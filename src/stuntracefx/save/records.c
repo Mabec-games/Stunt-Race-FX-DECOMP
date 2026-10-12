@@ -182,12 +182,15 @@ void SaveBlocksCheck(uint8_t bank, uint8_t *p)
         sum = 0;
         bad = 0;
         for (i = 0, x = base; i < 12 && !bad; i++, x += 4) {
+            uint8_t second;
+
             sum = add8(sum, rd8(b | (uint16_t)(0xFCD0 + x)), p);
-            if (rd8(b | (uint16_t)(0xFCD1 + x)) >= 0x41) {
+            second = rd8(b | (uint16_t)(0xFCD1 + x));
+            if (second >= 0x41) {
                 bad = 1;
                 break;
             }
-            sum = add8(sum, rd8(b | (uint16_t)(0xFCD1 + x)), p);
+            sum = add8(sum, second, p);
             sum = add8(sum, rd8(b | (uint16_t)(0xFCD2 + x)), p);
             sum = add8(sum, rd8(b | (uint16_t)(0xFCD3 + x)), p);
         }
