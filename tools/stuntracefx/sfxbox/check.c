@@ -855,6 +855,12 @@ static void run_original(uint32_t addr, int long_call)
     core_set_regs(&mine);
     cpu.a = out.a; cpu.x = out.x; cpu.y = out.y; cpu.d = out.d; cpu.db = out.db; cpu.p = out.p; cpu.e = out.e;
     cur_i = c < cur_n ? c + 1 : cur_n;
+    /* An interrupt the original took straight after the routine's return
+       (between its RTS/RTL and the next instruction at the caller's level)
+       is recorded before the return mark: the run above stops at the stand-in
+       return with it still pending, so it is left in the record to be taken
+       at its place. */
+    if (c < cur_n && c >= j + 6 && cur_ops[c - 4] >> 4 == 5) cur_i = c - 4;
 }
 
 void call_routine(uint32_t addr, int long_call)
