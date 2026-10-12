@@ -601,3 +601,8 @@ includeonce
 !text_pen = $F3
 !text_y = $F4
 !text_attr = $F5
+
+; Super FX record making (object/gsu_record.asm): where the record-making
+; programs leave the new record (0 when the pool is full), and record +$0A.
+!gsu_new_record = $70238E
+!gsu_rec_0a = $70000A

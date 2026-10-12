@@ -477,3 +477,136 @@ void abi_GsuRecordBits60(void)
 {
     cpu.a = GsuRecordBits60();
 }
+
+uint8_t GsuRun(uint8_t bank, uint16_t start);
+
+/* Where each record-making Super FX program leaves the new record's
+   address (0 when its pool had no room), and the word the S-CPU passes to
+   the record's +$0A. */
+#define GSU_NEW_RECORD 0x70238Eu
+#define RECORD_0A_WORD 0x1F4Cu
+
+/* The tail every routine below ends in ($08:CC7C): the new record becomes
+   object X's +$22; when there is one, its +$0A is set and GsuRecordFromObject
+   fills it from the object. */
+static uint8_t record_new(uint8_t bank, uint16_t obj, uint16_t program, uint16_t word0a)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t rec;
+
+    GsuRun(0x04, program);
+    wr16(b | RECORD_0A_WORD, word0a);
+    rec = rd16(GSU_NEW_RECORD);
+    wr16(b | (uint16_t)(0x2022 + obj), rec);
+    if (!rec)
+        return 0xFF;
+    wr16(0x70000A + rec, rd16(b | RECORD_0A_WORD));
+    GsuRecordFromObject(bank, obj);
+    return 0x00;
+}
+
+/* Exit: A = 0 (made) or $00FF (no room), N and Z from that byte; M 8-bit;
+   with a record Y = the object, otherwise Y unchanged; X unchanged. */
+static void abi_record_new(uint16_t program, uint16_t word0a)
+{
+    uint8_t r = record_new(cpu.db, cpu.x, program, word0a);
+
+    if (!r)
+        cpu.y = cpu.x;
+    cpu.a = r;
+    cpu.p = (uint8_t)(nz8(cpu.p, r) | P_M);
+}
+
+/*
+ * @routine 08:CB98 GsuRecordNew422
+ * WHAT IT DOES: Gives object X a new Super FX record from the second pool
+ * (mode $0422, linked into the list at $70:2398), with +$0A = 0, filled from
+ * the object.
+ * HOW: Runs Super FX program $04:8B64, which takes $2A bytes from the pool
+ * whose free list is at $70:1D70 and sets the record's flags and mode; then
+ * the shared tail at $08:CC7C ($1F4C = the +$0A word).
+ * Entry: M 8-bit, X 16-bit, D = $0000; X = object. Exit: A = 0 when the
+ * object got a record, $00FF when the pool had no room; N, Z from A's low
+ * byte; M 8-bit; X unchanged; Y = X with a record, else unchanged; $1F4C =
+ * the +$0A word.
+ */
+uint8_t GsuRecordNew422(uint8_t bank, uint16_t obj)
+{
+    return record_new(bank, obj, 0x8B64, 0x0000);
+}
+
+void abi_GsuRecordNew422(void)
+{
+    abi_record_new(0x8B64, 0x0000);
+}
+
+/*
+ * @routine 08:CBB2 GsuRecordNew42D
+ * WHAT IT DOES: Gives object X a new Super FX record from the first pool
+ * (mode $042D, flags $20), with +$0A = $90E8, filled from the object.
+ * HOW: Runs Super FX program $04:8C95, which takes $34 bytes from the pool
+ * whose free list is at $70:1098; then the shared tail at $08:CC7C.
+ * Entry: as GsuRecordNew422. Exit: as GsuRecordNew422.
+ */
+uint8_t GsuRecordNew42D(uint8_t bank, uint16_t obj)
+{
+    return record_new(bank, obj, 0x8C95, 0x90E8);
+}
+
+void abi_GsuRecordNew42D(void)
+{
+    abi_record_new(0x8C95, 0x90E8);
+}
+
+/*
+ * @routine 08:CBE6 GsuRecordNew424
+ * WHAT IT DOES: Gives object X a new Super FX record from the first pool
+ * (mode $0424, flags 8, +$2A = $40), with +$0A = $910A, filled from the
+ * object.
+ * HOW: Runs Super FX program $04:8C0A; then the shared tail at $08:CC7C.
+ * Entry: as GsuRecordNew422. Exit: as GsuRecordNew422.
+ */
+uint8_t GsuRecordNew424(uint8_t bank, uint16_t obj)
+{
+    return record_new(bank, obj, 0x8C0A, 0x910A);
+}
+
+void abi_GsuRecordNew424(void)
+{
+    abi_record_new(0x8C0A, 0x910A);
+}
+
+/*
+ * @routine 08:CC18 GsuRecordNew424Alt
+ * WHAT IT DOES: As GsuRecordNew424, with +$0A = $90E8.
+ * HOW: Runs Super FX program $04:8C0A; then the shared tail at $08:CC7C.
+ * Entry: as GsuRecordNew422. Exit: as GsuRecordNew422.
+ */
+uint8_t GsuRecordNew424Alt(uint8_t bank, uint16_t obj)
+{
+    return record_new(bank, obj, 0x8C0A, 0x90E8);
+}
+
+void abi_GsuRecordNew424Alt(void)
+{
+    abi_record_new(0x8C0A, 0x90E8);
+}
+
+/*
+ * @routine 08:CC63 GsuRecordNew426
+ * WHAT IT DOES: Gives object X a new Super FX record from the first pool
+ * (mode $0426, flags 8, +$2A = $40), with +$0A = $910A, filled from the
+ * object.
+ * HOW: Runs Super FX program $04:8B33; then falls into the shared tail at
+ * $08:CC7C, which the four routines above branch to.
+ * Entry: as GsuRecordNew422. Exit: as GsuRecordNew422.
+ */
+uint8_t GsuRecordNew426(uint8_t bank, uint16_t obj)
+{
+    return record_new(bank, obj, 0x8B33, 0x910A);
+}
+
+void abi_GsuRecordNew426(void)
+{
+    abi_record_new(0x8B33, 0x910A);
+}

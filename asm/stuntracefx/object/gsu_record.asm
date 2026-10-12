@@ -443,3 +443,133 @@ GsuRecordBits60:
     plx
     plp
     rtl
+
+; @routine 08:CB98 GsuRecordNew422
+; WHAT IT DOES: Gives object X a new Super FX record from the second pool
+; (mode $0422, linked into the list at $70:2398), with +$0A = 0, filled from
+; the object.
+; HOW: Runs Super FX program $04:8B64, which takes $2A bytes from the pool
+; whose free list is at $70:1D70 and sets the record's flags and mode; then
+; the shared tail at $08:CC7C ($1F4C = the +$0A word).
+; Entry: M 8-bit, X 16-bit, D = $0000; X = object. Exit: A = 0 when the
+; object got a record, $00FF when the pool had no room; N, Z from A's low
+; byte; M 8-bit; X unchanged; Y = X with a record, else unchanged; $1F4C =
+; the +$0A word.
+%at($08CB98)
+GsuRecordNew422:
+    phx
+    phy
+    lda.b #$04
+    ldx.w #$8B64
+    jsl.l GsuRun
+    ply
+    plx
+    rep.b #$20
+    lda.w #$0000
+    sta.w !wram_1F4C
+    sep.b #$20
+    brl GsuRecordNew_tail
+
+; @routine 08:CBB2 GsuRecordNew42D
+; WHAT IT DOES: Gives object X a new Super FX record from the first pool
+; (mode $042D, flags $20), with +$0A = $90E8, filled from the object.
+; HOW: Runs Super FX program $04:8C95, which takes $34 bytes from the pool
+; whose free list is at $70:1098; then the shared tail at $08:CC7C.
+; Entry: as GsuRecordNew422. Exit: as GsuRecordNew422.
+%at($08CBB2)
+GsuRecordNew42D:
+    phx
+    phy
+    lda.b #$04
+    ldx.w #$8C95
+    jsl.l GsuRun
+    ply
+    plx
+    rep.b #$20
+    lda.w #$90E8
+    sta.w !wram_1F4C
+    sep.b #$20
+    jmp.w GsuRecordNew_tail
+
+; @routine 08:CBE6 GsuRecordNew424
+; WHAT IT DOES: Gives object X a new Super FX record from the first pool
+; (mode $0424, flags 8, +$2A = $40), with +$0A = $910A, filled from the
+; object.
+; HOW: Runs Super FX program $04:8C0A; then the shared tail at $08:CC7C.
+; Entry: as GsuRecordNew422. Exit: as GsuRecordNew422.
+%at($08CBE6)
+GsuRecordNew424:
+    phx
+    phy
+    lda.b #$04
+    ldx.w #$8C0A
+    jsl.l GsuRun
+    ply
+    plx
+    rep.b #$20
+    lda.w #$910A
+    sta.w !wram_1F4C
+    sep.b #$20
+    bra GsuRecordNew_tail
+
+; @routine 08:CC18 GsuRecordNew424Alt
+; WHAT IT DOES: As GsuRecordNew424, with +$0A = $90E8.
+; HOW: Runs Super FX program $04:8C0A; then the shared tail at $08:CC7C.
+; Entry: as GsuRecordNew422. Exit: as GsuRecordNew422.
+%at($08CC18)
+GsuRecordNew424Alt:
+    phx
+    phy
+    lda.b #$04
+    ldx.w #$8C0A
+    jsl.l GsuRun
+    ply
+    plx
+    rep.b #$20
+    lda.w #$90E8
+    sta.w !wram_1F4C
+    sep.b #$20
+    bra GsuRecordNew_tail
+
+; @routine 08:CC63 GsuRecordNew426
+; WHAT IT DOES: Gives object X a new Super FX record from the first pool
+; (mode $0426, flags 8, +$2A = $40), with +$0A = $910A, filled from the
+; object.
+; HOW: Runs Super FX program $04:8B33; then falls into the shared tail at
+; $08:CC7C, which the four routines above branch to.
+; Entry: as GsuRecordNew422. Exit: as GsuRecordNew422.
+%at($08CC63)
+GsuRecordNew426:
+    phx
+    phy
+    lda.b #$04
+    ldx.w #$8B33
+    jsl.l GsuRun
+    ply
+    plx
+    rep.b #$20
+    lda.w #$910A
+    sta.w !wram_1F4C
+    sep.b #$20
+    bra GsuRecordNew_tail
+GsuRecordNew_tail:                  ; the four routines above join here
+    rep.b #$20
+    lda.l !gsu_new_record
+    sta.w !obj_22,x
+    bne .lCC8A
+    brl .lCC9E
+.lCC8A:
+    phx
+    txy
+    tax
+    lda.w !wram_1F4C
+    sta.l !gsu_rec_0a,x
+    plx
+    sep.b #$20
+    jsl.l GsuRecordFromObject
+    lda.b #$00
+    rtl
+.lCC9E:
+    sep.b #$20
+    lda.b #$FF
+    rtl
