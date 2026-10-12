@@ -673,3 +673,4 @@ includeonce
 !attach_entry = $702396
 !gsu_rec_27 = $700027
 !gsu_rec_90 = $700090
+!gsu_rec_2a = $70002A

@@ -1217,3 +1217,28 @@ ObjectPoseFromRecord:
     sta.w !obj_15,y
     plx
     rtl
+
+; @routine 08:CD08 GsuRecordSet2AHigh
+; WHAT IT DOES: Sets the word at +$2A of object X's record to A's low byte
+; as the high byte (and keeps that word in $1F36), when the object has a
+; record.
+; HOW: AND #$FF / XBA, then a long store.
+; Entry: M 8-bit, X 16-bit; X = object, A low byte = value. Exit: M 8-bit;
+; X unchanged; record: A = the word, N, Z from X; no record: A = 0, Z set.
+%at($08CD08)
+GsuRecordSet2AHigh:
+    rep.b #$20
+    and.w #$00FF
+    xba
+    sta.w !wram_1F36
+    rep.b #$20
+    lda.w !obj_22,x
+    beq .lCD22
+    phx
+    tax
+    lda.w !wram_1F36
+    sta.l !gsu_rec_2a,x
+    plx
+.lCD22:
+    sep.b #$20
+    rtl

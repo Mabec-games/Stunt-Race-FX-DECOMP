@@ -1205,3 +1205,35 @@ void abi_ObjectPoseFromRecord(void)
     cpu.y = cpu.x;
     cpu.p = (uint8_t)(p | P_M);
 }
+
+/*
+ * @routine 08:CD08 GsuRecordSet2AHigh
+ * WHAT IT DOES: Sets the word at +$2A of object X's record to A's low byte
+ * as the high byte (and keeps that word in $1F36), when the object has a
+ * record.
+ * HOW: AND #$FF / XBA, then a long store.
+ * Entry: M 8-bit, X 16-bit; X = object, A low byte = value. Exit: M 8-bit;
+ * X unchanged; record: A = the word, N, Z from X; no record: A = 0, Z set.
+ */
+uint16_t GsuRecordSet2AHigh(uint8_t bank, uint16_t obj, uint8_t value, uint8_t *p)
+{
+    uint16_t w = (uint16_t)(value << 8), rec;
+
+    wr16((uint32_t)bank << 16 | 0x1F36, w);
+    rec = record_of(bank, obj);
+    if (!rec) {
+        *p = nz16(*p, 0);
+        return 0;
+    }
+    wr16(0x70002A + rec, w);
+    *p = nz16(*p, obj);
+    return w;
+}
+
+void abi_GsuRecordSet2AHigh(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = GsuRecordSet2AHigh(cpu.db, cpu.x, (uint8_t)cpu.a, &p);
+    cpu.p = (uint8_t)(p | P_M);
+}
