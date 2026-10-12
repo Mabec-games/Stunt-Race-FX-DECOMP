@@ -508,3 +508,4 @@ includeonce
 !window_presets_a = $7ED9C5
 !window_presets_b = $7EDA1D
 !obj_link_w = $204F
+!approach_value = $3E

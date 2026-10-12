@@ -1,0 +1,115 @@
+/*
+ * approach.c: moving the value in direct page $3E toward a target. The
+ * step is the difference, raised to a minimum size, then divided by a power
+ * of two (each halving rounds toward zero). Every routine ends in one of two
+ * shared tails: $03:D1AA returns $3E with carry clear (it moved), $03:D1AE
+ * returns it with carry set (it was already there).
+ */
+#include "machine.h"
+
+#define APPROACH_VALUE 0x00003Eu
+
+/* One halving as CMP #$8000 (or #$80) / ROR A / BPL / ADC #0 does it: an
+   arithmetic shift whose negative results round toward zero. */
+static uint16_t halve(uint16_t v, uint16_t sign)
+{
+    uint16_t r = (uint16_t)((v >> 1) | (v & sign));
+
+    if (r & sign)
+        r = (uint16_t)(r + (v & 1));
+    return r;
+}
+
+/* The shared tails: A = $3E; N, Z from it; C clear when it moved; when it
+   moved, V from the add of the step. */
+static uint16_t approach(uint16_t target, int wide, uint16_t min, int shifts, int *moved, uint8_t *p)
+{
+    uint16_t mask = wide ? 0xFFFF : 0x00FF, sign = wide ? 0x8000 : 0x0080;
+    uint16_t cur = (wide ? rd16(APPROACH_VALUE) : rd8(APPROACH_VALUE)) & mask, d, s;
+    int i;
+
+    target &= mask;
+    *moved = target != cur;
+    if (!*moved) {
+        *p = (uint8_t)(wide ? nz16(*p, cur) : nz8(*p, (uint8_t)cur)) | P_C;
+        return cur;
+    }
+    d = (uint16_t)(target - cur) & mask;
+    if (!(d & sign)) {
+        if (d < min)
+            d = min;
+    } else if (!((uint16_t)(d + min) & sign)) {
+        d = (uint16_t)(-min) & mask;
+    }
+    for (i = 0; i < shifts; i++)
+        d = halve(d, sign) & mask;
+    s = (uint16_t)(d + cur) & mask;
+    *p = (uint8_t)((*p & ~(P_C | P_V)) | ((~(d ^ cur) & (d ^ s) & sign) ? P_V : 0));
+    if (wide)
+        wr16(APPROACH_VALUE, s);
+    else
+        wr8(APPROACH_VALUE, (uint8_t)s);
+    *p = wide ? nz16(*p, s) : nz8(*p, (uint8_t)s);
+    return s;
+}
+
+static void abi_approach(int wide, uint16_t min, int shifts)
+{
+    int moved;
+    uint8_t p = cpu.p;
+    uint16_t v = approach(cpu.a, wide, min, shifts, &moved, &p);
+
+    cpu.a = wide ? v : (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = p;
+}
+
+/*
+ * @routine 03:CDF4 ApproachQuarterMin4
+ * WHAT IT DOES: Moves $3E a quarter of the way toward A, by at least 1.
+ * HOW: The difference, at least 4 either way, halved twice; the tails at
+ * $03:D1AA / $03:D1AE.
+ * Entry: M 16-bit, D = $0000; A = target. Exit: A = $3E; N, Z from it; C
+ * clear when it moved (V from the add), set when it was already there.
+ */
+uint16_t ApproachQuarterMin4(uint16_t target, int *moved, uint8_t *p)
+{
+    return approach(target, 1, 4, 2, moved, p);
+}
+
+void abi_ApproachQuarterMin4(void)
+{
+    abi_approach(1, 4, 2);
+}
+
+/*
+ * @routine 03:CE30 ApproachEighthMin8
+ * WHAT IT DOES: Moves $3E an eighth of the way toward A, by at least 1.
+ * HOW: The difference, at least 8 either way, halved three times.
+ * Entry: as ApproachQuarterMin4. Exit: as ApproachQuarterMin4.
+ */
+uint16_t ApproachEighthMin8(uint16_t target, int *moved, uint8_t *p)
+{
+    return approach(target, 1, 8, 3, moved, p);
+}
+
+void abi_ApproachEighthMin8(void)
+{
+    abi_approach(1, 8, 3);
+}
+
+/*
+ * @routine 03:D00F ApproachQuarterMin4Byte
+ * WHAT IT DOES: The 8-bit form of ApproachQuarterMin4, on the byte at $3E.
+ * HOW: As ApproachQuarterMin4, with 8-bit arithmetic.
+ * Entry: M 8-bit, D = $0000; A = target. Exit: as ApproachQuarterMin4 (A
+ * low byte).
+ */
+uint16_t ApproachQuarterMin4Byte(uint8_t target, int *moved, uint8_t *p)
+{
+    return approach(target, 0, 4, 2, moved, p);
+}
+
+void abi_ApproachQuarterMin4Byte(void)
+{
+    abi_approach(0, 4, 2);
+}
