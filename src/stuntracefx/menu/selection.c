@@ -170,3 +170,49 @@ void abi_MenuStateInit(void)
     MenuStateInit();
     cpu.a = 0x001F;
 }
+
+uint16_t HandlerTableA(uint16_t i);
+uint8_t SaveChecksum(void);
+
+/*
+ * @routine 03:B548 SelectionCommit
+ * WHAT IT DOES: Records the two choices at $18CB and $18C9: their handler
+ * addresses (HandlerTableA) at $18DB and $18DD; both packed as a byte (the
+ * table at $03:B540 for each low two bits, $18C9's in the high nibble) into
+ * the save data at $70:FC0E, with the checksum renewed; and the derived
+ * values $18E3 and $18E5 from the table at $03:B46C, where $18D5 is the
+ * table $03:B464 entry for $18C9 when the two choices are the same, else 0.
+ * HOW: 16-bit lookups; $11DF holds the high nibble.
+ * Entry: any widths. Exit: A = $18E5's value; X = its table offset; P
+ * unchanged.
+ */
+uint16_t SelectionCommit(uint8_t bank, uint16_t *x)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t v;
+
+    wr16(0x0018DB, HandlerTableA(rd16(0x0018CB)));
+    wr16(0x0018DD, HandlerTableA(rd16(0x0018C9)));
+    wr16(b | 0x11DF, (uint16_t)(rd16(0x03B540 + ((rd16(0x0018C9) & 3) << 1)) << 4));
+    v = (uint16_t)(rd16(0x03B540 + ((rd16(0x0018CB) & 3) << 1)) | rd16(b | 0x11DF));
+    wr8(0x70FC0E, (uint8_t)v);
+    SaveChecksum();
+    wr16(0x0018D3, 0x0000);
+    wr16(0x0018D5, 0x0000);
+    if (rd16(0x0018CB) == rd16(0x0018C9))
+        wr16(b | 0x18D5, rd16(0x03B464 + (uint16_t)(rd16(0x0018C9) << 1)));
+    *x = (uint16_t)((uint16_t)((uint16_t)(rd16(0x0018CB) << 2) + rd16(0x0018D3)) << 1);
+    wr16(0x0018E3, rd16(0x03B46C + *x));
+    *x = (uint16_t)((uint16_t)((uint16_t)(rd16(0x0018C9) << 2) + rd16(0x0018D5)) << 1);
+    v = rd16(0x03B46C + *x);
+    wr16(0x0018E5, v);
+    return v;
+}
+
+void abi_SelectionCommit(void)
+{
+    uint16_t x;
+
+    cpu.a = SelectionCommit(cpu.db, &x);
+    cpu.x = (cpu.p & P_X) ? (uint8_t)x : x;
+}

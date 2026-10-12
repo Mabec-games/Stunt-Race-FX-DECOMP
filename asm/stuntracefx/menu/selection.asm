@@ -164,3 +164,76 @@ MenuStateInit:
     sta.l !wram_18F9
     plp
     rts
+
+; @routine 03:B548 SelectionCommit
+; WHAT IT DOES: Records the two choices at $18CB and $18C9: their handler
+; addresses (HandlerTableA) at $18DB and $18DD; both packed as a byte (the
+; table at $03:B540 for each low two bits, $18C9's in the high nibble) into
+; the save data at $70:FC0E, with the checksum renewed; and the derived
+; values $18E3 and $18E5 from the table at $03:B46C, where $18D5 is the
+; table $03:B464 entry for $18C9 when the two choices are the same, else 0.
+; HOW: 16-bit lookups; $11DF holds the high nibble.
+; Entry: any widths. Exit: A = $18E5's value; X = its table offset; P
+; unchanged.
+%at($03B548)
+SelectionCommit:
+    php
+    rep.b #$30
+    lda.l !selection
+    jsr.w HandlerTableA
+    sta.l !selection_handler_a
+    lda.l !selection_prev
+    jsr.w HandlerTableA
+    sta.l !selection_handler_b
+    lda.l !selection_prev
+    and.w #$0003
+    asl a
+    tax
+    lda.l !selection_bits_b540,x
+    asl a
+    asl a
+    asl a
+    asl a
+    sta.w !scratch_11df
+    lda.l !selection
+    and.w #$0003
+    asl a
+    tax
+    lda.l !selection_bits_b540,x
+    ora.w !scratch_11df
+    sep.b #$20
+    sta.l !save_bytes+8
+    rep.b #$20
+    jsl.l SaveChecksum
+    lda.w #$0000
+    sta.l !selection_out
+    sta.l !selection_out_1
+    lda.l !selection
+    cmp.l !selection_prev
+    bne .lB5B3
+    lda.l !selection_prev
+    asl a
+    tax
+    lda.l !selection_repeat_b464,x
+    sta.w !selection_out_1
+.lB5B3:
+    lda.l !selection
+    asl a
+    asl a
+    clc
+    adc.l !selection_out
+    asl a
+    tax
+    lda.l !selection_derived_b46c,x
+    sta.l !selection_derived
+    lda.l !selection_prev
+    asl a
+    asl a
+    clc
+    adc.l !selection_out_1
+    asl a
+    tax
+    lda.l !selection_derived_b46c,x
+    sta.l !wram_18E5
+    plp
+    rtl

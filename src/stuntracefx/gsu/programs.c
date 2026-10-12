@@ -345,3 +345,45 @@ void abi_GsuF441Player2(void)
         cpu.y &= 0x00FF;
     cpu.x = cpu.p & P_X ? 0x0041 : 0xF441;  /* the final pull restores X's width */
 }
+
+/*
+ * @routine 03:AF05 ViewReset
+ * WHAT IT DOES: Puts the view at the origin facing straight ahead: clears
+ * the position at $0664-$0669 and copies it to the Super FX inputs at
+ * $065E; runs program $01:8325 (Gsu8325) and keeps its nine words at
+ * $064C-$065D; sets the nine words at $063A to the identity matrix ($7F00
+ * on the diagonal).
+ * HOW: Work RAM through the data bank; the matrix is written a byte at a
+ * time (high bytes of the diagonal, then the low bytes).
+ * Entry: any widths. Exit: A = $7F with the high byte of the last result
+ * word; X = $25; Y high byte clear; P unchanged.
+ */
+uint16_t ViewReset(uint8_t bank)
+{
+    static const uint16_t high[9] = {0x063B, 0x063D, 0x063F, 0x0641, 0x0643, 0x0645, 0x0647, 0x0649, 0x064B};
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t v = 0;
+    unsigned i;
+
+    for (i = 0; i < 3; i++)
+        wr16(b | (0x0664 + 2 * i), 0x0000);
+    for (i = 0; i < 3; i++)
+        wr16(b | (0x065E + 2 * i), rd16(b | (0x0664 + 2 * i)));
+    Gsu8325(bank);
+    for (i = 0; i < 9; i++) {
+        v = rd16(b | (0x0608 + 2 * i));
+        wr16(b | (0x064C + 2 * i), v);
+    }
+    for (i = 0; i < 9; i++)
+        wr8(b | high[i], (i % 4) == 0 ? 0x7F : 0x00);
+    for (i = 0; i < 9; i++)
+        wr8(b | (uint16_t)(0x063A + 2 * i), 0x00);
+    return (uint16_t)((v & 0xFF00) | 0x7F);
+}
+
+void abi_ViewReset(void)
+{
+    cpu.a = ViewReset(cpu.db);
+    cpu.x = 0x0025;
+    cpu.y &= 0x00FF;
+}

@@ -538,3 +538,8 @@ includeonce
 !cycle_tilemap = $7F93D6
 !obj_04 = $2004
 !obj_59 = $2059
+!view_position = $0664
+!view_matrix = $063A
+!view_8325_out = $064C
+!selection_handler_a = $18DB
+!selection_handler_b = $18DD

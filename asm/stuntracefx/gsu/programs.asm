@@ -326,3 +326,70 @@ GsuF441_inputs:
     rep.b #$10
     plp
     rts
+
+; @routine 03:AF05 ViewReset
+; WHAT IT DOES: Puts the view at the origin facing straight ahead: clears
+; the position at $0664-$0669 and copies it to the Super FX inputs at
+; $065E; runs program $01:8325 (Gsu8325) and keeps its nine words at
+; $064C-$065D; sets the nine words at $063A to the identity matrix ($7F00
+; on the diagonal).
+; HOW: Work RAM through the data bank; the matrix is written a byte at a
+; time (high bytes of the diagonal, then the low bytes).
+; Entry: any widths. Exit: A = $7F with the high byte of the last result
+; word; X = $25; Y high byte clear; P unchanged.
+%at($03AF05)
+ViewReset:
+    php
+    rep.b #$20
+    stz.w !wram_0664
+    stz.w !wram_0666
+    stz.w !wram_0668
+    lda.w !wram_0664
+    sta.w !wram_065E
+    lda.w !wram_0666
+    sta.w !wram_065E+2
+    lda.w !wram_0668
+    sta.w !wram_065E+4
+    sep.b #$20
+    jsl.l Gsu8325
+    rep.b #$20
+    lda.w !gsu_8325_out
+    sta.w !view_8325_out
+    lda.w !gsu_8325_out+2
+    sta.w !view_8325_out+2
+    lda.w !gsu_8325_out+4
+    sta.w !view_8325_out+4
+    lda.w !gsu_8325_out+6
+    sta.w !view_8325_out+6
+    lda.w !gsu_8325_out+8
+    sta.w !view_8325_out+8
+    lda.w !gsu_8325_out+10
+    sta.w !view_8325_out+10
+    lda.w !gsu_8325_out+12
+    sta.w !view_8325_out+12
+    lda.w !gsu_8325_out+14
+    sta.w !view_8325_out+14
+    lda.w !gsu_8325_out+16
+    sta.w !view_8325_out+16
+    sep.b #$20
+    lda.b #$7F
+    sta.w !view_matrix+1
+    stz.w !view_matrix+3
+    stz.w !view_matrix+5
+    stz.w !view_matrix+7
+    sta.w !view_matrix+9
+    stz.w !view_matrix+11
+    stz.w !view_matrix+13
+    stz.w !view_matrix+15
+    sta.w !view_matrix+17
+    stz.w !view_matrix
+    stz.w !view_matrix+2
+    stz.w !view_matrix+4
+    stz.w !view_matrix+6
+    stz.w !view_matrix+8
+    stz.w !view_matrix+10
+    stz.w !view_matrix+12
+    stz.w !view_matrix+14
+    stz.w !view_matrix+16
+    plp
+    rtl

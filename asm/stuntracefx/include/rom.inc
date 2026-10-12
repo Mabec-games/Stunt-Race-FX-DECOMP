@@ -90,3 +90,8 @@ includeonce
 ; Palette bits per phase of TilemapPaletteCycle, six bytes each (video/tilemap.asm).
 !palette_cycle_a = $07CF26
 !palette_cycle_b = $07CF2C
+
+; Selection tables (menu/selection.asm).
+!selection_bits_b540 = $03B540
+!selection_repeat_b464 = $03B464
+!selection_derived_b46c = $03B46C
