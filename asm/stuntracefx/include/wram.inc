@@ -1162,3 +1162,6 @@ includeonce
 !fxcon_other = $0C
 ; Record sizes held for the box tests (object/fx_collide.asm).
 !fx_sizes = $70236C
+; Car push fields (race/fx_traffic.asm).
+!fxrec_yaw_rate = $34
+!fxrec_spread = $7C

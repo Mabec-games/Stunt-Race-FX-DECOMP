@@ -32,6 +32,10 @@
 #define REC_SIDES 0x42u
 #define REC_SPEED 0x4Au
 #define REC_NEXT_CAR 0x74u
+#define REC_Y 0x20u
+#define REC_YAW_RATE 0x34u
+#define REC_SPREAD 0x7Cu
+#define NEAR 0x07D0u           /* 2000 */
 
 /* The field `field` of record `rec` (R0 = field + rec, then LDW). */
 static uint16_t field(uint16_t f, uint16_t rec)
@@ -182,5 +186,116 @@ void abi_FxTrafficSides(void)
 
     memcpy(g.r, gsu.r, sizeof g.r);
     g = FxTrafficSides(g);
+    memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
+}
+
+/* |v| / 2 by DIV2 (S from it), then NOT and INC when negative. */
+static uint16_t half_magnitude(uint16_t v)
+{
+    v = gsu_div2(v);
+    return gsu.s ? gsu_inc(gsu_not(v)) : v;
+}
+
+/*
+ * @routine 04:BF98 FxSpreadCars
+ * WHAT IT DOES: Pushes the other cars near car R8 away from it: for each
+ * car on the cars' list (not R8) whose distance (|dx| + |dy| + |dz|) / 2
+ * is below 2000, its velocity x and z gain twice (2000 - that) along the
+ * unit vector from R8 to it, its +$34 gains or loses a share of it (by the
+ * sign of +$34: times $C180 or $3E80, scaled), and its +$7C = 30. A
+ * negative half z distance is made positive by code decoded from the ROM
+ * bytes and not reached in the traces so far.
+ * HOW: R8's position in R6, R5, R7 and R2 = 2000; per car, the differences
+ * (x into R1, z into R3) halved with DIV2; for a near car R8, R6, R5, R7,
+ * R2, the push and the car are kept on the R10 stack around FxNormalize of
+ * (dx, 0, dz), and each push is FMULT then ADD and SBK. R8 and the return
+ * address are kept on the R10 stack.
+ * Entry: R8 = the car's record; R10 = stack; R11 = return address. Exit:
+ * R9 = 0; R8, R6, R5, R7, R2 as set up; the others from the last car; S,
+ * Z from R10; the last RAM address R10.
+ */
+FxRegs FxSpreadCars(FxRegs g)
+{
+    uint16_t *sp = &g.r[10];
+
+    gsu_push(sp, g.r[11]);
+    gsu_push(sp, g.r[8]);
+    g.r[6] = gsu_ldw(gsu_add(REC_X, g.r[8], 0));
+    g.r[5] = gsu_ldw(gsu_add(REC_Y, g.r[8], 0));
+    g.r[7] = gsu_ldw(gsu_add(REC_Z, g.r[8], 0));
+    g.r[2] = NEAR;
+    g.r[0] = gsu_ldw(FX_CARS);
+    for (;; g.r[0] = gsu_ldw(gsu_add(REC_NEXT_CAR, g.r[9], 0))) {
+        g.r[9] = g.r[0];
+        gsu_moves(g.r[9]);
+        if (gsu.z)
+            break;
+        gsu_sub(g.r[0], g.r[8], 0);
+        if (gsu.z)
+            continue;
+        g.r[0] = gsu_sub(gsu_ldw(gsu_add(REC_X, g.r[9], 0)), g.r[6], 0);
+        g.r[1] = g.r[0];
+        g.r[4] = half_magnitude(g.r[0]);
+        g.r[0] = gsu_sub(gsu_ldw(gsu_add(REC_Y, g.r[9], 0)), g.r[5], 0);
+        g.r[4] = gsu_add(g.r[4], half_magnitude(g.r[0]), 0);
+        g.r[0] = gsu_sub(gsu_ldw(gsu_add(REC_Z, g.r[9], 0)), g.r[7], 0);
+        g.r[3] = g.r[0];
+        g.r[0] = half_magnitude(g.r[0]);
+        g.r[0] = gsu_add(g.r[0], g.r[4], 0);
+        g.r[0] = gsu_sub(g.r[0], g.r[2], 0);
+        if (!gsu.s)
+            continue;                                /* not near */
+        gsu_push(sp, g.r[8]);
+        gsu_push(sp, g.r[6]);
+        gsu_push(sp, g.r[5]);
+        gsu_push(sp, g.r[7]);
+        gsu_push(sp, g.r[2]);
+        g.r[0] = magnitude(g.r[0]);
+        g.r[0] = gsu_add(g.r[0], g.r[0], 0);
+        gsu_push(sp, g.r[0]);
+        gsu_push(sp, g.r[9]);
+        g.r[2] = 0;
+        g.r[11] = 0xC026;
+        g = FxNormalize(g);
+        g.r[9] = gsu_pull(sp);
+        g.r[6] = gsu_pull(sp);
+        g.r[0] = gsu_fmult(g.r[1], g.r[6]);
+        g.r[4] = gsu_ldw(gsu_add(REC_VX, g.r[9], 0));
+        g.r[0] = gsu_add(g.r[0], g.r[4], 0);
+        gsu_sbk(g.r[0]);
+        g.r[0] = gsu_fmult(g.r[3], g.r[6]);
+        g.r[4] = gsu_ldw(gsu_add(REC_VZ, g.r[9], 0));
+        g.r[0] = gsu_add(g.r[0], g.r[4], 0);
+        gsu_sbk(g.r[0]);
+        g.r[0] = gsu_ldw(gsu_add(REC_YAW_RATE, g.r[9], 0));
+        g.r[1] = g.r[0];
+        g.r[0] = 0xC180;
+        gsu_moves(g.r[1]);
+        if (!gsu.s)
+            g.r[0] = 0x3E80;
+        g.r[6] = gsu_add(g.r[6], g.r[6], 0);
+        g.r[6] = gsu_add(g.r[6], g.r[6], 0);
+        g.r[0] = gsu_add(gsu_fmult(g.r[0], g.r[6]), g.r[1], 0);
+        gsu_sbk(g.r[0]);
+        g.r[4] = 0x001E;
+        g.r[0] = gsu_add(REC_SPREAD, g.r[9], 0);
+        gsu_stw(g.r[0], g.r[4]);
+        g.r[2] = gsu_pull(sp);
+        g.r[7] = gsu_pull(sp);
+        g.r[5] = gsu_pull(sp);
+        g.r[6] = gsu_pull(sp);
+        g.r[8] = gsu_pull(sp);
+    }
+    g.r[8] = gsu_pull(sp);
+    gsu_pull(sp);
+    return g;
+}
+
+void abi_FxSpreadCars(void)
+{
+    FxRegs g;
+
+    memcpy(g.r, gsu.r, sizeof g.r);
+    g = FxSpreadCars(g);
     memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
 }

@@ -251,4 +251,222 @@ FxTrafficSides:
     ldw (r10)
     nop
 
+; @routine 04:BF98 FxSpreadCars
+; WHAT IT DOES: Pushes the other cars near car R8 away from it: for each
+; car on the cars' list (not R8) whose distance (|dx| + |dy| + |dz|) / 2
+; is below 2000, its velocity x and z gain twice (2000 - that) along the
+; unit vector from R8 to it, its +$34 gains or loses a share of it (by the
+; sign of +$34: times $C180 or $3E80, scaled), and its +$7C = 30. A
+; negative half z distance is made positive by code decoded from the ROM
+; bytes and not reached in the traces so far.
+; HOW: R8's position in R6, R5, R7 and R2 = 2000; per car, the differences
+; (x into R1, z into R3) halved with DIV2; for a near car R8, R6, R5, R7,
+; R2, the push and the car are kept on the R10 stack around FxNormalize of
+; (dx, 0, dz), and each push is FMULT then ADD and SBK. R8 and the return
+; address are kept on the R10 stack.
+; Entry: R8 = the car's record; R10 = stack; R11 = return address. Exit:
+; R9 = 0; R8, R6, R5, R7, R2 as set up; the others from the last car; S,
+; Z from R10; the last RAM address R10.
+%at($04BF98)
+FxSpreadCars:
+    from r11
+    stw (r10)
+    inc r10
+    inc r10
+    from r8
+    stw (r10)
+    inc r10
+    inc r10
+    ibt r6,#!fxrec_half_x
+    with r6
+    add r8
+    to r6
+    ldw (r6)
+    ibt r5,#!fxrec_half_x+2
+    with r5
+    add r8
+    to r5
+    ldw (r5)
+    ibt r7,#!fxrec_half_x+4
+    with r7
+    add r8
+    to r7
+    ldw (r7)
+    iwt r2,#2000
+    lm r0,(!fx_cars)
+.car:
+    moves r9,r0
+    bne .test
+    nop
+    iwt r15,#.done
+    nop
+.test:
+    cmp r8
+    bne .other
+    nop
+    iwt r15,#.next
+    nop
+.other:
+    ibt r0,#!fxrec_half_x
+    add r9
+    ldw (r0)
+    sub r6
+    move r1,r0
+    div2
+    bpl .dx
+    nop
+    not
+    inc r0
+.dx:
+    move r4,r0
+    ibt r0,#!fxrec_half_x+2
+    add r9
+    ldw (r0)
+    sub r5
+    div2
+    bpl .dy
+    nop
+    not
+    inc r0
+.dy:
+    with r4
+    add r0
+    ibt r0,#!fxrec_half_x+4
+    add r9
+    ldw (r0)
+    sub r7
+    move r3,r0
+    div2
+    bpl .dz
+    nop
+    not
+    inc r0
+.dz:
+    add r4
+    sub r2
+    bpl .next
+    nop
+    from r8
+    stw (r10)
+    inc r10
+    inc r10
+    from r6
+    stw (r10)
+    inc r10
+    inc r10
+    from r5
+    stw (r10)
+    inc r10
+    inc r10
+    from r7
+    stw (r10)
+    inc r10
+    inc r10
+    from r2
+    stw (r10)
+    inc r10
+    inc r10
+    moves r0,r0
+    bpl .push
+    nop
+    not
+    inc r0
+.push:
+    add r0
+    stw (r10)
+    inc r10
+    inc r10
+    from r9
+    stw (r10)
+    inc r10
+    inc r10
+    ibt r2,#0
+    link #4
+    iwt r15,#FxNormalize
+    nop
+    dec r10
+    dec r10
+    to r9
+    ldw (r10)
+    dec r10
+    dec r10
+    to r6
+    ldw (r10)
+    from r1
+    fmult
+    ibt r4,#!fxrec_velocity
+    with r4
+    add r9
+    to r4
+    ldw (r4)
+    add r4
+    sbk
+    from r3
+    fmult
+    ibt r4,#!fxrec_velocity+4
+    with r4
+    add r9
+    to r4
+    ldw (r4)
+    add r4
+    sbk
+    ibt r0,#!fxrec_yaw_rate
+    add r9
+    ldw (r0)
+    move r1,r0
+    iwt r0,#$C180
+    moves r1,r1
+    bmi .turn
+    nop
+    iwt r0,#$3E80
+.turn:
+    with r6
+    add r6
+    with r6
+    add r6
+    fmult
+    add r1
+    sbk
+    iwt r4,#$001E
+    ibt r0,#!fxrec_spread
+    add r9
+    from r4
+    stw (r0)
+    dec r10
+    dec r10
+    to r2
+    ldw (r10)
+    dec r10
+    dec r10
+    to r7
+    ldw (r10)
+    dec r10
+    dec r10
+    to r5
+    ldw (r10)
+    dec r10
+    dec r10
+    to r6
+    ldw (r10)
+    dec r10
+    dec r10
+    to r8
+    ldw (r10)
+.next:
+    ibt r0,#!fxrec_next_car
+    add r9
+    ldw (r0)
+    iwt r15,#.car
+    nop
+.done:
+    dec r10
+    dec r10
+    to r8
+    ldw (r10)
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+
 arch 65816
