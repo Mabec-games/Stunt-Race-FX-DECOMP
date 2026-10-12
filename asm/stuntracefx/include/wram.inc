@@ -409,3 +409,9 @@ includeonce
 !gsu_in_216 = $700216
 !save_record_a = $70FC4A
 !save_record_b = $70FC5E
+!wram_0DDA = $0DDA
+!wram_0DDB = $0DDB
+!wram_0D22 = $0D22
+!wram_0346 = $0346
+!wram_06CD = $0006CD
+!bank0_base = $000000              ; a bank 0 address indexed by a record pointer

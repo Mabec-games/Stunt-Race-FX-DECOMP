@@ -53,3 +53,16 @@ FixedColourFromStep:
     lda.l !fixed_colour_table,x
     sta.l !fixed_colour
     rtl
+
+; @routine 7E:E011 ColourMathSub83Windowed
+; WHAT IT DOES: Sets colour maths to $83 (subtract, on BG1 and BG2) and the
+; windows to colour only.
+; HOW: CGADSUB = $83 (a long store), then WindowsColourWindowOnly.
+; Entry: any widths. Exit: A low byte = $03; N, Z clear; M 8-bit.
+%ramcode($7EE011, $013D38)
+ColourMathSub83Windowed:
+    sep.b #$20
+    lda.b #$83
+    sta.l !CGADSUB
+    jsr.w WindowsColourWindowOnly
+    rts

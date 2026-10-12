@@ -244,3 +244,32 @@ void abi_PaletteLoad16(void)
     cpu.y = (uint16_t)(src + 0x20);
     cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
 }
+
+/*
+ * @routine 7E:B307 RasterColoursUnless0D22
+ * WHAT IT DOES: Unless the byte at $0D22 is set, writes the raster colours
+ * from the start of their buffers: RasterColoursE4, then RasterColoursCycling.
+ * HOW: X = 0 for both; $0D22 is read through the data bank.
+ * Entry: any widths. Exit: skipped: A low byte = $0D22. Written: A low byte
+ * as RasterColoursCycling leaves it, X = 0. P unchanged.
+ */
+uint8_t RasterColoursUnless0D22(uint8_t bank, int *ran)
+{
+    uint8_t v = rd8((uint32_t)bank << 16 | 0x0D22);
+
+    *ran = !v;
+    if (v)
+        return v;
+    RasterColoursE4(0);
+    return RasterColoursCycling(0);
+}
+
+void abi_RasterColoursUnless0D22(void)
+{
+    int ran;
+    uint8_t v = RasterColoursUnless0D22(cpu.db, &ran);
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    if (ran)
+        cpu.x = 0;
+}

@@ -168,3 +168,72 @@ void abi_HudDrawNumber3(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
     cpu.p = (uint8_t)(nz8(p, a) & ~P_C);
 }
+
+/* Draw the byte at `value` (data bank) with HudDrawNumber3 at `offset`;
+   the routines below then switch to 8-bit index registers. */
+static uint8_t draw_value(uint8_t bank, uint16_t value, uint16_t offset, uint8_t *p)
+{
+    return HudDrawNumber3(rd8((uint32_t)bank << 16 | value), offset, p);
+}
+
+static void abi_draw_value(uint16_t value, uint16_t offset)
+{
+    uint8_t p = cpu.p, a = draw_value(cpu.db, value, offset, &p);
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
+    cpu.x = offset & 0x00FF;
+    cpu.y &= 0x00FF;
+    cpu.p = (uint8_t)((nz8(p, a) & ~P_C) | P_M | P_X);
+}
+
+/*
+ * @routine 7E:E7AE HudDrawValueA
+ * WHAT IT DOES: Draws the number at $0DDA as three digits at sprite offset
+ * $114.
+ * HOW: HudDrawNumber3, through the shared tail at $7E:E7D0.
+ * Entry: any widths, D = $0000. Exit: as HudDrawNumber3; X = $14, Y high
+ * byte clear; M 8-bit, X 8-bit.
+ */
+uint8_t HudDrawValueA(uint8_t bank, uint8_t *p)
+{
+    return draw_value(bank, 0x0DDA, 0x0114, p);
+}
+
+void abi_HudDrawValueA(void)
+{
+    abi_draw_value(0x0DDA, 0x0114);
+}
+
+/*
+ * @routine 7E:E7BA HudDrawValueB
+ * WHAT IT DOES: Draws the number at $0DDA as three digits at sprite offset
+ * $28.
+ * HOW: As HudDrawValueA.
+ * Entry: as HudDrawValueA. Exit: as HudDrawValueA, X = $28.
+ */
+uint8_t HudDrawValueB(uint8_t bank, uint8_t *p)
+{
+    return draw_value(bank, 0x0DDA, 0x0028, p);
+}
+
+void abi_HudDrawValueB(void)
+{
+    abi_draw_value(0x0DDA, 0x0028);
+}
+
+/*
+ * @routine 7E:E7C6 HudDrawValueC
+ * WHAT IT DOES: Draws the number at $0DDB as three digits at sprite offset
+ * $128.
+ * HOW: As HudDrawValueA; its last three instructions are the shared tail.
+ * Entry: as HudDrawValueA. Exit: as HudDrawValueA, X = $28.
+ */
+uint8_t HudDrawValueC(uint8_t bank, uint8_t *p)
+{
+    return draw_value(bank, 0x0DDB, 0x0128, p);
+}
+
+void abi_HudDrawValueC(void)
+{
+    abi_draw_value(0x0DDB, 0x0128);
+}

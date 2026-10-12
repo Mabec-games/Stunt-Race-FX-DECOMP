@@ -144,3 +144,32 @@ ObjectPoolInit:
     plb
     plp
     rtl
+
+; @routine 7F:12AC ObjectLinkFlag4000Step
+; WHAT IT DOES: When the object two links on from the one at $0346 has bit
+; 14 set in its first word, adds 8 to $06CD.
+; HOW: Follows the link at +$4F twice (bank $7E), reads the record's first
+; word in bank 0.
+; Entry: any widths. Exit: A = the masked word, or the new $06CD; X, P
+; unchanged.
+%ramcode($7F12AC, $058AAC)
+ObjectLinkFlag4000Step:
+    php
+    rep.b #$30
+    phx
+    ldx.w !wram_0346
+    lda.l !obj_link,x
+    tax
+    lda.l !obj_link,x
+    tax
+    lda.l !bank0_base,x
+    and.w #$4000
+    beq .l12D2
+    lda.l !wram_06CD
+    clc
+    adc.w #$0008
+    sta.l !wram_06CD
+.l12D2:
+    plx
+    plp
+    rtl

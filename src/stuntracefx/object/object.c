@@ -208,3 +208,31 @@ void abi_ObjectPoolInit(void)
         cpu.x &= 0x00FF;
     }
 }
+
+/*
+ * @routine 7F:12AC ObjectLinkFlag4000Step
+ * WHAT IT DOES: When the object two links on from the one at $0346 has bit
+ * 14 set in its first word, adds 8 to $06CD.
+ * HOW: Follows the link at +$4F twice (bank $7E), reads the record's first
+ * word in bank 0.
+ * Entry: any widths. Exit: A = the masked word, or the new $06CD; X, P
+ * unchanged.
+ */
+uint16_t ObjectLinkFlag4000Step(void)
+{
+    uint16_t x = rd16(0x000346), a;
+
+    x = rd16(0x7E204F + x);
+    x = rd16(0x7E204F + x);
+    a = rd16(0x000000 + x) & 0x4000;
+    if (!a)
+        return a;
+    a = (uint16_t)(rd16(0x0006CD) + 8);
+    wr16(0x0006CD, a);
+    return a;
+}
+
+void abi_ObjectLinkFlag4000Step(void)
+{
+    cpu.a = ObjectLinkFlag4000Step();
+}

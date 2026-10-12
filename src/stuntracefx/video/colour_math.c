@@ -74,3 +74,25 @@ void abi_FixedColourFromStep(void)
     cpu.y &= 0x00FF;
     cpu.p = (uint8_t)(nz8(cpu.p, v) | P_M | P_X);
 }
+
+void WindowsColourWindowOnly(void);
+
+/*
+ * @routine 7E:E011 ColourMathSub83Windowed
+ * WHAT IT DOES: Sets colour maths to $83 (subtract, on BG1 and BG2) and the
+ * windows to colour only.
+ * HOW: CGADSUB = $83 (a long store), then WindowsColourWindowOnly.
+ * Entry: any widths. Exit: A low byte = $03; N, Z clear; M 8-bit.
+ */
+void ColourMathSub83Windowed(void)
+{
+    wr8(0x002131, 0x83);
+    WindowsColourWindowOnly();
+}
+
+void abi_ColourMathSub83Windowed(void)
+{
+    ColourMathSub83Windowed();
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x03);
+    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z)) | P_M);
+}

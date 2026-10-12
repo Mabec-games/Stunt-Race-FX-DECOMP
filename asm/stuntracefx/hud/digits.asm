@@ -150,3 +150,46 @@ HudDrawNumber3:
     inc a
     sta.w !oam_buffer+22,x
     rts
+
+; @routine 7E:E7AE HudDrawValueA
+; WHAT IT DOES: Draws the number at $0DDA as three digits at sprite offset
+; $114.
+; HOW: HudDrawNumber3, through the shared tail at $7E:E7D0.
+; Entry: any widths, D = $0000. Exit: as HudDrawNumber3; X = $14, Y high
+; byte clear; M 8-bit, X 8-bit.
+%ramcode($7EE7AE, $0144D5)
+HudDrawValueA:
+    sep.b #$20
+    lda.w !wram_0DDA
+    rep.b #$10
+    ldx.w #$0114
+    bra HudDrawValueTail
+
+; @routine 7E:E7BA HudDrawValueB
+; WHAT IT DOES: Draws the number at $0DDA as three digits at sprite offset
+; $28.
+; HOW: As HudDrawValueA.
+; Entry: as HudDrawValueA. Exit: as HudDrawValueA, X = $28.
+%ramcode($7EE7BA, $0144E1)
+HudDrawValueB:
+    sep.b #$20
+    lda.w !wram_0DDA
+    rep.b #$10
+    ldx.w #$0028
+    bra HudDrawValueTail
+
+; @routine 7E:E7C6 HudDrawValueC
+; WHAT IT DOES: Draws the number at $0DDB as three digits at sprite offset
+; $128.
+; HOW: As HudDrawValueA; its last three instructions are the shared tail.
+; Entry: as HudDrawValueA. Exit: as HudDrawValueA, X = $28.
+%ramcode($7EE7C6, $0144ED)
+HudDrawValueC:
+    sep.b #$20
+    lda.w !wram_0DDB
+    rep.b #$10
+    ldx.w #$0128
+HudDrawValueTail:                   ; shared with HudDrawValueA and HudDrawValueB
+    jsr.w HudDrawNumber3
+    sep.b #$10
+    rts

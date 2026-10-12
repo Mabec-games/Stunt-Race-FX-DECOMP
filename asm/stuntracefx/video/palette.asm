@@ -272,3 +272,24 @@ PaletteLoad16:
     dec.b !digit_count
     bne .lEDAE
     rts
+
+; @routine 7E:B307 RasterColoursUnless0D22
+; WHAT IT DOES: Unless the byte at $0D22 is set, writes the raster colours
+; from the start of their buffers: RasterColoursE4, then RasterColoursCycling.
+; HOW: X = 0 for both; $0D22 is read through the data bank.
+; Entry: any widths. Exit: skipped: A low byte = $0D22. Written: A low byte
+; as RasterColoursCycling leaves it, X = 0. P unchanged.
+%ramcode($7EB307, $01102E)
+RasterColoursUnless0D22:
+    php
+    sep.b #$20
+    rep.b #$10
+    lda.w !wram_0D22
+    bne .lB31C
+    ldx.w #$0000
+    sep.b #$20
+    jsr.w RasterColoursE4
+    jsr.w RasterColoursCycling
+.lB31C:
+    plp
+    rts
