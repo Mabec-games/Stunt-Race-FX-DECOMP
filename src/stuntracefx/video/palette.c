@@ -330,3 +330,254 @@ void abi_PaletteCopy16To7F39D7(void)
     cpu.x = 0x0020;
     cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
 }
+
+uint16_t PpuMultiply(uint8_t v);
+
+typedef struct {
+    uint16_t a;
+    uint8_t p;
+} BlendEnd;
+
+/* The body of ColourBlend; p carries the flags it leaves. */
+static BlendEnd colour_blend(uint8_t bank, uint8_t p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t from = rd16(0x0000F1), to = rd16(0x0000F3), r, g, bl, m, s;
+    BlendEnd e;
+
+    wr16(b | 0x344E, from & 0x1F);
+    wr16(b | 0x3452, (from >> 5) & 0x1F);
+    wr16(b | 0x3456, (from >> 10) & 0x1F);
+    wr16(0x0000F1, (uint16_t)(from >> 15));
+    wr16(b | 0x3450, to & 0x1F);
+    wr16(b | 0x3454, (to >> 5) & 0x1F);
+    wr16(b | 0x3458, (to >> 10) & 0x1F);
+    wr16(0x0000F3, (uint16_t)(to >> 15));
+    r = (uint16_t)((PpuMultiply((uint8_t)(rd16(b | 0x3450) - rd16(b | 0x344E))) + rd16(b | 0x344E)) & 0x1F);
+    wr16(b | 0x344E, r);
+    g = (uint16_t)(PpuMultiply((uint8_t)(rd16(b | 0x3454) - rd16(b | 0x3452))) + rd16(b | 0x3452));
+    wr16(b | 0x3452, g);
+    m = PpuMultiply((uint8_t)(rd16(b | 0x3458) - rd16(b | 0x3456)));
+    bl = rd16(b | 0x3456);
+    s = (uint16_t)(m + bl);
+    p = (uint8_t)(p & ~(P_V | P_C));
+    if (~(m ^ bl) & (m ^ s) & 0x8000)
+        p |= P_V;
+    bl = (uint16_t)((uint16_t)((uint16_t)(s >> 8 | s << 8) << 2) & 0x7C00);
+    wr16(0x0000F1, bl);
+    if (g & 0x0800)
+        p |= P_C;
+    e.a = (uint16_t)(((g << 5) & 0x03E0) | bl | r);
+    e.p = (uint8_t)(nz16(p, e.a) & ~P_M);
+    return e;
+}
+
+/*
+ * @routine 7E:E6E9 ColourBlend
+ * WHAT IT DOES: Blends two BGR555 colours, from direct page $F1 toward $F3,
+ * by the fraction loaded in the PPU multiplier (factor t * 8 gives t / 32),
+ * and returns the blend.
+ * HOW: Splits both colours into 5-bit components at $344E-$3458 (from: red,
+ * green, blue at $344E, $3452, $3456; to at $3450, $3454, $3458), shifting
+ * each colour word right 5 at a time in place; each component becomes from
+ * + PpuMultiply(to - from), red masked to 5 bits, and the three are packed
+ * back; $F1 is left with the blue field. The components go through the
+ * data bank.
+ * Entry: M 16-bit, D = $0000; the multiplier's factor set. Exit: A = the
+ * blended colour; N, Z from it; C = bit 11 of the green sum; V from the
+ * blue add; X, Y unchanged.
+ */
+uint16_t ColourBlend(uint8_t bank)
+{
+    return colour_blend(bank, 0).a;
+}
+
+void abi_ColourBlend(void)
+{
+    BlendEnd e = colour_blend(cpu.db, cpu.p);
+
+    cpu.a = e.a;
+    cpu.p = e.p;
+}
+
+/* Steps a 13-entry cycle position by n, wrapping. */
+static uint8_t cycle13(uint8_t v, uint8_t n)
+{
+    v = (uint8_t)(v + n);
+    return v < 0x0D ? v : (n == 1 ? 0 : (uint8_t)(v - 0x0D));
+}
+
+typedef struct {
+    uint16_t a, x;
+    uint8_t p;
+} KeptEnd;
+
+/* The body of PaletteKeptColoursStep, with everything its exit leaves. */
+static KeptEnd palette_kept_colours_step(uint8_t bank, uint16_t a, uint16_t x, uint16_t y, uint8_t p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t t, step = 0, v, d;
+    unsigned s;
+    KeptEnd e;
+    enum { NONE, SKIP, ONE, TWO, ODD } go = NONE;
+
+    if (!rd8(b | 0x0D53) && rd8(b | (uint16_t)(0x0E05 + y))
+        && (a = rd16(b | (uint16_t)(0x0D1E + x)), a & 0x4000)) {
+        t = rd8(b | (uint16_t)(0x0E01 + y));
+        if (t == 0xFF) {
+            go = TWO;
+        } else {
+            t++;
+            wr8(b | (uint16_t)(0x0E01 + y), t);
+            go = t >= 0xB4 ? TWO : t >= 0x78 ? ONE : t >= 0x3C ? ODD : SKIP;
+        }
+    } else {
+        t = rd8(b | (uint16_t)(0x0E01 + y));
+        if (!t) {
+            a = 0x7E63;
+            wr16(0x7EFF2B, a);
+        } else if (t >= 0x78) {
+            wr8(b | (uint16_t)(0x0E01 + y), (uint8_t)(t - 5));
+            go = TWO;
+        } else if (t >= 0x3C) {
+            wr8(b | (uint16_t)(0x0E01 + y), (uint8_t)(t - 4));
+            go = ONE;
+        } else if (t >= 0x1E) {
+            wr8(b | (uint16_t)(0x0E01 + y), (uint8_t)(t - 3));
+            go = ODD;
+        } else {
+            wr8(b | (uint16_t)(0x0E01 + y), (uint8_t)(t - 1));
+            go = SKIP;
+        }
+    }
+    /* SKIP steps by one on every fourth frame, ODD on every other one. */
+    if (go == SKIP)
+        go = (rd8(b | 0x0E3B) & 0x03) ? NONE : ONE;
+    else if (go == ODD)
+        go = (rd8(b | 0x0E3B) & 0x01) ? NONE : ONE;
+    if (go == ONE || go == TWO) {
+        step = cycle13(rd8(b | (uint16_t)(0x0E03 + y)), go == TWO ? 2 : 1);
+        wr8(b | (uint16_t)(0x0E03 + y), step);
+        x = (uint8_t)(step << 1);
+        a = rd16(0x7EB4E9 + x);
+        wr16(0x7EFF2B, a);
+    }
+    v = rd8(b | (uint16_t)(0x0DFD + y));
+    d = rd8(b | (uint16_t)(0x0DFB + y));
+    s = (unsigned)v - d;
+    p = (uint8_t)(p & ~(P_C | P_V));
+    if (s < 0x100)
+        p |= P_C;
+    if ((v ^ d) & (v ^ (uint8_t)s) & 0x80)
+        p |= P_V;
+    wr8(b | (uint16_t)(0x0DFD + y), (uint8_t)s);
+    if (p & P_C) {
+        e.a = (uint16_t)((a & 0xFF00) | (uint8_t)s);
+        e.p = (uint8_t)(nz8(p, (uint8_t)s) | P_M);
+    } else {
+        step = cycle13(rd8(b | (uint16_t)(0x0DFF + y)), 1);
+        wr8(b | (uint16_t)(0x0DFF + y), step);
+        x = (uint8_t)(step << 1);
+        wr16(0x7EFF27, rd16(0x7EB505 + x));
+        e.a = rd16(0x7EB521 + x);
+        wr16(0x7EFF29, e.a);
+        e.p = (uint8_t)(nz16(p, e.a) & ~(P_C | P_M));
+    }
+    e.x = x;
+    return e;
+}
+
+/*
+ * @routine 7E:B41F PaletteKeptColoursStep
+ * WHAT IT DOES: Animates the kept colours at $7E:FF27-$7E:FF2C for player Y
+ * (the timer at $0E01 + Y and the two 13-step cycles at $0E03 + Y and $0DFF
+ * + Y). While the player's flag at $0E05 + Y is set, $0D53 is clear and
+ * bit 14 of $0D1E + X is set, the timer counts up and the third colour's
+ * cycle speeds up with it (every fourth frame below $3C, every other frame
+ * below $78, every frame below $B4, two steps a frame from there); otherwise
+ * the timer counts back down through the same speeds and at 0 the third
+ * colour rests at $7E63. The first two colours step together whenever
+ * $0DFD + Y, less $0DFB + Y each frame, borrows.
+ * HOW: The third colour from the table at $7E:B4E9, the first two from
+ * $7E:B505 and $7E:B521, each indexed by its cycle step * 2. Counting down
+ * subtracts 5, 4, 3 or 1 by band ($78, $3C, $1E). Work RAM through the data
+ * bank.
+ * Entry: M 8-bit, X 8-bit; X = offset into $0D1E, Y = player offset.
+ * Exit: when the first two colours stepped, A = the second colour, M 16-bit,
+ * N, Z from it, C clear; otherwise A low byte = $0DFD + Y, M 8-bit, N, Z
+ * from it, C set; V from that subtract; X = the last cycle step * 2 when a
+ * step was made, else unchanged; Y unchanged.
+ */
+uint16_t PaletteKeptColoursStep(uint8_t bank, uint16_t x, uint16_t y)
+{
+    return palette_kept_colours_step(bank, 0, x, y, P_M | P_X).a;
+}
+
+void abi_PaletteKeptColoursStep(void)
+{
+    KeptEnd e = palette_kept_colours_step(cpu.db, cpu.a, cpu.x, cpu.y, cpu.p);
+
+    cpu.a = e.a;
+    cpu.x = e.x;
+    cpu.p = e.p;
+}
+
+uint16_t PpuMultiplierSetLowByteTimes8(uint8_t v);
+
+/*
+ * @routine 7E:E6D1 ColourBlendBy
+ * WHAT IT DOES: ColourBlend by the fraction in direct page $F5 (t / 32):
+ * blends the colour in $F1 toward the one in $F3.
+ * HOW: Loads the multiplier's factor with the low byte of $F5 times 8 (two
+ * long writes to M7A, low then high), then falls into ColourBlend.
+ * Entry: M 16-bit, D = $0000. Exit: as ColourBlend.
+ */
+uint16_t ColourBlendBy(uint8_t bank)
+{
+    PpuMultiplierSetLowByteTimes8(rd8(0x0000F5));
+    return ColourBlend(bank);
+}
+
+void abi_ColourBlendBy(void)
+{
+    PpuMultiplierSetLowByteTimes8(rd8(0x0000F5));
+    abi_ColourBlend();
+}
+
+void abi_ColourBlendBy(void);
+
+/*
+ * @routine 7E:E6A2 ColourBlendToTarget
+ * WHAT IT DOES: Blends colour A toward the target colour at $3470 by the
+ * amount at $3468 and stores the result at $0E21 + X; a negative target
+ * leaves the colour as it is (blended toward itself).
+ * HOW: Direct page $F1 = A, $F3 = the target (or A), $F5 = $3468, then
+ * ColourBlendBy; a long store of the result. $3470 and $3468 go through
+ * the data bank.
+ * Entry: M 16-bit, X 16-bit, D = $0000; A = colour, X = offset. Exit: as
+ * ColourBlend.
+ */
+uint16_t ColourBlendToTarget(uint8_t bank, uint16_t colour, uint16_t x)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t t = rd16(b | 0x3470), v;
+
+    wr16(0x0000F1, colour);
+    wr16(0x0000F3, (t & 0x8000) ? colour : t);
+    wr16(0x0000F5, rd16(b | 0x3468));
+    v = ColourBlendBy(bank);
+    wr16(0x000E21 + x, v);
+    return v;
+}
+
+void abi_ColourBlendToTarget(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t t = rd16(b | 0x3470);
+
+    wr16(0x0000F1, cpu.a);
+    wr16(0x0000F3, (t & 0x8000) ? cpu.a : t);
+    wr16(0x0000F5, rd16(b | 0x3468));
+    abi_ColourBlendBy();
+    wr16(0x000E21 + cpu.x, cpu.a);
+}

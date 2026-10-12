@@ -315,3 +315,87 @@ DmaFromDescriptor:
     sta.w !MDMAEN
     plp
     rts
+
+; @routine 7F:0B56 CoursePictureToVram
+; WHAT IT DOES: Copies four 64-word rows of the current course's picture,
+; as the Super FX drew it, to VRAM $6480, $6580, $64C0 and $65C0, starting
+; from the Super FX RAM offset the table at $7F:0B96 gives for the course
+; in $0E3D.
+; HOW: The table word w (index * 2) packs the offset: ((w AND $FFFC) with
+; its bytes swapped) * 2 + (w AND 3) * $80, stored in direct page $02; then
+; VramWriteRowFromGsuRam four times, each moving the offset down a row.
+; $0E3D is read through the data bank.
+; Entry: X 16-bit, D = $0000. Exit: A = the final offset; X = the last
+; row's offset + $80; Y = $FFFF (low bytes only when P restores 8-bit index
+; registers); P unchanged.
+%ramcode($7F0B56, $058356)
+CoursePictureToVram:
+    php
+    sep.b #$20
+    rep.b #$10
+    lda.w !course
+    rep.b #$20
+    and.w #$00FF
+    asl a
+    tax
+    lda.l !course_picture_offsets,x
+    pha
+    and.w #$FFFC
+    xba
+    asl a
+    sta.b !dp_02
+    pla
+    and.w #$0003
+    xba
+    lsr a
+    clc
+    adc.b !dp_02
+    sta.b !dp_02
+    lda.w #$6480
+    jsr.w VramWriteRowFromGsuRam
+    lda.w #$6580
+    jsr.w VramWriteRowFromGsuRam
+    lda.w #$64C0
+    jsr.w VramWriteRowFromGsuRam
+    lda.w #$65C0
+    jsr.w VramWriteRowFromGsuRam
+    plp
+    rtl
+
+; @routine 7F:0CDF AnimTilesQueueNext
+; WHAT IT DOES: Queues the next $400-byte frame of the animated tiles at
+; $7F:A7D7 for VRAM $2000: the frame offset in $18F7 steps by $400 through
+; $2000 bytes (eight frames), and the transfer goes on the VRAM queue.
+; HOW: Stages source $A7D7 + offset, bank $7F, VRAM $2000 and count $400 at
+; $16B1-$16B8 (through the data bank) and calls VramDmaQueueAdd; then sets
+; bit 1 of the update flags at $11D7.
+; Entry: any widths. Exit: A low byte = the update flags, high byte from
+; the new queue size (or $20 when the queue was full); P, X, Y unchanged.
+%ramcode($7F0CDF, $0584DF)
+AnimTilesQueueNext:
+    php
+    rep.b #$30
+    lda.l !wram_18F7
+    clc
+    adc.w #$0400
+    and.w #$1FFF
+    sta.l !wram_18F7
+    clc
+    adc.w #$A7D7
+    rep.b #$30
+    sta.w !vram_queue_staged+2
+    lda.w #$0400
+    sta.w !vram_queue_staged
+    lda.w #$007F
+    sta.w !vram_queue_staged+4
+    lda.w #$2000
+    sta.w !vram_queue_staged+6
+    jsl.l VramDmaQueueAdd
+    rep.b #$20
+    rep.b #$10
+    sep.b #$20
+    lda.w !frame_update_flags
+    ora.b #$02
+    sta.w !frame_update_flags
+    plp
+    rtl

@@ -460,3 +460,89 @@ void abi_VramNoiseTiles(void)
     cpu.x = 0;
     cpu.p = (uint8_t)((cpu.p & ~(P_N | P_M | P_X)) | P_Z);
 }
+
+uint8_t Bg2ScrollFromTable(uint16_t band);
+
+/*
+ * @routine 7E:B24C TilemapRowsTo5C00
+ * WHAT IT DOES: Writes 17 tilemap rows of 26 entries from the table at
+ * $7F:93D7 to VRAM from $5C00 (one 32-entry row apart), then sets BG2's
+ * scroll from screen band 0.
+ * HOW: VMAIN $80; for each row the VRAM address, then 26 words to VMDATA
+ * from $7F:93D7 plus the row offset in direct page $F9 (steps of $40 up to
+ * $440); the row address rides on the stack. Then Bg2ScrollFromTable with
+ * X = 0. The PPU is reached through the data bank.
+ * Entry: X 16-bit, D = $0000. Exit: A low byte = BG2's vertical scroll high
+ * byte, high byte $5E; X = Y = 0; M 8-bit; N, Z from A low byte; C set, V
+ * clear.
+ */
+uint8_t TilemapRowsTo5C00(uint8_t bank)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t vram = 0x5C00, off;
+    unsigned i;
+
+    wr8(b | 0x2115, 0x80);
+    wr16(0x0000F9, 0x0000);
+    do {
+        wr16(b | 0x2116, vram);
+        vram = (uint16_t)(vram + 0x0020);
+        off = rd16(0x0000F9);
+        for (i = 0; i < 26; i++)
+            wr16(b | 0x2118, rd16(0x7F93D7 + (uint16_t)(off + 2 * i)));
+        off = (uint16_t)(off + 0x0040);
+        wr16(0x0000F9, off);
+    } while (off != 0x0440);
+    return Bg2ScrollFromTable(0);
+}
+
+void abi_TilemapRowsTo5C00(void)
+{
+    uint8_t v = TilemapRowsTo5C00(cpu.db);
+
+    cpu.a = (uint16_t)(0x5E00 | v);
+    cpu.x = 0;
+    cpu.y = 0;
+    cpu.p = (uint8_t)(((nz8(cpu.p, v) & ~(P_V | P_X)) | P_C | P_M));
+}
+
+/*
+ * @routine 02:FA91 TilemapLevelColumns
+ * WHAT IT DOES: Draws twelve 4-row columns into the tilemap buffer, each
+ * filled to the level (0-4, more counts as 4) in $0F05-$0F10: the filled
+ * rows come from $02:FB4E, the empty ones above them from $7F:BBD7.
+ * HOW: For column i the buffer offset is the word at $02:FB6E + 2i; level n
+ * takes n rows from TilemapRowFromFB4E starting at source offset (4 - n) *
+ * 8, then 4 - n rows from TilemapRowFrom7FBBD7. Data bank 2 inside.
+ * Entry: any widths. Exit: A = the last offset + $40 (16-bit); X = its low
+ * byte, Y = $0C (with the 8-bit index registers P restores); P and the data
+ * bank unchanged.
+ */
+uint16_t TilemapLevelColumns(void)
+{
+    uint16_t x = 0, y, a = 0;
+    uint8_t p = 0, n;
+    unsigned i, k;
+
+    for (i = 0; i < 12; i++) {
+        x = rd16(0x02FB6E + 2 * i);
+        n = rd8(0x020F05 + i);
+        if (n > 4)
+            n = 4;
+        y = (uint16_t)((4 - n) * 8);
+        for (k = 0; k < n; k++)
+            a = TilemapRowFromFB4E(0x02, &x, &y, &p);
+        for (k = n; k < 4; k++)
+            a = TilemapRowFrom7FBBD7(&x, &p);
+    }
+    return a;
+}
+
+void abi_TilemapLevelColumns(void)
+{
+    cpu.a = TilemapLevelColumns();
+    cpu.x = cpu.a;
+    cpu.y = 0x000C;
+    if (cpu.p & P_X)
+        cpu.x &= 0x00FF;
+}

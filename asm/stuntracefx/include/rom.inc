@@ -141,3 +141,20 @@ includeonce
 
 ; Words for an attached block's +$32, by entry (object/object.asm).
 !attach_values = $098090
+; Window setup jump table, called through the data bank (video/windows.asm).
+!windows_setup_table = $DFDA
+
+; Metasprites (video/oam.asm): 4 bytes per metasprite (first piece, piece
+; count), 5 bytes per piece (X, Y, tile, attributes, size flag).
+!metasprite_groups = $04EDCB
+!metasprite_pieces = $04EE4B
+; High-table size bit masks, read through the data bank (video/oam.asm).
+!oam_size_masks = $FA8D
+; Tilemap buffer offsets of the twelve level columns (video/tilemap.asm).
+!level_column_offsets = $FB6E
+; Second metasprite set in bank $1C (video/oam.asm), laid out as the first.
+!metasprite_groups_1c = $1CE5AC
+!metasprite_pieces_1c = $1CE62C
+; Area records for the trigger list, read through the data bank
+; (object/object.asm).
+!area_records = $C61D

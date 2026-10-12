@@ -1019,3 +1019,215 @@ void abi_ObjectAttachLinked(void)
     cpu.y = rd16((uint32_t)cpu.db << 16 | 0x1F4E);
     cpu.p = (uint8_t)(p | P_M);
 }
+
+/*
+ * @routine 7E:F0E1 ObjectGroupsActivate
+ * WHAT IT DOES: For each entry in the list at $1AF5 (4 bytes each, ended by
+ * a zero first word), takes the object bucket its second word selects and
+ * sets the state byte (+$36) of every object in it to 3, skipping objects
+ * whose state is negative, and, when the entry's code is $23, objects with
+ * bit 4 of +$24 set.
+ * HOW: The bucket number (second word AND $07FE) indexes the bucket heads
+ * at $7F:0000; objects chain through +$3C (next in bucket). $1F2B keeps the list position and
+ * $1F2D the entry's code; X is reloaded from and stored back to direct page
+ * $3E around each chain. Data bank $7E inside.
+ * Entry: X 16-bit, D = $0000. Exit: A = 0; X = the list position of the
+ * terminating entry; Y = 0 when any chain was walked, else unchanged (low
+ * bytes only when P restores 8-bit index registers); P and the data bank
+ * unchanged.
+ */
+uint16_t ObjectGroupsActivate(uint16_t *y)
+{
+    uint16_t pos = 0, code, head;
+
+    wr16(0x7E1F2B, 0x0000);
+    for (;;) {
+        pos = rd16(0x7E1F2B);
+        code = rd16(0x7E1AF5 + pos);
+        if (!code)
+            return pos;
+        wr16(0x7E1F2D, code);
+        head = rd16(0x7E1AF7 + pos);
+        wr16(0x7E1F2B, (uint16_t)(pos + 4));
+        head = rd16(0x7F0000 + (head & 0x07FE));
+        if (!head)
+            continue;
+        *y = head;
+        do {
+            if (!(rd8(0x7E1F2D) == 0x23 && (rd8(0x7E2024 + *y) & 0x10))
+                && !(rd8(0x7E2036 + *y) & 0x80))
+                wr8(0x7E2036 + *y, 0x03);
+            *y = rd16(0x7E203C + *y);
+        } while (*y);
+        wr16(0x00003E, rd16(0x00003E));
+    }
+}
+
+void abi_ObjectGroupsActivate(void)
+{
+    cpu.x = ObjectGroupsActivate(&cpu.y);
+    cpu.a = 0;
+    if (cpu.p & P_X) {
+        cpu.x &= 0x00FF;
+        cpu.y &= 0x00FF;
+    }
+}
+
+typedef struct {
+    uint16_t a, x, y;
+    uint8_t p;
+} AreaEnd;
+
+/* The body of BucketTriggersFromArea, with everything its exit leaves. */
+static AreaEnd bucket_triggers_from_area(uint8_t bank, uint16_t rec, uint8_t p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t x = 0, y = rec, v, row, col, n;
+    AreaEnd e;
+
+    v = (uint16_t)(rd8(b + rec + 3) << 8);
+    v = (uint16_t)((v >> 1) | (v & 0x8000));
+    v = (uint16_t)((v >> 1) | (v & 0x8000));
+    wr16(0x000094, v);
+    wr16(b | 0x05F2, rd8(b + rec + 1));
+    wr16(0x0000A5, (uint16_t)(-(uint16_t)rd8(b + rec + 2) << 1));
+    wr16(b | 0x1F2B, rd8(b + rec + 0));
+    do {
+        wr16(0x000002, rd16(0x0000A5));
+        wr16(0x000004, rd16(b | 0x1F2B));
+        do {
+            col = rd16(0x000002);
+            row = rd16(0x000094);
+            if (!((col + rd16(b | 0x1F03)) & 0xFFC0) && !((row + rd16(b | 0x1F05)) & 0xF800)
+                && (v = rd8(b + y + 4)) != 0x2E) {
+                wr16(b | (uint16_t)(0x1AF5 + x), v);
+                wr16(b | (uint16_t)(0x1AF7 + x), (uint16_t)(rd16(b | 0x1F01) + col + row));
+                x = (uint16_t)(x + 4);
+            }
+            y = (uint16_t)(y + 1);
+            wr16(0x000002, (uint16_t)(col + 2));
+            n = (uint16_t)(rd16(0x000004) - 1);
+            wr16(0x000004, n);
+        } while (n);
+        v = rd16(0x000094);
+        e.a = (uint16_t)(v - 0x0040);
+        p = (uint8_t)(p & ~(P_C | P_V));
+        if (v >= 0x0040)
+            p |= P_C;
+        if ((v ^ 0x0040) & (v ^ e.a) & 0x8000)
+            p |= P_V;
+        wr16(0x000094, e.a);
+        n = (uint16_t)(rd16(b | 0x05F2) - 1);
+        wr16(b | 0x05F2, n);
+    } while (n);
+    wr16(b | (uint16_t)(0x1AF5 + x), 0x0000);
+    wr16(b | (uint16_t)(0x1AF7 + x), 0x0000);
+    e.x = x;
+    e.y = y;
+    e.p = (uint8_t)((p & ~P_N) | P_Z);
+    return e;
+}
+
+/*
+ * @routine 7E:C58D BucketTriggersFromArea
+ * WHAT IT DOES: Builds the trigger list at $1AF5 (read by
+ * ObjectGroupsActivate) from a rectangle of map cells: for each cell inside
+ * the window and not $2E, an entry of the cell's code and the bucket
+ * number $1F01 + the cell's column * 2 + its row * $40; the list ends with
+ * a zero entry.
+ * HOW: The record at A (data bank) holds the columns, rows, first column
+ * and first row as bytes, then the cells row by row. Direct page $A5 is
+ * -first column * 2 and $94 the first row * $40 (signed, counting down a
+ * row at a time); $02 steps the column by 2, $04 and $05F2 count the
+ * columns and rows (16-bit; $1F2B keeps the column count). A cell is in
+ * the window when $02 + $1F03 is below $40 and $94 + $1F05 below $800.
+ * Entry: M 16-bit, X 16-bit, D = $0000; A = record address. Exit: A = the
+ * final $94; X = the list size in bytes; Y = A + the cell count; N clear, Z
+ * set; C, V from the last row step.
+ */
+uint16_t BucketTriggersFromArea(uint8_t bank, uint16_t rec)
+{
+    return bucket_triggers_from_area(bank, rec, 0).x;
+}
+
+void abi_BucketTriggersFromArea(void)
+{
+    AreaEnd e = bucket_triggers_from_area(cpu.db, cpu.a, cpu.p);
+
+    cpu.a = e.a;
+    cpu.x = e.x;
+    cpu.y = e.y;
+    cpu.p = e.p;
+}
+
+/* For the abi_ wrappers: data bank $7E, the window and bucket origin from
+   three words at src, then BucketTriggersFromArea on the record. P on the
+   call: M 16-bit, X 16-bit, N, Z from the record address; afterwards M
+   8-bit and the data bank back, N, Z from it. */
+static void abi_triggers_from(uint16_t src, uint16_t rec, uint16_t x)
+{
+    uint8_t db = cpu.db;
+    unsigned i;
+
+    for (i = 0; i < 6; i += 2)
+        wr16(0x7E1F01 + i, rd16(0x7E0000 + src + i));
+    cpu.db = 0x7E;
+    cpu.a = rec;
+    cpu.x = x;
+    cpu.p = nz16((uint8_t)(cpu.p & ~(P_M | P_X)), rec);
+    abi_BucketTriggersFromArea();
+    cpu.db = db;
+    cpu.p = (uint8_t)(nz8(cpu.p, db) | P_M);
+}
+
+/*
+ * @routine 7E:C520 BucketTriggersFromView
+ * WHAT IT DOES: Builds the trigger list (BucketTriggersFromArea) from the
+ * area record that the high byte of the view's Y position ($0667) selects,
+ * with the window and bucket origin from $1EF5-$1EFA.
+ * HOW: Copies $1EF5, $1EF7, $1EF9 to $1F01, $1F03, $1F05; the record
+ * address is the word at $7E:C61D + ((($0667 >> 3) + 1) AND $FE). Data
+ * bank $7E inside.
+ * Entry: D = $0000. Exit: as BucketTriggersFromArea, with M 8-bit and N, Z
+ * from the data bank pulled back.
+ */
+void BucketTriggersFromView(void)
+{
+    uint16_t x = (uint16_t)((((rd8(0x7E0667) >> 3) + 1) & 0xFE));
+    unsigned i;
+
+    for (i = 0; i < 6; i += 2)
+        wr16(0x7E1F01 + i, rd16(0x7E1EF5 + i));
+    BucketTriggersFromArea(0x7E, rd16(0x7EC61D + x));
+}
+
+void abi_BucketTriggersFromView(void)
+{
+    uint16_t x = (uint16_t)((((rd8(0x7E0667) >> 3) + 1) & 0xFE));
+
+    abi_triggers_from(0x1EF5, rd16(0x7EC61D + x), x);
+}
+
+/*
+ * @routine 7E:C553 BucketTriggersFixedArea
+ * WHAT IT DOES: Builds the trigger list (BucketTriggersFromArea) from the
+ * area record at $7E:C661 when $0D62 is set or bit 7 of $1AEC is, else from
+ * the one at $7E:C696, with the window and bucket origin from $1EFB-$1F00.
+ * HOW: Copies $1EFB, $1EFD, $1EFF to $1F01, $1F03, $1F05. Data bank $7E
+ * inside.
+ * Entry: X 16-bit, D = $0000. Exit: as BucketTriggersFromArea, with M 8-bit
+ * and N, Z from the data bank pulled back.
+ */
+void BucketTriggersFixedArea(void)
+{
+    unsigned i;
+
+    for (i = 0; i < 6; i += 2)
+        wr16(0x7E1F01 + i, rd16(0x7E1EFB + i));
+    BucketTriggersFromArea(0x7E, (rd8(0x7E0D62) || (rd8(0x7E1AEC) & 0x80)) ? 0xC661 : 0xC696);
+}
+
+void abi_BucketTriggersFixedArea(void)
+{
+    abi_triggers_from(0x1EFB, (rd8(0x7E0D62) || (rd8(0x7E1AEC) & 0x80)) ? 0xC661 : 0xC696, cpu.x);
+}

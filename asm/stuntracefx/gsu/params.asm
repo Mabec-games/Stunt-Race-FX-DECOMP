@@ -334,3 +334,74 @@ GsuTableEntryNext:
     plb
     plx
     rtl
+
+; @routine 02:DA34 GsuRecordsUpload
+; WHAT IT DOES: Copies the $0CEE 30-byte records at $7E:F77F to Super FX
+; RAM at $70:0AAA and stores the count at $70:01C8.
+; HOW: Fifteen word copies per record with the data bank at $70; the count
+; runs down in $1F2B.
+; Entry: any widths. Exit: X, Y past the copies (unchanged when the count
+; is 0); A = 0; M 16-bit, X 16-bit; N, Z from the data bank pulled back;
+; C, V from the last source step (unchanged when the count is 0).
+%at($02DA34)
+GsuRecordsUpload:
+    sep.b #$20
+    phb
+    lda.b #$70
+    pha
+    plb
+    rep.b #$30
+    lda.l !gsu_record_count
+    sta.l !gsu_records_n
+    bne .lDA4A
+    brl .lDAD4
+.lDA4A:
+    ldx.w #$F77F
+    ldy.w #$0AAA
+    sta.l !wram_1F2B
+.lDA54:
+    lda.l !wram_bank_7e,x
+    sta.w 0,y
+    lda.l !wram_bank_7e+2,x
+    sta.w 2,y
+    lda.l !wram_bank_7e+4,x
+    sta.w 4,y
+    lda.l !wram_bank_7e+6,x
+    sta.w 6,y
+    lda.l !wram_bank_7e+8,x
+    sta.w 8,y
+    lda.l !wram_bank_7e+10,x
+    sta.w 10,y
+    lda.l !wram_bank_7e+12,x
+    sta.w 12,y
+    lda.l !wram_bank_7e+14,x
+    sta.w 14,y
+    lda.l !wram_bank_7e+16,x
+    sta.w 16,y
+    lda.l !wram_bank_7e+18,x
+    sta.w 18,y
+    lda.l !wram_bank_7e+20,x
+    sta.w 20,y
+    lda.l !wram_bank_7e+22,x
+    sta.w 22,y
+    lda.l !wram_bank_7e+24,x
+    sta.w 24,y
+    lda.l !wram_bank_7e+26,x
+    sta.w 26,y
+    lda.l !wram_bank_7e+28,x
+    sta.w 28,y
+    tya
+    clc
+    adc.w #$001E
+    tay
+    txa
+    clc
+    adc.w #$001E
+    tax
+    lda.l !wram_1F2B
+    dec a
+    sta.l !wram_1F2B
+    bne .lDA54
+.lDAD4:
+    plb
+    rtl

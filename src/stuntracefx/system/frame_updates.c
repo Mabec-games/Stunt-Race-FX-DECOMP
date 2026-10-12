@@ -346,3 +346,48 @@ void abi_FrameByteWritePush(void)
 {
     cpu.x = FrameByteWritePush(cpu.db, cpu.x, (uint8_t)cpu.a);
 }
+
+/* The body; returns the value the abi_ wrapper needs. */
+static uint8_t frame_input_and_count_end(uint8_t bank)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t v;
+
+    wr16(0x0018BB, rd16(0x0018BF));
+    wr16(0x0018BD, rd16(0x0018C1));
+    WordListAAppend(rd16(b | 0x0311));
+    WordListBAppend(rd16(b | 0x0313));
+    wr8(b | 0x0E3B, (uint8_t)(rd8(b | 0x0E3B) + 1));
+    wr8(b | 0x0306, (uint8_t)(rd8(b | 0x0306) + 1));
+    wr8(0x000006, (uint8_t)(rd8(0x000006) + 1));
+    v = rd8(b | 0x11DA);
+    wr8(b | 0x2100, v);
+    return v;
+}
+
+/*
+ * @routine 7F:1072 FrameInputAndCountEnd
+ * WHAT IT DOES: Ends a menu frame: copies $18BF-$18C2 to $18BB-$18BE,
+ * appends player 1's and player 2's new presses to the two word lists,
+ * steps the frame counters ($0E3B, $0306, direct page $06) and writes the
+ * brightness value at $11DA to INIDISP.
+ * HOW: Two long word copies; $0311 to WordListAAppend, $0313 to
+ * WordListBAppend; three 8-bit increments; the rest through the data bank.
+ * Entry: M 16-bit, D = $0000. Exit: A low byte = $11DA, high byte from
+ * $0314; X = list B's size; M 8-bit; N, Z from $11DA.
+ */
+void FrameInputAndCountEnd(uint8_t bank)
+{
+    frame_input_and_count_end(bank);
+}
+
+void abi_FrameInputAndCountEnd(void)
+{
+    uint16_t hi = rd16((uint32_t)cpu.db << 16 | 0x0313) & 0xFF00;
+    uint8_t v = frame_input_and_count_end(cpu.db);
+    uint16_t x = rd16(0x001193);
+
+    cpu.a = (uint16_t)(hi | v);
+    cpu.x = (cpu.p & P_X) ? (uint8_t)x : x;
+    cpu.p = (uint8_t)(nz8(cpu.p, v) | P_M);
+}

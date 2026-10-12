@@ -366,3 +366,121 @@ VramNoiseTiles:
     dex
     bne .lF48C
     rts
+
+; @routine 7E:B24C TilemapRowsTo5C00
+; WHAT IT DOES: Writes 17 tilemap rows of 26 entries from the table at
+; $7F:93D7 to VRAM from $5C00 (one 32-entry row apart), then sets BG2's
+; scroll from screen band 0.
+; HOW: VMAIN $80; for each row the VRAM address, then 26 words to VMDATA
+; from $7F:93D7 plus the row offset in direct page $F9 (steps of $40 up to
+; $440); the row address rides on the stack. Then Bg2ScrollFromTable with
+; X = 0. The PPU is reached through the data bank.
+; Entry: X 16-bit, D = $0000. Exit: A low byte = BG2's vertical scroll high
+; byte, high byte $5E; X = Y = 0; M 8-bit; N, Z from A low byte; C set, V
+; clear.
+%ramcode($7EB24C, $010F73)
+TilemapRowsTo5C00:
+    sep.b #$20
+    lda.b #$80
+    sta.w !VMAIN
+    rep.b #$30
+    stz.b !dp_f9
+    lda.w #$5C00
+    pha
+.lB25B:
+    pla
+    sta.w !VMADDL
+    clc
+    adc.w #$0020
+    pha
+    ldx.b !dp_f9
+    ldy.w #$001A
+.lB269:
+    lda.l !tilemap_7f93d7,x
+    sta.w !VMDATAL
+    inx
+    inx
+    dey
+    bne .lB269
+    lda.b !dp_f9
+    clc
+    adc.w #$0040
+    sta.b !dp_f9
+    cmp.w #$0440
+    bne .lB25B
+    pla
+    sep.b #$20
+    ldx.w #$0000
+    jsr.w Bg2ScrollFromTable
+    rts
+
+; @routine 02:FA91 TilemapLevelColumns
+; WHAT IT DOES: Draws twelve 4-row columns into the tilemap buffer, each
+; filled to the level (0-4, more counts as 4) in $0F05-$0F10: the filled
+; rows come from $02:FB4E, the empty ones above them from $7F:BBD7.
+; HOW: For column i the buffer offset is the word at $02:FB6E + 2i; level n
+; takes n rows from TilemapRowFromFB4E starting at source offset (4 - n) *
+; 8, then 4 - n rows from TilemapRowFrom7FBBD7. Data bank 2 inside.
+; Entry: any widths. Exit: A = the last offset + $40 (16-bit); X = its low
+; byte, Y = $0C (with the 8-bit index registers P restores); P and the data
+; bank unchanged.
+%at($02FA91)
+TilemapLevelColumns:
+    php
+    phb
+    phk
+    plb
+    rep.b #$30
+    ldy.w #$0000
+.lFA9A:
+    tya
+    asl a
+    tax
+    lda.w !level_column_offsets,x
+    tax
+    lda.w !level_columns,y
+    phy
+    and.w #$00FF
+    beq .lFAE8
+    cmp.w #$0002
+    bcc .lFAE0
+    beq .lFAD5
+    cmp.w #$0003
+    beq .lFAC7
+    ldy.w #$0000
+    jsr.w TilemapRowFromFB4E
+    jsr.w TilemapRowFromFB4E
+    jsr.w TilemapRowFromFB4E
+    jsr.w TilemapRowFromFB4E
+    bra .lFAF4
+.lFAC7:
+    ldy.w #$0008
+    jsr.w TilemapRowFromFB4E
+    jsr.w TilemapRowFromFB4E
+    jsr.w TilemapRowFromFB4E
+    bra .lFAF1
+.lFAD5:
+    ldy.w #$0010
+    jsr.w TilemapRowFromFB4E
+    jsr.w TilemapRowFromFB4E
+    bra .lFAEE
+.lFAE0:
+    ldy.w #$0018
+    jsr.w TilemapRowFromFB4E
+    bra .lFAEB
+.lFAE8:
+    jsr.w TilemapRowFrom7FBBD7
+.lFAEB:
+    jsr.w TilemapRowFrom7FBBD7
+.lFAEE:
+    jsr.w TilemapRowFrom7FBBD7
+.lFAF1:
+    jsr.w TilemapRowFrom7FBBD7
+.lFAF4:
+    ply
+    iny
+    cpy.w #$000C
+    bcc .lFA9A
+    plb
+    plp
+    rts

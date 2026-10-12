@@ -79,3 +79,27 @@ WindowsAllInverted:
     lda.b #$1F
     sta.l !TMW
     rts
+
+; @routine 7E:DFCA WindowsSetupSelect
+; WHAT IT DOES: Applies the window and colour maths setup chosen by $19A9:
+; 0 WindowsColourAddBg12, 2 ColourMathSub83Windowed, 4 colour maths $03
+; with the windows for colour only, 6 colour maths $81 with BG1 alone
+; inside the window, 8 WindowsAllInverted.
+; HOW: An indexed indirect call through the five-entry table at $7E:DFDA,
+; with the data bank set to $7E. Only 0, 2 and 8 are seen in play.
+; Entry: any widths; $19A9 = 0, 2, 4, 6 or 8. Exit: A low byte as the
+; setup leaves it; X = $19A9 (high byte clear); P and the data bank
+; unchanged.
+%ramcode($7EDFCA, $013CF1)
+WindowsSetupSelect:
+    php
+    phb
+    phk
+    plb
+    sep.b #$30
+    lda.w !windows_setup_index
+    tax
+    jsr.w (!windows_setup_table,x)
+    plb
+    plp
+    rtl

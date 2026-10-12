@@ -379,3 +379,84 @@ void abi_DmaFromDescriptor(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
     cpu.y = 0x00FF;
 }
+
+/*
+ * @routine 7F:0B56 CoursePictureToVram
+ * WHAT IT DOES: Copies four 64-word rows of the current course's picture,
+ * as the Super FX drew it, to VRAM $6480, $6580, $64C0 and $65C0, starting
+ * from the Super FX RAM offset the table at $7F:0B96 gives for the course
+ * in $0E3D.
+ * HOW: The table word w (index * 2) packs the offset: ((w AND $FFFC) with
+ * its bytes swapped) * 2 + (w AND 3) * $80, stored in direct page $02; then
+ * VramWriteRowFromGsuRam four times, each moving the offset down a row.
+ * $0E3D is read through the data bank.
+ * Entry: X 16-bit, D = $0000. Exit: A = the final offset; X = the last
+ * row's offset + $80; Y = $FFFF (low bytes only when P restores 8-bit index
+ * registers); P unchanged.
+ */
+uint16_t CoursePictureToVram(uint8_t bank)
+{
+    uint16_t w = rd16(0x7F0B96 + 2 * (unsigned)rd8((uint32_t)bank << 16 | 0x0E3D));
+    uint16_t t = (uint16_t)(w & 0xFFFC);
+
+    t = (uint16_t)((uint16_t)(t >> 8 | t << 8) << 1);
+    wr16(0x000002, (uint16_t)(t + ((w & 0x0003) << 7)));
+    VramWriteRowFromGsuRam(0x6480);
+    VramWriteRowFromGsuRam(0x6580);
+    VramWriteRowFromGsuRam(0x64C0);
+    return VramWriteRowFromGsuRam(0x65C0);
+}
+
+void abi_CoursePictureToVram(void)
+{
+    uint16_t a = CoursePictureToVram(cpu.db);
+
+    cpu.a = a;
+    cpu.x = (uint16_t)(a - 0x0200 + 0x80);
+    cpu.y = 0xFFFF;
+    if (cpu.p & P_X) {
+        cpu.x &= 0x00FF;
+        cpu.y &= 0x00FF;
+    }
+}
+
+void VramDmaQueueAdd(void);
+
+/*
+ * @routine 7F:0CDF AnimTilesQueueNext
+ * WHAT IT DOES: Queues the next $400-byte frame of the animated tiles at
+ * $7F:A7D7 for VRAM $2000: the frame offset in $18F7 steps by $400 through
+ * $2000 bytes (eight frames), and the transfer goes on the VRAM queue.
+ * HOW: Stages source $A7D7 + offset, bank $7F, VRAM $2000 and count $400 at
+ * $16B1-$16B8 (through the data bank) and calls VramDmaQueueAdd; then sets
+ * bit 1 of the update flags at $11D7.
+ * Entry: any widths. Exit: A low byte = the update flags, high byte from
+ * the new queue size (or $20 when the queue was full); P, X, Y unchanged.
+ */
+uint8_t AnimTilesQueueNext(uint8_t bank, uint16_t *a)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t off = (uint16_t)((rd16(0x0018F7) + 0x0400) & 0x1FFF);
+    uint8_t f;
+
+    wr16(0x0018F7, off);
+    wr16(b | 0x16B3, (uint16_t)(off + 0xA7D7));
+    wr16(b | 0x16B1, 0x0400);
+    wr16(b | 0x16B5, 0x007F);
+    wr16(b | 0x16B7, 0x2000);
+    *a = 0x2000;
+    if (rd16(0x0016AF) != 0x0200)
+        *a = (uint16_t)(rd16(0x0016AF) + 8);
+    VramDmaQueueAdd();
+    f = (uint8_t)(rd8(b | 0x11D7) | 0x02);
+    wr8(b | 0x11D7, f);
+    return f;
+}
+
+void abi_AnimTilesQueueNext(void)
+{
+    uint16_t a;
+    uint8_t f = AnimTilesQueueNext(cpu.db, &a);
+
+    cpu.a = (uint16_t)((a & 0xFF00) | f);
+}

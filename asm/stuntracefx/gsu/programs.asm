@@ -599,3 +599,99 @@ GsuF15BThree:
     rep.b #$20
     rep.b #$10
     rts
+
+; @routine 02:E01C Gsu81E3
+; WHAT IT DOES: Runs Super FX program $01:81E3 with direct page $02 at
+; $70:0068 and direct page $08 at $70:002C, and returns the word it leaves
+; at $70:0040.
+; HOW: Two long word stores, GsuRun, one long word load; X and P are saved
+; around it.
+; Entry: any widths, D = $0000. Exit: A = $70:0040; X and P unchanged.
+%at($02E01C)
+Gsu81E3:
+    phx
+    php
+    rep.b #$20
+    lda.b !dp_02
+    sta.l !gsu_in_68
+    lda.b !dp_08
+    sta.l !gsu_dest
+    sep.b #$20
+    rep.b #$10
+    lda.b #$01
+    ldx.w #$81E3
+    jsl.l GsuRun
+    rep.b #$20
+    lda.l !gsu_rec_40
+    plp
+    plx
+    rts
+
+; @routine 02:DF24 ViewMatrixUpdateAndSave
+; WHAT IT DOES: Saves the view position ($0664-$0669 to $065E-$0663), has
+; the Super FX recompute the nine-word view matrix at $0608 (Gsu8325) and
+; saves a copy of it at $064C-$065D.
+; HOW: Word copies through the data bank around Gsu8325.
+; Entry: D = $0000. Exit: A = the last matrix word (16-bit); X = $25, Y
+; high byte clear; M 8-bit, X 8-bit; N, Z from A as a 16-bit value.
+%at($02DF24)
+ViewMatrixUpdateAndSave:
+    rep.b #$20
+    lda.w !wram_0664
+    sta.w !wram_065E
+    lda.w !wram_0666
+    sta.w !wram_065E+2
+    lda.w !wram_0668
+    sta.w !wram_065E+4
+    sep.b #$30
+    jsl.l Gsu8325
+    rep.b #$20
+    lda.w !gsu_8325_out
+    sta.w !view_matrix_saved
+    lda.w !gsu_8325_out+2
+    sta.w !view_matrix_saved+2
+    lda.w !gsu_8325_out+4
+    sta.w !view_matrix_saved+4
+    lda.w !gsu_8325_out+6
+    sta.w !view_matrix_saved+6
+    lda.w !gsu_8325_out+8
+    sta.w !view_matrix_saved+8
+    lda.w !gsu_8325_out+10
+    sta.w !view_matrix_saved+10
+    lda.w !gsu_8325_out+12
+    sta.w !view_matrix_saved+12
+    lda.w !gsu_8325_out+14
+    sta.w !view_matrix_saved+14
+    lda.w !gsu_8325_out+16
+    sta.w !view_matrix_saved+16
+    sep.b #$20
+    rtl
+
+; @routine 02:E016 Gsu81E3Long
+; WHAT IT DOES: Gsu81E3 for callers in other banks.
+; HOW: A near call to Gsu81E3, then 16-bit A and a long return.
+; Entry: as Gsu81E3. Exit: as Gsu81E3, with M 16-bit.
+%at($02E016)
+Gsu81E3Long:
+    jsr.w Gsu81E3
+    rep.b #$20
+    rtl
+
+; @routine 02:DB59 ViewUpdateAndGsuAEF8
+; WHAT IT DOES: Updates the view matrix (ViewMatrixUpdateAndSave), then
+; runs Super FX program $01:AEF8.
+; HOW: Two long calls; GsuRun with A = 1, X = $AEF8.
+; Entry: D = $0000. Exit: A low byte = the screen mode value; X = $AEF8;
+; Y high byte clear; M 8-bit, X 16-bit; N, Z from the data bank.
+%at($02DB59)
+ViewUpdateAndGsuAEF8:
+    jsl.l ViewMatrixUpdateAndSave
+    sep.b #$20
+    rep.b #$10
+    sep.b #$20
+    lda.b #$01
+    ldx.w #$AEF8
+    jsl.l GsuRun
+    sep.b #$20
+    rep.b #$10
+    rtl

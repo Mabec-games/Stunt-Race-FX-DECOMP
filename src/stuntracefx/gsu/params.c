@@ -343,3 +343,59 @@ void abi_GsuTableEntryNext(void)
     cpu.a = GsuTableEntryNext(cpu.db, cpu.a, &p);
     cpu.p = nz16(p, cpu.x);
 }
+
+/* The body; X, Y and the flags as the exit leaves them. */
+static uint16_t gsu_records_upload(uint16_t *x, uint16_t *y, uint8_t *p)
+{
+    uint16_t n = rd16(0x000CEE), s, d;
+    unsigned i;
+
+    wr16(0x7001C8, n);
+    if (!n)
+        return 0;
+    s = 0xF77F;
+    d = 0x0AAA;
+    wr16(0x001F2B, n);
+    do {
+        for (i = 0; i < 30; i += 2)
+            wr16(0x700000 | (uint16_t)(d + i), rd16(0x7E0000 + s + i));
+        d = (uint16_t)(d + 0x1E);
+        *p = (uint8_t)(*p & ~(P_C | P_V));
+        if ((unsigned)s + 0x1E > 0xFFFF)
+            *p |= P_C;
+        if (~s & (uint16_t)(s + 0x1E) & 0x8000)
+            *p |= P_V;
+        s = (uint16_t)(s + 0x1E);
+        n = (uint16_t)(rd16(0x001F2B) - 1);
+        wr16(0x001F2B, n);
+    } while (n);
+    *x = s;
+    *y = d;
+    return 0;
+}
+
+/*
+ * @routine 02:DA34 GsuRecordsUpload
+ * WHAT IT DOES: Copies the $0CEE 30-byte records at $7E:F77F to Super FX
+ * RAM at $70:0AAA and stores the count at $70:01C8.
+ * HOW: Fifteen word copies per record with the data bank at $70; the count
+ * runs down in $1F2B.
+ * Entry: any widths. Exit: X, Y past the copies (unchanged when the count
+ * is 0); A = 0; M 16-bit, X 16-bit; N, Z from the data bank pulled back;
+ * C, V from the last source step (unchanged when the count is 0).
+ */
+uint16_t GsuRecordsUpload(void)
+{
+    uint16_t x, y;
+    uint8_t p = 0;
+
+    return gsu_records_upload(&x, &y, &p);
+}
+
+void abi_GsuRecordsUpload(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = gsu_records_upload(&cpu.x, &cpu.y, &p);
+    cpu.p = (uint8_t)(nz8(p, cpu.db) & ~(P_M | P_X));
+}

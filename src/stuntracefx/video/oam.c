@@ -848,3 +848,306 @@ void abi_OamPlaceRows75And112(void)
     OamPlaceRows75And112(cpu.db);
     cpu.a &= 0xFF00;
 }
+
+/* A strip with a marker sprite: the strip at the position in direct page
+   $02 (X at entry), then the marker at that position plus the value, less
+   the strip's span once the value reaches it, in the slot before the
+   strip. The OAM writes for the marker go through the data bank. */
+static uint16_t bar_marker(uint8_t bank, uint16_t pos, uint16_t v, uint16_t y, uint16_t span,
+                           uint16_t tile_far, uint16_t tile_near)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t tile;
+
+    if (v >= span) {
+        wr16(b | (uint16_t)(0x0375 + y), (uint16_t)(v + pos - span));
+        tile = tile_far;
+    } else {
+        wr16(b | (uint16_t)(0x0375 + y), (uint16_t)(v + pos));
+        tile = tile_near;
+    }
+    wr16(b | (uint16_t)(0x0377 + y), tile);
+    return tile;
+}
+
+/*
+ * @routine 7F:094E SpriteBar4WithMarker
+ * WHAT IT DOES: Shows a value of 0-63 (larger values are shown as 63) as a
+ * four-sprite strip at position X with the tiles SpriteStrip4 picks for it,
+ * plus a marker sprite at X + value (X + value - 16, with a different tile,
+ * from 16 up) in the sprite slot Y.
+ * HOW: Value to direct page $04, position to $02; SpriteStrip4 fills slots
+ * Y + 4 on; then the marker: tile word $3622 below 16, $3C20 from 16.
+ * Entry: M 8-bit, X 16-bit, D = $0000; A = value, X = position (X, Y
+ * pair), Y = marker slot offset in the sprite table. Exit: A = the marker's
+ * tile word; X as SpriteStrip4 leaves it; Y unchanged; P unchanged.
+ */
+uint16_t SpriteBar4WithMarker(uint8_t bank, uint8_t value, uint16_t pos, uint16_t y)
+{
+    uint16_t v = value < 0x3F ? value : 0x3F;
+
+    wr8(0x000004, (uint8_t)v);
+    wr16(0x000002, pos);
+    SpriteStrip4(v, (uint16_t)(y + 4));
+    return bar_marker(bank, pos, v, y, 0x0010, 0x3C20, 0x3622);
+}
+
+void abi_SpriteBar4WithMarker(void)
+{
+    uint16_t v = (uint8_t)cpu.a < 0x3F ? (uint8_t)cpu.a : 0x3F;
+
+    cpu.a = SpriteBar4WithMarker(cpu.db, (uint8_t)cpu.a, cpu.x, cpu.y);
+    cpu.x = (uint16_t)(((v >> 1) & 0x00F8) + 8);
+    if (cpu.p & P_X) {
+        cpu.x &= 0x00FF;
+        cpu.y &= 0x00FF;
+    }
+}
+
+/*
+ * @routine 7F:09ED SpriteBar6WithMarker
+ * WHAT IT DOES: Shows a value as a six-sprite strip at position X with the
+ * tiles SpriteStrip6 picks for it, plus a marker sprite at X + value
+ * (X + value - 8, with a different tile, from 8 up) in the sprite slot Y.
+ * HOW: As SpriteBar4WithMarker without the limit: SpriteStrip6 fills slots
+ * Y + 4 on; the marker's tile word is $3C1E below 8, $3C1F from 8.
+ * Entry: as SpriteBar4WithMarker. Exit: A = the marker's tile word; X as
+ * SpriteStrip6 leaves it; Y unchanged; P unchanged.
+ */
+uint16_t SpriteBar6WithMarker(uint8_t bank, uint8_t value, uint16_t pos, uint16_t y)
+{
+    wr8(0x000004, value);
+    wr16(0x000002, pos);
+    SpriteStrip6(value, (uint16_t)(y + 4));
+    return bar_marker(bank, pos, value, y, 0x0008, 0x3C1F, 0x3C1E);
+}
+
+void abi_SpriteBar6WithMarker(void)
+{
+    uint8_t v = (uint8_t)cpu.a;
+
+    cpu.a = SpriteBar6WithMarker(cpu.db, v, cpu.x, cpu.y);
+    cpu.x = (uint16_t)(((v & 0x0038) << 1) + 12);
+    if (cpu.p & P_X) {
+        cpu.x &= 0x00FF;
+        cpu.y &= 0x00FF;
+    }
+}
+
+typedef struct {
+    uint16_t a, x, y;
+    uint8_t p;
+} MetaspriteEnd;
+
+/* The body of MetaspriteDraw, with everything its exit leaves. */
+static MetaspriteEnd metasprite_draw(uint8_t bank, uint16_t group, uint16_t slot, uint8_t p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    MetaspriteEnd e;
+    uint16_t x = (uint16_t)(group << 2), y = (uint16_t)(slot << 2), mask, hi;
+    uint8_t n, lo = 0, v;
+    unsigned s;
+
+    n = (uint8_t)rd16(0x04EDCD + x);
+    wr16(0x0000F1, rd16(0x04EDCD + x));
+    x = rd16(0x04EDCB + x);
+    hi = (uint16_t)(x & 0xFF00);
+    do {
+        s = (unsigned)rd8(0x04EE4B + x) + rd8(b | 0x0D3B);
+        wr8(b | (uint16_t)(0x0375 + y), (uint8_t)s);
+        v = rd8(0x04EE4C + x);
+        s = (unsigned)v + rd8(b | 0x0D3C);
+        p = (uint8_t)(p & ~(P_C | P_V));
+        if (s > 0xFF)
+            p |= P_C;
+        if (~(v ^ rd8(b | 0x0D3C)) & (v ^ s) & 0x80)
+            p |= P_V;
+        wr8(b | (uint16_t)(0x0376 + y), (uint8_t)s);
+        wr8(b | (uint16_t)(0x0377 + y), rd8(0x04EE4D + x));
+        wr8(b | (uint16_t)(0x0378 + y), rd8(0x04EE4E + x));
+        lo = rd8(0x04EE4F + x);
+        if (!(lo & 0x01)) {
+            mask = rd16(b | (uint16_t)(0xFA8D + ((y >> 2) & 0x0003)));
+            wr16(0x0000F3, mask);
+            hi = (uint16_t)(mask & 0xFF00);
+            lo = (uint8_t)(rd8(0x000575 + (y >> 4)) & (uint8_t)mask);
+            wr8(0x000575 + (y >> 4), lo);
+            p = (uint8_t)((p & ~P_C) | ((y >> 3) & 1 ? P_C : 0));
+        }
+        x = (uint16_t)(x + 5);
+        y = (uint16_t)(y + 4);
+        n = (uint8_t)(n - 1);
+        wr8(0x0000F1, n);
+    } while (n);
+    e.a = (uint16_t)(hi | lo);
+    e.x = x;
+    e.y = y;
+    e.p = (uint8_t)(((p & ~(P_N | P_M)) | P_Z));
+    return e;
+}
+
+/*
+ * @routine 02:FA19 MetaspriteDraw
+ * WHAT IT DOES: Draws metasprite X into the sprite table from slot Y on:
+ * each piece's X and Y offsets are added to the origin at $0D3B/$0D3C and
+ * its tile and attribute bytes copied; a piece whose fifth byte has bit 0
+ * clear is made small (its size bit in the high table cleared).
+ * HOW: The group table at $04:EDCB (4 bytes per metasprite: first piece,
+ * piece count) and 5-byte pieces at $04:EE4B; the count runs down in direct
+ * page $F1 (8-bit, after a 16-bit store), the size masks $FD, $F7, $DF, $7F
+ * come from $02:FA8D through direct page $F3. Origin and sprite table go
+ * through the data bank.
+ * Entry: M 16-bit, X 16-bit, D = $0000; X = metasprite, Y = first slot.
+ * Exit: A = the last piece's fifth byte (or the high-table byte after its
+ * mask), high byte from the start of the group (or the last mask word);
+ * X, Y past the pieces; M 16-bit; N clear, Z set; C, V from the last Y
+ * add, C from bit 3 of the slot offset when the last piece was made small.
+ */
+uint16_t MetaspriteDraw(uint8_t bank, uint16_t group, uint16_t slot)
+{
+    return metasprite_draw(bank, group, slot, 0).a;
+}
+
+void abi_MetaspriteDraw(void)
+{
+    MetaspriteEnd e = metasprite_draw(cpu.db, cpu.x, cpu.y, cpu.p);
+
+    cpu.a = e.a;
+    cpu.x = e.x;
+    cpu.y = e.y;
+    cpu.p = e.p;
+}
+
+/* The cycled palette (attribute bits 1-3) for phase 1 and for phase 2 or
+   more: by which of bits 3 and 1 the piece's own attributes have set (bit 3,
+   else bit 1, else neither). */
+static uint8_t cycled_attr(uint8_t attr, uint8_t phase)
+{
+    static const uint8_t pal[2][3] = {{0x04, 0x08, 0x06}, {0x06, 0x04, 0x08}};
+    unsigned k = (attr & 0x08) ? 0 : (attr & 0x02) ? 1 : 2;
+
+    return (uint8_t)((attr & 0xF1) | pal[phase == 1][k]);
+}
+
+/* The shared body: set selector to $0D35, then from $02:F958 on. */
+static uint16_t flashing_metasprite_draw(uint8_t bank, uint16_t set, uint16_t *x, uint16_t *y)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t i, ph;
+    uint8_t n, a = 0, phase;
+
+    wr16(b | 0x0D35, set);
+    for (i = 0; i < 0x20; i++)
+        wr16(b | (uint16_t)(0x0575 + i), 0xAAAA);
+    if (!rd16(b | 0x0D37)) {
+        *x = 0x0020;
+        return 0;
+    }
+    if (!(rd16(b | 0x0E3B) & 0x0003)) {
+        ph = (uint16_t)(rd16(b | 0x0D39) + 1);
+        wr16(b | 0x0D39, ph < 3 ? ph : 0);
+    }
+    i = (uint16_t)(rd16(b | 0x0D35) << 2);
+    wr16(0x0000F1, rd16(0x1CE5AE + i));
+    n = rd8(0x0000F1);
+    *x = rd16(0x1CE5AC + i);
+    *y = 0;
+    i = (uint16_t)(*x & 0xFF00);
+    do {
+        wr8(b | (uint16_t)(0x0375 + *y), (uint8_t)(rd8(0x1CE62C + *x) + rd8(b | 0x0D37)));
+        wr8(b | (uint16_t)(0x0376 + *y), (uint8_t)(rd8(0x1CE62D + *x) + rd8(b | 0x0D38)));
+        wr8(b | (uint16_t)(0x0377 + *y), rd8(0x1CE62E + *x));
+        phase = rd8(b | 0x0D39);
+        a = rd8(0x1CE62F + *x);
+        wr8(b | (uint16_t)(0x0378 + *y), phase ? cycled_attr(a, phase) : a);
+        a = rd8(0x1CE630 + *x);
+        *x = (uint16_t)(*x + 5);
+        *y = (uint16_t)(*y + 4);
+        n = (uint8_t)(n - 1);
+        wr8(0x0000F1, n);
+    } while (n);
+    return (uint16_t)(i | a);
+}
+
+/*
+ * @routine 02:F94F FlashingMetaspriteDraw
+ * WHAT IT DOES: Resets the high sprite table to large sprites ($AA in
+ * $0575-$0595) and, when its position at $0D37/$0D38 is non-zero, draws
+ * metasprite 8 of the bank $1C set from sprite 0 with its palettes cycled:
+ * the phase in $0D39 steps 0, 1, 2 every fourth frame; phase 0 keeps each
+ * piece's palette, phases 1 and 2 swap the three palettes around.
+ * HOW: $0D35 = 8; the set's group table at $1C:E5AC (first piece, count)
+ * and 5-byte pieces at $1C:E62C as MetaspriteDraw reads them, the count
+ * running down in direct page $F1. Work RAM through the data bank.
+ * Entry: any widths, D = $0000. Exit: A = the last piece's fifth byte, high
+ * byte from its group's first piece (A = 0 and X = $20 when not drawn); X,
+ * Y past the pieces (low bytes with the 8-bit index registers P restores);
+ * P unchanged.
+ */
+uint16_t FlashingMetaspriteDraw(uint8_t bank, uint16_t *x, uint16_t *y)
+{
+    return flashing_metasprite_draw(bank, 0x0008, x, y);
+}
+
+void abi_FlashingMetaspriteDraw(void)
+{
+    cpu.a = FlashingMetaspriteDraw(cpu.db, &cpu.x, &cpu.y);
+    if (cpu.p & P_X) {
+        cpu.x &= 0x00FF;
+        cpu.y &= 0x00FF;
+    }
+}
+
+/*
+ * @routine 02:F926 FlashingMetaspriteDraw0
+ * WHAT IT DOES: FlashingMetaspriteDraw with metasprite 0 of the bank $1C
+ * set.
+ * HOW: $0D35 = 0, then a jump into FlashingMetaspriteDraw after its own
+ * store.
+ * Entry: as FlashingMetaspriteDraw. Exit: as FlashingMetaspriteDraw.
+ */
+uint16_t FlashingMetaspriteDraw0(uint8_t bank, uint16_t *x, uint16_t *y)
+{
+    return flashing_metasprite_draw(bank, 0x0000, x, y);
+}
+
+void abi_FlashingMetaspriteDraw0(void)
+{
+    cpu.a = FlashingMetaspriteDraw0(cpu.db, &cpu.x, &cpu.y);
+    if (cpu.p & P_X) {
+        cpu.x &= 0x00FF;
+        cpu.y &= 0x00FF;
+    }
+}
+
+/*
+ * @routine 02:FB9E OamAttr36x6
+ * WHAT IT DOES: Gives 6 sprites from entry A attribute byte $36.
+ * HOW: As OamAttr36x4.
+ * Entry: as OamAttr36x4. Exit: as OamAttr36x4.
+ */
+void OamAttr36x6(uint8_t bank, uint16_t first)
+{
+    oam_attr_fill(bank, first, 6, 0x36);
+}
+
+void abi_OamAttr36x6(void)
+{
+    abi_oam_attr_fill(6, 0x36);
+}
+
+/*
+ * @routine 02:FBB6 OamAttr38x4
+ * WHAT IT DOES: Gives 4 sprites from entry A attribute byte $38.
+ * HOW: As OamAttr36x4.
+ * Entry: as OamAttr36x4. Exit: as OamAttr36x4, low byte $38.
+ */
+void OamAttr38x4(uint8_t bank, uint16_t first)
+{
+    oam_attr_fill(bank, first, 4, 0x38);
+}
+
+void abi_OamAttr38x4(void)
+{
+    abi_oam_attr_fill(4, 0x38);
+}

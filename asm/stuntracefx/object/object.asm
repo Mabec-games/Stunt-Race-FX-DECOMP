@@ -1015,3 +1015,234 @@ ObjectAttachLinked:
     lda.b #$00
     sta.w 52,y
     rtl
+
+; @routine 7E:F0E1 ObjectGroupsActivate
+; WHAT IT DOES: For each entry in the list at $1AF5 (4 bytes each, ended by
+; a zero first word), takes the object bucket its second word selects and
+; sets the state byte (+$36) of every object in it to 3, skipping objects
+; whose state is negative, and, when the entry's code is $23, objects with
+; bit 4 of +$24 set.
+; HOW: The bucket number (second word AND $07FE) indexes the bucket heads
+; at $7F:0000; objects chain through +$3C (next in bucket). $1F2B keeps the list position and
+; $1F2D the entry's code; X is reloaded from and stored back to direct page
+; $3E around each chain. Data bank $7E inside.
+; Entry: X 16-bit, D = $0000. Exit: A = 0; X = the list position of the
+; terminating entry; Y = 0 when any chain was walked, else unchanged (low
+; bytes only when P restores 8-bit index registers); P and the data bank
+; unchanged.
+%ramcode($7EF0E1, $014E08)
+ObjectGroupsActivate:
+    php
+    phb
+    sep.b #$20
+    lda.b #$7E
+    pha
+    plb
+    rep.b #$30
+    stz.w !wram_1F2B
+.lF0EE:
+    ldx.w !wram_1F2B
+    lda.w !group_trigger_list,x
+    bne .lF0F9
+    brl .lF13E
+.lF0F9:
+    sta.w !wram_1F2D
+    lda.w !group_trigger_list+2,x
+    inx
+    inx
+    inx
+    inx
+    stx.w !wram_1F2B
+    and.w #$07FE
+    tax
+    lda.l !object_buckets,x
+    beq .lF0EE
+    tay
+    ldx.b !scale_scratch
+.lF113:
+    sep.b #$20
+    lda.w !wram_1F2D
+    cmp.b #$23
+    bne .lF127
+    lda.w !obj_24,y
+    and.b #$10
+    beq .lF127
+    jml.l .lF131
+.lF127:
+    lda.w !obj_36,y
+    bmi .lF131
+    lda.b #$03
+    sta.w !obj_36,y
+.lF131:
+    rep.b #$20
+    lda.w !obj_bucket_next,y
+    tay
+    bne .lF113
+    stx.b !scale_scratch
+    jmp.w .lF0EE
+.lF13E:
+    plb
+    plp
+    rts
+
+; @routine 7E:C58D BucketTriggersFromArea
+; WHAT IT DOES: Builds the trigger list at $1AF5 (read by
+; ObjectGroupsActivate) from a rectangle of map cells: for each cell inside
+; the window and not $2E, an entry of the cell's code and the bucket
+; number $1F01 + the cell's column * 2 + its row * $40; the list ends with
+; a zero entry.
+; HOW: The record at A (data bank) holds the columns, rows, first column
+; and first row as bytes, then the cells row by row. Direct page $A5 is
+; -first column * 2 and $94 the first row * $40 (signed, counting down a
+; row at a time); $02 steps the column by 2, $04 and $05F2 count the
+; columns and rows (16-bit; $1F2B keeps the column count). A cell is in
+; the window when $02 + $1F03 is below $40 and $94 + $1F05 below $800.
+; Entry: M 16-bit, X 16-bit, D = $0000; A = record address. Exit: A = the
+; final $94; X = the list size in bytes; Y = A + the cell count; N clear, Z
+; set; C, V from the last row step.
+%ramcode($7EC58D, $0122B4)
+BucketTriggersFromArea:
+    tay
+    ldx.w #$0000
+    lda.w 3,y
+    and.w #$00FF
+    xba
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    sta.b !area_row
+    lda.w 1,y
+    and.w #$00FF
+    sta.w !area_rows_left
+    lda.w 2,y
+    and.w #$00FF
+    eor.w #$FFFF
+    inc a
+    asl a
+    sta.b !area_col0
+    lda.w 0,y
+    and.w #$00FF
+    sta.w !wram_1F2B
+.lC5C1:
+    lda.b !area_col0
+    sta.b !dp_02
+    lda.w !wram_1F2B
+    sta.b !dp_04
+.lC5CA:
+    lda.b !dp_02
+    clc
+    adc.w !area_window_x
+    and.w #$FFC0
+    bne .lC600
+    lda.b !area_row
+    clc
+    adc.w !area_window_y
+    and.w #$F800
+    bne .lC600
+    lda.w 4,y
+    and.w #$00FF
+    cmp.w #$002E
+    beq .lC600
+    sta.w !group_trigger_list,x
+    lda.w !bucket_origin
+    clc
+    adc.b !dp_02
+    clc
+    adc.b !area_row
+    sta.w !group_trigger_list+2,x
+    txa
+    clc
+    adc.w #$0004
+    tax
+.lC600:
+    iny
+    inc.b !dp_02
+    inc.b !dp_02
+    dec.b !dp_04
+    bne .lC5CA
+    lda.b !area_row
+    sec
+    sbc.w #$0040
+    sta.b !area_row
+    dec.w !area_rows_left
+    bne .lC5C1
+    stz.w !group_trigger_list,x
+    stz.w !group_trigger_list+2,x
+    rts
+
+; @routine 7E:C520 BucketTriggersFromView
+; WHAT IT DOES: Builds the trigger list (BucketTriggersFromArea) from the
+; area record that the high byte of the view's Y position ($0667) selects,
+; with the window and bucket origin from $1EF5-$1EFA.
+; HOW: Copies $1EF5, $1EF7, $1EF9 to $1F01, $1F03, $1F05; the record
+; address is the word at $7E:C61D + ((($0667 >> 3) + 1) AND $FE). Data
+; bank $7E inside.
+; Entry: D = $0000. Exit: as BucketTriggersFromArea, with M 8-bit and N, Z
+; from the data bank pulled back.
+%ramcode($7EC520, $012247)
+BucketTriggersFromView:
+    sep.b #$20
+    phb
+    lda.b #$7E
+    pha
+    plb
+    rep.b #$30
+    lda.w !view_area_origin
+    sta.w !bucket_origin
+    lda.w !view_area_origin+2
+    sta.w !area_window_x
+    lda.w !view_area_origin+4
+    sta.w !area_window_y
+    lda.w !view_pos_y_hi
+    and.w #$00FF
+    lsr a
+    lsr a
+    lsr a
+    inc a
+    and.w #$00FE
+    tax
+    lda.w !area_records,x
+    jsr.w BucketTriggersFromArea
+    sep.b #$20
+    plb
+    rts
+
+; @routine 7E:C553 BucketTriggersFixedArea
+; WHAT IT DOES: Builds the trigger list (BucketTriggersFromArea) from the
+; area record at $7E:C661 when $0D62 is set or bit 7 of $1AEC is, else from
+; the one at $7E:C696, with the window and bucket origin from $1EFB-$1F00.
+; HOW: Copies $1EFB, $1EFD, $1EFF to $1F01, $1F03, $1F05. Data bank $7E
+; inside.
+; Entry: X 16-bit, D = $0000. Exit: as BucketTriggersFromArea, with M 8-bit
+; and N, Z from the data bank pulled back.
+%ramcode($7EC553, $01227A)
+BucketTriggersFixedArea:
+    sep.b #$20
+    phb
+    lda.b #$7E
+    pha
+    plb
+    rep.b #$20
+    lda.w !fixed_area_origin
+    sta.w !bucket_origin
+    lda.w !fixed_area_origin+2
+    sta.w !area_window_x
+    lda.w !fixed_area_origin+4
+    sta.w !area_window_y
+    lda.w !wram_0D62
+    and.w #$00FF
+    bne .lC57E
+    lda.w !wram_1AEC
+    and.w #$0080
+    beq .lC583
+.lC57E:
+    lda.w #$C661
+    bra .lC586
+.lC583:
+    lda.w #$C696
+.lC586:
+    jsr.w BucketTriggersFromArea
+    sep.b #$20
+    plb
+    rts

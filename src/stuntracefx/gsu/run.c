@@ -72,3 +72,56 @@ void abi_GsuRun(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | mode);
     cpu.p = nz8(cpu.p, cpu.db);
 }
+
+uint16_t GsuParamsUpdate(void);
+
+/* The body; returns the value the abi_ wrapper needs. */
+static uint8_t gsu_ab13_with_params(uint8_t bank, uint16_t *last)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t mode;
+
+    *last = GsuParamsUpdate();
+    wr8(b | 0x3034, 0x01);
+    wr8(b | 0x303A, (uint8_t)(rd8(b | 0x0374) | 0x18));
+    wr16(b | 0x301E, 0xAB13);
+    do {
+        uint8_t n = (uint8_t)(rd8(b | 0x1F21) + 1);
+
+        wr8(b | 0x1F21, n);
+        if (!n)
+            wr8(b | 0x1F22, (uint8_t)(rd8(b | 0x1F22) + 1));
+    } while (rd8(b | 0x3030) & 0x20);
+    mode = rd8(b | 0x0374);
+    wr8(b | 0x303A, mode);
+    return mode;
+}
+
+/*
+ * @routine 7F:0919 GsuAB13WithParams
+ * WHAT IT DOES: Updates the renderer's parameter block, runs Super FX
+ * program $01:AB13 to completion and takes the bus back, counting the polls
+ * in $1F21-$1F22.
+ * HOW: GsuParamsUpdate, then as GsuRun but written out: program bank 1,
+ * screen mode $0374 | $18, R15 = $AB13; each poll steps the 16-bit count
+ * (low byte, then the high byte when the low one wraps) before reading the
+ * status. Everything but the parameter copy goes through the data bank.
+ * Entry: any widths, D = $0000. Exit: A low byte = the screen mode value,
+ * high byte from the last parameter copied; X = $AB13 ($13 when P
+ * restores 8-bit index registers); P unchanged.
+ */
+uint8_t GsuAB13WithParams(uint8_t bank)
+{
+    uint16_t last;
+
+    return gsu_ab13_with_params(bank, &last);
+}
+
+void abi_GsuAB13WithParams(void)
+{
+    uint16_t last;
+    uint8_t mode = gsu_ab13_with_params(cpu.db, &last);
+
+    cpu.a = (uint16_t)((last & 0xFF00) | mode);
+    cpu.x = (cpu.p & P_X) ? 0x0013 : 0xAB13;
+}

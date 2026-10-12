@@ -339,3 +339,273 @@ PaletteCopy16To7F39D7:
     dec.b !digit_count
     bne .lEDCF
     rts
+
+; @routine 7E:E6E9 ColourBlend
+; WHAT IT DOES: Blends two BGR555 colours, from direct page $F1 toward $F3,
+; by the fraction loaded in the PPU multiplier (factor t * 8 gives t / 32),
+; and returns the blend.
+; HOW: Splits both colours into 5-bit components at $344E-$3458 (from: red,
+; green, blue at $344E, $3452, $3456; to at $3450, $3454, $3458), shifting
+; each colour word right 5 at a time in place; each component becomes from
+; + PpuMultiply(to - from), red masked to 5 bits, and the three are packed
+; back; $F1 is left with the blue field. The components go through the
+; data bank.
+; Entry: M 16-bit, D = $0000; the multiplier's factor set. Exit: A = the
+; blended colour; N, Z from it; C = bit 11 of the green sum; V from the
+; blue add; X, Y unchanged.
+%ramcode($7EE6E9, $014410)
+ColourBlend:
+    lda.b !blend_from
+    and.w #$001F
+    lsr.b !blend_from
+    lsr.b !blend_from
+    lsr.b !blend_from
+    lsr.b !blend_from
+    lsr.b !blend_from
+    sta.w !colour_from_r
+    lda.b !blend_from
+    and.w #$001F
+    lsr.b !blend_from
+    lsr.b !blend_from
+    lsr.b !blend_from
+    lsr.b !blend_from
+    lsr.b !blend_from
+    sta.w !colour_from_g
+    lda.b !blend_from
+    and.w #$001F
+    lsr.b !blend_from
+    lsr.b !blend_from
+    lsr.b !blend_from
+    lsr.b !blend_from
+    lsr.b !blend_from
+    sta.w !colour_from_b
+    lda.b !blend_to
+    and.w #$001F
+    lsr.b !blend_to
+    lsr.b !blend_to
+    lsr.b !blend_to
+    lsr.b !blend_to
+    lsr.b !blend_to
+    sta.w !colour_to_r
+    lda.b !blend_to
+    and.w #$001F
+    lsr.b !blend_to
+    lsr.b !blend_to
+    lsr.b !blend_to
+    lsr.b !blend_to
+    lsr.b !blend_to
+    sta.w !colour_to_g
+    lda.b !blend_to
+    and.w #$001F
+    lsr.b !blend_to
+    lsr.b !blend_to
+    lsr.b !blend_to
+    lsr.b !blend_to
+    lsr.b !blend_to
+    sta.w !colour_to_b
+    lda.w !colour_to_r
+    sec
+    sbc.w !colour_from_r
+    jsr.w PpuMultiply
+    clc
+    adc.w !colour_from_r
+    and.w #$001F
+    sta.w !colour_from_r
+    lda.w !colour_to_g
+    sec
+    sbc.w !colour_from_g
+    jsr.w PpuMultiply
+    clc
+    adc.w !colour_from_g
+    sta.w !colour_from_g
+    lda.w !colour_to_b
+    sec
+    sbc.w !colour_from_b
+    jsr.w PpuMultiply
+    clc
+    adc.w !colour_from_b
+    xba
+    asl a
+    asl a
+    and.w #$7C00
+    sta.b !blend_from
+    lda.w !colour_from_g
+    asl a
+    asl a
+    asl a
+    asl a
+    asl a
+    and.w #$03E0
+    ora.b !blend_from
+    ora.w !colour_from_r
+    rts
+
+; @routine 7E:B41F PaletteKeptColoursStep
+; WHAT IT DOES: Animates the kept colours at $7E:FF27-$7E:FF2C for player Y
+; (the timer at $0E01 + Y and the two 13-step cycles at $0E03 + Y and $0DFF
+; + Y). While the player's flag at $0E05 + Y is set, $0D53 is clear and
+; bit 14 of $0D1E + X is set, the timer counts up and the third colour's
+; cycle speeds up with it (every fourth frame below $3C, every other frame
+; below $78, every frame below $B4, two steps a frame from there); otherwise
+; the timer counts back down through the same speeds and at 0 the third
+; colour rests at $7E63. The first two colours step together whenever
+; $0DFD + Y, less $0DFB + Y each frame, borrows.
+; HOW: The third colour from the table at $7E:B4E9, the first two from
+; $7E:B505 and $7E:B521, each indexed by its cycle step * 2. Counting down
+; subtracts 5, 4, 3 or 1 by band ($78, $3C, $1E). Work RAM through the data
+; bank.
+; Entry: M 8-bit, X 8-bit; X = offset into $0D1E, Y = player offset.
+; Exit: when the first two colours stepped, A = the second colour, M 16-bit,
+; N, Z from it, C clear; otherwise A low byte = $0DFD + Y, M 8-bit, N, Z
+; from it, C set; V from that subtract; X = the last cycle step * 2 when a
+; step was made, else unchanged; Y unchanged.
+%ramcode($7EB41F, $011146)
+PaletteKeptColoursStep:
+    lda.w !kept_freeze
+    bne .lB455
+    lda.w !kept_enable,y
+    beq .lB455
+    rep.b #$20
+    lda.w !joy1_last,x
+    bit.w #$4000
+    beq .lB455
+    sep.b #$20
+    lda.w !kept_timer,y
+    cmp.b #$FF
+    beq .lB484
+    inc a
+    sta.w !kept_timer,y
+    cmp.b #$B4
+    bcs .lB484
+    cmp.b #$78
+    bcs .lB499
+    cmp.b #$3C
+    bcs .lB492
+.lB44C:
+    lda.w !frame_count
+    and.b #$03
+    bne .lB4B9
+    bra .lB499
+.lB455:
+    sep.b #$20
+    lda.w !kept_timer,y
+    beq .lB4B0
+    cmp.b #$78
+    bcs .lB47F
+    cmp.b #$3C
+    bcs .lB478
+    cmp.b #$1E
+    bcs .lB471
+    lda.w !kept_timer,y
+    dec a
+    sta.w !kept_timer,y
+    bra .lB44C
+.lB471:
+    sbc.b #$03
+    sta.w !kept_timer,y
+    bra .lB492
+.lB478:
+    sbc.b #$04
+    sta.w !kept_timer,y
+    bra .lB499
+.lB47F:
+    sbc.b #$05
+    sta.w !kept_timer,y
+.lB484:
+    lda.w !kept_cycle_c,y
+    clc
+    adc.b #$02
+    cmp.b #$0D
+    bcc .lB4A3
+    sbc.b #$0D
+    bra .lB4A3
+.lB492:
+    lda.w !frame_count
+    bit.b #$01
+    bne .lB4B9
+.lB499:
+    lda.w !kept_cycle_c,y
+    inc a
+    cmp.b #$0D
+    bcc .lB4A3
+    lda.b #$00
+.lB4A3:
+    sta.w !kept_cycle_c,y
+    asl a
+    tax
+    rep.b #$20
+    lda.l !kept_colours_c,x
+    bra .lB4B5
+.lB4B0:
+    rep.b #$20
+    lda.w #$7E63
+.lB4B5:
+    sta.l !kept_colour_c
+.lB4B9:
+    sep.b #$20
+    lda.w !kept_acc,y
+    sec
+    sbc.w !kept_sub,y
+    sta.w !kept_acc,y
+    bcs .lB4E8
+    lda.w !kept_cycle_ab,y
+    inc a
+    cmp.b #$0D
+    bcc .lB4D1
+    lda.b #$00
+.lB4D1:
+    sta.w !kept_cycle_ab,y
+    asl a
+    tax
+    rep.b #$20
+    lda.l !kept_colours_a,x
+    sta.l !palette_kept
+    lda.l !kept_colours_b,x
+    sta.l !kept_colour_b
+.lB4E8:
+    rts
+
+; @routine 7E:E6D1 ColourBlendBy
+; WHAT IT DOES: ColourBlend by the fraction in direct page $F5 (t / 32):
+; blends the colour in $F1 toward the one in $F3.
+; HOW: Loads the multiplier's factor with the low byte of $F5 times 8 (two
+; long writes to M7A, low then high), then falls into ColourBlend.
+; Entry: M 16-bit, D = $0000. Exit: as ColourBlend.
+%ramcode($7EE6D1, $0143F8)
+ColourBlendBy:
+    lda.b !blend_amount
+    xba
+    and.w #$FF00
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    sep.b #$20
+    sta.l !M7A
+    xba
+    sta.l !M7A
+    rep.b #$20
+
+; @routine 7E:E6A2 ColourBlendToTarget
+; WHAT IT DOES: Blends colour A toward the target colour at $3470 by the
+; amount at $3468 and stores the result at $0E21 + X; a negative target
+; leaves the colour as it is (blended toward itself).
+; HOW: Direct page $F1 = A, $F3 = the target (or A), $F5 = $3468, then
+; ColourBlendBy; a long store of the result. $3470 and $3468 go through
+; the data bank.
+; Entry: M 16-bit, X 16-bit, D = $0000; A = colour, X = offset. Exit: as
+; ColourBlend.
+%ramcode($7EE6A2, $0143C9)
+ColourBlendToTarget:
+    sta.b !blend_from
+    lda.w !blend_target
+    bpl .lE6AB
+    lda.b !blend_from
+.lE6AB:
+    sta.b !blend_to
+    lda.w !blend_target_amount
+    sta.b !blend_amount
+    jsr.w ColourBlendBy
+    sta.l !blended_colours,x
+    rts

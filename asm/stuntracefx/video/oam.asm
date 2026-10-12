@@ -301,7 +301,7 @@ OamAttr38x7:
     ldy.w #$0007
     sep.b #$20
     lda.b #$38
-OamAttrFillLoop:                    ; shared with OamAttr36x4 and OamAttr38x6
+OamAttrFillLoop:                    ; shared with OamAttr36x4, 36x6, 38x4 and 38x6
     sta.w !oam_buffer+3,x
     inx
     inx
@@ -775,3 +775,354 @@ OamPlaceRows75And112:
     sta.w !oam_buffer_high+27
     plp
     rts
+
+; @routine 7F:094E SpriteBar4WithMarker
+; WHAT IT DOES: Shows a value of 0-63 (larger values are shown as 63) as a
+; four-sprite strip at position X with the tiles SpriteStrip4 picks for it,
+; plus a marker sprite at X + value (X + value - 16, with a different tile,
+; from 16 up) in the sprite slot Y.
+; HOW: Value to direct page $04, position to $02; SpriteStrip4 fills slots
+; Y + 4 on; then the marker: tile word $3622 below 16, $3C20 from 16.
+; Entry: M 8-bit, X 16-bit, D = $0000; A = value, X = position (X, Y
+; pair), Y = marker slot offset in the sprite table. Exit: A = the marker's
+; tile word; X as SpriteStrip4 leaves it; Y unchanged; P unchanged.
+%ramcode($7F094E, $05814E)
+SpriteBar4WithMarker:
+    php
+    sep.b #$20
+    rep.b #$10
+    cmp.b #$3F
+    bcc .l0959
+    lda.b #$3F
+.l0959:
+    sta.b !dp_04
+    rep.b #$20
+    stx.b !dp_02
+    phy
+    tya
+    clc
+    adc.w #$0004
+    tay
+    sep.b #$20
+    lda.b !dp_04
+    rep.b #$20
+    and.w #$00FF
+    pha
+    jsr.w SpriteStrip4
+    pla
+    ply
+    cmp.w #$0010
+    bcc .l098C
+    clc
+    adc.b !dp_02
+    sec
+    sbc.w #$0010
+    sta.w !oam_buffer,y
+    lda.w #$3C20
+    sta.w !oam_buffer+2,y
+    plp
+    rtl
+.l098C:
+    rep.b #$20
+    clc
+    adc.b !dp_02
+    sta.w !oam_buffer,y
+    lda.w #$3622
+    sta.w !oam_buffer+2,y
+    plp
+    rtl
+
+; @routine 7F:09ED SpriteBar6WithMarker
+; WHAT IT DOES: Shows a value as a six-sprite strip at position X with the
+; tiles SpriteStrip6 picks for it, plus a marker sprite at X + value
+; (X + value - 8, with a different tile, from 8 up) in the sprite slot Y.
+; HOW: As SpriteBar4WithMarker without the limit: SpriteStrip6 fills slots
+; Y + 4 on; the marker's tile word is $3C1E below 8, $3C1F from 8.
+; Entry: as SpriteBar4WithMarker. Exit: A = the marker's tile word; X as
+; SpriteStrip6 leaves it; Y unchanged; P unchanged.
+%ramcode($7F09ED, $0581ED)
+SpriteBar6WithMarker:
+    php
+    sep.b #$20
+    rep.b #$10
+    sta.b !dp_04
+    rep.b #$20
+    stx.b !dp_02
+    phy
+    tya
+    clc
+    adc.w #$0004
+    tay
+    sep.b #$20
+    lda.b !dp_04
+    rep.b #$20
+    and.w #$00FF
+    pha
+    jsr.w SpriteStrip6
+    pla
+    ply
+    cmp.w #$0008
+    bcc .l0A25
+    clc
+    adc.b !dp_02
+    sec
+    sbc.w #$0008
+    sta.w !oam_buffer,y
+    lda.w #$3C1F
+    sta.w !oam_buffer+2,y
+    plp
+    rtl
+.l0A25:
+    rep.b #$20
+    clc
+    adc.b !dp_02
+    sta.w !oam_buffer,y
+    lda.w #$3C1E
+    sta.w !oam_buffer+2,y
+    plp
+    rtl
+
+; @routine 02:FA19 MetaspriteDraw
+; WHAT IT DOES: Draws metasprite X into the sprite table from slot Y on:
+; each piece's X and Y offsets are added to the origin at $0D3B/$0D3C and
+; its tile and attribute bytes copied; a piece whose fifth byte has bit 0
+; clear is made small (its size bit in the high table cleared).
+; HOW: The group table at $04:EDCB (4 bytes per metasprite: first piece,
+; piece count) and 5-byte pieces at $04:EE4B; the count runs down in direct
+; page $F1 (8-bit, after a 16-bit store), the size masks $FD, $F7, $DF, $7F
+; come from $02:FA8D through direct page $F3. Origin and sprite table go
+; through the data bank.
+; Entry: M 16-bit, X 16-bit, D = $0000; X = metasprite, Y = first slot.
+; Exit: A = the last piece's fifth byte (or the high-table byte after its
+; mask), high byte from the start of the group (or the last mask word);
+; X, Y past the pieces; M 16-bit; N clear, Z set; C, V from the last Y
+; add, C from bit 3 of the slot offset when the last piece was made small.
+%at($02FA19)
+MetaspriteDraw:
+    txa
+    asl a
+    asl a
+    tax
+    tya
+    asl a
+    asl a
+    tay
+    lda.l !metasprite_groups+2,x
+    sta.b !metasprite_count
+    lda.l !metasprite_groups,x
+    tax
+    sep.b #$20
+.lFA2E:
+    lda.l !metasprite_pieces,x
+    clc
+    adc.w !metasprite_origin_x
+    sta.w !oam_buffer,y
+    lda.l !metasprite_pieces+1,x
+    clc
+    adc.w !metasprite_origin_y
+    sta.w !oam_buffer+1,y
+    lda.l !metasprite_pieces+2,x
+    sta.w !oam_buffer+2,y
+    lda.l !metasprite_pieces+3,x
+    sta.w !oam_buffer+3,y
+    lda.l !metasprite_pieces+4,x
+    bit.b #$01
+    bne .lFA7D
+    phy
+    phx
+    rep.b #$20
+    tya
+    lsr a
+    lsr a
+    pha
+    lsr a
+    lsr a
+    tax
+    pla
+    and.w #$0003
+    tay
+    lda.w !oam_size_masks,y
+    sta.b !oam_size_mask
+    sep.b #$20
+    lda.l !oam_buffer_high,x
+    and.b !oam_size_mask
+    sta.l !oam_buffer_high,x
+    plx
+    ply
+.lFA7D:
+    inx
+    inx
+    inx
+    inx
+    inx
+    iny
+    iny
+    iny
+    iny
+    dec.b !metasprite_count
+    bne .lFA2E
+    rep.b #$20
+    rts
+
+; @routine 02:F94F FlashingMetaspriteDraw
+; WHAT IT DOES: Resets the high sprite table to large sprites ($AA in
+; $0575-$0595) and, when its position at $0D37/$0D38 is non-zero, draws
+; metasprite 8 of the bank $1C set from sprite 0 with its palettes cycled:
+; the phase in $0D39 steps 0, 1, 2 every fourth frame; phase 0 keeps each
+; piece's palette, phases 1 and 2 swap the three palettes around.
+; HOW: $0D35 = 8; the set's group table at $1C:E5AC (first piece, count)
+; and 5-byte pieces at $1C:E62C as MetaspriteDraw reads them, the count
+; running down in direct page $F1. Work RAM through the data bank.
+; Entry: any widths, D = $0000. Exit: A = the last piece's fifth byte, high
+; byte from its group's first piece (A = 0 and X = $20 when not drawn); X,
+; Y past the pieces (low bytes with the 8-bit index registers P restores);
+; P unchanged.
+%at($02F94F)
+FlashingMetaspriteDraw:
+    php
+    rep.b #$30
+    lda.w #$0008
+    sta.w !metasprite_set_sel
+FlashingMetaspriteDraw_set:             ; FlashingMetaspriteDraw0 joins here
+    ldx.w #$0000
+    lda.w #$AAAA
+.lF95E:
+    sta.w !oam_buffer_high,x
+    inx
+    cpx.w #$0020
+    bne .lF95E
+    lda.w !flash_sprite_x
+    bne .lF96E
+    plp
+    rts
+.lF96E:
+    lda.w !frame_count
+    and.w #$0003
+    bne .lF985
+    lda.w !flash_phase
+    inc a
+    cmp.w #$0003
+    bcc .lF982
+    lda.w #$0000
+.lF982:
+    sta.w !flash_phase
+.lF985:
+    ldy.w #$0000
+    lda.w !metasprite_set_sel
+    asl a
+    asl a
+    tax
+    lda.l !metasprite_groups_1c+2,x
+    sta.b !metasprite_count
+    lda.l !metasprite_groups_1c,x
+    tax
+.lF999:
+    sep.b #$20
+    lda.l !metasprite_pieces_1c,x
+    clc
+    adc.w !flash_sprite_x
+    sta.w !oam_buffer,y
+    lda.l !metasprite_pieces_1c+1,x
+    clc
+    adc.w !flash_sprite_y
+    sta.w !oam_buffer+1,y
+    lda.l !metasprite_pieces_1c+2,x
+    sta.w !oam_buffer+2,y
+    lda.w !flash_phase
+    cmp.b #$01
+    bcc .lF9FD
+    beq .lF9DF
+    lda.l !metasprite_pieces_1c+3,x
+    bit.b #$08
+    bne .lF9D9
+    bit.b #$02
+    bne .lF9D3
+    and.b #$F1
+    ora.b #$06
+    bra .lFA01
+.lF9D3:
+    and.b #$F1
+    ora.b #$08
+    bra .lFA01
+.lF9D9:
+    and.b #$F1
+    ora.b #$04
+    bra .lFA01
+.lF9DF:
+    lda.l !metasprite_pieces_1c+3,x
+    bit.b #$08
+    bne .lF9F7
+    bit.b #$02
+    bne .lF9F1
+    and.b #$F1
+    ora.b #$08
+    bra .lFA01
+.lF9F1:
+    and.b #$F1
+    ora.b #$04
+    bra .lFA01
+.lF9F7:
+    and.b #$F1
+    ora.b #$06
+    bra .lFA01
+.lF9FD:
+    lda.l !metasprite_pieces_1c+3,x
+.lFA01:
+    sta.w !oam_buffer+3,y
+    lda.l !metasprite_pieces_1c+4,x
+    bit.b #$01
+    inx
+    inx
+    inx
+    inx
+    inx
+    iny
+    iny
+    iny
+    iny
+    dec.b !metasprite_count
+    bne .lF999
+    plp
+    rts
+
+; @routine 02:F926 FlashingMetaspriteDraw0
+; WHAT IT DOES: FlashingMetaspriteDraw with metasprite 0 of the bank $1C
+; set.
+; HOW: $0D35 = 0, then a jump into FlashingMetaspriteDraw after its own
+; store.
+; Entry: as FlashingMetaspriteDraw. Exit: as FlashingMetaspriteDraw.
+%at($02F926)
+FlashingMetaspriteDraw0:
+    php
+    rep.b #$30
+    lda.w #$0000
+    sta.w !metasprite_set_sel
+    jmp.w FlashingMetaspriteDraw_set
+
+; @routine 02:FB9E OamAttr36x6
+; WHAT IT DOES: Gives 6 sprites from entry A attribute byte $36.
+; HOW: As OamAttr36x4.
+; Entry: as OamAttr36x4. Exit: as OamAttr36x4.
+%at($02FB9E)
+OamAttr36x6:
+    asl a
+    asl a
+    tax
+    ldy.w #$0006
+    sep.b #$20
+    lda.b #$36
+    bra OamAttrFillLoop
+
+; @routine 02:FBB6 OamAttr38x4
+; WHAT IT DOES: Gives 4 sprites from entry A attribute byte $38.
+; HOW: As OamAttr36x4.
+; Entry: as OamAttr36x4. Exit: as OamAttr36x4, low byte $38.
+%at($02FBB6)
+OamAttr38x4:
+    asl a
+    asl a
+    tax
+    ldy.w #$0004
+    sep.b #$20
+    lda.b #$38
+    bra OamAttrFillLoop

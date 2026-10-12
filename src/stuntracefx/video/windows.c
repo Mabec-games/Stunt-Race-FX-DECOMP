@@ -82,3 +82,59 @@ void abi_WindowsAllInverted(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x1F);
     cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z)) | P_M);
 }
+
+void ColourMathSub83Windowed(void);
+
+/* Setup 2 ($7E:E048), which no script selects: colour maths $03 (add, on
+   BG1 and BG2), then the windows for colour only. Leaves A low byte $03. */
+static void windows_colour_add03(void)
+{
+    wr8(CGADSUB, 0x03);
+    WindowsColourWindowOnly();
+}
+
+/* Setup 3 ($7E:E054), which no script selects: colour maths $81, no BG
+   windows, sprites window 1, colour window only, BG1 on the main screen
+   inside the window. Leaves A low byte $01. */
+static void windows_colour_sub81(void)
+{
+    wr8(CGADSUB, 0x81);
+    wr8(W12SEL, 0x00);
+    wr8(W34SEL, 0x00);
+    wr8(WOBJSEL, 0x20);
+    wr8(CGWSEL, 0x10);
+    wr8(WBGLOG, 0x00);
+    wr8(WOBJLOG, 0x00);
+    wr8(TMW, 0x01);
+}
+
+/*
+ * @routine 7E:DFCA WindowsSetupSelect
+ * WHAT IT DOES: Applies the window and colour maths setup chosen by $19A9:
+ * 0 WindowsColourAddBg12, 2 ColourMathSub83Windowed, 4 colour maths $03
+ * with the windows for colour only, 6 colour maths $81 with BG1 alone
+ * inside the window, 8 WindowsAllInverted.
+ * HOW: An indexed indirect call through the five-entry table at $7E:DFDA,
+ * with the data bank set to $7E. Only 0, 2 and 8 are seen in play.
+ * Entry: any widths; $19A9 = 0, 2, 4, 6 or 8. Exit: A low byte as the
+ * setup leaves it; X = $19A9 (high byte clear); P and the data bank
+ * unchanged.
+ */
+uint8_t WindowsSetupSelect(void)
+{
+    switch (rd8(0x7E19A9)) {
+    case 0: WindowsColourAddBg12(); return 0x17;
+    case 2: ColourMathSub83Windowed(); return 0x03;
+    case 4: windows_colour_add03(); return 0x03;
+    case 6: windows_colour_sub81(); return 0x01;
+    default: WindowsAllInverted(); return 0x1F;
+    }
+}
+
+void abi_WindowsSetupSelect(void)
+{
+    uint8_t a = WindowsSetupSelect();
+
+    cpu.x = rd8(0x7E19A9);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
+}

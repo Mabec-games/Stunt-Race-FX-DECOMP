@@ -278,3 +278,31 @@ FrameByteWritePush:
     pla
     plp
     rtl
+
+; @routine 7F:1072 FrameInputAndCountEnd
+; WHAT IT DOES: Ends a menu frame: copies $18BF-$18C2 to $18BB-$18BE,
+; appends player 1's and player 2's new presses to the two word lists,
+; steps the frame counters ($0E3B, $0306, direct page $06) and writes the
+; brightness value at $11DA to INIDISP.
+; HOW: Two long word copies; $0311 to WordListAAppend, $0313 to
+; WordListBAppend; three 8-bit increments; the rest through the data bank.
+; Entry: M 16-bit, D = $0000. Exit: A low byte = $11DA, high byte from
+; $0314; X = list B's size; M 8-bit; N, Z from $11DA.
+%ramcode($7F1072, $058872)
+FrameInputAndCountEnd:
+    rep.b #$20
+    lda.l !menu_sine_y
+    sta.l !menu_pos_18bb
+    lda.l !menu_sine_y_min
+    sta.l !menu_pos_18bd
+    lda.w !joy1_pressed
+    jsr.w WordListAAppend
+    lda.w !joy2_pressed
+    jsr.w WordListBAppend
+    sep.b #$20
+    inc.w !frame_count
+    inc.w !frames_since_tick
+    inc.b !dp_06
+    lda.w !wram_11DA
+    sta.w !INIDISP
+    rtl

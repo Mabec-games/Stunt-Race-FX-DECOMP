@@ -576,3 +576,104 @@ void abi_GsuFA1BFromTables(void)
         cpu.p = (uint8_t)((p & ~P_N) | P_Z);
     }
 }
+
+/*
+ * @routine 02:E01C Gsu81E3
+ * WHAT IT DOES: Runs Super FX program $01:81E3 with direct page $02 at
+ * $70:0068 and direct page $08 at $70:002C, and returns the word it leaves
+ * at $70:0040.
+ * HOW: Two long word stores, GsuRun, one long word load; X and P are saved
+ * around it.
+ * Entry: any widths, D = $0000. Exit: A = $70:0040; X and P unchanged.
+ */
+uint16_t Gsu81E3(void)
+{
+    wr16(GSU_IN_68, rd16(0x000002));
+    wr16(GSU_DEST, rd16(0x000008));
+    GsuRun(0x01, 0x81E3);
+    return rd16(0x700040);
+}
+
+void abi_Gsu81E3(void)
+{
+    cpu.a = Gsu81E3();
+}
+
+/*
+ * @routine 02:DF24 ViewMatrixUpdateAndSave
+ * WHAT IT DOES: Saves the view position ($0664-$0669 to $065E-$0663), has
+ * the Super FX recompute the nine-word view matrix at $0608 (Gsu8325) and
+ * saves a copy of it at $064C-$065D.
+ * HOW: Word copies through the data bank around Gsu8325.
+ * Entry: D = $0000. Exit: A = the last matrix word (16-bit); X = $25, Y
+ * high byte clear; M 8-bit, X 8-bit; N, Z from A as a 16-bit value.
+ */
+uint16_t ViewMatrixUpdateAndSave(uint8_t bank)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t v = 0;
+    unsigned i;
+
+    for (i = 0; i < 3; i++)
+        wr16(b | (0x065E + 2 * i), rd16(b | (0x0664 + 2 * i)));
+    Gsu8325(bank);
+    for (i = 0; i < 9; i++) {
+        v = rd16(b | (0x0608 + 2 * i));
+        wr16(b | (0x064C + 2 * i), v);
+    }
+    return v;
+}
+
+void abi_ViewMatrixUpdateAndSave(void)
+{
+    cpu.a = ViewMatrixUpdateAndSave(cpu.db);
+    cpu.x = 0x0025;
+    cpu.y &= 0x00FF;
+    cpu.p = (uint8_t)(nz16(cpu.p, cpu.a) | P_M | P_X);
+}
+
+void abi_Gsu81E3(void);
+
+/*
+ * @routine 02:E016 Gsu81E3Long
+ * WHAT IT DOES: Gsu81E3 for callers in other banks.
+ * HOW: A near call to Gsu81E3, then 16-bit A and a long return.
+ * Entry: as Gsu81E3. Exit: as Gsu81E3, with M 16-bit.
+ */
+uint16_t Gsu81E3Long(void)
+{
+    return Gsu81E3();
+}
+
+void abi_Gsu81E3Long(void)
+{
+    abi_Gsu81E3();
+    cpu.p = (uint8_t)(cpu.p & ~P_M);
+}
+
+void abi_ViewMatrixUpdateAndSave(void);
+void abi_GsuRun(void);
+
+/*
+ * @routine 02:DB59 ViewUpdateAndGsuAEF8
+ * WHAT IT DOES: Updates the view matrix (ViewMatrixUpdateAndSave), then
+ * runs Super FX program $01:AEF8.
+ * HOW: Two long calls; GsuRun with A = 1, X = $AEF8.
+ * Entry: D = $0000. Exit: A low byte = the screen mode value; X = $AEF8;
+ * Y high byte clear; M 8-bit, X 16-bit; N, Z from the data bank.
+ */
+uint8_t ViewUpdateAndGsuAEF8(uint8_t bank)
+{
+    ViewMatrixUpdateAndSave(bank);
+    return GsuRun(0x01, 0xAEF8);
+}
+
+void abi_ViewUpdateAndGsuAEF8(void)
+{
+    abi_ViewMatrixUpdateAndSave();
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
+    cpu.x = 0xAEF8;
+    cpu.p = (uint8_t)(nz16((uint8_t)((cpu.p | P_M) & ~P_X), 0xAEF8));
+    abi_GsuRun();
+    cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
+}

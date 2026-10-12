@@ -78,3 +78,19 @@ void abi_RandomWordStep(void)
 {
     cpu.a = RandomWordStep(cpu.db);
 }
+
+/*
+ * @routine 02:DF79 RandomStepLong
+ * WHAT IT DOES: RandomStep for callers in other banks.
+ * HOW: A near call to RandomStep, then a long return.
+ * Entry: any widths, D = $0000. Exit: as RandomStep.
+ */
+uint8_t RandomStepLong(void)
+{
+    return RandomStep();
+}
+
+void abi_RandomStepLong(void)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | RandomStepLong());
+}

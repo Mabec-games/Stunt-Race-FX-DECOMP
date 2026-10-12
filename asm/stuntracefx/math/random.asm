@@ -70,3 +70,12 @@ RandomWordStep:
     stz.w !random_word
     plp
     rtl
+
+; @routine 02:DF79 RandomStepLong
+; WHAT IT DOES: RandomStep for callers in other banks.
+; HOW: A near call to RandomStep, then a long return.
+; Entry: any widths, D = $0000. Exit: as RandomStep.
+%at($02DF79)
+RandomStepLong:
+    jsr.w RandomStep
+    rtl

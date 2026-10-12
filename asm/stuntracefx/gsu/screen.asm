@@ -107,3 +107,50 @@ GsuScreenFlipMenu:
     lda.b #$25
     sta.l !GSU_SCBR
     rts
+
+; @routine 02:D8CD GsuScreenToggle
+; WHAT IT DOES: Toggles $0D7F between 0 and 1 and points the Super FX at
+; the matching screen: start $2C00 with screen base $0B when $0D7F becomes
+; 0, start $9400 with screen base $25 when it becomes 1.
+; HOW: As GsuScreenFlip without $0D7D: gives RAM back to the S-CPU, stores
+; the start at $70:021A and direct page $48, hands ROM and RAM to the Super
+; FX again, then a long store to the screen base register. Work RAM and the
+; screen mode register are reached through the data bank, 16-bit.
+; Entry: D = $0000. Exit: A = the high byte of the last screen mode value
+; and the screen base; M 8-bit; N, Z clear.
+%at($02D8CD)
+GsuScreenToggle:
+    rep.b #$20
+    lda.w !gsu_buffer_select
+    beq .lD8FD
+    rep.b #$20
+    stz.w !gsu_buffer_select
+    lda.w !gsu_scmr_shadow
+    and.w #$FFF7
+    sta.w !GSU_SCMR
+    lda.w #$2C00
+    sta.l !gsu_screen_start
+    sta.b !gsu_screen_start_dp
+    lda.w !gsu_scmr_shadow
+    ora.w #$0018
+    sta.w !GSU_SCMR
+    sep.b #$20
+    lda.b #$0B
+    sta.l !GSU_SCBR
+    rts
+.lD8FD:
+    rep.b #$20
+    inc.w !gsu_buffer_select
+    lda.w !gsu_scmr_shadow
+    and.w #$FFF7
+    sta.w !GSU_SCMR
+    lda.w #$9400
+    sta.l !gsu_screen_start
+    sta.b !gsu_screen_start_dp
+    lda.w !gsu_scmr_shadow
+    ora.w #$0018
+    sta.w !GSU_SCMR
+    sep.b #$20
+    lda.b #$25
+    sta.l !GSU_SCBR
+    rts

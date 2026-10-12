@@ -86,3 +86,45 @@ void abi_GsuScreenFlipMenu(void)
     cpu.a = GsuScreenFlipMenu(cpu.db);
     cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z)) | P_M);
 }
+
+/*
+ * @routine 02:D8CD GsuScreenToggle
+ * WHAT IT DOES: Toggles $0D7F between 0 and 1 and points the Super FX at
+ * the matching screen: start $2C00 with screen base $0B when $0D7F becomes
+ * 0, start $9400 with screen base $25 when it becomes 1.
+ * HOW: As GsuScreenFlip without $0D7D: gives RAM back to the S-CPU, stores
+ * the start at $70:021A and direct page $48, hands ROM and RAM to the Super
+ * FX again, then a long store to the screen base register. Work RAM and the
+ * screen mode register are reached through the data bank, 16-bit.
+ * Entry: D = $0000. Exit: A = the high byte of the last screen mode value
+ * and the screen base; M 8-bit; N, Z clear.
+ */
+uint16_t GsuScreenToggle(uint8_t bank)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t mode, start;
+    uint8_t base;
+
+    if (rd16(b | 0x0D7F)) {
+        wr16(b | 0x0D7F, 0x0000);
+        start = 0x2C00;
+        base = 0x0B;
+    } else {
+        wr16(b | 0x0D7F, (uint16_t)(rd16(b | 0x0D7F) + 1));
+        start = 0x9400;
+        base = 0x25;
+    }
+    wr16(b | (GSU_SCMR & 0xFFFF), (uint16_t)(rd16(b | 0x0374) & 0xFFF7));
+    wr16(0x70021A, start);
+    wr16(0x000048, start);
+    mode = (uint16_t)(rd16(b | 0x0374) | 0x0018);
+    wr16(b | (GSU_SCMR & 0xFFFF), mode);
+    wr8(GSU_SCBR, base);
+    return (uint16_t)((mode & 0xFF00) | base);
+}
+
+void abi_GsuScreenToggle(void)
+{
+    cpu.a = GsuScreenToggle(cpu.db);
+    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z)) | P_M);
+}
