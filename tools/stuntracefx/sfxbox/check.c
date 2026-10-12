@@ -718,7 +718,7 @@ static int ls_exec(uint32_t pc)
         }
         STORE(sh->h_ops, rec->opoff + rec->opn);
         STORE(sh->h_calls, k + 1);
-    } else if (LOAD(sh->o_done) && k + 1 >= LOAD(sh->o_calls)) {
+    } else if (LOAD(sh->o_done) && k + 1 == LOAD(sh->o_calls)) {
         /* The script ended on the original side before this call returned
            (a long Super FX run can span the last frames): there is nothing
            left to compare it, or the frames after it, with. */
