@@ -79,3 +79,8 @@ includeonce
 !sound_table_d0d6 = $04D0D6
 !palette_bits_e26a = $04E26A
 !palette_bits_e30f = $04E30F
+
+; Position lists and record blocks for the bank $7F records (video/records_7f.asm).
+!records_list_f634 = $F634
+!records_list_f170 = $F170
+!records_blocks = $09F88B

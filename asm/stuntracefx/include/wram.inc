@@ -515,3 +515,14 @@ includeonce
 !wram_10D8 = $10D8
 !wram_1073 = $1073
 !dp_00 = $00
+!records_7f_a = $7F43D7
+!records_7f_b = $7F47FF
+!records_7f_45b7 = $7F45B7
+!records_7f_45d7 = $7F45D7
+!records_7f_47b7 = $7F47B7
+!records_7f_47d7 = $7F47D7
+!records_7f_49b7 = $7F49B7
+!records_7f_49d7 = $7F49D7
+!records_7f_4bb7 = $7F4BB7
+!wram_19B4 = $19B4
+!window_edges = $7FF883

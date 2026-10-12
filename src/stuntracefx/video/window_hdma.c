@@ -326,3 +326,54 @@ void abi_WindowHdmaPreset(void)
     cpu.a = WindowHdmaPreset(cpu.db, (uint8_t)cpu.x, &cpu.x, &cpu.y);
     cpu.p = (uint8_t)(((cpu.p & ~(P_N | P_X)) | P_Z | P_C | P_M));
 }
+
+/* (0x80 - v) + 0x80 as SEC / SBC then CLC / ADC #$80 do it, with C and V
+   from the add. */
+static uint8_t mirror80(uint8_t v, uint8_t *p)
+{
+    uint8_t d = (uint8_t)(0x80 - v);
+    unsigned s = (unsigned)d + 0x80;
+
+    *p = (uint8_t)((*p & ~(P_C | P_V)) | (s > 0xFF ? P_C : 0) | ((~(d ^ 0x80) & (d ^ (uint8_t)s) & 0x80) ? P_V : 0));
+    return (uint8_t)s;
+}
+
+/*
+ * @routine 09:F065 WindowEdgesFromPair
+ * WHAT IT DOES: Writes a pair of window edges and their mirror images about
+ * $80 into the window HDMA table at offset $28 + the byte at $19B4: the
+ * first byte at X, its mirror, the second byte at X + 1, its mirror ($80
+ * when the byte is $81).
+ * HOW: Byte reads through the data bank; long stores at $7F:F883-$7F:F886
+ * + the offset.
+ * Entry: M 8-bit, X 16-bit; X = the pair's address. Exit: A low byte = the
+ * last value; X unchanged; N, Z from X; C, V from the last mirror (C set
+ * when the second byte was $81).
+ */
+uint8_t WindowEdgesFromPair(uint8_t bank, uint16_t pair, uint8_t *p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t v0 = rd8(b | pair), v1, v;
+
+    wr8(0x7FF883 + rd16(b | 0x19B4), v0);
+    v = mirror80(rd8(b | pair), p);
+    wr8(0x7FF884 + rd16(b | 0x19B4), v);
+    v1 = rd8(b | (uint16_t)(pair + 1));
+    wr8(0x7FF885 + rd16(b | 0x19B4), v1);
+    if (rd8(b | (uint16_t)(pair + 1)) == 0x81) {
+        *p |= P_C;
+        v = 0x80;
+    } else {
+        v = mirror80(rd8(b | (uint16_t)(pair + 1)), p);
+    }
+    wr8(0x7FF886 + rd16(b | 0x19B4), v);
+    return v;
+}
+
+void abi_WindowEdgesFromPair(void)
+{
+    uint8_t p = cpu.p, v = WindowEdgesFromPair(cpu.db, cpu.x, &p);
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz16(p, cpu.x);
+}

@@ -300,3 +300,54 @@ WindowHdmaPreset:
     cmp.b #$09
     bne .lD746
     rts
+
+; @routine 09:F065 WindowEdgesFromPair
+; WHAT IT DOES: Writes a pair of window edges and their mirror images about
+; $80 into the window HDMA table at offset $28 + the byte at $19B4: the
+; first byte at X, its mirror, the second byte at X + 1, its mirror ($80
+; when the byte is $81).
+; HOW: Byte reads through the data bank; long stores at $7F:F883-$7F:F886
+; + the offset.
+; Entry: M 8-bit, X 16-bit; X = the pair's address. Exit: A low byte = the
+; last value; X unchanged; N, Z from X; C, V from the last mirror (C set
+; when the second byte was $81).
+%at($09F065)
+WindowEdgesFromPair:
+    sep.b #$20
+    rep.b #$10
+    lda.w !bank0_base,x
+    phx
+    ldx.w !wram_19B4
+    sta.l !window_edges,x
+    plx
+    lda.b #$80
+    sec
+    sbc.w !bank0_base,x
+    clc
+    adc.b #$80
+    phx
+    ldx.w !wram_19B4
+    sta.l !window_edges+1,x
+    plx
+    lda.w !bank0_base+1,x
+    phx
+    ldx.w !wram_19B4
+    sta.l !window_edges+2,x
+    plx
+    lda.w !bank0_base+1,x
+    cmp.b #$81
+    bne .lF09F
+    lda.b #$80
+    jmp.w .lF0A8
+.lF09F:
+    lda.b #$80
+    sec
+    sbc.w !bank0_base+1,x
+    clc
+    adc.b #$80
+.lF0A8:
+    phx
+    ldx.w !wram_19B4
+    sta.l !window_edges+3,x
+    plx
+    rts
