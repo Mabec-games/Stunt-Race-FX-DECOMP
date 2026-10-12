@@ -788,3 +788,15 @@ includeonce
 !obj_02 = $2002
 !object_count = $0CEE
 !dp_3e = $3E
+; Debug text (system/debug_text.asm): nibble half, second nibble, keep mask,
+; draw place and its base, the string pointer, Super FX RAM, three error flags.
+!text_half = $0307
+!text_high = $0308
+!text_mask = $1F2C
+!text_pos = $46
+!text_base = $48
+!dp_54 = $54
+!gsu_ram = $700000
+!gsu_flag_26f0 = $7026F0
+!gsu_flag_1090 = $701090
+!gsu_flag_2650 = $702650

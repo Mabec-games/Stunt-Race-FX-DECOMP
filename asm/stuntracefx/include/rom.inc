@@ -160,3 +160,7 @@ includeonce
 !area_records = $C61D
 ; Window table builders by layout direction (video/window_hdma.asm).
 !layout_builders = $DBC9
+
+; The debug font, 6 bytes a character, read through data bank 0
+; (system/debug_text.asm).
+!debug_font = $9022
