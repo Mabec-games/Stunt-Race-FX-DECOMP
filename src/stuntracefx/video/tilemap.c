@@ -366,3 +366,62 @@ void abi_TilemapPaletteCycle(void)
         cpu.p = (uint8_t)((cpu.p & ~(P_N | P_C)) | P_Z | (r == 2 ? P_C : 0));
     cpu.p |= P_M;
 }
+
+/*
+ * @routine 03:EA2E ScreenFrameAndPictures
+ * WHAT IT DOES: Writes the two framed picture panels to VRAM: at $7800 the
+ * frame rows (base $02B0), the gradient from $2000 and at $7A40 the picture
+ * (base $02B0); at $7C00 the frame rows (base $01B0), the gradient from
+ * $2010 and at $7E40 the picture (base $01B0).
+ * HOW: VMAIN = $80; VramFrameRows, VramFillGradient and VramPictureRows for
+ * each panel, setting the VRAM address between them.
+ * Entry: D = $0000. Exit: A = $7E40; X = $180; P unchanged.
+ */
+void ScreenFrameAndPictures(uint8_t bank)
+{
+    wr16(VMADDL, 0x7800);
+    wr8(VMAIN, 0x80);
+    VramFrameRows2B0(bank);
+    VramFillGradient(0x2000);
+    wr16(VMADDL, 0x7A40);
+    VramPictureRows2B0();
+    wr16(VMADDL, 0x7C00);
+    VramFrameRows1B0(bank);
+    VramFillGradient(0x2010);
+    wr16(VMADDL, 0x7E40);
+    VramPictureRows1B0();
+}
+
+void abi_ScreenFrameAndPictures(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.p = (uint8_t)((cpu.p & ~P_M) | P_X);
+    cpu.a = 0x7800;
+    wr16(VMADDL, cpu.a);
+    cpu.x = 0x80;
+    wr8(VMAIN, 0x80);
+    abi_VramFrameRows2B0();
+    cpu.p = (uint8_t)((cpu.p & ~P_M) | P_X);
+    cpu.x &= 0x00FF;
+    cpu.y &= 0x00FF;
+    cpu.a = 0x2000;
+    abi_VramFillGradient();
+    cpu.p &= (uint8_t)~P_M;
+    cpu.a = 0x7A40;
+    wr16(VMADDL, cpu.a);
+    abi_VramPictureRows2B0();
+    cpu.a = 0x7C00;
+    wr16(VMADDL, cpu.a);
+    abi_VramFrameRows1B0();
+    cpu.a = 0x2010;
+    cpu.p = (uint8_t)((cpu.p & ~P_M) | P_X);
+    cpu.x &= 0x00FF;
+    cpu.y &= 0x00FF;
+    abi_VramFillGradient();
+    cpu.p &= (uint8_t)~P_M;
+    cpu.a = 0x7E40;
+    wr16(VMADDL, cpu.a);
+    abi_VramPictureRows1B0();
+    cpu.p = p;
+}

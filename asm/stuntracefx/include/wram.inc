@@ -536,3 +536,5 @@ includeonce
 !wram_0E14 = $0E14
 !palette_bits = $F1
 !cycle_tilemap = $7F93D6
+!obj_04 = $2004
+!obj_59 = $2059

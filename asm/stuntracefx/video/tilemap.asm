@@ -300,3 +300,43 @@ TilemapPaletteCycle:
     dey
     bne .entry
     rts
+
+; @routine 03:EA2E ScreenFrameAndPictures
+; WHAT IT DOES: Writes the two framed picture panels to VRAM: at $7800 the
+; frame rows (base $02B0), the gradient from $2000 and at $7A40 the picture
+; (base $02B0); at $7C00 the frame rows (base $01B0), the gradient from
+; $2010 and at $7E40 the picture (base $01B0).
+; HOW: VMAIN = $80; VramFrameRows, VramFillGradient and VramPictureRows for
+; each panel, setting the VRAM address between them.
+; Entry: D = $0000. Exit: A = $7E40; X = $180; P unchanged.
+%at($03EA2E)
+ScreenFrameAndPictures:
+    php
+    sep.b #$10
+    rep.b #$20
+    lda.w #$7800
+    sta.w !VMADDL
+    ldx.b #$80
+    stx.w !VMAIN
+    jsr.w VramFrameRows2B0
+    sep.b #$10
+    rep.b #$20
+    lda.w #$2000
+    jsr.w VramFillGradient
+    rep.b #$20
+    lda.w #$7A40
+    sta.w !VMADDL
+    jsr.w VramPictureRows2B0
+    lda.w #$7C00
+    sta.w !VMADDL
+    jsr.w VramFrameRows1B0
+    lda.w #$2010
+    sep.b #$10
+    rep.b #$20
+    jsr.w VramFillGradient
+    rep.b #$20
+    lda.w #$7E40
+    sta.w !VMADDL
+    jsr.w VramPictureRows1B0
+    plp
+    rts

@@ -584,3 +584,33 @@ void abi_ObjectLinkEventTrigger(void)
     cpu.y &= 0x00FF;
     cpu.p = (uint8_t)(p | P_M | P_X);
 }
+
+void abi_ObjectBucketInsert(void);
+
+/*
+ * @routine 03:CB25 ObjectInit
+ * WHAT IT DOES: Clears object Y's record from +$04 on (47 words), puts it in
+ * bucket 0's list, and sets its +$36 to 0 and its +$59 to $69.
+ * HOW: Data bank $7E inside; ObjectBucketInsert; X and Y are swapped while
+ * it works and swapped back.
+ * Entry: M 8-bit, X 16-bit; Y = object. Exit: A = $69 with the object's
+ * high byte; X, Y unchanged; M 8-bit; N, Z from the caller's data bank.
+ */
+void ObjectInit(uint16_t obj)
+{
+    unsigned i;
+
+    for (i = 0; i < 0x2F; i++)
+        wr16(0x7E2004 + 2 * i + obj, 0x0000);
+    wr16(0x7E2040 + obj, 0x0000);
+    ObjectBucketInsert(obj);
+    wr8(0x7E2036 + obj, 0x00);
+    wr8(0x7E2059 + obj, 0x69);
+}
+
+void abi_ObjectInit(void)
+{
+    ObjectInit(cpu.y);
+    cpu.a = (uint16_t)((cpu.y & 0xFF00) | 0x69);
+    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) | P_M);
+}

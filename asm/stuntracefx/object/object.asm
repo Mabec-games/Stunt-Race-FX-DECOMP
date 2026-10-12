@@ -531,3 +531,46 @@ ObjectLinkEventTrigger:
 .lD3DA:
     sep.b #$30
     rts
+
+; @routine 03:CB25 ObjectInit
+; WHAT IT DOES: Clears object Y's record from +$04 on (47 words), puts it in
+; bucket 0's list, and sets its +$36 to 0 and its +$59 to $69.
+; HOW: Data bank $7E inside; ObjectBucketInsert; X and Y are swapped while
+; it works and swapped back.
+; Entry: M 8-bit, X 16-bit; Y = object. Exit: A = $69 with the object's
+; high byte; X, Y unchanged; M 8-bit; N, Z from the caller's data bank.
+%at($03CB25)
+ObjectInit:
+    phb
+    lda.b #$7E
+    pha
+    plb
+    phx
+    tyx
+    ply
+    rep.b #$20
+    lda.w #$0000
+    phy
+    phx
+    ldy.w #$002F
+.lCB37:
+    sta.w !obj_04,x
+    inx
+    inx
+    dey
+    bne .lCB37
+    plx
+    ply
+    lda.w #$0000
+    sta.w !obj_bucket,x
+    jsl.l ObjectBucketInsert
+    sep.b #$20
+    lda.b #$00
+    sta.w !obj_36,x
+    lda.b #$69
+    sta.w !obj_59,x
+    phx
+    tyx
+    ply
+    plb
+    rtl
