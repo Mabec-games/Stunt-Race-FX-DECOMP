@@ -1002,3 +1002,44 @@ includeonce
 ; The tied object's +$22, given to the Super FX by ViewFromRecord
 ; (object/orient.asm).
 !gsu_tied_22 = $70247A
+; Inputs of the Super FX digit program $07:F15B (race/time_bonus.asm): X, Y,
+; the step to the next digit, and the digit size.
+!gsu_digit_x = $70020A
+!gsu_digit_y = $70020C
+!gsu_digit_step = $70020E
+!gsu_digit_size = $700210
+; The time bonus to show; nonzero also shows the bonus digits (race/time_bonus.asm).
+!wram_0E6C = $0E6C
+; The time bonus animation (race/time_bonus.asm): its state (0-24,
+; even), the amount counted per frame, a copy of the time taken back, a
+; count byte and a flag the counting tests, and the flag that starts the
+; second animation.
+!time_bonus_state = $0D65
+!time_bonus_step = $0E7C
+!time_taken_copy = $0E76
+!wram_0D5A = $0D5A
+!wram_0D5B = $0D5B
+!wram_19F0 = $19F0
+; Renderer inputs $70:0212 and $70:0214 (gsu/programs.asm, race/time_bonus.asm).
+!gsu_in_212 = $700212
+!gsu_in_214 = $700214
+; TimeBonusTransfer's digit animation: its state and the digit size; the
+; target it counts $0E74 towards (race/time_bonus.asm).
+!bonus_digit_state = $0D67
+!bonus_digit_size = $0D69
+!wram_19EE = $19EE
+; TimeLeftDigits (race/time_bonus.asm): the time last drawn, and the byte
+; whose high four bits pick the large digit's placement.
+!time_left_shown = $0E78
+!wram_0E69 = $0E69
+; Lap time display (hud/lap_time.asm): record A's five digit bytes (record
+; B is !lap_digits), player 1's lead (signed), the no-record mark for A
+; ($FFFF), the large-record flag, and two packed times.
+!lap_record_a = $0F64
+!p1_lead = $0FA3
+!wram_0F2B = $0F2B
+!wram_0E57 = $0E57
+!packed_time_b = $1161
+!packed_time_a = $1163
+; Direct page $F1 as BinaryToBcd builds its result (hud/lap_time.asm).
+!bcd_digits = $F1

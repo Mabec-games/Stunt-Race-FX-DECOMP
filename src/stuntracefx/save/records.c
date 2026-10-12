@@ -381,3 +381,35 @@ void abi_SaveBlocksValidate(void)
     cpu.y = 0x0000;
     cpu.p = (uint8_t)(((p & ~(P_N | P_X)) | P_M | P_C | P_Z));
 }
+
+/*
+ * @routine 07:B085 SaveValidate
+ * WHAT IT DOES: Validates the whole save area: the three tables, blocks
+ * 0-11 and 12-15, then the two record sets, resetting whatever fails.
+ * HOW: SaveTablesCheck, SaveBlocksValidate, SaveBlocksCheck,
+ * SaveRecordsCheckB and SaveRecordsCheckA in turn; P is saved around them.
+ * Entry: any widths, D = $0000; DB = $70. Exit: A = $02 and the low byte
+ * SaveRecordsCheckA leaves; X = 20, Y = 4; P unchanged.
+ */
+void SaveValidate(uint8_t bank)
+{
+    uint8_t p = 0;
+
+    SaveTablesCheck(bank, &p);
+    SaveBlocksValidate(bank, &p);
+    SaveBlocksCheck(bank, &p);
+    SaveRecordsCheckB(bank, &p);
+    SaveRecordsCheckA(bank, &p);
+}
+
+void abi_SaveValidate(void)
+{
+    uint8_t p = cpu.p;
+
+    abi_SaveTablesCheck();
+    abi_SaveBlocksValidate();
+    abi_SaveBlocksCheck();
+    abi_SaveRecordsCheckB();
+    abi_SaveRecordsCheckA();
+    cpu.p = p;
+}

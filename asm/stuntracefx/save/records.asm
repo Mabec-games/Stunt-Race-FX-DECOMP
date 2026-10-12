@@ -475,3 +475,21 @@ SaveBlocksValidate:
     lda.b #$CC
     sta.w !save_block_sums_w,x
     jmp.w .block
+
+; @routine 07:B085 SaveValidate
+; WHAT IT DOES: Validates the whole save area: the three tables, blocks
+; 0-11 and 12-15, then the two record sets, resetting whatever fails.
+; HOW: SaveTablesCheck, SaveBlocksValidate, SaveBlocksCheck,
+; SaveRecordsCheckB and SaveRecordsCheckA in turn; P is saved around them.
+; Entry: any widths, D = $0000; DB = $70. Exit: A = $02 and the low byte
+; SaveRecordsCheckA leaves; X = 20, Y = 4; P unchanged.
+%at($07B085)
+SaveValidate:
+    php
+    jsr.w SaveTablesCheck
+    jsr.w SaveBlocksValidate
+    jsr.w SaveBlocksCheck
+    jsr.w SaveRecordsCheckB
+    jsr.w SaveRecordsCheckA
+    plp
+    rtl

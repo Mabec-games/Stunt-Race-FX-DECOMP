@@ -1677,3 +1677,239 @@ ObjectGsu81E3:
     ply
     plx
     rtl
+
+; @routine 07:9486 GsuFA5AThreeShifted
+; WHAT IT DOES: As GsuFA5AThree, from X = $0D6D + entry $0D6B of the word
+; table at $07:9806 (kept in direct page $F1) instead of $0D6D - 8, with
+; pieces $1A12, $1B12 and $1C18.
+; HOW: Word stores and GsuRun. Not reached in the traces so far.
+; Entry: M 16-bit, X 16-bit, D = $0000. Exit: A = $1C and the screen mode
+; value; X = $FA5A; N, Z from the data bank; C, V from the add of 8.
+%at($079486)
+GsuFA5AThreeShifted:
+    lda.w #$0100
+    sta.l !gsu_bytes_200+14
+    lda.w #$0100
+    sta.l !gsu_bytes_200+18
+    lda.w #$0100
+    sta.l !gsu_bytes_200+16
+    lda.w #$0100
+    sta.l !gsu_bytes_200+20
+    ldx.w !wram_0D6B
+    lda.l !fa5a_six_dx,x
+    clc
+    adc.w !wram_0D6D
+    sta.b !piece_x
+    sta.l !gsu_bytes_200+10
+    lda.w !wram_0D6F
+    sta.l !gsu_bytes_200+12
+    lda.w #$1A12
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FA5A
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.b !piece_x
+    sta.l !gsu_bytes_200+10
+    lda.w !wram_0D6F
+    clc
+    adc.w #$0018
+    sta.l !gsu_bytes_200+12
+    lda.w #$1B12
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FA5A
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.w #$0200
+    sta.l !gsu_bytes_200+16
+    lda.w #$0080
+    sta.l !gsu_bytes_200+20
+    lda.b !piece_x
+    sta.l !gsu_bytes_200+10
+    lda.w !wram_0D6F
+    clc
+    adc.w #$0008
+    sta.l !gsu_bytes_200+12
+    lda.w #$1C18
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FA5A
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rts
+
+; @routine 07:9533 GsuFA5ASixLeft
+; WHAT IT DOES: Runs Super FX program $07:FA5A six times, all with
+; $70:020E/0210/0212/0214 = $100, around the point ($0D6D, $0D6F): at X -
+; 8, pieces $1A0C, $1A14, $1B14, $1B0C at Y, Y + 8, Y + $10, Y + $18; then
+; at X - $10, pieces $1A0C and $1B0C at Y + 8 and Y + $10. The mirror of
+; GsuFA5ASix.
+; HOW: Word stores and GsuRun; each run reads the point again. Not reached
+; in the traces so far.
+; Entry: M 16-bit, X 16-bit, D = $0000. Exit: A = $1B and the screen mode
+; value; X = $FA5A; N, Z from the data bank; C, V from the add of -$10.
+%at($079533)
+GsuFA5ASixLeft:
+    lda.w #$0100
+    sta.l !gsu_bytes_200+14
+    lda.w #$0100
+    sta.l !gsu_bytes_200+18
+    lda.w #$0100
+    sta.l !gsu_bytes_200+16
+    lda.w #$0100
+    sta.l !gsu_bytes_200+20
+    lda.w !wram_0D6F
+    sta.l !gsu_bytes_200+12
+    lda.w !wram_0D6D
+    clc
+    adc.w #$FFF8
+    sta.l !gsu_bytes_200+10
+    lda.w #$1A0C
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FA5A
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.w !wram_0D6F
+    clc
+    adc.w #$0008
+    sta.l !gsu_bytes_200+12
+    lda.w !wram_0D6D
+    clc
+    adc.w #$FFF8
+    sta.l !gsu_bytes_200+10
+    lda.w #$1A14
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FA5A
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.w !wram_0D6F
+    clc
+    adc.w #$0010
+    sta.l !gsu_bytes_200+12
+    lda.w !wram_0D6D
+    clc
+    adc.w #$FFF8
+    sta.l !gsu_bytes_200+10
+    lda.w #$1B14
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FA5A
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.w !wram_0D6F
+    clc
+    adc.w #$0018
+    sta.l !gsu_bytes_200+12
+    lda.w !wram_0D6D
+    clc
+    adc.w #$FFF8
+    sta.l !gsu_bytes_200+10
+    lda.w #$1B0C
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FA5A
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.w !wram_0D6F
+    clc
+    adc.w #$0008
+    sta.l !gsu_bytes_200+12
+    lda.w !wram_0D6D
+    clc
+    adc.w #$FFF0
+    sta.l !gsu_bytes_200+10
+    lda.w #$1A0C
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FA5A
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.w !wram_0D6F
+    clc
+    adc.w #$0010
+    sta.l !gsu_bytes_200+12
+    lda.w !wram_0D6D
+    clc
+    adc.w #$FFF0
+    sta.l !gsu_bytes_200+10
+    lda.w #$1B0C
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FA5A
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rts
+
+; @routine 07:9718 GsuFA35FromTables
+; WHAT IT DOES: Sets the renderer inputs $70:020A = $0D6D, $70:020C = $0D6F
+; + 8, $70:0210 = $70:0214 = $100 and the bytes $BF, $BC, $BD at $70:0200;
+; then, when entry $0D6B of the word table at $07:97EE is nonzero, runs
+; Super FX program $07:FA35 with $70:020E = that word, $70:0212 = the same
+; entry of the table at $07:97FA and $70:0216 = $1C00. The counterpart of
+; GsuFA1BFromTables.
+; HOW: GsuBytes200_BFBCBD, word copies, GsuRun. Not reached in the traces
+; so far.
+; Entry: M 16-bit, X 16-bit, D = $0000. Exit: when the entry is 0, A = 0, X
+; = $0D6B, Z set and N clear; otherwise A = $1C and the screen mode value,
+; X = $FA35, N and Z from the data bank. C and V from the add of 8.
+%at($079718)
+GsuFA35FromTables:
+    jsl.l GsuBytes200_BFBCBD
+    lda.w !wram_0D6D
+    sta.l !gsu_bytes_200+10
+    lda.w !wram_0D6F
+    clc
+    adc.w #$0008
+    sta.l !gsu_bytes_200+12
+    lda.w #$0100
+    sta.l !gsu_bytes_200+16
+    lda.w #$0100
+    sta.l !gsu_bytes_200+20
+    ldx.w !wram_0D6B
+    lda.l !fa35_input_e,x
+    bne .run
+    rts
+.run:
+    sta.l !gsu_bytes_200+14
+    lda.l !fa35_input_12,x
+    sta.l !gsu_bytes_200+18
+    lda.w #$1C00
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FA35
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rts

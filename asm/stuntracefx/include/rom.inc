@@ -240,3 +240,16 @@ includeonce
 
 ; "MASTER" and "EXPERT" in the sprite font, six tiles each (hud/race_text.asm).
 !class_names = $02EFD6
+; Digit sizes by animation step, a word per step (race/time_bonus.asm).
+!digit_size_grow = $07918F
+!digit_size_bounce = $0792AD
+; Inputs $70:020E and $70:0212 of GsuFA35FromTables, a word per entry (gsu/programs.asm).
+!fa35_input_e = $0797EE
+!fa35_input_12 = $0797FA
+; TimeBonusTally's states, a word handler address per state (race/time_bonus.asm).
+!time_bonus_states = $8E9F
+; TimeBonusTransfer's digit animation states, a word handler per state, and
+; TimeLeftDigits' large digit placements, four words each, both read in bank
+; $07 (race/time_bonus.asm).
+!bonus_digit_states = $8C43
+!time_digit_large = $8DDA

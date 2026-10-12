@@ -1156,3 +1156,147 @@ void abi_ObjectGsu81E3(void)
 {
     ObjectGsu81E3();
 }
+
+/* Program $07:FA5A with all four of $70:020E/0210/0212/0214 = $100. */
+static void fa5a_unit_scale(void)
+{
+    wr16(0x70020E, 0x0100);
+    wr16(0x700212, 0x0100);
+    wr16(0x700210, 0x0100);
+    wr16(0x700214, 0x0100);
+}
+
+/*
+ * @routine 07:9486 GsuFA5AThreeShifted
+ * WHAT IT DOES: As GsuFA5AThree, from X = $0D6D + entry $0D6B of the word
+ * table at $07:9806 (kept in direct page $F1) instead of $0D6D - 8, with
+ * pieces $1A12, $1B12 and $1C18.
+ * HOW: Word stores and GsuRun. Not reached in the traces so far.
+ * Entry: M 16-bit, X 16-bit, D = $0000. Exit: A = $1C and the screen mode
+ * value; X = $FA5A; N, Z from the data bank; C, V from the add of 8.
+ */
+uint8_t GsuFA5AThreeShifted(uint8_t bank, uint8_t *p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t x;
+
+    fa5a_unit_scale();
+    x = add16(rd16(0x079806 + rd16(b | 0x0D6B)), rd16(b | 0x0D6D), p);
+    wr16(0x0000F1, x);
+    wr16(0x70020A, x);
+    wr16(0x70020C, rd16(b | 0x0D6F));
+    wr16(0x700216, 0x1A12);
+    GsuRun(0x07, 0xFA5A);
+    wr16(0x70020A, rd16(0x0000F1));
+    wr16(0x70020C, add16(rd16(b | 0x0D6F), 0x0018, p));
+    wr16(0x700216, 0x1B12);
+    GsuRun(0x07, 0xFA5A);
+    wr16(0x700210, 0x0200);
+    wr16(0x700214, 0x0080);
+    wr16(0x70020A, rd16(0x0000F1));
+    wr16(0x70020C, add16(rd16(b | 0x0D6F), 0x0008, p));
+    wr16(0x700216, 0x1C18);
+    return GsuRun(0x07, 0xFA5A);
+}
+
+void abi_GsuFA5AThreeShifted(void)
+{
+    uint8_t p = cpu.p, mode = GsuFA5AThreeShifted(cpu.db, &p);
+
+    cpu.a = (uint16_t)(0x1C00 | mode);
+    cpu.x = 0xFA5A;
+    cpu.p = nz8(p, cpu.db);
+}
+
+/*
+ * @routine 07:9533 GsuFA5ASixLeft
+ * WHAT IT DOES: Runs Super FX program $07:FA5A six times, all with
+ * $70:020E/0210/0212/0214 = $100, around the point ($0D6D, $0D6F): at X -
+ * 8, pieces $1A0C, $1A14, $1B14, $1B0C at Y, Y + 8, Y + $10, Y + $18; then
+ * at X - $10, pieces $1A0C and $1B0C at Y + 8 and Y + $10. The mirror of
+ * GsuFA5ASix.
+ * HOW: Word stores and GsuRun; each run reads the point again. Not reached
+ * in the traces so far.
+ * Entry: M 16-bit, X 16-bit, D = $0000. Exit: A = $1B and the screen mode
+ * value; X = $FA5A; N, Z from the data bank; C, V from the add of -$10.
+ */
+uint8_t GsuFA5ASixLeft(uint8_t bank, uint8_t *p)
+{
+    static const uint16_t dy[6] = {0x0000, 0x0008, 0x0010, 0x0018, 0x0008, 0x0010};
+    static const uint16_t dx[6] = {0xFFF8, 0xFFF8, 0xFFF8, 0xFFF8, 0xFFF0, 0xFFF0};
+    static const uint16_t piece[6] = {0x1A0C, 0x1A14, 0x1B14, 0x1B0C, 0x1A0C, 0x1B0C};
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t mode = 0;
+    unsigned i;
+
+    fa5a_unit_scale();
+    for (i = 0; i < 6; i++) {
+        uint16_t y = rd16(b | 0x0D6F);
+
+        wr16(0x70020C, dy[i] ? add16(y, dy[i], p) : y);
+        wr16(0x70020A, add16(rd16(b | 0x0D6D), dx[i], p));
+        wr16(0x700216, piece[i]);
+        mode = GsuRun(0x07, 0xFA5A);
+    }
+    return mode;
+}
+
+void abi_GsuFA5ASixLeft(void)
+{
+    uint8_t p = cpu.p, mode = GsuFA5ASixLeft(cpu.db, &p);
+
+    cpu.a = (uint16_t)(0x1B00 | mode);
+    cpu.x = 0xFA5A;
+    cpu.p = nz8(p, cpu.db);
+}
+
+/*
+ * @routine 07:9718 GsuFA35FromTables
+ * WHAT IT DOES: Sets the renderer inputs $70:020A = $0D6D, $70:020C = $0D6F
+ * + 8, $70:0210 = $70:0214 = $100 and the bytes $BF, $BC, $BD at $70:0200;
+ * then, when entry $0D6B of the word table at $07:97EE is nonzero, runs
+ * Super FX program $07:FA35 with $70:020E = that word, $70:0212 = the same
+ * entry of the table at $07:97FA and $70:0216 = $1C00. The counterpart of
+ * GsuFA1BFromTables.
+ * HOW: GsuBytes200_BFBCBD, word copies, GsuRun. Not reached in the traces
+ * so far.
+ * Entry: M 16-bit, X 16-bit, D = $0000. Exit: when the entry is 0, A = 0, X
+ * = $0D6B, Z set and N clear; otherwise A = $1C and the screen mode value,
+ * X = $FA35, N and Z from the data bank. C and V from the add of 8.
+ */
+int GsuFA35FromTables(uint8_t bank, uint8_t *mode, uint8_t *p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t x, v;
+
+    GsuBytes200_BFBCBD();
+    wr16(0x70020A, rd16(b | 0x0D6D));
+    wr16(0x70020C, add16(rd16(b | 0x0D6F), 0x0008, p));
+    wr16(0x700210, 0x0100);
+    wr16(0x700214, 0x0100);
+    x = rd16(b | 0x0D6B);
+    v = rd16(0x070000 | (uint16_t)(0x97EE + x));
+    if (!v)
+        return 0;
+    wr16(0x70020E, v);
+    wr16(0x700212, rd16(0x070000 | (uint16_t)(0x97FA + x)));
+    wr16(0x700216, 0x1C00);
+    *mode = GsuRun(0x07, 0xFA35);
+    return 1;
+}
+
+void abi_GsuFA35FromTables(void)
+{
+    uint16_t x = rd16((uint32_t)cpu.db << 16 | 0x0D6B);
+    uint8_t p = cpu.p, mode = 0;
+
+    if (GsuFA35FromTables(cpu.db, &mode, &p)) {
+        cpu.a = (uint16_t)(0x1C00 | mode);
+        cpu.x = 0xFA35;
+        cpu.p = (uint8_t)(nz8(p, cpu.db) & ~(P_M | P_X));
+    } else {
+        cpu.a = 0x0000;
+        cpu.x = x;
+        cpu.p = (uint8_t)((p & ~P_N) | P_Z);
+    }
+}
