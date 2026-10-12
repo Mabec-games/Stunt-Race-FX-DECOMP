@@ -689,4 +689,261 @@ FxCarNew:
     stop
     nop
 
+; @routine 04:BB17 FxCarHit
+; WHAT IT DOES: The damage from car R8's hit this step. Nothing for a car
+; with bit 3 of +$64 set; +$62 = 0 for one with any of bits $2201 of +$40
+; (or bit 9 of +$8A, decoded from the ROM bytes and not reached in the
+; traces so far). Otherwise +$62 = the hit's y ($2336) / 4, and the impact
+; is |that| (a quarter of it when +$44 is below 2; 0 when +$30 is negative)
+; plus |hit x| / 8 and |hit z| / 8, scaled by $2678 (FMULT), halved for a
+; car with contacts; it is added to $263E (cleared first when $263C is 0).
+; With $263C set, half the sum, when 16 or more (96 at most, decoded from
+; the ROM bytes and not reached in the traces so far), is added to the
+; damage +$82 and sets bit 7 of +$40 (below 24), bit 7 of +$70 and bit 6 of
+; +$40 (below 56) or bit 5 (else); bit 5 for the player's car ($2476) also
+; pushes the cars near it apart (FxSpreadCars). Damage of $200 or more sets
+; bit 0 of +$40.
+; HOW: DIV2s for the halvings, CMP and the sign for the limits; the hit
+; sum is LM, ADD, SBK. R11 is kept on the R10 stack around FxSpreadCars.
+; Entry: R8 = the car's record; R10 = stack; R11 = return address. Exit:
+; R1 = the impact (halved); R2, R0 and the flags from the last test; the
+; last RAM address the last field changed.
+%at($04BB17)
+FxCarHit:
+    ibt r1,#!fxcar_64
+    with r1
+    add r8
+    to r1
+    ldw (r1)
+    iwt r0,#$0008
+    and r1
+    beq .counts
+    nop
+    iwt r15,#.done
+    nop
+.counts:
+    ibt r1,#!fxrec_flags40
+    with r1
+    add r8
+    to r1
+    ldw (r1)
+    iwt r0,#$2201
+    and r1
+    beq .not_out
+    nop
+    iwt r15,#.no_impact
+    nop
+.not_out:
+    iwt r1,#!fxcar_8c-2
+    with r1
+    add r8
+    to r1
+    ldw (r1)
+    iwt r0,#$0200
+    and r1
+    beq .impact
+    nop
+    iwt r15,#.no_impact
+    nop
+.impact:
+    lm r0,(!fx_hit+2)
+    div2
+    div2
+    move r1,r0
+    ibt r0,#!fxcar_impact
+    add r8
+    from r1
+    stw (r0)
+    move r0,r1
+    moves r0,r0
+    bpl .y
+    nop
+    not
+    inc r0
+.y:
+    ibt r1,#!fxcar_44
+    with r1
+    add r8
+    to r1
+    ldw (r1)
+    iwt r2,#$0002
+    with r1
+    cmp r2
+    bpl .y_full
+    nop
+    div2
+    div2
+.y_full:
+    move r1,r0
+    ibt r0,#!fxrec_velocity+2
+    add r8
+    ldw (r0)
+    moves r0,r0
+    bpl .rising
+    nop
+    ibt r1,#0
+.rising:
+    lm r0,(!fx_hit)
+    moves r0,r0
+    bpl .x
+    nop
+    not
+    inc r0
+.x:
+    div2
+    div2
+    div2
+    with r1
+    add r0
+    lm r0,(!fx_hit+4)
+    moves r0,r0
+    bpl .z
+    nop
+    not
+    inc r0
+.z:
+    div2
+    div2
+    div2
+    with r1
+    add r0
+    lm r6,(!fx_hit_scale)
+    with r1
+    fmult
+    ibt r0,#!fxrec_list
+    add r8
+    ldw (r0)
+    moves r0,r0
+    beq .alone
+    nop
+    with r1
+    div2
+.alone:
+    lm r2,(!fx_hit_on)
+    moves r2,r2
+    bne .add
+    sub r0
+    sm (!fx_hit_sum),r0
+.add:
+    lm r0,(!fx_hit_sum)
+    add r1
+    sbk
+    move r1,r0
+    moves r2,r2
+    bne .damage
+    nop
+    iwt r15,#.done
+    nop
+.damage:
+    with r1
+    div2
+    iwt r2,#$0010
+    with r1
+    cmp r2
+    bpl .hard
+    nop
+    iwt r15,#.done
+    nop
+.hard:
+    iwt r2,#$0060
+    with r1
+    cmp r2
+    bmi .capped
+    nop
+    move r1,r2
+.capped:
+    iwt r0,#!fxrec_82
+    add r8
+    ldw (r0)
+    add r1
+    sbk
+    iwt r2,#$0018
+    with r1
+    cmp r2
+    bmi .light
+    nop
+    ibt r0,#!fxrec_direction
+    add r8
+    ldw (r0)
+    iwt r2,#$0080
+    or r2
+    sbk
+    iwt r2,#$0038
+    with r1
+    cmp r2
+    bmi .medium
+    nop
+    ibt r0,#!fxrec_flags40
+    add r8
+    ldw (r0)
+    iwt r2,#$0020
+    or r2
+    bra .severity
+    sbk
+.light:
+    ibt r0,#!fxrec_flags40
+    add r8
+    ldw (r0)
+    iwt r2,#$0080
+    or r2
+    bra .severity
+    sbk
+.medium:
+    ibt r0,#!fxrec_flags40
+    add r8
+    ldw (r0)
+    iwt r2,#$0040
+    or r2
+    sbk
+.severity:
+    ibt r0,#!fxrec_flags40
+    add r8
+    ldw (r0)
+    iwt r2,#$0020
+    and r2
+    beq .wrecked
+    nop
+    lm r0,(!fx_player)
+    cmp r8
+    bne .wrecked
+    nop
+    from r11
+    stw (r10)
+    inc r10
+    inc r10
+    link #4
+    iwt r15,#FxSpreadCars
+    nop
+    dec r10
+    dec r10
+    to r11
+    ldw (r10)
+.wrecked:
+    iwt r0,#!fxrec_82
+    add r8
+    ldw (r0)
+    iwt r2,#$0200
+    cmp r2
+    bmi .done
+    nop
+    ibt r2,#!fxrec_flags40
+    with r2
+    add r8
+    to r2
+    ldw (r2)
+    iwt r0,#$0001
+    or r2
+    sbk
+.done:
+    move r15,r11
+    nop
+.no_impact:
+    ibt r1,#0
+    ibt r0,#!fxcar_impact
+    add r8
+    from r1
+    stw (r0)
+    move r15,r11
+    nop
+
 arch 65816

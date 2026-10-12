@@ -467,3 +467,176 @@ void abi_FxCarNew(void)
     g = FxCarNew(g);
     memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
 }
+
+#define FX_HIT_X 0x2334u          /* the hit: x, y, z */
+#define FX_HIT_SCALE 0x2678u
+#define FX_HIT_ON 0x263Cu
+#define FX_HIT_SUM 0x263Eu
+#define FX_PLAYER 0x2476u
+#define CAR_64 0x64u
+#define CAR_FLAGS40 0x40u
+#define CAR_IMPACT 0x62u
+#define CAR_44 0x44u
+#define CAR_VY 0x30u
+#define CAR_DAMAGE 0x82u
+#define CAR_70 0x70u
+#define CAR_8A 0x8Au
+#define REC_CONTACTS_OF_CAR 0x18u
+
+/* |v| by MOVES, then NOT and INC when negative. */
+static uint16_t magnitude(uint16_t v)
+{
+    gsu_moves(v);
+    return gsu.s ? gsu_inc(gsu_not(v)) : v;
+}
+
+/* Bits `bits` set in field `f` of car R8 (LDW, OR, SBK), through R2. */
+static void car_or(FxRegs *g, uint16_t f, uint16_t bits)
+{
+    g->r[0] = gsu_ldw(gsu_add(f, g->r[8], 0));
+    g->r[2] = bits;
+    g->r[0] = gsu_or(g->r[0], g->r[2]);
+    gsu_sbk(g->r[0]);
+}
+
+/*
+ * @routine 04:BB17 FxCarHit
+ * WHAT IT DOES: The damage from car R8's hit this step. Nothing for a car
+ * with bit 3 of +$64 set; +$62 = 0 for one with any of bits $2201 of +$40
+ * (or bit 9 of +$8A, decoded from the ROM bytes and not reached in the
+ * traces so far). Otherwise +$62 = the hit's y ($2336) / 4, and the impact
+ * is |that| (a quarter of it when +$44 is below 2; 0 when +$30 is negative)
+ * plus |hit x| / 8 and |hit z| / 8, scaled by $2678 (FMULT), halved for a
+ * car with contacts; it is added to $263E (cleared first when $263C is 0).
+ * With $263C set, half the sum, when 16 or more (96 at most, decoded from
+ * the ROM bytes and not reached in the traces so far), is added to the
+ * damage +$82 and sets bit 7 of +$40 (below 24), bit 7 of +$70 and bit 6 of
+ * +$40 (below 56) or bit 5 (else); bit 5 for the player's car ($2476) also
+ * pushes the cars near it apart (FxSpreadCars). Damage of $200 or more sets
+ * bit 0 of +$40.
+ * HOW: DIV2s for the halvings, CMP and the sign for the limits; the hit
+ * sum is LM, ADD, SBK. R11 is kept on the R10 stack around FxSpreadCars.
+ * Entry: R8 = the car's record; R10 = stack; R11 = return address. Exit:
+ * R1 = the impact (halved); R2, R0 and the flags from the last test; the
+ * last RAM address the last field changed.
+ */
+FxRegs FxCarHit(FxRegs g)
+{
+    int i;
+
+    g.r[1] = gsu_ldw(gsu_add(CAR_64, g.r[8], 0));
+    g.r[0] = gsu_and(0x0008, g.r[1]);
+    if (!gsu.z)
+        return g;
+    g.r[1] = gsu_ldw(gsu_add(CAR_FLAGS40, g.r[8], 0));
+    g.r[0] = gsu_and(0x2201, g.r[1]);
+    if (gsu.z) {
+        g.r[1] = gsu_ldw(gsu_add(CAR_8A, g.r[8], 0));
+        g.r[0] = gsu_and(0x0200, g.r[1]);
+    }
+    if (!gsu.z) {
+        g.r[1] = 0;
+        g.r[0] = gsu_add(CAR_IMPACT, g.r[8], 0);
+        gsu_stw(g.r[0], g.r[1]);
+        return g;
+    }
+    g.r[0] = gsu_div2(gsu_div2(gsu_ldw(FX_HIT_X + 2)));
+    g.r[1] = g.r[0];
+    g.r[0] = gsu_add(CAR_IMPACT, g.r[8], 0);
+    gsu_stw(g.r[0], g.r[1]);
+    g.r[0] = magnitude(g.r[1]);
+    g.r[1] = gsu_ldw(gsu_add(CAR_44, g.r[8], 0));
+    g.r[2] = 0x0002;
+    gsu_sub(g.r[1], g.r[2], 0);
+    if (gsu.s)
+        g.r[0] = gsu_div2(gsu_div2(g.r[0]));
+    g.r[1] = g.r[0];
+    g.r[0] = gsu_ldw(gsu_add(CAR_VY, g.r[8], 0));
+    gsu_moves(g.r[0]);
+    if (gsu.s)
+        g.r[1] = 0;
+    for (i = 0; i < 2; i++) {
+        g.r[0] = magnitude(gsu_ldw(i ? FX_HIT_X + 4 : FX_HIT_X));
+        g.r[0] = gsu_div2(gsu_div2(gsu_div2(g.r[0])));
+        g.r[1] = gsu_add(g.r[1], g.r[0], 0);
+    }
+    g.r[6] = gsu_ldw(FX_HIT_SCALE);
+    g.r[1] = gsu_fmult(g.r[1], g.r[6]);
+    g.r[0] = gsu_ldw(gsu_add(REC_CONTACTS_OF_CAR, g.r[8], 0));
+    gsu_moves(g.r[0]);
+    if (!gsu.z)
+        g.r[1] = gsu_div2(g.r[1]);
+    g.r[2] = gsu_ldw(FX_HIT_ON);
+    gsu_moves(g.r[2]);
+    {
+        int on = !gsu.z;
+
+        g.r[0] = gsu_sub(g.r[0], g.r[0], 0);      /* in the branch's delay slot */
+        if (!on)
+            gsu_stw(FX_HIT_SUM, g.r[0]);
+    }
+    g.r[0] = gsu_add(gsu_ldw(FX_HIT_SUM), g.r[1], 0);
+    gsu_sbk(g.r[0]);
+    g.r[1] = g.r[0];
+    gsu_moves(g.r[2]);
+    if (gsu.z)
+        return g;
+    g.r[1] = gsu_div2(g.r[1]);
+    g.r[2] = 0x0010;
+    gsu_sub(g.r[1], g.r[2], 0);
+    if (gsu.s)
+        return g;
+    g.r[2] = 0x0060;
+    gsu_sub(g.r[1], g.r[2], 0);
+    if (!gsu.s)
+        g.r[1] = g.r[2];
+    g.r[0] = gsu_add(gsu_ldw(gsu_add(CAR_DAMAGE, g.r[8], 0)), g.r[1], 0);
+    gsu_sbk(g.r[0]);
+    g.r[2] = 0x0018;
+    gsu_sub(g.r[1], g.r[2], 0);
+    if (gsu.s) {
+        car_or(&g, CAR_FLAGS40, 0x0080);
+    } else {
+        car_or(&g, CAR_70, 0x0080);
+        g.r[2] = 0x0038;
+        gsu_sub(g.r[1], g.r[2], 0);
+        if (gsu.s)
+            car_or(&g, CAR_FLAGS40, 0x0040);
+        else
+            car_or(&g, CAR_FLAGS40, 0x0020);
+    }
+    g.r[0] = gsu_ldw(gsu_add(CAR_FLAGS40, g.r[8], 0));
+    g.r[2] = 0x0020;
+    g.r[0] = gsu_and(g.r[0], g.r[2]);
+    if (!gsu.z) {
+        g.r[0] = gsu_ldw(FX_PLAYER);
+        gsu_sub(g.r[0], g.r[8], 0);
+        if (gsu.z) {
+            uint16_t ret = g.r[11];
+
+            gsu_push(&g.r[10], ret);
+            g.r[11] = 0xBC52;
+            g = FxSpreadCars(g);
+            g.r[11] = gsu_pull(&g.r[10]);
+        }
+    }
+    g.r[0] = gsu_ldw(gsu_add(CAR_DAMAGE, g.r[8], 0));
+    g.r[2] = 0x0200;
+    gsu_sub(g.r[0], g.r[2], 0);
+    if (!gsu.s) {
+        g.r[2] = gsu_ldw(gsu_add(CAR_FLAGS40, g.r[8], 0));
+        g.r[0] = 0x0001;
+        g.r[0] = gsu_or(g.r[0], g.r[2]);
+        gsu_sbk(g.r[0]);
+    }
+    return g;
+}
+
+void abi_FxCarHit(void)
+{
+    FxRegs g;
+
+    memcpy(g.r, gsu.r, sizeof g.r);
+    g = FxCarHit(g);
+    memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
+}

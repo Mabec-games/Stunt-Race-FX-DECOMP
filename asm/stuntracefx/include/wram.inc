@@ -1195,3 +1195,10 @@ includeonce
 !fx_view_x_w = $00D8
 !fx_view_z_w = $00DC
 !fx_view_yaw_w = $00E0
+; Car hit fields and the hit (object/fx_car.asm).
+!fx_hit = $702334
+!fx_hit_scale = $702678
+!fx_hit_on = $70263C
+!fx_hit_sum = $70263E
+!fxcar_impact = $62
+!fxcar_44 = $44
