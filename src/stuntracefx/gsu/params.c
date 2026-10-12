@@ -310,3 +310,36 @@ void abi_GsuBytes200_0F080E(void)
 {
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0x0F, 0x08, 0x0E));
 }
+
+/*
+ * @routine 08:DC48 GsuTableEntryNext
+ * WHAT IT DOES: Returns entry A + 1 of the table whose bank is the byte at
+ * $70:1094 and address the word at $70:1092, or 1 when A equals the
+ * table's first word (its last entry).
+ * HOW: A is stored at $1F4C through the caller's data bank and read back
+ * through the table's (as GsuTableEntryTo1F4C does).
+ * Entry: M 16-bit, X 16-bit; A = entry. Exit: A = the next entry; X
+ * unchanged; N, Z from X; C from the compare.
+ */
+uint16_t GsuTableEntryNext(uint8_t bank, uint16_t entry, uint8_t *p)
+{
+    uint32_t t;
+    uint16_t a, last;
+
+    wr16((uint32_t)bank << 16 | 0x1F4C, entry);
+    t = (uint32_t)(rd16(0x701094) & 0x00FF) << 16;
+    a = rd16(t | 0x1F4C);
+    last = rd16(t | rd16(0x701092));
+    *p = (uint8_t)((*p & ~P_C) | (a >= last ? P_C : 0));
+    if (a == last)
+        a = 0x0000;
+    return (uint16_t)(a + 1);
+}
+
+void abi_GsuTableEntryNext(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = GsuTableEntryNext(cpu.db, cpu.a, &p);
+    cpu.p = nz16(p, cpu.x);
+}

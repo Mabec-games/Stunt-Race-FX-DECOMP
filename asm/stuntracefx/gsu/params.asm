@@ -303,3 +303,34 @@ GsuBytes200_0F080E:
     sta.l !gsu_bytes_200+3
     plp
     rtl
+
+; @routine 08:DC48 GsuTableEntryNext
+; WHAT IT DOES: Returns entry A + 1 of the table whose bank is the byte at
+; $70:1094 and address the word at $70:1092, or 1 when A equals the
+; table's first word (its last entry).
+; HOW: A is stored at $1F4C through the caller's data bank and read back
+; through the table's (as GsuTableEntryTo1F4C does).
+; Entry: M 16-bit, X 16-bit; A = entry. Exit: A = the next entry; X
+; unchanged; N, Z from X; C from the compare.
+%at($08DC48)
+GsuTableEntryNext:
+    sta.w !wram_1F4C
+    phx
+    lda.l !gsu_table_bank
+    sep.b #$20
+    and.b #$FF
+    phb
+    pha
+    plb
+    rep.b #$20
+    lda.l !gsu_table_addr
+    tax
+    lda.w !wram_1F4C
+    cmp.w 0,x
+    bne .lDC69
+    lda.w #$0000
+.lDC69:
+    inc a
+    plb
+    plx
+    rtl

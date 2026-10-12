@@ -639,3 +639,14 @@ includeonce
 !wram_0D53 = $0D53
 !obj_48 = $2048
 !gsu_rec_70 = $700070
+!wram_1F36 = $1F36
+!wram_1F38 = $1F38
+!wram_1F3A = $1F3A
+; Non-zero when records may land (object/gsu_record.asm).
+!gsu_record_ready = $702482
+!gsu_rec_2c = $70002C
+!gsu_rec_8a = $70008A
+!gsu_rec_82 = $700082
+!gsu_rec_34 = $700034
+!gsu_rec_36 = $700036
+!gsu_rec_38 = $700038

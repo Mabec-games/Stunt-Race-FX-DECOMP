@@ -841,3 +841,100 @@ ObjectSyncToRecord:
     tyx
     sep.b #$20
     jmp.w ObjectSync_tail
+
+; @routine 08:D01E RecordContactFlags
+; WHAT IT DOES: Adds to the flags in $1F38 what a record's contact word
+; ($1F3A, its +$64) and flags ($1F36, its +$16) say: when the contact word
+; is non-zero, 4 plus its lowest set bit of bits 0-2 (or the whole word
+; when none of them is set); 8 for flags bit 0; $80 for flags bit 11.
+; HOW: BIT #imm tests (Z only), ORs into $1F38 through the data bank.
+; Entry: M 16-bit, X 16-bit. Exit: A = $1F38; N, Z from it; C, V
+; unchanged.
+%at($08D01E)
+RecordContactFlags:
+    lda.w !wram_1F3A
+    beq .lD04A
+    bit.w #$0001
+    beq .lD02D
+    lda.w #$0001
+    bra .lD041
+.lD02D:
+    bit.w #$0002
+    beq .lD037
+    lda.w #$0002
+    bra .lD041
+.lD037:
+    bit.w #$0004
+    beq .lD041
+    lda.w #$0004
+    bra .lD041
+.lD041:
+    ora.w #$0004
+    ora.w !wram_1F38
+    sta.w !wram_1F2D+11
+.lD04A:
+    lda.w !wram_1F36
+    bit.w #$0001
+    beq .lD05B
+    lda.w !wram_1F2D+11
+    ora.w #$0008
+    sta.w !wram_1F2D+11
+.lD05B:
+    lda.w !wram_1F2D+9
+    bit.w #$0800
+    beq .lD06C
+    lda.w !wram_1F38
+    ora.w #$0080
+    sta.w !wram_1F38
+.lD06C:
+    lda.w !wram_1F2D+11
+    rts
+
+; @routine 08:B402 GsuRecordLand
+; WHAT IT DOES: When $70:2482 is non-zero and object X's record has bit 6
+; of +$2C and bit 4 of +$8A set, and not bit 8 of +$40: stops the record
+; (+$2E, +$30, +$32, +$36, +$34, +$38 zeroed) and, unless +$82 is already
+; $200, sets +$82 to $200 and in +$40 clears bits 5-6 and sets bits 0 and
+; 12.
+; HOW: 16-bit tests and stores on the record (the object's +$22, used
+; without a zero test). The stopping part is not reached by any script.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: X unchanged; M 8-bit; N, Z
+; from X; A = the last value tested or written; C set by the +$82 compare
+; when that is reached, else unchanged.
+%at($08B402)
+GsuRecordLand:
+    rep.b #$20
+    phx
+    lda.l !gsu_record_ready
+    beq .lB463
+    lda.w !obj_22,x
+    tax
+    lda.l !gsu_rec_2c,x
+    and.w #$0040
+    beq .lB463
+    lda.l !gsu_rec_8a,x
+    and.w #$0010
+    beq .lB463
+    lda.l !gsu_rec_40,x
+    and.w #$0100
+    bne .lB463
+    lda.w #$0000
+    sta.l !gsu_rec_vel_x,x
+    sta.l !gsu_rec_vel_y,x
+    sta.l !gsu_rec_vel_z,x
+    sta.l !gsu_rec_36,x
+    sta.l !gsu_rec_34,x
+    sta.l !gsu_rec_38,x
+    lda.l !gsu_rec_82,x
+    cmp.w #$0200
+    beq .lB463
+    lda.w #$0200
+    sta.l !gsu_rec_82,x
+    lda.l !gsu_rec_40,x
+    and.w #$FF9F
+    ora.w #$1001
+    sta.l !gsu_rec_40,x
+.lB463:
+    plx
+    sep.b #$20
+    rts

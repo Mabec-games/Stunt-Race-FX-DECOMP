@@ -876,3 +876,89 @@ void abi_ObjectSyncToRecord(void)
     cpu.a = ObjectSyncToRecord(cpu.db, cpu.x, &cpu.y, &p);
     cpu.p = (uint8_t)(p | P_M);
 }
+
+/*
+ * @routine 08:D01E RecordContactFlags
+ * WHAT IT DOES: Adds to the flags in $1F38 what a record's contact word
+ * ($1F3A, its +$64) and flags ($1F36, its +$16) say: when the contact word
+ * is non-zero, 4 plus its lowest set bit of bits 0-2 (or the whole word
+ * when none of them is set); 8 for flags bit 0; $80 for flags bit 11.
+ * HOW: BIT #imm tests (Z only), ORs into $1F38 through the data bank.
+ * Entry: M 16-bit, X 16-bit. Exit: A = $1F38; N, Z from it; C, V
+ * unchanged.
+ */
+uint16_t RecordContactFlags(uint8_t bank)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t c = rd16(b | 0x1F3A), f;
+
+    if (c) {
+        if (c & 0x0001)
+            c = 0x0001;
+        else if (c & 0x0002)
+            c = 0x0002;
+        else if (c & 0x0004)
+            c = 0x0004;
+        wr16(b | 0x1F38, (uint16_t)(c | 0x0004 | rd16(b | 0x1F38)));
+    }
+    f = rd16(b | 0x1F36);
+    if (f & 0x0001)
+        wr16(b | 0x1F38, (uint16_t)(rd16(b | 0x1F38) | 0x0008));
+    if (f & 0x0800)
+        wr16(b | 0x1F38, (uint16_t)(rd16(b | 0x1F38) | 0x0080));
+    return rd16(b | 0x1F38);
+}
+
+void abi_RecordContactFlags(void)
+{
+    cpu.a = RecordContactFlags(cpu.db);
+    cpu.p = nz16(cpu.p, cpu.a);
+}
+
+/*
+ * @routine 08:B402 GsuRecordLand
+ * WHAT IT DOES: When $70:2482 is non-zero and object X's record has bit 6
+ * of +$2C and bit 4 of +$8A set, and not bit 8 of +$40: stops the record
+ * (+$2E, +$30, +$32, +$36, +$34, +$38 zeroed) and, unless +$82 is already
+ * $200, sets +$82 to $200 and in +$40 clears bits 5-6 and sets bits 0 and
+ * 12.
+ * HOW: 16-bit tests and stores on the record (the object's +$22, used
+ * without a zero test). The stopping part is not reached by any script.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: X unchanged; M 8-bit; N, Z
+ * from X; A = the last value tested or written; C set by the +$82 compare
+ * when that is reached, else unchanged.
+ */
+uint16_t GsuRecordLand(uint8_t bank, uint16_t obj, uint8_t *p)
+{
+    uint16_t rec, a;
+    unsigned i;
+    static const uint8_t stop[6] = {0x2E, 0x30, 0x32, 0x36, 0x34, 0x38};
+
+    if (!(a = rd16(0x702482)))
+        return a;
+    rec = record_of(bank, obj);
+    if (!(a = rd16(0x70002C + rec) & 0x0040))
+        return a;
+    if (!(a = rd16(0x70008A + rec) & 0x0010))
+        return a;
+    if ((a = rd16(0x700040 + rec) & 0x0100))
+        return a;
+    for (i = 0; i < 6; i++)
+        wr16(0x700000 + stop[i] + rec, 0x0000);
+    a = rd16(0x700082 + rec);
+    *p = (uint8_t)((*p & ~P_C) | (a >= 0x0200 ? P_C : 0));
+    if (a == 0x0200)
+        return a;
+    wr16(0x700082 + rec, 0x0200);
+    a = (uint16_t)((rd16(0x700040 + rec) & 0xFF9F) | 0x1001);
+    wr16(0x700040 + rec, a);
+    return a;
+}
+
+void abi_GsuRecordLand(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = GsuRecordLand(cpu.db, cpu.x, &p);
+    cpu.p = (uint8_t)(nz16(p, cpu.x) | P_M);
+}
