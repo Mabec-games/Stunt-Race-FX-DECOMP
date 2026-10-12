@@ -946,3 +946,76 @@ void abi_ObjectLinkedHandlerByState(void)
     cpu.a = ObjectLinkedHandlerByState(cpu.db, cpu.x, cpu.a, &cpu.y, &p);
     cpu.p = (uint8_t)(p | P_M);
 }
+
+#define ATTACH_VALUES 0x098090u
+
+/*
+ * @routine 08:8525 ObjectAttachLinked
+ * WHAT IT DOES: Links object X to object Y: X's +$4F = Y, Y's +$06 = X, and
+ * the block Y's +$4F points at gets X at +$02, kind 5 at +$00, its +$32
+ * from the table at $09:8090 and its other fields (+$26-+$30, +$34-+$3A)
+ * cleared. The table entry is the word at $70:2396, plus 2 when Y's +$1A
+ * is $8E2A, else plus 4, 8 or 6 for $0D2B = 1, 2 or 3.
+ * HOW: The block is addressed through Y as a full address in the data
+ * bank. Only the $0D2B choices are reached by a script.
+ * Entry: M 8-bit, X 16-bit; X = object, Y = the other object. Exit: A = 0
+ * (M 8-bit), Z set; X unchanged; Y = the block; $1F4C = Y's +$1A, $1F4E =
+ * the block; C (and V after an add) from the last compare or add.
+ */
+uint16_t ObjectAttachLinked(uint8_t bank, uint16_t obj, uint16_t other, uint8_t *p)
+{
+    static const uint8_t clear[9] = {0x35, 0x37, 0x39, 0x26, 0x28, 0x2A, 0x2C, 0x2E, 0x30};
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t blk, kind, t, add = 0, m;
+    unsigned i, s;
+
+    wr16(field(bank, obj, 0x4F), other);
+    blk = rd16(field(bank, other, 0x4F));
+    wr16(b | 0x1F4E, blk);
+    kind = rd16(field(bank, other, 0x1A));
+    wr16(b | 0x1F4C, kind);
+    wr16(field(bank, other, 0x06), obj);
+    wr16(b | (uint16_t)(blk + 0x02), obj);
+    t = rd16(0x702396);
+    *p = (uint8_t)((*p & ~P_C) | (kind >= 0x8E2A ? P_C : 0));
+    if (kind == 0x8E2A) {
+        add = 2;
+    } else {
+        m = rd16(b | 0x0D2B) & 0x00FF;
+        *p = (uint8_t)((*p & ~P_C) | (m >= 1 ? P_C : 0));
+        if (m == 1)
+            add = 4;
+        else {
+            *p = (uint8_t)((*p & ~P_C) | (m >= 2 ? P_C : 0));
+            if (m == 2)
+                add = 8;
+            else {
+                *p = (uint8_t)((*p & ~P_C) | (m >= 3 ? P_C : 0));
+                if (m == 3)
+                    add = 6;
+            }
+        }
+    }
+    if (add) {
+        s = (unsigned)t + add;
+        *p = (uint8_t)((*p & ~(P_C | P_V)) | (s > 0xFFFF ? P_C : 0)
+                       | ((~(t ^ add) & (t ^ (uint16_t)s) & 0x8000) ? P_V : 0));
+        t = (uint16_t)s;
+    }
+    wr16(b | (uint16_t)(blk + 0x32), rd16(ATTACH_VALUES + t));
+    for (i = 0; i < 9; i++)
+        wr16(b | (uint16_t)(blk + clear[i]), 0x0000);
+    wr16(b | blk, 0x0005);
+    wr8(b | (uint16_t)(blk + 0x34), 0x00);
+    *p = nz8(*p, 0);
+    return 0x0000;
+}
+
+void abi_ObjectAttachLinked(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = ObjectAttachLinked(cpu.db, cpu.x, cpu.y, &p);
+    cpu.y = rd16((uint32_t)cpu.db << 16 | 0x1F4E);
+    cpu.p = (uint8_t)(p | P_M);
+}

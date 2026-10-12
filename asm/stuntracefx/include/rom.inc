@@ -138,3 +138,6 @@ includeonce
 
 ; BG1 horizontal scroll HDMA table of the stop screen (system/crash.asm).
 !crash_hofs_table = $00812E
+
+; Words for an attached block's +$32, by entry (object/object.asm).
+!attach_values = $098090

@@ -931,3 +931,87 @@ ObjectLinkedHandlerByState:
     sta.w !obj_25,x
 ObjectLinkedHandlerByState_done:    ; reached by the long jump above
     rtl
+
+; @routine 08:8525 ObjectAttachLinked
+; WHAT IT DOES: Links object X to object Y: X's +$4F = Y, Y's +$06 = X, and
+; the block Y's +$4F points at gets X at +$02, kind 5 at +$00, its +$32
+; from the table at $09:8090 and its other fields (+$26-+$30, +$34-+$3A)
+; cleared. The table entry is the word at $70:2396, plus 2 when Y's +$1A
+; is $8E2A, else plus 4, 8 or 6 for $0D2B = 1, 2 or 3.
+; HOW: The block is addressed through Y as a full address in the data
+; bank. Only the $0D2B choices are reached by a script.
+; Entry: M 8-bit, X 16-bit; X = object, Y = the other object. Exit: A = 0
+; (M 8-bit), Z set; X unchanged; Y = the block; $1F4C = Y's +$1A, $1F4E =
+; the block; C (and V after an add) from the last compare or add.
+%at($088525)
+ObjectAttachLinked:
+    rep.b #$20
+    tya
+    sta.w !obj_link_w,x
+    lda.w !obj_link_w,y
+    sta.w !wram_1F4E
+    lda.w !obj_1a_w,y
+    sta.w !wram_1F4C
+    txa
+    sta.w !obj_06,y
+    ldy.w !wram_1F4E
+    txa
+    sta.w 2,y
+    phx
+    lda.l !attach_entry
+    tax
+    lda.w !wram_1F4C
+    cmp.w #$8E2A
+    beq .l857F
+    lda.w !hud_mode
+    and.w #$00FF
+    cmp.w #$0001
+    beq .l8577
+    cmp.w #$0002
+    beq .l8567
+    cmp.w #$0003
+    beq .l856F
+    bra .l8585
+.l8567:
+    txa
+    clc
+    adc.w #$0008
+    tax
+    bra .l8585
+.l856F:
+    txa
+    clc
+    adc.w #$0006
+    tax
+    bra .l8585
+.l8577:
+    txa
+    clc
+    adc.w #$0004
+    tax
+    bra .l8585
+.l857F:
+    txa
+    clc
+    adc.w #$0002
+    tax
+.l8585:
+    lda.l !attach_values,x
+    sta.w 50,y
+    plx
+    lda.w #$0000
+    sta.w 53,y
+    sta.w 55,y
+    sta.w 57,y
+    sta.w 38,y
+    sta.w 40,y
+    sta.w 42,y
+    sta.w 44,y
+    sta.w 46,y
+    sta.w 48,y
+    lda.w #$0005
+    sta.w 0,y
+    sep.b #$20
+    lda.b #$00
+    sta.w 52,y
+    rtl
