@@ -1008,8 +1008,8 @@ includeonce
 !gsu_digit_y = $70020C
 !gsu_digit_step = $70020E
 !gsu_digit_size = $700210
-; The time bonus to show; nonzero also shows the bonus digits (race/time_bonus.asm).
-!wram_0E6C = $0E6C
+; !wram_0E6C (above) is the time bonus to show; nonzero also shows the
+; bonus digits (race/time_bonus.asm).
 ; The time bonus animation (race/time_bonus.asm): its state (0-24,
 ; even), the amount counted per frame, a copy of the time taken back, a
 ; count byte and a flag the counting tests, and the flag that starts the

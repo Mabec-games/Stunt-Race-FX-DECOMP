@@ -669,7 +669,7 @@ BackdropRowsUpdate:
     plp
     rts
 
-; @routine 03:D306 BackdropScrollFromView
+; @routine 03:D306 BackdropAnglesFromView
 ; WHAT IT DOES: Sets the backdrop's scroll from the view position: $06CD
 ; (the angle BackdropRowsUpdate scrolls by) = -($0664 / 64), kept below $E8
 ; and at least -$38, plus $98, modulo $200; $06CF = ($0666 / 32) AND $7FF.
@@ -680,7 +680,7 @@ BackdropRowsUpdate:
 ; Entry: any widths. Exit: A = the $06CF value; X, Y unchanged; P
 ; unchanged except N, Z, which the final pull of Y sets from Y.
 %at($03D306)
-BackdropScrollFromView:
+BackdropAnglesFromView:
     phy
     php
     rep.b #$30

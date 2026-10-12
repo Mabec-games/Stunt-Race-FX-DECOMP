@@ -684,7 +684,7 @@ void abi_BackdropRowsUpdate(void)
 }
 
 /*
- * @routine 03:D306 BackdropScrollFromView
+ * @routine 03:D306 BackdropAnglesFromView
  * WHAT IT DOES: Sets the backdrop's scroll from the view position: $06CD
  * (the angle BackdropRowsUpdate scrolls by) = -($0664 / 64), kept below $E8
  * and at least -$38, plus $98, modulo $200; $06CF = ($0666 / 32) AND $7FF.
@@ -695,7 +695,7 @@ void abi_BackdropRowsUpdate(void)
  * Entry: any widths. Exit: A = the $06CF value; X, Y unchanged; P
  * unchanged except N, Z, which the final pull of Y sets from Y.
  */
-uint16_t BackdropScrollFromView(uint8_t bank)
+uint16_t BackdropAnglesFromView(uint8_t bank)
 {
     uint32_t b = (uint32_t)bank << 16;
     uint16_t v = rd16(b | 0x0664), w;
@@ -717,9 +717,9 @@ uint16_t BackdropScrollFromView(uint8_t bank)
     return w;
 }
 
-void abi_BackdropScrollFromView(void)
+void abi_BackdropAnglesFromView(void)
 {
-    cpu.a = BackdropScrollFromView(cpu.db);
+    cpu.a = BackdropAnglesFromView(cpu.db);
     cpu.p = (cpu.p & P_X) ? nz8(cpu.p, (uint8_t)cpu.y) : nz16(cpu.p, cpu.y);
 }
 
