@@ -622,6 +622,7 @@ static int routine_at(uint32_t pc)
     return -1;
 }
 
+static int timed(uint32_t a);
 /* Debug: per-instruction trace of both sides (SFXBOX_LS_TRACE=first,last frame). */
 static FILE *trf;
 static long tr_lo = -1, tr_hi = -1;
@@ -635,12 +636,12 @@ static void trace_insn(uint32_t pc)
 static void trace_read(uint32_t addr, uint8_t data)
 {
     if (!trf || cur_frame < tr_lo || cur_frame > tr_hi) return;
-    if ((addr & 0x40FFFC) == 0x2140 || (addr & 0x40FFC0) == 0x3000) fprintf(trf, "  rd %06X=%02X @%u\n", addr, data, core_clock());
+    if (timed(addr)) fprintf(trf, "  rd %06X=%02X @%u\n", addr, data, core_clock());
 }
 static void trace_write(uint32_t addr, uint8_t data, int kind)
 {
     if (!trf || cur_frame < tr_lo || cur_frame > tr_hi) return;
-    if ((addr & 0x40FFFC) == 0x2140 || (addr & 0x40FFC0) == 0x3000) fprintf(trf, "  wr %06X=%02X k%d @%u\n", addr, data, kind, core_clock());
+    if (timed(addr)) fprintf(trf, "  wr %06X=%02X k%d @%u\n", addr, data, kind, core_clock());
 }
 
 /* Original side: measure each call's cost. */
@@ -803,7 +804,9 @@ static void replay_to(uint32_t to)
                 (uint16_t)(cur_addr[i + 2] >> 16), (uint16_t)cur_addr[i + 3], (uint8_t)(cur_addr[i + 3] >> 16),
                 (uint8_t)(cur_addr[i + 3] >> 24), (uint8_t)(cur_addr[i] >> 24), cur_addr[i] & 0xFFFFFF};
             struct SfxboxRegs mine; core_regs(&mine);
-            if (!core_interrupt_here(&at)) irq_missed++;
+            if (!core_interrupt_here(&at) && irq_missed++ < 5)
+                fprintf(lsrep, "OFF frame %ld: interrupt recorded at %06X (op %u of %u) not pending there (in %s; clock %u)\n",
+                        cur_frame, at.pc, i, cur_n, ls_cur_name ? ls_cur_name : "-", core_clock());
             core_set_regs(&mine);
         }
         i += 4;
@@ -972,6 +975,12 @@ static uint8_t live_access(int write, uint32_t addr, uint8_t value)
         if (cur_ops[j] >> 4 == want && same_place(cur_addr[j]) == same_place(addr)) {
             replay_to(j);
             cur_i = j + 1;
+            if (place_from >= 0 && cur_frame >= place_from && cur_frame <= place_to) {
+                uint32_t c0 = core_clock();
+                uint8_t r = core_access(write, addr, value);
+                fprintf(lsrep, "HW %ld %s %06X at %u: clock %u -> %u\n", cur_frame, write ? "w" : "r", addr, j, c0, core_clock());
+                return r;
+            }
             return core_access(write, addr, value);
         }
     /* No matching cycle left in the original's record: the run has already
