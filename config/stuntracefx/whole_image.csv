@@ -1,0 +1,12 @@
+script,verdict,detail,date,source
+attract,IDENTICAL,"frames 6300 compared 6300, differing 0; calls swapped 66021, entered other ways 0, unmatched 0: IDENTICAL",2026-10-11,b4061ce
+battle,IDENTICAL,"frames 11232 compared 11232, differing 0; calls swapped 82417, entered other ways 0, unmatched 0: IDENTICAL",2026-10-11,b4061ce
+speed_expert_4wd,IDENTICAL,"frames 11500 compared 11500, differing 0; calls swapped 102125, entered other ways 0, unmatched 0: IDENTICAL",2026-10-11,b4061ce
+speed_novice_4wd,IDENTICAL,"frames 11534 compared 11534, differing 0; calls swapped 94824, entered other ways 0, unmatched 0: IDENTICAL",2026-10-11,b4061ce
+speed_novice_coupe,IDENTICAL,"frames 11578 compared 11578, differing 0; calls swapped 111758, entered other ways 0, unmatched 0: IDENTICAL",2026-10-11,b4061ce
+speed_novice_ftype,IDENTICAL,"frames 11578 compared 11578, differing 0; calls swapped 111758, entered other ways 0, unmatched 0: IDENTICAL",2026-10-11,b4061ce
+stunt_bluelake,IDENTICAL,"frames 11558 compared 11558, differing 0; calls swapped 113765, entered other ways 0, unmatched 0: IDENTICAL",2026-10-11,b4061ce
+stunt_icedance,IDENTICAL,"frames 11524 compared 11524, differing 0; calls swapped 108614, entered other ways 0, unmatched 0: IDENTICAL",2026-10-11,b4061ce
+stunt_rockfield,IDENTICAL,"frames 11490 compared 11490, differing 0; calls swapped 103373, entered other ways 0, unmatched 0: IDENTICAL",2026-10-11,b4061ce
+stunt_upndown,IDENTICAL,"frames 11524 compared 11524, differing 0; calls swapped 104627, entered other ways 0, unmatched 0: IDENTICAL",2026-10-11,b4061ce
+testrun,IDENTICAL,"frames 11242 compared 11242, differing 0; calls swapped 79274, entered other ways 0, unmatched 0: IDENTICAL",2026-10-11,b4061ce
