@@ -671,3 +671,5 @@ includeonce
 !wram_0E59 = $0E59
 ; The attach table entry base (object/object.asm).
 !attach_entry = $702396
+!gsu_rec_27 = $700027
+!gsu_rec_90 = $700090

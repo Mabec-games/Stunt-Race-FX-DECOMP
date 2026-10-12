@@ -1151,3 +1151,57 @@ void abi_RecordButtonSequence(void)
     cpu.a = RecordButtonSequence(cpu.db, cpu.x, &p);
     cpu.p = p;
 }
+
+/*
+ * @routine 08:C9A9 ObjectPoseFromRecord
+ * WHAT IT DOES: Takes object X's pose back from its Super FX record:
+ * position (+$1E/+$20/+$22 to +$0C/+$0E/+$10) and the angle bytes +$27,
+ * +$29, +$25 to +$14, +$16, +$15; copies the record's +$40 to its +$90.
+ * Before that clears bits 5 and 6 of the object's +$25, and when its +$36
+ * is 1 makes it 2 and sets bit 10 of the record's flags (+$16), else
+ * clears that bit.
+ * HOW: The record is the object's +$22 (no zero test); X is the record and
+ * Y the object while copying.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: X unchanged; Y = X; M 8-bit;
+ * A = the high byte of its +$22 and the +$25 byte; N, Z from X; C from the
+ * +$36 compare.
+ */
+uint16_t ObjectPoseFromRecord(uint8_t bank, uint16_t obj, uint8_t *p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t rec, z;
+    uint8_t s, v;
+
+    wr8(b | (uint16_t)(0x2025 + obj), rd8(b | (uint16_t)(0x2025 + obj)) & 0xDF);
+    wr8(b | (uint16_t)(0x2025 + obj), rd8(b | (uint16_t)(0x2025 + obj)) & 0xBF);
+    s = rd8(b | (uint16_t)(0x2036 + obj));
+    *p = (uint8_t)((*p & ~P_C) | (s >= 0x01 ? P_C : 0));
+    if (s == 0x01)
+        wr8(b | (uint16_t)(0x2036 + obj), 0x02);
+    rec = record_of(bank, obj);
+    if (s == 0x01)
+        wr16(0x700016 + rec, (uint16_t)(rd16(0x700016 + rec) | 0x0400));
+    else
+        wr16(0x700016 + rec, (uint16_t)(rd16(0x700016 + rec) & 0xFBFF));
+    rec = record_of(bank, obj);
+    wr16(0x700090 + rec, rd16(0x700040 + rec));
+    wr16(b | (uint16_t)(0x200C + obj), rd16(0x70001E + rec));
+    wr16(b | (uint16_t)(0x200E + obj), rd16(0x700020 + rec));
+    z = rd16(0x700022 + rec);
+    wr16(b | (uint16_t)(0x2010 + obj), z);
+    wr8(b | (uint16_t)(0x2014 + obj), rd8(0x700027 + rec));
+    wr8(b | (uint16_t)(0x2016 + obj), rd8(0x700029 + rec));
+    v = rd8(0x700025 + rec);
+    wr8(b | (uint16_t)(0x2015 + obj), v);
+    *p = nz16(*p, obj);
+    return (uint16_t)((z & 0xFF00) | v);
+}
+
+void abi_ObjectPoseFromRecord(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = ObjectPoseFromRecord(cpu.db, cpu.x, &p);
+    cpu.y = cpu.x;
+    cpu.p = (uint8_t)(p | P_M);
+}

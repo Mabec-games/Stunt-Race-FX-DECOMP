@@ -1150,3 +1150,70 @@ RecordButtonSequence_next:          ; a press in time: the next stage
     stz.w !seq_count
     inc.w !seq_stage
     bra RecordButtonSequence_done
+
+; @routine 08:C9A9 ObjectPoseFromRecord
+; WHAT IT DOES: Takes object X's pose back from its Super FX record:
+; position (+$1E/+$20/+$22 to +$0C/+$0E/+$10) and the angle bytes +$27,
+; +$29, +$25 to +$14, +$16, +$15; copies the record's +$40 to its +$90.
+; Before that clears bits 5 and 6 of the object's +$25, and when its +$36
+; is 1 makes it 2 and sets bit 10 of the record's flags (+$16), else
+; clears that bit.
+; HOW: The record is the object's +$22 (no zero test); X is the record and
+; Y the object while copying.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: X unchanged; Y = X; M 8-bit;
+; A = the high byte of its +$22 and the +$25 byte; N, Z from X; C from the
+; +$36 compare.
+%at($08C9A9)
+ObjectPoseFromRecord:
+    sep.b #$20
+    lda.w !obj_25,x
+    and.b #$DF
+    sta.w !obj_25,x
+    lda.w !obj_25,x
+    and.b #$BF
+    sta.w !obj_25,x
+    phx
+    lda.w !obj_36,x
+    cmp.b #$01
+    bne .lC9DB
+    lda.b #$02
+    sta.w !obj_36,x
+    rep.b #$20
+    lda.w !obj_22,x
+    tax
+    lda.l !gsu_rec_flags,x
+    ora.w #$0400
+    sta.l !gsu_rec_flags,x
+    bra .lC9EC
+.lC9DB:
+    rep.b #$20
+    lda.w !obj_22,x
+    tax
+    lda.l !gsu_rec_flags,x
+    and.w #$FBFF
+    sta.l !gsu_rec_flags,x
+.lC9EC:
+    plx
+    sep.b #$20
+    phx
+    txy
+    rep.b #$20
+    lda.w !obj_22,x
+    tax
+    lda.l !gsu_rec_40,x
+    sta.l !gsu_rec_90,x
+    lda.l !gsu_rec_1e,x
+    sta.w !obj_pos_x,y
+    lda.l !gsu_rec_20,x
+    sta.w !obj_pos_y,y
+    lda.l !gsu_rec_22,x
+    sta.w !obj_pos_z,y
+    sep.b #$20
+    lda.l !gsu_rec_27,x
+    sta.w !obj_14,y
+    lda.l !gsu_rec_29,x
+    sta.w !obj_16,y
+    lda.l !gsu_rec_25,x
+    sta.w !obj_15,y
+    plx
+    rtl
