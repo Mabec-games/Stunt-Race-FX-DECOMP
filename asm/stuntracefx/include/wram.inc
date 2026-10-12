@@ -120,3 +120,56 @@ includeonce
 
 ; The player whose car is being processed: 0 or 1.
 !current_player = $1A5D
+
+; Super FX buffer upload (video/dma.asm): pending flag, which half is ready.
+!gsu_upload_pending = $0D32
+!gsu_buffer_select = $0D7F
+
+; The Super FX's view parameters (gsu/params.asm): sources in work RAM and
+; their places in the Super FX RAM parameter block.
+!wram_0D12 = $0D12
+!wram_05FA = $05FA
+!wram_0664 = $0664
+!wram_0666 = $0666
+!wram_0668 = $0668
+!dp_c5 = $C5
+!dp_c7 = $C7
+!dp_c9 = $C9
+!gsu_param_108a = $70108A
+!gsu_param_00d8 = $7000D8
+!gsu_param_00da = $7000DA
+!gsu_param_00dc = $7000DC
+!gsu_param_00de = $7000DE
+!gsu_param_00e0 = $7000E0
+!gsu_param_00e2 = $7000E2
+!gsu_param_2736 = $702736
+
+; A value stepped toward its target every other frame (system/approach.asm).
+!wram_11DA = $11DA
+!wram_11DB = $11DB
+!wram_11DC = $11DC
+
+; Window HDMA table in bank $7F (video/window_hdma.asm): three-byte entries
+; (line count, 16-bit indirect address), ended by a zero count.
+!window_hdma = $7FF85B
+!window_hdma_select = $19B6
+!window_hdma_off = $19D8
+!window_hdma_19bc = $19BC
+!window_lines = $19DC
+!window_19e2 = $19E2
+!window_19e3 = $19E3
+!window_19e4 = $19E4
+!window_19e5 = $19E5
+!window_hdma_lists = $7ED8DE
+!window_hdma_counts = $7EE0B4
+!window_hdma_addrs = $7EE0D2
+
+; A 16-bit value that slides toward a target (system/slide.asm), its high byte
+; copied to bank $7F.
+!slide_flags = $0DA5
+!slide_value = $19F6
+!slide_step = $19F8
+!slide_target = $19FA
+!slide_direction = $19FC
+!slide_out = $7F3468
+!slide_done = $7F3470

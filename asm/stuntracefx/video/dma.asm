@@ -255,3 +255,39 @@ VramWriteRowFromGsuRam:
     sta.b !dp_02
     plp
     rts
+
+; @routine 7E:ACBD VramUploadGsuBuffer
+; WHAT IT DOES: When a Super FX picture is waiting, copies it ($C00 bytes)
+; from Super FX RAM to VRAM $6600, from whichever half of the double buffer
+; is ready, and clears the request.
+; HOW: With $0D32 set: channel 0 in mode 1 to VMDATA from $70:4000 when
+; $0D7F is set, else from $70:D000; then $0D32 = 0.
+; Entry: M 8-bit, X 16-bit. Exit: A low byte = 1 after a copy, else 0; X =
+; the source after a copy; N clear; Z set when nothing was copied.
+%ramcode($7EACBD, $0109E4)
+VramUploadGsuBuffer:
+    lda.w !gsu_upload_pending
+    beq .lACF6
+    lda.b #$80
+    sta.w !VMAIN
+    ldx.w #$6600
+    stx.w !VMADDL
+    ldx.w #$1801
+    stx.w !DMAP0
+    lda.b #$70
+    sta.w !A1B0
+    ldx.w #$0C00
+    stx.w !DAS0L
+    lda.w !gsu_buffer_select
+    beq .lACE8
+    ldx.w #$4000
+    bra .lACEB
+.lACE8:
+    ldx.w #$D000
+.lACEB:
+    stx.w !A1T0L
+    lda.b #$01
+    sta.w !MDMAEN
+    stz.w !gsu_upload_pending
+.lACF6:
+    rts

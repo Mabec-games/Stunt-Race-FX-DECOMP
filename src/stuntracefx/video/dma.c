@@ -306,3 +306,50 @@ void abi_VramDmaWideRowsFromGsuRam(void)
     cpu.x = 0x00FF;
     cpu.y = 0x0001;
 }
+
+/*
+ * @routine 7E:ACBD VramUploadGsuBuffer
+ * WHAT IT DOES: When a Super FX picture is waiting, copies it ($C00 bytes)
+ * from Super FX RAM to VRAM $6600, from whichever half of the double buffer
+ * is ready, and clears the request.
+ * HOW: With $0D32 set: channel 0 in mode 1 to VMDATA from $70:4000 when
+ * $0D7F is set, else from $70:D000; then $0D32 = 0.
+ * Entry: M 8-bit, X 16-bit. Exit: A low byte = 1 after a copy, else 0; X =
+ * the source after a copy; N clear; Z set when nothing was copied.
+ */
+static int vram_upload_gsu_buffer(uint16_t *src)
+{
+    if (rd8(0x000D32) == 0)
+        return 0;
+    wr8(VMAIN, 0x80);
+    wr16(VMADDL, 0x6600);
+    wr16(DMAP0, 0x1801);
+    wr8(A1B0, 0x70);
+    wr16(DAS0L, 0x0C00);
+    *src = rd8(0x000D7F) ? 0x4000 : 0xD000;
+    wr16(A1T0L, *src);
+    wr8(MDMAEN, 0x01);
+    wr8(0x000D32, 0x00);
+    return 1;
+}
+
+void VramUploadGsuBuffer(void)
+{
+    uint16_t src;
+
+    vram_upload_gsu_buffer(&src);
+}
+
+void abi_VramUploadGsuBuffer(void)
+{
+    uint16_t src;
+
+    if (vram_upload_gsu_buffer(&src)) {
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
+        cpu.x = src;
+        cpu.p &= (uint8_t)~(P_N | P_Z);
+    } else {
+        cpu.a &= 0xFF00;
+        cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
+    }
+}
