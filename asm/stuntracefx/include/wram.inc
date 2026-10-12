@@ -849,3 +849,7 @@ includeonce
 ; The Super FX's current 3x3 matrix ($70:00E4, render/matrix.asm) as its
 ; own short RAM address, for LMS and SMS.
 !fx_matrix = $00E4
+
+; Three vectors of three words the Super FX multiplies by its matrix
+; (render/matrix.asm), as its own short RAM address.
+!fx_vectors = $0116

@@ -188,3 +188,8 @@ includeonce
 ; SaveTablesCheck offsets per table: into $70:FC6D and into $70:FC88 (save/records.asm).
 !save_table_second = $07B18A
 !save_table_first = $07B18D
+
+; The Super FX's arctangent table: 256 words, angle (a full turn is
+; $10000) by the ratio of the smaller to the larger side (render/angle.asm),
+; in ROM bank $00 as the Super FX sees it.
+!fx_atan_table = $009E40

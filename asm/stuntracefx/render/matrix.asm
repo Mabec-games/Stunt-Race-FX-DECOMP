@@ -137,4 +137,37 @@ FxMatrixApply:
     jmp r11
     nop
 
+; @routine 01:975B FxMatrixApplyVectors
+; WHAT IT DOES: Multiplies the three vectors at $0116, $011C and $0122 by
+; the current matrix, storing the nine results as words from R9 on.
+; HOW: Keeps R11 in R8, then for each vector loads it into R1, R2, R3 with
+; LMS and calls FxMatrixApply, which steps R9; restores R11 and returns.
+; Entry: R9 = where to store; R11 = return address. Exit: R9 = R9 + 18;
+; R1, R2, R3 = the third vector; R8 = R11; R0, R5, R6, the last RAM address
+; and the flags as the last FxMatrixApply leaves them.
+%at($01975B)
+FxMatrixApplyVectors:
+    move r8,r11
+    lms r1,(!fx_vectors)
+    lms r2,(!fx_vectors+2)
+    lms r3,(!fx_vectors+4)
+    link #4
+    iwt r15,#FxMatrixApply
+    nop
+    lms r1,(!fx_vectors+6)
+    lms r2,(!fx_vectors+8)
+    lms r3,(!fx_vectors+10)
+    link #4
+    iwt r15,#FxMatrixApply
+    nop
+    lms r1,(!fx_vectors+12)
+    lms r2,(!fx_vectors+14)
+    lms r3,(!fx_vectors+16)
+    link #4
+    iwt r15,#FxMatrixApply
+    nop
+    move r11,r8
+    jmp r11
+    nop
+
 arch 65816

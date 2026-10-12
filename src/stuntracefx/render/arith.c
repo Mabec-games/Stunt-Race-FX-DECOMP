@@ -13,6 +13,8 @@
  */
 #include "gsu.h"
 
+uint16_t FxDivideHalving(uint16_t hi, uint16_t lo, uint16_t *divisor, uint16_t *remainder);
+
 /* The 16 passes, from the dividend as it stands after the first shift.
    Returns the quotient; *rem_out = the high word after the last pass. */
 static uint16_t divide_passes(uint16_t rem, uint16_t quot, uint16_t divisor, uint16_t *rem_out)
@@ -150,19 +152,42 @@ void abi_FxDivide32By16(void)
     gsu.r[13] = 0x81D2;
 }
 
+/* The registers and flags a halving divide leaves (FxDivideHalving and
+   FxDivide32By16Halving: the same code, the loop at a different address). */
+static void halving_exit(uint16_t hi, uint16_t lo, uint16_t d, uint16_t loop)
+{
+    uint16_t used = d;
+    uint16_t rem, quot = FxDivideHalving(hi, lo, &used, &rem);
+    uint16_t shifted;
+
+    if ((hi | d) & 0x8000) {
+        lo = (uint16_t)(lo >> 1 | (hi & 1) << 15);
+        hi >>= 1;
+    }
+    divide_flags((uint16_t)(hi << 1 | lo >> 15), (uint16_t)(lo << 1), used);
+    divide_passes((uint16_t)(hi << 1 | lo >> 15), (uint16_t)(lo << 1), used, &shifted);
+    gsu.cy = shifted & 1;
+    gsu_sz(rem);
+    gsu.r[0] = rem;
+    gsu.r[4] = quot;
+    gsu.r[6] = used;
+    gsu.r[12] = 0;
+    gsu.r[13] = loop;
+}
+
 /*
- * @routine 01:96C0 FxDivideHalving
+ * @routine 01:81BC FxDivide32By16Halving
  * WHAT IT DOES: Divides the 32-bit value R0:R4 (R0 the high word) by R6,
  * unsigned, halving both first when either has its top bit set: R4 = the
  * quotient, R0 = the remainder (of the halved values).
  * HOW: MOVES tests R0 and R6; when either is negative, LSR R6 and the
- * 32-bit LSR/ROR of R0:R4 halve them. Then its own copy of the shared
- * loop, with the closing LSR.
- * Entry: R0:R4 = dividend, R6 = divisor; R11 = return address. Exit: R4 =
- * quotient, R0 = remainder; R6 = the divisor as used; R12 = 0; R13 =
- * $96D6 (the loop); S clear, Z and CY from the LSR; OV from the last pass.
+ * 32-bit LSR/ROR of R0:R4 halve them; then on into FxDivide32By16. The
+ * halving ($81C6-$81CA) is not reached in the traces so far: every call
+ * seen has both values below $8000.
+ * Entry: R0:R4 = dividend, R6 = divisor; R11 = return address. Exit: as
+ * FxDivide32By16; R6 = the divisor as used.
  */
-uint16_t FxDivideHalving(uint16_t hi, uint16_t lo, uint16_t *divisor, uint16_t *remainder)
+uint16_t FxDivide32By16Halving(uint16_t hi, uint16_t lo, uint16_t *divisor, uint16_t *remainder)
 {
     if ((hi | *divisor) & 0x8000) {
         *divisor >>= 1;
@@ -172,25 +197,91 @@ uint16_t FxDivideHalving(uint16_t hi, uint16_t lo, uint16_t *divisor, uint16_t *
     return FxDivide32By16(hi, lo, *divisor, remainder);
 }
 
+void abi_FxDivide32By16Halving(void)
+{
+    halving_exit(gsu.r[0], gsu.r[4], gsu.r[6], 0x81D2);
+}
+
+/*
+ * @routine 01:96C0 FxDivideHalving
+ * WHAT IT DOES: Divides the 32-bit value R0:R4 (R0 the high word) by R6,
+ * unsigned, halving both first when either has its top bit set: R4 = the
+ * quotient, R0 = the remainder (of the halved values).
+ * HOW: FxDivide32By16Halving's code again, with its own copy of the loop.
+ * Entry: R0:R4 = dividend, R6 = divisor; R11 = return address. Exit: R4 =
+ * quotient, R0 = remainder; R6 = the divisor as used; R12 = 0; R13 =
+ * $96D6 (the loop); S clear, Z and CY from the LSR; OV from the last pass.
+ */
+uint16_t FxDivideHalving(uint16_t hi, uint16_t lo, uint16_t *divisor, uint16_t *remainder)
+{
+    return FxDivide32By16Halving(hi, lo, divisor, remainder);
+}
+
 void abi_FxDivideHalving(void)
 {
-    uint16_t hi = gsu.r[0], lo = gsu.r[4], d = gsu.r[6];
-    uint16_t rem, quot = FxDivideHalving(hi, lo, &d, &rem);
-    uint16_t shifted;
+    halving_exit(gsu.r[0], gsu.r[4], gsu.r[6], 0x96D6);
+}
 
-    if ((hi | gsu.r[6]) & 0x8000) {
-        lo = (uint16_t)(lo >> 1 | (hi & 1) << 15);
-        hi >>= 1;
+/* The last division FxRatioClamp makes, for its exit registers. */
+typedef struct { uint16_t hi, lo, divisor, ret; } FxLastDivide;
+
+/*
+ * @routine 01:9658 FxRatioClamp
+ * WHAT IT DOES: Turns the pair (R1, R2), each halved, into the ratios
+ * R1 * 256 / R3 and R2 * 256 / R3; when the first would pass $3FFF it is
+ * held at $3FFF and the second scaled to keep the pair's ratio.
+ * HOW: Pushes R11 on the R10 stack; ASR R1, ASR R2. When R1's high byte
+ * is below R3, FxDivideHalving divides R1 << 8 by R3; if that is at most
+ * $3FFF, R2 << 8 is divided by R3 too and the routine returns. Otherwise
+ * (R1's high byte at least R3, or a first quotient over $3FFF) R2 is made
+ * R2 * $3FFF / R1 ((R2 << 14) - R2, then FxDivideHalving; R1 and R2 here
+ * the halved values or the two quotients) and R1 = $3FFF. Returns by
+ * pulling R11's value into R15.
+ * Entry: R1, R2 = the pair, R3 = the divisor, R10 = the stack; R11 =
+ * return address. Exit: R1, R2 = the results; R10 as at entry; R11 = the
+ * return address of the last call; R0, R4, R6, R12, R13, OV and CY as the
+ * last FxDivideHalving leaves them; S and Z from R10; the last RAM address
+ * R10.
+ */
+void FxRatioClamp(uint16_t *x, uint16_t *y, uint16_t d, FxLastDivide *last)
+{
+    uint16_t rem, used;
+    uint16_t a = (uint16_t)((int16_t)*x >> 1), b = (uint16_t)((int16_t)*y >> 1);
+
+    if ((a >> 8) < d) {
+        used = d;
+        last->hi = a >> 8; last->lo = (uint16_t)(a << 8); last->divisor = d; last->ret = 0x9672;
+        a = FxDivideHalving(a >> 8, (uint16_t)(a << 8), &used, &rem);
+        used = d;
+        last->hi = b >> 8; last->lo = (uint16_t)(b << 8); last->ret = a <= 0x3FFF ? 0x9688 : 0x969E;
+        b = FxDivideHalving(b >> 8, (uint16_t)(b << 8), &used, &rem);
+        if (a <= 0x3FFF) {
+            *x = a;
+            *y = b;
+            return;
+        }
     }
-    divide_flags((uint16_t)(hi << 1 | lo >> 15), (uint16_t)(lo << 1), d);
-    divide_passes((uint16_t)(hi << 1 | lo >> 15), (uint16_t)(lo << 1), d, &shifted);
-    gsu.cy = shifted & 1;
-    gsu_sz(rem);
-    gsu.r[0] = rem;
-    gsu.r[4] = quot;
-    gsu.r[6] = d;
-    gsu.r[12] = 0;
-    gsu.r[13] = 0x96D6;
+    {
+        uint32_t v = ((uint32_t)b << 14) - b;
+
+        used = a;
+        last->hi = (uint16_t)(v >> 16); last->lo = (uint16_t)v; last->divisor = a; last->ret = 0x96B6;
+        *y = FxDivideHalving((uint16_t)(v >> 16), (uint16_t)v, &used, &rem);
+        *x = 0x3FFF;
+    }
+}
+
+void abi_FxRatioClamp(void)
+{
+    uint16_t sp = gsu.r[10];
+    FxLastDivide last;
+
+    gsu_stw(sp, gsu.r[11]);
+    FxRatioClamp(&gsu.r[1], &gsu.r[2], gsu.r[3], &last);
+    halving_exit(last.hi, last.lo, last.divisor, 0x96D6);
+    gsu.r[11] = last.ret;
+    gsu_ldw(sp);
+    gsu_sz(sp);
 }
 
 /*

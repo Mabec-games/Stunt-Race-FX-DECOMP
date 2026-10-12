@@ -7,6 +7,7 @@
 #include "gsu.h"
 
 #define FX_MATRIX 0x00E4u
+#define FX_VECTORS 0x0116u  /* three vectors of three words */
 
 /*
  * @routine 01:972B FxMatrixTranspose
@@ -82,15 +83,56 @@ uint16_t FxMatrixApply(uint16_t x, uint16_t y, uint16_t z, uint16_t out, uint16_
     return sum;
 }
 
-void abi_FxMatrixApply(void)
+/* The registers and flags FxMatrixApply leaves, from its last result,
+   that result's first two terms and the last element. */
+static void apply_exit(uint16_t out, uint16_t sum, uint16_t part, uint16_t e)
 {
-    uint16_t out = gsu.r[9], part, e;
-    uint16_t sum = FxMatrixApply(gsu.r[1], gsu.r[2], gsu.r[3], out, &part, &e);
-
     gsu_add((uint16_t)(sum - part), part, 0);
     gsu.r[0] = sum;
     gsu.r[5] = part;
     gsu.r[6] = e;
     gsu.r[9] = (uint16_t)(out + 6);
     gsu_sz(gsu.r[9]);
+}
+
+void abi_FxMatrixApply(void)
+{
+    uint16_t out = gsu.r[9], part, e;
+    uint16_t sum = FxMatrixApply(gsu.r[1], gsu.r[2], gsu.r[3], out, &part, &e);
+
+    apply_exit(out, sum, part, e);
+}
+
+/*
+ * @routine 01:975B FxMatrixApplyVectors
+ * WHAT IT DOES: Multiplies the three vectors at $0116, $011C and $0122 by
+ * the current matrix, storing the nine results as words from R9 on.
+ * HOW: Keeps R11 in R8, then for each vector loads it into R1, R2, R3 with
+ * LMS and calls FxMatrixApply, which steps R9; restores R11 and returns.
+ * Entry: R9 = where to store; R11 = return address. Exit: R9 = R9 + 18;
+ * R1, R2, R3 = the third vector; R8 = R11; R0, R5, R6, the last RAM address
+ * and the flags as the last FxMatrixApply leaves them.
+ */
+void FxMatrixApplyVectors(uint16_t out, uint16_t *x, uint16_t *y, uint16_t *z,
+                          uint16_t *sum, uint16_t *partial, uint16_t *m22)
+{
+    int i;
+
+    for (i = 0; i < 3; i++) {
+        uint16_t v = (uint16_t)(FX_VECTORS + i * 6);
+
+        *x = gsu_ldw(v);
+        *y = gsu_ldw((uint16_t)(v + 2));
+        *z = gsu_ldw((uint16_t)(v + 4));
+        *sum = FxMatrixApply(*x, *y, *z, (uint16_t)(out + i * 6), partial, m22);
+    }
+}
+
+void abi_FxMatrixApplyVectors(void)
+{
+    uint16_t out = gsu.r[9], sum, part, e;
+
+    FxMatrixApplyVectors(out, &gsu.r[1], &gsu.r[2], &gsu.r[3], &sum, &part, &e);
+    apply_exit((uint16_t)(out + 12), sum, part, e);
+    gsu.r[8] = gsu.r[11];
 }

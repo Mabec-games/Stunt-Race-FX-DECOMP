@@ -127,6 +127,31 @@ FxDivideSigned:
     jmp r11
     nop
 
+; @routine 01:81BC FxDivide32By16Halving
+; WHAT IT DOES: Divides the 32-bit value R0:R4 (R0 the high word) by R6,
+; unsigned, halving both first when either has its top bit set: R4 = the
+; quotient, R0 = the remainder (of the halved values).
+; HOW: MOVES tests R0 and R6; when either is negative, LSR R6 and the
+; 32-bit LSR/ROR of R0:R4 halve them; then on into FxDivide32By16. The
+; halving ($81C6-$81CA) is not reached in the traces so far: every call
+; seen has both values below $8000.
+; Entry: R0:R4 = dividend, R6 = divisor; R11 = return address. Exit: as
+; FxDivide32By16; R6 = the divisor as used.
+%at($0181BC)
+FxDivide32By16Halving:
+    moves r0,r0
+    bmi .halve
+    nop
+    moves r6,r6
+    bpl FxDivide32By16
+    nop
+.halve:
+    with r6
+    lsr
+    lsr
+    with r4
+    ror
+
 ; @routine 01:81CB FxDivide32By16
 ; WHAT IT DOES: Divides the 32-bit value R0:R4 (R0 the high word) by R6,
 ; unsigned: R4 = the quotient, R0 = the remainder.
@@ -161,13 +186,109 @@ FxDivide32By16:
     jmp r11
     lsr
 
+; @routine 01:9658 FxRatioClamp
+; WHAT IT DOES: Turns the pair (R1, R2), each halved, into the ratios
+; R1 * 256 / R3 and R2 * 256 / R3; when the first would pass $3FFF it is
+; held at $3FFF and the second scaled to keep the pair's ratio.
+; HOW: Pushes R11 on the R10 stack; ASR R1, ASR R2. When R1's high byte
+; is below R3, FxDivideHalving divides R1 << 8 by R3; if that is at most
+; $3FFF, R2 << 8 is divided by R3 too and the routine returns. Otherwise
+; (R1's high byte at least R3, or a first quotient over $3FFF) R2 is made
+; R2 * $3FFF / R1 ((R2 << 14) - R2, then FxDivideHalving; R1 and R2 here
+; the halved values or the two quotients) and R1 = $3FFF. Returns by
+; pulling R11's value into R15.
+; Entry: R1, R2 = the pair, R3 = the divisor, R10 = the stack; R11 =
+; return address. Exit: R1, R2 = the results; R10 as at entry; R11 = the
+; return address of the last call; R0, R4, R6, R12, R13, OV and CY as the
+; last FxDivideHalving leaves them; S and Z from R10; the last RAM address
+; R10.
+%at($019658)
+FxRatioClamp:
+    from r11
+    stw (r10)                   ; push the return address
+    inc r10
+    inc r10
+    with r1
+    asr
+    with r2
+    asr
+    from r1
+    lob
+    to r4
+    swap
+    from r1
+    hib                         ; R0:R4 = R1 << 8
+    cmp r3
+    bcs .clamp
+    nop
+    move r6,r3
+    link #4
+    iwt r15,#FxDivideHalving
+    nop
+    iwt r0,#$3FFF
+    sub r4
+    bcc .over
+    nop
+    move r1,r4
+    from r2
+    lob
+    to r4
+    swap
+    from r2
+    hib
+    move r6,r3
+    link #4
+    iwt r15,#FxDivideHalving
+    nop
+    move r2,r4
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)                   ; return
+    nop
+.over:
+    move r1,r4
+    from r2
+    lob
+    to r4
+    swap
+    from r2
+    hib
+    move r6,r3
+    link #4
+    iwt r15,#FxDivideHalving
+    nop
+    move r2,r4
+.clamp:
+    ibt r4,#$00
+    from r2
+    lsr
+    with r4
+    ror
+    lsr
+    with r4
+    ror                         ; R0:R4 = R2 << 14
+    with r4
+    sub r2
+    ibt r6,#$00
+    sbc r6                      ; R0:R4 = R2 * $3FFF
+    move r6,r1
+    link #4
+    iwt r15,#FxDivideHalving
+    nop
+    move r2,r4
+    iwt r1,#$3FFF
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)                   ; return
+    nop
+
 ; @routine 01:96C0 FxDivideHalving
 ; WHAT IT DOES: Divides the 32-bit value R0:R4 (R0 the high word) by R6,
 ; unsigned, halving both first when either has its top bit set: R4 = the
 ; quotient, R0 = the remainder (of the halved values).
-; HOW: MOVES tests R0 and R6; when either is negative, LSR R6 and the
-; 32-bit LSR/ROR of R0:R4 halve them. Then its own copy of the shared
-; loop, with the closing LSR.
+; HOW: FxDivide32By16Halving's code again, with its own copy of the loop.
 ; Entry: R0:R4 = dividend, R6 = divisor; R11 = return address. Exit: R4 =
 ; quotient, R0 = remainder; R6 = the divisor as used; R12 = 0; R13 =
 ; $96D6 (the loop); S clear, Z and CY from the LSR; OV from the last pass.
