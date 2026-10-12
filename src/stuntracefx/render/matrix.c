@@ -219,11 +219,11 @@ static uint16_t fx_sine(uint16_t angle)
     return (uint16_t)(a + mul15((uint16_t)((angle & 0xFF) << 7), (uint16_t)(b - a)));
 }
 
-/* What FxMatrixFromAngles leaves in registers. */
+/* What FxMatrixFromAngles01 leaves in registers. */
 typedef struct { uint16_t sz, cz, sx, cx, sy, cy, sx_cy, cx_cy, sx_sy, cx_sy; } FxAnglesLeft;
 
 /*
- * @routine 01:832F FxMatrixFromAngles
+ * @routine 01:832F FxMatrixFromAngles01
  * WHAT IT DOES: Builds the rotation matrix for the three angles at $0020
  * (Z), $0022 (X) and $0024 (Y) and stores its nine words at R9.
  * HOW: Sets the RAM and ROM banks to 0. Each sine comes from the table at
@@ -240,7 +240,7 @@ typedef struct { uint16_t sz, cz, sx, cx, sy, cy, sx_cy, cx_cy, sx_sy, cx_sy; } 
  * S, Z from its ROL; OV from the ADD R13 of the element before.
  * R14 and the ROM buffer move as on the Super FX.
  */
-void FxMatrixFromAngles(uint16_t out, FxAnglesLeft *k)
+void FxMatrixFromAngles01(uint16_t out, FxAnglesLeft *k)
 {
     uint16_t m[9];
     uint16_t a;
@@ -278,13 +278,13 @@ void FxMatrixFromAngles(uint16_t out, FxAnglesLeft *k)
         gsu_stw((uint16_t)(out + i * 2), m[i]);
 }
 
-void abi_FxMatrixFromAngles(void)
+void abi_FxMatrixFromAngles01(void)
 {
     uint16_t out = gsu.r[9];
     FxAnglesLeft k;
     uint32_t p;
 
-    FxMatrixFromAngles(out, &k);
+    FxMatrixFromAngles01(out, &k);
     gsu_add(mul15(k.cx_cy, k.sz), k.sx_sy, 0);      /* OV of the ADD R13 */
     p = (uint32_t)((int32_t)(int16_t)k.cx * (int16_t)k.cz);
     gsu.cy = (uint8_t)(p >> 31);                    /* ROL takes FMULT's bit 15 */

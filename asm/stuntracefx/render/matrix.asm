@@ -245,7 +245,7 @@ FxMatrixRotateProgram:
     stop
     nop
 
-; @routine 01:832F FxMatrixFromAngles
+; @routine 01:832F FxMatrixFromAngles01
 ; WHAT IT DOES: Builds the rotation matrix for the three angles at $0020
 ; (Z), $0022 (X) and $0024 (Y) and stores its nine words at R9.
 ; HOW: Sets the RAM and ROM banks to 0. Each sine comes from the table at
@@ -262,7 +262,7 @@ FxMatrixRotateProgram:
 ; S, Z from its ROL; OV from the ADD R13 of the element before.
 ; R14 and the ROM buffer move as on the Super FX.
 %at($01832F)
-FxMatrixFromAngles:
+FxMatrixFromAngles01:
     sub r0
     ramb
     romb
