@@ -1,0 +1,229 @@
+# Random driving after battle.sfx, seed 16 (randplay.py drive).
+# Battle Trax, two players.
+# Power on, skip the title, reach GAME SELECTION.
+wait 300
+press START
+wait 200
+press START
+wait 200
+shot gamesel
+press DOWN
+wait 20
+press DOWN
+wait 20
+press START
+wait 120
+press START
+wait 90
+press START
+wait 150
+press 2.START
+wait 90
+press 2.START
+wait 150
+shot p2sel
+press START
+wait 150
+press START
+wait 150
+press 2.START
+wait 300
+shot racestart
+hold B+Y 64
+hold B+R 33
+hold B+R 88
+hold A 85
+hold B+X 42
+hold B+RIGHT 81
+hold A 81
+hold B+RIGHT 81
+hold B 63
+hold B+X 32
+hold B+Y 37
+hold B 48
+hold X 86
+hold B+X 78
+hold B 4
+hold A 66
+hold B+X 44
+hold B 25
+hold B 60
+hold RIGHT 5
+hold RIGHT 19
+hold B 67
+hold B+RIGHT 33
+hold B+Y 8
+hold B+L 81
+hold X 89
+hold B 33
+hold B 73
+hold B 54
+hold B+LEFT 10
+hold B+L 23
+hold B+A 34
+hold B 34
+hold B+LEFT 17
+hold B+A 53
+hold B+L 63
+hold LEFT 62
+hold B 7
+hold B+R 89
+hold X 53
+hold B+DOWN 18
+hold B+LEFT 40
+hold B+R 22
+hold A 20
+hold B+L 59
+hold B+L 27
+hold RIGHT 26
+hold B+DOWN 88
+hold B 66
+hold B+X 19
+hold B+X 67
+hold RIGHT 30
+hold X 21
+hold B 84
+hold B+LEFT 88
+hold LEFT 14
+hold B 69
+hold B+UP 16
+hold B+L 40
+hold A 28
+hold B 84
+press START
+wait 60
+press START
+hold Y 54
+hold B+DOWN 11
+hold B 53
+hold B+RIGHT 89
+hold A 30
+hold B+A 69
+hold X 31
+hold RIGHT 48
+hold LEFT 26
+hold B 15
+hold B+X 87
+hold B+LEFT 23
+hold B+LEFT 33
+hold B+R 15
+hold B 63
+hold B 77
+hold B+UP 30
+hold B+Y 18
+hold B+L 56
+hold B+L 80
+hold LEFT 51
+hold B+Y 28
+hold B+DOWN 53
+hold B 79
+hold Y 9
+hold B+L 48
+hold B+RIGHT 57
+hold Y 25
+hold B+L 9
+hold LEFT 87
+hold B+RIGHT 4
+hold B+DOWN 89
+hold B+R 7
+hold X 72
+press START
+wait 60
+press START
+hold B+RIGHT 44
+hold B 79
+hold LEFT 22
+hold B+X 76
+hold B+R 72
+hold B+RIGHT 82
+hold B+A 42
+hold LEFT 44
+hold B+A 52
+hold RIGHT 6
+hold Y 55
+hold LEFT 41
+hold B+DOWN 38
+hold RIGHT 4
+hold B 57
+hold A 47
+hold B+LEFT 38
+hold B 44
+hold B+Y 57
+hold B+Y 31
+hold B+DOWN 71
+hold B 39
+press START
+wait 60
+press START
+hold B 74
+hold B+A 28
+hold RIGHT 67
+hold B 12
+hold B+R 19
+hold RIGHT 52
+hold B+DOWN 43
+hold B+UP 26
+hold B+Y 13
+hold B+DOWN 22
+hold B+R 15
+hold B+X 58
+hold Y 54
+hold A 62
+hold B 48
+hold B+R 69
+hold B 71
+hold A 72
+hold B+UP 9
+hold A 50
+hold B 67
+hold A 44
+hold B+Y 46
+hold B+R 86
+press START
+wait 60
+press START
+hold B+R 4
+hold B+DOWN 84
+hold B+RIGHT 4
+hold B+RIGHT 7
+hold X 29
+hold B+L 39
+hold B 45
+hold Y 46
+hold A 9
+hold B+X 22
+hold Y 48
+hold B 67
+hold A 38
+hold B+RIGHT 40
+hold B 48
+hold B+DOWN 49
+hold Y 47
+hold X 43
+hold B+LEFT 28
+hold B 79
+hold B+R 74
+hold B+RIGHT 29
+hold B+DOWN 80
+hold A 30
+hold B+X 8
+hold B+Y 75
+hold A 85
+hold B 77
+hold B 88
+hold B+UP 22
+hold B+L 59
+hold A 75
+hold Y 48
+hold B+L 79
+hold A 72
+hold B+RIGHT 48
+hold B+R 52
+hold B+RIGHT 52
+hold B+R 77
+hold B+UP 29
+hold B 81
+hold B+R 17
+hold A 63
+hold B+Y 62
+shot driven
