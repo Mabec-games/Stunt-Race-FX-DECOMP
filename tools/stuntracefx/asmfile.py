@@ -43,14 +43,18 @@ def main(argv):
         body = block.splitlines()
         place = next(l for l in body if l.startswith('%'))
         code = body[body.index('Name:') + 1:]
+        if not code:
+            raise SystemExit('%s: no listing; a filed routine is not in the raw intake' % addr)
         code = [re.sub(r'\$0000,y', '0,y', l) for l in code]
+        start = r'\.l%s\b' % addr.replace(':', '').upper()[2:]
+        code = [re.sub(start, name, l) for l in code]  # a branch back to the entry
         out.append('\n'.join(['; ' + l for l in header] + [place, name + ':'] + code))
     new = not os.path.exists(path)
     with open(path, 'a') as f:
         if new:
             area = os.path.splitext(os.path.basename(path))[0]
             f.write('; %s.asm: see the C, %s, for what this file covers.\n\n' % (area, cfile))
-            f.write('incsrc "../include/macros.inc"\nincsrc "../include/hw.inc"\nincsrc "../include/wram.inc"\n\narch 65816\n')
+            f.write('incsrc "../include/macros.inc"\nincsrc "../include/hw.inc"\nincsrc "../include/wram.inc"\nincsrc "../include/rom.inc"\n\narch 65816\n')
         f.write('\n' + '\n\n'.join(out) + '\n')
     print('%s: %d routine(s)' % (path, len(out)))
     return 0

@@ -208,3 +208,39 @@ void abi_PaletteCycle(void)
     cpu.y = 0;
     cpu.p = (uint8_t)(nz8(p, cpu.db) & ~(P_M | P_X));
 }
+
+/*
+ * @routine 03:EDA5 PaletteLoad16
+ * WHAT IT DOES: Loads 16 colours from address A in the data bank into both
+ * palette work copies in bank $7F ($7F:35D7, $7F:37D7) and the palette
+ * buffer ($7E:FD65), from colour 0.
+ * HOW: A word loop counted in direct page $F1; each word is stored to the
+ * three copies in that order.
+ * Entry: M 16-bit, X 16-bit, D = $0000; A = source. Exit: A = the last
+ * colour; X = $20; Y = source + $20; $F1 = 0; Z set, N clear.
+ */
+uint16_t PaletteLoad16(uint8_t bank, uint16_t src)
+{
+    uint16_t c = 0;
+    unsigned i;
+
+    wr16(0x0000F1, 0x0010);
+    for (i = 0; i < 16; i++) {
+        c = rd16((uint32_t)bank << 16 | (uint16_t)(src + 2 * i));
+        wr16(0x7F35D7 + 2 * i, c);
+        wr16(0x7F37D7 + 2 * i, c);
+        wr16(0x7EFD65 + 2 * i, c);
+        wr16(0x0000F1, (uint16_t)(0x000F - i));
+    }
+    return c;
+}
+
+void abi_PaletteLoad16(void)
+{
+    uint16_t src = cpu.a;
+
+    cpu.a = PaletteLoad16(cpu.db, src);
+    cpu.x = 0x0020;
+    cpu.y = (uint16_t)(src + 0x20);
+    cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
+}

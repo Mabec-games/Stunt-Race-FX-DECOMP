@@ -5,6 +5,7 @@
 incsrc "../include/macros.inc"
 incsrc "../include/hw.inc"
 incsrc "../include/wram.inc"
+incsrc "../include/rom.inc"
 
 arch 65816
 
@@ -144,3 +145,103 @@ SpriteStrip6:
     plp
     rts
 SpriteStrip6Tiles:
+
+; @routine 03:ECD1 OamBufferClear
+; WHAT IT DOES: Moves every sprite in the sprite table copy off screen at
+; X = Y = $F0 and clears the high table (small size, X bit 8 clear).
+; HOW: Word stores of $F0F0 to the X/Y pair of entries 127 down to 0, then
+; word stores of zero over the 32-byte high table from the end.
+; Entry: any widths. Exit: A = 0; X = $FFFE ($FE when X is 8-bit); P
+; unchanged.
+%at($03ECD1)
+OamBufferClear:
+    php
+    rep.b #$30
+    lda.w #$F0F0
+    ldx.w #$01FC
+.lECDA:
+    sta.l !oam_buffer,x
+    dex
+    dex
+    dex
+    dex
+    bpl .lECDA
+    lda.w #$0000
+    ldx.w #$001E
+.lECEA:
+    sta.l !oam_buffer_high,x
+    dex
+    dex
+    bpl .lECEA
+    plp
+    rtl
+
+; @routine 03:FEF9 OamBufferHideLarge
+; WHAT IT DOES: Moves every sprite below the screen (Y = $F0) and sets the
+; high table to $AA: large size, X bit 8 clear, for all 128.
+; HOW: Byte stores of $F0 to each entry's Y, then $AA to each high table
+; byte, both counting up.
+; Entry: any widths. Exit: A low byte = $AA; X = $20; P
+; unchanged.
+%at($03FEF9)
+OamBufferHideLarge:
+    php
+    sep.b #$20
+    rep.b #$10
+    lda.b #$F0
+    ldx.w #$0000
+.lFF03:
+    sta.w !oam_buffer+$1,x
+    inx
+    inx
+    inx
+    inx
+    cpx.w #$0200
+    bcc .lFF03
+    ldx.w #$0000
+    lda.b #$AA
+.lFF14:
+    sta.w !oam_buffer_high,x
+    inx
+    cpx.w #$0020
+    bcc .lFF14
+    plp
+    rts
+
+; @routine 03:E9FE OamFromList
+; WHAT IT DOES: Writes sprite entries from the list at $F883 + Y in the data
+; bank into the sprite table copy at $0375 + X, until an $FF byte.
+; HOW: Each list item is either $FE, one byte, which hides the entry by
+; storing $FE as its Y, or four bytes (X, Y, tile, attributes) copied as
+; they are. X steps four per entry.
+; Entry: M 8-bit, X 16-bit; X = sprite table offset, Y = list offset. Exit:
+; X, Y past the last entry and item; A low byte = $FF; Z, C set, N clear.
+%at($03E9FE)
+OamFromList:
+    lda.w !oam_lists,y
+    cmp.b #$FF
+    beq .lEA2D
+    cmp.b #$FE
+    bne .lEA0E
+    sta.w !oam_buffer+$1,x
+    bra .lEA26
+.lEA0E:
+    sta.w !oam_buffer,x
+    lda.w !oam_lists+$1,y
+    sta.w !oam_buffer+$1,x
+    lda.w !oam_lists+$2,y
+    sta.w !oam_buffer+$2,x
+    lda.w !oam_lists+$3,y
+    sta.w !oam_buffer+$3,x
+    iny
+    iny
+    iny
+.lEA26:
+    iny
+    inx
+    inx
+    inx
+    inx
+    bra OamFromList
+.lEA2D:
+    rts

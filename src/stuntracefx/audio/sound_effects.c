@@ -266,3 +266,27 @@ void abi_PlayerSound0C(void)
 {
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | player_sound(0x0C, 0x1C));
 }
+
+void SoundPort0QueuePushRaw(uint8_t command);
+
+/*
+ * @routine 03:EDDF SoundFromTableD89
+ * WHAT IT DOES: Queues, exactly as given, the APU port 0 command that the
+ * table at $03:EDEF holds for the value in $0D89.
+ * HOW: Byte lookup indexed by $0D89, then SoundPort0QueuePushRaw.
+ * Entry: any widths. Exit: A low byte = the command; X = $0D89 (high byte
+ * zero); P unchanged.
+ */
+uint8_t SoundFromTableD89(void)
+{
+    uint8_t i = rd8(0x000D89), command = rd8(0x03EDEF + i);
+
+    SoundPort0QueuePushRaw(command);
+    return command;
+}
+
+void abi_SoundFromTableD89(void)
+{
+    cpu.x = rd8(0x000D89);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | SoundFromTableD89());
+}

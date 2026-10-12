@@ -353,3 +353,29 @@ void abi_VramUploadGsuBuffer(void)
         cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
     }
 }
+
+/*
+ * @routine 03:ECA8 DmaFromDescriptor
+ * WHAT IT DOES: Runs DMA channel 0 from a seven-byte descriptor: the bytes
+ * for $4300-$4306 (mode, B-bus register, source address and bank, size).
+ * HOW: The descriptor address goes to direct page $FB; the bytes are copied
+ * last to first through ($FB),Y in the data bank, then MDMAEN is set to 1.
+ * Entry: M 16-bit, D = $0000; A = descriptor address. Exit: $FB = A; A low
+ * byte = 1; Y = $FF (high byte zero); P unchanged.
+ */
+void DmaFromDescriptor(uint8_t bank, uint16_t desc)
+{
+    int y;
+
+    wr16(0x0000FB, desc);
+    for (y = 6; y >= 0; y--)
+        wr8(DMAP0 + (unsigned)y, rd8((uint32_t)bank << 16 | (uint16_t)(desc + y)));
+    wr8(MDMAEN, 0x01);
+}
+
+void abi_DmaFromDescriptor(void)
+{
+    DmaFromDescriptor(cpu.db, cpu.a);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
+    cpu.y = 0x00FF;
+}

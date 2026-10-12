@@ -8,6 +8,7 @@
 incsrc "../include/macros.inc"
 incsrc "../include/hw.inc"
 incsrc "../include/wram.inc"
+incsrc "../include/rom.inc"
 
 arch 65816
 
@@ -290,4 +291,27 @@ VramUploadGsuBuffer:
     sta.w !MDMAEN
     stz.w !gsu_upload_pending
 .lACF6:
+    rts
+
+; @routine 03:ECA8 DmaFromDescriptor
+; WHAT IT DOES: Runs DMA channel 0 from a seven-byte descriptor: the bytes
+; for $4300-$4306 (mode, B-bus register, source address and bank, size).
+; HOW: The descriptor address goes to direct page $FB; the bytes are copied
+; last to first through ($FB),Y in the data bank, then MDMAEN is set to 1.
+; Entry: M 16-bit, D = $0000; A = descriptor address. Exit: $FB = A; A low
+; byte = 1; Y = $FF (high byte zero); P unchanged.
+%at($03ECA8)
+DmaFromDescriptor:
+    php
+    sta.b !apu_stream_ptr
+    sep.b #$30
+    ldy.b #$06
+.lECAF:
+    lda.b (!apu_stream_ptr),y
+    sta.w !DMAP0,y
+    dey
+    bpl .lECAF
+    lda.b #$01
+    sta.w !MDMAEN
+    plp
     rts

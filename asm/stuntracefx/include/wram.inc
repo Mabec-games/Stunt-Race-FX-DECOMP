@@ -173,3 +173,65 @@ includeonce
 !slide_direction = $19FC
 !slide_out = $7F3468
 !slide_done = $7F3470
+
+; Three values stepped toward their limits (video/window_anim.asm).
+!wram_3435 = $3435
+!wram_3437 = $3437
+!wram_3439 = $3439
+
+; Selects the APU port 0 command played by SoundFromTableD89.
+!wram_0D89 = $0D89
+
+; Two work copies of a 16-colour palette in bank $7F (video/palette.asm).
+!palette_work_a = $7F35D7
+!palette_work_b = $7F37D7
+
+; Scroll HDMA table (video/scroll.asm): entries of a line count and a word.
+!scroll_hdma = $0010AA
+
+; Save data in battery-backed Super FX RAM (save/checksum.asm): nine bytes
+; summed into a checksum kept twice.
+!save_bytes = $70FC06
+!save_checksum = $70FC14
+!save_checksum_copy = $70FC15
+
+; Colour maths (video/colour_math.asm): the CGADSUB value the frame code
+; writes, and the fixed colour's intensity step and value in bank $7F.
+!colour_math_mode = $0D47
+!fixed_colour_step = $7F3408
+!fixed_colour = $7F340D
+
+; Course number.
+!course = $0E3D
+
+; The value written into the scroll HDMA table (video/scroll.asm).
+!scroll_value = $0E37
+
+; Direct-page scratch used by loops beside $F1.
+!dp_f3 = $F3
+!wram_0064 = $64
+
+; Tilemap buffers (video/tilemap.asm).
+!tilemap_buffer_7f = $7F3497
+!tilemap_buffer_39d7 = $7F39D7
+!tilemap_buffer_93d7 = $93D7
+
+; The object table (object/object.asm): $136 records of $62 bytes from $2001,
+; read through the data bank. Fields used so far: the free-list link (+0),
+; position (+$0C, +$0E, +$10), three bytes at +$14, velocity (+$2E, +$30,
+; +$32); +$1A and the link at +$4F are reached by long addressing in bank $7E.
+!obj_base = $2000
+!obj_pos_x = $200C
+!obj_pos_y = $200E
+!obj_pos_z = $2010
+!obj_14 = $2014
+!obj_15 = $2015
+!obj_16 = $2016
+!obj_vel_x = $202E
+!obj_vel_y = $2030
+!obj_vel_z = $2032
+!obj_1a = $7E201A
+!obj_link = $7E204F
+!wram_0329 = $0329
+!wram_032B = $032B
+!wram_032D = $032D

@@ -5,6 +5,7 @@
 incsrc "../include/macros.inc"
 incsrc "../include/hw.inc"
 incsrc "../include/wram.inc"
+incsrc "../include/rom.inc"
 
 arch 65816
 
@@ -243,4 +244,31 @@ RasterColours_colour0:
     sta.w !CGDATA
     lda.l !palette_buffer+1
     sta.w !CGDATA
+    rts
+
+; @routine 03:EDA5 PaletteLoad16
+; WHAT IT DOES: Loads 16 colours from address A in the data bank into both
+; palette work copies in bank $7F ($7F:35D7, $7F:37D7) and the palette
+; buffer ($7E:FD65), from colour 0.
+; HOW: A word loop counted in direct page $F1; each word is stored to the
+; three copies in that order.
+; Entry: M 16-bit, X 16-bit, D = $0000; A = source. Exit: A = the last
+; colour; X = $20; Y = source + $20; $F1 = 0; Z set, N clear.
+%at($03EDA5)
+PaletteLoad16:
+    tay
+    ldx.w #$0000
+    lda.w #$0010
+    sta.b !digit_count
+.lEDAE:
+    lda.w 0,y
+    sta.l !palette_work_a,x
+    sta.l !palette_work_b,x
+    sta.l !palette_buffer,x
+    inx
+    inx
+    iny
+    iny
+    dec.b !digit_count
+    bne .lEDAE
     rts

@@ -4,6 +4,7 @@
 incsrc "../include/macros.inc"
 incsrc "../include/hw.inc"
 incsrc "../include/wram.inc"
+incsrc "../include/rom.inc"
 
 arch 65816
 
@@ -38,3 +39,22 @@ ScrollCopyToBank7F:
     lda.w !scroll_pair_b
     sta.l !scroll_pair_b_7f
     rts
+
+; @routine 03:FED9 ScrollHdmaSet
+; WHAT IT DOES: Fills the scroll HDMA table at $10AA: the scroll value from
+; $0E37 into its first and fourth entries' data and $0130 into the second
+; and third.
+; HOW: Word stores to $10AE, $10B7, $10B1, $10B4, in that order.
+; Entry: any widths. Exit: A = $0130 (16-bit); P unchanged.
+%at($03FED9)
+ScrollHdmaSet:
+    php
+    rep.b #$20
+    lda.l !scroll_value
+    sta.l !scroll_hdma+$4
+    sta.l !scroll_hdma+$D
+    lda.w #$0130
+    sta.l !scroll_hdma+$7
+    sta.l !scroll_hdma+$A
+    plp
+    rtl

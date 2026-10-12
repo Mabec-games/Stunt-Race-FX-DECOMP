@@ -7,6 +7,7 @@
 
 incsrc "../include/macros.inc"
 incsrc "../include/wram.inc"
+incsrc "../include/rom.inc"
 
 arch 65816
 
@@ -312,5 +313,21 @@ PlayerSound0C:
 .player2:
     lda.b #$1C
     jsl.l SoundPort1QueuePush
+    plp
+    rtl
+
+; @routine 03:EDDF SoundFromTableD89
+; WHAT IT DOES: Queues, exactly as given, the APU port 0 command that the
+; table at $03:EDEF holds for the value in $0D89.
+; HOW: Byte lookup indexed by $0D89, then SoundPort0QueuePushRaw.
+; Entry: any widths. Exit: A low byte = the command; X = $0D89 (high byte
+; zero); P unchanged.
+%at($03EDDF)
+SoundFromTableD89:
+    php
+    sep.b #$30
+    ldx.w !wram_0D89
+    lda.l !sound_table_d89,x
+    jsl.l SoundPort0QueuePushRaw
     plp
     rtl

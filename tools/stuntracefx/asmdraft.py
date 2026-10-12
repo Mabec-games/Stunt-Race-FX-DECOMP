@@ -22,7 +22,7 @@ TAG = re.compile(r'@routine\s+([0-9A-Fa-f]{2}):([0-9A-Fa-f]{4})\s+(\w+)')
 
 def defines():
     names = {}
-    for f in ('hw.inc', 'wram.inc'):
+    for f in ('hw.inc', 'wram.inc', 'rom.inc'):
         for line in open(os.path.join(INC, f)):
             m = re.match(r'!(\w+)\s*=\s*\$([0-9A-Fa-f]+)', line)
             if m:

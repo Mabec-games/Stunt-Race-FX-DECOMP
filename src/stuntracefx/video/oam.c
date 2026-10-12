@@ -169,3 +169,92 @@ void abi_SpriteStrip6(void)
         cpu.y &= 0x00FF;
     }
 }
+
+/*
+ * @routine 03:ECD1 OamBufferClear
+ * WHAT IT DOES: Moves every sprite in the sprite table copy off screen at
+ * X = Y = $F0 and clears the high table (small size, X bit 8 clear).
+ * HOW: Word stores of $F0F0 to the X/Y pair of entries 127 down to 0, then
+ * word stores of zero over the 32-byte high table from the end.
+ * Entry: any widths. Exit: A = 0; X = $FFFE ($FE when X is 8-bit); P
+ * unchanged.
+ */
+void OamBufferClear(void)
+{
+    int x;
+
+    for (x = 0x01FC; x >= 0; x -= 4)
+        wr16(0x000375 + (unsigned)x, 0xF0F0);
+    for (x = 0x1E; x >= 0; x -= 2)
+        wr16(0x000575 + (unsigned)x, 0x0000);
+}
+
+void abi_OamBufferClear(void)
+{
+    OamBufferClear();
+    cpu.a = 0x0000;
+    cpu.x = (cpu.p & P_X) ? 0x00FE : 0xFFFE;
+}
+
+/*
+ * @routine 03:FEF9 OamBufferHideLarge
+ * WHAT IT DOES: Moves every sprite below the screen (Y = $F0) and sets the
+ * high table to $AA: large size, X bit 8 clear, for all 128.
+ * HOW: Byte stores of $F0 to each entry's Y, then $AA to each high table
+ * byte, both counting up.
+ * Entry: any widths. Exit: A low byte = $AA; X = $20; P
+ * unchanged.
+ */
+void OamBufferHideLarge(void)
+{
+    unsigned x;
+
+    for (x = 0; x < 0x200; x += 4)
+        wr8(0x000376 + x, 0xF0);
+    for (x = 0; x < 0x20; x++)
+        wr8(0x000575 + x, 0xAA);
+}
+
+void abi_OamBufferHideLarge(void)
+{
+    OamBufferHideLarge();
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xAA);
+    cpu.x = 0x0020;
+}
+
+/*
+ * @routine 03:E9FE OamFromList
+ * WHAT IT DOES: Writes sprite entries from the list at $F883 + Y in the data
+ * bank into the sprite table copy at $0375 + X, until an $FF byte.
+ * HOW: Each list item is either $FE, one byte, which hides the entry by
+ * storing $FE as its Y, or four bytes (X, Y, tile, attributes) copied as
+ * they are. X steps four per entry.
+ * Entry: M 8-bit, X 16-bit; X = sprite table offset, Y = list offset. Exit:
+ * X, Y past the last entry and item; A low byte = $FF; Z, C set, N clear.
+ */
+void OamFromList(uint8_t bank, uint16_t *x, uint16_t *y)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t v;
+
+    while ((v = rd8(b | (uint16_t)(0xF883 + *y))) != 0xFF) {
+        if (v == 0xFE) {
+            wr8(b | (uint16_t)(0x0376 + *x), v);
+        } else {
+            wr8(b | (uint16_t)(0x0375 + *x), v);
+            wr8(b | (uint16_t)(0x0376 + *x), rd8(b | (uint16_t)(0xF884 + *y)));
+            wr8(b | (uint16_t)(0x0377 + *x), rd8(b | (uint16_t)(0xF885 + *y)));
+            wr8(b | (uint16_t)(0x0378 + *x), rd8(b | (uint16_t)(0xF886 + *y)));
+            *y = (uint16_t)(*y + 3);
+        }
+        *y = (uint16_t)(*y + 1);
+        *x = (uint16_t)(*x + 4);
+    }
+}
+
+void abi_OamFromList(void)
+{
+    OamFromList(cpu.db, &cpu.x, &cpu.y);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xFF);
+    cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z | P_C);
+}
