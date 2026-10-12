@@ -762,3 +762,50 @@ ObjectRebucket:
 .l83E6:
     plp
     rtl
+
+; @routine 08:B5B3 ObjectRecordFlag70Step
+; WHAT IT DOES: While $0D53 is clear and object X's countdown +$48 is
+; running, counts it down; otherwise sets bit 2 of the word at +$70 of the
+; object's Super FX record when $0D53 is set, clears it when not.
+; HOW: 8-bit tests through the data bank, 16-bit read-modify-write of the
+; record word. An object with no record branches to $08:B5F6, a JSL to the
+; stop screen CrashWhite ($00:8014) that would fall into ObjectNearFocus;
+; no script reaches that path.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; X, Y unchanged.
+; Counting: A low byte = the count before the step, N, Z from the new
+; count. Otherwise: A = the new record word, N, Z from X.
+%at($08B5B3)
+ObjectRecordFlag70Step:
+    sep.b #$20
+    lda.w !wram_0D53
+    bne ObjectRecordFlag70Step_update
+    lda.w !obj_48,x
+    bne .lB5C3
+    jml.l ObjectRecordFlag70Step_update
+.lB5C3:
+    dec.w !obj_48,x
+    jmp.w ObjectRecordFlag70Step_done
+ObjectRecordFlag70Step_update:      ; reached by the long jump above
+    rep.b #$20
+    phx
+    lda.w !obj_22,x
+    beq ObjectRecordFlag70Step_stop
+    tax
+    lda.w !wram_0D53
+    and.w #$00FF
+    beq .lB5E7
+    lda.l !gsu_rec_70,x
+    ora.w #$0004
+    sta.l !gsu_rec_70,x
+    bra .lB5F2
+.lB5E7:
+    lda.l !gsu_rec_70,x
+    and.w #$FFFB
+    sta.l !gsu_rec_70,x
+.lB5F2:
+    plx
+    sep.b #$20
+ObjectRecordFlag70Step_done:
+    rtl
+ObjectRecordFlag70Step_stop:        ; no record: never reached by a script
+    jsl.l CrashWhite                ; falls into ObjectNearFocus

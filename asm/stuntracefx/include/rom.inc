@@ -135,3 +135,6 @@ includeonce
 !text_lines = $078000
 ; Object path commands, a word and its operands each (object/path.asm).
 !path_table = $0885B9
+
+; BG1 horizontal scroll HDMA table of the stop screen (system/crash.asm).
+!crash_hofs_table = $00812E

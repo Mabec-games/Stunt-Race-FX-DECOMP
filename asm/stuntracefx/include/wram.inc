@@ -630,3 +630,12 @@ includeonce
 !obj_bucket_long = $7E2040
 !gsu_rec_18 = $700018
 !wram_1F3C = $1F3C
+
+; The stop screen (system/crash.asm): its backdrop colour, the code it
+; scrolls to, and the scroll so far.
+!crash_colour = $1A2E
+!crash_code = $0717
+!crash_scroll = $0719
+!wram_0D53 = $0D53
+!obj_48 = $2048
+!gsu_rec_70 = $700070

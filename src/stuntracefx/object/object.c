@@ -803,3 +803,50 @@ void abi_ObjectRebucket(void)
 {
     cpu.a = ObjectRebucket(cpu.x);
 }
+
+void CrashWhite(uint8_t bank);
+
+/*
+ * @routine 08:B5B3 ObjectRecordFlag70Step
+ * WHAT IT DOES: While $0D53 is clear and object X's countdown +$48 is
+ * running, counts it down; otherwise sets bit 2 of the word at +$70 of the
+ * object's Super FX record when $0D53 is set, clears it when not.
+ * HOW: 8-bit tests through the data bank, 16-bit read-modify-write of the
+ * record word. An object with no record branches to $08:B5F6, a JSL to the
+ * stop screen CrashWhite ($00:8014) that would fall into ObjectNearFocus;
+ * no script reaches that path.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; X, Y unchanged.
+ * Counting: A low byte = the count before the step, N, Z from the new
+ * count. Otherwise: A = the new record word, N, Z from X.
+ */
+uint16_t ObjectRecordFlag70Step(uint8_t bank, uint16_t obj, uint16_t a, uint8_t *p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t flag = rd8(b | 0x0D53), n;
+    uint16_t rec, w;
+
+    if (!flag) {
+        n = rd8(field(bank, obj, 0x48));
+        if (n) {
+            wr8(field(bank, obj, 0x48), (uint8_t)(n - 1));
+            *p = nz8(*p, (uint8_t)(n - 1));
+            return (uint16_t)((a & 0xFF00) | n);
+        }
+    }
+    rec = rd16(field(bank, obj, 0x22));
+    if (!rec)
+        CrashWhite(bank);
+    w = rd16(0x700070 + rec);
+    w = flag ? (uint16_t)(w | 0x0004) : (uint16_t)(w & 0xFFFB);
+    wr16(0x700070 + rec, w);
+    *p = nz16(*p, obj);
+    return w;
+}
+
+void abi_ObjectRecordFlag70Step(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = ObjectRecordFlag70Step(cpu.db, cpu.x, cpu.a, &p);
+    cpu.p = (uint8_t)(p | P_M);
+}
