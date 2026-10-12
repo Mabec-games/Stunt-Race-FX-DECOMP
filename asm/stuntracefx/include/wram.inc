@@ -11,6 +11,9 @@ includeonce
 ; Direct page $3E: scratch left by math/scale.asm.
 !scale_scratch = $3E
 
+; The value last written to the Super FX screen mode register (video/dma.asm).
+!gsu_scmr_shadow = $0374
+
 ; The work-RAM copy of the sprite table (video/oam.asm): 128 four-byte entries
 ; (X, Y, tile, attributes) from $0375, then the 32-byte high table from $0575.
 !oam_buffer = $0375

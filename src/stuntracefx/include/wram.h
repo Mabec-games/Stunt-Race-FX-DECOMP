@@ -10,6 +10,9 @@
 #define APU_STREAM_PTR 0x0000FBu
 #define APU_STREAM_BANK 0x0000FDu
 
+/* The value last written to the Super FX screen mode register (video/dma.c). */
+#define GSU_SCMR_SHADOW 0x000374u
+
 /* The work-RAM copy of the sprite table (video/oam.c): 128 four-byte entries
    (X, Y, tile, attributes) from $0375, then the 32-byte high table from $0575. */
 #define OAM_BUFFER 0x000375u
