@@ -235,3 +235,64 @@ includeonce
 !wram_0329 = $0329
 !wram_032B = $032B
 !wram_032D = $032D
+
+; Super FX program inputs and outputs in its RAM (gsu/programs.asm).
+!gsu_in_20 = $700020
+!gsu_out_26 = $700026
+!gsu_dest = $70002C
+!gsu_in_2e = $70002E
+!gsu_in_34 = $700034
+!gsu_in_68 = $700068
+!gsu_in_6a = $70006A
+!gsu_in_92 = $700092
+!gsu_in_a2 = $7000A2
+!gsu_out_e4 = $7000E4
+!gsu_screen_start = $70021A
+!gsu_ramp = $703C00
+
+; The Super FX draw buffer (gsu/screen.asm): $0D7F selects it, $0D7D is its
+; offset; the buffer start is kept in direct page too.
+!gsu_buffer_offset = $0D7D
+!gsu_screen_start_dp = $48
+
+; Direct page words used as Super FX inputs and outputs.
+!dp_04 = $04
+!dp_2a = $2A
+!dp_2c = $2C
+!dp_2e = $2E
+!dp_30 = $30
+!dp_32 = $32
+!dp_34 = $34
+!dp_94 = $94
+!dp_b7 = $B7
+!dp_b9 = $B9
+!dp_bb = $BB
+!dp_ce = $CE
+!dp_d0 = $D0
+
+; Rotation (math/rotate.asm): the angle's sine and cosine, and z'.
+!rot_sin = $0624
+!rot_cos = $0625
+!rot_z = $05F2
+
+!wram_05EF = $05EF
+!wram_065E = $065E
+!gsu_8325_out = $0608
+!wram_0D45 = $0D45
+!wram_0D81 = $0D81
+!wram_0E33 = $0E33
+!wram_0E91 = $0E91
+!wram_0E92 = $0E92
+!wram_10CD = $10CD
+
+; The window HDMA table for channel 1 in bank $7F (video/screen_setup.asm).
+!window_table_7f = $7F3410
+
+; Four selections and the values derived from them (data/tables.asm).
+!selection = $18CB
+!selection_out = $18D3
+!selection_derived = $18E3
+!sel_base = $11DF
+!sel_sum = $11E1
+!sel_part = $11E3
+!scale_divisor = $7F340A

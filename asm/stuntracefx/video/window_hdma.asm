@@ -1,4 +1,8 @@
-; window_hdma.asm: see the C, src/stuntracefx/video/window_hdma.c, for what this file covers.
+; window_hdma.asm: the window HDMA table in bank $7F ($7F:F85B). Each entry is
+; three bytes: a line count and a 16-bit address of the window values for
+; those lines; a zero count ends the table. $F857 is the normal window
+; setting; $FFD1 and $FFDD are other ones.
+; C: src/stuntracefx/video/window_hdma.c.
 
 incsrc "../include/macros.inc"
 incsrc "../include/hw.inc"

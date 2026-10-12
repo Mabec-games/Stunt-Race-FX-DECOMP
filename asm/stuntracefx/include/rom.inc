@@ -22,3 +22,13 @@ includeonce
 
 ; A 128-word table read through the data bank by ReadTable9022.
 !table_9022 = $9022
+
+; Selection tables (data/tables.asm).
+!sel_base_table = $0BB00C
+!sel_table = $0BB014
+!sel_derived_table = $03B7B1
+!sel_out_table = $03B7B5
+
+; Cosine and sine by angle, bytes, read in bank 0 (math/rotate.asm).
+!rot_cos_table = $973E
+!rot_sin_table = $96FE

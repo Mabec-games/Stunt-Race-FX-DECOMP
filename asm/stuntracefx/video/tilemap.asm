@@ -141,3 +141,109 @@ VramDmaTileFromGsuRam:
     sta.w !MDMAEN
     rep.b #$20
     rts
+
+; @routine 03:EA76 VramFrameRows2B0
+; WHAT IT DOES: Writes the frame rows with tile base $02B0 at the current
+; VRAM address.
+; HOW: frame_rows; A is saved and restored around it.
+; Entry: M 16-bit, D = $0000; the VRAM address and VMAIN set. Exit: A
+; unchanged; X = 0; M 16-bit, X 16-bit; N, Z from A; C, V from the last add.
+%at($03EA76)
+VramFrameRows2B0:
+    pha
+    rep.b #$30
+    lda.w #$02B0
+    bra FrameRows
+
+; @routine 03:EA7E VramFrameRows1B0
+; WHAT IT DOES: As VramFrameRows2B0, with tile base $01B0.
+; HOW: As VramFrameRows2B0.
+; Entry, exit: as VramFrameRows2B0.
+%at($03EA7E)
+VramFrameRows1B0:
+    pha
+    rep.b #$30
+    lda.w #$01B0
+    bra FrameRows
+
+; @routine 03:EA86 VramPictureRows2B0
+; WHAT IT DOES: Writes the Super FX picture as tilemap words with tile base
+; $02B0 at the current VRAM address.
+; HOW: picture_rows; A is saved and restored around it.
+; Entry: M 16-bit, D = $0000; the VRAM address and VMAIN set. Exit: A
+; unchanged; X = $180; M 16-bit, X 16-bit; N, Z from A; C set; V from the
+; last add.
+%at($03EA86)
+VramPictureRows2B0:
+    pha
+    rep.b #$30
+    ldx.w #$0000
+    lda.w #$02B0
+    bra PictureRows
+
+; @routine 03:EA91 VramPictureRows1B0
+; WHAT IT DOES: As VramPictureRows2B0, with tile base $01B0.
+; HOW: As VramPictureRows2B0.
+; Entry, exit: as VramPictureRows2B0.
+%at($03EA91)
+VramPictureRows1B0:
+    pha
+    rep.b #$30
+    ldx.w #$0000
+    lda.w #$01B0
+    bra PictureRows
+
+; The frame rows (frame_rows in the C): 32 words of tile $2001 + base, then
+; 35 of $2002 + base, or $2010 + base in HUD modes 1 and 3 while $10CD is 0.
+; A = base on entry; the caller's A is on the stack.
+FrameRows:
+    sta.b !dp_f3
+    ldx.w #$0020
+.lEAA1:
+    lda.w #$2001
+    clc
+    adc.b !dp_f3
+    sta.w !VMDATAL
+    dex
+    bne .lEAA1
+    ldx.w #$0023
+.lEAB0:
+    lda.w !hud_mode
+    and.w #$00FF
+    cmp.w #$0001
+    beq .lEAC5
+    cmp.w #$0003
+    beq .lEAC5
+.lEAC0:
+    lda.w #$2002
+    bra .lEAD0
+.lEAC5:
+    lda.w !wram_10CD
+    and.w #$00FF
+    bne .lEAC0
+    lda.w #$2010
+.lEAD0:
+    clc
+    adc.b !dp_f3
+    sta.w !VMDATAL
+    dex
+    bne .lEAB0
+    pla
+    rts
+
+; The picture rows (picture_rows in the C): the 192 words of the Super FX
+; picture, each plus the base in A; the caller's A is on the stack.
+PictureRows:
+    sta.b !dp_f3
+    ldx.w #$0000
+.lEAE0:
+    lda.l !gsu_picture,x
+    clc
+    adc.b !dp_f3
+    sta.w !VMDATAL
+    inx
+    inx
+    cpx.w #$0180
+    bcc .lEAE0
+    pla
+    rts

@@ -107,3 +107,54 @@ void abi_CourseDataPointer(void)
     cpu.a = (uint16_t)((x & 0xFF00) | bank);
     cpu.p = (uint8_t)((nz16(p, x) & ~P_X) | P_M);
 }
+
+/*
+ * @routine 03:B70E SelectionTables18CB
+ * WHAT IT DOES: Derives the 2-bit values at $18D3-$18E9 from the four
+ * selections at $18CB, $18CD, $18CF, $18D1 through tables in banks $0B and
+ * $03.
+ * HOW: base = word table $0B:B00C[$18CB], kept at $11DF; index = base +
+ * $18CD * 3 + $18CF * 9 + $18D1 * 27 (partial sums at $11E1 and $11E3);
+ * $18E5, $18E7, $18E9 = bytes 0-2 of $0B:B014[index] & 3. $18E3 =
+ * $03:B7B1[$18CB] & 3; then for i = 0-3, $18D3 + 2i = $03:B7B5[selection i
+ * * 4 + the value at $18E3 + 2i] & 3. All 16-bit; $11DF-$11E3 through the
+ * data bank.
+ * Entry: any widths. Exit: A = the last value stored; X = 8; P unchanged.
+ */
+uint16_t SelectionTables18CB(uint8_t bank)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t base, s1, s2, i3, x, v = 0;
+
+    base = rd16(0x0BB00C + (uint16_t)(rd16(0x0018CB) << 1));
+    wr16(b | 0x11DF, base);
+    s1 = rd16(0x0018CD);
+    s1 = (uint16_t)((uint16_t)(s1 << 1) + s1);
+    wr16(b | 0x11E1, s1);
+    s2 = rd16(0x0018CF);
+    s1 = (uint16_t)((uint16_t)(s2 << 3) + s2 + s1);
+    wr16(b | 0x11E1, s1);
+    i3 = rd16(0x0018D1);
+    i3 = (uint16_t)((uint16_t)(i3 << 1) + i3);
+    wr16(b | 0x11E3, i3);
+    x = (uint16_t)((uint16_t)(i3 << 3) + i3 + s1 + base);
+    wr16(0x0018E5, rd16(0x0BB014 + x) & 3);
+    wr16(0x0018E7, rd16(0x0BB015 + x) & 3);
+    wr16(0x0018E9, rd16(0x0BB016 + x) & 3);
+    wr16(0x0018E3, rd16(0x03B7B1 + rd16(0x0018CB)) & 3);
+    for (x = 0; x < 8; x += 2) {
+        uint16_t idx = (uint16_t)((uint16_t)(rd16(0x0018CB + x) << 2) + rd16(0x0018E3 + x));
+
+        v = rd16(0x03B7B5 + idx) & 3;
+        wr16(0x0018D3 + x, v);
+    }
+    return v;
+}
+
+void abi_SelectionTables18CB(void)
+{
+    uint16_t v = SelectionTables18CB(cpu.db);
+
+    cpu.a = v;
+    cpu.x = 0x0008;
+}

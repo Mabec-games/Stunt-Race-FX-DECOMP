@@ -1,4 +1,6 @@
-; slide.asm: see the C, src/stuntracefx/system/slide.c, for what this file covers.
+; slide.asm: a 16-bit value at $19F6 that slides toward a target while bit 7
+; of $0DA5 is set; its high byte is copied to $7F:3468.
+; C: src/stuntracefx/system/slide.c.
 
 incsrc "../include/macros.inc"
 incsrc "../include/hw.inc"

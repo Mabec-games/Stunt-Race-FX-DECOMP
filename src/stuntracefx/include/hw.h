@@ -12,6 +12,7 @@
 #define HVBJOY 0x004212u  /* status: V-blank (bit 7), H-blank (bit 6), joypad busy (bit 0) */
 #define VMAIN 0x002115u    /* VRAM address increment mode */
 #define VMADDL 0x002116u   /* VRAM word address */
+#define VMDATAL 0x002118u  /* VRAM data, low byte (a 16-bit store writes both) */
 #define OAMADDL 0x002102u  /* OAM address */
 #define OAMADDH 0x002103u
 #define CGADD 0x002121u    /* CGRAM (palette) address */

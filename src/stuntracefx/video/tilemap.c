@@ -208,3 +208,122 @@ void abi_VramDmaTileFromGsuRam(void)
     cpu.a = 0x0001;
     cpu.p = (uint8_t)(p & ~(P_N | P_Z | P_M));
 }
+
+/*
+ * The frame rows: 32 words of tile $2001 + base, then 35 words of tile $2002
+ * + base, or $2010 + base when the HUD mode ($0D2B) is 1 or 3 and the byte
+ * at $10CD is 0. Written to VMDATA a word at a time; $F3 holds the base.
+ * Returns the flags of the last add.
+ */
+static uint8_t frame_rows(uint8_t bank, uint16_t base, uint8_t p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    unsigned i, s = 0;
+    uint16_t t, mode;
+
+    wr16(0x0000F3, base);
+    for (i = 0; i < 0x20; i++)
+        wr16(VMDATAL, (uint16_t)(0x2001 + base));
+    for (i = 0; i < 0x23; i++) {
+        mode = rd16(b | 0x0D2B) & 0x00FF;
+        t = 0x2002;
+        if ((mode == 1 || mode == 3) && !(rd16(b | 0x10CD) & 0x00FF))
+            t = 0x2010;
+        s = (unsigned)t + base;
+        wr16(VMDATAL, (uint16_t)s);
+    }
+    return (uint8_t)((p & ~(P_C | P_V)) | (s > 0xFFFF ? P_C : 0)
+                     | ((~(t ^ base) & (t ^ (uint16_t)s) & 0x8000) ? P_V : 0));
+}
+
+/*
+ * The picture rows: the 192 words of the Super FX picture at $70:3000, each
+ * plus base, to VMDATA. Returns the flags of the last add, with C set by the
+ * final compare.
+ */
+static uint8_t picture_rows(uint16_t base, uint8_t p)
+{
+    unsigned x, s = 0;
+    uint16_t t = 0;
+
+    wr16(0x0000F3, base);
+    for (x = 0; x < 0x180; x += 2) {
+        t = rd16(0x703000 + x);
+        s = (unsigned)t + base;
+        wr16(VMDATAL, (uint16_t)s);
+    }
+    return (uint8_t)((p & ~P_V) | P_C | ((~(t ^ base) & (t ^ (uint16_t)s) & 0x8000) ? P_V : 0));
+}
+
+/*
+ * @routine 03:EA76 VramFrameRows2B0
+ * WHAT IT DOES: Writes the frame rows with tile base $02B0 at the current
+ * VRAM address.
+ * HOW: frame_rows; A is saved and restored around it.
+ * Entry: M 16-bit, D = $0000; the VRAM address and VMAIN set. Exit: A
+ * unchanged; X = 0; M 16-bit, X 16-bit; N, Z from A; C, V from the last add.
+ */
+void VramFrameRows2B0(uint8_t bank)
+{
+    frame_rows(bank, 0x02B0, 0);
+}
+
+void abi_VramFrameRows2B0(void)
+{
+    cpu.p = (uint8_t)(nz16(frame_rows(cpu.db, 0x02B0, cpu.p), cpu.a) & ~(P_M | P_X));
+    cpu.x = 0;
+}
+
+/*
+ * @routine 03:EA7E VramFrameRows1B0
+ * WHAT IT DOES: As VramFrameRows2B0, with tile base $01B0.
+ * HOW: As VramFrameRows2B0.
+ * Entry, exit: as VramFrameRows2B0.
+ */
+void VramFrameRows1B0(uint8_t bank)
+{
+    frame_rows(bank, 0x01B0, 0);
+}
+
+void abi_VramFrameRows1B0(void)
+{
+    cpu.p = (uint8_t)(nz16(frame_rows(cpu.db, 0x01B0, cpu.p), cpu.a) & ~(P_M | P_X));
+    cpu.x = 0;
+}
+
+/*
+ * @routine 03:EA86 VramPictureRows2B0
+ * WHAT IT DOES: Writes the Super FX picture as tilemap words with tile base
+ * $02B0 at the current VRAM address.
+ * HOW: picture_rows; A is saved and restored around it.
+ * Entry: M 16-bit, D = $0000; the VRAM address and VMAIN set. Exit: A
+ * unchanged; X = $180; M 16-bit, X 16-bit; N, Z from A; C set; V from the
+ * last add.
+ */
+void VramPictureRows2B0(void)
+{
+    picture_rows(0x02B0, 0);
+}
+
+void abi_VramPictureRows2B0(void)
+{
+    cpu.p = (uint8_t)(nz16(picture_rows(0x02B0, cpu.p), cpu.a) & ~(P_M | P_X));
+    cpu.x = 0x0180;
+}
+
+/*
+ * @routine 03:EA91 VramPictureRows1B0
+ * WHAT IT DOES: As VramPictureRows2B0, with tile base $01B0.
+ * HOW: As VramPictureRows2B0.
+ * Entry, exit: as VramPictureRows2B0.
+ */
+void VramPictureRows1B0(void)
+{
+    picture_rows(0x01B0, 0);
+}
+
+void abi_VramPictureRows1B0(void)
+{
+    cpu.p = (uint8_t)(nz16(picture_rows(0x01B0, cpu.p), cpu.a) & ~(P_M | P_X));
+    cpu.x = 0x0180;
+}

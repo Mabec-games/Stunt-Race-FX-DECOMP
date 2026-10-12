@@ -1,4 +1,6 @@
-; approach.asm: see the C, src/stuntracefx/system/approach.c, for what this file covers.
+; approach.asm: a value at $11DA that moves one step toward its target at
+; $11DB every other call.
+; C: src/stuntracefx/system/approach.c.
 
 incsrc "../include/macros.inc"
 incsrc "../include/hw.inc"

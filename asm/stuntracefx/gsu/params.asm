@@ -1,4 +1,5 @@
-; params.asm: see the C, src/stuntracefx/gsu/params.c, for what this file covers.
+; params.asm: the parameter block in Super FX RAM that the renderer reads.
+; C: src/stuntracefx/gsu/params.c.
 
 incsrc "../include/macros.inc"
 incsrc "../include/hw.inc"
@@ -34,4 +35,33 @@ GsuParamsUpdate:
     lda.w !wram_05FA
     sta.l !gsu_param_2736
     plp
+    rtl
+
+; @routine 03:AEB6 GsuParamsFromDp
+; WHAT IT DOES: Marks $05EF with $FF and copies eight direct-page words into
+; the renderer's inputs at $70:0034-$70:003E, $70:0092 and $70:0094.
+; HOW: Word copies from $CE, $D0, $2A, $2E, $2C, $30, $32, $34, in that
+; order; $05EF is reached through the data bank.
+; Entry: M 8-bit, D = $0000. Exit: A = the last word; M 16-bit; N, Z from A.
+%at($03AEB6)
+GsuParamsFromDp:
+    lda.b #$FF
+    sta.w !wram_05EF
+    rep.b #$20
+    lda.b !dp_ce
+    sta.l !gsu_in_34
+    lda.b !dp_d0
+    sta.l !gsu_in_34+$2
+    lda.b !dp_2a
+    sta.l !gsu_in_34+$4
+    lda.b !dp_2e
+    sta.l !gsu_in_34+$6
+    lda.b !dp_2c
+    sta.l !gsu_in_34+$8
+    lda.b !dp_30
+    sta.l !gsu_in_34+$A
+    lda.b !dp_32
+    sta.l !gsu_in_92
+    lda.b !dp_34
+    sta.l !gsu_in_92+$2
     rtl

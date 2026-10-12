@@ -85,3 +85,86 @@ CourseDataPointer:
     lda.l !course_pointers+$2,x
     tyx
     rtl
+
+; @routine 03:B70E SelectionTables18CB
+; WHAT IT DOES: Derives the 2-bit values at $18D3-$18E9 from the four
+; selections at $18CB, $18CD, $18CF, $18D1 through tables in banks $0B and
+; $03.
+; HOW: base = word table $0B:B00C[$18CB], kept at $11DF; index = base +
+; $18CD * 3 + $18CF * 9 + $18D1 * 27 (partial sums at $11E1 and $11E3);
+; $18E5, $18E7, $18E9 = bytes 0-2 of $0B:B014[index] & 3. $18E3 =
+; $03:B7B1[$18CB] & 3; then for i = 0-3, $18D3 + 2i = $03:B7B5[selection i
+; * 4 + the value at $18E3 + 2i] & 3. All 16-bit; $11DF-$11E3 through the
+; data bank.
+; Entry: any widths. Exit: A = the last value stored; X = 8; P unchanged.
+%at($03B70E)
+SelectionTables18CB:
+    php
+    rep.b #$30
+    lda.l !selection
+    asl a
+    tax
+    lda.l !sel_base_table,x
+    sta.w !sel_base
+    lda.l !selection+$2
+    asl a
+    clc
+    adc.l !selection+$2
+    sta.w !sel_sum
+    lda.l !selection+$4
+    asl a
+    asl a
+    asl a
+    clc
+    adc.l !selection+$4
+    clc
+    adc.w !sel_sum
+    sta.w !sel_sum
+    lda.l !selection+$6
+    asl a
+    clc
+    adc.l !selection+$6
+    sta.w !sel_part
+    asl a
+    asl a
+    asl a
+    clc
+    adc.w !sel_part
+    clc
+    adc.w !sel_sum
+    clc
+    adc.w !sel_base
+    tax
+    lda.l !sel_table,x
+    and.w #$0003
+    sta.l !selection_derived+$2
+    lda.l !sel_table+$1,x
+    and.w #$0003
+    sta.l !selection_derived+$4
+    lda.l !sel_table+$2,x
+    and.w #$0003
+    sta.l !selection_derived+$6
+    lda.l !selection
+    tax
+    lda.l !sel_derived_table,x
+    and.w #$0003
+    sta.l !selection_derived
+    ldx.w #$0000
+.lB78F:
+    phx
+    lda.l !selection,x
+    asl a
+    asl a
+    clc
+    adc.l !selection_derived,x
+    tax
+    lda.l !sel_out_table,x
+    and.w #$0003
+    plx
+    sta.l !selection_out,x
+    inx
+    inx
+    cpx.w #$0008
+    bne .lB78F
+    plp
+    rts

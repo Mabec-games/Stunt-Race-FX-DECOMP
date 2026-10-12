@@ -30,3 +30,32 @@ void abi_GsuParamsUpdate(void)
 {
     cpu.a = GsuParamsUpdate();
 }
+
+/*
+ * @routine 03:AEB6 GsuParamsFromDp
+ * WHAT IT DOES: Marks $05EF with $FF and copies eight direct-page words into
+ * the renderer's inputs at $70:0034-$70:003E, $70:0092 and $70:0094.
+ * HOW: Word copies from $CE, $D0, $2A, $2E, $2C, $30, $32, $34, in that
+ * order; $05EF is reached through the data bank.
+ * Entry: M 8-bit, D = $0000. Exit: A = the last word; M 16-bit; N, Z from A.
+ */
+uint16_t GsuParamsFromDp(uint8_t bank)
+{
+    static const uint8_t from[8] = {0xCE, 0xD0, 0x2A, 0x2E, 0x2C, 0x30, 0x32, 0x34};
+    static const uint32_t to[8] = {0x700034, 0x700036, 0x700038, 0x70003A, 0x70003C, 0x70003E, 0x700092, 0x700094};
+    uint16_t v = 0;
+    unsigned i;
+
+    wr8((uint32_t)bank << 16 | 0x05EF, 0xFF);
+    for (i = 0; i < 8; i++) {
+        v = rd16(from[i]);
+        wr16(to[i], v);
+    }
+    return v;
+}
+
+void abi_GsuParamsFromDp(void)
+{
+    cpu.a = GsuParamsFromDp(cpu.db);
+    cpu.p = (uint8_t)(nz16(cpu.p, cpu.a) & ~P_M);
+}
