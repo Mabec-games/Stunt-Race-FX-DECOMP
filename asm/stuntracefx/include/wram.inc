@@ -76,6 +76,7 @@ includeonce
 !palette_animate = $0E5F
 !palette_buffer = $7EFD65
 !palette_kept = $7EFF27
+!palette_saved = $7EFF65              ; the palette buffer's saved copy
 !cycle_phase_a = $FD5B
 !cycle_phase_b = $FD5D
 !cycle_phase_c = $FD5F
@@ -346,3 +347,9 @@ includeonce
 !actor_anim_timer = $18
 !menu_sine_y = $18BF
 !menu_sine_y_min = $18C1
+
+; Menu HDMA tables and positions in bank $7F and work RAM (menu/screen.asm).
+!menu_hdma_1354 = $7F1354
+!menu_pos_18bb = $18BB
+!menu_pos_18bd = $18BD
+!gsu_picture_copy = $703800

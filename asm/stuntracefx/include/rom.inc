@@ -43,3 +43,6 @@ includeonce
 
 ; APU port 0 command pairs for $0D89/$0D8A (audio/sound_effects.asm).
 !sound_pair_table = $0BFB18
+
+; Sprite tile numbers for MenuActorSetTiles (menu/actors.asm).
+!menu_tile_table = $0BC528

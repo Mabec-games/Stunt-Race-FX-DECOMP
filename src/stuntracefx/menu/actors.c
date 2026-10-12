@@ -436,3 +436,41 @@ void abi_MenuSinePosition(void)
     cpu.x = rd16((uint32_t)cpu.db << 16 | 0x11F9);
     cpu.p = p;
 }
+
+/*
+ * @routine 0B:C4E4 MenuActorSetTiles
+ * WHAT IT DOES: Sets the tile numbers of two sprite entries of object X's
+ * group: entry Y (offset in bytes from the group's +$12) gets tile
+ * $0B:C528[A], the entry before it that tile + $10.
+ * HOW: Each attribute word keeps bits 9-15 and takes the tile in bits 0-8;
+ * the entry's offset is kept at $11E7 and the tile at $11DF.
+ * Entry: M 16-bit, X 16-bit, D = $0000; X = record, A = tile index, Y =
+ * entry offset. Exit: A = the second word written; X unchanged; N, Z from
+ * X; C, V from the step back of 8.
+ */
+uint16_t MenuActorSetTiles(uint8_t bank, uint16_t rec, uint16_t i, uint16_t off, uint8_t *p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t e = (uint16_t)(off + rd16((uint16_t)(rec + 0x12))), t, w, r;
+
+    wr16(b | 0x11E7, e);
+    wr16(b | 0x11DF, rd16(0x0BC528 + (uint16_t)(i << 1)));
+    e = rd16(b | 0x11E7);
+    wr16(0x7F135A + e, (uint16_t)((rd16(0x7F135A + e) & 0xFE00) | rd16(b | 0x11DF)));
+    t = (uint16_t)(rd16(b | 0x11DF) + 0x10);
+    wr16(b | 0x11DF, t);
+    r = (uint16_t)(e - 8);
+    *p = (uint8_t)((*p & ~(P_C | P_V)) | (e >= 8 ? P_C : 0) | (((e ^ 8) & (e ^ r) & 0x8000) ? P_V : 0));
+    w = (uint16_t)((rd16(0x7F135A + r) & 0xFE00) | rd16(b | 0x11DF));
+    wr16(0x7F135A + r, w);
+    *p = nz16(*p, rec);
+    return w;
+}
+
+void abi_MenuActorSetTiles(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = MenuActorSetTiles(cpu.db, cpu.x, cpu.a, cpu.y, &p);
+    cpu.p = p;
+}

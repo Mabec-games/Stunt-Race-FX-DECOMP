@@ -334,3 +334,45 @@ MenuSinePosition:
     sta.l !menu_sine_y_min
     ldx.w !actor_current
     rts
+
+; @routine 0B:C4E4 MenuActorSetTiles
+; WHAT IT DOES: Sets the tile numbers of two sprite entries of object X's
+; group: entry Y (offset in bytes from the group's +$12) gets tile
+; $0B:C528[A], the entry before it that tile + $10.
+; HOW: Each attribute word keeps bits 9-15 and takes the tile in bits 0-8;
+; the entry's offset is kept at $11E7 and the tile at $11DF.
+; Entry: M 16-bit, X 16-bit, D = $0000; X = record, A = tile index, Y =
+; entry offset. Exit: A = the second word written; X unchanged; N, Z from
+; X; C, V from the step back of 8.
+%at($0BC4E4)
+MenuActorSetTiles:
+    phx
+    pha
+    tya
+    clc
+    adc.b !actor_12,x
+    sta.w !menu_blink_entry
+    pla
+    asl a
+    tax
+    lda.l !menu_tile_table,x
+    sta.w !scratch_11df
+    ldx.w !menu_blink_entry
+    lda.l !menu_sprite_attr,x
+    and.w #$FE00
+    ora.w !scratch_11df
+    sta.l !menu_sprite_attr,x
+    lda.w !scratch_11df
+    clc
+    adc.w #$0010
+    sta.w !scratch_11df
+    txa
+    sec
+    sbc.w #$0008
+    tax
+    lda.l !menu_sprite_attr,x
+    and.w #$FE00
+    ora.w !scratch_11df
+    sta.l !menu_sprite_attr,x
+    plx
+    rts
