@@ -38,3 +38,28 @@ HalfRateApproach:
 .l1005:
     plp
     rts
+
+; @routine 0B:E2C5 ApproachTargetFull
+; WHAT IT DOES: Sets the target at $11DB to $0F.
+; HOW: One byte store through the data bank.
+; Entry: any widths. Exit: A low byte = $0F; P unchanged.
+%at($0BE2C5)
+ApproachTargetFull:
+    php
+    sep.b #$20
+    lda.b #$0F
+    sta.w !wram_11DB
+    plp
+    rts
+
+; @routine 0B:E2CF ApproachTargetZero
+; WHAT IT DOES: Sets the target at $11DB to 0.
+; HOW: One byte store through the data bank.
+; Entry, exit: any widths; every register unchanged.
+%at($0BE2CF)
+ApproachTargetZero:
+    php
+    sep.b #$20
+    stz.w !wram_11DB
+    plp
+    rts

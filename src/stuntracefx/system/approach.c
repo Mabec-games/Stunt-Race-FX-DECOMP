@@ -32,3 +32,36 @@ void abi_HalfRateApproach(void)
 {
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | HalfRateApproach());
 }
+
+/*
+ * @routine 0B:E2C5 ApproachTargetFull
+ * WHAT IT DOES: Sets the target at $11DB to $0F.
+ * HOW: One byte store through the data bank.
+ * Entry: any widths. Exit: A low byte = $0F; P unchanged.
+ */
+void ApproachTargetFull(uint8_t bank)
+{
+    wr8((uint32_t)bank << 16 | 0x11DB, 0x0F);
+}
+
+void abi_ApproachTargetFull(void)
+{
+    ApproachTargetFull(cpu.db);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x0F);
+}
+
+/*
+ * @routine 0B:E2CF ApproachTargetZero
+ * WHAT IT DOES: Sets the target at $11DB to 0.
+ * HOW: One byte store through the data bank.
+ * Entry, exit: any widths; every register unchanged.
+ */
+void ApproachTargetZero(uint8_t bank)
+{
+    wr8((uint32_t)bank << 16 | 0x11DB, 0x00);
+}
+
+void abi_ApproachTargetZero(void)
+{
+    ApproachTargetZero(cpu.db);
+}

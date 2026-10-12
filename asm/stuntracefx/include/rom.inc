@@ -32,3 +32,7 @@ includeonce
 ; Cosine and sine by angle, bytes, read in bank 0 (math/rotate.asm).
 !rot_cos_table = $973E
 !rot_sin_table = $96FE
+
+; Menu tables in bank $0B (menu/screen.asm, menu/selection.asm).
+!menu_oam_lists = $FCA2
+!menu_repeat_table = $0BC758

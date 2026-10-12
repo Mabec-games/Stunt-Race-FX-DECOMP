@@ -105,12 +105,12 @@ SelectionTables18CB:
     asl a
     tax
     lda.l !sel_base_table,x
-    sta.w !sel_base
+    sta.w !scratch_11df
     lda.l !selection+$2
     asl a
     clc
     adc.l !selection+$2
-    sta.w !sel_sum
+    sta.w !scratch_11e1
     lda.l !selection+$4
     asl a
     asl a
@@ -118,22 +118,22 @@ SelectionTables18CB:
     clc
     adc.l !selection+$4
     clc
-    adc.w !sel_sum
-    sta.w !sel_sum
+    adc.w !scratch_11e1
+    sta.w !scratch_11e1
     lda.l !selection+$6
     asl a
     clc
     adc.l !selection+$6
-    sta.w !sel_part
+    sta.w !scratch_11e3
     asl a
     asl a
     asl a
     clc
-    adc.w !sel_part
+    adc.w !scratch_11e3
     clc
-    adc.w !sel_sum
+    adc.w !scratch_11e1
     clc
-    adc.w !sel_base
+    adc.w !scratch_11df
     tax
     lda.l !sel_table,x
     and.w #$0003

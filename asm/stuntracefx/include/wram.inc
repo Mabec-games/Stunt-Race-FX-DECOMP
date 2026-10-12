@@ -288,11 +288,47 @@ includeonce
 ; The window HDMA table for channel 1 in bank $7F (video/screen_setup.asm).
 !window_table_7f = $7F3410
 
-; Four selections and the values derived from them (data/tables.asm).
+; Four selections and the values derived from them (data/tables.asm,
+; menu/selection.asm).
 !selection = $18CB
 !selection_out = $18D3
 !selection_derived = $18E3
-!sel_base = $11DF
-!sel_sum = $11E1
-!sel_part = $11E3
 !scale_divisor = $7F340A
+
+; Scratch words used by the menu code.
+!scratch_11df = $11DF
+!scratch_11e1 = $11E1
+!scratch_11e3 = $11E3
+
+; Menu objects (menu/actors.asm): records of $2C bytes from $1265, a stack
+; of free record addresses and the list of live ones.
+!actor_free_stack = $120D
+!actor_free_depth = $11F5
+!actor_list = $1239
+!actor_list_len = $11F7
+!actor_current = $11F9
+!menu_sprite_groups = $7F1356
+!menu_sprite_attr = $7F135A
+!menu_blink_counter = $11DD
+!menu_blink_entry = $11E7
+!menu_1201 = $1201
+!menu_1203 = $1203
+!menu_120b = $120B
+
+; Menu frame handshake and exit flag (menu/frame.asm, menu/selection.asm).
+!menu_frame_wait = $11D8
+!menu_exit = $11EB
+!menu_picture_size = $11D5
+!menu_1a64 = $1A64
+!wram_0357 = $0357
+!menu_1905 = $1905
+!menu_1907 = $1907
+!selection_prev = $18C9
+!table_116c = $116C
+
+; Menu object fields, as direct page offsets indexed by the record address.
+!actor_handler = $08
+!actor_10 = $10
+!actor_12 = $12
+!actor_kind = $1A
+!actor_palette = $24
