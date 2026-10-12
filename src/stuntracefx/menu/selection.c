@@ -216,3 +216,91 @@ void abi_SelectionCommit(void)
     cpu.a = SelectionCommit(cpu.db, &x);
     cpu.x = (cpu.p & P_X) ? (uint8_t)x : x;
 }
+
+uint16_t HandlerTableB(uint16_t i);
+uint16_t SelectionTables18CB(uint8_t bank);
+void abi_HandlerTableA(void);
+void abi_HandlerTableB(void);
+void abi_SelectionTables18CB(void);
+void abi_SaveChecksum(void);
+
+/* The save byte for the selection's mode ($18C3): 3, the low byte of the
+   $03:B540 entry for $18CB's low two bits at $70:FC0D; 1, that entry for
+   $18CB, shifted into the high nibble, kept with bits 0-1 of $70:FC0C;
+   otherwise the entry kept with bits 4-5 of $70:FC0C. Returns A as the
+   store leaves it. */
+static uint16_t save_selection(uint8_t bank, uint16_t *x)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t mode = rd16(0x0018C3), v;
+
+    if (mode == 3) {
+        *x = (uint16_t)((rd16(0x0018CB) & 3) << 1);
+        v = rd16(0x03B540 + *x);
+        wr8(0x70FC0D, (uint8_t)v);
+        return v;
+    }
+    wr16(b | 0x11DF, rd16(0x70FC0C) & (mode == 1 ? 0x0003 : 0x0030));
+    *x = (uint16_t)(rd16(0x0018CB) << 1);
+    v = rd16(0x03B540 + *x);
+    if (mode == 1)
+        v = (uint16_t)(v << 4);
+    v = (uint16_t)(v | rd16(b | 0x11DF));
+    wr8(0x70FC0C, (uint8_t)v);
+    return v;
+}
+
+/*
+ * @routine 03:B48C SelectionSave
+ * WHAT IT DOES: Records the choices: the handler addresses for $18CB and
+ * $18C9 (HandlerTableA) at $18DB and $18DD, then for $18CD, $18CF, $18D1
+ * (HandlerTableB) at $18DD, $18DF, $18E1; derives the values from them
+ * (SelectionTables18CB); and packs the choice into the save data by mode
+ * (see save_selection), renewing the checksum.
+ * HOW: 16-bit work, a byte store into the save data, SaveChecksum.
+ * Entry: any widths. Exit: A low byte = the checksum, high byte from the
+ * packed value; X = the table offset (low byte when X is 8-bit); P
+ * unchanged.
+ */
+void SelectionSave(uint8_t bank)
+{
+    uint16_t x;
+
+    wr16(0x0018DB, HandlerTableA(rd16(0x0018CB)));
+    wr16(0x0018DD, HandlerTableA(rd16(0x0018C9)));
+    wr16(0x0018DD, HandlerTableB(rd16(0x0018CD)));
+    wr16(0x0018DF, HandlerTableB(rd16(0x0018CF)));
+    wr16(0x0018E1, HandlerTableB(rd16(0x0018D1)));
+    SelectionTables18CB(bank);
+    save_selection(bank, &x);
+    SaveChecksum();
+}
+
+void abi_SelectionSave(void)
+{
+    static const struct { uint32_t from, to; int b; } h[5] = {
+        {0x0018CB, 0x0018DB, 0}, {0x0018C9, 0x0018DD, 0}, {0x0018CD, 0x0018DD, 1},
+        {0x0018CF, 0x0018DF, 1}, {0x0018D1, 0x0018E1, 1}};
+    uint8_t p = cpu.p;
+    uint16_t x;
+    unsigned i;
+
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    for (i = 0; i < 5; i++) {
+        cpu.a = rd16(h[i].from);
+        if (h[i].b)
+            abi_HandlerTableB();
+        else
+            abi_HandlerTableA();
+        wr16(h[i].to, cpu.a);
+    }
+    abi_SelectionTables18CB();
+    cpu.a = save_selection(cpu.db, &x);
+    cpu.x = x;
+    abi_SaveChecksum();
+    cpu.p = p;
+    if (p & P_X) {
+        cpu.x &= 0x00FF;
+        cpu.y &= 0x00FF;
+    }
+}

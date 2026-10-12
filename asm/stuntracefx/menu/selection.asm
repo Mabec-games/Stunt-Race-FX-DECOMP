@@ -237,3 +237,83 @@ SelectionCommit:
     sta.l !wram_18E5
     plp
     rtl
+
+; @routine 03:B48C SelectionSave
+; WHAT IT DOES: Records the choices: the handler addresses for $18CB and
+; $18C9 (HandlerTableA) at $18DB and $18DD, then for $18CD, $18CF, $18D1
+; (HandlerTableB) at $18DD, $18DF, $18E1; derives the values from them
+; (SelectionTables18CB); and packs the choice into the save data by mode
+; (see save_selection), renewing the checksum.
+; HOW: 16-bit work, a byte store into the save data, SaveChecksum.
+; Entry: any widths. Exit: A low byte = the checksum, high byte from the
+; packed value; X = the table offset (low byte when X is 8-bit); P
+; unchanged.
+%at($03B48C)
+SelectionSave:
+    php
+    rep.b #$30
+    lda.l !selection
+    jsr.w HandlerTableA
+    sta.l !selection_handler_a
+    lda.l !selection_prev
+    jsr.w HandlerTableA
+    sta.l !selection_handler_b
+    lda.l !selection_1
+    jsr.w HandlerTableB
+    sta.l !selection_handler_b
+    lda.l !selection_2
+    jsr.w HandlerTableB
+    sta.l !selection_handler_c
+    lda.l !selection_3
+    jsr.w HandlerTableB
+    sta.l !selection_handler_d
+    jsr.w SelectionTables18CB
+    lda.l !wram_18C3
+    cmp.w #$0003
+    beq .lB525
+    cmp.w #$0001
+    beq .lB4FC
+    lda.l !save_bytes+6
+    and.w #$0030
+    sta.w !scratch_11df
+    lda.l !selection
+    asl a
+    tax
+    lda.l !selection_bits_b540,x
+    ora.w !scratch_11df
+    sep.b #$20
+    sta.l !save_bytes+6
+    rep.b #$20
+    jsl.l SaveChecksum
+    bra .lB53E
+.lB4FC:
+    lda.l !save_bytes+6
+    and.w #$0003
+    sta.w !scratch_11df
+    lda.l !selection
+    asl a
+    tax
+    lda.l !selection_bits_b540,x
+    asl a
+    asl a
+    asl a
+    asl a
+    ora.w !scratch_11df
+    sep.b #$20
+    sta.l !save_bytes+6
+    rep.b #$20
+    jsl.l SaveChecksum
+    bra .lB53E
+.lB525:
+    lda.l !selection
+    and.w #$0003
+    asl a
+    tax
+    lda.l !selection_bits_b540,x
+    sep.b #$20
+    sta.l !save_bytes+7
+    rep.b #$20
+    jsl.l SaveChecksum
+.lB53E:
+    plp
+    rtl

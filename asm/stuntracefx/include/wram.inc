@@ -546,3 +546,5 @@ includeonce
 !wram_0E4B = $0E4B
 !engine_phase_p1 = $0DD6
 !engine_phase_p2 = $0DD7
+!selection_handler_c = $18DF
+!selection_handler_d = $18E1
