@@ -281,563 +281,565 @@
 <rect x="824.2" y="889.6" width="5.0" height="8.3" fill="#c8ccd2"><title>(unnamed)  7EA467  4B  T1  [bank 02 S-CPU]</title></rect>
 <rect x="829.8" y="889.6" width="5.0" height="8.3" fill="#c8ccd2"><title>(unnamed)  02DF79  4B  T1  [bank 02 S-CPU]</title></rect>
 <rect x="835.5" y="889.6" width="5.0" height="8.3" fill="#c8ccd2"><title>(unnamed)  02EB4D  4B  T1  [bank 02 S-CPU]</title></rect>
-<text x="845.6" y="10.5" font-size="10" fill="#8b949e">bank 07 S-CPU</text>
-<rect x="844.1" y="15.5" width="98.9" height="112.3" fill="#c8ccd2"><title>(unnamed)  07E557  904B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="844.1" y="128.4" width="98.9" height="82.6" fill="#c8ccd2"><title>(unnamed)  07E265  666B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="844.1" y="211.6" width="98.9" height="81.5" fill="#c8ccd2"><title>(unnamed)  07833B  657B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="844.1" y="293.7" width="98.9" height="77.3" fill="#c8ccd2"><title>(unnamed)  07C593  624B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="943.6" y="15.5" width="91.7" height="74.2" fill="#c8ccd2"><title>(unnamed)  07BC1C  555B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1035.9" y="15.5" width="76.2" height="74.2" fill="#c8ccd2"><title>(unnamed)  078653  462B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1112.7" y="15.5" width="58.9" height="74.2" fill="#c8ccd2"><title>(unnamed)  07B518  358B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1172.2" y="15.5" width="47.3" height="74.2" fill="#c8ccd2"><title>(unnamed)  079366  288B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="943.6" y="90.3" width="67.5" height="50.1" fill="#c8ccd2"><title>(unnamed)  078E90  278B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1011.7" y="90.3" width="53.1" height="50.1" fill="#c8ccd2"><title>(unnamed)  078C82  219B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1065.4" y="90.3" width="53.1" height="50.1" fill="#c8ccd2"><title>(unnamed)  07B211  219B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1119.1" y="90.3" width="50.6" height="50.1" fill="#c8ccd2"><title>(unnamed)  079D67  209B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1170.3" y="90.3" width="49.2" height="50.1" fill="#c8ccd2"><title>(unnamed)  07DAA7  203B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="943.6" y="141.0" width="47.1" height="47.6" fill="#c8ccd2"><title>(unnamed)  07BA15  185B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="943.6" y="189.1" width="47.1" height="47.3" fill="#c8ccd2"><title>(unnamed)  079660  184B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="943.6" y="237.0" width="47.1" height="45.5" fill="#c8ccd2"><title>(unnamed)  0792B5  177B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="943.6" y="283.1" width="47.1" height="43.9" fill="#c8ccd2"><title>(unnamed)  079E3B  171B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="943.6" y="327.6" width="47.1" height="43.4" fill="#c8ccd2"><title>(unnamed)  07B67E  169B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="991.3" y="141.0" width="49.8" height="40.1" fill="#c8ccd2"><title>(unnamed)  078BB3  165B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1041.7" y="141.0" width="49.8" height="40.1" fill="#c8ccd2"><title>(unnamed)  07997F  165B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1092.1" y="141.0" width="48.9" height="40.1" fill="#c8ccd2"><title>(unnamed)  07B400  162B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1141.6" y="141.0" width="38.8" height="40.1" fill="#c8ccd2"><title>(unnamed)  07B190  129B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1181.0" y="141.0" width="38.5" height="40.1" fill="#c8ccd2"><title>(unnamed)  07C3DD  128B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="991.3" y="181.7" width="37.1" height="41.0" fill="#c8ccd2"><title>(unnamed)  07B10B  126B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="991.3" y="223.2" width="37.1" height="37.0" fill="#c8ccd2"><title>(unnamed)  07E08F  114B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="991.3" y="260.8" width="37.1" height="36.7" fill="#c8ccd2"><title>(unnamed)  079883  113B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="991.3" y="298.1" width="37.1" height="36.7" fill="#c8ccd2"><title>(unnamed)  07CFA3  113B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="991.3" y="335.3" width="37.1" height="35.7" fill="#c8ccd2"><title>(unnamed)  07DD60  110B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1029.0" y="181.7" width="31.9" height="39.9" fill="#c8ccd2"><title>(unnamed)  07BBB2  106B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1029.0" y="222.2" width="31.9" height="38.0" fill="#c8ccd2"><title>(unnamed)  07D5C7  101B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1029.0" y="260.8" width="31.9" height="36.5" fill="#c8ccd2"><title>(unnamed)  07B329  97B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1029.0" y="297.9" width="31.9" height="36.5" fill="#c8ccd2"><title>(unnamed)  07DDCE  97B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1029.0" y="334.9" width="31.9" height="36.1" fill="#c8ccd2"><title>(unnamed)  07AA6E  96B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1061.6" y="181.7" width="34.1" height="33.8" fill="#c8ccd2"><title>(unnamed)  07B985  96B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1096.2" y="181.7" width="31.9" height="33.8" fill="#c8ccd2"><title>(unnamed)  07D6E8  90B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1128.7" y="181.7" width="30.1" height="33.8" fill="#c8ccd2"><title>(unnamed)  0791B1  85B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1159.4" y="181.7" width="30.1" height="33.8" fill="#c8ccd2"><title>(unnamed)  07C388  85B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1190.1" y="181.7" width="29.4" height="33.8" fill="#c8ccd2"><title>(unnamed)  079252  83B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1061.6" y="216.1" width="30.8" height="32.2" fill="#c8ccd2"><title>(unnamed)  07976B  83B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1061.6" y="248.9" width="30.8" height="31.1" fill="#c8ccd2"><title>(unnamed)  07EDC1  80B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1061.6" y="280.6" width="30.8" height="30.7" fill="#c8ccd2"><title>(unnamed)  078AA6  79B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1061.6" y="311.9" width="30.8" height="30.3" fill="#c8ccd2"><title>(unnamed)  07BAE6  78B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1061.6" y="342.7" width="30.8" height="28.3" fill="#c8ccd2"><title>(unnamed)  07A694  73B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1093.0" y="216.1" width="31.6" height="27.2" fill="#c8ccd2"><title>(unnamed)  07DA02  72B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1125.2" y="216.1" width="31.6" height="27.2" fill="#c8ccd2"><title>(unnamed)  07DC88  72B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1157.4" y="216.1" width="30.7" height="27.2" fill="#c8ccd2"><title>(unnamed)  07A9D7  70B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1188.8" y="216.1" width="30.7" height="27.2" fill="#c8ccd2"><title>(unnamed)  07CF14  70B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1093.0" y="243.8" width="25.5" height="27.1" fill="#c8ccd2"><title>(unnamed)  078619  58B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1119.0" y="243.8" width="25.5" height="27.1" fill="#c8ccd2"><title>(unnamed)  07B097  58B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1145.1" y="243.8" width="25.5" height="27.1" fill="#c8ccd2"><title>(unnamed)  07B0D1  58B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1171.1" y="243.8" width="24.6" height="27.1" fill="#c8ccd2"><title>(unnamed)  0785E1  56B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1196.3" y="243.8" width="23.2" height="27.1" fill="#c8ccd2"><title>(unnamed)  07CEDF  53B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1093.0" y="271.5" width="23.5" height="26.2" fill="#c8ccd2"><title>(unnamed)  07B727  52B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1093.0" y="298.3" width="23.5" height="25.2" fill="#c8ccd2"><title>(unnamed)  07DD03  50B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1093.0" y="324.1" width="23.5" height="23.1" fill="#c8ccd2"><title>(unnamed)  07C4A4  46B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1093.0" y="347.9" width="23.5" height="23.1" fill="#c8ccd2"><title>(unnamed)  07C53A  46B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1117.1" y="271.5" width="24.5" height="21.2" fill="#c8ccd2"><title>(unnamed)  07D9D1  44B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1117.1" y="293.3" width="24.5" height="19.7" fill="#c8ccd2"><title>(unnamed)  07BB4C  41B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1117.1" y="313.6" width="24.5" height="18.7" fill="#c8ccd2"><title>(unnamed)  07B9EE  39B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1117.1" y="333.0" width="24.5" height="18.7" fill="#c8ccd2"><title>(unnamed)  07C45D  39B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1117.1" y="352.3" width="24.5" height="18.7" fill="#c8ccd2"><title>(unnamed)  07DA65  39B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1142.1" y="271.5" width="20.7" height="19.8" fill="#c8ccd2"><title>(unnamed)  0789F5  35B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1163.5" y="271.5" width="20.7" height="19.8" fill="#c8ccd2"><title>(unnamed)  07D62C  35B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1184.8" y="271.5" width="17.7" height="19.8" fill="#c8ccd2"><title>(unnamed)  07B3D4  30B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1203.1" y="271.5" width="16.5" height="19.8" fill="#c8ccd2"><title>(unnamed)  07C2D3  28B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1142.1" y="291.9" width="20.2" height="16.1" fill="#c8ccd2"><title>(unnamed)  07C2EF  28B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1162.9" y="291.9" width="18.7" height="16.1" fill="#c8ccd2"><title>(unnamed)  07AADC  26B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1182.2" y="291.9" width="18.7" height="16.1" fill="#c8ccd2"><title>(unnamed)  07D64F  26B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1201.5" y="291.9" width="18.0" height="16.1" fill="#c8ccd2"><title>(unnamed)  07DD47  25B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1142.1" y="308.7" width="18.4" height="15.1" fill="#c8ccd2"><title>(unnamed)  078B9B  24B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1142.1" y="324.4" width="18.4" height="15.1" fill="#c8ccd2"><title>(unnamed)  07CE97  24B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1142.1" y="340.1" width="18.4" height="15.1" fill="#c8ccd2"><title>(unnamed)  07CEAF  24B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1142.1" y="355.9" width="18.4" height="15.1" fill="#c8ccd2"><title>(unnamed)  07CEC7  24B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1161.1" y="308.7" width="15.8" height="16.9" fill="#c8ccd2"><title>(unnamed)  07D6D1  23B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1177.4" y="308.7" width="15.8" height="16.9" fill="#c8ccd2"><title>(unnamed)  07DCEC  23B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1193.8" y="308.7" width="12.9" height="16.9" fill="#c8ccd2"><title>(unnamed)  07922F  19B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1207.3" y="308.7" width="12.2" height="16.9" fill="#c8ccd2"><title>(unnamed)  07B085  18B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1161.1" y="326.1" width="13.3" height="14.6" fill="#c8ccd2"><title>(unnamed)  0789E4  17B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1161.1" y="341.3" width="13.3" height="14.6" fill="#c8ccd2"><title>(unnamed)  07C4E0  17B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1161.1" y="356.5" width="13.3" height="14.6" fill="#c8ccd2"><title>(unnamed)  07C4F1  17B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1175.0" y="326.1" width="15.4" height="11.8" fill="#c8ccd2"><title>(unnamed)  07A684  16B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1191.1" y="326.1" width="14.4" height="11.8" fill="#c8ccd2"><title>(unnamed)  07AC46  15B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1206.1" y="326.1" width="13.4" height="11.8" fill="#c8ccd2"><title>(unnamed)  07AA60  14B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1175.0" y="338.5" width="13.7" height="11.6" fill="#c8ccd2"><title>(unnamed)  07AACE  14B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1175.0" y="350.7" width="13.7" height="9.8" fill="#c8ccd2"><title>(unnamed)  07C293  12B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1175.0" y="361.2" width="13.7" height="9.8" fill="#c8ccd2"><title>(unnamed)  07C502  12B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1189.3" y="338.5" width="11.1" height="11.1" fill="#c8ccd2"><title>(unnamed)  0791A6  11B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1201.0" y="338.5" width="9.0" height="11.1" fill="#c8ccd2"><title>(unnamed)  07919D  9B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1210.5" y="338.5" width="9.0" height="11.1" fill="#c8ccd2"><title>(unnamed)  07E246  9B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1189.3" y="350.2" width="8.7" height="10.1" fill="#c8ccd2"><title>(unnamed)  07B75B  8B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1189.3" y="360.9" width="8.7" height="10.1" fill="#c8ccd2"><title>(unnamed)  07B796  8B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1198.6" y="350.2" width="8.7" height="10.1" fill="#c8ccd2"><title>(unnamed)  07BB34  8B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1198.6" y="360.9" width="8.7" height="10.1" fill="#c8ccd2"><title>(unnamed)  07BB9A  8B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1207.9" y="350.2" width="11.6" height="6.5" fill="#c8ccd2"><title>(unnamed)  07B503  7B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1207.9" y="357.4" width="11.6" height="6.5" fill="#c8ccd2"><title>(unnamed)  07B50A  7B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1207.9" y="364.5" width="11.6" height="6.5" fill="#c8ccd2"><title>(unnamed)  07E22B  7B  T1  [bank 07 S-CPU]</title></rect>
-<text x="1224.6" y="10.5" font-size="10" fill="#8b949e">bank 0B S-CPU</text>
-<rect x="1223.1" y="15.5" width="79.2" height="103.6" fill="#c8ccd2"><title>(unnamed)  0BF09F  669B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1223.1" y="119.7" width="79.2" height="98.3" fill="#c8ccd2"><title>(unnamed)  0BEE24  635B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1223.1" y="218.6" width="79.2" height="81.8" fill="#c8ccd2"><title>(unnamed)  0BBA4E  529B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1223.1" y="300.9" width="79.2" height="70.1" fill="#c8ccd2"><title>(unnamed)  0BF784  454B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1302.9" y="15.5" width="61.7" height="63.4" fill="#c8ccd2"><title>(unnamed)  0BB506  321B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1365.3" y="15.5" width="61.2" height="63.4" fill="#c8ccd2"><title>(unnamed)  0BB814  318B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1427.0" y="15.5" width="58.2" height="63.4" fill="#c8ccd2"><title>(unnamed)  0BB64A  303B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1485.9" y="15.5" width="55.9" height="63.4" fill="#c8ccd2"><title>(unnamed)  0BFB26  291B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1542.4" y="15.5" width="55.5" height="63.4" fill="#c8ccd2"><title>(unnamed)  0BC225  289B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1302.9" y="79.5" width="54.2" height="59.0" fill="#c8ccd2"><title>(unnamed)  0BF33C  263B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1302.9" y="139.1" width="54.2" height="49.3" fill="#c8ccd2"><title>(unnamed)  7F0DAC  220B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1302.9" y="189.0" width="54.2" height="46.3" fill="#c8ccd2"><title>(unnamed)  0BC385  207B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1302.9" y="235.9" width="54.2" height="46.1" fill="#c8ccd2"><title>(unnamed)  0BD07C  206B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1302.9" y="282.6" width="54.2" height="44.7" fill="#c8ccd2"><title>(unnamed)  7F0BEF  200B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1302.9" y="327.9" width="54.2" height="43.1" fill="#c8ccd2"><title>(unnamed)  0BFA24  193B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1357.8" y="79.5" width="51.0" height="45.7" fill="#c8ccd2"><title>(unnamed)  0BBEEF  192B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1409.4" y="79.5" width="49.1" height="45.7" fill="#c8ccd2"><title>(unnamed)  7F0800  185B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1459.1" y="79.5" width="49.1" height="45.7" fill="#c8ccd2"><title>(unnamed)  0BCBC3  185B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1508.8" y="79.5" width="45.9" height="45.7" fill="#c8ccd2"><title>(unnamed)  0BD14A  173B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1555.2" y="79.5" width="42.7" height="45.7" fill="#c8ccd2"><title>(unnamed)  0BAEF2  161B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1357.8" y="125.8" width="43.4" height="43.8" fill="#c8ccd2"><title>(unnamed)  0BCD7C  157B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1401.8" y="125.8" width="42.3" height="43.8" fill="#c8ccd2"><title>(unnamed)  0BCE8A  153B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1444.7" y="125.8" width="40.0" height="43.8" fill="#c8ccd2"><title>(unnamed)  0BC676  145B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1485.3" y="125.8" width="39.8" height="43.8" fill="#c8ccd2"><title>(unnamed)  0BBFB8  144B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1525.6" y="125.8" width="37.2" height="43.8" fill="#c8ccd2"><title>(unnamed)  0BBD55  135B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1563.5" y="125.8" width="34.4" height="43.8" fill="#c8ccd2"><title>(unnamed)  7F0D2B  125B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1357.8" y="170.1" width="39.2" height="35.9" fill="#c8ccd2"><title>(unnamed)  0BCF27  117B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1357.8" y="206.7" width="39.2" height="34.4" fill="#c8ccd2"><title>(unnamed)  7F0AD6  112B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1357.8" y="241.7" width="39.2" height="34.4" fill="#c8ccd2"><title>(unnamed)  0BCE19  112B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1357.8" y="276.7" width="39.2" height="31.9" fill="#c8ccd2"><title>(unnamed)  0BB952  104B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1357.8" y="309.1" width="39.2" height="30.6" fill="#c8ccd2"><title>(unnamed)  0BB9C2  100B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1357.8" y="340.4" width="39.2" height="30.6" fill="#c8ccd2"><title>(unnamed)  0BBCF1  100B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1397.6" y="170.1" width="35.8" height="33.2" fill="#c8ccd2"><title>(unnamed)  0BC048  99B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1433.9" y="170.1" width="34.3" height="33.2" fill="#c8ccd2"><title>(unnamed)  0BC0E7  95B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1468.8" y="170.1" width="32.5" height="33.2" fill="#c8ccd2"><title>(unnamed)  0BD26F  90B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1501.9" y="170.1" width="32.5" height="33.2" fill="#c8ccd2"><title>(unnamed)  0BE1C5  90B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1535.0" y="170.1" width="32.1" height="33.2" fill="#c8ccd2"><title>(unnamed)  0BFC49  89B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1567.6" y="170.1" width="30.3" height="33.2" fill="#c8ccd2"><title>(unnamed)  0BC5EF  84B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1397.6" y="204.0" width="29.1" height="33.8" fill="#c8ccd2"><title>(unnamed)  0BCA67  82B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1397.6" y="238.3" width="29.1" height="32.9" fill="#c8ccd2"><title>(unnamed)  0BAFBC  80B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1397.6" y="271.9" width="29.1" height="32.9" fill="#c8ccd2"><title>(unnamed)  0BC59F  80B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1397.6" y="305.4" width="29.1" height="32.9" fill="#c8ccd2"><title>(unnamed)  0BC8BF  80B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1397.6" y="338.9" width="29.1" height="32.1" fill="#c8ccd2"><title>(unnamed)  7F094E  78B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1427.2" y="204.0" width="30.4" height="29.9" fill="#c8ccd2"><title>(unnamed)  0BC164  76B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1427.2" y="234.4" width="30.4" height="28.3" fill="#c8ccd2"><title>(unnamed)  7F09ED  72B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1427.2" y="263.3" width="30.4" height="28.3" fill="#c8ccd2"><title>(unnamed)  7F112F  72B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1427.2" y="292.2" width="30.4" height="26.3" fill="#c8ccd2"><title>(unnamed)  0BD606  67B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1427.2" y="319.1" width="30.4" height="25.9" fill="#c8ccd2"><title>(unnamed)  0BCB81  66B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1427.2" y="345.5" width="30.4" height="25.5" fill="#c8ccd2"><title>(unnamed)  7F0CDF  65B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1458.2" y="204.0" width="29.0" height="26.2" fill="#c8ccd2"><title>(unnamed)  7F0B56  64B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1487.9" y="204.0" width="27.6" height="26.2" fill="#c8ccd2"><title>(unnamed)  0BAE0A  61B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1516.1" y="204.0" width="27.6" height="26.2" fill="#c8ccd2"><title>(unnamed)  0BD025  61B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1544.3" y="204.0" width="26.7" height="26.2" fill="#c8ccd2"><title>(unnamed)  0BC4A9  59B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1571.6" y="204.0" width="26.3" height="26.2" fill="#c8ccd2"><title>(unnamed)  0BCFAB  58B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1458.2" y="230.8" width="28.7" height="23.6" fill="#c8ccd2"><title>(unnamed)  0BC1C8  57B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1487.5" y="230.8" width="28.2" height="23.6" fill="#c8ccd2"><title>(unnamed)  0BBC9A  56B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1516.3" y="230.8" width="27.1" height="23.6" fill="#c8ccd2"><title>(unnamed)  0BC34F  54B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1544.0" y="230.8" width="26.6" height="23.6" fill="#c8ccd2"><title>(unnamed)  7F0919  53B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1571.3" y="230.8" width="26.6" height="23.6" fill="#c8ccd2"><title>(unnamed)  7F1224  53B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1458.2" y="255.0" width="26.2" height="24.0" fill="#c8ccd2"><title>(unnamed)  0BCA32  53B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1458.2" y="279.6" width="26.2" height="23.1" fill="#c8ccd2"><title>(unnamed)  0BC82F  51B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1458.2" y="303.3" width="26.2" height="22.6" fill="#c8ccd2"><title>(unnamed)  7F11E9  50B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1458.2" y="326.6" width="26.2" height="22.2" fill="#c8ccd2"><title>(unnamed)  0BCB28  49B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1458.2" y="349.3" width="26.2" height="21.7" fill="#c8ccd2"><title>(unnamed)  7F1042  48B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1485.0" y="255.0" width="22.9" height="24.3" fill="#c8ccd2"><title>(unnamed)  7F1072  47B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1508.5" y="255.0" width="22.4" height="24.3" fill="#c8ccd2"><title>(unnamed)  7F10CD  46B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1531.5" y="255.0" width="22.4" height="24.3" fill="#c8ccd2"><title>(unnamed)  7F1278  46B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1554.5" y="255.0" width="21.9" height="24.3" fill="#c8ccd2"><title>(unnamed)  0BC47C  45B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1577.0" y="255.0" width="20.9" height="24.3" fill="#c8ccd2"><title>(unnamed)  0BC934  43B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1485.0" y="279.9" width="22.2" height="22.9" fill="#c8ccd2"><title>(unnamed)  0BE4B5  43B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1485.0" y="303.3" width="22.2" height="22.3" fill="#c8ccd2"><title>(unnamed)  0BC64C  42B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1485.0" y="326.3" width="22.2" height="22.3" fill="#c8ccd2"><title>(unnamed)  0BC760  42B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1485.0" y="349.2" width="22.2" height="21.8" fill="#c8ccd2"><title>(unnamed)  0BB450  41B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1507.7" y="279.9" width="23.6" height="20.5" fill="#c8ccd2"><title>(unnamed)  0BC896  41B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1531.9" y="279.9" width="21.8" height="20.5" fill="#c8ccd2"><title>(unnamed)  0BC95F  38B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1554.3" y="279.9" width="21.8" height="20.5" fill="#c8ccd2"><title>(unnamed)  0BE3F7  38B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1576.7" y="279.9" width="21.2" height="20.5" fill="#c8ccd2"><title>(unnamed)  0BC90F  37B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1507.7" y="301.0" width="17.7" height="23.9" fill="#c8ccd2"><title>(unnamed)  0BC872  36B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1507.7" y="325.4" width="17.7" height="22.5" fill="#c8ccd2"><title>(unnamed)  0BE2E1  34B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1507.7" y="348.5" width="17.7" height="22.5" fill="#c8ccd2"><title>(unnamed)  0BE458  34B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1526.0" y="301.0" width="19.1" height="19.6" fill="#c8ccd2"><title>(unnamed)  0BC9DD  32B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1526.0" y="321.1" width="19.1" height="17.1" fill="#c8ccd2"><title>(unnamed)  0BAE8F  28B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1526.0" y="338.8" width="19.1" height="15.8" fill="#c8ccd2"><title>(unnamed)  0BF6B6  26B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1526.0" y="355.2" width="19.1" height="15.8" fill="#c8ccd2"><title>(unnamed)  0BF6D0  26B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1545.7" y="301.0" width="19.4" height="14.9" fill="#c8ccd2"><title>(unnamed)  0BC9C4  25B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1565.7" y="301.0" width="16.2" height="14.9" fill="#c8ccd2"><title>(unnamed)  0BD4AE  21B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1582.5" y="301.0" width="15.4" height="14.9" fill="#c8ccd2"><title>(unnamed)  0BAE47  20B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1545.7" y="316.5" width="18.2" height="12.6" fill="#c8ccd2"><title>(unnamed)  0BD068  20B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1564.6" y="316.5" width="17.3" height="12.6" fill="#c8ccd2"><title>(unnamed)  0BE23D  19B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1582.5" y="316.5" width="15.4" height="12.6" fill="#c8ccd2"><title>(unnamed)  0BC78A  17B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1545.7" y="329.7" width="13.0" height="14.0" fill="#c8ccd2"><title>(unnamed)  0BAFAC  16B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1545.7" y="344.3" width="13.0" height="14.0" fill="#c8ccd2"><title>(unnamed)  0BCD6C  16B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1545.7" y="358.9" width="13.0" height="12.2" fill="#c8ccd2"><title>(unnamed)  0BC46D  14B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1559.4" y="329.7" width="12.8" height="12.4" fill="#c8ccd2"><title>(unnamed)  0BC985  14B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1572.7" y="329.7" width="12.8" height="12.4" fill="#c8ccd2"><title>(unnamed)  0BC993  14B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1586.1" y="329.7" width="11.8" height="12.4" fill="#c8ccd2"><title>(unnamed)  0BCB06  13B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1559.4" y="342.7" width="10.6" height="13.9" fill="#c8ccd2"><title>(unnamed)  0BCB1B  13B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1559.4" y="357.2" width="10.6" height="13.9" fill="#c8ccd2"><title>(unnamed)  0BCB74  13B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1570.5" y="342.7" width="14.6" height="9.2" fill="#c8ccd2"><title>(unnamed)  0BD5FA  12B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1585.8" y="342.7" width="12.1" height="9.2" fill="#c8ccd2"><title>(unnamed)  0BCAEE  10B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1570.5" y="352.5" width="11.1" height="9.0" fill="#c8ccd2"><title>(unnamed)  0BCAF8  9B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1570.5" y="362.1" width="11.1" height="9.0" fill="#c8ccd2"><title>(unnamed)  0BD5EC  9B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1582.2" y="352.5" width="7.5" height="11.6" fill="#c8ccd2"><title>(unnamed)  0BCAE6  8B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1590.4" y="352.5" width="7.5" height="11.6" fill="#c8ccd2"><title>(unnamed)  0BCB13  8B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1582.2" y="364.7" width="8.4" height="6.3" fill="#c8ccd2"><title>(unnamed)  0BCB01  5B  T1  [bank 0B S-CPU]</title></rect>
-<rect x="1591.3" y="364.7" width="6.6" height="6.3" fill="#c8ccd2"><title>(unnamed)  0BD5F6  4B  T1  [bank 0B S-CPU]</title></rect>
-<text x="845.6" y="383.6" font-size="10" fill="#8b949e">bank 03 S-CPU</text>
-<rect x="844.1" y="388.6" width="121.3" height="133.0" fill="#c8ccd2"><title>(unnamed)  03DE39  1328B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="844.1" y="522.2" width="121.3" height="72.0" fill="#c8ccd2"><title>(unnamed)  0389B4  722B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="844.1" y="594.8" width="121.3" height="66.0" fill="#c8ccd2"><title>(unnamed)  038648  662B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="966.0" y="388.6" width="103.3" height="69.6" fill="#c8ccd2"><title>(unnamed)  03D9B9  595B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1069.9" y="388.6" width="84.1" height="69.6" fill="#c8ccd2"><title>(unnamed)  03F0E6  485B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1154.5" y="388.6" width="77.8" height="69.6" fill="#c8ccd2"><title>(unnamed)  03E838  449B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="966.0" y="458.9" width="57.1" height="75.3" fill="#c8ccd2"><title>(unnamed)  03C3FF  357B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="966.0" y="534.7" width="57.1" height="69.1" fill="#c8ccd2"><title>(unnamed)  03C57C  328B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="966.0" y="604.4" width="57.1" height="56.3" fill="#c8ccd2"><title>(unnamed)  03EDF4  268B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1023.7" y="458.9" width="48.4" height="65.9" fill="#c8ccd2"><title>(unnamed)  03DD1B  266B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1023.7" y="525.4" width="48.4" height="51.4" fill="#c8ccd2"><title>(unnamed)  03D8B3  208B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1023.7" y="577.4" width="48.4" height="44.4" fill="#c8ccd2"><title>(unnamed)  03B48C  180B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1023.7" y="622.4" width="48.4" height="38.4" fill="#c8ccd2"><title>(unnamed)  03B5DF  156B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1072.8" y="458.9" width="42.9" height="42.3" fill="#c8ccd2"><title>(unnamed)  03AF05  152B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1116.2" y="458.9" width="42.6" height="42.3" fill="#c8ccd2"><title>(unnamed)  03B548  151B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1159.4" y="458.9" width="38.9" height="42.3" fill="#c8ccd2"><title>(unnamed)  03B3DA  138B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1198.9" y="458.9" width="33.4" height="42.3" fill="#c8ccd2"><title>(unnamed)  03B7C5  119B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1072.8" y="501.7" width="36.8" height="34.5" fill="#c8ccd2"><title>(unnamed)  03B67B  107B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1072.8" y="536.8" width="36.8" height="31.9" fill="#c8ccd2"><title>(unnamed)  038CF6  99B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1072.8" y="569.3" width="36.8" height="31.5" fill="#c8ccd2"><title>(unnamed)  03FD46  98B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1072.8" y="601.4" width="36.8" height="29.6" fill="#c8ccd2"><title>(unnamed)  03D306  92B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1072.8" y="631.5" width="36.8" height="29.2" fill="#c8ccd2"><title>(unnamed)  03FBB6  91B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1110.2" y="501.7" width="31.9" height="33.4" fill="#c8ccd2"><title>(unnamed)  03F05E  90B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1142.7" y="501.7" width="31.5" height="33.4" fill="#c8ccd2"><title>(unnamed)  03EFD2  89B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1174.8" y="501.7" width="30.4" height="33.4" fill="#c8ccd2"><title>(unnamed)  03D388  86B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1205.8" y="501.7" width="26.5" height="33.4" fill="#c8ccd2"><title>(unnamed)  03EF3F  75B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1110.2" y="535.7" width="31.2" height="27.2" fill="#c8ccd2"><title>(unnamed)  03EA2E  72B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1142.0" y="535.7" width="30.3" height="27.2" fill="#c8ccd2"><title>(unnamed)  03CB5C  70B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1172.9" y="535.7" width="30.3" height="27.2" fill="#c8ccd2"><title>(unnamed)  03FDA9  70B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1203.8" y="535.7" width="28.5" height="27.2" fill="#c8ccd2"><title>(unnamed)  03D042  66B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1110.2" y="563.5" width="30.1" height="24.6" fill="#c8ccd2"><title>(unnamed)  03ECF5  63B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1110.2" y="588.6" width="30.1" height="24.6" fill="#c8ccd2"><title>(unnamed)  03FB47  63B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1110.2" y="613.8" width="30.1" height="23.8" fill="#c8ccd2"><title>(unnamed)  03CF1A  61B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1110.2" y="638.2" width="30.1" height="22.6" fill="#c8ccd2"><title>(unnamed)  03CAEB  58B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1140.9" y="563.5" width="22.7" height="28.3" fill="#c8ccd2"><title>(unnamed)  03CB25  55B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1164.2" y="563.5" width="22.7" height="28.3" fill="#c8ccd2"><title>(unnamed)  03CEC3  55B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1187.5" y="563.5" width="22.7" height="28.3" fill="#c8ccd2"><title>(unnamed)  03EC6D  55B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1210.9" y="563.5" width="21.5" height="28.3" fill="#c8ccd2"><title>(unnamed)  03ED46  52B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1140.9" y="592.4" width="25.7" height="23.2" fill="#c8ccd2"><title>(unnamed)  03CAB8  51B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1140.9" y="616.2" width="25.7" height="22.2" fill="#c8ccd2"><title>(unnamed)  03B8A5  49B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1140.9" y="639.0" width="25.7" height="21.8" fill="#c8ccd2"><title>(unnamed)  03CCBB  48B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1167.2" y="592.4" width="24.1" height="21.2" fill="#c8ccd2"><title>(unnamed)  03DCEF  44B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1191.9" y="592.4" width="20.2" height="21.2" fill="#c8ccd2"><title>(unnamed)  03F47B  37B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1212.7" y="592.4" width="19.6" height="21.2" fill="#c8ccd2"><title>(unnamed)  03EC43  36B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1167.2" y="614.2" width="17.1" height="23.0" fill="#c8ccd2"><title>(unnamed)  03FAA8  34B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1167.2" y="637.8" width="17.1" height="23.0" fill="#c8ccd2"><title>(unnamed)  03FB25  34B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1184.8" y="614.2" width="14.5" height="23.8" fill="#c8ccd2"><title>(unnamed)  03C9B4  30B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1184.8" y="638.6" width="14.5" height="22.2" fill="#c8ccd2"><title>(unnamed)  03C998  28B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1199.9" y="614.2" width="16.4" height="13.1" fill="#c8ccd2"><title>(unnamed)  03FD32  19B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1216.9" y="614.2" width="15.5" height="13.1" fill="#c8ccd2"><title>(unnamed)  03D996  18B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1199.9" y="627.9" width="11.8" height="14.3" fill="#c8ccd2"><title>(unnamed)  03CCA1  15B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1212.3" y="627.9" width="10.1" height="14.3" fill="#c8ccd2"><title>(unnamed)  03ED34  13B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1223.0" y="627.9" width="9.3" height="14.3" fill="#c8ccd2"><title>(unnamed)  03FE26  12B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1199.9" y="642.8" width="14.6" height="9.1" fill="#c8ccd2"><title>(unnamed)  03FE35  12B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1199.9" y="652.5" width="14.6" height="8.3" fill="#c8ccd2"><title>(unnamed)  03863D  11B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1215.1" y="642.8" width="9.7" height="12.5" fill="#c8ccd2"><title>(unnamed)  03CCB0  11B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1225.4" y="642.8" width="6.9" height="12.5" fill="#c8ccd2"><title>(unnamed)  03CFE3  8B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1215.1" y="655.9" width="8.3" height="4.9" fill="#c8ccd2"><title>(unnamed)  03B8A1  4B  T1  [bank 03 S-CPU]</title></rect>
-<rect x="1224.0" y="655.9" width="8.3" height="4.9" fill="#c8ccd2"><title>(unnamed)  03FE5F  4B  T1  [bank 03 S-CPU]</title></rect>
-<text x="845.6" y="673.4" font-size="10" fill="#8b949e">bank 09 S-CPU</text>
-<rect x="844.1" y="678.4" width="189.4" height="121.6" fill="#c8ccd2"><title>(unnamed)  09B876  1919B  T1  [bank 09 S-CPU]</title></rect>
-<rect x="844.1" y="800.5" width="189.4" height="97.4" fill="#c8ccd2"><title>(unnamed)  098B3B  1539B  T1  [bank 09 S-CPU]</title></rect>
-<rect x="1034.1" y="678.4" width="132.6" height="115.4" fill="#c8ccd2"><title>(unnamed)  09B30B  1277B  T1  [bank 09 S-CPU]</title></rect>
-<rect x="1167.2" y="678.4" width="65.1" height="115.4" fill="#c8ccd2"><title>(unnamed)  09C11F  630B  T1  [bank 09 S-CPU]</title></rect>
-<rect x="1034.1" y="794.3" width="72.1" height="103.6" fill="#c8ccd2"><title>(unnamed)  09ECE0  626B  T1  [bank 09 S-CPU]</title></rect>
-<rect x="1106.7" y="794.3" width="50.2" height="103.6" fill="#c8ccd2"><title>(unnamed)  09E47D  438B  T1  [bank 09 S-CPU]</title></rect>
-<rect x="1157.6" y="794.3" width="39.8" height="50.0" fill="#c8ccd2"><title>(unnamed)  09EF52  169B  T1  [bank 09 S-CPU]</title></rect>
-<rect x="1198.0" y="794.3" width="34.3" height="50.0" fill="#c8ccd2"><title>(unnamed)  09B0A1  146B  T1  [bank 09 S-CPU]</title></rect>
-<rect x="1157.6" y="844.9" width="40.2" height="28.7" fill="#c8ccd2"><title>(unnamed)  09F0B2  99B  T1  [bank 09 S-CPU]</title></rect>
-<rect x="1157.6" y="874.2" width="40.2" height="23.7" fill="#c8ccd2"><title>(unnamed)  09EFFB  82B  T1  [bank 09 S-CPU]</title></rect>
-<rect x="1198.4" y="844.9" width="33.9" height="26.4" fill="#c8ccd2"><title>(unnamed)  09F065  77B  T1  [bank 09 S-CPU]</title></rect>
-<rect x="1198.4" y="871.9" width="21.2" height="26.0" fill="#c8ccd2"><title>(unnamed)  09C08E  48B  T1  [bank 09 S-CPU]</title></rect>
-<rect x="1220.2" y="871.9" width="12.1" height="26.0" fill="#c8ccd2"><title>(unnamed)  09C072  28B  T1  [bank 09 S-CPU]</title></rect>
-<text x="1237.4" y="383.6" font-size="10" fill="#8b949e">video</text>
-<rect x="1235.9" y="388.6" width="51.6" height="76.3" fill="#3fb950"><title>RaceScreenSetup  03F32A  337B  T4  [video]</title></rect>
-<rect x="1235.9" y="465.5" width="51.6" height="55.1" fill="#3fb950"><title>GradientSetup  0BFE12  244B  T4  [video]</title></rect>
-<rect x="1235.9" y="521.2" width="51.6" height="32.5" fill="#3fb950"><title>PaletteCycle  7EB63A  145B  T4  [video]</title></rect>
-<rect x="1235.9" y="554.3" width="51.6" height="27.7" fill="#3fb950"><title>RasterColoursCycling  7EB31E  124B  T4  [video]</title></rect>
-<rect x="1288.1" y="388.6" width="37.5" height="36.0" fill="#d29922"><title>WindowHdmaBands  7EDC18  117B  T2  [video]</title></rect>
-<rect x="1326.2" y="388.6" width="37.5" height="36.0" fill="#3fb950"><title>VideoRegsReset  03EB0E  117B  T4  [video]</title></rect>
-<rect x="1364.3" y="388.6" width="31.3" height="36.0" fill="#3fb950"><title>VramPictureRows1B0  03EA91  98B  T4  [video]</title></rect>
-<rect x="1396.2" y="388.6" width="28.7" height="36.0" fill="#3fb950"><title>RasterColoursE4  7EB39A  90B  T4  [video]</title></rect>
-<rect x="1425.5" y="388.6" width="26.1" height="36.0" fill="#3fb950"><title>VramDmaWideRowsFromGsuRam  7F08C7  82B  T4  [video]</title></rect>
-<rect x="1288.1" y="425.2" width="27.0" height="32.2" fill="#d29922"><title>WindowHdmaAt  7ED85C  76B  T2  [video]</title></rect>
-<rect x="1288.1" y="457.9" width="27.0" height="31.7" fill="#3fb950"><title>RasterColours  7EB755  75B  T4  [video]</title></rect>
-<rect x="1288.1" y="490.3" width="27.0" height="31.7" fill="#d29922"><title>WindowHdmaNormal  7EDBCD  75B  T2  [video]</title></rect>
-<rect x="1288.1" y="522.6" width="27.0" height="29.6" fill="#d29922"><title>WindowHdmaPreset  7ED718  70B  T2  [video]</title></rect>
-<rect x="1288.1" y="552.8" width="27.0" height="29.2" fill="#3fb950"><title>VramDmaRowsFromGsuRam  7EAC08  69B  T4  [video]</title></rect>
-<rect x="1315.7" y="425.2" width="28.1" height="23.5" fill="#3fb950"><title>VramUploadGsuBuffer  7EACBD  58B  T4  [video]</title></rect>
-<rect x="1344.4" y="425.2" width="27.6" height="23.5" fill="#d29922"><title>WindowHdmaFFD1  7EDC8D  57B  T2  [video]</title></rect>
-<rect x="1372.6" y="425.2" width="26.6" height="23.5" fill="#d29922"><title>WindowHdmaFromTable  7EDB10  55B  T2  [video]</title></rect>
-<rect x="1399.8" y="425.2" width="26.1" height="23.5" fill="#d29922"><title>WindowHdmaFFDD  7ED8A8  54B  T2  [video]</title></rect>
-<rect x="1426.5" y="425.2" width="25.1" height="23.5" fill="#d29922"><title>FadeStep  7EAC69  52B  T2  [video]</title></rect>
-<rect x="1315.7" y="449.2" width="25.3" height="21.9" fill="#3fb950"><title>VramDmaFromGsuRam  7EABD7  49B  T4  [video]</title></rect>
-<rect x="1315.7" y="471.8" width="25.3" height="21.9" fill="#d29922"><title>SpriteStrip4  7F099C  49B  T2  [video]</title></rect>
-<rect x="1315.7" y="494.3" width="25.3" height="21.9" fill="#d29922"><title>SpriteStrip6  7F0A35  49B  T2  [video]</title></rect>
-<rect x="1315.7" y="516.8" width="25.3" height="21.5" fill="#d29922"><title>WindowHdmaFromList  7ED6E8  48B  T2  [video]</title></rect>
-<rect x="1315.7" y="538.9" width="25.3" height="21.5" fill="#d29922"><title>OamFromList  03E9FE  48B  T2  [video]</title></rect>
-<rect x="1315.7" y="560.9" width="25.3" height="21.0" fill="#3fb950"><title>WindowsAllInverted  7EE085  47B  T4  [video]</title></rect>
-<rect x="1341.6" y="449.2" width="22.9" height="23.2" fill="#3fb950"><title>VramDmaTileFromGsuRam  03DCC0  47B  T4  [video]</title></rect>
-<rect x="1365.1" y="449.2" width="21.9" height="23.2" fill="#3fb950"><title>WindowsColourAddBg12  7EDFE4  45B  T4  [video]</title></rect>
-<rect x="1387.7" y="449.2" width="21.4" height="23.2" fill="#d29922"><title>OamHighBits58  07C50E  44B  T2  [video]</title></rect>
-<rect x="1409.7" y="449.2" width="20.9" height="23.2" fill="#3fb950"><title>WindowsColourWindowOnly  7EE01D  43B  T4  [video]</title></rect>
-<rect x="1431.2" y="449.2" width="20.4" height="23.2" fill="#3fb950"><title>RasterPaletteUpload  7EB72B  42B  T4  [video]</title></rect>
-<rect x="1341.6" y="473.0" width="20.5" height="22.5" fill="#3fb950"><title>TilemapRowFromFB4E  02FAFE  41B  T4  [video]</title></rect>
-<rect x="1341.6" y="496.2" width="20.5" height="22.5" fill="#3fb950"><title>PaletteDarkenFour  04E1FE  41B  T4  [video]</title></rect>
-<rect x="1341.6" y="519.3" width="20.5" height="21.4" fill="#3fb950"><title>TilemapRowFrom7FBBD7  02FB27  39B  T4  [video]</title></rect>
-<rect x="1341.6" y="541.3" width="20.5" height="20.9" fill="#d29922"><title>OamBufferHideLarge  03FEF9  38B  T2  [video]</title></rect>
-<rect x="1341.6" y="562.8" width="20.5" height="19.2" fill="#d29922"><title>OamBufferClear  03ECD1  35B  T2  [video]</title></rect>
-<rect x="1362.7" y="473.0" width="17.5" height="21.1" fill="#3fb950"><title>VramDmaFromBank7F  7EABB6  33B  T4  [video]</title></rect>
-<rect x="1380.8" y="473.0" width="17.5" height="21.1" fill="#3fb950"><title>PaletteLoad16  03EDA5  33B  T4  [video]</title></rect>
-<rect x="1399.0" y="473.0" width="17.5" height="21.1" fill="#d29922"><title>OamColumn8  07C572  33B  T2  [video]</title></rect>
-<rect x="1417.1" y="473.0" width="17.5" height="21.1" fill="#3fb950"><title>VramWriteRowFromGsuRam  7F0BCE  33B  T4  [video]</title></rect>
-<rect x="1435.2" y="473.0" width="16.4" height="21.1" fill="#3fb950"><title>OamDma  7EACF7  31B  T4  [video]</title></rect>
-<rect x="1362.7" y="494.7" width="18.9" height="17.7" fill="#d29922"><title>OamBlock52Left  07C33A  30B  T2  [video]</title></rect>
-<rect x="1362.7" y="513.0" width="18.9" height="17.7" fill="#d29922"><title>OamBlock52Right  07C36A  30B  T2  [video]</title></rect>
-<rect x="1362.7" y="531.3" width="18.9" height="16.5" fill="#3fb950"><title>FadeStepFixed  7EAC4D  28B  T4  [video]</title></rect>
-<rect x="1362.7" y="548.4" width="18.9" height="16.5" fill="#3fb950"><title>CgramDma  7EB0F6  28B  T4  [video]</title></rect>
-<rect x="1362.7" y="565.5" width="18.9" height="16.5" fill="#3fb950"><title>TilemapRowFromGsuRam  03ED89  28B  T4  [video]</title></rect>
-<rect x="1382.2" y="494.7" width="17.7" height="17.6" fill="#3fb950"><title>ScrollHdmaSet  03FED9  28B  T4  [video]</title></rect>
-<rect x="1400.5" y="494.7" width="17.1" height="17.6" fill="#d29922"><title>OamWriteSprites36To46  7EADFD  27B  T2  [video]</title></rect>
-<rect x="1418.2" y="494.7" width="17.1" height="17.6" fill="#3fb950"><title>VramFillGradient  03EAF3  27B  T4  [video]</title></rect>
-<rect x="1435.9" y="494.7" width="15.8" height="17.6" fill="#3fb950"><title>Bg2ScrollFromTable  7EB28C  25B  T4  [video]</title></rect>
-<rect x="1382.2" y="512.9" width="15.5" height="17.9" fill="#3fb950"><title>PaletteCopy16To7F39D7  03EDC6  25B  T4  [video]</title></rect>
-<rect x="1382.2" y="531.4" width="15.5" height="16.4" fill="#3fb950"><title>RasterColoursUnless0D22  7EB307  23B  T4  [video]</title></rect>
-<rect x="1382.2" y="548.4" width="15.5" height="16.4" fill="#d29922"><title>OamAttr38x7  02FBCE  23B  T2  [video]</title></rect>
-<rect x="1382.2" y="565.5" width="15.5" height="16.4" fill="#d29922"><title>ColourMathA7Start  03FCC9  23B  T2  [video]</title></rect>
-<rect x="1398.3" y="512.9" width="18.9" height="12.9" fill="#3fb950"><title>DmaFromDescriptor  03ECA8  22B  T4  [video]</title></rect>
-<rect x="1417.7" y="512.9" width="18.9" height="12.9" fill="#d29922"><title>OamSetPalette  04E317  22B  T2  [video]</title></rect>
-<rect x="1437.2" y="512.9" width="14.4" height="12.9" fill="#3fb950"><title>CgramDmaAll  7EB0E5  17B  T4  [video]</title></rect>
-<rect x="1398.3" y="526.3" width="13.3" height="14.0" fill="#3fb950"><title>GradientPointersToBank7F  7EB2A5  17B  T4  [video]</title></rect>
-<rect x="1412.2" y="526.3" width="13.3" height="14.0" fill="#3fb950"><title>WindowStep3439  03FE15  17B  T4  [video]</title></rect>
-<rect x="1426.1" y="526.3" width="12.5" height="14.0" fill="#3fb950"><title>OamDmaAll  7EAD16  16B  T4  [video]</title></rect>
-<rect x="1439.2" y="526.3" width="12.5" height="14.0" fill="#d29922"><title>FixedColourFromStep  03FE6B  16B  T2  [video]</title></rect>
-<rect x="1398.3" y="540.9" width="12.0" height="13.6" fill="#3fb950"><title>WindowStep3437  03FE06  15B  T4  [video]</title></rect>
-<rect x="1398.3" y="555.1" width="12.0" height="13.6" fill="#3fb950"><title>WindowStep3435  03FE44  15B  T4  [video]</title></rect>
-<rect x="1398.3" y="569.3" width="12.0" height="12.7" fill="#d29922"><title>OamHideRange  07C4D2  14B  T2  [video]</title></rect>
-<rect x="1410.8" y="540.9" width="14.0" height="10.0" fill="#d29922"><title>OamHideEntries0To2  02FC8D  13B  T2  [video]</title></rect>
-<rect x="1425.4" y="540.9" width="12.8" height="10.0" fill="#d29922"><title>ColourMathSub83Windowed  7EE011  12B  T2  [video]</title></rect>
-<rect x="1438.8" y="540.9" width="12.8" height="10.0" fill="#d29922"><title>OamAttr36x4  02FB92  12B  T2  [video]</title></rect>
-<rect x="1410.8" y="551.5" width="12.1" height="10.7" fill="#d29922"><title>OamAttr38x6  02FBC2  12B  T2  [video]</title></rect>
-<rect x="1410.8" y="562.8" width="12.1" height="9.7" fill="#3fb950"><title>VramPictureRows2B0  03EA86  11B  T4  [video]</title></rect>
-<rect x="1410.8" y="573.1" width="12.1" height="8.8" fill="#d29922"><title>OamHideEntries3And9  02FC83  10B  T2  [video]</title></rect>
-<rect x="1423.5" y="551.5" width="9.7" height="11.0" fill="#3fb950"><title>GradientFillCgadd  03ED7F  10B  T4  [video]</title></rect>
-<rect x="1433.8" y="551.5" width="9.7" height="11.0" fill="#3fb950"><title>GradientFillCgaddB  0BFB1C  10B  T4  [video]</title></rect>
-<rect x="1444.0" y="551.5" width="7.6" height="11.0" fill="#d29922"><title>OamSprite0AddY  02FB8A  8B  T2  [video]</title></rect>
-<rect x="1423.5" y="563.1" width="9.2" height="9.1" fill="#3fb950"><title>VramFrameRows2B0  03EA76  8B  T4  [video]</title></rect>
-<rect x="1423.5" y="572.8" width="9.2" height="9.1" fill="#3fb950"><title>VramFrameRows1B0  03EA7E  8B  T4  [video]</title></rect>
-<rect x="1433.3" y="563.1" width="8.9" height="9.4" fill="#d29922"><title>ColourMathA3  03FE57  8B  T2  [video]</title></rect>
-<rect x="1442.8" y="563.1" width="8.9" height="9.4" fill="#d29922"><title>ColourMathOff  03FE63  8B  T2  [video]</title></rect>
-<rect x="1433.3" y="573.1" width="8.3" height="8.8" fill="#d29922"><title>SpriteYOnScreen  7EB005  7B  T2  [video]</title></rect>
-<rect x="1442.1" y="573.1" width="4.5" height="8.8" fill="#d29922"><title>ColourMathA3Long  03FE53  4B  T2  [video]</title></rect>
-<rect x="1447.2" y="573.1" width="4.5" height="8.8" fill="#d29922"><title>OamBufferHideLargeLong  03FEF5  4B  T2  [video]</title></rect>
-<text x="1456.7" y="383.6" font-size="10" fill="#8b949e">menu</text>
-<rect x="1455.2" y="388.6" width="57.1" height="44.0" fill="#d29922"><title>MenuCourseGraphics  0BF94A  218B  T2  [menu]</title></rect>
-<rect x="1513.0" y="388.6" width="44.2" height="44.0" fill="#3fb950"><title>MenuStateInit  0BD4C3  169B  T4  [menu]</title></rect>
-<rect x="1557.7" y="388.6" width="40.2" height="44.0" fill="#3fb950"><title>MenuPictureInsetGrid  0BF6EA  154B  T4  [menu]</title></rect>
-<rect x="1455.2" y="433.3" width="46.2" height="35.0" fill="#3fb950"><title>MenuPaletteScale  0BE303  141B  T4  [menu]</title></rect>
-<rect x="1502.0" y="433.3" width="41.2" height="35.0" fill="#3fb950"><title>MenuHdmaSetupB  0BF5E6  126B  T4  [menu]</title></rect>
-<rect x="1543.8" y="433.3" width="29.6" height="35.0" fill="#3fb950"><title>MenuHdmaSetup  0BF50C  91B  T4  [menu]</title></rect>
-<rect x="1574.0" y="433.3" width="23.9" height="35.0" fill="#3fb950"><title>MenuActorPoolInit  0BB479  74B  T4  [menu]</title></rect>
-<rect x="1455.2" y="468.9" width="26.9" height="30.0" fill="#d29922"><title>MenuLoadPicturesTo7F  0BD391  71B  T2  [menu]</title></rect>
-<rect x="1455.2" y="499.5" width="26.9" height="28.7" fill="#3fb950"><title>MenuActorSetTiles  0BC4E4  68B  T4  [menu]</title></rect>
-<rect x="1455.2" y="528.7" width="26.9" height="26.9" fill="#3fb950"><title>MenuLoadClearGsu  0BD3D8  64B  T4  [menu]</title></rect>
-<rect x="1455.2" y="556.3" width="26.9" height="25.7" fill="#3fb950"><title>MenuGaugeFromButtonB  7F11AC  61B  T4  [menu]</title></rect>
-<rect x="1482.7" y="468.9" width="24.4" height="28.3" fill="#3fb950"><title>MenuLoadPictureCC78  0BD1F7  61B  T4  [menu]</title></rect>
-<rect x="1482.7" y="497.8" width="24.4" height="28.3" fill="#3fb950"><title>MenuActorAnimate  0BE250  61B  T4  [menu]</title></rect>
-<rect x="1482.7" y="526.7" width="24.4" height="27.3" fill="#3fb950"><title>MenuLoadPictureCE78  0BD234  59B  T4  [menu]</title></rect>
-<rect x="1482.7" y="554.6" width="24.4" height="27.3" fill="#3fb950"><title>MenuLoadPictureDD8C  0BD2C9  59B  T4  [menu]</title></rect>
-<rect x="1507.7" y="468.9" width="23.5" height="25.4" fill="#3fb950"><title>MenuGaugeSlideToTarget  7F1177  53B  T4  [menu]</title></rect>
-<rect x="1531.7" y="468.9" width="23.5" height="25.4" fill="#3fb950"><title>MenuSinePosition  0BC9FD  53B  T4  [menu]</title></rect>
-<rect x="1555.8" y="468.9" width="20.7" height="25.4" fill="#3fb950"><title>MenuLoadGsu4000  0BD304  47B  T4  [menu]</title></rect>
-<rect x="1577.2" y="468.9" width="20.7" height="25.4" fill="#3fb950"><title>MenuLoadGsu5000  0BD333  47B  T4  [menu]</title></rect>
-<rect x="1507.7" y="494.9" width="24.8" height="21.3" fill="#3fb950"><title>MenuLoadGsu6000  0BD362  47B  T4  [menu]</title></rect>
-<rect x="1507.7" y="516.8" width="24.8" height="21.3" fill="#3fb950"><title>MenuLoadBlank0800  0BD418  47B  T4  [menu]</title></rect>
-<rect x="1507.7" y="538.7" width="24.8" height="21.3" fill="#3fb950"><title>MenuLoadBlank1000  0BD447  47B  T4  [menu]</title></rect>
-<rect x="1507.7" y="560.6" width="24.8" height="21.3" fill="#3fb950"><title>MenuLoadBlank1800  0BD476  47B  T4  [menu]</title></rect>
-<rect x="1533.0" y="494.9" width="23.3" height="21.6" fill="#3fb950"><title>MenuActorApplyPalette  0BCAB9  45B  T4  [menu]</title></rect>
-<rect x="1557.0" y="494.9" width="21.2" height="21.6" fill="#3fb950"><title>MenuScrollReset  0BF4B2  41B  T4  [menu]</title></rect>
-<rect x="1578.8" y="494.9" width="19.1" height="21.6" fill="#3fb950"><title>MenuPictureToVram  0BE3D2  37B  T4  [menu]</title></rect>
-<rect x="1533.0" y="517.2" width="17.8" height="21.8" fill="#3fb950"><title>MenuActorsSet10  0BC9A1  35B  T4  [menu]</title></rect>
-<rect x="1533.0" y="539.6" width="17.8" height="21.2" fill="#3fb950"><title>MenuChoiceRepeat  0BC736  34B  T4  [menu]</title></rect>
-<rect x="1533.0" y="561.4" width="17.8" height="20.6" fill="#3fb950"><title>MenuActorFree  0BB4E5  33B  T4  [menu]</title></rect>
-<rect x="1551.5" y="517.2" width="16.2" height="21.3" fill="#3fb950"><title>MenuWaitFor0357  0BBCD2  31B  T4  [menu]</title></rect>
-<rect x="1568.2" y="517.2" width="15.6" height="21.3" fill="#d29922"><title>MenuActorAlloc  0BB4C3  30B  T2  [menu]</title></rect>
-<rect x="1584.5" y="517.2" width="13.4" height="21.3" fill="#3fb950"><title>MenuPaletteLoad  0BF4DB  26B  T4  [menu]</title></rect>
-<rect x="1551.5" y="539.0" width="18.7" height="14.7" fill="#d29922"><title>MenuActorFind  0BE28D  25B  T2  [menu]</title></rect>
-<rect x="1551.5" y="554.4" width="18.7" height="13.5" fill="#3fb950"><title>MenuActorBlink  0BC576  23B  T4  [menu]</title></rect>
-<rect x="1551.5" y="568.4" width="18.7" height="13.5" fill="#3fb950"><title>MenuPaletteSave  0BF4F5  23B  T4  [menu]</title></rect>
-<rect x="1570.8" y="539.0" width="13.6" height="16.0" fill="#3fb950"><title>MenuOamFromList  0BFAE5  20B  T4  [menu]</title></rect>
-<rect x="1585.0" y="539.0" width="12.9" height="16.0" fill="#3fb950"><title>MenuSet1A66  0BC723  19B  T4  [menu]</title></rect>
-<rect x="1570.8" y="555.7" width="15.7" height="13.2" fill="#d29922"><title>MenuWaitFrame  0BE390  19B  T2  [menu]</title></rect>
-<rect x="1570.8" y="569.5" width="15.7" height="12.5" fill="#3fb950"><title>MenuRowPosition  0BC58D  18B  T4  [menu]</title></rect>
-<rect x="1587.1" y="555.7" width="10.8" height="14.9" fill="#3fb950"><title>MenuActorCountdown  0BCF9C  15B  T4  [menu]</title></rect>
-<rect x="1587.1" y="571.2" width="8.8" height="10.8" fill="#3fb950"><title>MenuSetExit  0BD4A5  9B  T4  [menu]</title></rect>
-<rect x="1596.4" y="571.2" width="1.5" height="5.1" fill="#3fb950"><title>MenuActorIdleC47B  0BC47B  1B  T4  [menu]</title></rect>
-<rect x="1596.4" y="576.9" width="1.5" height="5.1" fill="#3fb950"><title>MenuActorIdleCE89  0BCE89  1B  T4  [menu]</title></rect>
-<text x="1237.4" y="594.5" font-size="10" fill="#8b949e">bank 07 Super FX</text>
-<rect x="1235.9" y="599.5" width="143.1" height="180.1" fill="#c8ccd2"><title>(unnamed)  07EE50  2209B  T1  [bank 07 Super FX]</title></rect>
-<text x="1237.4" y="792.3" font-size="10" fill="#8b949e">object</text>
-<rect x="1235.9" y="797.3" width="26.3" height="37.5" fill="#d29922"><title>ObjectPlaceFromTable  08B8F9  93B  T2  [object]</title></rect>
-<rect x="1235.9" y="835.4" width="26.3" height="33.4" fill="#3fb950"><title>GsuRecordFromObject  08D86F  83B  T4  [object]</title></rect>
-<rect x="1235.9" y="869.4" width="26.3" height="28.5" fill="#3fb950"><title>ObjectVelocityFromRecordOf  08DC6D  71B  T4  [object]</title></rect>
-<rect x="1262.8" y="797.3" width="26.8" height="27.5" fill="#d29922"><title>ObjectLinkEventTrigger  7ED397  70B  T2  [object]</title></rect>
-<rect x="1262.8" y="825.4" width="26.8" height="25.9" fill="#3fb950"><title>GsuRecordStep6A  08B2E9  66B  T4  [object]</title></rect>
-<rect x="1262.8" y="851.9" width="26.8" height="23.5" fill="#3fb950"><title>ObjectVelocityFromRecordScaled  08D5DF  60B  T4  [object]</title></rect>
-<rect x="1262.8" y="876.0" width="26.8" height="21.9" fill="#d29922"><title>ObjectSet5DByKind  08B48E  56B  T2  [object]</title></rect>
-<rect x="1290.2" y="797.3" width="23.1" height="24.5" fill="#d29922"><title>ObjectBucketRemove  088392  54B  T2  [object]</title></rect>
-<rect x="1313.9" y="797.3" width="22.2" height="24.5" fill="#d29922"><title>ObjectVelocityFromRecord  08D5AB  52B  T2  [object]</title></rect>
-<rect x="1336.6" y="797.3" width="21.3" height="24.5" fill="#3fb950"><title>GsuRecordVelocity  08D83D  50B  T4  [object]</title></rect>
-<rect x="1358.6" y="797.3" width="20.4" height="24.5" fill="#3fb950"><title>GsuRecordWords88  08B863  48B  T4  [object]</title></rect>
-<rect x="1290.2" y="822.4" width="19.1" height="25.1" fill="#d29922"><title>ObjectBucketInsert  088364  46B  T2  [object]</title></rect>
-<rect x="1290.2" y="848.1" width="19.1" height="25.1" fill="#3fb950"><title>GsuRecordFlag4  08D070  46B  T4  [object]</title></rect>
-<rect x="1290.2" y="873.9" width="19.1" height="24.0" fill="#d29922"><title>ObjectPoolInit  03D3DE  44B  T2  [object]</title></rect>
-<rect x="1309.9" y="822.4" width="23.0" height="18.5" fill="#3fb950"><title>GsuRecordBits60  09FBB2  41B  T4  [object]</title></rect>
-<rect x="1333.5" y="822.4" width="23.0" height="18.5" fill="#d29922"><title>ObjectLinkFlag4000Step  7F12AC  41B  T2  [object]</title></rect>
-<rect x="1357.1" y="822.4" width="21.9" height="18.5" fill="#d29922"><title>ObjectListAppend  08B75B  39B  T2  [object]</title></rect>
-<rect x="1309.9" y="841.5" width="19.3" height="19.9" fill="#3fb950"><title>GsuRecordWord58  08E401  37B  T4  [object]</title></rect>
-<rect x="1309.9" y="862.0" width="19.3" height="18.8" fill="#d29922"><title>ObjectApplyVelocity  03C06C  35B  T2  [object]</title></rect>
-<rect x="1309.9" y="881.3" width="19.3" height="16.6" fill="#3fb950"><title>GsuRecordPosition  08CCD2  31B  T4  [object]</title></rect>
-<rect x="1329.8" y="841.5" width="16.6" height="16.6" fill="#3fb950"><title>GsuRecordFlag10  08CCA3  27B  T4  [object]</title></rect>
-<rect x="1347.0" y="841.5" width="16.0" height="16.6" fill="#d29922"><title>ObjectTableC056  08C03C  26B  T2  [object]</title></rect>
-<rect x="1363.6" y="841.5" width="15.4" height="16.6" fill="#d29922"><title>ObjectTableE8AF  08E896  25B  T2  [object]</title></rect>
-<rect x="1329.8" y="858.7" width="18.5" height="12.7" fill="#d29922"><title>ObjectCopyPositionTo  03D1E6  23B  T2  [object]</title></rect>
-<rect x="1329.8" y="872.0" width="18.5" height="12.7" fill="#d29922"><title>ObjectCopyPositionFrom  03D1FD  23B  T2  [object]</title></rect>
-<rect x="1329.8" y="885.2" width="18.5" height="12.7" fill="#3fb950"><title>GsuRecordSetFlags  08CCF1  23B  T4  [object]</title></rect>
-<rect x="1348.9" y="858.7" width="15.5" height="14.4" fill="#d29922"><title>ObjectFlag40IfMatch  08B830  22B  T2  [object]</title></rect>
-<rect x="1365.0" y="858.7" width="14.0" height="14.4" fill="#3fb950"><title>GsuRecordMode2  08CCBE  20B  T4  [object]</title></rect>
-<rect x="1348.9" y="873.8" width="16.3" height="11.8" fill="#d29922"><title>ObjectCopy14To  03D214  19B  T2  [object]</title></rect>
-<rect x="1348.9" y="886.1" width="16.3" height="11.8" fill="#d29922"><title>ObjectCopy14From  03D227  19B  T2  [object]</title></rect>
-<rect x="1365.8" y="873.8" width="13.2" height="14.6" fill="#3fb950"><title>GsuRecordWord88  08E3EE  19B  T4  [object]</title></rect>
-<rect x="1365.8" y="888.9" width="13.2" height="9.0" fill="#d29922"><title>ObjectLinkedSet1A  0389A8  12B  T2  [object]</title></rect>
-<text x="1384.1" y="594.5" font-size="10" fill="#8b949e">bank 04 S-CPU</text>
-<rect x="1382.6" y="599.5" width="55.2" height="42.5" fill="#c8ccd2"><title>(unnamed)  04D0DB  217B  T1  [bank 04 S-CPU]</title></rect>
-<rect x="1438.4" y="599.5" width="51.9" height="42.5" fill="#c8ccd2"><title>(unnamed)  04D251  204B  T1  [bank 04 S-CPU]</title></rect>
-<rect x="1382.6" y="642.6" width="32.2" height="68.3" fill="#c8ccd2"><title>(unnamed)  04E048  204B  T1  [bank 04 S-CPU]</title></rect>
-<rect x="1415.4" y="642.6" width="30.6" height="34.6" fill="#c8ccd2"><title>(unnamed)  04D533  99B  T1  [bank 04 S-CPU]</title></rect>
-<rect x="1415.4" y="677.8" width="30.6" height="33.1" fill="#c8ccd2"><title>(unnamed)  04E28D  95B  T1  [bank 04 S-CPU]</title></rect>
-<rect x="1446.7" y="642.6" width="25.2" height="25.2" fill="#c8ccd2"><title>(unnamed)  04D082  60B  T1  [bank 04 S-CPU]</title></rect>
-<rect x="1472.4" y="642.6" width="17.9" height="25.2" fill="#c8ccd2"><title>(unnamed)  04E23F  43B  T1  [bank 04 S-CPU]</title></rect>
-<rect x="1446.7" y="668.4" width="16.4" height="20.9" fill="#c8ccd2"><title>(unnamed)  04D040  33B  T1  [bank 04 S-CPU]</title></rect>
-<rect x="1446.7" y="690.0" width="16.4" height="20.9" fill="#c8ccd2"><title>(unnamed)  04D061  33B  T1  [bank 04 S-CPU]</title></rect>
-<rect x="1463.6" y="668.4" width="13.5" height="23.8" fill="#c8ccd2"><title>(unnamed)  04E2EC  31B  T1  [bank 04 S-CPU]</title></rect>
-<rect x="1477.7" y="668.4" width="12.6" height="23.8" fill="#c8ccd2"><title>(unnamed)  04E32D  29B  T1  [bank 04 S-CPU]</title></rect>
-<rect x="1463.6" y="692.8" width="13.6" height="18.1" fill="#c8ccd2"><title>(unnamed)  04D0BE  24B  T1  [bank 04 S-CPU]</title></rect>
-<rect x="1477.9" y="692.8" width="12.4" height="18.1" fill="#c8ccd2"><title>(unnamed)  04DA20  22B  T1  [bank 04 S-CPU]</title></rect>
-<text x="1495.4" y="594.5" font-size="10" fill="#8b949e">gsu</text>
-<rect x="1493.9" y="599.5" width="35.5" height="32.6" fill="#3fb950"><title>GsuCF42ToVram  03EB83  108B  T4  [gsu]</title></rect>
-<rect x="1530.0" y="599.5" width="34.1" height="32.6" fill="#3fb950"><title>Gsu8325  03B011  104B  T4  [gsu]</title></rect>
-<rect x="1564.8" y="599.5" width="33.1" height="32.6" fill="#3fb950"><title>GsuScreenFlip  03B83C  101B  T4  [gsu]</title></rect>
-<rect x="1493.9" y="632.7" width="26.4" height="30.6" fill="#3fb950"><title>GsuEE88Ramp  03FE8D  76B  T4  [gsu]</title></rect>
-<rect x="1493.9" y="663.9" width="26.4" height="23.2" fill="#3fb950"><title>GsuParamsUpdate  7EE2C9  58B  T4  [gsu]</title></rect>
-<rect x="1493.9" y="687.7" width="26.4" height="23.2" fill="#3fb950"><title>Gsu82CE  03AFD7  58B  T4  [gsu]</title></rect>
-<rect x="1520.9" y="632.7" width="27.8" height="21.2" fill="#3fb950"><title>GsuParamsFromDp  03AEB6  56B  T4  [gsu]</title></rect>
-<rect x="1549.3" y="632.7" width="26.3" height="21.2" fill="#3fb950"><title>GsuTableEntryTo1F4C  08DC13  53B  T4  [gsu]</title></rect>
-<rect x="1576.2" y="632.7" width="21.7" height="21.2" fill="#3fb950"><title>GsuRun  7EE1F5  44B  T4  [gsu]</title></rect>
-<rect x="1520.9" y="654.6" width="20.2" height="22.3" fill="#3fb950"><title>ObjectGsu80BC  03C9EE  43B  T4  [gsu]</title></rect>
-<rect x="1520.9" y="677.4" width="20.2" height="18.0" fill="#3fb950"><title>GsuCF42To3000  03EC01  35B  T4  [gsu]</title></rect>
-<rect x="1520.9" y="696.1" width="20.2" height="14.8" fill="#3fb950"><title>GsuBytes200_BFB7B6  04D7BF  29B  T4  [gsu]</title></rect>
-<rect x="1541.7" y="654.6" width="18.3" height="16.4" fill="#3fb950"><title>GsuBytes200_BFB5BB  04D7DC  29B  T4  [gsu]</title></rect>
-<rect x="1560.6" y="654.6" width="18.3" height="16.4" fill="#3fb950"><title>GsuBytes200_BFBCBD  04D7F9  29B  T4  [gsu]</title></rect>
-<rect x="1579.6" y="654.6" width="18.3" height="16.4" fill="#3fb950"><title>GsuBytes200_BFBAB9  04D816  29B  T4  [gsu]</title></rect>
-<rect x="1541.7" y="671.5" width="15.5" height="19.4" fill="#3fb950"><title>GsuBytes200_BFB3BE  04D833  29B  T4  [gsu]</title></rect>
-<rect x="1541.7" y="691.5" width="15.5" height="19.4" fill="#3fb950"><title>GsuBytes200_0F0405  04D972  29B  T4  [gsu]</title></rect>
-<rect x="1557.8" y="671.5" width="15.5" height="19.4" fill="#3fb950"><title>GsuBytes200_0F090A  04D9AC  29B  T4  [gsu]</title></rect>
-<rect x="1557.8" y="691.5" width="15.5" height="19.4" fill="#3fb950"><title>GsuBytes200_0F050E  04D9E6  29B  T4  [gsu]</title></rect>
-<rect x="1573.8" y="671.5" width="24.1" height="12.4" fill="#3fb950"><title>GsuBytes200_0F080E  04DA03  29B  T4  [gsu]</title></rect>
-<rect x="1573.8" y="684.6" width="16.3" height="13.8" fill="#3fb950"><title>GsuWait  7EE1CB  22B  T4  [gsu]</title></rect>
-<rect x="1590.8" y="684.6" width="7.1" height="13.8" fill="#3fb950"><title>GsuParam216A  078E2A  10B  T4  [gsu]</title></rect>
-<rect x="1573.8" y="698.9" width="8.2" height="12.0" fill="#3fb950"><title>GsuParam216B  078E34  10B  T4  [gsu]</title></rect>
-<rect x="1582.7" y="698.9" width="7.3" height="12.0" fill="#3fb950"><title>GsuCF42ToC000  03EBEF  9B  T4  [gsu]</title></rect>
-<rect x="1590.6" y="698.9" width="7.3" height="12.0" fill="#3fb950"><title>GsuCF42To4000  03EBF8  9B  T4  [gsu]</title></rect>
-<text x="1384.1" y="723.5" font-size="10" fill="#8b949e">audio</text>
-<rect x="1382.6" y="728.5" width="26.5" height="39.7" fill="#3fb950"><title>ApuUpload  04D720  104B  T4  [audio]</title></rect>
-<rect x="1382.6" y="768.8" width="26.5" height="36.6" fill="#d29922"><title>PlayerStopHeldSound  04D49B  96B  T2  [audio]</title></rect>
-<rect x="1409.7" y="728.5" width="25.1" height="29.2" fill="#3fb950"><title>SoundPort0QueuePush  04D656  73B  T4  [audio]</title></rect>
-<rect x="1409.7" y="758.3" width="25.1" height="26.3" fill="#3fb950"><title>SoundPort1QueuePush  04D69F  66B  T4  [audio]</title></rect>
-<rect x="1409.7" y="785.2" width="25.1" height="20.2" fill="#3fb950"><title>SoundReset  04D6E1  51B  T4  [audio]</title></rect>
-<rect x="1435.4" y="728.5" width="24.9" height="17.1" fill="#d29922"><title>SoundAtRateForLevel  08D580  43B  T2  [audio]</title></rect>
-<rect x="1460.9" y="728.5" width="17.8" height="17.1" fill="#d29922"><title>SoundPairFromTable  0BFAF9  31B  T2  [audio]</title></rect>
-<rect x="1479.3" y="728.5" width="16.0" height="17.1" fill="#d29922"><title>PlayerHoldSound32  04D463  28B  T2  [audio]</title></rect>
-<rect x="1435.4" y="746.2" width="14.1" height="19.3" fill="#d29922"><title>PlayerHoldSound33  04D47F  28B  T2  [audio]</title></rect>
-<rect x="1435.4" y="766.1" width="14.1" height="19.3" fill="#d29922"><title>PlayerHoldSound34  04D4FB  28B  T2  [audio]</title></rect>
-<rect x="1435.4" y="786.0" width="14.1" height="19.3" fill="#d29922"><title>PlayerHoldSound35  04D517  28B  T2  [audio]</title></rect>
-<rect x="1450.1" y="746.2" width="15.1" height="16.8" fill="#3fb950"><title>ApuUploadNextByte  04D788  26B  T4  [audio]</title></rect>
-<rect x="1465.8" y="746.2" width="14.5" height="16.8" fill="#d29922"><title>PlayerSound23  04D5B3  25B  T2  [audio]</title></rect>
-<rect x="1480.9" y="746.2" width="14.5" height="16.8" fill="#d29922"><title>PlayerSound24  04D5CC  25B  T2  [audio]</title></rect>
-<rect x="1450.1" y="763.6" width="18.0" height="13.5" fill="#d29922"><title>PlayerSound0D  04D5E5  25B  T2  [audio]</title></rect>
-<rect x="1450.1" y="777.7" width="18.0" height="13.5" fill="#d29922"><title>PlayerSound0B  04D5FE  25B  T2  [audio]</title></rect>
-<rect x="1450.1" y="791.9" width="18.0" height="13.5" fill="#d29922"><title>PlayerSound12  04D617  25B  T2  [audio]</title></rect>
-<rect x="1468.7" y="763.6" width="13.6" height="17.9" fill="#d29922"><title>PlayerSound0C  04D630  25B  T2  [audio]</title></rect>
-<rect x="1482.9" y="763.6" width="12.4" height="17.9" fill="#3fb950"><title>ApuUploadBank19  04D44C  23B  T4  [audio]</title></rect>
-<rect x="1468.7" y="782.1" width="13.9" height="11.7" fill="#d29922"><title>Sound0E1AStop  04D5A2  17B  T2  [audio]</title></rect>
-<rect x="1468.7" y="794.4" width="13.9" height="11.0" fill="#3fb950"><title>SoundFromTableD89  03EDDF  16B  T4  [audio]</title></rect>
-<rect x="1483.2" y="782.1" width="12.1" height="10.1" fill="#3fb950"><title>SoundPort0QueuePushRaw  04D649  13B  T4  [audio]</title></rect>
-<rect x="1483.2" y="792.8" width="12.1" height="6.8" fill="#3fb950"><title>ApuSettleDelay  04D443  9B  T4  [audio]</title></rect>
-<rect x="1483.2" y="800.2" width="12.1" height="5.2" fill="#3fb950"><title>ApuPort1Send05  04D43C  7B  T4  [audio]</title></rect>
-<text x="1384.1" y="818.0" font-size="10" fill="#8b949e">math</text>
-<rect x="1382.6" y="823.0" width="52.5" height="74.9" fill="#3fb950"><title>RotateXZ  03C27F  384B  T4  [math]</title></rect>
-<rect x="1435.7" y="823.0" width="32.1" height="25.6" fill="#d29922"><title>Mode7ScaleProduct  03FCE0  82B  T2  [math]</title></rect>
-<rect x="1468.4" y="823.0" width="26.9" height="25.6" fill="#d29922"><title>ApproachEighthMin8  03CE30  69B  T2  [math]</title></rect>
-<rect x="1435.7" y="849.1" width="26.5" height="25.6" fill="#d29922"><title>ScaleDp02Dp94  0883F8  68B  T2  [math]</title></rect>
-<rect x="1435.7" y="875.4" width="26.5" height="22.5" fill="#d29922"><title>ApproachQuarterMin4  03CDF4  60B  T2  [math]</title></rect>
-<rect x="1462.7" y="849.1" width="32.6" height="15.4" fill="#d29922"><title>ApproachQuarterMin4Byte  03D00F  51B  T2  [math]</title></rect>
-<rect x="1462.7" y="865.2" width="17.3" height="15.8" fill="#d29922"><title>ScaleFiveThirtySeconds  03CC0D  28B  T2  [math]</title></rect>
-<rect x="1480.6" y="865.2" width="14.7" height="15.8" fill="#3fb950"><title>RandomStep  02DF7D  24B  T4  [math]</title></rect>
-<rect x="1462.7" y="881.5" width="13.5" height="16.4" fill="#3fb950"><title>PpuMultiplierSetLowByteTimes8  7EE6BA  23B  T4  [math]</title></rect>
-<rect x="1476.9" y="881.5" width="8.0" height="16.4" fill="#d29922"><title>ScaleThreeQuarters  03CC5A  14B  T2  [math]</title></rect>
-<rect x="1485.5" y="881.5" width="9.9" height="12.4" fill="#3fb950"><title>PpuMultiply  7EE7A1  13B  T4  [math]</title></rect>
-<rect x="1485.5" y="894.5" width="9.9" height="3.4" fill="#d29922"><title>ScaleDp02Dp94Long  0883E8  4B  T2  [math]</title></rect>
-<text x="1500.4" y="723.5" font-size="10" fill="#8b949e">system</text>
-<rect x="1498.9" y="728.5" width="27.5" height="36.5" fill="#3fb950"><title>VramDmaQueueFlush  7F0F77  101B  T4  [system]</title></rect>
-<rect x="1498.9" y="765.6" width="27.5" height="35.0" fill="#3fb950"><title>SlideStep  7EE0E8  97B  T4  [system]</title></rect>
-<rect x="1527.0" y="728.5" width="24.4" height="24.6" fill="#3fb950"><title>ByteWritesIfPending  7F0F3A  61B  T4  [system]</title></rect>
-<rect x="1552.1" y="728.5" width="23.2" height="24.6" fill="#3fb950"><title>OamDmaIfPending  7F0EC9  58B  T4  [system]</title></rect>
-<rect x="1575.9" y="728.5" width="22.0" height="24.6" fill="#3fb950"><title>CgramDmaIfPending  7F0F03  55B  T4  [system]</title></rect>
-<rect x="1527.0" y="753.7" width="20.7" height="26.1" fill="#3fb950"><title>VramDmaQueueAdd  7F1007  55B  T4  [system]</title></rect>
-<rect x="1527.0" y="780.4" width="20.7" height="20.3" fill="#3fb950"><title>HalfRateApproach  7F0FDC  43B  T4  [system]</title></rect>
-<rect x="1548.3" y="753.7" width="18.9" height="17.4" fill="#3fb950"><title>WaitScanline  02D7AB  34B  T4  [system]</title></rect>
-<rect x="1548.3" y="771.6" width="18.9" height="16.8" fill="#3fb950"><title>Set7EFFA6Sequence  08B893  33B  T4  [system]</title></rect>
-<rect x="1548.3" y="789.1" width="18.9" height="11.6" fill="#3fb950"><title>ReadTable9022  03AEEE  23B  T4  [system]</title></rect>
-<rect x="1567.9" y="753.7" width="14.7" height="14.2" fill="#3fb950"><title>WordListAAppend  7F10A1  22B  T4  [system]</title></rect>
-<rect x="1583.2" y="753.7" width="14.7" height="14.2" fill="#3fb950"><title>WordListBAppend  7F10B7  22B  T4  [system]</title></rect>
-<rect x="1567.9" y="768.5" width="15.1" height="13.2" fill="#3fb950"><title>Countdown0DF8  07EE11  21B  T4  [system]</title></rect>
-<rect x="1583.6" y="768.5" width="14.3" height="13.2" fill="#3fb950"><title>Set0D37FromTable  02FC44  20B  T4  [system]</title></rect>
-<rect x="1567.9" y="782.4" width="8.7" height="18.3" fill="#3fb950"><title>Set7EBC2BTrio  02D65A  17B  T4  [system]</title></rect>
-<rect x="1577.2" y="782.4" width="9.2" height="9.9" fill="#3fb950"><title>ApproachTargetFull  0BE2C5  10B  T4  [system]</title></rect>
-<rect x="1577.2" y="792.8" width="9.2" height="7.8" fill="#3fb950"><title>WaitHBlank  7EA2FD  8B  T4  [system]</title></rect>
-<rect x="1587.0" y="782.4" width="10.9" height="6.6" fill="#3fb950"><title>ApproachTargetZero  0BE2CF  8B  T4  [system]</title></rect>
-<rect x="1587.0" y="789.5" width="10.9" height="5.7" fill="#d29922"><title>KeepRegisters  7EF217  7B  T2  [system]</title></rect>
-<rect x="1587.0" y="795.8" width="9.0" height="4.8" fill="#3fb950"><title>DataBankTest  7EE18B  5B  T4  [system]</title></rect>
-<rect x="1596.6" y="795.8" width="1.3" height="4.8" fill="#3fb950"><title>ReturnOnly  03F329  1B  T4  [system]</title></rect>
-<rect x="1498.9" y="804.2" width="25.1" height="46.2" fill="#d29922"><title>HudDrawTime  7EB00C  102B  T2  [hud]</title></rect>
-<rect x="1524.6" y="804.2" width="22.5" height="28.5" fill="#d29922"><title>HudDrawNumber3  7EE95E  57B  T2  [hud]</title></rect>
-<rect x="1547.7" y="804.2" width="14.8" height="28.5" fill="#d29922"><title>HudDrawDigits19EC  7EE7D6  38B  T2  [hud]</title></rect>
-<rect x="1524.6" y="833.3" width="11.4" height="17.1" fill="#3fb950"><title>HudSlideIn  7EAECE  18B  T4  [hud]</title></rect>
-<rect x="1536.6" y="833.3" width="10.0" height="17.1" fill="#d29922"><title>HudDrawValueC  7EE7C6  16B  T2  [hud]</title></rect>
-<rect x="1547.2" y="833.3" width="15.3" height="8.3" fill="#d29922"><title>HudDrawValueA  7EE7AE  12B  T2  [hud]</title></rect>
-<rect x="1547.2" y="842.2" width="15.3" height="8.3" fill="#d29922"><title>HudDrawValueB  7EE7BA  12B  T2  [hud]</title></rect>
-<rect x="1498.9" y="854.0" width="42.5" height="43.9" fill="#d29922"><title>SelectionTables18CB  03B70E  163B  T2  [data]</title></rect>
-<rect x="1542.0" y="854.0" width="20.5" height="16.6" fill="#d29922"><title>CourseDataPointer  03EC24  31B  T2  [data]</title></rect>
-<rect x="1542.0" y="871.3" width="20.5" height="12.2" fill="#d29922"><title>CourseIndex12  03EFBB  23B  T2  [data]</title></rect>
-<rect x="1542.0" y="884.1" width="8.3" height="13.8" fill="#d29922"><title>HandlerTableA  03B6E6  11B  T2  [data]</title></rect>
-<rect x="1550.9" y="884.1" width="11.6" height="10.0" fill="#d29922"><title>HandlerTableB  03B6F9  11B  T2  [data]</title></rect>
-<rect x="1550.9" y="894.6" width="11.6" height="3.3" fill="#d29922"><title>SelectionTables18CBLong  03B70A  4B  T2  [data]</title></rect>
-<rect x="1566.1" y="804.2" width="31.8" height="29.1" fill="#3fb950"><title>JoypadAccumulate  7EB1E1  85B  T4  [input]</title></rect>
-<rect x="1566.1" y="833.9" width="31.8" height="17.2" fill="#3fb950"><title>JoypadRead  7EB1AE  51B  T4  [input]</title></rect>
-<rect x="1566.1" y="854.7" width="20.1" height="25.4" fill="#3fb950"><title>SaveChecksum  03F02B  50B  T4  [save]</title></rect>
-<rect x="1586.9" y="854.7" width="11.0" height="12.4" fill="#3fb950"><title>SaveRecordSumA  07ADCC  14B  T4  [save]</title></rect>
-<rect x="1586.9" y="867.7" width="11.0" height="12.4" fill="#3fb950"><title>SaveRecordSumB  07ADF9  14B  T4  [save]</title></rect>
-<rect x="1566.1" y="883.7" width="17.2" height="14.2" fill="#d29922"><title>RaceTimeAddD815  03EF9F  27B  T2  [race]</title></rect>
-<rect x="1584.0" y="883.7" width="7.3" height="14.2" fill="#d29922"><title>RaceTimeAddD814  03EF93  12B  T2  [race]</title></rect>
-<rect x="1594.9" y="883.7" width="3.0" height="12.2" fill="#c8ccd2"><title>(unnamed)  00FE88  8B  T1  [bank 00 S-CPU]</title></rect>
-<rect x="1594.9" y="899.5" width="3.0" height="0.4" fill="#c8ccd2"><title>(unnamed)  008000  1B  T1  [bank 00 Super FX]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 161 &#183; T3 behaviour-exact 0 &#183; 7,765/109,695 bytes exact (7.1%) &#183; green=T4 blue=T3 amber=T2 gray=T1</text></svg>
+<text x="845.6" y="10.5" font-size="10" fill="#8b949e">bank 0B S-CPU</text>
+<rect x="844.1" y="15.5" width="80.5" height="101.8" fill="#c8ccd2"><title>(unnamed)  0BF09F  669B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="844.1" y="117.9" width="80.5" height="96.6" fill="#c8ccd2"><title>(unnamed)  0BEE24  635B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="844.1" y="215.1" width="80.5" height="80.4" fill="#c8ccd2"><title>(unnamed)  0BBA4E  529B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="844.1" y="296.1" width="80.5" height="68.9" fill="#c8ccd2"><title>(unnamed)  0BF784  454B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="925.2" y="15.5" width="62.8" height="62.3" fill="#c8ccd2"><title>(unnamed)  0BB506  321B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="988.6" y="15.5" width="62.2" height="62.3" fill="#c8ccd2"><title>(unnamed)  0BB814  318B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1051.4" y="15.5" width="59.2" height="62.3" fill="#c8ccd2"><title>(unnamed)  0BB64A  303B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1111.2" y="15.5" width="56.8" height="62.3" fill="#c8ccd2"><title>(unnamed)  0BFB26  291B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1168.6" y="15.5" width="56.4" height="62.3" fill="#c8ccd2"><title>(unnamed)  0BC225  289B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="925.2" y="78.4" width="55.2" height="58.0" fill="#c8ccd2"><title>(unnamed)  0BF33C  263B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="925.2" y="137.0" width="55.2" height="48.4" fill="#c8ccd2"><title>(unnamed)  7F0DAC  220B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="925.2" y="186.0" width="55.2" height="45.5" fill="#c8ccd2"><title>(unnamed)  0BC385  207B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="925.2" y="232.2" width="55.2" height="45.3" fill="#c8ccd2"><title>(unnamed)  0BD07C  206B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="925.2" y="278.0" width="55.2" height="44.0" fill="#c8ccd2"><title>(unnamed)  7F0BEF  200B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="925.2" y="322.6" width="55.2" height="42.4" fill="#c8ccd2"><title>(unnamed)  0BFA24  193B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="981.0" y="78.4" width="51.8" height="44.9" fill="#c8ccd2"><title>(unnamed)  0BBEEF  192B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1033.4" y="78.4" width="49.9" height="44.9" fill="#c8ccd2"><title>(unnamed)  7F0800  185B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1083.9" y="78.4" width="49.9" height="44.9" fill="#c8ccd2"><title>(unnamed)  0BCBC3  185B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1134.5" y="78.4" width="46.6" height="44.9" fill="#c8ccd2"><title>(unnamed)  0BD14A  173B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1181.7" y="78.4" width="43.4" height="44.9" fill="#c8ccd2"><title>(unnamed)  0BAEF2  161B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="981.0" y="123.9" width="43.5" height="43.6" fill="#c8ccd2"><title>(unnamed)  0BCD7C  157B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="981.0" y="168.1" width="43.5" height="42.4" fill="#c8ccd2"><title>(unnamed)  0BCE8A  153B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="981.0" y="211.1" width="43.5" height="40.2" fill="#c8ccd2"><title>(unnamed)  0BC676  145B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="981.0" y="251.9" width="43.5" height="39.9" fill="#c8ccd2"><title>(unnamed)  0BBFB8  144B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="981.0" y="292.4" width="43.5" height="37.4" fill="#c8ccd2"><title>(unnamed)  0BBD55  135B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="981.0" y="330.4" width="43.5" height="34.6" fill="#c8ccd2"><title>(unnamed)  7F0D2B  125B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1025.1" y="123.9" width="42.5" height="33.2" fill="#c8ccd2"><title>(unnamed)  0BCF27  117B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1068.2" y="123.9" width="40.6" height="33.2" fill="#c8ccd2"><title>(unnamed)  7F0AD6  112B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1109.4" y="123.9" width="40.6" height="33.2" fill="#c8ccd2"><title>(unnamed)  0BCE19  112B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1150.6" y="123.9" width="37.7" height="33.2" fill="#c8ccd2"><title>(unnamed)  0BB952  104B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1188.9" y="123.9" width="36.2" height="33.2" fill="#c8ccd2"><title>(unnamed)  0BB9C2  100B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1025.1" y="157.7" width="35.0" height="34.3" fill="#c8ccd2"><title>(unnamed)  0BBCF1  100B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1060.8" y="157.7" width="34.7" height="34.3" fill="#c8ccd2"><title>(unnamed)  0BC048  99B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1096.0" y="157.7" width="33.2" height="34.3" fill="#c8ccd2"><title>(unnamed)  0BC0E7  95B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1129.9" y="157.7" width="31.5" height="34.3" fill="#c8ccd2"><title>(unnamed)  0BD26F  90B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1161.9" y="157.7" width="31.5" height="34.3" fill="#c8ccd2"><title>(unnamed)  0BE1C5  90B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1194.0" y="157.7" width="31.1" height="34.3" fill="#c8ccd2"><title>(unnamed)  0BFC49  89B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1025.1" y="192.5" width="28.5" height="35.2" fill="#c8ccd2"><title>(unnamed)  0BC5EF  84B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1025.1" y="228.3" width="28.5" height="34.4" fill="#c8ccd2"><title>(unnamed)  0BCA67  82B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1025.1" y="263.3" width="28.5" height="33.5" fill="#c8ccd2"><title>(unnamed)  0BAFBC  80B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1025.1" y="297.4" width="28.5" height="33.5" fill="#c8ccd2"><title>(unnamed)  0BC59F  80B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1025.1" y="331.5" width="28.5" height="33.5" fill="#c8ccd2"><title>(unnamed)  0BC8BF  80B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1054.3" y="192.5" width="30.4" height="30.6" fill="#c8ccd2"><title>(unnamed)  7F094E  78B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1085.3" y="192.5" width="29.6" height="30.6" fill="#c8ccd2"><title>(unnamed)  0BC164  76B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1115.5" y="192.5" width="28.0" height="30.6" fill="#c8ccd2"><title>(unnamed)  7F09ED  72B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1144.1" y="192.5" width="28.0" height="30.6" fill="#c8ccd2"><title>(unnamed)  7F112F  72B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1172.8" y="192.5" width="26.0" height="30.6" fill="#c8ccd2"><title>(unnamed)  0BD606  67B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1199.4" y="192.5" width="25.6" height="30.6" fill="#c8ccd2"><title>(unnamed)  0BCB81  66B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1054.3" y="223.8" width="26.6" height="29.1" fill="#c8ccd2"><title>(unnamed)  7F0CDF  65B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1054.3" y="253.5" width="26.6" height="28.7" fill="#c8ccd2"><title>(unnamed)  7F0B56  64B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1054.3" y="282.8" width="26.6" height="27.3" fill="#c8ccd2"><title>(unnamed)  0BAE0A  61B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1054.3" y="310.7" width="26.6" height="27.3" fill="#c8ccd2"><title>(unnamed)  0BD025  61B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1054.3" y="338.6" width="26.6" height="26.4" fill="#c8ccd2"><title>(unnamed)  0BC4A9  59B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1081.4" y="223.8" width="23.7" height="29.0" fill="#c8ccd2"><title>(unnamed)  0BCFAB  58B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1081.4" y="253.4" width="23.7" height="28.5" fill="#c8ccd2"><title>(unnamed)  0BC1C8  57B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1081.4" y="282.4" width="23.7" height="28.0" fill="#c8ccd2"><title>(unnamed)  0BBC9A  56B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1081.4" y="311.0" width="23.7" height="26.9" fill="#c8ccd2"><title>(unnamed)  0BC34F  54B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1081.4" y="338.6" width="23.7" height="26.4" fill="#c8ccd2"><title>(unnamed)  7F0919  53B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1105.8" y="223.8" width="24.2" height="25.9" fill="#c8ccd2"><title>(unnamed)  7F1224  53B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1130.6" y="223.8" width="24.2" height="25.9" fill="#c8ccd2"><title>(unnamed)  0BCA32  53B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1155.4" y="223.8" width="23.3" height="25.9" fill="#c8ccd2"><title>(unnamed)  0BC82F  51B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1179.3" y="223.8" width="22.8" height="25.9" fill="#c8ccd2"><title>(unnamed)  7F11E9  50B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1202.7" y="223.8" width="22.4" height="25.9" fill="#c8ccd2"><title>(unnamed)  0BCB28  49B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1105.8" y="250.3" width="24.4" height="23.3" fill="#c8ccd2"><title>(unnamed)  7F1042  48B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1105.8" y="274.2" width="24.4" height="22.8" fill="#c8ccd2"><title>(unnamed)  7F1072  47B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1105.8" y="297.5" width="24.4" height="22.3" fill="#c8ccd2"><title>(unnamed)  7F10CD  46B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1105.8" y="320.4" width="24.4" height="22.3" fill="#c8ccd2"><title>(unnamed)  7F1278  46B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1105.8" y="343.2" width="24.4" height="21.8" fill="#c8ccd2"><title>(unnamed)  0BC47C  45B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1130.8" y="250.3" width="23.4" height="21.6" fill="#c8ccd2"><title>(unnamed)  0BC934  43B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1154.8" y="250.3" width="23.4" height="21.6" fill="#c8ccd2"><title>(unnamed)  0BE4B5  43B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1178.8" y="250.3" width="22.8" height="21.6" fill="#c8ccd2"><title>(unnamed)  0BC64C  42B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1202.2" y="250.3" width="22.8" height="21.6" fill="#c8ccd2"><title>(unnamed)  0BC760  42B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1130.8" y="272.5" width="20.5" height="23.5" fill="#c8ccd2"><title>(unnamed)  0BB450  41B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1130.8" y="296.7" width="20.5" height="23.5" fill="#c8ccd2"><title>(unnamed)  0BC896  41B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1130.8" y="320.8" width="20.5" height="21.8" fill="#c8ccd2"><title>(unnamed)  0BC95F  38B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1130.8" y="343.2" width="20.5" height="21.8" fill="#c8ccd2"><title>(unnamed)  0BE3F7  38B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1151.9" y="272.5" width="18.8" height="23.1" fill="#c8ccd2"><title>(unnamed)  0BC90F  37B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1171.2" y="272.5" width="18.2" height="23.1" fill="#c8ccd2"><title>(unnamed)  0BC872  36B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1190.1" y="272.5" width="17.2" height="23.1" fill="#c8ccd2"><title>(unnamed)  0BE2E1  34B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1207.9" y="272.5" width="17.2" height="23.1" fill="#c8ccd2"><title>(unnamed)  0BE458  34B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1151.9" y="296.3" width="19.5" height="19.2" fill="#c8ccd2"><title>(unnamed)  0BC9DD  32B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1151.9" y="316.1" width="19.5" height="16.7" fill="#c8ccd2"><title>(unnamed)  0BAE8F  28B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1151.9" y="333.4" width="19.5" height="15.5" fill="#c8ccd2"><title>(unnamed)  0BF6B6  26B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1151.9" y="349.5" width="19.5" height="15.5" fill="#c8ccd2"><title>(unnamed)  0BF6D0  26B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1171.9" y="296.3" width="19.8" height="14.7" fill="#c8ccd2"><title>(unnamed)  0BC9C4  25B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1192.3" y="296.3" width="16.5" height="14.7" fill="#c8ccd2"><title>(unnamed)  0BD4AE  21B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1209.4" y="296.3" width="15.7" height="14.7" fill="#c8ccd2"><title>(unnamed)  0BAE47  20B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1171.9" y="311.5" width="14.3" height="16.0" fill="#c8ccd2"><title>(unnamed)  0BD068  20B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1186.9" y="311.5" width="13.6" height="16.0" fill="#c8ccd2"><title>(unnamed)  0BE23D  19B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1201.0" y="311.5" width="12.1" height="16.0" fill="#c8ccd2"><title>(unnamed)  0BC78A  17B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1213.7" y="311.5" width="11.3" height="16.0" fill="#c8ccd2"><title>(unnamed)  0BAFAC  16B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1171.9" y="328.2" width="14.0" height="13.0" fill="#c8ccd2"><title>(unnamed)  0BCD6C  16B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1171.9" y="341.8" width="14.0" height="11.3" fill="#c8ccd2"><title>(unnamed)  0BC46D  14B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1171.9" y="353.7" width="14.0" height="11.3" fill="#c8ccd2"><title>(unnamed)  0BC985  14B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1186.5" y="328.2" width="12.7" height="12.5" fill="#c8ccd2"><title>(unnamed)  0BC993  14B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1186.5" y="341.3" width="12.7" height="11.6" fill="#c8ccd2"><title>(unnamed)  0BCB06  13B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1186.5" y="353.4" width="12.7" height="11.6" fill="#c8ccd2"><title>(unnamed)  0BCB1B  13B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1199.8" y="328.2" width="12.9" height="11.4" fill="#c8ccd2"><title>(unnamed)  0BCB74  13B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1213.3" y="328.2" width="11.8" height="11.4" fill="#c8ccd2"><title>(unnamed)  0BD5FA  12B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1199.8" y="340.2" width="8.7" height="12.8" fill="#c8ccd2"><title>(unnamed)  0BCAEE  10B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1199.8" y="353.6" width="8.7" height="11.4" fill="#c8ccd2"><title>(unnamed)  0BCAF8  9B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1209.1" y="340.2" width="8.2" height="12.1" fill="#c8ccd2"><title>(unnamed)  0BD5EC  9B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1217.9" y="340.2" width="7.2" height="12.1" fill="#c8ccd2"><title>(unnamed)  0BCAE6  8B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1209.1" y="352.9" width="7.2" height="12.1" fill="#c8ccd2"><title>(unnamed)  0BCB13  8B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1216.9" y="352.9" width="8.2" height="6.5" fill="#c8ccd2"><title>(unnamed)  0BCB01  5B  T1  [bank 0B S-CPU]</title></rect>
+<rect x="1216.9" y="359.9" width="8.2" height="5.1" fill="#c8ccd2"><title>(unnamed)  0BD5F6  4B  T1  [bank 0B S-CPU]</title></rect>
+<text x="1230.2" y="10.5" font-size="10" fill="#8b949e">bank 07 S-CPU</text>
+<rect x="1228.7" y="15.5" width="100.5" height="110.4" fill="#c8ccd2"><title>(unnamed)  07E557  904B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1228.7" y="126.5" width="100.5" height="81.2" fill="#c8ccd2"><title>(unnamed)  07E265  666B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1228.7" y="208.3" width="100.5" height="80.1" fill="#c8ccd2"><title>(unnamed)  07833B  657B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1228.7" y="289.0" width="100.5" height="76.0" fill="#c8ccd2"><title>(unnamed)  07C593  624B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1329.8" y="15.5" width="89.1" height="76.3" fill="#c8ccd2"><title>(unnamed)  07BC1C  555B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1419.5" y="15.5" width="74.0" height="76.3" fill="#c8ccd2"><title>(unnamed)  078653  462B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1494.1" y="15.5" width="57.2" height="76.3" fill="#c8ccd2"><title>(unnamed)  07B518  358B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1552.0" y="15.5" width="45.9" height="76.3" fill="#c8ccd2"><title>(unnamed)  079366  288B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1329.8" y="92.4" width="65.6" height="51.5" fill="#c8ccd2"><title>(unnamed)  078E90  278B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1396.0" y="92.4" width="51.6" height="51.5" fill="#c8ccd2"><title>(unnamed)  078C82  219B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1448.2" y="92.4" width="51.6" height="51.5" fill="#c8ccd2"><title>(unnamed)  07B211  219B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1500.4" y="92.4" width="49.2" height="51.5" fill="#c8ccd2"><title>(unnamed)  079D67  209B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1550.1" y="92.4" width="47.8" height="51.5" fill="#c8ccd2"><title>(unnamed)  07DAA7  203B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1329.8" y="144.5" width="49.2" height="45.6" fill="#c8ccd2"><title>(unnamed)  07BA15  185B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1329.8" y="190.7" width="49.2" height="45.3" fill="#c8ccd2"><title>(unnamed)  079660  184B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1329.8" y="236.6" width="49.2" height="43.6" fill="#c8ccd2"><title>(unnamed)  0792B5  177B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1329.8" y="280.8" width="49.2" height="42.1" fill="#c8ccd2"><title>(unnamed)  079E3B  171B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1329.8" y="323.4" width="49.2" height="41.6" fill="#c8ccd2"><title>(unnamed)  07B67E  169B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1379.6" y="144.5" width="47.6" height="41.9" fill="#c8ccd2"><title>(unnamed)  078BB3  165B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1427.8" y="144.5" width="47.6" height="41.9" fill="#c8ccd2"><title>(unnamed)  07997F  165B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1476.0" y="144.5" width="46.8" height="41.9" fill="#c8ccd2"><title>(unnamed)  07B400  162B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1523.4" y="144.5" width="37.1" height="41.9" fill="#c8ccd2"><title>(unnamed)  07B190  129B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1561.1" y="144.5" width="36.8" height="41.9" fill="#c8ccd2"><title>(unnamed)  07C3DD  128B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1379.6" y="187.0" width="39.4" height="38.5" fill="#c8ccd2"><title>(unnamed)  07B10B  126B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1379.6" y="226.1" width="39.4" height="34.8" fill="#c8ccd2"><title>(unnamed)  07E08F  114B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1379.6" y="261.4" width="39.4" height="34.4" fill="#c8ccd2"><title>(unnamed)  079883  113B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1379.6" y="296.4" width="39.4" height="34.4" fill="#c8ccd2"><title>(unnamed)  07CFA3  113B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1379.6" y="331.5" width="39.4" height="33.5" fill="#c8ccd2"><title>(unnamed)  07DD60  110B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1419.6" y="187.0" width="34.0" height="37.5" fill="#c8ccd2"><title>(unnamed)  07BBB2  106B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1419.6" y="225.1" width="34.0" height="35.7" fill="#c8ccd2"><title>(unnamed)  07D5C7  101B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1419.6" y="261.4" width="34.0" height="34.3" fill="#c8ccd2"><title>(unnamed)  07B329  97B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1419.6" y="296.2" width="34.0" height="34.3" fill="#c8ccd2"><title>(unnamed)  07DDCE  97B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1419.6" y="331.1" width="34.0" height="33.9" fill="#c8ccd2"><title>(unnamed)  07AA6E  96B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1454.2" y="187.0" width="38.3" height="30.0" fill="#c8ccd2"><title>(unnamed)  07B985  96B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1493.1" y="187.0" width="35.9" height="30.0" fill="#c8ccd2"><title>(unnamed)  07D6E8  90B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1529.6" y="187.0" width="33.9" height="30.0" fill="#c8ccd2"><title>(unnamed)  0791B1  85B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1564.0" y="187.0" width="33.9" height="30.0" fill="#c8ccd2"><title>(unnamed)  07C388  85B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1454.2" y="217.6" width="29.1" height="34.1" fill="#c8ccd2"><title>(unnamed)  079252  83B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1483.9" y="217.6" width="29.1" height="34.1" fill="#c8ccd2"><title>(unnamed)  07976B  83B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1513.6" y="217.6" width="28.1" height="34.1" fill="#c8ccd2"><title>(unnamed)  07EDC1  80B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1542.3" y="217.6" width="27.7" height="34.1" fill="#c8ccd2"><title>(unnamed)  078AA6  79B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1570.6" y="217.6" width="27.3" height="34.1" fill="#c8ccd2"><title>(unnamed)  07BAE6  78B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1454.2" y="252.3" width="30.5" height="28.1" fill="#c8ccd2"><title>(unnamed)  07DA02  72B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1454.2" y="281.0" width="30.5" height="28.1" fill="#c8ccd2"><title>(unnamed)  07DC88  72B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1454.2" y="309.7" width="30.5" height="27.3" fill="#c8ccd2"><title>(unnamed)  07A9D7  70B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1454.2" y="337.7" width="30.5" height="27.3" fill="#c8ccd2"><title>(unnamed)  07CF14  70B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1485.3" y="252.3" width="27.9" height="24.6" fill="#c8ccd2"><title>(unnamed)  078619  58B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1513.8" y="252.3" width="27.9" height="24.6" fill="#c8ccd2"><title>(unnamed)  07B097  58B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1542.4" y="252.3" width="27.9" height="24.6" fill="#c8ccd2"><title>(unnamed)  07B0D1  58B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1570.9" y="252.3" width="27.0" height="24.6" fill="#c8ccd2"><title>(unnamed)  0785E1  56B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1485.3" y="277.5" width="26.0" height="23.6" fill="#c8ccd2"><title>(unnamed)  07B727  52B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1485.3" y="301.8" width="26.0" height="22.7" fill="#c8ccd2"><title>(unnamed)  07DD03  50B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1485.3" y="325.1" width="26.0" height="20.8" fill="#c8ccd2"><title>(unnamed)  07C53A  46B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1485.3" y="346.5" width="26.0" height="18.5" fill="#c8ccd2"><title>(unnamed)  07BB4C  41B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1511.9" y="277.5" width="22.2" height="20.6" fill="#c8ccd2"><title>(unnamed)  07B9EE  39B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1534.7" y="277.5" width="22.2" height="20.6" fill="#c8ccd2"><title>(unnamed)  07DA65  39B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1557.6" y="277.5" width="19.9" height="20.6" fill="#c8ccd2"><title>(unnamed)  0789F5  35B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1578.0" y="277.5" width="19.9" height="20.6" fill="#c8ccd2"><title>(unnamed)  07D62C  35B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1511.9" y="298.7" width="20.2" height="17.3" fill="#c8ccd2"><title>(unnamed)  07B3D4  30B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1511.9" y="316.7" width="20.2" height="16.1" fill="#c8ccd2"><title>(unnamed)  07C2D3  28B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1511.9" y="333.4" width="20.2" height="16.1" fill="#c8ccd2"><title>(unnamed)  07C2EF  28B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1511.9" y="350.1" width="20.2" height="14.9" fill="#c8ccd2"><title>(unnamed)  07AADC  26B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1532.7" y="298.7" width="16.7" height="18.1" fill="#c8ccd2"><title>(unnamed)  07D64F  26B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1550.0" y="298.7" width="16.0" height="18.1" fill="#c8ccd2"><title>(unnamed)  07DD47  25B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1566.6" y="298.7" width="15.3" height="18.1" fill="#c8ccd2"><title>(unnamed)  07CE97  24B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1582.6" y="298.7" width="15.3" height="18.1" fill="#c8ccd2"><title>(unnamed)  07CEAF  24B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1532.7" y="317.4" width="16.4" height="16.9" fill="#c8ccd2"><title>(unnamed)  07CEC7  24B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1532.7" y="335.0" width="16.4" height="16.2" fill="#c8ccd2"><title>(unnamed)  07DCEC  23B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1532.7" y="351.7" width="16.4" height="13.3" fill="#c8ccd2"><title>(unnamed)  07922F  19B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1549.8" y="317.4" width="12.8" height="16.1" fill="#c8ccd2"><title>(unnamed)  07B085  18B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1549.8" y="334.1" width="12.8" height="15.1" fill="#c8ccd2"><title>(unnamed)  0789E4  17B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1549.8" y="349.9" width="12.8" height="15.1" fill="#c8ccd2"><title>(unnamed)  07C4E0  17B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1563.2" y="317.4" width="11.7" height="14.5" fill="#c8ccd2"><title>(unnamed)  07AC46  15B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1575.5" y="317.4" width="10.9" height="14.5" fill="#c8ccd2"><title>(unnamed)  07AA60  14B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1587.0" y="317.4" width="10.9" height="14.5" fill="#c8ccd2"><title>(unnamed)  07AACE  14B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1563.2" y="332.6" width="11.4" height="11.8" fill="#c8ccd2"><title>(unnamed)  07C293  12B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1563.2" y="345.0" width="11.4" height="10.8" fill="#c8ccd2"><title>(unnamed)  0791A6  11B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1563.2" y="356.3" width="11.4" height="8.7" fill="#c8ccd2"><title>(unnamed)  07919D  9B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1575.2" y="332.6" width="11.7" height="8.5" fill="#c8ccd2"><title>(unnamed)  07E246  9B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1587.5" y="332.6" width="10.4" height="8.5" fill="#c8ccd2"><title>(unnamed)  07B75B  8B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1575.2" y="341.6" width="11.1" height="7.9" fill="#c8ccd2"><title>(unnamed)  07B796  8B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1586.8" y="341.6" width="11.1" height="7.9" fill="#c8ccd2"><title>(unnamed)  07BB34  8B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1575.2" y="350.1" width="11.5" height="7.6" fill="#c8ccd2"><title>(unnamed)  07BB9A  8B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1575.2" y="358.4" width="11.5" height="6.6" fill="#c8ccd2"><title>(unnamed)  07B503  7B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1587.3" y="350.1" width="10.6" height="7.1" fill="#c8ccd2"><title>(unnamed)  07B50A  7B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1587.3" y="357.9" width="10.6" height="7.1" fill="#c8ccd2"><title>(unnamed)  07E22B  7B  T1  [bank 07 S-CPU]</title></rect>
+<text x="845.6" y="377.6" font-size="10" fill="#8b949e">bank 03 S-CPU</text>
+<rect x="844.1" y="382.6" width="119.7" height="134.8" fill="#c8ccd2"><title>(unnamed)  03DE39  1328B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="844.1" y="518.0" width="119.7" height="73.0" fill="#c8ccd2"><title>(unnamed)  0389B4  722B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="844.1" y="591.6" width="119.7" height="66.9" fill="#c8ccd2"><title>(unnamed)  038648  662B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="964.4" y="382.6" width="92.8" height="77.5" fill="#c8ccd2"><title>(unnamed)  03D9B9  595B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="1057.7" y="382.6" width="75.5" height="77.5" fill="#c8ccd2"><title>(unnamed)  03F0E6  485B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="1133.9" y="382.6" width="69.9" height="77.5" fill="#c8ccd2"><title>(unnamed)  03E838  449B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="964.4" y="460.7" width="58.3" height="73.7" fill="#c8ccd2"><title>(unnamed)  03C3FF  357B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="964.4" y="535.1" width="58.3" height="67.7" fill="#c8ccd2"><title>(unnamed)  03C57C  328B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="964.4" y="603.4" width="58.3" height="55.2" fill="#c8ccd2"><title>(unnamed)  03EDF4  268B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="1023.3" y="460.7" width="58.9" height="54.3" fill="#c8ccd2"><title>(unnamed)  03DD1B  266B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="1082.7" y="460.7" width="45.9" height="54.3" fill="#c8ccd2"><title>(unnamed)  03D8B3  208B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="1129.2" y="460.7" width="39.6" height="54.3" fill="#c8ccd2"><title>(unnamed)  03B48C  180B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="1169.5" y="460.7" width="34.3" height="54.3" fill="#c8ccd2"><title>(unnamed)  03B5DF  156B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="1023.3" y="515.6" width="39.0" height="42.2" fill="#c8ccd2"><title>(unnamed)  03B3DA  138B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="1023.3" y="558.4" width="39.0" height="36.3" fill="#c8ccd2"><title>(unnamed)  03B7C5  119B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="1023.3" y="595.3" width="39.0" height="32.6" fill="#c8ccd2"><title>(unnamed)  03B67B  107B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="1023.3" y="628.5" width="39.0" height="30.1" fill="#c8ccd2"><title>(unnamed)  038CF6  99B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="1062.8" y="515.6" width="36.8" height="31.6" fill="#c8ccd2"><title>(unnamed)  03FD46  98B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="1100.2" y="515.6" width="34.5" height="31.6" fill="#c8ccd2"><title>(unnamed)  03D306  92B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="1135.3" y="515.6" width="34.1" height="31.6" fill="#c8ccd2"><title>(unnamed)  03FBB6  91B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="1170.0" y="515.6" width="33.7" height="31.6" fill="#c8ccd2"><title>(unnamed)  03F05E  90B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="1062.8" y="547.8" width="26.9" height="39.1" fill="#c8ccd2"><title>(unnamed)  03EFD2  89B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="1062.8" y="587.4" width="26.9" height="37.7" fill="#c8ccd2"><title>(unnamed)  03D388  86B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="1062.8" y="625.7" width="26.9" height="32.8" fill="#c8ccd2"><title>(unnamed)  03EF3F  75B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="1090.4" y="547.8" width="29.0" height="28.4" fill="#c8ccd2"><title>(unnamed)  03CB5C  70B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="1090.4" y="576.8" width="29.0" height="28.4" fill="#c8ccd2"><title>(unnamed)  03FDA9  70B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="1090.4" y="605.7" width="29.0" height="26.7" fill="#c8ccd2"><title>(unnamed)  03D042  66B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="1090.4" y="633.1" width="29.0" height="25.5" fill="#c8ccd2"><title>(unnamed)  03ECF5  63B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="1120.0" y="547.8" width="28.6" height="25.9" fill="#c8ccd2"><title>(unnamed)  03FB47  63B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="1149.2" y="547.8" width="27.7" height="25.9" fill="#c8ccd2"><title>(unnamed)  03CF1A  61B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="1177.5" y="547.8" width="26.3" height="25.9" fill="#c8ccd2"><title>(unnamed)  03CAEB  58B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="1120.0" y="574.2" width="28.8" height="22.4" fill="#c8ccd2"><title>(unnamed)  03CEC3  55B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="1149.3" y="574.2" width="27.2" height="22.4" fill="#c8ccd2"><title>(unnamed)  03ED46  52B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="1177.1" y="574.2" width="26.6" height="22.4" fill="#c8ccd2"><title>(unnamed)  03CAB8  51B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="1120.0" y="597.2" width="27.3" height="20.9" fill="#c8ccd2"><title>(unnamed)  03B8A5  49B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="1120.0" y="618.7" width="27.3" height="20.5" fill="#c8ccd2"><title>(unnamed)  03CCBB  48B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="1120.0" y="639.8" width="27.3" height="18.7" fill="#c8ccd2"><title>(unnamed)  03DCEF  44B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="1147.9" y="597.2" width="18.9" height="22.0" fill="#c8ccd2"><title>(unnamed)  03EC43  36B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="1167.4" y="597.2" width="17.8" height="22.0" fill="#c8ccd2"><title>(unnamed)  03FAA8  34B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="1185.9" y="597.2" width="17.8" height="22.0" fill="#c8ccd2"><title>(unnamed)  03FB25  34B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="1147.9" y="619.8" width="17.5" height="19.7" fill="#c8ccd2"><title>(unnamed)  03C9B4  30B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="1147.9" y="640.2" width="17.5" height="18.4" fill="#c8ccd2"><title>(unnamed)  03C998  28B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="1166.0" y="619.8" width="13.4" height="16.0" fill="#c8ccd2"><title>(unnamed)  03FD32  19B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="1180.0" y="619.8" width="12.7" height="16.0" fill="#c8ccd2"><title>(unnamed)  03D996  18B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="1193.3" y="619.8" width="10.5" height="16.0" fill="#c8ccd2"><title>(unnamed)  03CCA1  15B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="1166.0" y="636.4" width="12.9" height="11.2" fill="#c8ccd2"><title>(unnamed)  03ED34  13B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="1166.0" y="648.3" width="12.9" height="10.3" fill="#c8ccd2"><title>(unnamed)  03FE26  12B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="1179.5" y="636.4" width="11.8" height="11.2" fill="#c8ccd2"><title>(unnamed)  03FE35  12B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="1179.5" y="648.3" width="11.8" height="10.3" fill="#c8ccd2"><title>(unnamed)  03863D  11B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="1191.9" y="636.4" width="11.8" height="10.3" fill="#c8ccd2"><title>(unnamed)  03CCB0  11B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="1191.9" y="647.3" width="7.7" height="11.2" fill="#c8ccd2"><title>(unnamed)  03CFE3  8B  T1  [bank 03 S-CPU]</title></rect>
+<rect x="1200.2" y="647.3" width="3.5" height="11.2" fill="#c8ccd2"><title>(unnamed)  03B8A1  4B  T1  [bank 03 S-CPU]</title></rect>
+<text x="845.6" y="671.2" font-size="10" fill="#8b949e">bank 09 S-CPU</text>
+<rect x="844.1" y="676.2" width="187.5" height="122.8" fill="#c8ccd2"><title>(unnamed)  09B876  1919B  T1  [bank 09 S-CPU]</title></rect>
+<rect x="844.1" y="799.5" width="187.5" height="98.4" fill="#c8ccd2"><title>(unnamed)  098B3B  1539B  T1  [bank 09 S-CPU]</title></rect>
+<rect x="1032.2" y="676.2" width="171.6" height="89.1" fill="#c8ccd2"><title>(unnamed)  09B30B  1277B  T1  [bank 09 S-CPU]</title></rect>
+<rect x="1032.2" y="765.9" width="113.9" height="65.9" fill="#c8ccd2"><title>(unnamed)  09C11F  630B  T1  [bank 09 S-CPU]</title></rect>
+<rect x="1032.2" y="832.4" width="113.9" height="65.5" fill="#c8ccd2"><title>(unnamed)  09ECE0  626B  T1  [bank 09 S-CPU]</title></rect>
+<rect x="1146.7" y="765.9" width="57.0" height="91.3" fill="#c8ccd2"><title>(unnamed)  09E47D  438B  T1  [bank 09 S-CPU]</title></rect>
+<rect x="1146.7" y="857.8" width="42.8" height="40.1" fill="#c8ccd2"><title>(unnamed)  09B0A1  146B  T1  [bank 09 S-CPU]</title></rect>
+<rect x="1190.1" y="857.8" width="13.7" height="40.1" fill="#c8ccd2"><title>(unnamed)  09C08E  48B  T1  [bank 09 S-CPU]</title></rect>
+<text x="1208.8" y="377.6" font-size="10" fill="#8b949e">video</text>
+<rect x="1207.3" y="382.6" width="49.5" height="80.2" fill="#d29922"><title>RaceScreenSetup  03F32A  337B  T2  [video]</title></rect>
+<rect x="1207.3" y="463.4" width="49.5" height="57.9" fill="#3fb950"><title>GradientSetup  0BFE12  244B  T4  [video]</title></rect>
+<rect x="1207.3" y="522.0" width="49.5" height="39.9" fill="#d29922"><title>Records7FFromF170  09EF52  169B  T2  [video]</title></rect>
+<rect x="1207.3" y="562.5" width="49.5" height="34.2" fill="#3fb950"><title>PaletteCycle  7EB63A  145B  T4  [video]</title></rect>
+<rect x="1257.4" y="382.6" width="43.9" height="32.9" fill="#3fb950"><title>RasterColoursCycling  7EB31E  124B  T4  [video]</title></rect>
+<rect x="1302.0" y="382.6" width="41.4" height="32.9" fill="#d29922"><title>WindowHdmaBands  7EDC18  117B  T2  [video]</title></rect>
+<rect x="1344.0" y="382.6" width="41.4" height="32.9" fill="#d29922"><title>VideoRegsReset  03EB0E  117B  T2  [video]</title></rect>
+<rect x="1386.0" y="382.6" width="35.0" height="32.9" fill="#d29922"><title>WindowEdgesFromList  09F0B2  99B  T2  [video]</title></rect>
+<rect x="1421.6" y="382.6" width="34.6" height="32.9" fill="#d29922"><title>VramPictureRows1B0  03EA91  98B  T2  [video]</title></rect>
+<rect x="1257.4" y="416.1" width="32.7" height="33.7" fill="#d29922"><title>OamPalettesE28D  04E28D  95B  T2  [video]</title></rect>
+<rect x="1257.4" y="450.4" width="32.7" height="31.9" fill="#3fb950"><title>RasterColoursE4  7EB39A  90B  T4  [video]</title></rect>
+<rect x="1257.4" y="482.8" width="32.7" height="29.0" fill="#d29922"><title>Records7FFromF634  09EFFB  82B  T2  [video]</title></rect>
+<rect x="1257.4" y="512.4" width="32.7" height="29.0" fill="#3fb950"><title>VramDmaWideRowsFromGsuRam  7F08C7  82B  T4  [video]</title></rect>
+<rect x="1257.4" y="542.0" width="32.7" height="27.2" fill="#d29922"><title>WindowEdgesFromPair  09F065  77B  T2  [video]</title></rect>
+<rect x="1257.4" y="569.8" width="32.7" height="26.8" fill="#d29922"><title>WindowHdmaAt  7ED85C  76B  T2  [video]</title></rect>
+<rect x="1290.7" y="416.1" width="29.1" height="29.7" fill="#3fb950"><title>RasterColours  7EB755  75B  T4  [video]</title></rect>
+<rect x="1320.5" y="416.1" width="29.1" height="29.7" fill="#d29922"><title>WindowHdmaNormal  7EDBCD  75B  T2  [video]</title></rect>
+<rect x="1350.2" y="416.1" width="27.9" height="29.7" fill="#d29922"><title>ScreenFrameAndPictures  03EA2E  72B  T2  [video]</title></rect>
+<rect x="1378.7" y="416.1" width="27.1" height="29.7" fill="#d29922"><title>WindowHdmaPreset  7ED718  70B  T2  [video]</title></rect>
+<rect x="1406.5" y="416.1" width="26.7" height="29.7" fill="#3fb950"><title>VramDmaRowsFromGsuRam  7EAC08  69B  T4  [video]</title></rect>
+<rect x="1433.8" y="416.1" width="22.4" height="29.7" fill="#3fb950"><title>VramUploadGsuBuffer  7EACBD  58B  T4  [video]</title></rect>
+<rect x="1290.7" y="446.4" width="25.4" height="25.8" fill="#d29922"><title>WindowHdmaFFD1  7EDC8D  57B  T2  [video]</title></rect>
+<rect x="1290.7" y="472.8" width="25.4" height="24.9" fill="#d29922"><title>WindowHdmaFromTable  7EDB10  55B  T2  [video]</title></rect>
+<rect x="1290.7" y="498.2" width="25.4" height="24.9" fill="#d29922"><title>VideoStartUploads  03EC6D  55B  T2  [video]</title></rect>
+<rect x="1290.7" y="523.7" width="25.4" height="24.4" fill="#d29922"><title>WindowHdmaFFDD  7ED8A8  54B  T2  [video]</title></rect>
+<rect x="1290.7" y="548.7" width="25.4" height="23.9" fill="#d29922"><title>TilemapPaletteCycle  07CEDF  53B  T2  [video]</title></rect>
+<rect x="1290.7" y="573.2" width="25.4" height="23.5" fill="#d29922"><title>FadeStep  7EAC69  52B  T2  [video]</title></rect>
+<rect x="1316.7" y="446.4" width="23.1" height="24.3" fill="#3fb950"><title>VramDmaFromGsuRam  7EABD7  49B  T4  [video]</title></rect>
+<rect x="1340.4" y="446.4" width="23.1" height="24.3" fill="#d29922"><title>SpriteStrip4  7F099C  49B  T2  [video]</title></rect>
+<rect x="1364.0" y="446.4" width="23.1" height="24.3" fill="#d29922"><title>SpriteStrip6  7F0A35  49B  T2  [video]</title></rect>
+<rect x="1387.7" y="446.4" width="22.6" height="24.3" fill="#d29922"><title>WindowHdmaFromList  7ED6E8  48B  T2  [video]</title></rect>
+<rect x="1410.9" y="446.4" width="22.6" height="24.3" fill="#d29922"><title>OamFromList  03E9FE  48B  T2  [video]</title></rect>
+<rect x="1434.1" y="446.4" width="22.1" height="24.3" fill="#3fb950"><title>WindowsAllInverted  7EE085  47B  T4  [video]</title></rect>
+<rect x="1316.7" y="471.3" width="20.9" height="25.7" fill="#d29922"><title>VramDmaTileFromGsuRam  03DCC0  47B  T2  [video]</title></rect>
+<rect x="1316.7" y="497.6" width="20.9" height="25.2" fill="#d29922"><title>OamHide75Up  07C4A4  46B  T2  [video]</title></rect>
+<rect x="1316.7" y="523.4" width="20.9" height="24.6" fill="#3fb950"><title>WindowsColourAddBg12  7EDFE4  45B  T4  [video]</title></rect>
+<rect x="1316.7" y="548.6" width="20.9" height="24.0" fill="#d29922"><title>OamHighBits58  07C50E  44B  T2  [video]</title></rect>
+<rect x="1316.7" y="573.2" width="20.9" height="23.5" fill="#3fb950"><title>WindowsColourWindowOnly  7EE01D  43B  T4  [video]</title></rect>
+<rect x="1338.2" y="471.3" width="24.2" height="20.3" fill="#d29922"><title>OamPaletteFromTableE26A  04E23F  43B  T2  [video]</title></rect>
+<rect x="1362.9" y="471.3" width="23.6" height="20.3" fill="#3fb950"><title>RasterPaletteUpload  7EB72B  42B  T4  [video]</title></rect>
+<rect x="1387.1" y="471.3" width="23.0" height="20.3" fill="#d29922"><title>TilemapRowFromFB4E  02FAFE  41B  T2  [video]</title></rect>
+<rect x="1410.7" y="471.3" width="23.0" height="20.3" fill="#3fb950"><title>PaletteDarkenFour  04E1FE  41B  T4  [video]</title></rect>
+<rect x="1434.3" y="471.3" width="21.9" height="20.3" fill="#d29922"><title>TilemapRowFrom7FBBD7  02FB27  39B  T2  [video]</title></rect>
+<rect x="1338.2" y="492.2" width="20.2" height="21.9" fill="#d29922"><title>OamHide36And96  07C45D  39B  T2  [video]</title></rect>
+<rect x="1338.2" y="514.7" width="20.2" height="21.3" fill="#d29922"><title>OamBufferHideLarge  03FEF9  38B  T2  [video]</title></rect>
+<rect x="1338.2" y="536.6" width="20.2" height="20.8" fill="#d29922"><title>VramNoiseTiles  03F47B  37B  T2  [video]</title></rect>
+<rect x="1338.2" y="558.0" width="20.2" height="19.6" fill="#d29922"><title>OamBufferClear  03ECD1  35B  T2  [video]</title></rect>
+<rect x="1338.2" y="578.2" width="20.2" height="18.5" fill="#3fb950"><title>VramDmaFromBank7F  7EABB6  33B  T4  [video]</title></rect>
+<rect x="1359.0" y="492.2" width="19.4" height="19.2" fill="#3fb950"><title>PaletteLoad16  03EDA5  33B  T4  [video]</title></rect>
+<rect x="1379.0" y="492.2" width="19.4" height="19.2" fill="#d29922"><title>OamColumn8  07C572  33B  T2  [video]</title></rect>
+<rect x="1399.1" y="492.2" width="19.4" height="19.2" fill="#3fb950"><title>VramWriteRowFromGsuRam  7F0BCE  33B  T4  [video]</title></rect>
+<rect x="1419.1" y="492.2" width="18.2" height="19.2" fill="#3fb950"><title>OamDma  7EACF7  31B  T4  [video]</title></rect>
+<rect x="1438.0" y="492.2" width="18.2" height="19.2" fill="#d29922"><title>OamPaletteFromTableE30F  04E2EC  31B  T2  [video]</title></rect>
+<rect x="1359.0" y="512.0" width="19.7" height="17.2" fill="#d29922"><title>OamBlock52Left  07C33A  30B  T2  [video]</title></rect>
+<rect x="1359.0" y="529.7" width="19.7" height="17.2" fill="#d29922"><title>OamBlock52Right  07C36A  30B  T2  [video]</title></rect>
+<rect x="1359.0" y="547.5" width="19.7" height="16.0" fill="#3fb950"><title>FadeStepFixed  7EAC4D  28B  T4  [video]</title></rect>
+<rect x="1359.0" y="564.1" width="19.7" height="16.0" fill="#3fb950"><title>CgramDma  7EB0F6  28B  T4  [video]</title></rect>
+<rect x="1359.0" y="580.7" width="19.7" height="16.0" fill="#d29922"><title>TilemapRowFromGsuRam  03ED89  28B  T2  [video]</title></rect>
+<rect x="1379.3" y="512.0" width="19.7" height="16.0" fill="#3fb950"><title>ScrollHdmaSet  03FED9  28B  T4  [video]</title></rect>
+<rect x="1399.6" y="512.0" width="19.0" height="16.0" fill="#d29922"><title>OamWriteSprites36To46  7EADFD  27B  T2  [video]</title></rect>
+<rect x="1419.1" y="512.0" width="19.0" height="16.0" fill="#d29922"><title>VramFillGradient  03EAF3  27B  T2  [video]</title></rect>
+<rect x="1438.7" y="512.0" width="17.5" height="16.0" fill="#3fb950"><title>Bg2ScrollFromTable  7EB28C  25B  T4  [video]</title></rect>
+<rect x="1379.3" y="528.6" width="15.8" height="17.7" fill="#3fb950"><title>PaletteCopy16To7F39D7  03EDC6  25B  T4  [video]</title></rect>
+<rect x="1379.3" y="546.8" width="15.8" height="16.2" fill="#3fb950"><title>RasterColoursUnless0D22  7EB307  23B  T4  [video]</title></rect>
+<rect x="1379.3" y="563.6" width="15.8" height="16.2" fill="#d29922"><title>OamAttr38x7  02FBCE  23B  T2  [video]</title></rect>
+<rect x="1379.3" y="580.5" width="15.8" height="16.2" fill="#d29922"><title>ColourMathA7Start  03FCC9  23B  T2  [video]</title></rect>
+<rect x="1395.7" y="528.6" width="16.6" height="14.8" fill="#3fb950"><title>DmaFromDescriptor  03ECA8  22B  T4  [video]</title></rect>
+<rect x="1412.9" y="528.6" width="16.6" height="14.8" fill="#d29922"><title>OamSetPalette  04E317  22B  T2  [video]</title></rect>
+<rect x="1430.2" y="528.6" width="12.7" height="14.8" fill="#3fb950"><title>CgramDmaAll  7EB0E5  17B  T4  [video]</title></rect>
+<rect x="1443.5" y="528.6" width="12.7" height="14.8" fill="#3fb950"><title>GradientPointersToBank7F  7EB2A5  17B  T4  [video]</title></rect>
+<rect x="1395.7" y="543.9" width="14.3" height="13.1" fill="#3fb950"><title>WindowStep3439  03FE15  17B  T4  [video]</title></rect>
+<rect x="1395.7" y="557.7" width="14.3" height="13.1" fill="#d29922"><title>OamHighBits58Park112  07C4F1  17B  T2  [video]</title></rect>
+<rect x="1395.7" y="571.4" width="14.3" height="12.3" fill="#3fb950"><title>OamDmaAll  7EAD16  16B  T4  [video]</title></rect>
+<rect x="1395.7" y="584.3" width="14.3" height="12.3" fill="#d29922"><title>FixedColourFromStep  03FE6B  16B  T2  [video]</title></rect>
+<rect x="1410.6" y="543.9" width="15.1" height="10.9" fill="#3fb950"><title>WindowStep3437  03FE06  15B  T4  [video]</title></rect>
+<rect x="1426.3" y="543.9" width="15.1" height="10.9" fill="#3fb950"><title>WindowStep3435  03FE44  15B  T4  [video]</title></rect>
+<rect x="1442.1" y="543.9" width="14.1" height="10.9" fill="#d29922"><title>OamHideRange  07C4D2  14B  T2  [video]</title></rect>
+<rect x="1410.6" y="555.4" width="13.5" height="10.5" fill="#d29922"><title>OamHideEntries0To2  02FC8D  13B  T2  [video]</title></rect>
+<rect x="1410.6" y="566.5" width="13.5" height="9.7" fill="#d29922"><title>ColourMathSub83Windowed  7EE011  12B  T2  [video]</title></rect>
+<rect x="1410.6" y="576.7" width="13.5" height="9.7" fill="#d29922"><title>OamAttr36x4  02FB92  12B  T2  [video]</title></rect>
+<rect x="1410.6" y="587.0" width="13.5" height="9.7" fill="#d29922"><title>OamAttr38x6  02FBC2  12B  T2  [video]</title></rect>
+<rect x="1424.7" y="555.4" width="11.1" height="11.7" fill="#d29922"><title>OamHighBits18  07C502  12B  T2  [video]</title></rect>
+<rect x="1436.3" y="555.4" width="10.1" height="11.7" fill="#d29922"><title>VramPictureRows2B0  03EA86  11B  T2  [video]</title></rect>
+<rect x="1447.0" y="555.4" width="9.1" height="11.7" fill="#d29922"><title>OamHideEntries3And9  02FC83  10B  T2  [video]</title></rect>
+<rect x="1424.7" y="567.7" width="10.8" height="10.0" fill="#3fb950"><title>GradientFillCgadd  03ED7F  10B  T4  [video]</title></rect>
+<rect x="1424.7" y="578.3" width="10.8" height="10.0" fill="#3fb950"><title>GradientFillCgaddB  0BFB1C  10B  T4  [video]</title></rect>
+<rect x="1424.7" y="588.8" width="10.8" height="7.8" fill="#d29922"><title>OamSprite0AddY  02FB8A  8B  T2  [video]</title></rect>
+<rect x="1436.0" y="567.7" width="9.8" height="8.7" fill="#d29922"><title>VramFrameRows2B0  03EA76  8B  T2  [video]</title></rect>
+<rect x="1446.4" y="567.7" width="9.8" height="8.7" fill="#d29922"><title>VramFrameRows1B0  03EA7E  8B  T2  [video]</title></rect>
+<rect x="1436.0" y="577.0" width="8.9" height="9.5" fill="#d29922"><title>ColourMathA3  03FE57  8B  T2  [video]</title></rect>
+<rect x="1436.0" y="587.1" width="8.9" height="9.5" fill="#d29922"><title>ColourMathOff  03FE63  8B  T2  [video]</title></rect>
+<rect x="1445.5" y="577.0" width="10.7" height="6.9" fill="#d29922"><title>SpriteYOnScreen  7EB005  7B  T2  [video]</title></rect>
+<rect x="1445.5" y="584.5" width="5.0" height="7.9" fill="#d29922"><title>ColourMathA3Long  03FE53  4B  T2  [video]</title></rect>
+<rect x="1451.2" y="584.5" width="5.0" height="7.9" fill="#d29922"><title>ColourMathOffLong  03FE5F  4B  T2  [video]</title></rect>
+<rect x="1445.5" y="593.0" width="10.7" height="3.7" fill="#d29922"><title>OamBufferHideLargeLong  03FEF5  4B  T2  [video]</title></rect>
+<text x="1461.3" y="377.6" font-size="10" fill="#8b949e">menu</text>
+<rect x="1459.8" y="382.6" width="55.3" height="45.8" fill="#d29922"><title>MenuCourseGraphics  0BF94A  218B  T2  [menu]</title></rect>
+<rect x="1515.7" y="382.6" width="42.7" height="45.8" fill="#d29922"><title>MenuStateInit  0BD4C3  169B  T2  [menu]</title></rect>
+<rect x="1559.0" y="382.6" width="38.9" height="45.8" fill="#3fb950"><title>MenuPictureInsetGrid  0BF6EA  154B  T4  [menu]</title></rect>
+<rect x="1459.8" y="429.0" width="49.5" height="35.3" fill="#d29922"><title>SelectionCommit  03B548  151B  T2  [menu]</title></rect>
+<rect x="1509.9" y="429.0" width="46.2" height="35.3" fill="#3fb950"><title>MenuPaletteScale  0BE303  141B  T4  [menu]</title></rect>
+<rect x="1556.7" y="429.0" width="41.2" height="35.3" fill="#3fb950"><title>MenuHdmaSetupB  0BF5E6  126B  T4  [menu]</title></rect>
+<rect x="1459.8" y="464.9" width="32.5" height="32.1" fill="#3fb950"><title>MenuHdmaSetup  0BF50C  91B  T4  [menu]</title></rect>
+<rect x="1459.8" y="497.6" width="32.5" height="26.0" fill="#3fb950"><title>MenuActorPoolInit  0BB479  74B  T4  [menu]</title></rect>
+<rect x="1459.8" y="524.3" width="32.5" height="24.9" fill="#d29922"><title>MenuLoadPicturesTo7F  0BD391  71B  T2  [menu]</title></rect>
+<rect x="1459.8" y="549.8" width="32.5" height="23.9" fill="#3fb950"><title>MenuActorSetTiles  0BC4E4  68B  T4  [menu]</title></rect>
+<rect x="1459.8" y="574.2" width="32.5" height="22.4" fill="#3fb950"><title>MenuLoadClearGsu  0BD3D8  64B  T4  [menu]</title></rect>
+<rect x="1492.9" y="464.9" width="26.0" height="26.7" fill="#3fb950"><title>MenuGaugeFromButtonB  7F11AC  61B  T4  [menu]</title></rect>
+<rect x="1519.5" y="464.9" width="26.0" height="26.7" fill="#3fb950"><title>MenuLoadPictureCC78  0BD1F7  61B  T4  [menu]</title></rect>
+<rect x="1546.1" y="464.9" width="26.0" height="26.7" fill="#3fb950"><title>MenuActorAnimate  0BE250  61B  T4  [menu]</title></rect>
+<rect x="1572.8" y="464.9" width="25.1" height="26.7" fill="#3fb950"><title>MenuLoadPictureCE78  0BD234  59B  T4  [menu]</title></rect>
+<rect x="1492.9" y="492.2" width="23.4" height="28.6" fill="#3fb950"><title>MenuLoadPictureDD8C  0BD2C9  59B  T4  [menu]</title></rect>
+<rect x="1492.9" y="521.4" width="23.4" height="25.7" fill="#3fb950"><title>MenuGaugeSlideToTarget  7F1177  53B  T4  [menu]</title></rect>
+<rect x="1492.9" y="547.7" width="23.4" height="25.7" fill="#3fb950"><title>MenuSinePosition  0BC9FD  53B  T4  [menu]</title></rect>
+<rect x="1492.9" y="574.0" width="23.4" height="22.7" fill="#3fb950"><title>MenuLoadGsu4000  0BD304  47B  T4  [menu]</title></rect>
+<rect x="1516.9" y="492.2" width="26.6" height="20.0" fill="#3fb950"><title>MenuLoadGsu5000  0BD333  47B  T4  [menu]</title></rect>
+<rect x="1544.1" y="492.2" width="26.6" height="20.0" fill="#3fb950"><title>MenuLoadGsu6000  0BD362  47B  T4  [menu]</title></rect>
+<rect x="1571.3" y="492.2" width="26.6" height="20.0" fill="#3fb950"><title>MenuLoadBlank0800  0BD418  47B  T4  [menu]</title></rect>
+<rect x="1516.9" y="512.8" width="27.0" height="19.7" fill="#3fb950"><title>MenuLoadBlank1000  0BD447  47B  T4  [menu]</title></rect>
+<rect x="1544.5" y="512.8" width="27.0" height="19.7" fill="#3fb950"><title>MenuLoadBlank1800  0BD476  47B  T4  [menu]</title></rect>
+<rect x="1572.1" y="512.8" width="25.8" height="19.7" fill="#3fb950"><title>MenuActorApplyPalette  0BCAB9  45B  T4  [menu]</title></rect>
+<rect x="1516.9" y="533.1" width="20.4" height="22.7" fill="#3fb950"><title>MenuScrollReset  0BF4B2  41B  T4  [menu]</title></rect>
+<rect x="1516.9" y="556.4" width="20.4" height="20.4" fill="#3fb950"><title>MenuPictureToVram  0BE3D2  37B  T4  [menu]</title></rect>
+<rect x="1516.9" y="577.4" width="20.4" height="19.3" fill="#3fb950"><title>MenuActorsSet10  0BC9A1  35B  T4  [menu]</title></rect>
+<rect x="1537.9" y="533.1" width="20.4" height="18.6" fill="#d29922"><title>MenuChoiceRepeat  0BC736  34B  T2  [menu]</title></rect>
+<rect x="1558.9" y="533.1" width="19.8" height="18.6" fill="#3fb950"><title>MenuActorFree  0BB4E5  33B  T4  [menu]</title></rect>
+<rect x="1579.3" y="533.1" width="18.6" height="18.6" fill="#d29922"><title>MenuWaitFor0357  0BBCD2  31B  T2  [menu]</title></rect>
+<rect x="1537.9" y="552.3" width="20.8" height="16.1" fill="#d29922"><title>MenuActorAlloc  0BB4C3  30B  T2  [menu]</title></rect>
+<rect x="1537.9" y="569.0" width="20.8" height="13.8" fill="#3fb950"><title>MenuPaletteLoad  0BF4DB  26B  T4  [menu]</title></rect>
+<rect x="1537.9" y="583.4" width="20.8" height="13.3" fill="#d29922"><title>MenuActorFind  0BE28D  25B  T2  [menu]</title></rect>
+<rect x="1559.3" y="552.3" width="19.0" height="13.4" fill="#3fb950"><title>MenuActorBlink  0BC576  23B  T4  [menu]</title></rect>
+<rect x="1578.9" y="552.3" width="19.0" height="13.4" fill="#3fb950"><title>MenuPaletteSave  0BF4F5  23B  T4  [menu]</title></rect>
+<rect x="1559.3" y="566.3" width="14.4" height="15.3" fill="#3fb950"><title>MenuOamFromList  0BFAE5  20B  T4  [menu]</title></rect>
+<rect x="1559.3" y="582.2" width="14.4" height="14.5" fill="#d29922"><title>MenuSet1A66  0BC723  19B  T2  [menu]</title></rect>
+<rect x="1574.3" y="566.3" width="11.8" height="17.6" fill="#d29922"><title>MenuWaitFrame  0BE390  19B  T2  [menu]</title></rect>
+<rect x="1586.7" y="566.3" width="11.2" height="17.6" fill="#d29922"><title>MenuRowPosition  0BC58D  18B  T2  [menu]</title></rect>
+<rect x="1574.3" y="584.5" width="13.4" height="12.2" fill="#3fb950"><title>MenuActorCountdown  0BCF9C  15B  T4  [menu]</title></rect>
+<rect x="1588.3" y="584.5" width="9.6" height="9.9" fill="#d29922"><title>MenuSetExit  0BD4A5  9B  T2  [menu]</title></rect>
+<rect x="1588.3" y="594.9" width="4.5" height="1.7" fill="#3fb950"><title>MenuActorIdleC47B  0BC47B  1B  T4  [menu]</title></rect>
+<rect x="1593.4" y="594.9" width="4.5" height="1.7" fill="#3fb950"><title>MenuActorIdleCE89  0BCE89  1B  T4  [menu]</title></rect>
+<text x="1208.8" y="609.3" font-size="10" fill="#8b949e">bank 07 Super FX</text>
+<rect x="1207.3" y="614.3" width="152.6" height="168.0" fill="#c8ccd2"><title>(unnamed)  07EE50  2209B  T1  [bank 07 Super FX]</title></rect>
+<text x="1208.8" y="794.9" font-size="10" fill="#8b949e">object</text>
+<rect x="1207.3" y="799.9" width="26.9" height="36.5" fill="#d29922"><title>ObjectPlaceFromTable  08B8F9  93B  T2  [object]</title></rect>
+<rect x="1207.3" y="837.0" width="26.9" height="32.5" fill="#3fb950"><title>GsuRecordFromObject  08D86F  83B  T4  [object]</title></rect>
+<rect x="1207.3" y="870.2" width="26.9" height="27.7" fill="#3fb950"><title>ObjectVelocityFromRecordOf  08DC6D  71B  T4  [object]</title></rect>
+<rect x="1234.8" y="799.9" width="27.5" height="26.8" fill="#d29922"><title>ObjectLinkEventTrigger  7ED397  70B  T2  [object]</title></rect>
+<rect x="1234.8" y="827.3" width="27.5" height="25.2" fill="#3fb950"><title>GsuRecordStep6A  08B2E9  66B  T4  [object]</title></rect>
+<rect x="1234.8" y="853.1" width="27.5" height="22.9" fill="#3fb950"><title>ObjectVelocityFromRecordScaled  08D5DF  60B  T4  [object]</title></rect>
+<rect x="1234.8" y="876.6" width="27.5" height="21.3" fill="#d29922"><title>ObjectSet5DByKind  08B48E  56B  T2  [object]</title></rect>
+<rect x="1262.9" y="799.9" width="24.9" height="23.1" fill="#d29922"><title>ObjectInit  03CB25  55B  T2  [object]</title></rect>
+<rect x="1288.4" y="799.9" width="24.4" height="23.1" fill="#d29922"><title>ObjectBucketRemove  088392  54B  T2  [object]</title></rect>
+<rect x="1313.4" y="799.9" width="23.5" height="23.1" fill="#d29922"><title>ObjectVelocityFromRecord  08D5AB  52B  T2  [object]</title></rect>
+<rect x="1337.4" y="799.9" width="22.5" height="23.1" fill="#3fb950"><title>GsuRecordVelocity  08D83D  50B  T4  [object]</title></rect>
+<rect x="1262.9" y="823.6" width="19.9" height="25.1" fill="#3fb950"><title>GsuRecordWords88  08B863  48B  T4  [object]</title></rect>
+<rect x="1262.9" y="849.3" width="19.9" height="24.0" fill="#d29922"><title>ObjectBucketInsert  088364  46B  T2  [object]</title></rect>
+<rect x="1262.9" y="873.9" width="19.9" height="24.0" fill="#3fb950"><title>GsuRecordFlag4  08D070  46B  T4  [object]</title></rect>
+<rect x="1283.4" y="823.6" width="23.6" height="19.4" fill="#d29922"><title>ObjectPoolInit  03D3DE  44B  T2  [object]</title></rect>
+<rect x="1283.4" y="843.6" width="23.6" height="18.0" fill="#3fb950"><title>GsuRecordBits60  09FBB2  41B  T4  [object]</title></rect>
+<rect x="1283.4" y="862.2" width="23.6" height="18.0" fill="#d29922"><title>ObjectLinkFlag4000Step  7F12AC  41B  T2  [object]</title></rect>
+<rect x="1283.4" y="880.8" width="23.6" height="17.1" fill="#d29922"><title>ObjectListAppend  08B75B  39B  T2  [object]</title></rect>
+<rect x="1307.6" y="823.6" width="18.4" height="20.8" fill="#3fb950"><title>GsuRecordWord58  08E401  37B  T4  [object]</title></rect>
+<rect x="1326.6" y="823.6" width="17.4" height="20.8" fill="#d29922"><title>ObjectApplyVelocity  03C06C  35B  T2  [object]</title></rect>
+<rect x="1344.6" y="823.6" width="15.3" height="20.8" fill="#3fb950"><title>GsuRecordPosition  08CCD2  31B  T4  [object]</title></rect>
+<rect x="1307.6" y="845.0" width="17.7" height="15.6" fill="#3fb950"><title>GsuRecordFlag10  08CCA3  27B  T4  [object]</title></rect>
+<rect x="1326.0" y="845.0" width="17.0" height="15.6" fill="#d29922"><title>ObjectTableC056  08C03C  26B  T2  [object]</title></rect>
+<rect x="1343.6" y="845.0" width="16.4" height="15.6" fill="#d29922"><title>ObjectTableE8AF  08E896  25B  T2  [object]</title></rect>
+<rect x="1307.6" y="861.2" width="12.9" height="18.1" fill="#d29922"><title>ObjectCopyPositionTo  03D1E6  23B  T2  [object]</title></rect>
+<rect x="1307.6" y="879.8" width="12.9" height="18.1" fill="#d29922"><title>ObjectCopyPositionFrom  03D1FD  23B  T2  [object]</title></rect>
+<rect x="1321.2" y="861.2" width="12.6" height="18.5" fill="#3fb950"><title>GsuRecordSetFlags  08CCF1  23B  T4  [object]</title></rect>
+<rect x="1321.2" y="880.2" width="12.6" height="17.7" fill="#d29922"><title>ObjectFlag40IfMatch  08B830  22B  T2  [object]</title></rect>
+<rect x="1334.4" y="861.2" width="12.8" height="15.8" fill="#3fb950"><title>GsuRecordMode2  08CCBE  20B  T4  [object]</title></rect>
+<rect x="1347.8" y="861.2" width="12.2" height="15.8" fill="#d29922"><title>ObjectCopy14To  03D214  19B  T2  [object]</title></rect>
+<rect x="1334.4" y="877.5" width="19.3" height="9.9" fill="#d29922"><title>ObjectCopy14From  03D227  19B  T2  [object]</title></rect>
+<rect x="1334.4" y="888.0" width="19.3" height="9.9" fill="#3fb950"><title>GsuRecordWord88  08E3EE  19B  T4  [object]</title></rect>
+<rect x="1354.3" y="877.5" width="5.7" height="20.4" fill="#d29922"><title>ObjectLinkedSet1A  0389A8  12B  T2  [object]</title></rect>
+<text x="1365.1" y="609.3" font-size="10" fill="#8b949e">gsu</text>
+<rect x="1363.6" y="614.3" width="35.7" height="46.0" fill="#d29922"><title>ViewReset  03AF05  152B  T2  [gsu]</title></rect>
+<rect x="1363.6" y="660.9" width="35.7" height="32.5" fill="#d29922"><title>GsuCF42ToVram  03EB83  108B  T2  [gsu]</title></rect>
+<rect x="1363.6" y="694.0" width="35.7" height="31.3" fill="#d29922"><title>Gsu8325  03B011  104B  T2  [gsu]</title></rect>
+<rect x="1399.9" y="614.3" width="38.0" height="28.5" fill="#3fb950"><title>GsuScreenFlip  03B83C  101B  T4  [gsu]</title></rect>
+<rect x="1438.5" y="614.3" width="28.5" height="28.5" fill="#d29922"><title>GsuEE88Ramp  03FE8D  76B  T2  [gsu]</title></rect>
+<rect x="1467.5" y="614.3" width="27.3" height="28.5" fill="#d29922"><title>GsuF441Player2  07A694  73B  T2  [gsu]</title></rect>
+<rect x="1399.9" y="643.4" width="22.6" height="27.2" fill="#3fb950"><title>GsuParamsUpdate  7EE2C9  58B  T4  [gsu]</title></rect>
+<rect x="1399.9" y="671.2" width="22.6" height="27.2" fill="#d29922"><title>Gsu82CE  03AFD7  58B  T2  [gsu]</title></rect>
+<rect x="1399.9" y="699.1" width="22.6" height="26.3" fill="#3fb950"><title>GsuParamsFromDp  03AEB6  56B  T4  [gsu]</title></rect>
+<rect x="1423.1" y="643.4" width="26.8" height="21.0" fill="#3fb950"><title>GsuTableEntryTo1F4C  08DC13  53B  T4  [gsu]</title></rect>
+<rect x="1450.5" y="643.4" width="22.1" height="21.0" fill="#3fb950"><title>GsuRun  7EE1F5  44B  T4  [gsu]</title></rect>
+<rect x="1473.2" y="643.4" width="21.6" height="21.0" fill="#d29922"><title>ObjectGsu80BC  03C9EE  43B  T2  [gsu]</title></rect>
+<rect x="1423.1" y="665.0" width="16.4" height="22.3" fill="#d29922"><title>GsuCF42To3000  03EC01  35B  T2  [gsu]</title></rect>
+<rect x="1423.1" y="687.9" width="16.4" height="18.4" fill="#3fb950"><title>GsuBytes200_BFB7B6  04D7BF  29B  T4  [gsu]</title></rect>
+<rect x="1423.1" y="706.9" width="16.4" height="18.4" fill="#3fb950"><title>GsuBytes200_BFB5BB  04D7DC  29B  T4  [gsu]</title></rect>
+<rect x="1440.1" y="665.0" width="17.9" height="16.9" fill="#3fb950"><title>GsuBytes200_BFBCBD  04D7F9  29B  T4  [gsu]</title></rect>
+<rect x="1458.5" y="665.0" width="17.9" height="16.9" fill="#3fb950"><title>GsuBytes200_BFBAB9  04D816  29B  T4  [gsu]</title></rect>
+<rect x="1477.0" y="665.0" width="17.9" height="16.9" fill="#3fb950"><title>GsuBytes200_BFB3BE  04D833  29B  T4  [gsu]</title></rect>
+<rect x="1440.1" y="682.5" width="14.3" height="21.1" fill="#3fb950"><title>GsuBytes200_0F0405  04D972  29B  T4  [gsu]</title></rect>
+<rect x="1440.1" y="704.2" width="14.3" height="21.1" fill="#3fb950"><title>GsuBytes200_0F090A  04D9AC  29B  T4  [gsu]</title></rect>
+<rect x="1455.0" y="682.5" width="19.6" height="15.4" fill="#3fb950"><title>GsuBytes200_0F050E  04D9E6  29B  T4  [gsu]</title></rect>
+<rect x="1475.2" y="682.5" width="19.6" height="15.4" fill="#3fb950"><title>GsuBytes200_0F080E  04DA03  29B  T4  [gsu]</title></rect>
+<rect x="1455.0" y="698.4" width="18.0" height="13.8" fill="#d29922"><title>GsuF329Entry  078B9B  24B  T2  [gsu]</title></rect>
+<rect x="1455.0" y="712.8" width="18.0" height="12.6" fill="#3fb950"><title>GsuWait  7EE1CB  22B  T4  [gsu]</title></rect>
+<rect x="1473.6" y="698.4" width="12.9" height="12.6" fill="#d29922"><title>GsuF441Player1  07A684  16B  T2  [gsu]</title></rect>
+<rect x="1487.0" y="698.4" width="7.8" height="12.6" fill="#3fb950"><title>GsuParam216A  078E2A  10B  T4  [gsu]</title></rect>
+<rect x="1473.6" y="711.7" width="7.2" height="13.7" fill="#3fb950"><title>GsuParam216B  078E34  10B  T4  [gsu]</title></rect>
+<rect x="1481.4" y="711.7" width="13.5" height="6.5" fill="#d29922"><title>GsuCF42ToC000  03EBEF  9B  T2  [gsu]</title></rect>
+<rect x="1481.4" y="718.8" width="13.5" height="6.5" fill="#d29922"><title>GsuCF42To4000  03EBF8  9B  T2  [gsu]</title></rect>
+<text x="1499.9" y="609.3" font-size="10" fill="#8b949e">audio</text>
+<rect x="1498.4" y="614.3" width="37.5" height="29.6" fill="#3fb950"><title>ApuUpload  04D720  104B  T4  [audio]</title></rect>
+<rect x="1536.6" y="614.3" width="34.6" height="29.6" fill="#d29922"><title>PlayerStopHeldSound  04D49B  96B  T2  [audio]</title></rect>
+<rect x="1571.7" y="614.3" width="26.2" height="29.6" fill="#3fb950"><title>SoundPort0QueuePush  04D656  73B  T4  [audio]</title></rect>
+<rect x="1498.4" y="644.4" width="23.4" height="29.8" fill="#3fb950"><title>SoundPort1QueuePush  04D69F  66B  T4  [audio]</title></rect>
+<rect x="1498.4" y="674.8" width="23.4" height="27.0" fill="#d29922"><title>SoundHoldByFlags  04D082  60B  T2  [audio]</title></rect>
+<rect x="1498.4" y="702.4" width="23.4" height="22.9" fill="#3fb950"><title>SoundReset  04D6E1  51B  T4  [audio]</title></rect>
+<rect x="1522.5" y="644.4" width="22.7" height="19.8" fill="#d29922"><title>SoundAtRateForLevel  08D580  43B  T2  [audio]</title></rect>
+<rect x="1545.8" y="644.4" width="17.3" height="19.8" fill="#d29922"><title>EngineSoundsPlayer2  04D040  33B  T2  [audio]</title></rect>
+<rect x="1563.7" y="644.4" width="17.3" height="19.8" fill="#d29922"><title>EngineSoundsPlayer1  04D061  33B  T2  [audio]</title></rect>
+<rect x="1581.7" y="644.4" width="16.2" height="19.8" fill="#d29922"><title>SoundPairFromTable  0BFAF9  31B  T2  [audio]</title></rect>
+<rect x="1522.5" y="664.8" width="19.7" height="14.7" fill="#d29922"><title>PlayerHoldSound32  04D463  28B  T2  [audio]</title></rect>
+<rect x="1522.5" y="680.1" width="19.7" height="14.7" fill="#d29922"><title>PlayerHoldSound33  04D47F  28B  T2  [audio]</title></rect>
+<rect x="1522.5" y="695.4" width="19.7" height="14.7" fill="#d29922"><title>PlayerHoldSound34  04D4FB  28B  T2  [audio]</title></rect>
+<rect x="1522.5" y="710.6" width="19.7" height="14.7" fill="#d29922"><title>PlayerHoldSound35  04D517  28B  T2  [audio]</title></rect>
+<rect x="1542.7" y="664.8" width="18.5" height="14.5" fill="#3fb950"><title>ApuUploadNextByte  04D788  26B  T4  [audio]</title></rect>
+<rect x="1561.8" y="664.8" width="17.7" height="14.5" fill="#d29922"><title>PlayerSound23  04D5B3  25B  T2  [audio]</title></rect>
+<rect x="1580.2" y="664.8" width="17.7" height="14.5" fill="#d29922"><title>PlayerSound24  04D5CC  25B  T2  [audio]</title></rect>
+<rect x="1542.7" y="679.9" width="17.4" height="14.7" fill="#d29922"><title>PlayerSound0D  04D5E5  25B  T2  [audio]</title></rect>
+<rect x="1542.7" y="695.2" width="17.4" height="14.7" fill="#d29922"><title>PlayerSound0B  04D5FE  25B  T2  [audio]</title></rect>
+<rect x="1542.7" y="710.6" width="17.4" height="14.7" fill="#d29922"><title>PlayerSound12  04D617  25B  T2  [audio]</title></rect>
+<rect x="1560.8" y="679.9" width="18.6" height="13.8" fill="#d29922"><title>PlayerSound0C  04D630  25B  T2  [audio]</title></rect>
+<rect x="1580.0" y="679.9" width="17.9" height="13.8" fill="#d29922"><title>SoundIfFlag40  04D0BE  24B  T2  [audio]</title></rect>
+<rect x="1560.8" y="694.3" width="15.5" height="15.2" fill="#3fb950"><title>ApuUploadBank19  04D44C  23B  T4  [audio]</title></rect>
+<rect x="1560.8" y="710.1" width="15.5" height="15.2" fill="#d29922"><title>PlayerSound35  07D6D1  23B  T2  [audio]</title></rect>
+<rect x="1576.8" y="694.3" width="10.6" height="16.3" fill="#d29922"><title>Sound0E1AStop  04D5A2  17B  T2  [audio]</title></rect>
+<rect x="1588.0" y="694.3" width="9.9" height="16.3" fill="#d29922"><title>SoundFromTableD89  03EDDF  16B  T2  [audio]</title></rect>
+<rect x="1576.8" y="711.1" width="9.1" height="14.2" fill="#3fb950"><title>SoundPort0QueuePushRaw  04D649  13B  T4  [audio]</title></rect>
+<rect x="1586.6" y="711.1" width="11.3" height="7.7" fill="#3fb950"><title>ApuSettleDelay  04D443  9B  T4  [audio]</title></rect>
+<rect x="1586.6" y="719.4" width="11.3" height="5.9" fill="#3fb950"><title>ApuPort1Send05  04D43C  7B  T4  [audio]</title></rect>
+<text x="1365.1" y="737.9" font-size="10" fill="#8b949e">math</text>
+<rect x="1363.6" y="742.9" width="53.5" height="73.4" fill="#3fb950"><title>RotateXZ  03C27F  384B  T4  [math]</title></rect>
+<rect x="1417.6" y="742.9" width="36.1" height="22.7" fill="#3fb950"><title>Mode7ScaleProduct  03FCE0  82B  T4  [math]</title></rect>
+<rect x="1454.3" y="742.9" width="30.3" height="22.7" fill="#3fb950"><title>ApproachEighthMin8  03CE30  69B  T4  [math]</title></rect>
+<rect x="1417.6" y="766.2" width="25.7" height="26.3" fill="#3fb950"><title>ScaleDp02Dp94  0883F8  68B  T4  [math]</title></rect>
+<rect x="1417.6" y="793.1" width="25.7" height="23.2" fill="#3fb950"><title>ApproachQuarterMin4  03CDF4  60B  T4  [math]</title></rect>
+<rect x="1443.9" y="766.2" width="21.6" height="23.4" fill="#3fb950"><title>ApproachQuarterMin4Byte  03D00F  51B  T4  [math]</title></rect>
+<rect x="1466.1" y="766.2" width="18.5" height="23.4" fill="#d29922"><title>RandomWordStep  07D9D1  44B  T2  [math]</title></rect>
+<rect x="1443.9" y="790.2" width="19.7" height="13.8" fill="#3fb950"><title>ScaleFiveThirtySeconds  03CC0D  28B  T4  [math]</title></rect>
+<rect x="1443.9" y="804.6" width="19.7" height="11.7" fill="#d29922"><title>RandomStep  02DF7D  24B  T2  [math]</title></rect>
+<rect x="1464.2" y="790.2" width="20.4" height="10.8" fill="#3fb950"><title>PpuMultiplierSetLowByteTimes8  7EE6BA  23B  T4  [math]</title></rect>
+<rect x="1464.2" y="801.5" width="8.9" height="14.7" fill="#3fb950"><title>ScaleThreeQuarters  03CC5A  14B  T4  [math]</title></rect>
+<rect x="1473.7" y="801.5" width="10.9" height="11.1" fill="#3fb950"><title>PpuMultiply  7EE7A1  13B  T4  [math]</title></rect>
+<rect x="1473.7" y="813.3" width="10.9" height="3.0" fill="#3fb950"><title>ScaleDp02Dp94Long  0883E8  4B  T4  [math]</title></rect>
+<text x="1365.1" y="828.9" font-size="10" fill="#8b949e">bank 04 S-CPU</text>
+<rect x="1363.6" y="833.9" width="33.5" height="64.0" fill="#c8ccd2"><title>(unnamed)  04D0DB  217B  T1  [bank 04 S-CPU]</title></rect>
+<rect x="1397.6" y="833.9" width="63.5" height="31.7" fill="#c8ccd2"><title>(unnamed)  04D251  204B  T1  [bank 04 S-CPU]</title></rect>
+<rect x="1397.6" y="866.2" width="63.5" height="31.7" fill="#c8ccd2"><title>(unnamed)  04E048  204B  T1  [bank 04 S-CPU]</title></rect>
+<rect x="1461.7" y="833.9" width="22.9" height="42.0" fill="#c8ccd2"><title>(unnamed)  04D533  99B  T1  [bank 04 S-CPU]</title></rect>
+<rect x="1461.7" y="876.5" width="12.8" height="21.4" fill="#c8ccd2"><title>(unnamed)  04E32D  29B  T1  [bank 04 S-CPU]</title></rect>
+<rect x="1475.1" y="876.5" width="9.6" height="21.4" fill="#c8ccd2"><title>(unnamed)  04DA20  22B  T1  [bank 04 S-CPU]</title></rect>
+<text x="1489.7" y="737.9" font-size="10" fill="#8b949e">system</text>
+<rect x="1488.2" y="742.9" width="30.5" height="32.2" fill="#3fb950"><title>VramDmaQueueFlush  7F0F77  101B  T4  [system]</title></rect>
+<rect x="1488.2" y="775.7" width="30.5" height="30.9" fill="#3fb950"><title>SlideStep  7EE0E8  97B  T4  [system]</title></rect>
+<rect x="1519.4" y="742.9" width="26.8" height="21.9" fill="#3fb950"><title>ByteWritesIfPending  7F0F3A  61B  T4  [system]</title></rect>
+<rect x="1519.4" y="765.4" width="26.8" height="20.8" fill="#3fb950"><title>OamDmaIfPending  7F0EC9  58B  T4  [system]</title></rect>
+<rect x="1519.4" y="786.9" width="26.8" height="19.7" fill="#3fb950"><title>CgramDmaIfPending  7F0F03  55B  T4  [system]</title></rect>
+<rect x="1546.7" y="742.9" width="28.4" height="18.5" fill="#3fb950"><title>VramDmaQueueAdd  7F1007  55B  T4  [system]</title></rect>
+<rect x="1575.8" y="742.9" width="22.1" height="18.5" fill="#3fb950"><title>HalfRateApproach  7F0FDC  43B  T4  [system]</title></rect>
+<rect x="1546.7" y="762.1" width="14.4" height="22.3" fill="#3fb950"><title>WaitScanline  02D7AB  34B  T4  [system]</title></rect>
+<rect x="1546.7" y="785.0" width="14.4" height="21.6" fill="#3fb950"><title>Set7EFFA6Sequence  08B893  33B  T4  [system]</title></rect>
+<rect x="1561.8" y="762.1" width="18.2" height="11.8" fill="#3fb950"><title>ReadTable9022  03AEEE  23B  T4  [system]</title></rect>
+<rect x="1580.5" y="762.1" width="17.4" height="11.8" fill="#3fb950"><title>WordListAAppend  7F10A1  22B  T4  [system]</title></rect>
+<rect x="1561.8" y="774.4" width="12.7" height="16.1" fill="#3fb950"><title>WordListBAppend  7F10B7  22B  T4  [system]</title></rect>
+<rect x="1561.8" y="791.2" width="12.7" height="15.4" fill="#3fb950"><title>Countdown0DF8  07EE11  21B  T4  [system]</title></rect>
+<rect x="1575.0" y="774.4" width="12.1" height="15.3" fill="#3fb950"><title>Set0D37FromTable  02FC44  20B  T4  [system]</title></rect>
+<rect x="1587.7" y="774.4" width="10.2" height="15.3" fill="#3fb950"><title>Set7EBC2BTrio  02D65A  17B  T4  [system]</title></rect>
+<rect x="1575.0" y="790.4" width="10.2" height="8.7" fill="#3fb950"><title>ApproachTargetFull  0BE2C5  10B  T4  [system]</title></rect>
+<rect x="1575.0" y="799.7" width="10.2" height="6.9" fill="#3fb950"><title>WaitHBlank  7EA2FD  8B  T4  [system]</title></rect>
+<rect x="1585.9" y="790.4" width="12.0" height="5.8" fill="#3fb950"><title>ApproachTargetZero  0BE2CF  8B  T4  [system]</title></rect>
+<rect x="1585.9" y="796.8" width="6.2" height="9.8" fill="#d29922"><title>KeepRegisters  7EF217  7B  T2  [system]</title></rect>
+<rect x="1592.7" y="796.8" width="5.2" height="8.1" fill="#3fb950"><title>DataBankTest  7EE18B  5B  T4  [system]</title></rect>
+<rect x="1592.7" y="805.4" width="5.2" height="1.1" fill="#3fb950"><title>ReturnOnly  03F329  1B  T4  [system]</title></rect>
+<text x="1489.7" y="819.2" font-size="10" fill="#8b949e">hud</text>
+<rect x="1488.2" y="824.2" width="25.6" height="31.5" fill="#d29922"><title>HudDrawTime  7EB00C  102B  T2  [hud]</title></rect>
+<rect x="1514.4" y="824.2" width="23.8" height="18.7" fill="#d29922"><title>HudDrawNumber3  7EE95E  57B  T2  [hud]</title></rect>
+<rect x="1514.4" y="843.5" width="23.8" height="12.3" fill="#d29922"><title>HudDrawDigits19EC  7EE7D6  38B  T2  [hud]</title></rect>
+<rect x="1538.8" y="824.2" width="12.8" height="16.6" fill="#d29922"><title>HudCountUp19EC  09C072  28B  T2  [hud]</title></rect>
+<rect x="1552.2" y="824.2" width="8.0" height="16.6" fill="#3fb950"><title>HudSlideIn  7EAECE  18B  T4  [hud]</title></rect>
+<rect x="1538.8" y="841.4" width="8.2" height="14.3" fill="#d29922"><title>HudDrawValueC  7EE7C6  16B  T2  [hud]</title></rect>
+<rect x="1547.6" y="841.4" width="12.6" height="6.9" fill="#d29922"><title>HudDrawValueA  7EE7AE  12B  T2  [hud]</title></rect>
+<rect x="1547.6" y="848.8" width="12.6" height="6.9" fill="#d29922"><title>HudDrawValueB  7EE7BA  12B  T2  [hud]</title></rect>
+<text x="1489.7" y="868.3" font-size="10" fill="#8b949e">data</text>
+<rect x="1488.2" y="873.3" width="48.1" height="24.6" fill="#3fb950"><title>SelectionTables18CB  03B70E  163B  T4  [data]</title></rect>
+<rect x="1536.9" y="873.3" width="13.1" height="16.4" fill="#3fb950"><title>CourseDataPointer  03EC24  31B  T4  [data]</title></rect>
+<rect x="1550.7" y="873.3" width="9.6" height="16.4" fill="#3fb950"><title>CourseIndex12  03EFBB  23B  T4  [data]</title></rect>
+<rect x="1536.9" y="890.3" width="9.5" height="7.6" fill="#3fb950"><title>HandlerTableA  03B6E6  11B  T4  [data]</title></rect>
+<rect x="1547.1" y="890.3" width="9.5" height="7.6" fill="#3fb950"><title>HandlerTableB  03B6F9  11B  T4  [data]</title></rect>
+<rect x="1557.2" y="890.3" width="3.1" height="7.6" fill="#3fb950"><title>SelectionTables18CBLong  03B70A  4B  T4  [data]</title></rect>
+<rect x="1563.8" y="810.2" width="34.1" height="27.2" fill="#3fb950"><title>JoypadAccumulate  7EB1E1  85B  T4  [input]</title></rect>
+<rect x="1563.8" y="837.9" width="34.1" height="16.1" fill="#3fb950"><title>JoypadRead  7EB1AE  51B  T4  [input]</title></rect>
+<rect x="1563.8" y="857.6" width="21.6" height="23.6" fill="#3fb950"><title>SaveChecksum  03F02B  50B  T4  [save]</title></rect>
+<rect x="1586.1" y="857.6" width="11.8" height="11.5" fill="#3fb950"><title>SaveRecordSumA  07ADCC  14B  T4  [save]</title></rect>
+<rect x="1586.1" y="869.7" width="11.8" height="11.5" fill="#3fb950"><title>SaveRecordSumB  07ADF9  14B  T4  [save]</title></rect>
+<rect x="1563.8" y="884.8" width="18.5" height="13.1" fill="#3fb950"><title>RaceTimeAddD815  03EF9F  27B  T4  [race]</title></rect>
+<rect x="1582.9" y="884.8" width="7.9" height="13.1" fill="#3fb950"><title>RaceTimeAddD814  03EF93  12B  T4  [race]</title></rect>
+<rect x="1594.4" y="884.8" width="3.5" height="11.3" fill="#c8ccd2"><title>(unnamed)  00FE88  8B  T1  [bank 00 S-CPU]</title></rect>
+<rect x="1594.4" y="899.6" width="3.5" height="0.4" fill="#c8ccd2"><title>(unnamed)  008000  1B  T1  [bank 00 Super FX]</title></rect>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 150 &#183; T3 behaviour-exact 0 &#183; 6,900/109,695 bytes exact (6.3%) &#183; green=T4 blue=T3 amber=T2 gray=T1</text></svg>
