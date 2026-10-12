@@ -1123,3 +1123,24 @@ includeonce
 !fxcar_parts = $3E
 !fxcar_entry = $6E
 !fxcar_8c = $8C
+; Super FX RAM the start-up program sets (gsu/fx_init.asm).
+!fx_ram_test = $70235C
+!fx_ram_test_w = $235C
+!fx_ram_bad = $7026F0
+!fx_init_2732 = $702732
+!fx_init_2636 = $702636
+!fx_init_2380 = $702380
+!fx_init_2382 = $702382
+!fx_init_2642 = $702642
+!fx_init_2b92 = $702B92
+!fx_init_2b94 = $702B94
+!fx_init_2684 = $702684
+!fx_init_2686 = $702686
+!fx_init_1090 = $701090
+!fx_init_2470 = $702470
+!fx_init_273c = $70273C
+!fx_init_2472 = $702472
+; A model's unpacked points and the variant word that picks among its
+; parts, short addresses (render/fx_points.asm).
+!fx_points_w = $2488
+!fx_variant_w = $0044

@@ -114,6 +114,12 @@ static inline int gsu_count_down(uint16_t *count)
     return *count != 0;
 }
 
+/* GETBS: the ROM buffer, sign-extended. */
+static inline uint16_t gsu_getbs(void)
+{
+    return (uint16_t)(int16_t)(int8_t)gsu_getb();
+}
+
 /* GETBH: the ROM buffer as the high byte, the low byte of a kept. */
 static inline uint16_t gsu_getbh(uint16_t a)
 {
