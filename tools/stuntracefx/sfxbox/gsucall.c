@@ -13,7 +13,9 @@
  * fetched. A routine with C is entered when the Super FX is about to run its
  * first instruction, arrived at by a jump (not by falling through), with R11
  * pointing just past the instruction that ran last (the delay slot of a
- * LINK call) and no prefix (ALT1-3, WITH, TO, FROM) pending. The call ends
+ * LINK call). A prefix (WITH, TO, FROM, ALT1-3) in that delay slot applies
+ * to the routine's first instruction: the C gets it in gsu.pre_*, and the
+ * prefix state the original leaves at the return is restored after it. The call ends
  * when the Super FX is about to run the instruction at that R11 in the same
  * program bank: R15 is then one past it and the pipeline holds its opcode.
  * A tail branch into a routine (no LINK) is not an entry; the routine that
@@ -167,9 +169,7 @@ static int program_start(uint8_t opcode)
 static int entry_ok(uint32_t pc, uint32_t prev_end, const struct GsuState *st)
 {
     if (pc == prev_end) return 0;
-    if (st->r[11] != (uint16_t)prev_end) return 0;
-    if (st->sfr & SFR_PREFIX) return 0;
-    return st->sreg == 0 && st->dreg == 0;
+    return st->r[11] == (uint16_t)prev_end;
 }
 
 /* ---- the Super FX's bus as the C sees it ---- */
@@ -312,6 +312,8 @@ static void model_from(const struct GsuState *st)
     gsu.z = !!(st->sfr & SFR_Z); gsu.cy = !!(st->sfr & SFR_CY); gsu.s = !!(st->sfr & SFR_S); gsu.ov = !!(st->sfr & SFR_OV);
     gsu.rombr = st->rombr; gsu.rambr = st->rambr; gsu.colr = st->colr; gsu.por = st->por;
     gsu.scmr = st->scmr; gsu.scbr = st->scbr; gsu.ramaddr = st->ramaddr;
+    gsu.pre_b = !!(st->sfr & 1 << 12); gsu.pre_alt1 = !!(st->sfr & 1 << 8); gsu.pre_alt2 = !!(st->sfr & 1 << 9);
+    gsu.pre_sreg = st->sreg; gsu.pre_dreg = st->dreg;
     /* The ROM buffer; a fill still pending lands before anything reads it,
        with the R14 and ROMBR of now (ROMB completes a pending fill first). */
     gsu.romdr = st->romcl ? rom[rom_off((uint32_t)st->rombr << 16 | st->r[14])] : st->romdr;

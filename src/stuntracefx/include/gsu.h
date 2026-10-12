@@ -31,6 +31,11 @@ typedef struct {
     uint8_t scmr, scbr;      /* screen mode and base, set by the S-CPU */
     uint16_t ramaddr;        /* the last RAM address loaded or stored: SBK writes there */
     uint8_t romdr;           /* the ROM buffer: GETB and GETC read it */
+    /* A prefix the caller left pending for the routine's first instruction
+       (a WITH, TO, FROM or ALT in the delay slot of its call): B (set by
+       WITH), ALT1, ALT2, and the source and destination registers. All 0
+       when there is none. Set at entry; the C reads them, never writes. */
+    uint8_t pre_b, pre_alt1, pre_alt2, pre_sreg, pre_dreg;
 } RegsGSU;
 
 extern RegsGSU gsu;
