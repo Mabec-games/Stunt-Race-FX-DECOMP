@@ -1202,3 +1202,6 @@ includeonce
 !fx_hit_sum = $70263E
 !fxcar_impact = $62
 !fxcar_44 = $44
+; Computer driving fields (race/fx_drive.asm).
+!fxcar_steer_bias = $3A
+!fxcar_stuck = $7E
