@@ -76,3 +76,49 @@ Mode7ScaleProduct:
     rep.b #$20
     lda.w !MPYL
     rts
+
+; @routine 08:83F8 ScaleDp02Dp94
+; WHAT IT DOES: Rescales the pair in direct page $02 and $94: $02 becomes
+; ($02 >> 10, signed) + $20 with bit 0 cleared, $94 becomes (its top five
+; bits >> 5, signed) + $400; returns their sum.
+; HOW: Arithmetic shifts by CMP #$8000 / ROR A; the high byte of $02 >> 2
+; is taken and sign-extended.
+; Entry: M 16-bit, D = $0000. Exit: A = the sum; N, Z, C, V from the last
+; add.
+%at($0883F8)
+ScaleDp02Dp94:
+    lda.b !dp_02
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    xba
+    bit.w #$0080
+    beq .l840D
+    ora.w #$FF00
+    bra .l8410
+.l840D:
+    and.w #$00FF
+.l8410:
+    clc
+    adc.w #$0020
+    and.w #$FFFE
+    sta.b !dp_02
+    lda.b !dp_94
+    and.w #$F800
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    clc
+    adc.w #$0400
+    sta.b !dp_94
+    clc
+    adc.b !dp_02
+    rts

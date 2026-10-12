@@ -293,3 +293,88 @@ GsuRecordStep6A:
     plx
 .lB32A:
     rts
+
+; @routine 08:DC6D ObjectVelocityFromRecordOf
+; WHAT IT DOES: Sets object X's velocity (+$2E, +$30, +$32) to an eighth of
+; the values at +$2E, +$30, +$32 of object Y's Super FX record.
+; HOW: Each value is shifted right three times keeping its sign.
+; Entry: M 8-bit, X 16-bit; X = the object to set, Y = the object whose
+; record is read. Exit: A = the Z velocity (M 8-bit); X, Y unchanged; N, Z
+; from X; C from the last shift.
+%at($08DC6D)
+ObjectVelocityFromRecordOf:
+    phx
+    phy
+    rep.b #$20
+    lda.w !obj_22,y
+    txy
+    tax
+    lda.l !gsu_rec_vel_x,x
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    sta.w !obj_vel_x,y
+    lda.l !gsu_rec_vel_y,x
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    sta.w !obj_vel_y,y
+    lda.l !gsu_rec_vel_z,x
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    sta.w !obj_vel_z,y
+    sep.b #$20
+    ply
+    plx
+    rtl
+
+; @routine 08:D86F GsuRecordFromObject
+; WHAT IT DOES: Copies object X's state into its Super FX record: +$53,
+; +$55, +$57 to +$0C, +$0E, +$10; +$20 to +$14; its position (+$0C, +$0E,
+; +$10) to +$1E, +$20, +$22; its +$15 byte, as the high byte, to +$24; and
+; the low 7 bits of +$5A to +$12.
+; HOW: 16-bit copies in that order, when the object has a record.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: A = the last value (0 with no
+; record); X = Y = the object; M 8-bit; N, Z from X.
+%at($08D86F)
+GsuRecordFromObject:
+    rep.b #$20
+    txy
+    lda.w !obj_22,x
+    beq .lD8BE
+    tax
+    lda.w !obj_53,y
+    sta.l !gsu_rec_pos_x,x
+    lda.w !obj_55,y
+    sta.l !gsu_rec_pos_y,x
+    lda.w !obj_57,y
+    sta.l !gsu_rec_pos_z,x
+    lda.w !obj_20,y
+    sta.l !gsu_rec_14,x
+    lda.w !obj_pos_x,y
+    sta.l !gsu_rec_1e,x
+    lda.w !obj_pos_y,y
+    sta.l !gsu_rec_20,x
+    lda.w !obj_pos_z,y
+    sta.l !gsu_rec_22,x
+    lda.w !obj_15,y
+    and.w #$00FF
+    xba
+    sta.l !gsu_rec_24,x
+    lda.w !obj_5a,y
+    and.w #$007F
+    sta.l !gsu_rec_12,x
+.lD8BE:
+    sep.b #$20
+    tyx
+    rtl

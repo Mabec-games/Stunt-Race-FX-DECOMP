@@ -336,3 +336,77 @@ void abi_GsuRecordStep6A(void)
     cpu.a = a;
     cpu.p = (uint8_t)(nz16(p, cpu.x) | P_M);
 }
+
+/* An arithmetic shift right by three, as three CMP #$8000 / ROR A do it;
+   C is the last bit shifted out. */
+static uint16_t asr3(uint16_t v, uint8_t *p)
+{
+    *p = (uint8_t)((*p & ~P_C) | (v & 0x0004 ? P_C : 0));
+    return (uint16_t)((int16_t)v >> 3);
+}
+
+/*
+ * @routine 08:DC6D ObjectVelocityFromRecordOf
+ * WHAT IT DOES: Sets object X's velocity (+$2E, +$30, +$32) to an eighth of
+ * the values at +$2E, +$30, +$32 of object Y's Super FX record.
+ * HOW: Each value is shifted right three times keeping its sign.
+ * Entry: M 8-bit, X 16-bit; X = the object to set, Y = the object whose
+ * record is read. Exit: A = the Z velocity (M 8-bit); X, Y unchanged; N, Z
+ * from X; C from the last shift.
+ */
+uint16_t ObjectVelocityFromRecordOf(uint8_t bank, uint16_t obj, uint16_t from, uint8_t *p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t rec = record_of(bank, from), v = 0;
+    unsigned i;
+
+    for (i = 0; i < 3; i++) {
+        v = asr3(rd16(0x70002E + 2 * i + rec), p);
+        wr16(b | (uint16_t)(0x202E + 2 * i + obj), v);
+    }
+    return v;
+}
+
+void abi_ObjectVelocityFromRecordOf(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = ObjectVelocityFromRecordOf(cpu.db, cpu.x, cpu.y, &p);
+    cpu.p = (uint8_t)(nz16(p, cpu.x) | P_M);
+}
+
+/*
+ * @routine 08:D86F GsuRecordFromObject
+ * WHAT IT DOES: Copies object X's state into its Super FX record: +$53,
+ * +$55, +$57 to +$0C, +$0E, +$10; +$20 to +$14; its position (+$0C, +$0E,
+ * +$10) to +$1E, +$20, +$22; its +$15 byte, as the high byte, to +$24; and
+ * the low 7 bits of +$5A to +$12.
+ * HOW: 16-bit copies in that order, when the object has a record.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: A = the last value (0 with no
+ * record); X = Y = the object; M 8-bit; N, Z from X.
+ */
+uint16_t GsuRecordFromObject(uint8_t bank, uint16_t obj)
+{
+    static const struct { uint16_t from, to; } copy[7] = {
+        {0x2053, 0x0C}, {0x2055, 0x0E}, {0x2057, 0x10}, {0x2020, 0x14},
+        {0x200C, 0x1E}, {0x200E, 0x20}, {0x2010, 0x22}};
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t rec = record_of(bank, obj), v;
+    unsigned i;
+
+    if (!rec)
+        return 0;
+    for (i = 0; i < 7; i++)
+        wr16(0x700000 + copy[i].to + rec, rd16(b | (uint16_t)(copy[i].from + obj)));
+    wr16(0x700024 + rec, (uint16_t)((rd16(b | (uint16_t)(0x2015 + obj)) & 0x00FF) << 8));
+    v = rd16(b | (uint16_t)(0x205A + obj)) & 0x007F;
+    wr16(0x700012 + rec, v);
+    return v;
+}
+
+void abi_GsuRecordFromObject(void)
+{
+    cpu.a = GsuRecordFromObject(cpu.db, cpu.x);
+    cpu.y = cpu.x;
+    cpu.p = (uint8_t)(nz16(cpu.p, cpu.x) | P_M);
+}

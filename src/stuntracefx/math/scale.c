@@ -74,3 +74,37 @@ void abi_Mode7ScaleProduct(void)
     cpu.a = Mode7ScaleProduct(cpu.a, cpu.p & P_C);
     cpu.p = (uint8_t)(nz16(cpu.p, cpu.a) & ~P_M);
 }
+
+/*
+ * @routine 08:83F8 ScaleDp02Dp94
+ * WHAT IT DOES: Rescales the pair in direct page $02 and $94: $02 becomes
+ * ($02 >> 10, signed) + $20 with bit 0 cleared, $94 becomes (its top five
+ * bits >> 5, signed) + $400; returns their sum.
+ * HOW: Arithmetic shifts by CMP #$8000 / ROR A; the high byte of $02 >> 2
+ * is taken and sign-extended.
+ * Entry: M 16-bit, D = $0000. Exit: A = the sum; N, Z, C, V from the last
+ * add.
+ */
+uint16_t ScaleDp02Dp94(uint8_t *p)
+{
+    uint16_t a = asr1(asr1(rd16(0x000002))), b, s;
+
+    a = (uint16_t)(int16_t)(int8_t)(uint8_t)(a >> 8);
+    a = (uint16_t)((uint16_t)(a + 0x20) & 0xFFFE);
+    wr16(0x000002, a);
+    b = (uint16_t)((int16_t)(rd16(0x000094) & 0xF800) >> 5);
+    b = (uint16_t)(b + 0x0400);
+    wr16(0x000094, b);
+    s = (uint16_t)(b + a);
+    *p = (uint8_t)((nz16(*p, s) & ~(P_C | P_V)) | ((unsigned)b + a > 0xFFFF ? P_C : 0)
+                   | ((~(b ^ a) & (b ^ s) & 0x8000) ? P_V : 0));
+    return s;
+}
+
+void abi_ScaleDp02Dp94(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = ScaleDp02Dp94(&p);
+    cpu.p = p;
+}

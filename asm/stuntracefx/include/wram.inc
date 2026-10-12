@@ -460,3 +460,14 @@ includeonce
 !gsu_table_bank = $701094
 !wram_1F4E = $1F4E
 !wram_1F50 = $1F50
+!obj_20 = $2020
+!obj_53 = $2053
+!obj_55 = $2055
+!obj_57 = $2057
+!obj_5a = $205A
+!gsu_rec_12 = $700012
+!gsu_rec_14 = $700014
+!gsu_rec_1e = $70001E
+!gsu_rec_20 = $700020
+!gsu_rec_22 = $700022
+!gsu_rec_24 = $700024
