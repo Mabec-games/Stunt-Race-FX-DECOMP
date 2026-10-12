@@ -97,3 +97,102 @@ OamTextLine:
     bne .char
     plp
     rts
+
+; @routine 02:FBE5 SpriteTextAt895E
+; WHAT IT DOES: Draws text line $0E3D as sprites from slot $70 at X $89,
+; Y $5E, attributes $36, and makes those sprites small.
+; HOW: X in A's high byte, Y as $89 - $2B, then the shared body at
+; $02:FC1F (OamTextLineLong, then $058E-$0595 cleared).
+; Entry: X 16-bit, D = $0000. Exit: A = 0; X, Y as OamTextLine leaves
+; them; M 16-bit; Z, C, V set, N clear.
+%at($02FBE5)
+SpriteTextAt895E:
+    sep.b #$20
+    lda.b #$89
+    xba
+    lda.b #$89
+    sec
+    sbc.b #$2B
+    bra SpriteTextAt_y
+
+; @routine 02:FBF1 SpriteTextAt8152
+; WHAT IT DOES: As SpriteTextAt895E at X $81, Y $52.
+; HOW: Y as $89 - $37, then the shared body at $02:FC1C.
+; Entry: as SpriteTextAt895E. Exit: as SpriteTextAt895E.
+%at($02FBF1)
+SpriteTextAt8152:
+    sep.b #$20
+    lda.b #$81
+    xba
+    lda.b #$89
+    bra SpriteTextAt_body
+
+; @routine 02:FBFA SpriteTextAt8152B
+; WHAT IT DOES: The same as SpriteTextAt8152 (a second copy of its entry).
+; HOW: As SpriteTextAt8152.
+; Entry: as SpriteTextAt895E. Exit: as SpriteTextAt895E.
+%at($02FBFA)
+SpriteTextAt8152B:
+    sep.b #$20
+    lda.b #$81
+    xba
+    lda.b #$89
+    bra SpriteTextAt_body
+
+; @routine 02:FC03 SpriteTextAt8952
+; WHAT IT DOES: As SpriteTextAt895E at X $89, Y $52. Nothing calls this
+; entry in the traces so far.
+; HOW: As SpriteTextAt8152.
+; Entry: as SpriteTextAt895E. Exit: as SpriteTextAt895E.
+%at($02FC03)
+SpriteTextAt8952:
+    sep.b #$20
+    lda.b #$89
+    xba
+    lda.b #$89
+    bra SpriteTextAt_body
+
+; @routine 02:FC0C SpriteTextAt8152C
+; WHAT IT DOES: A third copy of SpriteTextAt8152's entry. Nothing calls it
+; in the traces so far.
+; HOW: As SpriteTextAt8152.
+; Entry: as SpriteTextAt895E. Exit: as SpriteTextAt895E.
+%at($02FC0C)
+SpriteTextAt8152C:
+    sep.b #$20
+    lda.b #$81
+    xba
+    lda.b #$89
+    bra SpriteTextAt_body
+
+; @routine 02:FC15 SpriteTextAt8952B
+; WHAT IT DOES: A second copy of SpriteTextAt8952's entry, falling into the
+; shared body. Nothing calls it in the traces so far.
+; HOW: As SpriteTextAt8152.
+; Entry: as SpriteTextAt895E. Exit: as SpriteTextAt895E.
+%at($02FC15)
+SpriteTextAt8952B:
+    sep.b #$20
+    lda.b #$89
+    xba
+    lda.b #$89
+SpriteTextAt_body:                  ; the entries above join here
+    sec
+    sbc.b #$37
+SpriteTextAt_y:                     ; SpriteTextAt895E joins here
+    sta.b !text_y
+    xba
+    sta.b !text_pen
+    lda.b #$70
+    sta.b !text_count
+    lda.b #$36
+    sta.b !text_attr
+    stz.b !text_tile
+    jsl.l OamTextLineLong
+    rep.b #$20
+    lda.w #$0000
+    sta.w !oam_buffer_high+25
+    sta.w !oam_buffer_high+27
+    sta.w !oam_buffer_high+29
+    sta.w !oam_buffer_high+31
+    rts
