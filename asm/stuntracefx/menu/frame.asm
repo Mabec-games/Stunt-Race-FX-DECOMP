@@ -54,3 +54,143 @@ MenuRunFrames:
     bne .lE2E4
     plp
     rts
+
+; @routine 0B:AE47 MenuRegionCheck
+; WHAT IT DOES: Stops the game on a PAL console (bit 4 of STAT78): starts
+; animation $1E on the kind $0F object and puts it at Y $60, clears +$10
+; of the kind $10 object, runs the objects once, builds the sprite table,
+; asks for frame updates 0-3 and then loops for ever. On NTSC it returns
+; at once; no script runs on PAL.
+; HOW: DB = 0 and 8-bit A throughout, so the searches compare and the
+; field writes store single bytes. The loop is a branch to itself without
+; waiting for a frame, so the frame updates are never taken.
+; Entry: X 16-bit. Exit (NTSC): A low byte = 0; X, Y unchanged; P and DB
+; unchanged.
+%at($0BAE47)
+MenuRegionCheck:
+    php
+    phb
+    sep.b #$20
+    rep.b #$10
+    lda.b #$00
+    pha
+    plb
+    lda.w !STAT78
+    and.b #$10
+    beq .lAE8C
+    lda.b #$0F
+    jsr.w MenuActorFind
+    lda.b !actor_anim,x
+    cmp.b #$1E
+    beq .lAE6B
+    lda.b #$1E
+    sta.b !actor_anim,x
+    stz.b !actor_anim_pos,x
+    stz.b !actor_anim_timer,x
+.lAE6B:
+    lda.b #$60
+    sta.b !actor_06,x
+    lda.b #$10
+    jsr.w MenuActorFind
+    stz.b !actor_10,x
+    jsl.l MenuActorsRun
+    jsl.l MenuOamBuild
+    sep.b #$20
+    lda.w !frame_update_flags
+    ora.b #$0F
+    sta.w !frame_update_flags
+    rep.b #$30
+.lAE8A:
+    bra .lAE8A
+.lAE8C:
+    plb
+    plp
+    rts
+
+; @routine 0B:AE8F MenuHeldRestart
+; WHAT IT DOES: Returns 0 when no player holds a button in bits 0-3 and
+; $18FB is clear. Otherwise starts animation $18 on the kind $0F object and
+; runs menu frames until that is so, then returns $FFFF (the caller opens
+; its screen again). No script holds those buttons here.
+; HOW: The held words are read through the data bank; the frames are as
+; MenuRunFrames's, with frame updates 0-3.
+; Entry: X 16-bit, D = $0000. Exit: A = 0 or $FFFF; N, Z from it; M
+; 16-bit, X 16-bit; X, Y unchanged when 0, as the last frame left them
+; when $FFFF, C then from the compare of the animation with $18.
+%at($0BAE8F)
+MenuHeldRestart:
+    rep.b #$30
+    lda.w !joy1_held
+    and.w #$000F
+    bne .lAEAB
+    lda.w !joy2_held
+    and.w #$000F
+    bne .lAEAB
+    lda.l !wram_18FB
+    bne .lAEAB
+    lda.w #$0000
+    rts
+.lAEAB:
+    lda.w #$000F
+    jsr.w MenuActorFind
+    lda.b !actor_anim,x
+    cmp.w #$0018
+    beq .lAEC1
+    lda.w #$0018
+    sta.b !actor_anim,x
+    stz.b !actor_anim_pos,x
+    stz.b !actor_anim_timer,x
+.lAEC1:
+    jsr.w MenuWaitFrame
+    jsl.l MenuActorsRun
+    jsl.l MenuOamBuild
+    sep.b #$20
+    lda.w !frame_update_flags
+    ora.b #$0F
+    sta.w !frame_update_flags
+    rep.b #$30
+    lda.w !joy1_held
+    and.w #$000F
+    bne .lAEC1
+    lda.w !joy2_held
+    and.w #$000F
+    bne .lAEC1
+    lda.l !wram_18FB
+    bne .lAEC1
+    lda.w #$FFFF
+    rts
+
+; @routine 0B:AE0A MenuScreen0Run
+; WHAT IT DOES: Runs the menu screen of spawn list 0: opens it
+; (MenuScreenOpen0), runs frames until the menu asks to exit ($11EB), checks
+; the region (MenuRegionCheck), opens it again while buttons are held
+; (MenuHeldRestart), then turns the display, interrupts, HDMA and DMA off.
+; HOW: Frames as MenuRunFrames's, with frame updates 0-3.
+; Entry: D = $0000. Exit: A = $0080; X, Y as the last frame left them; M
+; 8-bit, X 16-bit; N set, Z clear; C clear.
+%at($0BAE0A)
+MenuScreen0Run:
+    rep.b #$30
+    jsr.w MenuScreenOpen0
+.lAE0F:
+    jsr.w MenuWaitFrame
+    jsl.l MenuActorsRun
+    jsl.l MenuOamBuild
+    sep.b #$20
+    lda.w !frame_update_flags
+    ora.b #$0F
+    sta.w !frame_update_flags
+    rep.b #$30
+    lda.w !menu_exit
+    beq .lAE0F
+    jsr.w MenuRegionCheck
+    jsr.w MenuHeldRestart
+    cmp.w #$FFFF
+    beq MenuScreen0Run
+    sep.b #$20
+    lda.b #$80
+    sta.w !INIDISP
+    stz.w !NMITIMEN
+    stz.w !HDMAEN
+    stz.w !MDMAEN
+    rtl

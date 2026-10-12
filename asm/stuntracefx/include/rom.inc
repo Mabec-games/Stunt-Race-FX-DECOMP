@@ -169,3 +169,18 @@ includeonce
 !fa5a_input_12 = $0797CA
 !fa5a_six_dx = $079806
 !piece_scale_w = $85CC                 ; a byte per counter step, read through the data bank
+
+; Tiles for the menu screen of spawn list 0, $720 bytes (menu/screen.asm).
+!menu_tiles_dc8c = $1CDC8C
+
+; Menu pictures in bank $1C drawn by the Super FX (MenuScreenOpen6,
+; menu/screen.asm): each is preceded by its byte count, big-endian. $1C:BE58
+; is also copied raw, its first $40 bytes, to VRAM $7000.
+!menu_pic_dc38_size = $1CDC36
+!menu_pic_c9dc_size = $1CC9DA
+!menu_pic_babc_size = $1CBABA
+!menu_pic_be58_size = $1CBE56
+!menu_pic_c664_size = $1CC662
+!menu_pic_c818_size = $1CC816
+!menu_pic_becc_size = $1CBECA
+!menu_pic_be58 = $1CBE58

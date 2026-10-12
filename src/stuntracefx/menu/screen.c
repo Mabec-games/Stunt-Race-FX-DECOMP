@@ -567,3 +567,223 @@ void abi_MenuCrossFadeOut(void)
         cpu.p = (uint8_t)((nz16(cpu.p, cpu.a) & ~(P_M | P_X)));
     }
 }
+
+void SoundReset(void);
+void SoundPort0QueuePush(uint8_t command);
+void MenuWaitFrame(uint8_t bank);
+void MenuActorPoolInit(uint8_t bank);
+uint16_t MenuActorSpawnList(uint8_t bank, uint16_t list, uint16_t *a, uint16_t *y);
+void MenuActorsRun(void);
+uint16_t MenuOamBuild(uint16_t *x, uint16_t *y);
+
+/* The end of a menu screen's opening, with DB = 0: an empty object pool,
+   the objects of the spawn list made, run once and drawn into the sprite
+   table; then $0D3F = $1E, the IRQ at line $E0 with automatic joypad
+   reading, frame updates 2 and 3 asked for, and one frame waited. The
+   objects run with M 16-bit, X 16-bit and C set, as the copy loops before
+   leave them. */
+static void menu_screen_start(uint16_t list, uint8_t p)
+{
+    uint16_t a = 0x2802, y = 0x002C;  /* as MenuActorPoolInit leaves A and Y */
+
+    MenuActorPoolInit(0x00);
+    cpu.x = MenuActorSpawnList(0x00, list, &a, &y);
+    cpu.a = a;
+    cpu.y = y;
+    cpu.p = (uint8_t)((p & ~(P_M | P_X)) | P_C);
+    MenuActorsRun();
+    cpu.a = MenuOamBuild(&cpu.x, &cpu.y);
+    wr8(0x000D3F, 0x1E);
+    wr8(VTIMEL, 0xE0);
+    wr8(VTIMEH, 0x00);
+    wr8(0x0011D7, 0x0C);
+    wr8(NMITIMEN, 0x21);
+    MenuWaitFrame(0x00);
+}
+
+/*
+ * @routine 0B:F33C MenuScreenOpen0
+ * WHAT IT DOES: Opens the menu screen built from spawn list 0: with the
+ * display off, sets mode 1 (BG3 priority) with BG1-BG3 maps at $6000,
+ * $6400 and $7C00, tiles at 0, $2000 and $7000 (BG3 and BG4), colour math
+ * and the sub screen off; resets the sound and the scroll; loads the
+ * palette from $1C:989C (colour 0 then black) and $720 bytes of tiles from
+ * $1C:DC8C to VRAM $4000; clears the menu's lists and state; makes the
+ * objects of spawn list 0, runs them once and builds the sprite table; then
+ * turns on the IRQ at line $E0 and automatic joypad reading, plays sound
+ * $39, waits three frames and shows only sprites, with $11DA = $11DB =
+ * $0F.
+ * HOW: DB = 0 throughout; the display and interrupts are written directly,
+ * the frame updates are requested through $11D7 = $0C. The palette source
+ * goes through direct page $FB.
+ * Entry: D = $0000. Exit: A = $0010; X, Y as MenuOamBuild left them; P and
+ * DB unchanged.
+ */
+void MenuScreenOpen0(void)
+{
+    static const struct { uint32_t reg; uint8_t v; } ppu[] = {
+        {BGMODE, 0x09}, {BG1SC, 0x60}, {BG2SC, 0x65}, {BG3SC, 0x7C},
+        {BG12NBA, 0x20}, {BG34NBA, 0x77}, {CGADSUB, 0x00}, {CGWSEL, 0x00}, {TS, 0x00}};
+    uint8_t p = cpu.p, db = cpu.db;
+    uint16_t x;
+    unsigned i;
+
+    cpu.db = 0x00;
+    wr8(INIDISP, 0x80);
+    wr8(HDMAEN, 0x00);
+    wr8(MDMAEN, 0x00);
+    wr8(0x0011DA, 0x00);
+    wr8(NMITIMEN, 0x00);
+    for (i = 0; i < sizeof ppu / sizeof ppu[0]; i++)
+        wr8(ppu[i].reg, ppu[i].v);
+    SoundReset();
+    MenuScrollReset();
+    wr16(0x0000FB, 0x989C);
+    wr16(0x0000FD, 0x001C);
+    MenuPaletteLoad();
+    wr16(0x7EFD65, 0x0000);
+    wr16(VMADDL, 0x4000);
+    for (x = 0; x != 0x0720; x = (uint16_t)(x + 2))
+        wr16(VMDATAL, rd16(0x1CDC8C + x));
+    wr16(0x00162D, 0x0000);
+    wr16(0x0016AF, 0x0000);
+    wr16(0x000D7D, 0x0006);
+    wr16(0x0018FD, 0x0000);
+    wr16(0x001903, 0x0001);
+    wr16(0x0018B9, 0x0000);
+    wr16(0x001189, 0x1234);
+    wr16(0x00118F, 0x0000);
+    wr16(0x0011EB, 0x0000);
+    wr16(0x0011ED, 0x0000);
+    wr16(0x0011EF, 0x0000);
+    menu_screen_start(0x0000, p);
+    SoundPort0QueuePush(0x39);
+    MenuWaitFrame(0x00);
+    MenuWaitFrame(0x00);
+    wr8(0x0011DA, 0x0F);
+    wr8(0x0011DB, 0x0F);
+    wr8(TM, 0x10);
+    cpu.a = 0x0010;
+    cpu.db = db;
+    cpu.p = p;
+}
+
+void abi_MenuScreenOpen0(void)
+{
+    MenuScreenOpen0();
+}
+
+void SoundDataLoad(uint16_t which, uint16_t input);
+void ApuUpload(uint8_t bank, uint16_t addr);
+
+/* A sound block upload as the menu does it: port 1 (and 2) = 5, a delay,
+   the upload. The delays are counted loops; they cost time, not state. */
+static void menu_apu_upload(uint8_t bank, uint16_t addr)
+{
+    wr16(APUIO1, 0x0005);
+    ApuUpload(bank, addr);
+}
+
+/* Picture `in68` (Super FX input $1C) to VRAM `vram`; its byte count is
+   the big-endian word before it in bank $1C. */
+static void menu_picture(uint16_t vram, uint16_t in68)
+{
+    uint16_t x, n = rd16(0x1C0000 | (uint16_t)(in68 - 2));
+
+    wr16(VMADDL, vram);
+    wr16(0x0011D5, (uint16_t)((n << 8) | (n >> 8)));
+    MenuPictureToVram(0x00, in68, 0x001C, &x);
+}
+
+/*
+ * @routine 0B:EE24 MenuScreenOpen6
+ * WHAT IT DOES: Opens the menu screen built from spawn list 6: with the
+ * display off, sets mode 1 (BG3 priority) with BG1-BG3 maps at $6000,
+ * $6400 and $7C00, tiles at 0, $2000 and $7000, colour math adding BG2 (on
+ * the sub screen) to BG1, no fixed colour and no window masks; loads three
+ * sound blocks (SoundDataLoad $F3B5 with input $1E, then $1B:85F8 and
+ * $19:9A98), resets the sound and sends 1 on port 0; resets the scroll;
+ * loads the palette from $1C:989C, saves it, and scales colours 64-127 to
+ * 1/32 and 12-15 to full; sets up the menu HDMA; draws seven pictures from
+ * bank $1C into VRAM ($DC38 at $4000, $C9DC at $6800, $BABC at 0, $BE58 at
+ * $6000, $C664 at $2000, $C818 at $6400, $BECC at $7C00) and copies $40
+ * bytes from $1C:BE58 to $7000; clears the menu's lists, state and input;
+ * then menu_screen_start with spawn list 6 and BG1-BG3 and sprites on the
+ * main screen.
+ * HOW: DB = 0 throughout. Each sound upload is preceded by port 1 = 5 and
+ * a delay loop of $4000 steps (the last two followed by another).
+ * Entry: D = $0000. Exit: A = $0017; X, Y as MenuOamBuild left them; P and
+ * DB unchanged.
+ */
+void MenuScreenOpen6(void)
+{
+    static const struct { uint32_t reg; uint8_t v; } ppu[] = {
+        {BGMODE, 0x09}, {BG1SC, 0x60}, {BG2SC, 0x65}, {BG3SC, 0x7C},
+        {BG12NBA, 0x20}, {BG34NBA, 0x77}, {CGADSUB, 0x01}, {CGWSEL, 0x02}, {TS, 0x02},
+        {COLDATA, 0x00}, {TSW, 0x00}, {TMW, 0x00}};
+    uint8_t p = cpu.p, db = cpu.db;
+    uint16_t x, y;
+    unsigned i;
+
+    cpu.db = 0x00;
+    wr8(INIDISP, 0x80);
+    wr8(HDMAEN, 0x00);
+    wr8(MDMAEN, 0x00);
+    wr8(0x0011DA, 0x00);
+    wr8(NMITIMEN, 0x00);
+    for (i = 0; i < sizeof ppu / sizeof ppu[0]; i++)
+        wr8(ppu[i].reg, ppu[i].v);
+    wr16(APUIO1, 0x0005);
+    SoundDataLoad(0xF3B5, 0x001E);
+    menu_apu_upload(0x1B, 0x85F8);
+    menu_apu_upload(0x19, 0x9A98);
+    SoundReset();
+    wr8(APUIO0, 0x01);
+    MenuScrollReset();
+    wr16(0x0000FB, 0x989C);
+    wr16(0x0000FD, 0x001C);
+    MenuPaletteLoad();
+    MenuPaletteSave();
+    wr16(0x0011DF, 0x0001);
+    x = 0x0080;
+    y = 0x003F;
+    MenuPaletteScale(0x00, &x, &y);
+    wr16(0x0011DF, 0x0020);
+    x = 0x0018;
+    y = 0x0003;
+    MenuPaletteScale(0x00, &x, &y);
+    MenuHdmaSetup(0x00);
+    menu_picture(0x4000, 0xDC38);
+    menu_picture(0x6800, 0xC9DC);
+    wr16(VMADDL, 0x7000);
+    for (x = 0; x != 0x0040; x = (uint16_t)(x + 2))
+        wr16(VMDATAL, rd16(0x1CBE58 + x));
+    menu_picture(0x0000, 0xBABC);
+    menu_picture(0x6000, 0xBE58);
+    menu_picture(0x2000, 0xC664);
+    menu_picture(0x6400, 0xC818);
+    menu_picture(0x7C00, 0xBECC);
+    wr16(0x00162D, 0x0000);
+    wr16(0x0016AF, 0x0000);
+    wr16(0x000D7D, 0x0006);
+    wr16(0x0018FD, 0x0000);
+    wr16(0x00118B, 0x0000);
+    wr16(0x000311, 0x0000);
+    wr16(0x001903, 0x0000);
+    wr16(0x0018B9, 0x0000);
+    wr16(0x001189, 0x1234);
+    wr16(0x00118F, 0x0000);
+    wr16(0x0011EB, 0x0000);
+    wr16(0x0011ED, 0x0000);
+    wr16(0x0011EF, 0x0000);
+    menu_screen_start(0x0006, p);
+    wr8(TM, 0x17);
+    cpu.a = 0x0017;
+    cpu.db = db;
+    cpu.p = p;
+}
+
+void abi_MenuScreenOpen6(void)
+{
+    MenuScreenOpen6();
+}

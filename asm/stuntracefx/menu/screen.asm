@@ -705,3 +705,399 @@ MenuCrossFadeOut:
     lda.w #$D1F7
     sta.b !actor_handler,x
     rts
+
+; @routine 0B:F33C MenuScreenOpen0
+; WHAT IT DOES: Opens the menu screen built from spawn list 0: with the
+; display off, sets mode 1 (BG3 priority) with BG1-BG3 maps at $6000,
+; $6400 and $7C00, tiles at 0, $2000 and $7000 (BG3 and BG4), colour math
+; and the sub screen off; resets the sound and the scroll; loads the
+; palette from $1C:989C (colour 0 then black) and $720 bytes of tiles from
+; $1C:DC8C to VRAM $4000; clears the menu's lists and state; makes the
+; objects of spawn list 0, runs them once and builds the sprite table; then
+; turns on the IRQ at line $E0 and automatic joypad reading, plays sound
+; $39, waits three frames and shows only sprites, with $11DA = $11DB =
+; $0F.
+; HOW: DB = 0 throughout; the display and interrupts are written directly,
+; the frame updates are requested through $11D7 = $0C. The palette source
+; goes through direct page $FB.
+; Entry: D = $0000. Exit: A = $0010; X, Y as MenuOamBuild left them; P and
+; DB unchanged.
+%at($0BF33C)
+MenuScreenOpen0:
+    php
+    phb
+    sep.b #$20
+    rep.b #$10
+    lda.b #$00
+    pha
+    plb
+    sep.b #$20
+    rep.b #$10
+    lda.b #$80
+    sta.w !INIDISP
+    stz.w !HDMAEN
+    stz.w !MDMAEN
+    stz.w !wram_11DA
+    stz.w !NMITIMEN
+    lda.b #$09
+    sta.w !BGMODE
+    lda.b #$60
+    sta.w !BG1SC
+    lda.b #$65
+    sta.w !BG2SC
+    lda.b #$7C
+    sta.w !BG3SC
+    lda.b #$20
+    sta.w !BG12NBA
+    lda.b #$77
+    sta.w !BG34NBA
+    stz.w !CGADSUB
+    stz.w !CGWSEL
+    stz.w !TS
+    jsl.l SoundReset
+    jsr.w MenuScrollReset
+    rep.b #$20
+    lda.w #$989C
+    sta.b !apu_stream_ptr
+    lda.w #$001C
+    sta.b !apu_stream_bank
+    sep.b #$20
+    rep.b #$10
+    jsr.w MenuPaletteLoad
+    rep.b #$30
+    lda.w #$0000
+    sta.l !palette_buffer
+    lda.w #$4000
+    sta.w !VMADDL
+    ldx.w #$0000
+.lF3AE:
+    lda.l !menu_tiles_dc8c,x
+    sta.w !VMDATAL
+    inx
+    inx
+    cpx.w #$0720
+    bne .lF3AE
+    rep.b #$30
+    stz.w !byte_writes_size
+    stz.w !vram_queue_size
+    lda.w #$0006
+    sta.w !gsu_buffer_offset
+    lda.w #$0000
+    sta.l !wram_18FD
+    lda.w #$0001
+    sta.l !wram_1903
+    lda.w #$0000
+    sta.l !menu_18b9
+    lda.w #$1234
+    sta.w !menu_1189
+    stz.w !menu_118f
+    stz.w !menu_exit
+    lda.w #$0000
+    sta.w !menu_slide_pos
+    sta.w !menu_scroll_y
+    jsl.l MenuActorPoolInit
+    ldx.w #$0000
+    jsl.l MenuActorSpawnList
+    jsl.l MenuActorsRun
+    jsl.l MenuOamBuild
+    sep.b #$20
+    lda.b #$1E
+    sta.w !wram_0D3F
+    lda.b #$E0
+    sta.w !VTIMEL
+    stz.w !VTIMEH
+    lda.b #$0C
+    sta.w !frame_update_flags
+    lda.b #$21
+    sta.w !NMITIMEN
+    jsr.w MenuWaitFrame
+    sep.b #$20
+    lda.b #$39
+    jsl.l SoundPort0QueuePush
+    jsr.w MenuWaitFrame
+    jsr.w MenuWaitFrame
+    sep.b #$20
+    lda.b #$0F
+    sta.w !wram_11DA
+    sta.w !wram_11DB
+    lda.b #$10
+    sta.w !TM
+    plb
+    plp
+    rts
+
+; @routine 0B:EE24 MenuScreenOpen6
+; WHAT IT DOES: Opens the menu screen built from spawn list 6: with the
+; display off, sets mode 1 (BG3 priority) with BG1-BG3 maps at $6000,
+; $6400 and $7C00, tiles at 0, $2000 and $7000, colour math adding BG2 (on
+; the sub screen) to BG1, no fixed colour and no window masks; loads three
+; sound blocks (SoundDataLoad $F3B5 with input $1E, then $1B:85F8 and
+; $19:9A98), resets the sound and sends 1 on port 0; resets the scroll;
+; loads the palette from $1C:989C, saves it, and scales colours 64-127 to
+; 1/32 and 12-15 to full; sets up the menu HDMA; draws seven pictures from
+; bank $1C into VRAM ($DC38 at $4000, $C9DC at $6800, $BABC at 0, $BE58 at
+; $6000, $C664 at $2000, $C818 at $6400, $BECC at $7C00) and copies $40
+; bytes from $1C:BE58 to $7000; clears the menu's lists, state and input;
+; then menu_screen_start with spawn list 6 and BG1-BG3 and sprites on the
+; main screen.
+; HOW: DB = 0 throughout. Each sound upload is preceded by port 1 = 5 and
+; a delay loop of $4000 steps (the last two followed by another).
+; Entry: D = $0000. Exit: A = $0017; X, Y as MenuOamBuild left them; P and
+; DB unchanged.
+%at($0BEE24)
+MenuScreenOpen6:
+    php
+    phb
+    sep.b #$20
+    rep.b #$10
+    lda.b #$00
+    pha
+    plb
+    lda.b #$80
+    sta.w !INIDISP
+    stz.w !HDMAEN
+    stz.w !MDMAEN
+    stz.w !wram_11DA
+    stz.w !NMITIMEN
+    lda.b #$09
+    sta.w !BGMODE
+    lda.b #$60
+    sta.w !BG1SC
+    lda.b #$65
+    sta.w !BG2SC
+    lda.b #$7C
+    sta.w !BG3SC
+    lda.b #$20
+    sta.w !BG12NBA
+    lda.b #$77
+    sta.w !BG34NBA
+    lda.b #$01
+    sta.w !CGADSUB
+    lda.b #$02
+    sta.w !CGWSEL
+    lda.b #$02
+    sta.w !TS
+    stz.w !COLDATA
+    stz.w !TSW
+    stz.w !TMW
+    php
+    rep.b #$30
+    lda.w #$0005
+    sta.l !APUIO1
+    lda.w #$4000
+.lEE82:
+    dec a
+    bne .lEE82
+    lda.w #$F3B5
+    ldy.w #$001E
+    jsl.l SoundDataLoad
+    plp
+    php
+    rep.b #$30
+    lda.w #$0005
+    sta.l !APUIO1
+    lda.w #$4000
+.lEE9D:
+    dec a
+    bne .lEE9D
+    lda.w #$001B
+    ldy.w #$85F8
+    jsl.l ApuUpload
+    rep.b #$20
+    lda.w #$4000
+.lEEAF:
+    dec a
+    bne .lEEAF
+    plp
+    php
+    rep.b #$30
+    lda.w #$0005
+    sta.l !APUIO1
+    lda.w #$4000
+.lEEC0:
+    dec a
+    bne .lEEC0
+    lda.w #$0019
+    ldy.w #$9A98
+    jsl.l ApuUpload
+    rep.b #$20
+    lda.w #$4000
+.lEED2:
+    dec a
+    bne .lEED2
+    plp
+    jsl.l SoundReset
+    sep.b #$20
+    lda.b #$01
+    sta.w !APUIO0
+    jsr.w MenuScrollReset
+    rep.b #$30
+    rep.b #$20
+    lda.w #$989C
+    sta.b !apu_stream_ptr
+    lda.w #$001C
+    sta.b !apu_stream_bank
+    rep.b #$20
+    rep.b #$10
+    jsr.w MenuPaletteLoad
+    jsr.w MenuPaletteSave
+    lda.w #$0001
+    sta.w !scratch_11df
+    ldy.w #$003F
+    ldx.w #$0080
+    jsl.l MenuPaletteScale
+    lda.w #$0020
+    sta.w !scratch_11df
+    ldy.w #$0003
+    ldx.w #$0018
+    jsl.l MenuPaletteScale
+    jsr.w MenuHdmaSetup
+    rep.b #$30
+    ldx.w #$4000
+    stx.w !VMADDL
+    rep.b #$30
+    lda.l !menu_pic_dc38_size
+    xba
+    sta.w !menu_picture_size
+    lda.w #$DC38
+    ldx.w #$001C
+    rep.b #$20
+    rep.b #$10
+    jsr.w MenuPictureToVram
+    rep.b #$20
+    rep.b #$10
+    rep.b #$30
+    ldx.w #$6800
+    stx.w !VMADDL
+    rep.b #$30
+    lda.l !menu_pic_c9dc_size
+    xba
+    sta.w !menu_picture_size
+    lda.w #$C9DC
+    ldx.w #$001C
+    rep.b #$20
+    rep.b #$10
+    jsr.w MenuPictureToVram
+    rep.b #$20
+    rep.b #$10
+    rep.b #$30
+    lda.w #$7000
+    sta.w !VMADDL
+    ldx.w #$0000
+.lEF70:
+    lda.l !menu_pic_be58,x
+    sta.w !VMDATAL
+    inx
+    inx
+    cpx.w #$0040
+    bne .lEF70
+    rep.b #$30
+    ldx.w #$0000
+    stx.w !VMADDL
+    rep.b #$30
+    lda.l !menu_pic_babc_size
+    xba
+    sta.w !menu_picture_size
+    lda.w #$BABC
+    ldx.w #$001C
+    rep.b #$20
+    rep.b #$10
+    jsr.w MenuPictureToVram
+    rep.b #$20
+    rep.b #$10
+    rep.b #$30
+    ldx.w #$6000
+    stx.w !VMADDL
+    rep.b #$30
+    lda.l !menu_pic_be58_size
+    xba
+    sta.w !menu_picture_size
+    lda.w #$BE58
+    ldx.w #$001C
+    rep.b #$20
+    rep.b #$10
+    jsr.w MenuPictureToVram
+    rep.b #$20
+    rep.b #$10
+    rep.b #$30
+    ldx.w #$2000
+    stx.w !VMADDL
+    rep.b #$30
+    lda.l !menu_pic_c664_size
+    xba
+    sta.w !menu_picture_size
+    lda.w #$C664
+    ldx.w #$001C
+    rep.b #$20
+    rep.b #$10
+    jsr.w MenuPictureToVram
+    rep.b #$20
+    rep.b #$10
+    rep.b #$30
+    ldx.w #$6400
+    stx.w !VMADDL
+    rep.b #$30
+    lda.l !menu_pic_c818_size
+    xba
+    sta.w !menu_picture_size
+    lda.w #$C818
+    ldx.w #$001C
+    rep.b #$20
+    rep.b #$10
+    jsr.w MenuPictureToVram
+    rep.b #$20
+    rep.b #$10
+    rep.b #$30
+    ldx.w #$7C00
+    stx.w !VMADDL
+    rep.b #$30
+    lda.l !menu_pic_becc_size
+    xba
+    sta.w !menu_picture_size
+    lda.w #$BECC
+    ldx.w #$001C
+    rep.b #$20
+    rep.b #$10
+    jsr.w MenuPictureToVram
+    rep.b #$20
+    rep.b #$10
+    rep.b #$30
+    stz.w !byte_writes_size
+    stz.w !vram_queue_size
+    lda.w #$0006
+    sta.w !gsu_buffer_offset
+    lda.w #$0000
+    sta.l !wram_18FD
+    stz.w !menu_joy1_pressed
+    stz.w !joy1_pressed
+    lda.w #$0000
+    sta.l !wram_1903
+    sta.l !menu_18b9
+    lda.w #$1234
+    sta.w !menu_1189
+    stz.w !menu_118f
+    stz.w !menu_exit
+    lda.w #$0000
+    sta.w !menu_slide_pos
+    sta.w !menu_scroll_y
+    jsl.l MenuActorPoolInit
+    ldx.w #$0006
+    jsl.l MenuActorSpawnList
+    jsl.l MenuActorsRun
+    jsl.l MenuOamBuild
+    sep.b #$20
+    lda.b #$1E
+    sta.w !wram_0D3F
+    lda.b #$E0
+    sta.w !VTIMEL
+    stz.w !VTIMEH
+    lda.b #$0C
+    sta.w !frame_update_flags
+    lda.b #$21
+    sta.w !NMITIMEN
+    jsr.w MenuWaitFrame
+    lda.b #$17
+    sta.w !TM
+    plb
+    plp
+    rts

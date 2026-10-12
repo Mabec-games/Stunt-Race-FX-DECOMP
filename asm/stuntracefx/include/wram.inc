@@ -827,3 +827,12 @@ includeonce
 !oam_group_y = $11FF
 !actor_0c = $0C
 !actor_0e = $0E
+
+; Set by MenuScreenOpen0 (menu/screen.asm): $1189 (to $1234), $118F and
+; $0D3F (to $1E); their readers are not filed yet.
+!menu_1189 = $1189
+!menu_118f = $118F
+!wram_0D3F = $0D3F
+
+; Tested with the held buttons by MenuHeldRestart (menu/frame.asm).
+!wram_18FB = $18FB
