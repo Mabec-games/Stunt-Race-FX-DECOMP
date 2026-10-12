@@ -13,7 +13,8 @@ arch 65816
 ; WHAT IT DOES: Sets the horizontal and vertical scroll of BG1-BG3 to 0.
 ; HOW: Two zero writes to each scroll register (low then high byte), the
 ; horizontal ones first.
-; Entry: any widths. Exit: every register unchanged.
+; Entry: any widths. Exit: X and Y high bytes cleared (the routine switches
+; to 8-bit index registers); A and P unchanged.
 %at($0BF4B2)
 MenuScrollReset:
     php

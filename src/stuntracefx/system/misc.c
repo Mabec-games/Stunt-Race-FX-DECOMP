@@ -72,3 +72,48 @@ void abi_ReadTable9022(void)
     cpu.x = 0x80;
     cpu.y = 0x00;
 }
+
+/*
+ * @routine 02:FC44 Set0D37FromTable
+ * WHAT IT DOES: Sets $0D37 to the word table $02:FC58 entry for the byte at
+ * $0D48.
+ * HOW: 16-bit lookup; work RAM through the data bank.
+ * Entry: any widths. Exit: A = the entry; X = the byte * 2 (low byte only
+ * when X is 8-bit); P unchanged.
+ */
+uint16_t Set0D37FromTable(uint8_t bank, uint16_t *x)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t v;
+
+    *x = (uint16_t)((rd16(b | 0x0D48) & 0x00FF) << 1);
+    v = rd16(0x02FC58 + *x);
+    wr16(b | 0x0D37, v);
+    return v;
+}
+
+void abi_Set0D37FromTable(void)
+{
+    uint16_t x;
+
+    cpu.a = Set0D37FromTable(cpu.db, &x);
+    cpu.x = (cpu.p & P_X) ? (uint8_t)x : x;
+}
+
+/*
+ * @routine 02:D65A Set7EBC2BTrio
+ * WHAT IT DOES: Stores A's low byte at $7E:BC2B, $7E:BC2D and $7E:BC2F.
+ * HOW: Three long byte stores.
+ * Entry: any widths. Exit: every register unchanged.
+ */
+void Set7EBC2BTrio(uint8_t v)
+{
+    wr8(0x7EBC2B, v);
+    wr8(0x7EBC2D, v);
+    wr8(0x7EBC2F, v);
+}
+
+void abi_Set7EBC2BTrio(void)
+{
+    Set7EBC2BTrio((uint8_t)cpu.a);
+}

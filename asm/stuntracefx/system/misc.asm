@@ -64,3 +64,36 @@ ReadTable9022:
     bne .lAEF9
     plp
     rtl
+
+; @routine 02:FC44 Set0D37FromTable
+; WHAT IT DOES: Sets $0D37 to the word table $02:FC58 entry for the byte at
+; $0D48.
+; HOW: 16-bit lookup; work RAM through the data bank.
+; Entry: any widths. Exit: A = the entry; X = the byte * 2 (low byte only
+; when X is 8-bit); P unchanged.
+%at($02FC44)
+Set0D37FromTable:
+    php
+    rep.b #$30
+    lda.w !wram_0D48
+    and.w #$00FF
+    asl a
+    tax
+    lda.l !table_02fc58,x
+    sta.w !wram_0D37
+    plp
+    rts
+
+; @routine 02:D65A Set7EBC2BTrio
+; WHAT IT DOES: Stores A's low byte at $7E:BC2B, $7E:BC2D and $7E:BC2F.
+; HOW: Three long byte stores.
+; Entry: any widths. Exit: every register unchanged.
+%at($02D65A)
+Set7EBC2BTrio:
+    php
+    sep.b #$20
+    sta.l !wram_7EBC2B
+    sta.l !wram_7EBC2D
+    sta.l !wram_7EBC2F
+    plp
+    rtl

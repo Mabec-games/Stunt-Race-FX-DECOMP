@@ -110,12 +110,12 @@ def main(argv):
                         if rep:
                             rep = '!' + rep
                         elif 0x0375 <= key < 0x0595:
-                            rep = '!oam_buffer+$%X' % (key - 0x0375)
+                            rep = '!oam_buffer+%d' % (key - 0x0375)
                         else:
                             near = [(v - k2, n2) for k2, n2 in names.items() if 0 < v - k2 <= 0x40 and (k2 >> 16) == (v >> 16)]
                             if near:
                                 d, n2 = min(near)
-                                rep = '!%s+$%X' % (n2, d)
+                                rep = '!%s+%d' % (n2, d)
                     if rep:
                         op = op[:n.start()] + rep + op[n.end():]
                     else:

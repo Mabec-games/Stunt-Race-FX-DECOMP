@@ -258,3 +258,148 @@ void abi_OamFromList(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xFF);
     cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z | P_C);
 }
+
+/*
+ * @routine 02:FB8A OamSprite0AddY
+ * WHAT IT DOES: Moves sprite 0 of the sprite table copy down by A lines.
+ * HOW: An 8-bit add to its Y byte ($0376) through the data bank.
+ * Entry: M 8-bit; A = lines. Exit: A low byte = the new Y; N, Z, C, V from
+ * the add.
+ */
+uint8_t OamSprite0AddY(uint8_t bank, uint8_t lines, uint8_t *p)
+{
+    uint32_t a = (uint32_t)bank << 16 | 0x0376;
+    uint8_t y = rd8(a);
+    unsigned s = (unsigned)lines + y;
+
+    *p = (uint8_t)((nz8(*p, (uint8_t)s) & ~(P_C | P_V)) | (s > 0xFF ? P_C : 0)
+                   | ((~(lines ^ y) & (lines ^ (uint8_t)s) & 0x80) ? P_V : 0));
+    wr8(a, (uint8_t)s);
+    return (uint8_t)s;
+}
+
+void abi_OamSprite0AddY(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | OamSprite0AddY(cpu.db, (uint8_t)cpu.a, &p));
+    cpu.p = p;
+}
+
+/* Set the attribute byte of `count` sprites from entry `first` on. */
+static uint16_t oam_attr_fill(uint8_t bank, uint16_t first, uint16_t count, uint8_t attr)
+{
+    uint16_t x = (uint16_t)(first << 2);
+
+    do {
+        wr8((uint32_t)bank << 16 | (uint16_t)(0x0378 + x), attr);
+        x = (uint16_t)(x + 4);
+    } while (--count);
+    return x;
+}
+
+/* The common exit of the three attribute fills. */
+static void abi_oam_attr_fill(uint16_t count, uint8_t attr)
+{
+    uint16_t a4 = (uint16_t)(cpu.a << 2);
+
+    cpu.p = (uint8_t)((cpu.p & ~(P_C | P_N | P_M)) | ((cpu.a << 1) & 0x8000 ? P_C : 0) | P_Z);
+    cpu.x = oam_attr_fill(cpu.db, cpu.a, count, attr);
+    cpu.y = 0;
+    cpu.a = (uint16_t)((a4 & 0xFF00) | attr);
+}
+
+/*
+ * @routine 02:FB92 OamAttr36x4
+ * WHAT IT DOES: Gives 4 sprites from entry A attribute byte $36.
+ * HOW: Byte stores to each entry's attributes ($0378 + 4n) through the data
+ * bank; the loop is OamAttr38x7's.
+ * Entry: M 16-bit, X 16-bit; A = first entry. Exit: A = (A * 4) with $36 as
+ * its low byte; X past the last entry; Y = 0; M 16-bit; Z set, N clear; C
+ * from the doubling.
+ */
+void OamAttr36x4(uint8_t bank, uint16_t first)
+{
+    oam_attr_fill(bank, first, 4, 0x36);
+}
+
+void abi_OamAttr36x4(void)
+{
+    abi_oam_attr_fill(4, 0x36);
+}
+
+/*
+ * @routine 02:FBC2 OamAttr38x6
+ * WHAT IT DOES: Gives 6 sprites from entry A attribute byte $38.
+ * HOW: As OamAttr36x4.
+ * Entry: as OamAttr36x4. Exit: as OamAttr36x4, low byte $38.
+ */
+void OamAttr38x6(uint8_t bank, uint16_t first)
+{
+    oam_attr_fill(bank, first, 6, 0x38);
+}
+
+void abi_OamAttr38x6(void)
+{
+    abi_oam_attr_fill(6, 0x38);
+}
+
+/*
+ * @routine 02:FBCE OamAttr38x7
+ * WHAT IT DOES: Gives 7 sprites from entry A attribute byte $38.
+ * HOW: As OamAttr36x4; the loop at $02:FBD8 is shared with the two above.
+ * Entry: as OamAttr36x4. Exit: as OamAttr36x4, low byte $38.
+ */
+void OamAttr38x7(uint8_t bank, uint16_t first)
+{
+    oam_attr_fill(bank, first, 7, 0x38);
+}
+
+void abi_OamAttr38x7(void)
+{
+    abi_oam_attr_fill(7, 0x38);
+}
+
+/*
+ * @routine 02:FC83 OamHideEntries3And9
+ * WHAT IT DOES: Hides the sprites at entries 3 and 9 after offset Y.
+ * HOW: Stores $F000 (X = 0, Y = $F0) to their position words ($0381 + Y,
+ * $0399 + Y) through the data bank.
+ * Entry: M 16-bit; Y = byte offset. Exit: A = $F000; N set, Z clear.
+ */
+void OamHideEntries3And9(uint8_t bank, uint16_t y)
+{
+    uint32_t b = (uint32_t)bank << 16;
+
+    wr16(b | (uint16_t)(0x0381 + y), 0xF000);
+    wr16(b | (uint16_t)(0x0399 + y), 0xF000);
+}
+
+void abi_OamHideEntries3And9(void)
+{
+    OamHideEntries3And9(cpu.db, cpu.y);
+    cpu.a = 0xF000;
+    cpu.p = (uint8_t)((cpu.p & ~P_Z) | P_N);
+}
+
+/*
+ * @routine 02:FC8D OamHideEntries0To2
+ * WHAT IT DOES: Hides the three sprites from offset Y.
+ * HOW: As OamHideEntries3And9, at $0375, $0379 and $037D + Y.
+ * Entry: as OamHideEntries3And9. Exit: as OamHideEntries3And9.
+ */
+void OamHideEntries0To2(uint8_t bank, uint16_t y)
+{
+    uint32_t b = (uint32_t)bank << 16;
+
+    wr16(b | (uint16_t)(0x0375 + y), 0xF000);
+    wr16(b | (uint16_t)(0x0379 + y), 0xF000);
+    wr16(b | (uint16_t)(0x037D + y), 0xF000);
+}
+
+void abi_OamHideEntries0To2(void)
+{
+    OamHideEntries0To2(cpu.db, cpu.y);
+    cpu.a = 0xF000;
+    cpu.p = (uint8_t)((cpu.p & ~P_Z) | P_N);
+}

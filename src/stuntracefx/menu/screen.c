@@ -12,7 +12,8 @@ uint8_t GsuCF42To3000(uint16_t in68, uint16_t in6a);
  * WHAT IT DOES: Sets the horizontal and vertical scroll of BG1-BG3 to 0.
  * HOW: Two zero writes to each scroll register (low then high byte), the
  * horizontal ones first.
- * Entry: any widths. Exit: every register unchanged.
+ * Entry: any widths. Exit: X and Y high bytes cleared (the routine switches
+ * to 8-bit index registers); A and P unchanged.
  */
 void MenuScrollReset(void)
 {
@@ -28,6 +29,8 @@ void MenuScrollReset(void)
 void abi_MenuScrollReset(void)
 {
     MenuScrollReset();
+    cpu.x &= 0x00FF;
+    cpu.y &= 0x00FF;
 }
 
 /*

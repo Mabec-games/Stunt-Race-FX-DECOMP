@@ -245,3 +245,93 @@ OamFromList:
     bra OamFromList
 .lEA2D:
     rts
+
+; @routine 02:FB8A OamSprite0AddY
+; WHAT IT DOES: Moves sprite 0 of the sprite table copy down by A lines.
+; HOW: An 8-bit add to its Y byte ($0376) through the data bank.
+; Entry: M 8-bit; A = lines. Exit: A low byte = the new Y; N, Z, C, V from
+; the add.
+%at($02FB8A)
+OamSprite0AddY:
+    clc
+    adc.w !oam_buffer+1
+    sta.w !oam_buffer+1
+    rts
+
+; @routine 02:FB92 OamAttr36x4
+; WHAT IT DOES: Gives 4 sprites from entry A attribute byte $36.
+; HOW: Byte stores to each entry's attributes ($0378 + 4n) through the data
+; bank; the loop is OamAttr38x7's.
+; Entry: M 16-bit, X 16-bit; A = first entry. Exit: A = (A * 4) with $36 as
+; its low byte; X past the last entry; Y = 0; M 16-bit; Z set, N clear; C
+; from the doubling.
+%at($02FB92)
+OamAttr36x4:
+    asl a
+    asl a
+    tax
+    ldy.w #$0004
+    sep.b #$20
+    lda.b #$36
+    bra OamAttrFillLoop
+
+; @routine 02:FBC2 OamAttr38x6
+; WHAT IT DOES: Gives 6 sprites from entry A attribute byte $38.
+; HOW: As OamAttr36x4.
+; Entry: as OamAttr36x4. Exit: as OamAttr36x4, low byte $38.
+%at($02FBC2)
+OamAttr38x6:
+    asl a
+    asl a
+    tax
+    ldy.w #$0006
+    sep.b #$20
+    lda.b #$38
+    bra OamAttrFillLoop
+
+; @routine 02:FBCE OamAttr38x7
+; WHAT IT DOES: Gives 7 sprites from entry A attribute byte $38.
+; HOW: As OamAttr36x4; the loop at $02:FBD8 is shared with the two above.
+; Entry: as OamAttr36x4. Exit: as OamAttr36x4, low byte $38.
+%at($02FBCE)
+OamAttr38x7:
+    asl a
+    asl a
+    tax
+    ldy.w #$0007
+    sep.b #$20
+    lda.b #$38
+OamAttrFillLoop:                    ; shared with OamAttr36x4 and OamAttr38x6
+    sta.w !oam_buffer+3,x
+    inx
+    inx
+    inx
+    inx
+    dey
+    bne OamAttrFillLoop
+    rep.b #$20
+    rts
+
+; @routine 02:FC83 OamHideEntries3And9
+; WHAT IT DOES: Hides the sprites at entries 3 and 9 after offset Y.
+; HOW: Stores $F000 (X = 0, Y = $F0) to their position words ($0381 + Y,
+; $0399 + Y) through the data bank.
+; Entry: M 16-bit; Y = byte offset. Exit: A = $F000; N set, Z clear.
+%at($02FC83)
+OamHideEntries3And9:
+    lda.w #$F000
+    sta.w !oam_buffer+12,y
+    sta.w !oam_buffer+36,y
+    rts
+
+; @routine 02:FC8D OamHideEntries0To2
+; WHAT IT DOES: Hides the three sprites from offset Y.
+; HOW: As OamHideEntries3And9, at $0375, $0379 and $037D + Y.
+; Entry: as OamHideEntries3And9. Exit: as OamHideEntries3And9.
+%at($02FC8D)
+OamHideEntries0To2:
+    lda.w #$F000
+    sta.w !oam_buffer,y
+    sta.w !oam_buffer+4,y
+    sta.w !oam_buffer+8,y
+    rts

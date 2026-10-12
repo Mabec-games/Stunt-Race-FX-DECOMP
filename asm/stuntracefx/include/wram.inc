@@ -398,3 +398,8 @@ includeonce
 !gsu_in_3c = $70003C
 !gsu_in_3e = $70003E
 !gsu_in_94 = $700094
+!wram_0D48 = $0D48
+!wram_0D37 = $0D37
+!wram_7EBC2B = $7EBC2B
+!wram_7EBC2D = $7EBC2D
+!wram_7EBC2F = $7EBC2F

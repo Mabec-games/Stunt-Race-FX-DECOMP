@@ -56,3 +56,6 @@ includeonce
 ; 32 bytes read after them.
 !course_block_ptrs = $03F6F1
 !rom_1fa800 = $1FA800
+
+; Words selected by $0D48 (system/misc.asm).
+!table_02fc58 = $02FC58
