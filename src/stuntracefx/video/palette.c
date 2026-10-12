@@ -273,3 +273,60 @@ void abi_RasterColoursUnless0D22(void)
     if (ran)
         cpu.x = 0;
 }
+
+/*
+ * @routine 04:E1FE PaletteDarkenFour
+ * WHAT IT DOES: Stores A at $7F:345C and sets colours 16-19 of the third
+ * palette copy ($7F:39D7) to those of the second ($7F:37D7) minus one.
+ * HOW: Four 16-bit decrements, long addressing.
+ * Entry: M 16-bit; A = value. Exit: A = the last colour written; N, Z from
+ * it.
+ */
+uint16_t PaletteDarkenFour(uint16_t v)
+{
+    unsigned i;
+
+    wr16(0x7F345C, v);
+    for (i = 0; i < 4; i++) {
+        v = (uint16_t)(rd16(0x7F37F7 + 2 * i) - 1);
+        wr16(0x7F39F7 + 2 * i, v);
+    }
+    return v;
+}
+
+void abi_PaletteDarkenFour(void)
+{
+    cpu.a = PaletteDarkenFour(cpu.a);
+    cpu.p = nz16(cpu.p, cpu.a);
+}
+
+/*
+ * @routine 03:EDC6 PaletteCopy16To7F39D7
+ * WHAT IT DOES: Copies 16 colours from address A in the data bank to the
+ * third palette copy at $7F:39D7.
+ * HOW: A word loop counted in direct page $F1.
+ * Entry: M 16-bit, X 16-bit, D = $0000; A = source. Exit: A = the last word;
+ * X = $20; Y = source + $20; $F1 = 0; Z set, N clear.
+ */
+uint16_t PaletteCopy16To7F39D7(uint8_t bank, uint16_t src)
+{
+    uint16_t w = 0;
+    unsigned i;
+
+    for (i = 0; i < 16; i++) {
+        w = rd16((uint32_t)bank << 16 | (uint16_t)(src + 2 * i));
+        wr16(0x7F39D7 + 2 * i, w);
+    }
+    wr16(0x0000F1, 0);
+    return w;
+}
+
+void abi_PaletteCopy16To7F39D7(void)
+{
+    uint16_t src = cpu.a;
+
+    cpu.a = PaletteCopy16To7F39D7(cpu.db, src);
+    cpu.y = (uint16_t)(src + 0x20);
+    cpu.x = 0x0020;
+    cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
+}

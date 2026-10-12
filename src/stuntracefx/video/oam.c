@@ -534,3 +534,33 @@ void abi_OamColumn8(void)
     cpu.y = 0;
     cpu.p = (uint8_t)((p & ~P_N) | P_Z);
 }
+
+/*
+ * @routine 07:C50E OamHighBits58
+ * WHAT IT DOES: Sets $0E15 to $F8 and turns on size or X-high bits in high
+ * table bytes $16-$19 (sprites 88-103): $40, $55, $55, $15.
+ * HOW: Byte ORs through the data bank.
+ * Entry: any widths. Exit: A low byte = the last byte; X = $10 (high byte
+ * clear); Y high byte clear; P unchanged.
+ */
+uint8_t OamHighBits58(uint8_t bank)
+{
+    static const uint8_t bits[4] = {0x40, 0x55, 0x55, 0x15};
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t v = 0;
+    unsigned i;
+
+    wr8(b | 0x0E15, 0xF8);
+    for (i = 0; i < 4; i++) {
+        v = (uint8_t)(rd8(b | (uint16_t)(0x058B + i)) | bits[i]);
+        wr8(b | (uint16_t)(0x058B + i), v);
+    }
+    return v;
+}
+
+void abi_OamHighBits58(void)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | OamHighBits58(cpu.db));
+    cpu.x = 0x0010;
+    cpu.y &= 0x00FF;
+}

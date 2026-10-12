@@ -67,3 +67,6 @@ includeonce
 ; Byte tables indexed by object values (object/object.asm).
 !table_08e8af = $08E8AF
 !table_08c056 = $08C056
+
+; Tilemap rows read through the data bank (video/tilemap.asm).
+!tilemap_rows_fb4e = $FB4E

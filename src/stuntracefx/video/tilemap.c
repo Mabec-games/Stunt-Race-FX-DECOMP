@@ -5,36 +5,6 @@
 #include "hw.h"
 
 /*
- * @routine 03:EDC6 TilemapCopy16To7F39D7
- * WHAT IT DOES: Copies 16 words from address A in the data bank to $7F:39D7.
- * HOW: A word loop counted in direct page $F1.
- * Entry: M 16-bit, X 16-bit, D = $0000; A = source. Exit: A = the last word;
- * X = $20; Y = source + $20; $F1 = 0; Z set, N clear.
- */
-uint16_t TilemapCopy16To7F39D7(uint8_t bank, uint16_t src)
-{
-    uint16_t w = 0;
-    unsigned i;
-
-    for (i = 0; i < 16; i++) {
-        w = rd16((uint32_t)bank << 16 | (uint16_t)(src + 2 * i));
-        wr16(0x7F39D7 + 2 * i, w);
-    }
-    wr16(0x0000F1, 0);
-    return w;
-}
-
-void abi_TilemapCopy16To7F39D7(void)
-{
-    uint16_t src = cpu.a;
-
-    cpu.a = TilemapCopy16To7F39D7(cpu.db, src);
-    cpu.y = (uint16_t)(src + 0x20);
-    cpu.x = 0x0020;
-    cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
-}
-
-/*
  * @routine 03:ED89 TilemapRowFromGsuRam
  * WHAT IT DOES: Copies 32 tilemap words from Super FX RAM ($70:3000 + A +
  * $F1) to the buffer at $93D7 + Y in the data bank, setting bit 13 (priority)
@@ -279,4 +249,65 @@ void abi_VramPictureRows1B0(void)
 {
     cpu.p = (uint8_t)(nz16(picture_rows(0x01B0, cpu.p), cpu.a) & ~(P_M | P_X));
     cpu.x = 0x0180;
+}
+
+/* Step X by $40 as TXA / CLC / ADC #$40 / TAX does; A = the new X. */
+static uint16_t step_40(uint16_t *x, uint8_t *p)
+{
+    uint16_t s = (uint16_t)(*x + 0x40);
+
+    *p = (uint8_t)((nz16(*p, s) & ~(P_C | P_V)) | ((unsigned)*x + 0x40 > 0xFFFF ? P_C : 0) | ((~*x & s & 0x8000) ? P_V : 0));
+    *x = s;
+    return s;
+}
+
+/*
+ * @routine 02:FB27 TilemapRowFrom7FBBD7
+ * WHAT IT DOES: Copies four words from $7F:BBD7 + X to the tilemap buffer at
+ * $7F:93D7 + X, and moves X on by $40 (one row of 32 words).
+ * HOW: Four 16-bit long copies.
+ * Entry: M 16-bit, X 16-bit; X = byte offset. Exit: A = X = the offset + $40;
+ * N, Z, C, V from the add.
+ */
+uint16_t TilemapRowFrom7FBBD7(uint16_t *x, uint8_t *p)
+{
+    unsigned i;
+
+    for (i = 0; i < 4; i++)
+        wr16(0x7F93D7 + 2 * i + *x, rd16(0x7FBBD7 + 2 * i + *x));
+    return step_40(x, p);
+}
+
+void abi_TilemapRowFrom7FBBD7(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = TilemapRowFrom7FBBD7(&cpu.x, &p);
+    cpu.p = p;
+}
+
+/*
+ * @routine 02:FAFE TilemapRowFromFB4E
+ * WHAT IT DOES: Copies four words from $FB4E + Y in the data bank to the
+ * tilemap buffer at $7F:93D7 + X; Y moves on by 8, X by $40.
+ * HOW: Four 16-bit copies.
+ * Entry: M 16-bit, X 16-bit; X = byte offset, Y = source offset. Exit: A = X
+ * = the offset + $40; N, Z, C, V from that add.
+ */
+uint16_t TilemapRowFromFB4E(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
+{
+    unsigned i;
+
+    for (i = 0; i < 4; i++)
+        wr16(0x7F93D7 + 2 * i + *x, rd16((uint32_t)bank << 16 | (uint16_t)(0xFB4E + 2 * i + *y)));
+    *y = (uint16_t)(*y + 8);
+    return step_40(x, p);
+}
+
+void abi_TilemapRowFromFB4E(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = TilemapRowFromFB4E(cpu.db, &cpu.x, &cpu.y, &p);
+    cpu.p = p;
 }

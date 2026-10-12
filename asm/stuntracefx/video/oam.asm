@@ -432,3 +432,31 @@ OamColumn8:
     dey
     bne .lC575
     rts
+
+; @routine 07:C50E OamHighBits58
+; WHAT IT DOES: Sets $0E15 to $F8 and turns on size or X-high bits in high
+; table bytes $16-$19 (sprites 88-103): $40, $55, $55, $15.
+; HOW: Byte ORs through the data bank.
+; Entry: any widths. Exit: A low byte = the last byte; X = $10 (high byte
+; clear); Y high byte clear; P unchanged.
+%at($07C50E)
+OamHighBits58:
+    php
+    sep.b #$30
+    lda.b #$F8
+    sta.w !wram_0E15
+    ldx.b #$10
+    lda.w !oam_high_16-16,x
+    ora.b #$40
+    sta.w !oam_high_16-16,x
+    lda.w !oam_high_16-15,x
+    ora.b #$55
+    sta.w !oam_high_16-15,x
+    lda.w !oam_high_16-14,x
+    ora.b #$55
+    sta.w !oam_high_16-14,x
+    lda.w !oam_high_16-13,x
+    ora.b #$15
+    sta.w !oam_high_16-13,x
+    plp
+    rts

@@ -415,3 +415,31 @@ ObjectVelocityFromRecordScaled:
     tyx
     sep.b #$20
     rts
+
+; @routine 09:FBB2 GsuRecordBits60
+; WHAT IT DOES: Keeps bits 5-6 of the word at +$40 of the two records whose
+; addresses are at $70:2476 and $70:2478, at $1A24 and $1A26.
+; HOW: The data bank is $09 inside (so $1A24 is work RAM).
+; Entry: any widths. Exit: A = the second value (16-bit); X, P unchanged.
+%at($09FBB2)
+GsuRecordBits60:
+    php
+    phx
+    phb
+    phk
+    plb
+    rep.b #$30
+    lda.l !gsu_match_2476
+    tax
+    lda.l !gsu_rec_40,x
+    and.w #$0060
+    sta.w !wram_1A24
+    lda.l !gsu_match_2478
+    tax
+    lda.l !gsu_rec_40,x
+    and.w #$0060
+    sta.w !wram_1A26
+    plb
+    plx
+    plp
+    rtl

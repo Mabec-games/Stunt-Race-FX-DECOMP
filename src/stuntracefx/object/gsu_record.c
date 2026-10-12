@@ -454,3 +454,26 @@ void abi_ObjectVelocityFromRecordScaled(void)
     cpu.y = cpu.x;
     cpu.p = (uint8_t)(nz16(p, cpu.x) | P_M);
 }
+
+/*
+ * @routine 09:FBB2 GsuRecordBits60
+ * WHAT IT DOES: Keeps bits 5-6 of the word at +$40 of the two records whose
+ * addresses are at $70:2476 and $70:2478, at $1A24 and $1A26.
+ * HOW: The data bank is $09 inside (so $1A24 is work RAM).
+ * Entry: any widths. Exit: A = the second value (16-bit); X, P unchanged.
+ */
+uint16_t GsuRecordBits60(void)
+{
+    uint16_t v;
+
+    v = rd16(0x700040 + rd16(0x702476)) & 0x0060;
+    wr16(0x091A24, v);
+    v = rd16(0x700040 + rd16(0x702478)) & 0x0060;
+    wr16(0x091A26, v);
+    return v;
+}
+
+void abi_GsuRecordBits60(void)
+{
+    cpu.a = GsuRecordBits60();
+}

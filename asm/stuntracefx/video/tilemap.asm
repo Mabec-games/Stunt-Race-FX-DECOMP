@@ -8,28 +8,6 @@ incsrc "../include/rom.inc"
 
 arch 65816
 
-; @routine 03:EDC6 TilemapCopy16To7F39D7
-; WHAT IT DOES: Copies 16 words from address A in the data bank to $7F:39D7.
-; HOW: A word loop counted in direct page $F1.
-; Entry: M 16-bit, X 16-bit, D = $0000; A = source. Exit: A = the last word;
-; X = $20; Y = source + $20; $F1 = 0; Z set, N clear.
-%at($03EDC6)
-TilemapCopy16To7F39D7:
-    tay
-    ldx.w #$0000
-    lda.w #$0010
-    sta.b !digit_count
-.lEDCF:
-    lda.w 0,y
-    sta.l !tilemap_buffer_39d7,x
-    inx
-    inx
-    iny
-    iny
-    dec.b !digit_count
-    bne .lEDCF
-    rts
-
 ; @routine 03:ED89 TilemapRowFromGsuRam
 ; WHAT IT DOES: Copies 32 tilemap words from Super FX RAM ($70:3000 + A +
 ; $F1) to the buffer at $93D7 + Y in the data bank, setting bit 13 (priority)
@@ -219,4 +197,52 @@ PictureRows:
     cpx.w #$0180
     bcc .lEAE0
     pla
+    rts
+
+; @routine 02:FB27 TilemapRowFrom7FBBD7
+; WHAT IT DOES: Copies four words from $7F:BBD7 + X to the tilemap buffer at
+; $7F:93D7 + X, and moves X on by $40 (one row of 32 words).
+; HOW: Four 16-bit long copies.
+; Entry: M 16-bit, X 16-bit; X = byte offset. Exit: A = X = the offset + $40;
+; N, Z, C, V from the add.
+%at($02FB27)
+TilemapRowFrom7FBBD7:
+    lda.l !tilemap_7fbbd7,x
+    sta.l !tilemap_7f93d7,x
+    lda.l !tilemap_7fbbd7+2,x
+    sta.l !tilemap_7f93d7+2,x
+    lda.l !tilemap_7fbbd7+4,x
+    sta.l !tilemap_7f93d7+4,x
+    lda.l !tilemap_7fbbd7+6,x
+    sta.l !tilemap_7f93d7+6,x
+    txa
+    clc
+    adc.w #$0040
+    tax
+    rts
+
+; @routine 02:FAFE TilemapRowFromFB4E
+; WHAT IT DOES: Copies four words from $FB4E + Y in the data bank to the
+; tilemap buffer at $7F:93D7 + X; Y moves on by 8, X by $40.
+; HOW: Four 16-bit copies.
+; Entry: M 16-bit, X 16-bit; X = byte offset, Y = source offset. Exit: A = X
+; = the offset + $40; N, Z, C, V from that add.
+%at($02FAFE)
+TilemapRowFromFB4E:
+    lda.w !tilemap_rows_fb4e,y
+    sta.l !tilemap_7f93d7,x
+    lda.w !tilemap_rows_fb4e+2,y
+    sta.l !tilemap_7f93d7+2,x
+    lda.w !tilemap_rows_fb4e+4,y
+    sta.l !tilemap_7f93d7+4,x
+    lda.w !tilemap_rows_fb4e+6,y
+    sta.l !tilemap_7f93d7+6,x
+    tya
+    clc
+    adc.w #$0008
+    tay
+    txa
+    clc
+    adc.w #$0040
+    tax
     rts

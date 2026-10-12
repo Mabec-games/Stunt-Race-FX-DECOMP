@@ -180,9 +180,10 @@ includeonce
 !wram_0D89 = $0D89
 !wram_0D8A = $0D8A
 
-; Two work copies of a 16-colour palette in bank $7F (video/palette.asm).
+; Three work copies of the palette in bank $7F (video/palette.asm).
 !palette_work_a = $7F35D7
 !palette_work_b = $7F37D7
+!palette_work_c = $7F39D7
 
 ; Scroll HDMA table (video/scroll.asm): entries of a line count and a word.
 !scroll_hdma = $0010AA
@@ -210,7 +211,6 @@ includeonce
 !wram_0064 = $64
 
 ; Tilemap buffers (video/tilemap.asm).
-!tilemap_buffer_39d7 = $7F39D7
 !tilemap_buffer_93d7 = $93D7
 
 ; The object table (object/object.asm): $136 records of $62 bytes from $2001,
@@ -489,3 +489,12 @@ includeonce
 !oam_sprite54_attr = $0450
 !oam_sprite55_attr = $0454
 !oam_sprite56_attr = $0458
+!tilemap_7f93d7 = $7F93D7
+!tilemap_7fbbd7 = $7FBBD7
+!wram_7F345C = $7F345C
+!wram_0E15 = $0E15
+!wram_1A24 = $1A24
+!wram_1A26 = $1A26
+!gsu_rec_40 = $700040
+!gsu_match_2478 = $702478
+!oam_high_16 = $058B

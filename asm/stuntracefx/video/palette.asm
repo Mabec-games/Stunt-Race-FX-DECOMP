@@ -293,3 +293,49 @@ RasterColoursUnless0D22:
 .lB31C:
     plp
     rts
+
+; @routine 04:E1FE PaletteDarkenFour
+; WHAT IT DOES: Stores A at $7F:345C and sets colours 16-19 of the third
+; palette copy ($7F:39D7) to those of the second ($7F:37D7) minus one.
+; HOW: Four 16-bit decrements, long addressing.
+; Entry: M 16-bit; A = value. Exit: A = the last colour written; N, Z from
+; it.
+%at($04E1FE)
+PaletteDarkenFour:
+    sta.l !wram_7F345C
+    lda.l !palette_work_b+32
+    dec a
+    sta.l !palette_work_c+32
+    lda.l !palette_work_b+34
+    dec a
+    sta.l !palette_work_c+34
+    lda.l !palette_work_b+36
+    dec a
+    sta.l !palette_work_c+36
+    lda.l !palette_work_b+38
+    dec a
+    sta.l !palette_work_c+38
+    rtl
+
+; @routine 03:EDC6 PaletteCopy16To7F39D7
+; WHAT IT DOES: Copies 16 colours from address A in the data bank to the
+; third palette copy at $7F:39D7.
+; HOW: A word loop counted in direct page $F1.
+; Entry: M 16-bit, X 16-bit, D = $0000; A = source. Exit: A = the last word;
+; X = $20; Y = source + $20; $F1 = 0; Z set, N clear.
+%at($03EDC6)
+PaletteCopy16To7F39D7:
+    tay
+    ldx.w #$0000
+    lda.w #$0010
+    sta.b !digit_count
+.lEDCF:
+    lda.w 0,y
+    sta.l !palette_work_c,x
+    inx
+    inx
+    iny
+    iny
+    dec.b !digit_count
+    bne .lEDCF
+    rts
