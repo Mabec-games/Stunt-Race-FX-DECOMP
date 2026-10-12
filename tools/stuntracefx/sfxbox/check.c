@@ -45,6 +45,10 @@ static size_t wram_n, gsuram_n, rom_n;
 
 typedef struct { uint32_t addr; void (*abi)(void); const char *name; } Routine;
 static const Routine *routines;
+static const Routine *all_routines;     /* every routine with C, for call_routine */
+static int all_count;
+static uint8_t catalog_bits[1 << 21];   /* routine entries the catalog knows */
+static int is_catalog_entry(uint32_t pc) { return catalog_bits[pc >> 3] >> (pc & 7) & 1; }
 static int nroutines;
 static uint8_t *watched;  /* 16M-entry bitmap of routine entry points */
 
@@ -119,7 +123,7 @@ static void io_add(IoLog *l, uint32_t addr, uint8_t v)
 /* One watched call. Calls nest (a checked routine can call another), so the
    watches form a stack; every access is recorded in every open watch. */
 typedef struct {
-    int idx, in_irq, interrupted, dma, gsu, overflow;
+    int idx, in_irq, interrupted, dma, gsu, needs_asm, overflow;
     uint32_t ret_pc, irq_pc;
     uint16_t exit_s, irq_s;
     struct SfxboxRegs entry;
@@ -259,13 +263,15 @@ static void finish(Watch *w)
     /* A call that started the Super FX reads results the Super FX wrote
        while it ran; the C, run afterwards against the entry state, cannot
        see them, so such a call is only judged by the lockstep run. */
-    int unsure = w->interrupted || w->dma || w->gsu;
+    /* A call whose C reached a routine that has no C yet (through
+       call_routine) cannot be finished here; the lockstep run judges it. */
+    int unsure = w->interrupted || w->dma || w->gsu || w->needs_asm;
     if (unsure) st->inconclusive++; else st->diff++;
     if (st->shown < 8) {
         st->shown++;
         fprintf(report, "%s %06X %s call %ld: entry A=%04X X=%04X Y=%04X S=%04X D=%04X DB=%02X P=%02X%s; C/orig:%s\n",
                 unsure ? "INCONCLUSIVE" : "DIFF", r->addr, r->name, st->calls, w->entry.a, w->entry.x, w->entry.y,
-                w->entry.s, w->entry.d, w->entry.db, w->entry.p, w->interrupted ? " (interrupted)" : w->dma ? " (dma)" : w->gsu ? " (super fx ran)" : "", why);
+                w->entry.s, w->entry.d, w->entry.db, w->entry.p, w->interrupted ? " (interrupted)" : w->dma ? " (dma)" : w->gsu ? " (super fx ran)" : w->needs_asm ? " (calls original code)" : "", why);
     }
 }
 
@@ -303,7 +309,7 @@ static void on_insn(uint32_t pc)
         w->exit_s = (uint16_t)(sp + 3);
     } else { stats[idx].skipped++; return; }
     w->idx = idx; w->entry = r;
-    w->in_irq = w->interrupted = w->dma = w->gsu = w->overflow = 0;
+    w->in_irq = w->interrupted = w->dma = w->gsu = w->needs_asm = w->overflow = 0;
     map_clear(&w->undo); map_clear(&w->orig);
     w->oread.n = w->owrite.n = 0;
     depth++;
@@ -348,6 +354,10 @@ static int load_routines(void *core, const char *lib, const char *only)
     void *h = dlopen(lib, RTLD_NOW | RTLD_GLOBAL);
     if (!h) { fprintf(stderr, "dlopen %s: %s\n", lib, dlerror()); return -1; }
     const Routine *table = dlsym(h, "sfx_routine_table");
+    const uint32_t *cat = dlsym(h, "sfx_catalog");
+    const int *catn = dlsym(h, "sfx_catalog_count");
+    if (cat && catn)
+        for (int i = 0; i < *catn; i++) catalog_bits[cat[i] >> 3] |= (uint8_t)(1 << (cat[i] & 7));
     const int *count = dlsym(h, "sfx_routine_count");
     uint8_t *(*mem)(const char *, size_t *) = dlsym(core, "sfxbox_memory");
     *(void **)&core_regs = dlsym(core, "sfxbox_regs");
@@ -363,6 +373,7 @@ static int load_routines(void *core, const char *lib, const char *only)
         sel[nroutines++] = table[i];
     }
     routines = sel;
+    all_routines = table; all_count = *count;
     stats = calloc((size_t)(nroutines ? nroutines : 1), sizeof *stats);
     watched = calloc(1 << 21, 1);
     for (int i = 0; i < nroutines; i++) watched[routines[i].addr >> 3] |= (uint8_t)(1 << (routines[i].addr & 7));
@@ -469,12 +480,19 @@ static uint32_t hk;          /* hybrid: calls made this frame */
 
 static long cur_frame;
 static FILE *lsrep;
+static const char *ls_cur_name;
 static void stuck_report(const char *cond)
 {
     fprintf(stderr, "lockstep: %s side stuck in frame %ld waiting for %s; frames o/h %ld/%ld, calls o/h %llu/%llu,"
             " ops o/h %llu/%llu\n", role == 1 ? "original" : "hybrid", cur_frame, cond, LOAD(sh->o_frames),
             LOAD(sh->h_frames), (unsigned long long)LOAD(sh->o_calls), (unsigned long long)LOAD(sh->h_calls),
             (unsigned long long)LOAD(sh->o_ops), (unsigned long long)LOAD(sh->h_ops));
+    if (role == 2) {
+        uint64_t k = LOAD(sh->h_calls);
+        fprintf(stderr, "lockstep: hybrid at call %llu (%s); that call: frame %ld, %u ops, done %d\n",
+                (unsigned long long)k, ls_cur_name ? ls_cur_name : "-", sh->calls[k % CALLRING].frame,
+                sh->calls[k % CALLRING].opn, sh->calls[k % CALLRING].done);
+    }
     if (lsrep) fflush(lsrep);
 }
 
@@ -489,6 +507,8 @@ static struct {
     uint32_t ret_pc, irq_pc;
     uint16_t exit_s, irq_s;
     uint64_t call;
+    int depth;               /* catalog routines entered inside the call */
+    uint16_t open[64];       /* their stack pointers at entry */
 } m;
 
 static int entry(uint32_t pc, struct SfxboxRegs *r, uint32_t *ret, uint16_t *exit_s)
@@ -531,6 +551,8 @@ static void trace_write(uint32_t addr, uint8_t data, int kind)
 }
 
 /* Original side: measure each call's cost. */
+static void ls_op(uint8_t op, uint32_t addr);
+
 static void ls_insn(uint32_t pc)
 {
     trace_insn(pc);
@@ -541,11 +563,25 @@ static void ls_insn(uint32_t pc)
             if (r.s != m.irq_s) return;
             m.in_irq = 0;  /* back from the handler: this may also be the return */
         }
-        if (pc != m.ret_pc) return;
         struct SfxboxRegs r; core_regs(&r);
-        if (r.s != m.exit_s) return;
-        STORE(sh->calls[m.call % CALLRING].done, 1);
-        m.active = 0;
+        /* Inside the call, the entry into any routine the catalog knows is
+           marked (op 9: its address, op A: S), and so is its return, the
+           first instruction with S above its entry S (op C), so that C can
+           run that routine as original code at the same place (call_routine). */
+        while (m.depth && r.s > m.open[m.depth - 1]) {
+            m.depth--;
+            ls_op(0xC0, pc);
+        }
+        if (pc == m.ret_pc && r.s == m.exit_s) {
+            STORE(sh->calls[m.call % CALLRING].done, 1);
+            m.active = 0;
+            return;
+        }
+        if (is_catalog_entry(pc) && m.depth < 64) {
+            ls_op(0x90, pc);
+            ls_op(0xA0, r.s);
+            m.open[m.depth++] = r.s;
+        }
         return;
     }
     if (routine_at(pc) < 0) return;
@@ -558,10 +594,9 @@ static void ls_insn(uint32_t pc)
     STORE(rec->done, 0);
     STORE(sh->o_calls, k + 1);
     sh->fs[cur_frame % NSLOT].ncalls++;
-    m.active = 1; m.in_irq = 0; m.call = k;
+    m.active = 1; m.in_irq = 0; m.call = k; m.depth = 0;
 }
 
-static void ls_op(uint8_t op, uint32_t addr);
 
 /* An interrupt taken inside a call: its place in the call's cycles is marked
    with the registers at that moment (ops 5-8), so the hybrid can take it at
@@ -650,7 +685,58 @@ static void replay_to(uint32_t to)
 }
 
 static long snap_offset(uint32_t a);
-static int past_end;    /* the original's run ended inside this call */
+static int past_end;
+static void (*core_run_until)(const struct SfxboxRegs *, uint32_t, uint16_t);
+static long asm_unplaced;
+
+/* call_routine for a target without C, on the live machine: replay the
+   original's cycles to where it entered the routine (op 9), run the
+   routine as original code from there with the original's stack pointer
+   until it returns (to a stand-in return address), and go on in the
+   record after its return (op C). */
+static void run_original(uint32_t addr, int long_call)
+{
+    uint32_t j, c = cur_n;
+    int nest = 0;
+    uint16_t s = (uint16_t)(cpu.s - (long_call ? 3 : 2));
+
+    for (j = cur_i; j + 1 < cur_n; j++)
+        if (cur_ops[j] >> 4 == 9 && cur_addr[j] == addr && cur_ops[j + 1] >> 4 == 0xA) break;
+    if (j + 1 < cur_n) {
+        replay_to(j);
+        s = (uint16_t)cur_addr[j + 1];
+        for (c = j + 2; c < cur_n; c++) {
+            if (cur_ops[c] >> 4 == 9) nest++;
+            else if (cur_ops[c] >> 4 == 0xC && !nest--) break;
+        }
+    } else if (asm_unplaced++ < 5) {
+        fprintf(lsrep, "OFF frame %ld: call to %06X not in the original's record\n", cur_frame, addr);
+    }
+    /* Stand-in return address: $FFFF, so the return lands on $0000 (bank 0
+       after an RTL, the routine's bank after an RTS). */
+    core_bus_write((uint32_t)(uint16_t)(s + 1), 0xFF);
+    core_bus_write((uint32_t)(uint16_t)(s + 2), 0xFF);
+    if (long_call) core_bus_write((uint32_t)(uint16_t)(s + 3), 0x00);
+    struct SfxboxRegs from = {cpu.a, cpu.x, cpu.y, s, cpu.d, cpu.db, cpu.p, cpu.e, addr}, out, mine;
+    core_regs(&mine);
+    core_run_until(&from, long_call ? 0x000000 : (addr & 0xFF0000), (uint16_t)(s + (long_call ? 3 : 2)));
+    core_regs(&out);
+    core_set_regs(&mine);
+    cpu.a = out.a; cpu.x = out.x; cpu.y = out.y; cpu.d = out.d; cpu.db = out.db; cpu.p = out.p; cpu.e = out.e;
+    cur_i = c < cur_n ? c + 1 : cur_n;
+}
+
+void call_routine(uint32_t addr, int long_call)
+{
+    for (int i = 0; i < all_count; i++)
+        if (all_routines[i].addr == addr) { all_routines[i].abi(); return; }
+    if (!machine_live) {
+        if (cur) cur->needs_asm = 1;
+        if (c_running) longjmp(abort_c, 1);
+        return;
+    }
+    run_original(addr, long_call);
+}    /* the original's run ended inside this call */
 
 static uint8_t live_access(int write, uint32_t addr, uint8_t value)
 {
@@ -696,6 +782,7 @@ static int ls_exec(uint32_t pc)
     struct SfxboxRegs r; core_regs(&r);
     uint32_t ret; uint16_t exit_s;
     if (!entry(pc, &r, &ret, &exit_s)) { calls_fallback++; return 0; }
+    ls_cur_name = routines[idx].name;
     /* The original's next call: wait until it has returned, then take a
        private copy of its cycles (the ring moves on). */
     uint64_t k = LOAD(sh->h_calls);
@@ -743,11 +830,12 @@ int lockstep_begin(void *core, const char *lib, const char *only, const char *re
     *(void **)&core_clock = dlsym(core, "sfxbox_core_clock");
     *(void **)&core_replay = dlsym(core, "sfxbox_core_replay");
     *(void **)&core_interrupt_here = dlsym(core, "sfxbox_core_interrupt_here");
+    *(void **)&core_run_until = dlsym(core, "sfxbox_core_run_until");
     *(void **)&core_access = dlsym(core, "sfxbox_core_access");
     *(void **)&core_set_regs = dlsym(core, "sfxbox_core_set_regs");
     *(void **)&core_snapshot = dlsym(core, "sfxbox_core_snapshot");
     core_exec = dlsym(core, "sfxbox_cpu_exec");
-    if (!set_cb || !core_clock || !core_replay || !core_interrupt_here || !core_access || !core_set_regs || !core_snapshot || !core_exec) return -1;
+    if (!set_cb || !core_clock || !core_replay || !core_interrupt_here || !core_run_until || !core_access || !core_set_regs || !core_snapshot || !core_exec) return -1;
     sh = mmap(NULL, sizeof(Shared), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANON, -1, 0);
     if (sh == MAP_FAILED) return -1;
     (void)core_bus_peek;
@@ -879,9 +967,9 @@ void lockstep_end(long frames)
         if (LOAD(sh->stuck)) fprintf(stderr, "lockstep: a side waited too long; see the report\n");
     } else if (role == 2) {
         fprintf(lsrep, "frames %ld compared %ld, differing %ld; calls swapped %ld, entered other ways %ld, unmatched %ld, "
-                "hardware accesses off the timeline %ld, interrupts not pending where taken %ld: %s\n",
-                frames, frames_compared, diff_frames, calls_swapped, calls_fallback, mismatched_calls, timed_unmatched, irq_missed,
-                diff_frames || mismatched_calls || timed_unmatched || irq_missed ? "DIVERGENT" : calls_swapped ? "IDENTICAL" : "UNCOVERED");
+                "hardware accesses off the timeline %ld, interrupts not pending where taken %ld, original-code calls not placed %ld: %s\n",
+                frames, frames_compared, diff_frames, calls_swapped, calls_fallback, mismatched_calls, timed_unmatched, irq_missed, asm_unplaced,
+                diff_frames || mismatched_calls || timed_unmatched || irq_missed || asm_unplaced ? "DIVERGENT" : calls_swapped ? "IDENTICAL" : "UNCOVERED");
         fclose(lsrep);
         _exit(0);
     }

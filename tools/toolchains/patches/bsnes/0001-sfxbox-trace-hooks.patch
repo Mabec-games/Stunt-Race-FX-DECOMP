@@ -1,9 +1,9 @@
 diff --git a/bsnes/emulator/sfxbox.hpp b/bsnes/emulator/sfxbox.hpp
 new file mode 100644
-index 0000000..ad95cf6
+index 0000000..b486c66
 --- /dev/null
 +++ b/bsnes/emulator/sfxbox.hpp
-@@ -0,0 +1,48 @@
+@@ -0,0 +1,50 @@
 +#pragma once
 +// Trace and dispatch hooks for the sfxbox harness. The core calls these;
 +// the harness (target-libretro/sfxbox.cpp) defines them.
@@ -43,6 +43,8 @@ index 0000000..ad95cf6
 +// Take the pending interrupt from the given state and run its handler until it
 +// returns there (0 when none is pending).
 +int sfxbox_core_interrupt_here(const struct SfxboxRegs* at);
++// Run original code from a state until PC and S reach the given values.
++void sfxbox_core_run_until(const struct SfxboxRegs* from, uint32_t pc, uint16_t s);
 +uint32_t sfxbox_core_clock(void);
 +void sfxbox_core_charge(uint32_t clocks);
 +uint8_t sfxbox_core_bus_read(uint32_t addr);
@@ -201,10 +203,10 @@ index 0b4bf65..1966a4a 100644
      }
    }
 diff --git a/bsnes/sfc/cpu/cpu.cpp b/bsnes/sfc/cpu/cpu.cpp
-index b6fec16..4621bc6 100644
+index b6fec16..5f3563e 100644
 --- a/bsnes/sfc/cpu/cpu.cpp
 +++ b/bsnes/sfc/cpu/cpu.cpp
-@@ -1,8 +1,61 @@
+@@ -1,8 +1,73 @@
  #include <sfc/sfc.hpp>
 +#include <emulator/sfxbox.hpp>
 +
@@ -225,6 +227,18 @@ index b6fec16..4621bc6 100644
 +//Take the pending interrupt now, from the register state the original had
 +//when it took it, and run the handler as original code (no routine swapping)
 +//until it returns to that state's PC and stack. 0 when none is pending.
++//Run original code from the given state (routine swapping off) until the
++//program counter and stack pointer reach pc and s: a call made from C to a
++//routine that has no C yet, stopped when it returns.
++extern "C" void sfxbox_core_run_until(const struct SfxboxRegs* from, uint32_t pc, uint16_t s) {
++  using namespace SuperFamicom;
++  sfxbox_core_set_regs(from);
++  auto exec = sfxbox_cpu_exec;
++  sfxbox_cpu_exec = nullptr;
++  do cpu.main(); while(cpu.r.pc.d != pc || cpu.r.s.w != s);
++  sfxbox_cpu_exec = exec;
++}
++
 +extern "C" int sfxbox_core_interrupt_here(const struct SfxboxRegs* at) {
 +  using namespace SuperFamicom;
 +  if(!cpu.sfxboxInterruptPending()) return 0;
@@ -266,7 +280,7 @@ index b6fec16..4621bc6 100644
  #include "dma.cpp"
  #include "memory.cpp"
  #include "io.cpp"
-@@ -34,8 +87,14 @@ auto CPU::Enter() -> void {
+@@ -34,8 +99,14 @@ auto CPU::Enter() -> void {
  auto CPU::main() -> void {
    if(r.wai) return instructionWait();
    if(r.stp) return instructionStop();

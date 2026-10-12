@@ -67,4 +67,11 @@ static inline uint8_t nz8(uint8_t p, uint8_t v)
     return p;
 }
 
+/* Call the routine at `addr` (a JSL when `long_call`, else a JSR) with the
+   register file in `cpu` as its entry state, leaving its exit state there:
+   how the C makes the calls the original makes through an address it
+   computes (handler tables, addresses pushed for an RTL). A routine with C
+   runs its abi_ wrapper; one without runs as original code. */
+void call_routine(uint32_t addr, int long_call);
+
 #endif

@@ -8,7 +8,7 @@ each must have an abi_Name wrapper (the entry contract in code). The build
 generates the table that tells the harness which original routine each
 wrapper stands for. Outputs are deleted before they are rebuilt.
 """
-import glob, os, re, shutil, subprocess, sys
+import csv, glob, os, re, shutil, subprocess, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SRC = os.path.join(ROOT, 'src', 'stuntracefx')
@@ -63,6 +63,12 @@ def main(src=None, lib=None):
         for a, n in rows:
             t.write('    {0x%06X, abi_%s, "%s"},\n' % (a, n, n))
         t.write('    {0, 0, 0}\n};\nconst int sfx_routine_count = %d;\n' % len(rows))
+        # Every S-CPU routine entry the catalog knows, so the lockstep run can
+        # mark where the original enters one inside a swapped call.
+        cat = os.path.join(ROOT, 'build', 'stuntracefx', 'routines.csv')
+        entries = [r['addr'] for r in csv.DictReader(open(cat)) if r['cpu'] == 'cpu'] if os.path.exists(cat) else []
+        t.write('const uint32_t sfx_catalog[] = {%s0};\nconst int sfx_catalog_count = %d;\n'
+                % (''.join('0x%s, ' % a for a in entries), len(entries)))
     cmd = ['cc', '-O2', '-Wall', '-Wextra', '-std=c99', '-shared', '-fPIC', '-undefined', 'dynamic_lookup',
            '-I', os.path.join(SRC, 'include'), '-o', LIB, table] + files
     p = subprocess.run(cmd, capture_output=True, text=True)
