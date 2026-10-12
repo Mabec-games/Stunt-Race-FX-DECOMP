@@ -23,3 +23,9 @@ here when they are made.
 
 - Menu flow, controls and what each script reaches:
   [decomp/log/phase1-skeleton-2026-10-11](decomp/log/phase1-skeleton-2026-10-11.md).
+
+## Oracle
+
+- The core runs with its speed shortcuts off; a frontend that answers no
+  option queries gets the fast defaults
+  ([decomp/oracle/core-accuracy-settings-2026-10-11](decomp/oracle/core-accuracy-settings-2026-10-11.md)).

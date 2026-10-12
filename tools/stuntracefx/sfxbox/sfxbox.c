@@ -58,6 +58,18 @@ static bool env(unsigned cmd, void *data) {
         pixfmt = *(const unsigned *)data; return true;
     case RETRO_ENVIRONMENT_GET_CAN_DUPE:
         *(bool *)data = true; return true;
+    case RETRO_ENVIRONMENT_GET_VARIABLE: {
+        /* The core's speed shortcuts are all off: scanline PPU, fast DSP and
+           delayed coprocessor sync trade accuracy for speed. No overclock. */
+        struct retro_variable *v = data;
+        static const char *fixed[][2] = {
+            {"bsnes_ppu_fast", "OFF"}, {"bsnes_dsp_fast", "OFF"}, {"bsnes_coprocessor_delayed_sync", "OFF"},
+            {"bsnes_cpu_overclock", "100"}, {"bsnes_cpu_sfx_overclock", "100"}, {"bsnes_cpu_sa1_overclock", "100"},
+        };
+        for (unsigned i = 0; i < sizeof fixed / sizeof fixed[0]; i++)
+            if (!strcmp(v->key, fixed[i][0])) { v->value = fixed[i][1]; return true; }
+        return false;
+    }
     default:
         return false;
     }
