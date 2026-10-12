@@ -261,4 +261,210 @@ FxDriveDecide:
     ldw (r10)
     nop
 
+; @routine 04:BA05 FxSteerFromInput
+; WHAT IT DOES: The car R8's new steering value R3 from its old one
+; (+$3A) and the control bits R2: bit 0 steers one way and bit 1 the
+; other by $2662 a step (by $80 when already turned, and from the
+; opposite side straight back to 0), up to $2666 either way; bits 2 and 3
+; steer harder by $2664, the limit raised by $2668. With no bits it
+; returns toward 0 by $266A a step. With bit 10 of +$40 set the step is
+; scaled by the speed (twice $2662 times |+$4A|, $7F at most, / 256) and
+; a value is kept as it is when no bit is held (decoded from the ROM
+; bytes and not reached in the traces so far, as are the returns where
+; the value has not yet reached 0).
+; HOW: R5 = the step and R4 = its negative; R7 = 1 for the speed-scaled
+; case; limits by CMP and the sign. Three adds are WITH R3 before a BRA,
+; done in its delay slot.
+; Entry: R2 = the control bits; R8 = the car's record; R11 = return
+; address. Exit: R3 = the new value; R4, R5, R6 from the limits; R0 and
+; the flags from the last test; the last RAM address the last value read.
+%at($04BA05)
+FxSteerFromInput:
+    lm r5,(!fx_steer_rate)
+    ibt r7,#0
+    ibt r1,#!fxrec_flags40
+    with r1
+    add r8
+    to r1
+    ldw (r1)
+    iwt r0,#$0400
+    and r1
+    beq .steer
+    nop
+    ibt r7,#1
+    iwt r6,#$007F
+    ibt r0,#!fxrec_speed
+    add r8
+    ldw (r0)
+    moves r0,r0
+    bpl .speed
+    nop
+    not
+    inc r0
+.speed:
+    cmp r6
+    bmi .scale
+    nop
+    move r0,r6
+.scale:
+    to r6
+    swap
+    with r5
+    add r5
+    with r5
+    fmult
+.steer:
+    ibt r3,#!fxcar_steer_bias
+    with r3
+    add r8
+    to r3
+    ldw (r3)
+    move r4,r5
+    with r4
+    not
+    inc r4
+    iwt r0,#$000F
+    and r2
+    bne .held
+    nop
+    moves r7,r7
+    beq .center
+    nop
+    iwt r15,#.done
+    nop
+.center:
+    lm r1,(!fx_steer_back)
+    moves r3,r3
+    bne .off_center
+    nop
+    iwt r15,#.done
+    nop
+.off_center:
+    bpl .from_right
+    nop
+    with r3
+    add r1
+    bpl .centered_left
+    nop
+    iwt r15,#.done
+    nop
+.centered_left:
+    ibt r3,#0
+    iwt r15,#.done
+    nop
+.from_right:
+    with r3
+    sub r1
+    bmi .centered_right
+    nop
+    iwt r15,#.done
+    nop
+.centered_right:
+    ibt r3,#0
+    iwt r15,#.done
+    nop
+.held:
+    ibt r6,#0
+    iwt r0,#$0003
+    and r2
+    beq .hard
+    nop
+    lm r6,(!fx_steer_max)
+    iwt r0,#$0001
+    and r2
+    beq .bit1
+    nop
+    moves r3,r3
+    bpl .bit0_side
+    nop
+    moves r7,r7
+    bne .bit0_side
+    nop
+    ibt r3,#0
+.bit0_side:
+    moves r3,r3
+    beq .bit0_from_zero
+    nop
+    iwt r0,#$0080
+    with r3
+    bra .hard
+    add r0
+.bit0_from_zero:
+    with r3
+    bra .hard
+    add r5
+.bit1:
+    iwt r0,#$0002
+    and r2
+    beq .hard
+    nop
+    moves r3,r3
+    bmi .bit1_side
+    nop
+    moves r7,r7
+    bne .bit1_side
+    nop
+    ibt r3,#0
+.bit1_side:
+    moves r3,r3
+    beq .bit1_from_zero
+    nop
+    iwt r0,#$0080
+    with r3
+    bra .hard
+    sub r0
+.bit1_from_zero:
+    with r3
+    add r4
+.hard:
+    iwt r0,#$000C
+    and r2
+    beq .limit
+    nop
+    lm r0,(!fx_steer_max2)
+    with r6
+    add r0
+    lm r5,(!fx_steer_rate2)
+    move r4,r5
+    with r4
+    not
+    inc r4
+    iwt r0,#$0004
+    and r2
+    beq .bit3
+    nop
+    with r3
+    add r5
+.bit3:
+    iwt r0,#$0008
+    and r2
+    beq .limit
+    nop
+    with r3
+    add r4
+.limit:
+    move r4,r6
+    with r4
+    not
+    inc r4
+    moves r3,r3
+    bmi .low
+    nop
+    with r3
+    cmp r6
+    bmi .done
+    nop
+    move r3,r6
+    bra .done
+    nop
+.low:
+    with r3
+    cmp r4
+    bpl .done
+    nop
+    move r3,r4
+.done:
+    move r15,r11
+    nop
+
 arch 65816

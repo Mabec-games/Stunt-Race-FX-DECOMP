@@ -1205,3 +1205,9 @@ includeonce
 ; Computer driving fields (race/fx_drive.asm).
 !fxcar_steer_bias = $3A
 !fxcar_stuck = $7E
+; Steering rates (race/fx_drive.asm).
+!fx_steer_rate = $702662
+!fx_steer_rate2 = $702664
+!fx_steer_max = $702666
+!fx_steer_max2 = $702668
+!fx_steer_back = $70266A
