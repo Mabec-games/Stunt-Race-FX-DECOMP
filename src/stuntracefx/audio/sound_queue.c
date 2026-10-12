@@ -10,7 +10,9 @@
 #include "hw.h"
 #include "wram.h"
 
-/* Append a byte to a ring, unless sound is muted or the ring is full. */
+/* Append a byte to a ring, unless sound is muted or the ring is full. The
+   count is incremented in place (read again, as INC does): the frame code
+   may take a byte from the ring between the first read and the increment. */
 static void queue_push(uint32_t queue, uint32_t head, uint32_t count, uint8_t value)
 {
     uint8_t n;
@@ -19,14 +21,14 @@ static void queue_push(uint32_t queue, uint32_t head, uint32_t count, uint8_t va
         return;
     n = rd8(count);
     if (n == 0) {
-        wr8(count, 1);
+        wr8(count, (uint8_t)(rd8(count) + 1));
         wr8(queue + rd8(head), value);
     } else if (n < 0x10) {
         uint8_t slot = (uint8_t)(n + rd8(head));
         if (slot >= 0x10)
             slot -= 0x10;
         wr8(queue + slot, value);
-        wr8(count, (uint8_t)(n + 1));
+        wr8(count, (uint8_t)(rd8(count) + 1));
     }
 }
 

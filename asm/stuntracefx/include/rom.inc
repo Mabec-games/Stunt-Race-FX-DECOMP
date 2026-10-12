@@ -36,3 +36,10 @@ includeonce
 ; Menu tables in bank $0B (menu/screen.asm, menu/selection.asm).
 !menu_oam_lists = $FCA2
 !menu_repeat_table = $0BC758
+
+; Menu sprite animations (menu/actors.asm): duration and sprite group words.
+!menu_anim_table = $0BAB60
+!menu_anim_group = $0BAB62
+
+; APU port 0 command pairs for $0D89/$0D8A (audio/sound_effects.asm).
+!sound_pair_table = $0BFB18

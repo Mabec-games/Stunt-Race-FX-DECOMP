@@ -290,3 +290,27 @@ void abi_SoundFromTableD89(void)
     cpu.x = rd8(0x000D89);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | SoundFromTableD89());
 }
+
+/*
+ * @routine 0B:FAF9 SoundPairFromTable
+ * WHAT IT DOES: Queues two APU port 0 commands from the table at $0B:FB18:
+ * the one for $0D8A with bit 7 set (player 2's), then the one for $0D89.
+ * HOW: Two byte lookups, each pushed with SoundPort0QueuePushRaw.
+ * Entry: any widths. Exit: A low byte = the second command; X = $0D89 (high
+ * byte zero); P unchanged.
+ */
+uint8_t SoundPairFromTable(void)
+{
+    uint8_t c = (uint8_t)(rd8(0x0BFB18 + rd8(0x000D8A)) | 0x80);
+
+    SoundPort0QueuePushRaw(c);
+    c = rd8(0x0BFB18 + rd8(0x000D89));
+    SoundPort0QueuePushRaw(c);
+    return c;
+}
+
+void abi_SoundPairFromTable(void)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | SoundPairFromTable());
+    cpu.x = rd8(0x000D89);
+}

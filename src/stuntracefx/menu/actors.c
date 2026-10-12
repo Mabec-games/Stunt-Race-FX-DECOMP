@@ -304,3 +304,135 @@ void abi_MenuActorBlink(void)
     cpu.a = MenuActorBlink(cpu.db, &cpu.x);
     cpu.p = nz16(cpu.p, cpu.a);
 }
+
+/*
+ * @routine 0B:E250 MenuActorAnimate
+ * WHAT IT DOES: Steps object X's sprite animation: when its frame timer
+ * (+$18) runs out, moves to the next entry of its animation (+$14 = the
+ * animation's offset in the table at $0B:AB60, +$16 = the entry offset),
+ * restarting at the first entry when the next one's duration is negative,
+ * and sets the sprite group (+$12) and timer from the entry.
+ * HOW: Entries are four bytes: a duration word and a sprite group word; the
+ * timer is set to duration - 1. No animation when +$14 is negative. The
+ * offset is kept at $11DF while it is used.
+ * Entry: M 16-bit, X 16-bit, D = $0000; X = the object being run ($11F9).
+ * Exit: no animation: A = +$14; N set. Timer running: A = +$14; N, Z from
+ * the timer. Stepped: A = the new timer; X = $11F9; N, Z from A; C, V from
+ * the entry offset + animation offset.
+ */
+uint16_t MenuActorAnimate(uint8_t bank, uint16_t rec, uint16_t *x, uint8_t *p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t anim = rd16((uint16_t)(rec + 0x14)), t, pos, i, d, g;
+    unsigned s;
+
+    if (anim & 0x8000) {
+        *p = nz16(*p, anim);
+        return anim;
+    }
+    t = (uint16_t)(rd16((uint16_t)(rec + 0x18)) - 1);
+    wr16((uint16_t)(rec + 0x18), t);
+    if (!(t & 0x8000)) {
+        *p = nz16(*p, t);
+        return anim;
+    }
+    wr16(b | 0x11DF, anim);
+    pos = (uint16_t)(rd16((uint16_t)(rec + 0x16)) + 4);
+    wr16((uint16_t)(rec + 0x16), pos);
+    s = (unsigned)pos + anim;
+    *p = (uint8_t)((*p & ~(P_C | P_V)) | (s > 0xFFFF ? P_C : 0) | ((~(pos ^ anim) & (pos ^ (uint16_t)s) & 0x8000) ? P_V : 0));
+    i = (uint16_t)s;
+    d = rd16(0x0BAB60 + i);
+    if (d & 0x8000) {
+        wr16((uint16_t)(rd16(b | 0x11F9) + 0x16), 0x0000);
+        i = rd16(b | 0x11DF);
+        d = rd16(0x0BAB60 + i);
+    }
+    wr16(b | 0x11DF, (uint16_t)(d - 1));
+    g = rd16(0x0BAB62 + i);
+    *x = rd16(b | 0x11F9);
+    wr16((uint16_t)(*x + 0x12), g);
+    t = rd16(b | 0x11DF);
+    wr16((uint16_t)(*x + 0x18), t);
+    *p = nz16(*p, t);
+    return t;
+}
+
+void abi_MenuActorAnimate(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = MenuActorAnimate(cpu.db, cpu.x, &cpu.x, &p);
+    cpu.p = p;
+}
+
+/*
+ * @routine 0B:CF9C MenuActorCountdown
+ * WHAT IT DOES: Counts object X's +$0A down; when it passes zero, moves the
+ * object to handler $CFAB with the count at 0.
+ * HOW: A 16-bit memory decrement.
+ * Entry: M 16-bit, D = $0000; X = record. Exit: counting: A unchanged; N, Z
+ * from the count. Moved on: A = 0; Z set, N clear.
+ */
+int MenuActorCountdown(uint16_t rec, uint8_t *p)
+{
+    uint16_t c = (uint16_t)(rd16((uint16_t)(rec + 0x0A)) - 1);
+
+    wr16((uint16_t)(rec + 0x0A), c);
+    if (!(c & 0x8000)) {
+        *p = nz16(*p, c);
+        return 0;
+    }
+    wr16((uint16_t)(rec + 0x08), 0xCFAB);
+    wr16((uint16_t)(rec + 0x0A), 0x0000);
+    *p = (uint8_t)((*p & ~P_N) | P_Z);
+    return 1;
+}
+
+void abi_MenuActorCountdown(void)
+{
+    uint8_t p = cpu.p;
+
+    if (MenuActorCountdown(cpu.x, &p))
+        cpu.a = 0x0000;
+    cpu.p = p;
+}
+
+/*
+ * @routine 0B:C9FD MenuSinePosition
+ * WHAT IT DOES: From the angle in object X's +$0A, sets $18BF = (sine of
+ * the angle - $40, from the table at $00:96FE) + $81, kept to 8 bits, and
+ * $18C1 = the same, but at least $A8.
+ * HOW: The table byte is sign-extended, $80 added and the sum kept to 8
+ * bits before the + 1.
+ * Entry: M 16-bit, X 16-bit, D = $0000; X = record. Exit: A = the value
+ * stored at $18C1; X = $11F9; N, Z from X; C = (value before the minimum
+ * >= $A8); V from the add of $80.
+ */
+uint16_t MenuSinePosition(uint8_t bank, uint16_t rec, uint8_t *p)
+{
+    uint16_t i = (uint16_t)(rd16((uint16_t)(rec + 0x0A)) - 0x40) & 0x00FF, v = rd16(0x0096FE + i) & 0x00FF, s;
+
+    if (v >= 0x80)
+        v |= 0xFF00;
+    s = (uint16_t)(v + 0x80);
+    *p = (uint8_t)((*p & ~(P_C | P_V)) | ((~(v ^ 0x80) & (v ^ s) & 0x8000) ? P_V : 0));
+    v = (uint16_t)((s & 0x00FF) + 1);
+    wr16(0x0018BF, v);
+    if (v >= 0x00A8)
+        *p |= P_C;
+    else
+        v = 0x00A8;
+    wr16(0x0018C1, v);
+    *p = nz16(*p, rd16((uint32_t)bank << 16 | 0x11F9));
+    return v;
+}
+
+void abi_MenuSinePosition(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = MenuSinePosition(cpu.db, cpu.x, &p);
+    cpu.x = rd16((uint32_t)cpu.db << 16 | 0x11F9);
+    cpu.p = p;
+}

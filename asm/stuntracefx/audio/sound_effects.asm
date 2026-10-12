@@ -331,3 +331,24 @@ SoundFromTableD89:
     jsl.l SoundPort0QueuePushRaw
     plp
     rtl
+
+; @routine 0B:FAF9 SoundPairFromTable
+; WHAT IT DOES: Queues two APU port 0 commands from the table at $0B:FB18:
+; the one for $0D8A with bit 7 set (player 2's), then the one for $0D89.
+; HOW: Two byte lookups, each pushed with SoundPort0QueuePushRaw.
+; Entry: any widths. Exit: A low byte = the second command; X = $0D89 (high
+; byte zero); P unchanged.
+%at($0BFAF9)
+SoundPairFromTable:
+    php
+    sep.b #$30
+    ldx.w !wram_0D8A
+    lda.l !sound_pair_table,x
+    ora.b #$80
+    jsl.l SoundPort0QueuePushRaw
+    sep.b #$30
+    ldx.w !wram_0D89
+    lda.l !sound_pair_table,x
+    jsl.l SoundPort0QueuePushRaw
+    plp
+    rtl

@@ -238,3 +238,99 @@ MenuActorBlink:
     sta.l !menu_sprite_attr,x
 .lC58C:
     rts
+
+; @routine 0B:E250 MenuActorAnimate
+; WHAT IT DOES: Steps object X's sprite animation: when its frame timer
+; (+$18) runs out, moves to the next entry of its animation (+$14 = the
+; animation's offset in the table at $0B:AB60, +$16 = the entry offset),
+; restarting at the first entry when the next one's duration is negative,
+; and sets the sprite group (+$12) and timer from the entry.
+; HOW: Entries are four bytes: a duration word and a sprite group word; the
+; timer is set to duration - 1. No animation when +$14 is negative. The
+; offset is kept at $11DF while it is used.
+; Entry: M 16-bit, X 16-bit, D = $0000; X = the object being run ($11F9).
+; Exit: no animation: A = +$14; N set. Timer running: A = +$14; N, Z from
+; the timer. Stepped: A = the new timer; X = $11F9; N, Z from A; C, V from
+; the entry offset + animation offset.
+%at($0BE250)
+MenuActorAnimate:
+    lda.b !actor_anim,x
+    bmi .lE28C
+    dec.b !actor_anim_timer,x
+    bpl .lE28C
+    sta.w !scratch_11df
+    lda.b !actor_anim_pos,x
+    clc
+    adc.w #$0004
+    sta.b !actor_anim_pos,x
+    clc
+    adc.w !scratch_11df
+    tax
+    lda.l !menu_anim_table,x
+    bpl .lE27A
+    ldx.w !actor_current
+    stz.b !actor_anim_pos,x
+    ldx.w !scratch_11df
+    lda.l !menu_anim_table,x
+.lE27A:
+    dec a
+    sta.w !scratch_11df
+    lda.l !menu_anim_group,x
+    ldx.w !actor_current
+    sta.b !actor_12,x
+    lda.w !scratch_11df
+    sta.b !actor_anim_timer,x
+.lE28C:
+    rts
+
+; @routine 0B:CF9C MenuActorCountdown
+; WHAT IT DOES: Counts object X's +$0A down; when it passes zero, moves the
+; object to handler $CFAB with the count at 0.
+; HOW: A 16-bit memory decrement.
+; Entry: M 16-bit, D = $0000; X = record. Exit: counting: A unchanged; N, Z
+; from the count. Moved on: A = 0; Z set, N clear.
+%at($0BCF9C)
+MenuActorCountdown:
+    dec.b !actor_0a,x
+    bpl .lCFAA
+    lda.w #$CFAB
+    sta.b !actor_handler,x
+    lda.w #$0000
+    sta.b !actor_0a,x
+.lCFAA:
+    rts
+
+; @routine 0B:C9FD MenuSinePosition
+; WHAT IT DOES: From the angle in object X's +$0A, sets $18BF = (sine of
+; the angle - $40, from the table at $00:96FE) + $81, kept to 8 bits, and
+; $18C1 = the same, but at least $A8.
+; HOW: The table byte is sign-extended, $80 added and the sum kept to 8
+; bits before the + 1.
+; Entry: M 16-bit, X 16-bit, D = $0000; X = record. Exit: A = the value
+; stored at $18C1; X = $11F9; N, Z from X; C = (value before the minimum
+; >= $A8); V from the add of $80.
+%at($0BC9FD)
+MenuSinePosition:
+    lda.b !actor_0a,x
+    sec
+    sbc.w #$0040
+    and.w #$00FF
+    tax
+    lda.l !rot_sin_table,x
+    and.w #$00FF
+    cmp.w #$0080
+    bcc .lCA16
+    ora.w #$FF00
+.lCA16:
+    clc
+    adc.w #$0080
+    and.w #$00FF
+    inc a
+    sta.l !menu_sine_y
+    cmp.w #$00A8
+    bcs .lCA2A
+    lda.w #$00A8
+.lCA2A:
+    sta.l !menu_sine_y_min
+    ldx.w !actor_current
+    rts

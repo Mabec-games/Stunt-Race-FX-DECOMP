@@ -181,6 +181,7 @@ includeonce
 
 ; Selects the APU port 0 command played by SoundFromTableD89.
 !wram_0D89 = $0D89
+!wram_0D8A = $0D8A
 
 ; Two work copies of a 16-colour palette in bank $7F (video/palette.asm).
 !palette_work_a = $7F35D7
@@ -332,3 +333,16 @@ includeonce
 !actor_12 = $12
 !actor_kind = $1A
 !actor_palette = $24
+
+; Pictures the menu loader keeps in bank $7F (menu/loader.asm).
+!menu_picture_a = $7FA7D7
+!menu_picture_b = $7F3FD7
+
+; More menu object fields (menu/actors.asm): a count or angle (+$0A) and the
+; sprite animation's offset in its table, entry offset and frame timer.
+!actor_0a = $0A
+!actor_anim = $14
+!actor_anim_pos = $16
+!actor_anim_timer = $18
+!menu_sine_y = $18BF
+!menu_sine_y_min = $18C1

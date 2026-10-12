@@ -137,6 +137,16 @@ static Watch *cur;  /* the watch whose C is running */
 /* A C routine that reads past the replay is stopped here, not left spinning. */
 static jmp_buf abort_c;
 static int c_running;
+/* A C routine that waits on memory only an interrupt changes (a frame
+   handshake) would spin forever against the frozen entry state: past this
+   many accesses the call is abandoned and reported as a runaway. */
+#define RUNAWAY (1L << 22)
+static long c_accesses;
+static int c_runaway;
+static void count_access(void)
+{
+    if (c_running && ++c_accesses > RUNAWAY) { c_runaway = 1; longjmp(abort_c, 1); }
+}
 
 typedef struct { long calls, match, diff, inconclusive, skipped; int shown; } Stat;
 static Stat *stats;
@@ -152,6 +162,7 @@ static uint8_t live_access(int write, uint32_t addr, uint8_t value);
 uint8_t rd8(uint32_t addr)
 {
     if (machine_live) return live_access(0, addr & 0xFFFFFF, 0);
+    count_access();
     uint32_t n = norm(addr);
     uint8_t v;
     if (n >> 24 == R_IO) {
@@ -170,6 +181,7 @@ uint8_t rd8(uint32_t addr)
 void wr8(uint32_t addr, uint8_t value)
 {
     if (machine_live) { live_access(1, addr & 0xFFFFFF, value); return; }
+    count_access();
     uint32_t n = norm(addr);
     if (n >> 24 == R_IO) {
         io_add(&cur->cwrite, addr & 0xFFFF, value);
@@ -208,6 +220,7 @@ static void finish(Watch *w)
     cpu.db = w->entry.db; cpu.p = w->entry.p; cpu.e = w->entry.e; cpu.pc = w->entry.pc;
     map_clear(&w->cw); w->cwrite.n = 0; w->cread = 0; w->io_mismatch = 0;
     cur = w;
+    c_accesses = 0; c_runaway = 0;
     c_running = 1;
     if (setjmp(abort_c) == 0) r->abi();
     c_running = 0;
@@ -240,6 +253,7 @@ static void finish(Watch *w)
     if (w->cread != w->oread.n) { bad = 1; snprintf(why + strlen(why), sizeof why - strlen(why), " io-reads %d/%d", w->cread, w->oread.n); }
     if (w->io_mismatch) { bad = 1; strncat(why, " unreplayable-access", sizeof why - strlen(why) - 1); }
     if (w->overflow) { bad = 1; strncat(why, " overflow", sizeof why - strlen(why) - 1); }
+    if (c_runaway) { bad = 1; strncat(why, " runaway", sizeof why - strlen(why) - 1); }
 
     if (!bad) { st->match++; return; }
     int unsure = w->interrupted || w->dma;
@@ -629,13 +643,29 @@ static void replay_to(uint32_t to)
     cur_i = to;
 }
 
+static long snap_offset(uint32_t a);
+static int past_end;    /* the original's run ended inside this call */
+
 static uint8_t live_access(int write, uint32_t addr, uint8_t value)
 {
+    uint8_t want = (uint8_t)(write ? 2 : 1);
     if (!timed(addr)) {
+        /* Work RAM (and the Super FX RAM window) is the S-CPU's alone, but an
+           interrupt handler or a frame end can see it: the access is placed
+           at the original's matching access, so both see the same writes
+           done. The search stops at the next hardware access, which the C
+           must make first; a RAM access with no counterpart (the original
+           kept the value in a register) happens at once. */
+        long o = snap_offset(addr);
+        if (o >= 0)
+            for (uint32_t j = cur_i; j < cur_n; j++) {
+                uint8_t k = cur_ops[j] >> 4;
+                if ((k == 1 || k == 2) && timed(cur_addr[j])) break;
+                if (k == want && snap_offset(cur_addr[j]) == o) { replay_to(j + 1); break; }
+            }
         if (write) { core_bus_write(addr, value); return value; }
         return core_bus_read(addr);
     }
-    uint8_t want = (uint8_t)(write ? 2 : 1);
     for (uint32_t j = cur_i; j < cur_n; j++)
         if (cur_ops[j] >> 4 == want && same_place(cur_addr[j]) == same_place(addr)) {
             replay_to(j);
@@ -645,6 +675,7 @@ static uint8_t live_access(int write, uint32_t addr, uint8_t value)
     /* No matching cycle left in the original's record: the run has already
        diverged. The access is still made as a real, timed CPU access, so the
        clock moves and a polling loop in the C can end. */
+    if (past_end) return core_access(write, addr, value);
     if (timed_unmatched++ < 5)
         fprintf(lsrep, "OFF frame %ld: %s %06X with %u of %u recorded cycles used\n", cur_frame, write ? "write" : "read",
                 addr, cur_i, cur_n);
@@ -681,6 +712,10 @@ static int ls_exec(uint32_t pc)
         }
         STORE(sh->h_ops, rec->opoff + rec->opn);
         STORE(sh->h_calls, k + 1);
+    } else if (LOAD(sh->o_done) && cur_frame >= LOAD(sh->o_frames) - 1) {
+        /* The script ended inside this call on the original side: there is
+           nothing left to compare it with. */
+        past_end = 1;
     } else mismatched_calls++;
     hk++;
     cpu.a = r.a; cpu.x = r.x; cpu.y = r.y; cpu.s = r.s; cpu.d = r.d; cpu.db = r.db; cpu.p = r.p; cpu.e = r.e; cpu.pc = r.pc;
@@ -823,7 +858,7 @@ void lockstep_after_frame(long f)
         core_snapshot(sl->snap);
         STORE(sh->o_frames, f + 1);
     } else if (role == 2) {
-        compare(f);
+        if (!past_end) compare(f);
         STORE(sh->h_frames, f + 1);
     }
 }
