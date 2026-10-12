@@ -18,3 +18,32 @@ WaitHBlank:
     bit.b #$40
     beq WaitHBlank
     rts
+
+; @routine 02:D7AB WaitScanline
+; WHAT IT DOES: Waits until the low byte of the PPU's vertical counter
+; equals the byte at $06E3; clears $06E4 first.
+; HOW: Latches the counters (SLHV) and reads OPVCT twice (low, high) each
+; time round; the compare is 8-bit.
+; Entry: X 16-bit. Exit: A, X, P unchanged.
+%at($02D7AB)
+WaitScanline:
+    php
+    rep.b #$30
+    phx
+    pha
+    sep.b #$20
+    stz.w !scanline_wait_high
+.lD7B5:
+    sep.b #$20
+    lda.w !SLHV
+    lda.w !OPVCT
+    xba
+    lda.w !OPVCT
+    xba
+    cmp.w !scanline_wait
+    bne .lD7B5
+    rep.b #$30
+    pla
+    plx
+    plp
+    rtl

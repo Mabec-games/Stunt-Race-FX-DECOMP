@@ -29,3 +29,29 @@ void abi_WaitHBlank(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.p = (uint8_t)(nz8(cpu.p, v) & ~P_Z);
 }
+
+/*
+ * @routine 02:D7AB WaitScanline
+ * WHAT IT DOES: Waits until the low byte of the PPU's vertical counter
+ * equals the byte at $06E3; clears $06E4 first.
+ * HOW: Latches the counters (SLHV) and reads OPVCT twice (low, high) each
+ * time round; the compare is 8-bit.
+ * Entry: X 16-bit. Exit: A, X, P unchanged.
+ */
+void WaitScanline(uint8_t bank)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t lo;
+
+    wr8(b | 0x06E4, 0x00);
+    do {
+        rd8(SLHV);
+        lo = rd8(OPVCT);
+        rd8(OPVCT);
+    } while (lo != rd8(b | 0x06E3));
+}
+
+void abi_WaitScanline(void)
+{
+    WaitScanline(cpu.db);
+}

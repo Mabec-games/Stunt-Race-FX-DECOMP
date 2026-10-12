@@ -360,3 +360,75 @@ OamSetPalette:
     dex
     bne .lE31B
     rts
+
+; @routine 07:C33A OamBlock52Left
+; WHAT IT DOES: Places sprites 52 and 53 at X = $50 and $72 and gives
+; sprites 54-56 the attribute bytes $0C, $0C, $06.
+; HOW: Byte stores through the data bank (oam_block_52).
+; Entry: M 8-bit. Exit: A low byte = $06; X = $10 (16-bit); N, Z clear; C,
+; V from the add.
+%at($07C33A)
+OamBlock52Left:
+    rep.b #$10
+    ldx.w #$0010
+    lda.b #$50
+    sta.w !oam_sprite52_x-16,x
+    clc
+    adc.b #$22
+    sta.w !oam_sprite53_x-16,x
+    lda.b #$0C
+    sta.w !oam_sprite54_attr-16,x
+    sta.w !oam_sprite55_attr-16,x
+    lda.b #$06
+    sta.w !oam_sprite56_attr-16,x
+    rts
+
+; @routine 07:C36A OamBlock52Right
+; WHAT IT DOES: Places sprites 52 and 53 at X = $87 and $A1 and gives
+; sprites 54-56 the attribute bytes $06, $06, $0C.
+; HOW: As OamBlock52Left.
+; Entry: as OamBlock52Left. Exit: as OamBlock52Left, A low byte = $0C.
+%at($07C36A)
+OamBlock52Right:
+    rep.b #$10
+    ldx.w #$0010
+    lda.b #$87
+    sta.w !oam_sprite52_x-16,x
+    clc
+    adc.b #$1A
+    sta.w !oam_sprite53_x-16,x
+    lda.b #$06
+    sta.w !oam_sprite54_attr-16,x
+    sta.w !oam_sprite55_attr-16,x
+    lda.b #$0C
+    sta.w !oam_sprite56_attr-16,x
+    rts
+
+; @routine 07:C572 OamColumn8
+; WHAT IT DOES: Fills eight sprites from offset X: position words from
+; direct page $F1 (stepping $10), tile words from $F3 (stepping 2).
+; HOW: 16-bit stores; $F1 and $F3 are left past the last values.
+; Entry: M 16-bit, X 16-bit, D = $0000; X = byte offset. Exit: A = the last
+; $F3; X past the last sprite; Y = 0; Z set, N clear; C, V from the last
+; add.
+%at($07C572)
+OamColumn8:
+    ldy.w #$0008
+.lC575:
+    lda.b !digit_count
+    sta.w !oam_buffer,x
+    clc
+    adc.w #$0010
+    sta.b !digit_count
+    lda.b !dp_f3
+    sta.w !oam_buffer+2,x
+    clc
+    adc.w #$0002
+    sta.b !dp_f3
+    inx
+    inx
+    inx
+    inx
+    dey
+    bne .lC575
+    rts

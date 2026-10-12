@@ -478,3 +478,14 @@ includeonce
 !obj_4a = $204A
 !place_table = $FF66
 !gsu_bytes_200 = $700200
+!scanline_wait = $06E3
+!scanline_wait_high = $06E4
+!random_e6 = $E6
+!random_e7 = $E7
+!random_e8 = $E8
+!random_e9 = $E9
+!oam_sprite52_x = $0445
+!oam_sprite53_x = $0449
+!oam_sprite54_attr = $0450
+!oam_sprite55_attr = $0454
+!oam_sprite56_attr = $0458

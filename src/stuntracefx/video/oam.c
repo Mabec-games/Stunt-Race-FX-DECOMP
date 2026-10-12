@@ -436,3 +436,101 @@ void abi_OamSetPalette(void)
     cpu.x = 0;
     cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z | P_M);
 }
+
+/* Sprites 52-56 (X offset $10 into the block at $0435): two X positions
+   and three attribute bytes. */
+static uint8_t oam_block_52(uint8_t bank, uint8_t x0, uint8_t dx, uint8_t attr_a, uint8_t attr_b, uint8_t *p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    unsigned s = (unsigned)x0 + dx;
+
+    wr8(b | 0x0445, x0);
+    *p = (uint8_t)((*p & ~(P_C | P_V)) | (s > 0xFF ? P_C : 0) | ((~(x0 ^ dx) & (x0 ^ (uint8_t)s) & 0x80) ? P_V : 0));
+    wr8(b | 0x0449, (uint8_t)s);
+    wr8(b | 0x0450, attr_a);
+    wr8(b | 0x0454, attr_a);
+    wr8(b | 0x0458, attr_b);
+    return attr_b;
+}
+
+/*
+ * @routine 07:C33A OamBlock52Left
+ * WHAT IT DOES: Places sprites 52 and 53 at X = $50 and $72 and gives
+ * sprites 54-56 the attribute bytes $0C, $0C, $06.
+ * HOW: Byte stores through the data bank (oam_block_52).
+ * Entry: M 8-bit. Exit: A low byte = $06; X = $10 (16-bit); N, Z clear; C,
+ * V from the add.
+ */
+void OamBlock52Left(uint8_t bank, uint8_t *p)
+{
+    oam_block_52(bank, 0x50, 0x22, 0x0C, 0x06, p);
+}
+
+void abi_OamBlock52Left(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | oam_block_52(cpu.db, 0x50, 0x22, 0x0C, 0x06, &p));
+    cpu.x = 0x0010;
+    cpu.p = (uint8_t)(p & ~(P_N | P_Z | P_X));
+}
+
+/*
+ * @routine 07:C36A OamBlock52Right
+ * WHAT IT DOES: Places sprites 52 and 53 at X = $87 and $A1 and gives
+ * sprites 54-56 the attribute bytes $06, $06, $0C.
+ * HOW: As OamBlock52Left.
+ * Entry: as OamBlock52Left. Exit: as OamBlock52Left, A low byte = $0C.
+ */
+void OamBlock52Right(uint8_t bank, uint8_t *p)
+{
+    oam_block_52(bank, 0x87, 0x1A, 0x06, 0x0C, p);
+}
+
+void abi_OamBlock52Right(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | oam_block_52(cpu.db, 0x87, 0x1A, 0x06, 0x0C, &p));
+    cpu.x = 0x0010;
+    cpu.p = (uint8_t)(p & ~(P_N | P_Z | P_X));
+}
+
+/*
+ * @routine 07:C572 OamColumn8
+ * WHAT IT DOES: Fills eight sprites from offset X: position words from
+ * direct page $F1 (stepping $10), tile words from $F3 (stepping 2).
+ * HOW: 16-bit stores; $F1 and $F3 are left past the last values.
+ * Entry: M 16-bit, X 16-bit, D = $0000; X = byte offset. Exit: A = the last
+ * $F3; X past the last sprite; Y = 0; Z set, N clear; C, V from the last
+ * add.
+ */
+uint16_t OamColumn8(uint8_t bank, uint16_t *x, uint8_t *p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t v = 0, s;
+    unsigned i;
+
+    for (i = 0; i < 8; i++) {
+        v = rd16(0x0000F1);
+        wr16(b | (uint16_t)(0x0375 + *x), v);
+        wr16(0x0000F1, (uint16_t)(v + 0x10));
+        v = rd16(0x0000F3);
+        wr16(b | (uint16_t)(0x0377 + *x), v);
+        s = (uint16_t)(v + 2);
+        *p = (uint8_t)((*p & ~(P_C | P_V)) | ((unsigned)v + 2 > 0xFFFF ? P_C : 0) | ((~v & s & 0x8000) ? P_V : 0));
+        wr16(0x0000F3, s);
+        v = s;
+        *x = (uint16_t)(*x + 4);
+    }
+    return v;
+}
+
+void abi_OamColumn8(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = OamColumn8(cpu.db, &cpu.x, &p);
+    cpu.y = 0;
+    cpu.p = (uint8_t)((p & ~P_N) | P_Z);
+}
