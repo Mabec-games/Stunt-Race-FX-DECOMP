@@ -30,6 +30,7 @@ typedef struct {
     uint8_t colr, por;       /* plot colour and plot options (COLOR, CMODE) */
     uint8_t scmr, scbr;      /* screen mode and base, set by the S-CPU */
     uint16_t ramaddr;        /* the last RAM address loaded or stored: SBK writes there */
+    uint8_t romdr;           /* the ROM buffer: GETB and GETC read it */
 } RegsGSU;
 
 extern RegsGSU gsu;
@@ -87,10 +88,19 @@ static inline void gsu_sbk(uint16_t v)
     gsu_wr8(gsu_ram(gsu.ramaddr ^ 1), (uint8_t)(v >> 8));
 }
 
-/* GETB: the ROM byte at R14 in the ROM buffer's bank. */
-static inline uint8_t gsu_getb(uint16_t r14)
+/* Every write of R14 (even of the value it holds) refills the ROM buffer
+   from ROMBR:R14 as they are then; ROMB alone does not. C that writes R14
+   does it through gsu_r14, so the buffer follows as on the hardware. */
+static inline void gsu_r14(uint16_t v)
 {
-    return gsu_rd8((uint32_t)gsu.rombr << 16 | r14);
+    gsu.r[14] = v;
+    gsu.romdr = gsu_rd8((uint32_t)gsu.rombr << 16 | v);
+}
+
+/* GETB, GETC: the ROM buffer. */
+static inline uint8_t gsu_getb(void)
+{
+    return gsu.romdr;
 }
 
 /* ---- flags, as the instructions that set them leave them ---- */

@@ -312,6 +312,9 @@ static void model_from(const struct GsuState *st)
     gsu.z = !!(st->sfr & SFR_Z); gsu.cy = !!(st->sfr & SFR_CY); gsu.s = !!(st->sfr & SFR_S); gsu.ov = !!(st->sfr & SFR_OV);
     gsu.rombr = st->rombr; gsu.rambr = st->rambr; gsu.colr = st->colr; gsu.por = st->por;
     gsu.scmr = st->scmr; gsu.scbr = st->scbr; gsu.ramaddr = st->ramaddr;
+    /* The ROM buffer; a fill still pending lands before anything reads it,
+       with the R14 and ROMBR of now (ROMB completes a pending fill first). */
+    gsu.romdr = st->romcl ? rom[rom_off((uint32_t)st->rombr << 16 | st->r[14])] : st->romdr;
     pix[0] = st->pixel[0]; pix[1] = st->pixel[1];
 }
 
@@ -321,15 +324,6 @@ static uint16_t model_flags(uint16_t sfr)
     return (uint16_t)(sfr | (gsu.z ? SFR_Z : 0) | (gsu.cy ? SFR_CY : 0) | (gsu.s ? SFR_S : 0) | (gsu.ov ? SFR_OV : 0));
 }
 
-/* The ROM buffer after the C: the hardware refills it from ROMBR:R14 each
-   time R14 is written, so a routine that leaves R14 as it found it leaves
-   the buffer as it was at entry (a fill pending then counted as done). */
-static uint8_t rom_buffer(const struct GsuState *entry)
-{
-    if (gsu.r[14] == entry->r[14])
-        return entry->romcl ? rom[rom_off((uint32_t)entry->rombr << 16 | entry->r[14])] : entry->romdr;
-    return rom[rom_off((uint32_t)gsu.rombr << 16 | gsu.r[14])];
-}
 
 /* ======================================================================
  * A5: the per-call oracle
@@ -417,7 +411,7 @@ static void finish(Watch *w)
     if (gsu.rombr != fin.rombr) WHY(" rombr=%02X/%02X", gsu.rombr, fin.rombr);
     if (gsu.rambr != fin.rambr) WHY(" rambr=%02X/%02X", gsu.rambr, fin.rambr);
     if (gsu.ramaddr != fin.ramaddr) WHY(" ramaddr=%04X/%04X", gsu.ramaddr, fin.ramaddr);
-    if (!fin.romcl && rom_buffer(&w->entry) != fin.romdr) WHY(" romdr=%02X/%02X", rom_buffer(&w->entry), fin.romdr);
+    if (!fin.romcl && gsu.romdr != fin.romdr) WHY(" romdr=%02X/%02X", gsu.romdr, fin.romdr);
     for (int i = 0; i < 2; i++) {
         struct PixelCache *a = &pix[i], *b = &fin.pixel[i];
         int same = a->offset == b->offset && a->bitpend == b->bitpend;
@@ -741,7 +735,7 @@ static int hybrid_exec(uint32_t pc, uint32_t prev_end)
     out.colr = gsu.colr; out.por = gsu.por; out.rombr = gsu.rombr; out.rambr = gsu.rambr; out.ramaddr = gsu.ramaddr;
     out.pixel[0] = pix[0]; out.pixel[1] = pix[1];
     out.romcl = rec.romcl;
-    out.romdr = rom_buffer(&st);
+    out.romdr = gsu.romdr;   /* a fill still pending (romcl) refills it from R14 */
     out.sfr = (uint16_t)((out.sfr & ~SFR_R) | (rec.romcl ? SFR_R : 0));
     out.ramcl = rec.ramcl;
     out.ramar = rec.ramar;
