@@ -258,3 +258,142 @@ void abi_FxSumsPushLocal(void)
     g = FxSumsPushLocal(g);
     memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
 }
+
+#define FX_PUSH_FLAGS 0x2480u    /* the pushes' flag bytes so far */
+#define FX_PUSH_AMOUNT 0x2378u   /* the last push's amount, doubled */
+#define FX_PUSH_TURN 0x247Eu     /* the turn applied to pushes: 0-255 */
+#define FX_PUSH_DIR 0x236Cu      /* the last push's direction, turned */
+#define PUSH_SKIP 0x7D00u
+
+/*
+ * @routine 04:944C FxPushApply
+ * WHAT IT DOES: Applies the push whose five words are at R3 (flags, amount,
+ * then a direction x, y, z) and steps R3 past them: a push with no flags,
+ * flags above the low byte, a negative amount or an amount of $7D00 is
+ * skipped (the last two decoded from the ROM bytes and not reached in the
+ * traces so far). Otherwise its flag byte is ORed into $2480, twice the
+ * amount goes to $2378, the direction is turned about the vertical by the
+ * angle at $247E (a quarter, half or three quarters turn by swapping and
+ * negating; any other angle by FxTurn, decoded from the ROM bytes and not
+ * reached in the traces so far) and kept at $236C/$236E/$2370, and twice
+ * the amount times it (FMULT) is added to the world sum (FxSumsPushWorld).
+ * HOW: R0 = 1 for an applied push. The registers the general turn needs
+ * and the return address are kept on the R10 stack.
+ * Entry: R3 = the push; R10 = stack; R11 = return address. Exit: R3 = the
+ * push + 10; R0 = 1 (applied), 8 or 6 (skipped); applied: R4-R6 as
+ * FxSumsPushWorld leaves them, R11 = $955E; S, Z from R10; the last RAM
+ * address R10 (applied) or the push's last word read.
+ */
+FxRegs FxPushApply(FxRegs g)
+{
+    uint16_t *sp = &g.r[10];
+    int i, skip;
+
+    g.r[0] = gsu_ldw(g.r[3]);
+    g.r[3] = gsu_inc(gsu_inc(g.r[3]));
+    gsu_moves(g.r[0]);
+    if (gsu.z) {
+        g.r[0] = 0x0008;
+        g.r[3] = gsu_add(g.r[3], g.r[0], 0);
+        return g;
+    }
+    g.r[7] = gsu_hib(g.r[0]);
+    if (!gsu.z) {
+        g.r[0] = 0x0008;
+        g.r[3] = gsu_add(g.r[3], g.r[0], 0);
+        return g;
+    }
+    gsu_push(sp, g.r[11]);
+    g.r[1] = g.r[0];
+    g.r[0] = gsu_ldw(g.r[3]);
+    g.r[3] = gsu_inc(gsu_inc(g.r[3]));
+    g.r[7] = g.r[0];
+    gsu_moves(g.r[7]);
+    skip = gsu.s;
+    if (!skip) {
+        g.r[0] = PUSH_SKIP;
+        gsu_sub(g.r[0], g.r[7], 0);
+        skip = gsu.z;
+    }
+    if (skip) {
+        g.r[0] = 0x0006;
+        g.r[3] = gsu_add(g.r[3], g.r[0], 0);
+        gsu_pull(sp);
+        return g;
+    }
+    g.r[0] = gsu_or(gsu_ldw(FX_PUSH_FLAGS), g.r[1]);
+    gsu_sbk(g.r[0]);
+    g.r[7] = gsu_add(g.r[7], g.r[7], 0);
+    gsu_stw(FX_PUSH_AMOUNT, g.r[7]);
+    for (i = 4; i <= 6; i++) {
+        g.r[i] = gsu_ldw(g.r[3]);
+        g.r[3] = gsu_inc(gsu_inc(g.r[3]));
+    }
+    g.r[0] = gsu_ldw(FX_PUSH_TURN);
+    gsu_moves(g.r[0]);
+    if (!gsu.z) {
+        g.r[1] = 0x0040;
+        gsu_sub(g.r[0], g.r[1], 0);
+        if (gsu.z) {                                /* a quarter turn */
+            g.r[0] = gsu_inc(gsu_not(g.r[6]));
+            g.r[6] = g.r[4];
+            g.r[4] = g.r[0];
+        } else if (g.r[1] = 0x00C0, gsu_sub(g.r[0], g.r[1], 0), gsu.z) {
+            g.r[0] = gsu_inc(gsu_not(g.r[4]));
+            g.r[4] = g.r[6];
+            g.r[6] = g.r[0];
+        } else if (g.r[1] = 0x0080, gsu_sub(g.r[0], g.r[1], 0), gsu.z) {
+            g.r[4] = gsu_inc(gsu_not(g.r[4]));
+            g.r[6] = gsu_inc(gsu_not(g.r[6]));
+        } else {                                    /* any other angle */
+            static const uint8_t keep[6] = {2, 3, 5, 7, 8, 9};
+
+            for (i = 0; i < 6; i++)
+                gsu_push(sp, g.r[keep[i]]);
+            gsu_push(sp, g.r[11]);
+            g.r[1] = g.r[4];
+            g.r[3] = g.r[6];
+            g.r[2] = g.r[0];
+            g.r[0] = gsu_or(g.r[1], g.r[3]);
+            if (!gsu.z) {
+                g.r[11] = 0x9509;
+                g = FxTurnRegs(g);
+                for (i = 0; i < 2; i++) {
+                    g.r[1] = gsu_add(g.r[1], g.r[1], 0);
+                    g.r[1] = gsu_add(g.r[1], g.r[1], 0);
+                }
+                g.r[3] = gsu_add(g.r[3], g.r[3], 0);
+                g.r[3] = gsu_add(g.r[3], g.r[3], 0);
+            }
+            g.r[11] = gsu_pull(sp);
+            g.r[4] = g.r[3];
+            g.r[6] = g.r[1];
+            for (i = 5; i >= 0; i--)
+                g.r[keep[i]] = gsu_pull(sp);
+        }
+    }
+    for (i = 0; i < 3; i++)
+        gsu_stw((uint16_t)(FX_PUSH_DIR + 2 * i), g.r[4 + i]);
+    g.r[1] = g.r[7];
+    g.r[6] = gsu_ldw(FX_PUSH_DIR);
+    g.r[4] = g.r[0] = gsu_fmult(g.r[1], g.r[6]);
+    g.r[5] = g.r[7];
+    g.r[6] = gsu_ldw(FX_PUSH_DIR + 2);
+    g.r[5] = g.r[0] = gsu_fmult(g.r[5], g.r[6]);
+    g.r[6] = gsu_ldw(FX_PUSH_DIR + 4);
+    g.r[6] = g.r[0] = gsu_fmult(g.r[7], g.r[6]);
+    g.r[11] = 0x955E;
+    g = FxSumsPushWorld(g);
+    g.r[0] = 1;
+    gsu_pull(sp);
+    return g;
+}
+
+void abi_FxPushApply(void)
+{
+    FxRegs g;
+
+    memcpy(g.r, gsu.r, sizeof g.r);
+    g = FxPushApply(g);
+    memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
+}

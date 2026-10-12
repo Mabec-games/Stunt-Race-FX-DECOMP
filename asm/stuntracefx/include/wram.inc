@@ -1211,3 +1211,7 @@ includeonce
 !fx_steer_max = $702666
 !fx_steer_max2 = $702668
 !fx_steer_back = $70266A
+; Push application (object/fx_sums.asm).
+!fx_push_flags = $702480
+!fx_push_amount = $702378
+!fx_push_turn = $70247E
