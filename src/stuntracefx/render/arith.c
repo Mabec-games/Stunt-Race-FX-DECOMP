@@ -344,3 +344,44 @@ void abi_FxSqrt32(void)
     gsu.r[12] = 0;
     gsu.r[13] = 0x80A0;
 }
+
+#define FX_STACK 0x0240u    /* where each program starts the R10 stack */
+#define FX_LENGTH_IN 0x0068u
+#define FX_LENGTH_IN2 0x002Eu
+#define FX_LENGTH_OUT 0x006Au
+
+/*
+ * @routine 01:80BC FxLengthProgram
+ * WHAT IT DOES: A program the S-CPU starts: the length of the vector
+ * ($0068, $002E), stored at $006A.
+ * HOW: Sets the R10 stack to $0240; squares each word with LMULT (signed,
+ * R4 the low word), adds the two 32-bit squares (ADD, ADC) and takes
+ * FxSqrt32 of the sum; SM stores the root. Then STOP.
+ * Entry: started by the S-CPU. Exit (at the STOP): R10 = $0240; R11 =
+ * $80DF; the registers and flags as FxSqrt32 leaves them; the last RAM
+ * address $006A.
+ * Returns the sum of the squares; *root = the length.
+ */
+uint32_t FxLengthProgram(uint16_t *root)
+{
+    int16_t x = (int16_t)gsu_ldw(FX_LENGTH_IN);
+    int16_t z = (int16_t)gsu_ldw(FX_LENGTH_IN2);
+    uint32_t sum = (uint32_t)((int32_t)x * x) + (uint32_t)((int32_t)z * z);
+    uint16_t rem;
+
+    *root = FxSqrt32((uint16_t)(sum >> 16), (uint16_t)sum, &rem);
+    gsu_stw(FX_LENGTH_OUT, *root);
+    return sum;
+}
+
+void abi_FxLengthProgram(void)
+{
+    uint16_t root;
+    uint32_t sum = FxLengthProgram(&root);
+
+    gsu.r[4] = (uint16_t)(sum >> 16);
+    gsu.r[5] = (uint16_t)sum;
+    abi_FxSqrt32();
+    gsu.r[10] = FX_STACK;
+    gsu.r[11] = 0x80DF;
+}

@@ -64,6 +64,38 @@ FxSqrt32:
     jmp r11
     nop
 
+; @routine 01:80BC FxLengthProgram
+; WHAT IT DOES: A program the S-CPU starts: the length of the vector
+; ($0068, $002E), stored at $006A.
+; HOW: Sets the R10 stack to $0240; squares each word with LMULT (signed,
+; R4 the low word), adds the two 32-bit squares (ADD, ADC) and takes
+; FxSqrt32 of the sum; SM stores the root. Then STOP.
+; Entry: started by the S-CPU. Exit (at the STOP): R10 = $0240; R11 =
+; $80DF; the registers and flags as FxSqrt32 leaves them; the last RAM
+; address $006A.
+%at($0180BC)
+FxLengthProgram:
+    iwt r10,#$0240
+    lm r0,(!gsu_in_68)
+    move r6,r0
+    to r8
+    lmult                       ; R8:R4 = x * x
+    move r7,r4
+    lm r0,(!gsu_in_2e)
+    move r6,r0
+    lmult                       ; R0:R4 = z * z
+    with r4
+    add r7
+    adc r8
+    move r5,r4
+    move r4,r0
+    link #4
+    iwt r15,#FxSqrt32
+    nop
+    sm (!gsu_in_6a),r6
+    stop
+    nop
+
 ; @routine 01:8186 FxDivideSigned
 ; WHAT IT DOES: Divides the 32-bit value R5:R4 (R5 the high word) by R6,
 ; signed: R4 = the quotient, R0 = the remainder of the magnitudes, shifted

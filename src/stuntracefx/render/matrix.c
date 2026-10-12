@@ -136,3 +136,57 @@ void abi_FxMatrixApplyVectors(void)
     apply_exit((uint16_t)(out + 12), sum, part, e);
     gsu.r[8] = gsu.r[11];
 }
+
+#define FX_ROTATE_IN_X 0x0068u
+#define FX_ROTATE_IN_Y 0x002Cu
+#define FX_ROTATE_IN_Z 0x002Eu
+#define FX_ROTATE_OUT 0x0026u   /* three words */
+
+/*
+ * @routine 01:82CE FxMatrixRotateProgram
+ * WHAT IT DOES: A program the S-CPU starts: multiplies the current matrix
+ * by the column vector ($0068, $002C, $002E) and stores the result at
+ * $0026, $0028, $002A.
+ * HOW: CACHE; loads the vector into R1, R2, R3 with LMS; for each row, three
+ * FMULTs by the row's elements, each doubled by ROL, summed in R5 then R0
+ * and stored with SMS. Then STOP.
+ * Entry: started by the S-CPU. Exit (at the STOP): R1, R2, R3 = the
+ * vector; R0 = the last result, R5 = its first two terms, R6 = the
+ * matrix's last element; the last RAM address $002A; OV, S, CY, Z from the
+ * last ADD R5.
+ * Returns the last result; *partial and *m22 = R5 and R6 as left.
+ */
+uint16_t FxMatrixRotateProgram(uint16_t v[3], uint16_t *partial, uint16_t *m22)
+{
+    uint16_t sum = 0;
+    int row, col;
+
+    v[0] = gsu_ldw(FX_ROTATE_IN_X);
+    v[1] = gsu_ldw(FX_ROTATE_IN_Y);
+    v[2] = gsu_ldw(FX_ROTATE_IN_Z);
+    for (row = 0; row < 3; row++) {
+        sum = 0;
+        for (col = 0; col < 3; col++) {
+            *m22 = gsu_ldw((uint16_t)(FX_MATRIX + row * 6 + col * 2));
+            if (col == 2)
+                *partial = sum;
+            sum = (uint16_t)(sum + (uint16_t)((int32_t)(int16_t)v[col] * (int16_t)*m22 >> 15));
+        }
+        gsu_stw((uint16_t)(FX_ROTATE_OUT + row * 2), sum);
+    }
+    return sum;
+}
+
+void abi_FxMatrixRotateProgram(void)
+{
+    uint16_t v[3], part, e;
+    uint16_t sum = FxMatrixRotateProgram(v, &part, &e);
+
+    gsu.r[1] = v[0];
+    gsu.r[2] = v[1];
+    gsu.r[3] = v[2];
+    gsu_add((uint16_t)(sum - part), part, 0);
+    gsu.r[0] = sum;
+    gsu.r[5] = part;
+    gsu.r[6] = e;
+}
