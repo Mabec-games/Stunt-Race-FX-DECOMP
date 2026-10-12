@@ -574,3 +574,4 @@ includeonce
 ; position in the spawn list.
 !menu_spawn_record = $1209
 !menu_spawn_pos = $11FD
+!sound_block = $706000

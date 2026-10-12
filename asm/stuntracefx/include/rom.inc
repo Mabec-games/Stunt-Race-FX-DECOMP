@@ -122,3 +122,8 @@ includeonce
 !menu_actor_template = $0BEA0F
 !menu_spawn_lists = $0BE4E7
 !menu_spawn_entries = $0BE547
+
+; Sound blocks in ROM bank $1E (audio/sound_data.asm).
+!sound_block_8000 = $1E8000
+!sound_block_91bc = $1E91BC
+!sound_block_afc6 = $1EAFC6
