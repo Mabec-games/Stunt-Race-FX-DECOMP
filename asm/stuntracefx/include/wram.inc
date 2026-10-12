@@ -853,3 +853,9 @@ includeonce
 ; Three vectors of three words the Super FX multiplies by its matrix
 ; (render/matrix.asm), as its own short RAM address.
 !fx_vectors = $0116
+
+; The Super FX's point records (render/points.asm), as its own short RAM
+; addresses: the pair list's address (plus 4), and the vector added to
+; each point.
+!fx_pairs = $005A
+!fx_offset = $0026
