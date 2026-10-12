@@ -1526,3 +1526,51 @@ GsuPiecesStep10CB:
     rep.b #$20
     rep.b #$10
     rts
+
+; @routine 03:C998 ObjectGsu80BCThen81E3
+; WHAT IT DOES: For object X, runs program $01:80BC (ObjectGsu80BC) and
+; keeps its result in direct page $08, puts $000A (data bank) - the
+; object's +$0E in $02, then runs Gsu81E3Long.
+; HOW: 16-bit subtract; X and Y are saved and restored.
+; Entry: X 16-bit, D = $0000; X = object. Exit: A as Gsu81E3Long leaves it;
+; X, Y unchanged; M 16-bit; N, Z from X.
+%at($03C998)
+ObjectGsu80BCThen81E3:
+    phx
+    phy
+    rep.b #$20
+    jsl.l ObjectGsu80BC
+    sta.b !dp_08
+    lda.w !wram_000A
+    sec
+    sbc.w !obj_pos_y,x
+    sta.b !dp_02
+    jsl.l Gsu81E3Long
+    rep.b #$20
+    ply
+    plx
+    rtl
+
+; @routine 03:C9B4 ObjectGsu81E3
+; WHAT IT DOES: For object X, puts direct page $04 - its +$0C in $02 and
+; $05F2 - its +$10 in $08, then runs Gsu81E3Long.
+; HOW: 16-bit subtracts through the data bank; X and Y saved and restored.
+; Entry: X 16-bit, D = $0000; X = object. Exit: as ObjectGsu80BCThen81E3.
+%at($03C9B4)
+ObjectGsu81E3:
+    phx
+    phy
+    rep.b #$20
+    lda.b !dp_04
+    sec
+    sbc.w !obj_pos_x,x
+    sta.b !dp_02
+    lda.w !rot_z
+    sec
+    sbc.w !obj_pos_z,x
+    sta.b !dp_08
+    jsl.l Gsu81E3Long
+    rep.b #$20
+    ply
+    plx
+    rtl

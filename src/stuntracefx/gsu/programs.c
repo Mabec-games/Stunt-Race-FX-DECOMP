@@ -1014,3 +1014,77 @@ void abi_GsuPiecesStep10CB(void)
     cpu.a = (uint16_t)(0x8C00 | mode);
     cpu.p = nz8(p, cpu.db);
 }
+
+void abi_Gsu81E3Long(void);
+void abi_ObjectGsu80BC(void);
+
+/* A - B as SEC / SBC does it, leaving C and V in cpu.p. */
+static uint16_t sbc16(uint16_t a, uint16_t b)
+{
+    uint16_t r = (uint16_t)(a - b);
+
+    cpu.p = (uint8_t)((cpu.p & ~(P_C | P_V)) | (a >= b ? P_C : 0) | (((a ^ b) & (a ^ r) & 0x8000) ? P_V : 0));
+    return r;
+}
+
+/* The exit of the two routines below: X, Y restored (N, Z from X), M
+   16-bit. */
+static void restore_xy(uint16_t x, uint16_t y)
+{
+    cpu.y = y;
+    cpu.x = x;
+    cpu.p = (uint8_t)(nz16(cpu.p & ~P_M, x));
+}
+
+/*
+ * @routine 03:C998 ObjectGsu80BCThen81E3
+ * WHAT IT DOES: For object X, runs program $01:80BC (ObjectGsu80BC) and
+ * keeps its result in direct page $08, puts $000A (data bank) - the
+ * object's +$0E in $02, then runs Gsu81E3Long.
+ * HOW: 16-bit subtract; X and Y are saved and restored.
+ * Entry: X 16-bit, D = $0000; X = object. Exit: A as Gsu81E3Long leaves it;
+ * X, Y unchanged; M 16-bit; N, Z from X.
+ */
+void ObjectGsu80BCThen81E3(void)
+{
+    uint16_t x = cpu.x, y = cpu.y;
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    cpu.p &= (uint8_t)~P_M;
+    abi_ObjectGsu80BC();
+    wr16(0x000008, cpu.a);
+    cpu.a = sbc16(rd16(b | 0x000A), rd16(b | (uint16_t)(0x200E + x)));
+    wr16(0x000002, cpu.a);
+    abi_Gsu81E3Long();
+    restore_xy(x, y);
+}
+
+void abi_ObjectGsu80BCThen81E3(void)
+{
+    ObjectGsu80BCThen81E3();
+}
+
+/*
+ * @routine 03:C9B4 ObjectGsu81E3
+ * WHAT IT DOES: For object X, puts direct page $04 - its +$0C in $02 and
+ * $05F2 - its +$10 in $08, then runs Gsu81E3Long.
+ * HOW: 16-bit subtracts through the data bank; X and Y saved and restored.
+ * Entry: X 16-bit, D = $0000; X = object. Exit: as ObjectGsu80BCThen81E3.
+ */
+void ObjectGsu81E3(void)
+{
+    uint16_t x = cpu.x, y = cpu.y;
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    cpu.p &= (uint8_t)~P_M;
+    wr16(0x000002, sbc16(rd16(0x000004), rd16(b | (uint16_t)(0x200C + x))));
+    cpu.a = sbc16(rd16(b | 0x05F2), rd16(b | (uint16_t)(0x2010 + x)));
+    wr16(0x000008, cpu.a);
+    abi_Gsu81E3Long();
+    restore_xy(x, y);
+}
+
+void abi_ObjectGsu81E3(void)
+{
+    ObjectGsu81E3();
+}

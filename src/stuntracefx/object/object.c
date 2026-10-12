@@ -1515,3 +1515,31 @@ void abi_ObjectRunHandlerB(void)
     cpu.x = x;
     cpu.p = p;
 }
+
+void abi_ObjectRelease(void);
+
+/*
+ * @routine 03:CCB0 ObjectReleaseY
+ * WHAT IT DOES: ObjectRelease for the object in Y, called from other banks.
+ * HOW: Swaps X and Y around a long call to ObjectRelease (through the
+ * stack), so its exit X and Y come back swapped too.
+ * Entry: X 16-bit; Y = object. Exit: X = ObjectRelease's exit Y, Y = its
+ * exit X; A as it leaves it; N, Z from Y.
+ */
+void ObjectReleaseY(void)
+{
+    uint16_t t = cpu.x;
+
+    cpu.x = cpu.y;
+    cpu.y = t;
+    abi_ObjectRelease();
+    t = cpu.x;
+    cpu.x = cpu.y;
+    cpu.y = t;
+}
+
+void abi_ObjectReleaseY(void)
+{
+    ObjectReleaseY();
+    cpu.p = (cpu.p & P_X) ? nz8(cpu.p, (uint8_t)cpu.y) : nz16(cpu.p, cpu.y);
+}

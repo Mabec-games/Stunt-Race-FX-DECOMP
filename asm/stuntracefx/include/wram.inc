@@ -836,3 +836,4 @@ includeonce
 
 ; Tested with the held buttons by MenuHeldRestart (menu/frame.asm).
 !wram_18FB = $18FB
+!wram_000A = $000A
