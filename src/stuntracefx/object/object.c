@@ -1231,3 +1231,104 @@ void abi_BucketTriggersFixedArea(void)
 {
     abi_triggers_from(0x1EFB, (rd8(0x7E0D62) || (rd8(0x7E1AEC) & 0x80)) ? 0xC661 : 0xC696, cpu.x);
 }
+
+#define OBJ_USED_HEAD 0x7E0329u
+#define OBJ_USED_LAST 0x7E032Bu
+#define OBJ_FREE_HEAD 0x7E032Du
+
+/*
+ * @routine 03:CB5C ObjectAlloc
+ * WHAT IT DOES: Takes an object record from the free list ($032D) and links
+ * it into the used list (next at +$00, previous at +$02) after the last one
+ * taken ($032B), or at the head ($0329) when there is none; it becomes the
+ * last one taken. Carry set when it got one, clear when the free list was
+ * empty.
+ * HOW: Data bank $7E inside, 16-bit; P saved and restored, then the carry
+ * set or cleared. With an empty free list it ends at $03:CBAA. The empty
+ * case and a following record (a non-zero next) are not reached by a
+ * script.
+ * Entry: any widths. Exit: P as on entry but C; got one: X = the record,
+ * Y = its next, A = the previous last (or the old head when there was none,
+ * or X when there is a next); none: X = Y = the last taken, A's low byte
+ * = $7E.
+ */
+int ObjectAlloc(uint16_t *a, uint16_t *x, uint16_t *y)
+{
+    uint16_t last = rd16(OBJ_USED_LAST), rec = rd16(OBJ_FREE_HEAD), next;
+
+    if (!rec) {
+        *x = *y = last;
+        *a = (uint16_t)((*a & 0xFF00) | 0x7E);
+        return 0;
+    }
+    wr16(OBJ_FREE_HEAD, rd16(0x7E2000 + rec));
+    if (!last) {
+        *a = rd16(OBJ_USED_HEAD);
+        wr16(0x7E2000 + rec, *a);
+        wr16(0x7E2002 + rec, 0x0000);
+        wr16(OBJ_USED_HEAD, rec);
+    } else {
+        wr16(0x7E2000 + rec, rd16(0x7E2000 + last));
+        wr16(0x7E2000 + last, rec);
+        wr16(0x7E2002 + rec, last);
+        *a = last;
+    }
+    wr16(OBJ_USED_LAST, rec);
+    next = rd16(0x7E2000 + rec);
+    if (next) {
+        *a = rec;
+        wr16(0x7E2002 + next, rec);
+    }
+    *x = rec;
+    *y = next;
+    return 1;
+}
+
+void abi_ObjectAlloc(void)
+{
+    int got = ObjectAlloc(&cpu.a, &cpu.x, &cpu.y);
+
+    cpu.p = (uint8_t)((cpu.p & ~P_C) | (got ? P_C : 0));
+}
+
+/*
+ * @routine 03:CCBB ObjectSpawn
+ * WHAT IT DOES: Unless the count at $0CEE has reached $2E, takes a new
+ * object (ObjectAlloc), clears it (ObjectInit), and sets its +$36 to 3 and
+ * its +$04 to $1F2B. Carry set and Y = the object when it got one; carry
+ * clear and Y = 0 otherwise.
+ * HOW: X is kept in direct page $3E across the calls; the limit is a signed
+ * 8-bit compare (BPL).
+ * Entry: M 8-bit, X 16-bit, D = $0000. Exit: X unchanged; M 8-bit; got one:
+ * A = $1F2B, N, Z from it; none: Y = 0, N, Z from X.
+ */
+int ObjectSpawn(uint8_t bank, uint16_t *a, uint16_t x, uint16_t *y)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t n = rd8(b | 0x0CEE);
+    uint16_t ax, rx = 0, ry = 0;
+
+    wr16(0x00003E, x);
+    *a = (uint16_t)((*a & 0xFF00) | n);
+    ax = *a;
+    if (((uint8_t)(n - 0x2E) & 0x80) && ObjectAlloc(&ax, &rx, &ry)) {
+        *y = rx;
+        ObjectInit(rx);
+        wr8(b | (uint16_t)(0x2036 + rx), 0x03);
+        *a = rd16(b | 0x1F2B);
+        wr16(b | (uint16_t)(0x2004 + rx), *a);
+        return 1;
+    }
+    if (((uint8_t)(n - 0x2E) & 0x80))
+        *a = ax;
+    *y = 0;
+    return 0;
+}
+
+void abi_ObjectSpawn(void)
+{
+    if (ObjectSpawn(cpu.db, &cpu.a, cpu.x, &cpu.y))
+        cpu.p = (uint8_t)(nz16(cpu.p, cpu.a) | P_C | P_M);
+    else
+        cpu.p = (uint8_t)((nz16(cpu.p, cpu.x) & ~P_C) | P_M);
+}

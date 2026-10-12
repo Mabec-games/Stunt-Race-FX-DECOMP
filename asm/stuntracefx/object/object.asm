@@ -1246,3 +1246,104 @@ BucketTriggersFixedArea:
     sep.b #$20
     plb
     rts
+
+; @routine 03:CB5C ObjectAlloc
+; WHAT IT DOES: Takes an object record from the free list ($032D) and links
+; it into the used list (next at +$00, previous at +$02) after the last one
+; taken ($032B), or at the head ($0329) when there is none; it becomes the
+; last one taken. Carry set when it got one, clear when the free list was
+; empty.
+; HOW: Data bank $7E inside, 16-bit; P saved and restored, then the carry
+; set or cleared. With an empty free list it ends at $03:CBAA. The empty
+; case and a following record (a non-zero next) are not reached by a
+; script.
+; Entry: any widths. Exit: P as on entry but C; got one: X = the record,
+; Y = its next, A = the previous last (or the old head when there was none,
+; or X when there is a next); none: X = Y = the last taken, A's low byte
+; = $7E.
+%at($03CB5C)
+ObjectAlloc:
+    php
+    sep.b #$20
+    phb
+    lda.b #$7E
+    pha
+    plb
+    rep.b #$30
+    ldx.w !wram_032B
+    txy
+    ldx.w !wram_032D
+    bne .lCB73
+    tyx
+    jmp.w ObjectAlloc_none
+.lCB73:
+    lda.w !obj_base,x
+    sta.w !wram_032D
+    tya
+    bne .lCB8A
+    lda.w !wram_0329
+    sta.w !obj_base,x
+    stz.w !obj_02,x
+    stx.w !wram_0329
+    bra .lCB98
+.lCB8A:
+    lda.w !obj_base,y
+    sta.w !obj_base,x
+    txa
+    sta.w !obj_base,y
+    tya
+    sta.w !obj_02,x
+.lCB98:
+    stx.w !wram_032B
+    ldy.w !obj_base,x
+    beq .lCBA4
+    txa
+    sta.w !obj_02,y
+.lCBA4:
+    sep.b #$20
+    plb
+    plp
+    sec
+    rtl
+ObjectAlloc_none:                   ; the free list was empty
+    sep.b #$20
+    plb
+    plp
+    clc
+    rtl
+
+; @routine 03:CCBB ObjectSpawn
+; WHAT IT DOES: Unless the count at $0CEE has reached $2E, takes a new
+; object (ObjectAlloc), clears it (ObjectInit), and sets its +$36 to 3 and
+; its +$04 to $1F2B. Carry set and Y = the object when it got one; carry
+; clear and Y = 0 otherwise.
+; HOW: X is kept in direct page $3E across the calls; the limit is a signed
+; 8-bit compare (BPL).
+; Entry: M 8-bit, X 16-bit, D = $0000. Exit: X unchanged; M 8-bit; got one:
+; A = $1F2B, N, Z from it; none: Y = 0, N, Z from X.
+%at($03CCBB)
+ObjectSpawn:
+    stx.b !dp_3e
+    lda.w !object_count
+    cmp.b #$2E
+    bpl .lCCCA
+    jsl.l ObjectAlloc
+    bcs .lCCD1
+.lCCCA:
+    ldy.w #$0000
+    ldx.b !dp_3e
+    clc
+    rtl
+.lCCD1:
+    txy
+    ldx.b !dp_3e
+    sep.b #$20
+    jsl.l ObjectInit
+    lda.b #$03
+    sta.w !obj_36,y
+    rep.b #$20
+    lda.w !wram_1F2B
+    sta.w !obj_04,y
+    sep.b #$20
+    sec
+    rtl

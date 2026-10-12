@@ -783,3 +783,8 @@ includeonce
 !backdrop_rows_left = $F1
 !dp_0a = $0A
 !dp_0b = $0B
+; Objects (object/object.asm): the record's previous link, how many are in
+; use, and a direct page scratch word.
+!obj_02 = $2002
+!object_count = $0CEE
+!dp_3e = $3E
