@@ -20,7 +20,7 @@ arch superfx
 %at($01AEB9)
 FxScreenClear:
     sub r0
-    lm r1,(!gsu_screen_start&$FFFF)
+    lm r1,(!gsu_screen_start)
     iwt r12,#$3400
     cache
     move r13,r15

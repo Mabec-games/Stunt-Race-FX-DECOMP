@@ -33,7 +33,7 @@ FxSqrt32:
     ibt r6,#$00
     ibt r8,#$00
     ibt r12,#$10
-    iwt r13,#.pass&$FFFF
+    iwt r13,#.pass
     with r5
 .pass:
     add r5                      ; R5 <<= 1 (a WITH R5 is pending here)

@@ -845,3 +845,7 @@ includeonce
 !save_block_groups = $70FFD0
 !save_bad_flag = $001FFE
 !save_block_groups_w = $FFD0
+
+; The Super FX's current 3x3 matrix ($70:00E4, render/matrix.asm) as its
+; own short RAM address, for LMS and SMS.
+!fx_matrix = $00E4
