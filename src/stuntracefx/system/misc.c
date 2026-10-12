@@ -163,3 +163,42 @@ void abi_Set7EFFA6Sequence(void)
     Set7EFFA6Sequence();
     cpu.a = 0x0004;
 }
+
+/*
+ * @routine 02:D53D WordCopyStep
+ * WHAT IT DOES: While the count at $0CF6 is non-zero, copies one word from
+ * $02:D65A + $0CF2 to $07A2 + $0CF6 and steps both offsets down by 2. No
+ * script has reached the copy yet: $0CF6 has always been 0.
+ * HOW: 16-bit offsets and stores through the data bank; the source is a
+ * long read, and each offset is stepped with two DECs.
+ * Entry: any widths. Exit: when $0CF6 is 0, Y = 0 and A unchanged; else A
+ * = the word copied, X and Y the offsets before the step; M 16-bit, X
+ * 16-bit; N, Z from the last step (Z set when there was nothing to copy).
+ */
+uint16_t WordCopyStep(uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y, uint8_t *p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t n;
+
+    *y = rd16(b | 0x0CF6);
+    if (!*y) {
+        *p = nz16(*p, 0);
+        return a;
+    }
+    *x = rd16(b | 0x0CF2);
+    a = rd16(0x02D65A + *x);
+    wr16(b | (uint16_t)(0x07A2 + *y), a);
+    wr16(b | 0x0CF2, (uint16_t)(*x - 2));
+    n = (uint16_t)(*y - 2);
+    wr16(b | 0x0CF6, n);
+    *p = nz16(*p, n);
+    return a;
+}
+
+void abi_WordCopyStep(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = WordCopyStep(cpu.db, cpu.a, &cpu.x, &cpu.y, &p);
+    cpu.p = (uint8_t)(p & ~(P_M | P_X));
+}

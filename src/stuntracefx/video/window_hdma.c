@@ -427,3 +427,54 @@ void abi_WindowEdgesFromList(void)
     cpu.y = 0;
     cpu.p = (uint8_t)(p & ~(P_M | P_X));
 }
+
+/*
+ * @routine 7E:DB47 WindowHdmaLayout
+ * WHAT IT DOES: Writes the window HDMA table's line counts and data for
+ * layout $19B6: one screen (two entries) when $0D2E is clear; the split
+ * screen (three entries) when it is set, which no script has reached yet.
+ * HOW: Long stores into the table at $7F:F85B. One screen: entry 0 lines
+ * from $7E:E0C2 + X, entry 1 lines from $7E:E0C3 + X, data pointers $F857
+ * and the word at $7E:E0D2 + X, then $10 lines and the end. Split: entries
+ * 0 and 1 lines from $7E:E0CA + X, entry 2 from $7E:E0CB + X, pointers
+ * $F857, $F857, the word at $7E:E0E0 + X, $F857, then $10 lines and the
+ * end.
+ * Entry: any widths. Exit: A low byte 0, high byte from the layout's data
+ * word; X = $19B6; M 8-bit, X 16-bit; N clear, Z set.
+ */
+uint16_t WindowHdmaLayout(uint8_t bank, uint16_t *x)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t w;
+
+    if (!rd8(0x000D2E)) {
+        *x = rd16(b | 0x19B6);
+        wr16(0x7FF85C, 0xF857);
+        wr16(0x7FF862, 0xF857);
+        w = rd16(0x7EE0D2 + *x);
+        wr16(0x7FF85F, w);
+        wr8(0x7FF85B, rd8(0x7EE0C2 + *x));
+        wr8(0x7FF85E, rd8(0x7EE0C3 + *x));
+        wr8(0x7FF861, 0x10);
+        wr8(0x7FF864, 0x00);
+    } else {
+        *x = rd16(b | 0x19B6);
+        wr16(0x7FF85C, 0xF857);
+        wr16(0x7FF85F, 0xF857);
+        wr16(0x7FF865, 0xF857);
+        w = rd16(0x7EE0E0 + *x);
+        wr16(0x7FF862, w);
+        wr8(0x7FF85B, rd8(0x7EE0CA + *x));
+        wr8(0x7FF85E, rd8(0x7EE0CA + *x));
+        wr8(0x7FF861, rd8(0x7EE0CB + *x));
+        wr8(0x7FF864, 0x10);
+        wr8(0x7FF867, 0x00);
+    }
+    return (uint16_t)(w & 0xFF00);
+}
+
+void abi_WindowHdmaLayout(void)
+{
+    cpu.a = WindowHdmaLayout(cpu.db, &cpu.x);
+    cpu.p = (uint8_t)(((cpu.p & ~(P_N | P_X)) | P_Z | P_M));
+}

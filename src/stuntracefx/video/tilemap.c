@@ -546,3 +546,37 @@ void abi_TilemapLevelColumns(void)
     if (cpu.p & P_X)
         cpu.x &= 0x00FF;
 }
+
+/*
+ * @routine 7E:E8F4 TilemapRowToE3D7
+ * WHAT IT DOES: Copies 32 tilemap entries from $93D7 + X to $E3D7 + Y, or
+ * from the alternate buffer at $BBD7 + X when bit 14 of $0DA4 is set (no
+ * script has reached that case yet).
+ * HOW: A word loop counted down in direct page $F3; buffers through the
+ * data bank, $0DA4 with a long load.
+ * Entry: M 16-bit, X 16-bit, D = $0000; X = source offset, Y = destination
+ * offset. Exit: A = the last word copied; X, Y + $40; N clear, Z set; C, V
+ * unchanged.
+ */
+uint16_t TilemapRowToE3D7(uint8_t bank, uint16_t *x, uint16_t *y)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t src = (rd16(0x000DA4) & 0x4000) ? 0xBBD7 : 0x93D7, v = 0, n;
+
+    wr16(0x0000F3, 0x0020);
+    do {
+        v = rd16(b | (uint16_t)(src + *x));
+        wr16(b | (uint16_t)(0xE3D7 + *y), v);
+        *x = (uint16_t)(*x + 2);
+        *y = (uint16_t)(*y + 2);
+        n = (uint16_t)(rd16(0x0000F3) - 1);
+        wr16(0x0000F3, n);
+    } while (n);
+    return v;
+}
+
+void abi_TilemapRowToE3D7(void)
+{
+    cpu.a = TilemapRowToE3D7(cpu.db, &cpu.x, &cpu.y);
+    cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
+}

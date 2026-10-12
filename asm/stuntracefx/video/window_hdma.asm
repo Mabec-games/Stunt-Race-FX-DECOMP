@@ -412,3 +412,58 @@ WindowEdgesFromList:
     adc.w #$0002
     sta.w !window_hdma_select
     rts
+
+; @routine 7E:DB47 WindowHdmaLayout
+; WHAT IT DOES: Writes the window HDMA table's line counts and data for
+; layout $19B6: one screen (two entries) when $0D2E is clear; the split
+; screen (three entries) when it is set, which no script has reached yet.
+; HOW: Long stores into the table at $7F:F85B. One screen: entry 0 lines
+; from $7E:E0C2 + X, entry 1 lines from $7E:E0C3 + X, data pointers $F857
+; and the word at $7E:E0D2 + X, then $10 lines and the end. Split: entries
+; 0 and 1 lines from $7E:E0CA + X, entry 2 from $7E:E0CB + X, pointers
+; $F857, $F857, the word at $7E:E0E0 + X, $F857, then $10 lines and the
+; end.
+; Entry: any widths. Exit: A low byte 0, high byte from the layout's data
+; word; X = $19B6; M 8-bit, X 16-bit; N clear, Z set.
+%ramcode($7EDB47, $01386E)
+WindowHdmaLayout:
+    sep.b #$20
+    lda.l !wram_0D2E
+    bne .split
+    rep.b #$30
+    ldx.w !window_hdma_select
+    lda.w #$F857
+    sta.l !window_hdma+1
+    sta.l !window_hdma+7
+    lda.l !window_hdma_addrs,x
+    sta.l !window_hdma+4
+    sep.b #$20
+    lda.l !window_hdma_counts+14,x
+    sta.l !window_hdma
+    lda.l !window_hdma_counts+15,x
+    sta.l !window_hdma+3
+    lda.b #$10
+    sta.l !window_hdma+6
+    lda.b #$00
+    sta.l !window_hdma+9
+    rts
+.split:                             ; not reached in the traces so far
+    rep.b #$30
+    ldx.w !window_hdma_select
+    lda.w #$F857
+    sta.l !window_hdma+1
+    sta.l !window_hdma+4
+    sta.l !window_hdma+10
+    lda.l !window_hdma_addrs+14,x
+    sta.l !window_hdma+7
+    sep.b #$20
+    lda.l !window_hdma_counts+22,x
+    sta.l !window_hdma
+    sta.l !window_hdma+3
+    lda.l !window_hdma_counts+23,x
+    sta.l !window_hdma+6
+    lda.b #$10
+    sta.l !window_hdma+9
+    lda.b #$00
+    sta.l !window_hdma+12
+    rts

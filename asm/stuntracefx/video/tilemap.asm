@@ -484,3 +484,40 @@ TilemapLevelColumns:
     plb
     plp
     rts
+
+; @routine 7E:E8F4 TilemapRowToE3D7
+; WHAT IT DOES: Copies 32 tilemap entries from $93D7 + X to $E3D7 + Y, or
+; from the alternate buffer at $BBD7 + X when bit 14 of $0DA4 is set (no
+; script has reached that case yet).
+; HOW: A word loop counted down in direct page $F3; buffers through the
+; data bank, $0DA4 with a long load.
+; Entry: M 16-bit, X 16-bit, D = $0000; X = source offset, Y = destination
+; offset. Exit: A = the last word copied; X, Y + $40; N clear, Z set; C, V
+; unchanged.
+%ramcode($7EE8F4, $01461B)
+TilemapRowToE3D7:
+    lda.w #$0020
+    sta.b !row_count
+    lda.l !wram_0DA4
+    bit.w #$4000
+    bne .alt
+.lE902:
+    lda.w !tilemap_buffer_93d7,x
+    sta.w !tilemap_row_e3d7,y
+    inx
+    inx
+    iny
+    iny
+    dec.b !row_count
+    bne .lE902
+    rts
+.alt:                               ; not reached in the traces so far
+    lda.w !tilemap_alt_bbd7,x
+    sta.w !tilemap_row_e3d7,y
+    inx
+    inx
+    iny
+    iny
+    dec.b !row_count
+    bne .alt
+    rts

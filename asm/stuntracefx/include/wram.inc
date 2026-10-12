@@ -753,3 +753,12 @@ includeonce
 !blend_target = $3470
 !blend_target_amount = $3468
 !blended_colours = $000E21
+!copy_src_pos = $0CF2
+!copy_count = $0CF6
+!copy_dest = $07A2
+!copy_src = $02D65A
+!tilemap_alt_bbd7 = $BBD7
+!tilemap_row_e3d7 = $E3D7
+!tilemap_main_93d7 = $93D7
+!row_count = $F3
+!window_layout = $19B6

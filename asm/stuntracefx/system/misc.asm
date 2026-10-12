@@ -136,3 +136,29 @@ Set7EFFA6Sequence:
     sta.l !wram_7EFFA6+6
     plp
     rtl
+
+; @routine 02:D53D WordCopyStep
+; WHAT IT DOES: While the count at $0CF6 is non-zero, copies one word from
+; $02:D65A + $0CF2 to $07A2 + $0CF6 and steps both offsets down by 2. No
+; script has reached the copy yet: $0CF6 has always been 0.
+; HOW: 16-bit offsets and stores through the data bank; the source is a
+; long read, and each offset is stepped with two DECs.
+; Entry: any widths. Exit: when $0CF6 is 0, Y = 0 and A unchanged; else A
+; = the word copied, X and Y the offsets before the step; M 16-bit, X
+; 16-bit; N, Z from the last step (Z set when there was nothing to copy).
+%at($02D53D)
+WordCopyStep:
+    rep.b #$30
+    ldy.w !copy_count
+    bne .copy
+    rtl
+.copy:                              ; not reached in the traces so far
+    ldx.w !copy_src_pos
+    ldy.w !copy_count
+    lda.l !copy_src,x
+    sta.w !copy_dest,y
+    dec.w !copy_src_pos
+    dec.w !copy_src_pos
+    dec.w !copy_count
+    dec.w !copy_count
+    rtl
