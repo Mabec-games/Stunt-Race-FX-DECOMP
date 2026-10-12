@@ -1424,3 +1424,44 @@ ObjectRelease:
     jsl.l ObjectFreeLong
 .lCCAF:
     rtl
+
+; @routine 08:AB46 ObjectCallHandler
+; WHAT IT DOES: Runs object Y's handler, the routine at bank +$1C, address
+; +$1A, with X = Y = the object, keeping $1F58 and X, Y across it.
+; HOW: Pushes a return address ($08:AB67, so the handler's RTL lands on
+; $08:AB68), then the handler's bank and address - 1, and RTLs into it.
+; Entry: M 8-bit, X 16-bit; Y = object. The handler is entered with A =
+; its address - 1 (N, Z from that), M 8-bit, X = Y = the object, and must
+; return with M 8-bit. Exit: A low byte = $1F58, A high byte as the handler
+; left it; X, Y unchanged; N, Z from X; C, V as the handler left them.
+%at($08AB46)
+ObjectCallHandler:
+    phx
+    phy
+    lda.w !wram_1F58
+    pha
+    tyx
+    phy
+    phx
+    lda.b #ObjectCallHandler_return>>16
+    pha
+    rep.b #$20
+    lda.w #ObjectCallHandler_return-1
+    pha
+    sep.b #$20
+    lda.w !obj_1c,x
+    pha
+    rep.b #$20
+    lda.w !obj_1a_w,x
+    dec a
+    pha
+    sep.b #$20
+    rtl
+ObjectCallHandler_return:           ; the handler's RTL lands here
+    plx
+    ply
+    pla
+    sta.w !wram_1F58
+    ply
+    plx
+    rts

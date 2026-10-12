@@ -1429,3 +1429,38 @@ void abi_ObjectRelease(void)
     cpu.a = ObjectRelease(cpu.db, cpu.x, cpu.a, &p);
     cpu.p = p;
 }
+
+/*
+ * @routine 08:AB46 ObjectCallHandler
+ * WHAT IT DOES: Runs object Y's handler, the routine at bank +$1C, address
+ * +$1A, with X = Y = the object, keeping $1F58 and X, Y across it.
+ * HOW: Pushes a return address ($08:AB67, so the handler's RTL lands on
+ * $08:AB68), then the handler's bank and address - 1, and RTLs into it.
+ * Entry: M 8-bit, X 16-bit; Y = object. The handler is entered with A =
+ * its address - 1 (N, Z from that), M 8-bit, X = Y = the object, and must
+ * return with M 8-bit. Exit: A low byte = $1F58, A high byte as the handler
+ * left it; X, Y unchanged; N, Z from X; C, V as the handler left them.
+ */
+void ObjectCallHandler(uint16_t obj)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t keep = rd8(b | 0x1F58), bank = rd8(b | (uint16_t)(0x201C + obj));
+    uint16_t addr = rd16(b | (uint16_t)(0x201A + obj)), a = (uint16_t)(addr - 1);
+
+    cpu.a = a;
+    cpu.x = cpu.y = obj;
+    cpu.p = (uint8_t)(nz16(cpu.p, a) | P_M);
+    call_routine((uint32_t)bank << 16 | addr, 1);
+    wr8((uint32_t)cpu.db << 16 | 0x1F58, keep);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | keep);
+}
+
+void abi_ObjectCallHandler(void)
+{
+    uint16_t x = cpu.x, y = cpu.y;
+
+    ObjectCallHandler(y);
+    cpu.x = x;
+    cpu.y = y;
+    cpu.p = nz16(cpu.p, x);
+}
