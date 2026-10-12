@@ -51,6 +51,7 @@ static uint8_t catalog_bits[1 << 21];   /* routine entries the catalog knows */
 static int is_catalog_entry(uint32_t pc) { return catalog_bits[pc >> 3] >> (pc & 7) & 1; }
 static int nroutines;
 static uint8_t *watched;  /* 16M-entry bitmap of routine entry points */
+static uint8_t *has_c;    /* the same for every routine with C in the library */
 
 /* Normalised address: region in the top byte, offset below. */
 enum { R_NONE = 0, R_WRAM = 1, R_GSURAM = 2, R_IO = 3, R_ROM = 4 };
@@ -129,6 +130,7 @@ typedef struct {
     struct SfxboxRegs entry;
     Map undo, orig, cw;
     IoLog oread, owrite, cwrite;
+    IoLog oseq, cseq;        /* work RAM accesses in order (SFXBOX_SEQ): addr | 1 << 24 for a write */
     int cread;
     int io_mismatch;
 } Watch;
@@ -155,6 +157,8 @@ static void count_access(void)
 typedef struct { long calls, match, diff, inconclusive, skipped; int shown; } Stat;
 static Stat *stats;
 static FILE *report;
+static int seq_on;           /* SFXBOX_SEQ: compare the order of work RAM accesses */
+static long *seq_bad;        /* calls per routine whose C would be misplaced in lockstep */
 
 /* ---- the C's view: the sandbox during a check, the real bus in lockstep ---- */
 
@@ -175,6 +179,7 @@ uint8_t rd8(uint32_t addr)
         if (c_running) longjmp(abort_c, 1);
         return 0;
     }
+    if (seq_on && n >> 24 == R_WRAM) io_add(&cur->cseq, n & 0xFFFFFF, 0);
     if (map_get(&cur->cw, n, &v)) return v;
     if (map_get(&cur->undo, n, &v)) return v;
     uint8_t *p = phys(n);
@@ -191,6 +196,7 @@ void wr8(uint32_t addr, uint8_t value)
         io_add(&cur->cwrite, addr & 0xFFFF, value);
         return;
     }
+    if (seq_on && n >> 24 == R_WRAM) io_add(&cur->cseq, (n & 0xFFFFFF) | 1u << 24, 0);
     if (n >> 24 == R_WRAM || n >> 24 == R_GSURAM) map_put(&cur->cw, n, value, 0);
     else cur->io_mismatch = 1;
 }
@@ -212,6 +218,72 @@ static int is_scratch(Watch *w, uint32_t n)
     return off <= w->entry.s && off + 0x100 > w->entry.s;
 }
 
+/* SFXBOX_SEQ: place the C's work RAM accesses on the original's as the
+   lockstep run does (each at the next original access of the same kind and
+   address; a high byte written straight after its low byte with the
+   original's write just before). An access placed past an original access
+   to the same address that it left unmatched means the C reads or writes
+   that byte more often, or in another order, than the original: in a
+   lockstep call that spans frames or runs original code, the misplacement
+   moves the rest of the call. */
+static int u32cmp(const void *a, const void *b)
+{
+    uint32_t x = *(const uint32_t *)a, y = *(const uint32_t *)b;
+    return x < y ? -1 : x > y;
+}
+
+static void seq_report(Watch *w, const Routine *r, const char *what, uint32_t c, int k, uint32_t j)
+{
+    if (seq_bad[w->idx]++ < 3)
+        fprintf(report, "SEQ %06X %s call %ld: %s: C access %d (%s %06X)%s; %d C / %d original accesses\n", r->addr, r->name,
+                stats[w->idx].calls, what, k, (c >> 24) ? "wr" : "rd", c & 0xFFFFFF, j ? " placed past an original access it needs later" : "",
+                w->cseq.n, w->oseq.n);
+}
+
+static void seq_compare(Watch *w, const Routine *r)
+{
+    /* More accesses of a kind to an address than the original makes: the
+       extra one matches a later access outside the call. */
+    uint32_t nc = (uint32_t)w->cseq.n, no = (uint32_t)w->oseq.n;
+    uint32_t *cs = malloc((nc + 1) * sizeof *cs), *os = malloc((no + 1) * sizeof *os);
+    for (uint32_t i = 0; i < nc; i++) cs[i] = w->cseq.e[i].addr;
+    for (uint32_t i = 0; i < no; i++) os[i] = w->oseq.e[i].addr;
+    qsort(cs, nc, sizeof *cs, u32cmp); qsort(os, no, sizeof *os, u32cmp);
+    for (uint32_t i = 0, j = 0; i < nc;) {
+        uint32_t v = cs[i], ci = 0, oj = 0;
+        while (i < nc && cs[i] == v) { i++; ci++; }
+        while (j < no && os[j] < v) j++;
+        while (j < no && os[j] == v) { j++; oj++; }
+        if (ci > oj && oj) {
+            int k = 0;
+            while (k < w->cseq.n && w->cseq.e[k].addr != v) k++;
+            seq_report(w, r, "extra", v, k, 0);
+            free(cs); free(os);
+            return;
+        }
+    }
+    free(cs); free(os);
+    /* An original access skipped over that a later C access of the same
+       kind and address would have matched: that one now matches later. */
+    uint32_t i = 0, pj = 0, plo = 0xFFFFFFFF;
+    for (int k = 0; k < w->cseq.n; k++) {
+        uint32_t c = w->cseq.e[k].addr, a = c & 0xFFFFFF;
+        if ((c >> 24) && plo != 0xFFFFFFFF && a == plo + 1 && pj > 0 && w->oseq.e[pj - 1].addr == c) { plo = 0xFFFFFFFF; continue; }
+        plo = 0xFFFFFFFF;
+        uint32_t j = i;
+        while (j < no && w->oseq.e[j].addr != c) j++;
+        if (j == no) continue;
+        for (uint32_t q = i; q < j; q++) {
+            uint32_t o = w->oseq.e[q].addr;
+            if ((o & 0xFFFFFF) != a) continue;
+            for (int k2 = k + 1; k2 < w->cseq.n; k2++)
+                if (w->cseq.e[k2].addr == o) { seq_report(w, r, "stranded", c, k, j); return; }
+        }
+        if (c >> 24) { plo = a; pj = j; }
+        i = j + 1;
+    }
+}
+
 static void finish(Watch *w)
 {
     Stat *st = &stats[w->idx];
@@ -222,12 +294,14 @@ static void finish(Watch *w)
 
     cpu.a = w->entry.a; cpu.x = w->entry.x; cpu.y = w->entry.y; cpu.s = w->entry.s; cpu.d = w->entry.d;
     cpu.db = w->entry.db; cpu.p = w->entry.p; cpu.e = w->entry.e; cpu.pc = w->entry.pc;
-    map_clear(&w->cw); w->cwrite.n = 0; w->cread = 0; w->io_mismatch = 0;
+    map_clear(&w->cw); w->cwrite.n = 0; w->cread = 0; w->io_mismatch = 0; w->cseq.n = 0;
     cur = w;
     c_accesses = 0; c_runaway = 0;
     c_running = 1;
     if (setjmp(abort_c) == 0) r->abi();
     c_running = 0;
+
+    if (seq_on && !c_runaway && !w->needs_asm) seq_compare(w, r);
 
     char why[512] = "";
     int bad = 0;
@@ -311,7 +385,7 @@ static void on_insn(uint32_t pc)
     w->idx = idx; w->entry = r;
     w->in_irq = w->interrupted = w->dma = w->gsu = w->needs_asm = w->overflow = 0;
     map_clear(&w->undo); map_clear(&w->orig);
-    w->oread.n = w->owrite.n = 0;
+    w->oread.n = w->owrite.n = w->oseq.n = 0;
     depth++;
 }
 
@@ -327,6 +401,7 @@ static void on_write(uint32_t addr, uint8_t data, int kind)
         if (kind == 2) { w->dma = 1; continue; }
         if (w->in_irq) continue;
         if (ram) { map_put(&w->orig, n, data, 0); if (w->orig.n >= MAPN / 2) w->overflow = 1; }
+        if (seq_on && n >> 24 == R_WRAM) io_add(&w->oseq, (n & 0xFFFFFF) | 1u << 24, 0);
         else if (n >> 24 == R_IO) {
             io_add(&w->owrite, addr & 0xFFFF, data);
             if ((addr & 0xFFFF) == 0x301F) w->gsu = 1;  /* R15 high byte: the Super FX starts */
@@ -336,7 +411,13 @@ static void on_write(uint32_t addr, uint8_t data, int kind)
 
 static void on_read(uint32_t addr, uint8_t data)
 {
-    if (!depth || norm(addr) >> 24 != R_IO) return;
+    if (!depth) return;
+    if (seq_on && norm(addr) >> 24 == R_WRAM) {
+        uint32_t n = norm(addr) & 0xFFFFFF;
+        for (int i = 0; i < depth; i++) if (!ws[i].in_irq) io_add(&ws[i].oseq, n, 0);
+        return;
+    }
+    if (norm(addr) >> 24 != R_IO) return;
     for (int i = 0; i < depth; i++)
         if (!ws[i].in_irq) io_add(&ws[i].oread, addr & 0xFFFF, data);
 }
@@ -377,6 +458,8 @@ static int load_routines(void *core, const char *lib, const char *only)
     stats = calloc((size_t)(nroutines ? nroutines : 1), sizeof *stats);
     watched = calloc(1 << 21, 1);
     for (int i = 0; i < nroutines; i++) watched[routines[i].addr >> 3] |= (uint8_t)(1 << (routines[i].addr & 7));
+    has_c = calloc(1 << 21, 1);
+    for (int i = 0; i < all_count; i++) has_c[all_routines[i].addr >> 3] |= (uint8_t)(1 << (all_routines[i].addr & 7));
     *(void **)&core_bus_read = dlsym(core, "sfxbox_core_bus_read");
     *(void **)&core_bus_write = dlsym(core, "sfxbox_core_bus_write");
     return core_bus_read && core_bus_write ? 0 : -1;
@@ -391,6 +474,8 @@ int check_begin(void *core, const char *lib, const char *only, const char *repor
     void (*set_cb)(const struct SfxboxCallbacks *) = core_set_callbacks;
     report = fopen(report_path, "w");
     if (!report) return -1;
+    seq_on = getenv("SFXBOX_SEQ") != NULL;
+    seq_bad = calloc((size_t)(nroutines ? nroutines : 1), sizeof *seq_bad);
     static struct SfxboxCallbacks cb = {on_insn, on_write, on_read, on_interrupt};
     set_cb(&cb);
     return 0;
@@ -511,6 +596,7 @@ static struct {
     uint8_t pre_irq_op;      /* the last opcode before an interrupt */
     int irq_resumed;         /* the handler has just returned */
     uint16_t open[64];       /* their stack pointers at entry */
+    uint32_t ret[0x10000];   /* by S at a callee's entry: 1 << 24 | its return address */
 } m;
 
 static int entry(uint32_t pc, struct SfxboxRegs *r, uint32_t *ret, uint16_t *exit_s)
@@ -586,7 +672,25 @@ static void ls_insn(uint32_t pc)
            a jump table), which C reaches with call_routine. */
         uint8_t prev = m.irq_resumed ? m.pre_irq_op : *core_opcode;
         m.irq_resumed = 0;
-        int computed = prev == 0x6B || prev == 0x60 || prev == 0x6C || prev == 0x7C || prev == 0xDC || prev == 0xFC;
+        /* A JSR or JSL has just pushed its return address: remember it by
+           the callee's S, so the RTS or RTL that comes back to it is known
+           as a return. Counted as an entry, every return would open a level
+           at the caller's S that only closes when the caller returns, and a
+           caller making many calls would fill the 64 levels. */
+        if (prev == 0x20 || prev == 0xFC) {
+            uint16_t w = (uint16_t)(wram[(r.s + 1) & 0xFFFF] | wram[(r.s + 2) & 0xFFFF] << 8);
+            m.ret[r.s] = 0x1000000 | (pc & 0xFF0000) | (uint16_t)(w + 1);
+        } else if (prev == 0x22) {
+            uint16_t w = (uint16_t)(wram[(r.s + 1) & 0xFFFF] | wram[(r.s + 2) & 0xFFFF] << 8);
+            m.ret[r.s] = 0x1000000 | (uint32_t)wram[(r.s + 3) & 0xFFFF] << 16 | (uint16_t)(w + 1);
+        }
+        int returned = 0;
+        if (prev == 0x60 || prev == 0x6B) {
+            uint16_t at = (uint16_t)(r.s - (prev == 0x60 ? 2 : 3));
+            returned = m.ret[at] == (pc | 0x1000000);
+            if (returned) m.ret[at] = 0;
+        }
+        int computed = (!returned && (prev == 0x6B || prev == 0x60)) || prev == 0x6C || prev == 0x7C || prev == 0xDC || prev == 0xFC;
         if ((computed || is_catalog_entry(pc)) && m.depth < 64) {
             ls_op(0x90, pc);
             ls_op(0xA0, r.s);
@@ -752,9 +856,47 @@ void call_routine(uint32_t addr, int long_call)
     run_original(addr, long_call);
 }    /* the original's run ended inside this call */
 
+/* SFXBOX_LS_SKIPS=frame: from that frame, report every work RAM access
+   placed past an interrupt, or the entry of a routine with no C, in the
+   original's record:
+   where the C reads or writes a byte more often, or in another order, than
+   the original, that is where the run starts to drift. */
+static long skips_from = -1, skips_shown;
+static uint32_t recent[256];  /* the C's last accesses: addr | 1 << 24 for a write */
+static unsigned recent_n;
+static void log_skip(int write, uint32_t addr, uint32_t j)
+{
+    for (uint32_t q = cur_i; q < j; q++) {
+        uint8_t k = cur_ops[q] >> 4;
+        if ((k == 5 || (k == 9 && !(has_c[cur_addr[q] >> 3] >> (cur_addr[q] & 7) & 1))) && skips_shown++ < 200) {
+            fprintf(lsrep, "SKIP frame %ld in %s: %s %06X placed at %u from %u, past %s %06X at %u\n", cur_frame,
+                    ls_cur_name ? ls_cur_name : "-", write ? "write" : "read", addr, j, cur_i,
+                    k == 5 ? "an interrupt at" : "the entry of", cur_addr[q] & 0xFFFFFF, q);
+            fprintf(lsrep, "  the C's accesses before it:");
+            for (unsigned i = recent_n > 256 ? recent_n - 256 : 0; i < recent_n; i++)
+                fprintf(lsrep, " %s%06X", recent[i % 256] >> 24 ? "w" : "r", recent[i % 256] & 0xFFFFFF);
+            fprintf(lsrep, "\n");
+            return;
+        }
+    }
+}
+
+static long pair_lo = -1;  /* the last work RAM write placed, and where */
+static uint32_t pair_j;
+
 static uint8_t live_access(int write, uint32_t addr, uint8_t value)
 {
     uint8_t want = (uint8_t)(write ? 2 : 1);
+    /* The original side has given up waiting for the hybrid: the C is in a
+       loop that waits for something the record no longer brings (an
+       interrupt), and would spin for ever. */
+    if (LOAD(sh->stuck)) {
+        fprintf(lsrep, "frame %ld: the C of %s is still running, %u of %u recorded cycles used: DIVERGENT\n", cur_frame,
+                ls_cur_name ? ls_cur_name : "-", cur_i, cur_n);
+        fflush(lsrep);
+        _exit(6);
+    }
+    if (skips_from >= 0) recent[recent_n++ % 256] = (addr & 0xFFFFFF) | (uint32_t)write << 24;
     if (!timed(addr)) {
         /* Work RAM (and the Super FX RAM window) is the S-CPU's alone, but an
            interrupt handler or a frame end can see it: the access is placed
@@ -763,15 +905,38 @@ static uint8_t live_access(int write, uint32_t addr, uint8_t value)
            must make first; a RAM access with no counterpart (the original
            kept the value in a register) happens at once. */
         long o = snap_offset(addr);
-        if (o >= 0)
+        /* A 16-bit read-modify-write (INC, ASL, TSB...) writes the high
+           byte first, C's 16-bit write the low byte first: the high byte
+           written straight after the low one is placed with it when the
+           original wrote it just before. Searched forward, it would match a
+           later write of that byte and skip everything in between. */
+        int placed = 0;
+        if (o >= 0 && write && pair_lo >= 0 && o == pair_lo + 1) {
+            uint32_t q = pair_j;
+            while (q > 0 && (cur_ops[q - 1] >> 4 == 0 || cur_ops[q - 1] >> 4 == 3 || cur_ops[q - 1] >> 4 == 4)) q--;
+            placed = q > 0 && cur_ops[q - 1] >> 4 == 2 && snap_offset(cur_addr[q - 1]) == o;
+        }
+        pair_lo = -1;
+        if (o >= 0 && !placed)
             for (uint32_t j = cur_i; j < cur_n; j++) {
                 uint8_t k = cur_ops[j] >> 4;
                 if ((k == 1 || k == 2) && timed(cur_addr[j])) break;
-                if (k == want && snap_offset(cur_addr[j]) == o) { replay_to(j + 1); break; }
+                /* Nor past the original's entry into a routine with no C
+                   here: the C has to reach it first, through call_routine,
+                   which places the call there. Matched beyond it, an extra
+                   or reordered RAM access would leave the call unplaceable. */
+                if (k == 9 && !(has_c[cur_addr[j] >> 3] >> (cur_addr[j] & 7) & 1)) break;
+                if (k == want && snap_offset(cur_addr[j]) == o) {
+                    if (skips_from >= 0 && cur_frame >= skips_from) log_skip(write, addr, j);
+                    replay_to(j + 1);
+                    if (write) { pair_lo = o; pair_j = j; }
+                    break;
+                }
             }
         if (write) { core_bus_write(addr, value); return value; }
         return core_bus_read(addr);
     }
+    pair_lo = -1;
     for (uint32_t j = cur_i; j < cur_n; j++)
         if (cur_ops[j] >> 4 == want && same_place(cur_addr[j]) == same_place(addr)) {
             replay_to(j);
@@ -783,8 +948,8 @@ static uint8_t live_access(int write, uint32_t addr, uint8_t value)
        clock moves and a polling loop in the C can end. */
     if (past_end) return core_access(write, addr, value);
     if (timed_unmatched++ < 5)
-        fprintf(lsrep, "OFF frame %ld: %s %06X with %u of %u recorded cycles used\n", cur_frame, write ? "write" : "read",
-                addr, cur_i, cur_n);
+        fprintf(lsrep, "OFF frame %ld: %s %06X with %u of %u recorded cycles used (in %s)\n", cur_frame, write ? "write" : "read",
+                addr, cur_i, cur_n, ls_cur_name ? ls_cur_name : "-");
     return core_access(write, addr, value);
 }
 
@@ -801,7 +966,7 @@ static int ls_exec(uint32_t pc)
        private copy of its cycles (the ring moves on). */
     uint64_t k = LOAD(sh->h_calls);
     WAIT_UNTIL((k < LOAD(sh->o_calls) && LOAD(sh->calls[k % CALLRING].done)) || LOAD(sh->o_done));
-    cur_n = 0; cur_i = 0;
+    cur_n = 0; cur_i = 0; pair_lo = -1;
     if (k < LOAD(sh->o_calls) && LOAD(sh->calls[k % CALLRING].done)) {
         CallRec *rec = &sh->calls[k % CALLRING];
         if (rec->frame != cur_frame) mismatched_calls++;
@@ -871,6 +1036,7 @@ int lockstep_begin(void *core, const char *lib, const char *only, const char *re
         static struct SfxboxCallbacks cb = {ls_insn, trace_write, trace_read, ls_interrupt, ls_timing};
         set_cb(&cb);
     }
+    if (getenv("SFXBOX_LS_SKIPS")) skips_from = atol(getenv("SFXBOX_LS_SKIPS"));
     if (tr && sscanf(tr, "%ld,%ld", &tr_lo, &tr_hi) == 2) {
         char p[4096]; snprintf(p, sizeof p, "%s.%s", report_path, role == 1 ? "orig" : "hyb");
         trf = fopen(p, "w");
@@ -935,6 +1101,16 @@ static void compare(long f)
             }
         }
         if (count) { bad = 1; snprintf(buf + strlen(buf), sizeof buf - strlen(buf), " (%s: %d bytes)", reg[k].name, count); }
+    }
+    /* SFXBOX_LS_INFLIGHT=frame: from that frame, also list the bytes left
+       out above because the unfinished call writes them. */
+    if (sl->midcall && getenv("SFXBOX_LS_INFLIGHT") && f >= atol(getenv("SFXBOX_LS_INFLIGHT"))) {
+        int n = 0;
+        for (uint32_t o = 0; o < 0x30000; o++)
+            if (inflight[o] && mysnap[o] != sl->snap[o] && !(o > lo && o <= s)) {
+                if (n++ < 24) fprintf(lsrep, "%s %05X=%02X/%02X", n == 1 ? "IN FLIGHT" : "", o, mysnap[o], sl->snap[o]);
+            }
+        if (n) fprintf(lsrep, " (%d bytes) frame %ld\n", n, f);
     }
     if (sl->midcall) memset(inflight, 0, sizeof inflight);
     if (bad && sl->midcall) strncat(buf, " (frame ended inside a call)", sizeof buf - strlen(buf) - 1);

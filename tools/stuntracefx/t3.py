@@ -25,7 +25,7 @@ parallel and merges the results per routine:
 Verdicts are written to config/stuntracefx/t3_live.csv with the date and the
 source revision they were measured on. Only IDENTICAL passes.
 """
-import concurrent.futures, csv, datetime, glob, os, subprocess, sys
+import concurrent.futures, csv, datetime, functools, glob, os, subprocess, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 B = os.path.join(ROOT, 'build', 'stuntracefx')
@@ -197,16 +197,42 @@ def header_of(text, m, asm):
     return '\n'.join(out)
 
 
+def rel(path):
+    return os.path.relpath(os.path.join(ROOT, path), ROOT)
+
+
+@functools.lru_cache(maxsize=None)
+def dirty_paths():
+    """Every path with uncommitted changes, from one git status."""
+    out, paths = iter(git('status', '--porcelain', '-z', '--untracked-files=all').stdout.split('\0')), set()
+    for e in out:
+        if len(e) > 3:
+            paths.add(e[3:])
+            if e[0] in 'RC':  # a rename or copy names its source next
+                paths.add(next(out, ''))
+    return frozenset(paths)
+
+
 def dirty(path):
-    return bool(git('status', '--porcelain', '--', path).stdout.strip())
+    return rel(path) in dirty_paths()
+
+
+@functools.lru_cache(maxsize=None)
+def last_change(path):
+    return git('log', '-1', '--format=%H', '--', path).stdout.strip()
+
+
+@functools.lru_cache(maxsize=None)
+def is_ancestor(a, b):
+    return git('merge-base', '--is-ancestor', a, b).returncode == 0
 
 
 def contains(rev, path):
     """True when committed source `rev` includes the last change to `path`."""
     if not rev or rev.endswith('+dirty'):
         return False
-    last = git('log', '-1', '--format=%H', '--', path).stdout.strip()
-    return bool(last) and git('merge-base', '--is-ancestor', last, rev).returncode == 0
+    last = last_change(rel(path))
+    return bool(last) and is_ancestor(last, rev)
 
 
 def merged_map():
