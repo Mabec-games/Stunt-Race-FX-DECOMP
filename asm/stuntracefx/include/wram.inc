@@ -683,13 +683,10 @@ includeonce
 !view_pos_saved = $065E
 !course_picture_offsets = $7F0B96
 !level_columns = $0F05
-!obj_pos_x_long = $7E200C
-!obj_pos_z_long = $7E2010
 !map_marker_tiles = $7F0B46
 !group_trigger_list = $1AF5
 !group_trigger_pos = $1F2B
 !group_trigger_code = $1F2D
-!obj_24 = $2024
 !metasprite_origin_x = $0D3B
 !metasprite_origin_y = $0D3C
 !metasprite_count = $F1
@@ -780,8 +777,6 @@ includeonce
 !backdrop_half = $000D7F
 !view_angle = $0006CD
 !backdrop_0d96 = $0D96
-!bg2_scroll_y = $0D8E
-!bg2_scroll_x = $0D92
 !backdrop_scroll_base = $7EE811
 !view_06cf = $06CF
 !view_0da2 = $0DA2
