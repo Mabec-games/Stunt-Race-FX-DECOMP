@@ -8,33 +8,6 @@ incsrc "../include/rom.inc"
 
 arch 65816
 
-; @routine 03:ED7F TilemapFill7F3497
-; WHAT IT DOES: Fills Y words of the tilemap buffer at $7F:3497 + X with A.
-; HOW: 16-bit stores, X stepping by 2.
-; Entry: M 16-bit, X 16-bit; Y = count (0 means 65536). Exit: X past the
-; last word; Y = 0; Z set, N clear.
-%at($03ED7F)
-TilemapFill7F3497:
-    sta.l !tilemap_buffer_7f,x
-    inx
-    inx
-    dey
-    bne TilemapFill7F3497
-    rts
-
-; @routine 0B:FB1C TilemapFill7F3497B
-; WHAT IT DOES: The same fill as TilemapFill7F3497, in bank $0B.
-; HOW: As TilemapFill7F3497.
-; Entry, exit: as TilemapFill7F3497.
-%at($0BFB1C)
-TilemapFill7F3497B:
-    sta.l !tilemap_buffer_7f,x
-    inx
-    inx
-    dey
-    bne TilemapFill7F3497B
-    rts
-
 ; @routine 03:EDC6 TilemapCopy16To7F39D7
 ; WHAT IT DOES: Copies 16 words from address A in the data bank to $7F:39D7.
 ; HOW: A word loop counted in direct page $F1.

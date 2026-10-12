@@ -37,10 +37,6 @@ includeonce
 ; copied to bank $7F.
 !bg2_scroll_y = $0D8E
 !bg2_scroll_x = $0D92
-!scroll_pair_a = $0D96
-!scroll_pair_b = $0D98
-!scroll_pair_a_7f = $7F348D
-!scroll_pair_b_7f = $7F3493
 
 ; The sliding HUD panel's offset (hud/slide.asm); $10 is fully shown.
 !hud_slide = $0D57
@@ -214,7 +210,6 @@ includeonce
 !wram_0064 = $64
 
 ; Tilemap buffers (video/tilemap.asm).
-!tilemap_buffer_7f = $7F3497
 !tilemap_buffer_39d7 = $7F39D7
 !tilemap_buffer_93d7 = $93D7
 
@@ -354,3 +349,13 @@ includeonce
 !menu_pos_18bd = $18BD
 !gsu_picture_copy = $703800
 !menu_18b9 = $18B9
+
+; The colour gradient's HDMA tables in bank $7F (video/gradient.asm): CGADD
+; per line, and CGDATA entries of a line count and a colour address; the
+; two scrolling colour addresses and their sources in work RAM.
+!gradient_cgadd = $7F3497
+!gradient_cgdata = $7F3489
+!gradient_ptr_a = $7F348D
+!gradient_ptr_b = $7F3493
+!gradient_src_a = $0D96
+!gradient_src_b = $0D98

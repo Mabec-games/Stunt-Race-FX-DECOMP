@@ -38,30 +38,6 @@ void abi_Bg2ScrollFromTable(void)
 }
 
 /*
- * @routine 7E:B2A5 ScrollCopyToBank7F
- * WHAT IT DOES: Copies two 16-bit scroll values ($0D96, $0D98) to their
- * places in bank $7F ($7F:348D, $7F:3493).
- * HOW: Two 16-bit copies.
- * Entry: any widths, DB a bank where $0D96 is work RAM. Exit: A = the second
- * value; N, Z from it; M 16-bit.
- */
-uint16_t ScrollCopyToBank7F(void)
-{
-    uint16_t v = rd16(0x000D96);
-
-    wr16(0x7F348D, v);
-    v = rd16(0x000D98);
-    wr16(0x7F3493, v);
-    return v;
-}
-
-void abi_ScrollCopyToBank7F(void)
-{
-    cpu.a = ScrollCopyToBank7F();
-    cpu.p = (uint8_t)(nz16(cpu.p, cpu.a) & ~P_M);
-}
-
-/*
  * @routine 03:FED9 ScrollHdmaSet
  * WHAT IT DOES: Fills the scroll HDMA table at $10AA: the scroll value from
  * $0E37 into its first and fourth entries' data and $0130 into the second

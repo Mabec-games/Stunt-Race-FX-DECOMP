@@ -4,53 +4,6 @@
 #include "machine.h"
 #include "hw.h"
 
-/* Store a word count times at bank $7F, $3497 + X, stepping 2. */
-static uint16_t fill_7f3497(uint16_t value, uint16_t x, uint16_t count)
-{
-    do {
-        wr16(0x7F3497 + x, value);
-        x = (uint16_t)(x + 2);
-    } while (--count);
-    return x;
-}
-
-/*
- * @routine 03:ED7F TilemapFill7F3497
- * WHAT IT DOES: Fills Y words of the tilemap buffer at $7F:3497 + X with A.
- * HOW: 16-bit stores, X stepping by 2.
- * Entry: M 16-bit, X 16-bit; Y = count (0 means 65536). Exit: X past the
- * last word; Y = 0; Z set, N clear.
- */
-void TilemapFill7F3497(uint16_t value, uint16_t x, uint16_t count)
-{
-    fill_7f3497(value, x, count);
-}
-
-void abi_TilemapFill7F3497(void)
-{
-    cpu.x = fill_7f3497(cpu.a, cpu.x, cpu.y);
-    cpu.y = 0;
-    cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
-}
-
-/*
- * @routine 0B:FB1C TilemapFill7F3497B
- * WHAT IT DOES: The same fill as TilemapFill7F3497, in bank $0B.
- * HOW: As TilemapFill7F3497.
- * Entry, exit: as TilemapFill7F3497.
- */
-void TilemapFill7F3497B(uint16_t value, uint16_t x, uint16_t count)
-{
-    fill_7f3497(value, x, count);
-}
-
-void abi_TilemapFill7F3497B(void)
-{
-    cpu.x = fill_7f3497(cpu.a, cpu.x, cpu.y);
-    cpu.y = 0;
-    cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
-}
-
 /*
  * @routine 03:EDC6 TilemapCopy16To7F39D7
  * WHAT IT DOES: Copies 16 words from address A in the data bank to $7F:39D7.

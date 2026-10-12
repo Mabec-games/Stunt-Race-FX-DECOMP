@@ -51,3 +51,8 @@ includeonce
 ; and input $6A for program $01:CF42 (menu/screen.asm).
 !course_picture_a = $03F4F9
 !course_picture_b = $03F5A1
+
+; Per-course 32-byte blocks, three-byte pointers (video/gradient.asm), and
+; 32 bytes read after them.
+!course_block_ptrs = $03F6F1
+!rom_1fa800 = $1FA800
