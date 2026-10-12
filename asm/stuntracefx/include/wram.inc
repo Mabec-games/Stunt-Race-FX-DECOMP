@@ -1144,3 +1144,11 @@ includeonce
 ; parts, short addresses (render/fx_points.asm).
 !fx_points_w = $2488
 !fx_variant_w = $0044
+; The traffic test's copies and results (race/fx_traffic.asm).
+!fx_me_x = $7026F6
+!fx_me_z = $7026FA
+!fx_me_vx = $7026FC
+!fx_me_vz = $702700
+!fx_traffic_dist = $70263A
+!fx_traffic_close = $702638
+!fxrec_sides = $42
