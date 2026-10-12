@@ -404,3 +404,48 @@ SoundIfFlag40:
     rep.b #$20
     pla
     rts
+
+; @routine 04:D082 SoundHoldByFlags
+; WHAT IT DOES: Starts or stops a held sound for player Y (0 or 1): when bit
+; 15 or 14 of A is set and the player's byte at $0DD8 + Y is 0, sets it to
+; $FF and queues port 1 command $3A (player 1) or $3C (player 2); when both
+; bits are clear and the byte is set, clears it and queues $3B or $3D.
+; HOW: Immediate BIT tests; SoundPort1QueuePush.
+; Entry: M 16-bit, X 8-bit; A = flags, Y = player. Exit: M 8-bit. Nothing
+; to do: A low byte = the byte; N, Z from it. Queued: A low byte = the
+; command; C set; N, Z from the data bank.
+%at($04D082)
+SoundHoldByFlags:
+    bit.w #$8000
+    bne .lD08C
+    bit.w #$4000
+    beq .lD0A3
+.lD08C:
+    sep.b #$20
+    lda.w !sound_hold,y
+    bne .lD0BD
+    dec a
+    sta.w !sound_hold,y
+    cpy.b #$00
+    bne .lD09F
+    lda.b #$3A
+    bra .lD0B9
+.lD09F:
+    lda.b #$3C
+    bra .lD0B9
+.lD0A3:
+    sep.b #$20
+    lda.w !sound_hold,y
+    beq .lD0BD
+    lda.b #$00
+    sta.w !sound_hold,y
+    cpy.b #$00
+    bne .lD0B7
+    lda.b #$3B
+    bra .lD0B9
+.lD0B7:
+    lda.b #$3D
+.lD0B9:
+    jsl.l SoundPort1QueuePush
+.lD0BD:
+    rts

@@ -628,3 +628,31 @@ void abi_OamPaletteFromTableE26A(void)
     cpu.a = OamPaletteFromTableE26A(cpu.db, &cpu.y);
     cpu.x = 0;
 }
+
+/*
+ * @routine 04:E28D OamPalettesE28D
+ * WHAT IT DOES: Sets sprite palette bits in three runs from entry $0D75: 18
+ * sprites from the table at $04:E30B for $0D48's low byte, then 6 sprites
+ * from entry + $16 and 6 from entry + $1C from the table at $04:E313 for
+ * the bytes at $0D89 and $0D8A.
+ * HOW: OamSetPalette three times.
+ * Entry: any widths, D = $0000. Exit: A = the last attribute byte (high
+ * byte clear); X = 0; Y past the last sprite; P unchanged.
+ */
+uint8_t OamPalettesE28D(uint8_t bank, uint16_t *y)
+{
+    uint32_t b = (uint32_t)bank << 16;
+
+    *y = (uint16_t)(rd16(b | 0x0D75) << 2);
+    OamSetPalette(bank, rd8(0x04E30B + (rd16(b | 0x0D48) & 0x00FF)), 0x0012, y);
+    *y = (uint16_t)((uint16_t)(rd16(b | 0x0D75) + 0x16) << 2);
+    OamSetPalette(bank, rd8(0x04E313 + (rd16(b | 0x0D89) & 0x00FF)), 0x0006, y);
+    *y = (uint16_t)((uint16_t)(rd16(b | 0x0D75) + 0x1C) << 2);
+    return OamSetPalette(bank, rd8(0x04E313 + (rd16(b | 0x0D8A) & 0x00FF)), 0x0006, y);
+}
+
+void abi_OamPalettesE28D(void)
+{
+    cpu.a = OamPalettesE28D(cpu.db, &cpu.y);
+    cpu.x = 0;
+}

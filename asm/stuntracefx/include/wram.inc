@@ -526,3 +526,5 @@ includeonce
 !records_7f_4bb7 = $7F4BB7
 !wram_19B4 = $19B4
 !window_edges = $7FF883
+!wram_0D75 = $0D75
+!sound_hold = $0DD8

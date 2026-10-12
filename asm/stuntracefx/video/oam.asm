@@ -525,3 +525,57 @@ OamPaletteFromTableE26A:
     jsr.w OamSetPalette
     plp
     rtl
+
+; @routine 04:E28D OamPalettesE28D
+; WHAT IT DOES: Sets sprite palette bits in three runs from entry $0D75: 18
+; sprites from the table at $04:E30B for $0D48's low byte, then 6 sprites
+; from entry + $16 and 6 from entry + $1C from the table at $04:E313 for
+; the bytes at $0D89 and $0D8A.
+; HOW: OamSetPalette three times.
+; Entry: any widths, D = $0000. Exit: A = the last attribute byte (high
+; byte clear); X = 0; Y past the last sprite; P unchanged.
+%at($04E28D)
+OamPalettesE28D:
+    php
+    rep.b #$30
+    lda.w !wram_0D75
+    asl a
+    asl a
+    tay
+    lda.w !wram_0D48
+    and.w #$00FF
+    tax
+    lda.l !palette_bits_e30b,x
+    and.w #$00FF
+    ldx.w #$0012
+    jsr.w OamSetPalette
+    rep.b #$30
+    lda.w !wram_0D75
+    clc
+    adc.w #$0016
+    asl a
+    asl a
+    tay
+    lda.w !wram_0D89
+    and.w #$00FF
+    tax
+    lda.l !palette_bits_e313,x
+    and.w #$00FF
+    ldx.w #$0006
+    jsr.w OamSetPalette
+    rep.b #$30
+    lda.w !wram_0D75
+    clc
+    adc.w #$001C
+    asl a
+    asl a
+    tay
+    lda.w !wram_0D8A
+    and.w #$00FF
+    tax
+    lda.l !palette_bits_e313,x
+    and.w #$00FF
+    ldx.w #$0006
+    jsr.w OamSetPalette
+    plp
+    rtl

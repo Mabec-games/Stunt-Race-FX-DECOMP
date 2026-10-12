@@ -84,3 +84,5 @@ includeonce
 !records_list_f634 = $F634
 !records_list_f170 = $F170
 !records_blocks = $09F88B
+!palette_bits_e30b = $04E30B
+!palette_bits_e313 = $04E313
