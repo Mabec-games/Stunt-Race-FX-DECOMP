@@ -938,3 +938,129 @@ GsuRecordLand:
     plx
     sep.b #$20
     rts
+
+; @routine 08:CF41 RecordNextContact
+; WHAT IT DOES: Walks the contact list from the entry at $1F3C (entries
+; are records linked through +$0E) to the next one with bit 1 of +$10
+; set; for it, takes the touched record (its +$0C) and makes $1F3A that
+; record's contact word (+$64, when bit 1 of its +$16 is set, else 0),
+; $1F36 its flags (+$16), $1F38 their RecordContactFlags, and leaves $1F3C
+; at the following entry. Carry set when one was found.
+; HOW: 16-bit walk with X; Y = the touched record.
+; Entry: M 8-bit, X 16-bit. Exit: M 8-bit; X unchanged. Found: carry set,
+; A = $1F38, Y = the touched record, N, Z from X. Not found: carry clear,
+; A = 0, Y unchanged; N, Z from X after a walk, Z set when $1F3C was 0.
+%at($08CF41)
+RecordNextContact:
+    rep.b #$20
+    lda.w !wram_1F3C
+    beq .lCF8E
+    phx
+.lCF49:
+    tax
+    lda.l !contact_flags,x
+    and.w #$0002
+    bne .lCF5C
+    lda.l !contact_next,x
+    bne .lCF49
+    plx
+    bra .lCF8E
+.lCF5C:
+    lda.l !contact_record,x
+    tay
+    lda.l !contact_next,x
+    sta.w !wram_1F3C
+    tyx
+    stz.w !wram_1F3A
+    lda.l !gsu_rec_flags,x
+    bit.w #$0002
+    beq .lCF7C
+    lda.l !gsu_rec_64,x
+    sta.w !wram_1F3A
+.lCF7C:
+    lda.l !gsu_rec_flags,x
+    sta.w !wram_1F36
+    stz.w !wram_1F38
+    jsr.w RecordContactFlags
+    plx
+    sep.b #$20
+    sec
+    rtl
+.lCF8E:
+    sep.b #$20
+    clc
+    rtl
+
+; @routine 08:CF92 RecordContactSummary
+; WHAT IT DOES: Sums up every contact of object X's record into $1F38:
+; $10 when bit 0 of the record's +$1C is set ($80 more when bit 5 of
+; $70:26F2 is too), bit 5 of its +$2C, then RecordContactFlags over the
+; OR of the contact words ($1F3A) and flags ($1F36) of every touched record
+; (+$0C) in the contact list from its +$18 whose entries have bit 1 of +$10.
+; HOW: 16-bit walk with X through +$0E; Y keeps the entry while X is the
+; touched record. With no record it returns 0 at once.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; X unchanged; C, V
+; unchanged. Record: A = $1F38, N, Z from it; Y = the last entry with bit 1
+; set (unchanged when none). No record: A = 0, Z set.
+%at($08CF92)
+RecordContactSummary:
+    rep.b #$20
+    lda.w !obj_22,x
+    bne .lCF9C
+    brl .lD019
+.lCF9C:
+    phx
+    tax
+    stz.w !wram_1F38
+    lda.l !gsu_rec_1c,x
+    and.w #$0001
+    beq .lCFC5
+    lda.w !wram_1F38
+    ora.w #$0010
+    sta.w !wram_1F38
+    lda.l !gsu_control_26f2
+    and.w #$0020
+    beq .lCFC5
+    lda.w !wram_1F38
+    ora.w #$0080
+    sta.w !wram_1F38
+.lCFC5:
+    lda.l !gsu_rec_2c,x
+    and.w #$0020
+    ora.w !wram_1F38
+    sta.w !wram_1F38
+    stz.w !wram_1F36
+    stz.w !wram_1F3A
+    lda.l !gsu_rec_18,x
+.lCFDC:
+    tax
+    beq .lD012
+    lda.l !contact_flags,x
+    and.w #$0002
+    beq .lD00C
+    lda.l !contact_record,x
+    txy
+    tax
+    lda.l !gsu_rec_flags,x
+    bit.w #$0002
+    beq .lD005
+    lda.l !gsu_rec_64,x
+    ora.w !wram_1F3A
+    sta.w !wram_1F3A
+    lda.l !gsu_rec_flags,x
+.lD005:
+    ora.w !wram_1F36
+    sta.w !wram_1F36
+    tyx
+.lD00C:
+    lda.l !contact_next,x
+    bra .lCFDC
+.lD012:
+    plx
+    jsr.w RecordContactFlags
+    sep.b #$20
+    rtl
+.lD019:
+    sep.b #$20
+    lda.b #$00
+    rtl

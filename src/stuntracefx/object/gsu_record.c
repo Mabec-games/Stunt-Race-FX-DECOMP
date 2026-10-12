@@ -962,3 +962,102 @@ void abi_GsuRecordLand(void)
     cpu.a = GsuRecordLand(cpu.db, cpu.x, &p);
     cpu.p = (uint8_t)(nz16(p, cpu.x) | P_M);
 }
+
+/*
+ * @routine 08:CF41 RecordNextContact
+ * WHAT IT DOES: Walks the contact list from the entry at $1F3C (entries
+ * are records linked through +$0E) to the next one with bit 1 of +$10
+ * set; for it, takes the touched record (its +$0C) and makes $1F3A that
+ * record's contact word (+$64, when bit 1 of its +$16 is set, else 0),
+ * $1F36 its flags (+$16), $1F38 their RecordContactFlags, and leaves $1F3C
+ * at the following entry. Carry set when one was found.
+ * HOW: 16-bit walk with X; Y = the touched record.
+ * Entry: M 8-bit, X 16-bit. Exit: M 8-bit; X unchanged. Found: carry set,
+ * A = $1F38, Y = the touched record, N, Z from X. Not found: carry clear,
+ * A = 0, Y unchanged; N, Z from X after a walk, Z set when $1F3C was 0.
+ */
+int RecordNextContact(uint8_t bank, uint16_t *a, uint16_t *y, uint8_t *p, uint16_t x)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t e = rd16(b | 0x1F3C), r;
+
+    if (!e) {
+        *a = 0;
+        *p = (uint8_t)(nz16(*p, 0) & ~P_C);
+        return 0;
+    }
+    while (!(rd16(0x700010 + e) & 0x0002)) {
+        e = rd16(0x70000E + e);
+        if (!e) {
+            *a = 0;
+            *p = (uint8_t)(nz16(*p, x) & ~P_C);
+            return 0;
+        }
+    }
+    r = rd16(0x70000C + e);
+    wr16(b | 0x1F3C, rd16(0x70000E + e));
+    wr16(b | 0x1F3A, 0x0000);
+    if (rd16(0x700016 + r) & 0x0002)
+        wr16(b | 0x1F3A, rd16(0x700064 + r));
+    wr16(b | 0x1F36, rd16(0x700016 + r));
+    wr16(b | 0x1F38, 0x0000);
+    *a = RecordContactFlags(bank);
+    *y = r;
+    *p = (uint8_t)(nz16(*p, x) | P_C);
+    return 1;
+}
+
+void abi_RecordNextContact(void)
+{
+    uint8_t p = cpu.p;
+
+    RecordNextContact(cpu.db, &cpu.a, &cpu.y, &p, cpu.x);
+    cpu.p = (uint8_t)(p | P_M);
+}
+
+/*
+ * @routine 08:CF92 RecordContactSummary
+ * WHAT IT DOES: Sums up every contact of object X's record into $1F38:
+ * $10 when bit 0 of the record's +$1C is set ($80 more when bit 5 of
+ * $70:26F2 is too), bit 5 of its +$2C, then RecordContactFlags over the
+ * OR of the contact words ($1F3A) and flags ($1F36) of every touched record
+ * (+$0C) in the contact list from its +$18 whose entries have bit 1 of +$10.
+ * HOW: 16-bit walk with X through +$0E; Y keeps the entry while X is the
+ * touched record. With no record it returns 0 at once.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; X unchanged; C, V
+ * unchanged. Record: A = $1F38, N, Z from it; Y = the last entry with bit 1
+ * set (unchanged when none). No record: A = 0, Z set.
+ */
+uint16_t RecordContactSummary(uint8_t bank, uint16_t obj, uint16_t *y)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t rec = record_of(bank, obj), e, r;
+
+    if (!rec)
+        return 0;
+    wr16(b | 0x1F38, 0x0000);
+    if (rd16(0x70001C + rec) & 0x0001) {
+        wr16(b | 0x1F38, (uint16_t)(rd16(b | 0x1F38) | 0x0010));
+        if (rd16(0x7026F2) & 0x0020)
+            wr16(b | 0x1F38, (uint16_t)(rd16(b | 0x1F38) | 0x0080));
+    }
+    wr16(b | 0x1F38, (uint16_t)((rd16(0x70002C + rec) & 0x0020) | rd16(b | 0x1F38)));
+    wr16(b | 0x1F36, 0x0000);
+    wr16(b | 0x1F3A, 0x0000);
+    for (e = rd16(0x700018 + rec); e; e = rd16(0x70000E + e)) {
+        if (!(rd16(0x700010 + e) & 0x0002))
+            continue;
+        r = rd16(0x70000C + e);
+        if (rd16(0x700016 + r) & 0x0002)
+            wr16(b | 0x1F3A, (uint16_t)(rd16(0x700064 + r) | rd16(b | 0x1F3A)));
+        wr16(b | 0x1F36, (uint16_t)(rd16(0x700016 + r) | rd16(b | 0x1F36)));
+        *y = e;
+    }
+    return RecordContactFlags(bank);
+}
+
+void abi_RecordContactSummary(void)
+{
+    cpu.a = RecordContactSummary(cpu.db, cpu.x, &cpu.y);
+    cpu.p = (uint8_t)(nz16(cpu.p, cpu.a) | P_M);
+}

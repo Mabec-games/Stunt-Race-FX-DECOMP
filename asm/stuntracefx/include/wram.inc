@@ -650,3 +650,10 @@ includeonce
 !gsu_rec_34 = $700034
 !gsu_rec_36 = $700036
 !gsu_rec_38 = $700038
+; Contact list entries, reached from a record's +$18 (object/gsu_record.asm):
+; the touched record, the next entry, and flags (bit 1: in contact).
+!contact_record = $70000C
+!contact_next = $70000E
+!contact_flags = $700010
+!gsu_rec_64 = $700064
+!gsu_control_26f2 = $7026F2
