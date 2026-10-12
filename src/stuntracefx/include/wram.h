@@ -10,6 +10,11 @@
 #define APU_STREAM_PTR 0x0000FBu
 #define APU_STREAM_BANK 0x0000FDu
 
+/* The work-RAM copy of the sprite table (video/oam.c): 128 four-byte entries
+   (X, Y, tile, attributes) from $0375, then the 32-byte high table from $0575. */
+#define OAM_BUFFER 0x000375u
+#define OAM_BUFFER_HIGH 0x000575u
+
 /* Sound command queues (audio/sound_queue.c): two 16-byte rings, drained one
    byte per frame to APU ports 0 and 1 once the sound CPU has taken the last. */
 #define SOUND_PORT0_QUEUE 0x000DA8u

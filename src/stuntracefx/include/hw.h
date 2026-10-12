@@ -9,5 +9,6 @@
 #define APUIO1 0x002141u
 #define APUIO2 0x002142u
 #define APUIO3 0x002143u
+#define HVBJOY 0x004212u  /* status: V-blank (bit 7), H-blank (bit 6), joypad busy (bit 0) */
 
 #endif

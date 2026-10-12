@@ -61,8 +61,23 @@ def one(script, only):
     return name, rows, notes
 
 
+GATE_LIB = os.path.join(B, 'hybrid', 'gate', 'libsrfx.dylib')
+
+
+def build_gate_lib():
+    """Build the hybrid from the last commit; return its revision."""
+    sys.path.insert(0, os.path.join(ROOT, 'tools', 'stuntracefx'))
+    import hybrid
+    src, rev = hybrid.export_head()
+    if hybrid.main(src, GATE_LIB):
+        raise SystemExit('hybrid build of %s failed' % rev)
+    return rev
+
+
 def live(only):
-    run([sys.executable, os.path.join(ROOT, 'tools', 'stuntracefx', 'hybrid.py')])
+    global LIB
+    rev = build_gate_lib()
+    LIB = GATE_LIB
     scripts = sorted(glob.glob(os.path.join(SCRIPTS, '*.sfx')))
     with concurrent.futures.ThreadPoolExecutor(max_workers=os.cpu_count()) as ex:
         results = list(ex.map(lambda s: one(s, only), scripts))
@@ -74,7 +89,7 @@ def live(only):
             a['scripts'] += int(calls) > 0
         for n in notes[:20]:
             print(n)
-    rev, dirty = source_rev(), ''
+    dirty = ''
     stamp = datetime.date.today().isoformat()
     old = {}
     if os.path.exists(LIVE):
@@ -117,11 +132,13 @@ def image_one(script):
 
 
 def image():
-    run([sys.executable, os.path.join(ROOT, 'tools', 'stuntracefx', 'hybrid.py')])
+    global LIB
+    rev = build_gate_lib()
+    LIB = GATE_LIB
     scripts = sorted(glob.glob(os.path.join(SCRIPTS, '*.sfx')))
     with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, os.cpu_count() // 2)) as ex:
         results = list(ex.map(image_one, scripts))
-    stamp, rev, verdicts = datetime.date.today().isoformat(), source_rev(), []
+    stamp, verdicts = datetime.date.today().isoformat(), []
     rows = []
     for name, lines in results:
         last = lines[-1] if lines else 'FAILED'

@@ -8,6 +8,14 @@ includeonce
 !apu_stream_ptr = $FB
 !apu_stream_bank = $FD
 
+; Direct page $3E: scratch left by math/scale.asm.
+!scale_scratch = $3E
+
+; The work-RAM copy of the sprite table (video/oam.asm): 128 four-byte entries
+; (X, Y, tile, attributes) from $0375, then the 32-byte high table from $0575.
+!oam_buffer = $0375
+!oam_buffer_high = $0575
+
 ; Sound command queues (audio/sound_queue.asm): two 16-byte rings, drained one
 ; byte per frame to APU ports 0 and 1 once the sound CPU has taken the last one.
 !sound_port0_queue = $0DA8

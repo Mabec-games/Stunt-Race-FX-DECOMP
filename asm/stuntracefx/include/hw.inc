@@ -6,3 +6,4 @@ includeonce
 !APUIO1 = $2141
 !APUIO2 = $2142
 !APUIO3 = $2143
+!HVBJOY = $4212                 ; status: V-blank (bit 7), H-blank (bit 6), joypad busy (bit 0)
