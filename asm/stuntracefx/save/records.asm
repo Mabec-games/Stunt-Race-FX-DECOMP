@@ -305,3 +305,173 @@ SaveTablesCheck:
     dex
     bpl .table
     rts
+
+; @routine 07:B211 SaveBlocksValidate
+; WHAT IT DOES: Validates blocks 0-11 of the 48-byte blocks at $70:FCD0:
+; each is twelve 4-byte entries whose bytes must be $FF or in range (first
+; byte's low seven bits below 100, second byte's low five bits below 30 and
+; top three bits not 0, third byte's low five bits below 28); the 8-bit sum
+; of the block's four bytes at $70:FFD0 + 4 * block and its 48 bytes must
+; equal its sum byte at $70:FC33 + block. A block that fails sets $1FFE to
+; $11 and is reset to all $FF, its four bytes at $70:FFD0 too, with sum
+; byte $CC (which is their sum); then it is checked again.
+; HOW: Direct page $F1 holds the running sum, $F3 the block, $F5 its
+; offset. The block bytes are read through the data bank, the four-byte
+; groups long. The fourth entry byte's test, low two bits $38 or more, can
+; never fail.
+; Entry: M 8-bit, D = $0000; DB = $70. Exit: A = $020C; X = $0B; Y = 0;
+; $F3 = $0C; M 8-bit, X 16-bit; C, Z set, N clear; V from the last add.
+%at($07B211)
+SaveBlocksValidate:
+    rep.b #$10
+    ldx.w #$0000
+    stx.b !save_block
+.block:
+    rep.b #$20
+    lda.b !save_block
+    asl a
+    asl a
+    tax
+    sep.b #$20
+    lda.l !save_block_groups,x
+    sta.b !save_sum
+    lda.l !save_block_groups+1,x
+    clc
+    adc.b !save_sum
+    sta.b !save_sum
+    lda.l !save_block_groups+2,x
+    clc
+    adc.b !save_sum
+    sta.b !save_sum
+    lda.l !save_block_groups+3,x
+    clc
+    adc.b !save_sum
+    rep.b #$20
+    and.w #$00FF
+    sta.b !save_sum
+    lda.b !save_block
+    asl a
+    clc
+    adc.b !save_block
+    asl a
+    asl a
+    asl a
+    asl a
+    tax
+    sta.b !save_block_offset
+    ldy.w #$000C
+    sep.b #$20
+    clc
+.entry:
+    lda.w !save_blocks_w,x
+    pha
+    cmp.b #$FF
+    beq .first
+    and.b #$7F
+    cmp.b #$64
+    bcc .first
+    pla
+    bra .reset
+.first:
+    pla
+    clc
+    adc.b !save_sum
+    sta.b !save_sum
+    lda.w !save_blocks_w+1,x
+    pha
+    cmp.b #$FF
+    beq .second
+    and.b #$1F
+    cmp.b #$1E
+    bcc .high
+    pla
+    bra .reset
+.high:
+    pla
+    pha
+    and.b #$E0
+    cmp.b #$20
+    bcs .second
+    pla
+    bra .reset
+.second:
+    pla
+    clc
+    adc.b !save_sum
+    sta.b !save_sum
+    lda.w !save_blocks_w+2,x
+    pha
+    cmp.b #$FF
+    beq .third
+    and.b #$1F
+    cmp.b #$1C
+    bcc .third
+    pla
+    bra .reset
+.third:
+    pla
+    clc
+    adc.b !save_sum
+    sta.b !save_sum
+    lda.w !save_blocks_w+3,x
+    pha
+    cmp.b #$FF
+    beq .fourth
+    and.b #$03
+    cmp.b #$38
+    bcc .fourth
+    pla
+    bra .reset
+.fourth:
+    pla
+    clc
+    adc.b !save_sum
+    sta.b !save_sum
+    inx
+    inx
+    inx
+    inx
+    dey
+    bne .entry
+    ldx.b !save_block
+    lda.w !save_block_sums_w,x
+    cmp.b !save_sum
+    bne .reset
+    inc.b !save_block
+    lda.b !save_block
+    cmp.b #$0C
+    bcs .done
+    jmp.w .block
+.done:
+    rts
+.reset:
+    pha
+    lda.b #$11
+    sta.l !save_bad_flag
+    pla
+    rep.b #$20
+    ldx.b !save_block_offset
+    sep.b #$20
+    ldy.w #$0030
+    lda.b #$FF
+.fill:
+    sta.w !save_blocks_w,x
+    inx
+    dey
+    bne .fill
+    ldx.b !save_block
+    rep.b #$20
+    lda.b !save_block
+    and.w #$00FF
+    asl a
+    asl a
+    tay
+    sep.b #$20
+    lda.b #$FF
+    sta.w !save_block_groups_w,y
+    sta.w !save_block_groups_w+1,y
+    sta.w !save_block_groups_w+2,y
+    sta.w !save_block_groups_w+3,y
+    lda.b #$CC
+    sta.w !save_block_sums_w,x
+    jmp.w .block

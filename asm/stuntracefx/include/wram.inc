@@ -842,3 +842,6 @@ includeonce
 !save_table_sums = $70FC2D
 !table_first = $F3
 !table_second = $F5
+!save_block_groups = $70FFD0
+!save_bad_flag = $001FFE
+!save_block_groups_w = $FFD0

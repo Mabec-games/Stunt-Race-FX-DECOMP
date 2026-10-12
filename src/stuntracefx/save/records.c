@@ -293,3 +293,91 @@ void abi_SaveTablesCheck(void)
     cpu.y = 0x0000;
     cpu.p = (uint8_t)(((p & ~(P_Z | P_X)) | P_N | P_M));
 }
+
+/* One entry byte of SaveBlocksValidate: $FF passes; otherwise `bad` says
+   whether it fails. */
+static int entry_byte_bad(uint8_t v, int which)
+{
+    if (v == 0xFF)
+        return 0;
+    switch (which) {
+    case 0: return (v & 0x7F) >= 0x64;
+    case 1: return (v & 0x1F) >= 0x1E || (v & 0xE0) < 0x20;
+    case 2: return (v & 0x1F) >= 0x1C;
+    default: return (v & 0x03) >= 0x38;  /* never true */
+    }
+}
+
+/*
+ * @routine 07:B211 SaveBlocksValidate
+ * WHAT IT DOES: Validates blocks 0-11 of the 48-byte blocks at $70:FCD0:
+ * each is twelve 4-byte entries whose bytes must be $FF or in range (first
+ * byte's low seven bits below 100, second byte's low five bits below 30 and
+ * top three bits not 0, third byte's low five bits below 28); the 8-bit sum
+ * of the block's four bytes at $70:FFD0 + 4 * block and its 48 bytes must
+ * equal its sum byte at $70:FC33 + block. A block that fails sets $1FFE to
+ * $11 and is reset to all $FF, its four bytes at $70:FFD0 too, with sum
+ * byte $CC (which is their sum); then it is checked again.
+ * HOW: Direct page $F1 holds the running sum, $F3 the block, $F5 its
+ * offset. The block bytes are read through the data bank, the four-byte
+ * groups long. The fourth entry byte's test, low two bits $38 or more, can
+ * never fail.
+ * Entry: M 8-bit, D = $0000; DB = $70. Exit: A = $020C; X = $0B; Y = 0;
+ * $F3 = $0C; M 8-bit, X 16-bit; C, Z set, N clear; V from the last add.
+ */
+void SaveBlocksValidate(uint8_t bank, uint8_t *p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t block = 0, base, x;
+    uint8_t sum, v;
+    int i, j, bad;
+
+    wr16(0x0000F3, 0x0000);
+    while (block < 12) {
+        x = (uint16_t)(block << 2);
+        sum = rd8(0x70FFD0 + x);
+        wr8(0x0000F1, sum);
+        sum = add8(rd8(0x70FFD1 + x), sum, p);
+        sum = add8(rd8(0x70FFD2 + x), sum, p);
+        sum = add8(rd8(0x70FFD3 + x), sum, p);
+        wr16(0x0000F1, sum);
+        base = (uint16_t)(block * 48);
+        wr16(0x0000F5, base);
+        bad = 0;
+        for (i = 0, x = base; i < 12 && !bad; i++, x += 4) {
+            for (j = 0; j < 4; j++) {
+                v = rd8(b | (uint16_t)(0xFCD0 + x + j));
+                if (entry_byte_bad(v, j)) {
+                    bad = 1;
+                    break;
+                }
+                sum = add8(sum, v, p);
+            }
+        }
+        wr8(0x0000F1, sum);
+        if (!bad && rd8(b | (uint16_t)(0xFC33 + block)) != sum)
+            bad = 1;
+        if (bad) {
+            wr8(0x001FFE, 0x11);
+            for (i = 0; i < 48; i++)
+                wr8(b | (uint16_t)(0xFCD0 + base + i), 0xFF);
+            for (i = 0; i < 4; i++)
+                wr8(b | (uint16_t)(0xFFD0 + (block << 2) + i), 0xFF);
+            wr8(b | (uint16_t)(0xFC33 + block), 0xCC);
+            continue;  /* checked again */
+        }
+        block++;
+        wr8(0x0000F3, (uint8_t)block);
+    }
+}
+
+void abi_SaveBlocksValidate(void)
+{
+    uint8_t p = cpu.p;
+
+    SaveBlocksValidate(cpu.db, &p);
+    cpu.a = 0x020C;
+    cpu.x = 0x000B;
+    cpu.y = 0x0000;
+    cpu.p = (uint8_t)(((p & ~(P_N | P_X)) | P_M | P_C | P_Z));
+}
