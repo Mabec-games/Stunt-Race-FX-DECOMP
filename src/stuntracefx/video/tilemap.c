@@ -313,6 +313,34 @@ void abi_TilemapRowFromFB4E(void)
 }
 
 /*
+ * @routine 07:CF14 TilemapPaletteFill
+ * WHAT IT DOES: Sets the palette field (bits 2-4 of the attribute byte) of
+ * Y tilemap entries in the buffer at $7F:93D6, from entry offset X, to the
+ * bits in direct page $F1.
+ * HOW: Read, mask with $E3, OR in $F1, write back; X steps by 2. It is the
+ * tail of TilemapPaletteCycle, also called on its own.
+ * Entry: M 8-bit, X 16-bit, D = $0000; X = entry offset (bytes), Y = count
+ * (1 or more), $F1 = the palette bits. Exit: A low byte = the last
+ * attribute byte; X past the last entry; Y = 0; Z set, N clear.
+ */
+void TilemapPaletteFill(uint16_t *x, uint16_t *y, uint16_t *a)
+{
+    do {
+        uint8_t v = (uint8_t)((rd8(0x7F93D7 + *x) & 0xE3) | rd8(0x0000F1));
+
+        wr8(0x7F93D7 + *x, v);
+        *a = (uint16_t)((*a & 0xFF00) | v);
+        *x += 2;
+    } while (--*y);
+}
+
+void abi_TilemapPaletteFill(void)
+{
+    TilemapPaletteFill(&cpu.x, &cpu.y, &cpu.a);
+    cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
+}
+
+/*
  * @routine 07:CEDF TilemapPaletteCycle
  * WHAT IT DOES: Every fourth frame, steps the phase at $0DD5 (0 to 5) and
  * sets the palette field of Y tilemap entries in the buffer at $7F:93D6,
@@ -346,13 +374,7 @@ int TilemapPaletteCycle(uint8_t bank, uint16_t *x, uint16_t *y, uint16_t *a)
     pal = rd8(0x070000 | (uint16_t)(table + phase));
     wr8(0x0000F1, pal);
     *a = (uint16_t)(rd8(0x070000 | (uint16_t)(table + phase + 1)) << 8);
-    do {
-        uint8_t v = (uint8_t)((rd8(0x7F93D7 + *x) & 0xE3) | rd8(0x0000F1));
-
-        wr8(0x7F93D7 + *x, v);
-        *a = (uint16_t)((*a & 0xFF00) | v);
-        *x += 2;
-    } while (--*y);
+    TilemapPaletteFill(x, y, a);
     return mode >= 2 ? 2 : 1;
 }
 
@@ -681,4 +703,128 @@ void abi_TilemapPaletteCycle87(void)
     cpu.y = 0x0009;
     cpu.p &= (uint8_t)~P_X;
     abi_TilemapPaletteCycle();
+}
+
+/* Fill a row with palette `bits`, then give the entry at `mark` (an
+   attribute byte address) palette `mark_bits`. */
+static uint8_t row_mark(uint16_t x, uint16_t count, uint8_t bits, uint32_t mark, uint8_t mark_bits,
+                        uint16_t *xp, uint16_t *yp, uint16_t *a)
+{
+    uint8_t v;
+
+    wr8(0x0000F1, bits);
+    *xp = x;
+    *yp = count;
+    TilemapPaletteFill(xp, yp, a);
+    v = (uint8_t)((rd8(mark) & 0xE3) | mark_bits);
+    wr8(mark, v);
+    *a = (uint16_t)((*a & 0xFF00) | v);
+    return v;
+}
+
+static void abi_row_mark(uint16_t x, uint16_t count, uint8_t bits, uint32_t mark, uint8_t mark_bits)
+{
+    uint8_t v = row_mark(x, count, bits, mark, mark_bits, &cpu.x, &cpu.y, &cpu.a);
+
+    cpu.p = (uint8_t)(nz8(cpu.p, v) & ~P_X);
+}
+
+/*
+ * @routine 07:C2D3 TilemapRow107Palette5
+ * WHAT IT DOES: Gives 13 tilemap entries from offset $107 palette 5, then
+ * the seventh of them ($7F:94EA) palette 4.
+ * HOW: TilemapPaletteFill with $F1 = $14, then one masked store.
+ * Entry: M 8-bit, D = $0000. Exit: A low byte = the marked attribute byte;
+ * N, Z from it; X = $0121; Y = 0; X 16-bit.
+ */
+void TilemapRow107Palette5(void)
+{
+    uint16_t x, y, a = 0;
+
+    row_mark(0x0107, 0x000D, 0x14, 0x7F94EA, 0x10, &x, &y, &a);
+}
+
+void abi_TilemapRow107Palette5(void)
+{
+    abi_row_mark(0x0107, 0x000D, 0x14, 0x7F94EA, 0x10);
+}
+
+/*
+ * @routine 07:C2EF TilemapRow187Palette5
+ * WHAT IT DOES: Gives 10 tilemap entries from offset $187 palette 5, then
+ * the seventh of them ($7F:956A) palette 4.
+ * HOW: As TilemapRow107Palette5.
+ * Entry: M 8-bit, D = $0000. Exit: A low byte = the marked attribute byte;
+ * N, Z from it; X = $019B; Y = 0; X 16-bit.
+ */
+void TilemapRow187Palette5(void)
+{
+    uint16_t x, y, a = 0;
+
+    row_mark(0x0187, 0x000A, 0x14, 0x7F956A, 0x10, &x, &y, &a);
+}
+
+void abi_TilemapRow187Palette5(void)
+{
+    abi_row_mark(0x0187, 0x000A, 0x14, 0x7F956A, 0x10);
+}
+
+/*
+ * @routine 07:CE97 TilemapRow187Palette4
+ * WHAT IT DOES: Gives 9 tilemap entries from offset $187 palette 4, then
+ * the fourth of them ($7F:9564) palette 0.
+ * HOW: TilemapPaletteFill with $F1 = $10, then one masked store.
+ * Entry: M 8-bit, X 16-bit, D = $0000. Exit: A low byte = the marked
+ * attribute byte; N, Z from it; X = $0199; Y = 0.
+ */
+void TilemapRow187Palette4(void)
+{
+    uint16_t x, y, a = 0;
+
+    row_mark(0x0187, 0x0009, 0x10, 0x7F9564, 0x00, &x, &y, &a);
+}
+
+void abi_TilemapRow187Palette4(void)
+{
+    abi_row_mark(0x0187, 0x0009, 0x10, 0x7F9564, 0x00);
+}
+
+/*
+ * @routine 07:CEAF TilemapRow207Palette4
+ * WHAT IT DOES: Gives 13 tilemap entries from offset $207 palette 4, then
+ * the seventh of them ($7F:95EA) palette 0.
+ * HOW: As TilemapRow187Palette4.
+ * Entry: M 8-bit, X 16-bit, D = $0000. Exit: A low byte = the marked
+ * attribute byte; N, Z from it; X = $0221; Y = 0.
+ */
+void TilemapRow207Palette4(void)
+{
+    uint16_t x, y, a = 0;
+
+    row_mark(0x0207, 0x000D, 0x10, 0x7F95EA, 0x00, &x, &y, &a);
+}
+
+void abi_TilemapRow207Palette4(void)
+{
+    abi_row_mark(0x0207, 0x000D, 0x10, 0x7F95EA, 0x00);
+}
+
+/*
+ * @routine 07:CEC7 TilemapRow287Palette4
+ * WHAT IT DOES: Gives 10 tilemap entries from offset $287 palette 4, then
+ * the seventh of them ($7F:966A) palette 0.
+ * HOW: As TilemapRow187Palette4.
+ * Entry: M 8-bit, X 16-bit, D = $0000. Exit: A low byte = the marked
+ * attribute byte; N, Z from it; X = $029B; Y = 0.
+ */
+void TilemapRow287Palette4(void)
+{
+    uint16_t x, y, a = 0;
+
+    row_mark(0x0287, 0x000A, 0x10, 0x7F966A, 0x00, &x, &y, &a);
+}
+
+void abi_TilemapRow287Palette4(void)
+{
+    abi_row_mark(0x0287, 0x000A, 0x10, 0x7F966A, 0x00);
 }
