@@ -193,3 +193,32 @@ includeonce
 ; $10000) by the ratio of the smaller to the larger side (render/angle.asm),
 ; in ROM bank $00 as the Super FX sees it.
 !fx_atan_table = $009E40
+; Gradient run lengths (video/gradient.asm): a byte per run, 0 ends; the
+; table at +0 serves most courses, +$28 the first list of course $0A and
+; +$50 the second list of course 1. A course block's colours start at +$20;
+; $03:F745 holds a long pointer per course: the second colour block (its
+; word 0 for none).
+!gradient_run_table = $1FB44E
+!course_block_colours = $0020
+!course_block2_ptrs = $03F745
+
+; A zero byte, the fixed DMA source WramFillZero clears work RAM from
+; (system/misc.asm).
+!zero_byte_038d26 = $038D26
+
+; Per-course palettes (video/palette.asm): long pointers, three bytes per
+; course, to the palette ($03:F649) and the third copy's palette
+; ($03:F69D); colours are read from offset $20. $EF1F (bank $03, through
+; the data bank) holds 16 words of bits, one per colour: clear where the
+; third palette copy is kept one step off the second.
+!course_palette_ptrs = $03F649
+!course_palette2_ptrs = $03F69D
+!palette_differ_bits = $EF1F
+
+; Per-course picture records in bank $03, three bytes per course, read
+; through the data bank by RaceVideoSetup (video/screen_setup.asm): an
+; input word and byte for program $01:CF42. $F807 is read and not used.
+!course_picture_b_w = $F5A1
+!course_picture_c_w = $F54D
+!course_picture_d_w = $F5F5
+!course_table_f807_w = $F807

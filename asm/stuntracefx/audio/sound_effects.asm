@@ -520,3 +520,66 @@ EngineSoundsPlayer1:
 .lD080:
     plp
     rtl
+
+; @routine 03:EC43 HandlerSoundIndex
+; WHAT IT DOES: Maps a selection handler address to a sound index: $81B9 to
+; 0, $853D to 1, $8411 to 2, $82E5 to 3, any other to 4.
+; HOW: A chain of 16-bit compares. The $82E5 case is not reached in the
+; traces so far.
+; Entry: M 16-bit; A = the handler address. Exit: A = the index; N clear, Z
+; from it; C set on a match, else from the last compare; X, Y unchanged.
+%at($03EC43)
+HandlerSoundIndex:
+    cmp.w #$81B9
+    bne .l853D
+    lda.w #$0000
+    rts
+.l853D:
+    cmp.w #$853D
+    bne .l8411
+    lda.w #$0001
+    rts
+.l8411:
+    cmp.w #$8411
+    bne .l82E5
+    lda.w #$0002
+    rts
+.l82E5:
+    cmp.w #$82E5
+    bne .other
+    lda.w #$0003                    ; not reached in the traces so far
+    rts                             ; not reached in the traces so far
+.other:
+    lda.w #$0004
+    rts
+
+; @routine 03:DCEF SoundIndicesFromHandlers
+; WHAT IT DOES: Sets the sound indices from the two selection handlers:
+; $0D89 from handler A ($18DB), also $0D8B when $10DA or $10DC is nonzero,
+; and $0D8A from handler B ($18DD).
+; HOW: HandlerSoundIndex on each (the handlers read in bank 0, the rest
+; through the data bank), with 8-bit registers for the stores and tests.
+; Entry: any widths. Exit: A = handler B's index; X = the byte that decided
+; $0D8B ($10DA, or $10DC when it is 0); Y high byte cleared; P unchanged.
+%at($03DCEF)
+SoundIndicesFromHandlers:
+    php
+    rep.b #$20
+    lda.l !selection_handler_a
+    jsr.w HandlerSoundIndex
+    sep.b #$30
+    sta.w !wram_0D89
+    ldx.w !wram_10DA
+    bne .both
+    ldx.w !wram_10DC
+    beq .second
+.both:
+    sta.w !wram_0D8B
+.second:
+    rep.b #$20
+    lda.l !selection_handler_b
+    jsr.w HandlerSoundIndex
+    sep.b #$20
+    sta.w !wram_0D8A
+    plp
+    rtl

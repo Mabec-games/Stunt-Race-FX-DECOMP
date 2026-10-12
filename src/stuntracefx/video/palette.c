@@ -331,6 +331,112 @@ void abi_PaletteCopy16To7F39D7(void)
     cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
 }
 
+/*
+ * @routine 03:EDF4 PaletteCourseLoad
+ * WHAT IT DOES: Loads the course's palettes: colours 16-255 of the first two
+ * work copies and the palette buffer from the course palette, colours 16-255
+ * of the third copy from its own palette, colours 0-15 from the course block
+ * (PaletteLoad16) and the third copy's 0-15 from the second colour block
+ * (PaletteCopy16To7F39D7). Then, colour by colour from 255 down, the third
+ * copy is matched to the second where the bit table at $03:EF1F has the
+ * colour's bit set and kept one step off it where clear (an equal colour
+ * goes one down, or one up when its red is 0). Sets the six blended colours
+ * at $0E21-$0E2B; with $10DC set, clears colours $B0-$BF of all four copies.
+ * HOW: The pointer tables ($03:F649, $03:F69D, $03:F6F1, $03:F745) give each
+ * source's bank, which becomes the data bank while it is read. The table's
+ * word for 16 colours is shifted right by the colour's place in it, counted
+ * in direct page $F1. The $10DC case is not reached in the traces so far.
+ * Entry: M 16-bit, X 16-bit, D = $0000; DB = the bit table's bank ($03).
+ * Exit: A = $10DC's word (0); X = $FFFE; Y = 0; $F1 = 0; M 16-bit; Z set, N
+ * clear; C from the last compare of colour 0; V from the course index add;
+ * DB unchanged. (With $10DC set: A low byte 0, X = $20, M 8-bit, Z, C set.)
+ */
+uint16_t PaletteCourseLoad(uint8_t bank, uint16_t *xo, uint16_t *yo, uint8_t *p)
+{
+    uint32_t b = (uint32_t)bank << 16, src;
+    uint16_t c = rd16(b | 0x0E3D), i, x, y, w, d, s;
+    uint8_t blk;
+    unsigned k;
+
+    s = (uint16_t)((uint16_t)(c << 1) + rd16(b | 0x0E3D));
+    *p = (uint8_t)((*p & ~P_V) | ((~((uint16_t)(c << 1) ^ c) & ((uint16_t)(c << 1) ^ s) & 0x8000) ? P_V : 0));
+    i = (uint16_t)(s & 0x00FF);
+    blk = rd8(0x03F64B + i);
+    y = rd16(0x03F649 + i);
+    for (x = 0x0020; x < 0x0200; x = (uint16_t)(x + 2)) {
+        src = ((uint32_t)blk << 16) + 0x0020 + y;
+        w = rd16(src & 0xFFFFFF);
+        wr16(0x7F35D7 + x, w);
+        wr16(0x7F37D7 + x, w);
+        wr16(0x7EFD65 + x, w);
+        y = (uint16_t)(y + 2);
+    }
+    blk = rd8(0x03F69F + i);
+    y = rd16(0x03F69D + i);
+    for (x = 0x0020; x < 0x0200; x = (uint16_t)(x + 2)) {
+        src = ((uint32_t)blk << 16) + 0x0020 + y;
+        wr16(0x7F39D7 + x, rd16(src & 0xFFFFFF));
+        y = (uint16_t)(y + 2);
+    }
+    blk = rd8(0x03F6F3 + i);
+    PaletteLoad16(blk, rd16(0x03F6F1 + i));
+    blk = rd8(0x03F747 + i);
+    PaletteCopy16To7F39D7(blk, rd16(0x03F745 + i));
+    x = 0x01FE;
+    for (;;) {
+        uint16_t n = (uint16_t)((x >> 1) & 0x000F), bits;
+
+        y = (uint16_t)((x >> 4) & 0x001E);
+        wr16(0x0000F1, n);
+        bits = rd16(b | (uint16_t)(0xEF1F + y));
+        while (n) {
+            bits >>= 1;
+            n = (uint16_t)(rd16(0x0000F1) - 1);
+            wr16(0x0000F1, n);
+        }
+        w = rd16(0x7F37D7 + x);
+        d = rd16(0x7F39D7 + x);
+        *p = (uint8_t)((*p & ~P_C) | (w >= d ? P_C : 0));
+        if (!(bits & 1)) {
+            if (w == d)
+                wr16(0x7F39D7 + x, (uint16_t)(w & 0x001F ? w - 1 : w + 1));
+        } else if (w != d) {
+            wr16(0x7F39D7 + x, w);
+        }
+        if (!x)
+            break;
+        x = (uint16_t)(x - 2);
+    }
+    wr16(b | 0x0E21, 0x45CC);
+    wr16(b | 0x0E23, 0x2528);
+    wr16(b | 0x0E25, 0x1CE5);
+    wr16(b | 0x0E27, 0x739A);
+    wr16(b | 0x0E29, 0x1CE5);
+    wr16(b | 0x0E2B, 0x2528);
+    w = rd16(b | 0x10DC);
+    if (!w) {
+        *xo = 0xFFFE;
+        *yo = y;
+        *p = (uint8_t)((nz16(*p, 0) & ~(P_M | P_X)));
+        return 0;
+    }
+    for (k = 0; k < 0x20; k++) {
+        wr8(0x7EFEC5 + k, 0x00);
+        wr8(0x7F3937 + k, 0x00);
+        wr8(0x7F3B37 + k, 0x00);
+        wr8(0x7F3737 + k, 0x00);
+    }
+    *xo = 0x0020;
+    *yo = y;
+    *p = (uint8_t)((nz8(*p, 0) | P_M | P_C) & ~P_X);
+    return (uint16_t)(w & 0xFF00);
+}
+
+void abi_PaletteCourseLoad(void)
+{
+    cpu.a = PaletteCourseLoad(cpu.db, &cpu.x, &cpu.y, &cpu.p);
+}
+
 uint16_t PpuMultiply(uint8_t v);
 
 typedef struct {

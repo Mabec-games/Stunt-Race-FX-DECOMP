@@ -232,3 +232,385 @@ VideoStartUploads:
     jsr.w DmaFromDescriptor
     plp
     rtl
+
+; @routine 03:D996 RaceVideoInit
+; WHAT IT DOES: RaceVideoSetup, first clearing $0EED-$0EEF and the words at
+; $0E6C and $0E6E when $0D24 is 3 or more.
+; HOW: Data bank $03 (the program bank) around the call, so the clears go to
+; work RAM through it. The clears are not reached in the traces so far.
+; Entry: M 8-bit, D = $0000. Exit: as RaceVideoSetup; the data bank
+; unchanged, N and Z from it (as RaceVideoSetup's swapped return leaves P
+; otherwise).
+%at($03D996)
+RaceVideoInit:
+    phb
+    phk
+    plb
+    sep.b #$20
+    lda.w !wram_0D24
+    cmp.b #$03
+    bcc .setup
+    stz.w !wram_0EED                ; not reached in the traces so far
+    stz.w !wram_0EED+1              ; not reached in the traces so far
+    stz.w !wram_0EED+2              ; not reached in the traces so far
+    rep.b #$20                      ; not reached in the traces so far
+    stz.w !wram_0E6C                ; not reached in the traces so far
+    stz.w !wram_0E6E                ; not reached in the traces so far
+.setup:
+    jsl.l RaceVideoSetup
+    plb
+    rtl
+
+; @routine 03:D9B9 RaceVideoSetup
+; WHAT IT DOES: Sets up the screen for the course in $0E3D: resets the PPU
+; (VideoRegsReset), starts the uploads (VideoStartUploads), sets the sound
+; indices, has the Super FX draw the course's pictures into VRAM, loads the
+; course palettes (PaletteCourseLoad, then CgramDmaAll) and gradient colours.
+; Then, unless $0D62 is set: the course's pictures, the HUD graphics for the
+; HUD mode $0D2B, the framed panels (ScreenFrameAndPictures) and the course
+; tilemap built from the Super FX picture into $7F:93D7 (and a second one
+; into $7F:BBD7 when the course has one). With $0D62 set: the menu's course
+; graphics (MenuCourseGraphics), $7F:9BD7 cleared ($2001 bytes), the Super
+; FX picture copied to $7F:93D7 ($800 bytes) and two DMA transfers of it to
+; VRAM $7C00 and $6600.
+; HOW: Data bank $03 for the course tables (three bytes per course: $F4F9,
+; $F54D, $F5A1, $F5F5; $F807 is read and not used). HUD modes 0-3 go through
+; the table at $03:DA53: mode 0 (and 3 with $10CD set) draws $9228 and $FAE8
+; and copies $80 words of the picture row for $0D8B's low nibble to VRAM
+; $5B40; mode 1 (unless $0D4E is set, which goes on as mode 3) draws $FA38,
+; sends $180 bytes to VRAM $5AC0 and draws $FB90; mode 3 does the same with
+; $100 bytes from $70:3180 and $FC20; mode 2 draws nothing more. Tilemap
+; rows come from TilemapRowFromGsuRam, five per step of $40 in direct page
+; $F1 up to $800. The two block copies are MVN (byte by byte, read then
+; write). The $0D62 path ends with its pulls swapped (PLP takes the data
+; bank byte, PLB the status byte), so it returns with P = the caller's data
+; bank and the data bank = the caller's P. Mode 3's own drawing, the third
+; course picture and the second tilemap are not reached in the traces so
+; far.
+; Entry: D = $0000; X as VideoRegsReset takes it. Exit: A = 0 (the second
+; tilemap: $800); X = $800; Y = course * 3 (the second tilemap: $5000); P
+; and the data bank unchanged. With $0D62 set: A = $0401; X = $CF42; Y =
+; $9BD7; P and the data bank swapped as above.
+%at($03D9B9)
+RaceVideoSetup:
+    php
+    sep.b #$20
+    phb
+    phk
+    plb
+    rep.b #$20
+    jsl.l VideoRegsReset
+    jsl.l VideoStartUploads
+    jsl.l SoundIndicesFromHandlers
+    rep.b #$30
+    ldy.w #$F80D
+    ldx.w #$F7DA
+    jsl.l GsuCF42ToVram
+    rep.b #$30
+    lda.w !course
+    asl a
+    clc
+    adc.w !course
+    and.w #$00FF
+    pha
+    jsr.w PaletteCourseLoad
+    jsl.l CgramDmaAll
+    rep.b #$30
+    plx
+    phx
+    lda.w !course_table_f807_w,x
+    sep.b #$20
+    plx
+    phx
+    jsr.w GradientBuildColours
+    sep.b #$20
+    lda.w !wram_0D62
+    beq .draw
+    ply
+    jmp.w .menu
+.draw:
+    rep.b #$30
+    pla
+    pha
+    clc
+    adc.w #!course_picture_a&$FFFF
+    tax
+    ldy.w #$F853
+    jsl.l GsuCF42ToVram
+    rep.b #$30
+    plx
+    phx
+    lda.w !course_picture_c_w,x
+    beq .no_third
+    txa                             ; not reached in the traces so far
+    clc                             ; not reached in the traces so far
+    adc.w #!course_picture_c_w      ; not reached in the traces so far
+    tax                             ; not reached in the traces so far
+    ldy.w #$F85A                    ; not reached in the traces so far
+    jsl.l GsuCF42ToVram             ; not reached in the traces so far
+.no_third:
+    rep.b #$30
+    ldy.w #$F814
+    ldx.w #$F7DD
+    jsl.l GsuCF42ToVram
+    rep.b #$30
+    lda.w #$D970
+    ldx.w #$001D
+    jsl.l GsuCF42To3000
+    jsl.l CoursePictureToVram
+    sep.b #$30
+    lda.w !hud_mode
+    asl a
+    tax
+    jmp.w (.modes,x)
+.modes:
+    dw .mode0, .mode1, .mode2, .mode3
+.mode3:
+    lda.w !wram_10CD
+    beq .mode3_draw
+    brl .mode0
+.mode3_draw:
+    rep.b #$30                      ; not reached in the traces so far
+    ldy.w #$F830                    ; not reached in the traces so far
+    ldx.w #$F7D4                    ; not reached in the traces so far
+    jsl.l GsuCF42ToVram             ; not reached in the traces so far
+    rep.b #$30                      ; not reached in the traces so far
+    ldx.w #$0018                    ; not reached in the traces so far
+    lda.w #$FA38                    ; not reached in the traces so far
+    jsl.l GsuCF42To3000             ; not reached in the traces so far
+    rep.b #$30                      ; not reached in the traces so far
+    php                             ; not reached in the traces so far
+    rep.b #$20                      ; not reached in the traces so far
+    lda.w #$1801                    ; not reached in the traces so far
+    sta.l !DMAP0                    ; not reached in the traces so far
+    lda.w #$3180                    ; not reached in the traces so far
+    sta.l !A1T0L                    ; not reached in the traces so far
+    lda.w #$5AC0                    ; not reached in the traces so far
+    sta.l !VMADDL                   ; not reached in the traces so far
+    lda.w #$0100                    ; not reached in the traces so far
+    sta.l !DAS0L                    ; not reached in the traces so far
+    sep.b #$20                      ; not reached in the traces so far
+    lda.b #$80                      ; not reached in the traces so far
+    sta.l !VMAIN                    ; not reached in the traces so far
+    lda.b #$70                      ; not reached in the traces so far
+    sta.l !A1B0                     ; not reached in the traces so far
+    lda.b #$01                      ; not reached in the traces so far
+    sta.l !MDMAEN                   ; not reached in the traces so far
+    plp                             ; not reached in the traces so far
+    rep.b #$30                      ; not reached in the traces so far
+    ldx.w #$0018                    ; not reached in the traces so far
+    lda.w #$FC20                    ; not reached in the traces so far
+    jsl.l GsuCF42To3000             ; not reached in the traces so far
+    jmp.w .mode2                    ; not reached in the traces so far
+.mode1:
+    sep.b #$20
+    lda.w !hud_blank
+    bne .mode3
+    rep.b #$30
+    ldy.w #$F830
+    ldx.w #$F7D4
+    jsl.l GsuCF42ToVram
+    rep.b #$30
+    ldx.w #$0018
+    lda.w #$FA38
+    jsl.l GsuCF42To3000
+    rep.b #$30
+    php
+    rep.b #$20
+    lda.w #$1801
+    sta.l !DMAP0
+    lda.w #$3000
+    sta.l !A1T0L
+    lda.w #$5AC0
+    sta.l !VMADDL
+    lda.w #$0180
+    sta.l !DAS0L
+    sep.b #$20
+    lda.b #$80
+    sta.l !VMAIN
+    lda.b #$70
+    sta.l !A1B0
+    lda.b #$01
+    sta.l !MDMAEN
+    plp
+    rep.b #$30
+    ldx.w #$0018
+    lda.w #$FB90
+    jsl.l GsuCF42To3000
+    bra .mode2
+.mode0:
+    rep.b #$30
+    ldy.w #$F829
+    ldx.w #$F7D1
+    jsl.l GsuCF42ToVram
+    rep.b #$30
+    lda.w #$9228
+    ldx.w #$001D
+    jsl.l GsuCF42To3000
+    rep.b #$30
+    lda.w !wram_0D8B
+    and.w #$000F
+    xba
+    tax
+    ldy.w #$0080
+    lda.w #$5B40
+    sta.w !VMADDL
+.mode0_words:
+    lda.l !gsu_picture,x
+    sta.w !VMDATAL
+    inx
+    inx
+    dey
+    bne .mode0_words
+    rep.b #$30
+    ldx.w #$0018
+    lda.w #$FAE8
+    jsl.l GsuCF42To3000
+.mode2:
+    rep.b #$30
+    jsr.w ScreenFrameAndPictures
+    rep.b #$30
+    ply
+    phy
+    lda.w !course_picture_b_w+2,y
+    tax
+    lda.w !course_picture_b_w,y
+    jsl.l GsuCF42To3000
+    sep.b #$20
+    lda.b #$7F
+    phb
+    pha
+    plb
+    rep.b #$30
+    ldy.w #$0000
+    stz.b !tilemap_row_offset
+.rows:
+    lda.w #$0000
+    jsr.w TilemapRowFromGsuRam
+    lda.w #$0800
+    jsr.w TilemapRowFromGsuRam
+    lda.w #$1000
+    jsr.w TilemapRowFromGsuRam
+    lda.w #$1800
+    jsr.w TilemapRowFromGsuRam
+    lda.w #$0000
+    jsr.w TilemapRowFromGsuRam
+    lda.b !tilemap_row_offset
+    clc
+    adc.w #$0040
+    sta.b !tilemap_row_offset
+    cmp.w #$0800
+    bcc .rows
+    sep.b #$20
+    plb
+    rep.b #$30
+    ply
+    lda.w !course_picture_d_w+2,y
+    and.w #$00FF
+    beq .done
+    tax                             ; not reached in the traces so far
+    lda.w !course_picture_d_w,y     ; not reached in the traces so far
+    jsl.l GsuCF42To3000             ; not reached in the traces so far
+    sep.b #$20                      ; not reached in the traces so far
+    lda.b #$7F                      ; not reached in the traces so far
+    phb                             ; not reached in the traces so far
+    pha                             ; not reached in the traces so far
+    plb                             ; not reached in the traces so far
+    rep.b #$30                      ; not reached in the traces so far
+    ldy.w #$2800                    ; not reached in the traces so far
+    stz.b !tilemap_row_offset       ; not reached in the traces so far
+.rows_second:
+    lda.w #$0000                    ; not reached in the traces so far
+    jsr.w TilemapRowFromGsuRam      ; not reached in the traces so far
+    lda.w #$0800                    ; not reached in the traces so far
+    jsr.w TilemapRowFromGsuRam      ; not reached in the traces so far
+    lda.w #$1000                    ; not reached in the traces so far
+    jsr.w TilemapRowFromGsuRam      ; not reached in the traces so far
+    lda.w #$1800                    ; not reached in the traces so far
+    jsr.w TilemapRowFromGsuRam      ; not reached in the traces so far
+    lda.w #$0000                    ; not reached in the traces so far
+    jsr.w TilemapRowFromGsuRam      ; not reached in the traces so far
+    lda.b !tilemap_row_offset       ; not reached in the traces so far
+    clc                             ; not reached in the traces so far
+    adc.w #$0040                    ; not reached in the traces so far
+    sta.b !tilemap_row_offset       ; not reached in the traces so far
+    cmp.w #$0800                    ; not reached in the traces so far
+    bcc .rows_second                ; not reached in the traces so far
+    plb                             ; not reached in the traces so far
+.done:
+    sep.b #$20
+    plb
+    plp
+    rtl
+.menu:
+    jsl.l MenuCourseGraphics
+    phb
+    php
+    rep.b #$30
+    lda.w #$0000
+    sta.l !tilemap_7f9bd7
+    lda.w #$1FFF
+    ldx.w #!tilemap_7f9bd7
+    ldy.w #!tilemap_7f9bd7+1
+    mvn !tilemap_7f9bd7>>16,!tilemap_7f9bd7>>16
+    plp
+    plb
+    rep.b #$30
+    ldy.w #$F84C
+    ldx.w #$F7E3
+    jsl.l GsuCF42ToVram
+    rep.b #$30
+    phb
+    php
+    rep.b #$30
+    lda.w #$07FF
+    ldx.w #!gsu_picture
+    ldy.w #!tilemap_7f93d7
+    mvn !tilemap_7f93d7>>16,!gsu_picture>>16
+    plp
+    plb
+    rep.b #$30
+    lda.w #$C770
+    ldx.w #$0018
+    jsl.l GsuCF42To3000
+    rep.b #$30
+    php
+    rep.b #$20
+    lda.w #$1801
+    sta.l !DMAP0
+    lda.w #$3000
+    sta.l !A1T0L
+    lda.w #$7C00
+    sta.l !VMADDL
+    lda.w #$0800
+    sta.l !DAS0L
+    sep.b #$20
+    lda.b #$80
+    sta.l !VMAIN
+    lda.b #$70
+    sta.l !A1B0
+    lda.b #$01
+    sta.l !MDMAEN
+    plp
+    rep.b #$30
+    php
+    rep.b #$20
+    lda.w #$1801
+    sta.l !DMAP0
+    lda.w #$3600
+    sta.l !A1T0L
+    lda.w #$6600
+    sta.l !VMADDL
+    lda.w #$0400
+    sta.l !DAS0L
+    sep.b #$20
+    lda.b #$80
+    sta.l !VMAIN
+    lda.b #$70
+    sta.l !A1B0
+    lda.b #$01
+    sta.l !MDMAEN
+    plp
+    plp
+    plb
+    rtl

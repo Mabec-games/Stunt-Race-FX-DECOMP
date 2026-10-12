@@ -669,6 +669,66 @@ BackdropRowsUpdate:
     plp
     rts
 
+; @routine 03:D306 BackdropScrollFromView
+; WHAT IT DOES: Sets the backdrop's scroll from the view position: $06CD
+; (the angle BackdropRowsUpdate scrolls by) = -($0664 / 64), kept below $E8
+; and at least -$38, plus $98, modulo $200; $06CF = ($0666 / 32) AND $7FF.
+; HOW: Arithmetic shifts as CMP #$8000 / ROR A; the two limits are tested
+; with CMP and the sign of the difference, as the original does. Work RAM
+; through the data bank. The upper limit is not reached in the traces so
+; far.
+; Entry: any widths. Exit: A = the $06CF value; X, Y unchanged; P
+; unchanged except N, Z, which the final pull of Y sets from Y.
+%at($03D306)
+BackdropScrollFromView:
+    phy
+    php
+    rep.b #$30
+    lda.w !view_position
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    eor.w #$FFFF
+    inc a
+    cmp.w #$00E8
+    bmi .low
+    lda.w #$00E8                    ; not reached in the traces so far
+.low:
+    cmp.w #$FFC8
+    bpl .wrap
+    lda.w #$FFC8
+.wrap:
+    clc
+    adc.w #$0098
+    and.w #$01FF
+    sta.w !view_angle
+    lda.w !view_position+2
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    and.w #$07FF
+    sta.w !view_06cf
+    sep.b #$20
+    plp
+    ply
+    rtl
+
 ; @routine 07:C293 TilemapPaletteCycle87
 ; WHAT IT DOES: TilemapPaletteCycle on nine entries from entry offset $87.
 ; HOW: Sets X and Y and calls it.

@@ -388,6 +388,74 @@ void abi_ViewReset(void)
     cpu.y &= 0x00FF;
 }
 
+uint16_t GsuParamsFromDp(uint8_t bank);
+uint8_t ReadTable9022(uint8_t bank);
+
+/* The setup tail at $03:AE73 (with its own entry at $03:AE70, PHP and 8-bit
+   registers, that no traced code calls): seeds the random number state
+   ($E6-$E9), clears the view state, then ViewReset, ReadTable9022 and
+   GsuParamsFromDp. Returns GsuParamsFromDp's A. */
+static uint16_t view_setup_tail(uint8_t bank)
+{
+    static const uint8_t dp[8] = {0x9C, 0xBD, 0x99, 0x9F, 0xA0, 0xA1, 0x9D, 0xD3};
+    static const uint16_t clear[5] = {0x0665, 0x0667, 0x0669, 0x035D, 0x035E};
+    uint32_t b = (uint32_t)bank << 16;
+    unsigned i;
+
+    wr8(0x0000E6, rd8(b | 0x1A6C));
+    wr8(0x0000E7, 0xA7);
+    wr8(0x0000E8, 0x55);
+    wr8(0x0000E9, 0x7F);
+    for (i = 0; i < 8; i++)
+        wr8(dp[i], 0x00);
+    for (i = 0; i < 5; i++)
+        wr8(b | clear[i], 0x00);
+    wr8(b | 0x05FA, 0x00);
+    ViewReset(bank);
+    ReadTable9022(bank);
+    return GsuParamsFromDp(bank);
+}
+
+/*
+ * @routine 03:B67B ViewDefaults
+ * WHAT IT DOES: Sets the default view: Super FX words $70:01D0 = $1234,
+ * $70:01C4 = 1, $70:108C = 0; $A0 = $80, $05EF = $FF, $00 = 0; the
+ * direct-page view parameters $2A = 0, $2E = $67, $2C = 0, $30 = $58,
+ * $CE = $34, $D0 = $2C, $34 = $5D17, $32 = $9D89; then the setup tail at
+ * $03:AE73 (random seed, cleared state, ViewReset, ReadTable9022,
+ * GsuParamsFromDp).
+ * HOW: Byte stores in the original's order ($A0 is written here and cleared
+ * again in the tail), then a long jump into the tail, which returns through
+ * this routine's PLP.
+ * Entry: D = $0000; any widths. Exit: A = $5D17; X = $80; Y = 0; P
+ * unchanged.
+ */
+uint16_t ViewDefaults(uint8_t bank)
+{
+    static const uint8_t dp[16][2] = {
+        {0x2A, 0x00}, {0x2B, 0x00}, {0x2E, 0x67}, {0x2F, 0x00}, {0x2C, 0x00}, {0x2D, 0x00},
+        {0x30, 0x58}, {0x31, 0x00}, {0xCE, 0x34}, {0xCF, 0x00}, {0xD0, 0x2C}, {0xD1, 0x00},
+        {0x34, 0x17}, {0x35, 0x5D}, {0x32, 0x89}, {0x33, 0x9D}};
+    unsigned i;
+
+    wr16(0x7001D0, 0x1234);
+    wr16(0x7001C4, 0x0001);
+    wr16(0x70108C, 0x0000);
+    wr8(0x0000A0, 0x80);
+    wr8((uint32_t)bank << 16 | 0x05EF, 0xFF);
+    wr8(0x000000, 0x00);
+    for (i = 0; i < 16; i++)
+        wr8(dp[i][0], dp[i][1]);
+    return view_setup_tail(bank);
+}
+
+void abi_ViewDefaults(void)
+{
+    cpu.a = ViewDefaults(cpu.db);
+    cpu.x = 0x0080;
+    cpu.y = 0x0000;
+}
+
 void GsuBytes200_0F090A(void);
 void GsuBytes200_BFBCBD(void);
 void GsuBytes200_0F0405(void);

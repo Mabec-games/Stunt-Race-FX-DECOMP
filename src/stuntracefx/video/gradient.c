@@ -9,6 +9,137 @@
 #include "machine.h"
 #include "hw.h"
 
+/* The run expansion GradientExpandFirst and GradientExpandSecond share,
+   from run table index x: each run byte n stores the colour word at the
+   data bank's Y + $20 n times at $7F:EF57 + $F3, counting n down in $F1.
+   Returns the ending index; *y is left past the last colour read. */
+static uint16_t expand_runs(uint8_t bank, uint16_t x, uint16_t *y)
+{
+    for (;;) {
+        uint16_t n = (uint16_t)(rd16(0x1FB44E + x) & 0x00FF), colour, out;
+
+        if (!n)
+            return x;
+        wr16(0x0000F1, n);
+        colour = rd16(((uint32_t)bank << 16) + 0x0020 + *y);
+        out = rd16(0x0000F3);
+        do {
+            wr16((0x7FEF57 + out) & 0xFFFFFF, colour);
+            out = (uint16_t)(out + 2);
+            n = (uint16_t)(rd16(0x0000F1) - 1);
+            wr16(0x0000F1, n);
+        } while (n);
+        wr16(0x0000F3, out);
+        x = (uint16_t)(x + 1);
+        *y = (uint16_t)(*y + 2);
+    }
+}
+
+/* The course test both expansions start with: course $0A (first list) or
+   1 (second list) uses the run table from `special`, any other from 0. */
+static uint16_t expand_list(uint8_t bank, uint16_t *y, uint16_t course, uint16_t special, int *carry)
+{
+    uint16_t c = (uint16_t)(rd16((uint32_t)bank << 16 | 0x0E3D) & 0x00FF);
+
+    *carry = c >= course;
+    return expand_runs(bank, c == course ? special : 0, y);
+}
+
+static void abi_expand(uint16_t course, uint16_t special)
+{
+    uint16_t y = cpu.y;
+    int carry;
+
+    cpu.x = expand_list(cpu.db, &y, course, special, &carry);
+    cpu.y = y;
+    cpu.a = 0;
+    cpu.p = (uint8_t)((nz16(cpu.p, 0) & ~(P_M | P_C)) | (carry ? P_C : 0));
+}
+
+/*
+ * @routine 03:ED34 GradientExpandFirst
+ * WHAT IT DOES: Expands run-length colours into the list at $7F:EF57 + $F3:
+ * each run byte n repeats the next colour word n times.
+ * HOW: Run lengths from $1F:B44E (from +$28 for course $0A); colours from
+ * the data bank at Y + $20; $F1 counts each run down. Shares its loop with
+ * GradientExpandSecond. The course $0A case is not reached in the traces so
+ * far.
+ * Entry: X 16-bit, D = $0000; DB = the colours' bank; Y = their block;
+ * $F3 = the write offset. Exit: A = 0; X = the ending run's index; Y past
+ * the last colour; $F3 past the last write; M 16-bit; Z set, N clear; C
+ * from the course compare.
+ */
+uint16_t GradientExpandFirst(uint8_t bank, uint16_t *y, int *carry)
+{
+    return expand_list(bank, y, 0x000A, 0x0028, carry);
+}
+
+void abi_GradientExpandFirst(void)
+{
+    abi_expand(0x000A, 0x0028);
+}
+
+/*
+ * @routine 03:ED46 GradientExpandSecond
+ * WHAT IT DOES: As GradientExpandFirst, for the second list: run lengths
+ * from +$50 for course 1, from +0 otherwise.
+ * HOW: As GradientExpandFirst. The course 1 case is not reached in the
+ * traces so far.
+ * Entry: as GradientExpandFirst. Exit: as GradientExpandFirst.
+ */
+uint16_t GradientExpandSecond(uint8_t bank, uint16_t *y, int *carry)
+{
+    return expand_list(bank, y, 0x0001, 0x0050, carry);
+}
+
+void abi_GradientExpandSecond(void)
+{
+    abi_expand(0x0001, 0x0050);
+}
+
+/*
+ * @routine 03:ECF5 GradientBuildColours
+ * WHAT IT DOES: Builds the gradient's colour lists in bank $7F for the
+ * course: the first list at $7F:EF57 from the course block's colours, the
+ * second at $7F:F357 from the course's second colour block (if it has one),
+ * then clears the $100 bytes at $7F:F757.
+ * HOW: X indexes the course block pointers ($03:F6F1: address word, bank
+ * byte); with the block's bank as the data bank, GradientExpandFirst writes
+ * from offset 0, GradientExpandSecond from offset $400.
+ * Entry: M 8-bit, X 16-bit, D = $0000; X = course * 3. Exit: A = 0; X =
+ * $FFFE; Y past the last colour read; M 8-bit; N, Z from the restored data
+ * bank; DB unchanged; C from the last expansion's course compare; V
+ * unchanged.
+ */
+uint16_t GradientBuildColours(uint16_t x, int *carry)
+{
+    uint8_t bank = rd8(0x03F6F3 + x);
+    uint16_t y = rd16(0x03F6F1 + x), second;
+    int i;
+
+    wr16(0x0000F3, 0x0000);
+    GradientExpandFirst(bank, &y, carry);
+    second = rd16(0x03F745 + x);
+    if (second) {
+        y = second;
+        wr16(0x0000F3, 0x0400);
+        GradientExpandSecond(bank, &y, carry);
+    }
+    for (i = 0xFE; i >= 0; i -= 2)
+        wr16(0x7FF757 + (uint32_t)i, 0x0000);
+    return y;
+}
+
+void abi_GradientBuildColours(void)
+{
+    int carry;
+
+    cpu.y = GradientBuildColours(cpu.x, &carry);
+    cpu.a = 0;
+    cpu.x = 0xFFFE;
+    cpu.p = (uint8_t)((nz8(cpu.p, cpu.db) & ~P_C) | P_M | (carry ? P_C : 0));
+}
+
 /* Store a word `count` times at $7F:3497 + X, stepping 2. */
 static uint16_t fill_cgadd(uint16_t value, uint16_t x, uint16_t count)
 {

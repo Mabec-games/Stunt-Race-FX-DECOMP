@@ -246,6 +246,177 @@ RasterColours_colour0:
     sta.w !CGDATA
     rts
 
+; @routine 03:EDF4 PaletteCourseLoad
+; WHAT IT DOES: Loads the course's palettes: colours 16-255 of the first two
+; work copies and the palette buffer from the course palette, colours 16-255
+; of the third copy from its own palette, colours 0-15 from the course block
+; (PaletteLoad16) and the third copy's 0-15 from the second colour block
+; (PaletteCopy16To7F39D7). Then, colour by colour from 255 down, the third
+; copy is matched to the second where the bit table at $03:EF1F has the
+; colour's bit set and kept one step off it where clear (an equal colour
+; goes one down, or one up when its red is 0). Sets the six blended colours
+; at $0E21-$0E2B; with $10DC set, clears colours $B0-$BF of all four copies.
+; HOW: The pointer tables ($03:F649, $03:F69D, $03:F6F1, $03:F745) give each
+; source's bank, which becomes the data bank while it is read. The table's
+; word for 16 colours is shifted right by the colour's place in it, counted
+; in direct page $F1. The $10DC case is not reached in the traces so far.
+; Entry: M 16-bit, X 16-bit, D = $0000; DB = the bit table's bank ($03).
+; Exit: A = $10DC's word (0); X = $FFFE; Y = 0; $F1 = 0; M 16-bit; Z set, N
+; clear; C from the last compare of colour 0; V from the course index add;
+; DB unchanged. (With $10DC set: A low byte 0, X = $20, M 8-bit, Z, C set.)
+%at($03EDF4)
+PaletteCourseLoad:
+    rep.b #$30
+    lda.w !course
+    asl a
+    clc
+    adc.w !course
+    and.w #$00FF
+    tax
+    phx
+    sep.b #$20
+    lda.l !course_palette_ptrs+2,x
+    phb
+    pha
+    rep.b #$20
+    lda.l !course_palette_ptrs,x
+    plb
+    tay
+    ldx.w #$0020
+.copies:
+    lda.w !course_block_colours,y
+    sta.l !palette_work_a,x
+    sta.l !palette_work_b,x
+    sta.l !palette_buffer,x
+    inx
+    inx
+    iny
+    iny
+    cpx.w #$0200
+    bcc .copies
+    sep.b #$20
+    plb
+    plx
+    phx
+    lda.l !course_palette2_ptrs+2,x
+    phb
+    pha
+    plb
+    rep.b #$20
+    lda.l !course_palette2_ptrs,x
+    tay
+    ldx.w #$0020
+.third:
+    lda.w !course_block_colours,y
+    sta.l !palette_work_c,x
+    inx
+    inx
+    iny
+    iny
+    cpx.w #$0200
+    bcc .third
+    sep.b #$20
+    plb
+    sep.b #$20
+    plx
+    phx
+    lda.l !course_block_ptrs+2,x
+    phb
+    pha
+    plb
+    rep.b #$20
+    lda.l !course_block_ptrs,x
+    jsr.w PaletteLoad16
+    sep.b #$20
+    plb
+    plx
+    lda.l !course_block2_ptrs+2,x
+    phb
+    pha
+    plb
+    rep.b #$20
+    lda.l !course_block2_ptrs,x
+    jsr.w PaletteCopy16To7F39D7
+    plb
+    rep.b #$20
+    ldx.w #$01FE
+.colour:
+    txa
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    and.w #$001E
+    tay
+    txa
+    lsr a
+    and.w #$000F
+    sta.b !palette_bits
+    cmp.w #$0000
+    bne .shift
+    lda.w !palette_differ_bits,y
+    bra .test
+.shift:
+    lda.w !palette_differ_bits,y
+.shift_one:
+    lsr a
+    dec.b !palette_bits
+    bne .shift_one
+.test:
+    bit.w #$0001
+    bne .match
+    lda.l !palette_work_b,x
+    cmp.l !palette_work_c,x
+    bne .next
+    pha
+    and.w #$001F
+    beq .up
+    pla
+    dec a
+    bra .store
+.up:
+    pla
+    inc a
+    bra .store
+.match:
+    lda.l !palette_work_b,x
+    cmp.l !palette_work_c,x
+    beq .next
+.store:
+    sta.l !palette_work_c,x
+.next:
+    dex
+    dex
+    bpl .colour
+    lda.w #$45CC
+    sta.w !blend_set_a
+    lda.w #$2528
+    sta.w !blend_set_a+2
+    lda.w #$1CE5
+    sta.w !blend_set_a+4
+    lda.w #$739A
+    sta.w !blend_set_a+6
+    lda.w #$1CE5
+    sta.w !blend_set_a+8
+    lda.w #$2528
+    sta.w !blend_set_a+10
+    lda.w !wram_10DC
+    beq .done
+    sep.b #$20                      ; not reached in the traces so far
+    rep.b #$10
+    lda.b #$00
+    ldx.w #$0000
+.clear:
+    sta.l !palette_buffer+$160,x
+    sta.l !palette_work_b+$160,x
+    sta.l !palette_work_c+$160,x
+    sta.l !palette_work_a+$160,x
+    inx
+    cpx.w #$0020
+    bne .clear
+.done:
+    rts
+
 ; @routine 03:EDA5 PaletteLoad16
 ; WHAT IT DOES: Loads 16 colours from address A in the data bank into both
 ; palette work copies in bank $7F ($7F:35D7, $7F:37D7) and the palette

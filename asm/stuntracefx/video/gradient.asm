@@ -13,6 +13,112 @@ incsrc "../include/rom.inc"
 
 arch 65816
 
+; @routine 03:ECF5 GradientBuildColours
+; WHAT IT DOES: Builds the gradient's colour lists in bank $7F for the
+; course: the first list at $7F:EF57 from the course block's colours, the
+; second at $7F:F357 from the course's second colour block (if it has one),
+; then clears the $100 bytes at $7F:F757.
+; HOW: X indexes the course block pointers ($03:F6F1: address word, bank
+; byte); with the block's bank as the data bank, GradientExpandFirst writes
+; from offset 0, GradientExpandSecond from offset $400.
+; Entry: M 8-bit, X 16-bit, D = $0000; X = course * 3. Exit: A = 0; X =
+; $FFFE; Y past the last colour read; M 8-bit; N, Z from the restored data
+; bank; DB unchanged; C from the last expansion's course compare; V
+; unchanged.
+%at($03ECF5)
+GradientBuildColours:
+    sep.b #$20
+    lda.l !course_block_ptrs+2,x
+    phb
+    pha
+    plb
+    rep.b #$30
+    lda.l !course_block_ptrs,x
+    tay
+    phx
+    lda.w #$0000
+    sta.b !gradient_out
+    jsr.w GradientExpandFirst
+    plx
+    rep.b #$20
+    lda.l !course_block2_ptrs,x
+    beq .clear
+    tay
+    lda.w #$0400
+    sta.b !gradient_out
+    jsr.w GradientExpandSecond
+.clear:
+    rep.b #$20
+    ldx.w #$00FE
+    lda.w #$0000
+.loop:
+    sta.l !gradient_colours_clear,x
+    dex
+    dex
+    bpl .loop
+    sep.b #$20
+    plb
+    rts
+
+; @routine 03:ED34 GradientExpandFirst
+; WHAT IT DOES: Expands run-length colours into the list at $7F:EF57 + $F3:
+; each run byte n repeats the next colour word n times.
+; HOW: Run lengths from $1F:B44E (from +$28 for course $0A); colours from
+; the data bank at Y + $20; $F1 counts each run down. Shares its loop with
+; GradientExpandSecond.
+; Entry: X 16-bit, D = $0000; DB = the colours' bank; Y = their block;
+; $F3 = the write offset. Exit: A = 0; X = the ending run's index; Y past
+; the last colour; $F3 past the last write; M 16-bit; Z set, N clear; C
+; from the course compare.
+%at($03ED34)
+GradientExpandFirst:
+    rep.b #$20
+    lda.w !course
+    and.w #$00FF
+    cmp.w #$000A
+    bne GradientExpandAll
+    ldx.w #$0028                    ; not reached in the traces so far
+    bra GradientExpandRuns          ; not reached in the traces so far
+
+; @routine 03:ED46 GradientExpandSecond
+; WHAT IT DOES: As GradientExpandFirst, for the second list: run lengths
+; from +$50 for course 1, from +0 otherwise.
+; HOW: As GradientExpandFirst; the loop below is the shared one.
+; Entry: as GradientExpandFirst. Exit: as GradientExpandFirst.
+%at($03ED46)
+GradientExpandSecond:
+    rep.b #$20
+    lda.w !course
+    and.w #$00FF
+    cmp.w #$0001
+    bne GradientExpandAll
+    ldx.w #$0050                    ; not reached in the traces so far
+    bra GradientExpandRuns          ; not reached in the traces so far
+GradientExpandAll:
+    ldx.w #$0000
+GradientExpandRuns:
+    lda.l !gradient_run_table,x
+    and.w #$00FF
+    beq .done
+    sta.b !gradient_run_left
+    lda.w !course_block_colours,y
+    phx
+    ldx.b !gradient_out
+.run:
+    sta.l !gradient_colours,x
+    inx
+    inx
+    dec.b !gradient_run_left
+    bne .run
+    stx.b !gradient_out
+    plx
+    inx
+    iny
+    iny
+    bra GradientExpandRuns
+.done:
+    rts
+
 ; @routine 03:ED7F GradientFillCgadd
 ; WHAT IT DOES: Fills Y entries of the CGADD table at $7F:3497 + X with A.
 ; HOW: 16-bit stores, X stepping by 2.

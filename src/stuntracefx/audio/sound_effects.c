@@ -533,3 +533,67 @@ void abi_EngineSoundsPlayer1(void)
 {
     abi_engine_sounds(0x0DD6, 0x0D1A, 0x0309);
 }
+
+/*
+ * @routine 03:EC43 HandlerSoundIndex
+ * WHAT IT DOES: Maps a selection handler address to a sound index: $81B9 to
+ * 0, $853D to 1, $8411 to 2, $82E5 to 3, any other to 4.
+ * HOW: A chain of 16-bit compares. The $82E5 case is not reached in the
+ * traces so far.
+ * Entry: M 16-bit; A = the handler address. Exit: A = the index; N clear, Z
+ * from it; C set on a match, else from the last compare; X, Y unchanged.
+ */
+uint16_t HandlerSoundIndex(uint16_t handler, uint8_t *p)
+{
+    static const uint16_t known[4] = {0x81B9, 0x853D, 0x8411, 0x82E5};
+    uint16_t i;
+
+    for (i = 0; i < 4; i++)
+        if (handler == known[i]) {
+            *p = (uint8_t)(nz16(*p, i) | P_C);
+            return i;
+        }
+    *p = (uint8_t)((nz16(*p, 4) & ~P_C) | (handler >= 0x82E5 ? P_C : 0));
+    return 4;
+}
+
+void abi_HandlerSoundIndex(void)
+{
+    cpu.a = HandlerSoundIndex(cpu.a, &cpu.p);
+}
+
+/*
+ * @routine 03:DCEF SoundIndicesFromHandlers
+ * WHAT IT DOES: Sets the sound indices from the two selection handlers:
+ * $0D89 from handler A ($18DB), also $0D8B when $10DA or $10DC is nonzero,
+ * and $0D8A from handler B ($18DD).
+ * HOW: HandlerSoundIndex on each (the handlers read in bank 0, the rest
+ * through the data bank), with 8-bit registers for the stores and tests.
+ * Entry: any widths. Exit: A = handler B's index; X = the byte that decided
+ * $0D8B ($10DA, or $10DC when it is 0); Y high byte cleared; P unchanged.
+ */
+uint8_t SoundIndicesFromHandlers(uint8_t bank, uint8_t *x)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t p = 0, i;
+
+    i = (uint8_t)HandlerSoundIndex(rd16(0x0018DB), &p);
+    wr8(b | 0x0D89, i);
+    *x = rd8(b | 0x10DA);
+    if (!*x)
+        *x = rd8(b | 0x10DC);
+    if (*x)
+        wr8(b | 0x0D8B, i);
+    i = (uint8_t)HandlerSoundIndex(rd16(0x0018DD), &p);
+    wr8(b | 0x0D8A, i);
+    return i;
+}
+
+void abi_SoundIndicesFromHandlers(void)
+{
+    uint8_t x;
+
+    cpu.a = SoundIndicesFromHandlers(cpu.db, &x);
+    cpu.x = x;
+    cpu.y &= 0x00FF;
+}

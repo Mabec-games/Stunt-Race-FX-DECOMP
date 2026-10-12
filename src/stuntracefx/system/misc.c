@@ -202,3 +202,30 @@ void abi_WordCopyStep(void)
     cpu.a = WordCopyStep(cpu.db, cpu.a, &cpu.x, &cpu.y, &p);
     cpu.p = (uint8_t)(p & ~(P_M | P_X));
 }
+
+/*
+ * @routine 03:8CF6 WramFillZero
+ * WHAT IT DOES: Clears Y bytes of work RAM from bank A, address X.
+ * HOW: DMA channel 0, fixed source (the zero byte at $03:8D26), to WMDATA
+ * ($2180) with the work RAM address set at $2181-$2183; starts it.
+ * Entry: M 8-bit, X 16-bit; A = bank, X = address, Y = byte count (0 means
+ * 65536). Exit: A low byte = 1; X = $8008; N, Z clear.
+ */
+void WramFillZero(uint8_t bank, uint16_t addr, uint16_t count)
+{
+    wr16(0x002181, addr);
+    wr8(0x002183, bank);
+    wr16(0x004305, count);
+    wr16(0x004302, 0x8D26);
+    wr8(0x004304, 0x03);
+    wr16(0x004300, 0x8008);
+    wr8(0x00420B, 0x01);
+}
+
+void abi_WramFillZero(void)
+{
+    WramFillZero((uint8_t)cpu.a, cpu.x, cpu.y);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
+    cpu.x = 0x8008;
+    cpu.p = (uint8_t)(cpu.p & ~(P_N | P_Z));
+}

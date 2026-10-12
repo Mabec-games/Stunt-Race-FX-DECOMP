@@ -858,3 +858,44 @@ includeonce
 !fx_draw_step_x = $700212
 !fx_draw_step_y = $700214
 !fx_noise_seed = $70021C
+; Gradient colour lists in bank $7F built by GradientBuildColours
+; (video/gradient.asm): the first list from $EF57, the second from $F357,
+; and $100 bytes from $F757 cleared; $F1 counts a run down, $F3 is the
+; write offset.
+!gradient_colours = $7FEF57
+!gradient_colours_clear = $7FF757
+!gradient_run_left = $F1
+!gradient_out = $F3
+
+; Cleared or set by ViewDefaults and its shared tail (gsu/programs.asm);
+; their readers are not filed yet.
+!dp_99 = $99
+!dp_9c = $9C
+!dp_9d = $9D
+!dp_9f = $9F
+!dp_a0 = $A0
+!dp_a1 = $A1
+!dp_bd = $BD
+!dp_d3 = $D3
+!wram_035D = $035D
+!wram_035E = $035E
+!wram_1A6C = $1A6C
+!gsu_word_1c4 = $7001C4
+!gsu_word_1d0 = $7001D0
+!gsu_word_108c = $70108C
+
+; Sound indices from the selection handlers (audio/sound_effects.asm): $0D8B
+; is set too when $10DA or $10DC is nonzero.
+!wram_0D8B = $0D8B
+!wram_10DA = $10DA
+!wram_10DC = $10DC
+
+; RaceVideoSetup (video/screen_setup.asm): the second tilemap buffer in bank
+; $7F, cleared when $0D62 is set; $F1 steps the rows of the course tilemap;
+; $0D24 3 or more makes RaceVideoInit clear $0EED-$0EEF, $0E6C and $0E6E.
+!tilemap_7f9bd7 = $7F9BD7
+!tilemap_row_offset = $F1
+!wram_0D24 = $0D24
+!wram_0EED = $0EED
+!wram_0E6C = $0E6C
+!wram_0E6E = $0E6E

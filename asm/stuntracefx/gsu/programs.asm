@@ -394,6 +394,109 @@ ViewReset:
     plp
     rtl
 
+; The tail ViewDefaults ends in ($03:AE73), with an entry of its own at
+; $03:AE70 (PHP, then 8-bit registers) that no traced code calls: seeds the
+; random number state ($E6-$E9: $1A6C's byte, then $A7, $55, $7F), clears
+; $9C, $BD, $99, $9F-$A1, $9D, $D3, the view position's high bytes, $035D,
+; $035E and $05FA, then runs ViewReset, ReadTable9022 and GsuParamsFromDp
+; and returns through the PLP.
+%at($03AE70)
+ViewSetup:
+    php                             ; not reached in the traces so far
+    sep.b #$30                      ; not reached in the traces so far
+ViewSetupTail:
+    lda.w !wram_1A6C
+    sta.b !random_e6
+    lda.b #$A7
+    sta.b !random_e7
+    lda.b #$55
+    sta.b !random_e8
+    lda.b #$7F
+    sta.b !random_e9
+    stz.b !dp_9c
+    stz.b !dp_bd
+    stz.b !dp_99
+    stz.b !dp_9f
+    stz.b !dp_a0
+    stz.b !dp_a1
+    stz.b !dp_9d
+    stz.b !dp_d3
+    stz.w !view_position+1
+    stz.w !view_position+3
+    stz.w !view_position+5
+    stz.w !wram_035D
+    stz.w !wram_035E
+    lda.b #$00
+    sta.w !wram_05FA
+    jsl.l ViewReset
+    jsl.l ReadTable9022
+    jsl.l GsuParamsFromDp
+    plp
+    rtl
+
+; @routine 03:B67B ViewDefaults
+; WHAT IT DOES: Sets the default view: Super FX words $70:01D0 = $1234,
+; $70:01C4 = 1, $70:108C = 0; $A0 = $80, $05EF = $FF, $00 = 0; the
+; direct-page view parameters $2A = 0, $2E = $67, $2C = 0, $30 = $58,
+; $CE = $34, $D0 = $2C, $34 = $5D17, $32 = $9D89; then the setup tail at
+; $03:AE73 (random seed, cleared state, ViewReset, ReadTable9022,
+; GsuParamsFromDp).
+; HOW: Byte stores in the original's order ($A0 is written here and cleared
+; again in the tail), then a long jump into the tail, which returns through
+; this routine's PLP.
+; Entry: D = $0000; any widths. Exit: A = $5D17; X = $80; Y = 0; P
+; unchanged.
+%at($03B67B)
+ViewDefaults:
+    php
+    rep.b #$20
+    lda.w #$1234
+    sta.l !gsu_word_1d0
+    lda.w #$0001
+    sta.l !gsu_word_1c4
+    lda.w #$0000
+    sta.l !gsu_word_108c
+    sep.b #$20
+    lda.b #$80
+    sta.b !dp_a0
+    lda.b #$FF
+    sta.w !wram_05EF
+    stz.b !dp_00
+    sep.b #$30
+    lda.b #$00
+    sta.b !dp_2a
+    lda.b #$00
+    sta.b !dp_2a+1
+    lda.b #$67
+    sta.b !dp_2e
+    lda.b #$00
+    sta.b !dp_2e+1
+    lda.b #$00
+    sta.b !dp_2c
+    lda.b #$00
+    sta.b !dp_2c+1
+    lda.b #$58
+    sta.b !dp_30
+    lda.b #$00
+    sta.b !dp_30+1
+    lda.b #$34
+    sta.b !dp_ce
+    lda.b #$00
+    sta.b !dp_ce+1
+    lda.b #$2C
+    sta.b !dp_d0
+    lda.b #$00
+    sta.b !dp_d0+1
+    lda.b #$17
+    sta.b !dp_34
+    lda.b #$5D
+    sta.b !dp_34+1
+    lda.b #$89
+    sta.b !dp_32
+    lda.b #$9D
+    sta.b !dp_32+1
+    jml.l ViewSetupTail
+
 ; @routine 07:85E1 GsuF0A5OrF0B4
 ; WHAT IT DOES: Sets the renderer input at $70:020C to A, then runs Super FX
 ; program $07:F0A5 with the bytes $0F, $09, $0A at $70:0200 when $0D62 is

@@ -1474,7 +1474,7 @@ static int run_handler(uint8_t bank, uint16_t obj, uint16_t word_at, uint16_t ba
 {
     uint32_t b = (uint32_t)bank << 16;
     uint16_t h;
-    uint8_t p = cpu.p;
+    uint8_t p = cpu.p, hb;
 
     wr8(b | 0x0356, rd8(b | (uint16_t)(bank_at + obj)));
     h = rd16(b | (uint16_t)(word_at + obj));
@@ -1485,11 +1485,38 @@ static int run_handler(uint8_t bank, uint16_t obj, uint16_t word_at, uint16_t ba
     if (need_no_record && (cpu.a = rd16(b | (uint16_t)(0x2022 + obj))) != 0)
         return 0;
     wr16(b | 0x034C, obj);
-    cpu.a = (uint16_t)(rd16(b | 0x0354) - 1);
+    hb = rd8(b | 0x0356);
+    h = rd16(b | 0x0354);
+    cpu.a = (uint16_t)(h - 1);
     cpu.x = obj;
     cpu.p = (uint8_t)(nz16(p, cpu.a) | P_M);
-    call_routine((uint32_t)rd8(b | 0x0356) << 16 | rd16(b | 0x0354), 1);
+    call_routine((uint32_t)hb << 16 | h, 1);
     return 1;
+}
+
+/*
+ * @routine 03:CAB8 ObjectRunHandlerA
+ * WHAT IT DOES: Runs object X's first handler: the long address at +$1A
+ * (word) / +$1C (bank), unless the word is 0.
+ * HOW: Keeps the bank at $0356, the word at $0354 and the object at $034C,
+ * pushes $03:CAE7 as the handler's return and enters the handler with an RTL
+ * (A = its address - 1, M 8-bit).
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: A and Y as the handler leaves
+ * them (A = 0 with no handler); X, P unchanged.
+ */
+void ObjectRunHandlerA(uint8_t bank, uint16_t obj)
+{
+    run_handler(bank, obj, 0x201A, 0x201C, 0);
+}
+
+void abi_ObjectRunHandlerA(void)
+{
+    uint16_t x = cpu.x;
+    uint8_t p = cpu.p;
+
+    run_handler(cpu.db, x, 0x201A, 0x201C, 0);
+    cpu.x = x;
+    cpu.p = p;
 }
 
 /*
@@ -1543,4 +1570,85 @@ void abi_ObjectReleaseY(void)
 {
     ObjectReleaseY();
     cpu.p = (cpu.p & P_X) ? nz8(cpu.p, (uint8_t)cpu.y) : nz16(cpu.p, cpu.y);
+}
+
+/*
+ * @routine 03:D388 ObjectsRunHandlers
+ * WHAT IT DOES: The objects' frame: counts the frame in $05E9 (16-bit), then
+ * for each object in the used list (from $0329) steps its countdown at +$36:
+ * a negative one restarts at 3 and runs the second handler
+ * (ObjectRunHandlerB); one above 1 counts down and runs the first handler
+ * (ObjectRunHandlerA); one that reaches 0 from 1 clears +$22, +$23 and
+ * itself. An object a handler asked to free ($035C nonzero) is freed
+ * (ObjectFreeLong) after its next link is read.
+ * HOW: Data bank $7E for the walk; $035C is cleared before each object. The
+ * handlers are entered with X = the object, Y = the object (the caller's Y
+ * for the first) and the countdown's N, Z, C and V as the caller left them.
+ * Entry: X 16-bit; any M. Exit: A low byte = the last byte read; X = Y = 0;
+ * M 8-bit, X 16-bit; N, Z from the restored data bank; C, V as the handlers
+ * leave them.
+ */
+void ObjectsRunHandlers(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t db = cpu.db, v;
+    uint16_t x, y = cpu.y;
+
+    v = (uint8_t)(rd8(b | 0x05E9) + 1);
+    wr8(b | 0x05E9, v);
+    if (!v)
+        wr8(b | 0x05EA, (uint8_t)(rd8(b | 0x05EA) + 1));
+    cpu.db = 0x7E;
+    b = 0x7E0000;
+    x = rd16(b | 0x0329);
+    while (x) {
+        wr8(b | 0x035C, 0x00);
+        v = rd8(b | (uint16_t)(0x2036 + x));
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+        if (v && (v & 0x80 || v != 1)) {
+            if (v & 0x80) {
+                v = 0x03;
+                wr8(b | (uint16_t)(0x2036 + x), v);
+                cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+                cpu.x = x;
+                cpu.y = y;
+                cpu.p = (uint8_t)((nz8(cpu.p, v) | P_M) & ~P_X);
+                abi_ObjectRunHandlerB();
+            } else {
+                v = (uint8_t)(v - 1);
+                wr8(b | (uint16_t)(0x2036 + x), v);
+                cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+                cpu.x = x;
+                cpu.y = y;
+                cpu.p = (uint8_t)((nz8(cpu.p, v) | P_M) & ~P_X);
+                abi_ObjectRunHandlerA();
+            }
+            b = (uint32_t)cpu.db << 16;
+            v = rd8(b | 0x035C);
+            cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+            if (v) {
+                y = rd16(b | (uint16_t)(0x2000 + x));
+                cpu.x = x;
+                cpu.y = y;
+                abi_ObjectFreeLong();
+                x = y;
+                continue;
+            }
+        } else if (v) {
+            wr8(b | (uint16_t)(0x2022 + x), 0x00);
+            wr8(b | (uint16_t)(0x2023 + x), 0x00);
+            wr8(b | (uint16_t)(0x2036 + x), 0x00);
+        }
+        y = rd16(b | (uint16_t)(0x2000 + x));
+        x = y;
+    }
+    cpu.x = 0;
+    cpu.y = 0;
+    cpu.db = db;
+    cpu.p = (uint8_t)((nz8(cpu.p, db) | P_M) & ~P_X);
+}
+
+void abi_ObjectsRunHandlers(void)
+{
+    ObjectsRunHandlers();
 }

@@ -684,6 +684,46 @@ void abi_BackdropRowsUpdate(void)
 }
 
 /*
+ * @routine 03:D306 BackdropScrollFromView
+ * WHAT IT DOES: Sets the backdrop's scroll from the view position: $06CD
+ * (the angle BackdropRowsUpdate scrolls by) = -($0664 / 64), kept below $E8
+ * and at least -$38, plus $98, modulo $200; $06CF = ($0666 / 32) AND $7FF.
+ * HOW: Arithmetic shifts as CMP #$8000 / ROR A; the two limits are tested
+ * with CMP and the sign of the difference, as the original does. Work RAM
+ * through the data bank. The upper limit is not reached in the traces so
+ * far.
+ * Entry: any widths. Exit: A = the $06CF value; X, Y unchanged; P
+ * unchanged except N, Z, which the final pull of Y sets from Y.
+ */
+uint16_t BackdropScrollFromView(uint8_t bank)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t v = rd16(b | 0x0664), w;
+    int i;
+
+    for (i = 0; i < 6; i++)
+        v = (uint16_t)((v >> 1) | (v & 0x8000));
+    v = (uint16_t)-v;
+    if (!((uint16_t)(v - 0x00E8) & 0x8000))
+        v = 0x00E8;
+    if ((uint16_t)(v - 0xFFC8) & 0x8000)
+        v = 0xFFC8;
+    wr16(b | 0x06CD, (uint16_t)((v + 0x0098) & 0x01FF));
+    w = rd16(b | 0x0666);
+    for (i = 0; i < 5; i++)
+        w = (uint16_t)((w >> 1) | (w & 0x8000));
+    w &= 0x07FF;
+    wr16(b | 0x06CF, w);
+    return w;
+}
+
+void abi_BackdropScrollFromView(void)
+{
+    cpu.a = BackdropScrollFromView(cpu.db);
+    cpu.p = (cpu.p & P_X) ? nz8(cpu.p, (uint8_t)cpu.y) : nz16(cpu.p, cpu.y);
+}
+
+/*
  * @routine 07:C293 TilemapPaletteCycle87
  * WHAT IT DOES: TilemapPaletteCycle on nine entries from entry offset $87.
  * HOW: Sets X and Y and calls it.

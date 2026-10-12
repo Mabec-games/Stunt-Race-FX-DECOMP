@@ -95,6 +95,154 @@ ApproachEighthMin8:
     sta.b !approach_value
     brl ApproachMoved
 
+; @routine 03:CEC3 ApproachThirtySecondMin32
+; WHAT IT DOES: Moves $3E a thirty-second of the way toward A, by at least
+; 1.
+; HOW: The difference, at least $20 either way, halved five times.
+; Entry: as ApproachQuarterMin4. Exit: as ApproachQuarterMin4.
+%at($03CEC3)
+ApproachThirtySecondMin32:
+    cmp.b !approach_value
+    bne .lCECB
+    jml.l ApproachArrived           ; not reached in the traces so far
+.lCECB:
+    sec
+    sbc.b !approach_value
+    cmp.w #$0000
+    bmi .lCEDD
+    cmp.w #$0020
+    bpl .lCEE5
+    lda.w #$0020                    ; not reached in the traces so far
+    bra .lCEE5                      ; not reached in the traces so far
+.lCEDD:
+    cmp.w #$FFE0                    ; not reached in the traces so far
+    bmi .lCEE5                      ; not reached in the traces so far
+    lda.w #$FFE0                    ; not reached in the traces so far
+.lCEE5:
+    cmp.w #$8000
+    ror a
+    bpl .lCEEE
+    adc.w #$0000                    ; not reached in the traces so far
+.lCEEE:
+    cmp.w #$8000
+    ror a
+    bpl .lCEF7
+    adc.w #$0000                    ; not reached in the traces so far
+.lCEF7:
+    cmp.w #$8000
+    ror a
+    bpl .lCF00
+    adc.w #$0000                    ; not reached in the traces so far
+.lCF00:
+    cmp.w #$8000
+    ror a
+    bpl .lCF09
+    adc.w #$0000                    ; not reached in the traces so far
+.lCF09:
+    cmp.w #$8000
+    ror a
+    bpl .lCF12
+    adc.w #$0000                    ; not reached in the traces so far
+.lCF12:
+    clc
+    adc.b !approach_value
+    sta.b !approach_value
+    brl ApproachMoved
+
+; @routine 03:CF1A ApproachSixtyFourthMin64
+; WHAT IT DOES: Moves $3E a sixty-fourth of the way toward A, by at least 1.
+; HOW: The difference, at least $40 either way, halved six times.
+; Entry: as ApproachQuarterMin4. Exit: as ApproachQuarterMin4.
+%at($03CF1A)
+ApproachSixtyFourthMin64:
+    cmp.b !approach_value
+    bne .lCF22
+    jml.l ApproachArrived           ; not reached in the traces so far
+.lCF22:
+    sec
+    sbc.b !approach_value
+    cmp.w #$0000
+    bmi .lCF34
+    cmp.w #$0040
+    bpl .lCF3C
+    lda.w #$0040                    ; not reached in the traces so far
+    bra .lCF3C                      ; not reached in the traces so far
+.lCF34:
+    cmp.w #$FFC0                    ; not reached in the traces so far
+    bmi .lCF3C                      ; not reached in the traces so far
+    lda.w #$FFC0                    ; not reached in the traces so far
+.lCF3C:
+    cmp.w #$8000
+    ror a
+    bpl .lCF45
+    adc.w #$0000                    ; not reached in the traces so far
+.lCF45:
+    cmp.w #$8000
+    ror a
+    bpl .lCF4E
+    adc.w #$0000                    ; not reached in the traces so far
+.lCF4E:
+    cmp.w #$8000
+    ror a
+    bpl .lCF57
+    adc.w #$0000                    ; not reached in the traces so far
+.lCF57:
+    cmp.w #$8000
+    ror a
+    bpl .lCF60
+    adc.w #$0000                    ; not reached in the traces so far
+.lCF60:
+    cmp.w #$8000
+    ror a
+    bpl .lCF69
+    adc.w #$0000                    ; not reached in the traces so far
+.lCF69:
+    cmp.w #$8000
+    ror a
+    bpl .lCF72
+    adc.w #$0000                    ; not reached in the traces so far
+.lCF72:
+    clc
+    adc.b !approach_value
+    sta.b !approach_value
+    brl ApproachMoved
+
+; @routine 03:CFE3 ApproachHalfMin2Byte
+; WHAT IT DOES: Moves the byte at $3E half of the way toward A, by at least
+; 1.
+; HOW: The difference, at least 2 either way, halved once, with 8-bit
+; arithmetic. Only the arrived case is reached in the traces so far.
+; Entry: M 8-bit, D = $0000; A = target. Exit: as ApproachQuarterMin4 (A low
+; byte).
+%at($03CFE3)
+ApproachHalfMin2Byte:
+    cmp.b !approach_value
+    bne .lCFEB
+    jml.l ApproachArrived
+.lCFEB:                             ; not reached in the traces so far, to the end
+    sec
+    sbc.b !approach_value
+    cmp.b #$00
+    bmi .lCFFA
+    cmp.b #$02
+    bpl .lD000
+    lda.b #$02
+    bra .lD000
+.lCFFA:
+    cmp.b #$FE
+    bmi .lD000
+    lda.b #$FE
+.lD000:
+    cmp.b #$80
+    ror a
+    bpl .lD007
+    adc.b #$00
+.lD007:
+    clc
+    adc.b !approach_value
+    sta.b !approach_value
+    brl ApproachMoved
+
 ; @routine 03:D00F ApproachQuarterMin4Byte
 ; WHAT IT DOES: The 8-bit form of ApproachQuarterMin4, on the byte at $3E.
 ; HOW: As ApproachQuarterMin4, with 8-bit arithmetic.
@@ -134,9 +282,54 @@ ApproachQuarterMin4Byte:
     sta.b !approach_value
     brl ApproachMoved
 
+; @routine 03:D042 ApproachEighthMin8Byte
+; WHAT IT DOES: Moves the byte at $3E an eighth of the way toward A, by at
+; least 1.
+; HOW: The difference, at least 8 either way, halved three times, with 8-bit
+; arithmetic.
+; Entry: M 8-bit, D = $0000; A = target. Exit: as ApproachQuarterMin4 (A low
+; byte).
+%at($03D042)
+ApproachEighthMin8Byte:
+    cmp.b !approach_value
+    bne .lD04A
+    jml.l ApproachArrived
+.lD04A:
+    sec
+    sbc.b !approach_value
+    cmp.b #$00
+    bmi .lD059
+    cmp.b #$08
+    bpl .lD05F
+    lda.b #$08
+    bra .lD05F
+.lD059:
+    cmp.b #$F8
+    bmi .lD05F
+    lda.b #$F8
+.lD05F:
+    cmp.b #$80
+    ror a
+    bpl .lD066
+    adc.b #$00
+.lD066:
+    cmp.b #$80
+    ror a
+    bpl .lD06D
+    adc.b #$00
+.lD06D:
+    cmp.b #$80
+    ror a
+    bpl .lD074
+    adc.b #$00
+.lD074:
+    clc
+    adc.b !approach_value
+    sta.b !approach_value
+    brl ApproachMoved
+
 ; The shared tails ($03:D1AA, $03:D1AE): $3E back in A, carry clear when it
-; moved, set when it was already at the target. (The routine at $03:D042,
-; not filed yet, ends in them too.)
+; moved, set when it was already at the target.
 %at($03D1AA)
 ApproachMoved:
     lda.b !approach_value

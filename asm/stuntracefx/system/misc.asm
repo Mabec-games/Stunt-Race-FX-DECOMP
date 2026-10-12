@@ -162,3 +162,24 @@ WordCopyStep:
     dec.w !copy_count
     dec.w !copy_count
     rtl
+
+; @routine 03:8CF6 WramFillZero
+; WHAT IT DOES: Clears Y bytes of work RAM from bank A, address X.
+; HOW: DMA channel 0, fixed source (the zero byte at $03:8D26), to WMDATA
+; ($2180) with the work RAM address set at $2181-$2183; starts it.
+; Entry: M 8-bit, X 16-bit; A = bank, X = address, Y = byte count (0 means
+; 65536). Exit: A low byte = 1; X = $8008; N, Z clear.
+%at($038CF6)
+WramFillZero:
+    stx.w !WMADDL
+    sta.w !WMADDH
+    sty.w !DAS0L
+    ldx.w #!zero_byte_038d26
+    stx.w !A1T0L
+    lda.b #!zero_byte_038d26>>16
+    sta.w !A1B0
+    ldx.w #$8008
+    stx.w !DMAP0
+    lda.b #$01
+    sta.w !MDMAEN
+    rts

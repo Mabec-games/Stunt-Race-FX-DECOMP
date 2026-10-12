@@ -11,6 +11,8 @@ here when they are made.
   on every 65816 instruction ([decomp/toolchain/asar-control-2026-10-11](decomp/toolchain/asar-control-2026-10-11.md)).
 - asar reads a bare number as a branch operand as a raw displacement, not a
   target address. Branches use labels or raw displacements, never addresses.
+- asar writes MVN/MVP operands in byte order: `mvn dst,src` assembles to
+  `54 dst src` (the destination bank first, unlike WDC's `MVN src,dst`).
 
 ## Code
 

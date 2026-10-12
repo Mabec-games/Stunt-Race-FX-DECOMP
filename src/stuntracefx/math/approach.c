@@ -98,6 +98,70 @@ void abi_ApproachEighthMin8(void)
 }
 
 /*
+ * @routine 03:CEC3 ApproachThirtySecondMin32
+ * WHAT IT DOES: Moves $3E a thirty-second of the way toward A, by at least 1.
+ * HOW: The difference, at least $20 either way, halved five times.
+ * Entry: as ApproachQuarterMin4. Exit: as ApproachQuarterMin4.
+ */
+uint16_t ApproachThirtySecondMin32(uint16_t target, int *moved, uint8_t *p)
+{
+    return approach(target, 1, 32, 5, moved, p);
+}
+
+void abi_ApproachThirtySecondMin32(void)
+{
+    abi_approach(1, 32, 5);
+}
+
+/*
+ * @routine 03:CF1A ApproachSixtyFourthMin64
+ * WHAT IT DOES: Moves $3E a sixty-fourth of the way toward A, by at least 1.
+ * HOW: The difference, at least $40 either way, halved six times.
+ * Entry: as ApproachQuarterMin4. Exit: as ApproachQuarterMin4.
+ */
+uint16_t ApproachSixtyFourthMin64(uint16_t target, int *moved, uint8_t *p)
+{
+    return approach(target, 1, 64, 6, moved, p);
+}
+
+void abi_ApproachSixtyFourthMin64(void)
+{
+    abi_approach(1, 64, 6);
+}
+
+/*
+ * @routine 03:CFE3 ApproachHalfMin2Byte
+ * WHAT IT DOES: Moves the byte at $3E half of the way toward A, by at least 1.
+ * HOW: The difference, at least 2 either way, halved once, with 8-bit arithmetic. Only the arrived case is reached in the traces so far.
+ * Entry: M 8-bit, D = $0000; A = target. Exit: as ApproachQuarterMin4 (A low byte).
+ */
+uint16_t ApproachHalfMin2Byte(uint8_t target, int *moved, uint8_t *p)
+{
+    return approach(target, 0, 2, 1, moved, p);
+}
+
+void abi_ApproachHalfMin2Byte(void)
+{
+    abi_approach(0, 2, 1);
+}
+
+/*
+ * @routine 03:D042 ApproachEighthMin8Byte
+ * WHAT IT DOES: Moves the byte at $3E an eighth of the way toward A, by at least 1.
+ * HOW: The difference, at least 8 either way, halved three times, with 8-bit arithmetic.
+ * Entry: M 8-bit, D = $0000; A = target. Exit: as ApproachQuarterMin4 (A low byte).
+ */
+uint16_t ApproachEighthMin8Byte(uint8_t target, int *moved, uint8_t *p)
+{
+    return approach(target, 0, 8, 3, moved, p);
+}
+
+void abi_ApproachEighthMin8Byte(void)
+{
+    abi_approach(0, 8, 3);
+}
+
+/*
  * @routine 03:D00F ApproachQuarterMin4Byte
  * WHAT IT DOES: The 8-bit form of ApproachQuarterMin4, on the byte at $3E.
  * HOW: As ApproachQuarterMin4, with 8-bit arithmetic.

@@ -1466,6 +1466,45 @@ ObjectCallHandler_return:           ; the handler's RTL lands here
     plx
     rts
 
+; @routine 03:CAB8 ObjectRunHandlerA
+; WHAT IT DOES: Runs object X's first handler: the long address at +$1A
+; (word) / +$1C (bank), unless the word is 0.
+; HOW: Keeps the bank at $0356, the word at $0354 and the object at $034C,
+; pushes $03:CAE7 as the handler's return and enters the handler with an RTL
+; (A = its address - 1, M 8-bit).
+; Entry: M 8-bit, X 16-bit; X = object. Exit: A and Y as the handler leaves
+; them (A = 0 with no handler); X, P unchanged.
+%at($03CAB8)
+ObjectRunHandlerA:
+    php
+    phx
+    lda.w !obj_1c,x
+    sta.w !handler_bank
+    rep.b #$20
+    lda.w !obj_1a_w,x
+    beq ObjectRunHandlerA_return
+    sta.w !handler_addr
+    stx.w !handler_object
+    sep.b #$20
+    lda.b #ObjectRunHandlerA_return>>16
+    pha
+    rep.b #$20
+    lda.w #ObjectRunHandlerA_return-1
+    pha
+    sep.b #$20
+    lda.w !handler_bank
+    pha
+    rep.b #$20
+    lda.w !handler_addr
+    dec a
+    pha
+    sep.b #$20
+    rtl
+ObjectRunHandlerA_return:           ; the handler's RTL lands here
+    plx
+    plp
+    rtl
+
 ; @routine 03:CAEB ObjectRunHandlerB
 ; WHAT IT DOES: Runs object X's second handler: the long address at +$1D
 ; (word) / +$1F (bank), unless the word is 0 or the object has a Super FX
@@ -1523,4 +1562,67 @@ ObjectReleaseY:
     phx
     tyx
     ply
+    rtl
+
+; @routine 03:D388 ObjectsRunHandlers
+; WHAT IT DOES: The objects' frame: counts the frame in $05E9 (16-bit), then
+; for each object in the used list (from $0329) steps its countdown at +$36:
+; a negative one restarts at 3 and runs the second handler
+; (ObjectRunHandlerB); one above 1 counts down and runs the first handler
+; (ObjectRunHandlerA); one that reaches 0 from 1 clears +$22, +$23 and
+; itself. An object a handler asked to free ($035C nonzero) is freed
+; (ObjectFreeLong) after its next link is read.
+; HOW: Data bank $7E for the walk; $035C is cleared before each object. The
+; handlers are entered with X = the object, Y = the object (the caller's Y
+; for the first) and the countdown's N, Z, C and V as the caller left them.
+; Entry: X 16-bit; any M. Exit: A low byte = the last byte read; X = Y = 0;
+; M 8-bit, X 16-bit; N, Z from the restored data bank; C, V as the handlers
+; leave them.
+%at($03D388)
+ObjectsRunHandlers:
+    sep.b #$20
+    inc.w !wram_05E9
+    bne .counted
+    inc.w !wram_05E9+1
+.counted:
+    rep.b #$10
+    phb
+    lda.b #$7E
+    pha
+    plb
+    ldx.w !wram_0329
+.object:
+    stz.w !wram_035C
+    lda.w !obj_36,x
+    beq .next
+    bmi .restart
+    dec a
+    bne .count
+    stz.w !obj_22,x
+    stz.w !obj_22+1,x
+    stz.w !obj_36,x
+    bra .next
+.restart:
+    lda.b #$03
+    sta.w !obj_36,x
+    jsl.l ObjectRunHandlerB
+    bra .ran
+.count:
+    sta.w !obj_36,x
+    jsl.l ObjectRunHandlerA
+.ran:
+    lda.w !wram_035C
+    bne .free
+.next:
+    ldy.w !obj_base,x
+.link:
+    tyx
+    bne .object
+    bra .done
+.free:
+    ldy.w !obj_base,x
+    jsl.l ObjectFreeLong
+    bra .link
+.done:
+    plb
     rtl
