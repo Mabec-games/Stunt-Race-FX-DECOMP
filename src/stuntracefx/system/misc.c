@@ -117,3 +117,29 @@ void abi_Set7EBC2BTrio(void)
 {
     Set7EBC2BTrio((uint8_t)cpu.a);
 }
+
+/*
+ * @routine 07:EE11 Countdown0DF8
+ * WHAT IT DOES: Counts $0DF8 down by one; once it is zero, instead counts
+ * $0E5C down and clears $1160.
+ * HOW: 8-bit memory decrements through the data bank.
+ * Entry: any widths. Exit: A low byte = $0DF8's value before; P unchanged.
+ */
+uint8_t Countdown0DF8(uint8_t bank)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t v = rd8(b | 0x0DF8);
+
+    if (v) {
+        wr8(b | 0x0DF8, (uint8_t)(rd8(b | 0x0DF8) - 1));
+        return v;
+    }
+    wr8(b | 0x0E5C, (uint8_t)(rd8(b | 0x0E5C) - 1));
+    wr8(b | 0x1160, 0x00);
+    return v;
+}
+
+void abi_Countdown0DF8(void)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | Countdown0DF8(cpu.db));
+}

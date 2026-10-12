@@ -403,3 +403,9 @@ includeonce
 !wram_7EBC2B = $7EBC2B
 !wram_7EBC2D = $7EBC2D
 !wram_7EBC2F = $7EBC2F
+!wram_0DF8 = $0DF8
+!wram_0E5C = $0E5C
+!wram_1160 = $1160
+!gsu_in_216 = $700216
+!save_record_a = $70FC4A
+!save_record_b = $70FC5E

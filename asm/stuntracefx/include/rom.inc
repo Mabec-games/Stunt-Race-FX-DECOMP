@@ -59,3 +59,7 @@ includeonce
 
 ; Words selected by $0D48 (system/misc.asm).
 !table_02fc58 = $02FC58
+
+; Renderer inputs by entry, read through the data bank (gsu/params.asm).
+!param_216_table_a = $8E3E
+!param_216_table_b = $8E52

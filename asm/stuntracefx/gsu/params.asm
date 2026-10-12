@@ -65,3 +65,29 @@ GsuParamsFromDp:
     lda.b !dp_34
     sta.l !gsu_in_94
     rtl
+
+; @routine 07:8E2A GsuParam216A
+; WHAT IT DOES: Sets the renderer input at $70:0216 to entry A of the word
+; table at $8E3E in the data bank.
+; HOW: A * 2 as the index (8 bits when X is 8-bit).
+; Entry: M 16-bit; A = entry. Exit: A = the value; X = the index; N, Z from
+; A; C from the doubling.
+%at($078E2A)
+GsuParam216A:
+    asl a
+    tax
+    lda.w !param_216_table_a,x
+    sta.l !gsu_in_216
+    rts
+
+; @routine 07:8E34 GsuParam216B
+; WHAT IT DOES: As GsuParam216A, from the table at $8E52.
+; HOW: As GsuParam216A.
+; Entry: as GsuParam216A. Exit: as GsuParam216A.
+%at($078E34)
+GsuParam216B:
+    asl a
+    tax
+    lda.w !param_216_table_b,x
+    sta.l !gsu_in_216
+    rts

@@ -31,6 +31,19 @@ def c_header(addr):
     raise SystemExit('no C for %06X' % addr)
 
 
+def file_header(cfile):
+    """The C file's opening comment as the assembly file's, naming the C."""
+    text = open(os.path.join(ROOT, cfile)).read()
+    top = text[text.index('/*') + 2:text.index('*/')]
+    lines = [re.sub(r'^\s*\*\s?', '', l) for l in top.splitlines()]
+    while lines and not lines[0].strip():
+        lines.pop(0)
+    while lines and not lines[-1].strip():
+        lines.pop()
+    lines[0] = lines[0].replace('.c:', '.asm:', 1)
+    return '\n'.join(('; ' + l).rstrip() for l in lines) + '\n; C: %s.\n' % cfile
+
+
 def main(argv):
     path, addrs = argv[0], argv[1:]
     draft = subprocess.run([sys.executable, os.path.join(ROOT, 'tools', 'stuntracefx', 'asmdraft.py')] + addrs,
@@ -52,8 +65,7 @@ def main(argv):
     new = not os.path.exists(path)
     with open(path, 'a') as f:
         if new:
-            area = os.path.splitext(os.path.basename(path))[0]
-            f.write('; %s.asm: see the C, %s, for what this file covers.\n\n' % (area, cfile))
+            f.write(file_header(cfile) + '\n')
             f.write('incsrc "../include/macros.inc"\nincsrc "../include/hw.inc"\nincsrc "../include/wram.inc"\nincsrc "../include/rom.inc"\n\narch 65816\n')
         f.write('\n' + '\n\n'.join(out) + '\n')
     print('%s: %d routine(s)' % (path, len(out)))

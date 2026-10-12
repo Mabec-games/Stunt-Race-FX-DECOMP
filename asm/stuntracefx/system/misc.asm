@@ -97,3 +97,23 @@ Set7EBC2BTrio:
     sta.l !wram_7EBC2F
     plp
     rtl
+
+; @routine 07:EE11 Countdown0DF8
+; WHAT IT DOES: Counts $0DF8 down by one; once it is zero, instead counts
+; $0E5C down and clears $1160.
+; HOW: 8-bit memory decrements through the data bank.
+; Entry: any widths. Exit: A low byte = $0DF8's value before; P unchanged.
+%at($07EE11)
+Countdown0DF8:
+    php
+    sep.b #$20
+    lda.w !wram_0DF8
+    bne .lEE21
+    dec.w !wram_0E5C
+    stz.w !wram_1160
+    plp
+    rts
+.lEE21:
+    dec.w !wram_0DF8
+    plp
+    rts

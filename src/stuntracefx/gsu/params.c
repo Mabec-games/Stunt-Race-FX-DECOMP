@@ -59,3 +59,58 @@ void abi_GsuParamsFromDp(void)
     cpu.a = GsuParamsFromDp(cpu.db);
     cpu.p = (uint8_t)(nz16(cpu.p, cpu.a) & ~P_M);
 }
+
+/* $70:0216 = the word at `table` + index in the data bank. */
+static uint16_t param_216(uint8_t bank, uint16_t table, uint16_t index)
+{
+    uint16_t v = rd16((uint32_t)bank << 16 | (uint16_t)(table + index));
+
+    wr16(0x700216, v);
+    return v;
+}
+
+/* Registers: the index is A * 2, kept to 8 bits when X is 8-bit. */
+static void abi_param_216(uint16_t table)
+{
+    uint16_t a = cpu.a, x = (uint16_t)(a << 1);
+
+    if (cpu.p & P_X)
+        x &= 0x00FF;
+    cpu.x = x;
+    cpu.a = param_216(cpu.db, table, x);
+    cpu.p = (uint8_t)((nz16(cpu.p, cpu.a) & ~P_C) | (a & 0x8000 ? P_C : 0));
+}
+
+/*
+ * @routine 07:8E2A GsuParam216A
+ * WHAT IT DOES: Sets the renderer input at $70:0216 to entry A of the word
+ * table at $8E3E in the data bank.
+ * HOW: A * 2 as the index (8 bits when X is 8-bit).
+ * Entry: M 16-bit; A = entry. Exit: A = the value; X = the index; N, Z from
+ * A; C from the doubling.
+ */
+uint16_t GsuParam216A(uint8_t bank, uint16_t index)
+{
+    return param_216(bank, 0x8E3E, index);
+}
+
+void abi_GsuParam216A(void)
+{
+    abi_param_216(0x8E3E);
+}
+
+/*
+ * @routine 07:8E34 GsuParam216B
+ * WHAT IT DOES: As GsuParam216A, from the table at $8E52.
+ * HOW: As GsuParam216A.
+ * Entry: as GsuParam216A. Exit: as GsuParam216A.
+ */
+uint16_t GsuParam216B(uint8_t bank, uint16_t index)
+{
+    return param_216(bank, 0x8E52, index);
+}
+
+void abi_GsuParam216B(void)
+{
+    abi_param_216(0x8E52);
+}
