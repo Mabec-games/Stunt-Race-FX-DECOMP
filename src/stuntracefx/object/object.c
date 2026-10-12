@@ -537,3 +537,50 @@ void abi_ObjectPlaceFromTable(void)
 {
     cpu.a = ObjectPlaceFromTable((uint8_t)cpu.a, (uint8_t)cpu.x, &cpu.x, &cpu.y);
 }
+
+/*
+ * @routine 7E:D397 ObjectLinkEventTrigger
+ * WHAT IT DOES: Unless bit 7 of $0DA4 is already set: when the object two
+ * links on from the one at $0346 has bit 14 set in its first word and
+ * $1A24 is non-zero, clears $1A24, sets $0DA4 to $80 and starts the values
+ * at $1A1C-$1A22 ($1A, 0, $FE, 0).
+ * HOW: Links through +$4F; everything through the data bank.
+ * Entry: any widths. Exit: M 8-bit, X 8-bit (X, Y high bytes clear); A and
+ * N, Z as left by the test that ended it (see the code).
+ */
+uint16_t ObjectLinkEventTrigger(uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y, uint8_t *p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t f = rd8(b | 0x0DA4) & 0x80;
+
+    if (f) {
+        *p = (uint8_t)((*p & ~P_Z) | P_N);
+        return (uint16_t)((a & 0xFF00) | f);
+    }
+    *x = rd16(b | 0x0346);
+    *y = rd16(b | (uint16_t)(0x204F + *x));
+    *y = rd16(b | (uint16_t)(0x204F + *y));
+    a = rd16(b | *y) & 0x4000;
+    if (!a || !(a = rd16(b | 0x1A24))) {
+        *p = (uint8_t)((*p & ~P_N) | P_Z);
+        return 0;
+    }
+    wr16(b | 0x1A24, 0x0000);
+    wr8(b | 0x0DA4, 0x80);
+    wr8(b | 0x1A1C, 0x1A);
+    wr8(b | 0x1A1E, 0x00);
+    wr8(b | 0x1A22, 0x00);
+    wr8(b | 0x1A20, 0xFE);
+    *p = (uint8_t)((*p & ~P_Z) | P_N);
+    return 0x00FE;
+}
+
+void abi_ObjectLinkEventTrigger(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = ObjectLinkEventTrigger(cpu.db, cpu.a, &cpu.x, &cpu.y, &p);
+    cpu.x &= 0x00FF;
+    cpu.y &= 0x00FF;
+    cpu.p = (uint8_t)(p | P_M | P_X);
+}

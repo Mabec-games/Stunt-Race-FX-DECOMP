@@ -490,3 +490,44 @@ ObjectPlaceFromTable:
     plb
     plp
     rtl
+
+; @routine 7E:D397 ObjectLinkEventTrigger
+; WHAT IT DOES: Unless bit 7 of $0DA4 is already set: when the object two
+; links on from the one at $0346 has bit 14 set in its first word and
+; $1A24 is non-zero, clears $1A24, sets $0DA4 to $80 and starts the values
+; at $1A1C-$1A22 ($1A, 0, $FE, 0).
+; HOW: Links through +$4F; everything through the data bank.
+; Entry: any widths. Exit: M 8-bit, X 8-bit (X, Y high bytes clear); A and
+; N, Z as left by the test that ended it (see the code).
+%ramcode($7ED397, $0130BE)
+ObjectLinkEventTrigger:
+    sep.b #$20
+    lda.w !wram_0DA4
+    and.b #$80
+    bne .lD3DA
+    rep.b #$30
+    ldx.w !wram_0346
+    ldy.w !obj_link_w,x
+    lda.w !obj_link_w,y
+    tay
+    lda.w 0,y
+    and.w #$4000
+    beq .lD3DA
+    rep.b #$20
+    lda.w !wram_1A24
+    beq .lD3DA
+    lda.w #$0000
+    sta.w !wram_1A24
+    sep.b #$20
+    lda.b #$80
+    sta.w !wram_0DA4
+    lda.b #$1A
+    sta.w !wram_1A1C
+    lda.b #$00
+    sta.w !wram_1A1E
+    sta.w !wram_1A22
+    lda.b #$FE
+    sta.w !wram_1A20
+.lD3DA:
+    sep.b #$30
+    rts

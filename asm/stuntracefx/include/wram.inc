@@ -498,3 +498,13 @@ includeonce
 !gsu_rec_40 = $700040
 !gsu_match_2478 = $702478
 !oam_high_16 = $058B
+!wram_0DA4 = $0DA4
+!wram_1A1C = $1A1C
+!wram_1A1E = $1A1E
+!wram_1A20 = $1A20
+!wram_1A22 = $1A22
+!window_preset_count_w = $19E1
+!wram_0D2E = $0D2E
+!window_presets_a = $7ED9C5
+!window_presets_b = $7EDA1D
+!obj_link_w = $204F

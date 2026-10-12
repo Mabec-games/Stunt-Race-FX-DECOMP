@@ -255,3 +255,48 @@ WindowHdmaFFD1:
     sta.l !window_hdma+4
     sta.l !window_hdma+7
     rts
+
+; @routine 7E:D718 WindowHdmaPreset
+; WHAT IT DOES: Copies a 9-byte preset into the window HDMA table: from the
+; address at $7E:DA1D + X to entry offset $0F when $0D2E is set, otherwise
+; from the address at $7E:D9C5 + X to offset 3.
+; HOW: The preset is read through the data bank; $19E1 counts the bytes
+; (cleared with a long store, stepped through the data bank).
+; Entry: X 8-bit; X = preset index (bytes). Exit: A = 9, with the high byte
+; of the preset's address; X, Y past the copy; M 8-bit, X 16-bit; Z, C set,
+; N clear.
+%ramcode($7ED718, $01343F)
+WindowHdmaPreset:
+    sep.b #$30
+    lda.b #$00
+    sta.l !window_preset_count_w
+    lda.l !wram_0D2E
+    beq .lD736
+    rep.b #$20
+    sep.b #$10
+    lda.l !window_presets_b,x
+    rep.b #$10
+    tay
+    ldx.w #$000F
+    bra .lD744
+.lD736:
+    rep.b #$20
+    sep.b #$10
+    lda.l !window_presets_a,x
+    rep.b #$10
+    tay
+    ldx.w #$0003
+.lD744:
+    sep.b #$20
+.lD746:
+    lda.w 0,y
+    sta.l !window_hdma,x
+    iny
+    inx
+    lda.l !window_preset_count_w
+    clc
+    adc.b #$01
+    sta.w !window_preset_count_w
+    cmp.b #$09
+    bne .lD746
+    rts

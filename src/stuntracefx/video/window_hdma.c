@@ -286,3 +286,43 @@ void abi_WindowHdmaFromList(void)
     cpu.y = end.y;
     cpu.p = (uint8_t)(((cpu.p & ~(P_N | P_X)) | P_Z | P_M));
 }
+
+/*
+ * @routine 7E:D718 WindowHdmaPreset
+ * WHAT IT DOES: Copies a 9-byte preset into the window HDMA table: from the
+ * address at $7E:DA1D + X to entry offset $0F when $0D2E is set, otherwise
+ * from the address at $7E:D9C5 + X to offset 3.
+ * HOW: The preset is read through the data bank; $19E1 counts the bytes
+ * (cleared with a long store, stepped through the data bank).
+ * Entry: X 8-bit; X = preset index (bytes). Exit: A = 9, with the high byte
+ * of the preset's address; X, Y past the copy; M 8-bit, X 16-bit; Z, C set,
+ * N clear.
+ */
+uint16_t WindowHdmaPreset(uint8_t bank, uint8_t index, uint16_t *x, uint16_t *y)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t n;
+
+    wr8(0x0019E1, 0x00);
+    if (rd8(0x000D2E)) {
+        *y = rd16(0x7EDA1D + index);
+        *x = 0x000F;
+    } else {
+        *y = rd16(0x7ED9C5 + index);
+        *x = 0x0003;
+    }
+    do {
+        wr8(0x7FF85B + *x, rd8(b | *y));
+        (*y)++;
+        (*x)++;
+        n = (uint8_t)(rd8(0x0019E1) + 1);
+        wr8(b | 0x19E1, n);
+    } while (n != 9);
+    return (uint16_t)(((uint16_t)(*y - 9) & 0xFF00) | 0x09);
+}
+
+void abi_WindowHdmaPreset(void)
+{
+    cpu.a = WindowHdmaPreset(cpu.db, (uint8_t)cpu.x, &cpu.x, &cpu.y);
+    cpu.p = (uint8_t)(((cpu.p & ~(P_N | P_X)) | P_Z | P_C | P_M));
+}
