@@ -31,6 +31,84 @@ FxSumsClear:
     move r15,r11
     nop
 
+; One component of the push in <r> held to R1..R2 (-5000..5000).
+macro fx_clamp(r)
+    moves <r>,<r>
+    bmi ?negative
+    nop
+    with <r>
+    cmp r2
+    bmi ?done
+    nop
+    move <r>,r2
+    bra ?done
+    nop
+?negative:
+    with <r>
+    cmp r1
+    bpl ?done
+    nop
+    move <r>,r1
+?done:
+endmacro
+
+; The push in R4-R6, clamped, added to the sum at <sum>.
+macro fx_push_into(sum)
+    from r1
+    stw (r10)
+    inc r10
+    inc r10
+    from r2
+    stw (r10)
+    inc r10
+    inc r10
+    iwt r1,#-5000
+    iwt r2,#5000
+    %fx_clamp(r4)
+    %fx_clamp(r5)
+    %fx_clamp(r6)
+    dec r10
+    dec r10
+    to r2
+    ldw (r10)
+    dec r10
+    dec r10
+    to r1
+    ldw (r10)
+    lm r0,(<sum>)
+    add r4
+    sm (<sum>),r0
+    lm r0,(<sum>+2)
+    add r5
+    sm (<sum>+2),r0
+    lm r0,(<sum>+4)
+    add r6
+    sm (<sum>+4),r0
+    move r15,r11
+    nop
+endmacro
+
+; @routine 04:96C3 FxSumsPushWorld
+; WHAT IT DOES: Adds the push (R4, R5, R6), each held to -5000..5000, to
+; the world sum.
+; HOW: The clamp (clamp) per component with R1 = -5000 and R2 = 5000,
+; then LM, ADD, SM per word. R1 and R2 are kept on the R10 stack.
+; Entry: R4, R5, R6 = the push; R10 = stack; R11 = return address. Exit:
+; R4-R6 clamped; R0 = the new world z; R1, R2 as on entry; OV, S, CY, Z
+; from the last ADD; the last RAM address $2344.
+%at($0496C3)
+FxSumsPushWorld:
+    %fx_push_into(!fx_world_sum)
+
+; @routine 04:973F FxSumsPushLocal
+; WHAT IT DOES: As FxSumsPushWorld, into the own-axes sum.
+; HOW: As FxSumsPushWorld.
+; Entry: as FxSumsPushWorld. Exit: as FxSumsPushWorld; R0 = the new
+; own-axes z; the last RAM address $234A.
+%at($04973F)
+FxSumsPushLocal:
+    %fx_push_into(!fx_local_sum)
+
 ; @routine 04:97BB FxSumsRotateLocal
 ; WHAT IT DOES: Adds the own-axes sum, turned into world axes by the matrix
 ; at $00E4, into the world sum.

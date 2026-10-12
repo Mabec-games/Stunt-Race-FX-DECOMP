@@ -8,7 +8,9 @@
  * point) and added into the world sum; the world sum is then added to the
  * object's Super FX record (R9).
  */
+#include <string.h>
 #include "gsu_ops.h"
+#include "fx_calls.h"
 
 #define FX_WORLD_SUM 0x2340u   /* x, y, z */
 #define FX_LOCAL_SUM 0x2346u   /* x, y, z in the object's axes */
@@ -167,4 +169,92 @@ void abi_FxSumsApply(void)
     gsu.r[0] = o.last;
     if (o.moved)
         gsu.r[1] = o.field;
+}
+
+#define PUSH_MAX 0x1388u        /* 5000 */
+#define PUSH_MIN 0xEC78u        /* -5000 */
+
+/* A component held to -5000..5000 (R1, R2 the limits): MOVES for the sign,
+   then CMP with the limit on that side; the reached limit replaces it
+   (the replacing is decoded from the ROM bytes and not reached in the
+   traces so far). */
+static uint16_t clamp(FxRegs *g, uint16_t v)
+{
+    gsu_moves(v);
+    if (!gsu.s) {
+        gsu_sub(v, g->r[2], 0);
+        if (!gsu.s)
+            v = g->r[2];
+    } else {
+        gsu_sub(v, g->r[1], 0);
+        if (gsu.s)
+            v = g->r[1];
+    }
+    return v;
+}
+
+/* Both push routines: (R4, R5, R6) clamped, then added to the sum at
+   `sum`; R1 and R2 kept on the R10 stack. */
+static FxRegs push_into(FxRegs g, uint16_t sum)
+{
+    int i;
+
+    gsu_push(&g.r[10], g.r[1]);
+    gsu_push(&g.r[10], g.r[2]);
+    g.r[1] = PUSH_MIN;
+    g.r[2] = PUSH_MAX;
+    for (i = 4; i <= 6; i++)
+        g.r[i] = clamp(&g, g.r[i]);
+    g.r[2] = gsu_pull(&g.r[10]);
+    g.r[1] = gsu_pull(&g.r[10]);
+    for (i = 0; i < 3; i++) {
+        g.r[0] = gsu_add(gsu_ldw((uint16_t)(sum + 2 * i)), g.r[4 + i], 0);
+        gsu_stw((uint16_t)(sum + 2 * i), g.r[0]);
+    }
+    return g;
+}
+
+/*
+ * @routine 04:96C3 FxSumsPushWorld
+ * WHAT IT DOES: Adds the push (R4, R5, R6), each held to -5000..5000, to
+ * the world sum.
+ * HOW: The clamp (clamp) per component with R1 = -5000 and R2 = 5000,
+ * then LM, ADD, SM per word. R1 and R2 are kept on the R10 stack.
+ * Entry: R4, R5, R6 = the push; R10 = stack; R11 = return address. Exit:
+ * R4-R6 clamped; R0 = the new world z; R1, R2 as on entry; OV, S, CY, Z
+ * from the last ADD; the last RAM address $2344.
+ */
+FxRegs FxSumsPushWorld(FxRegs g)
+{
+    return push_into(g, FX_WORLD_SUM);
+}
+
+void abi_FxSumsPushWorld(void)
+{
+    FxRegs g;
+
+    memcpy(g.r, gsu.r, sizeof g.r);
+    g = FxSumsPushWorld(g);
+    memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
+}
+
+/*
+ * @routine 04:973F FxSumsPushLocal
+ * WHAT IT DOES: As FxSumsPushWorld, into the own-axes sum.
+ * HOW: As FxSumsPushWorld.
+ * Entry: as FxSumsPushWorld. Exit: as FxSumsPushWorld; R0 = the new
+ * own-axes z; the last RAM address $234A.
+ */
+FxRegs FxSumsPushLocal(FxRegs g)
+{
+    return push_into(g, FX_LOCAL_SUM);
+}
+
+void abi_FxSumsPushLocal(void)
+{
+    FxRegs g;
+
+    memcpy(g.r, gsu.r, sizeof g.r);
+    g = FxSumsPushLocal(g);
+    memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
 }
