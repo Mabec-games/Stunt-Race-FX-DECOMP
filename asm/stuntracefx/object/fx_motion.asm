@@ -18,7 +18,11 @@ macro fx_move_word(div2s)
     ldw (r5)
     inc r5
     inc r5
-    rep <div2s> : div2
+    !fx_halvings #= 0
+    while !fx_halvings < <div2s>
+        div2
+        !fx_halvings #= !fx_halvings+1
+    endwhile
     to r3
     ldw (r2)
     add r3

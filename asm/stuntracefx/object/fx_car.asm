@@ -233,4 +233,238 @@ FxCarFromScript:
     ldw (r10)
     nop
 
+; The row at offsets <a>, <b>, <c> of the matrix at $00E4 times (R1, R2, R3), FMULT then ROL each,
+; stored at R11, which steps on.
+macro fx_turn_row(a, b, c)
+    lms r6,(!fx_matrix_w+<a>)
+    from r1
+    fmult
+    to r5
+    rol
+    lms r6,(!fx_matrix_w+<b>)
+    from r2
+    fmult
+    rol
+    with r5
+    add r0
+    lms r6,(!fx_matrix_w+<c>)
+    from r3
+    fmult
+    rol
+    add r5
+    stw (r11)
+    inc r11
+    inc r11
+endmacro
+
+; The axis at word offset <o> of a part: position = the car's + the turned offset; velocity
+; = the change times 8.
+macro fx_part_axis(o)
+    ibt r1,#!fxpart_world+<o>
+    with r1
+    add r9
+    to r1
+    ldw (r1)
+    lm r0,(!fx_car_pos+<o>)
+    ibt r2,#!fxrec_half_x+<o>
+    with r2
+    add r9
+    to r2
+    ldw (r2)
+    with r1
+    add r0
+    ibt r0,#!fxrec_half_x+<o>
+    add r9
+    from r1
+    stw (r0)
+    with r1
+    sub r2
+    with r1
+    lmult
+    ibt r0,#!fxrec_velocity+<o>
+    add r9
+    from r4
+    stw (r0)
+endmacro
+
+; @routine 04:A4ED FxCarMoveParts
+; WHAT IT DOES: Moves each part of car R8 with it: the part's offset
+; (+$3C/+$3E/+$40, in the car's axes) turned into world axes by the
+; matrix at $00E4 goes to +$36/+$38/+$3A; its position +$1E/+$20/+$22
+; becomes the car's ($2354/$2356/$2358) plus that, and its velocity
+; +$2E/+$30/+$32 eight times the change. A part with bit 10 of +$46 set
+; gets velocity 0 instead (decoded from the ROM bytes, with four bytes
+; after the walk's jump and one after this path's that nothing reaches,
+; and not reached in the traces so far).
+; HOW: R12 keeps R8 while R8 and R11 walk the offset and its turned copy;
+; the turn is three rows of FMULT, ROL; the change times 8 is LMULT by R6
+; = 8 (R4 takes the low word). The return address is kept on the R10
+; stack. The routine runs under CACHE (the code cache only; nothing the
+; C has to do).
+; Entry: R8 = the car's record; R10 = stack; R11 = return address. Exit:
+; R9 = 0; R8 = R12 = the car (R12 as on entry without parts); the others
+; from the last part; S, Z from R10; the last RAM address R10.
+%at($04A4ED)
+FxCarMoveParts:
+    from r11
+    stw (r10)
+    inc r10
+    inc r10
+    ibt r0,#!fxcar_parts
+    add r8
+    ldw (r0)
+    cache
+.part:
+    moves r9,r0
+    bne .move
+    nop
+    iwt r15,#.done
+    nop
+.move:
+    nop
+    ibt r1,#!fxpart_46
+    with r1
+    add r9
+    to r1
+    ldw (r1)
+    iwt r0,#$0400
+    and r1
+    beq .follow
+    nop
+    iwt r15,#.still
+    nop
+.follow:
+    move r12,r8
+    iwt r8,#!fxpart_3c
+    with r8
+    add r9
+    iwt r11,#!fxpart_world
+    with r11
+    add r9
+    to r1
+    ldw (r8)
+    inc r8
+    inc r8
+    to r2
+    ldw (r8)
+    inc r8
+    inc r8
+    to r3
+    ldw (r8)
+    inc r8
+    inc r8
+    %fx_turn_row(0, 6, 12)
+    %fx_turn_row(2, 8, 14)
+    %fx_turn_row(4, 10, 16)
+    move r8,r12
+    iwt r6,#$0008
+    %fx_part_axis(0)
+    %fx_part_axis(2)
+    %fx_part_axis(4)
+    ibt r0,#!fxpart_next
+    add r9
+    ldw (r0)
+    iwt r15,#.part
+    nop
+    nop
+    bra .done
+    nop
+.still:
+    ibt r1,#0
+    ibt r0,#!fxrec_velocity
+    add r9
+    from r1
+    stw (r0)
+    ibt r0,#!fxrec_velocity+2
+    add r9
+    from r1
+    stw (r0)
+    ibt r0,#!fxrec_velocity+4
+    add r9
+    from r1
+    stw (r0)
+    ibt r0,#!fxpart_next
+    add r9
+    ldw (r0)
+    iwt r15,#.part
+    nop
+    nop
+.done:
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+
+; @routine 04:B9AC FxCarPose
+; WHAT IT DOES: Sets up the matrix at $00E4 for car R8 (from its angles,
+; negated: +$26, +$24, +$28 as angles 0-2, by FxMatrixFromAngles, then
+; FxMatrixTranspose) and moves its parts with it (FxCarMoveParts from its
+; position, copied to $2354).
+; HOW: The negated angles go to $0020/$0022/$0024 (NOT, INC, SMS); R8 and
+; the return address are kept on the R10 stack.
+; Entry: R8 = the car's record; R10 = stack; R11 = return address. Exit:
+; as FxCarMoveParts leaves them (R11 = $BA00 for a car without parts); S,
+; Z from R10; the last RAM address R10.
+%at($04B9AC)
+FxCarPose:
+    from r11
+    stw (r10)
+    inc r10
+    inc r10
+    from r8
+    stw (r10)
+    inc r10
+    inc r10
+    ibt r0,#!fxcar_yaw
+    add r8
+    ldw (r0)
+    not
+    inc r0
+    sms (!fx_angles_w),r0
+    ibt r0,#!fxcar_pitch
+    add r8
+    ldw (r0)
+    not
+    inc r0
+    sms (!fx_angles_w+2),r0
+    ibt r0,#!fxcar_roll
+    add r8
+    ldw (r0)
+    not
+    inc r0
+    sms (!fx_angles_w+4),r0
+    iwt r9,#!fx_matrix_w
+    link #4
+    iwt r15,#FxMatrixFromAngles
+    nop
+    iwt r9,#!fx_matrix_w
+    link #4
+    iwt r15,#FxMatrixTranspose
+    nop
+    dec r10
+    dec r10
+    to r8
+    ldw (r10)
+    ibt r0,#!fxrec_half_x
+    add r8
+    ldw (r0)
+    sm (!fx_car_pos),r0
+    ibt r0,#!fxrec_half_x+2
+    add r8
+    ldw (r0)
+    sm (!fx_car_pos+2),r0
+    ibt r0,#!fxrec_half_x+4
+    add r8
+    ldw (r0)
+    sm (!fx_car_pos+4),r0
+    link #4
+    iwt r15,#FxCarMoveParts
+    nop
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+
 arch 65816

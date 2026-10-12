@@ -1165,3 +1165,10 @@ includeonce
 ; Car push fields (race/fx_traffic.asm).
 !fxrec_yaw_rate = $34
 !fxrec_spread = $7C
+; Car pose (object/fx_car.asm): angles, the position for the parts,
+; part fields.
+!fx_car_pos = $702354
+!fxcar_pitch = $24
+!fxcar_yaw = $26
+!fxcar_roll = $28
+!fxpart_world = $36

@@ -5,6 +5,7 @@
 #define STUNTRACEFX_FX_CALLS_H
 
 #include <stdint.h>
+#include "gsu.h"
 
 typedef struct {
     uint16_t quot, rem;
@@ -31,5 +32,23 @@ FxRegs FxRecordsApart(FxRegs g);
 FxRegs FxBearingTo(FxRegs g);
 FxRegs FxCourseNearest(FxRegs g);
 FxRegs FxCourseNextEntry(FxRegs g);
+
+/* A routine whose C takes and leaves the registers in `gsu` (its abi_),
+   called on a register file. */
+static inline FxRegs fx_via_abi(FxRegs g, void (*abi)(void))
+{
+    extern RegsGSU gsu;
+    int i;
+
+    for (i = 0; i < 16; i++)
+        gsu.r[i] = g.r[i];
+    abi();
+    for (i = 0; i < 16; i++)
+        g.r[i] = gsu.r[i];
+    return g;
+}
+
+void abi_FxMatrixFromAngles(void);
+void abi_FxMatrixTranspose(void);
 
 #endif

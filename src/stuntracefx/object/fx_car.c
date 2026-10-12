@@ -17,6 +17,20 @@
 #define FX_CAR_26F2 0x26F2u
 
 #define PART_BYTES 0x0052u
+#define FX_CAR_POS 0x2354u       /* the car's position, for its parts */
+#define FX_ANGLES_W 0x0020u
+#define FX_MATRIX 0x00E4u
+
+#define CAR_PITCH 0x24u
+#define CAR_YAW 0x26u
+#define CAR_ROLL 0x28u
+#define CAR_PARTS 0x3Eu
+#define PART_OFFSET 0x3Cu       /* +$3C/+$3E/+$40: offset in the car's axes */
+#define PART_WORLD 0x36u        /* +$36/+$38/+$3A: the offset turned */
+#define PART_NEXT 0x34u
+#define PART_FLAGS 0x46u
+#define REC_POS 0x1Eu
+#define REC_VEL 0x2Eu
 
 /* A word of the script (GETB, INC R14, GETBH, INC R14). */
 static uint16_t script_word(uint16_t *r14)
@@ -183,5 +197,147 @@ void abi_FxCarFromScript(void)
 
     memcpy(g.r, gsu.r, sizeof g.r);
     g = FxCarFromScript(g);
+    memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
+}
+
+/*
+ * @routine 04:A4ED FxCarMoveParts
+ * WHAT IT DOES: Moves each part of car R8 with it: the part's offset
+ * (+$3C/+$3E/+$40, in the car's axes) turned into world axes by the
+ * matrix at $00E4 goes to +$36/+$38/+$3A; its position +$1E/+$20/+$22
+ * becomes the car's ($2354/$2356/$2358) plus that, and its velocity
+ * +$2E/+$30/+$32 eight times the change. A part with bit 10 of +$46 set
+ * gets velocity 0 instead (decoded from the ROM bytes, with four bytes
+ * after the walk's jump and one after this path's that nothing reaches,
+ * and not reached in the traces so far).
+ * HOW: R12 keeps R8 while R8 and R11 walk the offset and its turned copy;
+ * the turn is three rows of FMULT, ROL; the change times 8 is LMULT by R6
+ * = 8 (R4 takes the low word). The return address is kept on the R10
+ * stack. The routine runs under CACHE (the code cache only; nothing the
+ * C has to do).
+ * Entry: R8 = the car's record; R10 = stack; R11 = return address. Exit:
+ * R9 = 0; R8 = R12 = the car (R12 as on entry without parts); the others
+ * from the last part; S, Z from R10; the last RAM address R10.
+ */
+FxRegs FxCarMoveParts(FxRegs g)
+{
+    uint32_t p;
+    int i;
+
+    gsu_push(&g.r[10], g.r[11]);
+    g.r[0] = gsu_ldw(gsu_add(CAR_PARTS, g.r[8], 0));
+    for (;;) {
+        g.r[9] = g.r[0];
+        gsu_moves(g.r[9]);
+        if (gsu.z)
+            break;
+        g.r[1] = gsu_ldw(gsu_add(PART_FLAGS, g.r[9], 0));
+        g.r[0] = gsu_and(0x0400, g.r[1]);
+        if (!gsu.z) {
+            g.r[1] = 0;
+            for (i = 0; i < 3; i++) {
+                g.r[0] = gsu_add((uint16_t)(REC_VEL + 2 * i), g.r[9], 0);
+                gsu_stw(g.r[0], g.r[1]);
+            }
+            g.r[0] = gsu_ldw(gsu_add(PART_NEXT, g.r[9], 0));
+            continue;
+        }
+        g.r[12] = g.r[8];
+        g.r[8] = gsu_add(PART_OFFSET, g.r[9], 0);
+        g.r[11] = gsu_add(PART_WORLD, g.r[9], 0);
+        for (i = 1; i <= 3; i++) {
+            g.r[i] = gsu_ldw(g.r[8]);
+            g.r[8] = gsu_inc(gsu_inc(g.r[8]));
+        }
+        for (i = 0; i < 3; i++) {
+            uint16_t row = (uint16_t)(FX_MATRIX + 2 * i);
+
+            g.r[6] = gsu_ldw(row);
+            g.r[5] = gsu_rol(gsu_fmult(g.r[1], g.r[6]));
+            g.r[6] = gsu_ldw((uint16_t)(row + 6));
+            g.r[5] = gsu_add(g.r[5], gsu_rol(gsu_fmult(g.r[2], g.r[6])), 0);
+            g.r[6] = gsu_ldw((uint16_t)(row + 12));
+            g.r[0] = gsu_add(gsu_rol(gsu_fmult(g.r[3], g.r[6])), g.r[5], 0);
+            gsu_stw(g.r[11], g.r[0]);
+            g.r[11] = gsu_inc(gsu_inc(g.r[11]));
+        }
+        g.r[8] = g.r[12];
+        g.r[6] = 8;
+        for (i = 0; i < 3; i++) {
+            g.r[1] = gsu_ldw(gsu_add((uint16_t)(PART_WORLD + 2 * i), g.r[9], 0));
+            g.r[0] = gsu_ldw((uint16_t)(FX_CAR_POS + 2 * i));
+            g.r[2] = gsu_ldw(gsu_add((uint16_t)(REC_POS + 2 * i), g.r[9], 0));
+            g.r[1] = gsu_add(g.r[1], g.r[0], 0);
+            g.r[0] = gsu_add((uint16_t)(REC_POS + 2 * i), g.r[9], 0);
+            gsu_stw(g.r[0], g.r[1]);
+            g.r[1] = gsu_sub(g.r[1], g.r[2], 0);
+            p = gsu_lmult(g.r[1], g.r[6]);
+            g.r[1] = (uint16_t)(p >> 16);
+            g.r[4] = (uint16_t)p;
+            g.r[0] = gsu_add((uint16_t)(REC_VEL + 2 * i), g.r[9], 0);
+            gsu_stw(g.r[0], g.r[4]);
+        }
+        g.r[0] = gsu_ldw(gsu_add(PART_NEXT, g.r[9], 0));
+    }
+    gsu_pull(&g.r[10]);
+    return g;
+}
+
+void abi_FxCarMoveParts(void)
+{
+    FxRegs g;
+
+    memcpy(g.r, gsu.r, sizeof g.r);
+    g = FxCarMoveParts(g);
+    memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
+}
+
+/*
+ * @routine 04:B9AC FxCarPose
+ * WHAT IT DOES: Sets up the matrix at $00E4 for car R8 (from its angles,
+ * negated: +$26, +$24, +$28 as angles 0-2, by FxMatrixFromAngles, then
+ * FxMatrixTranspose) and moves its parts with it (FxCarMoveParts from its
+ * position, copied to $2354).
+ * HOW: The negated angles go to $0020/$0022/$0024 (NOT, INC, SMS); R8 and
+ * the return address are kept on the R10 stack.
+ * Entry: R8 = the car's record; R10 = stack; R11 = return address. Exit:
+ * as FxCarMoveParts leaves them (R11 = $BA00 for a car without parts); S,
+ * Z from R10; the last RAM address R10.
+ */
+FxRegs FxCarPose(FxRegs g)
+{
+    static const uint8_t angle[3] = {CAR_YAW, CAR_PITCH, CAR_ROLL};
+    int i;
+
+    gsu_push(&g.r[10], g.r[11]);
+    gsu_push(&g.r[10], g.r[8]);
+    for (i = 0; i < 3; i++) {
+        g.r[0] = gsu_ldw(gsu_add(angle[i], g.r[8], 0));
+        g.r[0] = gsu_inc(gsu_not(g.r[0]));
+        gsu_stw((uint16_t)(FX_ANGLES_W + 2 * i), g.r[0]);
+    }
+    g.r[9] = FX_MATRIX;
+    g.r[11] = 0xB9D7;
+    g = fx_via_abi(g, abi_FxMatrixFromAngles);
+    g.r[9] = FX_MATRIX;
+    g.r[11] = 0xB9DF;
+    g = fx_via_abi(g, abi_FxMatrixTranspose);
+    g.r[8] = gsu_pull(&g.r[10]);
+    for (i = 0; i < 3; i++) {
+        g.r[0] = gsu_ldw(gsu_add((uint16_t)(REC_POS + 2 * i), g.r[8], 0));
+        gsu_stw((uint16_t)(FX_CAR_POS + 2 * i), g.r[0]);
+    }
+    g.r[11] = 0xBA00;
+    g = FxCarMoveParts(g);
+    gsu_pull(&g.r[10]);
+    return g;
+}
+
+void abi_FxCarPose(void)
+{
+    FxRegs g;
+
+    memcpy(g.r, gsu.r, sizeof g.r);
+    g = FxCarPose(g);
     memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
 }
