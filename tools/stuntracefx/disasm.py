@@ -250,6 +250,49 @@ class Rom:
         if hi == 0xF: return 'iwt %s,#%s' % (r, h4(rom[off + 1] | rom[off + 2] << 8))
         raise ValueError(hex(op))
 
+    def gsu_combined(self, off):
+        """A prefix and the instruction it modifies as one mnemonic (same bytes),
+        or None. Only when the second byte is not a branch target."""
+        rom = self.rom
+        a = rom[off]
+        nxt = off + self.length[off]
+        if self.kind[nxt] != 'g' or nxt in self.labels or nxt // BANK != off // BANK:
+            return None
+        op = rom[nxt]
+        hi, lo = op >> 4, op & 15
+        r = 'r%d' % lo
+        if a in (0x3D, 0x3E, 0x3F):
+            alt = a - 0x3C
+            fixed = {(1, 0x4C): 'rpix', (1, 0x4E): 'cmode', (1, 0x96): 'div2', (1, 0x9F): 'lmult',
+                     (1, 0xEF): 'getbh', (2, 0xEF): 'getbl', (3, 0xEF): 'getbs', (2, 0xDF): 'ramb', (3, 0xDF): 'romb'}
+            if (alt, op) in fixed:
+                return fixed[(alt, op)], nxt + 1
+            if hi == 0x3 and lo < 12 and alt == 1:
+                return 'stb (%s)' % r, nxt + 1
+            if hi == 0x4 and lo < 12 and alt == 1:
+                return 'ldb (%s)' % r, nxt + 1
+            table = {0x5: ('adc ' + r, 'add #%d' % lo, 'adc #%d' % lo),
+                     0x6: ('sbc ' + r, 'sub #%d' % lo, 'cmp ' + r),
+                     0x8: ('umult ' + r, 'mult #%d' % lo, 'umult #%d' % lo)}
+            if lo >= 1:
+                table[0x7] = ('bic ' + r, 'and #%d' % lo, 'bic #%d' % lo)
+                table[0xC] = ('xor ' + r, 'or #%d' % lo, 'xor #%d' % lo)
+            if hi in table:
+                return table[hi][alt - 1], nxt + 1
+            if 0x98 <= op <= 0x9D and alt == 1:
+                return 'ljmp ' + r, nxt + 1
+            if hi == 0xA and alt in (1, 2):
+                v = rom[nxt + 1] * 2
+                return ('lms %s,(%s)' % (r, h4(v)) if alt == 1 else 'sms (%s),%s' % (h4(v), r)), nxt + 2
+            if hi == 0xF and alt in (1, 2):
+                v = rom[nxt + 1] | rom[nxt + 2] << 8
+                return ('lm %s,(%s)' % (r, h4(v)) if alt == 1 else 'sm (%s),%s' % (h4(v), r)), nxt + 3
+            return None
+        if a >> 4 == 0x2 and hi in (0x1, 0xB):
+            src = 'r%d' % (a & 15)
+            return ('move %s,%s' % (r, src) if hi == 0x1 else 'moves %s,%s' % (src, r)), nxt + 1
+        return None
+
     def bank_lines(self, b):
         rom = self.rom
         start, end = b * BANK, min((b + 1) * BANK, len(rom))
@@ -296,6 +339,15 @@ class Rom:
             if k:
                 flush()
                 setarch('65816' if k == 'c' else 'superfx')
+                comb = self.gsu_combined(off) if k == 'g' else None
+                if comb:
+                    text, after = comb
+                    if any(self.claimed[i] for i in range(off, after)):
+                        comb = None
+                if comb:
+                    out.append('    %-28s ; %06X gsu' % (text, addr_of(off)))
+                    off = after
+                    continue
                 text = self.cpu_text(off) if k == 'c' else self.gsu_text(off)
                 out.append('    %-28s ; %06X%s' % (text, addr_of(off), '' if k == 'c' else ' gsu'))
                 off += self.length[off]

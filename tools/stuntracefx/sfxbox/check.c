@@ -35,7 +35,7 @@ struct SfxboxCallbacks {
     void (*write)(uint32_t addr, uint8_t data, int kind);
     void (*read)(uint32_t addr, uint8_t data);
     void (*interrupt)(uint32_t resume_pc, uint16_t s);
-    void (*timing)(int kind, int clocks);
+    void (*timing)(int kind, int clocks, uint32_t addr);
 };
 
 static void (*core_regs)(struct SfxboxRegs *);
@@ -147,10 +147,11 @@ static FILE *report;
 static int machine_live;
 static uint8_t (*core_bus_read)(uint32_t);
 static void (*core_bus_write)(uint32_t, uint8_t);
+static uint8_t live_access(int write, uint32_t addr, uint8_t value);
 
 uint8_t rd8(uint32_t addr)
 {
-    if (machine_live) return core_bus_read(addr & 0xFFFFFF);
+    if (machine_live) return live_access(0, addr & 0xFFFFFF, 0);
     uint32_t n = norm(addr);
     uint8_t v;
     if (n >> 24 == R_IO) {
@@ -168,7 +169,7 @@ uint8_t rd8(uint32_t addr)
 
 void wr8(uint32_t addr, uint8_t value)
 {
-    if (machine_live) { core_bus_write(addr & 0xFFFFFF, value); return; }
+    if (machine_live) { live_access(1, addr & 0xFFFFFF, value); return; }
     uint32_t n = norm(addr);
     if (n >> 24 == R_IO) {
         io_add(&cur->cwrite, addr & 0xFFFF, value);
@@ -392,48 +393,71 @@ void check_end(void)
  * same number of clocks in one lump is not enough: a refresh landing in the
  * last cycles makes the hybrid up to 40 clocks late per call. After every frame the child
  * compares its machine state (WRAM, GSU RAM, VRAM, OAM, CGRAM, APU RAM) with
- * the parent's. The parent stays one frame ahead so a call's cost is known
- * before the child needs it.
+ * the parent's. The parent runs ahead of the child as far as it must: a call
+ * can span many frames (the boot sound upload spans dozens), and its cycles
+ * must be complete before the child can replay them. Frames live in a ring of
+ * snapshots and calls in a ring of cycle records; each side waits only for
+ * what it needs.
  * ====================================================================== */
 #include <signal.h>
 #include <sys/mman.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
-#define MAXC (1 << 17)
-#define MAXOPS (1 << 23)
+#define NSLOT 128
+#define CALLRING (1 << 18)
+#define OPRING (1u << 24)
 #define SNAP (0x20000 + 0x10000 + 0x10000 + 544 + 512 + 0x10000)
+
+typedef struct { long frame; uint64_t opoff; uint32_t opn; int done; } CallRec;
 typedef struct {
     long frame;
-    uint32_t ncalls, overflow, nops;
-    uint32_t opoff[MAXC], opn[MAXC];
-    uint8_t ops[MAXOPS];
+    uint32_t ncalls;
     uint16_t s;
     int midcall;
     uint32_t clock;
     struct SfxboxRegs regs;
     uint8_t snap[SNAP];
-} Slot;
+} FrameSlot;
+typedef struct {
+    long o_frames, h_frames;          /* frames each side has finished */
+    uint64_t o_calls, h_calls;        /* calls recorded / consumed */
+    uint64_t o_ops, h_ops;            /* cycles recorded / no longer needed */
+    int o_done, stuck;
+    CallRec calls[CALLRING];
+    FrameSlot fs[NSLOT];
+    uint8_t ops[OPRING];
+    uint32_t opaddr[OPRING];
+} Shared;
 
-static Slot *slots;
+static Shared *sh;
 static int role;            /* 0 off, 1 original (parent), 2 hybrid (child) */
-static int p_ready[2], p_ack[2];
 static pid_t child;
 static FILE *lsrep;
 static uint32_t (*core_clock)(void);
 static void (*core_replay)(const uint8_t *, uint32_t);
+static uint8_t (*core_access)(int, uint32_t, uint8_t);
 static void (*core_set_regs)(const struct SfxboxRegs *);
 static void (*core_snapshot)(uint8_t *);
 static int (**core_exec)(uint32_t);
 static uint8_t mysnap[SNAP];
 static long cur_frame, diff_frames, frames_compared, calls_swapped, calls_fallback, mismatched_calls;
-static uint32_t hk;          /* hybrid: next cost index in this frame */
+static uint32_t hk;          /* hybrid: calls made this frame */
+
+#define LOAD(x) __atomic_load_n(&(x), __ATOMIC_SEQ_CST)
+#define STORE(x, v) __atomic_store_n(&(x), (v), __ATOMIC_SEQ_CST)
+
+/* Wait for a condition the other side will make true; give up (and say so)
+   if it never does, rather than hang. */
+#define WAIT_UNTIL(cond) do { long spins_ = 0; while (!(cond)) { \
+        if (LOAD(sh->stuck)) _exit(6); \
+        if (++spins_ > 600000) { STORE(sh->stuck, 1); _exit(6); } usleep(50); } } while (0)
 
 static struct {
     int active, in_irq;
-    uint32_t ret_pc, irq_pc, slot_idx;
+    uint32_t ret_pc, irq_pc;
     uint16_t exit_s, irq_s;
-    long frame;
+    uint64_t call;
 } m;
 
 static int entry(uint32_t pc, struct SfxboxRegs *r, uint32_t *ret, uint16_t *exit_s)
@@ -489,18 +513,21 @@ static void ls_insn(uint32_t pc)
         if (pc != m.ret_pc) return;
         struct SfxboxRegs r; core_regs(&r);
         if (r.s != m.exit_s) return;
+        STORE(sh->calls[m.call % CALLRING].done, 1);
         m.active = 0;
         return;
     }
     if (routine_at(pc) < 0) return;
     struct SfxboxRegs r; core_regs(&r);
     if (!entry(pc, &r, &m.ret_pc, &m.exit_s)) return;
-    Slot *sl = &slots[cur_frame & 1];
-    if (sl->ncalls >= MAXC) { sl->overflow = 1; return; }
-    m.active = 1; m.in_irq = 0; m.frame = cur_frame;
-    m.slot_idx = sl->ncalls++;
-    sl->opoff[m.slot_idx] = sl->nops;
-    sl->opn[m.slot_idx] = 0;
+    uint64_t k = LOAD(sh->o_calls);
+    WAIT_UNTIL(k - LOAD(sh->h_calls) < CALLRING);
+    CallRec *rec = &sh->calls[k % CALLRING];
+    rec->frame = cur_frame; rec->opoff = LOAD(sh->o_ops); rec->opn = 0;
+    STORE(rec->done, 0);
+    STORE(sh->o_calls, k + 1);
+    sh->fs[cur_frame % NSLOT].ncalls++;
+    m.active = 1; m.in_irq = 0; m.call = k;
 }
 
 static void ls_interrupt(uint32_t resume_pc, uint16_t s)
@@ -509,13 +536,58 @@ static void ls_interrupt(uint32_t resume_pc, uint16_t s)
     m.in_irq = 1; m.irq_pc = resume_pc; m.irq_s = s;
 }
 
-static void ls_timing(int kind, int clocks)
+static void ls_timing(int kind, int clocks, uint32_t addr)
 {
     if (!m.active || m.in_irq) return;
-    Slot *sl = &slots[m.frame & 1];
-    if (sl->frame != m.frame || sl->nops >= MAXOPS) { sl->overflow = 1; return; }
-    sl->ops[sl->nops++] = (uint8_t)(kind << 4 | (clocks / 2));
-    sl->opn[m.slot_idx]++;
+    uint64_t n = LOAD(sh->o_ops);
+    WAIT_UNTIL(n - LOAD(sh->h_ops) < OPRING);
+    sh->opaddr[n % OPRING] = addr;
+    sh->ops[n % OPRING] = (uint8_t)(kind << 4 | (clocks / 2));
+    sh->calls[m.call % CALLRING].opn++;
+    STORE(sh->o_ops, n + 1);
+}
+
+/* Hybrid: the current call's recorded cycles, consumed as its C runs. A C
+   access to hardware or Super FX RAM first replays the original's cycles up
+   to its matching access, then makes that access for real with the CPU's own
+   timing, so concurrent hardware sees it at the original's clock. Work RAM
+   is the S-CPU's alone and is accessed at once. */
+static uint8_t *cur_ops;
+static uint32_t *cur_addr;
+static uint32_t cur_n, cur_i, cur_cap;
+static long timed_unmatched;
+
+static int timed(uint32_t a)
+{
+    uint32_t bank = a >> 16 & 0xFF, lo = a & 0xFFFF;
+    if (bank == 0x70 || bank == 0x71) return 1;
+    if ((bank & 0x40) == 0 && lo >= 0x2000 && lo < 0x8000) return 1;
+    return 0;
+}
+
+static uint32_t same_place(uint32_t a)  /* banks $00-$3F and $80-$BF alias for these */
+{
+    uint32_t bank = a >> 16 & 0xFF;
+    if (bank < 0x40 || (bank >= 0x80 && bank < 0xC0)) return a & 0xFFFF;
+    return a;
+}
+
+static uint8_t live_access(int write, uint32_t addr, uint8_t value)
+{
+    if (!timed(addr)) {
+        if (write) { core_bus_write(addr, value); return value; }
+        return core_bus_read(addr);
+    }
+    uint8_t want = (uint8_t)(write ? 2 : 1);
+    for (uint32_t j = cur_i; j < cur_n; j++)
+        if (cur_ops[j] >> 4 == want && same_place(cur_addr[j]) == same_place(addr)) {
+            if (j > cur_i) core_replay(cur_ops + cur_i, j - cur_i);
+            cur_i = j + 1;
+            return core_access(write, addr, value);
+        }
+    timed_unmatched++;
+    if (write) { core_bus_write(addr, value); return value; }
+    return core_bus_read(addr);
 }
 
 /* Hybrid side: run the C in place of the routine. */
@@ -526,30 +598,41 @@ static int ls_exec(uint32_t pc)
     struct SfxboxRegs r; core_regs(&r);
     uint32_t ret; uint16_t exit_s;
     if (!entry(pc, &r, &ret, &exit_s)) { calls_fallback++; return 0; }
-    Slot *sl = &slots[cur_frame & 1];
-    /* A private copy: the replay can outlive the frame, and the original
-       reuses this slot two frames later. */
-    static uint8_t ops[1 << 20];
-    uint32_t nops = 0;
-    if (hk < sl->ncalls) {
-        nops = sl->opn[hk];
-        if (nops > sizeof ops) { nops = sizeof ops; mismatched_calls++; }
-        memcpy(ops, sl->ops + sl->opoff[hk], nops);
+    /* The original's next call: wait until it has returned, then take a
+       private copy of its cycles (the ring moves on). */
+    uint64_t k = LOAD(sh->h_calls);
+    WAIT_UNTIL((k < LOAD(sh->o_calls) && LOAD(sh->calls[k % CALLRING].done)) || LOAD(sh->o_done));
+    cur_n = 0; cur_i = 0;
+    if (k < LOAD(sh->o_calls) && LOAD(sh->calls[k % CALLRING].done)) {
+        CallRec *rec = &sh->calls[k % CALLRING];
+        if (rec->frame != cur_frame) mismatched_calls++;
+        cur_n = rec->opn;
+        if (cur_n > cur_cap) {
+            cur_cap = cur_n;
+            cur_ops = realloc(cur_ops, cur_cap);
+            cur_addr = realloc(cur_addr, (size_t)cur_cap * sizeof *cur_addr);
+            if (!cur_ops || !cur_addr) _exit(7);
+        }
+        for (uint32_t i = 0; i < cur_n; i++) {
+            uint64_t o = (rec->opoff + i) % OPRING;
+            cur_ops[i] = sh->ops[o];
+            cur_addr[i] = sh->opaddr[o];
+        }
+        STORE(sh->h_ops, rec->opoff + rec->opn);
+        STORE(sh->h_calls, k + 1);
     } else mismatched_calls++;
     hk++;
     cpu.a = r.a; cpu.x = r.x; cpu.y = r.y; cpu.s = r.s; cpu.d = r.d; cpu.db = r.db; cpu.p = r.p; cpu.e = r.e; cpu.pc = r.pc;
     machine_live = 1;
     routines[idx].abi();
     machine_live = 0;
+    if (cur_i < cur_n) core_replay(cur_ops + cur_i, cur_n - cur_i);
+    cur_i = cur_n;
     struct SfxboxRegs out = {cpu.a, cpu.x, cpu.y, exit_s, cpu.d, cpu.db, cpu.p, cpu.e, ret};
     core_set_regs(&out);
-    core_replay(ops, nops);
     calls_swapped++;
     return 1;
 }
-
-static void wr_int(int fd, long v) { if (write(fd, &v, sizeof v) != sizeof v) _exit(3); }
-static long rd_int(int fd) { long v; if (read(fd, &v, sizeof v) != sizeof v) _exit(4); return v; }
 
 int lockstep_begin(void *core, const char *lib, const char *only, const char *report_path)
 {
@@ -557,15 +640,14 @@ int lockstep_begin(void *core, const char *lib, const char *only, const char *re
     void (*set_cb)(const struct SfxboxCallbacks *) = dlsym(core, "sfxbox_set_callbacks");
     *(void **)&core_clock = dlsym(core, "sfxbox_core_clock");
     *(void **)&core_replay = dlsym(core, "sfxbox_core_replay");
+    *(void **)&core_access = dlsym(core, "sfxbox_core_access");
     *(void **)&core_set_regs = dlsym(core, "sfxbox_core_set_regs");
     *(void **)&core_snapshot = dlsym(core, "sfxbox_core_snapshot");
     core_exec = dlsym(core, "sfxbox_cpu_exec");
-    if (!set_cb || !core_clock || !core_replay || !core_set_regs || !core_snapshot || !core_exec) return -1;
-    slots = mmap(NULL, sizeof(Slot) * 2, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANON, -1, 0);
-    if (slots == MAP_FAILED) return -1;
+    if (!set_cb || !core_clock || !core_replay || !core_access || !core_set_regs || !core_snapshot || !core_exec) return -1;
+    sh = mmap(NULL, sizeof(Shared), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANON, -1, 0);
+    if (sh == MAP_FAILED) return -1;
     (void)core_bus_peek;
-    slots[0].frame = slots[1].frame = -1;
-    if (pipe(p_ready) || pipe(p_ack)) return -1;
     fflush(NULL);
     child = fork();
     if (child < 0) return -1;
@@ -597,12 +679,11 @@ void lockstep_before_frame(long f)
 {
     cur_frame = f;
     if (role == 1) {
-        if (f >= 2) rd_int(p_ack[0]);
-        Slot *sl = &slots[f & 1];
-        sl->frame = f; sl->ncalls = 0; sl->overflow = 0; sl->nops = 0;
+        WAIT_UNTIL(f - LOAD(sh->h_frames) < NSLOT - 1);
+        FrameSlot *fs = &sh->fs[f % NSLOT];
+        fs->frame = f; fs->ncalls = 0;
     } else if (role == 2) {
-        long got = rd_int(p_ready[0]);
-        if (got != f) { fprintf(lsrep, "lockstep: frame order %ld/%ld\n", got, f); fflush(lsrep); _exit(5); }
+        WAIT_UNTIL(LOAD(sh->o_frames) > f || LOAD(sh->o_done));
         hk = 0;
     }
 }
@@ -612,7 +693,7 @@ static void compare(long f)
     static const struct { const char *name; uint32_t off, len; } reg[] = {
         {"wram", 0, 0x20000}, {"gsuram", 0x20000, 0x10000}, {"vram", 0x30000, 0x10000},
         {"oam", 0x40000, 544}, {"cgram", 0x40000 + 544, 512}, {"apuram", 0x40000 + 544 + 512, 0x10000}};
-    Slot *sl = &slots[f & 1];
+    FrameSlot *sl = &sh->fs[f % NSLOT];
     core_snapshot(mysnap);
     uint32_t s = sl->s, lo = s > 0x200 ? s - 0x200 : 0;
     int bad = 0;
@@ -631,7 +712,6 @@ static void compare(long f)
     }
     if (bad && sl->midcall) strncat(buf, " (frame ended inside a call)", sizeof buf - strlen(buf) - 1);
     if (hk != sl->ncalls) { bad = 1; snprintf(buf + strlen(buf), sizeof buf - strlen(buf), " calls %u/%u", hk, sl->ncalls); }
-    if (sl->overflow) { bad = 1; strncat(buf, " cost-overflow", sizeof buf - strlen(buf) - 1); }
     {
         struct SfxboxRegs r; core_regs(&r);
         uint32_t c = core_clock();
@@ -649,7 +729,7 @@ void lockstep_after_frame(long f)
 {
     if (trf) fflush(trf);
     if (role == 1) {
-        Slot *sl = &slots[f & 1];
+        FrameSlot *sl = &sh->fs[f % NSLOT];
         struct SfxboxRegs r; core_regs(&r);
         /* A frame that ends inside a call: the hybrid has already finished it,
            so the stack is judged at the caller's level. */
@@ -658,23 +738,25 @@ void lockstep_after_frame(long f)
         sl->clock = core_clock();
         sl->regs = r;
         core_snapshot(sl->snap);
-        if (f >= 1) wr_int(p_ready[1], f - 1);
+        STORE(sh->o_frames, f + 1);
     } else if (role == 2) {
         compare(f);
-        wr_int(p_ack[1], f);
+        STORE(sh->h_frames, f + 1);
     }
 }
 
 void lockstep_end(long frames)
 {
     if (role == 1) {
-        if (frames >= 1) wr_int(p_ready[1], frames - 1);
+        STORE(sh->o_done, 1);
         int st = 0;
         waitpid(child, &st, 0);
+        if (LOAD(sh->stuck)) fprintf(stderr, "lockstep: a side waited too long; see the report\n");
     } else if (role == 2) {
-        fprintf(lsrep, "frames %ld compared %ld, differing %ld; calls swapped %ld, entered other ways %ld, unmatched %ld: %s\n",
-                frames, frames_compared, diff_frames, calls_swapped, calls_fallback, mismatched_calls,
-                diff_frames || mismatched_calls ? "DIVERGENT" : calls_swapped ? "IDENTICAL" : "UNCOVERED");
+        fprintf(lsrep, "frames %ld compared %ld, differing %ld; calls swapped %ld, entered other ways %ld, unmatched %ld, "
+                "hardware accesses off the timeline %ld: %s\n",
+                frames, frames_compared, diff_frames, calls_swapped, calls_fallback, mismatched_calls, timed_unmatched,
+                diff_frames || mismatched_calls || timed_unmatched ? "DIVERGENT" : calls_swapped ? "IDENTICAL" : "UNCOVERED");
         fclose(lsrep);
         _exit(0);
     }

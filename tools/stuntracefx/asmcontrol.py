@@ -35,6 +35,14 @@ def build():
     for op in range(256):
         n = disasm.gsu_len(op)
         put(bytes([op]) + bytes((0x24 + i * 0x22) & 0xFF for i in range(n - 1)), disasm.GSU_OP)
+    # Prefix pairs the disassembler prints as one instruction (alt1-3, with+to, with+from).
+    for prefix in (0x3D, 0x3E, 0x3F, 0x21, 0x2A):
+        for op in range(256):
+            if 0x05 <= op <= 0x0F or op in (0x3D, 0x3E, 0x3F) or (prefix < 0x30 and 0x20 <= op <= 0x2F):
+                continue
+            put(bytes([prefix]), disasm.GSU_OP)
+            n = disasm.gsu_len(op)
+            put(bytes([op]) + bytes((0x24 + i * 0x22) & 0xFF for i in range(n - 1)), disasm.GSU_OP)
     pad = (-len(rom)) % disasm.BANK
     rom.extend(b'\xff' * pad)
     mp.extend([0] * pad)

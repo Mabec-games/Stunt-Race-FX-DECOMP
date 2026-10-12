@@ -44,3 +44,23 @@ Three things had to be right before A7 matched:
 Negative controls: dropping the bank step from the C fails A5 on the 12 calls
 that cross a bank and fails A7 on every script (the boot upload crosses one);
 reading the wrong byte fails 1,054,844 of 1,078,556 calls.
+
+**Later the same day, with the sound routines in place**, two more things A7
+needed:
+
+4. **Hardware handshakes cannot run atomically.** The C for the sound upload
+   polls the APU ports for the SPC700's answers. Run instantly on the live
+   machine, no time passed while it polled, so the SPC700 never answered and
+   the hybrid hung (confirmed by sampling the stuck process). The hybrid now
+   interleaves: when the C touches hardware or Super FX RAM, the original's
+   recorded cycles are replayed up to the matching access, which is then made
+   for real with the CPU's own timing. Work RAM is accessed at once.
+5. **A call can span many frames.** The upload's one call runs for dozens of
+   frames, so the original must run that far ahead before its cycles are
+   complete. Frames now sit in a ring of 128 snapshots and calls in a ring of
+   cycle records; each side waits only for what it needs, and a wait that
+   never ends stops both sides with a report instead of hanging.
+
+A5 also gained nesting (a checked routine that calls another checks both),
+growable logs for hardware reads (the upload polls thousands of times per
+call), and a stop for a C routine that reads past the replay.
