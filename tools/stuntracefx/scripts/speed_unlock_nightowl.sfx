@@ -1,0 +1,87 @@
+# speed_unlock_nightowl: the Speed Trax course-select code (controller 2:
+# hold L, press SELECT seven times) that unlocks every course, then a
+# race on Night Owl, the novice night course.
+# Power on, skip the title, GAME SELECTION: SPEED TRAX, 4WD, name AAA.
+wait 300
+hold START 2
+wait 202
+hold START 2
+wait 202
+hold START 2
+wait 122
+hold START 2
+wait 92
+hold START 2
+wait 152
+# SPEED TRAX course select. Controller 2 holds L and presses SELECT seven
+# times: the built-in code that opens every course and class (and saves it).
+hold 2.L 10
+hold 2.SELECT+2.L 4
+hold 2.L 6
+hold 2.SELECT+2.L 4
+hold 2.L 6
+hold 2.SELECT+2.L 4
+hold 2.L 6
+hold 2.SELECT+2.L 4
+hold 2.L 6
+hold 2.SELECT+2.L 4
+hold 2.L 6
+hold 2.SELECT+2.L 4
+hold 2.L 6
+hold 2.SELECT+2.L 4
+hold 2.L 6
+wait 61
+# Novice row, last course (Night Owl): RIGHT three times, PLAY.
+hold RIGHT 2
+wait 32
+hold RIGHT 2
+wait 32
+hold RIGHT 2
+wait 33
+hold START 2
+wait 122
+hold START 2
+wait 202
+# Race start, then drive straight on, weaving, for a while.
+wait 640
+hold B 80
+hold B+LEFT 10
+hold B 80
+hold B+RIGHT 10
+hold B 80
+hold B+LEFT 10
+hold B 80
+hold B+RIGHT 10
+hold B 80
+hold B+LEFT 10
+hold B 80
+hold B+RIGHT 10
+hold B 80
+hold B+LEFT 10
+hold B 80
+hold B+RIGHT 10
+hold B 80
+hold B+LEFT 10
+hold B 80
+hold B+RIGHT 10
+hold B 80
+hold B+LEFT 10
+hold B 80
+hold B+RIGHT 10
+hold B 80
+hold B+LEFT 10
+hold B 80
+hold B+RIGHT 10
+hold B 80
+hold B+LEFT 10
+hold B 80
+hold B+RIGHT 10
+hold B 80
+hold B+LEFT 10
+hold B 80
+hold B+RIGHT 10
+hold B 80
+hold B+LEFT 10
+hold B 80
+hold B+RIGHT 10
+wait 1
