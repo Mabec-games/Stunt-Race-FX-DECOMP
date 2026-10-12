@@ -13,6 +13,25 @@
 /* The value last written to the Super FX screen mode register (video/dma.c). */
 #define GSU_SCMR_SHADOW 0x000374u
 
+/* Direct page $FE-$FF: counts the polls while waiting for the Super FX (gsu/run.c). */
+#define GSU_WAIT_COUNT 0x0000FEu
+
+/* Joypads (input/joypad.c): held buttons, buttons newly pressed this frame,
+   and copies the frame code keeps. */
+#define JOY1_HELD 0x000309u
+#define JOY2_HELD 0x00030Du
+#define JOY1_PRESSED 0x000311u
+#define JOY2_PRESSED 0x000313u
+#define JOY1_PRESSED_COPY 0x000D1Au
+#define JOY2_PRESSED_COPY 0x000D1Cu
+#define JOY1_LAST 0x000D1Eu
+#define JOY2_LAST 0x000D20u
+
+/* Screen fade (video/fade.c): brightness accumulator, high byte = INIDISP
+   brightness; bit 15 set = forced blank. FADE_OUT nonzero: fading out. */
+#define FADE_LEVEL 0x000D60u
+#define FADE_OUT 0x000E3Au
+
 /* The work-RAM copy of the sprite table (video/oam.c): 128 four-byte entries
    (X, Y, tile, attributes) from $0375, then the 32-byte high table from $0575. */
 #define OAM_BUFFER 0x000375u

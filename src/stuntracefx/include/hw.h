@@ -21,5 +21,26 @@
 #define A1B0 0x004304u     /* DMA channel 0: A-bus bank */
 #define DAS0L 0x004305u    /* DMA channel 0: byte count */
 #define GSU_SCMR 0x00303Au /* Super FX screen mode: who owns ROM (bit 4) and RAM (bit 3) */
+#define INIDISP 0x002100u   /* screen brightness and forced blank */
+#define OAMDATA 0x002104u   /* OAM data write */
+#define BG2HOFS 0x00210Fu   /* BG2 horizontal scroll (written twice) */
+#define BG2VOFS 0x002110u   /* BG2 vertical scroll (written twice) */
+#define M7A 0x00211Bu       /* Mode 7 matrix A, also the multiplier's 16-bit factor (written twice) */
+#define M7B 0x00211Cu       /* Mode 7 matrix B, also the multiplier's 8-bit factor */
+#define CGDATA 0x002122u    /* CGRAM data write */
+#define W12SEL 0x002123u    /* window masks for BG1/BG2 */
+#define W34SEL 0x002124u    /* window masks for BG3/BG4 */
+#define WOBJSEL 0x002125u   /* window masks for sprites and colour */
+#define WBGLOG 0x00212Au    /* window logic for BGs */
+#define WOBJLOG 0x00212Bu   /* window logic for sprites and colour */
+#define TMW 0x00212Eu       /* main screen window mask enables */
+#define CGWSEL 0x002130u    /* colour maths control */
+#define CGADSUB 0x002131u   /* colour maths add/subtract and layers */
+#define MPYM 0x002135u      /* multiplier result, middle byte (then high at $2136) */
+#define JOY1L 0x004218u     /* joypad 1 auto-read result */
+#define JOY2L 0x00421Au     /* joypad 2 auto-read result */
+#define GSU_R15 0x00301Eu   /* Super FX program counter; writing it starts the Super FX */
+#define GSU_SFR 0x003030u   /* Super FX status (bit 5: running) */
+#define GSU_PBR 0x003034u   /* Super FX program bank */
 
 #endif

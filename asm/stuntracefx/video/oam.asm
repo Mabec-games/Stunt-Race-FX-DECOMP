@@ -3,6 +3,7 @@
 ; C: src/stuntracefx/video/oam.c.
 
 incsrc "../include/macros.inc"
+incsrc "../include/hw.inc"
 incsrc "../include/wram.inc"
 
 arch 65816
@@ -24,4 +25,41 @@ OamHideRange:
     inx
     dey
     bne .next
+    rts
+
+; @routine 7E:ADFD OamWriteSprites36To46
+; WHAT IT DOES: Copies sprites 36 to 46 from the work-RAM table straight to
+; OAM.
+; HOW: OAM word address $48 (sprite 36), then the 44 bytes from table offset
+; $90 written to OAMDATA one by one. Runs from work RAM.
+; Entry: M 8-bit, DB a bank where the table is work RAM. Exit: X = $BC
+; (16-bit); Y = 0; A low byte = the last byte written; Z set, N clear.
+%ramcode($7EADFD, $010B24)
+OamWriteSprites36To46:
+    rep.b #$10
+    ldx.w #$0090
+    lda.b #$48
+    sta.w !OAMADDL
+    stz.w !OAMADDH
+    ldy.w #$002C
+.next:
+    lda.w !oam_buffer,x
+    sta.w !OAMDATA
+    inx
+    dey
+    bne .next
+    rts
+
+; @routine 7E:B005 SpriteYOnScreen
+; WHAT IT DOES: Returns a sprite Y coordinate, or $F0 (hidden) when it is $B0
+; or more, below the part of the screen the sprites may cover.
+; HOW: Compares with $B0. Runs from work RAM.
+; Entry: M 8-bit; A = Y. Exit: A low byte = the Y to use; C set when it was
+; replaced; N, Z from the compare, or from $F0.
+%ramcode($7EB005, $010D2C)
+SpriteYOnScreen:
+    cmp.b #$B0
+    bcc .keep
+    lda.b #$F0
+.keep:
     rts
