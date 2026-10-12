@@ -2,6 +2,7 @@
  * sfxbox: run the original ROM headless and record what it executes.
  *
  *   sfxbox --rom ROM --script FILE --out DIR [--core DYLIB] [--trace]
+ *          [--check LIB [--only ADDR,ADDR...]]
  *
  * Script, one command per line ('#' starts a comment):
  *   wait N               N frames, no buttons
@@ -17,6 +18,10 @@
  *
  * With --trace, DIR receives rommap.bin (per ROM byte: who touched it and
  * how), wram_exec.bin, gsuram_exec.bin and edges.csv (control transfers).
+ *
+ * With --check, every call of a routine that LIB (the hybrid build of the C
+ * decomp) implements is checked against its C; see check.c. The report goes
+ * to DIR/check.txt.
  */
 #include <dlfcn.h>
 #include <stdarg.h>
@@ -25,6 +30,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "libretro.h"
+#include "check.h"
 
 static void die(const char *fmt, ...) {
     va_list ap; va_start(ap, fmt); vfprintf(stderr, fmt, ap); va_end(ap);
@@ -212,12 +218,15 @@ static void script(const char *path) {
 int main(int argc, char **argv) {
     const char *rom = NULL, *scr = NULL, *corepath = "tools/toolchains/bsnes/bsnes_libretro.dylib";
     int trace = 0;
+    const char *checklib = NULL, *only = NULL;
     for (int i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "--rom") && i + 1 < argc) rom = argv[++i];
         else if (!strcmp(argv[i], "--script") && i + 1 < argc) scr = argv[++i];
         else if (!strcmp(argv[i], "--out") && i + 1 < argc) outdir = argv[++i];
         else if (!strcmp(argv[i], "--core") && i + 1 < argc) corepath = argv[++i];
         else if (!strcmp(argv[i], "--trace")) trace = 1;
+        else if (!strcmp(argv[i], "--check") && i + 1 < argc) checklib = argv[++i];
+        else if (!strcmp(argv[i], "--only") && i + 1 < argc) only = argv[++i];
         else die("usage: sfxbox --rom ROM --script FILE --out DIR [--core DYLIB] [--trace]");
     }
     if (!rom || !scr || !outdir) die("usage: sfxbox --rom ROM --script FILE --out DIR [--core DYLIB] [--trace]");
@@ -243,7 +252,12 @@ int main(int argc, char **argv) {
     struct retro_game_info gi = {rom, data, n, NULL};
     if (!retro_load_game_p(&gi)) die("load failed: %s", rom);
     if (trace) sfxbox_trace_begin_p();
+    if (checklib) {
+        char rp[4096]; snprintf(rp, sizeof rp, "%s/check.txt", outdir);
+        if (check_begin(core, checklib, only, rp)) die("check setup failed");
+    }
     script(scr);
+    if (checklib) check_end();
     if (trace && sfxbox_trace_write_p(outdir)) die("trace write failed");
     printf("frames %ld\n", frames);
     return 0;
