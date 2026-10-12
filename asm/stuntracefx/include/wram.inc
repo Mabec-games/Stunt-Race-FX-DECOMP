@@ -851,3 +851,10 @@ includeonce
 ; address (plus 4) of the word pairs the point records take (points.asm).
 !gsu_vectors = $700116
 !gsu_point_pairs = $70005A
+!fx_draw_x = $70020A
+!fx_draw_y = $70020C
+!fx_draw_advance = $70020E
+!fx_draw_rows = $700210
+!fx_draw_step_x = $700212
+!fx_draw_step_y = $700214
+!fx_noise_seed = $70021C
