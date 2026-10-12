@@ -1,0 +1,9 @@
+.DS_Store
+__pycache__/
+reference/**/*.sfc
+reference/**/*.smc
+build/
+tools/toolchains/src/
+tools/toolchains/asar/
+tools/toolchains/bsnes/
+tools/toolchains/snes9x/

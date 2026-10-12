@@ -1,0 +1,11 @@
+# Boot, then leave the game alone so it cycles title and attract demos.
+wait 60
+shot f0060
+wait 240
+shot f0300
+wait 600
+shot f0900
+wait 1800
+shot f2700
+wait 3600
+shot f6300

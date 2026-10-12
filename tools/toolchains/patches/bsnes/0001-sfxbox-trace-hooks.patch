@@ -1,0 +1,374 @@
+diff --git a/bsnes/emulator/sfxbox.hpp b/bsnes/emulator/sfxbox.hpp
+new file mode 100644
+index 0000000..93a9159
+--- /dev/null
++++ b/bsnes/emulator/sfxbox.hpp
+@@ -0,0 +1,25 @@
++#pragma once
++// Trace and dispatch hooks for the sfxbox harness. The core calls these;
++// the harness (target-libretro/sfxbox.cpp) defines them.
++#include <stdint.h>
++
++enum : uint16_t {
++  SFXBOX_CPU_OP = 1 << 0, SFXBOX_CPU_OPND = 1 << 1, SFXBOX_CPU_DATA = 1 << 2, SFXBOX_DMA = 1 << 3,
++  SFXBOX_GSU_OP = 1 << 4, SFXBOX_GSU_OPND = 1 << 5, SFXBOX_GSU_DATA = 1 << 6,
++  SFXBOX_M8 = 1 << 8, SFXBOX_M16 = 1 << 9, SFXBOX_X8 = 1 << 10, SFXBOX_X16 = 1 << 11, SFXBOX_EMU = 1 << 12,
++};
++enum { SFXBOX_WHO_DATA = 0, SFXBOX_WHO_OP = 1, SFXBOX_WHO_OPND = 2, SFXBOX_WHO_DMA = 3, SFXBOX_WHO_NONE = 5 };
++
++extern "C" {
++extern int sfxbox_cpu_who;
++extern int sfxbox_cpu_first;
++extern uint32_t sfxbox_cpu_fetch_end;
++extern uint8_t sfxbox_cpu_opcode;
++extern int sfxbox_cpu_irq;
++void sfxbox_cpu_rom(uint32_t offset);
++void sfxbox_cpu_insn(uint32_t pc, int m, int x, int e, int db, int d);
++extern int (*sfxbox_cpu_exec)(uint32_t pc);
++void sfxbox_gsu_insn(uint32_t addr);
++void sfxbox_gsu_operand(uint32_t addr);
++void sfxbox_gsu_data(uint32_t addr);
++}
+diff --git a/bsnes/processor/wdc65816/instruction.cpp b/bsnes/processor/wdc65816/instruction.cpp
+index 1d39fa2..9d56445 100644
+--- a/bsnes/processor/wdc65816/instruction.cpp
++++ b/bsnes/processor/wdc65816/instruction.cpp
+@@ -1,5 +1,7 @@
+ auto WDC65816::interrupt() -> void {
++  sfxbox_cpu_who = SFXBOX_WHO_NONE;
+   read(PC.d);
++  sfxbox_cpu_who = SFXBOX_WHO_DATA;
+   idle();
+ N push(PC.b);
+   push(PC.h);
+diff --git a/bsnes/processor/wdc65816/memory.cpp b/bsnes/processor/wdc65816/memory.cpp
+index 7cfb2cc..21ee3de 100644
+--- a/bsnes/processor/wdc65816/memory.cpp
++++ b/bsnes/processor/wdc65816/memory.cpp
+@@ -9,7 +9,9 @@
+ auto WDC65816::idleIRQ() -> void {
+   if(interruptPending()) {
+     //modify I/O cycle to bus read cycle, do not increment PC
++    sfxbox_cpu_who = SFXBOX_WHO_NONE;
+     read(PC.d);
++    sfxbox_cpu_who = SFXBOX_WHO_DATA;
+   } else {
+     idle();
+   }
+@@ -28,7 +30,13 @@ auto WDC65816::idle6(uint16 address) -> void {
+ }
+ 
+ auto WDC65816::fetch() -> uint8 {
+-  return read(PC.b << 16 | PC.w++);
++  if(sfxbox_cpu_first) { sfxbox_cpu_who = SFXBOX_WHO_OP; sfxbox_cpu_first = 0; }
++  else sfxbox_cpu_who = SFXBOX_WHO_OPND;
++  uint8 data = read(PC.b << 16 | PC.w++);
++  if(sfxbox_cpu_who == SFXBOX_WHO_OP) sfxbox_cpu_opcode = data;
++  sfxbox_cpu_who = SFXBOX_WHO_DATA;
++  sfxbox_cpu_fetch_end = PC.b << 16 | PC.w;
++  return data;
+ }
+ 
+ auto WDC65816::pull() -> uint8 {
+diff --git a/bsnes/processor/wdc65816/wdc65816.cpp b/bsnes/processor/wdc65816/wdc65816.cpp
+index 5481693..84785ec 100755
+--- a/bsnes/processor/wdc65816/wdc65816.cpp
++++ b/bsnes/processor/wdc65816/wdc65816.cpp
+@@ -1,5 +1,6 @@
+ #include <processor/processor.hpp>
+ #include "wdc65816.hpp"
++#include <emulator/sfxbox.hpp>
+ 
+ namespace Processor {
+ 
+diff --git a/bsnes/sfc/coprocessor/superfx/bus.cpp b/bsnes/sfc/coprocessor/superfx/bus.cpp
+index 416383b..35eff69 100644
+--- a/bsnes/sfc/coprocessor/superfx/bus.cpp
++++ b/bsnes/sfc/coprocessor/superfx/bus.cpp
+@@ -16,6 +16,7 @@ auto SuperFX::CPUROM::read(uint addr, uint8 data) -> uint8 {
+     };
+     return vector[addr & 15];
+   }
++  sfxbox_cpu_rom(addr);
+   return superfx.rom.read(addr, data);
+ }
+ 
+diff --git a/bsnes/sfc/coprocessor/superfx/memory.cpp b/bsnes/sfc/coprocessor/superfx/memory.cpp
+index 01a8c82..625de68 100644
+--- a/bsnes/sfc/coprocessor/superfx/memory.cpp
++++ b/bsnes/sfc/coprocessor/superfx/memory.cpp
+@@ -72,15 +72,21 @@ auto SuperFX::readOpcode(uint16 addr) -> uint8 {
+ 
+ auto SuperFX::peekpipe() -> uint8 {
+   uint8 result = regs.pipeline;
++  uint32 at = sfxboxPipeAddr;
+   regs.pipeline = readOpcode(regs.r[15]);
++  sfxboxPipeAddr = regs.pbr << 16 | regs.r[15];
+   regs.r[15].modified = false;
++  sfxbox_gsu_insn(at);
+   return result;
+ }
+ 
+ auto SuperFX::pipe() -> uint8 {
+   uint8 result = regs.pipeline;
++  uint32 at = sfxboxPipeAddr;
+   regs.pipeline = readOpcode(++regs.r[15]);
++  sfxboxPipeAddr = regs.pbr << 16 | regs.r[15];
+   regs.r[15].modified = false;
++  sfxbox_gsu_operand(at);
+   return result;
+ }
+ 
+diff --git a/bsnes/sfc/coprocessor/superfx/superfx.cpp b/bsnes/sfc/coprocessor/superfx/superfx.cpp
+index 847f6a0..0da59c5 100644
+--- a/bsnes/sfc/coprocessor/superfx/superfx.cpp
++++ b/bsnes/sfc/coprocessor/superfx/superfx.cpp
+@@ -1,5 +1,6 @@
+ #include <sfc/sfc.hpp>
+ #include <processor/gsu/gsu.cpp>
++#include <emulator/sfxbox.hpp>
+ 
+ namespace SuperFamicom {
+ 
+@@ -11,6 +12,22 @@ namespace SuperFamicom {
+ #include "serialization.cpp"
+ SuperFX superfx;
+ 
++}
++
++// Memory views for the sfxbox harness: 0 WRAM, 1 GSU RAM, 2 ROM.
++extern "C" uint8_t* sfxbox_core_memory(int which, size_t* size) {
++  using namespace SuperFamicom;
++  switch(which) {
++  case 0: *size = sizeof cpu.wram; return cpu.wram;
++  case 1: *size = superfx.ram.size(); return superfx.ram.data();
++  case 2: *size = superfx.rom.size(); return superfx.rom.data();
++  }
++  *size = 0;
++  return nullptr;
++}
++
++namespace SuperFamicom {
++
+ auto SuperFX::synchronizeCPU() -> void {
+   if(clock >= 0) scheduler.resume(cpu.thread);
+ }
+diff --git a/bsnes/sfc/coprocessor/superfx/superfx.hpp b/bsnes/sfc/coprocessor/superfx/superfx.hpp
+index 97df3df..38df64f 100644
+--- a/bsnes/sfc/coprocessor/superfx/superfx.hpp
++++ b/bsnes/sfc/coprocessor/superfx/superfx.hpp
+@@ -39,6 +39,7 @@ struct SuperFX : Processor::GSU, Thread {
+   auto write(uint addr, uint8 data) -> void override;
+ 
+   auto readOpcode(uint16 addr) -> uint8;
++  uint32 sfxboxPipeAddr = 0;
+   alwaysinline auto peekpipe() -> uint8;
+   alwaysinline auto pipe() -> uint8 override;
+ 
+diff --git a/bsnes/sfc/coprocessor/superfx/timing.cpp b/bsnes/sfc/coprocessor/superfx/timing.cpp
+index 0b4bf65..1966a4a 100644
+--- a/bsnes/sfc/coprocessor/superfx/timing.cpp
++++ b/bsnes/sfc/coprocessor/superfx/timing.cpp
+@@ -3,6 +3,7 @@ auto SuperFX::step(uint clocks) -> void {
+     regs.romcl -= min(clocks, regs.romcl);
+     if(regs.romcl == 0) {
+       regs.sfr.r = 0;
++      sfxbox_gsu_data((regs.rombr << 16) + regs.r[14]);
+       regs.romdr = read((regs.rombr << 16) + regs.r[14]);
+     }
+   }
+diff --git a/bsnes/sfc/cpu/cpu.cpp b/bsnes/sfc/cpu/cpu.cpp
+index b6fec16..4fd33e4 100644
+--- a/bsnes/sfc/cpu/cpu.cpp
++++ b/bsnes/sfc/cpu/cpu.cpp
+@@ -1,4 +1,5 @@
+ #include <sfc/sfc.hpp>
++#include <emulator/sfxbox.hpp>
+ 
+ namespace SuperFamicom {
+ 
+@@ -34,8 +35,13 @@ auto CPU::Enter() -> void {
+ auto CPU::main() -> void {
+   if(r.wai) return instructionWait();
+   if(r.stp) return instructionStop();
+-  if(!status.interruptPending) return instruction();
++  if(!status.interruptPending) {
++    sfxbox_cpu_insn(r.pc.d, r.p.m, r.p.x, r.e, r.b, r.d.w);
++    if(sfxbox_cpu_exec && sfxbox_cpu_exec(r.pc.d)) return;
++    return instruction();
++  }
+ 
++  sfxbox_cpu_irq = 1;
+   if(status.nmiPending) {
+     status.nmiPending = 0;
+     r.vector = r.e ? 0xfffa : 0xffea;
+diff --git a/bsnes/sfc/cpu/dma.cpp b/bsnes/sfc/cpu/dma.cpp
+index 9f4a10f..7edc83c 100644
+--- a/bsnes/sfc/cpu/dma.cpp
++++ b/bsnes/sfc/cpu/dma.cpp
+@@ -63,7 +63,10 @@ auto CPU::Channel::validA(uint24 address) -> bool {
+ 
+ auto CPU::Channel::readA(uint24 address) -> uint8 {
+   step<4,1>();
++  int who = sfxbox_cpu_who;
++  sfxbox_cpu_who = SFXBOX_WHO_DMA;
+   cpu.r.mdr = validA(address) ? bus.read(address, cpu.r.mdr) : (uint8)0x00;
++  sfxbox_cpu_who = who;
+   step<4,1>();
+   return cpu.r.mdr;
+ }
+diff --git a/bsnes/target-libretro/libretro.cpp b/bsnes/target-libretro/libretro.cpp
+index fc7f321..ea1b19f 100644
+--- a/bsnes/target-libretro/libretro.cpp
++++ b/bsnes/target-libretro/libretro.cpp
+@@ -30,6 +30,7 @@ static void audio_queue(int16_t left, int16_t right)
+ }
+ 
+ #include "program.cpp"
++#include "sfxbox.cpp"
+ 
+ static string sgb_bios;
+ static vector<string> cheatList;
+diff --git a/bsnes/target-libretro/sfxbox.cpp b/bsnes/target-libretro/sfxbox.cpp
+new file mode 100644
+index 0000000..ec85f67
+--- /dev/null
++++ b/bsnes/target-libretro/sfxbox.cpp
+@@ -0,0 +1,137 @@
++// sfxbox: trace maps and dispatch hooks, exported for the harness.
++// Kept separate from the libretro frontend; libretro.cpp includes it.
++#include <emulator/sfxbox.hpp>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <unordered_map>
++
++extern "C" {
++int sfxbox_cpu_who = SFXBOX_WHO_DATA;
++int sfxbox_cpu_first = 0;
++uint32_t sfxbox_cpu_fetch_end = 0;
++uint8_t sfxbox_cpu_opcode = 0;
++int sfxbox_cpu_irq = 0;
++int (*sfxbox_cpu_exec)(uint32_t pc) = nullptr;
++}
++
++extern "C" uint8_t* sfxbox_core_memory(int which, size_t* size);  // sfc/coprocessor/superfx/superfx.cpp
++static uint8_t* sfxboxRomData() { size_t n; return sfxbox_core_memory(2, &n); }
++
++static uint16_t* sfxboxRom = nullptr;
++static uint32_t sfxboxRomSize = 0;
++static uint16_t sfxboxCpuFlags = 0;
++static uint8_t sfxboxWramExec[0x20000];
++static uint8_t sfxboxGsuRamExec[0x20000];
++static uint32_t sfxboxCpuPrev = ~0u;
++static uint32_t sfxboxGsuPrev = ~0u, sfxboxGsuEnd = ~0u;
++static uint8_t sfxboxGsuPrevOp = 0;
++// key: cpu(1) | kind(9) | from(24) | to(24) -> count
++static std::unordered_map<uint64_t, uint32_t> sfxboxEdges;
++
++static inline void sfxboxEdge(int gsu, uint32_t from, uint32_t to, uint32_t kind) {
++  uint64_t key = (uint64_t)gsu << 63 | (uint64_t)(kind & 0x1ff) << 48 | (uint64_t)(from & 0xffffff) << 24 | (to & 0xffffff);
++  sfxboxEdges[key]++;
++}
++
++extern "C" void sfxbox_cpu_rom(uint32_t offset) {
++  if(!sfxboxRom) return;
++  offset %= sfxboxRomSize;
++  switch(sfxbox_cpu_who) {
++  case SFXBOX_WHO_OP: sfxboxRom[offset] |= SFXBOX_CPU_OP | sfxboxCpuFlags; break;
++  case SFXBOX_WHO_OPND: sfxboxRom[offset] |= SFXBOX_CPU_OPND; break;
++  case SFXBOX_WHO_DMA: sfxboxRom[offset] |= SFXBOX_DMA; break;
++  case SFXBOX_WHO_DATA: sfxboxRom[offset] |= SFXBOX_CPU_DATA; break;
++  default: break;
++  }
++}
++
++extern "C" void sfxbox_cpu_insn(uint32_t pc, int m, int x, int e, int db, int d) {
++  (void)db; (void)d;
++  if(sfxboxRom) {
++    if(sfxboxCpuPrev != ~0u && pc != sfxbox_cpu_fetch_end)
++      sfxboxEdge(0, sfxboxCpuPrev, pc, sfxbox_cpu_irq ? 0x100 : sfxbox_cpu_opcode);
++    uint32_t bank = pc >> 16 & 0xff, addr = pc & 0xffff;
++    if(bank == 0x7e || bank == 0x7f) sfxboxWramExec[(bank & 1) << 16 | addr] = 1;
++    else if((bank & 0x40) == 0 && addr < 0x2000) sfxboxWramExec[addr] = 1;
++  }
++  sfxbox_cpu_irq = 0;
++  sfxboxCpuPrev = pc;
++  sfxboxCpuFlags = (m ? SFXBOX_M8 : SFXBOX_M16) | (x ? SFXBOX_X8 : SFXBOX_X16) | (e ? SFXBOX_EMU : 0);
++  sfxbox_cpu_first = 1;
++}
++
++// GSU address -> ROM offset, or -1 for RAM (mirrors SuperFX::read).
++static inline int64_t sfxboxGsuRom(uint32_t addr) {
++  uint32_t bank = addr >> 16 & 0xff;
++  if(bank <= 0x3f) return ((bank & 0x3f) << 15 | (addr & 0x7fff)) % sfxboxRomSize;
++  if(bank <= 0x5f) return (addr & 0x3fffff) % sfxboxRomSize;
++  return -1;
++}
++
++extern "C" void sfxbox_gsu_insn(uint32_t addr) {
++  if(!sfxboxRom) return;
++  int64_t o = sfxboxGsuRom(addr);
++  uint8_t op = 0;
++  if(o >= 0) { sfxboxRom[o] |= SFXBOX_GSU_OP; op = sfxboxRomData()[o]; }
++  else { sfxboxGsuRamExec[addr & 0x1ffff] = 1; }
++  if(sfxboxGsuPrev != ~0u && addr != sfxboxGsuEnd) sfxboxEdge(1, sfxboxGsuPrev, addr, sfxboxGsuPrevOp);
++  sfxboxGsuPrev = addr;
++  sfxboxGsuPrevOp = op;
++  sfxboxGsuEnd = (addr & 0xff0000) | ((addr + 1) & 0xffff);
++}
++
++extern "C" void sfxbox_gsu_operand(uint32_t addr) {
++  if(!sfxboxRom) return;
++  int64_t o = sfxboxGsuRom(addr);
++  if(o >= 0) sfxboxRom[o] |= SFXBOX_GSU_OPND;
++  sfxboxGsuEnd = (addr & 0xff0000) | ((addr + 1) & 0xffff);
++}
++
++extern "C" void sfxbox_gsu_data(uint32_t addr) {
++  if(!sfxboxRom) return;
++  int64_t o = sfxboxGsuRom(addr);
++  if(o >= 0) sfxboxRom[o] |= SFXBOX_GSU_DATA;
++}
++
++// ---- exported to the harness ----
++
++extern "C" RETRO_API void sfxbox_trace_begin() {
++  { size_t n; sfxbox_core_memory(2, &n); sfxboxRomSize = n; }
++  free(sfxboxRom);
++  sfxboxRom = (uint16_t*)calloc(sfxboxRomSize ? sfxboxRomSize : 1, sizeof(uint16_t));
++  memset(sfxboxWramExec, 0, sizeof sfxboxWramExec);
++  memset(sfxboxGsuRamExec, 0, sizeof sfxboxGsuRamExec);
++  sfxboxEdges.clear();
++  sfxboxCpuPrev = sfxboxGsuPrev = sfxboxGsuEnd = ~0u;
++}
++
++extern "C" RETRO_API int sfxbox_trace_write(const char* dir) {
++  if(!sfxboxRom) return -1;
++  char path[4096];
++  snprintf(path, sizeof path, "%s/rommap.bin", dir);
++  FILE* f = fopen(path, "wb"); if(!f) return -1;
++  fwrite(sfxboxRom, sizeof(uint16_t), sfxboxRomSize, f); fclose(f);
++  snprintf(path, sizeof path, "%s/wram_exec.bin", dir);
++  f = fopen(path, "wb"); if(!f) return -1;
++  fwrite(sfxboxWramExec, 1, sizeof sfxboxWramExec, f); fclose(f);
++  snprintf(path, sizeof path, "%s/gsuram_exec.bin", dir);
++  f = fopen(path, "wb"); if(!f) return -1;
++  fwrite(sfxboxGsuRamExec, 1, sizeof sfxboxGsuRamExec, f); fclose(f);
++  snprintf(path, sizeof path, "%s/edges.csv", dir);
++  f = fopen(path, "w"); if(!f) return -1;
++  fprintf(f, "cpu,kind,from,to,count\n");
++  for(auto& [k, n] : sfxboxEdges)
++    fprintf(f, "%s,%03x,%06x,%06x,%u\n", k >> 63 ? "gsu" : "cpu", (unsigned)(k >> 48 & 0x1ff),
++            (unsigned)(k >> 24 & 0xffffff), (unsigned)(k & 0xffffff), n);
++  fclose(f);
++  return 0;
++}
++
++extern "C" RETRO_API uint8_t* sfxbox_memory(const char* name, size_t* size) {
++  if(!strcmp(name, "wram")) return sfxbox_core_memory(0, size);
++  if(!strcmp(name, "gsuram")) return sfxbox_core_memory(1, size);
++  if(!strcmp(name, "rom")) return sfxbox_core_memory(2, size);
++  *size = 0;
++  return nullptr;
++}

@@ -1,0 +1,7 @@
+#!/bin/sh
+# Every commit passes two checks on what it adds (the staged diff, not the
+# whole tree): provenance hygiene, and the filing rules for decompiled
+# routines. Installed by tools/common/install_hooks.py (setup.sh runs it).
+top="$(git rev-parse --show-toplevel)"
+python3 "$top/tools/common/provcheck.py" --staged || exit 1
+exec python3 "$top/tools/stuntracefx/precommit.py"
