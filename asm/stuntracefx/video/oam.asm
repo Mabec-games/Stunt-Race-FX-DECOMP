@@ -446,6 +446,7 @@ OamHighBits58:
     lda.b #$F8
     sta.w !wram_0E15
     ldx.b #$10
+OamHighBitsOr:                          ; OamHighBits18 joins here with X = 0
     lda.w !oam_high_16-16,x
     ora.b #$40
     sta.w !oam_high_16-16,x
@@ -579,3 +580,92 @@ OamPalettesE28D:
     jsr.w OamSetPalette
     plp
     rtl
+
+
+; @routine 07:C45D OamHide36And96
+; WHAT IT DOES: Hides sprites 36-56 and 96-111, and clears the size and
+; X-high bits of sprites 96-111 (high table bytes $18-$1B).
+; HOW: OamHideRange twice, then four byte stores of 0 through the data bank.
+; Entry: any widths. Exit: A low byte = 0; X = $01C0 ($C0 when X is 8-bit);
+; Y = 0; P unchanged.
+%at($07C45D)
+OamHide36And96:
+    php
+    sep.b #$20
+    rep.b #$10
+    ldx.w #4*36
+    ldy.w #21
+    jsr.w OamHideRange
+    ldx.w #4*96
+    ldy.w #16
+    jsr.w OamHideRange
+    lda.b #$00
+    sta.w !oam_buffer_high+24
+    sta.w !oam_buffer_high+25
+    sta.w !oam_buffer_high+26
+    sta.w !oam_buffer_high+27
+    plp
+    rts
+
+; @routine 07:C4A4 OamHide75Up
+; WHAT IT DOES: Sets $0E0C and $0E14 to $F8 and hides sprites 75-127; when
+; the HUD mode ($0D2B) is nonzero sprites 87-95 are left alone.
+; HOW: OamHideRange from sprite 75: 53 sprites, or 12 then 32 from sprite
+; 96 when the mode is set.
+; Entry: any widths. Exit: A low byte = $F0; X = $0200 (0 when X is
+; 8-bit); Y = 0; P unchanged.
+%at($07C4A4)
+OamHide75Up:
+    php
+    sep.b #$20
+    rep.b #$10
+    lda.b #$F8
+    sta.w !wram_0E0C
+    sta.w !wram_0E14
+    lda.w !hud_mode
+    beq .all
+    ldx.w #4*75
+    ldy.w #12
+    jsr.w OamHideRange
+    ldx.w #4*96
+    ldy.w #32
+    bra .hide
+.all:
+    ldx.w #4*75
+    ldy.w #53
+.hide:
+    jsr.w OamHideRange
+    plp
+    rts
+
+; @routine 07:C4F1 OamHighBits58Park112
+; WHAT IT DOES: OamHighBits58, then sets the X-high bit of sprites 112-127
+; (high table bytes $1C-$1F = $55), which puts them off the left edge.
+; HOW: Two word stores of $5555 to $0591 and $0593 through the data bank.
+; Entry: any widths. Exit: A = $5555; X = $10 (high byte clear); Y high
+; byte clear; P unchanged.
+%at($07C4F1)
+OamHighBits58Park112:
+    php
+    jsr.w OamHighBits58
+    rep.b #$20
+    lda.w #$5555
+    sta.w !oam_buffer_high+28
+    sta.w !oam_buffer_high+30
+    plp
+    rts
+
+; @routine 07:C502 OamHighBits18
+; WHAT IT DOES: Sets $0E14 to $F8 and turns on size or X-high bits in high
+; table bytes 6-9 (sprites 24-39): $40, $55, $55, $15.
+; HOW: Enters OamHighBits58's OR sequence with X = 0 instead of $10.
+; Entry: any widths. Exit: A low byte = the last byte; X = 0; Y high byte
+; clear; P unchanged.
+%at($07C502)
+OamHighBits18:
+    php
+    sep.b #$30
+    lda.b #$F8
+    sta.w !wram_0E14
+    ldx.b #$00
+    bra OamHighBitsOr

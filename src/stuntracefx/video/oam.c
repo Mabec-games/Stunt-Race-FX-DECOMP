@@ -656,3 +656,116 @@ void abi_OamPalettesE28D(void)
     cpu.a = OamPalettesE28D(cpu.db, &cpu.y);
     cpu.x = 0;
 }
+
+/*
+ * @routine 07:C502 OamHighBits18
+ * WHAT IT DOES: Sets $0E14 to $F8 and turns on size or X-high bits in high
+ * table bytes 6-9 (sprites 24-39): $40, $55, $55, $15.
+ * HOW: Enters OamHighBits58's OR sequence with X = 0 instead of $10.
+ * Entry: any widths. Exit: A low byte = the last byte; X = 0; Y high byte
+ * clear; P unchanged.
+ */
+uint8_t OamHighBits18(uint8_t bank)
+{
+    static const uint8_t bits[4] = {0x40, 0x55, 0x55, 0x15};
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t v = 0;
+    unsigned i;
+
+    wr8(b | 0x0E14, 0xF8);
+    for (i = 0; i < 4; i++) {
+        v = (uint8_t)(rd8(b | (uint16_t)(0x057B + i)) | bits[i]);
+        wr8(b | (uint16_t)(0x057B + i), v);
+    }
+    return v;
+}
+
+void abi_OamHighBits18(void)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | OamHighBits18(cpu.db));
+    cpu.x = 0x0000;
+    cpu.y &= 0x00FF;
+}
+
+/*
+ * @routine 07:C4F1 OamHighBits58Park112
+ * WHAT IT DOES: OamHighBits58, then sets the X-high bit of sprites 112-127
+ * (high table bytes $1C-$1F = $55), which puts them off the left edge.
+ * HOW: Two word stores of $5555 to $0591 and $0593 through the data bank.
+ * Entry: any widths. Exit: A = $5555; X = $10 (high byte clear); Y high
+ * byte clear; P unchanged.
+ */
+void OamHighBits58Park112(uint8_t bank)
+{
+    uint32_t b = (uint32_t)bank << 16;
+
+    OamHighBits58(bank);
+    wr16(b | 0x0591, 0x5555);
+    wr16(b | 0x0593, 0x5555);
+}
+
+void abi_OamHighBits58Park112(void)
+{
+    OamHighBits58Park112(cpu.db);
+    cpu.a = 0x5555;
+    cpu.x = 0x0010;
+    cpu.y &= 0x00FF;
+}
+
+/*
+ * @routine 07:C45D OamHide36And96
+ * WHAT IT DOES: Hides sprites 36-56 and 96-111, and clears the size and
+ * X-high bits of sprites 96-111 (high table bytes $18-$1B).
+ * HOW: OamHideRange twice, then four byte stores of 0 through the data bank.
+ * Entry: any widths. Exit: A low byte = 0; X = $01C0 ($C0 when X is 8-bit);
+ * Y = 0; P unchanged.
+ */
+void OamHide36And96(uint8_t bank)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    unsigned i;
+
+    OamHideRange(0x0090, 0x0015);
+    OamHideRange(0x0180, 0x0010);
+    for (i = 0; i < 4; i++)
+        wr8(b | (uint16_t)(0x058D + i), 0x00);
+}
+
+void abi_OamHide36And96(void)
+{
+    OamHide36And96(cpu.db);
+    cpu.a &= 0xFF00;
+    cpu.x = cpu.p & P_X ? 0x00C0 : 0x01C0;  /* the final pull restores X's width */
+    cpu.y = 0x0000;
+}
+
+/*
+ * @routine 07:C4A4 OamHide75Up
+ * WHAT IT DOES: Sets $0E0C and $0E14 to $F8 and hides sprites 75-127; when
+ * the HUD mode ($0D2B) is nonzero sprites 87-95 are left alone.
+ * HOW: OamHideRange from sprite 75: 53 sprites, or 12 then 32 from sprite
+ * 96 when the mode is set.
+ * Entry: any widths. Exit: A low byte = $F0; X = $0200 (0 when X is
+ * 8-bit); Y = 0; P unchanged.
+ */
+void OamHide75Up(uint8_t bank)
+{
+    uint32_t b = (uint32_t)bank << 16;
+
+    wr8(b | 0x0E0C, 0xF8);
+    wr8(b | 0x0E14, 0xF8);
+    if (rd8(b | 0x0D2B)) {
+        OamHideRange(0x012C, 0x000C);
+        OamHideRange(0x0180, 0x0020);
+    } else {
+        OamHideRange(0x012C, 0x0035);
+    }
+}
+
+void abi_OamHide75Up(void)
+{
+    OamHide75Up(cpu.db);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xF0);
+    cpu.x = cpu.p & P_X ? 0x0000 : 0x0200;  /* the final pull restores X's width */
+    cpu.y = 0x0000;
+}

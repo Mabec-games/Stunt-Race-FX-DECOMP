@@ -41,3 +41,40 @@ void abi_RandomStep(void)
 {
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | RandomStep());
 }
+
+/*
+ * @routine 07:D9D1 RandomWordStep
+ * WHAT IT DOES: Steps the 16-bit generator at $0D18 and returns the new
+ * value. Called once per object update while racing.
+ * HOW: The low byte is XORed into the high byte and the bytes swapped (lo'
+ * = hi ^ lo, hi' = lo). That word is XORed with the old low byte shifted
+ * left once, shifted right one bit, and XORed with $FF80; when the bit
+ * shifted out is set it is also XORed with $8180. A result of $AA55 with
+ * that bit clear stores 0 instead.
+ * Entry: any widths; DB a bank where $0D18 is work RAM. Exit: A = the
+ * result ($AA55 when 0 was stored); P unchanged.
+ */
+uint16_t RandomWordStep(uint8_t bank)
+{
+    uint32_t at = (uint32_t)bank << 16 | 0x0D18;
+    uint16_t x = rd16(at);
+    uint16_t y, v;
+
+    /* low byte = hi ^ lo, high byte = lo */
+    y = (uint16_t)((x & 0xFF) << 8 | ((x >> 8) ^ (x & 0xFF)));
+    wr16(at, y);
+    v = (uint16_t)(((x & 0xFF) << 1) ^ y);
+    if (v & 1) {
+        v = (uint16_t)((v >> 1) ^ 0xFF80 ^ 0x8180);
+        wr16(at, v);
+    } else {
+        v = (uint16_t)((v >> 1) ^ 0xFF80);
+        wr16(at, v == 0xAA55 ? 0x0000 : v);
+    }
+    return v;
+}
+
+void abi_RandomWordStep(void)
+{
+    cpu.a = RandomWordStep(cpu.db);
+}

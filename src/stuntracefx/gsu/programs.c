@@ -11,6 +11,9 @@
 #include "hw.h"
 
 uint8_t GsuRun(uint8_t bank, uint16_t start);
+uint16_t GsuParam216B(uint8_t bank, uint16_t index);
+void GsuBytes200_0F050E(void);
+void GsuBytes200_0F080E(void);
 
 #define GSU_IN_68 0x700068u
 #define GSU_IN_6A 0x70006Au
@@ -253,4 +256,92 @@ void abi_GsuEE88Ramp(void)
     cpu.x = 0x0088;
     cpu.y &= 0x00FF;
     cpu.p = (uint8_t)((nz8(cpu.p, cpu.db) & ~P_M) | P_X);
+}
+
+
+/*
+ * @routine 07:8B9B GsuF329Entry
+ * WHAT IT DOES: Runs Super FX program $07:F329 with the renderer input at
+ * $70:0216 set to entry A (low four bits) of the table at $8E52.
+ * HOW: GsuParam216B, then GsuRun.
+ * Entry: M 16-bit, X 16-bit, D = $0000; A = entry. Exit: A = the table
+ * word's high byte and the screen mode value; X = $F329; C clear; N, Z
+ * from the data bank.
+ */
+uint8_t GsuF329Entry(uint8_t bank, uint16_t entry)
+{
+    GsuParam216B(bank, (uint16_t)((entry & 0x000F) << 1));
+    return GsuRun(0x07, 0xF329);
+}
+
+void abi_GsuF329Entry(void)
+{
+    uint16_t index = (uint16_t)((cpu.a & 0x000F) << 1);
+    uint16_t hi = (uint16_t)(rd16((uint32_t)cpu.db << 16 | (uint16_t)(0x8E52 + index)) & 0xFF00);
+    uint8_t mode = GsuF329Entry(cpu.db, cpu.a);
+
+    cpu.a = (uint16_t)(hi | mode);
+    cpu.x = 0xF329;
+    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~P_C);
+}
+
+/* Program $07:F441 for a player: its kind decides the bytes at $70:0200
+ * and the word at $70:0216; $70:020A = $74 and $70:020C = $3C. */
+static uint8_t f441(uint8_t kind)
+{
+    if ((kind & 0x0F) == 1) {
+        GsuBytes200_0F050E();
+        wr16(0x700216, 0x080E);
+    } else {
+        GsuBytes200_0F080E();
+        wr16(0x700216, 0x0A0E);
+    }
+    wr16(0x70020A, 0x0074);
+    wr16(0x70020C, 0x003C);
+    return GsuRun(0x07, 0xF441);
+}
+
+/*
+ * @routine 07:A684 GsuF441Player1
+ * WHAT IT DOES: Runs Super FX program $07:F441 for player 1, with the
+ * inputs chosen by the low four bits of $0DF4 (1, or anything else).
+ * HOW: Kind 1: GsuBytes200_0F050E and $70:0216 = $080E; otherwise
+ * GsuBytes200_0F080E and $0A0E. Then $70:020A = $74, $70:020C = $3C and
+ * GsuRun.
+ * Entry: any widths, D = $0000. Exit: A = the screen mode value (high byte
+ * clear); X = $F441 ($41 when X is 8-bit); Y high byte clear when X is
+ * 8-bit; P unchanged.
+ */
+uint8_t GsuF441Player1(uint8_t bank)
+{
+    return f441(rd8((uint32_t)bank << 16 | 0x0DF4));
+}
+
+void abi_GsuF441Player1(void)
+{
+    cpu.a = GsuF441Player1(cpu.db);
+    if (cpu.p & P_X)
+        cpu.y &= 0x00FF;
+    cpu.x = cpu.p & P_X ? 0x0041 : 0xF441;  /* the final pull restores X's width */
+}
+
+/*
+ * @routine 07:A694 GsuF441Player2
+ * WHAT IT DOES: As GsuF441Player1, for player 2 ($0DF5).
+ * HOW: The same tail as GsuF441Player1.
+ * Entry: any widths, D = $0000. Exit: A = the screen mode value (high byte
+ * clear); X = $F441 ($41 when X is 8-bit); Y high byte clear when X is
+ * 8-bit; P unchanged.
+ */
+uint8_t GsuF441Player2(uint8_t bank)
+{
+    return f441(rd8((uint32_t)bank << 16 | 0x0DF5));
+}
+
+void abi_GsuF441Player2(void)
+{
+    cpu.a = GsuF441Player2(cpu.db);
+    if (cpu.p & P_X)
+        cpu.y &= 0x00FF;
+    cpu.x = cpu.p & P_X ? 0x0041 : 0xF441;  /* the final pull restores X's width */
 }

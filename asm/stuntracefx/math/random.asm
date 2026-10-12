@@ -31,3 +31,42 @@ RandomStep:
     sta.b !random_e6
     plp
     rts
+
+; @routine 07:D9D1 RandomWordStep
+; WHAT IT DOES: Steps the 16-bit generator at $0D18 and returns the new
+; value. Called once per object update while racing.
+; HOW: The low byte is XORed into the high byte and the bytes swapped (lo'
+; = hi ^ lo, hi' = lo). That word is XORed with the old low byte shifted
+; left once, shifted right one bit, and XORed with $FF80; when the bit
+; shifted out is set it is also XORed with $8180. A result of $AA55 with
+; that bit clear stores 0 instead.
+; Entry: any widths; DB a bank where $0D18 is work RAM. Exit: A = the
+; result ($AA55 when 0 was stored); P unchanged.
+%at($07D9D1)
+RandomWordStep:
+    php
+    rep.b #$20
+    lda.w !random_word
+    and.w #$00FF
+    xba
+    eor.w !random_word
+    xba
+    sta.w !random_word
+    xba
+    and.w #$00FF
+    asl a
+    eor.w !random_word
+    lsr a
+    eor.w #$FF80
+    bcc .even
+    eor.w #$8180
+.store:
+    sta.w !random_word
+    plp
+    rtl
+.even:
+    cmp.w #$AA55
+    bne .store
+    stz.w !random_word
+    plp
+    rtl

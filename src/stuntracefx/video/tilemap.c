@@ -311,3 +311,58 @@ void abi_TilemapRowFromFB4E(void)
     cpu.a = TilemapRowFromFB4E(cpu.db, &cpu.x, &cpu.y, &p);
     cpu.p = p;
 }
+
+/*
+ * @routine 07:CEDF TilemapPaletteCycle
+ * WHAT IT DOES: Every fourth frame, steps the phase at $0DD5 (0 to 5) and
+ * sets the palette field of Y tilemap entries in the buffer at $7F:93D6,
+ * starting at entry offset X, to the phase's palette: from the table at
+ * $07:CF2C when the HUD mode word is 2, else from $07:CF26.
+ * HOW: Skips unless the low two bits of the frame counter are 0. The
+ * palette bits go through direct page $F1; each entry's attribute byte keeps
+ * its bits other than 2-4.
+ * Entry: M 8-bit, X 16-bit, D = $0000; X = entry offset (bytes), Y = count
+ * (1 or more). Exit, when skipped: A low byte = the frame counter's low two
+ * bits; N, Z from them; X, Y unchanged. Otherwise: A = the table byte after
+ * the phase's and the last attribute byte; X past the last entry; Y = 0; C
+ * set when the HUD mode word is 2 or more; Z set, N clear. M 8-bit.
+ */
+int TilemapPaletteCycle(uint8_t bank, uint16_t *x, uint16_t *y, uint16_t *a)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t phase, pal;
+    uint16_t mode, table;
+
+    if (rd8(b | 0x0E3B) & 0x03) {
+        *a = (uint16_t)((*a & 0xFF00) | (rd8(b | 0x0E3B) & 0x03));
+        return 0;
+    }
+    phase = (uint8_t)(rd8(b | 0x0DD5) + 1);
+    if (phase >= 6)
+        phase = 0;
+    wr8(b | 0x0DD5, phase);
+    mode = rd16(b | 0x0D2B);
+    table = mode == 2 ? 0xCF2C : 0xCF26;
+    pal = rd8(0x070000 | (uint16_t)(table + phase));
+    wr8(0x0000F1, pal);
+    *a = (uint16_t)(rd8(0x070000 | (uint16_t)(table + phase + 1)) << 8);
+    do {
+        uint8_t v = (uint8_t)((rd8(0x7F93D7 + *x) & 0xE3) | rd8(0x0000F1));
+
+        wr8(0x7F93D7 + *x, v);
+        *a = (uint16_t)((*a & 0xFF00) | v);
+        *x += 2;
+    } while (--*y);
+    return mode >= 2 ? 2 : 1;
+}
+
+void abi_TilemapPaletteCycle(void)
+{
+    int r = TilemapPaletteCycle(cpu.db, &cpu.x, &cpu.y, &cpu.a);
+
+    if (r == 0)
+        cpu.p = nz8(cpu.p, (uint8_t)cpu.a);
+    else
+        cpu.p = (uint8_t)((cpu.p & ~(P_N | P_C)) | P_Z | (r == 2 ? P_C : 0));
+    cpu.p |= P_M;
+}

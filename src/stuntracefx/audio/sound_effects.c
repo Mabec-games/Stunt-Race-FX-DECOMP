@@ -431,3 +431,26 @@ void abi_SoundHoldByFlags(void)
         cpu.p = (uint8_t)(nz8(cpu.p, a) | P_M);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
 }
+
+/*
+ * @routine 07:D6D1 PlayerSound35
+ * WHAT IT DOES: Queues sound command $35 on port 0 for the current player.
+ * HOW: Tests whether the byte at $0DF4 + Y is 1, but both branches make
+ * the same SoundPort0QueuePush call.
+ * Entry: M 16-bit, X 16-bit; Y = player index (bytes). Exit: A low byte =
+ * $35; M 8-bit; C set when the byte at $0DF4 + Y is 1 or more; N, Z from
+ * the data bank.
+ */
+void PlayerSound35(void)
+{
+    SoundPort0QueuePush(0x35);
+}
+
+void abi_PlayerSound35(void)
+{
+    uint8_t v = rd8((uint32_t)cpu.db << 16 | (uint16_t)(0x0DF4 + cpu.y));
+
+    PlayerSound35();
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x35);
+    cpu.p = (uint8_t)((nz8(cpu.p, cpu.db) & ~P_C) | P_M | (v >= 1 ? P_C : 0));
+}

@@ -248,3 +248,81 @@ GsuEE88Ramp:
     rep.b #$20
     sep.b #$10
     rtl
+
+; @routine 07:8B9B GsuF329Entry
+; WHAT IT DOES: Runs Super FX program $07:F329 with the renderer input at
+; $70:0216 set to entry A (low four bits) of the table at $8E52.
+; HOW: GsuParam216B, then GsuRun.
+; Entry: M 16-bit, X 16-bit, D = $0000; A = entry. Exit: A = the table
+; word's high byte and the screen mode value; X = $F329; C clear; N, Z
+; from the data bank.
+%at($078B9B)
+GsuF329Entry:
+    and.w #$000F
+    jsr.w GsuParam216B
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F329
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rts
+
+; @routine 07:A684 GsuF441Player1
+; WHAT IT DOES: Runs Super FX program $07:F441 for player 1, with the
+; inputs chosen by the low four bits of $0DF4 (1, or anything else).
+; HOW: Kind 1: GsuBytes200_0F050E and $70:0216 = $080E; otherwise
+; GsuBytes200_0F080E and $0A0E. Then $70:020A = $74, $70:020C = $3C and
+; GsuRun.
+; Entry: any widths, D = $0000. Exit: A = the screen mode value (high byte
+; clear); X = $F441 ($41 when X is 8-bit); Y high byte clear when X is
+; 8-bit; P unchanged.
+%at($07A684)
+GsuF441Player1:
+    php
+    rep.b #$30
+    lda.w !player_mode
+    and.w #$000F
+    cmp.w #$0001
+    beq GsuF441_kind1
+    bra GsuF441_other
+
+; @routine 07:A694 GsuF441Player2
+; WHAT IT DOES: As GsuF441Player1, for player 2 ($0DF5).
+; HOW: The same tail as GsuF441Player1.
+; Entry: any widths, D = $0000. Exit: A = the screen mode value (high byte
+; clear); X = $F441 ($41 when X is 8-bit); Y high byte clear when X is
+; 8-bit; P unchanged.
+%at($07A694)
+GsuF441Player2:
+    php
+    rep.b #$30
+    lda.w !player_mode+1
+    and.w #$000F
+    cmp.w #$0001
+    beq GsuF441_kind1
+    bra GsuF441_other
+GsuF441_kind1:                          ; GsuF441Player1 joins here
+    jsl.l GsuBytes200_0F050E
+    lda.w #$080E
+    sta.l !gsu_in_216
+    bra GsuF441_inputs
+GsuF441_other:                          ; GsuF441Player1 joins here
+    jsl.l GsuBytes200_0F080E
+    lda.w #$0A0E
+    sta.l !gsu_in_216
+GsuF441_inputs:
+    lda.w #$0074
+    sta.l !gsu_bytes_200+10
+    lda.w #$003C
+    sta.l !gsu_bytes_200+12
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F441
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    plp
+    rts

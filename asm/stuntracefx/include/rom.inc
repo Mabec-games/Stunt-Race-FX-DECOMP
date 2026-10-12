@@ -86,3 +86,7 @@ includeonce
 !records_blocks = $09F88B
 !palette_bits_e30b = $04E30B
 !palette_bits_e313 = $04E313
+
+; Palette bits per phase of TilemapPaletteCycle, six bytes each (video/tilemap.asm).
+!palette_cycle_a = $07CF26
+!palette_cycle_b = $07CF2C

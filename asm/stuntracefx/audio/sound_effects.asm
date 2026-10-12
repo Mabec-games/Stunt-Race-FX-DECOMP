@@ -449,3 +449,23 @@ SoundHoldByFlags:
     jsl.l SoundPort1QueuePush
 .lD0BD:
     rts
+
+; @routine 07:D6D1 PlayerSound35
+; WHAT IT DOES: Queues sound command $35 on port 0 for the current player.
+; HOW: Tests whether the byte at $0DF4 + Y is 1, but both branches make
+; the same SoundPort0QueuePush call.
+; Entry: M 16-bit, X 16-bit; Y = player index (bytes). Exit: A low byte =
+; $35; M 8-bit; C set when the byte at $0DF4 + Y is 1 or more; N, Z from
+; the data bank.
+%at($07D6D1)
+PlayerSound35:
+    sep.b #$20
+    lda.w !player_mode,y
+    cmp.b #$01
+    beq .one
+    lda.b #$35
+    jsl.l SoundPort0QueuePush
+    rts
+.one:
+    lda.b #$35
+    jsl.l SoundPort0QueuePush

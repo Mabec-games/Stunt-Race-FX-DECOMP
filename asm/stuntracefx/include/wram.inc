@@ -528,3 +528,11 @@ includeonce
 !window_edges = $7FF883
 !wram_0D75 = $0D75
 !sound_hold = $0DD8
+
+!random_word = $0D18
+!palette_phase = $0DD5
+!player_mode = $0DF4
+!wram_0E0C = $0E0C
+!wram_0E14 = $0E14
+!palette_bits = $F1
+!cycle_tilemap = $7F93D6

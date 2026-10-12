@@ -246,3 +246,57 @@ TilemapRowFromFB4E:
     adc.w #$0040
     tax
     rts
+
+; @routine 07:CEDF TilemapPaletteCycle
+; WHAT IT DOES: Every fourth frame, steps the phase at $0DD5 (0 to 5) and
+; sets the palette field of Y tilemap entries in the buffer at $7F:93D6,
+; starting at entry offset X, to the phase's palette: from the table at
+; $07:CF2C when the HUD mode word is 2, else from $07:CF26.
+; HOW: Skips unless the low two bits of the frame counter are 0. The
+; palette bits go through direct page $F1; each entry's attribute byte keeps
+; its bits other than 2-4.
+; Entry: M 8-bit, X 16-bit, D = $0000; X = entry offset (bytes), Y = count
+; (1 or more). Exit, when skipped: A low byte = the frame counter's low two
+; bits; N, Z from them; X, Y unchanged. Otherwise: A = the table byte after
+; the phase's and the last attribute byte; X past the last entry; Y = 0; C
+; set when the HUD mode word is 2 or more; Z set, N clear. M 8-bit.
+%at($07CEDF)
+TilemapPaletteCycle:
+    sep.b #$20
+    lda.w !frame_count
+    and.b #$03
+    beq .step
+    rts
+.step:
+    lda.w !palette_phase
+    inc a
+    cmp.b #$06
+    bcc .phase
+    lda.b #$00
+.phase:
+    sta.w !palette_phase
+    rep.b #$20
+    and.w #$00FF
+    phx
+    tax
+    lda.w !hud_mode
+    cmp.w #$0002
+    beq .b
+    lda.l !palette_cycle_a,x
+    bra .bits
+.b:
+    lda.l !palette_cycle_b,x
+.bits:
+    sep.b #$20
+    sta.b !palette_bits
+    plx
+.entry:
+    lda.l !cycle_tilemap+1,x
+    and.b #$E3
+    ora.b !palette_bits
+    sta.l !cycle_tilemap+1,x
+    inx
+    inx
+    dey
+    bne .entry
+    rts
