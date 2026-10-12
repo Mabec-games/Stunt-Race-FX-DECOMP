@@ -113,3 +113,28 @@ void abi_ObjectPathCommand(void)
     ObjectPathCommand(cpu.db, cpu.x, &cpu.a, &cpu.y, &p);
     cpu.p = (uint8_t)(nz16(p, cpu.x) | P_M);
 }
+
+/*
+ * @routine 08:88C7 ObjectPathStart
+ * WHAT IT DOES: Starts object X on the path at Y (an address in the
+ * $08:85B9 table) and runs its first command.
+ * HOW: +$29 = Y - $85B9, then ObjectPathCommand.
+ * Entry: M 8-bit, X 16-bit; X = object, Y = path. Exit: as
+ * ObjectPathCommand; for an unknown command V is from the subtract.
+ */
+int ObjectPathStart(uint8_t bank, uint16_t obj, uint16_t path, uint16_t *a, uint16_t *y, uint8_t *p)
+{
+    uint16_t t = (uint16_t)(path - 0x85B9);
+
+    *p = (uint8_t)((*p & ~P_V) | (((path ^ 0x85B9) & (path ^ t) & 0x8000) ? P_V : 0));
+    wr16(field(bank, obj, 0x29), t);
+    return ObjectPathCommand(bank, obj, a, y, p);
+}
+
+void abi_ObjectPathStart(void)
+{
+    uint8_t p = cpu.p;
+
+    ObjectPathStart(cpu.db, cpu.x, cpu.y, &cpu.a, &cpu.y, &p);
+    cpu.p = (uint8_t)(nz16(p, cpu.x) | P_M);
+}

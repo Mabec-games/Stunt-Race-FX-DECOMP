@@ -627,3 +627,4 @@ includeonce
 !obj_pos_x_long = $7E200C
 !obj_pos_z_long = $7E2010
 !wram_1F52 = $1F52
+!obj_bucket_long = $7E2040

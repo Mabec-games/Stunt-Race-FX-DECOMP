@@ -772,3 +772,34 @@ void abi_ObjectNearFocus(void)
     cpu.y = 0x1A64;
     cpu.p = (uint8_t)(p | P_M);
 }
+
+uint16_t ScaleObjectXZ(uint16_t obj, uint8_t *p);
+
+/*
+ * @routine 08:83CC ObjectRebucket
+ * WHAT IT DOES: Recomputes object X's bucket from its X and Z position
+ * (ScaleObjectXZ) and, when it changed, moves the object from its old
+ * bucket's list to the new one's.
+ * HOW: Compared with +$40 (bank $7E); ObjectBucketRemove, the new +$40,
+ * ObjectBucketInsert. P is saved and restored around it.
+ * Entry: any M, X 16-bit, D = $0000; X = object. Exit: A = the bucket when
+ * unchanged, else the object; X, Y, P unchanged; $02 and $94 as
+ * ScaleDp02Dp94 leaves them.
+ */
+uint16_t ObjectRebucket(uint16_t obj)
+{
+    uint8_t p = 0;
+    uint16_t key = ScaleObjectXZ(obj, &p);
+
+    if (key == rd16(0x7E2040 + obj))
+        return key;
+    ObjectBucketRemove(obj);
+    wr16(0x7E2040 + obj, key);
+    ObjectBucketInsert(obj);
+    return obj;
+}
+
+void abi_ObjectRebucket(void)
+{
+    cpu.a = ObjectRebucket(cpu.x);
+}

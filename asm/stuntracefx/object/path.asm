@@ -149,3 +149,20 @@ ObjectPathCommand:
     sep.b #$20
     plx
     rtl
+
+; @routine 08:88C7 ObjectPathStart
+; WHAT IT DOES: Starts object X on the path at Y (an address in the
+; $08:85B9 table) and runs its first command.
+; HOW: +$29 = Y - $85B9, then ObjectPathCommand.
+; Entry: M 8-bit, X 16-bit; X = object, Y = path. Exit: as
+; ObjectPathCommand; for an unknown command V is from the subtract.
+%at($0888C7)
+ObjectPathStart:
+    rep.b #$20
+    tya
+    sec
+    sbc.w #!path_table&$FFFF
+    sta.w !obj_29,x
+    sep.b #$20
+    jsl.l ObjectPathCommand
+    rtl

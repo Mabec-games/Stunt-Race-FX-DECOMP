@@ -737,3 +737,28 @@ ObjectNearFocus:
     sep.b #$20
 .lB67F:
     rtl
+
+; @routine 08:83CC ObjectRebucket
+; WHAT IT DOES: Recomputes object X's bucket from its X and Z position
+; (ScaleObjectXZ) and, when it changed, moves the object from its old
+; bucket's list to the new one's.
+; HOW: Compared with +$40 (bank $7E); ObjectBucketRemove, the new +$40,
+; ObjectBucketInsert. P is saved and restored around it.
+; Entry: any M, X 16-bit, D = $0000; X = object. Exit: A = the bucket when
+; unchanged, else the object; X, Y, P unchanged; $02 and $94 as
+; ScaleDp02Dp94 leaves them.
+%at($0883CC)
+ObjectRebucket:
+    php
+    rep.b #$20
+    jsr.w ScaleObjectXZ
+    cmp.l !obj_bucket_long,x
+    beq .l83E6
+    pha
+    jsl.l ObjectBucketRemove
+    pla
+    sta.l !obj_bucket_long,x
+    jsl.l ObjectBucketInsert
+.l83E6:
+    plp
+    rtl
