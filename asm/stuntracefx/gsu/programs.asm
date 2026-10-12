@@ -393,3 +393,209 @@ ViewReset:
     stz.w !view_matrix+16
     plp
     rtl
+
+; @routine 07:85E1 GsuF0A5OrF0B4
+; WHAT IT DOES: Sets the renderer input at $70:020C to A, then runs Super FX
+; program $07:F0A5 with the bytes $0F, $09, $0A at $70:0200 when $0D62 is
+; nonzero, else program $07:F0B4 with $BF, $BC, $BD.
+; HOW: GsuBytes200_0F090A or GsuBytes200_BFBCBD, then GsuRun.
+; Entry: M 16-bit, X 8-bit, D = $0000; A = the input. Exit: A = the screen
+; mode value (high byte clear); X = the program address's low byte; Y high
+; byte clear; M 16-bit, X 8-bit; N, Z from the data bank.
+%at($0785E1)
+GsuF0A5OrF0B4:
+    sta.l !gsu_bytes_200+12
+    lda.w !wram_0D62
+    and.w #$00FF
+    beq .f0b4
+    jsl.l GsuBytes200_0F090A
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F0A5
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    sep.b #$10
+    rts
+.f0b4:
+    jsl.l GsuBytes200_BFBCBD
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F0B4
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    sep.b #$10
+    rts
+
+; @routine 07:8619 GsuEEF5OrEFCD
+; WHAT IT DOES: Sets the renderer input at $70:020C to A, then runs Super FX
+; program $07:EEF5 with the bytes $0F, $04, $05 at $70:0200 when $0D62 is
+; nonzero, else program $07:EFCD with $BF, $B7, $B6.
+; HOW: GsuBytes200_0F0405 or GsuBytes200_BFB7B6, then GsuRun.
+; Entry: M 16-bit, X 8-bit, D = $0000; A = the input. Exit: A = the screen
+; mode value (high byte clear); X = the program address; M 16-bit, X
+; 16-bit; N, Z from the data bank.
+%at($078619)
+GsuEEF5OrEFCD:
+    sta.l !gsu_bytes_200+12
+    rep.b #$30
+    lda.w !wram_0D62
+    and.w #$00FF
+    beq .efcd
+    jsl.l GsuBytes200_0F0405
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$EEF5
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rts
+.efcd:
+    jsl.l GsuBytes200_BFB7B6
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$EFCD
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rts
+
+; @routine 07:9252 GsuDigitPair0E74
+; WHAT IT DOES: Draws the two digits of the byte at $0E74 (high digit, then
+; low) with Super FX program $07:F15B: $70:020E = $10, $70:020A = 4,
+; $70:020C = 8, and $70:0216 = the digit's entry in the table at $8E3E.
+; HOW: GsuParam216A and GsuRun for each digit.
+; Entry: M 16-bit, X 16-bit, D = $0000. Exit: A = the low digit's table
+; word's high byte and the screen mode value; X = $F15B; C clear; N, Z
+; from the data bank.
+%at($079252)
+GsuDigitPair0E74:
+    lda.w #$0010
+    sta.l !gsu_bytes_200+14
+    lda.w #$0004
+    sta.l !gsu_bytes_200+10
+    lda.w #$0008
+    lda.w #$0008
+    sta.l !gsu_bytes_200+12
+    lda.w !wram_0E74
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    and.w #$000F
+    jsr.w GsuParam216A
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$30
+    lda.w !wram_0E74
+    and.w #$000F
+    jsr.w GsuParam216A
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rts
+
+; @routine 07:976B GsuFA1BFromTables
+; WHAT IT DOES: Sets the renderer inputs $70:020A = $0D6D, $70:020C = $0D6F
+; + 8, $70:0210 = $70:0214 = $100 and the bytes $BF, $BC, $BD at $70:0200;
+; then, when entry $0D6B of the word table at $07:97D6 is nonzero, runs
+; Super FX program $07:FA1B with $70:020E = that word, $70:0212 = the same
+; entry of the table at $07:97E2 and $70:0216 = $1E00.
+; HOW: GsuBytes200_BFBCBD, word copies, GsuRun.
+; Entry: M 16-bit, X 16-bit, D = $0000. Exit: when the entry is 0, A = 0, X
+; = $0D6B, Z set and N clear; otherwise A = $1E and the screen mode value,
+; X = $FA1B, N and Z from the data bank. C and V from the add of 8.
+%at($07976B)
+GsuFA1BFromTables:
+    jsl.l GsuBytes200_BFBCBD
+    lda.w !wram_0D6D
+    sta.l !gsu_bytes_200+10
+    lda.w !wram_0D6F
+    clc
+    adc.w #$0008
+    sta.l !gsu_bytes_200+12
+    lda.w #$0100
+    sta.l !gsu_bytes_200+16
+    lda.w #$0100
+    sta.l !gsu_bytes_200+20
+    ldx.w !wram_0D6B
+    lda.l !fa1b_input_e,x
+    bne .run
+    rts
+.run:
+    sta.l !gsu_bytes_200+14
+    lda.l !fa1b_input_12,x
+    sta.l !gsu_bytes_200+18
+    lda.w #$1E00
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FA1B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rts
+
+; @routine 07:9883 GsuF15BThree
+; WHAT IT DOES: Runs Super FX program $07:F15B three times, with $70:0216
+; = $9000, $8808 and $881C, after setting $70:0210 = $20, $70:020E = $10,
+; $70:020A = $30, $70:020C = $18 and the bytes $0F, $04, $05 at $70:0200.
+; HOW: GsuBytes200_0F0405, then GsuRun for each value.
+; Entry: any widths, D = $0000. Exit: A = $88 and the screen mode value; X
+; = $F15B; M 16-bit, X 16-bit; N, Z from the data bank.
+%at($079883)
+GsuF15BThree:
+    rep.b #$30
+    lda.w #$0020
+    sta.l !gsu_bytes_200+16
+    lda.w #$0010
+    sta.l !gsu_bytes_200+14
+    lda.w #$0030
+    sta.l !gsu_bytes_200+10
+    lda.w #$0018
+    sta.l !gsu_bytes_200+12
+    jsl.l GsuBytes200_0F0405
+    rep.b #$20
+    lda.w #$9000
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8808
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$881C
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rts

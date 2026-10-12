@@ -769,3 +769,82 @@ void abi_OamHide75Up(void)
     cpu.x = cpu.p & P_X ? 0x0000 : 0x0200;  /* the final pull restores X's width */
     cpu.y = 0x0000;
 }
+
+/*
+ * @routine 07:C388 OamLargeColumns
+ * WHAT IT DOES: Lays out three columns of eight large sprites: sprites 40-47
+ * at $4840 with tiles from $0660, 96-103 at $5840 from $0680, 104-111 at
+ * $6840 from $06A0; positions step down $10 and tile words by 2. Sets the
+ * size bit of all 24 (high table bytes 10, 11 and 24-27 = $AA).
+ * HOW: OamColumn8 three times with its inputs in direct page $F1 and $F3,
+ * then byte stores through the data bank.
+ * Entry: any widths, D = $0000. Exit: A = $06AA; X = $01C0 ($C0 when X is
+ * 8-bit); Y = 0; P unchanged.
+ */
+void OamLargeColumns(uint8_t bank)
+{
+    static const uint16_t pos[3] = {0x4840, 0x5840, 0x6840};
+    static const uint16_t tile[3] = {0x0660, 0x0680, 0x06A0};
+    static const uint16_t first[3] = {0x00A0, 0x0180, 0x01A0};
+    static const uint16_t high[6] = {0x057F, 0x0580, 0x058D, 0x058E, 0x058F, 0x0590};
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t p = 0;
+    unsigned i;
+
+    for (i = 0; i < 3; i++) {
+        uint16_t x = first[i];
+
+        wr16(0x0000F1, pos[i]);
+        wr16(0x0000F3, tile[i]);
+        OamColumn8(bank, &x, &p);
+    }
+    for (i = 0; i < 6; i++)
+        wr8(b | high[i], 0xAA);
+}
+
+void abi_OamLargeColumns(void)
+{
+    OamLargeColumns(cpu.db);
+    cpu.a = 0x06AA;
+    cpu.x = cpu.p & P_X ? 0x00C0 : 0x01C0;  /* the final pull restores X's width */
+    cpu.y = 0x0000;
+}
+
+/*
+ * @routine 07:C3DD OamPlaceRows75And112
+ * WHAT IT DOES: Sets sprite Y positions: sprites 75-86 to $93, 112-113 to
+ * $70, 114-115 to $80, and, unless $10CD is set, 116-127 to $8C or $94
+ * (119, 121, 123, 125 and 127 at $94; the rest at $8C). Clears the size and
+ * X-high bits of sprites 40-47 and 96-111 (high table bytes 10, 11, 24-27).
+ * HOW: Byte stores through the data bank.
+ * Entry: any widths. Exit: A low byte = 0; X, Y unchanged; P unchanged.
+ */
+void OamPlaceRows75And112(uint8_t bank)
+{
+    static const uint8_t at8c[7] = {116, 117, 118, 120, 122, 124, 126};
+    static const uint8_t at94[5] = {119, 121, 123, 125, 127};
+    static const uint16_t high[6] = {0x057F, 0x0580, 0x058D, 0x058E, 0x058F, 0x0590};
+    uint32_t b = (uint32_t)bank << 16;
+    unsigned i;
+
+    if (!rd8(b | 0x10CD)) {
+        for (i = 0; i < 7; i++)
+            wr8(b | (uint16_t)(OAM_BUFFER + 1 + 4 * at8c[i]), 0x8C);
+        for (i = 0; i < 5; i++)
+            wr8(b | (uint16_t)(OAM_BUFFER + 1 + 4 * at94[i]), 0x94);
+    }
+    for (i = 75; i <= 86; i++)
+        wr8(b | (uint16_t)(OAM_BUFFER + 1 + 4 * i), 0x93);
+    wr8(b | (uint16_t)(OAM_BUFFER + 1 + 4 * 112), 0x70);
+    wr8(b | (uint16_t)(OAM_BUFFER + 1 + 4 * 113), 0x70);
+    wr8(b | (uint16_t)(OAM_BUFFER + 1 + 4 * 114), 0x80);
+    wr8(b | (uint16_t)(OAM_BUFFER + 1 + 4 * 115), 0x80);
+    for (i = 0; i < 6; i++)
+        wr8(b | high[i], 0x00);
+}
+
+void abi_OamPlaceRows75And112(void)
+{
+    OamPlaceRows75And112(cpu.db);
+    cpu.a &= 0xFF00;
+}

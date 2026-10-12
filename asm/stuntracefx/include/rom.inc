@@ -127,3 +127,9 @@ includeonce
 !sound_block_8000 = $1E8000
 !sound_block_91bc = $1E91BC
 !sound_block_afc6 = $1EAFC6
+; Inputs $70:020E and $70:0212 of GsuFA1BFromTables, a word per entry (gsu/programs.asm).
+!fa1b_input_e = $0797D6
+!fa1b_input_12 = $0797E2
+
+; Sprite text lines, a word pointer per line in bank $07 (video/sprite_text.asm).
+!text_lines = $078000

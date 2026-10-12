@@ -669,3 +669,109 @@ OamHighBits18:
     sta.w !wram_0E14
     ldx.b #$00
     bra OamHighBitsOr
+
+; @routine 07:C388 OamLargeColumns
+; WHAT IT DOES: Lays out three columns of eight large sprites: sprites 40-47
+; at $4840 with tiles from $0660, 96-103 at $5840 from $0680, 104-111 at
+; $6840 from $06A0; positions step down $10 and tile words by 2. Sets the
+; size bit of all 24 (high table bytes 10, 11 and 24-27 = $AA).
+; HOW: OamColumn8 three times with its inputs in direct page $F1 and $F3,
+; then byte stores through the data bank.
+; Entry: any widths, D = $0000. Exit: A = $06AA; X = $01C0 ($C0 when X is
+; 8-bit); Y = 0; P unchanged.
+%at($07C388)
+OamLargeColumns:
+    php
+    rep.b #$30
+    lda.w #$4840
+    sta.b !column_pos
+    lda.w #$0660
+    sta.b !column_tile
+    ldx.w #4*40
+    jsr.w OamColumn8
+    lda.w #$5840
+    sta.b !column_pos
+    lda.w #$0680
+    sta.b !column_tile
+    ldx.w #4*96
+    jsr.w OamColumn8
+    lda.w #$6840
+    sta.b !column_pos
+    lda.w #$06A0
+    sta.b !column_tile
+    ldx.w #4*104
+    jsr.w OamColumn8
+    sep.b #$20
+    lda.b #$AA
+    sta.w !oam_buffer_high+10
+    lda.b #$AA
+    sta.w !oam_buffer_high+11
+    lda.b #$AA
+    sta.w !oam_buffer_high+24
+    lda.b #$AA
+    sta.w !oam_buffer_high+25
+    lda.b #$AA
+    sta.w !oam_buffer_high+26
+    lda.b #$AA
+    sta.w !oam_buffer_high+27
+    plp
+    rts
+
+; @routine 07:C3DD OamPlaceRows75And112
+; WHAT IT DOES: Sets sprite Y positions: sprites 75-86 to $93, 112-113 to
+; $70, 114-115 to $80, and, unless $10CD is set, 116-127 to $8C or $94
+; (119, 121, 123, 125 and 127 at $94; the rest at $8C). Clears the size and
+; X-high bits of sprites 40-47 and 96-111 (high table bytes 10, 11, 24-27).
+; HOW: Byte stores through the data bank.
+; Entry: any widths. Exit: A low byte = 0; X, Y unchanged; P unchanged.
+%at($07C3DD)
+OamPlaceRows75And112:
+    php
+    sep.b #$20
+    lda.w !wram_10CD
+    bne .rows
+    lda.b #$8C
+    sta.w !oam_buffer+(4*116)+1
+    sta.w !oam_buffer+(4*117)+1
+    sta.w !oam_buffer+(4*118)+1
+    sta.w !oam_buffer+(4*120)+1
+    sta.w !oam_buffer+(4*122)+1
+    sta.w !oam_buffer+(4*124)+1
+    sta.w !oam_buffer+(4*126)+1
+    lda.b #$94
+    sta.w !oam_buffer+(4*119)+1
+    sta.w !oam_buffer+(4*121)+1
+    sta.w !oam_buffer+(4*123)+1
+    sta.w !oam_buffer+(4*125)+1
+    sta.w !oam_buffer+(4*127)+1
+.rows:
+    lda.b #$93
+    sta.w !oam_buffer+(4*75)+1
+    sta.w !oam_buffer+(4*76)+1
+    sta.w !oam_buffer+(4*77)+1
+    sta.w !oam_buffer+(4*78)+1
+    sta.w !oam_buffer+(4*79)+1
+    sta.w !oam_buffer+(4*80)+1
+    sta.w !oam_buffer+(4*81)+1
+    sta.w !oam_buffer+(4*82)+1
+    sta.w !oam_buffer+(4*83)+1
+    sta.w !oam_buffer+(4*84)+1
+    sta.w !oam_buffer+(4*85)+1
+    sta.w !oam_buffer+(4*86)+1
+    lda.b #$70
+    sta.w !oam_buffer+(4*112)+1
+    sta.w !oam_buffer+(4*113)+1
+    lda.b #$80
+    sta.w !oam_buffer+(4*114)+1
+    sta.w !oam_buffer+(4*115)+1
+    lda.b #$00
+    sta.w !oam_buffer_high+10
+    sta.w !oam_buffer_high+11
+    lda.b #$00
+    sta.w !oam_buffer_high+24
+    sta.w !oam_buffer_high+25
+    lda.b #$00
+    sta.w !oam_buffer_high+26
+    sta.w !oam_buffer_high+27
+    plp
+    rts
