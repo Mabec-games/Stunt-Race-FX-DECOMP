@@ -104,8 +104,9 @@ def h6(v):
 
 
 class Rom:
-    def __init__(self, rom, maps, incbin=None):
+    def __init__(self, rom, maps, incbin=None, claimed=None):
         self.rom = rom
+        self.claimed = claimed or bytearray(len(rom))  # 1 where filed source owns the byte
         self.incbin = incbin            # data comes from this file at build time
         self.map = [0] * len(rom)
         for m in maps:
@@ -122,6 +123,8 @@ class Rom:
         owner = [False] * len(rom)
         for off in range(len(rom)):
             v = mp[off]
+            if self.claimed[off]:
+                continue
             if v & CPU_OP:
                 n = cpu_len(rom[off], v)
                 kind = 'c'
@@ -131,6 +134,9 @@ class Rom:
             else:
                 continue
             span = range(off, off + n)
+            if any(self.claimed[i] for i in span):
+                self.rejected.append((off, kind, 'runs into filed source'))
+                continue
             if off + n > len(rom) or (off // BANK) != ((off + n - 1) // BANK) or any(owner[i] for i in span) \
                     or any(mp[i] & (CPU_OP | GSU_OP) for i in span[1:]):
                 self.rejected.append((off, kind, 'overlap or bank crossing'))
@@ -265,7 +271,17 @@ class Rom:
             data.clear()
 
         off = start
+        gap = False
         while off < end:
+            if self.claimed[off]:
+                flush()
+                gap = True
+                off += 1
+                continue
+            if gap:
+                setarch('65816')
+                out += ['', '; resumes after filed source', 'org %s' % h6(off), 'base %s' % h6(addr_of(off))]
+                gap = False
             if off in self.labels:
                 flush()
                 out.append('%s:' % self.labels[off])
@@ -291,20 +307,27 @@ def main():
     ap.add_argument('--trace', action='append', required=True)
     ap.add_argument('--out', required=True)
     ap.add_argument('--incbin', help='data bytes come from this file (path as the assembler sees it)')
+    ap.add_argument('--claimed', help='file of start-end offset ranges (hex) owned by filed source')
     a = ap.parse_args()
     rom = open(a.rom, 'rb').read()
     maps = []
     for d in a.trace:
         raw = open(os.path.join(d, 'rommap.bin'), 'rb').read()
         maps.append(struct.unpack('<%dH' % (len(raw) // 2), raw))
-    r = Rom(rom, maps, a.incbin)
+    claimed = bytearray(len(rom))
+    if a.claimed:
+        for line in open(a.claimed):
+            if line.strip():
+                lo, hi = (int(x, 16) for x in line.split('-'))
+                claimed[lo:hi] = b'\x01' * (hi - lo)
+    r = Rom(rom, maps, a.incbin, claimed)
     os.makedirs(a.out, exist_ok=True)
     banks = (len(rom) + BANK - 1) // BANK
     for b in range(banks):
         with open(os.path.join(a.out, 'bank%02X.asm' % b), 'w') as f:
             f.write('\n'.join(r.bank_lines(b)) + '\n')
     with open(os.path.join(a.out, 'main.asm'), 'w') as f:
-        f.write('; Raw intake: the whole ROM, traced instructions and data.\nnorom\n\n')
+        f.write('; Raw intake: every byte no filed source claims.\n')
         for b in range(banks):
             f.write('incsrc "bank%02X.asm"\n' % b)
     ninsn = sum(1 for k in r.kind if k)

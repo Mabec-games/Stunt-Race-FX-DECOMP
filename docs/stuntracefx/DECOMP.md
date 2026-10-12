@@ -58,9 +58,17 @@ responsibility, never by address range.
 | `tools/stuntracefx/asmcontrol.py` | assembler control: every 65816 and Super FX instruction form round-trips |
 | `tools/stuntracefx/ppm2png.py` | frame dumps to PNG |
 | `tools/stuntracefx/precommit.py` | filing rules on staged files |
+| `tools/stuntracefx/hybrid.py` | build the C into the library the harness loads; one entry per `@routine` |
+| `tools/stuntracefx/t3.py` | `--live` (A5, per call), `--image` (A7, lockstep), `--qualify` (every gate, the tier) |
 
 ```bash
 python3 tools/stuntracefx/build.py
 python3 tools/stuntracefx/image.py
 python3 tools/stuntracefx/asmcontrol.py
+python3 tools/stuntracefx/t3.py --live
+python3 tools/stuntracefx/t3.py --image
+python3 tools/stuntracefx/t3.py --qualify 04:D788
 ```
+
+Filed assembly goes in `asm/stuntracefx/<area>/`, placed with `%at(addr)`;
+the build assembles it in place and leaves its bytes out of the raw intake.

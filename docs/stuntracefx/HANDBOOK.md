@@ -29,3 +29,15 @@ here when they are made.
 - The core runs with its speed shortcuts off; a frontend that answers no
   option queries gets the fast defaults
   ([decomp/oracle/core-accuracy-settings-2026-10-11](decomp/oracle/core-accuracy-settings-2026-10-11.md)).
+- A5 checks each call against its C with no timing involved; A7 runs the C in
+  place in lockstep and must repeat the original's exact bus cycles, not just
+  its clock count; a frame can end inside a call; a replay can outlive its
+  frame ([decomp/oracle/call-and-lockstep-oracles-2026-10-11](decomp/oracle/call-and-lockstep-oracles-2026-10-11.md)).
+
+## Method
+
+- Routines that assembly still calls carry an abi_ wrapper: the readable C
+  takes arguments and returns values; the wrapper maps the 65816 registers and
+  flags to and from them and is the entry contract in code.
+- Order of work is bottom up: a routine's C calls its callees' C, so callees
+  reach T3 first.

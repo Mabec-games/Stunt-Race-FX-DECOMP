@@ -6,10 +6,7 @@
  * page plus an offset in Y.
  */
 #include "machine.h"
-
-/* Direct page $FB-$FD: the upload stream's long pointer (low, high, bank). */
-#define APU_STREAM_PTR 0x0000FBu
-#define APU_STREAM_BANK 0x0000FDu
+#include "wram.h"
 
 /*
  * @routine 04:D788 ApuUploadNextByte

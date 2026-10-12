@@ -2,7 +2,7 @@
  * sfxbox: run the original ROM headless and record what it executes.
  *
  *   sfxbox --rom ROM --script FILE --out DIR [--core DYLIB] [--trace]
- *          [--check LIB [--only ADDR,ADDR...]]
+ *          [--check LIB | --lockstep LIB] [--only ADDR,ADDR...]
  *
  * Script, one command per line ('#' starts a comment):
  *   wait N               N frames, no buttons
@@ -21,7 +21,9 @@
  *
  * With --check, every call of a routine that LIB (the hybrid build of the C
  * decomp) implements is checked against its C; see check.c. The report goes
- * to DIR/check.txt.
+ * to DIR/check.txt. With --lockstep, the C replaces those routines in a
+ * second copy of the game run in step with the original; see check.c. The
+ * report goes to DIR/lockstep.txt.
  */
 #include <dlfcn.h>
 #include <stdarg.h>
@@ -113,7 +115,16 @@ static int16_t input(unsigned port, unsigned device, unsigned index, unsigned id
     return (b >> id) & 1;
 }
 
-static void run(long n) { while (n-- > 0) { retro_run_p(); frames++; } }
+static int lockstep;
+static void run(long n)
+{
+    while (n-- > 0) {
+        if (lockstep) lockstep_before_frame(frames);
+        retro_run_p();
+        if (lockstep) lockstep_after_frame(frames);
+        frames++;
+    }
+}
 
 static unsigned parse_buttons(const char *s) {
     static const char *names[] = {"B", "Y", "SELECT", "START", "UP", "DOWN", "LEFT", "RIGHT", "A", "X", "L", "R"};
@@ -131,12 +142,14 @@ static unsigned parse_buttons(const char *s) {
 }
 
 static void write_file(const char *name, const char *ext, const void *p, size_t n) {
+    if (lockstep && lockstep_role() == 2) return;  /* the original writes the files */
     char path[4096]; snprintf(path, sizeof path, "%s/%s%s", outdir, name, ext);
     FILE *f = fopen(path, "wb"); if (!f) die("cannot write %s", path);
     fwrite(p, 1, n, f); fclose(f);
 }
 
 static void shot(const char *name) {
+    if (lockstep && lockstep_role() == 2) return;
     char path[4096]; snprintf(path, sizeof path, "%s/%s.ppm", outdir, name);
     FILE *f = fopen(path, "wb"); if (!f) die("cannot write %s", path);
     fprintf(f, "P6\n%u %u\n255\n", fw, fh);
@@ -218,7 +231,7 @@ static void script(const char *path) {
 int main(int argc, char **argv) {
     const char *rom = NULL, *scr = NULL, *corepath = "tools/toolchains/bsnes/bsnes_libretro.dylib";
     int trace = 0;
-    const char *checklib = NULL, *only = NULL;
+    const char *checklib = NULL, *only = NULL, *locklib = NULL;
     for (int i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "--rom") && i + 1 < argc) rom = argv[++i];
         else if (!strcmp(argv[i], "--script") && i + 1 < argc) scr = argv[++i];
@@ -227,6 +240,7 @@ int main(int argc, char **argv) {
         else if (!strcmp(argv[i], "--trace")) trace = 1;
         else if (!strcmp(argv[i], "--check") && i + 1 < argc) checklib = argv[++i];
         else if (!strcmp(argv[i], "--only") && i + 1 < argc) only = argv[++i];
+        else if (!strcmp(argv[i], "--lockstep") && i + 1 < argc) locklib = argv[++i];
         else die("usage: sfxbox --rom ROM --script FILE --out DIR [--core DYLIB] [--trace]");
     }
     if (!rom || !scr || !outdir) die("usage: sfxbox --rom ROM --script FILE --out DIR [--core DYLIB] [--trace]");
@@ -256,8 +270,14 @@ int main(int argc, char **argv) {
         char rp[4096]; snprintf(rp, sizeof rp, "%s/check.txt", outdir);
         if (check_begin(core, checklib, only, rp)) die("check setup failed");
     }
+    if (locklib) {
+        char rp[4096]; snprintf(rp, sizeof rp, "%s/lockstep.txt", outdir);
+        if (lockstep_begin(core, locklib, only, rp) < 0) die("lockstep setup failed");
+        lockstep = 1;
+    }
     script(scr);
     if (checklib) check_end();
+    if (lockstep) lockstep_end(frames);
     if (trace && sfxbox_trace_write_p(outdir)) die("trace write failed");
     printf("frames %ld\n", frames);
     return 0;
