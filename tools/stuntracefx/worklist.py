@@ -27,11 +27,17 @@ def main():
     for d in codemap.traces():
         edges += list(csv.DictReader(open(os.path.join(d, 'edges.csv'))))
     calls = {}
+    rom = open(os.path.join(ROOT, 'build', 'stuntracefx', 'baserom.sfc'), 'rb').read()
     for e in edges:
+        so, to = codemap.rom_offset(int(e['from'], 16)), codemap.rom_offset(int(e['to'], 16))
+        if so is None or to is None:
+            continue
         if e['cpu'] == 'cpu' and int(e['kind'], 16) in (0x20, 0x22, 0xFC):
-            so, to = codemap.rom_offset(int(e['from'], 16)), codemap.rom_offset(int(e['to'], 16))
-            if so is not None and to is not None:
-                calls.setdefault(so, set()).add(to)
+            calls.setdefault(so, set()).add(to)
+        elif e['cpu'] == 'gsu' and not (so >= 1 and rom[so - 1] == 0x00) and int(e['kind'], 16) != 0x00:
+            # Super FX: a LINK call or a branch or jump into another routine
+            # (a jump from the NOP after a STOP is the S-CPU starting a program).
+            calls.setdefault(so, set()).add(to)
     ready = []
     for r in rows:
         if a.cpu and r['cpu'] != a.cpu:

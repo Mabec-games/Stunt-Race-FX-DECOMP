@@ -62,7 +62,10 @@ def build():
                 starts.setdefault(o, ('cpu', 'interrupt'))
         else:
             so = rom_offset(src)
-            if kind == 0x00:
+            # A program the S-CPU starts: the first instruction after a STOP
+            # is the NOP the STOP leaves in the pipeline, traced at the byte
+            # after the STOP, then the jump to the start address.
+            if kind == 0x00 or (kind == 0x01 and so is not None and so >= 1 and rom[so - 1] == 0x00):
                 starts.setdefault(o, ('gsu', 'started'))
             elif so is not None and so >= 4 and rom[so - 3] == 0xFF:
                 if 0x91 <= rom[so - 4] <= 0x94:

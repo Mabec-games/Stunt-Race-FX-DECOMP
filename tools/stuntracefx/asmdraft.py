@@ -52,6 +52,26 @@ def listing():
     return text
 
 
+def gsu_names(ins, pc, names, labels, missing):
+    """Super FX operands: a jump to a filed routine by its label, RAM
+    addresses (in bank $70) by their names; short addresses (LMS, SMS) as
+    the name less !gsu_ram."""
+    m = re.match(r'iwt r15,#\$([0-9A-F]{4})$', ins)
+    if m:
+        full = (pc & 0xFF0000) | int(m.group(1), 16)
+        return 'iwt r15,#%s' % labels[full] if full in labels else ins
+    m = re.match(r'(lms?|sms?)\s+(.*)\(\$([0-9A-F]+)\)(.*)$', ins)
+    if m:
+        v = 0x700000 | int(m.group(3), 16)
+        n = names.get(v)
+        if not n:
+            missing.add((m.group(1), '$%06X' % v))
+            return ins
+        short = m.group(1) in ('lms', 'sms')
+        return '%s %s(%s)%s' % (m.group(1), m.group(2), ('!%s-!gsu_ram' % n) if short else '!' + n, m.group(4))
+    return ins
+
+
 def main(argv):
     rows = {r['addr']: r for r in csv.DictReader(open(os.path.join(B, 'routines.csv')))}
     names, labels, text = defines(), filed_labels(), listing()
@@ -93,6 +113,8 @@ def main(argv):
             jm = re.match(r'jmp\.w \$([0-9A-F]{4})$', ins)
             if jm and jm.group(1) in jumps:
                 ins = 'jmp.w ' + jumps[jm.group(1)]
+            if gsu:
+                ins = gsu_names(ins, pc, names, labels, missing)
             m = re.match(r'(\w+)(\.[bwl])?\s+(.*)$', ins)
             if m and not gsu and m.group(1) not in ('rep', 'sep', 'brk', 'cop', 'wdm', 'mvn', 'mvp'):
                 op = m.group(3)

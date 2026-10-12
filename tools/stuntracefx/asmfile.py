@@ -8,7 +8,7 @@ HOW, Entry/Exit) is taken from the routine's C, so it is written once. The
 file is created with its includes if it does not exist. Review the result:
 drafts are intake.
 """
-import os, re, subprocess, sys
+import csv, os, re, subprocess, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import asmdraft  # noqa: E402
 
@@ -63,12 +63,21 @@ def main(argv):
         code = [re.sub(start, name, l) for l in code]  # a branch back to the entry
         out.append('\n'.join(['; ' + l for l in header] + [place, name + ':'] + code))
     new = not os.path.exists(path)
+    # Super FX routines are assembled as Super FX code, and the file goes
+    # back to 65816 after them for whatever follows.
+    rows = {r['addr']: r['cpu'] for r in csv.DictReader(open(os.path.join(ROOT, 'build', 'stuntracefx', 'routines.csv')))}
+    gsu = any(rows.get(a.replace(':', '').upper()) == 'gsu' for a in addrs)
     os.makedirs(os.path.dirname(path) or '.', exist_ok=True)
     with open(path, 'a') as f:
         if new:
             f.write(file_header(cfile) + '\n')
-            f.write('incsrc "../include/macros.inc"\nincsrc "../include/hw.inc"\nincsrc "../include/wram.inc"\nincsrc "../include/rom.inc"\n\narch 65816\n')
+            f.write('incsrc "../include/macros.inc"\nincsrc "../include/hw.inc"\nincsrc "../include/wram.inc"\nincsrc "../include/rom.inc"\n\n')
+            f.write('arch superfx\n' if gsu else 'arch 65816\n')
+        elif gsu:
+            f.write('\narch superfx\n')
         f.write('\n' + '\n\n'.join(out) + '\n')
+        if gsu:
+            f.write('\narch 65816\n')
     print('%s: %d routine(s)' % (path, len(out)))
     return 0
 

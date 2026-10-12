@@ -17,7 +17,10 @@
  * when the Super FX is about to run the instruction at that R11 in the same
  * program bank: R15 is then one past it and the pipeline holds its opcode.
  * A tail branch into a routine (no LINK) is not an entry; the routine that
- * branches has to carry it in its C.
+ * branches has to carry it in its C. A program the S-CPU starts (by writing
+ * R15) is entered at its first instruction, the one after the NOP that the
+ * last STOP left in the pipeline, and ends when the Super FX is about to run
+ * its STOP: the C does everything before the STOP, the core runs the STOP.
  *
  * A5. The original runs untouched. At a call's entry the Super FX's state
  * is taken (registers, flags, colour, plot options, banks, the last RAM
@@ -142,6 +145,23 @@ int gsu_load(void *core, void *lib, const char *only)
     for (int i = 0; i < nrt; i++) bits[rt[i].addr >> 3] |= (uint8_t)(1 << (rt[i].addr & 7));
     return nrt;
 }
+
+/* A program the S-CPU starts: after a STOP (and at power-on) the Super FX
+   is halted; the S-CPU's write of R15 starts it with the NOP the STOP left
+   in the pipeline, and the instruction after that NOP is the program's
+   first. Returns 1 for that instruction. Every side calls this for every
+   instruction it is told of, so all agree. */
+static int halted = 1, starting;
+static int program_start(uint8_t opcode)
+{
+    int start = 0;
+    if (halted) { halted = 0; starting = 1; }
+    else if (starting) { starting = 0; start = 1; }
+    if (opcode == 0x00) halted = 1;
+    return start;
+}
+
+#define PROGRAM 0xFFFFFFFFu   /* the "return address" of a program: it ends at its STOP */
 
 /* Entered as a routine: see the top of the file. */
 static int entry_ok(uint32_t pc, uint32_t prev_end, const struct GsuState *st)
@@ -433,19 +453,22 @@ static void finish(Watch *w)
 
 static void check_insn(uint32_t pc, uint32_t prev_end, uint8_t opcode)
 {
+    int prog = program_start(opcode);
     while (depth && pc == ws[depth - 1].ret) { finish(&ws[depth - 1]); depth--; }
     if (depth && opcode == 0x00) {
-        /* STOP inside a watched call: the program ended before it returned. */
-        while (depth) stats[ws[--depth].idx].skipped++;
+        /* STOP: a watched program ends here; a watched call inside it
+           ended with the program, before it returned, and is not judged. */
+        while (depth && ws[depth - 1].ret != PROGRAM) stats[ws[--depth].idx].skipped++;
+        if (depth) { finish(&ws[depth - 1]); depth--; }
     }
     int idx = routine_at(pc);
     if (idx < 0) return;
     struct GsuState st;
     core_get(&st);
-    if (!entry_ok(pc, prev_end, &st) || depth == DEPTH) { stats[idx].skipped++; return; }
+    if (!(prog || entry_ok(pc, prev_end, &st)) || depth == DEPTH) { stats[idx].skipped++; return; }
     Watch *w = &ws[depth++];
     w->idx = idx; w->foreign = 0; w->gen++; w->ntouched = 0;
-    w->ret = (pc & 0xFF0000) | st.r[11];
+    w->ret = prog ? PROGRAM : (pc & 0xFF0000) | st.r[11];
     w->entry = st;
     w->pend = st.ramcl != 0;
     if (w->pend) { w->pend_off = ram_off(0x700000u + ((uint32_t)st.rambr << 16) + st.ramar); w->pend_val = st.ramdr; }
@@ -513,7 +536,7 @@ typedef struct {
     uint8_t romcl, ramcl;
     uint16_t ramar, prefix;
     uint8_t sreg, dreg;
-    uint32_t last_byte;
+    uint32_t last_byte, end;   /* the address the call ended at (a program's STOP) */
 } CallRec;
 
 typedef struct {
@@ -564,9 +587,11 @@ static void op(uint8_t kind, uint32_t arg)
 
 static void orig_insn(uint32_t pc, uint32_t prev_end, uint8_t opcode)
 {
+    int prog = program_start(opcode);
     if (m.active) {
         CallRec *rec = &sh->calls[m.call % CALLRING];
-        if (pc == m.ret) {
+        if (pc == m.ret || (m.ret == PROGRAM && opcode == 0x00)) {
+            rec->end = pc;
             struct GsuState st;
             core_get(&st);
             rec->romcl = st.romcl; rec->ramcl = st.ramcl; rec->ramar = st.ramar;
@@ -575,6 +600,7 @@ static void orig_insn(uint32_t pc, uint32_t prev_end, uint8_t opcode)
             STORE(rec->done, 1);
             m.active = 0;
         } else if (opcode == 0x00) {
+            rec->end = pc;
             rec->stopped = 1;
             STORE(rec->done, 1);
             m.active = 0;
@@ -584,7 +610,7 @@ static void orig_insn(uint32_t pc, uint32_t prev_end, uint8_t opcode)
     if (routine_at(pc) < 0) return;
     struct GsuState st;
     core_get(&st);
-    if (!entry_ok(pc, prev_end, &st)) return;
+    if (!(prog || entry_ok(pc, prev_end, &st))) return;
     uint64_t k = LOAD(sh->o_calls);
     WAIT_UNTIL(k - LOAD(sh->h_calls) < CALLRING);
     CallRec *rec = &sh->calls[k % CALLRING];
@@ -592,7 +618,7 @@ static void orig_insn(uint32_t pc, uint32_t prev_end, uint8_t opcode)
     STORE(rec->done, 0);
     STORE(sh->o_calls, k + 1);
     sh->fcalls[frame_now % NSLOT]++;
-    m.active = 1; m.ret = (pc & 0xFF0000) | st.r[11]; m.call = k;
+    m.active = 1; m.ret = prog ? PROGRAM : (pc & 0xFF0000) | st.r[11]; m.call = k;
 }
 
 static void orig_step(uint32_t clocks) { if (m.active) op(OP_STEP, clocks); }
@@ -640,13 +666,21 @@ static uint8_t live_ram(int write, uint32_t a, uint8_t v)
     return core_bus(write, a, v);
 }
 
+static int prog_now;
+static void hybrid_insn(uint32_t pc, uint32_t prev_end, uint8_t opcode)
+{
+    (void)pc; (void)prev_end;
+    prog_now = program_start(opcode);
+}
+
 static int hybrid_exec(uint32_t pc, uint32_t prev_end)
 {
     int idx = routine_at(pc);
     if (idx < 0) return 0;
     struct GsuState st;
     core_get(&st);
-    if (!entry_ok(pc, prev_end, &st)) { h_entered_other++; return 0; }
+    int prog = prog_now;
+    if (!(prog || entry_ok(pc, prev_end, &st))) { h_entered_other++; return 0; }
     cur_name = rt[idx].name;
     uint64_t k = LOAD(sh->h_calls);
     WAIT_UNTIL((k < LOAD(sh->o_calls) && LOAD(sh->calls[k % CALLRING].done)) || LOAD(sh->o_done));
@@ -673,6 +707,7 @@ static int hybrid_exec(uint32_t pc, uint32_t prev_end)
     } else {
         past_end = 1;
         rec.last_byte = st.last_byte;
+        rec.end = (pc & 0xFF0000) | st.r[11];
     }
     h_calls++;
     h_fcalls++;
@@ -695,7 +730,9 @@ static int hybrid_exec(uint32_t pc, uint32_t prev_end)
 
     struct GsuState out;
     core_get(&out);   /* cache base and lines as the replay left them */
-    uint16_t ret = st.r[11];
+    /* A call stops at its return address, a program at its STOP: the
+       Super FX is about to run that instruction (R15 one past it). */
+    uint16_t ret = prog ? (uint16_t)rec.end : st.r[11];
     memcpy(out.r, gsu.r, sizeof out.r);
     out.r[15] = (uint16_t)(ret + 1);
     out.sfr = model_flags(out.sfr);
@@ -726,7 +763,8 @@ void gsu_lockstep_role(int r, FILE *rep, volatile int *stk)
         static struct GsuCallbacks cb = {orig_insn, orig_step, orig_ram, orig_cache};
         core_set_cb(&cb, NULL);
     } else if (role == 2) {
-        core_set_cb(NULL, hybrid_exec);
+        static struct GsuCallbacks cb = {hybrid_insn, NULL, NULL, NULL};
+        core_set_cb(&cb, hybrid_exec);
     }
 }
 
