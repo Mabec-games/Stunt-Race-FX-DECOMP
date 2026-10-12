@@ -1985,3 +1985,288 @@ MenuDropAwayFinishCurrent:
 %at($0BD067)
 MenuSelectConfirmNone:
     rts
+
+; @routine 0B:B64A MenuOamBuild
+; WHAT IT DOES: Builds the sprite table at $0375 (and its high table at
+; $0575) from the menu objects, last live object first, relative to the
+; scroll position ($11ED, $11EF); entries left over from the previous frame
+; are moved off screen ($EFEF) and their high bits set to $5555.
+; HOW: An object with +$10 = $FFFF is skipped. +$12 = 0 is a single
+; sprite from the record (X +$02, Y +$06, tile +$0E | +$10, size bit 0 of
+; +$0C); +$12 = $FFFF is skipped; otherwise +$12 is a sprite group at
+; $7F:1356 (a count, then 8-byte entries: X, Y, tile and attributes, size
+; in bit 0) placed at the object's position. A sprite is kept when X is
+; -16 to 255 and Y -16 to 223; negative X sets its X high bit. Each sprite
+; shifts its X high bit and size bit into $11E1 (two RORs each); every
+; eighth sprite the word is stored; the last partial word is padded with
+; X-high pairs. $1205 and $1207 count the bytes used in the two tables,
+; $1201 and $1203 hold the previous frame's counts, $11DF the sprites
+; left in the current high word. A full table ($200 bytes) ends the
+; object. The single-sprite path, negative positions and a full table are
+; not reached by any script. DB is 0 throughout.
+; Entry: any widths. Exit: A = the high table's byte count; X = the last
+; record, group offset or entry offset used; Y = the end of the high
+; table fill; P unchanged.
+%at($0BB64A)
+MenuOamBuild:
+    php
+    sep.b #$20
+    phb
+    lda.b #$00
+    pha
+    plb
+    rep.b #$30
+    stz.w !oam_low_count
+    stz.w !oam_high_count
+    lda.w #$0007
+    sta.w !scratch_11df
+    stz.w !scratch_11e1
+    ldy.w !actor_list_len
+    dey
+    dey
+    bpl .lB66D
+    brl .lB7BF
+.lB66D:
+    sty.w !actor_current_slot
+    ldx.w !actor_list,y
+    lda.b !actor_10,x
+    inc a
+    bne .lB67B
+    brl .lB7B5
+.lB67B:
+    lda.b !actor_12,x
+    beq .lB68A
+    cmp.w #$FFFF
+    bne .lB687
+    brl .lB7B5
+.lB687:
+    jmp.w .lB70E
+.lB68A:
+    stz.w !oam_x_high
+    lda.b !actor_0c,x
+    sta.w !oam_size
+    ldy.w !oam_low_count
+    cpy.w #$0200
+    bne .lB69D
+    brl .lB7B5
+.lB69D:
+    lda.b !actor_02,x
+    sec
+    sbc.w !menu_slide_pos
+    bpl .lB6B2
+    cmp.w #$FFF0
+    bcs .lB6AD
+    brl .lB7B5
+.lB6AD:
+    inc.w !oam_x_high
+    bra .lB6BA
+.lB6B2:
+    cmp.w #$0100
+    bcc .lB6BA
+    brl .lB7B5
+.lB6BA:
+    sta.w !oam_buffer,y
+    lda.b !actor_06,x
+    sec
+    sbc.w !menu_scroll_y
+    bpl .lB6CD
+    cmp.w #$FFF0
+    bcs .lB6D5
+    jmp.w .lB7B5
+.lB6CD:
+    cmp.w #$00E0
+    bcc .lB6D5
+    brl .lB7B5
+.lB6D5:
+    sta.w !oam_buffer+1,y
+    lda.b !actor_0e,x
+    ora.b !actor_10,x
+    sta.w !oam_buffer+2,y
+    iny
+    iny
+    iny
+    iny
+    sty.w !oam_low_count
+    ror.w !oam_x_high
+    ror.w !scratch_11e1
+    ror.w !oam_size
+    ror.w !scratch_11e1
+    dec.w !scratch_11df
+    bpl .lB70B
+    lda.w #$0007
+    sta.w !scratch_11df
+    ldy.w !oam_high_count
+    lda.w !scratch_11e1
+    sta.w !oam_buffer_high,y
+    iny
+    iny
+    sty.w !oam_high_count
+.lB70B:
+    jmp.w .lB7B5
+.lB70E:
+    sta.w !scratch_11e3
+    lda.b !actor_02,x
+    sec
+    sbc.w !menu_slide_pos
+    sta.w !oam_group_x
+    lda.b !actor_06,x
+    sec
+    sbc.w !menu_scroll_y
+    sta.w !oam_group_y
+    ldx.w !scratch_11e3
+    lda.l !menu_sprite_groups,x
+    sta.w !scratch_11e3
+    inx
+    inx
+.lB72F:
+    stz.w !oam_x_high
+    ldy.w !oam_low_count
+    cpy.w #$0200
+    bne .lB73D
+    brl .lB7B5
+.lB73D:
+    lda.l !menu_sprite_groups,x
+    clc
+    adc.w !oam_group_x
+    bpl .lB751
+    cmp.w #$FFF0
+    bcc .lB7A7
+    inc.w !oam_x_high
+    bra .lB756
+.lB751:
+    cmp.w #$0100
+    bcs .lB7A7
+.lB756:
+    sta.w !oam_buffer,y
+    lda.l !menu_sprite_groups+2,x
+    clc
+    adc.w !oam_group_y
+    bpl .lB76A
+    cmp.w #$FFF0
+    bcs .lB76F
+    bra .lB7A7
+.lB76A:
+    cmp.w #$00E0
+    bcs .lB7A7
+.lB76F:
+    sta.w !oam_buffer+1,y
+    iny
+    iny
+    lda.l !menu_sprite_attr,x
+    sta.w !oam_buffer,y
+    iny
+    iny
+    sty.w !oam_low_count
+    lsr.w !oam_x_high
+    ror.w !scratch_11e1
+    lda.l !menu_sprite_attr+2,x
+    lsr a
+    ror.w !scratch_11e1
+    dec.w !scratch_11df
+    bpl .lB7A7
+    ldy.w !oam_high_count
+    lda.w !scratch_11e1
+    sta.w !oam_buffer_high,y
+    iny
+    iny
+    sty.w !oam_high_count
+    lda.w #$0007
+    sta.w !scratch_11df
+.lB7A7:
+    txa
+    clc
+    adc.w #$0008
+    tax
+    dec.w !scratch_11e3
+    bmi .lB7B5
+    brl .lB72F
+.lB7B5:
+    ldy.w !actor_current_slot
+    dey
+    dey
+    bmi .lB7BF
+    brl .lB66D
+.lB7BF:
+    ldy.w !scratch_11df
+    cpy.w #$0007
+    beq .lB7DB
+    lda.w !scratch_11e1
+.lB7CA:
+    sec
+    ror a
+    lsr a
+    dey
+    bpl .lB7CA
+    ldy.w !oam_high_count
+    sta.w !oam_buffer_high,y
+    iny
+    iny
+    sty.w !oam_high_count
+.lB7DB:
+    ldy.w !oam_low_count
+    cpy.w !menu_1201
+    bcs .lB7F0
+    lda.w #$EFEF
+.lB7E6:
+    sta.w !oam_buffer,y
+    iny
+    iny
+    cpy.w !menu_1201
+    bcc .lB7E6
+.lB7F0:
+    lda.w !oam_low_count
+    sta.w !menu_1201
+    ldy.w !oam_high_count
+    cpy.w !menu_1203
+    bcs .lB80B
+    lda.w #$5555
+.lB801:
+    sta.w !oam_buffer_high,y
+    iny
+    iny
+    cpy.w !menu_1203
+    bcc .lB801
+.lB80B:
+    lda.w !oam_high_count
+    sta.w !menu_1203
+    plb
+    plp
+    rtl
+
+; @routine 0B:B450 MenuActorsRun
+; WHAT IT DOES: Runs every live menu object's handler once, from the last
+; in the live list to the first.
+; HOW: With DB = 0: $11FB = the list offset and $11F9 = the record, then
+; JSR (+$08) in bank $0B, the handler running with X = the record and Y =
+; the offset; the offset is reloaded from $11FB afterwards, so a handler
+; may free its object. P and DB are saved and restored.
+; Entry: any widths. Exit: A, X as the last handler left them (A's low
+; byte 0 when there are none); Y = the last offset - 2; P and DB
+; unchanged.
+%at($0BB450)
+MenuActorsRun:
+    php
+    phb
+    sep.b #$20
+    rep.b #$10
+    lda.b #$00
+    pha
+    plb
+    rep.b #$20
+    ldy.w !actor_list_len
+    dey
+    dey
+    bmi .done
+.next:
+    sty.w !actor_current_slot
+    ldx.w !actor_list,y
+    stx.w !actor_current
+    jsr.w (!actor_handler,x)
+    ldy.w !actor_current_slot
+    dey
+    dey
+    bpl .next
+.done:
+    plb
+    plp
+    rtl

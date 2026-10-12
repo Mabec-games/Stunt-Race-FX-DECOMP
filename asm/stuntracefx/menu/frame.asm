@@ -28,3 +28,29 @@ MenuWaitFrame:
     bne .lE39C
     plp
     rts
+
+; @routine 0B:E2E1 MenuRunFrames
+; WHAT IT DOES: Runs menu frames until $11DA equals $11DB: each frame waits
+; for the vertical blank (MenuWaitFrame), runs the objects
+; (MenuActorsRun), builds the sprite table (MenuOamBuild) and asks for
+; every frame update (bits 0-4 of $11D7).
+; HOW: 8-bit A for the flags and the compare; P saved and restored.
+; Entry: any widths. Exit: A low byte = $11DA, high byte as MenuOamBuild
+; left it; X, Y as MenuOamBuild left them; P unchanged.
+%at($0BE2E1)
+MenuRunFrames:
+    php
+    sep.b #$20
+.lE2E4:
+    jsr.w MenuWaitFrame
+    jsl.l MenuActorsRun
+    jsl.l MenuOamBuild
+    sep.b #$20
+    lda.w !frame_update_flags
+    ora.b #$1F
+    sta.w !frame_update_flags
+    lda.w !wram_11DA
+    cmp.w !wram_11DB
+    bne .lE2E4
+    plp
+    rts

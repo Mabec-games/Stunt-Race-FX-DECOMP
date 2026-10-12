@@ -811,3 +811,19 @@ includeonce
 !handler_bank = $0356
 !piece_x = $F1
 !piece_counter = $10CB
+
+; The menu sprite builder (menu/actors.asm, MenuOamBuild): bytes used in the
+; sprite table and its high table this frame, the scroll's Y (X is
+; !menu_slide_pos), a sprite's X high bit and size while they are shifted
+; in, and a sprite group's position relative to the scroll; the object
+; fields +$0C (size in bit 0) and +$0E (tile and attributes) of a
+; single-sprite object.
+!oam_low_count = $1205
+!oam_high_count = $1207
+!menu_scroll_y = $11EF
+!oam_x_high = $11F1
+!oam_size = $11F3
+!oam_group_x = $11FD
+!oam_group_y = $11FF
+!actor_0c = $0C
+!actor_0e = $0E

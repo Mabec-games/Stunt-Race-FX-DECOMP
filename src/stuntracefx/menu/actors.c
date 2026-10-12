@@ -12,6 +12,7 @@
  */
 #include "machine.h"
 #include "hw.h"
+#include "wram.h"
 
 #define ACTOR_FIRST 0x1265u
 #define ACTOR_SIZE 0x2Cu
@@ -2117,4 +2118,226 @@ void MenuDropAwayFinishCurrent(uint8_t bank, uint8_t *p)
 void abi_MenuDropAwayFinishCurrent(void)
 {
     abi_MenuDropAwayFinish();
+}
+
+/* ROR of a 16-bit word in memory: c in at bit 15, bit 0 out to c. */
+static void ror_mem(uint32_t addr, int *c)
+{
+    uint16_t v = rd16(addr);
+    int out = v & 1;
+
+    wr16(addr, (uint16_t)((v >> 1) | (*c ? 0x8000 : 0)));
+    *c = out;
+}
+
+/* After a sprite's two high-table bits are shifted into $11E1: every
+   eighth sprite the word goes to the high table at $0575 + $1207. */
+static void oam_high_step(void)
+{
+    uint16_t n = (uint16_t)(rd16(0x0011DF) - 1), y;
+
+    wr16(0x0011DF, n);
+    if (!(n & 0x8000))
+        return;
+    wr16(0x0011DF, 0x0007);
+    y = rd16(0x001207);
+    wr16(OAM_BUFFER_HIGH + y, rd16(0x0011E1));
+    wr16(0x001207, (uint16_t)(y + 2));
+}
+
+/*
+ * @routine 0B:B64A MenuOamBuild
+ * WHAT IT DOES: Builds the sprite table at $0375 (and its high table at
+ * $0575) from the menu objects, last live object first, relative to the
+ * scroll position ($11ED, $11EF); entries left over from the previous frame
+ * are moved off screen ($EFEF) and their high bits set to $5555.
+ * HOW: An object with +$10 = $FFFF is skipped. +$12 = 0 is a single
+ * sprite from the record (X +$02, Y +$06, tile +$0E | +$10, size bit 0 of
+ * +$0C); +$12 = $FFFF is skipped; otherwise +$12 is a sprite group at
+ * $7F:1356 (a count, then 8-byte entries: X, Y, tile and attributes, size
+ * in bit 0) placed at the object's position. A sprite is kept when X is
+ * -16 to 255 and Y -16 to 223; negative X sets its X high bit. Each sprite
+ * shifts its X high bit and size bit into $11E1 (two RORs each); every
+ * eighth sprite the word is stored; the last partial word is padded with
+ * X-high pairs. $1205 and $1207 count the bytes used in the two tables,
+ * $1201 and $1203 hold the previous frame's counts, $11DF the sprites
+ * left in the current high word. A full table ($200 bytes) ends the
+ * object. The single-sprite path, negative positions and a full table are
+ * not reached by any script. DB is 0 throughout.
+ * Entry: any widths. Exit: A = the high table's byte count; X = the last
+ * record, group offset or entry offset used; Y = the end of the high
+ * table fill; P unchanged.
+ */
+uint16_t MenuOamBuild(uint16_t *x, uint16_t *y)
+{
+    uint16_t i, rec, n, sx, sy;
+    int c;
+
+    wr16(0x001205, 0x0000);
+    wr16(0x001207, 0x0000);
+    wr16(0x0011DF, 0x0007);
+    wr16(0x0011E1, 0x0000);
+    for (i = (uint16_t)(rd16(0x0011F7) - 2); !(i & 0x8000); i = (uint16_t)(rd16(0x0011FB) - 2)) {
+        wr16(0x0011FB, i);
+        rec = *x = rd16(0x001239 + i);
+        if (rd16((uint16_t)(rec + 0x10)) == 0xFFFF)
+            continue;
+        n = rd16((uint16_t)(rec + 0x12));
+        if (n == 0x0000) {
+            /* one sprite from the record */
+            wr16(0x0011F1, 0x0000);
+            wr16(0x0011F3, rd16((uint16_t)(rec + 0x0C)));
+            *y = rd16(0x001205);
+            if (*y == 0x0200)
+                continue;
+            sx = (uint16_t)(rd16((uint16_t)(rec + 0x02)) - rd16(0x0011ED));
+            if (sx & 0x8000) {
+                if (sx < 0xFFF0)
+                    continue;
+                wr16(0x0011F1, (uint16_t)(rd16(0x0011F1) + 1));
+            } else if (sx >= 0x0100) {
+                continue;
+            }
+            wr16(OAM_BUFFER + *y, sx);
+            sy = (uint16_t)(rd16((uint16_t)(rec + 0x06)) - rd16(0x0011EF));
+            if (sy & 0x8000) {
+                if (sy < 0xFFF0)
+                    continue;
+                c = 1;
+            } else {
+                if (sy >= 0x00E0)
+                    continue;
+                c = 0;
+            }
+            wr16(OAM_BUFFER + 1 + *y, sy);
+            wr16(OAM_BUFFER + 2 + *y, (uint16_t)(rd16((uint16_t)(rec + 0x0E)) | rd16((uint16_t)(rec + 0x10))));
+            *y = (uint16_t)(*y + 4);
+            wr16(0x001205, *y);
+            ror_mem(0x0011F1, &c);
+            ror_mem(0x0011E1, &c);
+            ror_mem(0x0011F3, &c);
+            ror_mem(0x0011E1, &c);
+            oam_high_step();
+            continue;
+        }
+        if (n == 0xFFFF)
+            continue;
+        /* a sprite group */
+        wr16(0x0011E3, n);
+        wr16(0x0011FD, (uint16_t)(rd16((uint16_t)(rec + 0x02)) - rd16(0x0011ED)));
+        wr16(0x0011FF, (uint16_t)(rd16((uint16_t)(rec + 0x06)) - rd16(0x0011EF)));
+        *x = rd16(0x0011E3);
+        wr16(0x0011E3, rd16(0x7F1356 + *x));
+        *x = (uint16_t)(*x + 2);
+        for (;;) {
+            wr16(0x0011F1, 0x0000);
+            *y = rd16(0x001205);
+            if (*y == 0x0200)
+                break;
+            sx = (uint16_t)(rd16(0x7F1356 + *x) + rd16(0x0011FD));
+            if (sx & 0x8000) {
+                if (sx < 0xFFF0)
+                    goto next;
+                wr16(0x0011F1, (uint16_t)(rd16(0x0011F1) + 1));
+            } else if (sx >= 0x0100) {
+                goto next;
+            }
+            wr16(OAM_BUFFER + *y, sx);
+            sy = (uint16_t)(rd16(0x7F1358 + *x) + rd16(0x0011FF));
+            if (sy & 0x8000 ? sy < 0xFFF0 : sy >= 0x00E0)
+                goto next;
+            wr16(OAM_BUFFER + 1 + *y, sy);
+            *y = (uint16_t)(*y + 2);
+            wr16(OAM_BUFFER + *y, rd16(0x7F135A + *x));
+            *y = (uint16_t)(*y + 2);
+            wr16(0x001205, *y);
+            c = rd16(0x0011F1) & 1;
+            wr16(0x0011F1, (uint16_t)(rd16(0x0011F1) >> 1));
+            ror_mem(0x0011E1, &c);
+            c = rd16(0x7F135C + *x) & 1;
+            ror_mem(0x0011E1, &c);
+            oam_high_step();
+        next:
+            *x = (uint16_t)(*x + 8);
+            wr16(0x0011E3, (uint16_t)(rd16(0x0011E3) - 1));
+            if (rd16(0x0011E3) & 0x8000)
+                break;
+        }
+    }
+    *y = rd16(0x0011DF);
+    if (*y != 0x0007) {
+        uint16_t a = rd16(0x0011E1);
+
+        do {
+            a = (uint16_t)((a >> 1) | 0x8000);
+            a = (uint16_t)(a >> 1);
+            *y = (uint16_t)(*y - 1);
+        } while (!(*y & 0x8000));
+        *y = rd16(0x001207);
+        wr16(OAM_BUFFER_HIGH + *y, a);
+        *y = (uint16_t)(*y + 2);
+        wr16(0x001207, *y);
+    }
+    *y = rd16(0x001205);
+    if (*y < rd16(0x001201)) {
+        do {
+            wr16(OAM_BUFFER + *y, 0xEFEF);
+            *y = (uint16_t)(*y + 2);
+        } while (*y < rd16(0x001201));
+    }
+    wr16(0x001201, rd16(0x001205));
+    *y = rd16(0x001207);
+    if (*y < rd16(0x001203)) {
+        do {
+            wr16(OAM_BUFFER_HIGH + *y, 0x5555);
+            *y = (uint16_t)(*y + 2);
+        } while (*y < rd16(0x001203));
+    }
+    wr16(0x001203, rd16(0x001207));
+    return rd16(0x001207);
+}
+
+void abi_MenuOamBuild(void)
+{
+    cpu.a = MenuOamBuild(&cpu.x, &cpu.y);
+}
+
+/*
+ * @routine 0B:B450 MenuActorsRun
+ * WHAT IT DOES: Runs every live menu object's handler once, from the last
+ * in the live list to the first.
+ * HOW: With DB = 0: $11FB = the list offset and $11F9 = the record, then
+ * JSR (+$08) in bank $0B, the handler running with X = the record and Y =
+ * the offset; the offset is reloaded from $11FB afterwards, so a handler
+ * may free its object. P and DB are saved and restored.
+ * Entry: any widths. Exit: A, X as the last handler left them (A's low
+ * byte 0 when there are none); Y = the last offset - 2; P and DB
+ * unchanged.
+ */
+void MenuActorsRun(void)
+{
+    uint8_t p = cpu.p, db = cpu.db;
+    uint16_t y;
+
+    cpu.a &= 0xFF00;
+    cpu.db = 0x00;
+    cpu.p = (uint8_t)((cpu.p & ~(P_M | P_X | P_N)) | P_Z);
+    y = (uint16_t)(rd16(LIVE_LEN) - 2);
+    while (!(y & 0x8000)) {
+        wr16(0x0011FB, y);
+        cpu.x = rd16(LIVE_LIST + y);
+        wr16(CURRENT, cpu.x);
+        cpu.y = y;
+        cpu.p = nz16(cpu.p, cpu.x);
+        call_routine(0x0B0000 | rd16(0x0B0000 | (uint16_t)(cpu.x + 0x08)), 0);
+        y = (uint16_t)(rd16(0x0011FB) - 2);
+    }
+    cpu.y = y;
+    cpu.db = db;
+    cpu.p = p;
+}
+
+void abi_MenuActorsRun(void)
+{
+    MenuActorsRun();
 }
