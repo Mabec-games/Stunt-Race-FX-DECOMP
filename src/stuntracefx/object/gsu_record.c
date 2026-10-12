@@ -145,3 +145,142 @@ void abi_GsuRecordWord88(void)
     cpu.a = GsuRecordWord88(cpu.db, cpu.x, &cpu.y);
     cpu.p = (uint8_t)(nz16(cpu.p, cpu.x) | P_M);
 }
+
+/*
+ * @routine 08:E401 GsuRecordWord58
+ * WHAT IT DOES: Returns the word at +$58 of the Super FX record of object X's
+ * +$06 object, with carry set when bits 4 and 10 of the record's +$42 are
+ * both clear.
+ * HOW: Y = the object's +$06; the record address is that object's +$22.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: A = the word (M 8-bit); Y =
+ * the +$06 object; X unchanged; N, Z from X; C as above.
+ */
+uint16_t GsuRecordWord58(uint8_t bank, uint16_t obj, uint16_t *y, int *clear)
+{
+    uint16_t rec;
+
+    *y = rd16((uint32_t)bank << 16 | (uint16_t)(0x2006 + obj));
+    rec = record_of(bank, *y);
+    *clear = !(rd16(0x700042 + rec) & 0x0410);
+    return rd16(0x700058 + rec);
+}
+
+void abi_GsuRecordWord58(void)
+{
+    int clear;
+
+    cpu.a = GsuRecordWord58(cpu.db, cpu.x, &cpu.y, &clear);
+    cpu.p = (uint8_t)((nz16(cpu.p, cpu.x) & ~P_C) | (clear ? P_C : 0) | P_M);
+}
+
+/*
+ * @routine 08:D070 GsuRecordFlag4
+ * WHAT IT DOES: Sets bit 2 of object X's record word at +$1C and returns 0;
+ * an object without a record gets $FF in its +$36 and returns $FF.
+ * HOW: The record test reads both bytes of +$22 (8-bit OR).
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: A low byte = 0 or $FF; X
+ * unchanged; Y = X when there is a record; M 8-bit; N, Z from A.
+ */
+uint16_t GsuRecordFlag4(uint8_t bank, uint16_t obj, int *has)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t rec, w;
+
+    *has = (rd8(b | (uint16_t)(0x2022 + obj)) | rd8(b | (uint16_t)(0x2023 + obj))) != 0;
+    if (!*has) {
+        wr8(b | (uint16_t)(0x2036 + obj), 0xFF);
+        return 0x00FF;
+    }
+    rec = record_of(bank, obj);
+    w = (uint16_t)(rd16(0x70001C + rec) | 0x0004);
+    wr16(0x70001C + rec, w);
+    return (uint16_t)(w & 0xFF00);
+}
+
+void abi_GsuRecordFlag4(void)
+{
+    int has;
+    uint16_t a = GsuRecordFlag4(cpu.db, cpu.x, &has);
+
+    if (has) {
+        cpu.a = a;
+        cpu.y = cpu.x;
+        cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z | P_M);
+    } else {
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xFF);
+        cpu.p = (uint8_t)((cpu.p & ~P_Z) | P_N | P_M);
+    }
+}
+
+/*
+ * @routine 08:D83D GsuRecordVelocity
+ * WHAT IT DOES: Copies object X's velocity (+$2E, +$30, +$32), times 8, into
+ * its record (+$2E, +$30, +$32) and returns 0; an object without a record
+ * returns $FF.
+ * HOW: Three left shifts of each word.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: A low byte = 0 (high byte
+ * from the last word) or A = $00FF; Y = X when there is a record; M 8-bit;
+ * N, Z from A; C from the last shift when there is a record.
+ */
+uint16_t GsuRecordVelocity(uint8_t bank, uint16_t obj, int *has, uint8_t *p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t rec = record_of(bank, obj), v = 0, w;
+    unsigned i;
+
+    *has = rec != 0;
+    if (!rec)
+        return 0x00FF;
+    for (i = 0; i < 3; i++) {
+        w = rd16(b | (uint16_t)(0x202E + 2 * i + obj));
+        *p = (uint8_t)((*p & ~P_C) | (w & 0x2000 ? P_C : 0));
+        v = (uint16_t)(w << 3);
+        wr16(0x70002E + 2 * i + rec, v);
+    }
+    return (uint16_t)(v & 0xFF00);
+}
+
+void abi_GsuRecordVelocity(void)
+{
+    int has;
+    uint8_t p = cpu.p;
+    uint16_t a = GsuRecordVelocity(cpu.db, cpu.x, &has, &p);
+
+    cpu.a = a;
+    if (has) {
+        cpu.y = cpu.x;
+        cpu.p = (uint8_t)((p & ~P_N) | P_Z | P_M);
+    } else {
+        cpu.p = (uint8_t)((p & ~P_Z) | P_N | P_M);
+    }
+}
+
+/*
+ * @routine 08:B863 GsuRecordWords88
+ * WHAT IT DOES: For each object in the list at $7E:FFAE (count = half the
+ * word at $7E:FFB8), copies the word at +$88 of its Super FX record into
+ * the list at $7E:FFA6.
+ * HOW: The record address is each object's +$22 (bank $7E); direct page $02
+ * counts the entries.
+ * Entry: any widths, D = $0000. Exit: A = the last word; X, Y, P unchanged.
+ */
+uint16_t GsuRecordWords88(void)
+{
+    uint16_t n = rd16(0x7EFFB8), x = 0, v = 0;
+
+    wr16(0x000002, (uint16_t)((n >> 1) | (n & 0x8000)));
+    do {
+        uint16_t obj = rd16(0x7EFFAE + x);
+
+        v = rd16(0x700088 + rd16(0x7E2022 + obj));
+        wr16(0x7EFFA6 + x, v);
+        x = (uint16_t)(x + 2);
+        wr16(0x000002, (uint16_t)(rd16(0x000002) - 1));
+    } while (rd16(0x000002));
+    return v;
+}
+
+void abi_GsuRecordWords88(void)
+{
+    cpu.a = GsuRecordWords88();
+}

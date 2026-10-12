@@ -334,3 +334,104 @@ void abi_ObjectTableC056(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.p = nz16(p, cpu.y);
 }
+
+/*
+ * @routine 08:B75B ObjectListAppend
+ * WHAT IT DOES: Appends object X to the zero-ended list of up to 32 words at
+ * $7E:FFBD, whose length in bytes is at $7E:FFFD; a full list is left alone.
+ * HOW: Stores X at the end, steps the length by 2 and stores the 0 that
+ * ends the list.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: A = 0, or $40 when full (M
+ * 8-bit); X, Y unchanged; N, Z from X; C from the full-length compare.
+ */
+int ObjectListAppend(uint16_t obj)
+{
+    uint16_t n = rd16(0x7EFFFD);
+
+    if (n == 0x0040)
+        return 0;
+    wr16(0x7EFFBD + n, obj);
+    n = (uint16_t)(n + 2);
+    wr16(0x7EFFFD, n);
+    wr16(0x7EFFBD + n, 0x0000);
+    return 1;
+}
+
+void abi_ObjectListAppend(void)
+{
+    uint16_t n = rd16(0x7EFFFD);
+
+    cpu.a = ObjectListAppend(cpu.x) ? 0x0000 : 0x0040;
+    cpu.p = (uint8_t)((nz16(cpu.p, cpu.x) & ~P_C) | (n >= 0x0040 ? P_C : 0) | P_M);
+}
+
+/*
+ * @routine 08:8364 ObjectBucketInsert
+ * WHAT IT DOES: Puts object X at the head of the list for its bucket: the
+ * bucket number is the object's +$40, the list heads are words at $7F:0000
+ * + the bucket, and +$3C/+$3E link to the next and previous objects.
+ * HOW: The old head becomes the object's next (+$3C, its previous cleared)
+ * and gets the object as its previous; the object becomes the head. Direct
+ * page $40 holds the object while the old head is updated. Data bank $7E
+ * inside.
+ * Entry: M 16-bit, X 16-bit, D = $0000; X = object. Exit: A = the object;
+ * X, Y unchanged; N, Z from the caller's data bank.
+ */
+void ObjectBucketInsert(uint16_t obj)
+{
+    uint16_t bucket = rd16(0x7E2040 + obj), head;
+
+    wr16(0x7E203E + obj, 0x0000);
+    head = rd16(0x7F0000 + bucket);
+    wr16(0x7E203C + obj, head);
+    if (head) {
+        wr16(0x000040, obj);
+        wr16(0x7E203E + head, rd16(0x000040));
+    }
+    wr16(0x7F0000 + bucket, obj);
+}
+
+void abi_ObjectBucketInsert(void)
+{
+    ObjectBucketInsert(cpu.x);
+    cpu.a = cpu.x;
+    cpu.p = nz8(cpu.p, cpu.db);
+}
+
+/* An arithmetic shift right by one, as CMP #$8000 / ROR A does it. */
+static uint16_t asr1c(uint16_t v, uint8_t *p)
+{
+    *p = (uint8_t)((*p & ~P_C) | (v & 1 ? P_C : 0));
+    return (uint16_t)((v >> 1) | (v & 0x8000));
+}
+
+/*
+ * @routine 08:D5AB ObjectVelocityFromRecord
+ * WHAT IT DOES: Sets object X's X and Z velocity (+$2E, +$32) to an eighth
+ * of the values at +$2E and +$32 of the Super FX record of the object named
+ * by its +$27.
+ * HOW: Each value is shifted right three times keeping its sign.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: A = the Z velocity (M 8-bit);
+ * X, Y = the object; N, Z from X; C from the last shift.
+ */
+uint16_t ObjectVelocityFromRecord(uint8_t bank, uint16_t obj, uint8_t *p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t rec = rd16(b | (uint16_t)(0x2022 + rd16(b | (uint16_t)(0x2027 + obj)))), v;
+
+    v = asr1c(asr1c(asr1c(rd16(0x70002E + rec), p), p), p);
+    wr16(b | (uint16_t)(0x202E + obj), v);
+    v = asr1c(asr1c(asr1c(rd16(0x700032 + rec), p), p), p);
+    wr16(b | (uint16_t)(0x2032 + obj), v);
+    *p = nz16(*p, obj);
+    return v;
+}
+
+void abi_ObjectVelocityFromRecord(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = ObjectVelocityFromRecord(cpu.db, cpu.x, &p);
+    cpu.y = cpu.x;
+    cpu.p = (uint8_t)(p | P_M);
+}

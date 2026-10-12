@@ -243,3 +243,108 @@ ObjectTableC056:
     plx
     ply
     rts
+
+; @routine 08:B75B ObjectListAppend
+; WHAT IT DOES: Appends object X to the zero-ended list of up to 32 words at
+; $7E:FFBD, whose length in bytes is at $7E:FFFD; a full list is left alone.
+; HOW: Stores X at the end, steps the length by 2 and stores the 0 that
+; ends the list.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: A = 0, or $40 when full (M
+; 8-bit); X, Y unchanged; N, Z from X; C from the full-length compare.
+%at($08B75B)
+ObjectListAppend:
+    phx
+    phy
+    rep.b #$20
+    txy
+    lda.l !object_list_len
+    cmp.w #$0040
+    beq .lB77D
+    tax
+    tya
+    sta.l !object_list,x
+    inx
+    inx
+    txa
+    sta.l !object_list_len
+    lda.w #$0000
+    sta.l !object_list,x
+.lB77D:
+    sep.b #$20
+    ply
+    plx
+    rtl
+
+; @routine 08:8364 ObjectBucketInsert
+; WHAT IT DOES: Puts object X at the head of the list for its bucket: the
+; bucket number is the object's +$40, the list heads are words at $7F:0000
+; + the bucket, and +$3C/+$3E link to the next and previous objects.
+; HOW: The old head becomes the object's next (+$3C, its previous cleared)
+; and gets the object as its previous; the object becomes the head. Direct
+; page $40 holds the object while the old head is updated. Data bank $7E
+; inside.
+; Entry: M 16-bit, X 16-bit, D = $0000; X = object. Exit: A = the object;
+; X, Y unchanged; N, Z from the caller's data bank.
+%at($088364)
+ObjectBucketInsert:
+    phb
+    phy
+    phx
+    sep.b #$20
+    lda.b #$7E
+    pha
+    plb
+    rep.b #$20
+    lda.w !obj_bucket,x
+    stz.w !obj_bucket_prev,x
+    txy
+    tax
+    lda.l !object_buckets,x
+    sta.w !obj_bucket_next,y
+    beq .l8389
+    sty.b !dp_40
+    tay
+    lda.b !dp_40
+    sta.w !obj_bucket_prev,y
+    tay
+.l8389:
+    tya
+    sta.l !object_buckets,x
+    plx
+    ply
+    plb
+    rtl
+
+; @routine 08:D5AB ObjectVelocityFromRecord
+; WHAT IT DOES: Sets object X's X and Z velocity (+$2E, +$32) to an eighth
+; of the values at +$2E and +$32 of the Super FX record of the object named
+; by its +$27.
+; HOW: Each value is shifted right three times keeping its sign.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: A = the Z velocity (M 8-bit);
+; X, Y = the object; N, Z from X; C from the last shift.
+%at($08D5AB)
+ObjectVelocityFromRecord:
+    ldy.w !obj_27,x
+    rep.b #$20
+    lda.w !obj_22,y
+    txy
+    tax
+    lda.l !gsu_rec_vel_x,x
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    sta.w !obj_vel_x,y
+    lda.l !gsu_rec_vel_z,x
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    sta.w !obj_vel_z,y
+    tyx
+    sep.b #$20
+    rts

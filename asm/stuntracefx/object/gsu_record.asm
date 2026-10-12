@@ -115,3 +115,139 @@ GsuRecordWord88:
     sep.b #$20
     plx
     rts
+
+; @routine 08:E401 GsuRecordWord58
+; WHAT IT DOES: Returns the word at +$58 of the Super FX record of object X's
+; +$06 object, with carry set when bits 4 and 10 of the record's +$42 are
+; both clear.
+; HOW: Y = the object's +$06; the record address is that object's +$22.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: A = the word (M 8-bit); Y =
+; the +$06 object; X unchanged; N, Z from X; C as above.
+%at($08E401)
+GsuRecordWord58:
+    ldy.w !obj_06,x
+    phx
+    rep.b #$20
+    lda.w !obj_22,y
+    tax
+    lda.l !gsu_rec_42,x
+    and.w #$0410
+    beq .lE41D
+    lda.l !gsu_rec_58,x
+    sep.b #$20
+    plx
+    clc
+    rts
+.lE41D:
+    lda.l !gsu_rec_58,x
+    sep.b #$20
+    plx
+    sec
+    rts
+
+; @routine 08:D070 GsuRecordFlag4
+; WHAT IT DOES: Sets bit 2 of object X's record word at +$1C and returns 0;
+; an object without a record gets $FF in its +$36 and returns $FF.
+; HOW: The record test reads both bytes of +$22 (8-bit OR).
+; Entry: M 8-bit, X 16-bit; X = object. Exit: A low byte = 0 or $FF; X
+; unchanged; Y = X when there is a record; M 8-bit; N, Z from A.
+%at($08D070)
+GsuRecordFlag4:
+    lda.w !obj_22,x
+    ora.w !obj_22+1,x
+    bne .lD07F
+    lda.b #$FF
+    sta.w !obj_36,x
+    bra .lD099
+.lD07F:
+    rep.b #$20
+    lda.w !obj_22,x
+    beq .lD099
+    txy
+    tax
+    lda.l !gsu_rec_1c,x
+    ora.w #$0004
+    sta.l !gsu_rec_1c,x
+    tyx
+    sep.b #$20
+    lda.b #$00
+    rtl
+.lD099:
+    sep.b #$20
+    lda.b #$FF
+    rtl
+
+; @routine 08:D83D GsuRecordVelocity
+; WHAT IT DOES: Copies object X's velocity (+$2E, +$30, +$32), times 8, into
+; its record (+$2E, +$30, +$32) and returns 0; an object without a record
+; returns $FF.
+; HOW: Three left shifts of each word.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: A low byte = 0 (high byte
+; from the last word) or A = $00FF; Y = X when there is a record; M 8-bit;
+; N, Z from A; C from the last shift when there is a record.
+%at($08D83D)
+GsuRecordVelocity:
+    rep.b #$20
+    lda.w !obj_22,x
+    beq .lD86A
+    txy
+    tax
+    lda.w !obj_vel_x,y
+    asl a
+    asl a
+    asl a
+    sta.l !gsu_rec_vel_x,x
+    lda.w !obj_vel_y,y
+    asl a
+    asl a
+    asl a
+    sta.l !gsu_rec_vel_y,x
+    lda.w !obj_vel_z,y
+    asl a
+    asl a
+    asl a
+    sta.l !gsu_rec_vel_z,x
+    tyx
+    sep.b #$20
+    lda.b #$00
+    rtl
+.lD86A:
+    sep.b #$20
+    lda.b #$FF
+    rtl
+
+; @routine 08:B863 GsuRecordWords88
+; WHAT IT DOES: For each object in the list at $7E:FFAE (count = half the
+; word at $7E:FFB8), copies the word at +$88 of its Super FX record into
+; the list at $7E:FFA6.
+; HOW: The record address is each object's +$22 (bank $7E); direct page $02
+; counts the entries.
+; Entry: any widths, D = $0000. Exit: A = the last word; X, Y, P unchanged.
+%at($08B863)
+GsuRecordWords88:
+    phx
+    phy
+    php
+    rep.b #$30
+    lda.l !object_list_b_len
+    cmp.w #$8000
+    ror a
+    sta.b !dp_02
+    ldx.w #$0000
+.lB875:
+    lda.l !object_list_b,x
+    phx
+    tax
+    lda.l !obj_22_long,x
+    tax
+    lda.l !gsu_rec_88,x
+    plx
+    sta.l !wram_7EFFA6,x
+    inx
+    inx
+    dec.b !dp_02
+    bne .lB875
+    plp
+    ply
+    plx
+    rtl
