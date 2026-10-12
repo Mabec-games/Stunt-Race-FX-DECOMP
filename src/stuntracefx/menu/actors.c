@@ -866,15 +866,16 @@ static void queue_frame_row(uint32_t b, uint16_t dest, uint16_t src)
 uint16_t MenuActorUploadFrames(uint8_t bank, uint16_t rec, uint16_t frame, uint16_t *xo, uint8_t *p)
 {
     uint32_t b = (uint32_t)bank << 16;
-    uint16_t n, v, src, e, s = 0, at;
+    uint16_t n, i, v, src, e, s = 0, at;
 
     wr16(b | 0x11DF, (uint16_t)(frame << 1));
     e = rd16((uint16_t)(rec + 0x12));
     n = rd16(0x7F1356 + e);
     wr16(b | 0x11E5, (uint16_t)(e + 2));
     do {
-        wr16(b | 0x11E1, rd16(0x0BCCBC + rd16(b | 0x11E3)));
-        wr16(b | 0x11E9, rd16(0x0BCD14 + rd16(b | 0x11E3)));
+        i = rd16(b | 0x11E3);  /* read once, for both tables */
+        wr16(b | 0x11E1, rd16(0x0BCCBC + i));
+        wr16(b | 0x11E9, rd16(0x0BCD14 + i));
         v = rd16(0x0BCC7C + rd16(b | 0x11DF));
         wr16(b | 0x11E7, v & 0x8000);
         e = rd16(b | 0x11E5);
@@ -884,7 +885,8 @@ uint16_t MenuActorUploadFrames(uint8_t bank, uint16_t rec, uint16_t frame, uint1
         queue_frame_row(b, rd16(b | 0x11E1), src);
         wr8(b | 0x11E2, (uint8_t)(rd8(b | 0x11E2) + 1));
         queue_frame_row(b, rd16(b | 0x11E1), (uint16_t)(src + 0x0200));
-        wr16(b | 0x11E3, (uint16_t)(rd16(b | 0x11E3) + 2));
+        wr16(b | 0x11E3, (uint16_t)(rd16(b | 0x11E3) + 1));  /* two memory increments */
+        wr16(b | 0x11E3, (uint16_t)(rd16(b | 0x11E3) + 1));
         wr16(b | 0x11DF, (uint16_t)(rd16(b | 0x11DF) + 2) & 0x003F);
         e = rd16(b | 0x11E5);
         s = (uint16_t)(e + 8);

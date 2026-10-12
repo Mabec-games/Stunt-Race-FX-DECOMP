@@ -641,9 +641,18 @@ static void trace_write(uint32_t addr, uint8_t data, int kind)
 /* Original side: measure each call's cost. */
 static void ls_op(uint8_t op, uint32_t addr);
 
+/* S at the start of the instruction now running: a frame can end inside
+   an instruction that pushes, with S already moved down past a byte whose
+   write has not landed yet. */
+static uint16_t insn_s;
+
 static void ls_insn(uint32_t pc)
 {
     trace_insn(pc);
+    {
+        struct SfxboxRegs r; core_regs(&r);
+        insn_s = r.s;
+    }
     if (m.active) {
         if (m.in_irq) {
             if (pc != m.irq_pc) return;
@@ -824,8 +833,10 @@ static void run_original(uint32_t addr, int long_call)
             if (cur_ops[c] >> 4 == 9) nest++;
             else if (cur_ops[c] >> 4 == 0xC && !nest--) break;
         }
-    } else if (asm_unplaced++ < 5) {
-        fprintf(lsrep, "OFF frame %ld: call to %06X not in the original's record\n", cur_frame, addr);
+    } else if (!past_end) {
+        /* Past the end, there is no record to place it in (as for a
+           hardware access): nothing after it is compared. */
+        if (asm_unplaced++ < 5) fprintf(lsrep, "OFF frame %ld: call to %06X not in the original's record\n", cur_frame, addr);
     }
     /* Stand-in return address: $FFFF, so the return lands on $0000 (bank 0
        after an RTL, the routine's bank after an RTS). */
@@ -881,6 +892,12 @@ static void log_skip(int write, uint32_t addr, uint32_t j)
     }
 }
 
+/* SFXBOX_LS_PLACE=first,last: in those frames, report where each work RAM
+   access of the C is placed in the original's record (from the index it
+   searched from to the one after its match; equal when it found none). An
+   access that jumps far ahead is one the original made elsewhere: the C
+   reads or writes that byte more often, or in another order. */
+static long place_from = -1, place_to = -1;
 static long pair_lo = -1;  /* the last work RAM write placed, and where */
 static uint32_t pair_j;
 
@@ -917,6 +934,7 @@ static uint8_t live_access(int write, uint32_t addr, uint8_t value)
             placed = q > 0 && cur_ops[q - 1] >> 4 == 2 && snap_offset(cur_addr[q - 1]) == o;
         }
         pair_lo = -1;
+        uint32_t from_i = cur_i;
         if (o >= 0 && !placed)
             for (uint32_t j = cur_i; j < cur_n; j++) {
                 uint8_t k = cur_ops[j] >> 4;
@@ -933,6 +951,8 @@ static uint8_t live_access(int write, uint32_t addr, uint8_t value)
                     break;
                 }
             }
+        if (place_from >= 0 && cur_frame >= place_from && cur_frame <= place_to)
+            fprintf(lsrep, "PLACE %ld %s %06X %u -> %u%s\n", cur_frame, write ? "w" : "r", addr, from_i, cur_i, placed ? " pair" : "");
         if (write) { core_bus_write(addr, value); return value; }
         return core_bus_read(addr);
     }
@@ -1036,6 +1056,7 @@ int lockstep_begin(void *core, const char *lib, const char *only, const char *re
         static struct SfxboxCallbacks cb = {ls_insn, trace_write, trace_read, ls_interrupt, ls_timing};
         set_cb(&cb);
     }
+    if (getenv("SFXBOX_LS_PLACE")) sscanf(getenv("SFXBOX_LS_PLACE"), "%ld,%ld", &place_from, &place_to);
     if (getenv("SFXBOX_LS_SKIPS")) skips_from = atol(getenv("SFXBOX_LS_SKIPS"));
     if (tr && sscanf(tr, "%ld,%ld", &tr_lo, &tr_hi) == 2) {
         char p[4096]; snprintf(p, sizeof p, "%s.%s", report_path, role == 1 ? "orig" : "hyb");
@@ -1136,7 +1157,11 @@ void lockstep_after_frame(long f)
         struct SfxboxRegs r; core_regs(&r);
         /* A frame that ends inside a call: the hybrid has already finished it,
            so the stack is judged at the caller's level. */
-        sl->s = m.active ? m.exit_s : r.s;
+        /* Otherwise at the start of the instruction it is in: the bytes an
+           unfinished push is still to write hold whatever was there before
+           (in the original, often a byte the C of an earlier call never
+           pushed), and the push overwrites them before anything reads them. */
+        sl->s = m.active ? m.exit_s : r.s > insn_s ? r.s : insn_s;
         sl->midcall = m.active;
         sl->clock = core_clock();
         sl->regs = r;

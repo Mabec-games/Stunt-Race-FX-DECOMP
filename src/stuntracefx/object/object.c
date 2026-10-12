@@ -448,7 +448,7 @@ void abi_ObjectVelocityFromRecord(void)
  */
 uint16_t ObjectBucketRemove(uint16_t obj)
 {
-    uint16_t prev = rd16(0x7E203E + obj), next;
+    uint16_t prev = rd16(0x7E203E + obj), next, bucket;
 
     if (prev) {
         next = rd16(0x7E203C + obj);
@@ -458,8 +458,9 @@ uint16_t ObjectBucketRemove(uint16_t obj)
         wr16(0x7E203E + next, prev);
         return prev;
     }
+    bucket = rd16(0x7E2040 + obj);  /* the bucket before the next object */
     next = rd16(0x7E203C + obj);
-    wr16(0x7F0000 + rd16(0x7E2040 + obj), next);
+    wr16(0x7F0000 + bucket, next);
     if (next)
         wr16(0x7E203E + next, 0x0000);
     return next;
