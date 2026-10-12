@@ -217,3 +217,91 @@ SaveBlocksCheck:
     lda.b #$E8
     sta.w !save_block_sums_w,x
     bra .next
+
+; @routine 07:B10B SaveTablesCheck
+; WHAT IT DOES: Validates three save tables, last first: table k is twelve
+; two-byte entries at $70:FC88 + 24k and nine bytes at $70:FC6D + 9k, and
+; every entry's second byte must be $1F or more; the 8-bit sum of all 33
+; bytes must equal the sum byte at $70:FC2D + k. A table that fails is reset
+; to 24 bytes of $FF and nine of 0, with sum byte $E8 (which is their sum).
+; HOW: The table's two offsets come from the byte tables at $07:B18D and
+; $07:B18A into direct page $F3 and $F5 (high bytes $F4, $F6 cleared);
+; $F1 holds the running sum. Tables are read through the data bank. A
+; second byte below $1F fails the table at once.
+; Entry: any widths, D = $0000; DB = $70. Exit: A = the last sum byte read
+; or written (high byte clear); X = $FFFF; Y = 0; M 8-bit, X 16-bit; N
+; set, Z clear; C, V as the last table's check left them.
+%at($07B10B)
+SaveTablesCheck:
+    rep.b #$30
+    lda.w #$0000
+    ldx.w #$0002
+    sep.b #$20
+    sta.b !table_first+1
+    sta.b !table_second+1
+.table:
+    phx
+    lda.l !save_table_first,x
+    sta.b !table_first
+    lda.l !save_table_second,x
+    sta.b !table_second
+    stz.b !save_sum
+    ldy.w #$000C
+    ldx.b !table_first
+.entry:
+    clc
+    lda.w !save_tables_a_w,x
+    adc.b !save_sum
+    sta.b !save_sum
+    lda.w !save_tables_a_w+1,x
+    cmp.b #$1F
+    bcc .short
+    clc
+    adc.b !save_sum
+    sta.b !save_sum
+    inx
+    inx
+    dey
+    bne .entry
+    ldx.b !table_second
+    ldy.w #$0009
+.tail:
+    clc
+    lda.w !save_tables_b_w,x
+    adc.b !save_sum
+    sta.b !save_sum
+    inx
+    dey
+    bne .tail
+    plx
+    lda.w !save_table_sums,x
+    cmp.b !save_sum
+    bne .reset
+    bra .next
+.short:
+    plx
+.reset:
+    phx
+    lda.b #$FF
+    ldx.b !table_first
+    ldy.w #$0018
+.fill:
+    sta.w !save_tables_a_w,x
+    inx
+    dey
+    bne .fill
+    ldx.b !table_second
+    lda.b #$00
+    ldy.w #$0009
+.clear:
+    sta.w !save_tables_b_w,x
+    inx
+    dey
+    bne .clear
+    plx
+    lda.b #$E8
+    sta.l !save_table_sums,x
+.next:
+    dex
+    bpl .table
+    rts

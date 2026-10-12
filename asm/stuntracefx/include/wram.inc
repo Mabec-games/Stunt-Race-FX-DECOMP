@@ -837,3 +837,8 @@ includeonce
 ; Tested with the held buttons by MenuHeldRestart (menu/frame.asm).
 !wram_18FB = $18FB
 !wram_000A = $000A
+!save_tables_a_w = $FC88
+!save_tables_b_w = $FC6D
+!save_table_sums = $70FC2D
+!table_first = $F3
+!table_second = $F5

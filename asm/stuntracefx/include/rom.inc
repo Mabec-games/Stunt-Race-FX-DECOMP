@@ -184,3 +184,7 @@ includeonce
 !menu_pic_c818_size = $1CC816
 !menu_pic_becc_size = $1CBECA
 !menu_pic_be58 = $1CBE58
+
+; SaveTablesCheck offsets per table: into $70:FC6D and into $70:FC88 (save/records.asm).
+!save_table_second = $07B18A
+!save_table_first = $07B18D

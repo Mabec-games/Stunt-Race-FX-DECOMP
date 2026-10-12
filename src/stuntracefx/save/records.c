@@ -220,3 +220,76 @@ void abi_SaveBlocksCheck(void)
     cpu.y = 0x0000;
     cpu.p = (uint8_t)(((p & ~P_N) | P_M | P_C | P_Z) & ~P_X);
 }
+
+/*
+ * @routine 07:B10B SaveTablesCheck
+ * WHAT IT DOES: Validates three save tables, last first: table k is twelve
+ * two-byte entries at $70:FC88 + 24k and nine bytes at $70:FC6D + 9k, and
+ * every entry's second byte must be $1F or more; the 8-bit sum of all 33
+ * bytes must equal the sum byte at $70:FC2D + k. A table that fails is reset
+ * to 24 bytes of $FF and nine of 0, with sum byte $E8 (which is their sum).
+ * HOW: The table's two offsets come from the byte tables at $07:B18D and
+ * $07:B18A into direct page $F3 and $F5 (high bytes $F4, $F6 cleared);
+ * $F1 holds the running sum. Tables are read through the data bank. A
+ * second byte below $1F fails the table at once.
+ * Entry: any widths, D = $0000; DB = $70. Exit: A = the last sum byte read
+ * or written (high byte clear); X = $FFFF; Y = 0; M 8-bit, X 16-bit; N
+ * set, Z clear; C, V as the last table's check left them.
+ */
+uint8_t SaveTablesCheck(uint8_t bank, uint8_t *p)
+{
+    static const uint8_t first[3] = {0x00, 0x18, 0x30};
+    static const uint8_t second[3] = {0x00, 0x09, 0x12};
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t a = 0, sum, v;
+    uint16_t x;
+    int k, i, bad;
+
+    wr8(0x0000F4, 0x00);
+    wr8(0x0000F6, 0x00);
+    for (k = 2; k >= 0; k--) {
+        wr8(0x0000F3, first[k]);
+        wr8(0x0000F5, second[k]);
+        sum = 0;
+        bad = 0;
+        for (i = 0, x = first[k]; i < 12; i++, x += 2) {
+            sum = add8(sum, rd8(b | (uint16_t)(0xFC88 + x)), p);
+            v = rd8(b | (uint16_t)(0xFC89 + x));
+            if (v < 0x1F) {
+                *p &= (uint8_t)~P_C;
+                bad = 1;
+                break;
+            }
+            sum = add8(sum, v, p);
+        }
+        if (!bad) {
+            for (i = 0, x = second[k]; i < 9; i++, x++)
+                sum = add8(sum, rd8(b | (uint16_t)(0xFC6D + x)), p);
+        }
+        wr8(0x0000F1, sum);
+        if (!bad) {
+            a = rd8(b | (uint16_t)(0xFC2D + k));
+            *p = (uint8_t)((*p & ~P_C) | (a >= sum ? P_C : 0));
+            bad = a != sum;
+        }
+        if (bad) {
+            for (i = 0, x = first[k]; i < 24; i++, x++)
+                wr8(b | (uint16_t)(0xFC88 + x), 0xFF);
+            for (i = 0, x = second[k]; i < 9; i++, x++)
+                wr8(b | (uint16_t)(0xFC6D + x), 0x00);
+            a = 0xE8;
+            wr8(0x70FC2D + k, a);
+        }
+    }
+    return a;
+}
+
+void abi_SaveTablesCheck(void)
+{
+    uint8_t p = cpu.p, a = SaveTablesCheck(cpu.db, &p);
+
+    cpu.a = a;
+    cpu.x = 0xFFFF;
+    cpu.y = 0x0000;
+    cpu.p = (uint8_t)(((p & ~(P_Z | P_X)) | P_N | P_M));
+}

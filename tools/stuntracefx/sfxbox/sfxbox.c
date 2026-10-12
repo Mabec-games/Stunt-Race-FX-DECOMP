@@ -12,6 +12,12 @@
  *   dump NAME            write WRAM and GSU RAM to DIR/NAME.wram, DIR/NAME.gsuram
  *   save NAME            write a state to DIR/NAME.state
  *   load PATH            read a state
+ *   poke ADDR BYTE[,BYTE...]
+ *                        write bytes from S-CPU address ADDR (hex, 24-bit) into
+ *                        work RAM ($7E-$7F, or the low 8K mirror in banks
+ *                        $00-$3F) or Super FX RAM ($70-$71), between frames;
+ *                        for scripts that start from save data the game itself
+ *                        could hold (see each script's header)
  *   repeat N ... end     run the enclosed lines N times (nests)
  * Buttons: B Y SELECT START UP DOWN LEFT RIGHT A X L R, player 1; prefix
  * with 2. for player 2 (2.START). Joined with +.
@@ -172,6 +178,28 @@ static char lines[20000][256];
 static int nlines;
 static const char *script_path;
 
+/* poke ADDR BYTE[,BYTE...]: both lockstep processes run the script, so a
+   poke lands the same way on each side. */
+static void poke(const char *line, int lineno) {
+    char addr[64] = "", bytes[256] = "";
+    if (sscanf(line, "%*s %63s %255s", addr, bytes) != 2) die("%s:%d: poke ADDR BYTE[,BYTE...]", script_path, lineno);
+    unsigned long a = strtoul(addr[0] == '$' ? addr + 1 : addr, NULL, 16);
+    unsigned bank = a >> 16 & 0xFF, off = a & 0xFFFF;
+    const char *view = NULL; size_t base = 0;
+    if (bank == 0x7E || bank == 0x7F) { view = "wram"; base = (size_t)(bank - 0x7E) << 16 | off; }
+    else if (bank <= 0x3F && off < 0x2000) { view = "wram"; base = off; }
+    else if (bank == 0x70 || bank == 0x71) { view = "gsuram"; base = (size_t)(bank - 0x70) << 16 | off; }
+    else die("%s:%d: poke: $%06lX is neither work RAM nor Super FX RAM", script_path, lineno, a);
+    size_t n; uint8_t *p = sfxbox_memory_p(view, &n);
+    if (!p) die("%s:%d: poke: no %s view", script_path, lineno, view);
+    for (char *s = bytes, *e; *s; s = *e ? e + 1 : e) {
+        unsigned long v = strtoul(s, &e, 16);
+        if (e == s || v > 0xFF || (*e && *e != ',')) die("%s:%d: poke: bad byte list", script_path, lineno);
+        if (base >= n) die("%s:%d: poke: past the end of %s", script_path, lineno, view);
+        p[base++] = (uint8_t)v;
+    }
+}
+
 static int block_end(int i) {  /* index of the matching end for a repeat at i */
     int depth = 0;
     for (int j = i + 1; j < nlines; j++) {
@@ -208,6 +236,7 @@ static void exec_range(int from, int to) {
             if (!retro_serialize_p(p, n)) die("serialize failed");
             write_file(b, ".state", p, n); free(p);
         }
+        else if (!strcmp(a, "poke") && k >= 3) poke(lines[i], i + 1);
         else if (!strcmp(a, "load") && k >= 2) {
             size_t n; void *p = load_file(b, &n);
             if (!retro_unserialize_p(p, n)) die("unserialize failed: %s", b);
