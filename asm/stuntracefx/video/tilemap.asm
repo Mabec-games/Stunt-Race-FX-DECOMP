@@ -521,3 +521,140 @@ TilemapRowToE3D7:
     dec.b !row_count
     bne .alt
     rts
+
+; @routine 7E:E815 BackdropRowsUpdate
+; WHAT IT DOES: Updates the scrolling backdrop for the Super FX buffer
+; $0D7F selects: sets $0D96 to twice the view angle $06CD plus $42 (at most
+; $300), BG2's scroll pair for that buffer from the angle and $06CF, and
+; copies 17 rows of 32 entries from the backdrop map at $7F:93D7 into that
+; buffer's tilemap ($7F:E3D7, or + $440 for buffer 1), filling
+; with $20C0 once the map ends ($2800 bytes).
+; HOW: ObjectLinkFlag4000Step first. The map row is ((($06CD + $0DA2) / 8)
+; AND $3F) * $140 by the PPU multiplier ($0140 in M7A, the row in M7B and
+; M7C), plus ($06CF / 8) AND $FE; rows go through TilemapRowToE3D7 with the
+; data bank at $7F and step $140 (17 counted in direct page $F1). The
+; vertical scroll is (angle AND 7) - $20 plus the word at $7E:E811 + 2 *
+; buffer, the horizontal (($06CF / 2) AND 7) - $18. The clamp of $0D96 has
+; not been reached by any script yet.
+; Entry: any widths, D = $0000. Exit: A = the next map offset, or $20C0
+; after a fill; X, Y past the copy (low bytes when P restores 8-bit index
+; registers); P and the data bank unchanged.
+%ramcode($7EE815, $01453C)
+BackdropRowsUpdate:
+    php
+    rep.b #$30
+    lda.l !gsu_buffer_select
+    asl a
+    tax
+    jsl.l ObjectLinkFlag4000Step
+    lda.l !wram_06CD
+    pha
+    asl a
+    adc.w #$0042
+    cmp.w #$0300
+    bcc .lE833
+    lda.w #$0300                    ; not reached in the traces so far
+.lE833:
+    sta.w !gradient_src_a
+    pla
+    and.w #$0007
+    sec
+    sbc.w #$0020
+    clc
+    adc.l !backdrop_scroll_base,x
+    sta.w !bg2_scroll_y,x
+    lda.w !view_06cf
+    lsr a
+    and.w #$0007
+    sec
+    sbc.w #$0018
+    sta.w !bg2_scroll_x,x
+    sep.b #$20
+    lda.b #$40
+    sta.l !M7A
+    lda.b #$01
+    sta.l !M7A
+    rep.b #$20
+    lda.w !wram_06CD
+    clc
+    adc.w !view_0da2
+    lsr a
+    lsr a
+    lsr a
+    and.w #$003F
+    sta.l !M7B
+    lda.l !MPYL
+    sta.b !digit_count
+    lda.w !view_06cf
+    lsr a
+    lsr a
+    lsr a
+    and.w #$00FE
+    clc
+    adc.b !digit_count
+    tax
+    sep.b #$20
+    phb
+    lda.b #$7F
+    pha
+    plb
+    rep.b #$20
+    lda.w #$0011
+    sta.b !digit_count
+    lda.l !gsu_buffer_select
+    bne .lE8C8
+    ldy.w #$0000
+.lE89F:
+    cpx.w #$2800
+    bcs .lE8B6
+    jsr.w TilemapRowToE3D7
+    txa
+    clc
+    adc.w #$0100
+    tax
+    dec.b !digit_count
+    bne .lE89F
+    sep.b #$20
+    plb
+    plp
+    rts
+.lE8B6:
+    lda.w #$20C0
+.lE8B9:
+    sta.w !tilemap_row_e3d7,y
+    iny
+    iny
+    cpy.w #$0440
+    bcc .lE8B9
+    sep.b #$20
+    plb
+    plp
+    rts
+.lE8C8:
+    ldy.w #$0440
+.lE8CB:
+    cpx.w #$2800
+    bcs .lE8E2
+    jsr.w TilemapRowToE3D7
+    txa
+    clc
+    adc.w #$0100
+    tax
+    dec.b !digit_count
+    bne .lE8CB
+    sep.b #$20
+    plb
+    plp
+    rts
+.lE8E2:
+    lda.w #$20C0
+.lE8E5:
+    sta.w !tilemap_row_e3d7,y
+    iny
+    iny
+    cpy.w #$0880
+    bcc .lE8E5
+    sep.b #$20
+    plb
+    plp
+    rts

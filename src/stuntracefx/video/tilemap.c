@@ -580,3 +580,83 @@ void abi_TilemapRowToE3D7(void)
     cpu.a = TilemapRowToE3D7(cpu.db, &cpu.x, &cpu.y);
     cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
 }
+
+uint16_t ObjectLinkFlag4000Step(void);
+
+/* The body of BackdropRowsUpdate; returns A as the code leaves it. */
+static uint16_t backdrop_rows_update(uint8_t bank, uint16_t *xo, uint16_t *yo)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t sel = rd16(0x000D7F), x = (uint16_t)(sel << 1), y, h, s, a, end;
+    unsigned n;
+
+    ObjectLinkFlag4000Step();
+    h = rd16(0x0006CD);
+    s = (uint16_t)((h << 1) + 0x42 + (h >> 15));
+    wr16(b | 0x0D96, s < 0x0300 ? s : 0x0300);
+    wr16(b | (uint16_t)(0x0D8E + x), (uint16_t)((h & 0x0007) - 0x20 + rd16(0x7EE811 + x)));
+    wr16(b | (uint16_t)(0x0D92 + x), (uint16_t)(((rd16(b | 0x06CF) >> 1) & 0x0007) - 0x18));
+    wr8(0x00211B, 0x40);
+    wr8(0x00211B, 0x01);
+    wr16(0x00211C, (uint16_t)(((uint16_t)(rd16(b | 0x06CD) + rd16(b | 0x0DA2)) >> 3) & 0x003F));
+    wr16(0x0000F1, rd16(0x002134));
+    x = (uint16_t)(((rd16(b | 0x06CF) >> 3) & 0x00FE) + rd16(0x0000F1));
+    wr16(0x0000F1, 0x0011);
+    y = sel ? 0x0440 : 0x0000;
+    end = sel ? 0x0880 : 0x0440;
+    for (;;) {
+        if (x >= 0x2800) {
+            a = 0x20C0;
+            do {
+                wr16(0x7F0000 | (uint16_t)(0xE3D7 + y), a);
+                y = (uint16_t)(y + 2);
+            } while (y < end);
+            break;
+        }
+        TilemapRowToE3D7(0x7F, &x, &y);
+        x = (uint16_t)(x + 0x0100);
+        a = x;
+        n = (uint16_t)(rd16(0x0000F1) - 1);
+        wr16(0x0000F1, (uint16_t)n);
+        if (!n)
+            break;
+    }
+    *xo = x;
+    *yo = y;
+    return a;
+}
+
+/*
+ * @routine 7E:E815 BackdropRowsUpdate
+ * WHAT IT DOES: Updates the scrolling backdrop for the Super FX buffer
+ * $0D7F selects: sets $0D96 to twice the view angle $06CD plus $42 (at most
+ * $300), BG2's scroll pair for that buffer from the angle and $06CF, and
+ * copies 17 rows of 32 entries from the backdrop map at $7F:93D7 into that
+ * buffer's tilemap ($7F:E3D7, or + $440 for buffer 1), filling
+ * with $20C0 once the map ends ($2800 bytes).
+ * HOW: ObjectLinkFlag4000Step first. The map row is ((($06CD + $0DA2) / 8)
+ * AND $3F) * $140 by the PPU multiplier ($0140 in M7A, the row in M7B and
+ * M7C), plus ($06CF / 8) AND $FE; rows go through TilemapRowToE3D7 with the
+ * data bank at $7F and step $140 (17 counted in direct page $F1). The
+ * vertical scroll is (angle AND 7) - $20 plus the word at $7E:E811 + 2 *
+ * buffer, the horizontal (($06CF / 2) AND 7) - $18. The clamp of $0D96 has
+ * not been reached by any script yet.
+ * Entry: any widths, D = $0000. Exit: A = the next map offset, or $20C0
+ * after a fill; X, Y past the copy (low bytes when P restores 8-bit index
+ * registers); P and the data bank unchanged.
+ */
+void BackdropRowsUpdate(uint8_t bank)
+{
+    uint16_t x, y;
+
+    backdrop_rows_update(bank, &x, &y);
+}
+
+void abi_BackdropRowsUpdate(void)
+{
+    cpu.a = backdrop_rows_update(cpu.db, &cpu.x, &cpu.y);
+    if (cpu.p & P_X) {
+        cpu.x &= 0x00FF;
+        cpu.y &= 0x00FF;
+    }
+}

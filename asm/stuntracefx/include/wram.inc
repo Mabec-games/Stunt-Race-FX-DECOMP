@@ -777,3 +777,12 @@ includeonce
 !layout_request = $0019BD
 !layout_limits = $7EDBC5
 !window_setup_bytes = $0019AC
+!backdrop_half = $000D7F
+!view_angle = $0006CD
+!backdrop_0d96 = $0D96
+!bg2_scroll_y = $0D8E
+!bg2_scroll_x = $0D92
+!backdrop_scroll_base = $7EE811
+!view_06cf = $06CF
+!view_0da2 = $0DA2
+!backdrop_rows_left = $F1
