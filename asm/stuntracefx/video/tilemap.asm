@@ -256,7 +256,7 @@ TilemapRowFromFB4E:
 ; palette bits go through direct page $F1; each entry's attribute byte keeps
 ; its bits other than 2-4.
 ; Entry: M 8-bit, X 16-bit, D = $0000; X = entry offset (bytes), Y = count
-; (1 or more). Exit, when skipped: A low byte = the frame counter's low two
+; (1 or more). Exit: when skipped, A low byte = the frame counter's low two
 ; bits; N, Z from them; X, Y unchanged. Otherwise: A = the table byte after
 ; the phase's and the last attribute byte; X past the last entry; Y = 0; C
 ; set when the HUD mode word is 2 or more; Z set, N clear. M 8-bit.
