@@ -44,3 +44,45 @@ void abi_GsuScreenFlip(void)
     cpu.a = GsuScreenFlip(cpu.db);
     cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z)) | P_M);
 }
+
+/*
+ * @routine 0B:FC49 GsuScreenFlipMenu
+ * WHAT IT DOES: The menu screens' form of GsuScreenFlip: swaps the Super
+ * FX's draw buffer between the one at $2C00 (screen base $0B) and the one
+ * at $9400 (screen base $25), leaving $0D7D alone.
+ * HOW: $0D7F set: clears it and selects $2C00; clear: sets it to 1 and
+ * selects $9400. The start goes to $70:021A and direct page $48 between
+ * giving RAM back to the S-CPU and handing ROM and RAM to the Super FX
+ * again; then the screen base register.
+ * Entry: D = $0000. Exit: A = the high byte of the last screen mode value
+ * and the screen base; M 8-bit; N, Z clear.
+ */
+uint16_t GsuScreenFlipMenu(uint8_t bank)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t mode, start;
+    uint8_t base;
+
+    if (rd16(b | 0x0D7F)) {
+        wr16(b | 0x0D7F, 0x0000);
+        start = 0x2C00;
+        base = 0x0B;
+    } else {
+        wr16(b | 0x0D7F, (uint16_t)(rd16(b | 0x0D7F) + 1));
+        start = 0x9400;
+        base = 0x25;
+    }
+    wr16(b | (GSU_SCMR & 0xFFFF), (uint16_t)(rd16(b | 0x0374) & 0xFFF7));
+    wr16(0x70021A, start);
+    wr16(0x000048, start);
+    mode = (uint16_t)(rd16(b | 0x0374) | 0x0018);
+    wr16(b | (GSU_SCMR & 0xFFFF), mode);
+    wr8(GSU_SCBR, base);
+    return (uint16_t)((mode & 0xFF00) | base);
+}
+
+void abi_GsuScreenFlipMenu(void)
+{
+    cpu.a = GsuScreenFlipMenu(cpu.db);
+    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z)) | P_M);
+}

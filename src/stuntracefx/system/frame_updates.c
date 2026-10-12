@@ -314,3 +314,35 @@ void abi_VramDmaQueueFlush(void)
     if (end.looped)
         cpu.x = end.x;
 }
+
+void SystemHalt(void);
+
+/*
+ * @routine 0B:E3F7 FrameByteWritePush
+ * WHAT IT DOES: Adds a byte write to the list ByteWritesIfPending applies in
+ * the next vertical blank: address X, value the low byte of A. A full list
+ * (32 entries) stops the game (SystemHalt); no script fills it.
+ * HOW: The entry (address word, value word) goes in at the list's size,
+ * which grows by 4. A, X and P are pushed first; A and P come back, X does
+ * not.
+ * Entry: any widths; A low byte = value, X = address (16 bits are used).
+ * Exit: A and P unchanged; X = the entry's offset; Y unchanged. A full
+ * list does not return.
+ */
+uint16_t FrameByteWritePush(uint8_t bank, uint16_t addr, uint8_t value)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t x = rd16(b | (uint16_t)BYTE_WRITES_SIZE);
+
+    if (x == 0x0080)
+        SystemHalt();
+    wr16(BYTE_WRITES + 2 + x, value);
+    wr16(BYTE_WRITES + x, addr);
+    wr16(b | (uint16_t)BYTE_WRITES_SIZE, (uint16_t)(x + 4));
+    return x;
+}
+
+void abi_FrameByteWritePush(void)
+{
+    cpu.x = FrameByteWritePush(cpu.db, cpu.x, (uint8_t)cpu.a);
+}

@@ -11,6 +11,7 @@
  * address (D = $0000); the lists through the data bank.
  */
 #include "machine.h"
+#include "hw.h"
 
 #define ACTOR_FIRST 0x1265u
 #define ACTOR_SIZE 0x2Cu
@@ -398,6 +399,29 @@ void abi_MenuActorCountdown(void)
     cpu.p = p;
 }
 
+/* The two sine positions: the table byte for the angle in +$0A - $40
+   ($00:96FE) sign-extended, $80 added, kept to 8 bits, then `step` (+1 or
+   -1) added; stored at $18BF, and at $18C1 raised to at least $A8. C is the
+   compare with $A8, V the add of $80, N and Z from $11F9. */
+static uint16_t sine_position(uint8_t bank, uint16_t rec, uint16_t step, uint8_t *p)
+{
+    uint16_t i = (uint16_t)(rd16((uint16_t)(rec + 0x0A)) - 0x40) & 0x00FF, v = rd16(0x0096FE + i) & 0x00FF, s;
+
+    if (v >= 0x80)
+        v |= 0xFF00;
+    s = (uint16_t)(v + 0x80);
+    *p = (uint8_t)((*p & ~(P_C | P_V)) | ((~(v ^ 0x80) & (v ^ s) & 0x8000) ? P_V : 0));
+    v = (uint16_t)((s & 0x00FF) + step);
+    wr16(0x0018BF, v);
+    if (v >= 0x00A8)
+        *p |= P_C;
+    else
+        v = 0x00A8;
+    wr16(0x0018C1, v);
+    *p = nz16(*p, rd16((uint32_t)bank << 16 | 0x11F9));
+    return v;
+}
+
 /*
  * @routine 0B:C9FD MenuSinePosition
  * WHAT IT DOES: From the angle in object X's +$0A, sets $18BF = (sine of
@@ -411,21 +435,7 @@ void abi_MenuActorCountdown(void)
  */
 uint16_t MenuSinePosition(uint8_t bank, uint16_t rec, uint8_t *p)
 {
-    uint16_t i = (uint16_t)(rd16((uint16_t)(rec + 0x0A)) - 0x40) & 0x00FF, v = rd16(0x0096FE + i) & 0x00FF, s;
-
-    if (v >= 0x80)
-        v |= 0xFF00;
-    s = (uint16_t)(v + 0x80);
-    *p = (uint8_t)((*p & ~(P_C | P_V)) | ((~(v ^ 0x80) & (v ^ s) & 0x8000) ? P_V : 0));
-    v = (uint16_t)((s & 0x00FF) + 1);
-    wr16(0x0018BF, v);
-    if (v >= 0x00A8)
-        *p |= P_C;
-    else
-        v = 0x00A8;
-    wr16(0x0018C1, v);
-    *p = nz16(*p, rd16((uint32_t)bank << 16 | 0x11F9));
-    return v;
+    return sine_position(bank, rec, 0x0001, p);
 }
 
 void abi_MenuSinePosition(void)
@@ -433,6 +443,28 @@ void abi_MenuSinePosition(void)
     uint8_t p = cpu.p;
 
     cpu.a = MenuSinePosition(cpu.db, cpu.x, &p);
+    cpu.x = rd16((uint32_t)cpu.db << 16 | 0x11F9);
+    cpu.p = p;
+}
+
+/*
+ * @routine 0B:CA32 MenuSinePosition7F
+ * WHAT IT DOES: As MenuSinePosition, but two lower: (sine of the angle - $40)
+ * + $7F, kept to 8 bits, at $18BF, and the same, at least $A8, at $18C1.
+ * HOW: The same code as MenuSinePosition with a decrement where it has an
+ * increment; a value of 0 before it becomes $FFFF.
+ * Entry: as MenuSinePosition. Exit: as MenuSinePosition.
+ */
+uint16_t MenuSinePosition7F(uint8_t bank, uint16_t rec, uint8_t *p)
+{
+    return sine_position(bank, rec, 0xFFFF, p);
+}
+
+void abi_MenuSinePosition7F(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = MenuSinePosition7F(cpu.db, cpu.x, &p);
     cpu.x = rd16((uint32_t)cpu.db << 16 | 0x11F9);
     cpu.p = p;
 }
@@ -473,4 +505,1616 @@ void abi_MenuActorSetTiles(void)
 
     cpu.a = MenuActorSetTiles(cpu.db, cpu.x, cpu.a, cpu.y, &p);
     cpu.p = p;
+}
+
+/*
+ * @routine 0B:E23D MenuActorAnimateFrame
+ * WHAT IT DOES: Steps object X's sprite animation once a frame, or four
+ * times when the fast animation flag $18FD is set.
+ * HOW: MenuActorAnimate, then three more calls when $18FD is not zero.
+ * Entry: M 16-bit, X 16-bit, D = $0000; X = the object being run ($11F9).
+ * Exit: flag clear: A = 0; Z set, N clear; X, C, V from the one step.
+ * Flag set: A, X, P from the last step.
+ */
+uint16_t MenuActorAnimateFrame(uint8_t bank, uint16_t *x, uint8_t *p)
+{
+    uint16_t a;
+    int i;
+
+    MenuActorAnimate(bank, *x, x, p);
+    a = rd16(0x0018FD);
+    if (!a) {
+        *p = nz16(*p, a);
+        return a;
+    }
+    for (i = 0; i < 3; i++)
+        a = MenuActorAnimate(bank, *x, x, p);
+    return a;
+}
+
+void abi_MenuActorAnimateFrame(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = MenuActorAnimateFrame(cpu.db, &cpu.x, &p);
+    cpu.p = p;
+}
+
+/* Starts animation a on record rec unless it is already the one playing:
+   CMP of a with +$14; on a change +$14 = a and the entry offset (+$16) and
+   frame timer (+$18) start from 0. */
+static void start_animation(uint16_t rec, uint16_t a, uint8_t *p)
+{
+    *p = cmp16(*p, a, rd16((uint16_t)(rec + 0x14)));
+    if (*p & P_Z)
+        return;
+    wr16((uint16_t)(rec + 0x14), a);
+    wr16((uint16_t)(rec + 0x16), 0x0000);
+    wr16((uint16_t)(rec + 0x18), 0x0000);
+}
+
+/*
+ * @routine 0B:C82F MenuSetPairAnimations
+ * WHAT IT DOES: Starts animation pair A of the table at $0B:C862 on the
+ * objects of kinds 3 and 5: the pair's second word on kind 5, its first on
+ * kind 3.
+ * HOW: Both words are pushed, then pulled in reverse after each
+ * MenuActorFind; an object already playing the animation is left alone.
+ * Entry: M 16-bit, X 16-bit, D = $0000; A = pair index. Exit: A = the
+ * pair's first word; X = $11F9; Y from the second search; N, Z from X; C
+ * from the last compare.
+ */
+uint16_t MenuSetPairAnimations(uint8_t bank, uint16_t pair, uint16_t *x, uint16_t *y, uint8_t *p)
+{
+    uint16_t i = (uint16_t)(pair << 2), first = rd16(0x0BC862 + i), second = rd16(0x0BC864 + i);
+
+    *p = (uint8_t)((*p & ~P_C) | ((pair << 1) & 0x8000 ? P_C : 0));
+    MenuActorFind(bank, 0x0005, x, y, p);
+    start_animation(*x, second, p);
+    MenuActorFind(bank, 0x0003, x, y, p);
+    start_animation(*x, first, p);
+    *x = rd16(dbw(bank, CURRENT));
+    *p = nz16(*p, *x);
+    return first;
+}
+
+void abi_MenuSetPairAnimations(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = MenuSetPairAnimations(cpu.db, cpu.a, &cpu.x, &cpu.y, &p);
+    cpu.p = p;
+}
+
+/*
+ * @routine 0B:C164 MenuChoiceAnimations
+ * WHAT IT DOES: Starts on each of the three objects whose kinds are listed
+ * at $0B:C15E the animation that shows its choice: for choice i, the word
+ * at $0B:C1B0 + $18CD[i] * 8 + $18E5[i] * 2.
+ * HOW: i runs over 0, 2, 4, kept on the stack and at $11E3; the table
+ * offset, then the animation, is built at $11E5. An object already playing
+ * the animation is left alone.
+ * Entry: M 16-bit, X 16-bit, D = $0000. Exit: A = the last animation; X =
+ * $11F9; Y from the last search; N, Z from X; C set; V from the last add of
+ * $18E5[i] * 2.
+ */
+uint16_t MenuChoiceAnimations(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
+{
+    uint16_t i, a = 0, s, anim = 0;
+    unsigned sum;
+
+    for (i = 0; i != 6; i = (uint16_t)(i + 2)) {
+        wr16(dbw(bank, 0x11E3), i);
+        wr16(dbw(bank, 0x11E5), 0x0000);
+        a = (uint16_t)(rd16(0x0018CD + i) << 3);
+        wr16(dbw(bank, 0x11E5), (uint16_t)(a + rd16(dbw(bank, 0x11E5))));
+        a = (uint16_t)(rd16(0x0018E5 + i) << 1);
+        s = rd16(dbw(bank, 0x11E5));
+        sum = (unsigned)a + s;
+        *p = (uint8_t)((*p & ~P_V) | ((~(a ^ s) & (a ^ (uint16_t)sum) & 0x8000) ? P_V : 0));
+        anim = rd16(0x0BC1B0 + (uint16_t)sum);
+        wr16(dbw(bank, 0x11E5), anim);
+        MenuActorFind(bank, rd16(0x0BC15E + rd16(dbw(bank, 0x11E3))), x, y, p);
+        anim = rd16(dbw(bank, 0x11E5));
+        start_animation(*x, anim, p);
+    }
+    *p |= P_C;
+    *x = rd16(dbw(bank, CURRENT));
+    *p = nz16(*p, *x);
+    return anim;
+}
+
+void abi_MenuChoiceAnimations(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = MenuChoiceAnimations(cpu.db, &cpu.x, &cpu.y, &p);
+    cpu.p = p;
+}
+
+/* Sets animation a on record rec unless it already has it, comparing the
+   field with a (the reverse of start_animation's compare). */
+static void start_animation_rev(uint16_t rec, uint16_t a, uint8_t *p)
+{
+    *p = cmp16(*p, rd16((uint16_t)(rec + 0x14)), a);
+    if (*p & P_Z)
+        return;
+    wr16((uint16_t)(rec + 0x14), a);
+    wr16((uint16_t)(rec + 0x16), 0x0000);
+    wr16((uint16_t)(rec + 0x18), 0x0000);
+}
+
+/*
+ * @routine 0B:C8BF MenuSlideInDone
+ * WHAT IT DOES: Once the sliding sprites' lowest position ($18C1) reaches
+ * $100: clears +$10 of the objects of kinds 4 and 5, starts animation $AE
+ * on kind 6 and $B8 on kind 7, and frees object X (the one being run).
+ * HOW: MenuActorsSet10 twice, MenuActorFind twice with X kept on the stack,
+ * then MenuActorFree with Y = its list offset at $11FB. An object already
+ * playing its animation is left alone.
+ * Entry: M 16-bit, X 16-bit, D = $0000; X = the object being run. Exit:
+ * not yet: A = $18C1; N, Z, C from the compare with $100. Done: as
+ * MenuActorFree, Y = $11FB, C from the last animation compare.
+ */
+int MenuSlideInDone(uint8_t bank, uint16_t rec, uint16_t *a, uint16_t *y, uint8_t *p)
+{
+    uint16_t x = rec;
+
+    *a = rd16(0x0018C1);
+    *p = cmp16(*p, *a, 0x0100);
+    if (!(*p & P_Z))
+        return 0;
+    MenuActorsSet10(bank, 0x0004, 0x0000, p);
+    MenuActorsSet10(bank, 0x0005, 0x0000, p);
+    MenuActorFind(bank, 0x0006, &x, y, p);
+    start_animation_rev(x, 0x00AE, p);
+    MenuActorFind(bank, 0x0007, &x, y, p);
+    start_animation_rev(x, 0x00B8, p);
+    *y = rd16(dbw(bank, 0x11FB));
+    *a = MenuActorFree(bank, rec, *y);
+    *p = (uint8_t)((*p & ~P_Z) | P_N);
+    return 1;
+}
+
+void abi_MenuSlideInDone(void)
+{
+    uint8_t p = cpu.p;
+
+    if (MenuSlideInDone(cpu.db, cpu.x, &cpu.a, &cpu.y, &p))
+        cpu.x = 0xFFFF;
+    cpu.p = p;
+}
+
+/*
+ * @routine 0B:CA67 MenuChoiceObjectUpdate
+ * WHAT IT DOES: Keeps object X, the choice numbered +$20 of a four-way
+ * selection, in step with the selection ($18C3, previously $18C5): it gets
+ * palette $0200 when the selection has just left it and $0A00 when it has
+ * just come to it; arriving there, or resting on it once the selection's
+ * countdown $18F5 is 0, sets +$22 = 1 and +$0A = 0 (unless +$10 is
+ * negative), and arriving also restarts the countdown at $FF.
+ * HOW: Three compare chains on the 16-bit words.
+ * Entry: M 16-bit, X 16-bit, D = $0000; X = record. Exit: A = the last value
+ * loaded; N, Z from it or the last compare; C from the last compare; V
+ * unchanged.
+ */
+uint16_t MenuChoiceObjectUpdate(uint16_t rec, uint8_t *p)
+{
+    uint16_t a, slot = (uint16_t)(rec + 0x20);
+
+    a = rd16(0x0018C5);
+    *p = cmp16(*p, a, rd16(slot));
+    if (*p & P_Z) {
+        *p = cmp16(*p, a, rd16(0x0018C3));
+        if (!(*p & P_Z))
+            wr16((uint16_t)(rec + 0x24), 0x0200);
+    }
+    a = rd16(0x0018C3);
+    *p = cmp16(*p, a, rd16(slot));
+    if (*p & P_Z) {
+        *p = cmp16(*p, a, rd16(0x0018C5));
+        if (!(*p & P_Z)) {
+            a = 0x0A00;
+            wr16((uint16_t)(rec + 0x24), a);
+            a = rd16((uint16_t)(rec + 0x10));
+            *p = nz16(*p, a);
+            if (!(a & 0x8000)) {
+                a = 0x0001;
+                wr16((uint16_t)(rec + 0x22), a);
+                wr16((uint16_t)(rec + 0x0A), 0x0000);
+                a = 0x00FF;
+                wr16(0x0018F5, a);
+            }
+        }
+    }
+    a = rd16(0x0018F5);
+    *p = nz16(*p, a);
+    if (a)
+        return a;
+    a = rd16(0x0018C3);
+    *p = cmp16(*p, a, rd16(slot));
+    if (!(*p & P_Z))
+        return a;
+    a = rd16((uint16_t)(rec + 0x10));
+    *p = nz16(*p, a);
+    if (a & 0x8000)
+        return a;
+    a = 0x0001;
+    *p = nz16(*p, a);
+    wr16((uint16_t)(rec + 0x22), a);
+    wr16((uint16_t)(rec + 0x0A), 0x0000);
+    return a;
+}
+
+void abi_MenuChoiceObjectUpdate(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = MenuChoiceObjectUpdate(cpu.x, &p);
+    cpu.p = p;
+}
+
+uint16_t MenuRowPosition(uint16_t rec, uint8_t *p);
+
+/* Sets the palette field (bits 9-11) of the sprite entry at $7F:135A + x
+   to 5. */
+static uint16_t entry_palette5(uint16_t x, uint8_t *p)
+{
+    uint16_t w = (uint16_t)((rd16(0x7F135A + x) & 0xF1FF) | 0x0A00);
+
+    wr16(0x7F135A + x, w);
+    *p = nz16(*p, w);
+    return w;
+}
+
+/*
+ * @routine 0B:C47C MenuRowPalette5
+ * WHAT IT DOES: Gives the two sprite entries at the row position of the
+ * kind 9 object (MenuRowPosition) palette 5.
+ * HOW: MenuActorFind for kind 9; each entry's attribute word keeps all but
+ * bits 9-11 and takes $0A00; the second entry is 8 bytes on.
+ * Entry: M 16-bit, X 16-bit, D = $0000. Exit: A = the second word written;
+ * X = the position + 8; Y from the search; N, Z from A; C, V from the add
+ * of 8.
+ */
+uint16_t MenuRowPalette5(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
+{
+    uint16_t pos, n;
+
+    MenuActorFind(bank, 0x0009, x, y, p);
+    pos = MenuRowPosition(*x, p);
+    entry_palette5(pos, p);
+    n = (uint16_t)(pos + 8);
+    *p = (uint8_t)((*p & ~(P_C | P_V)) | (n < pos ? P_C : 0) | ((~(pos ^ 8) & (pos ^ n) & 0x8000) ? P_V : 0));
+    *x = n;
+    return entry_palette5(n, p);
+}
+
+void abi_MenuRowPalette5(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = MenuRowPalette5(cpu.db, &cpu.x, &cpu.y, &p);
+    cpu.p = p;
+}
+
+/*
+ * @routine 0B:C4A9 MenuRowBlinkSettings
+ * WHAT IT DOES: Blinks the two sprite entries at object X's row position
+ * (MenuRowPosition, MenuActorBlink on each), then shows the three saved
+ * settings $18EF, $18F1 and $18F3 as tiles in the kind 9 object's sprite
+ * entries $2A, $1A and $0A (MenuActorSetTiles).
+ * HOW: The entry offset is kept at $11E7, the second 8 bytes on.
+ * Entry: M 16-bit, X 16-bit, D = $0000; X = record. Exit: A and P as the
+ * last MenuActorSetTiles; X from the search; Y = $000A.
+ */
+uint16_t MenuRowBlinkSettings(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
+{
+    uint16_t pos = MenuRowPosition(*x, p), a;
+
+    wr16(dbw(bank, 0x11E7), pos);
+    MenuActorBlink(bank, x);
+    wr16(dbw(bank, 0x11E7), (uint16_t)(rd16(dbw(bank, 0x11E7)) + 8));
+    MenuActorBlink(bank, x);
+    MenuActorFind(bank, 0x0009, x, y, p);
+    MenuActorSetTiles(bank, *x, rd16(0x0018EF), 0x002A, p);
+    MenuActorSetTiles(bank, *x, rd16(0x0018F1), 0x001A, p);
+    *y = 0x000A;
+    a = MenuActorSetTiles(bank, *x, rd16(0x0018F3), 0x000A, p);
+    return a;
+}
+
+void abi_MenuRowBlinkSettings(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = MenuRowBlinkSettings(cpu.db, &cpu.x, &cpu.y, &p);
+    cpu.p = p;
+}
+
+void VramDmaQueueAdd(void);
+
+/* Queues $40 bytes from $7F:src to VRAM word address dest through the
+   transfer request words at $16B1-$16B7. */
+static void queue_frame_row(uint32_t b, uint16_t dest, uint16_t src)
+{
+    wr16(b | 0x16B7, dest);
+    wr16(b | 0x16B3, src);
+    wr16(b | 0x16B1, 0x0040);
+    wr16(b | 0x16B5, 0x007F);
+    VramDmaQueueAdd();
+}
+
+/*
+ * @routine 0B:CBC3 MenuActorUploadFrames
+ * WHAT IT DOES: Shows animation frame A on every sprite of object X's
+ * group: for each sprite, its graphics (two rows of $40 bytes in bank $7F,
+ * the second $200 bytes after the first) are queued to its VRAM slot and
+ * the slot + $100, and bit 15 of the frame word becomes bit 15 (vertical
+ * flip) of the sprite's attribute word.
+ * HOW: The group's sprite count is the word at $7F:1356 + +$12, its entries
+ * follow at $7F:135A. Per sprite i (table offset $11E3, set by the caller):
+ * VRAM slot $0B:CCBC[i], graphics base $0B:CD14[i]; the frame word comes
+ * from $0B:CC7C at $11DF = A * 2, which steps by 2 per sprite, wrapping at
+ * $40. $11E1 holds the slot (its high byte incremented for the second
+ * row), $11E5 the entry offset, $11E7 the flip bit, $11E9 the base.
+ * Entry: M 16-bit, X 16-bit, D = $0000; X = record, A = frame, $11E3 =
+ * first table offset. Exit: A = the entry offset past the last sprite; X =
+ * $11F9; Y = $FFFF; N, Z from X; C, V from the last add of 8.
+ */
+uint16_t MenuActorUploadFrames(uint8_t bank, uint16_t rec, uint16_t frame, uint8_t *p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t n, v, src, e, s = 0;
+
+    wr16(b | 0x11DF, (uint16_t)(frame << 1));
+    e = rd16((uint16_t)(rec + 0x12));
+    n = rd16(0x7F1356 + e);
+    wr16(b | 0x11E5, (uint16_t)(e + 2));
+    do {
+        wr16(b | 0x11E1, rd16(0x0BCCBC + rd16(b | 0x11E3)));
+        wr16(b | 0x11E9, rd16(0x0BCD14 + rd16(b | 0x11E3)));
+        v = rd16(0x0BCC7C + rd16(b | 0x11DF));
+        wr16(b | 0x11E7, v & 0x8000);
+        e = rd16(b | 0x11E5);
+        wr16(0x7F135A + e, (uint16_t)((rd16(0x7F135A + e) & 0x7FFF) | rd16(b | 0x11E7)));
+        src = (uint16_t)((v & 0x7FFF) + rd16(b | 0x11E9));
+        queue_frame_row(b, rd16(b | 0x11E1), src);
+        wr8(b | 0x11E2, (uint8_t)(rd8(b | 0x11E2) + 1));
+        queue_frame_row(b, rd16(b | 0x11E1), (uint16_t)(src + 0x0200));
+        wr16(b | 0x11E3, (uint16_t)(rd16(b | 0x11E3) + 2));
+        wr16(b | 0x11DF, (uint16_t)(rd16(b | 0x11DF) + 2) & 0x003F);
+        e = rd16(b | 0x11E5);
+        s = (uint16_t)(e + 8);
+        *p = (uint8_t)((*p & ~(P_C | P_V)) | (s < e ? P_C : 0) | ((~(e ^ 8) & (e ^ s) & 0x8000) ? P_V : 0));
+        wr16(b | 0x11E5, s);
+        n = (uint16_t)(n - 1);
+    } while (!(n & 0x8000));
+    *p = nz16(*p, rd16(b | CURRENT));
+    return s;
+}
+
+void abi_MenuActorUploadFrames(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = MenuActorUploadFrames(cpu.db, cpu.x, cpu.a, &p);
+    cpu.x = rd16((uint32_t)cpu.db << 16 | CURRENT);
+    cpu.y = 0xFFFF;
+    cpu.p = p;
+}
+
+/*
+ * @routine 0B:D5F6 MenuActorAnimateOnly
+ * WHAT IT DOES: The handler of an object that only animates.
+ * HOW: MenuActorAnimateFrame.
+ * Entry: as MenuActorAnimateFrame. Exit: as MenuActorAnimateFrame.
+ */
+uint16_t MenuActorAnimateOnly(uint8_t bank, uint16_t *x, uint8_t *p)
+{
+    return MenuActorAnimateFrame(bank, x, p);
+}
+
+void abi_MenuActorAnimateOnly(void)
+{
+    abi_MenuActorAnimateFrame();
+}
+
+/* +$02 = top - $18C1 (SEC; SBC: C, V, N, Z from it), then the animation
+   step. */
+static uint16_t follow_slide(uint8_t bank, uint16_t top, uint16_t *x, uint8_t *p)
+{
+    uint16_t m = rd16(0x0018C1), d = (uint16_t)(top - m);
+
+    *p = (uint8_t)((nz16(*p, d) & ~(P_C | P_V)) | (top >= m ? P_C : 0) | (((top ^ m) & (top ^ d) & 0x8000) ? P_V : 0));
+    wr16((uint16_t)(*x + 0x02), d);
+    return MenuActorAnimateFrame(bank, x, p);
+}
+
+/*
+ * @routine 0B:C985 MenuActorFollowSlide1CF
+ * WHAT IT DOES: The handler of an object that moves with the sliding
+ * sprites: +$02 (its position) = $1CF - $18C1, then its animation step.
+ * HOW: A 16-bit subtraction, then MenuActorAnimateFrame.
+ * Entry: M 16-bit, X 16-bit, D = $0000; X = record. Exit: as
+ * MenuActorAnimateFrame; C and V from the subtraction when no step changed
+ * them.
+ */
+uint16_t MenuActorFollowSlide1CF(uint8_t bank, uint16_t *x, uint8_t *p)
+{
+    return follow_slide(bank, 0x01CF, x, p);
+}
+
+void abi_MenuActorFollowSlide1CF(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = MenuActorFollowSlide1CF(cpu.db, &cpu.x, &p);
+    cpu.p = p;
+}
+
+/*
+ * @routine 0B:C993 MenuActorFollowSlide194
+ * WHAT IT DOES: As MenuActorFollowSlide1CF, with +$02 = $194 - $18C1.
+ * HOW: As MenuActorFollowSlide1CF.
+ * Entry: as MenuActorFollowSlide1CF. Exit: as MenuActorFollowSlide1CF.
+ */
+uint16_t MenuActorFollowSlide194(uint8_t bank, uint16_t *x, uint8_t *p)
+{
+    return follow_slide(bank, 0x0194, x, p);
+}
+
+void abi_MenuActorFollowSlide194(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = MenuActorFollowSlide194(cpu.db, &cpu.x, &p);
+    cpu.p = p;
+}
+
+/*
+ * @routine 0B:CD6C MenuActorAnimateThenExit
+ * WHAT IT DOES: The handler of an object that animates for +$0A + 1 frames
+ * and then asks the menu to exit ($11EB = 1) on every later frame.
+ * HOW: 16-bit registers forced; MenuActorAnimateFrame; a memory decrement
+ * of +$0A.
+ * Entry: D = $0000; X = record. Exit: A = 1 when the count is negative,
+ * otherwise as MenuActorAnimateFrame; N, Z from the count or A; M 16-bit,
+ * X 16-bit.
+ */
+uint16_t MenuActorAnimateThenExit(uint8_t bank, uint16_t *x, uint8_t *p)
+{
+    uint16_t a, c;
+
+    *p &= (uint8_t)~(P_M | P_X);
+    a = MenuActorAnimateFrame(bank, x, p);
+    c = (uint16_t)(rd16((uint16_t)(*x + 0x0A)) - 1);
+    wr16((uint16_t)(*x + 0x0A), c);
+    *p = nz16(*p, c);
+    if (!(c & 0x8000))
+        return a;
+    a = 0x0001;
+    wr16(dbw(bank, 0x11EB), a);
+    *p = nz16(*p, a);
+    return a;
+}
+
+void abi_MenuActorAnimateThenExit(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = MenuActorAnimateThenExit(cpu.db, &cpu.x, &p);
+    cpu.p = p;
+}
+
+uint16_t MenuChoiceUpDown(uint8_t bank);
+
+/*
+ * @routine 0B:C872 MenuSlideInHandler
+ * WHAT IT DOES: The handler that slides the selection sprites in: the angle
+ * +$0A falls by 3 a frame to 0 and sets the sprites' height
+ * (MenuSinePosition7F); once it is below $60 the selection can be moved
+ * (MenuChoiceUpDown); at 0 the handler becomes $B952.
+ * HOW: A negative angle is clamped to 0 before it is stored; the fields
+ * are read again through $11F9, which MenuSinePosition7F leaves in X.
+ * Entry: M 16-bit, X 16-bit, D = $0000; X = record. Exit: at 0: A = $B952;
+ * N set, Z clear. Otherwise A = +$0A and P from the compare with $60, or
+ * as MenuChoiceUpDown (C clear); X = $11F9.
+ */
+uint16_t MenuSlideInHandler(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
+{
+    uint16_t a = (uint16_t)(rd16((uint16_t)(*x + 0x0A)) - 3);
+
+    if (a & 0x8000)
+        a = 0x0000;
+    wr16((uint16_t)(*x + 0x0A), a);
+    MenuSinePosition7F(bank, *x, p);
+    *x = rd16(dbw(bank, CURRENT));
+    a = rd16((uint16_t)(*x + 0x0A));
+    if (!a) {
+        a = 0xB952;
+        wr16((uint16_t)(*x + 0x08), a);
+        *p = nz16(*p, a);
+        return a;
+    }
+    *p = cmp16(*p, a, 0x0060);
+    if (*p & P_C)
+        return a;
+    a = MenuChoiceUpDown(bank);
+    *y = rd16(dbw(bank, 0x118B));
+    *p = nz16(*p, a);
+    return a;
+}
+
+void abi_MenuSlideInHandler(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = MenuSlideInHandler(cpu.db, &cpu.x, &cpu.y, &p);
+    cpu.p = p;
+}
+
+uint16_t MenuSpritePalettesScale(uint8_t bank, uint16_t factor);
+
+/*
+ * @routine 0B:C896 MenuFadeInHandler
+ * WHAT IT DOES: The handler that fades sprite palettes 5 and 1 as +$0A
+ * counts down by 2 (MenuSpritePalettesScale with the count); at 0 it sets
+ * +$10 of kind 2 objects to $FFFF and of kind 3 objects to 0, and moves on
+ * to handler $C8BF (MenuSlideInDone) with +$1E = 30.
+ * HOW: MenuActorsSet10 twice for the last step.
+ * Entry: M 16-bit, X 16-bit, D = $0000; X = record. Exit: fading: as
+ * MenuSpritePalettesScale. Done: A = $1E; Y = $FFFE; N, Z clear; C from
+ * the last compare.
+ */
+uint16_t MenuFadeInHandler(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
+{
+    uint16_t a = rd16((uint16_t)(*x + 0x0A));
+
+    if (a) {
+        a = (uint16_t)(a - 2);
+        wr16((uint16_t)(*x + 0x0A), a);
+        a = MenuSpritePalettesScale(bank, a);
+        *x = rd16(dbw(bank, CURRENT));
+        *y = 0xFFFF;
+        *p = nz16(*p, *x);
+        return a;
+    }
+    MenuActorsSet10(bank, 0x0002, 0xFFFF, p);
+    MenuActorsSet10(bank, 0x0003, 0x0000, p);
+    *y = 0xFFFE;
+    wr16((uint16_t)(*x + 0x08), 0xC8BF);
+    a = 0x001E;
+    wr16((uint16_t)(*x + 0x1E), a);
+    *p = nz16(*p, a);
+    return a;
+}
+
+void abi_MenuFadeInHandler(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = MenuFadeInHandler(cpu.db, &cpu.x, &cpu.y, &p);
+    cpu.p = p;
+}
+
+/*
+ * @routine 0B:CB81 MenuChoiceObjectFrames
+ * WHAT IT DOES: Every +$1C + 1 frames (counted in +$1E), applies object X's
+ * pending palette and, while it is selected (+$22), steps its frame count
+ * +$0A down through 31-1 (from 2 when +$10 is negative), showing frame
+ * +$0A on its sprites (MenuActorUploadFrames); the count reaching 0, or 1
+ * when +$10 is negative, ends the selection (+$22 = +$0A = 0).
+ * HOW: Memory decrement of +$1E; MenuActorApplyPalette; the count kept to
+ * 5 bits. The fields after the frame upload are read through $11F9, which
+ * it leaves in X.
+ * Entry: M 16-bit, X 16-bit, D = $0000; X = record; $11E3 = the first
+ * frame table offset. Exit: waiting: A unchanged; N, Z from +$1E.
+ * Otherwise A and P from the last load, compare or call; X = $11F9 after
+ * a frame upload or an end.
+ */
+uint16_t MenuChoiceObjectFrames(uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y, uint8_t *p)
+{
+    uint16_t t = (uint16_t)(rd16((uint16_t)(*x + 0x1E)) - 1);
+
+    wr16((uint16_t)(*x + 0x1E), t);
+    if (!(t & 0x8000)) {
+        *p = nz16(*p, t);
+        return a;
+    }
+    wr16((uint16_t)(*x + 0x1E), rd16((uint16_t)(*x + 0x1C)));
+    MenuActorApplyPalette(bank, *x, y, p);
+    a = rd16((uint16_t)(*x + 0x22));
+    *p = nz16(*p, a);
+    if (!a)
+        return a;
+    a = rd16((uint16_t)(*x + 0x10));
+    if (a & 0x8000) {
+        a = 0x0002;
+        wr16((uint16_t)(*x + 0x0A), a);
+    }
+    a = (uint16_t)(rd16((uint16_t)(*x + 0x0A)) - 1) & 0x001F;
+    wr16((uint16_t)(*x + 0x0A), a);
+    *p = nz16(*p, a);
+    if (a) {
+        a = MenuActorUploadFrames(bank, *x, a, p);
+        *x = rd16(dbw(bank, CURRENT));
+        *y = 0xFFFF;
+        a = rd16((uint16_t)(*x + 0x10));
+        *p = nz16(*p, a);
+        if (!(a & 0x8000))
+            return a;
+        a = rd16((uint16_t)(*x + 0x0A));
+        *p = cmp16(*p, a, 0x0001);
+        if (!(*p & P_Z))
+            return a;
+    }
+    *x = rd16(dbw(bank, CURRENT));
+    *p = nz16(*p, *x);
+    wr16((uint16_t)(*x + 0x22), 0x0000);
+    wr16((uint16_t)(*x + 0x0A), 0x0000);
+    return a;
+}
+
+void abi_MenuChoiceObjectFrames(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = MenuChoiceObjectFrames(cpu.db, cpu.a, &cpu.x, &cpu.y, &p);
+    cpu.p = p;
+}
+
+/* A choice object's frame: MenuChoiceObjectUpdate, $11E3 = the first frame
+   table offset, MenuChoiceObjectFrames. The offset 0 form stores it with
+   STZ, leaving A as the update returned it. */
+static uint16_t choice_object(uint8_t bank, uint16_t first, uint16_t *x, uint16_t *y, uint8_t *p)
+{
+    uint16_t a = MenuChoiceObjectUpdate(*x, p);
+
+    if (first) {
+        a = first;
+        *p = nz16(*p, a);
+    }
+    wr16(dbw(bank, 0x11E3), first);
+    return MenuChoiceObjectFrames(bank, a, x, y, p);
+}
+
+/*
+ * @routine 0B:CAEE MenuChoiceObject00
+ * WHAT IT DOES: The handler of a choice object whose frames start at frame
+ * table offset 0: MenuChoiceObjectUpdate, then MenuChoiceObjectFrames.
+ * HOW: $11E3 = 0 between the two.
+ * Entry: M 16-bit, X 16-bit, D = $0000; X = record. Exit: as
+ * MenuChoiceObjectFrames.
+ */
+uint16_t MenuChoiceObject00(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
+{
+    return choice_object(bank, 0x0000, x, y, p);
+}
+
+void abi_MenuChoiceObject00(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = MenuChoiceObject00(cpu.db, &cpu.x, &cpu.y, &p);
+    cpu.p = p;
+}
+
+/*
+ * @routine 0B:CB06 MenuChoiceObject12
+ * WHAT IT DOES: As MenuChoiceObject00, the frames starting at offset $12.
+ * HOW: As MenuChoiceObject00.
+ * Entry: as MenuChoiceObject00. Exit: as MenuChoiceObject00.
+ */
+uint16_t MenuChoiceObject12(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
+{
+    return choice_object(bank, 0x0012, x, y, p);
+}
+
+void abi_MenuChoiceObject12(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = MenuChoiceObject12(cpu.db, &cpu.x, &cpu.y, &p);
+    cpu.p = p;
+}
+
+/*
+ * @routine 0B:CB1B MenuChoiceObject24
+ * WHAT IT DOES: As MenuChoiceObject00, the frames starting at offset $24.
+ * HOW: As MenuChoiceObject00.
+ * Entry: as MenuChoiceObject00. Exit: as MenuChoiceObject00.
+ */
+uint16_t MenuChoiceObject24(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
+{
+    return choice_object(bank, 0x0024, x, y, p);
+}
+
+void abi_MenuChoiceObject24(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = MenuChoiceObject24(cpu.db, &cpu.x, &cpu.y, &p);
+    cpu.p = p;
+}
+
+/*
+ * @routine 0B:CB74 MenuChoiceObject48
+ * WHAT IT DOES: As MenuChoiceObject00, the frames starting at offset $48.
+ * HOW: As MenuChoiceObject00.
+ * Entry: as MenuChoiceObject00. Exit: as MenuChoiceObject00.
+ */
+uint16_t MenuChoiceObject48(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
+{
+    return choice_object(bank, 0x0048, x, y, p);
+}
+
+void abi_MenuChoiceObject48(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = MenuChoiceObject48(cpu.db, &cpu.x, &cpu.y, &p);
+    cpu.p = p;
+}
+
+/*
+ * @routine 0B:CB01 MenuChoiceObject12Start
+ * WHAT IT DOES: First frame of a MenuChoiceObject12 object: makes that its
+ * handler and runs it.
+ * HOW: +$08 = $CB06, then falls through into MenuChoiceObject12.
+ * Entry: as MenuChoiceObject12. Exit: as MenuChoiceObject12.
+ */
+uint16_t MenuChoiceObject12Start(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
+{
+    wr16((uint16_t)(*x + 0x08), 0xCB06);
+    return MenuChoiceObject12(bank, x, y, p);
+}
+
+void abi_MenuChoiceObject12Start(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = MenuChoiceObject12Start(cpu.db, &cpu.x, &cpu.y, &p);
+    cpu.p = p;
+}
+
+void Hang(void);
+
+/*
+ * @routine 0B:E1C5 MenuActorCopyGroup
+ * WHAT IT DOES: Gives object X ($11F9) its own copy of the sprite group its
+ * animation starts with: the group (a count word, then count + 1 entries
+ * of 8 bytes) is copied to the next free place in the group area, whose
+ * offset becomes the object's +$12. A copy that would reach $2C81 stops the
+ * game (Hang); no script gets there.
+ * HOW: The source group is the word at $0B:AB62 + +$14. $11DF = the size
+ * in bytes, (count + 1) * 8 + 2; $11E1 the source offset, $11E3 the
+ * destination; the next free offset $120B advances by the size. Copied a
+ * word at a time, $11DF counting down by 2.
+ * Entry: M 16-bit, X 16-bit, D = $0000. Exit: A = the last word copied; X =
+ * $11F9; N, Z from X; C clear; V from the add of the size.
+ */
+uint16_t MenuActorCopyGroup(uint8_t bank, uint8_t *p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t x = rd16(b | CURRENT), src, dst, size, a = 0;
+    unsigned s;
+
+    src = rd16(0x0BAB62 + rd16((uint16_t)(x + 0x14)));
+    size = (uint16_t)(((uint16_t)(rd16(0x7F1356 + src) + 1) << 3) + 2);
+    wr16(b | 0x11DF, size);
+    wr16(b | 0x11E1, src);
+    x = rd16(b | CURRENT);
+    dst = rd16(b | 0x120B);
+    wr16((uint16_t)(x + 0x12), dst);
+    wr16(b | 0x11E3, dst);
+    s = (unsigned)dst + rd16(b | 0x11DF);
+    *p = (uint8_t)((*p & ~P_V) | ((~(dst ^ size) & (dst ^ (uint16_t)s) & 0x8000) ? P_V : 0));
+    if ((uint16_t)s >= 0x2C81)
+        Hang();
+    *p &= (uint8_t)~P_C;
+    wr16(b | 0x120B, (uint16_t)s);
+    do {
+        a = rd16(0x7F1356 + rd16(b | 0x11E1));
+        wr16(0x7F1356 + rd16(b | 0x11E3), a);
+        wr16(b | 0x11E1, (uint16_t)(rd16(b | 0x11E1) + 2));
+        wr16(b | 0x11E3, (uint16_t)(rd16(b | 0x11E3) + 2));
+        wr16(b | 0x11DF, (uint16_t)(rd16(b | 0x11DF) - 2));
+    } while (rd16(b | 0x11DF));
+    *p = nz16(*p, rd16(b | CURRENT));
+    return a;
+}
+
+void abi_MenuActorCopyGroup(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = MenuActorCopyGroup(cpu.db, &p);
+    cpu.x = rd16((uint32_t)cpu.db << 16 | CURRENT);
+    cpu.p = p;
+}
+
+uint16_t FrameByteWritePush(uint8_t bank, uint16_t addr, uint8_t value);
+
+/* $18F9 = v, and COLDATA = v on all three components in the next vertical
+   blank (FrameByteWritePush). Returns A as the original leaves it: the
+   high byte of v and the COLDATA value. */
+static uint16_t fixed_colour_set(uint8_t bank, uint16_t v)
+{
+    uint8_t c = (uint8_t)(v | 0xE0);
+
+    wr16(0x0018F9, v);
+    FrameByteWritePush(bank, (uint16_t)COLDATA, c);
+    return (uint16_t)((v & 0xFF00) | c);
+}
+
+/*
+ * @routine 0B:C90F MenuFixedColourDown
+ * WHAT IT DOES: Steps the fixed colour's intensity $18F9 down by 2 toward 0
+ * (not below 0) and queues it to COLDATA for all three components.
+ * HOW: Nothing happens at 0; otherwise fixed_colour_set, with X kept on the
+ * stack around FrameByteWritePush.
+ * Entry: M 16-bit, X 16-bit. Exit: at 0: A = 0; Z set, N clear. Otherwise
+ * A = the COLDATA value (high byte 0); X unchanged; N, Z from X; M 16-bit,
+ * X 16-bit. C and V unchanged.
+ */
+uint16_t MenuFixedColourDown(uint8_t bank, uint16_t x, uint8_t *p)
+{
+    uint16_t v = rd16(0x0018F9);
+
+    if (!v) {
+        *p = nz16(*p, v);
+        return v;
+    }
+    v = (uint16_t)(v - 2);
+    if (v & 0x8000)
+        v = 0x0000;
+    *p = nz16(*p, x);
+    return fixed_colour_set(bank, v);
+}
+
+void abi_MenuFixedColourDown(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = MenuFixedColourDown(cpu.db, cpu.x, &p);
+    cpu.p = (uint8_t)(p & ~(P_M | P_X));
+}
+
+/*
+ * @routine 0B:C934 MenuFixedColourUp
+ * WHAT IT DOES: Steps the fixed colour's intensity $18F9 up by 2 toward $1F
+ * (not above it) and queues it to COLDATA for all three components.
+ * HOW: Nothing happens at $1F; otherwise fixed_colour_set, with X kept on
+ * the stack around FrameByteWritePush.
+ * Entry: M 16-bit, X 16-bit. Exit: at $1F: A = $1F; Z, C set, N clear.
+ * Otherwise A = the COLDATA value (high byte 0); X unchanged; N, Z from X;
+ * C = (the raised value >= $1F); M 16-bit, X 16-bit.
+ */
+uint16_t MenuFixedColourUp(uint8_t bank, uint16_t x, uint8_t *p)
+{
+    uint16_t v = rd16(0x0018F9);
+
+    *p = cmp16(*p, v, 0x001F);
+    if (*p & P_Z)
+        return v;
+    v = (uint16_t)(v + 2);
+    *p = cmp16(*p, v, 0x001F);
+    if (*p & P_C)
+        v = 0x001F;
+    *p = nz16(*p, x);
+    return fixed_colour_set(bank, v);
+}
+
+void abi_MenuFixedColourUp(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = MenuFixedColourUp(cpu.db, cpu.x, &p);
+    cpu.p = (uint8_t)(p & ~(P_M | P_X));
+}
+
+/*
+ * @routine 0B:C95F MenuFadeUpHandler
+ * WHAT IT DOES: The handler that raises the fixed colour each frame
+ * (MenuFixedColourUp) until the sliding sprites' lowest position $18C1 is
+ * back at $A8; then it sets +$10 of kind 3 objects to $FFFF and of kind 2
+ * objects to 0 and moves on to handler $C9C4 with +$0A = 0.
+ * HOW: MenuActorsSet10 around the handler change.
+ * Entry: M 16-bit, X 16-bit, D = $0000; X = record. Exit: waiting: A =
+ * $18C1; N, Z, C from the compare with $A8. Done: A as MenuActorsSet10;
+ * Y = $FFFE; N, Z from X; C from its last compare.
+ */
+uint16_t MenuFadeUpHandler(uint8_t bank, uint16_t x, uint16_t *y, uint8_t *p)
+{
+    uint16_t a;
+
+    MenuFixedColourUp(bank, x, p);
+    a = rd16(0x0018C1);
+    *p = cmp16(*p, a, 0x00A8);
+    if (!(*p & P_Z))
+        return a;
+    MenuActorsSet10(bank, 0x0003, 0xFFFF, p);
+    wr16((uint16_t)(x + 0x08), 0xC9C4);
+    wr16((uint16_t)(x + 0x0A), 0x0000);
+    a = MenuActorsSet10(bank, 0x0002, 0x0000, p);
+    *y = 0xFFFE;
+    *p = nz16(*p, x);
+    return a;
+}
+
+void abi_MenuFadeUpHandler(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = MenuFadeUpHandler(cpu.db, cpu.x, &cpu.y, &p);
+    cpu.p = p;
+}
+
+/*
+ * @routine 0B:C9C4 MenuFadeOutHandler
+ * WHAT IT DOES: The handler that keeps raising the fixed colour
+ * (MenuFixedColourUp) while +$0A counts up by 2 to $20, scaling sprite
+ * palettes 5 and 1 by it (MenuSpritePalettesScale); at $20 it frees the
+ * object.
+ * HOW: MenuActorFree with Y = its list offset at $11FB.
+ * Entry: M 16-bit, X 16-bit, D = $0000; X = record. Exit: counting: as
+ * MenuSpritePalettesScale. At $20: as MenuActorFree, Y = $11FB, C set.
+ */
+uint16_t MenuFadeOutHandler(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
+{
+    uint16_t a;
+
+    MenuFixedColourUp(bank, *x, p);
+    a = rd16((uint16_t)(*x + 0x0A));
+    *p = cmp16(*p, a, 0x0020);
+    if (*p & P_Z) {
+        *y = rd16(dbw(bank, 0x11FB));
+        a = MenuActorFree(bank, *x, *y);
+        *x = 0xFFFF;
+        *p = (uint8_t)((*p & ~P_Z) | P_N);
+        return a;
+    }
+    a = (uint16_t)(a + 2);
+    wr16((uint16_t)(*x + 0x0A), a);
+    a = MenuSpritePalettesScale(bank, a);
+    *x = rd16(dbw(bank, CURRENT));
+    *y = 0xFFFF;
+    *p = nz16(*p, *x);
+    return a;
+}
+
+void abi_MenuFadeOutHandler(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = MenuFadeOutHandler(cpu.db, &cpu.x, &cpu.y, &p);
+    cpu.p = p;
+}
+
+/* A choice object's first frame: its own sprite group (MenuActorCopyGroup)
+   and the handler `next`. */
+static void choice_start(uint8_t bank, uint16_t next, uint16_t *x, uint8_t *p)
+{
+    MenuActorCopyGroup(bank, p);
+    *x = rd16(dbw(bank, CURRENT));
+    wr16((uint16_t)(*x + 0x08), next);
+    *p = nz16(*p, next);
+}
+
+/*
+ * @routine 0B:CAE6 MenuChoiceObject00Start
+ * WHAT IT DOES: First frame of a MenuChoiceObject00 object: copies its
+ * sprite group (MenuActorCopyGroup), makes MenuChoiceObject00 its handler
+ * and runs it.
+ * HOW: +$08 = $CAEE, then falls through into MenuChoiceObject00.
+ * Entry: M 16-bit, X 16-bit, D = $0000. Exit: as MenuChoiceObject00.
+ */
+uint16_t MenuChoiceObject00Start(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
+{
+    choice_start(bank, 0xCAEE, x, p);
+    return MenuChoiceObject00(bank, x, y, p);
+}
+
+void abi_MenuChoiceObject00Start(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = MenuChoiceObject00Start(cpu.db, &cpu.x, &cpu.y, &p);
+    cpu.p = p;
+}
+
+/*
+ * @routine 0B:CAF8 MenuChoiceObject12Copy
+ * WHAT IT DOES: First frame of a MenuChoiceObject12 object: copies its
+ * sprite group (MenuActorCopyGroup) and makes MenuChoiceObject12Start
+ * ($CB01) its handler for the next frame.
+ * HOW: +$08 = $CB01.
+ * Entry: M 16-bit, X 16-bit, D = $0000. Exit: A = $CB01; X = $11F9; N set,
+ * Z clear; C clear.
+ */
+void MenuChoiceObject12Copy(uint8_t bank, uint16_t *x, uint8_t *p)
+{
+    choice_start(bank, 0xCB01, x, p);
+}
+
+void abi_MenuChoiceObject12Copy(void)
+{
+    uint8_t p = cpu.p;
+
+    MenuChoiceObject12Copy(cpu.db, &cpu.x, &p);
+    cpu.a = 0xCB01;
+    cpu.p = p;
+}
+
+/*
+ * @routine 0B:CB13 MenuChoiceObject24Start
+ * WHAT IT DOES: As MenuChoiceObject00Start, for MenuChoiceObject24
+ * ($CB1B).
+ * HOW: +$08 = $CB1B, then falls through into MenuChoiceObject24.
+ * Entry: as MenuChoiceObject00Start. Exit: as MenuChoiceObject24.
+ */
+uint16_t MenuChoiceObject24Start(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
+{
+    choice_start(bank, 0xCB1B, x, p);
+    return MenuChoiceObject24(bank, x, y, p);
+}
+
+void abi_MenuChoiceObject24Start(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = MenuChoiceObject24Start(cpu.db, &cpu.x, &cpu.y, &p);
+    cpu.p = p;
+}
+
+/*
+ * @routine 0B:C46D MenuRowStart
+ * WHAT IT DOES: First frame of the settings row object: copies its sprite
+ * group (MenuActorCopyGroup), blinks the row and shows the saved settings
+ * (MenuRowBlinkSettings), and leaves it idle (handler $C47B).
+ * HOW: +$08 = $C47B, then falls through into MenuActorIdleC47B, which only
+ * returns.
+ * Entry: M 16-bit, X 16-bit, D = $0000. Exit: A = $C47B; X = $11F9; Y =
+ * $000A; N set, Z clear; C, V as MenuRowBlinkSettings left them.
+ */
+void MenuRowStart(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
+{
+    MenuActorCopyGroup(bank, p);
+    *x = rd16(dbw(bank, CURRENT));
+    MenuRowBlinkSettings(bank, x, y, p);
+    *x = rd16(dbw(bank, CURRENT));
+    wr16((uint16_t)(*x + 0x08), 0xC47B);
+    *p = nz16(*p, 0xC47B);
+    MenuActorIdleC47B();
+}
+
+void abi_MenuRowStart(void)
+{
+    uint8_t p = cpu.p;
+
+    MenuRowStart(cpu.db, &cpu.x, &cpu.y, &p);
+    cpu.a = 0xC47B;
+    cpu.p = p;
+}
+
+/* BG1's vertical scroll = -pos, queued for the next vertical blank as two
+   writes to BG1VOFS: the high byte first, then the low byte. */
+static void queue_bg1_vscroll(uint8_t bank, uint16_t pos)
+{
+    uint16_t d = (uint16_t)(0 - pos);
+
+    FrameByteWritePush(bank, (uint16_t)BG1VOFS, (uint8_t)(d >> 8));
+    FrameByteWritePush(bank, (uint16_t)BG1VOFS, (uint8_t)d);
+}
+
+/* SEC; SBC from zero: N, Z, C, V of 0 - v. */
+static uint8_t negate_flags(uint8_t p, uint16_t v)
+{
+    uint16_t d = (uint16_t)(0 - v);
+
+    return (uint8_t)((nz16(p, d) & ~(P_C | P_V)) | (v == 0 ? P_C : 0) | ((v & d & 0x8000) ? P_V : 0));
+}
+
+/*
+ * @routine 0B:CD7C MenuDropStart
+ * WHAT IT DOES: The handler that waits +$0A + 1 frames and then starts a
+ * drop of BG1: handler $CE19 (MenuDropBounce) with speed +$22 = 1, BG1's
+ * vertical scroll set from the height +$20, and for the next vertical
+ * blank HDMA channel 4 on, the sub screen window mask and colour math off,
+ * BG1 and BG2 maps at VRAM $6800 and $6000 (both 64 tiles wide), BG1
+ * tiles at $4000 and BG2 tiles at 0.
+ * HOW: A memory decrement of +$0A; the register values go through
+ * FrameByteWritePush, X kept on the stack around each.
+ * Entry: M 16-bit, X 16-bit, D = $0000; X = record. Exit: waiting: A
+ * unchanged; N, Z from the count. Started: A = the scroll's high byte and
+ * $04; X unchanged; N, Z from X; C, V from 0 - the height; M 16-bit.
+ */
+uint16_t MenuDropStart(uint8_t bank, uint16_t rec, uint16_t a, uint8_t *p)
+{
+    static const struct { uint32_t reg; uint8_t v; } set[] = {
+        {HDMAEN, 0x10}, {TSW, 0x00}, {CGWSEL, 0x00}, {CGADSUB, 0x00},
+        {BG1SC, 0x69}, {BG2SC, 0x61}, {BG12NBA, 0x04}};
+    uint16_t c = (uint16_t)(rd16((uint16_t)(rec + 0x0A)) - 1), h;
+    unsigned i;
+
+    wr16((uint16_t)(rec + 0x0A), c);
+    if (!(c & 0x8000)) {
+        *p = nz16(*p, c);
+        return a;
+    }
+    wr16((uint16_t)(rec + 0x08), 0xCE19);
+    wr16((uint16_t)(rec + 0x22), 0x0001);
+    h = rd16((uint16_t)(rec + 0x20));
+    *p = negate_flags(*p, h);
+    queue_bg1_vscroll(bank, h);
+    for (i = 0; i < sizeof set / sizeof set[0]; i++)
+        FrameByteWritePush(bank, (uint16_t)set[i].reg, set[i].v);
+    *p = nz16(*p, rec);
+    return (uint16_t)((uint16_t)(0 - h) & 0xFF00) | 0x04;
+}
+
+void abi_MenuDropStart(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = MenuDropStart(cpu.db, cpu.x, cpu.a, &p);
+    cpu.p = p;
+}
+
+void SoundPort0QueuePush(uint8_t command);
+
+/*
+ * @routine 0B:CE19 MenuDropBounce
+ * WHAT IT DOES: One frame of BG1 dropping into place and bouncing: the
+ * speed +$22 grows by 1 every second frame and moves the height +$20
+ * (negative is above the rest position); reaching the rest position, the
+ * object bounces back with the speed reversed and reduced by 2 and sound
+ * $19 plays; once the speed is below 2 there, the handler becomes $CE89
+ * (idle). BG1's vertical scroll follows -height and +$06 = height + $4D.
+ * HOW: MenuActorAnimateFrame first; +$0A toggles 0/1 for the every second
+ * frame; the scroll goes through queue_bg1_vscroll.
+ * Entry: M 16-bit, X 16-bit, D = $0000; X = record. Exit: moving: A =
+ * +$06; N, Z, C, V from its add; X = the record after the animation step;
+ * M 16-bit, X 16-bit. Stopped: A = $CE89; X = $11F9; N set, Z clear; C, V
+ * from the height's add.
+ */
+uint16_t MenuDropBounce(uint8_t bank, uint16_t *x, uint8_t *p)
+{
+    uint16_t a, h, v;
+    unsigned s;
+
+    MenuActorAnimateFrame(bank, x, p);
+    a = (uint16_t)(rd16((uint16_t)(*x + 0x0A)) + 1) & 0x0001;
+    wr16((uint16_t)(*x + 0x0A), a);
+    if (!a)
+        wr16((uint16_t)(*x + 0x22), (uint16_t)(rd16((uint16_t)(*x + 0x22)) + 1));
+    h = rd16((uint16_t)(*x + 0x20));
+    v = rd16((uint16_t)(*x + 0x22));
+    s = (unsigned)h + v;
+    *p = (uint8_t)((*p & ~(P_C | P_V)) | (s > 0xFFFF ? P_C : 0) | ((~(h ^ v) & (h ^ (uint16_t)s) & 0x8000) ? P_V : 0));
+    wr16((uint16_t)(*x + 0x20), (uint16_t)s);
+    if (!(s & 0x8000)) {
+        a = (uint16_t)(rd16((uint16_t)(*x + 0x22)) - 2);
+        if (a & 0x8000) {
+            *x = rd16(dbw(bank, CURRENT));
+            wr16((uint16_t)(*x + 0x08), 0xCE89);
+            *p = nz16(*p, 0xCE89);
+            return 0xCE89;
+        }
+        wr16((uint16_t)(*x + 0x22), (uint16_t)(0 - a));
+        wr16((uint16_t)(*x + 0x20), 0x0000);
+        SoundPort0QueuePush(0x19);
+    }
+    h = rd16((uint16_t)(*x + 0x20));
+    queue_bg1_vscroll(bank, h);
+    s = (unsigned)h + 0x4D;
+    a = (uint16_t)s;
+    *p = (uint8_t)((nz16(*p, a) & ~(P_C | P_V | P_M | P_X)) | (s > 0xFFFF ? P_C : 0) | ((~h & a & 0x8000) ? P_V : 0));
+    wr16((uint16_t)(*x + 0x06), a);
+    return a;
+}
+
+void abi_MenuDropBounce(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = MenuDropBounce(cpu.db, &cpu.x, &p);
+    cpu.p = p;
+}
+
+/* A list of PPU register writes for the next vertical blank, in order. */
+struct reg_write {
+    uint32_t reg;
+    uint8_t v;
+};
+
+static void queue_regs(uint8_t bank, const struct reg_write *w, unsigned n)
+{
+    unsigned i;
+
+    for (i = 0; i < n; i++)
+        FrameByteWritePush(bank, (uint16_t)w[i].reg, w[i].v);
+}
+
+/*
+ * @routine 0B:CF27 MenuDropAway
+ * WHAT IT DOES: One frame of BG1 falling out of view: the speed +$22 grows
+ * by 1 every second frame and moves the height +$20 down; from $1E on,
+ * HDMA channel 5 alone is switched on each frame; at $DC the handler
+ * becomes $CE89 (idle). BG1's vertical scroll follows -height and +$06 =
+ * height + $4D.
+ * HOW: As MenuDropBounce without the bounce; the HDMA enable goes through
+ * FrameByteWritePush.
+ * Entry: M 16-bit, X 16-bit, D = $0000; X = record. Exit: moving: A =
+ * +$06; N, Z, C, V from its add; X = the record after the animation step;
+ * M 16-bit, X 16-bit. Gone: A = $CE89; X = $11F9; N, C set, Z clear; V
+ * from the height's add.
+ */
+uint16_t MenuDropAway(uint8_t bank, uint16_t *x, uint8_t *p)
+{
+    uint16_t a, h, v;
+    unsigned s;
+
+    MenuActorAnimateFrame(bank, x, p);
+    a = (uint16_t)(rd16((uint16_t)(*x + 0x0A)) + 1) & 0x0001;
+    wr16((uint16_t)(*x + 0x0A), a);
+    if (!a)
+        wr16((uint16_t)(*x + 0x22), (uint16_t)(rd16((uint16_t)(*x + 0x22)) + 1));
+    h = rd16((uint16_t)(*x + 0x20));
+    v = rd16((uint16_t)(*x + 0x22));
+    s = (unsigned)h + v;
+    *p = (uint8_t)((*p & ~(P_C | P_V)) | (s > 0xFFFF ? P_C : 0) | ((~(h ^ v) & (h ^ (uint16_t)s) & 0x8000) ? P_V : 0));
+    h = (uint16_t)s;
+    wr16((uint16_t)(*x + 0x20), h);
+    if (!(h & 0x8000)) {
+        if (h >= 0x00DC) {
+            *x = rd16(dbw(bank, CURRENT));
+            wr16((uint16_t)(*x + 0x08), 0xCE89);
+            *p = (uint8_t)(nz16(*p, 0xCE89) | P_C);
+            return 0xCE89;
+        }
+        if (h >= 0x001E)
+            FrameByteWritePush(bank, (uint16_t)HDMAEN, 0x20);
+    }
+    h = rd16((uint16_t)(*x + 0x20));
+    queue_bg1_vscroll(bank, h);
+    s = (unsigned)h + 0x4D;
+    a = (uint16_t)s;
+    *p = (uint8_t)((nz16(*p, a) & ~(P_C | P_V | P_M | P_X)) | (s > 0xFFFF ? P_C : 0) | ((~h & a & 0x8000) ? P_V : 0));
+    wr16((uint16_t)(*x + 0x06), a);
+    return a;
+}
+
+void abi_MenuDropAway(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = MenuDropAway(cpu.db, &cpu.x, &p);
+    cpu.p = p;
+}
+
+/*
+ * @routine 0B:D07C MenuDropAwayFinish
+ * WHAT IT DOES: Once BG1 has fallen away: for the next vertical blank, BG1's
+ * vertical scroll 0, HDMA and the window masks off, colour math adding the
+ * sub screen to BG1 only, BG2 on the sub screen, maps BG2 at $6400 and BG1
+ * at $6000 (64 x 32), BG1 tiles at 0 and BG2 tiles at $2000, BG1-BG3 and
+ * sprites on the main screen. Then the object being run ($11F9) and every
+ * kind $11 object get +$10 = $FFFF, and the object counts 64 frames in
+ * +$0A under handler $D14A (MenuCrossFadeOut).
+ * HOW: FrameByteWritePush for each register; MenuActorsSet10 for the kind
+ * $11 objects.
+ * Entry: D = $0000. Exit: A = $40; X = $11F9; Y = $FFFE; N, Z clear; C
+ * from MenuActorsSet10's last compare; M 16-bit, X 16-bit.
+ */
+void MenuDropAwayFinish(uint8_t bank, uint8_t *p)
+{
+    static const struct reg_write set[] = {
+        {BG1VOFS, 0x00}, {BG1VOFS, 0x00}, {HDMAEN, 0x00}, {TSW, 0x00},
+        {TMW, 0x00}, {CGADSUB, 0x01}, {CGWSEL, 0x02}, {TS, 0x02},
+        {BG2SC, 0x65}, {BG1SC, 0x61}, {BG12NBA, 0x20}, {TM, 0x17}};
+    uint16_t x;
+
+    queue_regs(bank, set, sizeof set / sizeof set[0]);
+    x = rd16(dbw(bank, CURRENT));
+    MenuActorsSet10(bank, 0x0011, 0xFFFF, p);
+    wr16((uint16_t)(x + 0x10), 0xFFFF);
+    wr16((uint16_t)(x + 0x08), 0xD14A);
+    wr16((uint16_t)(x + 0x0A), 0x0040);
+    *p = (uint8_t)(nz16(*p, 0x0040) & ~(P_M | P_X));
+}
+
+void abi_MenuDropAwayFinish(void)
+{
+    uint8_t p = cpu.p;
+
+    MenuDropAwayFinish(cpu.db, &p);
+    cpu.a = 0x0040;
+    cpu.x = rd16((uint32_t)cpu.db << 16 | CURRENT);
+    cpu.y = 0xFFFE;
+    cpu.p = p;
+}
+
+/*
+ * @routine 0B:D068 MenuDropAwayCheck
+ * WHAT IT DOES: Finishes the drop (MenuDropAwayFinish) once the kind $13
+ * object has gone idle (its handler is $CE89).
+ * HOW: MenuActorFind, then a compare of its +$08.
+ * Entry: M 16-bit, X 16-bit, D = $0000. Exit: not yet: A = that object's
+ * handler; X = the object; Y from the search; N, Z, C from the compare.
+ * Finished: as MenuDropAwayFinish.
+ */
+uint16_t MenuDropAwayCheck(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
+{
+    uint16_t a;
+
+    MenuActorFind(bank, 0x0013, x, y, p);
+    a = rd16((uint16_t)(*x + 0x08));
+    *p = cmp16(*p, a, 0xCE89);
+    if (!(*p & P_Z))
+        return a;
+    MenuDropAwayFinish(bank, p);
+    *x = rd16(dbw(bank, CURRENT));
+    *y = 0xFFFE;
+    return 0x0040;
+}
+
+void abi_MenuDropAwayCheck(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = MenuDropAwayCheck(cpu.db, &cpu.x, &cpu.y, &p);
+    cpu.p = p;
+}
+
+uint16_t MenuPictureDC8CGrid58(uint8_t bank);
+
+/*
+ * @routine 0B:B814 MenuSelectArrive
+ * WHAT IT DOES: The handler that brings the selection screen in from the
+ * side: the speed +$20 grows by 1 a frame and moves the position +$22 (it
+ * starts at -$100) toward 0, which sets BG1's horizontal scroll, the
+ * sliding sprites' heights ($18BF = position, $18C1 = position + $A8),
+ * $11ED and the byte at $7F:1354 (= $100 - position, at most $1FF). On
+ * arrival (position >= 0): sound $19, handler $B952 with +$0A = 0, and for
+ * the next vertical blank HDMA channels 5-7 on, window 1 at 32-136 on BG1,
+ * BG2 and (inverted) the colour window, BG1 on the sub screen and in both
+ * window masks, and colour math subtracting the fixed colour (white) from
+ * BG1 except inside the colour window; then the picture with the tile grid
+ * from $58 is drawn (MenuPictureDC8CGrid58) and $800 bytes of it queued to
+ * VRAM $6400.
+ * HOW: The scroll is queued as the position's high byte, then its low byte.
+ * MenuPictureDC8CGrid58 leaves X = $0700, so on arrival the store of 0
+ * meant for the position goes to $0722, and the scroll, heights and
+ * $7F:1354 are made from $0722 (0); the object's +$22 keeps its value.
+ * Entry: D = $0000; X = record. Exit: A = $100 - position, at most $1FF;
+ * X unchanged, or $0700 on arrival; N, Z from the compare with $1FF (or
+ * from $1FF); C from the compare; V from the subtraction; M 16-bit, X
+ * 16-bit.
+ */
+uint16_t MenuSelectArrive(uint8_t bank, uint16_t *x, uint8_t *p)
+{
+    static const struct reg_write set[] = {
+        {HDMAEN, 0xE0}, {W12SEL, 0x22}, {WOBJSEL, 0x30}, {WH0, 0x20},
+        {WH1, 0x88}, {TMW, 0x01}, {TSW, 0x01}, {TS, 0x01},
+        {CGADSUB, 0x81}, {CGWSEL, 0x20}, {COLDATA, 0xFF}};
+    uint16_t rec = *x, speed, pos, a, d;
+
+    *p &= (uint8_t)~(P_M | P_X);
+    speed = (uint16_t)(rd16((uint16_t)(rec + 0x20)) + 1);
+    wr16((uint16_t)(rec + 0x20), speed);
+    pos = (uint16_t)(rd16((uint16_t)(rec + 0x22)) + speed);
+    wr16((uint16_t)(rec + 0x22), pos);
+    if (!(pos & 0x8000)) {
+        SoundPort0QueuePush(0x19);
+        wr16((uint16_t)(rec + 0x08), 0xB952);
+        wr16((uint16_t)(rec + 0x0A), 0x0000);
+        queue_regs(bank, set, sizeof set / sizeof set[0]);
+        MenuPictureDC8CGrid58(bank);
+        rec = 0x0700;
+        wr16(0x0016B1, 0x0800);
+        wr16(0x0016B5, 0x0070);
+        wr16(0x0016B3, 0x3000);
+        wr16(0x0016B7, 0x6400);
+        VramDmaQueueAdd();
+        wr16((uint16_t)(rec + 0x22), 0x0000);
+    }
+    pos = rd16((uint16_t)(rec + 0x22));
+    wr16(dbw(bank, 0x11ED), pos);
+    wr16(0x0018BF, pos);
+    wr16(0x0018C1, (uint16_t)(pos + 0x00A8));
+    FrameByteWritePush(bank, (uint16_t)BG1HOFS, (uint8_t)(pos >> 8));
+    FrameByteWritePush(bank, (uint16_t)BG1HOFS, (uint8_t)pos);
+    a = rd16((uint16_t)(rec + 0x22));
+    d = (uint16_t)(0x0100 - a);
+    *p = (uint8_t)((*p & ~P_V) | (((0x0100 ^ a) & (0x0100 ^ d) & 0x8000) ? P_V : 0));
+    *p = cmp16(*p, d, 0x01FF);
+    if (*p & P_C) {
+        d = 0x01FF;
+        *p = nz16(*p, d);
+    }
+    wr8(0x7F1354, (uint8_t)d);
+    *x = rec;
+    return d;
+}
+
+void abi_MenuSelectArrive(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = MenuSelectArrive(cpu.db, &cpu.x, &p);
+    cpu.p = p;
+}
+
+/*
+ * @routine 0B:B506 MenuActorNew
+ * WHAT IT DOES: Takes a free object record (MenuActorAlloc) and fills it
+ * from the template at $0B:EA0F; X = $FFFF when none is free (no script
+ * runs out).
+ * HOW: 44 words, $0B:EA0F-$0B:EA66, stored through the data bank from the
+ * record on: $58 bytes, twice the record size, so the copy also runs over
+ * the next record. P is saved and restored.
+ * Entry: X 16-bit. Exit: A = the template's last word, or as
+ * MenuActorAlloc when none is free; X = the record or $FFFF; P unchanged.
+ */
+uint16_t MenuActorNew(uint8_t bank, uint16_t *a)
+{
+    uint8_t p = 0;  /* the flags it leaves are discarded by the PLP */
+    uint16_t rec = MenuActorAlloc(bank, &p), i;
+
+    if (rec == 0xFFFF)
+        return rec;
+    for (i = 0; i < 0x58; i = (uint16_t)(i + 2))
+        wr16(dbw(bank, (uint16_t)(rec + i)), rd16(0x0BEA0F + i));
+    *a = rd16(0x0BEA0F + 0x56);
+    return rec;
+}
+
+void abi_MenuActorNew(void)
+{
+    cpu.x = MenuActorNew(cpu.db, &cpu.a);
+}
+
+/*
+ * @routine 0B:E4B5 MenuActorSpawn
+ * WHAT IT DOES: Makes a new object (MenuActorNew) and applies the spawn
+ * entry list at $0B:E547 + X to it: each entry is a field offset and a
+ * value, ended by a negative offset. X = $FFFF when no record is free (no
+ * script runs out).
+ * HOW: The record is kept at $1209; the field writes go through the data
+ * bank. The failure return ($E4E3, LDX #$FFFF) follows the routine.
+ * Entry: M 16-bit, X 16-bit; X = the entry list's offset. Exit: A = the
+ * terminating offset; X = the record; Y = the last field written (the list
+ * offset if none); N, Z from X; C, V from the last step of 4 (C clear if
+ * none). None free: A as MenuActorAlloc; X = $FFFF; Y = the list offset; N,
+ * C set, Z clear.
+ */
+uint16_t MenuActorSpawn(uint8_t bank, uint16_t list, uint16_t *a, uint16_t *y, uint8_t *p)
+{
+    uint16_t rec, x, f, n;
+
+    *y = list;
+    rec = MenuActorNew(bank, a);
+    if (rec == 0xFFFF) {
+        *p = (uint8_t)((*p & ~P_Z) | P_N | P_C);
+        return rec;
+    }
+    *p &= (uint8_t)~P_C;
+    wr16(dbw(bank, 0x1209), rec);
+    for (x = list;; x = n) {
+        f = rd16(0x0BE547 + x);
+        if (f & 0x8000)
+            break;
+        *y = (uint16_t)(f + rd16(dbw(bank, 0x1209)));
+        wr16(dbw(bank, *y), rd16(0x0BE549 + x));
+        n = (uint16_t)(x + 4);
+        *p = (uint8_t)((*p & ~(P_C | P_V)) | (n < x ? P_C : 0) | ((~(x ^ 4) & (x ^ n) & 0x8000) ? P_V : 0));
+    }
+    *a = f;
+    rec = rd16(dbw(bank, 0x1209));
+    *p = nz16(*p, rec);
+    return rec;
+}
+
+void abi_MenuActorSpawn(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.x = MenuActorSpawn(cpu.db, cpu.x, &cpu.a, &cpu.y, &p);
+    cpu.p = p;
+}
+
+void SystemHaltSpawn(void);
+
+/*
+ * @routine 0B:E458 MenuActorSpawnList
+ * WHAT IT DOES: Spawns every object of spawn list X: the word list at
+ * $0B:E4E7 + X names each object's entry list (MenuActorSpawn), ended by a
+ * negative word. A full object pool stops the game (SystemHaltSpawn); no
+ * script fills it.
+ * HOW: The position in the list is kept at $11FD; P is saved and restored.
+ * Entry: X 16-bit; X = the list's offset. Exit: A = the terminating word;
+ * X = $11FD (the terminator's offset); Y as the last MenuActorSpawn; P
+ * unchanged.
+ */
+uint16_t MenuActorSpawnList(uint8_t bank, uint16_t list, uint16_t *a, uint16_t *y)
+{
+    uint16_t x, e;
+    uint8_t p = 0;  /* the flags it leaves are discarded by the PLP */
+
+    wr16(dbw(bank, 0x11FD), list);
+    for (;;) {
+        x = rd16(dbw(bank, 0x11FD));
+        e = rd16(0x0BE4E7 + x);
+        if (e & 0x8000)
+            break;
+        if (MenuActorSpawn(bank, e, a, y, &p) == 0xFFFF)
+            SystemHaltSpawn();
+        wr16(dbw(bank, 0x11FD), (uint16_t)(rd16(dbw(bank, 0x11FD)) + 2));
+    }
+    *a = e;
+    return x;
+}
+
+void abi_MenuActorSpawnList(void)
+{
+    cpu.x = MenuActorSpawnList(cpu.db, cpu.x, &cpu.a, &cpu.y);
+}
+
+/*
+ * @routine 0B:D025 MenuSelectConfirm
+ * WHAT IT DOES: When B or Start has been pressed ($118B bits 15 and 12):
+ * sets +$10 of every kind $11 object to $FFFF, starts the kind $13 object
+ * (BG1) moving away (handler $CE8A, speed -10), moves the object being run
+ * on to MenuDropAwayCheck ($D068) with +$10 = $FFFF, and plays sound $46.
+ * HOW: MenuActorsSet10, MenuActorFind, then the sound with 8-bit A.
+ * Entry: M 16-bit, X 16-bit, D = $0000. Exit: not pressed: A = 0; Z set, N
+ * clear. Confirmed: A = $FF46; X = $11F9; Y from the search; N, Z from the
+ * data bank; C from the search; M 16-bit.
+ */
+int MenuSelectConfirm(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
+{
+    uint16_t pressed = rd16(dbw(bank, 0x118B)) & 0x9000;
+
+    if (!pressed) {
+        *p = nz16(*p, pressed);
+        return 0;
+    }
+    MenuActorsSet10(bank, 0x0011, 0xFFFF, p);
+    MenuActorFind(bank, 0x0013, x, y, p);
+    wr16((uint16_t)(*x + 0x08), 0xCE8A);
+    wr16((uint16_t)(*x + 0x22), 0xFFF6);
+    *x = rd16(dbw(bank, CURRENT));
+    wr16((uint16_t)(*x + 0x08), 0xD068);
+    wr16((uint16_t)(*x + 0x10), 0xFFFF);
+    SoundPort0QueuePush(0x46);
+    *p = (uint8_t)(nz8(*p, bank) & ~P_M);
+    return 1;
+}
+
+void abi_MenuSelectConfirm(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = MenuSelectConfirm(cpu.db, &cpu.x, &cpu.y, &p) ? 0xFF46 : 0x0000;
+    cpu.p = p;
+}
+
+/*
+ * @routine 0B:D061 MenuDropAwayFinishCurrent
+ * WHAT IT DOES: MenuDropAwayFinish with X = the object being run. Nothing
+ * the scripts run reaches it: it sits after MenuSelectConfirm's last RTS
+ * and no traced jump or call targets it.
+ * HOW: LDX $11F9, then MenuDropAwayFinish.
+ * Entry: as MenuDropAwayFinish. Exit: as MenuDropAwayFinish.
+ */
+void MenuDropAwayFinishCurrent(uint8_t bank, uint8_t *p)
+{
+    MenuDropAwayFinish(bank, p);
+}
+
+void abi_MenuDropAwayFinishCurrent(void)
+{
+    abi_MenuDropAwayFinish();
 }

@@ -321,3 +321,43 @@ MenuLoadBlank1800:
     lda.w #$D4A5
     sta.b !actor_handler,x
     rts
+
+; @routine 0B:D26F MenuLoadPictureGrid
+; WHAT IT DOES: Draws picture $DC8C with the tile grid from tile 0 laid
+; over it (MenuPictureDC8CGrid0) and queues both copies, $800 bytes each,
+; to VRAM: $70:3000 to $6000 and $70:3800 to $6400; next step D2C9.
+; HOW: queue_from_gsu_ram twice.
+; Entry: M 16-bit, X 16-bit, D = $0000. Exit: as MenuLoadPictureCC78, A =
+; $D2C9.
+%at($0BD26F)
+MenuLoadPictureGrid:
+    jsr.w MenuPictureDC8CGrid0
+    rep.b #$30
+    rep.b #$30
+    lda.w #$0800
+    sta.l !vram_queue_staged
+    lda.w #$0070
+    sta.l !vram_queue_staged+4
+    lda.w #$3000
+    sta.l !vram_queue_staged+2
+    lda.w #$6000
+    sta.l !vram_queue_staged+6
+    jsl.l VramDmaQueueAdd
+    rep.b #$20
+    rep.b #$10
+    rep.b #$30
+    lda.w #$0800
+    sta.l !vram_queue_staged
+    lda.w #$0070
+    sta.l !vram_queue_staged+4
+    lda.w #$3800
+    sta.l !vram_queue_staged+2
+    lda.w #$6400
+    sta.l !vram_queue_staged+6
+    jsl.l VramDmaQueueAdd
+    rep.b #$20
+    rep.b #$10
+    ldx.w !actor_current
+    lda.w #$D2C9
+    sta.b !actor_handler,x
+    rts

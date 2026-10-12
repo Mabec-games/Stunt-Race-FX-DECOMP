@@ -245,3 +245,36 @@ WordListBAppend:
 .done:
     plp
     rts
+
+; @routine 0B:E3F7 FrameByteWritePush
+; WHAT IT DOES: Adds a byte write to the list ByteWritesIfPending applies in
+; the next vertical blank: address X, value the low byte of A. A full list
+; (32 entries) stops the game (SystemHalt); no script fills it.
+; HOW: The entry (address word, value word) goes in at the list's size,
+; which grows by 4. A, X and P are pushed first; A and P come back, X does
+; not.
+; Entry: any widths; A low byte = value, X = address (16 bits are used).
+; Exit: A and P unchanged; X = the entry's offset; Y unchanged. A full
+; list does not return.
+%at($0BE3F7)
+FrameByteWritePush:
+    php
+    rep.b #$30
+    pha
+    phx
+    and.w #$00FF
+    pha
+    ldx.w !byte_writes_size
+    cpx.w #$0080
+    beq SystemHalt
+    pla
+    sta.l !byte_writes+2,x
+    pla
+    sta.l !byte_writes,x
+    txa
+    clc
+    adc.w #$0004
+    sta.w !byte_writes_size
+    pla
+    plp
+    rtl

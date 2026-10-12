@@ -377,3 +377,193 @@ void abi_MenuCourseGraphics(void)
     cpu.a = MenuCourseGraphics(cpu.db);
     cpu.x = 0x0800;
 }
+
+/*
+ * @routine 0B:C9DD MenuSpritePalettesScale
+ * WHAT IT DOES: Scales sprite palettes 5 and 1 (colours 208-215 and
+ * 144-151) from their saved copy by A / 32.
+ * HOW: MenuPaletteScale twice, from byte offsets $1A0 and $120, with the
+ * factor stored at $11DF before each.
+ * Entry: M 16-bit, X 16-bit; A = factor (0-32). Exit: A = the last colour;
+ * X = $11F9; Y = $FFFF; N, Z from X.
+ */
+uint16_t MenuSpritePalettesScale(uint8_t bank, uint16_t factor)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t x = 0x01A0, y = 0x0007;
+
+    wr16(b | 0x11DF, factor);
+    MenuPaletteScale(bank, &x, &y);
+    wr16(b | 0x11DF, factor);
+    x = 0x0120;
+    y = 0x0007;
+    return MenuPaletteScale(bank, &x, &y);
+}
+
+void abi_MenuSpritePalettesScale(void)
+{
+    cpu.a = MenuSpritePalettesScale(cpu.db, cpu.a);
+    cpu.x = rd16((uint32_t)cpu.db << 16 | 0x11F9);
+    cpu.y = 0xFFFF;
+    cpu.p = nz16(cpu.p, cpu.x);
+}
+
+/* One cross-fade frame for count n: colours 64-127 scaled by f / 32 and
+   colours 12-15 by (32 - f) / 32, f = $0B:CFE5[n with bit 0 clear], the
+   second factor made as ((f - 1) EOR $1F) + 1; both through $11DF. Returns
+   the last colour. */
+static uint16_t cross_fade(uint8_t bank, uint16_t n)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t x = 0x0080, y = 0x003F;
+
+    wr16(b | 0x11DF, rd16(0x0BCFE5 + (uint16_t)(n & 0xFFFE)));
+    MenuPaletteScale(bank, &x, &y);
+    wr16(b | 0x11DF, (uint16_t)(((uint16_t)(rd16(b | 0x11DF) - 1) ^ 0x001F) + 1));
+    x = 0x0018;
+    y = 0x0003;
+    return MenuPaletteScale(bank, &x, &y);
+}
+
+/*
+ * @routine 0B:CFAB MenuCrossFadeStep
+ * WHAT IT DOES: One frame of a 64-frame cross-fade, as object X's handler:
+ * colours 64-127 are scaled from their saved copy by f / 32 and colours
+ * 12-15 by (32 - f) / 32, f from the table at $0B:CFE5 for the frame
+ * count +$0A; after the last frame the object's handler becomes $CE89.
+ * HOW: The count is incremented first; at $40 only the handler is changed.
+ * The table is read at the count with bit 0 cleared; the second factor is
+ * ((f - 1) EOR $1F) + 1. Both go through $11DF to MenuPaletteScale.
+ * Entry: M 16-bit, X 16-bit, D = $0000; X = record. Exit: last frame: A =
+ * $CE89; N set, Z clear; C set. Otherwise: A = the last colour; X = $0020;
+ * Y = $FFFF; N, Z from the second factor; C clear.
+ */
+int MenuCrossFadeStep(uint8_t bank, uint16_t rec, uint16_t *a)
+{
+    uint16_t n = (uint16_t)(rd16((uint16_t)(rec + 0x0A)) + 1);
+
+    if (n == 0x0040) {
+        *a = 0xCE89;
+        wr16((uint16_t)(rec + 0x08), *a);
+        return 0;
+    }
+    wr16((uint16_t)(rec + 0x0A), n);
+    *a = cross_fade(bank, n);
+    return 1;
+}
+
+void abi_MenuCrossFadeStep(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    if (MenuCrossFadeStep(cpu.db, cpu.x, &cpu.a)) {
+        cpu.x = 0x0020;
+        cpu.y = 0xFFFF;
+        cpu.p = (uint8_t)(nz16(cpu.p, rd16(b | 0x11DF)) & ~P_C);
+    } else {
+        cpu.p = (uint8_t)((nz16(cpu.p, cpu.a)) | P_C);
+    }
+}
+
+/* Draws picture $DC8C (input $1C) into $70:3000 with the Super FX, then
+   lays the tile grid from tile `first` over it (MenuPictureInsetGrid). */
+static uint16_t picture_dc8c_grid(uint8_t bank, uint16_t first)
+{
+    GsuCF42To3000(0xDC8C, 0x001C);
+    wr16((uint32_t)bank << 16 | 0x11E1, first);
+    return MenuPictureInsetGrid(bank);
+}
+
+/*
+ * @routine 0B:F6B6 MenuPictureDC8CGrid0
+ * WHAT IT DOES: Draws picture $DC8C and lays over it the 11 x 13 tile grid
+ * numbered from tile 0.
+ * HOW: GsuCF42To3000 with $DC8C and $1C, $11E1 = 0, MenuPictureInsetGrid;
+ * P saved and restored around it.
+ * Entry: X 16-bit. Exit: A = the last picture word; X = $0700; Y = $FFFF;
+ * P unchanged.
+ */
+uint16_t MenuPictureDC8CGrid0(uint8_t bank)
+{
+    return picture_dc8c_grid(bank, 0x0000);
+}
+
+void abi_MenuPictureDC8CGrid0(void)
+{
+    cpu.a = MenuPictureDC8CGrid0(cpu.db);
+    cpu.x = 0x0700;
+    cpu.y = 0xFFFF;
+}
+
+/*
+ * @routine 0B:F6D0 MenuPictureDC8CGrid58
+ * WHAT IT DOES: As MenuPictureDC8CGrid0, the grid numbered from tile $58.
+ * HOW: As MenuPictureDC8CGrid0.
+ * Entry: X 16-bit. Exit: as MenuPictureDC8CGrid0.
+ */
+uint16_t MenuPictureDC8CGrid58(uint8_t bank)
+{
+    return picture_dc8c_grid(bank, 0x0058);
+}
+
+void abi_MenuPictureDC8CGrid58(void)
+{
+    cpu.a = MenuPictureDC8CGrid58(cpu.db);
+    cpu.x = 0x0700;
+    cpu.y = 0xFFFF;
+}
+
+uint16_t FrameByteWritePush(uint8_t bank, uint16_t addr, uint8_t value);
+void VramDmaQueueAdd(void);
+
+/*
+ * @routine 0B:D14A MenuCrossFadeOut
+ * WHAT IT DOES: The cross-fade of MenuCrossFadeStep run backwards, as object
+ * X's handler: +$0A counts down by 2 and picks the factors; when it would
+ * go below 0, sets the screen up for the menu's graphics loader and makes
+ * MenuLoadPictureCC78 ($D1F7) the handler: $80 bytes from $0B:D56C queued
+ * to VRAM $7000, and for the next vertical blank BG1 tiles at $0000 and
+ * BG2 tiles at $7000, the BG2 map at $7C00 (64 x 32), mode 3, only BG2 on
+ * the main screen, HDMA off.
+ * HOW: cross_fade with the new count; the setup through VramDmaQueueAdd and
+ * FrameByteWritePush.
+ * Entry: M 16-bit, X 16-bit, D = $0000; X = record. Exit: fading: as
+ * MenuCrossFadeStep. Done: A = $D1F7; X unchanged; N set, Z clear; M
+ * 16-bit, X 16-bit; C, V unchanged.
+ */
+int MenuCrossFadeOut(uint8_t bank, uint16_t rec, uint16_t *a)
+{
+    static const struct { uint32_t reg; uint8_t v; } set[] = {
+        {BG12NBA, 0x70}, {BG2SC, 0x7D}, {BGMODE, 0x03}, {TM, 0x02}, {HDMAEN, 0x00}};
+    uint16_t n = (uint16_t)(rd16((uint16_t)(rec + 0x0A)) - 2);
+    unsigned i;
+
+    if (!(n & 0x8000)) {
+        wr16((uint16_t)(rec + 0x0A), n);
+        *a = cross_fade(bank, n);
+        return 1;
+    }
+    wr16(0x0016B1, 0x0080);
+    wr16(0x0016B5, 0x000B);
+    wr16(0x0016B3, 0xD56C);
+    wr16(0x0016B7, 0x7000);
+    VramDmaQueueAdd();
+    for (i = 0; i < sizeof set / sizeof set[0]; i++)
+        FrameByteWritePush(bank, (uint16_t)set[i].reg, set[i].v);
+    *a = 0xD1F7;
+    wr16((uint16_t)(rec + 0x08), *a);
+    return 0;
+}
+
+void abi_MenuCrossFadeOut(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    if (MenuCrossFadeOut(cpu.db, cpu.x, &cpu.a)) {
+        cpu.x = 0x0020;
+        cpu.y = 0xFFFF;
+        cpu.p = (uint8_t)(nz16(cpu.p, rd16(b | 0x11DF)) & ~P_C);
+    } else {
+        cpu.p = (uint8_t)((nz16(cpu.p, cpu.a) & ~(P_M | P_X)));
+    }
+}

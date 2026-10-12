@@ -513,3 +513,195 @@ MenuCourseGraphics:
     sep.b #$20
     plp
     rtl
+
+; @routine 0B:C9DD MenuSpritePalettesScale
+; WHAT IT DOES: Scales sprite palettes 5 and 1 (colours 208-215 and
+; 144-151) from their saved copy by A / 32.
+; HOW: MenuPaletteScale twice, from byte offsets $1A0 and $120, with the
+; factor stored at $11DF before each.
+; Entry: M 16-bit, X 16-bit; A = factor (0-32). Exit: A = the last colour;
+; X = $11F9; Y = $FFFF; N, Z from X.
+%at($0BC9DD)
+MenuSpritePalettesScale:
+    sta.w !scratch_11df
+    pha
+    ldy.w #$0007
+    ldx.w #$01A0
+    jsl.l MenuPaletteScale
+    pla
+    sta.w !scratch_11df
+    ldy.w #$0007
+    ldx.w #$0120
+    jsl.l MenuPaletteScale
+    ldx.w !actor_current
+    rts
+
+; @routine 0B:CFAB MenuCrossFadeStep
+; WHAT IT DOES: One frame of a 64-frame cross-fade, as object X's handler:
+; colours 64-127 are scaled from their saved copy by f / 32 and colours
+; 12-15 by (32 - f) / 32, f from the table at $0B:CFE5 for the frame
+; count +$0A; after the last frame the object's handler becomes $CE89.
+; HOW: The count is incremented first; at $40 only the handler is changed.
+; The table is read at the count with bit 0 cleared; the second factor is
+; ((f - 1) EOR $1F) + 1. Both go through $11DF to MenuPaletteScale.
+; Entry: M 16-bit, X 16-bit, D = $0000; X = record. Exit: last frame: A =
+; $CE89; N set, Z clear; C set. Otherwise: A = the last colour; X = $0020;
+; Y = $FFFF; N, Z from the second factor; C clear.
+%at($0BCFAB)
+MenuCrossFadeStep:
+    lda.b !actor_0a,x
+    inc a
+    cmp.w #$0040
+    beq .lCFDF
+    sta.b !actor_0a,x
+    lsr a
+    asl a
+    tax
+    lda.l !menu_fade_factors,x
+    sta.w !scratch_11df
+    ldy.w #$003F
+    ldx.w #$0080
+    jsl.l MenuPaletteScale
+    lda.w !scratch_11df
+    dec a
+    eor.w #$001F
+    inc a
+    sta.w !scratch_11df
+    ldy.w #$0003
+    ldx.w #$0018
+    jsl.l MenuPaletteScale
+    rts
+.lCFDF:
+    lda.w #$CE89
+    sta.b !actor_handler,x
+    rts
+
+; @routine 0B:F6B6 MenuPictureDC8CGrid0
+; WHAT IT DOES: Draws picture $DC8C and lays over it the 11 x 13 tile grid
+; numbered from tile 0.
+; HOW: GsuCF42To3000 with $DC8C and $1C, $11E1 = 0, MenuPictureInsetGrid;
+; P saved and restored around it.
+; Entry: X 16-bit. Exit: A = the last picture word; X = $0700; Y = $FFFF;
+; P unchanged.
+%at($0BF6B6)
+MenuPictureDC8CGrid0:
+    php
+    rep.b #$30
+    lda.w #$DC8C
+    ldx.w #$001C
+    jsl.l GsuCF42To3000
+    rep.b #$30
+    lda.w #$0000
+    sta.w !scratch_11e1
+    jsr.w MenuPictureInsetGrid
+    plp
+    rts
+
+; @routine 0B:F6D0 MenuPictureDC8CGrid58
+; WHAT IT DOES: As MenuPictureDC8CGrid0, the grid numbered from tile $58.
+; HOW: As MenuPictureDC8CGrid0.
+; Entry: X 16-bit. Exit: as MenuPictureDC8CGrid0.
+%at($0BF6D0)
+MenuPictureDC8CGrid58:
+    php
+    rep.b #$30
+    lda.w #$DC8C
+    ldx.w #$001C
+    jsl.l GsuCF42To3000
+    rep.b #$30
+    lda.w #$0058
+    sta.w !scratch_11e1
+    jsr.w MenuPictureInsetGrid
+    plp
+    rts
+
+; @routine 0B:D14A MenuCrossFadeOut
+; WHAT IT DOES: The cross-fade of MenuCrossFadeStep run backwards, as object
+; X's handler: +$0A counts down by 2 and picks the factors; when it would
+; go below 0, sets the screen up for the menu's graphics loader and makes
+; MenuLoadPictureCC78 ($D1F7) the handler: $80 bytes from $0B:D56C queued
+; to VRAM $7000, and for the next vertical blank BG1 tiles at $0000 and
+; BG2 tiles at $7000, the BG2 map at $7C00 (64 x 32), mode 3, only BG2 on
+; the main screen, HDMA off.
+; HOW: cross_fade with the new count; the setup through VramDmaQueueAdd and
+; FrameByteWritePush.
+; Entry: M 16-bit, X 16-bit, D = $0000; X = record. Exit: fading: as
+; MenuCrossFadeStep. Done: A = $D1F7; X unchanged; N set, Z clear; M
+; 16-bit, X 16-bit; C, V unchanged.
+%at($0BD14A)
+MenuCrossFadeOut:
+    lda.b !actor_0a,x
+    dec a
+    dec a
+    bmi .lD17C
+    sta.b !actor_0a,x
+    lsr a
+    asl a
+    tax
+    lda.l !menu_fade_factors,x
+    sta.w !scratch_11df
+    ldy.w #$003F
+    ldx.w #$0080
+    jsl.l MenuPaletteScale
+    lda.w !scratch_11df
+    dec a
+    eor.w #$001F
+    inc a
+    sta.w !scratch_11df
+    ldy.w #$0003
+    ldx.w #$0018
+    jsl.l MenuPaletteScale
+    rts
+.lD17C:
+    sep.b #$20
+    rep.b #$30
+    lda.w #$0080
+    sta.l !vram_queue_staged
+    lda.w #$000B
+    sta.l !vram_queue_staged+4
+    lda.w #$D56C
+    sta.l !vram_queue_staged+2
+    lda.w #$7000
+    sta.l !vram_queue_staged+6
+    jsl.l VramDmaQueueAdd
+    sep.b #$20
+    rep.b #$10
+    lda.b #$70
+    sep.b #$20
+    rep.b #$10
+    phx
+    ldx.w #!BG12NBA
+    jsl.l FrameByteWritePush
+    plx
+    lda.b #$7D
+    sep.b #$20
+    rep.b #$10
+    phx
+    ldx.w #!BG2SC
+    jsl.l FrameByteWritePush
+    plx
+    lda.b #$03
+    sep.b #$20
+    rep.b #$10
+    phx
+    ldx.w #!BGMODE
+    jsl.l FrameByteWritePush
+    plx
+    lda.b #$02
+    sep.b #$20
+    rep.b #$10
+    phx
+    ldx.w #!TM
+    jsl.l FrameByteWritePush
+    plx
+    lda.b #$00
+    sep.b #$20
+    rep.b #$10
+    phx
+    ldx.w #!HDMAEN
+    jsl.l FrameByteWritePush
+    plx
+    rep.b #$30
+    lda.w #$D1F7
+    sta.b !actor_handler,x
+    rts

@@ -317,3 +317,67 @@ SelectionSave:
 .lB53E:
     plp
     rtl
+
+; @routine 0B:C59F MenuChoiceUpDown
+; WHAT IT DOES: Moves the four-way selection $18C3 up or down with the
+; buttons player 1 has pressed since the menu last cleared $118B (bit 11
+; up, bit 10 down), wrapping, with sound $45 for each move; keeps the
+; previous selection at $18C5 and counts $18F5 down by one in 8 bits.
+; HOW: Up is handled before down, so both pressed move twice and play the
+; sound twice.
+; Entry: M 16-bit, X 16-bit. Exit: A = $18F5; Y = $118B; N, Z from A; M
+; 16-bit.
+%at($0BC59F)
+MenuChoiceUpDown:
+    lda.l !wram_18C3
+    sta.l !wram_18C5
+    ldy.w !menu_joy1_pressed
+    tya
+    and.w #$0800
+    beq .lC5C6
+    sep.b #$20
+    lda.b #$45
+    jsl.l SoundPort0QueuePush
+    rep.b #$20
+    lda.l !wram_18C3
+    dec a
+    and.w #$0003
+    sta.l !wram_18C3
+.lC5C6:
+    tya
+    and.w #$0400
+    beq .lC5E2
+    sep.b #$20
+    lda.b #$45
+    jsl.l SoundPort0QueuePush
+    rep.b #$20
+    lda.l !wram_18C3
+    inc a
+    and.w #$0003
+    sta.l !wram_18C3
+.lC5E2:
+    lda.l !wram_18F5
+    dec a
+    and.w #$00FF
+    sta.l !wram_18F5
+    rts
+
+; @routine 0B:D4AE MenuSelectStart
+; WHAT IT DOES: First frame of the selection screen's controlling object X:
+; resets the selection state (MenuStateInit), then sets the object's
+; handler to $B814, +$22 to $FF00 and +$20 to 0.
+; HOW: 16-bit registers forced first; the fields are direct page offsets
+; from the record.
+; Entry: D = $0000; X = record. Exit: A = 0; M 16-bit, X 16-bit; Z set, N
+; clear.
+%at($0BD4AE)
+MenuSelectStart:
+    rep.b #$30
+    jsr.w MenuStateInit
+    lda.w #$B814
+    sta.b !actor_handler,x
+    lda.w #$FF00
+    sta.b !actor_22,x
+    lda.w #$0000
+    sta.b !actor_20,x
+    rts

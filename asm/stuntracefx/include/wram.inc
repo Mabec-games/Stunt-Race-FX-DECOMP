@@ -548,3 +548,29 @@ includeonce
 !engine_phase_p2 = $0DD7
 !selection_handler_c = $18DF
 !selection_handler_d = $18E1
+; Menu scratch, object fields and input used by the selection objects
+; (menu/actors.asm): $11E5 a scratch word; $11FB the live list offset of the
+; object being run; +$20 and +$22 two fields of the menu objects; $118B
+; the player 1 buttons pressed since the menu last cleared it; $11E9 a
+; scratch word of MenuActorUploadFrames.
+!scratch_11e5 = $11E5
+!actor_current_slot = $11FB
+!actor_20 = $20
+!actor_22 = $22
+!menu_joy1_pressed = $118B
+!scratch_11e9 = $11E9
+
+; More menu object fields: +$02 the position the sliding objects follow,
+; +$1C and +$1E a frame period and its countdown; +$06 a sprite position.
+!actor_02 = $02
+!actor_1c = $1C
+!actor_1e = $1E
+!actor_06 = $06
+
+; $11ED: the selection screen's slide position, copied by MenuSelectArrive.
+!menu_slide_pos = $11ED
+
+; Object spawning (menu/actors.asm): the record being filled and the
+; position in the spawn list.
+!menu_spawn_record = $1209
+!menu_spawn_pos = $11FD

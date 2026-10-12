@@ -14,6 +14,7 @@
 
 uint8_t GsuCF42To3000(uint16_t in68, uint16_t in6a);
 void VramDmaQueueAdd(void);
+uint16_t MenuPictureDC8CGrid0(uint8_t bank);
 
 /* Stage a transfer of `size` bytes from $70:src to VRAM word address
    `vram` and queue it; the staging area is filled in the original's
@@ -87,6 +88,31 @@ void abi_MenuLoadPictureCE78(void)
     GsuCF42To3000(0xCE78, 0x0017);
     queue_from_gsu_ram(0x1000, 0x3000, 0x6800);
     step_exit(0xD26F);
+}
+
+/*
+ * @routine 0B:D26F MenuLoadPictureGrid
+ * WHAT IT DOES: Draws picture $DC8C with the tile grid from tile 0 laid
+ * over it (MenuPictureDC8CGrid0) and queues both copies, $800 bytes each,
+ * to VRAM: $70:3000 to $6000 and $70:3800 to $6400; next step D2C9.
+ * HOW: queue_from_gsu_ram twice.
+ * Entry: M 16-bit, X 16-bit, D = $0000. Exit: as MenuLoadPictureCC78, A =
+ * $D2C9.
+ */
+void MenuLoadPictureGrid(uint8_t bank)
+{
+    MenuPictureDC8CGrid0(bank);
+    queue_from_gsu_ram(0x0800, 0x3000, 0x6000);
+    queue_from_gsu_ram(0x0800, 0x3800, 0x6400);
+    next_step(bank, 0xD2C9);
+}
+
+void abi_MenuLoadPictureGrid(void)
+{
+    MenuPictureDC8CGrid0(cpu.db);
+    queue_from_gsu_ram(0x0800, 0x3000, 0x6000);
+    queue_from_gsu_ram(0x0800, 0x3800, 0x6400);
+    step_exit(0xD2C9);
 }
 
 /*

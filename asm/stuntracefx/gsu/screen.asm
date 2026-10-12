@@ -60,3 +60,50 @@ GsuScreenFlip:
     lda.b #$0B
     sta.l !GSU_SCBR
     rts
+
+; @routine 0B:FC49 GsuScreenFlipMenu
+; WHAT IT DOES: The menu screens' form of GsuScreenFlip: swaps the Super
+; FX's draw buffer between the one at $2C00 (screen base $0B) and the one
+; at $9400 (screen base $25), leaving $0D7D alone.
+; HOW: $0D7F set: clears it and selects $2C00; clear: sets it to 1 and
+; selects $9400. The start goes to $70:021A and direct page $48 between
+; giving RAM back to the S-CPU and handing ROM and RAM to the Super FX
+; again; then the screen base register.
+; Entry: D = $0000. Exit: A = the high byte of the last screen mode value
+; and the screen base; M 8-bit; N, Z clear.
+%at($0BFC49)
+GsuScreenFlipMenu:
+    rep.b #$20
+    lda.w !gsu_buffer_select
+    beq .lFC79
+    rep.b #$20
+    stz.w !gsu_buffer_select
+    lda.w !gsu_scmr_shadow
+    and.w #$FFF7
+    sta.w !GSU_SCMR
+    lda.w #$2C00
+    sta.l !gsu_screen_start
+    sta.b !gsu_screen_start_dp
+    lda.w !gsu_scmr_shadow
+    ora.w #$0018
+    sta.w !GSU_SCMR
+    sep.b #$20
+    lda.b #$0B
+    sta.l !GSU_SCBR
+    rts
+.lFC79:
+    rep.b #$20
+    inc.w !gsu_buffer_select
+    lda.w !gsu_scmr_shadow
+    and.w #$FFF7
+    sta.w !GSU_SCMR
+    lda.w #$9400
+    sta.l !gsu_screen_start
+    sta.b !gsu_screen_start_dp
+    lda.w !gsu_scmr_shadow
+    ora.w #$0018
+    sta.w !GSU_SCMR
+    sep.b #$20
+    lda.b #$25
+    sta.l !GSU_SCBR
+    rts

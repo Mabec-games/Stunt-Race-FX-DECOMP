@@ -99,3 +99,26 @@ includeonce
 ; Window edge lists by window (video/window_hdma.asm).
 !window_edge_offsets = $09F155
 !window_edge_lists = $09F98B
+
+; Menu object tables in bank $0B (menu/actors.asm, menu/screen.asm): animation
+; pairs (two words each), the choice animations (eight bytes per choice, a
+; word per position), the kinds of the three choice objects, and the
+; cross-fade factors (one word per two frames).
+!menu_anim_pairs = $0BC862
+!menu_choice_anims = $0BC1B0
+!menu_choice_kinds = $0BC15E
+!menu_fade_factors = $0BCFE5
+
+; Menu sprite frame tables in bank $0B (menu/actors.asm): per sprite of a
+; group the VRAM slot and the graphics base; per frame step a word whose
+; bit 15 is the vertical flip and whose rest is the graphics offset.
+!menu_frame_slots = $0BCCBC
+!menu_frame_bases = $0BCD14
+!menu_frames = $0BCC7C
+
+; Object spawning in bank $0B (menu/actors.asm): the record template, the
+; spawn lists (words naming entry lists, ended by a negative word) and the
+; entry lists (field offset, value; ended by a negative offset).
+!menu_actor_template = $0BEA0F
+!menu_spawn_lists = $0BE4E7
+!menu_spawn_entries = $0BE547

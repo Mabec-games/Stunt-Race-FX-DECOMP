@@ -304,3 +304,66 @@ void abi_SelectionSave(void)
         cpu.y &= 0x00FF;
     }
 }
+
+void SoundPort0QueuePush(uint8_t command);
+
+/*
+ * @routine 0B:C59F MenuChoiceUpDown
+ * WHAT IT DOES: Moves the four-way selection $18C3 up or down with the
+ * buttons player 1 has pressed since the menu last cleared $118B (bit 11
+ * up, bit 10 down), wrapping, with sound $45 for each move; keeps the
+ * previous selection at $18C5 and counts $18F5 down by one in 8 bits.
+ * HOW: Up is handled before down, so both pressed move twice and play the
+ * sound twice.
+ * Entry: M 16-bit, X 16-bit. Exit: A = $18F5; Y = $118B; N, Z from A; M
+ * 16-bit.
+ */
+uint16_t MenuChoiceUpDown(uint8_t bank)
+{
+    uint16_t pad = rd16((uint32_t)bank << 16 | 0x118B), a;
+
+    wr16(0x0018C5, rd16(0x0018C3));
+    if (pad & 0x0800) {
+        SoundPort0QueuePush(0x45);
+        wr16(0x0018C3, (uint16_t)(rd16(0x0018C3) - 1) & 0x0003);
+    }
+    if (pad & 0x0400) {
+        SoundPort0QueuePush(0x45);
+        wr16(0x0018C3, (uint16_t)(rd16(0x0018C3) + 1) & 0x0003);
+    }
+    a = (uint16_t)(rd16(0x0018F5) - 1) & 0x00FF;
+    wr16(0x0018F5, a);
+    return a;
+}
+
+void abi_MenuChoiceUpDown(void)
+{
+    cpu.a = MenuChoiceUpDown(cpu.db);
+    cpu.y = rd16((uint32_t)cpu.db << 16 | 0x118B);
+    cpu.p = (uint8_t)(nz16(cpu.p, cpu.a) & ~P_M);
+}
+
+/*
+ * @routine 0B:D4AE MenuSelectStart
+ * WHAT IT DOES: First frame of the selection screen's controlling object X:
+ * resets the selection state (MenuStateInit), then sets the object's
+ * handler to $B814, +$22 to $FF00 and +$20 to 0.
+ * HOW: 16-bit registers forced first; the fields are direct page offsets
+ * from the record.
+ * Entry: D = $0000; X = record. Exit: A = 0; M 16-bit, X 16-bit; Z set, N
+ * clear.
+ */
+void MenuSelectStart(uint16_t rec)
+{
+    MenuStateInit();
+    wr16((uint16_t)(rec + 0x08), 0xB814);
+    wr16((uint16_t)(rec + 0x22), 0xFF00);
+    wr16((uint16_t)(rec + 0x20), 0x0000);
+}
+
+void abi_MenuSelectStart(void)
+{
+    MenuSelectStart(cpu.x);
+    cpu.a = 0x0000;
+    cpu.p = (uint8_t)((cpu.p & ~(P_M | P_X | P_N)) | P_Z);
+}
