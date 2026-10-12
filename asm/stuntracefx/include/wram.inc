@@ -663,3 +663,9 @@ includeonce
 !seq_stage = $1A35
 !seq_input = $1AF0
 !gsu_rec_400 = $700400
+!obj_1a_w = $201A
+!obj_1c = $201C
+; Per-player state bytes, and two race flags (object/object.asm).
+!wram_0DD6 = $0DD6
+!wram_19ED = $19ED
+!wram_0E59 = $0E59

@@ -809,3 +809,125 @@ ObjectRecordFlag70Step_done:
     rtl
 ObjectRecordFlag70Step_stop:        ; no record: never reached by a script
     jsl.l CrashWhite                ; falls into ObjectNearFocus
+
+; @routine 08:B4C6 ObjectLinkedHandlerByState
+; WHAT IT DOES: Once per object (bit 3 of +$25 marks it done), gives
+; object X's linked object (+$4F) a new handler in bank 08 by the state
+; byte at $0DD6 + Y: 8 sets bits 3 of the record's +$64 and 5 of its +$70
+; and picks $91EB, $93D7 or $92DF by the record's +$88 (1, 4, other);
+; $0A or $0C clears bits 4, 5 and 10 of the record's +$42 and, when $0E59
+; is set, picks $94A1; other states pick $951B when $19ED is 8. Each pick
+; also runs GsuRecordWords88 unless bit 0 of $1AEE is set, and marks the
+; object done.
+; HOW: 8-bit compares; the handler is the linked object's +$1A (address)
+; and +$1C (bank). Only the $0A/$0C path is reached by a script.
+; Entry: M 8-bit, X 16-bit; X = object, Y = the state index. Exit: M
+; 8-bit; X unchanged; Y = the linked object when a handler was picked; A,
+; N, Z, C as the path leaves them; V unchanged.
+%at($08B4C6)
+ObjectLinkedHandlerByState:
+    sep.b #$20
+    lda.w !obj_25,x
+    and.b #$08
+    beq .lB4D3
+    jml.l ObjectLinkedHandlerByState_done
+.lB4D3:
+    lda.w !wram_0DD6,y
+    cmp.b #$08
+    beq .lB532
+    cmp.b #$0C
+    beq .lB501
+    cmp.b #$0A
+    beq .lB501
+    lda.w !wram_19ED
+    cmp.b #$08
+    beq .lB4EC
+    jmp.w ObjectLinkedHandlerByState_done
+.lB4EC:
+    ldy.w !obj_link_w,x
+    rep.b #$20
+    lda.w #$951B
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    jmp.w .lB59A
+.lB501:
+    phx
+    rep.b #$20
+    lda.w !obj_22,x
+    tax
+    lda.l !gsu_rec_42,x
+    and.w #$FBCF
+    sta.l !gsu_rec_42,x
+    sep.b #$20
+    plx
+    lda.w !wram_0E59
+    bne .lB51E
+    brl ObjectLinkedHandlerByState_done
+.lB51E:
+    ldy.w !obj_link_w,x
+    rep.b #$20
+    lda.w #$94A1
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    bra .lB59A
+.lB532:
+    phx
+    rep.b #$20
+    lda.w !obj_22,x
+    tax
+    lda.l !gsu_rec_64,x
+    ora.w #$0008
+    sta.l !gsu_rec_64,x
+    lda.l !gsu_rec_70,x
+    ora.w #$0020
+    sta.l !gsu_rec_70,x
+    lda.l !gsu_rec_88,x
+    sep.b #$20
+    sta.w !wram_1F58
+    plx
+    ldy.w !obj_link_w,x
+    lda.w !wram_1F58
+    cmp.b #$01
+    beq .lB589
+    cmp.b #$04
+    beq .lB578
+    rep.b #$20
+    lda.w #$92DF
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    bra .lB59A
+.lB578:
+    rep.b #$20
+    lda.w #$93D7
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    bra .lB59A
+.lB589:
+    rep.b #$20
+    lda.w #$91EB
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    bra .lB59A
+.lB59A:
+    rep.b #$20
+    lda.w !wram_1AEE
+    and.w #$0001
+    sep.b #$20
+    bne .lB5AA
+    jsl.l GsuRecordWords88
+.lB5AA:
+    lda.w !obj_25,x
+    ora.b #$08
+    sta.w !obj_25,x
+ObjectLinkedHandlerByState_done:    ; reached by the long jump above
+    rtl

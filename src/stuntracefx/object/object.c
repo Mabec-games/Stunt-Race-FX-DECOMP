@@ -850,3 +850,99 @@ void abi_ObjectRecordFlag70Step(void)
     cpu.a = ObjectRecordFlag70Step(cpu.db, cpu.x, cpu.a, &p);
     cpu.p = (uint8_t)(p | P_M);
 }
+
+uint16_t GsuRecordWords88(void);
+
+/* CMP of two 8-bit values: N, Z, C. */
+static uint8_t cmp8(uint8_t p, uint8_t a, uint8_t m)
+{
+    return (uint8_t)((nz8(p, (uint8_t)(a - m)) & ~P_C) | (a >= m ? P_C : 0));
+}
+
+/* Points the linked object (+$4F) at the handler $08:addr. */
+static uint16_t set_linked_handler(uint8_t bank, uint16_t obj, uint16_t addr)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t y = rd16(field(bank, obj, 0x4F));
+
+    wr16(b | (uint16_t)(0x201A + y), addr);
+    wr8(b | (uint16_t)(0x201C + y), 0x08);
+    return y;
+}
+
+/*
+ * @routine 08:B4C6 ObjectLinkedHandlerByState
+ * WHAT IT DOES: Once per object (bit 3 of +$25 marks it done), gives
+ * object X's linked object (+$4F) a new handler in bank 08 by the state
+ * byte at $0DD6 + Y: 8 sets bits 3 of the record's +$64 and 5 of its +$70
+ * and picks $91EB, $93D7 or $92DF by the record's +$88 (1, 4, other);
+ * $0A or $0C clears bits 4, 5 and 10 of the record's +$42 and, when $0E59
+ * is set, picks $94A1; other states pick $951B when $19ED is 8. Each pick
+ * also runs GsuRecordWords88 unless bit 0 of $1AEE is set, and marks the
+ * object done.
+ * HOW: 8-bit compares; the handler is the linked object's +$1A (address)
+ * and +$1C (bank). Only the $0A/$0C path is reached by a script.
+ * Entry: M 8-bit, X 16-bit; X = object, Y = the state index. Exit: M
+ * 8-bit; X unchanged; Y = the linked object when a handler was picked; A,
+ * N, Z, C as the path leaves them; V unchanged.
+ */
+uint16_t ObjectLinkedHandlerByState(uint8_t bank, uint16_t obj, uint16_t a, uint16_t *y, uint8_t *p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t f = rd8(field(bank, obj, 0x25)), v, k;
+    uint16_t rec, w;
+
+    if (f & 0x08) {
+        *p = nz8(*p, 0x08);
+        return (uint16_t)((a & 0xFF00) | 0x08);
+    }
+    v = rd8(b | (uint16_t)(0x0DD6 + *y));
+    *p = cmp8(*p, v, 0x08);
+    if (v == 0x08) {
+        rec = rd16(field(bank, obj, 0x22));
+        wr16(0x700064 + rec, (uint16_t)(rd16(0x700064 + rec) | 0x0008));
+        wr16(0x700070 + rec, (uint16_t)(rd16(0x700070 + rec) | 0x0020));
+        k = (uint8_t)rd16(0x700088 + rec);
+        wr8(b | 0x1F58, k);
+        *p = cmp8(*p, k, 0x01);
+        if (k != 0x01)
+            *p = cmp8(*p, k, 0x04);
+        *y = set_linked_handler(bank, obj, k == 0x01 ? 0x91EB : k == 0x04 ? 0x93D7 : 0x92DF);
+    } else {
+        *p = cmp8(*p, v, 0x0C);
+        if (v != 0x0C)
+            *p = cmp8(*p, v, 0x0A);
+        if (v == 0x0C || v == 0x0A) {
+            rec = rd16(field(bank, obj, 0x22));
+            w = (uint16_t)(rd16(0x700042 + rec) & 0xFBCF);
+            wr16(0x700042 + rec, w);
+            v = rd8(b | 0x0E59);
+            if (!v) {
+                *p = nz8(*p, 0);
+                return (uint16_t)(w & 0xFF00);
+            }
+            *y = set_linked_handler(bank, obj, 0x94A1);
+        } else {
+            v = rd8(b | 0x19ED);
+            *p = cmp8(*p, v, 0x08);
+            if (v != 0x08)
+                return (uint16_t)((a & 0xFF00) | v);
+            *y = set_linked_handler(bank, obj, 0x951B);
+        }
+    }
+    a = 0x0000;
+    if (!(rd16(b | 0x1AEE) & 0x0001))
+        a = GsuRecordWords88();
+    f = (uint8_t)(rd8(field(bank, obj, 0x25)) | 0x08);
+    wr8(field(bank, obj, 0x25), f);
+    *p = nz8(*p, f);
+    return (uint16_t)((a & 0xFF00) | f);
+}
+
+void abi_ObjectLinkedHandlerByState(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = ObjectLinkedHandlerByState(cpu.db, cpu.x, cpu.a, &cpu.y, &p);
+    cpu.p = (uint8_t)(p | P_M);
+}
