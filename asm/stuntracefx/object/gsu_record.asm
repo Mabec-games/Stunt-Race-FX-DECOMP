@@ -378,3 +378,40 @@ GsuRecordFromObject:
     sep.b #$20
     tyx
     rtl
+
+; @routine 08:D5DF ObjectVelocityFromRecordScaled
+; WHAT IT DOES: As ObjectVelocityFromRecord, with each value then scaled by
+; three quarters: X and Z velocity = 3/32 of the record values of the
+; object named by object X's +$27.
+; HOW: Shift right three times keeping the sign, then ScaleThreeQuarters.
+; Entry: M 8-bit, X 16-bit, D = $0000; X = object. Exit: A = the Z velocity
+; (M 8-bit); X, Y = the object; $3E = the last half; N, Z from X; C, V from
+; the last scaling add.
+%at($08D5DF)
+ObjectVelocityFromRecordScaled:
+    ldy.w !obj_27,x
+    rep.b #$20
+    lda.w !obj_22,y
+    txy
+    tax
+    lda.l !gsu_rec_vel_x,x
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    jsl.l ScaleThreeQuarters
+    sta.w !obj_vel_x,y
+    lda.l !gsu_rec_vel_z,x
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    jsl.l ScaleThreeQuarters
+    sta.w !obj_vel_z,y
+    tyx
+    sep.b #$20
+    rts

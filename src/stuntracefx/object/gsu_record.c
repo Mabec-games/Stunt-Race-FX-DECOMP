@@ -410,3 +410,47 @@ void abi_GsuRecordFromObject(void)
     cpu.y = cpu.x;
     cpu.p = (uint8_t)(nz16(cpu.p, cpu.x) | P_M);
 }
+
+uint16_t ScaleThreeQuarters(uint16_t v);
+
+/* ScaleThreeQuarters with the flags of its final add. */
+static uint16_t three_quarters(uint16_t v, uint8_t *p)
+{
+    uint16_t half = (uint16_t)((v >> 1) | (v & 0x8000)), quarter = (uint16_t)((half >> 1) | (half & 0x8000));
+    uint16_t r = ScaleThreeQuarters(v);
+
+    *p = (uint8_t)((*p & ~(P_C | P_V)) | ((unsigned)half + quarter > 0xFFFF ? P_C : 0)
+                   | ((~(half ^ quarter) & (half ^ r) & 0x8000) ? P_V : 0));
+    return r;
+}
+
+/*
+ * @routine 08:D5DF ObjectVelocityFromRecordScaled
+ * WHAT IT DOES: As ObjectVelocityFromRecord, with each value then scaled by
+ * three quarters: X and Z velocity = 3/32 of the record values of the
+ * object named by object X's +$27.
+ * HOW: Shift right three times keeping the sign, then ScaleThreeQuarters.
+ * Entry: M 8-bit, X 16-bit, D = $0000; X = object. Exit: A = the Z velocity
+ * (M 8-bit); X, Y = the object; $3E = the last half; N, Z from X; C, V from
+ * the last scaling add.
+ */
+uint16_t ObjectVelocityFromRecordScaled(uint8_t bank, uint16_t obj, uint8_t *p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t rec = record_of(bank, rd16(b | (uint16_t)(0x2027 + obj))), v;
+
+    v = three_quarters((uint16_t)((int16_t)rd16(0x70002E + rec) >> 3), p);
+    wr16(b | (uint16_t)(0x202E + obj), v);
+    v = three_quarters((uint16_t)((int16_t)rd16(0x700032 + rec) >> 3), p);
+    wr16(b | (uint16_t)(0x2032 + obj), v);
+    return v;
+}
+
+void abi_ObjectVelocityFromRecordScaled(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = ObjectVelocityFromRecordScaled(cpu.db, cpu.x, &p);
+    cpu.y = cpu.x;
+    cpu.p = (uint8_t)(nz16(p, cpu.x) | P_M);
+}

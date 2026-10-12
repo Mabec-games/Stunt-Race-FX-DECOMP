@@ -314,3 +314,43 @@ void abi_SoundPairFromTable(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | SoundPairFromTable());
     cpu.x = rd8(0x000D89);
 }
+
+/*
+ * @routine 08:D580 SoundAtRateForLevel
+ * WHAT IT DOES: Queues APU port 0 command $23 at a rate set by the level A:
+ * none below $28, every fourth frame (bits 0-1 of the counter at $05E9
+ * clear) up to $9F, every other frame from $A0.
+ * HOW: Signed compares with $28 and $A0; the counter is read through the
+ * data bank; SoundPort0QueuePushRaw.
+ * Entry: M 16-bit; A = level. Exit: below $28: A unchanged, N, Z, C from
+ * the compare. Skipped: A = the counter bits; N, Z from them. Queued: A =
+ * $23; N, Z from the data bank. C from the compare with $A0 in both.
+ */
+uint16_t SoundAtRateForLevel(uint8_t bank, uint16_t level, int *queued, uint8_t *p)
+{
+    uint16_t m, d = (uint16_t)(level - 0x28);
+
+    *queued = 0;
+    *p = (uint8_t)((nz16(*p, d) & ~P_C) | (level >= 0x28 ? P_C : 0));
+    if (d & 0x8000)
+        return level;
+    d = (uint16_t)(level - 0xA0);
+    *p = (uint8_t)((*p & ~P_C) | (level >= 0xA0 ? P_C : 0));
+    m = rd16((uint32_t)bank << 16 | 0x05E9) & (d & 0x8000 ? 0x0003 : 0x0001);
+    if (m) {
+        *p = nz16(*p, m);
+        return m;
+    }
+    SoundPort0QueuePushRaw(0x23);
+    *queued = 1;
+    return 0x0023;
+}
+
+void abi_SoundAtRateForLevel(void)
+{
+    int queued;
+    uint8_t p = cpu.p;
+
+    cpu.a = SoundAtRateForLevel(cpu.db, cpu.a, &queued, &p);
+    cpu.p = queued ? nz8(p, cpu.db) : p;
+}

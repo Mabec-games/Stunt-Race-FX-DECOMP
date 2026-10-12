@@ -352,3 +352,33 @@ SoundPairFromTable:
     jsl.l SoundPort0QueuePushRaw
     plp
     rtl
+
+; @routine 08:D580 SoundAtRateForLevel
+; WHAT IT DOES: Queues APU port 0 command $23 at a rate set by the level A:
+; none below $28, every fourth frame (bits 0-1 of the counter at $05E9
+; clear) up to $9F, every other frame from $A0.
+; HOW: Signed compares with $28 and $A0; the counter is read through the
+; data bank; SoundPort0QueuePushRaw.
+; Entry: M 16-bit; A = level. Exit: below $28: A unchanged, N, Z, C from
+; the compare. Skipped: A = the counter bits; N, Z from them. Queued: A =
+; $23; N, Z from the data bank. C from the compare with $A0 in both.
+%at($08D580)
+SoundAtRateForLevel:
+    cmp.w #$0028
+    bmi .lD5AA
+    cmp.w #$00A0
+    bpl .lD59B
+    lda.w !wram_05E9
+    and.w #$0003
+    bne .lD5AA
+    lda.w #$0023
+    jsl.l SoundPort0QueuePushRaw
+    bra .lD5AA
+.lD59B:
+    lda.w !wram_05E9
+    and.w #$0001
+    bne .lD5AA
+    lda.w #$0023
+    jsl.l SoundPort0QueuePushRaw
+.lD5AA:
+    rts

@@ -429,3 +429,64 @@ ObjectSet5DByKind:
     sta.w !obj_5d,x
     sep.b #$20
     rts
+
+; @routine 08:B8F9 ObjectPlaceFromTable
+; WHAT IT DOES: Sets up the object in entry A (from 1) of the list at
+; $7E:FFAE: its +$27 from $1F2D, its +$49 and +$4A from the bytes at $1F2B
+; and $1F4C, and, unless bit 0 of $1AEE is set, its position (+$0C, +$0E,
+; +$10) and +$15 byte from entry X (from 1) of the 8-byte table at
+; $7E:FF66.
+; HOW: Data bank $7E inside; word copies, then byte copies.
+; Entry: M 16-bit, X 16-bit; A low byte = list entry, X low byte = table
+; entry. Exit: A low byte = the byte from $1F4C; X = the table offset; Y =
+; the object; P unchanged.
+%at($08B8F9)
+ObjectPlaceFromTable:
+    php
+    sep.b #$20
+    rep.b #$10
+    phb
+    pha
+    lda.b #$7E
+    pha
+    plb
+    pla
+    rep.b #$20
+    phx
+    and.w #$00FF
+    dec a
+    asl a
+    tax
+    lda.l !object_list_b,x
+    tay
+    plx
+    txa
+    and.w #$00FF
+    dec a
+    asl a
+    asl a
+    asl a
+    tax
+    lda.w !wram_1F2D
+    sta.w !obj_27,y
+    lda.w !wram_1AEE
+    and.w #$0001
+    bne .lB945
+    lda.w !place_table,x
+    sta.w !obj_pos_x,y
+    lda.w !place_table+2,x
+    sta.w !obj_pos_y,y
+    lda.w !place_table+4,x
+    sta.w !obj_pos_z,y
+    sep.b #$20
+    lda.w !place_table+6,x
+    sta.w !obj_15,y
+.lB945:
+    sep.b #$20
+    lda.w !wram_1F2B
+    sta.w !obj_49,y
+    lda.w !wram_1F4C
+    sta.w !obj_4a,y
+    plb
+    plp
+    rtl

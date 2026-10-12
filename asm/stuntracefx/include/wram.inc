@@ -471,3 +471,9 @@ includeonce
 !gsu_rec_20 = $700020
 !gsu_rec_22 = $700022
 !gsu_rec_24 = $700024
+!wram_05E9 = $05E9
+!wram_1AEE = $1AEE
+!wram_1F2D = $1F2D
+!obj_49 = $2049
+!obj_4a = $204A
+!place_table = $FF66

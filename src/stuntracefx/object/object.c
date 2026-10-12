@@ -496,3 +496,44 @@ void abi_ObjectSet5DByKind(void)
     cpu.a = ObjectSet5DByKind(cpu.db, cpu.x, (uint8_t)cpu.a, &p);
     cpu.p = (uint8_t)(p | P_M);
 }
+
+/*
+ * @routine 08:B8F9 ObjectPlaceFromTable
+ * WHAT IT DOES: Sets up the object in entry A (from 1) of the list at
+ * $7E:FFAE: its +$27 from $1F2D, its +$49 and +$4A from the bytes at $1F2B
+ * and $1F4C, and, unless bit 0 of $1AEE is set, its position (+$0C, +$0E,
+ * +$10) and +$15 byte from entry X (from 1) of the 8-byte table at
+ * $7E:FF66.
+ * HOW: Data bank $7E inside; word copies, then byte copies.
+ * Entry: M 16-bit, X 16-bit; A low byte = list entry, X low byte = table
+ * entry. Exit: A low byte = the byte from $1F4C; X = the table offset; Y =
+ * the object; P unchanged.
+ */
+uint16_t ObjectPlaceFromTable(uint8_t list, uint8_t entry, uint16_t *x, uint16_t *y)
+{
+    uint16_t obj = rd16(0x7EFFAE + (uint16_t)((list - 1) << 1)), t = (uint16_t)((uint16_t)(entry - 1) << 3), a, w = 0;
+    unsigned i;
+
+    wr16(0x7E2027 + obj, rd16(0x7E1F2D));
+    a = rd16(0x7E1AEE) & 0x0001;
+    if (!a) {
+        for (i = 0; i < 3; i++) {
+            w = rd16(0x7EFF66 + 2 * i + t);
+            wr16(0x7E200C + 2 * i + obj, w);
+        }
+        a = (uint16_t)((w & 0xFF00) | rd8(0x7EFF6C + t));
+        wr8(0x7E2015 + obj, (uint8_t)a);
+    }
+    a = (uint16_t)((a & 0xFF00) | rd8(0x7E1F2B));
+    wr8(0x7E2049 + obj, (uint8_t)a);
+    a = (uint16_t)((a & 0xFF00) | rd8(0x7E1F4C));
+    wr8(0x7E204A + obj, (uint8_t)a);
+    *x = t;
+    *y = obj;
+    return a;
+}
+
+void abi_ObjectPlaceFromTable(void)
+{
+    cpu.a = ObjectPlaceFromTable((uint8_t)cpu.a, (uint8_t)cpu.x, &cpu.x, &cpu.y);
+}
