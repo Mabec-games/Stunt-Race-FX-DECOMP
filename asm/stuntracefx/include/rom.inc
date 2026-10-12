@@ -63,3 +63,7 @@ includeonce
 ; Renderer inputs by entry, read through the data bank (gsu/params.asm).
 !param_216_table_a = $8E3E
 !param_216_table_b = $8E52
+
+; Byte tables indexed by object values (object/object.asm).
+!table_08e8af = $08E8AF
+!table_08c056 = $08C056

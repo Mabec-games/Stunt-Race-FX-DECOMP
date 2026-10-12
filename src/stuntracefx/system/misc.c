@@ -143,3 +143,23 @@ void abi_Countdown0DF8(void)
 {
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | Countdown0DF8(cpu.db));
 }
+
+/*
+ * @routine 08:B893 Set7EFFA6Sequence
+ * WHAT IT DOES: Stores the words 1, 2, 3, 4 at $7E:FFA6-$7E:FFAD.
+ * HOW: Four 16-bit long stores.
+ * Entry: any widths. Exit: A = 4 (16-bit); P unchanged.
+ */
+void Set7EFFA6Sequence(void)
+{
+    unsigned i;
+
+    for (i = 0; i < 4; i++)
+        wr16(0x7EFFA6 + 2 * i, (uint16_t)(i + 1));
+}
+
+void abi_Set7EFFA6Sequence(void)
+{
+    Set7EFFA6Sequence();
+    cpu.a = 0x0004;
+}

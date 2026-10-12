@@ -173,3 +173,73 @@ ObjectLinkFlag4000Step:
     plx
     plp
     rtl
+
+; @routine 08:B830 ObjectFlag40IfMatch
+; WHAT IT DOES: When A equals the word at $70:2476, sets bit 6 of field
+; +$25 of the object at $0346.
+; HOW: 16-bit compare, then an 8-bit OR through the data bank.
+; Entry: M 16-bit, X 16-bit; A = value. Exit: no match: A unchanged; M
+; 16-bit; N, Z, C from the compare. Match: A low byte = the new field; X =
+; the object; M 8-bit; N, Z from it; C set.
+%at($08B830)
+ObjectFlag40IfMatch:
+    rep.b #$20
+    cmp.l !gsu_match_2476
+    bne .lB845
+    ldx.w !wram_0346
+    sep.b #$20
+    lda.w !obj_25,x
+    ora.b #$40
+    sta.w !obj_25,x
+.lB845:
+    rts
+
+; @routine 08:E896 ObjectTableE8AF
+; WHAT IT DOES: Returns the byte of the table at $08:E8AF for (A + object
+; X's +$15 + $1F4C) / 8.
+; HOW: 8-bit adds, three right shifts.
+; Entry: M 8-bit, X 16-bit; X = object, A = value. Exit: A low byte = the
+; table byte; X, Y unchanged; N, Z from X; C from the last shift; V from
+; the second add.
+%at($08E896)
+ObjectTableE8AF:
+    clc
+    adc.w !obj_15,x
+    clc
+    adc.w !wram_1F4C
+    phx
+    phy
+    sep.b #$10
+    lsr a
+    lsr a
+    lsr a
+    tax
+    lda.l !table_08e8af,x
+    rep.b #$10
+    ply
+    plx
+    rts
+
+; @routine 08:C03C ObjectTableC056
+; WHAT IT DOES: Sets $1F5A to the byte of the table at $08:C056 for (object
+; Y's +$15 - $1F5A) / 4.
+; HOW: An 8-bit subtract, two right shifts.
+; Entry: M 8-bit, X 16-bit; Y = object. Exit: A low byte = the new $1F5A;
+; X, Y unchanged; N, Z from Y; C from the last shift; V from the subtract.
+%at($08C03C)
+ObjectTableC056:
+    lda.w !obj_15,y
+    sec
+    sbc.w !wram_1F5A
+    phy
+    phx
+    sep.b #$10
+    lsr a
+    lsr a
+    tax
+    lda.l !table_08c056,x
+    sta.w !wram_1F5A
+    rep.b #$10
+    plx
+    ply
+    rts

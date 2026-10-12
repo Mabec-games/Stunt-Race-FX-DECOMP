@@ -117,3 +117,22 @@ Countdown0DF8:
     dec.w !wram_0DF8
     plp
     rts
+
+; @routine 08:B893 Set7EFFA6Sequence
+; WHAT IT DOES: Stores the words 1, 2, 3, 4 at $7E:FFA6-$7E:FFAD.
+; HOW: Four 16-bit long stores.
+; Entry: any widths. Exit: A = 4 (16-bit); P unchanged.
+%at($08B893)
+Set7EFFA6Sequence:
+    php
+    rep.b #$20
+    lda.w #$0001
+    sta.l !wram_7EFFA6
+    lda.w #$0002
+    sta.l !wram_7EFFA6+2
+    lda.w #$0003
+    sta.l !wram_7EFFA6+4
+    lda.w #$0004
+    sta.l !wram_7EFFA6+6
+    plp
+    rtl

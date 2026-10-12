@@ -236,3 +236,101 @@ void abi_ObjectLinkFlag4000Step(void)
 {
     cpu.a = ObjectLinkFlag4000Step();
 }
+
+/*
+ * @routine 08:B830 ObjectFlag40IfMatch
+ * WHAT IT DOES: When A equals the word at $70:2476, sets bit 6 of field
+ * +$25 of the object at $0346.
+ * HOW: 16-bit compare, then an 8-bit OR through the data bank.
+ * Entry: M 16-bit, X 16-bit; A = value. Exit: no match: A unchanged; M
+ * 16-bit; N, Z, C from the compare. Match: A low byte = the new field; X =
+ * the object; M 8-bit; N, Z from it; C set.
+ */
+int ObjectFlag40IfMatch(uint8_t bank, uint16_t a, uint16_t *x, uint8_t *v, uint8_t *p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t m = rd16(0x702476);
+
+    *p = (uint8_t)((nz16(*p, (uint16_t)(a - m)) & ~P_C) | (a >= m ? P_C : 0));
+    if (a != m)
+        return 0;
+    *x = rd16(b | 0x0346);
+    *v = (uint8_t)(rd8(b | (uint16_t)(0x2025 + *x)) | 0x40);
+    wr8(b | (uint16_t)(0x2025 + *x), *v);
+    *p = nz8(*p, *v);
+    return 1;
+}
+
+void abi_ObjectFlag40IfMatch(void)
+{
+    uint8_t v = 0, p = cpu.p;
+
+    if (ObjectFlag40IfMatch(cpu.db, cpu.a, &cpu.x, &v, &p)) {
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+        p |= P_M;
+    }
+    cpu.p = p;
+}
+
+/* An 8-bit add as ADC with carry clear: the sum, with C and V. */
+static uint8_t add8(uint8_t a, uint8_t b, uint8_t *p)
+{
+    unsigned s = (unsigned)a + b;
+
+    *p = (uint8_t)((*p & ~(P_C | P_V)) | (s > 0xFF ? P_C : 0) | ((~(a ^ b) & (a ^ (uint8_t)s) & 0x80) ? P_V : 0));
+    return (uint8_t)s;
+}
+
+/*
+ * @routine 08:E896 ObjectTableE8AF
+ * WHAT IT DOES: Returns the byte of the table at $08:E8AF for (A + object
+ * X's +$15 + $1F4C) / 8.
+ * HOW: 8-bit adds, three right shifts.
+ * Entry: M 8-bit, X 16-bit; X = object, A = value. Exit: A low byte = the
+ * table byte; X, Y unchanged; N, Z from X; C from the last shift; V from
+ * the second add.
+ */
+uint8_t ObjectTableE8AF(uint8_t bank, uint8_t a, uint16_t obj, uint8_t *p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+
+    a = add8(a, rd8(b | (uint16_t)(0x2015 + obj)), p);
+    a = add8(a, rd8(b | 0x1F4C), p);
+    *p = (uint8_t)((*p & ~P_C) | (a & 0x04 ? P_C : 0));
+    return rd8(0x08E8AF + (a >> 3));
+}
+
+void abi_ObjectTableE8AF(void)
+{
+    uint8_t p = cpu.p, v = ObjectTableE8AF(cpu.db, (uint8_t)cpu.a, cpu.x, &p);
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz16(p, cpu.x);
+}
+
+/*
+ * @routine 08:C03C ObjectTableC056
+ * WHAT IT DOES: Sets $1F5A to the byte of the table at $08:C056 for (object
+ * Y's +$15 - $1F5A) / 4.
+ * HOW: An 8-bit subtract, two right shifts.
+ * Entry: M 8-bit, X 16-bit; Y = object. Exit: A low byte = the new $1F5A;
+ * X, Y unchanged; N, Z from Y; C from the last shift; V from the subtract.
+ */
+uint8_t ObjectTableC056(uint8_t bank, uint16_t obj, uint8_t *p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t f = rd8(b | (uint16_t)(0x2015 + obj)), s = rd8(b | 0x1F5A), d = (uint8_t)(f - s), v;
+
+    *p = (uint8_t)((*p & ~(P_C | P_V)) | (d & 0x02 ? P_C : 0) | (((f ^ s) & (f ^ d) & 0x80) ? P_V : 0));
+    v = rd8(0x08C056 + (d >> 2));
+    wr8(b | 0x1F5A, v);
+    return v;
+}
+
+void abi_ObjectTableC056(void)
+{
+    uint8_t p = cpu.p, v = ObjectTableC056(cpu.db, cpu.y, &p);
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz16(p, cpu.y);
+}

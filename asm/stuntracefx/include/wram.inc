@@ -415,3 +415,22 @@ includeonce
 !wram_0346 = $0346
 !wram_06CD = $0006CD
 !bank0_base = $000000              ; a bank 0 address indexed by a record pointer
+
+; Object fields used by the record code (object/gsu_record.asm): another
+; object (+$06), the Super FX record address (+$22), a flags byte (+$25).
+!obj_06 = $2006
+!obj_22 = $2022
+!obj_25 = $2025
+
+; Super FX object records (object/gsu_record.asm), indexed by the record
+; address: position, flags, mode, and the word at +$88.
+!gsu_rec_pos_x = $70000C
+!gsu_rec_pos_y = $70000E
+!gsu_rec_pos_z = $700010
+!gsu_rec_flags = $700016
+!gsu_rec_mode = $70001A
+!gsu_rec_88 = $700088
+!gsu_match_2476 = $702476
+!wram_1F4C = $1F4C
+!wram_1F5A = $1F5A
+!wram_7EFFA6 = $7EFFA6
