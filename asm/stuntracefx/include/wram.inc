@@ -1160,3 +1160,5 @@ includeonce
 ; A contact's size and other record (object/fx_collide.asm).
 !fx_contact_bytes = $12
 !fxcon_other = $0C
+; Record sizes held for the box tests (object/fx_collide.asm).
+!fx_sizes = $70236C

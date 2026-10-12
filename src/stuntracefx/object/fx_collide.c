@@ -45,6 +45,13 @@
 #define CON_OTHER 0x0Cu
 #define CON_NEXT 0x0Eu
 #define CON_FLAGS 0x10u
+#define REC_Y 0x20u
+#define REC_SIZE_Y 0x0Eu
+#define REC_SIZE_Z 0x10u
+#define REC_MASK 0x1Au
+#define REC_ALL_NEXT 0x04u
+#define FX_SIZES 0x236Cu       /* R1's sizes: x, y, z */
+#define FX_RECORDS 0x2332u
 
 /*
  * @routine 04:9301 FxCollidePush
@@ -392,5 +399,152 @@ void abi_FxContactNote(void)
 
     memcpy(g.r, gsu.r, sizeof g.r);
     g = FxContactNote(g);
+    memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
+}
+
+/* Whether |a - b| - (R2's size + R1's size) is negative for one axis: R6 =
+   the summed size, R0 the difference. */
+static int axis_overlaps(FxRegs *g, uint16_t size, uint16_t mine, uint16_t pos, uint16_t b)
+{
+    g->r[6] = gsu_ldw(gsu_add(size, g->r[2], 0));
+    g->r[0] = gsu_ldw(mine);
+    g->r[6] = gsu_add(g->r[6], g->r[0], 0);
+    g->r[0] = gsu_sub(gsu_ldw(gsu_add(pos, g->r[2], 0)), b, 0);
+    if (gsu.s)
+        g->r[0] = gsu_inc(gsu_not(g->r[0]));
+    g->r[0] = gsu_sub(g->r[0], g->r[6], 0);
+    return gsu.s;
+}
+
+/* Whether field `a` of record `ra` and the flags (+$16) of record `rb`
+   share no bit: R6 = those flags, R0 the AND. */
+static int masks_clear(FxRegs *g, uint16_t ra, uint16_t rb)
+{
+    g->r[0] = gsu_ldw(gsu_add(REC_MASK, ra, 0));
+    g->r[6] = gsu_ldw(gsu_add(REC_FLAGS16, rb, 0));
+    g->r[0] = gsu_and(g->r[0], g->r[6]);
+    return gsu.z;
+}
+
+/*
+ * @routine 04:A20B FxRecordTouches
+ * WHAT IT DOES: Tests record R1 against every record after it on the list
+ * of all records ($2332, linked through +$04): their boxes overlap when on
+ * each axis (z, then x, then y) the distance between the positions is
+ * below the two sizes (+$10, +$0C, +$0E) added. For an overlapping pair:
+ * when both have bit 1 of +$16 set and FxRecordsApart says they stay
+ * apart, nothing; otherwise each notes the other as a contact
+ * (FxContactNote) unless its +$1A shares a bit with the other's +$16.
+ * Then, when R1 has contacts, FxListSweep drops those not seen this step.
+ * HOW: R1's position goes to R3-R5 and its sizes to $236C/$236E/$2370;
+ * R2 walks the list. The return address is kept on the R10 stack.
+ * Entry: R1 = the record; R10 = stack; R11 = return address. Exit: R2 = 0;
+ * R1, R3-R5 as above; the others from the last test or call; S, Z from
+ * R10; the last RAM address R10.
+ */
+FxRegs FxRecordTouches(FxRegs g)
+{
+    int i;
+
+    gsu_push(&g.r[10], g.r[11]);
+    for (i = 0; i < 3; i++)
+        g.r[3 + i] = gsu_ldw(gsu_add((uint16_t)(REC_X + 2 * i), g.r[1], 0));
+    for (i = 0; i < 3; i++) {
+        g.r[0] = gsu_ldw(gsu_add((uint16_t)(REC_SIZE + 2 * i), g.r[1], 0));
+        gsu_stw((uint16_t)(FX_SIZES + 2 * i), g.r[0]);
+    }
+    g.r[2] = g.r[1];
+    for (;;) {
+        g.r[0] = gsu_ldw(gsu_add(REC_ALL_NEXT, g.r[2], 0));
+        g.r[2] = g.r[0];
+        gsu_moves(g.r[2]);
+        if (gsu.z)
+            break;
+        if (!axis_overlaps(&g, REC_SIZE_Z, FX_SIZES + 4, REC_Z, g.r[5]))
+            continue;
+        if (!axis_overlaps(&g, REC_SIZE, FX_SIZES, REC_X, g.r[3]))
+            continue;
+        if (!axis_overlaps(&g, REC_SIZE_Y, FX_SIZES + 2, REC_Y, g.r[4]))
+            continue;
+        g.r[0] = gsu_ldw(gsu_add(REC_FLAGS16, g.r[1], 0));
+        g.r[6] = gsu_ldw(gsu_add(REC_FLAGS16, g.r[2], 0));
+        g.r[0] = gsu_and(g.r[0], g.r[6]);
+        g.r[6] = 0x0002;
+        g.r[0] = gsu_and(g.r[0], g.r[6]);
+        if (!gsu.z) {
+            g.r[7] = g.r[1];
+            g.r[8] = g.r[2];
+            g.r[11] = 0xA2B5;
+            g = FxRecordsApart(g);
+            gsu_moves(g.r[0]);
+            if (!gsu.z)
+                continue;
+        }
+        if (masks_clear(&g, g.r[1], g.r[2])) {
+            g.r[6] = g.r[1];
+            g.r[8] = g.r[2];
+            g.r[11] = 0xA2D1;
+            g = FxContactNote(g);
+        }
+        if (masks_clear(&g, g.r[2], g.r[1])) {
+            g.r[6] = g.r[2];
+            g.r[8] = g.r[1];
+            g.r[11] = 0xA2E8;
+            g = FxContactNote(g);
+        }
+    }
+    g.r[0] = gsu_ldw(gsu_add(REC_CONTACTS, g.r[1], 0));
+    gsu_moves(g.r[0]);
+    if (!gsu.z) {
+        g.r[6] = g.r[1];
+        g.r[11] = 0xA2FC;
+        g = FxListSweepRegs(g);
+    }
+    gsu_pull(&g.r[10]);
+    return g;
+}
+
+void abi_FxRecordTouches(void)
+{
+    FxRegs g;
+
+    memcpy(g.r, gsu.r, sizeof g.r);
+    g = FxRecordTouches(g);
+    memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
+}
+
+/*
+ * @routine 04:A1EC FxAllTouches
+ * WHAT IT DOES: FxRecordTouches for every record on the list of all
+ * records ($2332), so each pair is tested once.
+ * HOW: R1 walks the list through +$04; the return address is kept on the
+ * R10 stack. The routine runs under CACHE (the code cache only; nothing
+ * the C has to do).
+ * Entry: R10 = stack; R11 = return address. Exit: R0 = R1 = 0; the others
+ * from the last FxRecordTouches; S, Z from R10; the last RAM address R10.
+ */
+FxRegs FxAllTouches(FxRegs g)
+{
+    gsu_push(&g.r[10], g.r[11]);
+    g.r[0] = gsu_ldw(FX_RECORDS);
+    for (;;) {
+        g.r[1] = g.r[0];
+        gsu_moves(g.r[1]);
+        if (gsu.z)
+            break;
+        g.r[11] = 0xA1FF;
+        g = FxRecordTouches(g);
+        g.r[0] = gsu_ldw(gsu_add(REC_ALL_NEXT, g.r[1], 0));
+    }
+    gsu_pull(&g.r[10]);
+    return g;
+}
+
+void abi_FxAllTouches(void)
+{
+    FxRegs g;
+
+    memcpy(g.r, gsu.r, sizeof g.r);
+    g = FxAllTouches(g);
     memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
 }

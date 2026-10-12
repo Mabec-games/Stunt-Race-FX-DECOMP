@@ -514,4 +514,196 @@ FxContactNote:
     move r15,r11
     nop
 
+; Whether, on one axis, |R2's <pos> - <b>| < R2's <size> + R1's (at
+; <mine>), from the sign of the last SUB.
+macro fx_axis(size, mine, pos, b)
+    ibt r6,#<size>
+    with r6
+    add r2
+    to r6
+    ldw (r6)
+    lm r0,(<mine>)
+    with r6
+    add r0
+    ibt r0,#<pos>
+    add r2
+    ldw (r0)
+    sub <b>
+    bpl ?positive
+    nop
+    not
+    inc r0
+?positive:
+    sub r6
+endmacro
+
+; @routine 04:A1EC FxAllTouches
+; WHAT IT DOES: FxRecordTouches for every record on the list of all
+; records ($2332), so each pair is tested once.
+; HOW: R1 walks the list through +$04; the return address is kept on the
+; R10 stack. The routine runs under CACHE (the code cache only; nothing
+; the C has to do).
+; Entry: R10 = stack; R11 = return address. Exit: R0 = R1 = 0; the others
+; from the last FxRecordTouches; S, Z from R10; the last RAM address R10.
+%at($04A1EC)
+FxAllTouches:
+    %fx_push(r11)
+    lm r0,(!fx_records)
+    cache
+.record:
+    moves r1,r0
+    beq .done
+    nop
+    link #4
+    iwt r15,#FxRecordTouches
+    nop
+    ibt r0,#!fxrec_all_next
+    add r1
+    ldw (r0)
+    bra .record
+    nop
+.done:
+    %fx_pull(r15)
+    nop
+
+; @routine 04:A20B FxRecordTouches
+; WHAT IT DOES: Tests record R1 against every record after it on the list
+; of all records ($2332, linked through +$04): their boxes overlap when on
+; each axis (z, then x, then y) the distance between the positions is
+; below the two sizes (+$10, +$0C, +$0E) added. For an overlapping pair:
+; when both have bit 1 of +$16 set and FxRecordsApart says they stay
+; apart, nothing; otherwise each notes the other as a contact
+; (FxContactNote) unless its +$1A shares a bit with the other's +$16.
+; Then, when R1 has contacts, FxListSweep drops those not seen this step.
+; HOW: R1's position goes to R3-R5 and its sizes to $236C/$236E/$2370;
+; R2 walks the list. The return address is kept on the R10 stack.
+; Entry: R1 = the record; R10 = stack; R11 = return address. Exit: R2 = 0;
+; R1, R3-R5 as above; the others from the last test or call; S, Z from
+; R10; the last RAM address R10.
+%at($04A20B)
+FxRecordTouches:
+    %fx_push(r11)
+    ibt r3,#!fxrec_half_x
+    with r3
+    add r1
+    to r3
+    ldw (r3)
+    ibt r4,#!fxrec_half_x+2
+    with r4
+    add r1
+    to r4
+    ldw (r4)
+    ibt r5,#!fxrec_half_x+4
+    with r5
+    add r1
+    to r5
+    ldw (r5)
+    ibt r0,#!fxrec_size
+    add r1
+    ldw (r0)
+    sm (!fx_sizes),r0
+    ibt r0,#!fxrec_size+2
+    add r1
+    ldw (r0)
+    sm (!fx_sizes+2),r0
+    ibt r0,#!fxrec_size+4
+    add r1
+    ldw (r0)
+    sm (!fx_sizes+4),r0
+    move r2,r1
+.other:
+    ibt r0,#!fxrec_all_next
+    add r2
+    ldw (r0)
+    moves r2,r0
+    bne .test
+    nop
+    iwt r15,#.sweep
+    nop
+.test:
+    %fx_axis(!fxrec_size+4, !fx_sizes+4, !fxrec_half_x+4, r5)
+    bpl .other
+    nop
+    %fx_axis(!fxrec_size, !fx_sizes, !fxrec_half_x, r3)
+    bpl .other
+    nop
+    %fx_axis(!fxrec_size+2, !fx_sizes+2, !fxrec_half_x+2, r4)
+    bmi .overlap
+    nop
+    iwt r15,#.other
+    nop
+.overlap:
+    ibt r0,#!fxrec_flags16
+    add r1
+    ldw (r0)
+    ibt r6,#!fxrec_flags16
+    with r6
+    add r2
+    to r6
+    ldw (r6)
+    and r6
+    iwt r6,#$0002
+    and r6
+    beq .note
+    nop
+    move r7,r1
+    move r8,r2
+    link #4
+    iwt r15,#FxRecordsApart
+    nop
+    moves r0,r0
+    bne .next
+    nop
+.note:
+    ibt r0,#!fxrec_mode
+    add r1
+    ldw (r0)
+    ibt r6,#!fxrec_flags16
+    with r6
+    add r2
+    to r6
+    ldw (r6)
+    and r6
+    bne .note_other
+    nop
+    move r6,r1
+    move r8,r2
+    link #4
+    iwt r15,#FxContactNote
+    nop
+.note_other:
+    ibt r0,#!fxrec_mode
+    add r2
+    ldw (r0)
+    ibt r6,#!fxrec_flags16
+    with r6
+    add r1
+    to r6
+    ldw (r6)
+    and r6
+    bne .next
+    nop
+    move r6,r2
+    move r8,r1
+    link #4
+    iwt r15,#FxContactNote
+    nop
+.next:
+    iwt r15,#.other
+    nop
+.sweep:
+    ibt r0,#!fxrec_list
+    add r1
+    ldw (r0)
+    moves r0,r0
+    beq .done
+    nop
+    move r6,r1
+    link #4
+    iwt r15,#FxListSweep
+    nop
+.done:
+    %fx_pull(r15)
+    nop
+
 arch 65816

@@ -187,6 +187,21 @@ FxSweepRegs FxListSweep(uint16_t owner, uint16_t stack, FxSweepRegs g)
     return g;
 }
 
+/* FxListSweep on the whole register file, for other routines' C. */
+FxRegs FxListSweepRegs(FxRegs g)
+{
+    FxSweepRegs s = {g.r[0], g.r[2], g.r[7], g.r[8], g.r[9], g.r[12]};
+
+    s = FxListSweep(g.r[6], g.r[10], s);
+    g.r[0] = s.r0;
+    g.r[2] = s.r2;
+    g.r[7] = s.r7;
+    g.r[8] = s.r8;
+    g.r[9] = s.r9;
+    g.r[12] = s.r12;
+    return g;
+}
+
 void abi_FxListSweep(void)
 {
     FxSweepRegs g = {gsu.r[0], gsu.r[2], gsu.r[7], gsu.r[8], gsu.r[9], gsu.r[12]};
