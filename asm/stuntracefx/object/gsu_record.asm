@@ -222,7 +222,8 @@ GsuRecordVelocity:
 ; the list at $7E:FFA6.
 ; HOW: The record address is each object's +$22 (bank $7E); direct page $02
 ; counts the entries.
-; Entry: any widths, D = $0000. Exit: A = the last word; X, Y, P unchanged.
+; Entry: any widths, D = $0000. Exit: A = the last word; X, Y unchanged; P
+; unchanged except N, Z, which the final pull of X sets from X.
 %at($08B863)
 GsuRecordWords88:
     phx

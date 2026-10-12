@@ -262,7 +262,8 @@ void abi_GsuRecordVelocity(void)
  * the list at $7E:FFA6.
  * HOW: The record address is each object's +$22 (bank $7E); direct page $02
  * counts the entries.
- * Entry: any widths, D = $0000. Exit: A = the last word; X, Y, P unchanged.
+ * Entry: any widths, D = $0000. Exit: A = the last word; X, Y unchanged; P
+ * unchanged except N, Z, which the final pull of X sets from X.
  */
 uint16_t GsuRecordWords88(void)
 {
@@ -283,4 +284,5 @@ uint16_t GsuRecordWords88(void)
 void abi_GsuRecordWords88(void)
 {
     cpu.a = GsuRecordWords88();
+    cpu.p = (cpu.p & P_X) ? nz8(cpu.p, (uint8_t)cpu.x) : nz16(cpu.p, cpu.x);
 }
