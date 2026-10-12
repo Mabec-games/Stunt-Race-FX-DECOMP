@@ -5,6 +5,7 @@
  * current one is at $00E4: rows at $E4, $EA, $F0.
  */
 #include "gsu.h"
+#include "gsu_ops.h"
 
 #define FX_MATRIX 0x00E4u
 #define FX_VECTORS 0x0116u  /* three vectors of three words */
@@ -189,4 +190,115 @@ void abi_FxMatrixRotateProgram(void)
     gsu.r[0] = sum;
     gsu.r[5] = part;
     gsu.r[6] = e;
+}
+
+#define FX_ANGLES 0x0020u            /* three angles: $0020, $0022, $0024 */
+#define FX_SINE_TABLE 0x983Eu        /* ROM bank $00: 257 words, 1.15 */
+
+/* (a * b) >> 15, signed: FMULT then ROL. */
+static uint16_t mul15(uint16_t a, uint16_t b)
+{
+    return (uint16_t)((int32_t)(int16_t)a * (int16_t)b >> 15);
+}
+
+/* The sine of an angle (a full turn $10000) from the table, between its
+   entries by the angle's low byte: GETB/GETBH through the ROM buffer. */
+static uint16_t fx_sine(uint16_t angle)
+{
+    uint16_t at = (uint16_t)(FX_SINE_TABLE + (angle >> 8) * 2);
+    uint16_t a, b;
+
+    gsu_r14(at);
+    a = gsu_getb();
+    gsu_r14(++at);
+    a = gsu_getbh(a);
+    gsu_r14(++at);
+    b = gsu_getb();
+    gsu_r14(++at);
+    b = gsu_getbh(b);
+    return (uint16_t)(a + mul15((uint16_t)((angle & 0xFF) << 7), (uint16_t)(b - a)));
+}
+
+/* What FxMatrixFromAngles leaves in registers. */
+typedef struct { uint16_t sz, cz, sx, cx, sy, cy, sx_cy, cx_cy, sx_sy, cx_sy; } FxAnglesLeft;
+
+/*
+ * @routine 01:832F FxMatrixFromAngles
+ * WHAT IT DOES: Builds the rotation matrix for the three angles at $0020
+ * (Z), $0022 (X) and $0024 (Y) and stores its nine words at R9.
+ * HOW: Sets the RAM and ROM banks to 0. Each sine comes from the table at
+ * $00:983E: the angle's high byte picks two neighbouring words (GETB,
+ * GETBH), and the low byte << 7 times their difference (FMULT, ROL) is
+ * added to the first; each cosine is the sine of the angle + $4000. With
+ * products (a * b) >> 15 (FMULT, ROL) the rows are: sx sy sz + cx cy,
+ * sx cy sz - cx sy, sx cz; sy cz, cy cz, -sz; cx sy sz - sx cy,
+ * cx cy sz + sx sy, cx cz.
+ * Entry: R9 = where to store; R11 = return address. Exit: R9 = R9 + 16;
+ * R12, R8 = sin and cos of Z; R4, R3 = of X; R7, R5 = of Y; R1 = sx cy,
+ * R2 = cx cy, R13 = sx sy, R14 = cx sy; R6 = cos Z; R0 = the last element;
+ * the RAM and ROM banks 0; the last RAM address the last element's; CY,
+ * S, Z from its ROL; OV from the ADD R13 of the element before.
+ * R14 and the ROM buffer move as on the Super FX.
+ */
+void FxMatrixFromAngles(uint16_t out, FxAnglesLeft *k)
+{
+    uint16_t m[9];
+    uint16_t a;
+    int i;
+
+    gsu.rambr = 0;
+    gsu.rombr = 0;
+    a = gsu_ldw(FX_ANGLES);
+    k->sz = fx_sine(a);
+    gsu_r14(0x4000);
+    k->cz = fx_sine((uint16_t)(a + 0x4000));
+    a = gsu_ldw((uint16_t)(FX_ANGLES + 2));
+    k->sx = fx_sine(a);
+    gsu_r14(0x4000);
+    k->cx = fx_sine((uint16_t)(a + 0x4000));
+    a = gsu_ldw((uint16_t)(FX_ANGLES + 4));
+    k->sy = fx_sine(a);
+    gsu_r14(0x4000);
+    k->cy = fx_sine((uint16_t)(a + 0x4000));
+    k->sx_cy = mul15(k->sx, k->cy);
+    k->cx_cy = mul15(k->cx, k->cy);
+    k->sx_sy = mul15(k->sx, k->sy);
+    k->cx_sy = mul15(k->cx, k->sy);
+    gsu_r14(k->cx_sy);
+    m[0] = (uint16_t)(mul15(k->sx_sy, k->sz) + k->cx_cy);
+    m[1] = (uint16_t)(mul15(k->sx_cy, k->sz) - k->cx_sy);
+    m[2] = mul15(k->sx, k->cz);
+    m[3] = mul15(k->sy, k->cz);
+    m[4] = mul15(k->cy, k->cz);
+    m[5] = (uint16_t)-k->sz;
+    m[6] = (uint16_t)(mul15(k->cx_sy, k->sz) - k->sx_cy);
+    m[7] = (uint16_t)(mul15(k->cx_cy, k->sz) + k->sx_sy);
+    m[8] = mul15(k->cx, k->cz);
+    for (i = 0; i < 9; i++)
+        gsu_stw((uint16_t)(out + i * 2), m[i]);
+}
+
+void abi_FxMatrixFromAngles(void)
+{
+    uint16_t out = gsu.r[9];
+    FxAnglesLeft k;
+    uint32_t p;
+
+    FxMatrixFromAngles(out, &k);
+    gsu_add(mul15(k.cx_cy, k.sz), k.sx_sy, 0);      /* OV of the ADD R13 */
+    p = (uint32_t)((int32_t)(int16_t)k.cx * (int16_t)k.cz);
+    gsu.cy = (uint8_t)(p >> 31);                    /* ROL takes FMULT's bit 15 */
+    gsu.r[0] = (uint16_t)(p >> 15);
+    gsu_sz(gsu.r[0]);
+    gsu.r[1] = k.sx_cy;
+    gsu.r[2] = k.cx_cy;
+    gsu.r[3] = k.cx;
+    gsu.r[4] = k.sx;
+    gsu.r[5] = k.cy;
+    gsu.r[6] = k.cz;
+    gsu.r[7] = k.sy;
+    gsu.r[8] = k.cz;
+    gsu.r[9] = (uint16_t)(out + 16);
+    gsu.r[12] = k.sz;
+    gsu.r[13] = k.sx_sy;
 }

@@ -114,3 +114,34 @@ void abi_FxAtan2(void)
     gsu_r14(gsu_pull(&gsu.r[10]));
     gsu_pull(&gsu.r[10]);       /* the return address, into R15 */
 }
+
+#define FX_STACK 0x0240u    /* where each program starts the R10 stack */
+#define FX_ANGLE_IN_Y 0x0068u
+#define FX_ANGLE_IN_X 0x002Cu
+#define FX_ANGLE_OUT 0x0040u
+
+/*
+ * @routine 01:81E3 FxAngleProgram
+ * WHAT IT DOES: A program the S-CPU starts: the angle of the vector
+ * ($002C, $0068) by FxAtan2, stored at $0040.
+ * HOW: Sets the R10 stack to $0240; LMS loads $0068 into R1 and $002C into
+ * R2; FxAtan2; SMS stores R0. Then STOP.
+ * Entry: started by the S-CPU. Exit (at the STOP): R10 = $0240; R11 =
+ * $81F1; the registers and flags as FxAtan2 leaves them; the last RAM
+ * address $0040.
+ */
+void FxAngleProgram(void)
+{
+    gsu.r[10] = FX_STACK;
+    gsu.r[1] = gsu_ldw(FX_ANGLE_IN_Y);
+    gsu.r[2] = gsu_ldw(FX_ANGLE_IN_X);
+    /* LINK #4, then into FxAtan2 with its stack traffic and exit registers. */
+    gsu.r[11] = 0x81F1;
+    abi_FxAtan2();
+    gsu_stw(FX_ANGLE_OUT, gsu.r[0]);
+}
+
+void abi_FxAngleProgram(void)
+{
+    FxAngleProgram();
+}

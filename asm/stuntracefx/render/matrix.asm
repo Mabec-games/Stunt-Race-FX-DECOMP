@@ -6,6 +6,7 @@
 
 incsrc "../include/macros.inc"
 incsrc "../include/wram.inc"
+incsrc "../include/rom.inc"
 
 arch superfx
 
@@ -242,6 +243,270 @@ FxMatrixRotateProgram:
     add r5
     sms (!gsu_out_2a-!gsu_ram),r0
     stop
+    nop
+
+; @routine 01:832F FxMatrixFromAngles
+; WHAT IT DOES: Builds the rotation matrix for the three angles at $0020
+; (Z), $0022 (X) and $0024 (Y) and stores its nine words at R9.
+; HOW: Sets the RAM and ROM banks to 0. Each sine comes from the table at
+; $00:983E: the angle's high byte picks two neighbouring words (GETB,
+; GETBH), and the low byte << 7 times their difference (FMULT, ROL) is
+; added to the first; each cosine is the sine of the angle + $4000. With
+; products (a * b) >> 15 (FMULT, ROL) the rows are: sx sy sz + cx cy,
+; sx cy sz - cx sy, sx cz; sy cz, cy cz, -sz; cx sy sz - sx cy,
+; cx cy sz + sx sy, cx cz.
+; Entry: R9 = where to store; R11 = return address. Exit: R9 = R9 + 16;
+; R12, R8 = sin and cos of Z; R4, R3 = of X; R7, R5 = of Y; R1 = sx cy,
+; R2 = cx cy, R13 = sx sy, R14 = cx sy; R6 = cos Z; R0 = the last element;
+; the RAM and ROM banks 0; the last RAM address the last element's; CY,
+; S, Z from its ROL; OV from the ADD R13 of the element before.
+; R14 and the ROM buffer move as on the Super FX.
+%at($01832F)
+FxMatrixFromAngles:
+    sub r0
+    ramb
+    romb
+    lms r1,(!gsu_in_20-!gsu_ram)
+    iwt r6,#!fx_sine_table
+    from r1
+    hib
+    add r0
+    to r14
+    add r6
+    to r2
+    getb
+    inc r14
+    with r2
+    getbh
+    inc r14
+    getb
+    inc r14
+    getbh
+    to r6
+    sub r2
+    from r1
+    lob
+    swap
+    lsr
+    fmult
+    rol
+    to r12
+    add r2
+    iwt r14,#$4000
+    with r1
+    add r14
+    iwt r6,#!fx_sine_table
+    from r1
+    hib
+    add r0
+    to r14
+    add r6
+    to r2
+    getb
+    inc r14
+    with r2
+    getbh
+    inc r14
+    getb
+    inc r14
+    getbh
+    to r6
+    sub r2
+    from r1
+    lob
+    swap
+    lsr
+    fmult
+    rol
+    to r8
+    add r2
+    lms r1,(!gsu_in_22-!gsu_ram)
+    iwt r6,#!fx_sine_table
+    from r1
+    hib
+    add r0
+    to r14
+    add r6
+    to r2
+    getb
+    inc r14
+    with r2
+    getbh
+    inc r14
+    getb
+    inc r14
+    getbh
+    to r6
+    sub r2
+    from r1
+    lob
+    swap
+    lsr
+    fmult
+    rol
+    to r4
+    add r2
+    iwt r14,#$4000
+    with r1
+    add r14
+    iwt r6,#!fx_sine_table
+    from r1
+    hib
+    add r0
+    to r14
+    add r6
+    to r2
+    getb
+    inc r14
+    with r2
+    getbh
+    inc r14
+    getb
+    inc r14
+    getbh
+    to r6
+    sub r2
+    from r1
+    lob
+    swap
+    lsr
+    fmult
+    rol
+    to r3
+    add r2
+    lms r1,(!gsu_in_24-!gsu_ram)
+    iwt r6,#!fx_sine_table
+    from r1
+    hib
+    add r0
+    to r14
+    add r6
+    to r2
+    getb
+    inc r14
+    with r2
+    getbh
+    inc r14
+    getb
+    inc r14
+    getbh
+    to r6
+    sub r2
+    from r1
+    lob
+    swap
+    lsr
+    fmult
+    rol
+    to r7
+    add r2
+    iwt r14,#$4000
+    with r1
+    add r14
+    iwt r6,#!fx_sine_table
+    from r1
+    hib
+    add r0
+    to r14
+    add r6
+    to r2
+    getb
+    inc r14
+    with r2
+    getbh
+    inc r14
+    getb
+    inc r14
+    getbh
+    to r6
+    sub r2
+    from r1
+    lob
+    swap
+    lsr
+    fmult
+    rol
+    to r5
+    add r2
+    move r6,r5
+    from r4
+    fmult
+    to r1
+    rol
+    from r3
+    fmult
+    to r2
+    rol
+    move r6,r7
+    from r4
+    fmult
+    to r13
+    rol
+    from r3
+    fmult
+    to r14
+    rol
+    move r6,r12
+    from r13
+    fmult
+    rol
+    add r2
+    stw (r9)
+    inc r9
+    inc r9
+    from r1
+    fmult
+    rol
+    sub r14
+    stw (r9)
+    inc r9
+    inc r9
+    move r6,r8
+    from r4
+    fmult
+    rol
+    stw (r9)
+    inc r9
+    inc r9
+    from r7
+    fmult
+    rol
+    stw (r9)
+    inc r9
+    inc r9
+    from r5
+    fmult
+    rol
+    stw (r9)
+    inc r9
+    inc r9
+    from r12
+    not
+    inc r0
+    stw (r9)
+    inc r9
+    inc r9
+    move r6,r12
+    from r14
+    fmult
+    rol
+    sub r1
+    stw (r9)
+    inc r9
+    inc r9
+    from r2
+    fmult
+    rol
+    add r13
+    stw (r9)
+    inc r9
+    inc r9
+    move r6,r8
+    from r3
+    fmult
+    rol
+    stw (r9)
+    jmp r11
     nop
 
 arch 65816

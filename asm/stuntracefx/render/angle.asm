@@ -9,6 +9,27 @@ incsrc "../include/rom.inc"
 
 arch superfx
 
+; @routine 01:81E3 FxAngleProgram
+; WHAT IT DOES: A program the S-CPU starts: the angle of the vector
+; ($002C, $0068) by FxAtan2, stored at $0040.
+; HOW: Sets the R10 stack to $0240; LMS loads $0068 into R1 and $002C into
+; R2; FxAtan2; SMS stores R0. Then STOP.
+; Entry: started by the S-CPU. Exit (at the STOP): R10 = $0240; R11 =
+; $81F1; the registers and flags as FxAtan2 leaves them; the last RAM
+; address $0040.
+%at($0181E3)
+FxAngleProgram:
+    iwt r10,#$0240
+    lms r1,(!gsu_in_68-!gsu_ram)
+    lms r2,(!gsu_dest-!gsu_ram)
+    link #4
+    iwt r15,#FxAtan2
+    nop
+    sms (!gsu_rec_40-!gsu_ram),r0
+    nop
+    stop
+    nop
+
 ; @routine 01:81F7 FxAtan2
 ; WHAT IT DOES: The angle of the vector (R2, R1): 0 along +R2, $4000
 ; along +R1, as a word where a full turn is $10000.

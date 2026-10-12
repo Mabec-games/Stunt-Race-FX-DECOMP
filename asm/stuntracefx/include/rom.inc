@@ -256,3 +256,7 @@ includeonce
 ; Sine words by angle / 256 (257 entries), read by the Super FX in bank 0
 ; (math/fx_rotate.asm).
 !fx_sine16_table = $983E
+
+; The Super FX's sine table: 257 words in 1.15, a full turn in 256 steps
+; (render/matrix.asm), in ROM bank $00 as the Super FX sees it.
+!fx_sine_table = $00983E
