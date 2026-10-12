@@ -12,6 +12,7 @@
  * pass, so the remainder is exact only while it fits in 15 bits.
  */
 #include "gsu.h"
+#include "gsu_ops.h"
 
 uint16_t FxDivideHalving(uint16_t hi, uint16_t lo, uint16_t *divisor, uint16_t *remainder);
 
@@ -273,15 +274,13 @@ void FxRatioClamp(uint16_t *x, uint16_t *y, uint16_t d, FxLastDivide *last)
 
 void abi_FxRatioClamp(void)
 {
-    uint16_t sp = gsu.r[10];
     FxLastDivide last;
 
-    gsu_stw(sp, gsu.r[11]);
+    gsu_push(&gsu.r[10], gsu.r[11]);
     FxRatioClamp(&gsu.r[1], &gsu.r[2], gsu.r[3], &last);
     halving_exit(last.hi, last.lo, last.divisor, 0x96D6);
     gsu.r[11] = last.ret;
-    gsu_ldw(sp);
-    gsu_sz(sp);
+    gsu_pull(&gsu.r[10]);       /* the return address, into R15 */
 }
 
 /*

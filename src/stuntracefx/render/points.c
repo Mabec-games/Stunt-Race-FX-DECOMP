@@ -5,17 +5,12 @@
  * in ROM and moved by the vector at $0026.
  */
 #include "gsu.h"
+#include "gsu_ops.h"
 
 #define FX_RECORDS 0x0826u
 #define FX_POINTS 0x0340u
 #define FX_OFFSET 0x0026u   /* X, Y, Z added to each point */
 #define FX_PAIRS 0x005Au    /* the address of the pair list, plus 4 */
-
-/* DIV2: ASR, except that -1 gives 0. */
-static uint16_t div2(uint16_t v)
-{
-    return v == 0xFFFF ? 0 : (uint16_t)((int16_t)v >> 1);
-}
 
 /*
  * @routine 01:C1BE FxPointsGather
@@ -49,8 +44,8 @@ void FxPointsGather(uint16_t count, FxPointsLeft *left)
     /* UMULT takes the count's low byte only: the starting entry and record
        are those of count & $FF. */
     for (i = 0; i < n; i++) {
-        uint16_t a = div2(gsu_ldw(src));
-        uint16_t b = div2(gsu_ldw((uint16_t)(src + 2)));
+        uint16_t a = gsu_div2(gsu_ldw(src));
+        uint16_t b = gsu_div2(gsu_ldw((uint16_t)(src + 2)));
 
         gsu_stw(dst, a);
         gsu_stw((uint16_t)(dst + 2), b);

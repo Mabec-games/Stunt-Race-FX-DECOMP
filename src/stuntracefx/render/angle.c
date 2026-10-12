@@ -5,6 +5,7 @@
  * larger.
  */
 #include "gsu.h"
+#include "gsu_ops.h"
 
 #define FX_ATAN_TABLE 0x009E40u
 
@@ -74,12 +75,12 @@ uint16_t FxAtan2(uint16_t y, uint16_t x)
 
 void abi_FxAtan2(void)
 {
-    uint16_t y = gsu.r[1], x = gsu.r[2], sp = gsu.r[10];
+    uint16_t y = gsu.r[1], x = gsu.r[2];
     uint16_t ay = magnitude(y), ax = magnitude(x);
     uint16_t angle;
 
-    gsu_stw(sp, gsu.r[11]);
-    gsu_stw((uint16_t)(sp + 2), gsu.r[14]);
+    gsu_push(&gsu.r[10], gsu.r[11]);
+    gsu_push(&gsu.r[10], gsu.r[14]);
     angle = FxAtan2(y, x);
     gsu.r[6] = ay;
     if (ax == ay && ax != 0) {
@@ -110,7 +111,6 @@ void abi_FxAtan2(void)
         gsu_add((uint16_t)(angle - 0x8000), 0x8000, 0);
     }
     gsu.r[0] = angle;
-    gsu_r14(gsu_ldw((uint16_t)(sp + 2)));
-    gsu_ldw(sp);
-    gsu_sz(sp);
+    gsu_r14(gsu_pull(&gsu.r[10]));
+    gsu_pull(&gsu.r[10]);       /* the return address, into R15 */
 }
