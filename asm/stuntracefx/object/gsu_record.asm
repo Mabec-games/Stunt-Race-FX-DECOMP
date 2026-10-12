@@ -554,7 +554,7 @@ GsuRecordNew426:
     bra GsuRecordNew_tail
 GsuRecordNew_tail:                  ; the four routines above join here
     rep.b #$20
-    lda.l !gsu_new_record
+    lda.l !gsu_record_arg
     sta.w !obj_22,x
     bne .lCC8A
     brl .lCC9E
@@ -573,3 +573,169 @@ GsuRecordNew_tail:                  ; the four routines above join here
     sep.b #$20
     lda.b #$FF
     rtl
+
+; @routine 08:B80A GsuRecordLower82
+; WHAT IT DOES: Lowers the word at +$82 of the Super FX record Y by an
+; amount scaled from A, not below 0; when Y is the record at $70:2476, sets
+; bit 6 of +$25 of the object at $0346.
+; HOW: $70:238E = Y and $70:2390 = A as the high byte are the inputs of
+; Super FX program $04:BF75 (the amount times 2 times $200 by FMULT,
+; subtracted); ObjectFlag40IfMatch before it runs.
+; Entry: M 8-bit, X 16-bit; A low byte = amount, Y = record. Exit: A = Y's
+; high byte and the screen mode value; X, Y unchanged; M 8-bit, X 16-bit;
+; N, Z from X; C from ObjectFlag40IfMatch's compare.
+%at($08B80A)
+GsuRecordLower82:
+    phx
+    rep.b #$20
+    and.w #$00FF
+    xba
+    sta.l !gsu_in_amount
+    tya
+    sta.l !gsu_record_arg
+    jsr.w ObjectFlag40IfMatch
+    sep.b #$20
+    lda.b #$04
+    ldx.w #$BF75
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    sep.b #$20
+    plx
+    rtl
+
+; @routine 08:B7D6 GsuRecordRaise6A
+; WHAT IT DOES: Unless bit 0 of +$40 of the Super FX record Y is set,
+; raises its word at +$6A by an amount scaled from A, to at most $180; when
+; Y is the record at $70:2476, sets bit 6 of +$25 of the object at $0346.
+; HOW: As GsuRecordLower82, with Super FX program $04:BF51 (the amount
+; times 2 times $180 by FMULT, added and clamped).
+; Entry: M 8-bit, X 16-bit; A low byte = amount, Y = record. Exit: bit set:
+; A = 1; else as GsuRecordLower82. X, Y unchanged; M 8-bit, X 16-bit; N, Z
+; from X; C unchanged when skipped, else from ObjectFlag40IfMatch.
+%at($08B7D6)
+GsuRecordRaise6A:
+    phx
+    rep.b #$20
+    and.w #$00FF
+    xba
+    sta.l !gsu_in_amount
+    tya
+    sta.l !gsu_record_arg
+    tax
+    lda.l !gsu_rec_40,x
+    and.w #$0001
+    bne .lB806
+    lda.l !gsu_record_arg
+    jsr.w ObjectFlag40IfMatch
+    sep.b #$20
+    lda.b #$04
+    ldx.w #$BF51
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+.lB806:
+    sep.b #$20
+    plx
+    rtl
+
+; @routine 08:BF94 ObjectTurnFromRecord
+; WHAT IT DOES: Takes object Y's angles from its Super FX record X (+$29 to
+; +$16, +$25 to +$15) and sets its turn values for drawing: +$5D = +$29 +
+; 8 + a lean step, and +$18 (and +$19 when $0D62 is set) = $80 + the
+; direction byte from the table at $08:C056 relative to the view object at
+; $1A64 (and the one at $1A9F).
+; HOW: The lean step is (+$16 + the view's +$13) / 2 with its low two bits
+; cleared toward zero, limited to $F8..8 by signed compares, negated when
+; +$15 is more than $40 either way from the view's heading; ObjectTableC056
+; turns the negated view heading into the direction byte. The view
+; objects are read through the direct page (bank 0).
+; Entry: M 16-bit, X 16-bit, D = $0000; X = record, Y = object. Exit: M
+; 8-bit; X, Y unchanged; A high byte from +$5D; A low byte and N, Z: $0D62
+; clear: 0, Z set; else the +$19 value, N set; C, V from ObjectTableC056.
+%at($08BF94)
+ObjectTurnFromRecord:
+    sep.b #$20
+    lda.l !gsu_rec_29,x
+    sta.w !obj_16,y
+    lda.l !gsu_rec_25,x
+    sta.w !obj_15,y
+    phx
+    ldx.w #!menu_1a64
+    lda.b 17,x
+    eor.b #$FF
+    inc a
+    sta.w !wram_1F5A
+    lda.b 19,x
+    sta.w !wram_1F2B
+    plx
+    lda.w !obj_16,y
+    clc
+    adc.w !wram_1F2B
+    cmp.b #$80
+    ror a
+    bpl .lBFCA
+    eor.b #$FF
+    inc a
+    and.b #$FC
+    eor.b #$FF
+    inc a
+.lBFCA:
+    and.b #$FC
+    cmp.b #$08
+    bmi .lBFD2
+    lda.b #$08
+.lBFD2:
+    cmp.b #$F8
+    bpl .lBFD8
+    lda.b #$F8
+.lBFD8:
+    sta.w !wram_1F58
+    lda.w !obj_15,y
+    sec
+    sbc.w !wram_1F5A
+    bpl .lBFE7
+    eor.b #$FF
+    inc a
+.lBFE7:
+    cmp.b #$40
+    bmi .lBFF4
+    lda.w !wram_1F58
+    eor.b #$FF
+    inc a
+    sta.w !wram_1F58
+.lBFF4:
+    rep.b #$20
+    lda.w !wram_1F58
+    bit.w #$0080
+    beq .lC003
+    ora.w #$FF00
+    bra .lC006
+.lC003:
+    and.w #$00FF
+.lC006:
+    clc
+    adc.w #$0008
+    clc
+    adc.w !obj_29,y
+    sta.w !obj_5d,y
+    sep.b #$20
+    jsr.w ObjectTableC056
+    lda.w !wram_1F5A
+    ora.b #$80
+    sta.w !obj_18,y
+    lda.w !wram_0D62
+    beq .lC03B
+    phx
+    ldx.w #!view_b
+    lda.b 17,x
+    eor.b #$FF
+    inc a
+    sta.w !wram_1F5A
+    plx
+    jsr.w ObjectTableC056
+    lda.w !wram_1F5A
+    ora.b #$80
+    sta.w !obj_19,y
+.lC03B:
+    rts

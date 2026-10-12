@@ -614,3 +614,161 @@ void abi_ObjectInit(void)
     cpu.a = (uint16_t)((cpu.y & 0xFF00) | 0x69);
     cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) | P_M);
 }
+
+/*
+ * @routine 08:B8B4 ObjectPlaceAll
+ * WHAT IT DOES: Sets up every object in the list at $7E:FFA6 (half the
+ * count at $7E:FFB8 of them) with ObjectPlaceFromTable: object n (from 1)
+ * takes table entry $7E:FFA6[n], and its $1F2B, $1F2D and $1F4C words from
+ * the lists at $18D3, $18DB and $18E3.
+ * HOW: Direct page $02 counts down from the count halved (arithmetic shift),
+ * $08 counts the entry up from 1; the three words are stored through the
+ * data bank before each call.
+ * Entry: any widths, D = $0000. Exit: A = the last ObjectPlaceFromTable A;
+ * X, Y, P restored, then N, Z from X (pulled at its entry width).
+ */
+uint16_t ObjectPlaceAll(uint8_t bank)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t n = rd16(0x7EFFB8), i = 0, a = 0, x, y;
+
+    n = (uint16_t)((n >> 1) | (n & 0x8000));
+    wr16(0x000002, n);
+    wr16(0x000008, 0x0001);
+    do {
+        wr16(b | 0x1F2B, rd16(0x0018D3 + i));
+        wr16(b | 0x1F2D, rd16(0x0018DB + i));
+        wr16(b | 0x1F4C, rd16(0x0018E3 + i));
+        x = rd16(0x7EFFA6 + i);
+        a = ObjectPlaceFromTable((uint8_t)rd16(0x000008), (uint8_t)x, &x, &y);
+        i = (uint16_t)(i + 2);
+        wr16(0x000008, (uint16_t)(rd16(0x000008) + 1));
+        n = (uint16_t)(rd16(0x000002) - 1);
+        wr16(0x000002, n);
+    } while (n);
+    return a;
+}
+
+void abi_ObjectPlaceAll(void)
+{
+    cpu.a = ObjectPlaceAll(cpu.db);
+    cpu.p = (cpu.p & P_X) ? nz8(cpu.p, (uint8_t)cpu.x) : nz16(cpu.p, cpu.x);
+}
+
+/*
+ * @routine 08:E760 ObjectCountStep5F
+ * WHAT IT DOES: Steps object X's counter +$49 up by one; while it has not
+ * passed the limit at $1F58 its +$5F rises by $1F5A, after that +$5F falls
+ * by $1F5A and the routine reports when the counter has reached $1F59.
+ * HOW: 8-bit compares (BEQ/BMI on the difference); returns with carry set
+ * only when the counter equals $1F59 on the falling side.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: C set when done; rising: A
+ * low byte = the new +$5F, N, Z, V from the add; falling: A low byte = the
+ * counter, N, Z from the compare with $1F59, V from the subtract.
+ */
+int ObjectCountStep5F(uint8_t bank, uint16_t obj, uint8_t *a, uint8_t *p)
+{
+    uint32_t c = field(bank, obj, 0x49), f = field(bank, obj, 0x5F), b = (uint32_t)bank << 16;
+    uint8_t n = (uint8_t)(rd8(c) + 1), d = rd8(b | 0x1F5A), v = rd8(f), r;
+
+    wr8(c, n);
+    if (n == rd8(b | 0x1F58) || ((uint8_t)(n - rd8(b | 0x1F58)) & 0x80)) {
+        r = (uint8_t)(v + d);
+        wr8(f, r);
+        *p = (uint8_t)((nz8(*p, r) & ~(P_C | P_V)) | ((~(v ^ d) & (v ^ r) & 0x80) ? P_V : 0));
+        *a = r;
+        return 0;
+    }
+    r = (uint8_t)(v - d);
+    wr8(f, r);
+    *p = (uint8_t)((*p & ~P_V) | (((v ^ d) & (v ^ r) & 0x80) ? P_V : 0));
+    *a = n;
+    r = (uint8_t)(n - rd8(b | 0x1F59));
+    *p = (uint8_t)(nz8(*p, r) & ~P_C);
+    if (r)
+        return 0;
+    *p |= P_C;
+    return 1;
+}
+
+void abi_ObjectCountStep5F(void)
+{
+    uint8_t a = 0, p = cpu.p;
+
+    ObjectCountStep5F(cpu.db, cpu.x, &a, &p);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
+    cpu.p = p;
+}
+
+/* A 16-bit subtract as SBC with carry set; V from it. */
+static uint16_t sub16v(uint16_t a, uint16_t b, uint8_t *p)
+{
+    uint16_t r = (uint16_t)(a - b);
+
+    *p = (uint8_t)((*p & ~P_V) | (((a ^ b) & (a ^ r) & 0x8000) ? P_V : 0));
+    return r;
+}
+
+/* The magnitude as EOR #$FFFF / INC does it ($8000 stays $8000). */
+static uint16_t magnitude(uint16_t v)
+{
+    return (v & 0x8000) ? (uint16_t)(-v) : v;
+}
+
+/*
+ * @routine 08:B5FA ObjectNearFocus
+ * WHAT IT DOES: Switches object X between near and far by its distance
+ * from the object at $1A64 (|dX| + |dZ| against $1194). Near: clears bit 3
+ * of +$24, zeroes +$5F and sets +$5D by its kind (+$49) with
+ * ObjectSet5DByKind. Far: sets bit 3 of +$24, zeroes +$3A, sets +$5F to
+ * $32, +$5D to $99A3 + 2 * kind, and puts a direction ((the $1A64 object's
+ * +$11 + its own +$15) / 8, low two bits clear, bit 7 set) above the low
+ * two bits of +$18.
+ * HOW: 16-bit differences made positive by EOR/INC, summed, compared; the
+ * rest in 8-bit through the data bank. $1F2B keeps |dX|.
+ * Entry: M 8-bit, X 16-bit, D = $0000; X = object. Exit: Y = $1A64; M
+ * 8-bit; near: as ObjectSet5DByKind (V from the distance add); far: A = the
+ * +$5D value, N, Z, C, V from its add.
+ */
+uint16_t ObjectNearFocus(uint8_t bank, uint16_t obj, uint8_t *p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t dx, dz, sum;
+    unsigned s;
+    uint8_t k;
+
+    dx = magnitude(sub16v(rd16(b | 0x1A6C), rd16(field(bank, obj, 0x0C)), p));
+    wr16(b | 0x1F2B, dx);
+    dz = magnitude(sub16v(rd16(b | 0x1A70), rd16(field(bank, obj, 0x10)), p));
+    s = (unsigned)dz + dx;
+    sum = (uint16_t)s;
+    *p = (uint8_t)((*p & ~P_V) | ((~(dz ^ dx) & (dz ^ sum) & 0x8000) ? P_V : 0));
+    if ((uint16_t)(sum - 0x1194) & 0x8000) {
+        wr8(field(bank, obj, 0x24), rd8(field(bank, obj, 0x24)) & 0xF7);
+        wr8(field(bank, obj, 0x5F), 0x00);
+        return ObjectSet5DByKind(bank, obj, rd8(field(bank, obj, 0x49)), p);
+    }
+    k = (uint8_t)(rd8(field(bank, obj, 0x18)) & 0x03);
+    wr8(field(bank, obj, 0x18), k);
+    k = (uint8_t)(((uint8_t)(rd8(b | 0x1A75) + rd8(field(bank, obj, 0x15))) >> 3 & 0xFC) | 0x80 | k);
+    wr8(field(bank, obj, 0x18), k);
+    wr8(field(bank, obj, 0x24), rd8(field(bank, obj, 0x24)) | 0x08);
+    wr8(field(bank, obj, 0x3A), 0x00);
+    wr8(field(bank, obj, 0x5F), 0x32);
+    dx = (uint16_t)(rd8(field(bank, obj, 0x49)) << 1);
+    s = (unsigned)dx + 0x99A3;
+    sum = (uint16_t)s;
+    *p = (uint8_t)((nz16(*p, sum) & ~(P_C | P_V)) | (s > 0xFFFF ? P_C : 0)
+                   | ((~(dx ^ 0x99A3) & (dx ^ sum) & 0x8000) ? P_V : 0));
+    wr16(field(bank, obj, 0x5D), sum);
+    return sum;
+}
+
+void abi_ObjectNearFocus(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = ObjectNearFocus(cpu.db, cpu.x, &p);
+    cpu.y = 0x1A64;
+    cpu.p = (uint8_t)(p | P_M);
+}

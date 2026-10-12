@@ -133,3 +133,5 @@ includeonce
 
 ; Sprite text lines, a word pointer per line in bank $07 (video/sprite_text.asm).
 !text_lines = $078000
+; Object path commands, a word and its operands each (object/path.asm).
+!path_table = $0885B9

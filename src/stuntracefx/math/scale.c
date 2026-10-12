@@ -109,6 +109,29 @@ void abi_ScaleDp02Dp94(void)
     cpu.p = p;
 }
 
+/*
+ * @routine 08:83EC ScaleObjectXZ
+ * WHAT IT DOES: ScaleDp02Dp94 on object X's X and Z position: $02 = its
+ * +$0C, $94 = its +$10 (bank $7E), then rescaled.
+ * HOW: Two long loads, then falls into ScaleDp02Dp94.
+ * Entry: M 16-bit, X 16-bit, D = $0000; X = object. Exit: as
+ * ScaleDp02Dp94.
+ */
+uint16_t ScaleObjectXZ(uint16_t obj, uint8_t *p)
+{
+    wr16(0x000002, rd16(0x7E200C + obj));
+    wr16(0x000094, rd16(0x7E2010 + obj));
+    return ScaleDp02Dp94(p);
+}
+
+void abi_ScaleObjectXZ(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = ScaleObjectXZ(cpu.x, &p);
+    cpu.p = p;
+}
+
 void abi_ScaleDp02Dp94(void);
 
 /*

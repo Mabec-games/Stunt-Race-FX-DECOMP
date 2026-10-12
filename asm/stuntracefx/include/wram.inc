@@ -602,7 +602,28 @@ includeonce
 !text_y = $F4
 !text_attr = $F5
 
-; Super FX record making (object/gsu_record.asm): where the record-making
-; programs leave the new record (0 when the pool is full), and record +$0A.
-!gsu_new_record = $70238E
+; Super FX record programs (object/gsu_record.asm): the record argument
+; (the record-making programs leave the new record there, 0 when the pool
+; is full), the amount argument (high byte), and record +$0A.
+!gsu_record_arg = $70238E
+!gsu_in_amount = $702390
 !gsu_rec_0a = $70000A
+
+; Object fields and work values used by object/object.asm.
+!obj_18 = $2018
+!obj_24 = $2024
+!obj_3a = $203A
+!obj_5f = $205F
+!wram_1F58 = $1F58
+!wram_1F59 = $1F59
+!selection_out_b = $18DB
+!obj_19 = $2019
+!obj_29 = $2029
+!gsu_rec_25 = $700025
+!gsu_rec_29 = $700029
+; The second view object, read through the direct page like $1A64
+; (object/gsu_record.asm).
+!view_b = $1A9F
+!obj_pos_x_long = $7E200C
+!obj_pos_z_long = $7E2010
+!wram_1F52 = $1F52

@@ -480,10 +480,12 @@ void abi_GsuRecordBits60(void)
 
 uint8_t GsuRun(uint8_t bank, uint16_t start);
 
-/* Where each record-making Super FX program leaves the new record's
-   address (0 when its pool had no room), and the word the S-CPU passes to
-   the record's +$0A. */
-#define GSU_NEW_RECORD 0x70238Eu
+/* The record argument of the record programs: the record-making ones
+   leave the new record's address there (0 when the pool had no room). The
+   amount argument is a high byte. $1F4C is the word the S-CPU passes to the
+   new record's +$0A. */
+#define GSU_RECORD_ARG 0x70238Eu
+#define GSU_IN_AMOUNT 0x702390u
 #define RECORD_0A_WORD 0x1F4Cu
 
 /* The tail every routine below ends in ($08:CC7C): the new record becomes
@@ -496,7 +498,7 @@ static uint8_t record_new(uint8_t bank, uint16_t obj, uint16_t program, uint16_t
 
     GsuRun(0x04, program);
     wr16(b | RECORD_0A_WORD, word0a);
-    rec = rd16(GSU_NEW_RECORD);
+    rec = rd16(GSU_RECORD_ARG);
     wr16(b | (uint16_t)(0x2022 + obj), rec);
     if (!rec)
         return 0xFF;
@@ -609,4 +611,146 @@ uint8_t GsuRecordNew426(uint8_t bank, uint16_t obj)
 void abi_GsuRecordNew426(void)
 {
     abi_record_new(0x8B33, 0x910A);
+}
+
+int ObjectFlag40IfMatch(uint8_t bank, uint16_t a, uint16_t *x, uint8_t *v, uint8_t *p);
+
+/* The shared part of the two routines below: the record and the amount (as
+   the high byte) go to the Super FX, ObjectFlag40IfMatch flags the object
+   at $0346 when the record is $70:2476's, and the program runs. Returns A
+   as the original leaves it: Y's high byte over the screen mode value. */
+static uint16_t record_amount_run(uint8_t bank, uint16_t rec, uint8_t amount, uint16_t program, uint8_t *p)
+{
+    uint16_t x = 0;
+    uint8_t v = 0;
+
+    wr16(GSU_IN_AMOUNT, (uint16_t)(amount << 8));
+    wr16(GSU_RECORD_ARG, rec);
+    ObjectFlag40IfMatch(bank, rec, &x, &v, p);
+    return (uint16_t)((rec & 0xFF00) | GsuRun(0x04, program));
+}
+
+/*
+ * @routine 08:B80A GsuRecordLower82
+ * WHAT IT DOES: Lowers the word at +$82 of the Super FX record Y by an
+ * amount scaled from A, not below 0; when Y is the record at $70:2476, sets
+ * bit 6 of +$25 of the object at $0346.
+ * HOW: $70:238E = Y and $70:2390 = A as the high byte are the inputs of
+ * Super FX program $04:BF75 (the amount times 2 times $200 by FMULT,
+ * subtracted); ObjectFlag40IfMatch before it runs.
+ * Entry: M 8-bit, X 16-bit; A low byte = amount, Y = record. Exit: A = Y's
+ * high byte and the screen mode value; X, Y unchanged; M 8-bit, X 16-bit;
+ * N, Z from X; C from ObjectFlag40IfMatch's compare.
+ */
+uint16_t GsuRecordLower82(uint8_t bank, uint16_t rec, uint8_t amount, uint8_t *p)
+{
+    return record_amount_run(bank, rec, amount, 0xBF75, p);
+}
+
+void abi_GsuRecordLower82(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = GsuRecordLower82(cpu.db, cpu.y, (uint8_t)cpu.a, &p);
+    cpu.p = (uint8_t)((nz16(p, cpu.x) | P_M) & ~P_X);
+}
+
+/*
+ * @routine 08:B7D6 GsuRecordRaise6A
+ * WHAT IT DOES: Unless bit 0 of +$40 of the Super FX record Y is set,
+ * raises its word at +$6A by an amount scaled from A, to at most $180; when
+ * Y is the record at $70:2476, sets bit 6 of +$25 of the object at $0346.
+ * HOW: As GsuRecordLower82, with Super FX program $04:BF51 (the amount
+ * times 2 times $180 by FMULT, added and clamped).
+ * Entry: M 8-bit, X 16-bit; A low byte = amount, Y = record. Exit: bit set:
+ * A = 1; else as GsuRecordLower82. X, Y unchanged; M 8-bit, X 16-bit; N, Z
+ * from X; C unchanged when skipped, else from ObjectFlag40IfMatch.
+ */
+uint16_t GsuRecordRaise6A(uint8_t bank, uint16_t rec, uint8_t amount, uint8_t *p)
+{
+    if (rd16(0x700040 + rec) & 0x0001) {
+        wr16(GSU_IN_AMOUNT, (uint16_t)(amount << 8));
+        wr16(GSU_RECORD_ARG, rec);
+        return 0x0001;
+    }
+    return record_amount_run(bank, rec, amount, 0xBF51, p);
+}
+
+void abi_GsuRecordRaise6A(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = GsuRecordRaise6A(cpu.db, cpu.y, (uint8_t)cpu.a, &p);
+    cpu.p = (uint8_t)((nz16(p, cpu.x) | P_M) & ~P_X);
+}
+
+uint8_t ObjectTableC056(uint8_t bank, uint16_t obj, uint8_t *p);
+
+/*
+ * @routine 08:BF94 ObjectTurnFromRecord
+ * WHAT IT DOES: Takes object Y's angles from its Super FX record X (+$29 to
+ * +$16, +$25 to +$15) and sets its turn values for drawing: +$5D = +$29 +
+ * 8 + a lean step, and +$18 (and +$19 when $0D62 is set) = $80 + the
+ * direction byte from the table at $08:C056 relative to the view object at
+ * $1A64 (and the one at $1A9F).
+ * HOW: The lean step is (+$16 + the view's +$13) / 2 with its low two bits
+ * cleared toward zero, limited to $F8..8 by signed compares, negated when
+ * +$15 is more than $40 either way from the view's heading; ObjectTableC056
+ * turns the negated view heading into the direction byte. The view
+ * objects are read through the direct page (bank 0).
+ * Entry: M 16-bit, X 16-bit, D = $0000; X = record, Y = object. Exit: M
+ * 8-bit; X, Y unchanged; A high byte from +$5D; A low byte and N, Z: $0D62
+ * clear: 0, Z set; else the +$19 value, N set; C, V from ObjectTableC056.
+ */
+uint16_t ObjectTurnFromRecord(uint8_t bank, uint16_t rec, uint16_t obj, uint8_t *p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t a, sum, t;
+    uint16_t w;
+
+    wr8(b | (uint16_t)(0x2016 + obj), rd8(0x700029 + rec));
+    wr8(b | (uint16_t)(0x2015 + obj), rd8(0x700025 + rec));
+    wr8(b | 0x1F5A, (uint8_t)-rd8(0x001A75));
+    wr8(b | 0x1F2B, rd8(0x001A77));
+    sum = (uint8_t)(rd8(b | (uint16_t)(0x2016 + obj)) + rd8(b | 0x1F2B));
+    a = (uint8_t)((sum >> 1) | (sum & 0x80));
+    if (a & 0x80)
+        a = (uint8_t)-(uint8_t)((uint8_t)-a & 0xFC);
+    a &= 0xFC;
+    if (!((uint8_t)(a - 0x08) & 0x80))
+        a = 0x08;
+    if ((uint8_t)(a - 0xF8) & 0x80)
+        a = 0xF8;
+    wr8(b | 0x1F58, a);
+    t = (uint8_t)(rd8(b | (uint16_t)(0x2015 + obj)) - rd8(b | 0x1F5A));
+    if (t & 0x80)
+        t = (uint8_t)-t;
+    if (!((uint8_t)(t - 0x40) & 0x80))
+        wr8(b | 0x1F58, (uint8_t)-rd8(b | 0x1F58));
+    w = rd16(b | 0x1F58);
+    w = (w & 0x0080) ? (uint16_t)(w | 0xFF00) : (uint16_t)(w & 0x00FF);
+    w = (uint16_t)(w + 8 + rd16(b | (uint16_t)(0x2029 + obj)));
+    wr16(b | (uint16_t)(0x205D + obj), w);
+    ObjectTableC056(bank, obj, p);
+    a = (uint8_t)(rd8(b | 0x1F5A) | 0x80);
+    wr8(b | (uint16_t)(0x2018 + obj), a);
+    a = rd8(b | 0x0D62);
+    if (!a) {
+        *p = nz8(*p, 0);
+        return (uint16_t)(w & 0xFF00);
+    }
+    wr8(b | 0x1F5A, (uint8_t)-rd8(0x001AB0));
+    ObjectTableC056(bank, obj, p);
+    a = (uint8_t)(rd8(b | 0x1F5A) | 0x80);
+    wr8(b | (uint16_t)(0x2019 + obj), a);
+    *p = nz8(*p, a);
+    return (uint16_t)((w & 0xFF00) | a);
+}
+
+void abi_ObjectTurnFromRecord(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = ObjectTurnFromRecord(cpu.db, cpu.x, cpu.y, &p);
+    cpu.p = (uint8_t)(p | P_M);
 }

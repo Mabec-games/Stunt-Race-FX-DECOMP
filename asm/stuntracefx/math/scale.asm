@@ -77,6 +77,19 @@ Mode7ScaleProduct:
     lda.w !MPYL
     rts
 
+; @routine 08:83EC ScaleObjectXZ
+; WHAT IT DOES: ScaleDp02Dp94 on object X's X and Z position: $02 = its
+; +$0C, $94 = its +$10 (bank $7E), then rescaled.
+; HOW: Two long loads, then falls into ScaleDp02Dp94.
+; Entry: M 16-bit, X 16-bit, D = $0000; X = object. Exit: as
+; ScaleDp02Dp94.
+%at($0883EC)
+ScaleObjectXZ:
+    lda.l !obj_pos_x_long,x
+    sta.b !dp_02
+    lda.l !obj_pos_z_long,x
+    sta.b !dp_94
+
 ; @routine 08:83F8 ScaleDp02Dp94
 ; WHAT IT DOES: Rescales the pair in direct page $02 and $94: $02 becomes
 ; ($02 >> 10, signed) + $20 with bit 0 cleared, $94 becomes (its top five

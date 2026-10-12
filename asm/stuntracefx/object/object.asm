@@ -574,3 +574,166 @@ ObjectInit:
     ply
     plb
     rtl
+
+; @routine 08:B8B4 ObjectPlaceAll
+; WHAT IT DOES: Sets up every object in the list at $7E:FFA6 (half the
+; count at $7E:FFB8 of them) with ObjectPlaceFromTable: object n (from 1)
+; takes table entry $7E:FFA6[n], and its $1F2B, $1F2D and $1F4C words from
+; the lists at $18D3, $18DB and $18E3.
+; HOW: Direct page $02 counts down from the count halved (arithmetic shift),
+; $08 counts the entry up from 1; the three words are stored through the
+; data bank before each call.
+; Entry: any widths, D = $0000. Exit: A = the last ObjectPlaceFromTable A;
+; X, Y, P restored, then N, Z from X (pulled at its entry width).
+%at($08B8B4)
+ObjectPlaceAll:
+    phx
+    phy
+    php
+    rep.b #$30
+    lda.l !object_list_b_len
+    cmp.w #$8000
+    ror a
+    sta.b !dp_02
+    lda.w #$0001
+    sta.b !dp_08
+    ldx.w #$0000
+.lB8CB:
+    lda.l !selection_out,x
+    sta.w !wram_1F2B
+    lda.l !selection_out_b,x
+    sta.w !wram_1F2D
+    lda.l !selection_derived,x
+    sta.w !wram_1F4C
+    lda.l !wram_7EFFA6,x
+    phx
+    tax
+    lda.b !dp_08
+    jsl.l ObjectPlaceFromTable
+    plx
+    inx
+    inx
+    inc.b !dp_08
+    dec.b !dp_02
+    bne .lB8CB
+    plp
+    ply
+    plx
+    rtl
+
+; @routine 08:E760 ObjectCountStep5F
+; WHAT IT DOES: Steps object X's counter +$49 up by one; while it has not
+; passed the limit at $1F58 its +$5F rises by $1F5A, after that +$5F falls
+; by $1F5A and the routine reports when the counter has reached $1F59.
+; HOW: 8-bit compares (BEQ/BMI on the difference); returns with carry set
+; only when the counter equals $1F59 on the falling side.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: C set when done; rising: A
+; low byte = the new +$5F, N, Z, V from the add; falling: A low byte = the
+; counter, N, Z from the compare with $1F59, V from the subtract.
+%at($08E760)
+ObjectCountStep5F:
+    inc.w !obj_49,x
+    lda.w !obj_49,x
+    cmp.w !wram_1F58
+    beq .lE771
+    bmi .lE771
+    jml.l ObjectCountStep5F_falling
+.lE771:
+    lda.w !obj_5f,x
+    clc
+    adc.w !wram_1F5A
+    sta.w !obj_5f,x
+    jmp.w ObjectCountStep5F_clear
+ObjectCountStep5F_falling:          ; reached by the long jump above
+    lda.w !obj_5f,x
+    sec
+    sbc.w !wram_1F5A
+    sta.w !obj_5f,x
+    lda.w !obj_49,x
+    cmp.w !wram_1F59
+    bne ObjectCountStep5F_clear
+    jml.l ObjectCountStep5F_done
+ObjectCountStep5F_clear:            ; both branches return carry clear here
+    clc
+    rts
+ObjectCountStep5F_done:             ; reached by the long jump above
+    sec
+    rts
+
+; @routine 08:B5FA ObjectNearFocus
+; WHAT IT DOES: Switches object X between near and far by its distance
+; from the object at $1A64 (|dX| + |dZ| against $1194). Near: clears bit 3
+; of +$24, zeroes +$5F and sets +$5D by its kind (+$49) with
+; ObjectSet5DByKind. Far: sets bit 3 of +$24, zeroes +$3A, sets +$5F to
+; $32, +$5D to $99A3 + 2 * kind, and puts a direction ((the $1A64 object's
+; +$11 + its own +$15) / 8, low two bits clear, bit 7 set) above the low
+; two bits of +$18.
+; HOW: 16-bit differences made positive by EOR/INC, summed, compared; the
+; rest in 8-bit through the data bank. $1F2B keeps |dX|.
+; Entry: M 8-bit, X 16-bit, D = $0000; X = object. Exit: Y = $1A64; M
+; 8-bit; near: as ObjectSet5DByKind (V from the distance add); far: A = the
+; +$5D value, N, Z, C, V from its add.
+%at($08B5FA)
+ObjectNearFocus:
+    rep.b #$20
+    ldy.w #!menu_1a64
+    lda.w 8,y
+    sec
+    sbc.w !obj_pos_x,x
+    bpl .lB60C
+    eor.w #$FFFF
+    inc a
+.lB60C:
+    sta.w !wram_1F2B
+    lda.w 12,y
+    sec
+    sbc.w !obj_pos_z,x
+    bpl .lB61C
+    eor.w #$FFFF
+    inc a
+.lB61C:
+    clc
+    adc.w !wram_1F2B
+    cmp.w #$1194
+    sep.b #$20
+    bpl .lB63C
+    lda.w !obj_24,x
+    and.b #$F7
+    sta.w !obj_24,x
+    lda.b #$00
+    sta.w !obj_5f,x
+    lda.w !obj_49,x
+    jsr.w ObjectSet5DByKind
+    bra .lB67F
+.lB63C:
+    lda.w !obj_18,x
+    and.b #$03
+    sta.w !obj_18,x
+    ldy.w #!menu_1a64
+    lda.w 17,y
+    clc
+    adc.w !obj_15,x
+    lsr a
+    lsr a
+    lsr a
+    and.b #$FC
+    ora.b #$80
+    ora.w !obj_18,x
+    sta.w !obj_18,x
+    lda.w !obj_24,x
+    ora.b #$08
+    sta.w !obj_24,x
+    lda.b #$00
+    sta.w !obj_3a,x
+    lda.b #$32
+    sta.w !obj_5f,x
+    lda.w !obj_49,x
+    rep.b #$20
+    and.w #$00FF
+    asl a
+    clc
+    adc.w #$99A3
+    sta.w !obj_5d,x
+    sep.b #$20
+.lB67F:
+    rtl
