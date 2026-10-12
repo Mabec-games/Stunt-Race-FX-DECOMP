@@ -411,15 +411,16 @@ void abi_MenuSpritePalettesScale(void)
 /* One cross-fade frame for count n: colours 64-127 scaled by f / 32 and
    colours 12-15 by (32 - f) / 32, f = $0B:CFE5[n with bit 0 clear], the
    second factor made as ((f - 1) EOR $1F) + 1; both through $11DF. Returns
-   the last colour. */
-static uint16_t cross_fade(uint8_t bank, uint16_t n)
+   the last colour; *factor = the second factor. */
+static uint16_t cross_fade(uint8_t bank, uint16_t n, uint16_t *factor)
 {
     uint32_t b = (uint32_t)bank << 16;
     uint16_t x = 0x0080, y = 0x003F;
 
     wr16(b | 0x11DF, rd16(0x0BCFE5 + (uint16_t)(n & 0xFFFE)));
     MenuPaletteScale(bank, &x, &y);
-    wr16(b | 0x11DF, (uint16_t)(((uint16_t)(rd16(b | 0x11DF) - 1) ^ 0x001F) + 1));
+    *factor = (uint16_t)(((uint16_t)(rd16(b | 0x11DF) - 1) ^ 0x001F) + 1);
+    wr16(b | 0x11DF, *factor);
     x = 0x0018;
     y = 0x0003;
     return MenuPaletteScale(bank, &x, &y);
@@ -438,7 +439,7 @@ static uint16_t cross_fade(uint8_t bank, uint16_t n)
  * $CE89; N set, Z clear; C set. Otherwise: A = the last colour; X = $0020;
  * Y = $FFFF; N, Z from the second factor; C clear.
  */
-int MenuCrossFadeStep(uint8_t bank, uint16_t rec, uint16_t *a)
+int MenuCrossFadeStep(uint8_t bank, uint16_t rec, uint16_t *a, uint16_t *factor)
 {
     uint16_t n = (uint16_t)(rd16((uint16_t)(rec + 0x0A)) + 1);
 
@@ -448,18 +449,18 @@ int MenuCrossFadeStep(uint8_t bank, uint16_t rec, uint16_t *a)
         return 0;
     }
     wr16((uint16_t)(rec + 0x0A), n);
-    *a = cross_fade(bank, n);
+    *a = cross_fade(bank, n, factor);
     return 1;
 }
 
 void abi_MenuCrossFadeStep(void)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t f;
 
-    if (MenuCrossFadeStep(cpu.db, cpu.x, &cpu.a)) {
+    if (MenuCrossFadeStep(cpu.db, cpu.x, &cpu.a, &f)) {
         cpu.x = 0x0020;
         cpu.y = 0xFFFF;
-        cpu.p = (uint8_t)(nz16(cpu.p, rd16(b | 0x11DF)) & ~P_C);
+        cpu.p = (uint8_t)(nz16(cpu.p, f) & ~P_C);
     } else {
         cpu.p = (uint8_t)((nz16(cpu.p, cpu.a)) | P_C);
     }
@@ -531,7 +532,7 @@ void VramDmaQueueAdd(void);
  * MenuCrossFadeStep. Done: A = $D1F7; X unchanged; N set, Z clear; M
  * 16-bit, X 16-bit; C, V unchanged.
  */
-int MenuCrossFadeOut(uint8_t bank, uint16_t rec, uint16_t *a)
+int MenuCrossFadeOut(uint8_t bank, uint16_t rec, uint16_t *a, uint16_t *factor)
 {
     static const struct { uint32_t reg; uint8_t v; } set[] = {
         {BG12NBA, 0x70}, {BG2SC, 0x7D}, {BGMODE, 0x03}, {TM, 0x02}, {HDMAEN, 0x00}};
@@ -540,7 +541,7 @@ int MenuCrossFadeOut(uint8_t bank, uint16_t rec, uint16_t *a)
 
     if (!(n & 0x8000)) {
         wr16((uint16_t)(rec + 0x0A), n);
-        *a = cross_fade(bank, n);
+        *a = cross_fade(bank, n, factor);
         return 1;
     }
     wr16(0x0016B1, 0x0080);
@@ -557,12 +558,12 @@ int MenuCrossFadeOut(uint8_t bank, uint16_t rec, uint16_t *a)
 
 void abi_MenuCrossFadeOut(void)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t f;
 
-    if (MenuCrossFadeOut(cpu.db, cpu.x, &cpu.a)) {
+    if (MenuCrossFadeOut(cpu.db, cpu.x, &cpu.a, &f)) {
         cpu.x = 0x0020;
         cpu.y = 0xFFFF;
-        cpu.p = (uint8_t)(nz16(cpu.p, rd16(b | 0x11DF)) & ~P_C);
+        cpu.p = (uint8_t)(nz16(cpu.p, f) & ~P_C);
     } else {
         cpu.p = (uint8_t)((nz16(cpu.p, cpu.a) & ~(P_M | P_X)));
     }

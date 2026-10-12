@@ -863,10 +863,10 @@ static void queue_frame_row(uint32_t b, uint16_t dest, uint16_t src)
  * first table offset. Exit: A = the entry offset past the last sprite; X =
  * $11F9; Y = $FFFF; N, Z from X; C, V from the last add of 8.
  */
-uint16_t MenuActorUploadFrames(uint8_t bank, uint16_t rec, uint16_t frame, uint8_t *p)
+uint16_t MenuActorUploadFrames(uint8_t bank, uint16_t rec, uint16_t frame, uint16_t *xo, uint8_t *p)
 {
     uint32_t b = (uint32_t)bank << 16;
-    uint16_t n, v, src, e, s = 0;
+    uint16_t n, v, src, e, s = 0, at;
 
     wr16(b | 0x11DF, (uint16_t)(frame << 1));
     e = rd16((uint16_t)(rec + 0x12));
@@ -878,7 +878,8 @@ uint16_t MenuActorUploadFrames(uint8_t bank, uint16_t rec, uint16_t frame, uint8
         v = rd16(0x0BCC7C + rd16(b | 0x11DF));
         wr16(b | 0x11E7, v & 0x8000);
         e = rd16(b | 0x11E5);
-        wr16(0x7F135A + e, (uint16_t)((rd16(0x7F135A + e) & 0x7FFF) | rd16(b | 0x11E7)));
+        at = rd16(0x7F135A + e) & 0x7FFF;  /* the attribute word, then $11E7 */
+        wr16(0x7F135A + e, (uint16_t)(at | rd16(b | 0x11E7)));
         src = (uint16_t)((v & 0x7FFF) + rd16(b | 0x11E9));
         queue_frame_row(b, rd16(b | 0x11E1), src);
         wr8(b | 0x11E2, (uint8_t)(rd8(b | 0x11E2) + 1));
@@ -891,7 +892,8 @@ uint16_t MenuActorUploadFrames(uint8_t bank, uint16_t rec, uint16_t frame, uint8
         wr16(b | 0x11E5, s);
         n = (uint16_t)(n - 1);
     } while (!(n & 0x8000));
-    *p = nz16(*p, rd16(b | CURRENT));
+    *xo = rd16(b | CURRENT);
+    *p = nz16(*p, *xo);
     return s;
 }
 
@@ -899,8 +901,7 @@ void abi_MenuActorUploadFrames(void)
 {
     uint8_t p = cpu.p;
 
-    cpu.a = MenuActorUploadFrames(cpu.db, cpu.x, cpu.a, &p);
-    cpu.x = rd16((uint32_t)cpu.db << 16 | CURRENT);
+    cpu.a = MenuActorUploadFrames(cpu.db, cpu.x, cpu.a, &cpu.x, &p);
     cpu.y = 0xFFFF;
     cpu.p = p;
 }
@@ -1138,8 +1139,7 @@ uint16_t MenuChoiceObjectFrames(uint8_t bank, uint16_t a, uint16_t *x, uint16_t 
     wr16((uint16_t)(*x + 0x0A), a);
     *p = nz16(*p, a);
     if (a) {
-        a = MenuActorUploadFrames(bank, *x, a, p);
-        *x = rd16(dbw(bank, CURRENT));
+        a = MenuActorUploadFrames(bank, *x, a, x, p);
         *y = 0xFFFF;
         a = rd16((uint16_t)(*x + 0x10));
         *p = nz16(*p, a);
@@ -1295,7 +1295,7 @@ void Hang(void);
  * Entry: M 16-bit, X 16-bit, D = $0000. Exit: A = the last word copied; X =
  * $11F9; N, Z from X; C clear; V from the add of the size.
  */
-uint16_t MenuActorCopyGroup(uint8_t bank, uint8_t *p)
+uint16_t MenuActorCopyGroup(uint8_t bank, uint16_t *xo, uint8_t *p)
 {
     uint32_t b = (uint32_t)bank << 16;
     uint16_t x = rd16(b | CURRENT), src, dst, size, a = 0;
@@ -1322,7 +1322,8 @@ uint16_t MenuActorCopyGroup(uint8_t bank, uint8_t *p)
         wr16(b | 0x11E3, (uint16_t)(rd16(b | 0x11E3) + 2));
         wr16(b | 0x11DF, (uint16_t)(rd16(b | 0x11DF) - 2));
     } while (rd16(b | 0x11DF));
-    *p = nz16(*p, rd16(b | CURRENT));
+    *xo = rd16(b | CURRENT);
+    *p = nz16(*p, *xo);
     return a;
 }
 
@@ -1330,8 +1331,7 @@ void abi_MenuActorCopyGroup(void)
 {
     uint8_t p = cpu.p;
 
-    cpu.a = MenuActorCopyGroup(cpu.db, &p);
-    cpu.x = rd16((uint32_t)cpu.db << 16 | CURRENT);
+    cpu.a = MenuActorCopyGroup(cpu.db, &cpu.x, &p);
     cpu.p = p;
 }
 
@@ -1497,8 +1497,7 @@ void abi_MenuFadeOutHandler(void)
    and the handler `next`. */
 static void choice_start(uint8_t bank, uint16_t next, uint16_t *x, uint8_t *p)
 {
-    MenuActorCopyGroup(bank, p);
-    *x = rd16(dbw(bank, CURRENT));
+    MenuActorCopyGroup(bank, x, p);
     wr16((uint16_t)(*x + 0x08), next);
     *p = nz16(*p, next);
 }
@@ -1581,8 +1580,7 @@ void abi_MenuChoiceObject24Start(void)
  */
 void MenuRowStart(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
 {
-    MenuActorCopyGroup(bank, p);
-    *x = rd16(dbw(bank, CURRENT));
+    MenuActorCopyGroup(bank, x, p);
     MenuRowBlinkSettings(bank, x, y, p);
     *x = rd16(dbw(bank, CURRENT));
     wr16((uint16_t)(*x + 0x08), 0xC47B);
@@ -2170,7 +2168,7 @@ static void oam_high_step(void)
  */
 uint16_t MenuOamBuild(uint16_t *x, uint16_t *y)
 {
-    uint16_t i, rec, n, sx, sy;
+    uint16_t i, rec, n, sx, sy, w;
     int c;
 
     wr16(0x001205, 0x0000);
@@ -2251,16 +2249,27 @@ uint16_t MenuOamBuild(uint16_t *x, uint16_t *y)
             wr16(OAM_BUFFER + *y, rd16(0x7F135A + *x));
             *y = (uint16_t)(*y + 2);
             wr16(0x001205, *y);
-            c = rd16(0x0011F1) & 1;
-            wr16(0x0011F1, (uint16_t)(rd16(0x0011F1) >> 1));
+            w = rd16(0x0011F1);
+            c = w & 1;
+            wr16(0x0011F1, (uint16_t)(w >> 1));
             ror_mem(0x0011E1, &c);
             c = rd16(0x7F135C + *x) & 1;
             ror_mem(0x0011E1, &c);
-            oam_high_step();
+            w = (uint16_t)(rd16(0x0011DF) - 1);
+            wr16(0x0011DF, w);
+            if (w & 0x8000) {
+                /* here the word is stored before $11DF is reset */
+                *y = rd16(0x001207);
+                wr16(OAM_BUFFER_HIGH + *y, rd16(0x0011E1));
+                *y = (uint16_t)(*y + 2);
+                wr16(0x001207, *y);
+                wr16(0x0011DF, 0x0007);
+            }
         next:
             *x = (uint16_t)(*x + 8);
-            wr16(0x0011E3, (uint16_t)(rd16(0x0011E3) - 1));
-            if (rd16(0x0011E3) & 0x8000)
+            w = (uint16_t)(rd16(0x0011E3) - 1);
+            wr16(0x0011E3, w);
+            if (w & 0x8000)
                 break;
         }
     }
@@ -2293,8 +2302,9 @@ uint16_t MenuOamBuild(uint16_t *x, uint16_t *y)
             *y = (uint16_t)(*y + 2);
         } while (*y < rd16(0x001203));
     }
-    wr16(0x001203, rd16(0x001207));
-    return rd16(0x001207);
+    w = rd16(0x001207);
+    wr16(0x001203, w);
+    return w;
 }
 
 void abi_MenuOamBuild(void)

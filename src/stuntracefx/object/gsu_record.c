@@ -619,15 +619,20 @@ int ObjectFlag40IfMatch(uint8_t bank, uint16_t a, uint16_t *x, uint8_t *v, uint8
    the high byte) go to the Super FX, ObjectFlag40IfMatch flags the object
    at $0346 when the record is $70:2476's, and the program runs. Returns A
    as the original leaves it: Y's high byte over the screen mode value. */
-static uint16_t record_amount_run(uint8_t bank, uint16_t rec, uint8_t amount, uint16_t program, uint8_t *p)
+static uint16_t record_amount_go(uint8_t bank, uint16_t rec, uint16_t program, uint8_t *p)
 {
     uint16_t x = 0;
     uint8_t v = 0;
 
-    wr16(GSU_IN_AMOUNT, (uint16_t)(amount << 8));
-    wr16(GSU_RECORD_ARG, rec);
     ObjectFlag40IfMatch(bank, rec, &x, &v, p);
     return (uint16_t)((rec & 0xFF00) | GsuRun(0x04, program));
+}
+
+static uint16_t record_amount_run(uint8_t bank, uint16_t rec, uint8_t amount, uint16_t program, uint8_t *p)
+{
+    wr16(GSU_IN_AMOUNT, (uint16_t)(amount << 8));
+    wr16(GSU_RECORD_ARG, rec);
+    return record_amount_go(bank, rec, program, p);
 }
 
 /*
@@ -668,12 +673,13 @@ void abi_GsuRecordLower82(void)
  */
 uint16_t GsuRecordRaise6A(uint8_t bank, uint16_t rec, uint8_t amount, uint8_t *p)
 {
-    if (rd16(0x700040 + rec) & 0x0001) {
-        wr16(GSU_IN_AMOUNT, (uint16_t)(amount << 8));
-        wr16(GSU_RECORD_ARG, rec);
+    /* the inputs are stored before the flag is read, and the record is
+       read back from $70:238E for the match */
+    wr16(GSU_IN_AMOUNT, (uint16_t)(amount << 8));
+    wr16(GSU_RECORD_ARG, rec);
+    if (rd16(0x700040 + rec) & 0x0001)
         return 0x0001;
-    }
-    return record_amount_run(bank, rec, amount, 0xBF51, p);
+    return record_amount_go(bank, rd16(GSU_RECORD_ARG), 0xBF51, p);
 }
 
 void abi_GsuRecordRaise6A(void)
@@ -1031,7 +1037,7 @@ void abi_RecordNextContact(void)
 uint16_t RecordContactSummary(uint8_t bank, uint16_t obj, uint16_t *y)
 {
     uint32_t b = (uint32_t)bank << 16;
-    uint16_t rec = record_of(bank, obj), e, r;
+    uint16_t rec = record_of(bank, obj), e, r, f;
 
     if (!rec)
         return 0;
@@ -1041,16 +1047,22 @@ uint16_t RecordContactSummary(uint8_t bank, uint16_t obj, uint16_t *y)
         if (rd16(0x7026F2) & 0x0020)
             wr16(b | 0x1F38, (uint16_t)(rd16(b | 0x1F38) | 0x0080));
     }
-    wr16(b | 0x1F38, (uint16_t)((rd16(0x70002C + rec) & 0x0020) | rd16(b | 0x1F38)));
+    f = rd16(0x70002C + rec) & 0x0020;
+    wr16(b | 0x1F38, (uint16_t)(f | rd16(b | 0x1F38)));
     wr16(b | 0x1F36, 0x0000);
     wr16(b | 0x1F3A, 0x0000);
     for (e = rd16(0x700018 + rec); e; e = rd16(0x70000E + e)) {
         if (!(rd16(0x700010 + e) & 0x0002))
             continue;
         r = rd16(0x70000C + e);
-        if (rd16(0x700016 + r) & 0x0002)
-            wr16(b | 0x1F3A, (uint16_t)(rd16(0x700064 + r) | rd16(b | 0x1F3A)));
-        wr16(b | 0x1F36, (uint16_t)(rd16(0x700016 + r) | rd16(b | 0x1F36)));
+        /* the flags are read again only after +$64, as the original does */
+        f = rd16(0x700016 + r);
+        if (f & 0x0002) {
+            f = rd16(0x700064 + r);
+            wr16(b | 0x1F3A, (uint16_t)(f | rd16(b | 0x1F3A)));
+            f = rd16(0x700016 + r);
+        }
+        wr16(b | 0x1F36, (uint16_t)(f | rd16(b | 0x1F36)));
         *y = e;
     }
     return RecordContactFlags(bank);

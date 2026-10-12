@@ -89,14 +89,16 @@ static uint16_t actor_find8(uint8_t kind, uint16_t x)
 static void menu_frame(void)
 {
     uint32_t b;
+    uint8_t f;
 
     MenuWaitFrame(cpu.db);
     cpu.a = 0x0000;
     MenuActorsRun();
     cpu.a = MenuOamBuild(&cpu.x, &cpu.y);
     b = (uint32_t)cpu.db << 16;
-    wr8(b | 0x11D7, (uint8_t)(rd8(b | 0x11D7) | 0x0F));
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | rd8(b | 0x11D7));
+    f = (uint8_t)(rd8(b | 0x11D7) | 0x0F);
+    wr8(b | 0x11D7, f);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | f);
 }
 
 /*
