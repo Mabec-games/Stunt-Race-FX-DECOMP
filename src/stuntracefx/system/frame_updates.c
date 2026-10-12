@@ -3,10 +3,10 @@
  * applies in the next vertical blank.
  *
  * $11D7 holds one flag per pending update: bit 0 a list of byte writes,
- * bit 2 the sprite table, bit 3 the palette. Each routine here applies its
+ * bit 1 the VRAM transfer queue, bit 2 the sprite table, bit 3 the palette. Each routine here applies its
  * update only when its flag is set, then clears the flag. Other lists collect
  * values for the frame code: two word lists ($1195, $11B5, eight words each)
- * and a list of 8-byte records at $16B9.
+ * and the VRAM transfer queue at $16B9 (bit 1).
  */
 #include "machine.h"
 #include "hw.h"
@@ -160,14 +160,15 @@ void abi_ByteWritesIfPending(void)
 }
 
 /*
- * @routine 7F:1007 RecordListAppend
- * WHAT IT DOES: Appends the record staged at $16B1-$16B8 to the list at
- * $16B9, unless the list is full ($200 bytes).
- * HOW: Copies $16B3 (word), $16B5 (byte), $16B7 (word) and $16B1 (word) into
- * the next 8-byte slot, in that order, and advances the list size by 8.
+ * @routine 7F:1007 VramDmaQueueAdd
+ * WHAT IT DOES: Queues the VRAM transfer staged at $16B1-$16B8 for the
+ * next vertical blank, unless the queue is full ($200 bytes, 64 transfers).
+ * HOW: Copies the source address ($16B3), source bank ($16B5), VRAM address
+ * ($16B7) and byte count ($16B1) into the next 8-byte slot, in that order,
+ * and advances the queue size by 8. VramDmaQueueFlush runs the queue.
  * Entry: any widths. Exit: A = the new size when appended; P, X unchanged.
  */
-static int record_list_append(uint16_t *size_out)
+static int vram_dma_queue_add(uint16_t *size_out)
 {
     uint16_t x = rd16(0x0016AF);
 
@@ -182,18 +183,18 @@ static int record_list_append(uint16_t *size_out)
     return 1;
 }
 
-void RecordListAppend(void)
+void VramDmaQueueAdd(void)
 {
     uint16_t size;
 
-    record_list_append(&size);
+    vram_dma_queue_add(&size);
 }
 
-void abi_RecordListAppend(void)
+void abi_VramDmaQueueAdd(void)
 {
     uint16_t size;
 
-    if (record_list_append(&size))
+    if (vram_dma_queue_add(&size))
         cpu.a = size;
 }
 
@@ -249,4 +250,67 @@ void WordListBAppend(uint16_t value)
 void abi_WordListBAppend(void)
 {
     abi_word_list(0x001193, 0x0011B5);
+}
+
+/*
+ * @routine 7F:0F77 VramDmaQueueFlush
+ * WHAT IT DOES: Runs the queued VRAM transfers if any are pending.
+ * HOW: With bit 1 of the update flags set: sets VRAM to increment after the
+ * high byte and channel 0's target to VMDATA, then for each queued transfer,
+ * last first, sets the source address, VRAM address, count and bank and
+ * starts it (mode 1); then empties the queue and clears the bit.
+ * Entry: X 16-bit. Exit: A low byte = the flags after clearing, or 0 when
+ * nothing was pending; when pending, A's high byte is that of the last
+ * 16-bit value it held and X, after a pass, is negative; P unchanged.
+ */
+typedef struct {
+    uint8_t flags;
+    uint16_t a, x;
+    int ran, looped;
+} FlushEnd;
+
+static FlushEnd vram_dma_queue_flush(void)
+{
+    FlushEnd end = {0, 0, 0, 0, 0};
+    uint16_t x;
+
+    if (!(rd8(FRAME_UPDATE_FLAGS) & 0x02))
+        return end;
+    end.ran = 1;
+    wr8(VMAIN, 0x80);
+    wr8(DMAP0 + 1, 0x18);
+    x = (uint16_t)(rd16(0x0016AF) - 8);
+    end.a = x;
+    if (!(x & 0x8000)) {
+        do {
+            wr16(A1T0L, rd16(0x0016B9 + x));
+            wr16(VMADDL, rd16(0x0016BC + x));
+            wr16(DAS0L, rd16(0x0016BE + x));
+            wr8(A1B0, rd8(0x0016BB + x));
+            wr8(DMAP0, 0x01);
+            wr8(MDMAEN, 0x01);
+            x = (uint16_t)(x - 8);
+        } while (!(x & 0x8000));
+        end.a = x;
+        end.x = x;
+        end.looped = 1;
+    }
+    wr16(0x0016AF, 0);
+    end.flags = rd8(FRAME_UPDATE_FLAGS) & 0xFD;
+    wr8(FRAME_UPDATE_FLAGS, end.flags);
+    return end;
+}
+
+void VramDmaQueueFlush(void)
+{
+    vram_dma_queue_flush();
+}
+
+void abi_VramDmaQueueFlush(void)
+{
+    FlushEnd end = vram_dma_queue_flush();
+
+    cpu.a = (uint16_t)(((end.ran ? end.a : cpu.a) & 0xFF00) | end.flags);
+    if (end.looped)
+        cpu.x = end.x;
 }

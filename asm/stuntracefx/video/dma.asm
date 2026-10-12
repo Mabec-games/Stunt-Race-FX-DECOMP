@@ -175,3 +175,83 @@ CgramDma:
     lda.b #$01
     sta.w !MDMAEN
     rts
+
+; @routine 7F:08C7 VramDmaWideRowsFromGsuRam
+; WHAT IT DOES: Copies rows of $2C0 bytes from Super FX RAM to consecutive
+; VRAM, each row $400 bytes further on in Super FX RAM.
+; HOW: Takes the RAM from the Super FX, keeps the source in direct page
+; $FB-$FC, sets the VRAM address and channel 0 (mode 1, bank $70) once, then
+; transfers rows while the 8-bit row counter stays non-negative; gives ROM
+; and RAM back. Runs from work RAM bank $7F.
+; Entry: M 16-bit, X 16-bit, D = $0000; A low byte = rows - 1, X = source,
+; Y = VRAM word address. Exit: A = the source high byte and the screen mode
+; value; X = $00FF; Y = 1; P unchanged.
+%ramcode($7F08C7, $0580C7)
+VramDmaWideRowsFromGsuRam:
+    php
+    rep.b #$30
+    pha
+    sep.b #$20
+    lda.w !gsu_scmr_shadow
+    and.b #$F7
+    sta.w !GSU_SCMR
+    rep.b #$20
+    stx.b !dp_fb
+    sty.w !VMADDL
+    sep.b #$10
+    rep.b #$20
+    ldx.b #$80
+    stx.w !VMAIN
+    ldx.b #$18
+    stx.w !DMAP0+1
+    ldy.b #$70
+    sty.w !A1B0
+    ldy.b #$01
+    sty.w !DMAP0
+    pla
+    tax
+.row:
+    lda.w #$02C0
+    sta.w !DAS0L
+    lda.b !dp_fb
+    sta.w !A1T0L
+    clc
+    adc.w #$0400
+    sta.b !dp_fb
+    sty.w !MDMAEN
+    dex
+    bpl .row
+    sep.b #$20
+    lda.w !gsu_scmr_shadow
+    ora.b #$18
+    sta.w !GSU_SCMR
+    plp
+    rts
+
+; @routine 7F:0BCE VramWriteRowFromGsuRam
+; WHAT IT DOES: Copies one row of 64 words from Super FX RAM ($70:3000 plus
+; the offset in direct page $02) to VRAM, then moves the offset down a row
+; ($200 bytes).
+; HOW: Sets the VRAM address and writes the words to VMDATA one by one.
+; Entry: M 16-bit, X 16-bit, D = $0000; A = VRAM word address.
+; Exit: A = the new offset; X = the old offset + $80; Y = $FFFF; P unchanged.
+%ramcode($7F0BCE, $0583CE)
+VramWriteRowFromGsuRam:
+    php
+    rep.b #$30
+    sta.w !VMADDL
+    ldy.w #$003F
+    ldx.b !dp_02
+.word:
+    lda.l !gsu_picture,x
+    sta.w !VMDATAL
+    inx
+    inx
+    dey
+    bpl .word
+    lda.b !dp_02
+    clc
+    adc.w #$0200
+    sta.b !dp_02
+    plp
+    rts

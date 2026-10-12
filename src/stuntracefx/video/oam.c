@@ -89,3 +89,83 @@ void abi_SpriteYOnScreen(void)
     else
         cpu.p = (uint8_t)(nz8(cpu.p, (uint8_t)(y - 0xB0)) & ~P_C);
 }
+
+/* Build a strip of n+1 sprites: positions from direct page $02 stepping by
+   `step` (in the X byte), tiles and attributes from a table in bank $7F.
+   Direct page $02 is restored; $08 ends at $FFFF. */
+static void sprite_strip(uint16_t index, uint16_t offset, uint32_t table, uint16_t step, uint16_t n)
+{
+    uint16_t pos0 = rd16(0x000002), pos = pos0;
+
+    wr16(0x000008, n);
+    for (;;) {
+        wr16(0x000002, pos);
+        wr16(OAM_BUFFER + offset, pos);
+        pos = (uint16_t)(pos + step);
+        wr16(0x000002, pos);
+        wr16(OAM_BUFFER + 2 + offset, rd16(table + index));
+        index = (uint16_t)(index + 2);
+        offset = (uint16_t)(offset + 4);
+        n = (uint16_t)(n - 1);
+        wr16(0x000008, n);
+        if (n & 0x8000)
+            break;
+    }
+    wr16(0x000002, pos0);
+}
+
+/*
+ * @routine 7F:099C SpriteStrip4
+ * WHAT IT DOES: Places a horizontal strip of four sprites, 16 pixels apart,
+ * from the position in direct page $02, with the tiles of the set A selects.
+ * HOW: The set is (A / 2) rounded down to a multiple of 8 bytes in the table
+ * at $7F:09CD; each sprite takes the next X and tile word.
+ * Entry: M 16-bit, X 16-bit, D = $0000; A = set selector, Y = first sprite
+ * offset. Exit: A = the position; X = the table offset + 8; Y + 16; P
+ * unchanged.
+ */
+void SpriteStrip4(uint16_t selector, uint16_t offset)
+{
+    sprite_strip((uint16_t)((selector >> 1) & 0x00F8), offset, 0x7F09CD, 0x0010, 3);
+}
+
+void abi_SpriteStrip4(void)
+{
+    uint16_t index = (uint16_t)((cpu.a >> 1) & 0x00F8);
+
+    SpriteStrip4(cpu.a, cpu.y);
+    cpu.a = rd16(0x000002);
+    cpu.x = (uint16_t)(index + 8);
+    cpu.y = (uint16_t)(cpu.y + 16);
+    if (cpu.p & P_X) {
+        cpu.x &= 0x00FF;
+        cpu.y &= 0x00FF;
+    }
+}
+
+/*
+ * @routine 7F:0A35 SpriteStrip6
+ * WHAT IT DOES: Places a horizontal strip of six sprites, 8 pixels apart,
+ * from the position in direct page $02, with the tiles of the set A selects.
+ * HOW: The set is (A AND $38) * 2 bytes into the table at $7F:0A66.
+ * Entry: as SpriteStrip4. Exit: A = the position; X = the table offset +
+ * 12; Y + 24; P unchanged.
+ */
+void SpriteStrip6(uint16_t selector, uint16_t offset)
+{
+    sprite_strip((uint16_t)((selector & 0x0038) << 1), offset, 0x7F0A66, 0x0008, 5);
+}
+
+void abi_SpriteStrip6(void)
+{
+    uint16_t index = (uint16_t)((cpu.a & 0x0038) << 1);
+
+    SpriteStrip6(cpu.a, cpu.y);
+    cpu.a = rd16(0x000002);
+    cpu.x = (uint16_t)(index + 12);
+    cpu.y = (uint16_t)(cpu.y + 24);
+    if (cpu.p & P_X) {
+        cpu.x &= 0x00FF;
+        cpu.y &= 0x00FF;
+    }
+}

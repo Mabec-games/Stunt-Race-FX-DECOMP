@@ -228,3 +228,81 @@ void abi_CgramDmaAll(void)
     cpu.x = 0;
     cpu.y = 0;
 }
+
+/*
+ * @routine 7F:0BCE VramWriteRowFromGsuRam
+ * WHAT IT DOES: Copies one row of 64 words from Super FX RAM ($70:3000 plus
+ * the offset in direct page $02) to VRAM, then moves the offset down a row
+ * ($200 bytes).
+ * HOW: Sets the VRAM address and writes the words to VMDATA one by one.
+ * Entry: M 16-bit, X 16-bit, D = $0000; A = VRAM word address.
+ * Exit: A = the new offset; X = the old offset + $80; Y = $FFFF; P unchanged.
+ */
+uint16_t VramWriteRowFromGsuRam(uint16_t vram)
+{
+    uint16_t src = rd16(0x000002);
+    unsigned i;
+
+    wr16(VMADDL, vram);
+    for (i = 0; i < 64; i++)
+        wr16(0x002118, rd16(0x703000 + (uint16_t)(src + 2 * i)));
+    src = (uint16_t)(src + 0x0200);
+    wr16(0x000002, src);
+    return src;
+}
+
+void abi_VramWriteRowFromGsuRam(void)
+{
+    uint16_t old = rd16(0x000002);
+
+    cpu.a = VramWriteRowFromGsuRam(cpu.a);
+    cpu.x = (uint16_t)(old + 0x80);
+    cpu.y = 0xFFFF;
+    if (cpu.p & P_X) {
+        cpu.x &= 0x00FF;
+        cpu.y &= 0x00FF;
+    }
+}
+
+/*
+ * @routine 7F:08C7 VramDmaWideRowsFromGsuRam
+ * WHAT IT DOES: Copies rows of $2C0 bytes from Super FX RAM to consecutive
+ * VRAM, each row $400 bytes further on in Super FX RAM.
+ * HOW: Takes the RAM from the Super FX, keeps the source in direct page
+ * $FB-$FC, sets the VRAM address and channel 0 (mode 1 to VMDATA, bank $70)
+ * once, then transfers rows while the row counter (the low byte of A, as a
+ * signed 8-bit count down to -1) stays non-negative; gives ROM and RAM back.
+ * Entry: M 16-bit, X 16-bit, D = $0000; A low byte = rows - 1, X = source,
+ * Y = VRAM word address. Exit: A = the source high byte and the screen mode
+ * value; X = $00FF; Y = 1; P unchanged.
+ */
+uint8_t VramDmaWideRowsFromGsuRam(uint8_t rows_less_one, uint16_t src, uint16_t vram)
+{
+    uint8_t mode;
+
+    wr8(GSU_SCMR, rd8(GSU_SCMR_SHADOW) & 0xF7);
+    wr16(0x0000FB, src);
+    wr16(VMADDL, vram);
+    wr8(VMAIN, 0x80);
+    wr8(DMAP0 + 1, 0x18);
+    wr8(A1B0, 0x70);
+    wr8(DMAP0, 0x01);
+    do {
+        wr16(DAS0L, 0x02C0);
+        wr16(A1T0L, rd16(0x0000FB));
+        wr16(0x0000FB, (uint16_t)(rd16(0x0000FB) + 0x0400));
+        wr8(MDMAEN, 0x01);
+    } while (!(--rows_less_one & 0x80));
+    mode = rd8(GSU_SCMR_SHADOW) | 0x18;
+    wr8(GSU_SCMR, mode);
+    return mode;
+}
+
+void abi_VramDmaWideRowsFromGsuRam(void)
+{
+    uint8_t mode = VramDmaWideRowsFromGsuRam((uint8_t)cpu.a, cpu.x, cpu.y);
+
+    cpu.a = (uint16_t)((rd16(0x0000FB) & 0xFF00) | mode);
+    cpu.x = 0x00FF;
+    cpu.y = 0x0001;
+}

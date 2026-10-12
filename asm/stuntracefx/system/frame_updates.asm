@@ -118,34 +118,91 @@ ByteWritesIfPending:
     plp
     rts
 
-; @routine 7F:1007 RecordListAppend
-; WHAT IT DOES: Appends the record staged at $16B1-$16B8 to the list at
-; $16B9, unless the list is full ($200 bytes).
-; HOW: Copies $16B3 (word), $16B5 (byte), $16B7 (word) and $16B1 (word) into
-; the next 8-byte slot, in that order, and advances the list size by 8.
+; @routine 7F:0F77 VramDmaQueueFlush
+; WHAT IT DOES: Runs the queued VRAM transfers if any are pending.
+; HOW: With bit 1 of the update flags set: VRAM increments after the high
+; byte and channel 0 targets VMDATA; then for each queued transfer, last
+; first, sets the source address, VRAM address, count and bank and starts it
+; (mode 1); then empties the queue and clears the bit.
+; Entry: X 16-bit. Exit: A low byte = the flags after clearing, or 0 when
+; nothing was pending; P unchanged.
+VramDmaQueueFlush:
+    php
+    sep.b #$20
+    rep.b #$10
+    lda.w !frame_update_flags
+    and.b #$02
+    beq .done
+    lda.b #$80
+    sta.w !VMAIN
+    lda.b #$18
+    sta.w !DMAP0+1
+    rep.b #$20
+    lda.w !vram_queue_size
+    sec
+    sbc.w #$0008
+    bmi .empty
+    tax
+.next:
+    rep.b #$20
+    lda.l !vram_queue,x
+    sta.w !A1T0L
+    lda.l !vram_queue+3,x
+    sta.w !VMADDL
+    lda.l !vram_queue+5,x
+    sta.w !DAS0L
+    sep.b #$20
+    lda.l !vram_queue+2,x
+    sta.w !A1B0
+    lda.b #$01
+    sta.w !DMAP0
+    sta.w !MDMAEN
+    rep.b #$20
+    txa
+    sec
+    sbc.w #$0008
+    tax
+    bpl .next
+.empty:
+    rep.b #$20
+    stz.w !vram_queue_size
+    sep.b #$20
+    lda.w !frame_update_flags
+    and.b #$FD
+    sta.w !frame_update_flags
+.done:
+    plp
+    rts
+
+; @routine 7F:1007 VramDmaQueueAdd
+; WHAT IT DOES: Queues the VRAM transfer staged at $16B1-$16B8 for the next
+; vertical blank, unless the queue is full ($200 bytes, 64 transfers).
+; HOW: Copies the source address ($16B3), source bank ($16B5), VRAM address
+; ($16B7) and byte count ($16B1) into the next 8-byte slot, in that order, and
+; advances the queue size by 8. VramDmaQueueFlush runs the queue.
 ; Entry: any widths. Exit: A = the new size when appended; P, X unchanged.
 %ramcode($7F1007, $058807)
-RecordListAppend:
+VramDmaQueueAdd:
     php
     phx
     rep.b #$30
-    ldx.w !record_list_size
+    ldx.w !vram_queue_size
     cpx.w #$0200
     beq .done
-    lda.w !record_staged+2
-    sta.l !record_list,x
+    lda.w !vram_queue_staged+2
+    sta.l !vram_queue,x
     sep.b #$20
-    lda.w !record_staged+4
-    sta.l !record_list+2,x
+    lda.w !vram_queue_staged+4
+    sta.l !vram_queue+2,x
     rep.b #$20
-    lda.w !record_staged+6
-    sta.l !record_list+3,x
-    lda.w !record_staged
-    sta.l !record_list+5,x
+    lda.w !vram_queue_staged+6
+    sta.l !vram_queue+3,x
+    lda.w !vram_queue_staged
+    sta.l !vram_queue+5,x
     txa
     clc
     adc.w #$0008
-    sta.w !record_list_size
+    sta.w !vram_queue_size
 .done:
     plx
     plp

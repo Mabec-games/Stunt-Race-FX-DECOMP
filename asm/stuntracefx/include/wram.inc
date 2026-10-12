@@ -49,13 +49,50 @@ includeonce
 !frame_update_flags = $11D7
 !byte_writes_size = $162D
 !byte_writes = $162F
-!record_list_size = $16AF
-!record_staged = $16B1
-!record_list = $16B9
+!vram_queue_size = $16AF
+!vram_queue_staged = $16B1        ; size, source address, bank, VRAM address
+!vram_queue = $16B9
 !word_list_a_size = $1191
 !word_list_b_size = $1193
 !word_list_a = $1195
 !word_list_b = $11B5
+
+; HUD (hud/digits.asm): race time in BCD, the sprite offset it is drawn at,
+; the HUD hold timer, and the blank flag.
+!hud_mode = $0D2B
+!hud_blank = $0D4E
+!hud_hold = $0E5D
+!hud_time_sprite = $0E60
+!race_time_fraction = $0E63
+!race_time_seconds = $0E64
+!race_time_minutes = $0E66
+!hud_digits_19ec = $19EC
+!digit_count = $F1
+
+; Frame counter, stepped by the raster interrupt.
+!frame_count = $0E3B
+
+; Palette (video/palette.asm): animated colours in use; cycling phases.
+!palette_animate = $0E5F
+!palette_buffer = $7EFD65
+!palette_kept = $7EFF27
+!cycle_phase_a = $FD5B
+!cycle_phase_b = $FD5D
+!cycle_phase_c = $FD5F
+!cycle_colour_a = $FD85
+!cycle_colour_b = $FD87
+!cycle_colour_c = $FD89
+
+; Menu gauge (menu/gauge.asm).
+!menu_gauge = $117E
+
+; Direct page words the menu frame code passes values in.
+!dp_02 = $02
+!dp_08 = $08
+!dp_fb = $FB
+
+; Super FX RAM: a 64-word-wide picture the menu frame code copies row by row.
+!gsu_picture = $703000
 
 ; The work-RAM copy of the sprite table (video/oam.asm): 128 four-byte entries
 ; (X, Y, tile, attributes) from $0375, then the 32-byte high table from $0575.
