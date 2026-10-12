@@ -215,3 +215,25 @@ HudCountUp19EC:
     lda.b #$3C
     jsl.l SoundPort0QueuePush
     rts
+
+; @routine 7E:E7FC HudDigitSprites62
+; WHAT IT DOES: Shows the digit in $0DF4 on sprites 62 and 63 (tile 2d on
+; top, 2d + 1 below), or the digit 1 when $0D4C is set (no script has
+; reached that case yet).
+; HOW: Byte stores to the two sprites' tile bytes ($046F, $0473) through
+; the data bank.
+; Entry: M 8-bit. Exit: A low byte = 2d + 1; N, Z from it; C = bit 7 of d.
+%ramcode($7EE7FC, $014523)
+HudDigitSprites62:
+    lda.w !digit62_override
+    beq .lE805
+    lda.b #$01                      ; not reached in the traces so far
+    bra .lE808
+.lE805:
+    lda.w !digit62_value
+.lE808:
+    asl a
+    sta.w !oam_buffer+250
+    inc a
+    sta.w !oam_buffer+254
+    rts

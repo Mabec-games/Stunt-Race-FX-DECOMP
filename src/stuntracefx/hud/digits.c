@@ -280,3 +280,32 @@ void abi_HudCountUp19EC(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x3C);
     cpu.p = (uint8_t)(nz8(p & ~P_D, cpu.db) | P_M);
 }
+
+/*
+ * @routine 7E:E7FC HudDigitSprites62
+ * WHAT IT DOES: Shows the digit in $0DF4 on sprites 62 and 63 (tile 2d on
+ * top, 2d + 1 below), or the digit 1 when $0D4C is set (no script has
+ * reached that case yet).
+ * HOW: Byte stores to the two sprites' tile bytes ($046F, $0473) through
+ * the data bank.
+ * Entry: M 8-bit. Exit: A low byte = 2d + 1; N, Z from it; C = bit 7 of d.
+ */
+uint8_t HudDigitSprites62(uint8_t bank)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t d = rd8(b | 0x0D4C) ? 0x01 : rd8(b | 0x0DF4);
+
+    wr8(b | 0x046F, (uint8_t)(d << 1));
+    wr8(b | 0x0473, (uint8_t)((d << 1) + 1));
+    return (uint8_t)((d << 1) + 1);
+}
+
+void abi_HudDigitSprites62(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t d = rd8(b | 0x0D4C) ? 0x01 : rd8(b | 0x0DF4);
+    uint8_t v = HudDigitSprites62(cpu.db);
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = (uint8_t)((nz8(cpu.p, v) & ~P_C) | ((d & 0x80) ? P_C : 0));
+}

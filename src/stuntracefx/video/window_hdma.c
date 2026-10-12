@@ -478,3 +478,112 @@ void abi_WindowHdmaLayout(void)
     cpu.a = WindowHdmaLayout(cpu.db, &cpu.x);
     cpu.p = (uint8_t)(((cpu.p & ~(P_N | P_X)) | P_Z | P_M));
 }
+
+void abi_WindowHdmaLayout(void);
+
+/* The two window table builders WindowLayoutStep picks between by Y. */
+static void window_layout_apply(uint16_t y, uint8_t bank)
+{
+    if (y == 0)
+        window_hdma_from_table();
+    else
+        WindowHdmaLayout(bank, &y);
+}
+
+/*
+ * @routine 7E:DA75 WindowLayoutStep
+ * WHAT IT DOES: Acts on a request in $19BD to move the window layout: 1
+ * starts it moving up by 2 a step ($19B8 = 2, $19BA = 1), $FF down ($19B8 =
+ * -2, $19BA = 0); $19BC = $FF marks it moving. While it moves, each call
+ * clears the request and steps the layout $19B6 by $19B8, stopping (and
+ * clearing $19BC) when that would give -2, and not storing it when it
+ * reaches the limit for Y in the table at $7E:DBC5; then resets the window
+ * setup ($19A9 = 0, $19AC-$19B1 = $E7) and rebuilds the window table with
+ * WindowHdmaFromTable (Y = 0) or WindowHdmaLayout (Y = 2).
+ * HOW: Long accesses to $19B6-$19BD except one data-bank read of $19BC and
+ * the store to $19A9; the builder is called through the table at
+ * $7E:DBC9.
+ * Entry: Y = 0 or 2. Exit: when nothing moves, A low byte = $19BC, M 8-bit,
+ * X 8-bit, N, Z, C from comparing it with $FF; at the -2 stop A low byte =
+ * 0, Z, C set, N clear, M and X 8-bit; otherwise as the builder, with C
+ * from the limit compare and V from the step add.
+ */
+void WindowLayoutStep(uint8_t bank, uint16_t y)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t req = rd8(0x0019BD);
+    uint16_t pos;
+    unsigned i;
+
+    y &= 0x00FF;
+    if (req == 0x01 || req == 0xFF) {
+        wr8(0x0019BC, 0xFF);
+        wr16(0x0019B8, req == 0x01 ? 0x0002 : 0xFFFE);
+        wr16(0x0019BA, req == 0x01 ? 0x0001 : 0x0000);
+    } else if (rd8(b | 0x19BC) != 0xFF) {
+        return;
+    }
+    wr8(0x0019BD, 0x00);
+    pos = (uint16_t)(rd16(0x0019B6) + rd16(0x0019B8));
+    if (pos == 0xFFFE) {
+        wr8(0x0019BC, 0x00);
+        return;
+    }
+    if (pos != rd16(0x7EDBC5 + y))
+        wr16(0x0019B6, pos);
+    wr8(b | 0x19A9, 0x00);
+    for (i = 0; i < 6; i++)
+        wr8(0x0019AC + i, 0xE7);
+    window_layout_apply(y, bank);
+}
+
+void abi_WindowLayoutStep(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t req = rd8(0x0019BD), v;
+    uint16_t y = (uint8_t)cpu.y, s, m, pos, lim;
+    unsigned i;
+
+    cpu.x &= 0x00FF;
+    cpu.y = y;
+    cpu.p |= P_M | P_X;
+    if (req == 0x01 || req == 0xFF) {
+        wr8(0x0019BC, 0xFF);
+        wr16(0x0019B8, req == 0x01 ? 0x0002 : 0xFFFE);
+        wr16(0x0019BA, req == 0x01 ? 0x0001 : 0x0000);
+    } else {
+        v = rd8(b | 0x19BC);
+        if (v != 0xFF) {
+            cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+            cpu.p = (uint8_t)(nz8(cpu.p, (uint8_t)(v + 1)) & ~P_C);
+            return;
+        }
+    }
+    wr8(0x0019BD, 0x00);
+    s = rd16(0x0019B6);
+    m = rd16(0x0019B8);
+    pos = (uint16_t)(s + m);
+    cpu.p = (uint8_t)(cpu.p & ~P_V);
+    if (~(s ^ m) & (s ^ pos) & 0x8000)
+        cpu.p |= P_V;
+    if (pos == 0xFFFE) {
+        wr8(0x0019BC, 0x00);
+        cpu.a = 0x0000 | (pos & 0xFF00);
+        cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z | P_C);
+        return;
+    }
+    lim = rd16(0x7EDBC5 + y);
+    cpu.p = (uint8_t)((cpu.p & ~P_C) | (pos >= lim ? P_C : 0));
+    if (pos != lim)
+        wr16(0x0019B6, pos);
+    wr8(b | 0x19A9, 0x00);
+    for (i = 0; i < 6; i++)
+        wr8(0x0019AC + i, 0xE7);
+    cpu.a = (uint16_t)((pos & 0xFF00) | 0xE7);
+    cpu.x = y;
+    cpu.p = (uint8_t)(nz16((uint8_t)(cpu.p & ~P_X), y) | P_M);
+    if (y == 0)
+        abi_WindowHdmaFromTable();
+    else
+        abi_WindowHdmaLayout();
+}

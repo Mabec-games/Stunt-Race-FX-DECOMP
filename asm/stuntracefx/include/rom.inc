@@ -158,3 +158,5 @@ includeonce
 ; Area records for the trigger list, read through the data bank
 ; (object/object.asm).
 !area_records = $C61D
+; Window table builders by layout direction (video/window_hdma.asm).
+!layout_builders = $DBC9

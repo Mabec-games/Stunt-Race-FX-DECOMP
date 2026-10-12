@@ -581,3 +581,83 @@ void abi_ColourBlendToTarget(void)
     abi_ColourBlendBy();
     wr16(0x000E21 + cpu.x, cpu.a);
 }
+
+typedef struct {
+    uint16_t a, x, y;
+    uint8_t p;
+} FlashEnd;
+
+/* The body of PlayerColoursFlash, with everything its exit leaves. */
+static FlashEnd player_colours_flash(uint8_t bank, uint8_t v, uint16_t y, uint8_t p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t k, n, c;
+    uint16_t src;
+    FlashEnd e;
+
+    if (v >= 0x08) {
+        unsigned s = (unsigned)v + 0x60;
+
+        p = (uint8_t)(p & ~P_V);
+        if (~(v ^ 0x60) & (v ^ s) & 0x80)
+            p |= P_V;
+        v = s > 0xFF ? 0xFF : (uint8_t)s;
+    }
+    k = (uint8_t)(v >> 5);
+    src = 0x0E21;
+    if (!k) {
+        wr8(b | (uint16_t)(0x0E1F + y), 0x00);
+    } else {
+        n = (uint8_t)(8 - k);
+        p = (uint8_t)(p & ~P_V);
+        wr8(0x0000F9, n);
+        wr8(0x0000FA, (uint8_t)(n << 1));
+        c = rd8(b | (uint16_t)(0x0E1F + y));
+        if (c >= (uint8_t)(n << 1))
+            c = 0xFF;
+        c = (uint8_t)(c + 1);
+        wr8(b | (uint16_t)(0x0E1F + y), c);
+        if (c < n)
+            src = 0x0E27;
+    }
+    p = (uint8_t)((p & ~P_C) | ((y & 0x8000) ? P_C : 0));
+    e.y = (uint16_t)(y << 1);
+    e.x = rd16(b | (uint16_t)(0x0D83 + e.y));
+    wr16(0x7E01C8 + e.x, rd16(b | src));
+    wr16(0x7E01CA + e.x, rd16(b | (uint16_t)(src + 2)));
+    e.a = rd16(b | (uint16_t)(src + 4));
+    wr16(0x7E01CC + e.x, e.a);
+    e.p = (uint8_t)(nz16(p, e.a) & ~(P_M | P_X));
+    return e;
+}
+
+/*
+ * @routine 7E:B5C1 PlayerColoursFlash
+ * WHAT IT DOES: Writes player Y's three colours into the palette at
+ * $7E:01C8 + the player's offset ($0D83 + 2Y): the set at $0E21 normally;
+ * for a level A of 8 or more, flashing between the sets at $0E27 and $0E21
+ * faster the higher the level (on for n calls, off for n, where n = 8 - the
+ * top three bits of A + $60, the sum held at $FF; no script has reached the
+ * held case yet).
+ * HOW: The flash counter is at $0E1F + Y and runs 1 to 2n; n and 2n are
+ * kept in direct page $F9 and $FA; counts below n show $0E27. Work RAM
+ * through the data bank; the palette with long stores.
+ * Entry: M 8-bit, X 16-bit, D = $0000; A = level, Y = player. Exit: A = the
+ * third colour written; X = the player's palette offset; Y = 2Y; M 16-bit;
+ * N, Z from A; C = bit 15 of Y on entry; V clear after a flash step, from
+ * the add of $60 when only that ran.
+ */
+void PlayerColoursFlash(uint8_t bank, uint8_t level, uint16_t y)
+{
+    player_colours_flash(bank, level, y, 0);
+}
+
+void abi_PlayerColoursFlash(void)
+{
+    FlashEnd e = player_colours_flash(cpu.db, (uint8_t)cpu.a, cpu.y, cpu.p);
+
+    cpu.a = e.a;
+    cpu.x = e.x;
+    cpu.y = e.y;
+    cpu.p = e.p;
+}

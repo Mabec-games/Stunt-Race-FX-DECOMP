@@ -467,3 +467,84 @@ WindowHdmaLayout:
     lda.b #$00
     sta.l !window_hdma+12
     rts
+
+; @routine 7E:DA75 WindowLayoutStep
+; WHAT IT DOES: Acts on a request in $19BD to move the window layout: 1
+; starts it moving up by 2 a step ($19B8 = 2, $19BA = 1), $FF down ($19B8 =
+; -2, $19BA = 0); $19BC = $FF marks it moving. While it moves, each call
+; clears the request and steps the layout $19B6 by $19B8, stopping (and
+; clearing $19BC) when that would give -2, and not storing it when it
+; reaches the limit for Y in the table at $7E:DBC5; then resets the window
+; setup ($19A9 = 0, $19AC-$19B1 = $E7) and rebuilds the window table with
+; WindowHdmaFromTable (Y = 0) or WindowHdmaLayout (Y = 2).
+; HOW: Long accesses to $19B6-$19BD except one data-bank read of $19BC and
+; the store to $19A9; the builder is called through the table at
+; $7E:DBC9.
+; Entry: Y = 0 or 2. Exit: when nothing moves, A low byte = $19BC, M 8-bit,
+; X 8-bit, N, Z, C from comparing it with $FF; at the -2 stop A low byte =
+; 0, Z, C set, N clear, M and X 8-bit; otherwise as the builder, with C
+; from the limit compare and V from the step add.
+%ramcode($7EDA75, $01379C)
+WindowLayoutStep:
+    sep.b #$30
+    lda.l !layout_request
+    cmp.b #$01
+    beq .lDA8B
+    cmp.b #$FF
+    beq .lDAA4
+    lda.w !window_hdma_19bc
+    cmp.b #$FF
+    beq .lDABC
+    rts
+.lDA8B:
+    lda.b #$FF
+    sta.l !window_hdma_19bc
+    rep.b #$20
+    lda.w #$0002
+    sta.l !layout_step
+    lda.w #$0001
+    sta.l !layout_dir
+    jmp.w .lDABC
+.lDAA4:
+    sep.b #$20
+    lda.b #$FF
+    sta.l !window_hdma_19bc
+    rep.b #$20
+    lda.w #$FFFE
+    sta.l !layout_step
+    lda.w #$0000
+    sta.l !layout_dir
+.lDABC:
+    sep.b #$20
+    lda.b #$00
+    sta.l !layout_request
+    rep.b #$20
+    lda.l !window_hdma_select
+    clc
+    adc.l !layout_step
+    cmp.w #$FFFE
+    bne .lDADD
+    sep.b #$20
+    lda.b #$00
+    sta.l !window_hdma_19bc
+    rts
+.lDADD:
+    rep.b #$30
+    tyx
+    cmp.l !layout_limits,x
+    beq .lDAEA
+    sta.l !window_hdma_select
+.lDAEA:
+    sep.b #$20
+    lda.b #$00
+    sta.w !windows_setup_index
+    lda.b #$E7
+    sta.l !window_setup_bytes
+    sta.l !window_setup_bytes+1
+    sta.l !window_setup_bytes+2
+    sta.l !window_setup_bytes+3
+    sta.l !window_setup_bytes+4
+    sta.l !window_setup_bytes+5
+    tyx
+    jsr.w (!layout_builders,x)
+    rts

@@ -609,3 +609,85 @@ ColourBlendToTarget:
     jsr.w ColourBlendBy
     sta.l !blended_colours,x
     rts
+
+; @routine 7E:B5C1 PlayerColoursFlash
+; WHAT IT DOES: Writes player Y's three colours into the palette at
+; $7E:01C8 + the player's offset ($0D83 + 2Y): the set at $0E21 normally;
+; for a level A of 8 or more, flashing between the sets at $0E27 and $0E21
+; faster the higher the level (on for n calls, off for n, where n = 8 - the
+; top three bits of A + $60, the sum held at $FF; no script has reached the
+; held case yet).
+; HOW: The flash counter is at $0E1F + Y and runs 1 to 2n; n and 2n are
+; kept in direct page $F9 and $FA; counts below n show $0E27. Work RAM
+; through the data bank; the palette with long stores.
+; Entry: M 8-bit, X 16-bit, D = $0000; A = level, Y = player. Exit: A = the
+; third colour written; X = the player's palette offset; Y = 2Y; M 16-bit;
+; N, Z from A; C = bit 15 of Y on entry; V clear after a flash step, from
+; the add of $60 when only that ran.
+%ramcode($7EB5C1, $0112E8)
+PlayerColoursFlash:
+    cmp.b #$08
+    bcc .lB5CC
+    clc
+    adc.b #$60
+    bcc .lB5CC
+    lda.b #$FF                      ; not reached in the traces so far
+.lB5CC:
+    rol a
+    rol a
+    rol a
+    rol a
+    and.b #$07
+    beq .lB5DC
+    sec
+    sbc.b #$08
+    eor.b #$FF
+    inc a
+    bra .lB5E4
+.lB5DC:
+    lda.b #$00
+    sta.w !flash_count,y
+    bra .lB5FC
+    rts                             ; unreachable: nothing branches here
+.lB5E4:
+    rep.b #$10
+    sta.b !flash_n
+    asl a
+    sta.b !flash_2n
+    lda.w !flash_count,y
+    cmp.b !flash_2n
+    bcc .lB5F4
+    lda.b #$FF
+.lB5F4:
+    inc a
+    sta.w !flash_count,y
+    cmp.b !flash_n
+    bcc .lB61B
+.lB5FC:
+    rep.b #$20
+    tya
+    asl a
+    tay
+    lda.w !player_pal_offset,y
+    tax
+    lda.w !blended_colours
+    sta.l !player_palettes,x
+    lda.w !blended_colours+2
+    sta.l !player_palettes+2,x
+    lda.w !blended_colours+4
+    sta.l !player_palettes+4,x
+    rts
+.lB61B:
+    rep.b #$20
+    tya
+    asl a
+    tay
+    lda.w !player_pal_offset,y
+    tax
+    lda.w !blend_set_b
+    sta.l !player_palettes,x
+    lda.w !blend_set_b+2
+    sta.l !player_palettes+2,x
+    lda.w !blend_set_b+4
+    sta.l !player_palettes+4,x
+    rts
