@@ -169,4 +169,136 @@ FxCollidePush:
     %fx_pull(r15)
     nop
 
+; @routine 04:CA99 FxRecordsApart
+; WHAT IT DOES: Whether records R8 and R7 stay apart this step: R0 = 1 when
+; their distance on the ground plane is more than their sizes (+$0C each)
+; less $294 (no less than 0, decoded from the ROM bytes and not reached in
+; the traces so far) plus how fast they close (half the velocity
+; difference along the line between them), else R0 = 0.
+; HOW: The difference (R7 - R8) goes to $0068/$002E and FxNormalize makes
+; the unit vector; the distance is the difference, doubled, dotted with
+; it (FMULT) and kept at $0068; the closing speed is the velocity
+; difference halved (DIV2) dotted with it, negated, at $006A. R1-R5 and
+; the return address are kept on the R10 stack, R8 and R7 across the call.
+; Entry: R7, R8 = the records; R10 = stack; R11 = return address. Exit: R0
+; = 1 or 0; R1-R5, R7, R8 as on entry; R6 = the unit z; R9, R11-R13 as
+; FxNormalize leaves them; S, Z from R10; OV, CY from the CMP (R0 = 1) or
+; SUB R0 (R0 = 0); the last RAM address R10.
+%at($04CA99)
+FxRecordsApart:
+    %fx_push(r11)
+    %fx_push(r1)
+    %fx_push(r2)
+    %fx_push(r3)
+    %fx_push(r4)
+    %fx_push(r5)
+    ibt r1,#!fxrec_half_x
+    with r1
+    add r7
+    to r1
+    ldw (r1)
+    ibt r0,#!fxrec_half_x
+    add r8
+    ldw (r0)
+    with r1
+    sub r0
+    sm (!fx_normal_x),r1
+    ibt r3,#!fxrec_half_x+4
+    with r3
+    add r7
+    to r3
+    ldw (r3)
+    ibt r0,#!fxrec_half_x+4
+    add r8
+    ldw (r0)
+    with r3
+    sub r0
+    sm (!fx_normal_z),r3
+    ibt r2,#0
+    %fx_push(r8)
+    %fx_push(r7)
+    link #4
+    iwt r15,#FxNormalize
+    nop
+    %fx_pull(r7)
+    %fx_pull(r8)
+    lm r0,(!fx_normal_x)
+    add r0
+    move r6,r1
+    fmult
+    move r5,r0
+    lm r0,(!fx_normal_z)
+    add r0
+    move r6,r3
+    fmult
+    add r5
+    sm (!fx_normal_x),r0
+    ibt r0,#!fxrec_velocity
+    add r7
+    ldw (r0)
+    ibt r4,#!fxrec_velocity
+    with r4
+    add r8
+    to r4
+    ldw (r4)
+    sub r4
+    div2
+    move r6,r1
+    fmult
+    move r5,r0
+    ibt r0,#!fxrec_velocity+4
+    add r7
+    ldw (r0)
+    ibt r4,#!fxrec_velocity+4
+    with r4
+    add r8
+    to r4
+    ldw (r4)
+    sub r4
+    div2
+    move r6,r3
+    fmult
+    add r5
+    not
+    inc r0
+    sm (!fx_reach),r0
+    ibt r0,#!fxrec_size
+    add r7
+    ldw (r0)
+    ibt r1,#!fxrec_size
+    with r1
+    add r8
+    to r1
+    ldw (r1)
+    add r1
+    iwt r1,#$0294
+    sub r1
+    bpl .slack
+    nop
+    sub r0
+.slack:
+    lm r1,(!fx_reach)
+    add r1
+    lm r1,(!fx_normal_x)
+    cmp r1
+    bmi .apart
+    nop
+    sub r0
+    %fx_pull(r5)
+    %fx_pull(r4)
+    %fx_pull(r3)
+    %fx_pull(r2)
+    %fx_pull(r1)
+    %fx_pull(r15)
+    nop
+.apart:
+    ibt r0,#1
+    %fx_pull(r5)
+    %fx_pull(r4)
+    %fx_pull(r3)
+    %fx_pull(r2)
+    %fx_pull(r1)
+    %fx_pull(r15)
+    nop
+
 arch 65816

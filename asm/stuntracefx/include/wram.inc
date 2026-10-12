@@ -1152,3 +1152,8 @@ includeonce
 !fx_traffic_dist = $70263A
 !fx_traffic_close = $702638
 !fxrec_sides = $42
+; The touch test's distance and closing speed (object/fx_collide.asm).
+!fx_normal_x = $700068
+!fx_normal_z = $70002E
+!fx_reach = $70006A
+!fxrec_size = $0C

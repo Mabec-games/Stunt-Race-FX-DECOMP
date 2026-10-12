@@ -27,6 +27,10 @@
 #define FX_NORMAL_Z 0x002Eu
 #define FX_CLOSING 0x26F6u
 #define FX_PUSH 0x23A4u
+#define FX_REACH 0x006Au
+
+#define REC_SIZE 0x0Cu
+#define FX_TOUCH_SLACK 0x0294u
 
 /*
  * @routine 04:9301 FxCollidePush
@@ -147,5 +151,99 @@ void abi_FxCollidePush(void)
 
     memcpy(g.r, gsu.r, sizeof g.r);
     g = FxCollidePush(g);
+    memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
+}
+
+/*
+ * @routine 04:CA99 FxRecordsApart
+ * WHAT IT DOES: Whether records R8 and R7 stay apart this step: R0 = 1 when
+ * their distance on the ground plane is more than their sizes (+$0C each)
+ * less $294 (no less than 0, decoded from the ROM bytes and not reached in
+ * the traces so far) plus how fast they close (half the velocity
+ * difference along the line between them), else R0 = 0.
+ * HOW: The difference (R7 - R8) goes to $0068/$002E and FxNormalize makes
+ * the unit vector; the distance is the difference, doubled, dotted with
+ * it (FMULT) and kept at $0068; the closing speed is the velocity
+ * difference halved (DIV2) dotted with it, negated, at $006A. R1-R5 and
+ * the return address are kept on the R10 stack, R8 and R7 across the call.
+ * Entry: R7, R8 = the records; R10 = stack; R11 = return address. Exit: R0
+ * = 1 or 0; R1-R5, R7, R8 as on entry; R6 = the unit z; R9, R11-R13 as
+ * FxNormalize leaves them; S, Z from R10; OV, CY from the CMP (R0 = 1) or
+ * SUB R0 (R0 = 0); the last RAM address R10.
+ */
+FxRegs FxRecordsApart(FxRegs g)
+{
+    uint16_t *sp = &g.r[10];
+    int i;
+
+    gsu_push(sp, g.r[11]);
+    for (i = 1; i <= 5; i++)
+        gsu_push(sp, g.r[i]);
+    g.r[1] = gsu_ldw(gsu_add(REC_X, g.r[7], 0));
+    g.r[0] = gsu_ldw(gsu_add(REC_X, g.r[8], 0));
+    g.r[1] = gsu_sub(g.r[1], g.r[0], 0);
+    gsu_stw(FX_NORMAL_X, g.r[1]);
+    g.r[3] = gsu_ldw(gsu_add(REC_Z, g.r[7], 0));
+    g.r[0] = gsu_ldw(gsu_add(REC_Z, g.r[8], 0));
+    g.r[3] = gsu_sub(g.r[3], g.r[0], 0);
+    gsu_stw(FX_NORMAL_Z, g.r[3]);
+    g.r[2] = 0;
+    gsu_push(sp, g.r[8]);
+    gsu_push(sp, g.r[7]);
+    g.r[11] = 0xCAE0;
+    g = FxNormalize(g);
+    g.r[7] = gsu_pull(sp);
+    g.r[8] = gsu_pull(sp);
+
+    g.r[0] = gsu_ldw(FX_NORMAL_X);
+    g.r[0] = gsu_add(g.r[0], g.r[0], 0);
+    g.r[6] = g.r[1];
+    g.r[5] = g.r[0] = gsu_fmult(g.r[0], g.r[6]);
+    g.r[0] = gsu_ldw(FX_NORMAL_Z);
+    g.r[0] = gsu_add(g.r[0], g.r[0], 0);
+    g.r[6] = g.r[3];
+    g.r[0] = gsu_add(gsu_fmult(g.r[0], g.r[6]), g.r[5], 0);
+    gsu_stw(FX_NORMAL_X, g.r[0]);                   /* the distance */
+
+    g.r[0] = gsu_ldw(gsu_add(REC_VEL_X, g.r[7], 0));
+    g.r[4] = gsu_ldw(gsu_add(REC_VEL_X, g.r[8], 0));
+    g.r[0] = gsu_div2(gsu_sub(g.r[0], g.r[4], 0));
+    g.r[6] = g.r[1];
+    g.r[5] = g.r[0] = gsu_fmult(g.r[0], g.r[6]);
+    g.r[0] = gsu_ldw(gsu_add(REC_VEL_Z, g.r[7], 0));
+    g.r[4] = gsu_ldw(gsu_add(REC_VEL_Z, g.r[8], 0));
+    g.r[0] = gsu_div2(gsu_sub(g.r[0], g.r[4], 0));
+    g.r[6] = g.r[3];
+    g.r[0] = gsu_add(gsu_fmult(g.r[0], g.r[6]), g.r[5], 0);
+    g.r[0] = gsu_inc(gsu_not(g.r[0]));
+    gsu_stw(FX_REACH, g.r[0]);                      /* the closing speed */
+
+    g.r[0] = gsu_ldw(gsu_add(REC_SIZE, g.r[7], 0));
+    g.r[1] = gsu_ldw(gsu_add(REC_SIZE, g.r[8], 0));
+    g.r[0] = gsu_add(g.r[0], g.r[1], 0);
+    g.r[1] = FX_TOUCH_SLACK;
+    g.r[0] = gsu_sub(g.r[0], g.r[1], 0);
+    if (gsu.s)
+        g.r[0] = gsu_sub(g.r[0], g.r[0], 0);
+    g.r[1] = gsu_ldw(FX_REACH);
+    g.r[0] = gsu_add(g.r[0], g.r[1], 0);
+    g.r[1] = gsu_ldw(FX_NORMAL_X);
+    gsu_sub(g.r[0], g.r[1], 0);
+    if (gsu.s)
+        g.r[0] = 1;
+    else
+        g.r[0] = gsu_sub(g.r[0], g.r[0], 0);
+    for (i = 5; i >= 1; i--)
+        g.r[i] = gsu_pull(sp);
+    gsu_pull(sp);
+    return g;
+}
+
+void abi_FxRecordsApart(void)
+{
+    FxRegs g;
+
+    memcpy(g.r, gsu.r, sizeof g.r);
+    g = FxRecordsApart(g);
     memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
 }
