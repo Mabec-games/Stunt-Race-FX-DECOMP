@@ -105,3 +105,62 @@ MenuSet1A66:
     pla
     plp
     rts
+
+; @routine 0B:D4C3 MenuStateInit
+; WHAT IT DOES: Sets the menu's selection state to its defaults: the four
+; choices at $18CB-$18D1 to 0, 0, 1, 2, the derived values and positions to
+; their starting values, the draw-buffer offset $0D7D to 6, and three
+; values at $18EF-$18F3 from the save data ($70:FC08-$70:FC0A).
+; HOW: 16-bit long stores in the original's order.
+; Entry: any widths. Exit: A = $001F; P unchanged.
+%at($0BD4C3)
+MenuStateInit:
+    php
+    rep.b #$30
+    lda.w #$0006
+    sta.l !gsu_buffer_offset
+    lda.w #$0000
+    sta.l !selection_derived+$1A
+    lda.w #$0000
+    sta.l !selection_derived+$20
+    lda.w #$0001
+    sta.l !menu_18b9
+    lda.w #$0000
+    sta.l !selection_derived+$1E
+    sta.l !selection_derived+$1C
+    sta.l !selection_derived+$14
+    sta.l !menu_sine_y_min+$2
+    sta.l !selection
+    sta.l !selection_prev
+    sta.l !selection_derived+$A
+    sta.l !selection+$2
+    sta.l !selection_derived+$12
+    lda.w #$0000
+    sta.l !selection_out
+    lda.w #$0000
+    sta.l !selection_out+$2
+    lda.w #$0000
+    sta.l !selection_out+$4
+    lda.w #$0003
+    sta.l !selection_out+$6
+    lda.w #$0001
+    sta.l !menu_sine_y_min+$6
+    sta.l !selection_derived+$8
+    sta.l !selection+$4
+    lda.w #$0002
+    sta.l !selection+$6
+    lda.l !save_bytes+2
+    and.w #$00FF
+    sta.l !selection_derived+$C
+    lda.l !save_bytes+3
+    and.w #$00FF
+    sta.l !selection_derived+$E
+    lda.l !save_bytes+4
+    and.w #$00FF
+    sta.l !selection_derived+$10
+    lda.w #$FFFF
+    sta.l !menu_sine_y_min+$4
+    lda.w #$001F
+    sta.l !selection_derived+$16
+    plp
+    rts

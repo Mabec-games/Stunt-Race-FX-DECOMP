@@ -405,3 +405,110 @@ MenuPictureInsetGrid:
     bpl .lF76D
     plp
     rts
+
+; @routine 0B:F94A MenuCourseGraphics
+; WHAT IT DOES: Draws the course screen's graphics into VRAM: the course's
+; two pictures (tables $03:F4F9 and $03:F5A1, three bytes per course) to
+; $4C00 ($1800 bytes) and $3C00 ($2000 bytes), picture $FB84 to both $1680
+; and $3680 ($600 bytes each) and picture $FFAC to $1C00 ($800 bytes).
+; HOW: Each picture is drawn by the Super FX (GsuCF42To3000) and written a
+; word at a time to VMDATA.
+; Entry: any widths, D = $0000. Exit: A = the last word; X = $800; P
+; unchanged.
+%at($0BF94A)
+MenuCourseGraphics:
+    php
+    rep.b #$30
+    lda.w !course
+    asl a
+    clc
+    adc.w !course
+    and.w #$00FF
+    tax
+    lda.l !course_picture_a,x
+    pha
+    lda.l !course_picture_a+$2,x
+    and.w #$00FF
+    tax
+    pla
+    jsl.l GsuCF42To3000
+    rep.b #$30
+    lda.w #$4C00
+    sta.w !VMADDL
+    ldx.w #$0000
+.lF976:
+    lda.l !gsu_picture,x
+    sta.w !VMDATAL
+    inx
+    inx
+    cpx.w #$1800
+    bne .lF976
+    rep.b #$30
+    lda.w !course
+    asl a
+    clc
+    adc.w !course
+    and.w #$00FF
+    tax
+    lda.l !course_picture_b,x
+    pha
+    lda.l !course_picture_b+$2,x
+    and.w #$00FF
+    tax
+    pla
+    jsl.l GsuCF42To3000
+    rep.b #$30
+    lda.w #$3C00
+    sta.w !VMADDL
+    ldx.w #$0000
+.lF9AF:
+    lda.l !gsu_picture,x
+    sta.w !VMDATAL
+    inx
+    inx
+    cpx.w #$2000
+    bne .lF9AF
+    rep.b #$30
+    lda.w #$FB84
+    ldx.w #$0017
+    jsl.l GsuCF42To3000
+    rep.b #$30
+    lda.w #$1680
+    sta.w !VMADDL
+    ldx.w #$0000
+.lF9D4:
+    lda.l !gsu_picture,x
+    sta.w !VMDATAL
+    inx
+    inx
+    cpx.w #$0600
+    bne .lF9D4
+    rep.b #$30
+    lda.w #$3680
+    sta.w !VMADDL
+    ldx.w #$0000
+.lF9ED:
+    lda.l !gsu_picture,x
+    sta.w !VMDATAL
+    inx
+    inx
+    cpx.w #$0600
+    bne .lF9ED
+    rep.b #$30
+    lda.w #$FFAC
+    ldx.w #$0017
+    jsl.l GsuCF42To3000
+    rep.b #$30
+    lda.w #$1C00
+    sta.w !VMADDL
+    ldx.w #$0000
+.lFA12:
+    lda.l !gsu_picture,x
+    sta.w !VMDATAL
+    inx
+    inx
+    cpx.w #$0800
+    bne .lFA12
+    sep.b #$20
+    plp
+    rtl

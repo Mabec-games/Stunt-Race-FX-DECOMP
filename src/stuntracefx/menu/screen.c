@@ -318,3 +318,59 @@ void abi_MenuPictureInsetGrid(void)
     cpu.x = 0x0700;
     cpu.y = 0xFFFF;
 }
+
+/* Draw a picture with GsuCF42To3000 and write `bytes` of it to VRAM word
+   address `vram` (VMAIN as the caller left it). */
+static uint16_t picture_to_vram(uint8_t bank, uint16_t in68, uint16_t in6a, uint16_t vram, uint16_t bytes, int draw)
+{
+    uint16_t x, w = 0;
+
+    (void)bank;
+    if (draw)
+        GsuCF42To3000(in68, in6a);
+    wr16(VMADDL, vram);
+    for (x = 0; x != bytes; x = (uint16_t)(x + 2)) {
+        w = rd16(0x703000 + x);
+        wr16(VMDATAL, w);
+    }
+    return w;
+}
+
+/* The two words of a course's picture entry: input $68 and input $6A. */
+static void course_picture(uint8_t bank, uint32_t table, uint16_t *in68, uint16_t *in6a)
+{
+    uint16_t c = rd16((uint32_t)bank << 16 | 0x0E3D), i = (uint16_t)(((uint16_t)(c << 1) + c) & 0x00FF);
+
+    *in68 = rd16(table + i);
+    *in6a = rd16(table + 2 + i) & 0x00FF;
+}
+
+/*
+ * @routine 0B:F94A MenuCourseGraphics
+ * WHAT IT DOES: Draws the course screen's graphics into VRAM: the course's
+ * two pictures (tables $03:F4F9 and $03:F5A1, three bytes per course) to
+ * $4C00 ($1800 bytes) and $3C00 ($2000 bytes), picture $FB84 to both $1680
+ * and $3680 ($600 bytes each) and picture $FFAC to $1C00 ($800 bytes).
+ * HOW: Each picture is drawn by the Super FX (GsuCF42To3000) and written a
+ * word at a time to VMDATA.
+ * Entry: any widths, D = $0000. Exit: A = the last word; X = $800; P
+ * unchanged.
+ */
+uint16_t MenuCourseGraphics(uint8_t bank)
+{
+    uint16_t a, x;
+
+    course_picture(bank, 0x03F4F9, &a, &x);
+    picture_to_vram(bank, a, x, 0x4C00, 0x1800, 1);
+    course_picture(bank, 0x03F5A1, &a, &x);
+    picture_to_vram(bank, a, x, 0x3C00, 0x2000, 1);
+    picture_to_vram(bank, 0xFB84, 0x0017, 0x1680, 0x0600, 1);
+    picture_to_vram(bank, 0, 0, 0x3680, 0x0600, 0);
+    return picture_to_vram(bank, 0xFFAC, 0x0017, 0x1C00, 0x0800, 1);
+}
+
+void abi_MenuCourseGraphics(void)
+{
+    cpu.a = MenuCourseGraphics(cpu.db);
+    cpu.x = 0x0800;
+}

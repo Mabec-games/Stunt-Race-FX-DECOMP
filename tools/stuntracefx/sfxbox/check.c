@@ -119,7 +119,7 @@ static void io_add(IoLog *l, uint32_t addr, uint8_t v)
 /* One watched call. Calls nest (a checked routine can call another), so the
    watches form a stack; every access is recorded in every open watch. */
 typedef struct {
-    int idx, in_irq, interrupted, dma, overflow;
+    int idx, in_irq, interrupted, dma, gsu, overflow;
     uint32_t ret_pc, irq_pc;
     uint16_t exit_s, irq_s;
     struct SfxboxRegs entry;
@@ -256,13 +256,16 @@ static void finish(Watch *w)
     if (c_runaway) { bad = 1; strncat(why, " runaway", sizeof why - strlen(why) - 1); }
 
     if (!bad) { st->match++; return; }
-    int unsure = w->interrupted || w->dma;
+    /* A call that started the Super FX reads results the Super FX wrote
+       while it ran; the C, run afterwards against the entry state, cannot
+       see them, so such a call is only judged by the lockstep run. */
+    int unsure = w->interrupted || w->dma || w->gsu;
     if (unsure) st->inconclusive++; else st->diff++;
     if (st->shown < 8) {
         st->shown++;
         fprintf(report, "%s %06X %s call %ld: entry A=%04X X=%04X Y=%04X S=%04X D=%04X DB=%02X P=%02X%s; C/orig:%s\n",
                 unsure ? "INCONCLUSIVE" : "DIFF", r->addr, r->name, st->calls, w->entry.a, w->entry.x, w->entry.y,
-                w->entry.s, w->entry.d, w->entry.db, w->entry.p, w->interrupted ? " (interrupted)" : w->dma ? " (dma)" : "", why);
+                w->entry.s, w->entry.d, w->entry.db, w->entry.p, w->interrupted ? " (interrupted)" : w->dma ? " (dma)" : w->gsu ? " (super fx ran)" : "", why);
     }
 }
 
@@ -300,7 +303,7 @@ static void on_insn(uint32_t pc)
         w->exit_s = (uint16_t)(sp + 3);
     } else { stats[idx].skipped++; return; }
     w->idx = idx; w->entry = r;
-    w->in_irq = w->interrupted = w->dma = w->overflow = 0;
+    w->in_irq = w->interrupted = w->dma = w->gsu = w->overflow = 0;
     map_clear(&w->undo); map_clear(&w->orig);
     w->oread.n = w->owrite.n = 0;
     depth++;
@@ -318,7 +321,10 @@ static void on_write(uint32_t addr, uint8_t data, int kind)
         if (kind == 2) { w->dma = 1; continue; }
         if (w->in_irq) continue;
         if (ram) { map_put(&w->orig, n, data, 0); if (w->orig.n >= MAPN / 2) w->overflow = 1; }
-        else if (n >> 24 == R_IO) io_add(&w->owrite, addr & 0xFFFF, data);
+        else if (n >> 24 == R_IO) {
+            io_add(&w->owrite, addr & 0xFFFF, data);
+            if ((addr & 0xFFFF) == 0x301F) w->gsu = 1;  /* R15 high byte: the Super FX starts */
+        }
     }
 }
 

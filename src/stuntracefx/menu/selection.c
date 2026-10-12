@@ -135,3 +135,38 @@ void abi_MenuSet1A66(void)
         cpu.y &= 0x00FF;
     }
 }
+
+/*
+ * @routine 0B:D4C3 MenuStateInit
+ * WHAT IT DOES: Sets the menu's selection state to its defaults: the four
+ * choices at $18CB-$18D1 to 0, 0, 1, 2, the derived values and positions to
+ * their starting values, the draw-buffer offset $0D7D to 6, and three
+ * values at $18EF-$18F3 from the save data ($70:FC08-$70:FC0A).
+ * HOW: 16-bit long stores in the original's order.
+ * Entry: any widths. Exit: A = $001F; P unchanged.
+ */
+void MenuStateInit(void)
+{
+    static const struct { uint32_t addr; uint16_t v; } set[] = {
+        {0x000D7D, 0x0006}, {0x0018FD, 0x0000}, {0x001903, 0x0000}, {0x0018B9, 0x0001},
+        {0x001901, 0x0000}, {0x0018FF, 0x0000}, {0x0018F7, 0x0000}, {0x0018C3, 0x0000},
+        {0x0018CB, 0x0000}, {0x0018C9, 0x0000}, {0x0018ED, 0x0000}, {0x0018CD, 0x0000},
+        {0x0018F5, 0x0000}, {0x0018D3, 0x0000}, {0x0018D5, 0x0000}, {0x0018D7, 0x0000},
+        {0x0018D9, 0x0003}, {0x0018C7, 0x0001}, {0x0018EB, 0x0001}, {0x0018CF, 0x0001},
+        {0x0018D1, 0x0002}};
+    unsigned i;
+
+    for (i = 0; i < sizeof set / sizeof set[0]; i++)
+        wr16(set[i].addr, set[i].v);
+    wr16(0x0018EF, rd16(0x70FC08) & 0x00FF);
+    wr16(0x0018F1, rd16(0x70FC09) & 0x00FF);
+    wr16(0x0018F3, rd16(0x70FC0A) & 0x00FF);
+    wr16(0x0018C5, 0xFFFF);
+    wr16(0x0018F9, 0x001F);
+}
+
+void abi_MenuStateInit(void)
+{
+    MenuStateInit();
+    cpu.a = 0x001F;
+}

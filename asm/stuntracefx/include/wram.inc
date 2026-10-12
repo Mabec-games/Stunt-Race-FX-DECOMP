@@ -353,3 +353,4 @@ includeonce
 !menu_pos_18bb = $18BB
 !menu_pos_18bd = $18BD
 !gsu_picture_copy = $703800
+!menu_18b9 = $18B9

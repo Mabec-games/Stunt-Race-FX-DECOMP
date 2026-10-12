@@ -46,3 +46,8 @@ includeonce
 
 ; Sprite tile numbers for MenuActorSetTiles (menu/actors.asm).
 !menu_tile_table = $0BC528
+
+; Course pictures for the course screen, three bytes per course: input $68
+; and input $6A for program $01:CF42 (menu/screen.asm).
+!course_picture_a = $03F4F9
+!course_picture_b = $03F5A1
