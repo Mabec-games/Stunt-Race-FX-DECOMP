@@ -1347,3 +1347,80 @@ ObjectSpawn:
     sep.b #$20
     sec
     rtl
+
+; @routine 03:B8A1 ObjectFreeLong
+; WHAT IT DOES: ObjectFree for callers in other banks.
+; HOW: JSR to it, then RTL.
+; Entry: as ObjectFree. Exit: as ObjectFree.
+%at($03B8A1)
+ObjectFreeLong:
+    jsr.w ObjectFree
+    rtl
+
+; @routine 03:B8A5 ObjectFree
+; WHAT IT DOES: Gives object X back: takes it out of its bucket
+; (ObjectBucketRemove) and out of the used list (fixing the head $0329 or
+; its previous record's next, and its next record's previous or the last
+; taken $032B), then puts it at the head of the free list ($032D).
+; HOW: 16-bit, through the caller's data bank; X, Y and P are saved and
+; restored. Freeing the head of the used list is not reached by a script
+; (it also clears the last taken, and writes +$02 of the new head even when
+; there is none).
+; Entry: M 8-bit, X 16-bit; X = object. Exit: A = the old free head (M
+; 8-bit); X, Y, P unchanged except N, Z, which the final pull of X sets
+; from X.
+%at($03B8A5)
+ObjectFree:
+    phx
+    phy
+    php
+    jsl.l ObjectBucketRemove
+    rep.b #$20
+    ldy.w !obj_02,x
+    bne .lB8C4
+    ldy.w !obj_base,x
+    sty.w !wram_0329
+    lda.w #$0000
+    sta.w !obj_02,y
+    stz.w !wram_032B
+    bra .lB8D8
+.lB8C4:
+    phx
+    lda.w !obj_base,x
+    tax
+    sta.w !obj_base,y
+    beq .lB8D4
+    tya
+    sta.w !obj_02,x
+    bra .lB8D7
+.lB8D4:
+    sty.w !wram_032B
+.lB8D7:
+    plx
+.lB8D8:
+    lda.w !wram_032D
+    sta.w !obj_base,x
+    stx.w !wram_032D
+    sep.b #$20
+    plp
+    ply
+    plx
+    rts
+
+; @routine 03:CCA1 ObjectRelease
+; WHAT IT DOES: Frees object X (ObjectFreeLong), unless it is the object
+; at $034C, which instead counts one up in $035C.
+; HOW: A 16-bit compare of X; the count is an 8-bit increment.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: X, Y unchanged; C from the
+; compare; the object at $034C: N, Z from the new count; otherwise as
+; ObjectFree.
+%at($03CCA1)
+ObjectRelease:
+    cpx.w !wram_034C
+    bne .lCCAB
+    inc.w !wram_035C
+    bra .lCCAF
+.lCCAB:
+    jsl.l ObjectFreeLong
+.lCCAF:
+    rtl

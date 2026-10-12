@@ -800,3 +800,7 @@ includeonce
 !gsu_flag_26f0 = $7026F0
 !gsu_flag_1090 = $701090
 !gsu_flag_2650 = $702650
+; An object ObjectRelease never frees, and the count of refused frees
+; (object/object.asm).
+!wram_034C = $034C
+!wram_035C = $035C

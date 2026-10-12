@@ -1332,3 +1332,100 @@ void abi_ObjectSpawn(void)
     else
         cpu.p = (uint8_t)((nz16(cpu.p, cpu.x) & ~P_C) | P_M);
 }
+
+/*
+ * @routine 03:B8A5 ObjectFree
+ * WHAT IT DOES: Gives object X back: takes it out of its bucket
+ * (ObjectBucketRemove) and out of the used list (fixing the head $0329 or
+ * its previous record's next, and its next record's previous or the last
+ * taken $032B), then puts it at the head of the free list ($032D).
+ * HOW: 16-bit, through the caller's data bank; X, Y and P are saved and
+ * restored. Freeing the head of the used list is not reached by a script
+ * (it also clears the last taken, and writes +$02 of the new head even when
+ * there is none).
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: A = the old free head (M
+ * 8-bit); X, Y, P unchanged except N, Z, which the final pull of X sets
+ * from X.
+ */
+uint16_t ObjectFree(uint8_t bank, uint16_t obj)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t prev, next, head;
+
+    ObjectBucketRemove(obj);
+    prev = rd16(field(bank, obj, 0x02));
+    if (!prev) {
+        next = rd16(field(bank, obj, 0x00));
+        wr16(b | 0x0329, next);
+        wr16(b | (uint16_t)(0x2002 + next), 0x0000);
+        wr16(b | 0x032B, 0x0000);
+    } else {
+        next = rd16(field(bank, obj, 0x00));
+        wr16(b | (uint16_t)(0x2000 + prev), next);
+        if (next)
+            wr16(b | (uint16_t)(0x2002 + next), prev);
+        else
+            wr16(b | 0x032B, prev);
+    }
+    head = rd16(b | 0x032D);
+    wr16(field(bank, obj, 0x00), head);
+    wr16(b | 0x032D, obj);
+    return head;
+}
+
+void abi_ObjectFree(void)
+{
+    cpu.a = ObjectFree(cpu.db, cpu.x);
+    cpu.p = (cpu.p & P_X) ? nz8(cpu.p, (uint8_t)cpu.x) : nz16(cpu.p, cpu.x);
+}
+
+/*
+ * @routine 03:B8A1 ObjectFreeLong
+ * WHAT IT DOES: ObjectFree for callers in other banks.
+ * HOW: JSR to it, then RTL.
+ * Entry: as ObjectFree. Exit: as ObjectFree.
+ */
+uint16_t ObjectFreeLong(uint8_t bank, uint16_t obj)
+{
+    return ObjectFree(bank, obj);
+}
+
+void abi_ObjectFreeLong(void)
+{
+    abi_ObjectFree();
+}
+
+/*
+ * @routine 03:CCA1 ObjectRelease
+ * WHAT IT DOES: Frees object X (ObjectFreeLong), unless it is the object
+ * at $034C, which instead counts one up in $035C.
+ * HOW: A 16-bit compare of X; the count is an 8-bit increment.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: X, Y unchanged; C from the
+ * compare; the object at $034C: N, Z from the new count; otherwise as
+ * ObjectFree.
+ */
+uint16_t ObjectRelease(uint8_t bank, uint16_t obj, uint16_t a, uint8_t *p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t m = rd16(b | 0x034C);
+    uint8_t n;
+
+    *p = (uint8_t)((*p & ~P_C) | (obj >= m ? P_C : 0));
+    if (obj == m) {
+        n = (uint8_t)(rd8(b | 0x035C) + 1);
+        wr8(b | 0x035C, n);
+        *p = nz8(*p, n);
+        return a;
+    }
+    a = ObjectFreeLong(bank, obj);
+    *p = (*p & P_X) ? nz8(*p, (uint8_t)obj) : nz16(*p, obj);
+    return a;
+}
+
+void abi_ObjectRelease(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = ObjectRelease(cpu.db, cpu.x, cpu.a, &p);
+    cpu.p = p;
+}
