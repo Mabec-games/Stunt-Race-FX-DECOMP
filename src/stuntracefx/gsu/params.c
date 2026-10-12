@@ -154,3 +154,159 @@ void abi_GsuTableEntryTo1F4C(void)
     cpu.a = GsuTableEntryTo1F4C(cpu.db, cpu.a, &p);
     cpu.p = nz16(p, cpu.x);
 }
+
+
+/* Store the four bytes 0, b1, b2, b3 at $70:0200-$70:0203. */
+static uint8_t gsu_200(uint8_t b1, uint8_t b2, uint8_t b3)
+{
+    wr8(0x700200, 0x00);
+    wr8(0x700201, b1);
+    wr8(0x700202, b2);
+    wr8(0x700203, b3);
+    return b3;
+}
+
+/*
+ * @routine 04:D7BF GsuBytes200_BFB7B6
+ * WHAT IT DOES: Sets the four renderer input bytes at $70:0200-$70:0203 to
+ * 0, $BF, $B7, $B6.
+ * HOW: Four byte stores (gsu_200).
+ * Entry: any widths. Exit: A low byte = $B6; P unchanged.
+ */
+void GsuBytes200_BFB7B6(void)
+{
+    gsu_200(0xBF, 0xB7, 0xB6);
+}
+
+void abi_GsuBytes200_BFB7B6(void)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0xBF, 0xB7, 0xB6));
+}
+
+/*
+ * @routine 04:D7DC GsuBytes200_BFB5BB
+ * WHAT IT DOES: As GsuBytes200_BFB7B6, with 0, $BF, $B5, $BB.
+ * HOW: As GsuBytes200_BFB7B6.
+ * Entry: any widths. Exit: A low byte = $BB; P unchanged.
+ */
+void GsuBytes200_BFB5BB(void)
+{
+    gsu_200(0xBF, 0xB5, 0xBB);
+}
+
+void abi_GsuBytes200_BFB5BB(void)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0xBF, 0xB5, 0xBB));
+}
+
+/*
+ * @routine 04:D7F9 GsuBytes200_BFBCBD
+ * WHAT IT DOES: As GsuBytes200_BFB7B6, with 0, $BF, $BC, $BD.
+ * HOW: As GsuBytes200_BFB7B6.
+ * Entry: any widths. Exit: A low byte = $BD; P unchanged.
+ */
+void GsuBytes200_BFBCBD(void)
+{
+    gsu_200(0xBF, 0xBC, 0xBD);
+}
+
+void abi_GsuBytes200_BFBCBD(void)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0xBF, 0xBC, 0xBD));
+}
+
+/*
+ * @routine 04:D816 GsuBytes200_BFBAB9
+ * WHAT IT DOES: As GsuBytes200_BFB7B6, with 0, $BF, $BA, $B9.
+ * HOW: As GsuBytes200_BFB7B6.
+ * Entry: any widths. Exit: A low byte = $B9; P unchanged.
+ */
+void GsuBytes200_BFBAB9(void)
+{
+    gsu_200(0xBF, 0xBA, 0xB9);
+}
+
+void abi_GsuBytes200_BFBAB9(void)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0xBF, 0xBA, 0xB9));
+}
+
+/*
+ * @routine 04:D833 GsuBytes200_BFB3BE
+ * WHAT IT DOES: As GsuBytes200_BFB7B6, with 0, $BF, $B3, $BE.
+ * HOW: As GsuBytes200_BFB7B6.
+ * Entry: any widths. Exit: A low byte = $BE; P unchanged.
+ */
+void GsuBytes200_BFB3BE(void)
+{
+    gsu_200(0xBF, 0xB3, 0xBE);
+}
+
+void abi_GsuBytes200_BFB3BE(void)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0xBF, 0xB3, 0xBE));
+}
+
+/*
+ * @routine 04:D972 GsuBytes200_0F0405
+ * WHAT IT DOES: As GsuBytes200_BFB7B6, with 0, $0F, $04, $05.
+ * HOW: As GsuBytes200_BFB7B6.
+ * Entry: any widths. Exit: A low byte = $05; P unchanged.
+ */
+void GsuBytes200_0F0405(void)
+{
+    gsu_200(0x0F, 0x04, 0x05);
+}
+
+void abi_GsuBytes200_0F0405(void)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0x0F, 0x04, 0x05));
+}
+
+/*
+ * @routine 04:D9AC GsuBytes200_0F090A
+ * WHAT IT DOES: As GsuBytes200_BFB7B6, with 0, $0F, $09, $0A.
+ * HOW: As GsuBytes200_BFB7B6.
+ * Entry: any widths. Exit: A low byte = $0A; P unchanged.
+ */
+void GsuBytes200_0F090A(void)
+{
+    gsu_200(0x0F, 0x09, 0x0A);
+}
+
+void abi_GsuBytes200_0F090A(void)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0x0F, 0x09, 0x0A));
+}
+
+/*
+ * @routine 04:D9E6 GsuBytes200_0F050E
+ * WHAT IT DOES: As GsuBytes200_BFB7B6, with 0, $0F, $05, $0E.
+ * HOW: As GsuBytes200_BFB7B6.
+ * Entry: any widths. Exit: A low byte = $0E; P unchanged.
+ */
+void GsuBytes200_0F050E(void)
+{
+    gsu_200(0x0F, 0x05, 0x0E);
+}
+
+void abi_GsuBytes200_0F050E(void)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0x0F, 0x05, 0x0E));
+}
+
+/*
+ * @routine 04:DA03 GsuBytes200_0F080E
+ * WHAT IT DOES: As GsuBytes200_BFB7B6, with 0, $0F, $08, $0E.
+ * HOW: As GsuBytes200_BFB7B6.
+ * Entry: any widths. Exit: A low byte = $0E; P unchanged.
+ */
+void GsuBytes200_0F080E(void)
+{
+    gsu_200(0x0F, 0x08, 0x0E);
+}
+
+void abi_GsuBytes200_0F080E(void)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0x0F, 0x08, 0x0E));
+}

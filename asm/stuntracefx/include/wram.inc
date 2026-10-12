@@ -477,3 +477,4 @@ includeonce
 !obj_49 = $2049
 !obj_4a = $204A
 !place_table = $FF66
+!gsu_bytes_200 = $700200

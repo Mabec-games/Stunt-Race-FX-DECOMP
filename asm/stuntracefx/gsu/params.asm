@@ -131,3 +131,175 @@ GsuTableEntryTo1F4C:
     plb
     plx
     rtl
+
+; @routine 04:D7BF GsuBytes200_BFB7B6
+; WHAT IT DOES: Sets the four renderer input bytes at $70:0200-$70:0203 to
+; 0, $BF, $B7, $B6.
+; HOW: Four byte stores (gsu_200).
+; Entry: any widths. Exit: A low byte = $B6; P unchanged.
+%at($04D7BF)
+GsuBytes200_BFB7B6:
+    php
+    sep.b #$20
+    lda.b #$00
+    sta.l !gsu_bytes_200
+    lda.b #$BF
+    sta.l !gsu_bytes_200+1
+    lda.b #$B7
+    sta.l !gsu_bytes_200+2
+    lda.b #$B6
+    sta.l !gsu_bytes_200+3
+    plp
+    rtl
+
+; @routine 04:D7DC GsuBytes200_BFB5BB
+; WHAT IT DOES: As GsuBytes200_BFB7B6, with 0, $BF, $B5, $BB.
+; HOW: As GsuBytes200_BFB7B6.
+; Entry: any widths. Exit: A low byte = $BB; P unchanged.
+%at($04D7DC)
+GsuBytes200_BFB5BB:
+    php
+    sep.b #$20
+    lda.b #$00
+    sta.l !gsu_bytes_200
+    lda.b #$BF
+    sta.l !gsu_bytes_200+1
+    lda.b #$B5
+    sta.l !gsu_bytes_200+2
+    lda.b #$BB
+    sta.l !gsu_bytes_200+3
+    plp
+    rtl
+
+; @routine 04:D7F9 GsuBytes200_BFBCBD
+; WHAT IT DOES: As GsuBytes200_BFB7B6, with 0, $BF, $BC, $BD.
+; HOW: As GsuBytes200_BFB7B6.
+; Entry: any widths. Exit: A low byte = $BD; P unchanged.
+%at($04D7F9)
+GsuBytes200_BFBCBD:
+    php
+    sep.b #$20
+    lda.b #$00
+    sta.l !gsu_bytes_200
+    lda.b #$BF
+    sta.l !gsu_bytes_200+1
+    lda.b #$BC
+    sta.l !gsu_bytes_200+2
+    lda.b #$BD
+    sta.l !gsu_bytes_200+3
+    plp
+    rtl
+
+; @routine 04:D816 GsuBytes200_BFBAB9
+; WHAT IT DOES: As GsuBytes200_BFB7B6, with 0, $BF, $BA, $B9.
+; HOW: As GsuBytes200_BFB7B6.
+; Entry: any widths. Exit: A low byte = $B9; P unchanged.
+%at($04D816)
+GsuBytes200_BFBAB9:
+    php
+    sep.b #$20
+    lda.b #$00
+    sta.l !gsu_bytes_200
+    lda.b #$BF
+    sta.l !gsu_bytes_200+1
+    lda.b #$BA
+    sta.l !gsu_bytes_200+2
+    lda.b #$B9
+    sta.l !gsu_bytes_200+3
+    plp
+    rtl
+
+; @routine 04:D833 GsuBytes200_BFB3BE
+; WHAT IT DOES: As GsuBytes200_BFB7B6, with 0, $BF, $B3, $BE.
+; HOW: As GsuBytes200_BFB7B6.
+; Entry: any widths. Exit: A low byte = $BE; P unchanged.
+%at($04D833)
+GsuBytes200_BFB3BE:
+    php
+    sep.b #$20
+    lda.b #$00
+    sta.l !gsu_bytes_200
+    lda.b #$BF
+    sta.l !gsu_bytes_200+1
+    lda.b #$B3
+    sta.l !gsu_bytes_200+2
+    lda.b #$BE
+    sta.l !gsu_bytes_200+3
+    plp
+    rtl
+
+; @routine 04:D972 GsuBytes200_0F0405
+; WHAT IT DOES: As GsuBytes200_BFB7B6, with 0, $0F, $04, $05.
+; HOW: As GsuBytes200_BFB7B6.
+; Entry: any widths. Exit: A low byte = $05; P unchanged.
+%at($04D972)
+GsuBytes200_0F0405:
+    php
+    sep.b #$20
+    lda.b #$00
+    sta.l !gsu_bytes_200
+    lda.b #$0F
+    sta.l !gsu_bytes_200+1
+    lda.b #$04
+    sta.l !gsu_bytes_200+2
+    lda.b #$05
+    sta.l !gsu_bytes_200+3
+    plp
+    rtl
+
+; @routine 04:D9AC GsuBytes200_0F090A
+; WHAT IT DOES: As GsuBytes200_BFB7B6, with 0, $0F, $09, $0A.
+; HOW: As GsuBytes200_BFB7B6.
+; Entry: any widths. Exit: A low byte = $0A; P unchanged.
+%at($04D9AC)
+GsuBytes200_0F090A:
+    php
+    sep.b #$20
+    lda.b #$00
+    sta.l !gsu_bytes_200
+    lda.b #$0F
+    sta.l !gsu_bytes_200+1
+    lda.b #$09
+    sta.l !gsu_bytes_200+2
+    lda.b #$0A
+    sta.l !gsu_bytes_200+3
+    plp
+    rtl
+
+; @routine 04:D9E6 GsuBytes200_0F050E
+; WHAT IT DOES: As GsuBytes200_BFB7B6, with 0, $0F, $05, $0E.
+; HOW: As GsuBytes200_BFB7B6.
+; Entry: any widths. Exit: A low byte = $0E; P unchanged.
+%at($04D9E6)
+GsuBytes200_0F050E:
+    php
+    sep.b #$20
+    lda.b #$00
+    sta.l !gsu_bytes_200
+    lda.b #$0F
+    sta.l !gsu_bytes_200+1
+    lda.b #$05
+    sta.l !gsu_bytes_200+2
+    lda.b #$0E
+    sta.l !gsu_bytes_200+3
+    plp
+    rtl
+
+; @routine 04:DA03 GsuBytes200_0F080E
+; WHAT IT DOES: As GsuBytes200_BFB7B6, with 0, $0F, $08, $0E.
+; HOW: As GsuBytes200_BFB7B6.
+; Entry: any widths. Exit: A low byte = $0E; P unchanged.
+%at($04DA03)
+GsuBytes200_0F080E:
+    php
+    sep.b #$20
+    lda.b #$00
+    sta.l !gsu_bytes_200
+    lda.b #$0F
+    sta.l !gsu_bytes_200+1
+    lda.b #$08
+    sta.l !gsu_bytes_200+2
+    lda.b #$0E
+    sta.l !gsu_bytes_200+3
+    plp
+    rtl

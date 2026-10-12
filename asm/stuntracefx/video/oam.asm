@@ -335,3 +335,28 @@ OamHideEntries0To2:
     sta.w !oam_buffer+4,y
     sta.w !oam_buffer+8,y
     rts
+
+; @routine 04:E317 OamSetPalette
+; WHAT IT DOES: Sets the palette bits (1-3) of the attribute byte of X
+; sprites from offset Y to the bits in A.
+; HOW: The bits are kept in direct page $F1; each attribute byte ($0378 + Y,
+; through the data bank) keeps its other bits.
+; Entry: X 16-bit, D = $0000; A low byte = palette bits, X = count (0 means
+; 65536), Y = byte offset. Exit: A low byte = the last attribute; X = 0; Y
+; past the last sprite; M 8-bit; Z set, N clear.
+%at($04E317)
+OamSetPalette:
+    sep.b #$20
+    sta.b !digit_count
+.lE31B:
+    lda.w !oam_buffer+3,y
+    and.b #$F1
+    ora.b !digit_count
+    sta.w !oam_buffer+3,y
+    iny
+    iny
+    iny
+    iny
+    dex
+    bne .lE31B
+    rts

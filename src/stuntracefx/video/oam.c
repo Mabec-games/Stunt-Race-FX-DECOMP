@@ -403,3 +403,36 @@ void abi_OamHideEntries0To2(void)
     cpu.a = 0xF000;
     cpu.p = (uint8_t)((cpu.p & ~P_Z) | P_N);
 }
+
+/*
+ * @routine 04:E317 OamSetPalette
+ * WHAT IT DOES: Sets the palette bits (1-3) of the attribute byte of X
+ * sprites from offset Y to the bits in A.
+ * HOW: The bits are kept in direct page $F1; each attribute byte ($0378 + Y,
+ * through the data bank) keeps its other bits.
+ * Entry: X 16-bit, D = $0000; A low byte = palette bits, X = count (0 means
+ * 65536), Y = byte offset. Exit: A low byte = the last attribute; X = 0; Y
+ * past the last sprite; M 8-bit; Z set, N clear.
+ */
+uint8_t OamSetPalette(uint8_t bank, uint8_t bits, uint16_t count, uint16_t *y)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t v = 0;
+
+    wr8(0x0000F1, bits);
+    do {
+        v = (uint8_t)((rd8(b | (uint16_t)(0x0378 + *y)) & 0xF1) | rd8(0x0000F1));
+        wr8(b | (uint16_t)(0x0378 + *y), v);
+        *y = (uint16_t)(*y + 4);
+    } while (--count);
+    return v;
+}
+
+void abi_OamSetPalette(void)
+{
+    uint8_t v = OamSetPalette(cpu.db, (uint8_t)cpu.a, cpu.x, &cpu.y);
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.x = 0;
+    cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z | P_M);
+}
