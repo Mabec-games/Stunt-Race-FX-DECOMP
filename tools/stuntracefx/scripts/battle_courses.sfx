@@ -1,0 +1,262 @@
+# battle_courses: Battle Trax on Marine Pipe, Port Arena and Toxic Desert;
+# player 2 moves the course cursor and pauses; both players retire; the
+# round-end menu takes CHANGE COURSE and CHANGE CAR (Coupe and F-Type).
+# Power on, GAME SELECTION: BATTLE TRAX; both players keep the 4WD.
+wait 300
+hold START 2
+wait 202
+hold START 2
+wait 202
+hold DOWN 2
+wait 22
+hold DOWN 2
+wait 22
+hold START 2
+wait 122
+hold START 2
+wait 92
+hold START 2
+wait 152
+hold 2.START 2
+wait 92
+hold 2.START 2
+wait 152
+# Course select: player 2 moves the cursor (LEFT, RIGHT), then player 1
+# picks Marine Pipe (UP) and PLAY.
+hold 2.RIGHT 2
+wait 32
+hold 2.LEFT 2
+wait 33
+hold UP 2
+wait 33
+hold START 2
+wait 152
+hold START 2
+wait 152
+hold 2.START 2
+wait 602
+hold B+2.B 60
+hold B+LEFT+2.B+2.RIGHT 12
+hold B+2.B 60
+hold B+LEFT+2.B+2.RIGHT 12
+hold B+2.B 60
+hold B+LEFT+2.B+2.RIGHT 12
+hold B+2.B 60
+hold B+LEFT+2.B+2.RIGHT 12
+hold B+2.B 60
+hold B+LEFT+2.B+2.RIGHT 12
+hold B+2.B 60
+hold B+LEFT+2.B+2.RIGHT 12
+hold B+2.B 60
+hold B+LEFT+2.B+2.RIGHT 12
+hold B+2.B 60
+hold B+LEFT+2.B+2.RIGHT 12
+hold B+2.B 60
+hold B+LEFT+2.B+2.RIGHT 12
+hold B+2.B 60
+hold B+LEFT+2.B+2.RIGHT 12
+hold B+2.B 60
+hold B+LEFT+2.B+2.RIGHT 12
+hold B+2.B 60
+hold B+LEFT+2.B+2.RIGHT 12
+wait 1
+# Player 2 pauses: RETIRE? YES ends the round; the menu offers TRY AGAIN,
+# CHANGE COURSE, CHANGE CAR. CHANGE COURSE.
+hold 2.START 2
+wait 63
+hold 2.LEFT 2
+wait 32
+hold 2.START 2
+wait 203
+hold DOWN 2
+wait 33
+hold START 2
+wait 203
+# Port Arena: UP, RIGHT, PLAY. Both drive; then player 1 pauses and retires.
+hold UP 2
+wait 32
+hold RIGHT 2
+wait 32
+hold START 2
+wait 152
+hold START 2
+wait 152
+hold 2.START 2
+wait 602
+hold B+2.B+2.LEFT 50
+hold B+RIGHT+2.B 14
+hold A+2.B 10
+hold B+2.B+2.LEFT 50
+hold B+RIGHT+2.B 14
+hold A+2.B 10
+hold B+2.B+2.LEFT 50
+hold B+RIGHT+2.B 14
+hold A+2.B 10
+hold B+2.B+2.LEFT 50
+hold B+RIGHT+2.B 14
+hold A+2.B 10
+hold B+2.B+2.LEFT 50
+hold B+RIGHT+2.B 14
+hold A+2.B 10
+hold B+2.B+2.LEFT 50
+hold B+RIGHT+2.B 14
+hold A+2.B 10
+hold B+2.B+2.LEFT 50
+hold B+RIGHT+2.B 14
+hold A+2.B 10
+hold B+2.B+2.LEFT 50
+hold B+RIGHT+2.B 14
+hold A+2.B 10
+hold B+2.B+2.LEFT 50
+hold B+RIGHT+2.B 14
+hold A+2.B 10
+hold B+2.B+2.LEFT 50
+hold B+RIGHT+2.B 14
+hold A+2.B 10
+hold B+2.B+2.LEFT 50
+hold B+RIGHT+2.B 14
+hold A+2.B 10
+hold B+2.B+2.LEFT 50
+hold B+RIGHT+2.B 14
+hold A+2.B 10
+hold B+2.B+2.LEFT 50
+hold B+RIGHT+2.B 14
+hold A+2.B 10
+hold B+2.B+2.LEFT 50
+hold B+RIGHT+2.B 14
+hold A+2.B 10
+hold B+2.B+2.LEFT 50
+hold B+RIGHT+2.B 14
+hold A+2.B 10
+wait 1
+hold START 2
+wait 62
+hold LEFT 2
+wait 32
+hold START 2
+wait 203
+# CHANGE CAR: player 1 takes the Coupe, player 2 the F-Type.
+hold DOWN 2
+wait 32
+hold DOWN 2
+wait 33
+hold START 2
+wait 203
+hold RIGHT 2
+wait 32
+hold START 2
+wait 92
+hold START 2
+wait 153
+hold 2.LEFT 2
+wait 32
+hold 2.START 2
+wait 92
+hold 2.START 2
+wait 153
+# Port Arena again with the new cars; drive, then player 1 retires and
+# CHANGE COURSE to Toxic Desert (RIGHT from Cotton Farm).
+wait 200
+hold B+2.B 60
+hold B+LEFT+2.B+2.RIGHT 12
+hold Y+2.Y 8
+hold B+2.B 60
+hold B+LEFT+2.B+2.RIGHT 12
+hold Y+2.Y 8
+hold B+2.B 60
+hold B+LEFT+2.B+2.RIGHT 12
+hold Y+2.Y 8
+hold B+2.B 60
+hold B+LEFT+2.B+2.RIGHT 12
+hold Y+2.Y 8
+hold B+2.B 60
+hold B+LEFT+2.B+2.RIGHT 12
+hold Y+2.Y 8
+hold B+2.B 60
+hold B+LEFT+2.B+2.RIGHT 12
+hold Y+2.Y 8
+hold B+2.B 60
+hold B+LEFT+2.B+2.RIGHT 12
+hold Y+2.Y 8
+hold B+2.B 60
+hold B+LEFT+2.B+2.RIGHT 12
+hold Y+2.Y 8
+hold B+2.B 60
+hold B+LEFT+2.B+2.RIGHT 12
+hold Y+2.Y 8
+hold B+2.B 60
+hold B+LEFT+2.B+2.RIGHT 12
+hold Y+2.Y 8
+hold B+2.B 60
+hold B+LEFT+2.B+2.RIGHT 12
+hold Y+2.Y 8
+hold B+2.B 60
+hold B+LEFT+2.B+2.RIGHT 12
+hold Y+2.Y 8
+wait 1
+hold START 2
+wait 62
+hold LEFT 2
+wait 32
+hold START 2
+wait 202
+hold DOWN 2
+wait 32
+hold START 2
+wait 203
+hold DOWN 2
+wait 32
+hold RIGHT 2
+wait 33
+hold START 2
+wait 152
+hold START 2
+wait 152
+hold 2.START 2
+wait 602
+hold B+2.B 70
+hold B+RIGHT+2.B+2.LEFT 10
+hold B+X+2.B 8
+hold B+2.B 70
+hold B+RIGHT+2.B+2.LEFT 10
+hold B+X+2.B 8
+hold B+2.B 70
+hold B+RIGHT+2.B+2.LEFT 10
+hold B+X+2.B 8
+hold B+2.B 70
+hold B+RIGHT+2.B+2.LEFT 10
+hold B+X+2.B 8
+hold B+2.B 70
+hold B+RIGHT+2.B+2.LEFT 10
+hold B+X+2.B 8
+hold B+2.B 70
+hold B+RIGHT+2.B+2.LEFT 10
+hold B+X+2.B 8
+hold B+2.B 70
+hold B+RIGHT+2.B+2.LEFT 10
+hold B+X+2.B 8
+hold B+2.B 70
+hold B+RIGHT+2.B+2.LEFT 10
+hold B+X+2.B 8
+hold B+2.B 70
+hold B+RIGHT+2.B+2.LEFT 10
+hold B+X+2.B 8
+hold B+2.B 70
+hold B+RIGHT+2.B+2.LEFT 10
+hold B+X+2.B 8
+hold B+2.B 70
+hold B+RIGHT+2.B+2.LEFT 10
+hold B+X+2.B 8
+hold B+2.B 70
+hold B+RIGHT+2.B+2.LEFT 10
+hold B+X+2.B 8
+hold B+2.B 70
+hold B+RIGHT+2.B+2.LEFT 10
+hold B+X+2.B 8
+hold B+2.B 70
+hold B+RIGHT+2.B+2.LEFT 10
+hold B+X+2.B 8
+hold B+2.B 70
+hold B+RIGHT+2.B+2.LEFT 10
+hold B+X+2.B 8
+wait 602
