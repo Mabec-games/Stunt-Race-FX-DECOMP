@@ -18,3 +18,8 @@ here when they are made.
   the game is hand-written assembly.
 - The S-CPU runs code from ROM banks 00-0B and from WRAM; the Super FX runs
   from ROM banks 01 and 04 (LoROM view), first attract-mode trace.
+
+## Running the game
+
+- Menu flow, controls and what each script reaches:
+  [decomp/log/phase1-skeleton-2026-10-11](decomp/log/phase1-skeleton-2026-10-11.md).

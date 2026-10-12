@@ -1,0 +1,43 @@
+# Battle Trax, two players.
+# Power on, skip the title, reach GAME SELECTION.
+wait 300
+press START
+wait 200
+press START
+wait 200
+shot gamesel
+press DOWN
+wait 20
+press DOWN
+wait 20
+press START
+wait 120
+press START
+wait 90
+press START
+wait 150
+press 2.START
+wait 90
+press 2.START
+wait 150
+shot p2sel
+press START
+wait 150
+press START
+wait 150
+press 2.START
+wait 300
+shot racestart
+repeat 30
+hold B+2.B 80
+hold B+LEFT+2.B+2.RIGHT 14
+hold B+2.B+2.LEFT 80
+hold B+RIGHT+2.Y 14
+hold A+2.A 10
+end
+shot driven
+wait 3000
+shot after
+press START
+wait 300
+shot end

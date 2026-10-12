@@ -1,0 +1,46 @@
+# stunt_icedance
+# Power on, skip the title, reach GAME SELECTION.
+wait 300
+press START
+wait 200
+press START
+wait 200
+shot gamesel
+press DOWN
+wait 20
+press START
+wait 120
+press START
+wait 90
+press START
+wait 150
+press UP
+wait 30
+shot course
+press START
+wait 120
+press START
+wait 200
+shot racestart
+# Drive: accelerate, weave, try every button.
+repeat 25
+hold B 80
+hold B+LEFT 14
+hold B+X 6
+hold B 80
+hold B+RIGHT 14
+hold A 10
+hold B+L 20
+hold B+R 20
+hold Y 10
+press SELECT
+end
+shot driven
+# Leave it alone until the timer runs out and the game-over screens play.
+wait 3000
+shot after
+press START
+wait 300
+press START
+wait 300
+shot end

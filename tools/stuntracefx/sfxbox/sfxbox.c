@@ -11,7 +11,9 @@
  *   dump NAME            write WRAM and GSU RAM to DIR/NAME.wram, DIR/NAME.gsuram
  *   save NAME            write a state to DIR/NAME.state
  *   load PATH            read a state
- * Buttons: B Y SELECT START UP DOWN LEFT RIGHT A X L R.
+ *   repeat N ... end     run the enclosed lines N times (nests)
+ * Buttons: B Y SELECT START UP DOWN LEFT RIGHT A X L R, player 1; prefix
+ * with 2. for player 2 (2.START). Joined with +.
  *
  * With --trace, DIR receives rommap.bin (per ROM byte: who touched it and
  * how), wram_exec.bin, gsuram_exec.bin and edges.csv (control transfers).
@@ -87,9 +89,10 @@ static size_t audio_batch(const int16_t *d, size_t n) { (void)d; return n; }
 static void poll(void) {}
 static int16_t input(unsigned port, unsigned device, unsigned index, unsigned id) {
     (void)index;
-    if (port != 0 || device != RETRO_DEVICE_JOYPAD) return 0;
-    if (id == RETRO_DEVICE_ID_JOYPAD_MASK) return (int16_t)buttons;
-    return (buttons >> id) & 1;
+    if (port > 1 || device != RETRO_DEVICE_JOYPAD) return 0;
+    unsigned b = buttons >> (port * 16) & 0xffff;
+    if (id == RETRO_DEVICE_ID_JOYPAD_MASK) return (int16_t)b;
+    return (b >> id) & 1;
 }
 
 static void run(long n) { while (n-- > 0) { retro_run_p(); frames++; } }
@@ -98,11 +101,13 @@ static unsigned parse_buttons(const char *s) {
     static const char *names[] = {"B", "Y", "SELECT", "START", "UP", "DOWN", "LEFT", "RIGHT", "A", "X", "L", "R"};
     unsigned m = 0;
     char buf[256]; snprintf(buf, sizeof buf, "%s", s);
-    for (char *t = strtok(buf, "+"); t; t = strtok(NULL, "+")) {
-        unsigned i;
+    char *save = NULL;
+    for (char *t = strtok_r(buf, "+", &save); t; t = strtok_r(NULL, "+", &save)) {
+        unsigned i, shift = 0;
+        if (!strncmp(t, "2.", 2)) { t += 2; shift = 16; }
         for (i = 0; i < 12 && strcmp(t, names[i]); i++) {}
         if (i == 12) die("unknown button: %s", t);
-        m |= 1u << i;
+        m |= 1u << (i + shift);
     }
     return m;
 }
@@ -132,17 +137,34 @@ static void *load_file(const char *path, size_t *n) {
     fclose(f); return p;
 }
 
-static void script(const char *path) {
-    FILE *f = fopen(path, "r"); if (!f) die("cannot read script %s", path);
-    char line[1024];
-    int ln = 0;
-    while (fgets(line, sizeof line, f)) {
-        ln++;
-        char *h = strchr(line, '#'); if (h) *h = 0;
+static char lines[20000][256];
+static int nlines;
+static const char *script_path;
+
+static int block_end(int i) {  /* index of the matching end for a repeat at i */
+    int depth = 0;
+    for (int j = i + 1; j < nlines; j++) {
+        char a[64] = "";
+        sscanf(lines[j], "%63s", a);
+        if (!strcmp(a, "repeat")) depth++;
+        else if (!strcmp(a, "end")) { if (depth-- == 0) return j; }
+    }
+    die("%s:%d: repeat without end", script_path, i + 1);
+    return -1;
+}
+
+static void exec_range(int from, int to) {
+    for (int i = from; i < to; i++) {
         char a[64] = "", b[256] = "", c[64] = "";
-        int k = sscanf(line, "%63s %255s %63s", a, b, c);
+        int k = sscanf(lines[i], "%63s %255s %63s", a, b, c);
         if (k <= 0) continue;
-        if (!strcmp(a, "wait") && k >= 2) { buttons = 0; run(atol(b)); }
+        if (!strcmp(a, "repeat") && k >= 2) {
+            int e = block_end(i);
+            for (long n = atol(b); n > 0; n--) exec_range(i + 1, e);
+            i = e;
+        }
+        else if (!strcmp(a, "end")) die("%s:%d: end without repeat", script_path, i + 1);
+        else if (!strcmp(a, "wait") && k >= 2) { buttons = 0; run(atol(b)); }
         else if (!strcmp(a, "hold") && k >= 3) { buttons = parse_buttons(b); run(atol(c)); buttons = 0; }
         else if (!strcmp(a, "press") && k >= 2) { buttons = parse_buttons(b); run(k >= 3 ? atol(c) : 2); buttons = 0; run(2); }
         else if (!strcmp(a, "shot") && k >= 2) shot(b);
@@ -160,9 +182,19 @@ static void script(const char *path) {
             if (!retro_unserialize_p(p, n)) die("unserialize failed: %s", b);
             free(p);
         }
-        else die("%s:%d: bad command", path, ln);
+        else die("%s:%d: bad command", script_path, i + 1);
+    }
+}
+
+static void script(const char *path) {
+    FILE *f = fopen(path, "r"); if (!f) die("cannot read script %s", path);
+    script_path = path;
+    while (nlines < 20000 && fgets(lines[nlines], sizeof lines[0], f)) {
+        char *h = strchr(lines[nlines], '#'); if (h) *h = 0;
+        nlines++;
     }
     fclose(f);
+    exec_range(0, nlines);
 }
 
 int main(int argc, char **argv) {
