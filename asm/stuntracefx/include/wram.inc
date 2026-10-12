@@ -1157,3 +1157,6 @@ includeonce
 !fx_normal_z = $70002E
 !fx_reach = $70006A
 !fxrec_size = $0C
+; A contact's size and other record (object/fx_collide.asm).
+!fx_contact_bytes = $12
+!fxcon_other = $0C

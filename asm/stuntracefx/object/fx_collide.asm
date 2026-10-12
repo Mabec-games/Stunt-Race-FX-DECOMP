@@ -301,4 +301,217 @@ FxRecordsApart:
     %fx_pull(r15)
     nop
 
+; @routine 04:A345 FxContactNote
+; WHAT IT DOES: Notes that record R6 touches record R8: finds R8's contact
+; on R6's list or makes one (a $12-byte block from the first pool, on the
+; front of the list, +$0C = R8, +$10 = 0), copies R8's velocity x, z and
+; position x, z into it unless bit 2 of its +$10 is set, and sets bit 0 of
+; +$10. Nothing is done when bit 7 of R6's +$16 is set. With no room in
+; the pool nothing is noted (decoded from the ROM bytes, as is the
+; whole-block case of the allocation below, and not reached in the traces
+; so far).
+; HOW: The allocation is FxPoolTake's done again inline, with R7 the size,
+; R9 the walk and R8 (kept on the R10 stack) the link: an exact fit stays
+; on the chain with its size negated, else the block is cut from the end
+; of a bigger one. The routine runs under CACHE (the code cache only;
+; nothing the C has to do).
+; Entry: R6 = the record; R8 = the other; R10 = stack; R11 = return
+; address. Exit: R7 = the contact; R0 = its new +$10; R9 = 1; S, Z from
+; the OR; the last RAM address the contact + $10. Bit 7 set: R0 = R6's
+; +$16 and $80; R9 = $80.
+%at($04A345)
+FxContactNote:
+    ibt r0,#!fxrec_flags16
+    add r6
+    ldw (r0)
+    iwt r9,#$0080
+    and r9
+    beq .search
+    nop
+    iwt r15,#.done
+    nop
+.search:
+    ibt r7,#!fxrec_list
+    with r7
+    add r6
+    to r7
+    ldw (r7)
+    moves r7,r7
+    beq .new
+    nop
+.contact:
+    ibt r0,#!fxcon_other
+    add r7
+    ldw (r0)
+    cmp r8
+    bne .next
+    nop
+    iwt r15,#.found
+    nop
+.next:
+    ibt r0,#!fxrec_next
+    add r7
+    ldw (r0)
+    moves r7,r0
+    bne .contact
+    nop
+.new:
+    %fx_push(r8)
+    iwt r9,#!fx_pool_first
+    cache
+    ibt r7,#!fx_contact_bytes
+    %fx_push(r9)
+.exact:
+    to r8
+    ldw (r9)
+    inc r9
+    inc r9
+    ldw (r9)
+    sub r7
+    beq .exact_found
+    nop
+    moves r9,r8
+    bne .exact
+    nop
+    %fx_pull(r9)
+.bigger:
+    to r8
+    ldw (r9)
+    inc r9
+    inc r9
+    ldw (r9)
+    sub r7
+    bpl .bigger_found
+    nop
+    moves r9,r8
+    bne .bigger
+    nop
+    ibt r7,#0
+    bra .taken
+    nop
+.exact_found:
+    dec r10
+    dec r10
+    ldw (r10)
+    with r7
+    not
+    inc r7
+    sub r0
+    bra .mark
+    nop
+.bigger_found:
+    sub #4
+    bpl .split
+    nop
+    add #4
+    with r7
+    add r0
+    with r7
+    not
+    inc r7
+    ibt r0,#-4
+.split:
+    add #4
+    stw (r9)
+.mark:
+    from r9
+    to r8
+    add r0
+    from r7
+    stw (r8)
+    dec r8
+    dec r8
+    move r7,r8
+.taken:
+    %fx_pull(r8)
+    moves r7,r7
+    bne .link
+    nop
+    iwt r15,#.no_room
+    nop
+.link:
+    nop
+    iwt r9,#!fx_contact_bytes
+    ibt r0,#!fxcon_other
+    add r7
+    from r8
+    stw (r0)
+    ibt r9,#!fxrec_list
+    with r9
+    add r6
+    to r9
+    ldw (r9)
+    ibt r0,#!fxrec_next
+    add r7
+    from r9
+    stw (r0)
+    ibt r0,#!fxrec_list
+    add r6
+    from r7
+    stw (r0)
+    ibt r9,#0
+    ibt r0,#!fxrec_flags10
+    add r7
+    from r9
+    stw (r0)
+.found:
+    ibt r9,#!fxrec_flags10
+    with r9
+    add r7
+    to r9
+    ldw (r9)
+    iwt r0,#$0004
+    and r9
+    bne .seen
+    nop
+    ibt r9,#!fxrec_velocity
+    with r9
+    add r8
+    to r9
+    ldw (r9)
+    ibt r0,#!fxhit_velocity
+    add r7
+    from r9
+    stw (r0)
+    ibt r9,#!fxrec_velocity+4
+    with r9
+    add r8
+    to r9
+    ldw (r9)
+    ibt r0,#!fxhit_velocity+2
+    add r7
+    from r9
+    stw (r0)
+    ibt r9,#!fxrec_half_x
+    with r9
+    add r8
+    to r9
+    ldw (r9)
+    ibt r0,#!fxhit_x
+    add r7
+    from r9
+    stw (r0)
+    ibt r9,#!fxrec_half_x+4
+    with r9
+    add r8
+    to r9
+    ldw (r9)
+    ibt r0,#!fxhit_x+2
+    add r7
+    from r9
+    stw (r0)
+.seen:
+    ibt r0,#!fxrec_flags10
+    add r7
+    ldw (r0)
+    iwt r9,#$0001
+    or r9
+    sbk
+.done:
+    move r15,r11
+    nop
+.no_room:
+    move r15,r11
+    nop
+
 arch 65816

@@ -6,6 +6,13 @@
  * x, z at +$08, +$0A. A record's +$2A is its mass. The result goes to the
  * push at $70:23A4 (object/fx_record.c) as an amount along the unit vector
  * from the other's position to this one's.
+ *
+ * A record (R6) keeps a list of its contacts from +$18, linked through +$0E
+ * (FxListClearBit0 and FxListSweep in object/fx_record.c and fx_pool.c
+ * clear and sweep it): a contact is $12 bytes from the first pool, with
+ * the other record at +$0C, flags at +$10 (bit 0: seen this step, bit 2:
+ * keep the copy) and a copy of the other's velocity x, z and position x,
+ * z at +$04-+$0A, the contact words FxCollidePush reads.
  */
 #include <string.h>
 #include "gsu_ops.h"
@@ -31,6 +38,13 @@
 
 #define REC_SIZE 0x0Cu
 #define FX_TOUCH_SLACK 0x0294u
+#define FX_POOL_FIRST 0x1098u
+#define CONTACT_BYTES 0x0012u
+#define REC_FLAGS16 0x16u
+#define REC_CONTACTS 0x18u
+#define CON_OTHER 0x0Cu
+#define CON_NEXT 0x0Eu
+#define CON_FLAGS 0x10u
 
 /*
  * @routine 04:9301 FxCollidePush
@@ -245,5 +259,138 @@ void abi_FxRecordsApart(void)
 
     memcpy(g.r, gsu.r, sizeof g.r);
     g = FxRecordsApart(g);
+    memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
+}
+
+/*
+ * @routine 04:A345 FxContactNote
+ * WHAT IT DOES: Notes that record R6 touches record R8: finds R8's contact
+ * on R6's list or makes one (a $12-byte block from the first pool, on the
+ * front of the list, +$0C = R8, +$10 = 0), copies R8's velocity x, z and
+ * position x, z into it unless bit 2 of its +$10 is set, and sets bit 0 of
+ * +$10. Nothing is done when bit 7 of R6's +$16 is set. With no room in
+ * the pool nothing is noted (decoded from the ROM bytes, as is the
+ * whole-block case of the allocation below, and not reached in the traces
+ * so far).
+ * HOW: The allocation is FxPoolTake's done again inline, with R7 the size,
+ * R9 the walk and R8 (kept on the R10 stack) the link: an exact fit stays
+ * on the chain with its size negated, else the block is cut from the end
+ * of a bigger one. The routine runs under CACHE (the code cache only;
+ * nothing the C has to do).
+ * Entry: R6 = the record; R8 = the other; R10 = stack; R11 = return
+ * address. Exit: R7 = the contact; R0 = its new +$10; R9 = 1; S, Z from
+ * the OR; the last RAM address the contact + $10. Bit 7 set: R0 = R6's
+ * +$16 and $80; R9 = $80.
+ */
+FxRegs FxContactNote(FxRegs g)
+{
+    uint16_t *sp = &g.r[10];
+
+    g.r[0] = gsu_ldw(gsu_add(REC_FLAGS16, g.r[6], 0));
+    g.r[9] = 0x0080;
+    g.r[0] = gsu_and(g.r[0], g.r[9]);
+    if (!gsu.z)
+        return g;
+    g.r[7] = gsu_ldw(gsu_add(REC_CONTACTS, g.r[6], 0));
+    gsu_moves(g.r[7]);
+    while (!gsu.z) {
+        g.r[0] = gsu_ldw(gsu_add(CON_OTHER, g.r[7], 0));
+        gsu_sub(g.r[0], g.r[8], 0);
+        if (gsu.z)
+            goto found;
+        g.r[0] = gsu_ldw(gsu_add(CON_NEXT, g.r[7], 0));
+        g.r[7] = g.r[0];
+        gsu_moves(g.r[7]);
+    }
+    gsu_push(sp, g.r[8]);
+    g.r[9] = FX_POOL_FIRST;
+    g.r[7] = CONTACT_BYTES;
+    gsu_push(sp, g.r[9]);
+    for (;;) {                                        /* an exact fit */
+        g.r[8] = gsu_ldw(g.r[9]);
+        g.r[9] = gsu_inc(gsu_inc(g.r[9]));
+        g.r[0] = gsu_sub(gsu_ldw(g.r[9]), g.r[7], 0);
+        if (gsu.z) {
+            g.r[0] = gsu_pull(sp);
+            g.r[7] = gsu_inc(gsu_not(g.r[7]));
+            g.r[0] = gsu_sub(g.r[0], g.r[0], 0);
+            goto mark;
+        }
+        g.r[9] = g.r[8];
+        gsu_moves(g.r[9]);
+        if (gsu.z)
+            break;
+    }
+    g.r[9] = gsu_pull(sp);
+    for (;;) {                                        /* a bigger block */
+        g.r[8] = gsu_ldw(g.r[9]);
+        g.r[9] = gsu_inc(gsu_inc(g.r[9]));
+        g.r[0] = gsu_sub(gsu_ldw(g.r[9]), g.r[7], 0);
+        if (!gsu.s) {
+            g.r[0] = gsu_sub(g.r[0], 4, 0);
+            if (gsu.s) {                              /* too little to split */
+                g.r[0] = gsu_add(g.r[0], 4, 0);
+                g.r[7] = gsu_add(g.r[7], g.r[0], 0);
+                g.r[7] = gsu_inc(gsu_not(g.r[7]));
+                g.r[0] = 0xFFFC;
+            }
+            g.r[0] = gsu_add(g.r[0], 4, 0);
+            gsu_stw(g.r[9], g.r[0]);
+            goto mark;
+        }
+        g.r[9] = g.r[8];
+        gsu_moves(g.r[9]);
+        if (gsu.z) {
+            g.r[7] = 0;                               /* no room */
+            goto taken;
+        }
+    }
+mark:
+    g.r[8] = gsu_add(g.r[9], g.r[0], 0);
+    gsu_stw(g.r[8], g.r[7]);
+    g.r[8] = gsu_dec(gsu_dec(g.r[8]));
+    g.r[7] = g.r[8];
+taken:
+    g.r[8] = gsu_pull(sp);
+    gsu_moves(g.r[7]);
+    if (gsu.z)
+        return g;
+    g.r[9] = CONTACT_BYTES;
+    g.r[0] = gsu_add(CON_OTHER, g.r[7], 0);
+    gsu_stw(g.r[0], g.r[8]);
+    g.r[9] = gsu_ldw(gsu_add(REC_CONTACTS, g.r[6], 0));
+    g.r[0] = gsu_add(CON_NEXT, g.r[7], 0);
+    gsu_stw(g.r[0], g.r[9]);
+    g.r[0] = gsu_add(REC_CONTACTS, g.r[6], 0);
+    gsu_stw(g.r[0], g.r[7]);
+    g.r[9] = 0;
+    g.r[0] = gsu_add(CON_FLAGS, g.r[7], 0);
+    gsu_stw(g.r[0], g.r[9]);
+found:
+    g.r[9] = gsu_ldw(gsu_add(CON_FLAGS, g.r[7], 0));
+    g.r[0] = gsu_and(0x0004, g.r[9]);
+    if (gsu.z) {
+        static const uint8_t from[4] = {REC_VEL_X, REC_VEL_Z, REC_X, REC_Z};
+        int i;
+
+        for (i = 0; i < 4; i++) {
+            g.r[9] = gsu_ldw(gsu_add(from[i], g.r[8], 0));
+            g.r[0] = gsu_add((uint16_t)(HIT_VEL_X + 2 * i), g.r[7], 0);
+            gsu_stw(g.r[0], g.r[9]);
+        }
+    }
+    g.r[0] = gsu_ldw(gsu_add(CON_FLAGS, g.r[7], 0));
+    g.r[9] = 0x0001;
+    g.r[0] = gsu_or(g.r[0], g.r[9]);
+    gsu_sbk(g.r[0]);
+    return g;
+}
+
+void abi_FxContactNote(void)
+{
+    FxRegs g;
+
+    memcpy(g.r, gsu.r, sizeof g.r);
+    g = FxContactNote(g);
     memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
 }
