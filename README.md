@@ -11,8 +11,7 @@ and its commented assembly rebuilds the ROM byte-exact.
 
 ## Project Purpose
 
-A decompilation of **Stunt Race FX** (SNES, 1994), held to the same standard
-as the Boss Rally and Top Gear Rally decompilations: every routine rewritten
+A decompilation of **Stunt Race FX** (SNES, 1994): every routine rewritten
 as readable C, documented with what it does and how, filed by what it is for,
 and proven to behave exactly like the original; and the whole ROM rebuilt byte
 for byte. Progress is measured only by those two proofs; playability is a
@@ -32,10 +31,10 @@ kind of jump table, so its disassembly is a second witness for the engine.
 
 ## Two lanes, one game
 
-Boss Rally and Top Gear Rally were compiled C: the right C fed to the original
-compiler gave the original bytes, so one source carried both proofs. No
-compiler produced these bytes, so no C can rebuild them. Each routine
-therefore has two sources:
+When a game was compiled from C, the right C fed to the original compiler
+gives back the original bytes, so one source carries both proofs. No compiler
+produced these bytes, so no C can rebuild them. Each routine therefore has two
+sources:
 
 - **C, the decompilation.** Readable C per routine, certified behaviour exact
   against the running original (T3). A native port is built from it later and
@@ -78,8 +77,7 @@ the M1 corpus.
 
 ## More
 
-- [docs/stuntracefx/PLAN.md](docs/stuntracefx/PLAN.md): the plan, the standard and the lessons
-  carried over from Boss Rally and Top Gear Rally.
+- [docs/stuntracefx/PLAN.md](docs/stuntracefx/PLAN.md): the plan and the standard.
 - [docs/stuntracefx/HANDBOOK.md](docs/stuntracefx/HANDBOOK.md): what the work has learned, one rule per finding.
 - [docs/stuntracefx/DECOMP.md](docs/stuntracefx/DECOMP.md): standard, layout and tools in one page.
 
