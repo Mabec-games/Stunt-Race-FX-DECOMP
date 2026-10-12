@@ -585,9 +585,11 @@ static uint8_t live_access(int write, uint32_t addr, uint8_t value)
             cur_i = j + 1;
             return core_access(write, addr, value);
         }
+    /* No matching cycle left in the original's record: the run has already
+       diverged. The access is still made as a real, timed CPU access, so the
+       clock moves and a polling loop in the C can end. */
     timed_unmatched++;
-    if (write) { core_bus_write(addr, value); return value; }
-    return core_bus_read(addr);
+    return core_access(write, addr, value);
 }
 
 /* Hybrid side: run the C in place of the routine. */
