@@ -91,3 +91,43 @@ GsuParam216B:
     lda.w !param_216_table_b,x
     sta.l !gsu_in_216
     rts
+
+; @routine 08:DC13 GsuTableEntryTo1F4C
+; WHAT IT DOES: Copies three words of entry A (counted from 1) of a table of
+; 8-byte entries into $1F4C-$1F51; the table's bank is the byte at $70:1094
+; and its address the word at $70:1092, and the words start 2 bytes into
+; the entry.
+; HOW: The table's bank becomes the data bank for the copy, so $1F4C and
+; the table are both reached through it.
+; Entry: M 16-bit, X 16-bit; A = entry. Exit: A = the third word; X
+; unchanged; N, Z from X; C, V from the address add.
+%at($08DC13)
+GsuTableEntryTo1F4C:
+    sta.w !wram_1F4C
+    phx
+    lda.l !gsu_table_bank
+    sep.b #$20
+    and.b #$FF
+    phb
+    pha
+    plb
+    rep.b #$20
+    lda.w !wram_1F4C
+    dec a
+    asl a
+    asl a
+    asl a
+    clc
+    adc.l !gsu_table_addr
+    inc a
+    inc a
+    tax
+    lda.w 0,x
+    sta.w !wram_1F4C
+    lda.w 2,x
+    sta.w !wram_1F4E
+    lda.w 4,x
+    sta.w !wram_1F50
+    plb
+    plx
+    rtl

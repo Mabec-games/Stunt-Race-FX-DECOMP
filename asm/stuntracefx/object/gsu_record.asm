@@ -252,3 +252,44 @@ GsuRecordWords88:
     ply
     plx
     rtl
+
+; @routine 08:B2E9 GsuRecordStep6A
+; WHAT IT DOES: While $0D62 is set, advances object X's record word at +$6A
+; by 1 (when the record's +$88 is 1) or 3, up to $180, unless bit 10 of the
+; record's +$42 is set.
+; HOW: The step is kept at $1F2B; the limit test is a signed compare.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: $0D62 clear: A low byte = 0,
+; Z set. Otherwise A = the last word read or stored (M 8-bit); X unchanged;
+; N, Z from X; C, V from the limit compare and the add when it stepped.
+%at($08B2E9)
+GsuRecordStep6A:
+    lda.w !wram_0D62
+    beq .lB32A
+    phx
+    rep.b #$20
+    lda.w !obj_22,x
+    tax
+    lda.l !gsu_rec_42,x
+    bit.w #$0400
+    bne .lB327
+    lda.w #$0001
+    sta.w !wram_1F2B
+    lda.l !gsu_rec_88,x
+    cmp.w #$0001
+    beq .lB313
+    lda.w #$0003
+    sta.w !wram_1F2B
+.lB313:
+    lda.l !gsu_rec_6a,x
+    clc
+    adc.w !wram_1F2B
+    cmp.w #$0180
+    bmi .lB323
+    lda.w #$0180
+.lB323:
+    sta.l !gsu_rec_6a,x
+.lB327:
+    sep.b #$20
+    plx
+.lB32A:
+    rts

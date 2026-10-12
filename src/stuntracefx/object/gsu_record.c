@@ -286,3 +286,53 @@ void abi_GsuRecordWords88(void)
     cpu.a = GsuRecordWords88();
     cpu.p = (cpu.p & P_X) ? nz8(cpu.p, (uint8_t)cpu.x) : nz16(cpu.p, cpu.x);
 }
+
+/*
+ * @routine 08:B2E9 GsuRecordStep6A
+ * WHAT IT DOES: While $0D62 is set, advances object X's record word at +$6A
+ * by 1 (when the record's +$88 is 1) or 3, up to $180, unless bit 10 of the
+ * record's +$42 is set.
+ * HOW: The step is kept at $1F2B; the limit test is a signed compare.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: $0D62 clear: A low byte = 0,
+ * Z set. Otherwise A = the last word read or stored (M 8-bit); X unchanged;
+ * N, Z from X; C, V from the limit compare and the add when it stepped.
+ */
+uint16_t GsuRecordStep6A(uint8_t bank, uint16_t obj, int *ran, uint8_t *p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t rec, f, step, a, s;
+
+    *ran = rd8(b | 0x0D62) != 0;
+    if (!*ran)
+        return 0;
+    rec = record_of(bank, obj);
+    f = rd16(0x700042 + rec);
+    if (f & 0x0400)
+        return f;
+    wr16(b | 0x1F2B, 0x0001);
+    if (rd16(0x700088 + rec) != 0x0001)
+        wr16(b | 0x1F2B, 0x0003);
+    a = rd16(0x70006A + rec);
+    step = rd16(b | 0x1F2B);
+    s = (uint16_t)(a + step);
+    *p = (uint8_t)((*p & ~(P_C | P_V)) | ((~(a ^ step) & (a ^ s) & 0x8000) ? P_V : 0) | (s >= 0x0180 ? P_C : 0));
+    if (!((uint16_t)(s - 0x0180) & 0x8000))
+        s = 0x0180;
+    wr16(0x70006A + rec, s);
+    return s;
+}
+
+void abi_GsuRecordStep6A(void)
+{
+    int ran;
+    uint8_t p = cpu.p;
+    uint16_t a = GsuRecordStep6A(cpu.db, cpu.x, &ran, &p);
+
+    if (!ran) {
+        cpu.a &= 0xFF00;
+        cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
+        return;
+    }
+    cpu.a = a;
+    cpu.p = (uint8_t)(nz16(p, cpu.x) | P_M);
+}

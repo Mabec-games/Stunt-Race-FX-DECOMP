@@ -114,3 +114,43 @@ void abi_GsuParam216B(void)
 {
     abi_param_216(0x8E52);
 }
+
+/*
+ * @routine 08:DC13 GsuTableEntryTo1F4C
+ * WHAT IT DOES: Copies three words of entry A (counted from 1) of a table of
+ * 8-byte entries into $1F4C-$1F51; the table's bank is the byte at $70:1094
+ * and its address the word at $70:1092, and the words start 2 bytes into
+ * the entry.
+ * HOW: The table's bank becomes the data bank for the copy, so $1F4C and
+ * the table are both reached through it.
+ * Entry: M 16-bit, X 16-bit; A = entry. Exit: A = the third word; X
+ * unchanged; N, Z from X; C, V from the address add.
+ */
+uint16_t GsuTableEntryTo1F4C(uint8_t bank, uint16_t entry, uint8_t *p)
+{
+    uint32_t b = (uint32_t)bank << 16, t;
+    uint16_t a, base, s, v = 0;
+    unsigned i;
+
+    wr16(b | 0x1F4C, entry);
+    t = (uint32_t)(rd16(0x701094) & 0x00FF) << 16;
+    a = (uint16_t)((uint16_t)(rd16(t | 0x1F4C) - 1) << 3);
+    base = rd16(0x701092);
+    s = (uint16_t)(a + base);
+    *p = (uint8_t)((*p & ~(P_C | P_V)) | ((unsigned)a + base > 0xFFFF ? P_C : 0)
+                   | ((~(a ^ base) & (a ^ s) & 0x8000) ? P_V : 0));
+    s = (uint16_t)(s + 2);
+    for (i = 0; i < 3; i++) {
+        v = rd16(t | (uint16_t)(s + 2 * i));
+        wr16(t | (uint16_t)(0x1F4C + 2 * i), v);
+    }
+    return v;
+}
+
+void abi_GsuTableEntryTo1F4C(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = GsuTableEntryTo1F4C(cpu.db, cpu.a, &p);
+    cpu.p = nz16(p, cpu.x);
+}

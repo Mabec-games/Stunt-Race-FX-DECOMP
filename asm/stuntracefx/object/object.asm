@@ -348,3 +348,84 @@ ObjectVelocityFromRecord:
     tyx
     sep.b #$20
     rts
+
+; @routine 08:8392 ObjectBucketRemove
+; WHAT IT DOES: Takes object X out of its bucket's list (see
+; ObjectBucketInsert): its previous object, or the bucket's head when it has
+; none, is linked to its next, and its next gets its previous.
+; HOW: Data bank $7E inside; the head is $7F:0000 + the object's +$40.
+; Entry: X 16-bit; X = object. Exit: A = the previous object (or the next,
+; when there is no next or no previous); X, Y unchanged; M 16-bit; N, Z
+; from the caller's data bank.
+%at($088392)
+ObjectBucketRemove:
+    phb
+    phy
+    phx
+    sep.b #$20
+    lda.b #$7E
+    pha
+    plb
+    rep.b #$20
+    txy
+    lda.w !obj_bucket_prev,x
+    beq .l83B3
+    tax
+    lda.w !obj_bucket_next,y
+    sta.w !obj_bucket_next,x
+    beq .l83C4
+    tay
+    txa
+    sta.w !obj_bucket_prev,y
+    bra .l83C4
+.l83B3:
+    lda.w !obj_bucket,x
+    tax
+    lda.w !obj_bucket_next,y
+    sta.l !object_buckets,x
+    beq .l83C4
+    tax
+    stz.w !obj_bucket_prev,x
+.l83C4:
+    plx
+    ply
+    plb
+    rtl
+
+; @routine 08:B48E ObjectSet5DByKind
+; WHAT IT DOES: Sets object X's +$5D to $9163, $9335 or $9507 for A = 1, 2 or
+; 3, and to $8F91 otherwise.
+; HOW: Compares in turn; one 16-bit store through the data bank.
+; Entry: M 8-bit, X 16-bit; X = object, A = kind. Exit: A = the value (M
+; 8-bit); N set, Z clear; C from the last compare.
+%at($08B48E)
+ObjectSet5DByKind:
+    cmp.b #$01
+    beq .lB4A5
+    cmp.b #$02
+    beq .lB4B0
+    cmp.b #$03
+    beq .lB4BB
+    rep.b #$20
+    lda.w #$8F91
+    sta.w !obj_5d,x
+    sep.b #$20
+    rts
+.lB4A5:
+    rep.b #$20
+    lda.w #$9163
+    sta.w !obj_5d,x
+    sep.b #$20
+    rts
+.lB4B0:
+    rep.b #$20
+    lda.w #$9335
+    sta.w !obj_5d,x
+    sep.b #$20
+    rts
+.lB4BB:
+    rep.b #$20
+    lda.w #$9507
+    sta.w !obj_5d,x
+    sep.b #$20
+    rts

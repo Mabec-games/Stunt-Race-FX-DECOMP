@@ -435,3 +435,64 @@ void abi_ObjectVelocityFromRecord(void)
     cpu.y = cpu.x;
     cpu.p = (uint8_t)(p | P_M);
 }
+
+/*
+ * @routine 08:8392 ObjectBucketRemove
+ * WHAT IT DOES: Takes object X out of its bucket's list (see
+ * ObjectBucketInsert): its previous object, or the bucket's head when it has
+ * none, is linked to its next, and its next gets its previous.
+ * HOW: Data bank $7E inside; the head is $7F:0000 + the object's +$40.
+ * Entry: X 16-bit; X = object. Exit: A = the previous object (or the next,
+ * when there is no next or no previous); X, Y unchanged; M 16-bit; N, Z
+ * from the caller's data bank.
+ */
+uint16_t ObjectBucketRemove(uint16_t obj)
+{
+    uint16_t prev = rd16(0x7E203E + obj), next;
+
+    if (prev) {
+        next = rd16(0x7E203C + obj);
+        wr16(0x7E203C + prev, next);
+        if (!next)
+            return next;
+        wr16(0x7E203E + next, prev);
+        return prev;
+    }
+    next = rd16(0x7E203C + obj);
+    wr16(0x7F0000 + rd16(0x7E2040 + obj), next);
+    if (next)
+        wr16(0x7E203E + next, 0x0000);
+    return next;
+}
+
+void abi_ObjectBucketRemove(void)
+{
+    cpu.a = ObjectBucketRemove(cpu.x);
+    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~P_M);
+}
+
+/*
+ * @routine 08:B48E ObjectSet5DByKind
+ * WHAT IT DOES: Sets object X's +$5D to $9163, $9335 or $9507 for A = 1, 2 or
+ * 3, and to $8F91 otherwise.
+ * HOW: Compares in turn; one 16-bit store through the data bank.
+ * Entry: M 8-bit, X 16-bit; X = object, A = kind. Exit: A = the value (M
+ * 8-bit); N set, Z clear; C from the last compare.
+ */
+uint16_t ObjectSet5DByKind(uint8_t bank, uint16_t obj, uint8_t kind, uint8_t *p)
+{
+    uint16_t v = kind == 1 ? 0x9163 : kind == 2 ? 0x9335 : kind == 3 ? 0x9507 : 0x8F91;
+    uint8_t last = kind == 1 ? 1 : kind == 2 ? 2 : 3;
+
+    *p = (uint8_t)((*p & ~(P_C | P_Z)) | P_N | (kind >= last ? P_C : 0));
+    wr16((uint32_t)bank << 16 | (uint16_t)(0x205D + obj), v);
+    return v;
+}
+
+void abi_ObjectSet5DByKind(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = ObjectSet5DByKind(cpu.db, cpu.x, (uint8_t)cpu.a, &p);
+    cpu.p = (uint8_t)(p | P_M);
+}

@@ -452,3 +452,11 @@ includeonce
 !gsu_rec_vel_z = $700032
 !dp_40 = $40
 !obj_22_long = $7E2022
+!obj_5d = $205D
+!wram_0D62 = $0D62
+!wram_1F2B = $1F2B
+!gsu_rec_6a = $70006A
+!gsu_table_addr = $701092
+!gsu_table_bank = $701094
+!wram_1F4E = $1F4E
+!wram_1F50 = $1F50
