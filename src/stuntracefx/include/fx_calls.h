@@ -25,6 +25,7 @@ FxQuotient FxDivideHalvedIfLarge(uint16_t hi, uint16_t lo, uint16_t *divisor);
 FxRoot FxSquareRoot(uint16_t hi, uint16_t lo);
 FxRegs FxNormalize(FxRegs g);
 FxRegs FxAngleOf(FxRegs g);
+FxRegs FxTurnRegs(FxRegs g);
 FxRegs FxPoolTake(FxRegs g);
 FxRegs FxListSweepRegs(FxRegs g);
 FxRegs FxContactNote(FxRegs g);

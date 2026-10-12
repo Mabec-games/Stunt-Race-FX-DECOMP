@@ -36,6 +36,18 @@
 #define REC_YAW_RATE 0x34u
 #define REC_SPREAD 0x7Cu
 #define NEAR 0x07D0u           /* 2000 */
+#define FX_PLAYER 0x2476u
+#define FX_NEAR_LEVEL 0x2642u   /* smoothed closing level, -1 for none */
+#define FX_NEAR_SIDE 0x2644u
+#define FX_NEAR_BAND 0x2646u
+#define FX_NEAR_CAR 0x2648u
+#define FX_NEAR_Z 0x264Au
+#define FX_NEAR_X 0x264Cu
+#define FX_VIEW_X 0x00D8u
+#define FX_VIEW_Z 0x00DCu
+#define FX_VIEW_YAW 0x00E0u
+#define REC_64 0x64u
+#define REC_NEAR 0x8Cu
 
 /* The field `field` of record `rec` (R0 = field + rec, then LDW). */
 static uint16_t field(uint16_t f, uint16_t rec)
@@ -297,5 +309,159 @@ void abi_FxSpreadCars(void)
 
     memcpy(g.r, gsu.r, sizeof g.r);
     g = FxSpreadCars(g);
+    memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
+}
+
+/* The early exit: no car near; $2642 = -1, $2648 = 0. */
+static FxRegs near_none(FxRegs g)
+{
+    g.r[0] = 0xFFFF;
+    gsu_stw(FX_NEAR_LEVEL, g.r[0]);
+    g.r[0] = gsu_sub(g.r[0], g.r[0], 0);
+    gsu_stw(FX_NEAR_CAR, g.r[0]);
+    gsu_pull(&g.r[10]);
+    return g;
+}
+
+/*
+ * @routine 04:CF08 FxNearestCar
+ * WHAT IT DOES: Finds the car nearest the player's car ($2476; from the
+ * view's position $00D8/$00DC instead when bit 3 of its +$64 is set) by
+ * |dx| + |dz|, keeping each car's distance in its +$8C, and for the
+ * nearest: $2648 = the car; $2642 = a smoothed level from how fast it
+ * closed ((old distance - new) / 2 + $80, 0 at least, 255 at most, a
+ * quarter of the way from the old level each step); $2646 = its distance
+ * / 512, 7 at most; $264A/$264C = its offset turned into the view's axes
+ * (FxTurn by the high byte of $00E0), x negated; $2644 = 7 + that z / 32,
+ * 0 to 15. With no player car, no other car or no old distance: $2642 =
+ * -1, $2648 = 0. The case of an empty cars' list is decoded from the ROM
+ * bytes and not reached in the traces so far.
+ * HOW: R5 = the best distance (from $1000), R7 its car, R6 its old +$8C;
+ * the sums are checked for overflow (BVS). The return address is kept on
+ * the R10 stack. The walk runs under CACHE (the code cache only; nothing
+ * the C has to do).
+ * Entry: R10 = stack; R11 = return address. Exit: R0 = the side value or
+ * 0; R7 = the nearest car; R11 = $D002 when it got that far; S, Z from
+ * R10; the last RAM address R10.
+ */
+FxRegs FxNearestCar(FxRegs g)
+{
+    int i;
+
+    gsu_push(&g.r[10], g.r[11]);
+    g.r[3] = gsu_ldw(FX_PLAYER);
+    gsu_moves(g.r[3]);
+    if (gsu.z)
+        return near_none(g);
+    g.r[1] = gsu_ldw(gsu_add(REC_X, g.r[3], 0));
+    g.r[2] = gsu_ldw(gsu_add(REC_Z, g.r[3], 0));
+    g.r[8] = gsu_ldw(gsu_add(REC_64, g.r[3], 0));
+    g.r[0] = gsu_and(0x0008, g.r[8]);
+    if (!gsu.z) {
+        g.r[3] = 0;
+        g.r[1] = gsu_ldw(FX_VIEW_X);
+        g.r[2] = gsu_ldw(FX_VIEW_Z);
+    }
+    g.r[5] = 0x1000;
+    g.r[6] = 0;
+    g.r[0] = gsu_ldw(FX_CARS);
+    gsu_moves(g.r[0]);
+    if (gsu.z)
+        return near_none(g);
+    for (;; g.r[0] = gsu_ldw(gsu_add(REC_NEXT_CAR, g.r[8], 0))) {
+        g.r[8] = g.r[0];
+        gsu_moves(g.r[8]);
+        if (gsu.z)
+            break;
+        gsu_sub(g.r[0], g.r[3], 0);
+        if (gsu.z)
+            continue;
+        g.r[0] = gsu_sub(gsu_ldw(gsu_add(REC_X, g.r[8], 0)), g.r[1], 0);
+        if (gsu.s)
+            g.r[0] = gsu_inc(gsu_not(g.r[0]));
+        g.r[4] = g.r[0];
+        g.r[0] = gsu_sub(gsu_ldw(gsu_add(REC_Z, g.r[8], 0)), g.r[2], 0);
+        if (gsu.s)
+            g.r[0] = gsu_inc(gsu_not(g.r[0]));
+        g.r[4] = gsu_add(g.r[4], g.r[0], 0);
+        if (gsu.ov)
+            continue;
+        gsu_sub(g.r[4], g.r[5], 0);
+        if (gsu.s) {
+            g.r[6] = gsu_ldw(gsu_add(REC_NEAR, g.r[8], 0));
+            g.r[5] = g.r[4];
+            g.r[7] = g.r[8];
+        }
+        g.r[0] = gsu_add(REC_NEAR, g.r[8], 0);
+        gsu_stw(g.r[0], g.r[4]);
+    }
+    g.r[0] = g.r[6];
+    gsu_moves(g.r[0]);
+    if (gsu.z)
+        return near_none(g);
+    g.r[0] = gsu_sub(g.r[6], g.r[5], 0);
+    g.r[6] = gsu_div2(g.r[0]);
+    g.r[0] = 0x0080;
+    g.r[6] = gsu_add(g.r[6], g.r[0], 0);
+    if (gsu.s)
+        g.r[6] = 0;
+    g.r[0] = gsu_ldw(FX_NEAR_LEVEL);
+    gsu_moves(g.r[0]);
+    if (gsu.s) {
+        g.r[0] = g.r[6];
+        gsu_stw(FX_NEAR_LEVEL, g.r[0]);
+    }
+    g.r[0] = gsu_sub(g.r[0], g.r[6], 0);
+    g.r[0] = gsu_div2(gsu_div2(g.r[0]));
+    g.r[8] = gsu_ldw(FX_NEAR_LEVEL);
+    g.r[0] = gsu_sub(g.r[8], g.r[0], 0);
+    gsu_sbk(g.r[0]);
+    g.r[6] = 0x0080;
+    g.r[0] = gsu_fmult(g.r[5], g.r[6]);
+    g.r[8] = 0x0007;
+    gsu_sub(g.r[0], g.r[8], 0);
+    if (!gsu.s)
+        g.r[0] = g.r[8];
+    gsu_stw(FX_NEAR_BAND, g.r[0]);
+    g.r[8] = 0x00FF;
+    g.r[0] = gsu_ldw(FX_NEAR_LEVEL);
+    gsu_sub(g.r[0], g.r[8], 0);
+    if (!gsu.s)
+        gsu_sbk(g.r[8]);
+    gsu_stw(FX_NEAR_CAR, g.r[7]);
+    g.r[0] = gsu_ldw(gsu_add(REC_X, g.r[7], 0));
+    g.r[1] = gsu_sub(g.r[0], g.r[1], 0);
+    g.r[0] = gsu_ldw(gsu_add(REC_Z, g.r[7], 0));
+    g.r[3] = gsu_sub(g.r[0], g.r[2], 0);
+    g.r[0] = gsu_ldw(FX_VIEW_YAW);
+    g.r[2] = gsu_hib(g.r[0]);
+    g.r[0] = 0;
+    gsu.rombr = 0;
+    g.r[11] = 0xD002;
+    g = FxTurnRegs(g);
+    gsu_stw(FX_NEAR_Z, g.r[3]);
+    g.r[1] = gsu_inc(gsu_not(g.r[1]));
+    gsu_stw(FX_NEAR_X, g.r[1]);
+    g.r[0] = g.r[3];
+    for (i = 0; i < 5; i++)
+        g.r[0] = gsu_div2(g.r[0]);
+    g.r[0] = gsu_add(g.r[0], 7, 0);
+    if (gsu.s)
+        g.r[0] = gsu_sub(g.r[0], g.r[0], 0);
+    g.r[3] = 0x000F;
+    gsu_sub(g.r[0], g.r[3], 0);
+    if (!gsu.s)
+        g.r[0] = g.r[3];
+    gsu_stw(FX_NEAR_SIDE, g.r[0]);
+    gsu_pull(&g.r[10]);
+    return g;
+}
+
+void abi_FxNearestCar(void)
+{
+    FxRegs g;
+
+    memcpy(g.r, gsu.r, sizeof g.r);
+    g = FxNearestCar(g);
     memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
 }

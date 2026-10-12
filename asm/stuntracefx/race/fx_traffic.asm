@@ -469,4 +469,229 @@ FxSpreadCars:
     ldw (r10)
     nop
 
+; @routine 04:CF08 FxNearestCar
+; WHAT IT DOES: Finds the car nearest the player's car ($2476; from the
+; view's position $00D8/$00DC instead when bit 3 of its +$64 is set) by
+; |dx| + |dz|, keeping each car's distance in its +$8C, and for the
+; nearest: $2648 = the car; $2642 = a smoothed level from how fast it
+; closed ((old distance - new) / 2 + $80, 0 at least, 255 at most, a
+; quarter of the way from the old level each step); $2646 = its distance
+; / 512, 7 at most; $264A/$264C = its offset turned into the view's axes
+; (FxTurn by the high byte of $00E0), x negated; $2644 = 7 + that z / 32,
+; 0 to 15. With no player car, no other car or no old distance: $2642 =
+; -1, $2648 = 0. The case of an empty cars' list is decoded from the ROM
+; bytes and not reached in the traces so far.
+; HOW: R5 = the best distance (from $1000), R7 its car, R6 its old +$8C;
+; the sums are checked for overflow (BVS). The return address is kept on
+; the R10 stack. The walk runs under CACHE (the code cache only; nothing
+; the C has to do).
+; Entry: R10 = stack; R11 = return address. Exit: R0 = the side value or
+; 0; R7 = the nearest car; R11 = $D002 when it got that far; S, Z from
+; R10; the last RAM address R10.
+%at($04CF08)
+FxNearestCar:
+    from r11
+    stw (r10)
+    inc r10
+    inc r10
+    lm r3,(!fx_player)
+    moves r3,r3
+    bne .player
+    nop
+    iwt r15,#.none
+    nop
+.player:
+    ibt r1,#!fxrec_half_x
+    with r1
+    add r3
+    to r1
+    ldw (r1)
+    ibt r2,#!fxrec_half_x+4
+    with r2
+    add r3
+    to r2
+    ldw (r2)
+    ibt r8,#!fxcar_64
+    with r8
+    add r3
+    to r8
+    ldw (r8)
+    iwt r0,#$0008
+    and r8
+    beq .from_car
+    nop
+    ibt r3,#0
+    lms r1,(!fx_view_x_w)
+    lms r2,(!fx_view_z_w)
+.from_car:
+    iwt r5,#$1000
+    ibt r6,#0
+    lm r0,(!fx_cars)
+    moves r0,r0
+    bne .cars
+    nop
+    iwt r15,#.none
+    nop
+.cars:
+    cache
+.car:
+    moves r8,r0
+    beq .walked
+    nop
+    cmp r3
+    beq .next
+    nop
+    ibt r0,#!fxrec_half_x
+    add r8
+    ldw (r0)
+    sub r1
+    bpl .dx
+    nop
+    not
+    inc r0
+.dx:
+    move r4,r0
+    ibt r0,#!fxrec_half_x+4
+    add r8
+    ldw (r0)
+    sub r2
+    bpl .dz
+    nop
+    not
+    inc r0
+.dz:
+    with r4
+    add r0
+    bvs .next
+    nop
+    with r4
+    cmp r5
+    bpl .keep
+    nop
+    iwt r6,#!fxcar_8c
+    with r6
+    add r8
+    to r6
+    ldw (r6)
+    move r5,r4
+    move r7,r8
+.keep:
+    iwt r0,#!fxcar_8c
+    add r8
+    from r4
+    stw (r0)
+.next:
+    ibt r0,#!fxrec_next_car
+    add r8
+    ldw (r0)
+    bra .car
+    nop
+.walked:
+    moves r0,r6
+    bne .found
+    nop
+    iwt r15,#.none
+    nop
+.found:
+    from r6
+    sub r5
+    to r6
+    div2
+    iwt r0,#$0080
+    with r6
+    add r0
+    bpl .level
+    nop
+    ibt r6,#0
+.level:
+    lm r0,(!fx_near_level)
+    moves r0,r0
+    bpl .smooth
+    nop
+    move r0,r6
+    sm (!fx_near_level),r0
+.smooth:
+    sub r6
+    div2
+    div2
+    lm r8,(!fx_near_level)
+    from r8
+    sub r0
+    sbk
+    iwt r6,#$0080
+    from r5
+    fmult
+    iwt r8,#$0007
+    cmp r8
+    bmi .band
+    nop
+    move r0,r8
+.band:
+    sm (!fx_near_band),r0
+    iwt r8,#$00FF
+    lm r0,(!fx_near_level)
+    cmp r8
+    bmi .capped
+    nop
+    from r8
+    sbk
+.capped:
+    sm (!fx_near_car),r7
+    ibt r0,#!fxrec_half_x
+    add r7
+    ldw (r0)
+    to r1
+    sub r1
+    ibt r0,#!fxrec_half_x+4
+    add r7
+    ldw (r0)
+    to r3
+    sub r2
+    lms r0,(!fx_view_yaw_w)
+    to r2
+    hib
+    ibt r0,#0
+    romb
+    link #4
+    iwt r15,#FxTurn
+    nop
+    sm (!fx_near_z),r3
+    with r1
+    not
+    inc r1
+    sm (!fx_near_x),r1
+    from r3
+    div2
+    div2
+    div2
+    div2
+    div2
+    add #7
+    bpl .side
+    nop
+    sub r0
+.side:
+    ibt r3,#$0F
+    cmp r3
+    bmi .side_ok
+    nop
+    move r0,r3
+.side_ok:
+    sm (!fx_near_side),r0
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+.none:
+    ibt r0,#-1
+    sm (!fx_near_level),r0
+    sub r0
+    sm (!fx_near_car),r0
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+
 arch 65816

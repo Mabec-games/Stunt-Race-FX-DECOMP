@@ -140,6 +140,26 @@ FxTurnOut FxTurn(uint16_t x, uint16_t angle, uint16_t z, uint16_t stack, uint16_
     return o;
 }
 
+/* FxTurn on the whole register file, for other routines' C. */
+FxRegs FxTurnRegs(FxRegs g)
+{
+    uint16_t x = g.r[1];
+    FxTurnOut o = FxTurn(x, g.r[2], g.r[3], g.r[10], g.r[11]);
+
+    g.r[0] = o.hi_sum;
+    g.r[1] = o.x;
+    g.r[2] = o.x;
+    g.r[3] = o.z;
+    g.r[4] = o.lo;
+    g.r[5] = o.cos;
+    g.r[6] = x;
+    g.r[7] = o.lo_sum;
+    g.r[8] = o.hi_term;
+    g.r[9] = o.sin;
+    g.r[14] = o.r14;
+    return g;
+}
+
 void abi_FxTurn(void)
 {
     uint16_t x = gsu.r[1];

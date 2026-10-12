@@ -1184,3 +1184,14 @@ includeonce
 !fxcar_0a = $0A
 !fxcar_64 = $64
 !fxcar_script = $66
+; The nearest car to the player (race/fx_traffic.asm).
+!fx_player = $702476
+!fx_near_level = $702642
+!fx_near_side = $702644
+!fx_near_band = $702646
+!fx_near_car = $702648
+!fx_near_z = $70264A
+!fx_near_x = $70264C
+!fx_view_x_w = $00D8
+!fx_view_z_w = $00DC
+!fx_view_yaw_w = $00E0
