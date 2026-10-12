@@ -25,7 +25,8 @@ arch superfx
 ; R6 = the larger side (|R1| when R2 = 0 or the sides are equal); R5 =
 ; $FFFF when |R2| is the larger side, 0 when |R1| is or they are equal,
 ; kept when R2 = 0. When the table was used: R11 = $823D, R12 = 0, R13 =
-; $81D2, the ROM bank 0. R14 and R10 as at entry; the last RAM address
+; $81D2, the ROM bank 0. R14 (written back, so the ROM buffer refilled
+; from it) and R10 as at entry; the last RAM address
 ; R10; S and Z from R10; OV and CY from the ADD of $8000 when R2 is
 ; negative, else OV = bit 7 of R2 and CY from the last ADD before (kept
 ; when R2 = 0, set when the sides are equal).

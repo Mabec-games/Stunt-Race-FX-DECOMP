@@ -17,6 +17,7 @@ arch superfx
 ; Entry: R9 = the matrix; R11 = return address. Exit: R9 = the matrix + 4
 ; (element 2); R1 = the old element 5, R2 = the old element 7, R3 = the
 ; old element 6; the last RAM address R9; OV, S, CY, Z from the last SUB #6.
+; *old5, *old7, *old6 = those three, as the registers keep them.
 %at($01972B)
 FxMatrixTranspose:
     inc r9
@@ -74,6 +75,7 @@ FxMatrixTranspose:
 ; address. Exit: R9 = R9 + 6; R0 = the last result, R5 = its first two
 ; terms, R6 = the matrix's last element; the last RAM address the last
 ; result's; OV and CY from the last ADD R5, S and Z from R9.
+; Returns the last result; *partial and *m22 = R5 and R6 as left.
 %at($01978B)
 FxMatrixApply:
     cache
@@ -181,6 +183,7 @@ FxMatrixApplyVectors:
 ; vector; R0 = the last result, R5 = its first two terms, R6 = the
 ; matrix's last element; the last RAM address $002A; OV, S, CY, Z from the
 ; last ADD R5.
+; Returns the last result; *partial and *m22 = R5 and R6 as left.
 %at($0182CE)
 FxMatrixRotateProgram:
     cache

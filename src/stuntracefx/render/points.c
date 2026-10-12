@@ -33,11 +33,12 @@ static uint16_t div2(uint16_t v)
  * stored; R3 = record 1's first word as stored; R5, R6, R7 = the
  * vector; R12 = 0; R13 = $C1FD (the second loop); the last RAM address
  * the last Z's; OV and CY from the last ADD #6 to R2; Z set, S clear.
+ * R14 and the ROM buffer move as on the Super FX.
  */
 /* What FxPointsGather leaves in registers besides R14. */
 typedef struct { uint16_t first_word, offset[3], last_z, last_point; } FxPointsLeft;
 
-void FxPointsGather(uint16_t count, uint16_t *rom_at, FxPointsLeft *left)
+void FxPointsGather(uint16_t count, FxPointsLeft *left)
 {
     uint32_t n = count ? count : 0x10000u;
     uint16_t src = (uint16_t)(gsu_ldw(FX_PAIRS) - 4 + (count & 0xFF) * 8);
@@ -61,9 +62,9 @@ void FxPointsGather(uint16_t count, uint16_t *rom_at, FxPointsLeft *left)
         left->offset[k] = gsu_ldw((uint16_t)(FX_OFFSET + k * 2));
     dst = FX_RECORDS + 4;
     for (i = 0; i < n; i++) {
-        uint16_t p = (uint16_t)(FX_POINTS + gsu_getb(*rom_at) * 6);
+        uint16_t p = (uint16_t)(FX_POINTS + gsu_getb() * 6);
 
-        *rom_at = (uint16_t)(*rom_at + 1);
+        gsu_r14((uint16_t)(gsu.r[14] + 1));
         for (k = 0; k < 3; k++) {
             left->last_z = (uint16_t)(gsu_ldw((uint16_t)(p + k * 2)) + left->offset[k]);
             gsu_stw((uint16_t)(dst + k * 2), left->last_z);
@@ -79,7 +80,7 @@ void abi_FxPointsGather(void)
     uint32_t n = count ? count : 0x10000u;
     FxPointsLeft left;
 
-    FxPointsGather(count, &gsu.r[14], &left);
+    FxPointsGather(count, &left);
     gsu.r[0] = left.last_z;
     gsu.r[1] = (uint16_t)(left.last_point + 4);
     gsu.r[2] = gsu_add((uint16_t)(0x082A + (n - 1) * 10 + 4), 6, 0);

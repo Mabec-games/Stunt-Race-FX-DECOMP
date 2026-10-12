@@ -32,7 +32,8 @@ static uint16_t magnitude(uint16_t v)
  * R6 = the larger side (|R1| when R2 = 0 or the sides are equal); R5 =
  * $FFFF when |R2| is the larger side, 0 when |R1| is or they are equal,
  * kept when R2 = 0. When the table was used: R11 = $823D, R12 = 0, R13 =
- * $81D2, the ROM bank 0. R14 and R10 as at entry; the last RAM address
+ * $81D2, the ROM bank 0. R14 (written back, so the ROM buffer refilled
+ * from it) and R10 as at entry; the last RAM address
  * R10; S and Z from R10; OV and CY from the ADD of $8000 when R2 is
  * negative, else OV = bit 7 of R2 and CY from the last ADD before (kept
  * when R2 = 0, set when the sides are equal).
@@ -56,7 +57,11 @@ uint16_t FxAtan2(uint16_t y, uint16_t x)
         }
         ratio = FxDivide32By16(small >> 2, (uint16_t)(small << 14), large, &rem);
         at = (uint16_t)(FX_ATAN_TABLE + ((ratio >> 5) & 0xFFFE));
-        angle = (uint16_t)(gsu_rd8(at) | gsu_rd8(at + 1) << 8);
+        gsu.rombr = 0;
+        gsu_r14(at);
+        angle = gsu_getb();
+        gsu_r14((uint16_t)(at + 1));
+        angle = (uint16_t)(angle | gsu_getb() << 8);
         if (!x_larger)
             angle = (uint16_t)(0x4000 - angle);
     }
@@ -90,7 +95,6 @@ void abi_FxAtan2(void)
         gsu.r[11] = 0x823D;
         gsu.r[12] = 0;
         gsu.r[13] = 0x81D2;
-        gsu.rombr = 0;
         /* The table's word, before the sign steps. */
         pre = (uint16_t)((x ^ y) & 0x8000 ? -(x & 0x8000 ? (uint16_t)(angle - 0x8000) : angle)
                                            : (x & 0x8000 ? (uint16_t)(angle - 0x8000) : angle));
@@ -106,7 +110,7 @@ void abi_FxAtan2(void)
         gsu_add((uint16_t)(angle - 0x8000), 0x8000, 0);
     }
     gsu.r[0] = angle;
-    gsu_ldw((uint16_t)(sp + 2));
+    gsu_r14(gsu_ldw((uint16_t)(sp + 2)));
     gsu_ldw(sp);
     gsu_sz(sp);
 }

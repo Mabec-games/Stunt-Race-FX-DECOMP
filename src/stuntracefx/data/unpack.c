@@ -19,12 +19,21 @@
  * Entry: R14 = the address of the first byte; R11 = return address.
  * Exit: R2:R3 = the bit buffer; CY = the first bit; R14 = the address of
  * the fourth byte; R0 = R2 | R3 (not 0), S and Z from it; OV kept.
- * Returns the first bit.
+ * Returns the first bit. R14 and the ROM buffer move as on the Super FX.
  */
-int FxUnpackRefill(uint16_t at, uint16_t *hi, uint16_t *lo)
+int FxUnpackRefill(uint16_t *hi, uint16_t *lo)
 {
-    uint16_t w3 = (uint16_t)(gsu_getb(at) | gsu_getb((uint16_t)(at - 1)) << 8);
-    uint16_t w2 = (uint16_t)(gsu_getb((uint16_t)(at - 2)) | gsu_getb((uint16_t)(at - 3)) << 8);
+    uint8_t b[4];
+    uint16_t w3, w2;
+    int i;
+
+    for (i = 0; i < 4; i++) {
+        b[i] = gsu_getb();
+        if (i < 3)
+            gsu_r14((uint16_t)(gsu.r[14] - 1));
+    }
+    w3 = (uint16_t)(b[0] | b[1] << 8);
+    w2 = (uint16_t)(b[2] | b[3] << 8);
 
     *hi = (uint16_t)(0x8000 | w2 >> 1);
     *lo = (uint16_t)((w2 & 1) << 15 | w3 >> 1);
@@ -33,10 +42,7 @@ int FxUnpackRefill(uint16_t at, uint16_t *hi, uint16_t *lo)
 
 void abi_FxUnpackRefill(void)
 {
-    uint16_t at = gsu.r[14];
-
-    gsu.cy = (uint8_t)FxUnpackRefill(at, &gsu.r[2], &gsu.r[3]);
-    gsu.r[14] = (uint16_t)(at - 3);
+    gsu.cy = (uint8_t)FxUnpackRefill(&gsu.r[2], &gsu.r[3]);
     gsu.r[0] = (uint16_t)(gsu.r[2] | gsu.r[3]);
     gsu_sz(gsu.r[0]);
 }

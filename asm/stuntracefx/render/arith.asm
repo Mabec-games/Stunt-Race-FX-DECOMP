@@ -73,6 +73,7 @@ FxSqrt32:
 ; Entry: started by the S-CPU. Exit (at the STOP): R10 = $0240; R11 =
 ; $80DF; the registers and flags as FxSqrt32 leaves them; the last RAM
 ; address $006A.
+; Returns the sum of the squares; *root = the length.
 %at($0180BC)
 FxLengthProgram:
     iwt r10,#$0240

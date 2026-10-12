@@ -24,6 +24,7 @@ arch superfx
 ; stored; R3 = record 1's first word as stored; R5, R6, R7 = the
 ; vector; R12 = 0; R13 = $C1FD (the second loop); the last RAM address
 ; the last Z's; OV and CY from the last ADD #6 to R2; Z set, S clear.
+; R14 and the ROM buffer move as on the Super FX.
 %at($01C1BE)
 FxPointsGather:
     cache

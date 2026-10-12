@@ -20,6 +20,7 @@ arch superfx
 ; Entry: R14 = the address of the first byte; R11 = return address.
 ; Exit: R2:R3 = the bit buffer; CY = the first bit; R14 = the address of
 ; the fourth byte; R0 = R2 | R3 (not 0), S and Z from it; OV kept.
+; Returns the first bit. R14 and the ROM buffer move as on the Super FX.
 %at($01D0DB)
 FxUnpackRefill:
     to r3

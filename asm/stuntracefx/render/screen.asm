@@ -17,6 +17,7 @@ arch superfx
 ; Entry: R11 = return address. Exit: R0 = 0; R1 = the buffer's end; R12 = 0;
 ; R13 = $AEC4 (the loop); the last RAM address the last word stored; CY
 ; set and OV clear (SUB R0); S and Z from R1 (the INC in LOOP's delay slot).
+; Returns the address just past the buffer.
 %at($01AEB9)
 FxScreenClear:
     sub r0
