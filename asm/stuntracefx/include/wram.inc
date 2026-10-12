@@ -781,3 +781,5 @@ includeonce
 !view_06cf = $06CF
 !view_0da2 = $0DA2
 !backdrop_rows_left = $F1
+!dp_0a = $0A
+!dp_0b = $0B
