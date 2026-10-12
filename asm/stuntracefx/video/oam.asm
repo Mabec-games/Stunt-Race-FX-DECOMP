@@ -191,7 +191,7 @@ OamBufferHideLarge:
     lda.b #$F0
     ldx.w #$0000
 .lFF03:
-    sta.w !oam_buffer+$1,x
+    sta.w !oam_buffer+1,x
     inx
     inx
     inx
@@ -223,16 +223,16 @@ OamFromList:
     beq .lEA2D
     cmp.b #$FE
     bne .lEA0E
-    sta.w !oam_buffer+$1,x
+    sta.w !oam_buffer+1,x
     bra .lEA26
 .lEA0E:
     sta.w !oam_buffer,x
-    lda.w !oam_lists+$1,y
-    sta.w !oam_buffer+$1,x
-    lda.w !oam_lists+$2,y
-    sta.w !oam_buffer+$2,x
-    lda.w !oam_lists+$3,y
-    sta.w !oam_buffer+$3,x
+    lda.w !oam_lists+1,y
+    sta.w !oam_buffer+1,x
+    lda.w !oam_lists+2,y
+    sta.w !oam_buffer+2,x
+    lda.w !oam_lists+3,y
+    sta.w !oam_buffer+3,x
     iny
     iny
     iny

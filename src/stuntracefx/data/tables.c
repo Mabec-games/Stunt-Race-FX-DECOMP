@@ -33,7 +33,7 @@ void abi_HandlerTableA(void)
  * @routine 03:B6F9 HandlerTableB
  * WHAT IT DOES: Returns entry A of the handler address table at $03:B704.
  * HOW: Word lookup at A * 2.
- * Entry, exit: as HandlerTableA.
+ * Entry: as HandlerTableA. Exit: as HandlerTableA.
  */
 uint16_t HandlerTableB(uint16_t i)
 {

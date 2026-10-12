@@ -59,7 +59,7 @@ SlideStep:
     sta.l !slide_done
 .lE13D:
     sep.b #$20
-    lda.w !slide_value+$1
+    lda.w !slide_value+1
     sta.l !slide_out
 .lE146:
     plb

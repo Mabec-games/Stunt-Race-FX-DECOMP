@@ -30,7 +30,7 @@ GradientFillCgadd:
 ; @routine 0B:FB1C GradientFillCgaddB
 ; WHAT IT DOES: The same fill as GradientFillCgadd, in bank $0B.
 ; HOW: As GradientFillCgadd.
-; Entry, exit: as GradientFillCgadd.
+; Entry: as GradientFillCgadd. Exit: as GradientFillCgadd.
 %at($0BFB1C)
 GradientFillCgaddB:
     sta.l !gradient_cgadd,x
@@ -109,11 +109,11 @@ GradientSetup:
     lda.w #$0000
     sta.l !gradient_cgadd,x
     lda.w #$EC57
-    sta.l !gradient_cgdata+$1
+    sta.l !gradient_cgdata+1
     lda.w #$ECD7
     sta.l !gradient_ptr_a
     lda.w #$EC57
-    sta.l !gradient_cgdata+$7
+    sta.l !gradient_cgdata+7
     lda.w #$ECD7
     sta.l !gradient_ptr_b
     lda.w #$EC57
@@ -124,13 +124,13 @@ GradientSetup:
     lda.b #$17
     sta.l !gradient_cgdata
     lda.b #$D0
-    sta.l !gradient_cgdata+$3
+    sta.l !gradient_cgdata+3
     lda.b #$18
-    sta.l !gradient_cgdata+$6
+    sta.l !gradient_cgdata+6
     lda.b #$D0
-    sta.l !gradient_cgdata+$9
+    sta.l !gradient_cgdata+9
     lda.b #$00
-    sta.l !gradient_cgdata+$B
+    sta.l !gradient_cgdata+11
     lda.b #$7F
     sta.w !DASB3
     sep.b #$20

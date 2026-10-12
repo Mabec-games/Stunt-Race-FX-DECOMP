@@ -20,7 +20,7 @@ arch 65816
 MenuRowPosition:
     lda.w #$0002
     sec
-    sbc.l !selection_derived+$A
+    sbc.l !wram_18ED
     asl a
     asl a
     asl a
@@ -120,47 +120,47 @@ MenuStateInit:
     lda.w #$0006
     sta.l !gsu_buffer_offset
     lda.w #$0000
-    sta.l !selection_derived+$1A
+    sta.l !wram_18FD
     lda.w #$0000
-    sta.l !selection_derived+$20
+    sta.l !wram_1903
     lda.w #$0001
     sta.l !menu_18b9
     lda.w #$0000
-    sta.l !selection_derived+$1E
-    sta.l !selection_derived+$1C
-    sta.l !selection_derived+$14
-    sta.l !menu_sine_y_min+$2
+    sta.l !wram_1901
+    sta.l !wram_18FF
+    sta.l !wram_18F7
+    sta.l !wram_18C3
     sta.l !selection
     sta.l !selection_prev
-    sta.l !selection_derived+$A
-    sta.l !selection+$2
-    sta.l !selection_derived+$12
+    sta.l !wram_18ED
+    sta.l !selection_1
+    sta.l !wram_18F5
     lda.w #$0000
     sta.l !selection_out
     lda.w #$0000
-    sta.l !selection_out+$2
+    sta.l !selection_out_1
     lda.w #$0000
-    sta.l !selection_out+$4
+    sta.l !selection_out_2
     lda.w #$0003
-    sta.l !selection_out+$6
+    sta.l !selection_out_3
     lda.w #$0001
-    sta.l !menu_sine_y_min+$6
-    sta.l !selection_derived+$8
-    sta.l !selection+$4
+    sta.l !wram_18C7
+    sta.l !wram_18EB
+    sta.l !selection_2
     lda.w #$0002
-    sta.l !selection+$6
+    sta.l !selection_3
     lda.l !save_bytes+2
     and.w #$00FF
-    sta.l !selection_derived+$C
+    sta.l !wram_18EF
     lda.l !save_bytes+3
     and.w #$00FF
-    sta.l !selection_derived+$E
+    sta.l !wram_18F1
     lda.l !save_bytes+4
     and.w #$00FF
-    sta.l !selection_derived+$10
+    sta.l !wram_18F3
     lda.w #$FFFF
-    sta.l !menu_sine_y_min+$4
+    sta.l !wram_18C5
     lda.w #$001F
-    sta.l !selection_derived+$16
+    sta.l !wram_18F9
     plp
     rts

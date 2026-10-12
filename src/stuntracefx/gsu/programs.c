@@ -64,7 +64,7 @@ void abi_GsuCF42ToC000(void)
  * @routine 03:EBF8 GsuCF42To4000
  * WHAT IT DOES: As GsuCF42ToC000, drawing to $4000.
  * HOW: As GsuCF42ToC000.
- * Entry, exit: as GsuCF42ToC000.
+ * Entry: as GsuCF42ToC000. Exit: as GsuCF42ToC000.
  */
 uint8_t GsuCF42To4000(uint16_t in68, uint16_t in6a)
 {
@@ -80,7 +80,7 @@ void abi_GsuCF42To4000(void)
  * @routine 03:EC01 GsuCF42To3000
  * WHAT IT DOES: As GsuCF42ToC000, drawing to $3000.
  * HOW: As GsuCF42ToC000.
- * Entry, exit: as GsuCF42ToC000.
+ * Entry: as GsuCF42ToC000. Exit: as GsuCF42ToC000.
  */
 uint8_t GsuCF42To3000(uint16_t in68, uint16_t in6a)
 {

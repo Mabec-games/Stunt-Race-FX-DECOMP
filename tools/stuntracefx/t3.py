@@ -11,7 +11,10 @@ Gates for T3: 0 (the C says what it does, how, its entry and exit, and has no
 unfinished markers), C (every byte of the routine executed by the scripts),
 A5 and A7 (IDENTICAL, measured on committed source that includes the C's
 last change). T4 adds: the routine's assembly is filed with the same header,
-its operands are symbolic, and the whole ROM rebuilds byte-exact.
+its operands are symbolic, and the whole ROM rebuilds byte-exact. Symbolic
+means no hexadecimal literal outside an immediate: an address is a name, and
+a place inside a named table or record is the name plus a decimal index
+(!oam_tile+4*5, !scroll_hdma+3).
 
 A5 runs sfxbox --check over every script in tools/stuntracefx/scripts/ in
 parallel and merges the results per routine:
@@ -277,8 +280,12 @@ def assess(addrs, image_ok=None):
             ah = header_of(atext, am, True)
             ga = all(k in ah for k in ('WHAT IT DOES:', 'HOW:', 'Entry:', 'Exit:')) and not MARKERS.search(atext)
             body = atext[am.end():]
+            nxt = re.search(r'@routine\s', body)
+            if nxt:  # this routine only, up to the next one's header
+                body = body[:body.rfind('\n', 0, nxt.start()) + 1]
             literal = [l.strip() for l in body.splitlines()
-                       if l.strip() and not l.strip().startswith((';', '%', '!')) and not l.strip().endswith(':')
+                       if l.strip() and not l.strip().startswith((';', '%', '!', 'db ', 'dw ', 'dl '))
+                       and not l.strip().endswith(':')
                        and re.search(r'(?<!#)\$[0-9A-Fa-f]', l.split(';')[0])]
             gs = not literal
             if image_ok is None:

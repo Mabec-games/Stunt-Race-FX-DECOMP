@@ -54,7 +54,7 @@ void abi_ApproachTargetFull(void)
  * @routine 0B:E2CF ApproachTargetZero
  * WHAT IT DOES: Sets the target at $11DB to 0.
  * HOW: One byte store through the data bank.
- * Entry, exit: any widths; every register unchanged.
+ * Entry: any widths. Exit: every register unchanged.
  */
 void ApproachTargetZero(uint8_t bank)
 {

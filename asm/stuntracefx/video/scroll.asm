@@ -37,10 +37,10 @@ ScrollHdmaSet:
     php
     rep.b #$20
     lda.l !scroll_value
-    sta.l !scroll_hdma+$4
-    sta.l !scroll_hdma+$D
+    sta.l !scroll_hdma+4
+    sta.l !scroll_hdma+13
     lda.w #$0130
-    sta.l !scroll_hdma+$7
-    sta.l !scroll_hdma+$A
+    sta.l !scroll_hdma+7
+    sta.l !scroll_hdma+10
     plp
     rtl

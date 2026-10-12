@@ -34,11 +34,11 @@ MenuLoadPictureCC78:
     lda.w #$1000
     sta.l !vram_queue_staged
     lda.w #$0070
-    sta.l !vram_queue_staged+$4
+    sta.l !vram_queue_staged+4
     lda.w #$3000
-    sta.l !vram_queue_staged+$2
+    sta.l !vram_queue_staged+2
     lda.w #$3000
-    sta.l !vram_queue_staged+$6
+    sta.l !vram_queue_staged+6
     jsl.l VramDmaQueueAdd
     rep.b #$20
     rep.b #$10
@@ -63,11 +63,11 @@ MenuLoadPictureCE78:
     lda.w #$1000
     sta.l !vram_queue_staged
     lda.w #$0070
-    sta.l !vram_queue_staged+$4
+    sta.l !vram_queue_staged+4
     lda.w #$3000
-    sta.l !vram_queue_staged+$2
+    sta.l !vram_queue_staged+2
     lda.w #$6800
-    sta.l !vram_queue_staged+$6
+    sta.l !vram_queue_staged+6
     jsl.l VramDmaQueueAdd
     rep.b #$20
     rep.b #$10
@@ -92,11 +92,11 @@ MenuLoadPictureDD8C:
     lda.w #$1000
     sta.l !vram_queue_staged
     lda.w #$0070
-    sta.l !vram_queue_staged+$4
+    sta.l !vram_queue_staged+4
     lda.w #$3000
-    sta.l !vram_queue_staged+$2
+    sta.l !vram_queue_staged+2
     lda.w #$4000
-    sta.l !vram_queue_staged+$6
+    sta.l !vram_queue_staged+6
     jsl.l VramDmaQueueAdd
     rep.b #$20
     rep.b #$10
@@ -117,11 +117,11 @@ MenuLoadGsu4000:
     lda.w #$1000
     sta.l !vram_queue_staged
     lda.w #$0070
-    sta.l !vram_queue_staged+$4
+    sta.l !vram_queue_staged+4
     lda.w #$4000
-    sta.l !vram_queue_staged+$2
+    sta.l !vram_queue_staged+2
     lda.w #$4800
-    sta.l !vram_queue_staged+$6
+    sta.l !vram_queue_staged+6
     jsl.l VramDmaQueueAdd
     rep.b #$20
     rep.b #$10
@@ -134,18 +134,18 @@ MenuLoadGsu4000:
 ; WHAT IT DOES: Queues $1000 bytes from $70:5000 to VRAM $5000; next step
 ; D362.
 ; HOW: As MenuLoadGsu4000.
-; Entry, exit: as MenuLoadGsu4000, A = $D362.
+; Entry: as MenuLoadGsu4000. Exit: as MenuLoadGsu4000, A = $D362.
 %at($0BD333)
 MenuLoadGsu5000:
     rep.b #$30
     lda.w #$1000
     sta.l !vram_queue_staged
     lda.w #$0070
-    sta.l !vram_queue_staged+$4
+    sta.l !vram_queue_staged+4
     lda.w #$5000
-    sta.l !vram_queue_staged+$2
+    sta.l !vram_queue_staged+2
     lda.w #$5000
-    sta.l !vram_queue_staged+$6
+    sta.l !vram_queue_staged+6
     jsl.l VramDmaQueueAdd
     rep.b #$20
     rep.b #$10
@@ -158,18 +158,18 @@ MenuLoadGsu5000:
 ; WHAT IT DOES: Queues $1000 bytes from $70:6000 to VRAM $5800; next step
 ; D391.
 ; HOW: As MenuLoadGsu4000.
-; Entry, exit: as MenuLoadGsu4000, A = $D391.
+; Entry: as MenuLoadGsu4000. Exit: as MenuLoadGsu4000, A = $D391.
 %at($0BD362)
 MenuLoadGsu6000:
     rep.b #$30
     lda.w #$1000
     sta.l !vram_queue_staged
     lda.w #$0070
-    sta.l !vram_queue_staged+$4
+    sta.l !vram_queue_staged+4
     lda.w #$6000
-    sta.l !vram_queue_staged+$2
+    sta.l !vram_queue_staged+2
     lda.w #$5800
-    sta.l !vram_queue_staged+$6
+    sta.l !vram_queue_staged+6
     jsl.l VramDmaQueueAdd
     rep.b #$20
     rep.b #$10
@@ -237,11 +237,11 @@ MenuLoadClearGsu:
     lda.w #$1000
     sta.l !vram_queue_staged
     lda.w #$0070
-    sta.l !vram_queue_staged+$4
+    sta.l !vram_queue_staged+4
     lda.w #$3000
-    sta.l !vram_queue_staged+$2
+    sta.l !vram_queue_staged+2
     lda.w #$0000
-    sta.l !vram_queue_staged+$6
+    sta.l !vram_queue_staged+6
     jsl.l VramDmaQueueAdd
     rep.b #$20
     rep.b #$10
@@ -254,18 +254,18 @@ MenuLoadClearGsu:
 ; WHAT IT DOES: Queues $1000 bytes from $70:3000 (cleared) to VRAM $0800;
 ; next step D447.
 ; HOW: As MenuLoadGsu4000.
-; Entry, exit: as MenuLoadGsu4000, A = $D447.
+; Entry: as MenuLoadGsu4000. Exit: as MenuLoadGsu4000, A = $D447.
 %at($0BD418)
 MenuLoadBlank0800:
     rep.b #$30
     lda.w #$1000
     sta.l !vram_queue_staged
     lda.w #$0070
-    sta.l !vram_queue_staged+$4
+    sta.l !vram_queue_staged+4
     lda.w #$3000
-    sta.l !vram_queue_staged+$2
+    sta.l !vram_queue_staged+2
     lda.w #$0800
-    sta.l !vram_queue_staged+$6
+    sta.l !vram_queue_staged+6
     jsl.l VramDmaQueueAdd
     rep.b #$20
     rep.b #$10
@@ -278,18 +278,18 @@ MenuLoadBlank0800:
 ; WHAT IT DOES: Queues $1000 bytes from $70:3000 to VRAM $1000; next step
 ; D476.
 ; HOW: As MenuLoadGsu4000.
-; Entry, exit: as MenuLoadGsu4000, A = $D476.
+; Entry: as MenuLoadGsu4000. Exit: as MenuLoadGsu4000, A = $D476.
 %at($0BD447)
 MenuLoadBlank1000:
     rep.b #$30
     lda.w #$1000
     sta.l !vram_queue_staged
     lda.w #$0070
-    sta.l !vram_queue_staged+$4
+    sta.l !vram_queue_staged+4
     lda.w #$3000
-    sta.l !vram_queue_staged+$2
+    sta.l !vram_queue_staged+2
     lda.w #$1000
-    sta.l !vram_queue_staged+$6
+    sta.l !vram_queue_staged+6
     jsl.l VramDmaQueueAdd
     rep.b #$20
     rep.b #$10
@@ -302,18 +302,18 @@ MenuLoadBlank1000:
 ; WHAT IT DOES: Queues $400 bytes from $70:3000 to VRAM $1800; next step
 ; D4A5 (MenuSetExit).
 ; HOW: As MenuLoadGsu4000.
-; Entry, exit: as MenuLoadGsu4000, A = $D4A5.
+; Entry: as MenuLoadGsu4000. Exit: as MenuLoadGsu4000, A = $D4A5.
 %at($0BD476)
 MenuLoadBlank1800:
     rep.b #$30
     lda.w #$0400
     sta.l !vram_queue_staged
     lda.w #$0070
-    sta.l !vram_queue_staged+$4
+    sta.l !vram_queue_staged+4
     lda.w #$3000
-    sta.l !vram_queue_staged+$2
+    sta.l !vram_queue_staged+2
     lda.w #$1800
-    sta.l !vram_queue_staged+$6
+    sta.l !vram_queue_staged+6
     jsl.l VramDmaQueueAdd
     rep.b #$20
     rep.b #$10

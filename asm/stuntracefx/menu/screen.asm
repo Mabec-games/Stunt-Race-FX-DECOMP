@@ -427,7 +427,7 @@ MenuCourseGraphics:
     tax
     lda.l !course_picture_a,x
     pha
-    lda.l !course_picture_a+$2,x
+    lda.l !course_picture_a+2,x
     and.w #$00FF
     tax
     pla
@@ -452,7 +452,7 @@ MenuCourseGraphics:
     tax
     lda.l !course_picture_b,x
     pha
-    lda.l !course_picture_b+$2,x
+    lda.l !course_picture_b+2,x
     and.w #$00FF
     tax
     pla

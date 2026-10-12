@@ -208,7 +208,7 @@ MenuActorApplyPalette:
 ; @routine 0B:C47B MenuActorIdleC47B
 ; WHAT IT DOES: A handler that does nothing.
 ; HOW: Returns.
-; Entry, exit: any; nothing changes.
+; Entry: any. Exit: nothing changes.
 %at($0BC47B)
 MenuActorIdleC47B:
     rts
@@ -216,7 +216,7 @@ MenuActorIdleC47B:
 ; @routine 0B:CE89 MenuActorIdleCE89
 ; WHAT IT DOES: A handler that does nothing.
 ; HOW: Returns.
-; Entry, exit: any; nothing changes.
+; Entry: any. Exit: nothing changes.
 %at($0BCE89)
 MenuActorIdleCE89:
     rts

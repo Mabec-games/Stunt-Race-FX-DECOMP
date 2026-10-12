@@ -45,25 +45,25 @@ RasterColoursCycling:
     bne .odd
     lda.b #$10
     sta.w !CGADD
-    lda.l !palette_buffer+$20,x
+    lda.l !palette_buffer+32,x
     sta.w !CGDATA
-    lda.l !palette_buffer+$20+1,x
+    lda.l !palette_buffer+32+1,x
     sta.w !CGDATA
-    lda.l !palette_buffer+$20+2,x
+    lda.l !palette_buffer+32+2,x
     sta.w !CGDATA
-    lda.l !palette_buffer+$20+3,x
+    lda.l !palette_buffer+32+3,x
     sta.w !CGDATA
     rts
 .odd:
     lda.b #$12
     sta.w !CGADD
-    lda.l !palette_buffer+$24,x
+    lda.l !palette_buffer+36,x
     sta.w !CGDATA
-    lda.l !palette_buffer+$24+1,x
+    lda.l !palette_buffer+36+1,x
     sta.w !CGDATA
-    lda.l !palette_buffer+$24+2,x
+    lda.l !palette_buffer+36+2,x
     sta.w !CGDATA
-    lda.l !palette_buffer+$24+3,x
+    lda.l !palette_buffer+36+3,x
     sta.w !CGDATA
     rts
 
@@ -206,7 +206,7 @@ RasterPaletteUpload:
     lda.w !palette_animate
     beq RasterColours_colour0
     rep.b #$30
-    lda.w #!palette_buffer+$160
+    lda.w #!palette_buffer+352
     ldy.w #$0020
     ldx.w #$00B0
     jsr.w CgramDma

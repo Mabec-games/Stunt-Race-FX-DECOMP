@@ -59,7 +59,7 @@ void abi_PlayerHoldSound32(void)
  * WHAT IT DOES: Makes the current player's car hold sound $33 (player 1) or
  * $37 (player 2).
  * HOW: As PlayerHoldSound32.
- * Entry, exit: as PlayerHoldSound32.
+ * Entry: as PlayerHoldSound32. Exit: as PlayerHoldSound32.
  */
 void PlayerHoldSound33(void)
 {
@@ -106,7 +106,7 @@ void abi_PlayerStopHeldSound(void)
  * WHAT IT DOES: Makes the current player's car hold sound $34 (player 1) or
  * $38 (player 2).
  * HOW: As PlayerHoldSound32.
- * Entry, exit: as PlayerHoldSound32.
+ * Entry: as PlayerHoldSound32. Exit: as PlayerHoldSound32.
  */
 void PlayerHoldSound34(void)
 {
@@ -123,7 +123,7 @@ void abi_PlayerHoldSound34(void)
  * WHAT IT DOES: Makes the current player's car hold sound $35 (player 1) or
  * $39 (player 2).
  * HOW: As PlayerHoldSound32.
- * Entry, exit: as PlayerHoldSound32.
+ * Entry: as PlayerHoldSound32. Exit: as PlayerHoldSound32.
  */
 void PlayerHoldSound35(void)
 {
@@ -191,7 +191,7 @@ void abi_PlayerSound23(void)
  * @routine 04:D5CC PlayerSound24
  * WHAT IT DOES: Sends sound $24 (player 1) or $26 (player 2) on port 1.
  * HOW: As PlayerSound23.
- * Entry, exit: as PlayerSound23.
+ * Entry: as PlayerSound23. Exit: as PlayerSound23.
  */
 void PlayerSound24(void)
 {
@@ -207,7 +207,7 @@ void abi_PlayerSound24(void)
  * @routine 04:D5E5 PlayerSound0D
  * WHAT IT DOES: Sends sound $0D (player 1) or $18 (player 2) on port 1.
  * HOW: As PlayerSound23.
- * Entry, exit: as PlayerSound23.
+ * Entry: as PlayerSound23. Exit: as PlayerSound23.
  */
 void PlayerSound0D(void)
 {
@@ -223,7 +223,7 @@ void abi_PlayerSound0D(void)
  * @routine 04:D5FE PlayerSound0B
  * WHAT IT DOES: Sends sound $0B (player 1) or $1B (player 2) on port 1.
  * HOW: As PlayerSound23.
- * Entry, exit: as PlayerSound23.
+ * Entry: as PlayerSound23. Exit: as PlayerSound23.
  */
 void PlayerSound0B(void)
 {
@@ -239,7 +239,7 @@ void abi_PlayerSound0B(void)
  * @routine 04:D617 PlayerSound12
  * WHAT IT DOES: Sends sound $12 (player 1) or $19 (player 2) on port 1.
  * HOW: As PlayerSound23.
- * Entry, exit: as PlayerSound23.
+ * Entry: as PlayerSound23. Exit: as PlayerSound23.
  */
 void PlayerSound12(void)
 {
@@ -255,7 +255,7 @@ void abi_PlayerSound12(void)
  * @routine 04:D630 PlayerSound0C
  * WHAT IT DOES: Sends sound $0C (player 1) or $1C (player 2) on port 1.
  * HOW: As PlayerSound23.
- * Entry, exit: as PlayerSound23.
+ * Entry: as PlayerSound23. Exit: as PlayerSound23.
  */
 void PlayerSound0C(void)
 {

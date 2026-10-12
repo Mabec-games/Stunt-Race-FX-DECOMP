@@ -51,17 +51,17 @@ GsuParamsFromDp:
     lda.b !dp_ce
     sta.l !gsu_in_34
     lda.b !dp_d0
-    sta.l !gsu_in_34+$2
+    sta.l !gsu_in_36
     lda.b !dp_2a
-    sta.l !gsu_in_34+$4
+    sta.l !gsu_in_38
     lda.b !dp_2e
-    sta.l !gsu_in_34+$6
+    sta.l !gsu_in_3a
     lda.b !dp_2c
-    sta.l !gsu_in_34+$8
+    sta.l !gsu_in_3c
     lda.b !dp_30
-    sta.l !gsu_in_34+$A
+    sta.l !gsu_in_3e
     lda.b !dp_32
     sta.l !gsu_in_92
     lda.b !dp_34
-    sta.l !gsu_in_92+$2
+    sta.l !gsu_in_94
     rtl

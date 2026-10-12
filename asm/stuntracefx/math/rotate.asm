@@ -134,10 +134,10 @@ RotateXZ:
     bit.b #$80
     beq .lC343
     lda.b #$FF
-    sta.b !dp_04+$1
+    sta.b !dp_05
     bra .lC345
 .lC343:
-    stz.b !dp_04+$1
+    stz.b !dp_05
 .lC345:
     lda.b !dp_02
     bmi .lC35F
@@ -240,10 +240,10 @@ RotateXZ:
     bit.b #$80
     beq .lC3F7
     lda.b #$FF
-    sta.w !rot_z+$1
+    sta.w !rot_z_high
     bra .lC3FA
 .lC3F7:
-    stz.w !rot_z+$1
+    stz.w !rot_z_high
 .lC3FA:
     plb
     plp

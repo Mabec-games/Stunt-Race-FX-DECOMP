@@ -20,15 +20,15 @@ SaveChecksum:
     php
     sep.b #$20
     clc
-    lda.l !save_bytes+$5
+    lda.l !save_bytes+5
     adc.l !save_bytes
-    adc.l !save_bytes+$1
-    adc.l !save_bytes+$6
-    adc.l !save_bytes+$7
-    adc.l !save_bytes+$8
-    adc.l !save_bytes+$2
-    adc.l !save_bytes+$3
-    adc.l !save_bytes+$4
+    adc.l !save_bytes+1
+    adc.l !save_bytes+6
+    adc.l !save_bytes+7
+    adc.l !save_bytes+8
+    adc.l !save_bytes+2
+    adc.l !save_bytes+3
+    adc.l !save_bytes+4
     sta.l !save_checksum
     sta.l !save_checksum_copy
     plp

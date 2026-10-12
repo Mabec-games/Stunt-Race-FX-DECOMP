@@ -31,7 +31,7 @@ WindowHdmaFromList:
     sta.l !window_hdma
     rep.b #$20
     lda.w #$F857
-    sta.l !window_hdma+$1
+    sta.l !window_hdma+1
     sep.b #$20
     ldx.w #$0003
 .lD709:
@@ -57,11 +57,11 @@ WindowHdmaAt:
     pha
     clc
     adc.w !window_19e5
-    sta.l !window_hdma+$3
+    sta.l !window_hdma+3
     pla
     clc
     adc.w !window_19e3
-    sta.l !window_hdma+$6
+    sta.l !window_hdma+6
     lda.w !window_lines
     sec
     sbc.b #$01
@@ -71,16 +71,16 @@ WindowHdmaAt:
     lda.w !window_lines
     clc
     adc.w !window_19e2
-    sta.l !window_hdma+$9
+    sta.l !window_hdma+9
     lda.b #$00
-    sta.l !window_hdma+$C
+    sta.l !window_hdma+12
     rep.b #$20
     lda.w #$F857
-    sta.l !window_hdma+$4
-    sta.l !window_hdma+$7
+    sta.l !window_hdma+4
+    sta.l !window_hdma+7
     lda.w #$FFDD
-    sta.l !window_hdma+$1
-    sta.l !window_hdma+$A
+    sta.l !window_hdma+1
+    sta.l !window_hdma+10
     rts
 
 ; @routine 7E:D8A8 WindowHdmaFFDD
@@ -94,19 +94,19 @@ WindowHdmaFFDD:
     lda.b #$40
     sta.l !window_hdma
     lda.b #$40
-    sta.l !window_hdma+$3
+    sta.l !window_hdma+3
     lda.b #$40
-    sta.l !window_hdma+$6
+    sta.l !window_hdma+6
     lda.b #$3E
-    sta.l !window_hdma+$9
+    sta.l !window_hdma+9
     lda.b #$00
-    sta.l !window_hdma+$C
+    sta.l !window_hdma+12
     rep.b #$20
     lda.w #$FFDD
-    sta.l !window_hdma+$1
-    sta.l !window_hdma+$4
-    sta.l !window_hdma+$7
-    sta.l !window_hdma+$A
+    sta.l !window_hdma+1
+    sta.l !window_hdma+4
+    sta.l !window_hdma+7
+    sta.l !window_hdma+10
     rts
 
 ; @routine 7E:DB10 WindowHdmaFromTable
@@ -121,19 +121,19 @@ WindowHdmaFromTable:
     rep.b #$30
     ldx.w !window_hdma_select
     lda.w #$F857
-    sta.l !window_hdma+$1
-    sta.l !window_hdma+$7
+    sta.l !window_hdma+1
+    sta.l !window_hdma+7
     lda.l !window_hdma_addrs,x
-    sta.l !window_hdma+$4
+    sta.l !window_hdma+4
     sep.b #$20
     lda.l !window_hdma_counts,x
     sta.l !window_hdma
-    lda.l !window_hdma_counts+$1,x
-    sta.l !window_hdma+$3
+    lda.l !window_hdma_counts+1,x
+    sta.l !window_hdma+3
     lda.b #$30
-    sta.l !window_hdma+$6
+    sta.l !window_hdma+6
     lda.b #$00
-    sta.l !window_hdma+$9
+    sta.l !window_hdma+9
     rts
 
 ; @routine 7E:DBCD WindowHdmaNormal
@@ -159,19 +159,19 @@ WindowHdmaNormal:
     lda.b #$40
     sta.l !window_hdma
     lda.b #$40
-    sta.l !window_hdma+$3
+    sta.l !window_hdma+3
     lda.b #$40
-    sta.l !window_hdma+$6
+    sta.l !window_hdma+6
     lda.b #$40
-    sta.l !window_hdma+$9
+    sta.l !window_hdma+9
     lda.b #$00
-    sta.l !window_hdma+$C
+    sta.l !window_hdma+12
     rep.b #$20
     lda.w #$F857
-    sta.l !window_hdma+$1
-    sta.l !window_hdma+$4
-    sta.l !window_hdma+$7
-    sta.l !window_hdma+$A
+    sta.l !window_hdma+1
+    sta.l !window_hdma+4
+    sta.l !window_hdma+7
+    sta.l !window_hdma+10
 .lDC15:
     plb
     plp
@@ -196,34 +196,34 @@ WindowHdmaBands:
     lda.b #$17
     sta.l !window_hdma
     lda.b #$10
-    sta.l !window_hdma+$3
+    sta.l !window_hdma+3
     lda.b #$30
-    sta.l !window_hdma+$6
+    sta.l !window_hdma+6
     lda.b #$10
-    sta.l !window_hdma+$9
+    sta.l !window_hdma+9
     lda.b #$18
-    sta.l !window_hdma+$C
+    sta.l !window_hdma+12
     lda.b #$10
-    sta.l !window_hdma+$F
+    sta.l !window_hdma+15
     lda.b #$30
-    sta.l !window_hdma+$12
+    sta.l !window_hdma+18
     lda.b #$10
-    sta.l !window_hdma+$15
+    sta.l !window_hdma+21
     lda.b #$01
-    sta.l !window_hdma+$18
+    sta.l !window_hdma+24
     lda.b #$00
-    sta.l !window_hdma+$1B
+    sta.l !window_hdma+27
     rep.b #$20
     lda.w #$F857
-    sta.l !window_hdma+$1
-    sta.l !window_hdma+$4
-    sta.l !window_hdma+$7
-    sta.l !window_hdma+$A
-    sta.l !window_hdma+$D
-    sta.l !window_hdma+$10
-    sta.l !window_hdma+$13
-    sta.l !window_hdma+$16
-    sta.l !window_hdma+$19
+    sta.l !window_hdma+1
+    sta.l !window_hdma+4
+    sta.l !window_hdma+7
+    sta.l !window_hdma+10
+    sta.l !window_hdma+13
+    sta.l !window_hdma+16
+    sta.l !window_hdma+19
+    sta.l !window_hdma+22
+    sta.l !window_hdma+25
 .lDC8A:
     plb
     plp
@@ -240,18 +240,18 @@ WindowHdmaFFD1:
     lda.b #$20
     sta.l !window_hdma
     lda.b #$70
-    sta.l !window_hdma+$3
+    sta.l !window_hdma+3
     lda.b #$10
-    sta.l !window_hdma+$6
+    sta.l !window_hdma+6
     lda.b #$08
-    sta.l !window_hdma+$9
+    sta.l !window_hdma+9
     lda.b #$00
-    sta.l !window_hdma+$C
+    sta.l !window_hdma+12
     rep.b #$20
     lda.w #$F857
-    sta.l !window_hdma+$1
-    sta.l !window_hdma+$A
+    sta.l !window_hdma+1
+    sta.l !window_hdma+10
     lda.w #$FFD1
-    sta.l !window_hdma+$4
-    sta.l !window_hdma+$7
+    sta.l !window_hdma+4
+    sta.l !window_hdma+7
     rts

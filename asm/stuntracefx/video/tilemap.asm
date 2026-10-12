@@ -131,7 +131,7 @@ VramFrameRows2B0:
 ; @routine 03:EA7E VramFrameRows1B0
 ; WHAT IT DOES: As VramFrameRows2B0, with tile base $01B0.
 ; HOW: As VramFrameRows2B0.
-; Entry, exit: as VramFrameRows2B0.
+; Entry: as VramFrameRows2B0. Exit: as VramFrameRows2B0.
 %at($03EA7E)
 VramFrameRows1B0:
     pha
@@ -157,7 +157,7 @@ VramPictureRows2B0:
 ; @routine 03:EA91 VramPictureRows1B0
 ; WHAT IT DOES: As VramPictureRows2B0, with tile base $01B0.
 ; HOW: As VramPictureRows2B0.
-; Entry, exit: as VramPictureRows2B0.
+; Entry: as VramPictureRows2B0. Exit: as VramPictureRows2B0.
 %at($03EA91)
 VramPictureRows1B0:
     pha

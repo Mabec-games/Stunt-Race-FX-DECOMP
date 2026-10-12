@@ -240,7 +240,7 @@ void abi_WordListAAppend(void)
  * @routine 7F:10B7 WordListBAppend
  * WHAT IT DOES: Appends A to the eight-word list at $11B5, unless it is full.
  * HOW: Size in bytes at $1193; stores at $11B5 + size and adds 2.
- * Entry, exit: as WordListAAppend.
+ * Entry: as WordListAAppend. Exit: as WordListAAppend.
  */
 void WordListBAppend(uint16_t value)
 {

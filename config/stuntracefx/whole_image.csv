@@ -1,12 +1,12 @@
 script,verdict,detail,date,source
-attract,IDENTICAL,"frames 6300 compared 6300, differing 0; calls swapped 66021, entered other ways 0, unmatched 0: IDENTICAL",2026-10-11,b4061ce
-battle,IDENTICAL,"frames 11232 compared 11232, differing 0; calls swapped 82417, entered other ways 0, unmatched 0: IDENTICAL",2026-10-11,b4061ce
-speed_expert_4wd,IDENTICAL,"frames 11500 compared 11500, differing 0; calls swapped 102125, entered other ways 0, unmatched 0: IDENTICAL",2026-10-11,b4061ce
-speed_novice_4wd,IDENTICAL,"frames 11534 compared 11534, differing 0; calls swapped 94824, entered other ways 0, unmatched 0: IDENTICAL",2026-10-11,b4061ce
-speed_novice_coupe,IDENTICAL,"frames 11578 compared 11578, differing 0; calls swapped 111758, entered other ways 0, unmatched 0: IDENTICAL",2026-10-11,b4061ce
-speed_novice_ftype,IDENTICAL,"frames 11578 compared 11578, differing 0; calls swapped 111758, entered other ways 0, unmatched 0: IDENTICAL",2026-10-11,b4061ce
-stunt_bluelake,IDENTICAL,"frames 11558 compared 11558, differing 0; calls swapped 113765, entered other ways 0, unmatched 0: IDENTICAL",2026-10-11,b4061ce
-stunt_icedance,IDENTICAL,"frames 11524 compared 11524, differing 0; calls swapped 108614, entered other ways 0, unmatched 0: IDENTICAL",2026-10-11,b4061ce
-stunt_rockfield,IDENTICAL,"frames 11490 compared 11490, differing 0; calls swapped 103373, entered other ways 0, unmatched 0: IDENTICAL",2026-10-11,b4061ce
-stunt_upndown,IDENTICAL,"frames 11524 compared 11524, differing 0; calls swapped 104627, entered other ways 0, unmatched 0: IDENTICAL",2026-10-11,b4061ce
-testrun,IDENTICAL,"frames 11242 compared 11242, differing 0; calls swapped 79274, entered other ways 0, unmatched 0: IDENTICAL",2026-10-11,b4061ce
+attract,IDENTICAL,"frames 6300 compared 6299, differing 0; calls swapped 121739, entered other ways 46, unmatched 0, hardware accesses off the timeline 0, interrupts not pending where taken 0: IDENTICAL",2026-10-12,3a60f24
+battle,IDENTICAL,"frames 11232 compared 11232, differing 0; calls swapped 147235, entered other ways 37, unmatched 0, hardware accesses off the timeline 0, interrupts not pending where taken 0: IDENTICAL",2026-10-12,3a60f24
+speed_expert_4wd,IDENTICAL,"frames 11500 compared 11499, differing 0; calls swapped 372524, entered other ways 185, unmatched 0, hardware accesses off the timeline 0, interrupts not pending where taken 0: IDENTICAL",2026-10-12,3a60f24
+speed_novice_4wd,IDENTICAL,"frames 11534 compared 11532, differing 0; calls swapped 287006, entered other ways 131, unmatched 0, hardware accesses off the timeline 0, interrupts not pending where taken 0: IDENTICAL",2026-10-12,3a60f24
+speed_novice_coupe,IDENTICAL,"frames 11578 compared 11575, differing 0; calls swapped 286294, entered other ways 133, unmatched 0, hardware accesses off the timeline 0, interrupts not pending where taken 0: IDENTICAL",2026-10-12,3a60f24
+speed_novice_ftype,IDENTICAL,"frames 11578 compared 11577, differing 0; calls swapped 263579, entered other ways 90, unmatched 0, hardware accesses off the timeline 0, interrupts not pending where taken 0: IDENTICAL",2026-10-12,3a60f24
+stunt_bluelake,IDENTICAL,"frames 11558 compared 11557, differing 0; calls swapped 246091, entered other ways 100, unmatched 0, hardware accesses off the timeline 0, interrupts not pending where taken 0: IDENTICAL",2026-10-12,3a60f24
+stunt_icedance,IDENTICAL,"frames 11524 compared 11522, differing 0; calls swapped 254696, entered other ways 106, unmatched 0, hardware accesses off the timeline 0, interrupts not pending where taken 0: IDENTICAL",2026-10-12,3a60f24
+stunt_rockfield,IDENTICAL,"frames 11490 compared 11489, differing 0; calls swapped 237812, entered other ways 104, unmatched 0, hardware accesses off the timeline 0, interrupts not pending where taken 0: IDENTICAL",2026-10-12,3a60f24
+stunt_upndown,IDENTICAL,"frames 11524 compared 11521, differing 0; calls swapped 246884, entered other ways 95, unmatched 0, hardware accesses off the timeline 0, interrupts not pending where taken 0: IDENTICAL",2026-10-12,3a60f24
+testrun,IDENTICAL,"frames 11242 compared 11242, differing 0; calls swapped 301810, entered other ways 73, unmatched 0, hardware accesses off the timeline 0, interrupts not pending where taken 0: IDENTICAL",2026-10-12,3a60f24

@@ -42,7 +42,7 @@ void abi_GradientFillCgadd(void)
  * @routine 0B:FB1C GradientFillCgaddB
  * WHAT IT DOES: The same fill as GradientFillCgadd, in bank $0B.
  * HOW: As GradientFillCgadd.
- * Entry, exit: as GradientFillCgadd.
+ * Entry: as GradientFillCgadd. Exit: as GradientFillCgadd.
  */
 void GradientFillCgaddB(uint16_t value, uint16_t x, uint16_t count)
 {

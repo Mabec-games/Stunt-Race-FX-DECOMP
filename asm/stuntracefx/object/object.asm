@@ -44,7 +44,7 @@ ObjectCopy14To:
 ; @routine 03:D227 ObjectCopy14From
 ; WHAT IT DOES: Copies object Y's three bytes at +$14-$16 to object X.
 ; HOW: As ObjectCopy14To, the other way.
-; Entry, exit: as ObjectCopy14To.
+; Entry: as ObjectCopy14To. Exit: as ObjectCopy14To.
 %at($03D227)
 ObjectCopy14From:
     lda.w !obj_14,y
@@ -75,7 +75,7 @@ ObjectCopyPositionTo:
 ; @routine 03:D1FD ObjectCopyPositionFrom
 ; WHAT IT DOES: Copies object Y's position to object X.
 ; HOW: As ObjectCopyPositionTo, the other way.
-; Entry, exit: as ObjectCopyPositionTo.
+; Entry: as ObjectCopyPositionTo. Exit: as ObjectCopyPositionTo.
 %at($03D1FD)
 ObjectCopyPositionFrom:
     rep.b #$20

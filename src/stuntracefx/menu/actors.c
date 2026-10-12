@@ -255,7 +255,7 @@ void abi_MenuActorApplyPalette(void)
  * @routine 0B:C47B MenuActorIdleC47B
  * WHAT IT DOES: A handler that does nothing.
  * HOW: Returns.
- * Entry, exit: any; nothing changes.
+ * Entry: any. Exit: nothing changes.
  */
 void MenuActorIdleC47B(void)
 {
@@ -269,7 +269,7 @@ void abi_MenuActorIdleC47B(void)
  * @routine 0B:CE89 MenuActorIdleCE89
  * WHAT IT DOES: A handler that does nothing.
  * HOW: Returns.
- * Entry, exit: any; nothing changes.
+ * Entry: any. Exit: nothing changes.
  */
 void MenuActorIdleCE89(void)
 {

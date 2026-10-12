@@ -30,7 +30,7 @@ GsuCF42ToC000:
 ; @routine 03:EBF8 GsuCF42To4000
 ; WHAT IT DOES: As GsuCF42ToC000, drawing to $4000.
 ; HOW: As GsuCF42ToC000.
-; Entry, exit: as GsuCF42ToC000.
+; Entry: as GsuCF42ToC000. Exit: as GsuCF42ToC000.
 %at($03EBF8)
 GsuCF42To4000:
     sta.l !gsu_in_68
@@ -40,7 +40,7 @@ GsuCF42To4000:
 ; @routine 03:EC01 GsuCF42To3000
 ; WHAT IT DOES: As GsuCF42ToC000, drawing to $3000.
 ; HOW: As GsuCF42ToC000.
-; Entry, exit: as GsuCF42ToC000.
+; Entry: as GsuCF42ToC000. Exit: as GsuCF42ToC000.
 %at($03EC01)
 GsuCF42To3000:
     sta.l !gsu_in_68
@@ -163,9 +163,9 @@ Gsu82CE:
     rep.b #$20
     lda.l !gsu_out_26
     sta.b !dp_b7
-    lda.l !gsu_out_26+$2
+    lda.l !gsu_out_28
     sta.b !dp_b9
-    lda.l !gsu_out_26+$4
+    lda.l !gsu_out_2a
     sta.b !dp_bb
     plp
     ply
@@ -184,10 +184,10 @@ Gsu8325:
     rep.b #$20
     lda.w !wram_065E
     sta.l !gsu_in_20
-    lda.w !wram_065E+$2
-    sta.l !gsu_in_20+$2
-    lda.w !wram_065E+$4
-    sta.l !gsu_in_20+$4
+    lda.w !wram_065E+2
+    sta.l !gsu_in_22
+    lda.w !wram_065E+4
+    sta.l !gsu_in_24
     sep.b #$20
     rep.b #$10
     lda.b #$01
@@ -196,22 +196,22 @@ Gsu8325:
     rep.b #$20
     lda.l !gsu_out_e4
     sta.w !gsu_8325_out
-    lda.l !gsu_out_e4+$2
-    sta.w !gsu_8325_out+$2
-    lda.l !gsu_out_e4+$4
-    sta.w !gsu_8325_out+$4
-    lda.l !gsu_out_e4+$6
-    sta.w !gsu_8325_out+$6
-    lda.l !gsu_out_e4+$8
-    sta.w !gsu_8325_out+$8
-    lda.l !gsu_out_e4+$A
-    sta.w !gsu_8325_out+$A
-    lda.l !gsu_out_e4+$C
-    sta.w !gsu_8325_out+$C
-    lda.l !gsu_out_e4+$E
-    sta.w !gsu_8325_out+$E
-    lda.l !gsu_out_e4+$10
-    sta.w !gsu_8325_out+$10
+    lda.l !gsu_out_e4+2
+    sta.w !gsu_8325_out+2
+    lda.l !gsu_out_e4+4
+    sta.w !gsu_8325_out+4
+    lda.l !gsu_out_e4+6
+    sta.w !gsu_8325_out+6
+    lda.l !gsu_out_e4+8
+    sta.w !gsu_8325_out+8
+    lda.l !gsu_out_e4+10
+    sta.w !gsu_8325_out+10
+    lda.l !gsu_out_e4+12
+    sta.w !gsu_8325_out+12
+    lda.l !gsu_out_e4+14
+    sta.w !gsu_8325_out+14
+    lda.l !gsu_out_e4+16
+    sta.w !gsu_8325_out+16
     sep.b #$30
     rtl
 
@@ -227,19 +227,19 @@ GsuEE88Ramp:
     lda.w #$0080
     sta.l !gsu_ramp
     lda.w #$0090
-    sta.l !gsu_ramp+$2
+    sta.l !gsu_ramp+2
     lda.w #$00A0
-    sta.l !gsu_ramp+$4
+    sta.l !gsu_ramp+4
     lda.w #$00B0
-    sta.l !gsu_ramp+$6
+    sta.l !gsu_ramp+6
     lda.w #$00C0
-    sta.l !gsu_ramp+$8
+    sta.l !gsu_ramp+8
     lda.w #$00D0
-    sta.l !gsu_ramp+$A
+    sta.l !gsu_ramp+10
     lda.w #$00E0
-    sta.l !gsu_ramp+$C
+    sta.l !gsu_ramp+12
     lda.w #$00F0
-    sta.l !gsu_ramp+$E
+    sta.l !gsu_ramp+14
     sep.b #$20
     rep.b #$10
     ldx.w #$EE88

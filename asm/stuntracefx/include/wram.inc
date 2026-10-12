@@ -359,3 +359,42 @@ includeonce
 !gradient_ptr_b = $7F3493
 !gradient_src_a = $0D96
 !gradient_src_b = $0D98
+
+; Variables next to named ones whose purpose is not yet established; each
+; keeps its address (or its neighbour's name and position) as its name.
+!dp_05 = $05
+!rot_z_high = $05F3
+!wram_18C3 = $18C3
+!wram_18C5 = $18C5
+!wram_18C7 = $18C7
+!selection_1 = $18CD
+!selection_2 = $18CF
+!selection_3 = $18D1
+!selection_out_1 = $18D5
+!selection_out_2 = $18D7
+!selection_out_3 = $18D9
+!wram_18E5 = $18E5
+!wram_18E7 = $18E7
+!wram_18E9 = $18E9
+!wram_18EB = $18EB
+!wram_18ED = $18ED
+!wram_18EF = $18EF
+!wram_18F1 = $18F1
+!wram_18F3 = $18F3
+!wram_18F5 = $18F5
+!wram_18F7 = $18F7
+!wram_18F9 = $18F9
+!wram_18FD = $18FD
+!wram_18FF = $18FF
+!wram_1901 = $1901
+!wram_1903 = $1903
+!gsu_in_22 = $700022
+!gsu_in_24 = $700024
+!gsu_out_28 = $700028
+!gsu_out_2a = $70002A
+!gsu_in_36 = $700036
+!gsu_in_38 = $700038
+!gsu_in_3a = $70003A
+!gsu_in_3c = $70003C
+!gsu_in_3e = $70003E
+!gsu_in_94 = $700094

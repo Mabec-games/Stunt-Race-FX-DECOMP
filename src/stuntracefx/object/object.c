@@ -83,7 +83,7 @@ void abi_ObjectCopy14To(void)
  * @routine 03:D227 ObjectCopy14From
  * WHAT IT DOES: Copies object Y's three bytes at +$14-$16 to object X.
  * HOW: As ObjectCopy14To, the other way.
- * Entry, exit: as ObjectCopy14To.
+ * Entry: as ObjectCopy14To. Exit: as ObjectCopy14To.
  */
 void ObjectCopy14From(uint8_t bank, uint16_t to, uint16_t from)
 {
@@ -120,7 +120,7 @@ void abi_ObjectCopyPositionTo(void)
  * @routine 03:D1FD ObjectCopyPositionFrom
  * WHAT IT DOES: Copies object Y's position to object X.
  * HOW: As ObjectCopyPositionTo, the other way.
- * Entry, exit: as ObjectCopyPositionTo.
+ * Entry: as ObjectCopyPositionTo. Exit: as ObjectCopyPositionTo.
  */
 void ObjectCopyPositionFrom(uint8_t bank, uint16_t to, uint16_t from)
 {

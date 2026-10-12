@@ -27,7 +27,7 @@ HandlerTableA:
 ; @routine 03:B6F9 HandlerTableB
 ; WHAT IT DOES: Returns entry A of the handler address table at $03:B704.
 ; HOW: Word lookup at A * 2.
-; Entry, exit: as HandlerTableA.
+; Entry: as HandlerTableA. Exit: as HandlerTableA.
 %at($03B6F9)
 HandlerTableB:
     php
@@ -82,7 +82,7 @@ CourseDataPointer:
     sbc.w #$8000
     tay
     sep.b #$20
-    lda.l !course_pointers+$2,x
+    lda.l !course_pointers+2,x
     tyx
     rtl
 
@@ -106,24 +106,24 @@ SelectionTables18CB:
     tax
     lda.l !sel_base_table,x
     sta.w !scratch_11df
-    lda.l !selection+$2
+    lda.l !selection_1
     asl a
     clc
-    adc.l !selection+$2
+    adc.l !selection_1
     sta.w !scratch_11e1
-    lda.l !selection+$4
+    lda.l !selection_2
     asl a
     asl a
     asl a
     clc
-    adc.l !selection+$4
+    adc.l !selection_2
     clc
     adc.w !scratch_11e1
     sta.w !scratch_11e1
-    lda.l !selection+$6
+    lda.l !selection_3
     asl a
     clc
-    adc.l !selection+$6
+    adc.l !selection_3
     sta.w !scratch_11e3
     asl a
     asl a
@@ -137,13 +137,13 @@ SelectionTables18CB:
     tax
     lda.l !sel_table,x
     and.w #$0003
-    sta.l !selection_derived+$2
-    lda.l !sel_table+$1,x
+    sta.l !wram_18E5
+    lda.l !sel_table+1,x
     and.w #$0003
-    sta.l !selection_derived+$4
-    lda.l !sel_table+$2,x
+    sta.l !wram_18E7
+    lda.l !sel_table+2,x
     and.w #$0003
-    sta.l !selection_derived+$6
+    sta.l !wram_18E9
     lda.l !selection
     tax
     lda.l !sel_derived_table,x

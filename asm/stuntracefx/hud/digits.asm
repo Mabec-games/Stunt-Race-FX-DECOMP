@@ -40,39 +40,39 @@ HudDrawTime:
     lda.w !race_time_seconds
     and.b #$0F
     asl a
-    sta.w !oam_buffer+$1A,x
+    sta.w !oam_buffer+26,x
     inc a
-    sta.w !oam_buffer+$1E,x
+    sta.w !oam_buffer+30,x
     lda.w !race_time_seconds
     lsr a
     lsr a
     lsr a
     lsr a
     asl a
-    sta.w !oam_buffer+$12,x
+    sta.w !oam_buffer+18,x
     inc a
-    sta.w !oam_buffer+$16,x
+    sta.w !oam_buffer+22,x
     lda.w !race_time_fraction
     and.b #$0F
     asl a
-    sta.w !oam_buffer+$0A,x
+    sta.w !oam_buffer+10,x
     inc a
-    sta.w !oam_buffer+$0E,x
+    sta.w !oam_buffer+14,x
     lda.w !race_time_fraction
     lsr a
     lsr a
     lsr a
     lsr a
     asl a
-    sta.w !oam_buffer+$02,x
+    sta.w !oam_buffer+2,x
     inc a
-    sta.w !oam_buffer+$06,x
+    sta.w !oam_buffer+6,x
     lda.w !race_time_minutes
     and.b #$0F
     asl a
-    sta.w !oam_buffer+$22,x
+    sta.w !oam_buffer+34,x
     inc a
-    sta.w !oam_buffer+$26,x
+    sta.w !oam_buffer+38,x
     plp
     rts
 
@@ -90,18 +90,18 @@ HudDrawDigits19EC:
     lda.l !hud_digits_19ec
     and.b #$0F
     asl a
-    sta.w !oam_buffer+$16A
+    sta.w !oam_buffer+362
     inc a
-    sta.w !oam_buffer+$16E
+    sta.w !oam_buffer+366
     lda.l !hud_digits_19ec
     lsr a
     lsr a
     lsr a
     lsr a
     asl a
-    sta.w !oam_buffer+$162
+    sta.w !oam_buffer+354
     inc a
-    sta.w !oam_buffer+$166
+    sta.w !oam_buffer+358
 .done:
     rts
 
@@ -126,9 +126,9 @@ HudDrawNumber3:
     pha
     lda.b !digit_count
     asl a
-    sta.w !oam_buffer+$02,x
+    sta.w !oam_buffer+2,x
     inc a
-    sta.w !oam_buffer+$06,x
+    sta.w !oam_buffer+6,x
     pla
     stz.b !digit_count
 .tens:
@@ -141,12 +141,12 @@ HudDrawNumber3:
     pha
     lda.b !digit_count
     asl a
-    sta.w !oam_buffer+$0A,x
+    sta.w !oam_buffer+10,x
     inc a
-    sta.w !oam_buffer+$0E,x
+    sta.w !oam_buffer+14,x
     pla
     asl a
-    sta.w !oam_buffer+$12,x
+    sta.w !oam_buffer+18,x
     inc a
-    sta.w !oam_buffer+$16,x
+    sta.w !oam_buffer+22,x
     rts

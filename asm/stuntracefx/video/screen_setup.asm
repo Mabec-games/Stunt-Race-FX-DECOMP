@@ -85,21 +85,21 @@ RaceScreenSetup:
     sta.w !wram_0D81
     sep.b #$30
     lda.b #$01
-    sta.l !window_table_7f+$1
-    sta.l !window_table_7f+$4
-    sta.l !window_table_7f+$6
-    sta.l !window_table_7f+$9
-    sta.l !window_table_7f+$C
-    sta.l !window_table_7f+$15
-    sta.l !window_table_7f+$18
-    sta.l !window_table_7f+$1B
-    sta.l !window_table_7f+$1E
-    sta.l !window_table_7f+$1F
+    sta.l !window_table_7f+1
+    sta.l !window_table_7f+4
+    sta.l !window_table_7f+6
+    sta.l !window_table_7f+9
+    sta.l !window_table_7f+12
+    sta.l !window_table_7f+21
+    sta.l !window_table_7f+24
+    sta.l !window_table_7f+27
+    sta.l !window_table_7f+30
+    sta.l !window_table_7f+31
     lda.b #$00
-    sta.l !window_table_7f+$2
-    sta.l !window_table_7f+$5
-    sta.l !window_table_7f+$20
-    sta.l !window_table_7f+$21
+    sta.l !window_table_7f+2
+    sta.l !window_table_7f+5
+    sta.l !window_table_7f+32
+    sta.l !window_table_7f+33
     stz.w !colour_math_mode
     lda.b #$01
     sta.w !DMAP1
@@ -125,35 +125,35 @@ RaceScreenSetup:
     lda.b #$38
     sta.w !scroll_hdma
     lda.w !wram_0E33
-    sta.w !scroll_hdma+$1
-    lda.w !wram_0E33+$1
-    sta.w !scroll_hdma+$2
+    sta.w !scroll_hdma+1
+    lda.w !wram_0E33+1
+    sta.w !scroll_hdma+2
     lda.b #$4F
-    sta.w !scroll_hdma+$3
+    sta.w !scroll_hdma+3
     lda.w !scroll_value
-    sta.w !scroll_hdma+$4
-    lda.w !scroll_value+$1
-    sta.w !scroll_hdma+$5
+    sta.w !scroll_hdma+4
+    lda.w !scroll_value+1
+    sta.w !scroll_hdma+5
     lda.b #$01
-    sta.w !scroll_hdma+$6
+    sta.w !scroll_hdma+6
     lda.w !scroll_value
-    sta.w !scroll_hdma+$7
-    lda.w !scroll_value+$1
-    sta.w !scroll_hdma+$8
+    sta.w !scroll_hdma+7
+    lda.w !scroll_value+1
+    sta.w !scroll_hdma+8
     lda.b #$01
-    sta.w !scroll_hdma+$9
+    sta.w !scroll_hdma+9
     lda.w !scroll_value
-    sta.w !scroll_hdma+$A
-    lda.w !scroll_value+$1
-    sta.w !scroll_hdma+$B
+    sta.w !scroll_hdma+10
+    lda.w !scroll_value+1
+    sta.w !scroll_hdma+11
     lda.b #$01
-    sta.w !scroll_hdma+$C
+    sta.w !scroll_hdma+12
     lda.w !scroll_value
-    sta.w !scroll_hdma+$D
-    lda.w !scroll_value+$1
-    sta.w !scroll_hdma+$E
+    sta.w !scroll_hdma+13
+    lda.w !scroll_value+1
+    sta.w !scroll_hdma+14
     lda.b #$00
-    sta.w !scroll_hdma+$F
+    sta.w !scroll_hdma+15
     lda.b #$02
     sta.w !DMAP2
     lda.b #$10

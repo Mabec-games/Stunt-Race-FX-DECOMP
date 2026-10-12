@@ -136,7 +136,7 @@ void abi_MenuLoadGsu4000(void)
  * WHAT IT DOES: Queues $1000 bytes from $70:5000 to VRAM $5000; next step
  * D362.
  * HOW: As MenuLoadGsu4000.
- * Entry, exit: as MenuLoadGsu4000, A = $D362.
+ * Entry: as MenuLoadGsu4000. Exit: as MenuLoadGsu4000, A = $D362.
  */
 void MenuLoadGsu5000(uint8_t bank)
 {
@@ -155,7 +155,7 @@ void abi_MenuLoadGsu5000(void)
  * WHAT IT DOES: Queues $1000 bytes from $70:6000 to VRAM $5800; next step
  * D391.
  * HOW: As MenuLoadGsu4000.
- * Entry, exit: as MenuLoadGsu4000, A = $D391.
+ * Entry: as MenuLoadGsu4000. Exit: as MenuLoadGsu4000, A = $D391.
  */
 void MenuLoadGsu6000(uint8_t bank)
 {
@@ -234,7 +234,7 @@ void abi_MenuLoadClearGsu(void)
  * WHAT IT DOES: Queues $1000 bytes from $70:3000 (cleared) to VRAM $0800;
  * next step D447.
  * HOW: As MenuLoadGsu4000.
- * Entry, exit: as MenuLoadGsu4000, A = $D447.
+ * Entry: as MenuLoadGsu4000. Exit: as MenuLoadGsu4000, A = $D447.
  */
 void MenuLoadBlank0800(uint8_t bank)
 {
@@ -253,7 +253,7 @@ void abi_MenuLoadBlank0800(void)
  * WHAT IT DOES: Queues $1000 bytes from $70:3000 to VRAM $1000; next step
  * D476.
  * HOW: As MenuLoadGsu4000.
- * Entry, exit: as MenuLoadGsu4000, A = $D476.
+ * Entry: as MenuLoadGsu4000. Exit: as MenuLoadGsu4000, A = $D476.
  */
 void MenuLoadBlank1000(uint8_t bank)
 {
@@ -272,7 +272,7 @@ void abi_MenuLoadBlank1000(void)
  * WHAT IT DOES: Queues $400 bytes from $70:3000 to VRAM $1800; next step
  * D4A5 (MenuSetExit).
  * HOW: As MenuLoadGsu4000.
- * Entry, exit: as MenuLoadGsu4000, A = $D4A5.
+ * Entry: as MenuLoadGsu4000. Exit: as MenuLoadGsu4000, A = $D4A5.
  */
 void MenuLoadBlank1800(uint8_t bank)
 {
