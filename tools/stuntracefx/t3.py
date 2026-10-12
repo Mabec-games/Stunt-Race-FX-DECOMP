@@ -221,19 +221,20 @@ def span_of(addr, asm_path):
     return span
 
 
-def qualify(addrs):
+def assess(addrs, image_ok=None):
+    """Every gate for each routine: [(key, name, tier, [(gate, ok, why)])]."""
     live = {r['routine']: r for r in csv.DictReader(open(LIVE))} if os.path.exists(LIVE) else {}
     image_rows = list(csv.DictReader(open(IMAGE))) if os.path.exists(IMAGE) else []
-    mp = None
-    worst = 0
+    mp, out = None, []
     for a in addrs:
         addr = int(a, 16)
         key = '%06X' % addr
         cpath, ctext, cm = find_tagged(os.path.join(ROOT, 'src', 'stuntracefx'), ('.c',), addr)
         apath, atext, am = find_tagged(os.path.join(ROOT, 'asm', 'stuntracefx'), ('.asm',), addr)
-        gates = []
         if not cpath:
-            print('%s: no C' % key); worst = 1; continue
+            out.append((key, am.group(3) if am else '', 'T2' if apath else 'T1', [('C', False, 'no C')]))
+            continue
+        gates = []
         name = cm.group(3)
         h = header_of(ctext, cm, False)
         g0 = all(k in h for k in ('WHAT IT DOES:', 'HOW:', 'Entry:', 'Exit:')) and not MARKERS.search(ctext)
@@ -262,17 +263,24 @@ def qualify(addrs):
                        if l.strip() and not l.strip().startswith((';', '%', '!')) and not l.strip().endswith(':')
                        and re.search(r'(?<!#)\$[0-9A-Fa-f]', l.split(';')[0])]
             gs = not literal
-            img = subprocess.run([sys.executable, os.path.join(ROOT, 'tools', 'stuntracefx', 'image.py')],
-                                 capture_output=True, text=True, cwd=ROOT).returncode == 0
+            if image_ok is None:
+                image_ok = subprocess.run([sys.executable, os.path.join(ROOT, 'tools', 'stuntracefx', 'image.py')],
+                                          capture_output=True, text=True, cwd=ROOT).returncode == 0
             gates += [('T4 header', ga, os.path.relpath(apath, ROOT)),
                       ('T4 symbolic', gs, 'literal addresses: %s' % literal[:3] if literal else 'no literal addresses'),
-                      ('T4 image', img, 'whole ROM byte-exact' if img else 'image gate fails')]
-            t4 = t3 and ga and gs and img
-        tier = 'T4' if t4 else 'T3' if t3 else 'below T3'
-        print('%s %s: %s' % (key, name, tier))
+                      ('T4 image', image_ok, 'whole ROM byte-exact' if image_ok else 'image gate fails')]
+            t4 = t3 and ga and gs and image_ok
+        out.append((key, name, 'T4' if t4 else 'T3' if t3 else 'T2', gates))
+    return out
+
+
+def qualify(addrs):
+    worst = 0
+    for key, name, tier, gates in assess(addrs):
+        print('%s %s: %s' % (key, name, tier if tier in ('T3', 'T4') else 'below T3 (%s)' % tier))
         for g, ok, why in gates:
             print('  %-12s %s  %s' % (g, 'pass' if ok else 'FAIL', why))
-        worst = max(worst, 0 if t3 else 1)
+        worst = max(worst, 0 if tier in ('T3', 'T4') else 1)
     return worst
 
 

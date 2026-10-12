@@ -59,6 +59,8 @@ responsibility, never by address range.
 | `tools/stuntracefx/ppm2png.py` | frame dumps to PNG |
 | `tools/stuntracefx/precommit.py` | filing rules on staged files |
 | `tools/stuntracefx/hybrid.py` | build the C into the library the harness loads; one entry per `@routine` |
+| `tools/stuntracefx/catalog.py` | the routine catalog from the traces: entries on both processors, executed bytes |
+| `tools/stuntracefx/progress.py` | the README's bars and `docs/stuntracefx/progress-map.svg`, from one classification |
 | `tools/stuntracefx/t3.py` | `--live` (A5, per call), `--image` (A7, lockstep), `--qualify` (every gate, the tier) |
 
 ```bash
