@@ -63,6 +63,7 @@ def main(argv):
         code = [re.sub(start, name, l) for l in code]  # a branch back to the entry
         out.append('\n'.join(['; ' + l for l in header] + [place, name + ':'] + code))
     new = not os.path.exists(path)
+    os.makedirs(os.path.dirname(path) or '.', exist_ok=True)
     with open(path, 'a') as f:
         if new:
             f.write(file_header(cfile) + '\n')

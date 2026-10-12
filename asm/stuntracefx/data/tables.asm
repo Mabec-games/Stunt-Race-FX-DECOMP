@@ -168,3 +168,12 @@ SelectionTables18CB:
     bne .lB78F
     plp
     rts
+
+; @routine 03:B70A SelectionTables18CBLong
+; WHAT IT DOES: SelectionTables18CB for callers in other banks.
+; HOW: JSR to it, then RTL.
+; Entry: as SelectionTables18CB. Exit: as SelectionTables18CB.
+%at($03B70A)
+SelectionTables18CBLong:
+    jsr.w SelectionTables18CB
+    rtl

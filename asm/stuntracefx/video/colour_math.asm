@@ -66,3 +66,23 @@ ColourMathSub83Windowed:
     sta.l !CGADSUB
     jsr.w WindowsColourWindowOnly
     rts
+
+; @routine 03:FE53 ColourMathA3Long
+; WHAT IT DOES: ColourMathA3 for callers in other banks.
+; HOW: JSR to it, then RTL.
+; Entry: as ColourMathA3. Exit: as ColourMathA3.
+%at($03FE53)
+ColourMathA3Long:
+    jsr.w ColourMathA3
+    rtl
+
+; @routine 03:FE63 ColourMathOff
+; WHAT IT DOES: Sets the colour maths mode at $0D47 to 0 (none).
+; HOW: One byte store through the data bank.
+; Entry: any widths. Exit: A low byte = 0; M 8-bit; Z set, N clear.
+%at($03FE63)
+ColourMathOff:
+    sep.b #$20
+    lda.b #$00
+    sta.w !colour_math_mode
+    rts

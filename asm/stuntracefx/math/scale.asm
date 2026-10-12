@@ -122,3 +122,36 @@ ScaleDp02Dp94:
     clc
     adc.b !dp_02
     rts
+
+; @routine 08:83E8 ScaleDp02Dp94Long
+; WHAT IT DOES: ScaleDp02Dp94 for callers in other banks.
+; HOW: JSR to it, then RTL.
+; Entry: as ScaleDp02Dp94. Exit: as ScaleDp02Dp94.
+%at($0883E8)
+ScaleDp02Dp94Long:
+    jsr.w ScaleDp02Dp94
+    rtl
+
+; @routine 03:CC0D ScaleFiveThirtySeconds
+; WHAT IT DOES: Returns v/8 + v/32 of a signed 16-bit value (5/32), keeping
+; v/8 at $1F2B.
+; HOW: Arithmetic shifts by CMP #$8000 / ROR A (rounding toward minus
+; infinity), then an add.
+; Entry: M 16-bit; A = value. Exit: A = the result; $1F2B = v/8; N, Z, C, V
+; from the add.
+%at($03CC0D)
+ScaleFiveThirtySeconds:
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    sta.w !wram_1F2B
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    clc
+    adc.w !wram_1F2B
+    rtl

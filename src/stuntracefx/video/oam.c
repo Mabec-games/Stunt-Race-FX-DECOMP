@@ -564,3 +564,21 @@ void abi_OamHighBits58(void)
     cpu.x = 0x0010;
     cpu.y &= 0x00FF;
 }
+
+void abi_OamBufferHideLarge(void);
+
+/*
+ * @routine 03:FEF5 OamBufferHideLargeLong
+ * WHAT IT DOES: OamBufferHideLarge for callers in other banks.
+ * HOW: JSR to it, then RTL.
+ * Entry: as OamBufferHideLarge. Exit: as OamBufferHideLarge.
+ */
+void OamBufferHideLargeLong(void)
+{
+    OamBufferHideLarge();
+}
+
+void abi_OamBufferHideLargeLong(void)
+{
+    abi_OamBufferHideLarge();
+}

@@ -70,3 +70,7 @@ includeonce
 
 ; Tilemap rows read through the data bank (video/tilemap.asm).
 !tilemap_rows_fb4e = $FB4E
+
+; BCD values per course and entry, three bytes per entry (race/time.asm).
+!course_values_d814 = $03D814
+!course_values_d815 = $03D815

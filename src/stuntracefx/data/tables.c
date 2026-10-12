@@ -158,3 +158,21 @@ void abi_SelectionTables18CB(void)
     cpu.a = v;
     cpu.x = 0x0008;
 }
+
+void abi_SelectionTables18CB(void);
+
+/*
+ * @routine 03:B70A SelectionTables18CBLong
+ * WHAT IT DOES: SelectionTables18CB for callers in other banks.
+ * HOW: JSR to it, then RTL.
+ * Entry: as SelectionTables18CB. Exit: as SelectionTables18CB.
+ */
+void SelectionTables18CBLong(uint8_t bank)
+{
+    SelectionTables18CB(bank);
+}
+
+void abi_SelectionTables18CBLong(void)
+{
+    abi_SelectionTables18CB();
+}

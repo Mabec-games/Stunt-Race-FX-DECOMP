@@ -460,3 +460,12 @@ OamHighBits58:
     sta.w !oam_high_16-13,x
     plp
     rts
+
+; @routine 03:FEF5 OamBufferHideLargeLong
+; WHAT IT DOES: OamBufferHideLarge for callers in other banks.
+; HOW: JSR to it, then RTL.
+; Entry: as OamBufferHideLarge. Exit: as OamBufferHideLarge.
+%at($03FEF5)
+OamBufferHideLargeLong:
+    jsr.w OamBufferHideLarge
+    rtl

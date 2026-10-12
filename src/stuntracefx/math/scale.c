@@ -108,3 +108,48 @@ void abi_ScaleDp02Dp94(void)
     cpu.a = ScaleDp02Dp94(&p);
     cpu.p = p;
 }
+
+void abi_ScaleDp02Dp94(void);
+
+/*
+ * @routine 08:83E8 ScaleDp02Dp94Long
+ * WHAT IT DOES: ScaleDp02Dp94 for callers in other banks.
+ * HOW: JSR to it, then RTL.
+ * Entry: as ScaleDp02Dp94. Exit: as ScaleDp02Dp94.
+ */
+uint16_t ScaleDp02Dp94Long(uint8_t *p)
+{
+    return ScaleDp02Dp94(p);
+}
+
+void abi_ScaleDp02Dp94Long(void)
+{
+    abi_ScaleDp02Dp94();
+}
+
+/*
+ * @routine 03:CC0D ScaleFiveThirtySeconds
+ * WHAT IT DOES: Returns v/8 + v/32 of a signed 16-bit value (5/32), keeping
+ * v/8 at $1F2B.
+ * HOW: Arithmetic shifts by CMP #$8000 / ROR A (rounding toward minus
+ * infinity), then an add.
+ * Entry: M 16-bit; A = value. Exit: A = the result; $1F2B = v/8; N, Z, C, V
+ * from the add.
+ */
+uint16_t ScaleFiveThirtySeconds(uint8_t bank, uint16_t v, uint8_t *p)
+{
+    uint16_t e = asr1(asr1(asr1(v))), t = asr1(asr1(e)), s = (uint16_t)(t + e);
+
+    wr16((uint32_t)bank << 16 | 0x1F2B, e);
+    *p = (uint8_t)((nz16(*p, s) & ~(P_C | P_V)) | ((unsigned)t + e > 0xFFFF ? P_C : 0)
+                   | ((~(t ^ e) & (t ^ s) & 0x8000) ? P_V : 0));
+    return s;
+}
+
+void abi_ScaleFiveThirtySeconds(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = ScaleFiveThirtySeconds(cpu.db, cpu.a, &p);
+    cpu.p = p;
+}
