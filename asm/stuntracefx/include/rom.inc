@@ -164,3 +164,8 @@ includeonce
 ; The debug font, 6 bytes a character, read through data bank 0
 ; (system/debug_text.asm).
 !debug_font = $9022
+; Inputs of the $07:FA5A piece drawers, a word per entry (gsu/programs.asm).
+!fa5a_input_e = $0797BE
+!fa5a_input_12 = $0797CA
+!fa5a_six_dx = $079806
+!piece_scale_w = $85CC                 ; a byte per counter step, read through the data bank

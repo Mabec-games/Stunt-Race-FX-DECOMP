@@ -695,3 +695,834 @@ ViewUpdateAndGsuAEF8:
     sep.b #$20
     rep.b #$10
     rtl
+
+; @routine 07:8AA6 GsuF329Sequence
+; WHAT IT DOES: Runs Super FX program $07:F329 seven times: for each of the
+; five bytes at Y (through the data bank) via GsuF329Entry, with two runs
+; between them that set $70:0216 = $980A (after the first byte) and $980C
+; (after the third).
+; HOW: GsuF329Entry and GsuRun.
+; Entry: M 16-bit, X 16-bit, D = $0000; Y = the bytes. Exit: as
+; GsuF329Entry for the fifth byte; Y unchanged.
+%at($078AA6)
+GsuF329Sequence:
+    lda.w 0,y
+    jsr.w GsuF329Entry
+    lda.w #$980A
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F329
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.w 1,y
+    jsr.w GsuF329Entry
+    lda.w 2,y
+    jsr.w GsuF329Entry
+    lda.w #$980C
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F329
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.w 3,y
+    jsr.w GsuF329Entry
+    lda.w 4,y
+    jsr.w GsuF329Entry
+    rts
+
+; @routine 07:997F GsuF15BFive
+; WHAT IT DOES: Runs Super FX program $07:F15B five times, with $70:0216
+; = $8410, $8C0C, $8408, $8C10 and $8804, after setting $70:0210 = $20,
+; $70:020E = $10, $70:020A = $18, $70:020C = $18 and the bytes $0F, $09,
+; $0A at $70:0200.
+; HOW: GsuBytes200_0F090A, then GsuRun for each value.
+; Entry: any widths, D = $0000. Exit: A = $88 and the screen mode value; X
+; = $F15B; M 16-bit, X 16-bit; N, Z from the data bank.
+%at($07997F)
+GsuF15BFive:
+    rep.b #$30
+    lda.w #$0020
+    sta.l !gsu_bytes_200+16
+    lda.w #$0010
+    sta.l !gsu_bytes_200+14
+    lda.w #$0018
+    sta.l !gsu_bytes_200+10
+    lda.w #$0018
+    sta.l !gsu_bytes_200+12
+    jsl.l GsuBytes200_0F090A
+    rep.b #$20
+    lda.w #$8410
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8C0C
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8408
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8C10
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8804
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rts
+
+; @routine 07:92B5 GsuFA5AThree
+; WHAT IT DOES: Runs Super FX program $07:FA5A three times around the point
+; ($0D6D, $0D6F): at (X - 8, Y) with $70:0216 = $1A10 and (X - 8, Y + $18)
+; with $1B10, both with $70:020E/0210/0212/0214 = $100; then at (X - 8,
+; Y + 8) with $1A18, $70:0210 = $200 and $70:0214 = $80. The point goes to
+; $70:020A and $70:020C.
+; HOW: Word stores and GsuRun.
+; Entry: M 16-bit, X 16-bit, D = $0000. Exit: A = $1A and the screen mode
+; value; X = $FA5A; N, Z from the data bank; C, V from the add of 8.
+%at($0792B5)
+GsuFA5AThree:
+    lda.w #$0100
+    sta.l !gsu_bytes_200+14
+    lda.w #$0100
+    sta.l !gsu_bytes_200+18
+    lda.w #$0100
+    sta.l !gsu_bytes_200+16
+    lda.w #$0100
+    sta.l !gsu_bytes_200+20
+    lda.w !wram_0D6D
+    clc
+    adc.w #$FFF8
+    sta.l !gsu_bytes_200+10
+    lda.w !wram_0D6F
+    sta.l !gsu_bytes_200+12
+    lda.w #$1A10
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FA5A
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.w !wram_0D6D
+    clc
+    adc.w #$FFF8
+    sta.l !gsu_bytes_200+10
+    lda.w !wram_0D6F
+    clc
+    adc.w #$0018
+    sta.l !gsu_bytes_200+12
+    lda.w #$1B10
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FA5A
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.w #$0200
+    sta.l !gsu_bytes_200+16
+    lda.w #$0080
+    sta.l !gsu_bytes_200+20
+    lda.w !wram_0D6D
+    clc
+    adc.w #$FFF8
+    sta.l !gsu_bytes_200+10
+    lda.w !wram_0D6F
+    clc
+    adc.w #$0008
+    sta.l !gsu_bytes_200+12
+    lda.w #$1A18
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FA5A
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rts
+
+; @routine 07:9660 GsuFA5AFromTables
+; WHAT IT DOES: Runs Super FX program $07:FA5A three times at the point
+; ($0D6D, $0D6F): piece $1B18 at (X, Y) with $70:020E and $70:0212 from
+; entry $0D6B of the word tables at $07:97BE and $07:97CA; piece $1D18 at
+; (X, Y + $18); piece $1A55 at (X, Y + 8) with $70:0210 = $200 and
+; $70:0214 = $80 (the first two with both $100).
+; HOW: Word stores and GsuRun.
+; Entry: M 16-bit, X 16-bit, D = $0000. Exit: A = the screen mode value
+; (high byte clear); X = $FA5A; N, Z from the data bank; C, V from the add
+; of 8.
+%at($079660)
+GsuFA5AFromTables:
+    ldx.w !wram_0D6B
+    lda.l !fa5a_input_e,x
+    sta.l !gsu_bytes_200+14
+    lda.l !fa5a_input_12,x
+    sta.l !gsu_bytes_200+18
+    lda.w #$1B18
+    sta.l !gsu_in_216
+    lda.w !wram_0D6D
+    sta.l !gsu_bytes_200+10
+    lda.w !wram_0D6F
+    sta.l !gsu_bytes_200+12
+    lda.w #$0100
+    sta.l !gsu_bytes_200+16
+    lda.w #$0100
+    sta.l !gsu_bytes_200+20
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FA5A
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.w !wram_0D6D
+    sta.l !gsu_bytes_200+10
+    lda.w !wram_0D6F
+    clc
+    adc.w #$0018
+    sta.l !gsu_bytes_200+12
+    lda.w #$0100
+    sta.l !gsu_bytes_200+16
+    lda.w #$0100
+    sta.l !gsu_bytes_200+20
+    lda.w #$1D18
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FA5A
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.w !wram_0D6F
+    clc
+    adc.w #$0008
+    sta.l !gsu_bytes_200+12
+    lda.w !wram_0D6D
+    sta.l !gsu_bytes_200+10
+    lda.w #$1A55
+    sta.l !gsu_in_216
+    lda.w #$0200
+    sta.l !gsu_bytes_200+16
+    lda.w #$0080
+    sta.l !gsu_bytes_200+20
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FA5A
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rts
+
+; @routine 07:9366 GsuFA5ASix
+; WHAT IT DOES: Runs Super FX program $07:FA5A six times, all with
+; $70:020E/0210/0212/0214 = $100, from X = $0D6D + entry $0D6B of the word
+; table at $07:9806 (kept in direct page $F1) and Y = $0D6F: pieces $1A0E,
+; $1A16, $1B16, $1B0E at Y, Y + 8, Y + $10, Y + $18; then at X + 8, pieces
+; $1A0E and $1B0E at Y + 8 and Y + $10.
+; HOW: Word stores and GsuRun; $F1 ends as X + 8.
+; Entry: M 16-bit, X 16-bit, D = $0000. Exit: A = $1B and the screen mode
+; value; X = $FA5A; N, Z from the data bank; C, V from the add of $10.
+%at($079366)
+GsuFA5ASix:
+    lda.w #$0100
+    sta.l !gsu_bytes_200+14
+    lda.w #$0100
+    sta.l !gsu_bytes_200+18
+    lda.w #$0100
+    sta.l !gsu_bytes_200+16
+    lda.w #$0100
+    sta.l !gsu_bytes_200+20
+    ldx.w !wram_0D6B
+    lda.l !fa5a_six_dx,x
+    clc
+    adc.w !wram_0D6D
+    sta.b !piece_x
+    sta.l !gsu_bytes_200+10
+    lda.w #$1A0E
+    sta.l !gsu_in_216
+    lda.w !wram_0D6F
+    sta.l !gsu_bytes_200+12
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FA5A
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.b !piece_x
+    sta.l !gsu_bytes_200+10
+    lda.w !wram_0D6F
+    clc
+    adc.w #$0008
+    sta.l !gsu_bytes_200+12
+    lda.w #$1A16
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FA5A
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.b !piece_x
+    sta.l !gsu_bytes_200+10
+    lda.w !wram_0D6F
+    clc
+    adc.w #$0010
+    sta.l !gsu_bytes_200+12
+    lda.w #$1B16
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FA5A
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.b !piece_x
+    sta.l !gsu_bytes_200+10
+    lda.w !wram_0D6F
+    clc
+    adc.w #$0018
+    sta.l !gsu_bytes_200+12
+    lda.w #$1B0E
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FA5A
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.b !piece_x
+    clc
+    adc.w #$0008
+    sta.b !piece_x
+    sta.l !gsu_bytes_200+10
+    lda.w !wram_0D6F
+    clc
+    adc.w #$0008
+    sta.l !gsu_bytes_200+12
+    lda.w #$1A0E
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FA5A
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.b !piece_x
+    sta.l !gsu_bytes_200+10
+    lda.w !wram_0D6F
+    clc
+    adc.w #$0010
+    sta.l !gsu_bytes_200+12
+    lda.w #$1B0E
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FA5A
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rts
+
+; @routine 07:8653 GsuF15BTwoLines
+; WHAT IT DOES: Draws sixteen pieces with Super FX program $07:F15B (a run
+; per piece, $70:0216 = the piece): three from ($50, 8) and 13 from
+; (0, $2C), with $70:0210 = A, $70:020E = $10 and the bytes $BF, $B7,
+; $B6 at $70:0200. A piece of 0 is a space.
+; HOW: GsuBytes200_BFB7B6, then GsuRun per piece; the program steps the
+; position itself.
+; Entry: M 16-bit, X 8-bit, D = $0000; A = the input for $70:0210. Exit:
+; A = $8C and the screen mode value; X = $F15B; M 16-bit, X 16-bit; N, Z
+; from the data bank.
+%at($078653)
+GsuF15BTwoLines:
+    sta.l !gsu_bytes_200+16
+    lda.w #$0010
+    sta.l !gsu_bytes_200+14
+    lda.w #$0050
+    sta.l !gsu_bytes_200+10
+    lda.w #$0008
+    sta.l !gsu_bytes_200+12
+    jsl.l GsuBytes200_BFB7B6
+    rep.b #$20
+    lda.w #$8800
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8418
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8C14
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$0000
+    sta.l !gsu_bytes_200+10
+    lda.w #$002C
+    sta.l !gsu_bytes_200+12
+    rep.b #$20
+    lda.w #$8408
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8814
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8814
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$0000
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8C14
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8804
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8418
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$0000
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8C10
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8C14
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8408
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8C0C
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8C10
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rts
+
+; @routine 07:833B GsuPiecesStep10CB
+; WHAT IT DOES: Steps the counter at $10CB (up to $14) and draws eleven
+; pieces from ($10, $28): $800C, $8814, $8408, $8C04, $8C10, space, $8C14,
+; $8C00, space, $8800, $8C00, with $70:0210 = the counter's byte in the
+; table at $85CC (through the data bank), $70:020E = $10 and the bytes
+; $BF, $BA, $B9 at $70:0200. While the counter is below 8 the pieces go
+; through Super FX program $07:F15B, after that through $07:F121.
+; HOW: GsuBytes200_BFBAB9, then GsuRun per piece; after the first piece
+; the X position the program left at $70:020A is moved on by 4.
+; Entry: M 16-bit, X 16-bit, D = $0000. Exit: A = $8C and the screen mode
+; value; X = the program address; N, Z from the data bank; C, V from the
+; add of 4.
+%at($07833B)
+GsuPiecesStep10CB:
+    lda.w !piece_counter
+    inc a
+    cmp.w #$0014
+    bcc .capped
+    lda.w #$0014
+.capped:
+    sta.w !piece_counter
+    tax
+    lda.w #$0010
+    sta.l !gsu_bytes_200+14
+    lda.w #$0010
+    sta.l !gsu_bytes_200+10
+    lda.w #$0028
+    sta.l !gsu_bytes_200+12
+    jsl.l GsuBytes200_BFBAB9
+    lda.w !piece_scale_w,x
+    and.w #$00FF
+    sta.l !gsu_bytes_200+16
+    cpx.w #$0008
+    bcc .f15b
+    jmp.w .f121
+.f15b:
+    rep.b #$20
+    lda.w #$800C
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.l !gsu_bytes_200+10
+    clc
+    adc.w #$0004
+    sta.l !gsu_bytes_200+10
+    rep.b #$20
+    lda.w #$8814
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8408
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8C04
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8C10
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$0000
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8C14
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8C00
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$0000
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8800
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8C00
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rts
+.f121:
+    rep.b #$20
+    lda.w #$800C
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F121
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.l !gsu_bytes_200+10
+    clc
+    adc.w #$0004
+    sta.l !gsu_bytes_200+10
+    rep.b #$20
+    lda.w #$8814
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F121
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8408
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F121
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8C04
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F121
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8C10
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F121
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$0000
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F121
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8C14
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F121
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8C00
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F121
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$0000
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F121
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8800
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F121
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8C00
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F121
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rts

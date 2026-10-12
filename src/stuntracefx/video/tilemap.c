@@ -660,3 +660,25 @@ void abi_BackdropRowsUpdate(void)
         cpu.y &= 0x00FF;
     }
 }
+
+/*
+ * @routine 07:C293 TilemapPaletteCycle87
+ * WHAT IT DOES: TilemapPaletteCycle on nine entries from entry offset $87.
+ * HOW: Sets X and Y and calls it.
+ * Entry: M 8-bit, D = $0000. Exit: as TilemapPaletteCycle, with X 16-bit;
+ * when skipped, X = $87 and Y = 9.
+ */
+void TilemapPaletteCycle87(uint8_t bank, uint16_t *a)
+{
+    uint16_t x = 0x0087, y = 0x0009;
+
+    TilemapPaletteCycle(bank, &x, &y, a);
+}
+
+void abi_TilemapPaletteCycle87(void)
+{
+    cpu.x = 0x0087;
+    cpu.y = 0x0009;
+    cpu.p &= (uint8_t)~P_X;
+    abi_TilemapPaletteCycle();
+}

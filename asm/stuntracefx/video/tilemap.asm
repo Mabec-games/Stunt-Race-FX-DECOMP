@@ -658,3 +658,16 @@ BackdropRowsUpdate:
     plb
     plp
     rts
+
+; @routine 07:C293 TilemapPaletteCycle87
+; WHAT IT DOES: TilemapPaletteCycle on nine entries from entry offset $87.
+; HOW: Sets X and Y and calls it.
+; Entry: M 8-bit, D = $0000. Exit: as TilemapPaletteCycle, with X 16-bit;
+; when skipped, X = $87 and Y = 9.
+%at($07C293)
+TilemapPaletteCycle87:
+    rep.b #$10
+    ldx.w #$0087
+    ldy.w #$0009
+    jsr.w TilemapPaletteCycle
+    rts

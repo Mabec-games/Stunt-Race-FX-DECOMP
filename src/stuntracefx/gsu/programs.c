@@ -677,3 +677,340 @@ void abi_ViewUpdateAndGsuAEF8(void)
     abi_GsuRun();
     cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
 }
+
+/*
+ * @routine 07:8AA6 GsuF329Sequence
+ * WHAT IT DOES: Runs Super FX program $07:F329 seven times: for each of the
+ * five bytes at Y (through the data bank) via GsuF329Entry, with two runs
+ * between them that set $70:0216 = $980A (after the first byte) and $980C
+ * (after the third).
+ * HOW: GsuF329Entry and GsuRun.
+ * Entry: M 16-bit, X 16-bit, D = $0000; Y = the bytes. Exit: as
+ * GsuF329Entry for the fifth byte; Y unchanged.
+ */
+uint8_t GsuF329Sequence(uint8_t bank, uint16_t y)
+{
+    uint32_t b = (uint32_t)bank << 16;
+
+    GsuF329Entry(bank, rd8(b | y));
+    wr16(0x700216, 0x980A);
+    GsuRun(0x07, 0xF329);
+    GsuF329Entry(bank, rd8(b | (uint16_t)(y + 1)));
+    GsuF329Entry(bank, rd8(b | (uint16_t)(y + 2)));
+    wr16(0x700216, 0x980C);
+    GsuRun(0x07, 0xF329);
+    GsuF329Entry(bank, rd8(b | (uint16_t)(y + 3)));
+    return GsuF329Entry(bank, rd8(b | (uint16_t)(y + 4)));
+}
+
+void abi_GsuF329Sequence(void)
+{
+    uint16_t index = (uint16_t)((rd8((uint32_t)cpu.db << 16 | (uint16_t)(cpu.y + 4)) & 0x0F) << 1);
+    uint16_t hi = (uint16_t)(rd16((uint32_t)cpu.db << 16 | (uint16_t)(0x8E52 + index)) & 0xFF00);
+    uint8_t mode = GsuF329Sequence(cpu.db, cpu.y);
+
+    cpu.a = (uint16_t)(hi | mode);
+    cpu.x = 0xF329;
+    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~P_C);
+}
+
+/*
+ * @routine 07:997F GsuF15BFive
+ * WHAT IT DOES: Runs Super FX program $07:F15B five times, with $70:0216
+ * = $8410, $8C0C, $8408, $8C10 and $8804, after setting $70:0210 = $20,
+ * $70:020E = $10, $70:020A = $18, $70:020C = $18 and the bytes $0F, $09,
+ * $0A at $70:0200.
+ * HOW: GsuBytes200_0F090A, then GsuRun for each value.
+ * Entry: any widths, D = $0000. Exit: A = $88 and the screen mode value; X
+ * = $F15B; M 16-bit, X 16-bit; N, Z from the data bank.
+ */
+uint8_t GsuF15BFive(void)
+{
+    static const uint16_t in216[5] = {0x8410, 0x8C0C, 0x8408, 0x8C10, 0x8804};
+    uint8_t mode = 0;
+    unsigned i;
+
+    wr16(0x700210, 0x0020);
+    wr16(0x70020E, 0x0010);
+    wr16(0x70020A, 0x0018);
+    wr16(0x70020C, 0x0018);
+    GsuBytes200_0F090A();
+    for (i = 0; i < 5; i++) {
+        wr16(0x700216, in216[i]);
+        mode = f15b();
+    }
+    return mode;
+}
+
+void abi_GsuF15BFive(void)
+{
+    cpu.a = (uint16_t)(0x8800 | GsuF15BFive());
+    cpu.x = 0xF15B;
+    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X));
+}
+
+/*
+ * @routine 07:92B5 GsuFA5AThree
+ * WHAT IT DOES: Runs Super FX program $07:FA5A three times around the point
+ * ($0D6D, $0D6F): at (X - 8, Y) with $70:0216 = $1A10 and (X - 8, Y + $18)
+ * with $1B10, both with $70:020E/0210/0212/0214 = $100; then at (X - 8,
+ * Y + 8) with $1A18, $70:0210 = $200 and $70:0214 = $80. The point goes to
+ * $70:020A and $70:020C.
+ * HOW: Word stores and GsuRun.
+ * Entry: M 16-bit, X 16-bit, D = $0000. Exit: A = $1A and the screen mode
+ * value; X = $FA5A; N, Z from the data bank; C, V from the add of 8.
+ */
+uint8_t GsuFA5AThree(uint8_t bank, uint8_t *p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t y;
+
+    wr16(0x70020E, 0x0100);
+    wr16(0x700212, 0x0100);
+    wr16(0x700210, 0x0100);
+    wr16(0x700214, 0x0100);
+    wr16(0x70020A, (uint16_t)(rd16(b | 0x0D6D) - 8));
+    wr16(0x70020C, rd16(b | 0x0D6F));
+    wr16(0x700216, 0x1A10);
+    GsuRun(0x07, 0xFA5A);
+    wr16(0x70020A, (uint16_t)(rd16(b | 0x0D6D) - 8));
+    wr16(0x70020C, (uint16_t)(rd16(b | 0x0D6F) + 0x18));
+    wr16(0x700216, 0x1B10);
+    GsuRun(0x07, 0xFA5A);
+    wr16(0x700210, 0x0200);
+    wr16(0x700214, 0x0080);
+    wr16(0x70020A, (uint16_t)(rd16(b | 0x0D6D) - 8));
+    y = rd16(b | 0x0D6F);
+    *p = (uint8_t)((*p & ~(P_C | P_V)) | (y > 0xFFF7 ? P_C : 0) | ((~y & (uint16_t)(y + 8) & 0x8000) ? P_V : 0));
+    wr16(0x70020C, (uint16_t)(y + 8));
+    wr16(0x700216, 0x1A18);
+    return GsuRun(0x07, 0xFA5A);
+}
+
+void abi_GsuFA5AThree(void)
+{
+    uint8_t p = cpu.p, mode = GsuFA5AThree(cpu.db, &p);
+
+    cpu.a = (uint16_t)(0x1A00 | mode);
+    cpu.x = 0xFA5A;
+    cpu.p = nz8(p, cpu.db);
+}
+
+/* A 16-bit ADC with carry clear: the sum, with C and V set as the 65816 sets them. */
+static uint16_t add16(uint16_t a, uint16_t m, uint8_t *p)
+{
+    uint16_t r = (uint16_t)(a + m);
+
+    *p = (uint8_t)((*p & ~(P_C | P_V)) | ((unsigned)a + m > 0xFFFF ? P_C : 0)
+                   | ((~(a ^ m) & (a ^ r) & 0x8000) ? P_V : 0));
+    return r;
+}
+
+/* Program $07:FA5A at ($70:020A, $70:020C) with piece $70:0216. */
+static uint8_t fa5a(uint16_t x, uint16_t y, uint16_t piece)
+{
+    wr16(0x70020A, x);
+    wr16(0x700216, piece);
+    wr16(0x70020C, y);
+    return GsuRun(0x07, 0xFA5A);
+}
+
+/*
+ * @routine 07:9660 GsuFA5AFromTables
+ * WHAT IT DOES: Runs Super FX program $07:FA5A three times at the point
+ * ($0D6D, $0D6F): piece $1B18 at (X, Y) with $70:020E and $70:0212 from
+ * entry $0D6B of the word tables at $07:97BE and $07:97CA; piece $1D18 at
+ * (X, Y + $18); piece $1A55 at (X, Y + 8) with $70:0210 = $200 and
+ * $70:0214 = $80 (the first two with both $100).
+ * HOW: Word stores and GsuRun.
+ * Entry: M 16-bit, X 16-bit, D = $0000. Exit: A = the screen mode value
+ * (high byte clear); X = $FA5A; N, Z from the data bank; C, V from the add
+ * of 8.
+ */
+uint8_t GsuFA5AFromTables(uint8_t bank, uint8_t *p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t i = rd16(b | 0x0D6B), y;
+
+    wr16(0x70020E, rd16(0x070000 | (uint16_t)(0x97BE + i)));
+    wr16(0x700212, rd16(0x070000 | (uint16_t)(0x97CA + i)));
+    wr16(0x700216, 0x1B18);
+    wr16(0x70020A, rd16(b | 0x0D6D));
+    wr16(0x70020C, rd16(b | 0x0D6F));
+    wr16(0x700210, 0x0100);
+    wr16(0x700214, 0x0100);
+    GsuRun(0x07, 0xFA5A);
+    wr16(0x70020A, rd16(b | 0x0D6D));
+    wr16(0x70020C, add16(rd16(b | 0x0D6F), 0x0018, p));
+    wr16(0x700210, 0x0100);
+    wr16(0x700214, 0x0100);
+    wr16(0x700216, 0x1D18);
+    GsuRun(0x07, 0xFA5A);
+    y = add16(rd16(b | 0x0D6F), 0x0008, p);
+    wr16(0x70020C, y);
+    wr16(0x70020A, rd16(b | 0x0D6D));
+    wr16(0x700216, 0x1A55);
+    wr16(0x700210, 0x0200);
+    wr16(0x700214, 0x0080);
+    return GsuRun(0x07, 0xFA5A);
+}
+
+void abi_GsuFA5AFromTables(void)
+{
+    uint8_t p = cpu.p, mode = GsuFA5AFromTables(cpu.db, &p);
+
+    cpu.a = mode;
+    cpu.x = 0xFA5A;
+    cpu.p = nz8(p, cpu.db);
+}
+
+/*
+ * @routine 07:9366 GsuFA5ASix
+ * WHAT IT DOES: Runs Super FX program $07:FA5A six times, all with
+ * $70:020E/0210/0212/0214 = $100, from X = $0D6D + entry $0D6B of the word
+ * table at $07:9806 (kept in direct page $F1) and Y = $0D6F: pieces $1A0E,
+ * $1A16, $1B16, $1B0E at Y, Y + 8, Y + $10, Y + $18; then at X + 8, pieces
+ * $1A0E and $1B0E at Y + 8 and Y + $10.
+ * HOW: Word stores and GsuRun; $F1 ends as X + 8.
+ * Entry: M 16-bit, X 16-bit, D = $0000. Exit: A = $1B and the screen mode
+ * value; X = $FA5A; N, Z from the data bank; C, V from the add of $10.
+ */
+uint8_t GsuFA5ASix(uint8_t bank, uint8_t *p)
+{
+    static const uint16_t dy[6] = {0x0000, 0x0008, 0x0010, 0x0018, 0x0008, 0x0010};
+    static const uint16_t piece[6] = {0x1A0E, 0x1A16, 0x1B16, 0x1B0E, 0x1A0E, 0x1B0E};
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t x, y;
+    uint8_t mode = 0;
+    unsigned i;
+
+    wr16(0x70020E, 0x0100);
+    wr16(0x700212, 0x0100);
+    wr16(0x700210, 0x0100);
+    wr16(0x700214, 0x0100);
+    x = add16(rd16(0x070000 | (uint16_t)(0x9806 + rd16(b | 0x0D6B))), rd16(b | 0x0D6D), p);
+    wr16(0x0000F1, x);
+    for (i = 0; i < 6; i++) {
+        if (i == 4) {
+            x = add16(rd16(0x0000F1), 0x0008, p);
+            wr16(0x0000F1, x);
+        }
+        y = rd16(b | 0x0D6F);
+        if (dy[i])
+            y = add16(y, dy[i], p);
+        if (i == 0) {
+            mode = fa5a(x, y, piece[i]);
+        } else {
+            wr16(0x70020A, x);
+            wr16(0x70020C, y);
+            wr16(0x700216, piece[i]);
+            mode = GsuRun(0x07, 0xFA5A);
+        }
+    }
+    return mode;
+}
+
+void abi_GsuFA5ASix(void)
+{
+    uint8_t p = cpu.p, mode = GsuFA5ASix(cpu.db, &p);
+
+    cpu.a = (uint16_t)(0x1B00 | mode);
+    cpu.x = 0xFA5A;
+    cpu.p = nz8(p, cpu.db);
+}
+
+/*
+ * @routine 07:8653 GsuF15BTwoLines
+ * WHAT IT DOES: Draws sixteen pieces with Super FX program $07:F15B (a run
+ * per piece, $70:0216 = the piece): three from ($50, 8) and 13 from
+ * (0, $2C), with $70:0210 = A, $70:020E = $10 and the bytes $BF, $B7,
+ * $B6 at $70:0200. A piece of 0 is a space.
+ * HOW: GsuBytes200_BFB7B6, then GsuRun per piece; the program steps the
+ * position itself.
+ * Entry: M 16-bit, X 8-bit, D = $0000; A = the input for $70:0210. Exit:
+ * A = $8C and the screen mode value; X = $F15B; M 16-bit, X 16-bit; N, Z
+ * from the data bank.
+ */
+uint8_t GsuF15BTwoLines(uint16_t input)
+{
+    static const uint16_t first[3] = {0x8800, 0x8418, 0x8C14};
+    static const uint16_t second[13] = {0x8408, 0x8814, 0x8814, 0x0000, 0x8C14, 0x8804, 0x8418,
+                                        0x0000, 0x8C10, 0x8C14, 0x8408, 0x8C0C, 0x8C10};
+    uint8_t mode = 0;
+    unsigned i;
+
+    wr16(0x700210, input);
+    wr16(0x70020E, 0x0010);
+    wr16(0x70020A, 0x0050);
+    wr16(0x70020C, 0x0008);
+    GsuBytes200_BFB7B6();
+    for (i = 0; i < 3; i++) {
+        wr16(0x700216, first[i]);
+        f15b();
+    }
+    wr16(0x70020A, 0x0000);
+    wr16(0x70020C, 0x002C);
+    for (i = 0; i < 13; i++) {
+        wr16(0x700216, second[i]);
+        mode = f15b();
+    }
+    return mode;
+}
+
+void abi_GsuF15BTwoLines(void)
+{
+    cpu.a = (uint16_t)(0x8C00 | GsuF15BTwoLines(cpu.a));
+    cpu.x = 0xF15B;
+    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X));
+}
+
+void GsuBytes200_BFBAB9(void);
+
+/*
+ * @routine 07:833B GsuPiecesStep10CB
+ * WHAT IT DOES: Steps the counter at $10CB (up to $14) and draws eleven
+ * pieces from ($10, $28): $800C, $8814, $8408, $8C04, $8C10, space, $8C14,
+ * $8C00, space, $8800, $8C00, with $70:0210 = the counter's byte in the
+ * table at $85CC (through the data bank), $70:020E = $10 and the bytes
+ * $BF, $BA, $B9 at $70:0200. While the counter is below 8 the pieces go
+ * through Super FX program $07:F15B, after that through $07:F121.
+ * HOW: GsuBytes200_BFBAB9, then GsuRun per piece; after the first piece
+ * the X position the program left at $70:020A is moved on by 4.
+ * Entry: M 16-bit, X 16-bit, D = $0000. Exit: A = $8C and the screen mode
+ * value; X = the program address; N, Z from the data bank; C, V from the
+ * add of 4.
+ */
+uint8_t GsuPiecesStep10CB(uint8_t bank, uint16_t *program, uint8_t *p)
+{
+    static const uint16_t piece[11] = {0x800C, 0x8814, 0x8408, 0x8C04, 0x8C10, 0x0000,
+                                       0x8C14, 0x8C00, 0x0000, 0x8800, 0x8C00};
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t n = (uint16_t)(rd16(b | 0x10CB) + 1);
+    uint8_t mode = 0;
+    unsigned i;
+
+    if (n >= 0x0014)
+        n = 0x0014;
+    wr16(b | 0x10CB, n);
+    wr16(0x70020E, 0x0010);
+    wr16(0x70020A, 0x0010);
+    wr16(0x70020C, 0x0028);
+    GsuBytes200_BFBAB9();
+    wr16(0x700210, rd8(b | (uint16_t)(0x85CC + n)));
+    *program = n < 8 ? 0xF15B : 0xF121;
+    for (i = 0; i < 11; i++) {
+        wr16(0x700216, piece[i]);
+        mode = GsuRun(0x07, *program);
+        if (i == 0)
+            wr16(0x70020A, add16(rd16(0x70020A), 0x0004, p));
+    }
+    return mode;
+}
+
+void abi_GsuPiecesStep10CB(void)
+{
+    uint8_t p = cpu.p, mode = GsuPiecesStep10CB(cpu.db, &cpu.x, &p);
+
+    cpu.a = (uint16_t)(0x8C00 | mode);
+    cpu.p = nz8(p, cpu.db);
+}

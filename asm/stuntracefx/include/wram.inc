@@ -809,3 +809,5 @@ includeonce
 !handler_object = $034C
 !handler_addr = $0354
 !handler_bank = $0356
+!piece_x = $F1
+!piece_counter = $10CB

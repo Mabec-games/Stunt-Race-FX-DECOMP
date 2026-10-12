@@ -1126,3 +1126,20 @@ OamAttr38x4:
     sep.b #$20
     lda.b #$38
     bra OamAttrFillLoop
+
+; @routine 07:C4E0 OamHighBits18Park48
+; WHAT IT DOES: OamHighBits18, then sets the X-high bit of sprites 48-63
+; (high table bytes 12-15 = $55), which puts them off the left edge.
+; HOW: Two word stores of $5555 to $0581 and $0583 through the data bank.
+; Entry: any widths. Exit: A = $5555; X = 0; Y high byte clear; P
+; unchanged.
+%at($07C4E0)
+OamHighBits18Park48:
+    php
+    jsr.w OamHighBits18
+    rep.b #$20
+    lda.w #$5555
+    sta.w !oam_buffer_high+12
+    sta.w !oam_buffer_high+14
+    plp
+    rts

@@ -1151,3 +1151,28 @@ void abi_OamAttr38x4(void)
 {
     abi_oam_attr_fill(4, 0x38);
 }
+
+/*
+ * @routine 07:C4E0 OamHighBits18Park48
+ * WHAT IT DOES: OamHighBits18, then sets the X-high bit of sprites 48-63
+ * (high table bytes 12-15 = $55), which puts them off the left edge.
+ * HOW: Two word stores of $5555 to $0581 and $0583 through the data bank.
+ * Entry: any widths. Exit: A = $5555; X = 0; Y high byte clear; P
+ * unchanged.
+ */
+void OamHighBits18Park48(uint8_t bank)
+{
+    uint32_t b = (uint32_t)bank << 16;
+
+    OamHighBits18(bank);
+    wr16(b | 0x0581, 0x5555);
+    wr16(b | 0x0583, 0x5555);
+}
+
+void abi_OamHighBits18Park48(void)
+{
+    OamHighBits18Park48(cpu.db);
+    cpu.a = 0x5555;
+    cpu.x = 0x0000;
+    cpu.y &= 0x00FF;
+}
