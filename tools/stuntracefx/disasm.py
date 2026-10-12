@@ -14,6 +14,8 @@ which assembles to the ROM with asar in norom mode. This is intake: address
 names only, nothing here is filed or described.
 """
 import argparse, csv, os, struct, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import codemap  # noqa: E402
 
 CPU_OP, CPU_OPND, GSU_OP, GSU_OPND = 1, 2, 16, 32
 M8, M16, X8, X16 = 1 << 8, 1 << 9, 1 << 10, 1 << 11
@@ -87,8 +89,8 @@ def gsu_len(op):
 
 
 def addr_of(off):
-    """CPU (and GSU) view of a ROM offset: LoROM, banks 00-3F."""
-    return (off // BANK) << 16 | 0x8000 | (off % BANK)
+    """The address code at ROM offset `off` runs at: LoROM banks 00-3F, or its RAM copy."""
+    return codemap.run_addr(off)
 
 
 def h2(v):
@@ -159,10 +161,9 @@ class Rom:
 
     def rel_target(self, off, n, disp):
         a = addr_of(off)
-        t16 = (a + n + disp) & 0xFFFF
-        if t16 < 0x8000:
+        t = codemap.rom_offset((a & 0xFF0000) | ((a + n + disp) & 0xFFFF))
+        if t is None or t // BANK != off // BANK or addr_of(t) & 0xFF0000 != a & 0xFF0000:
             return None
-        t = (off // BANK) * BANK + (t16 - 0x8000)
         return t
 
     def cpu_target(self, off):
@@ -272,7 +273,13 @@ class Rom:
 
         off = start
         gap = False
+        prev = start
         while off < end:
+            if not self.claimed[off] and not gap and addr_of(off) - addr_of(prev) != off - prev:
+                flush()
+                setarch('65816')
+                out.append('base %s' % h6(addr_of(off)))
+            prev = off
             if self.claimed[off]:
                 flush()
                 gap = True
@@ -310,10 +317,7 @@ def main():
     ap.add_argument('--claimed', help='file of start-end offset ranges (hex) owned by filed source')
     a = ap.parse_args()
     rom = open(a.rom, 'rb').read()
-    maps = []
-    for d in a.trace:
-        raw = open(os.path.join(d, 'rommap.bin'), 'rb').read()
-        maps.append(struct.unpack('<%dH' % (len(raw) // 2), raw))
+    maps = [codemap.merged(a.trace)]
     claimed = bytearray(len(rom))
     if a.claimed:
         for line in open(a.claimed):

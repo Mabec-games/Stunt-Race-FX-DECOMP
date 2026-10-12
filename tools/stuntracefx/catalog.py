@@ -12,10 +12,13 @@ Its bytes are the executed code bytes of the same processor from its start
 up to the next routine start. Code before the first entry in a bank (reached
 only by jumps) starts a routine of its own. Code no trace has run is not in the catalog
 yet, so the catalog (and every total built on it) grows with coverage.
-Code the S-CPU runs from work RAM is copied there from ROM; it is counted
-once its source in ROM is known, not before.
+Code the S-CPU runs from work RAM is copied there from ROM
+(config/stuntracefx/ramcode.csv); it is counted at its ROM bytes and named
+by its run address.
 """
 import csv, glob, os, struct, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import codemap  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 B = os.path.join(ROOT, 'build', 'stuntracefx')
@@ -24,28 +27,19 @@ CPU_CODE, GSU_CODE = 0x03, 0x30
 RESET = 0x00FE88
 
 
-def rom_offset(addr):
-    bank, lo = addr >> 16 & 0xFF, addr & 0xFFFF
-    if (bank & 0x7F) < 0x40 and lo >= 0x8000:
-        return (bank & 0x3F) * 0x8000 + (lo - 0x8000)
-    if 0x40 <= (bank & 0x7F) < 0x60:
-        return addr & 0x3FFFFF
-    return None
+rom_offset = codemap.rom_offset
 
 
 def cpu_addr(off):
-    return (off // 0x8000) << 16 | 0x8000 | (off % 0x8000)
+    return codemap.run_addr(off)
 
 
 def load():
     rom = open(os.path.join(B, 'baserom.sfc'), 'rb').read()
-    mp = [0] * len(rom)
+    mp = codemap.merged()
     edges = []
-    for d in glob.glob(os.path.join(B, 'box', '*', 'rommap.bin')):
-        raw = open(d, 'rb').read()
-        for i, v in enumerate(struct.unpack('<%dH' % (len(raw) // 2), raw)):
-            mp[i] |= v
-        e = os.path.join(os.path.dirname(d), 'edges.csv')
+    for d in codemap.traces():
+        e = os.path.join(d, 'edges.csv')
         if os.path.exists(e):
             edges += list(csv.DictReader(open(e)))
     return rom, mp, edges

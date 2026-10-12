@@ -6,3 +6,10 @@ macro at(addr)
     org ((<addr>>>16)&$3F)*$8000+(<addr>&$7FFF)
     base <addr>
 endmacro
+
+; %ramcode(run, rom): place code that the game copies to work RAM and runs
+; there. It sits at ROM offset `rom`; labels resolve to its run address `run`.
+macro ramcode(run, rom)
+    org <rom>
+    base <run>
+endmacro

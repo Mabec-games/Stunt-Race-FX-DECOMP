@@ -190,20 +190,16 @@ def contains(rev, path):
 
 
 def merged_map():
-    maps = []
-    for d in glob.glob(os.path.join(B, 'box', '*', 'rommap.bin')):
-        raw = open(d, 'rb').read()
-        maps.append(struct.unpack('<%dH' % (len(raw) // 2), raw))
-    out = [0] * (len(maps[0]) if maps else 0)
-    for mp in maps:
-        for i, v in enumerate(mp):
-            out[i] |= v
-    return out
+    sys.path.insert(0, os.path.join(ROOT, 'tools', 'stuntracefx'))
+    import codemap
+    return codemap.merged()
 
 
 def span_of(addr, asm_path):
     """ROM offsets of the routine: from its address through the filed bytes that follow."""
-    start = ((addr >> 16) & 0x3F) * 0x8000 + (addr & 0x7FFF)
+    sys.path.insert(0, os.path.join(ROOT, 'tools', 'stuntracefx'))
+    import codemap
+    start = codemap.rom_offset(addr)
     owned = set()
     for line in open(os.path.join(B, 'claimed.txt')):
         lo, hi = (int(x, 16) for x in line.split('-'))
@@ -214,7 +210,7 @@ def span_of(addr, asm_path):
             if f.endswith('.asm'):
                 for m in TAG.finditer(open(os.path.join(dp, f)).read()):
                     a = int(m.group(1), 16) << 16 | int(m.group(2), 16)
-                    others.add(((a >> 16) & 0x3F) * 0x8000 + (a & 0x7FFF))
+                    others.add(codemap.rom_offset(a))
     span, o = [], start
     while o in owned and (o == start or o not in others):
         span.append(o); o += 1

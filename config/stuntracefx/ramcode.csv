@@ -1,0 +1,3 @@
+name,run,rom,length,evidence
+main_wram,7EA2D9,010000,54A6,"WRAM dumps at frames 600 and 3600 of attract mode match ROM 010000 for exactly this length; every executed address in the block falls inside"
+gsu_wait_wram,7F0800,058000,2C00,"WRAM dumps at frames 600 and 3600 of attract mode match ROM 058000 for exactly this length; every executed address in the block falls inside"
