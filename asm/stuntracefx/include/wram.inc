@@ -1172,3 +1172,15 @@ includeonce
 !fxcar_yaw = $26
 !fxcar_roll = $28
 !fxpart_world = $36
+; Car creation (object/fx_car.asm).
+!fx_car_bad = $702650
+!fx_car_2392 = $702392
+!fx_car_2394 = $702394
+!fx_car_2396 = $702396
+!fx_car_002c = $70002C
+!fx_car_0022 = $700022
+!fx_car_108c = $70108C
+!fx_car_last = $702474
+!fxcar_0a = $0A
+!fxcar_64 = $64
+!fxcar_script = $66

@@ -341,3 +341,129 @@ void abi_FxCarPose(void)
     g = FxCarPose(g);
     memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
 }
+
+#define FX_NEW_RECORD 0x238Eu    /* in: the car's script; out: its record */
+#define FX_CAR_AMOUNT 0x2390u
+#define FX_CAR_2392 0x2392u
+#define FX_CAR_2394 0x2394u
+#define FX_CAR_2396 0x2396u
+#define FX_CAR_LAST 0x2474u
+#define FX_CAR_BAD 0x2650u       /* an unknown script is noted here */
+#define FX_CARS 0x262Eu
+#define FX_SCRIPT_BANK 0x09u
+#define FX_CAR_DEFAULT 0x81B9u
+#define CAR_BYTES 0x0098u
+
+/* Field `field` of the new car R1 = `value`, through R2 and R0. */
+static void car_set(FxRegs *g, uint16_t f, uint16_t value)
+{
+    g->r[2] = value;
+    g->r[0] = gsu_add(f, g->r[1], 0);
+    gsu_stw(g->r[0], g->r[2]);
+}
+
+/*
+ * @routine 04:8CC6 FxCarNew
+ * WHAT IT DOES: A program: makes a car from the script whose address (in
+ * bank 9) the S-CPU left at $238E: a $98-byte record from the first pool
+ * (its address back to $238E, 0 when there is no room: decoded from the
+ * ROM bytes and not reached in the traces so far), set up from $2392,
+ * $0068/$002C/$002E (the position), $0022, $2390 and the script's own
+ * words, put on the front of the cars' list ($262E, +$74) and noted at
+ * $2474; then FxCarFromScript and FxCarPose. A script not among the nine
+ * known ones is noted at $2650 and $81B9 used instead (decoded from the
+ * ROM bytes and not reached in the traces so far, as are the matches of
+ * scripts $8669 and $8886).
+ * HOW: ROMB 9 and R14 = the script; nine CMPs with the known addresses.
+ * The script gives two words, of which the second is used for $2390 when
+ * the low byte of $108C is not 0, a byte for $2394, a word skipped, words
+ * for +$5A, +$5C, +$16, +$40, +$1A, +$0C, +$0E, +$10, then (after $2396 =
+ * the script offset from $8090 and 10 bytes skipped) +$2A and +$14. The
+ * record also gets +$96 = $2392, +$24 = $0022, +$64 = the old $2390, +$66 =
+ * the script, +$0A = $B1A1.
+ * Entry: the S-CPU starts it. Exit (at its STOP): R1 = R8 = the car; R10
+ * = $0240; the others as FxCarPose leaves them.
+ */
+FxRegs FxCarNew(FxRegs g)
+{
+    static const uint16_t known[9] = {0x81B9, 0x853D, 0x82E5, 0x8411, 0x8669, 0x876E, 0x8AA8, 0x8886, 0x8990};
+    static const uint8_t first[8] = {0x5A, 0x5C, 0x16, 0x40, 0x1A, 0x0C, 0x0E, 0x10};
+    int i;
+
+    g.r[10] = 0x0240;
+    g.r[0] = FX_SCRIPT_BANK;
+    gsu.rombr = FX_SCRIPT_BANK;
+    gsu_r14(gsu_ldw(FX_NEW_RECORD));
+    g.r[14] = gsu.r[14];
+    for (i = 0; i < 9; i++) {
+        g.r[0] = known[i];
+        gsu_sub(g.r[0], g.r[14], 0);
+        if (gsu.z)
+            break;
+    }
+    if (i == 9) {
+        gsu_stw(FX_CAR_BAD, g.r[14]);
+        gsu_r14(FX_CAR_DEFAULT);
+        g.r[14] = gsu.r[14];
+    }
+    g.r[4] = CAR_BYTES;
+    g.r[3] = 0x1098;
+    g.r[11] = 0x8D59;
+    g = FxPoolTake(g);
+    gsu_stw(FX_NEW_RECORD, g.r[1]);
+    gsu_moves(g.r[1]);
+    if (gsu.z)
+        return g;
+    car_set(&g, 0x96, gsu_ldw(FX_CAR_2392));
+    car_set(&g, 0x1E, gsu_ldw(0x0068));
+    car_set(&g, 0x20, gsu_ldw(0x002C));
+    car_set(&g, 0x22, gsu_ldw(0x002E));
+    car_set(&g, 0x24, gsu_ldw(0x0022));
+    car_set(&g, 0x64, gsu_ldw(FX_CAR_AMOUNT));
+    car_set(&g, 0x66, g.r[14]);
+    car_set(&g, 0x0A, 0xB1A1);
+    g.r[2] = script_word(&g.r[14]);
+    g.r[3] = script_word(&g.r[14]);
+    gsu_stw(FX_CAR_AMOUNT, g.r[2]);
+    g.r[0] = gsu_lob(gsu_ldw(0x108C));
+    if (!gsu.z)
+        gsu_stw(FX_CAR_AMOUNT, g.r[3]);
+    g.r[0] = gsu_getb();
+    gsu_r14(gsu_inc(g.r[14]));
+    g.r[14] = gsu.r[14];
+    gsu_stw(FX_CAR_2394, g.r[0]);
+    g.r[0] = script_word(&g.r[14]);
+    for (i = 0; i < 8; i++)
+        car_set(&g, first[i], script_word(&g.r[14]));
+    g.r[0] = 0x8090;
+    g.r[0] = gsu_sub(g.r[14], g.r[0], 0);
+    gsu_stw(FX_CAR_2396, g.r[0]);
+    gsu_r14(gsu_add(g.r[14], 10, 0));
+    g.r[14] = gsu.r[14];
+    car_set(&g, 0x2A, script_word(&g.r[14]));
+    car_set(&g, 0x14, script_word(&g.r[14]));
+    g.r[0] = gsu_ldw(FX_CARS);
+    g.r[2] = g.r[0];
+    gsu_moves(g.r[2]);
+    if (!gsu.z) {
+        g.r[0] = gsu_add(0x74, g.r[1], 0);
+        gsu_stw(g.r[0], g.r[2]);
+    }
+    gsu_stw(FX_CARS, g.r[1]);
+    g.r[11] = 0x8E77;
+    g = FxCarFromScript(g);
+    gsu_stw(FX_CAR_LAST, g.r[1]);
+    g.r[8] = g.r[1];
+    g.r[11] = 0x8E82;
+    g = FxCarPose(g);
+    return g;
+}
+
+void abi_FxCarNew(void)
+{
+    FxRegs g;
+
+    memcpy(g.r, gsu.r, sizeof g.r);
+    g = FxCarNew(g);
+    memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
+}

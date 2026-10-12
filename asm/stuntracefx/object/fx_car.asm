@@ -467,4 +467,226 @@ FxCarPose:
     ldw (r10)
     nop
 
+; A word of the script into R2 and field <f> of the new car R1 = it.
+macro fx_car_word(f)
+    to r2
+    getb
+    inc r14
+    with r2
+    getbh
+    inc r14
+    ibt r0,#<f>
+    add r1
+    from r2
+    stw (r0)
+endmacro
+
+; Field <f> of the new car R1 = R2.
+macro fx_car_r2(f)
+    ibt r0,#<f>
+    add r1
+    from r2
+    stw (r0)
+endmacro
+
+; @routine 04:8CC6 FxCarNew
+; WHAT IT DOES: A program: makes a car from the script whose address (in
+; bank 9) the S-CPU left at $238E: a $98-byte record from the first pool
+; (its address back to $238E, 0 when there is no room: decoded from the
+; ROM bytes and not reached in the traces so far), set up from $2392,
+; $0068/$002C/$002E (the position), $0022, $2390 and the script's own
+; words, put on the front of the cars' list ($262E, +$74) and noted at
+; $2474; then FxCarFromScript and FxCarPose. A script not among the nine
+; known ones is noted at $2650 and $81B9 used instead (decoded from the
+; ROM bytes and not reached in the traces so far, as are the matches of
+; scripts $8669 and $8886).
+; HOW: ROMB 9 and R14 = the script; nine CMPs with the known addresses.
+; The script gives two words, of which the second is used for $2390 when
+; the low byte of $108C is not 0, a byte for $2394, a word skipped, words
+; for +$5A, +$5C, +$16, +$40, +$1A, +$0C, +$0E, +$10, then (after $2396 =
+; the script offset from $8090 and 10 bytes skipped) +$2A and +$14. The
+; record also gets +$96 = $2392, +$24 = $0022, +$64 = the old $2390, +$66 =
+; the script, +$0A = $B1A1.
+; Entry: the S-CPU starts it. Exit (at its STOP): R1 = R8 = the car; R10
+; = $0240; the others as FxCarPose leaves them.
+%at($048CC6)
+FxCarNew:
+    iwt r10,#!fx_stack
+    iwt r0,#$0009
+    romb
+    lm r14,(!gsu_record_arg)
+    iwt r0,#$81B9
+    cmp r14
+    bne .not_0
+    nop
+    iwt r15,#.known
+    nop
+.not_0:
+    nop
+    iwt r0,#$853D
+    cmp r14
+    bne .not_1
+    nop
+    iwt r15,#.known
+    nop
+.not_1:
+    nop
+    iwt r0,#$82E5
+    cmp r14
+    bne .not_2
+    nop
+    iwt r15,#.known
+    nop
+.not_2:
+    nop
+    iwt r0,#$8411
+    cmp r14
+    bne .not_3
+    nop
+    iwt r15,#.known
+    nop
+.not_3:
+    nop
+    iwt r0,#$8669
+    cmp r14
+    bne .not_4
+    nop
+    iwt r15,#.known
+    nop
+.not_4:
+    nop
+    iwt r0,#$876E
+    cmp r14
+    bne .not_5
+    nop
+    iwt r15,#.known
+    nop
+.not_5:
+    nop
+    iwt r0,#$8AA8
+    cmp r14
+    bne .not_6
+    nop
+    iwt r15,#.known
+    nop
+.not_6:
+    nop
+    iwt r0,#$8886
+    cmp r14
+    bne .not_7
+    nop
+    iwt r15,#.known
+    nop
+.not_7:
+    nop
+    iwt r0,#$8990
+    cmp r14
+    bne .unknown
+    nop
+    iwt r15,#.known
+    nop
+.unknown:
+    nop
+    sm (!fx_car_bad),r14
+    iwt r14,#$81B9
+.known:
+    iwt r4,#$0098
+    iwt r3,#!fx_pool_first
+    link #4
+    iwt r15,#FxPoolTake
+    nop
+    sm (!gsu_record_arg),r1
+    moves r1,r1
+    bne .made
+    nop
+    iwt r15,#.done
+    nop
+.made:
+    lm r2,(!fx_car_2392)
+    iwt r0,#$0096
+    add r1
+    from r2
+    stw (r0)
+    lm r2,(!fx_normal_x)
+    %fx_car_r2(!fxrec_half_x)
+    lm r2,(!fx_car_002c)
+    %fx_car_r2(!fxrec_half_x+2)
+    lm r2,(!fx_normal_z)
+    %fx_car_r2(!fxrec_half_x+4)
+    lm r2,(!fx_car_0022)
+    %fx_car_r2(!fxcar_pitch)
+    lm r2,(!gsu_in_amount)
+    %fx_car_r2(!fxcar_64)
+    move r2,r14
+    %fx_car_r2(!fxcar_script)
+    iwt r2,#$B1A1
+    %fx_car_r2(!fxcar_0a)
+    to r2
+    getb
+    inc r14
+    with r2
+    getbh
+    inc r14
+    to r3
+    getb
+    inc r14
+    with r3
+    getbh
+    inc r14
+    sm (!gsu_in_amount),r2
+    lm r0,(!fx_car_108c)
+    lob
+    beq .amount
+    nop
+    sm (!gsu_in_amount),r3
+.amount:
+    getb
+    inc r14
+    sm (!fx_car_2394),r0
+    getb
+    inc r14
+    getbh
+    inc r14
+    %fx_car_word($5A)
+    %fx_car_word($5C)
+    %fx_car_word(!fxrec_flags16)
+    %fx_car_word(!fxrec_flags40)
+    %fx_car_word(!fxrec_mode)
+    %fx_car_word(!fxrec_size)
+    %fx_car_word(!fxrec_size+2)
+    %fx_car_word(!fxrec_size+4)
+    iwt r0,#$8090
+    from r14
+    sub r0
+    sm (!fx_car_2396),r0
+    with r14
+    add #10
+    %fx_car_word(!fxrec_mass)
+    %fx_car_word($14)
+    lm r0,(!fx_cars)
+    moves r2,r0
+    bne .link
+    nop
+    sm (!fx_cars),r1
+    bra .script
+    nop
+.link:
+    ibt r0,#!fxrec_next_car
+    add r1
+    from r2
+    stw (r0)
+    sm (!fx_cars),r1
+.script:
+    link #4
+    iwt r15,#FxCarFromScript
+    nop
+    sm (!fx_car_last),r1
+    move r8,r1
+    link #4
+    iwt r15,#FxCarPose
+    nop
+.done:
+    stop
+    nop
+
 arch 65816
