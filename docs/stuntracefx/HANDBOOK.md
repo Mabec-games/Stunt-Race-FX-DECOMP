@@ -34,6 +34,13 @@ here when they are made.
   its clock count; a frame can end inside a call; a replay can outlive its
   frame ([decomp/oracle/call-and-lockstep-oracles-2026-10-11](decomp/oracle/call-and-lockstep-oracles-2026-10-11.md)).
 
+- Super FX routines run as C too: entered when the Super FX is about to run
+  a routine's first instruction after a LINK call (R11 = just past the
+  delay slot) or a program's first after the S-CPU starts it, ended at the
+  instruction at R11 or at the program's STOP; lockstep places each RAM
+  access of the C on the original's and replays its clock steps and cache
+  events ([decomp/oracle/super-fx-routines-in-c-2026-10-12](decomp/oracle/super-fx-routines-in-c-2026-10-12.md)).
+
 ## Method
 
 - Routines that assembly still calls carry an abi_ wrapper: the readable C
