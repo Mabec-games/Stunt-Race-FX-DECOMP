@@ -222,3 +222,21 @@ includeonce
 !course_picture_c_w = $F54D
 !course_picture_d_w = $F5F5
 !course_table_f807_w = $F807
+; The menu's button sequence, one mask word a step (menu/handlers.asm).
+!button_sequence = $0BD66D
+
+; The menu choice a left or a right press moves to from each choice, a
+; word per choice (menu/choices.asm).
+!choice_left = $0BC81F
+!choice_right = $0BC827
+
+; The menu choice for each saved 2-bit setting, a word per value
+; (menu/choices.asm).
+!choice_from_save = $0BB9BA
+
+; The speed gauge's value for each scaled speed, by vehicle kind
+; (menu/gauge.asm).
+!gauge_table = $0BB158
+
+; "MASTER" and "EXPERT" in the sprite font, six tiles each (hud/race_text.asm).
+!class_names = $02EFD6

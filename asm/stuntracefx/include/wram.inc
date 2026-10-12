@@ -899,3 +899,106 @@ includeonce
 !wram_0EED = $0EED
 !wram_0E6C = $0E6C
 !wram_0E6E = $0E6E
+; Cleared by MenuButtonSequence when X is pressed (menu/handlers.asm); its
+; reader is not filed yet. Written with a long store.
+!wram_1913 = $001913
+
+; Player 2's buttons newly pressed this frame, as the menu collects them
+; (menu/choices.asm); $118B is player 1's.
+!menu_joy2_pressed = $118D
+
+; The saved progress byte in Super FX RAM: bit 2 opens the menu's fourth
+; choice (menu/choices.asm).
+!save_progress = $70FC0B
+
+; Saved menu settings in Super FX RAM, two bits a choice
+; (menu/choices.asm, MenuChoicesFromSave).
+!save_settings_a = $70FC0C
+!save_settings_b = $70FC0D
+!save_settings_c = $70FC0E
+
+; Cleared when the second settings screen is left (menu/choices.asm);
+; written with long stores.
+!wram_190B = $00190B
+!wram_190D = $00190D
+
+; Set with the HUD positions by MenuCourseScreenSetup (menu/course_screen.asm).
+!wram_0E0D = $0E0D
+
+; The speed gauge (menu/gauge.asm): the value shown, a word per vehicle
+; of speeds in Super FX RAM, and the object field (+$27) whose handler
+; word gives the vehicle's kind.
+!speed_gauge = $000E49
+!gsu_speeds = $70004A
+!obj_handler_27 = $7E2027
+
+; Serial joypad bits collected by JoypadPortCheck (input/joypad.asm).
+!joy_serial_bits = $1182
+
+; Player 2's vehicle object, as $0346 is player 1's (video/backdrop.asm).
+!wram_034A = $034A
+
+; The backdrop's vertical scroll base, a word per screen half, stored just
+; before BackdropScrollFromView in the work RAM code (video/backdrop.asm).
+!backdrop_y_base = $7EE920
+
+; The screen window's HDMA table entries in bank $7F that
+; WindowOpenCloseStep rewrites (system/vblank_updates.asm): line counts at
+; $134A and $134E, and $134C/$134D; and the line counts its mode 3 sets.
+!window_table_7f_134a = $7F134A
+!window_table_7f_134c = $7F134C
+!window_table_7f_134d = $7F134D
+!window_table_7f_134e = $7F134E
+!window_lines_12db = $7F12DB
+!window_lines_12e8 = $7F12E8
+!window_lines_12f6 = $7F12F6
+!window_lines_1301 = $7F1301
+!wram_1921 = $001921
+!wram_1925 = $001925
+!wram_1927 = $001927
+!wram_191B = $00191B
+!wram_191D = $00191D
+
+; The two colours VblankUpdates alternates colour $D9 between, stored in
+; the work RAM code (system/vblank_updates.asm).
+!blink_colours = $7F0DA8
+
+; The second speed gauge (menu/gauge.asm): its value and the value shown,
+; and two more per-vehicle words in Super FX RAM it reads.
+!speed_gauge_2_value = $1180
+!speed_gauge_2 = $000E47
+!gsu_speed_44 = $700044
+!gsu_speed_50 = $700050
+
+; $0D4A, a menu selection used for the course number (race/course.asm).
+!wram_0D4A = $0D4A
+
+; Eight 8-byte records after the sprite table (video/sprite_slots.asm): the
+; mask of those in use, the first in use, record 1's countdown, the
+; scratch word the mask is shifted in, and the record fields, as direct
+; page offsets indexed by the record.
+!slot_mask = $05D5
+!slot_first = $06D8
+!slot1_count = $08FB
+!slot_scan = $1F2B
+!slot_00 = $00
+!slot_04 = $04
+!slot_05 = $05
+!slot_06 = $06
+!slot_07 = $07
+
+; A record tied to an object (object/orient.asm), as offsets from the
+; record: flags, the tied object's offset in the object table, a position
+; and three angles.
+!tie_flags = $00
+!tie_object = $02
+!tie_x = $08
+!tie_y = $0A
+!tie_z = $0C
+!tie_angle_0e = $0E
+!tie_angle_10 = $10
+!tie_angle_12 = $12
+
+; The tied object's +$22, given to the Super FX by ViewFromRecord
+; (object/orient.asm).
+!gsu_tied_22 = $70247A

@@ -79,3 +79,57 @@ void abi_JoypadAccumulate(void)
 {
     cpu.a = JoypadAccumulate();
 }
+
+/* Eight serial reads of data line 2 (bit 1) of joypad port `port` into
+   $1182, first bit highest; returns the byte. */
+static uint8_t serial_byte(uint32_t b, uint8_t port)
+{
+    unsigned i;
+    uint8_t v;
+
+    wr8(b | 0x1182, 0x00);
+    for (i = 0; i < 8; i++) {
+        uint8_t bit = (rd8(b | (uint16_t)(0x4016 + port)) & 0x02) ? 1 : 0;
+
+        v = rd8(b | 0x1182);
+        wr8(b | 0x1182, (uint8_t)(v << 1 | bit));
+    }
+    return rd8(b | 0x1182);
+}
+
+/*
+ * @routine 7F:10CD JoypadPortCheck
+ * WHAT IT DOES: Checks joypad port A (0 or 1) for a device on its second
+ * data line: with the latch set, eight reads of that line all 1 and then,
+ * with the latch clear, eight reads not all 1 set $18FB to 1. The second
+ * half is not reached in the traces so far.
+ * HOW: The serial bits are shifted into $1182 (ROL); the latch is
+ * JOYSER0 bit 0 and is left clear. P is saved and restored.
+ * Entry: any widths; A low byte = the port. Exit: A low byte = 0 (A = 0
+ * when $18FB was set); X = the port, Y = $FF (8-bit values); P unchanged.
+ */
+int JoypadPortCheck(uint8_t bank, uint8_t port)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    int found = 0;
+
+    wr8(b | 0x4016, 0x01);
+    if (serial_byte(b, port) == 0xFF) {
+        wr8(b | 0x4016, 0x00);
+        if (serial_byte(b, port) != 0xFF) {
+            wr16(0x0018FB, 0x0001);
+            found = 1;
+        }
+    }
+    wr8(b | 0x4016, 0x00);
+    return found;
+}
+
+void abi_JoypadPortCheck(void)
+{
+    uint8_t port = (uint8_t)cpu.a;
+
+    cpu.a = JoypadPortCheck(cpu.db, port) ? 0x0000 : (uint16_t)(cpu.a & 0xFF00);
+    cpu.x = port;
+    cpu.y = 0x00FF;
+}

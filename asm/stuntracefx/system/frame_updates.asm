@@ -306,3 +306,37 @@ FrameInputAndCountEnd:
     lda.w !wram_11DA
     sta.w !INIDISP
     rtl
+
+; @routine 7F:1042 FrameCountAndPortsEnd
+; WHAT IT DOES: Ends a frame of the main game loop: steps the frame
+; counters (direct page $06, $0E3B, $0306), clears $18FB and, when $1903
+; is set, checks both joypad ports for a device (JoypadPortCheck, port 0
+; then 1); then writes the brightness value at $11DA to INIDISP.
+; HOW: Three 8-bit increments; $18FB and $1903 with long addressing; the
+; rest through the data bank.
+; Entry: M 16-bit, X 8-bit, D = $0000. Exit: A low byte = $11DA, high
+; byte 0, or $1903's high byte when the ports were checked and none set
+; $18FB; X = 1 and Y = $FF when the ports were checked, else unchanged;
+; M 8-bit; N, Z from $11DA; C, V unchanged.
+%ramcode($7F1042, $058842)
+FrameCountAndPortsEnd:
+    sep.b #$20
+    inc.b !dp_06
+    inc.w !frame_count
+    inc.w !frames_since_tick
+    rep.b #$20
+    lda.w #$0000
+    sta.l !wram_18FB
+    lda.l !wram_1903
+    beq .l1069
+    sep.b #$20
+    lda.b #$00
+    jsr.w JoypadPortCheck
+    sep.b #$20
+    lda.b #$01
+    jsr.w JoypadPortCheck
+.l1069:
+    sep.b #$20
+    lda.w !wram_11DA
+    sta.w !INIDISP
+    rtl

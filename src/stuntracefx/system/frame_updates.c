@@ -391,3 +391,58 @@ void abi_FrameInputAndCountEnd(void)
     cpu.x = (cpu.p & P_X) ? (uint8_t)x : x;
     cpu.p = (uint8_t)(nz8(cpu.p, v) | P_M);
 }
+
+int JoypadPortCheck(uint8_t bank, uint8_t port);
+
+/*
+ * @routine 7F:1042 FrameCountAndPortsEnd
+ * WHAT IT DOES: Ends a frame of the main game loop: steps the frame
+ * counters (direct page $06, $0E3B, $0306), clears $18FB and, when $1903
+ * is set, checks both joypad ports for a device (JoypadPortCheck, port 0
+ * then 1); then writes the brightness value at $11DA to INIDISP.
+ * HOW: Three 8-bit increments; $18FB and $1903 with long addressing; the
+ * rest through the data bank.
+ * Entry: M 16-bit, X 8-bit, D = $0000. Exit: A low byte = $11DA, high
+ * byte 0, or $1903's high byte when the ports were checked and none set
+ * $18FB; X = 1 and Y = $FF when the ports were checked, else unchanged;
+ * M 8-bit; N, Z from $11DA; C, V unchanged.
+ */
+uint8_t FrameCountAndPortsEnd(uint8_t bank, uint16_t *high, int *checked)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t v;
+    uint8_t lum;
+
+    wr8(0x000006, (uint8_t)(rd8(0x000006) + 1));
+    wr8(b | 0x0E3B, (uint8_t)(rd8(b | 0x0E3B) + 1));
+    wr8(b | 0x0306, (uint8_t)(rd8(b | 0x0306) + 1));
+    wr16(0x0018FB, 0x0000);
+    v = rd16(0x001903);
+    *high = (uint16_t)(v & 0xFF00);
+    *checked = 0;
+    if (v) {
+        int found = JoypadPortCheck(bank, 0);
+
+        found |= JoypadPortCheck(bank, 1);
+        if (found)
+            *high = 0x0000;
+        *checked = 1;
+    }
+    lum = rd8(b | 0x11DA);
+    wr8(b | INIDISP, lum);
+    return lum;
+}
+
+void abi_FrameCountAndPortsEnd(void)
+{
+    uint16_t high;
+    int checked;
+    uint8_t lum = FrameCountAndPortsEnd(cpu.db, &high, &checked);
+
+    cpu.a = (uint16_t)(high | lum);
+    if (checked) {
+        cpu.x = 0x0001;
+        cpu.y = 0x00FF;
+    }
+    cpu.p = (uint8_t)(nz8(cpu.p, lum) | P_M);
+}

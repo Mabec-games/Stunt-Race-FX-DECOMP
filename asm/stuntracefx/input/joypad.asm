@@ -82,3 +82,68 @@ JoypadAccumulate:
     sta.w !joy1_held
     plp
     rts
+
+; @routine 7F:10CD JoypadPortCheck
+; WHAT IT DOES: Checks joypad port A (0 or 1) for a device on its second
+; data line: with the latch set, eight reads of that line all 1 and then,
+; with the latch clear, eight reads not all 1 set $18FB to 1. The second
+; half is not reached in the traces so far.
+; HOW: The serial bits are shifted into !joy_serial_bits (ROL); the latch is
+; JOYSER0 bit 0 and is left clear. P is saved and restored.
+; Entry: any widths; A low byte = the port. Exit: A low byte = 0 (A = 0
+; when $18FB was set); X = the port, Y = $FF (8-bit values); P unchanged.
+%ramcode($7F10CD, $0588CD)
+JoypadPortCheck:
+    php
+    sep.b #$30
+    tax
+    lda.b #$01
+    sta.w !JOYSER0
+    stz.w !joy_serial_bits
+    ldy.b #$07
+.l10DB:
+    lda.w !JOYSER0,x
+    and.b #$02
+    beq .l10E8
+    sec
+    rol.w !joy_serial_bits
+    bra .l10EC
+.l10E8:
+    clc
+    rol.w !joy_serial_bits
+.l10EC:
+    dey
+    bpl .l10DB
+    lda.w !joy_serial_bits
+    cmp.b #$FF
+    bne .l1124
+    lda.b #$00
+    sta.w !JOYSER0
+    stz.w !joy_serial_bits
+    ldy.b #$07
+.l1100:
+    lda.w !JOYSER0,x
+    and.b #$02
+    beq .l110D
+    sec
+    rol.w !joy_serial_bits
+    bra .l1111
+.l110D:
+    clc
+    rol.w !joy_serial_bits
+.l1111:
+    dey
+    bpl .l1100
+    lda.w !joy_serial_bits
+    cmp.b #$FF
+    beq .l1124
+    rep.b #$20
+    lda.w #$0001
+    sta.l !wram_18FB
+.l1124:
+    sep.b #$20
+    lda.b #$00
+    sta.w !JOYSER0
+    rep.b #$20
+    plp
+    rts
