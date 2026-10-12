@@ -846,16 +846,8 @@ includeonce
 !save_bad_flag = $001FFE
 !save_block_groups_w = $FFD0
 
-; The Super FX's current 3x3 matrix ($70:00E4, render/matrix.asm) as its
-; own short RAM address, for LMS and SMS.
-!fx_matrix = $00E4
-
-; Three vectors of three words the Super FX multiplies by its matrix
-; (render/matrix.asm), as its own short RAM address.
-!fx_vectors = $0116
-
-; The Super FX's point records (render/points.asm), as its own short RAM
-; addresses: the pair list's address (plus 4), and the vector added to
-; each point.
-!fx_pairs = $005A
-!fx_offset = $0026
+; Super FX RAM read by bank 01's Super FX code (render/): three vectors
+; of three words multiplied by the matrix at $00E4 (matrix.asm), and the
+; address (plus 4) of the word pairs the point records take (points.asm).
+!gsu_vectors = $700116
+!gsu_point_pairs = $70005A

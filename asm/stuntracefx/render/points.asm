@@ -27,7 +27,7 @@ arch superfx
 %at($01C1BE)
 FxPointsGather:
     cache
-    lms r0,(!fx_pairs)
+    lms r0,(!gsu_point_pairs-!gsu_ram)
     to r2
     sub #4
     iwt r1,#$0826
@@ -60,9 +60,9 @@ FxPointsGather:
     sub #12
     loop
     nop
-    lms r5,(!fx_offset)
-    lms r6,(!fx_offset+2)
-    lms r7,(!fx_offset+4)
+    lms r5,(!gsu_out_26-!gsu_ram)
+    lms r6,(!gsu_out_26-!gsu_ram+2)
+    lms r7,(!gsu_out_26-!gsu_ram+4)
     iwt r2,#$082A
     move r12,r9
     move r13,r15

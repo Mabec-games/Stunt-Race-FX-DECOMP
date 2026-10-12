@@ -77,18 +77,18 @@ FxMatrixTranspose:
 %at($01978B)
 FxMatrixApply:
     cache
-    lms r6,(!fx_matrix)
+    lms r6,(!gsu_out_e4-!gsu_ram)
     from r1
     fmult
     to r5
     rol
-    lms r6,(!fx_matrix+6)
+    lms r6,(!gsu_out_e4-!gsu_ram+6)
     from r2
     fmult
     rol
     with r5
     add r0
-    lms r6,(!fx_matrix+12)
+    lms r6,(!gsu_out_e4-!gsu_ram+12)
     from r3
     fmult
     rol
@@ -96,18 +96,18 @@ FxMatrixApply:
     stw (r9)
     inc r9
     inc r9
-    lms r6,(!fx_matrix+2)
+    lms r6,(!gsu_out_e4-!gsu_ram+2)
     from r1
     fmult
     to r5
     rol
-    lms r6,(!fx_matrix+8)
+    lms r6,(!gsu_out_e4-!gsu_ram+8)
     from r2
     fmult
     rol
     with r5
     add r0
-    lms r6,(!fx_matrix+14)
+    lms r6,(!gsu_out_e4-!gsu_ram+14)
     from r3
     fmult
     rol
@@ -115,18 +115,18 @@ FxMatrixApply:
     stw (r9)
     inc r9
     inc r9
-    lms r6,(!fx_matrix+4)
+    lms r6,(!gsu_out_e4-!gsu_ram+4)
     from r1
     fmult
     to r5
     rol
-    lms r6,(!fx_matrix+10)
+    lms r6,(!gsu_out_e4-!gsu_ram+10)
     from r2
     fmult
     rol
     with r5
     add r0
-    lms r6,(!fx_matrix+16)
+    lms r6,(!gsu_out_e4-!gsu_ram+16)
     from r3
     fmult
     rol
@@ -148,21 +148,21 @@ FxMatrixApply:
 %at($01975B)
 FxMatrixApplyVectors:
     move r8,r11
-    lms r1,(!fx_vectors)
-    lms r2,(!fx_vectors+2)
-    lms r3,(!fx_vectors+4)
+    lms r1,(!gsu_vectors-!gsu_ram)
+    lms r2,(!gsu_vectors-!gsu_ram+2)
+    lms r3,(!gsu_vectors-!gsu_ram+4)
     link #4
     iwt r15,#FxMatrixApply
     nop
-    lms r1,(!fx_vectors+6)
-    lms r2,(!fx_vectors+8)
-    lms r3,(!fx_vectors+10)
+    lms r1,(!gsu_vectors-!gsu_ram+6)
+    lms r2,(!gsu_vectors-!gsu_ram+8)
+    lms r3,(!gsu_vectors-!gsu_ram+10)
     link #4
     iwt r15,#FxMatrixApply
     nop
-    lms r1,(!fx_vectors+12)
-    lms r2,(!fx_vectors+14)
-    lms r3,(!fx_vectors+16)
+    lms r1,(!gsu_vectors-!gsu_ram+12)
+    lms r2,(!gsu_vectors-!gsu_ram+14)
+    lms r3,(!gsu_vectors-!gsu_ram+16)
     link #4
     iwt r15,#FxMatrixApply
     nop
