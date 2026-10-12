@@ -253,3 +253,9 @@ includeonce
 ; $07 (race/time_bonus.asm).
 !bonus_digit_states = $8C43
 !time_digit_large = $8DDA
+; Sine words by angle / 256 (257 entries), read by the Super FX in bank 0
+; (math/fx_rotate.asm).
+!fx_sine16_table = $983E
+; Angle words by tangent / 64 (257 entries), read by the Super FX in bank 0
+; (math/fx_rotate.asm).
+!fx_atan_table = $9E40

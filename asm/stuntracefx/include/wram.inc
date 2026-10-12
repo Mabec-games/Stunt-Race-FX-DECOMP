@@ -1043,3 +1043,83 @@ includeonce
 !packed_time_a = $1163
 ; Direct page $F1 as BinaryToBcd builds its result (hud/lap_time.asm).
 !bcd_digits = $F1
+; Super FX side of the object step (object/fx_sums.asm): two vector sums,
+; the rotation matrix's words (short address), and record fields.
+!fx_world_sum = $702340
+!fx_local_sum = $702346
+!fx_matrix_w = $00E4
+!fxrec_half_x = $1E
+!fxrec_scaled_x = $2E
+; Car Super FX record fields for the lap count (race/fx_course.asm).
+!fxrec_segment = $58
+!fxrec_laps = $7A
+!fxrec_counted = $86
+; Super FX record fields and the push (object/fx_record.asm).
+!fx_push = $7023A4
+!fxrec_next = $0E
+!fxrec_flags10 = $10
+!fxrec_list = $18
+!fxrec_y = $20
+!fxrec_flags40 = $40
+!fxrec_y_held = $60
+; The two record pools' chain heads, short addresses (object/fx_pool.asm).
+!fx_pool_first = $1098
+!fx_pool_second = $1D70
+; Record motion fields (object/fx_motion.asm).
+!fxrec_flags1c = $1C
+!fxrec_velocity = $2E
+; The three angles FxMatrixFromAngles reads, short address (math/fx_rotate.asm).
+!fx_angles_w = $0020
+; Record speed and alignment (object/fx_record.asm).
+!fxrec_speed = $4A
+!fxrec_align = $6C
+; The collision push (object/fx_collide.asm): the unit vector (short
+; addresses), the closing speed, record mass and contact words.
+!fx_normal_x_w = $0068
+!fx_normal_y_w = $002C
+!fx_normal_z_w = $002E
+!fx_closing = $7026F6
+!fxrec_mass = $2A
+!fxhit_velocity = $04
+!fxhit_x = $08
+; Car record direction bits (race/fx_course.asm).
+!fxrec_direction = $70
+; The cars' list and rank fields (race/fx_rank.asm).
+!fx_cars = $70262E
+!fxrec_next_car = $74
+!fxrec_to_go = $84
+!fxrec_rank = $88
+; Record fields the amount programs change (object/fx_record.asm).
+!fxrec_6a = $6A
+!fxrec_82 = $82
+; The R10 stack Super FX programs start with (object/fx_pool.asm).
+!fx_stack = $0240
+; The list of all Super FX records and their list and pool fields
+; (object/fx_pool.asm).
+!fx_records = $702332
+!fxrec_all_next = $04
+!fxrec_all_prev = $06
+!fxrec_pool = $08
+; Record creation (object/fx_pool.asm): mode $0422 records' count and list,
+; and the fields set.
+!fx_count_422 = $702482
+!fx_list_422 = $702398
+!fxrec_flags16 = $16
+!fxrec_mode = $1A
+!fxrec_link_422 = $26
+; Car set-up (object/fx_car.asm): the script's values and the part and car
+; record fields.
+!fx_part_bytes = $0052
+!fx_part_mode = $700068
+!fx_script_at = $702392
+!fx_car_26f2 = $7026F2
+!fxpart_0c = $0C
+!fxpart_12 = $12
+!fxpart_next = $34
+!fxpart_3c = $3C
+!fxpart_44 = $44
+!fxpart_46 = $46
+!fxpart_50 = $50
+!fxcar_parts = $3E
+!fxcar_entry = $6E
+!fxcar_8c = $8C

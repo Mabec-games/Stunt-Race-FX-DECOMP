@@ -1,0 +1,170 @@
+/*
+ * fx_sums.c: the Super FX's two vector sums for the object it is moving.
+ *
+ * $70:2340/2342/2344 is a sum in world axes (x, y, z) and $70:2346/2348/234A
+ * a sum in the object's own axes. Pushes are added into them during a step;
+ * the own-axes sum is turned into world axes through the 3x3 matrix at
+ * $70:00E4 (columns of three words at $00E4, $00EA and $00F0, 1.15 fixed
+ * point) and added into the world sum; the world sum is then added to the
+ * object's Super FX record (R9).
+ */
+#include "gsu_ops.h"
+
+#define FX_WORLD_SUM 0x2340u   /* x, y, z */
+#define FX_LOCAL_SUM 0x2346u   /* x, y, z in the object's axes */
+#define FX_MATRIX 0x00E4u      /* column j, row i at +6*j+2*i */
+
+/* Record fields the world sum is added to. */
+#define REC_1E 0x1Eu           /* +$1E/+$20/+$22: half the sum */
+#define REC_2E 0x2Eu           /* +$2E/+$30/+$32: twice, eight times, twice */
+
+/* FMULT then ROL: bits 15-30 of the signed product, a 1.15 fixed point
+   multiply. */
+static uint16_t fx_mul15(uint16_t a, uint16_t b)
+{
+    return gsu_rol(gsu_fmult(a, b));
+}
+
+/*
+ * @routine 04:96A7 FxSumsClear
+ * WHAT IT DOES: Clears both vector sums.
+ * HOW: SUB R0 from itself, then six SMs of the zero, world x first.
+ * Entry: R11 = return address. Exit: R0 = 0; Z, CY set, S, OV clear; the
+ * last RAM address $234A.
+ */
+void FxSumsClear(void)
+{
+    uint16_t zero = gsu_sub(gsu.r[0], gsu.r[0], 0);
+    int i;
+
+    for (i = 0; i < 6; i++)
+        gsu_stw((uint16_t)(FX_WORLD_SUM + 2 * i), zero);
+}
+
+void abi_FxSumsClear(void)
+{
+    FxSumsClear();
+    gsu.r[0] = 0;
+}
+
+/*
+ * @routine 04:97BB FxSumsRotateLocal
+ * WHAT IT DOES: Adds the own-axes sum, turned into world axes by the matrix
+ * at $00E4, into the world sum.
+ * HOW: For world x, z, then y (in that order), the three products of the
+ * own-axes sum with the matrix row, each an FMULT whose top bit is rolled
+ * in, summed and added to the world sum's word with SBK.
+ * Entry: R11 = return address. Exit: R0 = the new world y; R2 = the own-axes
+ * sum's world y; R1, R3 = own-axes x, z; R4 = the old world y; R5 = the y
+ * row's first two products summed; R6 = the matrix word at $00F2; the last
+ * RAM address $2342; OV, S, CY, Z from the final add.
+ */
+typedef struct {
+    uint16_t lx, lz;    /* own-axes x and z */
+    uint16_t part;      /* the last axis's first two products summed */
+    uint16_t old;       /* the last axis's world sum before the add */
+    uint16_t m;         /* the last matrix word read */
+    uint16_t rot;       /* the own-axes sum's world y */
+    uint16_t y;         /* the new world y */
+} FxRotateLeft;
+
+FxRotateLeft FxSumsRotateLocal(void)
+{
+    static const uint8_t axis[3] = {0, 4, 2};   /* world x, z, y */
+    FxRotateLeft o;
+    uint16_t ly, sum = 0;
+    int k;
+
+    o.lx = gsu_ldw(FX_LOCAL_SUM);
+    ly = gsu_ldw(FX_LOCAL_SUM + 2);
+    o.lz = gsu_ldw(FX_LOCAL_SUM + 4);
+    for (k = 0; k < 3; k++) {
+        uint16_t row = (uint16_t)(FX_MATRIX + axis[k]);
+
+        o.m = gsu_ldw(row);
+        o.part = fx_mul15(o.lx, o.m);
+        o.m = gsu_ldw((uint16_t)(row + 6));
+        o.part = gsu_add(o.part, fx_mul15(ly, o.m), 0);
+        o.m = gsu_ldw((uint16_t)(row + 12));
+        sum = gsu_add(fx_mul15(o.lz, o.m), o.part, 0);
+        o.rot = sum;
+        o.old = gsu_ldw((uint16_t)(FX_WORLD_SUM + axis[k]));
+        sum = gsu_add(sum, o.old, 0);
+        gsu_sbk(sum);
+    }
+    o.y = sum;
+    return o;
+}
+
+void abi_FxSumsRotateLocal(void)
+{
+    FxRotateLeft o = FxSumsRotateLocal();
+
+    gsu.r[0] = o.y;
+    gsu.r[1] = o.lx;
+    gsu.r[2] = o.rot;
+    gsu.r[3] = o.lz;
+    gsu.r[4] = o.old;
+    gsu.r[5] = o.part;
+    gsu.r[6] = o.m;
+}
+
+/*
+ * @routine 04:9BD2 FxSumsApply
+ * WHAT IT DOES: Adds the world sum to the Super FX record R9: half of it to
+ * +$1E/+$20/+$22, and twice x, eight times y and twice z to +$2E/+$30/+$32.
+ * Nothing is changed when the sum is zero.
+ * HOW: The three words are ORed to test for zero; each field is read with
+ * LDW, the scaled sum added (DIV2 for the halves) and stored back with SBK,
+ * in record order.
+ * Entry: R9 = the record; R11 = return address. Exit: R4, R5, R6 = the world
+ * sum. A zero sum: R0 = 0; S clear, Z set; the last RAM address $2344.
+ * Otherwise: R0 = the new +$32; R1 = the old +$32; the last RAM address
+ * R9 + $32; OV, S, RAM address $2342; OV, S, CY, Z from the final add.
+ */
+typedef struct {
+    uint16_t v[3];      /* the world sum */
+    uint16_t last;      /* the new +$32 (0 for a zero sum) */
+    uint16_t field;     /* the old +$32 */
+    int moved;          /* the sum was not zero */
+} FxApplyLeft;
+
+FxApplyLeft FxSumsApply(uint16_t rec)
+{
+    static const uint8_t doublings[3] = {1, 3, 1};   /* x2, x8, x2 */
+    FxApplyLeft o = {{0, 0, 0}, 0, 0, 0};
+    uint16_t r;
+    int i, k;
+
+    for (i = 0; i < 3; i++)
+        o.v[i] = gsu_ldw((uint16_t)(FX_WORLD_SUM + 2 * i));
+    gsu_sz((uint16_t)(o.v[0] | o.v[1] | o.v[2]));
+    if (gsu.z)
+        return o;
+    o.moved = 1;
+    for (i = 0; i < 3; i++) {
+        o.field = gsu_ldw(gsu_add((uint16_t)(REC_1E + 2 * i), rec, 0));
+        gsu_sbk(gsu_add(gsu_div2(o.v[i]), o.field, 0));
+    }
+    for (i = 0; i < 3; i++) {
+        o.field = gsu_ldw(gsu_add((uint16_t)(REC_2E + 2 * i), rec, 0));
+        r = o.v[i];
+        for (k = 0; k < doublings[i]; k++)
+            r = gsu_add(r, r, 0);
+        o.last = gsu_add(r, o.field, 0);
+        gsu_sbk(o.last);
+    }
+    return o;
+}
+
+void abi_FxSumsApply(void)
+{
+    FxApplyLeft o = FxSumsApply(gsu.r[9]);
+
+    gsu.r[4] = o.v[0];
+    gsu.r[5] = o.v[1];
+    gsu.r[6] = o.v[2];
+    gsu.r[0] = o.last;
+    if (o.moved)
+        gsu.r[1] = o.field;
+}
