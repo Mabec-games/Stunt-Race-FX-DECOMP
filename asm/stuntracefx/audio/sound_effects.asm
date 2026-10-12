@@ -382,3 +382,25 @@ SoundAtRateForLevel:
     jsl.l SoundPort0QueuePushRaw
 .lD5AA:
     rts
+
+; @routine 04:D0BE SoundIfFlag40
+; WHAT IT DOES: When bit 6 of A is set, queues for the current player the
+; APU port 0 command the table at $04:D0D6 holds for the byte at $0D89 + Y.
+; HOW: An immediate BIT test; byte lookups; SoundPort0QueuePush. A is saved
+; and restored.
+; Entry: M 16-bit, X 8-bit; A = flags, Y = offset. Exit: A unchanged; X =
+; the $0D89 byte when it queued; M 16-bit, X 8-bit; N, Z from A.
+%at($04D0BE)
+SoundIfFlag40:
+    pha
+    bit.w #$0040
+    beq .lD0D2
+    sep.b #$30
+    lda.w !wram_0D89,y
+    tax
+    lda.l !sound_table_d0d6,x
+    jsl.l SoundPort0QueuePush
+.lD0D2:
+    rep.b #$20
+    pla
+    rts

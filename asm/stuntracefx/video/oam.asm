@@ -469,3 +469,59 @@ OamHighBits58:
 OamBufferHideLargeLong:
     jsr.w OamBufferHideLarge
     rtl
+
+; @routine 04:E2EC OamPaletteFromTableE30F
+; WHAT IT DOES: Sets the palette bits of 22 sprites from entry $0D79 to the
+; byte of the table at $04:E30F for $0D48's low byte.
+; HOW: OamSetPalette with X = $16, Y = $0D79 * 4.
+; Entry: any widths, D = $0000. Exit: A = the last attribute byte (high
+; byte clear); X = 0; Y past the last sprite; P unchanged.
+%at($04E2EC)
+OamPaletteFromTableE30F:
+    php
+    rep.b #$30
+    lda.w !wram_0D79
+    asl a
+    asl a
+    tay
+    lda.w !wram_0D48
+    and.w #$00FF
+    tax
+    lda.l !palette_bits_e30f,x
+    and.w #$00FF
+    ldx.w #$0016
+    jsr.w OamSetPalette
+    plp
+    rtl
+
+; @routine 04:E23F OamPaletteFromTableE26A
+; WHAT IT DOES: Sets the palette bits of 22 sprites from entry $0D7B + 13 to
+; $0A when $10D8 is 0, otherwise to the byte of the table at $04:E26A for
+; ($10D8 - 1)'s low byte.
+; HOW: OamSetPalette with X = $16.
+; Entry: any widths, D = $0000. Exit: as OamPaletteFromTableE30F.
+%at($04E23F)
+OamPaletteFromTableE26A:
+    php
+    rep.b #$30
+    lda.w !wram_0D7B
+    clc
+    adc.w #$000D
+    asl a
+    asl a
+    tay
+    lda.w !wram_10D8
+    bne .lE256
+    lda.w #$000A
+    bra .lE262
+.lE256:
+    dec a
+    and.w #$00FF
+    tax
+    lda.l !palette_bits_e26a,x
+    and.w #$00FF
+.lE262:
+    ldx.w #$0016
+    jsr.w OamSetPalette
+    plp
+    rtl

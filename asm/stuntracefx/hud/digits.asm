@@ -193,3 +193,25 @@ HudDrawValueTail:                   ; shared with HudDrawValueA and HudDrawValue
     jsr.w HudDrawNumber3
     sep.b #$10
     rts
+
+; @routine 09:C072 HudCountUp19EC
+; WHAT IT DOES: Marks object X (bit 0 of +$25), adds one to the BCD count at
+; $19EC and queues sound $3C for the current player.
+; HOW: An 8-bit decimal-mode add; SoundPort0QueuePush.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: A low byte = $3C; D clear;
+; C, V from the decimal add; N, Z from the data bank.
+%at($09C072)
+HudCountUp19EC:
+    lda.w !obj_25,x
+    ora.b #$01
+    sta.w !obj_25,x
+    sed
+    sep.b #$20
+    lda.w !hud_digits_19ec
+    clc
+    adc.b #$01
+    sta.w !hud_digits_19ec
+    cld
+    lda.b #$3C
+    jsl.l SoundPort0QueuePush
+    rts

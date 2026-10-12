@@ -354,3 +354,34 @@ void abi_SoundAtRateForLevel(void)
     cpu.a = SoundAtRateForLevel(cpu.db, cpu.a, &queued, &p);
     cpu.p = queued ? nz8(p, cpu.db) : p;
 }
+
+void SoundPort0QueuePush(uint8_t command);
+
+/*
+ * @routine 04:D0BE SoundIfFlag40
+ * WHAT IT DOES: When bit 6 of A is set, queues for the current player the
+ * APU port 0 command the table at $04:D0D6 holds for the byte at $0D89 + Y.
+ * HOW: An immediate BIT test; byte lookups; SoundPort0QueuePush. A is saved
+ * and restored.
+ * Entry: M 16-bit, X 8-bit; A = flags, Y = offset. Exit: A unchanged; X =
+ * the $0D89 byte when it queued; M 16-bit, X 8-bit; N, Z from A.
+ */
+int SoundIfFlag40(uint8_t bank, uint16_t flags, uint8_t y, uint8_t *x)
+{
+    if (!(flags & 0x0040))
+        return 0;
+    *x = rd8((uint32_t)bank << 16 | (uint16_t)(0x0D89 + y));
+    SoundPort0QueuePush(rd8(0x04D0D6 + *x));
+    return 1;
+}
+
+void abi_SoundIfFlag40(void)
+{
+    uint8_t x;
+
+    if (SoundIfFlag40(cpu.db, cpu.a, (uint8_t)cpu.y, &x)) {
+        cpu.x = x;
+        cpu.y &= 0x00FF;
+    }
+    cpu.p = (uint8_t)((nz16(cpu.p, cpu.a) & ~P_M) | P_X);
+}

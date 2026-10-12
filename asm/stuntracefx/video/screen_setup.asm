@@ -198,3 +198,37 @@ RaceScreenSetup:
     stz.w !BG3VOFS
     stz.w !BG3VOFS
     rts
+
+; @routine 03:EC6D VideoStartUploads
+; WHAT IT DOES: With interrupts off, clears direct page $00, acknowledges the
+; Super FX, sets the S-CPU's screen mode value ($0374) to 3 and runs the two
+; DMA transfers described at $F873 (to VRAM $0000) and $F87A (to $7C00).
+; HOW: NMITIMEN = 0 and SEI; reads $1073 and the Super FX status (16-bit,
+; so $3031 too); VMAIN = $80; DmaFromDescriptor twice. P (with the
+; interrupt flag) is restored on return.
+; Entry: any widths, D = $0000. Exit: A = $F801; X = $80; Y = $FF; P
+; unchanged.
+%at($03EC6D)
+VideoStartUploads:
+    php
+    sep.b #$30
+    sei
+    stz.w !NMITIMEN
+    stz.b !dp_00
+    lda.w !wram_1073
+    rep.b #$20
+    lda.l !GSU_SFR
+    lda.w #$0003
+    sta.w !gsu_scmr_shadow
+    ldx.b #$80
+    stx.w !VMAIN
+    lda.w #$0000
+    sta.w !VMADDL
+    lda.w #$F873
+    jsr.w DmaFromDescriptor
+    lda.w #$7C00
+    sta.w !VMADDL
+    lda.w #$F87A
+    jsr.w DmaFromDescriptor
+    plp
+    rtl

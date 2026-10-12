@@ -237,3 +237,46 @@ void abi_HudDrawValueC(void)
 {
     abi_draw_value(0x0DDB, 0x0128);
 }
+
+void SoundPort0QueuePush(uint8_t command);
+
+/* An 8-bit ADC in decimal mode, as the 65816 does it (carry in `c`). */
+static uint8_t adc_bcd8(uint8_t a, uint8_t m, int c, uint8_t *p)
+{
+    unsigned r = (a & 0x0F) + (m & 0x0F) + (unsigned)c;
+
+    if (r > 0x09) r += 0x06;
+    c = r > 0x0F;
+    r = (a & 0xF0) + (m & 0xF0) + ((unsigned)c << 4) + (r & 0x0F);
+    *p = (uint8_t)((*p & ~(P_V | P_C)) | ((~(a ^ m) & (a ^ r) & 0x80) ? P_V : 0));
+    if (r > 0x9F) r += 0x60;
+    if (r > 0xFF) *p |= P_C;
+    *p = nz8(*p, (uint8_t)r);
+    return (uint8_t)r;
+}
+
+/*
+ * @routine 09:C072 HudCountUp19EC
+ * WHAT IT DOES: Marks object X (bit 0 of +$25), adds one to the BCD count at
+ * $19EC and queues sound $3C for the current player.
+ * HOW: An 8-bit decimal-mode add; SoundPort0QueuePush.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: A low byte = $3C; D clear;
+ * C, V from the decimal add; N, Z from the data bank.
+ */
+void HudCountUp19EC(uint8_t bank, uint16_t obj, uint8_t *p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+
+    wr8(b | (uint16_t)(0x2025 + obj), (uint8_t)(rd8(b | (uint16_t)(0x2025 + obj)) | 0x01));
+    wr8(b | 0x19EC, adc_bcd8(rd8(b | 0x19EC), 0x01, 0, p));
+    SoundPort0QueuePush(0x3C);
+}
+
+void abi_HudCountUp19EC(void)
+{
+    uint8_t p = cpu.p;
+
+    HudCountUp19EC(cpu.db, cpu.x, &p);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x3C);
+    cpu.p = (uint8_t)(nz8(p & ~P_D, cpu.db) | P_M);
+}

@@ -74,3 +74,8 @@ includeonce
 ; BCD values per course and entry, three bytes per entry (race/time.asm).
 !course_values_d814 = $03D814
 !course_values_d815 = $03D815
+
+; Byte tables: sound commands by $0D89, sprite palettes (audio, video/oam).
+!sound_table_d0d6 = $04D0D6
+!palette_bits_e26a = $04E26A
+!palette_bits_e30f = $04E30F

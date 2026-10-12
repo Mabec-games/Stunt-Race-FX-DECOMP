@@ -139,3 +139,40 @@ void abi_RaceScreenSetup(void)
     cpu.y &= 0x00FF;
     cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z)) | P_M | P_X);
 }
+
+void DmaFromDescriptor(uint8_t bank, uint16_t desc);
+
+/*
+ * @routine 03:EC6D VideoStartUploads
+ * WHAT IT DOES: With interrupts off, clears direct page $00, acknowledges the
+ * Super FX, sets the S-CPU's screen mode value ($0374) to 3 and runs the two
+ * DMA transfers described at $F873 (to VRAM $0000) and $F87A (to $7C00).
+ * HOW: NMITIMEN = 0 and SEI; reads $1073 and the Super FX status (16-bit,
+ * so $3031 too); VMAIN = $80; DmaFromDescriptor twice. P (with the
+ * interrupt flag) is restored on return.
+ * Entry: any widths, D = $0000. Exit: A = $F801; X = $80; Y = $FF; P
+ * unchanged.
+ */
+void VideoStartUploads(uint8_t bank)
+{
+    uint32_t b = (uint32_t)bank << 16;
+
+    io8(bank, NMITIMEN, 0x00);
+    wr8(0x000000, 0x00);
+    rd8(b | 0x1073);
+    rd16(GSU_SFR);
+    wr16(b | 0x0374, 0x0003);
+    io8(bank, VMAIN, 0x80);
+    wr16(b | (VMADDL & 0xFFFF), 0x0000);
+    DmaFromDescriptor(bank, 0xF873);
+    wr16(b | (VMADDL & 0xFFFF), 0x7C00);
+    DmaFromDescriptor(bank, 0xF87A);
+}
+
+void abi_VideoStartUploads(void)
+{
+    VideoStartUploads(cpu.db);
+    cpu.a = 0xF801;
+    cpu.x = 0x0080;
+    cpu.y = 0x00FF;
+}

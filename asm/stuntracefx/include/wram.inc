@@ -510,3 +510,8 @@ includeonce
 !obj_link_w = $204F
 !approach_value = $3E
 !race_time_bcd = $0E70
+!wram_0D79 = $0D79
+!wram_0D7B = $0D7B
+!wram_10D8 = $10D8
+!wram_1073 = $1073
+!dp_00 = $00

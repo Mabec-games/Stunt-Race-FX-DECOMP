@@ -582,3 +582,49 @@ void abi_OamBufferHideLargeLong(void)
 {
     abi_OamBufferHideLarge();
 }
+
+/*
+ * @routine 04:E2EC OamPaletteFromTableE30F
+ * WHAT IT DOES: Sets the palette bits of 22 sprites from entry $0D79 to the
+ * byte of the table at $04:E30F for $0D48's low byte.
+ * HOW: OamSetPalette with X = $16, Y = $0D79 * 4.
+ * Entry: any widths, D = $0000. Exit: A = the last attribute byte (high
+ * byte clear); X = 0; Y past the last sprite; P unchanged.
+ */
+uint8_t OamPaletteFromTableE30F(uint8_t bank, uint16_t *y)
+{
+    uint32_t b = (uint32_t)bank << 16;
+
+    *y = (uint16_t)(rd16(b | 0x0D79) << 2);
+    return OamSetPalette(bank, rd8(0x04E30F + (rd16(b | 0x0D48) & 0x00FF)), 0x0016, y);
+}
+
+void abi_OamPaletteFromTableE30F(void)
+{
+    cpu.a = OamPaletteFromTableE30F(cpu.db, &cpu.y);
+    cpu.x = 0;
+}
+
+/*
+ * @routine 04:E23F OamPaletteFromTableE26A
+ * WHAT IT DOES: Sets the palette bits of 22 sprites from entry $0D7B + 13 to
+ * $0A when $10D8 is 0, otherwise to the byte of the table at $04:E26A for
+ * ($10D8 - 1)'s low byte.
+ * HOW: OamSetPalette with X = $16.
+ * Entry: any widths, D = $0000. Exit: as OamPaletteFromTableE30F.
+ */
+uint8_t OamPaletteFromTableE26A(uint8_t bank, uint16_t *y)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t n = rd16(b | 0x10D8);
+    uint8_t bits = n ? rd8(0x04E26A + ((uint16_t)(n - 1) & 0x00FF)) : 0x0A;
+
+    *y = (uint16_t)((uint16_t)(rd16(b | 0x0D7B) + 0x0D) << 2);
+    return OamSetPalette(bank, bits, 0x0016, y);
+}
+
+void abi_OamPaletteFromTableE26A(void)
+{
+    cpu.a = OamPaletteFromTableE26A(cpu.db, &cpu.y);
+    cpu.x = 0;
+}
