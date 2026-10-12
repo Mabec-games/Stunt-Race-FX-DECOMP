@@ -24,6 +24,7 @@
 #include <string.h>
 #include "machine.h"
 #include "check.h"
+#include "gsucall.h"
 
 /* ---- the machine model the C links against ---- */
 
@@ -391,6 +392,7 @@ static void on_insn(uint32_t pc)
 
 static void on_write(uint32_t addr, uint8_t data, int kind)
 {
+    if (norm(addr) >> 24 == R_GSURAM) gsu_check_foreign(0x700000u | (norm(addr) & 0xFFFFFF));
     if (!depth) return;
     uint32_t n = norm(addr);
     int ram = n >> 24 == R_WRAM || n >> 24 == R_GSURAM;
@@ -460,6 +462,7 @@ static int load_routines(void *core, const char *lib, const char *only)
     for (int i = 0; i < nroutines; i++) watched[routines[i].addr >> 3] |= (uint8_t)(1 << (routines[i].addr & 7));
     has_c = calloc(1 << 21, 1);
     for (int i = 0; i < all_count; i++) has_c[all_routines[i].addr >> 3] |= (uint8_t)(1 << (all_routines[i].addr & 7));
+    if (gsu_load(core, h, only) < 0) return -1;
     *(void **)&core_bus_read = dlsym(core, "sfxbox_core_bus_read");
     *(void **)&core_bus_write = dlsym(core, "sfxbox_core_bus_write");
     return core_bus_read && core_bus_write ? 0 : -1;
@@ -478,6 +481,7 @@ int check_begin(void *core, const char *lib, const char *only, const char *repor
     seq_bad = calloc((size_t)(nroutines ? nroutines : 1), sizeof *seq_bad);
     static struct SfxboxCallbacks cb = {on_insn, on_write, on_read, on_interrupt};
     set_cb(&cb);
+    gsu_check_begin(report);
     return 0;
 }
 
@@ -492,6 +496,7 @@ void check_end(void)
         printf("%06X %-28s calls %ld match %ld diff %ld inconclusive %ld  %s\n", routines[i].addr, routines[i].name,
                s->calls, s->match, s->diff, s->inconclusive, v);
     }
+    gsu_check_rows(report);
     fclose(report);
 }
 
@@ -1037,6 +1042,7 @@ int lockstep_begin(void *core, const char *lib, const char *only, const char *re
     if (!set_cb || !core_clock || !core_replay || !core_interrupt_here || !core_run_until || !core_access || !core_set_regs || !core_snapshot || !core_exec) return -1;
     sh = mmap(NULL, sizeof(Shared), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANON, -1, 0);
     if (sh == MAP_FAILED) return -1;
+    if (gsu_lockstep_prepare()) return -1;
     (void)core_bus_peek;
     fflush(NULL);
     child = fork();
@@ -1056,6 +1062,7 @@ int lockstep_begin(void *core, const char *lib, const char *only, const char *re
         static struct SfxboxCallbacks cb = {ls_insn, trace_write, trace_read, ls_interrupt, ls_timing};
         set_cb(&cb);
     }
+    gsu_lockstep_role(role, lsrep, &sh->stuck);
     if (getenv("SFXBOX_LS_PLACE")) sscanf(getenv("SFXBOX_LS_PLACE"), "%ld,%ld", &place_from, &place_to);
     if (getenv("SFXBOX_LS_SKIPS")) skips_from = atol(getenv("SFXBOX_LS_SKIPS"));
     if (tr && sscanf(tr, "%ld,%ld", &tr_lo, &tr_hi) == 2) {
@@ -1078,6 +1085,7 @@ void lockstep_before_frame(long f)
         WAIT_UNTIL(LOAD(sh->o_frames) > f || LOAD(sh->o_done));
         hk = 0;
     }
+    gsu_before_frame(f);
 }
 
 /* Where a CPU write lands in the frame snapshot: work RAM, or Super FX RAM
@@ -1136,6 +1144,7 @@ static void compare(long f)
     if (sl->midcall) memset(inflight, 0, sizeof inflight);
     if (bad && sl->midcall) strncat(buf, " (frame ended inside a call)", sizeof buf - strlen(buf) - 1);
     if (hk != sl->ncalls) { bad = 1; snprintf(buf + strlen(buf), sizeof buf - strlen(buf), " calls %u/%u", hk, sl->ncalls); }
+    if (gsu_after_frame(f, buf, sizeof buf)) bad = 1;
     {
         struct SfxboxRegs r; core_regs(&r);
         uint32_t c = core_clock();
@@ -1177,14 +1186,17 @@ void lockstep_end(long frames)
 {
     if (role == 1) {
         STORE(sh->o_done, 1);
+        gsu_lockstep_done();
         int st = 0;
         waitpid(child, &st, 0);
         if (LOAD(sh->stuck)) fprintf(stderr, "lockstep: a side waited too long; see the report\n");
     } else if (role == 2) {
+        char g[256];
+        int gbad = gsu_lockstep_summary(g, sizeof g);
         fprintf(lsrep, "frames %ld compared %ld, differing %ld; calls swapped %ld, entered other ways %ld, unmatched %ld, "
-                "hardware accesses off the timeline %ld, interrupts not pending where taken %ld, original-code calls not placed %ld: %s\n",
+                "hardware accesses off the timeline %ld, interrupts not pending where taken %ld, original-code calls not placed %ld%s: %s\n",
                 frames, frames_compared, diff_frames, calls_swapped, calls_fallback, mismatched_calls, timed_unmatched, irq_missed, asm_unplaced,
-                diff_frames || mismatched_calls || timed_unmatched || irq_missed || asm_unplaced ? "DIVERGENT" : calls_swapped ? "IDENTICAL" : "UNCOVERED");
+                g, diff_frames || mismatched_calls || timed_unmatched || irq_missed || asm_unplaced || gbad ? "DIVERGENT" : calls_swapped || gsu_count() ? "IDENTICAL" : "UNCOVERED");
         fclose(lsrep);
         _exit(0);
     }

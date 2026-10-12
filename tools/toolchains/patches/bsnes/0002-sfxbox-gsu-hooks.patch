@@ -1,0 +1,233 @@
+diff --git a/bsnes/emulator/sfxbox.hpp b/bsnes/emulator/sfxbox.hpp
+--- a/bsnes/emulator/sfxbox.hpp
++++ b/bsnes/emulator/sfxbox.hpp
+@@ -47,4 +47,45 @@
+ // OAM 544, CGRAM 512, APU RAM 64K, in that order.
+ enum { SFXBOX_SNAPSHOT_SIZE = 0x20000 + 0x10000 + 0x10000 + 544 + 512 + 0x10000 };
+ void sfxbox_core_snapshot(uint8_t* out);
++
++// ---- Super FX ----
++// Events from the Super FX for the harness (target-libretro/sfxbox.cpp keeps
++// the callbacks): each instruction about to run (its address, the address
++// after the last byte the previous one fetched, its opcode), each clock
++// step, each game pak RAM access, each code cache line filled and each cache
++// flush with the cache base it leaves.
++struct SfxboxGsuCallbacks {
++  void (*insn)(uint32_t pc, uint32_t prev_end, uint8_t opcode);
++  void (*step)(uint32_t clocks);
++  void (*ram)(int write, uint32_t addr, uint8_t data);
++  void (*cache)(int kind, uint32_t value);
++};
++extern SfxboxGsuCallbacks sfxbox_gsu_cb;
++extern int sfxbox_gsu_hooked;
++// Run in place of the instruction at pc (1), or let it run (0).
++extern int (*sfxbox_gsu_exec)(uint32_t pc, uint32_t prev_end);
++// The Super FX's state, read and written whole by the harness.
++struct SfxboxGsuPixelCache { uint16_t offset; uint8_t bitpend; uint8_t data[8]; };
++struct SfxboxGsuState {
++  uint16_t r[16];
++  uint16_t sfr;
++  uint8_t pbr, rombr, rambr, scbr, scmr, colr, por, cfgr, clsr, pipeline, sreg, dreg;
++  uint16_t cbr, ramaddr;
++  uint8_t romcl, romdr, ramcl, ramdr;
++  uint16_t ramar;
++  uint32_t pipe_addr, last_byte;
++  struct SfxboxGsuPixelCache pixel[2];
++};
++void sfxbox_gsu_get(struct SfxboxGsuState* out);
++void sfxbox_gsu_put(const struct SfxboxGsuState* in);
++// Spend clocks on the Super FX's timeline with nothing else happening.
++void sfxbox_gsu_time(uint32_t clocks);
++// One access on the Super FX's bus, made now (read when write == 0).
++uint8_t sfxbox_gsu_bus(int write, uint32_t addr, uint8_t data);
++// Fill code cache line `line` as an instruction fetch would, without time.
++void sfxbox_gsu_fill(uint32_t line);
++// Set the cache base and invalidate the cache, as CACHE and LJMP do.
++void sfxbox_gsu_flush(uint32_t cbr);
++// The code byte at addr as the Super FX would fetch it now (cache or bus), without time.
++uint8_t sfxbox_gsu_fetch(uint16_t addr);
+ }
+diff --git a/bsnes/sfc/coprocessor/superfx/memory.cpp b/bsnes/sfc/coprocessor/superfx/memory.cpp
+--- a/bsnes/sfc/coprocessor/superfx/memory.cpp
++++ b/bsnes/sfc/coprocessor/superfx/memory.cpp
+@@ -23,7 +23,9 @@
+       synchronizeCPU();
+       if(synchronizing()) break;
+     }
+-    return ram.read(addr & ramMask);
++    uint8 value = ram.read(addr & ramMask);
++    if(sfxbox_gsu_cb.ram) sfxbox_gsu_cb.ram(0, addr, value);
++    return value;
+   }
+ 
+   return data;
+@@ -36,6 +38,7 @@
+       synchronizeCPU();
+       if(synchronizing()) break;
+     }
++    if(sfxbox_gsu_cb.ram) sfxbox_gsu_cb.ram(1, addr, data);
+     return ram.write(addr & ramMask, data);
+   }
+ }
+@@ -51,6 +54,7 @@
+         cache.buffer[dp++] = read(sp++);
+       }
+       cache.valid[offset >> 4] = true;
++      if(sfxbox_gsu_cb.cache) sfxbox_gsu_cb.cache(1, offset >> 4);
+     } else {
+       step(regs.clsr ? 1 : 2);
+     }
+@@ -76,6 +80,7 @@
+   regs.pipeline = readOpcode(regs.r[15]);
+   sfxboxPipeAddr = regs.pbr << 16 | regs.r[15];
+   regs.r[15].modified = false;
++  sfxboxLastByte = at;
+   sfxbox_gsu_insn(at);
+   return result;
+ }
+@@ -86,12 +91,14 @@
+   regs.pipeline = readOpcode(++regs.r[15]);
+   sfxboxPipeAddr = regs.pbr << 16 | regs.r[15];
+   regs.r[15].modified = false;
++  sfxboxLastByte = at;
+   sfxbox_gsu_operand(at);
+   return result;
+ }
+ 
+ auto SuperFX::flushCache() -> void {
+   for(uint n : range(32)) cache.valid[n] = false;
++  if(sfxbox_gsu_cb.cache) sfxbox_gsu_cb.cache(2, regs.cbr);
+ }
+ 
+ auto SuperFX::readCache(uint16 addr) -> uint8 {
+diff --git a/bsnes/sfc/coprocessor/superfx/superfx.cpp b/bsnes/sfc/coprocessor/superfx/superfx.cpp
+--- a/bsnes/sfc/coprocessor/superfx/superfx.cpp
++++ b/bsnes/sfc/coprocessor/superfx/superfx.cpp
+@@ -26,6 +26,70 @@
+   return nullptr;
+ }
+ 
++//Super FX state and actions for the sfxbox harness (see emulator/sfxbox.hpp).
++extern "C" void sfxbox_gsu_get(struct SfxboxGsuState* o) {
++  using namespace SuperFamicom;
++  auto& r = superfx.regs;
++  for(uint n : range(16)) o->r[n] = r.r[n].data;
++  o->sfr = r.sfr.data; o->pbr = r.pbr; o->rombr = r.rombr; o->rambr = r.rambr; o->scbr = r.scbr;
++  o->scmr = (uint)r.scmr; o->colr = r.colr; o->por = (uint)r.por; o->cfgr = (uint)r.cfgr; o->clsr = r.clsr;
++  o->pipeline = r.pipeline; o->sreg = r.sreg; o->dreg = r.dreg; o->cbr = r.cbr; o->ramaddr = r.ramaddr;
++  o->romcl = r.romcl; o->romdr = r.romdr; o->ramcl = r.ramcl; o->ramdr = r.ramdr; o->ramar = r.ramar;
++  o->pipe_addr = superfx.sfxboxPipeAddr; o->last_byte = superfx.sfxboxLastByte;
++  for(uint n : range(2)) {
++    o->pixel[n].offset = superfx.pixelcache[n].offset; o->pixel[n].bitpend = superfx.pixelcache[n].bitpend;
++    for(uint k : range(8)) o->pixel[n].data[k] = superfx.pixelcache[n].data[k];
++  }
++}
++
++extern "C" void sfxbox_gsu_put(const struct SfxboxGsuState* i) {
++  using namespace SuperFamicom;
++  auto& r = superfx.regs;
++  for(uint n : range(16)) { r.r[n].data = i->r[n]; r.r[n].modified = false; }
++  r.sfr.data = i->sfr; r.pbr = i->pbr; r.rombr = i->rombr; r.rambr = i->rambr; r.scbr = i->scbr;
++  r.scmr = i->scmr; r.colr = i->colr; r.por = i->por; r.cfgr = i->cfgr; r.clsr = i->clsr;
++  r.pipeline = i->pipeline; r.sreg = i->sreg; r.dreg = i->dreg; r.cbr = i->cbr; r.ramaddr = i->ramaddr;
++  r.romcl = i->romcl; r.romdr = i->romdr; r.ramcl = i->ramcl; r.ramdr = i->ramdr; r.ramar = i->ramar;
++  superfx.sfxboxPipeAddr = i->pipe_addr; superfx.sfxboxLastByte = i->last_byte;
++  for(uint n : range(2)) {
++    superfx.pixelcache[n].offset = i->pixel[n].offset; superfx.pixelcache[n].bitpend = i->pixel[n].bitpend;
++    for(uint k : range(8)) superfx.pixelcache[n].data[k] = i->pixel[n].data[k];
++  }
++}
++
++extern "C" void sfxbox_gsu_time(uint32_t clocks) {
++  using namespace SuperFamicom;
++  superfx.clock += clocks * (uint64_t)cpu.frequency;
++  superfx.synchronizeCPU();
++}
++
++extern "C" uint8_t sfxbox_gsu_bus(int write, uint32_t addr, uint8_t data) {
++  using namespace SuperFamicom;
++  if(write) { superfx.write(addr, data); return data; }
++  return superfx.read(addr);
++}
++
++extern "C" void sfxbox_gsu_fill(uint32_t line) {
++  using namespace SuperFamicom;
++  uint dp = (line & 31) << 4;
++  uint sp = (superfx.regs.pbr << 16) + ((superfx.regs.cbr + dp) & 0xfff0);
++  for(uint n : range(16)) superfx.cache.buffer[dp++] = superfx.read(sp++);
++  superfx.cache.valid[line & 31] = true;
++}
++
++extern "C" void sfxbox_gsu_flush(uint32_t cbr) {
++  using namespace SuperFamicom;
++  superfx.regs.cbr = cbr;
++  for(uint n : range(32)) superfx.cache.valid[n] = false;
++}
++
++extern "C" uint8_t sfxbox_gsu_fetch(uint16_t addr) {
++  using namespace SuperFamicom;
++  uint16 offset = addr - superfx.regs.cbr;
++  if(offset < 512 && superfx.cache.valid[offset >> 4]) return superfx.cache.buffer[offset];
++  return superfx.read(superfx.regs.pbr << 16 | addr);
++}
++
+ namespace SuperFamicom {
+ 
+ auto SuperFX::synchronizeCPU() -> void {
+@@ -42,6 +106,12 @@
+ auto SuperFX::main() -> void {
+   if(regs.sfr.g == 0) return step(6);
+ 
++  if(sfxbox_gsu_hooked) {
++    uint32 prevEnd = (sfxboxLastByte & 0xff0000) | ((sfxboxLastByte + 1) & 0xffff);
++    if(sfxbox_gsu_cb.insn) sfxbox_gsu_cb.insn(sfxboxPipeAddr, prevEnd, regs.pipeline);
++    if(sfxbox_gsu_exec && sfxbox_gsu_exec(sfxboxPipeAddr, prevEnd)) return;
++  }
++
+   instruction(peekpipe());
+ 
+   if(regs.r[14].modified) {
+diff --git a/bsnes/sfc/coprocessor/superfx/superfx.hpp b/bsnes/sfc/coprocessor/superfx/superfx.hpp
+--- a/bsnes/sfc/coprocessor/superfx/superfx.hpp
++++ b/bsnes/sfc/coprocessor/superfx/superfx.hpp
+@@ -40,6 +40,7 @@
+ 
+   auto readOpcode(uint16 addr) -> uint8;
+   uint32 sfxboxPipeAddr = 0;
++  uint32 sfxboxLastByte = 0;
+   alwaysinline auto peekpipe() -> uint8;
+   alwaysinline auto pipe() -> uint8 override;
+ 
+diff --git a/bsnes/sfc/coprocessor/superfx/timing.cpp b/bsnes/sfc/coprocessor/superfx/timing.cpp
+--- a/bsnes/sfc/coprocessor/superfx/timing.cpp
++++ b/bsnes/sfc/coprocessor/superfx/timing.cpp
+@@ -15,6 +15,7 @@
+     }
+   }
+ 
++  if(sfxbox_gsu_cb.step) sfxbox_gsu_cb.step(clocks);
+   clock += clocks * (uint64_t)cpu.frequency;
+   synchronizeCPU();
+ }
+diff --git a/bsnes/target-libretro/sfxbox.cpp b/bsnes/target-libretro/sfxbox.cpp
+--- a/bsnes/target-libretro/sfxbox.cpp
++++ b/bsnes/target-libretro/sfxbox.cpp
+@@ -13,8 +13,18 @@
+ uint8_t sfxbox_cpu_opcode = 0;
+ int sfxbox_cpu_irq = 0;
+ int (*sfxbox_cpu_exec)(uint32_t pc) = nullptr;
++SfxboxGsuCallbacks sfxbox_gsu_cb = {};
++int sfxbox_gsu_hooked = 0;
++int (*sfxbox_gsu_exec)(uint32_t pc, uint32_t prev_end) = nullptr;
+ }
+ 
++// The harness installs its Super FX callbacks and its run-in-place hook here.
++extern "C" RETRO_API void sfxbox_gsu_set_callbacks(const SfxboxGsuCallbacks* cb, int (*exec)(uint32_t, uint32_t)) {
++  sfxbox_gsu_cb = cb ? *cb : SfxboxGsuCallbacks{};
++  sfxbox_gsu_exec = exec;
++  sfxbox_gsu_hooked = sfxbox_gsu_cb.insn || exec;
++}
++
+ extern "C" uint8_t* sfxbox_core_memory(int which, size_t* size);  // sfc/coprocessor/superfx/superfx.cpp
+ static uint8_t* sfxboxRomData() { size_t n; return sfxbox_core_memory(2, &n); }
+ 

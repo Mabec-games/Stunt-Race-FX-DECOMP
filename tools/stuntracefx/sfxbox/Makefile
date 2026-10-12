@@ -3,7 +3,7 @@ TOP := ../../..
 CORE_SRC := $(TOP)/tools/toolchains/src/bsnes/bsnes
 OUT := $(TOP)/build/stuntracefx/box/sfxbox
 
-$(OUT): sfxbox.c check.c check.h $(TOP)/src/stuntracefx/include/machine.h
+$(OUT): sfxbox.c check.c check.h gsucall.c gsucall.h $(TOP)/src/stuntracefx/include/machine.h $(TOP)/src/stuntracefx/include/gsu.h
 	@mkdir -p $(dir $(OUT))
 	cc -O2 -Wall -I$(CORE_SRC)/target-libretro -I$(TOP)/src/stuntracefx/include -Wl,-export_dynamic \
-		-o $(OUT) sfxbox.c check.c -ldl
+		-o $(OUT) sfxbox.c check.c gsucall.c -ldl
