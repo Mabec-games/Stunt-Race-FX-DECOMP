@@ -302,7 +302,25 @@ def qualify(addrs):
     return worst
 
 
+def gate_lock():
+    """One gate run at a time: two runs would share output files and the
+    machine. A lock left by a run that died is taken over."""
+    lock = os.path.join(B, 'gate.lock')
+    if os.path.exists(lock):
+        try:
+            pid = int(open(lock).read().strip())
+            os.kill(pid, 0)
+            raise SystemExit('another gate run (pid %d) holds %s' % (pid, lock))
+        except (ValueError, ProcessLookupError):
+            pass
+    open(lock, 'w').write(str(os.getpid()))
+    import atexit
+    atexit.register(lambda: os.path.exists(lock) and os.remove(lock))
+
+
 def main(argv):
+    if argv[:1] in (['--live'], ['--image']):
+        gate_lock()
     if argv[:1] == ['--live']:
         return live([a.upper().replace(':', '').replace('$', '') for a in argv[1:]])
     if argv[:1] == ['--image']:
