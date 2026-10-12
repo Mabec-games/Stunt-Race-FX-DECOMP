@@ -399,7 +399,7 @@ FxCarMoveParts:
 ; @routine 04:B9AC FxCarPose
 ; WHAT IT DOES: Sets up the matrix at $00E4 for car R8 (from its angles,
 ; negated: +$26, +$24, +$28 as angles 0-2, by FxMatrixFromAngles, then
-; FxMatrixTranspose) and moves its parts with it (FxCarMoveParts from its
+; FxMatrixTranspose04) and moves its parts with it (FxCarMoveParts from its
 ; position, copied to $2354).
 ; HOW: The negated angles go to $0020/$0022/$0024 (NOT, INC, SMS); R8 and
 ; the return address are kept on the R10 stack.
@@ -440,7 +440,7 @@ FxCarPose:
     nop
     iwt r9,#!fx_matrix_w
     link #4
-    iwt r15,#FxMatrixTranspose
+    iwt r15,#FxMatrixTranspose04
     nop
     dec r10
     dec r10

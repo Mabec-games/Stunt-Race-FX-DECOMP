@@ -226,7 +226,7 @@ FxMatrixFromAngles:
     jmp r11
     nop
 
-; @routine 04:C2C8 FxMatrixTranspose
+; @routine 04:C2C8 FxMatrixTranspose04
 ; WHAT IT DOES: Transposes the 3x3 matrix of words at R9 in place.
 ; HOW: Three swaps of the off-diagonal pairs (words 1 and 3, 2 and 6, 5 and
 ; 7), walking R9 with INC and ADD/SUB of small constants: loads and stores
@@ -236,7 +236,7 @@ FxMatrixFromAngles:
 ; the old word 5, R2 = the old word 7, R3 = the old word 6; the last RAM
 ; address matrix + 4; OV, S, CY, Z from the SUB that leaves R9.
 %at($04C2C8)
-FxMatrixTranspose:
+FxMatrixTranspose04:
     inc r9
     inc r9
     to r1

@@ -51,6 +51,6 @@ static inline FxRegs fx_via_abi(FxRegs g, void (*abi)(void))
 }
 
 void abi_FxMatrixFromAngles(void);
-void abi_FxMatrixTranspose(void);
+void abi_FxMatrixTranspose04(void);
 
 #endif

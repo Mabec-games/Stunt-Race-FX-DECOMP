@@ -296,7 +296,7 @@ void abi_FxCarMoveParts(void)
  * @routine 04:B9AC FxCarPose
  * WHAT IT DOES: Sets up the matrix at $00E4 for car R8 (from its angles,
  * negated: +$26, +$24, +$28 as angles 0-2, by FxMatrixFromAngles, then
- * FxMatrixTranspose) and moves its parts with it (FxCarMoveParts from its
+ * FxMatrixTranspose04) and moves its parts with it (FxCarMoveParts from its
  * position, copied to $2354).
  * HOW: The negated angles go to $0020/$0022/$0024 (NOT, INC, SMS); R8 and
  * the return address are kept on the R10 stack.
@@ -321,7 +321,7 @@ FxRegs FxCarPose(FxRegs g)
     g = fx_via_abi(g, abi_FxMatrixFromAngles);
     g.r[9] = FX_MATRIX;
     g.r[11] = 0xB9DF;
-    g = fx_via_abi(g, abi_FxMatrixTranspose);
+    g = fx_via_abi(g, abi_FxMatrixTranspose04);
     g.r[8] = gsu_pull(&g.r[10]);
     for (i = 0; i < 3; i++) {
         g.r[0] = gsu_ldw(gsu_add((uint16_t)(REC_POS + 2 * i), g.r[8], 0));

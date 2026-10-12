@@ -179,7 +179,7 @@ void abi_FxTurn(void)
 }
 
 /*
- * @routine 04:C2C8 FxMatrixTranspose
+ * @routine 04:C2C8 FxMatrixTranspose04
  * WHAT IT DOES: Transposes the 3x3 matrix of words at R9 in place.
  * HOW: Three swaps of the off-diagonal pairs (words 1 and 3, 2 and 6, 5 and
  * 7), walking R9 with INC and ADD/SUB of small constants: loads and stores
@@ -189,7 +189,7 @@ void abi_FxTurn(void)
  * the old word 5, R2 = the old word 7, R3 = the old word 6; the last RAM
  * address matrix + 4; OV, S, CY, Z from the SUB that leaves R9.
  */
-void FxMatrixTranspose(uint16_t m, uint16_t *left)
+void FxMatrixTranspose04(uint16_t m, uint16_t *left)
 {
     uint16_t w1, w2, w3, w5, w6, w7;
 
@@ -211,11 +211,11 @@ void FxMatrixTranspose(uint16_t m, uint16_t *left)
     left[2] = w6;
 }
 
-void abi_FxMatrixTranspose(void)
+void abi_FxMatrixTranspose04(void)
 {
     uint16_t m = gsu.r[9], left[3];
 
-    FxMatrixTranspose(m, left);
+    FxMatrixTranspose04(m, left);
     gsu.r[1] = left[0];
     gsu.r[2] = left[1];
     gsu.r[3] = left[2];
