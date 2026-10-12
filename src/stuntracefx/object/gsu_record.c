@@ -754,3 +754,125 @@ void abi_ObjectTurnFromRecord(void)
     cpu.a = ObjectTurnFromRecord(cpu.db, cpu.x, cpu.y, &p);
     cpu.p = (uint8_t)(p | P_M);
 }
+
+uint16_t ObjectRebucket(uint16_t obj);
+
+/* The tail of the two routines below ($08:CE60): Y = $1F3C (the record's
+   +$18); A's low byte becomes 1 when it is non-zero. */
+static uint16_t sync_tail(uint8_t bank, uint16_t a, uint16_t *y, uint8_t *p)
+{
+    *y = rd16((uint32_t)bank << 16 | 0x1F3C);
+    if (!*y) {
+        *p = nz16(*p, 0);
+        return a;
+    }
+    *p = nz8(*p, 0x01);
+    return (uint16_t)((a & 0xFF00) | 0x01);
+}
+
+/* No record ($08:CE69): $1F3C = 0, A = 0, carry set. */
+static uint16_t sync_none(uint8_t bank, uint8_t *p)
+{
+    wr16((uint32_t)bank << 16 | 0x1F3C, 0x0000);
+    *p = (uint8_t)(nz8(*p, 0) | P_C);
+    return 0x0000;
+}
+
+/* The steps both routines start with: ObjectRebucket, GsuRecordFlag4. */
+static uint16_t sync_start(uint8_t bank, uint16_t obj)
+{
+    int has;
+
+    ObjectRebucket(obj);
+    GsuRecordFlag4(bank, obj, &has);
+    return record_of(bank, obj);
+}
+
+/*
+ * @routine 08:CE02 ObjectSyncFromRecord
+ * WHAT IT DOES: Rebuckets object X, marks its record (GsuRecordFlag4), and
+ * takes its position back from the record (+$1E/+$20/+$22 to +$0C/+$0E/
+ * +$10), after giving the record its heading (+$15 as the high byte of
+ * +$24) and +$12 (+$5A's low 7 bits); bit 1 of +$24 follows bit 1 of the
+ * record's +$1C. Returns whether the record's +$18 is set.
+ * HOW: The object is in Y and the record in X while copying; $1F3C keeps
+ * the record's +$18; ends in the tail at $08:CE60 (shared with
+ * ObjectSyncToRecord) or, with no record, $08:CE69.
+ * Entry: M 8-bit, X 16-bit, D = $0000; X = object. Exit: X = the object; M
+ * 8-bit; V unchanged. Record: carry clear; Y = $1F3C; A low byte = 1 when
+ * it is non-zero (N, Z from that), else A = the new +$24 when the bit was
+ * set, 0 when not (Z set). No record: A = 0, Y = X, $1F3C = 0, Z and carry
+ * set.
+ */
+uint16_t ObjectSyncFromRecord(uint8_t bank, uint16_t obj, uint16_t *y, uint8_t *p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t rec = sync_start(bank, obj), a;
+    uint8_t f;
+
+    wr8(b | (uint16_t)(0x2024 + obj), rd8(b | (uint16_t)(0x2024 + obj)) & 0xFD);
+    if (!rec) {
+        *y = obj;
+        return sync_none(bank, p);
+    }
+    wr16(b | 0x1F3C, rd16(0x700018 + rec));
+    wr16(0x700024 + rec, (uint16_t)(rd8(b | (uint16_t)(0x2015 + obj)) << 8));
+    wr16(0x700012 + rec, rd16(b | (uint16_t)(0x205A + obj)) & 0x007F);
+    wr16(b | (uint16_t)(0x200C + obj), rd16(0x70001E + rec));
+    wr16(b | (uint16_t)(0x200E + obj), rd16(0x700020 + rec));
+    wr16(b | (uint16_t)(0x2010 + obj), rd16(0x700022 + rec));
+    a = rd16(0x70001C + rec) & 0x0002;
+    if (a) {
+        f = (uint8_t)(rd8(b | (uint16_t)(0x2024 + obj)) | 0x02);
+        wr8(b | (uint16_t)(0x2024 + obj), f);
+        a = f;
+    }
+    *p &= (uint8_t)~P_C;
+    return sync_tail(bank, a, y, p);
+}
+
+void abi_ObjectSyncFromRecord(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = ObjectSyncFromRecord(cpu.db, cpu.x, &cpu.y, &p);
+    cpu.p = (uint8_t)(p | P_M);
+}
+
+/*
+ * @routine 08:CEC3 ObjectSyncToRecord
+ * WHAT IT DOES: As ObjectSyncFromRecord, the other way: after the heading
+ * and +$12, the object's position goes to the record (+$0C/+$0E/+$10 to
+ * +$1E/+$20/+$22); +$24 is left alone.
+ * HOW: As ObjectSyncFromRecord, jumping to its tail at $08:CE60 (or
+ * $08:CE69 with no record).
+ * Entry: as ObjectSyncFromRecord. Exit: as ObjectSyncFromRecord, except
+ * that with a record and $1F3C zero A = the object's +$10.
+ */
+uint16_t ObjectSyncToRecord(uint8_t bank, uint16_t obj, uint16_t *y, uint8_t *p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t rec = sync_start(bank, obj), a;
+
+    if (!rec) {
+        *y = obj;
+        return sync_none(bank, p);
+    }
+    wr16(0x700024 + rec, (uint16_t)(rd8(b | (uint16_t)(0x2015 + obj)) << 8));
+    wr16(0x700012 + rec, rd16(b | (uint16_t)(0x205A + obj)) & 0x007F);
+    wr16(b | 0x1F3C, rd16(0x700018 + rec));
+    wr16(0x70001E + rec, rd16(b | (uint16_t)(0x200C + obj)));
+    wr16(0x700020 + rec, rd16(b | (uint16_t)(0x200E + obj)));
+    a = rd16(b | (uint16_t)(0x2010 + obj));
+    wr16(0x700022 + rec, a);
+    *p &= (uint8_t)~P_C;
+    return sync_tail(bank, a, y, p);
+}
+
+void abi_ObjectSyncToRecord(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = ObjectSyncToRecord(cpu.db, cpu.x, &cpu.y, &p);
+    cpu.p = (uint8_t)(p | P_M);
+}

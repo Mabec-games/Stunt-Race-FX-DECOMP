@@ -628,3 +628,5 @@ includeonce
 !obj_pos_z_long = $7E2010
 !wram_1F52 = $1F52
 !obj_bucket_long = $7E2040
+!gsu_rec_18 = $700018
+!wram_1F3C = $1F3C

@@ -739,3 +739,105 @@ ObjectTurnFromRecord:
     sta.w !obj_19,y
 .lC03B:
     rts
+
+; @routine 08:CE02 ObjectSyncFromRecord
+; WHAT IT DOES: Rebuckets object X, marks its record (GsuRecordFlag4), and
+; takes its position back from the record (+$1E/+$20/+$22 to +$0C/+$0E/
+; +$10), after giving the record its heading (+$15 as the high byte of
+; +$24) and +$12 (+$5A's low 7 bits); bit 1 of +$24 follows bit 1 of the
+; record's +$1C. Returns whether the record's +$18 is set.
+; HOW: The object is in Y and the record in X while copying; $1F3C keeps
+; the record's +$18; ends in the tail at $08:CE60 (shared with
+; ObjectSyncToRecord) or, with no record, $08:CE69.
+; Entry: M 8-bit, X 16-bit, D = $0000; X = object. Exit: X = the object; M
+; 8-bit; V unchanged. Record: carry clear; Y = $1F3C; A low byte = 1 when
+; it is non-zero (N, Z from that), else A = the new +$24 when the bit was
+; set, 0 when not (Z set). No record: A = 0, Y = X, $1F3C = 0, Z and carry
+; set.
+%at($08CE02)
+ObjectSyncFromRecord:
+    jsl.l ObjectRebucket
+    jsl.l GsuRecordFlag4
+    lda.w !obj_24,x
+    and.b #$FD
+    sta.w !obj_24,x
+    rep.b #$20
+    txy
+    lda.w !obj_22,y
+    beq ObjectSync_none
+    tax
+    lda.l !gsu_rec_18,x
+    sta.w !wram_1F3C
+    lda.w !obj_15,y
+    and.w #$00FF
+    xba
+    sta.l !gsu_rec_24,x
+    lda.w !obj_5a,y
+    and.w #$007F
+    sta.l !gsu_rec_12,x
+    lda.l !gsu_rec_1e,x
+    sta.w !obj_pos_x,y
+    lda.l !gsu_rec_20,x
+    sta.w !obj_pos_y,y
+    lda.l !gsu_rec_22,x
+    sta.w !obj_pos_z,y
+    lda.l !gsu_rec_1c,x
+    tyx
+    and.w #$0002
+    sep.b #$20
+    beq ObjectSync_tail
+    lda.w !obj_24,x
+    ora.b #$02
+    sta.w !obj_24,x
+ObjectSync_tail:                    ; ObjectSyncToRecord joins here too
+    ldy.w !wram_1F3C
+    beq .lCE67
+    lda.b #$01
+.lCE67:
+    clc
+    rtl
+ObjectSync_none:                    ; no record (ObjectSyncToRecord joins here too)
+    rep.b #$20
+    lda.w #$0000
+    sta.w !wram_1F3C
+    sep.b #$20
+    sep.b #$20
+    lda.b #$00
+    sec
+    rtl
+
+; @routine 08:CEC3 ObjectSyncToRecord
+; WHAT IT DOES: As ObjectSyncFromRecord, the other way: after the heading
+; and +$12, the object's position goes to the record (+$0C/+$0E/+$10 to
+; +$1E/+$20/+$22); +$24 is left alone.
+; HOW: As ObjectSyncFromRecord, jumping to its tail at $08:CE60 (or
+; $08:CE69 with no record).
+; Entry: as ObjectSyncFromRecord. Exit: as ObjectSyncFromRecord, except
+; that with a record and $1F3C zero A = the object's +$10.
+%at($08CEC3)
+ObjectSyncToRecord:
+    jsl.l ObjectRebucket
+    jsl.l GsuRecordFlag4
+    rep.b #$20
+    txy
+    lda.w !obj_22,y
+    beq ObjectSync_none
+    tax
+    lda.w !obj_15,y
+    and.w #$00FF
+    xba
+    sta.l !gsu_rec_24,x
+    lda.w !obj_5a,y
+    and.w #$007F
+    sta.l !gsu_rec_12,x
+    lda.l !gsu_rec_18,x
+    sta.w !wram_1F3C
+    lda.w !obj_pos_x,y
+    sta.l !gsu_rec_1e,x
+    lda.w !obj_pos_y,y
+    sta.l !gsu_rec_20,x
+    lda.w !obj_pos_z,y
+    sta.l !gsu_rec_22,x
+    tyx
+    sep.b #$20
+    jmp.w ObjectSync_tail
