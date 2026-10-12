@@ -1464,3 +1464,54 @@ void abi_ObjectCallHandler(void)
     cpu.y = y;
     cpu.p = nz16(cpu.p, x);
 }
+
+/* Run an object's handler as the dispatchers do it: the handler's address
+   (word) and bank are kept at $0354/$0356 and the object at $034C, and the
+   handler is entered by an RTL with X = the object, A = its address - 1, M
+   8-bit, N and Z from that A. Returns 0 when there is no handler. */
+static int run_handler(uint8_t bank, uint16_t obj, uint16_t word_at, uint16_t bank_at, int need_no_record)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t h;
+    uint8_t p = cpu.p;
+
+    wr8(b | 0x0356, rd8(b | (uint16_t)(bank_at + obj)));
+    h = rd16(b | (uint16_t)(word_at + obj));
+    cpu.a = h;
+    if (!h)
+        return 0;
+    wr16(b | 0x0354, h);
+    if (need_no_record && (cpu.a = rd16(b | (uint16_t)(0x2022 + obj))) != 0)
+        return 0;
+    wr16(b | 0x034C, obj);
+    cpu.a = (uint16_t)(rd16(b | 0x0354) - 1);
+    cpu.x = obj;
+    cpu.p = (uint8_t)(nz16(p, cpu.a) | P_M);
+    call_routine((uint32_t)rd8(b | 0x0356) << 16 | rd16(b | 0x0354), 1);
+    return 1;
+}
+
+/*
+ * @routine 03:CAEB ObjectRunHandlerB
+ * WHAT IT DOES: Runs object X's second handler: the long address at +$1D
+ * (word) / +$1F (bank), unless the word is 0 or the object has a Super FX
+ * record (+$22).
+ * HOW: As ObjectRunHandlerA, returning through $03:CB1F.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: A and Y as the handler leaves
+ * them (A = 0 with no handler, the record address when there is one); M
+ * 8-bit; X, P unchanged.
+ */
+void ObjectRunHandlerB(uint8_t bank, uint16_t obj)
+{
+    run_handler(bank, obj, 0x201D, 0x201F, 1);
+}
+
+void abi_ObjectRunHandlerB(void)
+{
+    uint16_t x = cpu.x;
+    uint8_t p = cpu.p;
+
+    run_handler(cpu.db, x, 0x201D, 0x201F, 1);
+    cpu.x = x;
+    cpu.p = p;
+}

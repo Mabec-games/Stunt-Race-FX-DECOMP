@@ -508,6 +508,8 @@ static struct {
     uint16_t exit_s, irq_s;
     uint64_t call;
     int depth;               /* catalog routines entered inside the call */
+    uint8_t pre_irq_op;      /* the last opcode before an interrupt */
+    int irq_resumed;         /* the handler has just returned */
     uint16_t open[64];       /* their stack pointers at entry */
 } m;
 
@@ -562,6 +564,7 @@ static void ls_insn(uint32_t pc)
             struct SfxboxRegs r; core_regs(&r);
             if (r.s != m.irq_s) return;
             m.in_irq = 0;  /* back from the handler: this may also be the return */
+            m.irq_resumed = 1;
         }
         struct SfxboxRegs r; core_regs(&r);
         /* Inside the call, the entry into any routine the catalog knows is
@@ -577,7 +580,14 @@ static void ls_insn(uint32_t pc)
             m.active = 0;
             return;
         }
-        if (is_catalog_entry(pc) && m.depth < 64) {
+        /* The previous instruction's opcode: after an RTL, RTS, JMP/JML
+           through memory or JSR (abs,X), this instruction may be a routine
+           entered through a computed address (a handler pushed for an RTL,
+           a jump table), which C reaches with call_routine. */
+        uint8_t prev = m.irq_resumed ? m.pre_irq_op : *core_opcode;
+        m.irq_resumed = 0;
+        int computed = prev == 0x6B || prev == 0x60 || prev == 0x6C || prev == 0x7C || prev == 0xDC || prev == 0xFC;
+        if ((computed || is_catalog_entry(pc)) && m.depth < 64) {
             ls_op(0x90, pc);
             ls_op(0xA0, r.s);
             m.open[m.depth++] = r.s;
@@ -608,6 +618,7 @@ static void ls_interrupt(uint32_t resume_pc, uint16_t s)
        runs at the call's level in between, but this one is taken there too. */
     if (m.in_irq && resume_pc == m.irq_pc && s == m.irq_s) m.in_irq = 0;
     if (m.in_irq) return;
+    m.pre_irq_op = *core_opcode;
     struct SfxboxRegs r; core_regs(&r);
     ls_op(0x50, (resume_pc & 0xFFFFFF) | (uint32_t)r.e << 24);
     ls_op(0x60, r.a | (uint32_t)r.x << 16);
@@ -728,8 +739,11 @@ static void run_original(uint32_t addr, int long_call)
 
 void call_routine(uint32_t addr, int long_call)
 {
-    for (int i = 0; i < all_count; i++)
-        if (all_routines[i].addr == addr) { all_routines[i].abi(); return; }
+    /* The C of the routines this run swaps in (all of them in a gate run;
+       those named by --only otherwise), so a focused run checks one
+       routine's C against everything else as original code. */
+    for (int i = 0; i < nroutines; i++)
+        if (routines[i].addr == addr) { routines[i].abi(); return; }
     if (!machine_live) {
         if (cur) cur->needs_asm = 1;
         if (c_running) longjmp(abort_c, 1);

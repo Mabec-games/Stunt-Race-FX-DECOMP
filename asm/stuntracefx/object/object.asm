@@ -1465,3 +1465,45 @@ ObjectCallHandler_return:           ; the handler's RTL lands here
     ply
     plx
     rts
+
+; @routine 03:CAEB ObjectRunHandlerB
+; WHAT IT DOES: Runs object X's second handler: the long address at +$1D
+; (word) / +$1F (bank), unless the word is 0 or the object has a Super FX
+; record (+$22).
+; HOW: As ObjectRunHandlerA, returning through $03:CB1F.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: A and Y as the handler leaves
+; them (A = 0 with no handler, the record address when there is one); M
+; 8-bit; X, P unchanged.
+%at($03CAEB)
+ObjectRunHandlerB:
+    php
+    phx
+    lda.w !obj_1f,x
+    sta.w !handler_bank
+    rep.b #$20
+    lda.w !obj_1d,x
+    beq .lCB20
+    sta.w !handler_addr
+    lda.w !obj_22,x
+    bne .lCB20
+    stx.w !handler_object
+    sep.b #$20
+    lda.b #$03
+    pha
+    rep.b #$20
+    lda.w #$CB1F
+    pha
+    sep.b #$20
+    lda.w !handler_bank
+    pha
+    rep.b #$20
+    lda.w !handler_addr
+    dec a
+    pha
+    sep.b #$20
+    rtl
+.lCB20:
+    sep.b #$20
+    plx
+    plp
+    rtl

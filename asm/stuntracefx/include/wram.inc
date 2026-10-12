@@ -804,3 +804,8 @@ includeonce
 ; (object/object.asm).
 !wram_034C = $034C
 !wram_035C = $035C
+!obj_1d = $201D
+!obj_1f = $201F
+!handler_object = $034C
+!handler_addr = $0354
+!handler_bank = $0356
