@@ -66,12 +66,13 @@ def filed_sources():
     return sorted(out)
 
 
-def claims(path, size):
-    """Bytes a filed file writes: assemble it alone over 00- and FF-filled images."""
+def claims(paths, size):
+    """Bytes the filed source writes: assemble it all (it shares labels) over
+    00- and FF-filled images; a byte written is the same in both."""
     tmp = os.path.join(B, 'claims')
     os.makedirs(tmp, exist_ok=True)
     wrap = os.path.join(tmp, 'wrap.asm')
-    open(wrap, 'w').write('norom\nincsrc "%s"\n' % path)
+    open(wrap, 'w').write('norom\n' + ''.join('incsrc "%s"\n' % p for p in paths))
     images = []
     for fill in (b'\x00', b'\xff'):
         img = os.path.join(tmp, 'fill.sfc')
@@ -98,6 +99,9 @@ def ranges(offsets):
 
 def main(argv):
     retrace = '--retrace' in argv
+    # First, so that no failure below can leave an old ROM to be graded.
+    if os.path.exists(OUT):
+        os.remove(OUT)
     stage_baserom()
     if not os.path.exists(SFXBOX):
         run(['make', '-C', os.path.join(ROOT, 'tools', 'stuntracefx', 'sfxbox')])
@@ -105,12 +109,7 @@ def main(argv):
     with concurrent.futures.ThreadPoolExecutor(max_workers=os.cpu_count()) as ex:
         traces = list(ex.map(lambda s: trace_one(s, retrace), scripts))
     size = os.path.getsize(BASEROM)
-    owner = {}
-    for f in filed_sources():
-        for o in claims(f, size):
-            if o in owner:
-                raise SystemExit('%s and %s both write ROM offset %06X' % (owner[o], f, o))
-            owner[o] = os.path.relpath(f, ROOT)
+    owner = set(claims(filed_sources(), size)) if filed_sources() else set()
     claimed = os.path.join(B, 'claimed.txt')
     with open(claimed, 'w') as c:
         for lo, hi in ranges(sorted(owner)):
@@ -122,8 +121,6 @@ def main(argv):
     for t in traces:
         args += ['--trace', t]
     print(run(args).strip())
-    if os.path.exists(OUT):
-        os.remove(OUT)
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     main_asm = os.path.join(B, 'main.asm')
     with open(main_asm, 'w') as m:

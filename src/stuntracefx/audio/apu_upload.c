@@ -1,11 +1,14 @@
 /*
  * apu_upload.c: sending the sound program and its data to the SPC700.
  *
- * The S-CPU streams bytes to the sound CPU's boot loader through the four
- * APU ports. The stream is read from ROM through a long pointer in direct
- * page plus an offset in Y.
+ * At boot the SPC700 runs its built-in loader. The S-CPU sends it blocks of
+ * bytes through the four APU ports with the loader's handshake, then tells it
+ * where to start. The data is a stream in ROM: a list of blocks, each a
+ * 16-bit length and a 16-bit SPC700 address followed by that many bytes; a
+ * block of length 0 ends the list and its address is where the SPC700 starts.
  */
 #include "machine.h"
+#include "hw.h"
 #include "wram.h"
 
 /*
@@ -49,4 +52,148 @@ void abi_ApuUploadNextByte(void)
     cpu.p = (uint8_t)((cpu.p & ~(P_C | P_V)) | (sum > 0xFFFF ? P_C : 0)
                       | ((~(next ^ low) & (next ^ sum) & 0x8000) ? P_V : 0));
     cpu.p |= P_M;
+}
+
+/* Where an upload left the stream, and the last value it put on port 0. */
+typedef struct {
+    uint16_t offset;
+    uint8_t kick;
+} ApuUploadEnd;
+
+static ApuUploadEnd apu_upload(uint8_t bank, uint16_t addr)
+{
+    ApuUploadEnd end;
+    uint16_t offset = 0;
+    uint8_t kick = 0xCC;
+
+    wr16(APU_STREAM_PTR, addr);
+    wr8(APU_STREAM_BANK, bank);
+    while (rd16(APUIO0) != 0xBBAA) {
+    }
+    for (;;) {
+        uint8_t lo = ApuUploadNextByte(&offset);
+        uint8_t hi = ApuUploadNextByte(&offset);
+        uint16_t length = (uint16_t)(lo | hi << 8);
+        uint8_t more = length != 0;
+        uint8_t index = 0;
+        unsigned carry = 1;
+
+        wr8(APUIO2, ApuUploadNextByte(&offset));
+        wr8(APUIO3, ApuUploadNextByte(&offset));
+        wr8(APUIO1, more);
+        wr8(APUIO0, kick);
+        while (rd8(APUIO0) != kick) {
+        }
+        if (!more)
+            break;
+        wr16(APUIO0, (uint16_t)(ApuUploadNextByte(&offset) << 8 | index));
+        while (--length) {
+            uint8_t data = ApuUploadNextByte(&offset);
+            while (rd8(APUIO0) != index) {
+            }
+            index++;
+            wr16(APUIO0, (uint16_t)(data << 8 | index));
+        }
+        while (rd8(APUIO0) != index) {
+        }
+        /* The next block's kick is past the last index, and never zero. */
+        kick = index;
+        do {
+            unsigned sum = kick + 3 + carry;
+            carry = sum > 0xFF;
+            kick = (uint8_t)sum;
+        } while (kick == 0);
+    }
+    end.offset = offset;
+    end.kick = kick;
+    return end;
+}
+
+/*
+ * @routine 04:D720 ApuUpload
+ * WHAT IT DOES: Uploads a block list from ROM to the SPC700's boot loader and
+ * starts the SPC700 at the address the list ends with.
+ * HOW: Points the upload stream at bank:address, waits for the loader's ready
+ * signature $BBAA on ports 0-1, then for each block sends the SPC700 address
+ * on ports 2-3, a flag on port 1 (1: data follows, 0: start here) and a kick
+ * value on port 0, and waits for the loader to echo the kick. The block's
+ * bytes go out on port 1 with a running index on port 0, each waiting for the
+ * loader to echo the previous index. The first kick is $CC; each later one
+ * is the last index plus 4 (plus 3 more while that wraps to zero).
+ * Entry: M 16-bit, X 16-bit, D = $0000; A low byte = ROM bank, Y = address.
+ * Exit: A = the final kick (high byte 0); X = 0; Y = the stream offset after
+ * the list; N, V clear; Z, C set; M 8-bit.
+ */
+void ApuUpload(uint8_t bank, uint16_t addr)
+{
+    apu_upload(bank, addr);
+}
+
+void abi_ApuUpload(void)
+{
+    ApuUploadEnd end = apu_upload((uint8_t)cpu.a, cpu.y);
+
+    cpu.a = end.kick;
+    cpu.x = 0;
+    cpu.y = end.offset;
+    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_V)) | P_Z | P_C | P_M);
+}
+
+/*
+ * @routine 04:D43C ApuPort1Send05
+ * WHAT IT DOES: Puts $05 on APU port 1, then waits while the sound CPU
+ * responds (ApuSettleDelay).
+ * HOW: An 8-bit store to port 1, then falls into ApuSettleDelay.
+ * Entry: M 16-bit. Exit: as ApuSettleDelay.
+ */
+void ApuPort1Send05(void)
+{
+    wr8(APUIO1, 0x05);
+}
+
+void abi_ApuPort1Send05(void)
+{
+    ApuPort1Send05();
+    cpu.a = 0;
+    cpu.p = (uint8_t)((cpu.p & ~(P_M | P_N)) | P_Z);
+}
+
+/*
+ * @routine 04:D443 ApuSettleDelay
+ * WHAT IT DOES: Waits a fixed time for the sound CPU to act on a command.
+ * HOW: Counts a 16-bit register down from $4000 to zero; it has no other
+ * effect.
+ * Entry: any widths. Exit: A = 0; M 16-bit; Z set, N clear.
+ */
+void ApuSettleDelay(void)
+{
+}
+
+void abi_ApuSettleDelay(void)
+{
+    cpu.a = 0;
+    cpu.p = (uint8_t)((cpu.p & ~(P_M | P_N)) | P_Z);
+}
+
+/*
+ * @routine 04:D44C ApuUploadBank19
+ * WHAT IT DOES: Uploads the sound block list at ROM $19:C27C to the SPC700,
+ * then waits for it to settle.
+ * HOW: ApuUpload with bank $19 and address $C27C, then ApuSettleDelay.
+ * Entry: any widths, D = $0000. Exit: A = 0, X = 0, Y = the stream offset
+ * after the list; P unchanged.
+ */
+void ApuUploadBank19(void)
+{
+    ApuUpload(0x19, 0xC27C);
+    ApuSettleDelay();
+}
+
+void abi_ApuUploadBank19(void)
+{
+    ApuUploadEnd end = apu_upload(0x19, 0xC27C);
+
+    cpu.a = 0;
+    cpu.x = 0;
+    cpu.y = end.offset;
 }

@@ -17,6 +17,7 @@
  * scratch and are not compared.
  */
 #include <dlfcn.h>
+#include <setjmp.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -78,7 +79,7 @@ static uint8_t *phys(uint32_t n)
 
 /* ---- small address -> byte map, cleared per call ---- */
 
-#define MAPN 8192
+#define MAPN (1 << 16)
 typedef struct { uint32_t key[MAPN]; uint8_t val[MAPN]; uint32_t gen[MAPN]; uint32_t g; int n; uint32_t order[MAPN]; } Map;
 
 static void map_clear(Map *m) { m->g++; m->n = 0; }
@@ -102,18 +103,40 @@ static void map_put(Map *m, uint32_t k, uint8_t v, int keep)
 }
 
 typedef struct { uint32_t addr; uint8_t v; } Io;
-#define ION 4096
 
-static struct {
-    int active, idx, in_irq, interrupted, dma, overflow;
+/* Growable logs of hardware accesses: a call can poll a port thousands of times. */
+typedef struct { Io *e; int n, cap; } IoLog;
+static void io_add(IoLog *l, uint32_t addr, uint8_t v)
+{
+    if (l->n == l->cap) {
+        l->cap = l->cap ? l->cap * 2 : 4096;
+        l->e = realloc(l->e, (size_t)l->cap * sizeof *l->e);
+        if (!l->e) abort();
+    }
+    l->e[l->n].addr = addr; l->e[l->n].v = v; l->n++;
+}
+
+/* One watched call. Calls nest (a checked routine can call another), so the
+   watches form a stack; every access is recorded in every open watch. */
+typedef struct {
+    int idx, in_irq, interrupted, dma, overflow;
     uint32_t ret_pc, irq_pc;
     uint16_t exit_s, irq_s;
     struct SfxboxRegs entry;
     Map undo, orig, cw;
-    Io oread[ION], owrite[ION], cwrite[ION];
-    int noread, nowrite, ncwrite, cread;
+    IoLog oread, owrite, cwrite;
+    int cread;
     int io_mismatch;
-} w;
+} Watch;
+
+#define DEPTH 6
+static Watch ws[DEPTH];
+static int depth;
+static Watch *cur;  /* the watch whose C is running */
+
+/* A C routine that reads past the replay is stopped here, not left spinning. */
+static jmp_buf abort_c;
+static int c_running;
 
 typedef struct { long calls, match, diff, inconclusive, skipped; int shown; } Stat;
 static Stat *stats;
@@ -131,14 +154,15 @@ uint8_t rd8(uint32_t addr)
     uint32_t n = norm(addr);
     uint8_t v;
     if (n >> 24 == R_IO) {
-        if (w.cread < w.noread && w.oread[w.cread].addr == (addr & 0xFFFF)) return w.oread[w.cread++].v;
-        w.io_mismatch = 1;
+        if (cur->cread < cur->oread.n && cur->oread.e[cur->cread].addr == (addr & 0xFFFF)) return cur->oread.e[cur->cread++].v;
+        cur->io_mismatch = 1;
+        if (c_running) longjmp(abort_c, 1);
         return 0;
     }
-    if (map_get(&w.cw, n, &v)) return v;
-    if (map_get(&w.undo, n, &v)) return v;
+    if (map_get(&cur->cw, n, &v)) return v;
+    if (map_get(&cur->undo, n, &v)) return v;
     uint8_t *p = phys(n);
-    if (!p) { w.io_mismatch = 1; return 0; }
+    if (!p) { cur->io_mismatch = 1; if (c_running) longjmp(abort_c, 1); return 0; }
     return *p;
 }
 
@@ -147,57 +171,58 @@ void wr8(uint32_t addr, uint8_t value)
     if (machine_live) { core_bus_write(addr & 0xFFFFFF, value); return; }
     uint32_t n = norm(addr);
     if (n >> 24 == R_IO) {
-        if (w.ncwrite < ION) { w.cwrite[w.ncwrite].addr = addr & 0xFFFF; w.cwrite[w.ncwrite].v = value; }
-        w.ncwrite++;
+        io_add(&cur->cwrite, addr & 0xFFFF, value);
         return;
     }
-    if (n >> 24 == R_WRAM || n >> 24 == R_GSURAM) map_put(&w.cw, n, value, 0);
-    else w.io_mismatch = 1;
+    if (n >> 24 == R_WRAM || n >> 24 == R_GSURAM) map_put(&cur->cw, n, value, 0);
+    else cur->io_mismatch = 1;
 }
 
 /* ---- events from the core ---- */
 
-static uint8_t entry_value(uint32_t n)
+static uint8_t entry_value(Watch *w, uint32_t n)
 {
     uint8_t v;
-    if (map_get(&w.undo, n, &v)) return v;
+    if (map_get(&w->undo, n, &v)) return v;
     uint8_t *p = phys(n);
     return p ? *p : 0;
 }
 
-static int is_scratch(uint32_t n)
+static int is_scratch(Watch *w, uint32_t n)
 {
     if (n >> 24 != R_WRAM) return 0;
     uint32_t off = n & 0xFFFFFF;
-    return off <= w.entry.s && off + 0x100 > w.entry.s;
+    return off <= w->entry.s && off + 0x100 > w->entry.s;
 }
 
-static void finish(void)
+static void finish(Watch *w)
 {
-    Stat *st = &stats[w.idx];
-    const Routine *r = &routines[w.idx];
+    Stat *st = &stats[w->idx];
+    const Routine *r = &routines[w->idx];
     struct SfxboxRegs out;
     core_regs(&out);
-    w.active = 0;
     st->calls++;
 
-    cpu.a = w.entry.a; cpu.x = w.entry.x; cpu.y = w.entry.y; cpu.s = w.entry.s; cpu.d = w.entry.d;
-    cpu.db = w.entry.db; cpu.p = w.entry.p; cpu.e = w.entry.e; cpu.pc = w.entry.pc;
-    map_clear(&w.cw); w.ncwrite = 0; w.cread = 0; w.io_mismatch = 0;
-    r->abi();
+    cpu.a = w->entry.a; cpu.x = w->entry.x; cpu.y = w->entry.y; cpu.s = w->entry.s; cpu.d = w->entry.d;
+    cpu.db = w->entry.db; cpu.p = w->entry.p; cpu.e = w->entry.e; cpu.pc = w->entry.pc;
+    map_clear(&w->cw); w->cwrite.n = 0; w->cread = 0; w->io_mismatch = 0;
+    cur = w;
+    c_running = 1;
+    if (setjmp(abort_c) == 0) r->abi();
+    c_running = 0;
 
     char why[512] = "";
     int bad = 0;
 #define DIFFR(f) if (cpu.f != out.f) { bad = 1; snprintf(why + strlen(why), sizeof why - strlen(why), " %s=%X/%X", #f, (unsigned)cpu.f, (unsigned)out.f); }
     DIFFR(a) DIFFR(x) DIFFR(y) DIFFR(d) DIFFR(db) DIFFR(p) DIFFR(e)
     for (int pass = 0; pass < 2; pass++) {
-        Map *m = pass ? &w.cw : &w.orig;
+        Map *m = pass ? &w->cw : &w->orig;
         for (int i = 0; i < m->n; i++) {
             uint32_t k = m->key[m->order[i]];
-            if (is_scratch(k)) continue;
+            if (is_scratch(w, k)) continue;
             uint8_t ov, cv;
-            if (!map_get(&w.orig, k, &ov)) ov = entry_value(k);
-            if (!map_get(&w.cw, k, &cv)) cv = entry_value(k);
+            if (!map_get(&w->orig, k, &ov)) ov = entry_value(w, k);
+            if (!map_get(&w->cw, k, &cv)) cv = entry_value(w, k);
             if (ov != cv) {
                 if (!bad || strlen(why) < 400)
                     snprintf(why + strlen(why), sizeof why - strlen(why), " [%d:%06X]=%02X/%02X", k >> 24, k & 0xFFFFFF, cv, ov);
@@ -205,95 +230,94 @@ static void finish(void)
             }
         }
     }
-    if (w.ncwrite != w.nowrite) { bad = 1; snprintf(why + strlen(why), sizeof why - strlen(why), " io-writes %d/%d", w.ncwrite, w.nowrite); }
-    else for (int i = 0; i < w.nowrite && i < ION; i++)
-        if (w.cwrite[i].addr != w.owrite[i].addr || w.cwrite[i].v != w.owrite[i].v) {
+    if (w->cwrite.n != w->owrite.n) { bad = 1; snprintf(why + strlen(why), sizeof why - strlen(why), " io-writes %d/%d", w->cwrite.n, w->owrite.n); }
+    else for (int i = 0; i < w->owrite.n; i++)
+        if (w->cwrite.e[i].addr != w->owrite.e[i].addr || w->cwrite.e[i].v != w->owrite.e[i].v) {
             bad = 1; snprintf(why + strlen(why), sizeof why - strlen(why), " io#%d %04X=%02X/%04X=%02X", i,
-                              w.cwrite[i].addr, w.cwrite[i].v, w.owrite[i].addr, w.owrite[i].v); break;
+                              w->cwrite.e[i].addr, w->cwrite.e[i].v, w->owrite.e[i].addr, w->owrite.e[i].v); break;
         }
-    if (w.cread != w.noread) { bad = 1; snprintf(why + strlen(why), sizeof why - strlen(why), " io-reads %d/%d", w.cread, w.noread); }
-    if (w.io_mismatch) { bad = 1; strncat(why, " unreplayable-access", sizeof why - strlen(why) - 1); }
-    if (w.overflow) { bad = 1; strncat(why, " overflow", sizeof why - strlen(why) - 1); }
+    if (w->cread != w->oread.n) { bad = 1; snprintf(why + strlen(why), sizeof why - strlen(why), " io-reads %d/%d", w->cread, w->oread.n); }
+    if (w->io_mismatch) { bad = 1; strncat(why, " unreplayable-access", sizeof why - strlen(why) - 1); }
+    if (w->overflow) { bad = 1; strncat(why, " overflow", sizeof why - strlen(why) - 1); }
 
     if (!bad) { st->match++; return; }
-    int unsure = w.interrupted || w.dma;
+    int unsure = w->interrupted || w->dma;
     if (unsure) st->inconclusive++; else st->diff++;
     if (st->shown < 8) {
         st->shown++;
         fprintf(report, "%s %06X %s call %ld: entry A=%04X X=%04X Y=%04X S=%04X D=%04X DB=%02X P=%02X%s; C/orig:%s\n",
-                unsure ? "INCONCLUSIVE" : "DIFF", r->addr, r->name, st->calls, w.entry.a, w.entry.x, w.entry.y,
-                w.entry.s, w.entry.d, w.entry.db, w.entry.p, w.interrupted ? " (interrupted)" : w.dma ? " (dma)" : "", why);
+                unsure ? "INCONCLUSIVE" : "DIFF", r->addr, r->name, st->calls, w->entry.a, w->entry.x, w->entry.y,
+                w->entry.s, w->entry.d, w->entry.db, w->entry.p, w->interrupted ? " (interrupted)" : w->dma ? " (dma)" : "", why);
     }
 }
 
 static void on_insn(uint32_t pc)
 {
-    if (w.active) {
-        if (w.in_irq) {
-            if (pc != w.irq_pc) return;
-            struct SfxboxRegs r; core_regs(&r);
-            if (r.s == w.irq_s) w.in_irq = 0;
-            return;
+    struct SfxboxRegs r;
+    int have = 0;
+    for (int i = 0; i < depth; i++)
+        if (ws[i].in_irq && pc == ws[i].irq_pc) {
+            if (!have) { core_regs(&r); have = 1; }
+            if (r.s == ws[i].irq_s) ws[i].in_irq = 0;
         }
-        if (pc != w.ret_pc) return;
-        struct SfxboxRegs r; core_regs(&r);
-        if (r.s == w.exit_s) finish();
-        return;
+    if (depth) {
+        Watch *t = &ws[depth - 1];
+        if (!t->in_irq && pc == t->ret_pc) {
+            if (!have) { core_regs(&r); have = 1; }
+            if (r.s == t->exit_s) { finish(t); depth--; }
+        }
     }
     if (!(watched[pc >> 3] >> (pc & 7) & 1)) return;
     int idx = -1;
     for (int i = 0; i < nroutines; i++) if (routines[i].addr == pc) { idx = i; break; }
     if (idx < 0) return;
-    struct SfxboxRegs r; core_regs(&r);
+    if (!have) { core_regs(&r); have = 1; }
     uint8_t via = *core_opcode;
     uint32_t sp = r.s;
-    if (sp + 3 >= wram_n || r.e) { stats[idx].skipped++; return; }
+    if (sp + 3 >= wram_n || r.e || depth == DEPTH) { stats[idx].skipped++; return; }
+    Watch *w = &ws[depth];
     uint16_t word = (uint16_t)(wram[(sp + 1) & 0xFFFF] | wram[(sp + 2) & 0xFFFF] << 8);
     if (via == 0x20 || via == 0xFC) {
-        w.ret_pc = (pc & 0xFF0000) | (uint16_t)(word + 1);
-        w.exit_s = (uint16_t)(sp + 2);
+        w->ret_pc = (pc & 0xFF0000) | (uint16_t)(word + 1);
+        w->exit_s = (uint16_t)(sp + 2);
     } else if (via == 0x22) {
-        w.ret_pc = (uint32_t)wram[(sp + 3) & 0xFFFF] << 16 | (uint16_t)(word + 1);
-        w.exit_s = (uint16_t)(sp + 3);
+        w->ret_pc = (uint32_t)wram[(sp + 3) & 0xFFFF] << 16 | (uint16_t)(word + 1);
+        w->exit_s = (uint16_t)(sp + 3);
     } else { stats[idx].skipped++; return; }
-    w.active = 1; w.idx = idx; w.entry = r;
-    w.in_irq = w.interrupted = w.dma = w.overflow = 0;
-    map_clear(&w.undo); map_clear(&w.orig);
-    w.noread = w.nowrite = 0;
+    w->idx = idx; w->entry = r;
+    w->in_irq = w->interrupted = w->dma = w->overflow = 0;
+    map_clear(&w->undo); map_clear(&w->orig);
+    w->oread.n = w->owrite.n = 0;
+    depth++;
 }
 
 static void on_write(uint32_t addr, uint8_t data, int kind)
 {
-    if (!w.active) return;
+    if (!depth) return;
     uint32_t n = norm(addr);
     int ram = n >> 24 == R_WRAM || n >> 24 == R_GSURAM;
-    if (ram) {
-        uint8_t *p = phys(n);
-        if (p) map_put(&w.undo, n, *p, 1);
-        if (w.undo.n >= MAPN / 2) w.overflow = 1;
-    }
-    if (kind == 2) { w.dma = 1; return; }
-    if (w.in_irq) return;
-    if (ram) { map_put(&w.orig, n, data, 0); if (w.orig.n >= MAPN / 2) w.overflow = 1; }
-    else if (n >> 24 == R_IO) {
-        if (w.nowrite < ION) { w.owrite[w.nowrite].addr = addr & 0xFFFF; w.owrite[w.nowrite].v = data; }
-        else w.overflow = 1;
-        w.nowrite++;
+    uint8_t *p = ram ? phys(n) : NULL;
+    for (int i = 0; i < depth; i++) {
+        Watch *w = &ws[i];
+        if (p) { map_put(&w->undo, n, *p, 1); if (w->undo.n >= MAPN / 2) w->overflow = 1; }
+        if (kind == 2) { w->dma = 1; continue; }
+        if (w->in_irq) continue;
+        if (ram) { map_put(&w->orig, n, data, 0); if (w->orig.n >= MAPN / 2) w->overflow = 1; }
+        else if (n >> 24 == R_IO) io_add(&w->owrite, addr & 0xFFFF, data);
     }
 }
 
 static void on_read(uint32_t addr, uint8_t data)
 {
-    if (!w.active || w.in_irq) return;
-    if (norm(addr) >> 24 != R_IO) return;
-    if (w.noread < ION) { w.oread[w.noread].addr = addr & 0xFFFF; w.oread[w.noread].v = data; w.noread++; }
-    else w.overflow = 1;
+    if (!depth || norm(addr) >> 24 != R_IO) return;
+    for (int i = 0; i < depth; i++)
+        if (!ws[i].in_irq) io_add(&ws[i].oread, addr & 0xFFFF, data);
 }
 
 static void on_interrupt(uint32_t resume_pc, uint16_t s)
 {
-    if (!w.active || w.in_irq) return;
-    w.in_irq = 1; w.interrupted = 1; w.irq_pc = resume_pc; w.irq_s = s;
+    for (int i = 0; i < depth; i++)
+        if (!ws[i].in_irq) { ws[i].in_irq = 1; ws[i].interrupted = 1; ws[i].irq_pc = resume_pc; ws[i].irq_s = s; }
 }
 
 /* ---- setup and report ---- */

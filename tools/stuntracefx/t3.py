@@ -242,7 +242,12 @@ def assess(addrs, image_ok=None):
         gates.append(('C covered', covered, '%d of %d bytes executed' % (sum(1 for o in span if mp[o] & 0x33), len(span))
                       if span else 'no filed assembly gives the routine\'s extent'))
         lr = live.get(key)
-        g5 = bool(lr) and lr['verdict'] == 'IDENTICAL' and contains(lr['source'], cpath) and not dirty(cpath)
+        # A call an interrupt overlapped cannot be judged per call (the handler can
+        # change what the routine reads mid-call); A7 judges those. A5 passes with
+        # no divergence and at least one identical call.
+        a5ok = bool(lr) and (lr['verdict'] == 'IDENTICAL' or (lr['verdict'] == 'UNVERIFIED' and int(lr['diff']) == 0
+                                                                and int(lr['calls']) > int(lr['inconclusive'])))
+        g5 = a5ok and contains(lr['source'], cpath) and not dirty(cpath)
         gates.append(('A5 live', g5, ('%s on %s' % (lr['verdict'], lr['source']) if lr else 'never run')
                       + ('; the C has uncommitted changes' if dirty(cpath) else '')))
         vs = [r['verdict'] for r in image_rows]

@@ -58,4 +58,13 @@ static inline uint8_t nz16(uint8_t p, uint16_t v)
     return p;
 }
 
+/* N and Z as an 8-bit load (or pull) sets them. */
+static inline uint8_t nz8(uint8_t p, uint8_t v)
+{
+    p &= (uint8_t)~(P_N | P_Z);
+    if (v == 0) p |= P_Z;
+    if (v & 0x80) p |= P_N;
+    return p;
+}
+
 #endif
