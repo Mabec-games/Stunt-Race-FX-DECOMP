@@ -1064,3 +1064,89 @@ RecordContactSummary:
     sep.b #$20
     lda.b #$00
     rtl
+
+; @routine 08:C8FF RecordButtonSequence
+; WHAT IT DOES: Watches the buttons in $1AF0 for a four-press sequence: bit
+; 6, then bit 7, then bit 14, each within 5 frames of the last, then bit 11
+; between 12 and 16 frames later. The full sequence plays sound $48 and
+; gives record X bit 13 of +$40, $180 at +$6A and $1000 at +$400. Too slow,
+; too early or done: back to the start.
+; HOW: $1A33 counts frames and $1A35 is the stage, both reset together;
+; the limits are signed compares (BPL/BMI). A stage above 3 gives the
+; reward at once. Only stages 0 and 1 are reached by a script.
+; Entry: M 16-bit, X 16-bit; X = record. Exit: X, Y unchanged; A and N, Z,
+; C as the last load or compare on the path taken; V unchanged.
+%at($08C8FF)
+RecordButtonSequence:
+    inc.w !seq_count
+    lda.w !seq_stage
+    beq .lC938
+    cmp.w #$0001
+    beq .lC94E
+    cmp.w #$0002
+    beq .lC964
+    cmp.w #$0003
+    beq .lC97A
+.reward:
+    lda.w #$0048
+    jsl.l SoundPort0QueuePush
+    lda.l !gsu_rec_40,x
+    ora.w #$2000
+    sta.l !gsu_rec_40,x
+    lda.w #$0180
+    sta.l !gsu_rec_6a,x
+    lda.w #$1000
+    sta.l !gsu_rec_400,x
+    bra .lC999
+.lC938:
+    lda.w !seq_count
+    cmp.w #$0005
+    bpl .lC999
+    lda.w !seq_input
+    bit.w #$0040
+    beq .lC94C
+    jml.l RecordButtonSequence_next
+.lC94C:
+    bra RecordButtonSequence_done
+.lC94E:
+    lda.w !seq_count
+    cmp.w #$0005
+    bpl .lC999
+    lda.w !seq_input
+    bit.w #$0080
+    beq .lC962
+    jml.l RecordButtonSequence_next
+.lC962:
+    bra RecordButtonSequence_done
+.lC964:
+    lda.w !seq_count
+    cmp.w #$0005
+    bpl .lC999
+    lda.w !seq_input
+    bit.w #$4000
+    beq .lC978
+    jml.l RecordButtonSequence_next
+.lC978:
+    bra RecordButtonSequence_done
+.lC97A:
+    lda.w !seq_count
+    cmp.w #$0011
+    bpl .lC999
+    lda.w !seq_input
+    bit.w #$0800
+    bne .lC98E
+    jml.l RecordButtonSequence_done
+.lC98E:
+    lda.w !seq_count
+    cmp.w #$000C
+    bmi .lC999
+    jmp.w .reward
+.lC999:
+    stz.w !seq_count
+    stz.w !seq_stage
+RecordButtonSequence_done:          ; reached by the long jump above
+    rts
+RecordButtonSequence_next:          ; a press in time: the next stage
+    stz.w !seq_count
+    inc.w !seq_stage
+    bra RecordButtonSequence_done

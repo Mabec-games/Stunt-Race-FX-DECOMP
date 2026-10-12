@@ -657,3 +657,9 @@ includeonce
 !contact_flags = $700010
 !gsu_rec_64 = $700064
 !gsu_control_26f2 = $7026F2
+; The button sequence (object/gsu_record.asm): frame count, stage, and the
+; buttons it reads.
+!seq_count = $1A33
+!seq_stage = $1A35
+!seq_input = $1AF0
+!gsu_rec_400 = $700400

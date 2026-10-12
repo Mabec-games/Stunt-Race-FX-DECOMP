@@ -1061,3 +1061,93 @@ void abi_RecordContactSummary(void)
     cpu.a = RecordContactSummary(cpu.db, cpu.x, &cpu.y);
     cpu.p = (uint8_t)(nz16(cpu.p, cpu.a) | P_M);
 }
+
+void SoundPort0QueuePush(uint8_t command);
+
+/* CMP of two 16-bit values: N, Z, C. */
+static uint8_t cmp16(uint8_t p, uint16_t a, uint16_t m)
+{
+    return (uint8_t)((nz16(p, (uint16_t)(a - m)) & ~P_C) | (a >= m ? P_C : 0));
+}
+
+#define SEQ_COUNT 0x1A33u
+#define SEQ_STAGE 0x1A35u
+#define SEQ_INPUT 0x1AF0u
+
+/*
+ * @routine 08:C8FF RecordButtonSequence
+ * WHAT IT DOES: Watches the buttons in $1AF0 for a four-press sequence: bit
+ * 6, then bit 7, then bit 14, each within 5 frames of the last, then bit 11
+ * between 12 and 16 frames later. The full sequence plays sound $48 and
+ * gives record X bit 13 of +$40, $180 at +$6A and $1000 at +$400. Too slow,
+ * too early or done: back to the start.
+ * HOW: $1A33 counts frames and $1A35 is the stage, both reset together;
+ * the limits are signed compares (BPL/BMI). A stage above 3 gives the
+ * reward at once. Only stages 0 and 1 are reached by a script.
+ * Entry: M 16-bit, X 16-bit; X = record. Exit: X, Y unchanged; A and N, Z,
+ * C as the last load or compare on the path taken; V unchanged.
+ */
+uint16_t RecordButtonSequence(uint8_t bank, uint16_t rec, uint8_t *p)
+{
+    static const uint16_t press[3] = {0x0040, 0x0080, 0x4000};
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t n, s, in;
+
+    n = (uint16_t)(rd16(b | SEQ_COUNT) + 1);
+    wr16(b | SEQ_COUNT, n);
+    s = rd16(b | SEQ_STAGE);
+    *p = nz16(*p, s);
+    if (s != 0)
+        *p = cmp16(*p, s, 0x0001);
+    if (s != 0 && s != 1)
+        *p = cmp16(*p, s, 0x0002);
+    if (s <= 2) {
+        *p = cmp16(*p, n, 0x0005);
+        if (!(*p & P_N))
+            goto reset;
+        in = rd16(b | SEQ_INPUT);
+        *p = nz16(*p, in);
+        if (!(in & press[s])) {
+            *p |= P_Z;
+            return in;
+        }
+        wr16(b | SEQ_COUNT, 0x0000);
+        wr16(b | SEQ_STAGE, (uint16_t)(rd16(b | SEQ_STAGE) + 1));
+        *p = nz16(*p, rd16(b | SEQ_STAGE));
+        return in;
+    }
+    *p = cmp16(*p, s, 0x0003);
+    if (s == 3) {
+        *p = cmp16(*p, n, 0x0011);
+        if (!(*p & P_N))
+            goto reset;
+        in = rd16(b | SEQ_INPUT);
+        *p = nz16(*p, in);
+        if (!(in & 0x0800)) {
+            *p |= P_Z;
+            return in;
+        }
+        n = rd16(b | SEQ_COUNT);
+        *p = cmp16(*p, n, 0x000C);
+        if (*p & P_N)
+            goto reset;
+    }
+    SoundPort0QueuePush(0x48);
+    wr16(0x700040 + rec, (uint16_t)(rd16(0x700040 + rec) | 0x2000));
+    wr16(0x70006A + rec, 0x0180);
+    wr16(0x700400 + rec, 0x1000);
+    *p = nz16(*p, 0x1000);
+    n = 0x1000;
+reset:
+    wr16(b | SEQ_COUNT, 0x0000);
+    wr16(b | SEQ_STAGE, 0x0000);
+    return n;
+}
+
+void abi_RecordButtonSequence(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = RecordButtonSequence(cpu.db, cpu.x, &p);
+    cpu.p = p;
+}
