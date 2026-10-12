@@ -425,3 +425,38 @@ void abi_ScreenFrameAndPictures(void)
     abi_VramPictureRows1B0();
     cpu.p = p;
 }
+
+uint16_t RandomWordStep(uint8_t bank);
+
+/*
+ * @routine 03:F47B VramNoiseTiles
+ * WHAT IT DOES: Fills $400 words of VRAM from address 0 with random tiles
+ * $20-$3F (from RandomWordStep); first stores $8000 as a word at BG4VOFS,
+ * which leaves BG4VOFS 0 and sets VMAIN to $80.
+ * HOW: A 16-bit store to $2114/$2115, then VMDATA writes; $0D18 is the
+ * random word.
+ * Entry: any widths. Exit: A = the last word written; X = 0; M 16-bit, X
+ * 16-bit; Z set, N clear.
+ */
+uint16_t VramNoiseTiles(uint8_t bank)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t v = 0;
+    unsigned i;
+
+    wr16(b | 0x2114, 0x8000);
+    wr16(b | 0x2116, 0x0000);
+    for (i = 0; i < 0x400; i++) {
+        RandomWordStep(bank);
+        v = (uint16_t)((rd16(b | 0x0D18) & 0x001F) | 0x0020);
+        wr16(b | 0x2118, v);
+    }
+    return v;
+}
+
+void abi_VramNoiseTiles(void)
+{
+    cpu.a = VramNoiseTiles(cpu.db);
+    cpu.x = 0;
+    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_M | P_X)) | P_Z);
+}

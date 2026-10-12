@@ -95,3 +95,7 @@ includeonce
 !selection_bits_b540 = $03B540
 !selection_repeat_b464 = $03B464
 !selection_derived_b46c = $03B46C
+
+; Window edge lists by window (video/window_hdma.asm).
+!window_edge_offsets = $09F155
+!window_edge_lists = $09F98B

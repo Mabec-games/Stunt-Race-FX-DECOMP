@@ -340,3 +340,29 @@ ScreenFrameAndPictures:
     jsr.w VramPictureRows1B0
     plp
     rts
+
+; @routine 03:F47B VramNoiseTiles
+; WHAT IT DOES: Fills $400 words of VRAM from address 0 with random tiles
+; $20-$3F (from RandomWordStep); first stores $8000 as a word at BG4VOFS,
+; which leaves BG4VOFS 0 and sets VMAIN to $80.
+; HOW: A 16-bit store to $2114/$2115, then VMDATA writes; $0D18 is the
+; random word.
+; Entry: any widths. Exit: A = the last word written; X = 0; M 16-bit, X
+; 16-bit; Z set, N clear.
+%at($03F47B)
+VramNoiseTiles:
+    rep.b #$30
+    lda.w #$8000
+    sta.w !BG4VOFS
+    lda.w #$0000
+    sta.w !VMADDL
+    ldx.w #$0400
+.lF48C:
+    jsl.l RandomWordStep
+    lda.w !random_word
+    and.w #$001F
+    ora.w #$0020
+    sta.w !VMDATAL
+    dex
+    bne .lF48C
+    rts

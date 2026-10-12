@@ -377,3 +377,53 @@ void abi_WindowEdgesFromPair(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.p = nz16(p, cpu.x);
 }
+
+/*
+ * @routine 09:F0B2 WindowEdgesFromList
+ * WHAT IT DOES: Writes a symmetrical run of window edges for the window
+ * selected by $19B6: the pairs of the list it points to (table $09:F98B,
+ * read through the data bank, ended by $FF) in order and then in reverse,
+ * each with WindowEdgesFromPair at a table offset that starts at the
+ * table $09:F155 value and steps by 4; then moves $19B6 on by 2.
+ * HOW: The offset is kept at $19B4; Y counts the pairs.
+ * Entry: any widths. Exit: A = the new $19B6; Y = 0; X at the first pair
+ * minus 2; M 16-bit, X 16-bit; N, Z, C, V from the add.
+ */
+uint16_t WindowEdgesFromList(uint8_t bank, uint16_t *x, uint8_t *p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t sel = rd16(b | 0x19B6), n = 0, s;
+
+    wr16(b | 0x19B4, rd16(0x09F155 + sel));
+    *x = rd16(0x09F98B + rd16(b | 0x19B6));
+    for (;;) {
+        WindowEdgesFromPair(bank, *x, p);
+        *x = (uint16_t)(*x + 2);
+        n++;
+        if (rd8(b | *x) == 0xFF)
+            break;
+        wr16(b | 0x19B4, (uint16_t)(rd16(b | 0x19B4) + 4));
+    }
+    *x = (uint16_t)(*x - 2);
+    for (;;) {
+        WindowEdgesFromPair(bank, *x, p);
+        *x = (uint16_t)(*x - 2);
+        if (!--n)
+            break;
+        wr16(b | 0x19B4, (uint16_t)(rd16(b | 0x19B4) + 4));
+    }
+    sel = rd16(b | 0x19B6);
+    s = (uint16_t)(sel + 2);
+    *p = (uint8_t)((nz16(*p, s) & ~(P_C | P_V)) | ((unsigned)sel + 2 > 0xFFFF ? P_C : 0) | ((~sel & s & 0x8000) ? P_V : 0));
+    wr16(b | 0x19B6, s);
+    return s;
+}
+
+void abi_WindowEdgesFromList(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = WindowEdgesFromList(cpu.db, &cpu.x, &p);
+    cpu.y = 0;
+    cpu.p = (uint8_t)(p & ~(P_M | P_X));
+}

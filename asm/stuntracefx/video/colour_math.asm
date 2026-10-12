@@ -86,3 +86,12 @@ ColourMathOff:
     lda.b #$00
     sta.w !colour_math_mode
     rts
+
+; @routine 03:FE5F ColourMathOffLong
+; WHAT IT DOES: ColourMathOff for callers in other banks.
+; HOW: JSR to it, then RTL.
+; Entry: as ColourMathOff. Exit: as ColourMathOff.
+%at($03FE5F)
+ColourMathOffLong:
+    jsr.w ColourMathOff
+    rtl

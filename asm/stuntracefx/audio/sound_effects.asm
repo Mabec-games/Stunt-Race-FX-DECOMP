@@ -469,3 +469,54 @@ PlayerSound35:
 .one:
     lda.b #$35
     jsl.l SoundPort0QueuePush
+
+; @routine 04:D040 EngineSoundsPlayer2
+; WHAT IT DOES: Runs player 2's engine sounds: when $0E4B is 0 and $0DD7 is
+; 6, SoundIfFlag40 with the buttons newly pressed ($0D1C) and
+; SoundHoldByFlags with the buttons held ($030D).
+; HOW: 8-bit tests through the data bank; Y is the caller's.
+; Entry: any widths; Y = the player. Exit: P unchanged; X, Y high bytes
+; clear; A and X as the sound routines leave them, or A low byte = the byte
+; that failed the test.
+%at($04D040)
+EngineSoundsPlayer2:
+    php
+    sep.b #$30
+    lda.w !wram_0E4B
+    bne .lD05F
+    lda.w !engine_phase_p2
+    cmp.b #$06
+    bne .lD05F
+    rep.b #$20
+    lda.w !joy2_pressed_copy
+    jsr.w SoundIfFlag40
+    rep.b #$20
+    lda.w !joy2_held
+    jsr.w SoundHoldByFlags
+.lD05F:
+    plp
+    rtl
+
+; @routine 04:D061 EngineSoundsPlayer1
+; WHAT IT DOES: As EngineSoundsPlayer2, for player 1: $0DD6, the buttons
+; newly pressed at $0D1A and held at $0309.
+; HOW: As EngineSoundsPlayer2.
+; Entry: as EngineSoundsPlayer2. Exit: as EngineSoundsPlayer2.
+%at($04D061)
+EngineSoundsPlayer1:
+    php
+    sep.b #$30
+    lda.w !wram_0E4B
+    bne .lD080
+    lda.w !engine_phase_p1
+    cmp.b #$06
+    bne .lD080
+    rep.b #$20
+    lda.w !joy1_pressed_copy
+    jsr.w SoundIfFlag40
+    rep.b #$20
+    lda.w !joy1_held
+    jsr.w SoundHoldByFlags
+.lD080:
+    plp
+    rtl

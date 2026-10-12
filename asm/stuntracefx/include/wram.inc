@@ -543,3 +543,6 @@ includeonce
 !view_8325_out = $064C
 !selection_handler_a = $18DB
 !selection_handler_b = $18DD
+!wram_0E4B = $0E4B
+!engine_phase_p1 = $0DD6
+!engine_phase_p2 = $0DD7

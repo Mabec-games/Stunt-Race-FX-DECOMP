@@ -132,3 +132,21 @@ void abi_ColourMathOff(void)
     cpu.a &= 0xFF00;
     cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z | P_M);
 }
+
+void abi_ColourMathOff(void);
+
+/*
+ * @routine 03:FE5F ColourMathOffLong
+ * WHAT IT DOES: ColourMathOff for callers in other banks.
+ * HOW: JSR to it, then RTL.
+ * Entry: as ColourMathOff. Exit: as ColourMathOff.
+ */
+void ColourMathOffLong(uint8_t bank)
+{
+    ColourMathOff(bank);
+}
+
+void abi_ColourMathOffLong(void)
+{
+    abi_ColourMathOff();
+}

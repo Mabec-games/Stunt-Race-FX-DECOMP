@@ -351,3 +351,64 @@ WindowEdgesFromPair:
     sta.l !window_edges+3,x
     plx
     rts
+
+; @routine 09:F0B2 WindowEdgesFromList
+; WHAT IT DOES: Writes a symmetrical run of window edges for the window
+; selected by $19B6: the pairs of the list it points to (table $09:F98B,
+; read through the data bank, ended by $FF) in order and then in reverse,
+; each with WindowEdgesFromPair at a table offset that starts at the
+; table $09:F155 value and steps by 4; then moves $19B6 on by 2.
+; HOW: The offset is kept at $19B4; Y counts the pairs.
+; Entry: any widths. Exit: A = the new $19B6; Y = 0; X at the first pair
+; minus 2; M 16-bit, X 16-bit; N, Z, C, V from the add.
+%at($09F0B2)
+WindowEdgesFromList:
+    rep.b #$30
+    lda.w !window_hdma_select
+    tax
+    lda.l !window_edge_offsets,x
+    sta.w !wram_19B4
+    ldx.w !window_hdma_select
+    lda.l !window_edge_lists,x
+    tax
+    sep.b #$20
+    ldy.w #$0000
+.lF0CC:
+    jsr.w WindowEdgesFromPair
+    inx
+    inx
+    iny
+    lda.w 0,x
+    cmp.b #$FF
+    beq .lF0EA
+    rep.b #$20
+    lda.w !wram_19B4
+    clc
+    adc.w #$0004
+    sta.w !wram_19B4
+    sep.b #$20
+    jmp.w .lF0CC
+.lF0EA:
+    dex
+    dex
+.lF0EC:
+    jsr.w WindowEdgesFromPair
+    dex
+    dex
+    dey
+    cpy.w #$0000
+    beq .lF108
+    rep.b #$20
+    lda.w !wram_19B4
+    clc
+    adc.w #$0004
+    sta.w !wram_19B4
+    sep.b #$20
+    jmp.w .lF0EC
+.lF108:
+    rep.b #$20
+    lda.w !window_hdma_select
+    clc
+    adc.w #$0002
+    sta.w !window_hdma_select
+    rts

@@ -454,3 +454,82 @@ void abi_PlayerSound35(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x35);
     cpu.p = (uint8_t)((nz8(cpu.p, cpu.db) & ~P_C) | P_M | (v >= 1 ? P_C : 0));
 }
+
+void abi_SoundIfFlag40(void);
+void abi_SoundHoldByFlags(void);
+
+/* The engine sounds for one player: when $0E4B is 0 and the player's byte
+   at `phase` is 6, SoundIfFlag40 with the player's newly pressed buttons
+   and SoundHoldByFlags with the buttons held (Y = the player). */
+static void abi_engine_sounds(uint16_t phase, uint16_t pressed, uint16_t held)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t p = cpu.p, v;
+
+    cpu.x &= 0x00FF;
+    cpu.y &= 0x00FF;
+    v = rd8(b | 0x0E4B);
+    if (!v) {
+        v = rd8(b | phase);
+        if (v == 0x06) {
+            cpu.p = (uint8_t)((cpu.p & ~P_M) | P_X);
+            cpu.a = rd16(b | pressed);
+            abi_SoundIfFlag40();
+            cpu.p &= (uint8_t)~P_M;
+            cpu.a = rd16(b | held);
+            abi_SoundHoldByFlags();
+            cpu.p = p;
+            return;
+        }
+    }
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = p;
+}
+
+/*
+ * @routine 04:D040 EngineSoundsPlayer2
+ * WHAT IT DOES: Runs player 2's engine sounds: when $0E4B is 0 and $0DD7 is
+ * 6, SoundIfFlag40 with the buttons newly pressed ($0D1C) and
+ * SoundHoldByFlags with the buttons held ($030D).
+ * HOW: 8-bit tests through the data bank; Y is the caller's.
+ * Entry: any widths; Y = the player. Exit: P unchanged; X, Y high bytes
+ * clear; A and X as the sound routines leave them, or A low byte = the byte
+ * that failed the test.
+ */
+static void engine_sounds(uint8_t bank, uint8_t player, uint16_t phase, uint16_t pressed, uint16_t held)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t x, a;
+
+    if (rd8(b | 0x0E4B) || rd8(b | phase) != 0x06)
+        return;
+    SoundIfFlag40(bank, rd16(b | pressed), player, &x);
+    SoundHoldByFlags(bank, rd16(b | held), player, &a);
+}
+
+void EngineSoundsPlayer2(uint8_t bank, uint8_t player)
+{
+    engine_sounds(bank, player, 0x0DD7, 0x0D1C, 0x030D);
+}
+
+void abi_EngineSoundsPlayer2(void)
+{
+    abi_engine_sounds(0x0DD7, 0x0D1C, 0x030D);
+}
+
+/*
+ * @routine 04:D061 EngineSoundsPlayer1
+ * WHAT IT DOES: As EngineSoundsPlayer2, for player 1: $0DD6, the buttons
+ * newly pressed at $0D1A and held at $0309.
+ * HOW: As EngineSoundsPlayer2.
+ * Entry: as EngineSoundsPlayer2. Exit: as EngineSoundsPlayer2.
+ */
+void EngineSoundsPlayer1(uint8_t bank, uint8_t player)
+{
+    engine_sounds(bank, player, 0x0DD6, 0x0D1A, 0x0309);
+}
+
+void abi_EngineSoundsPlayer1(void)
+{
+    abi_engine_sounds(0x0DD6, 0x0D1A, 0x0309);
+}
