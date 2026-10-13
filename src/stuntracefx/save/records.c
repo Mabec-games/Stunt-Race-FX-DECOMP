@@ -480,6 +480,8 @@ void abi_SaveUnlocksCheck(void)
 }
 
 void abi_TimeUnpackBcd(void);
+void abi_TimeTotalsSum(void);
+void abi_TimeRunningTotals(void);
 
 /*
  * @routine 07:B518 RecordsUnpackCourse
@@ -528,4 +530,30 @@ void abi_RecordsUnpackCourse(void)
     }
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | (uint8_t)a);
     cpu.p = p;
+}
+
+/*
+ * @routine 07:B503 RecordsUnpackCourseTotals
+ * WHAT IT DOES: Unpacks course $0D4A's records (RecordsUnpackCourse) and
+ * sums each group of four times (TimeTotalsSum).
+ * HOW: Two calls. Not reached in the traces so far.
+ * Entry: as RecordsUnpackCourse. Exit: as TimeTotalsSum.
+ */
+void abi_RecordsUnpackCourseTotals(void)
+{
+    abi_RecordsUnpackCourse();
+    abi_TimeTotalsSum();
+}
+
+/*
+ * @routine 07:B50A RecordsUnpackCourseRunning
+ * WHAT IT DOES: Unpacks course $0D4A's records (RecordsUnpackCourse) and
+ * makes each group of four times running totals (TimeRunningTotals).
+ * HOW: Two calls. Not reached in the traces so far.
+ * Entry: as RecordsUnpackCourse. Exit: as TimeRunningTotals.
+ */
+void abi_RecordsUnpackCourseRunning(void)
+{
+    abi_RecordsUnpackCourse();
+    abi_TimeRunningTotals();
 }

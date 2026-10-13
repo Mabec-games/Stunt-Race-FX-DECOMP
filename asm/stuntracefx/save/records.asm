@@ -546,6 +546,28 @@ SaveUnlocksCheck:
     plp
     rtl
 
+; @routine 07:B503 RecordsUnpackCourseTotals
+; WHAT IT DOES: Unpacks course $0D4A's records (RecordsUnpackCourse) and sums
+; each group of four times (TimeTotalsSum).
+; HOW: Two calls. Not reached in the traces so far.
+; Entry: as RecordsUnpackCourse. Exit: as TimeTotalsSum.
+%at($07B503)
+RecordsUnpackCourseTotals:
+    jsr RecordsUnpackCourse
+    jsr TimeTotalsSum
+    rtl
+
+; @routine 07:B50A RecordsUnpackCourseRunning
+; WHAT IT DOES: Unpacks course $0D4A's records (RecordsUnpackCourse) and
+; makes each group of four times running totals (TimeRunningTotals).
+; HOW: Two calls. Not reached in the traces so far.
+; Entry: as RecordsUnpackCourse. Exit: as TimeRunningTotals.
+%at($07B50A)
+RecordsUnpackCourseRunning:
+    jsr RecordsUnpackCourse
+    jsr TimeRunningTotals
+    rtl
+
 ; @routine 07:B518 RecordsUnpackCourse
 ; WHAT IT DOES: Unpacks the records of course $0D4A for display: its twelve
 ; packed times (the words at $70:FC88 + course * 24) each into three BCD
