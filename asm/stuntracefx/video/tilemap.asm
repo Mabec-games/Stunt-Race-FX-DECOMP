@@ -881,3 +881,64 @@ TilemapRow287Palette4:
     and.b #$E3
     sta.l !cycle_tilemap+660
     rts
+
+; @routine 07:CFA3 DigitTiles1184
+; WHAT IT DOES: Writes the three digits at $1184-$1186 as tilemap words
+; at $7F:9481-$7F:9486: tile $CA + digit, priority bit set ($2000).
+; HOW: Each digit read 8-bit, then a 16-bit add and OR.
+; Entry: any widths. Exit: A = $20CA + the last digit; M 8-bit; N, Z from
+; the OR; C, V from the add.
+%at($07CFA3)
+DigitTiles1184:
+    sep.b #$20
+    lda.l !wram_1184+0
+    rep.b #$20
+    and.w #$00FF
+    clc
+    adc.w #$00CA
+    ora.w #$2000
+    sta.l !digit_tiles_9481+0
+    sep.b #$20
+    lda.l !wram_1184+1
+    rep.b #$20
+    and.w #$00FF
+    clc
+    adc.w #$00CA
+    ora.w #$2000
+    sta.l !digit_tiles_9481+2
+    sep.b #$20
+    lda.l !wram_1184+2
+    rep.b #$20
+    and.w #$00FF
+    clc
+    adc.w #$00CA
+    ora.w #$2000
+    sta.l !digit_tiles_9481+4
+    sep.b #$20
+    rts
+
+; @routine 07:D029 TimesKeepAndAdvance
+; WHAT IT DOES: Keeps $0EE7-$0EE9 at $0EEA-$0EEC, clears $0E3F, moves the
+; stage $0D59 on, sets $0D23 = 2, clears $19DF and starts the window
+; closing ($19D8 = 2).
+; HOW: 8-bit stores through the data bank.
+; Entry: any widths. Exit: A low byte = 2; M 8-bit; N, Z clear.
+%at($07D029)
+TimesKeepAndAdvance:
+    sep.b #$20
+    lda.w !wram_0EE7
+    sta.w !wram_0EEA
+    lda.w !wram_0EE7+1
+    sta.w !wram_0EEA+1
+    lda.w !wram_0EE7+2
+    sta.w !wram_0EEA+2
+    lda.b #$00
+    sta.w !wram_0E3F
+    inc.w !wram_0D59
+    lda.b #$02
+    sta.w !wram_0D23
+    sep.b #$20
+    stz.w !wram_19DF
+    lda.b #$02
+    sta.w !window_hdma_off
+    rts

@@ -1572,3 +1572,8 @@ includeonce
 !player_place = $10C9                   ; its place among the first three (1-3, 0 none)
 !special_saves = $70FCD0                ; the special courses' saved entries, 48 bytes a course
 !best_times = $70FFD0                  ; each course's two saved best times (packed), four bytes a course
+!wram_1184 = $1184
+!wram_0EE7 = $0EE7
+!wram_0EEA = $0EEA
+!wram_0D59 = $0D59
+!digit_tiles_9481 = $7F9481           ; three tilemap words DigitTiles1184 writes

@@ -3,6 +3,7 @@
  */
 #include "machine.h"
 #include "hw.h"
+#include "cpu_ops.h"
 
 /*
  * @routine 03:ED89 TilemapRowFromGsuRam
@@ -931,4 +932,57 @@ void TilemapRow287Palette4(void)
 void abi_TilemapRow287Palette4(void)
 {
     abi_row_mark(0x0287, 0x000A, 0x10, 0x7F966A, 0x00);
+}
+
+/*
+ * @routine 07:CFA3 DigitTiles1184
+ * WHAT IT DOES: Writes the three digits at $1184-$1186 as tilemap words
+ * at $7F:9481-$7F:9486: tile $CA + digit, priority bit set ($2000).
+ * HOW: Each digit read 8-bit, then a 16-bit add and OR.
+ * Entry: any widths. Exit: A = $20CA + the last digit; M 8-bit; N, Z from
+ * the OR; C, V from the add.
+ */
+void abi_DigitTiles1184(void)
+{
+    uint8_t v;
+    unsigned i;
+
+    for (i = 0; i < 3; i++) {
+        cpu.p |= P_M;
+        v = rd8(0x001184 + i);
+        cpu.p &= (uint8_t)~(P_M | P_C);
+        cpu.a = op_adc16(v, 0x00CA, &cpu.p);
+        cpu.a |= 0x2000;
+        cpu.p = nz16(cpu.p, cpu.a);
+        wr16(0x7F9481 + i * 2, cpu.a);
+    }
+    cpu.p |= P_M;
+}
+
+/*
+ * @routine 07:D029 TimesKeepAndAdvance
+ * WHAT IT DOES: Keeps $0EE7-$0EE9 at $0EEA-$0EEC, clears $0E3F, moves the
+ * stage $0D59 on, sets $0D23 = 2, clears $19DF and starts the window
+ * closing ($19D8 = 2).
+ * HOW: 8-bit stores through the data bank.
+ * Entry: any widths. Exit: A low byte = 2; M 8-bit; N, Z clear.
+ */
+void abi_TimesKeepAndAdvance(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v;
+    unsigned i;
+
+    cpu.p |= P_M;
+    for (i = 0; i < 3; i++)
+        wr8(b | (uint16_t)(0x0EEA + i), rd8(b | (uint16_t)(0x0EE7 + i)));
+    wr8(b | 0x0E3F, 0x00);
+    v = (uint8_t)(rd8(b | 0x0D59) + 1);
+    wr8(b | 0x0D59, v);
+    cpu.p = nz8(cpu.p, v);
+    wr8(b | 0x0D23, 0x02);
+    wr8(b | 0x19DF, 0x00);
+    wr8(b | 0x19D8, 0x02);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x02);
+    cpu.p = nz8(cpu.p, 0x02);
 }
