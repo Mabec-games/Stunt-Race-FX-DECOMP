@@ -4,6 +4,7 @@
  */
 #include "machine.h"
 #include "hw.h"
+#include "cpu_ops.h"
 
 void abi_ObjectsRunHandlers(void);
 void abi_CameraFollowStep(void);
@@ -213,4 +214,171 @@ void abi_RaceFinishPhases0E(void)
 void abi_RaceFinishPhases10(void)
 {
     finish_phases(0x10, 0x10);
+}
+
+/* RaceVarsReset's stores in order: kind 0 through the data bank, 1 long,
+   2 direct page; width in bytes; value. */
+static const struct { uint8_t kind; uint32_t addr; uint8_t width; uint16_t v; } race_reset[] = {
+    {0, 0x0D60, 2, 0x0000},
+    {0, 0x0D29, 2, 0x0166},
+    {0, 0x0D7F, 2, 0x0000},
+    {1, 0x70021A, 2, 0x2C00},
+    {2, 0x0048, 2, 0x2C00},
+    {0, 0x0D81, 2, 0x0000},
+    {0, 0x0E62, 2, 0x0000},
+    {0, 0x0E64, 2, 0x0000},
+    {0, 0x0E66, 2, 0x0000},
+    {0, 0x10A2, 2, 0x0000},
+    {0, 0x10A4, 2, 0x009A},
+    {0, 0x10A6, 2, 0x006A},
+    {0, 0x10A8, 2, 0x0000},
+    {0, 0x0DA4, 2, 0x0000},
+    {0, 0x0DA6, 2, 0x0000},
+    {0, 0x0D9E, 2, 0x0000},
+    {0, 0x0DA0, 2, 0x0000},
+    {0, 0x117E, 2, 0x0000},
+    {0, 0x1180, 2, 0x0000},
+    {0, 0x0D85, 2, 0x37D7},
+    {0, 0x0D85, 2, 0x37D7},
+    {1, 0x7EFD5B, 2, 0x0000},
+    {1, 0x7EFD5D, 2, 0x0000},
+    {1, 0x7EFD5F, 2, 0x0000},
+    {1, 0x7EFD61, 2, 0x0000},
+    {1, 0x7EFD63, 2, 0x0000},
+    {1, 0x7F3460, 2, 0x0000},
+    {1, 0x7F3462, 2, 0x0000},
+    {1, 0x7F346C, 2, 0x0000},
+    {1, 0x7F346E, 2, 0x0000},
+    {1, 0x7F3464, 2, 0x0000},
+    {1, 0x7F3466, 2, 0x0000},
+    {1, 0x7F3474, 2, 0xFFFF},
+    {1, 0x7F3476, 2, 0xFFFF},
+    {1, 0x7F3478, 2, 0xFFFF},
+    {1, 0x7F345C, 2, 0x7FFF},
+    {1, 0x7F345E, 2, 0x7FFF},
+    {1, 0x7F3468, 2, 0x001F},
+    {1, 0x7F346A, 2, 0x001F},
+    {0, 0x0DE4, 2, 0x0000},
+    {0, 0x0DE6, 2, 0x0000},
+    {0, 0x0DDC, 2, 0x0000},
+    {0, 0x0DDE, 2, 0x0000},
+    {0, 0x0DE0, 2, 0x0000},
+    {0, 0x0DE2, 2, 0x0000},
+    {0, 0x0E5D, 2, 0x0000},
+    {0, 0x0D65, 2, 0x0000},
+    {0, 0x10BA, 1, 0x0000},
+    {0, 0x0D54, 1, 0x0000},
+    {0, 0x0E47, 1, 0x0000},
+    {0, 0x0E49, 1, 0x0000},
+    {0, 0x0D5C, 1, 0x0000},
+    {0, 0x0D5D, 1, 0x0000},
+    {0, 0x0EDB, 1, 0x0000},
+    {0, 0x0EDC, 1, 0x0000},
+    {0, 0x0EDD, 1, 0x0000},
+    {0, 0x0E1A, 1, 0x0000},
+    {0, 0x0DD6, 1, 0x0000},
+    {0, 0x0DD7, 1, 0x0000},
+    {0, 0x0DD8, 1, 0x0000},
+    {0, 0x0DD9, 1, 0x0000},
+    {0, 0x0DDA, 1, 0x0000},
+    {0, 0x0DDB, 1, 0x0000},
+    {0, 0x0DE8, 1, 0x0000},
+    {0, 0x0DE9, 1, 0x0000},
+    {0, 0x1A2D, 1, 0x0000},
+    {0, 0x0DEA, 1, 0x0000},
+    {0, 0x0DEB, 1, 0x0000},
+    {0, 0x0DF6, 1, 0x0000},
+    {0, 0x0DF7, 1, 0x0000},
+    {0, 0x0DF9, 1, 0x0000},
+    {0, 0x0DFA, 1, 0x0000},
+    {0, 0x0DEC, 1, 0x0000},
+    {0, 0x0DED, 1, 0x0000},
+    {0, 0x0DEE, 1, 0x0000},
+    {0, 0x0DEF, 1, 0x0000},
+    {0, 0x0DF4, 1, 0x0001},
+    {0, 0x0DF5, 1, 0x0001},
+    {0, 0x0E07, 1, 0x0000},
+    {0, 0x0E08, 1, 0x0000},
+    {2, 0x0000, 1, 0x0000},
+    {0, 0x0D22, 1, 0x0000},
+    {0, 0x0D23, 1, 0x0000},
+    {0, 0x0D2F, 1, 0x0000},
+    {0, 0x0D2D, 1, 0x0000},
+    {0, 0x0D2E, 1, 0x0000},
+    {0, 0x0D3D, 1, 0x0000},
+    {0, 0x0D55, 1, 0x0000},
+    {0, 0x0E57, 1, 0x0000},
+    {0, 0x0E5C, 1, 0x0000},
+    {0, 0x0E59, 1, 0x0000},
+    {0, 0x0E3A, 1, 0x0000},
+    {0, 0x0E54, 1, 0x0000},
+    {0, 0x0E3F, 1, 0x0000},
+    {0, 0x0E40, 1, 0x0000},
+    {0, 0x0E41, 1, 0x0000},
+    {0, 0x0E42, 1, 0x0000},
+    {0, 0x1A5D, 1, 0x0000},
+    {0, 0x0E4B, 1, 0x0000},
+    {0, 0x0E4F, 1, 0x0000},
+    {0, 0x0E50, 1, 0x0000},
+    {0, 0x0E51, 1, 0x0000},
+    {0, 0x0E52, 1, 0x0000},
+    {0, 0x0E53, 1, 0x0000},
+    {0, 0x0E90, 1, 0x0000},
+    {0, 0x0E01, 1, 0x0000},
+    {0, 0x0E02, 1, 0x0000},
+    {0, 0x0E5B, 1, 0x0000},
+    {0, 0x0D5B, 1, 0x0000},
+    {0, 0x0D5A, 1, 0x0000},
+    {0, 0x0E5F, 1, 0x0017},
+    {0, 0x4209, 1, 0x0017},
+    {0, 0x420A, 1, 0x0000},
+    {0, 0x4207, 1, 0x0040},
+    {0, 0x4208, 1, 0x0000},
+    {0, 0x0D53, 1, 0x00FF},
+    {0, 0x0D45, 1, 0x001C},
+    {0, 0x4200, 1, 0x0031},
+    {0, 0x210F, 1, 0x0000},
+    {0, 0x210F, 1, 0x0000},
+    {0, 0x2110, 1, 0x0080},
+    {0, 0x2110, 1, 0x0000},
+};
+
+/*
+ * @routine 03:E838 RaceVarsReset
+ * WHAT IT DOES: Resets the race's work variables before a race: $0DA2 =
+ * -$10 on course $0A, else 0; $0D29 = $166; the Super FX screen start
+ * $2C00 ($70:021A and direct page $48); the HUD, time, lap and gauge
+ * values cleared; $10A4 = $9A, $10A6 = $6A; $0D85 = $37D7; the fade
+ * values at $7F:345C-$7F:3478 ($7FFF, 0, $1F, $FFFF); $0DF4/$0DF5 = 1,
+ * $0E5F = $17, $0D53 = $FF, $0D45 = $1C; then the V/H IRQ timer
+ * ($17, $40), NMITIMEN = $31 and BG3 scroll 0 / 0.
+ * HOW: 16-bit stores, then 8-bit from $10BA on, in the original's order;
+ * $0D85 is stored twice. The course $0A value is not reached in the
+ * traces so far.
+ * Entry: any widths; DB a bank where work RAM and the PPU registers are
+ * mapped, D = $0000. Exit: A = $0080; M 8-bit; N set, Z clear; C from
+ * comparing the course with $0A.
+ */
+void abi_RaceVarsReset(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    unsigned i;
+
+    cpu.p &= (uint8_t)~P_M;
+    cpu.a = (uint16_t)(rd16(b | 0x0E3D) & 0x00FF);
+    op_cmp16(0x000A);
+    cpu.a = cpu.a == 0x000A ? 0xFFF0 : 0x0000;
+    wr16(b | 0x0DA2, cpu.a);
+    for (i = 0; i < sizeof race_reset / sizeof race_reset[0]; i++) {
+        uint32_t a = race_reset[i].kind == 0 ? (b | race_reset[i].addr)
+                   : race_reset[i].kind == 1 ? race_reset[i].addr
+                   : (uint16_t)(cpu.d + race_reset[i].addr);
+
+        if (race_reset[i].width == 2)
+            wr16(a, race_reset[i].v);
+        else
+            wr8(a, (uint8_t)race_reset[i].v);
+    }
+    cpu.a = 0x0080;
+    cpu.p = (uint8_t)(nz8(cpu.p, 0x80) | P_M);
 }

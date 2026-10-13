@@ -239,3 +239,172 @@ RaceFinishPhasesTail:               ; both routines end here
     lda.b #$02
     jsl.l SoundPort0QueuePushRaw
     rts
+
+; @routine 03:E838 RaceVarsReset
+; WHAT IT DOES: Resets the race's work variables before a race: $0DA2 = -$10
+; on course $0A, else 0; $0D29 = $166; the Super FX screen start $2C00
+; ($70:021A and direct page $48); the HUD, time, lap and gauge values
+; cleared; $10A4 = $9A, $10A6 = $6A; $0D85 = $37D7; the fade values at
+; $7F:345C-$7F:3478 ($7FFF, 0, $1F, $FFFF); $0DF4/$0DF5 = 1, $0E5F = $17,
+; $0D53 = $FF, $0D45 = $1C; then the V/H IRQ timer ($17, $40), NMITIMEN =
+; $31 and BG3 scroll 0 / 0.
+; HOW: 16-bit stores, then 8-bit from $10BA on, in the original's order;
+; $0D85 is stored twice. The course $0A value is not reached in the traces
+; so far.
+; Entry: any widths; DB a bank where work RAM and the PPU registers are
+; mapped, D = $0000. Exit: A = $0080; M 8-bit; N set, Z clear; C from
+; comparing the course with $0A.
+%at($03E838)
+RaceVarsReset:
+    rep.b #$20
+    lda.w !course
+    and.w #$00FF
+    cmp.w #$000A
+    bne .other
+    lda.w #$FFF0
+    bra .set
+.other:
+    lda.w #$0000
+.set:
+    sta.w !view_0da2
+    lda.w #$0000
+    sta.w !fade_level
+    lda.w #$0166
+    sta.w !wram_0D29
+    stz.w !gsu_buffer_select
+    lda.w #$2C00
+    sta.l !gsu_screen_start
+    sta.b !gsu_screen_start_dp
+    stz.w !wram_0D81
+    stz.w !wram_0E62
+    stz.w !race_time_seconds
+    stz.w !race_time_minutes
+    stz.w !wram_10A2
+    lda.w #$009A
+    sta.w !wram_10A4
+    lda.w #$006A
+    sta.w !wram_10A6
+    stz.w !wram_10A8
+    stz.w !wram_0DA4
+    stz.w !wram_0DA6
+    stz.w !wram_0D9E
+    stz.w !wram_0DA0
+    stz.w !menu_gauge
+    stz.w !speed_gauge_2_value
+    lda.w #$37D7
+    sta.w !wram_0D85
+    sta.w !wram_0D85
+    lda.w #$0000
+    sta.l !wram_7EFD5B
+    sta.l !wram_7EFD5D
+    sta.l !wram_7EFD5F
+    sta.l !wram_7EFD61
+    sta.l !wram_7EFD63
+    sta.l !wram_7F3460
+    sta.l !wram_7F3462
+    sta.l !wram_7F346C
+    sta.l !wram_7F346E
+    sta.l !wram_7F3464
+    sta.l !wram_7F3466
+    lda.w #$FFFF
+    sta.l !wram_7F3474
+    sta.l !wram_7F3476
+    sta.l !wram_7F3478
+    lda.w #$7FFF
+    sta.l !wram_7F345C
+    sta.l !wram_7F345E
+    lda.w #$001F
+    sta.l !slide_out
+    sta.l !wram_7F346A
+    stz.w !speed_count_p0
+    stz.w !speed_count_p1
+    stz.w !speed_total_p0
+    stz.w !wram_0DDE
+    stz.w !speed_total_p1
+    stz.w !wram_0DE2
+    stz.w !hud_hold
+    stz.w !time_bonus_state
+    sep.b #$20
+    stz.w !wram_10BA
+    stz.w !wram_0D54
+    stz.w !near_car_pos
+    stz.w !wram_0E49
+    stz.w !wram_0D5C
+    stz.w !wram_0D5D
+    stz.w !lap_mark
+    stz.w !wram_0EDC
+    stz.w !wram_0EDD
+    stz.w !wram_0E1A
+    stz.w !engine_phase_p1
+    stz.w !engine_phase_p2
+    stz.w !sound_hold
+    stz.w !wram_0DD9
+    stz.w !wram_0DDA
+    stz.w !wram_0DDB
+    stz.w !player_rec_7a
+    stz.w !wram_0DE9
+    stz.w !wram_1A2D
+    stz.w !wram_0DEA
+    stz.w !wram_0DEB
+    stz.w !player_rec_4e
+    stz.w !wram_0DF7
+    stz.w !gauge_b4_value
+    stz.w !gauge_a4_value
+    stz.w !player_rec_40
+    stz.w !wram_0DED
+    stz.w !player_rec_41
+    stz.w !wram_0DEF
+    lda.b #$01
+    sta.w !player_mode
+    sta.w !wram_0DF5
+    stz.w !wram_0E07
+    stz.w !wram_0E08
+    stz.b !dp_00
+    stz.w !wram_0D22
+    stz.w !wram_0D23
+    stz.w !wram_0D2F
+    stz.w !wram_0D2D
+    stz.w !wram_0D2E
+    stz.w !wram_0D3D
+    stz.w !panel_b_shown
+    stz.w !wram_0E57
+    stz.w !wram_0E5C
+    stz.w !wram_0E59
+    stz.w !fade_out
+    stz.w !wram_0E54
+    stz.w !wram_0E3F
+    stz.w !wram_0E40
+    stz.w !wram_0E41
+    stz.w !wram_0E42
+    stz.w !current_player
+    stz.w !wram_0E4B
+    stz.w !player1_held_sound
+    stz.w !player2_held_sound
+    stz.w !wram_0E51
+    stz.w !wram_0E52
+    stz.w !wram_0E53
+    stz.w !wram_0E90
+    stz.w !kept_timer
+    stz.w !wram_0E02
+    stz.w !wram_0E5B
+    stz.w !wram_0D5B
+    stz.w !wram_0D5A
+    lda.b #$17
+    sta.w !palette_animate
+    sta.w !VTIMEL
+    stz.w !VTIMEH
+    lda.b #$40
+    sta.w !HTIMEL
+    stz.w !HTIMEH
+    lda.b #$FF
+    sta.w !wram_0D53
+    lda.b #$1C
+    sta.w !wram_0D45
+    lda.b #$31
+    sta.w !NMITIMEN
+    stz.w !BG2HOFS
+    stz.w !BG2HOFS
+    lda.b #$80
+    sta.w !BG2VOFS
+    stz.w !BG2VOFS
+    rtl
