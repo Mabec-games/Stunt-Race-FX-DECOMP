@@ -823,6 +823,19 @@ static int past_end;
 static void (*core_run_until)(const struct SfxboxRegs *, uint32_t, uint16_t);
 static long asm_unplaced;
 
+/* The hybrid's report, and its end. */
+static void hybrid_finish(long frames)
+{
+    char g[256];
+    int gbad = gsu_lockstep_summary(g, sizeof g);
+    fprintf(lsrep, "frames %ld compared %ld, differing %ld; calls swapped %ld, entered other ways %ld, unmatched %ld, "
+            "hardware accesses off the timeline %ld, interrupts not pending where taken %ld, original-code calls not placed %ld%s: %s\n",
+            frames, frames_compared, diff_frames, calls_swapped, calls_fallback, mismatched_calls, timed_unmatched, irq_missed, asm_unplaced,
+            g, diff_frames || mismatched_calls || timed_unmatched || irq_missed || asm_unplaced || gbad ? "DIVERGENT" : calls_swapped || gsu_count() ? "IDENTICAL" : "UNCOVERED");
+    fclose(lsrep);
+    _exit(0);
+}
+
 /* call_routine for a target without C, on the live machine: replay the
    original's cycles to where it entered the routine (op 9), run the
    routine as original code from there with the original's stack pointer
@@ -1035,6 +1048,10 @@ static int ls_exec(uint32_t pc)
            left to compare it, or the frames after it, with. */
         past_end = 1;
         gsu_lockstep_past_end();
+        /* Its C would run live with no interrupts to come: one that waits
+           for the vertical blank would never return. The hybrid ends here,
+           at the frame the original's record ends in. */
+        hybrid_finish(cur_frame + 1);
     } else mismatched_calls++;
     hk++;
     cpu.a = r.a; cpu.x = r.x; cpu.y = r.y; cpu.s = r.s; cpu.d = r.d; cpu.db = r.db; cpu.p = r.p; cpu.e = r.e; cpu.pc = r.pc;
@@ -1215,14 +1232,6 @@ void lockstep_end(long frames)
         int st = 0;
         waitpid(child, &st, 0);
         if (LOAD(sh->stuck)) fprintf(stderr, "lockstep: a side waited too long; see the report\n");
-    } else if (role == 2) {
-        char g[256];
-        int gbad = gsu_lockstep_summary(g, sizeof g);
-        fprintf(lsrep, "frames %ld compared %ld, differing %ld; calls swapped %ld, entered other ways %ld, unmatched %ld, "
-                "hardware accesses off the timeline %ld, interrupts not pending where taken %ld, original-code calls not placed %ld%s: %s\n",
-                frames, frames_compared, diff_frames, calls_swapped, calls_fallback, mismatched_calls, timed_unmatched, irq_missed, asm_unplaced,
-                g, diff_frames || mismatched_calls || timed_unmatched || irq_missed || asm_unplaced || gbad ? "DIVERGENT" : calls_swapped || gsu_count() ? "IDENTICAL" : "UNCOVERED");
-        fclose(lsrep);
-        _exit(0);
-    }
+    } else if (role == 2)
+        hybrid_finish(frames);
 }
