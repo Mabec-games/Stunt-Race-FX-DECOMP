@@ -158,3 +158,143 @@ MenuInitialsStep:
     sta.l !wram_18EF,x
 .lC46C:
     rts
+
+; @routine 0B:C225 MenuInitialsFrame
+; WHAT IT DOES: The initials entry screen's frame: dims the fixed colour
+; (MenuFixedColourDown), shows a race frame (RaceFrameStep, A = 0), sets
+; $18FD, applies player 1's presses (MenuInitialsPresses), then takes the
+; buttons pressed ($118B, cleared): start or B ($9000) ends the menu
+; ($11EB = 1, sound $46, the current record freed); Y ($4000) goes back:
+; kind 5's +$10 = 0, kinds 6 and 7 to animations $AE and $B8, kinds 8 and
+; 9 +$10 = $FFFF, this record's handler $BA4E with its slide restarted,
+; kind 4 to animation $8A, $1191 cleared and sound $47; select ($2000)
+; with selection $18C3 at 0 confirms: sound $46, kinds 4, 8 and 9 +$10 =
+; $FFFF, kinds 10-14 +$10 = 0, handler $BFB8, $1191 cleared.
+; HOW: Y keeps the buttons; record X is $11F9 as MenuInitialsPresses
+; leaves it. Kind 4's animation change is not reached in the traces so
+; far.
+; Entry: M 16-bit, X 16-bit, D = $0000. Exit: M 16-bit; A, X, Y and flags
+; as the path's last step left them.
+%at($0BC225)
+MenuInitialsFrame:
+    jsr.w MenuFixedColourDown
+    lda.w #$0000
+    jsl.l RaceFrameStep
+    lda.w #$0001
+    sta.l !wram_18FD
+    jsr.w MenuInitialsPresses
+    ldy.w !menu_joy1_pressed
+    stz.w !menu_joy1_pressed
+    tya
+    and.w #$9000
+    bne .exit
+    tya
+    and.w #$4000
+    beq .select
+    brl .back
+.select:
+    tya
+    and.w #$2000
+    bne .confirm
+    rts
+.confirm:
+    lda.l !wram_18C3
+    cmp.w #$0000
+    bne .done
+    sep.b #$20
+    lda.b #$46
+    jsl.l SoundPort0QueuePush
+    rep.b #$20
+    lda.w #$0004
+    ldy.w #$FFFF
+    jsr.w MenuActorsSet10
+    lda.w #$0008
+    ldy.w #$FFFF
+    jsr.w MenuActorsSet10
+    lda.w #$0009
+    ldy.w #$FFFF
+    jsr.w MenuActorsSet10
+    lda.w #$000A
+    ldy.w #$0000
+    jsr.w MenuActorsSet10
+    lda.w #$000B
+    ldy.w #$0000
+    jsr.w MenuActorsSet10
+    lda.w #$000C
+    ldy.w #$0000
+    jsr.w MenuActorsSet10
+    lda.w #$000D
+    ldy.w #$0000
+    jsr.w MenuActorsSet10
+    lda.w #$000E
+    ldy.w #$0000
+    jsr.w MenuActorsSet10
+    lda.w #$BFB8
+    sta.b !actor_handler,x
+    lda.w #$0000
+    sta.l !word_list_a_size
+.done:
+    rts
+.exit:
+    lda.w #$0001
+    sta.w !menu_exit
+    sep.b #$20
+    lda.b #$46
+    jsl.l SoundPort0QueuePush
+    rep.b #$20
+    ldy.w !actor_current_slot
+    jsr.w MenuActorFree
+    rts
+.back:
+    ldx.w !actor_current
+    lda.w #$0005
+    ldy.w #$0000
+    jsr.w MenuActorsSet10
+    phx
+    lda.w #$0006
+    jsr.w MenuActorFind
+    lda.b !actor_anim,x
+    cmp.w #$00AE
+    beq .anim6
+    lda.w #$00AE
+    sta.b !actor_anim,x
+    stz.b !actor_anim_pos,x
+    stz.b !actor_anim_timer,x
+.anim6:
+    lda.w #$0007
+    jsr.w MenuActorFind
+    lda.b !actor_anim,x
+    cmp.w #$00B8
+    beq .anim7
+    lda.w #$00B8
+    sta.b !actor_anim,x
+    stz.b !actor_anim_pos,x
+    stz.b !actor_anim_timer,x
+.anim7:
+    plx
+    lda.w #$0008
+    ldy.w #$FFFF
+    jsr.w MenuActorsSet10
+    lda.w #$0009
+    ldy.w #$FFFF
+    jsr.w MenuActorsSet10
+    lda.w #$BA4E
+    sta.b !actor_handler,x
+    stz.b !actor_0a,x
+    lda.w #$0004
+    jsr.w MenuActorFind
+    lda.b !actor_anim,x
+    cmp.w #$008A
+    beq .anim4
+    lda.w #$008A
+    sta.b !actor_anim,x
+    stz.b !actor_anim_pos,x
+    stz.b !actor_anim_timer,x
+.anim4:
+    lda.w #$0000
+    sta.l !word_list_a_size
+    sep.b #$20
+    lda.b #$47
+    jsl.l SoundPort0QueuePush
+    rep.b #$20
+    rts
