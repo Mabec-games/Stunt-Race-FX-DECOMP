@@ -879,3 +879,47 @@ void abi_PalettesStep(void)
     }
     cpu.p = p0;
 }
+
+/*
+ * @routine 7E:E149 FadeValueStep
+ * WHAT IT DOES: Unless bit 7 of $0DA5 is set, while bit 5 is set: steps
+ * the word $19FE by $1A00 until it reaches $1A02 (then clears bit 5,
+ * leaving $19FE as it was) and puts its high byte in $7F:3460.
+ * HOW: The data bank is the code's ($7E) and restored; $0DA5 is read
+ * long. The step is not reached in the traces so far.
+ * Entry: any widths. Exit: P and the data bank restored; A as the last
+ * step left it.
+ */
+void abi_FadeValueStep(void)
+{
+    uint8_t p0 = cpu.p, db0 = cpu.db, v;
+    uint32_t b = 0x7E0000;
+    uint16_t w;
+
+    cpu.db = 0x7E;
+    cpu.p |= P_M;
+    v = (uint8_t)(rd8(0x000DA5) & 0x80);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    if (!v) {
+        v = (uint8_t)(rd8(0x000DA5) & 0x20);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+        if (v) {
+            cpu.p &= (uint8_t)~(P_M | P_C);
+            w = op_adc16(rd16(b | 0x19FE), rd16(b | 0x1A00), &cpu.p);
+            cpu.a = w;
+            op_cmp16(rd16(b | 0x1A02));
+            if (!(cpu.p & P_Z))
+                wr16(b | 0x19FE, w);
+            else {
+                v = (uint8_t)(rd8(0x000DA5) & 0xDF);
+                wr8(0x000DA5, v);
+            }
+            cpu.p |= P_M;
+            v = rd8(b | 0x19FF);
+            cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+            wr8(0x7F3460, v);
+        }
+    }
+    cpu.db = db0;
+    cpu.p = p0;
+}

@@ -965,3 +965,46 @@ PalettesStep:
 .done:
     plp
     rts
+
+; @routine 7E:E149 FadeValueStep
+; WHAT IT DOES: Unless bit 7 of $0DA5 is set, while bit 5 is set: steps
+; the word $19FE by $1A00 until it reaches $1A02 (then clears bit 5,
+; leaving $19FE as it was) and puts its high byte in $7F:3460.
+; HOW: The data bank is the code's ($7E) and restored; $0DA5 is read
+; long. The step is not reached in the traces so far.
+; Entry: any widths. Exit: P and the data bank restored; A as the last
+; step left it.
+%ramcode($7EE149, $013E70)
+FadeValueStep:
+    php
+    phb
+    phk
+    plb
+    sep.b #$20
+    lda.l !slide_flags
+    and.b #$80
+    bne .done
+    lda.l !slide_flags
+    and.b #$20
+    beq .done
+    rep.b #$20
+    lda.w !wram_19FE
+    clc
+    adc.w !wram_1A00
+    cmp.w !wram_1A02
+    beq .end
+    sta.w !wram_19FE
+    jmp.w .show
+.end:
+    sep.b #$20
+    lda.l !slide_flags
+    and.b #$DF
+    sta.l !slide_flags
+.show:
+    sep.b #$20
+    lda.w !wram_19FF
+    sta.l !wram_7F3460
+.done:
+    plb
+    plp
+    rtl
