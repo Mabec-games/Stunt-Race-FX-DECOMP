@@ -500,6 +500,27 @@ WindowLayoutStepForScreen:
     plp
     rtl
 
+; @routine 7E:DDD9 WindowSlideStep
+; WHAT IT DOES: Steps the window slide the way bits 1-2 of $0DA5 ask: 2 slides
+; it down (WindowSlideDown), 4 or 6 up (WindowSlideUp), 0 not at all.
+; HOW: The bits are tested through the data bank.
+; Entry: X 16-bit or 8-bit (unchanged). Exit: M 8-bit; as the slide it runs,
+; or A low byte = 0 with Z set.
+%ramcode($7EDDD9, $013B00)
+WindowSlideStep:
+    sep.b #$20
+    lda.w !slide_flags
+    and.b #$06
+    beq .done
+    cmp.b #$02
+    bne .up
+    jsr WindowSlideDown
+    jmp .done
+.up:
+    jsr WindowSlideUp
+.done:
+    rts
+
 ; @routine 7E:DDF0 WindowSlideDown
 ; WHAT IT DOES: Moves the window slide position $1A14 down a line; at $96
 ; the slide ends.

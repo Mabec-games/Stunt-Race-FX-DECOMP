@@ -568,6 +568,35 @@ static void abi_window_slide(uint8_t step, uint8_t stop)
 }
 
 /*
+ * @routine 7E:DDD9 WindowSlideStep
+ * WHAT IT DOES: Steps the window slide the way bits 1-2 of $0DA5 ask: 2
+ * slides it down (WindowSlideDown), 4 or 6 up (WindowSlideUp), 0 not at
+ * all.
+ * HOW: The bits are tested through the data bank.
+ * Entry: X 16-bit or 8-bit (unchanged). Exit: M 8-bit; as the slide it
+ * runs, or A low byte = 0 with Z set.
+ */
+void abi_WindowSlideDown(void);
+void abi_WindowSlideUp(void);
+
+void abi_WindowSlideStep(void)
+{
+    uint8_t v;
+
+    cpu.p |= P_M;
+    v = (uint8_t)(rd8(((uint32_t)cpu.db << 16) | 0x0DA5) & 0x06);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+    if (!v)
+        return;
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x02)) & ~P_C) | (v >= 0x02 ? P_C : 0));
+    if (v == 0x02)
+        abi_WindowSlideDown();
+    else
+        abi_WindowSlideUp();
+}
+
+/*
  * @routine 7E:DDF0 WindowSlideDown
  * WHAT IT DOES: Moves the window slide position $1A14 down a line; at $96
  * the slide ends.
