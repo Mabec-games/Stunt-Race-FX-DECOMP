@@ -1826,3 +1826,136 @@ void abi_GlyphListMessageAndTime(void)
     op_rep(P_M);
     time_glyph(b, digit_glyph(0x0000F5, 0), 0x7C, 1);
 }
+
+void abi_GsuBytes200_BFB7B6_D8C4(void);
+void abi_GsuBytes200_BFBAB9_D8E1(void);
+void abi_GsuBytes200_BFB3BE_D8FE(void);
+void abi_GsuBytes200_BFBBBE(void);
+
+/* LDA #glyph, STA.L $70:0216, then Super FX program $07:prog (SEP #$20,
+   REP #$10, LDX #prog, LDA #$07, JSL GsuRun, REP #$20, REP #$10). */
+static void glyph_prog(uint16_t prog, uint16_t glyph)
+{
+    op_lda16_imm(glyph);
+    wr16(0x700216, glyph);
+    op_sep(P_M);
+    op_rep(P_X);
+    cpu.x = prog;
+    cpu.p = nz16(cpu.p, prog);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x07);
+    cpu.p = nz8(cpu.p, 0x07);
+    abi_GsuRun();
+    op_rep(P_M | P_X);
+}
+
+/* LDA.L $70:020A or $020C, CLC/SEC, ADC/SBC #d, STA.L: move the draw
+   position. */
+static void draw_pos_add(uint32_t at, uint16_t d, int sub)
+{
+    op_lda16(at);
+    if (sub)
+        op_sub16(d);
+    else
+        op_add16(d);
+    wr16(at, cpu.a);
+}
+
+/*
+ * @routine 07:A03F GlyphWordAt1C28
+ * WHAT IT DOES: Draws a nine-glyph word with program $07:F15B at (28, 40),
+ * 32 rows, advancing 16, with the renderer bytes 0, $BF, $BC, $BD: glyphs
+ * $840C, $8C00, $881C, $8C18, $8C10, then 4 further on $8C14, $8C0C, $8408
+ * and $9004.
+ * HOW: Long stores to the program's parameters; GsuRun per glyph.
+ * Entry: any widths. Exit: M 16-bit, X 16-bit; X = $F15B; A as GsuRun
+ * leaves it.
+ */
+void abi_GlyphWordAt1C28(void)
+{
+    static const uint16_t g1[5] = {0x840C, 0x8C00, 0x881C, 0x8C18, 0x8C10};
+    static const uint16_t g2[4] = {0x8C14, 0x8C0C, 0x8408, 0x9004};
+    int i;
+
+    op_rep(P_M | P_X);
+    op_lda16_imm(0x001C);
+    wr16(0x70020A, 0x001C);
+    op_lda16_imm(0x0028);
+    wr16(0x70020C, 0x0028);
+    op_lda16_imm(0x0020);
+    wr16(0x700210, 0x0020);
+    op_lda16_imm(0x0010);
+    wr16(0x70020E, 0x0010);
+    abi_GsuBytes200_BFBCBD();
+    for (i = 0; i < 5; i++) {
+        op_rep(P_M);
+        glyph_prog(0xF15B, g1[i]);
+    }
+    draw_pos_add(0x70020A, 0x0004, 0);
+    for (i = 0; i < 4; i++) {
+        op_rep(P_M);
+        glyph_prog(0xF15B, g2[i]);
+    }
+}
+
+/* Three rows of three 8 x 8 glyphs (program $07:F280), each row 8 lower
+   and back 24; the glyphs are row byte * $100 + $1A, $1C, $1E. `mid` (when
+   not 0) sets the renderer bytes before the first row's third glyph,
+   `row2` after the step to the second row. */
+static void glyph_grid3(uint16_t first, void (*mid)(void), void (*row2)(void))
+{
+    int r, c;
+
+    for (r = 0; r < 3; r++) {
+        if (r) {
+            draw_pos_add(0x70020C, 0x0008, 0);
+            draw_pos_add(0x70020A, 0x0018, 1);
+            if (r == 1 && row2)
+                row2();
+        }
+        for (c = 0; c < 3; c++) {
+            if (r == 0 && c == 2 && mid)
+                mid();
+            glyph_prog(0xF280, (uint16_t)((first + r) << 8 | (0x1A + 2 * c)));
+        }
+    }
+}
+
+/*
+ * @routine 07:A158 GlyphGrid1A
+ * WHAT IT DOES: Draws the 3 x 3 glyph picture $1A1A-$1C1E at (56, 48) with
+ * program $07:F280 (8 x 8 glyphs): its first two glyphs with the renderer
+ * bytes 0, $BF, $B7, $B6, the third with 0, $BF, $BA, $B9 and the rest
+ * with 0, $BF, $B3, $BE.
+ * HOW: Each row of three, then 8 down and 24 back; the renderer setters'
+ * long entries ($04:D8C4, $D8E1, $D8FE).
+ * Entry: any widths. Exit: M 16-bit, X 16-bit; X = $F280; A as GsuRun
+ * leaves it.
+ */
+void abi_GlyphGrid1A(void)
+{
+    op_rep(P_M);
+    op_lda16_imm(0x0038);
+    wr16(0x70020A, 0x0038);
+    op_lda16_imm(0x0030);
+    wr16(0x70020C, 0x0030);
+    abi_GsuBytes200_BFB7B6_D8C4();
+    glyph_grid3(0x1A, abi_GsuBytes200_BFBAB9_D8E1, abi_GsuBytes200_BFB3BE_D8FE);
+}
+
+/*
+ * @routine 07:A27D GlyphGrid1D
+ * WHAT IT DOES: Draws the 3 x 3 glyph picture $1D1A-$1F1E at (56, 72) with
+ * program $07:F280, the renderer bytes 0, $BF, $BB, $BE.
+ * HOW: As GlyphGrid1A, one setter first.
+ * Entry: any widths. Exit: as GlyphGrid1A.
+ */
+void abi_GlyphGrid1D(void)
+{
+    op_rep(P_M);
+    op_lda16_imm(0x0038);
+    wr16(0x70020A, 0x0038);
+    op_lda16_imm(0x0048);
+    wr16(0x70020C, 0x0048);
+    abi_GsuBytes200_BFBBBE();
+    glyph_grid3(0x1D, 0, 0);
+}

@@ -2557,3 +2557,350 @@ GlyphListMessageAndTime:
     sta.w !glyph_list_y,y
     rts
 
+
+; @routine 07:A03F GlyphWordAt1C28
+; WHAT IT DOES: Draws a nine-glyph word with program $07:F15B at (28, 40),
+; 32 rows, advancing 16, with the renderer bytes 0, $BF, $BC, $BD: glyphs
+; $840C, $8C00, $881C, $8C18, $8C10, then 4 further on $8C14, $8C0C, $8408
+; and $9004.
+; HOW: Long stores to the program's parameters; GsuRun per glyph.
+; Entry: any widths. Exit: M 16-bit, X 16-bit; X = $F15B; A as GsuRun
+; leaves it.
+%at($07A03F)
+GlyphWordAt1C28:
+    rep.b #$30
+    lda.w #$001C
+    sta.l !fx_draw_x
+    lda.w #$0028
+    sta.l !fx_draw_y
+    lda.w #$0020
+    sta.l !fx_draw_rows
+    lda.w #$0010
+    sta.l !fx_draw_advance
+    jsl.l GsuBytes200_BFBCBD
+    rep.b #$20
+    lda.w #$840C
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8C00
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$881C
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8C18
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8C10
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.l !fx_draw_x
+    clc
+    adc.w #$0004
+    sta.l !fx_draw_x
+    rep.b #$20
+    lda.w #$8C14
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8C0C
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8408
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$9004
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rts
+
+; @routine 07:A158 GlyphGrid1A
+; WHAT IT DOES: Draws the 3 x 3 glyph picture $1A1A-$1C1E at (56, 48) with
+; program $07:F280 (8 x 8 glyphs): its first two glyphs with the renderer
+; bytes 0, $BF, $B7, $B6, the third with 0, $BF, $BA, $B9 and the rest
+; with 0, $BF, $B3, $BE.
+; HOW: Each row of three, then 8 down and 24 back; the renderer setters'
+; long entries ($04:D8C4, $D8E1, $D8FE).
+; Entry: any widths. Exit: M 16-bit, X 16-bit; X = $F280; A as GsuRun
+; leaves it.
+%at($07A158)
+GlyphGrid1A:
+    rep.b #$20
+    lda.w #$0038
+    sta.l !fx_draw_x
+    lda.w #$0030
+    sta.l !fx_draw_y
+    jsl.l GsuBytes200_BFB7B6_D8C4
+    lda.w #$1A1A
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F280
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.w #$1A1C
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F280
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    jsl.l GsuBytes200_BFBAB9_D8E1
+    lda.w #$1A1E
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F280
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.l !fx_draw_y
+    clc
+    adc.w #$0008
+    sta.l !fx_draw_y
+    lda.l !fx_draw_x
+    sec
+    sbc.w #$0018
+    sta.l !fx_draw_x
+    jsl.l GsuBytes200_BFB3BE_D8FE
+    lda.w #$1B1A
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F280
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.w #$1B1C
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F280
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.w #$1B1E
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F280
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.l !fx_draw_y
+    clc
+    adc.w #$0008
+    sta.l !fx_draw_y
+    lda.l !fx_draw_x
+    sec
+    sbc.w #$0018
+    sta.l !fx_draw_x
+    lda.w #$1C1A
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F280
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.w #$1C1C
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F280
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.w #$1C1E
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F280
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rts
+
+; @routine 07:A27D GlyphGrid1D
+; WHAT IT DOES: Draws the 3 x 3 glyph picture $1D1A-$1F1E at (56, 72) with
+; program $07:F280, the renderer bytes 0, $BF, $BB, $BE.
+; HOW: As GlyphGrid1A, one setter first.
+; Entry: any widths. Exit: as GlyphGrid1A.
+%at($07A27D)
+GlyphGrid1D:
+    rep.b #$20
+    lda.w #$0038
+    sta.l !fx_draw_x
+    lda.w #$0048
+    sta.l !fx_draw_y
+    jsl.l GsuBytes200_BFBBBE
+    lda.w #$1D1A
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F280
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.w #$1D1C
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F280
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.w #$1D1E
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F280
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.l !fx_draw_y
+    clc
+    adc.w #$0008
+    sta.l !fx_draw_y
+    lda.l !fx_draw_x
+    sec
+    sbc.w #$0018
+    sta.l !fx_draw_x
+    lda.w #$1E1A
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F280
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.w #$1E1C
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F280
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.w #$1E1E
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F280
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.l !fx_draw_y
+    clc
+    adc.w #$0008
+    sta.l !fx_draw_y
+    lda.l !fx_draw_x
+    sec
+    sbc.w #$0018
+    sta.l !fx_draw_x
+    lda.w #$1F1A
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F280
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.w #$1F1C
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F280
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.w #$1F1E
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F280
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rts
+
