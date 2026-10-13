@@ -296,7 +296,7 @@ static void finish(Watch *w)
     st->calls++;
 
     cpu.a = w->entry.a; cpu.x = w->entry.x; cpu.y = w->entry.y; cpu.s = w->entry.s; cpu.d = w->entry.d;
-    cpu.db = w->entry.db; cpu.p = w->entry.p; cpu.e = w->entry.e; cpu.pc = w->entry.pc;
+    cpu.db = w->entry.db; cpu.p = w->entry.p; cpu.e = w->entry.e; cpu.pc = w->entry.pc; cpu.unwound = 0;
     map_clear(&w->cw); w->cwrite.n = 0; w->cread = 0; w->io_mismatch = 0; w->cseq.n = 0;
     cur = w;
     c_accesses = 0; c_runaway = 0;
@@ -310,6 +310,13 @@ static void finish(Watch *w)
     int bad = 0;
 #define DIFFR(f) if (cpu.f != out.f) { bad = 1; snprintf(why + strlen(why), sizeof why - strlen(why), " %s=%X/%X", #f, (unsigned)cpu.f, (unsigned)out.f); }
     DIFFR(a) DIFFR(x) DIFFR(y) DIFFR(d) DIFFR(db) DIFFR(p) DIFFR(e)
+    /* A routine that left through its caller's frame: the C must too, to
+       the same place. */
+    if (!c_runaway && (cpu.unwound || out.s != w->exit_s)) {
+        if (!cpu.unwound || out.s == w->exit_s) {
+            bad = 1; snprintf(why + strlen(why), sizeof why - strlen(why), " unwound=%d/%d", cpu.unwound, out.s != w->exit_s);
+        } else { DIFFR(s) DIFFR(pc) }
+    }
     for (int pass = 0; pass < 2; pass++) {
         Map *m = pass ? &w->cw : &w->orig;
         for (int i = 0; i < m->n; i++) {
@@ -361,12 +368,17 @@ static void on_insn(uint32_t pc)
             if (!have) { core_regs(&r); have = 1; }
             if (r.s == ws[i].irq_s) ws[i].in_irq = 0;
         }
-    if (depth) {
+    /* A watch ends at its return, or when an RTS, RTL or RTI takes S above
+       its exit level: the routine left through its caller's frame, which
+       may end the caller's watch at the same place. */
+    uint8_t prev_op = *core_opcode;
+    while (depth) {
         Watch *t = &ws[depth - 1];
-        if (!t->in_irq && pc == t->ret_pc) {
-            if (!have) { core_regs(&r); have = 1; }
-            if (r.s == t->exit_s) { finish(t); depth--; }
-        }
+        if (t->in_irq) break;
+        if (!have) { core_regs(&r); have = 1; }
+        if ((pc == t->ret_pc && r.s == t->exit_s)
+            || (r.s > t->exit_s && (prev_op == 0x60 || prev_op == 0x6B || prev_op == 0x40))) { finish(t); depth--; }
+        else break;
     }
     if (!(watched[pc >> 3] >> (pc & 7) & 1)) return;
     int idx = -1;
@@ -704,7 +716,8 @@ static void ls_insn(uint32_t pc)
             m.depth--;
             ls_op(0xC0, pc);
         }
-        if (pc == m.ret_pc && r.s == m.exit_s) {
+        if ((pc == m.ret_pc && r.s == m.exit_s)
+            || (r.s > m.exit_s && !m.irq_resumed && (*core_opcode == 0x60 || *core_opcode == 0x6B || *core_opcode == 0x40))) {
             STORE(sh->calls[m.call % CALLRING].done, 1);
             m.active = 0;
             return;
@@ -1159,12 +1172,13 @@ static int ls_exec(uint32_t pc)
     } else mismatched_calls++;
     hk++;
     cpu.a = r.a; cpu.x = r.x; cpu.y = r.y; cpu.s = r.s; cpu.d = r.d; cpu.db = r.db; cpu.p = r.p; cpu.e = r.e; cpu.pc = r.pc;
+    cpu.unwound = 0;
     machine_live = 1;
     routines[idx].abi();
     machine_live = 0;
     while (fetch_more(cur_n + 1)) {}
     replay_to(cur_n);
-    struct SfxboxRegs out = {cpu.a, cpu.x, cpu.y, exit_s, cpu.d, cpu.db, cpu.p, cpu.e, ret};
+    struct SfxboxRegs out = {cpu.a, cpu.x, cpu.y, cpu.unwound ? cpu.s : exit_s, cpu.d, cpu.db, cpu.p, cpu.e, cpu.unwound ? cpu.pc : ret};
     core_set_regs(&out);
     calls_swapped++;
     return 1;

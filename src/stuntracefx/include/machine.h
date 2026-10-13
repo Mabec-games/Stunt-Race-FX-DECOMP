@@ -44,6 +44,10 @@ typedef struct {
     uint16_t a, x, y, s, d;
     uint8_t db, p, e;
     uint32_t pc;
+    /* Set by C that leaves through its caller's frame (pulling the
+       caller's saved registers and return address): s and pc are then
+       where it lands, not the routine's own return. */
+    uint8_t unwound;
 } Regs65816;
 
 extern Regs65816 cpu;

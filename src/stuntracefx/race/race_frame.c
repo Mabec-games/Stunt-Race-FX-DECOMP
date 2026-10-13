@@ -531,3 +531,45 @@ void abi_ViewParamsByPlayers(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     view_params(v ? two : one);
 }
+
+/*
+ * @routine 02:E33D LoopLeaveWhenEnded
+ * WHAT IT DOES: Ends the frame loop at $02:E289 once its fade-out has run
+ * its course ($0E3A set and $0D61 negative): interrupts and the vertical
+ * blank interrupt off, and a return from the loop itself with its saved
+ * data bank and P. Otherwise a plain return.
+ * HOW: PLA drops this routine's return address; then STZ $4200, SEI, PLB,
+ * PLP and RTL take the loop's frame (P and the data bank pushed after its
+ * JSL).
+ * Entry: D = $0000. Exit: M 8-bit; on the way out as the loop's caller
+ * left P and the data bank, A = this routine's return address.
+ */
+void abi_LoopLeaveWhenEnded(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t lo;
+
+    op_sep(P_M);
+    op_lda8(b | 0x0E3A);
+    if (!(uint8_t)cpu.a)
+        return;
+    op_lda8(b | 0x0D61);
+    if (!(cpu.a & 0x80))
+        return;
+    op_rep(P_M);
+    cpu.a = rd16((uint16_t)(cpu.s + 1));
+    cpu.p = nz16(cpu.p, cpu.a);
+    cpu.s = (uint16_t)(cpu.s + 2);
+    op_sep(P_M | P_X);
+    wr8(NMITIMEN, 0x00);
+    cpu.p |= P_I;
+    cpu.db = rd8((uint16_t)(cpu.s + 1));
+    cpu.s = (uint16_t)(cpu.s + 1);
+    cpu.p = nz8(cpu.p, cpu.db);
+    op_plp(rd8((uint16_t)(cpu.s + 1)));
+    cpu.s = (uint16_t)(cpu.s + 1);
+    lo = (uint16_t)(rd16((uint16_t)(cpu.s + 1)) + 1);
+    cpu.pc = (uint32_t)rd8((uint16_t)(cpu.s + 3)) << 16 | lo;
+    cpu.s = (uint16_t)(cpu.s + 3);
+    cpu.unwound = 1;
+}

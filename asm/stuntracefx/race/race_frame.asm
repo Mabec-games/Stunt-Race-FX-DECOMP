@@ -621,3 +621,33 @@ ViewParamsTwo:
     lda.b #$71
     sta.b $33
     rts
+
+; @routine 02:E33D LoopLeaveWhenEnded
+; WHAT IT DOES: Ends the frame loop at $02:E289 once its fade-out has run
+; its course ($0E3A set and $0D61 negative): interrupts and the vertical
+; blank interrupt off, and a return from the loop itself with its saved
+; data bank and P. Otherwise a plain return.
+; HOW: PLA drops this routine's return address; then STZ $4200, SEI, PLB,
+; PLP and RTL take the loop's frame (P and the data bank pushed after its
+; JSL).
+; Entry: D = $0000. Exit: M 8-bit; on the way out as the loop's caller
+; left P and the data bank, A = this routine's return address.
+%at($02E33D)
+LoopLeaveWhenEnded:
+    sep.b #$20
+    lda.w !fade_out
+    beq .lE349
+    lda.w !fade_level_hi
+    bmi .lE34A
+.lE349:
+    rts
+.lE34A:
+    rep.b #$20
+    pla
+    sep.b #$30
+    stz.w !NMITIMEN
+    sei
+    plb
+    plp
+    rtl
+
