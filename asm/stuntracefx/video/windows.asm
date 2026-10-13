@@ -228,3 +228,125 @@ BobWindow1:
     jsr.w WindowHdmaFFD9
 .done:
     rts
+
+; @routine 7E:D311 WindowSweepIfOn
+; WHAT IT DOES: Unless the window HDMA state $19D8 is set or no layout is
+; chosen ($19BC = $FF), while bit 4 of $0DA5 is set selects window setup
+; 4 ($19A9) and steps the sweep (WindowSweep).
+; HOW: The data bank is set to the code's ($7E) and restored. The sweep
+; is not reached in the traces so far.
+; Entry: any widths. Exit: P and the data bank restored; A as the last
+; test or call left it.
+%ramcode($7ED311, $013038)
+WindowSweepIfOn:
+    php
+    phb
+    phk
+    plb
+    sep.b #$20
+    lda.w !window_hdma_off
+    bne .done
+    lda.l !layout_moving
+    cmp.b #$FF
+    beq .done
+    sep.b #$20
+    lda.w !slide_flags
+    and.b #$10
+    beq .done
+    sep.b #$20
+    lda.b #$04
+    sta.w !windows_setup_index
+    jsr.w WindowSweep
+.done:
+    plb
+    plp
+    rtl
+
+; @routine 7E:DE5E WindowSweep
+; WHAT IT DOES: Steps sweep 0 (WindowSweepStep) and, unless its position
+; $1A15 is $EE, puts the position in window setup bytes $19AC, $19AE and
+; $19AD and sets the window bands (WindowHdmaFFD1, or WindowHdmaFFD5 with
+; $0D62 set).
+; HOW: Long stores to bank 0. Not reached in the traces so far.
+; Entry: any widths. Exit: M 8-bit, X 8-bit; as the last call left them.
+%ramcode($7EDE5E, $013B85)
+WindowSweep:
+    sep.b #$30
+    ldx.b #$00
+    jsr.w WindowSweepStep
+    lda.l !wram_1A15
+    cmp.b #$EE
+    beq .done
+    sta.l !window_setup_bytes
+    sta.l !window_setup_bytes+2
+    sta.l !window_setup_bytes+1
+    lda.w !wram_0D62
+    bne .alt
+    jsr.w WindowHdmaFFD1
+    jmp.w .done
+.alt:
+    jsr.w WindowHdmaFFD5
+.done:
+    rts
+
+; @routine 7E:DE88 WindowSweepStep
+; WHAT IT DOES: Steps sweep X at half rate ($1A17 + X toggling): its
+; position $1A15 + X moves by its velocity $1A19 + X, which turns round at
+; $F2 and $E8; the sixteenth step ($1A1B) ends the sweep: bit 4 of $0DA5
+; cleared, $1A17/$1A18/$1A1B = 0, velocities $FE, positions $F0.
+; HOW: 8-bit; long accesses to bank 0 except the velocity add and the
+; end's stores (data bank). Not reached in the traces so far.
+; Entry: X = sweep. Exit: M 8-bit, X 8-bit; A and flags from the last
+; step.
+%ramcode($7EDE88, $013BAF)
+WindowSweepStep:
+    sep.b #$30
+    lda.l !wram_1A17,x
+    clc
+    adc.b #$01
+    cmp.b #$02
+    beq .count
+    sta.l !wram_1A17,x
+    jmp.w .done
+.count:
+    lda.l !wram_1A1B
+    clc
+    adc.b #$01
+    sta.l !wram_1A1B
+    cmp.b #$10
+    bne .move
+    lda.b #$00
+    sta.l !wram_1A1B
+    lda.w !slide_flags
+    and.b #$EF
+    sta.w !slide_flags
+    lda.b #$00
+    sta.w !wram_1A17
+    sta.w !wram_1A18
+    sta.w !wram_1A1B
+    lda.b #$FE
+    sta.w !wram_1A19
+    sta.w !wram_1A1A
+    lda.b #$F0
+    sta.w !wram_1A15
+    sta.w !wram_1A16
+    rts
+.move:
+    lda.b #$00
+    sta.l !wram_1A17,x
+    lda.l !wram_1A15,x
+    clc
+    adc.w !wram_1A19,x
+    sta.l !wram_1A15,x
+    cmp.b #$F2
+    beq .turn
+    cmp.b #$E8
+    beq .turn
+    jmp.w .done
+.turn:
+    lda.l !wram_1A19,x
+    eor.b #$FF
+    inc a
+    sta.l !wram_1A19,x
+.done:
+    rts

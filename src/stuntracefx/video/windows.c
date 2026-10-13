@@ -264,3 +264,135 @@ void abi_BobWindow1(void)
     if (bob_window(1, 0x19AF))
         abi_WindowHdmaFFD9();
 }
+
+/*
+ * @routine 7E:DE88 WindowSweepStep
+ * WHAT IT DOES: Steps sweep X at half rate ($1A17 + X toggling): its
+ * position $1A15 + X moves by its velocity $1A19 + X, which turns round at
+ * $F2 and $E8; the sixteenth step ($1A1B) ends the sweep: bit 4 of $0DA5
+ * cleared, $1A17/$1A18/$1A1B = 0, velocities $FE, positions $F0.
+ * HOW: 8-bit; long accesses to bank 0 except the velocity add and the
+ * end's stores (data bank). Not reached in the traces so far.
+ * Entry: X = sweep. Exit: M 8-bit, X 8-bit; A and flags from the last
+ * step.
+ */
+void abi_WindowSweepStep(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v, c;
+    unsigned i;
+
+    op_sep(P_M | P_X);
+    cpu.p &= (uint8_t)~P_C;
+    v = op_adc8(rd8(0x001A17 + cpu.x), 0x01, &cpu.p);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x02)) & ~P_C) | (v >= 0x02 ? P_C : 0));
+    if (v != 0x02) {
+        wr8(0x001A17 + cpu.x, v);
+        return;
+    }
+    cpu.p &= (uint8_t)~P_C;
+    c = op_adc8(rd8(0x001A1B), 0x01, &cpu.p);
+    wr8(0x001A1B, c);
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(c - 0x10)) & ~P_C) | (c >= 0x10 ? P_C : 0));
+    if (c == 0x10) {
+        static const uint16_t z[3] = {0x1A17, 0x1A18, 0x1A1B};
+
+        wr8(0x001A1B, 0x00);
+        v = (uint8_t)(rd8(b | 0x0DA5) & 0xEF);
+        wr8(b | 0x0DA5, v);
+        for (i = 0; i < 3; i++)
+            wr8(b | z[i], 0x00);
+        wr8(b | 0x1A19, 0xFE);
+        wr8(b | 0x1A1A, 0xFE);
+        wr8(b | 0x1A15, 0xF0);
+        wr8(b | 0x1A16, 0xF0);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xF0);
+        cpu.p = nz8(cpu.p, 0xF0);
+        return;
+    }
+    wr8(0x001A17 + cpu.x, 0x00);
+    v = rd8(0x001A15 + cpu.x);
+    cpu.p &= (uint8_t)~P_C;
+    v = op_adc8(v, rd8(b | (uint16_t)(0x1A19 + cpu.x)), &cpu.p);
+    wr8(0x001A15 + cpu.x, v);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0xF2)) & ~P_C) | (v >= 0xF2 ? P_C : 0));
+    if (v != 0xF2) {
+        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0xE8)) & ~P_C) | (v >= 0xE8 ? P_C : 0));
+        if (v != 0xE8)
+            return;
+    }
+    v = (uint8_t)((rd8(0x001A19 + cpu.x) ^ 0xFF) + 1);
+    wr8(0x001A19 + cpu.x, v);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+}
+
+/*
+ * @routine 7E:DE5E WindowSweep
+ * WHAT IT DOES: Steps sweep 0 (WindowSweepStep) and, unless its position
+ * $1A15 is $EE, puts the position in window setup bytes $19AC, $19AE and
+ * $19AD and sets the window bands (WindowHdmaFFD1, or WindowHdmaFFD5 with
+ * $0D62 set).
+ * HOW: Long stores to bank 0. Not reached in the traces so far.
+ * Entry: any widths. Exit: M 8-bit, X 8-bit; as the last call left them.
+ */
+void abi_WindowSweep(void)
+{
+    uint8_t v;
+
+    op_sep(P_M | P_X);
+    cpu.x = 0x00;
+    abi_WindowSweepStep();
+    v = rd8(0x001A15);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0xEE)) & ~P_C) | (v >= 0xEE ? P_C : 0));
+    if (v == 0xEE)
+        return;
+    wr8(0x0019AC, v);
+    wr8(0x0019AE, v);
+    wr8(0x0019AD, v);
+    v = rd8((uint32_t)cpu.db << 16 | 0x0D62);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    if (v)
+        abi_WindowHdmaFFD5();
+    else
+        abi_WindowHdmaFFD1();
+}
+
+/*
+ * @routine 7E:D311 WindowSweepIfOn
+ * WHAT IT DOES: Unless the window HDMA state $19D8 is set or no layout is
+ * chosen ($19BC = $FF), while bit 4 of $0DA5 is set selects window setup
+ * 4 ($19A9) and steps the sweep (WindowSweep).
+ * HOW: The data bank is set to the code's ($7E) and restored. The sweep
+ * is not reached in the traces so far.
+ * Entry: any widths. Exit: P and the data bank restored; A as the last
+ * test or call left it.
+ */
+void abi_WindowSweepIfOn(void)
+{
+    uint8_t p0 = cpu.p, db0 = cpu.db, v;
+    uint32_t b = 0x7E0000;
+
+    cpu.db = 0x7E;
+    cpu.p |= P_M;
+    v = rd8(b | 0x19D8);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    if (!v) {
+        v = rd8(0x0019BC);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+        if (v != 0xFF) {
+            v = (uint8_t)(rd8(b | 0x0DA5) & 0x10);
+            cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+            if (v) {
+                cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x04);
+                wr8(b | 0x19A9, 0x04);
+                abi_WindowSweep();
+            }
+        }
+    }
+    cpu.db = db0;
+    cpu.p = p0;
+}
