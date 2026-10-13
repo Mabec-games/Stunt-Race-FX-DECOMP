@@ -1580,3 +1580,4 @@ includeonce
 !wram_19E2 = $19E2
 !wram_19E4 = $19E4
 !speed_sample_long = $000DDA            ; $0DDA read long
+!hud_panel_y = $F9                      ; the HUD panel's Y offset (direct page, also stored as $00F9)
