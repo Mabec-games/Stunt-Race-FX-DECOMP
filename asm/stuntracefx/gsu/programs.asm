@@ -1913,3 +1913,84 @@ GsuFA35FromTables:
     rep.b #$20
     rep.b #$10
     rts
+
+; @routine 07:9AB0 HudSixGlyphs
+; WHAT IT DOES: Draws six HUD glyphs with Super FX program $07:F15B: the
+; input bytes 0, $0F, $06, $0E (GsuBytes200_0F060E), $20 rows, an advance
+; of $10, starting at X $10, Y $18; the glyph words $8C10, $8C04, $8814,
+; $8408, $8C10 and $8804 in turn at $70:0216.
+; HOW: Long word stores to Super FX RAM, then GsuRun per glyph.
+; Entry: D = $0000. Exit: as the last GsuRun leaves it, with M and X 16-bit.
+%at($079AB0)
+HudSixGlyphs:
+    rep.b #$30
+    jsl.l GsuBytes200_0F060E
+    lda.w #$0020
+    sta.l !fx_draw_rows
+    lda.w #$0010
+    sta.l !fx_draw_advance
+    lda.w #$0010
+    sta.l !fx_draw_x
+    lda.w #$0018
+    sta.l !fx_draw_y
+    rep.b #$20
+    lda.w #$8C10
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8C04
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8814
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8408
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8C10
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8804
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rts

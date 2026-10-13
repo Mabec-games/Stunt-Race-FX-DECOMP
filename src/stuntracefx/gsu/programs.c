@@ -1300,3 +1300,38 @@ void abi_GsuFA35FromTables(void)
         cpu.p = (uint8_t)((p & ~P_N) | P_Z);
     }
 }
+
+void abi_GsuBytes200_0F060E(void);
+void abi_GsuRun(void);
+
+/*
+ * @routine 07:9AB0 HudSixGlyphs
+ * WHAT IT DOES: Draws six HUD glyphs with Super FX program $07:F15B: the
+ * input bytes 0, $0F, $06, $0E (GsuBytes200_0F060E), $20 rows, an advance
+ * of $10, starting at X $10, Y $18; the glyph words $8C10, $8C04, $8814,
+ * $8408, $8C10 and $8804 in turn at $70:0216.
+ * HOW: Long word stores to Super FX RAM, then GsuRun per glyph.
+ * Entry: D = $0000. Exit: as the last GsuRun leaves it, with M and X 16-bit.
+ */
+void abi_HudSixGlyphs(void)
+{
+    static const uint16_t glyph[6] = {0x8C10, 0x8C04, 0x8814, 0x8408, 0x8C10, 0x8804};
+    unsigned i;
+
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    abi_GsuBytes200_0F060E();
+    wr16(0x700210, 0x0020);
+    wr16(0x70020E, 0x0010);
+    wr16(0x70020A, 0x0010);
+    wr16(0x70020C, 0x0018);
+    for (i = 0; i < 6; i++) {
+        cpu.p &= (uint8_t)~(P_M | P_X);
+        cpu.a = glyph[i];
+        wr16(0x700216, glyph[i]);
+        cpu.p |= P_M;
+        cpu.x = 0xF15B;
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x07);
+        abi_GsuRun();
+    }
+    cpu.p &= (uint8_t)~(P_M | P_X);
+}
