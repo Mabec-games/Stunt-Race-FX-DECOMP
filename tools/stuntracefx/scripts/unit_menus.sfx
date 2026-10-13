@@ -1,0 +1,14 @@
+# unit_menus: unit tests (call) of menu objects on paths no script reaches:
+# - the championship results, from the states at the end of the second
+#   championship, with the race phase $0DD6 not 8: ResultsWaitButton with
+#   Start pressed (the screen ends) and ResultsOverOrHide (the object is
+#   hidden); object $1265.
+load build/stuntracefx/states/speed_championship_33.state
+set 7E0DD6 00
+set 7E118B 00,10
+call 0B:DA8A x=1265 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/speed_championship_32.state
+set 7E0DD6 00
+call 0B:DD01 x=1265 p=00 db=00 d=0000
+wait 1

@@ -312,3 +312,6 @@ BigSpritesCountDraw = $079EE9                   ; 07:9EE9, the $0E5C alternative
 !cursor_x_table = $EB49               ; MenuCursorFourWay's cursor X by position (data bank)
 !menu_cycle_frame_offsets = $0BDFCB   ; MenuSelectionFramesCycle: 4 words, each frame's offset in the picture
 !menu_cycle_selection_offsets = $0BDFD3 ; MenuSelectionFramesCycle: a word per selection, its picture's offset
+!results_car_anim = $0BDA0F          ; ResultsPlaceCar: the car animation per kind (4 words)
+!results_car_anim_leader = $0BDA17   ; ResultsPlaceCar: the same for the leader's place
+!results_blink_palettes = $0BDA86    ; ResultsLeaderBlink: palette bits per step (2 words)
