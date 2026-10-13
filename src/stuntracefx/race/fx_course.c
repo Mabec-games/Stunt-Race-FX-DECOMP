@@ -508,3 +508,58 @@ void abi_FxCourseNextDistance(void)
     gsu.r[0] = gsu_add(gsu.r[0], gsu.r[4], 0);
     gsu_pull(&gsu.r[10]);
 }
+
+void abi_FxAngleVector(void);
+
+/*
+ * @routine 04:C72F FxCarVelocityFromSegment
+ * WHAT IT DOES: Takes the saved R11 back off the R10 stack and, unless car
+ * R8's word +$58 (its entry) is 0, sets the car's velocity +$2E/+$30/+$32
+ * to a vector along its heading +$24 whose length is twice word 4 of the
+ * entry (FxTableEntryWords, FxCourseEntryRead) times the factor for $26F4
+ * from the table at $04:C781 (FMULT).
+ * HOW: Entered by a jump with the caller's R11 saved on top of the return
+ * address; FxAngleVector makes the vector. The 0 entry exit is not reached
+ * in the traces so far.
+ * Entry: R8 = the car's record; R10 = stack (saved R11 on top of the
+ * return address). Exit: R11 = $C76D (or the saved R11 for a 0 entry); R1-
+ * R3 the vector; S, Z from R10; the last RAM address R10.
+ */
+void abi_FxCarVelocityFromSegment(void)
+{
+    static const uint8_t field[3] = {0x2E, 0x30, 0x32};
+    int i;
+
+    gsu.r[11] = gsu_pull(&gsu.r[10]);
+    gsu.r[0] = gsu_add(0x0058, gsu.r[8], 0);
+    gsu.r[0] = gsu_ldw(gsu.r[0]);
+    gsu_moves(gsu.r[0]);
+    if (gsu.z) {
+        gsu_pull(&gsu.r[10]);
+        return;
+    }
+    gsu.r[11] = 0xC745;
+    abi_FxTableEntryWords();
+    gsu.r[11] = 0xC74A;
+    abi_FxCourseEntryRead();
+    gsu.r[0] = 0x0004;
+    gsu.rombr = 0x04;
+    gsu.r[0] = gsu_lob(gsu_ldw(0x26F4));
+    gsu.r[0] = gsu_add(gsu.r[0], gsu.r[0], 0);
+    gsu_r14(0xC781);
+    gsu_r14(gsu_add(gsu.r[14], gsu.r[0], 0));
+    gsu.r[6] = gsu_getb();
+    gsu_r14(gsu_inc(gsu.r[14]));
+    gsu.r[6] = gsu_getbh(gsu.r[6]);
+    gsu.r[0] = gsu_add(gsu.r[4], gsu.r[4], 0);
+    gsu.r[4] = gsu.r[0] = gsu_fmult(gsu.r[0], gsu.r[6]);
+    gsu.r[0] = gsu_add(0x0024, gsu.r[8], 0);
+    gsu.r[0] = gsu_ldw(gsu.r[0]);
+    gsu.r[11] = 0xC76D;
+    abi_FxAngleVector();
+    for (i = 0; i < 3; i++) {
+        gsu.r[0] = gsu_add(field[i], gsu.r[8], 0);
+        gsu_stw(gsu.r[0], gsu.r[1 + i]);
+    }
+    gsu_pull(&gsu.r[10]);
+}

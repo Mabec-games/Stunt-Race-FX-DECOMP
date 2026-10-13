@@ -502,5 +502,80 @@ FxCourseNextDistance:
     ldw (r10)
     nop
 
+; @routine 04:C72F FxCarVelocityFromSegment
+; WHAT IT DOES: Takes the saved R11 back off the R10 stack and, unless car
+; R8's word +$58 (its entry) is 0, sets the car's velocity +$2E/+$30/+$32 to
+; a vector along its heading +$24 whose length is twice word 4 of the entry
+; (FxTableEntryWords, FxCourseEntryRead) times the factor for $26F4 from the
+; table at $04:C781 (FMULT).
+; HOW: Entered by a jump with the caller's R11 saved on top of the return
+; address; FxAngleVector makes the vector. The 0 entry exit is not reached in
+; the traces so far.
+; Entry: R8 = the car's record; R10 = stack (saved R11 on top of the return
+; address). Exit: R11 = $C76D (or the saved R11 for a 0 entry); R1-R3 the
+; vector; S, Z from R10; the last RAM address R10.
+%at($04C72F)
+FxCarVelocityFromSegment:
+    dec r10
+    dec r10
+    to r11
+    ldw (r10)
+    ibt r0,#$58
+    add r8
+    ldw (r0)
+    moves r0,r0
+    bne .entry
+    nop
+    iwt r15,#.done
+    nop
+.entry:
+    link #4
+    iwt r15,#FxTableEntryWords
+    nop
+    link #4
+    iwt r15,#FxCourseEntryRead
+    nop
+    ibt r0,#$04
+    romb
+    lm r0,($26F4)
+    lob
+    add r0
+    iwt r14,#$C781
+    with r14
+    add r0
+    to r6
+    getb
+    inc r14
+    with r6
+    getbh
+    from r4
+    add r4
+    fmult
+    move r4,r0
+    ibt r0,#$24
+    add r8
+    ldw (r0)
+    link #4
+    iwt r15,#FxAngleVector
+    nop
+    ibt r0,#$2E
+    add r8
+    from r1
+    stw (r0)
+    ibt r0,#$30
+    add r8
+    from r2
+    stw (r0)
+    ibt r0,#$32
+    add r8
+    from r3
+    stw (r0)
+.done:
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+
 arch 65816
 
