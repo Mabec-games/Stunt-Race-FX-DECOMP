@@ -44,6 +44,7 @@
 #   $4400) and to the side; lines in each direction, steep and shallow,
 #   from far and from behind the near limit; and lines whose earlier
 #   point lies past each edge while the new one is inside.
+# - FxCarMoveParts for car $1918 with bit 10 of its first part's +$46 set.
 load build/stuntracefx/states/battle_04.state
 set 701B04 00,00
 set 701CE4 00,00
@@ -261,4 +262,8 @@ set 7027AE 10,04,05,81,00,00,E0,00,00,00,10,01,34,12,10,04,05,81,00,00,F8,00,00,
 set 7027E6 10,04,05,00,81,00,00,00,50,00,10,01,34,12,10,04,05,00,81,00,00,00,68,00,10,01,34,12,10,04,05,00,81,00,00,00,80,00,10,01,34,12,10,04,05,00,81,00,00,00,98,00,10,01,34,12
 set 70281E 10,04,05,00,81,00,00,00,B0,00,10,01,34,12,10,04,05,00,81,00,00,00,C8,00,10,01,34,12,10,04,05,00,81,00,00,00,E0,00,10,01,34,12,10,04,05,00,81,00,00,00,F8,00,10,01,34,12
 fx 01:BA13 stop=80E3 r2=1234 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 701816 1A,05
+fx 04:A4ED stop=888C r8=1918 r10=0242
 wait 1
