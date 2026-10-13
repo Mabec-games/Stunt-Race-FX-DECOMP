@@ -27,6 +27,9 @@
 #   -5000 on every axis; FxTimersProgram with timed record 0 at 16 and bit 4
 #   of its flags set; FxCarNew with script $8886, with an unknown script
 #   ($8000) and with the first pool empty.
+# - FxClipYPlane and FxClipXPlane with both ends below the plane;
+#   FxClipNear with a negative plane (R14 = -256) and both ends in front,
+#   then both behind.
 load build/stuntracefx/states/battle_04.state
 set 701B04 00,00
 set 701CE4 00,00
@@ -156,4 +159,16 @@ load build/stuntracefx/states/novice_coupe_race1.state
 set 70238E 86,88
 set 701098 00,00,00,00
 fx 04:8CC6 stop=888C
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:C4AA stop=80E3 r1=0000 r2=0100 r3=0010 r4=0000 r5=0100 r6=4000 r7=0010 r10=0250
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:C77A stop=80E3 r1=0100 r2=0000 r3=0010 r4=0100 r5=0000 r6=4000 r7=0010 r10=0250
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:CC87 stop=80E3 r1=0000 r2=0000 r3=0200 r4=0000 r5=0000 r7=0200 r14=FF00 r10=0250
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:CC87 stop=80E3 r1=0000 r2=0000 r3=0010 r4=0000 r5=0000 r7=0010 r14=FF00 r10=0250
 wait 1
