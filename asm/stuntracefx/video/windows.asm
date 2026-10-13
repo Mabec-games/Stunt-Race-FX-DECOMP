@@ -164,3 +164,67 @@ BobStep:
     sta.l !wram_1A20,x
 .done:
     rts
+
+; @routine 7E:DEFE BobWindow0
+; WHAT IT DOES: Steps bob 0 (BobStep) and, unless it is at $18, sets window
+; setup bytes $19AC-$19AE from its position ($20, (position | $40) - 2,
+; position | $80) and the window bands (WindowHdmaFFD1, or WindowHdmaFFD5
+; with $0D62 set).
+; HOW: Long accesses to bank 0; $0D62 through the data bank. The $0D62
+; case is not reached in the traces so far.
+; Entry: any widths. Exit: M 8-bit, X 8-bit; as the last call left them.
+%ramcode($7EDEFE, $013C25)
+BobWindow0:
+    sep.b #$30
+    ldx.b #$00
+    jsr.w BobStep
+    sep.b #$30
+    lda.l !wram_1A1C
+    cmp.b #$18
+    beq .done
+    pha
+    ora.b #$80
+    sta.l !wram_19AE
+    pla
+    ora.b #$40
+    sec
+    sbc.b #$02
+    sta.l !wram_19AD
+    lda.b #$20
+    sta.l !window_setup_bytes
+    lda.w !wram_0D62
+    bne .alt
+    jsr.w WindowHdmaFFD1
+    jmp.w .done
+.alt:
+    jsr.w WindowHdmaFFD5
+.done:
+    rts
+
+; @routine 7E:DF35 BobWindow1
+; WHAT IT DOES: As BobWindow0 for bob 1: setup bytes $19AF-$19B1 and the
+; bands WindowHdmaFFD9.
+; HOW: As BobWindow0. Not reached in the traces so far.
+; Entry: any widths. Exit: as BobWindow0.
+%ramcode($7EDF35, $013C5C)
+BobWindow1:
+    sep.b #$30
+    ldx.b #$01
+    jsr.w BobStep
+    sep.b #$30
+    lda.l !wram_1A1D
+    cmp.b #$18
+    beq .done
+    pha
+    ora.b #$80
+    sta.l !wram_19B1
+    pla
+    ora.b #$40
+    sec
+    sbc.b #$02
+    sta.l !wram_19B0
+    lda.b #$20
+    sta.l !wram_19AF
+    jsr.w WindowHdmaFFD9
+.done:
+    rts

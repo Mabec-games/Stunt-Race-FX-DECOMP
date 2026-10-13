@@ -199,3 +199,68 @@ void abi_BobStep(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.p = nz8(cpu.p, v);
 }
+
+void abi_WindowHdmaFFD1(void);
+void abi_WindowHdmaFFD5(void);
+void abi_WindowHdmaFFD9(void);
+
+/* Bob x's window: BobStep, then, unless its position is $18, the setup
+   bytes at `at` ($20, (position | $40) - 2, position | $80). */
+static int bob_window(uint8_t x, uint16_t at)
+{
+    uint8_t v, w;
+
+    op_sep(P_M | P_X);
+    cpu.x = x;
+    abi_BobStep();
+    op_sep(P_M | P_X);
+    v = rd8((uint32_t)(0x001A1C + x));
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x18)) & ~P_C) | (v >= 0x18 ? P_C : 0));
+    if (v == 0x18)
+        return 0;
+    wr8((uint32_t)(0x000002 + at), (uint8_t)(v | 0x80));
+    cpu.p |= P_C;
+    w = op_sbc8((uint8_t)(v | 0x40), 0x02, &cpu.p);
+    wr8((uint32_t)(0x000001 + at), w);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x20);
+    wr8((uint32_t)at, 0x20);
+    return 1;
+}
+
+/*
+ * @routine 7E:DEFE BobWindow0
+ * WHAT IT DOES: Steps bob 0 (BobStep) and, unless it is at $18, sets window
+ * setup bytes $19AC-$19AE from its position ($20, (position | $40) - 2,
+ * position | $80) and the window bands (WindowHdmaFFD1, or WindowHdmaFFD5
+ * with $0D62 set).
+ * HOW: Long accesses to bank 0; $0D62 through the data bank. The $0D62
+ * case is not reached in the traces so far.
+ * Entry: any widths. Exit: M 8-bit, X 8-bit; as the last call left them.
+ */
+void abi_BobWindow0(void)
+{
+    uint8_t v;
+
+    if (!bob_window(0, 0x19AC))
+        return;
+    v = rd8((uint32_t)cpu.db << 16 | 0x0D62);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    if (v)
+        abi_WindowHdmaFFD5();
+    else
+        abi_WindowHdmaFFD1();
+}
+
+/*
+ * @routine 7E:DF35 BobWindow1
+ * WHAT IT DOES: As BobWindow0 for bob 1: setup bytes $19AF-$19B1 and the
+ * bands WindowHdmaFFD9.
+ * HOW: As BobWindow0. Not reached in the traces so far.
+ * Entry: any widths. Exit: as BobWindow0.
+ */
+void abi_BobWindow1(void)
+{
+    if (bob_window(1, 0x19AF))
+        abi_WindowHdmaFFD9();
+}

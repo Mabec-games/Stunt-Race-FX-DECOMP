@@ -1093,3 +1093,44 @@ WindowBandsAnimate:
     plb
     plp
     rtl
+
+; @routine 7E:DCC6 WindowHdmaFFD5
+; WHAT IT DOES: Sets the window table's second to fourth bands to 16, 48
+; and 16 lines at $FFD5.
+; HOW: Counts, then addresses. Not reached in the traces so far.
+; Entry: any widths. Exit: as WindowHdmaFFD1, A = $FFD5.
+%ramcode($7EDCC6, $0139ED)
+WindowHdmaFFD5:
+    sep.b #$20
+    lda.b #$10
+    sta.l !window_hdma+3
+    lda.b #$30
+    sta.l !window_hdma+6
+    lda.b #$10
+    sta.l !window_hdma+9
+    rep.b #$20
+    lda.w #$FFD5
+    sta.l !window_hdma+4
+    sta.l !window_hdma+7
+    sta.l !window_hdma+10
+    rts
+
+; @routine 7E:DCEC WindowHdmaFFD9
+; WHAT IT DOES: As WindowHdmaFFD5 for the sixth to eighth bands, at $FFD9.
+; HOW: As WindowHdmaFFD5. Not reached in the traces so far.
+; Entry: any widths. Exit: as WindowHdmaFFD1, A = $FFD9.
+%ramcode($7EDCEC, $013A13)
+WindowHdmaFFD9:
+    sep.b #$20
+    lda.b #$10
+    sta.l !window_hdma+15
+    lda.b #$30
+    sta.l !window_hdma+18
+    lda.b #$10
+    sta.l !window_hdma+21
+    rep.b #$20
+    lda.w #$FFD9
+    sta.l !window_hdma+16
+    sta.l !window_hdma+19
+    sta.l !window_hdma+22
+    rts

@@ -1009,3 +1009,40 @@ out:
     cpu.db = db0;
     cpu.p = p0;
 }
+
+/* Three bands of 16, 48 and 16 lines at entry offset `at`, all at the
+   window address `addr`. */
+static void window_bands_3(uint16_t at, uint16_t addr)
+{
+    wr8(WINDOW_HDMA + at, 0x10);
+    wr8(WINDOW_HDMA + at + 3, 0x30);
+    wr8(WINDOW_HDMA + at + 6, 0x10);
+    wr16(WINDOW_HDMA + at + 1, addr);
+    wr16(WINDOW_HDMA + at + 4, addr);
+    wr16(WINDOW_HDMA + at + 7, addr);
+    cpu.a = addr;
+    cpu.p = (uint8_t)((cpu.p & ~(P_Z | P_M)) | P_N);
+}
+
+/*
+ * @routine 7E:DCC6 WindowHdmaFFD5
+ * WHAT IT DOES: Sets the window table's second to fourth bands to 16, 48
+ * and 16 lines at $FFD5.
+ * HOW: Counts, then addresses. Not reached in the traces so far.
+ * Entry: any widths. Exit: as WindowHdmaFFD1, A = $FFD5.
+ */
+void abi_WindowHdmaFFD5(void)
+{
+    window_bands_3(3, 0xFFD5);
+}
+
+/*
+ * @routine 7E:DCEC WindowHdmaFFD9
+ * WHAT IT DOES: As WindowHdmaFFD5 for the sixth to eighth bands, at $FFD9.
+ * HOW: As WindowHdmaFFD5. Not reached in the traces so far.
+ * Entry: any widths. Exit: as WindowHdmaFFD1, A = $FFD9.
+ */
+void abi_WindowHdmaFFD9(void)
+{
+    window_bands_3(15, 0xFFD9);
+}
