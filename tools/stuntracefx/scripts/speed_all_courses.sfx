@@ -1,0 +1,571 @@
+# speed_all_courses: every Speed Trax course, master, expert and novice with
+# their bonus courses (all opened with the controller 2 code), each started,
+# driven for five seconds and retired from the pause menu. The spare cars
+# ($0DF8) are set back to 2 in each race so retiring never ends the game.
+wait 300
+hold START 2
+wait 202
+hold START 2
+wait 202
+hold START 2
+wait 122
+hold START 2
+wait 92
+hold START 2
+wait 152
+hold 2.L 10
+hold 2.SELECT+2.L 4
+hold 2.L 6
+hold 2.SELECT+2.L 4
+hold 2.L 6
+hold 2.SELECT+2.L 4
+hold 2.L 6
+hold 2.SELECT+2.L 4
+hold 2.L 6
+hold 2.SELECT+2.L 4
+hold 2.L 6
+hold 2.SELECT+2.L 4
+hold 2.L 6
+hold 2.SELECT+2.L 4
+hold 2.L 6
+wait 61
+hold LEFT 2
+wait 32
+hold LEFT 2
+wait 32
+hold LEFT 2
+wait 32
+hold LEFT 2
+wait 32
+hold UP 2
+wait 32
+hold UP 2
+wait 32
+hold UP 2
+wait 32
+hold START 2
+wait 122
+hold START 2
+wait 640
+poke 7E0DF8 02
+hold B 300
+wait 10
+press START
+wait 180
+press LEFT
+wait 40
+press LEFT
+wait 40
+press START
+wait 400
+shot master_0
+hold LEFT 2
+wait 32
+hold LEFT 2
+wait 32
+hold LEFT 2
+wait 32
+hold LEFT 2
+wait 32
+hold UP 2
+wait 32
+hold UP 2
+wait 32
+hold UP 2
+wait 32
+hold RIGHT 2
+wait 32
+hold START 2
+wait 122
+hold START 2
+wait 640
+poke 7E0DF8 02
+hold B 300
+wait 10
+press START
+wait 180
+press LEFT
+wait 40
+press LEFT
+wait 40
+press START
+wait 400
+shot master_1
+hold LEFT 2
+wait 32
+hold LEFT 2
+wait 32
+hold LEFT 2
+wait 32
+hold LEFT 2
+wait 32
+hold UP 2
+wait 32
+hold UP 2
+wait 32
+hold UP 2
+wait 32
+hold RIGHT 2
+wait 32
+hold RIGHT 2
+wait 32
+hold START 2
+wait 122
+hold START 2
+wait 640
+poke 7E0DF8 02
+hold B 300
+wait 10
+press START
+wait 180
+press LEFT
+wait 40
+press LEFT
+wait 40
+press START
+wait 400
+shot master_bonus
+hold LEFT 2
+wait 32
+hold LEFT 2
+wait 32
+hold LEFT 2
+wait 32
+hold LEFT 2
+wait 32
+hold UP 2
+wait 32
+hold UP 2
+wait 32
+hold UP 2
+wait 32
+hold RIGHT 2
+wait 32
+hold RIGHT 2
+wait 32
+hold RIGHT 2
+wait 32
+hold START 2
+wait 122
+hold START 2
+wait 640
+poke 7E0DF8 02
+hold B 300
+wait 10
+press START
+wait 180
+press LEFT
+wait 40
+press LEFT
+wait 40
+press START
+wait 400
+shot master_2
+hold LEFT 2
+wait 32
+hold LEFT 2
+wait 32
+hold LEFT 2
+wait 32
+hold LEFT 2
+wait 32
+hold UP 2
+wait 32
+hold UP 2
+wait 32
+hold UP 2
+wait 32
+hold RIGHT 2
+wait 32
+hold RIGHT 2
+wait 32
+hold RIGHT 2
+wait 32
+hold RIGHT 2
+wait 32
+hold START 2
+wait 122
+hold START 2
+wait 640
+poke 7E0DF8 02
+hold B 300
+wait 10
+press START
+wait 180
+press LEFT
+wait 40
+press LEFT
+wait 40
+press START
+wait 400
+shot master_3
+hold LEFT 2
+wait 32
+hold LEFT 2
+wait 32
+hold LEFT 2
+wait 32
+hold LEFT 2
+wait 32
+hold UP 2
+wait 32
+hold UP 2
+wait 32
+hold UP 2
+wait 32
+hold DOWN 2
+wait 32
+hold START 2
+wait 122
+hold START 2
+wait 640
+poke 7E0DF8 02
+hold B 300
+wait 10
+press START
+wait 180
+press LEFT
+wait 40
+press LEFT
+wait 40
+press START
+wait 400
+shot expert_0
+hold LEFT 2
+wait 32
+hold LEFT 2
+wait 32
+hold LEFT 2
+wait 32
+hold LEFT 2
+wait 32
+hold UP 2
+wait 32
+hold UP 2
+wait 32
+hold UP 2
+wait 32
+hold DOWN 2
+wait 32
+hold RIGHT 2
+wait 32
+hold START 2
+wait 122
+hold START 2
+wait 640
+poke 7E0DF8 02
+hold B 300
+wait 10
+press START
+wait 180
+press LEFT
+wait 40
+press LEFT
+wait 40
+press START
+wait 400
+shot expert_1
+hold LEFT 2
+wait 32
+hold LEFT 2
+wait 32
+hold LEFT 2
+wait 32
+hold LEFT 2
+wait 32
+hold UP 2
+wait 32
+hold UP 2
+wait 32
+hold UP 2
+wait 32
+hold DOWN 2
+wait 32
+hold RIGHT 2
+wait 32
+hold RIGHT 2
+wait 32
+hold START 2
+wait 122
+hold START 2
+wait 640
+poke 7E0DF8 02
+hold B 300
+wait 10
+press START
+wait 180
+press LEFT
+wait 40
+press LEFT
+wait 40
+press START
+wait 400
+shot expert_bonus
+hold LEFT 2
+wait 32
+hold LEFT 2
+wait 32
+hold LEFT 2
+wait 32
+hold LEFT 2
+wait 32
+hold UP 2
+wait 32
+hold UP 2
+wait 32
+hold UP 2
+wait 32
+hold DOWN 2
+wait 32
+hold RIGHT 2
+wait 32
+hold RIGHT 2
+wait 32
+hold RIGHT 2
+wait 32
+hold START 2
+wait 122
+hold START 2
+wait 640
+poke 7E0DF8 02
+hold B 300
+wait 10
+press START
+wait 180
+press LEFT
+wait 40
+press LEFT
+wait 40
+press START
+wait 400
+shot expert_2
+hold LEFT 2
+wait 32
+hold LEFT 2
+wait 32
+hold LEFT 2
+wait 32
+hold LEFT 2
+wait 32
+hold UP 2
+wait 32
+hold UP 2
+wait 32
+hold UP 2
+wait 32
+hold DOWN 2
+wait 32
+hold RIGHT 2
+wait 32
+hold RIGHT 2
+wait 32
+hold RIGHT 2
+wait 32
+hold RIGHT 2
+wait 32
+hold START 2
+wait 122
+hold START 2
+wait 640
+poke 7E0DF8 02
+hold B 300
+wait 10
+press START
+wait 180
+press LEFT
+wait 40
+press LEFT
+wait 40
+press START
+wait 400
+shot expert_3
+hold LEFT 2
+wait 32
+hold LEFT 2
+wait 32
+hold LEFT 2
+wait 32
+hold LEFT 2
+wait 32
+hold UP 2
+wait 32
+hold UP 2
+wait 32
+hold UP 2
+wait 32
+hold DOWN 2
+wait 32
+hold DOWN 2
+wait 32
+hold START 2
+wait 122
+hold START 2
+wait 640
+poke 7E0DF8 02
+hold B 300
+wait 10
+press START
+wait 180
+press LEFT
+wait 40
+press LEFT
+wait 40
+press START
+wait 400
+shot novice_0
+hold LEFT 2
+wait 32
+hold LEFT 2
+wait 32
+hold LEFT 2
+wait 32
+hold LEFT 2
+wait 32
+hold UP 2
+wait 32
+hold UP 2
+wait 32
+hold UP 2
+wait 32
+hold DOWN 2
+wait 32
+hold DOWN 2
+wait 32
+hold RIGHT 2
+wait 32
+hold START 2
+wait 122
+hold START 2
+wait 640
+poke 7E0DF8 02
+hold B 300
+wait 10
+press START
+wait 180
+press LEFT
+wait 40
+press LEFT
+wait 40
+press START
+wait 400
+shot novice_1
+hold LEFT 2
+wait 32
+hold LEFT 2
+wait 32
+hold LEFT 2
+wait 32
+hold LEFT 2
+wait 32
+hold UP 2
+wait 32
+hold UP 2
+wait 32
+hold UP 2
+wait 32
+hold DOWN 2
+wait 32
+hold DOWN 2
+wait 32
+hold RIGHT 2
+wait 32
+hold RIGHT 2
+wait 32
+hold START 2
+wait 122
+hold START 2
+wait 640
+poke 7E0DF8 02
+hold B 300
+wait 10
+press START
+wait 180
+press LEFT
+wait 40
+press LEFT
+wait 40
+press START
+wait 400
+shot novice_bonus
+hold LEFT 2
+wait 32
+hold LEFT 2
+wait 32
+hold LEFT 2
+wait 32
+hold LEFT 2
+wait 32
+hold UP 2
+wait 32
+hold UP 2
+wait 32
+hold UP 2
+wait 32
+hold DOWN 2
+wait 32
+hold DOWN 2
+wait 32
+hold RIGHT 2
+wait 32
+hold RIGHT 2
+wait 32
+hold RIGHT 2
+wait 32
+hold START 2
+wait 122
+hold START 2
+wait 640
+poke 7E0DF8 02
+hold B 300
+wait 10
+press START
+wait 180
+press LEFT
+wait 40
+press LEFT
+wait 40
+press START
+wait 400
+shot novice_2
+hold LEFT 2
+wait 32
+hold LEFT 2
+wait 32
+hold LEFT 2
+wait 32
+hold LEFT 2
+wait 32
+hold UP 2
+wait 32
+hold UP 2
+wait 32
+hold UP 2
+wait 32
+hold DOWN 2
+wait 32
+hold DOWN 2
+wait 32
+hold RIGHT 2
+wait 32
+hold RIGHT 2
+wait 32
+hold RIGHT 2
+wait 32
+hold RIGHT 2
+wait 32
+hold START 2
+wait 122
+hold START 2
+wait 640
+poke 7E0DF8 02
+hold B 300
+wait 10
+press START
+wait 180
+press LEFT
+wait 40
+press LEFT
+wait 40
+press START
+wait 400
+shot novice_3

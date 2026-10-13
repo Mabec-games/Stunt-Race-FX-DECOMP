@@ -9,14 +9,14 @@
     --full                      with --live or --image: run everything; by default
                                  only what changed since its last result runs
 
-Gates for T3: 0 (the C says what it does, how, its entry and exit, and has no
-unfinished markers), C (every byte of the routine executed by the scripts),
-A5 and A7 (IDENTICAL, measured on committed source that includes the C's
-last change). T4 adds: the routine's assembly is filed with the same header,
-its operands are symbolic, and the whole ROM rebuilds byte-exact. Symbolic
-means no hexadecimal literal outside an immediate: an address is a name, and
-a place inside a named table or record is the name plus a decimal index
-(!oam_tile+4*5, !scroll_hdma+3).
+Gates for T3: 0 (the C says what it does, how, its entry and exit, and has
+no unfinished markers), C (every byte of the routine executed by the
+scripts, or, for a table inside it, read), A5 and A7 (IDENTICAL, measured on
+committed source that includes the C's last change). T4 adds: the routine's
+assembly is filed with the same header, its operands are symbolic, and the
+whole ROM rebuilds byte-exact. Symbolic means no hexadecimal literal outside
+an immediate: an address is a name, and a place inside a named table or
+record is the name plus a decimal index (!oam_tile+4*5, !scroll_hdma+3).
 
 A5 runs sfxbox --check over every script in tools/stuntracefx/scripts/ in
 parallel and merges the results per routine:
@@ -435,8 +435,10 @@ def assess(addrs, image_ok=None):
         span = span_of(addr, apath) if apath else []
         if mp is None:
             mp = merged_map()
-        covered = bool(span) and all(mp[o] & 0x33 for o in span)
-        gates.append(('C covered', covered, '%d of %d bytes executed' % (sum(1 for o in span if mp[o] & 0x33), len(span))
+        # Executed, or (a table inside the routine, such as a JMP (abs,X)
+        # list) read as data: each entry counts once its case is taken.
+        covered = bool(span) and all(mp[o] & 0x77 for o in span)
+        gates.append(('C covered', covered, '%d of %d bytes executed or read' % (sum(1 for o in span if mp[o] & 0x77), len(span))
                       if span else 'no filed assembly gives the routine\'s extent'))
         lr = live.get(key)
         # A call an interrupt overlapped cannot be judged per call (the handler can
