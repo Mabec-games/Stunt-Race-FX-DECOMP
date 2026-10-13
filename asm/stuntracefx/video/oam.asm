@@ -1608,3 +1608,52 @@ OamWordRow5:
     plp
     rts
 
+
+; @routine 07:BAE6 OamStagePause
+; WHAT IT DOES: When Select was pressed ($0D1A bit 12): $0D2E = 0, sound
+; $15 on port 1, the layout request $19BD = 1, the high bits of sprites 18
+; on (OamHighBits18), $0D2D down by one, $0E5B and $0E5F cleared and stage
+; $0D2F = 0; then, each frame (waiting for $0D52 from the vertical blank),
+; the stage's handler (OamStageDispatchBB3C) with the presses cleared,
+; until $0D2D is 0.
+; HOW: P saved and restored; 8-bit through the data bank, the presses
+; 16-bit.
+; Entry: any widths. Exit: P restored; A as the last step left it.
+%at($07BAE6)
+OamStagePause:
+    php
+    rep.b #$20
+    lda.w !joy1_pressed_copy
+    bit.w #$1000
+    bne .lBAF3
+    plp
+    rts
+.lBAF3:
+    sep.b #$20
+    lda.b #$00
+    sta.w !wram_0D2E
+    lda.b #$15
+    jsl.l SoundPort1QueuePush
+    lda.b #$01
+    sta.w !layout_request
+    jsr.w OamHighBits18
+    dec.w !wram_0D2D
+    stz.w !wram_0E5B
+    stz.w !palette_animate
+    lda.b #$00
+    sta.w !wram_0D2F
+.lBB16:
+    sep.b #$20
+    lda.w !hud_blank+4
+    beq .lBB16
+    stz.w !hud_blank+4
+    jsr.w OamStageDispatchBB3C
+    rep.b #$20
+    stz.w !joy1_pressed_copy
+    stz.w !joy2_pressed_copy
+    sep.b #$20
+    lda.w !wram_0D2D
+    bne .lBB16
+    plp
+    rts
+

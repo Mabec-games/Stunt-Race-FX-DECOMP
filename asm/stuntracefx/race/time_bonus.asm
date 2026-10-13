@@ -812,3 +812,43 @@ TimeLeftDigits:
     rep.b #$20
     rep.b #$10
     rts
+
+; @routine 07:925C GsuDigitPair0E74At
+; WHAT IT DOES: Draws the two digits of $0E74 (high, then low nibble) at
+; (A, 8): GsuParam216A for each, then program $07:F15B.
+; HOW: The x stored once; the second digit's x is where the first left it.
+; Entry: M 16-bit, X 16-bit; A = x. Exit: M 16-bit, X 16-bit; X = $F15B;
+; A as GsuRun leaves it.
+%at($07925C)
+GsuDigitPair0E74At:
+    sta.l !fx_draw_x
+    lda.w #$0008
+    lda.w #$0008
+    sta.l !fx_draw_y
+    lda.w !wram_0E74
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    and.w #$000F
+    jsr.w GsuParam216A
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$30
+    lda.w !wram_0E74
+    and.w #$000F
+    jsr.w GsuParam216A
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rts
+

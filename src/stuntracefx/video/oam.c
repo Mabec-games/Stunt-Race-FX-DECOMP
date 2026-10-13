@@ -1652,3 +1652,66 @@ void abi_OamWordRow5(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x38);
     op_plp(p0);
 }
+
+void abi_SoundPort1QueuePush(void);
+void abi_OamHighBits18(void);
+
+/*
+ * @routine 07:BAE6 OamStagePause
+ * WHAT IT DOES: When Select was pressed ($0D1A bit 12): $0D2E = 0, sound
+ * $15 on port 1, the layout request $19BD = 1, the high bits of sprites 18
+ * on (OamHighBits18), $0D2D down by one, $0E5B and $0E5F cleared and stage
+ * $0D2F = 0; then, each frame (waiting for $0D52 from the vertical blank),
+ * the stage's handler (OamStageDispatchBB3C) with the presses cleared,
+ * until $0D2D is 0.
+ * HOW: P saved and restored; 8-bit through the data bank, the presses
+ * 16-bit.
+ * Entry: any widths. Exit: P restored; A as the last step left it.
+ */
+void abi_OamStagePause(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t p0 = cpu.p, v;
+
+    op_rep(P_M);
+    op_lda16(b | 0x0D1A);
+    if (!(cpu.a & 0x1000)) {
+        cpu.p |= P_Z;
+        op_plp(p0);
+        return;
+    }
+    cpu.p &= (uint8_t)~P_Z;
+    op_sep(P_M);
+    cpu.a = (uint16_t)(cpu.a & 0xFF00);
+    cpu.p = nz8(cpu.p, 0);
+    wr8(b | 0x0D2E, 0x00);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x15);
+    cpu.p = nz8(cpu.p, 0x15);
+    abi_SoundPort1QueuePush();
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
+    cpu.p = nz8(cpu.p, 0x01);
+    wr8(b | 0x19BD, 0x01);
+    abi_OamHighBits18();
+    v = (uint8_t)(rd8(b | 0x0D2D) - 1);
+    wr8(b | 0x0D2D, v);
+    cpu.p = nz8(cpu.p, v);
+    wr8(b | 0x0E5B, 0x00);
+    wr8(b | 0x0E5F, 0x00);
+    cpu.a = (uint16_t)(cpu.a & 0xFF00);
+    cpu.p = nz8(cpu.p, 0);
+    wr8(b | 0x0D2F, 0x00);
+    do {
+        do {
+            op_sep(P_M);
+            op_lda8(b | 0x0D52);
+        } while (!(uint8_t)cpu.a);
+        wr8(b | 0x0D52, 0x00);
+        abi_OamStageDispatchBB3C();
+        op_rep(P_M);
+        wr16(b | 0x0D1A, 0x0000);
+        wr16(b | 0x0D1C, 0x0000);
+        op_sep(P_M);
+        op_lda8(b | 0x0D2D);
+    } while ((uint8_t)cpu.a);
+    op_plp(p0);
+}

@@ -5,6 +5,7 @@
  * animation whose digit size comes from a table.
  */
 #include "machine.h"
+#include "cpu_ops.h"
 #include "wram.h"
 
 uint8_t GsuRun(uint8_t bank, uint16_t start);
@@ -1108,4 +1109,51 @@ void TimeLeftDigits(void)
 void abi_TimeLeftDigits(void)
 {
     TimeLeftDigits();
+}
+
+void abi_GsuRun(void);
+
+/* SEP #$20, REP #$10, LDX #$F15B, LDA #$07, JSL GsuRun, REP #$20, REP #$10:
+   program $07:F15B (a digit). */
+static void run_f15b(void)
+{
+    op_sep(P_M);
+    op_rep(P_X);
+    cpu.x = 0xF15B;
+    cpu.p = nz16(cpu.p, cpu.x);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x07);
+    cpu.p = nz8(cpu.p, 0x07);
+    abi_GsuRun();
+    op_rep(P_M | P_X);
+}
+
+/*
+ * @routine 07:925C GsuDigitPair0E74At
+ * WHAT IT DOES: Draws the two digits of $0E74 (high, then low nibble) at
+ * (A, 8): GsuParam216A for each, then program $07:F15B.
+ * HOW: The x stored once; the second digit's x is where the first left it.
+ * Entry: M 16-bit, X 16-bit; A = x. Exit: M 16-bit, X 16-bit; X = $F15B;
+ * A as GsuRun leaves it.
+ */
+void abi_GsuDigitPair0E74At(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    wr16(0x70020A, cpu.a);
+    op_lda16_imm(0x0008);
+    op_lda16_imm(0x0008);
+    wr16(0x70020C, 0x0008);
+    op_lda16(b | 0x0E74);
+    op_lsr16();
+    op_lsr16();
+    op_lsr16();
+    op_lsr16();
+    op_and16(0x000F);
+    abi_GsuParam216A();
+    run_f15b();
+    op_rep(P_M | P_X);
+    op_lda16(b | 0x0E74);
+    op_and16(0x000F);
+    abi_GsuParam216A();
+    run_f15b();
 }

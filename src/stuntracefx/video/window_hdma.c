@@ -1151,3 +1151,40 @@ out:
     cpu.db = db0;
     op_plp(p0);
 }
+
+/*
+ * @routine 0B:F567 WindowHdmaChannelsSetup
+ * WHAT IT DOES: Sets up HDMA channels 3-7 from the tables in bank $7F:
+ * 7 to $210F (BG2 x, two writes) from $12D5, 6 to $2110 indirect from
+ * $12E2 (bank 0 data), 5 to $212C from $12F2, 4 and 3 to $2127 from
+ * $12FD and $1308; the window lines $7F:130D and $7F:130F cleared.
+ * HOW: 8-bit register writes, the addresses 16-bit; through the data bank;
+ * P saved and restored.
+ * Entry: any widths. Exit: P restored; A = 0; X = $1308.
+ */
+void abi_WindowHdmaChannelsSetup(void)
+{
+    static const struct { uint8_t dmap, bbad; uint16_t a1t; } ch[5] = {
+        {0x02, 0x0F, 0x12D5}, {0x42, 0x10, 0x12E2}, {0x00, 0x2C, 0x12F2}, {0x00, 0x27, 0x12FD}, {0x00, 0x27, 0x1308}};
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t p0 = cpu.p;
+    int i;
+
+    op_sep(P_M);
+    op_rep(P_X);
+    for (i = 0; i < 5; i++) {
+        uint16_t base = (uint16_t)(0x4370 - 0x10 * i);
+
+        wr8(b | base, ch[i].dmap);
+        wr8(b | (uint16_t)(base + 1), ch[i].bbad);
+        cpu.x = ch[i].a1t;
+        wr16(b | (uint16_t)(base + 2), cpu.x);
+        wr8(b | (uint16_t)(base + 4), 0x7F);
+        if (i == 1)
+            wr8(b | (uint16_t)(base + 7), 0x00);
+    }
+    cpu.a = (uint16_t)(cpu.a & 0xFF00);
+    wr8(0x7F130D, 0x00);
+    wr8(0x7F130F, 0x00);
+    op_plp(p0);
+}

@@ -1267,3 +1267,65 @@ WindowSplitAnimate:
     plb
     plp
     rtl
+
+; @routine 0B:F567 WindowHdmaChannelsSetup
+; WHAT IT DOES: Sets up HDMA channels 3-7 from the tables in bank $7F:
+; 7 to $210F (BG2 x, two writes) from $12D5, 6 to $2110 indirect from
+; $12E2 (bank 0 data), 5 to $212C from $12F2, 4 and 3 to $2127 from
+; $12FD and $1308; the window lines $7F:130D and $7F:130F cleared.
+; HOW: 8-bit register writes, the addresses 16-bit; through the data bank;
+; P saved and restored.
+; Entry: any widths. Exit: P restored; A = 0; X = $1308.
+%at($0BF567)
+WindowHdmaChannelsSetup:
+    php
+    sep.b #$20
+    rep.b #$10
+    lda.b #$02
+    sta.w !DMAP7
+    lda.b #$0F
+    sta.w !BBAD7
+    ldx.w #$12D5
+    stx.w !A1T7L
+    lda.b #$7F
+    sta.w !A1B7
+    lda.b #$42
+    sta.w !DMAP6
+    lda.b #$10
+    sta.w !BBAD6
+    ldx.w #$12E2
+    stx.w !A1T6L
+    lda.b #$7F
+    sta.w !A1B6
+    lda.b #$00
+    sta.w !DASB6
+    lda.b #$00
+    sta.w !DMAP5
+    lda.b #$2C
+    sta.w !BBAD5
+    ldx.w #$12F2
+    stx.w !A1T5L
+    lda.b #$7F
+    sta.w !A1B5
+    lda.b #$00
+    sta.w !DMAP4
+    lda.b #$27
+    sta.w !BBAD4
+    ldx.w #$12FD
+    stx.w !A1T4L
+    lda.b #$7F
+    sta.w !A1B4
+    lda.b #$00
+    sta.w !DMAP3
+    lda.b #$27
+    sta.w !BBAD3
+    ldx.w #$1308
+    stx.w !A1T3L
+    lda.b #$7F
+    sta.w !A1B3
+    lda.b #$00
+    sta.l !window_lines_1301+12
+    sta.l !window_lines_1301+14
+    plp
+    rts
+
