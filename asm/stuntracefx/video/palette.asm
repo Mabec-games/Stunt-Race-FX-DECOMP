@@ -1008,3 +1008,94 @@ FadeValueStep:
     plb
     plp
     rtl
+
+; @routine 02:D55F PaletteFadeStep
+; WHAT IT DOES: While the fade count $0CFA is nonzero, decrements it and
+; moves $1167 colours of the buffer at $0722 + $1168 one step toward the
+; colours at $02:D65A + $1168: each of blue, green and red up or down by
+; one where it differs.
+; HOW: Each part masked ($7C00, $03E0, $001F) and compared through
+; $1F2B; blue and green kept at $3E and $40, then ORed with red. The count
+; kept on the stack. Runs only from unit_cpu.
+; Entry: D = $0000. Exit: with $0CFA 0, M 8-bit and A's low byte 0;
+; otherwise M 16-bit, X 16-bit, A = 0, X and Y past the last colour.
+%at($02D55F)
+PaletteFadeStep:
+    sep.b #$20
+    lda.w !copy_count+4
+    bne .lD567
+    rtl
+.lD567:
+    dec a                           ; not reached in the traces so far
+    sta.w !copy_count+4             ; not reached in the traces so far
+    rep.b #$30                      ; not reached in the traces so far
+    ldx.w !packed_time_a+5          ; not reached in the traces so far
+    ldy.w !packed_time_a+5          ; not reached in the traces so far
+    lda.w !packed_time_a+4          ; not reached in the traces so far
+.lD576:
+    pha                             ; not reached in the traces so far
+    lda.w !crash_scroll+9,y         ; not reached in the traces so far
+    and.w #$7C00                    ; not reached in the traces so far
+    sta.w !wram_1F2B                ; not reached in the traces so far
+    lda.l !copy_src,x               ; not reached in the traces so far
+    and.w #$7C00                    ; not reached in the traces so far
+    cmp.w !wram_1F2B                ; not reached in the traces so far
+    beq .lD59E                      ; not reached in the traces so far
+    bcs .lD597                      ; not reached in the traces so far
+    lda.w !wram_1F2B                ; not reached in the traces so far
+    sec                             ; not reached in the traces so far
+    sbc.w #$0400                    ; not reached in the traces so far
+    bra .lD59E                      ; not reached in the traces so far
+.lD597:
+    lda.w !wram_1F2B                ; not reached in the traces so far
+    clc                             ; not reached in the traces so far
+    adc.w #$0400                    ; not reached in the traces so far
+.lD59E:
+    sta.b !scale_scratch            ; not reached in the traces so far
+    lda.w !crash_scroll+9,y         ; not reached in the traces so far
+    and.w #$03E0                    ; not reached in the traces so far
+    sta.w !wram_1F2B                ; not reached in the traces so far
+    lda.l !copy_src,x               ; not reached in the traces so far
+    and.w #$03E0                    ; not reached in the traces so far
+    cmp.w !wram_1F2B                ; not reached in the traces so far
+    beq .lD5C7                      ; not reached in the traces so far
+    bcs .lD5C0                      ; not reached in the traces so far
+    lda.w !wram_1F2B                ; not reached in the traces so far
+    sec                             ; not reached in the traces so far
+    sbc.w #$0020                    ; not reached in the traces so far
+    bra .lD5C7                      ; not reached in the traces so far
+.lD5C0:
+    lda.w !wram_1F2B                ; not reached in the traces so far
+    clc                             ; not reached in the traces so far
+    adc.w #$0020                    ; not reached in the traces so far
+.lD5C7:
+    sta.b !dp_40                    ; not reached in the traces so far
+    lda.w !crash_scroll+9,y         ; not reached in the traces so far
+    and.w #$001F                    ; not reached in the traces so far
+    sta.w !wram_1F2B                ; not reached in the traces so far
+    lda.l !copy_src,x               ; not reached in the traces so far
+    and.w #$001F                    ; not reached in the traces so far
+    cmp.w !wram_1F2B                ; not reached in the traces so far
+    beq .lD5EA                      ; not reached in the traces so far
+    bcs .lD5E6                      ; not reached in the traces so far
+    lda.w !wram_1F2B                ; not reached in the traces so far
+    dec a                           ; not reached in the traces so far
+    bra .lD5EA                      ; not reached in the traces so far
+.lD5E6:
+    lda.w !wram_1F2B                ; not reached in the traces so far
+    inc a                           ; not reached in the traces so far
+.lD5EA:
+    ora.b !scale_scratch            ; not reached in the traces so far
+    ora.b !dp_40                    ; not reached in the traces so far
+    sta.w !crash_scroll+9,y         ; not reached in the traces so far
+    iny                             ; not reached in the traces so far
+    iny                             ; not reached in the traces so far
+    inx                             ; not reached in the traces so far
+    inx                             ; not reached in the traces so far
+    pla                             ; not reached in the traces so far
+    dec a                           ; not reached in the traces so far
+    beq .lD5FC                      ; not reached in the traces so far
+    brl .lD576                      ; not reached in the traces so far
+.lD5FC:
+    rtl                             ; not reached in the traces so far
+

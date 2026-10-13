@@ -923,3 +923,86 @@ void abi_FadeValueStep(void)
     cpu.db = db0;
     op_plp(p0);
 }
+
+/* One colour part of PaletteFadeStep: the part (mask m) of the colour at
+   $0722+Y moved one step toward the same part at $02:D65A+X. */
+static uint16_t fade_part(uint32_t b, uint16_t m, uint16_t step)
+{
+    uint16_t c;
+
+    op_lda16(b | (uint16_t)(0x0722 + cpu.y));
+    op_and16(m);
+    wr16(b | 0x1F2B, cpu.a);
+    op_lda16(0x02D65A + (uint32_t)cpu.x);
+    op_and16(m);
+    c = rd16(b | 0x1F2B);
+    op_cmp16(c);
+    if (cpu.a == c)
+        return cpu.a;
+    if (cpu.p & P_C) {
+        op_lda16(b | 0x1F2B);
+        if (step == 1) {
+            cpu.a++;
+            cpu.p = nz16(cpu.p, cpu.a);
+        } else {
+            op_add16(step);
+        }
+    } else {
+        op_lda16(b | 0x1F2B);
+        if (step == 1) {
+            cpu.a--;
+            cpu.p = nz16(cpu.p, cpu.a);
+        } else {
+            op_sub16(step);
+        }
+    }
+    return cpu.a;
+}
+
+/*
+ * @routine 02:D55F PaletteFadeStep
+ * WHAT IT DOES: While the fade count $0CFA is nonzero, decrements it and
+ * moves $1167 colours of the buffer at $0722 + $1168 one step toward the
+ * colours at $02:D65A + $1168: each of blue, green and red up or down by
+ * one where it differs.
+ * HOW: Each part masked ($7C00, $03E0, $001F) and compared through
+ * $1F2B; blue and green kept at $3E and $40, then ORed with red. The count
+ * kept on the stack. Runs only from unit_cpu.
+ * Entry: D = $0000. Exit: with $0CFA 0, M 8-bit and A's low byte 0;
+ * otherwise M 16-bit, X 16-bit, A = 0, X and Y past the last colour.
+ */
+void abi_PaletteFadeStep(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t n, v;
+
+    op_sep(P_M);
+    op_lda8(b | 0x0CFA);
+    if (!(uint8_t)cpu.a)
+        return;
+    v = (uint8_t)(cpu.a - 1);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, (uint8_t)v);
+    wr8(b | 0x0CFA, (uint8_t)v);
+    op_rep(P_M | P_X);
+    cpu.x = rd16(b | 0x1168);
+    cpu.p = nz16(cpu.p, cpu.x);
+    cpu.y = rd16(b | 0x1168);
+    cpu.p = nz16(cpu.p, cpu.y);
+    op_lda16(b | 0x1167);
+    do {
+        n = cpu.a;
+        wr16(0x00003E, fade_part(b, 0x7C00, 0x0400));
+        wr16(0x000040, fade_part(b, 0x03E0, 0x0020));
+        fade_part(b, 0x001F, 1);
+        cpu.a |= rd16(0x00003E);
+        cpu.a |= rd16(0x000040);
+        cpu.p = nz16(cpu.p, cpu.a);
+        wr16(b | (uint16_t)(0x0722 + cpu.y), cpu.a);
+        cpu.y = (uint16_t)(cpu.y + 2);
+        cpu.x = (uint16_t)(cpu.x + 2);
+        cpu.p = nz16(cpu.p, cpu.x);
+        cpu.a = (uint16_t)(n - 1);
+        cpu.p = nz16(cpu.p, cpu.a);
+    } while (cpu.a);
+}
