@@ -893,7 +893,8 @@ static void log_skip(int write, uint32_t addr, uint32_t j)
 {
     for (uint32_t q = cur_i; q < j; q++) {
         uint8_t k = cur_ops[q] >> 4;
-        if ((k == 5 || (k == 9 && !(has_c[cur_addr[q] >> 3] >> (cur_addr[q] & 7) & 1))) && skips_shown++ < 200) {
+        if ((k == 5 || (k == 9 && is_catalog_entry(cur_addr[q] & 0xFFFFFF) && !(has_c[cur_addr[q] >> 3] >> (cur_addr[q] & 7) & 1)))
+            && skips_shown++ < 200) {
             fprintf(lsrep, "SKIP frame %ld in %s: %s %06X placed at %u from %u, past %s %06X at %u\n", cur_frame,
                     ls_cur_name ? ls_cur_name : "-", write ? "write" : "read", addr, j, cur_i,
                     k == 5 ? "an interrupt at" : "the entry of", cur_addr[q] & 0xFFFFFF, q);
@@ -956,8 +957,10 @@ static uint8_t live_access(int write, uint32_t addr, uint8_t value)
                 /* Nor past the original's entry into a routine with no C
                    here: the C has to reach it first, through call_routine,
                    which places the call there. Matched beyond it, an extra
-                   or reordered RAM access would leave the call unplaceable. */
-                if (k == 9 && !(has_c[cur_addr[j] >> 3] >> (cur_addr[j] & 7) & 1)) break;
+                   or reordered RAM access would leave the call unplaceable.
+                   Only catalogued routines count: a computed jump inside a
+                   routine (a handler table the C runs inline) is not one. */
+                if (k == 9 && is_catalog_entry(cur_addr[j] & 0xFFFFFF) && !(has_c[cur_addr[j] >> 3] >> (cur_addr[j] & 7) & 1)) break;
                 if (k == want && snap_offset(cur_addr[j]) == o) {
                     if (skips_from >= 0 && cur_frame >= skips_from) log_skip(write, addr, j);
                     replay_to(j + 1);
