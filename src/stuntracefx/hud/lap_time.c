@@ -507,3 +507,51 @@ void abi_BcdToBinary(void)
     cpu.x = x0;
     cpu.p = nz16(cpu.p, x0);
 }
+
+/* ROR A (16-bit) through the carry. */
+static void ror16(void)
+{
+    uint8_t c = (uint8_t)(cpu.a & 1);
+
+    cpu.a = (uint16_t)(cpu.a >> 1 | (cpu.p & P_C) << 15);
+    cpu.p = (uint8_t)(nz16((uint8_t)(cpu.p & ~P_C), cpu.a) | c);
+}
+
+/*
+ * @routine 07:AC13 TimePackBcd
+ * WHAT IT DOES: Packs a time given in BCD into one binary word: the
+ * hundredths (A's low byte) in bits 0-6, the seconds (X's low byte) in
+ * bits 7-12, the minutes (Y's low byte) in bits 13-15.
+ * HOW: BcdToBinary on each; the parts gathered at $F3 (XBA and LSR for the
+ * seconds, four RORs for the minutes).
+ * Entry: M 16-bit, X 16-bit, D = $0000. Exit: A = the packed time, $F3 =
+ * its bits 0-12; N, Z from A; C = bit 3 of the minutes; X and Y unchanged.
+ */
+void abi_TimePackBcd(void)
+{
+    int i;
+
+    op_and16(0x00FF);
+    abi_BcdToBinary();
+    op_and16(0x007F);
+    wr16(0x0000F3, cpu.a);
+    cpu.a = cpu.x;
+    cpu.p = nz16(cpu.p, cpu.a);
+    op_and16(0x00FF);
+    abi_BcdToBinary();
+    op_xba();
+    op_lsr16();
+    op_and16(0x1F80);
+    cpu.a |= rd16(0x0000F3);
+    cpu.p = nz16(cpu.p, cpu.a);
+    wr16(0x0000F3, cpu.a);
+    cpu.a = cpu.y;
+    cpu.p = nz16(cpu.p, cpu.a);
+    op_and16(0x00FF);
+    abi_BcdToBinary();
+    for (i = 0; i < 4; i++)
+        ror16();
+    op_and16(0xE000);
+    cpu.a |= rd16(0x0000F3);
+    cpu.p = nz16(cpu.p, cpu.a);
+}

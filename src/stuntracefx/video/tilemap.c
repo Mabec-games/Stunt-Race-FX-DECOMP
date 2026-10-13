@@ -1171,3 +1171,39 @@ void abi_ChampionshipScreenStep(void)
         break;
     }
 }
+
+void abi_OverlaySpritesStep(void);
+
+/*
+ * @routine 07:B9EE ChampionshipScreenLoop
+ * WHAT IT DOES: Runs the championship screen a frame at a time: waits for
+ * the vertical blank's flag $0D52, then ChampionshipScreenStep and
+ * OverlaySpritesStep, and clears both pads' presses and held buttons;
+ * until the fade level's high byte $0D61 goes negative.
+ * HOW: 8-bit, the pads 16-bit. A stage of ChampionshipScreenStep can leave
+ * through this routine's frame.
+ * Entry: D = $0000. Exit: M 8-bit, X 8-bit; A low byte = $0D61.
+ */
+void abi_ChampionshipScreenLoop(void)
+{
+    uint32_t b;
+
+    do {
+        op_sep(P_M | P_X);
+        b = (uint32_t)cpu.db << 16;
+        do
+            op_lda8(b | 0x0D52);
+        while (!(uint8_t)cpu.a);
+        wr8(b | 0x0D52, 0x00);
+        abi_ChampionshipScreenStep();
+        abi_OverlaySpritesStep();
+        b = (uint32_t)cpu.db << 16;
+        op_rep(P_M);
+        wr16(b | 0x0D1A, 0x0000);
+        wr16(b | 0x0D1C, 0x0000);
+        wr16(b | 0x0309, 0x0000);
+        wr16(b | 0x030D, 0x0000);
+        op_sep(P_M);
+        op_lda8(b | 0x0D61);
+    } while (!(cpu.a & 0x80));
+}

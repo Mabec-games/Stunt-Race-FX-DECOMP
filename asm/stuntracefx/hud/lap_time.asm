@@ -550,3 +550,37 @@ BcdToBinary:
     plx
     rtl
 
+
+; @routine 07:AC13 TimePackBcd
+; WHAT IT DOES: Packs a time given in BCD into one binary word: the
+; hundredths (A's low byte) in bits 0-6, the seconds (X's low byte) in
+; bits 7-12, the minutes (Y's low byte) in bits 13-15.
+; HOW: BcdToBinary on each; the parts gathered at $F3 (XBA and LSR for the
+; seconds, four RORs for the minutes).
+; Entry: M 16-bit, X 16-bit, D = $0000. Exit: A = the packed time, $F3 =
+; its bits 0-12; N, Z from A; C = bit 3 of the minutes; X and Y unchanged.
+%at($07AC13)
+TimePackBcd:
+    and.w #$00FF
+    jsl.l BcdToBinary
+    and.w #$007F
+    sta.b !dp_f3
+    txa
+    and.w #$00FF
+    jsl.l BcdToBinary
+    xba
+    lsr a
+    and.w #$1F80
+    ora.b !dp_f3
+    sta.b !dp_f3
+    tya
+    and.w #$00FF
+    jsl.l BcdToBinary
+    ror a
+    ror a
+    ror a
+    ror a
+    and.w #$E000
+    ora.b !dp_f3
+    rts
+

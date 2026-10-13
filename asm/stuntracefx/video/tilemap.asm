@@ -1086,3 +1086,32 @@ ChampionshipScreenStep:
     dex
     bpl .lBAD9
     rts
+
+; @routine 07:B9EE ChampionshipScreenLoop
+; WHAT IT DOES: Runs the championship screen a frame at a time: waits for
+; the vertical blank's flag $0D52, then ChampionshipScreenStep and
+; OverlaySpritesStep, and clears both pads' presses and held buttons;
+; until the fade level's high byte $0D61 goes negative.
+; HOW: 8-bit, the pads 16-bit. A stage of ChampionshipScreenStep can leave
+; through this routine's frame.
+; Entry: D = $0000. Exit: M 8-bit, X 8-bit; A low byte = $0D61.
+%at($07B9EE)
+ChampionshipScreenLoop:
+.lB9EE:
+    sep.b #$30
+.lB9F0:
+    lda.w !hud_blank+4
+    beq .lB9F0
+    stz.w !hud_blank+4
+    jsr.w ChampionshipScreenStep
+    jsl.l OverlaySpritesStep
+    rep.b #$20
+    stz.w !joy1_pressed_copy
+    stz.w !joy2_pressed_copy
+    stz.w !joy1_held
+    stz.w !joy2_held
+    sep.b #$20
+    lda.w !fade_level_hi
+    bpl .lB9EE
+    rts
+
