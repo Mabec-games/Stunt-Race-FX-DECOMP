@@ -1617,3 +1617,38 @@ void abi_OamPaletteForD75(void)
     abi_OamSetPalette();
     op_plp(p0);
 }
+
+/*
+ * @routine 07:D576 OamWordRow5
+ * WHAT IT DOES: Puts the five-letter word from the table at $D5AD (in the
+ * data bank, $07 when called) as
+ * sprites 90-94 ($04E1): x from $A5 by 8, y $4E, tile $C0 + the letter,
+ * attributes $38.
+ * HOW: 8-bit; x and y in direct page $F3 and $F4; P saved and restored.
+ * Entry: D = $0000. Exit: P restored; A = $38; X = $14; Y = 5.
+ */
+void abi_OamWordRow5(void)
+{
+    uint32_t b;
+    uint8_t p0 = cpu.p, v;
+
+    op_sep(P_M | P_X);
+    b = (uint32_t)cpu.db << 16;
+    wr8(0x0000F3, 0xA5);
+    wr8(0x0000F4, 0x4E);
+    cpu.x = 0;
+    cpu.y = 0;
+    do {
+        v = rd8(0x0000F3);
+        wr8(b | (uint16_t)(0x04E1 + cpu.x), v);
+        wr8(0x0000F3, (uint8_t)(v + 8));
+        wr8(b | (uint16_t)(0x04E2 + cpu.x), rd8(0x0000F4));
+        v = rd8(b | (uint16_t)(0xD5AD + cpu.y));
+        wr8(b | (uint16_t)(0x04E3 + cpu.x), (uint8_t)(v + 0xC0));
+        wr8(b | (uint16_t)(0x04E4 + cpu.x), 0x38);
+        cpu.x = (uint16_t)(cpu.x + 4);
+        cpu.y = (uint16_t)(cpu.y + 1);
+    } while (cpu.y < 5);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x38);
+    op_plp(p0);
+}

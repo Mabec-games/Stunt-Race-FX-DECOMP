@@ -1101,3 +1101,33 @@ MenuScreenOpen6:
     plb
     plp
     rts
+
+; @routine 0B:EDE7 PictureCellAttributes
+; WHAT IT DOES: Gives the 2 x 2 cell at X in the Super FX picture map
+; ($70:3000 + X, + 2, + $40, + $42) the attribute bits $11DF over each
+; tile number (its low 9 bits kept).
+; HOW: AND #$01FF, ORA $11DF per word; P saved and restored.
+; Entry: X 16-bit; X = the cell. Exit: P restored; A = the last word.
+%at($0BEDE7)
+PictureCellAttributes:
+    php
+    rep.b #$30
+    lda.l !gsu_picture,x
+    and.w #$01FF
+    ora.w !scratch_11df
+    sta.l !gsu_picture,x
+    lda.l !gsu_picture+2,x
+    and.w #$01FF
+    ora.w !scratch_11df
+    sta.l !gsu_picture+2,x
+    lda.l !gsu_picture+64,x
+    and.w #$01FF
+    ora.w !scratch_11df
+    sta.l !gsu_picture+64,x
+    lda.l !gsu_picture+66,x
+    and.w #$01FF
+    ora.w !scratch_11df
+    sta.l !gsu_picture+66,x
+    plp
+    rts
+

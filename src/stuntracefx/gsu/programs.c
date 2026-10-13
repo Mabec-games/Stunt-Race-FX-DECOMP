@@ -1656,3 +1656,62 @@ void abi_GlyphListDraw(void)
         }
     } while (!(cpu.p & P_C));
 }
+
+/*
+ * @routine 07:A426 GlyphSpriteDraw
+ * WHAT IT DOES: Draws glyph sprite X/2: glyph $1010 + X at ($0FB0 + X,
+ * $0FE0 + X) with program $07:F329, then steps X by 2.
+ * HOW: Long stores to the program's parameters; X kept on the stack around
+ * GsuRun.
+ * Entry: M 16-bit, X 16-bit; X = the sprite * 2. Exit: X + 2; M 16-bit, X
+ * 16-bit; N, Z from X; A as GsuRun leaves it.
+ */
+void abi_GlyphSpriteDraw(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t x = cpu.x;
+
+    op_lda16(b | (uint16_t)(0x0FB0 + x));
+    wr16(0x70020A, cpu.a);
+    op_lda16(b | (uint16_t)(0x0FE0 + x));
+    wr16(0x70020C, cpu.a);
+    op_lda16(b | (uint16_t)(0x1010 + x));
+    wr16(0x700216, cpu.a);
+    run_f329();
+    cpu.x = (uint16_t)(x + 2);
+    cpu.p = nz16(cpu.p, cpu.x);
+}
+
+/*
+ * @routine 04:DA3C GlyphSpritesInit
+ * WHAT IT DOES: Sets the 16 glyph sprites up: x from the table at
+ * $04:DA7A, y 8, glyph from the table at $04:DA8E, $1040 + X = 0; then
+ * $10D8 = 0, $115A = $1E, and $0D5B and the HUD hold $0E5D cleared.
+ * HOW: A 16-bit loop over X = 0 to $1E by 2; P saved and restored.
+ * Entry: any widths. Exit: P restored; A = $001E; X = $20; Y unchanged.
+ */
+void abi_GlyphSpritesInit(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t p0 = cpu.p;
+
+    op_rep(P_M | P_X);
+    cpu.x = 0x0000;
+    do {
+        op_lda16(0x04DA7A + (uint32_t)cpu.x);
+        wr16(b | (uint16_t)(0x0FB0 + cpu.x), cpu.a);
+        op_lda16_imm(0x0008);
+        wr16(b | (uint16_t)(0x0FE0 + cpu.x), 0x0008);
+        op_lda16(0x04DA8E + (uint32_t)cpu.x);
+        wr16(b | (uint16_t)(0x1010 + cpu.x), cpu.a);
+        wr16(b | (uint16_t)(0x1040 + cpu.x), 0x0000);
+        cpu.x = (uint16_t)(cpu.x + 2);
+    } while (cpu.x < 0x0020);
+    wr16(b | 0x10D8, 0x0000);
+    op_lda16_imm(0x001E);
+    wr16(b | 0x115A, 0x001E);
+    op_sep(P_M);
+    wr8(b | 0x0D5B, 0x00);
+    wr8(b | 0x0E5D, 0x00);
+    op_plp(p0);
+}

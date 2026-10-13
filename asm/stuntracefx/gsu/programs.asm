@@ -2332,3 +2332,59 @@ GlyphListDraw:
     bcc .lDDE0
     rts
 
+
+; @routine 07:A426 GlyphSpriteDraw
+; WHAT IT DOES: Draws glyph sprite X/2: glyph $1010 + X at ($0FB0 + X,
+; $0FE0 + X) with program $07:F329, then steps X by 2.
+; HOW: Long stores to the program's parameters; X kept on the stack around
+; GsuRun.
+; Entry: M 16-bit, X 16-bit; X = the sprite * 2. Exit: X + 2; M 16-bit, X
+; 16-bit; N, Z from X; A as GsuRun leaves it.
+%at($07A426)
+GlyphSpriteDraw:
+    lda.w !glyph_spr_x,x
+    sta.l !fx_draw_x
+    lda.w !glyph_spr_y,x
+    sta.l !fx_draw_y
+    lda.w !glyph_spr_glyph,x
+    sta.l !gsu_in_216
+    phx
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F329
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+
+; @routine 04:DA3C GlyphSpritesInit
+; WHAT IT DOES: Sets the 16 glyph sprites up: x from the table at
+; $04:DA7A, y 8, glyph from the table at $04:DA8E, $1040 + X = 0; then
+; $10D8 = 0, $115A = $1E, and $0D5B and the HUD hold $0E5D cleared.
+; HOW: A 16-bit loop over X = 0 to $1E by 2; P saved and restored.
+; Entry: any widths. Exit: P restored; A = $001E; X = $20; Y unchanged.
+%at($04DA3C)
+GlyphSpritesInit:
+    php
+    rep.b #$30
+    ldx.w #$0000
+.lDA42:
+    lda.l !glyph_spr_init_x,x
+    sta.w !glyph_spr_x,x
+    lda.w #$0008
+    sta.w !glyph_spr_y,x
+    lda.l !glyph_spr_init_glyph,x
+    sta.w !glyph_spr_glyph,x
+    stz.w !glyph_spr_1040,x
+    inx
+    inx
+    cpx.w #$0020
+    bcc .lDA42
+    stz.w !wram_10D8
+    lda.w #$001E
+    sta.w !wram_115A
+    sep.b #$20
+    stz.w !wram_0D5B
+    stz.w !hud_hold
+    plp
+    rtl
+

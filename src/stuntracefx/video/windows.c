@@ -589,3 +589,62 @@ void abi_WindowsColourSubtract3(void)
     wr8(0x002131, 0x03);
     abi_WindowsColourWindowOnly();
 }
+
+void abi_WindowSlideStep(void);
+
+/*
+ * @routine 7E:D2C9 WindowSlideOrOscillate
+ * WHAT IT DOES: Unless the split window is on ($19D8) or its line $19BC is
+ * $FF: with bits 1-2 of $0DA5, steps the slide (window setup 2,
+ * WindowSlideStep) and, if still sliding, stops; otherwise, with bit 3,
+ * window setup 2 and the oscillating window (OscillatorWindow).
+ * HOW: Data bank $7E (the program's) around it; P saved and restored.
+ * Entry: any widths. Exit: P and the data bank restored; A, X, Y as the
+ * last step left them.
+ */
+void abi_WindowSlideOrOscillate(void)
+{
+    uint8_t p0 = cpu.p, db0 = cpu.db, v;
+
+    cpu.db = 0x7E;
+    op_sep(P_M);
+    op_lda8(0x7E19D8);
+    if (!(uint8_t)cpu.a) {
+        op_lda8(0x0019BC);
+        v = (uint8_t)cpu.a;
+        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0xFF)) & ~P_C) | (v >= 0xFF ? P_C : 0));
+        if (v != 0xFF) {
+            op_lda8(0x7E0DA5);
+            v = (uint8_t)(cpu.a & 0x06);
+            cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+            cpu.p = nz8(cpu.p, v);
+            if (v) {
+                cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x02);
+                cpu.p = nz8(cpu.p, 0x02);
+                wr8(0x7E19A9, 0x02);
+                abi_WindowSlideStep();
+                op_lda8(0x7E0DA5);
+                v = (uint8_t)(cpu.a & 0x06);
+                cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+                cpu.p = nz8(cpu.p, v);
+                if (v)
+                    goto out;
+            }
+            op_sep(P_M);
+            op_lda8(0x7E0DA5);
+            v = (uint8_t)(cpu.a & 0x08);
+            cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+            cpu.p = nz8(cpu.p, v);
+            if (v) {
+                op_sep(P_M);
+                cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x02);
+                cpu.p = nz8(cpu.p, 0x02);
+                wr8(0x7E19A9, 0x02);
+                abi_OscillatorWindow();
+            }
+        }
+    }
+out:
+    cpu.db = db0;
+    op_plp(p0);
+}

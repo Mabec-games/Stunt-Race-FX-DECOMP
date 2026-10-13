@@ -1566,3 +1566,45 @@ OamPaletteForD75:
     plp
     rtl
 
+
+; @routine 07:D576 OamWordRow5
+; WHAT IT DOES: Puts the five-letter word from the table at $D5AD (in the
+; data bank, $07 when called) as
+; sprites 90-94 ($04E1): x from $A5 by 8, y $4E, tile $C0 + the letter,
+; attributes $38.
+; HOW: 8-bit; x and y in direct page $F3 and $F4; P saved and restored.
+; Entry: D = $0000. Exit: P restored; A = $38; X = $14; Y = 5.
+%at($07D576)
+OamWordRow5:
+    php
+    sep.b #$30
+    lda.b #$A5
+    sta.b !dp_f3
+    lda.b #$4E
+    sta.b !text_y
+    ldx.b #$00
+    ldy.b #$00
+.lD585:
+    lda.b !dp_f3
+    sta.w !oam_buffer+364,x
+    clc
+    adc.b #$08
+    sta.b !dp_f3
+    lda.b !text_y
+    sta.w !oam_buffer+365,x
+    lda.w !oam_word_row_letters,y
+    clc
+    adc.b #$C0
+    sta.w !oam_buffer+366,x
+    lda.b #$38
+    sta.w !oam_buffer+367,x
+    inx
+    inx
+    inx
+    inx
+    iny
+    cpy.b #$05
+    bcc .lD585
+    plp
+    rts
+

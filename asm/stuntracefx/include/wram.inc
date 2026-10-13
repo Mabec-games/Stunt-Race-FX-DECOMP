@@ -1588,3 +1588,9 @@ includeonce
 !glyph_list_on = $110E              ; per entry: drawn when not 0
 !glyph_list_x = $1134               ; per entry: x (byte), y in the next byte
 !glyph_list_y = $1135
+; The 16 glyph sprites (GlyphSpritesInit, GlyphSpriteDraw; gsu/programs.asm).
+!glyph_spr_x = $0FB0                ; per sprite (2 bytes apart): x
+!glyph_spr_y = $0FE0                ; y
+!glyph_spr_glyph = $1010            ; the glyph
+!glyph_spr_1040 = $1040             ; cleared by GlyphSpritesInit
+!wram_115A = $115A

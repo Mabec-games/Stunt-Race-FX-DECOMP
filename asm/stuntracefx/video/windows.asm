@@ -531,3 +531,51 @@ WindowsColourSubtract3:
     sta.l !CGADSUB
     jsr.w WindowsColourWindowOnly
 
+
+; @routine 7E:D2C9 WindowSlideOrOscillate
+; WHAT IT DOES: Unless the split window is on ($19D8) or its line $19BC is
+; $FF: with bits 1-2 of $0DA5, steps the slide (window setup 2,
+; WindowSlideStep) and, if still sliding, stops; otherwise, with bit 3,
+; window setup 2 and the oscillating window (OscillatorWindow).
+; HOW: Data bank $7E (the program's) around it; P saved and restored.
+; Entry: any widths. Exit: P and the data bank restored; A, X, Y as the
+; last step left them.
+%ramcode($7ED2C9, $012FF0)
+WindowSlideOrOscillate:
+    php
+    phb
+    phk
+    plb
+    sep.b #$20
+    lda.w !window_hdma_off
+    bne .lD30A
+    lda.l !window_hdma_19bc
+    cmp.b #$FF
+    beq .lD30A
+    sep.b #$20
+    lda.w !slide_flags
+    and.b #$06
+    beq .lD2F7
+    lda.b #$02
+    sta.w !windows_setup_index
+    jsr.w WindowSlideStep
+    lda.w !slide_flags
+    and.b #$06
+    beq .lD2F7
+    plb
+    plp
+    rtl
+.lD2F7:
+    sep.b #$20
+    lda.w !slide_flags
+    and.b #$08
+    beq .lD30A
+    sep.b #$20
+    lda.b #$02
+    sta.w !windows_setup_index
+    jsr.w OscillatorWindow
+.lD30A:
+    plb
+    plp
+    rtl
+

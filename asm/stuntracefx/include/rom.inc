@@ -322,3 +322,6 @@ GsuF329At93x6C = $078A90                        ; 07:8A90, the draw tail of the 
 WindowDigitStepEC6B = $07EC6B                   ; 07:EC6B, inside the routine at 07:E944 (not filed yet)
 WindowDigitStepEBDD = $07EBDD                   ; 07:EBDD, inside the routine at 07:E944 (not filed yet)
 !race_fade_stage_handlers = $EC18   ; RaceFadeStageDispatch: handlers by $0D48 (bank 02)
+!glyph_spr_init_x = $04DA7A         ; GlyphSpritesInit: x per sprite
+!glyph_spr_init_glyph = $04DA8E     ; GlyphSpritesInit: glyph per sprite
+!oam_word_row_letters = $D5AD       ; OamWordRow5: the five letters (bank 07, through the data bank)

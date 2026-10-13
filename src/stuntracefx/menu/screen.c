@@ -3,6 +3,7 @@
  * saved copy, sprite lists and pictures drawn by the Super FX.
  */
 #include "machine.h"
+#include "cpu_ops.h"
 #include "hw.h"
 
 uint8_t GsuCF42To3000(uint16_t in68, uint16_t in6a);
@@ -787,4 +788,32 @@ void MenuScreenOpen6(void)
 void abi_MenuScreenOpen6(void)
 {
     MenuScreenOpen6();
+}
+
+/*
+ * @routine 0B:EDE7 PictureCellAttributes
+ * WHAT IT DOES: Gives the 2 x 2 cell at X in the Super FX picture map
+ * ($70:3000 + X, + 2, + $40, + $42) the attribute bits $11DF over each
+ * tile number (its low 9 bits kept).
+ * HOW: AND #$01FF, ORA $11DF per word; P saved and restored.
+ * Entry: X 16-bit; X = the cell. Exit: P restored; A = the last word.
+ */
+void abi_PictureCellAttributes(void)
+{
+    static const uint16_t at[4] = {0x0000, 0x0002, 0x0040, 0x0042};
+    uint32_t b;
+    uint8_t p0 = cpu.p;
+    int i;
+
+    op_rep(P_M | P_X);
+    b = (uint32_t)cpu.db << 16;
+    for (i = 0; i < 4; i++) {
+        uint32_t a = 0x703000 + (uint32_t)(uint16_t)(cpu.x + at[i]);
+
+        op_lda16(a);
+        op_and16(0x01FF);
+        cpu.a |= rd16(b | 0x11DF);
+        wr16(a, cpu.a);
+    }
+    op_plp(p0);
 }
