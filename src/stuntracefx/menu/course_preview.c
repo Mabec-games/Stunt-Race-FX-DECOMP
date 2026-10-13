@@ -378,3 +378,153 @@ void abi_MenuScreenOpenPreview(void)
     cpu.db = db;
     cpu.p = p;
 }
+
+/* A byte for a PPU register on the frame write list (FrameByteWritePush),
+   X kept. */
+static void frame_write(uint8_t v, uint16_t reg)
+{
+    uint16_t x = cpu.x;
+
+    cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.x = reg;
+    abi_FrameByteWritePush();
+    cpu.x = x;
+}
+
+/* MenuPaletteScale with $11DF = `level` (a byte or a word store), X, Y. */
+static void palette_scale(uint16_t level, int word, uint16_t x, uint16_t y)
+{
+    if (word)
+        wr16(0x0011DF, level);
+    else
+        wr8(0x0011DF, (uint8_t)level);
+    cpu.a = word ? level : (uint16_t)((cpu.a & 0xFF00) | (uint8_t)level);
+    cpu.y = y;
+    cpu.x = x;
+    abi_MenuPaletteScale();
+}
+
+/*
+ * @routine 0B:F09F MenuScreenOpenPreviewFade
+ * WHAT IT DOES: Opens the menu screen with the course preview, fading in:
+ * clears the menu's lists and state, makes the menu objects (spawn list
+ * $10), waits a frame, turns on the IRQ at line $E0, copies 24 bytes of the
+ * palette at $1C:E3AC to $7E:FF65 (clearing the same at $7E:FD65), starts
+ * a race in the background (RaceStart), sets up the menu HDMA and runs the
+ * objects; asks (frame write list) for BG1 at $6000, BG2 tiles at 0, colour
+ * math adding the sub screen with BG1 on it, BG2 scrolled to 1 then 0, and
+ * sprites, BG1 and BG2 on the main screen; then over 17 frames brings the
+ * colours from 1/32 to full ($1909 counting $20 down by 2: colours 0-7 to
+ * $20 - $1909, 12-14 to $1909); then the full mode: no colour math, BG2 at
+ * $6800 with tiles at 0 and $6000, BG2 scrolled to $FF00, HDMA channels 4
+ * and 7, BG1, BG2 and sprites on the main screen, windows on BG1 and
+ * sprites; loads the palette from $1C:E3AC, saves it and scales colours
+ * 144-159 and 208-223 to full; runs the objects again and asks for every
+ * frame update over two frames.
+ * HOW: DB = 0 throughout; the PPU writes go through FrameByteWritePush, so
+ * they land in the vertical blank. The palette source is read through the
+ * long pointer at direct page $FB. P and DB saved and restored.
+ * Entry: D = $0000. Exit: A = 0; X, Y as MenuOamBuild left them; P and DB
+ * unchanged.
+ */
+void abi_MenuScreenOpenPreviewFade(void)
+{
+    static const struct { uint8_t v; uint16_t reg; } first[] = {
+        {0x61, 0x2107}, {0x70, 0x210B}, {0x01, 0x2131}, {0x02, 0x2130}, {0x02, 0x212D}, {0x00, 0x2132},
+        {0x00, 0x212F}, {0x00, 0x212E}, {0x03, 0x212C}, {0x01, 0x210D}, {0x00, 0x210D}};
+    static const struct { uint8_t v; uint16_t reg; } full[] = {
+        {0x00, 0x2131}, {0x00, 0x2130}, {0x69, 0x2108}, {0x30, 0x210B}, {0xFF, 0x210F}, {0x00, 0x210F},
+        {0x90, 0x420C}, {0x13, 0x212C}, {0xFF, 0x2127}, {0x30, 0x2123}, {0x03, 0x2125}, {0x12, 0x212E}};
+    uint8_t p = cpu.p, db = cpu.db, v;
+    uint16_t x, y;
+    uint32_t src;
+    unsigned i;
+
+    cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
+    cpu.a = (uint16_t)(cpu.a & 0xFF00);
+    cpu.db = 0x00;
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    wr16(0x00162D, 0x0000);
+    wr16(0x0016AF, 0x0000);
+    wr16(0x001191, 0x0000);
+    wr16(0x001193, 0x0000);
+    wr16(0x0011EB, 0x0000);
+    wr16(0x000D7D, 0x0006);
+    wr16(0x001189, 0x1234);
+    wr16(0x00118F, 0x0000);
+    wr16(0x0011ED, 0x0000);
+    wr16(0x0011EF, 0x0000);
+    cpu.a = 0x0000;
+    abi_MenuActorPoolInit();
+    cpu.x = 0x0010;
+    abi_MenuActorSpawnList();
+    cpu.p |= P_M;
+    wr8(0x0011D7, 0x00);
+    abi_MenuWaitFrame();
+    cpu.p |= P_M;
+    wr8(0x000D3F, 0x20);
+    wr8(0x004209, 0xE0);
+    wr8(0x00420A, 0x00);
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    wr16(0x0000FB, 0xE3AC);
+    wr16(0x0000FD, 0x001C);
+    for (x = 0, y = 0; x != 0x0018; x = (uint16_t)(x + 2), y = (uint16_t)(y + 2)) {
+        src = rd8(0x0000FB);
+        src |= (uint32_t)rd8(0x0000FC) << 8;
+        src |= (uint32_t)rd8(0x0000FD) << 16;
+        wr16(0x7EFF65 + x, rd16((src + y) & 0xFFFFFF));
+        wr16(0x7EFD65 + x, 0x0000);
+    }
+    cpu.a = 0x0000;
+    cpu.x = x;
+    cpu.y = y;
+    abi_RaceStart();
+    abi_MenuHdmaSetupB();
+    abi_MenuActorsRun();
+    abi_MenuOamBuild();
+    for (i = 0; i < sizeof first / sizeof first[0]; i++)
+        frame_write(first[i].v, first[i].reg);
+    cpu.p |= P_M;
+    wr8(0x0011D7, (uint8_t)(rd8(0x0011D7) | 0x0F));
+    wr8(0x001909, 0x20);
+    do {
+        abi_MenuWaitFrame();
+        cpu.p |= P_M;
+        palette_scale((uint8_t)(0x20 - rd8(0x001909)), 0, 0x0000, 0x0007);
+        cpu.p |= P_M;
+        palette_scale(rd8(0x001909), 0, 0x0018, 0x0003);
+        cpu.p |= P_M;
+        wr8(0x0011D7, (uint8_t)(rd8(0x0011D7) | 0x0B));
+        v = (uint8_t)(rd8(0x001909) - 2);
+        wr8(0x001909, v);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    } while (!(v & 0x80));
+    abi_MenuWaitFrame();
+    for (i = 0; i < sizeof full / sizeof full[0]; i++)
+        frame_write(full[i].v, full[i].reg);
+    cpu.p &= (uint8_t)~P_M;
+    wr16(0x0000FB, 0xE3AC);
+    wr16(0x0000FD, 0x001C);
+    cpu.a = 0x001C;
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    abi_MenuPaletteLoad();
+    cpu.a = 0x0000;
+    wr16(0x7EFD65, 0x0000);
+    abi_MenuPaletteSave();
+    cpu.p &= (uint8_t)~P_M;
+    palette_scale(0x0020, 1, 0x0120, 0x0007);
+    cpu.p &= (uint8_t)~P_M;
+    palette_scale(0x0020, 1, 0x01A0, 0x0007);
+    cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
+    abi_MenuActorsRun();
+    abi_MenuOamBuild();
+    cpu.p |= P_M;
+    wr8(0x0011D7, (uint8_t)(rd8(0x0011D7) | 0x0B));
+    abi_MenuWaitFrame();
+    cpu.p |= P_M;
+    wr8(0x0011D7, (uint8_t)(rd8(0x0011D7) | 0x0F));
+    abi_MenuWaitFrame();
+    cpu.db = db;
+    cpu.p = p;
+}

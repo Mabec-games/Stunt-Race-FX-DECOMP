@@ -393,3 +393,311 @@ MenuScreenOpenPreview:
     plb
     plp
     rts
+
+; @routine 0B:F09F MenuScreenOpenPreviewFade
+; WHAT IT DOES: Opens the menu screen with the course preview, fading in:
+; clears the menu's lists and state, makes the menu objects (spawn list
+; $10), waits a frame, turns on the IRQ at line $E0, copies 24 bytes of the
+; palette at $1C:E3AC to $7E:FF65 (clearing the same at $7E:FD65), starts
+; a race in the background (RaceStart), sets up the menu HDMA and runs the
+; objects; asks (frame write list) for BG1 at $6000, BG2 tiles at 0, colour
+; math adding the sub screen with BG1 on it, BG2 scrolled to 1 then 0, and
+; sprites, BG1 and BG2 on the main screen; then over 17 frames brings the
+; colours from 1/32 to full ($1909 counting $20 down by 2: colours 0-7 to
+; $20 - $1909, 12-14 to $1909); then the full mode: no colour math, BG2 at
+; $6800 with tiles at 0 and $6000, BG2 scrolled to $FF00, HDMA channels 4
+; and 7, BG1, BG2 and sprites on the main screen, windows on BG1 and
+; sprites; loads the palette from $1C:E3AC, saves it and scales colours
+; 144-159 and 208-223 to full; runs the objects again and asks for every
+; frame update over two frames.
+; HOW: DB = 0 throughout; the PPU writes go through FrameByteWritePush, so
+; they land in the vertical blank. The palette source is read through the
+; long pointer at direct page $FB. P and DB saved and restored.
+; Entry: D = $0000. Exit: A = 0; X, Y as MenuOamBuild left them; P and DB
+; unchanged.
+%at($0BF09F)
+MenuScreenOpenPreviewFade:
+    php
+    phb
+    sep.b #$20
+    rep.b #$10
+    lda.b #$00
+    pha
+    plb
+    rep.b #$30
+    stz.w !byte_writes_size
+    stz.w !vram_queue_size
+    stz.w !word_list_a_size
+    stz.w !word_list_b_size
+    stz.w !menu_exit
+    lda.w #$0006
+    sta.w !gsu_buffer_offset
+    lda.w #$1234
+    sta.w !menu_1189
+    stz.w !menu_118f
+    lda.w #$0000
+    sta.w !menu_slide_pos
+    lda.w #$0000
+    sta.w !menu_scroll_y
+    jsl.l MenuActorPoolInit
+    ldx.w #$0010
+    jsl.l MenuActorSpawnList
+    sep.b #$20
+    stz.w !frame_update_flags
+    jsr.w MenuWaitFrame
+    lda.b #$20
+    sta.w !wram_0D3F
+    lda.b #$E0
+    sta.w !VTIMEL
+    stz.w !VTIMEH
+    rep.b #$30
+    rep.b #$20
+    lda.w #$E3AC
+    sta.b !apu_stream_ptr
+    lda.w #$001C
+    sta.b !apu_stream_bank
+    rep.b #$20
+    rep.b #$10
+    ldx.w #$0000
+    ldy.w #$0000
+.copy_palette:
+    lda.b [!apu_stream_ptr],y
+    sta.l !palette_saved,x
+    lda.w #$0000
+    sta.l !palette_buffer,x
+    iny
+    iny
+    inx
+    inx
+    cpx.w #$0018
+    bne .copy_palette
+    jsl.l RaceStart
+    jsr.w MenuHdmaSetupB
+    jsl.l MenuActorsRun
+    jsl.l MenuOamBuild
+    sep.b #$20
+    lda.b #$61
+    sep.b #$20
+    rep.b #$10
+    phx
+    ldx.w #$2107
+    jsl.l FrameByteWritePush
+    plx
+    lda.b #$70
+    sep.b #$20
+    rep.b #$10
+    phx
+    ldx.w #$210B
+    jsl.l FrameByteWritePush
+    plx
+    lda.b #$01
+    sep.b #$20
+    rep.b #$10
+    phx
+    ldx.w #$2131
+    jsl.l FrameByteWritePush
+    plx
+    lda.b #$02
+    sep.b #$20
+    rep.b #$10
+    phx
+    ldx.w #$2130
+    jsl.l FrameByteWritePush
+    plx
+    lda.b #$02
+    sep.b #$20
+    rep.b #$10
+    phx
+    ldx.w #$212D
+    jsl.l FrameByteWritePush
+    plx
+    lda.b #$00
+    sep.b #$20
+    rep.b #$10
+    phx
+    ldx.w #$2132
+    jsl.l FrameByteWritePush
+    plx
+    sep.b #$20
+    rep.b #$10
+    phx
+    ldx.w #$212F
+    jsl.l FrameByteWritePush
+    plx
+    sep.b #$20
+    rep.b #$10
+    phx
+    ldx.w #$212E
+    jsl.l FrameByteWritePush
+    plx
+    lda.b #$03
+    sep.b #$20
+    rep.b #$10
+    phx
+    ldx.w #$212C
+    jsl.l FrameByteWritePush
+    plx
+    lda.b #$01
+    sep.b #$20
+    rep.b #$10
+    phx
+    ldx.w #$210D
+    jsl.l FrameByteWritePush
+    plx
+    lda.b #$00
+    sep.b #$20
+    rep.b #$10
+    phx
+    ldx.w #$210D
+    jsl.l FrameByteWritePush
+    plx
+    lda.w !frame_update_flags
+    ora.b #$0F
+    sta.w !frame_update_flags
+    lda.b #$20
+    sta.l !preview_fade_step
+.fade:
+    jsr.w MenuWaitFrame
+    lda.b #$20
+    sec
+    sbc.l !preview_fade_step
+    sta.w !scratch_11df
+    ldy.w #$0007
+    ldx.w #$0000
+    jsl.l MenuPaletteScale
+    lda.l !preview_fade_step
+    sta.w !scratch_11df
+    ldy.w #$0003
+    ldx.w #$0018
+    jsl.l MenuPaletteScale
+    lda.w !frame_update_flags
+    ora.b #$0B
+    sta.w !frame_update_flags
+    lda.l !preview_fade_step
+    dec a
+    dec a
+    sta.l !preview_fade_step
+    bpl .fade
+    jsr.w MenuWaitFrame
+    sep.b #$20
+    rep.b #$10
+    lda.b #$00
+    sep.b #$20
+    rep.b #$10
+    phx
+    ldx.w #$2131
+    jsl.l FrameByteWritePush
+    plx
+    sep.b #$20
+    rep.b #$10
+    phx
+    ldx.w #$2130
+    jsl.l FrameByteWritePush
+    plx
+    lda.b #$69
+    sep.b #$20
+    rep.b #$10
+    phx
+    ldx.w #$2108
+    jsl.l FrameByteWritePush
+    plx
+    lda.b #$30
+    sep.b #$20
+    rep.b #$10
+    phx
+    ldx.w #$210B
+    jsl.l FrameByteWritePush
+    plx
+    lda.b #$FF
+    sep.b #$20
+    rep.b #$10
+    phx
+    ldx.w #$210F
+    jsl.l FrameByteWritePush
+    plx
+    lda.b #$00
+    sep.b #$20
+    rep.b #$10
+    phx
+    ldx.w #$210F
+    jsl.l FrameByteWritePush
+    plx
+    lda.b #$90
+    sep.b #$20
+    rep.b #$10
+    phx
+    ldx.w #$420C
+    jsl.l FrameByteWritePush
+    plx
+    lda.b #$13
+    sep.b #$20
+    rep.b #$10
+    phx
+    ldx.w #$212C
+    jsl.l FrameByteWritePush
+    plx
+    lda.b #$FF
+    sep.b #$20
+    rep.b #$10
+    phx
+    ldx.w #$2127
+    jsl.l FrameByteWritePush
+    plx
+    lda.b #$30
+    sep.b #$20
+    rep.b #$10
+    phx
+    ldx.w #$2123
+    jsl.l FrameByteWritePush
+    plx
+    lda.b #$03
+    sep.b #$20
+    rep.b #$10
+    phx
+    ldx.w #$2125
+    jsl.l FrameByteWritePush
+    plx
+    lda.b #$12
+    sep.b #$20
+    rep.b #$10
+    phx
+    ldx.w #$212E
+    jsl.l FrameByteWritePush
+    plx
+    rep.b #$20
+    lda.w #$E3AC
+    sta.b !apu_stream_ptr
+    lda.w #$001C
+    sta.b !apu_stream_bank
+    sep.b #$20
+    rep.b #$10
+    rep.b #$30
+    jsr.w MenuPaletteLoad
+    lda.w #$0000
+    sta.l !palette_buffer
+    jsr.w MenuPaletteSave
+    lda.w #$0020
+    sta.w !scratch_11df
+    ldy.w #$0007
+    ldx.w #$0120
+    jsl.l MenuPaletteScale
+    lda.w #$0020
+    sta.w !scratch_11df
+    ldy.w #$0007
+    ldx.w #$01A0
+    jsl.l MenuPaletteScale
+    sep.b #$20
+    rep.b #$10
+    jsl.l MenuActorsRun
+    jsl.l MenuOamBuild
+    lda.w !frame_update_flags
+    ora.b #$0B
+    sta.w !frame_update_flags
+    jsr.w MenuWaitFrame
+    lda.w !frame_update_flags
+    ora.b #$0F
+    sta.w !frame_update_flags
+    jsr.w MenuWaitFrame
+    plb
+    plp
+    rts

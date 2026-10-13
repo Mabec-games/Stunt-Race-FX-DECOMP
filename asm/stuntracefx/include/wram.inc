@@ -1440,3 +1440,7 @@ includeonce
 !menu_1905_long = $001905
 !menu_1907_long = $001907
 !palette_word_fd65 = $7EFD65
+
+; MenuScreenOpenPreviewFade's fade level, $20 counted down by 2
+; (menu/course_preview.asm).
+!preview_fade_step = $001909
