@@ -23,6 +23,10 @@
 # - FxSteerFromInput on the player's record: with bit 10 of +$40 set and
 #   +$4A negative; with no steering and +$3A far negative and far positive
 #   (past $266A either way); FxCourseNextEntry with bit 1 of +$70 set.
+# - FxSumsPushWorld and FxSumsPushLocal with a push past +5000 and past
+#   -5000 on every axis; FxTimersProgram with timed record 0 at 16 and bit 4
+#   of its flags set; FxCarNew with script $8886, with an unknown script
+#   ($8000) and with the first pool empty.
 load build/stuntracefx/states/battle_04.state
 set 701B04 00,00
 set 701CE4 00,00
@@ -123,4 +127,33 @@ wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
 set 701988 06,00
 fx 04:CCA4 stop=888C r8=1918 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 04:96C3 stop=888C r4=2000 r5=2000 r6=2000 r10=024C
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 04:96C3 stop=888C r4=E000 r5=E000 r6=E000 r10=024C
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 04:973F stop=888C r4=2000 r5=2000 r6=2000 r10=0248
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 04:973F stop=888C r4=E000 r5=E000 r6=E000 r10=0248
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70273E 10,10
+fx 01:BBC7 stop=80E3
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70238E 86,88
+fx 04:8CC6 stop=888C
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70238E 00,80
+fx 04:8CC6 stop=888C
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70238E 86,88
+set 701098 00,00,00,00
+fx 04:8CC6 stop=888C
 wait 1
