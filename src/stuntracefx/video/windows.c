@@ -394,7 +394,7 @@ void abi_WindowSweepIfOn(void)
         }
     }
     cpu.db = db0;
-    cpu.p = p0;
+    op_plp(p0);
 }
 
 /*
@@ -523,8 +523,9 @@ static void bob_setup(uint32_t b)
  * (ObjectLinkEventTrigger) and, while bob 0 runs (bit 7 of $0DA4), sets
  * window setup 2 and steps it (BobWindow0); with $0D62 set the same for
  * player 2 (ObjectLinkEventTrigger2, $0DA6, BobWindow1).
- * HOW: The data bank is the code's ($7E) and restored. Bob 1's window is
- * not reached in the traces so far.
+ * HOW: The data bank is the code's ($7E) and restored. $0D62 is read at
+ * the width BobWindow0 left (a word after WindowHdmaFFD1). Bob 1's window
+ * is not reached in the traces so far.
  * Entry: any widths. Exit: P and the data bank restored.
  */
 void abi_BobWindowsRun(void)
@@ -549,10 +550,16 @@ void abi_BobWindowsRun(void)
         bob_setup(b);
         abi_BobWindow0();
     }
-    v = rd8(b | 0x0D62);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    if (!v)
-        goto out;
+    if (cpu.p & P_M) {
+        v = rd8(b | 0x0D62);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+        if (!v)
+            goto out;
+    } else {                    /* WindowHdmaFFD1 left M 16-bit: a word */
+        cpu.a = rd16(b | 0x0D62);
+        if (!cpu.a)
+            goto out;
+    }
     op_sep(P_M | P_X);
     abi_ObjectLinkEventTrigger2();
     cpu.p |= P_M;

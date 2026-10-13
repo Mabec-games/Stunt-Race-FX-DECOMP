@@ -877,7 +877,7 @@ void abi_PalettesStep(void)
         cpu.x = 0x00;
         abi_PaletteKeptColoursStep();
     }
-    cpu.p = p0;
+    op_plp(p0);
 }
 
 /*
@@ -921,5 +921,5 @@ void abi_FadeValueStep(void)
         }
     }
     cpu.db = db0;
-    cpu.p = p0;
+    op_plp(p0);
 }

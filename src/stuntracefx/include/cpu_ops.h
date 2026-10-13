@@ -223,4 +223,14 @@ static inline void op_rep(uint8_t bits)
     cpu.p &= (uint8_t)~bits;
 }
 
+/* PLP: restoring 8-bit index registers clears the high bytes of X and Y. */
+static inline void op_plp(uint8_t p)
+{
+    cpu.p = p;
+    if (p & P_X) {
+        cpu.x &= 0x00FF;
+        cpu.y &= 0x00FF;
+    }
+}
+
 #endif

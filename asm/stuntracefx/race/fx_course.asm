@@ -857,9 +857,10 @@ FxCarPlaceOnSegment:
 ; a vector along its heading +$24 whose length is twice word 4 of the entry
 ; (FxTableEntryWords, FxCourseEntryRead) times the factor for $26F4 from the
 ; table at $04:C781 (FMULT).
-; HOW: Entered by a jump with the caller's R11 saved on top of the return
-; address; FxAngleVector makes the vector. The 0 entry exit is not reached in
-; the traces so far.
+; HOW: Entered by LINK from 04:C451, but it never returns to that R11: it
+; pulls the R11 04:C3D5 saved and returns through the word under it, two
+; levels up, so its C has to be part of 04:C3D5's. FxAngleVector makes the
+; vector. The 0 entry exit is not reached in the traces so far.
 ; Entry: R8 = the car's record; R10 = stack (saved R11 on top of the return
 ; address). Exit: R11 = $C76D (or the saved R11 for a 0 entry); R1-R3 the
 ; vector; S, Z from R10; the last RAM address R10.

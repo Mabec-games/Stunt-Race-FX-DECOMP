@@ -439,8 +439,9 @@ OscillatorStep:
 ; (ObjectLinkEventTrigger) and, while bob 0 runs (bit 7 of $0DA4), sets
 ; window setup 2 and steps it (BobWindow0); with $0D62 set the same for
 ; player 2 (ObjectLinkEventTrigger2, $0DA6, BobWindow1).
-; HOW: The data bank is the code's ($7E) and restored. Bob 1's window is
-; not reached in the traces so far.
+; HOW: The data bank is the code's ($7E) and restored. $0D62 is read at
+; the width BobWindow0 left (a word after WindowHdmaFFD1). Bob 1's window
+; is not reached in the traces so far.
 ; Entry: any widths. Exit: P and the data bank restored.
 %ramcode($7ED33A, $013061)
 BobWindowsRun:

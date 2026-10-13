@@ -1392,8 +1392,8 @@ SpritePiecesTwoCars:
 ; HOW: JMP ($AD58,X) on the stage; OAMADDL then OAMDATA bytes from the
 ; buffer at $0375 through the data bank.
 ; Entry: any widths; DB a bank where work RAM and the PPU are mapped.
-; Exit: X past the last byte copied (16-bit); Y = 0; A low byte = the last
-; byte written; P restored.
+; Exit: X past the last byte copied (its low byte when P restores 8-bit
+; index registers); Y = 0; A low byte = the last byte written; P restored.
 %ramcode($7EAD26, $010A4D)
 OamDirectStage:
     php

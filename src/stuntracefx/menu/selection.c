@@ -432,7 +432,9 @@ void abi_MenuCursorFourWay(void)
         }
     } else {
         op_sep(P_M | P_X);
-        cpu.x = (uint8_t)(rd8(b | 0x0D48) << 1);
+        v = rd8(b | 0x0D48);
+        cpu.p = (uint8_t)((cpu.p & ~P_C) | (v >> 7));     /* ASL A */
+        cpu.x = (uint8_t)(v << 1);
         switch (cpu.x) {
         case 0:
             if (pad_bit(b, 0x0100))

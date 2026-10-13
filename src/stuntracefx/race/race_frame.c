@@ -443,7 +443,7 @@ void abi_RaceModeSetup(void)
             wr8(b | 0x0E3D, 0x1B);
             wr8(b | 0x0E3E, 0x00);
             pick_sound(b);
-            cpu.p = p0;
+            op_plp(p0);
             return;
         }
         v = rd8(0x70FC0B);
@@ -471,7 +471,7 @@ void abi_RaceModeSetup(void)
         abi_RecordsUnpackCourseRunning();
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x02);
         wr8(b | 0x0DF8, 0x02);
-        cpu.p = p0;
+        op_plp(p0);
         return;
     }
     if (mode == 0x02) {
@@ -485,16 +485,12 @@ void abi_RaceModeSetup(void)
         abi_ApuUpload();
         cpu.p &= (uint8_t)~P_M;
         delay_4000();
-        cpu.p = p1;
-        if (p1 & P_X) {
-            cpu.x &= 0x00FF;
-            cpu.y &= 0x00FF;
-        }
+        op_plp(p1);
     }
     cpu.p |= P_M;
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xFF);
     wr8(b | 0x0DF8, 0xFF);
-    cpu.p = p0;
+    op_plp(p0);
 }
 
 /* The view's direct page parameters $2A-$35 and $CE-$D1, in the order the

@@ -1478,8 +1478,8 @@ static void stage_reset_if(uint32_t b, uint16_t at, uint8_t v)
  * HOW: JMP ($AD58,X) on the stage; OAMADDL then OAMDATA bytes from the
  * buffer at $0375 through the data bank.
  * Entry: any widths; DB a bank where work RAM and the PPU are mapped.
- * Exit: X past the last byte copied (16-bit); Y = 0; A low byte = the last
- * byte written; P restored.
+ * Exit: X past the last byte copied (its low byte when P restores 8-bit
+ * index registers); Y = 0; A low byte = the last byte written; P restored.
  */
 void abi_OamDirectStage(void)
 {
@@ -1495,7 +1495,7 @@ void abi_OamDirectStage(void)
         cpu.x = w;
         if (w) {
             oam_direct(b, 0xE8, 0x01D0, 0x0030, 1);
-            cpu.p = p0;
+            op_plp(p0);
             return;
         }
     }
@@ -1535,5 +1535,5 @@ void abi_OamDirectStage(void)
         oam_direct(b, 0xE8, 0x01D0, 0x0030, 0);
         break;
     }
-    cpu.p = p0;
+    op_plp(p0);
 }

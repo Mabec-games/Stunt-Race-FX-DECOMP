@@ -233,7 +233,7 @@ static void hud_panel_slide(uint8_t f9, uint16_t x, int panel_a)
     v = lda8(b | 0x0D54);
     cmp8(v, 0x08);
     if (v < 0x08) {
-        cpu.p = p0;
+        op_plp(p0);
         return;
     }
     if (panel_a) {
@@ -248,7 +248,7 @@ static void hud_panel_slide(uint8_t f9, uint16_t x, int panel_a)
         }
     }
     hud_sprites_y(b);
-    cpu.p = p0;
+    op_plp(p0);
 }
 
 /*
@@ -351,5 +351,5 @@ void abi_HudPanelsStep(void)
     default:
         break;
     }
-    cpu.p = p0;
+    op_plp(p0);
 }

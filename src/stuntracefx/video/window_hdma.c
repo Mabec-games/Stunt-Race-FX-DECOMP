@@ -1007,7 +1007,7 @@ void abi_WindowBandsAnimate(void)
     op_sep(P_M | P_X);
 out:
     cpu.db = db0;
-    cpu.p = p0;
+    op_plp(p0);
 }
 
 /* Three bands of 16, 48 and 16 lines at entry offset `at`, all at the
@@ -1147,5 +1147,5 @@ void abi_WindowSplitAnimate(void)
     }
 out:
     cpu.db = db0;
-    cpu.p = p0;
+    op_plp(p0);
 }

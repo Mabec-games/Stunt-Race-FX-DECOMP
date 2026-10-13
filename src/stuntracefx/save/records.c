@@ -975,14 +975,18 @@ static void records_load_sorted(uint32_t b, uint16_t x, int descending)
 static uint16_t records_player_place(uint32_t b)
 {
     static const uint16_t tag_at[3] = {0x0F13, 0x0F15, 0x0F17};
-    uint16_t a = rd16(b | 0x10C7), v = 0;
+    uint16_t a = rd16(b | 0x10C7), v = 0, t;
     int i;
 
-    for (i = 0; i < 3; i++)
-        if (a == rd16(b | tag_at[i])) {
+    for (i = 0; i < 3; i++) {
+        t = rd16(b | tag_at[i]);
+        cpu.p = (uint8_t)((cpu.p & ~P_C) | (a >= t ? P_C : 0));     /* CMP */
+        if (a == t) {
             v = (uint16_t)(i + 1);
             break;
         }
+    }
+    cpu.p = nz16(cpu.p, v);
     wr16(b | 0x10C9, v);
     return v;
 }
@@ -990,8 +994,9 @@ static uint16_t records_player_place(uint32_t b)
 /* The save offset of course a's entries: (a * 2 + $F3) * 16, $F3 = a. */
 static uint16_t records_offset(uint16_t a)
 {
-    a = (uint16_t)(a << 1);
-    a = (uint16_t)(a + rd16((uint16_t)(cpu.d + 0xF3)));
+    cpu.p &= (uint8_t)~P_C;
+    a = op_adc16((uint16_t)(a << 1), rd16((uint16_t)(cpu.d + 0xF3)), &cpu.p);
+    cpu.p = (uint8_t)((cpu.p & ~P_C) | ((a >> 12) & 1));    /* the last ASL */
     return (uint16_t)(a << 4);
 }
 
@@ -1014,7 +1019,6 @@ void abi_RecordsLoadSpecialCourse(void)
     cpu.a = records_player_place(b);
     cpu.x = 0xFFFE;
     cpu.y = 0x0018;
-    cpu.p = nz16(cpu.p, cpu.a);
 }
 
 /* TimeUnpackBcd on A, its Y, X, A (8-bit) stored at `to`, + 1, + 2. */
@@ -1081,7 +1085,7 @@ void abi_RecordsLoadForCourse(void)
     else if (v < 0x10)
         abi_RecordsLoadSpecialCourse();
     cpu.db = db0;
-    cpu.p = p0;
+    op_plp(p0);
 }
 
 /*
@@ -1099,5 +1103,5 @@ void abi_RecordsLoadCourseLong(void)
     cpu.db = 0x07;
     abi_RecordsLoadCourse();
     cpu.db = db0;
-    cpu.p = p0;
+    op_plp(p0);
 }

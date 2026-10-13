@@ -175,7 +175,7 @@ void abi_RaceClockStep(void)
     v = rd8(0x000E5B);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     if (!v) {
-        cpu.p = p0;
+        op_plp(p0);
         return;
     }
     cpu.p = (uint8_t)((cpu.p & ~P_M) | P_D);
@@ -220,5 +220,5 @@ void abi_RaceClockStep(void)
             wr16(b | 0x0E70, 0x0000);
         }
     }
-    cpu.p = p0;
+    op_plp(p0);
 }

@@ -181,7 +181,7 @@ void abi_SoundPortsSend(void)
     if (v) {
         wr8(b | 0x2140, v);
         wr8(b | 0x10E2, 0x00);
-        cpu.p = p0;
+        op_plp(p0);
         return;
     }
     v = rd8(b | 0x10E3);
@@ -189,7 +189,7 @@ void abi_SoundPortsSend(void)
     if (v) {
         wr8(b | 0x2141, v);
         wr8(b | 0x10E3, 0x00);
-        cpu.p = p0;
+        op_plp(p0);
         return;
     }
     {
@@ -200,7 +200,7 @@ void abi_SoundPortsSend(void)
             v = rd8(b | hold[i]);
             cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
             if (v) {
-                cpu.p = p0;
+                op_plp(p0);
                 return;
             }
         }
@@ -208,7 +208,7 @@ void abi_SoundPortsSend(void)
     v = rd8(b | 0x0E3B);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     if (!(v & 0x01)) {
-        cpu.p = p0;
+        op_plp(p0);
         return;
     }
     ring_send(b, 0x2140, 0x0DCC, 0x0DC8, 0x0DA8);
@@ -227,5 +227,5 @@ void abi_SoundPortsSend(void)
         wr8(b | 0x2143, v);
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     }
-    cpu.p = p0;
+    op_plp(p0);
 }
