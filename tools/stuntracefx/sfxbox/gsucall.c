@@ -349,6 +349,18 @@ static FILE *report;
 typedef struct { long calls, match, diff, inconclusive, skipped; int shown; } Stat;
 static Stat *stats;
 
+/* A state loaded (sfxbox load, or a unit call's machine put back): the
+   Super FX is stopped or in the middle of a program, whatever the
+   instructions seen before said (program_start goes by them). Calls the
+   per-call checks had open went with the machine they ran on: not judged. */
+void gsu_state_loaded(int running)
+{
+    halted = !running;
+    starting = 0;
+    if (mode == 1)
+        while (depth) stats[ws[--depth].idx].skipped++;
+}
+
 static void bm_init(ByteMap *m) { m->v = calloc(ram_n, 1); m->g = calloc(ram_n, sizeof *m->g); }
 static int bm_get(const ByteMap *m, uint32_t gen, uint32_t off, uint8_t *v) { if (m->g[off] != gen) return 0; *v = m->v[off]; return 1; }
 static void bm_put(ByteMap *m, uint32_t gen, uint32_t off, uint8_t v, int keep)

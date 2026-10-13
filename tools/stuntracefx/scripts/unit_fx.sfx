@@ -1,0 +1,84 @@
+# unit_fx: unit tests (fx) of Super FX routines on paths no script reaches,
+# each started on its own with the registers a real call had (R11 = a STOP
+# in its bank: $04:888C, $07:EE86, $01:80E3):
+# - FxRecordsApart, the battle cars $1AF8 and $1CD8 with both sizes (+$0C)
+#   0, so their sum less $294 is clamped to 0;
+# - FxGlyph8x8 and FxGlyph16x32 with no glyph ($70:0216 = 0), kept so the
+#   next program runs the NOP after each one's STOP; then
+#   FxPolygonClipTop with a 2-vertex polygon ($40 = 2);
+# - FxCarHit on the player's record $1738 (+$64 and +$40 cleared) with $263C
+#   set and $400 already in $263E, so half the sum is held at 96.
+# - FxPoolTake asked for $32 bytes when the first pool's head has size 0
+#   and its first block $34, so the block is taken whole; FxCarAddPart
+#   with the first pool empty ($1098-$109B = 0), so there is no room;
+# - FxCarCatchUp on record $1918 with +$72 = $FFFF and segment +$58 = 0;
+#   FxCourseNearest with $1092 = 0; FxNearestCar with $262E = 0;
+# - FxDivide32By16Halving and FxDivideHalvedIfLarge with R0 negative;
+# - the right, left, bottom and near polygon clips with a 2-vertex polygon.
+load build/stuntracefx/states/battle_04.state
+set 701B04 00,00
+set 701CE4 00,00
+fx 04:CA99 stop=888C r7=1AF8 r8=1CD8 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700216 00,00
+fx 07:F280 stop=EE86 keep
+set 700216 00,00
+fx 07:F6DF stop=EE86 keep
+set 700040 02,00
+fx 01:C668 stop=80E3 r10=024C
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70179C 00,00
+set 701778 00,00
+set 70263C 01,00
+set 70263E 00,04
+fx 04:BB17 stop=888C r8=1738 r10=0242
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70109A 00,00
+fx 04:893A stop=888C r3=1098 r4=0032 r10=0246
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 701970 00,00
+set 70198A FF,FF
+fx 04:C595 stop=888C r8=1918 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 701098 00,00,00,00
+fx 04:8E84 stop=888C r1=1CD8 r14=81E1 r10=0246
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 701970 00,00
+fx 04:C595 stop=888C r8=1918 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 701092 00,00
+fx 04:CC06 stop=888C r8=1738 r10=0246
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70262E 00,00
+fx 04:CF08 stop=888C r10=0240
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:81BC stop=80E3 r0=8000 r4=1234 r6=0100
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 04:C135 stop=888C r0=8000 r4=1234 r6=0100
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700040 02,00
+fx 01:C933 stop=80E3 r10=024C
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700040 02,00
+fx 01:CA42 stop=80E3 r10=024C
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700040 02,00
+fx 01:CB63 stop=80E3 r10=024C
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700040 02,00
+fx 01:CE34 stop=80E3 r10=0250
+wait 1

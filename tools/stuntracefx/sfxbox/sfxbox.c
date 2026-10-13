@@ -51,6 +51,7 @@
 #include <string.h>
 #include "libretro.h"
 #include "check.h"
+#include "gsucall.h"
 
 static void die(const char *fmt, ...) {
     va_list ap; va_start(ap, fmt); vfprintf(stderr, fmt, ap); va_end(ap);
@@ -67,9 +68,22 @@ SYM(retro_init) SYM(retro_set_environment) SYM(retro_set_video_refresh) SYM(retr
 SYM(retro_set_audio_sample_batch) SYM(retro_set_input_poll) SYM(retro_set_input_state) SYM(retro_load_game)
 SYM(retro_run) SYM(retro_serialize_size) SYM(retro_serialize) SYM(retro_unserialize)
 SYM(sfxbox_trace_begin) SYM(sfxbox_trace_write) SYM(sfxbox_memory) SYM(sfxbox_trace_break)
-/* The trace takes no edge across a jump made here (a state loaded, a unit
-   call's registers set): the next instruction was not reached from the last. */
+/* The trace takes no edge across a state loaded here (a load, or a unit
+   call's machine put back): the next instruction was not reached from the
+   last, and the Super FX's pipeline address is not in the state. A unit
+   call's register jump needs none: the edges it makes lead to and from the
+   stub in work RAM, which is no ROM routine, and the Super FX's pipeline is
+   real (the NOP after a STOP runs when the next program starts). */
 static void trace_break(void) { if (sfxbox_trace_break_p) sfxbox_trace_break_p(); }
+static int (*sfxbox_gsu_running_p)(void);
+/* After a state is loaded: the trace and the Super FX checks start again
+   from it. (The Super FX's GO bit is read from the core directly: a bus
+   read here, outside the emulation thread, would switch threads.) */
+static void state_loaded(void)
+{
+    trace_break();
+    if (sfxbox_gsu_running_p) gsu_state_loaded(sfxbox_gsu_running_p());
+}
 
 static const char *outdir;
 static char sysdir[4096];
@@ -262,13 +276,12 @@ static int call_exec(uint32_t pc)
         struct SfxboxRegs r = call_regs;
         r.s = call_from.s; r.e = 0; r.pc = call_stub;
         sfxbox_core_set_regs_p(&r);
-        trace_break();
         call_state = 2;
         return 1;
     }
     if (call_state == 2 && pc == call_loop) {
         call_state = 0;
-        if (call_keep) { sfxbox_core_set_regs_p(&call_from); trace_break(); return 1; }   /* the game goes on from where it was */
+        if (call_keep) { sfxbox_core_set_regs_p(&call_from); return 1; }   /* the game goes on from where it was */
         return 0;   /* parked in the stub's loop until the machine is put back: see call() */
     }
     return exec_before ? exec_before(pc) : 0;
@@ -333,7 +346,7 @@ static void call(const char *line, int lineno) {
        machine after it is never used for another. */
     if (!call_state && !call_keep && !lockstep) {
         if (!retro_unserialize_p(snap, sn)) die("%s:%d: call: unserialize failed", script_path, lineno);
-        trace_break();
+        state_loaded();
         if (checklib_on) check_rollback(open_calls);
     }
     free(snap);
@@ -349,8 +362,10 @@ static void call(const char *line, int lineno) {
    back. R11 is the return address the routine jumps to when done: stop=ADDR
    names a STOP in the routine's bank, where the Super FX then halts. The
    routine is started as a program, so the checks take it as entered there
-   and judge it at that STOP.
-       fx BANK:ADDR stop=ADDR [r0=..] ... [r14=..] [frames=N] */
+   and judge it at that STOP. keep is as for call: the machine is not put
+   back, so the next program the Super FX starts runs the NOP after this
+   one's STOP (it is in the pipeline).
+       fx BANK:ADDR stop=ADDR [r0=..] ... [r14=..] [frames=N] [keep] */
 static void fx(const char *line, int lineno) {
     char tok[24][64];
     int k = sscanf(line, "%*s %63s %63s %63s %63s %63s %63s %63s %63s %63s %63s %63s %63s %63s %63s %63s %63s %63s %63s",
@@ -361,14 +376,15 @@ static void fx(const char *line, int lineno) {
     for (const char *c = tok[0]; *c; c++) if (*c != '$' && *c != ':') ab[j++] = *c;
     ab[j] = 0;
     uint32_t addr = (uint32_t)strtoul(ab, NULL, 16);
-    long stop = -1; char frames[32] = "";
+    long stop = -1; char frames[64] = "";
     long reg[16]; for (int i = 0; i < 16; i++) reg[i] = -1;
     for (int i = 1; i < k; i++) {
         const char *eq = strchr(tok[i], '=');
+        if (!strcmp(tok[i], "keep")) { strcat(frames, " keep"); continue; }
         if (!eq) die("%s:%d: fx: bad option %s", script_path, lineno, tok[i]);
         unsigned long v = strtoul(eq + 1, NULL, 16);
         if (!strncmp(tok[i], "stop=", 5)) stop = (long)(v & 0xFFFF);
-        else if (!strncmp(tok[i], "frames=", 7)) snprintf(frames, sizeof frames, " %s", tok[i]);
+        else if (!strncmp(tok[i], "frames=", 7)) { strcat(frames, " "); strcat(frames, tok[i]); }
         else if (tok[i][0] == 'r') {
             int n = atoi(tok[i] + 1);
             if (n < 0 || n > 14) die("%s:%d: fx: no register %s", script_path, lineno, tok[i]);
@@ -462,7 +478,7 @@ static void exec_range(int from, int to) {
         else if (!strcmp(a, "load") && k >= 2) {
             size_t n; void *p = load_file(b, &n);
             if (!retro_unserialize_p(p, n)) die("unserialize failed: %s", b);
-            trace_break();
+            state_loaded();
             free(p);
         }
         else die("%s:%d: bad command", script_path, i + 1);
@@ -505,6 +521,7 @@ int main(int argc, char **argv) {
     LOAD(retro_set_audio_sample_batch) LOAD(retro_set_input_poll) LOAD(retro_set_input_state) LOAD(retro_load_game)
     LOAD(retro_run) LOAD(retro_serialize_size) LOAD(retro_serialize) LOAD(retro_unserialize)
     LOAD(sfxbox_trace_begin) LOAD(sfxbox_trace_write) LOAD(sfxbox_memory) LOAD(sfxbox_trace_break)
+    *(void **)&sfxbox_gsu_running_p = dlsym(core, "sfxbox_gsu_running");
     LOAD(sfxbox_core_regs) LOAD(sfxbox_core_set_regs) LOAD(sfxbox_core_bus_read)
     if (!(cpu_exec_hook = dlsym(core, "sfxbox_cpu_exec"))) die("missing symbol sfxbox_cpu_exec");
 

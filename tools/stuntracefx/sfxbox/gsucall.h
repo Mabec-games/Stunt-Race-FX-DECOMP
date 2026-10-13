@@ -11,6 +11,9 @@
 int gsu_load(void *core, void *lib, const char *only);
 int gsu_count(void);
 
+/* A state was loaded; running: the Super FX's GO bit in it. */
+void gsu_state_loaded(int running);
+
 /* Per-call oracle (A5). */
 void gsu_check_begin(FILE *report);
 void gsu_check_foreign(uint32_t addr);  /* the S-CPU or a DMA wrote Super FX RAM */
