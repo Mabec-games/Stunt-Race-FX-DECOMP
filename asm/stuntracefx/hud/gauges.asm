@@ -115,3 +115,46 @@ HudGaugesPanelB:
 .lEEF2:
     jsl.l SpriteBar6WithMarker
     rts
+
+; @routine 07:C53A Gauge6BPlace
+; WHAT IT DOES: Puts panel B's six-sprite gauge at Y = $5A ($0E14) and clears
+; the X-position high bits of sprites 27-38 in the high table ($057B-$057E).
+; HOW: Byte ANDs through the data bank (masks $BF, $AA, $AA, $EA).
+; Entry: any widths. Exit: A low byte = the last byte; X = 0; X and Y high
+; bytes cleared (SEP #$30); P unchanged.
+%at($07C53A)
+Gauge6BPlace:
+    php
+    sep.b #$30
+    lda.b #$5A
+    sta.w !gauge_b6_y
+    ldx.b #$00
+    bra Gauge6Place
+
+; @routine 07:C546 Gauge6APlace
+; WHAT IT DOES: As Gauge6BPlace for panel A: Y = $C2 ($0E15), sprites 91-102
+; ($058B-$058E).
+; HOW: As Gauge6BPlace with X = $10. Not reached in the traces so far.
+; Entry: any widths. Exit: as Gauge6BPlace, X = $10.
+%at($07C546)
+Gauge6APlace:
+    php
+    sep.b #$30
+    lda.b #$C2
+    sta.w !gauge_a6_y
+    ldx.b #$10
+Gauge6Place:
+    lda.w !oam_buffer_high+6,x
+    and.b #$BF
+    sta.w !oam_buffer_high+6,x
+    lda.w !oam_buffer_high+7,x
+    and.b #$AA
+    sta.w !oam_buffer_high+7,x
+    lda.w !oam_buffer_high+8,x
+    and.b #$AA
+    sta.w !oam_buffer_high+8,x
+    lda.w !oam_buffer_high+9,x
+    and.b #$EA
+    sta.w !oam_buffer_high+9,x
+    plp
+    rts
