@@ -1558,3 +1558,4 @@ includeonce
 !wram_0EEE = $0EEE
 !wram_0EEF = $0EEF
 !wram_0D25 = $0D25
+!wram_340D = $340D

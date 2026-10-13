@@ -4,6 +4,7 @@
  * finished value by incrementing X.
  */
 #include "machine.h"
+#include "cpu_ops.h"
 
 /*
  * @routine 03:FE06 WindowStep3437
@@ -144,4 +145,79 @@ void abi_WindowStep3433By2(void)
 void abi_WindowStep3433By3(void)
 {
     window_step_down(0x3433, 3);
+}
+
+/*
+ * @routine 03:FDF7 WindowStep3437By3
+ * WHAT IT DOES: Adds 3 to $3437 in the data bank, stopping at $FF; X
+ * counts up by one when it stops.
+ * HOW: As WindowStep3437. Not reached in the traces so far.
+ * Entry: M 8-bit, X 8-bit. Exit: as WindowStep3437.
+ */
+void abi_WindowStep3437By3(void)
+{
+    uint32_t a = (uint32_t)cpu.db << 16 | 0x3437;
+    uint8_t v = rd8(a), r;
+
+    cpu.p &= (uint8_t)~P_C;
+    r = op_adc8(v, 0x03, &cpu.p);
+    if (cpu.p & P_C) {
+        cpu.x = (uint8_t)(cpu.x + 1);
+        r = 0xFF;
+        cpu.p = nz8(cpu.p, r);
+    }
+    wr8(a, r);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | r);
+}
+
+void abi_WindowStep3433By2(void);
+void abi_WindowStep3433By3(void);
+
+/*
+ * @routine 03:FDA9 WindowEdgesStep
+ * WHAT IT DOES: One step of the window edges in bank $7F: $340D counts up
+ * to $1F; then by how $3433 compares with -$3437: equal, $3437 + 2 and
+ * $3433 - 2; below, $3437 + 2 and $3433 - 3; above, $3437 + 3 and $3433 -
+ * 2; then $3439 + 1 and $3435 - 3. When two or more of the steps have
+ * stopped (X), the fade starts ($0D61 = $80, $0E3A = 1).
+ * HOW: The data bank is $7F for the steps; X counts the stops. The above
+ * case is not reached in the traces so far.
+ * Entry: any widths. Exit: M 8-bit, X 8-bit; X = the stops; the data bank
+ * restored; A as the last step left it.
+ */
+void abi_WindowEdgesStep(void)
+{
+    uint8_t db0 = cpu.db, v, m;
+    uint32_t b = 0x7F0000;
+
+    op_sep(P_M | P_X);
+    cpu.db = 0x7F;
+    v = rd8(b | 0x340D);
+    cpu.p = (uint8_t)((cpu.p & ~P_C) | (v >= 0x1F ? P_C : 0));
+    if (v < 0x1F)
+        wr8(b | 0x340D, (uint8_t)(rd8(b | 0x340D) + 1));
+    cpu.x = 0x00;
+    v = (uint8_t)((rd8(b | 0x3437) ^ 0xFF) + 1);
+    m = rd8(b | 0x3433);
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - m)) & ~P_C) | (v >= m ? P_C : 0));
+    if (v == m) {
+        abi_WindowStep3437();
+        abi_WindowStep3433By2();
+    } else if (v < m) {
+        abi_WindowStep3437();
+        abi_WindowStep3433By3();
+    } else {
+        abi_WindowStep3437By3();
+        abi_WindowStep3433By2();
+    }
+    abi_WindowStep3439();
+    abi_WindowStep3435();
+    cpu.p = (uint8_t)((cpu.p & ~P_C) | (cpu.x >= 0x02 ? P_C : 0));
+    if (cpu.x >= 0x02) {
+        wr8(0x000D61, 0x80);
+        wr8(0x000E3A, 0x01);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
+    }
+    cpu.db = db0;
+    cpu.p = nz8(cpu.p, db0);
 }
