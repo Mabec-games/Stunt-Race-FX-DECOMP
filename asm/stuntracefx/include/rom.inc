@@ -325,3 +325,6 @@ WindowDigitStepEBDD = $07EBDD                   ; 07:EBDD, inside the routine at
 !glyph_spr_init_x = $04DA7A         ; GlyphSpritesInit: x per sprite
 !glyph_spr_init_glyph = $04DA8E     ; GlyphSpritesInit: glyph per sprite
 !oam_word_row_letters = $D5AD       ; OamWordRow5: the five letters (bank 07, through the data bank)
+!glyph_messages = $DF6D              ; GlyphListMessageAndTime: the messages' addresses (bank 04, through the data bank)
+!glyph_message_length = $0000        ; a message: its length byte (indexed by its address)
+!glyph_message_letters = $0001       ; then a glyph word per letter

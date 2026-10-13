@@ -2388,3 +2388,172 @@ GlyphSpritesInit:
     plp
     rtl
 
+
+; @routine 04:DE2C GlyphListMessageAndTime
+; WHAT IT DOES: Fills the glyph list with message X/2 (the string its word
+; in the table at $04:DF6D points to: a length byte, then a glyph word per
+; letter, 0 for a space) centred on x $68 at y $58, then the time row at y
+; $68 from x $4C by 8: the digits of $F7 (low), $F6 and $F5 with the
+; separator glyphs $980A and $980C; $10E4 = the letters - 1 and $10E6 =
+; that + 7.
+; HOW: The string through the data bank (bank $04); the letter count in
+; direct page $F1 and the x in $F3; spaces take a place but no entry. The
+; letters' on-flags are cleared as bytes, the time's as words.
+; Entry: M 16-bit, X 16-bit, D = $0000, DB = $04; X = the message * 2.
+; Exit: M 8-bit; Y = the last entry; A low byte = $68; N, Z from it.
+%at($04DE2C)
+GlyphListMessageAndTime:
+    lda.w !glyph_messages,x
+    tax
+    lda.w !glyph_message_length,x
+    and.w #$00FF
+    sta.b !digit_count
+    asl a
+    asl a
+    sec
+    sbc.w #$0068
+    eor.w #$FFFF
+    inc a
+    sta.b !dp_f3
+    lda.b !digit_count
+    dec a
+    sta.w !glyph_list_first
+    clc
+    adc.w #$0007
+    sta.w !glyph_list_count
+    ldy.w #$0000
+.lDE54:
+    lda.w !glyph_message_letters,x
+    beq .lDE6F
+    sta.w !glyph_list_glyph,y
+    sep.b #$20
+    lda.b !dp_f3
+    sta.w !glyph_list_x,y
+    lda.b #$58
+    sta.w !glyph_list_y,y
+    lda.b #$00
+    sta.w !glyph_list_on,y
+    iny
+    iny
+.lDE6F:
+    rep.b #$20
+    lda.b !dp_f3
+    clc
+    adc.w #$0008
+    sta.b !dp_f3
+    inx
+    inx
+    dec.b !digit_count
+    bne .lDE54
+    rep.b #$20
+    lda.b !glyph_time_low
+    and.w #$000F
+    asl a
+    clc
+    adc.w #$9400
+    sta.w !glyph_list_glyph,y
+    lda.w #$0000
+    sta.w !glyph_list_on,y
+    sep.b #$20
+    lda.b #$4C
+    sta.w !glyph_list_x,y
+    lda.b #$68
+    sta.w !glyph_list_y,y
+    iny
+    iny
+    rep.b #$20
+    lda.w #$980A
+    sta.w !glyph_list_glyph,y
+    lda.w #$0000
+    sta.w !glyph_list_on,y
+    sep.b #$20
+    lda.b #$54
+    sta.w !glyph_list_x,y
+    lda.b #$68
+    sta.w !glyph_list_y,y
+    iny
+    iny
+    rep.b #$20
+    lda.b !glyph_time_mid
+    and.w #$00FF
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    asl a
+    clc
+    adc.w #$9400
+    sta.w !glyph_list_glyph,y
+    lda.w #$0000
+    sta.w !glyph_list_on,y
+    sep.b #$20
+    lda.b #$5C
+    sta.w !glyph_list_x,y
+    lda.b #$68
+    sta.w !glyph_list_y,y
+    iny
+    iny
+    rep.b #$20
+    lda.b !glyph_time_mid
+    and.w #$000F
+    asl a
+    clc
+    adc.w #$9400
+    sta.w !glyph_list_glyph,y
+    lda.w #$0000
+    sta.w !glyph_list_on,y
+    sep.b #$20
+    lda.b #$64
+    sta.w !glyph_list_x,y
+    lda.b #$68
+    sta.w !glyph_list_y,y
+    iny
+    iny
+    rep.b #$20
+    lda.w #$980C
+    sta.w !glyph_list_glyph,y
+    lda.w #$0000
+    sta.w !glyph_list_on,y
+    sep.b #$20
+    lda.b #$6C
+    sta.w !glyph_list_x,y
+    lda.b #$68
+    sta.w !glyph_list_y,y
+    iny
+    iny
+    rep.b #$20
+    lda.b !glyph_time_high
+    and.w #$00FF
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    asl a
+    clc
+    adc.w #$9400
+    sta.w !glyph_list_glyph,y
+    lda.w #$0000
+    sta.w !glyph_list_on,y
+    sep.b #$20
+    lda.b #$74
+    sta.w !glyph_list_x,y
+    lda.b #$68
+    sta.w !glyph_list_y,y
+    iny
+    iny
+    rep.b #$20
+    lda.b !glyph_time_high
+    and.w #$000F
+    asl a
+    clc
+    adc.w #$9400
+    sta.w !glyph_list_glyph,y
+    lda.w #$0000
+    sta.w !glyph_list_on,y
+    sep.b #$20
+    lda.b #$7C
+    sta.w !glyph_list_x,y
+    lda.b #$68
+    sta.w !glyph_list_y,y
+    rts
+

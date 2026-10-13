@@ -1594,3 +1594,6 @@ includeonce
 !glyph_spr_glyph = $1010            ; the glyph
 !glyph_spr_1040 = $1040             ; cleared by GlyphSpritesInit
 !wram_115A = $115A
+!glyph_time_high = $F5               ; GlyphListMessageAndTime: the time's digits (direct page)
+!glyph_time_mid = $F6
+!glyph_time_low = $F7

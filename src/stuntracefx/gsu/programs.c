@@ -1715,3 +1715,114 @@ void abi_GlyphSpritesInit(void)
     wr8(b | 0x0E5D, 0x00);
     op_plp(p0);
 }
+
+/* One glyph of the time row: the glyph word, on (+$110E = 0, 16-bit), x,
+   y $68, then the next entry (not after the last). */
+static void time_glyph(uint32_t b, uint16_t glyph, uint8_t x, int last)
+{
+    op_rep(P_M);
+    cpu.a = glyph;
+    cpu.p = nz16(cpu.p, glyph);
+    wr16(b | (uint16_t)(0x10E8 + cpu.y), glyph);
+    op_lda16_imm(0x0000);
+    wr16(b | (uint16_t)(0x110E + cpu.y), 0x0000);
+    op_sep(P_M);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | x);
+    wr8(b | (uint16_t)(0x1134 + cpu.y), x);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x68);
+    cpu.p = nz8(cpu.p, 0x68);
+    wr8(b | (uint16_t)(0x1135 + cpu.y), 0x68);
+    if (!last)
+        cpu.y = (uint16_t)(cpu.y + 2);
+}
+
+/* A digit glyph: $9400 + digit * 2, the digit read from direct page. */
+static uint16_t digit_glyph(uint16_t addr, int high)
+{
+    op_lda16(addr);
+    op_and16(high ? 0x00FF : 0x000F);
+    if (high) {
+        op_lsr16();
+        op_lsr16();
+        op_lsr16();
+        op_lsr16();
+    }
+    op_asl16();
+    op_add16(0x9400);
+    return cpu.a;
+}
+
+/*
+ * @routine 04:DE2C GlyphListMessageAndTime
+ * WHAT IT DOES: Fills the glyph list with message X/2 (the string its word
+ * in the table at $04:DF6D points to: a length byte, then a glyph word per
+ * letter, 0 for a space) centred on x $68 at y $58, then the time row at y
+ * $68 from x $4C by 8: the digits of $F7 (low), $F6 and $F5 with the
+ * separator glyphs $980A and $980C; $10E4 = the letters - 1 and $10E6 =
+ * that + 7.
+ * HOW: The string through the data bank (bank $04); the letter count in
+ * direct page $F1 and the x in $F3; spaces take a place but no entry. The
+ * letters' on-flags are cleared as bytes, the time's as words.
+ * Entry: M 16-bit, X 16-bit, D = $0000, DB = $04; X = the message * 2.
+ * Exit: M 8-bit; Y = the last entry; A low byte = $68; N, Z from it.
+ */
+void abi_GlyphListMessageAndTime(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t v;
+
+    op_lda16(b | (uint16_t)(0xDF6D + cpu.x));
+    op_tax16();
+    op_lda16(b | cpu.x);
+    op_and16(0x00FF);
+    wr16(0x0000F1, cpu.a);
+    op_asl16();
+    op_asl16();
+    op_sub16(0x0068);
+    cpu.a = (uint16_t)(~cpu.a + 1);
+    cpu.p = nz16(cpu.p, cpu.a);
+    wr16(0x0000F3, cpu.a);
+    op_lda16(0x0000F1);
+    cpu.a = (uint16_t)(cpu.a - 1);
+    cpu.p = nz16(cpu.p, cpu.a);
+    wr16(b | 0x10E4, cpu.a);
+    op_add16(0x0007);
+    wr16(b | 0x10E6, cpu.a);
+    cpu.y = 0x0000;
+    cpu.p = nz16(cpu.p, 0);
+    do {
+        op_lda16(b | (uint16_t)(0x0001 + cpu.x));
+        if (cpu.a) {
+            wr16(b | (uint16_t)(0x10E8 + cpu.y), cpu.a);
+            op_sep(P_M);
+            op_lda8(0x0000F3);
+            wr8(b | (uint16_t)(0x1134 + cpu.y), (uint8_t)cpu.a);
+            cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x58);
+            wr8(b | (uint16_t)(0x1135 + cpu.y), 0x58);
+            cpu.a = (uint16_t)(cpu.a & 0xFF00);
+            cpu.p = nz8(cpu.p, 0);
+            wr8(b | (uint16_t)(0x110E + cpu.y), 0x00);
+            cpu.y = (uint16_t)(cpu.y + 2);
+        }
+        op_rep(P_M);
+        op_lda16(0x0000F3);
+        op_add16(0x0008);
+        wr16(0x0000F3, cpu.a);
+        cpu.x = (uint16_t)(cpu.x + 2);
+        v = (uint16_t)(rd16(0x0000F1) - 1);
+        wr16(0x0000F1, v);
+        cpu.p = nz16(cpu.p, v);
+    } while (v);
+    op_rep(P_M);
+    time_glyph(b, digit_glyph(0x0000F7, 0), 0x4C, 0);
+    time_glyph(b, 0x980A, 0x54, 0);
+    op_rep(P_M);
+    time_glyph(b, digit_glyph(0x0000F6, 1), 0x5C, 0);
+    op_rep(P_M);
+    time_glyph(b, digit_glyph(0x0000F6, 0), 0x64, 0);
+    time_glyph(b, 0x980C, 0x6C, 0);
+    op_rep(P_M);
+    time_glyph(b, digit_glyph(0x0000F5, 1), 0x74, 0);
+    op_rep(P_M);
+    time_glyph(b, digit_glyph(0x0000F5, 0), 0x7C, 1);
+}
