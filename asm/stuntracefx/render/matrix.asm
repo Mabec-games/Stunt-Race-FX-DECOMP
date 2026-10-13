@@ -524,4 +524,147 @@ FxMatrixFromAngles01:
     jmp r11
     nop
 
+; @routine 01:981A FxSegmentCrossZ
+; WHAT IT DOES: Finds where the segment from (R1, R2, R3) to (R4, R5, R6)
+; crosses z = 0: R0 = 0 when both ends have z >= 0, $FFFF when both are
+; negative; otherwise R0 = 1 with the end whose z was negative replaced by
+; the crossing point (the other end kept in its registers).
+; HOW: The z >= 0 end is saved at $9A/$9C/$9E (SMS) and put back at the
+; end (LMS); the ends are brought to the midpoint (ADD, DIV2) toward the
+; crossing until the midpoint's z is 0. When the first end is the one
+; with z >= 0 the ends are swapped while searching.
+; Entry: R1-R6 = the ends; R11 = return address. Exit: as above; R1-R6 as
+; the search left them; the last RAM address $9E; S, Z from the last
+; DIV2 (or the end tests).
+%at($01981A)
+FxSegmentCrossZ:
+    cache
+    moves r3,r3
+    bmi .first_negative
+    nop
+    moves r6,r6
+    bmi .second_negative
+    nop
+    sub r0
+    jmp r11
+    nop
+.first_negative:
+    moves r6,r6
+    bpl .first_only
+    nop
+    ibt r0,#$FF
+    jmp r11
+    nop
+.second_negative:
+    sms ($9A),r1
+    sms ($9C),r2
+    sms ($9E),r3
+    move r0,r1
+    move r1,r4
+    move r4,r0
+    move r0,r2
+    move r2,r5
+    move r5,r0
+    move r0,r3
+    move r3,r6
+    move r6,r0
+.search_a:
+    from r3
+    add r6
+    div2
+    beq .found_a
+    nop
+    bmi .neg_a
+    nop
+    move r6,r0
+    from r1
+    add r4
+    to r4
+    div2
+    from r2
+    add r5
+    to r5
+    div2
+    bra .search_a
+    nop
+.neg_a:
+    move r3,r0
+    from r1
+    add r4
+    to r1
+    div2
+    from r2
+    add r5
+    to r2
+    div2
+    bra .search_a
+    nop
+.found_a:
+    move r6,r0
+    from r1
+    add r4
+    to r4
+    div2
+    from r2
+    add r5
+    to r5
+    div2
+    lms r1,($9A)
+    lms r2,($9C)
+    lms r3,($9E)
+    ibt r0,#$01
+    jmp r11
+    nop
+.first_only:
+    sms ($9A),r4
+    sms ($9C),r5
+    sms ($9E),r6
+.search_b:
+    from r3
+    add r6
+    div2
+    beq .found_b
+    nop
+    bmi .neg_b
+    nop
+    move r6,r0
+    from r1
+    add r4
+    to r4
+    div2
+    from r2
+    add r5
+    to r5
+    div2
+    bra .search_b
+    nop
+.neg_b:
+    move r3,r0
+    from r1
+    add r4
+    to r1
+    div2
+    from r2
+    add r5
+    to r2
+    div2
+    bra .search_b
+    nop
+.found_b:
+    move r3,r0
+    from r1
+    add r4
+    to r1
+    div2
+    from r2
+    add r5
+    to r2
+    div2
+    lms r4,($9A)
+    lms r5,($9C)
+    lms r6,($9E)
+    ibt r0,#$01
+    jmp r11
+    nop
+
 arch 65816

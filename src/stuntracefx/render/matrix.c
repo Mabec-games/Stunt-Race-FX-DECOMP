@@ -317,3 +317,98 @@ void abi_FxMatrixFromAnglesProgram(void)
     gsu.r[11] = 0x832D;
     abi_FxMatrixFromAngles01();
 }
+
+/* R0 = Ra + Rb (ADD), then Rd = R0 DIV2. */
+static void fx_half_sum(int d, int a, int b)
+{
+    gsu.r[0] = gsu_add(gsu.r[a], gsu.r[b], 0);
+    gsu.r[d] = gsu_div2(gsu.r[0]);
+}
+
+/*
+ * @routine 01:981A FxSegmentCrossZ
+ * WHAT IT DOES: Finds where the segment from (R1, R2, R3) to (R4, R5, R6)
+ * crosses z = 0: R0 = 0 when both ends have z >= 0, $FFFF when both are
+ * negative; otherwise R0 = 1 with the end whose z was negative replaced by
+ * the crossing point (the other end kept in its registers).
+ * HOW: The z >= 0 end is saved at $9A/$9C/$9E (SMS) and put back at the
+ * end (LMS); the ends are brought to the midpoint (ADD, DIV2) toward the
+ * crossing until the midpoint's z is 0. When the first end is the one
+ * with z >= 0 the ends are swapped while searching.
+ * Entry: R1-R6 = the ends; R11 = return address. Exit: as above; R1-R6 as
+ * the search left them; the last RAM address $9E; S, Z from the last
+ * DIV2 (or the end tests).
+ */
+void abi_FxSegmentCrossZ(void)
+{
+    int i;
+
+    gsu_moves(gsu.r[3]);
+    if (!gsu.s) {
+        gsu_moves(gsu.r[6]);
+        if (!gsu.s) {
+            gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[0], 0);
+            return;
+        }
+        gsu_stw(0x009A, gsu.r[1]);
+        gsu_stw(0x009C, gsu.r[2]);
+        gsu_stw(0x009E, gsu.r[3]);
+        for (i = 1; i <= 3; i++) {
+            gsu.r[0] = gsu.r[i];
+            gsu.r[i] = gsu.r[i + 3];
+            gsu.r[i + 3] = gsu.r[0];
+        }
+        for (;;) {
+            gsu.r[0] = gsu_div2(gsu_add(gsu.r[3], gsu.r[6], 0));
+            if (gsu.z) {
+                gsu.r[6] = gsu.r[0];
+                fx_half_sum(4, 1, 4);
+                fx_half_sum(5, 2, 5);
+                gsu.r[1] = gsu_ldw(0x009A);
+                gsu.r[2] = gsu_ldw(0x009C);
+                gsu.r[3] = gsu_ldw(0x009E);
+                gsu.r[0] = 0x0001;
+                return;
+            }
+            if (gsu.s) {
+                gsu.r[3] = gsu.r[0];
+                fx_half_sum(1, 1, 4);
+                fx_half_sum(2, 2, 5);
+            } else {
+                gsu.r[6] = gsu.r[0];
+                fx_half_sum(4, 1, 4);
+                fx_half_sum(5, 2, 5);
+            }
+        }
+    }
+    gsu_moves(gsu.r[6]);
+    if (gsu.s) {
+        gsu.r[0] = 0xFFFF;
+        return;
+    }
+    gsu_stw(0x009A, gsu.r[4]);
+    gsu_stw(0x009C, gsu.r[5]);
+    gsu_stw(0x009E, gsu.r[6]);
+    for (;;) {
+        gsu.r[0] = gsu_div2(gsu_add(gsu.r[3], gsu.r[6], 0));
+        if (gsu.z) {
+            gsu.r[3] = gsu.r[0];
+            fx_half_sum(1, 1, 4);
+            fx_half_sum(2, 2, 5);
+            gsu.r[4] = gsu_ldw(0x009A);
+            gsu.r[5] = gsu_ldw(0x009C);
+            gsu.r[6] = gsu_ldw(0x009E);
+            gsu.r[0] = 0x0001;
+            return;
+        }
+        if (gsu.s) {
+            gsu.r[3] = gsu.r[0];
+            fx_half_sum(1, 1, 4);
+            fx_half_sum(2, 2, 5);
+        } else {
+            gsu.r[6] = gsu.r[0];
+            fx_half_sum(4, 1, 4);
+            fx_half_sum(5, 2, 5);
+        }
+    }
+}
