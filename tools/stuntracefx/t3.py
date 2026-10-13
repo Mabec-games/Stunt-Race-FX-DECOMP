@@ -261,8 +261,14 @@ def image_one(script):
     rep = os.path.join(d, 'lockstep.txt')
     if os.path.exists(rep):
         os.remove(rep)
-    run([SFXBOX, '--rom', os.path.join(B, 'baserom.sfc'), '--script', script, '--out', d, '--lockstep', LIB])
-    lines = open(rep).read().splitlines() if os.path.exists(rep) else ['no report: FAILED']
+    # A run that stops (a side stuck waiting) is that script's failure, not
+    # the whole gate's: the other scripts' results still count.
+    p = subprocess.run([SFXBOX, '--rom', os.path.join(B, 'baserom.sfc'), '--script', script, '--out', d, '--lockstep', LIB],
+                       capture_output=True, text=True, cwd=ROOT)
+    lines = open(rep).read().splitlines() if os.path.exists(rep) else []
+    if p.returncode or not lines or ': ' not in lines[-1]:
+        why = (p.stderr.strip().splitlines() or ['no report'])[-1]
+        lines.append('stopped (%s): FAILED' % why)
     return name, lines
 
 
