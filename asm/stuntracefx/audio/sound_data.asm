@@ -80,3 +80,103 @@ SoundDataLoad:
     dec a
     bne .wait
     rtl
+
+; @routine 04:D251 MusicLoadForCourse
+; WHAT IT DOES: Loads music A's sound data into the SPC700: the first
+; block list from the table at $04:D41E (three bytes per music: an address,
+; $FFFF for none, and a bank); then, in HUD mode 2, $1000 bytes of the
+; block for the course in $0D8A, copied from bank $19 to Super FX RAM at
+; $70:3000 and patched (+$10 to its word at 2, +$D30 to its words at 4, 6
+; and 22) before uploading it from there; otherwise the second list from
+; the table at $04:D42D. Each upload is preceded by ApuPort1Send05 and
+; followed by ApuSettleDelay.
+; HOW: The index is the music times 3 through direct page $F1; the copy is
+; MVN (byte by byte, each read then written). X is saved on the stack
+; around the first upload.
+; Entry: M 16-bit, X 16-bit, D = $0000; A low nibble = music. Exit: A = 0;
+; M 16-bit; Z set, N clear; X, Y, C and V as the last call or compare
+; leaves them.
+%at($04D251)
+MusicLoadForCourse:
+    and.w #$000F
+    sta.b !music_index
+    asl a
+    clc
+    adc.b !music_index
+    tax
+    phx
+    jsl.l ApuPort1Send05
+    rep.b #$30
+    lda.l !music_lists,x
+    cmp.w #$FFFF
+    beq .first_done
+    tay
+    jsl.l ApuPort1Send05
+    lda.l !music_lists+2,x
+    and.w #$00FF
+    jsl.l ApuUpload
+.first_done:
+    rep.b #$20
+    rep.b #$10
+    jsl.l ApuSettleDelay
+    rep.b #$30
+    plx
+    lda.w !hud_mode
+    and.w #$00FF
+    cmp.w #$0002
+    beq .course_block
+    rep.b #$30
+    lda.l !music_lists+15,x
+    cmp.w #$FFFF
+    beq .second_done
+    tay
+    jsl.l ApuPort1Send05
+    lda.l !music_lists+17,x
+    and.w #$00FF
+    jsl.l ApuUpload
+.second_done:
+    rep.b #$20
+    rep.b #$10
+    jsl.l ApuSettleDelay
+    rts
+.course_block:
+    jsl.l ApuPort1Send05
+    lda.w !wram_0D8A
+    and.w #$000F
+    sta.b !music_index
+    asl a
+    clc
+    adc.b !music_index
+    tax
+    lda.l !music_lists,x
+    tax
+    ldy.w #$3000
+    sep.b #$20
+    phb
+    rep.b #$20
+    lda.w #$0FFF
+    mvn !gsu_picture>>16,!music_course_blocks>>16
+    sep.b #$20
+    plb
+    rep.b #$20
+    lda.l !gsu_picture+2
+    clc
+    adc.w #$0010
+    sta.l !gsu_picture+2
+    lda.l !gsu_picture+4
+    clc
+    adc.w #$0D30
+    sta.l !gsu_picture+4
+    lda.l !gsu_picture+6
+    clc
+    adc.w #$0D30
+    sta.l !gsu_picture+6
+    lda.l !gsu_picture+22
+    clc
+    adc.w #$0D30
+    sta.l !gsu_picture+22
+    ldy.w #$3000
+    lda.w #$0070
+    jsl.l ApuUpload
+    jsl.l ApuSettleDelay
+    rts

@@ -267,3 +267,9 @@ includeonce
 !piece_set_bias = $07B981
 !piece_sets = $1CF09E
 !piece_bytes = $1CF11E
+
+; MusicLoadForCourse's tables (audio/sound_data.asm): per music, three
+; bytes (block list address, $FFFF for none; bank) for the first list at
+; +0 and the second at +15; and the course blocks in bank $19.
+!music_lists = $04D41E
+!music_course_blocks = $190000

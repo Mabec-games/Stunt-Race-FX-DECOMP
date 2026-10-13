@@ -1242,3 +1242,7 @@ includeonce
 !sprite_piece_frame = $10C3
 !sprite_piece_palette = $10C5
 !sprite_piece_count = $F1
+
+; The music table index (music * 3) MusicLoadForCourse computes through
+; direct page (audio/sound_data.asm).
+!music_index = $F1
