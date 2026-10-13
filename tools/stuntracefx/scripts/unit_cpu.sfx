@@ -33,6 +33,7 @@
 # - RecordTagCar4 and 8 (nothing calls them); TimeBelowRecord with the
 #   first byte higher, the second higher and all equal; GlyphSlideThree with
 #   the glyphs $8006 and $800C.
+# - PictureTurnStep with R held (the pace of 8).
 load build/stuntracefx/states/novice_coupe_race1.state
 set 7E3437 FE
 call 03:FDF7 p=30 db=7E d=0000
@@ -560,4 +561,11 @@ wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
 set 7E1010 06,80,0C,80,00,80
 call 07:9814 p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D1E 10,00
+set 7E0D31 00,00,02,00
+set 7E0309 00,00
+set 7E0D7F 00,00
+call 07:C593 p=30 db=07 d=0000
 wait 1

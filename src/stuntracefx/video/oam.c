@@ -1715,3 +1715,93 @@ void abi_OamStagePause(void)
     } while ((uint8_t)cpu.a);
     op_plp(p0);
 }
+
+void abi_GsuCF42To3000(void);
+void abi_GsuCF42ToC000(void);
+void abi_GsuRun(void);
+
+/*
+ * @routine 07:C593 PictureTurnStep
+ * WHAT IT DOES: Turns the picture one step at a pace set by the buttons.
+ * After $0D32 reads 0, a nonzero delay $0D31 is counted down and nothing
+ * else happens. Otherwise the delay is set from the buttons $0D1E (X 3,
+ * Y 2, L 6, R 8, none 4), the picture number $0D33 moves back with Select
+ * held ($0309 bit $2000; 0 wraps to 7) or on, and the entry of the table
+ * at $C648 (three bytes each: source word, bank byte) is drawn: by
+ * GsuCF42To3000 and Super FX program $07:EE59 with $0D7F nonzero, or
+ * GsuCF42ToC000 and $07:EE50. $0D32 is decremented at the end.
+ * HOW: P saved and restored. A table word below $8000 is a picture number
+ * to go to instead (entry 8 sends the count back to 0). The R pace runs
+ * only from unit_cpu.
+ * Entry: M 8-bit, X 8-bit, D = $0000, data bank $07. Exit: P restored; A
+ * as the last call leaves it, X = the program address, Y = $0D7F.
+ */
+void abi_PictureTurnStep(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t p0 = cpu.p;
+    uint16_t m, k, t, y;
+
+    op_sep(P_M);
+    do
+        op_lda8(b | 0x0D32);
+    while ((uint8_t)cpu.a);
+    op_lda8(b | 0x0D31);
+    if ((uint8_t)cpu.a) {
+        wr8(b | 0x0D31, (uint8_t)(rd8(b | 0x0D31) - 1));
+        op_plp(p0);
+        return;
+    }
+    op_rep(P_M);
+    op_lda16(b | 0x0D1E);
+    m = cpu.a;
+    k = (m & 0x0040) ? 3 : (m & 0x4000) ? 2 : (m & 0x0020) ? 6
+        : (m & 0x0010) ? 8 : 4;
+    cpu.a = k;
+    op_sep(P_M);
+    wr8(b | 0x0D31, (uint8_t)k);
+    op_rep(P_M | P_X);
+    op_lda16(b | 0x0309);
+    if (cpu.a & 0x2000) {
+        op_lda16(b | 0x0D33);
+        t = (uint16_t)(cpu.a - 1);
+        if (t & 0x8000)
+            t = 0x0007;
+    } else {
+        op_lda16(b | 0x0D33);
+        t = (uint16_t)(cpu.a + 1);
+    }
+    for (;;) {
+        wr16(b | 0x0D33, t);
+        y = (uint16_t)((uint16_t)(t << 1) + rd16(b | 0x0D33));
+        cpu.y = y;
+        cpu.x = (uint16_t)(rd16(b | (uint16_t)(0xC64A + y)) & 0x00FF);
+        cpu.a = rd16(b | (uint16_t)(0xC648 + y));
+        if (cpu.a >= 0x8000)
+            break;
+        t = cpu.a;
+    }
+    cpu.p = (uint8_t)(nz16(cpu.p, (uint16_t)(cpu.a - 0x8000)) | P_C);
+    cpu.y = rd16(b | 0x0D7F);
+    cpu.p = nz16(cpu.p, cpu.y);
+    if (cpu.y) {
+        abi_GsuCF42To3000();
+        op_sep(P_M);
+        op_rep(P_X);
+        cpu.x = 0xEE59;
+        cpu.p = nz16(cpu.p, 0xEE59);
+    } else {
+        abi_GsuCF42ToC000();
+        op_sep(P_M);
+        op_rep(P_X);
+        cpu.x = 0xEE50;
+        cpu.p = nz16(cpu.p, 0xEE50);
+    }
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x07);
+    cpu.p = nz8(cpu.p, 0x07);
+    abi_GsuRun();
+    op_rep(P_M | P_X);
+    op_sep(P_M);
+    wr8(b | 0x0D32, (uint8_t)(rd8(b | 0x0D32) - 1));
+    op_plp(p0);
+}

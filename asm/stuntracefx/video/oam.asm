@@ -1657,3 +1657,129 @@ OamStagePause:
     plp
     rts
 
+
+; @routine 07:C593 PictureTurnStep
+; WHAT IT DOES: Turns the picture one step at a pace set by the buttons.
+; After $0D32 reads 0, a nonzero delay $0D31 is counted down and nothing
+; else happens. Otherwise the delay is set from the buttons $0D1E (X 3,
+; Y 2, L 6, R 8, none 4), the picture number $0D33 moves back with Select
+; held ($0309 bit $2000; 0 wraps to 7) or on, and the entry of the table
+; at $C648 (three bytes each: source word, bank byte) is drawn: by
+; GsuCF42To3000 and Super FX program $07:EE59 with $0D7F nonzero, or
+; GsuCF42ToC000 and $07:EE50. $0D32 is decremented at the end.
+; HOW: P saved and restored. A table word below $8000 is a picture number
+; to go to instead (entry 8 sends the count back to 0). The R pace runs
+; only from unit_cpu.
+; Entry: M 8-bit, X 8-bit, D = $0000, data bank $07. Exit: P restored; A
+; as the last call leaves it, X = the program address, Y = $0D7F.
+%at($07C593)
+PictureTurnStep:
+    php
+.lC594:
+    sep.b #$20
+    lda.w !gsu_upload_pending
+    bne .lC594
+    lda.w !wram_0D2F+2
+    beq .lC5A5
+    dec.w !wram_0D2F+2
+    plp
+    rts
+.lC5A5:
+    rep.b #$20
+    lda.w !joy1_last
+    bit.w #$0040
+    beq .lC5B4
+    lda.w #$0003
+    bra .lC5D5
+.lC5B4:
+    bit.w #$4000
+    beq .lC5BE
+    lda.w #$0002
+    bra .lC5D5
+.lC5BE:
+    bit.w #$0020
+    beq .lC5C8
+    lda.w #$0006
+    bra .lC5D5
+.lC5C8:
+    bit.w #$0010
+    beq .lC5D2
+    lda.w #$0008                    ; not reached in the traces so far
+    bra .lC5D5                      ; not reached in the traces so far
+.lC5D2:
+    lda.w #$0004
+.lC5D5:
+    sep.b #$20
+    sta.w !wram_0D2F+2
+    rep.b #$30
+    lda.w !joy1_held
+    bit.w #$2000
+    beq .lC5EF
+    lda.w !gsu_upload_pending+1
+    dec a
+    bpl .lC5F3
+    lda.w #$0007
+    bra .lC5F3
+.lC5EF:
+    lda.w !gsu_upload_pending+1
+    inc a
+.lC5F3:
+    sta.w !gsu_upload_pending+1
+    asl a
+    clc
+    adc.w !gsu_upload_pending+1
+    tay
+    lda.w PictureTurnStep_table+2,y
+    and.w #$00FF
+    tax
+    lda.w PictureTurnStep_table,y
+    cmp.w #$8000
+    bcs .lC610
+    sta.w !gsu_upload_pending+1
+    bra .lC5F3
+.lC610:
+    ldy.w !gsu_buffer_select
+    beq .lC62C
+    jsl.l GsuCF42To3000
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$EE59
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    bra .lC641
+.lC62C:
+    jsl.l GsuCF42ToC000
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$EE50
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+.lC641:
+    sep.b #$20
+    dec.w !gsu_upload_pending
+    plp
+    rts
+PictureTurnStep_table:
+    ; source word, bank byte; a word below $8000 is a picture number
+    dw $9394
+    db $1D
+    dw $9500
+    db $1D
+    dw $9664
+    db $1D
+    dw $97D4
+    db $1D
+    dw $993C
+    db $1D
+    dw $9AA4
+    db $1D
+    dw $9C04
+    db $1D
+    dw $9D60
+    db $1D
+    dw $0000
+    db $00
