@@ -45,6 +45,11 @@
 #   from far and from behind the near limit; and lines whose earlier
 #   point lies past each edge while the new one is inside.
 # - FxCarMoveParts for car $1918 with bit 10 of its first part's +$46 set.
+# - programs no script starts: FxGlyph16x16 and FxGlyph16x32Double (with
+#   glyph $8000; the double one also with none), each kept so the next
+#   program runs the NOP after its STOP; FxSprite16x32 at x = 16, $D8, -8
+#   and -256; FxNoiseFillScreen; FxCoursePrevEntry from segment 1 (to the
+#   last) and from 3.
 load build/stuntracefx/states/battle_04.state
 set 701B04 00,00
 set 701CE4 00,00
@@ -266,4 +271,47 @@ wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
 set 701816 1A,05
 fx 04:A4ED stop=888C r8=1918 r10=0242
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70020A 10,00,10,00
+set 700216 00,80
+fx 07:F5C9 stop=EE86 keep
+fx 07:EE94 stop=EE86
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700216 00,00
+fx 07:F7F4 stop=EE86 keep
+set 70020A 10,00,10,00
+set 700216 00,80
+fx 07:F7F4 stop=EE86 keep
+fx 07:EE94 stop=EE86
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70020A 10,00,10,00
+set 700216 00,80
+fx 07:FAB0 stop=EE86
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70020A D8,00,10,00
+set 700216 00,80
+fx 07:FAB0 stop=EE86
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70020A F8,FF,10,00
+set 700216 00,80
+fx 07:FAB0 stop=EE86
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70020A 00,FF,10,00
+set 700216 00,80
+fx 07:FAB0 stop=EE86
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 07:EE94 stop=EE86
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 04:CD05 stop=888C r0=0001 r5=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 04:CD05 stop=888C r0=0003 r5=0040
 wait 1
