@@ -702,3 +702,28 @@ NearCarSoundUpdate:
 .done:
     plp
     rtl
+
+; @routine 04:DA20 WindowSlideUpSound
+; WHAT IT DOES: Sends sound $10 on port 1 while the window slide is going up
+; (bit 2 of $0DA5), then sets $19D8 (window HDMA off) if it is clear.
+; HOW: BIT #$04 on $0DA5 through the data bank. The sound is not sent in the
+; traces so far.
+; Entry: any widths. Exit: A low byte = $19D8's old value, or 1 when it was
+; clear; P unchanged.
+%at($04DA20)
+WindowSlideUpSound:
+    php
+    sep.b #$20
+    lda.w !slide_flags
+    bit.b #$04
+    beq .mark
+    lda.b #$10
+    jsl.l SoundPort1QueuePush
+.mark:
+    lda.w !window_hdma_off
+    bne .done
+    lda.b #$01
+    sta.w !window_hdma_off
+.done:
+    plp
+    rtl

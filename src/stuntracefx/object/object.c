@@ -2027,3 +2027,44 @@ void abi_ObjectSparkleStart(void)
     cpu.p |= P_M;
     abi_ObjectSparkleStep();
 }
+
+/*
+ * @routine 08:D14A ObjectSpawnD460UnlessFlag
+ * WHAT IT DOES: Unless $0D62 is set, makes a new object (ObjectSpawn, kind
+ * word $A158 at $1F2B) with handler $08:D460 at object X's position
+ * (ObjectCopyPositionTo) and X as its +$27, as ObjectSpawnChanceD460.
+ * HOW: The handler is the long pointer +$1A-$1C; through the data bank.
+ * The no-object exit is not reached in the traces so far.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectSpawnChanceD460;
+ * with $0D62 set, A low byte = it, Z clear.
+ */
+void abi_ObjectSpawnD460UnlessFlag(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v, a;
+
+    v = rd8(b | 0x0D62);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+    if (v)
+        return;
+    cpu.p &= (uint8_t)~P_M;
+    cpu.a = 0xA158;
+    wr16(b | 0x1F2B, 0xA158);
+    cpu.p |= P_M;
+    abi_ObjectSpawn();
+    if (!(cpu.p & P_C))
+        return;
+    cpu.p &= (uint8_t)~P_M;
+    cpu.a = 0xD460;
+    wr16(b | (uint16_t)(0x201A + cpu.y), 0xD460);
+    cpu.p |= P_M;
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x08);
+    wr8(b | (uint16_t)(0x201C + cpu.y), 0x08);
+    abi_ObjectCopyPositionTo();
+    a = (uint8_t)cpu.a;
+    wr16(b | (uint16_t)(0x2027 + cpu.y), cpu.x);
+    cpu.p |= P_M;
+    cpu.a = (uint16_t)((cpu.x & 0xFF00) | a);
+    cpu.p = nz8(cpu.p, a);
+}

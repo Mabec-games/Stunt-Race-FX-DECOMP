@@ -724,3 +724,33 @@ void abi_NearCarSoundUpdate(void)
     abi_SoundNearCarOnce();
     cpu.p = p0;
 }
+
+/*
+ * @routine 04:DA20 WindowSlideUpSound
+ * WHAT IT DOES: Sends sound $10 on port 1 while the window slide is going
+ * up (bit 2 of $0DA5), then sets $19D8 (window HDMA off) if it is clear.
+ * HOW: BIT #$04 on $0DA5 through the data bank. The sound is not sent in
+ * the traces so far.
+ * Entry: any widths. Exit: A low byte = $19D8's old value, or 1 when it
+ * was clear; P unchanged.
+ */
+void abi_WindowSlideUpSound(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t p0 = cpu.p, v;
+
+    cpu.p |= P_M;
+    v = rd8(b | 0x0DA5);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    if (v & 0x04) {
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x10);
+        abi_SoundPort1QueuePush();
+    }
+    v = rd8(b | 0x19D8);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    if (!v) {
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
+        wr8(b | 0x19D8, 0x01);
+    }
+    cpu.p = p0;
+}

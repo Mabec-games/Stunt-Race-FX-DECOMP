@@ -2027,3 +2027,39 @@ ObjectSparkleStep:
     dec.w !obj_48,x
     jsl.l ObjectRebucket
     rtl
+
+; @routine 08:D14A ObjectSpawnD460UnlessFlag
+; WHAT IT DOES: Unless $0D62 is set, makes a new object (ObjectSpawn, kind word
+; $A158 at $1F2B) with handler $08:D460 at object X's position
+; (ObjectCopyPositionTo) and X as its +$27, as ObjectSpawnChanceD460.
+; HOW: The handler is the long pointer +$1A-$1C; through the data bank. The
+; no-object exit is not reached in the traces so far.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectSpawnChanceD460; with
+; $0D62 set, A low byte = it, Z clear.
+%at($08D14A)
+ObjectSpawnD460UnlessFlag:
+    lda.w !wram_0D62
+    bne ObjectSpawnD460UnlessFlag_done
+    rep.b #$20
+    lda.w #$A158
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .spawned
+    jml.l ObjectSpawnD460UnlessFlag_done
+.spawned:
+    rep.b #$20
+    lda.w #$D460
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    jsl.l ObjectCopyPositionTo
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_27,y
+    sep.b #$20
+    pla
+ObjectSpawnD460UnlessFlag_done:         ; reached by the long jump above
+    rts
