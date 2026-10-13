@@ -20,6 +20,9 @@
 #   positive and both negative; FxContactNote for record $210C (bit 7 of
 #   +$16 cleared, no contacts) and $2136 with the first pool cut to its
 #   first block, of $14 bytes, so the $12-byte contact takes it whole.
+# - FxSteerFromInput on the player's record: with bit 10 of +$40 set and
+#   +$4A negative; with no steering and +$3A far negative and far positive
+#   (past $266A either way); FxCourseNextEntry with bit 1 of +$70 set.
 load build/stuntracefx/states/battle_04.state
 set 701B04 00,00
 set 701CE4 00,00
@@ -101,4 +104,23 @@ set 70109A 00,00
 set 701434 00,00,14,00
 set 702122 01,23,00,00
 fx 04:A345 stop=888C r6=210C r8=2136 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 701778 08,07
+set 701782 00,FF
+fx 04:BA05 stop=888C r2=0000 r8=1738 r10=0242
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 701772 00,80
+set 70266A 10,00
+fx 04:BA05 stop=888C r2=0000 r8=1738 r10=0242
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 701772 00,70
+set 70266A 10,00
+fx 04:BA05 stop=888C r2=0000 r8=1738 r10=0242
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 701988 06,00
+fx 04:CCA4 stop=888C r8=1918 r10=0244
 wait 1
