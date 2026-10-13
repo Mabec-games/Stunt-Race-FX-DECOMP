@@ -5,6 +5,7 @@
  */
 #include "machine.h"
 #include "hw.h"
+#include "cpu_ops.h"
 
 void CgramDma(uint16_t src, uint8_t colour, uint16_t size);
 
@@ -840,4 +841,41 @@ store:
     cpu.x = 0x0000;
     wr16(0x7EFD8B, cpu.a);
     cpu.p = nz16(cpu.p, 0);
+}
+
+void abi_PlayerColoursFlash(void);
+void abi_PaletteCycle(void);
+void abi_PaletteKeptColoursStep(void);
+
+/*
+ * @routine 7E:B3F4 PalettesStep
+ * WHAT IT DOES: While $0E5F is set, steps the frame's palette effects for
+ * player 0: its colours (PlayerColoursFlash with A = $0DDA), its status
+ * colour (StatusColourPick), the cycling colours (PaletteCycle) and the
+ * kept colours (PaletteKeptColoursStep).
+ * HOW: Y = 0 for each; M 8-bit, X 16-bit, then both 8-bit for the last.
+ * Entry: any widths. Exit: P restored; X and Y as the last call left them.
+ */
+void abi_PalettesStep(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t p0 = cpu.p, v;
+
+    cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
+    v = rd8(b | 0x0E5F);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    if (v) {
+        cpu.y = 0x0000;
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | rd8(b | 0x0DDA));
+        abi_PlayerColoursFlash();
+        cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
+        cpu.y = 0x0000;
+        abi_StatusColourPick();
+        abi_PaletteCycle();
+        op_sep(P_M | P_X);
+        cpu.y = 0x00;
+        cpu.x = 0x00;
+        abi_PaletteKeptColoursStep();
+    }
+    cpu.p = p0;
 }

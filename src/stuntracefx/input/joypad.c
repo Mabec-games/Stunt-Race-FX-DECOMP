@@ -133,3 +133,30 @@ void abi_JoypadPortCheck(void)
     cpu.x = port;
     cpu.y = 0x00FF;
 }
+
+void abi_SoundPortsSend(void);
+void abi_JoypadRead(void);
+
+/*
+ * @routine 7E:A7A3 FrameSoundAndJoypads
+ * WHAT IT DOES: The frame's sound output (SoundPortsSend) and joypad read
+ * (JoypadRead), then adds this frame's presses ($0311, $0313) to the ones
+ * the menus collect at $118B and $118D.
+ * HOW: 16-bit ORs through the data bank.
+ * Entry: as JoypadRead. Exit: A = $118D; M 16-bit; N, Z from it.
+ */
+void abi_FrameSoundAndJoypads(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    unsigned i;
+
+    abi_SoundPortsSend();
+    abi_JoypadRead();
+    cpu.p &= (uint8_t)~P_M;
+    for (i = 0; i < 2; i++) {
+        cpu.a = rd16(b | (uint16_t)(0x118B + i * 2));
+        cpu.a |= rd16(b | (uint16_t)(0x0311 + i * 2));
+        cpu.p = nz16(cpu.p, cpu.a);
+        wr16(b | (uint16_t)(0x118B + i * 2), cpu.a);
+    }
+}

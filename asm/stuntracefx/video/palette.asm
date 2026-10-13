@@ -935,3 +935,33 @@ StatusColourPick:
     sta.l !status_colour,x
 .done:
     rts
+
+; @routine 7E:B3F4 PalettesStep
+; WHAT IT DOES: While $0E5F is set, steps the frame's palette effects for
+; player 0: its colours (PlayerColoursFlash with A = $0DDA), its status
+; colour (StatusColourPick), the cycling colours (PaletteCycle) and the
+; kept colours (PaletteKeptColoursStep).
+; HOW: Y = 0 for each; M 8-bit, X 16-bit, then both 8-bit for the last.
+; Entry: any widths. Exit: P restored; X and Y as the last call left them.
+%ramcode($7EB3F4, $01111B)
+PalettesStep:
+    php
+    sep.b #$20
+    rep.b #$10
+    lda.w !palette_animate
+    beq .done
+    ldy.w #$0000
+    lda.w !wram_0DDA
+    jsr.w PlayerColoursFlash
+    sep.b #$20
+    rep.b #$10
+    ldy.w #$0000
+    jsr.w StatusColourPick
+    jsr.w PaletteCycle
+    sep.b #$30
+    ldy.b #$00
+    ldx.b #$00
+    jsr.w PaletteKeptColoursStep
+.done:
+    plp
+    rts

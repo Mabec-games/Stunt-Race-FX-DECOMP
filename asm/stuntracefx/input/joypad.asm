@@ -147,3 +147,22 @@ JoypadPortCheck:
     rep.b #$20
     plp
     rts
+
+; @routine 7E:A7A3 FrameSoundAndJoypads
+; WHAT IT DOES: The frame's sound output (SoundPortsSend) and joypad read
+; (JoypadRead), then adds this frame's presses ($0311, $0313) to the ones
+; the menus collect at $118B and $118D.
+; HOW: 16-bit ORs through the data bank.
+; Entry: as JoypadRead. Exit: A = $118D; M 16-bit; N, Z from it.
+%ramcode($7EA7A3, $0104CA)
+FrameSoundAndJoypads:
+    jsr.w SoundPortsSend
+    jsr.w JoypadRead
+    rep.b #$20
+    lda.w !menu_joy1_pressed
+    ora.w !joy1_pressed
+    sta.w !menu_joy1_pressed
+    lda.w !menu_joy2_pressed
+    ora.w !joy2_pressed
+    sta.w !menu_joy2_pressed
+    rts
