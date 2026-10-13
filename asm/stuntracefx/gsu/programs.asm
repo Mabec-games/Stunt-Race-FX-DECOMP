@@ -3320,9 +3320,8 @@ GlyphSlideThree:
 ; to 24 (BFB3BE before 12, BF12B6 before 16), or with $0FAE 0 only 12 to
 ; 15, each 8 pixels to the left; then the glyph pictures GlyphGrid1A and
 ; GlyphGrid1D.
-; HOW: X steps by 2 through the sprites. The left-shifted draw at $A41D
-; subtracts 8 and joins GlyphSpriteDraw after its first load; it runs only
-; from unit_cpu.
+; HOW: X steps by 2 through the sprites; the left-shifted ones by
+; GlyphSpriteDrawLeft8 (only from unit_cpu).
 ; Entry: D = $0000. Exit: as GlyphGrid1D leaves it.
 %at($07A39A)
 GlyphSpritesDrawAll:
@@ -3346,10 +3345,10 @@ GlyphSpritesDrawAll:
     lda.w !p1_lead+11
     bne .lA3E7
     jsl.l GsuBytes200_BFB3BE        ; not reached in the traces so far
-    jsr.w GlyphSpritesDrawAll_left  ; not reached in the traces so far
-    jsr.w GlyphSpritesDrawAll_left  ; not reached in the traces so far
-    jsr.w GlyphSpritesDrawAll_left  ; not reached in the traces so far
-    jsr.w GlyphSpritesDrawAll_left  ; not reached in the traces so far
+    jsr.w GlyphSpriteDrawLeft8      ; not reached in the traces so far
+    jsr.w GlyphSpriteDrawLeft8      ; not reached in the traces so far
+    jsr.w GlyphSpriteDrawLeft8      ; not reached in the traces so far
+    jsr.w GlyphSpriteDrawLeft8      ; not reached in the traces so far
     bra .lA416                      ; not reached in the traces so far
 .lA3E7:
     jsl.l GsuBytes200_BFB3BE
@@ -3371,7 +3370,12 @@ GlyphSpritesDrawAll:
     jsr.w GlyphGrid1A
     jsr.w GlyphGrid1D
     rts
-GlyphSpritesDrawAll_left:
+; @routine 07:A41D GlyphSpriteDrawLeft8
+; WHAT IT DOES: As GlyphSpriteDraw, 8 pixels to the left.
+; HOW: Subtracts 8 from the sprite's x and joins GlyphSpriteDraw after its
+; first load. Only GlyphSpritesDrawAll calls it, with $0FAE 0 (unit_cpu).
+; Entry: M 16-bit, X 16-bit; X = the sprite * 2. Exit: as GlyphSpriteDraw.
+GlyphSpriteDrawLeft8:
     lda.w !glyph_spr_x,x            ; not reached in the traces so far
     sec                             ; not reached in the traces so far
     sbc.w #$0008                    ; not reached in the traces so far

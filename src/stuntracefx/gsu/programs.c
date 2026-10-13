@@ -2325,6 +2325,23 @@ void abi_GlyphSlideThree(void)
 void abi_GsuBytes200_BF12B6(void);
 
 /*
+ * @routine 07:A41D GlyphSpriteDrawLeft8
+ * WHAT IT DOES: As GlyphSpriteDraw, 8 pixels to the left.
+ * HOW: Subtracts 8 from the sprite's x and joins GlyphSpriteDraw after its
+ * first load. Only GlyphSpritesDrawAll calls it, with $0FAE 0 (unit_cpu).
+ * Entry: M 16-bit, X 16-bit; X = the sprite * 2. Exit: as GlyphSpriteDraw.
+ */
+void abi_GlyphSpriteDrawLeft8(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t x = cpu.x;
+
+    op_lda16(b | (uint16_t)(0x0FB0 + x));
+    op_sub16(0x0008);
+    glyph_sprite_at(b, x);
+}
+
+/*
  * @routine 07:A39A GlyphSpritesDrawAll
  * WHAT IT DOES: Draws glyph sprites 1 to 11 (GlyphSpriteDraw) with the
  * renderer bytes switched between them (GsuBytes200_BFB3BE before 1 and
@@ -2332,15 +2349,13 @@ void abi_GsuBytes200_BF12B6(void);
  * to 24 (BFB3BE before 12, BF12B6 before 16), or with $0FAE 0 only 12 to
  * 15, each 8 pixels to the left; then the glyph pictures GlyphGrid1A and
  * GlyphGrid1D.
- * HOW: X steps by 2 through the sprites. The left-shifted draw at $A41D
- * subtracts 8 and joins GlyphSpriteDraw after its first load; it runs only
- * from unit_cpu.
+ * HOW: X steps by 2 through the sprites; the left-shifted ones by
+ * GlyphSpriteDrawLeft8 (only from unit_cpu).
  * Entry: D = $0000. Exit: as GlyphGrid1D leaves it.
  */
 void abi_GlyphSpritesDrawAll(void)
 {
     uint32_t b = (uint32_t)cpu.db << 16;
-    uint16_t x;
     int i;
 
     op_rep(P_M | P_X);
@@ -2360,12 +2375,8 @@ void abi_GlyphSpritesDrawAll(void)
     op_lda16(b | 0x0FAE);
     if (!cpu.a) {
         abi_GsuBytes200_BFB3BE();
-        for (i = 0; i < 4; i++) {
-            x = cpu.x;
-            op_lda16(b | (uint16_t)(0x0FB0 + x));
-            op_sub16(0x0008);
-            glyph_sprite_at(b, x);
-        }
+        for (i = 0; i < 4; i++)
+            abi_GlyphSpriteDrawLeft8();
     } else {
         abi_GsuBytes200_BFB3BE();
         for (i = 0; i < 4; i++)
