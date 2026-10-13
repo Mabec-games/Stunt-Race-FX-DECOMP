@@ -467,3 +467,44 @@ void abi_FxRecordHeadingAhead(void)
     g = FxRecordHeadingAhead(g);
     memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
 }
+
+void abi_FxTableEntryWords(void);
+
+/* |R0 - b| / 4 with the Super FX's flags: SUB, then NOT and INC when
+   negative, then two DIV2s. */
+static uint16_t quarter_apart(uint16_t a, uint16_t b)
+{
+    uint16_t d = gsu_sub(a, b, 0);
+
+    if (gsu.s)
+        d = gsu_inc(gsu_not(d));
+    return gsu_div2(gsu_div2(d));
+}
+
+/*
+ * @routine 04:CED6 FxCourseNextDistance
+ * WHAT IT DOES: Finds the segment after entry R0 for car R8
+ * (FxTableEntryWords, FxCourseNextEntry) and returns how far the car is
+ * from it: R0 = |car x (+$1E) - R1| / 4 + |car z (+$22) - R3| / 4.
+ * HOW: The return address is kept on the R10 stack; each difference is
+ * made positive with NOT and INC and halved twice with DIV2.
+ * Entry: R0 = entry; R8 = the car's record; R10 = stack; R11 = return
+ * address. Exit: R0 = the distance; R4 = the x part; R1-R3, R5, R6 as
+ * FxCourseNextEntry leaves them; R11 = $CEE4; OV, CY from the final add;
+ * S, Z from R10; the last RAM address R10.
+ */
+void abi_FxCourseNextDistance(void)
+{
+    gsu_push(&gsu.r[10], gsu.r[11]);
+    gsu.r[11] = 0xCEDF;
+    abi_FxTableEntryWords();
+    gsu.r[11] = 0xCEE4;
+    abi_FxCourseNextEntry();
+    gsu.r[0] = gsu_add(0x001E, gsu.r[8], 0);
+    gsu.r[0] = quarter_apart(gsu_ldw(gsu.r[0]), gsu.r[1]);
+    gsu.r[4] = gsu.r[0];
+    gsu.r[0] = gsu_add(0x0022, gsu.r[8], 0);
+    gsu.r[0] = quarter_apart(gsu_ldw(gsu.r[0]), gsu.r[3]);
+    gsu.r[0] = gsu_add(gsu.r[0], gsu.r[4], 0);
+    gsu_pull(&gsu.r[10]);
+}

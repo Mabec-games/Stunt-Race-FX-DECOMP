@@ -450,4 +450,57 @@ FxLapSegment:
     move r15,r11
     nop
 
+; @routine 04:CED6 FxCourseNextDistance
+; WHAT IT DOES: Finds the segment after entry R0 for car R8 (FxTableEntryWords,
+; FxCourseNextEntry) and returns how far the car is from it: R0 = |car x
+; (+$1E) - R1| / 4 + |car z (+$22) - R3| / 4.
+; HOW: The return address is kept on the R10 stack; each difference is made
+; positive with NOT and INC and halved twice with DIV2.
+; Entry: R0 = entry; R8 = the car's record; R10 = stack; R11 = return
+; address. Exit: R0 = the distance; R4 = the x part; R1-R3, R5, R6 as
+; FxCourseNextEntry leaves them; R11 = $CEE4; OV, CY from the final add; S,
+; Z from R10; the last RAM address R10.
+%at($04CED6)
+FxCourseNextDistance:
+    from r11
+    stw (r10)
+    inc r10
+    inc r10
+    link #4
+    iwt r15,#FxTableEntryWords
+    nop
+    link #4
+    iwt r15,#FxCourseNextEntry
+    nop
+    ibt r0,#$1E
+    add r8
+    ldw (r0)
+    sub r1
+    bpl .x
+    nop
+    not
+    inc r0
+.x:
+    div2
+    div2
+    move r4,r0
+    ibt r0,#$22
+    add r8
+    ldw (r0)
+    sub r3
+    bpl .z
+    nop
+    not
+    inc r0
+.z:
+    div2
+    div2
+    add r4
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+
 arch 65816
+
