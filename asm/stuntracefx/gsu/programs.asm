@@ -2904,3 +2904,253 @@ GlyphGrid1D:
     rep.b #$10
     rts
 
+; @routine 04:DB87 GlyphTimesSequence
+; WHAT IT DOES: One frame of the three best times' display, by its step
+; $10D8 (the table at $04:DB94): two waits; then for each of the course
+; $0D4A's three times ($0EF9, $0EFC, $0EFF): its message and time as a
+; glyph list (GlyphListMessageAndTime), shown a glyph a frame
+; (GlyphListDraw with the entries' flags set to $FF one by one), a wait of
+; 10, then cleared a glyph a frame, a wait of 4; then the row of six glyphs
+; at y 96 drawn from its last glyph back to its first a step at a time
+; with waits of 4 and 8; at the end the split window on ($19D8 = 1, $19DF
+; cleared) with sound $04 on port 1, and after $14 frames the screen at
+; $07:EE26 (with data bank $07).
+; HOW: JMP (table,X) on the step; $115A counts frames, $115C the entry.
+; Entry: any widths, D = $0000. Exit: M 16-bit, X 16-bit; A, X, Y as the
+; step leaves them.
+%at($04DB87)
+GlyphTimesSequence:
+    rep.b #$30
+    lda.w !wram_10D8
+    and.w #$00FF
+    asl a
+    tax
+    jmp.w (.steps,x)
+.steps:
+    dw .step_DBC2
+    dw .step_DBD1
+    dw .step_DBDA
+    dw .step_DC01
+    dw .step_DC27
+    dw .step_DC36
+    dw .step_DC5C
+    dw .step_DC01
+    dw .step_DC27
+    dw .step_DC36
+    dw .step_DC87
+    dw .step_DC01
+    dw .step_DC27
+    dw .step_DC36
+    dw .step_DCB2
+    dw .step_DCBC
+    dw .step_DCCE
+    dw .step_DCE0
+    dw .step_DCF2
+    dw .step_DD04
+    dw .step_DD16
+    dw .step_DD28
+    dw .step_DD4C
+.step_DBC2:
+    dec.w !wram_115A
+    bne .lDBD0
+    lda.w #$001E
+    sta.w !wram_115A
+    inc.w !wram_10D8
+.lDBD0:
+    rts
+.step_DBD1:
+    dec.w !wram_115A
+    bne .lDBD9
+    inc.w !wram_10D8
+.lDBD9:
+    rts
+.step_DBDA:
+    sep.b #$20
+    lda.w !lap_times+9
+    sta.b !save_block_offset
+    lda.w !lap_times+10
+    sta.b !glyph_time_mid
+    lda.w !lap_times+11
+    sta.b !record_page
+    rep.b #$20
+    stz.w !wram_115A+2
+    inc.w !wram_10D8
+    lda.w !wram_0D4A
+    and.w #$00FF
+    asl a
+    asl a
+    asl a
+    tax
+    jsr.w GlyphListMessageAndTime
+    rts
+.step_DC01:
+    lda.w !wram_115A+2
+    tax
+    lda.w #$00FF
+    sta.w !glyph_list_on,x
+    inc.w !wram_115A+2
+    inc.w !wram_115A+2
+    lda.w !wram_115A+2
+    lsr a
+    cmp.w !glyph_list_count
+    bcc .lDC23
+    inc.w !wram_10D8
+    lda.w #$000A
+    sta.w !wram_115A
+.lDC23:
+    jsr.w GlyphListDraw
+    rts
+.step_DC27:
+    dec.w !wram_115A
+    bne .lDC32
+    stz.w !wram_115A+2
+    inc.w !wram_10D8
+.lDC32:
+    jsr.w GlyphListDraw
+    rts
+.step_DC36:
+    lda.w !wram_115A+2
+    tax
+    lda.w #$0000
+    sta.w !glyph_list_on,x
+    inc.w !wram_115A+2
+    inc.w !wram_115A+2
+    lda.w !wram_115A+2
+    lsr a
+    cmp.w !glyph_list_count
+    bcc .lDC58
+    inc.w !wram_10D8
+    lda.w #$0004
+    sta.w !wram_115A
+.lDC58:
+    jsr.w GlyphListDraw
+    rts
+.step_DC5C:
+    sep.b #$20
+    lda.w !lap_times+12
+    sta.b !save_block_offset
+    lda.w !lap_times+13
+    sta.b !glyph_time_mid
+    lda.w !lap_times+14
+    sta.b !record_page
+    rep.b #$20
+    stz.w !wram_115A+2
+    inc.w !wram_10D8
+    lda.w !wram_0D4A
+    and.w #$00FF
+    asl a
+    asl a
+    asl a
+    clc
+    adc.w #$0002
+    tax
+    jsr.w GlyphListMessageAndTime
+    rts
+.step_DC87:
+    sep.b #$20
+    lda.w !lap_times+15
+    sta.b !save_block_offset
+    lda.w !lap_times+16
+    sta.b !glyph_time_mid
+    lda.w !lap_times+17
+    sta.b !record_page
+    rep.b #$20
+    stz.w !wram_115A+2
+    inc.w !wram_10D8
+    lda.w !wram_0D4A
+    and.w #$00FF
+    asl a
+    asl a
+    asl a
+    clc
+    adc.w #$0004
+    tax
+    jsr.w GlyphListMessageAndTime
+    rts
+.step_DCB2:
+    lda.w #$0004
+    sta.w !wram_115A
+    inc.w !wram_10D8
+    rts
+.step_DCBC:
+    dec.w !wram_115A
+    bne .lDCCA
+    lda.w #$0004
+    sta.w !wram_115A
+    inc.w !wram_10D8
+.lDCCA:
+    jsr.w GlyphRowY60From5
+    rts
+.step_DCCE:
+    dec.w !wram_115A
+    bne .lDCDC
+    lda.w #$0004
+    sta.w !wram_115A
+    inc.w !wram_10D8
+.lDCDC:
+    jsr.w GlyphRowY60From4
+    rts
+.step_DCE0:
+    dec.w !wram_115A
+    bne .lDCEE
+    lda.w #$0008
+    sta.w !wram_115A
+    inc.w !wram_10D8
+.lDCEE:
+    jsr.w GlyphRowY60From3
+    rts
+.step_DCF2:
+    dec.w !wram_115A
+    bne .lDD00
+    lda.w #$0008
+    sta.w !wram_115A
+    inc.w !wram_10D8
+.lDD00:
+    jsr.w GlyphRowY60From2
+    rts
+.step_DD04:
+    dec.w !wram_115A
+    bne .lDD12
+    lda.w #$0008
+    sta.w !wram_115A
+    inc.w !wram_10D8
+.lDD12:
+    jsr.w GlyphRowY60From1
+    rts
+.step_DD16:
+    dec.w !wram_115A
+    bne .lDD24
+    lda.w #$0004
+    sta.w !wram_115A
+    inc.w !wram_10D8
+.lDD24:
+    jsr.w GlyphRowY60From0
+    rts
+.step_DD28:
+    dec.w !wram_115A
+    bne .lDD48
+    lda.w #$0014
+    sta.w !wram_115A
+    inc.w !wram_10D8
+    sep.b #$20
+    lda.b #$01
+    sta.w !window_hdma_off
+    stz.w !wram_19DF
+    lda.b #$04
+    jsl.l SoundPort1QueuePush
+    rep.b #$20
+.lDD48:
+    jsr.w GlyphRowY60From0
+    rts
+.step_DD4C:
+    dec.w !wram_115A
+    bne .lDD5B
+    sep.b #$20
+    lda.b #$07
+    pha
+    plb
+    jml.l $07EE26
+.lDD5B:
+    rep.b #$30
+    jsr.w GlyphRowY60From0
+    rts

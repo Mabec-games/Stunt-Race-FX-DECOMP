@@ -1959,3 +1959,197 @@ void abi_GlyphGrid1D(void)
     abi_GsuBytes200_BFBBBE();
     glyph_grid3(0x1D, 0, 0);
 }
+
+void abi_GlyphListMessageAndTime(void);
+void abi_GlyphListDraw(void);
+void abi_SoundPort1QueuePush(void);
+
+/* DEC $115A (16-bit); at 0, $115A = reload (unless 0) and the step $10D8
+   moves on; 1 when it ran out. */
+static int glyph_wait(uint32_t b, uint16_t reload)
+{
+    uint16_t v = (uint16_t)(rd16(b | 0x115A) - 1);
+
+    wr16(b | 0x115A, v);
+    cpu.p = nz16(cpu.p, v);
+    if (v)
+        return 0;
+    if (reload) {
+        op_lda16_imm(reload);
+        wr16(b | 0x115A, reload);
+    }
+    v = (uint16_t)(rd16(b | 0x10D8) + 1);
+    wr16(b | 0x10D8, v);
+    cpu.p = nz16(cpu.p, v);
+    return 1;
+}
+
+/* INC $10D8 (16-bit). */
+static void glyph_next(uint32_t b)
+{
+    uint16_t v = (uint16_t)(rd16(b | 0x10D8) + 1);
+
+    wr16(b | 0x10D8, v);
+    cpu.p = nz16(cpu.p, v);
+}
+
+/* A time's three bytes to direct page $F5-$F7, $115C = 0, the next step,
+   then message $0D4A * 8 + extra (GlyphListMessageAndTime). */
+static void glyph_load_time(uint32_t b, uint16_t from, uint16_t extra)
+{
+    int i;
+
+    op_sep(P_M);
+    for (i = 0; i < 3; i++) {
+        op_lda8(b | (uint16_t)(from + i));
+        wr8((uint32_t)(0xF5 + i), (uint8_t)cpu.a);
+    }
+    op_rep(P_M);
+    wr16(b | 0x115C, 0x0000);
+    glyph_next(b);
+    op_lda16(b | 0x0D4A);
+    op_and16(0x00FF);
+    op_asl16();
+    op_asl16();
+    op_asl16();
+    if (extra)
+        op_add16(extra);
+    op_tax16();
+    abi_GlyphListMessageAndTime();
+}
+
+/* One more of the list's entries gets on-flag `flag` ($115C the entry * 2);
+   after the last, the next step and $115A = reload. Then the list is
+   drawn. */
+static void glyph_flag_step(uint32_t b, uint16_t flag, uint16_t reload)
+{
+    uint16_t v;
+
+    op_lda16(b | 0x115C);
+    op_tax16();
+    op_lda16_imm(flag);
+    wr16(b | (uint16_t)(0x110E + cpu.x), flag);
+    v = (uint16_t)(rd16(b | 0x115C) + 1);
+    wr16(b | 0x115C, v);
+    v = (uint16_t)(rd16(b | 0x115C) + 1);
+    wr16(b | 0x115C, v);
+    cpu.p = nz16(cpu.p, v);
+    op_lda16(b | 0x115C);
+    op_lsr16();
+    op_cmp16(rd16(b | 0x10E6));
+    if (cpu.p & P_C) {
+        glyph_next(b);
+        op_lda16_imm(reload);
+        wr16(b | 0x115A, reload);
+    }
+    abi_GlyphListDraw();
+}
+
+/*
+ * @routine 04:DB87 GlyphTimesSequence
+ * WHAT IT DOES: One frame of the three best times' display, by its step
+ * $10D8 (the table at $04:DB94): two waits; then for each of the course
+ * $0D4A's three times ($0EF9, $0EFC, $0EFF): its message and time as a
+ * glyph list (GlyphListMessageAndTime), shown a glyph a frame
+ * (GlyphListDraw with the entries' flags set to $FF one by one), a wait of
+ * 10, then cleared a glyph a frame, a wait of 4; then the row of six glyphs
+ * at y 96 drawn from its last glyph back to its first a step at a time
+ * with waits of 4 and 8; at the end the split window on ($19D8 = 1, $19DF
+ * cleared) with sound $04 on port 1, and after $14 frames the screen at
+ * $07:EE26 (with data bank $07).
+ * HOW: JMP (table,X) on the step; $115A counts frames, $115C the entry.
+ * Entry: any widths, D = $0000. Exit: M 16-bit, X 16-bit; A, X, Y as the
+ * step leaves them.
+ */
+void abi_GlyphTimesSequence(void)
+{
+    static void (*const row[6])(void) = {abi_GlyphRowY60From0, abi_GlyphRowY60From1, abi_GlyphRowY60From2,
+                                          abi_GlyphRowY60From3, abi_GlyphRowY60From4, abi_GlyphRowY60From5};
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t step;
+
+    op_rep(P_M | P_X);
+    op_lda16(b | 0x10D8);
+    op_and16(0x00FF);
+    op_asl16();
+    op_tax16();
+    step = (uint16_t)(cpu.x >> 1);
+    rd16(0x040000 | (uint16_t)(0xDB94 + cpu.x));
+    switch (step) {
+    case 0:
+        glyph_wait(b, 0x001E);
+        break;
+    case 1:
+        glyph_wait(b, 0);
+        break;
+    case 2:
+        glyph_load_time(b, 0x0EF9, 0);
+        break;
+    case 6:
+        glyph_load_time(b, 0x0EFC, 2);
+        break;
+    case 10:
+        glyph_load_time(b, 0x0EFF, 4);
+        break;
+    case 3: case 7: case 11:
+        glyph_flag_step(b, 0x00FF, 0x000A);
+        break;
+    case 4: case 8: case 12: {
+        uint16_t v = (uint16_t)(rd16(b | 0x115A) - 1);
+
+        wr16(b | 0x115A, v);
+        cpu.p = nz16(cpu.p, v);
+        if (!v) {
+            wr16(b | 0x115C, 0x0000);
+            glyph_next(b);
+        }
+        abi_GlyphListDraw();
+        break;
+    }
+    case 5: case 9: case 13:
+        glyph_flag_step(b, 0x0000, 0x0004);
+        break;
+    case 14:
+        op_lda16_imm(0x0004);
+        wr16(b | 0x115A, 0x0004);
+        glyph_next(b);
+        break;
+    case 15: case 16: case 17: case 18: case 19: case 20: {
+        static const uint16_t reload[6] = {0x0004, 0x0004, 0x0008, 0x0008, 0x0008, 0x0004};
+        glyph_wait(b, reload[step - 15]);
+        row[5 - (step - 15)]();
+        break;
+    }
+    case 21:
+        if (glyph_wait(b, 0x0014)) {
+            op_sep(P_M);
+            cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
+            cpu.p = nz8(cpu.p, 0x01);
+            wr8(b | 0x19D8, 0x01);
+            wr8(b | 0x19DF, 0x00);
+            cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x04);
+            cpu.p = nz8(cpu.p, 0x04);
+            abi_SoundPort1QueuePush();
+            op_rep(P_M);
+        }
+        abi_GlyphRowY60From0();
+        break;
+    default: {
+        uint16_t v = (uint16_t)(rd16(b | 0x115A) - 1);
+
+        wr16(b | 0x115A, v);
+        cpu.p = nz16(cpu.p, v);
+        if (!v) {
+            op_sep(P_M);
+            cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x07);
+            cpu.p = nz8(cpu.p, 0x07);
+            cpu.db = 0x07;
+            call_routine(0x07EE26, 0);
+            return;
+        }
+        op_rep(P_M | P_X);
+        abi_GlyphRowY60From0();
+        break;
+    }
+    }
+}
