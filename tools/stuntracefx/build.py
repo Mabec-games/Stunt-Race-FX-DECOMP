@@ -41,11 +41,42 @@ def stage_baserom():
         shutil.copyfile(REF, BASEROM)
 
 
+STATE_RECIPES = os.path.join(ROOT, 'tools', 'stuntracefx', 'states')
+STATES = os.path.join(B, 'states')
+
+
+def make_states():
+    """Run each recipe in tools/stuntracefx/states/ (a script that ends in
+    `save NAME`) whose state is missing or older than it, into
+    build/stuntracefx/states/NAME.state. Scripts start from one with
+    `load build/stuntracefx/states/NAME.state`: the frames that lead there
+    run once, not in every script and every gate. States hold the game's
+    RAM, so they are built here and never committed."""
+    os.makedirs(STATES, exist_ok=True)
+    todo = []
+    for r in sorted(glob.glob(os.path.join(STATE_RECIPES, '*.sfx'))):
+        st = os.path.join(STATES, os.path.splitext(os.path.basename(r))[0] + '.state')
+        if not os.path.exists(st) or os.path.getmtime(st) < os.path.getmtime(r):
+            todo.append(r)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=os.cpu_count()) as ex:
+        list(ex.map(lambda r: run([SFXBOX, '--rom', BASEROM, '--script', r, '--out', STATES], cwd=ROOT), todo))
+
+
+def inputs_mtime(script):
+    """The script's time, or a state it loads if that is newer."""
+    t = os.path.getmtime(script)
+    for line in open(script):
+        w = line.split()
+        if len(w) >= 2 and w[0] == 'load' and os.path.exists(os.path.join(ROOT, w[1])):
+            t = max(t, os.path.getmtime(os.path.join(ROOT, w[1])))
+    return t
+
+
 def trace_one(script, retrace):
     name = os.path.splitext(os.path.basename(script))[0]
     d = os.path.join(B, 'box', name)
     stamp = os.path.join(d, 'rommap.bin')
-    if not retrace and os.path.exists(stamp) and os.path.getmtime(stamp) >= os.path.getmtime(script):
+    if not retrace and os.path.exists(stamp) and os.path.getmtime(stamp) >= inputs_mtime(script):
         return d
     shutil.rmtree(d, ignore_errors=True)
     os.makedirs(d)
@@ -105,6 +136,7 @@ def main(argv):
     stage_baserom()
     if not os.path.exists(SFXBOX):
         run(['make', '-C', os.path.join(ROOT, 'tools', 'stuntracefx', 'sfxbox')])
+    make_states()
     scripts = sorted(glob.glob(os.path.join(SCRIPTS, '*.sfx')))
     with concurrent.futures.ThreadPoolExecutor(max_workers=os.cpu_count()) as ex:
         traces = list(ex.map(lambda s: trace_one(s, retrace), scripts))

@@ -1,0 +1,24 @@
+# novice_coupe_race1: Speed Trax, the coupe, Easy Ride, at the start of
+# the race (as speed_novice_coupe reaches it).
+wait 300
+press START
+wait 200
+press START
+wait 200
+press START
+wait 120
+press RIGHT
+wait 40
+press START
+wait 90
+press START
+wait 150
+press RIGHT
+wait 30
+press RIGHT
+wait 30
+press START
+wait 120
+press START
+wait 200
+save novice_coupe_race1
