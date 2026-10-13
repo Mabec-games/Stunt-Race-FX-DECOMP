@@ -2501,3 +2501,142 @@ ObjectAttachedPlace:
     sep.b #$20
     jsl.l ObjectRebucket
     rtl
+
+; @routine 08:E798 ObjectPlaceOnParent
+; WHAT IT DOES: Puts object Y on object X: unless bit 0 of Y's +$25 is set
+; (then +$18 = +$19 = $8C), $1F4C = Y's +$48 plus the high byte of X's
+; Super FX record word +$3A * 4, and Y's +$18 and +$19 become the table
+; bytes (ObjectTableE8AF) for $1A75 and $1AB0 with bit 7 set; then Y's
+; position is X's plus Y's offset (+$2E, +$30, +$32) turned by X's angles
+; +$16 (RotateXY), +$14 (RotateXZFrom08) and +$15 (RotateXZ) and doubled.
+; HOW: The offset is kept at $1F58-$1F5A and in direct page $02/$08/$94
+; (sign bytes $05, $0B, $05F3); the table values are read through direct
+; page + X with X set to $1A64 and $1A9F. The $8C path is not reached in
+; the traces so far.
+; Entry: M 8-bit, X 16-bit, D = $0000; X = the parent, Y = the object.
+; Exit: M 8-bit; A = the new +$0E; N, Z, C, V from its add.
+%at($08E798)
+ObjectPlaceOnParent:
+    lda.w !obj_25,y
+    and.b #$01
+    beq .tables
+    jml.l ObjectPlaceOnParent_fixed
+.tables:
+    phx
+    rep.b #$20
+    lda.w !obj_22,x
+    tax
+    beq .base
+    lda.l !gsu_in_3a,x
+    asl a
+    asl a
+    xba
+.base:
+    sep.b #$20
+    clc
+    adc.w !obj_48,y
+    sta.w !wram_1F4C
+    plx
+    bra ObjectPlaceOnParent_attrs
+ObjectPlaceOnParent_fixed:              ; reached by the long jump above
+    lda.b #$8C
+    sta.w !obj_18,y
+    sta.w !obj_19,y
+    bra ObjectPlaceOnParent_offset
+ObjectPlaceOnParent_attrs:
+    phx
+    ldx.w #$1A64
+    lda.b $11,x
+    plx
+    jsr.w ObjectTableE8AF
+    ora.b #$80
+    sta.w !obj_18,y
+    phx
+    ldx.w #$1A9F
+    lda.b $11,x
+    plx
+    jsr.w ObjectTableE8AF
+    ora.b #$80
+    sta.w !obj_19,y
+ObjectPlaceOnParent_offset:
+    lda.w !obj_vel_x,y
+    sta.w !wram_1F58
+    lda.w !obj_vel_y,y
+    sta.w !attach_y
+    lda.w !obj_vel_z,y
+    sta.w !attach_z
+    lda.w !wram_1F58
+    sta.b !dp_02
+    sta.b !dp_04
+    bit.b #$80
+    beq .x_positive
+    lda.b #$FF
+    sta.b !dp_05
+    bra .y
+.x_positive:
+    stz.b !dp_05
+.y:
+    lda.w !attach_y
+    sta.b !dp_08
+    sta.b !dp_0a
+    bit.b #$80
+    beq .y_positive
+    lda.b #$FF
+    sta.b !dp_0b
+    bra .z
+.y_positive:
+    stz.b !dp_0b
+.z:
+    lda.w !attach_z
+    sta.b !dp_94
+    sta.w !rot_z
+    bit.b #$80
+    beq .z_positive
+    lda.b #$FF
+    sta.w !rot_z_high
+    bra .turn
+.z_positive:
+    stz.w !rot_z_high
+.turn:
+    lda.w !obj_16,x
+    jsl.l RotateXY
+    lda.b !dp_04
+    sta.b !dp_02
+    lda.b !dp_0a
+    sta.b !dp_08
+    lda.w !rot_z
+    sta.b !dp_94
+    lda.w !obj_14,x
+    jsl.l RotateXZFrom08
+    lda.b !dp_04
+    sta.b !dp_02
+    lda.b !dp_0a
+    sta.b !dp_08
+    lda.w !rot_z
+    sta.b !dp_94
+    lda.w !obj_15,x
+    jsl.l RotateXZ
+    rep.b #$20
+    lda.b !dp_04
+    asl a
+    sta.b !dp_04
+    lda.b !dp_0a
+    asl a
+    sta.b !dp_0a
+    lda.w !rot_z
+    asl a
+    sta.w !rot_z
+    lda.w !obj_pos_x,x
+    clc
+    adc.b !dp_04
+    sta.w !obj_pos_x,y
+    lda.w !obj_pos_z,x
+    clc
+    adc.w !rot_z
+    sta.w !obj_pos_z,y
+    lda.w !obj_pos_y,x
+    clc
+    adc.b !dp_0a
+    sta.w !obj_pos_y,y
+    sep.b #$20
+    rts

@@ -2439,3 +2439,112 @@ void abi_ObjectAttachedStep(void)
     wr8(b | (uint16_t)(0x204B + cpu.x), v);
     parent_place(b, 1);
 }
+
+void abi_ObjectTableE8AF(void);
+
+/*
+ * @routine 08:E798 ObjectPlaceOnParent
+ * WHAT IT DOES: Puts object Y on object X: unless bit 0 of Y's +$25 is set
+ * (then +$18 = +$19 = $8C), $1F4C = Y's +$48 plus the high byte of X's
+ * Super FX record word +$3A * 4, and Y's +$18 and +$19 become the table
+ * bytes (ObjectTableE8AF) for $1A75 and $1AB0 with bit 7 set; then Y's
+ * position is X's plus Y's offset (+$2E, +$30, +$32) turned by X's angles
+ * +$16 (RotateXY), +$14 (RotateXZFrom08) and +$15 (RotateXZ) and doubled.
+ * HOW: The offset is kept at $1F58-$1F5A and in direct page $02/$08/$94
+ * (sign bytes $05, $0B, $05F3); the table values are read through direct
+ * page + X with X set to $1A64 and $1A9F. The $8C path is not reached in
+ * the traces so far.
+ * Entry: M 8-bit, X 16-bit, D = $0000; X = the parent, Y = the object.
+ * Exit: M 8-bit; A = the new +$0E; N, Z, C, V from its add.
+ */
+void abi_ObjectPlaceOnParent(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v;
+    uint16_t w, x0;
+    unsigned i;
+    static const uint16_t to[3] = {0x200C, 0x2010, 0x200E};
+    static const uint16_t from_x[2] = {0x1A64, 0x1A9F};
+    uint32_t from[3];
+
+    v = (uint8_t)(rd8(b | (uint16_t)(0x2025 + cpu.y)) & 0x01);
+    if (v) {
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x8C);
+        wr8(b | (uint16_t)(0x2018 + cpu.y), 0x8C);
+        wr8(b | (uint16_t)(0x2019 + cpu.y), 0x8C);
+    } else {
+        x0 = cpu.x;
+        cpu.p &= (uint8_t)~P_M;
+        w = rd16(b | (uint16_t)(0x2022 + cpu.x));
+        cpu.x = w;
+        if (w) {
+            w = (uint16_t)(rd16((uint32_t)(0x70003A + cpu.x)) << 2);
+            w = (uint16_t)(w >> 8 | w << 8);
+        }
+        cpu.a = w;
+        cpu.p |= P_M;
+        cpu.p &= (uint8_t)~P_C;
+        v = op_adc8((uint8_t)w, rd8(b | (uint16_t)(0x2048 + cpu.y)), &cpu.p);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+        wr8(b | 0x1F4C, v);
+        cpu.x = x0;
+        for (i = 0; i < 2; i++) {
+            v = rd8((uint16_t)(cpu.d + 0x11 + from_x[i]));
+            cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+            cpu.p = nz16(cpu.p, cpu.x);
+            abi_ObjectTableE8AF();
+            v = (uint8_t)(cpu.a | 0x80);
+            cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+            wr8(b | (uint16_t)(0x2018 + i + cpu.y), v);
+        }
+    }
+    for (i = 0; i < 3; i++)
+        wr8(b | (uint16_t)(0x1F58 + i), rd8(b | (uint16_t)(0x202E + i * 2 + cpu.y)));
+    v = rd8(b | 0x1F58);
+    wr8(dp8(0x02), v);
+    wr8(dp8(0x04), v);
+    sign_byte(dp8(0x05), v);
+    v = rd8(b | 0x1F59);
+    wr8(dp8(0x08), v);
+    wr8(dp8(0x0A), v);
+    sign_byte(dp8(0x0B), v);
+    v = rd8(b | 0x1F5A);
+    wr8(dp8(0x94), v);
+    wr8(b | 0x05F2, v);
+    sign_byte(b | 0x05F3, v);
+    for (i = 0; i < 3; i++) {
+        static const uint8_t angle[3] = {0x16, 0x14, 0x15};
+
+        if (i) {
+            wr8(dp8(0x02), rd8(dp8(0x04)));
+            wr8(dp8(0x08), rd8(dp8(0x0A)));
+            wr8(dp8(0x94), rd8(b | 0x05F2));
+        }
+        v = rd8(b | (uint16_t)(0x2000 + angle[i] + cpu.x));
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+        cpu.p = nz8(cpu.p, v);
+        if (i == 0)
+            abi_RotateXY();
+        else if (i == 1)
+            abi_RotateXZFrom08();
+        else
+            abi_RotateXZ();
+    }
+    cpu.p &= (uint8_t)~P_M;
+    w = (uint16_t)(rd16(dp8(0x04)) << 1);
+    wr16(dp8(0x04), w);
+    w = (uint16_t)(rd16(dp8(0x0A)) << 1);
+    wr16(dp8(0x0A), w);
+    w = (uint16_t)(rd16(b | 0x05F2) << 1);
+    wr16(b | 0x05F2, w);
+    from[0] = dp8(0x04);
+    from[1] = b | 0x05F2;
+    from[2] = dp8(0x0A);
+    for (i = 0; i < 3; i++) {
+        w = rd16(b | (uint16_t)(to[i] + cpu.x));
+        cpu.p &= (uint8_t)~P_C;
+        cpu.a = op_adc16(w, rd16(from[i]), &cpu.p);
+        wr16(b | (uint16_t)(to[i] + cpu.y), cpu.a);
+    }
+    cpu.p |= P_M;
+}
