@@ -1651,7 +1651,8 @@ ObjectsRunHandlers:
 ; Entry: X 16-bit; Y = script entry. Exit: A = the high byte of the
 ; script pointer - $8000 and the script byte (or 3); X = the object; Y
 ; unchanged; M 16-bit; N, Z from the data bank pulled back; C from
-; comparing the script byte with $EA.
+; comparing the script byte with $EA; V from subtracting $8000 (set when
+; the script pointer is below $8000).
 %at($08826E)
 ObjectSpawnFromScript:
     phy

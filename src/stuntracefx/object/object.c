@@ -1678,7 +1678,8 @@ void abi_CrashGreen(void);
  * Entry: X 16-bit; Y = script entry. Exit: A = the high byte of the
  * script pointer - $8000 and the script byte (or 3); X = the object; Y
  * unchanged; M 16-bit; N, Z from the data bank pulled back; C from
- * comparing the script byte with $EA.
+ * comparing the script byte with $EA; V from subtracting $8000 (set when
+ * the script pointer is below $8000).
  */
 void abi_ObjectSpawnFromScript(void)
 {
@@ -1732,7 +1733,9 @@ void abi_ObjectSpawnFromScript(void)
     w = (uint16_t)(rd16(OBJ_FIELD(o, 0x1A)) - 0x8000);
     v = rd8((uint32_t)bank << 16 | (uint16_t)(0x8000 + w));
     cpu.x = o;
-    cpu.p = (uint8_t)((cpu.p & ~P_C) | (v >= 0xEA ? P_C : 0));
+    /* V from SBC #$8000 (set when the pointer is below $8000), C from the
+       compare with $EA. */
+    cpu.p = (uint8_t)((cpu.p & ~(P_C | P_V)) | (v >= 0xEA ? P_C : 0) | ((w & 0x8000) ? P_V : 0));
     if (v == 0xEA) {
         wr8(OBJ_FIELD(o, 0x36), 0x03);
         v = 0x03;

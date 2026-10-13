@@ -197,7 +197,7 @@ void abi_CourseScriptRun(void)
             cpu.y = y;
             cpu.db = db;
             cpu.p = (uint8_t)((nz8(cpu.p, db) & ~(P_C | P_V)) | P_M | ((unsigned)y + 0x8000 > 0xFFFF ? P_C : 0)
-                              | ((~y & a & 0x8000) ? P_V : 0));
+                              | ((y & ~a & 0x8000) ? P_V : 0));
             return;
         default:                                       /* $00: back to offset 0 */
             x = op;
