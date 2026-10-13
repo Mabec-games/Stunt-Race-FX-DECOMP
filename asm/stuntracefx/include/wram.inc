@@ -1467,3 +1467,7 @@ includeonce
 !near_car_pos = $0E47                  ; nearest car's level / 16 | side * 16 (07:EDC1)
 !near_car_band_sent = $115E            ; $31 - the nearest car's band, as last sent on sound port 1
 !near_car_none = $117C                 ; 1 while there is no nearest car
+!record_row_time = $F2                 ; records rows: the time's offset in !record_times
+!record_row_name = $F3                 ; records rows: the name entry (two bytes of letters, then the car)
+!record_page = $F7                     ; records rows: the page's offset in !record_times
+!record_row_sprites = $0D75            ; the three records rows' first sprite numbers (words)

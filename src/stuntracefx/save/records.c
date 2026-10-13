@@ -3,6 +3,7 @@
  * $70:FC5E onwards).
  */
 #include "machine.h"
+#include "cpu_ops.h"
 
 /* Sum five bytes from `base` + X with 8-bit adds; X steps past them. */
 static uint8_t sum5(uint32_t base, uint8_t *x, uint8_t *p)
@@ -556,4 +557,230 @@ void abi_RecordsUnpackCourseRunning(void)
 {
     abi_RecordsUnpackCourse();
     abi_TimeRunningTotals();
+}
+
+/* The records screen's rows: direct page $F2 = the time's offset in the
+   record times, $F3-$F5 = the row's name entry (two bytes of three 5-bit
+   letters, then the car), $F7 = the page's offset. */
+static uint32_t dp(uint8_t a)
+{
+    return (uint16_t)(cpu.d + a);
+}
+
+void abi_SpritePieces3(void);
+
+/*
+ * @routine 02:FF01 RecordNameLetters
+ * WHAT IT DOES: Puts the three 5-bit letters of A (bits 0-4, 5-9, 10-14)
+ * plus $0A into the tile bytes of sprites Y / 4, + 1 and + 2.
+ * HOW: The letters are kept on the stack between them (PHA, PLA). Not
+ * reached in the traces so far.
+ * Entry: M 16-bit, X 16-bit; A = the letters, Y = sprite buffer offset.
+ * Exit: A = the third tile; M 16-bit; N, Z, C, V clear (the last add).
+ */
+void abi_RecordNameLetters(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t v = cpu.a;
+    unsigned i;
+    static const uint8_t shift[3] = {0, 5, 10};
+
+    for (i = 0; i < 3; i++) {
+        cpu.a = (uint16_t)(((v >> shift[i]) & 0x001F) + 0x000A);
+        wr8(b | (uint16_t)(0x039F + i * 4 + cpu.y), (uint8_t)cpu.a);
+    }
+    cpu.p &= (uint8_t)~(P_N | P_Z | P_C | P_V | P_M);
+}
+
+/*
+ * @routine 02:F077 RecordRowDraw
+ * WHAT IT DOES: Draws one records row from sprite Y: the time at $0F76 +
+ * ($F7 + $F2) as six digit sprites (minutes, seconds, hundredths, a digit
+ * a sprite), the car (piece set (name byte 3 * 3) & 15 at X = $57) and the
+ * three letters of the name; a time with no seconds ($FF) hides the row's
+ * first three sprites instead (Y = $F0).
+ * HOW: Digit nibbles to the sprites' tile bytes; SpritePieces3 for the car
+ * with palette 0; RecordNameLetters four bytes on. All but the no-time
+ * path are not reached in the traces so far.
+ * Entry: Y = sprite number.
+ * Exit: no time: A low byte = $F0, M 8-bit, X 16-bit, X = the time's
+ * offset, Y = sprite * 4, N set, Z clear, C set (the compare), V from
+ * adding $F2. Otherwise as RecordNameLetters, X as SpritePieces3 left it,
+ * Y = sprite * 4 + 4.
+ */
+void abi_RecordRowDraw(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t w, y;
+    uint8_t v, t;
+    unsigned i;
+    static const uint16_t hi[3] = {0x039B, 0x038F, 0x0383}, lo[3] = {0x039F, 0x0393, 0x0387};
+
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    w = rd16(dp(0xF7));
+    cpu.p &= (uint8_t)~P_C;
+    w = op_adc16(w, rd16(dp(0xF2)), &cpu.p);
+    cpu.x = (uint16_t)(w & 0x00FF);
+    y = (uint16_t)(cpu.y << 2);
+    cpu.p = (uint8_t)((nz16(cpu.p, y) & ~P_C) | ((cpu.y & 0x4000) ? P_C : 0));
+    cpu.y = y;
+    cpu.p |= P_M;
+    v = rd8(b | (uint16_t)(0x0F77 + cpu.x));
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0xFF)) & ~P_C) | (v >= 0xFF ? P_C : 0));
+    if (v == 0xFF) {
+        cpu.a = (uint16_t)((y & 0xFF00) | 0xF0);
+        cpu.p = nz8(cpu.p, 0xF0);
+        wr8(b | (uint16_t)(0x0376 + y), 0xF0);
+        wr8(b | (uint16_t)(0x037A + y), 0xF0);
+        wr8(b | (uint16_t)(0x037E + y), 0xF0);
+        return;
+    }
+    for (i = 0; i < 3; i++) {
+        v = rd8(b | (uint16_t)(0x0F76 + i + cpu.x));
+        wr8(b | (uint16_t)(hi[i] + y), (uint8_t)(v >> 4));
+        t = rd8(b | (uint16_t)(0x0F76 + i + cpu.x));
+        wr8(b | (uint16_t)(lo[i] + y), (uint8_t)(t & 0x0F));
+    }
+    cpu.p &= (uint8_t)~P_M;
+    w = rd16(dp(0xF5));
+    w = (uint16_t)((w << 1) + rd16(dp(0xF5)));
+    wr16(b | 0x10C3, (uint16_t)(w & 0x000F));
+    wr16(b | 0x10BD, 0x0057);
+    wr16(b | 0x10C5, 0x0000);
+    cpu.a = 0x0057;
+    abi_SpritePieces3();
+    cpu.y = (uint16_t)(y + 4);
+    cpu.p &= (uint8_t)~P_M;
+    cpu.a = rd16(dp(0xF3));
+    abi_RecordNameLetters();
+}
+
+/* Row n (0-2): its name entry ($10CF + n * 3) to $F3-$F5, its screen Y
+   ($7C + n * $11) to $10BF, then RecordRowDraw from sprite $0D75 + n * 2. */
+static void record_row(unsigned n)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v = 0;
+    unsigned i;
+
+    for (i = 0; i < 3; i++) {
+        v = rd8(b | (uint16_t)(0x10CF + n * 3 + i));
+        wr8(dp((uint8_t)(0xF3 + i)), v);
+    }
+    wr8(b | 0x10BF, (uint8_t)(0x7C + n * 0x11));
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | (uint8_t)(0x7C + n * 0x11));
+    cpu.y = rd16(b | (uint16_t)(0x0D75 + n * 2));
+    abi_RecordRowDraw();
+}
+
+/* SEP #$20, REP #$10, then the time offset to $F2. */
+static void record_row_time(uint8_t t)
+{
+    cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | t);
+    wr8(dp(0xF2), t);
+}
+
+/*
+ * @routine 02:F016 RecordRow1
+ * WHAT IT DOES: Draws the first records row (RecordRowDraw) with the first
+ * name entry, at Y = $7C from the sprite in $0D75.
+ * HOW: record_row 0.
+ * Entry: M 8-bit, X 16-bit; $F2 = the time's offset. Exit: as
+ * RecordRowDraw.
+ */
+void abi_RecordRow1(void)
+{
+    record_row(0);
+}
+
+/*
+ * @routine 02:F039 RecordRow2
+ * WHAT IT DOES: As RecordRow1 for the second row: the second name entry,
+ * Y = $8D, the sprite in $0D77.
+ * HOW: record_row 1.
+ * Entry: as RecordRow1. Exit: as RecordRow1.
+ */
+void abi_RecordRow2(void)
+{
+    record_row(1);
+}
+
+/*
+ * @routine 02:F05C RecordRow3
+ * WHAT IT DOES: As RecordRow1 for the third row: the third name entry,
+ * Y = $9E, the sprite in $0D79.
+ * HOW: record_row 2.
+ * Entry: as RecordRow1. Exit: as RecordRow1.
+ */
+void abi_RecordRow3(void)
+{
+    record_row(2);
+}
+
+/*
+ * @routine 02:F00E RecordRow1Time0
+ * WHAT IT DOES: RecordRow1 with time offset 0.
+ * HOW: Sets $F2 and falls into RecordRow1.
+ * Entry: any widths. Exit: as RecordRow1.
+ */
+void abi_RecordRow1Time0(void)
+{
+    record_row_time(0x00);
+    record_row(0);
+}
+
+/*
+ * @routine 02:F031 RecordRow2Time4
+ * WHAT IT DOES: RecordRow2 with time offset $0C (the second group's).
+ * HOW: Sets $F2 and falls into RecordRow2.
+ * Entry: any widths. Exit: as RecordRow2.
+ */
+void abi_RecordRow2Time4(void)
+{
+    record_row_time(0x0C);
+    record_row(1);
+}
+
+/*
+ * @routine 02:F054 RecordRow3Time8
+ * WHAT IT DOES: RecordRow3 with time offset $18 (the third group's).
+ * HOW: Sets $F2 and falls into RecordRow3.
+ * Entry: any widths. Exit: as RecordRow3.
+ */
+void abi_RecordRow3Time8(void)
+{
+    record_row_time(0x18);
+    record_row(2);
+}
+
+/*
+ * @routine 02:EFE2 RecordRowsGroupFirsts
+ * WHAT IT DOES: Draws the three records rows, each with the first time of
+ * its group (offsets 0, $0C, $18).
+ * HOW: RecordRow1Time0, RecordRow2Time4, RecordRow3Time8.
+ * Entry: any widths. Exit: as RecordRow3.
+ */
+void abi_RecordRowsGroupFirsts(void)
+{
+    abi_RecordRow1Time0();
+    abi_RecordRow2Time4();
+    abi_RecordRow3Time8();
+}
+
+/*
+ * @routine 02:EFEC RecordRowsFirstTimes
+ * WHAT IT DOES: Draws the three records rows with times 0, 1 and 2
+ * (offsets 0, 3, 6).
+ * HOW: Sets $F2 before each of RecordRow1, RecordRow2, RecordRow3.
+ * Entry: any widths. Exit: as RecordRow3.
+ */
+void abi_RecordRowsFirstTimes(void)
+{
+    unsigned n;
+
+    for (n = 0; n < 3; n++) {
+        record_row_time((uint8_t)(n * 3));
+        record_row(n);
+    }
 }

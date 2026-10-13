@@ -714,3 +714,249 @@ RecordsUnpackCourse:
     sta.w !wram_10CD+10
     plp
     rts
+
+; @routine 02:EFE2 RecordRowsGroupFirsts
+; WHAT IT DOES: Draws the three records rows, each with the first time of its
+; group (offsets 0, $0C, $18).
+; HOW: RecordRow1Time0, RecordRow2Time4, RecordRow3Time8.
+; Entry: any widths. Exit: as RecordRow3.
+%at($02EFE2)
+RecordRowsGroupFirsts:
+    jsr RecordRow1Time0
+    jsr RecordRow2Time4
+    jsr RecordRow3Time8
+    rts
+
+; @routine 02:EFEC RecordRowsFirstTimes
+; WHAT IT DOES: Draws the three records rows with times 0, 1 and 2 (offsets
+; 0, 3, 6).
+; HOW: Sets $F2 before each of RecordRow1, RecordRow2, RecordRow3.
+; Entry: any widths. Exit: as RecordRow3.
+%at($02EFEC)
+RecordRowsFirstTimes:
+    sep.b #$20
+    rep.b #$10
+    lda.b #$00
+    sta.b !record_row_time
+    jsr RecordRow1
+    sep.b #$20
+    rep.b #$10
+    lda.b #$03
+    sta.b !record_row_time
+    jsr RecordRow2
+    sep.b #$20
+    rep.b #$10
+    lda.b #$06
+    sta.b !record_row_time
+    jsr RecordRow3
+    rts
+
+; @routine 02:F00E RecordRow1Time0
+; WHAT IT DOES: RecordRow1 with time offset $00.
+; HOW: Sets $F2 and falls into RecordRow1.
+; Entry: any widths. Exit: as RecordRow1.
+%at($02F00E)
+RecordRow1Time0:
+    sep.b #$20
+    rep.b #$10
+    lda.b #$00
+    sta.b !record_row_time
+
+; @routine 02:F016 RecordRow1
+; WHAT IT DOES: Draws records row 1 (RecordRowDraw) with name entry 1, at
+; screen Y = $7C, from the sprite in $0D75.
+; HOW: The name entry to $F3-$F5, the screen Y to $10BF.
+; Entry: M 8-bit, X 16-bit; $F2 = the time's offset. Exit: as RecordRowDraw.
+RecordRow1:
+    lda.w !record_names+0
+    sta.b !record_row_name
+    lda.w !record_names+1
+    sta.b !record_row_name+1
+    lda.w !record_names+2
+    sta.b !record_row_name+2
+    lda.b #$7C
+    sta.w !sprite_piece_y
+    ldy.w !record_row_sprites+0
+    jsr RecordRowDraw
+    rts
+
+; @routine 02:F031 RecordRow2Time4
+; WHAT IT DOES: RecordRow2 with time offset $0C.
+; HOW: Sets $F2 and falls into RecordRow2.
+; Entry: any widths. Exit: as RecordRow2.
+%at($02F031)
+RecordRow2Time4:
+    sep.b #$20
+    rep.b #$10
+    lda.b #$0C
+    sta.b !record_row_time
+
+; @routine 02:F039 RecordRow2
+; WHAT IT DOES: Draws records row 2 (RecordRowDraw) with name entry 2, at
+; screen Y = $8D, from the sprite in $0D77.
+; HOW: The name entry to $F3-$F5, the screen Y to $10BF.
+; Entry: M 8-bit, X 16-bit; $F2 = the time's offset. Exit: as RecordRowDraw.
+RecordRow2:
+    lda.w !record_names+3
+    sta.b !record_row_name
+    lda.w !record_names+4
+    sta.b !record_row_name+1
+    lda.w !record_names+5
+    sta.b !record_row_name+2
+    lda.b #$8D
+    sta.w !sprite_piece_y
+    ldy.w !record_row_sprites+2
+    jsr RecordRowDraw
+    rts
+
+; @routine 02:F054 RecordRow3Time8
+; WHAT IT DOES: RecordRow3 with time offset $18.
+; HOW: Sets $F2 and falls into RecordRow3.
+; Entry: any widths. Exit: as RecordRow3.
+%at($02F054)
+RecordRow3Time8:
+    sep.b #$20
+    rep.b #$10
+    lda.b #$18
+    sta.b !record_row_time
+
+; @routine 02:F05C RecordRow3
+; WHAT IT DOES: Draws records row 3 (RecordRowDraw) with name entry 3, at
+; screen Y = $9E, from the sprite in $0D79.
+; HOW: The name entry to $F3-$F5, the screen Y to $10BF.
+; Entry: M 8-bit, X 16-bit; $F2 = the time's offset. Exit: as RecordRowDraw.
+RecordRow3:
+    lda.w !record_names+6
+    sta.b !record_row_name
+    lda.w !record_names+7
+    sta.b !record_row_name+1
+    lda.w !record_names+8
+    sta.b !record_row_name+2
+    lda.b #$9E
+    sta.w !sprite_piece_y
+    ldy.w !record_row_sprites+4
+    jsr RecordRowDraw
+    rts
+
+; @routine 02:F077 RecordRowDraw
+; WHAT IT DOES: Draws one records row from sprite Y: the time at $0F76 + ($F7
+; + $F2) as six digit sprites (minutes, seconds, hundredths, a digit a
+; sprite), the car (piece set (name byte 3 * 3) & 15 at X = $57) and the
+; three letters of the name; a time with no seconds ($FF) hides the row's
+; first three sprites instead (Y = $F0).
+; HOW: Digit nibbles to the sprites' tile bytes; SpritePieces3 for the car
+; with palette 0; RecordNameLetters four bytes on. All but the no-time path
+; are not reached in the traces so far.
+; Entry: Y = sprite number. Exit: no time: A low byte = $F0, M 8-bit, X =
+; the time's offset, Y = sprite * 4; otherwise as RecordNameLetters, X as
+; SpritePieces3 left it, Y = sprite * 4 + 4.
+%at($02F077)
+RecordRowDraw:
+    rep.b #$30
+    lda.b !record_page
+    clc
+    adc.b !record_row_time
+    and.w #$00FF
+    tax
+    tya
+    asl a
+    asl a
+    tay
+    sep.b #$20
+    lda.w !record_times+1,x
+    cmp.b #$FF
+    beq .none
+    lda.w !record_times,x
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    sta.w !oam_buffer+$26,y
+    lda.w !record_times,x
+    and.b #$0F
+    sta.w !oam_buffer+$2A,y
+    lda.w !record_times+1,x
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    sta.w !oam_buffer+$1A,y
+    lda.w !record_times+1,x
+    and.b #$0F
+    sta.w !oam_buffer+$1E,y
+    lda.w !record_times+2,x
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    sta.w !oam_buffer+$0E,y
+    lda.w !record_times+2,x
+    and.b #$0F
+    sta.w !oam_buffer+$12,y
+    rep.b #$20
+    lda.b !record_row_name+2
+    asl a
+    clc
+    adc.b !record_row_name+2
+    and.w #$000F
+    sta.w !sprite_piece_frame
+    lda.w #$0057
+    sta.w !sprite_piece_x
+    stz.w !sprite_piece_palette
+    phy
+    jsl.l SpritePieces3
+    ply
+    iny
+    iny
+    iny
+    iny
+    rep.b #$20
+    lda.b !record_row_name
+    jsr RecordNameLetters
+    rts
+.none:
+    lda.b #$F0
+    sta.w !oam_buffer+1,y
+    sta.w !oam_buffer+5,y
+    sta.w !oam_buffer+9,y
+    rts
+
+; @routine 02:FF01 RecordNameLetters
+; WHAT IT DOES: Puts the three 5-bit letters of A (bits 0-4, 5-9, 10-14) plus
+; $0A into the tile bytes of sprites Y / 4, + 1 and + 2.
+; HOW: The letters are kept on the stack between them. Not reached in the
+; traces so far.
+; Entry: M 16-bit, X 16-bit; A = the letters, Y = sprite buffer offset.
+; Exit: A = the third tile; M 16-bit; N, Z, C, V clear (the last add).
+%at($02FF01)
+RecordNameLetters:
+    pha
+    and.w #$001F
+    clc
+    adc.w #$000A
+    sep.b #$20
+    sta.w !oam_buffer+$2A,y
+    rep.b #$20
+    pla
+    pha
+    asl a
+    asl a
+    asl a
+    xba
+    and.w #$001F
+    clc
+    adc.w #$000A
+    sep.b #$20
+    sta.w !oam_buffer+$2E,y
+    rep.b #$20
+    pla
+    lsr a
+    lsr a
+    xba
+    and.w #$001F
+    clc
+    adc.w #$000A
+    sep.b #$20
+    sta.w !oam_buffer+$32,y
+    rep.b #$20
+    rts
