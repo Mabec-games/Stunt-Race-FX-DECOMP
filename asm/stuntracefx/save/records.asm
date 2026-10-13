@@ -960,3 +960,83 @@ RecordNameLetters:
     sta.w !oam_buffer+$32,y
     rep.b #$20
     rts
+
+; @routine 07:D6E8 RecordTimeCompare
+; WHAT IT DOES: Compares record time X (BCD minutes, seconds, hundredths at
+; $0F5B + X, unpacked to the five digits at $0F64-$0F68) with the best time's
+; digits at $0F69, most significant first: $0FA3 = $FF when it is better, 1
+; when worse or when there is no best time ($0F2B = $FFFF), 0 when equal;
+; then sound $35 on port 0 unless $0E57 is set.
+; HOW: Nibbles split with AND and LSR (the byte kept on the stack); an 8-bit
+; compare per digit. The no-best, worse and equal results are not reached in
+; the traces so far.
+; Entry: M 16-bit, X 16-bit; X = the time's offset. Exit: M 8-bit; X = the
+; digit the compare stopped at (or X unchanged with no best time); A low
+; byte = $0E57's value, or as SoundPort0QueuePush leaves it.
+%at($07D6E8)
+RecordTimeCompare:
+    lda.w !wram_0F2B
+    cmp.w #$FFFF
+    beq .worse
+    sep.b #$20
+    lda.w !record_time_bcd,x
+    pha
+    and.b #$0F
+    sta.w !lap_record_a+4
+    pla
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    sta.w !lap_record_a+3
+    lda.w !record_time_bcd+1,x
+    pha
+    and.b #$0F
+    sta.w !lap_record_a+2
+    pla
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    sta.w !lap_record_a+1
+    lda.w !record_time_bcd+2,x
+    and.b #$0F
+    sta.w !lap_record_a
+    ldx.w #$0000
+.digit:
+    lda.w !lap_record_a,x
+    cmp.w !lap_digits,x
+    bcc .better
+    bne .worse
+    inx
+    cpx.w #$0005
+    bcc .digit
+    sep.b #$20
+    lda.b #$00
+    sta.w !p1_lead
+    lda.w !wram_0E57
+    bne .doneE
+    lda.b #$35
+    jsl.l SoundPort0QueuePush
+.doneE:
+    rts
+.better:
+    sep.b #$20
+    lda.b #$FF
+    sta.w !p1_lead
+    lda.w !wram_0E57
+    bne .doneB
+    lda.b #$35
+    jsl.l SoundPort0QueuePush
+.doneB:
+    rts
+.worse:
+    sep.b #$20
+    lda.b #$01
+    sta.w !p1_lead
+    lda.w !wram_0E57
+    bne .doneW
+    lda.b #$35
+    jsl.l SoundPort0QueuePush
+.doneW:
+    rts

@@ -784,3 +784,75 @@ void abi_RecordRowsFirstTimes(void)
         record_row(n);
     }
 }
+
+void abi_SoundPort0QueuePush(void);
+
+/* $0FA3 = r, then sound $35 on port 0 unless $0E57 is set. */
+static void compare_result(uint32_t b, uint8_t r)
+{
+    uint8_t v;
+
+    cpu.p |= P_M;
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | r);
+    wr8(b | 0x0FA3, r);
+    v = rd8(b | 0x0E57);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+    if (v)
+        return;
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x35);
+    abi_SoundPort0QueuePush();
+}
+
+/*
+ * @routine 07:D6E8 RecordTimeCompare
+ * WHAT IT DOES: Compares record time X (BCD minutes, seconds, hundredths
+ * at $0F5B + X, unpacked to the five digits at $0F64-$0F68) with the best
+ * time's digits at $0F69, most significant first: $0FA3 = $FF when it is
+ * better, 1 when worse or when there is no best time ($0F2B = $FFFF), 0
+ * when equal; then sound $35 on port 0 unless $0E57 is set.
+ * HOW: Nibbles split with AND and LSR (the byte kept on the stack); an
+ * 8-bit compare per digit. The no-best, worse and equal results are not
+ * reached in the traces so far.
+ * Entry: M 16-bit, X 16-bit; X = the time's offset. Exit: M 8-bit; X = the
+ * digit the compare stopped at (or X unchanged with no best time); A low
+ * byte = $0E57's value, or as SoundPort0QueuePush leaves it.
+ */
+void abi_RecordTimeCompare(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v, m;
+    uint16_t w;
+
+    w = rd16(b | 0x0F2B);
+    cpu.a = w;
+    op_cmp16(0xFFFF);
+    if (w == 0xFFFF) {
+        compare_result(b, 0x01);
+        return;
+    }
+    cpu.p |= P_M;
+    v = rd8(b | (uint16_t)(0x0F5B + cpu.x));
+    wr8(b | 0x0F68, (uint8_t)(v & 0x0F));
+    wr8(b | 0x0F67, (uint8_t)(v >> 4));
+    v = rd8(b | (uint16_t)(0x0F5C + cpu.x));
+    wr8(b | 0x0F66, (uint8_t)(v & 0x0F));
+    wr8(b | 0x0F65, (uint8_t)(v >> 4));
+    v = rd8(b | (uint16_t)(0x0F5D + cpu.x));
+    wr8(b | 0x0F64, (uint8_t)(v & 0x0F));
+    for (cpu.x = 0; cpu.x < 5; cpu.x++) {
+        v = rd8(b | (uint16_t)(0x0F64 + cpu.x));
+        m = rd8(b | (uint16_t)(0x0F69 + cpu.x));
+        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - m)) & ~P_C) | (v >= m ? P_C : 0));
+        if (v < m) {
+            compare_result(b, 0xFF);
+            return;
+        }
+        if (v != m) {
+            compare_result(b, 0x01);
+            return;
+        }
+    }
+    cpu.p = (uint8_t)((nz16(cpu.p, 0) & ~P_C) | P_C);
+    compare_result(b, 0x00);
+}
