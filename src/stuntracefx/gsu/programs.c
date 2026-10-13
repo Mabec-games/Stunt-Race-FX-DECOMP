@@ -2153,3 +2153,110 @@ void abi_GlyphTimesSequence(void)
     }
     }
 }
+
+void abi_GsuBytes200_BFB7B6(void);
+void abi_GlyphTimesSequence(void);
+
+/* SEP #$20, REP #$10, LDX #prog, LDA #$07, JSL GsuRun, REP #$20, REP #$10. */
+static void glyph_prog_run(uint16_t prog)
+{
+    op_sep(P_M);
+    op_rep(P_X);
+    cpu.x = prog;
+    cpu.p = nz16(cpu.p, prog);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x07);
+    cpu.p = nz8(cpu.p, 0x07);
+    abi_GsuRun();
+    op_rep(P_M | P_X);
+}
+
+/*
+ * @routine 04:DAE2 GlyphSpritesGrowAndTimes
+ * WHAT IT DOES: Once the best times' display has started ($10D8 not 0):
+ * each glyph sprite's size step $1040 (0-7) grows by one once the sprite
+ * before it has reached 3 (the first always), and every sprite with a
+ * step is drawn scaled (program $07:FAF2, the renderer bytes 0, $BF, $B7,
+ * $B6) at its x and y plus the step's offsets, with the step's size and
+ * scale (tables at $04:DAA2, $DAB2, $DAC2, $DAD2). Then GlyphTimesSequence.
+ * HOW: Data bank $04 (the program's) for the tables; P and the data bank
+ * saved and restored.
+ * Entry: any widths, D = $0000. Exit: P and the data bank restored; A, X,
+ * Y as GlyphTimesSequence leaves them.
+ */
+void abi_GlyphSpritesGrowAndTimes(void)
+{
+    uint8_t p0 = cpu.p, db0 = cpu.db;
+    uint32_t b;
+    uint16_t v;
+
+    op_sep(P_M);
+    cpu.db = 0x04;
+    b = 0x040000;
+    op_rep(P_M | P_X);
+    op_lda16(b | 0x10D8);
+    if (cpu.a) {
+        cpu.x = 0x0002;
+        do {
+            op_lda16(b | (uint16_t)(0x103E + cpu.x));
+            op_cmp16(0x0003);
+            if (cpu.p & P_C) {
+                op_lda16(b | (uint16_t)(0x1040 + cpu.x));
+                op_cmp16(0x0007);
+                if (!(cpu.p & P_C)) {
+                    cpu.a = (uint16_t)(cpu.a + 1);
+                    cpu.p = nz16(cpu.p, cpu.a);
+                    wr16(b | (uint16_t)(0x1040 + cpu.x), cpu.a);
+                }
+            }
+            cpu.x = (uint16_t)(cpu.x + 2);
+            cpu.p = (uint8_t)((nz16(cpu.p, (uint16_t)(cpu.x - 0x0014)) & ~P_C) | (cpu.x >= 0x0014 ? P_C : 0));
+        } while (cpu.x < 0x0014);
+        op_lda16(b | 0x1040);
+        op_cmp16(0x0007);
+        if (!(cpu.p & P_C)) {
+            v = (uint16_t)(rd16(b | 0x1040) + 1);
+            wr16(b | 0x1040, v);
+            cpu.p = nz16(cpu.p, v);
+        }
+        abi_GsuBytes200_BFB7B6();
+        cpu.x = 0x0000;
+        do {
+            op_lda16(b | (uint16_t)(0x1040 + cpu.x));
+            if (cpu.a) {
+                uint16_t x = cpu.x;
+                uint8_t p;
+
+                op_asl16();
+                op_tay16();
+                op_lda16(b | (uint16_t)(0xDAA2 + cpu.y));
+                wr16(0x70020E, cpu.a);
+                wr16(0x700210, cpu.a);
+                op_lda16(b | (uint16_t)(0xDAB2 + cpu.y));
+                wr16(0x700212, cpu.a);
+                wr16(0x700214, cpu.a);
+                op_lda16(b | (uint16_t)(0x0FB0 + cpu.x));
+                op_add16(rd16(b | (uint16_t)(0xDAC2 + cpu.y)));
+                wr16(0x70020A, cpu.a);
+                op_lda16_imm(0x0006);
+                wr16(0x70020C, 0x0006);
+                op_lda16(b | (uint16_t)(0x0FE0 + cpu.x));
+                op_add16(rd16(b | (uint16_t)(0xDAD2 + cpu.y)));
+                wr16(0x70020C, cpu.a);
+                op_lda16(b | (uint16_t)(0x1010 + cpu.x));
+                wr16(0x700216, cpu.a);
+                p = cpu.p;
+                glyph_prog_run(0xFAF2);
+                op_plp(p);
+                cpu.x = x;
+                cpu.p = nz16(cpu.p, x);
+            }
+            cpu.x = (uint16_t)(cpu.x + 2);
+            cpu.p = (uint8_t)((nz16(cpu.p, (uint16_t)(cpu.x - 0x0020)) & ~P_C) | (cpu.x >= 0x0020 ? P_C : 0));
+        } while (cpu.x != 0x0020);
+    }
+    abi_GlyphTimesSequence();
+    op_sep(P_M);
+    cpu.db = db0;
+    cpu.p = nz8(cpu.p, db0);
+    op_plp(p0);
+}

@@ -328,3 +328,7 @@ WindowDigitStepEBDD = $07EBDD                   ; 07:EBDD, inside the routine at
 !glyph_messages = $DF6D              ; GlyphListMessageAndTime: the messages' addresses (bank 04, through the data bank)
 !glyph_message_length = $0000        ; a message: its length byte (indexed by its address)
 !glyph_message_letters = $0001       ; then a glyph word per letter
+!glyph_spr_sizes = $DAA2             ; GlyphSpritesGrowAndTimes: per size step, the size (bank 04, data bank)
+!glyph_spr_scales = $DAB2            ; the scale
+!glyph_spr_dx = $DAC2                ; the x offset
+!glyph_spr_dy = $DAD2                ; the y offset

@@ -3154,3 +3154,95 @@ GlyphTimesSequence:
     rep.b #$30
     jsr.w GlyphRowY60From0
     rts
+
+; @routine 04:DAE2 GlyphSpritesGrowAndTimes
+; WHAT IT DOES: Once the best times' display has started ($10D8 not 0):
+; each glyph sprite's size step $1040 (0-7) grows by one once the sprite
+; before it has reached 3 (the first always), and every sprite with a
+; step is drawn scaled (program $07:FAF2, the renderer bytes 0, $BF, $B7,
+; $B6) at its x and y plus the step's offsets, with the step's size and
+; scale (tables at $04:DAA2, $DAB2, $DAC2, $DAD2). Then GlyphTimesSequence.
+; HOW: Data bank $04 (the program's) for the tables; P and the data bank
+; saved and restored.
+; Entry: any widths, D = $0000. Exit: P and the data bank restored; A, X,
+; Y as GlyphTimesSequence leaves them.
+%at($04DAE2)
+GlyphSpritesGrowAndTimes:
+    php
+    sep.b #$20
+    phb
+    phk
+    plb
+    rep.b #$30
+    lda.w !wram_10D8
+    bne .lDAF2
+    brl .lDB7F
+.lDAF2:
+    ldx.w #$0002
+.lDAF5:
+    lda.w !glyph_spr_1040-2,x
+    cmp.w #$0003
+    bcc .lDB09
+    lda.w !glyph_spr_1040,x
+    cmp.w #$0007
+    bcs .lDB09
+    inc a
+    sta.w !glyph_spr_1040,x
+.lDB09:
+    inx
+    inx
+    cpx.w #$0014
+    bcc .lDAF5
+    lda.w !glyph_spr_1040
+    cmp.w #$0007
+    bcs .lDB1B
+    inc.w !glyph_spr_1040
+.lDB1B:
+    jsl.l GsuBytes200_BFB7B6
+    ldx.w #$0000
+.lDB22:
+    lda.w !glyph_spr_1040,x
+    beq .lDB78
+    asl a
+    tay
+    lda.w !glyph_spr_sizes,y
+    sta.l !fx_draw_advance
+    sta.l !fx_draw_rows
+    lda.w !glyph_spr_scales,y
+    sta.l !fx_draw_step_x
+    sta.l !fx_draw_step_y
+    lda.w !glyph_spr_x,x
+    clc
+    adc.w !glyph_spr_dx,y
+    sta.l !fx_draw_x
+    lda.w #$0006
+    sta.l !fx_draw_y
+    lda.w !glyph_spr_y,x
+    clc
+    adc.w !glyph_spr_dy,y
+    sta.l !fx_draw_y
+    lda.w !glyph_spr_glyph,x
+    sta.l !gsu_in_216
+    phx
+    php
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FAF2
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    plp
+    plx
+.lDB78:
+    inx
+    inx
+    cpx.w #$0020
+    bne .lDB22
+.lDB7F:
+    jsr.w GlyphTimesSequence
+    sep.b #$20
+    plb
+    plp
+    rtl
+
