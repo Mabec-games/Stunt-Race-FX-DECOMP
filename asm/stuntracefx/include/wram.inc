@@ -1579,3 +1579,4 @@ includeonce
 !digit_tiles_9481 = $7F9481           ; three tilemap words DigitTiles1184 writes
 !wram_19E2 = $19E2
 !wram_19E4 = $19E4
+!speed_sample_long = $000DDA            ; $0DDA read long

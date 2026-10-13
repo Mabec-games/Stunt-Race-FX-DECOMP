@@ -432,3 +432,87 @@ OscillatorStep:
     sta.l !wram_1A0C,x
 .done:
     rts
+
+; @routine 7E:D33A BobWindowsRun
+; WHAT IT DOES: Unless the window HDMA state $19D8 is set or no layout is
+; chosen ($19BC = $FF): checks player 1's link event
+; (ObjectLinkEventTrigger) and, while bob 0 runs (bit 7 of $0DA4), sets
+; window setup 2 and steps it (BobWindow0); with $0D62 set the same for
+; player 2 (ObjectLinkEventTrigger2, $0DA6, BobWindow1).
+; HOW: The data bank is the code's ($7E) and restored. Bob 1's window is
+; not reached in the traces so far.
+; Entry: any widths. Exit: P and the data bank restored.
+%ramcode($7ED33A, $013061)
+BobWindowsRun:
+    php
+    phb
+    phk
+    plb
+    sep.b #$20
+    lda.w !window_hdma_off
+    bne .done
+    lda.l !layout_moving
+    cmp.b #$FF
+    beq .done
+    jsr.w ObjectLinkEventTrigger
+    sep.b #$30
+    lda.w !wram_0DA4
+    and.b #$80
+    beq .player2
+    sep.b #$20
+    lda.l !wram_0D45
+    and.b #$DF
+    sta.l !wram_0D45
+    lda.b #$02
+    sta.w !windows_setup_index
+    jsr.w BobWindow0
+.player2:
+    lda.w !wram_0D62
+    beq .done
+    sep.b #$30
+    jsr.w ObjectLinkEventTrigger2
+    sep.b #$20
+    lda.w !wram_0DA6
+    and.b #$80
+    beq .done
+    sep.b #$20
+    lda.l !wram_0D45
+    and.b #$DF
+    sta.l !wram_0D45
+    lda.b #$02
+    sta.w !windows_setup_index
+    jsr.w BobWindow1
+.done:
+    plb
+    plp
+    rtl
+
+; @routine 7E:DD12 OscillatorWindow
+; WHAT IT DOES: Sets the oscillator level $1A11 from $0DDA, steps
+; oscillator 0 (OscillatorStep) and puts its value in window setup byte
+; $19AD with $19AC = $20 and $19AE = $95, then sets the window bands
+; (WindowHdmaFFD1, or WindowHdmaFFD5 with $0D62 set).
+; HOW: Long stores to bank 0. The $0D62 case is not reached in the traces
+; so far.
+; Entry: any widths. Exit: M 8-bit, X 8-bit; as the last call left them.
+%ramcode($7EDD12, $013A39)
+OscillatorWindow:
+    sep.b #$30
+    lda.l !speed_sample_long
+    sta.l !wram_1A11
+    ldx.b #$00
+    jsr.w OscillatorStep
+    lda.w !wram_1A08
+    sta.l !wram_19AD
+    lda.b #$20
+    sta.l !window_setup_bytes
+    lda.b #$95
+    sta.l !wram_19AE
+    lda.w !wram_0D62
+    bne .alt
+    jsr.w WindowHdmaFFD1
+    jmp.w .done
+.alt:
+    jsr.w WindowHdmaFFD5
+.done:
+    rts

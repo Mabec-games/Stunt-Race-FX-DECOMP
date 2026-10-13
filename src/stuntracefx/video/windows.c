@@ -468,3 +468,100 @@ void abi_OscillatorStep(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.p = nz8(cpu.p, v);
 }
+
+/*
+ * @routine 7E:DD12 OscillatorWindow
+ * WHAT IT DOES: Sets the oscillator level $1A11 from $0DDA, steps
+ * oscillator 0 (OscillatorStep) and puts its value in window setup byte
+ * $19AD with $19AC = $20 and $19AE = $95, then sets the window bands
+ * (WindowHdmaFFD1, or WindowHdmaFFD5 with $0D62 set).
+ * HOW: Long stores to bank 0. The $0D62 case is not reached in the traces
+ * so far.
+ * Entry: any widths. Exit: M 8-bit, X 8-bit; as the last call left them.
+ */
+void abi_OscillatorWindow(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v;
+
+    op_sep(P_M | P_X);
+    v = rd8(0x000DDA);
+    wr8(0x001A11, v);
+    cpu.x = 0x00;
+    abi_OscillatorStep();
+    v = rd8(b | 0x1A08);
+    wr8(0x0019AD, v);
+    wr8(0x0019AC, 0x20);
+    wr8(0x0019AE, 0x95);
+    v = rd8(b | 0x0D62);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    if (v)
+        abi_WindowHdmaFFD5();
+    else
+        abi_WindowHdmaFFD1();
+}
+
+void abi_ObjectLinkEventTrigger(void);
+void abi_ObjectLinkEventTrigger2(void);
+
+/* Bit 5 of $0D45 cleared and window setup 2 ($19A9). */
+static void bob_setup(uint32_t b)
+{
+    uint8_t v;
+
+    cpu.p |= P_M;
+    v = (uint8_t)(rd8(0x000D45) & 0xDF);
+    wr8(0x000D45, v);
+    wr8(b | 0x19A9, 0x02);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x02);
+}
+
+/*
+ * @routine 7E:D33A BobWindowsRun
+ * WHAT IT DOES: Unless the window HDMA state $19D8 is set or no layout is
+ * chosen ($19BC = $FF): checks player 1's link event
+ * (ObjectLinkEventTrigger) and, while bob 0 runs (bit 7 of $0DA4), sets
+ * window setup 2 and steps it (BobWindow0); with $0D62 set the same for
+ * player 2 (ObjectLinkEventTrigger2, $0DA6, BobWindow1).
+ * HOW: The data bank is the code's ($7E) and restored. Bob 1's window is
+ * not reached in the traces so far.
+ * Entry: any widths. Exit: P and the data bank restored.
+ */
+void abi_BobWindowsRun(void)
+{
+    uint8_t p0 = cpu.p, db0 = cpu.db, v;
+    uint32_t b = 0x7E0000;
+
+    cpu.db = 0x7E;
+    cpu.p |= P_M;
+    v = rd8(b | 0x19D8);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    if (v)
+        goto out;
+    v = rd8(0x0019BC);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    if (v == 0xFF)
+        goto out;
+    abi_ObjectLinkEventTrigger();
+    op_sep(P_M | P_X);
+    v = (uint8_t)(rd8(b | 0x0DA4) & 0x80);
+    if (v) {
+        bob_setup(b);
+        abi_BobWindow0();
+    }
+    v = rd8(b | 0x0D62);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    if (!v)
+        goto out;
+    op_sep(P_M | P_X);
+    abi_ObjectLinkEventTrigger2();
+    cpu.p |= P_M;
+    v = (uint8_t)(rd8(b | 0x0DA6) & 0x80);
+    if (v) {
+        bob_setup(b);
+        abi_BobWindow1();
+    }
+out:
+    cpu.db = db0;
+    cpu.p = p0;
+}
