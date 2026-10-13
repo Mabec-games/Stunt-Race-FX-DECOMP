@@ -165,3 +165,103 @@ SoundReset:
     sta.l !APUIO2
     plp
     rtl
+
+; @routine 7E:B112 SoundPortsSend
+; WHAT IT DOES: The frame's sound output: a direct byte at $10E2 (port 0)
+; or $10E3 (port 1) is sent alone and cleared; otherwise, unless $10DA or
+; $10DC is set, on odd frames ($0E3B) each port gets 0 while it still
+; shows the last command, else the next byte of its queue (port 0 from
+; the ring at $0DA8, port 1 from $0DB8, the port 1 byte also kept at
+; $0DD2); then ports 2 and 3 get $0E47 and $0E49 (0 while $0E4B is set).
+; HOW: 8-bit, through the data bank; a queue's head only moves on while
+; bytes remain after the one taken. The direct bytes are not sent in the
+; traces so far.
+; Entry: any widths; DB a bank where work RAM and the APU ports are
+; mapped. Exit: X and Y high bytes cleared; X = the last head; A as the
+; last write; P restored.
+%ramcode($7EB112, $010E39)
+SoundPortsSend:
+    php
+    sep.b #$30
+    lda.w !sound_direct0
+    beq .direct1
+    sta.w !APUIO0
+    stz.w !sound_direct0
+    plp
+    rts
+.direct1:
+    lda.w !sound_direct1
+    beq .queues
+    sta.w !APUIO1
+    stz.w !sound_direct1
+    plp
+    rts
+.queues:
+    lda.w !wram_10DA
+    bne .hold
+    lda.w !wram_10DC
+    bne .hold
+    lda.w !frame_count
+    bit.b #$01
+    bne .send
+.hold:
+    plp
+    rts
+.send:
+    lda.w !APUIO0
+    bne .busy0
+    lda.w !sound_port0_count
+    beq .port1
+    ldx.w !sound_port0_head
+    lda.w !sound_port0_queue,x
+    dec.w !sound_port0_count
+    beq .send0
+    inx
+    cpx.b #$10
+    bcc .head0
+    ldx.b #$00
+.head0:
+    stx.w !sound_port0_head
+.send0:
+    bra .write0
+.busy0:
+    lda.b #$00
+.write0:
+    sta.w !APUIO0
+.port1:
+    lda.w !APUIO1
+    bne .busy1
+    lda.w !sound_port1_count
+    beq .ports23
+    ldx.w !sound_port1_head
+    lda.w !sound_port1_queue,x
+    dec.w !sound_port1_count
+    beq .send1
+    inx
+    cpx.b #$10
+    bcc .head1
+    ldx.b #$00
+.head1:
+    stx.w !sound_port1_head
+.send1:
+    bra .write1
+.busy1:
+    lda.b #$00
+.write1:
+    sta.w !APUIO1
+    sta.w !sound_port1_last
+.ports23:
+    lda.w !wram_0E4B
+    bne .quiet
+    lda.w !near_car_pos
+    sta.w !APUIO2
+    lda.w !wram_0E49
+    sta.w !APUIO3
+    plp
+    rts
+.quiet:
+    lda.b #$00
+    sta.w !APUIO2
+    sta.w !APUIO3
+    plp
+    rts

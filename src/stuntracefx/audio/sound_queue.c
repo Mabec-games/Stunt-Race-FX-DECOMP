@@ -7,6 +7,7 @@
  * when the sound CPU has taken the previous one.
  */
 #include "machine.h"
+#include "cpu_ops.h"
 #include "hw.h"
 #include "wram.h"
 
@@ -120,4 +121,111 @@ void abi_SoundReset(void)
     cpu.a &= 0xFF00;
     cpu.x &= 0x00FF;
     cpu.y &= 0x00FF;
+}
+
+/* One ring to its port: 0 when the port still shows a command, else the
+   oldest byte (the head steps on, wrapping at 16, unless that was the
+   last). Returns 0 when the ring is empty and the port was clear (nothing
+   written), else 1 with the byte written in A. */
+static int ring_send(uint32_t b, uint16_t port, uint16_t count, uint16_t head, uint16_t ring)
+{
+    uint8_t v, n;
+
+    v = rd8(b | port);
+    if (v) {
+        v = 0x00;
+    } else {
+        n = rd8(b | count);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | n);
+        if (!n)
+            return 0;
+        cpu.x = rd8(b | head);
+        v = rd8(b | (uint16_t)(ring + cpu.x));
+        n = (uint8_t)(rd8(b | count) - 1);
+        wr8(b | count, n);
+        if (n) {
+            cpu.x = (uint8_t)(cpu.x + 1);
+            if (cpu.x >= 0x10)
+                cpu.x = 0x00;
+            wr8(b | head, (uint8_t)cpu.x);
+        }
+    }
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    wr8(b | port, v);
+    return 1;
+}
+
+/*
+ * @routine 7E:B112 SoundPortsSend
+ * WHAT IT DOES: The frame's sound output: a direct byte at $10E2 (port 0)
+ * or $10E3 (port 1) is sent alone and cleared; otherwise, unless $10DA or
+ * $10DC is set, on odd frames ($0E3B) each port gets 0 while it still
+ * shows the last command, else the next byte of its queue (port 0 from
+ * the ring at $0DA8, port 1 from $0DB8, the port 1 byte also kept at
+ * $0DD2); then ports 2 and 3 get $0E47 and $0E49 (0 while $0E4B is set).
+ * HOW: 8-bit, through the data bank; a queue's head only moves on while
+ * bytes remain after the one taken. The direct bytes are not sent in the
+ * traces so far.
+ * Entry: any widths; DB a bank where work RAM and the APU ports are
+ * mapped. Exit: X and Y high bytes cleared; X = the last head; A as the
+ * last write; P restored.
+ */
+void abi_SoundPortsSend(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t p0 = cpu.p, v;
+
+    op_sep(P_M | P_X);
+    v = rd8(b | 0x10E2);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    if (v) {
+        wr8(b | 0x2140, v);
+        wr8(b | 0x10E2, 0x00);
+        cpu.p = p0;
+        return;
+    }
+    v = rd8(b | 0x10E3);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    if (v) {
+        wr8(b | 0x2141, v);
+        wr8(b | 0x10E3, 0x00);
+        cpu.p = p0;
+        return;
+    }
+    {
+        static const uint16_t hold[2] = {0x10DA, 0x10DC};
+        int i;
+
+        for (i = 0; i < 2; i++) {
+            v = rd8(b | hold[i]);
+            cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+            if (v) {
+                cpu.p = p0;
+                return;
+            }
+        }
+    }
+    v = rd8(b | 0x0E3B);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    if (!(v & 0x01)) {
+        cpu.p = p0;
+        return;
+    }
+    ring_send(b, 0x2140, 0x0DCC, 0x0DC8, 0x0DA8);
+    if (ring_send(b, 0x2141, 0x0DCE, 0x0DCA, 0x0DB8))
+        wr8(b | 0x0DD2, (uint8_t)cpu.a);
+    v = rd8(b | 0x0E4B);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    if (v) {
+        cpu.a = (uint16_t)(cpu.a & 0xFF00);
+        wr8(b | 0x2142, 0x00);
+        wr8(b | 0x2143, 0x00);
+    } else {
+        v = rd8(b | 0x0E47);
+        wr8(b | 0x2142, v);
+        v = rd8(b | 0x0E49);
+        wr8(b | 0x2143, v);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    }
+    cpu.p = p0;
 }

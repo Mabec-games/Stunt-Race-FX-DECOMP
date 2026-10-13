@@ -1541,3 +1541,5 @@ includeonce
 !status_colour = $7EFD8B               ; the colour StatusColourPick picks
 !status_colours_a = $7EB5B1            ; four colours, in the work RAM copy of the code
 !status_colours_b = $7EB5B9            ; four more
+!sound_direct0 = $10E2                  ; a byte sent straight to APU port 0 (then cleared)
+!sound_direct1 = $10E3                  ; the same for port 1
