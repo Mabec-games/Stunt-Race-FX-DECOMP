@@ -6,6 +6,8 @@
     t3.py --image               gate A7: every routine's C replaces it at once, in
                                  lockstep with the original, every script, every frame
     t3.py --qualify ADDR...     every gate for each routine, and the tier it reaches
+    --full                      with --live or --image: run everything; by default
+                                 only what changed since its last result runs
 
 Gates for T3: 0 (the C says what it does, how, its entry and exit, and has no
 unfinished markers), C (every byte of the routine executed by the scripts),
@@ -64,6 +66,86 @@ def one(script, only):
     return name, rows, notes
 
 
+# Incremental gates. A script's lockstep result depends only on the C of the
+# routines it reaches (every other routine's C is never called), the shared
+# headers, the harness and the core patches, and the script itself; a
+# routine's per-call result only on its own C and those shared paths. So a
+# gate run reruns a script, or a routine, only when one of those changed
+# since the revision its last passing result was measured on, and carries
+# the other results forward to the new revision. --full reruns everything.
+SHARED = ('src/stuntracefx/include/', 'tools/stuntracefx/sfxbox/', 'tools/toolchains/patches/',
+          'tools/stuntracefx/hybrid.py')
+
+
+@functools.lru_cache(maxsize=None)
+def changed_since(rev):
+    """Paths changed from committed source `rev` to HEAD; None when unknown."""
+    if not rev or rev.endswith('+dirty'):
+        return None
+    r = git('diff', '--name-only', rev, 'HEAD')
+    return None if r.returncode else frozenset(l for l in r.stdout.splitlines() if l)
+
+
+def shared_changed(paths):
+    return any(p.startswith(SHARED) or (p.startswith('src/stuntracefx/') and not p.endswith('.c'))
+               for p in paths)
+
+
+@functools.lru_cache(maxsize=None)
+def tags_in(rev, path):
+    """Routine addresses tagged in the C file `path` at `rev` (HEAD: the work tree)."""
+    if rev == 'HEAD':
+        full = os.path.join(ROOT, path)
+        text = open(full).read() if os.path.exists(full) else ''
+    else:
+        r = git('show', '%s:%s' % (rev, path))
+        text = r.stdout if r.returncode == 0 else ''
+    return frozenset('%02X%s' % (int(m.group(1), 16), m.group(2).upper()) for m in TAG.finditer(text))
+
+
+def changed_routines(rev, paths):
+    """Every routine whose C was added, changed or removed between `rev` and HEAD."""
+    out = set()
+    for p in paths:
+        if p.startswith('src/stuntracefx/') and p.endswith('.c'):
+            out |= tags_in(rev, p) | tags_in('HEAD', p)
+    return out
+
+
+@functools.lru_cache(maxsize=None)
+def reached():
+    """Script name -> addresses of the catalogued routines its trace entered."""
+    sys.path.insert(0, os.path.join(ROOT, 'tools', 'stuntracefx'))
+    import codemap
+    rows = list(csv.DictReader(open(os.path.join(B, 'routines.csv'))))
+    out = {}
+    for s in glob.glob(os.path.join(SCRIPTS, '*.sfx')):
+        name = os.path.splitext(os.path.basename(s))[0]
+        d = os.path.join(B, 'box', name)
+        if not os.path.exists(os.path.join(d, 'rommap.bin')):
+            continue
+        mp = codemap.merged([d])
+        out[name] = frozenset(r['addr'] for r in rows if int(r['offset'], 16) < len(mp) and mp[int(r['offset'], 16)] & 0x33)
+    return out
+
+
+def script_stale(name, rev, prev):
+    """Why `name` must run again for HEAD, given its last row; '' when its result carries."""
+    if not prev or prev['verdict'] not in ('IDENTICAL', 'UNCOVERED'):
+        return 'no passing result'
+    paths = changed_since(prev['source'])
+    if paths is None:
+        return 'no committed revision to compare'
+    if shared_changed(paths):
+        return 'shared code changed'
+    if 'tools/stuntracefx/scripts/%s.sfx' % name in paths:
+        return 'script changed'
+    if name not in reached():
+        return 'no trace'
+    hit = reached()[name] & changed_routines(prev['source'], paths)
+    return 'C changed for %s' % ' '.join(sorted(hit)[:4]) if hit else ''
+
+
 GATE_LIB = os.path.join(B, 'hybrid', 'gate', 'libsrfx.dylib')
 
 
@@ -77,11 +159,53 @@ def build_gate_lib():
     return rev
 
 
-def live(only):
+def stale_routines(rev):
+    """Routines whose per-call result must be measured again for HEAD."""
+    have = {}
+    for dp, dn, fn in os.walk(os.path.join(ROOT, 'src', 'stuntracefx')):
+        for f in fn:
+            if f.endswith('.c'):
+                for a in tags_in('HEAD', os.path.relpath(os.path.join(dp, f), ROOT)):
+                    have[a] = os.path.relpath(os.path.join(dp, f), ROOT)
+    old = {r['routine']: r for r in csv.DictReader(open(LIVE))} if os.path.exists(LIVE) else {}
+    out = []
+    for a, path in sorted(have.items()):
+        prev = old.get(a)
+        paths = changed_since(prev['source']) if prev else None
+        if paths is None or shared_changed(paths) or path in paths:
+            out.append(a)
+    return out
+
+
+def live(only, full=False):
     global LIB
     rev = build_gate_lib()
     LIB = GATE_LIB
     scripts = sorted(glob.glob(os.path.join(SCRIPTS, '*.sfx')))
+    if not only and not full:
+        only = stale_routines(rev)
+        if not only:
+            # Nothing to measure: every result holds for HEAD.
+            rows = list(csv.DictReader(open(LIVE))) if os.path.exists(LIVE) else []
+            for r in rows:
+                paths = changed_since(r['source'])
+                if paths is not None and not shared_changed(paths):
+                    r['source'] = rev
+            with open(LIVE, 'w', newline='') as f:
+                wr = csv.DictWriter(f, ['routine', 'name', 'verdict', 'calls', 'scripts', 'diff', 'inconclusive', 'date', 'source'])
+                wr.writeheader()
+                wr.writerows(rows)
+            print('every routine\'s per-call result is current (carried to %s)' % rev)
+            return 1 if any(r['verdict'] != 'IDENTICAL' for r in rows) else 0
+        print('%d routine(s) to measure: %s' % (len(only), ' '.join(only[:12]) + (' ...' if len(only) > 12 else '')))
+    if only and not full:
+        # Only the scripts that reach one of them; for the rest the calls
+        # count is 0 either way. A script with no trace runs.
+        want = set(only)
+        rch = reached()
+        scripts = [s for s in scripts if os.path.splitext(os.path.basename(s))[0] not in rch
+                   or rch[os.path.splitext(os.path.basename(s))[0]] & want]
+        print('%d script(s) reach them' % len(scripts))
     with concurrent.futures.ThreadPoolExecutor(max_workers=os.cpu_count()) as ex:
         results = list(ex.map(lambda s: one(s, only), scripts))
     agg = {}
@@ -107,6 +231,14 @@ def live(only):
             addr, a['name'], a['calls'], a['scripts'], len(scripts), a['diff'], a['inc'], v))
         old[addr] = {'routine': addr, 'name': a['name'], 'verdict': v, 'calls': a['calls'], 'scripts': a['scripts'],
                      'diff': a['diff'], 'inconclusive': a['inc'], 'date': stamp, 'source': rev + ('+dirty' if dirty else '')}
+    if not full:
+        # Routines not measured again: their result holds for HEAD.
+        measured = set(agg)
+        for k, r in old.items():
+            if k not in measured and not (only and k in only):
+                paths = changed_since(r['source'])
+                if paths is not None and not shared_changed(paths):
+                    r['source'] = rev
     os.makedirs(os.path.dirname(LIVE), exist_ok=True)
     with open(LIVE, 'w', newline='') as f:
         wr = csv.DictWriter(f, ['routine', 'name', 'verdict', 'calls', 'scripts', 'diff', 'inconclusive', 'date', 'source'])
@@ -134,15 +266,28 @@ def image_one(script):
     return name, lines
 
 
-def image():
+def image(full=False):
     global LIB
     rev = build_gate_lib()
     LIB = GATE_LIB
     scripts = sorted(glob.glob(os.path.join(SCRIPTS, '*.sfx')))
-    with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, os.cpu_count() // 2)) as ex:
-        results = list(ex.map(image_one, scripts))
+    old = {r['script']: r for r in csv.DictReader(open(IMAGE))} if os.path.exists(IMAGE) else {}
     stamp, verdicts = datetime.date.today().isoformat(), []
-    rows = []
+    rows, run_these = [], []
+    for s in scripts:
+        name = os.path.splitext(os.path.basename(s))[0]
+        why = 'full run' if full else script_stale(name, rev, old.get(name))
+        if why:
+            run_these.append(s)
+            print('%-22s runs: %s' % (name, why))
+            continue
+        r = dict(old[name])
+        print('%-22s %s (carried from %s)' % (name, r['verdict'], r['source']))
+        r['source'] = rev
+        verdicts.append(r['verdict'])
+        rows.append(r)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, os.cpu_count() // 2)) as ex:
+        results = list(ex.map(image_one, run_these))
     for name, lines in results:
         last = lines[-1] if lines else 'FAILED'
         v = last.rsplit(': ', 1)[-1] if ': ' in last else 'FAILED'
@@ -155,7 +300,7 @@ def image():
     with open(IMAGE, 'w', newline='') as f:
         wr = csv.DictWriter(f, ['script', 'verdict', 'detail', 'date', 'source'])
         wr.writeheader()
-        wr.writerows(rows)
+        wr.writerows(sorted(rows, key=lambda r: r['script']))
     ok = all(v in ('IDENTICAL', 'UNCOVERED') for v in verdicts) and 'IDENTICAL' in verdicts
     print('whole image: %s' % ('IDENTICAL' if ok else 'DIVERGENT'))
     return 0 if ok else 1
@@ -354,12 +499,14 @@ def gate_lock():
 
 
 def main(argv):
-    if argv[:1] in (['--live'], ['--image']):
+    if argv[:1] in (['--live'], ['--image']) or argv[1:2] in (['--live'], ['--image']):
         gate_lock()
+    full = '--full' in argv
+    argv = [a for a in argv if a != '--full']
     if argv[:1] == ['--live']:
-        return live([a.upper().replace(':', '').replace('$', '') for a in argv[1:]])
+        return live([a.upper().replace(':', '').replace('$', '') for a in argv[1:]], full)
     if argv[:1] == ['--image']:
-        return image()
+        return image(full)
     if argv[:1] == ['--qualify'] and argv[1:]:
         return qualify([x.replace(':', '').replace('$', '') for x in argv[1:]])
     print(__doc__)
