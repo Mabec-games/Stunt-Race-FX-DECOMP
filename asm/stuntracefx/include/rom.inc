@@ -281,3 +281,11 @@ includeonce
 !slide_value_table = $09F127
 !window_19e6_table = $09F115
 !layout_records = $09F14D
+
+; Race phase handler tables in bank $07, a word per phase (race/
+; player_stats.asm), and the race code PlayerStatsThenPhaseDD35 jumps to
+; while a fade runs.
+!phase_handlers_e232 = $E232
+!phase_handlers_e24f = $E24F
+!phase_handlers_dd35 = $DD35
+!race_fade_tail = $EBE9

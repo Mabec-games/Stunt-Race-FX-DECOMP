@@ -1303,3 +1303,23 @@ includeonce
 !wram_19EA = $19EA
 !wram_19EB = $19EB
 !wram_1A06 = $1A06
+
+; Per-player race figures (race/player_stats.asm): speedometer samples and
+; their 32-bit totals and counts per player, and bytes of the car's Super
+; FX record (+$40-$43, +$4E, +$7A) a byte per player.
+!speed_sample = $0DDA
+!speed_total_p0 = $0DDC
+!speed_total_p1 = $0DE0
+!speed_count_p0 = $0DE4
+!speed_count_p1 = $0DE6
+!player_rec_7a = $0DE8
+!player_rec_40 = $0DEC
+!player_rec_41 = $0DEE
+!player_rec_42 = $0DF0
+!player_rec_43 = $0DF2
+!player_rec_4e = $0DF6
+!fade_level_hi = $0D61
+!gsu_rec_41 = $700041
+!gsu_rec_43 = $700043
+!gsu_rec_4e = $70004E
+!gsu_rec_7a = $70007A

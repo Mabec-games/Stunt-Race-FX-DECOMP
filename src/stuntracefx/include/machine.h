@@ -18,10 +18,14 @@
 uint8_t rd8(uint32_t addr);
 void wr8(uint32_t addr, uint8_t value);
 
-/* Multi-byte accesses are little-endian and linear in the 24-bit space. */
+/* Multi-byte accesses are little-endian and linear in the 24-bit space,
+   the low byte first, as the CPU makes them (lockstep places each access
+   on the original's, so the order is part of the behaviour). */
 static inline uint16_t rd16(uint32_t addr)
 {
-    return (uint16_t)(rd8(addr) | rd8((addr + 1) & 0xFFFFFF) << 8);
+    uint8_t lo = rd8(addr);
+
+    return (uint16_t)(lo | rd8((addr + 1) & 0xFFFFFF) << 8);
 }
 
 static inline void wr16(uint32_t addr, uint16_t value)
