@@ -462,6 +462,17 @@ static void check_insn(uint32_t pc, uint32_t prev_end, uint8_t opcode)
     struct GsuState st;
     core_get(&st);
     if (!(prog || entry_ok(pc, prev_end, &st)) || depth == DEPTH) { stats[idx].skipped++; return; }
+    /* SFXBOX_GSU_ENTRY=addr: print the registers at each entry of that
+       routine (for writing unit tests that reach its other paths). */
+    {
+        static long want = -2;
+        if (want == -2) want = getenv("SFXBOX_GSU_ENTRY") ? (long)strtoul(getenv("SFXBOX_GSU_ENTRY"), NULL, 16) : -1;
+        if (want == (long)pc) {
+            fprintf(stderr, "GSU ENTRY %06X:", pc);
+            for (int r = 0; r < 16; r++) fprintf(stderr, " r%d=%04X", r, st.r[r]);
+            fprintf(stderr, " rambr=%02X\n", st.rambr);
+        }
+    }
     Watch *w = &ws[depth++];
     w->idx = idx; w->foreign = 0; w->gen++; w->ntouched = 0;
     w->ret = prog ? PROGRAM : (pc & 0xFF0000) | st.r[11];

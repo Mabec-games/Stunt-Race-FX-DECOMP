@@ -296,7 +296,7 @@ def source_rev():
 
 
 def pieces(script):
-    """A script of unit calls (sfxbox call), as one lockstep script per call.
+    """A script of unit calls (sfxbox call or fx), as one lockstep script per call.
 
     A unit call puts the machine back as it was when it returns, and a
     `load` replaces the whole machine: in one lockstep run, either can land
@@ -310,7 +310,7 @@ def pieces(script):
     or as C, so there is no call to compare: it has no piece."""
     lines = [l.split('#')[0].strip() for l in open(script)]
     lines = [l for l in lines if l]
-    if not any(l.split()[0] == 'call' for l in lines):
+    if not any(l.split()[0] in ('call', 'fx') for l in lines):
         return [script]
     name = os.path.splitext(os.path.basename(script))[0]
     d = os.path.join(B, 'image', name, 'pieces')
@@ -324,7 +324,7 @@ def pieces(script):
             prefix, sets = [l], []
         elif w[0] == 'set':
             sets.append(l)
-        elif w[0] == 'call':
+        elif w[0] in ('call', 'fx'):
             if 'keep' in w:
                 prefix += sets + [l]
             sets_now, sets = sets, []
@@ -332,7 +332,7 @@ def pieces(script):
                 continue
             tail = []
             for t in lines[i + 1:]:
-                if t.split()[0] in ('call', 'load', 'set'):
+                if t.split()[0] in ('call', 'fx', 'load', 'set'):
                     break
                 tail.append(t)
             body = prefix + ([] if 'keep' in w else sets_now + [l]) + tail

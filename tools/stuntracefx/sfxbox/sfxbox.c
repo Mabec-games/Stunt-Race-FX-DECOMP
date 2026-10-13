@@ -197,8 +197,8 @@ static const char *script_path;
 /* poke ADDR BYTE[,BYTE...]: both lockstep processes run the script, so a
    poke lands the same way on each side. */
 static void poke(const char *line, int lineno) {
-    char addr[64] = "", bytes[256] = "";
-    if (sscanf(line, "%*s %63s %255s", addr, bytes) != 2) die("%s:%d: poke ADDR BYTE[,BYTE...]", script_path, lineno);
+    char addr[64] = "", bytes[1024] = "";
+    if (sscanf(line, "%*s %63s %1023s", addr, bytes) != 2) die("%s:%d: poke ADDR BYTE[,BYTE...]", script_path, lineno);
     unsigned long a = strtoul(addr[0] == '$' ? addr + 1 : addr, NULL, 16);
     unsigned bank = a >> 16 & 0xFF, off = a & 0xFFFF;
     const char *view = NULL; size_t base = 0;
@@ -242,7 +242,7 @@ static int call_keep;    /* keep: the machine is not put back after the call */
 
 /* set: bytes staged for the next call, written when it starts (after the
    state it is put back to was taken), so the game never runs on them. */
-static char staged[64][256];
+static char staged[64][1024];
 static int staged_line[64], nstaged;
 
 static int call_exec(uint32_t pc)
@@ -341,6 +341,80 @@ static void call(const char *line, int lineno) {
     call_state = 0;
 }
 
+/* fx: a unit test of a Super FX routine. A stub in work RAM at $7F:1F00,
+   run as a call (see call), does what the game's GsuRun does: sets the
+   Super FX registers named (rN=VALUE, 16-bit), the program bank, the
+   screen mode $0374 | $18, clears SFR, writes R15 = the routine (which
+   starts the Super FX), polls GO until it stops, and puts the screen mode
+   back. R11 is the return address the routine jumps to when done: stop=ADDR
+   names a STOP in the routine's bank, where the Super FX then halts. The
+   routine is started as a program, so the checks take it as entered there
+   and judge it at that STOP.
+       fx BANK:ADDR stop=ADDR [r0=..] ... [r14=..] [frames=N] */
+static void fx(const char *line, int lineno) {
+    char tok[24][64];
+    int k = sscanf(line, "%*s %63s %63s %63s %63s %63s %63s %63s %63s %63s %63s %63s %63s %63s %63s %63s %63s %63s %63s",
+                   tok[0], tok[1], tok[2], tok[3], tok[4], tok[5], tok[6], tok[7], tok[8], tok[9], tok[10], tok[11], tok[12],
+                   tok[13], tok[14], tok[15], tok[16], tok[17]);
+    if (k < 2) die("%s:%d: fx BANK:ADDR stop=ADDR [rN=VALUE...] [frames=N]", script_path, lineno);
+    char ab[64]; int j = 0;
+    for (const char *c = tok[0]; *c; c++) if (*c != '$' && *c != ':') ab[j++] = *c;
+    ab[j] = 0;
+    uint32_t addr = (uint32_t)strtoul(ab, NULL, 16);
+    long stop = -1; char frames[32] = "";
+    long reg[16]; for (int i = 0; i < 16; i++) reg[i] = -1;
+    for (int i = 1; i < k; i++) {
+        const char *eq = strchr(tok[i], '=');
+        if (!eq) die("%s:%d: fx: bad option %s", script_path, lineno, tok[i]);
+        unsigned long v = strtoul(eq + 1, NULL, 16);
+        if (!strncmp(tok[i], "stop=", 5)) stop = (long)(v & 0xFFFF);
+        else if (!strncmp(tok[i], "frames=", 7)) snprintf(frames, sizeof frames, " %s", tok[i]);
+        else if (tok[i][0] == 'r') {
+            int n = atoi(tok[i] + 1);
+            if (n < 0 || n > 14) die("%s:%d: fx: no register %s", script_path, lineno, tok[i]);
+            reg[n] = (long)(v & 0xFFFF);
+        } else die("%s:%d: fx: bad option %s", script_path, lineno, tok[i]);
+    }
+    if (stop < 0) die("%s:%d: fx: stop=ADDR is needed (R11, where the routine returns)", script_path, lineno);
+    reg[11] = stop;
+    uint8_t b[160]; int m = 0;
+    b[m++] = 0xC2; b[m++] = 0x30;                                   /* REP #$30 */
+    for (int n = 0; n < 15; n++) if (reg[n] >= 0) {
+        b[m++] = 0xA9; b[m++] = (uint8_t)reg[n]; b[m++] = (uint8_t)(reg[n] >> 8);   /* LDA #v */
+        b[m++] = 0x8D; b[m++] = (uint8_t)(2 * n); b[m++] = 0x30;    /* STA $30nn */
+    }
+    b[m++] = 0xE2; b[m++] = 0x20;                                   /* SEP #$20 */
+    b[m++] = 0xA9; b[m++] = (uint8_t)(addr >> 16);                  /* LDA #bank */
+    b[m++] = 0x8D; b[m++] = 0x34; b[m++] = 0x30;                    /* STA $3034 (PBR) */
+    b[m++] = 0xAD; b[m++] = 0x74; b[m++] = 0x03;                    /* LDA $0374 */
+    b[m++] = 0x09; b[m++] = 0x18;                                   /* ORA #$18 */
+    b[m++] = 0x8D; b[m++] = 0x3A; b[m++] = 0x30;                    /* STA $303A (SCMR) */
+    b[m++] = 0x9C; b[m++] = 0x30; b[m++] = 0x30;                    /* STZ $3030 (SFR) */
+    b[m++] = 0xC2; b[m++] = 0x20;                                   /* REP #$20 */
+    b[m++] = 0xA9; b[m++] = (uint8_t)addr; b[m++] = (uint8_t)(addr >> 8);       /* LDA #routine */
+    b[m++] = 0x8D; b[m++] = 0x1E; b[m++] = 0x30;                    /* STA $301E: R15, starts it */
+    b[m++] = 0xE2; b[m++] = 0x20;                                   /* SEP #$20 */
+    b[m++] = 0xAD; b[m++] = 0x30; b[m++] = 0x30;                    /* poll: LDA $3030 */
+    b[m++] = 0x29; b[m++] = 0x20;                                   /* AND #$20 */
+    b[m++] = 0xD0; b[m++] = 0xF9;                                   /* BNE poll */
+    b[m++] = 0xAD; b[m++] = 0x74; b[m++] = 0x03;                    /* LDA $0374 */
+    b[m++] = 0x8D; b[m++] = 0x3A; b[m++] = 0x30;                    /* STA $303A */
+    b[m++] = 0x60;                                                  /* RTS */
+    size_t n; uint8_t *w = sfxbox_memory_p("wram", &n);
+    if (0x11F00 + (size_t)m > 0x11FE0) die("%s:%d: fx: stub too long", script_path, lineno);
+    char cl[128];
+    snprintf(cl, sizeof cl, "call 7F:1F00 p=30 db=00 d=0000%s", frames);
+    /* The stub is written when the call starts (with the set bytes), after
+       the state the call puts back was taken. */
+    if (nstaged + 1 > 64) die("%s:%d: fx: more than 64 set lines", script_path, lineno);
+    char *st = staged[nstaged]; int o = snprintf(st, sizeof staged[0], "set 7F1F00 ");
+    for (int i = 0; i < m && o < (int)sizeof staged[0] - 4; i++) o += snprintf(st + o, sizeof staged[0] - (size_t)o, i ? ",%02X" : "%02X", b[i]);
+    if (o >= (int)sizeof staged[0] - 4) die("%s:%d: fx: stub too long for one set line", script_path, lineno);
+    staged_line[nstaged++] = lineno;
+    (void)w; (void)n;
+    call(cl, lineno);
+}
+
 static int block_end(int i) {  /* index of the matching end for a repeat at i */
     int depth = 0;
     for (int j = i + 1; j < nlines; j++) {
@@ -379,6 +453,7 @@ static void exec_range(int from, int to) {
         }
         else if (!strcmp(a, "poke") && k >= 3) poke(lines[i], i + 1);
         else if (!strcmp(a, "call") && k >= 2) call(lines[i], i + 1);
+        else if (!strcmp(a, "fx") && k >= 2) fx(lines[i], i + 1);
         else if (!strcmp(a, "set") && k >= 3) {
             if (nstaged == 64) die("%s:%d: set: more than 64 for one call", script_path, i + 1);
             snprintf(staged[nstaged], sizeof staged[0], "%s", lines[i]);
