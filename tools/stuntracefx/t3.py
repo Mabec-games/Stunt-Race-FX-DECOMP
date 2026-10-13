@@ -27,7 +27,7 @@ parallel and merges the results per routine:
 Verdicts are written to config/stuntracefx/t3_live.csv with the date and the
 source revision they were measured on. Only IDENTICAL passes.
 """
-import concurrent.futures, csv, datetime, functools, glob, os, subprocess, sys
+import concurrent.futures, csv, datetime, functools, glob, hashlib, json, os, subprocess, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 B = os.path.join(ROOT, 'build', 'stuntracefx')
@@ -177,74 +177,114 @@ def stale_routines(rev):
     return out
 
 
+def _cache_path(name):
+    return os.path.join(B, 'check', name, 'rows.json')
+
+
+def _load_cache(name):
+    try:
+        return json.load(open(_cache_path(name)))
+    except (OSError, ValueError):
+        return None
+
+
+def _script_sha(script):
+    return hashlib.sha1(open(script, 'rb').read()).hexdigest()
+
+
 def live(only, full=False):
+    """A5. Each script's per-routine results are kept with the revision and
+    the script they were measured on (build/stuntracefx/check/NAME/rows.json);
+    a run measures again only what can have changed: a new or changed script,
+    or shared code changed since, runs every routine; otherwise a script runs
+    only the routines whose C changed (and that it reaches). The verdicts are
+    then summed over every script's kept results."""
     global LIB
     rev = build_gate_lib()
     LIB = GATE_LIB
     scripts = sorted(glob.glob(os.path.join(SCRIPTS, '*.sfx')))
-    if not only and not full:
-        only = stale_routines(rev)
-        if not only:
-            # Nothing to measure: every result holds for HEAD.
-            rows = list(csv.DictReader(open(LIVE))) if os.path.exists(LIVE) else []
-            for r in rows:
-                paths = changed_since(r['source'])
-                if paths is not None and not shared_changed(paths):
-                    r['source'] = rev
-            with open(LIVE, 'w', newline='') as f:
-                wr = csv.DictWriter(f, ['routine', 'name', 'verdict', 'calls', 'scripts', 'diff', 'inconclusive', 'date', 'source'])
-                wr.writeheader()
-                wr.writerows(rows)
-            print('every routine\'s per-call result is current (carried to %s)' % rev)
-            return 1 if any(r['verdict'] != 'IDENTICAL' for r in rows) else 0
-        print('%d routine(s) to measure: %s' % (len(only), ' '.join(only[:12]) + (' ...' if len(only) > 12 else '')))
-    if only and not full:
-        # Only the scripts that reach one of them; for the rest the calls
-        # count is 0 either way. A script with no trace runs.
-        want = set(only)
-        rch = reached()
-        scripts = [s for s in scripts if os.path.splitext(os.path.basename(s))[0] not in rch
-                   or rch[os.path.splitext(os.path.basename(s))[0]] & want]
-        print('%d script(s) reach them' % len(scripts))
+    have = set()
+    for dp, dn, fn in os.walk(os.path.join(ROOT, 'src', 'stuntracefx')):
+        for f in fn:
+            if f.endswith('.c'):
+                have |= tags_in('HEAD', os.path.relpath(os.path.join(dp, f), ROOT))
+    stale = set(only) if only else set() if full else set(stale_routines(rev))
+    rch = reached()
+    jobs = []
+    for sc in scripts:
+        name = os.path.splitext(os.path.basename(sc))[0]
+        c = _load_cache(name)
+        why = ''
+        if full or not c:
+            why = 'all'
+        elif c.get('script') != _script_sha(sc):
+            why = 'all'
+        else:
+            paths = changed_since(c.get('rev'))
+            if paths is None or shared_changed(paths):
+                why = 'all'
+        if why == 'all' and only:
+            why = ''  # explicit routines: measure just those
+        if why == 'all':
+            jobs.append((sc, None))
+            continue
+        want = stale & (rch.get(name, have) | {a for a in stale if c and a not in c.get('rows', {})})
+        if not want and only:
+            want = stale & rch.get(name, have)
+        if want:
+            jobs.append((sc, sorted(want)))
+    print('%d script run(s): %d whole, %d for changed routines' % (
+        len(jobs), sum(1 for _, w in jobs if w is None), sum(1 for _, w in jobs if w is not None)))
     with concurrent.futures.ThreadPoolExecutor(max_workers=os.cpu_count()) as ex:
-        results = list(ex.map(lambda s: one(s, only), scripts))
-    agg = {}
-    for name, rows, notes in results:
+        results = list(ex.map(lambda j: (j,) + one(j[0], j[1]), jobs))
+    for (sc, want), name, rows, notes in results:
+        c = _load_cache(name) if want is not None else None
+        kept = dict(c['rows']) if c else {}
         for addr, rname, calls, match, diff, inc, skipped, _ in rows:
-            a = agg.setdefault(addr, {'name': rname, 'calls': 0, 'match': 0, 'diff': 0, 'inc': 0, 'scripts': 0})
-            a['calls'] += int(calls); a['match'] += int(match); a['diff'] += int(diff); a['inc'] += int(inc)
-            a['scripts'] += int(calls) > 0
+            kept[addr] = [rname, int(calls), int(match), int(diff), int(inc), int(skipped)]
+        os.makedirs(os.path.dirname(_cache_path(name)), exist_ok=True)
+        json.dump({'rev': rev, 'script': _script_sha(sc), 'rows': kept}, open(_cache_path(name), 'w'))
         for n in notes[:20]:
             print(n)
-    dirty = ''
+    # Results that were not measured again hold for HEAD: carry them.
+    agg = {}
+    for sc in scripts:
+        name = os.path.splitext(os.path.basename(sc))[0]
+        c = _load_cache(name)
+        if not c:
+            continue
+        if c['rev'] != rev:
+            c['rev'] = rev
+            json.dump(c, open(_cache_path(name), 'w'))
+        for addr, (rname, calls, match, diff, inc, skipped) in c['rows'].items():
+            if addr not in have:
+                continue
+            a = agg.setdefault(addr, {'name': rname, 'calls': 0, 'diff': 0, 'inc': 0, 'scripts': 0})
+            a['calls'] += calls; a['diff'] += diff; a['inc'] += inc
+            a['scripts'] += calls > 0
     stamp = datetime.date.today().isoformat()
-    old = {}
-    if os.path.exists(LIVE):
-        for r in csv.DictReader(open(LIVE)):
-            old[r['routine']] = r
-    failed = 0
+    old = {r['routine']: r for r in csv.DictReader(open(LIVE))} if os.path.exists(LIVE) else {}
+    out, failed = {}, 0
     for addr in sorted(agg):
         a = agg[addr]
         v = 'DIVERGENT' if a['diff'] else 'UNCOVERED' if a['calls'] == 0 else 'UNVERIFIED' if a['inc'] else 'IDENTICAL'
         failed += v != 'IDENTICAL'
-        print('%s %-28s calls %d in %d/%d scripts, diff %d, inconclusive %d: %s' % (
-            addr, a['name'], a['calls'], a['scripts'], len(scripts), a['diff'], a['inc'], v))
-        old[addr] = {'routine': addr, 'name': a['name'], 'verdict': v, 'calls': a['calls'], 'scripts': a['scripts'],
-                     'diff': a['diff'], 'inconclusive': a['inc'], 'date': stamp, 'source': rev + ('+dirty' if dirty else '')}
-    if not full:
-        # Routines not measured again: their result holds for HEAD.
-        measured = set(agg)
-        for k, r in old.items():
-            if k not in measured and not (only and k in only):
-                paths = changed_since(r['source'])
-                if paths is not None and not shared_changed(paths):
-                    r['source'] = rev
+        prev = old.get(addr)
+        same = prev and prev['verdict'] == v and int(prev['calls']) == a['calls'] and int(prev['diff']) == a['diff']
+        if not same or addr in stale:
+            print('%s %-28s calls %d in %d/%d scripts, diff %d, inconclusive %d: %s' % (
+                addr, a['name'], a['calls'], a['scripts'], len(scripts), a['diff'], a['inc'], v))
+        out[addr] = {'routine': addr, 'name': a['name'], 'verdict': v, 'calls': a['calls'], 'scripts': a['scripts'],
+                     'diff': a['diff'], 'inconclusive': a['inc'], 'date': stamp if not same else prev['date'],
+                     'source': rev}
     os.makedirs(os.path.dirname(LIVE), exist_ok=True)
     with open(LIVE, 'w', newline='') as f:
         wr = csv.DictWriter(f, ['routine', 'name', 'verdict', 'calls', 'scripts', 'diff', 'inconclusive', 'date', 'source'])
         wr.writeheader()
-        for k in sorted(old):
-            wr.writerow(old[k])
+        for k in sorted(out):
+            wr.writerow(out[k])
+    print('%d routines: %s' % (len(out), ', '.join('%d %s' % (n, v) for v, n in sorted(
+        {v: sum(1 for r in out.values() if r['verdict'] == v) for v in set(r['verdict'] for r in out.values())}.items()))))
     return 1 if failed else 0
 
 
