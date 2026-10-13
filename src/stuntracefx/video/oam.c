@@ -1183,6 +1183,25 @@ void abi_FlashingMetaspriteDraw0(void)
 }
 
 /*
+ * @routine 02:F932 FlashingMetaspriteDrawByMode
+ * WHAT IT DOES: FlashingMetaspriteDraw with metasprite $14 of the bank $1C
+ * set when $0D4C's low byte is set, else metasprite $0E.
+ * HOW: $0D35 = $14 or $0E, then a jump into FlashingMetaspriteDraw after
+ * its own store.
+ * Entry: as FlashingMetaspriteDraw. Exit: as FlashingMetaspriteDraw.
+ */
+void abi_FlashingMetaspriteDrawByMode(void)
+{
+    uint16_t set = (rd16(((uint32_t)cpu.db << 16) | 0x0D4C) & 0x00FF) ? 0x0014 : 0x000E;
+
+    cpu.a = flashing_metasprite_draw(cpu.db, set, &cpu.x, &cpu.y);
+    if (cpu.p & P_X) {
+        cpu.x &= 0x00FF;
+        cpu.y &= 0x00FF;
+    }
+}
+
+/*
  * @routine 02:FB9E OamAttr36x6
  * WHAT IT DOES: Gives 6 sprites from entry A attribute byte $36.
  * HOW: As OamAttr36x4.
@@ -1298,6 +1317,45 @@ void abi_SpritePieces3(void)
     attr = SpritePieces3(cpu.db, &cpu.x, &cpu.y, &p, &set);
     cpu.a = (uint16_t)((set & 0xFF00) | attr);
     cpu.p = p;
+}
+
+/* Piece set A at screen X = x, Y = $7E, then SpritePieces3; the flags
+   left by the set-up subtracts are SpritePieces3's to overwrite. */
+static void pieces_at(uint16_t x)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    wr16(b | 0x10C3, cpu.a);
+    wr16(b | 0x10BD, x);
+    wr16(b | 0x10BF, 0x0089 - 0x000B);
+    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_V)) | P_C);
+    abi_SpritePieces3();
+    cpu.p &= (uint8_t)~P_M;
+}
+
+/*
+ * @routine 02:FD3E SpritePiecesAtLeft
+ * WHAT IT DOES: Writes the three sprites of piece set A ($10C3) at screen
+ * X = $5D, Y = $7E from sprite buffer offset Y.
+ * HOW: Stores the set and position ($81 - $24, $89 - $0B) and calls
+ * SpritePieces3.
+ * Entry: M 16-bit, X 16-bit, D = $0000; A = the set, Y = sprite buffer
+ * offset. Exit: as SpritePieces3, M 16-bit.
+ */
+void abi_SpritePiecesAtLeft(void)
+{
+    pieces_at(0x0081 - 0x0024);
+}
+
+/*
+ * @routine 02:FD4D SpritePiecesAtRight
+ * WHAT IT DOES: As SpritePiecesAtLeft at screen X = $A5.
+ * HOW: As SpritePiecesAtLeft ($81 + $24).
+ * Entry: as SpritePiecesAtLeft. Exit: as SpritePiecesAtLeft.
+ */
+void abi_SpritePiecesAtRight(void)
+{
+    pieces_at(0x0081 + 0x0024);
 }
 
 /* SpritePieces3 into sprite offset `y`, keeping its A, X, Y and flags. */

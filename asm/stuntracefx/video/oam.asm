@@ -1151,6 +1151,27 @@ FlashingMetaspriteDraw0:
     sta.w !metasprite_set_sel
     jmp.w FlashingMetaspriteDraw_set
 
+; @routine 02:F932 FlashingMetaspriteDrawByMode
+; WHAT IT DOES: FlashingMetaspriteDraw with metasprite $14 of the bank $1C set
+; when $0D4C's low byte is set, else metasprite $0E.
+; HOW: $0D35 = $14 or $0E, then a jump into FlashingMetaspriteDraw after its
+; own store.
+; Entry: as FlashingMetaspriteDraw. Exit: as FlashingMetaspriteDraw.
+%at($02F932)
+FlashingMetaspriteDrawByMode:
+    php
+    rep.b #$30
+    lda.w !digit62_override
+    and.w #$00FF
+    beq .set0E
+    lda.w #$0014
+    sta.w !metasprite_set_sel
+    jmp.w FlashingMetaspriteDraw_set
+.set0E:
+    lda.w #$000E
+    sta.w !metasprite_set_sel
+    jmp.w FlashingMetaspriteDraw_set
+
 ; @routine 02:FB9E OamAttr36x6
 ; WHAT IT DOES: Gives 6 sprites from entry A attribute byte $36.
 ; HOW: As OamAttr36x4.
@@ -1194,6 +1215,42 @@ OamHighBits18Park48:
     sta.w !oam_buffer_high+12
     sta.w !oam_buffer_high+14
     plp
+    rts
+
+; @routine 02:FD3E SpritePiecesAtLeft
+; WHAT IT DOES: Writes the three sprites of piece set A ($10C3) at screen
+; X = $5D, Y = $7E from sprite buffer offset Y.
+; HOW: Stores the set and position ($81 - $24, $89 - $0B) and calls
+; SpritePieces3.
+; Entry: M 16-bit, X 16-bit, D = $0000; A = the set, Y = sprite buffer
+; offset. Exit: as SpritePieces3, M 16-bit.
+%at($02FD3E)
+SpritePiecesAtLeft:
+    sta.w !sprite_piece_frame
+    lda.w #$0081
+    sec
+    sbc.w #$0024
+    sta.w !sprite_piece_x
+    bra SpritePiecesAtY
+
+; @routine 02:FD4D SpritePiecesAtRight
+; WHAT IT DOES: As SpritePiecesAtLeft at screen X = $A5.
+; HOW: As SpritePiecesAtLeft ($81 + $24).
+; Entry: as SpritePiecesAtLeft. Exit: as SpritePiecesAtLeft.
+%at($02FD4D)
+SpritePiecesAtRight:
+    sta.w !sprite_piece_frame
+    lda.w #$0081
+    clc
+    adc.w #$0024
+    sta.w !sprite_piece_x
+SpritePiecesAtY:
+    lda.w #$0089
+    sec
+    sbc.w #$000B
+    sta.w !sprite_piece_y
+    jsl.l SpritePieces3
+    rep.b #$20
     rts
 
 ; @routine 07:B985 SpritePieces3
