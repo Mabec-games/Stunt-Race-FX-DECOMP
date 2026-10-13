@@ -909,3 +909,88 @@ void abi_RecordCompareTime1(void)
 {
     record_compare_by_mode(0x0003);
 }
+
+/* Swap the words at at + x and at + 2 + x (PHA/PLA through A). */
+static void swap_words(uint32_t b, uint16_t at, uint16_t x, int first_read_done, uint16_t first)
+{
+    uint16_t v;
+
+    if (first_read_done) {
+        v = rd16(b | (uint16_t)(at + x));
+        wr16(b | (uint16_t)(at + 2 + x), v);
+        wr16(b | (uint16_t)(at + x), first);
+    } else {
+        v = rd16(b | (uint16_t)(at + x));
+        wr16(b | (uint16_t)(at + x), rd16(b | (uint16_t)(at + 2 + x)));
+        wr16(b | (uint16_t)(at + 2 + x), v);
+    }
+}
+
+/*
+ * @routine 07:B329 RecordsLoadSpecialCourse
+ * WHAT IT DOES: For courses $0C-$0F ($0E3D): loads the course's twelve
+ * saved entries ($70:FCD0 + course * 48, four bytes each) into the times
+ * at $0F2B and the words at $0F43, with the tags from the table at $B4EB
+ * (data bank) at $0F13; sorts them so a larger time never follows a
+ * smaller one, the three arrays together; then $10C9 = the place (1-3) of
+ * tag $10C7 among the first three, or 0.
+ * HOW: Direct page $F3 holds the course for course * 3; an insertion pass
+ * from the end. The swaps and places other than 1 are not reached in the
+ * traces so far.
+ * Entry: any widths; D = $0000. Exit: M, X 16-bit; A = the place; X =
+ * $FFFE; Y = $18; or, for other courses, A = the course.
+ */
+void abi_RecordsLoadSpecialCourse(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t a, x, y, v, c;
+    int i;
+    static const uint16_t tag_at[3] = {0x0F13, 0x0F15, 0x0F17};
+
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    a = (uint16_t)(rd16(b | 0x0E3D) & 0x00FF);
+    wr16((uint16_t)(cpu.d + 0xF3), a);
+    cpu.a = a;
+    op_cmp16(0x000C);
+    if (a < 0x000C)
+        return;
+    op_cmp16(0x0010);
+    if (a >= 0x0010)
+        return;
+    a = (uint16_t)(a << 1);
+    a = (uint16_t)(a + rd16((uint16_t)(cpu.d + 0xF3)));
+    x = (uint16_t)(a << 4);
+    for (y = 0; y < 0x0018; y = (uint16_t)(y + 2)) {
+        wr16(b | (uint16_t)(0x0F2B + y), rd16((uint32_t)(0x70FCD0 + x)));
+        wr16(b | (uint16_t)(0x0F43 + y), rd16((uint32_t)(0x70FCD2 + x)));
+        wr16(b | (uint16_t)(0x0F13 + y), rd16(b | (uint16_t)(0xB4EB + y)));
+        x = (uint16_t)(x + 4);
+    }
+    for (i = 0x14; i >= 0; i -= 2) {
+        x = (uint16_t)i;
+        for (;;) {
+            v = rd16(b | (uint16_t)(0x0F2D + x));
+            c = rd16(b | (uint16_t)(0x0F2B + x));
+            if (v <= c)
+                break;
+            swap_words(b, 0x0F2B, x, 1, v);
+            swap_words(b, 0x0F13, x, 0, 0);
+            swap_words(b, 0x0F43, x, 0, 0);
+            if (x >= 0x0014)
+                break;
+            x = (uint16_t)(x + 2);
+        }
+    }
+    a = rd16(b | 0x10C7);
+    v = 0;
+    for (i = 0; i < 3; i++)
+        if (a == rd16(b | tag_at[i])) {
+            v = (uint16_t)(i + 1);
+            break;
+        }
+    cpu.a = v;
+    wr16(b | 0x10C9, v);
+    cpu.x = 0xFFFE;
+    cpu.y = 0x0018;
+    cpu.p = nz16(cpu.p, v);
+}

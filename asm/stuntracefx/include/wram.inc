@@ -1565,3 +1565,9 @@ includeonce
 !wram_1A11 = $1A11
 !wram_1A10 = $1A10
 !oscillator_rates = $7ED30D              ; OscillatorStep's rates by level, in the code's work RAM copy
+!special_times = $0F2B                  ; RecordsLoadSpecialCourse: twelve times (same address as !wram_0F2B)
+!special_words = $0F43                  ; their second words
+!special_tags = $0F13                   ; their tags
+!player_tag = $10C7                     ; the tag RecordsLoadSpecialCourse looks for
+!player_place = $10C9                   ; its place among the first three (1-3, 0 none)
+!special_saves = $70FCD0                ; the special courses' saved entries, 48 bytes a course

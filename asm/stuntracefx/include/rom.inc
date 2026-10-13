@@ -308,3 +308,4 @@ BigSpritesCountDraw = $079EE9                   ; 07:9EE9, the $0E5C alternative
 !course_values_d810 = $03D810          ; by $0D4A
 !mode1_values_d8a3 = $03D8A3           ; by ($0E3D - $0C) * 4 + $0D89
 !object_speeds = $08B32B               ; speed bytes by Super FX record word $5E
+!special_tag_table = $B4EB             ; the tags RecordsLoadSpecialCourse reads through the data bank

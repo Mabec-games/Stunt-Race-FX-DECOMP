@@ -1094,3 +1094,108 @@ RecordCompareTime1:
     jsl.l SoundPort0QueuePush
     plp
     rtl
+
+; @routine 07:B329 RecordsLoadSpecialCourse
+; WHAT IT DOES: For courses $0C-$0F ($0E3D): loads the course's twelve
+; saved entries ($70:FCD0 + course * 48, four bytes each) into the times
+; at $0F2B and the words at $0F43, with the tags from the table at $B4EB
+; (data bank) at $0F13; sorts them so a larger time never follows a
+; smaller one, the three arrays together; then $10C9 = the place (1-3) of
+; tag $10C7 among the first three, or 0.
+; HOW: Direct page $F3 holds the course for course * 3; an insertion pass
+; from the end. The swaps and places other than 1 are not reached in the
+; traces so far.
+; Entry: any widths; D = $0000. Exit: M, X 16-bit; A = the place; X =
+; $FFFE; Y = $18; or, for other courses, A = the course.
+%at($07B329)
+RecordsLoadSpecialCourse:
+    rep.b #$30
+    lda.w !course
+    and.w #$00FF
+    sta.b !dp_f3
+    cmp.w #$000C
+    bcc .done
+    cmp.w #$0010
+    bcc .load
+.done:
+    rts
+.load:
+    asl a
+    clc
+    adc.b !dp_f3
+    asl a
+    asl a
+    asl a
+    asl a
+    tax
+    ldy.w #$0000
+.copy:
+    lda.l !special_saves,x
+    sta.w !special_times,y
+    lda.l !special_saves+2,x
+    sta.w !special_words,y
+    lda.w !special_tag_table,y
+    sta.w !special_tags,y
+    inx
+    inx
+    inx
+    inx
+    iny
+    iny
+    cpy.w #$0018
+    bcc .copy
+    ldx.w #$0014
+.outer:
+    phx
+.inner:
+    lda.w !special_times+2,x
+    cmp.w !special_times,x
+    bcc .next
+    beq .next
+    pha
+    lda.w !special_times,x
+    sta.w !special_times+2,x
+    pla
+    sta.w !special_times,x
+    lda.w !special_tags,x
+    pha
+    lda.w !special_tags+2,x
+    sta.w !special_tags,x
+    pla
+    sta.w !special_tags+2,x
+    lda.w !special_words,x
+    pha
+    lda.w !special_words+2,x
+    sta.w !special_words,x
+    pla
+    sta.w !special_words+2,x
+    cpx.w #$0014
+    bcs .next
+    inx
+    inx
+    bra .inner
+.next:
+    plx
+    dex
+    dex
+    bpl .outer
+    lda.w !player_tag
+    cmp.w !special_tags
+    beq .first
+    cmp.w !special_tags+2
+    beq .second
+    cmp.w !special_tags+4
+    beq .third
+    lda.w #$0000
+    bra .place
+.third:
+    lda.w #$0003
+    bra .place
+.second:
+    lda.w #$0002
+    bra .place
+.first:
+    lda.w #$0001
+.place:
+    sta.w !player_place
+    rts
