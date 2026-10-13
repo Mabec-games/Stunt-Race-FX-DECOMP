@@ -502,6 +502,178 @@ FxCourseNextDistance:
     ldw (r10)
     nop
 
+; @routine 04:C595 FxCarCatchUp
+; WHAT IT DOES: The rubber band for car R8: picks a pair of words from the
+; table for $26F4 (at $04:C4D1, pointing into bank 4) by how far the car
+; is ahead of the player (+$88 against the player's, $2476). The car's
+; count +$72 goes up by one; when it reaches the first word (or wraps
+; from $FFFF to 0) it restarts at 0 and the car is moved on to its next
+; segment entry (FxTableEntryWords, FxCourseNextEntry, into +$58) and put
+; there (FxCarPlaceOnSegment).
+; Then its position +$1E/+$20/+$22 gets its velocity +$2E/+$30/+$32
+; times the second word (FMULT) added, and every object linked from +$3E
+; (through +$34) is put at the same position.
+; HOW: ROM bank 4 for the GETBs; the second word is kept on the R10 stack
+; with the return address. The 0 entry jump is not reached in the traces
+; so far.
+; Entry: R8 = the car's record; R10 = stack; R11 = return address. Exit:
+; R1-R3 the new position; R6 = 0 (the end of the links); R14 past the
+; pair; S, Z from R10; the last RAM address R10.
+%at($04C595)
+FxCarCatchUp:
+    from r11
+    stw (r10)
+    inc r10
+    inc r10
+    ibt r0,#$04
+    romb
+    iwt r14,#$C4D1
+    lm r0,($26F4)
+    lob
+    add r0
+    with r14
+    add r0
+    getb
+    inc r14
+    getbh
+    move r14,r0
+    lm r2,($2476)
+    iwt r1,#$0088
+    with r1
+    add r2
+    to r1
+    ldw (r1)
+    iwt r0,#$0088
+    add r8
+    ldw (r0)
+    sub r1
+    add r0
+    add r0
+    with r14
+    add r0
+    to r3
+    getb
+    inc r14
+    with r3
+    getbh
+    inc r14
+    to r6
+    getb
+    inc r14
+    with r6
+    getbh
+    inc r14
+    from r6
+    stw (r10)
+    inc r10
+    inc r10
+    ibt r0,#$72
+    add r8
+    ldw (r0)
+    inc r0
+    beq .place
+    sbk
+    cmp r3
+    bpl .restart
+    nop
+    iwt r15,#.move
+    nop
+.restart:
+    sub r0
+    sbk
+.place:
+    ibt r0,#$58
+    add r8
+    ldw (r0)
+    moves r0,r0
+    bne .entry
+    nop
+    iwt r15,#.move
+    nop
+.entry:
+    link #4
+    iwt r15,#FxTableEntryWords
+    nop
+    link #4
+    iwt r15,#FxCourseNextEntry
+    nop
+    move r6,r0
+    ibt r0,#$58
+    add r8
+    from r6
+    stw (r0)
+    link #4
+    iwt r15,#FxCarPlaceOnSegment
+    nop
+.move:
+    dec r10
+    dec r10
+    to r6
+    ldw (r10)
+    ibt r0,#$2E
+    add r8
+    ldw (r0)
+    ibt r1,#$1E
+    with r1
+    add r8
+    to r1
+    ldw (r1)
+    fmult
+    add r1
+    sbk
+    ibt r0,#$30
+    add r8
+    ldw (r0)
+    ibt r2,#$20
+    with r2
+    add r8
+    to r2
+    ldw (r2)
+    fmult
+    add r2
+    sbk
+    ibt r0,#$32
+    add r8
+    ldw (r0)
+    ibt r3,#$22
+    with r3
+    add r8
+    to r3
+    ldw (r3)
+    fmult
+    add r3
+    sbk
+    ibt r0,#$3E
+    add r8
+    ldw (r0)
+.linked:
+    moves r6,r0
+    beq .done
+    nop
+    ibt r0,#$1E
+    add r6
+    from r1
+    stw (r0)
+    ibt r0,#$20
+    add r6
+    from r2
+    stw (r0)
+    ibt r0,#$22
+    add r6
+    from r3
+    stw (r0)
+    ibt r0,#$34
+    add r6
+    ldw (r0)
+    bra .linked
+    nop
+.done:
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+
 ; @routine 04:C65A FxCarPlaceOnSegment
 ; WHAT IT DOES: Puts car R8 back on its segment entry +$58 (unless that is
 ; 0): reads the entry (FxTableEntryWords, FxCourseEntryRead), keeps its

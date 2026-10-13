@@ -669,3 +669,112 @@ void abi_FxCarPlaceOnSegment(void)
     gsu.r[8] = gsu_pull(&gsu.r[10]);
     gsu_pull(&gsu.r[10]);
 }
+
+/*
+ * @routine 04:C595 FxCarCatchUp
+ * WHAT IT DOES: The rubber band for car R8: picks a pair of words from the
+ * table for $26F4 (at $04:C4D1, pointing into bank 4) by how far the car
+ * is ahead of the player (+$88 against the player's, $2476). The car's
+ * count +$72 goes up by one; when it reaches the first word (or wraps
+ * from $FFFF to 0) it restarts at 0 and the car is moved on to its next
+ * segment entry (FxTableEntryWords, FxCourseNextEntry, into +$58) and put
+ * there (FxCarPlaceOnSegment).
+ * Then its position +$1E/+$20/+$22 gets its velocity +$2E/+$30/+$32
+ * times the second word (FMULT) added, and every object linked from +$3E
+ * (through +$34) is put at the same position.
+ * HOW: ROM bank 4 for the GETBs; the second word is kept on the R10 stack
+ * with the return address. The 0 entry jump is not reached in the traces
+ * so far.
+ * Entry: R8 = the car's record; R10 = stack; R11 = return address. Exit:
+ * R1-R3 the new position; R6 = 0 (the end of the links); R14 past the
+ * pair; S, Z from R10; the last RAM address R10.
+ */
+void abi_FxCarCatchUp(void)
+{
+    static const uint8_t pos[3] = {0x1E, 0x20, 0x22}, vel[3] = {0x2E, 0x30, 0x32};
+    int i, place = 1;
+
+    gsu_push(&gsu.r[10], gsu.r[11]);
+    gsu.r[0] = 0x0004;
+    gsu.rombr = 0x04;
+    gsu_r14(0xC4D1);
+    gsu.r[0] = gsu_lob(gsu_ldw(0x26F4));
+    gsu.r[0] = gsu_add(gsu.r[0], gsu.r[0], 0);
+    gsu_r14(gsu_add(gsu.r[14], gsu.r[0], 0));
+    gsu.r[0] = gsu_getb();
+    gsu_r14(gsu_inc(gsu.r[14]));
+    gsu.r[0] = gsu_getbh(gsu.r[0]);
+    gsu_r14(gsu.r[0]);
+    gsu.r[2] = gsu_ldw(0x2476);
+    gsu.r[1] = 0x0088;
+    gsu.r[1] = gsu_add(gsu.r[1], gsu.r[2], 0);
+    gsu.r[1] = gsu_ldw(gsu.r[1]);
+    gsu.r[0] = gsu_add(0x0088, gsu.r[8], 0);
+    gsu.r[0] = gsu_sub(gsu_ldw(gsu.r[0]), gsu.r[1], 0);
+    gsu.r[0] = gsu_add(gsu.r[0], gsu.r[0], 0);
+    gsu.r[0] = gsu_add(gsu.r[0], gsu.r[0], 0);
+    gsu_r14(gsu_add(gsu.r[14], gsu.r[0], 0));
+    gsu.r[3] = gsu_getb();
+    gsu_r14(gsu_inc(gsu.r[14]));
+    gsu.r[3] = gsu_getbh(gsu.r[3]);
+    gsu_r14(gsu_inc(gsu.r[14]));
+    gsu.r[6] = gsu_getb();
+    gsu_r14(gsu_inc(gsu.r[14]));
+    gsu.r[6] = gsu_getbh(gsu.r[6]);
+    gsu_r14(gsu_inc(gsu.r[14]));
+    gsu_push(&gsu.r[10], gsu.r[6]);
+    gsu.r[0] = gsu_add(0x0072, gsu.r[8], 0);
+    gsu.r[0] = gsu_inc(gsu_ldw(gsu.r[0]));
+    gsu_sbk(gsu.r[0]);
+    if (!gsu.z) {
+        gsu_sub(gsu.r[0], gsu.r[3], 0);
+        if (gsu.s)
+            place = 0;
+        else {
+            gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[0], 0);
+            gsu_sbk(gsu.r[0]);
+        }
+    }
+    if (place) {
+        gsu.r[0] = gsu_add(0x0058, gsu.r[8], 0);
+        gsu.r[0] = gsu_ldw(gsu.r[0]);
+        gsu_moves(gsu.r[0]);
+        if (!gsu.z) {
+            gsu.r[11] = 0xC5FA;
+            abi_FxTableEntryWords();
+            gsu.r[11] = 0xC5FF;
+            abi_FxCourseNextEntry();
+            gsu.r[6] = gsu.r[0];
+            gsu.r[0] = gsu_add(0x0058, gsu.r[8], 0);
+            gsu_stw(gsu.r[0], gsu.r[6]);
+            gsu.r[11] = 0xC60B;
+            abi_FxCarPlaceOnSegment();
+        }
+    }
+    gsu.r[6] = gsu_pull(&gsu.r[10]);
+    for (i = 0; i < 3; i++) {
+        gsu.r[0] = gsu_add(vel[i], gsu.r[8], 0);
+        gsu.r[0] = gsu_ldw(gsu.r[0]);
+        gsu.r[1 + i] = pos[i];
+        gsu.r[1 + i] = gsu_add(gsu.r[1 + i], gsu.r[8], 0);
+        gsu.r[1 + i] = gsu_ldw(gsu.r[1 + i]);
+        gsu.r[0] = gsu_fmult(gsu.r[0], gsu.r[6]);
+        gsu.r[0] = gsu_add(gsu.r[0], gsu.r[1 + i], 0);
+        gsu_sbk(gsu.r[0]);
+    }
+    gsu.r[0] = gsu_add(0x003E, gsu.r[8], 0);
+    gsu.r[0] = gsu_ldw(gsu.r[0]);
+    for (;;) {
+        gsu.r[6] = gsu.r[0];
+        gsu_moves(gsu.r[6]);
+        if (gsu.z)
+            break;
+        for (i = 0; i < 3; i++) {
+            gsu.r[0] = gsu_add(pos[i], gsu.r[6], 0);
+            gsu_stw(gsu.r[0], gsu.r[1 + i]);
+        }
+        gsu.r[0] = gsu_add(0x0034, gsu.r[6], 0);
+        gsu.r[0] = gsu_ldw(gsu.r[0]);
+    }
+    gsu_pull(&gsu.r[10]);
+}
