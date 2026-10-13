@@ -8,6 +8,7 @@
  */
 #include "machine.h"
 #include "hw.h"
+#include "cpu_ops.h"
 
 uint16_t MenuActorAnimateFrame(uint8_t bank, uint16_t *x, uint8_t *p);
 int MenuSelectConfirm(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p);
@@ -378,4 +379,73 @@ void abi_MenuBg1RiseAway(void)
 
     cpu.a = MenuBg1RiseAway(cpu.db, &cpu.x, &p);
     cpu.p = p;
+}
+
+/*
+ * @routine 0B:DF7B MenuActorNoStep
+ * WHAT IT DOES: Nothing: the frame handler of an object that does nothing
+ * on its own.
+ * HOW: RTS.
+ * Entry: any. Exit: every register and flag unchanged.
+ */
+void abi_MenuActorNoStep(void)
+{
+}
+
+/*
+ * @routine 0B:E0DF MenuActorNoStepE0DF
+ * WHAT IT DOES: Nothing: as MenuActorNoStep, a second copy.
+ * HOW: RTS.
+ * Entry: any. Exit: every register and flag unchanged.
+ */
+void abi_MenuActorNoStepE0DF(void)
+{
+}
+
+void abi_VramDmaQueueAdd(void);
+
+/*
+ * @routine 0B:DF7C MenuSelectionFramesCycle
+ * WHAT IT DOES: Object X's frame: every seventh frame (its count +$0A run
+ * down from 6) steps its frame +$22 through 0-3 and queues that frame of the
+ * picture for the selection $18CB to VRAM: $80 bytes from $70:3000 + the
+ * frame's offset (0, $200, $400, $200; table $0B:DFCB) + the selection's
+ * ($80, $100, 0, $180; table $0B:DFD3), to VRAM word $15C0.
+ * HOW: The frame offset is kept at $11DF; the request goes through the
+ * words at $16B1-$16B7 (data bank) and VramDmaQueueAdd; X is reloaded from
+ * $11F9.
+ * Entry: M 16-bit, X 16-bit, D = $0000; X = the object. Exit: counting:
+ * A unchanged, N, Z from the count; a step: X = $11F9 with N, Z from it,
+ * A as VramDmaQueueAdd leaves it, C and V from the address add.
+ */
+void abi_MenuSelectionFramesCycle(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t obj = cpu.x, n, off, sel;
+
+    n = dec_field(obj, 0x0A);
+    cpu.p = nz16(cpu.p, n);
+    if (!(n & 0x8000))
+        return;
+    wr16((uint16_t)(obj + 0x0A), 0x0006);
+    n = (uint16_t)((rd16((uint16_t)(obj + 0x22)) + 1) & 0x0003);
+    wr16((uint16_t)(obj + 0x22), n);
+    off = rd16(0x0BDFCB + (uint32_t)(n << 1));
+    wr16(b | 0x11DF, off);
+    sel = (uint16_t)(rd16(0x0018CB) << 1);
+    cpu.x = sel;
+    cpu.a = rd16(0x0BDFD3 + (uint32_t)sel);
+    off = rd16(b | 0x11DF);
+    cpu.p &= (uint8_t)~P_C;
+    cpu.a = op_adc16(cpu.a, off, &cpu.p);
+    cpu.p &= (uint8_t)~P_C;
+    cpu.a = op_adc16(cpu.a, 0x3000, &cpu.p);
+    wr16(b | 0x16B3, cpu.a);
+    wr16(b | 0x16B1, 0x0080);
+    wr16(b | 0x16B5, 0x0070);
+    cpu.a = 0x15C0;
+    wr16(b | 0x16B7, cpu.a);
+    abi_VramDmaQueueAdd();
+    cpu.x = rd16(b | 0x11F9);
+    cpu.p = nz16(cpu.p, cpu.x);
 }

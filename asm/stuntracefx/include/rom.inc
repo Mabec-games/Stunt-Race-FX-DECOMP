@@ -310,3 +310,5 @@ BigSpritesCountDraw = $079EE9                   ; 07:9EE9, the $0E5C alternative
 !object_speeds = $08B32B               ; speed bytes by Super FX record word $5E
 !special_tag_table = $B4EB             ; the tags RecordsLoadSpecialCourse reads through the data bank
 !cursor_x_table = $EB49               ; MenuCursorFourWay's cursor X by position (data bank)
+!menu_cycle_frame_offsets = $0BDFCB   ; MenuSelectionFramesCycle: 4 words, each frame's offset in the picture
+!menu_cycle_selection_offsets = $0BDFD3 ; MenuSelectionFramesCycle: a word per selection, its picture's offset

@@ -354,3 +354,69 @@ MenuBg1RiseAway:
     adc.w #$004D
     sta.b !actor_06,x
     rts
+
+; @routine 0B:DF7B MenuActorNoStep
+; WHAT IT DOES: Nothing: the frame handler of an object that does nothing
+; on its own.
+; HOW: RTS.
+; Entry: any. Exit: every register and flag unchanged.
+%at($0BDF7B)
+MenuActorNoStep:
+    rts
+
+; @routine 0B:DF7C MenuSelectionFramesCycle
+; WHAT IT DOES: Object X's frame: every seventh frame (its count +$0A run
+; down from 6) steps its frame +$22 through 0-3 and queues that frame of the
+; picture for the selection $18CB to VRAM: $80 bytes from $70:3000 + the
+; frame's offset (0, $200, $400, $200; table $0B:DFCB) + the selection's
+; ($80, $100, 0, $180; table $0B:DFD3), to VRAM word $15C0.
+; HOW: The frame offset is kept at $11DF; the request goes through the
+; words at $16B1-$16B7 (data bank) and VramDmaQueueAdd; X is reloaded from
+; $11F9.
+; Entry: M 16-bit, X 16-bit, D = $0000; X = the object. Exit: counting:
+; A unchanged, N, Z from the count; a step: X = $11F9 with N, Z from it,
+; A as VramDmaQueueAdd leaves it, C and V from the address add.
+%at($0BDF7C)
+MenuSelectionFramesCycle:
+    dec.b !actor_0a,x
+    bpl .counting
+    lda.w #$0006
+    sta.b !actor_0a,x
+    lda.b !actor_22,x
+    inc a
+    and.w #$0003
+    sta.b !actor_22,x
+    asl a
+    tax
+    lda.l !menu_cycle_frame_offsets,x
+    sta.w !scratch_11df
+    lda.l !selection
+    asl a
+    tax
+    lda.l !menu_cycle_selection_offsets,x
+    clc
+    adc.w !scratch_11df
+    clc
+    adc.w #$3000
+    rep.b #$30
+    sta.w !vram_queue_staged+2
+    lda.w #$0080
+    sta.w !vram_queue_staged
+    lda.w #$0070
+    sta.w !vram_queue_staged+4
+    lda.w #$15C0
+    sta.w !vram_queue_staged+6
+    jsl.l VramDmaQueueAdd
+    rep.b #$20
+    rep.b #$10
+    ldx.w !actor_current
+.counting:
+    rts
+
+; @routine 0B:E0DF MenuActorNoStepE0DF
+; WHAT IT DOES: Nothing: as MenuActorNoStep, a second copy.
+; HOW: RTS.
+; Entry: any. Exit: every register and flag unchanged.
+%at($0BE0DF)
+MenuActorNoStepE0DF:
+    rts
