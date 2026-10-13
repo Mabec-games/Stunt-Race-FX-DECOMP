@@ -665,3 +665,62 @@ void abi_SoundNearCarOnce(void)
     abi_SoundPort0QueuePush();
     cpu.p = p0;
 }
+
+void abi_Sound0E1AStop(void);
+
+/*
+ * @routine 07:EDC1 NearCarSoundUpdate
+ * WHAT IT DOES: Unless $0E4B is set, follows the car nearest the player
+ * with sound: packs its level and side ($70:2642 / 16, $70:2644 * 16) into
+ * $0E47; when its distance band ($70:2646) changes, sends $31 - band on
+ * port 1 (kept in $115E), clears $117C and runs SoundNearCarOnce. With no
+ * nearest car (level negative) it sets $117C and stops the $0E1A sound.
+ * HOW: Direct page $02 holds the level part for the OR; the band compare
+ * is 16-bit against $115E.
+ * Entry: any widths, DB a bank where $0E4B is work RAM. Exit: X, Y as
+ * SoundNearCarOnce leaves them (high bytes cleared) when it runs; A as the
+ * path left it; P restored.
+ */
+void abi_NearCarSoundUpdate(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16, dp = (uint16_t)(cpu.d + 2);
+    uint8_t p0 = cpu.p;
+    uint16_t v, lv;
+
+    if (cpu.p & P_M) {
+        v = rd8(b | 0x0E4B);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    } else {
+        v = rd16(b | 0x0E4B);
+        cpu.a = v;
+    }
+    if (v) {
+        cpu.p = p0;
+        return;
+    }
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    lv = rd16(0x702642);
+    if (lv & 0x8000) {
+        cpu.p |= P_M;
+        cpu.a = (uint16_t)((lv & 0xFF00) | 0x01);
+        wr8(b | 0x117C, 0x01);
+        abi_Sound0E1AStop();
+        cpu.p = p0;
+        return;
+    }
+    wr16(dp, (uint16_t)(lv >> 4));
+    v = (uint16_t)(rd16(0x702644) << 4);
+    v |= rd16(dp);
+    wr8(0x000E47, (uint8_t)v);
+    v = (uint16_t)(0x0031 - rd16(0x702646));
+    cpu.a = v;
+    if (v == rd16(b | 0x115E)) {
+        cpu.p = p0;
+        return;
+    }
+    wr16(b | 0x115E, v);
+    abi_SoundPort1QueuePush();
+    wr16(b | 0x117C, 0x0000);
+    abi_SoundNearCarOnce();
+    cpu.p = p0;
+}

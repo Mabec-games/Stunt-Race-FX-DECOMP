@@ -648,3 +648,57 @@ SoundIndicesFromHandlers:
     sta.w !wram_0D8A
     plp
     rtl
+
+; @routine 07:EDC1 NearCarSoundUpdate
+; WHAT IT DOES: Unless $0E4B is set, follows the car nearest the player with
+; sound: packs its level and side ($70:2642 / 16, $70:2644 * 16) into $0E47;
+; when its distance band ($70:2646) changes, sends $31 - band on port 1 (kept
+; in $115E), clears $117C and runs SoundNearCarOnce. With no nearest car
+; (level negative) it sets $117C and stops the $0E1A sound.
+; HOW: Direct page $02 holds the level part for the OR; the band compare is
+; 16-bit against $115E.
+; Entry: any widths, DB a bank where $0E4B is work RAM. Exit: X, Y as
+; SoundNearCarOnce leaves them (high bytes cleared) when it runs; A as the
+; path left it; P restored.
+%at($07EDC1)
+NearCarSoundUpdate:
+    php
+    lda.w !wram_0E4B
+    bne .done
+    rep.b #$30
+    lda.l !fx_near_level
+    bmi .none
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    sta.b !dp_02
+    lda.l !fx_near_side
+    asl a
+    asl a
+    asl a
+    asl a
+    ora.b !dp_02
+    sep.b #$20
+    sta.l !near_car_pos
+    rep.b #$20
+    lda.w #$0031
+    sec
+    sbc.l !fx_near_band
+    cmp.w !near_car_band_sent
+    beq .same
+    sta.w !near_car_band_sent
+    jsl.l SoundPort1QueuePush
+    stz.w !near_car_none
+    jsl.l SoundNearCarOnce
+.same:
+    plp
+    rtl
+.none:
+    sep.b #$20
+    lda.b #$01
+    sta.w !near_car_none
+    jsl.l Sound0E1AStop
+.done:
+    plp
+    rtl
