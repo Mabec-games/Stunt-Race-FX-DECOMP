@@ -69,7 +69,12 @@ def rom_offset(addr):
 
 
 def traces():
-    return sorted(os.path.dirname(p) for p in glob.glob(os.path.join(B, 'box', '*', 'rommap.bin')))
+    """The trace of each current script (tools/stuntracefx/scripts/); traces
+    left by scripts since removed or pruned do not count."""
+    names = {os.path.splitext(os.path.basename(s))[0]
+             for s in glob.glob(os.path.join(ROOT, 'tools', 'stuntracefx', 'scripts', '*.sfx'))}
+    return sorted(os.path.dirname(p) for p in glob.glob(os.path.join(B, 'box', '*', 'rommap.bin'))
+                  if os.path.basename(os.path.dirname(p)) in names)
 
 
 def merged(dirs=None):

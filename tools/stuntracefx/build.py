@@ -46,8 +46,8 @@ STATES = os.path.join(B, 'states')
 
 
 def make_states():
-    """Run each recipe in tools/stuntracefx/states/ (a script that ends in
-    `save NAME`) whose state is missing or older than it, into
+    """Run each recipe in tools/stuntracefx/states/ (a script with one or
+    more `save NAME` lines) that has a state missing or older than it, into
     build/stuntracefx/states/NAME.state. Scripts start from one with
     `load build/stuntracefx/states/NAME.state`: the frames that lead there
     run once, not in every script and every gate. States hold the game's
@@ -55,9 +55,12 @@ def make_states():
     os.makedirs(STATES, exist_ok=True)
     todo = []
     for r in sorted(glob.glob(os.path.join(STATE_RECIPES, '*.sfx'))):
-        st = os.path.join(STATES, os.path.splitext(os.path.basename(r))[0] + '.state')
-        if not os.path.exists(st) or os.path.getmtime(st) < os.path.getmtime(r):
-            todo.append(r)
+        names = [l.split()[1] for l in open(r) if l.startswith('save ')]
+        for n in names:
+            st = os.path.join(STATES, n + '.state')
+            if not os.path.exists(st) or os.path.getmtime(st) < os.path.getmtime(r):
+                todo.append(r)
+                break
     with concurrent.futures.ThreadPoolExecutor(max_workers=os.cpu_count()) as ex:
         list(ex.map(lambda r: run([SFXBOX, '--rom', BASEROM, '--script', r, '--out', STATES], cwd=ROOT), todo))
 

@@ -149,6 +149,7 @@ def script_stale(name, rev, prev):
 GATE_LIB = os.path.join(B, 'hybrid', 'gate', 'libsrfx.dylib')
 
 
+@functools.lru_cache(maxsize=None)
 def build_gate_lib():
     """Build the hybrid from the last commit; return its revision."""
     sys.path.insert(0, os.path.join(ROOT, 'tools', 'stuntracefx'))
