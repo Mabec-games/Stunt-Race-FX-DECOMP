@@ -1475,3 +1475,4 @@ includeonce
 !scaled_words = $7F3432                ; four words set between their bases and targets (BlendStepUp/Down)
 !scaled_words_target = $7F343A
 !scaled_words_base = $7F3442
+!wram_3433 = $3433

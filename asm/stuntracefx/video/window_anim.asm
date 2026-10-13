@@ -64,3 +64,37 @@ WindowStep3439:
 .store:
     sta.w !wram_3439
     rts
+
+; @routine 03:FE26 WindowStep3433By2
+; WHAT IT DOES: Subtracts 2 from $3433 in the data bank, stopping at 1; X
+; counts up by one when it stops.
+; HOW: As WindowStep3435. The stop is not reached in the traces so far.
+; Entry: M 8-bit, X 8-bit. Exit: as WindowStep3435.
+%at($03FE26)
+WindowStep3433By2:
+    lda.w !wram_3433
+    sec
+    sbc.b #$02
+    bcs .store
+    inx
+    lda.b #$01
+.store:
+    sta.w !wram_3433
+    rts
+
+; @routine 03:FE35 WindowStep3433By3
+; WHAT IT DOES: Subtracts 3 from $3433 in the data bank, stopping at 1; X
+; counts up by one when it stops.
+; HOW: As WindowStep3435. The stop is not reached in the traces so far.
+; Entry: M 8-bit, X 8-bit. Exit: as WindowStep3435.
+%at($03FE35)
+WindowStep3433By3:
+    lda.w !wram_3433
+    sec
+    sbc.b #$03
+    bcs .store
+    inx
+    lda.b #$01
+.store:
+    sta.w !wram_3433
+    rts

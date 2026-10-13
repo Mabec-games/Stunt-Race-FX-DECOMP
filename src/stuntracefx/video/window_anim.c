@@ -103,3 +103,45 @@ void abi_WindowStep3439(void)
     cpu.x = x;
     cpu.p = p;
 }
+
+/* Subtract n from the byte at addr in the data bank, stopping at 1 (X
+   counting the stop), as WindowStep3435. */
+static void window_step_down(uint16_t addr, uint8_t n)
+{
+    uint32_t a = (uint32_t)cpu.db << 16 | addr;
+    uint8_t v = rd8(a), r = (uint8_t)(v - n);
+
+    cpu.p = (uint8_t)((nz8(cpu.p, r) & ~(P_C | P_V)) | (v >= n ? P_C : 0)
+                      | (((v ^ n) & (v ^ r) & 0x80) ? P_V : 0));
+    if (v < n) {
+        cpu.x = (uint8_t)(cpu.x + 1);
+        r = 0x01;
+        cpu.p = nz8(cpu.p, r);
+    }
+    wr8(a, r);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | r);
+}
+
+/*
+ * @routine 03:FE26 WindowStep3433By2
+ * WHAT IT DOES: Subtracts 2 from $3433 in the data bank, stopping at 1; X
+ * counts up by one when it stops.
+ * HOW: As WindowStep3435. The stop is not reached in the traces so far.
+ * Entry: M 8-bit, X 8-bit. Exit: as WindowStep3435.
+ */
+void abi_WindowStep3433By2(void)
+{
+    window_step_down(0x3433, 2);
+}
+
+/*
+ * @routine 03:FE35 WindowStep3433By3
+ * WHAT IT DOES: Subtracts 3 from $3433 in the data bank, stopping at 1; X
+ * counts up by one when it stops.
+ * HOW: As WindowStep3435. The stop is not reached in the traces so far.
+ * Entry: M 8-bit, X 8-bit. Exit: as WindowStep3435.
+ */
+void abi_WindowStep3433By3(void)
+{
+    window_step_down(0x3433, 3);
+}
