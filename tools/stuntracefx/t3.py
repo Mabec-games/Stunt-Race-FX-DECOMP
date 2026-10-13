@@ -39,7 +39,7 @@ IMAGE = os.path.join(ROOT, 'config', 'stuntracefx', 'whole_image.csv')
 
 
 def run(cmd):
-    p = subprocess.run(cmd, capture_output=True, text=True, cwd=ROOT)
+    p = subprocess.run(cmd, capture_output=True, text=True, cwd=ROOT, timeout=120)  # stuck: fails
     if p.returncode:
         sys.stderr.write(p.stdout + p.stderr)
         raise SystemExit('failed: %s' % ' '.join(cmd))
@@ -295,6 +295,56 @@ def source_rev():
     return rev + ('+dirty' if dirty else '')
 
 
+def pieces(script):
+    """A script of unit calls (sfxbox call), as one lockstep script per call.
+
+    A unit call puts the machine back as it was when it returns, and a
+    `load` replaces the whole machine: in one lockstep run, either can land
+    where the original is inside a call the hybrid ran in one step as C,
+    leaving the two sides' records of calls out of step. So each call is run
+    on its own: its last `load`, every command since then except the earlier
+    calls (each put back, so the machine is as if it had not run) and their
+    `set`s, then the call, which is the run's last (nothing to put back),
+    and the commands after it up to the next call or load. A call marked
+    noreturn (a routine that stops the game) never returns, in the original
+    or as C, so there is no call to compare: it has no piece."""
+    lines = [l.split('#')[0].strip() for l in open(script)]
+    lines = [l for l in lines if l]
+    if not any(l.split()[0] == 'call' for l in lines):
+        return [script]
+    name = os.path.splitext(os.path.basename(script))[0]
+    d = os.path.join(B, 'image', name, 'pieces')
+    os.makedirs(d, exist_ok=True)
+    for old in glob.glob(os.path.join(d, '*.sfx')):
+        os.remove(old)
+    out, prefix, sets = [], [], []
+    for i, l in enumerate(lines):
+        w = l.split()
+        if w[0] == 'load':
+            prefix, sets = [l], []
+        elif w[0] == 'set':
+            sets.append(l)
+        elif w[0] == 'call':
+            if 'keep' in w:
+                prefix += sets + [l]
+            sets_now, sets = sets, []
+            if 'noreturn' in w:
+                continue
+            tail = []
+            for t in lines[i + 1:]:
+                if t.split()[0] in ('call', 'load', 'set'):
+                    break
+                tail.append(t)
+            body = prefix + ([] if 'keep' in w else sets_now + [l]) + tail
+            path = os.path.join(d, '%s_p%03d.sfx' % (name, len(out)))
+            with open(path, 'w') as f:
+                f.write('\n'.join(body) + '\n')
+            out.append(path)
+        else:
+            prefix.append(l)
+    return out
+
+
 def image_one(script):
     name = os.path.splitext(os.path.basename(script))[0]
     d = os.path.join(B, 'image', name)
@@ -304,8 +354,13 @@ def image_one(script):
         os.remove(rep)
     # A run that stops (a side stuck waiting) is that script's failure, not
     # the whole gate's: the other scripts' results still count.
-    p = subprocess.run([SFXBOX, '--rom', os.path.join(B, 'baserom.sfc'), '--script', script, '--out', d, '--lockstep', LIB],
-                       capture_output=True, text=True, cwd=ROOT)
+    # The longest gate script runs in well under a minute: one still running
+    # after two is stuck (a side waiting on the other), and fails.
+    try:
+        p = subprocess.run([SFXBOX, '--rom', os.path.join(B, 'baserom.sfc'), '--script', script, '--out', d, '--lockstep', LIB],
+                           capture_output=True, text=True, cwd=ROOT, timeout=120)
+    except subprocess.TimeoutExpired:
+        return name, ['stopped (no result after 120s): FAILED']
     lines = open(rep).read().splitlines() if os.path.exists(rep) else []
     if p.returncode or not lines or ': ' not in lines[-1]:
         why = (p.stderr.strip().splitlines() or ['no report'])[-1]
@@ -333,8 +388,24 @@ def image(full=False):
         r['source'] = rev
         verdicts.append(r['verdict'])
         rows.append(r)
+    work = [(s, p) for s in run_these for p in pieces(s)]
     with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, os.cpu_count() // 2)) as ex:
-        results = list(ex.map(image_one, run_these))
+        done = list(ex.map(image_one, [p for _, p in work]))
+    results = []
+    for s in run_these:
+        name = os.path.splitext(os.path.basename(s))[0]
+        got = [r for (src, _), r in zip(work, done) if src == s]
+        if len(got) == 1 and got[0][0] == name:
+            results.append(got[0])
+            continue
+        # A script of unit calls: its pieces' verdicts together.
+        vs = [ls[-1].rsplit(': ', 1)[-1] if ls and ': ' in ls[-1] else 'FAILED' for _, ls in got]
+        bad = [(n, ls) for (n, ls), v in zip(got, vs) if v not in ('IDENTICAL', 'UNCOVERED')]
+        v = 'DIVERGENT' if bad else 'IDENTICAL' if 'IDENTICAL' in vs else 'UNCOVERED'
+        lines = ['%s: %s' % (n, ls[-1] if ls else 'no report') for n, ls in bad]
+        lines.append('%d calls run one per lockstep run, %d IDENTICAL, %d UNCOVERED, %d not: %s' % (
+            len(vs), vs.count('IDENTICAL'), vs.count('UNCOVERED'), len(bad), v))
+        results.append((name, lines))
     for name, lines in results:
         last = lines[-1] if lines else 'FAILED'
         v = last.rsplit(': ', 1)[-1] if ': ' in last else 'FAILED'

@@ -50,6 +50,8 @@ static const Routine *all_routines;     /* every routine with C, for call_routin
 static int all_count;
 static uint8_t catalog_bits[1 << 21];   /* routine entries the catalog knows */
 static int is_catalog_entry(uint32_t pc) { return catalog_bits[pc >> 3] >> (pc & 7) & 1; }
+static uint8_t jump_bits[1 << 21];      /* code C calls that the original jumps to */
+static int is_jump_entry(uint32_t pc) { return jump_bits[pc >> 3] >> (pc & 7) & 1; }
 static int nroutines;
 static uint8_t *watched;  /* 16M-entry bitmap of routine entry points */
 static uint8_t *has_c;    /* the same for every routine with C in the library */
@@ -460,6 +462,10 @@ static int load_routines(void *core, const char *lib, const char *only)
     const int *catn = dlsym(h, "sfx_catalog_count");
     if (cat && catn)
         for (int i = 0; i < *catn; i++) catalog_bits[cat[i] >> 3] |= (uint8_t)(1 << (cat[i] & 7));
+    const uint32_t *jmp = dlsym(h, "sfx_jump_entries");
+    const int *jmpn = dlsym(h, "sfx_jump_entry_count");
+    if (jmp && jmpn)
+        for (int i = 0; i < *jmpn; i++) jump_bits[jmp[i] >> 3] |= (uint8_t)(1 << (jmp[i] & 7));
     const int *count = dlsym(h, "sfx_routine_count");
     uint8_t *(*mem)(const char *, size_t *) = dlsym(core, "sfxbox_memory");
     *(void **)&core_regs = dlsym(core, "sfxbox_regs");
@@ -564,6 +570,8 @@ typedef struct {
     uint64_t o_calls, h_calls;        /* calls recorded / consumed */
     uint64_t o_ops, h_ops;            /* cycles recorded / no longer needed */
     int o_done, stuck;
+    uint64_t o_units;                 /* unit calls (sfxbox call) the original has run */
+    long unit_end[256];               /* the frame each of them ended its frames at */
     CallRec calls[CALLRING];
     FrameSlot fs[NSLOT];
     uint8_t ops[OPRING];
@@ -725,7 +733,12 @@ static void ls_insn(uint32_t pc)
             returned = m.ret[at] == (pc | 0x1000000);
             if (returned) m.ret[at] = 0;
         }
-        int computed = (!returned && (prev == 0x6B || prev == 0x60)) || prev == 0x6C || prev == 0x7C || prev == 0xDC || prev == 0xFC;
+        /* Or a jump (BRL, JML, JMP) to code the C reaches with call_routine
+           that the catalog does not have as an entry (07:9EE9, the tail
+           jump of BigSpritesRow6): only those, since a jump inside a loop
+           would open a level each time round. */
+        int computed = (!returned && (prev == 0x6B || prev == 0x60)) || prev == 0x6C || prev == 0x7C || prev == 0xDC || prev == 0xFC
+                       || ((prev == 0x82 || prev == 0x5C || prev == 0x4C) && is_jump_entry(pc));
         if ((computed || is_catalog_entry(pc)) && m.depth < 64) {
             ls_op(0x90, pc);
             ls_op(0xA0, r.s);
@@ -1125,11 +1138,52 @@ int lockstep_begin(void *core, const char *lib, const char *only, const char *re
     if (tr && sscanf(tr, "%ld,%ld", &tr_lo, &tr_hi) == 2) {
         char p[4096]; snprintf(p, sizeof p, "%s.%s", report_path, role == 1 ? "orig" : "hyb");
         trf = fopen(p, "w");
+        if (trf) setvbuf(trf, NULL, _IOLBF, 0);
     }
     return role;
 }
 
 int lockstep_role(void) { return role; }
+
+/* Whether a unit call (sfxbox call) may start at this instruction. The
+   hybrid runs a routine with C in one step, so it is never inside one at
+   an instruction boundary; the original is, while it records the call. The
+   unit call starts on both sides at the same place only outside every such
+   call, and not at the entry of one either (the hybrid would start it before
+   running the routine, the original after). Nor, on the hybrid, while a C
+   routine runs original code (call_routine), which the original runs inside
+   its recorded call. */
+uint32_t lockstep_clock(void) { return role ? core_clock() : 0; }
+void lockstep_debug_state(void)
+{
+    fprintf(stderr, "  side %d: recording %d (%06X, in irq %d), C running %d, hybrid frame %ld\n", role, m.active, m_pc, m.in_irq, machine_live, cur_frame);
+}
+
+/* The frames a unit call takes: the original runs the routine in real
+   time, and a frame can end inside it, where the hybrid's C has already
+   returned; it then runs one frame more for the call than the hybrid. Both
+   sides go on from the same frame, the original's: it says where its call
+   ended, and the hybrid runs on to there. */
+long lockstep_unit_end(long f)
+{
+    static uint64_t n;
+    if (role == 1) {
+        sh->unit_end[n % 256] = f;
+        STORE(sh->o_units, ++n);
+        return f;
+    }
+    if (role == 2) {
+        WAIT_UNTIL(LOAD(sh->o_units) > n || LOAD(sh->o_done));
+        if (LOAD(sh->o_units) <= n) return f;
+        return sh->unit_end[n++ % 256];
+    }
+    return f;
+}
+int lockstep_call_ok(uint32_t pc)
+{
+    if (!role) return 1;
+    return !m.active && !machine_live && routine_at(pc) < 0;
+}
 
 void lockstep_before_frame(long f)
 {

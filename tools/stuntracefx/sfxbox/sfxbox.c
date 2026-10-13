@@ -246,9 +246,13 @@ static int call_exec(uint32_t pc)
     /* Not while the Super FX runs: it may hold the ROM and its RAM, and the
        S-CPU reads neither then (the game waits in work RAM). Nor in the
        vertical blank, where the NMI would land between the JSR and the
-       routine's first instruction (a script line runs at a frame's end). */
-    if (call_state == 1 && !(sfxbox_core_bus_read_p(0x003030) & 0x20) && !(sfxbox_core_bus_read_p(0x004212) & 0x80)) {
+       routine's first instruction (a script line runs at a frame's end).
+       Under --lockstep, not where the original and the hybrid differ. */
+    if (call_state == 1 && lockstep_call_ok(pc) && !(sfxbox_core_bus_read_p(0x003030) & 0x20) && !(sfxbox_core_bus_read_p(0x004212) & 0x80)) {
         sfxbox_core_regs_p(&call_from);
+        if (getenv("SFXBOX_CALL_DEBUG"))
+            fprintf(stderr, "call starts (side %d) frame %ld at %06X S=%04X clock %u\n", lockstep ? lockstep_role() : 0, frames, call_from.pc, call_from.s, lockstep_clock());
+        if (getenv("SFXBOX_CALL_DEBUG") && lockstep) lockstep_debug_state();
         if (checklib_on) check_unit_call(call_from.pc, call_from.s);
         for (int i = 0; i < nstaged; i++) poke(staged[i], staged_line[i]);
         struct SfxboxRegs r = call_regs;
@@ -314,9 +318,15 @@ static void call(const char *line, int lineno) {
     call_state = 1;
     long f = 0;
     while (call_state && f < frames_max) { run(1); f++; }
+    if (lockstep && !call_state)
+        for (long end = lockstep_unit_end(frames); frames < end; f++) run(1);
     *cpu_exec_hook = exec_before;
     nstaged = 0;
-    if (!call_state && !call_keep) {
+    /* Under --lockstep the machine is not put back: the two sides' records
+       of calls would go out of step. A lockstep script has a call as its
+       last (t3.py runs a script of unit calls one call at a time), so the
+       machine after it is never used for another. */
+    if (!call_state && !call_keep && !lockstep) {
         if (!retro_unserialize_p(snap, sn)) die("%s:%d: call: unserialize failed", script_path, lineno);
         if (checklib_on) check_rollback(open_calls);
     }

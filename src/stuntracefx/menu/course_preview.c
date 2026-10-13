@@ -47,7 +47,8 @@ static void groups_45(uint16_t y)
     abi_MenuActorsSet10();
 }
 
-/* `channels` pushed for HDMAEN ($420C) on the frame write list. */
+/* `channels` pushed for HDMAEN ($420C) on the frame write list; X kept,
+   N and Z from it (pulled back 16-bit). */
 static void hdma_on(uint8_t channels)
 {
     uint16_t x = cpu.x;
@@ -58,6 +59,7 @@ static void hdma_on(uint8_t channels)
     cpu.x = 0x420C;
     abi_FrameByteWritePush();
     cpu.x = x;
+    cpu.p = nz16(cpu.p, x);  /* PLX, X 16-bit */
     cpu.p &= (uint8_t)~P_M;
 }
 
@@ -193,6 +195,8 @@ void abi_MenuPreviewCountdown(void)
         wr16(ACTOR(x, 0x08), 0xBE29);
         wr16(0x001905, 0x0001);
         wr16(0x001907, 0x0028);
+        cpu.a = 0x464A;
+        cpu.p = nz16(cpu.p, cpu.a);
         wr16(0x7EFD65, 0x464A);
         hdma_on(0xE0);
         return;

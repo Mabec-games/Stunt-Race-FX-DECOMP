@@ -1,7 +1,8 @@
 # unit_fade_windows: unit tests (call) from the start of a Novice race: the
 # fade-in step at every level (its whole step table), the window bands in
 # states 3 and 6, and the split window in state 3, in state 6 and closing
-# from state 2 to its end; the split-screen window layout.
+# from state 2 (its start, and its last step from $0C00 to $0800 with
+# the state set as the start leaves it); the split-screen window layout.
 load build/stuntracefx/states/novice_coupe_race1.state
 set 7E0E3A 00
 set 7E0D60 00,00
@@ -98,75 +99,17 @@ set 7E19D8 03
 call 7E:D75E long p=00 db=00 d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-poke 7E19DF 01
-poke 7E19D8 02
-call 7E:D75E long keep p=00 db=00 d=0000
+set 7E19DF 01
+set 7E19D8 02
+call 7E:D75E long p=00 db=00 d=0000
 wait 1
-call 7E:D75E long keep p=00 db=00 d=0000
-wait 1
-call 7E:D75E long keep p=00 db=00 d=0000
-wait 1
-call 7E:D75E long keep p=00 db=00 d=0000
-wait 1
-call 7E:D75E long keep p=00 db=00 d=0000
-wait 1
-call 7E:D75E long keep p=00 db=00 d=0000
-wait 1
-call 7E:D75E long keep p=00 db=00 d=0000
-wait 1
-call 7E:D75E long keep p=00 db=00 d=0000
-wait 1
-call 7E:D75E long keep p=00 db=00 d=0000
-wait 1
-call 7E:D75E long keep p=00 db=00 d=0000
-wait 1
-call 7E:D75E long keep p=00 db=00 d=0000
-wait 1
-call 7E:D75E long keep p=00 db=00 d=0000
-wait 1
-call 7E:D75E long keep p=00 db=00 d=0000
-wait 1
-call 7E:D75E long keep p=00 db=00 d=0000
-wait 1
-call 7E:D75E long keep p=00 db=00 d=0000
-wait 1
-call 7E:D75E long keep p=00 db=00 d=0000
-wait 1
-call 7E:D75E long keep p=00 db=00 d=0000
-wait 1
-call 7E:D75E long keep p=00 db=00 d=0000
-wait 1
-call 7E:D75E long keep p=00 db=00 d=0000
-wait 1
-call 7E:D75E long keep p=00 db=00 d=0000
-wait 1
-call 7E:D75E long keep p=00 db=00 d=0000
-wait 1
-call 7E:D75E long keep p=00 db=00 d=0000
-wait 1
-call 7E:D75E long keep p=00 db=00 d=0000
-wait 1
-call 7E:D75E long keep p=00 db=00 d=0000
-wait 1
-call 7E:D75E long keep p=00 db=00 d=0000
-wait 1
-call 7E:D75E long keep p=00 db=00 d=0000
-wait 1
-call 7E:D75E long keep p=00 db=00 d=0000
-wait 1
-call 7E:D75E long keep p=00 db=00 d=0000
-wait 1
-call 7E:D75E long keep p=00 db=00 d=0000
-wait 1
-call 7E:D75E long keep p=00 db=00 d=0000
-wait 1
-call 7E:D75E long keep p=00 db=00 d=0000
-wait 1
-call 7E:D75E long keep p=00 db=00 d=0000
-wait 1
-call 7E:D75E long keep p=00 db=00 d=0000
-wait 1
-call 7E:D75E long keep p=00 db=00 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E19DF 01
+set 7E19D8 04
+set 7E19D9 00,08,00,0C,00,FC
+set 7E19E2 00,00,F5,0B
+set 7E0DA4 00,00
+call 7E:D75E long p=00 db=00 d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
 set 7E19DF 01

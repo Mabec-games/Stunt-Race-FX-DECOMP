@@ -1,5 +1,6 @@
 # unit_draw_crash: unit tests (call) from the start of a Novice race: the big
-# sprite rows' count draw ($0E5C set), the backdrop scroll's cap, and two
+# sprite rows' count draw ($0E5C set), the backdrop scroll's cap (half 0:
+# half 1 follows player 2's vehicle, none in this race, to open bus), and two
 # paths that stop the game (noreturn, the state loaded again after): a
 # record step with no record (CrashWhite) and a script spawn with no free
 # object (CrashGreen).
@@ -13,6 +14,7 @@ call 07:9E3B p=00 db=00 d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
 set 7E06CD 00,04
+set 7E0D7F 00
 call 7E:E924 p=10 db=00 d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
