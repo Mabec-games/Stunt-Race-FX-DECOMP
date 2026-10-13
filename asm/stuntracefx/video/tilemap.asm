@@ -942,3 +942,29 @@ TimesKeepAndAdvance:
     lda.b #$02
     sta.w !window_hdma_off
     rts
+
+; @routine 07:C30B WindowClosedDigitStep
+; WHAT IT DOES: When the split window is in state 5 ($19D8): with the
+; override $0D4C set, clears it, sets $0D48 = 2 and goes on at $07:EC6B;
+; without it at $07:EBDD (decoded from the ROM bytes and not reached in the
+; traces so far). Otherwise nothing (not reached either).
+; HOW: 8-bit tests through the data bank; the two continuations are jumps,
+; reached as original code (call_routine).
+; Entry: any widths. Exit: M 8-bit; as the continuation leaves it.
+%at($07C30B)
+WindowClosedDigitStep:
+    sep.b #$20
+    lda.w !window_hdma_off
+    cmp.b #$05
+    bne .lC327
+    lda.w !digit62_override
+    beq .lC324
+    stz.w !digit62_override
+    lda.b #$02
+    sta.w !wram_0D48
+    jmp.w WindowDigitStepEC6B
+.lC324:
+    jmp.w WindowDigitStepEBDD                  ; not reached in the traces so far
+.lC327:
+    rts                             ; not reached in the traces so far
+

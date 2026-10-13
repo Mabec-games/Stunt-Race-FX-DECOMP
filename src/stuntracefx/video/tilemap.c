@@ -986,3 +986,34 @@ void abi_TimesKeepAndAdvance(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x02);
     cpu.p = nz8(cpu.p, 0x02);
 }
+
+/*
+ * @routine 07:C30B WindowClosedDigitStep
+ * WHAT IT DOES: When the split window is in state 5 ($19D8): with the
+ * override $0D4C set, clears it, sets $0D48 = 2 and goes on at $07:EC6B;
+ * without it at $07:EBDD (decoded from the ROM bytes and not reached in the
+ * traces so far). Otherwise nothing (not reached either).
+ * HOW: 8-bit tests through the data bank; the two continuations are jumps,
+ * reached as original code (call_routine).
+ * Entry: any widths. Exit: M 8-bit; as the continuation leaves it.
+ */
+void abi_WindowClosedDigitStep(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    op_sep(P_M);
+    op_lda8(b | 0x19D8);
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)((uint8_t)cpu.a - 0x05)) & ~P_C) | ((uint8_t)cpu.a >= 0x05 ? P_C : 0));
+    if ((uint8_t)cpu.a != 0x05)
+        return;
+    op_lda8(b | 0x0D4C);
+    if (!(uint8_t)cpu.a) {
+        call_routine(0x07EBDD, 0);
+        return;
+    }
+    wr8(b | 0x0D4C, 0x00);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x02);
+    cpu.p = nz8(cpu.p, 0x02);
+    wr8(b | 0x0D48, 0x02);
+    call_routine(0x07EC6B, 0);
+}

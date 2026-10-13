@@ -1503,3 +1503,43 @@ OamDirectStage:
     bne .loop0
     plp
     rts
+
+; @routine 07:AC08 OamFillEvery4
+; WHAT IT DOES: Stores the byte A at $0376 + X and every fourth byte after
+; it, Y times: one field of Y consecutive sprites in the OAM buffer.
+; HOW: STA, four INX, DEY under BNE; through the data bank.
+; Entry: M 8-bit; X = the first offset; Y = the count (not 0). Exit: X past
+; the last; Y = 0; Z set, N clear.
+%at($07AC08)
+OamFillEvery4:
+.lAC08:
+    sta.w !oam_buffer+1,x
+    inx
+    inx
+    inx
+    inx
+    dey
+    bne .lAC08
+    rts
+
+; @routine 07:BB34 OamStageDispatchBB3C
+; WHAT IT DOES: Runs the handler for stage $0D2F from the table at
+; $07:BB3C (eight entries, $07:BC32 to $07:BFC9).
+; HOW: SEP #$30, then JMP (table,X); the handler returns to the caller.
+; Entry: any widths. Exit: as the handler leaves it.
+%at($07BB34)
+OamStageDispatchBB3C:
+    sep.b #$30
+    ldx.w !wram_0D2F
+    jmp.w (!oam_stage_handlers_bb3c,x)
+
+; @routine 07:BB9A OamStageDispatchBBA2
+; WHAT IT DOES: As OamStageDispatchBB3C, with the table at $07:BBA2.
+; HOW: SEP #$30, then JMP (table,X).
+; Entry: any widths. Exit: as the handler leaves it.
+%at($07BB9A)
+OamStageDispatchBBA2:
+    sep.b #$30
+    ldx.w !wram_0D2F
+    jmp.w (!oam_stage_handlers_bba2,x)
+

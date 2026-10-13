@@ -1371,3 +1371,21 @@ RecordsLoadCourse:
     sta.w !record_time_bcd+8
     sep.b #$20
     rts
+
+; @routine 07:B077 RecordCarTimes12
+; WHAT IT DOES: A = $0D89 * 12, low byte only.
+; HOW: ASL, CLC, ADC $0D89, ASL, ASL, AND #$FF (16-bit); through the data
+; bank.
+; Entry: M 16-bit. Exit: A = the value; N, Z from it; C from the last
+; shift; V from the add.
+%at($07B077)
+RecordCarTimes12:
+    lda.w !wram_0D89
+    asl a
+    clc
+    adc.w !wram_0D89
+    asl a
+    asl a
+    and.w #$00FF
+    rts
+

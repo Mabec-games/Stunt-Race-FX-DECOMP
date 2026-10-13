@@ -1105,3 +1105,23 @@ void abi_RecordsLoadCourseLong(void)
     cpu.db = db0;
     op_plp(p0);
 }
+
+/*
+ * @routine 07:B077 RecordCarTimes12
+ * WHAT IT DOES: A = $0D89 * 12, low byte only.
+ * HOW: ASL, CLC, ADC $0D89, ASL, ASL, AND #$FF (16-bit); through the data
+ * bank.
+ * Entry: M 16-bit. Exit: A = the value; N, Z from it; C from the last
+ * shift; V from the add.
+ */
+void abi_RecordCarTimes12(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    op_lda16(b | 0x0D89);
+    op_asl16();
+    op_add16(rd16(b | 0x0D89));
+    op_asl16();
+    op_asl16();
+    op_and16(0x00FF);
+}

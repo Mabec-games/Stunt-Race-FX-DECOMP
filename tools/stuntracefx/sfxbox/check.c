@@ -804,6 +804,61 @@ static void ls_op(uint8_t op, uint32_t addr)
 static uint8_t *cur_ops;
 static uint32_t *cur_addr;
 static uint32_t cur_n, cur_i, cur_cap;
+
+/* The call's record is taken while the original is still making it: a call
+   that runs for many frames (a screen's loop, a phase handler) would
+   otherwise have the hybrid wait at its start for more frames than the
+   original may run ahead, and neither side would move. cur_rec is the
+   record, cur_open while more of it may come. fetch_more copies what has
+   come (giving its place in the ring back) until there are `need` ops or
+   the record is complete; 1 when there are. */
+static CallRec *cur_rec;
+static int cur_open;
+static void hybrid_finish(long frames);
+static int past_end;
+static int fetch_more(uint32_t need)
+{
+    long spins = 0;
+
+    while (cur_n < need) {
+        if (!cur_open) return 0;
+        int done = LOAD(cur_rec->done);
+        /* Ops are published by o_ops; while the call is open every new op
+           is its own, and once it is done its count is final. */
+        uint64_t top = done ? cur_rec->opoff + cur_rec->opn : LOAD(sh->o_ops);
+        uint32_t avail = (uint32_t)(top - cur_rec->opoff);
+        if (avail > cur_n) {
+            if (avail > cur_cap) {
+                cur_cap = avail + (avail >> 1) + 1024;
+                cur_ops = realloc(cur_ops, cur_cap);
+                cur_addr = realloc(cur_addr, (size_t)cur_cap * sizeof *cur_addr);
+                if (!cur_ops || !cur_addr) _exit(7);
+            }
+            for (uint32_t i = cur_n; i < avail; i++) {
+                uint64_t o = (cur_rec->opoff + i) % OPRING;
+                cur_ops[i] = sh->ops[o];
+                cur_addr[i] = sh->opaddr[o];
+            }
+            cur_n = avail;
+            STORE(sh->h_ops, cur_rec->opoff + cur_n);
+            spins = 0;
+            continue;
+        }
+        if (done) { cur_open = 0; return 0; }
+        if (LOAD(sh->o_done)) {
+            /* The script ended on the original side inside this call: as
+               for a call that never returned (ls_exec), nothing after it
+               can be compared. */
+            past_end = 1;
+            gsu_lockstep_past_end();
+            hybrid_finish(cur_frame + 1);
+        }
+        if (LOAD(sh->stuck)) _exit(6);
+        if (++spins > 600000) { stuck_report("more of the call's record"); STORE(sh->stuck, 1); _exit(6); }
+        usleep(50);
+    }
+    return 1;
+}
 static long timed_unmatched;
 
 static int timed(uint32_t a)
@@ -832,7 +887,7 @@ static void replay_to(uint32_t to)
     while (i < to) {
         if (cur_ops[i] >> 4 != 5) { i++; continue; }
         if (i > run) core_replay(cur_ops + run, i - run);
-        if (i + 3 < cur_n) {
+        if (i + 3 < cur_n || fetch_more(i + 4)) {
             struct SfxboxRegs at = {
                 (uint16_t)cur_addr[i + 1], (uint16_t)(cur_addr[i + 1] >> 16), (uint16_t)cur_addr[i + 2],
                 (uint16_t)(cur_addr[i + 2] >> 16), (uint16_t)cur_addr[i + 3], (uint8_t)(cur_addr[i + 3] >> 16),
@@ -851,7 +906,6 @@ static void replay_to(uint32_t to)
 }
 
 static long snap_offset(uint32_t a);
-static int past_end;
 static void (*core_run_until)(const struct SfxboxRegs *, uint32_t, uint16_t);
 static long asm_unplaced;
 
@@ -879,15 +933,13 @@ static void run_original(uint32_t addr, int long_call)
     int nest = 0;
     uint16_t s = (uint16_t)(cpu.s - (long_call ? 3 : 2));
 
-    for (j = cur_i; j + 1 < cur_n; j++)
+    int found;
+    for (j = cur_i; j + 1 < cur_n || fetch_more(j + 2); j++)
         if (cur_ops[j] >> 4 == 9 && cur_addr[j] == addr && cur_ops[j + 1] >> 4 == 0xA) break;
-    if (j + 1 < cur_n) {
+    found = j + 1 < cur_n;
+    if (found) {
         replay_to(j);
         s = (uint16_t)cur_addr[j + 1];
-        for (c = j + 2; c < cur_n; c++) {
-            if (cur_ops[c] >> 4 == 9) nest++;
-            else if (cur_ops[c] >> 4 == 0xC && !nest--) break;
-        }
     } else if (!past_end) {
         /* Past the end, there is no record to place it in (as for a
            hardware access): nothing after it is compared. */
@@ -904,6 +956,13 @@ static void run_original(uint32_t addr, int long_call)
     core_regs(&out);
     core_set_regs(&mine);
     cpu.a = out.a; cpu.x = out.x; cpu.y = out.y; cpu.d = out.d; cpu.db = out.db; cpu.p = out.p; cpu.e = out.e;
+    /* Its return mark, looked for only now: a routine that runs for many
+       frames has its return far ahead in a record still being made. */
+    if (found)
+        for (c = j + 2; c < cur_n || fetch_more(c + 1); c++) {
+            if (cur_ops[c] >> 4 == 9) nest++;
+            else if (cur_ops[c] >> 4 == 0xC && !nest--) break;
+        }
     cur_i = c < cur_n ? c + 1 : cur_n;
     /* An interrupt the original took straight after the routine's return
        (between its RTS/RTL and the next instruction at the caller's level)
@@ -998,7 +1057,7 @@ static uint8_t live_access(int write, uint32_t addr, uint8_t value)
         pair_lo = -1;
         uint32_t from_i = cur_i;
         if (o >= 0 && !placed)
-            for (uint32_t j = cur_i; j < cur_n; j++) {
+            for (uint32_t j = cur_i; j < cur_n || fetch_more(j + 1); j++) {
                 uint8_t k = cur_ops[j] >> 4;
                 if ((k == 1 || k == 2) && timed(cur_addr[j])) break;
                 /* Nor past the original's entry into a routine with no C
@@ -1021,7 +1080,7 @@ static uint8_t live_access(int write, uint32_t addr, uint8_t value)
         return core_bus_read(addr);
     }
     pair_lo = -1;
-    for (uint32_t j = cur_i; j < cur_n; j++)
+    for (uint32_t j = cur_i; j < cur_n || fetch_more(j + 1); j++)
         if (cur_ops[j] >> 4 == want && same_place(cur_addr[j]) == same_place(addr)) {
             replay_to(j);
             cur_i = j + 1;
@@ -1055,24 +1114,14 @@ static int ls_exec(uint32_t pc)
     /* The original's next call: wait until it has returned, then take a
        private copy of its cycles (the ring moves on). */
     uint64_t k = LOAD(sh->h_calls);
-    WAIT_UNTIL((k < LOAD(sh->o_calls) && LOAD(sh->calls[k % CALLRING].done)) || LOAD(sh->o_done));
-    cur_n = 0; cur_i = 0; pair_lo = -1;
-    if (k < LOAD(sh->o_calls) && LOAD(sh->calls[k % CALLRING].done)) {
+    WAIT_UNTIL(k < LOAD(sh->o_calls) || LOAD(sh->o_done));
+    cur_n = 0; cur_i = 0; pair_lo = -1; cur_open = 0;
+    if (k < LOAD(sh->o_calls)) {
         CallRec *rec = &sh->calls[k % CALLRING];
         if (rec->frame != cur_frame) mismatched_calls++;
-        cur_n = rec->opn;
-        if (cur_n > cur_cap) {
-            cur_cap = cur_n;
-            cur_ops = realloc(cur_ops, cur_cap);
-            cur_addr = realloc(cur_addr, (size_t)cur_cap * sizeof *cur_addr);
-            if (!cur_ops || !cur_addr) _exit(7);
-        }
-        for (uint32_t i = 0; i < cur_n; i++) {
-            uint64_t o = (rec->opoff + i) % OPRING;
-            cur_ops[i] = sh->ops[o];
-            cur_addr[i] = sh->opaddr[o];
-        }
-        STORE(sh->h_ops, rec->opoff + rec->opn);
+        cur_rec = rec;
+        cur_open = 1;
+        fetch_more(1);
         STORE(sh->h_calls, k + 1);
     } else if (LOAD(sh->o_done) && k + 1 == LOAD(sh->o_calls)) {
         /* The script ended on the original side before this call returned
@@ -1090,6 +1139,7 @@ static int ls_exec(uint32_t pc)
     machine_live = 1;
     routines[idx].abi();
     machine_live = 0;
+    while (fetch_more(cur_n + 1)) {}
     replay_to(cur_n);
     struct SfxboxRegs out = {cpu.a, cpu.x, cpu.y, exit_s, cpu.d, cpu.db, cpu.p, cpu.e, ret};
     core_set_regs(&out);

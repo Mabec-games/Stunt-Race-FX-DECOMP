@@ -246,3 +246,63 @@ void abi_TimeRunningTotals(void)
         }
     cpu.p = p0;
 }
+
+/* LDA $0D4A, ASL x3, CLC, ADC $0D4A (8-bit): the course times nine. */
+static uint8_t course_times_9(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v = rd8(b | 0x0D4A), a = v;
+    int i;
+
+    for (i = 0; i < 3; i++) {
+        cpu.p = (uint8_t)((cpu.p & ~P_C) | (a >> 7));
+        a = (uint8_t)(a << 1);
+    }
+    cpu.p &= (uint8_t)~P_C;
+    return op_adc8(a, rd8(b | 0x0D4A), &cpu.p);
+}
+
+/* TAX, LDY #3, then three bytes from $70:FC6D + X to $70:FC70 + X. */
+static void record_slot_copy(uint8_t a)
+{
+    uint8_t v = 0;
+
+    cpu.x = a;
+    cpu.y = 3;
+    do {
+        v = rd8(0x70FC6D + (uint32_t)cpu.x);
+        wr8(0x70FC70 + (uint32_t)cpu.x, v);
+        cpu.x = (uint8_t)(cpu.x + 1);
+        cpu.y = (uint8_t)(cpu.y - 1);
+    } while (cpu.y);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, 0);
+}
+
+/*
+ * @routine 07:B93C RecordSlotCopy0
+ * WHAT IT DOES: Copies the course $0D4A's first three-byte record entry
+ * ($70:FC6D + course * 9) to the second.
+ * HOW: The offset as course * 8 + course, then the copy loop of
+ * RecordSlotCopy3 (its code from the TAX).
+ * Entry: M 8-bit, X 8-bit. Exit: A = the last byte copied; X = the offset
+ * + 3; Y = 0; Z set, N clear; C, V from the add.
+ */
+void abi_RecordSlotCopy0(void)
+{
+    record_slot_copy(course_times_9());
+}
+
+/*
+ * @routine 07:B948 RecordSlotCopy3
+ * WHAT IT DOES: Copies the course $0D4A's second three-byte record entry
+ * ($70:FC70 + course * 9) to the third.
+ * HOW: As RecordSlotCopy0 with 3 added (the carry of the first add in).
+ * Entry: M 8-bit, X 8-bit. Exit: as RecordSlotCopy0.
+ */
+void abi_RecordSlotCopy3(void)
+{
+    uint8_t a = course_times_9();
+
+    record_slot_copy(op_adc8(a, 0x03, &cpu.p));
+}

@@ -302,3 +302,46 @@ TimeAddToNext:
     sta.w !record_times+5,x
 .done:
     rts
+
+; @routine 07:B93C RecordSlotCopy0
+; WHAT IT DOES: Copies the course $0D4A's first three-byte record entry
+; ($70:FC6D + course * 9) to the second.
+; HOW: The offset as course * 8 + course, then the copy loop of
+; RecordSlotCopy3 (its code from the TAX).
+; Entry: M 8-bit, X 8-bit. Exit: A = the last byte copied; X = the offset
+; + 3; Y = 0; Z set, N clear; C, V from the add.
+%at($07B93C)
+RecordSlotCopy0:
+    lda.w !wram_0D4A
+    asl a
+    asl a
+    asl a
+    clc
+    adc.w !wram_0D4A
+    bra RecordSlotCopy3_copy
+
+; @routine 07:B948 RecordSlotCopy3
+; WHAT IT DOES: Copies the course $0D4A's second three-byte record entry
+; ($70:FC70 + course * 9) to the third.
+; HOW: As RecordSlotCopy0 with 3 added (the carry of the first add in).
+; Entry: M 8-bit, X 8-bit. Exit: as RecordSlotCopy0.
+%at($07B948)
+RecordSlotCopy3:
+    lda.w !wram_0D4A
+    asl a
+    asl a
+    asl a
+    clc
+    adc.w !wram_0D4A
+    adc.b #$03
+RecordSlotCopy3_copy:
+    tax
+    ldy.b #$03
+.copy_byte:
+    lda.l !save_course_names,x
+    sta.l !save_course_names+3,x
+    inx
+    dey
+    bne .copy_byte
+    rts
+

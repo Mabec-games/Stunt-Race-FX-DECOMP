@@ -1439,3 +1439,37 @@ void abi_BigSpritesRow5(void)
     for (i = 0; i < 5; i++)
         sprite24x40(src[i]);
 }
+
+void abi_GsuBytes200_BFB3BE(void);
+void abi_GsuF329Sequence(void);
+
+/*
+ * @routine 07:89E4 HudHoldDraw
+ * WHAT IT DOES: When the HUD hold flag $0E5D is set, sets the renderer
+ * bytes 0, $BF, $B3, $BE (GsuBytes200_BFB3BE) and draws the sequence at
+ * $0F69 at (147, 108) (GsuF329Sequence, through the tail of the routine at
+ * $07:89F5).
+ * HOW: P saved and restored; 16-bit.
+ * Entry: any widths. Exit: P restored; A, X, Y as the draw leaves them
+ * (A = $0E5D when not set).
+ */
+void abi_HudHoldDraw(void)
+{
+    uint8_t p0 = cpu.p;
+
+    op_rep(P_M | P_X);
+    op_lda16((uint32_t)cpu.db << 16 | 0x0E5D);
+    if (!cpu.a) {
+        op_plp(p0);
+        return;
+    }
+    abi_GsuBytes200_BFB3BE();
+    op_lda16_imm(0x0093);
+    wr16(0x70020A, 0x0093);
+    op_lda16_imm(0x006C);
+    wr16(0x70020C, 0x006C);
+    cpu.y = 0x0F69;
+    cpu.p = nz16(cpu.p, cpu.y);
+    abi_GsuF329Sequence();
+    op_plp(p0);
+}

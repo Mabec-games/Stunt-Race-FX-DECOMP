@@ -2165,3 +2165,24 @@ BigSpritesRow5:
     rep.b #$20
     rep.b #$10
     rts
+
+; @routine 07:89E4 HudHoldDraw
+; WHAT IT DOES: When the HUD hold flag $0E5D is set, sets the renderer
+; bytes 0, $BF, $B3, $BE (GsuBytes200_BFB3BE) and draws the sequence at
+; $0F69 at (147, 108) (GsuF329Sequence, through the tail of the routine at
+; $07:89F5).
+; HOW: P saved and restored; 16-bit.
+; Entry: any widths. Exit: P restored; A, X, Y as the draw leaves them
+; (A = $0E5D when not set).
+%at($0789E4)
+HudHoldDraw:
+    php
+    rep.b #$30
+    lda.w !hud_hold
+    bne .l89EE
+    plp
+    rts
+.l89EE:
+    jsl.l GsuBytes200_BFB3BE
+    jmp.w GsuF329At93x6C
+

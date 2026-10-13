@@ -72,3 +72,21 @@ LapSplit:
     sta.w !lap_digits
     cld
     rts
+
+; @routine 07:D5B2 RaceTimeKeep
+; WHAT IT DOES: Copies the race time (fraction $0E63, seconds $0E64,
+; minutes $0E66) to $0EE7-$0EE9.
+; HOW: Three 8-bit loads and stores through the data bank.
+; Entry: any widths. Exit: M 8-bit; A low byte = the minutes; N, Z from
+; them.
+%at($07D5B2)
+RaceTimeKeep:
+    sep.b #$20
+    lda.w !race_time_fraction
+    sta.w !wram_0EE7
+    lda.w !race_time_seconds
+    sta.w !wram_0EE7+1
+    lda.w !race_time_minutes
+    sta.w !wram_0EE7+2
+    rts
+

@@ -1537,3 +1537,56 @@ void abi_OamDirectStage(void)
     }
     op_plp(p0);
 }
+
+/*
+ * @routine 07:AC08 OamFillEvery4
+ * WHAT IT DOES: Stores the byte A at $0376 + X and every fourth byte after
+ * it, Y times: one field of Y consecutive sprites in the OAM buffer.
+ * HOW: STA, four INX, DEY under BNE; through the data bank.
+ * Entry: M 8-bit; X = the first offset; Y = the count (not 0). Exit: X past
+ * the last; Y = 0; Z set, N clear.
+ */
+void abi_OamFillEvery4(void)
+{
+    uint16_t mask = (cpu.p & P_X) ? 0x00FF : 0xFFFF;
+
+    do {
+        wr8((uint32_t)cpu.db << 16 | (uint16_t)(0x0376 + cpu.x), (uint8_t)cpu.a);
+        cpu.x = (uint16_t)((cpu.x + 4) & mask);
+        cpu.y = (uint16_t)((cpu.y - 1) & mask);
+    } while (cpu.y);
+    cpu.p = nz16(cpu.p, 0);
+}
+
+/* JMP ($BB3C,X) / ($BBA2,X) with X = $0D2F after SEP #$30: the handler
+   from the table, reached as original code. */
+static void oam_stage_dispatch(uint32_t table)
+{
+    op_sep(P_M | P_X);
+    cpu.x = rd8((uint32_t)cpu.db << 16 | 0x0D2F);
+    cpu.p = nz8(cpu.p, (uint8_t)cpu.x);
+    call_routine((uint32_t)0x070000 | rd16(table + cpu.x), 0);
+}
+
+/*
+ * @routine 07:BB34 OamStageDispatchBB3C
+ * WHAT IT DOES: Runs the handler for stage $0D2F from the table at
+ * $07:BB3C (eight entries, $07:BC32 to $07:BFC9).
+ * HOW: SEP #$30, then JMP (table,X); the handler returns to the caller.
+ * Entry: any widths. Exit: as the handler leaves it.
+ */
+void abi_OamStageDispatchBB3C(void)
+{
+    oam_stage_dispatch(0x07BB3C);
+}
+
+/*
+ * @routine 07:BB9A OamStageDispatchBBA2
+ * WHAT IT DOES: As OamStageDispatchBB3C, with the table at $07:BBA2.
+ * HOW: SEP #$30, then JMP (table,X).
+ * Entry: any widths. Exit: as the handler leaves it.
+ */
+void abi_OamStageDispatchBBA2(void)
+{
+    oam_stage_dispatch(0x07BBA2);
+}

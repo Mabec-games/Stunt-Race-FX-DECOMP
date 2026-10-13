@@ -4,6 +4,7 @@
  * a lap's time is the clock minus the mark.
  */
 #include "machine.h"
+#include "cpu_ops.h"
 
 /* An 8-bit SBC in decimal mode, as the 65816 does it: C is the decimal
    no-borrow, V from the binary sum of the top digit before its adjustment. */
@@ -91,4 +92,25 @@ void abi_LapSplit(void)
 
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | LapSplit(cpu.db, (uint8_t)cpu.x, &p));
     cpu.p = p;
+}
+
+/*
+ * @routine 07:D5B2 RaceTimeKeep
+ * WHAT IT DOES: Copies the race time (fraction $0E63, seconds $0E64,
+ * minutes $0E66) to $0EE7-$0EE9.
+ * HOW: Three 8-bit loads and stores through the data bank.
+ * Entry: any widths. Exit: M 8-bit; A low byte = the minutes; N, Z from
+ * them.
+ */
+void abi_RaceTimeKeep(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    op_sep(P_M);
+    op_lda8(b | 0x0E63);
+    wr8(b | 0x0EE7, (uint8_t)cpu.a);
+    op_lda8(b | 0x0E64);
+    wr8(b | 0x0EE8, (uint8_t)cpu.a);
+    op_lda8(b | 0x0E66);
+    wr8(b | 0x0EE9, (uint8_t)cpu.a);
 }
