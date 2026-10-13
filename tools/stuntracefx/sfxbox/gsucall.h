@@ -23,6 +23,7 @@ void gsu_before_frame(long f);
 /* After frame f: appends what differs to buf (the hybrid side); 1 if anything does. */
 int gsu_after_frame(long f, char *buf, size_t n);
 void gsu_lockstep_done(void);           /* the original side has finished */
+void gsu_lockstep_past_end(void);       /* the S-CPU side has run past the original's record */
 /* The hybrid's totals for the report line; 1 if any of them is a divergence. */
 int gsu_lockstep_summary(char *buf, size_t n);
 #endif

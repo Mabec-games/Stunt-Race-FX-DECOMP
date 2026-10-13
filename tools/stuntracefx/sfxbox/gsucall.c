@@ -705,7 +705,11 @@ static int hybrid_exec(uint32_t pc, uint32_t prev_end)
     cn = ci = 0;
     if (k < LOAD(sh->o_calls) && LOAD(sh->calls[k % CALLRING].done)) {
         rec = sh->calls[k % CALLRING];
-        if (rec.frame != frame_now) h_unmatched++;
+        if (rec.frame != frame_now && !past_end) {
+            h_unmatched++;
+            fprintf(lsrep, "GUNMATCHED call %llu %s %06X: original frame %ld, here %ld\n",
+                    (unsigned long long)k, cur_name, pc, rec.frame, frame_now);
+        }
         if (rec.stopped) h_stopped++;
         cn = rec.opn;
         if (cn > ccap) {
@@ -790,6 +794,14 @@ void gsu_before_frame(long f)
     frame_now = f;
     if (role == 1 && sh) sh->fcalls[f % NSLOT] = 0;
     h_fcalls = 0;
+}
+
+/* The S-CPU side has run a call the original never finished (the script
+   ended inside it): the Super FX programs it starts have no frame of the
+   original's to be matched with. */
+void gsu_lockstep_past_end(void)
+{
+    past_end = 1;
 }
 
 int gsu_after_frame(long f, char *buf, size_t n)

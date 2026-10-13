@@ -603,6 +603,7 @@ static struct {
     uint16_t open[64];       /* their stack pointers at entry */
     uint32_t ret[0x10000];   /* by S at a callee's entry: 1 << 24 | its return address */
 } m;
+static uint32_t m_pc;        /* the routine of the open call */
 
 static int entry(uint32_t pc, struct SfxboxRegs *r, uint32_t *ret, uint16_t *exit_s)
 {
@@ -724,6 +725,7 @@ static void ls_insn(uint32_t pc)
     STORE(sh->o_calls, k + 1);
     sh->fs[cur_frame % NSLOT].ncalls++;
     m.active = 1; m.in_irq = 0; m.call = k; m.depth = 0;
+    m_pc = pc;
 }
 
 
@@ -1032,6 +1034,7 @@ static int ls_exec(uint32_t pc)
            (a long Super FX run can span the last frames): there is nothing
            left to compare it, or the frames after it, with. */
         past_end = 1;
+        gsu_lockstep_past_end();
     } else mismatched_calls++;
     hk++;
     cpu.a = r.a; cpu.x = r.x; cpu.y = r.y; cpu.s = r.s; cpu.d = r.d; cpu.db = r.db; cpu.p = r.p; cpu.e = r.e; cpu.pc = r.pc;
@@ -1190,6 +1193,10 @@ void lockstep_after_frame(long f)
            pushed), and the push overwrites them before anything reads them. */
         sl->s = m.active ? m.exit_s : r.s > insn_s ? r.s : insn_s;
         sl->midcall = m.active;
+        /* SFXBOX_LS_MIDCALL=frame: from that frame, name the call each
+           frame ends inside. */
+        if (m.active && getenv("SFXBOX_LS_MIDCALL") && f >= atol(getenv("SFXBOX_LS_MIDCALL")))
+            fprintf(stderr, "MIDCALL frame %ld ends inside call %llu at %06X\n", f, (unsigned long long)m.call, m_pc);
         sl->clock = core_clock();
         sl->regs = r;
         core_snapshot(sl->snap);
