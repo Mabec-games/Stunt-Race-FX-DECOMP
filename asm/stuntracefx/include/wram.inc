@@ -1378,3 +1378,23 @@ includeonce
 !spawn_base_0c = $000C
 !spawn_base_0e = $000E
 !spawn_mirror = $001AF4
+
+; CourseScriptRun (object/course_script.asm): where it leaves the script
+; position, object fields as long addresses, and the state it sets.
+!gsu_script_next = $701092
+!gsu_script_bank = $701094
+!obj_09_long = $7E2009
+!obj_27_long = $7E2027
+!obj_29_long = $7E2029
+!obj_48_long = $7E2048
+!obj_49_long = $7E2049
+!obj_4a_long = $7E204A
+!obj_5a_long = $7E205A
+!spawn_counter = $1ADE
+!script_flags_long = $001AEC
+!script_byte_1f71 = $1F71
+!script_byte_1f72 = $1F72
+!script_records = $7EFF66
+!wram_1AEE_long = $001AEE
+!bare_object_a = $1ADA
+!bare_object_b = $1ADC

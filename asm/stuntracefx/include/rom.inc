@@ -293,3 +293,6 @@ includeonce
 ; A course script entry, read through the data bank at $8000 + Y
 ; (object/object.asm).
 !script_entry = $8000
+
+; The course script's opcode handlers, a word per even opcode (bank $08).
+!course_script_ops = $8000
