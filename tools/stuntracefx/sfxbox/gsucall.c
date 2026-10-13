@@ -522,7 +522,13 @@ void gsu_check_rows(FILE *rep)
 #define CALLRING (1 << 20)
 #define OPRING (1u << 24)
 
-enum { OP_STEP = 1, OP_READ = 2, OP_WRITE = 3, OP_FILL = 4, OP_FLUSH = 5 };
+enum { OP_STEP = 1, OP_READ = 2, OP_WRITE = 3, OP_FILL = 4, OP_FLUSH = 5, OP_FLAGS = 6 };
+
+/* The status bits an instruction sets, which the S-CPU can read at $3030
+   while the call runs: Z, CY, S, OV, R, ALT1, ALT2 and B. The C keeps its
+   flags in the model until it returns, so the hybrid's core shows them as
+   the original had them at each point of the call (OP_FLAGS). */
+#define SFR_SHOWN (SFR_Z | SFR_CY | SFR_S | SFR_OV | SFR_R | SFR_PREFIX)
 
 typedef struct {
     long frame;
@@ -569,7 +575,7 @@ int gsu_lockstep_prepare(void)
 
 /* ---- original side: record each call ---- */
 
-static struct { int active; uint32_t ret; uint64_t call; } m;
+static struct { int active; uint32_t ret; uint64_t call; uint16_t flags; } m;
 
 static void op(uint8_t kind, uint32_t arg)
 {
@@ -586,6 +592,14 @@ static void orig_insn(uint32_t pc, uint32_t prev_end, uint8_t opcode)
     int prog = program_start(opcode);
     if (m.active) {
         CallRec *rec = &sh->calls[m.call % CALLRING];
+        {
+            struct GsuState fs;
+            core_get(&fs);
+            if ((fs.sfr & SFR_SHOWN) != m.flags) {
+                m.flags = fs.sfr & SFR_SHOWN;
+                op(OP_FLAGS, m.flags);
+            }
+        }
         if (pc == m.ret || (m.ret == PROGRAM && opcode == 0x00)) {
             rec->end = pc;
             struct GsuState st;
@@ -614,7 +628,7 @@ static void orig_insn(uint32_t pc, uint32_t prev_end, uint8_t opcode)
     STORE(rec->done, 0);
     STORE(sh->o_calls, k + 1);
     sh->fcalls[frame_now % NSLOT]++;
-    m.active = 1; m.ret = prog ? PROGRAM : (pc & 0xFF0000) | st.r[11]; m.call = k;
+    m.active = 1; m.ret = prog ? PROGRAM : (pc & 0xFF0000) | st.r[11]; m.call = k; m.flags = st.sfr & SFR_SHOWN;
 }
 
 static void orig_step(uint32_t clocks) { if (m.active) op(OP_STEP, clocks); }
@@ -641,6 +655,13 @@ static void replay_to(uint32_t to)
         case OP_STEP: core_time(carg[i]); break;
         case OP_FILL: core_fill(carg[i]); break;
         case OP_FLUSH: core_flush(carg[i]); break;
+        case OP_FLAGS: {
+            struct GsuState fs;
+            core_get(&fs);
+            fs.sfr = (uint16_t)((fs.sfr & ~SFR_SHOWN) | carg[i]);
+            core_put(&fs);
+            break;
+        }
         default: break;
         }
     }
