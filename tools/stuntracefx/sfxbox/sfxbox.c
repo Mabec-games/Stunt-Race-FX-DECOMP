@@ -59,13 +59,17 @@ static void die(const char *fmt, ...) {
 
 static void *core;
 void sfxbox_trace_begin(void);
+void sfxbox_trace_break(void);
 int sfxbox_trace_write(const char *dir);
 uint8_t *sfxbox_memory(const char *name, size_t *size);
 #define SYM(name) static __typeof__(&name) name##_p;
 SYM(retro_init) SYM(retro_set_environment) SYM(retro_set_video_refresh) SYM(retro_set_audio_sample)
 SYM(retro_set_audio_sample_batch) SYM(retro_set_input_poll) SYM(retro_set_input_state) SYM(retro_load_game)
 SYM(retro_run) SYM(retro_serialize_size) SYM(retro_serialize) SYM(retro_unserialize)
-SYM(sfxbox_trace_begin) SYM(sfxbox_trace_write) SYM(sfxbox_memory)
+SYM(sfxbox_trace_begin) SYM(sfxbox_trace_write) SYM(sfxbox_memory) SYM(sfxbox_trace_break)
+/* The trace takes no edge across a jump made here (a state loaded, a unit
+   call's registers set): the next instruction was not reached from the last. */
+static void trace_break(void) { if (sfxbox_trace_break_p) sfxbox_trace_break_p(); }
 
 static const char *outdir;
 static char sysdir[4096];
@@ -258,12 +262,13 @@ static int call_exec(uint32_t pc)
         struct SfxboxRegs r = call_regs;
         r.s = call_from.s; r.e = 0; r.pc = call_stub;
         sfxbox_core_set_regs_p(&r);
+        trace_break();
         call_state = 2;
         return 1;
     }
     if (call_state == 2 && pc == call_loop) {
         call_state = 0;
-        if (call_keep) { sfxbox_core_set_regs_p(&call_from); return 1; }   /* the game goes on from where it was */
+        if (call_keep) { sfxbox_core_set_regs_p(&call_from); trace_break(); return 1; }   /* the game goes on from where it was */
         return 0;   /* parked in the stub's loop until the machine is put back: see call() */
     }
     return exec_before ? exec_before(pc) : 0;
@@ -328,6 +333,7 @@ static void call(const char *line, int lineno) {
        machine after it is never used for another. */
     if (!call_state && !call_keep && !lockstep) {
         if (!retro_unserialize_p(snap, sn)) die("%s:%d: call: unserialize failed", script_path, lineno);
+        trace_break();
         if (checklib_on) check_rollback(open_calls);
     }
     free(snap);
@@ -381,6 +387,7 @@ static void exec_range(int from, int to) {
         else if (!strcmp(a, "load") && k >= 2) {
             size_t n; void *p = load_file(b, &n);
             if (!retro_unserialize_p(p, n)) die("unserialize failed: %s", b);
+            trace_break();
             free(p);
         }
         else die("%s:%d: bad command", script_path, i + 1);
@@ -422,7 +429,7 @@ int main(int argc, char **argv) {
     LOAD(retro_init) LOAD(retro_set_environment) LOAD(retro_set_video_refresh) LOAD(retro_set_audio_sample)
     LOAD(retro_set_audio_sample_batch) LOAD(retro_set_input_poll) LOAD(retro_set_input_state) LOAD(retro_load_game)
     LOAD(retro_run) LOAD(retro_serialize_size) LOAD(retro_serialize) LOAD(retro_unserialize)
-    LOAD(sfxbox_trace_begin) LOAD(sfxbox_trace_write) LOAD(sfxbox_memory)
+    LOAD(sfxbox_trace_begin) LOAD(sfxbox_trace_write) LOAD(sfxbox_memory) LOAD(sfxbox_trace_break)
     LOAD(sfxbox_core_regs) LOAD(sfxbox_core_set_regs) LOAD(sfxbox_core_bus_read)
     if (!(cpu_exec_hook = dlsym(core, "sfxbox_cpu_exec"))) die("missing symbol sfxbox_cpu_exec");
 
