@@ -1571,3 +1571,4 @@ includeonce
 !player_tag = $10C7                     ; the tag RecordsLoadSpecialCourse looks for
 !player_place = $10C9                   ; its place among the first three (1-3, 0 none)
 !special_saves = $70FCD0                ; the special courses' saved entries, 48 bytes a course
+!best_times = $70FFD0                  ; each course's two saved best times (packed), four bytes a course

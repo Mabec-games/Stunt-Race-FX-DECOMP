@@ -1199,3 +1199,175 @@ RecordsLoadSpecialCourse:
 .place:
     sta.w !player_place
     rts
+
+; @routine 07:B3D4 RecordsLoadForCourse
+; WHAT IT DOES: Loads course $0E3D's records: RecordsLoadSpecialCourse for
+; courses $0C-$0F, RecordsLoadCourse below $0C, nothing above.
+; HOW: The data bank is set to $07 (the tag table's) and restored.
+; Entry: any widths; D = $0000. Exit: P and the data bank restored.
+%at($07B3D4)
+RecordsLoadForCourse:
+    php
+    sep.b #$20
+    phb
+    phk
+    plb
+    lda.w !course
+    cmp.b #$0C
+    bcc .normal
+    cmp.b #$10
+    bcs .done
+    jsr.w RecordsLoadSpecialCourse
+    bra .done
+.normal:
+    jsr.w RecordsLoadCourse
+.done:
+    sep.b #$20
+    plb
+    plp
+    rtl
+
+; @routine 07:B3F2 RecordsLoadCourseLong
+; WHAT IT DOES: RecordsLoadCourse for callers in other banks, with the
+; data bank $07.
+; HOW: As RecordsLoadForCourse. Not reached in the traces so far.
+; Entry: any widths; D = $0000. Exit: P and the data bank restored.
+%at($07B3F2)
+RecordsLoadCourseLong:
+    php
+    sep.b #$20
+    phb
+    phk
+    plb
+    jsr.w RecordsLoadCourse
+    sep.b #$20
+    plb
+    plp
+    rtl
+
+; @routine 07:B400 RecordsLoadCourse
+; WHAT IT DOES: For a normal course (below $0C): loads its twelve saved
+; entries and sorts them, smallest time first (as RecordsLoadSpecialCourse
+; otherwise); for any course finds the player's place ($10C9); then
+; unpacks the course's two best times ($70:FFD0 + course * 4) and the
+; first time to BCD at $0F5B, $0F5E and $0F61 (TimeUnpackBcd).
+; HOW: Direct page $F3 holds the course. The swaps and places other than
+; 1 are not reached in the traces so far.
+; Entry: any widths; D = $0000. Exit: M 8-bit, X 8-bit; A low byte = the
+; last minutes; X, Y the last seconds and hundredths.
+%at($07B400)
+RecordsLoadCourse:
+    rep.b #$30
+    lda.w !course
+    and.w #$00FF
+    sta.b !dp_f3
+    cmp.w #$000C
+    bcs .place
+    asl a
+    clc
+    adc.b !dp_f3
+    asl a
+    asl a
+    asl a
+    asl a
+    tax
+    ldy.w #$0000
+.copy:
+    lda.l !special_saves,x
+    sta.w !special_times,y
+    lda.l !special_saves+2,x
+    sta.w !special_words,y
+    lda.w !special_tag_table,y
+    sta.w !special_tags,y
+    inx
+    inx
+    inx
+    inx
+    iny
+    iny
+    cpy.w #$0018
+    bcc .copy
+    ldx.w #$0014
+.outer:
+    phx
+.inner:
+    lda.w !special_times+2,x
+    cmp.w !special_times,x
+    bcs .next
+    pha
+    lda.w !special_times,x
+    sta.w !special_times+2,x
+    pla
+    sta.w !special_times,x
+    lda.w !special_tags,x
+    pha
+    lda.w !special_tags+2,x
+    sta.w !special_tags,x
+    pla
+    sta.w !special_tags+2,x
+    lda.w !special_words,x
+    pha
+    lda.w !special_words+2,x
+    sta.w !special_words,x
+    pla
+    sta.w !special_words+2,x
+    cpx.w #$0014
+    bcs .next
+    inx
+    inx
+    bra .inner
+.next:
+    plx
+    dex
+    dex
+    bpl .outer
+.place:
+    lda.w !player_tag
+    cmp.w !special_tags
+    beq .first
+    cmp.w !special_tags+2
+    beq .second
+    cmp.w !special_tags+4
+    beq .third
+    lda.w #$0000
+    bra .placed
+.third:
+    lda.w #$0003
+    bra .placed
+.second:
+    lda.w #$0002
+    bra .placed
+.first:
+    lda.w #$0001
+.placed:
+    sta.w !player_place
+    lda.w !course
+    and.w #$00FF
+    asl a
+    asl a
+    tax
+    phx
+    rep.b #$30
+    lda.l !best_times,x
+    jsr.w TimeUnpackBcd
+    sep.b #$30
+    sty.w !record_time_bcd+0
+    stx.w !record_time_bcd+1
+    sta.w !record_time_bcd+2
+    rep.b #$30
+    plx
+    lda.l !best_times+2,x
+    jsr.w TimeUnpackBcd
+    sep.b #$30
+    sty.w !record_time_bcd+3
+    stx.w !record_time_bcd+4
+    sta.w !record_time_bcd+5
+    rep.b #$30
+    lda.w !special_times
+    jsr.w TimeUnpackBcd
+    sep.b #$30
+    sty.w !record_time_bcd+6
+    stx.w !record_time_bcd+7
+    sta.w !record_time_bcd+8
+    sep.b #$20
+    rts
