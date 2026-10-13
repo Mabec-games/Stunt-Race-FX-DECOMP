@@ -432,9 +432,9 @@ static uint16_t fx_scaled(uint16_t a, int more)
    keep_first) ends at the midpoint. ax = 1 (x) or 2 (y). */
 static void fx_clip_search(int ax, int more, int keep_first)
 {
-    int o = 3 - ax, neg, i;
+    int o = 3 - ax, neg;
 
-    for (i = 0; ; i++) {
+    for (;;) {
         gsu.r[0] = gsu_add(gsu.r[ax], gsu.r[ax + 3], 0);
         gsu.r[14] = gsu_div2(gsu.r[0]);
         gsu.r[0] = gsu_add(gsu.r[3], gsu.r[7], 0);
@@ -601,17 +601,26 @@ void abi_FxClipXPlane(void)
     fx_clip_plane(1, 1);
 }
 
+static void fx_near_test(uint16_t z);
+
 /* One plane clip driver's settings. */
 typedef struct {
-    uint16_t slope;       /* the slope's RAM address (LMS R6) */
+    uint16_t slope;       /* the slope's RAM address (LMS R6); 0 for the near plane */
     int ax, more, neg;    /* axis (1 x, 2 y), extra doublings, the plane's side */
     void (*clip)(void);   /* the segment clip */
     uint16_t ret_out, ret_in;   /* R11 at the two calls */
 } FxPlaneDriver;
 
+/* The output pointer a driver writes through (R9; the near plane's R8). */
+static int fx_ro;
+
 /* R0 = z - (or +) the scaled coordinate: SUB or ADD after the scaling. */
 static void fx_plane_test(const FxPlaneDriver *d, int c, int z)
 {
+    if (!d->slope) {
+        fx_near_test(gsu.r[z]);
+        return;
+    }
     gsu.r[0] = fx_scaled(gsu.r[c], d->more);
     gsu.r[0] = d->neg ? gsu_add(gsu.r[z], gsu.r[0], 0) : gsu_sub(gsu.r[z], gsu.r[0], 0);
 }
@@ -624,15 +633,15 @@ static void fx_emit(int r1, int r2, int r3, uint16_t at1, uint16_t at2)
     int i;
 
     for (i = 0; i < 3; i++) {
-        gsu_stw(gsu.r[9], gsu.r[r[i]]);
-        gsu.r[9] = gsu_inc(gsu_inc(gsu.r[9]));
+        gsu_stw(gsu.r[fx_ro], gsu.r[r[i]]);
+        gsu.r[fx_ro] = gsu_inc(gsu_inc(gsu.r[fx_ro]));
     }
     gsu.r[0] = gsu_ldw(at1);
-    gsu_stw(gsu.r[9], gsu.r[0]);
-    gsu.r[9] = gsu_inc(gsu_inc(gsu.r[9]));
+    gsu_stw(gsu.r[fx_ro], gsu.r[0]);
+    gsu.r[fx_ro] = gsu_inc(gsu_inc(gsu.r[fx_ro]));
     gsu.r[0] = gsu_ldw(at2);
-    gsu_stw(gsu.r[9], gsu.r[0]);
-    gsu.r[9] = gsu_inc(gsu_inc(gsu.r[9]));
+    gsu_stw(gsu.r[fx_ro], gsu.r[0]);
+    gsu.r[fx_ro] = gsu_inc(gsu_inc(gsu.r[fx_ro]));
     gsu.r[0] = gsu_inc(gsu_ldw(0x0040));
     gsu_sbk(gsu.r[0]);
 }
@@ -662,44 +671,55 @@ static void fx_plane_clip(const FxPlaneDriver *d, uint16_t ret, int fixed)
    than 3 are left or there were only 2. */
 static void fx_plane_driver(const FxPlaneDriver *d)
 {
-    int in1, i;
+    int in1, i, rc, ri, ro;
     static const int reg1[3] = {1, 2, 3}, reg2[3] = {4, 5, 7};
 
+    if (d->slope) {
+        rc = 14; ri = 8; ro = 9;
+    } else {
+        rc = 9; ri = 6; ro = 8;
+    }
+    fx_ro = ro;
     gsu_push(&gsu.r[10], gsu.r[11]);
     gsu_push(&gsu.r[10], gsu.r[14]);
-    gsu.r[6] = gsu_ldw(d->slope);
-    gsu.r[14] = gsu_ldw(0x0040);
+    if (d->slope) {
+        gsu.r[6] = gsu_ldw(d->slope);
+        gsu.r[14] = gsu_ldw(0x0040);
+    } else {
+        gsu.r[14] = gsu.r[0];
+        gsu.r[9] = gsu_ldw(0x0040);
+    }
     gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[0], 0);
     gsu_stw(0x0040, gsu.r[0]);
-    gsu.r[8] = gsu_ldw(0x0060);
-    gsu.r[9] = gsu_ldw(0x0062);
-    gsu.r[0] = gsu_sub(gsu.r[14], 0x0002, 0);
+    gsu.r[ri] = gsu_ldw(0x0060);
+    gsu.r[ro] = gsu_ldw(0x0062);
+    gsu.r[0] = gsu_sub(gsu.r[rc], 0x0002, 0);
     if (gsu.z)
         goto fail;
     do {
         for (i = 0; i < 3; i++) {
-            gsu.r[reg1[i]] = gsu_ldw(gsu.r[8]);
-            gsu.r[8] = gsu_inc(gsu_inc(gsu.r[8]));
+            gsu.r[reg1[i]] = gsu_ldw(gsu.r[ri]);
+            gsu.r[ri] = gsu_inc(gsu_inc(gsu.r[ri]));
         }
-        gsu.r[0] = gsu_ldw(gsu.r[8]);
-        gsu.r[8] = gsu_inc(gsu_inc(gsu.r[8]));
+        gsu.r[0] = gsu_ldw(gsu.r[ri]);
+        gsu.r[ri] = gsu_inc(gsu_inc(gsu.r[ri]));
         gsu_stw(0x008A, gsu.r[0]);
-        gsu.r[0] = gsu_ldw(gsu.r[8]);
-        gsu.r[8] = gsu_inc(gsu_inc(gsu.r[8]));
+        gsu.r[0] = gsu_ldw(gsu.r[ri]);
+        gsu.r[ri] = gsu_inc(gsu_inc(gsu.r[ri]));
         gsu_stw(0x008E, gsu.r[0]);
-        gsu.r[0] = gsu_dec(gsu.r[14]);
+        gsu.r[0] = gsu_dec(gsu.r[rc]);
         if (gsu.z)
-            gsu.r[8] = gsu_ldw(0x0060);
+            gsu.r[ri] = gsu_ldw(0x0060);
         for (i = 0; i < 3; i++) {
-            gsu.r[reg2[i]] = gsu_ldw(gsu.r[8]);
-            gsu.r[8] = gsu_inc(gsu_inc(gsu.r[8]));
+            gsu.r[reg2[i]] = gsu_ldw(gsu.r[ri]);
+            gsu.r[ri] = gsu_inc(gsu_inc(gsu.r[ri]));
         }
-        gsu.r[0] = gsu_ldw(gsu.r[8]);
-        gsu.r[8] = gsu_inc(gsu_inc(gsu.r[8]));
+        gsu.r[0] = gsu_ldw(gsu.r[ri]);
+        gsu.r[ri] = gsu_inc(gsu_inc(gsu.r[ri]));
         gsu_stw(0x008C, gsu.r[0]);
-        gsu.r[0] = gsu_ldw(gsu.r[8]);
+        gsu.r[0] = gsu_ldw(gsu.r[ri]);
         gsu_stw(0x0090, gsu.r[0]);
-        gsu.r[8] = gsu_sub(gsu.r[8], 0x0008, 0);
+        gsu.r[ri] = gsu_sub(gsu.r[ri], 0x0008, 0);
         fx_plane_test(d, d->ax, 3);
         in1 = !gsu.s;
         if (in1) {
@@ -716,7 +736,7 @@ static void fx_plane_driver(const FxPlaneDriver *d)
                 fx_emit(1, 2, 3, 0x008A, 0x008E);
             }
         }
-        gsu.r[14] = gsu_dec(gsu.r[14]);
+        gsu.r[rc] = gsu_dec(gsu.r[rc]);
     } while (!gsu.z);
     gsu.r[0] = gsu_ldw(0x0040);
     gsu.r[1] = gsu_sub(gsu.r[0], 0x0003, 0);
@@ -788,6 +808,168 @@ void abi_FxPolygonClipLeft(void)
 void abi_FxPolygonClipBottom(void)
 {
     static const FxPlaneDriver d = {0x0094, 2, 2, 1, abi_FxClipYPlane, 0xCC10, 0xCC3F};
+
+    fx_plane_driver(&d);
+}
+
+/* MOVES R0, R14, then (in the BPL's delay slot) SUB z, and for a negative
+   R14 ADD instead: R0 = R14 - z, or R14 + z. */
+static void fx_near_test(uint16_t z)
+{
+    int pl;
+
+    gsu.r[0] = gsu.r[14];
+    gsu_moves(gsu.r[0]);
+    pl = !gsu.s;
+    gsu.r[0] = gsu_sub(gsu.r[0], z, 0);
+    if (!pl)
+        gsu.r[0] = gsu_add(gsu.r[14], z, 0);
+}
+
+/* The near clip's halving search, x and y both halved; then the far end
+   (the second when keep_first) ends at the midpoint. */
+static void fx_near_search(int keep_first)
+{
+    int neg;
+
+    for (;;) {
+        gsu.r[0] = gsu_add(gsu.r[3], gsu.r[7], 0);
+        gsu.r[11] = gsu_div2(gsu.r[0]);
+        fx_near_test(gsu.r[11]);
+        if (gsu.z)
+            break;
+        neg = gsu.s;
+        gsu.r[10] = gsu_dec(gsu.r[10]);
+        if (gsu.z)
+            break;
+        if (!neg) {
+            gsu.r[7] = gsu.r[11];
+            fx_half_sum(4, 1, 4);
+            fx_half_sum(5, 2, 5);
+            fx_half_sum(12, 8, 12);
+            fx_half_sum(13, 9, 13);
+        } else {
+            gsu.r[3] = gsu.r[11];
+            fx_half_sum(1, 1, 4);
+            fx_half_sum(2, 2, 5);
+            fx_half_sum(8, 8, 12);
+            fx_half_sum(9, 9, 13);
+        }
+    }
+    if (keep_first) {
+        gsu.r[7] = gsu.r[11];
+        fx_half_sum(4, 1, 4);
+        fx_half_sum(5, 2, 5);
+        fx_half_sum(12, 8, 12);
+        fx_half_sum(13, 9, 13);
+    } else {
+        gsu.r[3] = gsu.r[11];
+        fx_half_sum(1, 1, 4);
+        fx_half_sum(2, 2, 5);
+        fx_half_sum(8, 8, 12);
+        fx_half_sum(9, 9, 13);
+    }
+}
+
+/* R10 from $A0, then R13, R12, R9, R8 pulled; R0 = 1; return. */
+static void fx_near_leave(void)
+{
+    gsu.r[10] = gsu_ldw(0x00A0);
+    gsu.r[13] = gsu_pull(&gsu.r[10]);
+    gsu.r[12] = gsu_pull(&gsu.r[10]);
+    gsu.r[9] = gsu_pull(&gsu.r[10]);
+    gsu.r[8] = gsu_pull(&gsu.r[10]);
+    gsu.r[0] = 0x0001;
+    gsu_pull(&gsu.r[10]);
+}
+
+/*
+ * @routine 01:CC87 FxClipNear
+ * WHAT IT DOES: Clips the segment from (R1, R2, R3) to (R4, R5, R7)
+ * against the near plane at z = R14: an end is in front when R14 - z (or
+ * R14 + z for a negative R14) is not negative. R0 = 0 when both are, $FFFF
+ * when neither is; otherwise R0 = 1 with the end behind replaced by the
+ * crossing (halving x, y and z, at most 12 steps) and its attributes
+ * written back ($8A/$8E for the first end, $8C/$90 for the second).
+ * HOW: As FxClipYPlane, with R14 the plane (not saved).
+ * Entry: R1-R5, R7 the ends; R14 = the near z; R10 = stack; R11 = return
+ * address. Exit: as above; R8, R9, R12, R13 restored; S, Z from R10; the
+ * last RAM address R10.
+ */
+void abi_FxClipNear(void)
+{
+    int i;
+
+    gsu_push(&gsu.r[10], gsu.r[11]);
+    fx_near_test(gsu.r[3]);
+    if (!gsu.s) {
+        fx_near_test(gsu.r[7]);
+        if (!gsu.s) {
+            gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[0], 0);
+            gsu_pull(&gsu.r[10]);
+            return;
+        }
+        gsu_stw(0x009A, gsu.r[1]);
+        gsu_stw(0x009C, gsu.r[2]);
+        gsu_stw(0x009E, gsu.r[3]);
+        fx_clip_enter();
+        {
+            static const int a[3] = {1, 2, 3}, b[3] = {4, 5, 7};
+
+            for (i = 0; i < 3; i++) {
+                gsu.r[0] = gsu.r[a[i]];
+                gsu.r[a[i]] = gsu.r[b[i]];
+                gsu.r[b[i]] = gsu.r[0];
+            }
+        }
+        gsu.r[8] = gsu_ldw(0x008C);
+        gsu.r[9] = gsu_ldw(0x0090);
+        gsu.r[12] = gsu_ldw(0x008A);
+        gsu.r[13] = gsu_ldw(0x008E);
+        fx_near_search(1);
+        gsu.r[1] = gsu_ldw(0x009A);
+        gsu.r[2] = gsu_ldw(0x009C);
+        gsu.r[3] = gsu_ldw(0x009E);
+        gsu_stw(0x008C, gsu.r[12]);
+        gsu_stw(0x0090, gsu.r[13]);
+        fx_near_leave();
+        return;
+    }
+    fx_near_test(gsu.r[7]);
+    if (gsu.s) {
+        gsu.r[0] = 0xFFFF;
+        gsu_pull(&gsu.r[10]);
+        return;
+    }
+    gsu_stw(0x009A, gsu.r[4]);
+    gsu_stw(0x009C, gsu.r[5]);
+    gsu_stw(0x009E, gsu.r[7]);
+    fx_clip_enter();
+    gsu.r[8] = gsu_ldw(0x008A);
+    gsu.r[9] = gsu_ldw(0x008E);
+    gsu.r[12] = gsu_ldw(0x008C);
+    gsu.r[13] = gsu_ldw(0x0090);
+    fx_near_search(0);
+    gsu.r[4] = gsu_ldw(0x009A);
+    gsu.r[5] = gsu_ldw(0x009C);
+    gsu.r[7] = gsu_ldw(0x009E);
+    gsu_stw(0x008A, gsu.r[8]);
+    gsu_stw(0x008E, gsu.r[9]);
+    fx_near_leave();
+}
+
+/*
+ * @routine 01:CE34 FxPolygonClipNear
+ * WHAT IT DOES: As FxPolygonClipTop against the near plane at z = R0
+ * (FxClipNear): R0 = the new vertex count, or 0.
+ * HOW: As FxPolygonClipTop, with R14 = the near z and R9 counting, R6
+ * reading and R8 writing the vertices.
+ * Entry: R0 = the near z; R10 = stack; R11 = return address. Exit: as
+ * FxPolygonClipTop, R8 past the output.
+ */
+void abi_FxPolygonClipNear(void)
+{
+    static const FxPlaneDriver d = {0x0000, 1, 0, 0, abi_FxClipNear, 0xCED7, 0xCEFD};
 
     fx_plane_driver(&d);
 }

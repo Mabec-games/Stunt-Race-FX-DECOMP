@@ -2320,4 +2320,580 @@ FxPolygonClipBottom:
     ldw (r10)
     nop
 
+; @routine 01:CC87 FxClipNear
+; WHAT IT DOES: Clips the segment from (R1, R2, R3) to (R4, R5, R7)
+; against the near plane at z = R14: an end is in front when R14 - z (or
+; R14 + z for a negative R14) is not negative. R0 = 0 when both are, $FFFF
+; when neither is; otherwise R0 = 1 with the end behind replaced by the
+; crossing (halving x, y and z, at most 12 steps) and its attributes
+; written back ($8A/$8E for the first end, $8C/$90 for the second).
+; HOW: As FxClipYPlane, with R14 the plane (not saved).
+; Entry: R1-R5, R7 the ends; R14 = the near z; R10 = stack; R11 = return
+; address. Exit: as above; R8, R9, R12, R13 restored; S, Z from R10; the
+; last RAM address R10.
+%at($01CC87)
+FxClipNear:
+    cache
+    from r11
+    stw (r10)
+    inc r10
+    inc r10
+    with r0
+    from r14
+    bpl .lCC93
+    sub r3
+    from r14
+    add r3
+.lCC93:
+    bmi .lCCA6
+    nop
+    with r0
+    from r14
+    bpl .lCC9D
+    sub r7
+    from r14
+    add r7
+.lCC9D:
+    bmi .lCCBC
+    nop
+    sub r0
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+.lCCA6:
+    with r0
+    from r14
+    bpl .lCCAD
+    sub r7
+    from r14
+    add r7
+.lCCAD:
+    bmi .lCCB4
+    nop
+    iwt r15,#.lCD81
+    nop
+.lCCB4:
+    nop
+    ibt r0,#$FF
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+.lCCBC:
+    sms ($9A),r1
+    sms ($9C),r2
+    sms ($9E),r3
+    from r8
+    stw (r10)
+    inc r10
+    inc r10
+    from r9
+    stw (r10)
+    inc r10
+    inc r10
+    from r12
+    stw (r10)
+    inc r10
+    inc r10
+    from r13
+    stw (r10)
+    inc r10
+    inc r10
+    sms ($A0),r10
+    ibt r10,#$0C
+    with r1
+    to r0
+    with r4
+    to r1
+    with r0
+    to r4
+    with r2
+    to r0
+    with r5
+    to r2
+    with r0
+    to r5
+    with r3
+    to r0
+    with r7
+    to r3
+    with r0
+    to r7
+    lms r8,($8C)
+    lms r9,($90)
+    lms r12,($8A)
+    lms r13,($8E)
+.lCCF8:
+    from r3
+    add r7
+    to r11
+    div2
+    with r0
+    from r14
+    bpl .lCD04
+    sub r11
+    from r14
+    add r11
+.lCD04:
+    beq .lCD42
+    nop
+    bmi .lCD26
+    dec r10
+    beq .lCD42
+    nop
+    with r11
+    to r7
+    from r1
+    add r4
+    to r4
+    div2
+    from r2
+    add r5
+    to r5
+    div2
+    from r8
+    add r12
+    to r12
+    div2
+    from r9
+    add r13
+    to r13
+    div2
+    bra .lCCF8
+    nop
+.lCD26:
+    beq .lCD42
+    nop
+    with r11
+    to r3
+    from r1
+    add r4
+    to r1
+    div2
+    from r2
+    add r5
+    to r2
+    div2
+    from r8
+    add r12
+    to r8
+    div2
+    from r9
+    add r13
+    to r9
+    div2
+    bra .lCCF8
+    nop
+.lCD42:
+    with r11
+    to r7
+    from r1
+    add r4
+    to r4
+    div2
+    from r2
+    add r5
+    to r5
+    div2
+    from r8
+    add r12
+    to r12
+    div2
+    from r9
+    add r13
+    to r13
+    div2
+    lms r1,($9A)
+    lms r2,($9C)
+    lms r3,($9E)
+    sms ($8C),r12
+    sms ($90),r13
+    lms r10,($A0)
+    dec r10
+    dec r10
+    to r13
+    ldw (r10)
+    dec r10
+    dec r10
+    to r12
+    ldw (r10)
+    dec r10
+    dec r10
+    to r9
+    ldw (r10)
+    dec r10
+    dec r10
+    to r8
+    ldw (r10)
+    ibt r0,#$01
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+.lCD81:
+    sms ($9A),r4
+    sms ($9C),r5
+    sms ($9E),r7
+    from r8
+    stw (r10)
+    inc r10
+    inc r10
+    from r9
+    stw (r10)
+    inc r10
+    inc r10
+    from r12
+    stw (r10)
+    inc r10
+    inc r10
+    from r13
+    stw (r10)
+    inc r10
+    inc r10
+    sms ($A0),r10
+    ibt r10,#$0C
+    lms r8,($8A)
+    lms r9,($8E)
+    lms r12,($8C)
+    lms r13,($90)
+.lCDAB:
+    from r3
+    add r7
+    to r11
+    div2
+    with r0
+    from r14
+    bpl .lCDB7
+    sub r11
+    from r14
+    add r11
+.lCDB7:
+    beq .lCDF5
+    nop
+    bmi .lCDD9
+    dec r10
+    beq .lCDF5
+    nop
+    with r11
+    to r7
+    from r1
+    add r4
+    to r4
+    div2
+    from r2
+    add r5
+    to r5
+    div2
+    from r8
+    add r12
+    to r12
+    div2
+    from r9
+    add r13
+    to r13
+    div2
+    bra .lCDAB
+    nop
+.lCDD9:
+    beq .lCDF5
+    nop
+    with r11
+    to r3
+    from r1
+    add r4
+    to r1
+    div2
+    from r2
+    add r5
+    to r2
+    div2
+    from r8
+    add r12
+    to r8
+    div2
+    from r9
+    add r13
+    to r9
+    div2
+    bra .lCDAB
+    nop
+.lCDF5:
+    with r11
+    to r3
+    from r1
+    add r4
+    to r1
+    div2
+    from r2
+    add r5
+    to r2
+    div2
+    from r8
+    add r12
+    to r8
+    div2
+    from r9
+    add r13
+    to r9
+    div2
+    lms r4,($9A)
+    lms r5,($9C)
+    lms r7,($9E)
+    sms ($8A),r8
+    sms ($8E),r9
+    lms r10,($A0)
+    dec r10
+    dec r10
+    to r13
+    ldw (r10)
+    dec r10
+    dec r10
+    to r12
+    ldw (r10)
+    dec r10
+    dec r10
+    to r9
+    ldw (r10)
+    dec r10
+    dec r10
+    to r8
+    ldw (r10)
+    ibt r0,#$01
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+
+; @routine 01:CE34 FxPolygonClipNear
+; WHAT IT DOES: As FxPolygonClipTop against the near plane at z = R0
+; (FxClipNear): R0 = the new vertex count, or 0.
+; HOW: As FxPolygonClipTop, with R14 = the near z and R9 counting, R6
+; reading and R8 writing the vertices.
+; Entry: R0 = the near z; R10 = stack; R11 = return address. Exit: as
+; FxPolygonClipTop, R8 past the output.
+%at($01CE34)
+FxPolygonClipNear:
+    from r11
+    stw (r10)
+    inc r10
+    inc r10
+    from r14
+    stw (r10)
+    inc r10
+    inc r10
+    with r0
+    to r14
+    lms r9,($40)
+    sub r0
+    sms ($40),r0
+    lms r6,($60)
+    lms r8,($62)
+    from r9
+    sub #2
+    bne .lCE55
+    nop
+    iwt r15,#.lCF38
+    nop
+.lCE55:
+    nop
+.lCE56:
+    to r1
+    ldw (r6)
+    inc r6
+    inc r6
+    to r2
+    ldw (r6)
+    inc r6
+    inc r6
+    to r3
+    ldw (r6)
+    inc r6
+    inc r6
+    ldw (r6)
+    inc r6
+    inc r6
+    sms ($8A),r0
+    ldw (r6)
+    inc r6
+    inc r6
+    sms ($8E),r0
+    with r9
+    to r0
+    dec r0
+    bne .lCE77
+    nop
+    lms r6,($60)
+.lCE77:
+    to r4
+    ldw (r6)
+    inc r6
+    inc r6
+    to r5
+    ldw (r6)
+    inc r6
+    inc r6
+    to r7
+    ldw (r6)
+    inc r6
+    inc r6
+    ldw (r6)
+    inc r6
+    inc r6
+    sms ($8C),r0
+    ldw (r6)
+    sms ($90),r0
+    with r6
+    sub #8
+    with r0
+    from r14
+    bpl .lCE97
+    sub r3
+    from r14
+    add r3
+.lCE97:
+    bpl .lCEAB
+    nop
+    with r0
+    from r14
+    bpl .lCEA1
+    sub r7
+    from r14
+    add r7
+.lCEA1:
+    bpl .lCEA8
+    nop
+    iwt r15,#.lCF1A
+    nop
+.lCEA8:
+    bra .lCEF8
+    nop
+.lCEAB:
+    from r1
+    stw (r8)
+    inc r8
+    inc r8
+    from r2
+    stw (r8)
+    inc r8
+    inc r8
+    from r3
+    stw (r8)
+    inc r8
+    inc r8
+    lms r0,($8A)
+    stw (r8)
+    inc r8
+    inc r8
+    lms r0,($8E)
+    stw (r8)
+    inc r8
+    inc r8
+    lms r0,($40)
+    inc r0
+    sbk
+    with r0
+    from r14
+    bpl .lCECF
+    sub r7
+    from r14
+    add r7
+.lCECF:
+    bpl .lCF1A
+    nop
+    link #4
+    iwt r15,#FxClipNear
+    nop
+    from r4
+    stw (r8)
+    inc r8
+    inc r8
+    from r5
+    stw (r8)
+    inc r8
+    inc r8
+    from r7
+    stw (r8)
+    inc r8
+    inc r8
+    lms r0,($8C)
+    stw (r8)
+    inc r8
+    inc r8
+    lms r0,($90)
+    stw (r8)
+    inc r8
+    inc r8
+    lms r0,($40)
+    inc r0
+    sbk
+    iwt r15,#.lCF1A
+    nop
+.lCEF8:
+    link #4
+    iwt r15,#FxClipNear
+    nop
+    from r1
+    stw (r8)
+    inc r8
+    inc r8
+    from r2
+    stw (r8)
+    inc r8
+    inc r8
+    from r3
+    stw (r8)
+    inc r8
+    inc r8
+    lms r0,($8A)
+    stw (r8)
+    inc r8
+    inc r8
+    lms r0,($8E)
+    stw (r8)
+    inc r8
+    inc r8
+    lms r0,($40)
+    inc r0
+    sbk
+.lCF1A:
+    dec r9
+    beq .lCF22
+    nop
+    iwt r15,#.lCE56
+    nop
+.lCF22:
+    lms r0,($40)
+    to r1
+    sub #3
+    bpl .lCF2F
+    nop
+    iwt r15,#.lCF38
+    nop
+.lCF2F:
+    dec r10
+    dec r10
+    to r14
+    ldw (r10)
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+.lCF38:
+    dec r10
+    dec r10
+    to r14
+    ldw (r10)
+    sub r0
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+
 arch 65816
