@@ -482,6 +482,9 @@ static void exec_range(int from, int to) {
             size_t n; void *p = load_file(b, &n);
             if (!retro_unserialize_p(p, n)) die("unserialize failed: %s", b);
             state_loaded();
+            /* Calls still open (one that never returns, as a stop screen)
+               belong to the machine the load replaced: they never end. */
+            if (checklib_on) check_rollback(0);
             free(p);
         }
         else die("%s:%d: bad command", script_path, i + 1);

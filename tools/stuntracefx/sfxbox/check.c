@@ -368,16 +368,18 @@ static void on_insn(uint32_t pc)
             if (!have) { core_regs(&r); have = 1; }
             if (r.s == ws[i].irq_s) ws[i].in_irq = 0;
         }
-    /* A watch ends at its return, or when an RTS, RTL or RTI takes S above
-       its exit level: the routine left through its caller's frame, which
-       may end the caller's watch at the same place. */
+    /* A watch ends at its return, or when an RTS or RTL takes S above its
+       exit level: the routine left through its caller's frame, which may
+       end the caller's watch at the same place. (An RTI is an interrupt
+       handler's: a routine that stops the game may reset S above its frame
+       and wait there for interrupts.) */
     uint8_t prev_op = *core_opcode;
     while (depth) {
         Watch *t = &ws[depth - 1];
         if (t->in_irq) break;
         if (!have) { core_regs(&r); have = 1; }
         if ((pc == t->ret_pc && r.s == t->exit_s)
-            || (r.s > t->exit_s && (prev_op == 0x60 || prev_op == 0x6B || prev_op == 0x40))) { finish(t); depth--; }
+            || (r.s > t->exit_s && (prev_op == 0x60 || prev_op == 0x6B))) { finish(t); depth--; }
         else break;
     }
     if (!(watched[pc >> 3] >> (pc & 7) & 1)) return;
@@ -722,7 +724,7 @@ static void ls_insn(uint32_t pc)
         /* The call ends at its return, or where a return took S above its
            exit level: it left through its caller's frame. */
         if ((pc == m.ret_pc && r.s == m.exit_s)
-            || (r.s > m.exit_s && (prev == 0x60 || prev == 0x6B || prev == 0x40))) {
+            || (r.s > m.exit_s && (prev == 0x60 || prev == 0x6B))) {
             STORE(sh->calls[m.call % CALLRING].done, 1);
             m.active = 0;
             m.irq_resumed = 0;
@@ -1041,13 +1043,14 @@ static void run_original(uint32_t addr, int long_call)
 /* The stack between the original's S where it entered the code a call or
    jump reaches (lo) and the hybrid's (hi): the frames the original's JSRs
    and JSLs pushed there for calls the C made directly, C to C, which push
-   nothing. Put back from the record (op B), the latest at each place. */
-static void restore_frames(uint32_t j, uint16_t lo, uint16_t hi)
+   nothing. Put back from the record (op B), the latest at each place; the
+   size of the innermost one (at lo), 0 when there is none. */
+static unsigned restore_frames(uint32_t j, uint16_t lo, uint16_t hi)
 {
     uint8_t put[64] = {0};
-    unsigned need = (uint16_t)(hi - lo), have = 0;
+    unsigned need = (uint16_t)(hi - lo), have = 0, inner = 0;
 
-    if (!need || need > sizeof put) return;
+    if (!need || need > sizeof put) return 0;
     for (uint32_t q = j; q-- > 1 && have < need;) {
         if (cur_ops[q] >> 4 != 0xB || cur_ops[q - 1] >> 4 != 0xA) continue;
         uint16_t at = (uint16_t)cur_addr[q - 1];
@@ -1059,8 +1062,10 @@ static void restore_frames(uint32_t j, uint16_t lo, uint16_t hi)
             core_bus_write((uint32_t)(uint16_t)(at + 1 + k), (uint8_t)(cur_addr[q] >> (8 * k)));
             put[at - lo + k] = 1;
         }
+        if (at == lo) inner = n;
         have += n;
     }
+    return inner;
 }
 
 /* Code run as original code has left the C's frame: the rest of the
@@ -1084,8 +1089,10 @@ static void record_rest(void)
 
 static void jump_original(uint32_t addr)
 {
-    uint32_t j;
-    uint16_t s = cpu.s;
+    uint32_t j, c = cur_n;
+    int nest = 0;
+    uint16_t s = cpu.s, hs = cpu.s;
+    unsigned inner = 0;
 
     int found;
     for (j = cur_i; j + 1 < cur_n || fetch_more(j + 2); j++)
@@ -1094,7 +1101,7 @@ static void jump_original(uint32_t addr)
     if (found) {
         replay_to(j);
         s = (uint16_t)cur_addr[j + 1];
-        restore_frames(j, s, cpu.s);
+        inner = restore_frames(j, s, hs);
     } else if (!past_end) {
         if (asm_unplaced++ < 5) fprintf(lsrep, "OFF frame %ld: jump to %06X not in the original's record\n", cur_frame, addr);
     }
@@ -1104,10 +1111,23 @@ static void jump_original(uint32_t addr)
     core_regs(&out);
     core_set_regs(&mine);
     cpu.a = out.a; cpu.x = out.x; cpu.y = out.y; cpu.d = out.d; cpu.db = out.db; cpu.p = out.p; cpu.e = out.e;
+    /* Called from C (a frame put back): back through that frame is the
+       routine's return to the C that called it, which goes on. */
+    if (found && hs != s && inner && out.s == (uint16_t)(s + inner)) {
+        for (c = j + 2; c < cur_n || fetch_more(c + 1); c++) {
+            if (cur_ops[c] >> 4 == 9) nest++;
+            else if (cur_ops[c] >> 4 == 0xC && !nest--) break;
+        }
+        cur_i = c < cur_n ? c + 1 : cur_n;
+        if (c < cur_n && c >= j + 6 && cur_ops[c - 4] >> 4 == 5) cur_i = c - 4;
+        return;
+    }
+    /* Otherwise it left the routine's frame: its own return when the C
+       was entered from original code, or through its caller's. */
     cpu.s = out.s; cpu.pc = out.pc; cpu.unwound = 1;
-    /* The jump is the routine's last action. */
     if (found) record_rest();
     else cur_i = cur_n;
+    if (hs != s && ls_escape_set) longjmp(ls_escape, 1);
 }
 
 void jump_routine(uint32_t addr)
