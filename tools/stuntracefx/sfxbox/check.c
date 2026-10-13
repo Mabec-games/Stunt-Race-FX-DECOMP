@@ -716,17 +716,22 @@ static void ls_insn(uint32_t pc)
             m.depth--;
             ls_op(0xC0, pc);
         }
+        /* The previous instruction's opcode (before an interrupt the
+           original took between it and this one). */
+        uint8_t prev = m.irq_resumed ? m.pre_irq_op : *core_opcode;
+        /* The call ends at its return, or where a return took S above its
+           exit level: it left through its caller's frame. */
         if ((pc == m.ret_pc && r.s == m.exit_s)
-            || (r.s > m.exit_s && !m.irq_resumed && (*core_opcode == 0x60 || *core_opcode == 0x6B || *core_opcode == 0x40))) {
+            || (r.s > m.exit_s && (prev == 0x60 || prev == 0x6B || prev == 0x40))) {
             STORE(sh->calls[m.call % CALLRING].done, 1);
             m.active = 0;
+            m.irq_resumed = 0;
             return;
         }
-        /* The previous instruction's opcode: after an RTL, RTS, JMP/JML
-           through memory or JSR (abs,X), this instruction may be a routine
-           entered through a computed address (a handler pushed for an RTL,
-           a jump table), which C reaches with call_routine. */
-        uint8_t prev = m.irq_resumed ? m.pre_irq_op : *core_opcode;
+        /* After an RTL, RTS, JMP/JML through memory or JSR (abs,X), this
+           instruction may be a routine entered through a computed address (a
+           handler pushed for an RTL, a jump table), which C reaches with
+           call_routine. */
         m.irq_resumed = 0;
         /* A JSR or JSL has just pushed its return address: remember it by
            the callee's S, so the RTS or RTL that comes back to it is known
@@ -755,6 +760,14 @@ static void ls_insn(uint32_t pc)
         if ((computed || is_catalog_entry(pc)) && m.depth < 64) {
             ls_op(0x90, pc);
             ls_op(0xA0, r.s);
+            /* Op B: the return address a JSR or JSL pushed to enter it
+               (its byte count in the top byte), so that the hybrid can put
+               back the frames of calls its C made without pushing one. */
+            if (prev == 0x20 || prev == 0xFC)
+                ls_op(0xB0, 2u << 24 | wram[(r.s + 1) & 0xFFFF] | (uint32_t)wram[(r.s + 2) & 0xFFFF] << 8);
+            else if (prev == 0x22)
+                ls_op(0xB0, 3u << 24 | wram[(r.s + 1) & 0xFFFF] | (uint32_t)wram[(r.s + 2) & 0xFFFF] << 8
+                            | (uint32_t)wram[(r.s + 3) & 0xFFFF] << 16);
             m.open[m.depth++] = r.s;
         }
         return;
@@ -943,6 +956,7 @@ static void replay_to(uint32_t to)
 
 static long snap_offset(uint32_t a);
 static void (*core_run_until)(const struct SfxboxRegs *, uint32_t, uint16_t);
+static void (*core_run_out)(const struct SfxboxRegs *, uint16_t);
 static long asm_unplaced;
 
 /* The hybrid's report, and its end. */
@@ -963,6 +977,10 @@ static void hybrid_finish(long frames)
    routine as original code from there with the original's stack pointer
    until it returns (to a stand-in return address), and go on in the
    record after its return (op C). */
+static void record_rest(void);
+static jmp_buf ls_escape;
+static int ls_escape_set;
+
 static void run_original(uint32_t addr, int long_call)
 {
     uint32_t j, c = cur_n;
@@ -988,10 +1006,19 @@ static void run_original(uint32_t addr, int long_call)
     if (long_call) core_bus_write((uint32_t)(uint16_t)(s + 3), 0x00);
     struct SfxboxRegs from = {cpu.a, cpu.x, cpu.y, s, cpu.d, cpu.db, cpu.p, cpu.e, addr}, out, mine;
     core_regs(&mine);
-    core_run_until(&from, long_call ? 0x000000 : (addr & 0xFF0000), (uint16_t)(s + (long_call ? 3 : 2)));
+    core_run_out(&from, s);
     core_regs(&out);
     core_set_regs(&mine);
     cpu.a = out.a; cpu.x = out.x; cpu.y = out.y; cpu.d = out.d; cpu.db = out.db; cpu.p = out.p; cpu.e = out.e;
+    /* Not back at the stand-in: it left through the C's frame (02:E33D's
+       way out of a loop); the C is abandoned where it landed. */
+    if (out.pc != (long_call ? 0x000000 : (addr & 0xFF0000)) || out.s != (uint16_t)(s + (long_call ? 3 : 2))) {
+        cpu.s = out.s; cpu.pc = out.pc; cpu.unwound = 1;
+        if (found) record_rest();
+        else cur_i = cur_n;
+        if (ls_escape_set) longjmp(ls_escape, 1);
+        return;
+    }
     /* Its return mark, looked for only now: a routine that runs for many
        frames has its return far ahead in a record still being made. */
     if (found)
@@ -1006,6 +1033,93 @@ static void run_original(uint32_t addr, int long_call)
        return with it still pending, so it is left in the record to be taken
        at its place. */
     if (c < cur_n && c >= j + 6 && cur_ops[c - 4] >> 4 == 5) cur_i = c - 4;
+}
+
+/* jump_routine on the live machine: as run_original, but in the calling
+   routine's frame (no stand-in return), run until S rises above it; the
+   routine then ends where the original's run left it. */
+/* The stack between the original's S where it entered the code a call or
+   jump reaches (lo) and the hybrid's (hi): the frames the original's JSRs
+   and JSLs pushed there for calls the C made directly, C to C, which push
+   nothing. Put back from the record (op B), the latest at each place. */
+static void restore_frames(uint32_t j, uint16_t lo, uint16_t hi)
+{
+    uint8_t put[64] = {0};
+    unsigned need = (uint16_t)(hi - lo), have = 0;
+
+    if (!need || need > sizeof put) return;
+    for (uint32_t q = j; q-- > 1 && have < need;) {
+        if (cur_ops[q] >> 4 != 0xB || cur_ops[q - 1] >> 4 != 0xA) continue;
+        uint16_t at = (uint16_t)cur_addr[q - 1];
+        unsigned n = cur_addr[q] >> 24, k, clash = 0;
+        if (at < lo || at + n > hi) continue;
+        for (k = 0; k < n; k++) clash |= put[at - lo + k];
+        if (clash) continue;
+        for (k = 0; k < n; k++) {
+            core_bus_write((uint32_t)(uint16_t)(at + 1 + k), (uint8_t)(cur_addr[q] >> (8 * k)));
+            put[at - lo + k] = 1;
+        }
+        have += n;
+    }
+}
+
+/* Code run as original code has left the C's frame: the rest of the
+   call's record is that code's, which has just run. (Its levels' return
+   marks are no guide: a level whose code pulls its own return address is
+   marked returned at the pull.) An interrupt the original took right at
+   the landing is recorded last, before the return marks there, and is left
+   to be taken in its place. */
+static void record_rest(void)
+{
+    uint32_t e;
+
+    while (fetch_more(cur_n + 1)) {}
+    e = cur_n;
+    while (e > cur_i && cur_ops[e - 1] >> 4 == 0xC) e--;
+    cur_i = e >= cur_i + 4 && cur_ops[e - 4] >> 4 == 5 ? e - 4 : cur_n;
+}
+
+/* ls_escape is the C's way out when original code it called left through
+   its caller's frame: the C is abandoned there (ls_exec). */
+
+static void jump_original(uint32_t addr)
+{
+    uint32_t j;
+    uint16_t s = cpu.s;
+
+    int found;
+    for (j = cur_i; j + 1 < cur_n || fetch_more(j + 2); j++)
+        if (cur_ops[j] >> 4 == 9 && cur_addr[j] == addr && cur_ops[j + 1] >> 4 == 0xA) break;
+    found = j + 1 < cur_n;
+    if (found) {
+        replay_to(j);
+        s = (uint16_t)cur_addr[j + 1];
+        restore_frames(j, s, cpu.s);
+    } else if (!past_end) {
+        if (asm_unplaced++ < 5) fprintf(lsrep, "OFF frame %ld: jump to %06X not in the original's record\n", cur_frame, addr);
+    }
+    struct SfxboxRegs from = {cpu.a, cpu.x, cpu.y, s, cpu.d, cpu.db, cpu.p, cpu.e, addr}, out, mine;
+    core_regs(&mine);
+    core_run_out(&from, s);
+    core_regs(&out);
+    core_set_regs(&mine);
+    cpu.a = out.a; cpu.x = out.x; cpu.y = out.y; cpu.d = out.d; cpu.db = out.db; cpu.p = out.p; cpu.e = out.e;
+    cpu.s = out.s; cpu.pc = out.pc; cpu.unwound = 1;
+    /* The jump is the routine's last action. */
+    if (found) record_rest();
+    else cur_i = cur_n;
+}
+
+void jump_routine(uint32_t addr)
+{
+    for (int i = 0; i < nroutines; i++)
+        if (routines[i].addr == addr) { routines[i].abi(); return; }
+    if (!machine_live) {
+        if (cur) cur->needs_asm = 1;
+        if (c_running) longjmp(abort_c, 1);
+        return;
+    }
+    jump_original(addr);
 }
 
 void call_routine(uint32_t addr, int long_call)
@@ -1174,7 +1288,11 @@ static int ls_exec(uint32_t pc)
     cpu.a = r.a; cpu.x = r.x; cpu.y = r.y; cpu.s = r.s; cpu.d = r.d; cpu.db = r.db; cpu.p = r.p; cpu.e = r.e; cpu.pc = r.pc;
     cpu.unwound = 0;
     machine_live = 1;
-    routines[idx].abi();
+    if (setjmp(ls_escape) == 0) {
+        ls_escape_set = 1;
+        routines[idx].abi();
+    }
+    ls_escape_set = 0;
     machine_live = 0;
     while (fetch_more(cur_n + 1)) {}
     replay_to(cur_n);
@@ -1192,11 +1310,12 @@ int lockstep_begin(void *core, const char *lib, const char *only, const char *re
     *(void **)&core_replay = dlsym(core, "sfxbox_core_replay");
     *(void **)&core_interrupt_here = dlsym(core, "sfxbox_core_interrupt_here");
     *(void **)&core_run_until = dlsym(core, "sfxbox_core_run_until");
+    *(void **)&core_run_out = dlsym(core, "sfxbox_core_run_out");
     *(void **)&core_access = dlsym(core, "sfxbox_core_access");
     *(void **)&core_set_regs = dlsym(core, "sfxbox_core_set_regs");
     *(void **)&core_snapshot = dlsym(core, "sfxbox_core_snapshot");
     core_exec = dlsym(core, "sfxbox_cpu_exec");
-    if (!set_cb || !core_clock || !core_replay || !core_interrupt_here || !core_run_until || !core_access || !core_set_regs || !core_snapshot || !core_exec) return -1;
+    if (!set_cb || !core_clock || !core_replay || !core_interrupt_here || !core_run_until || !core_run_out || !core_access || !core_set_regs || !core_snapshot || !core_exec) return -1;
     sh = mmap(NULL, sizeof(Shared), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANON, -1, 0);
     if (sh == MAP_FAILED) return -1;
     if (gsu_lockstep_prepare()) return -1;

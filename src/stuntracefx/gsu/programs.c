@@ -1666,12 +1666,9 @@ void abi_GlyphListDraw(void)
  * Entry: M 16-bit, X 16-bit; X = the sprite * 2. Exit: X + 2; M 16-bit, X
  * 16-bit; N, Z from X; A as GsuRun leaves it.
  */
-void abi_GlyphSpriteDraw(void)
+/* GlyphSpriteDraw from its first store: sprite X/2 drawn at x = A. */
+static void glyph_sprite_at(uint32_t b, uint16_t x)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint16_t x = cpu.x;
-
-    op_lda16(b | (uint16_t)(0x0FB0 + x));
     wr16(0x70020A, cpu.a);
     op_lda16(b | (uint16_t)(0x0FE0 + x));
     wr16(0x70020C, cpu.a);
@@ -1680,6 +1677,14 @@ void abi_GlyphSpriteDraw(void)
     run_f329();
     cpu.x = (uint16_t)(x + 2);
     cpu.p = nz16(cpu.p, cpu.x);
+}
+
+void abi_GlyphSpriteDraw(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    op_lda16(b | (uint16_t)(0x0FB0 + cpu.x));
+    glyph_sprite_at(b, cpu.x);
 }
 
 /*
@@ -2315,4 +2320,60 @@ void abi_GlyphSlideThree(void)
         cpu.p = (uint8_t)((nz16(cpu.p, (uint16_t)(cpu.x - 0x0006)) & ~P_C) | (cpu.x >= 0x0006 ? P_C : 0));
     } while (cpu.x < 0x0006);
     op_plp(p0);
+}
+
+void abi_GsuBytes200_BF12B6(void);
+
+/*
+ * @routine 07:A39A GlyphSpritesDrawAll
+ * WHAT IT DOES: Draws glyph sprites 1 to 11 (GlyphSpriteDraw) with the
+ * renderer bytes switched between them (GsuBytes200_BFB3BE before 1 and
+ * 4, GsuBytes200_BFBCBD before 2 and 9); then, with $0FAE set, sprites 12
+ * to 24 (BFB3BE before 12, BF12B6 before 16), or with $0FAE 0 only 12 to
+ * 15, each 8 pixels to the left; then the glyph pictures GlyphGrid1A and
+ * GlyphGrid1D.
+ * HOW: X steps by 2 through the sprites. The left-shifted draw at $A41D
+ * subtracts 8 and joins GlyphSpriteDraw after its first load; it runs only
+ * from unit_cpu.
+ * Entry: D = $0000. Exit: as GlyphGrid1D leaves it.
+ */
+void abi_GlyphSpritesDrawAll(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t x;
+    int i;
+
+    op_rep(P_M | P_X);
+    cpu.x = 0x0002;
+    cpu.p = nz16(cpu.p, cpu.x);
+    abi_GsuBytes200_BFB3BE();
+    abi_GlyphSpriteDraw();
+    abi_GsuBytes200_BFBCBD();
+    abi_GlyphSpriteDraw();
+    abi_GlyphSpriteDraw();
+    abi_GsuBytes200_BFB3BE();
+    for (i = 0; i < 5; i++)
+        abi_GlyphSpriteDraw();
+    abi_GsuBytes200_BFBCBD();
+    for (i = 0; i < 3; i++)
+        abi_GlyphSpriteDraw();
+    op_lda16(b | 0x0FAE);
+    if (!cpu.a) {
+        abi_GsuBytes200_BFB3BE();
+        for (i = 0; i < 4; i++) {
+            x = cpu.x;
+            op_lda16(b | (uint16_t)(0x0FB0 + x));
+            op_sub16(0x0008);
+            glyph_sprite_at(b, x);
+        }
+    } else {
+        abi_GsuBytes200_BFB3BE();
+        for (i = 0; i < 4; i++)
+            abi_GlyphSpriteDraw();
+        abi_GsuBytes200_BF12B6();
+        for (i = 0; i < 9; i++)
+            abi_GlyphSpriteDraw();
+    }
+    abi_GlyphGrid1A();
+    abi_GlyphGrid1D();
 }

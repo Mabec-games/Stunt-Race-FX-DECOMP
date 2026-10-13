@@ -2343,6 +2343,7 @@ GlyphListDraw:
 %at($07A426)
 GlyphSpriteDraw:
     lda.w !glyph_spr_x,x
+GlyphSpriteDraw_at:
     sta.l !fx_draw_x
     lda.w !glyph_spr_y,x
     sta.l !fx_draw_y
@@ -3310,4 +3311,69 @@ GlyphSlideThree:
     bcc .l981A
     plp
     rts
+
+
+; @routine 07:A39A GlyphSpritesDrawAll
+; WHAT IT DOES: Draws glyph sprites 1 to 11 (GlyphSpriteDraw) with the
+; renderer bytes switched between them (GsuBytes200_BFB3BE before 1 and
+; 4, GsuBytes200_BFBCBD before 2 and 9); then, with $0FAE set, sprites 12
+; to 24 (BFB3BE before 12, BF12B6 before 16), or with $0FAE 0 only 12 to
+; 15, each 8 pixels to the left; then the glyph pictures GlyphGrid1A and
+; GlyphGrid1D.
+; HOW: X steps by 2 through the sprites. The left-shifted draw at $A41D
+; subtracts 8 and joins GlyphSpriteDraw after its first load; it runs only
+; from unit_cpu.
+; Entry: D = $0000. Exit: as GlyphGrid1D leaves it.
+%at($07A39A)
+GlyphSpritesDrawAll:
+    rep.b #$30
+    ldx.w #$0002
+    jsl.l GsuBytes200_BFB3BE
+    jsr.w GlyphSpriteDraw
+    jsl.l GsuBytes200_BFBCBD
+    jsr.w GlyphSpriteDraw
+    jsr.w GlyphSpriteDraw
+    jsl.l GsuBytes200_BFB3BE
+    jsr.w GlyphSpriteDraw
+    jsr.w GlyphSpriteDraw
+    jsr.w GlyphSpriteDraw
+    jsr.w GlyphSpriteDraw
+    jsr.w GlyphSpriteDraw
+    jsl.l GsuBytes200_BFBCBD
+    jsr.w GlyphSpriteDraw
+    jsr.w GlyphSpriteDraw
+    jsr.w GlyphSpriteDraw
+    lda.w !p1_lead+11
+    bne .lA3E7
+    jsl.l GsuBytes200_BFB3BE        ; not reached in the traces so far
+    jsr.w GlyphSpritesDrawAll_left  ; not reached in the traces so far
+    jsr.w GlyphSpritesDrawAll_left  ; not reached in the traces so far
+    jsr.w GlyphSpritesDrawAll_left  ; not reached in the traces so far
+    jsr.w GlyphSpritesDrawAll_left  ; not reached in the traces so far
+    bra .lA416                      ; not reached in the traces so far
+.lA3E7:
+    jsl.l GsuBytes200_BFB3BE
+    jsr.w GlyphSpriteDraw
+    jsr.w GlyphSpriteDraw
+    jsr.w GlyphSpriteDraw
+    jsr.w GlyphSpriteDraw
+    jsl.l GsuBytes200_BF12B6
+    jsr.w GlyphSpriteDraw
+    jsr.w GlyphSpriteDraw
+    jsr.w GlyphSpriteDraw
+    jsr.w GlyphSpriteDraw
+    jsr.w GlyphSpriteDraw
+    jsr.w GlyphSpriteDraw
+    jsr.w GlyphSpriteDraw
+    jsr.w GlyphSpriteDraw
+    jsr.w GlyphSpriteDraw
+.lA416:
+    jsr.w GlyphGrid1A
+    jsr.w GlyphGrid1D
+    rts
+GlyphSpritesDrawAll_left:
+    lda.w !glyph_spr_x,x            ; not reached in the traces so far
+    sec                             ; not reached in the traces so far
+    sbc.w #$0008                    ; not reached in the traces so far
+    bra GlyphSpriteDraw_at          ; not reached in the traces so far
 

@@ -994,7 +994,8 @@ void abi_TimesKeepAndAdvance(void)
  * without it at $07:EBDD (decoded from the ROM bytes and not reached in the
  * traces so far). Otherwise nothing (not reached either).
  * HOW: 8-bit tests through the data bank; the two continuations are jumps,
- * reached as original code (call_routine).
+ * reached as original code (jump_routine); $07:EC6B leaves through the
+ * caller's frame.
  * Entry: any widths. Exit: M 8-bit; as the continuation leaves it.
  */
 void abi_WindowClosedDigitStep(void)
@@ -1008,14 +1009,14 @@ void abi_WindowClosedDigitStep(void)
         return;
     op_lda8(b | 0x0D4C);
     if (!(uint8_t)cpu.a) {
-        call_routine(0x07EBDD, 0);
+        jump_routine(0x07EBDD);
         return;
     }
     wr8(b | 0x0D4C, 0x00);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x02);
     cpu.p = nz8(cpu.p, 0x02);
     wr8(b | 0x0D48, 0x02);
-    call_routine(0x07EC6B, 0);
+    jump_routine(0x07EC6B);
 }
 
 void abi_WindowSlideUpSound(void);
@@ -1057,7 +1058,7 @@ static void stage_next(uint32_t b)
  * window to close. The others are elsewhere in bank $07 ($CC83, $CC9B,
  * $CF6F, TimesKeepAndAdvance, $CCBF). Each finished stage moves $0D59 on.
  * HOW: JMP (table,X); the stages outside this routine are reached through
- * call_routine. The RTS after WindowClosedDigitStep runs only when that
+ * jump_routine (one leaves through the caller's frame). The RTS after WindowClosedDigitStep runs only when that
  * returns (unit_cpu).
  * Entry: M 8-bit, X 8-bit, D = $0000. Exit: as the stage leaves it.
  */
@@ -1166,7 +1167,7 @@ void abi_ChampionshipScreenStep(void)
         abi_TimesKeepAndAdvance();
         break;
     default:
-        call_routine(0x070000 | t, 0);
+        jump_routine(0x070000 | t);
         break;
     }
 }

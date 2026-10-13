@@ -465,3 +465,88 @@ TimeBelowRecord:
 .lB980:
     rts
 
+
+; @routine 07:AC77 BcdToBinary
+; WHAT IT DOES: Converts the four BCD digits in A to binary.
+; HOW: For each of the thousands, hundreds and tens digits (when A is at
+; least $1000, $100, $10), adds 1000, 100 or 10 to $F1 that many times
+; and masks the digit off; then adds the units. X kept on the stack. The
+; thousands and hundreds run only from unit_cpu.
+; Entry: M 16-bit, X 16-bit, D = $0000; A = the BCD value. Exit: A = the
+; value; $F1 = A less the units; X unchanged, N and Z from it; C and V from
+; the last addition.
+%at($07AC77)
+BcdToBinary:
+    stz.b !digit_count
+    phx
+    cmp.w #$1000
+    bcc .lAC9C
+    pha                             ; not reached in the traces so far
+    lsr a                           ; not reached in the traces so far
+    lsr a                           ; not reached in the traces so far
+    lsr a                           ; not reached in the traces so far
+    lsr a                           ; not reached in the traces so far
+    lsr a                           ; not reached in the traces so far
+    lsr a                           ; not reached in the traces so far
+    lsr a                           ; not reached in the traces so far
+    lsr a                           ; not reached in the traces so far
+    lsr a                           ; not reached in the traces so far
+    lsr a                           ; not reached in the traces so far
+    lsr a                           ; not reached in the traces so far
+    lsr a                           ; not reached in the traces so far
+    tax                             ; not reached in the traces so far
+    lda.b !digit_count              ; not reached in the traces so far
+.lAC8F:
+    clc                             ; not reached in the traces so far
+    adc.w #$03E8                    ; not reached in the traces so far
+    dex                             ; not reached in the traces so far
+    bne .lAC8F                      ; not reached in the traces so far
+    sta.b !digit_count              ; not reached in the traces so far
+    pla                             ; not reached in the traces so far
+    and.w #$0FFF                    ; not reached in the traces so far
+.lAC9C:
+    cmp.w #$0100
+    bcc .lACBA
+    pha                             ; not reached in the traces so far
+    lsr a                           ; not reached in the traces so far
+    lsr a                           ; not reached in the traces so far
+    lsr a                           ; not reached in the traces so far
+    lsr a                           ; not reached in the traces so far
+    lsr a                           ; not reached in the traces so far
+    lsr a                           ; not reached in the traces so far
+    lsr a                           ; not reached in the traces so far
+    lsr a                           ; not reached in the traces so far
+    tax                             ; not reached in the traces so far
+    lda.b !digit_count              ; not reached in the traces so far
+.lACAD:
+    clc                             ; not reached in the traces so far
+    adc.w #$0064                    ; not reached in the traces so far
+    dex                             ; not reached in the traces so far
+    bne .lACAD                      ; not reached in the traces so far
+    sta.b !digit_count              ; not reached in the traces so far
+    pla                             ; not reached in the traces so far
+    and.w #$00FF                    ; not reached in the traces so far
+.lACBA:
+    cmp.w #$0010
+    bcc .lACD4
+    pha
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    tax
+    lda.b !digit_count
+.lACC7:
+    clc
+    adc.w #$000A
+    dex
+    bne .lACC7
+    sta.b !digit_count
+    pla
+    and.w #$000F
+.lACD4:
+    clc
+    adc.b !digit_count
+    plx
+    rtl
+

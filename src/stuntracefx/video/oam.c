@@ -1565,14 +1565,15 @@ static void oam_stage_dispatch(uint32_t table)
     op_sep(P_M | P_X);
     cpu.x = rd8((uint32_t)cpu.db << 16 | 0x0D2F);
     cpu.p = nz8(cpu.p, (uint8_t)cpu.x);
-    call_routine((uint32_t)0x070000 | rd16(table + cpu.x), 0);
+    jump_routine((uint32_t)0x070000 | rd16(table + cpu.x));
 }
 
 /*
  * @routine 07:BB34 OamStageDispatchBB3C
  * WHAT IT DOES: Runs the handler for stage $0D2F from the table at
  * $07:BB3C (eight entries, $07:BC32 to $07:BFC9).
- * HOW: SEP #$30, then JMP (table,X); the handler returns to the caller.
+ * HOW: SEP #$30, then JMP (table,X); the handler returns to the caller,
+ * or (the stage at $07:BEC6) through the caller's frame.
  * Entry: any widths. Exit: as the handler leaves it.
  */
 void abi_OamStageDispatchBB3C(void)

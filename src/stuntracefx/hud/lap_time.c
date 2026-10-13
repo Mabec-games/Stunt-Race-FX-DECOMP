@@ -470,3 +470,40 @@ void abi_TimeBelowRecord(void)
             return;
     }
 }
+
+/*
+ * @routine 07:AC77 BcdToBinary
+ * WHAT IT DOES: Converts the four BCD digits in A to binary.
+ * HOW: For each of the thousands, hundreds and tens digits (when A is at
+ * least $1000, $100, $10), adds 1000, 100 or 10 to $F1 that many times
+ * and masks the digit off; then adds the units. X kept on the stack. The
+ * thousands and hundreds run only from unit_cpu.
+ * Entry: M 16-bit, X 16-bit, D = $0000; A = the BCD value. Exit: A = the
+ * value; $F1 = A less the units; X unchanged, N and Z from it; C and V from
+ * the last addition.
+ */
+void abi_BcdToBinary(void)
+{
+    static const uint16_t thr[3] = {0x1000, 0x0100, 0x0010};
+    static const uint16_t mul[3] = {1000, 100, 10};
+    static const uint8_t sh[3] = {12, 8, 4};
+    uint16_t x0 = cpu.x, v = cpu.a, n, t;
+    int i;
+
+    wr16(0x0000F1, 0x0000);
+    for (i = 0; i < 3; i++) {
+        if (v < thr[i])
+            continue;
+        n = (uint16_t)(v >> sh[i]);
+        t = rd16(0x0000F1);
+        do
+            t = (uint16_t)(t + mul[i]);
+        while (--n);
+        wr16(0x0000F1, t);
+        v &= (uint16_t)(thr[i] - 1);
+    }
+    cpu.a = v;
+    op_add16(rd16(0x0000F1));
+    cpu.x = x0;
+    cpu.p = nz16(cpu.p, x0);
+}
