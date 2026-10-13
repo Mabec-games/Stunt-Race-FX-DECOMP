@@ -1,0 +1,31 @@
+# unit_choices: unit tests (call) from the start of a Novice race: player 1's
+# choice step left and right with some progress saved (bit 2 clear), with
+# $18C3 at 3 and at 0.
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70FC0B 01
+set 7E18C3 03,00
+set 7E18CB 01,00
+set 7E118F 00,02
+call 0B:C676 x=1F20 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70FC0B 01
+set 7E18C3 00,00
+set 7E18CB 01,00
+set 7E118F 00,02
+call 0B:C676 x=1F20 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70FC0B 01
+set 7E18C3 03,00
+set 7E18CB 01,00
+set 7E118F 00,01
+call 0B:C676 x=1F20 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70FC0B 01
+set 7E18C3 00,00
+set 7E18CB 01,00
+set 7E118F 00,01
+call 0B:C676 x=1F20 p=00 db=00 d=0000
+wait 1

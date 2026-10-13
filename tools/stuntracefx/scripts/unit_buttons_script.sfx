@@ -1,0 +1,84 @@
+# unit_buttons_script: unit tests (call) from the start of a Novice race: the
+# record button sequence through every stage, early, late and complete;
+# the course script's opcode $10, and opcodes $16 and $18 with no free
+# object, which stop the game (noreturn; the state is loaded again after).
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1A35 02,00
+set 7E1A33 02,00
+set 7E1AF0 00,40
+call 08:C8FF x=7F00 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1A35 02,00
+set 7E1A33 09,00
+set 7E1AF0 00,40
+call 08:C8FF x=7F00 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1A35 03,00
+set 7E1A33 0E,00
+set 7E1AF0 00,08
+call 08:C8FF x=7F00 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1A35 03,00
+set 7E1A33 05,00
+set 7E1AF0 00,08
+call 08:C8FF x=7F00 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1A35 03,00
+set 7E1A33 20,00
+set 7E1AF0 00,08
+call 08:C8FF x=7F00 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1A35 04,00
+set 7E1A33 00,00
+set 7E1AF0 00,00
+call 08:C8FF x=7F00 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1A35 01,00
+set 7E1A33 02,00
+set 7E1AF0 80,00
+call 08:C8FF x=7F00 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1A35 01,00
+set 7E1A33 09,00
+set 7E1AF0 80,00
+call 08:C8FF x=7F00 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1A35 00,00
+set 7E1A33 00,00
+set 7E1AF0 40,00
+call 08:C8FF x=7F00 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1A35 02,00
+set 7E1A33 02,00
+set 7E1AF0 00,00
+call 08:C8FF x=7F00 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1A35 03,00
+set 7E1A33 0E,00
+set 7E1AF0 00,00
+call 08:C8FF x=7F00 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7FFF00 10,00,00,00,00,00,00,00,00,00,00,00,80,00,00,00,00,00,00,00,00,00,00,00,04
+call 08:801C long a=007F x=7F00 p=20 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E032D 00,00
+set 7FFF00 16,04
+call 08:801C long noreturn frames=3 a=007F x=7F00 p=20 db=00 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E032D 00,00
+set 7FFF00 18,04
+call 08:801C long noreturn frames=3 a=007F x=7F00 p=20 db=00 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+wait 1

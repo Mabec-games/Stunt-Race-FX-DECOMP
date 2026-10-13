@@ -3,83 +3,83 @@
 # speed sample's clamp and the totals' overflow for both players, the race
 # clock's ten minute hold and the countdown reaching zero.
 load build/stuntracefx/states/novice_coupe_race1.state
-poke 7E003E 00,01
+set 7E003E 00,01
 call 03:CEC3 long a=0100 p=00 db=00 d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-poke 7E003E 00,01
+set 7E003E 00,01
 call 03:CEC3 long a=010A p=00 db=00 d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-poke 7E003E 00,01
+set 7E003E 00,01
 call 03:CEC3 long a=00F6 p=00 db=00 d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-poke 7E003E 00,01
+set 7E003E 00,01
 call 03:CEC3 long a=0000 p=00 db=00 d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-poke 7E003E 00,01
+set 7E003E 00,01
 call 03:CEC3 long a=0300 p=00 db=00 d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-poke 7E003E 00,01
+set 7E003E 00,01
 call 03:CF1A long a=0100 p=00 db=00 d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-poke 7E003E 00,01
+set 7E003E 00,01
 call 03:CF1A long a=010A p=00 db=00 d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-poke 7E003E 00,01
+set 7E003E 00,01
 call 03:CF1A long a=00F6 p=00 db=00 d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-poke 7E003E 00,01
+set 7E003E 00,01
 call 03:CF1A long a=0000 p=00 db=00 d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-poke 7E003E 00,01
+set 7E003E 00,01
 call 03:CF1A long a=0300 p=00 db=00 d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-poke 7E003E 40
+set 7E003E 40
 call 03:CFE3 long a=0040 p=20 db=00 d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-poke 7E003E 40
+set 7E003E 40
 call 03:CFE3 long a=0041 p=20 db=00 d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-poke 7E003E 40
+set 7E003E 40
 call 03:CFE3 long a=003F p=20 db=00 d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-poke 7E003E 40
+set 7E003E 40
 call 03:CFE3 long a=0010 p=20 db=00 d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-poke 7E003E 40
+set 7E003E 40
 call 03:CFE3 long a=0070 p=20 db=00 d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-poke 7E0DDC FF,FF,FF,FF,FF,FF,FF,FF
+set 7E0DDC FF,FF,FF,FF,FF,FF,FF,FF
 call 07:DDCE a=7FFF y=0000 p=00 db=00 d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-poke 7E0DDC FF,FF,FF,FF,FF,FF,FF,FF
+set 7E0DDC FF,FF,FF,FF,FF,FF,FF,FF
 call 07:DDCE a=7FFF y=0001 p=00 db=00 d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-poke 7E0E5B 01
-poke 7E0D29 50,00
-poke 7E0E62 99,99,59,00,09,00
+set 7E0E5B 01
+set 7E0D29 50,00
+set 7E0E62 99,99,59,00,09,00
 call 7E:B072 p=00 db=00 d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-poke 7E0E5B 01
-poke 7E0D29 01,00
-poke 7E0E68 00,00
-poke 7E0E70 00,00
+set 7E0E5B 01
+set 7E0D29 01,00
+set 7E0E68 00,00
+set 7E0E70 00,00
 call 7E:B072 p=00 db=00 d=0000
 wait 1

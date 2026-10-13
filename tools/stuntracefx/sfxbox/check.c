@@ -430,6 +430,25 @@ static void on_interrupt(uint32_t resume_pc, uint16_t s)
         if (!ws[i].in_irq) { ws[i].in_irq = 1; ws[i].interrupted = 1; ws[i].irq_pc = resume_pc; ws[i].irq_s = s; }
 }
 
+/* A unit call (sfxbox call) starting while calls are open suspends them as
+   an interrupt would: it can change what they read (the PPU multiplier,
+   work RAM), so a call it overlaps is judged inconclusive. */
+void check_unit_call(uint32_t resume_pc, uint16_t s)
+{
+    on_interrupt(resume_pc, s);
+}
+
+/* The calls open now, and dropping those opened since: a unit call puts
+   the machine back as it was, so calls begun after that point never
+   happened. One still open from before is judged inconclusive. */
+int check_depth(void) { return depth; }
+
+void check_rollback(int d)
+{
+    if (d < depth) depth = d;
+    for (int i = 0; i < depth; i++) ws[i].interrupted = 1;
+}
+
 /* ---- setup and report ---- */
 
 static int load_routines(void *core, const char *lib, const char *only)

@@ -1,0 +1,13 @@
+# unit_preview_countdown: a unit test (call) from the start of a Novice race:
+# the course preview countdown with player 2's $4000 press, through a
+# one-entry menu actor list built in low work RAM.
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E11F9 20,1F
+set 7E11F7 02,00
+set 7E1239 80,1F
+set 7E1F9A 04,00
+set 7E1F2A 05,00
+set 7E1193 02,00
+set 7E11B5 00,40
+call 0B:BD55 x=1F20 p=00 db=00 d=0000
+wait 1

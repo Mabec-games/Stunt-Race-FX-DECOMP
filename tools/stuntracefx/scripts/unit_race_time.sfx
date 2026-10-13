@@ -1,0 +1,31 @@
+# unit_race_time: unit tests (call) from the start of a Novice race: the
+# time bonus transfer from 24 or more, the time left at zero and at three
+# digits, and the race mode setup for mode 3 with each progress bit 0.
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D5B 01
+set 7E19F0 30,00
+call 07:8BB3 p=00 db=07 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D5B 01
+set 7E0DD6 00
+set 7E0E70 00,00
+set 7E0E78 05,00
+call 07:8C82 p=00 db=07 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D5B 01
+set 7E0DD6 00
+set 7E0E70 50,01
+call 07:8C82 p=00 db=07 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D2B 03
+set 70FC0B 01
+call 03:D8B3 long p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D2B 03
+set 70FC0B 02
+call 03:D8B3 long p=00 db=00 d=0000
+wait 1

@@ -1,0 +1,57 @@
+# unit_contacts: unit tests (call) from the start of a Novice race: the
+# contact flags for each lowest contact bit, a word with none of bits 0-2,
+# flags bit 0 and bit 11; the contact list walked past an entry to a found
+# one, and walked to its end, in unused Super FX RAM.
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1F3A 01,00
+set 7E1F36 00,00
+set 7E1F38 00,00
+call 08:D01E p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1F3A 02,00
+set 7E1F36 00,00
+set 7E1F38 00,00
+call 08:D01E p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1F3A 04,00
+set 7E1F36 00,00
+set 7E1F38 00,00
+call 08:D01E p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1F3A 10,00
+set 7E1F36 00,00
+set 7E1F38 00,00
+call 08:D01E p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1F3A 00,00
+set 7E1F36 01,00
+set 7E1F38 00,00
+call 08:D01E p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1F3A 00,00
+set 7E1F36 00,08
+set 7E1F38 00,00
+call 08:D01E p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 707E0E 40,7E
+set 707E10 00,00
+set 707E4E 00,00
+set 707E50 02,00
+set 707E4C 80,7E
+set 707E96 02,00
+set 707EE4 05,00
+set 7E1F3C 00,7E
+call 08:CF41 long p=20 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 707E0E 00,00
+set 707E10 00,00
+set 7E1F3C 00,7E
+call 08:CF41 long p=20 db=00 d=0000
+wait 1

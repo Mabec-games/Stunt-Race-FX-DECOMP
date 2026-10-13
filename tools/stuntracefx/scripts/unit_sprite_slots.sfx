@@ -1,0 +1,38 @@
+# unit_sprite_slots: unit tests (call) from the start of a Novice race: the
+# first sprite slot with none and with only the last, slot 1's countdown with
+# the palette saved and not, its sprite at 4 and 0, and still counting; the
+# word copy step with words left.
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E05D5 00
+call 02:D932 p=20 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E05D5 80
+call 02:D932 p=20 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E08FB 00
+set 7EFF65 01
+set 7E05A4 04
+call 02:E0A9 long p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E08FB 00
+set 7EFF65 01
+set 7E05A4 00
+call 02:E0A9 long p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0CF2 04,00
+set 7E0CF6 04,00
+call 02:D53D long p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E08FB 00
+set 7EFF65 00
+call 02:E0A9 long p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E08FB 05
+call 02:E0A9 long p=00 db=00 d=0000
+wait 1

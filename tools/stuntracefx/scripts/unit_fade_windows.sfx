@@ -1,0 +1,180 @@
+# unit_fade_windows: unit tests (call) from the start of a Novice race: the
+# fade-in step at every level (its whole step table), the window bands in
+# states 3 and 6, and the split window in state 3, in state 6 and closing
+# from state 2 to its end; the split-screen window layout.
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0E3A 00
+set 7E0D60 00,00
+call 7E:AC69 p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0E3A 00
+set 7E0D60 00,01
+call 7E:AC69 p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0E3A 00
+set 7E0D60 00,02
+call 7E:AC69 p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0E3A 00
+set 7E0D60 00,03
+call 7E:AC69 p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0E3A 00
+set 7E0D60 00,04
+call 7E:AC69 p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0E3A 00
+set 7E0D60 00,05
+call 7E:AC69 p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0E3A 00
+set 7E0D60 00,06
+call 7E:AC69 p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0E3A 00
+set 7E0D60 00,07
+call 7E:AC69 p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0E3A 00
+set 7E0D60 00,08
+call 7E:AC69 p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0E3A 00
+set 7E0D60 00,09
+call 7E:AC69 p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0E3A 00
+set 7E0D60 00,0A
+call 7E:AC69 p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0E3A 00
+set 7E0D60 00,0B
+call 7E:AC69 p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0E3A 00
+set 7E0D60 00,0C
+call 7E:AC69 p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0E3A 00
+set 7E0D60 00,0D
+call 7E:AC69 p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0E3A 00
+set 7E0D60 00,0E
+call 7E:AC69 p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0E3A 00
+set 7E0D60 00,0F
+call 7E:AC69 p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E19DF 00
+set 7E19D8 03
+call 7E:D5EC long p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E19DF 00
+set 7E19D8 06
+call 7E:D5EC long p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E19DF 01
+set 7E19D8 03
+call 7E:D75E long p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+poke 7E19DF 01
+poke 7E19D8 02
+call 7E:D75E long keep p=00 db=00 d=0000
+wait 1
+call 7E:D75E long keep p=00 db=00 d=0000
+wait 1
+call 7E:D75E long keep p=00 db=00 d=0000
+wait 1
+call 7E:D75E long keep p=00 db=00 d=0000
+wait 1
+call 7E:D75E long keep p=00 db=00 d=0000
+wait 1
+call 7E:D75E long keep p=00 db=00 d=0000
+wait 1
+call 7E:D75E long keep p=00 db=00 d=0000
+wait 1
+call 7E:D75E long keep p=00 db=00 d=0000
+wait 1
+call 7E:D75E long keep p=00 db=00 d=0000
+wait 1
+call 7E:D75E long keep p=00 db=00 d=0000
+wait 1
+call 7E:D75E long keep p=00 db=00 d=0000
+wait 1
+call 7E:D75E long keep p=00 db=00 d=0000
+wait 1
+call 7E:D75E long keep p=00 db=00 d=0000
+wait 1
+call 7E:D75E long keep p=00 db=00 d=0000
+wait 1
+call 7E:D75E long keep p=00 db=00 d=0000
+wait 1
+call 7E:D75E long keep p=00 db=00 d=0000
+wait 1
+call 7E:D75E long keep p=00 db=00 d=0000
+wait 1
+call 7E:D75E long keep p=00 db=00 d=0000
+wait 1
+call 7E:D75E long keep p=00 db=00 d=0000
+wait 1
+call 7E:D75E long keep p=00 db=00 d=0000
+wait 1
+call 7E:D75E long keep p=00 db=00 d=0000
+wait 1
+call 7E:D75E long keep p=00 db=00 d=0000
+wait 1
+call 7E:D75E long keep p=00 db=00 d=0000
+wait 1
+call 7E:D75E long keep p=00 db=00 d=0000
+wait 1
+call 7E:D75E long keep p=00 db=00 d=0000
+wait 1
+call 7E:D75E long keep p=00 db=00 d=0000
+wait 1
+call 7E:D75E long keep p=00 db=00 d=0000
+wait 1
+call 7E:D75E long keep p=00 db=00 d=0000
+wait 1
+call 7E:D75E long keep p=00 db=00 d=0000
+wait 1
+call 7E:D75E long keep p=00 db=00 d=0000
+wait 1
+call 7E:D75E long keep p=00 db=00 d=0000
+wait 1
+call 7E:D75E long keep p=00 db=00 d=0000
+wait 1
+call 7E:D75E long keep p=00 db=00 d=0000
+wait 1
+call 7E:D75E long keep p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E19DF 01
+set 7E19D8 06
+call 7E:D75E long p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D2E 01
+set 7E19B6 00,00
+call 7E:DB47 p=00 db=00 d=0000
+wait 1

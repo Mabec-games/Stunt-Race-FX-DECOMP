@@ -1,0 +1,41 @@
+# unit_objects_menus: unit tests (call) from the start of a Novice race: the
+# three spawns with no free object, ObjectAlloc with no last record and with
+# a following one, a menu object still waiting, a menu spawn with the pool
+# full, and the window edges' above case.
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E032D 00,00
+set 7E0D62 00
+call 08:E8CF long x=2F79 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E032D 00,00
+set 7E0D62 00
+call 08:D14A x=2F79 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E032D 00,00
+set 7E0D62 00
+call 08:EB4D long x=2F79 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E032B 00,00
+call 03:CB5C long p=00 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E4F79 79,2F
+call 03:CB5C long p=00 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1FBE 05,00
+call 0B:D5EC x=1FA0 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E11F5 2C,00
+call 0B:E4B5 x=0000 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7F340D 1F
+set 7F3433 20
+set 7F3437 10
+call 03:FDA9 long p=00 db=00 d=0000
+wait 1

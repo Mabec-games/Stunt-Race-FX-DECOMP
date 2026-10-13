@@ -1,0 +1,70 @@
+# unit_view_gauges: unit tests (call) from the start of a Novice race: the
+# view taken from a record with flag bit 13, every stage of the Super FX
+# picture upload, and the second speed gauge's cases (no values, a negative
+# speed, the cap, a high-gear negative speed, steps down into range).
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1A64 01,20
+call 02:DAD6 long x=1A64 p=00 db=03 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D7D 00,00
+call 7F:0800 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D7D 02,00
+call 7F:0800 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D7D 04,00
+call 7F:0800 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D7D 06,00
+call 7F:0800 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D7D 08,00
+call 7F:0800 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D7D 0A,00
+call 7F:0800 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D7D 0C,00
+call 7F:0800 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D53 00
+call 7F:0BEF long a=0000 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D53 00
+set 70014A 00,80
+set 700144 00,00
+set 700150 10,00
+set 7E1180 10,00
+call 7F:0BEF long a=0100 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D53 00
+set 70014A FF,7F
+set 700144 05,00
+set 7E1180 00,00
+call 7F:0BEF long a=0100 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D53 00
+set 70014A 00,90
+set 700144 05,00
+set 7E1180 00,00
+call 7F:0BEF long a=0100 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D53 00
+set 70014A 70,00
+set 700144 00,00
+set 700150 00,00
+set 7E1180 20,00
+call 7F:0BEF long a=0100 p=00 db=00 d=0000
+wait 1

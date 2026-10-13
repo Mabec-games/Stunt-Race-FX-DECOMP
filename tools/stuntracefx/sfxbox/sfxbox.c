@@ -18,11 +18,18 @@
  *                        $00-$3F) or Super FX RAM ($70-$71), between frames;
  *                        for scripts that start from save data the game itself
  *                        could hold (see each script's header)
- *   call ADDR [long] [a=HEX] [x=] [y=] [p=] [db=] [d=] [frames=N]
+ *   set ADDR BYTE[,BYTE...]
+ *                        as poke, but written when the next call starts, so
+ *                        the game itself never runs on those bytes
+ *   call ADDR [long] [keep] [noreturn] [a=HEX] [x=] [y=] [p=] [db=] [d=] [frames=N]
  *                        run the routine at ADDR once as a unit test: entered
  *                        by a JSR (by a JSL with long) from a stub in work RAM
  *                        with those registers, the game's state as the script
- *                        left it; then the game goes on where it was
+ *                        left it; then the machine is put back as it was
+ *                        before the call (with keep, the game goes on from
+ *                        where it was, the call's changes kept); with
+ *                        noreturn, for a path that stops the game, the
+ *                        frames run and the machine stays as it left it
  *   repeat N ... end     run the enclosed lines N times (nests)
  * Buttons: B Y SELECT START UP DOWN LEFT RIGHT A X L R, player 1; prefix
  * with 2. for player 2 (2.START). Joined with +.
@@ -206,12 +213,15 @@ static void poke(const char *line, int lineno) {
 }
 
 /* call: run one routine as a unit test, from the state the script has
-   reached. At the next instruction boundary the CPU's registers are saved
-   and it runs a stub in low work RAM ($1FE0, its bytes saved and put back):
-   JSR or JSL to the routine, then BRA to itself. The routine is entered by
+   reached. At the next instruction boundary the CPU's registers are taken
+   and it runs a stub in low work RAM ($1FE0): JSR (then NOP) or JSL to the
+   routine, then at $1FE4 a BRA to itself. The routine is entered by
    a real JSR/JSL, so --check and --lockstep take it as a call like any
-   other. When the stub's loop is reached the registers are restored and
-   the game goes on from where it was. Interrupts run as usual meanwhile.
+   other. When it returns, the whole machine is put back as it was before
+   the call (a state taken just before it), so the game goes on as if the
+   call had not been made: nothing it relies on (the PPU multiplier's
+   factor, work RAM) is left changed, and the frames the call ran are not
+   kept; the coverage and the checks of the call are.
    It starts only while the Super FX is stopped (GO, bit 5 of $3030, clear)
    and outside the vertical blank ($4212 bit 7). */
 struct SfxboxRegs { uint16_t a, x, y, s, d; uint8_t db, p, e; uint32_t pc; };
@@ -223,6 +233,13 @@ static int (*exec_before)(uint32_t);
 static struct SfxboxRegs call_from, call_regs;
 static uint32_t call_stub, call_loop;
 static int call_state;   /* 1 to start at the next boundary, 2 running, 0 done */
+static int checklib_on;  /* --check: the checker is told when a call starts */
+static int call_keep;    /* keep: the machine is not put back after the call */
+
+/* set: bytes staged for the next call, written when it starts (after the
+   state it is put back to was taken), so the game never runs on them. */
+static char staged[64][256];
+static int staged_line[64], nstaged;
 
 static int call_exec(uint32_t pc)
 {
@@ -232,6 +249,8 @@ static int call_exec(uint32_t pc)
        routine's first instruction (a script line runs at a frame's end). */
     if (call_state == 1 && !(sfxbox_core_bus_read_p(0x003030) & 0x20) && !(sfxbox_core_bus_read_p(0x004212) & 0x80)) {
         sfxbox_core_regs_p(&call_from);
+        if (checklib_on) check_unit_call(call_from.pc, call_from.s);
+        for (int i = 0; i < nstaged; i++) poke(staged[i], staged_line[i]);
         struct SfxboxRegs r = call_regs;
         r.s = call_from.s; r.e = 0; r.pc = call_stub;
         sfxbox_core_set_regs_p(&r);
@@ -239,26 +258,29 @@ static int call_exec(uint32_t pc)
         return 1;
     }
     if (call_state == 2 && pc == call_loop) {
-        sfxbox_core_set_regs_p(&call_from);
         call_state = 0;
-        return 1;
+        if (call_keep) { sfxbox_core_set_regs_p(&call_from); return 1; }   /* the game goes on from where it was */
+        return 0;   /* parked in the stub's loop until the machine is put back: see call() */
     }
     return exec_before ? exec_before(pc) : 0;
 }
 
 static void call(const char *line, int lineno) {
     char tok[16][64]; int k = sscanf(line, "%*s %63s %63s %63s %63s %63s %63s %63s %63s %63s", tok[0], tok[1], tok[2], tok[3], tok[4], tok[5], tok[6], tok[7], tok[8]);
-    if (k < 1) die("%s:%d: call ADDR [long] [a=] [x=] [y=] [p=] [db=] [d=] [frames=]", script_path, lineno);
+    if (k < 1) die("%s:%d: call ADDR [long] [keep] [noreturn] [a=] [x=] [y=] [p=] [db=] [d=] [frames=]", script_path, lineno);
     char ab[64]; int j = 0;
     for (const char *c = tok[0]; *c; c++) if (*c != '$' && *c != ':') ab[j++] = *c;
     ab[j] = 0;
     uint32_t addr = (uint32_t)strtoul(ab, NULL, 16), bank = addr >> 16;
-    int lng = 0; long frames_max = 600;
+    int lng = 0, noreturn = 0; long frames_max = 600;
+    call_keep = 0;
     struct SfxboxRegs cur; sfxbox_core_regs_p(&cur);
     call_regs = cur;
     for (int i = 1; i < k; i++) {
         unsigned long v = strtoul(strchr(tok[i], '=') ? strchr(tok[i], '=') + 1 : "0", NULL, 16);
         if (!strcmp(tok[i], "long")) lng = 1;
+        else if (!strcmp(tok[i], "noreturn")) noreturn = 1;
+        else if (!strcmp(tok[i], "keep")) call_keep = 1;
         else if (!strncmp(tok[i], "a=", 2)) call_regs.a = (uint16_t)v;
         else if (!strncmp(tok[i], "x=", 2)) call_regs.x = (uint16_t)v;
         else if (!strncmp(tok[i], "y=", 2)) call_regs.y = (uint16_t)v;
@@ -275,22 +297,32 @@ static void call(const char *line, int lineno) {
     else if (bank == 0x7F) { at = 0x11FE0; sb = 0x7F; }
     else if (bank == 0x7E || bank < 0x40 || (bank >= 0x80 && bank < 0xC0)) { at = 0x1FE0; sb = bank; }
     else die("%s:%d: call: a JSR can't reach bank %02X from work RAM; use long", script_path, lineno, bank);
-    uint8_t keep[6]; memcpy(keep, w + at, 6);
     uint8_t stub[6]; int m = 0;
     if (lng) { stub[m++] = 0x22; stub[m++] = (uint8_t)addr; stub[m++] = (uint8_t)(addr >> 8); stub[m++] = (uint8_t)bank; }
-    else { stub[m++] = 0x20; stub[m++] = (uint8_t)addr; stub[m++] = (uint8_t)(addr >> 8); }
+    else { stub[m++] = 0x20; stub[m++] = (uint8_t)addr; stub[m++] = (uint8_t)(addr >> 8); stub[m++] = 0xEA; }
     stub[m++] = 0x80; stub[m++] = 0xFE;
     memcpy(w + at, stub, (size_t)m);
     call_stub = sb << 16 | 0x1FE0;
     call_loop = call_stub + (uint32_t)(m - 2);
+    /* The machine as it was, put back when the call returns, so that the
+       game goes on as if the call had not been made. */
+    size_t sn = retro_serialize_size_p(); void *snap = malloc(sn);
+    if (!snap || !retro_serialize_p(snap, sn)) die("%s:%d: call: serialize failed", script_path, lineno);
+    int open_calls = checklib_on ? check_depth() : 0;
     exec_before = *cpu_exec_hook;
     *cpu_exec_hook = call_exec;
     call_state = 1;
     long f = 0;
     while (call_state && f < frames_max) { run(1); f++; }
     *cpu_exec_hook = exec_before;
-    memcpy(w + at, keep, 6);
-    if (call_state) die("%s:%d: call %06X did not return in %ld frames", script_path, lineno, addr, frames_max);
+    nstaged = 0;
+    if (!call_state && !call_keep) {
+        if (!retro_unserialize_p(snap, sn)) die("%s:%d: call: unserialize failed", script_path, lineno);
+        if (checklib_on) check_rollback(open_calls);
+    }
+    free(snap);
+    if (call_state && !noreturn) die("%s:%d: call %06X did not return in %ld frames", script_path, lineno, addr, frames_max);
+    call_state = 0;
 }
 
 static int block_end(int i) {  /* index of the matching end for a repeat at i */
@@ -331,6 +363,11 @@ static void exec_range(int from, int to) {
         }
         else if (!strcmp(a, "poke") && k >= 3) poke(lines[i], i + 1);
         else if (!strcmp(a, "call") && k >= 2) call(lines[i], i + 1);
+        else if (!strcmp(a, "set") && k >= 3) {
+            if (nstaged == 64) die("%s:%d: set: more than 64 for one call", script_path, i + 1);
+            snprintf(staged[nstaged], sizeof staged[0], "%s", lines[i]);
+            staged_line[nstaged++] = i + 1;
+        }
         else if (!strcmp(a, "load") && k >= 2) {
             size_t n; void *p = load_file(b, &n);
             if (!retro_unserialize_p(p, n)) die("unserialize failed: %s", b);
@@ -394,6 +431,7 @@ int main(int argc, char **argv) {
     if (checklib) {
         char rp[4096]; snprintf(rp, sizeof rp, "%s/check.txt", outdir);
         if (check_begin(core, checklib, only, rp)) die("check setup failed");
+        checklib_on = 1;
     }
     if (locklib) {
         char rp[4096]; snprintf(rp, sizeof rp, "%s/lockstep.txt", outdir);

@@ -1,0 +1,82 @@
+# unit_time_records: unit tests (call) from the start of a Novice race: the
+# time digit bytes for each range and the override, time bonus states 18
+# (idle end) and 20 (advance), the record loads' sort swaps with places 2,
+# 3 and none for a normal and a special course, a course out of range, and
+# the finish phases for player 2 and with bit 0 of $0DED.
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D4C 01,00
+set 7E0E76 25,00
+call 07:90EE p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D4C 00,00
+set 7E0E76 25,00
+call 07:90EE p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D4C 00,00
+set 7E0E76 15,00
+call 07:90EE p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D4C 00,00
+set 7E0E76 05,00
+call 07:90EE p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D65 12,00
+set 7E19F0 00,00
+call 07:8E90 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D65 14,00
+set 7E0D6B 08,00
+call 07:8E90 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0E3D 02
+set 70FD30 0C,00,11,22,0B,00,11,22,0A,00,11,22,09,00,11,22,08,00,11,22,07,00,11,22,06,00,11,22,05,00,11,22,04,00,11,22,03,00,11,22,02,00,11,22,01,00,11,22
+set 7E10C7 28,00
+call 07:B400 p=00 db=07 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0E3D 02
+set 70FD30 0C,00,11,22,0B,00,11,22,0A,00,11,22,09,00,11,22,08,00,11,22,07,00,11,22,06,00,11,22,05,00,11,22,04,00,11,22,03,00,11,22,02,00,11,22,01,00,11,22
+set 7E10C7 24,00
+call 07:B400 p=00 db=07 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0E3D 02
+set 70FD30 0C,00,11,22,0B,00,11,22,0A,00,11,22,09,00,11,22,08,00,11,22,07,00,11,22,06,00,11,22,05,00,11,22,04,00,11,22,03,00,11,22,02,00,11,22,01,00,11,22
+set 7E10C7 00,00
+call 07:B400 p=00 db=07 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0E3D 0D
+set 70FF40 01,00,11,22,02,00,11,22,03,00,11,22,04,00,11,22,05,00,11,22,06,00,11,22,07,00,11,22,08,00,11,22,09,00,11,22,0A,00,11,22,0B,00,11,22,0C,00,11,22
+set 7E10C7 28,00
+call 07:B329 p=00 db=07 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0E3D 0D
+set 70FF40 01,00,11,22,02,00,11,22,03,00,11,22,04,00,11,22,05,00,11,22,06,00,11,22,07,00,11,22,08,00,11,22,09,00,11,22,0A,00,11,22,0B,00,11,22,0C,00,11,22
+set 7E10C7 24,00
+call 07:B329 p=00 db=07 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0E3D 0D
+set 70FF40 01,00,11,22,02,00,11,22,03,00,11,22,04,00,11,22,05,00,11,22,06,00,11,22,07,00,11,22,08,00,11,22,09,00,11,22,0A,00,11,22,0B,00,11,22,0C,00,11,22
+set 7E10C7 00,00
+call 07:B329 p=00 db=07 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0E3D 05
+call 07:B329 p=00 db=07 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:AA0B y=0001 p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0DED 01
+call 07:AA0B y=0000 p=30 db=00 d=0000
+wait 1

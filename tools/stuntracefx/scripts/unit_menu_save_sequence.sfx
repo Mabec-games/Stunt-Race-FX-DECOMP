@@ -1,0 +1,18 @@
+# unit_menu_save_sequence: unit tests (call) from the start of a Novice race:
+# the menu choices restored for a menu other than 0-2, with and without
+# progress saved, and the button sequence's eighth step.
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70FC0B 01
+call 0B:B9C2 a=0003 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70FC0B 00
+call 0B:B9C2 a=0003 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E11F9 20,1F
+set 7E1F2A 07,00
+set 7E1F34 00,00
+set 7E118B 80,00
+call 0B:D606 x=1F20 p=00 db=00 d=0000
+wait 1

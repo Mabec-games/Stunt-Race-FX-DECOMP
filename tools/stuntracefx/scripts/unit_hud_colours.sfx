@@ -3,100 +3,100 @@
 # step and its end, and every stage of the HUD panels' and the direct
 # OAM writes' jump tables.
 load build/stuntracefx/states/novice_coupe_race1.state
-poke 7E0DDA 05
-poke 7E0DF0 00
-poke 7E0DF2 04
-poke 7E0E05 00
+set 7E0DDA 05
+set 7E0DF0 00
+set 7E0DF2 04
+set 7E0E05 00
 call 7E:B53F y=0000 p=20 db=7E d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-poke 7E0DDA 05
-poke 7E0DF0 10
-poke 7E0DF2 04
-poke 7E0E05 00
+set 7E0DDA 05
+set 7E0DF0 10
+set 7E0DF2 04
+set 7E0E05 00
 call 7E:B53F y=0000 p=20 db=7E d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-poke 7E0DA5 20
-poke 7E19FE 00,10,01,00,05,05
+set 7E0DA5 20
+set 7E19FE 00,10,01,00,05,05
 call 7E:E149 long p=00 db=00 d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-poke 7E0DA5 20
-poke 7E19FE 00,10,01,00,01,10
+set 7E0DA5 20
+set 7E19FE 00,10,01,00,01,10
 call 7E:E149 long p=00 db=00 d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-poke 7E0D54 02
-poke 7E0E16 AE
+set 7E0D54 02
+set 7E0E16 AE
 call 7E:AE5E p=00 db=00 d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-poke 7E0D54 04
-poke 7E0E12 7E
+set 7E0D54 04
+set 7E0E12 7E
 call 7E:AE5E p=00 db=00 d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-poke 7E0D54 04
-poke 7E0E12 1C
+set 7E0D54 04
+set 7E0E12 1C
 call 7E:AE5E p=00 db=00 d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-poke 7E0D54 06
-poke 7E0E0B 28
+set 7E0D54 06
+set 7E0E0B 28
 call 7E:AE5E p=00 db=00 d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-poke 7E0D54 00
+set 7E0D54 00
 call 7E:AE5E p=00 db=00 d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-poke 7E0D54 00
-poke 7E0D2B 01
+set 7E0D54 00
+set 7E0D2B 01
 call 7E:AD26 p=00 db=00 d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-poke 7E0D54 02
+set 7E0D54 02
 call 7E:AE5E p=00 db=00 d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-poke 7E0D54 02
-poke 7E0D2B 01
+set 7E0D54 02
+set 7E0D2B 01
 call 7E:AD26 p=00 db=00 d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-poke 7E0D54 04
+set 7E0D54 04
 call 7E:AE5E p=00 db=00 d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-poke 7E0D54 04
-poke 7E0D2B 01
+set 7E0D54 04
+set 7E0D2B 01
 call 7E:AD26 p=00 db=00 d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-poke 7E0D54 06
+set 7E0D54 06
 call 7E:AE5E p=00 db=00 d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-poke 7E0D54 06
-poke 7E0D2B 01
+set 7E0D54 06
+set 7E0D2B 01
 call 7E:AD26 p=00 db=00 d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-poke 7E0D54 08
+set 7E0D54 08
 call 7E:AE5E p=00 db=00 d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-poke 7E0D54 08
-poke 7E0D2B 01
+set 7E0D54 08
+set 7E0D2B 01
 call 7E:AD26 p=00 db=00 d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-poke 7E0D54 0A
+set 7E0D54 0A
 call 7E:AE5E p=00 db=00 d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-poke 7E0D54 0A
-poke 7E0D2B 01
+set 7E0D54 0A
+set 7E0D2B 01
 call 7E:AD26 p=00 db=00 d=0000
 wait 1

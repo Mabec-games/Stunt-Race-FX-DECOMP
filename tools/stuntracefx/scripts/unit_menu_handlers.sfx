@@ -1,0 +1,43 @@
+# unit_menu_handlers: unit tests (call) from the start of a Novice race, with
+# a one-entry menu actor list built in low work RAM: the kind 4 animation
+# change of the slide to the preview, the initials frame's back (Y) and the
+# settings' exit (B); initials left and a letter wrapping up.
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E11F7 02,00
+set 7E1239 80,1F
+set 7E1F9A 04,00
+set 7E1F94 00,00
+set 7E1F2A 7E,00
+set 7E11F9 20,1F
+call 0B:C5EF x=1F20 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E11F7 02,00
+set 7E1239 80,1F
+set 7E1F9A 04,00
+set 7E1F94 00,00
+set 7E11F9 20,1F
+set 7E1191 02,00
+set 7E1195 00,40
+call 0B:C225 x=1F20 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E11F7 02,00
+set 7E1239 80,1F
+set 7E1F9A 04,00
+set 7E1F94 00,00
+set 7E11F9 20,1F
+set 7E118B 00,80
+call 0B:BEEF x=1F20 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E118F 00,02
+set 7E18ED 01,00
+call 0B:C385 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E118F 00,08
+set 7E18ED 00,00
+set 7E18EF 19,00
+call 0B:C385 p=00 db=00 d=0000
+wait 1

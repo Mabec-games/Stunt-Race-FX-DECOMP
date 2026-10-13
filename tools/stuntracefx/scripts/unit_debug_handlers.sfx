@@ -1,0 +1,50 @@
+# unit_debug_handlers: unit tests (call) from the start of a Novice race: the
+# three debug error messages, and the linked object's handler by state (8
+# with each record kind, with and without the record words, and another
+# state with $19ED at 8).
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7026F0 01,00
+set 701090 01,00
+set 702650 01,00
+call 08:FEB4 long p=20 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E4F9E 00
+set 7E4FC8 00,2E
+set 7E4F9B 00,7F
+set 7E4E22 00,7F
+set 707F88 01,00
+set 7E1AEE 01
+set 7E0DD6 08
+call 08:B4C6 long x=2F79 y=0000 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E4F9E 00
+set 7E4FC8 00,2E
+set 7E4F9B 00,7F
+set 7E4E22 00,7F
+set 707F88 04,00
+set 7E1AEE 01
+set 7E0DD6 08
+call 08:B4C6 long x=2F79 y=0000 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E4F9E 00
+set 7E4FC8 00,2E
+set 7E4F9B 00,7F
+set 7E4E22 00,7F
+set 707F88 05,00
+set 7E1AEE 00
+set 7E0DD6 08
+call 08:B4C6 long x=2F79 y=0000 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E4F9E 00
+set 7E4FC8 00,2E
+set 7E4F9B 00,7F
+set 7E4E22 00,7F
+set 7E0DD6 00
+set 7E19ED 08
+set 7E1AEE 01
+call 08:B4C6 long x=2F79 y=0000 p=20 db=7E d=0000
+wait 1
