@@ -232,7 +232,8 @@ static void poke(const char *line, int lineno) {
 
 /* call: run one routine as a unit test, from the state the script has
    reached. At the next instruction boundary the CPU's registers are taken
-   and it runs a stub in low work RAM ($1FE0): JSR (then NOP) or JSL to the
+   and it runs a stub in low work RAM ($1FE0; $7F:FFE0 for bank $7F, out of
+   the code the game copies to $7F:0800): JSR (then NOP) or JSL to the
    routine, then at $1FE4 a BRA to itself. The routine is entered by
    a real JSR/JSL, so --check and --lockstep take it as a call like any
    other. When it returns, the whole machine is put back as it was before
@@ -316,7 +317,7 @@ static void call(const char *line, int lineno) {
     size_t n; uint8_t *w = sfxbox_memory_p("wram", &n);
     size_t at = 0; uint32_t sb = 0;
     if (lng) { at = 0x1FE0; sb = 0x00; }
-    else if (bank == 0x7F) { at = 0x11FE0; sb = 0x7F; }
+    else if (bank == 0x7F) { at = 0x1FFE0; sb = 0x7F; }   /* $7F:FFE0: outside the code copied to $7F:0800 */
     else if (bank == 0x7E || bank < 0x40 || (bank >= 0x80 && bank < 0xC0)) { at = 0x1FE0; sb = bank; }
     else die("%s:%d: call: a JSR can't reach bank %02X from work RAM; use long", script_path, lineno, bank);
     uint8_t stub[6]; int m = 0;
@@ -324,7 +325,7 @@ static void call(const char *line, int lineno) {
     else { stub[m++] = 0x20; stub[m++] = (uint8_t)addr; stub[m++] = (uint8_t)(addr >> 8); stub[m++] = 0xEA; }
     stub[m++] = 0x80; stub[m++] = 0xFE;
     memcpy(w + at, stub, (size_t)m);
-    call_stub = sb << 16 | 0x1FE0;
+    call_stub = sb << 16 | (uint32_t)(at & 0xFFFF);
     call_loop = call_stub + (uint32_t)(m - 2);
     /* The machine as it was, put back when the call returns, so that the
        game goes on as if the call had not been made. */
@@ -354,7 +355,9 @@ static void call(const char *line, int lineno) {
     call_state = 0;
 }
 
-/* fx: a unit test of a Super FX routine. A stub in work RAM at $7F:1F00,
+/* fx: a unit test of a Super FX routine. A stub in work RAM at $7F:F000
+   (outside the blocks of ROM code the game copies to work RAM, which the
+   trace folds back onto the ROM),
    run as a call (see call), does what the game's GsuRun does: sets the
    Super FX registers named (rN=VALUE, 16-bit), the program bank, the
    screen mode $0374 | $18, clears SFR, writes R15 = the routine (which
@@ -417,13 +420,13 @@ static void fx(const char *line, int lineno) {
     b[m++] = 0x8D; b[m++] = 0x3A; b[m++] = 0x30;                    /* STA $303A */
     b[m++] = 0x60;                                                  /* RTS */
     size_t n; uint8_t *w = sfxbox_memory_p("wram", &n);
-    if (0x11F00 + (size_t)m > 0x11FE0) die("%s:%d: fx: stub too long", script_path, lineno);
+    if ((size_t)m > 0xFE0) die("%s:%d: fx: stub too long", script_path, lineno);
     char cl[128];
-    snprintf(cl, sizeof cl, "call 7F:1F00 p=30 db=00 d=0000%s", frames);
+    snprintf(cl, sizeof cl, "call 7F:F000 p=30 db=00 d=0000%s", frames);
     /* The stub is written when the call starts (with the set bytes), after
        the state the call puts back was taken. */
     if (nstaged + 1 > 64) die("%s:%d: fx: more than 64 set lines", script_path, lineno);
-    char *st = staged[nstaged]; int o = snprintf(st, sizeof staged[0], "set 7F1F00 ");
+    char *st = staged[nstaged]; int o = snprintf(st, sizeof staged[0], "set 7FF000 ");
     for (int i = 0; i < m && o < (int)sizeof staged[0] - 4; i++) o += snprintf(st + o, sizeof staged[0] - (size_t)o, i ? ",%02X" : "%02X", b[i]);
     if (o >= (int)sizeof staged[0] - 4) die("%s:%d: fx: stub too long for one set line", script_path, lineno);
     staged_line[nstaged++] = lineno;
