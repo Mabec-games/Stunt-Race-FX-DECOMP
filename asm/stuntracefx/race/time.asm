@@ -58,10 +58,10 @@ RaceTimeAddD814:
 RaceTimeInit:
     sep.b #$30
     lda.b #$99
-    sta.w !race_time_nines
-    sta.w !race_time_nines+1
-    sta.w !race_time_nines+2
-    sta.w !race_time_nines+3
+    sta.w !countdown_fraction
+    sta.w !countdown_fraction+1
+    sta.w !countdown_fraction+2
+    sta.w !countdown_fraction+3
     lda.w !hud_mode
     beq .mode0
     cmp.b #$02
@@ -94,4 +94,71 @@ RaceTimeInit:
 .store:
     sta.w !race_time_bcd
     stz.w !race_time_bcd+1
+    rts
+
+; @routine 7E:B072 RaceClockStep
+; WHAT IT DOES: While $0E5B is set, adds the step $0D29 to the race time
+; (BCD: $0E62 the fraction, $0E64 seconds, $0E66 minutes; seconds carry
+; at 60, and from 10 minutes it holds at 9:59.9999) and takes it off the
+; countdown $0E68, borrowing from $0E70; when $0E70 is already 0 the
+; countdown stops at 0.
+; HOW: 16-bit decimal adds and subtracts (SED); the compares are binary.
+; The 10 minute hold is not reached in the traces so far.
+; Entry: any widths. Exit: X and Y high bytes cleared (SEP #$30); A as
+; the last step left it; P restored (decimal off).
+%ramcode($7EB072, $010D99)
+RaceClockStep:
+    php
+    sep.b #$30
+    lda.l !wram_0E5B
+    bne .run
+    plp
+    rts
+.run:
+    rep.b #$20
+    sed
+    lda.w !wram_0E62
+    clc
+    adc.w !wram_0D29
+    sta.w !wram_0E62
+    lda.w !race_time_seconds
+    adc.w #$0000
+    sta.w !race_time_seconds
+    cmp.w #$0060
+    bcc .countdown
+    stz.w !race_time_seconds
+    lda.w !race_time_minutes
+    clc
+    adc.w #$0001
+    sta.w !race_time_minutes
+    cmp.w #$0010
+    bcc .countdown
+    lda.w #$0009
+    sta.w !race_time_minutes
+    lda.w #$0059
+    sta.w !race_time_seconds
+    lda.w #$9999
+    sta.w !wram_0E62
+.countdown:
+    sed
+    lda.w !countdown_fraction
+    sec
+    sbc.w !wram_0D29
+    bcs .store
+    sta.w !countdown_fraction
+    lda.w !race_time_bcd
+    beq .stop
+    sec
+    sbc.w #$0001
+    sta.w !race_time_bcd
+    bra .done
+.stop:
+    stz.w !countdown_fraction
+    stz.w !race_time_bcd
+    bra .done
+.store:
+    sta.w !countdown_fraction
+.done:
+    cld
+    plp
     rts

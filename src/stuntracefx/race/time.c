@@ -152,3 +152,73 @@ void abi_RaceTimeInit(void)
     wr8(b | 0x0E70, v);
     wr8(b | 0x0E71, 0x00);
 }
+
+/*
+ * @routine 7E:B072 RaceClockStep
+ * WHAT IT DOES: While $0E5B is set, adds the step $0D29 to the race time
+ * (BCD: $0E62 the fraction, $0E64 seconds, $0E66 minutes; seconds carry
+ * at 60, and from 10 minutes it holds at 9:59.9999) and takes it off the
+ * countdown $0E68, borrowing from $0E70; when $0E70 is already 0 the
+ * countdown stops at 0.
+ * HOW: 16-bit decimal adds and subtracts (SED); the compares are binary.
+ * The 10 minute hold is not reached in the traces so far.
+ * Entry: any widths. Exit: X and Y high bytes cleared (SEP #$30); A as
+ * the last step left it; P restored (decimal off).
+ */
+void abi_RaceClockStep(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t p0 = cpu.p, v;
+    uint16_t a;
+
+    op_sep(P_M | P_X);
+    v = rd8(0x000E5B);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    if (!v) {
+        cpu.p = p0;
+        return;
+    }
+    cpu.p = (uint8_t)((cpu.p & ~P_M) | P_D);
+    a = rd16(b | 0x0E62);
+    cpu.p &= (uint8_t)~P_C;
+    a = op_adc16(a, rd16(b | 0x0D29), &cpu.p);
+    wr16(b | 0x0E62, a);
+    a = op_adc16(rd16(b | 0x0E64), 0x0000, &cpu.p);
+    wr16(b | 0x0E64, a);
+    cpu.a = a;
+    op_cmp16(0x0060);
+    if (a >= 0x0060) {
+        wr16(b | 0x0E64, 0x0000);
+        cpu.p &= (uint8_t)~P_C;
+        a = op_adc16(rd16(b | 0x0E66), 0x0001, &cpu.p);
+        wr16(b | 0x0E66, a);
+        cpu.a = a;
+        op_cmp16(0x0010);
+        if (a >= 0x0010) {
+            wr16(b | 0x0E66, 0x0009);
+            wr16(b | 0x0E64, 0x0059);
+            wr16(b | 0x0E62, 0x9999);
+            cpu.a = 0x9999;
+            cpu.p = nz16(cpu.p, cpu.a);
+        }
+    }
+    a = rd16(b | 0x0E68);
+    cpu.p |= P_C;
+    a = op_sbc16(a, rd16(b | 0x0D29), &cpu.p);
+    cpu.a = a;
+    wr16(b | 0x0E68, a);
+    if (!(cpu.p & P_C)) {
+        a = rd16(b | 0x0E70);
+        cpu.a = a;
+        cpu.p = nz16(cpu.p, a);
+        if (a) {
+            cpu.p |= P_C;
+            cpu.a = op_sbc16(a, 0x0001, &cpu.p);
+            wr16(b | 0x0E70, cpu.a);
+        } else {
+            wr16(b | 0x0E68, 0x0000);
+            wr16(b | 0x0E70, 0x0000);
+        }
+    }
+    cpu.p = p0;
+}

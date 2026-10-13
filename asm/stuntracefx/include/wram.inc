@@ -1476,7 +1476,7 @@ includeonce
 !scaled_words_target = $7F343A
 !scaled_words_base = $7F3442
 !wram_3433 = $3433
-!race_time_nines = $0E68              ; four bytes RaceTimeInit sets to $99
+!countdown_fraction = $0E68             ; the countdown's BCD fraction (RaceTimeInit sets $0E68-$0E6B to $99; RaceClockStep counts it down)
 !wram_0DA6 = $0DA6
 !record_time_bcd = $0F5B                ; record times as BCD minutes, seconds, hundredths (three bytes each)
 !wram_0D29 = $0D29
