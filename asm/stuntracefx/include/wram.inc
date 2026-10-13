@@ -1472,3 +1472,6 @@ includeonce
 !record_page = $F7                     ; records rows: the page's offset in !record_times
 !record_row_sprites = $0D75            ; the three records rows' first sprite numbers (words)
 !fx_pushes = $7023AE                   ; the 19 pushes of five words FxPushesApply applies
+!scaled_words = $7F3432                ; four words set between their bases and targets (BlendStepUp/Down)
+!scaled_words_target = $7F343A
+!scaled_words_base = $7F3442

@@ -3,6 +3,7 @@
  */
 #include "machine.h"
 #include "hw.h"
+#include "cpu_ops.h"
 
 /* Direct page $3E: scratch the routines below leave behind. */
 #define SCALE_SCRATCH 0x00003Eu
@@ -175,4 +176,66 @@ void abi_ScaleFiveThirtySeconds(void)
 
     cpu.a = ScaleFiveThirtySeconds(cpu.db, cpu.a, &p);
     cpu.p = p;
+}
+
+/* The four words at $7F:3432: base ($7F:3442) + (target ($7F:343A) - base)
+   through Mode7ScaleProduct, i.e. scaled by $7F:3408 / $7F:340A. */
+static void blend_words(void)
+{
+    unsigned i;
+
+    for (i = 0; i < 4; i++) {
+        cpu.a = rd16((uint32_t)(0x7F343A + i * 2));
+        cpu.p |= P_C;
+        cpu.a = op_sbc16(cpu.a, rd16((uint32_t)(0x7F3442 + i * 2)), &cpu.p);
+        abi_Mode7ScaleProduct();
+        cpu.p &= (uint8_t)~P_C;
+        cpu.a = op_adc16(cpu.a, rd16((uint32_t)(0x7F3442 + i * 2)), &cpu.p);
+        wr16((uint32_t)(0x7F3432 + i * 2), cpu.a);
+    }
+}
+
+/*
+ * @routine 03:FD32 BlendStepUp
+ * WHAT IT DOES: Unless the factor $7F:3408 has reached $7F:340A, steps it
+ * up by one and sets the four words at $7F:3432 between their bases
+ * ($7F:3442) and targets ($7F:343A) by it.
+ * HOW: (target - base) through Mode7ScaleProduct, plus the base. The return
+ * at the top is not reached in the traces so far.
+ * Entry: any widths. Exit: M, X 16-bit; A = the last word; N, Z, C, V
+ * from its add; or, at the top, A = the factor with Z and C set.
+ */
+void abi_BlendStepUp(void)
+{
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    cpu.a = rd16(0x7F3408);
+    op_cmp16(rd16(0x7F340A));
+    if (cpu.p & P_Z)
+        return;
+    cpu.a = (uint16_t)(cpu.a + 1);
+    cpu.p = nz16(cpu.p, cpu.a);
+    wr16(0x7F3408, cpu.a);
+    blend_words();
+}
+
+/*
+ * @routine 03:FD46 BlendStepDown
+ * WHAT IT DOES: Unless the factor $7F:3408 is 0, steps it down by one and
+ * sets the four words at $7F:3432 by it (as BlendStepUp).
+ * HOW: As BlendStepUp. The return at the top is not reached in the traces
+ * so far.
+ * Entry: any widths. Exit: as BlendStepUp; or, at the top, A = 0 with Z
+ * set.
+ */
+void abi_BlendStepDown(void)
+{
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    cpu.a = rd16(0x7F3408);
+    cpu.p = nz16(cpu.p, cpu.a);
+    if (cpu.p & P_Z)
+        return;
+    cpu.a = (uint16_t)(cpu.a - 1);
+    cpu.p = nz16(cpu.p, cpu.a);
+    wr16(0x7F3408, cpu.a);
+    blend_words();
 }

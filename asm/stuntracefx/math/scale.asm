@@ -168,3 +168,69 @@ ScaleFiveThirtySeconds:
     clc
     adc.w !wram_1F2B
     rtl
+
+; @routine 03:FD32 BlendStepUp
+; WHAT IT DOES: Unless the factor $7F:3408 has reached $7F:340A, steps it up
+; by one and sets the four words at $7F:3432 between their bases ($7F:3442)
+; and targets ($7F:343A) by it.
+; HOW: (target - base) through Mode7ScaleProduct, plus the base. The return
+; at the top is not reached in the traces so far.
+; Entry: any widths. Exit: M, X 16-bit; A = the last word; N, Z, C, V from
+; its add; or, at the top, A = the factor with Z and C set.
+%at($03FD32)
+BlendStepUp:
+    rep.b #$30
+    lda.l !fixed_colour_step
+    cmp.l !scale_divisor
+    bne .step
+    rtl
+.step:
+    inc a
+    sta.l !fixed_colour_step
+    bra BlendWords
+
+; @routine 03:FD46 BlendStepDown
+; WHAT IT DOES: Unless the factor $7F:3408 is 0, steps it down by one and sets
+; the four words at $7F:3432 by it (as BlendStepUp).
+; HOW: As BlendStepUp. The return at the top is not reached in the traces so
+; far.
+; Entry: any widths. Exit: as BlendStepUp; or, at the top, A = 0 with Z set.
+%at($03FD46)
+BlendStepDown:
+    rep.b #$30
+    lda.l !fixed_colour_step
+    bne .step
+    rtl
+.step:
+    dec a
+    sta.l !fixed_colour_step
+BlendWords:
+    lda.l !scaled_words_target+0
+    sec
+    sbc.l !scaled_words_base+0
+    jsr Mode7ScaleProduct
+    clc
+    adc.l !scaled_words_base+0
+    sta.l !scaled_words+0
+    lda.l !scaled_words_target+2
+    sec
+    sbc.l !scaled_words_base+2
+    jsr Mode7ScaleProduct
+    clc
+    adc.l !scaled_words_base+2
+    sta.l !scaled_words+2
+    lda.l !scaled_words_target+4
+    sec
+    sbc.l !scaled_words_base+4
+    jsr Mode7ScaleProduct
+    clc
+    adc.l !scaled_words_base+4
+    sta.l !scaled_words+4
+    lda.l !scaled_words_target+6
+    sec
+    sbc.l !scaled_words_base+6
+    jsr Mode7ScaleProduct
+    clc
+    adc.l !scaled_words_base+6
+    sta.l !scaled_words+6
+    rtl
