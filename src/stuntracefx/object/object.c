@@ -1743,3 +1743,36 @@ void abi_ObjectSpawnFromScript(void)
     cpu.a = (uint16_t)((w & 0xFF00) | v);
     cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~P_M);
 }
+
+/*
+ * @routine 09:B0A1 ObjectStep48To8
+ * WHAT IT DOES: Counts object X's +$48 up to 8, then copies it to $1F58
+ * and, with bit 7 set, to +$5A.
+ * HOW: 8-bit accesses through the data bank; at 8 the increment is skipped
+ * by a long jump past it.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: A low byte = +$48 OR $80;
+ * N set, Z clear; C from comparing the old +$48 with 8.
+ */
+uint8_t ObjectStep48To8(uint8_t bank, uint16_t obj, uint8_t *p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t v = rd8(b | (uint16_t)(0x2048 + obj));
+
+    *p = (uint8_t)((*p & ~P_C) | (v >= 0x08 ? P_C : 0));
+    if (v != 0x08)
+        wr8(b | (uint16_t)(0x2048 + obj), (uint8_t)(rd8(b | (uint16_t)(0x2048 + obj)) + 1));
+    v = rd8(b | (uint16_t)(0x2048 + obj));
+    wr8(b | 0x1F58, v);
+    v = (uint8_t)(rd8(b | 0x1F58) | 0x80);
+    wr8(b | (uint16_t)(0x205A + obj), v);
+    *p = nz8(*p, v);
+    return v;
+}
+
+void abi_ObjectStep48To8(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | ObjectStep48To8(cpu.db, cpu.x, &p));
+    cpu.p = p;
+}

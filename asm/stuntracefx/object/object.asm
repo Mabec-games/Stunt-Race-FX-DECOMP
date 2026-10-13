@@ -1751,3 +1751,26 @@ ObjectSpawnFromScript:
     plb
     rep.b #$20
     rts
+
+; @routine 09:B0A1 ObjectStep48To8
+; WHAT IT DOES: Counts object X's +$48 up to 8, then copies it to $1F58
+; and, with bit 7 set, to +$5A.
+; HOW: 8-bit accesses through the data bank; at 8 the increment is skipped
+; by a long jump past it.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: A low byte = +$48 OR $80;
+; N set, Z clear; C from comparing the old +$48 with 8.
+%at($09B0A1)
+ObjectStep48To8:
+    lda.w !obj_48,x
+    cmp.b #$08
+    bne .count
+    jml.l ObjectStep48To8_copy
+.count:
+    inc.w !obj_48,x
+ObjectStep48To8_copy:               ; reached by the long jump above at 8
+    lda.w !obj_48,x
+    sta.w !wram_1F58
+    lda.w !wram_1F58
+    ora.b #$80
+    sta.w !obj_5a,x
+    rts

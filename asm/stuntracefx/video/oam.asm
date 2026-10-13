@@ -1234,3 +1234,64 @@ SpritePieces3:
     dec.b !sprite_piece_count
     bne .piece
     rtl
+
+; @routine 07:C22B SpritePiecesTwoCars
+; WHAT IT DOES: Shows the two players' cars as three-piece sprites: every
+; fourth frame steps the piece selector $10BB through 0-3; with tile and
+; palette bases $30 and Y $A0, player 1's car ($0D89 * 3) at X $84 into
+; sprite offset $C0 and player 2's ($0D8A * 3) at X $CC into $CC
+; (SpritePieces3); then the bytes $20, $58 at $0581-$0582 (the second
+; sprite table's size bits).
+; HOW: 8-bit stores through the data bank; the selector steps when the
+; frame count's low two bits are 3.
+; Entry: D = $0000. Exit: A = $58 (high byte as SpritePieces3 left it);
+; X, Y as the second SpritePieces3 left them, Y truncated to 8 bits
+; between the two; M 8-bit, X 16-bit; N, Z clear.
+%at($07C22B)
+SpritePiecesTwoCars:
+    sep.b #$30
+    lda.w !frame_count
+    and.b #$03
+    cmp.b #$03
+    bne .bases
+    lda.w !sprite_piece_select
+    inc a
+    cmp.b #$04
+    bcc .select
+    lda.b #$00
+.select:
+    sta.w !sprite_piece_select
+.bases:
+    lda.b #$30
+    sta.w !sprite_piece_tile
+    lda.b #$30
+    sta.w !sprite_piece_palette
+    lda.b #$A0
+    sta.w !sprite_piece_y
+    lda.b #$84
+    sta.w !sprite_piece_x
+    lda.w !wram_0D89
+    asl a
+    clc
+    adc.w !wram_0D89
+    sta.w !sprite_piece_frame
+    rep.b #$30
+    ldy.w #$00C0
+    jsl.l SpritePieces3
+    sep.b #$30
+    lda.w !wram_0D8A
+    asl a
+    clc
+    adc.w !wram_0D8A
+    sta.w !sprite_piece_frame
+    lda.b #$CC
+    sta.w !sprite_piece_x
+    rep.b #$30
+    ldy.w #$00CC
+    jsl.l SpritePieces3
+    sep.b #$20
+    lda.b #$20
+    sta.w !oam_high_table+12
+    lda.b #$58
+    sta.w !oam_high_table+13
+    rts

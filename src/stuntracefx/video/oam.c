@@ -1259,3 +1259,68 @@ void abi_SpritePieces3(void)
     cpu.a = (uint16_t)((set & 0xFF00) | attr);
     cpu.p = p;
 }
+
+/* SpritePieces3 into sprite offset `y`, keeping its A, X, Y and flags. */
+static void car_pieces(uint16_t y)
+{
+    uint8_t p, attr;
+    uint16_t set;
+
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    cpu.y = y;
+    p = cpu.p;
+    attr = SpritePieces3(cpu.db, &cpu.x, &cpu.y, &p, &set);
+    cpu.a = (uint16_t)((set & 0xFF00) | attr);
+    cpu.p = p;
+}
+
+/*
+ * @routine 07:C22B SpritePiecesTwoCars
+ * WHAT IT DOES: Shows the two players' cars as three-piece sprites: every
+ * fourth frame steps the piece selector $10BB through 0-3; with tile and
+ * palette bases $30 and Y $A0, player 1's car ($0D89 * 3) at X $84 into
+ * sprite offset $C0 and player 2's ($0D8A * 3) at X $CC into $CC
+ * (SpritePieces3); then the bytes $20, $58 at $0581-$0582 (the second
+ * sprite table's size bits).
+ * HOW: 8-bit stores through the data bank; the selector steps when the
+ * frame count's low two bits are 3.
+ * Entry: D = $0000. Exit: A = $58 (high byte as SpritePieces3 left it);
+ * X, Y as the second SpritePieces3 left them, Y truncated to 8 bits
+ * between the two; M 8-bit, X 16-bit; N, Z clear.
+ */
+void abi_SpritePiecesTwoCars(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v, n;
+
+    cpu.p |= P_M | P_X;
+    cpu.x &= 0x00FF;
+    cpu.y &= 0x00FF;
+    if ((rd8(b | 0x0E3B) & 0x03) == 0x03) {
+        v = (uint8_t)(rd8(b | 0x10BB) + 1);
+        if (v >= 0x04)
+            v = 0x00;
+        wr8(b | 0x10BB, v);
+    }
+    wr8(b | 0x10C1, 0x30);
+    wr8(b | 0x10C5, 0x30);
+    wr8(b | 0x10BF, 0xA0);
+    wr8(b | 0x10BD, 0x84);
+    n = rd8(b | 0x0D89);
+    n = (uint8_t)((n << 1) + rd8(b | 0x0D89));
+    wr8(b | 0x10C3, n);
+    car_pieces(0x00C0);
+    cpu.p |= P_M | P_X;
+    cpu.x &= 0x00FF;
+    cpu.y &= 0x00FF;
+    n = rd8(b | 0x0D8A);
+    n = (uint8_t)((n << 1) + rd8(b | 0x0D8A));
+    wr8(b | 0x10C3, n);
+    wr8(b | 0x10BD, 0xCC);
+    car_pieces(0x00CC);
+    cpu.p |= P_M;
+    wr8(b | 0x0581, 0x20);
+    wr8(b | 0x0582, 0x58);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x58);
+    cpu.p = nz8(cpu.p, 0x58);
+}

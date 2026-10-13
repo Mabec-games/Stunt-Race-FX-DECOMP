@@ -1444,3 +1444,7 @@ includeonce
 ; MenuScreenOpenPreviewFade's fade level, $20 counted down by 2
 ; (menu/course_preview.asm).
 !preview_fade_step = $001909
+
+; The sprite table's high part (size and X bit 8), after the 512 bytes at
+; $0375 (video/oam.asm).
+!oam_high_table = $0575
