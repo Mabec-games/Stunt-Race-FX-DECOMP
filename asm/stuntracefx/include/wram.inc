@@ -1398,3 +1398,30 @@ includeonce
 !wram_1AEE_long = $001AEE
 !bare_object_a = $1ADA
 !bare_object_b = $1ADC
+
+; CameraFollowStep (race/camera.asm): the camera record's fields (direct
+; page, D = 0), its target and mode, the view angles and matrix copy.
+!cam_flags = $00
+!cam_target = $02
+!cam_pos = $08
+!cam_pitch = $14
+!cam_turn = $16
+!cam_base = $1A
+!cam_lead = $26
+!cam_angle_add = $35
+!cam_target_obj = $1F33
+!cam_mode = $05FA
+!cam_lag = $1F2B
+!cam_tmp_a = $02
+!cam_tmp_b = $08
+!cam_tmp_c = $94
+!cam_offset_x = $B7
+!cam_offset_y = $B9
+!cam_offset_z = $BB
+!view_pitch = $065E
+!view_turn = $0660
+!view_roll = $0662
+!view_matrix_copy = $064C
+!gsu_record_247a = $70247A
+!gsu_rec_6c = $70006C
+!view_matrix_out = $0608
