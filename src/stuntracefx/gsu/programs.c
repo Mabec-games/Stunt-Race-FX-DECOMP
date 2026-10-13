@@ -2260,3 +2260,59 @@ void abi_GlyphSpritesGrowAndTimes(void)
     cpu.p = nz8(cpu.p, db0);
     op_plp(p0);
 }
+
+void abi_GsuBytes200_BFBAB9(void);
+
+/*
+ * @routine 07:9814 GlyphSlideThree
+ * WHAT IT DOES: Slides the first three glyph sprites left: each one's x
+ * goes down by its step $1040 but not below its target $1070 (nor past
+ * 0), and it is drawn at y $50 with program $07:F3D2, the renderer bytes
+ * by its glyph: 0, $BF, $B7, $B6 for $8000, $BC, $BD for $8006, $BA, $B9
+ * for $800C, $B3, $BE for the others.
+ * HOW: 16-bit; X and P kept on the stack around GsuRun; P saved and
+ * restored.
+ * Entry: any widths. Exit: P restored; X = 6; A as the last draw left it.
+ */
+void abi_GlyphSlideThree(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t p0 = cpu.p, p;
+    uint16_t x;
+
+    op_rep(P_M | P_X);
+    cpu.x = 0x0000;
+    do {
+        op_lda16(b | (uint16_t)(0x0FB0 + cpu.x));
+        op_sub16(rd16(b | (uint16_t)(0x1040 + cpu.x)));
+        if (cpu.p & P_C) {
+            op_cmp16(rd16(b | (uint16_t)(0x1070 + cpu.x)));
+            if (!(cpu.p & P_C))
+                op_lda16(b | (uint16_t)(0x1070 + cpu.x));
+        } else {
+            op_lda16(b | (uint16_t)(0x1070 + cpu.x));
+        }
+        wr16(b | (uint16_t)(0x0FB0 + cpu.x), cpu.a);
+        wr16(0x70020A, cpu.a);
+        op_lda16_imm(0x0050);
+        wr16(0x70020C, 0x0050);
+        op_lda16(b | (uint16_t)(0x1010 + cpu.x));
+        wr16(0x700216, cpu.a);
+        op_cmp16(0x8000);
+        if (cpu.p & P_Z)
+            abi_GsuBytes200_BFB7B6();
+        else if (op_cmp16(0x8006), cpu.p & P_Z)
+            abi_GsuBytes200_BFBCBD();
+        else if (op_cmp16(0x800C), cpu.p & P_Z)
+            abi_GsuBytes200_BFBAB9();
+        else
+            abi_GsuBytes200_BFB3BE();
+        x = cpu.x;
+        p = cpu.p;
+        glyph_prog_run(0xF3D2);
+        op_plp(p);
+        cpu.x = (uint16_t)(x + 2);
+        cpu.p = (uint8_t)((nz16(cpu.p, (uint16_t)(cpu.x - 0x0006)) & ~P_C) | (cpu.x >= 0x0006 ? P_C : 0));
+    } while (cpu.x < 0x0006);
+    op_plp(p0);
+}

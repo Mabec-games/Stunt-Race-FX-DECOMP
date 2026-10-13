@@ -1125,3 +1125,49 @@ void abi_RecordCarTimes12(void)
     op_asl16();
     op_and16(0x00FF);
 }
+
+void abi_RecordCarTimes12(void);
+
+/* JSR RecordCarTimes12, (CLC, ADC #extra,) STA $10C7. */
+static void record_tag(uint16_t extra)
+{
+    abi_RecordCarTimes12();
+    if (extra)
+        op_add16(extra);
+    wr16((uint32_t)cpu.db << 16 | 0x10C7, cpu.a);
+}
+
+/*
+ * @routine 07:B05E RecordTagCar0
+ * WHAT IT DOES: Sets the tag $10C7 to $0D89 * 12 (low byte), the place of
+ * the car's first record.
+ * HOW: RecordCarTimes12; the entries at $07:B063 and $07:B06C add 4 and 8.
+ * Entry: M 16-bit. Exit: A = the tag; N, Z from RecordCarTimes12's AND.
+ */
+void abi_RecordTagCar0(void)
+{
+    record_tag(0);
+}
+
+/*
+ * @routine 07:B063 RecordTagCar4
+ * WHAT IT DOES: As RecordTagCar0 plus 4 (the second record).
+ * HOW: As RecordTagCar0 with CLC, ADC #4; no script reaches it (unit_cpu
+ * does).
+ * Entry: M 16-bit. Exit: A = the tag; N, Z, C, V from the add.
+ */
+void abi_RecordTagCar4(void)
+{
+    record_tag(0x0004);
+}
+
+/*
+ * @routine 07:B06C RecordTagCar8
+ * WHAT IT DOES: As RecordTagCar0 plus 8 (the third record).
+ * HOW: As RecordTagCar4 with 8; no script reaches it (unit_cpu does).
+ * Entry: M 16-bit. Exit: as RecordTagCar4.
+ */
+void abi_RecordTagCar8(void)
+{
+    record_tag(0x0008);
+}

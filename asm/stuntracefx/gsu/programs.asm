@@ -3246,3 +3246,68 @@ GlyphSpritesGrowAndTimes:
     plp
     rtl
 
+; @routine 07:9814 GlyphSlideThree
+; WHAT IT DOES: Slides the first three glyph sprites left: each one's x
+; goes down by its step $1040 but not below its target $1070 (nor past
+; 0), and it is drawn at y $50 with program $07:F3D2, the renderer bytes
+; by its glyph: 0, $BF, $B7, $B6 for $8000, $BC, $BD for $8006, $BA, $B9
+; for $800C, $B3, $BE for the others.
+; HOW: 16-bit; X and P kept on the stack around GsuRun; P saved and
+; restored.
+; Entry: any widths. Exit: P restored; X = 6; A as the last draw left it.
+%at($079814)
+GlyphSlideThree:
+    php
+    rep.b #$30
+    ldx.w #$0000
+.l981A:
+    lda.w !glyph_spr_x,x
+    sec
+    sbc.w !glyph_spr_1040,x
+    bcc .l9828
+    cmp.w !glyph_spr_1040+48,x
+    bcs .l982B
+.l9828:
+    lda.w !glyph_spr_1040+48,x
+.l982B:
+    sta.w !glyph_spr_x,x
+    sta.l !fx_draw_x
+    lda.w #$0050
+    sta.l !fx_draw_y
+    lda.w !glyph_spr_glyph,x
+    sta.l !gsu_in_216
+    cmp.w #$8000
+    beq .l9861
+    cmp.w #$8006
+    beq .l985B
+    cmp.w #$800C
+    beq .l9855
+    jsl.l GsuBytes200_BFB3BE
+    bra .l9865
+.l9855:
+    jsl.l GsuBytes200_BFBAB9        ; not reached in the traces so far
+    bra .l9865                      ; not reached in the traces so far
+.l985B:
+    jsl.l GsuBytes200_BFBCBD        ; not reached in the traces so far
+    bra .l9865                      ; not reached in the traces so far
+.l9861:
+    jsl.l GsuBytes200_BFB7B6
+.l9865:
+    phx
+    php
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F3D2
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    plp
+    plx
+    inx
+    inx
+    cpx.w #$0006
+    bcc .l981A
+    plp
+    rts
+

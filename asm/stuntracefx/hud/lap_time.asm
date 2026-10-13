@@ -438,3 +438,30 @@ RecordNameStore_slot:
     sta.l !save_course_names+1,x
     lda.w !wram_0D89
 
+
+; @routine 07:B964 TimeBelowRecord
+; WHAT IT DOES: Compares the time $0EEF/$0EEE/$0EED (most significant
+; first) with the record time at $0F81 + X: carry clear when it is
+; lower; when a byte is higher it returns at once with carry set.
+; HOW: 8-bit CMP per byte, BCC lower, BEQ on to the next.
+; Entry: M 8-bit; X = the record's offset. Exit: A = the last byte
+; compared; N, Z, C from that compare.
+%at($07B964)
+TimeBelowRecord:
+    lda.w !wram_0EEF
+    cmp.w !record_times+11,x
+    bcc .lB980
+    beq .lB96F                      ; not reached in the traces so far
+    rts                             ; not reached in the traces so far
+.lB96F:
+    lda.w !wram_0EEE                ; not reached in the traces so far
+    cmp.w !record_times+10,x        ; not reached in the traces so far
+    bcc .lB980                      ; not reached in the traces so far
+    beq .lB97A                      ; not reached in the traces so far
+    rts                             ; not reached in the traces so far
+.lB97A:
+    lda.w !wram_0EED                ; not reached in the traces so far
+    cmp.w !record_times+9,x         ; not reached in the traces so far
+.lB980:
+    rts
+

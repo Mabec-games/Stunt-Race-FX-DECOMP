@@ -1389,3 +1389,38 @@ RecordCarTimes12:
     and.w #$00FF
     rts
 
+; @routine 07:B05E RecordTagCar0
+; WHAT IT DOES: Sets the tag $10C7 to $0D89 * 12 (low byte), the place of
+; the car's first record.
+; HOW: RecordCarTimes12; the entries at $07:B063 and $07:B06C add 4 and 8.
+; Entry: M 16-bit. Exit: A = the tag; N, Z from RecordCarTimes12's AND.
+%at($07B05E)
+RecordTagCar0:
+    jsr.w RecordCarTimes12
+    bra RecordTagCar_store
+
+; @routine 07:B063 RecordTagCar4
+; WHAT IT DOES: As RecordTagCar0 plus 4 (the second record).
+; HOW: As RecordTagCar0 with CLC, ADC #4; no script reaches it (unit_cpu
+; does).
+; Entry: M 16-bit. Exit: A = the tag; N, Z, C, V from the add.
+%at($07B063)
+RecordTagCar4:
+    jsr.w RecordCarTimes12          ; not reached in the traces so far
+    clc                             ; not reached in the traces so far
+    adc.w #$0004                    ; not reached in the traces so far
+    bra RecordTagCar_store                     ; not reached in the traces so far
+
+; @routine 07:B06C RecordTagCar8
+; WHAT IT DOES: As RecordTagCar0 plus 8 (the third record).
+; HOW: As RecordTagCar4 with 8; no script reaches it (unit_cpu does).
+; Entry: M 16-bit. Exit: as RecordTagCar4.
+%at($07B06C)
+RecordTagCar8:
+    jsr.w RecordCarTimes12          ; not reached in the traces so far
+    clc                             ; not reached in the traces so far
+    adc.w #$0008                    ; not reached in the traces so far
+RecordTagCar_store:
+    sta.w !player_tag
+    rts
+

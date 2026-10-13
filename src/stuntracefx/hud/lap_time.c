@@ -444,3 +444,29 @@ void abi_RecordNameStore6(void)
 {
     record_name_store(0x06);
 }
+
+/*
+ * @routine 07:B964 TimeBelowRecord
+ * WHAT IT DOES: Compares the time $0EEF/$0EEE/$0EED (most significant
+ * first) with the record time at $0F81 + X: carry clear when it is
+ * lower; when a byte is higher it returns at once with carry set.
+ * HOW: 8-bit CMP per byte, BCC lower, BEQ on to the next.
+ * Entry: M 8-bit; X = the record's offset. Exit: A = the last byte
+ * compared; N, Z, C from that compare.
+ */
+void abi_TimeBelowRecord(void)
+{
+    static const uint16_t mine[3] = {0x0EEF, 0x0EEE, 0x0EED}, rec[3] = {0x0F81, 0x0F80, 0x0F7F};
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t a, m;
+    int i;
+
+    for (i = 0; i < 3; i++) {
+        op_lda8(b | mine[i]);
+        a = (uint8_t)cpu.a;
+        m = rd8(b | (uint16_t)(rec[i] + cpu.x));
+        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(a - m)) & ~P_C) | (a >= m ? P_C : 0));
+        if (a != m)
+            return;
+    }
+}

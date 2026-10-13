@@ -30,6 +30,9 @@
 # - ObjectSpawnPuff with no free object; RecordNameStore3 and 6 (nothing
 #   calls them); ChampionshipScreenStep with HUD mode 0 and the split window
 #   not in state 5 (WindowClosedDigitStep returns).
+# - RecordTagCar4 and 8 (nothing calls them); TimeBelowRecord with the
+#   first byte higher, the second higher and all equal; GlyphSlideThree with
+#   the glyphs $8006 and $800C.
 load build/stuntracefx/states/novice_coupe_race1.state
 set 7E3437 FE
 call 03:FDF7 p=30 db=7E d=0000
@@ -532,4 +535,29 @@ load build/stuntracefx/states/novice_coupe_race1.state
 set 7E0D2B 00
 set 7E19D8 00
 call 07:BA15 p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:B063 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:B06C p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0EED 07,06,09
+set 7E0F7F 07,06,05
+call 07:B964 x=0000 p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0EED 07,08,05
+set 7E0F7F 07,06,05
+call 07:B964 x=0000 p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0EED 07,06,05
+set 7E0F7F 07,06,05
+call 07:B964 x=0000 p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1010 06,80,0C,80,00,80
+call 07:9814 p=30 db=00 d=0000
 wait 1
