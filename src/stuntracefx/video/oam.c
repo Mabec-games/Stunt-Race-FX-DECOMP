@@ -1921,3 +1921,126 @@ void abi_OamStagePause2(void)
     } while ((uint8_t)cpu.a);
     op_plp(p0);
 }
+
+/*
+ * @routine 04:E048 OverlaySpritesStep
+ * WHAT IT DOES: Moves and draws a 12-sprite overlay (sprites 36 to 47) by
+ * its state $10A2: 0 sets it up at (154, 106), plain, and goes to 1; 2
+ * slides it left 9 a frame until x is below -80, then 1; 3 puts it at x =
+ * -512 with $10A8 = $40 and goes to 4; 4 slides it right 2 a frame to x =
+ * 32, then 7; 5 puts it at x = 256, plain, and goes to 6; 6 slides it left
+ * 3 a frame to x = 154, then 7; 1 and 7 hold it. Then each sprite is
+ * placed from the table at $04:E1B6 (x, y, tile; the second set of 12 at
+ * $E1DA when $10A8 is set): off screen (y = $F0) when its x is negative or
+ * past 239; its y bobbing up 1 and its tile 8 on while bit 2 of the frame
+ * count is clear; attributes $10 with palette 0, 1 or 2 for the pictures
+ * $7F:63D7, $6FD7 and $7BD7 at $10A0 (4 otherwise), ORed with $10A8. The
+ * twelve are large ($AA in their high bits).
+ * HOW: JMP (table,X) on the state; the bob in $F5, the tile step in $F1,
+ * the attributes in $F3. P and the data bank saved and restored. States 5
+ * and 6 run only from unit_cpu.
+ * Entry: D = $0000. Exit: P and the data bank restored; A low byte $AA;
+ * X and Y past the last sprite.
+ */
+void abi_OverlaySpritesStep(void)
+{
+    const uint32_t b = 0x040000;
+    uint8_t p0 = cpu.p, db0 = cpu.db, s, v, bob, step;
+    uint16_t a, pic;
+
+    op_sep(P_M | P_X);
+    cpu.db = 0x04;
+    s = rd8(b | 0x10A2);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | (uint8_t)(s << 1));
+    cpu.x = (uint8_t)(s << 1);
+    switch (rd16(0x040000 | (uint16_t)(0xE056 + cpu.x))) {
+    case 0xE06E:
+        op_rep(P_M);
+        wr16(b | 0x10A4, 0x009A);
+        wr16(b | 0x10A6, 0x006A);
+        wr16(b | 0x10A8, 0x0000);
+        wr16(b | 0x10A2, 0x0001);
+        break;
+    case 0xE088:
+        op_rep(P_M);
+        a = (uint16_t)(rd16(b | 0x10A4) - 9);
+        wr16(b | 0x10A4, a);
+        if (!(a & 0x8000) || a >= 0xFFB0)
+            break;
+        wr16(b | 0x10A2, 0x0001);
+        break;
+    case 0xE0A3:
+        op_rep(P_M);
+        wr16(b | 0x10A4, 0xFE00);
+        wr16(b | 0x10A8, 0x0040);
+        wr16(b | 0x10A2, (uint16_t)(rd16(b | 0x10A2) + 1));
+        break;
+    case 0xE0B6:
+        op_rep(P_M);
+        a = (uint16_t)(rd16(b | 0x10A4) + 2);
+        wr16(b | 0x10A4, a);
+        if ((a & 0x8000) || a < 0x0020)
+            break;
+        wr16(b | 0x10A4, 0x0020);
+        wr16(b | 0x10A2, 0x0007);
+        break;
+    case 0xE0D7:
+        op_rep(P_M);
+        wr16(b | 0x10A4, 0x0100);
+        wr16(b | 0x10A8, 0x0000);
+        wr16(b | 0x10A2, (uint16_t)(rd16(b | 0x10A2) + 1));
+        break;
+    case 0xE0E7:
+        op_rep(P_M);
+        a = (uint16_t)(rd16(b | 0x10A4) - 3);
+        wr16(b | 0x10A4, a);
+        if (a >= 0x009A)
+            break;
+        wr16(b | 0x10A4, 0x009A);
+        wr16(b | 0x10A2, 0x0007);
+        break;
+    }
+    op_sep(P_M);
+    if (rd8(b | 0x0E3B) & 0x04) {
+        bob = 0x00;
+        step = 0x00;
+    } else {
+        bob = 0x01;
+        step = 0x08;
+    }
+    wr8(0x0000F5, bob);
+    wr8(0x0000F1, step);
+    op_rep(P_M | P_X);
+    pic = rd16(b | 0x10A0);
+    a = pic == rd16(0x04E066) ? 0x0000 : pic == rd16(0x04E068) ? 0x0002
+        : pic == rd16(0x04E06A) ? 0x0004 : 0x0008;
+    op_sep(P_M);
+    wr8(0x0000F3, (uint8_t)(a | rd8(b | 0x10A8)));
+    cpu.x = rd8(b | 0x10A8) ? 0x0024 : 0x0000;
+    cpu.y = 0x0090;
+    do {
+        op_rep(P_M);
+        a = (uint16_t)((rd16(0x04E1B6 + (uint32_t)cpu.x) & 0x00FF) + rd16(b | 0x10A4));
+        cpu.a = a;
+        op_sep(P_M);
+        if ((a & 0x8000) || a >= 0x00F0) {
+            wr8(b | (uint16_t)(0x0376 + cpu.y), 0xF0);
+        } else {
+            wr8(b | (uint16_t)(0x0375 + cpu.y), (uint8_t)a);
+            v = (uint8_t)(rd8(0x04E1B7 + (uint32_t)cpu.x) + rd8(b | 0x10A6));
+            v = (uint8_t)(v - rd8(0x0000F5));
+            wr8(b | (uint16_t)(0x0376 + cpu.y), v);
+            v = (uint8_t)(rd8(0x04E1B8 + (uint32_t)cpu.x) + rd8(0x0000F1));
+            wr8(b | (uint16_t)(0x0377 + cpu.y), v);
+            wr8(b | (uint16_t)(0x0378 + cpu.y), (uint8_t)(0x10 | rd8(0x0000F3)));
+        }
+        cpu.x = (uint16_t)(cpu.x + 3);
+        cpu.y = (uint16_t)(cpu.y + 4);
+    } while (cpu.y < 0x00C0);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xAA);
+    wr8(b | 0x057E, 0xAA);
+    wr8(b | 0x057F, 0xAA);
+    wr8(b | 0x0580, 0xAA);
+    cpu.db = db0;
+    op_plp(p0);
+}

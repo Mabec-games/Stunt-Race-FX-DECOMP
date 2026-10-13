@@ -42,6 +42,7 @@
 #   BcdToBinary of $1234, $0999 and $9999.
 # - OamHideForHudMode in HUD modes 1, 2 and 3; OamStagePause2 with pad 2's
 #   Select pressed and one frame of pause ($0D2D = 1).
+# - OverlaySpritesStep in states 5 and 6 (x at $A0, then at $9B).
 load build/stuntracefx/states/novice_coupe_race1.state
 set 7E3437 FE
 call 03:FDF7 p=30 db=7E d=0000
@@ -646,4 +647,18 @@ load build/stuntracefx/states/novice_coupe_race1.state
 set 7E0D1C 00,10
 set 7E0D2D 01
 call 07:BB4C p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E10A2 05,00
+call 04:E048 long p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E10A2 06,00
+set 7E10A4 A0,00
+call 04:E048 long p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E10A2 06,00
+set 7E10A4 9B,00
+call 04:E048 long p=30 db=00 d=0000
 wait 1

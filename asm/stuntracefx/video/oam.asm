@@ -1880,3 +1880,218 @@ OamStagePause2:
     plp                             ; not reached in the traces so far
     rts                             ; not reached in the traces so far
 
+
+; @routine 04:E048 OverlaySpritesStep
+; WHAT IT DOES: Moves and draws a 12-sprite overlay (sprites 36 to 47) by
+; its state $10A2: 0 sets it up at (154, 106), plain, and goes to 1; 2
+; slides it left 9 a frame until x is below -80, then 1; 3 puts it at x =
+; -512 with $10A8 = $40 and goes to 4; 4 slides it right 2 a frame to x =
+; 32, then 7; 5 puts it at x = 256, plain, and goes to 6; 6 slides it left
+; 3 a frame to x = 154, then 7; 1 and 7 hold it. Then each sprite is
+; placed from the table at $04:E1B6 (x, y, tile; the second set of 12 at
+; $E1DA when $10A8 is set): off screen (y = $F0) when its x is negative or
+; past 239; its y bobbing up 1 and its tile 8 on while bit 2 of the frame
+; count is clear; attributes $10 with palette 0, 1 or 2 for the pictures
+; $7F:63D7, $6FD7 and $7BD7 at $10A0 (4 otherwise), ORed with $10A8. The
+; twelve are large ($AA in their high bits).
+; HOW: JMP (table,X) on the state; the bob in $F5, the tile step in $F1,
+; the attributes in $F3. P and the data bank saved and restored. States 5
+; and 6 run only from unit_cpu.
+; Entry: D = $0000. Exit: P and the data bank restored; A low byte $AA;
+; X and Y past the last sprite.
+%at($04E048)
+OverlaySpritesStep:
+    php
+    sep.b #$30
+    phb
+    phk
+    plb
+    lda.w !wram_10A2
+    asl a
+    tax
+    jmp.w (.table,x)
+.table:
+    dw .lE06E, .lE104, .lE088, .lE0A3, .lE0B6, .lE0D7, .lE0E7, .lE104
+.pictures:
+    ; the split screen's pictures in bank $7F (the fourth is not compared)
+    dw $63D7, $6FD7, $7BD7, $87D7
+.lE06E:
+    rep.b #$20
+    lda.w #$009A
+    sta.w !wram_10A4
+    lda.w #$006A
+    sta.w !wram_10A6
+    stz.w !wram_10A8
+    lda.w #$0001
+    sta.w !wram_10A2
+    jmp.w .lE104
+.lE088:
+    rep.b #$20
+    lda.w !wram_10A4
+    sec
+    sbc.w #$0009
+    sta.w !wram_10A4
+    bpl .lE104
+    cmp.w #$FFB0
+    bcs .lE104
+    lda.w #$0001
+    sta.w !wram_10A2
+    bra .lE104
+.lE0A3:
+    rep.b #$20
+    lda.w #$FE00
+    sta.w !wram_10A4
+    lda.w #$0040
+    sta.w !wram_10A8
+    inc.w !wram_10A2
+    bra .lE104
+.lE0B6:
+    rep.b #$20
+    lda.w !wram_10A4
+    clc
+    adc.w #$0002
+    sta.w !wram_10A4
+    bmi .lE104
+    cmp.w #$0020
+    bcc .lE104
+    lda.w #$0020
+    sta.w !wram_10A4
+    lda.w #$0007
+    sta.w !wram_10A2
+    bra .lE104
+.lE0D7:
+    rep.b #$20                      ; not reached in the traces so far
+    lda.w #$0100                    ; not reached in the traces so far
+    sta.w !wram_10A4                ; not reached in the traces so far
+    stz.w !wram_10A8                ; not reached in the traces so far
+    inc.w !wram_10A2                ; not reached in the traces so far
+    bra .lE104                      ; not reached in the traces so far
+.lE0E7:
+    rep.b #$20                      ; not reached in the traces so far
+    lda.w !wram_10A4                ; not reached in the traces so far
+    sec                             ; not reached in the traces so far
+    sbc.w #$0003                    ; not reached in the traces so far
+    sta.w !wram_10A4                ; not reached in the traces so far
+    cmp.w #$009A                    ; not reached in the traces so far
+    bcs .lE104                      ; not reached in the traces so far
+    lda.w #$009A                    ; not reached in the traces so far
+    sta.w !wram_10A4                ; not reached in the traces so far
+    lda.w #$0007                    ; not reached in the traces so far
+    sta.w !wram_10A2                ; not reached in the traces so far
+.lE104:
+    sep.b #$20
+    lda.w !frame_count
+    bit.b #$04
+    beq .lE113
+    lda.b #$00
+    sta.b !save_block_offset
+    bra .lE119
+.lE113:
+    lda.b #$01
+    sta.b !save_block_offset
+    lda.b #$08
+.lE119:
+    sta.b !digit_count
+    rep.b #$30
+    lda.w !fx_pool_first+8
+    cmp.l .pictures
+    beq .lE141
+    cmp.l .pictures+2
+    beq .lE13C
+    cmp.l .pictures+4
+    beq .lE137
+    lda.w #$0008
+    bra .lE144
+.lE137:
+    lda.w #$0004
+    bra .lE144
+.lE13C:
+    lda.w #$0002
+    bra .lE144
+.lE141:
+    lda.w #$0000
+.lE144:
+    sep.b #$20
+    ora.w !wram_10A8
+    sta.b !dp_f3
+    lda.w !wram_10A8
+    beq .lE155
+    ldx.w #$0024
+    bra .lE158
+.lE155:
+    ldx.w #$0000
+.lE158:
+    ldy.w #$0090
+.lE15B:
+    rep.b #$20
+    lda.l .sprites,x
+    and.w #$00FF
+    clc
+    adc.w !wram_10A4
+    bmi .lE16F
+    cmp.w #$00F0
+    bcc .lE178
+.lE16F:
+    sep.b #$20
+    lda.b #$F0
+    sta.w !oam_buffer+1,y
+    bra .lE19C
+.lE178:
+    sep.b #$20
+    sta.w !oam_buffer,y
+    lda.l .sprites+1,x
+    clc
+    adc.w !wram_10A6
+    sec
+    sbc.b !save_block_offset
+    sta.w !oam_buffer+1,y
+    lda.l .sprites+2,x
+    clc
+    adc.b !digit_count
+    sta.w !oam_buffer+2,y
+    lda.b #$10
+    ora.b !dp_f3
+    sta.w !oam_buffer+3,y
+.lE19C:
+    inx
+    inx
+    inx
+    iny
+    iny
+    iny
+    iny
+    cpy.w #$00C0
+    bcc .lE15B
+    lda.b #$AA
+    sta.w !oam_buffer_high+9
+    sta.w !oam_buffer_high+10
+    sta.w !oam_buffer_high+11
+    plb
+    plp
+    rtl
+.sprites:
+    ; x, y, tile: the first set of 12, then the set used with $10A8 set
+    db $00, $00, $60
+    db $10, $00, $62
+    db $20, $00, $64
+    db $30, $00, $66
+    db $00, $10, $80
+    db $10, $10, $82
+    db $20, $10, $84
+    db $30, $10, $86
+    db $00, $20, $A0
+    db $10, $20, $A2
+    db $20, $20, $A4
+    db $30, $20, $A6
+    db $00, $00, $66
+    db $10, $00, $64
+    db $20, $00, $62
+    db $30, $00, $60
+    db $00, $10, $86
+    db $10, $10, $84
+    db $20, $10, $82
+    db $30, $10, $80
+    db $00, $20, $A6
+    db $10, $20, $A4
+    db $20, $20, $A2
+    db $30, $20, $A0
