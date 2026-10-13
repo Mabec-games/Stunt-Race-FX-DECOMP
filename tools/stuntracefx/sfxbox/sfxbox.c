@@ -211,10 +211,13 @@ static void poke(const char *line, int lineno) {
    JSR or JSL to the routine, then BRA to itself. The routine is entered by
    a real JSR/JSL, so --check and --lockstep take it as a call like any
    other. When the stub's loop is reached the registers are restored and
-   the game goes on from where it was. Interrupts run as usual meanwhile. */
+   the game goes on from where it was. Interrupts run as usual meanwhile.
+   It starts only while the Super FX is stopped (GO, bit 5 of $3030, clear)
+   and outside the vertical blank ($4212 bit 7). */
 struct SfxboxRegs { uint16_t a, x, y, s, d; uint8_t db, p, e; uint32_t pc; };
 static void (*sfxbox_core_regs_p)(struct SfxboxRegs *);
 static void (*sfxbox_core_set_regs_p)(const struct SfxboxRegs *);
+static uint8_t (*sfxbox_core_bus_read_p)(uint32_t);
 static int (**cpu_exec_hook)(uint32_t);
 static int (*exec_before)(uint32_t);
 static struct SfxboxRegs call_from, call_regs;
@@ -223,7 +226,11 @@ static int call_state;   /* 1 to start at the next boundary, 2 running, 0 done *
 
 static int call_exec(uint32_t pc)
 {
-    if (call_state == 1) {
+    /* Not while the Super FX runs: it may hold the ROM and its RAM, and the
+       S-CPU reads neither then (the game waits in work RAM). Nor in the
+       vertical blank, where the NMI would land between the JSR and the
+       routine's first instruction (a script line runs at a frame's end). */
+    if (call_state == 1 && !(sfxbox_core_bus_read_p(0x003030) & 0x20) && !(sfxbox_core_bus_read_p(0x004212) & 0x80)) {
         sfxbox_core_regs_p(&call_from);
         struct SfxboxRegs r = call_regs;
         r.s = call_from.s; r.e = 0; r.pc = call_stub;
@@ -261,6 +268,7 @@ static void call(const char *line, int lineno) {
         else if (!strncmp(tok[i], "frames=", 7)) frames_max = strtol(tok[i] + 7, NULL, 10);
         else die("%s:%d: call: bad option %s", script_path, lineno, tok[i]);
     }
+    if (call_regs.p & 0x10) { call_regs.x &= 0x00FF; call_regs.y &= 0x00FF; }  /* 8-bit index */
     size_t n; uint8_t *w = sfxbox_memory_p("wram", &n);
     size_t at = 0; uint32_t sb = 0;
     if (lng) { at = 0x1FE0; sb = 0x00; }
@@ -368,7 +376,7 @@ int main(int argc, char **argv) {
     LOAD(retro_set_audio_sample_batch) LOAD(retro_set_input_poll) LOAD(retro_set_input_state) LOAD(retro_load_game)
     LOAD(retro_run) LOAD(retro_serialize_size) LOAD(retro_serialize) LOAD(retro_unserialize)
     LOAD(sfxbox_trace_begin) LOAD(sfxbox_trace_write) LOAD(sfxbox_memory)
-    LOAD(sfxbox_core_regs) LOAD(sfxbox_core_set_regs)
+    LOAD(sfxbox_core_regs) LOAD(sfxbox_core_set_regs) LOAD(sfxbox_core_bus_read)
     if (!(cpu_exec_hook = dlsym(core, "sfxbox_cpu_exec"))) die("missing symbol sfxbox_cpu_exec");
 
     retro_set_environment_p(env);
