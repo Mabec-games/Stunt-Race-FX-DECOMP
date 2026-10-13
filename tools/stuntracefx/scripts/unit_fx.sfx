@@ -36,6 +36,9 @@
 #   +$7E at 20 while stopped (the reversing turn).
 # - FxPushApply with a negative amount, with $7D00, and with a turn of 16
 #   at $247E (FxTurn).
+# - FxScaledSpriteAdvance with no glyph (kept, so the next start runs the
+#   NOP after its STOP), then a 64 x 64 sprite of glyph $8000 crossing the
+#   right edge ($3A), starting left of 0, and crossing the bottom ($3E).
 load build/stuntracefx/states/battle_04.state
 set 701B04 00,00
 set 701CE4 00,00
@@ -209,4 +212,20 @@ load build/stuntracefx/states/novice_coupe_race1.state
 set 7023A4 01,00,00,01,00,01,00,00,00,01
 set 70247E 10,00
 fx 04:944C stop=888C r3=23A4 r10=0248
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 07:FAF2 stop=EE86 keep
+set 70020A C0,00,00,00,00,04,00,02
+set 700216 00,80
+fx 07:FAF2 stop=EE86
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70020A F0,FF,00,00,00,04,00,02
+set 700216 00,80
+fx 07:FAF2 stop=EE86
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70020A 00,00,70,00,00,04,00,02
+set 700216 00,80
+fx 07:FAF2 stop=EE86
 wait 1
