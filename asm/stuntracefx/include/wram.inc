@@ -1461,3 +1461,4 @@ includeonce
 !save_course_names = $70FC6D
 !record_times = $0F76
 !record_names = $10CF
+!time_total = $F1                      ; BCD hundredths, seconds, minutes being summed (07:B67E)

@@ -104,3 +104,80 @@ void abi_TimeUnpackBcd(void)
     op_and16(0x0007);
     abi_BinaryToBcd();
 }
+
+/* Adds the BCD time at $0F76 + X (hundredths, seconds, minutes) to the
+   time at `to` (three bytes), with the decimal carries the original makes:
+   hundredths into seconds, seconds past 59 (once on the add's carry, once
+   on 60 or more) into minutes. A $FF hundredths byte means no time. The
+   decimal flag is as the caller set it. */
+static void time_add(uint32_t b, uint16_t x, uint32_t to[3])
+{
+    uint8_t v;
+
+    v = rd8(b | (uint16_t)(0x0F76 + x));
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0xFF)) & ~P_C) | (v >= 0xFF ? P_C : 0));
+    if (v == 0xFF)
+        return;
+    cpu.p &= (uint8_t)~P_C;
+    v = op_adc8(v, rd8(to[0]), &cpu.p);
+    wr8(to[0], v);
+    v = rd8(b | (uint16_t)(0x0F77 + x));
+    v = op_adc8(v, rd8(to[1]), &cpu.p);
+    if (cpu.p & P_C) {
+        cpu.p |= P_C;
+        v = op_sbc8(v, 0x60, &cpu.p);
+        wr8(to[1], v);
+        v = rd8(to[2]);
+        cpu.p &= (uint8_t)~P_C;
+        wr8(to[2], op_adc8(v, 0x01, &cpu.p));
+        v = rd8(to[1]);
+    }
+    wr8(to[1], v);
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x60)) & ~P_C) | (v >= 0x60 ? P_C : 0));
+    if (v >= 0x60) {
+        v = op_sbc8(v, 0x60, &cpu.p);
+        wr8(to[1], v);
+        v = rd8(to[2]);
+        cpu.p &= (uint8_t)~P_C;
+        wr8(to[2], op_adc8(v, 0x01, &cpu.p));
+    }
+    cpu.p &= (uint8_t)~P_C;
+    v = rd8(b | (uint16_t)(0x0F78 + x));
+    v = op_adc8(v, rd8(to[2]), &cpu.p);
+    wr8(to[2], v);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+}
+
+/*
+ * @routine 07:B75B TimeAddToTotal
+ * WHAT IT DOES: Adds record time X (BCD hundredths, seconds, minutes at
+ * $0F76 + X) to the total in direct page $F1-$F3, unless it is no time
+ * ($FF).
+ * HOW: Decimal adds (the caller sets D); seconds past 59 carry into the
+ * minutes. Not reached in the traces so far.
+ * Entry: M 8-bit, D = $0000, decimal mode; X = the time's offset. Exit: A
+ * low byte = the new minutes, N, Z, C, V from their add; or, for no time,
+ * $FF with Z and C set.
+ */
+void abi_TimeAddToTotal(void)
+{
+    uint32_t to[3] = {0x0000F1, 0x0000F2, 0x0000F3};
+
+    time_add((uint32_t)cpu.db << 16, cpu.x, to);
+}
+
+/*
+ * @routine 07:B796 TimeAddToNext
+ * WHAT IT DOES: Adds record time X to the time after it ($0F79 + X),
+ * unless it is no time ($FF).
+ * HOW: As TimeAddToTotal. Not reached in the traces so far.
+ * Entry: as TimeAddToTotal. Exit: as TimeAddToTotal.
+ */
+void abi_TimeAddToNext(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t to[3] = {b | (uint16_t)(0x0F79 + cpu.x), b | (uint16_t)(0x0F7A + cpu.x), b | (uint16_t)(0x0F7B + cpu.x)};
+
+    time_add(b, cpu.x, to);
+}

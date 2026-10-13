@@ -95,3 +95,89 @@ BinaryToBcd:
     clc
     adc.b !bcd_digits
     rtl
+
+; @routine 07:B75B TimeAddToTotal
+; WHAT IT DOES: Adds record time X (BCD hundredths, seconds, minutes at
+; $0F76 + X) to the total in direct page $F1-$F3, unless it is no time ($FF).
+; HOW: Decimal adds (the caller sets D); seconds past 59 carry into the
+; minutes. Not reached in the traces so far.
+; Entry: M 8-bit, D = $0000, decimal mode; X = the time's offset.
+; Exit: A = the new minutes; or $FF with Z and C set for no time.
+%at($07B75B)
+TimeAddToTotal:
+    lda.w !record_times,x
+    cmp.b #$FF
+    beq .done
+    clc
+    adc.b !time_total
+    sta.b !time_total
+    lda.w !record_times+1,x
+    adc.b !time_total+1
+    bcc .seconds
+    sec
+    sbc.b #$60
+    sta.b !time_total+1
+    lda.b !time_total+2
+    clc
+    adc.b #$01
+    sta.b !time_total+2
+    lda.b !time_total+1
+.seconds:
+    sta.b !time_total+1
+    cmp.b #$60
+    bcc .minutes
+    sbc.b #$60
+    sta.b !time_total+1
+    lda.b !time_total+2
+    clc
+    adc.b #$01
+    sta.b !time_total+2
+.minutes:
+    clc
+    lda.w !record_times+2,x
+    adc.b !time_total+2
+    sta.b !time_total+2
+.done:
+    rts
+
+; @routine 07:B796 TimeAddToNext
+; WHAT IT DOES: Adds record time X to the time after it ($0F79 + X), unless
+; it is no time ($FF).
+; HOW: As TimeAddToTotal. Not reached in the traces so far.
+; Entry: as TimeAddToTotal. Exit: as TimeAddToTotal.
+%at($07B796)
+TimeAddToNext:
+    lda.w !record_times,x
+    cmp.b #$FF
+    beq .done
+    clc
+    adc.w !record_times+3,x
+    sta.w !record_times+3,x
+    lda.w !record_times+1,x
+    adc.w !record_times+4,x
+    bcc .seconds
+    sec
+    sbc.b #$60
+    sta.w !record_times+4,x
+    lda.w !record_times+5,x
+    clc
+    adc.b #$01
+    sta.w !record_times+5,x
+    lda.w !record_times+4,x
+.seconds:
+    sta.w !record_times+4,x
+    cmp.b #$60
+    bcc .minutes
+    sbc.b #$60
+    sta.w !record_times+4,x
+    lda.w !record_times+5,x
+    clc
+    adc.b #$01
+    sta.w !record_times+5,x
+.minutes:
+    clc
+    lda.w !record_times+2,x
+    adc.w !record_times+5,x
+    sta.w !record_times+5,x
+.done:
+    rts

@@ -63,6 +63,47 @@ static inline uint16_t op_sbc16(uint16_t a, uint16_t m, uint8_t *p)
     return (uint16_t)r;
 }
 
+/* The 65816's 8-bit ADC and SBC, binary or decimal as the D flag in *p
+   says, as the emulator core computes them. */
+static inline uint8_t op_adc8(uint8_t a, uint8_t m, uint8_t *p)
+{
+    int c = *p & P_C, r;
+
+    if (!(*p & P_D)) {
+        r = a + m + c;
+    } else {
+        r = (a & 0x0F) + (m & 0x0F) + c;
+        if (r > 0x09) r += 0x06;
+        c = r > 0x0F;
+        r = (a & 0xF0) + (m & 0xF0) + (c << 4) + (r & 0x0F);
+    }
+    *p = (uint8_t)((*p & ~(P_V | P_C)) | ((~(a ^ m) & (a ^ r) & 0x80) ? P_V : 0));
+    if ((*p & P_D) && r > 0x9F) r += 0x60;
+    if (r > 0xFF) *p |= P_C;
+    *p = nz8(*p, (uint8_t)r);
+    return (uint8_t)r;
+}
+
+static inline uint8_t op_sbc8(uint8_t a, uint8_t m, uint8_t *p)
+{
+    int c = *p & P_C, r;
+
+    m = (uint8_t)~m;
+    if (!(*p & P_D)) {
+        r = a + m + c;
+    } else {
+        r = (a & 0x0F) + (m & 0x0F) + c;
+        if (r <= 0x0F) r -= 0x06;
+        c = r > 0x0F;
+        r = (a & 0xF0) + (m & 0xF0) + (c << 4) + (r & 0x0F);
+    }
+    *p = (uint8_t)((*p & ~(P_V | P_C)) | ((~(a ^ m) & (a ^ r) & 0x80) ? P_V : 0));
+    if ((*p & P_D) && r <= 0xFF) r -= 0x60;
+    if (r > 0xFF) *p |= P_C;
+    *p = nz8(*p, (uint8_t)r);
+    return (uint8_t)r;
+}
+
 /* LDA (16-bit), from memory or immediate. */
 static inline void op_lda16(uint32_t addr)
 {
