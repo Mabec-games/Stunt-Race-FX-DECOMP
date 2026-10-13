@@ -600,3 +600,194 @@ void abi_FxClipXPlane(void)
 {
     fx_clip_plane(1, 1);
 }
+
+/* One plane clip driver's settings. */
+typedef struct {
+    uint16_t slope;       /* the slope's RAM address (LMS R6) */
+    int ax, more, neg;    /* axis (1 x, 2 y), extra doublings, the plane's side */
+    void (*clip)(void);   /* the segment clip */
+    uint16_t ret_out, ret_in;   /* R11 at the two calls */
+} FxPlaneDriver;
+
+/* R0 = z - (or +) the scaled coordinate: SUB or ADD after the scaling. */
+static void fx_plane_test(const FxPlaneDriver *d, int c, int z)
+{
+    gsu.r[0] = fx_scaled(gsu.r[c], d->more);
+    gsu.r[0] = d->neg ? gsu_add(gsu.r[z], gsu.r[0], 0) : gsu_sub(gsu.r[z], gsu.r[0], 0);
+}
+
+/* A vertex (three registers and the two attribute words) appended at R9,
+   the output count $40 counted up. */
+static void fx_emit(int r1, int r2, int r3, uint16_t at1, uint16_t at2)
+{
+    const int r[3] = {r1, r2, r3};
+    int i;
+
+    for (i = 0; i < 3; i++) {
+        gsu_stw(gsu.r[9], gsu.r[r[i]]);
+        gsu.r[9] = gsu_inc(gsu_inc(gsu.r[9]));
+    }
+    gsu.r[0] = gsu_ldw(at1);
+    gsu_stw(gsu.r[9], gsu.r[0]);
+    gsu.r[9] = gsu_inc(gsu_inc(gsu.r[9]));
+    gsu.r[0] = gsu_ldw(at2);
+    gsu_stw(gsu.r[9], gsu.r[0]);
+    gsu.r[9] = gsu_inc(gsu_inc(gsu.r[9]));
+    gsu.r[0] = gsu_inc(gsu_ldw(0x0040));
+    gsu_sbk(gsu.r[0]);
+}
+
+static void fx_negate(int r)
+{
+    gsu.r[r] = gsu_inc(gsu_not(gsu.r[r]));
+}
+
+/* The clip call, the axis coordinates negated around it for the negative
+   side (only the replaced end's afterwards). */
+static void fx_plane_clip(const FxPlaneDriver *d, uint16_t ret, int fixed)
+{
+    if (d->neg) {
+        fx_negate(d->ax);
+        fx_negate(d->ax + 3);
+    }
+    gsu.r[11] = ret;
+    d->clip();
+    if (d->neg)
+        fx_negate(fixed);
+}
+
+/* Clips the polygon at $60 (count $40, five words a vertex) against the
+   plane into the list at $62: Sutherland-Hodgman, each edge from vertex
+   to next (the last to the first). R0 = the new count, or 0 when fewer
+   than 3 are left or there were only 2. */
+static void fx_plane_driver(const FxPlaneDriver *d)
+{
+    int in1, i;
+    static const int reg1[3] = {1, 2, 3}, reg2[3] = {4, 5, 7};
+
+    gsu_push(&gsu.r[10], gsu.r[11]);
+    gsu_push(&gsu.r[10], gsu.r[14]);
+    gsu.r[6] = gsu_ldw(d->slope);
+    gsu.r[14] = gsu_ldw(0x0040);
+    gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[0], 0);
+    gsu_stw(0x0040, gsu.r[0]);
+    gsu.r[8] = gsu_ldw(0x0060);
+    gsu.r[9] = gsu_ldw(0x0062);
+    gsu.r[0] = gsu_sub(gsu.r[14], 0x0002, 0);
+    if (gsu.z)
+        goto fail;
+    do {
+        for (i = 0; i < 3; i++) {
+            gsu.r[reg1[i]] = gsu_ldw(gsu.r[8]);
+            gsu.r[8] = gsu_inc(gsu_inc(gsu.r[8]));
+        }
+        gsu.r[0] = gsu_ldw(gsu.r[8]);
+        gsu.r[8] = gsu_inc(gsu_inc(gsu.r[8]));
+        gsu_stw(0x008A, gsu.r[0]);
+        gsu.r[0] = gsu_ldw(gsu.r[8]);
+        gsu.r[8] = gsu_inc(gsu_inc(gsu.r[8]));
+        gsu_stw(0x008E, gsu.r[0]);
+        gsu.r[0] = gsu_dec(gsu.r[14]);
+        if (gsu.z)
+            gsu.r[8] = gsu_ldw(0x0060);
+        for (i = 0; i < 3; i++) {
+            gsu.r[reg2[i]] = gsu_ldw(gsu.r[8]);
+            gsu.r[8] = gsu_inc(gsu_inc(gsu.r[8]));
+        }
+        gsu.r[0] = gsu_ldw(gsu.r[8]);
+        gsu.r[8] = gsu_inc(gsu_inc(gsu.r[8]));
+        gsu_stw(0x008C, gsu.r[0]);
+        gsu.r[0] = gsu_ldw(gsu.r[8]);
+        gsu_stw(0x0090, gsu.r[0]);
+        gsu.r[8] = gsu_sub(gsu.r[8], 0x0008, 0);
+        fx_plane_test(d, d->ax, 3);
+        in1 = !gsu.s;
+        if (in1) {
+            fx_emit(1, 2, 3, 0x008A, 0x008E);
+            fx_plane_test(d, d->ax + 3, 7);
+            if (gsu.s) {
+                fx_plane_clip(d, d->ret_out, d->ax + 3);
+                fx_emit(4, 5, 7, 0x008C, 0x0090);
+            }
+        } else {
+            fx_plane_test(d, d->ax + 3, 7);
+            if (!gsu.s) {
+                fx_plane_clip(d, d->ret_in, d->ax);
+                fx_emit(1, 2, 3, 0x008A, 0x008E);
+            }
+        }
+        gsu.r[14] = gsu_dec(gsu.r[14]);
+    } while (!gsu.z);
+    gsu.r[0] = gsu_ldw(0x0040);
+    gsu.r[1] = gsu_sub(gsu.r[0], 0x0003, 0);
+    if (!gsu.s) {
+        gsu.r[14] = gsu_pull(&gsu.r[10]);
+        gsu_pull(&gsu.r[10]);
+        return;
+    }
+fail:
+    gsu.r[14] = gsu_pull(&gsu.r[10]);
+    gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[0], 0);
+    gsu_pull(&gsu.r[10]);
+}
+
+/*
+ * @routine 01:C668 FxPolygonClipTop
+ * WHAT IT DOES: Clips the polygon at $60 ($40 vertices of five words:
+ * x, y, z and two attributes) against the plane z = y * slope ($94) * 8
+ * into the list at $62 (FxClipYPlane for each crossing edge): R0 = the
+ * new vertex count ($40), or 0 when fewer than 3 are left or there were 2.
+ * HOW: Each edge from a vertex to the next (the last to the first); a
+ * vertex inside is kept, a crossing adds the clipped point. R14 and the
+ * return address on the R10 stack.
+ * Entry: R10 = stack; R11 = return address. Exit: R0 as above; R9 past
+ * the output; R14 restored; S, Z from R10; the last RAM address R10.
+ */
+void abi_FxPolygonClipTop(void)
+{
+    static const FxPlaneDriver d = {0x0094, 2, 2, 0, abi_FxClipYPlane, 0xC70F, 0xC735};
+
+    fx_plane_driver(&d);
+}
+
+/*
+ * @routine 01:C933 FxPolygonClipRight
+ * WHAT IT DOES: As FxPolygonClipTop against z = x * slope ($92) * 4
+ * (FxClipXPlane).
+ * HOW: As FxPolygonClipTop.
+ * Entry: as FxPolygonClipTop. Exit: as FxPolygonClipTop.
+ */
+void abi_FxPolygonClipRight(void)
+{
+    static const FxPlaneDriver d = {0x0092, 1, 1, 0, abi_FxClipXPlane, 0xC9D7, 0xC9FD};
+
+    fx_plane_driver(&d);
+}
+
+/*
+ * @routine 01:CA42 FxPolygonClipLeft
+ * WHAT IT DOES: As FxPolygonClipRight against z = -x * slope * 4: x is
+ * negated around each FxClipXPlane (the clipped point's back afterwards).
+ * HOW: As FxPolygonClipTop, testing z + the scaled x.
+ * Entry: as FxPolygonClipTop. Exit: as FxPolygonClipTop.
+ */
+void abi_FxPolygonClipLeft(void)
+{
+    static const FxPlaneDriver d = {0x0092, 1, 1, 1, abi_FxClipXPlane, 0xCAEC, 0xCB1B};
+
+    fx_plane_driver(&d);
+}
+
+/*
+ * @routine 01:CB63 FxPolygonClipBottom
+ * WHAT IT DOES: As FxPolygonClipTop against z = -y * slope * 8: y is
+ * negated around each FxClipYPlane (the clipped point's back afterwards).
+ * HOW: As FxPolygonClipTop, testing z + the scaled y.
+ * Entry: as FxPolygonClipTop. Exit: as FxPolygonClipTop.
+ */
+void abi_FxPolygonClipBottom(void)
+{
+    static const FxPlaneDriver d = {0x0094, 2, 2, 1, abi_FxClipYPlane, 0xCC10, 0xCC3F};
+
+    fx_plane_driver(&d);
+}

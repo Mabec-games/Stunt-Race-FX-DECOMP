@@ -1389,4 +1389,935 @@ FxClipXPlane:
     ldw (r10)
     nop
 
+; @routine 01:C668 FxPolygonClipTop
+; WHAT IT DOES: Clips the polygon at $60 ($40 vertices of five words:
+; x, y, z and two attributes) against the plane z = y * slope ($94) * 8
+; into the list at $62 (FxClipYPlane for each crossing edge): R0 = the
+; new vertex count ($40), or 0 when fewer than 3 are left or there were 2.
+; HOW: Each edge from a vertex to the next (the last to the first); a
+; vertex inside is kept, a crossing adds the clipped point. R14 and the
+; return address on the R10 stack.
+; Entry: R10 = stack; R11 = return address. Exit: R0 as above; R9 past
+; the output; R14 restored; S, Z from R10; the last RAM address R10.
+%at($01C668)
+FxPolygonClipTop:
+    from r11
+    stw (r10)
+    inc r10
+    inc r10
+    from r14
+    stw (r10)
+    inc r10
+    inc r10
+    lms r6,($94)
+    lms r14,($40)
+    sub r0
+    sms ($40),r0
+    lms r8,($60)
+    lms r9,($62)
+    from r14
+    sub #2
+    bne .lC68A
+    nop
+    iwt r15,#.lC770
+    nop
+.lC68A:
+    nop
+.lC68B:
+    to r1
+    ldw (r8)
+    inc r8
+    inc r8
+    to r2
+    ldw (r8)
+    inc r8
+    inc r8
+    to r3
+    ldw (r8)
+    inc r8
+    inc r8
+    ldw (r8)
+    inc r8
+    inc r8
+    sms ($8A),r0
+    ldw (r8)
+    inc r8
+    inc r8
+    sms ($8E),r0
+    with r14
+    to r0
+    dec r0
+    bne .lC6AC
+    nop
+    lms r8,($60)
+.lC6AC:
+    to r4
+    ldw (r8)
+    inc r8
+    inc r8
+    to r5
+    ldw (r8)
+    inc r8
+    inc r8
+    to r7
+    ldw (r8)
+    inc r8
+    inc r8
+    ldw (r8)
+    inc r8
+    inc r8
+    sms ($8C),r0
+    ldw (r8)
+    sms ($90),r0
+    with r8
+    sub #8
+    from r2
+    fmult
+    adc r0
+    add r0
+    add r0
+    from r3
+    sub r0
+    bpl .lC6E2
+    nop
+    from r5
+    fmult
+    adc r0
+    add r0
+    add r0
+    from r7
+    sub r0
+    bpl .lC6DF
+    nop
+    iwt r15,#.lC752
+    nop
+.lC6DF:
+    bra .lC730
+    nop
+.lC6E2:
+    from r1
+    stw (r9)
+    inc r9
+    inc r9
+    from r2
+    stw (r9)
+    inc r9
+    inc r9
+    from r3
+    stw (r9)
+    inc r9
+    inc r9
+    lms r0,($8A)
+    stw (r9)
+    inc r9
+    inc r9
+    lms r0,($8E)
+    stw (r9)
+    inc r9
+    inc r9
+    lms r0,($40)
+    inc r0
+    sbk
+    from r5
+    fmult
+    adc r0
+    add r0
+    add r0
+    from r7
+    sub r0
+    bpl .lC752
+    nop
+    link #4
+    iwt r15,#FxClipYPlane
+    nop
+    from r4
+    stw (r9)
+    inc r9
+    inc r9
+    from r5
+    stw (r9)
+    inc r9
+    inc r9
+    from r7
+    stw (r9)
+    inc r9
+    inc r9
+    lms r0,($8C)
+    stw (r9)
+    inc r9
+    inc r9
+    lms r0,($90)
+    stw (r9)
+    inc r9
+    inc r9
+    lms r0,($40)
+    inc r0
+    sbk
+    iwt r15,#.lC752
+    nop
+.lC730:
+    link #4
+    iwt r15,#FxClipYPlane
+    nop
+    from r1
+    stw (r9)
+    inc r9
+    inc r9
+    from r2
+    stw (r9)
+    inc r9
+    inc r9
+    from r3
+    stw (r9)
+    inc r9
+    inc r9
+    lms r0,($8A)
+    stw (r9)
+    inc r9
+    inc r9
+    lms r0,($8E)
+    stw (r9)
+    inc r9
+    inc r9
+    lms r0,($40)
+    inc r0
+    sbk
+.lC752:
+    dec r14
+    beq .lC75A
+    nop
+    iwt r15,#.lC68B
+    nop
+.lC75A:
+    lms r0,($40)
+    to r1
+    sub #3
+    bpl .lC767
+    nop
+    iwt r15,#.lC770
+    nop
+.lC767:
+    dec r10
+    dec r10
+    to r14
+    ldw (r10)
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+.lC770:
+    dec r10
+    dec r10
+    to r14
+    ldw (r10)
+    sub r0
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+
+; @routine 01:C933 FxPolygonClipRight
+; WHAT IT DOES: As FxPolygonClipTop against z = x * slope ($92) * 4
+; (FxClipXPlane).
+; HOW: As FxPolygonClipTop.
+; Entry: as FxPolygonClipTop. Exit: as FxPolygonClipTop.
+%at($01C933)
+FxPolygonClipRight:
+    from r11
+    stw (r10)
+    inc r10
+    inc r10
+    from r14
+    stw (r10)
+    inc r10
+    inc r10
+    lms r6,($92)
+    lms r14,($40)
+    sub r0
+    sms ($40),r0
+    lms r8,($60)
+    lms r9,($62)
+    from r14
+    sub #2
+    bne .lC955
+    nop
+    iwt r15,#.lCA38
+    nop
+.lC955:
+    nop
+.lC956:
+    to r1
+    ldw (r8)
+    inc r8
+    inc r8
+    to r2
+    ldw (r8)
+    inc r8
+    inc r8
+    to r3
+    ldw (r8)
+    inc r8
+    inc r8
+    ldw (r8)
+    inc r8
+    inc r8
+    sms ($8A),r0
+    ldw (r8)
+    inc r8
+    inc r8
+    sms ($8E),r0
+    with r14
+    to r0
+    dec r0
+    bne .lC977
+    nop
+    lms r8,($60)
+.lC977:
+    to r4
+    ldw (r8)
+    inc r8
+    inc r8
+    to r5
+    ldw (r8)
+    inc r8
+    inc r8
+    to r7
+    ldw (r8)
+    inc r8
+    inc r8
+    ldw (r8)
+    inc r8
+    inc r8
+    sms ($8C),r0
+    ldw (r8)
+    sms ($90),r0
+    with r8
+    sub #8
+    from r1
+    fmult
+    adc r0
+    add r0
+    from r3
+    sub r0
+    bpl .lC9AB
+    nop
+    from r4
+    fmult
+    adc r0
+    add r0
+    from r7
+    sub r0
+    bpl .lC9A8
+    nop
+    iwt r15,#.lCA1A
+    nop
+.lC9A8:
+    bra .lC9F8
+    nop
+.lC9AB:
+    from r1
+    stw (r9)
+    inc r9
+    inc r9
+    from r2
+    stw (r9)
+    inc r9
+    inc r9
+    from r3
+    stw (r9)
+    inc r9
+    inc r9
+    lms r0,($8A)
+    stw (r9)
+    inc r9
+    inc r9
+    lms r0,($8E)
+    stw (r9)
+    inc r9
+    inc r9
+    lms r0,($40)
+    inc r0
+    sbk
+    from r4
+    fmult
+    adc r0
+    add r0
+    from r7
+    sub r0
+    bpl .lCA1A
+    nop
+    link #4
+    iwt r15,#FxClipXPlane
+    nop
+    from r4
+    stw (r9)
+    inc r9
+    inc r9
+    from r5
+    stw (r9)
+    inc r9
+    inc r9
+    from r7
+    stw (r9)
+    inc r9
+    inc r9
+    lms r0,($8C)
+    stw (r9)
+    inc r9
+    inc r9
+    lms r0,($90)
+    stw (r9)
+    inc r9
+    inc r9
+    lms r0,($40)
+    inc r0
+    sbk
+    iwt r15,#.lCA1A
+    nop
+.lC9F8:
+    link #4
+    iwt r15,#FxClipXPlane
+    nop
+    from r1
+    stw (r9)
+    inc r9
+    inc r9
+    from r2
+    stw (r9)
+    inc r9
+    inc r9
+    from r3
+    stw (r9)
+    inc r9
+    inc r9
+    lms r0,($8A)
+    stw (r9)
+    inc r9
+    inc r9
+    lms r0,($8E)
+    stw (r9)
+    inc r9
+    inc r9
+    lms r0,($40)
+    inc r0
+    sbk
+.lCA1A:
+    dec r14
+    beq .lCA22
+    nop
+    iwt r15,#.lC956
+    nop
+.lCA22:
+    lms r0,($40)
+    to r1
+    sub #3
+    bpl .lCA2F
+    nop
+    iwt r15,#.lCA38
+    nop
+.lCA2F:
+    dec r10
+    dec r10
+    to r14
+    ldw (r10)
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+.lCA38:
+    dec r10
+    dec r10
+    to r14
+    ldw (r10)
+    sub r0
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+
+; @routine 01:CA42 FxPolygonClipLeft
+; WHAT IT DOES: As FxPolygonClipRight against z = -x * slope * 4: x is
+; negated around each FxClipXPlane (the clipped point's back afterwards).
+; HOW: As FxPolygonClipTop, testing z + the scaled x.
+; Entry: as FxPolygonClipTop. Exit: as FxPolygonClipTop.
+%at($01CA42)
+FxPolygonClipLeft:
+    from r11
+    stw (r10)
+    inc r10
+    inc r10
+    from r14
+    stw (r10)
+    inc r10
+    inc r10
+    lms r6,($92)
+    lms r14,($40)
+    sub r0
+    sms ($40),r0
+    lms r8,($60)
+    lms r9,($62)
+    from r14
+    sub #2
+    bne .lCA64
+    nop
+    iwt r15,#.lCB59
+    nop
+.lCA64:
+    nop
+.lCA65:
+    to r1
+    ldw (r8)
+    inc r8
+    inc r8
+    to r2
+    ldw (r8)
+    inc r8
+    inc r8
+    to r3
+    ldw (r8)
+    inc r8
+    inc r8
+    ldw (r8)
+    inc r8
+    inc r8
+    sms ($8A),r0
+    ldw (r8)
+    inc r8
+    inc r8
+    sms ($8E),r0
+    with r14
+    to r0
+    dec r0
+    bne .lCA86
+    nop
+    lms r8,($60)
+.lCA86:
+    to r4
+    ldw (r8)
+    inc r8
+    inc r8
+    to r5
+    ldw (r8)
+    inc r8
+    inc r8
+    to r7
+    ldw (r8)
+    inc r8
+    inc r8
+    ldw (r8)
+    inc r8
+    inc r8
+    sms ($8C),r0
+    ldw (r8)
+    sms ($90),r0
+    with r8
+    sub #8
+    from r1
+    fmult
+    adc r0
+    add r0
+    from r3
+    add r0
+    bpl .lCABA
+    nop
+    from r4
+    fmult
+    adc r0
+    add r0
+    from r7
+    add r0
+    bpl .lCAB7
+    nop
+    iwt r15,#.lCB3B
+    nop
+.lCAB7:
+    bra .lCB10
+    nop
+.lCABA:
+    from r1
+    stw (r9)
+    inc r9
+    inc r9
+    from r2
+    stw (r9)
+    inc r9
+    inc r9
+    from r3
+    stw (r9)
+    inc r9
+    inc r9
+    lms r0,($8A)
+    stw (r9)
+    inc r9
+    inc r9
+    lms r0,($8E)
+    stw (r9)
+    inc r9
+    inc r9
+    lms r0,($40)
+    inc r0
+    sbk
+    from r4
+    fmult
+    adc r0
+    add r0
+    from r7
+    add r0
+    bpl .lCB3B
+    nop
+    with r1
+    not
+    inc r1
+    with r4
+    not
+    inc r4
+    link #4
+    iwt r15,#FxClipXPlane
+    nop
+    with r4
+    not
+    inc r4
+    from r4
+    stw (r9)
+    inc r9
+    inc r9
+    from r5
+    stw (r9)
+    inc r9
+    inc r9
+    from r7
+    stw (r9)
+    inc r9
+    inc r9
+    lms r0,($8C)
+    stw (r9)
+    inc r9
+    inc r9
+    lms r0,($90)
+    stw (r9)
+    inc r9
+    inc r9
+    lms r0,($40)
+    inc r0
+    sbk
+    iwt r15,#.lCB3B
+    nop
+.lCB10:
+    with r1
+    not
+    inc r1
+    with r4
+    not
+    inc r4
+    link #4
+    iwt r15,#FxClipXPlane
+    nop
+    with r1
+    not
+    inc r1
+    from r1
+    stw (r9)
+    inc r9
+    inc r9
+    from r2
+    stw (r9)
+    inc r9
+    inc r9
+    from r3
+    stw (r9)
+    inc r9
+    inc r9
+    lms r0,($8A)
+    stw (r9)
+    inc r9
+    inc r9
+    lms r0,($8E)
+    stw (r9)
+    inc r9
+    inc r9
+    lms r0,($40)
+    inc r0
+    sbk
+.lCB3B:
+    dec r14
+    beq .lCB43
+    nop
+    iwt r15,#.lCA65
+    nop
+.lCB43:
+    lms r0,($40)
+    to r1
+    sub #3
+    bpl .lCB50
+    nop
+    iwt r15,#.lCB59
+    nop
+.lCB50:
+    dec r10
+    dec r10
+    to r14
+    ldw (r10)
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+.lCB59:
+    dec r10
+    dec r10
+    to r14
+    ldw (r10)
+    sub r0
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+
+; @routine 01:CB63 FxPolygonClipBottom
+; WHAT IT DOES: As FxPolygonClipTop against z = -y * slope * 8: y is
+; negated around each FxClipYPlane (the clipped point's back afterwards).
+; HOW: As FxPolygonClipTop, testing z + the scaled y.
+; Entry: as FxPolygonClipTop. Exit: as FxPolygonClipTop.
+%at($01CB63)
+FxPolygonClipBottom:
+    from r11
+    stw (r10)
+    inc r10
+    inc r10
+    from r14
+    stw (r10)
+    inc r10
+    inc r10
+    lms r6,($94)
+    lms r14,($40)
+    sub r0
+    sms ($40),r0
+    lms r8,($60)
+    lms r9,($62)
+    from r14
+    sub #2
+    bne .lCB85
+    nop
+    iwt r15,#.lCC7D
+    nop
+.lCB85:
+    nop
+.lCB86:
+    to r1
+    ldw (r8)
+    inc r8
+    inc r8
+    to r2
+    ldw (r8)
+    inc r8
+    inc r8
+    to r3
+    ldw (r8)
+    inc r8
+    inc r8
+    ldw (r8)
+    inc r8
+    inc r8
+    sms ($8A),r0
+    ldw (r8)
+    inc r8
+    inc r8
+    sms ($8E),r0
+    with r14
+    to r0
+    dec r0
+    bne .lCBA7
+    nop
+    lms r8,($60)
+.lCBA7:
+    to r4
+    ldw (r8)
+    inc r8
+    inc r8
+    to r5
+    ldw (r8)
+    inc r8
+    inc r8
+    to r7
+    ldw (r8)
+    inc r8
+    inc r8
+    ldw (r8)
+    inc r8
+    inc r8
+    sms ($8C),r0
+    ldw (r8)
+    sms ($90),r0
+    with r8
+    sub #8
+    from r2
+    fmult
+    adc r0
+    add r0
+    add r0
+    from r3
+    add r0
+    bpl .lCBDD
+    nop
+    from r5
+    fmult
+    adc r0
+    add r0
+    add r0
+    from r7
+    add r0
+    bpl .lCBDA
+    nop
+    iwt r15,#.lCC5F
+    nop
+.lCBDA:
+    bra .lCC34
+    nop
+.lCBDD:
+    from r1
+    stw (r9)
+    inc r9
+    inc r9
+    from r2
+    stw (r9)
+    inc r9
+    inc r9
+    from r3
+    stw (r9)
+    inc r9
+    inc r9
+    lms r0,($8A)
+    stw (r9)
+    inc r9
+    inc r9
+    lms r0,($8E)
+    stw (r9)
+    inc r9
+    inc r9
+    lms r0,($40)
+    inc r0
+    sbk
+    from r5
+    fmult
+    adc r0
+    add r0
+    add r0
+    from r7
+    add r0
+    bpl .lCC5F
+    nop
+    with r2
+    not
+    inc r2
+    with r5
+    not
+    inc r5
+    link #4
+    iwt r15,#FxClipYPlane
+    nop
+    with r5
+    not
+    inc r5
+    from r4
+    stw (r9)
+    inc r9
+    inc r9
+    from r5
+    stw (r9)
+    inc r9
+    inc r9
+    from r7
+    stw (r9)
+    inc r9
+    inc r9
+    lms r0,($8C)
+    stw (r9)
+    inc r9
+    inc r9
+    lms r0,($90)
+    stw (r9)
+    inc r9
+    inc r9
+    lms r0,($40)
+    inc r0
+    sbk
+    iwt r15,#.lCC5F
+    nop
+.lCC34:
+    with r2
+    not
+    inc r2
+    with r5
+    not
+    inc r5
+    link #4
+    iwt r15,#FxClipYPlane
+    nop
+    with r2
+    not
+    inc r2
+    from r1
+    stw (r9)
+    inc r9
+    inc r9
+    from r2
+    stw (r9)
+    inc r9
+    inc r9
+    from r3
+    stw (r9)
+    inc r9
+    inc r9
+    lms r0,($8A)
+    stw (r9)
+    inc r9
+    inc r9
+    lms r0,($8E)
+    stw (r9)
+    inc r9
+    inc r9
+    lms r0,($40)
+    inc r0
+    sbk
+.lCC5F:
+    dec r14
+    beq .lCC67
+    nop
+    iwt r15,#.lCB86
+    nop
+.lCC67:
+    lms r0,($40)
+    to r1
+    sub #3
+    bpl .lCC74
+    nop
+    iwt r15,#.lCC7D
+    nop
+.lCC74:
+    dec r10
+    dec r10
+    to r14
+    ldw (r10)
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+.lCC7D:
+    dec r10
+    dec r10
+    to r14
+    ldw (r10)
+    sub r0
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+
 arch 65816
