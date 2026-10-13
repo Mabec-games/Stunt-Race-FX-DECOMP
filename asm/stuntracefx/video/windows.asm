@@ -103,3 +103,64 @@ WindowsSetupSelect:
     plb
     plp
     rtl
+
+; @routine 7E:DF61 BobStep
+; WHAT IT DOES: Steps bob X (0 or 1) at half rate: on every second call
+; ($1A1E + X toggling) its count $1A22 + X goes up; at 10 the count restarts
+; and bit 7 of $0DA4 (bob 0) or $0DA6 (bob 1) is cleared; otherwise its
+; position $1A1C + X moves by its velocity $1A20 + X, which turns round at $1C
+; and $16.
+; HOW: 8-bit; long accesses to bank 0 except the velocity add and the flag
+; bytes (data bank). Bob 1's flag is not reached in the traces so far.
+; Entry: X = bob. Exit: M 8-bit, X 8-bit (high bytes cleared); A low byte and
+; flags from the last step taken.
+%ramcode($7EDF61, $013C88)
+BobStep:
+    sep.b #$30
+    lda.l !wram_1A1E,x
+    clc
+    adc.b #$01
+    cmp.b #$02
+    beq .count
+    sta.l !wram_1A1E,x
+    jmp.w .done
+.count:
+    lda.l !wram_1A22,x
+    clc
+    adc.b #$01
+    sta.l !wram_1A22,x
+    cmp.b #$0A
+    bne .move
+    lda.b #$00
+    sta.l !wram_1A22,x
+    cpx.b #$01
+    beq .bob1
+    lda.w !wram_0DA4
+    and.b #$7F
+    sta.w !wram_0DA4
+    bra .flagged
+.bob1:
+    lda.w !wram_0DA6
+    and.b #$7F
+    sta.w !wram_0DA6
+.flagged:
+    rts
+.move:
+    lda.b #$00
+    sta.l !wram_1A1E,x
+    lda.l !wram_1A1C,x
+    clc
+    adc.w !wram_1A20,x
+    sta.l !wram_1A1C,x
+    cmp.b #$1C
+    beq .turn
+    cmp.b #$16
+    beq .turn
+    jmp.w .done
+.turn:
+    lda.l !wram_1A20,x
+    eor.b #$FF
+    inc a
+    sta.l !wram_1A20,x
+.done:
+    rts

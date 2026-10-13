@@ -3,6 +3,7 @@
  * between.
  */
 #include "machine.h"
+#include "cpu_ops.h"
 #include "hw.h"
 
 /*
@@ -137,4 +138,64 @@ void abi_WindowsSetupSelect(void)
 
     cpu.x = rd8(0x7E19A9);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
+}
+
+/*
+ * @routine 7E:DF61 BobStep
+ * WHAT IT DOES: Steps bob X (0 or 1) at half rate: on every second call
+ * ($1A1E + X toggling) its count $1A22 + X goes up; at 10 the count
+ * restarts and bit 7 of $0DA4 (bob 0) or $0DA6 (bob 1) is cleared;
+ * otherwise its position $1A1C + X moves by its velocity $1A20 + X, which
+ * turns round at $1C and $16.
+ * HOW: 8-bit; long accesses to bank 0 except the velocity add and the
+ * flag bytes (data bank). Bob 1's flag is not reached in the traces so
+ * far.
+ * Entry: X = bob. Exit: M 8-bit, X 8-bit (high bytes cleared); A low byte
+ * and flags from the last step taken.
+ */
+void abi_BobStep(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v, c;
+
+    op_sep(P_M | P_X);
+    cpu.p &= (uint8_t)~P_C;
+    v = op_adc8(rd8(0x001A1E + cpu.x), 0x01, &cpu.p);
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x02)) & ~P_C) | (v >= 0x02 ? P_C : 0));
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    if (v != 0x02) {
+        wr8(0x001A1E + cpu.x, v);
+        return;
+    }
+    cpu.p &= (uint8_t)~P_C;
+    c = op_adc8(rd8(0x001A22 + cpu.x), 0x01, &cpu.p);
+    wr8(0x001A22 + cpu.x, c);
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(c - 0x0A)) & ~P_C) | (c >= 0x0A ? P_C : 0));
+    if (c == 0x0A) {
+        uint16_t at = cpu.x == 0x01 ? 0x0DA6 : 0x0DA4;
+
+        wr8(0x001A22 + cpu.x, 0x00);
+        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(cpu.x - 0x01)) & ~P_C) | (cpu.x >= 0x01 ? P_C : 0));
+        v = (uint8_t)(rd8(b | at) & 0x7F);
+        wr8(b | at, v);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+        cpu.p = nz8(cpu.p, v);
+        return;
+    }
+    wr8(0x001A1E + cpu.x, 0x00);
+    v = rd8(0x001A1C + cpu.x);
+    cpu.p &= (uint8_t)~P_C;
+    v = op_adc8(v, rd8(b | (uint16_t)(0x1A20 + cpu.x)), &cpu.p);
+    wr8(0x001A1C + cpu.x, v);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x1C)) & ~P_C) | (v >= 0x1C ? P_C : 0));
+    if (v != 0x1C) {
+        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x16)) & ~P_C) | (v >= 0x16 ? P_C : 0));
+        if (v != 0x16)
+            return;
+    }
+    v = (uint8_t)((rd8(0x001A20 + cpu.x) ^ 0xFF) + 1);
+    wr8(0x001A20 + cpu.x, v);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
 }
