@@ -5,6 +5,7 @@
  * setting; $FFD1 and $FFDD are other ones.
  */
 #include "machine.h"
+#include "hw.h"
 
 #define WINDOW_HDMA 0x7FF85Bu
 
@@ -703,4 +704,172 @@ void abi_WindowLayoutStep(void)
         abi_WindowHdmaFromTable();
     else
         abi_WindowHdmaLayout();
+}
+
+void abi_Records7FFromF170(void);
+void abi_Records7FFromF634(void);
+
+/* Bytes `n` from ROM $09:src to `dst` (bank $7F), long stores. */
+static void copy_rom09(uint16_t src, uint32_t dst, unsigned n)
+{
+    unsigned i;
+
+    for (i = 0; i < n; i++)
+        wr8(dst + i, rd8(0x090000 | (uint16_t)(src + i)));
+}
+
+/*
+ * @routine 09:ECE0 WindowsInit
+ * WHAT IT DOES: Sets up the race's windows: the four-byte HDMA band entries
+ * at $7F:F857 and $7F:FFD1-$FFE0 and the 16-byte window table header at
+ * $7F:F85B from the lists in bank $09; the course records into bank $7F
+ * (Records7FFromF170, or Records7FFromF634 on the menu's course screen);
+ * the window edges for every list (WindowEdgesFromList until $19B6 reaches
+ * $0E); the word list at $09:FB74 (to its $FFFF) to $7F:FF8B; on the
+ * course screen, every edge byte at $7F:F883 moved by -$28 and a copy +$50
+ * at $7F:FB03; then the window, slide and layout state ($19A9-$1A29) to
+ * its start values, the slide value $19F6 and $19E6 from the tables at
+ * $09:F127 and $09:F115 for HUD modes 0 and 3 (and 0), the layout record
+ * for $0D89 from $09:F14D, and HDMA channels 4 (to $2126, indirect, from
+ * $7F:F85B) and 5 (to $2132 from $7F:FF8B).
+ * HOW: Data bank $09 (the program bank) and P saved and restored; the
+ * state stores are in the original's order, byte and word as it makes
+ * them. The ROM bytes $09:xxxx indexed by the tables are read through the
+ * data bank.
+ * Entry: any widths, D = $0000. Exit: A = $007F; X = 0; Y as the last
+ * callee left it; P and the data bank unchanged.
+ */
+void WindowsInit(void)
+{
+    const uint32_t b = 0x090000;
+    uint16_t x, w, m;
+    unsigned i;
+    uint8_t v;
+
+    copy_rom09(0xF999, 0x7FF857, 4);
+    copy_rom09(0xF99D, 0x7FFFD1, 4);
+    copy_rom09(0xF9A1, 0x7FFFD5, 4);
+    copy_rom09(0xF9A5, 0x7FFFD9, 4);
+    copy_rom09(0xF9A9, 0x7FFFDD, 4);
+    cpu.p |= P_M | P_X;
+    cpu.x = 0x0004;
+    cpu.y &= 0x00FF;
+    v = rd8(b | 0x0D62);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    if (v)
+        abi_Records7FFromF634();
+    else
+        abi_Records7FFromF170();
+    cpu.p |= P_M | P_X;
+    cpu.x &= 0x00FF;
+    cpu.y &= 0x00FF;
+    copy_rom09(0xF163, 0x7FF85B, 16);
+    wr16(b | 0x19B6, 0x0000);
+    do {
+        abi_WindowEdgesFromList();
+    } while (rd16(b | 0x19B6) != 0x000E);
+    for (x = 0; (w = rd16(0x09FB74 + x)) != 0xFFFF; x = (uint16_t)(x + 2))
+        wr16(0x7FFF8B + x, w);
+    if (rd8(b | 0x0D62)) {
+        for (x = 0; x < 0x0280; x++) {
+            v = (uint8_t)(rd8(0x7FF883 + x) + 0xD8);
+            wr8(0x7FF883 + x, v);
+            wr8(0x7FFB03 + x, (uint8_t)(v + 0x50));
+        }
+    }
+    wr16(b | 0x19B6, 0xFFFE);
+    wr16(b | 0x19B8, 0xFFFE);
+    wr16(b | 0x19BA, 0x0000);
+    wr8(b | 0x19BC, 0x00);
+    wr8(b | 0x19BE, 0x00);
+    wr8(b | 0x19A9, 0x00);
+    wr8(b | 0x1A07, 0x00);
+    wr8(b | 0x1A0A, 0x00);
+    wr8(b | 0x1A0B, 0x00);
+    wr8(b | 0x1A17, 0x00);
+    wr8(b | 0x1A18, 0x00);
+    wr8(b | 0x19BF, 0x00);
+    wr8(b | 0x19C0, 0xF9);
+    wr8(b | 0x1A0C, 0x01);
+    wr8(b | 0x1A0D, 0x01);
+    wr8(b | 0x1A08, 0x40);
+    wr8(b | 0x1A09, 0x40);
+    wr8(b | 0x1A19, 0xFE);
+    wr8(b | 0x1A1A, 0xFE);
+    wr8(b | 0x1A15, 0xF0);
+    wr8(b | 0x1A16, 0xF0);
+    for (i = 0; i < 6; i++)
+        wr8(b | (uint16_t)(0x19AC + i), 0x00);
+    wr8(b | 0x1A0E, 0x00);
+    wr8(b | 0x1A0F, 0x00);
+    wr8(b | 0x1A1B, 0x00);
+    wr8(b | 0x1A1C, 0x1A);
+    wr8(b | 0x1A1D, 0x1A);
+    wr8(b | 0x1A1E, 0x00);
+    wr8(b | 0x1A1F, 0x00);
+    wr8(b | 0x1A22, 0x00);
+    wr8(b | 0x1A23, 0x00);
+    wr8(b | 0x1A20, 0xFE);
+    wr8(b | 0x1A21, 0xFE);
+    m = rd16(b | 0x0D2B);
+    if (m == 0x0000 || m == 0x0003) {
+        x = (uint16_t)((rd16(b | 0x0D4A) & 0x00FF) << 1);
+        w = (uint16_t)((rd16(b | 0x0D48) & 0x00FF) << 1);
+        x = (uint16_t)(w + rd16(0x09F127 + x));
+        wr16(b | 0x19F6, rd16(b | x));
+    }
+    if (rd16(b | 0x0D2B) == 0x0000) {
+        x = (uint16_t)((rd16(b | 0x0D4A) & 0x00FF) << 1);
+        w = (uint16_t)(rd16(b | 0x0D48) & 0x00FF);
+        x = (uint16_t)(w + rd16(0x09F115 + x));
+        wr8(b | 0x19E6, rd8(b | x));
+    }
+    wr16(b | 0x19FE, 0x0000);
+    x = (uint8_t)(rd16(b | 0x0D89) << 1);
+    wr8(b | 0x19D1, (uint8_t)x);
+    wr16(b | 0x19CB, rd16(0x09F14D + x));
+    wr16(b | 0x19D3, 0x0000);
+    wr16(b | 0x19CF, 0x0017);
+    wr16(b | 0x19C5, 0x0020);
+    wr16(b | 0x19C3, 0xE020);
+    wr16(b | 0x19F3, 0xE600);
+    wr8(b | 0x19F5, 0x00);
+    wr8(b | 0x1A14, 0x80);
+    wr8(b | 0x19D8, 0x00);
+    wr8(b | 0x19E0, 0xFE);
+    wr8(b | 0x19DF, 0x00);
+    wr16(b | 0x19DB, 0x0000);
+    wr16(b | 0x19DD, 0x0000);
+    wr8(b | 0x1A04, 0xFF);
+    {
+        static const uint16_t zero[] = {0x19EC, 0x19ED, 0x19E8, 0x19E9, 0x19EA, 0x19EB, 0x19F2,
+                                        0x19EE, 0x19EF, 0x19F0, 0x19F1, 0x1A06, 0x1A29};
+
+        for (i = 0; i < sizeof zero / sizeof zero[0]; i++)
+            wr8(b | zero[i], 0x00);
+    }
+    wr8(b | DMAP4, 0x44);
+    wr8(b | BBAD4, 0x26);
+    wr16(b | A1T4L, 0xF85B);
+    wr8(b | A1B4, 0x7F);
+    wr16(b | DAS4L, 0x0000);
+    wr8(b | DASB4, 0x7F);
+    wr8(b | DMAP5, 0x00);
+    wr8(b | BBAD5, 0x32);
+    wr16(b | A1T5L, 0xFF8B);
+    wr8(b | A1B5, 0x7F);
+    wr16(b | DAS5L, 0x0000);
+    wr8(b | DASB5, 0x7F);
+}
+
+void abi_WindowsInit(void)
+{
+    uint8_t p = cpu.p, db = cpu.db;
+
+    cpu.db = 0x09;
+    WindowsInit();
+    cpu.a = 0x007F;
+    cpu.x = 0x0000;
+    cpu.db = db;
+    cpu.p = p;
 }

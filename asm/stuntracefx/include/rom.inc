@@ -273,3 +273,11 @@ includeonce
 ; +0 and the second at +15; and the course blocks in bank $19.
 !music_lists = $04D41E
 !music_course_blocks = $190000
+
+; WindowsInit's tables in bank $09 (video/window_hdma.asm): the colour HDMA
+; list ($FFFF ends it), the slide value and $19E6 tables by $0D4A, and a
+; layout record word per $0D89.
+!window_colour_list = $09FB74
+!slide_value_table = $09F127
+!window_19e6_table = $09F115
+!layout_records = $09F14D

@@ -645,3 +645,288 @@ WindowLayoutStep:
     tyx
     jsr.w (!layout_builders,x)
     rts
+
+; @routine 09:ECE0 WindowsInit
+; WHAT IT DOES: Sets up the race's windows: the four-byte HDMA band entries
+; at $7F:F857 and $7F:FFD1-$FFE0 and the 16-byte window table header at
+; $7F:F85B from the lists in bank $09; the course records into bank $7F
+; (Records7FFromF170, or Records7FFromF634 on the menu's course screen);
+; the window edges for every list (WindowEdgesFromList until $19B6 reaches
+; $0E); the word list at $09:FB74 (to its $FFFF) to $7F:FF8B; on the
+; course screen, every edge byte at $7F:F883 moved by -$28 and a copy +$50
+; at $7F:FB03; then the window, slide and layout state ($19A9-$1A29) to
+; its start values, the slide value $19F6 and $19E6 from the tables at
+; $09:F127 and $09:F115 for HUD modes 0 and 3 (and 0), the layout record
+; for $0D89 from $09:F14D, and HDMA channels 4 (to $2126, indirect, from
+; $7F:F85B) and 5 (to $2132 from $7F:FF8B).
+; HOW: Data bank $09 (the program bank) and P saved and restored; the
+; state stores are in the original's order, byte and word as it makes
+; them. The ROM bytes $09:xxxx indexed by the tables are read through the
+; data bank.
+; Entry: any widths, D = $0000. Exit: A = $007F; X = 0; Y as the last
+; callee left it; P and the data bank unchanged.
+%at($09ECE0)
+WindowsInit:
+    phb
+    phk
+    plb
+    php
+    sep.b #$30
+    ldx.b #$00
+.copy_first:
+    lda.l !window_edge_lists+14,x
+    sta.l !window_band_first,x
+    inx
+    cpx.b #$04
+    bne .copy_first
+    ldx.b #$00
+.copy_band0:
+    lda.l !window_edge_lists+18,x
+    sta.l !window_bands,x
+    inx
+    cpx.b #$04
+    bne .copy_band0
+    ldx.b #$00
+.copy_band1:
+    lda.l !window_edge_lists+22,x
+    sta.l !window_bands+4,x
+    inx
+    cpx.b #$04
+    bne .copy_band1
+    ldx.b #$00
+.copy_band2:
+    lda.l !window_edge_lists+26,x
+    sta.l !window_bands+8,x
+    inx
+    cpx.b #$04
+    bne .copy_band2
+    ldx.b #$00
+.copy_band3:
+    lda.l !window_edge_lists+30,x
+    sta.l !window_bands+12,x
+    inx
+    cpx.b #$04
+    bne .copy_band3
+    sep.b #$30
+    lda.w !wram_0D62
+    bne .course_screen
+    jsr.w Records7FFromF170
+    jmp.w .records_done
+.course_screen:
+    jsr.w Records7FFromF634
+.records_done:
+    sep.b #$30
+    ldx.b #$00
+.copy_header:
+    lda.l !window_edge_offsets+14,x
+    sta.l !window_hdma,x
+    inx
+    cpx.b #$10
+    bne .copy_header
+    rep.b #$20
+    stz.w !window_hdma_select
+.next_list:
+    jsr.w WindowEdgesFromList
+    rep.b #$20
+    lda.w !window_hdma_select
+    cmp.w #$000E
+    bne .next_list
+    rep.b #$30
+    ldx.w #$0000
+.copy_colours:
+    lda.l !window_colour_list,x
+    cmp.w #$FFFF
+    beq .colours_done
+    sta.l !window_colour_hdma,x
+    inx
+    inx
+    jmp.w .copy_colours
+.colours_done:
+    sep.b #$20
+    rep.b #$10
+    lda.w !wram_0D62
+    beq .state
+    ldx.w #$0000
+.shift_edge:
+    lda.l !window_edges,x
+    clc
+    adc.b #$D8
+    sta.l !window_edges,x
+    clc
+    adc.b #$50
+    sta.l !window_edges_copy,x
+    inx
+    cpx.w #$0280
+    bne .shift_edge
+.state:
+    rep.b #$20
+    lda.w #$FFFE
+    sta.w !window_hdma_select
+    lda.w #$FFFE
+    sta.w !layout_step
+    stz.w !layout_dir
+    sep.b #$20
+    stz.w !window_hdma_19bc
+    lda.b #$00
+    sta.w !wram_19BE
+    sta.w !windows_setup_index
+    sta.w !wram_1A07
+    lda.b #$00
+    sta.w !wram_1A0A
+    sta.w !wram_1A0B
+    sta.w !wram_1A17
+    sta.w !wram_1A18
+    sta.w !wram_19BF
+    lda.b #$F9
+    sta.w !wram_19C0
+    lda.b #$01
+    sta.w !wram_1A0C
+    sta.w !wram_1A0D
+    lda.b #$40
+    sta.w !wram_1A08
+    sta.w !wram_1A09
+    lda.b #$FE
+    sta.w !wram_1A19
+    sta.w !wram_1A1A
+    lda.b #$F0
+    sta.w !wram_1A15
+    sta.w !wram_1A16
+    sep.b #$20
+    lda.b #$00
+    sta.w !window_setup_bytes
+    sta.w !wram_19AD
+    sta.w !wram_19AE
+    sta.w !wram_19AF
+    sta.w !wram_19B0
+    sta.w !wram_19B1
+    sta.w !wram_1A0E
+    sta.w !wram_1A0F
+    sta.w !wram_1A1B
+    sep.b #$20
+    lda.b #$1A
+    sta.w !wram_1A1C
+    sta.w !wram_1A1D
+    stz.w !wram_1A1E
+    stz.w !wram_1A1F
+    stz.w !wram_1A22
+    stz.w !wram_1A23
+    lda.b #$FE
+    sta.w !wram_1A20
+    sta.w !wram_1A21
+    rep.b #$30
+    lda.w !hud_mode
+    beq .slide_value
+    cmp.w #$0003
+    bne .mode0_only
+.slide_value:
+    lda.w !wram_0D4A
+    and.w #$00FF
+    asl a
+    tax
+    lda.w !wram_0D48
+    and.w #$00FF
+    asl a
+    clc
+    adc.l !slide_value_table,x
+    tax
+    lda.w !bank0_base,x
+    sta.w !slide_value
+.mode0_only:
+    rep.b #$30
+    lda.w !hud_mode
+    bne .layout
+    lda.w !wram_0D4A
+    and.w #$00FF
+    asl a
+    tax
+    lda.w !wram_0D48
+    and.w #$00FF
+    clc
+    adc.l !window_19e6_table,x
+    tax
+    sep.b #$20
+    lda.w !bank0_base,x
+    sta.w !wram_19E6
+.layout:
+    rep.b #$20
+    lda.w #$0000
+    sta.w !wram_19FE
+    sep.b #$10
+    lda.w !wram_0D89
+    asl a
+    tax
+    stx.w !wram_19D1
+    lda.l !layout_records,x
+    sta.w !wram_19CB
+    stz.w !wram_19D3
+    rep.b #$20
+    lda.w #$0017
+    sta.w !wram_19CF
+    lda.w #$0020
+    sta.w !wram_19C5
+    lda.w #$E020
+    sta.w !wram_19C3
+    lda.w #$E600
+    sta.w !wram_19F3
+    sep.b #$20
+    stz.w !wram_19F5
+    sep.b #$20
+    lda.b #$80
+    sta.w !window_slide_pos
+    lda.b #$00
+    sta.w !window_hdma_off
+    lda.b #$FE
+    sta.w !wram_19E0
+    lda.b #$00
+    sta.w !wram_19DF
+    rep.b #$20
+    lda.w #$0000
+    sta.w !wram_19DB
+    sta.w !wram_19DD
+    sep.b #$20
+    lda.b #$FF
+    sta.w !wram_1A04
+    sep.b #$20
+    lda.b #$00
+    sta.w !hud_digits_19ec
+    sta.w !wram_19ED
+    sta.w !wram_19E8
+    sta.w !wram_19E9
+    sta.w !wram_19EA
+    sta.w !wram_19EB
+    sta.w !wram_19F2
+    sta.w !wram_19EE
+    sta.w !wram_19EE+1
+    sta.w !wram_19F0
+    sta.w !wram_19F0+1
+    sta.w !wram_1A06
+    sta.w !wram_1A26+3
+    sep.b #$20
+    rep.b #$10
+    lda.b #$44
+    sta.w !DMAP4
+    lda.b #$26
+    sta.w !BBAD4
+    ldx.w #$F85B
+    stx.w !A1T4L
+    lda.b #$7F
+    sta.w !A1B4
+    ldx.w #$0000
+    stx.w !DAS4L
+    lda.b #$7F
+    sta.w !DASB4
+    lda.b #$00
+    sta.w !DMAP5
+    lda.b #$32
+    sta.w !BBAD5
+    ldx.w #$FF8B
+    stx.w !A1T5L
+    lda.b #$7F
+    sta.w !A1B5
+    ldx.w #$0000
+    stx.w !DAS5L
+    lda.b #$7F
+    sta.w !DASB5
+    plp
+    plb
+    rtl

@@ -1246,3 +1246,60 @@ includeonce
 ; The music table index (music * 3) MusicLoadForCourse computes through
 ; direct page (audio/sound_data.asm).
 !music_index = $F1
+
+; WindowsInit's targets (video/window_hdma.asm): the first window band
+; entry, the four band entries at $7F:FFD1, the colour HDMA list it copies
+; to $7F:FF8B, and the shifted copy of the window edges.
+!window_band_first = $7FF857
+!window_bands = $7FFFD1
+!window_colour_hdma = $7FFF8B
+!window_edges_copy = $7FFB03
+; Window, slide and layout state WindowsInit sets (video/window_hdma.asm).
+!wram_19BE = $19BE
+!wram_1A07 = $1A07
+!wram_1A0A = $1A0A
+!wram_1A0B = $1A0B
+!wram_1A17 = $1A17
+!wram_1A18 = $1A18
+!wram_19BF = $19BF
+!wram_19C0 = $19C0
+!wram_1A0C = $1A0C
+!wram_1A0D = $1A0D
+!wram_1A08 = $1A08
+!wram_1A09 = $1A09
+!wram_1A19 = $1A19
+!wram_1A1A = $1A1A
+!wram_1A15 = $1A15
+!wram_1A16 = $1A16
+!wram_19AD = $19AD
+!wram_19AE = $19AE
+!wram_19AF = $19AF
+!wram_19B0 = $19B0
+!wram_19B1 = $19B1
+!wram_1A0E = $1A0E
+!wram_1A0F = $1A0F
+!wram_1A1B = $1A1B
+!wram_1A1D = $1A1D
+!wram_1A1F = $1A1F
+!wram_1A23 = $1A23
+!wram_1A21 = $1A21
+!wram_19E6 = $19E6
+!wram_19FE = $19FE
+!wram_19D1 = $19D1
+!wram_19CB = $19CB
+!wram_19D3 = $19D3
+!wram_19CF = $19CF
+!wram_19C5 = $19C5
+!wram_19C3 = $19C3
+!wram_19F3 = $19F3
+!wram_19F5 = $19F5
+!wram_19E0 = $19E0
+!wram_19DF = $19DF
+!wram_19DB = $19DB
+!wram_19DD = $19DD
+!wram_1A04 = $1A04
+!wram_19E8 = $19E8
+!wram_19E9 = $19E9
+!wram_19EA = $19EA
+!wram_19EB = $19EB
+!wram_1A06 = $1A06
