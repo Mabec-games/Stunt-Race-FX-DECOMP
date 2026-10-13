@@ -816,6 +816,29 @@ static CallRec *cur_rec;
 static int cur_open;
 static void hybrid_finish(long frames);
 static int past_end;
+/* What has come of the record so far, without waiting (each frame, so the
+   ring keeps moving while the hybrid runs original code in a long call). */
+static void fetch_avail(void)
+{
+    if (!cur_open || !cur_rec) return;
+    uint64_t top = LOAD(cur_rec->done) ? cur_rec->opoff + cur_rec->opn : LOAD(sh->o_ops);
+    uint32_t avail = (uint32_t)(top - cur_rec->opoff);
+    if (avail <= cur_n) return;
+    if (avail > cur_cap) {
+        cur_cap = avail + (avail >> 1) + 1024;
+        cur_ops = realloc(cur_ops, cur_cap);
+        cur_addr = realloc(cur_addr, (size_t)cur_cap * sizeof *cur_addr);
+        if (!cur_ops || !cur_addr) _exit(7);
+    }
+    for (uint32_t i = cur_n; i < avail; i++) {
+        uint64_t o = (cur_rec->opoff + i) % OPRING;
+        cur_ops[i] = sh->ops[o];
+        cur_addr[i] = sh->opaddr[o];
+    }
+    cur_n = avail;
+    STORE(sh->h_ops, cur_rec->opoff + cur_n);
+}
+
 static int fetch_more(uint32_t need)
 {
     long spins = 0;
@@ -1243,7 +1266,15 @@ void lockstep_before_frame(long f)
         FrameSlot *fs = &sh->fs[f % NSLOT];
         fs->frame = f; fs->ncalls = 0;
     } else if (role == 2) {
-        WAIT_UNTIL(LOAD(sh->o_frames) > f || LOAD(sh->o_done));
+        /* Waiting for the original's frame, the record is drained as it
+           comes: the original may be waiting for ring space. */
+        long spins = 0;
+        while (!(LOAD(sh->o_frames) > f || LOAD(sh->o_done))) {
+            fetch_avail();
+            if (LOAD(sh->stuck)) _exit(6);
+            if (++spins > 600000) { stuck_report("LOAD(sh->o_frames) > f || LOAD(sh->o_done)"); STORE(sh->stuck, 1); _exit(6); }
+            usleep(50);
+        }
         hk = 0;
     }
     gsu_before_frame(f);
