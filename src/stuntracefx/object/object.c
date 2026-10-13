@@ -1776,3 +1776,51 @@ void abi_ObjectStep48To8(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | ObjectStep48To8(cpu.db, cpu.x, &p));
     cpu.p = p;
 }
+
+void abi_RandomStepLong(void);
+void abi_ObjectSpawn(void);
+void abi_ObjectCopyPositionTo(void);
+
+/*
+ * @routine 08:D181 ObjectSpawnChanceD460
+ * WHAT IT DOES: With a chance of 78 in 256 (RandomStepLong at $B2 or
+ * more), makes a new object (ObjectSpawn, kind word $A158 at $1F2B) with
+ * handler $08:D460 at object X's position (ObjectCopyPositionTo) and X as
+ * its +$27.
+ * HOW: The handler is the long pointer +$1A-$1C; through the data bank.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: no spawn: A low byte = the
+ * random value or as ObjectSpawn leaves it; otherwise A low byte as
+ * ObjectCopyPositionTo leaves it, N, Z from it; Y = the new object; M
+ * 8-bit.
+ */
+void abi_ObjectSpawnChanceD460(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t y;
+    uint8_t a;
+
+    abi_RandomStepLong();
+    cpu.p = (uint8_t)((cpu.p & ~P_C) | ((uint8_t)cpu.a >= 0xB2 ? P_C : 0));
+    cpu.p = nz8(cpu.p, (uint8_t)((uint8_t)cpu.a - 0xB2));
+    if ((uint8_t)cpu.a < 0xB2)
+        return;
+    cpu.p &= (uint8_t)~P_M;
+    cpu.a = 0xA158;
+    wr16(b | 0x1F2B, 0xA158);
+    cpu.p |= P_M;
+    abi_ObjectSpawn();
+    if (!(cpu.p & P_C))
+        return;
+    y = cpu.y;
+    cpu.p &= (uint8_t)~P_M;
+    wr16(b | (uint16_t)(0x201A + y), 0xD460);
+    cpu.p |= P_M;
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x08);
+    wr8(b | (uint16_t)(0x201C + y), 0x08);
+    abi_ObjectCopyPositionTo();
+    a = (uint8_t)cpu.a;
+    wr16(b | (uint16_t)(0x2027 + cpu.y), cpu.x);
+    cpu.p |= P_M;
+    cpu.a = (uint16_t)((cpu.x & 0xFF00) | a);
+    cpu.p = nz8(cpu.p, a);
+}

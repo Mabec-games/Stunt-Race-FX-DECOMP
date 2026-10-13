@@ -1774,3 +1774,44 @@ ObjectStep48To8_copy:               ; reached by the long jump above at 8
     ora.b #$80
     sta.w !obj_5a,x
     rts
+
+; @routine 08:D181 ObjectSpawnChanceD460
+; WHAT IT DOES: With a chance of 78 in 256 (RandomStepLong at $B2 or
+; more), makes a new object (ObjectSpawn, kind word $A158 at $1F2B) with
+; handler $08:D460 at object X's position (ObjectCopyPositionTo) and X as
+; its +$27.
+; HOW: The handler is the long pointer +$1A-$1C; through the data bank.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: no spawn: A low byte = the
+; random value or as ObjectSpawn leaves it; otherwise A low byte as
+; ObjectCopyPositionTo leaves it, N, Z from it; Y = the new object; M
+; 8-bit.
+%at($08D181)
+ObjectSpawnChanceD460:
+    jsl.l RandomStepLong
+    cmp.b #$B2
+    bcs .spawn
+    jml.l ObjectSpawnChanceD460_done
+.spawn:
+    rep.b #$20
+    lda.w #$A158
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .spawned
+    jml.l ObjectSpawnChanceD460_done
+.spawned:
+    rep.b #$20
+    lda.w #$D460
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    jsl.l ObjectCopyPositionTo
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_27,y
+    sep.b #$20
+    pla
+ObjectSpawnChanceD460_done:          ; reached by the long jumps above
+    rts
