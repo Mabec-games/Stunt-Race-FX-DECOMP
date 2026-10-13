@@ -1,5 +1,5 @@
 # unit_hud_colours: unit tests (call) from the start of a Novice race: the
-# status colour's \$0400 path with and without \$0010, the fade value's
+# status colour's $0400 path with and without $0010, the fade value's
 # step and its end, and every stage of the HUD panels' and the direct
 # OAM writes' jump tables.
 load build/stuntracefx/states/novice_coupe_race1.state
