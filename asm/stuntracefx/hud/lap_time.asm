@@ -96,6 +96,127 @@ BinaryToBcd:
     adc.b !bcd_digits
     rtl
 
+; @routine 07:B67E TimeTotalsSum
+; WHAT IT DOES: Sums each group of four record times ($0F76, $0F82, $0F8E)
+; into its total ($0F9A, $0F9D, $0FA0); a group whose first time has no
+; minutes ($FF) totals $FF:$FF:$FF.
+; HOW: Decimal mode, $F1-$F3 as the running sum, TimeAddToTotal per time.
+; Not reached in the traces so far.
+; Entry: D = $0000. Exit: A = the last total's minutes; X = $21; P restored.
+%at($07B67E)
+TimeTotalsSum:
+    php
+    sep #$30
+    sed
+    stz.b !time_total
+    stz.b !time_total+1
+    stz.b !time_total+2
+    ldx.b #$00
+    jsr TimeAddToTotal
+    ldx.b #$03
+    jsr TimeAddToTotal
+    ldx.b #$06
+    jsr TimeAddToTotal
+    ldx.b #$09
+    jsr TimeAddToTotal
+    lda.w !record_times+2
+    cmp.b #$FF
+    bne .group0
+    sta.b !time_total
+    sta.b !time_total+1
+    sta.b !time_total+2
+.group0:
+    lda.b !time_total
+    sta.w !record_totals+0
+    lda.b !time_total+1
+    sta.w !record_totals+1
+    lda.b !time_total+2
+    sta.w !record_totals+2
+    stz.b !time_total
+    stz.b !time_total+1
+    stz.b !time_total+2
+    ldx.b #$0C
+    jsr TimeAddToTotal
+    ldx.b #$0F
+    jsr TimeAddToTotal
+    ldx.b #$12
+    jsr TimeAddToTotal
+    ldx.b #$15
+    jsr TimeAddToTotal
+    lda.w !record_times+14
+    cmp.b #$FF
+    bne .group1
+    sta.b !time_total
+    sta.b !time_total+1
+    sta.b !time_total+2
+.group1:
+    lda.b !time_total
+    sta.w !record_totals+3
+    lda.b !time_total+1
+    sta.w !record_totals+4
+    lda.b !time_total+2
+    sta.w !record_totals+5
+    stz.b !time_total
+    stz.b !time_total+1
+    stz.b !time_total+2
+    ldx.b #$18
+    jsr TimeAddToTotal
+    ldx.b #$1B
+    jsr TimeAddToTotal
+    ldx.b #$1E
+    jsr TimeAddToTotal
+    ldx.b #$21
+    jsr TimeAddToTotal
+    lda.w !record_times+26
+    cmp.b #$FF
+    bne .group2
+    sta.b !time_total
+    sta.b !time_total+1
+    sta.b !time_total+2
+.group2:
+    lda.b !time_total
+    sta.w !record_totals+6
+    lda.b !time_total+1
+    sta.w !record_totals+7
+    lda.b !time_total+2
+    sta.w !record_totals+8
+    cld
+    plp
+    rts
+
+; @routine 07:B727 TimeRunningTotals
+; WHAT IT DOES: Turns each group of four record times into running totals:
+; the first three are added into the time after each.
+; HOW: Decimal mode, TimeAddToNext for times 0-2, 4-6 and 8-10. Not reached
+; in the traces so far.
+; Entry: D = $0000. Exit: X = $1E; P restored.
+%at($07B727)
+TimeRunningTotals:
+    php
+    sep #$30
+    sed
+    ldx.b #$00
+    jsr TimeAddToNext
+    ldx.b #$03
+    jsr TimeAddToNext
+    ldx.b #$06
+    jsr TimeAddToNext
+    ldx.b #$0C
+    jsr TimeAddToNext
+    ldx.b #$0F
+    jsr TimeAddToNext
+    ldx.b #$12
+    jsr TimeAddToNext
+    ldx.b #$18
+    jsr TimeAddToNext
+    ldx.b #$1B
+    jsr TimeAddToNext
+    ldx.b #$1E
+    jsr TimeAddToNext
+    cld
+    plp
+    rts
+
 ; @routine 07:B75B TimeAddToTotal
 ; WHAT IT DOES: Adds record time X (BCD hundredths, seconds, minutes at
 ; $0F76 + X) to the total in direct page $F1-$F3, unless it is no time ($FF).

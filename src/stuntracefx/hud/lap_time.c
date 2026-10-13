@@ -181,3 +181,68 @@ void abi_TimeAddToNext(void)
 
     time_add(b, cpu.x, to);
 }
+
+/*
+ * @routine 07:B67E TimeTotalsSum
+ * WHAT IT DOES: Sums each group of four record times ($0F76, $0F82, $0F8E)
+ * into its total ($0F9A, $0F9D, $0FA0); a group whose first time has no
+ * minutes ($FF) totals $FF:$FF:$FF.
+ * HOW: Decimal mode, $F1-$F3 as the running sum, TimeAddToTotal per time.
+ * Not reached in the traces so far.
+ * Entry: D = $0000. Exit: A low byte = the last total's minutes; X = $21;
+ * P restored.
+ */
+void abi_TimeTotalsSum(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t p0 = cpu.p, v;
+    unsigned g, i;
+
+    op_sep(P_M | P_X);
+    cpu.p |= P_D;
+    for (g = 0; g < 3; g++) {
+        wr8(0x0000F1, 0);
+        wr8(0x0000F2, 0);
+        wr8(0x0000F3, 0);
+        for (i = 0; i < 4; i++) {
+            cpu.x = (uint16_t)(g * 12 + i * 3);
+            abi_TimeAddToTotal();
+        }
+        v = rd8(b | (uint16_t)(0x0F78 + g * 12));
+        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0xFF)) & ~P_C) | (v >= 0xFF ? P_C : 0));
+        if (v == 0xFF) {
+            wr8(0x0000F1, v);
+            wr8(0x0000F2, v);
+            wr8(0x0000F3, v);
+        }
+        for (i = 0; i < 3; i++) {
+            v = rd8(0x0000F1 + i);
+            wr8(b | (uint16_t)(0x0F9A + g * 3 + i), v);
+        }
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    }
+    cpu.p = p0;
+}
+
+/*
+ * @routine 07:B727 TimeRunningTotals
+ * WHAT IT DOES: Turns each group of four record times into running totals:
+ * the first three are added into the time after each.
+ * HOW: Decimal mode, TimeAddToNext for times 0-2, 4-6 and 8-10. Not
+ * reached in the traces so far.
+ * Entry: D = $0000. Exit: X = $1E; P restored; A as TimeAddToNext left it.
+ */
+void abi_TimeRunningTotals(void)
+{
+    uint8_t p0 = cpu.p;
+    unsigned g, i;
+
+    op_sep(P_M | P_X);
+    cpu.p |= P_D;
+    for (g = 0; g < 3; g++)
+        for (i = 0; i < 3; i++) {
+            cpu.x = (uint16_t)(g * 12 + i * 3);
+            abi_TimeAddToNext();
+        }
+    cpu.p = p0;
+}

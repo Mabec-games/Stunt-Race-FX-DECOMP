@@ -1462,3 +1462,4 @@ includeonce
 !record_times = $0F76
 !record_names = $10CF
 !time_total = $F1                      ; BCD hundredths, seconds, minutes being summed (07:B67E)
+!record_totals = $0F9A                 ; three BCD totals (hundredths, seconds, minutes) of the four-time groups at !record_times
