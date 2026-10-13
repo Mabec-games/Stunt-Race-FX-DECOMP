@@ -1198,3 +1198,64 @@ void abi_OamHighBits18Park48(void)
     cpu.x = 0x0000;
     cpu.y &= 0x00FF;
 }
+
+/*
+ * @routine 07:B985 SpritePieces3
+ * WHAT IT DOES: Writes three sprites of a piece set to the sprite buffer
+ * from entry offset Y: the set is the word at $1C:F09E + ((the byte at
+ * $07:B981 + $10BB's low byte) + $10C3) * 4 (low byte); each piece (five
+ * bytes from $1C:F11E + the set) adds its X, Y and tile to $10BD, $10BF and
+ * $10C1, and gives its attribute, with the palette bits (1-3) from $10C5
+ * when that is not 0.
+ * HOW: Direct page $F1 counts the pieces down. $10C5 is read again for the
+ * palette when it is set.
+ * Entry: M 16-bit, X 16-bit, D = $0000; Y = sprite buffer offset. Exit:
+ * A = the set's high byte and the last attribute; X = the set + 15; Y
+ * past the third sprite; M 8-bit; N clear, Z set ($F1 counted to 0); C, V from the last
+ * tile add.
+ */
+uint8_t SpritePieces3(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p, uint16_t *set)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t i;
+    uint8_t attr = 0, n;
+    unsigned t;
+
+    i = rd8(0x07B981 + (rd16(b | 0x10BB) & 0x00FF));
+    i = (uint16_t)(i + rd16(b | 0x10C3));
+    *x = *set = rd16(0x1CF09E + ((uint16_t)(i << 2) & 0x00FF));
+    wr8(0x0000F1, 0x03);
+    do {
+        wr8(b | (uint16_t)(0x0375 + *y), (uint8_t)(rd8(b | 0x10BD) + rd8(0x1CF11E + *x)));
+        wr8(b | (uint16_t)(0x0376 + *y), (uint8_t)(rd8(b | 0x10BF) + rd8(0x1CF11F + *x)));
+        {
+            uint8_t base = rd8(b | 0x10C1), add = rd8(0x1CF120 + *x);
+
+            t = (unsigned)base + add;
+            *p = (uint8_t)((*p & ~(P_C | P_V)) | (t > 0xFF ? P_C : 0)
+                           | ((~(base ^ add) & (base ^ t) & 0x80) ? P_V : 0));
+            wr8(b | (uint16_t)(0x0377 + *y), (uint8_t)t);
+        }
+        if (rd8(b | 0x10C5))
+            attr = (uint8_t)((rd8(0x1CF121 + *x) & 0xF1) | rd8(b | 0x10C5));
+        else
+            attr = rd8(0x1CF121 + *x);
+        wr8(b | (uint16_t)(0x0378 + *y), attr);
+        *x = (uint16_t)(*x + 5);
+        *y = (uint16_t)(*y + 4);
+        n = (uint8_t)(rd8(0x0000F1) - 1);
+        wr8(0x0000F1, n);
+    } while (n);
+    *p = (uint8_t)(nz8(*p, 0) | P_M);
+    return attr;
+}
+
+void abi_SpritePieces3(void)
+{
+    uint8_t p = cpu.p, attr;
+    uint16_t set;
+
+    attr = SpritePieces3(cpu.db, &cpu.x, &cpu.y, &p, &set);
+    cpu.a = (uint16_t)((set & 0xFF00) | attr);
+    cpu.p = p;
+}

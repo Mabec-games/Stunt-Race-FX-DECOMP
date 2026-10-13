@@ -413,3 +413,68 @@ void abi_SaveValidate(void)
     abi_SaveRecordsCheckA();
     cpu.p = p;
 }
+
+/* The unlock bytes of the save in the order their checksum adds them. */
+static const uint16_t unlock_bytes[10] = {
+    0xFC0B, 0xFC0F, 0xFC06, 0xFC07, 0xFC0C, 0xFC0D, 0xFC0E, 0xFC08, 0xFC09, 0xFC0A};
+
+/* The checksum: an 8-bit add chain, each carry going into the next add. */
+static uint8_t unlock_sum(void)
+{
+    unsigned s = rd8(0x700000 | unlock_bytes[0]), c = 0, i;
+
+    for (i = 1; i < 10; i++) {
+        s = s + rd8(0x700000 | unlock_bytes[i]) + c;
+        c = s >> 8;
+        s &= 0xFF;
+    }
+    return (uint8_t)s;
+}
+
+/*
+ * @routine 03:EFD2 SaveUnlocksCheck
+ * WHAT IT DOES: Checks the unlock bytes of the save ($70:FC06-$FC0F, the
+ * courses and classes opened) against their checksum at $70:FC14; when it
+ * differs, clears them and the checksum word ($FC14-$FC15). Then validates
+ * the whole save (SaveValidate).
+ * HOW: Data bank $70; the checksum is an 8-bit add with carry over the ten
+ * bytes in the order $FC0B, $FC0F, $FC06, $FC07, $FC0C-$FC0E, $FC08-$FC0A,
+ * the carry cleared only before the first. P and the data bank are saved
+ * and restored.
+ * Entry: any widths, D = $0000. Exit: as SaveValidate (A = $02 and the
+ * low byte SaveRecordsCheckA leaves; X = 20, Y = 4); P and the data bank
+ * unchanged.
+ */
+void SaveUnlocksCheck(void)
+{
+    unsigned i;
+
+    if (unlock_sum() != rd8(0x70FC14)) {
+        for (i = 0; i < 10; i++)
+            wr8(0x700000 | unlock_bytes[i], 0x00);
+        wr8(0x70FC14, 0x00);
+        wr8(0x70FC15, 0x00);
+    }
+    SaveValidate(0x70);
+}
+
+void abi_SaveUnlocksCheck(void)
+{
+    uint8_t p = cpu.p, db = cpu.db, s = unlock_sum();
+    unsigned i;
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | s);
+    if (s != rd8(0x70FC14)) {
+        for (i = 0; i < 10; i++)
+            wr8(0x700000 | unlock_bytes[i], 0x00);
+        wr8(0x70FC14, 0x00);
+        wr8(0x70FC15, 0x00);
+    }
+    cpu.x &= 0x00FF;
+    cpu.y &= 0x00FF;
+    cpu.p |= P_M | P_X;
+    cpu.db = 0x70;
+    abi_SaveValidate();
+    cpu.db = db;
+    cpu.p = p;
+}

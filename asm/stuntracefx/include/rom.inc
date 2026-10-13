@@ -260,3 +260,10 @@ includeonce
 ; The Super FX's sine table: 257 words in 1.15, a full turn in 256 steps
 ; (render/matrix.asm), in ROM bank $00 as the Super FX sees it.
 !fx_sine_table = $00983E
+
+; SpritePieces3's tables (video/oam.asm): a set bias per selector byte, the
+; piece set offsets (a word per set, the index times 4), and the pieces
+; (five bytes: X, Y, tile, attribute and one unused).
+!piece_set_bias = $07B981
+!piece_sets = $1CF09E
+!piece_bytes = $1CF11E

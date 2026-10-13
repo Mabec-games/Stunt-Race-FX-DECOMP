@@ -1167,3 +1167,70 @@ OamHighBits18Park48:
     sta.w !oam_buffer_high+14
     plp
     rts
+
+; @routine 07:B985 SpritePieces3
+; WHAT IT DOES: Writes three sprites of a piece set to the sprite buffer
+; from entry offset Y: the set is the word at $1C:F09E + ((the byte at
+; $07:B981 + $10BB's low byte) + $10C3) * 4 (low byte); each piece (five
+; bytes from $1C:F11E + the set) adds its X, Y and tile to $10BD, $10BF and
+; $10C1, and gives its attribute, with the palette bits (1-3) from $10C5
+; when that is not 0.
+; HOW: Direct page $F1 counts the pieces down. $10C5 is read again for the
+; palette when it is set.
+; Entry: M 16-bit, X 16-bit, D = $0000; Y = sprite buffer offset. Exit:
+; A = the set's high byte and the last attribute; X = the set + 15; Y
+; past the third sprite; M 8-bit; N clear, Z set ($F1 counted to 0); C, V from the last
+; tile add.
+%at($07B985)
+SpritePieces3:
+    lda.w !sprite_piece_select
+    and.w #$00FF
+    tax
+    lda.l !piece_set_bias,x
+    and.w #$00FF
+    clc
+    adc.w !sprite_piece_frame
+    asl a
+    asl a
+    and.w #$00FF
+    tax
+    lda.l !piece_sets,x
+    tax
+    sep.b #$20
+    lda.b #$03
+    sta.b !sprite_piece_count
+.piece:
+    lda.w !sprite_piece_x
+    clc
+    adc.l !piece_bytes,x
+    sta.w !oam_buffer,y
+    lda.w !sprite_piece_y
+    clc
+    adc.l !piece_bytes+1,x
+    sta.w !oam_buffer+1,y
+    lda.w !sprite_piece_tile
+    clc
+    adc.l !piece_bytes+2,x
+    sta.w !oam_buffer+2,y
+    lda.w !sprite_piece_palette
+    bne .own_palette
+    lda.l !piece_bytes+3,x
+    bra .attr
+.own_palette:
+    lda.l !piece_bytes+3,x
+    and.b #$F1
+    ora.w !sprite_piece_palette
+.attr:
+    sta.w !oam_buffer+3,y
+    inx
+    inx
+    inx
+    inx
+    inx
+    iny
+    iny
+    iny
+    iny
+    dec.b !sprite_piece_count
+    bne .piece
+    rtl

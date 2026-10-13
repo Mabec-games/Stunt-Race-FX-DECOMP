@@ -493,3 +493,55 @@ SaveValidate:
     jsr.w SaveRecordsCheckA
     plp
     rtl
+
+; @routine 03:EFD2 SaveUnlocksCheck
+; WHAT IT DOES: Checks the unlock bytes of the save ($70:FC06-!save_unlocks+9, the
+; courses and classes opened) against their checksum at $70:FC14; when it
+; differs, clears them and the checksum word (!save_unlocks_sum-!save_unlocks_sum+1). Then validates
+; the whole save (SaveValidate).
+; HOW: Data bank $70; the checksum is an 8-bit add with carry over the ten
+; bytes in the order !save_unlocks+5, !save_unlocks+9, !save_unlocks, !save_unlocks+1, !save_unlocks+6-!save_unlocks+8, !save_unlocks+2-!save_unlocks+4,
+; the carry cleared only before the first. P and the data bank are saved
+; and restored.
+; Entry: any widths, D = $0000. Exit: as SaveValidate (A = $02 and the
+; low byte SaveRecordsCheckA leaves; X = 20, Y = 4); P and the data bank
+; unchanged.
+%at($03EFD2)
+SaveUnlocksCheck:
+    php
+    sep.b #$30
+    phb
+    lda.b #$70
+    pha
+    plb
+    sep.b #$20
+    clc
+    lda.w !save_unlocks+5
+    adc.w !save_unlocks+9
+    adc.w !save_unlocks
+    adc.w !save_unlocks+1
+    adc.w !save_unlocks+6
+    adc.w !save_unlocks+7
+    adc.w !save_unlocks+8
+    adc.w !save_unlocks+2
+    adc.w !save_unlocks+3
+    adc.w !save_unlocks+4
+    cmp.w !save_unlocks_sum
+    beq .valid
+    stz.w !save_unlocks+5
+    stz.w !save_unlocks+9
+    stz.w !save_unlocks
+    stz.w !save_unlocks+1
+    stz.w !save_unlocks+6
+    stz.w !save_unlocks+7
+    stz.w !save_unlocks+8
+    stz.w !save_unlocks+2
+    stz.w !save_unlocks+3
+    stz.w !save_unlocks+4
+    stz.w !save_unlocks_sum
+    stz.w !save_unlocks_sum+1
+.valid:
+    jsl.l SaveValidate
+    plb
+    plp
+    rtl

@@ -237,3 +237,35 @@ HudDigitSprites62:
     inc a
     sta.w !oam_buffer+254
     rts
+
+; @routine 09:C08E HudCountMove19EE
+; WHAT IT DOES: Unless $0E59 is set: queues sound $35 for the current
+; player, raises +$6A of Super FX record Y and lowers its +$82 by $7F's
+; worth (GsuRecordRaise6A, GsuRecordLower82), moves the count at $19EE to
+; $19F0 (clearing $19EE) and sets $19F2 to 1.
+; HOW: 16-bit copy and clear through the data bank; the rest 8-bit.
+; Entry: X 16-bit; Y = record. Exit: skipped: A low byte = $0E59; N, Z
+; from it. Otherwise: A = the old $19EE's high byte and 1; N, Z from 1;
+; M 8-bit; X, Y unchanged.
+%at($09C08E)
+HudCountMove19EE:
+    sep.b #$20
+    lda.w !wram_0E59
+    bne .done
+    lda.b #$35
+    jsl.l SoundPort0QueuePush
+    sep.b #$20
+    lda.b #$7F
+    jsl.l GsuRecordRaise6A
+    sep.b #$20
+    lda.b #$7F
+    jsl.l GsuRecordLower82
+    rep.b #$20
+    lda.w !wram_19EE
+    sta.w !wram_19F0
+    stz.w !wram_19EE
+    sep.b #$20
+    lda.b #$01
+    sta.w !wram_19F2
+.done:
+    rts

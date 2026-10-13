@@ -309,3 +309,64 @@ void abi_HudDigitSprites62(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.p = (uint8_t)((nz8(cpu.p, v) & ~P_C) | ((d & 0x80) ? P_C : 0));
 }
+
+uint16_t GsuRecordRaise6A(uint8_t bank, uint16_t rec, uint8_t amount, uint8_t *p);
+uint16_t GsuRecordLower82(uint8_t bank, uint16_t rec, uint8_t amount, uint8_t *p);
+void abi_SoundPort0QueuePush(void);
+void abi_GsuRecordRaise6A(void);
+void abi_GsuRecordLower82(void);
+
+/*
+ * @routine 09:C08E HudCountMove19EE
+ * WHAT IT DOES: Unless $0E59 is set: queues sound $35 for the current
+ * player, raises +$6A of Super FX record Y and lowers its +$82 by $7F's
+ * worth (GsuRecordRaise6A, GsuRecordLower82), moves the count at $19EE to
+ * $19F0 (clearing $19EE) and sets $19F2 to 1.
+ * HOW: 16-bit copy and clear through the data bank; the rest 8-bit.
+ * Entry: X 16-bit; Y = record. Exit: skipped: A low byte = $0E59; N, Z
+ * from it. Otherwise: A = the old $19EE's high byte and 1; N, Z from 1;
+ * M 8-bit; X, Y unchanged.
+ */
+void HudCountMove19EE(uint8_t bank, uint16_t rec)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t p = 0;
+    uint16_t n;
+
+    if (rd8(b | 0x0E59))
+        return;
+    SoundPort0QueuePush(0x35);
+    GsuRecordRaise6A(bank, rec, 0x7F, &p);
+    GsuRecordLower82(bank, rec, 0x7F, &p);
+    n = rd16(b | 0x19EE);
+    wr16(b | 0x19F0, n);
+    wr16(b | 0x19EE, 0x0000);
+    wr8(b | 0x19F2, 0x01);
+}
+
+void abi_HudCountMove19EE(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v = rd8(b | 0x0E59);
+    uint16_t n;
+
+    cpu.p |= P_M;
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+    if (v)
+        return;
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x35);
+    abi_SoundPort0QueuePush();
+    cpu.p |= P_M;
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x7F);
+    abi_GsuRecordRaise6A();
+    cpu.p |= P_M;
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x7F);
+    abi_GsuRecordLower82();
+    n = rd16(b | 0x19EE);
+    wr16(b | 0x19F0, n);
+    wr16(b | 0x19EE, 0x0000);
+    wr8(b | 0x19F2, 0x01);
+    cpu.a = (uint16_t)((n & 0xFF00) | 0x01);
+    cpu.p = (uint8_t)(nz8(cpu.p, 0x01) | P_M);
+}

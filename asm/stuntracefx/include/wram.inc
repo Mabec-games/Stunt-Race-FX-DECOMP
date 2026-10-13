@@ -1222,3 +1222,23 @@ includeonce
 ; The window slide position (video/window_hdma.asm): the line the moving
 ; window band starts at, stepped by WindowSlideDown/WindowSlideUp.
 !window_slide_pos = $001A14
+
+; $19F2: set to 1 when HudCountMove19EE moves the count at $19EE to $19F0
+; (hud/digits.asm).
+!wram_19F2 = $19F2
+
+; The save's unlock bytes in bank $70, through the data bank (save/
+; records.asm): $FC06-$FC0F (courses and classes opened) and their 8-bit
+; checksum word at $FC14.
+!save_unlocks = $FC06
+!save_unlocks_sum = $FC14
+
+; The piece sprite inputs of SpritePieces3 (video/oam.asm): set selector
+; and frame, then the X, Y, tile and palette added to each piece.
+!sprite_piece_select = $10BB
+!sprite_piece_x = $10BD
+!sprite_piece_y = $10BF
+!sprite_piece_tile = $10C1
+!sprite_piece_frame = $10C3
+!sprite_piece_palette = $10C5
+!sprite_piece_count = $F1
