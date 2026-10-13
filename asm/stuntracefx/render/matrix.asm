@@ -667,4 +667,372 @@ FxSegmentCrossZ:
     jmp r11
     nop
 
+; @routine 01:C4AA FxClipYPlane
+; WHAT IT DOES: Clips the segment from (R1, R2, R3) to (R4, R5, R7)
+; against the plane z = y * R6 * 8 (FMULT, ADC, two ADDs): R0 = 0 when
+; both ends have z at or above it, $FFFF when both are below; otherwise
+; R0 = 1 with the end below replaced by the crossing, found by halving
+; (at most 12 steps), its attributes halved along with it: the first
+; end's at $8A/$8E, the second's at $8C/$90 (the moved end's written
+; back there).
+; HOW: The end kept is saved at $9A-$9E and put back; R8, R9, R12, R13
+; and the return address and R14 are kept on the R10 stack, R10 itself at
+; $A0.
+; Entry: R1-R7 as above, R6 = the slope; R10 = stack; R11 = return
+; address. Exit: as above; R8, R9, R12-R14 restored; S, Z from R10; the
+; last RAM address R10.
+%at($01C4AA)
+FxClipYPlane:
+    cache
+    from r11
+    stw (r10)
+    inc r10
+    inc r10
+    from r14
+    stw (r10)
+    inc r10
+    inc r10
+    from r2
+    fmult
+    adc r0
+    add r0
+    add r0
+    from r3
+    sub r0
+    bmi .lC4D3
+    nop
+    from r5
+    fmult
+    adc r0
+    add r0
+    add r0
+    from r7
+    sub r0
+    bmi .lC4EE
+    nop
+    dec r10
+    dec r10
+    to r14
+    ldw (r10)
+    sub r0
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+.lC4D3:
+    from r5
+    fmult
+    adc r0
+    add r0
+    add r0
+    from r7
+    sub r0
+    bmi .lC4E2
+    nop
+    iwt r15,#.lC5B4
+    nop
+.lC4E2:
+    nop
+    dec r10
+    dec r10
+    to r14
+    ldw (r10)
+    ibt r0,#$FF
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+.lC4EE:
+    sms ($9A),r1
+    sms ($9C),r2
+    sms ($9E),r3
+    from r8
+    stw (r10)
+    inc r10
+    inc r10
+    from r9
+    stw (r10)
+    inc r10
+    inc r10
+    from r12
+    stw (r10)
+    inc r10
+    inc r10
+    from r13
+    stw (r10)
+    inc r10
+    inc r10
+    sms ($A0),r10
+    ibt r10,#$0C
+    with r1
+    to r0
+    with r4
+    to r1
+    with r0
+    to r4
+    with r2
+    to r0
+    with r5
+    to r2
+    with r0
+    to r5
+    with r3
+    to r0
+    with r7
+    to r3
+    with r0
+    to r7
+    lms r8,($8C)
+    lms r9,($90)
+    lms r12,($8A)
+    lms r13,($8E)
+.lC52A:
+    from r2
+    add r5
+    to r14
+    div2
+    from r3
+    add r7
+    to r11
+    div2
+    from r14
+    fmult
+    adc r0
+    add r0
+    add r0
+    from r11
+    sub r0
+    beq .lC574
+    nop
+    bmi .lC55B
+    dec r10
+    beq .lC574
+    nop
+    with r11
+    to r7
+    from r1
+    add r4
+    to r4
+    div2
+    with r14
+    to r5
+    from r8
+    add r12
+    to r12
+    div2
+    from r9
+    add r13
+    to r13
+    div2
+    bra .lC52A
+    nop
+.lC55B:
+    beq .lC574
+    nop
+    with r11
+    to r3
+    from r1
+    add r4
+    to r1
+    div2
+    with r14
+    to r2
+    from r8
+    add r12
+    to r8
+    div2
+    from r9
+    add r13
+    to r9
+    div2
+    bra .lC52A
+    nop
+.lC574:
+    with r11
+    to r7
+    from r1
+    add r4
+    to r4
+    div2
+    with r14
+    to r5
+    from r8
+    add r12
+    to r12
+    div2
+    from r9
+    add r13
+    to r13
+    div2
+    lms r1,($9A)
+    lms r2,($9C)
+    lms r3,($9E)
+    sms ($8C),r12
+    sms ($90),r13
+    lms r10,($A0)
+    dec r10
+    dec r10
+    to r13
+    ldw (r10)
+    dec r10
+    dec r10
+    to r12
+    ldw (r10)
+    dec r10
+    dec r10
+    to r9
+    ldw (r10)
+    dec r10
+    dec r10
+    to r8
+    ldw (r10)
+    dec r10
+    dec r10
+    to r14
+    ldw (r10)
+    ibt r0,#$01
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+.lC5B4:
+    sms ($9A),r4
+    sms ($9C),r5
+    sms ($9E),r7
+    from r8
+    stw (r10)
+    inc r10
+    inc r10
+    from r9
+    stw (r10)
+    inc r10
+    inc r10
+    from r12
+    stw (r10)
+    inc r10
+    inc r10
+    from r13
+    stw (r10)
+    inc r10
+    inc r10
+    sms ($A0),r10
+    ibt r10,#$0C
+    lms r8,($8A)
+    lms r9,($8E)
+    lms r12,($8C)
+    lms r13,($90)
+.lC5DE:
+    from r2
+    add r5
+    to r14
+    div2
+    from r3
+    add r7
+    to r11
+    div2
+    from r14
+    fmult
+    adc r0
+    add r0
+    add r0
+    from r11
+    sub r0
+    beq .lC628
+    nop
+    bmi .lC60F
+    dec r10
+    beq .lC628
+    nop
+    with r11
+    to r7
+    from r1
+    add r4
+    to r4
+    div2
+    with r14
+    to r5
+    from r8
+    add r12
+    to r12
+    div2
+    from r9
+    add r13
+    to r13
+    div2
+    bra .lC5DE
+    nop
+.lC60F:
+    beq .lC628
+    nop
+    with r11
+    to r3
+    from r1
+    add r4
+    to r1
+    div2
+    with r14
+    to r2
+    from r8
+    add r12
+    to r8
+    div2
+    from r9
+    add r13
+    to r9
+    div2
+    bra .lC5DE
+    nop
+.lC628:
+    with r11
+    to r3
+    from r1
+    add r4
+    to r1
+    div2
+    with r14
+    to r2
+    from r8
+    add r12
+    to r8
+    div2
+    from r9
+    add r13
+    to r9
+    div2
+    lms r4,($9A)
+    lms r5,($9C)
+    lms r7,($9E)
+    sms ($8A),r8
+    sms ($8E),r9
+    lms r10,($A0)
+    dec r10
+    dec r10
+    to r13
+    ldw (r10)
+    dec r10
+    dec r10
+    to r12
+    ldw (r10)
+    dec r10
+    dec r10
+    to r9
+    ldw (r10)
+    dec r10
+    dec r10
+    to r8
+    ldw (r10)
+    dec r10
+    dec r10
+    to r14
+    ldw (r10)
+    ibt r0,#$01
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+
 arch 65816
