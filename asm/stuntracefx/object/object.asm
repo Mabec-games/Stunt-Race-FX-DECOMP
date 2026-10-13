@@ -2340,3 +2340,164 @@ ObjectTrailPlace:
     sta.w !obj_vel_z,x
     jsl.l ObjectRebucket
     rtl
+
+; @routine 08:EB4D ObjectSpawnAttached
+; WHAT IT DOES: Unless $0D62 is set, makes a new object (ObjectSpawn, kind
+; word $A158 at $1F2B) with bit 2 of +$24 set, +$4A = 2, +$48 = 5, +$49 =
+; $0A, handler $08:EBA3 (ObjectAttachedStart), object X as its parent
+; (+$27) and the offset $1F59/$1F5A as its +$30/+$32.
+; HOW: As ObjectSpawnTrail. The no-object exit is not reached in the
+; traces so far.
+; Entry: M 8-bit, X 16-bit; X = object; $1F59/$1F5A = the offset. Exit: M
+; 8-bit; Y = the new object; A low byte = $1F5A; or as ObjectSpawnTrail.
+%at($08EB4D)
+ObjectSpawnAttached:
+    lda.w !wram_0D62
+    bne ObjectSpawnAttached_done
+    rep.b #$20
+    lda.w #$A158
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .spawned
+    jml.l ObjectSpawnAttached_done
+.spawned:
+    lda.w !obj_24,y
+    ora.b #$04
+    sta.w !obj_24,y
+    lda.b #$02
+    sta.w !obj_4a,y
+    lda.b #$05
+    sta.w !obj_48,y
+    lda.b #$0A
+    sta.w !obj_49,y
+    rep.b #$20
+    lda.w #ObjectAttachedStart
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #ObjectAttachedStart>>16
+    sta.w !obj_1c,y
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_27,y
+    sep.b #$20
+    pla
+    lda.w !attach_y
+    sta.w !obj_vel_y,y
+    lda.w !attach_z
+    sta.w !obj_vel_z,y
+ObjectSpawnAttached_done:               ; reached by the long jump above
+    rtl
+
+; @routine 08:EBA3 ObjectAttachedStart
+; WHAT IT DOES: An attached object's first frame: count +$4B = $0C,
+; handler $08:EBB9 (ObjectAttachedStep), then placed by its parent.
+; HOW: As ObjectTrailStart.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectRebucket.
+ObjectAttachedStart:
+    lda.b #$0C
+    sta.w !obj_4b,x
+    rep.b #$20
+    lda.w #ObjectAttachedStep
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #ObjectAttachedStep>>16
+    sta.w !obj_1c,x
+    bra ObjectAttachedPlace
+
+; @routine 08:EBB9 ObjectAttachedStep
+; WHAT IT DOES: As ObjectTrailStep, with the offset (0, +$30, +$32) kept at
+; $1F59/$1F5A and no drift.
+; HOW: As ObjectTrailStep. The sign stores of the zero x are kept.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectRebucket or
+; ObjectReleaseLong.
+ObjectAttachedStep:
+    lda.w !obj_24,x
+    ora.b #$04
+    sta.w !obj_24,x
+    lda.b #$00
+    sta.w !obj_4a,x
+    lda.b #$00
+    sta.w !obj_48,x
+    lda.b #$00
+    sta.w !obj_49,x
+    lda.w !obj_4b,x
+    bne .count
+    jml.l ObjectReleaseLong
+.count:
+    dec.w !obj_4b,x
+ObjectAttachedPlace:
+    ldy.w !obj_27,x
+    lda.w !obj_vel_y,x
+    sta.w !attach_y
+    lda.w !obj_vel_z,x
+    sta.w !attach_z
+    lda.b #$00
+    sta.b !dp_02
+    sta.b !dp_04
+    bit.b #$80
+    beq .x_positive
+    lda.b #$FF
+    sta.b !dp_05
+    bra .y
+.x_positive:
+    stz.b !dp_05
+.y:
+    lda.w !attach_y
+    sta.b !dp_08
+    sta.b !dp_0a
+    bit.b #$80
+    beq .y_positive
+    lda.b #$FF
+    sta.b !dp_0b
+    bra .z
+.y_positive:
+    stz.b !dp_0b
+.z:
+    lda.w !attach_z
+    sta.b !dp_94
+    sta.w !rot_z
+    bit.b #$80
+    beq .z_positive
+    lda.b #$FF
+    sta.w !rot_z_high
+    bra .turn
+.z_positive:
+    stz.w !rot_z_high
+.turn:
+    lda.w !obj_14,y
+    jsl.l RotateXZFrom08
+    lda.b !dp_04
+    sta.b !dp_02
+    lda.b !dp_0a
+    sta.b !dp_08
+    lda.w !rot_z
+    sta.b !dp_94
+    lda.w !obj_15,y
+    jsl.l RotateXZ
+    rep.b #$20
+    lda.b !dp_04
+    asl a
+    sta.b !dp_04
+    lda.b !dp_0a
+    asl a
+    sta.b !dp_0a
+    lda.w !rot_z
+    asl a
+    sta.w !rot_z
+    lda.w !obj_pos_x,y
+    clc
+    adc.b !dp_04
+    sta.w !obj_pos_x,x
+    lda.w !obj_pos_z,y
+    clc
+    adc.w !rot_z
+    sta.w !obj_pos_z,x
+    lda.w !obj_pos_y,y
+    clc
+    adc.b !dp_0a
+    sta.w !obj_pos_y,x
+    sep.b #$20
+    jsl.l ObjectRebucket
+    rtl

@@ -2182,11 +2182,11 @@ static void sign_byte(uint32_t at, uint8_t a)
     wr8(at, (a & 0x80) ? 0xFF : 0x00);
 }
 
-/* The trail's shared tail: object X at its parent (+$27)'s position plus
-   the offset (0, -10, +$32) turned by the parent's angles +$14
-   (RotateXZFrom08) and +$15 (RotateXZ) and doubled; +$32 then moves by -5
-   and the object is rebucketed. */
-static void trail_place(uint32_t b)
+/* Object X at its parent (+$27)'s position plus an offset turned by the
+   parent's angles +$14 (RotateXZFrom08) and +$15 (RotateXZ) and doubled,
+   then rebucketed. A trail's offset is (0, -10, +$32), +$32 moving by -5
+   after; an attached object's is (0, +$30, +$32), kept at $1F59/$1F5A. */
+static void parent_place(uint32_t b, int attached)
 {
     uint8_t v;
     uint16_t w;
@@ -2195,15 +2195,21 @@ static void trail_place(uint32_t b)
     uint32_t from[3];
 
     cpu.y = rd16(b | (uint16_t)(0x2027 + cpu.x));
-    v = rd8(b | (uint16_t)(0x2032 + cpu.x));
-    wr8(b | 0x1F58, v);
+    if (attached) {
+        wr8(b | 0x1F59, rd8(b | (uint16_t)(0x2030 + cpu.x)));
+        wr8(b | 0x1F5A, rd8(b | (uint16_t)(0x2032 + cpu.x)));
+    } else {
+        v = rd8(b | (uint16_t)(0x2032 + cpu.x));
+        wr8(b | 0x1F58, v);
+    }
     wr8(dp8(0x02), 0x00);
     wr8(dp8(0x04), 0x00);
     sign_byte(dp8(0x05), 0x00);
-    wr8(dp8(0x08), 0xF6);
-    wr8(dp8(0x0A), 0xF6);
-    sign_byte(dp8(0x0B), 0xF6);
-    v = rd8(b | 0x1F58);
+    v = attached ? rd8(b | 0x1F59) : 0xF6;
+    wr8(dp8(0x08), v);
+    wr8(dp8(0x0A), v);
+    sign_byte(dp8(0x0B), v);
+    v = rd8(b | (attached ? 0x1F5A : 0x1F58));
     wr8(dp8(0x94), v);
     wr8(b | 0x05F2, v);
     sign_byte(b | 0x05F3, v);
@@ -2238,11 +2244,13 @@ static void trail_place(uint32_t b)
         wr16(b | (uint16_t)(to[i] + cpu.x), cpu.a);
     }
     cpu.p |= P_M;
-    v = rd8(b | (uint16_t)(0x2032 + cpu.x));
-    cpu.p &= (uint8_t)~P_C;
-    v = op_adc8(v, 0xFB, &cpu.p);
-    wr8(b | (uint16_t)(0x2032 + cpu.x), v);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    if (!attached) {
+        v = rd8(b | (uint16_t)(0x2032 + cpu.x));
+        cpu.p &= (uint8_t)~P_C;
+        v = op_adc8(v, 0xFB, &cpu.p);
+        wr8(b | (uint16_t)(0x2032 + cpu.x), v);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    }
     abi_ObjectRebucket();
 }
 
@@ -2303,7 +2311,7 @@ void abi_ObjectTrailStart(void)
     wr16(b | (uint16_t)(0x201A + cpu.x), 0xE934);
     wr8(b | (uint16_t)(0x201C + cpu.x), 0x08);
     wr8(b | (uint16_t)(0x2032 + cpu.x), 0xD8);
-    trail_place(b);
+    parent_place(b, 0);
 }
 
 /*
@@ -2339,5 +2347,95 @@ void abi_ObjectTrailStep(void)
     }
     v = (uint8_t)(rd8(b | (uint16_t)(0x204B + cpu.x)) - 1);
     wr8(b | (uint16_t)(0x204B + cpu.x), v);
-    trail_place(b);
+    parent_place(b, 0);
+}
+
+/*
+ * @routine 08:EB4D ObjectSpawnAttached
+ * WHAT IT DOES: Unless $0D62 is set, makes a new object (ObjectSpawn, kind
+ * word $A158 at $1F2B) with bit 2 of +$24 set, +$4A = 2, +$48 = 5, +$49 =
+ * $0A, handler $08:EBA3 (ObjectAttachedStart), object X as its parent
+ * (+$27) and the offset $1F59/$1F5A as its +$30/+$32.
+ * HOW: As ObjectSpawnTrail. The no-object exit is not reached in the
+ * traces so far.
+ * Entry: M 8-bit, X 16-bit; X = object; $1F59/$1F5A = the offset. Exit: M
+ * 8-bit; Y = the new object; A low byte = $1F5A; or as ObjectSpawnTrail.
+ */
+void abi_ObjectSpawnAttached(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v;
+
+    v = rd8(b | 0x0D62);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+    if (v)
+        return;
+    cpu.p &= (uint8_t)~P_M;
+    cpu.a = 0xA158;
+    wr16(b | 0x1F2B, 0xA158);
+    cpu.p |= P_M;
+    abi_ObjectSpawn();
+    if (!(cpu.p & P_C))
+        return;
+    v = (uint8_t)(rd8(b | (uint16_t)(0x2024 + cpu.y)) | 0x04);
+    wr8(b | (uint16_t)(0x2024 + cpu.y), v);
+    wr8(b | (uint16_t)(0x204A + cpu.y), 0x02);
+    wr8(b | (uint16_t)(0x2048 + cpu.y), 0x05);
+    wr8(b | (uint16_t)(0x2049 + cpu.y), 0x0A);
+    wr16(b | (uint16_t)(0x201A + cpu.y), 0xEBA3);
+    wr8(b | (uint16_t)(0x201C + cpu.y), 0x08);
+    wr16(b | (uint16_t)(0x2027 + cpu.y), cpu.x);
+    wr8(b | (uint16_t)(0x2030 + cpu.y), rd8(b | 0x1F59));
+    v = rd8(b | 0x1F5A);
+    wr8(b | (uint16_t)(0x2032 + cpu.y), v);
+    cpu.a = (uint16_t)((cpu.x & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+}
+
+/*
+ * @routine 08:EBA3 ObjectAttachedStart
+ * WHAT IT DOES: An attached object's first frame: count +$4B = $0C,
+ * handler $08:EBB9 (ObjectAttachedStep), then placed by its parent.
+ * HOW: As ObjectTrailStart.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectRebucket.
+ */
+void abi_ObjectAttachedStart(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    wr8(b | (uint16_t)(0x204B + cpu.x), 0x0C);
+    wr16(b | (uint16_t)(0x201A + cpu.x), 0xEBB9);
+    wr8(b | (uint16_t)(0x201C + cpu.x), 0x08);
+    parent_place(b, 1);
+}
+
+/*
+ * @routine 08:EBB9 ObjectAttachedStep
+ * WHAT IT DOES: As ObjectTrailStep, with the offset (0, +$30, +$32) kept at
+ * $1F59/$1F5A and no drift.
+ * HOW: As ObjectTrailStep. The sign stores of the zero x are kept.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectRebucket or
+ * ObjectReleaseLong.
+ */
+void abi_ObjectAttachedStep(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v;
+
+    v = (uint8_t)(rd8(b | (uint16_t)(0x2024 + cpu.x)) | 0x04);
+    wr8(b | (uint16_t)(0x2024 + cpu.x), v);
+    wr8(b | (uint16_t)(0x204A + cpu.x), 0x00);
+    wr8(b | (uint16_t)(0x2048 + cpu.x), 0x00);
+    wr8(b | (uint16_t)(0x2049 + cpu.x), 0x00);
+    v = rd8(b | (uint16_t)(0x204B + cpu.x));
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+    if (!v) {
+        abi_ObjectReleaseLong();
+        return;
+    }
+    v = (uint8_t)(rd8(b | (uint16_t)(0x204B + cpu.x)) - 1);
+    wr8(b | (uint16_t)(0x204B + cpu.x), v);
+    parent_place(b, 1);
 }

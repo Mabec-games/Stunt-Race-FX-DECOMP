@@ -1549,3 +1549,5 @@ includeonce
 !window_band_target = $19D9            ; where it stops
 !gsu_rec_5e = $70005E                  ; Super FX record word $5E
 !obj_4b = $204B
+!attach_y = $1F59                      ; an attached object's y offset from its parent (+$30)
+!attach_z = $1F5A                      ; its z offset (+$32)
