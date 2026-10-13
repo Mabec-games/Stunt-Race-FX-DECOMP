@@ -968,3 +968,121 @@ WindowClosedDigitStep:
 .lC327:
     rts                             ; not reached in the traces so far
 
+
+; @routine 07:BA15 ChampionshipScreenStep
+; WHAT IT DOES: One frame of the championship screen's set-up by its stage
+; $0D59 (the table at $07:BA26), or, with the HUD mode $0D2B 0,
+; WindowClosedDigitStep. The stages here: 0 (BA71) clears $0E5F, $19DF and
+; $10A2, sets $0D22 = 6, $0D23 = 0, the slide-up sound and hides sprites
+; 36 and 96 (OamHide36And96); 1 (BA56) waits for the split window's
+; state 5, then BG2's scroll (-24, -32); 4 (BA9A) has the Super FX picture
+; made (GsuCF42To3000 with $FB99, $1F) and copied from $70:3000 to
+; $7F:93D7 ($440 bytes), the digit tiles (DigitTiles1184), bit 1 of $0D45
+; set and bits 2-3 cleared, and the palette buffer from $1F:8600; 7 (BA3A)
+; BG2's scroll and map ($5C), $19DF cleared; 8 (BA8F) waits for the split
+; window to close. The others are elsewhere in bank $07 ($CC83, $CC9B,
+; $CF6F, TimesKeepAndAdvance, $CCBF). Each finished stage moves $0D59 on.
+; HOW: JMP (table,X); the stages outside this routine are reached through
+; call_routine. The RTS after WindowClosedDigitStep runs only when that
+; returns (unit_cpu).
+; Entry: M 8-bit, X 8-bit, D = $0000. Exit: as the stage leaves it.
+%at($07BA15)
+ChampionshipScreenStep:
+    lda.w !hud_mode
+    bne .stage
+    jsr.w WindowClosedDigitStep
+    rts
+.stage:
+    lda.w !wram_0D59
+    asl a
+    tax
+    jmp.w (.stages,x)
+.stages:
+    dw .stage_BA71
+    dw .stage_BA56
+    dw ChampionshipStageCC83
+    dw ChampionshipStageCC9B
+    dw .stage_BA9A
+    dw ChampionshipStageCF6F
+    dw TimesKeepAndAdvance
+    dw .stage_BA3A
+    dw .stage_BA8F
+    dw ChampionshipStageCCBF
+.stage_BA3A:
+    rep.b #$20
+    lda.w #$FFE0
+    sta.w !bg2_scroll_y
+    lda.w #$FFE8
+    sta.w !bg2_scroll_x
+    sep.b #$20
+    lda.b #$5C
+    sta.w !BG2SC
+    inc.w !wram_0D59
+    stz.w !wram_19DF
+    rts
+.stage_BA56:
+    sep.b #$20
+    lda.w !window_hdma_off
+    cmp.b #$05
+    bne .lBA70
+    inc.w !wram_0D59
+    rep.b #$20
+    lda.w #$FFE0
+    sta.w !bg2_scroll_y
+    lda.w #$FFE8
+    sta.w !bg2_scroll_x
+.lBA70:
+    rts
+.stage_BA71:
+    stz.w !palette_animate
+    lda.b #$06
+    sta.w !wram_0D22
+    lda.b #$00
+    sta.w !wram_0D23
+    stz.w !wram_19DF
+    stz.w !wram_10A2
+    jsl.l WindowSlideUpSound
+    inc.w !wram_0D59
+    jsr.w OamHide36And96
+    rts
+.stage_BA8F:
+    sep.b #$20
+    lda.w !window_hdma_off
+    bne .lBA99
+    inc.w !wram_0D59
+.lBA99:
+    rts
+.stage_BA9A:
+    sep.b #$20
+    lda.b #$00
+    sta.w !sound_port1_last+2
+    sta.w !palette_phase
+    rep.b #$30
+    ldx.w #$001F
+    lda.w #$FB99
+    jsl.l GsuCF42To3000
+    phb
+    php
+    rep.b #$30
+    lda.w #$043F
+    ldx.w #$3000
+    ldy.w #$93D7
+    mvn !tilemap_7f93d7>>16,!gsu_picture>>16
+    plp
+    plb
+    jsr.w DigitTiles1184
+    sep.b #$20
+    inc.w !wram_0D59
+    lda.w !wram_0D45
+    ora.b #$02
+    and.b #$F3
+    sta.w !wram_0D45
+    rep.b #$30
+    ldx.w #$01FE
+.lBAD9:
+    lda.l !championship_palette,x
+    sta.l !palette_buffer,x
+    dex
+    dex
+    bpl .lBAD9
+    rts

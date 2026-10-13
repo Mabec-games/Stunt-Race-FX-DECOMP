@@ -27,6 +27,9 @@
 # - routines nothing in the scripts calls: three of the renderer byte
 #   setters, the bonus digits' bounce and full sizes (with $0E6C clear and
 #   set), OamBlock123Left, Gauge6APlace and two sprite-text entries.
+# - ObjectSpawnPuff with no free object; RecordNameStore3 and 6 (nothing
+#   calls them); ChampionshipScreenStep with HUD mode 0 and the split window
+#   not in state 5 (WindowClosedDigitStep returns).
 load build/stuntracefx/states/novice_coupe_race1.state
 set 7E3437 FE
 call 03:FDF7 p=30 db=7E d=0000
@@ -514,4 +517,19 @@ call 02:FC0C p=00 db=00 d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
 call 02:FC15 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E032D 00,00
+call 09:C37A y=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:B8E1 p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:B8E5 p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D2B 00
+set 7E19D8 00
+call 07:BA15 p=30 db=00 d=0000
 wait 1

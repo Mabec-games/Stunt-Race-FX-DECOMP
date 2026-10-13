@@ -2779,3 +2779,66 @@ ObjectBillboardTilt:
 .lC03B:
     rts
 
+
+; @routine 09:C37A ObjectSpawnPuff
+; WHAT IT DOES: Counts a hit: $1A28 up by one and the decimal counter at
+; $19EE-$19EF up by one; then makes an object of kind $A158 (ObjectSpawn)
+; at object Y's position, 500 units higher ($FE0C), with +$5D = $9BB4,
+; +$29 = $FE0C, bit 3 of +$24 set, +$3A = 0, +$5F = $14 and +$0A = 7.
+; Without a free object nothing is made (decoded from the ROM bytes, its
+; exit the PLX, RTS at $09:C3EB; unit_cpu reaches it).
+; HOW: SED around the decimal adds; X kept on the stack; the new object
+; comes back in Y.
+; Entry: M 8-bit, X 16-bit; Y = the object. Exit: X restored, N, Z from
+; it; Y = the new object; M 8-bit.
+%at($09C37A)
+ObjectSpawnPuff:
+    sep.b #$20
+    lda.w !wram_1A26+2
+    clc
+    adc.b #$01
+    sta.w !wram_1A26+2
+    sed
+    lda.w !wram_19EE
+    clc
+    adc.b #$01
+    sta.w !wram_19EE
+    lda.w !wram_19EE+1
+    adc.b #$00
+    sta.w !wram_19EE+1
+    cld
+    phx
+    tyx
+    rep.b #$20
+    lda.w #$A158
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lC3AE
+    jml.l ObjectExitPlx             ; not reached in the traces so far
+.lC3AE:
+    rep.b #$20
+    lda.w #$9BB4
+    sta.w !obj_5d,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$FE0C
+    sta.w !obj_29,y
+    sep.b #$20
+    lda.w !obj_24,y
+    ora.b #$08
+    sta.w !obj_24,y
+    lda.b #$00
+    sta.w !obj_3a,y
+    lda.b #$14
+    sta.w !obj_5f,y
+    jsl.l ObjectCopyPositionTo
+    rep.b #$20
+    lda.w !obj_pos_y,y
+    clc
+    adc.w #$FE0C
+    sta.w !obj_pos_y,y
+    sep.b #$20
+    lda.b #$07
+    sta.w !obj_09+1,y
+

@@ -2715,3 +2715,79 @@ void abi_ObjectBillboardTilt(void)
     wr8(b | (uint16_t)(0x2019 + y), a);
     (void)w;
 }
+
+/*
+ * @routine 09:C37A ObjectSpawnPuff
+ * WHAT IT DOES: Counts a hit: $1A28 up by one and the decimal counter at
+ * $19EE-$19EF up by one; then makes an object of kind $A158 (ObjectSpawn)
+ * at object Y's position, 500 units higher ($FE0C), with +$5D = $9BB4,
+ * +$29 = $FE0C, bit 3 of +$24 set, +$3A = 0, +$5F = $14 and +$0A = 7.
+ * Without a free object nothing is made (decoded from the ROM bytes, its
+ * exit the PLX, RTS at $09:C3EB; unit_cpu reaches it).
+ * HOW: SED around the decimal adds; X kept on the stack; the new object
+ * comes back in Y.
+ * Entry: M 8-bit, X 16-bit; Y = the object. Exit: X restored, N, Z from
+ * it; Y = the new object; M 8-bit.
+ */
+void abi_ObjectSpawnPuff(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t x = cpu.x, v;
+    uint8_t a;
+
+    a = rd8(b | 0x1A28);
+    cpu.p &= (uint8_t)~P_C;
+    a = op_adc8(a, 0x01, &cpu.p);
+    wr8(b | 0x1A28, a);
+    cpu.p |= P_D;
+    a = rd8(b | 0x19EE);
+    cpu.p &= (uint8_t)~P_C;
+    a = op_adc8(a, 0x01, &cpu.p);
+    wr8(b | 0x19EE, a);
+    a = rd8(b | 0x19EF);
+    a = op_adc8(a, 0x00, &cpu.p);
+    wr8(b | 0x19EF, a);
+    cpu.p &= (uint8_t)~P_D;
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
+    cpu.x = cpu.y;
+    cpu.p = nz16(cpu.p, cpu.x);
+    op_rep(P_M);
+    op_lda16_imm(0xA158);
+    wr16(b | 0x1F2B, 0xA158);
+    op_sep(P_M);
+    abi_ObjectSpawn();
+    if (!(cpu.p & P_C)) {
+        cpu.x = x;
+        cpu.p = nz16(cpu.p, x);
+        return;
+    }
+    op_rep(P_M);
+    op_lda16_imm(0x9BB4);
+    wr16(b | (uint16_t)(0x205D + cpu.y), 0x9BB4);
+    op_sep(P_M);
+    op_rep(P_M);
+    op_lda16_imm(0xFE0C);
+    wr16(b | (uint16_t)(0x2029 + cpu.y), 0xFE0C);
+    op_sep(P_M);
+    op_lda8(b | (uint16_t)(0x2024 + cpu.y));
+    a = (uint8_t)(cpu.a | 0x08);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
+    cpu.p = nz8(cpu.p, a);
+    wr8(b | (uint16_t)(0x2024 + cpu.y), a);
+    cpu.a = (uint16_t)(cpu.a & 0xFF00);
+    wr8(b | (uint16_t)(0x203A + cpu.y), 0x00);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x14);
+    wr8(b | (uint16_t)(0x205F + cpu.y), 0x14);
+    cpu.p = nz8(cpu.p, 0x14);
+    abi_ObjectCopyPositionTo();
+    op_rep(P_M);
+    op_lda16(b | (uint16_t)(0x200E + cpu.y));
+    op_add16(0xFE0C);
+    wr16(b | (uint16_t)(0x200E + cpu.y), cpu.a);
+    op_sep(P_M);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x07);
+    wr8(b | (uint16_t)(0x200A + cpu.y), 0x07);
+    cpu.x = x;
+    cpu.p = nz16(cpu.p, x);
+    (void)v;
+}

@@ -1017,3 +1017,156 @@ void abi_WindowClosedDigitStep(void)
     wr8(b | 0x0D48, 0x02);
     call_routine(0x07EC6B, 0);
 }
+
+void abi_WindowSlideUpSound(void);
+void abi_OamHide36And96(void);
+void abi_GsuCF42To3000(void);
+
+/* SEP #$20 / REP #$20 around: BG2's scroll to (-24, -32) for the
+   championship screens ($0D92 = $FFE8, $0D8E = $FFE0). */
+static void bg2_scroll_corner(uint32_t b)
+{
+    op_rep(P_M);
+    op_lda16_imm(0xFFE0);
+    wr16(b | 0x0D8E, 0xFFE0);
+    op_lda16_imm(0xFFE8);
+    wr16(b | 0x0D92, 0xFFE8);
+}
+
+/* INC $0D59 (8-bit). */
+static void stage_next(uint32_t b)
+{
+    uint8_t v = (uint8_t)(rd8(b | 0x0D59) + 1);
+
+    wr8(b | 0x0D59, v);
+    cpu.p = nz8(cpu.p, v);
+}
+
+/*
+ * @routine 07:BA15 ChampionshipScreenStep
+ * WHAT IT DOES: One frame of the championship screen's set-up by its stage
+ * $0D59 (the table at $07:BA26), or, with the HUD mode $0D2B 0,
+ * WindowClosedDigitStep. The stages here: 0 (BA71) clears $0E5F, $19DF and
+ * $10A2, sets $0D22 = 6, $0D23 = 0, the slide-up sound and hides sprites
+ * 36 and 96 (OamHide36And96); 1 (BA56) waits for the split window's
+ * state 5, then BG2's scroll (-24, -32); 4 (BA9A) has the Super FX picture
+ * made (GsuCF42To3000 with $FB99, $1F) and copied from $70:3000 to
+ * $7F:93D7 ($440 bytes), the digit tiles (DigitTiles1184), bit 1 of $0D45
+ * set and bits 2-3 cleared, and the palette buffer from $1F:8600; 7 (BA3A)
+ * BG2's scroll and map ($5C), $19DF cleared; 8 (BA8F) waits for the split
+ * window to close. The others are elsewhere in bank $07 ($CC83, $CC9B,
+ * $CF6F, TimesKeepAndAdvance, $CCBF). Each finished stage moves $0D59 on.
+ * HOW: JMP (table,X); the stages outside this routine are reached through
+ * call_routine. The RTS after WindowClosedDigitStep runs only when that
+ * returns (unit_cpu).
+ * Entry: M 8-bit, X 8-bit, D = $0000. Exit: as the stage leaves it.
+ */
+void abi_ChampionshipScreenStep(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t t;
+    uint8_t v;
+    int i;
+
+    op_lda8(b | 0x0D2B);
+    if (!(uint8_t)cpu.a) {
+        abi_WindowClosedDigitStep();
+        return;
+    }
+    op_lda8(b | 0x0D59);
+    v = (uint8_t)cpu.a;
+    cpu.p = (uint8_t)((cpu.p & ~P_C) | (v >> 7));
+    v = (uint8_t)(v << 1);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.x = v;
+    cpu.p = nz8(cpu.p, v);
+    t = rd16(0x070000 | (uint16_t)(0xBA26 + v));
+    switch (t) {
+    case 0xBA71:
+        wr8(b | 0x0E5F, 0x00);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x06);
+        wr8(b | 0x0D22, 0x06);
+        cpu.a = (uint16_t)(cpu.a & 0xFF00);
+        cpu.p = nz8(cpu.p, 0);
+        wr8(b | 0x0D23, 0x00);
+        wr8(b | 0x19DF, 0x00);
+        wr8(b | 0x10A2, 0x00);
+        abi_WindowSlideUpSound();
+        stage_next(b);
+        abi_OamHide36And96();
+        break;
+    case 0xBA56:
+        op_sep(P_M);
+        op_lda8(b | 0x19D8);
+        v = (uint8_t)cpu.a;
+        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x05)) & ~P_C) | (v >= 0x05 ? P_C : 0));
+        if (v != 0x05)
+            break;
+        stage_next(b);
+        bg2_scroll_corner(b);
+        break;
+    case 0xBA3A:
+        bg2_scroll_corner(b);
+        op_sep(P_M);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x5C);
+        cpu.p = nz8(cpu.p, 0x5C);
+        wr8(b | 0x2108, 0x5C);
+        stage_next(b);
+        wr8(b | 0x19DF, 0x00);
+        break;
+    case 0xBA8F:
+        op_sep(P_M);
+        op_lda8(b | 0x19D8);
+        if (!(uint8_t)cpu.a)
+            stage_next(b);
+        break;
+    case 0xBA9A: {
+        uint8_t p1, db1;
+
+        op_sep(P_M);
+        cpu.a = (uint16_t)(cpu.a & 0xFF00);
+        cpu.p = nz8(cpu.p, 0);
+        wr8(b | 0x0DD4, 0x00);
+        wr8(b | 0x0DD5, 0x00);
+        op_rep(P_M | P_X);
+        cpu.x = 0x001F;
+        op_lda16_imm(0xFB99);
+        abi_GsuCF42To3000();
+        db1 = cpu.db;
+        p1 = cpu.p;
+        op_rep(P_M | P_X);
+        for (i = 0; i < 0x440; i++)
+            wr8(0x7F93D7 + (uint32_t)i, rd8(0x703000 + (uint32_t)i));
+        cpu.a = 0xFFFF;
+        cpu.x = 0x3440;
+        cpu.y = 0x9817;
+        op_plp(p1);
+        cpu.db = db1;
+        cpu.p = nz8(cpu.p, db1);
+        abi_DigitTiles1184();
+        op_sep(P_M);
+        stage_next((uint32_t)cpu.db << 16);
+        b = (uint32_t)cpu.db << 16;
+        op_lda8(b | 0x0D45);
+        v = (uint8_t)((cpu.a | 0x02) & 0xF3);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+        cpu.p = nz8(cpu.p, v);
+        wr8(b | 0x0D45, v);
+        op_rep(P_M | P_X);
+        cpu.x = 0x01FE;
+        do {
+            op_lda16(0x1F8600 + (uint32_t)cpu.x);
+            wr16(0x7EFD65 + (uint32_t)cpu.x, cpu.a);
+            cpu.x = (uint16_t)(cpu.x - 2);
+            cpu.p = nz16(cpu.p, cpu.x);
+        } while (!(cpu.x & 0x8000));
+        break;
+    }
+    case 0xD029:
+        abi_TimesKeepAndAdvance();
+        break;
+    default:
+        call_routine(0x070000 | t, 0);
+        break;
+    }
+}

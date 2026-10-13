@@ -393,3 +393,48 @@ RecordShiftFrom1_copy:
     dey
     bne .copy_byte
 
+; @routine 07:B8DD RecordNameStore0
+; WHAT IT DOES: Writes the entered name ($0F11, $0F12) and car ($0D89)
+; into the course $0D4A's first three-byte record entry ($70:FC6D +
+; course * 9).
+; HOW: The entry's offset (0, 3 or 6 from the three entries) through
+; direct page $F5; 8-bit long stores.
+; Entry: M 8-bit, X 8-bit, D = $0000. Exit: A = the car; X = the entry's
+; offset; N, Z from the car.
+%at($07B8DD)
+RecordNameStore0:
+    lda.b #$00
+    bra RecordNameStore_slot
+
+; @routine 07:B8E1 RecordNameStore3
+; WHAT IT DOES: As RecordNameStore0 for the second entry.
+; HOW: The same code with 3; no script reaches it (unit_cpu does).
+; Entry: as RecordNameStore0. Exit: as RecordNameStore0.
+%at($07B8E1)
+RecordNameStore3:
+    lda.b #$03                      ; not reached in the traces so far
+    bra RecordNameStore_slot        ; not reached in the traces so far
+
+; @routine 07:B8E5 RecordNameStore6
+; WHAT IT DOES: As RecordNameStore0 for the third entry.
+; HOW: The same code with 6; no script reaches it (unit_cpu does).
+; Entry: as RecordNameStore0. Exit: as RecordNameStore0.
+%at($07B8E5)
+RecordNameStore6:
+    lda.b #$06                      ; not reached in the traces so far
+RecordNameStore_slot:
+    sta.b !save_block_offset
+    lda.w !wram_0D4A
+    asl a
+    asl a
+    asl a
+    clc
+    adc.w !wram_0D4A
+    adc.b !save_block_offset
+    tax
+    lda.w !level_columns+12
+    sta.l !save_course_names,x
+    lda.w !level_columns+13
+    sta.l !save_course_names+1,x
+    lda.w !wram_0D89
+

@@ -378,3 +378,69 @@ void abi_RecordShiftFrom1(void)
     a = course_times_24();
     times_slot_copy(op_adc8(a, 0x08, &cpu.p));
 }
+
+/* STA $F5, then the record entry at $70:FC6D + course * 9 + $F5 gets the
+   name bytes $0F11, $0F12 and the car $0D89. */
+static void record_name_store(uint8_t slot)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t a;
+    int i;
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | slot);
+    cpu.p = nz8(cpu.p, slot);
+    wr8(0x0000F5, slot);
+    a = rd8(b | 0x0D4A);
+    for (i = 0; i < 3; i++) {
+        cpu.p = (uint8_t)((cpu.p & ~P_C) | (a >> 7));
+        a = (uint8_t)(a << 1);
+    }
+    cpu.p &= (uint8_t)~P_C;
+    a = op_adc8(a, rd8(b | 0x0D4A), &cpu.p);
+    a = op_adc8(a, rd8(0x0000F5), &cpu.p);
+    cpu.x = a;
+    cpu.p = nz8(cpu.p, a);
+    op_lda8(b | 0x0F11);
+    wr8(0x70FC6D + (uint32_t)cpu.x, (uint8_t)cpu.a);
+    op_lda8(b | 0x0F12);
+    wr8(0x70FC6E + (uint32_t)cpu.x, (uint8_t)cpu.a);
+    op_lda8(b | 0x0D89);
+    wr8(0x70FC6F + (uint32_t)cpu.x, (uint8_t)cpu.a);
+}
+
+/*
+ * @routine 07:B8DD RecordNameStore0
+ * WHAT IT DOES: Writes the entered name ($0F11, $0F12) and car ($0D89)
+ * into the course $0D4A's first three-byte record entry ($70:FC6D +
+ * course * 9).
+ * HOW: The entry's offset (0, 3 or 6 from the three entries) through
+ * direct page $F5; 8-bit long stores.
+ * Entry: M 8-bit, X 8-bit, D = $0000. Exit: A = the car; X = the entry's
+ * offset; N, Z from the car.
+ */
+void abi_RecordNameStore0(void)
+{
+    record_name_store(0x00);
+}
+
+/*
+ * @routine 07:B8E1 RecordNameStore3
+ * WHAT IT DOES: As RecordNameStore0 for the second entry.
+ * HOW: The same code with 3; no script reaches it (unit_cpu does).
+ * Entry: as RecordNameStore0. Exit: as RecordNameStore0.
+ */
+void abi_RecordNameStore3(void)
+{
+    record_name_store(0x03);
+}
+
+/*
+ * @routine 07:B8E5 RecordNameStore6
+ * WHAT IT DOES: As RecordNameStore0 for the third entry.
+ * HOW: The same code with 6; no script reaches it (unit_cpu does).
+ * Entry: as RecordNameStore0. Exit: as RecordNameStore0.
+ */
+void abi_RecordNameStore6(void)
+{
+    record_name_store(0x06);
+}
