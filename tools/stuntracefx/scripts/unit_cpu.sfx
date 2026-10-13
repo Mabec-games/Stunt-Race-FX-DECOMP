@@ -24,6 +24,9 @@
 #   BigSpritesRow5 with $0E5C clear; PaletteCourseLoad with $10DC set;
 #   WindowSweepStep 0 on each half step, at its sixteenth step, and
 #   turning at $F2.
+# - routines nothing in the scripts calls: three of the renderer byte
+#   setters, the bonus digits' bounce and full sizes (with $0E6C clear and
+#   set), OamBlock123Left, Gauge6APlace and two sprite-text entries.
 load build/stuntracefx/states/novice_coupe_race1.state
 set 7E3437 FE
 call 03:FDF7 p=30 db=7E d=0000
@@ -474,4 +477,41 @@ set 7E1A1B 00
 set 7E1A15 F0
 set 7E1A19 02
 call 7E:DE88 x=0000 p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 04:D850 long p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 04:D88A long p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 04:D8A7 long p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0E6C 00,00
+call 07:9238 p=00 db=07 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0E6C 05,00
+call 07:9238 p=00 db=07 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0E6C 00,00
+call 07:9241 p=00 db=07 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0E6C 05,00
+call 07:9241 p=00 db=07 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:C331 p=20 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:C546 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 02:FC0C p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 02:FC15 p=00 db=00 d=0000
 wait 1
