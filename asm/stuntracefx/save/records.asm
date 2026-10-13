@@ -545,3 +545,150 @@ SaveUnlocksCheck:
     plb
     plp
     rtl
+
+; @routine 07:B518 RecordsUnpackCourse
+; WHAT IT DOES: Unpacks the records of course $0D4A for display: its twelve
+; packed times (the words at $70:FC88 + course * 24) each into three BCD
+; bytes (hundredths, seconds, minutes) from $0F76 on (TimeUnpackBcd), then
+; its nine name bytes ($70:FC6D + course * 9) to $10CF-$10D7.
+; HOW: The table offset is kept in direct page $F5; the time stores are
+; 8-bit (X and Y truncated by SEP #$30). P saved and restored.
+; Entry: DB a bank where $0D4A is work RAM, D = $0000. Exit: A low byte =
+; the last name byte; X = course * 9 (8-bit); Y as the last TimeUnpackBcd
+; left it, truncated; P unchanged.
+%at($07B518)
+RecordsUnpackCourse:
+    php
+    rep.b #$30
+    lda.w !wram_0D4A
+    asl a
+    clc
+    adc.w !wram_0D4A
+    and.w #$00FF
+    asl a
+    asl a
+    asl a
+    tax
+    stx.b !save_block_offset
+    lda.l !save_course_times,x
+    jsr.w TimeUnpackBcd
+    sep.b #$30
+    sty.w !record_times
+    stx.w !record_times+1
+    sta.w !record_times+2
+    rep.b #$30
+    ldx.b !save_block_offset
+    lda.l !save_course_times+2,x
+    jsr.w TimeUnpackBcd
+    sep.b #$30
+    sty.w !record_times+3
+    stx.w !record_times+4
+    sta.w !record_times+5
+    rep.b #$30
+    ldx.b !save_block_offset
+    lda.l !save_course_times+4,x
+    jsr.w TimeUnpackBcd
+    sep.b #$30
+    sty.w !record_times+6
+    stx.w !record_times+7
+    sta.w !record_times+8
+    rep.b #$30
+    ldx.b !save_block_offset
+    lda.l !save_course_times+6,x
+    jsr.w TimeUnpackBcd
+    sep.b #$30
+    sty.w !record_times+9
+    stx.w !record_times+10
+    sta.w !record_times+11
+    rep.b #$30
+    ldx.b !save_block_offset
+    lda.l !save_course_times+8,x
+    jsr.w TimeUnpackBcd
+    sep.b #$30
+    sty.w !record_times+12
+    stx.w !record_times+13
+    sta.w !record_times+14
+    rep.b #$30
+    ldx.b !save_block_offset
+    lda.l !save_course_times+10,x
+    jsr.w TimeUnpackBcd
+    sep.b #$30
+    sty.w !record_times+15
+    stx.w !record_times+16
+    sta.w !record_times+17
+    rep.b #$30
+    ldx.b !save_block_offset
+    lda.l !save_course_times+12,x
+    jsr.w TimeUnpackBcd
+    sep.b #$30
+    sty.w !record_times+18
+    stx.w !record_times+19
+    sta.w !record_times+20
+    rep.b #$30
+    ldx.b !save_block_offset
+    lda.l !save_course_times+14,x
+    jsr.w TimeUnpackBcd
+    sep.b #$30
+    sty.w !record_times+21
+    stx.w !record_times+22
+    sta.w !record_times+23
+    rep.b #$30
+    ldx.b !save_block_offset
+    lda.l !save_course_times+16,x
+    jsr.w TimeUnpackBcd
+    sep.b #$30
+    sty.w !record_times+24
+    stx.w !record_times+25
+    sta.w !record_times+26
+    rep.b #$30
+    ldx.b !save_block_offset
+    lda.l !save_course_times+18,x
+    jsr.w TimeUnpackBcd
+    sep.b #$30
+    sty.w !record_times+27
+    stx.w !record_times+28
+    sta.w !record_times+29
+    rep.b #$30
+    ldx.b !save_block_offset
+    lda.l !save_course_times+20,x
+    jsr.w TimeUnpackBcd
+    sep.b #$30
+    sty.w !record_times+30
+    stx.w !record_times+31
+    sta.w !record_times+32
+    rep.b #$30
+    ldx.b !save_block_offset
+    lda.l !save_course_times+22,x
+    jsr.w TimeUnpackBcd
+    sep.b #$30
+    sty.w !record_times+33
+    stx.w !record_times+34
+    sta.w !record_times+35
+    sep.b #$30
+    lda.w !wram_0D4A
+    asl a
+    asl a
+    asl a
+    clc
+    adc.w !wram_0D4A
+    tax
+    lda.l !save_course_names,x
+    sta.w !wram_10CD+2
+    lda.l !save_course_names+1,x
+    sta.w !wram_10CD+3
+    lda.l !save_course_names+2,x
+    sta.w !wram_10CD+4
+    lda.l !save_course_names+3,x
+    sta.w !wram_10CD+5
+    lda.l !save_course_names+4,x
+    sta.w !wram_10CD+6
+    lda.l !save_course_names+5,x
+    sta.w !wram_10CD+7
+    lda.l !save_course_names+6,x
+    sta.w !wram_10CD+8
+    lda.l !save_course_names+7,x
+    sta.w !wram_10CD+9
+    lda.l !save_course_names+8,x
+    sta.w !wram_10CD+10
+    plp
+    rts

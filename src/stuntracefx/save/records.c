@@ -478,3 +478,54 @@ void abi_SaveUnlocksCheck(void)
     cpu.db = db;
     cpu.p = p;
 }
+
+void abi_TimeUnpackBcd(void);
+
+/*
+ * @routine 07:B518 RecordsUnpackCourse
+ * WHAT IT DOES: Unpacks the records of course $0D4A for display: its twelve
+ * packed times (the words at $70:FC88 + course * 24) each into three BCD
+ * bytes (hundredths, seconds, minutes) from $0F76 on (TimeUnpackBcd), then
+ * its nine name bytes ($70:FC6D + course * 9) to $10CF-$10D7.
+ * HOW: The table offset is kept in direct page $F5; the time stores are
+ * 8-bit (X and Y truncated by SEP #$30). P saved and restored.
+ * Entry: DB a bank where $0D4A is work RAM, D = $0000. Exit: A low byte =
+ * the last name byte; X = course * 9 (8-bit); Y as the last TimeUnpackBcd
+ * left it, truncated; P unchanged.
+ */
+void abi_RecordsUnpackCourse(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t p = cpu.p, c;
+    uint16_t x, a;
+    unsigned i;
+
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    a = rd16(b | 0x0D4A);
+    a = (uint16_t)((uint16_t)(a << 1) + rd16(b | 0x0D4A));
+    x = (uint16_t)((a & 0x00FF) << 3);
+    wr16(0x0000F5, x);
+    for (i = 0; i < 12; i++) {
+        cpu.p &= (uint8_t)~(P_M | P_X);
+        if (i)
+            x = rd16(0x0000F5);
+        cpu.x = x;
+        cpu.a = rd16(0x70FC88 + (uint16_t)(x + 2 * i));
+        abi_TimeUnpackBcd();
+        cpu.p |= P_M | P_X;
+        cpu.x &= 0x00FF;
+        cpu.y &= 0x00FF;
+        wr8(b | (uint16_t)(0x0F76 + 3 * i), (uint8_t)cpu.y);
+        wr8(b | (uint16_t)(0x0F77 + 3 * i), (uint8_t)cpu.x);
+        wr8(b | (uint16_t)(0x0F78 + 3 * i), (uint8_t)cpu.a);
+    }
+    c = rd8(b | 0x0D4A);
+    c = (uint8_t)((uint8_t)(c << 3) + rd8(b | 0x0D4A));
+    cpu.x = c;
+    for (i = 0; i < 9; i++) {
+        a = rd8(0x70FC6D + (uint16_t)(c + i));
+        wr8(b | (uint16_t)(0x10CF + i), (uint8_t)a);
+    }
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | (uint8_t)a);
+    cpu.p = p;
+}

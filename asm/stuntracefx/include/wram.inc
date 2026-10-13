@@ -1453,3 +1453,11 @@ includeonce
 ; the bank $07 code they call when bit 0 of $0DED is set (never run yet).
 !wram_0E58 = $0E58
 !wram_0E5B = $0E5B
+
+; RecordsUnpackCourse (save/records.asm): the save's per-course record
+; times (12 packed words per course) and names (9 bytes per course), and
+; their unpacked copies for display.
+!save_course_times = $70FC88
+!save_course_names = $70FC6D
+!record_times = $0F76
+!record_names = $10CF
