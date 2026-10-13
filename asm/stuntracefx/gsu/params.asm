@@ -247,6 +247,161 @@ GsuBytes200_BFB3BE:
     plp
     rtl
 
+; @routine 04:D850 GsuBytes200_BFB2B3
+; WHAT IT DOES: As GsuBytes200_BFB7B6, with 0, $BF, $B2, $B3.
+; HOW: As GsuBytes200_BFB7B6. Not reached in the traces so far.
+; Entry: any widths. Exit: A low byte = $B3; P unchanged.
+%at($04D850)
+GsuBytes200_BFB2B3:
+    php
+    sep.b #$20
+    lda.b #$00
+    sta.l !gsu_bytes_200
+    lda.b #$BF
+    sta.l !gsu_bytes_200+1
+    lda.b #$B2
+    sta.l !gsu_bytes_200+2
+    lda.b #$B3
+    sta.l !gsu_bytes_200+3
+    plp
+    rtl
+
+; @routine 04:D86D GsuBytes200_BF12B6
+; WHAT IT DOES: As GsuBytes200_BFB7B6, with 0, $BF, $12, $B6.
+; HOW: As GsuBytes200_BFB7B6. Not reached in the traces so far.
+; Entry: any widths. Exit: A low byte = $B6; P unchanged.
+%at($04D86D)
+GsuBytes200_BF12B6:
+    php
+    sep.b #$20
+    lda.b #$00
+    sta.l !gsu_bytes_200
+    lda.b #$BF
+    sta.l !gsu_bytes_200+1
+    lda.b #$12
+    sta.l !gsu_bytes_200+2
+    lda.b #$B6
+    sta.l !gsu_bytes_200+3
+    plp
+    rtl
+
+; @routine 04:D88A GsuBytes200_BF11BD
+; WHAT IT DOES: As GsuBytes200_BFB7B6, with 0, $BF, $11, $BD.
+; HOW: As GsuBytes200_BFB7B6. Not reached in the traces so far.
+; Entry: any widths. Exit: A low byte = $BD; P unchanged.
+%at($04D88A)
+GsuBytes200_BF11BD:
+    php
+    sep.b #$20
+    lda.b #$00
+    sta.l !gsu_bytes_200
+    lda.b #$BF
+    sta.l !gsu_bytes_200+1
+    lda.b #$11
+    sta.l !gsu_bytes_200+2
+    lda.b #$BD
+    sta.l !gsu_bytes_200+3
+    plp
+    rtl
+
+; @routine 04:D8A7 GsuBytes200_BF10B9
+; WHAT IT DOES: As GsuBytes200_BFB7B6, with 0, $BF, $10, $B9.
+; HOW: As GsuBytes200_BFB7B6. Not reached in the traces so far.
+; Entry: any widths. Exit: A low byte = $B9; P unchanged.
+%at($04D8A7)
+GsuBytes200_BF10B9:
+    php
+    sep.b #$20
+    lda.b #$00
+    sta.l !gsu_bytes_200
+    lda.b #$BF
+    sta.l !gsu_bytes_200+1
+    lda.b #$10
+    sta.l !gsu_bytes_200+2
+    lda.b #$B9
+    sta.l !gsu_bytes_200+3
+    plp
+    rtl
+
+; @routine 04:D8C4 GsuBytes200_BFB7B6_D8C4
+; WHAT IT DOES: As GsuBytes200_BFB7B6, with 0, $BF, $B7, $B6
+; (the same bytes as 04:D7BF).
+; HOW: As GsuBytes200_BFB7B6. Not reached in the traces so far.
+; Entry: any widths. Exit: A low byte = $B6; P unchanged.
+%at($04D8C4)
+GsuBytes200_BFB7B6_D8C4:
+    php
+    sep.b #$20
+    lda.b #$00
+    sta.l !gsu_bytes_200
+    lda.b #$BF
+    sta.l !gsu_bytes_200+1
+    lda.b #$B7
+    sta.l !gsu_bytes_200+2
+    lda.b #$B6
+    sta.l !gsu_bytes_200+3
+    plp
+    rtl
+
+; @routine 04:D8E1 GsuBytes200_BFBAB9_D8E1
+; WHAT IT DOES: As GsuBytes200_BFB7B6, with 0, $BF, $BA, $B9
+; (the same bytes as 04:D816).
+; HOW: As GsuBytes200_BFB7B6. Not reached in the traces so far.
+; Entry: any widths. Exit: A low byte = $B9; P unchanged.
+%at($04D8E1)
+GsuBytes200_BFBAB9_D8E1:
+    php
+    sep.b #$20
+    lda.b #$00
+    sta.l !gsu_bytes_200
+    lda.b #$BF
+    sta.l !gsu_bytes_200+1
+    lda.b #$BA
+    sta.l !gsu_bytes_200+2
+    lda.b #$B9
+    sta.l !gsu_bytes_200+3
+    plp
+    rtl
+
+; @routine 04:D8FE GsuBytes200_BFB3BE_D8FE
+; WHAT IT DOES: As GsuBytes200_BFB7B6, with 0, $BF, $B3, $BE
+; (the same bytes as 04:D833).
+; HOW: As GsuBytes200_BFB7B6. Not reached in the traces so far.
+; Entry: any widths. Exit: A low byte = $BE; P unchanged.
+%at($04D8FE)
+GsuBytes200_BFB3BE_D8FE:
+    php
+    sep.b #$20
+    lda.b #$00
+    sta.l !gsu_bytes_200
+    lda.b #$BF
+    sta.l !gsu_bytes_200+1
+    lda.b #$B3
+    sta.l !gsu_bytes_200+2
+    lda.b #$BE
+    sta.l !gsu_bytes_200+3
+    plp
+    rtl
+
+; @routine 04:D91B GsuBytes200_BFBBBE
+; WHAT IT DOES: As GsuBytes200_BFB7B6, with 0, $BF, $BB, $BE.
+; HOW: As GsuBytes200_BFB7B6. Not reached in the traces so far.
+; Entry: any widths. Exit: A low byte = $BE; P unchanged.
+%at($04D91B)
+GsuBytes200_BFBBBE:
+    php
+    sep.b #$20
+    lda.b #$00
+    sta.l !gsu_bytes_200
+    lda.b #$BF
+    sta.l !gsu_bytes_200+1
+    lda.b #$BB
+    sta.l !gsu_bytes_200+2
+    lda.b #$BE
+    sta.l !gsu_bytes_200+3
+    plp
+    rtl
+
 ; @routine 04:D972 GsuBytes200_0F0405
 ; WHAT IT DOES: As GsuBytes200_BFB7B6, with 0, $0F, $04, $05.
 ; HOW: As GsuBytes200_BFB7B6.

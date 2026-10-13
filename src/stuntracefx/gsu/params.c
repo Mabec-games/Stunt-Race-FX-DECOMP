@@ -264,6 +264,97 @@ void abi_GsuBytes200_BFB3BE(void)
 }
 
 /*
+ * @routine 04:D850 GsuBytes200_BFB2B3
+ * WHAT IT DOES: As GsuBytes200_BFB7B6, with 0, $BF, $B2, $B3.
+ * HOW: As GsuBytes200_BFB7B6. Not reached in the traces so far.
+ * Entry: any widths. Exit: A low byte = $B3; P unchanged.
+ */
+void abi_GsuBytes200_BFB2B3(void)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0xBF, 0xB2, 0xB3));
+}
+
+/*
+ * @routine 04:D86D GsuBytes200_BF12B6
+ * WHAT IT DOES: As GsuBytes200_BFB7B6, with 0, $BF, $12, $B6.
+ * HOW: As GsuBytes200_BFB7B6. Not reached in the traces so far.
+ * Entry: any widths. Exit: A low byte = $B6; P unchanged.
+ */
+void abi_GsuBytes200_BF12B6(void)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0xBF, 0x12, 0xB6));
+}
+
+/*
+ * @routine 04:D88A GsuBytes200_BF11BD
+ * WHAT IT DOES: As GsuBytes200_BFB7B6, with 0, $BF, $11, $BD.
+ * HOW: As GsuBytes200_BFB7B6. Not reached in the traces so far.
+ * Entry: any widths. Exit: A low byte = $BD; P unchanged.
+ */
+void abi_GsuBytes200_BF11BD(void)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0xBF, 0x11, 0xBD));
+}
+
+/*
+ * @routine 04:D8A7 GsuBytes200_BF10B9
+ * WHAT IT DOES: As GsuBytes200_BFB7B6, with 0, $BF, $10, $B9.
+ * HOW: As GsuBytes200_BFB7B6. Not reached in the traces so far.
+ * Entry: any widths. Exit: A low byte = $B9; P unchanged.
+ */
+void abi_GsuBytes200_BF10B9(void)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0xBF, 0x10, 0xB9));
+}
+
+/*
+ * @routine 04:D8C4 GsuBytes200_BFB7B6_D8C4
+ * WHAT IT DOES: As GsuBytes200_BFB7B6, with 0, $BF, $B7, $B6
+ * (the same bytes as 04:D7BF).
+ * HOW: As GsuBytes200_BFB7B6. Not reached in the traces so far.
+ * Entry: any widths. Exit: A low byte = $B6; P unchanged.
+ */
+void abi_GsuBytes200_BFB7B6_D8C4(void)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0xBF, 0xB7, 0xB6));
+}
+
+/*
+ * @routine 04:D8E1 GsuBytes200_BFBAB9_D8E1
+ * WHAT IT DOES: As GsuBytes200_BFB7B6, with 0, $BF, $BA, $B9
+ * (the same bytes as 04:D816).
+ * HOW: As GsuBytes200_BFB7B6. Not reached in the traces so far.
+ * Entry: any widths. Exit: A low byte = $B9; P unchanged.
+ */
+void abi_GsuBytes200_BFBAB9_D8E1(void)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0xBF, 0xBA, 0xB9));
+}
+
+/*
+ * @routine 04:D8FE GsuBytes200_BFB3BE_D8FE
+ * WHAT IT DOES: As GsuBytes200_BFB7B6, with 0, $BF, $B3, $BE
+ * (the same bytes as 04:D833).
+ * HOW: As GsuBytes200_BFB7B6. Not reached in the traces so far.
+ * Entry: any widths. Exit: A low byte = $BE; P unchanged.
+ */
+void abi_GsuBytes200_BFB3BE_D8FE(void)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0xBF, 0xB3, 0xBE));
+}
+
+/*
+ * @routine 04:D91B GsuBytes200_BFBBBE
+ * WHAT IT DOES: As GsuBytes200_BFB7B6, with 0, $BF, $BB, $BE.
+ * HOW: As GsuBytes200_BFB7B6. Not reached in the traces so far.
+ * Entry: any widths. Exit: A low byte = $BE; P unchanged.
+ */
+void abi_GsuBytes200_BFBBBE(void)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0xBF, 0xBB, 0xBE));
+}
+
+/*
  * @routine 04:D972 GsuBytes200_0F0405
  * WHAT IT DOES: As GsuBytes200_BFB7B6, with 0, $0F, $04, $05.
  * HOW: As GsuBytes200_BFB7B6.
