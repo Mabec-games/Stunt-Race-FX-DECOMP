@@ -381,3 +381,125 @@ MenuSelectStart:
     lda.w #$0000
     sta.b !actor_20,x
     rts
+
+; @routine 02:EA53 MenuCursorFourWay
+; WHAT IT DOES: Moves the menu cursor by the held buttons ($0D1A: $0100
+; right, $0200 left): on the extra row ($0D4C set) right goes to position
+; 2 and left to 1, leaving the row; otherwise position $0D48 (0-3) moves
+; right from 0 and 2, left from 1 and 3, and from 1 (left not held) and 2
+; (right not held) the other button goes up to the extra row ($0D4C - 1);
+; each move plays sound $45. Then the cursor X $0D37 is $88 on the extra
+; row, else the position's byte of the table at $EB49 (also in $0E91).
+; HOW: An internal jump table by position; the buttons are tested 16-bit
+; and read again for each test. Several moves are not reached in the
+; traces so far.
+; Entry: any widths. Exit: M 8-bit, X 8-bit; A low byte = the cursor X.
+%at($02EA53)
+MenuCursorFourWay:
+    sep.b #$30
+    lda.w !digit62_override
+    beq .positions
+    rep.b #$20
+    lda.w !joy1_pressed_copy
+    bit.w #$0100
+    sep.b #$20
+    beq .row_left
+    lda.b #$02
+    sta.w !wram_0D48
+    stz.w !digit62_override
+    lda.b #$45
+    jsl.l SoundPort0QueuePush
+    jmp.w .cursor
+.row_left:
+    rep.b #$20
+    lda.w !joy1_pressed_copy
+    bit.w #$0200
+    sep.b #$20
+    bne .row_left_held
+    jmp.w .cursor
+.row_left_held:
+    lda.b #$01
+    sta.w !wram_0D48
+    stz.w !digit62_override
+    lda.b #$45
+    jsl.l SoundPort0QueuePush
+    jmp.w .cursor
+.positions:
+    sep.b #$30
+    lda.w !wram_0D48
+    asl a
+    tax
+    jmp.w (.cases,x)
+.cases:
+    dw .case0, .case1, .case2, .case3
+.case0:
+    rep.b #$20
+    lda.w !joy1_pressed_copy
+    bit.w #$0100
+    sep.b #$20
+    beq .cursor
+    inc.w !wram_0D48
+    lda.b #$45
+    jsl.l SoundPort0QueuePush
+    bra .cursor
+.case1:
+    rep.b #$20
+    lda.w !joy1_pressed_copy
+    bit.w #$0200
+    sep.b #$20
+    beq .case1_up
+    dec.w !wram_0D48
+    lda.b #$45
+    jsl.l SoundPort0QueuePush
+    bra .cursor
+.case1_up:
+    rep.b #$20
+    lda.w !joy1_pressed_copy
+    bit.w #$0100
+    sep.b #$20
+    beq .cursor
+    dec.w !digit62_override
+    lda.b #$45
+    jsl.l SoundPort0QueuePush
+    bra .cursor
+.case2:
+    rep.b #$20
+    lda.w !joy1_pressed_copy
+    bit.w #$0100
+    sep.b #$20
+    beq .case2_up
+    inc.w !wram_0D48
+    lda.b #$45
+    jsl.l SoundPort0QueuePush
+    bra .cursor
+.case2_up:
+    rep.b #$20
+    lda.w !joy1_pressed_copy
+    bit.w #$0200
+    sep.b #$20
+    beq .cursor
+    dec.w !digit62_override
+    lda.b #$45
+    jsl.l SoundPort0QueuePush
+    bra .cursor
+.case3:
+    rep.b #$20
+    lda.w !joy1_pressed_copy
+    bit.w #$0200
+    sep.b #$20
+    beq .cursor
+    dec.w !wram_0D48
+    lda.b #$45
+    jsl.l SoundPort0QueuePush
+.cursor:
+    lda.w !digit62_override
+    beq .by_position
+    lda.b #$88
+    sta.w !wram_0D37
+    rts
+.by_position:
+    ldx.w !wram_0D48
+    lda.w !cursor_x_table,x
+    sta.w !wram_0E91
+    sta.w !wram_0D37
+    rts

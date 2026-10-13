@@ -4,6 +4,7 @@
  * menu's exit flag at $11EB.
  */
 #include "machine.h"
+#include "cpu_ops.h"
 
 /*
  * @routine 0B:C58D MenuRowPosition
@@ -366,4 +367,107 @@ void abi_MenuSelectStart(void)
     MenuSelectStart(cpu.x);
     cpu.a = 0x0000;
     cpu.p = (uint8_t)((cpu.p & ~(P_M | P_X | P_N)) | P_Z);
+}
+
+void abi_SoundPort0QueuePush(void);
+
+/* REP #$20, LDA $0D1A, BIT #bit, SEP #$20: whether that button is held. */
+static int pad_bit(uint32_t b, uint16_t bit)
+{
+    uint16_t a;
+
+    cpu.p &= (uint8_t)~P_M;
+    a = rd16(b | 0x0D1A);
+    cpu.a = a;
+    cpu.p = nz16(cpu.p, a);
+    cpu.p = (uint8_t)((cpu.p & ~P_Z) | ((a & bit) ? 0 : P_Z));
+    cpu.p |= P_M;
+    return (a & bit) != 0;
+}
+
+/* A byte of work RAM moved by d (INC or DEC), then sound $45 on port 0. */
+static void step_with_sound(uint32_t b, uint16_t at, int d)
+{
+    uint8_t v = (uint8_t)(rd8(b | at) + d);
+
+    wr8(b | at, v);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x45);
+    cpu.p = nz8(cpu.p, 0x45);
+    abi_SoundPort0QueuePush();
+}
+
+/*
+ * @routine 02:EA53 MenuCursorFourWay
+ * WHAT IT DOES: Moves the menu cursor by the held buttons ($0D1A: $0100
+ * right, $0200 left): on the extra row ($0D4C set) right goes to position
+ * 2 and left to 1, leaving the row; otherwise position $0D48 (0-3) moves
+ * right from 0 and 2, left from 1 and 3, and from 1 (left not held) and 2
+ * (right not held) the other button goes up to the extra row ($0D4C - 1);
+ * each move plays sound $45. Then the cursor X $0D37 is $88 on the extra
+ * row, else the position's byte of the table at $EB49 (also in $0E91).
+ * HOW: An internal jump table by position; the buttons are tested 16-bit
+ * and read again for each test. Several moves are not reached in the
+ * traces so far.
+ * Entry: any widths. Exit: M 8-bit, X 8-bit; A low byte = the cursor X.
+ */
+void abi_MenuCursorFourWay(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v;
+
+    op_sep(P_M | P_X);
+    v = rd8(b | 0x0D4C);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    if (v) {
+        if (pad_bit(b, 0x0100)) {
+            wr8(b | 0x0D48, 0x02);
+            wr8(b | 0x0D4C, 0x00);
+            cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x45);
+            abi_SoundPort0QueuePush();
+        } else if (pad_bit(b, 0x0200)) {
+            wr8(b | 0x0D48, 0x01);
+            wr8(b | 0x0D4C, 0x00);
+            cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x45);
+            abi_SoundPort0QueuePush();
+        }
+    } else {
+        op_sep(P_M | P_X);
+        cpu.x = (uint8_t)(rd8(b | 0x0D48) << 1);
+        switch (cpu.x) {
+        case 0:
+            if (pad_bit(b, 0x0100))
+                step_with_sound(b, 0x0D48, +1);
+            break;
+        case 2:
+            if (pad_bit(b, 0x0200))
+                step_with_sound(b, 0x0D48, -1);
+            else if (pad_bit(b, 0x0100))
+                step_with_sound(b, 0x0D4C, -1);
+            break;
+        case 4:
+            if (pad_bit(b, 0x0100))
+                step_with_sound(b, 0x0D48, +1);
+            else if (pad_bit(b, 0x0200))
+                step_with_sound(b, 0x0D4C, -1);
+            break;
+        default:
+            if (pad_bit(b, 0x0200))
+                step_with_sound(b, 0x0D48, -1);
+            break;
+        }
+    }
+    v = rd8(b | 0x0D4C);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    if (v) {
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x88);
+        cpu.p = nz8(cpu.p, 0x88);
+        wr8(b | 0x0D37, 0x88);
+        return;
+    }
+    cpu.x = rd8(b | 0x0D48);
+    v = rd8(b | (uint16_t)(0xEB49 + cpu.x));
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+    wr8(b | 0x0E91, v);
+    wr8(b | 0x0D37, v);
 }
