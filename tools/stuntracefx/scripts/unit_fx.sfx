@@ -30,6 +30,10 @@
 # - FxClipYPlane and FxClipXPlane with both ends below the plane;
 #   FxClipNear with a negative plane (R14 = -256) and both ends in front,
 #   then both behind.
+# - FxCarPlaceOnSegment on car $1918 (its linked objects with lists, so
+#   each is swept) and with its segment +$58 = 0; FxDriveDecide for car
+#   $1AF8 with bit 14 of +$40 set and a point far to each side, and with
+#   +$7E at 20 while stopped (the reversing turn).
 load build/stuntracefx/states/battle_04.state
 set 701B04 00,00
 set 701CE4 00,00
@@ -171,4 +175,23 @@ fx 01:CC87 stop=80E3 r1=0000 r2=0000 r3=0200 r4=0000 r5=0000 r7=0200 r14=FF00 r1
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
 fx 01:CC87 stop=80E3 r1=0000 r2=0000 r3=0010 r4=0000 r5=0000 r7=0010 r14=FF00 r10=0250
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 04:C65A stop=888C r8=1918 r10=0248
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 701970 00,00
+fx 04:C65A stop=888C r8=1918 r10=0248
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 701B38 08,43
+fx 04:C7D5 stop=888C r1=CF80 r3=02A0 r4=025D r8=1AF8 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 701B38 08,43
+fx 04:C7D5 stop=888C r1=8F80 r3=02A0 r4=025D r8=1AF8 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 701B76 14,00
+fx 04:C7D5 stop=888C r1=AF80 r3=12A0 r4=025D r8=1AF8 r10=0244
 wait 1
