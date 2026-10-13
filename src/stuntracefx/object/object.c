@@ -2596,3 +2596,122 @@ void abi_ObjectLinkEventTrigger2(void)
     }
     op_sep(P_M | P_X);
 }
+
+/* A - m (8-bit) as CMP sets the flags; returns the difference. */
+static uint8_t cmp8_flags(uint8_t a, uint8_t m)
+{
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(a - m)) & ~P_C) | (a >= m ? P_C : 0));
+    return (uint8_t)(a - m);
+}
+
+/* EOR #$FF, INC A (8-bit): the negation, with N, Z. */
+static uint8_t neg8(uint8_t a)
+{
+    a = (uint8_t)(~a + 1);
+    cpu.p = nz8(cpu.p, a);
+    return a;
+}
+
+/* PHX, LDX #camera, LDA $11,X, EOR #$FF, INC A, STA $1F5A, PLX: minus the
+   camera's turn (its byte +$11), kept at $1F5A. */
+static void camera_turn_negated(uint32_t b, uint16_t camera)
+{
+    uint16_t x = cpu.x;
+    uint8_t v;
+
+    cpu.x = camera;
+    v = neg8(rd8((uint16_t)(camera + 0x11)));
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    wr8(b | 0x1F5A, v);
+    cpu.x = x;
+    cpu.p = nz16(cpu.p, x);
+}
+
+/*
+ * @routine 08:BFA4 ObjectBillboardTilt
+ * WHAT IT DOES: The tilt of object Y's picture as seen by the camera
+ * $1A64: half its pitch +$16 plus the camera's +$13, rounded to 4 toward
+ * zero and held to -8..8, negated when its heading +$15 is $40 or more
+ * from the camera's turn (minus +$11); +$5D = that (sign-extended) + 8 +
+ * its +$29; then the table bytes (ObjectTableC056) and +$18 = the turn
+ * with bit 7 set; with two players ($0D62) the second camera ($1A9F) the
+ * same into +$19.
+ * HOW: 8-bit with the halving as CMP #$80 / ROR A and the limits by the
+ * sign of CMP; $1F2B, $1F58 and $1F5A hold the parts; the camera fields
+ * through direct page + X.
+ * Entry: M 8-bit, X 16-bit, D = $0000; Y = the object. Exit: M 8-bit; A =
+ * the last +$18/+$19 byte; X as on entry; flags from the last step.
+ */
+void abi_ObjectBillboardTilt(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t y = cpu.y, w;
+    uint8_t a, c;
+
+    camera_turn_negated(b, 0x1A64);
+    {
+        uint16_t x = cpu.x;
+
+        cpu.x = 0x1A64;
+        a = rd8(0x1A64 + 0x13);
+        wr8(b | 0x1F2B, a);
+        cpu.x = x;
+        cpu.p = nz16(cpu.p, x);
+    }
+    a = rd8(b | (uint16_t)(0x2016 + y));
+    cpu.p &= (uint8_t)~P_C;
+    a = op_adc8(a, rd8(b | 0x1F2B), &cpu.p);
+    cmp8_flags(a, 0x80);
+    c = (uint8_t)(cpu.p & P_C);
+    a = (uint8_t)(a >> 1 | (c ? 0x80 : 0));
+    cpu.p = nz8(cpu.p, a);
+    if (a & 0x80) {
+        a = neg8(a);
+        a &= 0xFC;
+        a = neg8(a);
+    }
+    a &= 0xFC;
+    cpu.p = nz8(cpu.p, a);
+    if (!(cmp8_flags(a, 0x08) & 0x80))
+        a = 0x08;
+    if (cmp8_flags(a, 0xF8) & 0x80)
+        a = 0xF8;
+    wr8(b | 0x1F58, a);
+    a = rd8(b | (uint16_t)(0x2015 + y));
+    cpu.p |= P_C;
+    a = op_sbc8(a, rd8(b | 0x1F5A), &cpu.p);
+    if (a & 0x80)
+        a = neg8(a);
+    if (!(cmp8_flags(a, 0x40) & 0x80)) {
+        a = neg8(rd8(b | 0x1F58));
+        wr8(b | 0x1F58, a);
+    }
+    op_rep(P_M);
+    op_lda16(b | 0x1F58);
+    if (cpu.a & 0x0080)
+        cpu.a |= 0xFF00;
+    else
+        cpu.a &= 0x00FF;
+    cpu.p = nz16(cpu.p, cpu.a);
+    op_add16(0x0008);
+    op_add16(rd16(b | (uint16_t)(0x2029 + y)));
+    wr16(b | (uint16_t)(0x205D + y), cpu.a);
+    op_sep(P_M);
+    abi_ObjectTableC056();
+    op_lda8(b | 0x1F5A);
+    a = (uint8_t)(cpu.a | 0x80);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
+    cpu.p = nz8(cpu.p, a);
+    wr8(b | (uint16_t)(0x2018 + y), a);
+    op_lda8(b | 0x0D62);
+    if (!(uint8_t)cpu.a)
+        return;
+    camera_turn_negated(b, 0x1A9F);
+    abi_ObjectTableC056();
+    op_lda8(b | 0x1F5A);
+    a = (uint8_t)(cpu.a | 0x80);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
+    cpu.p = nz8(cpu.p, a);
+    wr8(b | (uint16_t)(0x2019 + y), a);
+    (void)w;
+}

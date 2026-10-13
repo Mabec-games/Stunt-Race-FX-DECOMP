@@ -2683,3 +2683,99 @@ ObjectPlaceOnParent_offset:
     sta.w !obj_pos_y,y
     sep.b #$20
     rts
+
+; @routine 08:BFA4 ObjectBillboardTilt
+; WHAT IT DOES: The tilt of object Y's picture as seen by the camera
+; $1A64: half its pitch +$16 plus the camera's +$13, rounded to 4 toward
+; zero and held to -8..8, negated when its heading +$15 is $40 or more
+; from the camera's turn (minus +$11); +$5D = that (sign-extended) + 8 +
+; its +$29; then the table bytes (ObjectTableC056) and +$18 = the turn
+; with bit 7 set; with two players ($0D62) the second camera ($1A9F) the
+; same into +$19.
+; HOW: 8-bit with the halving as CMP #$80 / ROR A and the limits by the
+; sign of CMP; $1F2B, $1F58 and $1F5A hold the parts; the camera fields
+; through direct page + X.
+; Entry: M 8-bit, X 16-bit, D = $0000; Y = the object. Exit: M 8-bit; A =
+; the last +$18/+$19 byte; X as on entry; flags from the last step.
+%at($08BFA4)
+ObjectBillboardTilt:
+    phx
+    ldx.w #$1A64
+    lda.b !actor_10+1,x
+    eor.b #$FF
+    inc a
+    sta.w !wram_1F5A
+    lda.b !actor_12+1,x
+    sta.w !wram_1F2B
+    plx
+    lda.w !obj_16,y
+    clc
+    adc.w !wram_1F2B
+    cmp.b #$80
+    ror a
+    bpl .lBFCA
+    eor.b #$FF
+    inc a
+    and.b #$FC
+    eor.b #$FF
+    inc a
+.lBFCA:
+    and.b #$FC
+    cmp.b #$08
+    bmi .lBFD2
+    lda.b #$08
+.lBFD2:
+    cmp.b #$F8
+    bpl .lBFD8
+    lda.b #$F8
+.lBFD8:
+    sta.w !wram_1F58
+    lda.w !obj_15,y
+    sec
+    sbc.w !wram_1F5A
+    bpl .lBFE7
+    eor.b #$FF
+    inc a
+.lBFE7:
+    cmp.b #$40
+    bmi .lBFF4
+    lda.w !wram_1F58
+    eor.b #$FF
+    inc a
+    sta.w !wram_1F58
+.lBFF4:
+    rep.b #$20
+    lda.w !wram_1F58
+    bit.w #$0080
+    beq .lC003
+    ora.w #$FF00
+    bra .lC006
+.lC003:
+    and.w #$00FF
+.lC006:
+    clc
+    adc.w #$0008
+    clc
+    adc.w !obj_29,y
+    sta.w !obj_5d,y
+    sep.b #$20
+    jsr.w ObjectTableC056
+    lda.w !wram_1F5A
+    ora.b #$80
+    sta.w !obj_18,y
+    lda.w !wram_0D62
+    beq .lC03B
+    phx
+    ldx.w #$1A9F
+    lda.b !actor_10+1,x
+    eor.b #$FF
+    inc a
+    sta.w !wram_1F5A
+    plx
+    jsr.w ObjectTableC056
+    lda.w !wram_1F5A
+    ora.b #$80
+    sta.w !obj_19,y
+.lC03B:
+    rts
+
