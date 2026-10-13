@@ -701,3 +701,61 @@ MenuScreenOpenPreviewFade:
     plb
     plp
     rts
+
+; @routine 0B:AFAC MenuPreviewRun
+; WHAT IT DOES: Runs the course preview menu: opens it
+; (MenuScreenOpenPreview), waits a frame, sets the fade target to full
+; (ApproachTargetFull), then runs the menu's loop until it asks to leave.
+; HOW: Joins MenuPreviewRunFade's loop.
+; Entry: D = $0000. Exit: as MenuRunFrames leaves it.
+%at($0BAFAC)
+MenuPreviewRun:
+    rep.b #$30
+    jsr.w MenuScreenOpenPreview
+    jsr.w MenuWaitFrame
+    jsr.w ApproachTargetFull
+    rep.b #$30
+    jmp.w MenuPreviewLoop
+
+; @routine 0B:AFBC MenuPreviewRunFade
+; WHAT IT DOES: Runs the course preview menu, fading it in
+; (MenuScreenOpenPreviewFade) with every frame update on ($11DA = $11DB =
+; $0F), then the menu's loop until it asks to leave ($11EB): each frame
+; the objects run, presses are cleared and the blink counter steps; at
+; the end sound $04 on port 1, the fade target to 0 and the menu frames
+; run out.
+; HOW: The loop is shared with MenuPreviewRun.
+; Entry: D = $0000. Exit: as MenuRunFrames leaves it.
+%at($0BAFBC)
+MenuPreviewRunFade:
+    rep.b #$30
+    jsr.w MenuScreenOpenPreviewFade
+    sep.b #$20
+    lda.b #$0F
+    sta.w !wram_11DA
+    sta.w !wram_11DB
+    rep.b #$30
+MenuPreviewLoop:                    ; MenuPreviewRun joins here
+    jsr.w MenuWaitFrame
+    lda.w #$0000
+    sta.l !wram_18FD
+    inc.w !menu_blink_counter
+    jsl.l MenuActorsRun
+    jsl.l MenuOamBuild
+    rep.b #$20
+    stz.w !menu_joy1_pressed
+    stz.w !menu_joy2_pressed
+    sep.b #$20
+    lda.w !frame_update_flags
+    ora.b #$0F
+    sta.w !frame_update_flags
+    rep.b #$30
+    lda.w !menu_exit
+    beq MenuPreviewLoop
+    sep.b #$20
+    lda.b #$04
+    jsl.l SoundPort1QueuePush
+    rep.b #$20
+    jsr.w ApproachTargetZero
+    jsr.w MenuRunFrames
+    rtl
