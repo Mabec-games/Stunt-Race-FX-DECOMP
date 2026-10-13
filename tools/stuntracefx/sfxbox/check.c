@@ -642,6 +642,8 @@ static struct {
     uint8_t pre_irq_op;      /* the last opcode before an interrupt */
     int irq_resumed;         /* the handler has just returned */
     uint16_t open[64];       /* their stack pointers at entry */
+    uint32_t open_pc[64];    /* and their entries */
+    uint16_t entry_s;        /* S at the call's own entry */
     uint32_t ret[0x10000];   /* by S at a callee's entry: 1 << 24 | its return address */
 } m;
 static uint32_t m_pc;        /* the routine of the open call */
@@ -759,7 +761,12 @@ static void ls_insn(uint32_t pc)
            would open a level each time round. */
         int computed = (!returned && (prev == 0x6B || prev == 0x60)) || prev == 0x6C || prev == 0x7C || prev == 0xDC || prev == 0xFC
                        || ((prev == 0x82 || prev == 0x5C || prev == 0x4C) && is_jump_entry(pc));
-        if ((computed || is_catalog_entry(pc)) && m.depth < 64) {
+        /* Back at the entry of the level open at this S (the call's own,
+           or a routine's inside it) by a branch: a loop, not an entry. */
+        int again = !computed && prev != 0x20 && prev != 0x22 && prev != 0xFC
+                    && ((m.depth && m.open_pc[m.depth - 1] == pc && m.open[m.depth - 1] == r.s)
+                        || (!m.depth && pc == m_pc && r.s == m.entry_s));
+        if ((computed || is_catalog_entry(pc)) && !again && m.depth < 64) {
             ls_op(0x90, pc);
             ls_op(0xA0, r.s);
             /* Op B: the return address a JSR or JSL pushed to enter it
@@ -770,6 +777,7 @@ static void ls_insn(uint32_t pc)
             else if (prev == 0x22)
                 ls_op(0xB0, 3u << 24 | wram[(r.s + 1) & 0xFFFF] | (uint32_t)wram[(r.s + 2) & 0xFFFF] << 8
                             | (uint32_t)wram[(r.s + 3) & 0xFFFF] << 16);
+            m.open_pc[m.depth] = pc;
             m.open[m.depth++] = r.s;
         }
         return;
@@ -784,7 +792,7 @@ static void ls_insn(uint32_t pc)
     STORE(rec->done, 0);
     STORE(sh->o_calls, k + 1);
     sh->fs[cur_frame % NSLOT].ncalls++;
-    m.active = 1; m.in_irq = 0; m.call = k; m.depth = 0;
+    m.active = 1; m.in_irq = 0; m.call = k; m.depth = 0; m.entry_s = r.s;
     m_pc = pc;
 }
 
@@ -980,6 +988,7 @@ static void hybrid_finish(long frames)
    until it returns (to a stand-in return address), and go on in the
    record after its return (op C). */
 static void record_rest(void);
+static void leave_frame(struct SfxboxRegs *out);
 static jmp_buf ls_escape;
 static int ls_escape_set;
 
@@ -1015,6 +1024,8 @@ static void run_original(uint32_t addr, int long_call)
     /* Not back at the stand-in: it left through the C's frame (02:E33D's
        way out of a loop); the C is abandoned where it landed. */
     if (out.pc != (long_call ? 0x000000 : (addr & 0xFF0000)) || out.s != (uint16_t)(s + (long_call ? 3 : 2))) {
+        leave_frame(&out);
+        cpu.a = out.a; cpu.x = out.x; cpu.y = out.y; cpu.d = out.d; cpu.db = out.db; cpu.p = out.p; cpu.e = out.e;
         cpu.s = out.s; cpu.pc = out.pc; cpu.unwound = 1;
         if (found) record_rest();
         else cur_i = cur_n;
@@ -1085,7 +1096,19 @@ static void record_rest(void)
 }
 
 /* ls_escape is the C's way out when original code it called left through
-   its caller's frame: the C is abandoned there (ls_exec). */
+   its caller's frame: the C is abandoned there (ls_exec). ls_entry_s: S at
+   the swapped routine's entry; code that lands still inside its frame runs
+   on as original code until it leaves it. */
+static uint16_t ls_entry_s;
+static void leave_frame(struct SfxboxRegs *out)
+{
+    if (out->s > ls_entry_s) return;
+    struct SfxboxRegs mine;
+    core_regs(&mine);
+    core_run_out(out, ls_entry_s);
+    core_regs(out);
+    core_set_regs(&mine);
+}
 
 static void jump_original(uint32_t addr)
 {
@@ -1124,6 +1147,8 @@ static void jump_original(uint32_t addr)
     }
     /* Otherwise it left the routine's frame: its own return when the C
        was entered from original code, or through its caller's. */
+    leave_frame(&out);
+    cpu.a = out.a; cpu.x = out.x; cpu.y = out.y; cpu.d = out.d; cpu.db = out.db; cpu.p = out.p; cpu.e = out.e;
     cpu.s = out.s; cpu.pc = out.pc; cpu.unwound = 1;
     if (found) record_rest();
     else cur_i = cur_n;
@@ -1307,6 +1332,7 @@ static int ls_exec(uint32_t pc)
     hk++;
     cpu.a = r.a; cpu.x = r.x; cpu.y = r.y; cpu.s = r.s; cpu.d = r.d; cpu.db = r.db; cpu.p = r.p; cpu.e = r.e; cpu.pc = r.pc;
     cpu.unwound = 0;
+    ls_entry_s = r.s;
     machine_live = 1;
     if (setjmp(ls_escape) == 0) {
         ls_escape_set = 1;
