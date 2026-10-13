@@ -1783,3 +1783,100 @@ PictureTurnStep_table:
     db $1D
     dw $0000
     db $00
+
+; @routine 07:ABBB OamHideForHudMode
+; WHAT IT DOES: Hides sprites by putting them at y = $E0: the two whose y
+; is at $0E0C and $0E14, sprites 36 to 56, and by the HUD mode $0D2B: with
+; mode 0 sprites 75 to 127 (twice), with mode 2 no more, otherwise 75 to
+; 87 and 96 to 127.
+; HOW: OamFillEvery4 on the OAM buffer's y bytes; P saved and restored.
+; The modes other than 0 run only from unit_cpu.
+; Entry: D = $0000. Exit: P restored; A low byte $E0 (or 2 with mode 2);
+; X and Y as OamFillEvery4 leaves them.
+%at($07ABBB)
+OamHideForHudMode:
+    php
+    sep.b #$20
+    rep.b #$10
+    lda.b #$E0
+    sta.w !wram_0E0C
+    sta.w !wram_0E14
+    ldx.w #$0090
+    ldy.w #$0015
+    jsr.w OamFillEvery4
+    lda.w !hud_mode
+    beq .lABF2
+    cmp.b #$02                      ; not reached in the traces so far
+    bcc .lABDC                      ; not reached in the traces so far
+    beq .lABF0                      ; not reached in the traces so far
+.lABDC:
+    lda.b #$E0                      ; not reached in the traces so far
+    ldx.w #$012C                    ; not reached in the traces so far
+    ldy.w #$000D                    ; not reached in the traces so far
+    jsr.w OamFillEvery4             ; not reached in the traces so far
+    ldx.w #$0180                    ; not reached in the traces so far
+    ldy.w #$0020                    ; not reached in the traces so far
+    jsr.w OamFillEvery4             ; not reached in the traces so far
+.lABF0:
+    plp                             ; not reached in the traces so far
+    rts                             ; not reached in the traces so far
+.lABF2:
+    lda.b #$E0
+    ldx.w #$012C
+    ldy.w #$0035
+    jsr.w OamFillEvery4
+    ldx.w #$012C
+    ldy.w #$0035
+    jsr.w OamFillEvery4
+    plp
+    rts
+
+
+; @routine 07:BB4C OamStagePause2
+; WHAT IT DOES: As OamStagePause for pad 2: when its Select was pressed
+; ($0D1C bit 12): $0D2E = $FF, sound $15 on port 1, the layout request
+; $19BD = 1, the high bits of sprites 58 on (OamHighBits58), $0D2D down by
+; one, $0E5B and $0E5F cleared and stage $0D2F = 0; then, each frame, the
+; stage's handler from the table at $07:BBA2 (OamStageDispatchBBA2) with
+; the presses cleared, until $0D2D is 0.
+; HOW: As OamStagePause. The loop is also entered by a jump from $07:EB42;
+; the press runs only from unit_cpu.
+; Entry: any widths. Exit: P restored; A as the last step left it.
+%at($07BB4C)
+OamStagePause2:
+    php
+    rep.b #$20
+    lda.w !joy2_pressed_copy
+    bit.w #$1000
+    bne .lBB59
+    plp
+    rts
+.lBB59:
+    sep.b #$20                      ; not reached in the traces so far
+    lda.b #$FF                      ; not reached in the traces so far
+    sta.w !wram_0D2E                ; not reached in the traces so far
+    lda.b #$15                      ; not reached in the traces so far
+    jsl.l SoundPort1QueuePush       ; not reached in the traces so far
+    lda.b #$01                      ; not reached in the traces so far
+    sta.w !layout_request           ; not reached in the traces so far
+    jsr.w OamHighBits58             ; not reached in the traces so far
+    dec.w !wram_0D2D                ; not reached in the traces so far
+    stz.w !wram_0E5B                ; not reached in the traces so far
+    stz.w !palette_animate          ; not reached in the traces so far
+    lda.b #$00                      ; not reached in the traces so far
+    sta.w !wram_0D2F                ; not reached in the traces so far
+.lBB7C:
+    sep.b #$20
+    lda.w !hud_blank+4
+    beq .lBB7C
+    stz.w !hud_blank+4
+    jsr.w OamStageDispatchBBA2
+    rep.b #$20
+    stz.w !joy1_pressed_copy
+    stz.w !joy2_pressed_copy
+    sep.b #$20
+    lda.w !wram_0D2D
+    bne .lBB7C
+    plp                             ; not reached in the traces so far
+    rts                             ; not reached in the traces so far
+

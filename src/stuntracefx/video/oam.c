@@ -1806,3 +1806,118 @@ void abi_PictureTurnStep(void)
     wr8(b | 0x0D32, (uint8_t)(rd8(b | 0x0D32) - 1));
     op_plp(p0);
 }
+
+/* LDA #$E0 (8-bit), LDX, LDY, then OamFillEvery4: hides sprites. */
+static void oam_hide(uint16_t x, uint16_t y)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xE0);
+    cpu.p = nz8(cpu.p, 0xE0);
+    cpu.x = x;
+    cpu.y = y;
+    cpu.p = nz16(cpu.p, y);
+    abi_OamFillEvery4();
+}
+
+/*
+ * @routine 07:ABBB OamHideForHudMode
+ * WHAT IT DOES: Hides sprites by putting them at y = $E0: the two whose y
+ * is at $0E0C and $0E14, sprites 36 to 56, and by the HUD mode $0D2B: with
+ * mode 0 sprites 75 to 127 (twice), with mode 2 no more, otherwise 75 to
+ * 87 and 96 to 127.
+ * HOW: OamFillEvery4 on the OAM buffer's y bytes; P saved and restored.
+ * The modes other than 0 run only from unit_cpu.
+ * Entry: D = $0000. Exit: P restored; A low byte $E0 (or 2 with mode 2);
+ * X and Y as OamFillEvery4 leaves them.
+ */
+void abi_OamHideForHudMode(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t p0 = cpu.p, v;
+
+    op_sep(P_M);
+    op_rep(P_X);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xE0);
+    cpu.p = nz8(cpu.p, 0xE0);
+    wr8(b | 0x0E0C, 0xE0);
+    wr8(b | 0x0E14, 0xE0);
+    cpu.x = 0x0090;
+    cpu.y = 0x0015;
+    cpu.p = nz16(cpu.p, cpu.y);
+    abi_OamFillEvery4();
+    op_lda8(b | 0x0D2B);
+    v = (uint8_t)cpu.a;
+    if (!v) {
+        oam_hide(0x012C, 0x0035);
+        cpu.x = 0x012C;
+        cpu.y = 0x0035;
+        cpu.p = nz16(cpu.p, cpu.y);
+        abi_OamFillEvery4();
+    } else if (v != 0x02) {
+        oam_hide(0x012C, 0x000D);
+        cpu.x = 0x0180;
+        cpu.y = 0x0020;
+        cpu.p = nz16(cpu.p, cpu.y);
+        abi_OamFillEvery4();
+    }
+    op_plp(p0);
+}
+
+/*
+ * @routine 07:BB4C OamStagePause2
+ * WHAT IT DOES: As OamStagePause for pad 2: when its Select was pressed
+ * ($0D1C bit 12): $0D2E = $FF, sound $15 on port 1, the layout request
+ * $19BD = 1, the high bits of sprites 58 on (OamHighBits58), $0D2D down by
+ * one, $0E5B and $0E5F cleared and stage $0D2F = 0; then, each frame, the
+ * stage's handler from the table at $07:BBA2 (OamStageDispatchBBA2) with
+ * the presses cleared, until $0D2D is 0.
+ * HOW: As OamStagePause. The loop is also entered by a jump from $07:EB42;
+ * the press runs only from unit_cpu.
+ * Entry: any widths. Exit: P restored; A as the last step left it.
+ */
+void abi_OamStagePause2(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t p0 = cpu.p, v;
+
+    op_rep(P_M);
+    op_lda16(b | 0x0D1C);
+    if (!(cpu.a & 0x1000)) {
+        cpu.p |= P_Z;
+        op_plp(p0);
+        return;
+    }
+    cpu.p &= (uint8_t)~P_Z;
+    op_sep(P_M);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xFF);
+    cpu.p = nz8(cpu.p, 0xFF);
+    wr8(b | 0x0D2E, 0xFF);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x15);
+    cpu.p = nz8(cpu.p, 0x15);
+    abi_SoundPort1QueuePush();
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
+    cpu.p = nz8(cpu.p, 0x01);
+    wr8(b | 0x19BD, 0x01);
+    abi_OamHighBits58();
+    v = (uint8_t)(rd8(b | 0x0D2D) - 1);
+    wr8(b | 0x0D2D, v);
+    cpu.p = nz8(cpu.p, v);
+    wr8(b | 0x0E5B, 0x00);
+    wr8(b | 0x0E5F, 0x00);
+    cpu.a = (uint16_t)(cpu.a & 0xFF00);
+    cpu.p = nz8(cpu.p, 0);
+    wr8(b | 0x0D2F, 0x00);
+    do {
+        do {
+            op_sep(P_M);
+            op_lda8(b | 0x0D52);
+        } while (!(uint8_t)cpu.a);
+        wr8(b | 0x0D52, 0x00);
+        abi_OamStageDispatchBBA2();
+        op_rep(P_M);
+        wr16(b | 0x0D1A, 0x0000);
+        wr16(b | 0x0D1C, 0x0000);
+        op_sep(P_M);
+        op_lda8(b | 0x0D2D);
+    } while ((uint8_t)cpu.a);
+    op_plp(p0);
+}

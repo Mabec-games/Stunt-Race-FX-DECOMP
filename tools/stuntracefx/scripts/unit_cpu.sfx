@@ -40,6 +40,8 @@
 #   $20) and the split screen's stage 8.
 # - GlyphSpritesDrawAll with $0FAE 0 (the last four 8 pixels left);
 #   BcdToBinary of $1234, $0999 and $9999.
+# - OamHideForHudMode in HUD modes 1, 2 and 3; OamStagePause2 with pad 2's
+#   Select pressed and one frame of pause ($0D2D = 1).
 load build/stuntracefx/states/novice_coupe_race1.state
 set 7E3437 FE
 call 03:FDF7 p=30 db=7E d=0000
@@ -627,4 +629,21 @@ call 07:AC77 long a=0999 x=55AA p=00 db=00 d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
 call 07:AC77 long a=9999 x=55AA p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D2B 01
+call 07:ABBB p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D2B 02
+call 07:ABBB p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D2B 03
+call 07:ABBB p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D1C 00,10
+set 7E0D2D 01
+call 07:BB4C p=30 db=00 d=0000
 wait 1
