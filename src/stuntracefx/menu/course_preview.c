@@ -3,6 +3,7 @@
  * frame (RaceFrameStep) drawn each menu frame behind the course select.
  */
 #include "machine.h"
+#include "cpu_ops.h"
 
 void abi_MenuFixedColourDown(void);
 void abi_RaceFrameStep(void);
@@ -540,3 +541,73 @@ void abi_MenuRunFrames(void);
    menu's loop until the player leaves, for longer than lockstep can hold a
    call open; their C is held back until the harness can (their assembly
    is filed in menu/course_preview.asm). */
+
+void abi_MenuSinePosition(void);
+void abi_MenuActorFind(void);
+void abi_MenuSet1A66(void);
+void abi_MenuSetPairAnimations(void);
+void abi_RaceFrameStep(void);
+
+/* Direct page word off + X. */
+static uint32_t dpx(uint8_t off)
+{
+    return (uint16_t)(cpu.d + off + cpu.x);
+}
+
+/*
+ * @routine 0B:C5EF MenuSlideToPreview
+ * WHAT IT DOES: Steps menu record X's slide +$0A by 3 up to $80 and places
+ * it (MenuSinePosition); when it reaches $80 it sets the record's handler
+ * +$08 to $BA4E and restarts the slide, gives kind 4's actor (MenuActorFind)
+ * animation $8A (+$14; its position +$16 and timer +$18 restarted when it
+ * had another), clears $18D3, sets up selection $18CB's pair (MenuSet1A66,
+ * MenuSetPairAnimations), shows a race frame (RaceFrameStep with A = 0),
+ * sets $18FD to 1 and clears $1191.
+ * HOW: Words through direct page + X, so each step uses the X the call
+ * before left. The animation change is not reached in the traces so far.
+ * Entry: M 16-bit, X 16-bit, D = $0000; X = record. Exit: A = 0, Z set
+ * (or, before $80, A = the slide, N, Z, C from comparing it with $80); X
+ * and Y as the last call left them.
+ */
+void abi_MenuSlideToPreview(void)
+{
+    cpu.a = (uint16_t)(rd16(dpx(0x0A)) + 3);
+    op_cmp16(0x0080);
+    if (cpu.a >= 0x0080) {
+        cpu.a = 0x0080;
+        cpu.p = nz16(cpu.p, cpu.a);
+    }
+    wr16(dpx(0x0A), cpu.a);
+    abi_MenuSinePosition();
+    cpu.a = rd16(dpx(0x0A));
+    op_cmp16(0x0080);
+    if (cpu.a != 0x0080)
+        return;
+    wr16(dpx(0x08), 0xBA4E);
+    wr16(dpx(0x0A), 0x0000);
+    cpu.a = 0x0004;
+    cpu.p = nz16(cpu.p, cpu.a);
+    abi_MenuActorFind();
+    cpu.a = rd16(dpx(0x14));
+    op_cmp16(0x008A);
+    if (cpu.a != 0x008A) {
+        cpu.a = 0x008A;
+        wr16(dpx(0x14), 0x008A);
+        wr16(dpx(0x16), 0x0000);
+        wr16(dpx(0x18), 0x0000);
+    }
+    cpu.a = 0x0000;
+    wr16(0x0018D3, 0x0000);
+    cpu.a = rd16(0x0018CB);
+    cpu.p = nz16(cpu.p, cpu.a);
+    abi_MenuSet1A66();
+    abi_MenuSetPairAnimations();
+    cpu.a = 0x0000;
+    cpu.p = nz16(cpu.p, 0);
+    abi_RaceFrameStep();
+    cpu.a = 0x0001;
+    wr16(0x0018FD, 0x0001);
+    cpu.a = 0x0000;
+    wr16(0x001191, 0x0000);
+    cpu.p = nz16(cpu.p, 0);
+}

@@ -759,3 +759,58 @@ MenuPreviewLoop:                    ; MenuPreviewRun joins here
     jsr.w ApproachTargetZero
     jsr.w MenuRunFrames
     rtl
+
+; @routine 0B:C5EF MenuSlideToPreview
+; WHAT IT DOES: Steps menu record X's slide +$0A by 3 up to $80 and places
+; it (MenuSinePosition); when it reaches $80 it sets the record's handler
+; +$08 to $BA4E and restarts the slide, gives kind 4's actor (MenuActorFind)
+; animation $8A (+$14; its position +$16 and timer +$18 restarted when it
+; had another), clears $18D3, sets up selection $18CB's pair (MenuSet1A66,
+; MenuSetPairAnimations), shows a race frame (RaceFrameStep with A = 0),
+; sets $18FD to 1 and clears $1191.
+; HOW: Words through direct page + X, so each step uses the X the call
+; before left. The animation change is not reached in the traces so far.
+; Entry: M 16-bit, X 16-bit, D = $0000; X = record. Exit: A = 0, Z set
+; (or, before $80, A = the slide, N, Z, C from comparing it with $80); X
+; and Y as the last call left them.
+%at($0BC5EF)
+MenuSlideToPreview:
+    lda.b !actor_0a,x
+    inc a
+    inc a
+    inc a
+    cmp.w #$0080
+    bcc .store
+    lda.w #$0080
+.store:
+    sta.b !actor_0a,x
+    jsr.w MenuSinePosition
+    lda.b !actor_0a,x
+    cmp.w #$0080
+    bne .done
+    lda.w #$BA4E
+    sta.b !actor_handler,x
+    stz.b !actor_0a,x
+    lda.w #$0004
+    jsr.w MenuActorFind
+    lda.b !actor_anim,x
+    cmp.w #$008A
+    beq .animated
+    lda.w #$008A
+    sta.b !actor_anim,x
+    stz.b !actor_anim_pos,x
+    stz.b !actor_anim_timer,x
+.animated:
+    lda.w #$0000
+    sta.l !selection_out
+    lda.l !selection
+    jsr.w MenuSet1A66
+    jsr.w MenuSetPairAnimations
+    lda.w #$0000
+    jsl.l RaceFrameStep
+    lda.w #$0001
+    sta.l !wram_18FD
+    lda.w #$0000
+    sta.l !word_list_a_size
+.done:
+    rts
