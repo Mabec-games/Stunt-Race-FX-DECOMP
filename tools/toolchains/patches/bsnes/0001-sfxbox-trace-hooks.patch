@@ -604,12 +604,12 @@ index 0000000..ab01b93
 +}
 +
 +extern "C" void sfxbox_cpu_read(uint32_t addr, uint8_t data) {
-+  if(sfxboxRom && (sfxbox_cpu_who == SFXBOX_WHO_OP || sfxbox_cpu_who == SFXBOX_WHO_OPND)) {
++  if(sfxboxRom && (sfxbox_cpu_who == SFXBOX_WHO_OP || sfxbox_cpu_who == SFXBOX_WHO_OPND || sfxbox_cpu_who == SFXBOX_WHO_DATA)) {
 +    uint32_t bank = addr >> 16 & 0xff, lo = addr & 0xffff;
 +    int32_t off = -1;
 +    if(bank == 0x7e || bank == 0x7f) off = (bank & 1) << 16 | lo;
 +    else if((bank & 0x40) == 0 && lo < 0x2000) off = lo;
-+    if(off >= 0) sfxboxWramCode[off] |= sfxbox_cpu_who == SFXBOX_WHO_OP ? (SFXBOX_CPU_OP | sfxboxCpuFlags) : SFXBOX_CPU_OPND;
++    if(off >= 0) sfxboxWramCode[off] |= sfxbox_cpu_who == SFXBOX_WHO_OP ? (SFXBOX_CPU_OP | sfxboxCpuFlags) : sfxbox_cpu_who == SFXBOX_WHO_OPND ? SFXBOX_CPU_OPND : SFXBOX_CPU_DATA;
 +  }
 +  if(sfxboxCb.read) sfxboxCb.read(addr, data);
 +}
