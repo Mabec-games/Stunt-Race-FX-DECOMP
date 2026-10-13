@@ -6,6 +6,7 @@
  * +$4F the link to a related object.
  */
 #include "machine.h"
+#include "cpu_ops.h"
 
 /* A field of the object at offset `obj` in the data bank. */
 static uint32_t field(uint8_t bank, uint16_t obj, uint16_t off)
@@ -1823,4 +1824,44 @@ void abi_ObjectSpawnChanceD460(void)
     cpu.p |= P_M;
     cpu.a = (uint16_t)((cpu.x & 0xFF00) | a);
     cpu.p = nz8(cpu.p, a);
+}
+
+/*
+ * @routine 08:F911 ObjectAdvance5DIfFlag
+ * WHAT IT DOES: Adds 2 to object X's word +$5D when $0D62 is set.
+ * HOW: A 16-bit add through the data bank.
+ * Entry: X 16-bit; X = object. Exit: M 8-bit; when $0D62 is clear, A low
+ * byte = 0 with Z set; otherwise A = the new word, N, Z, C, V from the
+ * add.
+ */
+void abi_ObjectAdvance5DIfFlag(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v;
+    uint16_t w;
+
+    cpu.p |= P_M;
+    v = rd8(b | 0x0D62);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+    if (!v)
+        return;
+    w = rd16(b | (uint16_t)(0x205D + cpu.x));
+    cpu.p &= (uint8_t)~(P_M | P_C);
+    cpu.a = op_adc16(w, 0x0002, &cpu.p);
+    wr16(b | (uint16_t)(0x205D + cpu.x), cpu.a);
+    cpu.p |= P_M;
+}
+
+/*
+ * @routine 08:F927 ObjectReleaseLong
+ * WHAT IT DOES: ObjectRelease for callers in other banks and object
+ * handler tables.
+ * HOW: SEP #$20 and a long call.
+ * Entry: X 16-bit; X = object. Exit: as ObjectRelease, M 8-bit.
+ */
+void abi_ObjectReleaseLong(void)
+{
+    cpu.p |= P_M;
+    abi_ObjectRelease();
 }

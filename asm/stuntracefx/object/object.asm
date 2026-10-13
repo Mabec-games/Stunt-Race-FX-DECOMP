@@ -1815,3 +1815,33 @@ ObjectSpawnChanceD460:
     pla
 ObjectSpawnChanceD460_done:          ; reached by the long jumps above
     rts
+
+; @routine 08:F911 ObjectAdvance5DIfFlag
+; WHAT IT DOES: Adds 2 to object X's word +$5D when $0D62 is set.
+; HOW: A 16-bit add through the data bank.
+; Entry: X 16-bit; X = object. Exit: M 8-bit; when $0D62 is clear, A low
+; byte = 0 with Z set; otherwise A = the new word, N, Z, C, V from the add.
+%at($08F911)
+ObjectAdvance5DIfFlag:
+    sep.b #$20
+    lda.w !wram_0D62
+    beq .done
+    rep.b #$20
+    lda.w !obj_5d,x
+    clc
+    adc.w #$0002
+    sta.w !obj_5d,x
+    sep.b #$20
+.done:
+    rts
+
+; @routine 08:F927 ObjectReleaseLong
+; WHAT IT DOES: ObjectRelease for callers in other banks and object handler
+; tables.
+; HOW: SEP #$20 and a long call.
+; Entry: X 16-bit; X = object. Exit: as ObjectRelease, M 8-bit.
+%at($08F927)
+ObjectReleaseLong:
+    sep.b #$20
+    jsl.l ObjectRelease
+    rtl
