@@ -275,6 +275,13 @@ ObjectListAppend:
     plx
     rtl
 
+; ObjectSpawnFromScript's way out when no object is free: the stop screen.
+; CrashGreen never returns (the bytes after it are ObjectBucketInsert).
+; Not reached in the traces so far.
+%at($088360)
+ObjectSpawnFailed:
+    jsl.l CrashGreen
+
 ; @routine 08:8364 ObjectBucketInsert
 ; WHAT IT DOES: Puts object X at the head of the list for its bucket: the
 ; bucket number is the object's +$40, the list heads are words at $7F:0000
@@ -1626,3 +1633,120 @@ ObjectsRunHandlers:
 .done:
     plb
     rtl
+
+; @routine 08:826E ObjectSpawnFromScript
+; WHAT IT DOES: Makes a new object (ObjectAlloc, ObjectInit) from the
+; course script entry at Y (in the data bank, read at $8000 + Y on): its
+; model (+$04) from +$07, +$20 from +$09, position (+$0C, +$0E, +$10) from
+; +$01, +$03, +$05, script pointer (+$1A-$1C) from +$0B and +$0C, flags
+; (+$06) from +$14, and +$15 from $1AF4; the offsets +$53, +$55 and +$57
+; from +$0E, +$10 and +$12, added to the record that +$20 points to in
+; bank 0 (+$0A, +$0C, +$0E) when bit 9 of the flags is set, and +$53 and
+; +$57 swapped when the low byte of $1AF4 is neither 0 nor $80. Then puts
+; it in its bucket (ObjectRebucket) and sets +$36 to 3 when the first byte
+; of its script is $EA. With no free object it stops the game
+; (CrashGreen); no script has got there.
+; HOW: Long accesses to the object (bank $7E); the bank-0 record and the
+; script byte through the data bank, switched for them and restored.
+; Entry: X 16-bit; Y = script entry. Exit: A = the high byte of the
+; script pointer - $8000 and the script byte (or 3); X = the object; Y
+; unchanged; M 16-bit; N, Z from the data bank pulled back; C from
+; comparing the script byte with $EA.
+%at($08826E)
+ObjectSpawnFromScript:
+    phy
+    sep.b #$20
+    jsl.l ObjectAlloc
+    bcs .allocated
+    brl ObjectSpawnFailed           ; not reached in the traces so far
+.allocated:
+    txy
+    jsl.l ObjectInit
+    ply
+    sep.b #$20
+    lda.l !spawn_mirror
+    sta.l !obj_15_long,x
+    rep.b #$20
+    lda.w !script_entry+7,y
+    sta.l !obj_04_long,x
+    lda.w !script_entry+9,y
+    sta.l !obj_20_long,x
+    lda.w !script_entry+1,y
+    sta.l !obj_pos_x_long,x
+    lda.w !script_entry+3,y
+    sta.l !obj_pos_y_long,x
+    lda.w !script_entry+5,y
+    sta.l !obj_pos_z_long,x
+    lda.w !script_entry+11,y
+    sta.l !obj_1a,x
+    lda.w !script_entry+12,y
+    sta.l !obj_1b_long,x
+    lda.w !script_entry+20,y
+    sta.l !obj_06_long,x
+    and.w #$0200
+    beq .offsets
+    phy
+    phb
+    sep.b #$20
+    lda.b #$00
+    pha
+    plb
+    rep.b #$20
+    lda.l !obj_20_long,x
+    tay
+    lda.w !spawn_base_0a,y
+    sta.l !obj_53_long,x
+    lda.w !spawn_base_0c,y
+    sta.l !obj_55_long,x
+    lda.w !spawn_base_0e,y
+    sta.l !obj_57_long,x
+    plb
+    ply
+.offsets:
+    lda.w !script_entry+14,y
+    clc
+    adc.l !obj_53_long,x
+    sta.l !obj_53_long,x
+    lda.w !script_entry+16,y
+    clc
+    adc.l !obj_55_long,x
+    sta.l !obj_55_long,x
+    lda.w !script_entry+18,y
+    clc
+    adc.l !obj_57_long,x
+    sta.l !obj_57_long,x
+    lda.l !spawn_mirror
+    and.w #$00FF
+    beq .rebucket
+    cmp.w #$0080
+    beq .rebucket
+    lda.l !obj_53_long,x
+    pha
+    lda.l !obj_57_long,x
+    sta.l !obj_53_long,x
+    pla
+    sta.l !obj_57_long,x
+.rebucket:
+    jsl.l ObjectRebucket
+    sep.b #$20
+    phb
+    lda.l !obj_1c_long,x
+    pha
+    plb
+    phx
+    rep.b #$20
+    lda.l !obj_1a,x
+    sec
+    sbc.w #$8000
+    tax
+    sep.b #$20
+    lda.w !script_entry,x
+    plx
+    cmp.b #$EA
+    bne .done
+    lda.b #$03
+    sta.l !obj_36_long,x
+.done:
+    plb
+    rep.b #$20
+    rts

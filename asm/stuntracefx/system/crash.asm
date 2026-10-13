@@ -28,6 +28,20 @@ CrashWhite:
     ldx.w #$00AA
     bra CrashBody
 
+; @routine 00:8048 CrashGreen
+; WHAT IT DOES: Stops the game on the stop screen with a green backdrop,
+; code $E2: what ObjectSpawnFromScript does when no object is free. Not
+; reached in the traces so far.
+; HOW: As CrashWhite, with $1A2E = $03E0 and X = $E2.
+; Entry: any widths; D = $0000. Exit: never returns.
+%at($008048)
+CrashGreen:
+    rep.b #$30
+    lda.w #$03E0
+    sta.w !crash_colour
+    ldx.w #$00E2
+    bra CrashBody
+
 %at($00805C)
 CrashBody:                          ; every stop screen entry joins here
     stx.w !crash_code

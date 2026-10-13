@@ -1359,3 +1359,22 @@ includeonce
 !obj_26 = $2026
 !obj_09 = $2009
 !obj_60 = $2060
+
+; ObjectSpawnFromScript (object/object.asm): object fields as long
+; addresses, the bank-0 record its +$20 can point to, and the byte at
+; $1AF4 it copies to +$15 (and that decides the mirror).
+!obj_04_long = $7E2004
+!obj_06_long = $7E2006
+!obj_15_long = $7E2015
+!obj_pos_y_long = $7E200E
+!obj_1b_long = $7E201B
+!obj_1c_long = $7E201C
+!obj_20_long = $7E2020
+!obj_36_long = $7E2036
+!obj_53_long = $7E2053
+!obj_55_long = $7E2055
+!obj_57_long = $7E2057
+!spawn_base_0a = $000A
+!spawn_base_0c = $000C
+!spawn_base_0e = $000E
+!spawn_mirror = $001AF4

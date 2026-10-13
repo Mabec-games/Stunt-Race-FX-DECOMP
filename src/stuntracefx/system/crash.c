@@ -89,3 +89,22 @@ void abi_CrashWhite(void)
 {
     CrashWhite(cpu.db);
 }
+
+/*
+ * @routine 00:8048 CrashGreen
+ * WHAT IT DOES: Stops the game on the stop screen with a green backdrop,
+ * code $E2: what ObjectSpawnFromScript does when no object is free. Not
+ * reached in the traces so far.
+ * HOW: As CrashWhite, with $1A2E = $03E0 and X = $E2.
+ * Entry: any widths; D = $0000. Exit: never returns.
+ */
+void CrashGreen(uint8_t bank)
+{
+    wr16((uint32_t)bank << 16 | CRASH_COLOUR, 0x03E0);
+    crash_body(bank, 0x00E2);
+}
+
+void abi_CrashGreen(void)
+{
+    CrashGreen(cpu.db);
+}

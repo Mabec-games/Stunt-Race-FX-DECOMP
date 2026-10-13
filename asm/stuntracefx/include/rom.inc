@@ -289,3 +289,7 @@ includeonce
 !phase_handlers_e24f = $E24F
 !phase_handlers_dd35 = $DD35
 !race_fade_tail = $EBE9
+
+; A course script entry, read through the data bank at $8000 + Y
+; (object/object.asm).
+!script_entry = $8000

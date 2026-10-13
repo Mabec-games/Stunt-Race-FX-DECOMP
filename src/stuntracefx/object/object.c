@@ -1652,3 +1652,91 @@ void abi_ObjectsRunHandlers(void)
 {
     ObjectsRunHandlers();
 }
+
+void abi_ObjectAlloc(void);
+void abi_ObjectInit(void);
+void abi_ObjectRebucket(void);
+void abi_CrashGreen(void);
+
+#define OBJ_FIELD(o, f) (0x7E2000u + (uint16_t)((f) + (o)))
+
+/*
+ * @routine 08:826E ObjectSpawnFromScript
+ * WHAT IT DOES: Makes a new object (ObjectAlloc, ObjectInit) from the
+ * course script entry at Y (in the data bank, read at $8000 + Y on): its
+ * model (+$04) from +$07, +$20 from +$09, position (+$0C, +$0E, +$10) from
+ * +$01, +$03, +$05, script pointer (+$1A-$1C) from +$0B and +$0C, flags
+ * (+$06) from +$14, and +$15 from $1AF4; the offsets +$53, +$55 and +$57
+ * from +$0E, +$10 and +$12, added to the record that +$20 points to in
+ * bank 0 (+$0A, +$0C, +$0E) when bit 9 of the flags is set, and +$53 and
+ * +$57 swapped when the low byte of $1AF4 is neither 0 nor $80. Then puts
+ * it in its bucket (ObjectRebucket) and sets +$36 to 3 when the first byte
+ * of its script is $EA. With no free object it stops the game
+ * (CrashGreen); no script has got there.
+ * HOW: Long accesses to the object (bank $7E); the bank-0 record and the
+ * script byte through the data bank, switched for them and restored.
+ * Entry: X 16-bit; Y = script entry. Exit: A = the high byte of the
+ * script pointer - $8000 and the script byte (or 3); X = the object; Y
+ * unchanged; M 16-bit; N, Z from the data bank pulled back; C from
+ * comparing the script byte with $EA.
+ */
+void abi_ObjectSpawnFromScript(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t y = cpu.y, o, w, r, t, u;
+    uint8_t v, bank;
+
+    cpu.p |= P_M;
+    abi_ObjectAlloc();
+    if (!(cpu.p & P_C)) {
+        abi_CrashGreen();
+        return;
+    }
+    cpu.y = cpu.x;
+    abi_ObjectInit();
+    cpu.y = y;
+    o = cpu.x;
+    wr8(OBJ_FIELD(o, 0x15), rd8(0x001AF4));
+    wr16(OBJ_FIELD(o, 0x04), rd16(b | (uint16_t)(0x8007 + y)));
+    wr16(OBJ_FIELD(o, 0x20), rd16(b | (uint16_t)(0x8009 + y)));
+    wr16(OBJ_FIELD(o, 0x0C), rd16(b | (uint16_t)(0x8001 + y)));
+    wr16(OBJ_FIELD(o, 0x0E), rd16(b | (uint16_t)(0x8003 + y)));
+    wr16(OBJ_FIELD(o, 0x10), rd16(b | (uint16_t)(0x8005 + y)));
+    wr16(OBJ_FIELD(o, 0x1A), rd16(b | (uint16_t)(0x800B + y)));
+    wr16(OBJ_FIELD(o, 0x1B), rd16(b | (uint16_t)(0x800C + y)));
+    w = rd16(b | (uint16_t)(0x8014 + y));
+    wr16(OBJ_FIELD(o, 0x06), w);
+    if (w & 0x0200) {
+        r = rd16(OBJ_FIELD(o, 0x20));
+        wr16(OBJ_FIELD(o, 0x53), rd16((uint16_t)(0x000A + r)));
+        wr16(OBJ_FIELD(o, 0x55), rd16((uint16_t)(0x000C + r)));
+        wr16(OBJ_FIELD(o, 0x57), rd16((uint16_t)(0x000E + r)));
+    }
+    t = rd16(b | (uint16_t)(0x800E + y));
+    wr16(OBJ_FIELD(o, 0x53), (uint16_t)(t + rd16(OBJ_FIELD(o, 0x53))));
+    t = rd16(b | (uint16_t)(0x8010 + y));
+    wr16(OBJ_FIELD(o, 0x55), (uint16_t)(t + rd16(OBJ_FIELD(o, 0x55))));
+    t = rd16(b | (uint16_t)(0x8012 + y));
+    wr16(OBJ_FIELD(o, 0x57), (uint16_t)(t + rd16(OBJ_FIELD(o, 0x57))));
+    w = (uint16_t)(rd16(0x001AF4) & 0x00FF);
+    if (w != 0x0000 && w != 0x0080) {
+        t = rd16(OBJ_FIELD(o, 0x53));
+        u = rd16(OBJ_FIELD(o, 0x57));
+        wr16(OBJ_FIELD(o, 0x53), u);
+        wr16(OBJ_FIELD(o, 0x57), t);
+    }
+    cpu.x = o;
+    cpu.p &= (uint8_t)~P_M;
+    abi_ObjectRebucket();
+    bank = rd8(OBJ_FIELD(o, 0x1C));
+    w = (uint16_t)(rd16(OBJ_FIELD(o, 0x1A)) - 0x8000);
+    v = rd8((uint32_t)bank << 16 | (uint16_t)(0x8000 + w));
+    cpu.x = o;
+    cpu.p = (uint8_t)((cpu.p & ~P_C) | (v >= 0xEA ? P_C : 0));
+    if (v == 0xEA) {
+        wr8(OBJ_FIELD(o, 0x36), 0x03);
+        v = 0x03;
+    }
+    cpu.a = (uint16_t)((w & 0xFF00) | v);
+    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~P_M);
+}
