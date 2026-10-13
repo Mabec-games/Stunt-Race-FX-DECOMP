@@ -50,7 +50,7 @@
 <rect x="302.6" y="237.5" width="31.9" height="32.7" fill="#3fb950"><title>FxCarPose  04B9AC  89B  T4  [object]</title></rect>
 <rect x="129.7" y="270.9" width="32.0" height="31.6" fill="#3fb950"><title>ObjectsRunHandlers  03D388  86B  T4  [object]</title></rect>
 <rect x="129.7" y="303.0" width="32.0" height="30.4" fill="#3fb950"><title>GsuRecordFromObject  08D86F  83B  T4  [object]</title></rect>
-<rect x="129.7" y="334.1" width="32.0" height="26.7" fill="#d29922"><title>FxRecordNew422  048B64  73B  T2  [object]</title></rect>
+<rect x="129.7" y="334.1" width="32.0" height="26.7" fill="#3fb950"><title>FxRecordNew422  048B64  73B  T4  [object]</title></rect>
 <rect x="129.7" y="361.4" width="32.0" height="26.3" fill="#3fb950"><title>ObjectSyncToRecord  08CEC3  72B  T4  [object]</title></rect>
 <rect x="129.7" y="388.3" width="32.0" height="26.3" fill="#d29922"><title>RecordNextContact  08CF41  72B  T2  [object]</title></rect>
 <rect x="129.7" y="415.3" width="32.0" height="26.0" fill="#3fb950"><title>ObjectVelocityFromRecordOf  08DC6D  71B  T4  [object]</title></rect>
@@ -77,9 +77,9 @@
 <rect x="188.2" y="350.4" width="25.1" height="23.6" fill="#d29922"><title>ObjectSpawnD460UnlessFlag  08D14A  51B  T2  [object]</title></rect>
 <rect x="188.2" y="374.6" width="25.1" height="23.1" fill="#3fb950"><title>GsuRecordVelocity  08D83D  50B  T4  [object]</title></rect>
 <rect x="188.2" y="398.3" width="25.1" height="22.6" fill="#d29922"><title>ObjectFree  03B8A5  49B  T2  [object]</title></rect>
-<rect x="188.2" y="421.5" width="25.1" height="22.6" fill="#d29922"><title>FxRecordNew426  048B33  49B  T2  [object]</title></rect>
-<rect x="188.2" y="444.8" width="25.1" height="22.6" fill="#d29922"><title>FxRecordNew424  048C0A  49B  T2  [object]</title></rect>
-<rect x="213.9" y="326.2" width="24.3" height="23.4" fill="#d29922"><title>FxRecordNew42D  048C95  49B  T2  [object]</title></rect>
+<rect x="188.2" y="421.5" width="25.1" height="22.6" fill="#3fb950"><title>FxRecordNew426  048B33  49B  T4  [object]</title></rect>
+<rect x="188.2" y="444.8" width="25.1" height="22.6" fill="#3fb950"><title>FxRecordNew424  048C0A  49B  T4  [object]</title></rect>
+<rect x="213.9" y="326.2" width="24.3" height="23.4" fill="#3fb950"><title>FxRecordNew42D  048C95  49B  T4  [object]</title></rect>
 <rect x="238.8" y="326.2" width="23.7" height="23.4" fill="#3fb950"><title>ObjectSpawn  03CCBB  48B  T4  [object]</title></rect>
 <rect x="263.1" y="326.2" width="23.7" height="23.4" fill="#3fb950"><title>FxPushesApply  04941C  48B  T4  [object]</title></rect>
 <rect x="287.4" y="326.2" width="23.7" height="23.4" fill="#3fb950"><title>GsuRecordWords88  08B863  48B  T4  [object]</title></rect>
@@ -94,9 +94,9 @@
 <rect x="277.7" y="350.2" width="19.1" height="22.9" fill="#3fb950"><title>GsuRecordLower82  08B80A  38B  T4  [object]</title></rect>
 <rect x="297.3" y="350.2" width="18.6" height="22.9" fill="#3fb950"><title>GsuRecordWord58  08E401  37B  T4  [object]</title></rect>
 <rect x="316.5" y="350.2" width="18.0" height="22.9" fill="#3fb950"><title>FxPushSet  049683  36B  T4  [object]</title></rect>
-<rect x="236.2" y="373.7" width="21.5" height="19.2" fill="#d29922"><title>FxRecordRaise6A  04BF51  36B  T2  [object]</title></rect>
+<rect x="236.2" y="373.7" width="21.5" height="19.2" fill="#3fb950"><title>FxRecordRaise6A  04BF51  36B  T4  [object]</title></rect>
 <rect x="236.2" y="393.6" width="21.5" height="18.7" fill="#3fb950"><title>ObjectApplyVelocity  03C06C  35B  T4  [object]</title></rect>
-<rect x="236.2" y="412.9" width="21.5" height="18.7" fill="#d29922"><title>FxRecordLower82  04BF75  35B  T2  [object]</title></rect>
+<rect x="236.2" y="412.9" width="21.5" height="18.7" fill="#3fb950"><title>FxRecordLower82  04BF75  35B  T4  [object]</title></rect>
 <rect x="236.2" y="432.2" width="21.5" height="17.6" fill="#3fb950"><title>FxListClearBit0  04A441  33B  T4  [object]</title></rect>
 <rect x="236.2" y="450.4" width="21.5" height="17.0" fill="#d29922"><title>ObjectLinkEventTrigger2  7ED3DD  32B  T2  [object]</title></rect>
 <rect x="258.3" y="373.7" width="19.1" height="18.6" fill="#3fb950"><title>FxAllTouches  04A1EC  31B  T4  [object]</title></rect>
@@ -124,7 +124,7 @@
 <rect x="311.3" y="441.4" width="12.6" height="13.2" fill="#3fb950"><title>ObjectRelease  03CCA1  15B  T4  [object]</title></rect>
 <rect x="324.5" y="441.4" width="10.0" height="13.2" fill="#3fb950"><title>ObjectLinkedSet1A  0389A8  12B  T4  [object]</title></rect>
 <rect x="311.3" y="455.2" width="9.9" height="12.2" fill="#3fb950"><title>ObjectReleaseY  03CCB0  11B  T4  [object]</title></rect>
-<rect x="321.8" y="455.2" width="8.9" height="12.2" fill="#d29922"><title>FxPoolsMergeProgram  04888E  10B  T2  [object]</title></rect>
+<rect x="321.8" y="455.2" width="8.9" height="12.2" fill="#3fb950"><title>FxPoolsMergeProgram  04888E  10B  T4  [object]</title></rect>
 <rect x="331.3" y="455.2" width="3.2" height="12.2" fill="#3fb950"><title>ObjectFreeLong  03B8A1  4B  T4  [object]</title></rect>
 <text x="3.0" y="480.0" font-size="10" fill="#8b949e">menu</text>
 <rect x="1.5" y="485.0" width="106.8" height="75.1" fill="#3fb950"><title>MenuScreenOpenPreviewFade  0BF09F  669B  T4  [menu]</title></rect>
@@ -486,12 +486,12 @@
 <rect x="651.5" y="516.5" width="77.1" height="65.1" fill="#d29922"><title>FxClipXPlane  01C77A  429B  T2  [render]</title></rect>
 <rect x="651.5" y="582.1" width="77.1" height="62.9" fill="#d29922"><title>FxClipNear  01CC87  415B  T2  [render]</title></rect>
 <rect x="729.1" y="377.8" width="79.7" height="57.4" fill="#3fb950"><title>FxGlyph24x16  07F441  392B  T4  [render]</title></rect>
-<rect x="809.5" y="377.8" width="61.5" height="57.4" fill="#d29922"><title>FxSortObjectsProgram  01AEF8  303B  T2  [render]</title></rect>
+<rect x="809.5" y="377.8" width="61.5" height="57.4" fill="#3fb950"><title>FxSortObjectsProgram  01AEF8  303B  T4  [render]</title></rect>
 <rect x="871.6" y="377.8" width="59.4" height="57.4" fill="#3fb950"><title>FxGlyph16RowsFromTop  07F15B  293B  T4  [render]</title></rect>
 <rect x="931.6" y="377.8" width="58.6" height="57.4" fill="#3fb950"><title>FxMatrixFromAngles01  01832F  289B  T4  [render]</title></rect>
 <rect x="729.1" y="435.8" width="63.5" height="52.8" fill="#d29922"><title>FxPolygonClipBottom  01CB63  288B  T2  [render]</title></rect>
 <rect x="729.1" y="489.2" width="63.5" height="52.2" fill="#d29922"><title>FxPolygonClipLeft  01CA42  285B  T2  [render]</title></rect>
-<rect x="729.1" y="542.0" width="63.5" height="52.0" fill="#d29922"><title>FxTable2702Program  01D1EB  284B  T2  [render]</title></rect>
+<rect x="729.1" y="542.0" width="63.5" height="52.0" fill="#3fb950"><title>FxTable2702Program  01D1EB  284B  T4  [render]</title></rect>
 <rect x="729.1" y="594.7" width="63.5" height="50.4" fill="#d29922"><title>FxGlyph16x32  07F6DF  275B  T2  [render]</title></rect>
 <rect x="793.3" y="435.8" width="65.8" height="47.7" fill="#d29922"><title>FxPolygonClipTop  01C668  270B  T2  [render]</title></rect>
 <rect x="859.7" y="435.8" width="65.1" height="47.7" fill="#d29922"><title>FxPolygonClipRight  01C933  267B  T2  [render]</title></rect>
@@ -508,7 +508,7 @@
 <rect x="881.7" y="527.3" width="37.6" height="31.7" fill="#3fb950"><title>FxRatioClamp  019658  104B  T4  [render]</title></rect>
 <rect x="919.9" y="527.3" width="35.1" height="31.7" fill="#3fb950"><title>FxNoiseFill  07EE88  97B  T4  [render]</title></rect>
 <rect x="955.5" y="527.3" width="34.7" height="31.7" fill="#3fb950"><title>FxPointsGather  01C1BE  96B  T4  [render]</title></rect>
-<rect x="881.7" y="559.6" width="30.2" height="33.0" fill="#d29922"><title>FxMatrixRotateProgram  0182CE  87B  T2  [render]</title></rect>
+<rect x="881.7" y="559.6" width="30.2" height="33.0" fill="#3fb950"><title>FxMatrixRotateProgram  0182CE  87B  T4  [render]</title></rect>
 <rect x="881.7" y="593.2" width="30.2" height="29.5" fill="#3fb950"><title>FxMatrixApply  01978B  78B  T4  [render]</title></rect>
 <rect x="881.7" y="623.3" width="30.2" height="21.8" fill="#3fb950"><title>FxGlyph16RowsFromBottom  07F121  58B  T4  [render]</title></rect>
 <rect x="912.5" y="559.6" width="27.6" height="22.2" fill="#3fb950"><title>FxDivideSigned  018186  54B  T4  [render]</title></rect>
@@ -516,18 +516,18 @@
 <rect x="965.8" y="559.6" width="24.5" height="22.2" fill="#3fb950"><title>FxMatrixApplyVectors  01975B  48B  T4  [render]</title></rect>
 <rect x="912.5" y="582.4" width="24.6" height="21.6" fill="#3fb950"><title>FxTiles2bppTo4bppLow  07EE59  47B  T4  [render]</title></rect>
 <rect x="912.5" y="604.6" width="24.6" height="21.1" fill="#3fb950"><title>FxScaledSpriteEighth  07FA5A  46B  T4  [render]</title></rect>
-<rect x="912.5" y="626.3" width="24.6" height="18.8" fill="#d29922"><title>FxLengthProgram  0180BC  41B  T2  [render]</title></rect>
+<rect x="912.5" y="626.3" width="24.6" height="18.8" fill="#3fb950"><title>FxLengthProgram  0180BC  41B  T4  [render]</title></rect>
 <rect x="937.7" y="582.4" width="26.0" height="17.3" fill="#3fb950"><title>FxScaledSprite13  07FA1B  40B  T4  [render]</title></rect>
 <rect x="964.2" y="582.4" width="26.0" height="17.3" fill="#3fb950"><title>FxSprite24x40  07FA88  40B  T4  [render]</title></rect>
 <rect x="937.7" y="600.3" width="19.6" height="22.4" fill="#3fb950"><title>FxDivideHalving  0196C0  39B  T4  [render]</title></rect>
 <rect x="937.7" y="623.3" width="19.6" height="21.8" fill="#3fb950"><title>FxSqrt32  018096  38B  T4  [render]</title></rect>
 <rect x="957.8" y="600.3" width="17.0" height="15.6" fill="#3fb950"><title>FxDivide32By16  0181CB  24B  T4  [render]</title></rect>
 <rect x="975.4" y="600.3" width="14.8" height="15.6" fill="#3fb950"><title>FxTableEntryWords  04CD83  21B  T4  [render]</title></rect>
-<rect x="957.8" y="616.5" width="14.5" height="15.2" fill="#d29922"><title>FxAngleProgram  0181E3  20B  T2  [render]</title></rect>
+<rect x="957.8" y="616.5" width="14.5" height="15.2" fill="#3fb950"><title>FxAngleProgram  0181E3  20B  T4  [render]</title></rect>
 <rect x="957.8" y="632.3" width="14.5" height="12.8" fill="#3fb950"><title>FxScreenClear  01AEB9  17B  T4  [render]</title></rect>
 <rect x="972.9" y="616.5" width="17.3" height="9.3" fill="#3fb950"><title>FxPictureRise40  07F0A5  15B  T4  [render]</title></rect>
 <rect x="972.9" y="626.4" width="8.4" height="12.7" fill="#d29922"><title>FxDivide32By16Halving  0181BC  10B  T2  [render]</title></rect>
-<rect x="981.9" y="626.4" width="8.4" height="12.7" fill="#d29922"><title>FxMatrixFromAnglesProgram  018325  10B  T2  [render]</title></rect>
+<rect x="981.9" y="626.4" width="8.4" height="12.7" fill="#3fb950"><title>FxMatrixFromAnglesProgram  018325  10B  T4  [render]</title></rect>
 <rect x="972.9" y="639.7" width="17.3" height="5.4" fill="#3fb950"><title>FxTiles2bppTo4bppHigh  07EE50  9B  T4  [render]</title></rect>
 <text x="653.0" y="657.7" font-size="10" fill="#8b949e">bank 04 Super FX</text>
 <rect x="651.5" y="662.7" width="119.0" height="235.2" fill="#c8ccd2"><title>(unnamed)  04AF54  2391B  T1  [bank 04 Super FX]</title></rect>
@@ -895,4 +895,4 @@
 <rect x="1564.2" y="886.6" width="33.7" height="8.3" fill="#3fb950"><title>FrameSoundAndJoypads  7EA7A3  27B  T4  [input]</title></rect>
 <rect x="1564.2" y="898.4" width="29.5" height="0.4" fill="#c8ccd2"><title>(unnamed)  00FE88  8B  T1  [bank 00 S-CPU]</title></rect>
 <rect x="1597.4" y="898.4" width="0.5" height="0.4" fill="#c8ccd2"><title>(unnamed)  008000  1B  T1  [bank 00 Super FX]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 576 &#183; T3 behaviour-exact 1 &#183; 39,046/112,886 bytes exact (34.6%) &#183; green=T4 blue=T3 amber=T2 gray=T1</text></svg>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 589 &#183; T3 behaviour-exact 1 &#183; 40,092/112,886 bytes exact (35.5%) &#183; green=T4 blue=T3 amber=T2 gray=T1</text></svg>
