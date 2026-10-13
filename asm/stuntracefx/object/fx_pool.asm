@@ -550,4 +550,195 @@ FxRecordNew42D:
     stop
     nop
 
+; @routine 04:8A08 FxObjectFree
+; WHAT IT DOES: Frees Super FX object R1: sweeps its list when its word
+; +$18 is set (FxListClearBit0, FxListSweep), frees its children when bit
+; 1 of +$16 is set (FxObjectFreeChildren), takes it out of the used list
+; (previous +$06, next +$04; the head at $2332), then, when its word +$02
+; is negative, negates it, otherwise pushes the object on the free list
+; its +$08 points at (+$00 = the old first).
+; HOW: The return address (and R8 around the sweep) on the R10 stack.
+; Two compares of +$08 with $1098 and $1D70 branch to the next
+; instruction either way. The children are not freed in the traces so
+; far.
+; Entry: R1 = the object; R10 = stack; R11 = return address. Exit: R1 as
+; on entry; R2 = the object + 2 (R3 = +$08) or, negated, the object + 2
+; with R0 its new +$02; CY from the $1D70 compare; S, Z from R10; the
+; last RAM address R10.
+%at($048A08)
+FxObjectFree:
+    from r11
+    stw (r10)
+    inc r10
+    inc r10
+    ibt r0,#$18
+    add r1
+    ldw (r0)
+    moves r0,r0
+    beq .children
+    nop
+    from r8
+    stw (r10)
+    inc r10
+    inc r10
+    move r6,r1
+    link #4
+    iwt r15,#FxListClearBit0
+    nop
+    link #4
+    iwt r15,#FxListSweep
+    nop
+    dec r10
+    dec r10
+    to r8
+    ldw (r10)
+.children:
+    ibt r0,#$16
+    add r1
+    ldw (r0)
+    iwt r2,#$0002
+    and r2
+    beq .unlink
+    nop
+    link #4
+    iwt r15,#FxObjectFreeChildren
+    nop
+.unlink:
+    ibt r2,#$06
+    with r2
+    add r1
+    to r2
+    ldw (r2)
+    ibt r3,#$04
+    with r3
+    add r1
+    to r3
+    ldw (r3)
+    moves r2,r2
+    beq .first
+    nop
+    ibt r0,#$04
+    add r2
+    from r3
+    stw (r0)
+    bra .next
+    nop
+.first:
+    sm (!fx_records),r3
+.next:
+    moves r3,r3
+    beq .pool
+    nop
+    ibt r0,#$06
+    add r3
+    from r2
+    stw (r0)
+.pool:
+    ibt r3,#$08
+    with r3
+    add r1
+    to r3
+    ldw (r3)
+    inc r1
+    inc r1
+    ldw (r1)
+    moves r2,r0
+    bpl .size
+    nop
+    with r2
+    not
+    inc r2
+.size:
+    iwt r0,#$1098
+    cmp r3
+    bne .pool2
+    nop
+.pool2:
+    iwt r0,#$1D70
+    cmp r3
+    bne .pool3
+    nop
+.pool3:
+    dec r1
+    dec r1
+    ibt r3,#$08
+    with r3
+    add r1
+    to r3
+    ldw (r3)
+    move r2,r1
+    inc r2
+    inc r2
+    ldw (r2)
+    moves r0,r0
+    bpl .push
+    nop
+    not
+    inc r0
+    stw (r2)
+    bra .done
+    nop
+.push:
+    ldw (r3)
+    stw (r1)
+    from r1
+    stw (r3)
+.done:
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+
+; @routine 04:8AA2 FxObjectFreeChildren
+; WHAT IT DOES: Frees each Super FX object linked from object R1's +$3E
+; (through each one's +$34) with FxObjectFree, which frees their own
+; children in turn.
+; HOW: The next link is read before each free; the return address and R1
+; are kept on the R10 stack. Not reached in the traces so far.
+; Entry: R1 = the object; R10 = stack; R11 = return address. Exit: R1 as
+; on entry; R4 = 0; R11 = $8AC2 when any was freed; S, Z from R10; the
+; last RAM address R10.
+%at($048AA2)
+FxObjectFreeChildren:
+    from r11
+    stw (r10)
+    inc r10
+    inc r10
+    from r1
+    stw (r10)
+    inc r10
+    inc r10
+    ibt r4,#$3E
+    with r4
+    add r1
+    to r4
+    ldw (r4)
+.child:
+    moves r4,r4
+    beq .done
+    nop
+    move r1,r4
+    ibt r4,#$34
+    with r4
+    add r1
+    to r4
+    ldw (r4)
+    link #4
+    iwt r15,#FxObjectFree
+    nop
+    move r1,r4
+    bra .child
+    nop
+.done:
+    dec r10
+    dec r10
+    to r1
+    ldw (r10)
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+
 arch 65816

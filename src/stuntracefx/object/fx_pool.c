@@ -495,3 +495,122 @@ void abi_FxRecordNew422(void)
 {
     ABI_REGS(FxRecordNew422(g));
 }
+
+void abi_FxListClearBit0(void);
+void abi_FxObjectFreeChildren(void);
+
+/*
+ * @routine 04:8A08 FxObjectFree
+ * WHAT IT DOES: Frees Super FX object R1: sweeps its list when its word
+ * +$18 is set (FxListClearBit0, FxListSweep), frees its children when bit
+ * 1 of +$16 is set (FxObjectFreeChildren), takes it out of the used list
+ * (previous +$06, next +$04; the head at $2332), then, when its word +$02
+ * is negative, negates it, otherwise pushes the object on the free list
+ * its +$08 points at (+$00 = the old first).
+ * HOW: The return address (and R8 around the sweep) on the R10 stack.
+ * Two compares of +$08 with $1098 and $1D70 branch to the next
+ * instruction either way. The children are not freed in the traces so
+ * far.
+ * Entry: R1 = the object; R10 = stack; R11 = return address. Exit: R1 as
+ * on entry; R2 = the object + 2 (R3 = +$08) or, negated, the object + 2
+ * with R0 its new +$02; CY from the $1D70 compare; S, Z from R10; the
+ * last RAM address R10.
+ */
+void abi_FxObjectFree(void)
+{
+    gsu_push(&gsu.r[10], gsu.r[11]);
+    gsu.r[0] = gsu_add(0x0018, gsu.r[1], 0);
+    gsu.r[0] = gsu_ldw(gsu.r[0]);
+    gsu_moves(gsu.r[0]);
+    if (!gsu.z) {
+        gsu_push(&gsu.r[10], gsu.r[8]);
+        gsu.r[6] = gsu.r[1];
+        gsu.r[11] = 0x8A20;
+        abi_FxListClearBit0();
+        gsu.r[11] = 0x8A25;
+        abi_FxListSweep();
+        gsu.r[8] = gsu_pull(&gsu.r[10]);
+    }
+    gsu.r[0] = gsu_add(0x0016, gsu.r[1], 0);
+    gsu.r[0] = gsu_ldw(gsu.r[0]);
+    gsu.r[2] = 0x0002;
+    gsu.r[0] = gsu_and(gsu.r[0], gsu.r[2]);
+    if (!gsu.z) {
+        gsu.r[11] = 0x8A39;
+        abi_FxObjectFreeChildren();
+    }
+    gsu.r[2] = gsu_add(0x0006, gsu.r[1], 0);
+    gsu.r[2] = gsu_ldw(gsu.r[2]);
+    gsu.r[3] = gsu_add(0x0004, gsu.r[1], 0);
+    gsu.r[3] = gsu_ldw(gsu.r[3]);
+    gsu_moves(gsu.r[2]);
+    if (!gsu.z) {
+        gsu.r[0] = gsu_add(0x0004, gsu.r[2], 0);
+        gsu_stw(gsu.r[0], gsu.r[3]);
+    } else
+        gsu_stw(0x2332, gsu.r[3]);
+    gsu_moves(gsu.r[3]);
+    if (!gsu.z) {
+        gsu.r[0] = gsu_add(0x0006, gsu.r[3], 0);
+        gsu_stw(gsu.r[0], gsu.r[2]);
+    }
+    gsu.r[3] = gsu_add(0x0008, gsu.r[1], 0);
+    gsu.r[3] = gsu_ldw(gsu.r[3]);
+    gsu.r[1] = gsu_inc(gsu_inc(gsu.r[1]));
+    gsu.r[0] = gsu_ldw(gsu.r[1]);
+    gsu.r[2] = gsu.r[0];
+    gsu_moves(gsu.r[2]);
+    if (gsu.s)
+        gsu.r[2] = gsu_inc(gsu_not(gsu.r[2]));
+    gsu.r[0] = 0x1098;
+    gsu_sub(gsu.r[0], gsu.r[3], 0);
+    gsu.r[0] = 0x1D70;
+    gsu_sub(gsu.r[0], gsu.r[3], 0);
+    gsu.r[1] = gsu_dec(gsu_dec(gsu.r[1]));
+    gsu.r[3] = gsu_add(0x0008, gsu.r[1], 0);
+    gsu.r[3] = gsu_ldw(gsu.r[3]);
+    gsu.r[2] = gsu_inc(gsu_inc(gsu.r[1]));
+    gsu.r[0] = gsu_ldw(gsu.r[2]);
+    gsu_moves(gsu.r[0]);
+    if (gsu.s) {
+        gsu.r[0] = gsu_inc(gsu_not(gsu.r[0]));
+        gsu_stw(gsu.r[2], gsu.r[0]);
+    } else {
+        gsu.r[0] = gsu_ldw(gsu.r[3]);
+        gsu_stw(gsu.r[1], gsu.r[0]);
+        gsu_stw(gsu.r[3], gsu.r[1]);
+    }
+    gsu_pull(&gsu.r[10]);
+}
+
+/*
+ * @routine 04:8AA2 FxObjectFreeChildren
+ * WHAT IT DOES: Frees each Super FX object linked from object R1's +$3E
+ * (through each one's +$34) with FxObjectFree, which frees their own
+ * children in turn.
+ * HOW: The next link is read before each free; the return address and R1
+ * are kept on the R10 stack. Not reached in the traces so far.
+ * Entry: R1 = the object; R10 = stack; R11 = return address. Exit: R1 as
+ * on entry; R4 = 0; R11 = $8AC2 when any was freed; S, Z from R10; the
+ * last RAM address R10.
+ */
+void abi_FxObjectFreeChildren(void)
+{
+    gsu_push(&gsu.r[10], gsu.r[11]);
+    gsu_push(&gsu.r[10], gsu.r[1]);
+    gsu.r[4] = gsu_add(0x003E, gsu.r[1], 0);
+    gsu.r[4] = gsu_ldw(gsu.r[4]);
+    for (;;) {
+        gsu_moves(gsu.r[4]);
+        if (gsu.z)
+            break;
+        gsu.r[1] = gsu.r[4];
+        gsu.r[4] = gsu_add(0x0034, gsu.r[1], 0);
+        gsu.r[4] = gsu_ldw(gsu.r[4]);
+        gsu.r[11] = 0x8AC2;
+        abi_FxObjectFree();
+        gsu.r[1] = gsu.r[4];
+    }
+    gsu.r[1] = gsu_pull(&gsu.r[10]);
+    gsu_pull(&gsu.r[10]);
+}
