@@ -382,3 +382,117 @@ void abi_RaceVarsReset(void)
     cpu.a = 0x0080;
     cpu.p = (uint8_t)(nz8(cpu.p, 0x80) | P_M);
 }
+
+void abi_HandlerSoundIndex(void);
+void abi_ApuUpload(void);
+void abi_RecordsUnpackCourseRunning(void);
+
+/* The pick's sound: $0D8C = the handler at $18DB, $0D8B its sound index
+   (HandlerSoundIndex), leaving M and X 8-bit. */
+static void pick_sound(uint32_t b)
+{
+    cpu.p &= (uint8_t)~P_M;
+    cpu.a = rd16(0x0018DB);
+    wr16(b | 0x0D8C, cpu.a);
+    abi_HandlerSoundIndex();
+    op_sep(P_M | P_X);
+    wr8(b | 0x0D8B, (uint8_t)cpu.a);
+}
+
+/* LDA #$4000, DEC A until 0: A = 0, Z set. */
+static void delay_4000(void)
+{
+    cpu.a = 0x0000;
+    cpu.p = nz16(cpu.p, 0);
+}
+
+/*
+ * @routine 03:D8B3 RaceModeSetup
+ * WHAT IT DOES: Sets the race up for mode $0D2B. Mode 3 with bits 0-2 of
+ * $70:FC0B clear only marks $10CD ($FF), takes course $1B and the pick's
+ * sound ($18DB into $0D8C, HandlerSoundIndex into $0D8B). Otherwise:
+ * $0D4A = 0 (or, in mode 3, 1 unless bit 0 of $70:FC0B is set), $10CD and
+ * $0E37 cleared, the pick's sound, the race flags at $0D4C, $0D4E, $10CD,
+ * $0D48, $0E3E, $0D63, $0D44, $0EED-$0EEF, $0D24, $0D25 cleared, the twelve
+ * bytes at $0F05 set to 4 in mode 0 else 0, $0E6C/$0E6E cleared; then mode
+ * 0 unpacks the course's records as running totals
+ * (RecordsUnpackCourseRunning) with $0DF8 = 2, others $0DF8 = $FF, mode 2
+ * first sending 5 on APU port 1 and uploading sound block $1A:F091
+ * (ApuUpload) between two delay loops.
+ * HOW: 8-bit with word stores where the original is 16-bit; the $0F05
+ * bytes are stored from the last down. Mode 3 with any of bits 0-2 set is
+ * not reached in the traces so far.
+ * Entry: any widths; DB a bank where work RAM is mapped, D = $0000. Exit:
+ * P restored; X and Y high bytes cleared; A as the last step left it.
+ */
+void abi_RaceModeSetup(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t p0 = cpu.p, mode, v;
+    static const uint16_t clear[] = {0x0D4C, 0x0D4E, 0x10CD, 0x0D48, 0x0E3E, 0x0D63, 0x0D4C,
+                                     0x0D44, 0x0EED, 0x0EEE, 0x0EEF, 0x0D24, 0x0D25};
+    unsigned i;
+
+    cpu.p |= P_M;
+    mode = rd8(b | 0x0D2B);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | mode);
+    if (mode == 0x03) {
+        v = (uint8_t)(rd8(0x70FC0B) & 0x07);
+        if (!v) {
+            wr8(b | 0x10CD, 0xFF);
+            wr8(b | 0x0E3D, 0x1B);
+            wr8(b | 0x0E3E, 0x00);
+            pick_sound(b);
+            cpu.p = p0;
+            return;
+        }
+        v = rd8(0x70FC0B);
+        wr8(b | 0x0D4A, (v & 0x01) ? 0x00 : 0x01);
+    } else
+        wr8(b | 0x0D4A, 0x00);
+    wr8(b | 0x10CD, 0x00);
+    cpu.p &= (uint8_t)~P_M;
+    wr16(b | 0x0E37, 0x0000);
+    pick_sound(b);
+    for (i = 0; i < sizeof clear / sizeof clear[0]; i++)
+        wr8(b | clear[i], 0x00);
+    v = rd8(b | 0x0D2B) ? 0x00 : 0x04;
+    for (i = 0x0C; i-- > 0; )
+        wr8(b | (uint16_t)(0x0F05 + i), v);
+    cpu.x = 0xFF;
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p &= (uint8_t)~P_M;
+    wr16(b | 0x0E6C, 0x0000);
+    wr16(b | 0x0E6E, 0x0000);
+    cpu.p |= P_M;
+    mode = rd8(b | 0x0D2B);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | mode);
+    if (mode == 0x00) {
+        abi_RecordsUnpackCourseRunning();
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x02);
+        wr8(b | 0x0DF8, 0x02);
+        cpu.p = p0;
+        return;
+    }
+    if (mode == 0x02) {
+        uint8_t p1 = cpu.p;
+
+        cpu.p &= (uint8_t)~(P_M | P_X);
+        wr16(0x002141, 0x0005);
+        delay_4000();
+        cpu.a = 0x001A;
+        cpu.y = 0xF091;
+        abi_ApuUpload();
+        cpu.p &= (uint8_t)~P_M;
+        delay_4000();
+        cpu.p = p1;
+        if (p1 & P_X) {
+            cpu.x &= 0x00FF;
+            cpu.y &= 0x00FF;
+        }
+    }
+    cpu.p |= P_M;
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xFF);
+    wr8(b | 0x0DF8, 0xFF);
+    cpu.p = p0;
+}

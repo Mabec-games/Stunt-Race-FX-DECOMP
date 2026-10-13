@@ -408,3 +408,127 @@ RaceVarsReset:
     sta.w !BG2VOFS
     stz.w !BG2VOFS
     rtl
+
+; @routine 03:D8B3 RaceModeSetup
+; WHAT IT DOES: Sets the race up for mode $0D2B. Mode 3 with bits 0-2 of
+; $70:FC0B clear only marks $10CD ($FF), takes course $1B and the pick's
+; sound ($18DB into $0D8C, HandlerSoundIndex into $0D8B). Otherwise:
+; $0D4A = 0 (or, in mode 3, 1 unless bit 0 of $70:FC0B is set), $10CD and
+; $0E37 cleared, the pick's sound, the race flags at $0D4C, $0D4E, $10CD,
+; $0D48, $0E3E, $0D63, $0D44, $0EED-$0EEF, $0D24, $0D25 cleared, the twelve
+; bytes at $0F05 set to 4 in mode 0 else 0, $0E6C/$0E6E cleared; then mode
+; 0 unpacks the course's records as running totals
+; (RecordsUnpackCourseRunning) with $0DF8 = 2, others $0DF8 = $FF, mode 2
+; first sending 5 on APU port 1 and uploading sound block $1A:F091
+; (ApuUpload) between two delay loops.
+; HOW: 8-bit with word stores where the original is 16-bit; the $0F05
+; bytes are stored from the last down. Mode 3 with any of bits 0-2 set is
+; not reached in the traces so far.
+; Entry: any widths; DB a bank where work RAM is mapped, D = $0000. Exit:
+; P restored; X and Y high bytes cleared; A as the last step left it.
+%at($03D8B3)
+RaceModeSetup:
+    php
+    sep.b #$20
+    lda.w !hud_mode
+    cmp.b #$03
+    bne .other
+    lda.l !save_progress
+    and.b #$07
+    bne .mode3_more
+    lda.b #$FF
+    sta.w !wram_10CD
+    lda.b #$1B
+    sta.w !course
+    stz.w !wram_0E3E
+    rep.b #$20
+    lda.l !selection_handler_a
+    sta.w !wram_0D8C
+    jsr.w HandlerSoundIndex
+    sep.b #$30
+    sta.w !wram_0D8B
+    plp
+    rtl
+.mode3_more:
+    lda.l !save_progress
+    bit.b #$01
+    bne .one_off
+    lda.b #$01
+    bra .set_0d4a
+.one_off:
+    lda.b #$00
+.set_0d4a:
+    sta.w !wram_0D4A
+    bra .setup
+.other:
+    stz.w !wram_0D4A
+.setup:
+    stz.w !wram_10CD
+    rep.b #$20
+    stz.w !scroll_value
+    lda.l !selection_handler_a
+    sta.w !wram_0D8C
+    jsr.w HandlerSoundIndex
+    sep.b #$30
+    sta.w !wram_0D8B
+    stz.w !digit62_override
+    stz.w !hud_blank
+    stz.w !wram_10CD
+    stz.w !wram_0D48
+    stz.w !wram_0E3E
+    stz.w !wram_0D63
+    stz.w !digit62_override
+    stz.w !wram_0D44
+    stz.w !wram_0EED
+    stz.w !wram_0EEE
+    stz.w !wram_0EEF
+    stz.w !wram_0D24
+    stz.w !wram_0D25
+    ldx.b #$0B
+    lda.w !hud_mode
+    beq .four
+    lda.b #$00
+    bra .columns
+.four:
+    lda.b #$04
+.columns:
+    sta.w !level_columns,x
+    dex
+    bpl .columns
+    rep.b #$20
+    stz.w !wram_0E6C
+    stz.w !wram_0E6E
+    sep.b #$20
+    lda.w !hud_mode
+    beq .records
+    cmp.b #$02
+    bne .mark
+    php
+    rep.b #$30
+    lda.w #$0005
+    sta.l !APUIO1
+    lda.w #$4000
+.wait1:
+    dec a
+    bne .wait1
+    lda.w #$001A
+    ldy.w #$F091
+    jsl.l ApuUpload
+    rep.b #$20
+    lda.w #$4000
+.wait2:
+    dec a
+    bne .wait2
+    plp
+.mark:
+    sep.b #$20
+    lda.b #$FF
+    sta.w !wram_0DF8
+    plp
+    rtl
+.records:
+    jsl.l RecordsUnpackCourseRunning
+    lda.b #$02
+    sta.w !wram_0DF8
+    plp
+    rtl

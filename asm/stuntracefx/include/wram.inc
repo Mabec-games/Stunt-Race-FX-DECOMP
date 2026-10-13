@@ -1551,3 +1551,10 @@ includeonce
 !obj_4b = $204B
 !attach_y = $1F59                      ; an attached object's y offset from its parent (+$30)
 !attach_z = $1F5A                      ; its z offset (+$32)
+!wram_0E3E = $0E3E
+!wram_0D8C = $0D8C
+!wram_0D63 = $0D63
+!wram_0D44 = $0D44
+!wram_0EEE = $0EEE
+!wram_0EEF = $0EEF
+!wram_0D25 = $0D25
