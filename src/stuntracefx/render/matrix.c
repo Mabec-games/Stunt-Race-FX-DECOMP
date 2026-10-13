@@ -302,3 +302,18 @@ void abi_FxMatrixFromAngles01(void)
     gsu.r[12] = k.sz;
     gsu.r[13] = k.sx_sy;
 }
+
+/*
+ * @routine 01:8325 FxMatrixFromAnglesProgram
+ * WHAT IT DOES: The Super FX program that builds the rotation matrix for
+ * the angles at $0020-$0024 into $00E4 (FxMatrixFromAngles01).
+ * HOW: R9 = $00E4, the call, then STOP.
+ * Entry: started by the S-CPU. Exit (at the STOP): as FxMatrixFromAngles01,
+ * R9 = $00F4, R11 = $832D.
+ */
+void abi_FxMatrixFromAnglesProgram(void)
+{
+    gsu.r[9] = 0x00E4;
+    gsu.r[11] = 0x832D;
+    abi_FxMatrixFromAngles01();
+}
