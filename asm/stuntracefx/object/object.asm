@@ -552,7 +552,7 @@ ObjectLinkEventTrigger2:
     sep.b #$20
     lda.w !wram_0DA6
     and.b #$80
-    bne .done
+    bne ObjectLinkEventTrigger2_done
     rep.b #$30
     ldx.w !wram_034A
     ldy.w !obj_link_w,x
@@ -560,7 +560,7 @@ ObjectLinkEventTrigger2:
     tay
     lda.w 0,y
     and.w #$4000
-    beq .done
+    beq ObjectLinkEventTrigger2_done
     rep.b #$20
     lda.w !wram_1A26
     beq ObjectLinkEventTrigger_done
@@ -570,13 +570,15 @@ ObjectLinkEventTrigger2:
     lda.b #$80
     sta.w !wram_0DA6
     lda.b #$1A
+ObjectLinkEventTrigger2_bob:            ; jsr target of 7E:F737
     sta.w !wram_1A1D
     lda.b #$00
     sta.w !wram_1A1F
     sta.w !wram_1A23
     lda.b #$FE
+ObjectLinkEventTrigger2_speed:          ; jsr target of 7E:F6F2
     sta.w !wram_1A21
-.done:
+ObjectLinkEventTrigger2_done:
     sep.b #$30
     rts
 

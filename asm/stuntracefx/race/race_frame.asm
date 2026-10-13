@@ -532,3 +532,92 @@ RaceModeSetup:
     sta.w !wram_0DF8
     plp
     rtl
+
+; @routine 7E:F6E9 ViewParamsByPlayers
+; WHAT IT DOES: Sets the view's direct page parameters for one player or,
+; with $0D62 set, for the two-player split: $2A-$2F, $30/$31, $CE-$D1,
+; $34/$35 and $32/$33 ($CF, $80, $68, $40, $4000, $4EC4 for one; $8F,
+; $50, $48, $28, $6666, $71C7 for two).
+; HOW: Byte stores to direct page.
+; Entry: any widths, D = $0000. Exit: M 8-bit; A low byte = the last byte
+; ($4E or $71), N, Z from it.
+%ramcode($7EF6E9, $015410)
+ViewParamsByPlayers:
+    sep.b #$20
+    lda.w !wram_0D62
+    beq ViewParamsOne
+    bra ViewParamsTwo
+ViewParamsSpeedLong:                    ; 7E:F6F2, not reached in the traces so far
+    jsr.w ObjectLinkEventTrigger2_speed
+    rtl
+ViewParamsOne:
+    lda.b #$00
+    sta.b $2A
+    lda.b #$00
+    sta.b $2B
+    lda.b #$CF
+    sta.b $2E
+    lda.b #$00
+    sta.b $2F
+    lda.b #$00
+    sta.b $2C
+    lda.b #$00
+    sta.b $2D
+    lda.b #$80
+    sta.b $30
+    lda.b #$00
+    sta.b $31
+    lda.b #$68
+    sta.b $CE
+    lda.b #$00
+    sta.b $CF
+    lda.b #$40
+    sta.b $D0
+    lda.b #$00
+    sta.b $D1
+    lda.b #$00
+    sta.b $34
+    lda.b #$40
+    sta.b $35
+    lda.b #$C4
+    sta.b $32
+    lda.b #$4E
+    sta.b $33
+    rts
+ViewParamsBobLong:                      ; 7E:F737, not reached in the traces so far
+    jsr.w ObjectLinkEventTrigger2_bob
+    rtl
+ViewParamsTwo:
+    lda.b #$00
+    sta.b $2A
+    lda.b #$00
+    sta.b $2B
+    lda.b #$8F
+    sta.b $2E
+    lda.b #$00
+    sta.b $2F
+    lda.b #$00
+    sta.b $2C
+    lda.b #$00
+    sta.b $2D
+    lda.b #$50
+    sta.b $30
+    lda.b #$00
+    sta.b $31
+    lda.b #$48
+    sta.b $CE
+    lda.b #$00
+    sta.b $CF
+    lda.b #$28
+    sta.b $D0
+    lda.b #$00
+    sta.b $D1
+    lda.b #$66
+    sta.b $34
+    lda.b #$66
+    sta.b $35
+    lda.b #$C7
+    sta.b $32
+    lda.b #$71
+    sta.b $33
+    rts

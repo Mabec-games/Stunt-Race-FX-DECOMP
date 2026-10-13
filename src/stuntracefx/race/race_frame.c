@@ -496,3 +496,41 @@ void abi_RaceModeSetup(void)
     wr8(b | 0x0DF8, 0xFF);
     cpu.p = p0;
 }
+
+/* The view's direct page parameters $2A-$35 and $CE-$D1, in the order the
+   original stores them (8-bit). */
+static void view_params(const uint8_t *v)
+{
+    static const uint8_t at[16] = {0x2A, 0x2B, 0x2E, 0x2F, 0x2C, 0x2D, 0x30, 0x31,
+                                   0xCE, 0xCF, 0xD0, 0xD1, 0x34, 0x35, 0x32, 0x33};
+    int i;
+
+    for (i = 0; i < 16; i++)
+        wr8((uint16_t)(cpu.d + at[i]), v[i]);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v[15]);
+    cpu.p = nz8(cpu.p, v[15]);
+}
+
+/*
+ * @routine 7E:F6E9 ViewParamsByPlayers
+ * WHAT IT DOES: Sets the view's direct page parameters for one player or,
+ * with $0D62 set, for the two-player split: $2A-$2F, $30/$31, $CE-$D1,
+ * $34/$35 and $32/$33 ($CF, $80, $68, $40, $4000, $4EC4 for one; $8F,
+ * $50, $48, $28, $6666, $71C7 for two).
+ * HOW: Byte stores to direct page.
+ * Entry: any widths, D = $0000. Exit: M 8-bit; A low byte = the last byte
+ * ($4E or $71), N, Z from it.
+ */
+void abi_ViewParamsByPlayers(void)
+{
+    static const uint8_t one[16] = {0x00, 0x00, 0xCF, 0x00, 0x00, 0x00, 0x80, 0x00,
+                                    0x68, 0x00, 0x40, 0x00, 0x00, 0x40, 0xC4, 0x4E};
+    static const uint8_t two[16] = {0x00, 0x00, 0x8F, 0x00, 0x00, 0x00, 0x50, 0x00,
+                                    0x48, 0x00, 0x28, 0x00, 0x66, 0x66, 0xC7, 0x71};
+    uint8_t v;
+
+    cpu.p |= P_M;
+    v = rd8((uint32_t)cpu.db << 16 | 0x0D62);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    view_params(v ? two : one);
+}
