@@ -70,7 +70,7 @@ FxSqrt32:
 ; HOW: Sets the R10 stack to $0240; squares each word with LMULT (signed,
 ; R4 the low word), adds the two 32-bit squares (ADD, ADC) and takes
 ; FxSqrt32 of the sum; SM stores the root. Then STOP.
-; Entry: started by the S-CPU. Exit (at the STOP): R10 = $0240; R11 =
+; Entry: started by the S-CPU. Exit: (at the STOP) R10 = $0240; R11 =
 ; $80DF; the registers and flags as FxSqrt32 leaves them; the last RAM
 ; address $006A.
 ; Returns the sum of the squares; *root = the length.

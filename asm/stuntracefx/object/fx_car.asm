@@ -507,7 +507,7 @@ endmacro
 ; the script offset from $8090 and 10 bytes skipped) +$2A and +$14. The
 ; record also gets +$96 = $2392, +$24 = $0022, +$64 = the old $2390, +$66 =
 ; the script, +$0A = $B1A1.
-; Entry: the S-CPU starts it. Exit (at its STOP): R1 = R8 = the car; R10
+; Entry: the S-CPU starts it. Exit: (at its STOP) R1 = R8 = the car; R10
 ; = $0240; the others as FxCarPose leaves them.
 %at($048CC6)
 FxCarNew:

@@ -196,7 +196,7 @@ FxPoolTake:
 ; @routine 04:888E FxPoolsMergeProgram
 ; WHAT IT DOES: A program: FxPoolsMerge.
 ; HOW: R10 = $0240 for the stack, then the call.
-; Entry: the S-CPU starts it. Exit (at its STOP): as FxPoolsMerge; R10 =
+; Entry: the S-CPU starts it. Exit: (at its STOP) as FxPoolsMerge; R10 =
 ; $0240; R11 = $8896.
 %at($04888E)
 FxPoolsMergeProgram:
@@ -461,7 +461,7 @@ endmacro
 ; mass +$2A = $40, flags +$16 = 8 and mode +$1A = $0426; its address (or
 ; 0) to $238E. The S-CPU side is GsuRecordNew426 (object/gsu_record.asm).
 ; HOW: FxPoolTake with R10 = $0240, then three STWs through R2 and R0.
-; Entry: the S-CPU starts it. Exit (at its STOP): R1 = the record; R0 = R1
+; Entry: the S-CPU starts it. Exit: (at its STOP) R1 = the record; R0 = R1
 ; + $1A; R2 = $0426; R11 = $8B41; OV, S, CY, Z from the last ADD; the last
 ; RAM address R1 + $1A. No record: R1 = 0; Z set from R1.
 %at($048B33)
@@ -482,7 +482,7 @@ FxRecordNew426:
 ; GsuRecordNew422 (object/gsu_record.asm).
 ; HOW: FxPoolTake with R10 = $0240; the count is LM, INC, SBK; the flags
 ; an LDW, OR and STW.
-; Entry: the S-CPU starts it. Exit (at its STOP): R1 = the record; R0 = R1
+; Entry: the S-CPU starts it. Exit: (at its STOP) R1 = the record; R0 = R1
 ; + $1A; R2 = $0422; R11 = $8B72; OV, S, CY, Z from the last ADD; the last
 ; RAM address R1 + $1A. No record: R1 = 0; Z set from R1.
 %at($048B64)
@@ -522,7 +522,7 @@ FxRecordNew422:
 ; WHAT IT DOES: A program: as FxRecordNew426 with mode $0424. The S-CPU
 ; side is GsuRecordNew424 (object/gsu_record.asm).
 ; HOW: As FxRecordNew426.
-; Entry: the S-CPU starts it. Exit (at its STOP): as FxRecordNew426; R2 =
+; Entry: the S-CPU starts it. Exit: (at its STOP) as FxRecordNew426; R2 =
 ; $0424; R11 = $8C18.
 %at($048C0A)
 FxRecordNew424:
@@ -538,7 +538,7 @@ FxRecordNew424:
 ; WHAT IT DOES: A program: as FxRecordNew426 with mass 0, flags $20 and
 ; mode $042D. The S-CPU side is GsuRecordNew42D (object/gsu_record.asm).
 ; HOW: As FxRecordNew426.
-; Entry: the S-CPU starts it. Exit (at its STOP): as FxRecordNew426; R2 =
+; Entry: the S-CPU starts it. Exit: (at its STOP) as FxRecordNew426; R2 =
 ; $042D; R11 = $8CA3.
 %at($048C95)
 FxRecordNew42D:

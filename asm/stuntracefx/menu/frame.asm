@@ -64,7 +64,7 @@ MenuRunFrames:
 ; HOW: DB = 0 and 8-bit A throughout, so the searches compare and the
 ; field writes store single bytes. The loop is a branch to itself without
 ; waiting for a frame, so the frame updates are never taken.
-; Entry: X 16-bit. Exit (NTSC): A low byte = 0; X, Y unchanged; P and DB
+; Entry: X 16-bit. Exit: (NTSC) A low byte = 0; X, Y unchanged; P and DB
 ; unchanged.
 %at($0BAE47)
 MenuRegionCheck:

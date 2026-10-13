@@ -151,7 +151,7 @@ void abi_FxMatrixApplyVectors(void)
  * HOW: CACHE; loads the vector into R1, R2, R3 with LMS; for each row, three
  * FMULTs by the row's elements, each doubled by ROL, summed in R5 then R0
  * and stored with SMS. Then STOP.
- * Entry: started by the S-CPU. Exit (at the STOP): R1, R2, R3 = the
+ * Entry: started by the S-CPU. Exit: (at the STOP) R1, R2, R3 = the
  * vector; R0 = the last result, R5 = its first two terms, R6 = the
  * matrix's last element; the last RAM address $002A; OV, S, CY, Z from the
  * last ADD R5.
@@ -308,7 +308,7 @@ void abi_FxMatrixFromAngles01(void)
  * WHAT IT DOES: The Super FX program that builds the rotation matrix for
  * the angles at $0020-$0024 into $00E4 (FxMatrixFromAngles01).
  * HOW: R9 = $00E4, the call, then STOP.
- * Entry: started by the S-CPU. Exit (at the STOP): as FxMatrixFromAngles01,
+ * Entry: started by the S-CPU. Exit: (at the STOP) as FxMatrixFromAngles01,
  * R9 = $00F4, R11 = $832D.
  */
 void abi_FxMatrixFromAnglesProgram(void)

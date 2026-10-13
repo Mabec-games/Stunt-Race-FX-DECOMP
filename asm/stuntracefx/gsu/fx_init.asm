@@ -17,7 +17,7 @@ arch superfx
 ; $273C, $235C = 0.
 ; HOW: RAMB 0; the clearing is STW under LOOP with INC R1 in its delay
 ; slot; the test reads the word twice (into R3, then R0) and compares.
-; Entry: the S-CPU starts it. Exit (at its STOP): R0 = 0; R1 = $1D72; R2
+; Entry: the S-CPU starts it. Exit: (at its STOP) R0 = 0; R1 = $1D72; R2
 ; = $1234; R3 = the word read back; R10 = $0240; R12 = 0; R13 = $8831;
 ; RAMBR = 0; Z, CY set, S, OV clear; the last RAM address $235C.
 %at($048800)

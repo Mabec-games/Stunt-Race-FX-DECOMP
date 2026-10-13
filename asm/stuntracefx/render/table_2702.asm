@@ -12,7 +12,7 @@ arch superfx
 ; HOW: Sets the RAM bank to 0, then stores each byte with STB through R1,
 ; loading it with IBT (zero) or IWT (the rest), INC R1 after each. Then
 ; STOP.
-; Entry: started by the S-CPU. Exit (at the STOP): R1 = $2732; R0 = the
+; Entry: started by the S-CPU. Exit: (at the STOP) R1 = $2732; R0 = the
 ; last byte; the RAM bank 0; the last RAM address $2731; CY set and OV
 ; clear (SUB R0); S and Z from R1.
 %at($01D1EB)

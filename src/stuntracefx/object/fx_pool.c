@@ -98,7 +98,7 @@ void abi_FxPoolsMerge(void)
  * @routine 04:888E FxPoolsMergeProgram
  * WHAT IT DOES: A program: FxPoolsMerge.
  * HOW: R10 = $0240 for the stack, then the call.
- * Entry: the S-CPU starts it. Exit (at its STOP): as FxPoolsMerge; R10 =
+ * Entry: the S-CPU starts it. Exit: (at its STOP) as FxPoolsMerge; R10 =
  * $0240; R11 = $8896.
  */
 FxPoolWalk FxPoolsMergeProgram(FxPoolWalk w)
@@ -406,7 +406,7 @@ static FxRegs record_new_first(FxRegs g, uint16_t ret, uint16_t mass, uint16_t f
  * mass +$2A = $40, flags +$16 = 8 and mode +$1A = $0426; its address (or
  * 0) to $238E. The S-CPU side is GsuRecordNew426 (object/gsu_record.c).
  * HOW: FxPoolTake with R10 = $0240, then three STWs through R2 and R0.
- * Entry: the S-CPU starts it. Exit (at its STOP): R1 = the record; R0 = R1
+ * Entry: the S-CPU starts it. Exit: (at its STOP) R1 = the record; R0 = R1
  * + $1A; R2 = $0426; R11 = $8B41; OV, S, CY, Z from the last ADD; the last
  * RAM address R1 + $1A. No record: R1 = 0; Z set from R1.
  */
@@ -425,7 +425,7 @@ void abi_FxRecordNew426(void)
  * WHAT IT DOES: A program: as FxRecordNew426 with mode $0424. The S-CPU
  * side is GsuRecordNew424 (object/gsu_record.c).
  * HOW: As FxRecordNew426.
- * Entry: the S-CPU starts it. Exit (at its STOP): as FxRecordNew426; R2 =
+ * Entry: the S-CPU starts it. Exit: (at its STOP) as FxRecordNew426; R2 =
  * $0424; R11 = $8C18.
  */
 FxRegs FxRecordNew424(FxRegs g)
@@ -443,7 +443,7 @@ void abi_FxRecordNew424(void)
  * WHAT IT DOES: A program: as FxRecordNew426 with mass 0, flags $20 and
  * mode $042D. The S-CPU side is GsuRecordNew42D (object/gsu_record.c).
  * HOW: As FxRecordNew426.
- * Entry: the S-CPU starts it. Exit (at its STOP): as FxRecordNew426; R2 =
+ * Entry: the S-CPU starts it. Exit: (at its STOP) as FxRecordNew426; R2 =
  * $042D; R11 = $8CA3.
  */
 FxRegs FxRecordNew42D(FxRegs g)
@@ -465,7 +465,7 @@ void abi_FxRecordNew42D(void)
  * GsuRecordNew422 (object/gsu_record.c).
  * HOW: FxPoolTake with R10 = $0240; the count is LM, INC, SBK; the flags
  * an LDW, OR and STW.
- * Entry: the S-CPU starts it. Exit (at its STOP): R1 = the record; R0 = R1
+ * Entry: the S-CPU starts it. Exit: (at its STOP) R1 = the record; R0 = R1
  * + $1A; R2 = $0422; R11 = $8B72; OV, S, CY, Z from the last ADD; the last
  * RAM address R1 + $1A. No record: R1 = 0; Z set from R1.
  */

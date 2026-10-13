@@ -280,7 +280,7 @@ static void abi_amount(FxAmountRegs g)
  * HOW: ROMB, RAMB 0; FMULT of $0300 (R2 doubled) by the amount, ADD, and
  * the cap by CMP and the sign; SBK stores to the field's address, the last
  * loaded. The S-CPU side is GsuRecordRaise6A (object/gsu_record.c).
- * Entry: the S-CPU starts it. Exit (at its STOP): R0 = the new +$6A; R1 =
+ * Entry: the S-CPU starts it. Exit: (at its STOP) R0 = the new +$6A; R1 =
  * the old; R2 = $0180; R6 = the amount; R8 = the record; ROMBR = RAMBR = 0;
  * OV, S, CY, Z from the CMP; the last RAM address R8 + $6A.
  */
@@ -310,7 +310,7 @@ void abi_FxRecordRaise6A(void)
  * the field, and SUB R0 for 0 when negative; SBK stores to the field's
  * address, the last loaded. The S-CPU side is GsuRecordLower82
  * (object/gsu_record.c).
- * Entry: the S-CPU starts it. Exit (at its STOP): R0 = the new +$82; R1 =
+ * Entry: the S-CPU starts it. Exit: (at its STOP) R0 = the new +$82; R1 =
  * the old; R2 = $0200; R6 = the amount; R8 = the record; ROMBR = RAMBR = 0;
  * OV, S, CY, Z from the last SUB; the last RAM address R8 + $82.
  */
@@ -342,7 +342,7 @@ void abi_FxRecordLower82(void)
  * HOW: ROM bank $14, RAM bank 0; CACHE and LOOP over R12 = 20 records, R9
  * stepping by R8 = 14; WITH then TO is a MOVE; the BNE's delay slot
  * clears R0 either way.
- * Entry: started by the S-CPU. Exit (at the STOP): R9 past the records;
+ * Entry: started by the S-CPU. Exit: (at the STOP) R9 past the records;
  * R12 = 0; R10 = $0240; the other registers as the last record left them.
  */
 void abi_FxTimersProgram(void)

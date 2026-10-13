@@ -14,7 +14,7 @@ arch superfx
 ; ($002C, $0068) by FxAtan2, stored at $0040.
 ; HOW: Sets the R10 stack to $0240; LMS loads $0068 into R1 and $002C into
 ; R2; FxAtan2; SMS stores R0. Then STOP.
-; Entry: started by the S-CPU. Exit (at the STOP): R10 = $0240; R11 =
+; Entry: started by the S-CPU. Exit: (at the STOP) R10 = $0240; R11 =
 ; $81F1; the registers and flags as FxAtan2 leaves them; the last RAM
 ; address $0040.
 %at($0181E3)

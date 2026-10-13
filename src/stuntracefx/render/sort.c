@@ -101,7 +101,7 @@ static void link_slot(void)
  * negative or |X| - radius is not below |Z|. Otherwise its key is the
  * old key + Z + the shape's bias (+$05), stored at +$02, and it is linked
  * in before the first slot whose key is not above it (+$00). Then STOP.
- * Entry: started by the S-CPU. Exit (at the STOP): R9 past the last slot;
+ * Entry: started by the S-CPU. Exit: (at the STOP) R9 past the last slot;
  * R12 = 0; R13 = $AF0F (the slot loop); the other registers, the flags
  * and the last RAM address as the last slot left them; the ROM bank 0.
  * R14 and the ROM buffer move as on the Super FX.
