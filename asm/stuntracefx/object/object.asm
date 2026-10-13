@@ -1845,3 +1845,185 @@ ObjectReleaseLong:
     sep.b #$20
     jsl.l ObjectRelease
     rtl
+
+; @routine 08:E9F4 ObjectSpawnSparklePair
+; WHAT IT DOES: Makes two objects (kind $A158 at $1F2B) at object X's
+; position, each with handler $08:EA6B (ObjectSparkleStart) and object X as
+; its parent (+$06), and puts each in its bucket (ObjectRebucket).
+; HOW: The handler is the long pointer +$1A-$1C; a failed spawn skips that
+; object. Through the data bank.
+; Entry: M 8-bit, X 16-bit, D = $0000; X = object. Exit: X = object; Y = the
+; last new object (or as ObjectSpawn leaves it); M 8-bit; A and flags as the
+; last step left them.
+%at($08E9F4)
+ObjectSpawnSparklePair:
+    rep.b #$20
+    lda.w #$A158
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .first
+    jml.l ObjectSpawnSparklePair_second
+.first:
+    rep.b #$20
+    lda.w #ObjectSparkleStart
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #ObjectSparkleStart>>16
+    sta.w !obj_1c,y
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_06,y
+    sep.b #$20
+    pla
+    jsl.l ObjectCopyPositionTo
+    phx
+    tyx
+    ply
+    jsl.l ObjectRebucket
+    phx
+    tyx
+    ply
+ObjectSpawnSparklePair_second:          ; reached by the long jump above
+    rep.b #$20
+    lda.w #$A158
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .second
+    jml.l ObjectSpawnSparklePair_done
+.second:
+    rep.b #$20
+    lda.w #ObjectSparkleStart
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #ObjectSparkleStart>>16
+    sta.w !obj_1c,y
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_06,y
+    sep.b #$20
+    pla
+    jsl.l ObjectCopyPositionTo
+    phx
+    tyx
+    ply
+    jsl.l ObjectRebucket
+    phx
+    tyx
+    ply
+ObjectSpawnSparklePair_done:            ; reached by the long jump above
+    rtl
+
+; @routine 08:EA6B ObjectSparkleStart
+; WHAT IT DOES: Object X's first frame as a sparkle: sets bit 3 of +$24, +$5D
+; = $9998, +$18 = a random 0-3 with bit 7 (kept in $1F58), handler $08:EB07
+; (ObjectSparkleStep), +$5F = $0A, count +$48 = 5, and a random acceleration:
+; +$27 and +$2B get -$3F to +$40 added, +$29 becomes -(+$29 + 0 to $3F);
+; then runs its first step.
+; HOW: RandomStepLong for each random part; falls into ObjectSparkleStep.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectSparkleStep.
+ObjectSparkleStart:
+    lda.w !obj_24,x
+    ora.b #$08
+    sta.w !obj_24,x
+    rep.b #$20
+    lda.w #$9998
+    sta.w !obj_5d,x
+    sep.b #$20
+    jsl.l RandomStepLong
+    and.b #$03
+    sta.w !wram_1F58
+    lda.w !wram_1F58
+    ora.b #$80
+    sta.w !obj_18,x
+    rep.b #$20
+    lda.w #ObjectSparkleStep
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #ObjectSparkleStep>>16
+    sta.w !obj_1c,x
+    lda.b #$0A
+    sta.w !obj_5f,x
+    lda.b #$05
+    sta.w !obj_48,x
+    jsl.l RandomStepLong
+    rep.b #$20
+    and.w #$007F
+    clc
+    adc.w !obj_27,x
+    sta.w !obj_27,x
+    sep.b #$20
+    jsl.l RandomStepLong
+    rep.b #$20
+    and.w #$003F
+    clc
+    adc.w !obj_29,x
+    sta.w !obj_29,x
+    sep.b #$20
+    jsl.l RandomStepLong
+    rep.b #$20
+    and.w #$007F
+    clc
+    adc.w !obj_27+4,x
+    sta.w !obj_27+4,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_27,x
+    sec
+    sbc.w #$003F
+    sta.w !obj_27,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_29,x
+    eor.w #$FFFF
+    inc a
+    sta.w !obj_29,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_27+4,x
+    sec
+    sbc.w #$003F
+    sta.w !obj_27+4,x
+    sep.b #$20
+
+; @routine 08:EB07 ObjectSparkleStep
+; WHAT IT DOES: Object X's frame as a sparkle: takes its parent's position
+; (+$06, ObjectCopyPositionFrom), moves it (ObjectApplyVelocity), adds its
+; acceleration (+$27, +$29, +$2B) to its velocity (+$2E, +$30, +$32); when
+; its count +$48 is 0 it is released (ObjectReleaseLong), otherwise counted
+; down and rebucketed.
+; HOW: 16-bit adds through the data bank; the release is a jump.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; as ObjectRebucket or
+; ObjectReleaseLong.
+ObjectSparkleStep:
+    ldy.w !obj_06,x
+    jsl.l ObjectCopyPositionFrom
+    jsl.l ObjectApplyVelocity
+    rep.b #$20
+    lda.w !obj_vel_x,x
+    clc
+    adc.w !obj_27,x
+    sta.w !obj_vel_x,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_vel_y,x
+    clc
+    adc.w !obj_29,x
+    sta.w !obj_vel_y,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_vel_z,x
+    clc
+    adc.w !obj_27+4,x
+    sta.w !obj_vel_z,x
+    sep.b #$20
+    lda.w !obj_48,x
+    bne .count
+    jml.l ObjectReleaseLong
+.count:
+    dec.w !obj_48,x
+    jsl.l ObjectRebucket
+    rtl

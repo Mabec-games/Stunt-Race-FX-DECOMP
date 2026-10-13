@@ -1865,3 +1865,165 @@ void abi_ObjectReleaseLong(void)
     cpu.p |= P_M;
     abi_ObjectRelease();
 }
+
+void abi_ObjectRebucket(void);
+void abi_ObjectCopyPositionFrom(void);
+void abi_ObjectApplyVelocity(void);
+
+/* PHX, TYX, PLY: X and Y swapped, N and Z from the pulled Y. */
+static void swap_xy(void)
+{
+    uint16_t t = cpu.x;
+
+    cpu.x = cpu.y;
+    cpu.y = t;
+    cpu.p = nz16(cpu.p, cpu.y);
+}
+
+/* A new object (kind $A158) with handler $08:EA6B at object X's position,
+   X as its +$06 and put in its bucket. */
+static void spawn_sparkle(uint32_t b)
+{
+    cpu.p &= (uint8_t)~P_M;
+    cpu.a = 0xA158;
+    wr16(b | 0x1F2B, 0xA158);
+    cpu.p = (uint8_t)(nz16(cpu.p, 0xA158) | P_M);
+    abi_ObjectSpawn();
+    if (!(cpu.p & P_C))
+        return;
+    cpu.a = 0xEA6B;
+    wr16(b | (uint16_t)(0x201A + cpu.y), 0xEA6B);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x08);
+    wr8(b | (uint16_t)(0x201C + cpu.y), 0x08);
+    wr16(b | (uint16_t)(0x2006 + cpu.y), cpu.x);
+    cpu.a = (uint16_t)((cpu.x & 0xFF00) | 0x08);
+    cpu.p = nz8(cpu.p, 0x08);
+    abi_ObjectCopyPositionTo();
+    swap_xy();
+    abi_ObjectRebucket();
+    swap_xy();
+}
+
+/*
+ * @routine 08:E9F4 ObjectSpawnSparklePair
+ * WHAT IT DOES: Makes two objects (kind $A158 at $1F2B) at object X's
+ * position, each with handler $08:EA6B (ObjectSparkleStart) and object X
+ * as its parent (+$06), and puts each in its bucket (ObjectRebucket).
+ * HOW: The handler is the long pointer +$1A-$1C; a failed spawn skips that
+ * object. Through the data bank.
+ * Entry: M 8-bit, X 16-bit, D = $0000; X = object. Exit: X = object; Y =
+ * the last new object (or as ObjectSpawn leaves it); M 8-bit; A and flags
+ * as the last step left them.
+ */
+void abi_ObjectSpawnSparklePair(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    spawn_sparkle(b);
+    spawn_sparkle(b);
+}
+
+/* +off += (random & mask), 16-bit. */
+static void add_random(uint32_t b, uint16_t off, uint16_t mask)
+{
+    uint16_t w;
+
+    abi_RandomStepLong();
+    cpu.p &= (uint8_t)~P_M;
+    op_and16(mask);
+    w = rd16(b | (uint16_t)(off + cpu.x));
+    cpu.p &= (uint8_t)~P_C;
+    cpu.a = op_adc16(cpu.a, w, &cpu.p);
+    wr16(b | (uint16_t)(off + cpu.x), cpu.a);
+    cpu.p |= P_M;
+}
+
+/*
+ * @routine 08:EB07 ObjectSparkleStep
+ * WHAT IT DOES: Object X's frame as a sparkle: takes its parent's position
+ * (+$06, ObjectCopyPositionFrom), moves it (ObjectApplyVelocity), adds its
+ * acceleration (+$27, +$29, +$2B) to its velocity (+$2E, +$30, +$32); when
+ * its count +$48 is 0 it is released (ObjectReleaseLong), otherwise counted
+ * down and rebucketed.
+ * HOW: 16-bit adds through the data bank; the release is a jump.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; as ObjectRebucket
+ * or ObjectReleaseLong.
+ */
+void abi_ObjectSparkleStep(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t w;
+    uint8_t v;
+    unsigned i;
+
+    cpu.y = rd16(b | (uint16_t)(0x2006 + cpu.x));
+    cpu.p = nz16(cpu.p, cpu.y);
+    abi_ObjectCopyPositionFrom();
+    abi_ObjectApplyVelocity();
+    for (i = 0; i < 3; i++) {
+        cpu.p &= (uint8_t)~P_M;
+        w = rd16(b | (uint16_t)(0x202E + i * 2 + cpu.x));
+        cpu.p &= (uint8_t)~P_C;
+        cpu.a = op_adc16(w, rd16(b | (uint16_t)(0x2027 + i * 2 + cpu.x)), &cpu.p);
+        wr16(b | (uint16_t)(0x202E + i * 2 + cpu.x), cpu.a);
+        cpu.p |= P_M;
+    }
+    v = rd8(b | (uint16_t)(0x2048 + cpu.x));
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+    if (!v) {
+        abi_ObjectReleaseLong();
+        return;
+    }
+    v = (uint8_t)(rd8(b | (uint16_t)(0x2048 + cpu.x)) - 1);
+    wr8(b | (uint16_t)(0x2048 + cpu.x), v);
+    cpu.p = nz8(cpu.p, v);
+    abi_ObjectRebucket();
+}
+
+/*
+ * @routine 08:EA6B ObjectSparkleStart
+ * WHAT IT DOES: Object X's first frame as a sparkle: sets bit 3 of +$24,
+ * +$5D = $9998, +$18 = a random 0-3 with bit 7 (kept in $1F58), handler
+ * $08:EB07 (ObjectSparkleStep), +$5F = $0A, count +$48 = 5, and a random
+ * acceleration: +$27 and +$2B get -$3F to +$40 added, +$29 becomes
+ * -(+$29 + 0 to $3F); then runs its first step.
+ * HOW: RandomStepLong for each random part; falls into ObjectSparkleStep.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectSparkleStep.
+ */
+void abi_ObjectSparkleStart(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v;
+    uint16_t w;
+
+    v = (uint8_t)(rd8(b | (uint16_t)(0x2024 + cpu.x)) | 0x08);
+    wr8(b | (uint16_t)(0x2024 + cpu.x), v);
+    wr16(b | (uint16_t)(0x205D + cpu.x), 0x9998);
+    abi_RandomStepLong();
+    v = (uint8_t)(cpu.a & 0x03);
+    wr8(b | 0x1F58, v);
+    v = (uint8_t)(rd8(b | 0x1F58) | 0x80);
+    wr8(b | (uint16_t)(0x2018 + cpu.x), v);
+    wr16(b | (uint16_t)(0x201A + cpu.x), 0xEB07);
+    wr8(b | (uint16_t)(0x201C + cpu.x), 0x08);
+    wr8(b | (uint16_t)(0x205F + cpu.x), 0x0A);
+    wr8(b | (uint16_t)(0x2048 + cpu.x), 0x05);
+    add_random(b, 0x2027, 0x007F);
+    add_random(b, 0x2029, 0x003F);
+    add_random(b, 0x202B, 0x007F);
+    cpu.p &= (uint8_t)~P_M;
+    w = rd16(b | (uint16_t)(0x2027 + cpu.x));
+    cpu.p |= P_C;
+    w = op_sbc16(w, 0x003F, &cpu.p);
+    wr16(b | (uint16_t)(0x2027 + cpu.x), w);
+    w = (uint16_t)((rd16(b | (uint16_t)(0x2029 + cpu.x)) ^ 0xFFFF) + 1);
+    wr16(b | (uint16_t)(0x2029 + cpu.x), w);
+    w = rd16(b | (uint16_t)(0x202B + cpu.x));
+    cpu.p |= P_C;
+    w = op_sbc16(w, 0x003F, &cpu.p);
+    wr16(b | (uint16_t)(0x202B + cpu.x), w);
+    cpu.a = w;
+    cpu.p |= P_M;
+    abi_ObjectSparkleStep();
+}
