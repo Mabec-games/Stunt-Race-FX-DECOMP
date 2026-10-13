@@ -345,3 +345,51 @@ RecordSlotCopy3_copy:
     bne .copy_byte
     rts
 
+
+; @routine 07:B90C RecordShiftFrom0
+; WHAT IT DOES: Moves the course $0D4A's first record down a place: its
+; three-byte entry (RecordSlotCopy0) and its eight-byte times at $70:FC88
+; + course * 24 to the next eight.
+; HOW: The offset as (course * 2 + course) * 8, then the copy loop of
+; RecordShiftFrom1 (its code from the TAX).
+; Entry: M 8-bit, X 8-bit. Exit: A = the last byte copied; X = the offset
+; + 8; Y = 0; Z set, N clear; C from the last shift.
+%at($07B90C)
+RecordShiftFrom0:
+    jsr.w RecordSlotCopy0
+    lda.w !wram_0D4A
+    asl a
+    clc
+    adc.w !wram_0D4A
+    asl a
+    asl a
+    asl a
+    bra RecordShiftFrom1_copy
+
+; @routine 07:B91C RecordShiftFrom1
+; WHAT IT DOES: Moves the course $0D4A's second record down a place: its
+; entry (RecordSlotCopy3) and its times at $70:FC90 + course * 24 to the
+; next eight.
+; HOW: As RecordShiftFrom0 with 8 added (and the last shift's carry).
+; Entry: M 8-bit, X 8-bit. Exit: as RecordShiftFrom0, C from the add.
+%at($07B91C)
+RecordShiftFrom1:
+    jsr.w RecordSlotCopy3
+    lda.w !wram_0D4A
+    asl a
+    clc
+    adc.w !wram_0D4A
+    asl a
+    asl a
+    asl a
+    adc.b #$08
+RecordShiftFrom1_copy:
+    tax
+    ldy.b #$08
+.copy_byte:
+    lda.l !save_course_times,x
+    sta.l !save_course_times+8,x
+    inx
+    dey
+    bne .copy_byte
+

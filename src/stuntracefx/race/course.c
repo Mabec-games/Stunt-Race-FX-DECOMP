@@ -2,6 +2,7 @@
  * course.c: the course number $0E3D, from the menu's selections.
  */
 #include "machine.h"
+#include "cpu_ops.h"
 
 static uint32_t dbw(uint8_t bank, uint16_t a)
 {
@@ -57,4 +58,26 @@ uint8_t CourseFromSelectionLong(uint8_t bank, uint8_t *p)
 void abi_CourseFromSelectionLong(void)
 {
     abi_CourseFromSelection();
+}
+
+/*
+ * @routine 02:EC10 RaceFadeStageDispatch
+ * WHAT IT DOES: Runs the handler for stage $0D48 from the table at
+ * $02:EC18 ($ECB8, $ECD9, $EC30, $EC73).
+ * HOW: ASL, TAX, JMP (table,X) with 8-bit registers; the handler returns
+ * to the caller.
+ * Entry: M 8-bit, X 8-bit. Exit: as the handler leaves it.
+ */
+void abi_RaceFadeStageDispatch(void)
+{
+    uint8_t v;
+
+    op_lda8((uint32_t)cpu.db << 16 | 0x0D48);
+    v = (uint8_t)cpu.a;
+    cpu.p = (uint8_t)((cpu.p & ~P_C) | (v >> 7));
+    v = (uint8_t)(v << 1);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.x = v;
+    cpu.p = nz8(cpu.p, v);
+    call_routine(0x020000 | rd16(0x020000 | (uint16_t)(0xEC18 + v)), 0);
 }

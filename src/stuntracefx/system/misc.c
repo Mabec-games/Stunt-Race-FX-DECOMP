@@ -2,6 +2,7 @@
  * misc.c: small routines of the frame code that have no other home yet.
  */
 #include "machine.h"
+#include "cpu_ops.h"
 
 /*
  * @routine 7E:E18B DataBankTest

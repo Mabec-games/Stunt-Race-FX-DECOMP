@@ -1543,3 +1543,26 @@ OamStageDispatchBBA2:
     ldx.w !wram_0D2F
     jmp.w (!oam_stage_handlers_bba2,x)
 
+
+; @routine 04:E227 OamPaletteForD75
+; WHAT IT DOES: Gives ten sprites from sprite ($0D75 + 13) * 4 palette
+; $16 (OamSetPalette with A = 10, X = $16, Y = the offset).
+; HOW: P saved and restored; 16-bit.
+; Entry: any widths. Exit: P unchanged; A, X, Y as OamSetPalette leaves
+; them.
+%at($04E227)
+OamPaletteForD75:
+    php
+    rep.b #$30
+    lda.w !wram_0D75
+    clc
+    adc.w #$000D
+    asl a
+    asl a
+    tay
+    lda.w #$000A
+    ldx.w #$0016
+    jsr.w OamSetPalette
+    plp
+    rtl
+

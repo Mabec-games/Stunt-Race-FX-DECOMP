@@ -306,3 +306,75 @@ void abi_RecordSlotCopy3(void)
 
     record_slot_copy(op_adc8(a, 0x03, &cpu.p));
 }
+
+void abi_RecordSlotCopy0(void);
+void abi_RecordSlotCopy3(void);
+
+/* LDA $0D4A, ASL, CLC, ADC $0D4A, ASL x3 (8-bit): the course times 24. */
+static uint8_t course_times_24(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t a = rd8(b | 0x0D4A);
+    int i;
+
+    cpu.p = (uint8_t)((cpu.p & ~P_C) | (a >> 7));
+    a = (uint8_t)(a << 1);
+    cpu.p &= (uint8_t)~P_C;
+    a = op_adc8(a, rd8(b | 0x0D4A), &cpu.p);
+    for (i = 0; i < 3; i++) {
+        cpu.p = (uint8_t)((cpu.p & ~P_C) | (a >> 7));
+        a = (uint8_t)(a << 1);
+    }
+    cpu.p = nz8(cpu.p, a);
+    return a;
+}
+
+/* TAX, LDY #8, then eight bytes from $70:FC88 + X to $70:FC90 + X. */
+static void times_slot_copy(uint8_t a)
+{
+    uint8_t v = 0;
+
+    cpu.x = a;
+    cpu.y = 8;
+    do {
+        v = rd8(0x70FC88 + (uint32_t)cpu.x);
+        wr8(0x70FC90 + (uint32_t)cpu.x, v);
+        cpu.x = (uint8_t)(cpu.x + 1);
+        cpu.y = (uint8_t)(cpu.y - 1);
+    } while (cpu.y);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, 0);
+}
+
+/*
+ * @routine 07:B90C RecordShiftFrom0
+ * WHAT IT DOES: Moves the course $0D4A's first record down a place: its
+ * three-byte entry (RecordSlotCopy0) and its eight-byte times at $70:FC88
+ * + course * 24 to the next eight.
+ * HOW: The offset as (course * 2 + course) * 8, then the copy loop of
+ * RecordShiftFrom1 (its code from the TAX).
+ * Entry: M 8-bit, X 8-bit. Exit: A = the last byte copied; X = the offset
+ * + 8; Y = 0; Z set, N clear; C from the last shift.
+ */
+void abi_RecordShiftFrom0(void)
+{
+    abi_RecordSlotCopy0();
+    times_slot_copy(course_times_24());
+}
+
+/*
+ * @routine 07:B91C RecordShiftFrom1
+ * WHAT IT DOES: Moves the course $0D4A's second record down a place: its
+ * entry (RecordSlotCopy3) and its times at $70:FC90 + course * 24 to the
+ * next eight.
+ * HOW: As RecordShiftFrom0 with 8 added (and the last shift's carry).
+ * Entry: M 8-bit, X 8-bit. Exit: as RecordShiftFrom0, C from the add.
+ */
+void abi_RecordShiftFrom1(void)
+{
+    uint8_t a;
+
+    abi_RecordSlotCopy3();
+    a = course_times_24();
+    times_slot_copy(op_adc8(a, 0x08, &cpu.p));
+}

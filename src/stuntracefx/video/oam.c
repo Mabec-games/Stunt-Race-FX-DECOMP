@@ -1590,3 +1590,30 @@ void abi_OamStageDispatchBBA2(void)
 {
     oam_stage_dispatch(0x07BBA2);
 }
+
+void abi_OamSetPalette(void);
+
+/*
+ * @routine 04:E227 OamPaletteForD75
+ * WHAT IT DOES: Gives ten sprites from sprite ($0D75 + 13) * 4 palette
+ * $16 (OamSetPalette with A = 10, X = $16, Y = the offset).
+ * HOW: P saved and restored; 16-bit.
+ * Entry: any widths. Exit: P unchanged; A, X, Y as OamSetPalette leaves
+ * them.
+ */
+void abi_OamPaletteForD75(void)
+{
+    uint8_t p0 = cpu.p;
+
+    op_rep(P_M | P_X);
+    op_lda16((uint32_t)cpu.db << 16 | 0x0D75);
+    op_add16(0x000D);
+    op_asl16();
+    op_asl16();
+    op_tay16();
+    op_lda16_imm(0x000A);
+    cpu.x = 0x0016;
+    cpu.p = nz16(cpu.p, cpu.x);
+    abi_OamSetPalette();
+    op_plp(p0);
+}

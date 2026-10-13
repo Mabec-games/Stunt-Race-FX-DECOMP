@@ -321,3 +321,4 @@ BigSpritesCountDraw = $079EE9                   ; 07:9EE9, the $0E5C alternative
 GsuF329At93x6C = $078A90                        ; 07:8A90, the draw tail of the routine at 07:89F5 (not filed yet; a label so jumps reach it)
 WindowDigitStepEC6B = $07EC6B                   ; 07:EC6B, inside the routine at 07:E944 (not filed yet)
 WindowDigitStepEBDD = $07EBDD                   ; 07:EBDD, inside the routine at 07:E944 (not filed yet)
+!race_fade_stage_handlers = $EC18   ; RaceFadeStageDispatch: handlers by $0D48 (bank 02)

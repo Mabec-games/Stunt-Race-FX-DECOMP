@@ -573,3 +573,19 @@ out:
     cpu.db = db0;
     cpu.p = p0;
 }
+
+/*
+ * @routine 7E:E048 WindowsColourSubtract3
+ * WHAT IT DOES: Colour maths adds on BG1 and BG2 ($03 to CGADSUB), then the
+ * colour window only (WindowsColourWindowOnly).
+ * HOW: An 8-bit long store, then the call.
+ * Entry: any widths. Exit: M 8-bit; as WindowsColourWindowOnly.
+ */
+void abi_WindowsColourSubtract3(void)
+{
+    op_sep(P_M);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x03);
+    cpu.p = nz8(cpu.p, 0x03);
+    wr8(0x002131, 0x03);
+    abi_WindowsColourWindowOnly();
+}

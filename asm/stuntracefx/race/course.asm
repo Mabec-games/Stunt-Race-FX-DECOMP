@@ -39,3 +39,17 @@ CourseFromSelection:
     adc.w !wram_0D48
     sta.w !course
     rts
+
+; @routine 02:EC10 RaceFadeStageDispatch
+; WHAT IT DOES: Runs the handler for stage $0D48 from the table at
+; $02:EC18 ($ECB8, $ECD9, $EC30, $EC73).
+; HOW: ASL, TAX, JMP (table,X) with 8-bit registers; the handler returns
+; to the caller.
+; Entry: M 8-bit, X 8-bit. Exit: as the handler leaves it.
+%at($02EC10)
+RaceFadeStageDispatch:
+    lda.w !wram_0D48
+    asl a
+    tax
+    jmp.w (!race_fade_stage_handlers,x)
+

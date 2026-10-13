@@ -518,3 +518,16 @@ OscillatorWindow:
     jsr.w WindowHdmaFFD5
 .done:
     rts
+
+; @routine 7E:E048 WindowsColourSubtract3
+; WHAT IT DOES: Colour maths adds on BG1 and BG2 ($03 to CGADSUB), then the
+; colour window only (WindowsColourWindowOnly).
+; HOW: An 8-bit long store, then the call.
+; Entry: any widths. Exit: M 8-bit; as WindowsColourWindowOnly.
+%ramcode($7EE048, $013D6F)
+WindowsColourSubtract3:
+    sep.b #$20
+    lda.b #$03
+    sta.l !CGADSUB
+    jsr.w WindowsColourWindowOnly
+
