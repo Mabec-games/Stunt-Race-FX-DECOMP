@@ -172,6 +172,71 @@ PlayerHoldSound35:
     plp
     rtl
 
+; @routine 04:D533 SoundNearCarOnce
+; WHAT IT DOES: The first time it runs (mark $0E1A clear), marks it, sends $1D
+; on port 1 and, unless $0D53 is set, a sound for the car nearest the player
+; when that car's record word $88 is not below the player's: $1D, $1F or $1E
+; on port 0 for car scripts $876E, $8AA8 and $8990.
+; HOW: DEC marks $0E1A ($FF). The car records are in Super FX RAM at $70:0000
+; + the offsets in $70:2476 (player) and $70:2648 (nearest car); the player's
+; word is kept in $11DF for the compare. The $876E sound and the no-match path
+; are not reached in the traces so far.
+; Entry: DB a bank where $0E1A is work RAM. Exit: X and Y high bytes cleared
+; (SEP #$30 before the PHX); A as the path left it; P restored.
+%at($04D533)
+SoundNearCarOnce:
+    php
+    sep.b #$30
+    lda.w !wram_0E1A
+    bne .done
+    dec.w !wram_0E1A
+    lda.b #$1D
+    jsl.l SoundPort1QueuePush
+    sep.b #$20
+    lda.l !wram_0D53
+    bne .done
+    rep.b #$30
+    phx
+    lda.l !fx_player
+    tax
+    lda.l !gsu_rec_88,x
+    sta.l !scratch_11df
+    lda.l !fx_near_car
+    tax
+    lda.l !gsu_rec_88,x
+    cmp.l !scratch_11df
+    bcc .behind
+    lda.l !gsu_rec_66,x
+    plx
+    cmp.w #$876E
+    beq .sound1D
+    cmp.w #$8AA8
+    beq .sound1F
+    cmp.w #$8990
+    beq .sound1E
+    bra .done
+.sound1D:
+    sep.b #$20
+    lda.b #$1D
+    jsl.l SoundPort0QueuePush
+    bra .done
+.sound1F:
+    sep.b #$20
+    lda.b #$1F
+    jsl.l SoundPort0QueuePush
+    bra .done
+.sound1E:
+    sep.b #$20
+    lda.b #$1E
+    jsl.l SoundPort0QueuePush
+.done:
+    plp
+    rtl
+.behind:
+    plx
+    plp
+    rtl
+
 ; @routine 04:D5A2 Sound0E1AStop
 ; WHAT IT DOES: Ends the sound marked by $0E1A: clears the mark and sends $08
 ; on port 1, if the mark was set.

@@ -8,6 +8,7 @@
  */
 #include "machine.h"
 #include "wram.h"
+#include "cpu_ops.h"
 
 void SoundPort1QueuePush(uint8_t command);
 
@@ -596,4 +597,71 @@ void abi_SoundIndicesFromHandlers(void)
     cpu.a = SoundIndicesFromHandlers(cpu.db, &x);
     cpu.x = x;
     cpu.y &= 0x00FF;
+}
+
+void abi_SoundPort0QueuePush(void);
+void abi_SoundPort1QueuePush(void);
+
+/*
+ * @routine 04:D533 SoundNearCarOnce
+ * WHAT IT DOES: The first time it runs (mark $0E1A clear), marks it, sends
+ * $1D on port 1 and, unless $0D53 is set, a sound for the car nearest the
+ * player when that car's record word $88 is not below the player's: $1D,
+ * $1F or $1E on port 0 for car scripts $876E, $8AA8 and $8990.
+ * HOW: DEC marks $0E1A ($FF). The car records are in Super FX RAM at
+ * $70:0000 + the offsets in $70:2476 (player) and $70:2648 (nearest car);
+ * the player's word is kept in $11DF for the compare. The $876E sound and
+ * the no-match path are not reached in the traces so far.
+ * Entry: DB a bank where $0E1A is work RAM. Exit: X and Y high bytes
+ * cleared (SEP #$30 before the PHX); A as the path left it; P restored.
+ */
+void abi_SoundNearCarOnce(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t p0 = cpu.p, v;
+    uint16_t x0, w;
+
+    op_sep(P_M | P_X);
+    v = rd8(b | 0x0E1A);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    if (v != 0) {
+        cpu.p = p0;
+        return;
+    }
+    wr8(b | 0x0E1A, (uint8_t)(v - 1));
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x1D);
+    abi_SoundPort1QueuePush();
+    v = rd8(0x000D53);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    if (v != 0) {
+        cpu.p = p0;
+        return;
+    }
+    x0 = cpu.x;                                     /* PHX */
+    cpu.x = rd16(0x702476);
+    w = rd16(0x700088 + cpu.x);
+    wr16(0x0011DF, w);
+    cpu.x = rd16(0x702648);
+    cpu.a = rd16(0x700088 + cpu.x);
+    if (cpu.a < rd16(0x0011DF)) {
+        cpu.x = x0;
+        cpu.p = p0;
+        return;
+    }
+    cpu.a = rd16(0x700066 + cpu.x);
+    cpu.x = x0;                                     /* PLX */
+    if (cpu.a == 0x876E)
+        v = 0x1D;
+    else if (cpu.a == 0x8AA8)
+        v = 0x1F;
+    else if (cpu.a == 0x8990)
+        v = 0x1E;
+    else {
+        cpu.p = p0;
+        return;
+    }
+    cpu.p |= P_M;
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    abi_SoundPort0QueuePush();
+    cpu.p = p0;
 }
