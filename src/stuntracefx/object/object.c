@@ -2095,7 +2095,7 @@ static void sign_of_zero(uint32_t at)
  * @routine 08:B34B ObjectMoveForward
  * WHAT IT DOES: Moves object X forward by its speed: the byte of the table
  * at $08:B32B for its Super FX record's word +$5E (the record at +$22), as
- * the vector (speed, 0, 0) turned by the object's angles +$16 (RotateXY),
+ * the vector (0, speed, 0) turned by the object's angles +$16 (RotateXY),
  * +$14 (RotateXZFrom08) and +$15 (RotateXZ); four times the result is added
  * to its position +$0C, +$0E, +$10.
  * HOW: The vector is kept in direct page $02/$08/$94 (sign bytes $05, $0B,
