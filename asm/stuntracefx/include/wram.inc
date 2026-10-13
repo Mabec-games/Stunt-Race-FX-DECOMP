@@ -1435,3 +1435,8 @@ includeonce
 !race_target_116c = $00116C
 !gsu_view_246c = $70246C
 !gsu_screen_area = $702C00
+
+; MenuPreviewCountdown's held-preview state (menu/course_preview.asm).
+!menu_1905_long = $001905
+!menu_1907_long = $001907
+!palette_word_fd65 = $7EFD65
