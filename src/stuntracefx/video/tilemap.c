@@ -745,6 +745,50 @@ void abi_TilemapPaletteCycle87(void)
     abi_TilemapPaletteCycle();
 }
 
+/*
+ * @routine 07:C29F TilemapPaletteCycle107
+ * WHAT IT DOES: TilemapPaletteCycle on 13 entries from entry offset $107.
+ * HOW: Sets X and Y and calls it.
+ * Entry: M 8-bit, D = $0000. Exit: as TilemapPaletteCycle, with X 16-bit;
+ * when skipped, X = $107 and Y = 13.
+ */
+void TilemapPaletteCycle107(uint8_t bank, uint16_t *a)
+{
+    uint16_t x = 0x0107, y = 0x000D;
+
+    TilemapPaletteCycle(bank, &x, &y, a);
+}
+
+void abi_TilemapPaletteCycle107(void)
+{
+    cpu.x = 0x0107;
+    cpu.y = 0x000D;
+    cpu.p &= (uint8_t)~P_X;
+    abi_TilemapPaletteCycle();
+}
+
+/*
+ * @routine 07:C2AB TilemapPaletteCycle187
+ * WHAT IT DOES: TilemapPaletteCycle on 10 entries from entry offset $187.
+ * HOW: Sets X and Y and calls it.
+ * Entry: M 8-bit, D = $0000. Exit: as TilemapPaletteCycle, with X 16-bit;
+ * when skipped, X = $187 and Y = 10.
+ */
+void TilemapPaletteCycle187(uint8_t bank, uint16_t *a)
+{
+    uint16_t x = 0x0187, y = 0x000A;
+
+    TilemapPaletteCycle(bank, &x, &y, a);
+}
+
+void abi_TilemapPaletteCycle187(void)
+{
+    cpu.x = 0x0187;
+    cpu.y = 0x000A;
+    cpu.p &= (uint8_t)~P_X;
+    abi_TilemapPaletteCycle();
+}
+
 /* Fill a row with palette `bits`, then give the entry at `mark` (an
    attribute byte address) palette `mark_bits`. */
 static uint8_t row_mark(uint16_t x, uint16_t count, uint8_t bits, uint32_t mark, uint8_t mark_bits,
@@ -767,6 +811,26 @@ static void abi_row_mark(uint16_t x, uint16_t count, uint8_t bits, uint32_t mark
     uint8_t v = row_mark(x, count, bits, mark, mark_bits, &cpu.x, &cpu.y, &cpu.a);
 
     cpu.p = (uint8_t)(nz8(cpu.p, v) & ~P_X);
+}
+
+/*
+ * @routine 07:C2B7 TilemapRow87Palette5
+ * WHAT IT DOES: Gives 9 tilemap entries from offset $87 palette 5, then
+ * the fourth of them ($7F:9464) palette 4.
+ * HOW: TilemapPaletteFill with $F1 = $14, then one masked store.
+ * Entry: M 8-bit, D = $0000. Exit: A low byte = the marked attribute byte;
+ * N, Z from it; X = $0099; Y = 0; X 16-bit.
+ */
+void TilemapRow87Palette5(void)
+{
+    uint16_t x, y, a = 0;
+
+    row_mark(0x0087, 0x0009, 0x14, 0x7F9464, 0x10, &x, &y, &a);
+}
+
+void abi_TilemapRow87Palette5(void)
+{
+    abi_row_mark(0x0087, 0x0009, 0x14, 0x7F9464, 0x10);
 }
 
 /*

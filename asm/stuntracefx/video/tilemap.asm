@@ -742,6 +742,52 @@ TilemapPaletteCycle87:
     jsr.w TilemapPaletteCycle
     rts
 
+; @routine 07:C29F TilemapPaletteCycle107
+; WHAT IT DOES: TilemapPaletteCycle on 13 entries from entry offset $107.
+; HOW: Sets X and Y and calls it.
+; Entry: M 8-bit, D = $0000. Exit: as TilemapPaletteCycle, with X 16-bit;
+; when skipped, X = $107 and Y = 13.
+%at($07C29F)
+TilemapPaletteCycle107:
+    rep.b #$10
+    ldx.w #$0107
+    ldy.w #13
+    jsr.w TilemapPaletteCycle
+    rts
+
+; @routine 07:C2AB TilemapPaletteCycle187
+; WHAT IT DOES: TilemapPaletteCycle on 10 entries from entry offset $187.
+; HOW: Sets X and Y and calls it.
+; Entry: M 8-bit, D = $0000. Exit: as TilemapPaletteCycle, with X 16-bit;
+; when skipped, X = $187 and Y = 10.
+%at($07C2AB)
+TilemapPaletteCycle187:
+    rep.b #$10
+    ldx.w #$0187
+    ldy.w #10
+    jsr.w TilemapPaletteCycle
+    rts
+
+; @routine 07:C2B7 TilemapRow87Palette5
+; WHAT IT DOES: Gives 9 tilemap entries from offset $87 palette 5, then
+; the fourth of them ($7F:9464) palette 4.
+; HOW: TilemapPaletteFill with $F1 = $14, then one masked store.
+; Entry: M 8-bit, D = $0000. Exit: A low byte = the marked attribute byte;
+; N, Z from it; X = $0099; Y = 0; X 16-bit.
+%at($07C2B7)
+TilemapRow87Palette5:
+    rep.b #$10
+    ldx.w #$0087
+    ldy.w #9
+    lda.b #$14
+    sta.b !palette_bits
+    jsr.w TilemapPaletteFill
+    lda.l !cycle_tilemap+142
+    and.b #$E3
+    ora.b #$10
+    sta.l !cycle_tilemap+142
+    rts
+
 ; @routine 07:C2D3 TilemapRow107Palette5
 ; WHAT IT DOES: Gives 13 tilemap entries from offset $107 palette 5, then
 ; the seventh of them ($7F:94EA) palette 4.

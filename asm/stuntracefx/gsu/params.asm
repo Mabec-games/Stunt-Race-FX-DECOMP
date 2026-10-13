@@ -171,6 +171,25 @@ GsuBytes200_BFB5BB:
     plp
     rtl
 
+; @routine 04:D938 GsuBytes200_0F060E
+; WHAT IT DOES: As GsuBytes200_BFB7B6, with 0, $0F, $06, $0E.
+; HOW: As GsuBytes200_BFB7B6.
+; Entry: any widths. Exit: A low byte = $0E; P unchanged.
+%at($04D938)
+GsuBytes200_0F060E:
+    php
+    sep.b #$20
+    lda.b #$00
+    sta.l !gsu_bytes_200
+    lda.b #$0F
+    sta.l !gsu_bytes_200+1
+    lda.b #$06
+    sta.l !gsu_bytes_200+2
+    lda.b #$0E
+    sta.l !gsu_bytes_200+3
+    plp
+    rtl
+
 ; @routine 04:D7F9 GsuBytes200_BFBCBD
 ; WHAT IT DOES: As GsuBytes200_BFB7B6, with 0, $BF, $BC, $BD.
 ; HOW: As GsuBytes200_BFB7B6.

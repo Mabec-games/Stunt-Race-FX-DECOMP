@@ -527,6 +527,30 @@ OamPaletteFromTableE26A:
     plp
     rtl
 
+; @routine 04:E26E OamPaletteFromTableE26AByMode
+; WHAT IT DOES: Sets the palette bits of 18 sprites from entry $0D79 to the
+; byte of the table at $04:E26A for $0D48's low byte.
+; HOW: OamSetPalette with X = $12.
+; Entry: any widths, D = $0000. Exit: A = the last attribute byte (high
+; byte clear); X = 0; Y past the last sprite; P unchanged.
+%at($04E26E)
+OamPaletteFromTableE26AByMode:
+    php
+    rep.b #$30
+    lda.w !wram_0D79
+    asl a
+    asl a
+    tay
+    lda.w !wram_0D48
+    and.w #$00FF
+    tax
+    lda.l !palette_bits_e26a,x
+    and.w #$00FF
+    ldx.w #$0012
+    jsr.w OamSetPalette
+    plp
+    rtl
+
 ; @routine 04:E28D OamPalettesE28D
 ; WHAT IT DOES: Sets sprite palette bits in three runs from entry $0D75: 18
 ; sprites from the table at $04:E30B for $0D48's low byte, then 6 sprites

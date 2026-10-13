@@ -1218,3 +1218,7 @@ includeonce
 
 ; The head of the Super FX's draw list of object slots (render/sort.asm).
 !gsu_draw_list = $70023C
+
+; The window slide position (video/window_hdma.asm): the line the moving
+; window band starts at, stepped by WindowSlideDown/WindowSlideUp.
+!window_slide_pos = $001A14

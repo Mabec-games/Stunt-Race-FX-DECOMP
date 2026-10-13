@@ -468,6 +468,103 @@ WindowHdmaLayout:
     sta.l !window_hdma+12
     rts
 
+; @routine 7E:D28F WindowLayoutStepForScreen
+; WHAT IT DOES: Clears bit 5 of $0D45 and steps the window layout
+; (WindowLayoutStep) with Y = 0, or Y = 2 on the menu's course screen
+; ($0D62 set).
+; HOW: Data bank $7E inside, P and the data bank saved and restored.
+; Entry: any widths. Exit: A, X, Y as WindowLayoutStep leaves them; P and
+; the data bank unchanged.
+%ramcode($7ED28F, $012FB6)
+WindowLayoutStepForScreen:
+    php
+    phb
+    phk
+    plb
+    sep.b #$20
+    lda.l !wram_0D45
+    and.b #$DF
+    sta.l !wram_0D45
+    lda.w !wram_0D62
+    bne .course_screen
+    rep.b #$30
+    ldy.w #$0000
+    jsr.w WindowLayoutStep
+    jmp.w .done
+.course_screen:
+    rep.b #$30
+    ldy.w #$0002
+    jsr.w WindowLayoutStep
+.done:
+    plb
+    plp
+    rtl
+
+; @routine 7E:DDF0 WindowSlideDown
+; WHAT IT DOES: Moves the window slide position $1A14 down a line; at $96
+; the slide ends.
+; HOW: window_slide with +1, stopping at $96. Long accesses except $0DA5
+; (data bank).
+; Entry: X 16-bit or 8-bit (unchanged). Exit: M 8-bit; A low byte = $0DA5
+; when the slide ends, else the new position (A high byte $FF); N, Z from
+; it; C from comparing the new position with $96.
+%ramcode($7EDDF0, $013B17)
+WindowSlideDown:
+    sep.b #$20
+    lda.l !window_slide_pos
+    clc
+    adc.b #$01
+    cmp.b #$96
+    beq .stop
+    sta.l !window_slide_pos
+    jmp.w .move
+.stop:
+    lda.w !slide_flags
+    and.b #$F9
+    sta.w !slide_flags
+    rts
+.move:
+    jsr.w WindowHdmaFFD1
+    sep.b #$20
+    lda.b #$40
+    sta.l !window_setup_bytes+1
+    lda.b #$20
+    sta.l !window_setup_bytes
+    lda.l !window_slide_pos
+    sta.l !window_setup_bytes+2
+    rts
+
+; @routine 7E:DE27 WindowSlideUp
+; WHAT IT DOES: Moves the window slide position $1A14 up a line; at $7F
+; the slide ends.
+; HOW: As WindowSlideDown, with -1, stopping at $7F.
+; Entry: as WindowSlideDown. Exit: as WindowSlideDown, comparing with $7F.
+%ramcode($7EDE27, $013B4E)
+WindowSlideUp:
+    sep.b #$20
+    lda.l !window_slide_pos
+    sec
+    sbc.b #$01
+    cmp.b #$7F
+    beq .stop
+    sta.l !window_slide_pos
+    jmp.w .move
+.stop:
+    lda.w !slide_flags
+    and.b #$F9
+    sta.w !slide_flags
+    rts
+.move:
+    jsr.w WindowHdmaFFD1
+    sep.b #$20
+    lda.b #$40
+    sta.l !window_setup_bytes+1
+    lda.b #$20
+    sta.l !window_setup_bytes
+    lda.l !window_slide_pos
+    sta.l !window_setup_bytes+2
+    rts
+
 ; @routine 7E:DA75 WindowLayoutStep
 ; WHAT IT DOES: Acts on a request in $19BD to move the window layout: 1
 ; starts it moving up by 2 a step ($19B8 = 2, $19BA = 1), $FF down ($19B8 =

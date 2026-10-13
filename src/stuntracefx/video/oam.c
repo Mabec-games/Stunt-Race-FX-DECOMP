@@ -630,6 +630,28 @@ void abi_OamPaletteFromTableE26A(void)
 }
 
 /*
+ * @routine 04:E26E OamPaletteFromTableE26AByMode
+ * WHAT IT DOES: Sets the palette bits of 18 sprites from entry $0D79 to the
+ * byte of the table at $04:E26A for $0D48's low byte.
+ * HOW: OamSetPalette with X = $12.
+ * Entry: any widths, D = $0000. Exit: A = the last attribute byte (high
+ * byte clear); X = 0; Y past the last sprite; P unchanged.
+ */
+uint8_t OamPaletteFromTableE26AByMode(uint8_t bank, uint16_t *y)
+{
+    uint32_t b = (uint32_t)bank << 16;
+
+    *y = (uint16_t)(rd16(b | 0x0D79) << 2);
+    return OamSetPalette(bank, rd8(0x04E26A + (rd16(b | 0x0D48) & 0x00FF)), 0x0012, y);
+}
+
+void abi_OamPaletteFromTableE26AByMode(void)
+{
+    cpu.a = OamPaletteFromTableE26AByMode(cpu.db, &cpu.y);
+    cpu.x = 0;
+}
+
+/*
  * @routine 04:E28D OamPalettesE28D
  * WHAT IT DOES: Sets sprite palette bits in three runs from entry $0D75: 18
  * sprites from the table at $04:E30B for $0D48's low byte, then 6 sprites

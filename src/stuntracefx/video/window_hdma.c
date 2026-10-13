@@ -490,6 +490,118 @@ static void window_layout_apply(uint16_t y, uint8_t bank)
         WindowHdmaLayout(bank, &y);
 }
 
+void WindowLayoutStep(uint8_t bank, uint16_t y);
+void abi_WindowLayoutStep(void);
+
+/*
+ * @routine 7E:D28F WindowLayoutStepForScreen
+ * WHAT IT DOES: Clears bit 5 of $0D45 and steps the window layout
+ * (WindowLayoutStep) with Y = 0, or Y = 2 on the menu's course screen
+ * ($0D62 set).
+ * HOW: Data bank $7E inside, P and the data bank saved and restored.
+ * Entry: any widths. Exit: A, X, Y as WindowLayoutStep leaves them; P and
+ * the data bank unchanged.
+ */
+void WindowLayoutStepForScreen(void)
+{
+    wr8(0x000D45, (uint8_t)(rd8(0x000D45) & 0xDF));
+    WindowLayoutStep(0x7E, rd8(0x7E0D62) ? 0x0002 : 0x0000);
+}
+
+void abi_WindowLayoutStepForScreen(void)
+{
+    uint8_t p = cpu.p, db = cpu.db, v;
+
+    v = (uint8_t)(rd8(0x000D45) & 0xDF);
+    wr8(0x000D45, v);
+    cpu.db = 0x7E;
+    v = rd8(0x7E0D62);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.y = v ? 0x0002 : 0x0000;
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    abi_WindowLayoutStep();
+    cpu.db = db;
+    cpu.p = p;
+}
+
+/* One step of the window slide: the slide position at $1A14 moves by
+   `step`; reaching `stop` ends the slide (bits 1 and 2 of $0DA5 cleared),
+   otherwise the window table becomes WindowHdmaFFD1's and the window setup
+   $19AC-$19AE = $20, $40, the position. */
+static int window_slide(uint8_t bank, uint8_t step, uint8_t stop, uint8_t *a, uint8_t *pos)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t v = (uint8_t)(rd8(0x001A14) + step);
+
+    *pos = v;
+
+    if (v == stop) {
+        *a = (uint8_t)(rd8(b | 0x0DA5) & 0xF9);
+        wr8(b | 0x0DA5, *a);
+        return 0;
+    }
+    wr8(0x001A14, v);
+    WindowHdmaFFD1();
+    wr8(0x0019AD, 0x40);
+    wr8(0x0019AC, 0x20);
+    *a = rd8(0x001A14);
+    wr8(0x0019AE, *a);
+    return 1;
+}
+
+static void abi_window_slide(uint8_t step, uint8_t stop)
+{
+    uint8_t a, v;
+    int moved = window_slide(cpu.db, step, stop, &a, &v);
+
+    if (moved)
+        cpu.a = (uint16_t)(0xFF00 | a);   /* WindowHdmaFFD1 left $FFD1 */
+    else
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
+    cpu.p = (uint8_t)((nz8(cpu.p, a) & ~P_C) | P_M | (v >= stop ? P_C : 0));
+}
+
+/*
+ * @routine 7E:DDF0 WindowSlideDown
+ * WHAT IT DOES: Moves the window slide position $1A14 down a line; at $96
+ * the slide ends.
+ * HOW: window_slide with +1, stopping at $96. Long accesses except $0DA5
+ * (data bank).
+ * Entry: X 16-bit or 8-bit (unchanged). Exit: M 8-bit; A low byte = $0DA5
+ * when the slide ends, else the new position (A high byte $FF); N, Z from
+ * it; C from comparing the new position with $96.
+ */
+void WindowSlideDown(uint8_t bank)
+{
+    uint8_t a, v;
+
+    window_slide(bank, 0x01, 0x96, &a, &v);
+}
+
+void abi_WindowSlideDown(void)
+{
+    abi_window_slide(0x01, 0x96);
+}
+
+/*
+ * @routine 7E:DE27 WindowSlideUp
+ * WHAT IT DOES: Moves the window slide position $1A14 up a line; at $7F
+ * the slide ends.
+ * HOW: As WindowSlideDown, with -1, stopping at $7F.
+ * Entry: as WindowSlideDown. Exit: as WindowSlideDown, comparing with $7F.
+ */
+void WindowSlideUp(uint8_t bank)
+{
+    uint8_t a, v;
+
+    window_slide(bank, 0xFF, 0x7F, &a, &v);
+}
+
+void abi_WindowSlideUp(void)
+{
+    abi_window_slide(0xFF, 0x7F);
+}
+
 /*
  * @routine 7E:DA75 WindowLayoutStep
  * WHAT IT DOES: Acts on a request in $19BD to move the window layout: 1
