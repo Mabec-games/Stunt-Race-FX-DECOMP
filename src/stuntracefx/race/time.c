@@ -3,6 +3,7 @@
  * BCD value the course tables add to.
  */
 #include "machine.h"
+#include "cpu_ops.h"
 
 uint8_t CourseIndex12(uint8_t a, uint8_t *p);
 
@@ -81,4 +82,73 @@ void abi_RaceTimeAddD814(void)
 
     cpu.a = RaceTimeAddD814(&cpu.x, &p);
     cpu.p = (uint8_t)((p & ~P_D) | P_M);
+}
+
+void abi_CourseIndex12(void);
+
+/* ASL A, 8-bit: C from bit 7. */
+static uint8_t asl8(uint8_t v)
+{
+    cpu.p = (uint8_t)((cpu.p & ~P_C) | (v & 0x80 ? P_C : 0));
+    v = (uint8_t)(v << 1);
+    cpu.p = nz8(cpu.p, v);
+    return v;
+}
+
+/*
+ * @routine 03:EF3F RaceTimeInit
+ * WHAT IT DOES: Sets the four bytes at $0E68 to $99 and starts the BCD race
+ * time at $0E70 (word) by the mode in $0D2B: mode 0 takes the course's
+ * entry $0D89 of the table at $03:D813 (CourseIndex12), or with $0D4C set
+ * byte $0D4A of the table at $03:D810; mode 1 (unless $0D4E is set) takes
+ * entry ($0E3D - $0C) * 4 + $0D89 of the table at $03:D8A3; otherwise 0.
+ * HOW: 8-bit throughout; the high byte is cleared with STZ. The $0D4C
+ * path is not reached in the traces so far.
+ * Entry: any widths, D = $0000. Exit: A low byte = the value, N, Z from
+ * it; X as the path left it (8-bit); X and Y high bytes cleared; M 8-bit,
+ * X 8-bit; C, V as the path left them.
+ */
+void abi_RaceTimeInit(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v;
+    unsigned i;
+
+    op_sep(P_M | P_X);
+    for (i = 0; i < 4; i++)
+        wr8(b | (uint16_t)(0x0E68 + i), 0x99);
+    v = rd8(b | 0x0D2B);
+    cpu.p = nz8(cpu.p, v);
+    if (v == 0) {
+        v = rd8(b | 0x0D4C);
+        cpu.p = nz8(cpu.p, v);
+        if (v == 0) {
+            cpu.a = (uint16_t)((cpu.a & 0xFF00) | rd8(b | 0x0D89));
+            abi_CourseIndex12();
+            v = rd8((uint32_t)(0x03D813 + cpu.x));
+        } else {
+            cpu.x = rd8(b | 0x0D4A);
+            v = rd8((uint32_t)(0x03D810 + cpu.x));
+        }
+    } else {
+        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x02)) & ~P_C) | (v >= 0x02 ? P_C : 0));
+        if (v >= 0x02)
+            v = 0x00;
+        else if (rd8(b | 0x0D4E) != 0)
+            v = 0x00;
+        else {
+            v = rd8(b | 0x0E3D);
+            cpu.p |= P_C;
+            v = op_sbc8(v, 0x0C, &cpu.p);
+            v = asl8(asl8(v));
+            cpu.p &= (uint8_t)~P_C;
+            v = op_adc8(v, rd8(b | 0x0D89), &cpu.p);
+            cpu.x = v;
+            v = rd8((uint32_t)(0x03D8A3 + cpu.x));
+        }
+    }
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+    wr8(b | 0x0E70, v);
+    wr8(b | 0x0E71, 0x00);
 }
