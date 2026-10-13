@@ -554,11 +554,16 @@ static void abi_window_slide(uint8_t step, uint8_t stop)
     uint8_t a, v;
     int moved = window_slide(cpu.db, step, stop, &a, &v);
 
+    uint8_t old = (uint8_t)(v - step);
+    /* V from the step: ADC #1 (clear carry) going up, SBC #1 (set carry)
+       going down. */
+    int ov = step == 0x01 ? (~(old ^ 0x01) & (old ^ v) & 0x80) != 0 : ((old ^ 0x01) & (old ^ v) & 0x80) != 0;
+
     if (moved)
         cpu.a = (uint16_t)(0xFF00 | a);   /* WindowHdmaFFD1 left $FFD1 */
     else
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
-    cpu.p = (uint8_t)((nz8(cpu.p, a) & ~P_C) | P_M | (v >= stop ? P_C : 0));
+    cpu.p = (uint8_t)((nz8(cpu.p, a) & ~(P_C | P_V)) | P_M | (v >= stop ? P_C : 0) | (ov ? P_V : 0));
 }
 
 /*
@@ -569,7 +574,7 @@ static void abi_window_slide(uint8_t step, uint8_t stop)
  * (data bank).
  * Entry: X 16-bit or 8-bit (unchanged). Exit: M 8-bit; A low byte = $0DA5
  * when the slide ends, else the new position (A high byte $FF); N, Z from
- * it; C from comparing the new position with $96.
+ * it; C from comparing the new position with $96; V from the add.
  */
 void WindowSlideDown(uint8_t bank)
 {

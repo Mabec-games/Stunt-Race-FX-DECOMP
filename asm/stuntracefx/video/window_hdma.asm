@@ -507,7 +507,7 @@ WindowLayoutStepForScreen:
 ; (data bank).
 ; Entry: X 16-bit or 8-bit (unchanged). Exit: M 8-bit; A low byte = $0DA5
 ; when the slide ends, else the new position (A high byte $FF); N, Z from
-; it; C from comparing the new position with $96.
+; it; C from comparing the new position with $96; V from the add.
 %ramcode($7EDDF0, $013B17)
 WindowSlideDown:
     sep.b #$20
