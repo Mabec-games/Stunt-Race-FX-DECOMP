@@ -302,3 +302,4 @@ includeonce
 !preview_picture_a = $17CC78
 !preview_picture_b = $17CE78
 !preview_picture_c = $17DD8C
+!race_e944 = $E944

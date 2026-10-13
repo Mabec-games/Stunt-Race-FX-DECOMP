@@ -140,3 +140,77 @@ void abi_RaceStart(void)
     cpu.y = 0x1A64;
     cpu.p = p;
 }
+
+void abi_SoundPort0QueuePush(void);
+void abi_SoundPort0QueuePushRaw(void);
+
+/* The race phases after a finish: sound $37 for the current player, then
+   the two players' phases ($0DD6, $0DD7): `p2` for player 2's finish (Y
+   not 0), else by bit 0 of $0DED: set, both $14 after $07:E944; clear,
+   player 1 `p1` and player 2 $12. Then $0E58 = $30, $0E5B = $0E5F = 0 and
+   sound 2 on port 0. */
+static void finish_phases(uint8_t p1, uint8_t p2)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t y = cpu.y;
+    uint8_t lo, hi;
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x37);
+    abi_SoundPort0QueuePush();
+    if ((uint8_t)y != 0x00) {
+        cpu.p |= P_M;
+        wr8(b | 0x0DD6, 0x12);
+        wr8(b | 0x0DD7, p2);
+    } else {
+        cpu.p |= P_M;
+        hi = rd8(b | 0x0DEF);
+        lo = rd8(b | 0x0DED);
+        cpu.a = (uint16_t)(hi << 8 | lo);
+        cpu.p &= (uint8_t)~P_M;
+        if (lo & 0x01) {
+            cpu.p |= P_M;
+            call_routine(0x07E944, 0);
+            cpu.p |= P_M;
+            wr8(b | 0x0DD6, 0x14);
+            wr8(b | 0x0DD7, 0x14);
+        } else {
+            cpu.p |= P_M;
+            wr8(b | 0x0DD7, 0x12);
+            wr8(b | 0x0DD6, p1);
+        }
+    }
+    wr8(b | 0x0E58, 0x30);
+    wr8(b | 0x0E5B, 0x00);
+    wr8(b | 0x0E5F, 0x00);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x02);
+    abi_SoundPort0QueuePushRaw();
+}
+
+/*
+ * @routine 07:A9D7 RaceFinishPhases0E
+ * WHAT IT DOES: Sets the race phases after a finish: sound $37; with Y not
+ * 0 (player 2), player 1 $12 and player 2 $0E; with Y = 0, both $14 (after
+ * $07:E944) when bit 0 of $0DED is set, else player 1 $0E and player 2
+ * $12. Then $0E58 = $30, $0E5B = $0E5F = 0 and sound 2.
+ * HOW: Shares its tail with RaceFinishPhases10 ($07:AA4E). The $0DED case
+ * is not reached in the traces so far.
+ * Entry: M 8-bit, X 8-bit; Y = player. Exit: A low byte = 2; M 8-bit; N, Z
+ * from the data bank (the sound queue's last pull).
+ */
+void abi_RaceFinishPhases0E(void)
+{
+    finish_phases(0x0E, 0x0E);
+}
+
+/*
+ * @routine 07:AA0B RaceFinishPhases10
+ * WHAT IT DOES: As RaceFinishPhases0E, with $10 in place of $0E: player 2
+ * $10 when Y is not 0, player 1 $10 otherwise.
+ * HOW: As RaceFinishPhases0E. The Y-not-0 and $0DED cases are not reached
+ * in the traces so far.
+ * Entry: as RaceFinishPhases0E. Exit: as RaceFinishPhases0E.
+ */
+void abi_RaceFinishPhases10(void)
+{
+    finish_phases(0x10, 0x10);
+}

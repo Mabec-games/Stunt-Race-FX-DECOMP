@@ -1448,3 +1448,8 @@ includeonce
 ; The sprite table's high part (size and X bit 8), after the 512 bytes at
 ; $0375 (video/oam.asm).
 !oam_high_table = $0575
+
+; RaceFinishPhases0E/10 (race/race_frame.asm): the finish state bytes, and
+; the bank $07 code they call when bit 0 of $0DED is set (never run yet).
+!wram_0E58 = $0E58
+!wram_0E5B = $0E5B

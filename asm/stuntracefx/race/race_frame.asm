@@ -157,3 +157,85 @@ RaceStart:
     bne .clear
     plp
     rtl
+
+; @routine 07:A9D7 RaceFinishPhases0E
+; WHAT IT DOES: Sets the race phases after a finish: sound $37; with Y not
+; 0 (player 2), player 1 $12 and player 2 $0E; with Y = 0, both $14 (after
+; $07:E944) when bit 0 of $0DED is set, else player 1 $0E and player 2
+; $12. Then $0E58 = $30, $0E5B = $0E5F = 0 and sound 2.
+; HOW: Shares its tail with RaceFinishPhases10 ($07:AA4E). The $0DED case
+; is not reached in the traces so far.
+; Entry: M 8-bit, X 8-bit; Y = player. Exit: A low byte = 2; M 8-bit; N, Z
+; from the data bank (the sound queue's last pull).
+%at($07A9D7)
+RaceFinishPhases0E:
+    lda.b #$37
+    jsl.l SoundPort0QueuePush
+    cpy.b #$00
+    bne .player2
+    sep.b #$20
+    lda.w !player_rec_41+1
+    xba
+    lda.w !player_rec_40+1
+    rep.b #$20
+    bit.w #$0001
+    bne RaceFinishPhasesBoth
+    sep.b #$20
+    lda.b #$12
+    sta.w !engine_phase_p2
+    lda.b #$0E
+    sta.w !engine_phase_p1
+    bra RaceFinishPhasesTail
+.player2:
+    lda.b #$12
+    sta.w !engine_phase_p1
+    lda.b #$0E
+    sta.w !engine_phase_p2
+    bra RaceFinishPhasesTail
+
+; @routine 07:AA0B RaceFinishPhases10
+; WHAT IT DOES: As RaceFinishPhases0E, with $10 in place of $0E: player 2
+; $10 when Y is not 0, player 1 $10 otherwise.
+; HOW: As RaceFinishPhases0E. The Y-not-0 and $0DED cases are not reached
+; in the traces so far.
+; Entry: as RaceFinishPhases0E. Exit: as RaceFinishPhases0E.
+%at($07AA0B)
+RaceFinishPhases10:
+    lda.b #$37
+    jsl.l SoundPort0QueuePush
+    cpy.b #$00
+    bne .player2
+    sep.b #$20
+    lda.w !player_rec_41+1
+    xba
+    lda.w !player_rec_40+1
+    rep.b #$20
+    bit.w #$0001
+    bne RaceFinishPhasesBoth
+    sep.b #$20
+    lda.b #$12
+    sta.w !engine_phase_p2
+    lda.b #$10
+    sta.w !engine_phase_p1
+    bra RaceFinishPhasesTail
+.player2:
+    sep.b #$20                      ; not reached in the traces so far
+    lda.b #$12                      ; not reached in the traces so far
+    sta.w !engine_phase_p1          ; not reached in the traces so far
+    lda.b #$10                      ; not reached in the traces so far
+    sta.w !engine_phase_p2          ; not reached in the traces so far
+    bra RaceFinishPhasesTail        ; not reached in the traces so far
+RaceFinishPhasesBoth:               ; bit 0 of $0DED: not reached in the traces so far
+    sep.b #$20
+    jsr.w !race_e944
+    lda.b #$14
+    sta.w !engine_phase_p1
+    sta.w !engine_phase_p2
+RaceFinishPhasesTail:               ; both routines end here
+    lda.b #$30
+    sta.w !wram_0E58
+    stz.w !wram_0E5B
+    stz.w !palette_animate
+    lda.b #$02
+    jsl.l SoundPort0QueuePushRaw
+    rts
