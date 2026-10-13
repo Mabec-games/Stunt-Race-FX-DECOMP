@@ -2186,3 +2186,149 @@ HudHoldDraw:
     jsl.l GsuBytes200_BFB3BE
     jmp.w GsuF329At93x6C
 
+
+; @routine 04:DDB0 GlyphAtY60
+; WHAT IT DOES: Draws glyph A at ($70:020A, 96) with the renderer bytes 0,
+; $BF, $B5, $BB (GsuBytes200_BFB5BB) and program $07:F329.
+; HOW: Long stores to the program's parameters, then GsuRun.
+; Entry: M 16-bit, X 16-bit; A = the glyph. Exit: M 16-bit, X 16-bit; X =
+; $F329; A as GsuRun leaves it.
+%at($04DDB0)
+GlyphAtY60:
+    sta.l !gsu_in_216
+    lda.w #$0060
+    sta.l !fx_draw_y
+    jsl.l GsuBytes200_BFB5BB
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F329
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rts
+
+; @routine 04:DD61 GlyphRowY60From0
+; WHAT IT DOES: Draws a row of six glyphs at y 96 from x $78 down by 8:
+; $9808 three times, then $941A, $960E and $9414 (GlyphAtY60).
+; HOW: Six steps of LDA #x, STA.L $70:020A, LDA #glyph, JSR; the entries
+; at $04:DD6E, $DD7B, $DD88, $DD95 and $DDA2 start further along.
+; Entry: M 16-bit, X 16-bit. Exit: as GlyphAtY60.
+%at($04DD61)
+GlyphRowY60From0:
+    lda.w #$0078
+    sta.l !fx_draw_x
+    lda.w #$9808
+    jsr.w GlyphAtY60
+
+; @routine 04:DD6E GlyphRowY60From1
+; WHAT IT DOES: As GlyphRowY60From0 from its second glyph (x $70).
+; HOW: The same code, entered further along.
+; Entry: M 16-bit, X 16-bit. Exit: as GlyphAtY60.
+%at($04DD6E)
+GlyphRowY60From1:
+    lda.w #$0070
+    sta.l !fx_draw_x
+    lda.w #$9808
+    jsr.w GlyphAtY60
+
+; @routine 04:DD7B GlyphRowY60From2
+; WHAT IT DOES: As GlyphRowY60From0 from its third glyph (x $68).
+; HOW: The same code, entered further along.
+; Entry: M 16-bit, X 16-bit. Exit: as GlyphAtY60.
+%at($04DD7B)
+GlyphRowY60From2:
+    lda.w #$0068
+    sta.l !fx_draw_x
+    lda.w #$9808
+    jsr.w GlyphAtY60
+
+; @routine 04:DD88 GlyphRowY60From3
+; WHAT IT DOES: As GlyphRowY60From0 from its fourth glyph (x $60).
+; HOW: The same code, entered further along.
+; Entry: M 16-bit, X 16-bit. Exit: as GlyphAtY60.
+%at($04DD88)
+GlyphRowY60From3:
+    lda.w #$0060
+    sta.l !fx_draw_x
+    lda.w #$941A
+    jsr.w GlyphAtY60
+
+; @routine 04:DD95 GlyphRowY60From4
+; WHAT IT DOES: As GlyphRowY60From0 from its fifth glyph (x $58).
+; HOW: The same code, entered further along.
+; Entry: M 16-bit, X 16-bit. Exit: as GlyphAtY60.
+%at($04DD95)
+GlyphRowY60From4:
+    lda.w #$0058
+    sta.l !fx_draw_x
+    lda.w #$960E
+    jsr.w GlyphAtY60
+
+; @routine 04:DDA2 GlyphRowY60From5
+; WHAT IT DOES: Draws the row's last glyph, $9414 at x $50 (GlyphAtY60).
+; HOW: The same code, entered at its last step.
+; Entry: M 16-bit, X 16-bit. Exit: as GlyphAtY60.
+%at($04DDA2)
+GlyphRowY60From5:
+    lda.w #$0050
+    sta.l !fx_draw_x
+    lda.w #$9414
+    jsr.w GlyphAtY60
+    rts
+
+; @routine 04:DDD1 GlyphListDraw
+; WHAT IT DOES: Draws the glyph list: for each of the $10E6 entries (2
+; bytes apart) whose word at $110E is set, glyph $10E8 at x and y the bytes
+; at $1134 and $1135, the first $10E4 entries with the renderer bytes 0,
+; $BF, $BC, $BD and the rest with 0, $BF, $B3, $BE; program $07:F329.
+; HOW: The limits doubled into direct page $F1 and $F3; X and P kept on the
+; stack around GsuRun.
+; Entry: M 16-bit, X 16-bit, D = $0000. Exit: M 16-bit, X 16-bit; X = the
+; end; N, Z, C from its compare.
+%at($04DDD1)
+GlyphListDraw:
+    ldx.w #$0000
+    lda.w !glyph_list_first
+    asl a
+    sta.b !digit_count
+    lda.w !glyph_list_count
+    asl a
+    sta.b !dp_f3
+.lDDE0:
+    rep.b #$20
+    lda.w !glyph_list_on,x
+    beq .lDE25
+    lda.w !glyph_list_glyph,x
+    sta.l !gsu_in_216
+    lda.w !glyph_list_x,x
+    and.w #$00FF
+    sta.l !fx_draw_x
+    lda.w !glyph_list_y,x
+    and.w #$00FF
+    sta.l !fx_draw_y
+    cpx.b !digit_count
+    bcs .lDE0C
+    jsl.l GsuBytes200_BFBCBD
+    bra .lDE10
+.lDE0C:
+    jsl.l GsuBytes200_BFB3BE
+.lDE10:
+    phx
+    php
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F329
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    plp
+    plx
+.lDE25:
+    inx
+    inx
+    cpx.b !dp_f3
+    bcc .lDDE0
+    rts
+

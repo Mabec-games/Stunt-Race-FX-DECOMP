@@ -1473,3 +1473,186 @@ void abi_HudHoldDraw(void)
     abi_GsuF329Sequence();
     op_plp(p0);
 }
+
+/* SEP #$20, REP #$10, LDX #$F329, LDA #$07, JSL GsuRun, REP #$20, REP #$10:
+   Super FX program $07:F329 (the glyph at $70:0216 drawn at $70:020A,
+   $70:020C). */
+static void run_f329(void)
+{
+    op_sep(P_M);
+    op_rep(P_X);
+    cpu.x = 0xF329;
+    cpu.p = nz16(cpu.p, cpu.x);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x07);
+    cpu.p = nz8(cpu.p, 0x07);
+    abi_GsuRun();
+    op_rep(P_M | P_X);
+}
+
+/*
+ * @routine 04:DDB0 GlyphAtY60
+ * WHAT IT DOES: Draws glyph A at ($70:020A, 96) with the renderer bytes 0,
+ * $BF, $B5, $BB (GsuBytes200_BFB5BB) and program $07:F329.
+ * HOW: Long stores to the program's parameters, then GsuRun.
+ * Entry: M 16-bit, X 16-bit; A = the glyph. Exit: M 16-bit, X 16-bit; X =
+ * $F329; A as GsuRun leaves it.
+ */
+void abi_GlyphAtY60(void)
+{
+    wr16(0x700216, cpu.a);
+    op_lda16_imm(0x0060);
+    wr16(0x70020C, 0x0060);
+    abi_GsuBytes200_BFB5BB();
+    run_f329();
+}
+
+/* One step of the row at y 96: LDA #x, STA.L $70:020A, LDA #glyph, JSR
+   GlyphAtY60. */
+static void glyph_step(uint16_t x, uint16_t glyph)
+{
+    op_lda16_imm(x);
+    wr16(0x70020A, x);
+    op_lda16_imm(glyph);
+    abi_GlyphAtY60();
+}
+
+/* The row of six glyphs from 04:DD61, each entry running the rest. */
+static void glyph_row(int from)
+{
+    static const uint16_t xs[6] = {0x0078, 0x0070, 0x0068, 0x0060, 0x0058, 0x0050};
+    static const uint16_t gs[6] = {0x9808, 0x9808, 0x9808, 0x941A, 0x960E, 0x9414};
+    int i;
+
+    for (i = from; i < 6; i++)
+        glyph_step(xs[i], gs[i]);
+}
+
+/*
+ * @routine 04:DD61 GlyphRowY60From0
+ * WHAT IT DOES: Draws a row of six glyphs at y 96 from x $78 down by 8:
+ * $9808 three times, then $941A, $960E and $9414 (GlyphAtY60).
+ * HOW: Six steps of LDA #x, STA.L $70:020A, LDA #glyph, JSR; the entries
+ * at $04:DD6E, $DD7B, $DD88, $DD95 and $DDA2 start further along.
+ * Entry: M 16-bit, X 16-bit. Exit: as GlyphAtY60.
+ */
+void abi_GlyphRowY60From0(void)
+{
+    glyph_row(0);
+}
+
+/*
+ * @routine 04:DD6E GlyphRowY60From1
+ * WHAT IT DOES: As GlyphRowY60From0 from its second glyph (x $70).
+ * HOW: The same code, entered further along.
+ * Entry: M 16-bit, X 16-bit. Exit: as GlyphAtY60.
+ */
+void abi_GlyphRowY60From1(void)
+{
+    glyph_row(1);
+}
+
+/*
+ * @routine 04:DD7B GlyphRowY60From2
+ * WHAT IT DOES: As GlyphRowY60From0 from its third glyph (x $68).
+ * HOW: The same code, entered further along.
+ * Entry: M 16-bit, X 16-bit. Exit: as GlyphAtY60.
+ */
+void abi_GlyphRowY60From2(void)
+{
+    glyph_row(2);
+}
+
+/*
+ * @routine 04:DD88 GlyphRowY60From3
+ * WHAT IT DOES: As GlyphRowY60From0 from its fourth glyph (x $60).
+ * HOW: The same code, entered further along.
+ * Entry: M 16-bit, X 16-bit. Exit: as GlyphAtY60.
+ */
+void abi_GlyphRowY60From3(void)
+{
+    glyph_row(3);
+}
+
+/*
+ * @routine 04:DD95 GlyphRowY60From4
+ * WHAT IT DOES: As GlyphRowY60From0 from its fifth glyph (x $58).
+ * HOW: The same code, entered further along.
+ * Entry: M 16-bit, X 16-bit. Exit: as GlyphAtY60.
+ */
+void abi_GlyphRowY60From4(void)
+{
+    glyph_row(4);
+}
+
+/*
+ * @routine 04:DDA2 GlyphRowY60From5
+ * WHAT IT DOES: Draws the row's last glyph, $9414 at x $50 (GlyphAtY60).
+ * HOW: The same code, entered at its last step.
+ * Entry: M 16-bit, X 16-bit. Exit: as GlyphAtY60.
+ */
+void abi_GlyphRowY60From5(void)
+{
+    glyph_row(5);
+}
+
+/*
+ * @routine 04:DDD1 GlyphListDraw
+ * WHAT IT DOES: Draws the glyph list: for each of the $10E6 entries (2
+ * bytes apart) whose word at $110E is set, glyph $10E8 at x and y the bytes
+ * at $1134 and $1135, the first $10E4 entries with the renderer bytes 0,
+ * $BF, $BC, $BD and the rest with 0, $BF, $B3, $BE; program $07:F329.
+ * HOW: The limits doubled into direct page $F1 and $F3; X and P kept on the
+ * stack around GsuRun.
+ * Entry: M 16-bit, X 16-bit, D = $0000. Exit: M 16-bit, X 16-bit; X = the
+ * end; N, Z, C from its compare.
+ */
+void abi_GlyphListDraw(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t x;
+    uint8_t p;
+
+    cpu.x = 0x0000;
+    cpu.p = nz16(cpu.p, 0);
+    op_lda16(b | 0x10E4);
+    op_asl16();
+    wr16(0x0000F1, cpu.a);
+    op_lda16(b | 0x10E6);
+    op_asl16();
+    wr16(0x0000F3, cpu.a);
+    do {
+        op_rep(P_M);
+        op_lda16(b | (uint16_t)(0x110E + cpu.x));
+        if (cpu.a) {
+            op_lda16(b | (uint16_t)(0x10E8 + cpu.x));
+            wr16(0x700216, cpu.a);
+            op_lda16(b | (uint16_t)(0x1134 + cpu.x));
+            op_and16(0x00FF);
+            wr16(0x70020A, cpu.a);
+            op_lda16(b | (uint16_t)(0x1135 + cpu.x));
+            op_and16(0x00FF);
+            wr16(0x70020C, cpu.a);
+            {
+                uint16_t lim = rd16(0x0000F1);
+
+                cpu.p = (uint8_t)((nz16(cpu.p, (uint16_t)(cpu.x - lim)) & ~P_C) | (cpu.x >= lim ? P_C : 0));
+                if (cpu.x >= lim)
+                    abi_GsuBytes200_BFB3BE();
+                else
+                    abi_GsuBytes200_BFBCBD();
+            }
+            x = cpu.x;
+            p = cpu.p;
+            run_f329();
+            op_plp(p);
+            cpu.x = x;
+            cpu.p = nz16(cpu.p, x);
+        }
+        cpu.x = (uint16_t)(cpu.x + 2);
+        {
+            uint16_t lim = rd16(0x0000F3);
+
+            cpu.p = (uint8_t)((nz16(cpu.p, (uint16_t)(cpu.x - lim)) & ~P_C) | (cpu.x >= lim ? P_C : 0));
+        }
+    } while (!(cpu.p & P_C));
+}
