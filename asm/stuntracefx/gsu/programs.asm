@@ -1994,3 +1994,174 @@ HudSixGlyphs:
     rep.b #$20
     rep.b #$10
     rts
+
+; @routine 07:9D67 BigSpritesRow6
+; WHAT IT DOES: Unless $0E5C is set, draws six 24 x 40 sprites (Super FX
+; program FxSprite24x40) from (24, 40): sources $B000, $A506, $A518 and
+; $A00C, then 16 further on $B006 and $AA0C. With $0E5C set it goes to
+; 07:9EE9 instead.
+; HOW: GsuBytes200_BFB5BB first; GsuRun for each sprite; the x the program
+; leaves is read back for the gap. The jump is not reached in the traces so
+; far.
+; Entry: any widths, D = $0000. Exit: M, X 16-bit; X = $FA88; A = the last
+; source's high byte and the screen mode value; N, Z from the data bank; C,
+; V from adding the gap.
+%at($079D67)
+BigSpritesRow6:
+    rep.b #$20
+    jsl.l GsuBytes200_BFB5BB
+    sep.b #$20
+    lda.w !wram_0E5C
+    beq .draw
+    brl BigSpritesCountDraw
+.draw:
+    rep.b #$30
+    lda.w #$0018
+    sta.l !fx_draw_x
+    lda.w #$0028
+    sta.l !fx_draw_y
+    lda.w #$0100
+    sta.l !fx_draw_step_x
+    sta.l !fx_draw_step_y
+    rep.b #$20
+    lda.w #$B000
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #FxSprite24x40
+    lda.b #FxSprite24x40>>16
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$A506
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #FxSprite24x40
+    lda.b #FxSprite24x40>>16
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$A518
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #FxSprite24x40
+    lda.b #FxSprite24x40>>16
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$A00C
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #FxSprite24x40
+    lda.b #FxSprite24x40>>16
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.l !fx_draw_x
+    clc
+    adc.w #$0010
+    sta.l !fx_draw_x
+    rep.b #$20
+    lda.w #$B006
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #FxSprite24x40
+    lda.b #FxSprite24x40>>16
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$AA0C
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #FxSprite24x40
+    lda.b #FxSprite24x40>>16
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rts
+
+; @routine 07:9E3B BigSpritesRow5
+; WHAT IT DOES: Unless $0E5C is set, draws five 24 x 40 sprites
+; (FxSprite24x40) from (32, 40): sources $A006, $AA12, $A000, $AA18 and
+; $A500. With $0E5C set it goes to 07:9EE9 instead.
+; HOW: GsuBytes200_BFBCBD first; GsuRun for each sprite. The jump is not
+; reached in the traces so far.
+; Entry: any widths, D = $0000. Exit: as BigSpritesRow6, C and V as the
+; entry left them.
+%at($079E3B)
+BigSpritesRow5:
+    rep.b #$20
+    jsl.l GsuBytes200_BFBCBD
+    sep.b #$20
+    lda.w !wram_0E5C
+    beq .draw
+    brl BigSpritesCountDraw
+.draw:
+    rep.b #$30
+    lda.w #$0020
+    sta.l !fx_draw_x
+    lda.w #$0028
+    sta.l !fx_draw_y
+    lda.w #$0100
+    sta.l !fx_draw_step_x
+    sta.l !fx_draw_step_y
+    rep.b #$20
+    lda.w #$A006
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #FxSprite24x40
+    lda.b #FxSprite24x40>>16
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$AA12
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #FxSprite24x40
+    lda.b #FxSprite24x40>>16
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$A000
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #FxSprite24x40
+    lda.b #FxSprite24x40>>16
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$AA18
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #FxSprite24x40
+    lda.b #FxSprite24x40>>16
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$A500
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #FxSprite24x40
+    lda.b #FxSprite24x40>>16
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rts

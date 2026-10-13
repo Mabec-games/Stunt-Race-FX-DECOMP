@@ -9,6 +9,7 @@
  */
 #include "machine.h"
 #include "hw.h"
+#include "cpu_ops.h"
 
 uint8_t GsuRun(uint8_t bank, uint16_t start);
 uint16_t GsuParam216B(uint8_t bank, uint16_t index);
@@ -1334,4 +1335,107 @@ void abi_HudSixGlyphs(void)
         abi_GsuRun();
     }
     cpu.p &= (uint8_t)~(P_M | P_X);
+}
+
+void abi_GsuBytes200_BFB5BB(void);
+void abi_GsuBytes200_BFBCBD(void);
+
+/* $70:0216 = src, then Super FX program $07:FA88 (FxSprite24x40) through
+   GsuRun; M and X 16-bit after. */
+static void sprite24x40(uint16_t src)
+{
+    cpu.p &= (uint8_t)~P_M;
+    cpu.a = src;
+    wr16(0x700216, src);
+    cpu.p = (uint8_t)((nz16(cpu.p, src) | P_M) & ~P_X);
+    cpu.x = 0xFA88;
+    cpu.a = (uint16_t)((src & 0xFF00) | 0x07);
+    abi_GsuRun();
+    cpu.p &= (uint8_t)~(P_M | P_X);
+}
+
+/* The common start: the renderer bytes (setter), then, with $0E5C set,
+   07:9EE9 instead (a jump; not reached in the traces so far). Returns 0
+   when the jump was taken. */
+static int big_sprites_start(void (*setter)(void))
+{
+    uint8_t v;
+
+    cpu.p &= (uint8_t)~P_M;
+    setter();
+    cpu.p |= P_M;
+    v = rd8((uint32_t)cpu.db << 16 | 0x0E5C);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+    if (v) {
+        call_routine(0x079EE9, 0);
+        return 0;
+    }
+    return 1;
+}
+
+/* M and X 16-bit; x, y, and both steps $100 at $70:020A-$70:0214. */
+static void big_sprites_at(uint16_t x, uint16_t y)
+{
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    wr16(0x70020A, x);
+    wr16(0x70020C, y);
+    wr16(0x700212, 0x0100);
+    wr16(0x700214, 0x0100);
+    cpu.a = 0x0100;
+    cpu.p = nz16(cpu.p, 0x0100);
+}
+
+/*
+ * @routine 07:9D67 BigSpritesRow6
+ * WHAT IT DOES: Unless $0E5C is set, draws six 24 x 40 sprites (Super FX
+ * program FxSprite24x40) from (24, 40): sources $B000, $A506, $A518 and
+ * $A00C, then 16 further on $B006 and $AA0C. With $0E5C set it goes to
+ * 07:9EE9 instead.
+ * HOW: GsuBytes200_BFB5BB first; GsuRun for each sprite; the x the
+ * program leaves is read back for the gap. The jump is not reached in the
+ * traces so far.
+ * Entry: any widths, D = $0000. Exit: M, X 16-bit; X = $FA88; A = the
+ * last source's high byte and the screen mode value; N, Z from the data
+ * bank; C, V from adding the gap.
+ */
+void abi_BigSpritesRow6(void)
+{
+    static const uint16_t first[4] = {0xB000, 0xA506, 0xA518, 0xA00C}, second[2] = {0xB006, 0xAA0C};
+    uint16_t w;
+    unsigned i;
+
+    if (!big_sprites_start(abi_GsuBytes200_BFB5BB))
+        return;
+    big_sprites_at(0x0018, 0x0028);
+    for (i = 0; i < 4; i++)
+        sprite24x40(first[i]);
+    w = rd16(0x70020A);
+    cpu.p &= (uint8_t)~P_C;
+    cpu.a = op_adc16(w, 0x0010, &cpu.p);
+    wr16(0x70020A, cpu.a);
+    for (i = 0; i < 2; i++)
+        sprite24x40(second[i]);
+}
+
+/*
+ * @routine 07:9E3B BigSpritesRow5
+ * WHAT IT DOES: Unless $0E5C is set, draws five 24 x 40 sprites
+ * (FxSprite24x40) from (32, 40): sources $A006, $AA12, $A000, $AA18 and
+ * $A500. With $0E5C set it goes to 07:9EE9 instead.
+ * HOW: GsuBytes200_BFBCBD first; GsuRun for each sprite. The jump is not
+ * reached in the traces so far.
+ * Entry: any widths, D = $0000. Exit: as BigSpritesRow6, C and V as the
+ * entry left them.
+ */
+void abi_BigSpritesRow5(void)
+{
+    static const uint16_t src[5] = {0xA006, 0xAA12, 0xA000, 0xAA18, 0xA500};
+    unsigned i;
+
+    if (!big_sprites_start(abi_GsuBytes200_BFBCBD))
+        return;
+    big_sprites_at(0x0020, 0x0028);
+    for (i = 0; i < 5; i++)
+        sprite24x40(src[i]);
 }
