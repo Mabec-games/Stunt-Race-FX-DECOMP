@@ -2171,3 +2171,172 @@ ObjectMoveForward:
     sep.b #$20
 .done:
     rts
+
+; @routine 08:E8CF ObjectSpawnTrail
+; WHAT IT DOES: Unless $0D62 is set, makes a new object (ObjectSpawn, kind
+; word $A158 at $1F2B) with bit 2 of +$24 set, +$4A = 3, +$48 = $14, +$49 =
+; $0A, handler $08:E919 (ObjectTrailStart) and object X as its parent
+; (+$27).
+; HOW: The handler is the long pointer +$1A-$1C; through the data bank.
+; The no-object exit is not reached in the traces so far.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; Y = the new object
+; (or as ObjectSpawn leaves it); A low byte = 8, high byte from X; or A
+; low byte = $0D62 with it set.
+%at($08E8CF)
+ObjectSpawnTrail:
+    lda.w !wram_0D62
+    bne ObjectSpawnTrail_done
+    rep.b #$20
+    lda.w #$A158
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .spawned
+    jml.l ObjectSpawnTrail_done
+.spawned:
+    lda.w !obj_24,y
+    ora.b #$04
+    sta.w !obj_24,y
+    lda.b #$03
+    sta.w !obj_4a,y
+    lda.b #$14
+    sta.w !obj_48,y
+    lda.b #$0A
+    sta.w !obj_49,y
+    rep.b #$20
+    lda.w #ObjectTrailStart
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #ObjectTrailStart>>16
+    sta.w !obj_1c,y
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_27,y
+    sep.b #$20
+    pla
+ObjectSpawnTrail_done:                  ; reached by the long jump above
+    rtl
+
+; @routine 08:E919 ObjectTrailStart
+; WHAT IT DOES: A trail object's first frame: its count +$4B = $0C, handler
+; $08:E934 (ObjectTrailStep), +$32 = $D8, then placed by its parent.
+; HOW: Byte and word stores, then the shared placing (see
+; ObjectTrailStep).
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectRebucket.
+ObjectTrailStart:
+    lda.b #$0C
+    sta.w !obj_4b,x
+    rep.b #$20
+    lda.w #ObjectTrailStep
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #ObjectTrailStep>>16
+    sta.w !obj_1c,x
+    lda.b #$D8
+    sta.w !obj_vel_z,x
+    bra ObjectTrailPlace
+
+; @routine 08:E934 ObjectTrailStep
+; WHAT IT DOES: A trail object's frame: sets bit 2 of +$24 and clears +$4A,
+; +$48 and +$49; when its count +$4B is 0 it is released
+; (ObjectReleaseLong), otherwise counted down and put at its parent's
+; position (+$27) plus (0, -10, +$32) turned by the parent's angles +$14
+; and +$15 (RotateXZFrom08, RotateXZ) and doubled, with +$32 moved by -5,
+; and rebucketed.
+; HOW: The offset is kept in direct page $02/$08/$94 (sign bytes $05,
+; $0B, $05F3) and comes back in $04/$0A/$05F2; the release is a jump. The
+; sign stores that cannot run (bit 7 of 0, and of $F6 clear) are kept.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectRebucket or
+; ObjectReleaseLong.
+ObjectTrailStep:
+    lda.w !obj_24,x
+    ora.b #$04
+    sta.w !obj_24,x
+    lda.b #$00
+    sta.w !obj_4a,x
+    lda.b #$00
+    sta.w !obj_48,x
+    lda.b #$00
+    sta.w !obj_49,x
+    lda.w !obj_4b,x
+    bne .count
+    jml.l ObjectReleaseLong
+.count:
+    dec.w !obj_4b,x
+ObjectTrailPlace:
+    ldy.w !obj_27,x
+    lda.w !obj_vel_z,x
+    sta.w !wram_1F58
+    lda.b #$00
+    sta.b !dp_02
+    sta.b !dp_04
+    bit.b #$80
+    beq .x_positive
+    lda.b #$FF
+    sta.b !dp_05
+    bra .y
+.x_positive:
+    stz.b !dp_05
+.y:
+    lda.b #$F6
+    sta.b !dp_08
+    sta.b !dp_0a
+    bit.b #$80
+    beq .y_positive
+    lda.b #$FF
+    sta.b !dp_0b
+    bra .z
+.y_positive:
+    stz.b !dp_0b
+.z:
+    lda.w !wram_1F58
+    sta.b !dp_94
+    sta.w !rot_z
+    bit.b #$80
+    beq .z_positive
+    lda.b #$FF
+    sta.w !rot_z_high
+    bra .turn
+.z_positive:
+    stz.w !rot_z_high
+.turn:
+    lda.w !obj_14,y
+    jsl.l RotateXZFrom08
+    lda.b !dp_04
+    sta.b !dp_02
+    lda.b !dp_0a
+    sta.b !dp_08
+    lda.w !rot_z
+    sta.b !dp_94
+    lda.w !obj_15,y
+    jsl.l RotateXZ
+    rep.b #$20
+    lda.b !dp_04
+    asl a
+    sta.b !dp_04
+    lda.b !dp_0a
+    asl a
+    sta.b !dp_0a
+    lda.w !rot_z
+    asl a
+    sta.w !rot_z
+    lda.w !obj_pos_x,y
+    clc
+    adc.b !dp_04
+    sta.w !obj_pos_x,x
+    lda.w !obj_pos_z,y
+    clc
+    adc.w !rot_z
+    sta.w !obj_pos_z,x
+    lda.w !obj_pos_y,y
+    clc
+    adc.b !dp_0a
+    sta.w !obj_pos_y,x
+    sep.b #$20
+    lda.w !obj_vel_z,x
+    clc
+    adc.b #$FB
+    sta.w !obj_vel_z,x
+    jsl.l ObjectRebucket
+    rtl

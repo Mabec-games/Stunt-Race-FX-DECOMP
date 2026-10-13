@@ -2174,3 +2174,170 @@ void abi_ObjectMoveForward(void)
     }
     cpu.p |= P_M;
 }
+
+/* LDA a, then BIT #$80: the sign byte at `at` is $FF when bit 7 of a is
+   set, else 0. */
+static void sign_byte(uint32_t at, uint8_t a)
+{
+    wr8(at, (a & 0x80) ? 0xFF : 0x00);
+}
+
+/* The trail's shared tail: object X at its parent (+$27)'s position plus
+   the offset (0, -10, +$32) turned by the parent's angles +$14
+   (RotateXZFrom08) and +$15 (RotateXZ) and doubled; +$32 then moves by -5
+   and the object is rebucketed. */
+static void trail_place(uint32_t b)
+{
+    uint8_t v;
+    uint16_t w;
+    unsigned i;
+    static const uint16_t to[3] = {0x200C, 0x2010, 0x200E};
+    uint32_t from[3];
+
+    cpu.y = rd16(b | (uint16_t)(0x2027 + cpu.x));
+    v = rd8(b | (uint16_t)(0x2032 + cpu.x));
+    wr8(b | 0x1F58, v);
+    wr8(dp8(0x02), 0x00);
+    wr8(dp8(0x04), 0x00);
+    sign_byte(dp8(0x05), 0x00);
+    wr8(dp8(0x08), 0xF6);
+    wr8(dp8(0x0A), 0xF6);
+    sign_byte(dp8(0x0B), 0xF6);
+    v = rd8(b | 0x1F58);
+    wr8(dp8(0x94), v);
+    wr8(b | 0x05F2, v);
+    sign_byte(b | 0x05F3, v);
+    for (i = 0; i < 2; i++) {
+        if (i) {
+            wr8(dp8(0x02), rd8(dp8(0x04)));
+            wr8(dp8(0x08), rd8(dp8(0x0A)));
+            wr8(dp8(0x94), rd8(b | 0x05F2));
+        }
+        v = rd8(b | (uint16_t)(0x2014 + i + cpu.y));
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+        cpu.p = nz8(cpu.p, v);
+        if (i == 0)
+            abi_RotateXZFrom08();
+        else
+            abi_RotateXZ();
+    }
+    cpu.p &= (uint8_t)~P_M;
+    w = (uint16_t)(rd16(dp8(0x04)) << 1);
+    wr16(dp8(0x04), w);
+    w = (uint16_t)(rd16(dp8(0x0A)) << 1);
+    wr16(dp8(0x0A), w);
+    w = (uint16_t)(rd16(b | 0x05F2) << 1);
+    wr16(b | 0x05F2, w);
+    from[0] = dp8(0x04);
+    from[1] = b | 0x05F2;
+    from[2] = dp8(0x0A);
+    for (i = 0; i < 3; i++) {
+        w = rd16(b | (uint16_t)(to[i] + cpu.y));
+        cpu.p &= (uint8_t)~P_C;
+        cpu.a = op_adc16(w, rd16(from[i]), &cpu.p);
+        wr16(b | (uint16_t)(to[i] + cpu.x), cpu.a);
+    }
+    cpu.p |= P_M;
+    v = rd8(b | (uint16_t)(0x2032 + cpu.x));
+    cpu.p &= (uint8_t)~P_C;
+    v = op_adc8(v, 0xFB, &cpu.p);
+    wr8(b | (uint16_t)(0x2032 + cpu.x), v);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    abi_ObjectRebucket();
+}
+
+/*
+ * @routine 08:E8CF ObjectSpawnTrail
+ * WHAT IT DOES: Unless $0D62 is set, makes a new object (ObjectSpawn, kind
+ * word $A158 at $1F2B) with bit 2 of +$24 set, +$4A = 3, +$48 = $14, +$49 =
+ * $0A, handler $08:E919 (ObjectTrailStart) and object X as its parent
+ * (+$27).
+ * HOW: The handler is the long pointer +$1A-$1C; through the data bank.
+ * The no-object exit is not reached in the traces so far.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; Y = the new object
+ * (or as ObjectSpawn leaves it); A low byte = 8, high byte from X; or A
+ * low byte = $0D62 with it set.
+ */
+void abi_ObjectSpawnTrail(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v;
+
+    v = rd8(b | 0x0D62);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+    if (v)
+        return;
+    cpu.p &= (uint8_t)~P_M;
+    cpu.a = 0xA158;
+    wr16(b | 0x1F2B, 0xA158);
+    cpu.p |= P_M;
+    abi_ObjectSpawn();
+    if (!(cpu.p & P_C))
+        return;
+    v = (uint8_t)(rd8(b | (uint16_t)(0x2024 + cpu.y)) | 0x04);
+    wr8(b | (uint16_t)(0x2024 + cpu.y), v);
+    wr8(b | (uint16_t)(0x204A + cpu.y), 0x03);
+    wr8(b | (uint16_t)(0x2048 + cpu.y), 0x14);
+    wr8(b | (uint16_t)(0x2049 + cpu.y), 0x0A);
+    wr16(b | (uint16_t)(0x201A + cpu.y), 0xE919);
+    wr8(b | (uint16_t)(0x201C + cpu.y), 0x08);
+    wr16(b | (uint16_t)(0x2027 + cpu.y), cpu.x);
+    cpu.a = (uint16_t)((cpu.x & 0xFF00) | 0x08);
+    cpu.p = nz8(cpu.p, 0x08);
+}
+
+/*
+ * @routine 08:E919 ObjectTrailStart
+ * WHAT IT DOES: A trail object's first frame: its count +$4B = $0C, handler
+ * $08:E934 (ObjectTrailStep), +$32 = $D8, then placed by its parent.
+ * HOW: Byte and word stores, then the shared placing (see
+ * ObjectTrailStep).
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectRebucket.
+ */
+void abi_ObjectTrailStart(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    wr8(b | (uint16_t)(0x204B + cpu.x), 0x0C);
+    wr16(b | (uint16_t)(0x201A + cpu.x), 0xE934);
+    wr8(b | (uint16_t)(0x201C + cpu.x), 0x08);
+    wr8(b | (uint16_t)(0x2032 + cpu.x), 0xD8);
+    trail_place(b);
+}
+
+/*
+ * @routine 08:E934 ObjectTrailStep
+ * WHAT IT DOES: A trail object's frame: sets bit 2 of +$24 and clears +$4A,
+ * +$48 and +$49; when its count +$4B is 0 it is released
+ * (ObjectReleaseLong), otherwise counted down and put at its parent's
+ * position (+$27) plus (0, -10, +$32) turned by the parent's angles +$14
+ * and +$15 (RotateXZFrom08, RotateXZ) and doubled, with +$32 moved by -5,
+ * and rebucketed.
+ * HOW: The offset is kept in direct page $02/$08/$94 (sign bytes $05,
+ * $0B, $05F3) and comes back in $04/$0A/$05F2; the release is a jump. The
+ * sign stores that cannot run (bit 7 of 0, and of $F6 clear) are kept.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectRebucket or
+ * ObjectReleaseLong.
+ */
+void abi_ObjectTrailStep(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v;
+
+    v = (uint8_t)(rd8(b | (uint16_t)(0x2024 + cpu.x)) | 0x04);
+    wr8(b | (uint16_t)(0x2024 + cpu.x), v);
+    wr8(b | (uint16_t)(0x204A + cpu.x), 0x00);
+    wr8(b | (uint16_t)(0x2048 + cpu.x), 0x00);
+    wr8(b | (uint16_t)(0x2049 + cpu.x), 0x00);
+    v = rd8(b | (uint16_t)(0x204B + cpu.x));
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+    if (!v) {
+        abi_ObjectReleaseLong();
+        return;
+    }
+    v = (uint8_t)(rd8(b | (uint16_t)(0x204B + cpu.x)) - 1);
+    wr8(b | (uint16_t)(0x204B + cpu.x), v);
+    trail_place(b);
+}

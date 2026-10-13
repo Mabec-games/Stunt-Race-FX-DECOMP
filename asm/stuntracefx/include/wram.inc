@@ -1548,3 +1548,4 @@ includeonce
 !window_band_step = $19D6              ; its step per frame
 !window_band_target = $19D9            ; where it stops
 !gsu_rec_5e = $70005E                  ; Super FX record word $5E
+!obj_4b = $204B
