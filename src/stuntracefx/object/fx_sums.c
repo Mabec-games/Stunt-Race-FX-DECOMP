@@ -397,3 +397,35 @@ void abi_FxPushApply(void)
     g = FxPushApply(g);
     memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
 }
+
+/*
+ * @routine 04:941C FxPushesApply
+ * WHAT IT DOES: Applies the 19 pushes at $23AE (FxPushApply each) with the
+ * push flags at $2480 cleared first, and returns the flags they set.
+ * HOW: The return address is kept on the R10 stack; the ROM bank is set to
+ * 0; R13 counts the pushes from 1, stopping at $14.
+ * Entry: R10 = stack; R11 = return address. Exit: R0 = the flags at
+ * $2480; R3 past the last push; R13 = $14; R11 = $943F; CY, OV from the
+ * last count compare; S, Z from R10; the last RAM address R10.
+ */
+void abi_FxPushesApply(void)
+{
+    gsu_push(&gsu.r[10], gsu.r[11]);
+    gsu.r[0] = 0x0000;
+    gsu.rombr = 0;
+    gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[0], 0);
+    gsu_stw(FX_PUSH_FLAGS, gsu.r[0]);
+    gsu.r[3] = 0x23AE;
+    gsu.r[13] = 0x0000;
+    for (;;) {
+        gsu.r[13] = gsu_inc(gsu.r[13]);
+        gsu.r[0] = 0x0014;
+        gsu_sub(gsu.r[0], gsu.r[13], 0);
+        if (gsu.z)
+            break;
+        gsu.r[11] = 0x943F;
+        abi_FxPushApply();
+    }
+    gsu.r[0] = gsu_ldw(FX_PUSH_FLAGS);
+    gsu_pull(&gsu.r[10]);
+}

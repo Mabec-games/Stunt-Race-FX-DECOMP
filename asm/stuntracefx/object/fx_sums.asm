@@ -14,6 +14,48 @@ incsrc "../include/wram.inc"
 
 arch superfx
 
+; @routine 04:941C FxPushesApply
+; WHAT IT DOES: Applies the 19 pushes at $23AE (FxPushApply each) with the
+; push flags at $2480 cleared first, and returns the flags they set.
+; HOW: The return address is kept on the R10 stack; the ROM bank is set to 0;
+; R13 counts the pushes from 1, stopping at $14.
+; Entry: R10 = stack; R11 = return address. Exit: R0 = the flags at $2480;
+; R3 past the last push; R13 = $14; R11 = $943F; CY, OV from the last count
+; compare; S, Z from R10; the last RAM address R10.
+%at($04941C)
+FxPushesApply:
+    from r11
+    stw (r10)
+    inc r10
+    inc r10
+    ibt r0,#$00
+    romb
+    sub r0
+    sm (!fx_push_flags),r0
+    iwt r3,#!fx_pushes-!gsu_ram
+    ibt r13,#$00
+.next:
+    inc r13
+    ibt r0,#$14
+    cmp r13
+    bne .apply
+    nop
+    iwt r15,#.done
+    nop
+.apply:
+    link #4
+    iwt r15,#FxPushApply
+    nop
+    iwt r15,#.next
+    nop
+.done:
+    lm r0,(!fx_push_flags)
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+
 ; @routine 04:944C FxPushApply
 ; WHAT IT DOES: Applies the push whose five words are at R3 (flags, amount,
 ; then a direction x, y, z) and steps R3 past them: a push with no flags,

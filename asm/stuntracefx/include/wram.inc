@@ -1471,3 +1471,4 @@ includeonce
 !record_row_name = $F3                 ; records rows: the name entry (two bytes of letters, then the car)
 !record_page = $F7                     ; records rows: the page's offset in !record_times
 !record_row_sprites = $0D75            ; the three records rows' first sprite numbers (words)
+!fx_pushes = $7023AE                   ; the 19 pushes of five words FxPushesApply applies
