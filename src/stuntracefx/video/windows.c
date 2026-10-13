@@ -396,3 +396,75 @@ void abi_WindowSweepIfOn(void)
     cpu.db = db0;
     cpu.p = p0;
 }
+
+/*
+ * @routine 7E:DD43 OscillatorStep
+ * WHAT IT DOES: Steps oscillator X by the level in bits 5-7 of $1A11 (4
+ * while bit 7 is set, with $1A0E + X = $80): a change of level restarts
+ * its count $1A0A + X; level 0 resets it ($1A08 + X = $40, rising by 1);
+ * otherwise its count runs to the rate for the level (the table at
+ * $7E:D30D, kept in $1A10) and then $1A08 + X moves by $1A0C + X, turning
+ * round at $40 and $42.
+ * HOW: 8-bit; long accesses to bank 0 except $1A10's store and the step
+ * add (data bank). Bit 7 and level 0 are not reached in the traces so far.
+ * Entry: X = oscillator. Exit: M 8-bit, X 8-bit; A and flags from the
+ * last step.
+ */
+void abi_OscillatorStep(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v, a, c;
+
+    op_sep(P_M | P_X);
+    v = (uint8_t)(rd8(0x001A11) & 0x80);
+    if (v) {
+        wr8(0x001A0E + cpu.x, 0x80);
+        a = 0x04;
+    } else {
+        a = (uint8_t)(rd8(0x001A11) >> 5);
+        c = rd8(0x001A0E + cpu.x);
+        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(a - c)) & ~P_C) | (a >= c ? P_C : 0));
+        if (a != c)
+            wr8(0x001A0A + cpu.x, 0x00);
+        v = rd8(0x001A11);
+        a = (uint8_t)(v >> 5);
+        cpu.p = (uint8_t)((nz8(cpu.p, a) & ~P_C) | ((v & 0x10) ? P_C : 0));
+        wr8(0x001A0E + cpu.x, a);
+        if (!a) {
+            wr8(0x001A0A + cpu.x, 0x00);
+            wr8(0x001A08 + cpu.x, 0x40);
+            wr8(0x001A0C + cpu.x, 0x01);
+            cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
+            cpu.p = nz8(cpu.p, 0x01);
+            return;
+        }
+    }
+    a = (uint8_t)(a - 1);
+    v = rd8((uint32_t)(0x7ED30D + a));
+    wr8(b | 0x1A10, v);
+    cpu.p &= (uint8_t)~P_C;
+    c = op_adc8(rd8(0x001A0A + cpu.x), 0x01, &cpu.p);
+    v = rd8(0x001A10);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | c);
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(c - v)) & ~P_C) | (c >= v ? P_C : 0));
+    if (c != v) {
+        wr8(0x001A0A + cpu.x, c);
+        return;
+    }
+    wr8(0x001A0A + cpu.x, 0x00);
+    v = rd8(0x001A08 + cpu.x);
+    cpu.p &= (uint8_t)~P_C;
+    v = op_adc8(v, rd8(b | (uint16_t)(0x1A0C + cpu.x)), &cpu.p);
+    wr8(0x001A08 + cpu.x, v);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x40)) & ~P_C) | (v >= 0x40 ? P_C : 0));
+    if (v != 0x40) {
+        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x42)) & ~P_C) | (v >= 0x42 ? P_C : 0));
+        if (v != 0x42)
+            return;
+    }
+    v = (uint8_t)((rd8(0x001A0C + cpu.x) ^ 0xFF) + 1);
+    wr8(0x001A0C + cpu.x, v);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+}

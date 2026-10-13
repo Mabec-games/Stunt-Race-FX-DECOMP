@@ -350,3 +350,85 @@ WindowSweepStep:
     sta.l !wram_1A19,x
 .done:
     rts
+
+; @routine 7E:DD43 OscillatorStep
+; WHAT IT DOES: Steps oscillator X by the level in bits 5-7 of $1A11 (4
+; while bit 7 is set, with $1A0E + X = $80): a change of level restarts
+; its count $1A0A + X; level 0 resets it ($1A08 + X = $40, rising by 1);
+; otherwise its count runs to the rate for the level (the table at
+; $7E:D30D, kept in $1A10) and then $1A08 + X moves by $1A0C + X, turning
+; round at $40 and $42.
+; HOW: 8-bit; long accesses to bank 0 except $1A10's store and the step
+; add (data bank). Bit 7 and level 0 are not reached in the traces so far.
+; Entry: X = oscillator. Exit: M 8-bit, X 8-bit; A and flags from the
+; last step.
+%ramcode($7EDD43, $013A6A)
+OscillatorStep:
+    sep.b #$30
+    lda.l !wram_1A11
+    and.b #$80
+    beq .level
+    lda.b #$80
+    sta.l !wram_1A0E,x
+    lda.b #$04
+    jmp.w .rate
+.level:
+    lda.l !wram_1A11
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    cmp.l !wram_1A0E,x
+    beq .same
+    lda.b #$00
+    sta.l !wram_1A0A,x
+.same:
+    lda.l !wram_1A11
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    sta.l !wram_1A0E,x
+    bne .rate
+    lda.b #$00
+    sta.l !wram_1A0A,x
+    lda.b #$40
+    sta.l !wram_1A08,x
+    lda.b #$01
+    sta.l !wram_1A0C,x
+    jmp.w .done
+.rate:
+    dec a
+    phx
+    tax
+    lda.l !oscillator_rates,x
+    sta.w !wram_1A10
+    plx
+    lda.l !wram_1A0A,x
+    clc
+    adc.b #$01
+    cmp.l !wram_1A10
+    beq .move
+    sta.l !wram_1A0A,x
+    jmp.w .done
+.move:
+    lda.b #$00
+    sta.l !wram_1A0A,x
+    lda.l !wram_1A08,x
+    clc
+    adc.w !wram_1A0C,x
+    sta.l !wram_1A08,x
+    cmp.b #$40
+    beq .turn
+    cmp.b #$42
+    beq .turn
+    jmp.w .done
+.turn:
+    lda.l !wram_1A0C,x
+    eor.b #$FF
+    inc a
+    sta.l !wram_1A0C,x
+.done:
+    rts

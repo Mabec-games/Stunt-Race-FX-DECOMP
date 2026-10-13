@@ -1562,3 +1562,6 @@ includeonce
 !wram_1A00 = $1A00
 !wram_1A02 = $1A02
 !wram_19FF = $19FF
+!wram_1A11 = $1A11
+!wram_1A10 = $1A10
+!oscillator_rates = $7ED30D              ; OscillatorStep's rates by level, in the code's work RAM copy
