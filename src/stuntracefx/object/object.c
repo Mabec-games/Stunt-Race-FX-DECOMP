@@ -2548,3 +2548,51 @@ void abi_ObjectPlaceOnParent(void)
     }
     cpu.p |= P_M;
 }
+
+/*
+ * @routine 7E:D3DD ObjectLinkEventTrigger2
+ * WHAT IT DOES: ObjectLinkEventTrigger for player 2: unless bit 7 of $0DA6
+ * is set, when the object two links on from the one at $034A has bit 14
+ * set in its first word and $1A26 is non-zero, clears $1A26, sets $0DA6 to
+ * $80 and starts bob 1 ($1A1D = $1A, $1A1F = $1A23 = 0, $1A21 = $FE).
+ * HOW: As ObjectLinkEventTrigger; a zero $1A26 leaves through its exit.
+ * The start is not reached in the traces so far.
+ * Entry: any widths. Exit: as ObjectLinkEventTrigger.
+ */
+void abi_ObjectLinkEventTrigger2(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t f;
+    uint16_t a;
+
+    cpu.p |= P_M;
+    f = (uint8_t)(rd8(b | 0x0DA6) & 0x80);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | f);
+    cpu.p = nz8(cpu.p, f);
+    if (!f) {
+        cpu.p &= (uint8_t)~(P_M | P_X);
+        cpu.x = rd16(b | 0x034A);
+        cpu.y = rd16(b | (uint16_t)(0x204F + cpu.x));
+        cpu.y = rd16(b | (uint16_t)(0x204F + cpu.y));
+        a = (uint16_t)(rd16(b | cpu.y) & 0x4000);
+        cpu.a = a;
+        cpu.p = nz16(cpu.p, a);
+        if (a) {
+            a = rd16(b | 0x1A26);
+            cpu.a = a;
+            cpu.p = nz16(cpu.p, a);
+            if (a) {
+                wr16(b | 0x1A26, 0x0000);
+                cpu.p |= P_M;
+                wr8(b | 0x0DA6, 0x80);
+                wr8(b | 0x1A1D, 0x1A);
+                wr8(b | 0x1A1F, 0x00);
+                wr8(b | 0x1A23, 0x00);
+                wr8(b | 0x1A21, 0xFE);
+                cpu.a = 0x00FE;
+                cpu.p = nz8(cpu.p, 0xFE);
+            }
+        }
+    }
+    op_sep(P_M | P_X);
+}

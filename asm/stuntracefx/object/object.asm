@@ -511,7 +511,7 @@ ObjectLinkEventTrigger:
     sep.b #$20
     lda.w !wram_0DA4
     and.b #$80
-    bne .lD3DA
+    bne ObjectLinkEventTrigger_done
     rep.b #$30
     ldx.w !wram_0346
     ldy.w !obj_link_w,x
@@ -519,10 +519,10 @@ ObjectLinkEventTrigger:
     tay
     lda.w 0,y
     and.w #$4000
-    beq .lD3DA
+    beq ObjectLinkEventTrigger_done
     rep.b #$20
     lda.w !wram_1A24
-    beq .lD3DA
+    beq ObjectLinkEventTrigger_done
     lda.w #$0000
     sta.w !wram_1A24
     sep.b #$20
@@ -535,7 +535,48 @@ ObjectLinkEventTrigger:
     sta.w !wram_1A22
     lda.b #$FE
     sta.w !wram_1A20
-.lD3DA:
+ObjectLinkEventTrigger_done:
+    sep.b #$30
+    rts
+
+; @routine 7E:D3DD ObjectLinkEventTrigger2
+; WHAT IT DOES: ObjectLinkEventTrigger for player 2: unless bit 7 of $0DA6
+; is set, when the object two links on from the one at $034A has bit 14
+; set in its first word and $1A26 is non-zero, clears $1A26, sets $0DA6 to
+; $80 and starts bob 1 ($1A1D = $1A, $1A1F = $1A23 = 0, $1A21 = $FE).
+; HOW: As ObjectLinkEventTrigger; a zero $1A26 leaves through its exit.
+; The start is not reached in the traces so far.
+; Entry: any widths. Exit: as ObjectLinkEventTrigger.
+%ramcode($7ED3DD, $013104)
+ObjectLinkEventTrigger2:
+    sep.b #$20
+    lda.w !wram_0DA6
+    and.b #$80
+    bne .done
+    rep.b #$30
+    ldx.w !wram_034A
+    ldy.w !obj_link_w,x
+    lda.w !obj_link_w,y
+    tay
+    lda.w 0,y
+    and.w #$4000
+    beq .done
+    rep.b #$20
+    lda.w !wram_1A26
+    beq ObjectLinkEventTrigger_done
+    lda.w #$0000
+    sta.w !wram_1A26
+    sep.b #$20
+    lda.b #$80
+    sta.w !wram_0DA6
+    lda.b #$1A
+    sta.w !wram_1A1D
+    lda.b #$00
+    sta.w !wram_1A1F
+    sta.w !wram_1A23
+    lda.b #$FE
+    sta.w !wram_1A21
+.done:
     sep.b #$30
     rts
 
