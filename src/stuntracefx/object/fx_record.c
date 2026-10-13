@@ -403,3 +403,231 @@ void abi_FxTimersProgram(void)
         gsu.r[12] = gsu_dec(gsu.r[12]);
     } while (gsu.r[12] != 0);
 }
+
+/* PLOT: the pixel at (R1, R2), R1 moving on by one. */
+static void fx_plot(void)
+{
+    gsu_plot((uint8_t)gsu.r[1], (uint8_t)gsu.r[2]);
+    gsu.r[1] = (uint16_t)(gsu.r[1] + 1);
+}
+
+/* COLOR, with the plot options' nibble modes. */
+static void fx_color(uint16_t v)
+{
+    uint8_t c = (uint8_t)v;
+
+    if (gsu.por & 0x04)
+        c = (uint8_t)((gsu.colr & 0xF0) | c >> 4);
+    else if (gsu.por & 0x08)
+        c = (uint8_t)((gsu.colr & 0xF0) | (c & 0x0F));
+    gsu.colr = c;
+}
+
+/* R6 = z for the scale: clamped to $43FF; returns 0 (skip) when below
+   $100. Then R14 = $896C + (z AND NOT 1) and R6 = the scale there. */
+static int fx_scale_for(void)
+{
+    gsu.r[0] = gsu_sub(0x4400, gsu.r[6], 0);
+    if (gsu.s)
+        gsu.r[6] = 0x43FF;
+    gsu.r[0] = gsu_sub(0x0100, gsu.r[6], 0);
+    if (!gsu.s && !gsu.z)
+        return 0;
+    gsu.r[6] = gsu_bic(gsu.r[6], 0x0001);
+    gsu.r[0] = 0x896C;
+    gsu_r14(gsu_add(gsu.r[0], gsu.r[6], 0));
+    gsu.r[6] = gsu_getb();
+    gsu_r14(gsu_inc(gsu.r[14]));
+    gsu.r[6] = gsu_getbh(gsu.r[6]);
+    return 1;
+}
+
+/* Projects R[c]: FMULT by the scale, plus the centre at `centre` (into
+   R5), then checks it against the bound at `bound` (into R[rb]; SUB, carry
+   clear = inside). */
+static int fx_project(int c, uint16_t centre, uint16_t bound, int rb)
+{
+    gsu.r[0] = gsu_fmult(gsu.r[c], gsu.r[6]);
+    gsu.r[5] = gsu_ldw(centre);
+    gsu.r[c] = gsu_add(gsu.r[0], gsu.r[5], 0);
+    gsu.r[rb] = gsu_ldw(bound);
+    gsu.r[0] = gsu_sub(gsu.r[c], gsu.r[rb], 0);
+    if (gsu.cy)
+        return 0;
+    gsu.r[0] = gsu_add(gsu.r[0], gsu.r[rb], 0);
+    return 1;
+}
+
+/* A line from (R3, R9) to (R1, R2): Bresenham with PLOT in the branch's
+   delay slot and the error step in the LOOP's. R12 is kept at $40. */
+static void fx_line(void)
+{
+    gsu_stw(0x0040, gsu.r[12]);
+    gsu.r[5] = 0x0001;
+    gsu.r[3] = gsu_sub(gsu.r[3], gsu.r[1], 0);
+    if (gsu.s) {
+        gsu.r[5] = 0xFFFF;
+        gsu.r[3] = gsu_inc(gsu_not(gsu.r[3]));
+    }
+    gsu.r[6] = 0x0001;
+    gsu.r[9] = gsu_sub(gsu.r[9], gsu.r[2], 0);
+    if (gsu.s) {
+        gsu.r[6] = 0xFFFF;
+        gsu.r[9] = gsu_inc(gsu_not(gsu.r[9]));
+    }
+    gsu.r[0] = gsu_sub(gsu.r[3], gsu.r[9], 0);
+    if (!gsu.s) {
+        gsu.r[12] = gsu_inc(gsu.r[3]);
+        gsu.r[0] = gsu_lsr(gsu.r[0]);
+        gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[9], 0);
+        gsu.r[13] = 0xBB9A;
+        do {
+            int cs = gsu.cy;
+
+            fx_plot();
+            if (!cs) {
+                gsu.r[0] = gsu_add(gsu.r[0], gsu.r[3], 0);
+                gsu.r[2] = gsu_add(gsu.r[2], gsu.r[6], 0);
+            }
+            gsu.r[1] = gsu_dec(gsu.r[1]);
+            gsu.r[1] = gsu_add(gsu.r[1], gsu.r[5], 0);
+            gsu.r[12] = gsu_dec(gsu.r[12]);
+            gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[9], 0);
+        } while (gsu.r[12] != 0);
+    } else {
+        gsu.r[12] = gsu_inc(gsu.r[9]);
+        gsu.r[0] = gsu_inc(gsu_not(gsu.r[0]));
+        gsu.r[0] = gsu_lsr(gsu.r[0]);
+        gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[3], 0);
+        gsu.r[13] = 0xBBB5;
+        do {
+            int cs = gsu.cy;
+
+            fx_plot();
+            if (!cs) {
+                gsu.r[0] = gsu_add(gsu.r[0], gsu.r[9], 0);
+                gsu.r[1] = gsu_add(gsu.r[1], gsu.r[5], 0);
+            }
+            gsu.r[1] = gsu_dec(gsu.r[1]);
+            gsu.r[2] = gsu_add(gsu.r[2], gsu.r[6], 0);
+            gsu.r[12] = gsu_dec(gsu.r[12]);
+            gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[3], 0);
+        } while (gsu.r[12] != 0);
+    }
+    gsu.r[12] = gsu_ldw(0x0040);
+}
+
+/* Particle R11 (its record): moved by its deltas, projected and drawn. */
+static void fx_particle(void)
+{
+    static const struct { uint8_t delta, word, at; } axis[3] = {{3, 6, 0x26}, {4, 8, 0x28}, {5, 0x0A, 0x2A}};
+    static const int keep[3] = {3, 9, 13}, to[3] = {1, 2, 6}, rw[3] = {1, 2, 6};
+    int i, big;
+
+    for (i = 0; i < 3; i++) {
+        gsu.r[0] = gsu_add(axis[i].delta, gsu.r[11], 0);
+        gsu.r[0] = gsu_ldb(gsu.r[0]);
+        gsu.r[0] = (uint16_t)(int16_t)(int8_t)gsu.r[0];
+        gsu_sz(gsu.r[0]);
+        gsu.r[rw[i]] = axis[i].word;
+        gsu.r[rw[i]] = gsu_add(gsu.r[rw[i]], gsu.r[11], 0);
+        gsu.r[rw[i]] = gsu_ldw(gsu.r[rw[i]]);
+        gsu.r[keep[i]] = gsu.r[rw[i]];
+        gsu.r[0] = gsu_add(gsu.r[0], gsu.r[rw[i]], 0);
+        gsu_sbk(gsu.r[0]);
+        gsu.r[4] = gsu_ldw(axis[i].at);
+        gsu.r[to[i]] = gsu_add(gsu.r[0], gsu.r[4], 0);
+    }
+    gsu.r[5] = gsu_add(0x0001, gsu.r[11], 0);
+    gsu.r[5] = gsu_ldb(gsu.r[5]);
+    gsu.r[0] = gsu_or(gsu.r[5], 0x0001);
+    gsu.r[4] = gsu_add(0x0001, gsu.r[11], 0);
+    gsu_stb(gsu.r[4], (uint8_t)gsu.r[0]);
+    gsu.r[0] = gsu_and(gsu.r[5], 0x0002);
+    if (!gsu.z) {
+        gsu.r[0] = gsu_add(0x0004, gsu.r[11], 0);
+        gsu.r[0] = gsu_ldb(gsu.r[0]);
+        gsu.r[0] = gsu_add(gsu.r[0], 0x0001, 0);
+        gsu.r[4] = gsu_add(0x0004, gsu.r[11], 0);
+        gsu_stb(gsu.r[4], (uint8_t)gsu.r[0]);
+    }
+    gsu_moves(gsu.r[6]);
+    if (gsu.s || !fx_scale_for())
+        return;
+    if (!fx_project(1, 0x0034, 0x003A, 4) || !fx_project(2, 0x0036, 0x003E, 5))
+        return;
+    gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[0], 0);
+    gsu.por = (uint8_t)gsu.r[0];
+    gsu.r[0] = gsu_add(0x0002, gsu.r[11], 0);
+    gsu.r[0] = gsu_ldb(gsu.r[0]);
+    fx_color(gsu.r[0]);
+    gsu.r[0] = 0x0008;
+    gsu.por = 0x08;
+    gsu.r[0] = gsu_add(0x0001, gsu.r[11], 0);
+    gsu.r[0] = gsu_ldb(gsu.r[0]);
+    gsu.r[0] = gsu_and(gsu.r[0], 0x0004);
+    big = !gsu.z;
+    if (!big) {
+        fx_plot();
+        fx_plot();
+        gsu.r[2] = gsu_inc(gsu.r[2]);
+        gsu.r[1] = gsu_dec(gsu.r[1]);
+        gsu.r[1] = gsu_dec(gsu.r[1]);
+        fx_plot();
+        fx_plot();
+        return;
+    }
+    for (i = 0; i < 3; i++) {
+        static const uint8_t at[3] = {0x26, 0x28, 0x2A};
+
+        gsu.r[0] = gsu_ldw(at[i]);
+        gsu.r[keep[i]] = gsu_add(gsu.r[0], gsu.r[keep[i]], 0);
+    }
+    gsu.r[6] = gsu.r[13];
+    if (!fx_scale_for())
+        return;
+    if (!fx_project(3, 0x0034, 0x003A, 4) || !fx_project(9, 0x0036, 0x003E, 5))
+        return;
+    fx_line();
+}
+
+/*
+ * @routine 01:BA13 FxParticlesDraw
+ * WHAT IT DOES: Draws the particles of key R2: for each of the 20 records
+ * at $273E (14 bytes) whose word +$0C is R2, moves it by its signed deltas
+ * (+3, +4, +5 into the words +6, +8, +$0A), sets bit 0 of its flags (+1)
+ * and, with flag bit 1, steps +4; then, when its z (plus $2A) is from
+ * $100 up, projects it (the scale for z from the table at $14:896C,
+ * FMULT, plus the centre $34/$36), and inside the bounds ($3A, $3E) plots
+ * it in colour +2: a 2 x 2 dot, or with flag bit 2 a line from where it
+ * was (projected the same way).
+ * HOW: ROM bank $14; the view offsets at $26/$28/$2A; R12 counts the
+ * records and is kept at $40 while a line is drawn; plot options 0 for
+ * the colour, then 8. The line is not reached in the traces so far.
+ * Entry: R2 = the key; R10 = stack; R11 = return address. Exit: R7 = the
+ * key; R12 = 0; R11 past the last record + 12; the plot registers as the
+ * last particle left them; S, Z from R10; the last RAM address R10.
+ */
+void abi_FxParticlesDraw(void)
+{
+    gsu_push(&gsu.r[10], gsu.r[11]);
+    gsu.r[7] = gsu.r[2];
+    gsu.r[0] = 0x0014;
+    gsu.rombr = 0x14;
+    gsu.r[11] = 0x274A;
+    gsu.r[12] = 0x0014;
+    for (;;) {
+        gsu.r[0] = gsu_ldw(gsu.r[11]);
+        gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[7], 0);
+        if (gsu.z) {
+            gsu.r[11] = gsu_sub(gsu.r[11], 0x000C, 0);
+            fx_particle();
+            gsu.r[11] = gsu_add(gsu.r[11], 0x000C, 0);
+        }
+        gsu.r[11] = gsu_add(gsu.r[11], 0x000E, 0);
+        gsu.r[12] = gsu_dec(gsu.r[12]);
+        if (gsu.z)
+            break;
+    }
+    gsu_pull(&gsu.r[10]);
+}

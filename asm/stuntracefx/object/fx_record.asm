@@ -416,4 +416,344 @@ FxTimersProgram:
     stop
     nop
 
+; @routine 01:BA13 FxParticlesDraw
+; WHAT IT DOES: Draws the particles of key R2: for each of the 20 records
+; at $273E (14 bytes) whose word +$0C is R2, moves it by its signed deltas
+; (+3, +4, +5 into the words +6, +8, +$0A), sets bit 0 of its flags (+1)
+; and, with flag bit 1, steps +4; then, when its z (plus $2A) is from
+; $100 up, projects it (the scale for z from the table at $14:896C,
+; FMULT, plus the centre $34/$36), and inside the bounds ($3A, $3E) plots
+; it in colour +2: a 2 x 2 dot, or with flag bit 2 a line from where it
+; was (projected the same way).
+; HOW: ROM bank $14; the view offsets at $26/$28/$2A; R12 counts the
+; records and is kept at $40 while a line is drawn; plot options 0 for
+; the colour, then 8. The line is not reached in the traces so far.
+; Entry: R2 = the key; R10 = stack; R11 = return address. Exit: R7 = the
+; key; R12 = 0; R11 past the last record + 12; the plot registers as the
+; last particle left them; S, Z from R10; the last RAM address R10.
+%at($01BA13)
+FxParticlesDraw:
+    from r11
+    stw (r10)
+    inc r10
+    inc r10
+    with r2
+    to r7
+    ibt r0,#$14
+    romb
+    iwt r11,#$274A
+    iwt r12,#$0014
+    cache
+.lBA24:
+    ldw (r11)
+    sub r7
+    beq .lBA35
+    nop
+.lBA29:
+    with r11
+    add #14
+    dec r12
+    bne .lBA24
+    nop
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+.lBA35:
+    with r11
+    sub #12
+    ibt r0,#$03
+    add r11
+    ldb (r0)
+    sex
+    ibt r1,#$06
+    with r1
+    add r11
+    to r1
+    ldw (r1)
+    with r1
+    to r3
+    add r1
+    sbk
+    lms r4,($26)
+    to r1
+    add r4
+    ibt r0,#$04
+    add r11
+    ldb (r0)
+    sex
+    ibt r2,#$08
+    with r2
+    add r11
+    to r2
+    ldw (r2)
+    with r2
+    to r9
+    add r2
+    sbk
+    lms r4,($28)
+    to r2
+    add r4
+    ibt r0,#$05
+    add r11
+    ldb (r0)
+    sex
+    ibt r6,#$0A
+    with r6
+    add r11
+    to r6
+    ldw (r6)
+    with r6
+    to r13
+    add r6
+    sbk
+    lms r4,($2A)
+    to r6
+    add r4
+    ibt r5,#$01
+    with r5
+    add r11
+    to r5
+    ldb (r5)
+    from r5
+    or #1
+    ibt r4,#$01
+    with r4
+    add r11
+    from r0
+    stb (r4)
+    from r5
+    and #2
+    beq .lBA9C
+    nop
+    ibt r0,#$04
+    add r11
+    ldb (r0)
+    add #1
+    ibt r4,#$04
+    with r4
+    add r11
+    from r0
+    stb (r4)
+.lBA9C:
+    with r6
+    from r6
+    bmi .lBB0D
+    nop
+    iwt r0,#$4400
+    sub r6
+    bpl .lBAAB
+    nop
+    iwt r6,#$43FF
+.lBAAB:
+    iwt r0,#$0100
+    sub r6
+    bmi .lBAB9
+    nop
+    beq .lBAB9
+    nop
+    iwt r15,#.lBB0D
+    nop
+.lBAB9:
+    with r6
+    bic #1
+    iwt r0,#$896C
+    to r14
+    add r6
+    to r6
+    getb
+    inc r14
+    with r6
+    getbh
+    from r1
+    fmult
+    lms r5,($34)
+    to r1
+    add r5
+    lms r4,($3A)
+    from r1
+    sub r4
+    bcc .lBADA
+    nop
+    iwt r15,#.lBB0D
+    nop
+.lBADA:
+    add r4
+    from r2
+    fmult
+    lms r5,($36)
+    to r2
+    add r5
+    lms r5,($3E)
+    from r2
+    sub r5
+    bcc .lBAEE
+    nop
+    iwt r15,#.lBB0D
+    nop
+.lBAEE:
+    add r5
+    sub r0
+    cmode
+    ibt r0,#$02
+    add r11
+    ldb (r0)
+    color
+    ibt r0,#$08
+    cmode
+    ibt r0,#$01
+    add r11
+    ldb (r0)
+    and #4
+    bne .lBB14
+    nop
+    plot
+    plot
+    inc r2
+    dec r1
+    dec r1
+    plot
+    plot
+.lBB0D:
+    with r11
+    add #12
+    iwt r15,#.lBA29
+    nop
+.lBB14:
+    lms r0,($26)
+    to r3
+    add r3
+    lms r0,($28)
+    to r9
+    add r9
+    lms r0,($2A)
+    to r13
+    add r13
+    with r13
+    to r6
+    iwt r0,#$4400
+    sub r6
+    bpl .lBB2F
+    nop
+    iwt r6,#$43FF
+.lBB2F:
+    iwt r0,#$0100
+    sub r6
+    bmi .lBB3D
+    nop
+    beq .lBB3D
+    nop
+    iwt r15,#.lBB0D
+    nop
+.lBB3D:
+    with r6
+    bic #1
+    iwt r0,#$896C
+    to r14
+    add r6
+    to r6
+    getb
+    inc r14
+    with r6
+    getbh
+    from r3
+    fmult
+    lms r5,($34)
+    to r3
+    add r5
+    lms r4,($3A)
+    from r3
+    sub r4
+    bcc .lBB5E
+    nop
+    iwt r15,#.lBB0D
+    nop
+.lBB5E:
+    add r4
+    from r9
+    fmult
+    lms r5,($36)
+    to r9
+    add r5
+    lms r5,($3E)
+    from r9
+    sub r5
+    bcc .lBB72
+    nop
+    iwt r15,#.lBB0D
+    nop
+.lBB72:
+    add r5
+    sms ($40),r12
+    ibt r5,#$01
+    with r3
+    sub r1
+    bpl .lBB82
+    nop
+    ibt r5,#$FF
+    with r3
+    not
+    inc r3
+.lBB82:
+    ibt r6,#$01
+    with r9
+    sub r2
+    bpl .lBB8E
+    nop
+    ibt r6,#$FF
+    with r9
+    not
+    inc r9
+.lBB8E:
+    from r3
+    sub r9
+    bmi .lBBAC
+    nop
+    with r3
+    to r12
+    inc r12
+    lsr
+    sub r9
+    with r15
+    to r13
+    bcs .lBBA0
+    plot
+    add r3
+    with r2
+    add r6
+.lBBA0:
+    dec r1
+    with r1
+    add r5
+    loop
+    sub r9
+    lms r12,($40)
+    iwt r15,#.lBB0D
+    nop
+.lBBAC:
+    with r9
+    to r12
+    inc r12
+    not
+    inc r0
+    lsr
+    sub r3
+    with r15
+    to r13
+    bcs .lBBBB
+    plot
+    add r9
+    with r1
+    add r5
+.lBBBB:
+    dec r1
+    with r2
+    add r6
+    loop
+    sub r3
+    lms r12,($40)
+    iwt r15,#.lBB0D
+    nop
+
 arch 65816
