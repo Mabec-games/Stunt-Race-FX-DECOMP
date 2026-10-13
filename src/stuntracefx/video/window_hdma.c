@@ -1046,3 +1046,106 @@ void abi_WindowHdmaFFD9(void)
 {
     window_bands_3(15, 0xFFD9);
 }
+
+void abi_WindowHdmaAt(void);
+void abi_WindowHdmaFFDD(void);
+
+/*
+ * @routine 7E:D75E WindowSplitAnimate
+ * WHAT IT DOES: While $19DF is 1, runs the split window animation of state
+ * $19D8: 1 starts an opening ($19DB from 0 by $0400 to $7400, $19E2 =
+ * $F50B, $19E4 = 0), 2 a closing (from $8000 by -$0400 to $0800, $19E4 =
+ * $0BF5, $19E2 = 0), both going on to state 4 with $0DA4 cleared; in
+ * states 4 and 5 it clears bit 5 of $0D45, selects window setup 8 with
+ * $19E0 in $19AC-$19B1, and moves $19DB on, setting the bands around line
+ * ($FF - 2 * $19DC) / 2 (WindowHdmaAt); at the end, from $7000 up it sets
+ * the full bands (WindowHdmaFFDD) and state 5, below it state 0.
+ * HOW: The data bank is the code's ($7E); some accesses are long to bank
+ * 0. The closing, state 3 and the state 0 end are not reached in the
+ * traces so far.
+ * Entry: any widths. Exit: P and the data bank restored; X and Y high
+ * bytes cleared; A as the last step left it.
+ */
+void abi_WindowSplitAnimate(void)
+{
+    uint8_t p0 = cpu.p, db0 = cpu.db, v, h;
+    uint32_t b = 0x7E0000;
+    uint16_t a;
+    unsigned i;
+
+    cpu.db = 0x7E;
+    op_sep(P_M | P_X);
+    v = rd8(0x0019DF);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    if (v != 0x01)
+        goto out;
+    v = rd8(b | 0x19D8);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    if (!v)
+        goto out;
+    v = rd8(b | 0x19D8);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    if (v == 0x01 || v == 0x02) {
+        cpu.p &= (uint8_t)~P_M;
+        if (v == 0x01) {
+            wr16(0x0019DD, 0x0400);
+            wr16(0x0019DB, 0x0000);
+            wr16(0x0019D9, 0x7400);
+            wr16(b | 0x19E2, 0xF50B);
+            wr16(b | 0x19E4, 0x0000);
+        } else {
+            wr16(0x0019DD, 0xFC00);
+            wr16(0x0019DB, 0x8000);
+            wr16(0x0019D9, 0x0800);
+            wr16(b | 0x19E4, 0x0BF5);
+            wr16(b | 0x19E2, 0x0000);
+        }
+        wr16(0x000DA4, 0x0000);
+        op_sep(P_M | P_X);
+        wr8(0x0019D8, 0x04);
+    } else if (v != 0x04 && v != 0x05) {
+        goto out;
+    }
+    cpu.p |= P_M;
+    v = (uint8_t)(rd8(0x000D45) & 0xDF);
+    wr8(0x000D45, v);
+    wr8(b | 0x19A9, 0x08);
+    v = rd8(b | 0x19E0);
+    for (i = 0; i < 6; i++)
+        wr8(b | (uint16_t)(0x19AC + i), v);
+    cpu.p &= (uint8_t)~(P_M | P_C);
+    a = op_adc16(rd16(0x0019DB), rd16(0x0019DD), &cpu.p);
+    cpu.a = a;
+    op_cmp16(rd16(b | 0x19D9));
+    if (!(cpu.p & P_Z)) {
+        wr16(0x0019DB, a);
+        cpu.p |= P_M;
+        h = rd8(0x0019DC);
+        cpu.p |= P_C;
+        v = op_sbc8(0xFF, h, &cpu.p);
+        h = rd8(0x0019DC);
+        cpu.p |= P_C;
+        v = op_sbc8(v, h, &cpu.p);
+        cpu.p = (uint8_t)((cpu.p & ~P_C) | (v & 0x01));
+        v = (uint8_t)(v >> 1);
+        cpu.p = nz8(cpu.p, v);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+        abi_WindowHdmaAt();
+        goto out;
+    }
+    a = rd16(0x0019DB);
+    cpu.a = a;
+    op_cmp16(0x7000);
+    if (a >= 0x7000) {
+        abi_WindowHdmaFFDD();
+        cpu.p |= P_M;
+        wr8(b | 0x19D8, 0x05);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x05);
+    } else {
+        cpu.p |= P_M;
+        wr8(b | 0x19D8, 0x00);
+    }
+out:
+    cpu.db = db0;
+    cpu.p = p0;
+}

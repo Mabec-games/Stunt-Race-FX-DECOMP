@@ -1134,3 +1134,134 @@ WindowHdmaFFD9:
     sta.l !window_hdma+19
     sta.l !window_hdma+22
     rts
+
+; @routine 7E:D75E WindowSplitAnimate
+; WHAT IT DOES: While $19DF is 1, runs the split window animation of state
+; $19D8: 1 starts an opening ($19DB from 0 by $0400 to $7400, $19E2 =
+; $F50B, $19E4 = 0), 2 a closing (from $8000 by -$0400 to $0800, $19E4 =
+; $0BF5, $19E2 = 0), both going on to state 4 with $0DA4 cleared; in
+; states 4 and 5 it clears bit 5 of $0D45, selects window setup 8 with
+; $19E0 in $19AC-$19B1, and moves $19DB on, setting the bands around line
+; ($FF - 2 * $19DC) / 2 (WindowHdmaAt); at the end, from $7000 up it sets
+; the full bands (WindowHdmaFFDD) and state 5, below it state 0.
+; HOW: The data bank is the code's ($7E); some accesses are long to bank
+; 0. The closing, state 3 and the state 0 end are not reached in the
+; traces so far.
+; Entry: any widths. Exit: P and the data bank restored; X and Y high
+; bytes cleared; A as the last step left it.
+%ramcode($7ED75E, $013485)
+WindowSplitAnimate:
+    php
+    phb
+    phk
+    plb
+    sep.b #$30
+    lda.l !wram_19DF
+    cmp.b #$01
+    bne .out
+    lda.w !window_hdma_off
+    bne .state
+.out:
+    plb
+    plp
+    rtl
+.state:
+    sep.b #$30
+    lda.w !window_hdma_off
+    cmp.b #$04
+    beq .run
+    cmp.b #$05
+    beq .run
+    cmp.b #$01
+    beq .open
+    cmp.b #$02
+    beq .close
+    cmp.b #$03
+    beq .state3
+    plb
+    plp
+    rtl
+.state3:
+    sep.b #$20
+    plb
+    plp
+    rtl
+.open:
+    rep.b #$20
+    lda.w #$0400
+    sta.l !wram_19DD
+    lda.w #$0000
+    sta.l !wram_19DB
+    lda.w #$7400
+    sta.l !window_band_target
+    lda.w #$F50B
+    sta.w !wram_19E2
+    lda.w #$0000
+    sta.w !wram_19E4
+    jmp.w .started
+.close:
+    rep.b #$20
+    lda.w #$FC00
+    sta.l !wram_19DD
+    lda.w #$8000
+    sta.l !wram_19DB
+    lda.w #$0800
+    sta.l !window_band_target
+    lda.w #$0BF5
+    sta.w !wram_19E4
+    lda.w #$0000
+    sta.w !wram_19E2
+.started:
+    rep.b #$20
+    lda.w #$0000
+    sta.l !wram_0DA4
+    sep.b #$30
+    lda.b #$04
+    sta.l !window_hdma_off
+.run:
+    sep.b #$20
+    lda.l !wram_0D45
+    and.b #$DF
+    sta.l !wram_0D45
+    lda.b #$08
+    sta.w !windows_setup_index
+    lda.w !wram_19E0
+    sta.w !window_setup_bytes
+    sta.w !window_setup_bytes+1
+    sta.w !window_setup_bytes+2
+    sta.w !window_setup_bytes+3
+    sta.w !window_setup_bytes+4
+    sta.w !window_setup_bytes+5
+    rep.b #$20
+    lda.l !wram_19DB
+    clc
+    adc.l !wram_19DD
+    cmp.w !window_band_target
+    beq .arrived
+    sta.l !wram_19DB
+    sep.b #$20
+    lda.b #$FF
+    sec
+    sbc.l !wram_19DB+1
+    sec
+    sbc.l !wram_19DB+1
+    lsr a
+    jsr.w WindowHdmaAt
+    bra .done
+.arrived:
+    rep.b #$20
+    lda.l !wram_19DB
+    cmp.w #$7000
+    bcc .closed
+    jsr.w WindowHdmaFFDD
+    sep.b #$20
+    lda.b #$05
+    sta.w !window_hdma_off
+    bra .done
+.closed:
+    sep.b #$20
+    stz.w !window_hdma_off
+.done:
+    plb
+    plp
+    rtl

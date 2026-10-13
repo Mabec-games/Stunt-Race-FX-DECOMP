@@ -1577,3 +1577,5 @@ includeonce
 !wram_0EEA = $0EEA
 !wram_0D59 = $0D59
 !digit_tiles_9481 = $7F9481           ; three tilemap words DigitTiles1184 writes
+!wram_19E2 = $19E2
+!wram_19E4 = $19E4
