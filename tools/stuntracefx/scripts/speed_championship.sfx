@@ -1,0 +1,358 @@
+# speed_championship: three Novice Speed Trax championships. Each race is
+# finished by setting the player car's lap count ($70:1D52, its record
+# being the one $70:2476 points to) to 3 every 50 frames; the first and
+# third run fast and equal, the second later, so the records sort, compare
+# equal and worse; each ends with initials entry, every button pressed.
+# speed_novice_coupe
+# Power on, skip the title, reach GAME SELECTION.
+wait 300
+press START
+wait 200
+press START
+wait 200
+shot gamesel
+press START
+wait 120
+press RIGHT
+wait 40
+shot carsel
+press START
+wait 90
+press START
+wait 150
+press RIGHT
+wait 30
+press RIGHT
+wait 30
+shot course
+press START
+wait 120
+press START
+wait 200
+shot racestart
+repeat 12
+hold B 50
+poke 701D52 03,00
+end
+wait 1500
+press START
+wait 200
+press START
+wait 400
+repeat 12
+hold B 50
+poke 701D52 03,00
+end
+wait 1500
+press START
+wait 200
+press START
+wait 400
+repeat 12
+hold B 50
+poke 701D52 03,00
+end
+wait 1500
+press START
+wait 200
+press START
+wait 400
+repeat 12
+hold B 50
+poke 701D52 03,00
+end
+wait 1500
+press START
+wait 200
+press START
+wait 400
+repeat 12
+hold B 50
+poke 701D52 03,00
+end
+wait 1500
+press START
+wait 200
+press START
+wait 400
+repeat 12
+hold B 50
+poke 701D52 03,00
+end
+wait 1500
+press START
+wait 200
+press START
+wait 400
+press START
+wait 200
+shot a_res
+press START
+wait 200
+press START
+wait 200
+shot a_name
+press UP
+wait 20
+press UP
+wait 20
+press DOWN
+wait 20
+press RIGHT
+wait 20
+press UP
+wait 20
+press LEFT
+wait 20
+press B
+wait 20
+press DOWN
+wait 20
+press DOWN
+wait 20
+press RIGHT
+wait 20
+press RIGHT
+wait 20
+press UP
+wait 20
+press A
+wait 20
+press RIGHT
+wait 20
+press DOWN
+wait 20
+press Y
+wait 20
+press X
+wait 20
+press L
+wait 20
+press R
+wait 20
+press START
+wait 20
+wait 200
+shot a_after
+press START
+wait 200
+press START
+wait 640
+hold B 400
+repeat 12
+hold B 50
+poke 701D52 03,00
+end
+wait 1500
+press START
+wait 200
+press START
+wait 400
+hold B 400
+repeat 12
+hold B 50
+poke 701D52 03,00
+end
+wait 1500
+press START
+wait 200
+press START
+wait 400
+hold B 400
+repeat 12
+hold B 50
+poke 701D52 03,00
+end
+wait 1500
+press START
+wait 200
+press START
+wait 400
+hold B 400
+repeat 12
+hold B 50
+poke 701D52 03,00
+end
+wait 1500
+press START
+wait 200
+press START
+wait 400
+hold B 400
+repeat 12
+hold B 50
+poke 701D52 03,00
+end
+wait 1500
+press START
+wait 200
+press START
+wait 400
+hold B 400
+repeat 12
+hold B 50
+poke 701D52 03,00
+end
+wait 1500
+press START
+wait 200
+press START
+wait 400
+press START
+wait 200
+shot b_res
+press START
+wait 200
+press START
+wait 200
+shot b_name
+press UP
+wait 20
+press UP
+wait 20
+press DOWN
+wait 20
+press RIGHT
+wait 20
+press UP
+wait 20
+press LEFT
+wait 20
+press B
+wait 20
+press DOWN
+wait 20
+press DOWN
+wait 20
+press RIGHT
+wait 20
+press RIGHT
+wait 20
+press UP
+wait 20
+press A
+wait 20
+press RIGHT
+wait 20
+press DOWN
+wait 20
+press Y
+wait 20
+press X
+wait 20
+press L
+wait 20
+press R
+wait 20
+press START
+wait 20
+wait 200
+shot b_after
+press START
+wait 200
+press START
+wait 640
+repeat 12
+hold B 50
+poke 701D52 03,00
+end
+wait 1500
+press START
+wait 200
+press START
+wait 400
+repeat 12
+hold B 50
+poke 701D52 03,00
+end
+wait 1500
+press START
+wait 200
+press START
+wait 400
+repeat 12
+hold B 50
+poke 701D52 03,00
+end
+wait 1500
+press START
+wait 200
+press START
+wait 400
+repeat 12
+hold B 50
+poke 701D52 03,00
+end
+wait 1500
+press START
+wait 200
+press START
+wait 400
+repeat 12
+hold B 50
+poke 701D52 03,00
+end
+wait 1500
+press START
+wait 200
+press START
+wait 400
+repeat 12
+hold B 50
+poke 701D52 03,00
+end
+wait 1500
+press START
+wait 200
+press START
+wait 400
+press START
+wait 200
+shot c_res
+press START
+wait 200
+press START
+wait 200
+shot c_name
+press UP
+wait 20
+press UP
+wait 20
+press DOWN
+wait 20
+press RIGHT
+wait 20
+press UP
+wait 20
+press LEFT
+wait 20
+press B
+wait 20
+press DOWN
+wait 20
+press DOWN
+wait 20
+press RIGHT
+wait 20
+press RIGHT
+wait 20
+press UP
+wait 20
+press A
+wait 20
+press RIGHT
+wait 20
+press DOWN
+wait 20
+press Y
+wait 20
+press X
+wait 20
+press L
+wait 20
+press R
+wait 20
+press START
+wait 20
+wait 200
+shot c_after
