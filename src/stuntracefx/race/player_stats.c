@@ -165,3 +165,113 @@ void abi_PlayerStatsAndPaletteAnimate(void)
 {
     PlayerStatsAndPaletteAnimate();
 }
+
+void abi_PlayerStatsFromRecord(void);
+
+/* LDA $0DD6 (in the current width), TAX, JMP (table,X): the race phase's
+   handler, reached as original code; it returns to the caller, or through
+   the caller's frame. */
+static void phase_jump(uint16_t table)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    if (cpu.p & P_M)
+        op_lda8(b | 0x0DD6);
+    else
+        op_lda16(b | 0x0DD6);
+    cpu.x = (cpu.p & P_X) ? (uint16_t)(cpu.a & 0x00FF) : cpu.a;
+    cpu.p = (cpu.p & P_X) ? nz8(cpu.p, (uint8_t)cpu.x) : nz16(cpu.p, cpu.x);
+    jump_routine(0x070000 | rd16(0x070000 | (uint16_t)(table + cpu.x)));
+}
+
+/*
+ * @routine 07:E22B PhaseDispatchE232
+ * WHAT IT DOES: Runs the handler for race phase $0DD6 from the table at
+ * $07:E232.
+ * HOW: JMP (table,X); the handler returns to the caller, or through its
+ * caller's frame (jump_routine).
+ * Entry: any widths. Exit: as the handler leaves it.
+ */
+void abi_PhaseDispatchE232(void)
+{
+    phase_jump(0xE232);
+}
+
+/*
+ * @routine 07:E246 PhaseDispatchE24F
+ * WHAT IT DOES: Runs the handler for race phase $0DD6 from the table at
+ * $07:E24F, with 8-bit registers.
+ * HOW: SEP #$30, then JMP (table,X).
+ * Entry: any widths. Exit: as the handler leaves it.
+ */
+void abi_PhaseDispatchE24F(void)
+{
+    op_sep(P_M | P_X);
+    phase_jump(0xE24F);
+}
+
+/* REP #$30, LDY #0, LDA.L $70:2476, TAX, SEP #$20, JSR
+   PlayerStatsFromRecord, SEP #$10: player 0's figures. */
+static void player0_stats(void)
+{
+    op_rep(P_M | P_X);
+    cpu.y = 0;
+    cpu.p = nz16(cpu.p, 0);
+    op_lda16(0x702476);
+    op_tax16();
+    op_sep(P_M);
+    abi_PlayerStatsFromRecord();
+    op_sep(P_X);
+}
+
+/*
+ * @routine 07:DCEC PlayerStatsThenPhaseE232
+ * WHAT IT DOES: Player 0's figures from its record, then the race phase
+ * handler from the table at $07:E232 with Y = 0.
+ * HOW: PlayerStatsFromRecord, SEP #$10, then PhaseDispatchE232.
+ * Entry: any widths, D = $0000. Exit: as the phase handler leaves it.
+ */
+void abi_PlayerStatsThenPhaseE232(void)
+{
+    player0_stats();
+    cpu.y = 0;
+    cpu.p = nz8(cpu.p, 0);
+    abi_PhaseDispatchE232();
+}
+
+/*
+ * @routine 07:DD03 PlayerStatsThenPhaseDD35
+ * WHAT IT DOES: Player 0's figures from its record; then, when $10CD is set
+ * and the race phase $0DD6 is 8 or more, starts the fade out ($0E3A = 1)
+ * and, while bit 7 of $0D61 is set, goes on to $07:EBE9; otherwise runs the
+ * race phase handler from the table at $07:DD35.
+ * HOW: PlayerStatsFromRecord, SEP #$10, then the checks; the handlers and
+ * $07:EBE9 are entered by JMP and return to the caller.
+ * Entry: any widths, D = $0000. Exit: fading with bit 7 of $0D61 clear: A
+ * low byte = $0D61, N, Z from it, C set; otherwise as the handler leaves it.
+ */
+void abi_PlayerStatsThenPhaseDD35(void)
+{
+    uint32_t b;
+    uint8_t v;
+
+    player0_stats();
+    b = (uint32_t)cpu.db << 16;
+    op_lda8(b | 0x10CD);
+    if ((uint8_t)cpu.a) {
+        op_lda8(b | 0x0DD6);
+        v = (uint8_t)cpu.a;
+        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x08)) & ~P_C) | (v >= 0x08 ? P_C : 0));
+        if (v >= 0x08) {
+            cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
+            cpu.p = nz8(cpu.p, 0x01);
+            wr8(b | 0x0E3A, 0x01);
+            op_lda8(b | 0x0D61);
+            if (!((uint8_t)cpu.a & 0x80))
+                return;
+            jump_routine(0x07EBE9);
+            return;
+        }
+    }
+    phase_jump(0xDD35);
+}

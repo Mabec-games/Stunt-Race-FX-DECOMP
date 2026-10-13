@@ -144,7 +144,8 @@ PlayerStatsFromRecord:
 ; @routine 07:E22B PhaseDispatchE232
 ; WHAT IT DOES: Runs the handler for race phase $0DD6 from the table at
 ; $07:E232.
-; HOW: JMP (table,X); the handler returns to the caller.
+; HOW: JMP (table,X); the handler returns to the caller, or through its
+; caller's frame (jump_routine).
 ; Entry: any widths. Exit: as the handler leaves it.
 %at($07E22B)
 PhaseDispatchE232:
