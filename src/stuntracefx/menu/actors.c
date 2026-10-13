@@ -147,9 +147,10 @@ static uint8_t cmp16(uint8_t p, uint16_t a, uint16_t b)
  */
 int MenuActorFind(uint8_t bank, uint16_t kind, uint16_t *x, uint16_t *y, uint8_t *p)
 {
-    uint16_t i = (uint16_t)(rd16(dbw(bank, LIVE_LEN)) - 2);
+    uint16_t i;
 
     wr16(dbw(bank, 0x11E1), kind);
+    i = (uint16_t)(rd16(dbw(bank, LIVE_LEN)) - 2);
     while (!(i & 0x8000)) {
         *x = rd16(dbw(bank, (uint16_t)(LIVE_LIST + i)));
         *p = cmp16(*p, rd16((uint16_t)(*x + 0x1A)), rd16(dbw(bank, 0x11E1)));
