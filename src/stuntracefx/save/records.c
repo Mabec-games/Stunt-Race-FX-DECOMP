@@ -856,3 +856,56 @@ void abi_RecordTimeCompare(void)
     cpu.p = (uint8_t)((nz16(cpu.p, 0) & ~P_C) | P_C);
     compare_result(b, 0x00);
 }
+
+void abi_PlayerSound35(void);
+
+/* By mode $0D2B: 0 sound $35 on port 0, 2 PlayerSound35, else
+   RecordTimeCompare on record time x. P restored. */
+static void record_compare_by_mode(uint16_t x)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t p0 = cpu.p;
+
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    cpu.a = rd16(b | 0x0D2B);
+    cpu.p = nz16(cpu.p, cpu.a);
+    if (cpu.a == 0x0000) {
+        cpu.a = 0x0035;
+        cpu.p = nz16(cpu.p, cpu.a);
+        abi_SoundPort0QueuePush();
+    } else {
+        op_cmp16(0x0002);
+        if (cpu.a == 0x0002)
+            abi_PlayerSound35();
+        else {
+            cpu.x = x;
+            cpu.p = nz16(cpu.p, x);
+            abi_RecordTimeCompare();
+        }
+    }
+    cpu.p = p0;
+}
+
+/*
+ * @routine 07:D62C RecordCompareTime0
+ * WHAT IT DOES: By mode $0D2B: 0 plays sound $35, 2 PlayerSound35, others
+ * compare record time 0 with the best (RecordTimeCompare).
+ * HOW: 16-bit mode test.
+ * Entry: any widths. Exit: as the call made; P restored.
+ */
+void abi_RecordCompareTime0(void)
+{
+    record_compare_by_mode(0x0000);
+}
+
+/*
+ * @routine 07:D64F RecordCompareTime1
+ * WHAT IT DOES: As RecordCompareTime0 for record time 1 (offset 3).
+ * HOW: As RecordCompareTime0. The mode 0 sound is not reached in the
+ * traces so far.
+ * Entry: any widths. Exit: as RecordCompareTime0.
+ */
+void abi_RecordCompareTime1(void)
+{
+    record_compare_by_mode(0x0003);
+}

@@ -1040,3 +1040,57 @@ RecordTimeCompare:
     jsl.l SoundPort0QueuePush
 .doneW:
     rts
+
+; @routine 07:D62C RecordCompareTime0
+; WHAT IT DOES: By mode $0D2B: 0 plays sound $35, 2 PlayerSound35, others
+; compare record time 0 with the best (RecordTimeCompare).
+; HOW: 16-bit mode test.
+; Entry: any widths. Exit: as the call made; P restored.
+%at($07D62C)
+RecordCompareTime0:
+    php
+    rep.b #$30
+    lda.w !hud_mode
+    beq .sound
+    cmp.w #$0002
+    beq .mode2
+    ldx.w #$0000
+    jsr.w RecordTimeCompare
+    plp
+    rtl
+.mode2:
+    jsr.w PlayerSound35
+    plp
+    rtl
+.sound:
+    lda.w #$0035
+    jsl.l SoundPort0QueuePush
+    plp
+    rtl
+
+; @routine 07:D64F RecordCompareTime1
+; WHAT IT DOES: As RecordCompareTime0 for record time 1 (offset 3).
+; HOW: As RecordCompareTime0. The mode 0 sound is not reached in the
+; traces so far.
+; Entry: any widths. Exit: as RecordCompareTime0.
+%at($07D64F)
+RecordCompareTime1:
+    php
+    rep.b #$30
+    lda.w !hud_mode
+    beq .sound
+    cmp.w #$0002
+    beq .mode2
+    ldx.w #$0003
+    jsr.w RecordTimeCompare
+    plp
+    rtl
+.mode2:
+    jsr.w PlayerSound35
+    plp
+    rtl
+.sound:
+    lda.w #$0035
+    jsl.l SoundPort0QueuePush
+    plp
+    rtl
