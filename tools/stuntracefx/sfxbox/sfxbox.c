@@ -18,6 +18,11 @@
  *                        $00-$3F) or Super FX RAM ($70-$71), between frames;
  *                        for scripts that start from save data the game itself
  *                        could hold (see each script's header)
+ *   call ADDR [long] [a=HEX] [x=] [y=] [p=] [db=] [d=] [frames=N]
+ *                        run the routine at ADDR once as a unit test: entered
+ *                        by a JSR (by a JSL with long) from a stub in work RAM
+ *                        with those registers, the game's state as the script
+ *                        left it; then the game goes on where it was
  *   repeat N ... end     run the enclosed lines N times (nests)
  * Buttons: B Y SELECT START UP DOWN LEFT RIGHT A X L R, player 1; prefix
  * with 2. for player 2 (2.START). Joined with +.
@@ -200,6 +205,86 @@ static void poke(const char *line, int lineno) {
     }
 }
 
+/* call: run one routine as a unit test, from the state the script has
+   reached. At the next instruction boundary the CPU's registers are saved
+   and it runs a stub in low work RAM ($1FE0, its bytes saved and put back):
+   JSR or JSL to the routine, then BRA to itself. The routine is entered by
+   a real JSR/JSL, so --check and --lockstep take it as a call like any
+   other. When the stub's loop is reached the registers are restored and
+   the game goes on from where it was. Interrupts run as usual meanwhile. */
+struct SfxboxRegs { uint16_t a, x, y, s, d; uint8_t db, p, e; uint32_t pc; };
+static void (*sfxbox_core_regs_p)(struct SfxboxRegs *);
+static void (*sfxbox_core_set_regs_p)(const struct SfxboxRegs *);
+static int (**cpu_exec_hook)(uint32_t);
+static int (*exec_before)(uint32_t);
+static struct SfxboxRegs call_from, call_regs;
+static uint32_t call_stub, call_loop;
+static int call_state;   /* 1 to start at the next boundary, 2 running, 0 done */
+
+static int call_exec(uint32_t pc)
+{
+    if (call_state == 1) {
+        sfxbox_core_regs_p(&call_from);
+        struct SfxboxRegs r = call_regs;
+        r.s = call_from.s; r.e = 0; r.pc = call_stub;
+        sfxbox_core_set_regs_p(&r);
+        call_state = 2;
+        return 1;
+    }
+    if (call_state == 2 && pc == call_loop) {
+        sfxbox_core_set_regs_p(&call_from);
+        call_state = 0;
+        return 1;
+    }
+    return exec_before ? exec_before(pc) : 0;
+}
+
+static void call(const char *line, int lineno) {
+    char tok[16][64]; int k = sscanf(line, "%*s %63s %63s %63s %63s %63s %63s %63s %63s %63s", tok[0], tok[1], tok[2], tok[3], tok[4], tok[5], tok[6], tok[7], tok[8]);
+    if (k < 1) die("%s:%d: call ADDR [long] [a=] [x=] [y=] [p=] [db=] [d=] [frames=]", script_path, lineno);
+    char ab[64]; int j = 0;
+    for (const char *c = tok[0]; *c; c++) if (*c != '$' && *c != ':') ab[j++] = *c;
+    ab[j] = 0;
+    uint32_t addr = (uint32_t)strtoul(ab, NULL, 16), bank = addr >> 16;
+    int lng = 0; long frames_max = 600;
+    struct SfxboxRegs cur; sfxbox_core_regs_p(&cur);
+    call_regs = cur;
+    for (int i = 1; i < k; i++) {
+        unsigned long v = strtoul(strchr(tok[i], '=') ? strchr(tok[i], '=') + 1 : "0", NULL, 16);
+        if (!strcmp(tok[i], "long")) lng = 1;
+        else if (!strncmp(tok[i], "a=", 2)) call_regs.a = (uint16_t)v;
+        else if (!strncmp(tok[i], "x=", 2)) call_regs.x = (uint16_t)v;
+        else if (!strncmp(tok[i], "y=", 2)) call_regs.y = (uint16_t)v;
+        else if (!strncmp(tok[i], "p=", 2)) call_regs.p = (uint8_t)v;
+        else if (!strncmp(tok[i], "db=", 3)) call_regs.db = (uint8_t)v;
+        else if (!strncmp(tok[i], "d=", 2)) call_regs.d = (uint16_t)v;
+        else if (!strncmp(tok[i], "frames=", 7)) frames_max = strtol(tok[i] + 7, NULL, 10);
+        else die("%s:%d: call: bad option %s", script_path, lineno, tok[i]);
+    }
+    size_t n; uint8_t *w = sfxbox_memory_p("wram", &n);
+    size_t at = 0; uint32_t sb = 0;
+    if (lng) { at = 0x1FE0; sb = 0x00; }
+    else if (bank == 0x7F) { at = 0x11FE0; sb = 0x7F; }
+    else if (bank == 0x7E || bank < 0x40 || (bank >= 0x80 && bank < 0xC0)) { at = 0x1FE0; sb = bank; }
+    else die("%s:%d: call: a JSR can't reach bank %02X from work RAM; use long", script_path, lineno, bank);
+    uint8_t keep[6]; memcpy(keep, w + at, 6);
+    uint8_t stub[6]; int m = 0;
+    if (lng) { stub[m++] = 0x22; stub[m++] = (uint8_t)addr; stub[m++] = (uint8_t)(addr >> 8); stub[m++] = (uint8_t)bank; }
+    else { stub[m++] = 0x20; stub[m++] = (uint8_t)addr; stub[m++] = (uint8_t)(addr >> 8); }
+    stub[m++] = 0x80; stub[m++] = 0xFE;
+    memcpy(w + at, stub, (size_t)m);
+    call_stub = sb << 16 | 0x1FE0;
+    call_loop = call_stub + (uint32_t)(m - 2);
+    exec_before = *cpu_exec_hook;
+    *cpu_exec_hook = call_exec;
+    call_state = 1;
+    long f = 0;
+    while (call_state && f < frames_max) { run(1); f++; }
+    *cpu_exec_hook = exec_before;
+    memcpy(w + at, keep, 6);
+    if (call_state) die("%s:%d: call %06X did not return in %ld frames", script_path, lineno, addr, frames_max);
+}
+
 static int block_end(int i) {  /* index of the matching end for a repeat at i */
     int depth = 0;
     for (int j = i + 1; j < nlines; j++) {
@@ -237,6 +322,7 @@ static void exec_range(int from, int to) {
             write_file(b, ".state", p, n); free(p);
         }
         else if (!strcmp(a, "poke") && k >= 3) poke(lines[i], i + 1);
+        else if (!strcmp(a, "call") && k >= 2) call(lines[i], i + 1);
         else if (!strcmp(a, "load") && k >= 2) {
             size_t n; void *p = load_file(b, &n);
             if (!retro_unserialize_p(p, n)) die("unserialize failed: %s", b);
@@ -282,6 +368,8 @@ int main(int argc, char **argv) {
     LOAD(retro_set_audio_sample_batch) LOAD(retro_set_input_poll) LOAD(retro_set_input_state) LOAD(retro_load_game)
     LOAD(retro_run) LOAD(retro_serialize_size) LOAD(retro_serialize) LOAD(retro_unserialize)
     LOAD(sfxbox_trace_begin) LOAD(sfxbox_trace_write) LOAD(sfxbox_memory)
+    LOAD(sfxbox_core_regs) LOAD(sfxbox_core_set_regs)
+    if (!(cpu_exec_hook = dlsym(core, "sfxbox_cpu_exec"))) die("missing symbol sfxbox_cpu_exec");
 
     retro_set_environment_p(env);
     retro_init_p();
