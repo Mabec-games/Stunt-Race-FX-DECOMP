@@ -115,9 +115,10 @@ MenuActorFree:
 ; WHAT IT DOES: Finds the live object of kind A (+$1A), searching from the
 ; end of the list.
 ; HOW: Compares each record's +$1A with A (kept at $11E1).
-; Entry: M 16-bit, X 16-bit, D = $0000; A = kind. Exit: found: X = the
-; record, Y = its list offset, Z and C set. Not found: Y = $FFFE, N set, Z
-; clear, C from the last compare.
+; Entry: M 16-bit, X 16-bit, D = $0000; A = kind. Exit: A = the kind of
+; the last record looked at (the kind searched for with an empty list);
+; found: X = the record, Y = its list offset, Z and C set. Not found: Y =
+; $FFFE, N set, Z clear, C from the last compare.
 %at($0BE28D)
 MenuActorFind:
     sta.w !scratch_11e1

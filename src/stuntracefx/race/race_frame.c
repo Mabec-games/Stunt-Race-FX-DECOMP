@@ -158,6 +158,7 @@ static void finish_phases(uint8_t p1, uint8_t p2)
 
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x37);
     abi_SoundPort0QueuePush();
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)y) & ~P_C) | P_C);     /* CPY #0 */
     if ((uint8_t)y != 0x00) {
         cpu.p |= P_M;
         wr8(b | 0x0DD6, 0x12);

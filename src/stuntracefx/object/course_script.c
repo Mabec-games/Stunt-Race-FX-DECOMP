@@ -67,7 +67,7 @@ static void bare_object(uint32_t b, uint16_t y, uint16_t slot, uint16_t link)
  * opcode, each handler going back to the loop with X past its entry.
  * Opcode $10 and the no-free-object stops are not reached in the traces
  * so far.
- * Entry: M 16-bit, X 16-bit, D = $0000; A low byte = script bank, X =
+ * Entry: M 8-bit, X 16-bit, D = $0000; A = script bank (PHA, PLB), X =
  * script offset. Exit: A = the script bank; X = 4; Y = the offset after
  * the end opcode; M 8-bit; N, Z from the data bank pulled back; C, V from
  * adding $8000.

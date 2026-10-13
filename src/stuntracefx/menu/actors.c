@@ -141,19 +141,26 @@ static uint8_t cmp16(uint8_t p, uint16_t a, uint16_t b)
  * WHAT IT DOES: Finds the live object of kind A (+$1A), searching from the
  * end of the list.
  * HOW: Compares each record's +$1A with A (kept at $11E1).
- * Entry: M 16-bit, X 16-bit, D = $0000; A = kind. Exit: found: X = the
- * record, Y = its list offset, Z and C set. Not found: Y = $FFFE, N set, Z
- * clear, C from the last compare.
+ * Entry: M 16-bit, X 16-bit, D = $0000; A = kind. Exit: A = the kind of
+ * the last record looked at (the kind searched for with an empty list);
+ * found: X = the record, Y = its list offset, Z and C set. Not found: Y =
+ * $FFFE, N set, Z clear, C from the last compare.
  */
+/* The kind MenuActorFind last loaded (its A on exit when the list is not
+   empty). */
+static uint16_t find_last_kind;
+
 int MenuActorFind(uint8_t bank, uint16_t kind, uint16_t *x, uint16_t *y, uint8_t *p)
 {
     uint16_t i;
 
+    find_last_kind = kind;
     wr16(dbw(bank, 0x11E1), kind);
     i = (uint16_t)(rd16(dbw(bank, LIVE_LEN)) - 2);
     while (!(i & 0x8000)) {
         *x = rd16(dbw(bank, (uint16_t)(LIVE_LIST + i)));
-        *p = cmp16(*p, rd16((uint16_t)(*x + 0x1A)), rd16(dbw(bank, 0x11E1)));
+        find_last_kind = rd16((uint16_t)(*x + 0x1A));
+        *p = cmp16(*p, find_last_kind, rd16(dbw(bank, 0x11E1)));
         if (*p & P_Z) {
             *y = i;
             return 1;
@@ -170,6 +177,7 @@ void abi_MenuActorFind(void)
     uint8_t p = cpu.p;
 
     MenuActorFind(cpu.db, cpu.a, &cpu.x, &cpu.y, &p);
+    cpu.a = find_last_kind;
     cpu.p = p;
 }
 
