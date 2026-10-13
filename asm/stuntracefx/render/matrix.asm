@@ -1035,4 +1035,358 @@ FxClipYPlane:
     ldw (r10)
     nop
 
+; @routine 01:C77A FxClipXPlane
+; WHAT IT DOES: As FxClipYPlane against the plane z = x * R6 * 4 (FMULT,
+; ADC, one ADD), halving on x.
+; HOW: As FxClipYPlane.
+; Entry: as FxClipYPlane. Exit: as FxClipYPlane.
+%at($01C77A)
+FxClipXPlane:
+    cache
+    from r11
+    stw (r10)
+    inc r10
+    inc r10
+    from r14
+    stw (r10)
+    inc r10
+    inc r10
+    from r1
+    fmult
+    adc r0
+    add r0
+    from r3
+    sub r0
+    bmi .lC7A1
+    nop
+    from r4
+    fmult
+    adc r0
+    add r0
+    from r7
+    sub r0
+    bmi .lC7BB
+    nop
+    dec r10
+    dec r10
+    to r14
+    ldw (r10)
+    sub r0
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+.lC7A1:
+    from r4
+    fmult
+    adc r0
+    add r0
+    from r7
+    sub r0
+    bmi .lC7AF
+    nop
+    iwt r15,#.lC880
+    nop
+.lC7AF:
+    nop
+    dec r10
+    dec r10
+    to r14
+    ldw (r10)
+    ibt r0,#$FF
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+.lC7BB:
+    sms ($9A),r1
+    sms ($9C),r2
+    sms ($9E),r3
+    from r8
+    stw (r10)
+    inc r10
+    inc r10
+    from r9
+    stw (r10)
+    inc r10
+    inc r10
+    from r12
+    stw (r10)
+    inc r10
+    inc r10
+    from r13
+    stw (r10)
+    inc r10
+    inc r10
+    sms ($A0),r10
+    ibt r10,#$0C
+    with r1
+    to r0
+    with r4
+    to r1
+    with r0
+    to r4
+    with r2
+    to r0
+    with r5
+    to r2
+    with r0
+    to r5
+    with r3
+    to r0
+    with r7
+    to r3
+    with r0
+    to r7
+    lms r8,($8C)
+    lms r9,($90)
+    lms r12,($8A)
+    lms r13,($8E)
+.lC7F7:
+    from r1
+    add r4
+    to r14
+    div2
+    from r3
+    add r7
+    to r11
+    div2
+    from r14
+    fmult
+    adc r0
+    add r0
+    from r11
+    sub r0
+    beq .lC840
+    nop
+    bmi .lC827
+    dec r10
+    beq .lC840
+    nop
+    with r11
+    to r7
+    from r2
+    add r5
+    to r5
+    div2
+    with r14
+    to r4
+    from r8
+    add r12
+    to r12
+    div2
+    from r9
+    add r13
+    to r13
+    div2
+    bra .lC7F7
+    nop
+.lC827:
+    beq .lC840
+    nop
+    with r11
+    to r3
+    from r2
+    add r5
+    to r2
+    div2
+    with r14
+    to r1
+    from r8
+    add r12
+    to r8
+    div2
+    from r9
+    add r13
+    to r9
+    div2
+    bra .lC7F7
+    nop
+.lC840:
+    with r11
+    to r7
+    from r2
+    add r5
+    to r5
+    div2
+    with r14
+    to r4
+    from r8
+    add r12
+    to r12
+    div2
+    from r9
+    add r13
+    to r13
+    div2
+    lms r1,($9A)
+    lms r2,($9C)
+    lms r3,($9E)
+    sms ($8C),r12
+    sms ($90),r13
+    lms r10,($A0)
+    dec r10
+    dec r10
+    to r13
+    ldw (r10)
+    dec r10
+    dec r10
+    to r12
+    ldw (r10)
+    dec r10
+    dec r10
+    to r9
+    ldw (r10)
+    dec r10
+    dec r10
+    to r8
+    ldw (r10)
+    dec r10
+    dec r10
+    to r14
+    ldw (r10)
+    ibt r0,#$01
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+.lC880:
+    sms ($9A),r4
+    sms ($9C),r5
+    sms ($9E),r7
+    from r8
+    stw (r10)
+    inc r10
+    inc r10
+    from r9
+    stw (r10)
+    inc r10
+    inc r10
+    from r12
+    stw (r10)
+    inc r10
+    inc r10
+    from r13
+    stw (r10)
+    inc r10
+    inc r10
+    sms ($A0),r10
+    ibt r10,#$0C
+    lms r8,($8A)
+    lms r9,($8E)
+    lms r12,($8C)
+    lms r13,($90)
+.lC8AA:
+    from r1
+    add r4
+    to r14
+    div2
+    from r3
+    add r7
+    to r11
+    div2
+    from r14
+    fmult
+    adc r0
+    add r0
+    from r11
+    sub r0
+    beq .lC8F3
+    nop
+    bmi .lC8DA
+    dec r10
+    beq .lC8F3
+    nop
+    with r11
+    to r7
+    from r2
+    add r5
+    to r5
+    div2
+    with r14
+    to r4
+    from r8
+    add r12
+    to r12
+    div2
+    from r9
+    add r13
+    to r13
+    div2
+    bra .lC8AA
+    nop
+.lC8DA:
+    beq .lC8F3
+    nop
+    with r11
+    to r3
+    from r2
+    add r5
+    to r2
+    div2
+    with r14
+    to r1
+    from r8
+    add r12
+    to r8
+    div2
+    from r9
+    add r13
+    to r9
+    div2
+    bra .lC8AA
+    nop
+.lC8F3:
+    with r11
+    to r3
+    from r2
+    add r5
+    to r2
+    div2
+    with r14
+    to r1
+    from r8
+    add r12
+    to r8
+    div2
+    from r9
+    add r13
+    to r9
+    div2
+    lms r4,($9A)
+    lms r5,($9C)
+    lms r7,($9E)
+    sms ($8A),r8
+    sms ($8E),r9
+    lms r10,($A0)
+    dec r10
+    dec r10
+    to r13
+    ldw (r10)
+    dec r10
+    dec r10
+    to r12
+    ldw (r10)
+    dec r10
+    dec r10
+    to r9
+    ldw (r10)
+    dec r10
+    dec r10
+    to r8
+    ldw (r10)
+    dec r10
+    dec r10
+    to r14
+    ldw (r10)
+    ibt r0,#$01
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+
 arch 65816

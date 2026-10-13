@@ -413,31 +413,33 @@ void abi_FxSegmentCrossZ(void)
     }
 }
 
-/* R0 = a * R6 (FMULT) doubled with the carry (ADC R0), then twice more
-   (ADD R0, ADD R0). */
-static uint16_t fx_scaled_y(uint16_t a)
+/* R0 = a * R6 (FMULT) doubled with the carry (ADC R0), then doubled
+   again `more` times (ADD R0). */
+static uint16_t fx_scaled(uint16_t a, int more)
 {
     uint16_t v = gsu_fmult(a, gsu.r[6]);
 
     v = gsu_add(v, v, gsu.cy);
-    v = gsu_add(v, v, 0);
-    return gsu_add(v, v, 0);
+    while (more--)
+        v = gsu_add(v, v, 0);
+    return v;
 }
 
-/* The halving search of FxClipYPlane: the midpoint (R14 = y, R11 = z)
-   tested against the plane; the end on the midpoint's side moves to it,
-   with its attributes (R8/R12, R9/R13). At most 12 steps (R10, counted
-   in the BMI's delay slot). The far end ends at the midpoint. */
-static void fx_clip_search(int keep_first)
+/* The halving search of the plane clips: the midpoint (R14 on the axis,
+   R11 = z) tested against the plane; the end on the midpoint's side moves
+   to it, with its attributes (R8/R12, R9/R13). At most 12 steps (R10,
+   counted in the BMI's delay slot). Then the far end (the second when
+   keep_first) ends at the midpoint. ax = 1 (x) or 2 (y). */
+static void fx_clip_search(int ax, int more, int keep_first)
 {
-    int neg;
+    int o = 3 - ax, neg, i;
 
-    for (;;) {
-        gsu.r[0] = gsu_add(gsu.r[2], gsu.r[5], 0);
+    for (i = 0; ; i++) {
+        gsu.r[0] = gsu_add(gsu.r[ax], gsu.r[ax + 3], 0);
         gsu.r[14] = gsu_div2(gsu.r[0]);
         gsu.r[0] = gsu_add(gsu.r[3], gsu.r[7], 0);
         gsu.r[11] = gsu_div2(gsu.r[0]);
-        gsu.r[0] = fx_scaled_y(gsu.r[14]);
+        gsu.r[0] = fx_scaled(gsu.r[14], more);
         gsu.r[0] = gsu_sub(gsu.r[11], gsu.r[0], 0);
         if (gsu.z)
             break;
@@ -447,28 +449,28 @@ static void fx_clip_search(int keep_first)
             break;
         if (!neg) {
             gsu.r[7] = gsu.r[11];
-            fx_half_sum(4, 1, 4);
-            gsu.r[5] = gsu.r[14];
+            fx_half_sum(o + 3, o, o + 3);
+            gsu.r[ax + 3] = gsu.r[14];
             fx_half_sum(12, 8, 12);
             fx_half_sum(13, 9, 13);
         } else {
             gsu.r[3] = gsu.r[11];
-            fx_half_sum(1, 1, 4);
-            gsu.r[2] = gsu.r[14];
+            fx_half_sum(o, o, o + 3);
+            gsu.r[ax] = gsu.r[14];
             fx_half_sum(8, 8, 12);
             fx_half_sum(9, 9, 13);
         }
     }
     if (keep_first) {
         gsu.r[7] = gsu.r[11];
-        fx_half_sum(4, 1, 4);
-        gsu.r[5] = gsu.r[14];
+        fx_half_sum(o + 3, o, o + 3);
+        gsu.r[ax + 3] = gsu.r[14];
         fx_half_sum(12, 8, 12);
         fx_half_sum(13, 9, 13);
     } else {
         gsu.r[3] = gsu.r[11];
-        fx_half_sum(1, 1, 4);
-        gsu.r[2] = gsu.r[14];
+        fx_half_sum(o, o, o + 3);
+        gsu.r[ax] = gsu.r[14];
         fx_half_sum(8, 8, 12);
         fx_half_sum(9, 9, 13);
     }
@@ -514,16 +516,16 @@ static void fx_clip_leave(void)
  * address. Exit: as above; R8, R9, R12-R14 restored; S, Z from R10; the
  * last RAM address R10.
  */
-void abi_FxClipYPlane(void)
+static void fx_clip_plane(int ax, int more)
 {
     int i;
 
     gsu_push(&gsu.r[10], gsu.r[11]);
     gsu_push(&gsu.r[10], gsu.r[14]);
-    gsu.r[0] = fx_scaled_y(gsu.r[2]);
+    gsu.r[0] = fx_scaled(gsu.r[ax], more);
     gsu.r[0] = gsu_sub(gsu.r[3], gsu.r[0], 0);
     if (!gsu.s) {
-        gsu.r[0] = fx_scaled_y(gsu.r[5]);
+        gsu.r[0] = fx_scaled(gsu.r[ax + 3], more);
         gsu.r[0] = gsu_sub(gsu.r[7], gsu.r[0], 0);
         if (!gsu.s) {
             gsu.r[14] = gsu_pull(&gsu.r[10]);
@@ -548,7 +550,7 @@ void abi_FxClipYPlane(void)
         gsu.r[9] = gsu_ldw(0x0090);
         gsu.r[12] = gsu_ldw(0x008A);
         gsu.r[13] = gsu_ldw(0x008E);
-        fx_clip_search(1);
+        fx_clip_search(ax, more, 1);
         gsu.r[1] = gsu_ldw(0x009A);
         gsu.r[2] = gsu_ldw(0x009C);
         gsu.r[3] = gsu_ldw(0x009E);
@@ -557,7 +559,7 @@ void abi_FxClipYPlane(void)
         fx_clip_leave();
         return;
     }
-    gsu.r[0] = fx_scaled_y(gsu.r[5]);
+    gsu.r[0] = fx_scaled(gsu.r[ax + 3], more);
     gsu.r[0] = gsu_sub(gsu.r[7], gsu.r[0], 0);
     if (gsu.s) {
         gsu.r[14] = gsu_pull(&gsu.r[10]);
@@ -573,11 +575,28 @@ void abi_FxClipYPlane(void)
     gsu.r[9] = gsu_ldw(0x008E);
     gsu.r[12] = gsu_ldw(0x008C);
     gsu.r[13] = gsu_ldw(0x0090);
-    fx_clip_search(0);
+    fx_clip_search(ax, more, 0);
     gsu.r[4] = gsu_ldw(0x009A);
     gsu.r[5] = gsu_ldw(0x009C);
     gsu.r[7] = gsu_ldw(0x009E);
     gsu_stw(0x008A, gsu.r[8]);
     gsu_stw(0x008E, gsu.r[9]);
     fx_clip_leave();
+}
+
+void abi_FxClipYPlane(void)
+{
+    fx_clip_plane(2, 2);
+}
+
+/*
+ * @routine 01:C77A FxClipXPlane
+ * WHAT IT DOES: As FxClipYPlane against the plane z = x * R6 * 4 (FMULT,
+ * ADC, one ADD), halving on x.
+ * HOW: As FxClipYPlane.
+ * Entry: as FxClipYPlane. Exit: as FxClipYPlane.
+ */
+void abi_FxClipXPlane(void)
+{
+    fx_clip_plane(1, 1);
 }
