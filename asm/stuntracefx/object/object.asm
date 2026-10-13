@@ -2063,3 +2063,111 @@ ObjectSpawnD460UnlessFlag:
     pla
 ObjectSpawnD460UnlessFlag_done:         ; reached by the long jump above
     rts
+
+; @routine 08:B34B ObjectMoveForward
+; WHAT IT DOES: Moves object X forward by its speed: the byte of the table
+; at $08:B32B for its Super FX record's word +$5E (the record at +$22), as
+; the vector (speed, 0, 0) turned by the object's angles +$16 (RotateXY),
+; +$14 (RotateXZFrom08) and +$15 (RotateXZ); four times the result is added
+; to its position +$0C, +$0E, +$10.
+; HOW: The vector is kept in direct page $02/$08/$94 (sign bytes $05, $0B,
+; $05F3) and the rotations leave it in $04/$0A/$05F2. The sign bytes of
+; the zero components are set from A = 0, so their $FF stores never run;
+; the early return tests the flags from PLX (X = 0, never an object). None
+; of these is reached in the traces so far.
+; Entry: M 8-bit, X 16-bit, D = $0000; X = object. Exit: M 8-bit; A = the
+; new +$0E; N, Z, C, V from its add.
+%at($08B34B)
+ObjectMoveForward:
+    phx
+    rep.b #$20
+    lda.w !obj_22,x
+    tax
+    lda.l !gsu_rec_5e,x
+    tax
+    sep.b #$20
+    lda.l !object_speeds,x
+    plx
+    sta.b !dp_08
+    bne .move
+    brl .done
+.move:
+    lda.b #$00
+    sta.b !dp_02
+    sta.b !dp_04
+    bit.b #$80
+    beq .x_positive
+    lda.b #$FF
+    sta.b !dp_05
+    bra .y
+.x_positive:
+    stz.b !dp_05
+.y:
+    lda.b !dp_08
+    sta.b !dp_08
+    sta.b !dp_0a
+    bit.b #$80
+    beq .y_positive
+    lda.b #$FF
+    sta.b !dp_0b
+    bra .z
+.y_positive:
+    stz.b !dp_0b
+.z:
+    lda.b #$00
+    sta.b !dp_94
+    sta.w !rot_z
+    bit.b #$80
+    beq .z_positive
+    lda.b #$FF
+    sta.w !rot_z_high
+    bra .turn
+.z_positive:
+    stz.w !rot_z_high
+.turn:
+    lda.w !obj_16,x
+    jsl.l RotateXY
+    lda.b !dp_04
+    sta.b !dp_02
+    lda.b !dp_0a
+    sta.b !dp_08
+    lda.w !rot_z
+    sta.b !dp_94
+    lda.w !obj_14,x
+    jsl.l RotateXZFrom08
+    lda.b !dp_04
+    sta.b !dp_02
+    lda.b !dp_0a
+    sta.b !dp_08
+    lda.w !rot_z
+    sta.b !dp_94
+    lda.w !obj_15,x
+    jsl.l RotateXZ
+    rep.b #$20
+    lda.b !dp_04
+    asl a
+    asl a
+    sta.b !dp_04
+    lda.b !dp_0a
+    asl a
+    asl a
+    sta.b !dp_0a
+    lda.w !rot_z
+    asl a
+    asl a
+    sta.w !rot_z
+    lda.w !obj_pos_x,x
+    clc
+    adc.b !dp_04
+    sta.w !obj_pos_x,x
+    lda.w !obj_pos_z,x
+    clc
+    adc.w !rot_z
+    sta.w !obj_pos_z,x
+    lda.w !obj_pos_y,x
+    clc
+    adc.b !dp_0a
+    sta.w !obj_pos_y,x
+    sep.b #$20
+.done:
+    rts

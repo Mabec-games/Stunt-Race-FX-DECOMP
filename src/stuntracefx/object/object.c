@@ -2068,3 +2068,109 @@ void abi_ObjectSpawnD460UnlessFlag(void)
     cpu.a = (uint16_t)((cpu.x & 0xFF00) | a);
     cpu.p = nz8(cpu.p, a);
 }
+
+void abi_RotateXY(void);
+void abi_RotateXZFrom08(void);
+void abi_RotateXZ(void);
+
+/* Direct page byte or word at off. */
+static uint32_t dp8(uint8_t off)
+{
+    return (uint16_t)(cpu.d + off);
+}
+
+/* A = 0 and BIT #$80: the sign byte at `at` set to $FF when bit 7 of A is
+   set (never, A being 0), else cleared. */
+static void sign_of_zero(uint32_t at)
+{
+    uint8_t a = 0x00;
+
+    if (a & 0x80)
+        wr8(at, 0xFF);
+    else
+        wr8(at, 0x00);
+}
+
+/*
+ * @routine 08:B34B ObjectMoveForward
+ * WHAT IT DOES: Moves object X forward by its speed: the byte of the table
+ * at $08:B32B for its Super FX record's word +$5E (the record at +$22), as
+ * the vector (speed, 0, 0) turned by the object's angles +$16 (RotateXY),
+ * +$14 (RotateXZFrom08) and +$15 (RotateXZ); four times the result is added
+ * to its position +$0C, +$0E, +$10.
+ * HOW: The vector is kept in direct page $02/$08/$94 (sign bytes $05, $0B,
+ * $05F3) and the rotations leave it in $04/$0A/$05F2. The sign bytes of
+ * the zero components are set from A = 0, so their $FF stores never run;
+ * the early return tests the flags from PLX (X = 0, never an object). None
+ * of these is reached in the traces so far.
+ * Entry: M 8-bit, X 16-bit, D = $0000; X = object. Exit: M 8-bit; A = the
+ * new +$0E; N, Z, C, V from its add.
+ */
+void abi_ObjectMoveForward(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t x0 = cpu.x, w;
+    uint8_t v;
+    unsigned i;
+    static const uint8_t angle[3] = {0x16, 0x14, 0x15};
+
+    cpu.p &= (uint8_t)~P_M;
+    cpu.x = rd16(b | (uint16_t)(0x2022 + cpu.x));
+    cpu.x = rd16((uint32_t)(0x70005E + cpu.x));
+    cpu.p |= P_M;
+    v = rd8((uint32_t)(0x08B32B + cpu.x));
+    cpu.x = x0;
+    cpu.p = nz16(cpu.p, x0);
+    wr8(dp8(0x08), v);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    if (!x0)
+        return;
+    wr8(dp8(0x02), 0x00);
+    wr8(dp8(0x04), 0x00);
+    sign_of_zero(dp8(0x05));
+    v = rd8(dp8(0x08));
+    wr8(dp8(0x08), v);
+    wr8(dp8(0x0A), v);
+    wr8(dp8(0x0B), (v & 0x80) ? 0xFF : 0x00);
+    wr8(dp8(0x94), 0x00);
+    wr8(b | 0x05F2, 0x00);
+    sign_of_zero(b | 0x05F3);
+    for (i = 0; i < 3; i++) {
+        if (i) {
+            wr8(dp8(0x02), rd8(dp8(0x04)));
+            wr8(dp8(0x08), rd8(dp8(0x0A)));
+            wr8(dp8(0x94), rd8(b | 0x05F2));
+        }
+        v = rd8(b | (uint16_t)(0x2000 + angle[i] + cpu.x));
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+        cpu.p = nz8(cpu.p, v);
+        if (i == 0)
+            abi_RotateXY();
+        else if (i == 1)
+            abi_RotateXZFrom08();
+        else
+            abi_RotateXZ();
+    }
+    cpu.p &= (uint8_t)~P_M;
+    w = (uint16_t)(rd16(dp8(0x04)) << 2);
+    wr16(dp8(0x04), w);
+    w = (uint16_t)(rd16(dp8(0x0A)) << 2);
+    wr16(dp8(0x0A), w);
+    w = (uint16_t)(rd16(b | 0x05F2) << 2);
+    wr16(b | 0x05F2, w);
+    {
+        static const uint16_t to[3] = {0x200C, 0x2010, 0x200E};
+        uint32_t from[3];
+
+        from[0] = dp8(0x04);
+        from[1] = b | 0x05F2;
+        from[2] = dp8(0x0A);
+        for (i = 0; i < 3; i++) {
+            w = rd16(b | (uint16_t)(to[i] + cpu.x));
+            cpu.p &= (uint8_t)~P_C;
+            cpu.a = op_adc16(w, rd16(from[i]), &cpu.p);
+            wr16(b | (uint16_t)(to[i] + cpu.x), cpu.a);
+        }
+    }
+    cpu.p |= P_M;
+}
