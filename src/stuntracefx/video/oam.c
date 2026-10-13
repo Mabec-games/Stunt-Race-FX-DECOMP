@@ -437,20 +437,60 @@ void abi_OamSetPalette(void)
     cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z | P_M);
 }
 
-/* Sprites 52-56 (X offset $10 into the block at $0435): two X positions
-   and three attribute bytes. */
-static uint8_t oam_block_52(uint8_t bank, uint8_t x0, uint8_t dx, uint8_t attr_a, uint8_t attr_b, uint8_t *p)
+/* Sprites 52-56 (X offset $10 into the block at $0435; $2C and $12C move
+   it on by 7 and 71 sprites): two X positions and three attribute bytes. */
+static uint8_t oam_block(uint8_t bank, uint16_t x, uint8_t x0, uint8_t dx, uint8_t attr_a, uint8_t attr_b, uint8_t *p)
 {
     uint32_t b = (uint32_t)bank << 16;
     unsigned s = (unsigned)x0 + dx;
 
-    wr8(b | 0x0445, x0);
+    wr8(b | (uint16_t)(0x0435 + x), x0);
     *p = (uint8_t)((*p & ~(P_C | P_V)) | (s > 0xFF ? P_C : 0) | ((~(x0 ^ dx) & (x0 ^ (uint8_t)s) & 0x80) ? P_V : 0));
-    wr8(b | 0x0449, (uint8_t)s);
-    wr8(b | 0x0450, attr_a);
-    wr8(b | 0x0454, attr_a);
-    wr8(b | 0x0458, attr_b);
+    wr8(b | (uint16_t)(0x0439 + x), (uint8_t)s);
+    wr8(b | (uint16_t)(0x0440 + x), attr_a);
+    wr8(b | (uint16_t)(0x0444 + x), attr_a);
+    wr8(b | (uint16_t)(0x0448 + x), attr_b);
     return attr_b;
+}
+
+static uint8_t oam_block_52(uint8_t bank, uint8_t x0, uint8_t dx, uint8_t attr_a, uint8_t attr_b, uint8_t *p)
+{
+    return oam_block(bank, 0x0010, x0, dx, attr_a, attr_b, p);
+}
+
+/*
+ * @routine 07:C328 OamBlock59Left
+ * WHAT IT DOES: Places sprites 59 and 60 at X = $30 and $52 and gives
+ * sprites 61-63 the attribute bytes $0C, $0C, $06.
+ * HOW: OamBlock52Left's stores with X = $2C.
+ * Entry: M 8-bit. Exit: A low byte = $06; X = $2C (16-bit); N, Z clear; C,
+ * V from the add.
+ */
+void abi_OamBlock59Left(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | oam_block(cpu.db, 0x002C, 0x30, 0x22, 0x0C, 0x06, &p));
+    cpu.x = 0x002C;
+    cpu.p = (uint8_t)(p & ~(P_N | P_Z | P_X));
+}
+
+/*
+ * @routine 07:C331 OamBlock123Left
+ * WHAT IT DOES: Places sprites 123 and 124 at X = $7E and $A0 and gives
+ * sprites 125-127 the attribute bytes $0C, $0C, $06.
+ * HOW: OamBlock52Left's stores with X = $12C. Not reached in the traces
+ * so far.
+ * Entry: M 8-bit. Exit: A low byte = $06; X = $12C (16-bit); N, Z clear;
+ * C, V from the add.
+ */
+void abi_OamBlock123Left(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | oam_block(cpu.db, 0x012C, 0x7E, 0x22, 0x0C, 0x06, &p));
+    cpu.x = 0x012C;
+    cpu.p = (uint8_t)(p & ~(P_N | P_Z | P_X));
 }
 
 /*

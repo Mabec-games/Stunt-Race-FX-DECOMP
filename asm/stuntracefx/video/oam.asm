@@ -361,6 +361,33 @@ OamSetPalette:
     bne .lE31B
     rts
 
+; @routine 07:C328 OamBlock59Left
+; WHAT IT DOES: Places sprites 59 and 60 at X = $30 and $52 and gives sprites
+; 61-63 the attribute bytes $0C, $0C, $06.
+; HOW: OamBlock52Left's stores with X = $2C.
+; Entry: M 8-bit. Exit: A low byte = $06; X = $2C (16-bit); N, Z clear; C, V
+; from the add.
+%at($07C328)
+OamBlock59Left:
+    rep.b #$10
+    ldx.w #$002C
+    lda.b #$30
+    bra OamBlockPlace
+
+; @routine 07:C331 OamBlock123Left
+; WHAT IT DOES: Places sprites 123 and 124 at X = $7E and $A0 and gives
+; sprites 125-127 the attribute bytes $0C, $0C, $06.
+; HOW: OamBlock52Left's stores with X = $12C. Not reached in the traces so
+; far.
+; Entry: M 8-bit. Exit: A low byte = $06; X = $12C (16-bit); N, Z clear; C, V
+; from the add.
+%at($07C331)
+OamBlock123Left:
+    rep.b #$10
+    ldx.w #$012C
+    lda.b #$7E
+    bra OamBlockPlace
+
 ; @routine 07:C33A OamBlock52Left
 ; WHAT IT DOES: Places sprites 52 and 53 at X = $50 and $72 and gives
 ; sprites 54-56 the attribute bytes $0C, $0C, $06.
@@ -372,6 +399,7 @@ OamBlock52Left:
     rep.b #$10
     ldx.w #$0010
     lda.b #$50
+OamBlockPlace:
     sta.w !oam_sprite52_x-16,x
     clc
     adc.b #$22
