@@ -358,10 +358,8 @@ FxRegs FxPushApply(FxRegs g)
             if (!gsu.z) {
                 g.r[11] = 0x9509;
                 g = FxTurnRegs(g);
-                for (i = 0; i < 2; i++) {
-                    g.r[1] = gsu_add(g.r[1], g.r[1], 0);
-                    g.r[1] = gsu_add(g.r[1], g.r[1], 0);
-                }
+                g.r[1] = gsu_add(g.r[1], g.r[1], 0);
+                g.r[1] = gsu_add(g.r[1], g.r[1], 0);
                 g.r[3] = gsu_add(g.r[3], g.r[3], 0);
                 g.r[3] = gsu_add(g.r[3], g.r[3], 0);
             }

@@ -34,6 +34,8 @@
 #   each is swept) and with its segment +$58 = 0; FxDriveDecide for car
 #   $1AF8 with bit 14 of +$40 set and a point far to each side, and with
 #   +$7E at 20 while stopped (the reversing turn).
+# - FxPushApply with a negative amount, with $7D00, and with a turn of 16
+#   at $247E (FxTurn).
 load build/stuntracefx/states/battle_04.state
 set 701B04 00,00
 set 701CE4 00,00
@@ -194,4 +196,17 @@ wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
 set 701B76 14,00
 fx 04:C7D5 stop=888C r1=AF80 r3=12A0 r4=025D r8=1AF8 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7023A4 01,00,00,80,00,01,00,00,00,01
+fx 04:944C stop=888C r3=23A4 r10=0248
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7023A4 01,00,00,7D,00,01,00,00,00,01
+fx 04:944C stop=888C r3=23A4 r10=0248
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7023A4 01,00,00,01,00,01,00,00,00,01
+set 70247E 10,00
+fx 04:944C stop=888C r3=23A4 r10=0248
 wait 1
