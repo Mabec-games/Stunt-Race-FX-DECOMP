@@ -1425,3 +1425,13 @@ includeonce
 !gsu_record_247a = $70247A
 !gsu_rec_6c = $70006C
 !view_matrix_out = $0608
+
+; RaceFrameStep and RaceStart (race/race_frame.asm): the frames counted
+; for the last race frame, a word RaceStart clears, the camera target's
+; source, the Super FX word set to $FFFF each frame, and the Super FX screen
+; area RaceStart clears ($70:2C00-$5FFF).
+!frames_taken = $06D4
+!race_word_116a = $116A
+!race_target_116c = $00116C
+!gsu_view_246c = $70246C
+!gsu_screen_area = $702C00
