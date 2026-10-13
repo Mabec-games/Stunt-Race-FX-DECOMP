@@ -324,11 +324,13 @@ FxRecordLower82:
 ; WHAT IT DOES: The Super FX program that steps the 20 timed records at
 ; $273E (14 bytes each): a record whose timer byte (+0) is set counts it
 ; down; while its flags (+1) have bit 4 and the timer is below $20, +2
-; takes the byte of the table at $14:D0CC (ROM); then a record with bit 0
-; of +1 has it cleared, any other ends: its timer is cleared and its word
-; +$0C set to 0 (also for a record whose timer was already 0).
+; takes entry (timer) of the byte table at $14:D0BC (ROM); then a record
+; with bit 0 of +1 has it cleared, any other ends: its timer is cleared
+; and its word +$0C set to 0 (also for a record whose timer was already
+; 0).
 ; HOW: ROM bank $14, RAM bank 0; CACHE and LOOP over R12 = 20 records, R9
-; stepping by R8 = 14; the BNE's delay slot clears R0 either way.
+; stepping by R8 = 14; WITH then TO is a MOVE; the BNE's delay slot
+; clears R0 either way.
 ; Entry: started by the S-CPU. Exit (at the STOP): R9 past the records;
 ; R12 = 0; R10 = $0240; the other registers as the last record left them.
 %at($01BBC7)
