@@ -211,3 +211,170 @@ void abi_MenuPreviewCountdown(void)
     cpu.y = rd16(0x0011FB);
     abi_MenuActorFree();
 }
+
+void abi_MenuActorPoolInit(void);
+void abi_MenuHdmaSetupB(void);
+void abi_MenuActorSpawnList(void);
+void abi_RaceStart(void);
+void abi_MenuActorsRun(void);
+void abi_MenuOamBuild(void);
+void abi_MenuScrollReset(void);
+void abi_MenuPaletteLoad(void);
+void abi_MenuPaletteSave(void);
+void abi_MenuPaletteScale(void);
+void abi_MenuPictureToVram(void);
+void abi_MenuPictureDC8CGrid0(void);
+void abi_MenuLoadPicturesTo7F(void);
+void abi_MenuLoadClearGsu(void);
+void abi_MenuLoadBlank0800(void);
+void abi_MenuLoadBlank1000(void);
+void abi_MenuLoadBlank1800(void);
+void abi_SoundReset(void);
+void abi_MenuWaitFrame(void);
+
+/* A store as STZ/STA makes it at the accumulator width in P. */
+static void wr_m(uint32_t a, uint16_t v)
+{
+    if (cpu.p & P_M)
+        wr8(a, (uint8_t)v);
+    else
+        wr16(a, v);
+}
+
+/* A bank $17 picture to VRAM `vram`: its byte count is the big-endian
+   word before it ($11D5), then MenuPictureToVram with A = the picture and
+   X = the bank. */
+static void preview_picture(uint16_t vram, uint16_t pic)
+{
+    uint16_t n;
+
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    cpu.x = vram;
+    wr16(0x002116, vram);
+    n = rd16(0x170000 | (uint16_t)(pic - 2));
+    cpu.a = (uint16_t)((n << 8) | (n >> 8));
+    wr16(0x0011D5, cpu.a);
+    cpu.a = pic;
+    cpu.x = 0x0017;
+    abi_MenuPictureToVram();
+}
+
+/*
+ * @routine 0B:F784 MenuScreenOpenPreview
+ * WHAT IT DOES: Opens the menu screen with the course preview behind it:
+ * with the display, HDMA, DMA and interrupts off, clears the menu's lists
+ * and state, makes the menu objects (MenuActorPoolInit, spawn list $10) and
+ * starts a race in the background (RaceStart), runs the objects once;
+ * sets mode 3 with BG1 and BG2 maps at $6000 and $6800 and tiles at 0 and
+ * $6000, no colour math, BG2 scrolled to $FF00 and BG1 to $0100, BG1, BG2
+ * and sprites on the main screen with windows on BG1 and sprites; loads
+ * the palette from $1C:E3AC, saves it and scales colours 144-159 and
+ * 208-223 to full; draws three pictures from bank $17 ($CC78 at $3000,
+ * $CE78 at $6800, $DD8C at $4000) and the $DC8C grid, copies $1000 bytes
+ * of the Super FX picture ($70:3000) to VRAM $6000; loads the menu's
+ * pictures and blank tiles (MenuLoad*); turns on the IRQ at line $E0 and
+ * the joypad, waits two frames, runs the objects again, and turns on HDMA
+ * channels 4 and 7 with every frame update asked for.
+ * HOW: DB = 0 throughout; P and DB saved and restored.
+ * Entry: D = $0000. Exit: A = 0; X, Y as MenuOamBuild left them; P and DB
+ * unchanged.
+ */
+void abi_MenuScreenOpenPreview(void)
+{
+    uint8_t p = cpu.p, db = cpu.db;
+    uint16_t x;
+    static const struct { uint16_t reg; uint8_t v; } ppu[] = {
+        {0x2105, 0x03}, {0x2131, 0x00}, {0x2130, 0x00}, {0x2107, 0x61}, {0x2108, 0x69}, {0x210B, 0x30},
+        {0x210F, 0x00}, {0x210F, 0xFF}, {0x2127, 0xFF}, {0x210D, 0x00}, {0x210D, 0x01}, {0x212C, 0x13},
+        {0x2123, 0x30}, {0x2125, 0x03}, {0x212E, 0x12}};
+    unsigned i;
+
+    cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
+    cpu.a = (uint16_t)(cpu.a & 0xFF00);
+    cpu.db = 0x00;
+    wr8(0x002100, 0x80);
+    wr8(0x00420C, 0x00);
+    wr8(0x00420B, 0x00);
+    wr8(0x0011DA, 0x00);
+    wr8(0x004200, 0x00);
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    wr16(0x00162D, 0x0000);
+    wr16(0x0016AF, 0x0000);
+    wr16(0x001191, 0x0000);
+    wr16(0x001193, 0x0000);
+    wr16(0x000D7D, 0x0006);
+    wr16(0x001189, 0x1234);
+    wr16(0x00118F, 0x0000);
+    wr16(0x0011EB, 0x0000);
+    cpu.a = 0x1234;
+    abi_MenuActorPoolInit();
+    abi_MenuHdmaSetupB();
+    cpu.x = 0x0010;
+    abi_MenuActorSpawnList();
+    abi_RaceStart();
+    abi_MenuActorsRun();
+    abi_MenuOamBuild();
+    wr_m(0x0011ED, 0x0000);
+    wr_m(0x0011EF, 0x0000);
+    cpu.p |= P_M;
+    for (i = 0; i < sizeof ppu / sizeof ppu[0]; i++)
+        wr8(ppu[i].reg, ppu[i].v);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x12);
+    abi_MenuScrollReset();
+    cpu.p &= (uint8_t)~P_M;
+    wr16(0x0000FB, 0xE3AC);
+    wr16(0x0000FD, 0x001C);
+    cpu.a = 0x001C;
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    abi_MenuPaletteLoad();
+    cpu.a = 0x0000;
+    wr16(0x7EFD65, 0x0000);
+    abi_MenuPaletteSave();
+    wr16(0x0011DF, 0x0020);
+    cpu.a = 0x0020;
+    cpu.y = 0x0007;
+    cpu.x = 0x0120;
+    abi_MenuPaletteScale();
+    cpu.a = 0x0020;
+    wr16(0x0011DF, 0x0020);
+    cpu.y = 0x0007;
+    cpu.x = 0x01A0;
+    abi_MenuPaletteScale();
+    preview_picture(0x3000, 0xCC78);
+    preview_picture(0x6800, 0xCE78);
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    abi_MenuPictureDC8CGrid0();
+    wr16(0x002116, 0x6000);
+    for (x = 0; x != 0x1000; x = (uint16_t)(x + 2))
+        wr16(0x002118, rd16(0x703000 + x));
+    preview_picture(0x4000, 0xDD8C);
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    cpu.x = 0x1601;
+    wr16(0x0011F9, 0x1601);
+    abi_MenuLoadPicturesTo7F();
+    abi_MenuLoadClearGsu();
+    abi_MenuLoadBlank0800();
+    abi_MenuLoadBlank1000();
+    abi_MenuLoadBlank1800();
+    cpu.p |= P_M;
+    wr8(0x000D3F, 0x20);
+    wr8(0x004209, 0xE0);
+    wr8(0x00420A, 0x00);
+    wr8(0x0011D7, 0x0F);
+    wr8(0x0010DA, 0x00);
+    cpu.a = (uint16_t)(cpu.a & 0xFF00);
+    abi_SoundReset();
+    cpu.p |= P_M;
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x21);
+    wr8(0x004200, 0x21);
+    abi_MenuWaitFrame();
+    abi_MenuWaitFrame();
+    abi_MenuActorsRun();
+    abi_MenuOamBuild();
+    cpu.p |= P_M;
+    wr8(0x00420C, 0x90);
+    wr8(0x0011D7, (uint8_t)(rd8(0x0011D7) | 0x0F));
+    abi_MenuWaitFrame();
+    cpu.db = db;
+    cpu.p = p;
+}

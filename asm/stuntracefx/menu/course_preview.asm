@@ -199,3 +199,197 @@ MenuPreviewCountdown:
     plx                             ; not reached in the traces so far
     rep.b #$20                      ; not reached in the traces so far
     rts                             ; not reached in the traces so far
+
+; @routine 0B:F784 MenuScreenOpenPreview
+; WHAT IT DOES: Opens the menu screen with the course preview behind it:
+; with the display, HDMA, DMA and interrupts off, clears the menu's lists
+; and state, makes the menu objects (MenuActorPoolInit, spawn list $10) and
+; starts a race in the background (RaceStart), runs the objects once;
+; sets mode 3 with BG1 and BG2 maps at $6000 and $6800 and tiles at 0 and
+; $6000, no colour math, BG2 scrolled to $FF00 and BG1 to $0100, BG1, BG2
+; and sprites on the main screen with windows on BG1 and sprites; loads
+; the palette from $1C:E3AC, saves it and scales colours 144-159 and
+; 208-223 to full; draws three pictures from bank $17 ($CC78 at $3000,
+; $CE78 at $6800, $DD8C at $4000) and the $DC8C grid, copies $1000 bytes
+; of the Super FX picture ($70:3000) to VRAM $6000; loads the menu's
+; pictures and blank tiles (MenuLoad*); turns on the IRQ at line $E0 and
+; the joypad, waits two frames, runs the objects again, and turns on HDMA
+; channels 4 and 7 with every frame update asked for.
+; HOW: DB = 0 throughout; P and DB saved and restored.
+; Entry: D = $0000. Exit: A = 0; X, Y as MenuOamBuild left them; P and DB
+; unchanged.
+%at($0BF784)
+MenuScreenOpenPreview:
+    php
+    phb
+    sep.b #$20
+    rep.b #$10
+    lda.b #$00
+    pha
+    plb
+    lda.b #$80
+    sta.w !INIDISP
+    stz.w !HDMAEN
+    stz.w !MDMAEN
+    stz.w !wram_11DA
+    stz.w !NMITIMEN
+    rep.b #$30
+    stz.w !byte_writes_size
+    stz.w !vram_queue_size
+    stz.w !word_list_a_size
+    stz.w !word_list_b_size
+    lda.w #$0006
+    sta.w !gsu_buffer_offset
+    lda.w #$1234
+    sta.w !menu_1189
+    stz.w !menu_118f
+    stz.w !menu_exit
+    jsl.l MenuActorPoolInit
+    jsr.w MenuHdmaSetupB
+    ldx.w #$0010
+    jsl.l MenuActorSpawnList
+    jsl.l RaceStart
+    jsl.l MenuActorsRun
+    jsl.l MenuOamBuild
+    stz.w !menu_slide_pos
+    stz.w !menu_scroll_y
+    sep.b #$20
+    lda.b #$03
+    sta.w !BGMODE
+    stz.w !CGADSUB
+    stz.w !CGWSEL
+    lda.b #$61
+    sta.w !BG1SC
+    lda.b #$69
+    sta.w !BG2SC
+    lda.b #$30
+    sta.w !BG12NBA
+    stz.w !BG2HOFS
+    lda.b #$FF
+    sta.w !BG2HOFS
+    sta.w !WH1
+    stz.w !BG1HOFS
+    lda.b #$01
+    sta.w !BG1HOFS
+    lda.b #$13
+    sta.w !TM
+    lda.b #$30
+    sta.w !W12SEL
+    lda.b #$03
+    sta.w !WOBJSEL
+    lda.b #$12
+    sta.w !TMW
+    jsr.w MenuScrollReset
+    rep.b #$20
+    lda.w #$E3AC
+    sta.b !apu_stream_ptr
+    lda.w #$001C
+    sta.b !apu_stream_bank
+    sep.b #$20
+    rep.b #$10
+    rep.b #$30
+    jsr.w MenuPaletteLoad
+    lda.w #$0000
+    sta.l !palette_buffer
+    jsr.w MenuPaletteSave
+    lda.w #$0020
+    sta.w !scratch_11df
+    ldy.w #$0007
+    ldx.w #$0120
+    jsl.l MenuPaletteScale
+    lda.w #$0020
+    sta.w !scratch_11df
+    ldy.w #$0007
+    ldx.w #$01A0
+    jsl.l MenuPaletteScale
+    rep.b #$30
+    rep.b #$30
+    ldx.w #$3000
+    stx.w !VMADDL
+    rep.b #$30
+    lda.l !preview_picture_a-2
+    xba
+    sta.w !menu_picture_size
+    lda.w #$CC78
+    ldx.w #$0017
+    rep.b #$20
+    rep.b #$10
+    jsr.w MenuPictureToVram
+    rep.b #$20
+    rep.b #$10
+    rep.b #$30
+    ldx.w #$6800
+    stx.w !VMADDL
+    rep.b #$30
+    lda.l !preview_picture_b-2
+    xba
+    sta.w !menu_picture_size
+    lda.w #$CE78
+    ldx.w #$0017
+    rep.b #$20
+    rep.b #$10
+    jsr.w MenuPictureToVram
+    rep.b #$20
+    rep.b #$10
+    jsr.w MenuPictureDC8CGrid0
+    ldx.w #$0000
+    lda.w #$6000
+    sta.w !VMADDL
+.copy_picture:
+    lda.l !gsu_picture,x
+    sta.w !VMDATAL
+    inx
+    inx
+    cpx.w #$1000
+    bne .copy_picture
+    rep.b #$30
+    ldx.w #$4000
+    stx.w !VMADDL
+    rep.b #$30
+    lda.l !preview_picture_c-2
+    xba
+    sta.w !menu_picture_size
+    lda.w #$DD8C
+    ldx.w #$0017
+    rep.b #$20
+    rep.b #$10
+    jsr.w MenuPictureToVram
+    rep.b #$20
+    rep.b #$10
+    rep.b #$30
+    ldx.w #$1601
+    stx.w !actor_current
+    jsr.w MenuLoadPicturesTo7F
+    jsr.w MenuLoadClearGsu
+    jsr.w MenuLoadBlank0800
+    jsr.w MenuLoadBlank1000
+    jsr.w MenuLoadBlank1800
+    sep.b #$20
+    lda.b #$20
+    sta.w !wram_0D3F
+    lda.b #$E0
+    sta.w !VTIMEL
+    stz.w !VTIMEH
+    lda.b #$0F
+    sta.w !frame_update_flags
+    sep.b #$20
+    lda.b #$00
+    sta.l !wram_10DA
+    jsl.l SoundReset
+    sep.b #$20
+    lda.b #$21
+    sta.w !NMITIMEN
+    jsr.w MenuWaitFrame
+    jsr.w MenuWaitFrame
+    jsl.l MenuActorsRun
+    jsl.l MenuOamBuild
+    sep.b #$20
+    lda.b #$90
+    sta.w !HDMAEN
+    lda.w !frame_update_flags
+    ora.b #$0F
+    sta.w !frame_update_flags
+    jsr.w MenuWaitFrame
+    plb
+    plp
+    rts

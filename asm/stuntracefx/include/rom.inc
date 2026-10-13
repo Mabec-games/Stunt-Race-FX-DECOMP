@@ -296,3 +296,9 @@ includeonce
 
 ; The course script's opcode handlers, a word per even opcode (bank $08).
 !course_script_ops = $8000
+
+; MenuScreenOpenPreview's pictures in bank $17 (menu/course_preview.asm),
+; each after its big-endian byte count.
+!preview_picture_a = $17CC78
+!preview_picture_b = $17CE78
+!preview_picture_c = $17DD8C
