@@ -9,6 +9,11 @@
 #   at speed $800 (held at $257); GaugeTableIndex for the vehicle kinds
 #   $82E5 and an unknown one; PlayerVehicleRaised with bit 14 set in the
 #   word its links lead to ($1A64).
+# - ObjectSyncFromRecord for the player's car with bit 1 of its record's
+#   +$1C; ObjectSpawnSparklePair with no free object (both spawns fail);
+#   ObjectDrawListBuild with the car a kind-2 object with bit 6 of +$24;
+#   DebugDrawChar for character 0 at $6400 on its second half (the cell
+#   wraps); ObjectFree of the used list's head ($0001).
 load build/stuntracefx/states/novice_coupe_race1.state
 set 7E3437 FE
 call 03:FDF7 p=30 db=7E d=0000
@@ -52,4 +57,25 @@ wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
 set 7E1A64 01,40
 call 7F:1278 long x=0000 p=10 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 701CF4 0A,00
+call 08:CE02 long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E032D 00,00
+call 08:E9F4 long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2025 50
+set 7E2027 02
+call 7E:EF50 p=00 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0046 00,64
+set 7E0307 04,00
+call 03:D651 a=0000 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 03:B8A5 x=0001 p=20 db=7E d=0000
 wait 1
