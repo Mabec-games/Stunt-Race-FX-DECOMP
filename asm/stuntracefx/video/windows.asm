@@ -204,7 +204,8 @@ BobWindow0:
 ; @routine 7E:DF35 BobWindow1
 ; WHAT IT DOES: As BobWindow0 for bob 1: setup bytes $19AF-$19B1 and the
 ; bands WindowHdmaFFD9.
-; HOW: As BobWindow0. Not reached in the traces so far.
+; HOW: As BobWindow0. Reached by a unit test
+; (unit_uncalled).
 ; Entry: any widths. Exit: as BobWindow0.
 %ramcode($7EDF35, $013C5C)
 BobWindow1:

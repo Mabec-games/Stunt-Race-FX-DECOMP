@@ -256,7 +256,8 @@ void abi_BobWindow0(void)
  * @routine 7E:DF35 BobWindow1
  * WHAT IT DOES: As BobWindow0 for bob 1: setup bytes $19AF-$19B1 and the
  * bands WindowHdmaFFD9.
- * HOW: As BobWindow0. Not reached in the traces so far.
+ * HOW: As BobWindow0. Reached by a unit test
+ * (unit_uncalled).
  * Entry: any widths. Exit: as BobWindow0.
  */
 void abi_BobWindow1(void)

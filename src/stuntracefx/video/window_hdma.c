@@ -1028,7 +1028,8 @@ static void window_bands_3(uint16_t at, uint16_t addr)
  * @routine 7E:DCC6 WindowHdmaFFD5
  * WHAT IT DOES: Sets the window table's second to fourth bands to 16, 48
  * and 16 lines at $FFD5.
- * HOW: Counts, then addresses. Not reached in the traces so far.
+ * HOW: Counts, then addresses. Reached by a unit test
+ * (unit_uncalled).
  * Entry: any widths. Exit: as WindowHdmaFFD1, A = $FFD5.
  */
 void abi_WindowHdmaFFD5(void)
@@ -1039,7 +1040,8 @@ void abi_WindowHdmaFFD5(void)
 /*
  * @routine 7E:DCEC WindowHdmaFFD9
  * WHAT IT DOES: As WindowHdmaFFD5 for the sixth to eighth bands, at $FFD9.
- * HOW: As WindowHdmaFFD5. Not reached in the traces so far.
+ * HOW: As WindowHdmaFFD5. Reached by a unit test
+ * (unit_uncalled).
  * Entry: any widths. Exit: as WindowHdmaFFD1, A = $FFD9.
  */
 void abi_WindowHdmaFFD9(void)

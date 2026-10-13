@@ -1,0 +1,42 @@
+# unit_uncalled: unit tests (call) from the start of a Novice race for
+# routines the game reaches only by jumps or not at all in the scripts:
+# KeepRegisters, the bob 1 window and its bands, the $FFD5 bands,
+# TimesKeepAndAdvance, and the trail, attached and sparkle object handlers
+# (object $2F79 with its parent, +$27 and +$06, the player's car $0001;
+# the sparkle step with its count +$48 at 0, so it is released), and
+# ObjectReleaseLong (reached only by a JML) on that object.
+load build/stuntracefx/states/novice_coupe_race1.state
+call 7E:F217 long p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 7E:DF35 p=00 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 7E:DCC6 p=00 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 7E:DCEC p=00 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:D029 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E4FA0 01,00
+call 08:E919 long x=2F79 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E4FA0 01,00
+call 08:EBA3 long x=2F79 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E4F7F 01,00
+call 08:EA6B long x=2F79 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E4F7F 01,00
+set 7E4FC1 00
+call 08:EB07 long x=2F79 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:F927 long x=2F79 p=20 db=7E d=0000
+wait 1
