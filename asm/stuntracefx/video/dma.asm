@@ -399,3 +399,466 @@ AnimTilesQueueNext:
     sta.w !frame_update_flags
     plp
     rtl
+
+; @routine 7E:A7BE NmiFrameUpload
+; WHAT IT DOES: The vertical blank's uploads for the screen being built,
+; one stage per frame. With $0D22 nonzero, the split screen's stage $0D23
+; (the table at $AA4B): pictures and maps from Super FX RAM and bank $7F,
+; sprites, BG2's scroll and the palette. Otherwise the race screen's stage
+; $0D7D (the table at $A7D1): halves of the Super FX picture by the buffer
+; $0D7F, the bank $7F rows that go with them, the tile and map bases and
+; BG2's scroll for the finished buffer ($0D81 = -1 or 1, $0D28
+; decremented); each sets the next stage. Stages with nothing to do
+; upload the sprites (with $0D28 set and $0D54 clear) and the palette.
+; HOW: P saved and restored. JMP (table,X); the stages share their ends.
+; The stage table's entries $1C ($A8E6, which pushes P again) and the
+; helper at $A7F3 are never used.
+; Entry: D = $0000, data bank $00. Exit: P restored; A, X, Y as the stage
+; leaves them.
+%ramcode($7EA7BE, $0104E5)
+NmiFrameUpload:
+    php
+    sep.b #$20
+    lda.w !wram_0D22
+    beq .lA7C9
+    jmp.w NmiFrameUpload_split
+.lA7C9:
+    rep.b #$30
+    ldx.w !gsu_buffer_offset
+    jmp.w (.table,x)
+.table:
+    dw NmiFrameUpload_s00, NmiFrameUpload_s02, NmiFrameUpload_s04, NmiFrameUpload_s06, NmiFrameUpload_s08, NmiFrameUpload_s0A, NmiFrameUpload_s0C, NmiFrameUpload_s0E
+    dw NmiFrameUpload_s10, NmiFrameUpload_s12, NmiFrameUpload_s14, NmiFrameUpload_s16, NmiFrameUpload_s18, NmiFrameUpload_s1A, CgramUploadAll, NmiFrameUpload_s06
+    dw NmiFrameUpload_split
+    ; nothing jumps here or calls this: a row copy to VMDATA, unused
+.lA7F3:
+    lda.w !bank0_base,x             ; not reached in the traces so far
+    sta.l !VMDATAL                  ; not reached in the traces so far
+    inx                             ; not reached in the traces so far
+    inx                             ; not reached in the traces so far
+    dey                             ; not reached in the traces so far
+    bne .lA7F3                      ; not reached in the traces so far
+    rts                             ; not reached in the traces so far
+NmiFrameUpload_sprites:
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$0001
+.lA807:
+    dex
+    bne .lA807
+    lda.w !wram_0D25+3
+    beq .lA820
+    stz.w !wram_0D25+3
+    lda.w !wram_0D54
+    bne .lA820
+    ldx.w #$0375
+    ldy.w #$0220
+    jsr.w OamDma
+.lA820:
+    rep.b #$30
+    jsr.w CgramUploadAll
+    ldx.w #$000A
+.lA828:
+    dex
+    bne .lA828
+    plp
+    rts
+NmiFrameUpload_s00:
+    rep.b #$30
+    lda.w #$0001
+.lA832:
+    dec a
+    bne .lA832
+    lda.w !gsu_buffer_select
+    beq NmiFrameUpload_sprites
+    rep.b #$20
+    ldx.w #$0002
+    stx.w !gsu_buffer_offset
+    ldx.w #$2C00
+    ldy.w #$0000
+    lda.w #$2200
+    jsr.w VramDmaFromGsuRam
+    rep.b #$30
+    lda.w #$0200
+    ldx.w #$E3D7
+    ldy.w #$5BC0
+    jsr.w VramDmaFromBank7F
+    plp
+    rts
+NmiFrameUpload_s02:
+    rep.b #$30
+    lda.w #$0001
+.lA863:
+    dec a
+    bne .lA863
+    ldx.w #$0004
+    stx.w !gsu_buffer_offset
+    ldx.w #$4E00
+    ldy.w #$1100
+    lda.w #$2200
+    jsr.w VramDmaFromGsuRam
+    rep.b #$30
+    lda.w #$0240
+    ldx.w #$E5D7
+    ldy.w #$5CC0
+    jsr.w VramDmaFromBank7F
+    sep.b #$20
+    lda.b #$01
+    sta.w !wram_0357
+    plp
+    rts
+NmiFrameUpload_s04:
+    rep.b #$30
+    lda.w #$0004
+.lA894:
+    dec a
+    bne .lA894
+    ldx.w #$0006
+    stx.w !gsu_buffer_offset
+    lda.w !gradient_src_b+2
+    sta.l !gradient_ptr_a
+    ldx.w #$7000
+    ldy.w #$2200
+    lda.w #$2400
+    jsr.w VramDmaFromGsuRam
+    sep.b #$20
+    lda.b #$60
+    sta.w !BG12NBA
+    lda.b #$78
+    sta.w !BG1SC
+    lda.w !bg2_scroll_x
+    sta.w !BG2HOFS
+    lda.w !bg2_scroll_x+1
+    sta.w !BG2HOFS
+    lda.w !bg2_scroll_y
+    sta.w !BG2VOFS
+    lda.w !bg2_scroll_y+1
+    sta.w !BG2VOFS
+    rep.b #$20
+    lda.w #$FFFF
+    sta.l !wram_0D81
+    sep.b #$20
+    stz.b !bank0_base
+    dec.w !wram_0D25+3
+    plp
+    rts
+
+; @routine 7E:A8E6 CgramUploadAll
+; WHAT IT DOES: Copies the whole palette buffer ($7E:FD65, 512 bytes) to
+; CGRAM, noting $FD65 at $0D83.
+; HOW: CgramDma from colour 0. NmiFrameUpload's stages follow it in the
+; same stretch of code.
+; Entry: any widths. Exit: P restored; A = $2201, X = 0, Y = 0.
+%ramcode($7EA8E6, $01060D)
+CgramUploadAll:
+    php
+    rep.b #$30
+    lda.w #$FD65
+    sta.w !player_pal_offset
+    ldx.w #$0000
+    ldy.w #$0200
+    jsr.w CgramDma
+    plp
+    rts
+NmiFrameUpload_s06:
+    rep.b #$30
+    lda.w !gsu_buffer_select
+    beq .lA904
+    jmp.w NmiFrameUpload_sprites
+.lA904:
+    lda.w #$0001
+.lA907:
+    dec a
+    bne .lA907
+    ldx.w #$0008
+    stx.w !gsu_buffer_offset
+    ldx.w #$B800
+    ldy.w #$3400
+    lda.w #$2200
+    jsr.w VramDmaFromGsuRam
+    rep.b #$30
+    lda.w #$0200
+    ldx.w #$E817
+    ldy.w #$5DE0
+    jsr.w VramDmaFromBank7F
+    plp
+    rts
+NmiFrameUpload_s08:
+    lda.w #$0001
+.lA92F:
+    dec a
+    bne .lA92F
+    ldx.w #$000A
+    stx.w !gsu_buffer_offset
+    ldx.w #$DA00
+    ldy.w #$4500
+    lda.w #$2200
+    jsr.w VramDmaFromGsuRam
+    rep.b #$30
+    lda.w #$0240
+    ldx.w #$EA17
+    ldy.w #$5EE0
+    jsr.w VramDmaFromBank7F
+    sep.b #$20
+    lda.b #$01
+    sta.w !wram_0357
+    plp
+    rts
+NmiFrameUpload_s0A:
+    rep.b #$30
+    lda.w #$0004
+.lA960:
+    dec a
+    bne .lA960
+    lda.w #$0000
+    sta.w !gsu_buffer_offset
+    lda.w !gradient_src_b+4
+    sta.l !gradient_ptr_a
+    ldx.w #$9400
+    ldy.w #$2200
+    lda.w #$2400
+    jsr.w VramDmaFromGsuRam
+    sep.b #$20
+    lda.w !bg2_scroll_x+2
+    sta.w !BG2HOFS
+    lda.w !bg2_scroll_x+3
+    sta.w !BG2HOFS
+    lda.w !bg2_scroll_y+2
+    sta.w !BG2VOFS
+    lda.w !bg2_scroll_y+3
+    sta.w !BG2VOFS
+    lda.b #$62
+    sta.w !BG12NBA
+    lda.b #$7C
+    sta.w !BG1SC
+    rep.b #$20
+    lda.w #$0001
+    sta.w !wram_0D81
+    sep.b #$20
+    stz.b !bank0_base
+    dec.w !wram_0D25+3
+    plp
+    rts
+NmiFrameUpload_s0C:
+    lda.w !gsu_buffer_select
+    beq NmiFrameUpload_s0E
+    ldx.w #$0010
+    stx.w !gsu_buffer_offset
+    lda.w #$2C00
+    ldx.w #$0000
+    ldy.w #$0012
+    jsr.w VramDmaRowsFromGsuRam
+    sep.b #$20
+    lda.b #$01
+    sta.w !wram_0357
+    stz.b !bank0_base
+NmiFrameUpload_s0E:
+    plp
+    rts
+NmiFrameUpload_s10:
+    lda.w !gsu_buffer_select
+    bne NmiFrameUpload_s12
+    ldx.w #$0014
+    stx.w !gsu_buffer_offset
+    lda.w #$9400
+    ldx.w #$0B40
+    ldy.w #$0012
+    jsr.w VramDmaRowsFromGsuRam
+    sep.b #$20
+    lda.b #$01
+    sta.w !wram_0357
+    stz.b !bank0_base
+    lda.b #$40
+    sta.w !BG12NBA
+NmiFrameUpload_s12:
+    plp
+    rts
+NmiFrameUpload_s14:
+    lda.w !gsu_buffer_select
+    beq NmiFrameUpload_s16
+    ldx.w #$0018
+    stx.w !gsu_buffer_offset
+    lda.w #$2C00
+    ldx.w #$2000
+    ldy.w #$0012
+    jsr.w VramDmaRowsFromGsuRam
+    sep.b #$20
+    lda.b #$01
+    sta.w !wram_0357
+    stz.b !bank0_base
+NmiFrameUpload_s16:
+    plp
+    rts
+NmiFrameUpload_s18:
+    lda.w !gsu_buffer_select
+    bne NmiFrameUpload_s1A
+    ldx.w #$000C
+    stx.w !gsu_buffer_offset
+    lda.w #$9400
+    ldx.w #$2B40
+    ldy.w #$0012
+    jsr.w VramDmaRowsFromGsuRam
+    sep.b #$20
+    lda.b #$01
+    sta.w !wram_0357
+    stz.b !bank0_base
+    lda.b #$42
+    sta.w !BG12NBA
+NmiFrameUpload_s1A:
+    plp
+    rts
+NmiFrameUpload_split:
+    sep.b #$30
+    ldx.w !wram_0D23
+    jmp.w (.table,x)
+.table:
+    dw .lABB4, .lAB63, .lAB85, .lAB5C, .lAB6A, .lAB4C, .lAA91, .lAA9A
+    dw .lAB0F, .lAA5F
+.lAA5F:
+    sep.b #$20
+    rep.b #$10
+    ldx.w !fx_pool_first+8
+    stx.w !A1T0L
+    lda.b #$7F
+    sta.w !A1B0
+    ldx.w #$0C00
+    stx.w !DAS0L
+    ldx.w #$6600
+    stx.w !VMADDL
+    ldx.w #$1801
+    stx.w !DMAP0
+    lda.b #$80
+    sta.w !VMAIN
+    lda.b #$01
+    sta.w !MDMAEN
+    lda.b #$02
+    sta.w !wram_0D23
+    plp
+    rts
+.lAA91:
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$0000
+    bra .lAAA1
+.lAA9A:
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$0B40
+.lAAA1:
+    stx.w !VMADDL
+    ldx.w #$1680
+    stx.w !DAS0L
+    ldx.w #$9BD7
+    stx.w !A1T0L
+    ldx.w #$1801
+    stx.w !DMAP0
+    lda.b #$7F
+    sta.w !A1B0
+    lda.b #$80
+    sta.w !VMAIN
+    lda.w !gsu_scmr_shadow
+    and.b #$F7
+    sta.w !GSU_SCMR
+    lda.b #$01
+    sta.w !MDMAEN
+    lda.w !gsu_scmr_shadow
+    ora.b #$18
+    sta.w !GSU_SCMR
+    sep.b #$20
+    lda.b #$70
+    sta.w !BG12NBA
+    lda.b #$10
+    sta.w !wram_0D23
+    lda.b #$00
+    sta.w !CGADD
+    sta.w !CGADD
+    sta.w !CGADD
+    sta.w !CGADD
+    sta.w !CGADD
+    sta.w !CGADD
+    sta.w !CGADD
+    lda.b #$C4
+    sta.w !CGDATA
+    sta.l !palette_buffer
+    lda.b #$1C
+    sta.w !CGDATA
+    sta.l !palette_buffer+1
+    stz.w !palette_animate
+    plp
+    rts
+.lAB0F:
+    rep.b #$20
+    lda.w #$0800
+    sta.w !DAS0L
+    lda.w #$93D7
+    sta.w !A1T0L
+    lda.w #$7800
+    sta.w !VMADDL
+    lda.w #$1801
+    sta.w !DMAP0
+    sep.b #$20
+    lda.b #$7F
+    sta.w !A1B0
+    lda.b #$80
+    sta.w !VMAIN
+    lda.w !gsu_scmr_shadow
+    and.b #$F7
+    sta.w !GSU_SCMR
+    lda.b #$01
+    sta.w !MDMAEN
+    lda.w !gsu_scmr_shadow
+    ora.b #$18
+    sta.w !GSU_SCMR
+    plp
+    rts
+.lAB4C:
+    sep.b #$20
+    rep.b #$10
+    jsr.w VramUploadGsuBuffer
+    ldx.w #$0375
+    ldy.w #$0220
+    jsr.w OamDma
+.lAB5C:
+    rep.b #$30
+    jsr.w CgramUploadAll
+    plp
+    rts
+.lAB63:
+    sep.b #$20
+    rep.b #$10
+    jsr.w TilemapRowsTo5C00
+.lAB6A:
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$0375
+    ldy.w #$0220
+    jsr.w OamDma
+    sep.b #$30
+    ldx.b #$00
+    jsr.w Bg2ScrollFromTable
+    rep.b #$30
+    jsr.w CgramUploadAll
+    plp
+    rts
+.lAB85:
+    rep.b #$30
+    ldx.w #$4000
+    ldy.w #$6C00
+    lda.w #$0A00
+    jsr.w VramDmaFromGsuRam
+    rep.b #$30
+    ldx.w #$4600
+    ldy.w #$6240
+    lda.w #$0140
+    jsr.w VramDmaFromGsuRam
+    rep.b #$30
+    ldx.w #$4800
+    ldy.w #$6340
+    lda.w #$0140
+    jsr.w VramDmaFromGsuRam
+    sep.b #$20
+    stz.w !wram_0D23
+.lABB4:
+    plp
+    rts
+

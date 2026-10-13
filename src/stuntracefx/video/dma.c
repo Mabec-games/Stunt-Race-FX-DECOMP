@@ -10,6 +10,7 @@
 #include "machine.h"
 #include "hw.h"
 #include "wram.h"
+#include "cpu_ops.h"
 
 /* DMA channel 0, mode 1 (two registers, write once) to VMDATAL/H. */
 static void vram_channel(uint16_t size, uint16_t src, uint16_t vram)
@@ -459,4 +460,459 @@ void abi_AnimTilesQueueNext(void)
     uint8_t f = AnimTilesQueueNext(cpu.db, &a);
 
     cpu.a = (uint16_t)((a & 0xFF00) | f);
+}
+
+/*
+ * @routine 7E:A8E6 CgramUploadAll
+ * WHAT IT DOES: Copies the whole palette buffer ($7E:FD65, 512 bytes) to
+ * CGRAM, noting $FD65 at $0D83.
+ * HOW: CgramDma from colour 0. NmiFrameUpload's stages follow it in the
+ * same stretch of code.
+ * Entry: any widths. Exit: P restored; A = $2201, X = 0, Y = 0.
+ */
+void abi_CgramUploadAll(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t p0 = cpu.p;
+
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    cpu.a = 0xFD65;
+    wr16(b | 0x0D83, 0xFD65);
+    cpu.x = 0x0000;
+    cpu.y = 0x0200;
+    cpu.p = nz16(cpu.p, cpu.y);
+    abi_CgramDma();
+    cpu.p = p0;
+    if (p0 & P_X) {
+        cpu.x &= 0x00FF;
+        cpu.y &= 0x00FF;
+    }
+}
+
+void abi_TilemapRowsTo5C00(void);
+void abi_Bg2ScrollFromTable(void);
+
+/* LDA #n, LDX #n, LDY #n in some order: N, Z from the last one loaded. */
+static void ld3(uint16_t a, uint16_t x, uint16_t y, uint16_t last)
+{
+    cpu.a = a;
+    cpu.x = x;
+    cpu.y = y;
+    cpu.p = nz16(cpu.p, last);
+}
+
+/* LDA #n / DEC A / BNE: a delay, leaving A = 0. */
+static void delay_a(void)
+{
+    cpu.a = 0;
+    cpu.p = nz16(cpu.p, 0);
+}
+
+/* LDX #n / STX $0D7D: the next stage. */
+static void next_stage(uint32_t b, uint16_t n)
+{
+    cpu.x = n;
+    cpu.p = nz16(cpu.p, n);
+    wr16(b | 0x0D7D, n);
+}
+
+/* SEP #$20, STZ $00, DEC $0D28. */
+static void frame_done(uint32_t b)
+{
+    uint8_t v;
+
+    cpu.p |= P_M;
+    wr8(0x000000, 0x00);
+    v = (uint8_t)(rd8(b | 0x0D28) - 1);
+    wr8(b | 0x0D28, v);
+    cpu.p = nz8(cpu.p, v);
+}
+
+/* SEP #$20, $0357 = 1 (and STZ $00 when z). */
+static void flag_0357(uint32_t b, int z)
+{
+    cpu.p |= P_M;
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
+    cpu.p = nz8(cpu.p, 0x01);
+    wr8(b | 0x0357, 0x01);
+    if (z)
+        wr8(0x000000, 0x00);
+}
+
+/* LDA #n / STA reg with M 8-bit. */
+static void put8(uint32_t addr, uint8_t v)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+    wr8(addr, v);
+}
+
+/* LDA abs / STA reg with M 8-bit. */
+static void copy8(uint32_t to, uint32_t from)
+{
+    uint8_t v = rd8(from);
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+    wr8(to, v);
+}
+
+/* The stage at $A800: sprites to OAM when $0D28 is set (and $0D54 clear),
+   then the whole palette. */
+static void upload_sprites_palette(uint32_t b)
+{
+    uint8_t v;
+
+    cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
+    cpu.x = 0;
+    cpu.p = nz16(cpu.p, 0);
+    v = rd8(b | 0x0D28);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+    if (v) {
+        wr8(b | 0x0D28, 0x00);
+        v = rd8(b | 0x0D54);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+        cpu.p = nz8(cpu.p, v);
+        if (!v) {
+            cpu.x = 0x0375;
+            cpu.y = 0x0220;
+            cpu.p = nz16(cpu.p, cpu.y);
+            abi_OamDma();
+        }
+    }
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    abi_CgramUploadAll();
+    cpu.x = 0;
+    cpu.p = nz16(cpu.p, 0);
+}
+
+/* The rows stages ($A9B1, $A9D3, $A9FA, $AA1C): with $0D7F set (or clear,
+   by want), the next stage, rows from Super FX RAM, $0357 = 1, and BG1/2's
+   tile bases when nba is nonzero. */
+static void upload_rows(uint32_t b, int want, uint16_t n, uint16_t src,
+                        uint16_t vram, uint8_t nba)
+{
+    uint16_t sel;
+
+    sel = rd16(b | 0x0D7F);
+    cpu.a = sel;
+    cpu.p = nz16(cpu.p, sel);
+    if (!sel != !want)
+        return;
+    next_stage(b, n);
+    ld3(src, vram, 0x0012, 0x0012);
+    abi_VramDmaRowsFromGsuRam();
+    flag_0357(b, 1);
+    if (nba)
+        put8(BG12NBA, nba);
+}
+
+/* The split screen's DMA of $7F:9BD7 ($1680 bytes) to VRAM word x, then
+   BG1/2 tile bases $70, stage $10 and colour 0 = $1CC4. */
+static void split_picture(uint32_t b, uint16_t x)
+{
+    int i;
+
+    cpu.x = x;
+    cpu.p = nz16(cpu.p, x);
+    wr16(VMADDL, x);
+    cpu.x = 0x1680;
+    wr16(DAS0L, 0x1680);
+    cpu.x = 0x9BD7;
+    wr16(A1T0L, 0x9BD7);
+    cpu.x = 0x1801;
+    cpu.p = nz16(cpu.p, 0x1801);
+    wr16(DMAP0, 0x1801);
+    put8(A1B0, 0x7F);
+    put8(VMAIN, 0x80);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | rd8(b | 0x0374));
+    cpu.a &= 0xFFF7;
+    cpu.p = nz8(cpu.p, (uint8_t)cpu.a);
+    wr8(GSU_SCMR, (uint8_t)cpu.a);
+    put8(MDMAEN, 0x01);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | rd8(b | 0x0374));
+    cpu.a |= 0x0018;
+    cpu.p = nz8(cpu.p, (uint8_t)cpu.a);
+    wr8(GSU_SCMR, (uint8_t)cpu.a);
+    put8(BG12NBA, 0x70);
+    put8(b | 0x0D23, 0x10);
+    put8(CGADD, 0x00);
+    for (i = 1; i < 7; i++)
+        wr8(CGADD, 0x00);
+    put8(CGDATA, 0xC4);
+    wr8(0x7EFD65, 0xC4);
+    put8(CGDATA, 0x1C);
+    wr8(0x7EFD66, 0x1C);
+    wr8(b | 0x0E5F, 0x00);
+}
+
+/* The split screen's stages, by $0D23 (the table at $AA4B). */
+static void split_stage(uint32_t b)
+{
+    uint8_t s;
+
+    cpu.p |= P_M | P_X;
+    cpu.x &= 0x00FF;
+    cpu.y &= 0x00FF;
+    s = rd8(b | 0x0D23);
+    cpu.x = s;
+    cpu.p = nz8(cpu.p, s);
+    switch (rd16(0x7E0000 | (uint16_t)(0xAA4B + s))) {
+    case 0xABB4:
+        break;
+    case 0xAB63:
+        cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
+        abi_TilemapRowsTo5C00();
+        /* fall through */
+    case 0xAB6A:
+        cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
+        cpu.x = 0x0375;
+        cpu.y = 0x0220;
+        cpu.p = nz16(cpu.p, cpu.y);
+        abi_OamDma();
+        cpu.p |= P_M | P_X;
+        cpu.x = 0;
+        cpu.y &= 0x00FF;
+        cpu.p = nz8(cpu.p, 0);
+        abi_Bg2ScrollFromTable();
+        cpu.p &= (uint8_t)~(P_M | P_X);
+        abi_CgramUploadAll();
+        break;
+    case 0xAB85:
+        cpu.p &= (uint8_t)~(P_M | P_X);
+        ld3(0x0A00, 0x4000, 0x6C00, 0x0A00);
+        abi_VramDmaFromGsuRam();
+        cpu.p &= (uint8_t)~(P_M | P_X);
+        ld3(0x0140, 0x4600, 0x6240, 0x0140);
+        abi_VramDmaFromGsuRam();
+        cpu.p &= (uint8_t)~(P_M | P_X);
+        ld3(0x0140, 0x4800, 0x6340, 0x0140);
+        abi_VramDmaFromGsuRam();
+        cpu.p |= P_M;
+        wr8(b | 0x0D23, 0x00);
+        break;
+    case 0xAB4C:
+        cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
+        abi_VramUploadGsuBuffer();
+        cpu.x = 0x0375;
+        cpu.y = 0x0220;
+        cpu.p = nz16(cpu.p, cpu.y);
+        abi_OamDma();
+        /* fall through */
+    case 0xAB5C:
+        cpu.p &= (uint8_t)~(P_M | P_X);
+        abi_CgramUploadAll();
+        break;
+    case 0xAA91:
+        cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
+        split_picture(b, 0x0000);
+        break;
+    case 0xAA9A:
+        cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
+        split_picture(b, 0x0B40);
+        break;
+    case 0xAB0F:
+        cpu.p &= (uint8_t)~P_M;
+        cpu.a = 0x0800;
+        wr16(DAS0L, 0x0800);
+        cpu.a = 0x93D7;
+        wr16(A1T0L, 0x93D7);
+        cpu.a = 0x7800;
+        wr16(VMADDL, 0x7800);
+        cpu.a = 0x1801;
+        cpu.p = nz16(cpu.p, 0x1801);
+        wr16(DMAP0, 0x1801);
+        cpu.p |= P_M;
+        put8(A1B0, 0x7F);
+        put8(VMAIN, 0x80);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | rd8(b | 0x0374));
+        cpu.a &= 0xFFF7;
+        cpu.p = nz8(cpu.p, (uint8_t)cpu.a);
+        wr8(GSU_SCMR, (uint8_t)cpu.a);
+        put8(MDMAEN, 0x01);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | rd8(b | 0x0374));
+        cpu.a |= 0x0018;
+        cpu.p = nz8(cpu.p, (uint8_t)cpu.a);
+        wr8(GSU_SCMR, (uint8_t)cpu.a);
+        break;
+    case 0xAA5F: {
+        uint16_t src;
+
+        cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
+        src = rd16(b | 0x10A0);
+        cpu.x = src;
+        wr16(A1T0L, src);
+        put8(A1B0, 0x7F);
+        cpu.x = 0x0C00;
+        wr16(DAS0L, 0x0C00);
+        cpu.x = 0x6600;
+        wr16(VMADDL, 0x6600);
+        cpu.x = 0x1801;
+        cpu.p = nz16(cpu.p, 0x1801);
+        wr16(DMAP0, 0x1801);
+        put8(VMAIN, 0x80);
+        put8(MDMAEN, 0x01);
+        put8(b | 0x0D23, 0x02);
+        break;
+    }
+    }
+}
+
+/*
+ * @routine 7E:A7BE NmiFrameUpload
+ * WHAT IT DOES: The vertical blank's uploads for the screen being built,
+ * one stage per frame. With $0D22 nonzero, the split screen's stage $0D23
+ * (the table at $AA4B): pictures and maps from Super FX RAM and bank $7F,
+ * sprites, BG2's scroll and the palette. Otherwise the race screen's stage
+ * $0D7D (the table at $A7D1): halves of the Super FX picture by the buffer
+ * $0D7F, the bank $7F rows that go with them, the tile and map bases and
+ * BG2's scroll for the finished buffer ($0D81 = -1 or 1, $0D28
+ * decremented); each sets the next stage. Stages with nothing to do
+ * upload the sprites (with $0D28 set and $0D54 clear) and the palette.
+ * HOW: P saved and restored. JMP (table,X); the stages share their ends.
+ * The stage table's entries $1C ($A8E6, which pushes P again) and the
+ * helper at $A7F3 are never used.
+ * Entry: D = $0000, data bank $00. Exit: P restored; A, X, Y as the stage
+ * leaves them.
+ */
+void abi_NmiFrameUpload(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t p0 = cpu.p;
+    uint8_t v;
+    uint16_t sel;
+
+    cpu.p |= P_M;
+    v = rd8(b | 0x0D22);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+    if (v) {
+        split_stage(b);
+        op_plp(p0);
+        return;
+    }
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    cpu.x = rd16(b | 0x0D7D);
+    cpu.p = nz16(cpu.p, cpu.x);
+    switch (rd16(0x7E0000 | (uint16_t)(0xA7D1 + cpu.x))) {
+    case 0xA82D:
+        delay_a();
+        sel = rd16(b | 0x0D7F);
+        cpu.a = sel;
+        cpu.p = nz16(cpu.p, sel);
+        if (!sel) {
+            upload_sprites_palette(b);
+            break;
+        }
+        next_stage(b, 0x0002);
+        ld3(0x2200, 0x2C00, 0x0000, 0x2200);
+        abi_VramDmaFromGsuRam();
+        cpu.p &= (uint8_t)~(P_M | P_X);
+        ld3(0x0200, 0xE3D7, 0x5BC0, 0x5BC0);
+        abi_VramDmaFromBank7F();
+        break;
+    case 0xA85E:
+        delay_a();
+        next_stage(b, 0x0004);
+        ld3(0x2200, 0x4E00, 0x1100, 0x2200);
+        abi_VramDmaFromGsuRam();
+        cpu.p &= (uint8_t)~(P_M | P_X);
+        ld3(0x0240, 0xE5D7, 0x5CC0, 0x5CC0);
+        abi_VramDmaFromBank7F();
+        flag_0357(b, 0);
+        break;
+    case 0xA88F:
+        delay_a();
+        next_stage(b, 0x0006);
+        op_lda16(b | 0x0D9A);
+        wr16(0x7F348D, cpu.a);
+        ld3(0x2400, 0x7000, 0x2200, 0x2400);
+        abi_VramDmaFromGsuRam();
+        cpu.p |= P_M;
+        put8(BG12NBA, 0x60);
+        put8(BG1SC, 0x78);
+        copy8(BG2HOFS, b | 0x0D92);
+        copy8(BG2HOFS, b | 0x0D93);
+        copy8(BG2VOFS, b | 0x0D8E);
+        copy8(BG2VOFS, b | 0x0D8F);
+        cpu.p &= (uint8_t)~P_M;
+        cpu.a = 0xFFFF;
+        cpu.p = nz16(cpu.p, 0xFFFF);
+        wr16(0x000D81, 0xFFFF);
+        frame_done(b);
+        break;
+    case 0xA8FA:
+        sel = rd16(b | 0x0D7F);
+        cpu.a = sel;
+        cpu.p = nz16(cpu.p, sel);
+        if (sel) {
+            upload_sprites_palette(b);
+            break;
+        }
+        delay_a();
+        next_stage(b, 0x0008);
+        ld3(0x2200, 0xB800, 0x3400, 0x2200);
+        abi_VramDmaFromGsuRam();
+        cpu.p &= (uint8_t)~(P_M | P_X);
+        ld3(0x0200, 0xE817, 0x5DE0, 0x5DE0);
+        abi_VramDmaFromBank7F();
+        break;
+    case 0xA92C:
+        delay_a();
+        next_stage(b, 0x000A);
+        ld3(0x2200, 0xDA00, 0x4500, 0x2200);
+        abi_VramDmaFromGsuRam();
+        cpu.p &= (uint8_t)~(P_M | P_X);
+        ld3(0x0240, 0xEA17, 0x5EE0, 0x5EE0);
+        abi_VramDmaFromBank7F();
+        flag_0357(b, 0);
+        break;
+    case 0xA95B:
+        delay_a();
+        cpu.a = 0;
+        cpu.p = nz16(cpu.p, 0);
+        wr16(b | 0x0D7D, 0x0000);
+        op_lda16(b | 0x0D9C);
+        wr16(0x7F348D, cpu.a);
+        ld3(0x2400, 0x9400, 0x2200, 0x2400);
+        abi_VramDmaFromGsuRam();
+        cpu.p |= P_M;
+        copy8(BG2HOFS, b | 0x0D94);
+        copy8(BG2HOFS, b | 0x0D95);
+        copy8(BG2VOFS, b | 0x0D90);
+        copy8(BG2VOFS, b | 0x0D91);
+        put8(BG12NBA, 0x62);
+        put8(BG1SC, 0x7C);
+        cpu.p &= (uint8_t)~P_M;
+        cpu.a = 0x0001;
+        cpu.p = nz16(cpu.p, 0x0001);
+        wr16(b | 0x0D81, 0x0001);
+        frame_done(b);
+        break;
+    case 0xA9B1:
+        upload_rows(b, 1, 0x0010, 0x2C00, 0x0000, 0);
+        break;
+    case 0xA9D1:
+        break;
+    case 0xA9D3:
+        upload_rows(b, 0, 0x0014, 0x9400, 0x0B40, 0x40);
+        break;
+    case 0xA9F8:
+        break;
+    case 0xA9FA:
+        upload_rows(b, 1, 0x0018, 0x2C00, 0x2000, 0);
+        break;
+    case 0xAA1A:
+        break;
+    case 0xAA1C:
+        upload_rows(b, 0, 0x000C, 0x9400, 0x2B40, 0x42);
+        break;
+    case 0xAA41:
+        break;
+    case 0xAA43:
+        split_stage(b);
+        break;
+    }
+    op_plp(p0);
 }

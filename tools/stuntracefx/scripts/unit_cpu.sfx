@@ -36,6 +36,8 @@
 # - PictureTurnStep with R held (the pace of 8).
 # - PaletteFadeStep with a fade under way: four colours, each part up,
 #   down or already there.
+# - NmiFrameUpload at the stages nothing sets ($0E, $12, $16, $1A, $1E,
+#   $20) and the split screen's stage 8.
 load build/stuntracefx/states/novice_coupe_race1.state
 set 7E3437 FE
 call 03:FDF7 p=30 db=7E d=0000
@@ -576,4 +578,38 @@ set 7E0CFA 02
 set 7E1167 04,00,00
 set 7E0722 04,63,00,09,0B,40,FF,7F
 call 02:D55F long p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D22 00
+set 7E0D7D 0E,00
+call 7E:A7BE p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D22 00
+set 7E0D7D 12,00
+call 7E:A7BE p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D22 00
+set 7E0D7D 16,00
+call 7E:A7BE p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D22 00
+set 7E0D7D 1A,00
+call 7E:A7BE p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D22 00
+set 7E0D7D 1E,00
+call 7E:A7BE p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D22 00
+set 7E0D7D 20,00
+call 7E:A7BE p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D22 01,08
+call 7E:A7BE p=30 db=00 d=0000
 wait 1
