@@ -563,3 +563,109 @@ void abi_FxCarVelocityFromSegment(void)
     }
     gsu_pull(&gsu.r[10]);
 }
+
+void abi_FxBearingTo(void);
+void abi_FxListClearBit0(void);
+void abi_FxListSweep(void);
+
+/* R0 = the car's word +off - from, negated (SUB, NOT, INC). */
+static uint16_t back_from(uint16_t off, uint16_t from)
+{
+    gsu.r[0] = gsu_add(off, gsu.r[8], 0);
+    gsu.r[0] = gsu_sub(gsu_ldw(gsu.r[0]), from, 0);
+    return gsu_inc(gsu_not(gsu.r[0]));
+}
+
+/* For list member R6 with a word +$18, FxListClearBit0 and FxListSweep. */
+static void sweep_if_listed(uint16_t r11a, uint16_t r11b)
+{
+    gsu.r[0] = gsu_add(0x0018, gsu.r[6], 0);
+    gsu.r[0] = gsu_ldw(gsu.r[0]);
+    gsu_moves(gsu.r[0]);
+    if (gsu.z)
+        return;
+    gsu.r[11] = r11a;
+    abi_FxListClearBit0();
+    gsu.r[11] = r11b;
+    abi_FxListSweep();
+}
+
+/*
+ * @routine 04:C65A FxCarPlaceOnSegment
+ * WHAT IT DOES: Puts car R8 back on its segment entry +$58 (unless that is
+ * 0): reads the entry (FxTableEntryWords, FxCourseEntryRead), keeps its
+ * point at $26F6/$26F8/$26FA with y lowered by $A0, sets the car's
+ * velocity +$2E/+$30/+$32 to point minus position (+$1E/+$20/+$22), clears
+ * +$26, +$28, +$36, +$34 and +$38, steps to the next entry
+ * (FxCourseNextEntry) and turns the car to face it (FxBearingTo into
+ * +$24); then, for each object linked from +$3E (through +$34) and for
+ * the car itself, when its word +$18 is set, FxListClearBit0 and
+ * FxListSweep.
+ * HOW: The return address, the entry number and R8 are kept on the R10
+ * stack. The 0 entry exit and the sweep inside the loop are not reached in
+ * the traces so far.
+ * Entry: R8 = the car's record; R10 = stack; R11 = return address. Exit:
+ * R8 restored; R6 = the car; R11 = $C726 or as before the last sweep; S, Z
+ * from R10; the last RAM address R10.
+ */
+void abi_FxCarPlaceOnSegment(void)
+{
+    static const uint8_t at[3] = {0x1E, 0x20, 0x22}, vel[3] = {0x2E, 0x30, 0x32};
+    static const uint8_t zero[5] = {0x26, 0x28, 0x36, 0x34, 0x38};
+    int i;
+
+    gsu_push(&gsu.r[10], gsu.r[11]);
+    gsu.r[0] = gsu_add(0x0058, gsu.r[8], 0);
+    gsu.r[0] = gsu_ldw(gsu.r[0]);
+    gsu_moves(gsu.r[0]);
+    if (gsu.z) {
+        gsu_pull(&gsu.r[10]);
+        return;
+    }
+    gsu.r[11] = 0xC670;
+    abi_FxTableEntryWords();
+    gsu.r[11] = 0xC675;
+    abi_FxCourseEntryRead();
+    gsu_push(&gsu.r[10], gsu.r[0]);
+    gsu.r[0] = 0xFF60;
+    gsu.r[2] = gsu_add(gsu.r[2], gsu.r[0], 0);
+    gsu_stw(0x26F6, gsu.r[1]);
+    gsu_stw(0x26F8, gsu.r[2]);
+    gsu_stw(0x26FA, gsu.r[3]);
+    for (i = 0; i < 3; i++) {
+        gsu.r[4] = gsu.r[0] = back_from(at[i], gsu.r[1 + i]);
+        gsu.r[0] = gsu_add(vel[i], gsu.r[8], 0);
+        gsu_stw(gsu.r[0], gsu.r[4]);
+    }
+    gsu.r[1] = 0x0000;
+    for (i = 0; i < 5; i++) {
+        gsu.r[0] = gsu_add(zero[i], gsu.r[8], 0);
+        gsu_stw(gsu.r[0], gsu.r[1]);
+    }
+    gsu.r[0] = gsu_pull(&gsu.r[10]);
+    gsu.r[11] = 0xC6D6;
+    abi_FxCourseNextEntry();
+    gsu.r[11] = 0xC6DB;
+    abi_FxBearingTo();
+    gsu.r[1] = gsu.r[0];
+    gsu.r[0] = gsu_add(0x0024, gsu.r[8], 0);
+    gsu_stw(gsu.r[0], gsu.r[1]);
+    gsu.r[0] = gsu.r[1];
+    gsu_push(&gsu.r[10], gsu.r[8]);
+    gsu.r[0] = gsu_add(0x003E, gsu.r[8], 0);
+    gsu.r[0] = gsu_ldw(gsu.r[0]);
+    for (;;) {
+        gsu.r[6] = gsu.r[0];
+        gsu_moves(gsu.r[6]);
+        if (gsu.z)
+            break;
+        sweep_if_listed(0xC6FF, 0xC704);
+        gsu.r[0] = gsu_add(0x0034, gsu.r[6], 0);
+        gsu.r[0] = gsu_ldw(gsu.r[0]);
+    }
+    gsu.r[6] = gsu_pull(&gsu.r[10]);
+    gsu_push(&gsu.r[10], gsu.r[6]);
+    sweep_if_listed(0xC721, 0xC726);
+    gsu.r[8] = gsu_pull(&gsu.r[10]);
+    gsu_pull(&gsu.r[10]);
+}

@@ -502,6 +502,183 @@ FxCourseNextDistance:
     ldw (r10)
     nop
 
+; @routine 04:C65A FxCarPlaceOnSegment
+; WHAT IT DOES: Puts car R8 back on its segment entry +$58 (unless that is
+; 0): reads the entry (FxTableEntryWords, FxCourseEntryRead), keeps its
+; point at $26F6/$26F8/$26FA with y lowered by $A0, sets the car's
+; velocity +$2E/+$30/+$32 to point minus position (+$1E/+$20/+$22), clears
+; +$26, +$28, +$36, +$34 and +$38, steps to the next entry
+; (FxCourseNextEntry) and turns the car to face it (FxBearingTo into
+; +$24); then, for each object linked from +$3E (through +$34) and for
+; the car itself, when its word +$18 is set, FxListClearBit0 and
+; FxListSweep.
+; HOW: The return address, the entry number and R8 are kept on the R10
+; stack. The 0 entry exit and the sweep inside the loop are not reached in
+; the traces so far.
+; Entry: R8 = the car's record; R10 = stack; R11 = return address. Exit:
+; R8 restored; R6 = the car; R11 = $C726 or as before the last sweep; S, Z
+; from R10; the last RAM address R10.
+%at($04C65A)
+FxCarPlaceOnSegment:
+    from r11
+    stw (r10)
+    inc r10
+    inc r10
+    ibt r0,#$58
+    add r8
+    ldw (r0)
+    moves r0,r0
+    bne .entry
+    nop
+    iwt r15,#.return
+    nop
+.entry:
+    link #4
+    iwt r15,#FxTableEntryWords
+    nop
+    link #4
+    iwt r15,#FxCourseEntryRead
+    nop
+    stw (r10)
+    inc r10
+    inc r10
+    iwt r0,#$FF60
+    with r2
+    add r0
+    sm ($26F6),r1
+    sm ($26F8),r2
+    sm ($26FA),r3
+    ibt r0,#$1E
+    add r8
+    ldw (r0)
+    sub r1
+    not
+    inc r0
+    move r4,r0
+    ibt r0,#$2E
+    add r8
+    from r4
+    stw (r0)
+    ibt r0,#$20
+    add r8
+    ldw (r0)
+    sub r2
+    not
+    inc r0
+    move r4,r0
+    ibt r0,#$30
+    add r8
+    from r4
+    stw (r0)
+    ibt r0,#$22
+    add r8
+    ldw (r0)
+    sub r3
+    not
+    inc r0
+    move r4,r0
+    ibt r0,#$32
+    add r8
+    from r4
+    stw (r0)
+    ibt r1,#$00
+    ibt r0,#$26
+    add r8
+    from r1
+    stw (r0)
+    ibt r0,#$28
+    add r8
+    from r1
+    stw (r0)
+    ibt r0,#$36
+    add r8
+    from r1
+    stw (r0)
+    ibt r0,#$34
+    add r8
+    from r1
+    stw (r0)
+    ibt r0,#$38
+    add r8
+    from r1
+    stw (r0)
+    dec r10
+    dec r10
+    ldw (r10)
+    link #4
+    iwt r15,#FxCourseNextEntry
+    nop
+    link #4
+    iwt r15,#FxBearingTo
+    nop
+    move r1,r0
+    ibt r0,#$24
+    add r8
+    from r1
+    stw (r0)
+    move r0,r1
+    from r8
+    stw (r10)
+    inc r10
+    inc r10
+    ibt r0,#$3E
+    add r8
+    ldw (r0)
+.linked:
+    moves r6,r0
+    beq .car
+    nop
+    ibt r0,#$18
+    add r6
+    ldw (r0)
+    moves r0,r0
+    beq .next
+    nop
+    link #4
+    iwt r15,#FxListClearBit0
+    nop
+    link #4
+    iwt r15,#FxListSweep
+    nop
+.next:
+    ibt r0,#$34
+    add r6
+    ldw (r0)
+    bra .linked
+    nop
+.car:
+    dec r10
+    dec r10
+    to r6
+    ldw (r10)
+    from r6
+    stw (r10)
+    inc r10
+    inc r10
+    ibt r0,#$18
+    add r6
+    ldw (r0)
+    moves r0,r0
+    beq .done
+    nop
+    link #4
+    iwt r15,#FxListClearBit0
+    nop
+    link #4
+    iwt r15,#FxListSweep
+    nop
+.done:
+    dec r10
+    dec r10
+    to r8
+    ldw (r10)
+.return:
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+
 ; @routine 04:C72F FxCarVelocityFromSegment
 ; WHAT IT DOES: Takes the saved R11 back off the R10 stack and, unless car
 ; R8's word +$58 (its entry) is 0, sets the car's velocity +$2E/+$30/+$32 to
