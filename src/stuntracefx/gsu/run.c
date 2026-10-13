@@ -125,3 +125,74 @@ void abi_GsuAB13WithParams(void)
     cpu.a = (uint16_t)((last & 0xFF00) | mode);
     cpu.x = (cpu.p & P_X) ? 0x0013 : 0xAB13;
 }
+
+void abi_BucketTriggersFromView(void);
+void abi_ObjectDrawListBuild(void);
+void abi_BucketTriggersFixedArea(void);
+void abi_ObjectGroupsActivate(void);
+void abi_GsuRecordsUpload(void);
+
+/*
+ * @routine 7E:E1E1 FrameObjectsWhileGsuRuns
+ * WHAT IT DOES: The S-CPU's share of a race frame while the Super FX
+ * draws: the trigger list for the view (BucketTriggersFromView), the draw
+ * list (ObjectDrawListBuild), the fixed area's triggers
+ * (BucketTriggersFixedArea), the object groups (ObjectGroupsActivate);
+ * then waits for the Super FX (GsuWait) and uploads the records it needs
+ * next (GsuRecordsUpload).
+ * HOW: Six calls in turn.
+ * Entry: X 16-bit, D = $0000. Exit: as GsuRecordsUpload leaves it.
+ */
+void FrameObjectsWhileGsuRuns(void)
+{
+    abi_BucketTriggersFromView();
+    abi_ObjectDrawListBuild();
+    abi_BucketTriggersFixedArea();
+    abi_ObjectGroupsActivate();
+    abi_GsuWait();
+    abi_GsuRecordsUpload();
+}
+
+void abi_FrameObjectsWhileGsuRuns(void)
+{
+    FrameObjectsWhileGsuRuns();
+}
+
+/*
+ * @routine 7E:E221 FrameRunGsu8FCA
+ * WHAT IT DOES: Starts Super FX program $04:8FCA, does the frame's object
+ * work while it runs (FrameObjectsWhileGsuRuns), and keeps the number of
+ * polls the wait took ($FE) in $1F1F.
+ * HOW: As GsuRun, without waiting before the object work; the poll count
+ * in direct page $FE is cleared first. Data bank 0 inside, restored at the
+ * end.
+ * Entry: D = $0000. Exit: A = the poll count; X, Y as GsuRecordsUpload
+ * leaves them; M 8-bit, X 16-bit; N, Z from the data bank pulled back.
+ */
+void FrameRunGsu8FCA(void)
+{
+    uint8_t db = cpu.db;
+    uint16_t n;
+
+    cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
+    wr8(0x0000FE, 0x00);
+    wr8(0x0000FF, 0x00);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x04);
+    cpu.x = 0x8FCA;
+    wr8(GSU_PBR, 0x04);
+    cpu.db = 0x00;
+    wr8(GSU_SCMR, (uint8_t)(rd8(GSU_SCMR_SHADOW) | 0x18));
+    wr8(GSU_SFR, 0x00);
+    wr16(GSU_R15, 0x8FCA);
+    FrameObjectsWhileGsuRuns();
+    n = rd16(0x0000FE);
+    wr16(0x001F1F, n);
+    cpu.a = n;
+    cpu.db = db;
+    cpu.p = (uint8_t)(nz8(cpu.p | P_M, db) & ~P_X);
+}
+
+void abi_FrameRunGsu8FCA(void)
+{
+    FrameRunGsu8FCA();
+}

@@ -99,3 +99,57 @@ GsuAB13WithParams:
     sta.w !GSU_SCMR
     plp
     rtl
+
+; @routine 7E:E1E1 FrameObjectsWhileGsuRuns
+; WHAT IT DOES: The S-CPU's share of a race frame while the Super FX
+; draws: the trigger list for the view (BucketTriggersFromView), the draw
+; list (ObjectDrawListBuild), the fixed area's triggers
+; (BucketTriggersFixedArea), the object groups (ObjectGroupsActivate);
+; then waits for the Super FX (GsuWait) and uploads the records it needs
+; next (GsuRecordsUpload).
+; HOW: Six calls in turn.
+; Entry: X 16-bit, D = $0000. Exit: as GsuRecordsUpload leaves it.
+%ramcode($7EE1E1, $013F08)
+FrameObjectsWhileGsuRuns:
+    jsr.w BucketTriggersFromView
+    jsr.w ObjectDrawListBuild
+    jsr.w BucketTriggersFixedArea
+    jsr.w ObjectGroupsActivate
+    jsr.w GsuWait
+    jsl.l GsuRecordsUpload
+    rts
+
+; @routine 7E:E221 FrameRunGsu8FCA
+; WHAT IT DOES: Starts Super FX program $04:8FCA, does the frame's object
+; work while it runs (FrameObjectsWhileGsuRuns), and keeps the number of
+; polls the wait took ($FE) in $1F1F.
+; HOW: As GsuRun, without waiting before the object work; the poll count
+; in direct page $FE is cleared first. Data bank 0 inside, restored at the
+; end.
+; Entry: D = $0000. Exit: A = the poll count; X, Y as GsuRecordsUpload
+; leaves them; M 8-bit, X 16-bit; N, Z from the data bank pulled back.
+%ramcode($7EE221, $013F48)
+FrameRunGsu8FCA:
+    sep.b #$20
+    rep.b #$10
+    stz.b !gsu_wait_count
+    stz.b !gsu_wait_count_hi
+    lda.b #$04
+    ldx.w #$8FCA
+    sta.l !GSU_PBR
+    phb
+    lda.b #$00
+    pha
+    plb
+    lda.w !gsu_scmr_shadow
+    ora.b #$18
+    sta.w !GSU_SCMR
+    stz.w !GSU_SFR
+    stx.w !GSU_R15
+    jsr.w FrameObjectsWhileGsuRuns
+    rep.b #$20
+    lda.b !gsu_wait_count
+    sta.w !gsu_wait_polls
+    sep.b #$20
+    plb
+    rtl

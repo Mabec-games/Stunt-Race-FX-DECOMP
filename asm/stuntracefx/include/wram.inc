@@ -1323,3 +1323,39 @@ includeonce
 !gsu_rec_43 = $700043
 !gsu_rec_4e = $70004E
 !gsu_rec_7a = $70007A
+
+; ObjectDrawListBuild (object/draw_list.asm): the records written, the
+; trigger position and word, the object being looked at, the next record's
+; address (direct page), the view side, and the 30-byte draw record's
+; fields (offsets from the record, data bank $7E).
+!draw_count = $0CEE
+!trigger_pos = $1F2B
+!trigger_word = $1F2D
+!draw_object = $034C
+!draw_next = $3E
+!draw_side = $1F07
+!draw_depth = $0002
+!draw_angle_a = $0004
+!draw_angle_b = $0005
+!draw_angle_c = $0006
+!draw_flags = $0007
+!draw_model = $0008
+!draw_link = $000A
+!draw_link_48 = $000C
+!draw_link_49 = $000D
+!draw_link_4a = $000E
+!draw_y = $0010
+!draw_x = $0012
+!draw_z = $0014
+!draw_anim = $0016
+!draw_no_link = $0018
+!draw_palette = $0019
+!draw_frame = $001A
+!draw_kind = $001B
+!draw_5f = $001C
+!draw_60 = $001D
+!gsu_wait_count_hi = $FF
+!gsu_wait_polls = $1F1F
+!obj_26 = $2026
+!obj_09 = $2009
+!obj_60 = $2060
