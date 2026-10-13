@@ -320,4 +320,98 @@ FxRecordLower82:
     stop
     nop
 
+; @routine 01:BBC7 FxTimersProgram
+; WHAT IT DOES: The Super FX program that steps the 20 timed records at
+; $273E (14 bytes each): a record whose timer byte (+0) is set counts it
+; down; while its flags (+1) have bit 4 and the timer is below $20, +2
+; takes the byte of the table at $14:D0CC (ROM); then a record with bit 0
+; of +1 has it cleared, any other ends: its timer is cleared and its word
+; +$0C set to 0 (also for a record whose timer was already 0).
+; HOW: ROM bank $14, RAM bank 0; CACHE and LOOP over R12 = 20 records, R9
+; stepping by R8 = 14; the BNE's delay slot clears R0 either way.
+; Entry: started by the S-CPU. Exit (at the STOP): R9 past the records;
+; R12 = 0; R10 = $0240; the other registers as the last record left them.
+%at($01BBC7)
+FxTimersProgram:
+    iwt r10,#$0240
+    ibt r0,#$14
+    romb
+    sub r0
+    ramb
+    iwt r8,#$000E
+    iwt r9,#$273E
+    iwt r12,#$0014
+    ibt r5,#$20
+    cache
+    with r15
+    to r13
+.record:
+    ldb (r9)
+    lob
+    beq .end
+    nop
+    dec r0
+    stb (r9)
+    with r0
+    to r7
+    ibt r0,#$01
+    add r9
+    ldb (r0)
+    ibt r6,#$10
+    and r6
+    beq .flags
+    nop
+    with r7
+    to r0
+    cmp r5
+    bpl .flags
+    nop
+    iwt r14,#$D0BC
+    with r14
+    add r0
+    getb
+    ibt r7,#$02
+    with r7
+    add r9
+    from r0
+    stb (r7)
+.flags:
+    ibt r0,#$01
+    add r9
+    ldb (r0)
+    with r0
+    to r6
+    and #1
+    bne .bit0
+    sub r0
+    stb (r9)
+.end:
+    ibt r7,#$0C
+    with r7
+    add r9
+    from r0
+    stw (r7)
+    with r9
+    add r8
+    loop
+    nop
+    bra .done
+    nop
+.bit0:
+    with r6
+    to r0
+    bic #1
+    ibt r7,#$01
+    with r7
+    add r9
+    from r0
+    stb (r7)
+    with r9
+    add r8
+    loop
+    nop
+.done:
+    stop
+    nop
+
 arch 65816

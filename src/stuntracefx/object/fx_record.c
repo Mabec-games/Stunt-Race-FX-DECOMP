@@ -329,3 +329,72 @@ void abi_FxRecordLower82(void)
 {
     abi_amount(FxRecordLower82());
 }
+
+/*
+ * @routine 01:BBC7 FxTimersProgram
+ * WHAT IT DOES: The Super FX program that steps the 20 timed records at
+ * $273E (14 bytes each): a record whose timer byte (+0) is set counts it
+ * down; while its flags (+1) have bit 4 and the timer is below $20, +2
+ * takes the byte of the table at $14:D0CC (ROM); then a record with bit 0
+ * of +1 has it cleared, any other ends: its timer is cleared and its word
+ * +$0C set to 0 (also for a record whose timer was already 0).
+ * HOW: ROM bank $14, RAM bank 0; CACHE and LOOP over R12 = 20 records, R9
+ * stepping by R8 = 14; the BNE's delay slot clears R0 either way.
+ * Entry: started by the S-CPU. Exit (at the STOP): R9 past the records;
+ * R12 = 0; R10 = $0240; the other registers as the last record left them.
+ */
+void abi_FxTimersProgram(void)
+{
+    int bit0;
+
+    gsu.r[10] = 0x0240;
+    gsu.r[0] = 0x0014;
+    gsu.rombr = 0x14;
+    gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[0], 0);
+    gsu.rambr = 0x00;
+    gsu.r[8] = 0x000E;
+    gsu.r[9] = 0x273E;
+    gsu.r[12] = 0x0014;
+    gsu.r[5] = 0x0020;
+    gsu.r[13] = 0xBBDF;
+    do {
+        gsu.r[0] = gsu_lob(gsu_ldb(gsu.r[9]));
+        if (!gsu.z) {
+            gsu.r[0] = gsu_dec(gsu.r[0]);
+            gsu_stb(gsu.r[9], (uint8_t)gsu.r[0]);
+            gsu.r[7] = gsu.r[0];
+            gsu.r[0] = gsu_add(0x0001, gsu.r[9], 0);
+            gsu.r[0] = gsu_ldb(gsu.r[0]);
+            gsu.r[6] = 0x0010;
+            gsu.r[0] = gsu_and(gsu.r[0], gsu.r[6]);
+            if (!gsu.z) {
+                gsu_sub(gsu.r[7], gsu.r[5], 0);
+                if (gsu.s) {
+                    gsu_r14(0xD0BC);
+                    gsu_r14(gsu_add(gsu.r[14], gsu.r[0], 0));
+                    gsu.r[0] = gsu_getb();
+                    gsu.r[7] = gsu_add(0x0002, gsu.r[9], 0);
+                    gsu_stb(gsu.r[7], (uint8_t)gsu.r[0]);
+                }
+            }
+            gsu.r[0] = gsu_add(0x0001, gsu.r[9], 0);
+            gsu.r[0] = gsu_ldb(gsu.r[0]);
+            gsu.r[6] = gsu_and(gsu.r[0], 0x0001);
+            bit0 = !gsu.z;
+            gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[0], 0);
+            if (bit0) {
+                gsu.r[0] = gsu_bic(gsu.r[6], 0x0001);
+                gsu.r[7] = gsu_add(0x0001, gsu.r[9], 0);
+                gsu_stb(gsu.r[7], (uint8_t)gsu.r[0]);
+                gsu.r[9] = gsu_add(gsu.r[9], gsu.r[8], 0);
+                gsu.r[12] = gsu_dec(gsu.r[12]);
+                continue;
+            }
+            gsu_stb(gsu.r[9], (uint8_t)gsu.r[0]);
+        }
+        gsu.r[7] = gsu_add(0x000C, gsu.r[9], 0);
+        gsu_stw(gsu.r[7], gsu.r[0]);
+        gsu.r[9] = gsu_add(gsu.r[9], gsu.r[8], 0);
+        gsu.r[12] = gsu_dec(gsu.r[12]);
+    } while (gsu.r[12] != 0);
+}
