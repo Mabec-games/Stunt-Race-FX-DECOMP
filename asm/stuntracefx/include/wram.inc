@@ -1544,3 +1544,6 @@ includeonce
 !sound_direct0 = $10E2                  ; a byte sent straight to APU port 0 (then cleared)
 !sound_direct1 = $10E3                  ; the same for port 1
 !wram_0E16 = $0E16
+!window_band_pos = $19D4               ; window band animation: position (high byte = the table entry)
+!window_band_step = $19D6              ; its step per frame
+!window_band_target = $19D9            ; where it stops
