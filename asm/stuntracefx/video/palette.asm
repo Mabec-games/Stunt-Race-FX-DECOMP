@@ -862,3 +862,76 @@ PlayerColoursFlash:
     lda.w !blend_set_b+4
     sta.l !player_palettes+4,x
     rts
+
+; @routine 7E:B53F StatusColourPick
+; WHAT IT DOES: Picks the colour for item Y and stores it at $7E:FD8B: 0
+; while its timer $0DDA + Y is 0; with flag $0400 (of $0DF0/$0DF2 + Y) and
+; $0E05 + Y set, entry ($0E3B & 3) of the colours at $7E:B5B9; with flag
+; $0010 and the timer at $3C or more, entry ($0E3B & 3) of $7E:B5B1;
+; otherwise, on even frames only, entry (($0E3B >> 1) & 3) of $7E:B5B1
+; (odd frames store nothing).
+; HOW: The tables are read from the code's work RAM copy. The $0400 path
+; with $0E05 clear is not reached in the traces so far.
+; Entry: M 8-bit, X 16-bit; Y = item. Exit: M 16-bit; A = the colour (or
+; $0E3B on an odd frame, X unchanged); X = 0 after a store.
+%ramcode($7EB53F, $011266)
+StatusColourPick:
+    lda.w !wram_0DDA,y
+    beq .none
+    lda.w !player_rec_43,y
+    xba
+    lda.w !player_rec_42,y
+    rep.b #$20
+    bit.w #$0400
+    bne .flag400
+    bit.w #$0010
+    bne .flag10
+    bra .even
+.flag400:
+    pha
+    sep.b #$20
+    lda.w !kept_enable,y
+    bne .table_b
+    rep.b #$20
+    pla
+    bit.w #$0010
+    bne .flag10
+    bra .even
+.table_b:
+    rep.b #$20
+    pla
+    lda.w !frame_count
+    and.w #$0003
+    asl a
+    tax
+    lda.l !status_colours_b,x
+    bra .store
+.flag10:
+    sep.b #$20
+    lda.w !wram_0DDA,y
+    cmp.b #$3C
+    bcc .even
+    rep.b #$20
+    lda.w !frame_count
+    bra .pick
+.even:
+    rep.b #$20
+    lda.w !frame_count
+    bit.w #$0001
+    bne .done
+    lsr a
+.pick:
+    and.w #$0003
+    asl a
+    tax
+    lda.l !status_colours_a,x
+    bra .store
+.none:
+    rep.b #$20
+    lda.w #$0000
+    bra .store
+.store:
+    ldx.w #$0000
+    sta.l !status_colour,x
+.done:
+    rts

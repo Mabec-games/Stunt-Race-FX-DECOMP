@@ -767,3 +767,77 @@ void abi_PlayerColoursFlash(void)
     cpu.y = e.y;
     cpu.p = e.p;
 }
+
+/*
+ * @routine 7E:B53F StatusColourPick
+ * WHAT IT DOES: Picks the colour for item Y and stores it at $7E:FD8B: 0
+ * while its timer $0DDA + Y is 0; with flag $0400 (of $0DF0/$0DF2 + Y) and
+ * $0E05 + Y set, entry ($0E3B & 3) of the colours at $7E:B5B9; with flag
+ * $0010 and the timer at $3C or more, entry ($0E3B & 3) of $7E:B5B1;
+ * otherwise, on even frames only, entry (($0E3B >> 1) & 3) of $7E:B5B1
+ * (odd frames store nothing).
+ * HOW: The tables are read from the code's work RAM copy. The $0400 path
+ * with $0E05 clear is not reached in the traces so far.
+ * Entry: M 8-bit, X 16-bit; Y = item. Exit: M 16-bit; A = the colour (or
+ * $0E3B on an odd frame, X unchanged); X = 0 after a store.
+ */
+void abi_StatusColourPick(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t flags, t;
+    uint8_t v;
+    int table = 0;
+
+    v = rd8(b | (uint16_t)(0x0DDA + cpu.y));
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+    if (v == 0) {
+        cpu.p &= (uint8_t)~P_M;
+        cpu.a = 0x0000;
+        cpu.p = nz16(cpu.p, 0);
+        goto store;
+    }
+    v = rd8(b | (uint16_t)(0x0DF2 + cpu.y));
+    flags = (uint16_t)(v << 8);
+    flags |= rd8(b | (uint16_t)(0x0DF0 + cpu.y));
+    cpu.a = flags;
+    cpu.p &= (uint8_t)~P_M;
+    if (flags & 0x0400) {
+        v = rd8(b | (uint16_t)(0x0E05 + cpu.y));
+        if (v) {
+            cpu.a = flags;
+            t = rd16(b | 0x0E3B);
+            cpu.x = (uint16_t)((t & 0x0003) << 1);
+            cpu.p = (uint8_t)(cpu.p & ~P_C);
+            cpu.a = rd16((uint32_t)(0x7EB5B9 + cpu.x));
+            cpu.p = nz16(cpu.p, cpu.a);
+            goto store;
+        }
+    }
+    if (flags & 0x0010) {
+        v = rd8(b | (uint16_t)(0x0DDA + cpu.y));
+        cpu.p = (uint8_t)((cpu.p & ~P_C) | (v >= 0x3C ? P_C : 0));
+        if (v >= 0x3C) {
+            t = rd16(b | 0x0E3B);
+            table = 1;
+        }
+    }
+    if (!table) {
+        t = rd16(b | 0x0E3B);
+        cpu.a = t;
+        if (t & 0x0001) {
+            cpu.p = nz16(cpu.p, t);
+            return;
+        }
+        cpu.p = (uint8_t)((cpu.p & ~P_C) | (t & 0x0001));
+        t = (uint16_t)(t >> 1);
+    }
+    cpu.x = (uint16_t)((t & 0x0003) << 1);
+    cpu.p = (uint8_t)(cpu.p & ~P_C);
+    cpu.a = rd16((uint32_t)(0x7EB5B1 + cpu.x));
+    cpu.p = nz16(cpu.p, cpu.a);
+store:
+    cpu.x = 0x0000;
+    wr16(0x7EFD8B, cpu.a);
+    cpu.p = nz16(cpu.p, 0);
+}

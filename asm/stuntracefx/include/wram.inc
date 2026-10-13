@@ -1538,3 +1538,6 @@ includeonce
 !wram_0E53 = $0E53
 !wram_0E90 = $0E90
 !wram_0E02 = $0E02
+!status_colour = $7EFD8B               ; the colour StatusColourPick picks
+!status_colours_a = $7EB5B1            ; four colours, in the work RAM copy of the code
+!status_colours_b = $7EB5B9            ; four more
