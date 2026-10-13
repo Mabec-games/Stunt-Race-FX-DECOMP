@@ -15,6 +15,11 @@
 #   FxCourseNearest with $1092 = 0; FxNearestCar with $262E = 0;
 # - FxDivide32By16Halving and FxDivideHalvedIfLarge with R0 negative;
 # - the right, left, bottom and near polygon clips with a 2-vertex polygon.
+# - FxObjectFree on battle car $1AF8, whose parts are freed with it
+#   (FxObjectFreeChildren); FxSegmentCrossZ with both ends' z (R3, R6)
+#   positive and both negative; FxContactNote for record $210C (bit 7 of
+#   +$16 cleared, no contacts) and $2136 with the first pool cut to its
+#   first block, of $14 bytes, so the $12-byte contact takes it whole.
 load build/stuntracefx/states/battle_04.state
 set 701B04 00,00
 set 701CE4 00,00
@@ -81,4 +86,19 @@ wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
 set 700040 02,00
 fx 01:CE34 stop=80E3 r10=0250
+wait 1
+load build/stuntracefx/states/battle_04.state
+fx 04:8A08 stop=888C r1=1AF8 r10=0242
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:981A stop=80E3 r3=0001 r6=0001
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:981A stop=80E3 r3=8000 r6=8000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70109A 00,00
+set 701434 00,00,14,00
+set 702122 01,23,00,00
+fx 04:A345 stop=888C r6=210C r8=2136 r10=0244
 wait 1
