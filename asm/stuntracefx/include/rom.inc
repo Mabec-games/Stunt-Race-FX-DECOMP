@@ -315,3 +315,4 @@ BigSpritesCountDraw = $079EE9                   ; 07:9EE9, the $0E5C alternative
 !results_car_anim = $0BDA0F          ; ResultsPlaceCar: the car animation per kind (4 words)
 !results_car_anim_leader = $0BDA17   ; ResultsPlaceCar: the same for the leader's place
 !results_blink_palettes = $0BDA86    ; ResultsLeaderBlink: palette bits per step (2 words)
+!results_letter_tiles = $0BDDD3     ; ResultsLetterTiles: the tile of each letter (32 words)

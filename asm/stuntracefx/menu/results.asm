@@ -460,3 +460,872 @@ ResultsOverOrHide:
     lda.w #MenuActorNoStep
     sta.b !dp_08,x
     rts
+; @routine 0B:DAD1 ResultsLower
+; WHAT IT DOES: Lowers the standings panel: +$0A goes down by 4 to 0 (kept
+; at $1921), the scroll $11EF is $66 less it; at 0 the object goes on to
+; ResultsRiseAgain (+$08 = $DC6D, +$0A = 0), $1925 = $5F, the objects of
+; kinds $14-$17 are hidden and those of kinds $1A-$25 shown
+; (MenuActorsSet10 with $FFFF and 0), and for the leader's place $0FAC
+; (1-3; places 2 and 3 reached by unit tests,
+; unit_menus) the kind $18 object gets animation $262, $268 or $26E,
+; +$02 = $88 and ResultsLeaderBlinkResume, the kind $19 object animation
+; $250, $256 or $25C, +$02 = $58 and MenuWaitThenAnimate.
+; HOW: An animation is restarted (+$16 = +$18 = 0) only when it changes.
+; The place tests are byte compares through words masked with $FF.
+; Entry: X = the object, D = $0000. Exit: M 16-bit, X 16-bit; lowering: A
+; = +$0A, N, Z, C from the compare with 0; done: X = the kind $19 object
+; (or as MenuActorFind left it), A and the flags from the last step.
+%at($0BDAD1)
+ResultsLower:
+    rep.b #$30
+    lda.b !actor_0a,x
+    sec
+    sbc.w #$0004
+    bpl .lDADE
+    lda.w #$0000
+.lDADE:
+    sta.b !actor_0a,x
+    sta.l !wram_1921
+    pha
+    lda.w #$0066
+    sec
+    sbc.b !actor_0a,x
+    sta.w !menu_scroll_y
+    pla
+    cmp.w #$0000
+    beq .lDAF5
+    rts
+.lDAF5:
+    lda.w #$DC6D
+    sta.b !dp_08,x
+    lda.w #$0000
+    sta.b !actor_0a,x
+    lda.w #$005F
+    sta.l !wram_1925
+    lda.w #$0014
+    ldy.w #$FFFF
+    jsr.w MenuActorsSet10
+    lda.w #$0015
+    ldy.w #$FFFF
+    jsr.w MenuActorsSet10
+    lda.w #$0016
+    ldy.w #$FFFF
+    jsr.w MenuActorsSet10
+    lda.w #$0017
+    ldy.w #$FFFF
+    jsr.w MenuActorsSet10
+    lda.w #$001A
+    ldy.w #$0000
+    jsr.w MenuActorsSet10
+    lda.w #$001B
+    ldy.w #$0000
+    jsr.w MenuActorsSet10
+    lda.w #$001C
+    ldy.w #$0000
+    jsr.w MenuActorsSet10
+    lda.w #$001D
+    ldy.w #$0000
+    jsr.w MenuActorsSet10
+    lda.w #$001E
+    ldy.w #$0000
+    jsr.w MenuActorsSet10
+    lda.w #$001F
+    ldy.w #$0000
+    jsr.w MenuActorsSet10
+    lda.w #$0020
+    ldy.w #$0000
+    jsr.w MenuActorsSet10
+    lda.w #$0021
+    ldy.w #$0000
+    jsr.w MenuActorsSet10
+    lda.w #$0022
+    ldy.w #$0000
+    jsr.w MenuActorsSet10
+    lda.w #$0023
+    ldy.w #$0000
+    jsr.w MenuActorsSet10
+    lda.w #$0024
+    ldy.w #$0000
+    jsr.w MenuActorsSet10
+    lda.w #$0025
+    ldy.w #$0000
+    jsr.w MenuActorsSet10
+    lda.w #$0018
+    jsr.w MenuActorFind
+    lda.l !p1_lead+9
+    and.w #$00FF
+    beq .lDC01
+    cmp.w #$0001
+    bne .lDBC6
+    lda.b !actor_anim,x
+    cmp.w #$0262
+    beq .lDBBA
+    lda.w #$0262
+    sta.b !actor_anim,x
+    stz.b !actor_anim_pos,x
+    stz.b !actor_anim_timer,x
+.lDBBA:
+    lda.w #$0088
+    sta.b !dp_02,x
+    lda.w #$DA1F
+    sta.b !dp_08,x
+    bra .lDC01
+.lDBC6:
+    cmp.w #$0002
+    bne .lDBE7
+    lda.b !actor_anim,x
+    cmp.w #$0268
+    beq .lDBDB
+    lda.w #$0268
+    sta.b !actor_anim,x
+    stz.b !actor_anim_pos,x
+    stz.b !actor_anim_timer,x
+.lDBDB:
+    lda.w #$0088
+    sta.b !dp_02,x
+    lda.w #$DA1F
+    sta.b !dp_08,x
+    bra .lDC01
+.lDBE7:
+    lda.b !actor_anim,x
+    cmp.w #$026E
+    beq .lDBF7
+    lda.w #$026E
+    sta.b !actor_anim,x
+    stz.b !actor_anim_pos,x
+    stz.b !actor_anim_timer,x
+.lDBF7:
+    lda.w #$0088
+    sta.b !dp_02,x
+    lda.w #$DA1F
+    sta.b !dp_08,x
+.lDC01:
+    lda.w #$0019
+    jsr.w MenuActorFind
+    lda.l !p1_lead+9
+    and.w #$00FF
+    beq .lDC6C
+    cmp.w #$0001
+    bne .lDC31
+    lda.b !actor_anim,x
+    cmp.w #$0250
+    beq .lDC25
+    lda.w #$0250
+    sta.b !actor_anim,x
+    stz.b !actor_anim_pos,x
+    stz.b !actor_anim_timer,x
+.lDC25:
+    lda.w #$0058
+    sta.b !dp_02,x
+    lda.w #$D5EC
+    sta.b !dp_08,x
+    bra .lDC6C
+.lDC31:
+    cmp.w #$0002
+    bne .lDC52
+    lda.b !actor_anim,x
+    cmp.w #$0256
+    beq .lDC46
+    lda.w #$0256
+    sta.b !actor_anim,x
+    stz.b !actor_anim_pos,x
+    stz.b !actor_anim_timer,x
+.lDC46:
+    lda.w #$0058
+    sta.b !dp_02,x
+    lda.w #$D5EC
+    sta.b !dp_08,x
+    bra .lDC6C
+.lDC52:
+    lda.b !actor_anim,x
+    cmp.w #$025C
+    beq .lDC62
+    lda.w #$025C
+    sta.b !actor_anim,x
+    stz.b !actor_anim_pos,x
+    stz.b !actor_anim_timer,x
+.lDC62:
+    lda.w #$0058
+    sta.b !dp_02,x
+    lda.w #$D5EC
+    sta.b !dp_08,x
+.lDC6C:
+    rts
+
+; @routine 0B:DCBF ResultsTimeDigits
+; WHAT IT DOES: When the championship is over ($0DD6 = 8), shows the time
+; $0EEF, $0EEE, $0EED (two digits each) on object X's sprite group and
+; stops it (+$08 = MenuActorNoStep); otherwise hides it (+$10 = $FFFF;
+; reached by unit tests, unit_menus).
+; HOW: MenuActorCopyGroup, then the digits from the group's first entry
+; ($11E1); X reloaded from $11F9.
+; Entry: M 16-bit, X 16-bit, D = $0000; X = the object. Exit: X = $11F9; A
+; = $DF7B; N set, Z clear.
+%at($0BDCBF)
+ResultsTimeDigits:
+    lda.l !engine_phase_p1
+    and.w #$00FF
+    cmp.w #$0008
+    bne .lDCF3
+    jsr.w MenuActorCopyGroup
+    lda.b !actor_12,x
+    inc a
+    inc a
+    sta.w !scratch_11e1
+    lda.l !wram_0EEF
+    jsr.w ResultsBcdPair
+    lda.l !wram_0EEE
+    jsr.w ResultsBcdPair
+    lda.l !wram_0EED
+    jsr.w ResultsBcdPair
+    ldx.w !actor_current
+    lda.w #$DF7B
+    sta.b !dp_08,x
+    rts
+.lDCF3:
+    ldx.w !actor_current
+    lda.w #$FFFF
+    sta.b !actor_10,x
+    lda.w #$DF7B
+    sta.b !dp_08,x
+    rts
+
+; @routine 0B:DD1E ResultsInitials
+; WHAT IT DOES: Shows the initials of the car for place +$22 (three 5-bit
+; letters in the word at $70:FC6D + ResultsCarIndex) on object X's sprite
+; group, then starts ResultsLeaderBlink when it is the leader's place and
+; the championship is over, otherwise stops (MenuActorNoStep).
+; HOW: MenuActorCopyGroup; the word shifted right 5 at a time through
+; $11DF; ResultsLetterTiles from the group's first entry ($11E5).
+; Entry: M 16-bit, X 16-bit, D = $0000; X = the object. Exit: X = $11F9;
+; A and the flags from the last step.
+%at($0BDD1E)
+ResultsInitials:
+    jsr.w MenuActorCopyGroup
+    lda.b !actor_12,x
+    inc a
+    inc a
+    sta.w !scratch_11e5
+    jsr.w ResultsCarIndex
+    lda.l !save_course_names,x
+    sta.w !scratch_11df
+    and.w #$001F
+    jsr.w ResultsLetterTiles
+    lda.w !scratch_11df
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    sta.w !scratch_11df
+    and.w #$001F
+    jsr.w ResultsLetterTiles
+    lda.w !scratch_11df
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    sta.w !scratch_11df
+    and.w #$001F
+    jsr.w ResultsLetterTiles
+    ldx.w !actor_current
+    lda.l !p1_lead+9
+    and.w #$00FF
+    cmp.b !actor_22,x
+    bne .lDD81
+    lda.l !engine_phase_p1
+    and.w #$00FF
+    cmp.w #$0008
+    bne .lDD81
+    ldx.w !actor_current
+    lda.w #$DA33
+    sta.b !dp_08,x
+    stz.b !actor_22,x
+    stz.b !actor_0a,x
+    rts
+.lDD81:
+    lda.w #$DF7B
+    sta.b !dp_08,x
+    rts
+
+; @routine 0B:DD87 ResultsLetterTiles
+; WHAT IT DOES: Puts letter A (0-31) in the next two sprites of the group
+; at $11E5: its tile from the table at $0B:DDD3 and the tile $10 on below
+; it.
+; HOW: The tile through $11E3; X kept on the stack.
+; Entry: M 16-bit, X 16-bit; A = the letter. Exit: X as on entry, N, Z
+; from it; A = the new $11E5; C, V from its add.
+%at($0BDD87)
+ResultsLetterTiles:
+    phx
+    asl a
+    tax
+    lda.l !results_letter_tiles,x
+    sta.w !scratch_11e3
+    ldx.w !scratch_11e5
+    lda.l !menu_sprite_attr,x
+    and.w #$FE00
+    ora.w !scratch_11e3
+    sta.l !menu_sprite_attr,x
+    lda.w !scratch_11e5
+    clc
+    adc.w #$0008
+    sta.w !scratch_11e5
+    lda.w !scratch_11e3
+    clc
+    adc.w #$0010
+    sta.w !scratch_11e3
+    ldx.w !scratch_11e5
+    lda.l !menu_sprite_attr,x
+    and.w #$FE00
+    ora.w !scratch_11e3
+    sta.l !menu_sprite_attr,x
+    lda.w !scratch_11e5
+    clc
+    adc.w #$0008
+    sta.w !scratch_11e5
+    plx
+    rts
+
+; @routine 0B:DE0B ResultsLapTimes
+; WHAT IT DOES: Shows the time of place +$22 (the bytes at $0F78, $0F77 and
+; $0F76 + it, two digits each) on object X's sprite group; a place with no
+; time ($FF) first blanks its line (ResultsNoTime). Then starts
+; ResultsLeaderBlink when +$20 is the leader's place and the championship
+; is over, otherwise stops (MenuActorNoStep).
+; HOW: MenuActorCopyGroup; ResultsBcdPair from the group's first entry
+; ($11E1); the place and its first byte kept on the stack.
+; Entry: M 16-bit, X 16-bit, D = $0000; X = the object. Exit: X = $11F9;
+; A and the flags from the last step.
+%at($0BDE0B)
+ResultsLapTimes:
+    jsr.w MenuActorCopyGroup
+    lda.b !actor_12,x
+    inc a
+    inc a
+    sta.w !scratch_11e1
+    lda.b !actor_22,x
+    tax
+    lda.l !record_times+2,x
+    pha
+    phx
+    and.w #$00FF
+    cmp.w #$00FF
+    bne .lDE29
+    jsr.w ResultsNoTime
+.lDE29:
+    plx
+    pla
+    jsr.w ResultsBcdPair
+    lda.l !record_times+1,x
+    jsr.w ResultsBcdPair
+    lda.l !record_times,x
+    jsr.w ResultsBcdPair
+    ldx.w !actor_current
+    lda.l !p1_lead+9
+    and.w #$00FF
+    cmp.b !actor_20,x
+    bne .lDE63
+    lda.l !engine_phase_p1
+    and.w #$00FF
+    cmp.w #$0008
+    bne .lDE63
+    ldx.w !actor_current
+    lda.w #$DA33
+    sta.b !dp_08,x
+    stz.b !actor_22,x
+    stz.b !actor_0a,x
+    rts
+.lDE63:
+    lda.w #$DF7B
+    sta.b !dp_08,x
+    rts
+
+; @routine 0B:DE69 ResultsBcdPair
+; WHAT IT DOES: Puts the two decimal digits of the byte A (high, then low)
+; in the group at $11E1 (ResultsDigitTiles).
+; HOW: The byte kept at $11E5.
+; Entry: M 16-bit, X 16-bit; A low byte = the digits. Exit: as
+; ResultsDigitTiles.
+%at($0BDE69)
+ResultsBcdPair:
+    and.w #$00FF
+    sta.w !scratch_11e5
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    and.w #$000F
+    jsr.w ResultsDigitTiles
+    lda.w !scratch_11e5
+    and.w #$000F
+    jsr.w ResultsDigitTiles
+    rts
+
+; @routine 0B:DE83 ResultsDigitTiles
+; WHAT IT DOES: Puts digit A (0-9; 15 for a blank, tile $94) in the next
+; two sprites of the group at $11E1: tile A + $50 and the one $10 on.
+; HOW: As ResultsLetterTiles with the tile computed.
+; Entry: M 16-bit, X 16-bit; A = the digit. Exit: X as on entry, N, Z
+; from it; A = the new $11E1; C, V from its add.
+%at($0BDE83)
+ResultsDigitTiles:
+    phx
+    cmp.w #$000F
+    bne .lDE8C
+    lda.w #$0044
+.lDE8C:
+    clc
+    adc.w #$0050
+    sta.w !scratch_11e3
+    ldx.w !scratch_11e1
+    lda.l !menu_sprite_attr,x
+    and.w #$FE00
+    ora.w !scratch_11e3
+    sta.l !menu_sprite_attr,x
+    lda.w !scratch_11e1
+    clc
+    adc.w #$0008
+    sta.w !scratch_11e1
+    lda.w !scratch_11e3
+    clc
+    adc.w #$0010
+    sta.w !scratch_11e3
+    ldx.w !scratch_11e1
+    lda.l !menu_sprite_attr,x
+    and.w #$FE00
+    ora.w !scratch_11e3
+    sta.l !menu_sprite_attr,x
+    lda.w !scratch_11e1
+    clc
+    adc.w #$0008
+    sta.w !scratch_11e1
+    plx
+    rts
+
+; @routine 0B:DED5 ResultsNoTime
+; WHAT IT DOES: For a place with no time: by the current object's kind
+; ($20, $21 or another; $20 reached by a unit test, unit_menus) blanks
+; the initials of the kind $23, $24 or $25 object (ResultsBlankLetters)
+; and hides the kind $1D, $1E or $1F object (+$10 = $FFFF, +$02 = $200,
+; MenuActorNoStep).
+; HOW: $11DF and $11E1 kept on the stack.
+; Entry: M 16-bit, X 16-bit, D = $0000. Exit: X = the hidden object; A =
+; $11DF; N, Z from it.
+%at($0BDED5)
+ResultsNoTime:
+    lda.w !scratch_11df
+    pha
+    lda.w !scratch_11e1
+    pha
+    ldx.w !actor_current
+    lda.b !actor_kind,x
+    cmp.w #$0020
+    beq .lDF3A
+    cmp.w #$0021
+    beq .lDF13
+    lda.w #$0025
+    jsr.w MenuActorFind
+    jsr.w ResultsBlankLetters
+    lda.w #$001F
+    jsr.w MenuActorFind
+    lda.w #$FFFF
+    sta.b !actor_10,x
+    lda.w #$0200
+    sta.b !dp_02,x
+    lda.w #$DF7B
+    sta.b !dp_08,x
+    pla
+    sta.w !scratch_11e1
+    pla
+    sta.w !scratch_11df
+    rts
+.lDF13:
+    lda.w #$0024
+    jsr.w MenuActorFind
+    jsr.w ResultsBlankLetters
+    lda.w #$001E
+    jsr.w MenuActorFind
+    lda.w #$FFFF
+    sta.b !actor_10,x
+    lda.w #$0200
+    sta.b !dp_02,x
+    lda.w #$DF7B
+    sta.b !dp_08,x
+    pla
+    sta.w !scratch_11e1
+    pla
+    sta.w !scratch_11df
+    rts
+.lDF3A:
+    lda.w #$0023
+    jsr.w MenuActorFind
+    jsr.w ResultsBlankLetters
+    lda.w #$001D
+    jsr.w MenuActorFind
+    lda.w #$FFFF
+    sta.b !actor_10,x
+    lda.w #$0200
+    sta.b !dp_02,x
+    lda.w #$DF7B
+    sta.b !dp_08,x
+    pla
+    sta.w !scratch_11e1
+    pla
+    sta.w !scratch_11df
+    rts
+
+; @routine 0B:DF61 ResultsBlankLetters
+; WHAT IT DOES: Puts three blank letters (26) in object X's sprite group.
+; HOW: ResultsLetterTiles from the group's first entry ($11E5).
+; Entry: M 16-bit, X 16-bit; X = the object. Exit: as ResultsLetterTiles.
+%at($0BDF61)
+ResultsBlankLetters:
+    lda.b !actor_12,x
+    inc a
+    inc a
+    sta.w !scratch_11e5
+    lda.w #$001A
+    jsr.w ResultsLetterTiles
+    lda.w #$001A
+    jsr.w ResultsLetterTiles
+    lda.w #$001A
+    jsr.w ResultsLetterTiles
+    rts
+
+; @routine 0B:DFDB ResultsPlace0
+; WHAT IT DOES: Place 0's points object (see place_points in the C):
+; counts +$0A down, then shows, with ResultsPlace0Animate as its handler,
+; and shows car 0's points or animates by $0D48 (the hiding below it can
+; never run: the BCC after CMP #0 never branches).
+; HOW: As the other places, with 0.
+; Entry: M 16-bit, X 16-bit, D = $0000; X = the object. Exit: counting: N,
+; Z from the count; else as ResultsPoints, ResultsPhaseAnim or the hiding
+; store (A = $FFFF).
+%at($0BDFDB)
+ResultsPlace0:
+    dec.b !actor_0a,x
+    bpl .lE005
+    stz.b !actor_10,x
+    lda.w #$E018
+    sta.b !dp_08,x
+    lda.l !engine_phase_p1
+    and.w #$00FF
+    cmp.w #$0008
+    beq .lE00C
+    lda.l !wram_0D48
+    and.w #$00FF
+    cmp.w #$0000
+    beq .lE002
+    bcc .lE006
+    bne .lE00C
+.lE002:
+    jsr.w ResultsPhaseAnim
+.lE005:
+    rts
+.lE006:
+    lda.w #$FFFF
+    sta.b !actor_10,x
+    rts
+.lE00C:
+    lda.w #$0000
+    jsr.w ResultsPoints
+    lda.w #$E0DF
+    sta.b !dp_08,x
+    rts
+
+; @routine 0B:E018 ResultsPlace0Animate
+; WHAT IT DOES: Place 0's points object's frame while animating:
+; MenuActorAnimateFrame.
+; HOW: JSR, RTS.
+; Entry: as MenuActorAnimateFrame. Exit: as MenuActorAnimateFrame.
+%at($0BE018)
+ResultsPlace0Animate:
+    jsr.w MenuActorAnimateFrame
+    rts
+
+; @routine 0B:E01C ResultsPlace1
+; WHAT IT DOES: As ResultsPlace0 for place 1 (handler ResultsPlace1Animate).
+; HOW: As ResultsPlace0, with 1.
+; Entry: as ResultsPlace0. Exit: as ResultsPlace0.
+%at($0BE01C)
+ResultsPlace1:
+    dec.b !actor_0a,x
+    bpl .lE046
+    stz.b !actor_10,x
+    lda.w #$E059
+    sta.b !dp_08,x
+    lda.l !engine_phase_p1
+    and.w #$00FF
+    cmp.w #$0008
+    beq .lE04D
+    lda.l !wram_0D48
+    and.w #$00FF
+    cmp.w #$0001
+    beq .lE043
+    bcc .lE047
+    bne .lE04D
+.lE043:
+    jsr.w ResultsPhaseAnim
+.lE046:
+    rts
+.lE047:
+    lda.w #$FFFF
+    sta.b !actor_10,x
+    rts
+.lE04D:
+    lda.w #$0001
+    jsr.w ResultsPoints
+    lda.w #$E0DF
+    sta.b !dp_08,x
+    rts
+
+; @routine 0B:E059 ResultsPlace1Animate
+; WHAT IT DOES: As ResultsPlace0Animate, for place 1.
+; HOW: JSR, RTS.
+; Entry: as MenuActorAnimateFrame. Exit: as MenuActorAnimateFrame.
+%at($0BE059)
+ResultsPlace1Animate:
+    jsr.w MenuActorAnimateFrame
+    rts
+
+; @routine 0B:E05D ResultsPlace2
+; WHAT IT DOES: As ResultsPlace0 for place 2 (handler ResultsPlace2Animate).
+; HOW: As ResultsPlace0, with 2.
+; Entry: as ResultsPlace0. Exit: as ResultsPlace0.
+%at($0BE05D)
+ResultsPlace2:
+    dec.b !actor_0a,x
+    bpl .lE087
+    stz.b !actor_10,x
+    lda.w #$E09A
+    sta.b !dp_08,x
+    lda.l !engine_phase_p1
+    and.w #$00FF
+    cmp.w #$0008
+    beq .lE08E
+    lda.l !wram_0D48
+    and.w #$00FF
+    cmp.w #$0002
+    beq .lE084
+    bcc .lE088
+    bne .lE08E
+.lE084:
+    jsr.w ResultsPhaseAnim
+.lE087:
+    rts
+.lE088:
+    lda.w #$FFFF
+    sta.b !actor_10,x
+    rts
+.lE08E:
+    lda.w #$0002
+    jsr.w ResultsPoints
+    lda.w #$E0DF
+    sta.b !dp_08,x
+    rts
+
+; @routine 0B:E09A ResultsPlace2Animate
+; WHAT IT DOES: As ResultsPlace0Animate, for place 2.
+; HOW: JSR, RTS.
+; Entry: as MenuActorAnimateFrame. Exit: as MenuActorAnimateFrame.
+%at($0BE09A)
+ResultsPlace2Animate:
+    jsr.w MenuActorAnimateFrame
+    rts
+
+; @routine 0B:E09E ResultsPlace3
+; WHAT IT DOES: As ResultsPlace0 for place 3 (handler ResultsPlace3Animate).
+; HOW: As ResultsPlace0, with 3.
+; Entry: as ResultsPlace0. Exit: as ResultsPlace0.
+%at($0BE09E)
+ResultsPlace3:
+    dec.b !actor_0a,x
+    bpl .lE0C8
+    stz.b !actor_10,x
+    lda.w #$E0DB
+    sta.b !dp_08,x
+    lda.l !engine_phase_p1
+    and.w #$00FF
+    cmp.w #$0008
+    beq .lE0CF
+    lda.l !wram_0D48
+    and.w #$00FF
+    cmp.w #$0003
+    beq .lE0C5
+    bcc .lE0C9
+    bne .lE0CF
+.lE0C5:
+    jsr.w ResultsPhaseAnim
+.lE0C8:
+    rts
+.lE0C9:
+    lda.w #$FFFF
+    sta.b !actor_10,x
+    rts
+.lE0CF:
+    lda.w #$0003
+    jsr.w ResultsPoints
+    lda.w #$E0DF
+    sta.b !dp_08,x
+    rts
+
+; @routine 0B:E0DB ResultsPlace3Animate
+; WHAT IT DOES: As ResultsPlace0Animate, for place 3.
+; HOW: JSR, RTS.
+; Entry: as MenuActorAnimateFrame. Exit: as MenuActorAnimateFrame.
+%at($0BE0DB)
+ResultsPlace3Animate:
+    jsr.w MenuActorAnimateFrame
+    rts
+
+; @routine 0B:E0E0 ResultsPoints
+; WHAT IT DOES: Shows the points of car A (five digits: the low digit of
+; $0EFB + 3A, then the bytes $0EFA and $0EF9 + 3A) on object X's sprite
+; group.
+; HOW: MenuActorCopyGroup with A kept on the stack, then at $11DF; the
+; digits from the group's first entry ($11E1).
+; Entry: M 16-bit, X 16-bit, D = $0000; A = the car; X = the object. Exit:
+; X = $11F9, N, Z from it; A and C, V from the last step.
+%at($0BE0E0)
+ResultsPoints:
+    pha
+    jsr.w MenuActorCopyGroup
+    pla
+    sta.w !scratch_11df
+    lda.b !actor_12,x
+    inc a
+    inc a
+    sta.w !scratch_11e1
+    lda.w !scratch_11df
+    asl a
+    clc
+    adc.w !scratch_11df
+    tax
+    lda.l !lap_times+11,x
+    and.w #$000F
+    jsr.w ResultsPointsTile
+    lda.l !lap_times+10,x
+    jsr.w ResultsPointsPair
+    lda.l !lap_times+9,x
+    jsr.w ResultsPointsPair
+    ldx.w !actor_current
+    rts
+
+; @routine 0B:E114 ResultsPointsPair
+; WHAT IT DOES: Puts the two decimal digits of the byte A (high, then low)
+; in the group at $11E1 as single tiles 0-9 (ResultsPointsTile).
+; HOW: The byte kept at $11E5.
+; Entry: M 16-bit, X 16-bit; A low byte = the digits. Exit: as
+; ResultsPointsTile.
+%at($0BE114)
+ResultsPointsPair:
+    and.w #$00FF
+    sta.w !scratch_11e5
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    and.w #$000F
+    jsr.w ResultsPointsTile
+    lda.w !scratch_11e5
+    and.w #$000F
+    jsr.w ResultsPointsTile
+    rts
+
+; @routine 0B:E12E ResultsPointsTile
+; WHAT IT DOES: Puts tile A in the next sprite of the group at $11E1.
+; HOW: The tile through $11E3; X kept on the stack.
+; Entry: M 16-bit, X 16-bit; A = the tile. Exit: X as on entry, N, Z from
+; it; A = the new $11E1; C, V from its add.
+%at($0BE12E)
+ResultsPointsTile:
+    phx
+    sta.w !scratch_11e3
+    ldx.w !scratch_11e1
+    lda.l !menu_sprite_attr,x
+    and.w #$FE00
+    ora.w !scratch_11e3
+    sta.l !menu_sprite_attr,x
+    lda.w !scratch_11e1
+    clc
+    adc.w #$0008
+    sta.w !scratch_11e1
+    plx
+    rts
+
+; @routine 0B:E14F ResultsPhaseAnim
+; WHAT IT DOES: Gives object X the animation for the race phase $0DD6: $1A4
+; for 6, $17C for $0A, $19A for $0C, $190 for $0E, $186 for $10; none for
+; the others. Reached by unit tests (unit_menus).
+; HOW: A compare chain; the animation is restarted (+$16 = +$18 = 0) only
+; when it changes.
+; Entry: M 16-bit, X 16-bit, D = $0000; X = the object. Exit: A = the
+; animation (or the phase), N, Z, C from the last compare.
+%at($0BE14F)
+ResultsPhaseAnim:
+    lda.l !engine_phase_p1
+    and.w #$00FF
+    cmp.w #$0006
+    beq .lE170
+    cmp.w #$000A
+    beq .lE181
+    cmp.w #$000C
+    beq .lE192
+    cmp.w #$000E
+    beq .lE1A3
+    cmp.w #$0010
+    beq .lE1B4
+    rts
+.lE170:
+    lda.b !actor_anim,x
+    cmp.w #$01A4
+    beq .lE180
+    lda.w #$01A4
+    sta.b !actor_anim,x
+    stz.b !actor_anim_pos,x
+    stz.b !actor_anim_timer,x
+.lE180:
+    rts
+.lE181:
+    lda.b !actor_anim,x
+    cmp.w #$017C
+    beq .lE191
+    lda.w #$017C
+    sta.b !actor_anim,x
+    stz.b !actor_anim_pos,x
+    stz.b !actor_anim_timer,x
+.lE191:
+    rts
+.lE192:
+    lda.b !actor_anim,x
+    cmp.w #$019A
+    beq .lE1A2
+    lda.w #$019A
+    sta.b !actor_anim,x
+    stz.b !actor_anim_pos,x
+    stz.b !actor_anim_timer,x
+.lE1A2:
+    rts
+.lE1A3:
+    lda.b !actor_anim,x
+    cmp.w #$0190
+    beq .lE1B3
+    lda.w #$0190
+    sta.b !actor_anim,x
+    stz.b !actor_anim_pos,x
+    stz.b !actor_anim_timer,x
+.lE1B3:
+    rts
+.lE1B4:
+    lda.b !actor_anim,x
+    cmp.w #$0186
+    beq .lE1C4
+    lda.w #$0186
+    sta.b !actor_anim,x
+    stz.b !actor_anim_pos,x
+    stz.b !actor_anim_timer,x
+.lE1C4:
+    rts
+

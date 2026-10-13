@@ -502,3 +502,623 @@ void abi_ResultsOverOrHide(void)
     set_field(0x10, 0xFFFF);
     set_field(0x08, 0xDF7B);
 }
+
+void abi_MenuActorsSet10(void);
+void abi_MenuActorAnimateFrame(void);
+
+/*
+ * @routine 0B:DAD1 ResultsLower
+ * WHAT IT DOES: Lowers the standings panel: +$0A goes down by 4 to 0 (kept
+ * at $1921), the scroll $11EF is $66 less it; at 0 the object goes on to
+ * ResultsRiseAgain (+$08 = $DC6D, +$0A = 0), $1925 = $5F, the objects of
+ * kinds $14-$17 are hidden and those of kinds $1A-$25 shown
+ * (MenuActorsSet10 with $FFFF and 0), and for the leader's place $0FAC
+ * (1-3; places 2 and 3 reached by unit tests,
+ * unit_menus) the kind $18 object gets animation $262, $268 or $26E,
+ * +$02 = $88 and ResultsLeaderBlinkResume, the kind $19 object animation
+ * $250, $256 or $25C, +$02 = $58 and MenuWaitThenAnimate.
+ * HOW: An animation is restarted (+$16 = +$18 = 0) only when it changes.
+ * The place tests are byte compares through words masked with $FF.
+ * Entry: X = the object, D = $0000. Exit: M 16-bit, X 16-bit; lowering: A
+ * = +$0A, N, Z, C from the compare with 0; done: X = the kind $19 object
+ * (or as MenuActorFind left it), A and the flags from the last step.
+ */
+static void place_object(uint16_t kind, uint16_t anim0, uint16_t pos, uint16_t handler)
+{
+    uint16_t place, anim;
+
+    op_lda16_imm(kind);
+    abi_MenuActorFind();
+    place = byte_of(0x000FAC);
+    if (!place)
+        return;
+    op_cmp16(0x0001);
+    anim = anim0;
+    if (!(cpu.p & P_Z)) {
+        op_cmp16(0x0002);
+        anim = (cpu.p & P_Z) ? (uint16_t)(anim0 + 6) : (uint16_t)(anim0 + 12);
+    }
+    op_lda16(fld(0x14));
+    op_cmp16(anim);
+    if (!(cpu.p & P_Z)) {
+        set_field(0x14, anim);
+        wr16(fld(0x16), 0x0000);
+        wr16(fld(0x18), 0x0000);
+    }
+    set_field(0x02, pos);
+    set_field(0x08, handler);
+}
+
+void abi_ResultsLower(void)
+{
+    static const uint16_t kinds[16] = {0x14, 0x15, 0x16, 0x17, 0x1A, 0x1B, 0x1C, 0x1D,
+                                       0x1E, 0x1F, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25};
+    unsigned i;
+
+    op_rep(P_M | P_X);
+    op_lda16(fld(0x0A));
+    op_sub16(0x0004);
+    if (cpu.p & P_N)
+        op_lda16_imm(0x0000);
+    wr16(fld(0x0A), cpu.a);
+    wr16(0x001921, cpu.a);
+    {
+        uint16_t kept = cpu.a;
+
+        op_lda16_imm(0x0066);
+        op_sub16(rd16(fld(0x0A)));
+        wr16(abs_db(0x11EF), cpu.a);
+        cpu.a = kept;
+        cpu.p = nz16(cpu.p, kept);
+    }
+    op_cmp16(0x0000);
+    if (!(cpu.p & P_Z))
+        return;
+    set_field(0x08, 0xDC6D);
+    set_field(0x0A, 0x0000);
+    op_lda16_imm(0x005F);
+    wr16(0x001925, 0x005F);
+    for (i = 0; i < 16; i++) {
+        op_lda16_imm(kinds[i]);
+        cpu.y = i < 4 ? 0xFFFF : 0x0000;
+        cpu.p = nz16(cpu.p, cpu.y);
+        abi_MenuActorsSet10();
+    }
+    place_object(0x0018, 0x0262, 0x0088, 0xDA1F);
+    place_object(0x0019, 0x0250, 0x0058, 0xD5EC);
+}
+
+/* The sprite tile at $11E3 into the next entry of the group, $11E1 or
+   $11E5 (`at`) stepping by 8: the attribute word's low 9 bits replaced. */
+static void tile_at(uint16_t at)
+{
+    cpu.x = rd16(abs_db(at));
+    cpu.p = nz16(cpu.p, cpu.x);
+    op_lda16(0x7F135A + (uint32_t)cpu.x);
+    op_and16(0xFE00);
+    cpu.a |= rd16(abs_db(0x11E3));
+    cpu.p = nz16(cpu.p, cpu.a);
+    wr16(0x7F135A + (uint32_t)cpu.x, cpu.a);
+    op_lda16(abs_db(at));
+    op_add16(0x0008);
+    wr16(abs_db(at), cpu.a);
+}
+
+/* A character two sprites high: tile $11E3 and the one $10 on, through
+   the entries at `at`. */
+static void tall_tile(uint16_t at)
+{
+    tile_at(at);
+    op_lda16(abs_db(0x11E3));
+    op_add16(0x0010);
+    wr16(abs_db(0x11E3), cpu.a);
+    tile_at(at);
+}
+
+/*
+ * @routine 0B:DD87 ResultsLetterTiles
+ * WHAT IT DOES: Puts letter A (0-31) in the next two sprites of the group
+ * at $11E5: its tile from the table at $0B:DDD3 and the tile $10 on below
+ * it.
+ * HOW: The tile through $11E3; X kept on the stack.
+ * Entry: M 16-bit, X 16-bit; A = the letter. Exit: X as on entry, N, Z
+ * from it; A = the new $11E5; C, V from its add.
+ */
+void abi_ResultsLetterTiles(void)
+{
+    uint16_t x = cpu.x;
+
+    op_asl16();
+    op_tax16();
+    op_lda16(0x0BDDD3 + (uint32_t)cpu.x);
+    wr16(abs_db(0x11E3), cpu.a);
+    tall_tile(0x11E5);
+    cpu.x = x;
+    cpu.p = nz16(cpu.p, x);
+}
+
+/*
+ * @routine 0B:DE83 ResultsDigitTiles
+ * WHAT IT DOES: Puts digit A (0-9; 15 for a blank, tile $94) in the next
+ * two sprites of the group at $11E1: tile A + $50 and the one $10 on.
+ * HOW: As ResultsLetterTiles with the tile computed.
+ * Entry: M 16-bit, X 16-bit; A = the digit. Exit: X as on entry, N, Z
+ * from it; A = the new $11E1; C, V from its add.
+ */
+void abi_ResultsDigitTiles(void)
+{
+    uint16_t x = cpu.x;
+
+    op_cmp16(0x000F);
+    if (cpu.p & P_Z)
+        op_lda16_imm(0x0044);
+    op_add16(0x0050);
+    wr16(abs_db(0x11E3), cpu.a);
+    tall_tile(0x11E1);
+    cpu.x = x;
+    cpu.p = nz16(cpu.p, x);
+}
+
+/*
+ * @routine 0B:DE69 ResultsBcdPair
+ * WHAT IT DOES: Puts the two decimal digits of the byte A (high, then low)
+ * in the group at $11E1 (ResultsDigitTiles).
+ * HOW: The byte kept at $11E5.
+ * Entry: M 16-bit, X 16-bit; A low byte = the digits. Exit: as
+ * ResultsDigitTiles.
+ */
+void abi_ResultsBcdPair(void)
+{
+    op_and16(0x00FF);
+    wr16(abs_db(0x11E5), cpu.a);
+    op_lsr16();
+    op_lsr16();
+    op_lsr16();
+    op_lsr16();
+    op_and16(0x000F);
+    abi_ResultsDigitTiles();
+    op_lda16(abs_db(0x11E5));
+    op_and16(0x000F);
+    abi_ResultsDigitTiles();
+}
+
+/*
+ * @routine 0B:DCBF ResultsTimeDigits
+ * WHAT IT DOES: When the championship is over ($0DD6 = 8), shows the time
+ * $0EEF, $0EEE, $0EED (two digits each) on object X's sprite group and
+ * stops it (+$08 = MenuActorNoStep); otherwise hides it (+$10 = $FFFF;
+ * reached by unit tests, unit_menus).
+ * HOW: MenuActorCopyGroup, then the digits from the group's first entry
+ * ($11E1); X reloaded from $11F9.
+ * Entry: M 16-bit, X 16-bit, D = $0000; X = the object. Exit: X = $11F9; A
+ * = $DF7B; N set, Z clear.
+ */
+void abi_ResultsTimeDigits(void)
+{
+    byte_of(0x000DD6);
+    op_cmp16(0x0008);
+    if (cpu.p & P_Z) {
+        abi_MenuActorCopyGroup();
+        op_lda16(fld(0x12));
+        cpu.a = (uint16_t)(cpu.a + 2);
+        cpu.p = nz16(cpu.p, cpu.a);
+        wr16(abs_db(0x11E1), cpu.a);
+        op_lda16(0x000EEF);
+        abi_ResultsBcdPair();
+        op_lda16(0x000EEE);
+        abi_ResultsBcdPair();
+        op_lda16(0x000EED);
+        abi_ResultsBcdPair();
+        cpu.x = rd16(abs_db(0x11F9));
+        cpu.p = nz16(cpu.p, cpu.x);
+    } else {
+        cpu.x = rd16(abs_db(0x11F9));
+        cpu.p = nz16(cpu.p, cpu.x);
+        set_field(0x10, 0xFFFF);
+    }
+    set_field(0x08, 0xDF7B);
+}
+
+/* The leader's place test of ResultsInitials and ResultsLapTimes: when
+   $0FAC is the object's field `field` and the championship is over, the
+   object starts ResultsLeaderBlink; otherwise it stops. */
+static void leader_or_stop(uint16_t field)
+{
+    cpu.x = rd16(abs_db(0x11F9));
+    cpu.p = nz16(cpu.p, cpu.x);
+    byte_of(0x000FAC);
+    op_cmp16(rd16(fld(field)));
+    if (cpu.p & P_Z) {
+        byte_of(0x000DD6);
+        op_cmp16(0x0008);
+        if (cpu.p & P_Z) {
+            cpu.x = rd16(abs_db(0x11F9));
+            cpu.p = nz16(cpu.p, cpu.x);
+            set_field(0x08, 0xDA33);
+            wr16(fld(0x22), 0x0000);
+            wr16(fld(0x0A), 0x0000);
+            return;
+        }
+    }
+    set_field(0x08, 0xDF7B);
+}
+
+/*
+ * @routine 0B:DD1E ResultsInitials
+ * WHAT IT DOES: Shows the initials of the car for place +$22 (three 5-bit
+ * letters in the word at $70:FC6D + ResultsCarIndex) on object X's sprite
+ * group, then starts ResultsLeaderBlink when it is the leader's place and
+ * the championship is over, otherwise stops (MenuActorNoStep).
+ * HOW: MenuActorCopyGroup; the word shifted right 5 at a time through
+ * $11DF; ResultsLetterTiles from the group's first entry ($11E5).
+ * Entry: M 16-bit, X 16-bit, D = $0000; X = the object. Exit: X = $11F9;
+ * A and the flags from the last step.
+ */
+void abi_ResultsInitials(void)
+{
+    unsigned i;
+
+    abi_MenuActorCopyGroup();
+    op_lda16(fld(0x12));
+    cpu.a = (uint16_t)(cpu.a + 2);
+    cpu.p = nz16(cpu.p, cpu.a);
+    wr16(abs_db(0x11E5), cpu.a);
+    abi_ResultsCarIndex();
+    op_lda16(0x70FC6D + (uint32_t)cpu.x);
+    wr16(abs_db(0x11DF), cpu.a);
+    for (i = 0; i < 3; i++) {
+        if (i) {
+            op_lda16(abs_db(0x11DF));
+            op_lsr16();
+            op_lsr16();
+            op_lsr16();
+            op_lsr16();
+            op_lsr16();
+            wr16(abs_db(0x11DF), cpu.a);
+        }
+        op_and16(0x001F);
+        abi_ResultsLetterTiles();
+    }
+    leader_or_stop(0x22);
+}
+
+/*
+ * @routine 0B:DF61 ResultsBlankLetters
+ * WHAT IT DOES: Puts three blank letters (26) in object X's sprite group.
+ * HOW: ResultsLetterTiles from the group's first entry ($11E5).
+ * Entry: M 16-bit, X 16-bit; X = the object. Exit: as ResultsLetterTiles.
+ */
+void abi_ResultsBlankLetters(void)
+{
+    unsigned i;
+
+    op_lda16(fld(0x12));
+    cpu.a = (uint16_t)(cpu.a + 2);
+    cpu.p = nz16(cpu.p, cpu.a);
+    wr16(abs_db(0x11E5), cpu.a);
+    for (i = 0; i < 3; i++) {
+        op_lda16_imm(0x001A);
+        abi_ResultsLetterTiles();
+    }
+}
+
+/*
+ * @routine 0B:DED5 ResultsNoTime
+ * WHAT IT DOES: For a place with no time: by the current object's kind
+ * ($20, $21 or another; $20 reached by a unit test, unit_menus) blanks
+ * the initials of the kind $23, $24 or $25 object (ResultsBlankLetters)
+ * and hides the kind $1D, $1E or $1F object (+$10 = $FFFF, +$02 = $200,
+ * MenuActorNoStep).
+ * HOW: $11DF and $11E1 kept on the stack.
+ * Entry: M 16-bit, X 16-bit, D = $0000. Exit: X = the hidden object; A =
+ * $11DF; N, Z from it.
+ */
+void abi_ResultsNoTime(void)
+{
+    uint16_t k11df = rd16(abs_db(0x11DF)), k11e1, letters, other;
+
+    cpu.a = k11df;
+    cpu.p = nz16(cpu.p, k11df);
+    k11e1 = rd16(abs_db(0x11E1));
+    cpu.x = rd16(abs_db(0x11F9));
+    cpu.p = nz16(cpu.p, cpu.x);
+    op_lda16(fld(0x1A));
+    op_cmp16(0x0020);
+    if (cpu.p & P_Z) {
+        letters = 0x0023;
+        other = 0x001D;
+    } else {
+        op_cmp16(0x0021);
+        letters = (cpu.p & P_Z) ? 0x0024 : 0x0025;
+        other = (cpu.p & P_Z) ? 0x001E : 0x001F;
+    }
+    op_lda16_imm(letters);
+    abi_MenuActorFind();
+    abi_ResultsBlankLetters();
+    op_lda16_imm(other);
+    abi_MenuActorFind();
+    set_field(0x10, 0xFFFF);
+    set_field(0x02, 0x0200);
+    set_field(0x08, 0xDF7B);
+    wr16(abs_db(0x11E1), k11e1);
+    op_lda16_imm(k11df);
+    wr16(abs_db(0x11DF), k11df);
+}
+
+/*
+ * @routine 0B:DE0B ResultsLapTimes
+ * WHAT IT DOES: Shows the time of place +$22 (the bytes at $0F78, $0F77 and
+ * $0F76 + it, two digits each) on object X's sprite group; a place with no
+ * time ($FF) first blanks its line (ResultsNoTime). Then starts
+ * ResultsLeaderBlink when +$20 is the leader's place and the championship
+ * is over, otherwise stops (MenuActorNoStep).
+ * HOW: MenuActorCopyGroup; ResultsBcdPair from the group's first entry
+ * ($11E1); the place and its first byte kept on the stack.
+ * Entry: M 16-bit, X 16-bit, D = $0000; X = the object. Exit: X = $11F9;
+ * A and the flags from the last step.
+ */
+void abi_ResultsLapTimes(void)
+{
+    uint16_t place, first;
+
+    abi_MenuActorCopyGroup();
+    op_lda16(fld(0x12));
+    cpu.a = (uint16_t)(cpu.a + 2);
+    cpu.p = nz16(cpu.p, cpu.a);
+    wr16(abs_db(0x11E1), cpu.a);
+    op_lda16(fld(0x22));
+    op_tax16();
+    place = cpu.x;
+    op_lda16(0x000F78 + (uint32_t)place);
+    first = cpu.a;
+    op_and16(0x00FF);
+    op_cmp16(0x00FF);
+    if (cpu.p & P_Z)
+        abi_ResultsNoTime();
+    cpu.x = place;
+    cpu.a = first;
+    cpu.p = nz16(cpu.p, first);
+    abi_ResultsBcdPair();
+    op_lda16(0x000F77 + (uint32_t)cpu.x);
+    abi_ResultsBcdPair();
+    op_lda16(0x000F76 + (uint32_t)cpu.x);
+    abi_ResultsBcdPair();
+    leader_or_stop(0x20);
+}
+
+/*
+ * @routine 0B:E12E ResultsPointsTile
+ * WHAT IT DOES: Puts tile A in the next sprite of the group at $11E1.
+ * HOW: The tile through $11E3; X kept on the stack.
+ * Entry: M 16-bit, X 16-bit; A = the tile. Exit: X as on entry, N, Z from
+ * it; A = the new $11E1; C, V from its add.
+ */
+void abi_ResultsPointsTile(void)
+{
+    uint16_t x = cpu.x;
+
+    wr16(abs_db(0x11E3), cpu.a);
+    tile_at(0x11E1);
+    cpu.x = x;
+    cpu.p = nz16(cpu.p, x);
+}
+
+/*
+ * @routine 0B:E114 ResultsPointsPair
+ * WHAT IT DOES: Puts the two decimal digits of the byte A (high, then low)
+ * in the group at $11E1 as single tiles 0-9 (ResultsPointsTile).
+ * HOW: The byte kept at $11E5.
+ * Entry: M 16-bit, X 16-bit; A low byte = the digits. Exit: as
+ * ResultsPointsTile.
+ */
+void abi_ResultsPointsPair(void)
+{
+    op_and16(0x00FF);
+    wr16(abs_db(0x11E5), cpu.a);
+    op_lsr16();
+    op_lsr16();
+    op_lsr16();
+    op_lsr16();
+    op_and16(0x000F);
+    abi_ResultsPointsTile();
+    op_lda16(abs_db(0x11E5));
+    op_and16(0x000F);
+    abi_ResultsPointsTile();
+}
+
+/*
+ * @routine 0B:E0E0 ResultsPoints
+ * WHAT IT DOES: Shows the points of car A (five digits: the low digit of
+ * $0EFB + 3A, then the bytes $0EFA and $0EF9 + 3A) on object X's sprite
+ * group.
+ * HOW: MenuActorCopyGroup with A kept on the stack, then at $11DF; the
+ * digits from the group's first entry ($11E1).
+ * Entry: M 16-bit, X 16-bit, D = $0000; A = the car; X = the object. Exit:
+ * X = $11F9, N, Z from it; A and C, V from the last step.
+ */
+void abi_ResultsPoints(void)
+{
+    uint16_t car = cpu.a, at;
+
+    abi_MenuActorCopyGroup();
+    cpu.a = car;
+    cpu.p = nz16(cpu.p, car);
+    wr16(abs_db(0x11DF), car);
+    op_lda16(fld(0x12));
+    cpu.a = (uint16_t)(cpu.a + 2);
+    cpu.p = nz16(cpu.p, cpu.a);
+    wr16(abs_db(0x11E1), cpu.a);
+    op_lda16(abs_db(0x11DF));
+    op_asl16();
+    op_add16(rd16(abs_db(0x11DF)));
+    op_tax16();
+    at = cpu.x;
+    op_lda16(0x000EFB + (uint32_t)at);
+    op_and16(0x000F);
+    abi_ResultsPointsTile();
+    op_lda16(0x000EFA + (uint32_t)cpu.x);
+    abi_ResultsPointsPair();
+    op_lda16(0x000EF9 + (uint32_t)cpu.x);
+    abi_ResultsPointsPair();
+    cpu.x = rd16(abs_db(0x11F9));
+    cpu.p = nz16(cpu.p, cpu.x);
+}
+
+/*
+ * @routine 0B:E14F ResultsPhaseAnim
+ * WHAT IT DOES: Gives object X the animation for the race phase $0DD6: $1A4
+ * for 6, $17C for $0A, $19A for $0C, $190 for $0E, $186 for $10; none for
+ * the others. Reached by unit tests (unit_menus).
+ * HOW: A compare chain; the animation is restarted (+$16 = +$18 = 0) only
+ * when it changes.
+ * Entry: M 16-bit, X 16-bit, D = $0000; X = the object. Exit: A = the
+ * animation (or the phase), N, Z, C from the last compare.
+ */
+void abi_ResultsPhaseAnim(void)
+{
+    static const uint16_t phase[5] = {0x0006, 0x000A, 0x000C, 0x000E, 0x0010};
+    static const uint16_t anim[5] = {0x01A4, 0x017C, 0x019A, 0x0190, 0x0186};
+    unsigned i;
+
+    byte_of(0x000DD6);
+    for (i = 0; i < 5; i++) {
+        op_cmp16(phase[i]);
+        if (cpu.p & P_Z)
+            break;
+    }
+    if (i == 5)
+        return;
+    op_lda16(fld(0x14));
+    op_cmp16(anim[i]);
+    if (cpu.p & P_Z)
+        return;
+    set_field(0x14, anim[i]);
+    wr16(fld(0x16), 0x0000);
+    wr16(fld(0x18), 0x0000);
+}
+
+/* ResultsPlace0-3: place n's points object: after its count +$0A runs
+   out it shows (+$10 = 0, +$08 = its animate handler) and, when the
+   championship is over or place n is past $0D48, shows car n's points
+   (ResultsPoints) and stops; at $0D48 = n it animates by the phase
+   (ResultsPhaseAnim); before it, it hides again. The $0D48 cases are
+   reached by unit tests (unit_menus), except place 0's hiding: $0D48 is
+   never below 0, so the BCC after CMP #0 never branches. */
+static void place_points(uint16_t n, uint16_t handler)
+{
+    if (!(dec_fld(0x0A) & 0x8000))
+        return;
+    wr16(fld(0x10), 0x0000);
+    set_field(0x08, handler);
+    byte_of(0x000DD6);
+    op_cmp16(0x0008);
+    if (!(cpu.p & P_Z)) {
+        byte_of(0x000D48);
+        op_cmp16(n);
+        if (cpu.p & P_Z) {
+            abi_ResultsPhaseAnim();
+            return;
+        }
+        if (!(cpu.p & P_C)) {
+            set_field(0x10, 0xFFFF);
+            return;
+        }
+    }
+    op_lda16_imm(n);
+    abi_ResultsPoints();
+    set_field(0x08, 0xE0DF);
+}
+
+/*
+ * @routine 0B:DFDB ResultsPlace0
+ * WHAT IT DOES: Place 0's points object (see place_points in the C):
+ * counts +$0A down, then shows, with ResultsPlace0Animate as its handler,
+ * and shows car 0's points or animates by $0D48 (the hiding below it can
+ * never run: the BCC after CMP #0 never branches).
+ * HOW: As the other places, with 0.
+ * Entry: M 16-bit, X 16-bit, D = $0000; X = the object. Exit: counting: N,
+ * Z from the count; else as ResultsPoints, ResultsPhaseAnim or the hiding
+ * store (A = $FFFF).
+ */
+void abi_ResultsPlace0(void)
+{
+    place_points(0x0000, 0xE018);
+}
+
+/*
+ * @routine 0B:E01C ResultsPlace1
+ * WHAT IT DOES: As ResultsPlace0 for place 1 (handler ResultsPlace1Animate).
+ * HOW: As ResultsPlace0, with 1.
+ * Entry: as ResultsPlace0. Exit: as ResultsPlace0.
+ */
+void abi_ResultsPlace1(void)
+{
+    place_points(0x0001, 0xE059);
+}
+
+/*
+ * @routine 0B:E05D ResultsPlace2
+ * WHAT IT DOES: As ResultsPlace0 for place 2 (handler ResultsPlace2Animate).
+ * HOW: As ResultsPlace0, with 2.
+ * Entry: as ResultsPlace0. Exit: as ResultsPlace0.
+ */
+void abi_ResultsPlace2(void)
+{
+    place_points(0x0002, 0xE09A);
+}
+
+/*
+ * @routine 0B:E09E ResultsPlace3
+ * WHAT IT DOES: As ResultsPlace0 for place 3 (handler ResultsPlace3Animate).
+ * HOW: As ResultsPlace0, with 3.
+ * Entry: as ResultsPlace0. Exit: as ResultsPlace0.
+ */
+void abi_ResultsPlace3(void)
+{
+    place_points(0x0003, 0xE0DB);
+}
+
+/*
+ * @routine 0B:E018 ResultsPlace0Animate
+ * WHAT IT DOES: Place 0's points object's frame while animating:
+ * MenuActorAnimateFrame.
+ * HOW: JSR, RTS.
+ * Entry: as MenuActorAnimateFrame. Exit: as MenuActorAnimateFrame.
+ */
+void abi_ResultsPlace0Animate(void)
+{
+    abi_MenuActorAnimateFrame();
+}
+
+/*
+ * @routine 0B:E059 ResultsPlace1Animate
+ * WHAT IT DOES: As ResultsPlace0Animate, for place 1.
+ * HOW: JSR, RTS.
+ * Entry: as MenuActorAnimateFrame. Exit: as MenuActorAnimateFrame.
+ */
+void abi_ResultsPlace1Animate(void)
+{
+    abi_MenuActorAnimateFrame();
+}
+
+/*
+ * @routine 0B:E09A ResultsPlace2Animate
+ * WHAT IT DOES: As ResultsPlace0Animate, for place 2.
+ * HOW: JSR, RTS.
+ * Entry: as MenuActorAnimateFrame. Exit: as MenuActorAnimateFrame.
+ */
+void abi_ResultsPlace2Animate(void)
+{
+    abi_MenuActorAnimateFrame();
+}
+
+/*
+ * @routine 0B:E0DB ResultsPlace3Animate
+ * WHAT IT DOES: As ResultsPlace0Animate, for place 3.
+ * HOW: JSR, RTS.
+ * Entry: as MenuActorAnimateFrame. Exit: as MenuActorAnimateFrame.
+ */
+void abi_ResultsPlace3Animate(void)
+{
+    abi_MenuActorAnimateFrame();
+}

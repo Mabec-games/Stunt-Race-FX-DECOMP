@@ -3,6 +3,10 @@
 #   championship, with the race phase $0DD6 not 8: ResultsWaitButton with
 #   Start pressed (the screen ends) and ResultsOverOrHide (the object is
 #   hidden); object $1265.
+# - the rest of the results objects from the same states: the time with the
+#   phase not 8; a place with no time for kind $20; each place with $0D48
+#   at, past and before it and every phase; their animate handlers; and the
+#   panel lowered with the leader in second and third place.
 load build/stuntracefx/states/speed_championship_33.state
 set 7E0DD6 00
 set 7E118B 00,10
@@ -11,4 +15,130 @@ wait 1
 load build/stuntracefx/states/speed_championship_32.state
 set 7E0DD6 00
 call 0B:DD01 x=1265 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/speed_championship_32.state
+set 7E0DD6 00
+call 0B:DCBF x=1265 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/speed_championship_32.state
+set 7E127F 20,00
+call 0B:DED5 x=1265 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/speed_championship_32.state
+set 7E0DD6 06
+set 7E0D48 00
+set 7E126F 00,00
+call 0B:DFDB x=1265 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/speed_championship_32.state
+set 7E0DD6 00
+set 7E0D48 01
+set 7E126F 00,00
+call 0B:DFDB x=1265 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/speed_championship_32.state
+set 7E0DD6 06
+set 7E0D48 01
+set 7E126F 00,00
+call 0B:E01C x=1265 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/speed_championship_32.state
+set 7E0DD6 00
+set 7E0D48 02
+set 7E126F 00,00
+call 0B:E01C x=1265 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/speed_championship_32.state
+set 7E0DD6 00
+set 7E0D48 00
+set 7E126F 00,00
+call 0B:E01C x=1265 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/speed_championship_32.state
+set 7E0DD6 06
+set 7E0D48 02
+set 7E126F 00,00
+call 0B:E05D x=1265 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/speed_championship_32.state
+set 7E0DD6 00
+set 7E0D48 03
+set 7E126F 00,00
+call 0B:E05D x=1265 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/speed_championship_32.state
+set 7E0DD6 00
+set 7E0D48 01
+set 7E126F 00,00
+call 0B:E05D x=1265 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/speed_championship_32.state
+set 7E0DD6 06
+set 7E0D48 03
+set 7E126F 00,00
+call 0B:E09E x=1265 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/speed_championship_32.state
+set 7E0DD6 00
+set 7E0D48 04
+set 7E126F 00,00
+call 0B:E09E x=1265 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/speed_championship_32.state
+set 7E0DD6 00
+set 7E0D48 02
+set 7E126F 00,00
+call 0B:E09E x=1265 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/speed_championship_32.state
+set 7E0DD6 0A
+set 7E0D48 00
+set 7E126F 00,00
+call 0B:DFDB x=1265 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/speed_championship_32.state
+set 7E0DD6 0C
+set 7E0D48 00
+set 7E126F 00,00
+call 0B:DFDB x=1265 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/speed_championship_32.state
+set 7E0DD6 0E
+set 7E0D48 00
+set 7E126F 00,00
+call 0B:DFDB x=1265 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/speed_championship_32.state
+set 7E0DD6 10
+set 7E0D48 00
+set 7E126F 00,00
+call 0B:DFDB x=1265 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/speed_championship_32.state
+set 7E0DD6 00
+set 7E0D48 00
+set 7E126F 00,00
+call 0B:DFDB x=1265 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/speed_championship_32.state
+call 0B:E018 x=1265 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/speed_championship_32.state
+call 0B:E059 x=1265 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/speed_championship_32.state
+call 0B:E09A x=1265 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/speed_championship_32.state
+call 0B:E0DB x=1265 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/speed_championship_33.state
+set 7E0FAC 02
+set 7E126F 04,00
+call 0B:DAD1 x=1265 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/speed_championship_33.state
+set 7E0FAC 03
+set 7E126F 04,00
+call 0B:DAD1 x=1265 p=00 db=00 d=0000
 wait 1
