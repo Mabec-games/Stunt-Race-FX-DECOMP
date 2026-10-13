@@ -1,0 +1,55 @@
+# unit_cpu: unit tests (call) of S-CPU routines on paths no script reaches,
+# from the start of a Novice race:
+# - WindowStep3437By3 at $FE (held at $FF); BackdropAnglesFromView with
+#   the view x $0664 = $C000 (the angle held at $E8);
+# - WindowSlideUpSound with bit 2 of $0DA5; PlayerSound35 for player 0
+#   with $0DF4 = 0; PlayerColoursFlash at level $A8 (the sum held at $FF);
+#   WindowSweep with $0D62 set;
+# - GaugeFromSpeed with no record ($02 = 0) and for the player's record
+#   at speed $800 (held at $257); GaugeTableIndex for the vehicle kinds
+#   $82E5 and an unknown one; PlayerVehicleRaised with bit 14 set in the
+#   word its links lead to ($1A64).
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E3437 FE
+call 03:FDF7 p=30 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0664 00,C0
+call 03:D306 long p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0DA5 04
+call 04:DA20 long p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0DF4 00
+call 07:D6D1 y=0000 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 7E:B5C1 a=00A8 y=0000 p=20 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D62 01
+call 7E:DE5E p=00 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0002 00,00
+call 7F:11E9 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0002 38,17
+set 701782 00,08
+call 7F:11E9 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2028 E5,82
+call 7F:1224 x=0000 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2028 00,90
+call 7F:1224 x=0000 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1A64 01,40
+call 7F:1278 long x=0000 p=10 db=00 d=0000
+wait 1
