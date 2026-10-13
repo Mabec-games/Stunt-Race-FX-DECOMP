@@ -5,6 +5,7 @@
 #include "machine.h"
 #include "hw.h"
 #include "wram.h"
+#include "cpu_ops.h"
 
 /*
  * @routine 07:C4D2 OamHideRange
@@ -1421,4 +1422,118 @@ void abi_SpritePiecesTwoCars(void)
     wr8(b | 0x0582, 0x58);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x58);
     cpu.p = nz8(cpu.p, 0x58);
+}
+
+/* OAM address addr (word), then n bytes: from the buffer at $0375 + x, or
+   $F0 each when hide. Leaves X past them, Y = 0. */
+static void oam_direct(uint32_t b, uint8_t addr, uint16_t x, uint16_t n, int hide)
+{
+    uint8_t v = addr;
+
+    wr8(b | 0x2102, addr);
+    wr8(b | 0x2103, 0x00);
+    cpu.x = x;
+    for (cpu.y = n; cpu.y; cpu.y--) {
+        v = hide ? 0xF0 : rd8(b | (uint16_t)(0x0375 + cpu.x));
+        wr8(b | 0x2104, v);
+        cpu.x = (uint16_t)(cpu.x + 1);
+    }
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z)) | P_Z);
+}
+
+/* Step $0D54 on by 2 (two INCs) when the byte at `at` equals v. */
+static void stage_next_if(uint32_t b, uint16_t at, uint8_t v)
+{
+    uint8_t c = rd8(b | at);
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | c);
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(c - v)) & ~P_C) | (c >= v ? P_C : 0));
+    if (c != v)
+        return;
+    wr8(b | 0x0D54, (uint8_t)(rd8(b | 0x0D54) + 1));
+    wr8(b | 0x0D54, (uint8_t)(rd8(b | 0x0D54) + 1));
+}
+
+/* Restart $0D54 when the byte at `at` equals v. */
+static void stage_reset_if(uint32_t b, uint16_t at, uint8_t v)
+{
+    uint8_t c = rd8(b | at);
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | c);
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(c - v)) & ~P_C) | (c >= v ? P_C : 0));
+    if (c == v)
+        wr8(b | 0x0D54, 0x00);
+}
+
+/*
+ * @routine 7E:AD26 OamDirectStage
+ * WHAT IT DOES: Writes a band of sprites straight to OAM mid-frame. Away
+ * from mode 1 ($0D2B) with $0E5D set it hides sprites 116-127 ($F0 in all
+ * their bytes); otherwise stage $0D54 picks: 0 sprites 116-127; 2 the same,
+ * moving on when $0E16 is $AC; 4 sprites 75-86, moving on when $0E12 is
+ * $1F; 6 sprites 112-115, with $0D55 = $2A and back to 0 when $0E0B is
+ * $2A; 8 sprites 36-46 (OamWriteSprites36To46), back to 0 when $0D57 is
+ * $10; 10 the same and sprites 116-127, back to 0 when $0D57 is $D0.
+ * HOW: JMP ($AD58,X) on the stage; OAMADDL then OAMDATA bytes from the
+ * buffer at $0375 through the data bank.
+ * Entry: any widths; DB a bank where work RAM and the PPU are mapped.
+ * Exit: X past the last byte copied (16-bit); Y = 0; A low byte = the last
+ * byte written; P restored.
+ */
+void abi_OamDirectStage(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t p0 = cpu.p, v;
+    uint16_t w;
+
+    cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
+    v = rd8(b | 0x0D2B);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    if (v != 0x01) {
+        w = rd16(b | 0x0E5D);
+        cpu.x = w;
+        if (w) {
+            oam_direct(b, 0xE8, 0x01D0, 0x0030, 1);
+            cpu.p = p0;
+            return;
+        }
+    }
+    op_sep(P_X);
+    cpu.x = rd8(b | 0x0D54);
+    switch (cpu.x) {
+    case 0x02:
+        stage_next_if(b, 0x0E16, 0xAC);
+        /* fall through */
+    case 0x00:
+        cpu.p &= (uint8_t)~P_X;
+        oam_direct(b, 0xE8, 0x01D0, 0x0030, 0);
+        break;
+    case 0x04:
+        stage_next_if(b, 0x0E12, 0x1F);
+        cpu.p &= (uint8_t)~P_X;
+        oam_direct(b, 0x96, 0x012C, 0x0030, 0);
+        break;
+    case 0x06:
+        v = rd8(b | 0x0E0B);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+        if (v == 0x2A) {
+            wr8(b | 0x0D55, v);
+            wr8(b | 0x0D54, 0x00);
+        }
+        cpu.p &= (uint8_t)~P_X;
+        oam_direct(b, 0xE0, 0x01C0, 0x0010, 0);
+        break;
+    case 0x08:
+        stage_reset_if(b, 0x0D57, 0x10);
+        abi_OamWriteSprites36To46();
+        break;
+    default:                                        /* 0x0A */
+        stage_reset_if(b, 0x0D57, 0xD0);
+        abi_OamWriteSprites36To46();
+        cpu.p &= (uint8_t)~P_X;
+        oam_direct(b, 0xE8, 0x01D0, 0x0030, 0);
+        break;
+    }
+    cpu.p = p0;
 }

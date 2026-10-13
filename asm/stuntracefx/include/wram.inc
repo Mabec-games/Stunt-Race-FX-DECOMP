@@ -1543,3 +1543,4 @@ includeonce
 !status_colours_b = $7EB5B9            ; four more
 !sound_direct0 = $10E2                  ; a byte sent straight to APU port 0 (then cleared)
 !sound_direct1 = $10E3                  ; the same for port 1
+!wram_0E16 = $0E16

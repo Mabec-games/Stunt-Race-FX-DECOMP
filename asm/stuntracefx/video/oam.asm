@@ -1380,3 +1380,126 @@ SpritePiecesTwoCars:
     lda.b #$58
     sta.w !oam_high_table+13
     rts
+
+; @routine 7E:AD26 OamDirectStage
+; WHAT IT DOES: Writes a band of sprites straight to OAM mid-frame. Away
+; from mode 1 ($0D2B) with $0E5D set it hides sprites 116-127 ($F0 in all
+; their bytes); otherwise stage $0D54 picks: 0 sprites 116-127; 2 the same,
+; moving on when $0E16 is $AC; 4 sprites 75-86, moving on when $0E12 is
+; $1F; 6 sprites 112-115, with $0D55 = $2A and back to 0 when $0E0B is
+; $2A; 8 sprites 36-46 (OamWriteSprites36To46), back to 0 when $0D57 is
+; $10; 10 the same and sprites 116-127, back to 0 when $0D57 is $D0.
+; HOW: JMP ($AD58,X) on the stage; OAMADDL then OAMDATA bytes from the
+; buffer at $0375 through the data bank.
+; Entry: any widths; DB a bank where work RAM and the PPU are mapped.
+; Exit: X past the last byte copied (16-bit); Y = 0; A low byte = the last
+; byte written; P restored.
+%ramcode($7EAD26, $010A4D)
+OamDirectStage:
+    php
+    sep.b #$20
+    rep.b #$10
+    lda.w !hud_mode
+    cmp.b #$01
+    beq .stage
+    ldx.w !hud_hold
+    beq .stage
+    ldx.w #$01D0
+    lda.b #$E8
+    sta.w !OAMADDL
+    stz.w !OAMADDH
+    ldy.w #$0030
+    lda.b #$F0
+.hide:
+    sta.w !OAMDATA
+    inx
+    dey
+    bne .hide
+    plp
+    rts
+.stage:
+    sep.b #$10
+    ldx.w !wram_0D54
+    jmp.w (.stages,x)
+.stages:
+    dw .stage0, .stage2, .stage4, .stage6, .stage8, .stage10
+.stage4:
+    lda.w !gauge_b6_x
+    cmp.b #$1F
+    bne .copy4
+    inc.w !wram_0D54
+    inc.w !wram_0D54
+.copy4:
+    rep.b #$10
+    ldx.w #$012C
+    lda.b #$96
+    sta.w !OAMADDL
+    stz.w !OAMADDH
+    ldy.w #$0030
+.loop4:
+    lda.w !oam_buffer,x
+    sta.w !OAMDATA
+    inx
+    dey
+    bne .loop4
+    plp
+    rts
+.stage6:
+    lda.w !map_b_y_w
+    cmp.b #$2A
+    bne .copy6
+    sta.w !panel_b_shown
+    stz.w !wram_0D54
+.copy6:
+    rep.b #$10
+    ldx.w #$01C0
+    lda.b #$E0
+    sta.w !OAMADDL
+    stz.w !OAMADDH
+    ldy.w #$0010
+.loop6:
+    lda.w !oam_buffer,x
+    sta.w !OAMDATA
+    inx
+    dey
+    bne .loop6
+    plp
+    rts
+.stage8:
+    lda.w !hud_slide
+    cmp.b #$10
+    bne .copy8
+    stz.w !wram_0D54
+.copy8:
+    jsr.w OamWriteSprites36To46
+    plp
+    rts
+.stage10:
+    lda.w !hud_slide
+    cmp.b #$D0
+    bne .copy10
+    stz.w !wram_0D54
+.copy10:
+    jsr.w OamWriteSprites36To46
+    bra .stage0
+.stage2:
+    lda.w !wram_0E16
+    cmp.b #$AC
+    bne .stage0
+    inc.w !wram_0D54
+    inc.w !wram_0D54
+.stage0:
+    rep.b #$10
+    ldx.w #$01D0
+    lda.b #$E8
+    sta.w !OAMADDL
+    stz.w !OAMADDH
+    ldy.w #$0030
+.loop0:
+    lda.w !oam_buffer,x
+    sta.w !OAMDATA
+    inx
+    dey
+    bne .loop0
+    plp
+    rts
