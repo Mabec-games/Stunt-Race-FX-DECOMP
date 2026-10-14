@@ -1,0 +1,160 @@
+/*
+ * reset.c: the soft reset (L, R, START and SELECT held) and the jumps that
+ * restart the game.
+ */
+#include "machine.h"
+#include "cpu_ops.h"
+#include "hw.h"
+
+void abi_SoundPort1QueuePush(void);
+
+#define RESET_STATE 0x0D51u     /* $0D51: a reset under way when not 0 */
+#define RESET_TICK 0x0D52u      /* set by each vertical blank */
+#define RESET_FRAMES 0x0D5Fu    /* frames left to wait */
+
+/* LDA # (8-bit). */
+static void reset_lda8(uint8_t v)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+}
+
+/* 03:8CF2 on a work RAM range: A = bank, X = start, Y = end. */
+static void reset_fill(uint8_t bank, uint16_t x, uint16_t y)
+{
+    reset_lda8(bank);
+    cpu.x = x;
+    cpu.p = nz16(cpu.p, x);
+    cpu.y = y;
+    cpu.p = nz16(cpu.p, y);
+    call_routine(0x038CF2, 1);
+}
+
+/*
+ * @routine 07:AB82 SoftResetWarmBoot
+ * WHAT IT DOES: Restarts the game from 03:8BAA. Nothing reaches it: it
+ * follows SoftResetCheck's jump to 03:8B34.
+ * HOW: A long jump.
+ * Entry: any. Exit: never returns.
+ */
+void abi_SoftResetWarmBoot(void)
+{
+    jump_routine(0x038BAA);
+}
+
+/*
+ * @routine 07:AADC SoftResetCheck
+ * WHAT IT DOES: The soft reset: when player 1 holds L, R, START and SELECT
+ * and nothing else ($0309), with no reset under way ($0D51), starts one:
+ * $0D51 down by one, sound $04 on port 1, the fade out ($0E3A = 1) and $70
+ * frames to wait ($0D5F). Under way, it waits those frames ($0D52 set by
+ * each vertical blank), then blanks the screen, stops the NMI, DMA and HDMA,
+ * clears $0D51, resets the sound (07:AB8C), clears $0D2B and $0D62, clears
+ * work RAM ($00:0300-$2100, $7E:2000-$E000, $7F:0000-$FFFF by 03:8CF2) and
+ * Super FX RAM $70:0000-$27FF, and restarts the game (03:8B34).
+ * HOW: 8-bit A for the flags, 16-bit for the buttons; through the data bank;
+ * the Super FX RAM by MVN from each byte to the next.
+ * Entry: any widths; DB = $07. Exit: P unchanged; A = the buttons masked
+ * (no reset); the reset never returns.
+ */
+void abi_SoftResetCheck(void)
+{
+    uint8_t p0 = cpu.p, db;
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v;
+    uint16_t i;
+
+    op_sep(P_M);
+    op_lda8(b | RESET_STATE);
+    if (!(uint8_t)cpu.a) {
+        op_rep(P_M);
+        op_lda16(b | 0x0309);
+        op_and16(0x3030);
+        op_cmp16(0x3030);
+        if (!(cpu.p & P_Z)) {
+            op_plp(p0);
+            return;
+        }
+        op_lda16(b | 0x0309);
+        op_and16(0xCFCF);
+        if (cpu.a) {
+            op_plp(p0);
+            return;
+        }
+        op_sep(P_M);
+        v = (uint8_t)(rd8(b | RESET_STATE) - 1);
+        wr8(b | RESET_STATE, v);
+        cpu.p = nz8(cpu.p, v);
+        reset_lda8(0x04);
+        abi_SoundPort1QueuePush();
+        reset_lda8(0x01);
+        wr8(b | 0x0E3A, 0x01);
+        reset_lda8(0x70);
+        wr8(b | RESET_FRAMES, 0x70);
+    }
+    do {
+        do
+            op_lda8(b | RESET_TICK);
+        while (!(uint8_t)cpu.a);
+        wr8(b | RESET_TICK, 0x00);
+        v = (uint8_t)(rd8(b | RESET_FRAMES) - 1);
+        wr8(b | RESET_FRAMES, v);
+        cpu.p = nz8(cpu.p, v);
+    } while (v);
+    reset_lda8(0x80);
+    wr8(b | INIDISP, 0x80);
+    wr8(b | NMITIMEN, 0x00);
+    wr8(b | MDMAEN, 0x00);
+    wr8(b | HDMAEN, 0x00);
+    wr8(b | RESET_STATE, 0x00);
+    call_routine(0x07AB8C, 0);
+    op_sep(P_M);
+    wr8(b | 0x0D2B, 0x00);
+    wr8(b | 0x0D62, 0x00);
+    op_sep(P_M);
+    op_rep(P_X);
+    reset_fill(0x00, 0x0300, 0x2100);
+    reset_fill(0x7E, 0x2000, 0xE000);
+    reset_fill(0x7F, 0x0000, 0xFFFF);
+    db = cpu.db;
+    v = cpu.p;
+    op_rep(P_M | P_X);
+    op_lda16_imm(0x0000);
+    wr16(0x700000, 0x0000);
+    op_lda16_imm(0x27FF);
+    cpu.x = 0x0000;
+    cpu.p = nz16(cpu.p, 0);
+    cpu.y = 0x0001;
+    cpu.p = nz16(cpu.p, 1);
+    for (i = 0; i <= 0x27FF; i++)
+        wr8(0x700001u + i, rd8(0x700000u + i));
+    cpu.a = 0xFFFF;
+    cpu.x = 0x2800;
+    cpu.y = 0x2801;
+    cpu.db = 0x70;
+    op_plp(v);
+    cpu.db = db;
+    cpu.p = nz8(cpu.p, db);
+    jump_routine(0x038B34);
+}
+
+/*
+ * @routine 07:AACE SoftResetLong
+ * WHAT IT DOES: SoftResetCheck for callers in other banks.
+ * HOW: P and the data bank saved; the data bank set to its own ($07).
+ * Entry: any widths. Exit: as SoftResetCheck, then P and the data bank put
+ * back.
+ */
+void abi_SoftResetLong(void)
+{
+    uint8_t p0 = cpu.p, db = cpu.db;
+
+    op_sep(P_M);
+    cpu.db = 0x07;
+    cpu.p = nz8(cpu.p, 0x07);
+    abi_SoftResetCheck();
+    op_sep(P_M);
+    cpu.db = db;
+    cpu.p = nz8(cpu.p, db);
+    op_plp(p0);
+}

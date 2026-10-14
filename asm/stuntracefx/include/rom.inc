@@ -375,3 +375,7 @@ HudColourStep = $7EE34F                         ; 7E:E34F, the colour work HudFr
 RaceSoundsAndHud = $07DAA7                      ; 07:DAA7, the engine sounds and the HUD mode's work RaceFrameRun calls (not filed yet)
 RaceSoundsPlayer1 = $07DA02                     ; 07:DA02, player 1's sounds and HUD work in a two-player race (not filed yet)
 RaceSoundsPlayer2 = $07DA65                     ; 07:DA65, player 2's (not filed yet)
+SoftResetApu = $07AB8C                          ; 07:AB8C, the soft reset's sound reset (not filed yet)
+MemoryFill = $038CF2                            ; 03:8CF2, fills a work RAM range (not filed yet)
+BootStart = $038B34                             ; 03:8B34, the game's start after the reset vector's mode switch (not filed yet)
+BootWarm = $038BAA                              ; 03:8BAA, a later point of the start (not filed yet)

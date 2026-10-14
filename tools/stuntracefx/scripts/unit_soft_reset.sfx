@@ -1,0 +1,13 @@
+# unit_soft_reset: unit calls of the soft reset from the start of a Novice
+# race: SoftResetCheck (07:AADC) with L, R, START and SELECT held and A
+# too (no reset), then with only those four held (the reset: the fade, the
+# wait, the clears and the game's restart, which never returns), and
+# SoftResetWarmBoot (07:AB82), which nothing reaches, restarting from
+# 03:8BAA.
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0309 B0,30
+call 07:AADC p=00 db=07 d=0000
+set 7E0309 30,30
+call 07:AADC p=00 db=07 d=0000 noreturn frames=240
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:AB82 p=00 db=07 d=0000 noreturn frames=240
