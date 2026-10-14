@@ -67,6 +67,7 @@
 #   and at 3 with Left and with Down.
 # - CarSelectTwoPlayers: each pad's Right and Left from each end, with HUD
 #   mode 3, with the fourth car open ($70:FC0B bit 2) and with neither.
+# - RaceLoad in HUD modes 3 and 4, and in mode 1 with $0D63 set.
 load build/stuntracefx/states/novice_coupe_race1.state
 set 7E3437 FE
 call 03:FDF7 p=30 db=7E d=0000
@@ -952,4 +953,19 @@ set 7E0D8A 02
 set 7E0D2B 00,00
 set 70FC0B 00
 call 07:C0CA p=30 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D2B 03
+set 7E0D63 00
+call 03:F0E6 long p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D2B 04
+set 7E0D63 00
+call 03:F0E6 long p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D2B 01
+set 7E0D63 FF
+call 03:F0E6 long p=30 db=00 d=0000
 wait 1

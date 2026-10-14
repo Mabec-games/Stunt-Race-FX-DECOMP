@@ -573,3 +573,200 @@ void abi_LoopLeaveWhenEnded(void)
     cpu.s = (uint16_t)(cpu.s + 3);
     cpu.unwound = 1;
 }
+
+void abi_VideoRegsReset(void);
+void abi_SaveUnlocksCheck(void);
+void abi_SoundIndicesFromHandlers(void);
+void abi_SoundDataLoad(void);
+void abi_SoundReset(void);
+void abi_VramNoiseTiles(void);
+void abi_CgramDmaAll(void);
+void abi_OamBufferClear(void);
+void abi_ReturnOnly(void);
+void abi_RaceVarsReset(void);
+void abi_GsuCF42ToVram(void);
+void abi_RaceScreenSetup(void);
+
+/* PHP, REP #$30, 5 on APU port 1 (a word store), a delay, then the load
+   with A and Y, PLP. */
+static void race_load_sound(void (*load)(void), uint16_t a, uint16_t y, int delay_after)
+{
+    uint8_t p = cpu.p;
+
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    cpu.a = 0x0005;
+    wr16(0x002141, 0x0005);
+    delay_4000();
+    cpu.a = a;
+    cpu.y = y;
+    cpu.p = nz16(cpu.p, y);
+    load();
+    if (delay_after) {
+        cpu.p &= (uint8_t)~P_M;
+        delay_4000();
+    }
+    op_plp(p);
+}
+
+/* REP #$30, LDY, LDX, JSL GsuCF42ToVram. */
+static void race_load_gsu(uint16_t y, uint16_t x)
+{
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    cpu.y = y;
+    cpu.x = x;
+    cpu.p = nz16(cpu.p, x);
+    abi_GsuCF42ToVram();
+}
+
+/* PHB, PHP, REP #$30, MVN $7F,$70 of $1000 bytes from $70:3000 to $7F:dst,
+   PLP, PLB. */
+static void race_load_copy(uint16_t dst)
+{
+    uint8_t p = cpu.p;
+    unsigned i;
+
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    for (i = 0; i < 0x1000; i++)
+        wr8(0x7F0000 | (uint16_t)(dst + i), rd8(0x703000 + i));
+    cpu.a = 0xFFFF;
+    cpu.x = 0x4000;
+    cpu.y = (uint16_t)(dst + 0x1000);
+    op_plp(p);
+}
+
+/* The views for the mode: the GSU block (Y $F868, X x) and the two copies
+   of $70:3000 into $7F:93D7 and $7F:BBD7. */
+static void race_load_views(uint16_t x)
+{
+    race_load_gsu(0xF868, x);
+    race_load_copy(0x93D7);
+    race_load_copy(0xBBD7);
+}
+
+/* REP #$20, then $0E35, $0E37 (= scroll), $0E31 and $0E33 (word stores). */
+static void race_load_scroll(uint32_t b, uint16_t scroll)
+{
+    cpu.p &= (uint8_t)~P_M;
+    wr16(b | 0x0E35, 0x0000);
+    if (scroll) {
+        cpu.a = scroll;
+        cpu.p = nz16(cpu.p, scroll);
+    }
+    wr16(b | 0x0E37, scroll);
+    wr16(b | 0x0E31, 0x0000);
+    wr16(b | 0x0E33, 0x0000);
+}
+
+/* SEP #$20, LDA $0D63: Z when it is clear. */
+static uint8_t race_load_0d63(uint32_t b)
+{
+    op_sep(P_M);
+    op_lda8(b | 0x0D63);
+    return (uint8_t)cpu.a;
+}
+
+/*
+ * @routine 03:F0E6 RaceLoad
+ * WHAT IT DOES: Loads a race: video registers reset (twice), the unlocks
+ * checked, the sounds chosen (SoundIndicesFromHandlers) and loaded
+ * (SoundDataLoad $E049/$1E, ApuUpload $1B:B8A0 and $1B:D5FC, each after 5
+ * on APU port 1 and a delay), SoundReset, 1 on APU port 0, the Super FX
+ * screen mode shadow $0374 = 3, the noise tiles (VramNoiseTiles), the
+ * palette from $1F:8200 into $7E:FD65 and to CGRAM, the OAM buffer
+ * cleared, the race variables reset and two Super FX blocks put in VRAM
+ * (GsuCF42ToVram, Y/X $F837/$F7E6 and $F822/$F801). Then by HUD mode $0D2B
+ * through the table at $03:F1B2: modes 0 and 3 take their views (Y $F868
+ * with X $F7F2 or $F7FB; $70:3000 copied twice into $7F:93D7 and
+ * $7F:BBD7), then block $F83E/$F7E9 and the scroll $0E37 = $50 ($0 with
+ * $0D63 set); modes 1 and 2 their views ($F7F8, $F7F5) and blocks
+ * $F83E/$F7EC or $F83E/$F7EF with the scroll 0, mode 2 and mode 1 without
+ * $0D63 also clearing $0D48 (mode 1 then with scroll $50); mode 4 (the
+ * fifth entry) none of these. $0E35, $0E31 and $0E33 are cleared. Last,
+ * RaceScreenSetup.
+ * HOW: P and the data bank ($03) pushed; delay loops of $4000; MVN for the
+ * copies. Modes 3 and 4, and mode 1 with $0D63 set, are not reached in the
+ * traces so far. Modes above 4 would take code bytes as addresses and are
+ * not modelled.
+ * Entry: any widths. Exit: P and the data bank restored; A, X, Y as
+ * RaceScreenSetup leaves them.
+ */
+void abi_RaceLoad(void)
+{
+    const uint32_t b = 0x030000;
+    uint8_t p0 = cpu.p, db0 = cpu.db, v;
+    uint16_t w;
+
+    op_sep(P_M | P_X);
+    cpu.db = 0x03;
+    cpu.p = nz8(cpu.p, 0x03);
+    abi_VideoRegsReset();
+    abi_SaveUnlocksCheck();
+    abi_SoundIndicesFromHandlers();
+    race_load_sound(abi_SoundDataLoad, 0xE049, 0x001E, 0);
+    race_load_sound(abi_ApuUpload, 0x001B, 0xB8A0, 1);
+    race_load_sound(abi_ApuUpload, 0x001B, 0xD5FC, 1);
+    abi_SoundReset();
+    op_sep(P_M);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
+    wr8(b | 0x2140, 0x01);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x03);
+    cpu.p = nz8(cpu.p, 0x03);
+    wr8(b | 0x0374, 0x03);
+    abi_VramNoiseTiles();
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    for (w = 0x01FE;; w = (uint16_t)(w - 2)) {
+        cpu.a = rd16(0x1F8200 + w);
+        wr16(0x7EFD65 + w, cpu.a);
+        if (!w)
+            break;
+    }
+    cpu.x = 0xFFFE;
+    cpu.p = nz16(cpu.p, 0xFFFE);
+    abi_CgramDmaAll();
+    abi_OamBufferClear();
+    abi_ReturnOnly();
+    abi_VideoRegsReset();
+    abi_RaceVarsReset();
+    race_load_gsu(0xF837, 0xF7E6);
+    race_load_gsu(0xF822, 0xF801);
+    op_sep(P_M | P_X);
+    v = rd8(b | 0x0D2B);
+    cpu.p = (uint8_t)((cpu.p & ~P_C) | (v >> 7));
+    v = (uint8_t)(v << 1);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.x = v;
+    cpu.p = nz8(cpu.p, v);
+    w = rd16(b | (uint16_t)(0xF1B2 + v));
+    switch (w) {
+    case 0xF1EE:
+    case 0xF1BC:
+        race_load_views(w == 0xF1EE ? 0xF7F2 : 0xF7FB);
+        race_load_gsu(0xF83E, 0xF7E9);
+        race_load_scroll(b, race_load_0d63(b) ? 0x0000 : 0x0050);
+        break;
+    case 0xF256:
+        race_load_views(0xF7F5);
+        race_load_gsu(0xF83E, 0xF7EF);
+        race_load_scroll(b, 0x0000);
+        op_sep(P_M);
+        wr8(b | 0x0D48, 0x00);
+        break;
+    case 0xF2A7:
+        race_load_views(0xF7F8);
+        race_load_gsu(0xF83E, 0xF7EC);
+        race_load_scroll(b, 0x0000);
+        if (race_load_0d63(b))
+            race_load_scroll(b, 0x0000);
+        else {
+            race_load_scroll(b, 0x0050);
+            op_sep(P_M);
+            wr8(b | 0x0D48, 0x00);
+        }
+        break;
+    }
+    abi_RaceScreenSetup();
+    op_sep(P_M);
+    cpu.db = db0;
+    cpu.p = nz8(cpu.p, db0);
+    op_plp(p0);
+}

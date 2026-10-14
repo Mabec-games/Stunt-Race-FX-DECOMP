@@ -651,3 +651,278 @@ LoopLeaveWhenEnded:
     plp
     rtl
 
+; @routine 03:F0E6 RaceLoad
+; WHAT IT DOES: Loads a race: video registers reset (twice), the unlocks
+; checked, the sounds chosen (SoundIndicesFromHandlers) and loaded
+; (SoundDataLoad $E049/$1E, ApuUpload $1B:B8A0 and $1B:D5FC, each after 5
+; on APU port 1 and a delay), SoundReset, 1 on APU port 0, the Super FX
+; screen mode shadow $0374 = 3, the noise tiles (VramNoiseTiles), the
+; palette from $1F:8200 into $7E:FD65 and to CGRAM, the OAM buffer
+; cleared, the race variables reset and two Super FX blocks put in VRAM
+; (GsuCF42ToVram, Y/X $F837/$F7E6 and $F822/$F801). Then by HUD mode $0D2B
+; through the table at $03:F1B2: modes 0 and 3 take their views (Y $F868
+; with X $F7F2 or $F7FB; $70:3000 copied twice into $7F:93D7 and
+; $7F:BBD7), then block $F83E/$F7E9 and the scroll $0E37 = $50 ($0 with
+; $0D63 set); modes 1 and 2 their views ($F7F8, $F7F5) and blocks
+; $F83E/$F7EC or $F83E/$F7EF with the scroll 0, mode 2 and mode 1 without
+; $0D63 also clearing $0D48 (mode 1 then with scroll $50); mode 4 (the
+; fifth entry) none of these. $0E35, $0E31 and $0E33 are cleared. Last,
+; RaceScreenSetup.
+; HOW: P and the data bank ($03) pushed; delay loops of $4000; MVN for the
+; copies. Modes 3 and 4, and mode 1 with $0D63 set, are not reached in the
+; traces so far. Modes above 4 would take code bytes as addresses and are
+; not modelled.
+; Entry: any widths. Exit: P and the data bank restored; A, X, Y as
+; RaceScreenSetup leaves them.
+%at($03F0E6)
+RaceLoad:
+    php
+    sep.b #$30
+    phb
+    phk
+    plb
+    jsl.l VideoRegsReset
+    jsl.l SaveUnlocksCheck
+    jsl.l SoundIndicesFromHandlers
+    php
+    rep.b #$30
+    lda.w #$0005
+    sta.l !APUIO1
+    lda.w #$4000
+.lF105:
+    dec a
+    bne .lF105
+    lda.w #$E049
+    ldy.w #$001E
+    jsl.l SoundDataLoad
+    plp
+    php
+    rep.b #$30
+    lda.w #$0005
+    sta.l !APUIO1
+    lda.w #$4000
+.lF120:
+    dec a
+    bne .lF120
+    lda.w #$001B
+    ldy.w #$B8A0
+    jsl.l ApuUpload
+    rep.b #$20
+    lda.w #$4000
+.lF132:
+    dec a
+    bne .lF132
+    plp
+    php
+    rep.b #$30
+    lda.w #$0005
+    sta.l !APUIO1
+    lda.w #$4000
+.lF143:
+    dec a
+    bne .lF143
+    lda.w #$001B
+    ldy.w #$D5FC
+    jsl.l ApuUpload
+    rep.b #$20
+    lda.w #$4000
+.lF155:
+    dec a
+    bne .lF155
+    plp
+    jsl.l SoundReset
+    sep.b #$20
+    lda.b #$01
+    sta.w !APUIO0
+    lda.b #$03
+    sta.w !gsu_scmr_shadow
+    jsr.w VramNoiseTiles
+    rep.b #$30
+    ldx.w #$01FE
+.lF171:
+    lda.l !race_palette,x
+    sta.l !palette_buffer,x
+    dex
+    dex
+    bpl .lF171
+    jsl.l CgramDmaAll
+    jsl.l OamBufferClear
+    jsr.w ReturnOnly
+    jsl.l VideoRegsReset
+    jsl.l RaceVarsReset
+    rep.b #$30
+    ldy.w #$F837
+    ldx.w #$F7E6
+    jsl.l GsuCF42ToVram
+    rep.b #$30
+    ldy.w #$F822
+    ldx.w #$F801
+    jsl.l GsuCF42ToVram
+    sep.b #$30
+    lda.w !hud_mode
+    asl a
+    tax
+    jmp.w (RaceLoad_modes,x)
+RaceLoad_modes:
+    dw .lF1EE, .lF2A7, .lF256, .lF1BC, .lF321
+.lF1BC:
+    rep.b #$30
+    ldy.w #$F868
+    ldx.w #$F7FB
+    jsl.l GsuCF42ToVram
+    phb
+    php
+    rep.b #$30
+    lda.w #$0FFF
+    ldx.w #$3000
+    ldy.w #$93D7
+    mvn $7F,$70
+    plp
+    plb
+    phb
+    php
+    rep.b #$30
+    lda.w #$0FFF
+    ldx.w #$3000
+    ldy.w #$BBD7
+    mvn $7F,$70
+    plp
+    plb
+    bra .lF21E
+.lF1EE:
+    rep.b #$30
+    ldy.w #$F868
+    ldx.w #$F7F2
+    jsl.l GsuCF42ToVram
+    phb
+    php
+    rep.b #$30
+    lda.w #$0FFF
+    ldx.w #$3000
+    ldy.w #$93D7
+    mvn $7F,$70
+    plp
+    plb
+    phb
+    php
+    rep.b #$30
+    lda.w #$0FFF
+    ldx.w #$3000
+    ldy.w #$BBD7
+    mvn $7F,$70
+    plp
+    plb
+.lF21E:
+    rep.b #$30
+    ldy.w #$F83E
+    ldx.w #$F7E9
+    jsl.l GsuCF42ToVram
+    sep.b #$20
+    lda.w !wram_0D63
+    beq .lF242
+    rep.b #$20
+    stz.w !wram_0E33+2
+    stz.w !scroll_value
+    stz.w !blend_set_b+10
+    stz.w !wram_0E33
+    jmp.w .lF321
+.lF242:
+    rep.b #$20
+    stz.w !wram_0E33+2
+    lda.w #$0050
+    sta.w !scroll_value
+    stz.w !blend_set_b+10
+    stz.w !wram_0E33
+    jmp.w .lF321
+.lF256:
+    rep.b #$30
+    ldy.w #$F868
+    ldx.w #$F7F5
+    jsl.l GsuCF42ToVram
+    phb
+    php
+    rep.b #$30
+    lda.w #$0FFF
+    ldx.w #$3000
+    ldy.w #$93D7
+    mvn $7F,$70
+    plp
+    plb
+    phb
+    php
+    rep.b #$30
+    lda.w #$0FFF
+    ldx.w #$3000
+    ldy.w #$BBD7
+    mvn $7F,$70
+    plp
+    plb
+    rep.b #$30
+    ldy.w #$F83E
+    ldx.w #$F7EF
+    jsl.l GsuCF42ToVram
+    rep.b #$20
+    stz.w !wram_0E33+2
+    stz.w !scroll_value
+    stz.w !blend_set_b+10
+    stz.w !wram_0E33
+    sep.b #$20
+    stz.w !wram_0D48
+    bra .lF321
+.lF2A7:
+    rep.b #$30
+    ldy.w #$F868
+    ldx.w #$F7F8
+    jsl.l GsuCF42ToVram
+    phb
+    php
+    rep.b #$30
+    lda.w #$0FFF
+    ldx.w #$3000
+    ldy.w #$93D7
+    mvn $7F,$70
+    plp
+    plb
+    phb
+    php
+    rep.b #$30
+    lda.w #$0FFF
+    ldx.w #$3000
+    ldy.w #$BBD7
+    mvn $7F,$70
+    plp
+    plb
+    rep.b #$30
+    ldy.w #$F83E
+    ldx.w #$F7EC
+    jsl.l GsuCF42ToVram
+    rep.b #$20
+    stz.w !wram_0E33+2
+    stz.w !scroll_value
+    stz.w !blend_set_b+10
+    stz.w !wram_0E33
+    sep.b #$20
+    lda.w !wram_0D63
+    beq .lF309
+    rep.b #$20
+    stz.w !wram_0E33+2
+    stz.w !scroll_value
+    stz.w !blend_set_b+10
+    stz.w !wram_0E33
+    jmp.w .lF321
+.lF309:
+    rep.b #$20
+    stz.w !wram_0E33+2
+    lda.w #$0050
+    sta.w !scroll_value
+    stz.w !blend_set_b+10
+    stz.w !wram_0E33
+    sep.b #$20
+    stz.w !wram_0D48
+    bra .lF321
+.lF321:
+    jsr.w RaceScreenSetup
+    sep.b #$20
+    plb
+    plp
+    rtl

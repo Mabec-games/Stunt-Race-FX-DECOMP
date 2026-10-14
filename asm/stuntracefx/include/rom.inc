@@ -355,3 +355,4 @@ DemoRunBody = $038683                           ; 03:8683, inside the routine at
 !palette_cycle_b_bright = $04E433 ; course $0B: colour 15's low byte with $7F:3460 at $18 or more
 !palette_cycle_b_dim = $04E407    ; course $0B: colour 15's low byte otherwise
 !car_select_choices = $07C1BF     ; CarSelectTwoPlayers: the choice for each car (2, 0, 1, 3)
+!race_palette = $1F8200            ; RaceLoad: the race's 256 colours
