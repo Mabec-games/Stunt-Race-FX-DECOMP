@@ -372,3 +372,4 @@ RaceHudLoadRace = $03DECA                       ; 03:DECA, RaceHudLoad's way on 
 RaceHudLoadMenu = $03E6FA                       ; 03:E6FA, RaceHudLoad's way on with $0D62 set (not filed yet)
 !course_gsu_speeds = $03F799      ; RaceHudLoad: the Super FX's speed word by course
 HudColourStep = $7EE34F                         ; 7E:E34F, the colour work HudFrameWhileGsuRuns calls (not filed yet)
+RaceSoundsAndHud = $07DAA7                      ; 07:DAA7, the engine sounds and the HUD mode's work RaceFrameRun calls (not filed yet)

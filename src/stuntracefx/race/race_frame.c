@@ -770,3 +770,159 @@ void abi_RaceLoad(void)
     cpu.p = nz8(cpu.p, db0);
     op_plp(p0);
 }
+
+void abi_PlayerControlsFrame(void);
+void abi_PaletteFadeStep(void);
+void abi_WordCopyStep(void);
+void abi_BackdropAnglesFromView(void);
+void abi_FrameRunGsuAB13B(void);
+void abi_DebugShowErrors(void);
+void abi_SpeedGaugeUpdate(void);
+void abi_NearCarSoundUpdate(void);
+void abi_GsuScreenToggle(void);
+
+/* CMP # (8-bit): N, Z and C. */
+static void frame_cmp8(uint8_t m)
+{
+    uint8_t a = (uint8_t)cpu.a;
+
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(a - m)) & ~P_C) | (a >= m ? P_C : 0));
+}
+
+/* LDA # (8-bit): the low byte of A. */
+static void frame_lda8_imm(uint8_t v)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+}
+
+/*
+ * @routine 02:D7CD RaceFrameRun
+ * WHAT IT DOES: One frame of a race: takes the frames counted since the last
+ * ($0306, into $06D4, cleared), points the view from player 1's car
+ * (ViewFromRecord on the object two links on from $0346), reads the
+ * players' controls (PlayerControlsFrame), draws side 0 ($1F07) with Super FX
+ * programs $8FCA (FrameRunGsu8FCA, $70:246C-D = $FF first) and $01:BBC7
+ * (GsuRun), runs the objects, the view and program $AEF8, the palette fade,
+ * the word copy and the backdrop angles; then side 1 with the HUD
+ * (FrameRunGsuAB13B, $1AE8 cleared first), DebugShowErrors, the speed gauge
+ * (A = $70:2476, X = $2143) and the near-car sound; keeps $1AE8 at $1AEA;
+ * runs program $01:D307 when $70:2732 is set, else 07:DAA7; switches the
+ * screen buffers (GsuScreenToggle), clears $0357 and keeps time: $1F3E =
+ * $0306, $06D5 adds $06D4 and $06D6 counts frames, each $3C of $06D5 moving
+ * $06D6 to $06D7; $0306 also goes to $70:108E, with 0 at $70:108F.
+ * HOW: Data bank $02, its own (the low addresses reach work RAM); $00 = 2;
+ * 8-bit A for the counts; P and the data bank put back at the end.
+ * Entry: any widths; D = $0000. Exit: P and the data bank unchanged; A low
+ * byte 0; X, Y as the last call left them.
+ */
+void abi_RaceFrameRun(void)
+{
+    uint8_t p0 = cpu.p, db = cpu.db, v;
+    uint32_t b;
+
+    op_sep(P_M);
+    op_rep(P_X);
+    cpu.db = 0x02;
+    cpu.p = nz8(cpu.p, 0x02);
+    b = 0x020000;
+    op_lda8(b | 0x0306);
+    wr8(b | 0x06D4, (uint8_t)cpu.a);
+    wr8(b | 0x0306, 0x00);
+    frame_lda8_imm(0x02);
+    wr8(cpu.d, 0x02);
+    op_rep(P_M | P_X);
+    cpu.x = rd16(b | 0x0346);
+    cpu.p = nz16(cpu.p, cpu.x);
+    op_lda16(0x7E204Fu + cpu.x);
+    op_tax16();
+    op_lda16(0x7E204Fu + cpu.x);
+    op_tax16();
+    abi_ViewFromRecord();
+    abi_PlayerControlsFrame();
+    op_sep(P_M);
+    wr8(cpu.db << 16 | 0x1F07, 0x00);
+    frame_lda8_imm(0xFF);
+    wr8(0x70246C, 0xFF);
+    wr8(0x70246D, 0xFF);
+    abi_FrameRunGsu8FCA();
+    op_sep(P_M);
+    op_rep(P_X);
+    frame_lda8_imm(0x01);
+    cpu.x = 0xBBC7;
+    cpu.p = nz16(cpu.p, cpu.x);
+    abi_GsuRun();
+    op_sep(P_M);
+    op_rep(P_X);
+    abi_ObjectsRunHandlers();
+    abi_ViewUpdateAndGsuAEF8();
+    abi_PaletteFadeStep();
+    abi_WordCopyStep();
+    abi_BackdropAnglesFromView();
+    op_sep(P_M);
+    b = (uint32_t)cpu.db << 16;
+    frame_lda8_imm(0x01);
+    wr8(b | 0x1F07, 0x01);
+    op_rep(P_M);
+    wr16(b | 0x1AE8, 0x0000);
+    op_sep(P_M);
+    abi_FrameRunGsuAB13B();
+    op_sep(P_M);
+    abi_DebugShowErrors();
+    op_rep(P_M | P_X);
+    cpu.x = 0x2143;
+    cpu.p = nz16(cpu.p, cpu.x);
+    op_lda16(0x702476);
+    abi_SpeedGaugeUpdate();
+    abi_NearCarSoundUpdate();
+    op_rep(P_M);
+    b = (uint32_t)cpu.db << 16;
+    op_lda16(b | 0x1AE8);
+    wr16(b | 0x1AEA, cpu.a);
+    op_lda16(0x702732);
+    if (cpu.a) {
+        op_sep(P_M);
+        frame_lda8_imm(0x01);
+        cpu.x = 0xD307;
+        cpu.p = nz16(cpu.p, cpu.x);
+        abi_GsuRun();
+        op_rep(P_M | P_X);
+    } else {
+        op_sep(P_M);
+        call_routine(0x07DAA7, 1);
+    }
+    abi_GsuScreenToggle();
+    op_sep(P_M);
+    b = (uint32_t)cpu.db << 16;
+    wr8(b | 0x0357, 0x00);
+    op_lda8(b | 0x0306);
+    wr8(b | 0x1F3E, (uint8_t)cpu.a);
+    op_lda8(b | 0x06D5);
+    cpu.p &= (uint8_t)~P_C;
+    v = op_adc8((uint8_t)cpu.a, rd8(b | 0x06D4), &cpu.p);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    wr8(b | 0x06D5, v);
+    v = (uint8_t)(rd8(b | 0x06D6) + 1);
+    wr8(b | 0x06D6, v);
+    cpu.p = nz8(cpu.p, v);
+    op_lda8(b | 0x06D5);
+    frame_cmp8(0x3C);
+    if (cpu.p & P_C) {
+        op_lda8(b | 0x06D6);
+        wr8(b | 0x06D7, (uint8_t)cpu.a);
+        wr8(b | 0x06D6, 0x00);
+        op_lda8(b | 0x06D5);
+        cpu.p |= P_C;
+        v = op_sbc8((uint8_t)cpu.a, 0x3C, &cpu.p);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+        wr8(b | 0x06D5, v);
+    }
+    op_sep(P_M);
+    op_lda8(b | 0x0306);
+    wr8(0x70108E, (uint8_t)cpu.a);
+    frame_lda8_imm(0x00);
+    wr8(0x70108F, 0x00);
+    cpu.db = db;
+    cpu.p = nz8(cpu.p, db);
+    op_plp(p0);
+}
