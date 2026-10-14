@@ -55,14 +55,14 @@ _Snapshot 2026-10-14._
 
 ```
 M1  Behaviour exact (T3 + T4)
-    ████████████████████████░░░░░░░░░░░░░░░░   60.2%   82,774 / 137,404 B   905 / 1022 routines
+    █████████████████████████░░░░░░░░░░░░░░░   61.9%   85,008 / 137,404 B   915 / 1022 routines
 M2  Byte exact (T4)
-    ███████████████████████░░░░░░░░░░░░░░░░░   56.6%   77,736 / 137,404 B   888 / 1022 routines
+    ███████████████████████░░░░░░░░░░░░░░░░░   58.2%   79,970 / 137,404 B   898 / 1022 routines
 ```
 
 | Processor | M1: behaviour exact | M2: byte exact |
 |---|---|---|
-| **S-CPU (65816)** | `█████████████░░░░░░░` 63.1%: 783/863 routines, 64,398/102,081 B | `████████████░░░░░░░░` 61.8%: 778/863 routines, 63,107/102,081 B |
+| **S-CPU (65816)** | `█████████████░░░░░░░` 65.3%: 793/863 routines, 66,632/102,081 B | `█████████████░░░░░░░` 64.0%: 788/863 routines, 65,341/102,081 B |
 | **Super FX (GSU-1)** | `██████████░░░░░░░░░░` 52.0%: 122/159 routines, 18,376/35,323 B | `████████░░░░░░░░░░░░` 41.4%: 110/159 routines, 14,629/35,323 B |
 | **SPC700 (sound)** | not yet measured | not yet measured |
 <!-- PROGRESS:END -->
@@ -87,7 +87,7 @@ the M1 corpus.
 **What the bars measure.** Both bars count the executed code bytes of every
 routine the scripts have reached, on the S-CPU and the Super FX: 137,404 B in 1022
 routines. M1 counts routines whose C is certified behaviour exact (T3) or
-whose assembly is also byte exact (T4); M2 counts T4 only. 28 routine(s) are
+whose assembly is also byte exact (T4); M2 counts T4 only. 19 routine(s) are
 in the tree but not yet certified (T2).
 
 **The denominator grows.** Code no script has run is not counted yet. Of the
