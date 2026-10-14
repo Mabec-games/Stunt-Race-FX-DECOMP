@@ -1523,3 +1523,37 @@ ChampionScreenOpen:
     plb
     plp
     rts
+
+; @routine 0B:ADD4 ChampionScreenRun
+; WHAT IT DOES: Runs the championship's closing screen: opens it
+; (ChampionScreenOpen), waits a frame, sets the fade target to full
+; (ApproachTargetFull); then each frame (MenuWaitFrame) runs the objects,
+; builds the sprite table, clears both players' presses ($118B, $118D) and
+; asks for frame updates 0-3 ($11D7), until the menu asks to leave
+; ($11EB); then the fade target to 0 (ApproachTargetZero) and the menu
+; frames run out (MenuRunFrames).
+; HOW: 16-bit, with 8-bit for the $11D7 update.
+; Entry: D = $0000. Exit: as MenuRunFrames leaves it.
+%at($0BADD4)
+ChampionScreenRun:
+    rep.b #$30
+    jsr.w ChampionScreenOpen
+    jsr.w MenuWaitFrame
+    jsr.w ApproachTargetFull
+.lADDF:
+    jsr.w MenuWaitFrame
+    jsl.l MenuActorsRun
+    jsl.l MenuOamBuild
+    rep.b #$20
+    stz.w !menu_joy1_pressed
+    stz.w !menu_joy2_pressed
+    sep.b #$20
+    lda.w !frame_update_flags
+    ora.b #$0F
+    sta.w !frame_update_flags
+    rep.b #$30
+    lda.w !menu_exit
+    beq .lADDF
+    jsr.w ApproachTargetZero
+    jsr.w MenuRunFrames
+    rtl
