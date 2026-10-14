@@ -38,7 +38,7 @@ points into a routine count.
     census.py --recall      the same walk from the vectors alone: how many of
                             the catalog's routines it finds (its blind spots)
 """
-import csv, os, re, sys
+import bisect, csv, os, re, sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import codemap, disasm  # noqa: E402
@@ -407,7 +407,8 @@ def known():
     return cat, tags
 
 
-def main(argv):
+def census(recall=False):
+    """Run the walk; returns (Census, catalog S-CPU set, catalog Super FX set, tags)."""
     cat, tags = known()
     cpu_cat = {int(r['addr'], 16) for r in cat if r['cpu'] == 'cpu'}
     gsu_cat = {int(r['addr'], 16) for r in cat if r['cpu'] == 'gsu'}
@@ -419,7 +420,6 @@ def main(argv):
         if a >= 0x8000:                       # $0108/$010C are RAM: jumps the game writes
             c.entries[a] = ('vector', 'traced')
             seeds.append((a, M8 | X8))
-    recall = '--recall' in argv
     if not recall:
         for a in sorted(cpu_cat | set(tags)):
             o = c.off(a)
@@ -436,11 +436,8 @@ def main(argv):
             c.walk(work)
 
     settle(seeds)
-    found_cat = sum(1 for a in cpu_cat if a in c.entries)
     if recall:
-        print('walk from the vectors alone reaches %d of the catalog\'s %d S-CPU routines (%.0f%%)' % (
-            found_cat, len(cpu_cat), 100.0 * found_cat / max(1, len(cpu_cat))))
-        return 0
+        return c, cpu_cat, gsu_cat, tags
     for a in gsu_cat:
         c.gentries.setdefault(a, 'known')
     c.gsu_walk()
@@ -455,7 +452,72 @@ def main(argv):
             c.add(a, 'orphan', 'static', c.clean(a, M8 | X8) or (M8 | X8), work)
         settle(work)
         c.gsu_walk()
+    c.rounds = rounds
+    return c, cpu_cat, gsu_cat, tags
 
+
+def estimate(state=None):
+    """The routine count: named routines, plus the entry points found that
+    are routines, plus the share of unfiled jump-table targets the filed code
+    makes routines of (the rest become cases of their dispatcher). Orphans
+    may be dead tails of their neighbour: the low bound takes half."""
+    c, cpu_cat, gsu_cat, tags = state or census()
+    named = cpu_cat | gsu_cat | set(tags)
+    rows = sorted((int(r['offset'], 16), int(r['addr'], 16)) for r in csv.DictReader(open(os.path.join(B, 'routines.csv')))
+                  if r['cpu'] == 'cpu')
+    offs = [r[0] for r in rows]
+
+    def owner(o):
+        i = bisect.bisect_right(offs, o) - 1
+        return rows[i][1] if i >= 0 else None
+
+    # Jump-table targets that ran, in filed routines: filed as routines or as cases.
+    own = cases = 0
+    for o in range(len(c.rom) - 3):
+        if not (c.mp[o] & 1 and c.rom[o] == 0x7C):
+            continue
+        bank = codemap.run_addr(o) & 0xFF0000
+        tb = c.off(bank | c.rom[o + 1] | c.rom[o + 2] << 8)
+        for i in range(128 if tb is not None else 0):
+            p = tb + 2 * i
+            if not c.mp[p] & 4:
+                break
+            t = bank | c.rom[p] | c.rom[p + 1] << 8
+            to = c.off(t)
+            if to is None or not c.mp[to] & 1:
+                continue
+            if t in tags:
+                own += 1
+            elif owner(to) in tags:
+                cases += 1
+    rate = own / max(1, own + cases)
+    sure = orphan = undecided = 0
+    for a, (kind, _) in c.entries.items():
+        if a in named:
+            continue
+        if kind == 'orphan':
+            orphan += 1
+        elif kind == 'table':
+            if owner(c.off(a)) not in tags:
+                undecided += 1
+        else:
+            sure += 1
+    sure += sum(1 for a in c.gentries if a not in named)
+    base = len(named) + sure
+    return {'named': len(named), 'sure': sure, 'orphan': orphan, 'tables': undecided, 'rate': rate,
+            'expected': base + orphan + round(rate * undecided),
+            'low': base + orphan // 2, 'high': base + orphan + undecided}
+
+
+def main(argv):
+    recall = '--recall' in argv
+    c, cpu_cat, gsu_cat, tags = census(recall)
+    if recall:
+        found_cat = sum(1 for a in cpu_cat if a in c.entries)
+        print('walk from the vectors alone reaches %d of the catalog\'s %d S-CPU routines (%.0f%%)' % (
+            found_cat, len(cpu_cat), 100.0 * found_cat / max(1, len(cpu_cat))))
+        return 0
+    rom = c.rom
     cpu_new = sorted(a for a in c.entries if a not in cpu_cat and a not in tags)
     gsu_new = sorted(a for a in c.gentries if a not in gsu_cat and a not in tags)
     named = cpu_cat | gsu_cat | set(tags)
@@ -470,7 +532,7 @@ def main(argv):
             if by.get((kind, how)):
                 print('  %-8s %-7s %3d  %s' % (kind, how, len(by[kind, how]), ' '.join('%06X' % a for a in by[kind, how])))
     print('Super FX entry points found that nothing names: %d  %s' % (len(gsu_new), ' '.join('%06X' % a for a in gsu_new)))
-    print('static blocks rejected %d; orphan rounds %d' % (c.bad, rounds))
+    print('static blocks rejected %d; orphan rounds %d' % (c.bad, c.rounds))
     print('all entry points (named and found): %d' % len(named | set(cpu_new) | set(gsu_new)))
     banks = {}
     for o in range(len(rom)):
@@ -479,6 +541,9 @@ def main(argv):
     code_banks = sorted({c.off(a) >> 15 for a in named if c.off(a) is not None})
     print('bytes in code banks neither run, read nor reached: %d (%s)' % (
         sum(banks.get(b, 0) for b in code_banks), ', '.join('%02X:%d' % (b, banks.get(b, 0)) for b in code_banks)))
+    e = estimate((c, cpu_cat, gsu_cat, tags))
+    print('routines: about %d (%d to %d): %d named, %d found, %d orphans, %d of %d unfiled jump-table targets at the filed rate %.0f%%' % (
+        e['expected'], e['low'], e['high'], e['named'], e['sure'], e['orphan'], round(e['rate'] * e['tables']), e['tables'], 100 * e['rate']))
     return 0
 
 

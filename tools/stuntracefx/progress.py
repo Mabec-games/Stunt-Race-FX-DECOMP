@@ -15,6 +15,7 @@ import datetime, html, os, re, sys
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(ROOT, 'tools', 'stuntracefx'))
 import catalog  # noqa: E402
+import census   # noqa: E402
 import t3       # noqa: E402
 
 README = os.path.join(ROOT, 'README.md')
@@ -71,7 +72,7 @@ def fmt(n):
     return '{:,}'.format(n)
 
 
-def blocks(rows, mp):
+def blocks(rows, mp, est):
     total = sum(r['bytes'] for r in rows)
     m1 = [r for r in rows if r['tier'] in ('T3', 'T4')]
     m2 = [r for r in rows if r['tier'] == 'T4']
@@ -82,7 +83,10 @@ def blocks(rows, mp):
              '    %s  %5.1f%%   %s / %s B   %d / %d routines' % (bar(pct(b1, total) / 100, BAR_W), pct(b1, total), fmt(b1), fmt(total), len(m1), len(rows)),
              'M2  Byte exact (T4)',
              '    %s  %5.1f%%   %s / %s B   %d / %d routines' % (bar(pct(b2, total) / 100, BAR_W), pct(b2, total), fmt(b2), fmt(total), len(m2), len(rows)),
-             '```', '', '| Processor | M1: behaviour exact | M2: byte exact |', '|---|---|---|']
+             '```', '',
+             'The game has about **%s routines** (%s to %s, by the [routine census](docs/stuntracefx/ROUTINE_CENSUS.md)); '
+             'the bars measure the %s the scripts have run so far.' % (fmt(est['expected']), fmt(est['low']), fmt(est['high']), fmt(len(rows))),
+             '', '| Processor | M1: behaviour exact | M2: byte exact |', '|---|---|---|']
     for cpu in ('cpu', 'gsu'):
         rs = [r for r in rows if r['cpu'] == cpu]
         t = sum(r['bytes'] for r in rs)
@@ -107,7 +111,14 @@ def blocks(rows, mp):
         'whose assembly is also byte exact (T4); M2 counts T4 only. %d routine(s) are' % len(t2),
         'in the tree but not yet certified (T2).',
         '',
-        '**The denominator grows.** Code no script has run is not counted yet. Of the',
+        '**The denominator grows.** Code no script has run is not counted yet. The',
+        'routine census (`tools/stuntracefx/census.py`) follows the code statically from',
+        'the routines that ran and the ones filed, and puts the game at about %s:' % fmt(est['expected']),
+        '%s named (%s of them filed but never run), %s found by calls, handler' % (
+            fmt(est['named']), fmt(est['named'] - len(rows)), fmt(est['sure'])),
+        'pointers and Super FX calls, %s orphans nothing refers to, and about %s of %s' % (
+            fmt(est['orphan']), fmt(round(est['rate'] * est['tables'])), fmt(est['tables'])),
+        'jump-table targets in code not filed yet. Of the',
         'ROM\'s %s B, the scripts have run %s B as code and read %s B as data;' % (fmt(len(mp)), fmt(code), fmt(data)),
         '%s B have not been touched by any script. The sound CPU\'s program is' % fmt(untouched),
         'uploaded from ROM and is not measured yet.',
@@ -192,7 +203,7 @@ def render_svg(rows, path):
 
 def main(argv):
     rows, mp, image_ok = classify()
-    status, detail = blocks(rows, mp)
+    status, detail = blocks(rows, mp, census.estimate())
     if '--print' in argv:
         print(status)
         return 0

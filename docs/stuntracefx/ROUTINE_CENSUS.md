@@ -6,7 +6,7 @@ reads the traces already in build/, runs nothing).
 
 ## The answer
 
-**About 1,370 routines; between 1,300 and 1,470.**
+**About 1,373 routines; between 1,298 and 1,465.**
 
 | | count | confidence |
 |---|---:|---|
@@ -18,8 +18,8 @@ reads the traces already in build/, runs nothing).
 | Interrupt vector with its own handler (00FE90, a lone RTI) | 1 | certain |
 | Super FX routines (one ran, 049A9B; 18 reached by LINK + IWT R15) | 19 | high |
 | Orphans: code nothing refers to | 81 | real code; some may be dead tails of their neighbour, not routines |
-| Jump-table targets in code not yet filed | 126 | about 30 will be routines, see below |
-| **Total** | **about 1,370** | |
+| Jump-table targets in code not yet filed | 126 | about 34 will be routines, see below |
+| **Total** | **about 1,373** | |
 
 The 1,130 quoted before was the catalog plus the tags filed so far. The
 catalog only counts routines that ran, so it was always a floor.
@@ -28,11 +28,15 @@ catalog only counts routines that ran, so it was always a floor.
 
 The census finds 274 JMP (abs,X) targets that nothing names. 148 sit inside
 routines already filed as C, where the decomp made them `case`s of their
-dispatcher. Of all the jump-table targets in filed code, 46 of 194 (24%)
-became routines of their own (the course screen's and the stunt panel's
-state handlers). The other 126 are in code not filed yet (86 ran, 40 never
-ran). At the same rate about 30 of them become routines. That gives 0 to 126,
-expected 30.
+dispatcher. Of the JMP (abs,X) targets that ran in filed code, 65 of 239
+(27%) became routines of their own (the course screen's and the stunt
+panel's state handlers). The other 126 are in code not filed yet (86 ran, 40
+never ran). At the same rate about 34 of them become routines. That gives 0
+to 126, expected 34.
+
+The low bound also counts only half the orphans, in case the rest are dead
+tails of the routine before them. `census.py` prints the same estimate on
+its last line, and `progress.py` puts it in the README.
 
 ## How sure
 
