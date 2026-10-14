@@ -2791,3 +2791,231 @@ void abi_ObjectSpawnPuff(void)
     cpu.p = nz16(cpu.p, x);
     (void)v;
 }
+
+void abi_ObjectPoseFromRecord(void);
+void abi_GsuRun(void);
+void abi_ObjectCarFrame(void);
+void abi_ObjectCarRecordNew(void);
+void abi_ObjectCarRecordTake(void);
+
+/* An object's field: DB:$2000 + offset + X. */
+static uint32_t car_field(uint16_t off)
+{
+    return ((uint32_t)cpu.db << 16) + off + cpu.x;
+}
+
+/*
+ * @routine 08:B23D ObjectCarFrame
+ * WHAT IT DOES: A car object's frame: unless the player's car ($0346) has
+ * bit 3 of +$25 and this object's record +$1C has bit 4, steps the record's
+ * flag (ObjectRecordFlag70Step), the near-focus test, the pose from the
+ * record and the object's bucket; otherwise marks the record (+$16 |=
+ * $0420), +$36 = 3 and +$24 bit 5.
+ * HOW: 8-bit A for the flags; the record by long accesses with X = +$22.
+ * Entry: M 8-bit, X 16-bit, data bank $7E; X = the object. Exit: as
+ * ObjectRebucket, or M 8-bit with A = the new +$24.
+ */
+void abi_ObjectCarFrame(void)
+{
+    uint16_t obj = cpu.x;
+    uint8_t v;
+
+    cpu.y = rd16(((uint32_t)cpu.db << 16) | 0x0346);
+    cpu.p = nz16(cpu.p, cpu.y);
+    v = (uint8_t)(rd8(((uint32_t)cpu.db << 16) + 0x2025 + cpu.y) & 0x08);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+    if (v) {
+        op_rep(P_M);
+        op_lda16(car_field(0x2022));
+        op_tax16();
+        op_lda16(0x70001C + cpu.x);
+        cpu.x = obj;
+        cpu.p = nz16(cpu.p, obj);
+        op_and16(0x0010);
+        op_sep(P_M);
+        if (cpu.a) {
+            op_rep(P_M);
+            op_lda16(car_field(0x2022));
+            op_tax16();
+            cpu.a = (uint16_t)(rd16(0x700016 + cpu.x) | 0x0420);
+            cpu.p = nz16(cpu.p, cpu.a);
+            wr16(0x700016 + cpu.x, cpu.a);
+            op_sep(P_M);
+            cpu.x = obj;
+            cpu.p = nz16(cpu.p, obj);
+            cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x03);
+            cpu.p = nz8(cpu.p, 0x03);
+            wr8(car_field(0x2036), 0x03);
+            v = (uint8_t)(rd8(car_field(0x2024)) | 0x20);
+            cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+            cpu.p = nz8(cpu.p, v);
+            wr8(car_field(0x2024), v);
+            return;
+        }
+    }
+    abi_ObjectRecordFlag70Step();
+    abi_ObjectNearFocus();
+    abi_ObjectPoseFromRecord();
+    abi_ObjectRebucket();
+}
+
+/*
+ * @routine 08:B1FC ObjectCarSpawnPlace
+ * WHAT IT DOES: ObjectCarSpawn after the record is made: with no record
+ * (+$22 = 0, which ObjectCarRecordNew never leaves: it returns before it
+ * would) the crash screen at 08:B292; else the record gets +$64 bit 3 and
+ * +$40 bit 9, the object's handler (+$1A) becomes ObjectCarFrame, +$1C = 8,
+ * its kind's value set (ObjectSet5DByKind with +$49), and the first frame
+ * runs (ObjectCarFrame).
+ * HOW: The record through long accesses with X = +$22, the object's X kept.
+ * Entry: M 16-bit, X 16-bit, data bank $7E; X = the object. Exit: as
+ * ObjectCarFrame.
+ */
+void abi_ObjectCarSpawnPlace(void)
+{
+    uint16_t obj;
+    uint32_t r;
+
+    op_rep(P_M);
+    op_lda16(car_field(0x2022));
+    if (!cpu.a) {
+        jump_routine(0x08B292);
+        return;
+    }
+    obj = cpu.x;
+    op_tax16();
+    r = 0x700000u + cpu.x;
+    cpu.a = (uint16_t)(rd16(r + 0x64) | 0x0008);
+    cpu.p = nz16(cpu.p, cpu.a);
+    wr16(r + 0x64, cpu.a);
+    cpu.a = (uint16_t)(rd16(r + 0x40) | 0x0200);
+    cpu.p = nz16(cpu.p, cpu.a);
+    wr16(r + 0x40, cpu.a);
+    cpu.a = (uint16_t)(rd16(r + 0x70) | 0x0002);
+    cpu.p = nz16(cpu.p, cpu.a);
+    cpu.x = obj;
+    cpu.p = nz16(cpu.p, obj);
+    op_sep(P_M);
+    op_rep(P_M);
+    op_lda16_imm(0xB23D);
+    wr16(car_field(0x201A), 0xB23D);
+    op_sep(P_M);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x08);
+    cpu.p = nz8(cpu.p, 0x08);
+    wr8(car_field(0x201C), 0x08);
+    op_lda8(car_field(0x2049));
+    abi_ObjectSet5DByKind();
+    abi_ObjectCarFrame();
+}
+
+/*
+ * @routine 08:B1E5 ObjectCarSpawn
+ * WHAT IT DOES: Starts object X as a car: raises it ($200E - $1E0), makes
+ * its Super FX record (ObjectCarRecordNew, A = 4), then as
+ * ObjectCarSpawnPlace.
+ * HOW: 16-bit for the position; JSL to the record's maker.
+ * Entry: M 8-bit, X 16-bit, data bank $7E; X = the object. Exit: as
+ * ObjectCarFrame, or the crash screen.
+ */
+void abi_ObjectCarSpawn(void)
+{
+    op_rep(P_M);
+    op_lda16(car_field(0x200E));
+    op_add16(0xFE20);
+    wr16(car_field(0x200E), cpu.a);
+    op_sep(P_M);
+    op_rep(P_M);
+    op_lda16_imm(0x0004);
+    abi_ObjectCarRecordNew();
+    abi_ObjectCarSpawnPlace();
+}
+
+/*
+ * @routine 08:B99A ObjectCarRecordTake
+ * WHAT IT DOES: ObjectCarRecordNew after the program: the record it made
+ * ($70:238E; none: a return by the RTL at 08:A033, which nothing reaches,
+ * the program always finding one) goes to +$22, $70:2390 to +$04, $70:2394
+ * to $1F58 and with bit 7 to +$18, +$24 bit 4, then 08:BA57 and 08:DCB4,
+ * +$46 = 3 and +$4D = 1.
+ * HOW: 16-bit for the words, 8-bit for the flags.
+ * Entry: M 16-bit, X 16-bit, data bank $7E; X = the object. Exit: M 8-bit;
+ * A = 1; X, Y as 08:DCB4 left them.
+ */
+void abi_ObjectCarRecordTake(void)
+{
+    uint8_t v;
+
+    op_rep(P_M);
+    op_lda16(0x70238E);
+    if (!cpu.a) {
+        jump_routine(0x08A033);
+        return;
+    }
+    wr16(car_field(0x2022), cpu.a);
+    op_lda16(0x702390);
+    wr16(car_field(0x2004), cpu.a);
+    op_sep(P_M);
+    op_lda8(0x702394);
+    wr8(((uint32_t)cpu.db << 16) | 0x1F58, (uint8_t)cpu.a);
+    op_lda8(((uint32_t)cpu.db << 16) | 0x1F58);
+    v = (uint8_t)(cpu.a | 0x80);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+    wr8(car_field(0x2018), v);
+    v = (uint8_t)(rd8(car_field(0x2024)) | 0x10);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+    wr8(car_field(0x2024), v);
+    call_routine(0x08BA57, 1);
+    call_routine(0x08DCB4, 1);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x03);
+    cpu.p = nz8(cpu.p, 0x03);
+    wr8(car_field(0x2046), 0x03);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
+    cpu.p = nz8(cpu.p, 0x01);
+    wr8(car_field(0x204D), 0x01);
+    op_sep(P_M);
+}
+
+/*
+ * @routine 08:B956 ObjectCarRecordNew
+ * WHAT IT DOES: Makes object X's Super FX car record: amount A at
+ * $70:2390, the position (+$0C, +$0E, +$10) at $70:0068, $70:002C and
+ * $70:002E, +$15 as the high byte at $70:0022, +$4A at $70:2392 and +$27 at
+ * $70:238E, then Super FX program $04:8CC6; then as ObjectCarRecordTake.
+ * HOW: 16-bit for the words; X and Y kept around the program.
+ * Entry: M 16-bit, X 16-bit, data bank $7E; A = amount, X = the object.
+ * Exit: as ObjectCarRecordTake.
+ */
+void abi_ObjectCarRecordNew(void)
+{
+    uint16_t x = cpu.x, y = cpu.y;
+
+    wr16(0x702390, cpu.a);
+    op_lda16(car_field(0x200C));
+    wr16(0x700068, cpu.a);
+    op_lda16(car_field(0x200E));
+    wr16(0x70002C, cpu.a);
+    op_lda16(car_field(0x2010));
+    wr16(0x70002E, cpu.a);
+    op_lda16(car_field(0x2015));
+    op_and16(0x00FF);
+    op_xba();
+    wr16(0x700022, cpu.a);
+    op_lda16(car_field(0x204A));
+    op_and16(0x00FF);
+    wr16(0x702392, cpu.a);
+    op_lda16(car_field(0x2027));
+    wr16(0x70238E, cpu.a);
+    op_sep(P_M);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x04);
+    cpu.p = nz8(cpu.p, 0x04);
+    cpu.x = 0x8CC6;
+    cpu.p = nz16(cpu.p, cpu.x);
+    abi_GsuRun();
+    cpu.y = y;
+    cpu.x = x;
+    cpu.p = nz16(cpu.p, x);
+    abi_ObjectCarRecordTake();
+}

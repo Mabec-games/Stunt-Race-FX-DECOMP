@@ -2842,3 +2842,180 @@ ObjectSpawnPuff:
     lda.b #$07
     sta.w !obj_09+1,y
 
+; @routine 08:B1E5 ObjectCarSpawn
+; WHAT IT DOES: Starts object X as a car: raises it ($200E - $1E0), makes
+; its Super FX record (ObjectCarRecordNew, A = 4), then as
+; ObjectCarSpawnPlace.
+; HOW: 16-bit for the position; JSL to the record's maker.
+; Entry: M 8-bit, X 16-bit, data bank $7E; X = the object. Exit: as
+; ObjectCarFrame, or the crash screen.
+%at($08B1E5)
+ObjectCarSpawn:
+    rep.b #$20
+    lda.w !obj_pos_y,x
+    clc
+    adc.w #$FE20
+    sta.w !obj_pos_y,x
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0004
+    jsl.l ObjectCarRecordNew
+
+; @routine 08:B1FC ObjectCarSpawnPlace
+; WHAT IT DOES: ObjectCarSpawn after the record is made: with no record
+; (+$22 = 0, which ObjectCarRecordNew never leaves: it returns before it
+; would) the crash screen at 08:B292; else the record gets +$64 bit 3 and
+; +$40 bit 9, the object's handler (+$1A) becomes ObjectCarFrame, +$1C = 8,
+; its kind's value set (ObjectSet5DByKind with +$49), and the first frame
+; runs (ObjectCarFrame).
+; HOW: The record through long accesses with X = +$22, the object's X kept.
+; Entry: M 16-bit, X 16-bit, data bank $7E; X = the object. Exit: as
+; ObjectCarFrame.
+%at($08B1FC)
+ObjectCarSpawnPlace:
+    rep.b #$20
+    lda.w !obj_22,x
+    bne ObjectCar_lB206
+    brl CarSpawnCrash
+ObjectCar_lB206:
+    phx
+    tax
+    lda.l !gsu_rec_64,x
+    ora.w #$0008
+    sta.l !gsu_rec_64,x
+    lda.l !gsu_rec_40,x
+    ora.w #$0200
+    sta.l !gsu_rec_40,x
+    lda.l !gsu_rec_70,x
+    ora.w #$0002
+    plx
+    sep.b #$20
+    rep.b #$20
+    lda.w #$B23D
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+    lda.w !obj_49,x
+    jsr.w ObjectSet5DByKind
+
+; @routine 08:B23D ObjectCarFrame
+; WHAT IT DOES: A car object's frame: unless the player's car ($0346) has
+; bit 3 of +$25 and this object's record +$1C has bit 4, steps the record's
+; flag (ObjectRecordFlag70Step), the near-focus test, the pose from the
+; record and the object's bucket; otherwise marks the record (+$16 |=
+; $0420), +$36 = 3 and +$24 bit 5.
+; HOW: 8-bit A for the flags; the record by long accesses with X = +$22.
+; Entry: M 8-bit, X 16-bit, data bank $7E; X = the object. Exit: as
+; ObjectRebucket, or M 8-bit with A = the new +$24.
+%at($08B23D)
+ObjectCarFrame:
+    ldy.w !wram_0346
+    lda.w !obj_25,y
+    and.b #$08
+    bne ObjectCar_lB24B
+    jml.l ObjectCarFrame_step
+ObjectCar_lB24B:
+    rep.b #$20
+    phx
+    lda.w !obj_22,x
+    tax
+    lda.l !gsu_rec_1c,x
+    plx
+    and.w #$0010
+    sep.b #$20
+    bne ObjectCar_lB26F
+ObjectCarFrame_step:
+    jsl.l ObjectRecordFlag70Step
+    jsl.l ObjectNearFocus
+    jsl.l ObjectPoseFromRecord
+    jsl.l ObjectRebucket
+    rtl
+ObjectCar_lB26F:
+    phx
+    rep.b #$20
+    lda.w !obj_22,x
+    tax
+    lda.l !gsu_rec_flags,x
+    ora.w #$0420
+    sta.l !gsu_rec_flags,x
+    sep.b #$20
+    plx
+    lda.b #$03
+    sta.w !obj_36,x
+    lda.w !obj_24,x
+    ora.b #$20
+    sta.w !obj_24,x
+    rtl
+
+; @routine 08:B956 ObjectCarRecordNew
+; WHAT IT DOES: Makes object X's Super FX car record: amount A at
+; $70:2390, the position (+$0C, +$0E, +$10) at $70:0068, $70:002C and
+; $70:002E, +$15 as the high byte at $70:0022, +$4A at $70:2392 and +$27 at
+; $70:238E, then Super FX program $04:8CC6; then as ObjectCarRecordTake.
+; HOW: 16-bit for the words; X and Y kept around the program.
+; Entry: M 16-bit, X 16-bit, data bank $7E; A = amount, X = the object.
+; Exit: as ObjectCarRecordTake.
+%at($08B956)
+ObjectCarRecordNew:
+    sta.l !gsu_in_amount
+    lda.w !obj_pos_x,x
+    sta.l !gsu_in_68
+    lda.w !obj_pos_y,x
+    sta.l !gsu_dest
+    lda.w !obj_pos_z,x
+    sta.l !gsu_in_2e
+    lda.w !obj_15,x
+    and.w #$00FF
+    xba
+    sta.l !gsu_in_22
+    lda.w !obj_4a,x
+    and.w #$00FF
+    sta.l !fx_script_at
+    lda.w !obj_27,x
+    sta.l !gsu_record_arg
+    sep.b #$20
+    phx
+    phy
+    lda.b #$04
+    ldx.w #$8CC6
+    jsl.l GsuRun
+    ply
+    plx
+
+; @routine 08:B99A ObjectCarRecordTake
+; WHAT IT DOES: ObjectCarRecordNew after the program: the record it made
+; ($70:238E; none: a return by the RTL at 08:A033, which nothing reaches,
+; the program always finding one) goes to +$22, $70:2390 to +$04, $70:2394
+; to $1F58 and with bit 7 to +$18, +$24 bit 4, then 08:BA57 and 08:DCB4,
+; +$46 = 3 and +$4D = 1.
+; HOW: 16-bit for the words, 8-bit for the flags.
+; Entry: M 16-bit, X 16-bit, data bank $7E; X = the object. Exit: M 8-bit;
+; A = 1; X, Y as 08:DCB4 left them.
+%at($08B99A)
+ObjectCarRecordTake:
+    rep.b #$20
+    lda.l !gsu_record_arg
+    bne ObjectCar_lB9A5
+    brl RtlA033
+ObjectCar_lB9A5:
+    sta.w !obj_22,x
+    lda.l !gsu_in_amount
+    sta.w !obj_04,x
+    sep.b #$20
+    lda.l !fx_car_2394
+    sta.w !wram_1F58
+    lda.w !wram_1F58
+    ora.b #$80
+    sta.w !obj_18,x
+    lda.w !obj_24,x
+    ora.b #$10
+    sta.w !obj_24,x
+    jsl.l ObjectCarBA57
+    jsl.l ObjectCarDCB4
+    lda.b #$03
+    sta.w !obj_bucket+6,x
+    lda.b #$01
+    sta.w !obj_4b+2,x
+    sep.b #$20
+    rtl

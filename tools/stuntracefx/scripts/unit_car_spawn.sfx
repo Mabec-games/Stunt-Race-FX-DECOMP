@@ -1,0 +1,12 @@
+# unit_car_spawn: the car spawn's failure paths, which nothing reaches (the
+# Super FX always finds a record), entered right after the record's making
+# with object 1 of the start of a Novice race: ObjectCarSpawnPlace
+# (08:B1FC) with +$22 at 0 (the crash screen, which stops the game) and
+# ObjectCarRecordTake (08:B99A) with $70:238E at 0 (the return through the
+# RTL at 08:A033).
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2023 00,00
+call 08:B1FC long p=00 x=0001 db=7E d=0000 noreturn frames=60
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70238E 00,00
+call 08:B99A long p=00 x=0001 db=7E d=0000

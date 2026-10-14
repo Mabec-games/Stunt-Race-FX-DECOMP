@@ -382,3 +382,7 @@ AttractViewStartRom = $02CFC6                   ; 02:CFC6, AttractViewStart's RO
 ViewParamsByPlayersRom = $02D410                ; 02:D410, ViewParamsByPlayers's ROM copy
 AttractViewRest = $03AE73                       ; 03:AE73, where AttractViewStart goes on (not filed yet)
 PlayerTwoFrameWork = $07E265                    ; 07:E265, RaceSoundsPlayer2's frame work (not filed yet)
+CarSpawnCrash = $08B292                         ; 08:B292, ObjectCarSpawnPlace's crash screen for a car with no record (not filed yet)
+RtlA033 = $08A033                               ; 08:A033, an RTL ObjectCarRecordTake branches to (not filed yet)
+ObjectCarBA57 = $08BA57                         ; 08:BA57 (not filed yet)
+ObjectCarDCB4 = $08DCB4                         ; 08:DCB4 (not filed yet)
