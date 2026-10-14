@@ -1,0 +1,38 @@
+# unit_hud_colour: unit calls of HudColourStep (7E:E34F) on the paths no
+# play reaches, from the start of a Novice race (the work registers at
+# $7F:3458-$347C):
+# - a negative request ($345C) with the amount at $1E (kept to $1F);
+# - the HUD gradient ($0DA4 bit 11) with a target that is not negative;
+# - a new target ($3478 set) with the blend $3460 at $1F, then at 5, and
+#   the buffer's colour 2 apart in $37D7 and $39D7;
+# - a changed blend ($3460 against $3464) with a negative target;
+# - HudColourRowsRest (7E:E4E4) with a negative target, and
+#   HudColourStepFrom14 (7E:E50B), entered with the frame HudColourStep
+#   pushes (P, DB), which nothing else reaches.
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7F345C 00,80
+set 7F3468 1E,00
+call 7E:E34F long p=30 db=00 d=0000
+set 7E0DA4 00,08
+set 7F3470 00,00
+call 7E:E34F long p=30 db=00 d=0000
+set 7F3478 01,00
+set 7F3460 1F,00
+set 7F37DB 10,00
+set 7F39DB 00,00
+call 7E:E34F long p=30 db=00 d=0000
+set 7F3478 01,00
+set 7F3460 05,00
+set 7F37DB 10,00
+set 7F39DB 00,00
+call 7E:E34F long p=30 db=00 d=0000
+set 7F3460 05,00
+set 7F3464 00,00
+set 7F3470 00,80
+set 7F37DB 10,00
+set 7F39DB 00,00
+call 7E:E34F long p=30 db=00 d=0000
+set 7F3470 00,80
+set 7F345A 02,00
+call 7E:E4E4 long frame=3000 a=1234 x=0000 y=0000 p=00 db=7F d=0000
+call 7E:E50B long frame=3000 p=00 db=7F d=0000

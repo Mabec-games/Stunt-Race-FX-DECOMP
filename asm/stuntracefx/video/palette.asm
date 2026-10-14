@@ -1203,3 +1203,433 @@ CoursePaletteCycle:
     plb
     plp
     rtl
+
+; @routine 7E:E34F HudColourStep
+; WHAT IT DOES: The race's colour work each frame, with the data bank $7F:
+; steps the blend toward the target colour $3470 by $3468 ($345C asks: a
+; negative value sets the target to its low 15 bits and adds 2 to the
+; amount, at most $1F; a positive one takes 3 off it, down to $0A on course
+; 6 and $0F on course 4, elsewhere to nothing once the fade $0D60 is $0F00,
+; the target then $FFFF); with $0DA4 bit 11 the HUD's gradient goes to $F757
+; and the first 16 colours of the buffer at $7E:FD65 to 0, the target (when
+; not negative) blended from black at $F1 first. Otherwise it rebuilds one
+; of three gradient bands (the table at $7E:E69C, counter $347C) at
+; $7F:EC57 from the colours at $EF57/$F357 + $0D96, blended by $3460 and
+; toward the target; then the buffer from $7F:35D7, $37D7 and $39D7 as the
+; blend, target and amount have changed, five HUD colours at $0E21
+; (ColourBlendToTarget), on course 7 colours $0C-$0F again, and keeps the
+; blend, amount and target at $3464, $346C and $3474.
+; HOW: P and the data bank pushed at the start and pulled at the end; 16-bit
+; registers; colours through ColourBlend and ColourBlendBy with direct page
+; $F1, $F3 and $F5.
+; Entry: any widths; D = $0000. Exit: M 8-bit, X 8-bit inside, then P and
+; the data bank as they were; A, X, Y as the last step left them.
+%ramcode($7EE34F, $014076)
+HudColourStep:
+    php
+    phb
+    sep.b #$20
+    lda.b #$7F
+    pha
+    plb
+    rep.b #$30
+    lda.w !colour_to_b+4
+    bne HudColourStep_lE361
+    brl HudColourStep_lE3DE
+HudColourStep_lE361:
+    bmi HudColourStep_lE3C6
+    lda.l !course
+    and.w #$00FF
+    cmp.w #$0006
+    beq HudColourStep_lE385
+    cmp.w #$0004
+    bne HudColourStep_lE39F
+    lda.w !blend_target_amount
+    sec
+    sbc.w #$0003
+    cmp.w #$000F
+    bcs HudColourStep_lE3DB
+    lda.w #$000F
+    bra HudColourStep_lE394
+HudColourStep_lE385:
+    lda.w !blend_target_amount
+    sec
+    sbc.w #$0003
+    cmp.w #$000A
+    bcs HudColourStep_lE3DB
+    lda.w #$000A
+HudColourStep_lE394:
+    sta.w !blend_target_amount
+    lda.w #$0000
+    sta.w !colour_to_b+4
+    bra HudColourStep_lE3DE
+HudColourStep_lE39F:
+    lda.l !fade_level
+    cmp.w #$0F00
+    beq HudColourStep_lE3AD
+    lda.w !blend_target_amount
+    bra HudColourStep_lE3DB
+HudColourStep_lE3AD:
+    lda.w !blend_target_amount
+    beq HudColourStep_lE3DE
+    sec
+    sbc.w #$0003
+    bcs HudColourStep_lE3DB
+    lda.w #$FFFF
+    sta.w !blend_target
+    lda.w #$0000
+    sta.w !colour_to_b+4
+    bra HudColourStep_lE3DB
+HudColourStep_lE3C6:
+    and.w #$7FFF
+    sta.w !blend_target
+    lda.w !blend_target_amount
+    clc
+    adc.w #$0002
+    cmp.w #$001F
+    bcc HudColourStep_lE3DB
+    lda.w #$001F
+HudColourStep_lE3DB:
+    sta.w !blend_target_amount
+HudColourStep_lE3DE:
+    lda.l !wram_0DA4
+    bit.w #$0800
+    beq HudColourStep_lE42E
+    sta.w !blend_target+8
+    ldy.w #$0080
+    ldx.w #$00FE
+    lda.l !gsu_buffer_select
+    beq HudColourStep_lE3F9
+    ldx.w #$01FE
+HudColourStep_lE3F9:
+    lda.w !blend_target
+    bmi HudColourStep_lE40D
+    sta.b !dp_f3
+    lda.w #$0000
+    sta.b !digit_count
+    lda.w !blend_target_amount
+    sta.b !save_block_offset
+    jsr.w ColourBlendBy
+HudColourStep_lE40D:
+    lda.l !gsu_buffer_select
+    asl a
+    tax
+    lda.w #$F757
+    sta.l !gradient_src_b+2,x
+    lda.w #$0000
+    ldx.w #$0004
+HudColourStep_lE420:
+    sta.l !palette_buffer,x
+    inx
+    inx
+    cpx.w #$0020
+    bne HudColourStep_lE420
+    jmp.w HudColourStep_lE697
+HudColourStep_lE42E:
+    lda.w !blend_target+8
+    beq HudColourStep_lE445
+    lda.w !blend_target
+    sta.w !blend_target+4
+    lda.w #$0000
+    sta.w !blend_target+8
+    ldx.w #$0004
+    jmp.w HudColourStep_lE579
+HudColourStep_lE445:
+    lda.w !blend_target+12
+    inc a
+    cmp.w #$0003
+    bcc HudColourStep_lE451
+    lda.w #$0000
+HudColourStep_lE451:
+    sta.w !blend_target+12
+    asl a
+    tax
+    lda.l HudColourStep_bands,x
+    tay
+    clc
+    adc.w #$0100
+    sta.w !colour_to_b+2
+    lda.l !gsu_buffer_select
+    asl a
+    tax
+    tya
+    clc
+    adc.w #$EC57
+    sta.l !gradient_src_b+2,x
+    lda.l !gradient_src_a
+    tax
+    lda.w !blend_target
+    bpl HudColourStep_lE4B7
+    lda.w !colour_to_b+8
+    jsr.w PpuMultiplierSetLowByteTimes8
+    lda.w !palette_differ_bits+56,x
+    sta.b !digit_count
+    bra HudColourStep_lE4A1
+HudColourStep_lE488:
+    lda.w !palette_differ_bits+56,x
+    cmp.w !palette_differ_bits+54,x
+    bne HudColourStep_lE49F
+    sta.b !digit_count
+    lda.w !palette_differ_bits+1080,x
+    cmp.w !palette_differ_bits+1078,x
+    bne HudColourStep_lE4A4
+    lda.w !race_fade_stage_handlers+61,y
+    bra HudColourStep_lE4A9
+HudColourStep_lE49F:
+    sta.b !digit_count
+HudColourStep_lE4A1:
+    lda.w !palette_differ_bits+1080,x
+HudColourStep_lE4A4:
+    sta.b !dp_f3
+    jsr.w ColourBlend
+HudColourStep_lE4A9:
+    sta.w !race_fade_stage_handlers+63,y
+    inx
+    inx
+    iny
+    iny
+    cpy.w !colour_to_b+2
+    bcc HudColourStep_lE488
+    bra HudColourStep_lE506
+HudColourStep_lE4B7:
+    lda.w !palette_differ_bits+56,x
+    sta.b !digit_count
+    bra HudColourStep_lE4D7
+HudColourStep_lE4BE:
+    lda.w !palette_differ_bits+56,x
+    cmp.w !palette_differ_bits+54,x
+    bne HudColourStep_lE4D5
+    sta.b !digit_count
+    lda.w !palette_differ_bits+1080,x
+    cmp.w !palette_differ_bits+1078,x
+    bne HudColourStep_lE4DA
+    lda.w !race_fade_stage_handlers+61,y
+    bra HudColourStep_lE4FA
+HudColourStep_lE4D5:
+    sta.b !digit_count
+HudColourStep_lE4D7:
+    lda.w !palette_differ_bits+1080,x
+HudColourStep_lE4DA:
+    sta.b !dp_f3
+    lda.w !colour_to_b+8
+    sta.b !save_block_offset
+    jsr.w ColourBlendBy
+
+; @routine 7E:E4E4 HudColourRowsRest
+; WHAT IT DOES: HudColourStep from inside its second band loop, with the
+; blended colour in A: a negative target ($3470) keeps it as the row's
+; colour; otherwise it is blended toward the target by $3468. Then the
+; loop's other rows and the rest of HudColourStep. Nothing reaches it with a
+; negative target: the loop runs only when the target is positive.
+; HOW: Pushes A and pulls it back, as the loop does; ends as HudColourStep,
+; pulling the data bank and P the start pushed.
+; Entry: as inside HudColourStep: M 16-bit, X 16-bit, D = $0000, DB = $7F;
+; X = colour offset, Y = row offset; the data bank and P on the stack above
+; the return address. Exit: as HudColourStep.
+%ramcode($7EE4E4, $01420B)
+HudColourRowsRest:
+    pha
+    lda.w !blend_target
+    bmi HudColourStep_lE4F9
+    sta.b !dp_f3
+    pla
+    sta.b !digit_count
+    lda.w !blend_target_amount
+    sta.b !save_block_offset
+    jsr.w ColourBlendBy
+    bra HudColourStep_lE4FA
+HudColourStep_lE4F9:
+    pla
+HudColourStep_lE4FA:
+    sta.w !race_fade_stage_handlers+63,y
+    inx
+    inx
+    iny
+    iny
+    cpy.w !colour_to_b+2
+    bcc HudColourStep_lE4BE
+HudColourStep_lE506:
+    ldx.w #$0004
+    bra HudColourStep_lE50E
+
+; @routine 7E:E50B HudColourStepFrom14
+; WHAT IT DOES: HudColourStep's buffer step from colour $14 (offset $14 into
+; the buffers) instead of 4. Nothing reaches it: the code before branches
+; over it.
+; HOW: X = $14, then as HudColourStep from its buffer step.
+; Entry: as inside HudColourStep: M 16-bit, X 16-bit, D = $0000, DB = $7F;
+; the data bank and P on the stack above the return address. Exit: as
+; HudColourStep.
+%ramcode($7EE50B, $014232)
+HudColourStepFrom14:
+    ldx.w #$0014
+HudColourStep_lE50E:
+    lda.w !colour_to_b+8
+    cmp.w !colour_to_b+12
+    bne HudColourStep_lE574
+    lda.w !blend_target
+    bpl HudColourStep_lE535
+    lda.w !blend_target+4
+    bpl HudColourStep_lE523
+    jmp.w HudColourStep_lE613
+HudColourStep_lE523:
+    lda.l !palette_work_a,x
+    sta.l !palette_buffer,x
+    inx
+    inx
+    cpx.w #$0200
+    bcc HudColourStep_lE523
+    jmp.w HudColourStep_lE613
+HudColourStep_lE535:
+    cmp.w !blend_target+4
+    beq HudColourStep_lE53D
+    jmp.w HudColourStep_lE548
+HudColourStep_lE53D:
+    lda.w !blend_target_amount
+    cmp.w !blend_target_amount+4
+    bne HudColourStep_lE548
+    jmp.w HudColourStep_lE685
+HudColourStep_lE548:
+    lda.w !blend_target_amount
+    jsr.w PpuMultiplierSetLowByteTimes8
+HudColourStep_lE54E:
+    lda.l !palette_work_b,x
+    cmp.l !palette_work_c,x
+    beq HudColourStep_lE56A
+    lda.w !blend_target
+    sta.b !dp_f3
+    lda.l !palette_work_a,x
+    sta.b !digit_count
+    jsr.w ColourBlend
+    sta.l !palette_buffer,x
+HudColourStep_lE56A:
+    inx
+    inx
+    cpx.w #$0200
+    bcc HudColourStep_lE54E
+    jmp.w HudColourStep_lE613
+HudColourStep_lE574:
+    lda.w !blend_target
+    bmi HudColourStep_lE5D8
+HudColourStep_lE579:
+    lda.l !palette_work_b,x
+    sec
+    sbc.l !palette_work_c,x
+    beq HudColourStep_lE5CF
+    cmp.w #$0001
+    beq HudColourStep_lE59E
+    cmp.w #$FFFF
+    beq HudColourStep_lE59E
+    lda.w !colour_to_b+8
+    beq HudColourStep_lE59E
+    cmp.w #$001F
+    bne HudColourStep_lE5A4
+    lda.l !palette_work_c,x
+    bra HudColourStep_lE5B8
+HudColourStep_lE59E:
+    lda.l !palette_work_b,x
+    bra HudColourStep_lE5B8
+HudColourStep_lE5A4:
+    lda.l !palette_work_b,x
+    sta.b !digit_count
+    lda.l !palette_work_c,x
+    sta.b !dp_f3
+    lda.w !colour_to_b+8
+    sta.b !save_block_offset
+    jsr.w ColourBlendBy
+HudColourStep_lE5B8:
+    sta.l !palette_work_a,x
+    sta.b !digit_count
+    lda.w !blend_target
+    sta.b !dp_f3
+    lda.w !blend_target_amount
+    sta.b !save_block_offset
+    jsr.w ColourBlendBy
+    sta.l !palette_buffer,x
+HudColourStep_lE5CF:
+    inx
+    inx
+    cpx.w #$0200
+    bcc HudColourStep_lE579
+    bra HudColourStep_lE613
+HudColourStep_lE5D8:
+    lda.w !colour_to_b+8
+    sta.b !save_block_offset
+    jsr.w PpuMultiplierSetLowByteTimes8; not reached in the traces so far
+HudColourStep_lE5E0:
+    lda.l !palette_work_b,x
+    sec
+    sbc.l !palette_work_c,x
+    beq HudColourStep_lE60C
+    cmp.w #$0001
+    beq HudColourStep_lE60C
+    cmp.w #$FFFF
+    beq HudColourStep_lE60C
+    lda.l !palette_work_b,x
+    sta.b !digit_count
+    lda.l !palette_work_c,x
+    sta.b !dp_f3
+    jsr.w ColourBlend
+    sta.l !palette_work_a,x
+    sta.l !palette_buffer,x
+HudColourStep_lE60C:
+    inx
+    inx
+    cpx.w #$0200
+    bcc HudColourStep_lE5E0
+HudColourStep_lE613:
+    lda.w #$45CC
+    ldx.w #$0000
+    jsr.w ColourBlendToTarget
+    lda.w #$2528
+    ldx.w #$0002
+    jsr.w ColourBlendToTarget
+    lda.w #$1CE5
+    ldx.w #$0004
+    jsr.w ColourBlendToTarget
+    lda.w #$739A
+    ldx.w #$0006
+    jsr.w ColourBlendToTarget
+    lda.w #$1CE5
+    ldx.w #$0008
+    jsr.w ColourBlendToTarget
+    lda.w #$2528
+    ldx.w #$000A
+    jsr.w ColourBlendToTarget
+    rep.b #$30
+    lda.l !course
+    and.w #$00FF
+    cmp.w #$0007
+    bne HudColourStep_lE685
+    lda.w !colour_to_b+4
+    bne HudColourStep_lE685
+    lda.w !colour_to_b+8
+    sta.b !save_block_offset
+    jsr.w PpuMultiplierSetLowByteTimes8
+    ldx.w #$0018
+HudColourStep_lE667:
+    lda.l !palette_work_b,x
+    sta.b !digit_count
+    lda.l !palette_work_c,x
+    sta.b !dp_f3
+    jsr.w ColourBlend
+    sta.l !palette_work_a,x
+    sta.l !palette_buffer,x
+    inx
+    inx
+    cpx.w #$0020
+    bcc HudColourStep_lE667
+HudColourStep_lE685:
+    lda.w !colour_to_b+8
+    sta.w !colour_to_b+12
+    lda.w !blend_target_amount
+    sta.w !blend_target_amount+4
+    lda.w !blend_target
+    sta.w !blend_target+4
+HudColourStep_lE697:
+    sep.b #$30
+    plb
+    plp
+    rtl
+HudColourStep_bands:
+    dw $0000,$0100,$0200
