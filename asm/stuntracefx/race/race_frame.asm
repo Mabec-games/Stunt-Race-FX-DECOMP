@@ -551,11 +551,11 @@ ViewParamsByPlayers:
 ; @routine 7E:F6F2 ViewParamsSpeedLong
 ; WHAT IT DOES: A long way into ObjectLinkEventTrigger2's tail, which
 ; nothing reaches: stores A at $1A21.
-; HOW: JSR ObjectLinkEventTrigger2_speed, RTL.
+; HOW: JSR ObjectLinkSpeedSet, RTL.
 ; Entry: any widths; data bank $7E. Exit: M and X 8-bit (X and Y high
 ; bytes 0); A unchanged.
 ViewParamsSpeedLong:
-    jsr.w ObjectLinkEventTrigger2_speed
+    jsr.w ObjectLinkSpeedSet
     rtl
 ViewParamsOne:
     lda.b #$00
@@ -596,11 +596,11 @@ ViewParamsOne:
 ; WHAT IT DOES: A long way into ObjectLinkEventTrigger2's tail, which
 ; nothing reaches: starts bob 1 with A as its kind ($1A1D = A, $1A1F =
 ; $1A23 = 0, $1A21 = $FE).
-; HOW: JSR ObjectLinkEventTrigger2_bob, RTL.
+; HOW: JSR ObjectLinkBobStart, RTL.
 ; Entry: M 8-bit (the code is 8-bit); data bank $7E. Exit: M and X 8-bit
 ; (X and Y high bytes 0); A low byte = $FE; N set, Z clear.
 ViewParamsBobLong:
-    jsr.w ObjectLinkEventTrigger2_bob
+    jsr.w ObjectLinkBobStart
     rtl
 ViewParamsTwo:
     lda.b #$00

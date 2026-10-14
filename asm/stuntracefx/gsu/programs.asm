@@ -2166,6 +2166,198 @@ BigSpritesRow5:
     rep.b #$10
     rts
 
+; @routine 07:8821 GlyphRowsAt32
+; WHAT IT DOES: Draws nine pieces with Super FX program $07:F15B from (32,
+; 40): $881C, $8418, $9004, $8C14, space, $8408, $8C0C, $8418, $8408,
+; with $70:0210 = A, $70:020E = $10 and the bytes $BF, $B7, $B6 at
+; $70:0200 (StuntPanelShow's line).
+; HOW: As GsuF15BTwoLines.
+; Entry: M 16-bit, D = $0000; A = the input for $70:0210. Exit: A = $84
+; and the screen mode value; X = $F15B; M 16-bit, X 16-bit; N, Z from the
+; data bank.
+%at($078821)
+GlyphRowsAt32:
+    sta.l !gsu_bytes_200+16
+    lda.w #$0010
+    sta.l !gsu_bytes_200+14
+    lda.w #$0020
+    sta.l !gsu_bytes_200+10
+    lda.w #$0028
+    sta.l !gsu_bytes_200+12
+    jsl.l GsuBytes200_BFB7B6
+    rep.b #$20
+    lda.w #$881C
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8418
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$9004
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8C14
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$0000
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8408
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8C0C
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8418
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8408
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rts
+
+; @routine 07:8929 GlyphRowsAt56
+; WHAT IT DOES: Draws six pieces with Super FX program $07:F15B from (56,
+; 40): $841C, $8808, $881C, $8808, $8C10, $8804, with $70:0210 = A,
+; $70:020E = $10 and the bytes $BF, $B7, $B6 at $70:0200
+; (StuntPanelDone's line).
+; HOW: As GsuF15BTwoLines.
+; Entry: M 16-bit, D = $0000; A = the input for $70:0210. Exit: A = $88
+; and the screen mode value; X = $F15B; M 16-bit, X 16-bit; N, Z from the
+; data bank.
+%at($078929)
+GlyphRowsAt56:
+    sta.l !gsu_bytes_200+16
+    lda.w #$0010
+    sta.l !gsu_bytes_200+14
+    lda.w #$0038
+    sta.l !gsu_bytes_200+10
+    lda.w #$0028
+    sta.l !gsu_bytes_200+12
+    jsl.l GsuBytes200_BFB7B6
+    rep.b #$20
+    lda.w #$841C
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8808
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$881C
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8808
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8C10
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8804
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rts
+
 ; @routine 07:89E4 HudHoldDraw
 ; WHAT IT DOES: When the HUD hold flag $0E5D is set, sets the renderer
 ; bytes 0, $BF, $B3, $BE (GsuBytes200_BFB3BE) and draws the sequence at

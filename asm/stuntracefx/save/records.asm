@@ -1105,6 +1105,25 @@ RecordCompareTime1:
     plp
     rtl
 
+; @routine 07:B31B RecordsLoadSpecialCourseLong
+; WHAT IT DOES: RecordsLoadSpecialCourse for a JSL caller
+; (StuntPanelWait): with data bank $07, P and the data bank kept.
+; HOW: PHP, SEP #$20, PHB, PHK, PLB, JSR; then PLB, PLP, RTL.
+; Entry: any widths; D = $0000. Exit: P and the data bank unchanged; A,
+; X, Y as RecordsLoadSpecialCourse leaves them.
+%at($07B31B)
+RecordsLoadSpecialCourseLong:
+    php
+    sep.b #$20
+    phb
+    phk
+    plb
+    jsr.w RecordsLoadSpecialCourse
+    sep.b #$20
+    plb
+    plp
+    rtl
+
 ; @routine 07:B329 RecordsLoadSpecialCourse
 ; WHAT IT DOES: For courses $0C-$0F ($0E3D): loads the course's twelve
 ; saved entries ($70:FCD0 + course * 48, four bytes each) into the times

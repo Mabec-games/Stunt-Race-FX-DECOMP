@@ -2660,6 +2660,46 @@ void abi_ObjectLinkEventTrigger2(void)
     op_sep(P_M | P_X);
 }
 
+/*
+ * @routine 7E:D41D ObjectLinkSpeedSet
+ * WHAT IT DOES: ObjectLinkEventTrigger2's last store as its own entry
+ * (ViewParamsSpeedLong's JSR): A at $1A21, then 8-bit registers.
+ * HOW: STA.W (as wide as M) through the data bank, SEP #$30, RTS.
+ * Entry: any widths; data bank $7E. Exit: M and X 8-bit (X and Y high
+ * bytes 0); A unchanged.
+ */
+void abi_ObjectLinkSpeedSet(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    if (cpu.p & P_M)
+        wr8(b | 0x1A21, (uint8_t)cpu.a);
+    else
+        wr16(b | 0x1A21, cpu.a);
+    op_sep(P_M | P_X);
+}
+
+/*
+ * @routine 7E:D410 ObjectLinkBobStart
+ * WHAT IT DOES: ObjectLinkEventTrigger2's bob start as its own entry
+ * (ViewParamsBobLong's JSR): bob 1 with A as its kind ($1A1D = A, $1A1F
+ * = $1A23 = 0), then ObjectLinkSpeedSet with $FE.
+ * HOW: 8-bit stores through the data bank.
+ * Entry: M 8-bit (the code is 8-bit); data bank $7E. Exit: M and X 8-bit
+ * (X and Y high bytes 0); A low byte = $FE; N set, Z clear.
+ */
+void abi_ObjectLinkBobStart(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    wr8(b | 0x1A1D, (uint8_t)cpu.a);
+    wr8(b | 0x1A1F, 0x00);
+    wr8(b | 0x1A23, 0x00);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xFE);
+    cpu.p = nz8(cpu.p, 0xFE);
+    abi_ObjectLinkSpeedSet();
+}
+
 /* A - m (8-bit) as CMP sets the flags; returns the difference. */
 static uint8_t cmp8_flags(uint8_t a, uint8_t m)
 {

@@ -570,13 +570,28 @@ ObjectLinkEventTrigger2:
     lda.b #$80
     sta.w !wram_0DA6
     lda.b #$1A
-ObjectLinkEventTrigger2_bob:            ; jsr target of 7E:F737
+
+; @routine 7E:D410 ObjectLinkBobStart
+; WHAT IT DOES: ObjectLinkEventTrigger2's bob start as its own entry
+; (ViewParamsBobLong's JSR): bob 1 with A as its kind ($1A1D = A, $1A1F
+; = $1A23 = 0), then ObjectLinkSpeedSet with $FE.
+; HOW: 8-bit stores through the data bank.
+; Entry: M 8-bit (the code is 8-bit); data bank $7E. Exit: M and X 8-bit
+; (X and Y high bytes 0); A low byte = $FE; N set, Z clear.
+ObjectLinkBobStart:
     sta.w !wram_1A1D
     lda.b #$00
     sta.w !wram_1A1F
     sta.w !wram_1A23
     lda.b #$FE
-ObjectLinkEventTrigger2_speed:          ; jsr target of 7E:F6F2
+
+; @routine 7E:D41D ObjectLinkSpeedSet
+; WHAT IT DOES: ObjectLinkEventTrigger2's last store as its own entry
+; (ViewParamsSpeedLong's JSR): A at $1A21, then 8-bit registers.
+; HOW: STA.W (as wide as M) through the data bank, SEP #$30, RTS.
+; Entry: any widths; data bank $7E. Exit: M and X 8-bit (X and Y high
+; bytes 0); A unchanged.
+ObjectLinkSpeedSet:
     sta.w !wram_1A21
 ObjectLinkEventTrigger2_done:
     sep.b #$30

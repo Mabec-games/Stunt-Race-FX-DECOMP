@@ -532,27 +532,20 @@ void abi_ViewParamsByPlayers(void)
     view_params(v ? two : one);
 }
 
-/* STA.W $1A21 (as wide as M), SEP #$30, RTS; then the RTL after the JSR. */
-static void link_trigger_speed(uint32_t b)
-{
-    if (cpu.p & P_M)
-        wr8(b | 0x1A21, (uint8_t)cpu.a);
-    else
-        wr16(b | 0x1A21, cpu.a);
-    op_sep(P_M | P_X);
-}
+void abi_ObjectLinkSpeedSet(void);
+void abi_ObjectLinkBobStart(void);
 
 /*
  * @routine 7E:F6F2 ViewParamsSpeedLong
  * WHAT IT DOES: A long way into ObjectLinkEventTrigger2's tail, which
  * nothing reaches: stores A at $1A21.
- * HOW: JSR ObjectLinkEventTrigger2_speed, RTL.
+ * HOW: JSR ObjectLinkSpeedSet, RTL.
  * Entry: any widths; data bank $7E. Exit: M and X 8-bit (X and Y high
  * bytes 0); A unchanged.
  */
 void abi_ViewParamsSpeedLong(void)
 {
-    link_trigger_speed((uint32_t)cpu.db << 16);
+    abi_ObjectLinkSpeedSet();
 }
 
 /*
@@ -560,20 +553,13 @@ void abi_ViewParamsSpeedLong(void)
  * WHAT IT DOES: A long way into ObjectLinkEventTrigger2's tail, which
  * nothing reaches: starts bob 1 with A as its kind ($1A1D = A, $1A1F =
  * $1A23 = 0, $1A21 = $FE).
- * HOW: JSR ObjectLinkEventTrigger2_bob, RTL.
+ * HOW: JSR ObjectLinkBobStart, RTL.
  * Entry: M 8-bit (the code is 8-bit); data bank $7E. Exit: M and X 8-bit
  * (X and Y high bytes 0); A low byte = $FE; N set, Z clear.
  */
 void abi_ViewParamsBobLong(void)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-
-    wr8(b | 0x1A1D, (uint8_t)cpu.a);
-    wr8(b | 0x1A1F, 0x00);
-    wr8(b | 0x1A23, 0x00);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xFE);
-    cpu.p = nz8(cpu.p, 0xFE);
-    link_trigger_speed(b);
+    abi_ObjectLinkBobStart();
 }
 
 /*

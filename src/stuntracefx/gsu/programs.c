@@ -1033,6 +1033,66 @@ void abi_GsuF15BTwoLines(void)
     cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X));
 }
 
+/* $70:0210 = input, $70:020E = $10, the position (x, $28), the bytes
+   $BF, $B7, $B6 at $70:0200, then each piece through program $07:F15B. */
+static uint8_t glyph_rows_at(uint16_t input, uint16_t x, const uint16_t *piece, unsigned n)
+{
+    uint8_t mode = 0;
+    unsigned i;
+
+    wr16(0x700210, input);
+    wr16(0x70020E, 0x0010);
+    wr16(0x70020A, x);
+    wr16(0x70020C, 0x0028);
+    GsuBytes200_BFB7B6();
+    for (i = 0; i < n; i++) {
+        wr16(0x700216, piece[i]);
+        mode = f15b();
+    }
+    return mode;
+}
+
+/*
+ * @routine 07:8821 GlyphRowsAt32
+ * WHAT IT DOES: Draws nine pieces with Super FX program $07:F15B from (32,
+ * 40): $881C, $8418, $9004, $8C14, space, $8408, $8C0C, $8418, $8408,
+ * with $70:0210 = A, $70:020E = $10 and the bytes $BF, $B7, $B6 at
+ * $70:0200 (StuntPanelShow's line).
+ * HOW: As GsuF15BTwoLines.
+ * Entry: M 16-bit, D = $0000; A = the input for $70:0210. Exit: A = $84
+ * and the screen mode value; X = $F15B; M 16-bit, X 16-bit; N, Z from the
+ * data bank.
+ */
+void abi_GlyphRowsAt32(void)
+{
+    static const uint16_t piece[9] = {0x881C, 0x8418, 0x9004, 0x8C14, 0x0000,
+                                      0x8408, 0x8C0C, 0x8418, 0x8408};
+
+    cpu.a = (uint16_t)(0x8400 | glyph_rows_at(cpu.a, 0x0020, piece, 9));
+    cpu.x = 0xF15B;
+    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X));
+}
+
+/*
+ * @routine 07:8929 GlyphRowsAt56
+ * WHAT IT DOES: Draws six pieces with Super FX program $07:F15B from (56,
+ * 40): $841C, $8808, $881C, $8808, $8C10, $8804, with $70:0210 = A,
+ * $70:020E = $10 and the bytes $BF, $B7, $B6 at $70:0200
+ * (StuntPanelDone's line).
+ * HOW: As GsuF15BTwoLines.
+ * Entry: M 16-bit, D = $0000; A = the input for $70:0210. Exit: A = $88
+ * and the screen mode value; X = $F15B; M 16-bit, X 16-bit; N, Z from the
+ * data bank.
+ */
+void abi_GlyphRowsAt56(void)
+{
+    static const uint16_t piece[6] = {0x841C, 0x8808, 0x881C, 0x8808, 0x8C10, 0x8804};
+
+    cpu.a = (uint16_t)(0x8800 | glyph_rows_at(cpu.a, 0x0038, piece, 6));
+    cpu.x = 0xF15B;
+    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X));
+}
+
 void GsuBytes200_BFBAB9(void);
 
 /*

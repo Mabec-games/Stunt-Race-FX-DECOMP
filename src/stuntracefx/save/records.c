@@ -1061,6 +1061,27 @@ void abi_RecordsLoadSpecialCourse(void)
     cpu.y = 0x0018;
 }
 
+/*
+ * @routine 07:B31B RecordsLoadSpecialCourseLong
+ * WHAT IT DOES: RecordsLoadSpecialCourse for a JSL caller
+ * (StuntPanelWait): with data bank $07, P and the data bank kept.
+ * HOW: PHP, SEP #$20, PHB, PHK, PLB, JSR; then PLB, PLP, RTL.
+ * Entry: any widths; D = $0000. Exit: P and the data bank unchanged; A,
+ * X, Y as RecordsLoadSpecialCourse leaves them.
+ */
+void abi_RecordsLoadSpecialCourseLong(void)
+{
+    uint8_t p0 = cpu.p, db0 = cpu.db;
+
+    op_sep(P_M);
+    cpu.db = 0x07;
+    cpu.p = nz8(cpu.p, 0x07);
+    abi_RecordsLoadSpecialCourse();
+    op_sep(P_M);
+    cpu.db = db0;
+    op_plp(p0);
+}
+
 /* TimeUnpackBcd on A, its Y, X, A (8-bit) stored at `to`, + 1, + 2. */
 static void unpack_to(uint32_t b, uint16_t a, uint16_t to)
 {
