@@ -336,3 +336,176 @@ void abi_MenuInitialsFrame(void)
     wr16(0x001191, 0x0000);
     cpu.p = nz16(cpu.p, 0);
 }
+
+void abi_SoundPort0QueuePushRaw(void);
+void abi_MenuChoicePressesP1(void);
+void abi_MenuActorSpawn(void);
+void abi_FrameByteWritePush(void);
+
+/* Kinds 6 and 7 to animations $C2 and $C8, X kept (PHX, PLX). */
+static void kinds67_anim(void)
+{
+    uint16_t x = cpu.x;
+
+    kind_anim(0x0006, 0x00C2);
+    kind_anim(0x0007, 0x00C8);
+    cpu.x = x;
+}
+
+/*
+ * @routine 0B:BA4E MenuSettingsFrame
+ * WHAT IT DOES: The settings screen's frame for actor record X. While its
+ * count +$0A runs it is counted down (sound $3F, raw, at $13, $0E, $09 and
+ * $04; at 0 kind 4 to animation $8A). Then the fixed colour is dimmed
+ * twice (MenuFixedColourDown), a race frame shown (RaceFrameStep, A = 0),
+ * $18FD = 1, player 1's presses applied (MenuChoicePressesP1) and the
+ * buttons pressed ($118B, cleared) taken: Y ($4000) goes back to the
+ * initials (handler $C872, count $80, sound $47, an actor from $027E,
+ * kinds 4 and 5 +$10 = $FFFF, kinds 6 and 7 to animations $C2 and $C8);
+ * B or Start ($9000), unless $18F9 is set, takes the choice $18C3: 2 ends
+ * (kind 4 to animation $90, kinds 4 and 5 +$10 = $FFFF, sound $46, handler
+ * $BC9A, $1905 = 1, $1907 = $28, colour 0 = $464A, $1193 = 0, $E0 queued
+ * for HDMAEN), others go on (sound $46, $190B = $190D = 0, kind 5 +$10 =
+ * $FFFF, kinds 6 and 7 as above, kinds 8 and 9 +$10 = 0, handler $C225,
+ * $1191 = 0); Select ($2000) with choice 0 sound $46, kinds 4 and 5 +$10 =
+ * $FFFF, kinds 6 and 7 as above, kinds 10-14 +$10 = 0, handler $BEEF.
+ * HOW: Y keeps the buttons; X is $11F9 again after the calls. The count
+ * is not reached in the traces so far.
+ * Entry: M 16-bit, X 16-bit, D = $0000; X = the record. Exit: M 16-bit; A,
+ * X, Y and flags as the path's last step left them.
+ */
+void abi_MenuSettingsFrame(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t pad, v;
+    unsigned k;
+
+    cpu.a = rd16(dpx(0x0A));
+    cpu.p = nz16(cpu.p, cpu.a);
+    if (cpu.a) {
+        cpu.a = (uint16_t)(cpu.a - 1);
+        cpu.p = nz16(cpu.p, cpu.a);
+        wr16(dpx(0x0A), cpu.a);
+        v = cpu.a;
+        op_cmp16(0x0013);
+        if (v == 0x0013 || v == 0x000E || v == 0x0009 || v == 0x0004) {
+            if (v != 0x0013)
+                op_cmp16(v);
+            cpu.p |= P_M;
+            cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x3F);
+            cpu.p = nz8(cpu.p, 0x3F);
+            abi_SoundPort0QueuePushRaw();
+            cpu.p &= (uint8_t)~P_M;
+        } else
+            op_cmp16(0x0004);
+        cpu.a = rd16(dpx(0x0A));
+        cpu.p = nz16(cpu.p, cpu.a);
+        if (!cpu.a)
+            kind_anim(0x0004, 0x008A);
+    }
+    cpu.x = rd16(b | 0x11F9);
+    abi_MenuFixedColourDown();
+    abi_MenuFixedColourDown();
+    cpu.a = 0x0000;
+    cpu.p = nz16(cpu.p, 0);
+    abi_RaceFrameStep();
+    cpu.a = 0x0001;
+    cpu.p = nz16(cpu.p, 1);
+    wr16(0x0018FD, 0x0001);
+    cpu.x = rd16(b | 0x11F9);
+    abi_MenuChoicePressesP1();
+    cpu.x = rd16(b | 0x11F9);
+    pad = rd16(b | 0x118B);
+    cpu.y = pad;
+    wr16(b | 0x118B, 0x0000);
+    cpu.a = pad;
+    op_and16(0x4000);
+    if (cpu.a) {
+        cpu.x = rd16(b | 0x11F9);
+        cpu.a = 0xC872;
+        wr16(dpx(0x08), 0xC872);
+        cpu.a = 0x0080;
+        wr16(dpx(0x0A), 0x0080);
+        sound_port0(0x47);
+        cpu.x = 0x027E;
+        cpu.p = nz16(cpu.p, 0x027E);
+        abi_MenuActorSpawn();
+        set10(0x0004, 0xFFFF);
+        set10(0x0005, 0xFFFF);
+        kinds67_anim();
+        cpu.x = rd16(b | 0x11F9);
+        cpu.p = nz16(cpu.p, cpu.x);
+        return;
+    }
+    op_lda16(0x0018F9);
+    if (!cpu.a) {
+        cpu.a = pad;
+        op_and16(0x9000);
+        if (cpu.a) {
+            op_lda16(0x0018C3);
+            op_cmp16(0x0002);
+            if (cpu.a == 0x0002) {
+                kind_anim(0x0004, 0x0090);
+                set10(0x0004, 0xFFFF);
+                set10(0x0005, 0xFFFF);
+                sound_port0(0x46);
+                cpu.x = rd16(b | 0x11F9);
+                cpu.a = 0xBC9A;
+                wr16(dpx(0x08), 0xBC9A);
+                cpu.a = 0x0001;
+                wr16(0x001905, 0x0001);
+                cpu.a = 0x0028;
+                wr16(0x001907, 0x0028);
+                cpu.a = 0x464A;
+                wr16(0x7EFD65, 0x464A);
+                cpu.a = 0x0000;
+                cpu.p = nz16(cpu.p, 0);
+                wr16(0x001193, 0x0000);
+                op_sep(P_M);
+                cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xE0);
+                cpu.p = nz8(cpu.p, 0xE0);
+                {
+                    uint16_t x = cpu.x;
+
+                    cpu.x = 0x420C;
+                    cpu.p = nz16(cpu.p, 0x420C);
+                    abi_FrameByteWritePush();
+                    cpu.x = x;
+                }
+                op_rep(P_M);
+                return;
+            }
+            sound_port0(0x46);
+            cpu.a = 0x0000;
+            cpu.p = nz16(cpu.p, 0);
+            wr16(0x00190B, 0x0000);
+            wr16(0x00190D, 0x0000);
+            set10(0x0005, 0xFFFF);
+            kinds67_anim();
+            set10(0x0008, 0x0000);
+            set10(0x0009, 0x0000);
+            cpu.a = 0xC225;
+            wr16(dpx(0x08), 0xC225);
+            cpu.a = 0x0000;
+            cpu.p = nz16(cpu.p, 0);
+            wr16(0x001191, 0x0000);
+            return;
+        }
+    }
+    cpu.a = pad;
+    op_and16(0x2000);
+    if (!cpu.a)
+        return;
+    op_lda16(0x0018C3);
+    op_cmp16(0x0000);
+    if (cpu.a)
+        return;
+    sound_port0(0x46);
+    set10(0x0004, 0xFFFF);
+    set10(0x0005, 0xFFFF);
+    kinds67_anim();
+    for (k = 0x000A; k <= 0x000E; k++)
+        set10((uint16_t)k, 0x0000);
+    cpu.a = 0xBEEF;
+    wr16(dpx(0x08), 0xBEEF);
+}

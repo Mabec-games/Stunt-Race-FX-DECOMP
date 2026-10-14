@@ -298,3 +298,272 @@ MenuInitialsFrame:
     jsl.l SoundPort0QueuePush
     rep.b #$20
     rts
+
+; @routine 0B:BA4E MenuSettingsFrame
+; WHAT IT DOES: The settings screen's frame for actor record X. While its
+; count +$0A runs it is counted down (sound $3F, raw, at $13, $0E, $09 and
+; $04; at 0 kind 4 to animation $8A). Then the fixed colour is dimmed
+; twice (MenuFixedColourDown), a race frame shown (RaceFrameStep, A = 0),
+; $18FD = 1, player 1's presses applied (MenuChoicePressesP1) and the
+; buttons pressed ($118B, cleared) taken: Y ($4000) goes back to the
+; initials (handler $C872, count $80, sound $47, an actor from $027E,
+; kinds 4 and 5 +$10 = $FFFF, kinds 6 and 7 to animations $C2 and $C8);
+; B or Start ($9000), unless $18F9 is set, takes the choice $18C3: 2 ends
+; (kind 4 to animation $90, kinds 4 and 5 +$10 = $FFFF, sound $46, handler
+; $BC9A, $1905 = 1, $1907 = $28, colour 0 = $464A, $1193 = 0, $E0 queued
+; for HDMAEN), others go on (sound $46, $190B = $190D = 0, kind 5 +$10 =
+; $FFFF, kinds 6 and 7 as above, kinds 8 and 9 +$10 = 0, handler $C225,
+; $1191 = 0); Select ($2000) with choice 0 sound $46, kinds 4 and 5 +$10 =
+; $FFFF, kinds 6 and 7 as above, kinds 10-14 +$10 = 0, handler $BEEF.
+; HOW: Y keeps the buttons; X is $11F9 again after the calls. The count
+; is not reached in the traces so far.
+; Entry: M 16-bit, X 16-bit, D = $0000; X = the record. Exit: M 16-bit; A,
+; X, Y and flags as the path's last step left them.
+%at($0BBA4E)
+MenuSettingsFrame:
+    lda.b !actor_0a,x
+    beq .lBA8D
+    dec a
+    sta.b !actor_0a,x
+    cmp.w #$0013
+    beq .lBA69
+    cmp.w #$000E
+    beq .lBA69
+    cmp.w #$0009
+    beq .lBA69
+    cmp.w #$0004
+    bne .lBA73
+.lBA69:
+    sep.b #$20
+    lda.b #$3F
+    jsl.l SoundPort0QueuePushRaw
+    rep.b #$20
+.lBA73:
+    lda.b !actor_0a,x
+    bne .lBA8D
+    lda.w #$0004
+    jsr.w MenuActorFind
+    lda.b !actor_anim,x
+    cmp.w #$008A
+    beq .lBA8D
+    lda.w #$008A
+    sta.b !actor_anim,x
+    stz.b !actor_anim_pos,x
+    stz.b !actor_anim_timer,x
+.lBA8D:
+    ldx.w !actor_current
+    jsr.w MenuFixedColourDown
+    jsr.w MenuFixedColourDown
+    lda.w #$0000
+    jsl.l RaceFrameStep
+    lda.w #$0001
+    sta.l !wram_18FD
+    ldx.w !actor_current
+    jsr.w MenuChoicePressesP1
+    ldx.w !actor_current
+    ldy.w !menu_joy1_pressed
+    stz.w !menu_joy1_pressed
+    tya
+    and.w #$4000
+    beq .lBABC
+    brl .lBC39
+.lBABC:
+    lda.l !wram_18F9
+    bne .lBACB
+    tya
+    and.w #$9000
+    beq .lBACB
+    brl .lBB5B
+.lBACB:
+    tya
+    and.w #$2000
+    bne .lBAD2
+    rts
+.lBAD2:
+    lda.l !wram_18C3
+    cmp.w #$0000
+    beq .lBADE
+    brl .lBB5A
+.lBADE:
+    sep.b #$20
+    lda.b #$46
+    jsl.l SoundPort0QueuePush
+    rep.b #$20
+    lda.w #$0004
+    ldy.w #$FFFF
+    jsr.w MenuActorsSet10
+    lda.w #$0005
+    ldy.w #$FFFF
+    jsr.w MenuActorsSet10
+    phx
+    lda.w #$0006
+    jsr.w MenuActorFind
+    lda.b !actor_anim,x
+    cmp.w #$00C2
+    beq .lBB11
+    lda.w #$00C2
+    sta.b !actor_anim,x
+    stz.b !actor_anim_pos,x
+    stz.b !actor_anim_timer,x
+.lBB11:
+    lda.w #$0007
+    jsr.w MenuActorFind
+    lda.b !actor_anim,x
+    cmp.w #$00C8
+    beq .lBB27
+    lda.w #$00C8
+    sta.b !actor_anim,x
+    stz.b !actor_anim_pos,x
+    stz.b !actor_anim_timer,x
+.lBB27:
+    plx
+    lda.w #$000A
+    ldy.w #$0000
+    jsr.w MenuActorsSet10
+    lda.w #$000B
+    ldy.w #$0000
+    jsr.w MenuActorsSet10
+    lda.w #$000C
+    ldy.w #$0000
+    jsr.w MenuActorsSet10
+    lda.w #$000D
+    ldy.w #$0000
+    jsr.w MenuActorsSet10
+    lda.w #$000E
+    ldy.w #$0000
+    jsr.w MenuActorsSet10
+    lda.w #$BEEF
+    sta.b !dp_08,x
+.lBB5A:
+    rts
+.lBB5B:
+    lda.l !wram_18C3
+    cmp.w #$0002
+    beq .lBBCF
+    sep.b #$20
+    lda.b #$46
+    jsl.l SoundPort0QueuePush
+    rep.b #$20
+    lda.w #$0000
+    sta.l !wram_190B
+    sta.l !wram_190D
+    lda.w #$0005
+    ldy.w #$FFFF
+    jsr.w MenuActorsSet10
+    phx
+    lda.w #$0006
+    jsr.w MenuActorFind
+    lda.b !actor_anim,x
+    cmp.w #$00C2
+    beq .lBB99
+    lda.w #$00C2
+    sta.b !actor_anim,x
+    stz.b !actor_anim_pos,x
+    stz.b !actor_anim_timer,x
+.lBB99:
+    lda.w #$0007
+    jsr.w MenuActorFind
+    lda.b !actor_anim,x
+    cmp.w #$00C8
+    beq .lBBAF
+    lda.w #$00C8
+    sta.b !actor_anim,x
+    stz.b !actor_anim_pos,x
+    stz.b !actor_anim_timer,x
+.lBBAF:
+    plx
+    lda.w #$0008
+    ldy.w #$0000
+    jsr.w MenuActorsSet10
+    lda.w #$0009
+    ldy.w #$0000
+    jsr.w MenuActorsSet10
+    lda.w #$C225
+    sta.b !dp_08,x
+    lda.w #$0000
+    sta.l !word_list_a_size
+    rts
+.lBBCF:
+    lda.w #$0004
+    jsr.w MenuActorFind
+    lda.b !actor_anim,x
+    cmp.w #$0090
+    beq .lBBE5
+    lda.w #$0090
+    sta.b !actor_anim,x
+    stz.b !actor_anim_pos,x
+    stz.b !actor_anim_timer,x
+.lBBE5:
+    lda.w #$0004
+    ldy.w #$FFFF
+    jsr.w MenuActorsSet10
+    lda.w #$0005
+    ldy.w #$FFFF
+    jsr.w MenuActorsSet10
+    sep.b #$20
+    lda.b #$46
+    jsl.l SoundPort0QueuePush
+    rep.b #$20
+    ldx.w !actor_current
+    lda.w #$BC9A
+    sta.b !dp_08,x
+    lda.w #$0001
+    sta.l !menu_1905
+    lda.w #$0028
+    sta.l !menu_1907
+    lda.w #$464A
+    sta.l !palette_buffer
+    lda.w #$0000
+    sta.l !word_list_b_size
+    sep.b #$20
+    lda.b #$E0
+    sep.b #$20
+    rep.b #$10
+    phx
+    ldx.w #$420C
+    jsl.l FrameByteWritePush
+    plx
+    rep.b #$20
+    rts
+.lBC39:
+    ldx.w !actor_current
+    lda.w #$C872
+    sta.b !dp_08,x
+    lda.w #$0080
+    sta.b !actor_0a,x
+    sep.b #$20
+    lda.b #$47
+    jsl.l SoundPort0QueuePush
+    rep.b #$20
+    ldx.w #$027E
+    jsr.w MenuActorSpawn
+    lda.w #$0004
+    ldy.w #$FFFF
+    jsr.w MenuActorsSet10
+    lda.w #$0005
+    ldy.w #$FFFF
+    jsr.w MenuActorsSet10
+    phx
+    lda.w #$0006
+    jsr.w MenuActorFind
+    lda.b !actor_anim,x
+    cmp.w #$00C2
+    beq .lBC7F
+    lda.w #$00C2
+    sta.b !actor_anim,x
+    stz.b !actor_anim_pos,x
+    stz.b !actor_anim_timer,x
+.lBC7F:
+    lda.w #$0007
+    jsr.w MenuActorFind
+    lda.b !actor_anim,x
+    cmp.w #$00C8
+    beq .lBC95
+    lda.w #$00C8
+    sta.b !actor_anim,x
+    stz.b !actor_anim_pos,x
+    stz.b !actor_anim_timer,x
+.lBC95:
+    plx
+    ldx.w !actor_current
+    rts

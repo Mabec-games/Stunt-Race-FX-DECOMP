@@ -3,6 +3,8 @@
 # change of the slide to the preview, the initials frame's back (Y) and the
 # settings' exit (B); initials left and a letter wrapping up.
 # MenuBg1RiseAway with the background still below its start (y $20 >= 0).
+# MenuSettingsFrame with its count at 5 (sound $3F at 4) and at 1 (kind 4
+# to animation $8A at 0).
 load build/stuntracefx/states/novice_coupe_race1.state
 set 7E11F7 02,00
 set 7E1239 80,1F
@@ -50,4 +52,22 @@ set 7E1F2A 00,00
 set 7E1F40 10,00
 set 7E1F42 01,00
 call 0B:CE8A x=1F20 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E11F7 02,00
+set 7E1239 80,1F
+set 7E1F9A 04,00
+set 7E1F94 00,00
+set 7E11F9 20,1F
+set 7E1F2A 05,00
+call 0B:BA4E x=1F20 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E11F7 02,00
+set 7E1239 80,1F
+set 7E1F9A 04,00
+set 7E1F94 00,00
+set 7E11F9 20,1F
+set 7E1F2A 01,00
+call 0B:BA4E x=1F20 p=00 db=00 d=0000
 wait 1
