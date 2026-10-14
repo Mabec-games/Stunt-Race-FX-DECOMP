@@ -984,3 +984,307 @@ CourseZoomTimeUp:
     tax
     ldy.w #$0008
     bra CourseZoomBattle_zoom
+
+; @routine 02:E60D CourseRecordsKey
+; WHAT IT DOES: The course select's records key: $0E91 = $30; with the
+; records panel already up ($0D44) or Start or A pressed (sound $46), the
+; course's totals unpacked (RecordsUnpackCourseTotals), $0D44 = $0D43 = 2,
+; $0D42 = $1E, and a return through its caller's frame (its own return
+; address pulled); otherwise the flashing sprite of set 0
+; (FlashingMetaspriteDraw0).
+; HOW: 8-bit; PLA, PLA, RTS to leave.
+; Entry: M 8-bit; data bank $7E or a mirror. Exit: as
+; FlashingMetaspriteDraw0; or at the caller's return with A low byte its
+; return address's high byte.
+%at($02E60D)
+CourseRecordsKey:
+    sep.b #$20
+    lda.b #$30
+    sta.w !wram_0E91
+    lda.w !wram_0D44
+    bne .lE62B
+    rep.b #$20
+    lda.w !joy1_pressed_copy
+    bit.w #$9000
+    sep.b #$20
+    beq .lE63F
+    lda.b #$46
+    jsl.l SoundPort0QueuePush
+.lE62B:
+    jsl.l RecordsUnpackCourseTotals
+    lda.b #$02
+    sta.w !wram_0D44
+    sta.w !wram_0D3F+4
+    lda.b #$1E
+    sta.w !wram_0D3F+3
+    pla
+    pla
+    rts
+.lE63F:
+    lda.b #$00
+    sta.w !metasprite_set_sel
+    jsr.w FlashingMetaspriteDraw0
+    rts
+
+; @routine 02:E648 CourseRecordsSelectStep
+; WHAT IT DOES: The course select's frame where the records can be shown
+; (state 0 of $0D43): on page 0 ($0D63 = 0) the scroll $0E37 runs up to
+; $50 by 4, on page 1 down to 0; there, the records key
+; (CourseRecordsKey, which leaves when it opens them), the flashing
+; sprite at ($80, $B0) on the cursor's first row and ($80, $60) on the
+; other, and Up ($0800) and Down ($0400) move the cursor $0D4A (on page
+; 0's second row Up, with group 1 open, also pages down) with sound $45.
+; HOW: 8-bit; the pads' word 16-bit.
+; Entry: any widths; data bank $7E or a mirror. Exit: M and X 8-bit; as
+; the last step leaves it.
+%at($02E648)
+CourseRecordsSelectStep:
+    rep.b #$30
+    sep.b #$30
+    lda.w !wram_0D63
+    bne .lE666
+    lda.w !scroll_value
+    cmp.b #$50
+    beq .lE67A
+    inc a
+    inc a
+    inc a
+    inc a
+    cmp.b #$50
+    bcc .lE662
+    lda.b #$50
+.lE662:
+    sta.w !scroll_value
+    rts
+.lE666:
+    lda.w !scroll_value
+    bne .lE66E
+    jmp.w .lE6E9
+.lE66E:
+    dec a
+    dec a
+    dec a
+    dec a
+    bpl .lE676
+    lda.b #$00
+.lE676:
+    sta.w !scroll_value
+    rts
+.lE67A:
+    jsr.w CourseRecordsKey
+    lda.w !wram_0D4A
+    bne .lE6A4
+    lda.b #$80
+    sta.w !wram_0D37
+    lda.b #$B0
+    sta.w !flash_sprite_y
+    rep.b #$20
+    lda.w !joy1_pressed_copy
+    bit.w #$0800
+    sep.b #$20
+    beq .lE6A3
+    lda.b #$45
+    jsl.l SoundPort0QueuePush
+    lda.b #$01
+    sta.w !wram_0D4A
+.lE6A3:
+    rts
+.lE6A4:
+    lda.b #$80
+    sta.w !wram_0D37
+    lda.b #$60
+    sta.w !flash_sprite_y
+    sep.b #$20
+    lda.l !save_progress
+    bit.b #$02
+    beq .lE6D3
+    rep.b #$20
+    lda.w !joy1_pressed_copy
+    bit.w #$0800
+    sep.b #$20
+    beq .lE6D3
+    lda.b #$45
+    jsl.l SoundPort0QueuePush
+    dec.w !wram_0D63
+    lda.b #$02
+    sta.w !wram_0D4A
+    rts
+.lE6D3:
+    rep.b #$20
+    lda.w !joy1_pressed_copy
+    bit.w #$0400
+    sep.b #$20
+    beq .lE6A3
+    lda.b #$45
+    jsl.l SoundPort0QueuePush
+    stz.w !wram_0D4A
+.lE6E8:
+    rts
+.lE6E9:
+    jsr.w CourseRecordsKey
+    lda.w !wram_0D4A
+    cmp.b #$01
+    bne .lE72E
+    lda.b #$80
+    sta.w !wram_0D37
+    lda.b #$B0
+    sta.w !flash_sprite_y
+    rep.b #$20
+    lda.w !joy1_pressed_copy
+    bit.w #$0400
+    sep.b #$20
+    beq .lE716
+    lda.b #$45
+    jsl.l SoundPort0QueuePush
+    stz.w !wram_0D63
+    stz.w !wram_0D4A
+    rts
+.lE716:
+    rep.b #$20
+    lda.w !joy1_pressed_copy
+    bit.w #$0800
+    sep.b #$20
+    beq .lE6E8
+    lda.b #$45
+    jsl.l SoundPort0QueuePush
+    lda.b #$02
+    sta.w !wram_0D4A
+    rts
+.lE72E:
+    lda.b #$80
+    sta.w !wram_0D37
+    lda.b #$60
+    sta.w !flash_sprite_y
+    rep.b #$20
+    lda.w !joy1_pressed_copy
+    bit.w #$0400
+    sep.b #$20
+    beq .lE74F
+    lda.b #$45
+    jsl.l SoundPort0QueuePush
+    lda.b #$01
+    sta.w !wram_0D4A
+.lE74F:
+    rts
+
+; @routine 02:E750 CourseRecordsOpening
+; WHAT IT DOES: The records panel opening (state 2 of $0D43): counts
+; $0D42 down; at 0, $0D42 = $2A, state 4 and, unless $0D4C is set, sound
+; $2D.
+; HOW: 8-bit through the data bank.
+; Entry: M 8-bit; data bank $7E or a mirror. Exit: A low byte as the last
+; load leaves it; N, Z from it.
+%at($02E750)
+CourseRecordsOpening:
+    dec.w !wram_0D3F+3
+    bne .lE76A
+    lda.b #$2A
+    sta.w !wram_0D3F+3
+    lda.b #$04
+    sta.w !wram_0D3F+4
+    lda.w !digit62_override
+    bne .lE76A
+    lda.b #$2D
+    jsl.l SoundPort0QueuePush
+.lE76A:
+    rts
+
+; @routine 02:E76B CourseRecordsReopen
+; WHAT IT DOES: State 8 of $0D43 (no run reaches it): counts $0D42 up; at
+; $2A, $0D44 = 2 and state 0.
+; HOW: 8-bit through the data bank.
+; Entry: M 8-bit; data bank $7E or a mirror. Exit: N, Z, C from the
+; compare with $2A, or A low byte 0.
+%at($02E76B)
+CourseRecordsReopen:
+    lda.w !wram_0D3F+3
+    inc a
+    sta.w !wram_0D3F+3
+    cmp.b #$2A
+    bcc .lE780
+    lda.b #$02
+    sta.w !wram_0D44
+    lda.b #$00
+    sta.w !wram_0D3F+4
+.lE780:
+    rts
+
+; @routine 02:E781 CourseRecordsClosing
+; WHAT IT DOES: The records panel closing (state 6 of $0D43): counts $0D42
+; up; at $2A, state 0 and $0D44 = 0; otherwise the cursor's level column
+; pulses with the count (as CourseRecordsShown's).
+; HOW: 8-bit through the data bank; the pulse is a branch into
+; CourseRecordsShown.
+; Entry: M 8-bit, X 8-bit; data bank $7E or a mirror. Exit: A low byte 0
+; at the end, else the column's level.
+%at($02E781)
+CourseRecordsClosing:
+    lda.w !wram_0D3F+3
+    inc a
+    sta.w !wram_0D3F+3
+    cmp.b #$2A
+    bcc CourseRecordsPulse
+    lda.b #$00
+    sta.w !wram_0D3F+4
+    sta.w !wram_0D44
+    rts
+
+; @routine 02:E795 CourseRecordsShown
+; WHAT IT DOES: The records panel up (state 4 of $0D43): counts $0D42
+; down; at 0, $0D40 = 2 and the zoom into the course
+; (CourseZoomFromSelection, or CourseZoomFromSelection4 on page 1);
+; otherwise, unless $0D4C is set, the cursor's level column ($0F05 +
+; $0D4A * 4 + $0D48) pulses with the count: 0 below $10, 1 to $17, 2 to
+; $1F, 3 at $20-$21, 4 from $22.
+; HOW: 8-bit through the data bank; the column by a long store.
+; Entry: M 8-bit, X 8-bit; data bank $7E or a mirror. Exit: as the zoom
+; leaves it, or A low byte the column's level.
+%at($02E795)
+CourseRecordsShown:
+    dec.w !wram_0D3F+3
+    bne .lE7AE
+    lda.b #$02
+    sta.w !wram_0D3F+1
+    lda.w !wram_0D63
+    bne .lE7A9
+    jsl.l CourseZoomFromSelection
+    rts
+.lE7A9:
+    jsl.l CourseZoomFromSelection4
+    rts
+.lE7AE:
+    lda.w !digit62_override
+    beq CourseRecordsPulse
+    rts
+CourseRecordsPulse:                     ; the level column pulse (CourseRecordsClosing too)
+    lda.w !wram_0D4A
+    asl a
+    asl a
+    clc
+    adc.w !wram_0D48
+    tax
+    lda.w !wram_0D3F+3
+    cmp.b #$22
+    bcs .lE7E1
+    cmp.b #$20
+    bcs .lE7DD
+    cmp.b #$18
+    bcs .lE7D9
+    cmp.b #$10
+    bcs .lE7D5
+    lda.b #$00
+    bra .lE7E3
+.lE7D5:
+    lda.b #$01
+    bra .lE7E3
+.lE7D9:
+    lda.b #$02
+    bra .lE7E3
+.lE7DD:
+    lda.b #$03
+    bra .lE7E3
+.lE7E1:
+    lda.b #$04
+.lE7E3:
+    sta.l !level_columns,x
+    rts

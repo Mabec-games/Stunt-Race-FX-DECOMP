@@ -1,0 +1,229 @@
+# unit_course_records: the course select's records panel from the
+# course grid (menus_course_grid_01): CourseRecordsSelectStep (02:E648)
+# scrolling in and out, on each page and row with Up, Down and nothing
+# (group 1 open and closed), and with the panel up ($0D44), where
+# CourseRecordsKey leaves through its frame; CourseRecordsKey (02:E60D)
+# with nothing pressed; the panel's states CourseRecordsOpening
+# (02:E750), CourseRecordsReopen (02:E76B), CourseRecordsClosing
+# (02:E781) and CourseRecordsShown (02:E795) at their ends and counting,
+# the level column pulse at each threshold.
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D63 00
+set 7E0E37 10
+call 02:E648 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D63 00
+set 7E0E37 4E
+call 02:E648 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D63 01
+set 7E0E37 08
+call 02:E648 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D63 01
+set 7E0E37 02
+call 02:E648 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D63 00
+set 7E0E37 50
+set 7E0D44 00
+set 7E0D4A 00
+set 70FC0B 07
+set 7E0D1A 00,00
+call 02:E648 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D63 00
+set 7E0E37 50
+set 7E0D44 00
+set 7E0D4A 00
+set 70FC0B 07
+set 7E0D1A 00,08
+call 02:E648 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D63 00
+set 7E0E37 50
+set 7E0D44 00
+set 7E0D4A 01
+set 70FC0B 07
+set 7E0D1A 00,08
+call 02:E648 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D63 00
+set 7E0E37 50
+set 7E0D44 00
+set 7E0D4A 01
+set 70FC0B 05
+set 7E0D1A 00,08
+call 02:E648 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D63 00
+set 7E0E37 50
+set 7E0D44 00
+set 7E0D4A 01
+set 70FC0B 07
+set 7E0D1A 00,04
+call 02:E648 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D63 00
+set 7E0E37 50
+set 7E0D44 00
+set 7E0D4A 01
+set 70FC0B 07
+set 7E0D1A 00,00
+call 02:E648 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D63 01
+set 7E0E37 00
+set 7E0D44 00
+set 7E0D4A 01
+set 70FC0B 07
+set 7E0D1A 00,04
+call 02:E648 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D63 01
+set 7E0E37 00
+set 7E0D44 00
+set 7E0D4A 01
+set 70FC0B 07
+set 7E0D1A 00,08
+call 02:E648 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D63 01
+set 7E0E37 00
+set 7E0D44 00
+set 7E0D4A 01
+set 70FC0B 07
+set 7E0D1A 00,00
+call 02:E648 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D63 01
+set 7E0E37 00
+set 7E0D44 00
+set 7E0D4A 00
+set 70FC0B 07
+set 7E0D1A 00,04
+call 02:E648 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D63 01
+set 7E0E37 00
+set 7E0D44 00
+set 7E0D4A 00
+set 70FC0B 07
+set 7E0D1A 00,00
+call 02:E648 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D63 00
+set 7E0E37 50
+set 7E0D44 02
+call 02:E648 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D63 00
+set 7E0E37 50
+set 7E0D44 00
+set 7E0D1A 00,90
+call 02:E648 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D63 01
+set 7E0E37 00
+set 7E0D44 02
+call 02:E648 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D63 01
+set 7E0E37 00
+set 7E0D44 00
+set 7E0D1A 00,90
+call 02:E648 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D44 00
+set 7E0D1A 00,00
+call 02:E60D p=20 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D42 01
+set 7E0D4C 00
+call 02:E750 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D42 01
+set 7E0D4C 01
+call 02:E750 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D42 05
+set 7E0D4C 00
+call 02:E750 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D42 29
+call 02:E76B p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D42 10
+call 02:E76B p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D42 29
+set 7E0D4A 01
+set 7E0D48 01
+call 02:E781 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D42 05
+set 7E0D4A 01
+set 7E0D48 01
+call 02:E781 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D42 12
+set 7E0D4A 01
+set 7E0D48 01
+call 02:E781 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D42 1A
+set 7E0D4A 01
+set 7E0D48 01
+call 02:E781 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D42 20
+set 7E0D4A 01
+set 7E0D48 01
+call 02:E781 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D42 22
+set 7E0D4A 01
+set 7E0D48 01
+call 02:E781 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D42 01
+set 7E0D63 00
+call 02:E795 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D42 01
+set 7E0D63 01
+call 02:E795 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D42 10
+set 7E0D4C 01
+call 02:E795 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D42 06
+set 7E0D4C 00
+set 7E0D4A 00
+set 7E0D48 02
+call 02:E795 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D42 13
+set 7E0D4C 00
+set 7E0D4A 00
+set 7E0D48 02
+call 02:E795 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D42 1B
+set 7E0D4C 00
+set 7E0D4A 00
+set 7E0D48 02
+call 02:E795 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D42 21
+set 7E0D4C 00
+set 7E0D4A 00
+set 7E0D48 02
+call 02:E795 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D42 24
+set 7E0D4C 00
+set 7E0D4A 00
+set 7E0D48 02
+call 02:E795 p=30 db=00 d=0000

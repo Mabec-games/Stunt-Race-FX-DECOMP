@@ -1021,3 +1021,350 @@ store:
     op_lda16_imm(0x0000);
     course_zoom(box_offset(0x0000, 0x00A0), 0x0008);
 }
+
+void abi_RecordsUnpackCourseTotals(void);
+void abi_FlashingMetaspriteDraw0(void);
+void abi_CourseZoomFromSelection(void);
+void abi_CourseZoomFromSelection4(void);
+
+/* 02:E60D's work: $0E91 = $30; with the records panel already up ($0D44)
+   or Start or A pressed (sound $46), the course's totals unpacked
+   (RecordsUnpackCourseTotals), $0D44 = $0D43 = 2 and $0D42 = $1E, and it
+   leaves through its caller's frame (returns 1); otherwise the flashing
+   sprite of set 0 (FlashingMetaspriteDraw0). */
+static int records_key(uint32_t b)
+{
+    op_sep(P_M);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x30);
+    cpu.p = nz8(cpu.p, 0x30);
+    wr8(b | 0x0E91, 0x30);
+    op_lda8(b | 0x0D44);
+    if (!(uint8_t)cpu.a) {
+        if (!sel_pressed(b, 0x9000)) {
+            cpu.a = (uint16_t)(cpu.a & 0xFF00);
+            cpu.p = nz8(cpu.p, 0);
+            wr8(b | 0x0D35, 0x00);
+            abi_FlashingMetaspriteDraw0();
+            return 0;
+        }
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x46);
+        cpu.p = nz8(cpu.p, 0x46);
+        abi_SoundPort0QueuePush();
+    }
+    abi_RecordsUnpackCourseTotals();
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x02);
+    wr8(b | 0x0D44, 0x02);
+    wr8(b | 0x0D43, 0x02);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x1E);
+    cpu.p = nz8(cpu.p, 0x1E);
+    wr8(b | 0x0D42, 0x1E);
+    return 1;
+}
+
+/*
+ * @routine 02:E60D CourseRecordsKey
+ * WHAT IT DOES: The course select's records key: $0E91 = $30; with the
+ * records panel already up ($0D44) or Start or A pressed (sound $46), the
+ * course's totals unpacked (RecordsUnpackCourseTotals), $0D44 = $0D43 = 2,
+ * $0D42 = $1E, and a return through its caller's frame (its own return
+ * address pulled); otherwise the flashing sprite of set 0
+ * (FlashingMetaspriteDraw0).
+ * HOW: 8-bit; PLA, PLA, RTS to leave.
+ * Entry: M 8-bit; data bank $7E or a mirror. Exit: as
+ * FlashingMetaspriteDraw0; or at the caller's return with A low byte its
+ * return address's high byte.
+ */
+void abi_CourseRecordsKey(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v;
+
+    if (!records_key(b))
+        return;
+    cpu.s = (uint16_t)(cpu.s + 1);
+    cpu.s = (uint16_t)(cpu.s + 1);
+    v = rd8((uint16_t)cpu.s);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+    cpu.pc = 0x020000 | (uint16_t)(rd16((uint16_t)(cpu.s + 1)) + 1);
+    cpu.s = (uint16_t)(cpu.s + 2);
+    cpu.unwound = 1;
+}
+
+/* C-to-C: CourseRecordsKey from a routine of this file, its leaving being
+   that routine's own return; A as its PLAs leave it (the JSR's return
+   address high byte, $E6). */
+static int records_key_inner(uint32_t b)
+{
+    if (!records_key(b))
+        return 0;
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xE6);
+    cpu.p = nz8(cpu.p, 0xE6);
+    return 1;
+}
+
+/* LDA #$80, STA $0D37, LDA #y, STA $0D38: the flashing sprite. */
+static void records_sprite(uint32_t b, uint8_t y)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x80);
+    wr8(b | 0x0D37, 0x80);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | y);
+    cpu.p = nz8(cpu.p, y);
+    wr8(b | 0x0D38, y);
+}
+
+/*
+ * @routine 02:E648 CourseRecordsSelectStep
+ * WHAT IT DOES: The course select's frame where the records can be shown
+ * (state 0 of $0D43): on page 0 ($0D63 = 0) the scroll $0E37 runs up to
+ * $50 by 4, on page 1 down to 0; there, the records key
+ * (CourseRecordsKey, which leaves when it opens them), the flashing
+ * sprite at ($80, $B0) on the cursor's first row and ($80, $60) on the
+ * other, and Up ($0800) and Down ($0400) move the cursor $0D4A (on page
+ * 0's second row Up, with group 1 open, also pages down) with sound $45.
+ * HOW: 8-bit; the pads' word 16-bit.
+ * Entry: any widths; data bank $7E or a mirror. Exit: M and X 8-bit; as
+ * the last step leaves it.
+ */
+void abi_CourseRecordsSelectStep(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v;
+
+    op_rep(P_M | P_X);
+    op_sep(P_M | P_X);
+    op_lda8(b | 0x0D63);
+    if (!(uint8_t)cpu.a) {
+        op_lda8(b | 0x0E37);
+        v = (uint8_t)cpu.a;
+        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x50)) & ~P_C) | (v >= 0x50 ? P_C : 0));
+        if (v != 0x50) {
+            v = (uint8_t)(v + 4);
+            cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x50)) & ~P_C) | (v >= 0x50 ? P_C : 0));
+            if (v >= 0x50) {
+                v = 0x50;
+                cpu.p = nz8(cpu.p, v);
+            }
+            cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+            wr8(b | 0x0E37, v);
+            return;
+        }
+        if (records_key_inner(b))
+            return;
+        op_lda8(b | 0x0D4A);
+        if (!(uint8_t)cpu.a) {
+            records_sprite(b, 0xB0);
+            if (sel_pressed(b, 0x0800)) {
+                sel_sound();
+                sel_row(b, 0x01);
+            }
+            return;
+        }
+        records_sprite(b, 0x60);
+        op_sep(P_M);
+        if (sel_open(0x02) && sel_pressed(b, 0x0800)) {
+            sel_sound();
+            v = (uint8_t)(rd8(b | 0x0D63) - 1);
+            wr8(b | 0x0D63, v);
+            sel_row(b, 0x02);
+            return;
+        }
+        if (sel_pressed(b, 0x0400)) {
+            sel_sound();
+            wr8(b | 0x0D4A, 0x00);
+        }
+        return;
+    }
+    op_lda8(b | 0x0E37);
+    v = (uint8_t)cpu.a;
+    if (v) {
+        v = (uint8_t)(v - 4);
+        cpu.p = nz8(cpu.p, v);
+        if (v & 0x80) {
+            v = 0x00;
+            cpu.p = nz8(cpu.p, v);
+        }
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+        wr8(b | 0x0E37, v);
+        return;
+    }
+    if (records_key_inner(b))
+        return;
+    op_lda8(b | 0x0D4A);
+    v = (uint8_t)cpu.a;
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x01)) & ~P_C) | (v >= 0x01 ? P_C : 0));
+    if (v == 0x01) {
+        records_sprite(b, 0xB0);
+        if (sel_pressed(b, 0x0400)) {
+            sel_sound();
+            wr8(b | 0x0D63, 0x00);
+            wr8(b | 0x0D4A, 0x00);
+            return;
+        }
+        if (sel_pressed(b, 0x0800)) {
+            sel_sound();
+            sel_row(b, 0x02);
+        }
+        return;
+    }
+    records_sprite(b, 0x60);
+    if (sel_pressed(b, 0x0400)) {
+        sel_sound();
+        sel_row(b, 0x01);
+    }
+}
+
+/*
+ * @routine 02:E750 CourseRecordsOpening
+ * WHAT IT DOES: The records panel opening (state 2 of $0D43): counts
+ * $0D42 down; at 0, $0D42 = $2A, state 4 and, unless $0D4C is set, sound
+ * $2D.
+ * HOW: 8-bit through the data bank.
+ * Entry: M 8-bit; data bank $7E or a mirror. Exit: A low byte as the last
+ * load leaves it; N, Z from it.
+ */
+void abi_CourseRecordsOpening(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v = (uint8_t)(rd8(b | 0x0D42) - 1);
+
+    wr8(b | 0x0D42, v);
+    cpu.p = nz8(cpu.p, v);
+    if (v)
+        return;
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x2A);
+    wr8(b | 0x0D42, 0x2A);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x04);
+    wr8(b | 0x0D43, 0x04);
+    op_lda8(b | 0x0D4C);
+    if ((uint8_t)cpu.a)
+        return;
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x2D);
+    cpu.p = nz8(cpu.p, 0x2D);
+    abi_SoundPort0QueuePush();
+}
+
+/*
+ * @routine 02:E76B CourseRecordsReopen
+ * WHAT IT DOES: State 8 of $0D43 (no run reaches it): counts $0D42 up; at
+ * $2A, $0D44 = 2 and state 0.
+ * HOW: 8-bit through the data bank.
+ * Entry: M 8-bit; data bank $7E or a mirror. Exit: N, Z, C from the
+ * compare with $2A, or A low byte 0.
+ */
+void abi_CourseRecordsReopen(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v = (uint8_t)(rd8(b | 0x0D42) + 1);
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    wr8(b | 0x0D42, v);
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x2A)) & ~P_C) | (v >= 0x2A ? P_C : 0));
+    if (v < 0x2A)
+        return;
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x02);
+    wr8(b | 0x0D44, 0x02);
+    cpu.a = (uint16_t)(cpu.a & 0xFF00);
+    cpu.p = nz8(cpu.p, 0);
+    wr8(b | 0x0D43, 0x00);
+}
+
+/* 02:E7B4: the cursor's level column ($0F05 + $0D4A * 4 + $0D48) set by
+   the count $0D42: 0 below $10, 1 to $17, 2 to $1F, 3 at $20-$21, 4
+   from $22. */
+static void records_pulse(uint32_t b)
+{
+    uint8_t v;
+    uint16_t x;
+
+    op_lda8(b | 0x0D4A);
+    x = (uint16_t)(((uint8_t)cpu.a << 2) & 0xFF);
+    x = (uint8_t)(x + rd8(b | 0x0D48));
+    cpu.x = x;
+    op_lda8(b | 0x0D42);
+    v = (uint8_t)cpu.a;
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x22)) & ~P_C) | (v >= 0x22 ? P_C : 0));
+    if (v >= 0x22)
+        v = 0x04;
+    else {
+        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x20)) & ~P_C) | (v >= 0x20 ? P_C : 0));
+        if (v >= 0x20)
+            v = 0x03;
+        else {
+            cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x18)) & ~P_C) | (v >= 0x18 ? P_C : 0));
+            if (v >= 0x18)
+                v = 0x02;
+            else {
+                cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x10)) & ~P_C) | (v >= 0x10 ? P_C : 0));
+                v = v >= 0x10 ? 0x01 : 0x00;
+            }
+        }
+    }
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+    wr8(0x000F05 + (uint32_t)x, v);
+}
+
+/*
+ * @routine 02:E781 CourseRecordsClosing
+ * WHAT IT DOES: The records panel closing (state 6 of $0D43): counts $0D42
+ * up; at $2A, state 0 and $0D44 = 0; otherwise the cursor's level column
+ * pulses with the count (as CourseRecordsShown's).
+ * HOW: 8-bit through the data bank; the pulse is a branch into
+ * CourseRecordsShown.
+ * Entry: M 8-bit, X 8-bit; data bank $7E or a mirror. Exit: A low byte 0
+ * at the end, else the column's level.
+ */
+void abi_CourseRecordsClosing(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v = (uint8_t)(rd8(b | 0x0D42) + 1);
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    wr8(b | 0x0D42, v);
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x2A)) & ~P_C) | (v >= 0x2A ? P_C : 0));
+    if (v < 0x2A) {
+        records_pulse(b);
+        return;
+    }
+    cpu.a = (uint16_t)(cpu.a & 0xFF00);
+    cpu.p = nz8(cpu.p, 0);
+    wr8(b | 0x0D43, 0x00);
+    wr8(b | 0x0D44, 0x00);
+}
+
+/*
+ * @routine 02:E795 CourseRecordsShown
+ * WHAT IT DOES: The records panel up (state 4 of $0D43): counts $0D42
+ * down; at 0, $0D40 = 2 and the zoom into the course
+ * (CourseZoomFromSelection, or CourseZoomFromSelection4 on page 1);
+ * otherwise, unless $0D4C is set, the cursor's level column ($0F05 +
+ * $0D4A * 4 + $0D48) pulses with the count: 0 below $10, 1 to $17, 2 to
+ * $1F, 3 at $20-$21, 4 from $22.
+ * HOW: 8-bit through the data bank; the column by a long store.
+ * Entry: M 8-bit, X 8-bit; data bank $7E or a mirror. Exit: as the zoom
+ * leaves it, or A low byte the column's level.
+ */
+void abi_CourseRecordsShown(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v = (uint8_t)(rd8(b | 0x0D42) - 1);
+
+    wr8(b | 0x0D42, v);
+    cpu.p = nz8(cpu.p, v);
+    if (!v) {
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x02);
+        cpu.p = nz8(cpu.p, 0x02);
+        wr8(b | 0x0D40, 0x02);
+        op_lda8(b | 0x0D63);
+        if ((uint8_t)cpu.a)
+            abi_CourseZoomFromSelection4();
+        else
+            abi_CourseZoomFromSelection();
+        return;
+    }
+    op_lda8(b | 0x0D4C);
+    if ((uint8_t)cpu.a)
+        return;
+    records_pulse(b);
+}
