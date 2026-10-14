@@ -86,15 +86,15 @@ SoftResetCheck:
     lda.b #$00
     ldx.w #$0300
     ldy.w #$2100
-    jsl.l MemoryFill
+    jsl.l WramFillZeroLong
     lda.b #$7E
     ldx.w #$2000
     ldy.w #$E000
-    jsl.l MemoryFill
+    jsl.l WramFillZeroLong
     lda.b #$7F
     ldx.w #$0000
     ldy.w #$FFFF
-    jsl.l MemoryFill
+    jsl.l WramFillZeroLong
     phb
     php
     rep.b #$30
@@ -117,6 +117,52 @@ SoftResetCheck:
 SoftResetWarmBoot:
     jml.l BootWarm
 SoftResetCheck_done:
+    plp
+    rts
+
+; @routine 07:AB88 SoftResetApuLong
+; WHAT IT DOES: SoftResetApu for callers in other banks. Nothing calls it.
+; HOW: A near call, then a long return.
+; Entry: any widths. Exit: as SoftResetApu.
+%at($07AB88)
+SoftResetApuLong:
+    jsr.w SoftResetApu
+    rtl
+
+; @routine 07:AB8C SoftResetApu
+; WHAT IT DOES: Restarts the sound for the soft reset: a pause, command $06
+; to APU port 1, another pause, the sound program uploaded again (ApuUpload
+; of block $19 at $C27C) and a last pause.
+; HOW: Delay loops of $8000 counts of X and $4000 of A; P saved around the
+; upload and around the whole.
+; Entry: any widths. Exit: P unchanged; A = 0; X = 0; Y as ApuUpload leaves
+; it.
+%at($07AB8C)
+SoftResetApu:
+    php
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$8000
+.lAB94:
+    dex
+    bne .lAB94
+    lda.b #$06
+    sta.l !APUIO1
+    ldx.w #$8000
+.lABA0:
+    dex
+    bne .lABA0
+    php
+    rep.b #$30
+    lda.w #$0019
+    ldy.w #$C27C
+    jsl.l ApuUpload
+    rep.b #$20
+    lda.w #$4000
+.lABB5:
+    dec a
+    bne .lABB5
+    plp
     plp
     rts
 

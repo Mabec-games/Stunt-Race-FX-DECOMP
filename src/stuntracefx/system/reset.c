@@ -7,6 +7,8 @@
 #include "hw.h"
 
 void abi_SoundPort1QueuePush(void);
+void abi_SoftResetApu(void);
+void abi_WramFillZeroLong(void);
 
 #define RESET_STATE 0x0D51u     /* $0D51: a reset under way when not 0 */
 #define RESET_TICK 0x0D52u      /* set by each vertical blank */
@@ -19,7 +21,7 @@ static void reset_lda8(uint8_t v)
     cpu.p = nz8(cpu.p, v);
 }
 
-/* 03:8CF2 on a work RAM range: A = bank, X = start, Y = end. */
+/* WramFillZeroLong on a work RAM range: A = bank, X = start, Y = count. */
 static void reset_fill(uint8_t bank, uint16_t x, uint16_t y)
 {
     reset_lda8(bank);
@@ -27,7 +29,7 @@ static void reset_fill(uint8_t bank, uint16_t x, uint16_t y)
     cpu.p = nz16(cpu.p, x);
     cpu.y = y;
     cpu.p = nz16(cpu.p, y);
-    call_routine(0x038CF2, 1);
+    abi_WramFillZeroLong();
 }
 
 /*
@@ -107,7 +109,7 @@ void abi_SoftResetCheck(void)
     wr8(b | MDMAEN, 0x00);
     wr8(b | HDMAEN, 0x00);
     wr8(b | RESET_STATE, 0x00);
-    call_routine(0x07AB8C, 0);
+    abi_SoftResetApu();
     op_sep(P_M);
     wr8(b | 0x0D2B, 0x00);
     wr8(b | 0x0D62, 0x00);
@@ -177,4 +179,54 @@ void abi_ResetVector(void)
     cpu.p = (uint8_t)((cpu.p & ~P_C) | (old_e ? P_C : 0));
     cpu.p &= (uint8_t)~P_D;
     jump_routine(0x038AA9);
+}
+
+void abi_ApuUpload(void);
+
+/*
+ * @routine 07:AB8C SoftResetApu
+ * WHAT IT DOES: Restarts the sound for the soft reset: a pause, command $06
+ * to APU port 1, another pause, the sound program uploaded again (ApuUpload
+ * of block $19 at $C27C) and a last pause.
+ * HOW: Delay loops of $8000 counts of X and $4000 of A; P saved around the
+ * upload and around the whole.
+ * Entry: any widths. Exit: P unchanged; A = 0; X = 0; Y as ApuUpload leaves
+ * it.
+ */
+void abi_SoftResetApu(void)
+{
+    uint8_t p0 = cpu.p, p1;
+
+    op_sep(P_M);
+    op_rep(P_X);
+    cpu.x = 0x0000;
+    cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x06);
+    cpu.p = nz8(cpu.p, 0x06);
+    wr8(APUIO1, 0x06);
+    cpu.x = 0x0000;
+    cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
+    p1 = cpu.p;
+    op_rep(P_M | P_X);
+    cpu.a = 0x0019;
+    cpu.p = nz16(cpu.p, cpu.a);
+    cpu.y = 0xC27C;
+    cpu.p = nz16(cpu.p, cpu.y);
+    abi_ApuUpload();
+    op_rep(P_M);
+    cpu.a = 0x0000;
+    cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
+    op_plp(p1);
+    op_plp(p0);
+}
+
+/*
+ * @routine 07:AB88 SoftResetApuLong
+ * WHAT IT DOES: SoftResetApu for callers in other banks. Nothing calls it.
+ * HOW: A near call, then a long return.
+ * Entry: any widths. Exit: as SoftResetApu.
+ */
+void abi_SoftResetApuLong(void)
+{
+    abi_SoftResetApu();
 }

@@ -1,0 +1,21 @@
+# unit_boot: unit calls of the game's start, each entered as a call from
+# the start of a Novice race and compared in lockstep over the frames
+# after it (they never return): BootColdStart (03:8AA9), BootStart
+# (03:8B34), BootWarm (03:8BAA) and BootSoftRestart (03:8C86), which
+# nothing reaches; RaceLoop (02:E289) with HUD modes 3 and 4 (the ends of
+# its table). BootSoftRestart's run also calls SoftResetApuLong (07:AB88),
+# which nothing else calls.
+load build/stuntracefx/states/novice_coupe_race1.state
+call 03:8AA9 long p=00 db=00 d=0000 noreturn frames=240
+load build/stuntracefx/states/novice_coupe_race1.state
+call 03:8B34 long p=20 db=03 d=0000 noreturn frames=240
+load build/stuntracefx/states/novice_coupe_race1.state
+call 03:8BAA long p=20 db=03 d=0000 noreturn frames=240
+load build/stuntracefx/states/novice_coupe_race1.state
+call 03:8C86 long p=20 db=03 d=0000 noreturn frames=240
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D2B 03
+call 02:E289 long p=00 db=00 d=0000 noreturn frames=120
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D2B 04
+call 02:E289 long p=00 db=00 d=0000 noreturn frames=120

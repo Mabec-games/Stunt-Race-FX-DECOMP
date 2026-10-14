@@ -248,3 +248,15 @@ void abi_DemoRunFirst(void)
     wr16((uint32_t)cpu.db << 16 | 0x1A57, 0x0000);
     jump_routine(0x038683);
 }
+
+/*
+ * @routine 03:8CF2 WramFillZeroLong
+ * WHAT IT DOES: WramFillZero for callers in other banks: clears Y bytes of
+ * work RAM from bank A, address X.
+ * HOW: A near call, then a long return.
+ * Entry: as WramFillZero. Exit: as WramFillZero.
+ */
+void abi_WramFillZeroLong(void)
+{
+    abi_WramFillZero();
+}

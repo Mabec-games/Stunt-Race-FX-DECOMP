@@ -163,6 +163,16 @@ WordCopyStep:
     dec.w !copy_count
     rtl
 
+; @routine 03:8CF2 WramFillZeroLong
+; WHAT IT DOES: WramFillZero for callers in other banks: clears Y bytes of
+; work RAM from bank A, address X.
+; HOW: A near call, then a long return.
+; Entry: as WramFillZero. Exit: as WramFillZero.
+%at($038CF2)
+WramFillZeroLong:
+    jsr.w WramFillZero
+    rtl
+
 ; @routine 03:8CF6 WramFillZero
 ; WHAT IT DOES: Clears Y bytes of work RAM from bank A, address X.
 ; HOW: DMA channel 0, fixed source (the zero byte at $03:8D26), to WMDATA
