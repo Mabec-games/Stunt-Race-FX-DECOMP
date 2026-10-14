@@ -1264,11 +1264,15 @@ static uint32_t ls_ret;
 static void leave_frame(struct SfxboxRegs *out)
 {
     struct SfxboxRegs mine;
+    if (getenv("SFXBOX_LS_LEAVE"))
+        fprintf(lsrep, "LEAVE frame %ld at %06X S=%04X exit_s %04X ret %06X\n", cur_frame, out->pc, out->s, ls_exit_s, ls_ret);
     core_regs(&mine);
     while (!(out->s > ls_exit_s || (out->s == ls_exit_s && out->pc == ls_ret))) {
         core_run_out(out, (uint16_t)(ls_exit_s - 1));
         core_regs(out);
     }
+    if (getenv("SFXBOX_LS_LEAVE"))
+        fprintf(lsrep, "LEFT frame %ld at %06X S=%04X\n", cur_frame, out->pc, out->s);
     core_set_regs(&mine);
 }
 
@@ -1298,15 +1302,22 @@ static void jump_original(uint32_t addr, const uint8_t *pushed, int n, int searc
     /* What the original pushed before it went there, at its S. */
     for (int k = 0; k < n; k++)
         core_bus_write((uint32_t)(uint16_t)(s + n - k), pushed[k]);
+    /* The return address in the innermost frame put back: the landing a
+       return through it makes (low 16 bits). */
+    uint16_t back = 0;
+    if (found && inner)
+        back = (uint16_t)((core_bus_read((uint32_t)(uint16_t)(s + n + 1)) | core_bus_read((uint32_t)(uint16_t)(s + n + 2)) << 8) + 1);
     struct SfxboxRegs from = {cpu.a, cpu.x, cpu.y, s, cpu.d, cpu.db, cpu.p, cpu.e, addr}, out, mine;
     core_regs(&mine);
     core_run_out(&from, s);
     core_regs(&out);
     core_set_regs(&mine);
     cpu.a = out.a; cpu.x = out.x; cpu.y = out.y; cpu.d = out.d; cpu.db = out.db; cpu.p = out.p; cpu.e = out.e;
-    /* Called from C (a frame put back): back through that frame is the
-       routine's return to the C that called it, which goes on. */
-    if (found && hs != (uint16_t)(s + n) && inner && out.s == (uint16_t)(s + n + inner)) {
+    /* Called from C (a frame put back): back through that frame (at its S
+       and its return address: code that reset the stack can return at
+       that S from elsewhere) is the routine's return to the C that called
+       it, which goes on. */
+    if (found && hs != (uint16_t)(s + n) && inner && out.s == (uint16_t)(s + n + inner) && (uint16_t)out.pc == back) {
         /* The C goes on from the original's first fetch at the landing
            (return marks are no guide: a level whose code pulls what it
            pushed is marked returned at the pull). */
