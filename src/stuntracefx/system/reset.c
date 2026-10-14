@@ -158,3 +158,23 @@ void abi_SoftResetLong(void)
     cpu.p = nz8(cpu.p, db);
     op_plp(p0);
 }
+
+/*
+ * @routine 00:FE88 ResetVector
+ * WHAT IT DOES: Where the console starts the game (the reset vector): stops
+ * interrupts, switches the CPU to native mode and decimal off, and jumps
+ * to the start (03:8AA9).
+ * HOW: SEI, CLC, XCE (the old emulation flag into C), CLD, a long jump.
+ * Entry: the reset (emulation mode). Exit: never returns.
+ */
+void abi_ResetVector(void)
+{
+    uint8_t old_e = cpu.e;
+
+    cpu.p |= P_I;
+    cpu.p &= (uint8_t)~P_C;
+    cpu.e = 0;
+    cpu.p = (uint8_t)((cpu.p & ~P_C) | (old_e ? P_C : 0));
+    cpu.p &= (uint8_t)~P_D;
+    jump_routine(0x038AA9);
+}

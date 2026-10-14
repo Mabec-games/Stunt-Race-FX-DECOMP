@@ -379,3 +379,4 @@ SoftResetApu = $07AB8C                          ; 07:AB8C, the soft reset's soun
 MemoryFill = $038CF2                            ; 03:8CF2, fills a work RAM range (not filed yet)
 BootStart = $038B34                             ; 03:8B34, the game's start after the reset vector's mode switch (not filed yet)
 BootWarm = $038BAA                              ; 03:8BAA, a later point of the start (not filed yet)
+BootColdStart = $038AA9                         ; 03:8AA9, the start the reset vector jumps to (not filed yet)

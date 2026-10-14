@@ -119,3 +119,17 @@ SoftResetWarmBoot:
 SoftResetCheck_done:
     plp
     rts
+
+; @routine 00:FE88 ResetVector
+; WHAT IT DOES: Where the console starts the game (the reset vector): stops
+; interrupts, switches the CPU to native mode and decimal off, and jumps
+; to the start (03:8AA9).
+; HOW: SEI, CLC, XCE (the old emulation flag into C), CLD, a long jump.
+; Entry: the reset (emulation mode). Exit: never returns.
+%at($00FE88)
+ResetVector:
+    sei
+    clc
+    xce
+    cld
+    jml.l BootColdStart
