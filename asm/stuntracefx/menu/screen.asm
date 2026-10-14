@@ -1131,3 +1131,395 @@ PictureCellAttributes:
     plp
     rts
 
+; @routine 0B:EA3B ChampionScreenOpen
+; WHAT IT DOES: Opens the championship's closing screen: with the display
+; off, mode 3 with BG1 and BG2 maps at $6000 and $6400, no colour math, the
+; windows for sprites only; three sound blocks (SoundDataLoad $F884 with
+; input $1D, ApuUpload $1B:85F8 and $19:9A98), the sound reset and 1 on
+; port 0; the scroll reset. When the phase $0DD6 is 8 (won) the class
+; $0D4A (0-2) sets its bit (1, 2 or 4) in $70:FC0B; the save's checksum
+; renewed. The palette from $04:EBCB loaded and saved, the window HDMA set
+; up; pictures drawn by the Super FX: $1D:9068 copied to $7F:A7D7 ($2000
+; bytes), $1C:DC8C to VRAM $6000 (each word + $100), $18:C770, $18:998C
+; and $1C:989C to VRAM $4000, $2000 and 0; $04:E87B coloured for the
+; class, row by row from the tables at $0B:ED9F, $0BEDD7 and $0BEDCF, the
+; two cells at $0628 and $052E given the selection's attributes ($0B:EDDF)
+; and written to VRAM $6400 ($1000 bytes); then $04:EBCB drawn. The menu's
+; lists and state cleared ($1905 = 3, $11EF = $66, $1919 = class * 32,
+; $1927 = 0 when won, else $20), the objects of spawn list $36 made, run
+; and drawn; HDMA channels 4-7, $0D3F = $20, the IRQ at line $E0, frame
+; updates 2 and 3, a frame waited and BG1 and BG2 on the main screen.
+; HOW: DB = 0 throughout; P and DB pushed. Each sound load is preceded by
+; port 1 = 5 and a delay. Classes 1 and 2 when won, and the phase other
+; than 8, are not reached in the traces so far.
+; Entry: any widths; D = $0000. Exit: P and DB restored; A, X, Y as
+; MenuWaitFrame leaves them.
+%at($0BEA3B)
+ChampionScreenOpen:
+    php
+    phb
+    sep.b #$20
+    rep.b #$10
+    lda.b #$00
+    pha
+    plb
+    lda.b #$80
+    sta.w !INIDISP
+    stz.w !HDMAEN
+    stz.w !MDMAEN
+    stz.w !wram_11DA
+    stz.w !NMITIMEN
+    lda.b #$03
+    sta.w !BGMODE
+    lda.b #$60
+    sta.w !BG1SC
+    lda.b #$65
+    sta.w !BG2SC
+    lda.b #$00
+    sta.w !BG12NBA
+    lda.b #$00
+    stz.w !CGADSUB
+    stz.w !CGWSEL
+    stz.w !TS
+    stz.w !COLDATA
+    stz.w !TSW
+    lda.b #$03
+    sta.w !WOBJSEL
+    lda.b #$00
+    sta.w !WH0
+    lda.b #$00
+    sta.w !WH1
+    lda.b #$10
+    sta.w !TMW
+    php
+    rep.b #$30
+    lda.w #$0005
+    sta.l !APUIO1
+    lda.w #$4000
+.lEA9C:
+    dec a
+    bne .lEA9C
+    lda.w #$F884
+    ldy.w #$001D
+    jsl.l SoundDataLoad
+    plp
+    php
+    rep.b #$30
+    lda.w #$0005
+    sta.l !APUIO1
+    lda.w #$4000
+.lEAB7:
+    dec a
+    bne .lEAB7
+    lda.w #$001B
+    ldy.w #$85F8
+    jsl.l ApuUpload
+    rep.b #$20
+    lda.w #$4000
+.lEAC9:
+    dec a
+    bne .lEAC9
+    plp
+    php
+    rep.b #$30
+    lda.w #$0005
+    sta.l !APUIO1
+    lda.w #$4000
+.lEADA:
+    dec a
+    bne .lEADA
+    lda.w #$0019
+    ldy.w #$9A98
+    jsl.l ApuUpload
+    rep.b #$20
+    lda.w #$4000
+.lEAEC:
+    dec a
+    bne .lEAEC
+    plp
+    jsl.l SoundReset
+    sep.b #$20
+    lda.b #$01
+    sta.w !APUIO0
+    jsr.w MenuScrollReset
+    sep.b #$20
+    lda.l !engine_phase_p1
+    cmp.b #$08
+    bne .lEB3A
+    lda.l !wram_0D4A
+    cmp.b #$00
+    bne .lEB1C
+    lda.l !save_progress
+    ora.b #$01
+    sta.l !save_progress
+    bra .lEB3A
+.lEB1C:
+    cmp.b #$01
+    bne .lEB2C
+    lda.l !save_progress
+    ora.b #$02
+    sta.l !save_progress
+    bra .lEB3A
+.lEB2C:
+    cmp.b #$02
+    bne .lEB3A
+    lda.l !save_progress
+    ora.b #$04
+    sta.l !save_progress
+.lEB3A:
+    jsl.l SaveChecksum
+    rep.b #$30
+    rep.b #$20
+    lda.w #$EBCB
+    sta.b !apu_stream_ptr
+    lda.w #$0004
+    sta.b !apu_stream_bank
+    rep.b #$20
+    rep.b #$10
+    jsr.w MenuPaletteLoad
+    jsr.w MenuPaletteSave
+    jsr.w WindowHdmaChannelsSetup
+    rep.b #$30
+    lda.w #$9068
+    ldx.w #$001D
+    jsl.l GsuCF42To3000
+    rep.b #$30
+    ldx.w #$0000
+.lEB6A:
+    lda.l !gsu_picture,x
+    sta.l !menu_picture_a,x
+    inx
+    inx
+    cpx.w #$2000
+    bne .lEB6A
+    rep.b #$30
+    lda.w #$DC8C
+    ldx.w #$001C
+    jsl.l GsuCF42To3000
+    rep.b #$30
+    lda.w #$6000
+    sta.w !VMADDL
+    ldx.w #$0000
+.lEB90:
+    lda.l !gsu_picture,x
+    clc
+    adc.w #$0100
+    sta.w !VMDATAL
+    inx
+    inx
+    cpx.w #$0800
+    bne .lEB90
+    rep.b #$30
+    ldx.w #$4000
+    stx.w !VMADDL
+    rep.b #$30
+    lda.l !champion_picture_a-2
+    xba
+    sta.w !menu_picture_size
+    lda.w #$C770
+    ldx.w #$0018
+    rep.b #$20
+    rep.b #$10
+    jsr.w MenuPictureToVram
+    rep.b #$20
+    rep.b #$10
+    rep.b #$30
+    ldx.w #$2000
+    stx.w !VMADDL
+    rep.b #$30
+    lda.l !champion_picture_b-2
+    xba
+    sta.w !menu_picture_size
+    lda.w #$998C
+    ldx.w #$0018
+    rep.b #$20
+    rep.b #$10
+    jsr.w MenuPictureToVram
+    rep.b #$20
+    rep.b #$10
+    rep.b #$30
+    ldx.w #$0000
+    stx.w !VMADDL
+    rep.b #$30
+    lda.l !menu_picture_palette-2
+    xba
+    sta.w !menu_picture_size
+    lda.w #$989C
+    ldx.w #$001C
+    rep.b #$20
+    rep.b #$10
+    jsr.w MenuPictureToVram
+    rep.b #$20
+    rep.b #$10
+    rep.b #$30
+    lda.w #$E87B
+    ldx.w #$0004
+    jsl.l GsuCF42To3000
+    rep.b #$30
+    lda.l !wram_0D4A
+    and.w #$00FF
+    asl a
+    asl a
+    asl a
+    asl a
+    tax
+    ldy.w #$0003
+.lEC28:
+    lda.l !champion_row_colours,x
+    sta.w !scratch_11e1
+    lda.l !champion_row_colours+2,x
+    sta.w !scratch_11e3
+    phx
+    phy
+    tya
+    asl a
+    tax
+    lda.l !champion_row_cells,x
+    sta.w !scratch_11e5
+    phx
+    phy
+    ldy.w #$0004
+.lEC47:
+    phy
+    ldx.w !scratch_11e5
+    ldy.w #$000B
+.lEC4E:
+    lda.l !gsu_picture,x
+    and.w #$03FF
+    ora.w !scratch_11e3
+    sta.l !gsu_picture,x
+    inx
+    inx
+    dey
+    bpl .lEC4E
+    ply
+    lda.w !scratch_11e5
+    clc
+    adc.w #$0040
+    sta.w !scratch_11e5
+    dey
+    bpl .lEC47
+    ply
+    plx
+    tya
+    asl a
+    tax
+    lda.l !champion_row_marks,x
+    tax
+    ldy.w #$0003
+    lda.w !scratch_11e1
+    ora.w !scratch_11e3
+.lEC82:
+    pha
+    sta.l !gsu_picture,x
+    clc
+    adc.w #$0010
+    sta.l !gsu_picture+64,x
+    clc
+    adc.w #$0010
+    sta.l !gsu_picture+128,x
+    pla
+    inc a
+    inx
+    inx
+    dey
+    bpl .lEC82
+    ply
+    plx
+    inx
+    inx
+    inx
+    inx
+    dey
+    bpl .lEC28
+    lda.l !selection
+    and.w #$0003
+    asl a
+    tax
+    lda.l !champion_selection_attrs,x
+    sta.w !scratch_11df
+    ldx.w #$0628
+    jsr.w PictureCellAttributes
+    ldx.w #$052E
+    jsr.w PictureCellAttributes
+    lda.w #$6400
+    sta.w !VMADDL
+    ldx.w #$0000
+.lECCC:
+    lda.l !gsu_picture,x
+    sta.w !VMDATAL
+    inx
+    inx
+    cpx.w #$1000
+    bne .lECCC
+    rep.b #$30
+    lda.w #$EBCB
+    ldx.w #$0004
+    jsl.l GsuCF42To3000
+    rep.b #$30
+    stz.w !byte_writes_size
+    stz.w !vram_queue_size
+    lda.w #$0006
+    sta.w !gsu_buffer_offset
+    lda.w #$0000
+    sta.l !wram_18FD
+    stz.w !menu_joy1_pressed
+    stz.w !joy1_pressed
+    lda.w #$0000
+    sta.l !wram_1903
+    sta.l !menu_18b9
+    lda.w #$0003
+    sta.l !menu_1905
+    lda.w #$0000
+    sta.l !wram_1921
+    sta.l !wram_1925
+    lda.w #$0066
+    sta.l !menu_scroll_y
+    lda.l !wram_0D4A
+    and.w #$00FF
+    asl a
+    asl a
+    asl a
+    asl a
+    asl a
+    sta.l !wram_1913+6
+    lda.l !engine_phase_p1
+    and.w #$00FF
+    cmp.w #$0008
+    beq .lED4A
+    lda.w #$0020
+    sta.l !wram_1927
+    bra .lED51
+.lED4A:
+    lda.w #$0000
+    sta.l !wram_1927
+.lED51:
+    lda.w #$1234
+    sta.w !menu_1189
+    stz.w !menu_118f
+    stz.w !menu_exit
+    lda.w #$0000
+    sta.w !menu_slide_pos
+    jsl.l MenuActorPoolInit
+    ldx.w #$0036
+    jsl.l MenuActorSpawnList
+    jsl.l MenuActorsRun
+    jsl.l MenuOamBuild
+    sep.b #$20
+    lda.b #$F0
+    sta.w !HDMAEN
+    lda.b #$20
+    sta.w !wram_0D3F
+    lda.b #$E0
+    sta.w !VTIMEL
+    stz.w !VTIMEH
+    lda.b #$0C
+    sta.w !frame_update_flags
+    lda.b #$21
+    sta.w !NMITIMEN
+    jsr.w MenuWaitFrame
+    lda.b #$03
+    sta.w !TM
+    plb
+    plp
+    rts

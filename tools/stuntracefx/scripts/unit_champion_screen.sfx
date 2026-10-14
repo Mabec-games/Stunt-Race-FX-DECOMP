@@ -1,0 +1,28 @@
+# unit_champion_screen: the championship's closing screen (ChampionScreenOpen)
+# for classes 1 and 2 when won, from cut 32 of the championship play with the
+# class $0D4A poked after the load; then with the phase $0DD6 poked to 0
+# before the screen opens (not won).
+load build/stuntracefx/states/speed_championship_32.state
+poke 7E0D4A 01
+press START
+wait 200
+press START
+wait 200
+press START
+wait 200
+load build/stuntracefx/states/speed_championship_32.state
+poke 7E0D4A 02
+press START
+wait 200
+press START
+wait 200
+press START
+wait 200
+load build/stuntracefx/states/speed_championship_32.state
+press START
+wait 200
+poke 7E0DD6 00
+press START
+wait 200
+press START
+wait 200

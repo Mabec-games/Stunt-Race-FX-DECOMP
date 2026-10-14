@@ -817,3 +817,325 @@ void abi_PictureCellAttributes(void)
     }
     op_plp(p0);
 }
+
+void abi_SoundDataLoad(void);
+void abi_ApuUpload(void);
+void abi_SoundReset(void);
+void abi_SaveChecksum(void);
+void abi_WindowHdmaChannelsSetup(void);
+void abi_GsuCF42To3000(void);
+void abi_MenuActorPoolInit(void);
+void abi_MenuActorSpawnList(void);
+void abi_MenuActorsRun(void);
+void abi_MenuOamBuild(void);
+void abi_MenuWaitFrame(void);
+
+/* PHP, REP #$30, port 1 = 5 (a word store), a delay, the load with A and
+   Y, (REP #$20 and a delay after an upload), PLP. */
+static void champion_sound(void (*load)(void), uint16_t a, uint16_t y, int delay_after)
+{
+    uint8_t p = cpu.p;
+
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    cpu.a = 0x0005;
+    wr16(APUIO1, 0x0005);
+    cpu.a = 0x0000;
+    cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
+    cpu.a = a;
+    cpu.y = y;
+    cpu.p = nz16(cpu.p, y);
+    load();
+    if (delay_after) {
+        cpu.p &= (uint8_t)~P_M;
+        cpu.a = 0x0000;
+        cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
+    }
+    op_plp(p);
+}
+
+/* LDX #vram, STX VMADDL, LDA.L size (big-endian), XBA, STA $11D5, then
+   MenuPictureToVram with A and X. */
+static void champion_picture(uint16_t vram, uint32_t size, uint16_t in68, uint16_t in6a)
+{
+    cpu.x = vram;
+    cpu.p = nz16(cpu.p, vram);
+    wr16(VMADDL, vram);
+    cpu.a = rd16(size);
+    op_xba();
+    wr16(0x0011D5, cpu.a);
+    cpu.a = in68;
+    cpu.x = in6a;
+    cpu.p = nz16(cpu.p, in6a);
+    abi_MenuPictureToVram();
+}
+
+/* CLC, ADC #m (16-bit). */
+static uint16_t champion_add(uint16_t a, uint16_t m)
+{
+    cpu.p &= (uint8_t)~P_C;
+    return op_adc16(a, m, &cpu.p);
+}
+
+/*
+ * @routine 0B:EA3B ChampionScreenOpen
+ * WHAT IT DOES: Opens the championship's closing screen: with the display
+ * off, mode 3 with BG1 and BG2 maps at $6000 and $6400, no colour math, the
+ * windows for sprites only; three sound blocks (SoundDataLoad $F884 with
+ * input $1D, ApuUpload $1B:85F8 and $19:9A98), the sound reset and 1 on
+ * port 0; the scroll reset. When the phase $0DD6 is 8 (won) the class
+ * $0D4A (0-2) sets its bit (1, 2 or 4) in $70:FC0B; the save's checksum
+ * renewed. The palette from $04:EBCB loaded and saved, the window HDMA set
+ * up; pictures drawn by the Super FX: $1D:9068 copied to $7F:A7D7 ($2000
+ * bytes), $1C:DC8C to VRAM $6000 (each word + $100), $18:C770, $18:998C
+ * and $1C:989C to VRAM $4000, $2000 and 0; $04:E87B coloured for the
+ * class, row by row from the tables at $0B:ED9F, $0BEDD7 and $0BEDCF, the
+ * two cells at $0628 and $052E given the selection's attributes ($0B:EDDF)
+ * and written to VRAM $6400 ($1000 bytes); then $04:EBCB drawn. The menu's
+ * lists and state cleared ($1905 = 3, $11EF = $66, $1919 = class * 32,
+ * $1927 = 0 when won, else $20), the objects of spawn list $36 made, run
+ * and drawn; HDMA channels 4-7, $0D3F = $20, the IRQ at line $E0, frame
+ * updates 2 and 3, a frame waited and BG1 and BG2 on the main screen.
+ * HOW: DB = 0 throughout; P and DB pushed. Each sound load is preceded by
+ * port 1 = 5 and a delay. Classes 1 and 2 when won, and the phase other
+ * than 8, are not reached in the traces so far.
+ * Entry: any widths; D = $0000. Exit: P and DB restored; A, X, Y as
+ * MenuWaitFrame leaves them.
+ */
+void abi_ChampionScreenOpen(void)
+{
+    static const struct { uint32_t reg; uint8_t v; } ppu[] = {
+        {BGMODE, 0x03}, {BG1SC, 0x60}, {BG2SC, 0x65}, {BG12NBA, 0x00}};
+    static const uint32_t off[] = {CGADSUB, CGWSEL, TS, COLDATA, TSW};
+    uint8_t p0 = cpu.p, db0 = cpu.db, v, bit;
+    uint16_t x, a, yo, y2, y3, x2, sx;
+    unsigned i;
+
+    op_sep(P_M);
+    op_rep(P_X);
+    cpu.a = (uint16_t)(cpu.a & 0xFF00);
+    cpu.db = 0x00;
+    cpu.p = nz8(cpu.p, 0x00);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x80);
+    wr8(INIDISP, 0x80);
+    wr8(HDMAEN, 0x00);
+    wr8(MDMAEN, 0x00);
+    wr8(0x0011DA, 0x00);
+    wr8(NMITIMEN, 0x00);
+    for (i = 0; i < sizeof ppu / sizeof ppu[0]; i++)
+        wr8(ppu[i].reg, ppu[i].v);
+    for (i = 0; i < sizeof off / sizeof off[0]; i++)
+        wr8(off[i], 0x00);
+    wr8(WOBJSEL, 0x03);
+    wr8(WH0, 0x00);
+    wr8(WH1, 0x00);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x10);
+    cpu.p = nz8(cpu.p, 0x10);
+    wr8(TMW, 0x10);
+    champion_sound(abi_SoundDataLoad, 0xF884, 0x001D, 0);
+    champion_sound(abi_ApuUpload, 0x001B, 0x85F8, 1);
+    champion_sound(abi_ApuUpload, 0x0019, 0x9A98, 1);
+    abi_SoundReset();
+    op_sep(P_M);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
+    cpu.p = nz8(cpu.p, 0x01);
+    wr8(APUIO0, 0x01);
+    abi_MenuScrollReset();
+    op_sep(P_M);
+    op_lda8(0x000DD6);
+    v = (uint8_t)cpu.a;
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x08)) & ~P_C) | (v >= 0x08 ? P_C : 0));
+    if (v == 0x08) {
+        op_lda8(0x000D4A);
+        v = (uint8_t)cpu.a;
+        bit = v == 0x00 ? 0x01 : v == 0x01 ? 0x02 : v == 0x02 ? 0x04 : 0x00;
+        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - (v < 0x02 ? v : 0x02))) & ~P_C) | P_C);
+        if (v > 0x02)
+            cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x02)) & ~P_C) | P_C);
+        if (bit) {
+            v = (uint8_t)(rd8(0x70FC0B) | bit);
+            cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+            cpu.p = nz8(cpu.p, v);
+            wr8(0x70FC0B, v);
+        }
+    }
+    abi_SaveChecksum();
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    cpu.a = 0xEBCB;
+    wr16(0x0000FB, 0xEBCB);
+    cpu.a = 0x0004;
+    cpu.p = nz16(cpu.p, 0x0004);
+    wr16(0x0000FD, 0x0004);
+    abi_MenuPaletteLoad();
+    abi_MenuPaletteSave();
+    abi_WindowHdmaChannelsSetup();
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    cpu.a = 0x9068;
+    cpu.x = 0x001D;
+    cpu.p = nz16(cpu.p, 0x001D);
+    abi_GsuCF42To3000();
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    for (x = 0x0000; x != 0x2000; x = (uint16_t)(x + 2)) {
+        cpu.a = rd16(0x703000 + x);
+        wr16(0x7FA7D7 + x, cpu.a);
+    }
+    cpu.x = x;
+    cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z | P_C);
+    cpu.a = 0xDC8C;
+    cpu.x = 0x001C;
+    cpu.p = nz16(cpu.p, 0x001C);
+    abi_GsuCF42To3000();
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    cpu.a = 0x6000;
+    wr16(VMADDL, 0x6000);
+    for (x = 0x0000; x != 0x0800; x = (uint16_t)(x + 2)) {
+        a = rd16(0x703000 + x);
+        cpu.a = champion_add(a, 0x0100);
+        wr16(VMDATAL, cpu.a);
+    }
+    cpu.x = x;
+    cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z | P_C);
+    champion_picture(0x4000, 0x18C76E, 0xC770, 0x0018);
+    champion_picture(0x2000, 0x18998A, 0x998C, 0x0018);
+    champion_picture(0x0000, 0x1C989A, 0x989C, 0x001C);
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    cpu.a = 0xE87B;
+    cpu.x = 0x0004;
+    cpu.p = nz16(cpu.p, 0x0004);
+    abi_GsuCF42To3000();
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    a = (uint16_t)(rd16(0x000D4A) & 0x00FF);
+    for (i = 0; i < 4; i++) {
+        cpu.p = (uint8_t)((cpu.p & ~P_C) | (a >> 15));
+        a = (uint16_t)(a << 1);
+    }
+    x = a;
+    yo = 0x0003;
+    for (;;) {
+        cpu.a = rd16(0x0BED9F + x);
+        wr16(0x0011E1, cpu.a);
+        cpu.a = rd16(0x0BEDA1 + x);
+        wr16(0x0011E3, cpu.a);
+        sx = x;
+        cpu.a = rd16(0x0BEDD7 + (uint16_t)(yo << 1));
+        wr16(0x0011E5, cpu.a);
+        for (y2 = 0x0004;; y2--) {
+            x2 = rd16(0x0011E5);
+            for (y3 = 0x000B;; y3--) {
+                a = (uint16_t)(rd16(0x703000 + x2) & 0x03FF);
+                a |= rd16(0x0011E3);
+                wr16(0x703000 + x2, a);
+                x2 = (uint16_t)(x2 + 2);
+                if (!y3)
+                    break;
+            }
+            a = rd16(0x0011E5);
+            a = champion_add(a, 0x0040);
+            wr16(0x0011E5, a);
+            if (!y2)
+                break;
+        }
+        x2 = rd16(0x0BEDCF + (uint16_t)(yo << 1));
+        a = rd16(0x0011E1);
+        a |= rd16(0x0011E3);
+        for (i = 0; i < 4; i++) {
+            uint16_t c = a;
+
+            wr16(0x703000 + x2, c);
+            c = champion_add(c, 0x0010);
+            wr16(0x703040 + x2, c);
+            c = champion_add(c, 0x0010);
+            wr16(0x703080 + x2, c);
+            a = (uint16_t)(a + 1);
+            x2 = (uint16_t)(x2 + 2);
+        }
+        cpu.a = a;
+        x = (uint16_t)(sx + 4);
+        if (!yo)
+            break;
+        yo--;
+    }
+    cpu.x = x;
+    cpu.y = 0xFFFF;
+    cpu.p = nz16(cpu.p, 0xFFFF);
+    a = (uint16_t)(rd16(0x0018CB) & 0x0003);
+    cpu.p = (uint8_t)((cpu.p & ~P_C) | (a >> 15));
+    a = (uint16_t)(a << 1);
+    cpu.a = rd16(0x0BEDDF + a);
+    wr16(0x0011DF, cpu.a);
+    cpu.x = 0x0628;
+    cpu.p = nz16(cpu.p, 0x0628);
+    abi_PictureCellAttributes();
+    cpu.x = 0x052E;
+    cpu.p = nz16(cpu.p, 0x052E);
+    abi_PictureCellAttributes();
+    cpu.a = 0x6400;
+    wr16(VMADDL, 0x6400);
+    for (x = 0x0000; x != 0x1000; x = (uint16_t)(x + 2)) {
+        cpu.a = rd16(0x703000 + x);
+        wr16(VMDATAL, cpu.a);
+    }
+    cpu.x = x;
+    cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z | P_C);
+    cpu.a = 0xEBCB;
+    cpu.x = 0x0004;
+    cpu.p = nz16(cpu.p, 0x0004);
+    abi_GsuCF42To3000();
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    wr16(0x00162D, 0x0000);
+    wr16(0x0016AF, 0x0000);
+    cpu.a = 0x0006;
+    wr16(0x000D7D, 0x0006);
+    cpu.a = 0x0000;
+    wr16(0x0018FD, 0x0000);
+    wr16(0x00118B, 0x0000);
+    wr16(0x000311, 0x0000);
+    wr16(0x001903, 0x0000);
+    wr16(0x0018B9, 0x0000);
+    cpu.a = 0x0003;
+    wr16(0x001905, 0x0003);
+    cpu.a = 0x0000;
+    wr16(0x001921, 0x0000);
+    wr16(0x001925, 0x0000);
+    cpu.a = 0x0066;
+    wr16(0x0011EF, 0x0066);
+    a = (uint16_t)(rd16(0x000D4A) & 0x00FF);
+    for (i = 0; i < 5; i++) {
+        cpu.p = (uint8_t)((cpu.p & ~P_C) | (a >> 15));
+        a = (uint16_t)(a << 1);
+    }
+    cpu.a = a;
+    wr16(0x001919, a);
+    a = (uint16_t)(rd16(0x000DD6) & 0x00FF);
+    cpu.p = (uint8_t)((nz16(cpu.p, (uint16_t)(a - 0x0008)) & ~P_C) | (a >= 0x0008 ? P_C : 0));
+    cpu.a = a == 0x0008 ? 0x0000 : 0x0020;
+    wr16(0x001927, cpu.a);
+    cpu.a = 0x1234;
+    wr16(0x001189, 0x1234);
+    wr16(0x00118F, 0x0000);
+    wr16(0x0011EB, 0x0000);
+    cpu.a = 0x0000;
+    cpu.p = nz16(cpu.p, 0x0000);
+    wr16(0x0011ED, 0x0000);
+    abi_MenuActorPoolInit();
+    cpu.x = 0x0036;
+    cpu.p = nz16(cpu.p, 0x0036);
+    abi_MenuActorSpawnList();
+    abi_MenuActorsRun();
+    abi_MenuOamBuild();
+    op_sep(P_M);
+    wr8(HDMAEN, 0xF0);
+    wr8(0x000D3F, 0x20);
+    wr8(VTIMEL, 0xE0);
+    wr8(VTIMEH, 0x00);
+    wr8(0x0011D7, 0x0C);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x21);
+    cpu.p = nz8(cpu.p, 0x21);
+    wr8(NMITIMEN, 0x21);
+    abi_MenuWaitFrame();
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x03);
+    cpu.p = nz8(cpu.p, 0x03);
+    wr8(TM, 0x03);
+    cpu.db = db0;
+    cpu.p = nz8(cpu.p, db0);
+    op_plp(p0);
+}
