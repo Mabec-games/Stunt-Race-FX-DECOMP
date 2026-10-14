@@ -939,6 +939,23 @@ static uint32_t same_place(uint32_t a)  /* banks $00-$3F and $80-$BF alias for t
 
 static long irq_missed;
 
+/* The core replays a copy of the ops: a frame can end inside a replay (a
+   long DMA), and the main loop then drains more of the record
+   (fetch_avail), which may move cur_ops. */
+static void replay_ops(uint32_t from, uint32_t n)
+{
+    static uint8_t *buf;
+    static uint32_t cap;
+
+    if (n > cap) {
+        cap = n + (n >> 1) + 1024;
+        buf = realloc(buf, cap);
+        if (!buf) _exit(7);
+    }
+    memcpy(buf, cur_ops + from, n);
+    core_replay(buf, n);
+}
+
 /* Replay the recorded cycles [cur_i, to), taking each recorded interrupt at
    its place: the core takes the pending interrupt from the original's
    registers and runs the handler until it returns. */
@@ -947,7 +964,7 @@ static void replay_to(uint32_t to)
     uint32_t i = cur_i, run = cur_i;
     while (i < to) {
         if (cur_ops[i] >> 4 != 5) { i++; continue; }
-        if (i > run) core_replay(cur_ops + run, i - run);
+        if (i > run) replay_ops(run, i - run);
         if (i + 3 < cur_n || fetch_more(i + 4)) {
             struct SfxboxRegs at = {
                 (uint16_t)cur_addr[i + 1], (uint16_t)(cur_addr[i + 1] >> 16), (uint16_t)cur_addr[i + 2],
@@ -962,7 +979,7 @@ static void replay_to(uint32_t to)
         i += 4;
         run = i;
     }
-    if (to > run) core_replay(cur_ops + run, to - run);
+    if (to > run) replay_ops(run, to - run);
     cur_i = to;
 }
 
