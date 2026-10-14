@@ -512,3 +512,104 @@ void abi_RaceVideoInit(void)
     cpu.db = db0;
     cpu.p = nz8(cpu.p, db0);
 }
+
+void abi_SoundReset(void);
+void abi_CourseSoundLoad(void);
+void abi_VramDmaTileFromGsuRam(void);
+void abi_RaceTimeInit(void);
+
+/* LDA #from, STA $F1, LDA (a word of work RAM at w), LDX #vram, JSR
+   VramDmaTileFromGsuRam: one tile of the Super FX picture to VRAM. */
+static void hud_tile(uint32_t b, uint16_t from, uint16_t w, uint16_t vram)
+{
+    cpu.a = from;
+    wr16(0x0000F1, from);
+    op_lda16(b | w);
+    cpu.x = vram;
+    cpu.p = nz16(cpu.p, vram);
+    abi_VramDmaTileFromGsuRam();
+}
+
+/*
+ * @routine 03:DD1B RaceHudLoad
+ * WHAT IT DOES: Loads a race's sound and HUD graphics: the sound reset, the
+ * car $0D89 = 4 when $0D4C is set in HUD mode 0 (else the sounds chosen,
+ * SoundIndicesFromHandlers), the course's sound (CourseSoundLoad); the
+ * Super FX picture $1D:8078, and by HUD mode $0D2B (the table at $03:DD56)
+ * tiles of it to VRAM: mode 0 the tiles $18E5, $18E7 and $18E9 (from
+ * $30A0) at $62F0, $63E0 and $63F0, then as mode 1; mode 1 nothing more
+ * unless $0D4E is set, which goes on as mode 3; mode 2 tile $18E5 (from
+ * $3000) at $62F0; mode 3 $20 bytes from $70:3080 to $63F0. Then tile
+ * $18E3 (from $3000) at $62E0, the Super FX blocks $F845/$F804 to VRAM
+ * and $18:D920 drawn, $3000 bytes of it copied to $7F:63D7, the sound reset
+ * again, the race time set up (RaceTimeInit), the Super FX's speed $70:0050
+ * from the course's word at $03:F799; then on to $03:DECA, or $03:E6FA
+ * with $0D62 set, which pull P and the data bank pushed here.
+ * HOW: P and the data bank ($03) pushed; MVN for the copy; the last part
+ * is a jump (jump_routine_pushed with the two bytes). HUD modes above 3
+ * would take code bytes as addresses and are not modelled.
+ * Entry: any widths; D = $0000. Exit: as the code at $03:DECA or $03:E6FA
+ * leaves it.
+ */
+void abi_RaceHudLoad(void)
+{
+    const uint32_t b = 0x030000;
+    uint8_t pushed[2] = {cpu.p, cpu.db};
+    uint16_t w, x;
+
+    op_sep(P_M);
+    cpu.db = 0x03;
+    cpu.p = nz8(cpu.p, 0x03);
+    abi_SoundReset();
+    op_sep(P_M);
+    op_lda8(b | 0x0D4C);
+    if ((uint8_t)cpu.a && (op_lda8(b | 0x0D2B), !(uint8_t)cpu.a)) {
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x04);
+        cpu.p = nz8(cpu.p, 0x04);
+        wr8(b | 0x0D89, 0x04);
+    } else
+        abi_SoundIndicesFromHandlers();
+    abi_CourseSoundLoad();
+    video_gsu_3000(0x8078, 0x001D, 0);
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    w = rd16(b | 0x0D2B);
+    cpu.p = (uint8_t)((cpu.p & ~P_C) | (w >> 15));
+    x = (uint16_t)(w << 1);
+    cpu.a = x;
+    cpu.x = x;
+    cpu.p = nz16(cpu.p, x);
+    w = rd16(b | (uint16_t)(0xDD56 + x));
+    if (w == 0xDDA4) {
+        hud_tile(b, 0x30A0, 0x18E5, 0x62F0);
+        hud_tile(b, 0x30A0, 0x18E7, 0x63E0);
+        hud_tile(b, 0x30A0, 0x18E9, 0x63F0);
+        w = 0xDDCE;
+    }
+    if (w == 0xDDCE) {
+        op_sep(P_M);
+        op_lda8(b | 0x0D4E);
+        if ((uint8_t)cpu.a)
+            w = 0xDD5E;
+    }
+    if (w == 0xDD94)
+        hud_tile(b, 0x3000, 0x18E5, 0x62F0);
+    if (w == 0xDD5E)
+        video_gsu_ram_dma(0x3080, 0x63F0, 0x0020);
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    hud_tile(b, 0x3000, 0x18E3, 0x62E0);
+    video_gsu_vram(0xF845, 0xF804);
+    video_gsu_3000(0xD920, 0x0018, 0);
+    video_mvn(0x703000, 0x7F63D7, 0x3000);
+    op_sep(P_M);
+    abi_SoundReset();
+    op_sep(P_M);
+    abi_RaceTimeInit();
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    x = (uint16_t)((rd16(b | 0x0E3D) & 0x00FF) << 1);
+    cpu.x = x;
+    cpu.a = rd16(0x03F799 + x);
+    wr16(0x700050, cpu.a);
+    op_sep(P_M);
+    op_lda8(b | 0x0D62);
+    jump_routine_pushed((uint8_t)cpu.a ? 0x03E6FA : 0x03DECA, pushed, 2);
+}

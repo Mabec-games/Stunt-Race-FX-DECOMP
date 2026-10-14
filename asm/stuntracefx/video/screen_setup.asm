@@ -614,3 +614,142 @@ RaceVideoSetup:
     plp
     plb
     rtl
+
+; @routine 03:DD1B RaceHudLoad
+; WHAT IT DOES: Loads a race's sound and HUD graphics: the sound reset, the
+; car $0D89 = 4 when $0D4C is set in HUD mode 0 (else the sounds chosen,
+; SoundIndicesFromHandlers), the course's sound (CourseSoundLoad); the
+; Super FX picture $1D:8078, and by HUD mode $0D2B (the table at $03:DD56)
+; tiles of it to VRAM: mode 0 the tiles $18E5, $18E7 and $18E9 (from
+; $30A0) at $62F0, $63E0 and $63F0, then as mode 1; mode 1 nothing more
+; unless $0D4E is set, which goes on as mode 3; mode 2 tile $18E5 (from
+; $3000) at $62F0; mode 3 $20 bytes from $70:3080 to $63F0. Then tile
+; $18E3 (from $3000) at $62E0, the Super FX blocks $F845/$F804 to VRAM
+; and $18:D920 drawn, $3000 bytes of it copied to $7F:63D7, the sound reset
+; again, the race time set up (RaceTimeInit), the Super FX's speed $70:0050
+; from the course's word at $03:F799; then on to $03:DECA, or $03:E6FA
+; with $0D62 set, which pull P and the data bank pushed here.
+; HOW: P and the data bank ($03) pushed; MVN for the copy; the last part
+; is a jump (jump_routine_pushed with the two bytes). HUD modes above 3
+; would take code bytes as addresses and are not modelled.
+; Entry: any widths; D = $0000. Exit: as the code at $03:DECA or $03:E6FA
+; leaves it.
+%at($03DD1B)
+RaceHudLoad:
+    php
+    sep.b #$20
+    phb
+    phk
+    plb
+    jsl.l SoundReset
+    sep.b #$20
+    lda.w !digit62_override
+    beq .lDD38
+    lda.w !hud_mode
+    bne .lDD38
+    lda.b #$04
+    sta.w !wram_0D89
+    bra .lDD3C
+.lDD38:
+    jsl.l SoundIndicesFromHandlers
+.lDD3C:
+    jsl.l CourseSoundLoad
+    rep.b #$30
+    lda.w #$8078
+    ldx.w #$001D
+    jsl.l GsuCF42To3000
+    rep.b #$30
+    lda.w !hud_mode
+    asl a
+    tax
+    jmp.w (RaceHudLoad_modes,x)
+RaceHudLoad_modes:
+    dw .lDDA4, .lDDCE, .lDD94, .lDD5E
+.lDD5E:
+    php
+    rep.b #$20
+    lda.w #$1801
+    sta.l !DMAP0
+    lda.w #$3080
+    sta.l !A1T0L
+    lda.w #$63F0
+    sta.l !VMADDL
+    lda.w #$0020
+    sta.l !DAS0L
+    sep.b #$20
+    lda.b #$80
+    sta.l !VMAIN
+    lda.b #$70
+    sta.l !A1B0
+    lda.b #$01
+    sta.l !MDMAEN
+    plp
+    bra .lDDD5
+.lDD94:
+    lda.w #$3000
+    sta.b !digit_count
+    lda.w !wram_18E5
+    ldx.w #$62F0
+    jsr.w VramDmaTileFromGsuRam
+    bra .lDDD5
+.lDDA4:
+    lda.w #$30A0
+    sta.b !digit_count
+    lda.w !wram_18E5
+    ldx.w #$62F0
+    jsr.w VramDmaTileFromGsuRam
+    lda.w #$30A0
+    sta.b !digit_count
+    lda.w !wram_18E7
+    ldx.w #$63E0
+    jsr.w VramDmaTileFromGsuRam
+    lda.w #$30A0
+    sta.b !digit_count
+    lda.w !wram_18E9
+    ldx.w #$63F0
+    jsr.w VramDmaTileFromGsuRam
+.lDDCE:
+    sep.b #$20
+    lda.w !hud_blank
+    bne .lDD5E
+.lDDD5:
+    rep.b #$30
+    lda.w #$3000
+    sta.b !digit_count
+    lda.w !selection_derived
+    ldx.w #$62E0
+    jsr.w VramDmaTileFromGsuRam
+    rep.b #$30
+    ldy.w #$F845
+    ldx.w #$F804
+    jsl.l GsuCF42ToVram
+    rep.b #$30
+    lda.w #$D920
+    ldx.w #$0018
+    jsl.l GsuCF42To3000
+    phb
+    php
+    rep.b #$30
+    lda.w #$2FFF
+    ldx.w #$3000
+    ldy.w #$63D7
+    mvn $7F,$70
+    plp
+    plb
+    sep.b #$20
+    jsl.l SoundReset
+    sep.b #$20
+    jsr.w RaceTimeInit
+    rep.b #$30
+    lda.w !course
+    and.w #$00FF
+    asl a
+    tax
+    lda.l !course_gsu_speeds,x
+    sta.l !gsu_speed_50
+    sep.b #$20
+    lda.w !wram_0D62
+    bne .lDE36
+    brl RaceHudLoadRace
+.lDE36:
+    jmp.w RaceHudLoadMenu

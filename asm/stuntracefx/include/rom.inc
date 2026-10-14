@@ -368,3 +368,6 @@ DemoRunBody = $038683                           ; 03:8683, inside the routine at
 !champion_picture_a = $18C770     ; ChampionScreenOpen: picture, its size the word before
 !champion_picture_b = $18998C     ; ChampionScreenOpen: picture, its size the word before
 !menu_picture_palette = $1C989C   ; ChampionScreenOpen: picture, its size the word before
+RaceHudLoadRace = $03DECA                       ; 03:DECA, RaceHudLoad's way on for a race (inside the routine at 03:DE39, not filed yet)
+RaceHudLoadMenu = $03E6FA                       ; 03:E6FA, RaceHudLoad's way on with $0D62 set (not filed yet)
+!course_gsu_speeds = $03F799      ; RaceHudLoad: the Super FX's speed word by course
