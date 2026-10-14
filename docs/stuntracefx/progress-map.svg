@@ -153,7 +153,7 @@
 <rect x="338.9" y="388.9" width="11.9" height="14.6" fill="#3fb950"><title>MenuActorAnimateFrame  0BE23D  19B  T4  [menu]</title></rect>
 <rect x="351.4" y="388.9" width="11.9" height="14.6" fill="#3fb950"><title>MenuWaitFrame  0BE390  19B  T4  [menu]</title></rect>
 <rect x="363.9" y="388.9" width="11.2" height="14.6" fill="#3fb950"><title>MenuRowPosition  0BC58D  18B  T4  [menu]</title></rect>
-<rect x="326.4" y="404.1" width="11.9" height="12.2" fill="#d29922"><title>MenuPreviewRun  0BAFAC  16B  T2  [menu]</title></rect>
+<rect x="326.4" y="404.1" width="11.9" height="12.2" fill="#3fb950"><title>MenuPreviewRun  0BAFAC  16B  T4  [menu]</title></rect>
 <rect x="326.4" y="416.9" width="11.9" height="12.2" fill="#3fb950"><title>MenuActorAnimateThenExit  0BCD6C  16B  T4  [menu]</title></rect>
 <rect x="326.4" y="429.7" width="11.9" height="11.4" fill="#3fb950"><title>MenuActorCountdown  0BCF9C  15B  T4  [menu]</title></rect>
 <rect x="326.4" y="441.7" width="11.9" height="10.6" fill="#3fb950"><title>MenuRowStart  0BC46D  14B  T4  [menu]</title></rect>
@@ -1040,4 +1040,4 @@
 <rect x="1553.7" y="882.9" width="26.5" height="15.0" fill="#d29922"><title>JoypadPortCheck  7F10CD  46B  T2  [input]</title></rect>
 <rect x="1580.8" y="882.9" width="15.3" height="15.0" fill="#3fb950"><title>FrameSoundAndJoypads  7EA7A3  27B  T4  [input]</title></rect>
 <rect x="1599.7" y="853.9" width="0.4" height="44.0" fill="#c8ccd2"><title>(unnamed)  00FE88  8B  T1  [bank 00 S-CPU]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 887 &#183; T3 behaviour-exact 17 &#183; 77,428/137,217 bytes exact (56.4%) &#183; green=T4 blue=T3 amber=T2 gray=T1</text></svg>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 888 &#183; T3 behaviour-exact 17 &#183; 77,444/137,217 bytes exact (56.4%) &#183; green=T4 blue=T3 amber=T2 gray=T1</text></svg>
