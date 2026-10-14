@@ -1278,6 +1278,7 @@ static uint8_t live_access(int write, uint32_t addr, uint8_t value)
     /* The original side has given up waiting for the hybrid: the C is in a
        loop that waits for something the record no longer brings (an
        interrupt), and would spin for ever. */
+    if (PARENT_GONE()) _exit(6);
     if (LOAD(sh->stuck)) {
         fprintf(lsrep, "frame %ld: the C of %s is still running, %u of %u recorded cycles used: DIVERGENT\n", cur_frame,
                 ls_cur_name ? ls_cur_name : "-", cur_i, cur_n);

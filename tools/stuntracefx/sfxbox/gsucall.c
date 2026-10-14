@@ -582,7 +582,7 @@ static long frame_now;
 #define LOAD(x) __atomic_load_n(&(x), __ATOMIC_SEQ_CST)
 #define STORE(x, v) __atomic_store_n(&(x), (v), __ATOMIC_SEQ_CST)
 #define WAIT_UNTIL(cond) do { long spins_ = 0; while (!(cond)) { \
-        if (*stuck) _exit(6); \
+        if (*stuck || (role == 2 && getppid() == 1)) _exit(6); \
         if (++spins_ > 600000) { \
             fprintf(stderr, "lockstep: %s side stuck in frame %ld waiting for Super FX %s; calls o/h %llu/%llu\n", \
                     role == 1 ? "original" : "hybrid", frame_now, #cond, (unsigned long long)LOAD(sh->o_calls), \
