@@ -1113,33 +1113,18 @@ static void hc_step(uint16_t *r, uint16_t end)
     cpu.p = (uint8_t)((nz16(cpu.p, (uint16_t)(*r - end)) & ~P_C) | (*r >= end ? P_C : 0));
 }
 
-/* PHA / PLA through the real stack (bank 0). */
-static void hc_push16(uint16_t v)
-{
-    wr8((uint16_t)cpu.s, (uint8_t)(v >> 8));
-    cpu.s--;
-    wr8((uint16_t)cpu.s, (uint8_t)v);
-    cpu.s--;
-}
-
-static uint16_t hc_pull16(void)
-{
-    uint16_t v;
-
-    cpu.s++;
-    v = rd8((uint16_t)cpu.s);
-    cpu.s++;
-    v |= (uint16_t)(rd8((uint16_t)cpu.s) << 8);
-    return v;
-}
-
 enum { HC_START, HC_ROWS_REST, HC_FROM14 };
 
 /* HudColourStep's body, entered at its start or at one of its two inner
-   entries. */
+   entries. The start keeps the P and data bank it pushes (and the colour
+   the band loop pushes and pulls) here, not on the stack: called from C
+   there is no return address under them, so stack writes would land where
+   the original writes other things. An inner entry finds P and the data
+   bank on the stack above its return address, as the start leaves them. */
 static void hud_colour_step(int from)
 {
-    uint16_t v;
+    uint8_t p0 = cpu.p, db0 = cpu.db;
+    uint16_t pushed;
 
     switch (from) {
     case HC_ROWS_REST:
@@ -1149,10 +1134,6 @@ static void hud_colour_step(int from)
         cpu.p = nz16(cpu.p, cpu.x);
         goto buffer;
     }
-    wr8((uint16_t)cpu.s, cpu.p);
-    cpu.s--;
-    wr8((uint16_t)cpu.s, cpu.db);
-    cpu.s--;
     op_sep(P_M);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x7F);
     cpu.db = 0x7F;
@@ -1346,15 +1327,15 @@ b_blend:
         wr16(hc_dp(0xF5), cpu.a);
         abi_ColourBlendBy();
 rows_rest:
-        hc_push16(cpu.a);
+        pushed = cpu.a;
         op_lda16(HC_TGT(0));
         if (cpu.a & 0x8000) {
-            cpu.a = hc_pull16();
+            cpu.a = pushed;
             cpu.p = nz16(cpu.p, cpu.a);
             goto b_store;
         }
         wr16(hc_dp(0xF3), cpu.a);
-        cpu.a = hc_pull16();
+        cpu.a = pushed;
         cpu.p = nz16(cpu.p, cpu.a);
         wr16(hc_dp(0xF1), cpu.a);
         op_lda16(HC_AMT(0));
@@ -1527,12 +1508,15 @@ keep:
     wr16(HC_TGT(4), cpu.a);
 end:
     op_sep(P_M | P_X);
-    cpu.s++;
-    cpu.db = rd8((uint16_t)cpu.s);
-    cpu.p = nz8(cpu.p, cpu.db);
-    cpu.s++;
-    v = rd8((uint16_t)cpu.s);
-    op_plp((uint8_t)v);
+    if (from != HC_START) {
+        cpu.s++;
+        db0 = rd8((uint16_t)cpu.s);
+        cpu.s++;
+        p0 = rd8((uint16_t)cpu.s);
+    }
+    cpu.db = db0;
+    cpu.p = nz8(cpu.p, db0);
+    op_plp(p0);
 }
 
 /*

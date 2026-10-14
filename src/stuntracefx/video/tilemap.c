@@ -584,9 +584,10 @@ void abi_TilemapLevelColumns(void)
 uint16_t TilemapRowToE3D7(uint8_t bank, uint16_t *x, uint16_t *y)
 {
     uint32_t b = (uint32_t)bank << 16;
-    uint16_t src = (rd16(0x000DA4) & 0x4000) ? 0xBBD7 : 0x93D7, v = 0, n;
+    uint16_t src, v = 0, n;
 
     wr16(0x0000F3, 0x0020);
+    src = (rd16(0x000DA4) & 0x4000) ? 0xBBD7 : 0x93D7;
     do {
         v = rd16(b | (uint16_t)(src + *x));
         wr16(b | (uint16_t)(0xE3D7 + *y), v);
