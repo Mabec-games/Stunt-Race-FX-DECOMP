@@ -359,10 +359,23 @@ static void finish(Watch *w)
     }
 }
 
+/* Interrupts (and unit calls) taken and not yet returned from: where each
+   resumes and the opcode before it, so the instruction it resumes at is
+   judged by that opcode, not the handler's RTI (a raster IRQ between a
+   JSR and the routine's first instruction would hide the call). */
+static struct { uint32_t pc; uint16_t s; uint8_t op; } irqs[16];
+static int nirqs;
+
 static void on_insn(uint32_t pc)
 {
     struct SfxboxRegs r;
     int have = 0;
+    uint8_t prev_op = *core_opcode;
+    while (nirqs && pc == irqs[nirqs - 1].pc) {
+        if (!have) { core_regs(&r); have = 1; }
+        if (r.s != irqs[nirqs - 1].s) break;
+        prev_op = irqs[--nirqs].op;
+    }
     for (int i = 0; i < depth; i++)
         if (ws[i].in_irq && pc == ws[i].irq_pc) {
             if (!have) { core_regs(&r); have = 1; }
@@ -373,7 +386,6 @@ static void on_insn(uint32_t pc)
        end the caller's watch at the same place. (An RTI is an interrupt
        handler's: a routine that stops the game may reset S above its frame
        and wait there for interrupts.) */
-    uint8_t prev_op = *core_opcode;
     while (depth) {
         Watch *t = &ws[depth - 1];
         if (t->in_irq) break;
@@ -387,7 +399,7 @@ static void on_insn(uint32_t pc)
     for (int i = 0; i < nroutines; i++) if (routines[i].addr == pc) { idx = i; break; }
     if (idx < 0) return;
     if (!have) { core_regs(&r); have = 1; }
-    uint8_t via = *core_opcode;
+    uint8_t via = prev_op;
     uint32_t sp = r.s;
     if (sp + 3 >= wram_n || r.e || depth == DEPTH) { stats[idx].skipped++; return; }
     Watch *w = &ws[depth];
@@ -442,6 +454,10 @@ static void on_read(uint32_t addr, uint8_t data)
 
 static void on_interrupt(uint32_t resume_pc, uint16_t s)
 {
+    if (nirqs < 16) {
+        irqs[nirqs].pc = resume_pc; irqs[nirqs].s = s; irqs[nirqs].op = *core_opcode;
+        nirqs++;
+    }
     for (int i = 0; i < depth; i++)
         if (!ws[i].in_irq) { ws[i].in_irq = 1; ws[i].interrupted = 1; ws[i].irq_pc = resume_pc; ws[i].irq_s = s; }
 }
@@ -461,6 +477,7 @@ int check_depth(void) { return depth; }
 
 void check_rollback(int d)
 {
+    nirqs = 0;
     if (d < depth) depth = d;
     for (int i = 0; i < depth; i++) ws[i].interrupted = 1;
 }
