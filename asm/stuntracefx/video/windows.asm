@@ -530,6 +530,34 @@ WindowsColourSubtract3:
     lda.b #$03
     sta.l !CGADSUB
     jsr.w WindowsColourWindowOnly
+    rts
+
+; @routine 7E:E054 WindowsColourSub81
+; WHAT IT DOES: Window setup 6, which no script selects: colour maths $81,
+; no BG windows, sprites window 1, colour window only, BG1 on the main
+; screen inside the window.
+; HOW: CGADSUB $81, W12SEL $00, W34SEL $00, WOBJSEL $20, CGWSEL $10,
+; WBGLOG $00, WOBJLOG $00, TMW $01, in that order; 8-bit long stores.
+; Entry: any widths. Exit: A low byte = $01; N, Z clear; M 8-bit.
+%ramcode($7EE054, $013D7B)
+WindowsColourSub81:
+    sep.b #$20
+    lda.b #$81
+    sta.l !CGADSUB
+    lda.b #$00
+    sta.l !W12SEL
+    sta.l !W34SEL
+    lda.b #$20
+    sta.l !WOBJSEL
+    lda.b #$10
+    sta.l !CGWSEL
+    lda.b #$00
+    sta.l !WBGLOG
+    lda.b #$00
+    sta.l !WOBJLOG
+    lda.b #$01
+    sta.l !TMW
+    rts
 
 
 ; @routine 7E:D2C9 WindowSlideOrOscillate

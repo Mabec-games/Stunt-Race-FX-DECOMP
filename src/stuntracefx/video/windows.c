@@ -94,10 +94,16 @@ static void windows_colour_add03(void)
     WindowsColourWindowOnly();
 }
 
-/* Setup 3 ($7E:E054), which no script selects: colour maths $81, no BG
-   windows, sprites window 1, colour window only, BG1 on the main screen
-   inside the window. Leaves A low byte $01. */
-static void windows_colour_sub81(void)
+/*
+ * @routine 7E:E054 WindowsColourSub81
+ * WHAT IT DOES: Window setup 6, which no script selects: colour maths $81,
+ * no BG windows, sprites window 1, colour window only, BG1 on the main
+ * screen inside the window.
+ * HOW: CGADSUB $81, W12SEL $00, W34SEL $00, WOBJSEL $20, CGWSEL $10,
+ * WBGLOG $00, WOBJLOG $00, TMW $01, in that order; 8-bit long stores.
+ * Entry: any widths. Exit: A low byte = $01; N, Z clear; M 8-bit.
+ */
+void WindowsColourSub81(void)
 {
     wr8(CGADSUB, 0x81);
     wr8(W12SEL, 0x00);
@@ -107,6 +113,13 @@ static void windows_colour_sub81(void)
     wr8(WBGLOG, 0x00);
     wr8(WOBJLOG, 0x00);
     wr8(TMW, 0x01);
+}
+
+void abi_WindowsColourSub81(void)
+{
+    WindowsColourSub81();
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
+    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z)) | P_M);
 }
 
 /*
@@ -127,7 +140,7 @@ uint8_t WindowsSetupSelect(void)
     case 0: WindowsColourAddBg12(); return 0x17;
     case 2: ColourMathSub83Windowed(); return 0x03;
     case 4: windows_colour_add03(); return 0x03;
-    case 6: windows_colour_sub81(); return 0x01;
+    case 6: WindowsColourSub81(); return 0x01;
     default: WindowsAllInverted(); return 0x1F;
     }
 }
