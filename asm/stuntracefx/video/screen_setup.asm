@@ -237,7 +237,7 @@ VideoStartUploads:
 ; WHAT IT DOES: RaceVideoSetup, first clearing $0EED-$0EEF and the words at
 ; $0E6C and $0E6E when $0D24 is 3 or more.
 ; HOW: Data bank $03 (the program bank) around the call, so the clears go to
-; work RAM through it. The clears are not reached in the traces so far.
+; work RAM through it.
 ; Entry: M 8-bit, D = $0000. Exit: as RaceVideoSetup; the data bank
 ; unchanged, N and Z from it (as RaceVideoSetup's swapped return leaves P
 ; otherwise).

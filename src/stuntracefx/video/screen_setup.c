@@ -478,3 +478,37 @@ done:
     cpu.p = nz8(cpu.p, db0);
     op_plp(p0);
 }
+
+/*
+ * @routine 03:D996 RaceVideoInit
+ * WHAT IT DOES: RaceVideoSetup, first clearing $0EED-$0EEF and the words at
+ * $0E6C and $0E6E when $0D24 is 3 or more.
+ * HOW: Data bank $03 (the program bank) around the call, so the clears go to
+ * work RAM through it.
+ * Entry: M 8-bit, D = $0000. Exit: as RaceVideoSetup; the data bank
+ * unchanged, N and Z from it (as RaceVideoSetup's swapped return leaves P
+ * otherwise).
+ */
+void abi_RaceVideoInit(void)
+{
+    const uint32_t b = 0x030000;
+    uint8_t db0 = cpu.db, v;
+
+    cpu.db = 0x03;
+    cpu.p = nz8(cpu.p, 0x03);
+    op_sep(P_M);
+    op_lda8(b | 0x0D24);
+    v = (uint8_t)cpu.a;
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x03)) & ~P_C) | (v >= 0x03 ? P_C : 0));
+    if (v >= 0x03) {
+        wr8(b | 0x0EED, 0x00);
+        wr8(b | 0x0EEE, 0x00);
+        wr8(b | 0x0EEF, 0x00);
+        op_rep(P_M);
+        wr16(b | 0x0E6C, 0x0000);
+        wr16(b | 0x0E6E, 0x0000);
+    }
+    abi_RaceVideoSetup();
+    cpu.db = db0;
+    cpu.p = nz8(cpu.p, db0);
+}
