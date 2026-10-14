@@ -1653,3 +1653,103 @@ RecordTagCar_store:
     sta.w !player_tag
     rts
 
+; @routine 07:AD1B TimeUpRecordUpdate
+; WHAT IT DOES: The time-up run's end: its time ($0E66 minutes, $0E64
+; seconds, $0E63 hundredths, BCD) as five digits at $0F69, then packed
+; (TimePackBcd) and set against the record for the course ($0E3D - $17,
+; five bytes each from $70:FC4A): lower, it becomes the record with $0F11
+; and the car $0D89, $0FA3 = $FF and the sums made again
+; (SaveRecordSumsTimeUp); higher, $0FA3 = 1; equal, $0FA3 = 0.
+; HOW: 8-bit digits through the data bank; the compare 16-bit; the record
+; by long stores; $F1 holds the course for course * 5.
+; Entry: any widths; data bank $07, D = $0000. Exit: M 8-bit; X the
+; record's offset (or as the sums leave it); A low byte = $0FA3's value.
+%at($07AD1B)
+TimeUpRecordUpdate:
+    sep.b #$20
+    lda.w !race_time_minutes
+    and.b #$0F
+    sta.w !lap_digits
+    lda.w !race_time_seconds
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    sta.w !lap_digits+1
+    lda.w !race_time_seconds
+    and.b #$0F
+    sta.w !lap_digits+2
+    lda.w !race_time_fraction
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    sta.w !lap_digits+3
+    lda.w !race_time_fraction
+    and.b #$0F
+    sta.w !lap_digits+4
+    rep.b #$30
+    lda.w !race_time_fraction
+    ldx.w !race_time_seconds
+    ldy.w !race_time_minutes
+    jsr.w TimePackBcd
+    pha
+    lda.w !course
+    sec
+    sbc.w #$0017
+    sta.b !digit_count
+    asl a
+    asl a
+    clc
+    adc.b !digit_count
+    and.w #$00FF
+    tax
+    pla
+    cmp.l !save_record_a,x
+    beq .equal
+    bcs .slower
+    sta.l !save_record_a,x
+    lda.w !level_columns+12
+    sta.l !save_record_a+2,x
+    sep.b #$20
+    lda.w !wram_0D89
+    sta.l !save_record_a+4,x
+    lda.b #$FF
+    sta.l !p1_lead
+    jsr.w SaveRecordSumsTimeUp
+    rts
+.slower:
+    sep.b #$20
+    lda.b #$01
+    sta.l !p1_lead
+    rts
+.equal:
+    sep.b #$20
+    lda.b #$00
+    sta.l !p1_lead
+    rts
+
+; @routine 07:ADA3 SaveRecordSumsTimeUp
+; WHAT IT DOES: The sums of the four five-byte time-up records from
+; $70:FC4A (SaveRecordSumA at offsets 0, 5, 10, 15) into
+; $70:FC46-$70:FC49; $F1 cleared first.
+; HOW: 8-bit registers.
+; Entry: any widths, D = $0000. Exit: M 8-bit, X 8-bit; A low byte = the
+; last sum; X = $14, Y = 0; Z set, N clear; C, V from the last add.
+%at($07ADA3)
+SaveRecordSumsTimeUp:
+    sep.b #$30
+    stz.b !digit_count
+    ldx.b #$00
+    jsr.w SaveRecordSumA
+    sta.l !save_table_sums+25
+    ldx.b #$05
+    jsr.w SaveRecordSumA
+    sta.l !save_table_sums+26
+    ldx.b #$0A
+    jsr.w SaveRecordSumA
+    sta.l !save_table_sums+27
+    ldx.b #$0F
+    jsr.w SaveRecordSumA
+    sta.l !save_table_sums+28
+    rts

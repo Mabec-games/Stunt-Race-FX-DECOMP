@@ -1478,3 +1478,109 @@ void abi_RecordTagCar8(void)
 {
     record_tag(0x0008);
 }
+/*
+ * @routine 07:ADA3 SaveRecordSumsTimeUp
+ * WHAT IT DOES: The sums of the four five-byte time-up records from
+ * $70:FC4A (SaveRecordSumA at offsets 0, 5, 10, 15) into
+ * $70:FC46-$70:FC49; $F1 cleared first.
+ * HOW: 8-bit registers.
+ * Entry: any widths, D = $0000. Exit: M 8-bit, X 8-bit; A low byte = the
+ * last sum; X = $14, Y = 0; Z set, N clear; C, V from the last add.
+ */
+void abi_SaveRecordSumsTimeUp(void)
+{
+    static const uint8_t at[4] = {0x00, 0x05, 0x0A, 0x0F};
+    uint8_t x, p, v;
+    int i;
+
+    op_sep(P_M | P_X);
+    wr8(0x0000F1, 0x00);
+    for (i = 0; i < 4; i++) {
+        x = at[i];
+        p = cpu.p;
+        v = SaveRecordSumA(&x, &p);
+        cpu.p = p;
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+        cpu.x = x;
+        cpu.y = 0;
+        wr8(0x70FC46 + (uint32_t)i, v);
+    }
+}
+
+/* SEP #$20, LDA #v, STA.L $000FA3: player 1's lead byte. */
+static void time_up_lead(uint8_t v)
+{
+    op_sep(P_M);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+    wr8(0x000FA3, v);
+}
+
+/*
+ * @routine 07:AD1B TimeUpRecordUpdate
+ * WHAT IT DOES: The time-up run's end: its time ($0E66 minutes, $0E64
+ * seconds, $0E63 hundredths, BCD) as five digits at $0F69, then packed
+ * (TimePackBcd) and set against the record for the course ($0E3D - $17,
+ * five bytes each from $70:FC4A): lower, it becomes the record with $0F11
+ * and the car $0D89, $0FA3 = $FF and the sums made again
+ * (SaveRecordSumsTimeUp); higher, $0FA3 = 1; equal, $0FA3 = 0.
+ * HOW: 8-bit digits through the data bank; the compare 16-bit; the record
+ * by long stores; $F1 holds the course for course * 5.
+ * Entry: any widths; data bank $07, D = $0000. Exit: M 8-bit; X the
+ * record's offset (or as the sums leave it); A low byte = $0FA3's value.
+ */
+void abi_TimeUpRecordUpdate(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t t, k, x, r;
+    uint8_t v, p;
+
+    op_sep(P_M);
+    v = rd8(b | 0x0E66);
+    wr8(b | 0x0F69, (uint8_t)(v & 0x0F));
+    v = rd8(b | 0x0E64);
+    wr8(b | 0x0F6A, (uint8_t)(v >> 4));
+    v = rd8(b | 0x0E64);
+    wr8(b | 0x0F6B, (uint8_t)(v & 0x0F));
+    v = rd8(b | 0x0E63);
+    wr8(b | 0x0F6C, (uint8_t)(v >> 4));
+    v = rd8(b | 0x0E63);
+    v = (uint8_t)(v & 0x0F);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+    wr8(b | 0x0F6D, v);
+    op_rep(P_M | P_X);
+    op_lda16(b | 0x0E63);
+    cpu.x = rd16(b | 0x0E64);
+    cpu.y = rd16(b | 0x0E66);
+    abi_TimePackBcd();
+    t = cpu.a;
+    op_lda16(b | 0x0E3D);
+    p = (uint8_t)(cpu.p | P_C);
+    k = op_sbc16(cpu.a, 0x0017, &p);
+    wr16(0x0000F1, k);
+    k = (uint16_t)(k << 2);
+    p = (uint8_t)(p & ~P_C);
+    k = op_adc16(k, rd16(0x0000F1), &p);
+    x = (uint16_t)(k & 0x00FF);
+    cpu.x = x;
+    cpu.a = t;
+    r = rd16(0x70FC4A + (uint32_t)x);
+    cpu.p = (uint8_t)((nz16(p, (uint16_t)(t - r)) & ~P_C) | (t >= r ? P_C : 0));
+    if (t == r) {
+        time_up_lead(0x00);
+        return;
+    }
+    if (t > r) {
+        time_up_lead(0x01);
+        return;
+    }
+    wr16(0x70FC4A + (uint32_t)x, t);
+    op_lda16(b | 0x0F11);
+    wr16(0x70FC4C + (uint32_t)x, cpu.a);
+    op_sep(P_M);
+    op_lda8(b | 0x0D89);
+    wr8(0x70FC4E + (uint32_t)x, (uint8_t)cpu.a);
+    time_up_lead(0xFF);
+    abi_SaveRecordSumsTimeUp();
+}

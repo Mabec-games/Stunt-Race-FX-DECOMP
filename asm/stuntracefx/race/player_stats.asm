@@ -1065,7 +1065,7 @@ TimeUpPhaseSlideOut:
 ; the time's limit 9:59.99 ($0E66, $0E64, $0E63), $0E5A = $20, phase $0C
 ; and sound $31; otherwise, unless $1F71 is set, phase 8, $0D53 = 8,
 ; $0E5B cleared, $0E58 = $30, sound $3E, $0592-$0594 = $55 (the sprites'
-; high bits) and the time's digits (TimeToLapDigits).
+; high bits) and the time's record (TimeUpRecordUpdate).
 ; HOW: 8-bit compares and stores through the data bank.
 ; Entry: any widths; data bank $07. Exit: M 8-bit; A as the last step
 ; leaves it.
@@ -1097,7 +1097,7 @@ TimeUpPhaseRace:
     sta.w !oam_high_16+7
     sta.w !oam_high_16+8
     sta.w !oam_high_16+9
-    jsr.w TimeToLapDigits
+    jsr.w TimeUpRecordUpdate
 .done:
     rts
 .limit:

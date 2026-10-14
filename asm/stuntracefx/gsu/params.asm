@@ -132,6 +132,26 @@ GsuTableEntryTo1F4C:
     plx
     rtl
 
+; @routine 04:D7A2 GsuBytes200_BFBABD
+; WHAT IT DOES: Sets the four renderer input bytes at $70:0200-$70:0203 to
+; 0, $BF, $BA, $BD.
+; HOW: Four byte stores (gsu_200).
+; Entry: any widths. Exit: A low byte = $BD; P unchanged.
+%at($04D7A2)
+GsuBytes200_BFBABD:
+    php
+    sep.b #$20
+    lda.b #$00
+    sta.l !gsu_bytes_200
+    lda.b #$BF
+    sta.l !gsu_bytes_200+1
+    lda.b #$BA
+    sta.l !gsu_bytes_200+2
+    lda.b #$BD
+    sta.l !gsu_bytes_200+3
+    plp
+    rtl
+
 ; @routine 04:D7BF GsuBytes200_BFB7B6
 ; WHAT IT DOES: Sets the four renderer input bytes at $70:0200-$70:0203 to
 ; 0, $BF, $B7, $B6.

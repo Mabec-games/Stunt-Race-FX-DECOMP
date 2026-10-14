@@ -2779,3 +2779,240 @@ void abi_HudLapDigitsDraw(void)
     lap_digit(b, 0x0F6C);
     lap_digit(b, 0x0F6D);
 }
+void abi_GsuBytes200_BFBABD(void);
+
+/* REP #$30, LDA #x, STA.L $70:020A, then Super FX program $07:F5C9. */
+static void blank_mark_at(uint16_t x)
+{
+    op_rep(P_M | P_X);
+    op_lda16_imm(x);
+    wr16(0x70020A, x);
+    glyph_prog_run(0xF5C9);
+}
+
+/*
+ * @routine 07:A6DD HudBlankDraw
+ * WHAT IT DOES: Stunt Trax with $0D4E set: three marks ($0C08, bytes 0,
+ * $BF, $BA, $BD) at (4, 108), (22, 108) and (40, 108), then over them,
+ * with the bytes 0, $BF, $B7, $B6, the mark $0E08 for each of the low
+ * nibble of $1F71 used: none, at 40, 22 and 4 for 0; at 22 and 4 for 1;
+ * at 4 for 2.
+ * HOW: Super FX program $07:F5C9 per mark; P saved and restored.
+ * Entry: any widths; data bank $07. Exit: P restored; A, X, Y as the last
+ * run leaves them.
+ */
+void abi_HudBlankDraw(void)
+{
+    uint8_t p0 = cpu.p;
+    uint16_t n;
+
+    op_rep(P_M | P_X);
+    abi_GsuBytes200_BFBABD();
+    op_rep(P_M | P_X);
+    op_lda16_imm(0x0C08);
+    wr16(0x700216, 0x0C08);
+    op_lda16_imm(0x0004);
+    wr16(0x70020A, 0x0004);
+    op_lda16_imm(0x006C);
+    wr16(0x70020C, 0x006C);
+    glyph_prog_run(0xF5C9);
+    blank_mark_at(0x0016);
+    blank_mark_at(0x0028);
+    abi_GsuBytes200_BFB7B6();
+    op_rep(P_M | P_X);
+    op_lda16_imm(0x0E08);
+    wr16(0x700216, 0x0E08);
+    op_lda16((uint32_t)cpu.db << 16 | 0x1F71);
+    op_and16(0x000F);
+    n = cpu.a;
+    if (n) {
+        cpu.p = (uint8_t)((nz16(cpu.p, (uint16_t)(n - 2)) & ~P_C) | (n >= 2 ? P_C : 0));
+        if (n > 2) {
+            op_plp(p0);
+            return;
+        }
+    }
+    if (n == 0)
+        blank_mark_at(0x0028);
+    if (n <= 1)
+        blank_mark_at(0x0016);
+    blank_mark_at(0x0004);
+    op_plp(p0);
+}
+
+void abi_GsuBytes200_BFBCBD(void);
+void abi_SoundPort0QueuePush(void);
+void abi_SoundPort0QueuePushRaw(void);
+
+/* GlyphSpritesSlideIn's tail (07:A4F5): the two glyph words drawn at the
+   sprites' positions ($0FB0/$0FE0 with the bytes 0, $BF, $B7, $B6;
+   $0FB2/$0FE2 with 0, $BF, $BC, $BD), program $07:FAB0 per glyph, the
+   position moved 8 on after each word's third glyph. */
+static void glyph_slide_draw(uint32_t b)
+{
+    static const uint16_t one[6] = {0x8804, 0x8808, 0x8C14, 0x8408, 0x8814, 0x8814};
+    static const uint16_t two[8] = {0x8C14, 0x8804, 0x8418, 0x8410, 0x8408, 0x8C0C, 0x8C10, 0x901C};
+    unsigned i;
+
+    op_rep(P_M);
+    abi_GsuBytes200_BFB7B6();
+    op_lda16(b | 0x0FB0);
+    wr16(0x70020A, cpu.a);
+    op_lda16(b | 0x0FE0);
+    wr16(0x70020C, cpu.a);
+    for (i = 0; i < 6; i++) {
+        if (i == 3)
+            draw_pos_add(0x70020A, 0x0008, 0);
+        glyph_prog(0xFAB0, one[i]);
+    }
+    abi_GsuBytes200_BFBCBD();
+    op_lda16(b | 0x0FB2);
+    wr16(0x70020A, cpu.a);
+    op_lda16(b | 0x0FE2);
+    wr16(0x70020C, cpu.a);
+    for (i = 0; i < 8; i++) {
+        if (i == 3)
+            draw_pos_add(0x70020A, 0x0008, 0);
+        glyph_prog(0xFAB0, two[i]);
+    }
+}
+
+/* CMP #m (16-bit): N, Z, C as the compare sets them. */
+static void slide_cmp16(uint16_t a, uint16_t m)
+{
+    cpu.p = (uint8_t)((nz16(cpu.p, (uint16_t)(a - m)) & ~P_C) | (a >= m ? P_C : 0));
+}
+
+/*
+ * @routine 07:A451 GlyphSpritesSlideOut
+ * WHAT IT DOES: Moves the two glyph sprites out by $16: the first left to
+ * no further than -$68 ($0FB0), the second right to no further than $D0
+ * ($0FB2); once both are there, phase $0DD6 = 6 (a 16-bit store) and
+ * nothing is drawn; otherwise they are drawn (GlyphSpritesSlideIn's
+ * tail).
+ * HOW: 16-bit, through the data bank; the tail is a branch.
+ * Entry: any widths; data bank $07. Exit: M 16-bit, X 16-bit; A = 6; or
+ * as the drawing leaves them.
+ */
+void abi_GlyphSpritesSlideOut(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t a;
+    uint8_t p;
+
+    op_rep(P_M | P_X);
+    p = (uint8_t)(cpu.p | P_C);
+    a = op_sbc16(rd16(b | 0x0FB0), 0x0016, &p);
+    cpu.p = p;
+    if (a & 0x8000) {
+        slide_cmp16(a, 0xFF98);
+        if (!(cpu.p & P_C)) {
+            a = 0xFF98;
+            cpu.p = nz16(cpu.p, a);
+        }
+    }
+    wr16(b | 0x0FB0, a);
+    p = (uint8_t)(cpu.p & ~P_C);
+    a = op_adc16(rd16(b | 0x0FB2), 0x0016, &p);
+    cpu.p = p;
+    slide_cmp16(a, 0x00D0);
+    if (cpu.p & P_C) {
+        a = 0x00D0;
+        cpu.p = nz16(cpu.p, a);
+    }
+    wr16(b | 0x0FB2, a);
+    a = rd16(b | 0x0FB0);
+    slide_cmp16(a, 0xFF98);
+    if (a == 0xFF98) {
+        a = rd16(b | 0x0FB2);
+        slide_cmp16(a, 0x00D0);
+        if (a == 0x00D0) {
+            cpu.a = 0x0006;
+            cpu.p = nz16(cpu.p, 0x0006);
+            wr16(b | 0x0DD6, 0x0006);
+            return;
+        }
+    }
+    cpu.a = a;
+    glyph_slide_draw(b);
+}
+
+/*
+ * @routine 07:A492 GlyphSpritesSlideIn
+ * WHAT IT DOES: Moves the two glyph sprites in by $16: the first left to
+ * no less than $34 ($0FB0), the second right to no more than $24 ($0FB2,
+ * unless negative); once both are there, counts $0E55 down from $10 (at
+ * $10, $0E5B = $10 and sounds 1 and $3A; at 0, phase $0DD6 = 4),
+ * otherwise sets it to $10; then draws them: the first word's six glyphs
+ * at the first sprite, the second word's eight at the second.
+ * HOW: 16-bit moves through the data bank; program $07:FAB0 per glyph.
+ * Entry: any widths; data bank $07. Exit: M 16-bit, X 16-bit; A, X as the
+ * last run leaves them.
+ */
+void abi_GlyphSpritesSlideIn(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t a;
+    uint8_t p, v;
+    int there;
+
+    op_rep(P_M | P_X);
+    p = (uint8_t)(cpu.p | P_C);
+    a = op_sbc16(rd16(b | 0x0FB0), 0x0016, &p);
+    cpu.p = p;
+    slide_cmp16(a, 0x0034);
+    if (!(cpu.p & P_C)) {
+        a = 0x0034;
+        cpu.p = nz16(cpu.p, a);
+    }
+    wr16(b | 0x0FB0, a);
+    p = (uint8_t)(cpu.p & ~P_C);
+    a = op_adc16(rd16(b | 0x0FB2), 0x0016, &p);
+    cpu.p = p;
+    if (!(a & 0x8000)) {
+        slide_cmp16(a, 0x0024);
+        if (cpu.p & P_C) {
+            a = 0x0024;
+            cpu.p = nz16(cpu.p, a);
+        }
+    }
+    wr16(b | 0x0FB2, a);
+    a = rd16(b | 0x0FB0);
+    slide_cmp16(a, 0x0034);
+    there = 0;
+    if (a == 0x0034) {
+        a = rd16(b | 0x0FB2);
+        slide_cmp16(a, 0x0024);
+        there = a == 0x0024;
+    }
+    if (there) {
+        op_sep(P_M);
+        op_lda8(b | 0x0E55);
+        v = (uint8_t)cpu.a;
+        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x10)) & ~P_C) | (v >= 0x10 ? P_C : 0));
+        if (v == 0x10) {
+            wr8(b | 0x0E5B, v);
+            cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
+            cpu.p = nz8(cpu.p, 0x01);
+            abi_SoundPort0QueuePushRaw();
+            cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x3A);
+            cpu.p = nz8(cpu.p, 0x3A);
+            abi_SoundPort0QueuePush();
+        }
+        v = (uint8_t)(rd8(b | 0x0E55) - 1);
+        wr8(b | 0x0E55, v);
+        cpu.p = nz8(cpu.p, v);
+        if (!v) {
+            cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x04);
+            cpu.p = nz8(cpu.p, 0x04);
+            wr8(b | 0x0DD6, 0x04);
+        }
+    } else {
+        op_sep(P_M);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x10);
+        cpu.p = nz8(cpu.p, 0x10);
+        wr8(b | 0x0E55, 0x10);
+    }
+    glyph_slide_draw(b);
+}
+

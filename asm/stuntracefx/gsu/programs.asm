@@ -3998,3 +3998,342 @@ GlyphSpriteDrawLeft8:
     sbc.w #$0008                    ; not reached in the traces so far
     bra GlyphSpriteDraw_at          ; not reached in the traces so far
 
+; @routine 07:A451 GlyphSpritesSlideOut
+; WHAT IT DOES: Moves the two glyph sprites out by $16: the first left to
+; no further than -$68 ($0FB0), the second right to no further than $D0
+; ($0FB2); once both are there, phase $0DD6 = 6 (a 16-bit store) and
+; nothing is drawn; otherwise they are drawn (GlyphSpritesSlideIn's
+; tail).
+; HOW: 16-bit, through the data bank; the tail is a branch.
+; Entry: any widths; data bank $07. Exit: M 16-bit, X 16-bit; A = 6; or
+; as the drawing leaves them.
+%at($07A451)
+GlyphSpritesSlideOut:
+    rep.b #$30
+    lda.w !glyph_spr_x
+    sec
+    sbc.w #$0016
+    bpl .first
+    cmp.w #$FF98
+    bcs .first
+    lda.w #$FF98
+.first:
+    sta.w !glyph_spr_x
+    lda.w !glyph_spr_x+2
+    clc
+    adc.w #$0016
+    cmp.w #$00D0
+    bcc .second
+    lda.w #$00D0
+.second:
+    sta.w !glyph_spr_x+2
+    lda.w !glyph_spr_x
+    cmp.w #$FF98
+    bne .draw
+    lda.w !glyph_spr_x+2
+    cmp.w #$00D0
+    bne .draw
+    lda.w #$0006
+    sta.w !engine_phase_p1
+    rts
+.draw:
+    bra GlyphSpritesSlideDraw
+
+; @routine 07:A492 GlyphSpritesSlideIn
+; WHAT IT DOES: Moves the two glyph sprites in by $16: the first left to
+; no less than $34 ($0FB0), the second right to no more than $24 ($0FB2,
+; unless negative); once both are there, counts $0E55 down from $10 (at
+; $10, $0E5B = $10 and sounds 1 and $3A; at 0, phase $0DD6 = 4),
+; otherwise sets it to $10; then draws them: the first word's six glyphs
+; at the first sprite, the second word's eight at the second.
+; HOW: 16-bit moves through the data bank; program $07:FAB0 per glyph.
+; Entry: any widths; data bank $07. Exit: M 16-bit, X 16-bit; A, X as the
+; last run leaves them.
+%at($07A492)
+GlyphSpritesSlideIn:
+    rep.b #$30
+    lda.w !glyph_spr_x
+    sec
+    sbc.w #$0016
+    cmp.w #$0034
+    bcs .first
+    lda.w #$0034
+.first:
+    sta.w !glyph_spr_x
+    lda.w !glyph_spr_x+2
+    clc
+    adc.w #$0016
+    bmi .second
+    cmp.w #$0024
+    bcc .second
+    lda.w #$0024
+.second:
+    sta.w !glyph_spr_x+2
+    lda.w !glyph_spr_x
+    cmp.w #$0034
+    bne .moving
+    lda.w !glyph_spr_x+2
+    cmp.w #$0024
+    bne .moving
+    sep.b #$20
+    lda.w !wram_0E54+1
+    cmp.b #$10
+    bne .count
+    sta.w !wram_0E5B
+    lda.b #$01
+    jsl.l SoundPort0QueuePushRaw
+    lda.b #$3A
+    jsl.l SoundPort0QueuePush
+.count:
+    dec.w !wram_0E54+1
+    bne GlyphSpritesSlideDraw
+    lda.b #$04
+    sta.w !engine_phase_p1
+    bra GlyphSpritesSlideDraw
+.moving:
+    sep.b #$20
+    lda.b #$10
+    sta.w !wram_0E54+1
+GlyphSpritesSlideDraw:                  ; the two words drawn (GlyphSpritesSlideOut's tail too)
+    rep.b #$20
+    jsl.l GsuBytes200_BFB7B6
+    lda.w !glyph_spr_x
+    sta.l !fx_draw_x
+    lda.w !glyph_spr_y
+    sta.l !fx_draw_y
+    lda.w #$8804
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FAB0
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.w #$8808
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FAB0
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.w #$8C14
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FAB0
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.l !fx_draw_x
+    clc
+    adc.w #$0008
+    sta.l !fx_draw_x
+    lda.w #$8408
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FAB0
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.w #$8814
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FAB0
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.w #$8814
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FAB0
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    jsl.l GsuBytes200_BFBCBD
+    lda.w !glyph_spr_x+2
+    sta.l !fx_draw_x
+    lda.w !glyph_spr_y+2
+    sta.l !fx_draw_y
+    lda.w #$8C14
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FAB0
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.w #$8804
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FAB0
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.w #$8418
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FAB0
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.l !fx_draw_x
+    clc
+    adc.w #$0008
+    sta.l !fx_draw_x
+    lda.w #$8410
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FAB0
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.w #$8408
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FAB0
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.w #$8C0C
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FAB0
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.w #$8C10
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FAB0
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.w #$901C
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FAB0
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rts
+
+; @routine 07:A6DD HudBlankDraw
+; WHAT IT DOES: Stunt Trax with $0D4E set: three marks ($0C08, bytes 0,
+; $BF, $BA, $BD) at (4, 108), (22, 108) and (40, 108), then over them,
+; with the bytes 0, $BF, $B7, $B6, the mark $0E08 for each of the low
+; nibble of $1F71 used: none, at 40, 22 and 4 for 0; at 22 and 4 for 1;
+; at 4 for 2.
+; HOW: Super FX program $07:F5C9 per mark; P saved and restored.
+; Entry: any widths; data bank $07. Exit: P restored; A, X, Y as the last
+; run leaves them.
+%at($07A6DD)
+HudBlankDraw:
+    php
+    rep.b #$30
+    jsl.l GsuBytes200_BFBABD
+    rep.b #$30
+    lda.w #$0C08
+    sta.l !gsu_in_216
+    lda.w #$0004
+    sta.l !fx_draw_x
+    lda.w #$006C
+    sta.l !fx_draw_y
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F5C9
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$30
+    lda.w #$0016
+    sta.l !fx_draw_x
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F5C9
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$30
+    lda.w #$0028
+    sta.l !fx_draw_x
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F5C9
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    jsl.l GsuBytes200_BFB7B6
+    rep.b #$30
+    lda.w #$0E08
+    sta.l !gsu_in_216
+    lda.w !script_byte_1f71
+    and.w #$000F
+    beq .three
+    cmp.w #$0002
+    beq .one
+    bcc .two
+    plp
+    rts
+.three:
+    rep.b #$30
+    lda.w #$0028
+    sta.l !fx_draw_x
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F5C9
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+.two:
+    rep.b #$30
+    lda.w #$0016
+    sta.l !fx_draw_x
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F5C9
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+.one:
+    rep.b #$30
+    lda.w #$0004
+    sta.l !fx_draw_x
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F5C9
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    plp
+    rts

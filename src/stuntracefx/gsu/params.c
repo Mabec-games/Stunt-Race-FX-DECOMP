@@ -506,3 +506,15 @@ void abi_GsuRecordsUpload(void)
     cpu.a = gsu_records_upload(&cpu.x, &cpu.y, &p);
     cpu.p = (uint8_t)(nz8(p, cpu.db) & ~(P_M | P_X));
 }
+/*
+ * @routine 04:D7A2 GsuBytes200_BFBABD
+ * WHAT IT DOES: Sets the four renderer input bytes at $70:0200-$70:0203 to
+ * 0, $BF, $BA, $BD.
+ * HOW: Four byte stores (gsu_200).
+ * Entry: any widths. Exit: A low byte = $BD; P unchanged.
+ */
+void abi_GsuBytes200_BFBABD(void)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0xBF, 0xBA, 0xBD));
+}
+
