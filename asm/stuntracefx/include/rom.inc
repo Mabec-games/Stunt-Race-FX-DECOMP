@@ -373,3 +373,5 @@ RaceHudLoadMenu = $03E6FA                       ; 03:E6FA, RaceHudLoad's way on 
 !course_gsu_speeds = $03F799      ; RaceHudLoad: the Super FX's speed word by course
 HudColourStep = $7EE34F                         ; 7E:E34F, the colour work HudFrameWhileGsuRuns calls (not filed yet)
 RaceSoundsAndHud = $07DAA7                      ; 07:DAA7, the engine sounds and the HUD mode's work RaceFrameRun calls (not filed yet)
+RaceSoundsPlayer1 = $07DA02                     ; 07:DA02, player 1's sounds and HUD work in a two-player race (not filed yet)
+RaceSoundsPlayer2 = $07DA65                     ; 07:DA65, player 2's (not filed yet)

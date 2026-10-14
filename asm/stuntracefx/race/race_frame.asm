@@ -1047,3 +1047,134 @@ RaceFrameRun:
     plb
     plp
     rtl
+
+; @routine 0B:FB26 RaceFrameRunTwoPlayers
+; WHAT IT DOES: One frame of a two-player race: takes the frames counted
+; since the last ($0306, into $06D4, cleared), runs the objects, then for
+; player 1 points the view from the car (ViewFromRecord on the object two
+; links on from $0346), reads both players' controls (PlayerControlsFrame)
+; and draws side 0 ($1F07) with Super FX programs $8FCA (FrameRunGsu8FCA,
+; $70:246C-D = $FF first) and $01:BBC7, the view and program $AEF8, the
+; palette fade, the word copy and the backdrop angles; for player 2 the
+; view from the car at $034A, side 1 with the HUD (FrameRunGsuAB13B, $1AE8
+; cleared first) and the speed gauge (A = $70:2476, X = $2143), 07:DA02,
+; a screen switch (GsuScreenFlipMenu) and $0357 cleared; then the view and
+; program $AEF8 again, the backdrop angles, $06CF less $140, HUD panel A
+; (FrameRunGsuAB13A), the second gauge (A = $70:2478, X = $2142), 07:DA65,
+; another switch and $0357 cleared; and keeps time as RaceFrameRun does.
+; HOW: As RaceFrameRun: data bank $02, its own; $00 = 2; P and the data bank
+; put back at the end.
+; Entry: any widths; D = $0000. Exit: P and the data bank unchanged; A low
+; byte 0; X, Y as the last call left them.
+%at($0BFB26)
+RaceFrameRunTwoPlayers:
+    php
+    sep.b #$20
+    rep.b #$10
+    phb
+    phk
+    plb
+    lda.w !frames_since_tick
+    sta.w !frames_taken
+    stz.w !frames_since_tick
+    lda.b #$02
+    sta.b !bank0_base
+    sep.b #$20
+    rep.b #$10
+    jsl.l ObjectsRunHandlers
+    rep.b #$30
+    ldx.w !wram_0346
+    lda.l !obj_link,x
+    tax
+    lda.l !obj_link,x
+    tax
+    jsl.l ViewFromRecord
+    jsl.l PlayerControlsFrame
+    sep.b #$20
+    stz.w !draw_side
+    lda.b #$FF
+    sta.l !gsu_view_246c
+    sta.l !gsu_view_246c+1
+    jsl.l FrameRunGsu8FCA
+    sep.b #$20
+    rep.b #$10
+    sep.b #$20
+    lda.b #$01
+    ldx.w #$BBC7
+    jsl.l GsuRun
+    sep.b #$20
+    rep.b #$10
+    jsl.l ViewUpdateAndGsuAEF8
+    rep.b #$20
+    jsl.l PaletteFadeStep
+    jsl.l WordCopyStep
+    jsl.l BackdropAnglesFromView
+    rep.b #$30
+    ldx.w !wram_034A
+    lda.l !obj_link,x
+    tax
+    lda.l !obj_link,x
+    tax
+    jsl.l ViewFromRecord
+    sep.b #$20
+    lda.b #$01
+    sta.w !draw_side
+    rep.b #$20
+    stz.w !spawn_counter+10
+    sep.b #$20
+    sep.b #$20
+    jsl.l FrameRunGsuAB13B
+    rep.b #$30
+    ldx.w #$2143
+    lda.l !gsu_match_2476
+    jsl.l SpeedGaugeUpdate
+    sep.b #$20
+    jsl.l RaceSoundsPlayer1
+    jsr.w GsuScreenFlipMenu
+    sep.b #$20
+    stz.w !wram_0357
+    jsl.l ViewUpdateAndGsuAEF8
+    jsl.l BackdropAnglesFromView
+    rep.b #$20
+    lda.w !view_06cf
+    sec
+    sbc.w #$0140
+    sta.w !view_06cf
+    sep.b #$20
+    jsl.l FrameRunGsuAB13A
+    rep.b #$30
+    ldx.w #$2142
+    lda.l !gsu_match_2478
+    jsl.l SpeedGauge2Update
+    jsl.l RaceSoundsPlayer2
+    sep.b #$20
+    jsr.w GsuScreenFlipMenu
+    sep.b #$20
+    stz.w !wram_0357
+    sep.b #$20
+    lda.w !frames_since_tick
+    sta.w !wram_1F3C+2
+    lda.w !frames_taken+1
+    clc
+    adc.w !frames_taken
+    sta.w !frames_taken+1
+    inc.w !frames_taken+2
+    lda.w !frames_taken+1
+    cmp.b #$3C
+    bcc .lFC37
+    lda.w !frames_taken+2
+    sta.w !frames_taken+3
+    stz.w !frames_taken+2
+    lda.w !frames_taken+1
+    sec
+    sbc.b #$3C
+    sta.w !frames_taken+1
+.lFC37:
+    sep.b #$20
+    lda.w !frames_since_tick
+    sta.l !gsu_word_108c+2
+    lda.b #$00
+    sta.l !gsu_word_108c+3
+    plb
+    plp
+    rtl
