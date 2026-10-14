@@ -8,8 +8,8 @@
 # BootSoftRestartRest (03:8C95), after BootSoftRestart's demo run, which
 # never returns (it calls SoftResetApuLong, 07:AB88, which nothing else
 # calls); and the
-# demo runs DemoRunSecond (03:8648) and DemoRunThird (03:865E), which the
-# game reaches by a jump and which never return.
+# demo runs DemoRunSecond (03:8648) and DemoRunThird (03:865E), which run
+# longer than the frames given.
 load build/stuntracefx/states/novice_coupe_race1.state
 call 03:8AA9 long p=00 db=00 d=0000 noreturn frames=240
 load build/stuntracefx/states/novice_coupe_race1.state

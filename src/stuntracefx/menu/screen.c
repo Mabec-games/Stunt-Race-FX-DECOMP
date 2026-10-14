@@ -1182,3 +1182,8 @@ void abi_ChampionScreenRun(void)
     abi_ApproachTargetZero();
     abi_MenuRunFrames();
 }
+
+/* TitleScreenRun (0B:AEF2) and TitleScreenLoop (0B:AF10) are held back:
+   with their C, the course menu reached from a demo diverges in lockstep
+   (unit_title, frame 757) while the title's objects run as C; their
+   assembly is filed in menu/screen.asm. */

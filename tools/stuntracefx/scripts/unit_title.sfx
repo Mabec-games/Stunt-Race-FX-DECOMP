@@ -1,0 +1,20 @@
+# unit_title: unit calls of TitleScreenLoop (0B:AF10) from the title screen
+# of the attract play, the idle count $1913 set one short of $400 so the
+# next demo starts at once: the count's wrap to 0 (DemoRunFirst) with
+# $1915 at 2 and the second demo, each with START pressed in it; and
+# DemoRunFourth (03:8653), the title's third demo, entered as a call. The
+# demos run longer than the frames given, so the calls are marked noreturn
+# and judged in lockstep.
+load build/stuntracefx/states/attract_06.state
+wait 400
+set 7E1913 FF,03
+set 7E1915 02,00
+call 0B:AF10 long p=00 db=00 d=0000 noreturn frames=3000 press=START@300
+load build/stuntracefx/states/attract_06.state
+wait 400
+set 7E1913 FF,03
+set 7E1915 00,00
+call 0B:AF10 long p=00 db=00 d=0000 noreturn frames=3000 press=START@300
+load build/stuntracefx/states/attract_06.state
+wait 400
+call 03:8653 long p=30 db=00 d=0000 noreturn frames=600

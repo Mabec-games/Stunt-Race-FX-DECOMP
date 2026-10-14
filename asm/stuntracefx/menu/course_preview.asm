@@ -838,7 +838,7 @@ CourseMenuRun:
     stz.w !packed_time_a+5
     lda.l !wram_1913+4
     bne .lB3FB
-    jsl.l MenuFirstScreen
+    jsl.l TitleScreenRun
     rep.b #$20
     cmp.w #$0000
     beq .lB402

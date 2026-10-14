@@ -374,7 +374,6 @@ RaceHudLoadMenu = $03E6FA                       ; 03:E6FA, RaceHudLoad's way on 
 RaceSoundsAndHud = $07DAA7                      ; 07:DAA7, the engine sounds and the HUD mode's work RaceFrameRun calls (not filed yet)
 OverlayStepC6AA = $07C6AA                       ; 07:C6AA, OverlayFramesUntilFaded's frame work (not filed yet)
 PauseFrameBC1C = $07BC1C                        ; 07:BC1C, the pause's frame work (not filed yet)
-MenuFirstScreen = $0BAEF2                       ; 0B:AEF2, the screen CourseMenuRun shows the first time (not filed yet)
 RaceFrameTail = $02E356                         ; 02:E356, the end of each RaceLoop frame (not filed yet)
 !boot_interrupt_stubs = $038D16                 ; BootColdStart: 16 bytes of interrupt stubs copied to $0101
 AttractRaceSetup = $02CF3E                      ; 02:CF3E, the attract race's setup (not filed yet)

@@ -176,10 +176,23 @@ DemoRunSecond:
     sta.w !seq_stage+34
     jmp.w DemoRunBody
 
+; @routine 03:8653 DemoRunFourth
+; WHAT IT DOES: Runs the third demo of the title screen's cycle: $1A57 = $FC
+; (its offset in the demo tables), then the shared demo run at $03:8683.
+; HOW: A tail JMP into the demo run, reached as original code
+; (jump_routine).
+; Entry: D = $0000. Exit: as the demo run leaves it.
+%at($038653)
+DemoRunFourth:
+    rep.b #$30
+    lda.w #$00FC
+    sta.w !seq_stage+34
+    jmp.w DemoRunBody
+
 ; @routine 03:865E DemoRunThird
 ; WHAT IT DOES: Runs the third of the attract demos: $1A57 = $159, then the
 ; shared demo run at $03:8683; the code after the call (more demos, at
-; $03:866A) has never been reached, the demo run not returning.
+; $03:866A) has not been reached in the traces so far.
 ; HOW: A JSL to the demo run, then on into $03:866A as original code.
 ; Entry: D = $0000. Exit: as the demo run leaves it.
 %at($03865E)

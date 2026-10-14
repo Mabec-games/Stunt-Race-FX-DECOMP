@@ -1557,3 +1557,103 @@ ChampionScreenRun:
     jsr.w ApproachTargetZero
     jsr.w MenuRunFrames
     rtl
+
+; @routine 0B:AEF2 TitleScreenRun
+; WHAT IT DOES: The title screen: opens it (MenuScreenOpen6), $10DA = 0,
+; waits a frame and sets the fade target to full, then its loop
+; (TitleScreenLoop) with the idle count $1913 at 0.
+; HOW: 16-bit registers; $10DA and $1913 by long accesses.
+; Entry: any widths; D = $0000. Exit: as TitleScreenLoop leaves it.
+%at($0BAEF2)
+TitleScreenRun:
+    rep.b #$30
+    jsr.w MenuScreenOpen6
+    sep.b #$20
+    lda.b #$00
+    sta.l !wram_10DA
+    rep.b #$20
+    jsr.w MenuWaitFrame
+    jsr.w ApproachTargetFull
+    rep.b #$30
+    lda.w #$0000
+    sta.l !wram_1913
+
+; @routine 0B:AF10 TitleScreenLoop
+; WHAT IT DOES: The title screen's frames: each runs the objects and builds
+; the sprites; while object kind $12 is idle (handler $D606, +$0A at 0) the
+; count $1913 goes up, and at $400 the screen fades out, $10DA = $FF and the
+; next of three attract demos runs ($1915 counts 0, 1, 2: DemoRunFirst,
+; DemoRunSecond, DemoRunFourth); a demo returning C set leaves with A =
+; $FFFF, C clear restarts the session (BootWarm). Both players' presses are
+; cleared and frame updates 0-3 asked for each frame; the menu's exit
+; ($11EB) leaves with A = 0.
+; HOW: The idle object through direct page + X; a branch back for the next
+; frame.
+; Entry: M 16-bit, X 16-bit; D = $0000. Exit: A = 0 or $FFFF; M 16-bit, X
+; 16-bit; or BootWarm, which never returns.
+%at($0BAF10)
+TitleScreenLoop:
+    jsr.w MenuWaitFrame
+    jsl.l MenuActorsRun
+    jsl.l MenuOamBuild
+    rep.b #$20
+    lda.w #$0012
+    jsr.w MenuActorFind
+    lda.b !dp_08,x
+    cmp.w #$D606
+    bne .lAF88
+    lda.b !actor_0a,x
+    bne .lAF88
+    lda.l !wram_1913
+    inc a
+    sta.l !wram_1913
+    cmp.w #$0400
+    bne .lAF88
+    jsr.w ApproachTargetZero
+    jsr.w MenuRunFrames
+    sep.b #$20
+    lda.b #$FF
+    sta.l !wram_10DA
+    rep.b #$20
+    lda.l !wram_1913+2
+    inc a
+    and.w #$0003
+    cmp.w #$0003
+    bne .lAF5C
+    lda.w #$0000
+.lAF5C:
+    sta.l !wram_1913+2
+    cmp.w #$0000
+    beq .lAF74
+    cmp.w #$0001
+    beq .lAF7E
+    jsl.l DemoRunFourth
+    bcs .lAFA6
+    jml.l BootWarm
+.lAF74:
+    jsl.l DemoRunFirst
+    bcs .lAFA6
+    jml.l BootWarm
+.lAF7E:
+    jsl.l DemoRunSecond
+    bcs .lAFA6
+    jml.l BootWarm
+.lAF88:
+    stz.w !menu_joy1_pressed
+    stz.w !menu_joy2_pressed
+    sep.b #$20
+    lda.w !frame_update_flags
+    ora.b #$0F
+    sta.w !frame_update_flags
+    rep.b #$30
+    lda.w !menu_exit
+    bne .lAFA2
+    brl TitleScreenLoop
+.lAFA2:
+    lda.w #$0000
+    rtl
+.lAFA6:
+TitleScreenLoop_quit:
+    rep.b #$30
+    lda.w #$FFFF
+    rtl

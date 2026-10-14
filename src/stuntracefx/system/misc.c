@@ -282,7 +282,7 @@ void abi_DemoRunSecond(void)
  * @routine 03:865E DemoRunThird
  * WHAT IT DOES: Runs the third of the attract demos: $1A57 = $159, then the
  * shared demo run at $03:8683; the code after the call (more demos, at
- * $03:866A) has never been reached, the demo run not returning.
+ * $03:866A) has not been reached in the traces so far.
  * HOW: A JSL to the demo run, then on into $03:866A as original code.
  * Entry: D = $0000. Exit: as the demo run leaves it.
  */
@@ -294,4 +294,21 @@ void abi_DemoRunThird(void)
     wr16((uint32_t)cpu.db << 16 | 0x1A57, 0x0159);
     call_routine(0x038683, 1);
     jump_routine(0x03866A);
+}
+
+/*
+ * @routine 03:8653 DemoRunFourth
+ * WHAT IT DOES: Runs the third demo of the title screen's cycle: $1A57 = $FC
+ * (its offset in the demo tables), then the shared demo run at $03:8683.
+ * HOW: A tail JMP into the demo run, reached as original code
+ * (jump_routine).
+ * Entry: D = $0000. Exit: as the demo run leaves it.
+ */
+void abi_DemoRunFourth(void)
+{
+    op_rep(P_M | P_X);
+    cpu.a = 0x00FC;
+    cpu.p = nz16(cpu.p, cpu.a);
+    wr16((uint32_t)cpu.db << 16 | 0x1A57, 0x00FC);
+    jump_routine(0x038683);
 }
