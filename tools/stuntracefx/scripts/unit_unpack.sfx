@@ -1,0 +1,19 @@
+# unit_unpack: unit tests (fx) of FxUnpackProgram (01:CF42) on the paths no
+# script reaches, each a program started on its own:
+# - packed data ending at $05:9C1A (output size $F4 to $70:3000): its
+#   bits give a literal run of code 7, then a 1 and ten 0 bits, so the
+#   run's length is read in 18 bits;
+# - the game's own data ending at $18:FB90 (size $180 to $70:3000) with
+#   $70:00A2 = $0101, so the pass adds it to the output's words.
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700068 1A,9C
+set 70006A 05,00
+set 70002C 00,30
+set 7000A2 00,00
+fx 01:CF42 stop=80E3
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700068 90,FB
+set 70006A 18,00
+set 70002C 00,30
+set 7000A2 01,01
+fx 01:CF42 stop=80E3
