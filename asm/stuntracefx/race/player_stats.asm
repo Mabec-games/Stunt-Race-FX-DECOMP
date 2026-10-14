@@ -887,3 +887,385 @@ StuntPanelDone:
     jsl.l WindowSlideUpSound
 .done:
     rts
+
+; @routine 07:DAA7 RaceSoundsAndHud
+; WHAT IT DOES: The race frame's sounds and HUD: the soft reset check,
+; player 1's engine sounds (EngineSoundsPlayer1, Y = 0), then the HUD
+; mode $0D2B's work from the table at $07:DABE: mode 0 the race (the
+; stats and phase, time bonus and digits, hold rows, palette cycle; or
+; PlayerOnePhaseStep's with $0D4C set), mode 1 Stunt Trax (StuntPhaseStep,
+; or TimeUpPhaseStep with $0D4E set), modes 2 and 3 RaceHudModeTwo.
+; HOW: P and the data bank pushed, data bank $07, 8-bit registers; JMP
+; (abs,X); each mode ends pulling them and returning (RTL).
+; Entry: any widths. Exit: P and the data bank unchanged; A, X, Y as the
+; mode's work leaves them.
+%at($07DAA7)
+RaceSoundsAndHud:
+    php
+    phb
+    phk
+    plb
+    sep.b #$30
+    jsr.w SoftResetCheck
+    ldy.b #$00
+    jsl.l EngineSoundsPlayer1
+    lda.w !hud_mode
+    asl a
+    tax
+    jmp.w (.modes,x)
+.modes:
+    dw .mode0,.mode1,RaceHudModeTwo,RaceHudModeTwo
+.mode0:
+    phb
+    lda.b #$7E
+    pha
+    plb
+    rep.b #$30
+    ldx.w !wram_0346
+    ldy.w !obj_link_w,x
+    lda.w !obj_link_w,y
+    tay
+    lda.w !bank0_base,y
+    and.w #$4000
+    beq .word_0166
+    lda.w #$0177
+    bra .word
+.word_0166:
+    lda.w #$0166
+.word:
+    sta.l !wram_0D29
+    sep.b #$30
+    plb
+    lda.w !wram_0D24
+    cmp.b #$03
+    bne .race
+    lda.w !engine_phase_p1
+    cmp.b #$08
+    bcc .race
+    lda.b #$01
+    sta.w !fade_out
+    lda.w !fade_level_hi
+    bpl .end0
+    jmp.w WindowDigitStepEC6B
+.race:
+    ldx.b #$00
+    lda.w !digit62_override
+    bne .override
+    jsr.w PlayerStatsThenPhaseE232
+    jsr.w TimeBonusTally
+    jsr.w TimeLeftDigits
+    jsr.w HudHoldDraw
+    jsl.l CoursePaletteCycle
+.end0:
+    rep.b #$20
+    stz.w !joy1_pressed_copy
+    plb
+    plp
+    rtl
+.override:
+    jsr.w PlayerOnePhaseStep
+    jsr.w TimeBonusTally
+    jsr.w TimeLeftDigits
+    jsr.w TimeBonusTransfer
+    bra .end0
+.mode1:
+    lda.w !hud_blank
+    bne .blank
+    ldy.b #$00
+    jsr.w StuntPhaseStep
+    sep.b #$20
+    lda.w !wram_0E59
+    bne .end1
+    jsr.w TimeBonusTally
+    jsr.w TimeLeftDigits
+    jsr.w TimeBonusTransfer
+.end1:
+    rep.b #$20
+    stz.w !joy1_pressed_copy
+    stz.w !joy2_pressed_copy
+    plb
+    plp
+    rtl
+.blank:
+    stz.w !wram_0D53
+    ldy.b #$00
+    jsr.w TimeUpPhaseStep
+    jsr.w HudBlankDraw
+    rep.b #$20
+    stz.w !joy1_pressed_copy
+    stz.w !joy2_pressed_copy
+    plb
+    plp
+    rtl
+
+; @routine 07:DB71 TimeUpPhaseStep
+; WHAT IT DOES: The race phase each frame for Stunt Trax with $0D4E set,
+; as PlayerOnePhaseStep with the table at $07:DB89: 0 TimeUpPhaseStart, 2
+; TimeUpPhaseSlideIn, 4 TimeUpPhaseSlideOut, 6 TimeUpPhaseRace, 8
+; TimeUpPhaseEnd, 10 $07:EBDC, 12 $07:ECA4.
+; HOW: As PlayerOnePhaseStep, with only X 8-bit for the dispatch.
+; Entry: any widths; data bank $07. Exit: as the handler leaves it.
+%at($07DB71)
+TimeUpPhaseStep:
+    rep.b #$30
+    ldy.w #$0000
+    lda.l !gsu_match_2476
+    tax
+    sep.b #$20
+    jsr.w PlayerStatsFromRecord
+    sep.b #$10
+    lda.w !engine_phase_p1
+    tax
+    jmp.w (.handlers,x)
+.handlers:                              ; seven: phase 14's word is the next code
+    dw TimeUpPhaseStart,TimeUpPhaseSlideIn,TimeUpPhaseSlideOut,TimeUpPhaseRace,TimeUpPhaseEnd,$EBDC,$ECA4
+
+; @routine 07:DB97 TimeUpPhaseStart
+; WHAT IT DOES: TimeUpPhaseStep's phase 0: the first two glyph sprites
+; placed ($0FB0/$0FE0 = $DA, $14; $0FB2/$0FE2 = -$62, $40) and the phase
+; word $0DD6 stepped twice.
+; HOW: 16-bit stores and INCs through the data bank.
+; Entry: X 8-bit; data bank $07. Exit: M 16-bit; A = $0040; N, Z from the
+; phase word.
+%at($07DB97)
+TimeUpPhaseStart:
+    rep.b #$20
+    lda.w #$00DA
+    sta.w !glyph_spr_x
+    lda.w #$0014
+    sta.w !glyph_spr_y
+    lda.w #$FF9E
+    sta.w !glyph_spr_x+2
+    lda.w #$0040
+    sta.w !glyph_spr_y+2
+    inc.w !engine_phase_p1
+    inc.w !engine_phase_p1
+    rts
+
+; @routine 07:DBB8 TimeUpPhaseSlideIn
+; WHAT IT DOES: TimeUpPhaseStep's phase 2: 07:A492 (GlyphSpritesSlideIn).
+; HOW: JSR, RTS.
+; Entry: as GlyphSpritesSlideIn. Exit: as GlyphSpritesSlideIn.
+%at($07DBB8)
+TimeUpPhaseSlideIn:
+    jsr.w GlyphSpritesSlideIn
+    rts
+
+; @routine 07:DBBC TimeUpPhaseSlideOut
+; WHAT IT DOES: TimeUpPhaseStep's phase 4: 07:A451 (GlyphSpritesSlideOut).
+; HOW: JSR, RTS.
+; Entry: as GlyphSpritesSlideOut. Exit: as GlyphSpritesSlideOut.
+%at($07DBBC)
+TimeUpPhaseSlideOut:
+    jsr.w GlyphSpritesSlideOut
+    rts
+
+; @routine 07:DBC0 TimeUpPhaseRace
+; WHAT IT DOES: TimeUpPhaseStep's phase 6: the pause (PauseOnStart); at
+; the time's limit 9:59.99 ($0E66, $0E64, $0E63), $0E5A = $20, phase $0C
+; and sound $31; otherwise, unless $1F71 is set, phase 8, $0D53 = 8,
+; $0E5B cleared, $0E58 = $30, sound $3E, $0592-$0594 = $55 (the sprites'
+; high bits) and the time's digits (TimeToLapDigits).
+; HOW: 8-bit compares and stores through the data bank.
+; Entry: any widths; data bank $07. Exit: M 8-bit; A as the last step
+; leaves it.
+%at($07DBC0)
+TimeUpPhaseRace:
+    jsr.w PauseOnStart
+    sep.b #$20
+    lda.w !race_time_minutes
+    cmp.b #$09
+    bne .running
+    lda.w !race_time_seconds
+    cmp.b #$59
+    bne .running
+    lda.w !race_time_fraction
+    cmp.b #$99
+    beq .limit
+.running:
+    lda.w !script_byte_1f71
+    bne .done
+    lda.b #$08
+    sta.w !engine_phase_p1
+    sta.w !wram_0D53
+    stz.w !wram_0E5B
+    lda.b #$30
+    sta.w !wram_0E58
+    lda.b #$3E
+    jsl.l SoundPort0QueuePush
+    lda.b #$55
+    sta.w !oam_high_16+7
+    sta.w !oam_high_16+8
+    sta.w !oam_high_16+9
+    jsr.w TimeToLapDigits
+.done:
+    rts
+.limit:
+    lda.b #$20
+    sta.w !wram_0E59+1
+    lda.b #$0C
+    sta.w !engine_phase_p1
+    lda.b #$31
+    jsl.l SoundPort0QueuePush
+    rts
+
+; @routine 07:DC15 TimeUpPhaseEnd
+; WHAT IT DOES: TimeUpPhaseStep's phase 8: while $0E58 counts down, the
+; lap digits (HudLapDigitsDraw) and, with player 1 behind, the word
+; (HudLeadWordDraw); at 0, $0D59 cleared, the championship screen's loop
+; and on at WindowDigitStepEC6B ($0DD4 set) or WindowDigitStepEC80.
+; HOW: 8-bit count through the data bank; the CMP #$20 before the draw
+; branches to the next instruction either way.
+; Entry: any widths; data bank $07. Exit: M 8-bit; as the last step
+; leaves it.
+%at($07DC15)
+TimeUpPhaseEnd:
+    sep.b #$20
+    lda.w !wram_0E58
+    beq .over
+    dec a
+    sta.w !wram_0E58
+    cmp.b #$20
+    bne .draw
+.draw:
+    jsr.w HudLapDigitsDraw
+    sep.b #$20
+    lda.w !p1_lead
+    bpl .done
+    jsr.w HudLeadWordDraw
+.done:
+    rts
+.over:
+    sep.b #$20
+    stz.w !wram_0D59
+    jsr.w ChampionshipScreenLoop
+    sep.b #$20
+    lda.w !sound_port1_last+2
+    beq .other
+    jmp.w WindowDigitStepEC6B
+.other:
+    jmp.w WindowDigitStepEC80
+
+; @routine 07:DC47 RaceHudModeTwo
+; WHAT IT DOES: RaceSoundsAndHud's frame for HUD modes 2 and 3: $0D29 =
+; $0214 or $0182 by bit 14 of the player's car's link's link's first
+; word, player 0's stats and phase (PlayerStatsThenPhaseDD35, Y = 0), the
+; time rows (HudTimesDraw) and the course's palette cycle; then both
+; players' presses cleared.
+; HOW: Data bank $7E for the car, then back; ends pulling the data bank
+; and P RaceSoundsAndHud pushed.
+; Entry: M 8-bit, X 8-bit, data bank $07; the data bank and P on the
+; stack above the return address. Exit: P and the data bank pulled; A as
+; the clears leave it (M 16-bit before the PLP).
+%at($07DC47)
+RaceHudModeTwo:
+    sep.b #$20
+    phb
+    lda.b #$7E
+    pha
+    plb
+    rep.b #$30
+    ldx.w !wram_0346
+    ldy.w !obj_link_w,x
+    lda.w !obj_link_w,y
+    tay
+    lda.w !bank0_base,y
+    and.w #$4000
+    beq .word_0182
+    lda.w #$0214
+    bra .word
+.word_0182:
+    lda.w #$0182
+.word:
+    sta.l !wram_0D29
+    sep.b #$30
+    plb
+    ldy.b #$00
+    jsr.w PlayerStatsThenPhaseDD35
+    jsr.w HudTimesDraw
+    jsl.l CoursePaletteCycle
+    rep.b #$20
+    stz.w !joy1_pressed_copy
+    stz.w !joy2_pressed_copy
+    plb
+    plp
+    rtl
+
+; @routine 07:DC88 RaceEndCountdownFade
+; WHAT IT DOES: The race's end, frame by frame: counts $0E56 down; at 0 in
+; HUD mode 0 starts the fade out ($0E3A = 1) and, once it is done ($0D61
+; negative), goes on at WindowDigitStepEBDD; in other modes $0D59
+; cleared, sound $30, the championship screen's loop and on at
+; WindowDigitStepEC6B ($0DD4 set) or WindowDigitStepEC80.
+; HOW: Waits for $0D52 each frame; 8-bit through the data bank.
+; Entry: any widths; data bank $07. Exit: does not return (jumps on).
+%at($07DC88)
+RaceEndCountdownFade:
+    sep.b #$20
+    lda.w !hud_blank+4
+    beq RaceEndCountdownFade
+    stz.w !hud_blank+4
+    lda.w !wram_0E54+2
+    beq RaceEndCountdownFade_count_done
+    dec a
+    sta.w !wram_0E54+2
+    bne RaceEndCountdownFade
+    lda.w !hud_mode
+    beq RaceEndCountdownFade_fade
+    stz.w !wram_0D59
+    lda.b #$30
+    jsl.l SoundPort0QueuePushRaw
+    jsr.w ChampionshipScreenLoop
+
+; @routine 07:DCAE RaceEndCountdownFadeOn
+; WHAT IT DOES: RaceEndCountdownFade's last step as an entry: on at
+; WindowDigitStepEC6B with $0DD4 set, else at WindowDigitStepEC80.
+; HOW: SEP #$20, LDA $0DD4, then the jump.
+; Entry: any widths; data bank $07. Exit: does not return (jumps on).
+%at($07DCAE)
+RaceEndCountdownFadeOn:
+    sep.b #$20
+    lda.w !sound_port1_last+2
+    beq .other
+    jmp.w WindowDigitStepEC6B
+.other:
+    jmp.w WindowDigitStepEC80
+RaceEndCountdownFade_fade:
+    lda.b #$01
+    sta.w !fade_out
+    bra RaceEndCountdownFade
+RaceEndCountdownFade_count_done:
+    lda.w !fade_level_hi
+    bpl RaceEndCountdownFade
+    jmp.w WindowDigitStepEBDD
+
+; @routine 07:DCCA RaceEndCountdown
+; WHAT IT DOES: The race's end, frame by frame: counts $0E5A down; at 0,
+; $0D59 cleared, the championship screen's loop and on at
+; WindowDigitStepEC6B ($0DD4 set) or WindowDigitStepEC80.
+; HOW: Waits for $0D52 each frame; 8-bit through the data bank.
+; Entry: any widths; data bank $07. Exit: does not return (jumps on).
+%at($07DCCA)
+RaceEndCountdown:
+    sep.b #$20
+    lda.w !hud_blank+4
+    beq RaceEndCountdown
+    stz.w !hud_blank+4
+    dec.w !wram_0E59+1
+    bne RaceEndCountdown
+    stz.w !wram_0D59
+    jsr.w ChampionshipScreenLoop
+
+; @routine 07:DCDF RaceEndCountdownOn
+; WHAT IT DOES: RaceEndCountdown's last step as an entry: on at
+; WindowDigitStepEC6B with $0DD4 set, else at WindowDigitStepEC80.
+; HOW: SEP #$20, LDA $0DD4, then the jump.
+; Entry: any widths; data bank $07. Exit: does not return (jumps on).
+%at($07DCDF)
+RaceEndCountdownOn:
+    sep.b #$20
+    lda.w !sound_port1_last+2
+    beq .other
+    jmp.w WindowDigitStepEC6B
+.other:
+    jmp.w WindowDigitStepEC80

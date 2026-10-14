@@ -1110,3 +1110,534 @@ void abi_StuntPhaseStep(void)
     case 0xE99D: jump_routine(0x07E99D); break;
     }
 }
+
+void abi_SoftResetCheck(void);
+void abi_EngineSoundsPlayer1(void);
+void abi_PlayerStatsThenPhaseE232(void);
+void abi_PlayerStatsThenPhaseDD35(void);
+void abi_TimeBonusTally(void);
+void abi_TimeLeftDigits(void);
+void abi_TimeBonusTransfer(void);
+void abi_HudHoldDraw(void);
+void abi_HudTimesDraw(void);
+void abi_CoursePaletteCycle(void);
+void abi_ChampionshipScreenLoop(void);
+void abi_HudLapDigitsDraw(void);
+void abi_HudLeadWordDraw(void);
+
+/* PHB, LDA #$7E, PHA, PLB, REP #$30, then the player's car ($0346): its
+   link's link's first word, bit 14 picking the word for $0D29 (set or
+   clear); SEP #$30, PLB. */
+static void hud_car_word(uint16_t set, uint16_t clear)
+{
+    uint16_t x, y, w;
+
+    op_rep(P_M | P_X);
+    x = rd16(0x7E0346);
+    y = rd16(0x7E0000 | (uint16_t)(0x204F + x));
+    y = rd16(0x7E0000 | (uint16_t)(0x204F + y));
+    w = (uint16_t)(rd16(0x7E0000 | y) & 0x4000);
+    cpu.x = x;
+    cpu.y = y;
+    w = w ? set : clear;
+    cpu.a = w;
+    wr16(0x000D29, w);
+    op_sep(P_M | P_X);
+    cpu.p = nz8(cpu.p, cpu.db);
+}
+
+/* The end of a HUD mode's frame: REP #$20, the presses cleared ($0D1A,
+   and $0D1C with both), then the data bank and P pulled: from the stack
+   for an inner entry, else as kept. */
+static void hud_end(int both, int inner, uint8_t p0, uint8_t db0)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    op_rep(P_M);
+    wr16(b | 0x0D1A, 0x0000);
+    if (both)
+        wr16(b | 0x0D1C, 0x0000);
+    if (inner) {
+        cpu.s++;
+        db0 = rd8((uint16_t)cpu.s);
+        cpu.s++;
+        p0 = rd8((uint16_t)cpu.s);
+    }
+    cpu.db = db0;
+    cpu.p = nz8(cpu.p, db0);
+    op_plp(p0);
+}
+
+/*
+ * @routine 07:DC47 RaceHudModeTwo
+ * WHAT IT DOES: RaceSoundsAndHud's frame for HUD modes 2 and 3: $0D29 =
+ * $0214 or $0182 by bit 14 of the player's car's link's link's first
+ * word, player 0's stats and phase (PlayerStatsThenPhaseDD35, Y = 0), the
+ * time rows (HudTimesDraw) and the course's palette cycle; then both
+ * players' presses cleared.
+ * HOW: Data bank $7E for the car, then back; ends pulling the data bank
+ * and P RaceSoundsAndHud pushed.
+ * Entry: M 8-bit, X 8-bit, data bank $07; the data bank and P on the
+ * stack above the return address. Exit: P and the data bank pulled; A as
+ * the clears leave it (M 16-bit before the PLP).
+ */
+static void hud_mode_two(int inner, uint8_t p0, uint8_t db0)
+{
+    uint8_t db = cpu.db;
+
+    op_sep(P_M);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x7E);
+    cpu.db = 0x7E;
+    hud_car_word(0x0214, 0x0182);
+    cpu.db = db;
+    cpu.p = nz8(cpu.p, db);
+    cpu.y = 0x0000;
+    cpu.p = nz8(cpu.p, 0);
+    abi_PlayerStatsThenPhaseDD35();
+    abi_HudTimesDraw();
+    abi_CoursePaletteCycle();
+    hud_end(1, inner, p0, db0);
+}
+
+void abi_RaceHudModeTwo(void)
+{
+    hud_mode_two(1, 0, 0);
+}
+
+/* HUD mode 0: $0D29 = $0177 or $0166; with $0D24 = 3 and the phase at 8
+   or more (never in the traces), the fade out started and, once it is
+   done, 07:EC6B; otherwise, with $0D4C set, player 1's phase step, the
+   time bonus and digits and its transfer, else the stats and phase
+   (PlayerStatsThenPhaseE232), the time bonus and digits, the hold rows and
+   the palette cycle; then player 1's presses cleared. */
+static void hud_mode_zero(uint8_t p0, uint8_t db0)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t db = cpu.db, v;
+    static const uint8_t pushed_none = 0;
+
+    (void)pushed_none;
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x7E);
+    cpu.db = 0x7E;
+    hud_car_word(0x0177, 0x0166);
+    cpu.db = db;
+    cpu.p = nz8(cpu.p, db);
+    op_lda8(b | 0x0D24);
+    v = (uint8_t)cpu.a;
+    if (v == 0x03) {
+        op_lda8(b | 0x0DD6);
+        if ((uint8_t)cpu.a >= 0x08) {
+            uint8_t pushed[2];
+
+            cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
+            wr8(b | 0x0E3A, 0x01);
+            op_lda8(b | 0x0D61);
+            if (!((uint8_t)cpu.a & 0x80)) {
+                hud_end(0, 0, p0, db0);
+                return;
+            }
+            pushed[0] = p0;
+            pushed[1] = db0;
+            jump_routine_pushed(0x07EC6B, pushed, 2);
+            return;
+        }
+    }
+    cpu.x = 0x0000;
+    cpu.p = nz8(cpu.p, 0);
+    op_lda8(b | 0x0D4C);
+    if ((uint8_t)cpu.a) {
+        abi_PlayerOnePhaseStep();
+        abi_TimeBonusTally();
+        abi_TimeLeftDigits();
+        abi_TimeBonusTransfer();
+    } else {
+        abi_PlayerStatsThenPhaseE232();
+        abi_TimeBonusTally();
+        abi_TimeLeftDigits();
+        abi_HudHoldDraw();
+        abi_CoursePaletteCycle();
+    }
+    hud_end(0, 0, p0, db0);
+}
+
+void abi_TimeUpPhaseStep(void);
+void abi_HudBlankDraw(void);
+
+/* HUD mode 1 (Stunt Trax): with $0D4E clear, the Stunt Trax phase
+   (StuntPhaseStep, Y = 0) and, unless $0E59 is set, the time bonus, its
+   digits and transfer; with it set, $0D53 cleared, TimeUpPhaseStep and
+   07:A6DD; then both players' presses cleared. */
+static void hud_mode_one(uint8_t p0, uint8_t db0)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    op_lda8(b | 0x0D4E);
+    if ((uint8_t)cpu.a) {
+        wr8(b | 0x0D53, 0x00);
+        cpu.y = 0x0000;
+        cpu.p = nz8(cpu.p, 0);
+        abi_TimeUpPhaseStep();
+        call_routine(0x07A6DD, 0);
+        hud_end(1, 0, p0, db0);
+        return;
+    }
+    cpu.y = 0x0000;
+    cpu.p = nz8(cpu.p, 0);
+    abi_StuntPhaseStep();
+    op_sep(P_M);
+    op_lda8(b | 0x0E59);
+    if (!(uint8_t)cpu.a) {
+        abi_TimeBonusTally();
+        abi_TimeLeftDigits();
+        abi_TimeBonusTransfer();
+    }
+    hud_end(1, 0, p0, db0);
+}
+
+/*
+ * @routine 07:DAA7 RaceSoundsAndHud
+ * WHAT IT DOES: The race frame's sounds and HUD: the soft reset check,
+ * player 1's engine sounds (EngineSoundsPlayer1, Y = 0), then the HUD
+ * mode $0D2B's work from the table at $07:DABE: mode 0 the race (the
+ * stats and phase, time bonus and digits, hold rows, palette cycle; or
+ * PlayerOnePhaseStep's with $0D4C set), mode 1 Stunt Trax (StuntPhaseStep,
+ * or TimeUpPhaseStep with $0D4E set), modes 2 and 3 RaceHudModeTwo.
+ * HOW: P and the data bank pushed, data bank $07, 8-bit registers; JMP
+ * (abs,X); each mode ends pulling them and returning (RTL).
+ * Entry: any widths. Exit: P and the data bank unchanged; A, X, Y as the
+ * mode's work leaves them.
+ */
+void abi_RaceSoundsAndHud(void)
+{
+    uint8_t p0 = cpu.p, db0 = cpu.db;
+
+    cpu.db = 0x07;
+    cpu.p = nz8(cpu.p, 0x07);
+    op_sep(P_M | P_X);
+    abi_SoftResetCheck();
+    cpu.y = 0x0000;
+    cpu.p = nz8(cpu.p, 0);
+    abi_EngineSoundsPlayer1();
+    op_lda8(0x070D2B);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | (uint8_t)(cpu.a << 1));
+    cpu.x = (uint8_t)cpu.a;
+    cpu.p = nz8(cpu.p, (uint8_t)cpu.x);
+    switch (rd16(0x07DABE + cpu.x)) {
+    case 0xDAC6: hud_mode_zero(p0, db0); break;
+    case 0xDB36: hud_mode_one(p0, db0); break;
+    case 0xDC47: hud_mode_two(0, p0, db0); break;
+    }
+}
+
+/*
+ * @routine 07:DB97 TimeUpPhaseStart
+ * WHAT IT DOES: TimeUpPhaseStep's phase 0: the first two glyph sprites
+ * placed ($0FB0/$0FE0 = $DA, $14; $0FB2/$0FE2 = -$62, $40) and the phase
+ * word $0DD6 stepped twice.
+ * HOW: 16-bit stores and INCs through the data bank.
+ * Entry: X 8-bit; data bank $07. Exit: M 16-bit; A = $0040; N, Z from the
+ * phase word.
+ */
+void abi_TimeUpPhaseStart(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t v;
+    int i;
+
+    op_rep(P_M);
+    op_lda16_imm(0x00DA);
+    wr16(b | 0x0FB0, 0x00DA);
+    op_lda16_imm(0x0014);
+    wr16(b | 0x0FE0, 0x0014);
+    op_lda16_imm(0xFF9E);
+    wr16(b | 0x0FB2, 0xFF9E);
+    op_lda16_imm(0x0040);
+    wr16(b | 0x0FE2, 0x0040);
+    for (i = 0; i < 2; i++) {
+        v = (uint16_t)(rd16(b | 0x0DD6) + 1);
+        wr16(b | 0x0DD6, v);
+        cpu.p = nz16(cpu.p, v);
+    }
+}
+
+/*
+ * @routine 07:DBB8 TimeUpPhaseSlideIn
+ * WHAT IT DOES: TimeUpPhaseStep's phase 2: 07:A492 (GlyphSpritesSlideIn).
+ * HOW: JSR, RTS.
+ * Entry: as GlyphSpritesSlideIn. Exit: as GlyphSpritesSlideIn.
+ */
+void abi_TimeUpPhaseSlideIn(void)
+{
+    call_routine(0x07A492, 0);
+}
+
+/*
+ * @routine 07:DBBC TimeUpPhaseSlideOut
+ * WHAT IT DOES: TimeUpPhaseStep's phase 4: 07:A451 (GlyphSpritesSlideOut).
+ * HOW: JSR, RTS.
+ * Entry: as GlyphSpritesSlideOut. Exit: as GlyphSpritesSlideOut.
+ */
+void abi_TimeUpPhaseSlideOut(void)
+{
+    call_routine(0x07A451, 0);
+}
+
+/* CMP # (8-bit): N, Z, C as the compare sets them; whether equal. */
+static int time_cmp8(uint8_t m)
+{
+    uint8_t a = (uint8_t)cpu.a;
+
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(a - m)) & ~P_C) | (a >= m ? P_C : 0));
+    return a == m;
+}
+
+/*
+ * @routine 07:DBC0 TimeUpPhaseRace
+ * WHAT IT DOES: TimeUpPhaseStep's phase 6: the pause (PauseOnStart); at
+ * the time's limit 9:59.99 ($0E66, $0E64, $0E63), $0E5A = $20, phase $0C
+ * and sound $31; otherwise, unless $1F71 is set, phase 8, $0D53 = 8,
+ * $0E5B cleared, $0E58 = $30, sound $3E, $0592-$0594 = $55 (the sprites'
+ * high bits) and the time's digits (TimeToLapDigits).
+ * HOW: 8-bit compares and stores through the data bank.
+ * Entry: any widths; data bank $07. Exit: M 8-bit; A as the last step
+ * leaves it.
+ */
+void abi_TimeUpPhaseRace(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    abi_PauseOnStart();
+    op_sep(P_M);
+    op_lda8(b | 0x0E66);
+    if (time_cmp8(0x09)) {
+        op_lda8(b | 0x0E64);
+        if (time_cmp8(0x59)) {
+            op_lda8(b | 0x0E63);
+            if (time_cmp8(0x99)) {
+                cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x20);
+                wr8(b | 0x0E5A, 0x20);
+                cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x0C);
+                wr8(b | 0x0DD6, 0x0C);
+                cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x31);
+                cpu.p = nz8(cpu.p, 0x31);
+                abi_SoundPort0QueuePush();
+                return;
+            }
+        }
+    }
+    op_lda8(b | 0x1F71);
+    if ((uint8_t)cpu.a)
+        return;
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x08);
+    wr8(b | 0x0DD6, 0x08);
+    wr8(b | 0x0D53, 0x08);
+    wr8(b | 0x0E5B, 0x00);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x30);
+    wr8(b | 0x0E58, 0x30);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x3E);
+    cpu.p = nz8(cpu.p, 0x3E);
+    abi_SoundPort0QueuePush();
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x55);
+    cpu.p = nz8(cpu.p, 0x55);
+    wr8(b | 0x0592, 0x55);
+    wr8(b | 0x0593, 0x55);
+    wr8(b | 0x0594, 0x55);
+    call_routine(0x07AD1B, 0);
+}
+
+/* SEP #$20, LDA $0DD4: on at WindowDigitStepEC6B when set, else at
+   WindowDigitStepEC80 (jumps). */
+static void race_end_go_on(uint32_t b)
+{
+    op_sep(P_M);
+    op_lda8(b | 0x0DD4);
+    if ((uint8_t)cpu.a)
+        jump_routine(0x07EC6B);
+    else
+        jump_routine(0x07EC80);
+}
+
+/*
+ * @routine 07:DC15 TimeUpPhaseEnd
+ * WHAT IT DOES: TimeUpPhaseStep's phase 8: while $0E58 counts down, the
+ * lap digits (HudLapDigitsDraw) and, with player 1 behind, the word
+ * (HudLeadWordDraw); at 0, $0D59 cleared, the championship screen's loop
+ * and on at WindowDigitStepEC6B ($0DD4 set) or WindowDigitStepEC80.
+ * HOW: 8-bit count through the data bank; the CMP #$20 before the draw
+ * branches to the next instruction either way.
+ * Entry: any widths; data bank $07. Exit: M 8-bit; as the last step
+ * leaves it.
+ */
+void abi_TimeUpPhaseEnd(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v;
+
+    op_sep(P_M);
+    op_lda8(b | 0x0E58);
+    v = (uint8_t)cpu.a;
+    if (!v) {
+        op_sep(P_M);
+        wr8(b | 0x0D59, 0x00);
+        abi_ChampionshipScreenLoop();
+        race_end_go_on(b);
+        return;
+    }
+    v = (uint8_t)(v - 1);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    wr8(b | 0x0E58, v);
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x20)) & ~P_C) | (v >= 0x20 ? P_C : 0));
+    abi_HudLapDigitsDraw();
+    op_sep(P_M);
+    op_lda8(b | 0x0FA3);
+    if ((uint8_t)cpu.a & 0x80)
+        abi_HudLeadWordDraw();
+}
+
+/*
+ * @routine 07:DB71 TimeUpPhaseStep
+ * WHAT IT DOES: The race phase each frame for Stunt Trax with $0D4E set,
+ * as PlayerOnePhaseStep with the table at $07:DB89: 0 TimeUpPhaseStart, 2
+ * TimeUpPhaseSlideIn, 4 TimeUpPhaseSlideOut, 6 TimeUpPhaseRace, 8
+ * TimeUpPhaseEnd, 10 $07:EBDC, 12 $07:ECA4.
+ * HOW: As PlayerOnePhaseStep, with only X 8-bit for the dispatch.
+ * Entry: any widths; data bank $07. Exit: as the handler leaves it.
+ */
+void abi_TimeUpPhaseStep(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    op_rep(P_M | P_X);
+    cpu.y = 0x0000;
+    cpu.p = nz16(cpu.p, 0);
+    op_lda16(0x702476);
+    op_tax16();
+    op_sep(P_M);
+    abi_PlayerStatsFromRecord();
+    op_sep(P_X);
+    if (cpu.p & P_M)
+        op_lda8(b | 0x0DD6);
+    else
+        op_lda16(b | 0x0DD6);
+    cpu.x = (uint8_t)cpu.a;
+    cpu.p = nz8(cpu.p, (uint8_t)cpu.x);
+    switch (rd16(0x07DB89 + cpu.x)) {
+    case 0xDB97: abi_TimeUpPhaseStart(); break;
+    case 0xDBB8: abi_TimeUpPhaseSlideIn(); break;
+    case 0xDBBC: abi_TimeUpPhaseSlideOut(); break;
+    case 0xDBC0: abi_TimeUpPhaseRace(); break;
+    case 0xDC15: abi_TimeUpPhaseEnd(); break;
+    case 0xEBDC: jump_routine(0x07EBDC); break;
+    case 0xECA4: jump_routine(0x07ECA4); break;
+    }
+}
+
+void abi_RaceEndCountdownFadeOn(void);
+void abi_RaceEndCountdownOn(void);
+
+/* LDA $0D52 until set (the vertical blank), then clear it. */
+static void race_end_vblank(uint32_t b)
+{
+    do {
+        op_sep(P_M);
+        op_lda8(b | 0x0D52);
+    } while (!(uint8_t)cpu.a);
+    wr8(b | 0x0D52, 0x00);
+}
+
+/*
+ * @routine 07:DC88 RaceEndCountdownFade
+ * WHAT IT DOES: The race's end, frame by frame: counts $0E56 down; at 0 in
+ * HUD mode 0 starts the fade out ($0E3A = 1) and, once it is done ($0D61
+ * negative), goes on at WindowDigitStepEBDD; in other modes $0D59
+ * cleared, sound $30, the championship screen's loop and on at
+ * WindowDigitStepEC6B ($0DD4 set) or WindowDigitStepEC80.
+ * HOW: Waits for $0D52 each frame; 8-bit through the data bank.
+ * Entry: any widths; data bank $07. Exit: does not return (jumps on).
+ */
+void abi_RaceEndCountdownFade(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v;
+
+    for (;;) {
+        race_end_vblank(b);
+        op_lda8(b | 0x0E56);
+        v = (uint8_t)cpu.a;
+        if (!v) {
+            op_lda8(b | 0x0D61);
+            if ((uint8_t)cpu.a & 0x80) {
+                jump_routine(0x07EBDD);
+                return;
+            }
+            continue;
+        }
+        v = (uint8_t)(v - 1);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+        cpu.p = nz8(cpu.p, v);
+        wr8(b | 0x0E56, v);
+        if (v)
+            continue;
+        op_lda8(b | 0x0D2B);
+        if ((uint8_t)cpu.a) {
+            wr8(b | 0x0D59, 0x00);
+            cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x30);
+            cpu.p = nz8(cpu.p, 0x30);
+            abi_SoundPort0QueuePushRaw();
+            abi_ChampionshipScreenLoop();
+            abi_RaceEndCountdownFadeOn();
+            return;
+        }
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
+        cpu.p = nz8(cpu.p, 0x01);
+        wr8(b | 0x0E3A, 0x01);
+    }
+}
+
+/*
+ * @routine 07:DCCA RaceEndCountdown
+ * WHAT IT DOES: The race's end, frame by frame: counts $0E5A down; at 0,
+ * $0D59 cleared, the championship screen's loop and on at
+ * WindowDigitStepEC6B ($0DD4 set) or WindowDigitStepEC80.
+ * HOW: Waits for $0D52 each frame; 8-bit through the data bank.
+ * Entry: any widths; data bank $07. Exit: does not return (jumps on).
+ */
+void abi_RaceEndCountdown(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v;
+
+    do {
+        race_end_vblank(b);
+        v = (uint8_t)(rd8(b | 0x0E5A) - 1);
+        wr8(b | 0x0E5A, v);
+        cpu.p = nz8(cpu.p, v);
+    } while (v);
+    wr8(b | 0x0D59, 0x00);
+    abi_ChampionshipScreenLoop();
+    abi_RaceEndCountdownOn();
+}
+
+/*
+ * @routine 07:DCAE RaceEndCountdownFadeOn
+ * WHAT IT DOES: RaceEndCountdownFade's last step as an entry: on at
+ * WindowDigitStepEC6B with $0DD4 set, else at WindowDigitStepEC80.
+ * HOW: SEP #$20, LDA $0DD4, then the jump.
+ * Entry: any widths; data bank $07. Exit: does not return (jumps on).
+ */
+void abi_RaceEndCountdownFadeOn(void)
+{
+    race_end_go_on((uint32_t)cpu.db << 16);
+}
+
+/*
+ * @routine 07:DCDF RaceEndCountdownOn
+ * WHAT IT DOES: RaceEndCountdown's last step as an entry: on at
+ * WindowDigitStepEC6B with $0DD4 set, else at WindowDigitStepEC80.
+ * HOW: SEP #$20, LDA $0DD4, then the jump.
+ * Entry: any widths; data bank $07. Exit: does not return (jumps on).
+ */
+void abi_RaceEndCountdownOn(void)
+{
+    race_end_go_on((uint32_t)cpu.db << 16);
+}
