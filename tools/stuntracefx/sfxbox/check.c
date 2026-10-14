@@ -1473,6 +1473,12 @@ static int ls_exec(uint32_t pc)
     replay_to(cur_n);
     struct SfxboxRegs out = {cpu.a, cpu.x, cpu.y, cpu.unwound ? cpu.s : exit_s, cpu.d, cpu.db, cpu.p, cpu.e, cpu.unwound ? cpu.pc : ret};
     core_set_regs(&out);
+    /* The original's last instruction was the routine's RTS or RTL, not
+       the JSR or JSL that entered it: an entry right after the call (a
+       routine's inner entry, 7E:E4E4 after JSR ColourBlendBy) must not be
+       taken as entered by that JSR. */
+    if (!cpu.unwound)
+        *core_opcode = (uint8_t)(exit_s - r.s == 3 ? 0x6B : 0x60);
     if (calls_from >= 0 && cur_frame >= calls_from)
         fprintf(lsrep, "HDONE frame %ld call %llu at %06X S=%04X%s\n", cur_frame, (unsigned long long)(LOAD(sh->h_calls) - 1),
                 out.pc, out.s, cpu.unwound ? " unwound" : "");
