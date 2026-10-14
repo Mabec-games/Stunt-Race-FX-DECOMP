@@ -338,3 +338,4 @@ ChampionshipStageCF6F = $07CF6F                ; ChampionshipScreenStep: a stage
 ChampionshipStageCCBF = $07CCBF                ; ChampionshipScreenStep: a stage elsewhere in bank 07 (not filed yet)
 !championship_palette = $1F8600     ; ChampionshipScreenStep: the screen's 256 colours
 ObjectExitPlx = $09C3EB                         ; 09:C3EB, PLX then RTS (a shared exit, not filed yet)
+DemoRunBody = $038683                           ; 03:8683, inside the routine at 03:8648 (not filed yet)

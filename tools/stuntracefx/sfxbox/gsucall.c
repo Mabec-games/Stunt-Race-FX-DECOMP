@@ -827,6 +827,13 @@ void gsu_lockstep_past_end(void)
     past_end = 1;
 }
 
+/* The script ended on the original side inside a Super FX call, which the
+   C has finished: the frame it is in can no longer be compared. */
+int gsu_lockstep_is_past_end(void)
+{
+    return past_end;
+}
+
 int gsu_after_frame(long f, char *buf, size_t n)
 {
     if (role != 2 || !sh || past_end) return 0;

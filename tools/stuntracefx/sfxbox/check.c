@@ -1552,7 +1552,7 @@ void lockstep_after_frame(long f)
         core_snapshot(sl->snap);
         STORE(sh->o_frames, f + 1);
     } else if (role == 2) {
-        if (!past_end) compare(f);
+        if (!past_end && !gsu_lockstep_is_past_end()) compare(f);
         STORE(sh->h_frames, f + 1);
     }
 }

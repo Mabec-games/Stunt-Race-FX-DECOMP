@@ -230,3 +230,21 @@ void abi_WramFillZero(void)
     cpu.x = 0x8008;
     cpu.p = (uint8_t)(cpu.p & ~(P_N | P_Z));
 }
+
+/*
+ * @routine 03:863D DemoRunFirst
+ * WHAT IT DOES: Runs the first of the attract demos: $1A57 = 0 (its offset
+ * in the demo tables at $03:8004), then the shared demo run at $03:8683
+ * (course, settings and the race itself).
+ * HOW: A tail JMP into the demo runs of the routine at $03:8648, reached
+ * as original code (jump_routine).
+ * Entry: D = $0000. Exit: as the demo run leaves it.
+ */
+void abi_DemoRunFirst(void)
+{
+    op_rep(P_M | P_X);
+    cpu.a = 0x0000;
+    cpu.p = nz16(cpu.p, 0);
+    wr16((uint32_t)cpu.db << 16 | 0x1A57, 0x0000);
+    jump_routine(0x038683);
+}

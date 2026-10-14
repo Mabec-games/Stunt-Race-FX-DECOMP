@@ -183,3 +183,18 @@ WramFillZero:
     lda.b #$01
     sta.w !MDMAEN
     rts
+
+; @routine 03:863D DemoRunFirst
+; WHAT IT DOES: Runs the first of the attract demos: $1A57 = 0 (its offset
+; in the demo tables at $03:8004), then the shared demo run at $03:8683
+; (course, settings and the race itself).
+; HOW: A tail JMP into the demo runs of the routine at $03:8648, reached
+; as original code (jump_routine).
+; Entry: D = $0000. Exit: as the demo run leaves it.
+%at($03863D)
+DemoRunFirst:
+    rep.b #$30
+    lda.w #$0000
+    sta.w !seq_stage+34
+    jmp.w DemoRunBody
+
