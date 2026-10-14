@@ -852,3 +852,172 @@ void abi_BattleCourseSelectStep(void)
     }
     abi_CourseCursorStep();
 }
+
+/*
+ * @routine 02:FC60 TimeUpSelectDraw
+ * WHAT IT DOES: The time-up course select's flashing sprite position
+ * $0D37: ($80, $60) with $0D4E set; else ($48, $B0) with the cursor $0D48
+ * at 2 and ($B8, $B0) otherwise.
+ * HOW: The bytes tested with an 8-bit X; a 16-bit store; P saved and
+ * restored.
+ * Entry: any widths; data bank $7E or a mirror. Exit: P restored; A = the
+ * position word; X = the last byte tested.
+ */
+void abi_TimeUpSelectDraw(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t p0 = cpu.p;
+    uint16_t v;
+
+    op_sep(P_X);
+    op_rep(P_M);
+    cpu.x = rd8(b | 0x0D4E);
+    if (cpu.x) {
+        v = 0x6080;
+    } else {
+        cpu.x = rd8(b | 0x0D48);
+        v = cpu.x == 0x02 ? 0xB048 : 0xB0B8;
+    }
+    cpu.a = v;
+    wr16(b | 0x0D37, v);
+    op_plp(p0);
+}
+
+/* SEP #$20, LDA #$45, JSL SoundPort0QueuePush: the move sound. */
+static void time_up_sound(void)
+{
+    op_sep(P_M);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x45);
+    cpu.p = nz8(cpu.p, 0x45);
+    abi_SoundPort0QueuePush();
+}
+
+/* LDA #v, STA addr (8-bit). */
+static void time_up_set(uint32_t at, uint8_t v)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+    wr8(at, v);
+}
+
+/*
+ * @routine 02:EB6D TimeUpCursorStep
+ * WHAT IT DOES: The time-up course select's cursor: with $0D4E set, Down
+ * ($0400) clears it and puts the cursor $0D48 at 2; otherwise Up ($0800)
+ * sets $0D4E to $FF; with the cursor at 2, Down puts it at 0 and Right
+ * ($0100) at 3 ($0D63 cleared with Down); elsewhere Down puts it at 1
+ * ($0D63 cleared) and Left ($0200) at 2. Each move with sound $45.
+ * HOW: The pads' word 16-bit, the stores 8-bit.
+ * Entry: M 8-bit; data bank $7E or a mirror. Exit: M 8-bit after a move,
+ * else 16-bit; A as the last step leaves it.
+ */
+void abi_TimeUpCursorStep(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v;
+
+    op_lda8(b | 0x0D4E);
+    if ((uint8_t)cpu.a) {
+        if (sel_pressed16(b, 0x0400)) {
+            time_up_sound();
+            wr8(b | 0x0D4E, 0x00);
+            time_up_set(b | 0x0D48, 0x02);
+        }
+        return;
+    }
+    if (sel_pressed16(b, 0x0800)) {
+        time_up_sound();
+        time_up_set(b | 0x0D4E, 0xFF);
+        return;
+    }
+    op_sep(P_M);
+    op_lda8(b | 0x0D48);
+    v = (uint8_t)cpu.a;
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x02)) & ~P_C) | (v >= 0x02 ? P_C : 0));
+    if (v != 0x02) {
+        if (sel_pressed16(b, 0x0400)) {
+            time_up_sound();
+            wr8(b | 0x0D63, 0x00);
+            time_up_set(b | 0x0D48, 0x01);
+            return;
+        }
+        op_lda16(b | 0x0D1A);
+        cpu.p = (uint8_t)((cpu.p & ~(P_N | P_V | P_Z)) | ((cpu.a >> 8) & 0xC0) | ((cpu.a & 0x0200) ? 0 : P_Z));
+        if (cpu.a & 0x0200) {
+            time_up_sound();
+            time_up_set(b | 0x0D48, 0x02);
+        }
+        return;
+    }
+    if (sel_pressed16(b, 0x0400)) {
+        time_up_sound();
+        wr8(b | 0x0D63, 0x00);
+        time_up_set(b | 0x0D48, 0x00);
+        return;
+    }
+    op_lda16(b | 0x0D1A);
+    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_V | P_Z)) | ((cpu.a >> 8) & 0xC0) | ((cpu.a & 0x0100) ? 0 : P_Z));
+    if (cpu.a & 0x0100) {
+        time_up_sound();
+        time_up_set(b | 0x0D48, 0x03);
+    }
+}
+
+/*
+ * @routine 03:FAFF CourseZoomTimeUp
+ * WHAT IT DOES: As CourseZoomStunt for the time-up select: the course
+ * $0E3D from the cursor $0D48 in the list at $03:FB86, then the zoom from
+ * box ($0D48 - 2) * 8 + $80 to target 8.
+ * HOW: As CourseZoomStunt (BRA to CourseZoomBattle's zoom).
+ * Entry: any widths. Exit: as CourseZoomStunt.
+ */
+void abi_CourseZoomTimeUp(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t a;
+
+    op_rep(P_M | P_X);
+    cpu.x = rd16(b | 0x0D48);
+    a = (uint16_t)(rd16(0x03FB86 + cpu.x) & 0x00FF);
+    cpu.a = a;
+    cpu.p = nz16(cpu.p, a);
+    wr16(b | 0x0E3D, a);
+    op_lda16(b | 0x0D48);
+    cpu.p |= P_C;
+    a = op_sbc16(cpu.a, 0x0002, &cpu.p);
+    a = asl3(a);
+    course_zoom(box_offset(a, 0x0080), 0x0008);
+}
+
+/*
+ * @routine 03:FADB CourseZoomTimeUpNext
+ * WHAT IT DOES: The time-up select's zoom with $0D4E set: the course
+ * $0E3D stepped on within $17-$1A ($17 below or past them), then the zoom
+ * from box $A0 to target 8.
+ * HOW: 16-bit; a jump to CourseZoomBattle's zoom.
+ * Entry: any widths. Exit: as CourseZoomStunt.
+ */
+void abi_CourseZoomTimeUpNext(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t a;
+
+    op_rep(P_M | P_X);
+    op_lda16(b | 0x0E3D);
+    a = cpu.a;
+    op_cmp16(0x0017);
+    if (a >= 0x0017) {
+        a = (uint16_t)(a + 1);
+        cpu.a = a;
+        cpu.p = nz16(cpu.p, a);
+        op_cmp16(0x001B);
+        if (a < 0x001B)
+            goto store;
+    }
+    a = 0x0017;
+    op_lda16_imm(a);
+store:
+    wr16(b | 0x0E3D, a);
+    op_lda16_imm(0x0000);
+    course_zoom(box_offset(0x0000, 0x00A0), 0x0008);
+}

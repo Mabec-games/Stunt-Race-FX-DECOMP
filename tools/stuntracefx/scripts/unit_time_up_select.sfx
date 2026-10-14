@@ -1,0 +1,80 @@
+# unit_time_up_select: the Stunt Trax time-up course select, which no
+# run reaches, from the course select at Bluelake: TimeUpSelectDraw
+# (02:FC60) with $0D4E set and with the cursor at 2 and 0;
+# TimeUpCursorStep (02:EB6D) with $0D4E set and Down or nothing, then
+# clear with Up, the cursor at 0 with Down, Left or nothing and at 2 with
+# Down, Right or nothing; CourseZoomTimeUp (03:FAFF) for cursors 2 and 3;
+# CourseZoomTimeUpNext (03:FADB) for courses 5, $18 and $1A.
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E0D4E 01
+call 02:FC60 p=30 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E0D4E 00
+set 7E0D48 02
+call 02:FC60 p=30 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E0D4E 00
+set 7E0D48 00
+call 02:FC60 p=30 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E0D4E 01
+set 7E0D1A 00,04
+call 02:EB6D p=20 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E0D4E 01
+set 7E0D1A 00,00
+call 02:EB6D p=20 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E0D4E 00
+set 7E0D1A 00,08
+call 02:EB6D p=20 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E0D4E 00
+set 7E0D48 00
+set 7E0D1A 00,04
+call 02:EB6D p=20 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E0D4E 00
+set 7E0D48 00
+set 7E0D1A 00,02
+call 02:EB6D p=20 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E0D4E 00
+set 7E0D48 00
+set 7E0D1A 00,00
+call 02:EB6D p=20 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E0D4E 00
+set 7E0D48 02
+set 7E0D1A 00,04
+call 02:EB6D p=20 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E0D4E 00
+set 7E0D48 02
+set 7E0D1A 00,01
+call 02:EB6D p=20 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E0D4E 00
+set 7E0D48 02
+set 7E0D1A 00,00
+call 02:EB6D p=20 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E0D48 02
+set 7E0D49 00
+call 03:FAFF long p=30 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E0D48 03
+set 7E0D49 00
+call 03:FAFF long p=30 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E0E3D 05
+set 7E0E3E 00
+call 03:FADB long p=30 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E0E3D 18
+set 7E0E3E 00
+call 03:FADB long p=30 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E0E3D 1A
+set 7E0E3E 00
+call 03:FADB long p=30 db=00 d=0000

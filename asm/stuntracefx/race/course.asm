@@ -816,3 +816,171 @@ BattleCourseSelectStep:
 .lEA4F:
     jsr.w CourseCursorStep
     rts
+
+; @routine 02:EB6D TimeUpCursorStep
+; WHAT IT DOES: The time-up course select's cursor: with $0D4E set, Down
+; ($0400) clears it and puts the cursor $0D48 at 2; otherwise Up ($0800)
+; sets $0D4E to $FF; with the cursor at 2, Down puts it at 0 and Right
+; ($0100) at 3 ($0D63 cleared with Down); elsewhere Down puts it at 1
+; ($0D63 cleared) and Left ($0200) at 2. Each move with sound $45.
+; HOW: The pads' word 16-bit, the stores 8-bit.
+; Entry: M 8-bit; data bank $7E or a mirror. Exit: M 8-bit after a move,
+; else 16-bit; A as the last step leaves it.
+%at($02EB6D)
+TimeUpCursorStep:
+    lda.w !hud_blank
+    beq .free
+    rep.b #$20
+    lda.w !joy1_pressed_copy
+    bit.w #$0400
+    beq .done_set
+    sep.b #$20
+    lda.b #$45
+    jsl.l SoundPort0QueuePush
+    stz.w !hud_blank
+    lda.b #$02
+    sta.w !wram_0D48
+.done_set:
+    rts
+.free:
+    rep.b #$20
+    lda.w !joy1_pressed_copy
+    bit.w #$0800
+    beq .rows
+    sep.b #$20
+    lda.b #$45
+    jsl.l SoundPort0QueuePush
+    lda.b #$FF
+    sta.w !hud_blank
+    rts
+.rows:
+    sep.b #$20
+    lda.w !wram_0D48
+    cmp.b #$02
+    beq .at2
+    rep.b #$20
+    lda.w !joy1_pressed_copy
+    bit.w #$0400
+    beq .left
+    sep.b #$20
+    lda.b #$45
+    jsl.l SoundPort0QueuePush
+    stz.w !wram_0D63
+    lda.b #$01
+    sta.w !wram_0D48
+    rts
+.left:
+    lda.w !joy1_pressed_copy
+    bit.w #$0200
+    beq .done
+    sep.b #$20
+    lda.b #$45
+    jsl.l SoundPort0QueuePush
+    lda.b #$02
+    sta.w !wram_0D48
+    rts
+.at2:
+    rep.b #$20
+    lda.w !joy1_pressed_copy
+    bit.w #$0400
+    beq .right
+    sep.b #$20
+    lda.b #$45
+    jsl.l SoundPort0QueuePush
+    stz.w !wram_0D63
+    lda.b #$00
+    sta.w !wram_0D48
+    rts
+.right:
+    lda.w !joy1_pressed_copy
+    bit.w #$0100
+    beq .done
+    sep.b #$20
+    lda.b #$45
+    jsl.l SoundPort0QueuePush
+    lda.b #$03
+    sta.w !wram_0D48
+.done:
+    rts
+
+; @routine 02:FC60 TimeUpSelectDraw
+; WHAT IT DOES: The time-up course select's flashing sprite position
+; $0D37: ($80, $60) with $0D4E set; else ($48, $B0) with the cursor $0D48
+; at 2 and ($B8, $B0) otherwise.
+; HOW: The bytes tested with an 8-bit X; a 16-bit store; P saved and
+; restored.
+; Entry: any widths; data bank $7E or a mirror. Exit: P restored; A = the
+; position word; X = the last byte tested.
+%at($02FC60)
+TimeUpSelectDraw:
+    php
+    sep.b #$10
+    rep.b #$20
+    ldx.w !hud_blank
+    bne .blank
+    ldx.w !wram_0D48
+    cpx.b #$02
+    beq .left
+    lda.w #$B0B8
+    bra .store
+.left:
+    lda.w #$B048
+    bra .store
+.blank:
+    lda.w #$6080
+.store:
+    sta.w !wram_0D37
+    plp
+    rts
+
+; @routine 03:FADB CourseZoomTimeUpNext
+; WHAT IT DOES: The time-up select's zoom with $0D4E set: the course
+; $0E3D stepped on within $17-$1A ($17 below or past them), then the zoom
+; from box $A0 to target 8.
+; HOW: 16-bit; a jump to CourseZoomBattle's zoom.
+; Entry: any widths. Exit: as CourseZoomStunt.
+%at($03FADB)
+CourseZoomTimeUpNext:
+    rep.b #$30
+    lda.w !course
+    cmp.w #$0017
+    bcc .first
+    inc a
+    cmp.w #$001B
+    bcc .store
+.first:
+    lda.w #$0017
+.store:
+    sta.w !course
+    lda.w #$0000
+    clc
+    adc.w #$00A0
+    tax
+    ldy.w #$0008
+    jmp.w CourseZoomBattle_zoom
+
+; @routine 03:FAFF CourseZoomTimeUp
+; WHAT IT DOES: As CourseZoomStunt for the time-up select: the course
+; $0E3D from the cursor $0D48 in the list at $03:FB86, then the zoom from
+; box ($0D48 - 2) * 8 + $80 to target 8.
+; HOW: As CourseZoomStunt (BRA to CourseZoomBattle's zoom).
+; Entry: any widths. Exit: as CourseZoomStunt.
+%at($03FAFF)
+CourseZoomTimeUp:
+    rep.b #$30
+    ldx.w !wram_0D48
+    lda.l !course_list_stunt,x
+    and.w #$00FF
+    sta.w !course
+    and.w #$00FF
+    lda.w !wram_0D48
+    sec
+    sbc.w #$0002
+    asl a
+    asl a
+    asl a
+    clc
+    adc.w #$0080
+    tax
+    ldy.w #$0008
+    bra CourseZoomBattle_zoom
