@@ -953,6 +953,15 @@ static void replay_ops(uint32_t from, uint32_t n)
         if (!buf) _exit(7);
     }
     memcpy(buf, cur_ops + from, n);
+    /* The core polls for interrupts with its own P (the I flag), which
+       stays at the call's entry while the C runs: it is given the C's. */
+    {
+        struct SfxboxRegs r;
+
+        core_regs(&r);
+        r.p = cpu.p;
+        core_set_regs(&r);
+    }
     core_replay(buf, n);
 }
 
