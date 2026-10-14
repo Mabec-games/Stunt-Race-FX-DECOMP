@@ -25,6 +25,7 @@ void abi_RaceFrameRunTwoPlayers(void);
 void abi_WramFillZero(void);
 void abi_WramFillZeroLong(void);
 void abi_SoftResetApuLong(void);
+void abi_DemoRunThird(void);
 
 /*
  * @routine 03:89B4 HardwareRegsInit
@@ -400,7 +401,7 @@ soft:
     op_lda16_imm(0xFFFF);
     wr16(b | 0x10DC, 0xFFFF);
     wr16(b | 0x10DE, 0x0000);
-    call_routine(0x03865E, 1);
+    abi_DemoRunThird();
     op_sep(P_M);
     b = (uint32_t)cpu.db << 16;
     boot_lda8(0x06);

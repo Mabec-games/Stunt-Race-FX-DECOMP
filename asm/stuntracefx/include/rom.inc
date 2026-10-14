@@ -381,4 +381,3 @@ RaceFrameTail = $02E356                         ; 02:E356, the end of each RaceL
 !boot_interrupt_stubs = $038D16                 ; BootColdStart: 16 bytes of interrupt stubs copied to $0101
 AttractRaceSetup = $02CF3E                      ; 02:CF3E, the attract race's setup (not filed yet)
 AttractCourseSetup = $02CF45                    ; 02:CF45, the attract race's course (not filed yet)
-DemoRunStop = $03865E                           ; 03:865E (not filed yet)

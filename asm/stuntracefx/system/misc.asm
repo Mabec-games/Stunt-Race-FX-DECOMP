@@ -163,6 +163,32 @@ WordCopyStep:
     dec.w !copy_count
     rtl
 
+; @routine 03:8648 DemoRunSecond
+; WHAT IT DOES: Runs the second of the attract demos: $1A57 = $6B (its
+; offset in the demo tables), then the shared demo run at $03:8683.
+; HOW: A tail JMP into the demo run, reached as original code
+; (jump_routine).
+; Entry: D = $0000. Exit: as the demo run leaves it.
+%at($038648)
+DemoRunSecond:
+    rep.b #$30
+    lda.w #$006B
+    sta.w !seq_stage+34
+    jmp.w DemoRunBody
+
+; @routine 03:865E DemoRunThird
+; WHAT IT DOES: Runs the third of the attract demos: $1A57 = $159, then the
+; shared demo run at $03:8683; the code after the call (more demos, at
+; $03:866A) has never been reached, the demo run not returning.
+; HOW: A JSL to the demo run, then on into $03:866A as original code.
+; Entry: D = $0000. Exit: as the demo run leaves it.
+%at($03865E)
+DemoRunThird:
+    rep.b #$30
+    lda.w #$0159
+    sta.w !seq_stage+34
+    jsl.l DemoRunBody
+
 ; @routine 03:8CF2 WramFillZeroLong
 ; WHAT IT DOES: WramFillZero for callers in other banks: clears Y bytes of
 ; work RAM from bank A, address X.

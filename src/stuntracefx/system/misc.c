@@ -260,3 +260,38 @@ void abi_WramFillZeroLong(void)
 {
     abi_WramFillZero();
 }
+
+/*
+ * @routine 03:8648 DemoRunSecond
+ * WHAT IT DOES: Runs the second of the attract demos: $1A57 = $6B (its
+ * offset in the demo tables), then the shared demo run at $03:8683.
+ * HOW: A tail JMP into the demo run, reached as original code
+ * (jump_routine).
+ * Entry: D = $0000. Exit: as the demo run leaves it.
+ */
+void abi_DemoRunSecond(void)
+{
+    op_rep(P_M | P_X);
+    cpu.a = 0x006B;
+    cpu.p = nz16(cpu.p, cpu.a);
+    wr16((uint32_t)cpu.db << 16 | 0x1A57, 0x006B);
+    jump_routine(0x038683);
+}
+
+/*
+ * @routine 03:865E DemoRunThird
+ * WHAT IT DOES: Runs the third of the attract demos: $1A57 = $159, then the
+ * shared demo run at $03:8683; the code after the call (more demos, at
+ * $03:866A) has never been reached, the demo run not returning.
+ * HOW: A JSL to the demo run, then on into $03:866A as original code.
+ * Entry: D = $0000. Exit: as the demo run leaves it.
+ */
+void abi_DemoRunThird(void)
+{
+    op_rep(P_M | P_X);
+    cpu.a = 0x0159;
+    cpu.p = nz16(cpu.p, cpu.a);
+    wr16((uint32_t)cpu.db << 16 | 0x1A57, 0x0159);
+    call_routine(0x038683, 1);
+    jump_routine(0x03866A);
+}

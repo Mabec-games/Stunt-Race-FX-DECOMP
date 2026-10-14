@@ -359,7 +359,7 @@ BootSoftRestart:
     lda.w #$FFFF
     sta.w !wram_10DC
     stz.w !wram_10DC+2
-    jsl.l DemoRunStop
+    jsl.l DemoRunThird
     sep.b #$20
     lda.b #$06
     sta.w !APUIO1
