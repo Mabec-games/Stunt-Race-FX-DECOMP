@@ -1584,3 +1584,133 @@ void abi_TimeUpRecordUpdate(void)
     time_up_lead(0xFF);
     abi_SaveRecordSumsTimeUp();
 }
+
+/*
+ * @routine 07:AE07 StuntRecordTime
+ * WHAT IT DOES: Stunt Trax's score against the course's three best for
+ * the car: the score is $19EC as the high byte and the BCD sum of $0E70
+ * and $19F0 as the low; for courses $0C-$0F, at $70:FCD0 + course * 48 +
+ * car ($0D89) * 12 (three entries of score and $0F11, best first), a
+ * higher score goes in at its place (tag RecordTagCar0, 4 or 8), the
+ * lower ones moving down, and the course's 48 bytes are summed into
+ * $70:FC33 + course. For any other course its RTS takes the score it
+ * pushed as the return address (no run reaches that: the courses here
+ * are $0C-$0F).
+ * HOW: SED for the BCD add; $F1 holds course * 48 (also $0D14), $F3 the
+ * car, $F7 the entry's offset; the score is kept on the stack.
+ * Entry: any widths; data bank $07, D = $0000. Exit: M 16-bit, X 16-bit;
+ * A as the last step leaves it.
+ */
+void abi_StuntRecordTime(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t t, k, n;
+    uint8_t lo, sum, pushed[2];
+
+    op_sep(P_M);
+    op_lda8(b | 0x19EC);
+    op_xba();
+    cpu.p |= P_D;
+    op_lda8(b | 0x0E70);
+    cpu.p &= (uint8_t)~P_C;
+    lo = op_adc8((uint8_t)cpu.a, rd8(b | 0x19F0), &cpu.p);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | lo);
+    cpu.p &= (uint8_t)~P_D;
+    op_rep(P_M | P_X);
+    t = cpu.a;
+    op_lda16(b | 0x0E3D);
+    op_and16(0x00FF);
+    op_cmp16(0x000C);
+    if (cpu.p & P_C)
+        op_cmp16(0x0010);
+    if (cpu.a < 0x000C || cpu.a >= 0x0010) {
+        pushed[0] = (uint8_t)(t >> 8);
+        pushed[1] = (uint8_t)t;
+        jump_routine_pushed(0x07AE29, pushed, 2);
+        return;
+    }
+    wr16(special_dp(0xF1), cpu.a);
+    op_asl16();
+    op_add16(rd16(special_dp(0xF1)));
+    op_asl16();
+    op_asl16();
+    op_asl16();
+    op_asl16();
+    wr16(special_dp(0xF1), cpu.a);
+    wr16(b | 0x0D14, cpu.a);
+    cpu.y = cpu.a;
+    op_lda16(b | 0x0D89);
+    op_and16(0x00FF);
+    wr16(special_dp(0xF3), cpu.a);
+    op_asl16();
+    op_add16(rd16(special_dp(0xF3)));
+    op_asl16();
+    op_asl16();
+    op_add16(rd16(special_dp(0xF1)));
+    op_tax16();
+    wr16(special_dp(0xF7), cpu.a);
+    cpu.a = t;
+    cpu.p = nz16(cpu.p, t);
+    op_cmp16(rd16(SPECIAL_SAVES + cpu.x));
+    if ((cpu.p & P_C) && !(cpu.p & P_Z)) {
+        abi_RecordTagCar0();
+        special_move(4, 8);
+        special_move(6, 10);
+        special_move(0, 4);
+        special_move(2, 6);
+        op_lda16(b | 0x0F11);
+        wr16(SPECIAL_SAVES + 2 + cpu.x, cpu.a);
+        cpu.a = t;
+        cpu.p = nz16(cpu.p, t);
+        wr16(SPECIAL_SAVES + cpu.x, t);
+    } else {
+        op_cmp16(rd16(SPECIAL_SAVES + 4 + cpu.x));
+        if ((cpu.p & P_C) && !(cpu.p & P_Z)) {
+            abi_RecordTagCar4();
+            special_move(4, 8);
+            special_move(6, 10);
+            cpu.a = t;
+            cpu.p = nz16(cpu.p, t);
+            wr16(SPECIAL_SAVES + 4 + cpu.x, t);
+            op_lda16(b | 0x0F11);
+            wr16(SPECIAL_SAVES + 6 + cpu.x, cpu.a);
+        } else {
+            op_cmp16(rd16(SPECIAL_SAVES + 8 + cpu.x));
+            if (!(cpu.p & P_C) || (cpu.p & P_Z)) {
+                op_rep(P_M | P_X);
+                return;
+            }
+            wr16(SPECIAL_SAVES + 8 + cpu.x, t);
+            abi_RecordTagCar8();
+            op_lda16(b | 0x0F11);
+            wr16(SPECIAL_SAVES + 10 + cpu.x, cpu.a);
+        }
+    }
+    op_sep(P_M);
+    cpu.a = (uint16_t)(cpu.a & 0xFF00);
+    cpu.p = nz8(cpu.p, 0);
+    wr8(special_dp(0xF1), 0x00);
+    cpu.y = 0x0030;
+    cpu.x = rd16(special_dp(0xF7));
+    cpu.x = rd16(b | 0x0D14);
+    n = 0x0030;
+    sum = 0;
+    do {
+        uint8_t v = rd8(SPECIAL_SAVES + cpu.x);
+
+        cpu.p &= (uint8_t)~P_C;
+        sum = op_adc8(v, rd8(special_dp(0xF1)), &cpu.p);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | sum);
+        wr8(special_dp(0xF1), sum);
+        cpu.x = (uint16_t)(cpu.x + 1);
+        n = (uint16_t)(n - 1);
+        cpu.y = n;
+    } while (n);
+    op_sep(P_X);
+    cpu.x = rd8(b | 0x0E3D);
+    k = rd8(special_dp(0xF1));
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | k);
+    cpu.p = nz8(cpu.p, (uint8_t)k);
+    wr8(0x70FC33 + cpu.x, (uint8_t)k);
+    op_rep(P_M | P_X);
+}

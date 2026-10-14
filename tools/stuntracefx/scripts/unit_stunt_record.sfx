@@ -1,0 +1,51 @@
+# unit_stunt_record: StuntRecordTime (07:AE07) from Stunt Trax at
+# Icedance, course $0C with car 0 (entries at $70:FF10) and the score
+# $0515: above the best, the second and the third (each entry above $FFFF
+# made to lose), below all three; and on course 0 with the score $AE28,
+# whose RTS then lands on that RTS (07:AE29), which returns.
+load build/stuntracefx/states/stunt_icedance_07.state
+set 7E0E3D 0C
+set 7E0D89 00
+set 7E19EC 05
+set 7E0E70 10
+set 7E19F0 05
+set 70FF10 00,00
+set 70FF14 00,00
+set 70FF18 00,00
+call 07:AE07 p=30 db=07 d=0000
+load build/stuntracefx/states/stunt_icedance_07.state
+set 7E0E3D 0C
+set 7E0D89 00
+set 7E19EC 05
+set 7E0E70 10
+set 7E19F0 05
+set 70FF10 FF,FF
+set 70FF14 00,00
+set 70FF18 00,00
+call 07:AE07 p=30 db=07 d=0000
+load build/stuntracefx/states/stunt_icedance_07.state
+set 7E0E3D 0C
+set 7E0D89 00
+set 7E19EC 05
+set 7E0E70 10
+set 7E19F0 05
+set 70FF10 FF,FF
+set 70FF14 FF,FF
+set 70FF18 00,00
+call 07:AE07 p=30 db=07 d=0000
+load build/stuntracefx/states/stunt_icedance_07.state
+set 7E0E3D 0C
+set 7E0D89 00
+set 7E19EC 05
+set 7E0E70 10
+set 7E19F0 05
+set 70FF10 FF,FF
+set 70FF14 FF,FF
+set 70FF18 FF,FF
+call 07:AE07 p=30 db=07 d=0000
+load build/stuntracefx/states/stunt_icedance_07.state
+set 7E0E3D 00
+set 7E19EC AE
+set 7E0E70 20
+set 7E19F0 08
+call 07:AE07 p=30 db=07 d=0000

@@ -1753,3 +1753,126 @@ SaveRecordSumsTimeUp:
     jsr.w SaveRecordSumA
     sta.l !save_table_sums+28
     rts
+
+; @routine 07:AE07 StuntRecordTime
+; WHAT IT DOES: Stunt Trax's score against the course's three best for
+; the car: the score is $19EC as the high byte and the BCD sum of $0E70
+; and $19F0 as the low; for courses $0C-$0F, at $70:FCD0 + course * 48 +
+; car ($0D89) * 12 (three entries of score and $0F11, best first), a
+; higher score goes in at its place (tag RecordTagCar0, 4 or 8), the
+; lower ones moving down, and the course's 48 bytes are summed into
+; $70:FC33 + course. For any other course its RTS takes the score it
+; pushed as the return address (no run reaches that: the courses here
+; are $0C-$0F).
+; HOW: SED for the BCD add; $F1 holds course * 48 (also $0D14), $F3 the
+; car, $F7 the entry's offset; the score is kept on the stack.
+; Entry: any widths; data bank $07, D = $0000. Exit: M 16-bit, X 16-bit;
+; A as the last step leaves it.
+%at($07AE07)
+StuntRecordTime:
+    sep.b #$20
+    lda.w !hud_digits_19ec
+    xba
+    sed
+    lda.w !race_time_bcd
+    clc
+    adc.w !wram_19F0
+    cld
+    rep.b #$30
+    pha
+    lda.w !course
+    and.w #$00FF
+    cmp.w #$000C
+    bcc .other
+    cmp.w #$0010
+    bcc .stunt
+.other:
+    rts
+.stunt:
+    sta.b !digit_count
+    asl a
+    clc
+    adc.b !digit_count
+    asl a
+    asl a
+    asl a
+    asl a
+    sta.b !digit_count
+    sta.w !wram_0D12+2
+    tay
+    lda.w !wram_0D89
+    and.w #$00FF
+    sta.b !dp_f3
+    asl a
+    clc
+    adc.b !dp_f3
+    asl a
+    asl a
+    clc
+    adc.b !digit_count
+    tax
+    sta.b !record_page
+    pla
+    cmp.l !special_saves,x
+    bcc .second
+    beq .second
+    pha
+    jsr.w RecordTagCar0
+    lda.l !special_saves+4,x
+    sta.l !special_saves+8,x
+    lda.l !special_saves+6,x
+    sta.l !special_saves+10,x
+    lda.l !special_saves,x
+    sta.l !special_saves+4,x
+    lda.l !special_saves+2,x
+    sta.l !special_saves+6,x
+    lda.w !level_columns+12
+    sta.l !special_saves+2,x
+    pla
+    sta.l !special_saves,x
+    jmp.w .sum
+.second:
+    cmp.l !special_saves+4,x
+    bcc .third
+    beq .third
+    pha
+    jsr.w RecordTagCar4
+    lda.l !special_saves+4,x
+    sta.l !special_saves+8,x
+    lda.l !special_saves+6,x
+    sta.l !special_saves+10,x
+    pla
+    sta.l !special_saves+4,x
+    lda.w !level_columns+12
+    sta.l !special_saves+6,x
+    bra .sum
+.third:
+    cmp.l !special_saves+8,x
+    bcc .done
+    beq .done
+    sta.l !special_saves+8,x
+    jsr.w RecordTagCar8
+    lda.w !level_columns+12
+    sta.l !special_saves+10,x
+.sum:
+    sep.b #$20
+    lda.b #$00
+    sta.b !digit_count
+    ldy.w #$0030
+    ldx.b !record_page
+    ldx.w !wram_0D12+2
+.add:
+    lda.l !special_saves,x
+    clc
+    adc.b !digit_count
+    sta.b !digit_count
+    inx
+    dey
+    bne .add
+    sep.b #$10
+    ldx.w !course
+    lda.b !digit_count
+    sta.l !save_table_sums+6,x
+.done:
+    rep.b #$30
+    rts
