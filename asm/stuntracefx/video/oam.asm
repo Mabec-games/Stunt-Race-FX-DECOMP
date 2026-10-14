@@ -2095,3 +2095,91 @@ OverlaySpritesStep:
     db $10, $20, $A4
     db $20, $20, $A2
     db $30, $20, $A0
+
+; @routine 07:C683 OverlayFramesUntilFaded
+; WHAT IT DOES: Runs frames until the fade's high byte $0D61 is negative:
+; each waits for the vertical blank ($0D52, then cleared), runs 07:C6AA and
+; the overlay sprites (OverlaySpritesStep), and clears both players' presses
+; ($0D1A, $0D1C) and held buttons ($0309, $030D).
+; HOW: 8-bit registers, 16-bit A for the clears; through the data bank.
+; Entry: any widths. Exit: M 8-bit, X 8-bit; A low byte = $0D61 (negative);
+; N set; X, Y as the last call left them.
+%at($07C683)
+OverlayFramesUntilFaded:
+.loop:
+    sep.b #$30
+.lC685:
+    lda.w !hud_blank+4
+    beq .lC685
+    stz.w !hud_blank+4
+    jsr.w OverlayStepC6AA
+    jsl.l OverlaySpritesStep
+    rep.b #$20
+    stz.w !joy1_pressed_copy
+    stz.w !joy2_pressed_copy
+    stz.w !joy1_held
+    stz.w !joy2_held
+    sep.b #$20
+    lda.w !fade_level_hi
+    bpl .loop
+    rts
+
+; @routine 07:BBB2 PauseOnStart
+; WHAT IT DOES: The race's pause: with START pressed ($0D1A bit 12) it clears
+; $0D2E, plays sound $15 on port 1, asks for layout 1 ($19BD), hides sprites
+; 75 up and lays out the large columns (OamHide75Up, OamLargeColumns),
+; counts $0D2D and $0D22 down, clears $0E5B, $0E5F, $0D32-$0D34, $0D31 and
+; $0D2F, sets $0D23 = $0A; then runs frames (each after the vertical blank,
+; $0D52) of 07:BC1C and PictureTurnStep, clearing both players' presses,
+; until $0D2D is 0 again.
+; HOW: 8-bit A for the flags, 16-bit for the presses; through the data bank;
+; P saved and put back.
+; Entry: any widths. Exit: P unchanged; A = the presses (no START), or A low
+; byte 0 ($0D2D).
+%at($07BBB2)
+PauseOnStart:
+    php
+    sep.b #$20
+    rep.b #$20
+    lda.w !joy1_pressed_copy
+    bit.w #$1000
+    bne .lBBC1
+    plp
+    rts
+.lBBC1:
+    sep.b #$20
+    lda.b #$00
+    sta.w !wram_0D2E
+    lda.b #$15
+    jsl.l SoundPort1QueuePush
+    lda.b #$01
+    sta.w !layout_request
+    jsr.w OamHide75Up
+    jsr.w OamLargeColumns
+    dec.w !wram_0D2D
+    stz.w !wram_0E5B
+    stz.w !palette_animate
+    stz.w !gsu_upload_pending
+    stz.w !gsu_upload_pending+1
+    stz.w !gsu_upload_pending+2
+    stz.w !wram_0D2F+2
+    dec.w !wram_0D22
+    lda.b #$00
+    sta.w !wram_0D2F
+    lda.b #$0A
+    sta.w !wram_0D23
+.lBBFB:
+    sep.b #$20
+    lda.w !hud_blank+4
+    beq .lBBFB
+    stz.w !hud_blank+4
+    jsr.w PauseFrameBC1C
+    jsr.w PictureTurnStep
+    rep.b #$20
+    stz.w !joy1_pressed_copy
+    stz.w !joy2_pressed_copy
+    sep.b #$20
+    lda.w !wram_0D2D
+    bne .lBBFB
+    plp
+    rts

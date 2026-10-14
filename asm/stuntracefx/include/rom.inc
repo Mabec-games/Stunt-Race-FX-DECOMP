@@ -379,3 +379,7 @@ MemoryFill = $038CF2                            ; 03:8CF2, fills a work RAM rang
 BootStart = $038B34                             ; 03:8B34, the game's start after the reset vector's mode switch (not filed yet)
 BootWarm = $038BAA                              ; 03:8BAA, a later point of the start (not filed yet)
 BootColdStart = $038AA9                         ; 03:8AA9, the start the reset vector jumps to (not filed yet)
+OverlayStepC6AA = $07C6AA                       ; 07:C6AA, OverlayFramesUntilFaded's frame work (not filed yet)
+PauseFrameBC1C = $07BC1C                        ; 07:BC1C, the pause's frame work (not filed yet)
+MenuFirstScreen = $0BAEF2                       ; 0B:AEF2, the screen CourseMenuRun shows the first time (not filed yet)
+RaceFrameTail = $02E356                         ; 02:E356, the end of each RaceLoop frame (not filed yet)

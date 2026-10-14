@@ -689,3 +689,80 @@ void abi_MenuPreviewRunFade(void)
     cpu.p &= (uint8_t)~(P_M | P_X);
     preview_menu_loop();
 }
+
+void abi_SelectionSave(void);
+void abi_SelectionCommit(void);
+void abi_SaveChecksum(void);
+
+/*
+ * @routine 03:B3DA CourseMenuRun
+ * WHAT IT DOES: The course menu before a race: clears side $1F07, the
+ * selection $18C3 and $1168; the first time ($1917 clear) 0B:AEF2's screen
+ * first, then the course preview, faded in (MenuPreviewRunFade) when that
+ * screen returned 0, else MenuPreviewRun; then the HUD mode $0D2B = the
+ * selection, $1917 = 1, the selection kept (SelectionCommit for choice 2,
+ * else SelectionSave), the three settings $18EF, $18F1, $18F3 at $1184-$1186
+ * and in the save at $70:FC08-$70:FC0A (SaveChecksum); $0D3F = $1C, the NMI
+ * and HDMA off and the screen blanked.
+ * HOW: Through the data bank, long accesses to $18C3-$18F3 and $1917; P
+ * saved and put back.
+ * Entry: any widths. Exit: P unchanged; A low byte $80.
+ */
+void abi_CourseMenuRun(void)
+{
+    uint8_t p0 = cpu.p;
+    uint32_t b = (uint32_t)cpu.db << 16;
+    static const uint16_t setting[3] = {0x18EF, 0x18F1, 0x18F3};
+    int i;
+
+    op_sep(P_M);
+    cpu.a = (uint16_t)(cpu.a & 0xFF00);
+    cpu.p = nz8(cpu.p, 0x00);
+    wr8(b | 0x1F07, 0x00);
+    op_rep(P_M);
+    wr16(b | 0x18C3, 0x0000);
+    wr16(b | 0x1168, 0x0000);
+    op_lda16(0x001917);
+    if (!cpu.a) {
+        call_routine(0x0BAEF2, 1);
+        op_rep(P_M);
+        op_cmp16(0x0000);
+        if (cpu.p & P_Z) {
+            abi_MenuPreviewRunFade();
+            goto chosen;
+        }
+    }
+    abi_MenuPreviewRun();
+chosen:
+    op_rep(P_M);
+    b = (uint32_t)cpu.db << 16;
+    op_lda16(0x0018C3);
+    wr16(b | 0x0D2B, cpu.a);
+    op_lda16_imm(0x0001);
+    wr16(0x001917, 0x0001);
+    op_lda16(0x0018C3);
+    op_cmp16(0x0002);
+    if (cpu.p & P_Z)
+        abi_SelectionCommit();
+    else
+        abi_SelectionSave();
+    op_sep(P_M);
+    b = (uint32_t)cpu.db << 16;
+    for (i = 0; i < 3; i++) {
+        op_lda8(setting[i]);
+        wr8(b | (uint16_t)(0x1184 + i), (uint8_t)cpu.a);
+        wr8(0x70FC08u + i, (uint8_t)cpu.a);
+    }
+    abi_SaveChecksum();
+    op_sep(P_M);
+    b = (uint32_t)cpu.db << 16;
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x1C);
+    cpu.p = nz8(cpu.p, 0x1C);
+    wr8(b | 0x0D3F, 0x1C);
+    wr8(b | 0x4200, 0x00);
+    wr8(b | 0x420C, 0x00);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x80);
+    cpu.p = nz8(cpu.p, 0x80);
+    wr8(b | 0x2100, 0x80);
+    op_plp(p0);
+}

@@ -1041,3 +1041,145 @@ void abi_RaceFrameRunTwoPlayers(void)
     wr8((uint32_t)cpu.db << 16 | 0x0357, 0x00);
     frame_time(db, p0);
 }
+
+void abi_GsuEE88Ramp(void);
+void abi_SoftResetLong(void);
+void abi_ScrollHdmaSet(void);
+void abi_OamBufferHideLargeLong(void);
+void abi_RaceLoad(void);
+void abi_LoopLeaveWhenEnded(void);
+
+/* A byte pushed on the real stack (bank 0). */
+static void loop_push8(uint8_t v)
+{
+    wr8((uint16_t)cpu.s, v);
+    cpu.s--;
+}
+
+/*
+ * @routine 02:E289 RaceLoop
+ * WHAT IT DOES: The race's frame loop (unless $10CD is set: nothing): packs
+ * the three colour settings $1184-$1186 into a BGR word at $0F11, sets the
+ * players $0D62 from the HUD mode (the table after the loop: 2 for mode 2),
+ * loads the race (RaceLoad), sets $0D3F = $10, clears the fade, the fade
+ * out and $0D40, $0D43 and $0D50, turns the NMI, the IRQ and the joypad
+ * read on ($4200 = $31) and interrupts on; then each frame, after the
+ * vertical blank ($0D52) and the Super FX's frame ($0D81): GsuEE88Ramp, every
+ * eighth frame the next of four sprite pieces ($10BB), $10C1 = $10C5 = 0,
+ * $0D7F = 1, the soft reset check, the scroll HDMA, the large sprites hidden,
+ * LoopLeaveWhenEnded (which leaves the loop when the race's fade out is done)
+ * and 02:E356.
+ * HOW: The packing through direct page $F1; then P and the data bank pushed
+ * (the data bank $02) for LoopLeaveWhenEnded to pull on the way out.
+ * Entry: any widths; D = $0000; called by JSL. Exit: through
+ * LoopLeaveWhenEnded: as the caller left P and the data bank; or, with
+ * $10CD set, at once.
+ */
+void abi_RaceLoop(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v;
+
+    op_sep(P_M);
+    op_lda8(b | 0x10CD);
+    if ((uint8_t)cpu.a)
+        return;
+    op_rep(P_M);
+    op_lda16(b | 0x1184);
+    op_and16(0x001F);
+    wr16(0x0000F1, cpu.a);
+    op_lda16(b | 0x1185);
+    op_asl16();
+    op_asl16();
+    op_asl16();
+    op_asl16();
+    op_asl16();
+    op_and16(0x03E0);
+    cpu.a |= rd16(0x0000F1);
+    cpu.p = nz16(cpu.p, cpu.a);
+    wr16(0x0000F1, cpu.a);
+    op_lda16(b | 0x1186);
+    op_xba();
+    op_asl16();
+    op_asl16();
+    op_and16(0x7C00);
+    cpu.a |= rd16(0x0000F1);
+    cpu.p = nz16(cpu.p, cpu.a);
+    wr16(b | 0x0F11, cpu.a);
+    loop_push8(cpu.p);
+    op_sep(P_M | P_X);
+    loop_push8(cpu.db);
+    cpu.db = 0x02;
+    cpu.p = nz8(cpu.p, 0x02);
+    b = 0x020000;
+    cpu.x = rd8(b | 0x0D2B);
+    cpu.p = nz8(cpu.p, (uint8_t)cpu.x);
+    v = rd8(0x02E338 + cpu.x);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+    wr8(b | 0x0D62, v);
+    abi_RaceLoad();
+    op_sep(P_M);
+    b = (uint32_t)cpu.db << 16;
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x10);
+    cpu.p = nz8(cpu.p, 0x10);
+    wr8(b | 0x0D3F, 0x10);
+    wr8(b | 0x0D61, 0x00);
+    wr8(b | 0x0E3A, 0x00);
+    wr8(b | 0x0D43, 0x00);
+    wr8(b | 0x0D40, 0x00);
+    wr8(b | 0x0D50, 0x00);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x31);
+    cpu.p = nz8(cpu.p, 0x31);
+    wr8(b | 0x4200, 0x31);
+    cpu.p &= (uint8_t)~P_I;
+    for (;;) {
+        op_sep(P_M);
+        b = (uint32_t)cpu.db << 16;
+        do
+            op_lda8(b | 0x0D52);
+        while (!(uint8_t)cpu.a);
+        wr8(b | 0x0D52, 0x00);
+        op_rep(P_M);
+        do
+            op_lda16(b | 0x0D81);
+        while (!cpu.a);
+        wr16(b | 0x0D81, 0x0000);
+        abi_GsuEE88Ramp();
+        op_sep(P_M);
+        b = (uint32_t)cpu.db << 16;
+        op_lda8(b | 0x0E3B);
+        v = (uint8_t)(cpu.a & 0x07);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 7)) & ~P_C) | (v >= 7 ? P_C : 0));
+        if (v == 7) {
+            op_lda8(b | 0x10BB);
+            v = (uint8_t)(cpu.a + 1);
+            cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 4)) & ~P_C) | (v >= 4 ? P_C : 0));
+            if (v >= 4)
+                v = 0;
+            cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+            cpu.p = nz8(cpu.p, v);
+            wr8(b | 0x10BB, v);
+        }
+        cpu.a = (uint16_t)(cpu.a & 0xFF00);
+        cpu.p = nz8(cpu.p, 0x00);
+        wr8(b | 0x10C5, 0x00);
+        wr8(b | 0x10C1, 0x00);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
+        cpu.p = nz8(cpu.p, 0x01);
+        wr8(b | 0x0D7F, 0x01);
+        abi_SoftResetLong();
+        abi_ScrollHdmaSet();
+        abi_OamBufferHideLargeLong();
+        /* JSR LoopLeaveWhenEnded: its return address (02:E332) on the
+           stack, which it drops on the way out of the loop. */
+        loop_push8(0xE3);
+        loop_push8(0x32);
+        abi_LoopLeaveWhenEnded();
+        if (cpu.unwound)
+            return;
+        cpu.s = (uint16_t)(cpu.s + 2);
+        call_routine(0x02E356, 0);
+    }
+}

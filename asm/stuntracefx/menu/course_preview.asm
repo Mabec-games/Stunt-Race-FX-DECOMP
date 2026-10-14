@@ -814,3 +814,70 @@ MenuSlideToPreview:
     sta.l !word_list_a_size
 .done:
     rts
+
+; @routine 03:B3DA CourseMenuRun
+; WHAT IT DOES: The course menu before a race: clears side $1F07, the
+; selection $18C3 and $1168; the first time ($1917 clear) 0B:AEF2's screen
+; first, then the course preview, faded in (MenuPreviewRunFade) when that
+; screen returned 0, else MenuPreviewRun; then the HUD mode $0D2B = the
+; selection, $1917 = 1, the selection kept (SelectionCommit for choice 2,
+; else SelectionSave), the three settings $18EF, $18F1, $18F3 at $1184-$1186
+; and in the save at $70:FC08-$70:FC0A (SaveChecksum); $0D3F = $1C, the NMI
+; and HDMA off and the screen blanked.
+; HOW: Through the data bank, long accesses to $18C3-$18F3 and $1917; P
+; saved and put back.
+; Entry: any widths. Exit: P unchanged; A low byte $80.
+%at($03B3DA)
+CourseMenuRun:
+    php
+    sep.b #$20
+    lda.b #$00
+    sta.w !draw_side
+    rep.b #$20
+    stz.w !wram_18C3
+    stz.w !packed_time_a+5
+    lda.l !wram_1913+4
+    bne .lB3FB
+    jsl.l MenuFirstScreen
+    rep.b #$20
+    cmp.w #$0000
+    beq .lB402
+.lB3FB:
+    jsl.l MenuPreviewRun
+    jmp.w .lB406
+.lB402:
+    jsl.l MenuPreviewRunFade
+.lB406:
+    rep.b #$20
+    lda.l !wram_18C3
+    sta.w !hud_mode
+    lda.w #$0001
+    sta.l !wram_1913+4
+    lda.l !wram_18C3
+    cmp.w #$0002
+    beq .lB425
+    jsl.l SelectionSave
+    bra .lB429
+.lB425:
+    jsl.l SelectionCommit
+.lB429:
+    sep.b #$20
+    lda.l !wram_18EF
+    sta.w !wram_1184
+    sta.l !save_bytes+2
+    lda.l !wram_18F1
+    sta.w !wram_1184+1
+    sta.l !save_bytes+3
+    lda.l !wram_18F3
+    sta.w !wram_1184+2
+    sta.l !save_bytes+4
+    jsl.l SaveChecksum
+    sep.b #$20
+    lda.b #$1C
+    sta.w !wram_0D3F
+    stz.w !NMITIMEN
+    stz.w !HDMAEN
+    lda.b #$80
+    sta.w !INIDISP
+    plp
+    rtl

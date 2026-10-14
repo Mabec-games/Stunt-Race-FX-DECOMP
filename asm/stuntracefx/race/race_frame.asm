@@ -622,6 +622,108 @@ ViewParamsTwo:
     sta.b $33
     rts
 
+; @routine 02:E289 RaceLoop
+; WHAT IT DOES: The race's frame loop (unless $10CD is set: nothing): packs
+; the three colour settings $1184-$1186 into a BGR word at $0F11, sets the
+; players $0D62 from the HUD mode (the table after the loop: 2 for mode 2),
+; loads the race (RaceLoad), sets $0D3F = $10, clears the fade, the fade
+; out and $0D40, $0D43 and $0D50, turns the NMI, the IRQ and the joypad
+; read on ($4200 = $31) and interrupts on; then each frame, after the
+; vertical blank ($0D52) and the Super FX's frame ($0D81): GsuEE88Ramp, every
+; eighth frame the next of four sprite pieces ($10BB), $10C1 = $10C5 = 0,
+; $0D7F = 1, the soft reset check, the scroll HDMA, the large sprites hidden,
+; LoopLeaveWhenEnded (which leaves the loop when the race's fade out is done)
+; and 02:E356.
+; HOW: The packing through direct page $F1; then P and the data bank pushed
+; (the data bank $02) for LoopLeaveWhenEnded to pull on the way out.
+; Entry: any widths; D = $0000; called by JSL. Exit: through
+; LoopLeaveWhenEnded: as the caller left P and the data bank; or, with
+; $10CD set, at once.
+%at($02E289)
+RaceLoop:
+    sep.b #$20
+    lda.w !wram_10CD
+    beq .lE291
+    rtl
+.lE291:
+    rep.b #$20
+    lda.w !wram_1184
+    and.w #$001F
+    sta.b !digit_count
+    lda.w !wram_1184+1
+    asl a
+    asl a
+    asl a
+    asl a
+    asl a
+    and.w #$03E0
+    ora.b !digit_count
+    sta.b !digit_count
+    lda.w !wram_1184+2
+    xba
+    asl a
+    asl a
+    and.w #$7C00
+    ora.b !digit_count
+    sta.w !level_columns+12
+    php
+    sep.b #$30
+    phb
+    phk
+    plb
+    ldx.w !hud_mode
+    lda.w RaceLoop_players,x
+    sta.w !wram_0D62
+    jsl.l RaceLoad
+    sep.b #$20
+    lda.b #$10
+    sta.w !wram_0D3F
+    stz.w !fade_level_hi
+    stz.w !fade_out
+    stz.w !wram_0D3F+4
+    stz.w !wram_0D3F+1
+    stz.w !hud_blank+2
+    lda.b #$31
+    sta.w !NMITIMEN
+    cli
+.lE2E7:
+    sep.b #$20
+    lda.w !hud_blank+4
+    beq .lE2E7
+    stz.w !hud_blank+4
+    rep.b #$20
+.lE2F3:
+    lda.w !wram_0D81
+    beq .lE2F3
+    stz.w !wram_0D81
+    jsl.l GsuEE88Ramp
+    sep.b #$20
+    lda.w !frame_count
+    and.b #$07
+    cmp.b #$07
+    bne .lE317
+    lda.w !sprite_piece_select
+    inc a
+    cmp.b #$04
+    bcc .lE314
+    lda.b #$00
+.lE314:
+    sta.w !sprite_piece_select
+.lE317:
+    lda.b #$00
+    sta.w !sprite_piece_palette
+    sta.w !sprite_piece_tile
+    lda.b #$01
+    sta.w !gsu_buffer_select
+    jsl.l SoftResetLong
+    jsl.l ScrollHdmaSet
+    jsl.l OamBufferHideLargeLong
+    jsr.w LoopLeaveWhenEnded
+    jsr.w RaceFrameTail
+    bra .lE2E7
+RaceLoop_players:
+    db $00,$00,$02,$00,$00
+
 ; @routine 02:E33D LoopLeaveWhenEnded
 ; WHAT IT DOES: Ends the frame loop at $02:E289 once its fade-out has run
 ; its course ($0E3A set and $0D61 negative): interrupts and the vertical

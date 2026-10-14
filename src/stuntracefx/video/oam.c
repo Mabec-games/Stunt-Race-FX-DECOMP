@@ -2044,3 +2044,120 @@ void abi_OverlaySpritesStep(void)
     cpu.db = db0;
     op_plp(p0);
 }
+
+/* Waits for the vertical blank: $0D52, set by each, read until it is set,
+   then cleared. */
+static void oam_wait_tick(uint32_t b)
+{
+    op_sep(P_M);
+    do
+        op_lda8(b | 0x0D52);
+    while (!(uint8_t)cpu.a);
+    wr8(b | 0x0D52, 0x00);
+}
+
+/*
+ * @routine 07:C683 OverlayFramesUntilFaded
+ * WHAT IT DOES: Runs frames until the fade's high byte $0D61 is negative:
+ * each waits for the vertical blank ($0D52, then cleared), runs 07:C6AA and
+ * the overlay sprites (OverlaySpritesStep), and clears both players' presses
+ * ($0D1A, $0D1C) and held buttons ($0309, $030D).
+ * HOW: 8-bit registers, 16-bit A for the clears; through the data bank.
+ * Entry: any widths. Exit: M 8-bit, X 8-bit; A low byte = $0D61 (negative);
+ * N set; X, Y as the last call left them.
+ */
+void abi_OverlayFramesUntilFaded(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    do {
+        op_sep(P_M | P_X);
+        oam_wait_tick(b);
+        call_routine(0x07C6AA, 0);
+        abi_OverlaySpritesStep();
+        op_rep(P_M);
+        wr16(b | 0x0D1A, 0x0000);
+        wr16(b | 0x0D1C, 0x0000);
+        wr16(b | 0x0309, 0x0000);
+        wr16(b | 0x030D, 0x0000);
+        op_sep(P_M);
+        op_lda8(b | 0x0D61);
+    } while (!(cpu.a & 0x80));
+}
+
+/* DEC abs (8-bit). */
+static void oam_dec8(uint32_t at)
+{
+    uint8_t v = (uint8_t)(rd8(at) - 1);
+
+    wr8(at, v);
+    cpu.p = nz8(cpu.p, v);
+}
+
+/* LDA # (8-bit). */
+static void oam_lda8(uint8_t v)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+}
+
+/*
+ * @routine 07:BBB2 PauseOnStart
+ * WHAT IT DOES: The race's pause: with START pressed ($0D1A bit 12) it clears
+ * $0D2E, plays sound $15 on port 1, asks for layout 1 ($19BD), hides sprites
+ * 75 up and lays out the large columns (OamHide75Up, OamLargeColumns),
+ * counts $0D2D and $0D22 down, clears $0E5B, $0E5F, $0D32-$0D34, $0D31 and
+ * $0D2F, sets $0D23 = $0A; then runs frames (each after the vertical blank,
+ * $0D52) of 07:BC1C and PictureTurnStep, clearing both players' presses,
+ * until $0D2D is 0 again.
+ * HOW: 8-bit A for the flags, 16-bit for the presses; through the data bank;
+ * P saved and put back.
+ * Entry: any widths. Exit: P unchanged; A = the presses (no START), or A low
+ * byte 0 ($0D2D).
+ */
+void abi_PauseOnStart(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t p0 = cpu.p;
+
+    op_sep(P_M);
+    op_rep(P_M);
+    op_lda16(b | 0x0D1A);
+    cpu.p = (uint8_t)((cpu.p & ~P_Z) | ((cpu.a & 0x1000) ? 0 : P_Z));
+    if (!(cpu.a & 0x1000)) {
+        op_plp(p0);
+        return;
+    }
+    op_sep(P_M);
+    oam_lda8(0x00);
+    wr8(b | 0x0D2E, 0x00);
+    oam_lda8(0x15);
+    abi_SoundPort1QueuePush();
+    oam_lda8(0x01);
+    wr8(b | 0x19BD, 0x01);
+    abi_OamHide75Up();
+    abi_OamLargeColumns();
+    oam_dec8(b | 0x0D2D);
+    wr8(b | 0x0E5B, 0x00);
+    wr8(b | 0x0E5F, 0x00);
+    wr8(b | 0x0D32, 0x00);
+    wr8(b | 0x0D33, 0x00);
+    wr8(b | 0x0D34, 0x00);
+    wr8(b | 0x0D31, 0x00);
+    oam_dec8(b | 0x0D22);
+    oam_lda8(0x00);
+    wr8(b | 0x0D2F, 0x00);
+    oam_lda8(0x0A);
+    wr8(b | 0x0D23, 0x0A);
+    do {
+        oam_wait_tick(b);
+        call_routine(0x07BC1C, 0);
+        abi_PictureTurnStep();
+        op_rep(P_M);
+        wr16(b | 0x0D1A, 0x0000);
+        wr16(b | 0x0D1C, 0x0000);
+        op_sep(P_M);
+        op_lda8(b | 0x0D2D);
+    } while ((uint8_t)cpu.a);
+    op_plp(p0);
+}
