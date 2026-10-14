@@ -65,6 +65,8 @@
 # - CourseCursorStep at 3 with Down; RaceFadeStageDispatch at 2 and 3 with
 #   Up and the fourth course open, at 2 with Up and Right while it is shut,
 #   and at 3 with Left and with Down.
+# - CarSelectTwoPlayers: each pad's Right and Left from each end, with HUD
+#   mode 3, with the fourth car open ($70:FC0B bit 2) and with neither.
 load build/stuntracefx/states/novice_coupe_race1.state
 set 7E3437 FE
 call 03:FDF7 p=30 db=7E d=0000
@@ -869,4 +871,85 @@ set 7E0D48 03,00
 set 7E0D1A 00,04
 set 70FC06 00
 call 02:EC10 p=30 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D1A 00,01
+set 7E0D1C 00,01
+set 7E0D89 03
+set 7E0D8A 02
+set 7E0D2B 03,00
+set 70FC0B 00
+call 07:C0CA p=30 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D1A 00,01
+set 7E0D1C 00,01
+set 7E0D89 00
+set 7E0D8A 02
+set 7E0D2B 00,00
+set 70FC0B 04
+call 07:C0CA p=30 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D1A 00,01
+set 7E0D1C 00,01
+set 7E0D89 02
+set 7E0D8A 03
+set 7E0D2B 00,00
+set 70FC0B 04
+call 07:C0CA p=30 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D1A 00,02
+set 7E0D1C 00,01
+set 7E0D89 01
+set 7E0D8A 00
+set 7E0D2B 00,00
+set 70FC0B 00
+call 07:C0CA p=30 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D1A 00,02
+set 7E0D1C 00,02
+set 7E0D89 00
+set 7E0D8A 01
+set 7E0D2B 03,00
+set 70FC0B 00
+call 07:C0CA p=30 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D1A 00,02
+set 7E0D1C 00,02
+set 7E0D89 00
+set 7E0D8A 00
+set 7E0D2B 00,00
+set 70FC0B 04
+call 07:C0CA p=30 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D1A 00,02
+set 7E0D1C 00,02
+set 7E0D89 00
+set 7E0D8A 00
+set 7E0D2B 00,00
+set 70FC0B 00
+call 07:C0CA p=30 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D1A 00,00
+set 7E0D1C 00,02
+set 7E0D89 00
+set 7E0D8A 00
+set 7E0D2B 03,00
+set 70FC0B 00
+call 07:C0CA p=30 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D1A 00,00
+set 7E0D1C 00,01
+set 7E0D89 00
+set 7E0D8A 02
+set 7E0D2B 00,00
+set 70FC0B 00
+call 07:C0CA p=30 db=7E d=0000
 wait 1

@@ -503,3 +503,131 @@ MenuCursorFourWay:
     sta.w !wram_0E91
     sta.w !wram_0D37
     rts
+
+; @routine 07:C0CA CarSelectTwoPlayers
+; WHAT IT DOES: The two players' car choices: Right ($0100) or Left
+; ($0200) pressed on pad 1 ($0D1A) steps player 1's car $0D89, on pad 2
+; ($0D1C) player 2's $0D8A, each with sound $45 (0 to 2 in turn, 3 only in
+; HUD mode 3 or with bit 2 of $70:FC0B); then both are recorded:
+; player 2's as $18C9 and player 1's as $18CB from the table at $07:C1BF
+; (2, 0, 1, 3), each through SelectionCommit.
+; HOW: 16-bit BIT tests of the pads; 8-bit steps (X 8-bit only on the way
+; Right). Left on pad 1 and both buttons on pad 2 are not reached in the
+; traces so far.
+; Entry: X 8-bit. Exit: M, X 8-bit; as SelectionCommit leaves them.
+%at($07C0CA)
+CarSelectTwoPlayers:
+    rep.b #$20
+    lda.w !joy1_pressed_copy
+    bit.w #$0100
+    beq .lC102
+    sep.b #$30
+    lda.b #$45
+    jsl.l SoundPort0QueuePush
+    lda.w !wram_0D89
+    inc a
+    cmp.b #$03
+    beq .lC0E8
+    bcs .lC0FB
+    bcc .lC0FD
+.lC0E8:
+    ldx.w !hud_mode
+    cpx.b #$03
+    beq .lC0FD
+    lda.l !save_progress
+    bit.b #$04
+    beq .lC0FB
+    lda.b #$03
+    bra .lC0FD
+.lC0FB:
+    lda.b #$00
+.lC0FD:
+    sta.w !wram_0D89
+    bra .lC134
+.lC102:
+    rep.b #$20
+    lda.w !joy1_pressed_copy
+    bit.w #$0200
+    beq .lC134
+    sep.b #$20
+    lda.b #$45
+    jsl.l SoundPort0QueuePush
+    lda.w !wram_0D89
+    dec a
+    bpl .lC131
+    lda.b #$03
+    ldx.w !hud_mode
+    cpx.b #$03
+    beq .lC131
+    lda.l !save_progress
+    bit.b #$04
+    beq .lC12F
+    lda.b #$03
+    bra .lC0FD
+.lC12F:
+    lda.b #$02
+.lC131:
+    sta.w !wram_0D89
+.lC134:
+    rep.b #$20
+    lda.w !joy2_pressed_copy
+    bit.w #$0100
+    beq .lC16C
+    sep.b #$20
+    lda.b #$45
+    jsl.l SoundPort0QueuePush
+    lda.w !wram_0D8A
+    inc a
+    cmp.b #$03
+    beq .lC152
+    bcs .lC165
+    bcc .lC167
+.lC152:
+    ldx.w !hud_mode
+    cpx.b #$03
+    beq .lC167
+    lda.l !save_progress
+    bit.b #$04
+    beq .lC165
+    lda.b #$03
+    bra .lC167
+.lC165:
+    lda.b #$00
+.lC167:
+    sta.w !wram_0D8A
+    bra .lC19E
+.lC16C:
+    rep.b #$20
+    lda.w !joy2_pressed_copy
+    bit.w #$0200
+    beq .lC19E
+    sep.b #$20
+    lda.b #$45
+    jsl.l SoundPort0QueuePush
+    lda.w !wram_0D8A
+    dec a
+    bpl .lC19B
+    lda.b #$03
+    ldx.w !hud_mode
+    cpx.b #$03
+    beq .lC19B
+    lda.l !save_progress
+    bit.b #$04
+    beq .lC199
+    lda.b #$03
+    bra .lC19B
+.lC199:
+    lda.b #$02
+.lC19B:
+    sta.w !wram_0D8A
+.lC19E:
+    sep.b #$30
+    ldx.w !wram_0D8A
+    lda.l !car_select_choices,x
+    sta.l !selection_prev
+    jsl.l SelectionCommit
+    ldx.w !wram_0D89
+    lda.l !car_select_choices,x
+    sta.l !selection
+    jsl.l SelectionCommit
+    rts

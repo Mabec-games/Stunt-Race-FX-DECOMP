@@ -473,3 +473,99 @@ void abi_MenuCursorFourWay(void)
     wr8(b | 0x0E91, v);
     wr8(b | 0x0D37, v);
 }
+
+/* The fourth car is there in HUD mode 3 ($0D2B, read as X) or once bit 2
+   of $70:FC0B is set: LDX, CPX #3, then LDA.L, BIT #4. */
+static int fourth_car(uint32_t b)
+{
+    uint8_t v;
+
+    cpu.x = rd8(b | 0x0D2B);
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(cpu.x - 0x03)) & ~P_C) | (cpu.x >= 0x03 ? P_C : 0));
+    if (cpu.x == 0x03)
+        return 2;
+    v = rd8(0x70FC0B);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+    cpu.p = (v & 0x04) ? (uint8_t)(cpu.p & ~P_Z) : (uint8_t)(cpu.p | P_Z);
+    return (v & 0x04) != 0;
+}
+
+/* Sound $45, then the car at `at` one on (Right) or back (Left): 0 to 2
+   in turn, 3 after 2 (Right) or before 0 (Left) only with the fourth car;
+   Right from 3 wraps to 0, Left from 0 without it to 2. */
+static void car_step(uint32_t b, uint16_t at, int right)
+{
+    uint8_t v;
+    int four;
+
+    op_sep(right ? P_M | P_X : P_M);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x45);
+    cpu.p = nz8(cpu.p, 0x45);
+    abi_SoundPort0QueuePush();
+    v = rd8(b | at);
+    if (right) {
+        v = (uint8_t)(v + 1);
+        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x03)) & ~P_C) | (v >= 0x03 ? P_C : 0));
+        if (v == 0x03) {
+            four = fourth_car(b);
+            v = four ? 0x03 : 0x00;
+        } else if (v > 0x03)
+            v = 0x00;
+    } else {
+        v = (uint8_t)(v - 1);
+        cpu.p = nz8(cpu.p, v);
+        if (v & 0x80) {
+            four = fourth_car(b);
+            v = four ? 0x03 : 0x02;
+        }
+    }
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+    wr8(b | at, v);
+}
+
+/*
+ * @routine 07:C0CA CarSelectTwoPlayers
+ * WHAT IT DOES: The two players' car choices: Right ($0100) or Left
+ * ($0200) pressed on pad 1 ($0D1A) steps player 1's car $0D89, on pad 2
+ * ($0D1C) player 2's $0D8A, each with sound $45 (0 to 2 in turn, 3 only in
+ * HUD mode 3 or with bit 2 of $70:FC0B); then both are recorded:
+ * player 2's as $18C9 and player 1's as $18CB from the table at $07:C1BF
+ * (2, 0, 1, 3), each through SelectionCommit.
+ * HOW: 16-bit BIT tests of the pads; 8-bit steps (X 8-bit only on the way
+ * Right). Left on pad 1 and both buttons on pad 2 are not reached in the
+ * traces so far.
+ * Entry: X 8-bit. Exit: M, X 8-bit; as SelectionCommit leaves them.
+ */
+void abi_CarSelectTwoPlayers(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    static const uint16_t pad[2] = {0x0D1A, 0x0D1C}, car[2] = {0x0D89, 0x0D8A};
+    int i;
+
+    for (i = 0; i < 2; i++) {
+        op_rep(P_M);
+        op_lda16(b | pad[i]);
+        if (cpu.a & 0x0100) {
+            cpu.p &= (uint8_t)~P_Z;
+            car_step(b, car[i], 1);
+            continue;
+        }
+        cpu.p |= P_Z;
+        op_rep(P_M);
+        op_lda16(b | pad[i]);
+        cpu.p = (cpu.a & 0x0200) ? (uint8_t)(cpu.p & ~P_Z) : (uint8_t)(cpu.p | P_Z);
+        if (cpu.a & 0x0200)
+            car_step(b, car[i], 0);
+    }
+    op_sep(P_M | P_X);
+    cpu.x = rd8(b | 0x0D8A);
+    op_lda8(0x07C1BF + cpu.x);
+    wr8(0x0018C9, (uint8_t)cpu.a);
+    abi_SelectionCommit();
+    cpu.x = rd8(b | 0x0D89);
+    op_lda8(0x07C1BF + cpu.x);
+    wr8(0x0018CB, (uint8_t)cpu.a);
+    abi_SelectionCommit();
+}
