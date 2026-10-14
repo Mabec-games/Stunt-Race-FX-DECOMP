@@ -798,43 +798,49 @@ ColourBlendToTarget:
 %ramcode($7EB5C1, $0112E8)
 PlayerColoursFlash:
     cmp.b #$08
-    bcc .lB5CC
+    bcc PlayerColoursFlash_lB5CC
     clc
     adc.b #$60
-    bcc .lB5CC
+    bcc PlayerColoursFlash_lB5CC
     lda.b #$FF                      ; not reached in the traces so far
-.lB5CC:
+PlayerColoursFlash_lB5CC:
     rol a
     rol a
     rol a
     rol a
     and.b #$07
-    beq .lB5DC
+    beq PlayerColoursFlash_lB5DC
     sec
     sbc.b #$08
     eor.b #$FF
     inc a
-    bra .lB5E4
-.lB5DC:
+    bra PlayerColoursFlash_lB5E4
+PlayerColoursFlash_lB5DC:
     lda.b #$00
     sta.w !flash_count,y
-    bra .lB5FC
-    rts                             ; unreachable: nothing branches here
-.lB5E4:
+    bra PlayerColoursFlash_lB5FC
+
+; @routine 7E:B5E3 PlayerColoursFlashRts
+; WHAT IT DOES: An RTS inside PlayerColoursFlash that nothing branches to.
+; HOW: Returns.
+; Entry: any. Exit: all unchanged.
+PlayerColoursFlashRts:
+    rts
+PlayerColoursFlash_lB5E4:
     rep.b #$10
     sta.b !flash_n
     asl a
     sta.b !flash_2n
     lda.w !flash_count,y
     cmp.b !flash_2n
-    bcc .lB5F4
+    bcc PlayerColoursFlash_lB5F4
     lda.b #$FF
-.lB5F4:
+PlayerColoursFlash_lB5F4:
     inc a
     sta.w !flash_count,y
     cmp.b !flash_n
-    bcc .lB61B
-.lB5FC:
+    bcc PlayerColoursFlash_lB61B
+PlayerColoursFlash_lB5FC:
     rep.b #$20
     tya
     asl a
@@ -848,7 +854,7 @@ PlayerColoursFlash:
     lda.w !blended_colours+4
     sta.l !player_palettes+4,x
     rts
-.lB61B:
+PlayerColoursFlash_lB61B:
     rep.b #$20
     tya
     asl a

@@ -88,5 +88,9 @@ void jump_routine(uint32_t addr);
 /* As jump_routine, for code the original reaches with values it pushed
    first (PHP, PHB...) still on the stack: pushed[0] the first pushed. */
 void jump_routine_pushed(uint32_t addr, const uint8_t *pushed, int n);
+/* The original branches to itself at addr for ever: run that as original
+   code, even where a routine with C starts there. An idle loop makes no
+   access, so a C loop would give the timeline nothing to move on by. */
+void jump_original_code(uint32_t addr);
 
 #endif

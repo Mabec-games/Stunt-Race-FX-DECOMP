@@ -1,0 +1,13 @@
+# unit_halts: the menu bank's stops, which nothing reaches, as noreturn
+# calls from the start of a Novice race: Hang (0B:E21F), SystemHalt
+# (0B:E41D) and SystemHaltSpawn (0B:E47A), each run for 20 frames; and
+# MenuDropAwayFinishCurrent (0B:D061), which sits after MenuSelectConfirm's
+# last RTS, on menu screen 0 with its current object.
+load build/stuntracefx/states/novice_coupe_race1.state
+call 0B:E21F p=30 db=00 d=0000 noreturn frames=20
+load build/stuntracefx/states/novice_coupe_race1.state
+call 0B:E41D p=00 db=00 d=0000 noreturn frames=20
+load build/stuntracefx/states/novice_coupe_race1.state
+call 0B:E47A p=00 db=00 d=0000 noreturn frames=20
+load build/stuntracefx/states/menu_screen0.state
+call 0B:D061 p=00 db=00 d=0000 vblank

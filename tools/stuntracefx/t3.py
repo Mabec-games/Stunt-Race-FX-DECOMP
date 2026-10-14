@@ -372,6 +372,11 @@ def image_one(script):
     if p.returncode or not lines or ': ' not in lines[-1]:
         why = (p.stderr.strip().splitlines() or ['no report'])[-1]
         lines.append('stopped (%s): FAILED' % why)
+    elif re.search(r'\bframes [1-9][0-9]* compared 0,', lines[-1]):
+        # Nothing was judged: a run of frames whose hybrid side never got
+        # one to compare (it stopped, or the record ended under it) proves
+        # nothing.
+        lines.append('no frame compared: FAILED')
     return name, lines
 
 

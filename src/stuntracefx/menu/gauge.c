@@ -5,6 +5,7 @@
  * in direct page $02 and copied to $0E49.
  */
 #include "machine.h"
+#include "cpu_ops.h"
 #include "wram.h"
 
 #define MENU_GAUGE 0x00117Eu
@@ -157,6 +158,28 @@ void abi_GaugeFromSpeed(void)
 
     cpu.a = GaugeFromSpeed(cpu.db, &x);
     cpu.x = (cpu.p & P_X) ? (uint8_t)x : x;
+}
+
+/*
+ * @routine 7F:120E GaugeFromSpeedZero
+ * WHAT IT DOES: GaugeFromSpeed's LDA #0 after the BRA that ends the
+ * scaling, which nothing reaches: the gauge for 0 (the byte at $0B:B158 +
+ * GaugeTableIndex of 0) into $02.
+ * HOW: As GaugeFromSpeed from there; ends pulling the P its start pushed.
+ * Entry: M 16-bit, X 16-bit, D = $0000; P on the stack above the return
+ * address. Exit: as GaugeFromSpeed.
+ */
+void abi_GaugeFromSpeedZero(void)
+{
+    uint16_t x, a;
+
+    x = GaugeTableIndex(cpu.db, 0x0000);
+    a = rd8(0x0BB158 + x);
+    wr16(0x000002, a);
+    cpu.a = a;
+    cpu.x = x;
+    cpu.s++;
+    op_plp(rd8((uint16_t)cpu.s));
 }
 
 /*

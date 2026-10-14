@@ -81,12 +81,12 @@ def main(src=None, lib=None):
         entries = [r['addr'] for r in catalog if r['cpu'] == 'cpu']
         t.write('const uint32_t sfx_catalog[] = {%s0};\nconst int sfx_catalog_count = %d;\n'
                 % (''.join('0x%s, ' % a for a in entries), len(entries)))
-        # Code the C reaches with call_routine or jump_routine that the
-        # original enters by a jump (a BRL or JML tail jump, as
-        # BigSpritesRow6 to 07:9EE9), not as a catalogued routine: the
-        # lockstep run marks those entries too.
+        # Code the C reaches with call_routine, jump_routine or
+        # jump_original_code that the original enters by a jump (a BRL or
+        # JML tail jump, as BigSpritesRow6 to 07:9EE9), not as a
+        # catalogued routine: the lockstep run marks those entries too.
         known = {int(a, 16) for a in entries}
-        jumps = sorted({int(m, 16) for f in files for m in re.findall(r'(?:call_routine|jump_routine|jump_routine_pushed)\(0x([0-9A-Fa-f]{6})', open(f).read())} - known)
+        jumps = sorted({int(m, 16) for f in files for m in re.findall(r'(?:call_routine|jump_routine|jump_routine_pushed|jump_original_code)\(0x([0-9A-Fa-f]{6})', open(f).read())} - known)
         t.write('const uint32_t sfx_jump_entries[] = {%s0};\nconst int sfx_jump_entry_count = %d;\n'
                 % (''.join('0x%06X, ' % a for a in jumps), len(jumps)))
     cmd = ['cc', '-O2', '-Wall', '-Wextra', '-std=c99', '-shared', '-fPIC', '-undefined', 'dynamic_lookup',

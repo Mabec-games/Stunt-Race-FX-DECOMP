@@ -427,8 +427,14 @@ static void call(const char *line, int lineno) {
         f++;
     }
     buttons = 0;
-    if (lockstep && !call_state)
+    if (lockstep && !call_state) {
         for (long end = lockstep_unit_end(frames); frames < end; f++) run(1);
+        /* One frame more on both sides: the original's last frame can end
+           inside a later call, whose rest the hybrid would wait for in
+           vain (and then compare nothing); this way the frame the unit
+           call ended in is always compared. */
+        run(1);
+    }
     if (getenv("SFXBOX_CALL_DEBUG"))
         fprintf(stderr, "call command done (side %d) frame %ld clock %u\n", lockstep ? lockstep_role() : 0, frames, lockstep_clock());
     nstaged = 0;

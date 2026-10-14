@@ -326,7 +326,7 @@ SaveBlocksValidate:
     rep.b #$10
     ldx.w #$0000
     stx.b !save_block
-.block:
+SaveBlocksValidate_block:
     rep.b #$20
     lda.b !save_block
     asl a
@@ -362,17 +362,17 @@ SaveBlocksValidate:
     ldy.w #$000C
     sep.b #$20
     clc
-.entry:
+SaveBlocksValidate_entry:
     lda.w !save_blocks_w,x
     pha
     cmp.b #$FF
-    beq .first
+    beq SaveBlocksValidate_first
     and.b #$7F
     cmp.b #$64
-    bcc .first
+    bcc SaveBlocksValidate_first
     pla
-    bra .reset
-.first:
+    bra SaveBlocksValidate_reset
+SaveBlocksValidate_first:
     pla
     clc
     adc.b !save_sum
@@ -380,21 +380,21 @@ SaveBlocksValidate:
     lda.w !save_blocks_w+1,x
     pha
     cmp.b #$FF
-    beq .second
+    beq SaveBlocksValidate_second
     and.b #$1F
     cmp.b #$1E
-    bcc .high
+    bcc SaveBlocksValidate_high
     pla
-    bra .reset
-.high:
+    bra SaveBlocksValidate_reset
+SaveBlocksValidate_high:
     pla
     pha
     and.b #$E0
     cmp.b #$20
-    bcs .second
+    bcs SaveBlocksValidate_second
     pla
-    bra .reset
-.second:
+    bra SaveBlocksValidate_reset
+SaveBlocksValidate_second:
     pla
     clc
     adc.b !save_sum
@@ -402,13 +402,13 @@ SaveBlocksValidate:
     lda.w !save_blocks_w+2,x
     pha
     cmp.b #$FF
-    beq .third
+    beq SaveBlocksValidate_third
     and.b #$1F
     cmp.b #$1C
-    bcc .third
+    bcc SaveBlocksValidate_third
     pla
-    bra .reset
-.third:
+    bra SaveBlocksValidate_reset
+SaveBlocksValidate_third:
     pla
     clc
     adc.b !save_sum
@@ -416,13 +416,23 @@ SaveBlocksValidate:
     lda.w !save_blocks_w+3,x
     pha
     cmp.b #$FF
-    beq .fourth
+    beq SaveBlocksValidate_fourth
     and.b #$03
     cmp.b #$38
-    bcc .fourth
+    bcc SaveBlocksValidate_fourth
+
+; @routine 07:B2B8 SaveBlocksFourthBad
+; WHAT IT DOES: SaveBlocksValidate's failure of an entry's fourth byte,
+; which cannot happen (its low two bits are never $38 or more): the block
+; $F3 is reset as for any failure and checked again, then the rest.
+; HOW: Pulls the byte the test pushed, then as SaveBlocksValidate's reset.
+; Entry: M 8-bit, X 16-bit, D = $0000; DB = $70; $F3 = the block, $F5 its
+; offset; the entry byte on the stack above the return address. Exit: as
+; SaveBlocksValidate.
+SaveBlocksFourthBad:
     pla
-    bra .reset
-.fourth:
+    bra SaveBlocksValidate_reset
+SaveBlocksValidate_fourth:
     pla
     clc
     adc.b !save_sum
@@ -432,19 +442,19 @@ SaveBlocksValidate:
     inx
     inx
     dey
-    bne .entry
+    bne SaveBlocksValidate_entry
     ldx.b !save_block
     lda.w !save_block_sums_w,x
     cmp.b !save_sum
-    bne .reset
+    bne SaveBlocksValidate_reset
     inc.b !save_block
     lda.b !save_block
     cmp.b #$0C
-    bcs .done
-    jmp.w .block
-.done:
+    bcs SaveBlocksValidate_done
+    jmp.w SaveBlocksValidate_block
+SaveBlocksValidate_done:
     rts
-.reset:
+SaveBlocksValidate_reset:
     pha
     lda.b #$11
     sta.l !save_bad_flag
@@ -454,11 +464,11 @@ SaveBlocksValidate:
     sep.b #$20
     ldy.w #$0030
     lda.b #$FF
-.fill:
+SaveBlocksValidate_fill:
     sta.w !save_blocks_w,x
     inx
     dey
-    bne .fill
+    bne SaveBlocksValidate_fill
     ldx.b !save_block
     rep.b #$20
     lda.b !save_block
@@ -474,7 +484,7 @@ SaveBlocksValidate:
     sta.w !save_block_groups_w+3,y
     lda.b #$CC
     sta.w !save_block_sums_w,x
-    jmp.w .block
+    jmp.w SaveBlocksValidate_block
 
 ; @routine 07:B085 SaveValidate
 ; WHAT IT DOES: Validates the whole save area: the three tables, blocks

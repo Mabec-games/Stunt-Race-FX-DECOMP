@@ -2185,8 +2185,11 @@ static void sign_byte(uint32_t at, uint8_t a)
 /* Object X at its parent (+$27)'s position plus an offset turned by the
    parent's angles +$14 (RotateXZFrom08) and +$15 (RotateXZ) and doubled,
    then rebucketed. A trail's offset is (0, -10, +$32), +$32 moving by -5
-   after; an attached object's is (0, +$30, +$32), kept at $1F59/$1F5A. */
-static void parent_place(uint32_t b, int attached)
+   after; an attached object's is (0, +$30, +$32), kept at $1F59/$1F5A.
+   From stage 1 (the x sign's store of $FF, which cannot run: the x is 0)
+   or stage 2 (the trail's y sign's store of 0, which cannot run: the y is
+   $F6), with Y the parent and the stores before those made. */
+static void parent_place_from(uint32_t b, int attached, int stage)
 {
     uint8_t v;
     uint16_t w;
@@ -2194,21 +2197,29 @@ static void parent_place(uint32_t b, int attached)
     static const uint16_t to[3] = {0x200C, 0x2010, 0x200E};
     uint32_t from[3];
 
-    cpu.y = rd16(b | (uint16_t)(0x2027 + cpu.x));
-    if (attached) {
-        wr8(b | 0x1F59, rd8(b | (uint16_t)(0x2030 + cpu.x)));
-        wr8(b | 0x1F5A, rd8(b | (uint16_t)(0x2032 + cpu.x)));
-    } else {
-        v = rd8(b | (uint16_t)(0x2032 + cpu.x));
-        wr8(b | 0x1F58, v);
+    if (stage == 0) {
+        cpu.y = rd16(b | (uint16_t)(0x2027 + cpu.x));
+        if (attached) {
+            wr8(b | 0x1F59, rd8(b | (uint16_t)(0x2030 + cpu.x)));
+            wr8(b | 0x1F5A, rd8(b | (uint16_t)(0x2032 + cpu.x)));
+        } else {
+            v = rd8(b | (uint16_t)(0x2032 + cpu.x));
+            wr8(b | 0x1F58, v);
+        }
+        wr8(dp8(0x02), 0x00);
+        wr8(dp8(0x04), 0x00);
+        sign_byte(dp8(0x05), 0x00);
+    } else if (stage == 1) {
+        wr8(dp8(0x05), 0xFF);
     }
-    wr8(dp8(0x02), 0x00);
-    wr8(dp8(0x04), 0x00);
-    sign_byte(dp8(0x05), 0x00);
-    v = attached ? rd8(b | 0x1F59) : 0xF6;
-    wr8(dp8(0x08), v);
-    wr8(dp8(0x0A), v);
-    sign_byte(dp8(0x0B), v);
+    if (stage <= 1) {
+        v = attached ? rd8(b | 0x1F59) : 0xF6;
+        wr8(dp8(0x08), v);
+        wr8(dp8(0x0A), v);
+        sign_byte(dp8(0x0B), v);
+    } else {
+        wr8(dp8(0x0B), 0x00);
+    }
     v = rd8(b | (attached ? 0x1F5A : 0x1F58));
     wr8(dp8(0x94), v);
     wr8(b | 0x05F2, v);
@@ -2252,6 +2263,11 @@ static void parent_place(uint32_t b, int attached)
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     }
     abi_ObjectRebucket();
+}
+
+static void parent_place(uint32_t b, int attached)
+{
+    parent_place_from(b, attached, 0);
 }
 
 /*
@@ -2348,6 +2364,53 @@ void abi_ObjectTrailStep(void)
     v = (uint8_t)(rd8(b | (uint16_t)(0x204B + cpu.x)) - 1);
     wr8(b | (uint16_t)(0x204B + cpu.x), v);
     parent_place(b, 0);
+}
+
+/*
+ * @routine 08:E96A ObjectTrailSignX
+ * WHAT IT DOES: ObjectTrailPlace's store of $FF as the offset's x sign
+ * ($05), which nothing reaches (the test is of bit 7 of the x, 0); then
+ * the rest of the placing.
+ * HOW: As ObjectTrailPlace from there.
+ * Entry: M 8-bit, X 16-bit; X = object, Y = its parent; $1F58 = its +$32,
+ * $02 = $04 = 0. Exit: as ObjectTrailStep.
+ */
+void abi_ObjectTrailSignX(void)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xFF);
+    cpu.p = nz8(cpu.p, 0xFF);
+    parent_place_from((uint32_t)cpu.db << 16, 0, 1);
+}
+
+/*
+ * @routine 08:E982 ObjectTrailSignY
+ * WHAT IT DOES: ObjectTrailPlace's store of 0 as the offset's y sign ($0B),
+ * which nothing reaches (the test is of bit 7 of the y, $F6); then the
+ * rest of the placing.
+ * HOW: As ObjectTrailPlace from there.
+ * Entry: M 8-bit, X 16-bit; X = object, Y = its parent; $1F58 = its +$32,
+ * $02 = $04 = 0, $05 the x sign, $08 = $0A = the y. Exit: as
+ * ObjectTrailStep.
+ */
+void abi_ObjectTrailSignY(void)
+{
+    parent_place_from((uint32_t)cpu.db << 16, 0, 2);
+}
+
+/*
+ * @routine 08:EBF5 ObjectAttachedSignX
+ * WHAT IT DOES: ObjectAttachedPlace's store of $FF as the offset's x sign
+ * ($05), which nothing reaches (the test is of bit 7 of the x, 0); then
+ * the rest of the placing.
+ * HOW: As ObjectAttachedPlace from there.
+ * Entry: M 8-bit, X 16-bit; X = object, Y = its parent; $1F59/$1F5A = its
+ * +$30/+$32, $02 = $04 = 0. Exit: as ObjectAttachedStep.
+ */
+void abi_ObjectAttachedSignX(void)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xFF);
+    cpu.p = nz8(cpu.p, 0xFF);
+    parent_place_from((uint32_t)cpu.db << 16, 1, 1);
 }
 
 /*

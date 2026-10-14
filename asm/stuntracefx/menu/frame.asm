@@ -77,7 +77,17 @@ MenuRegionCheck:
     plb
     lda.w !STAT78
     and.b #$10
-    beq .lAE8C
+    beq MenuRegionCheck_ntsc
+
+; @routine 0B:AE58 MenuRegionPal
+; WHAT IT DOES: MenuRegionCheck's stop on a PAL console, which no NTSC
+; run reaches: the region screen's objects set (animation $1E on the
+; kind $0F object at Y $60, +$10 of the kind $10 object cleared), one
+; frame's objects and sprites, then a loop for ever.
+; HOW: As inside MenuRegionCheck.
+; Entry: M 8-bit, X 16-bit, D = $0000; DB = 0; P and DB on the stack.
+; Exit: does not return.
+MenuRegionPal:
     lda.b #$0F
     jsr.w MenuActorFind
     lda.b !actor_anim,x
@@ -102,7 +112,7 @@ MenuRegionCheck:
     rep.b #$30
 .lAE8A:
     bra .lAE8A
-.lAE8C:
+MenuRegionCheck_ntsc:
     plb
     plp
     rts

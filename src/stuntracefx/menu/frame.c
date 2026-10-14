@@ -101,6 +101,31 @@ static void menu_frame(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | f);
 }
 
+/* MenuRegionCheck's PAL stop (from 0B:AE58), with DB = 0: the kind $0F
+   object's animation $1E at Y $60, +$10 of the kind $10 object cleared,
+   the objects run and the sprite table built once, frame updates 0-3
+   asked for, then the loop for ever (its branch to itself at 0B:AE8A run
+   as original code). */
+static void region_stop(void)
+{
+    uint16_t x;
+
+    x = actor_find8(0x0F, cpu.x);
+    if (rd8((uint16_t)(x + 0x14)) != 0x1E) {
+        wr8((uint16_t)(x + 0x14), 0x1E);
+        wr8((uint16_t)(x + 0x16), 0x00);
+        wr8((uint16_t)(x + 0x18), 0x00);
+    }
+    wr8((uint16_t)(x + 0x06), 0x60);
+    x = actor_find8(0x10, x);
+    wr8((uint16_t)(x + 0x10), 0x00);
+    cpu.x = x;
+    MenuActorsRun();
+    cpu.a = MenuOamBuild(&cpu.x, &cpu.y);
+    wr8(0x0011D7, (uint8_t)(rd8(0x0011D7) | 0x0F));
+    jump_original_code(0x0BAE8A);
+}
+
 /*
  * @routine 0B:AE47 MenuRegionCheck
  * WHAT IT DOES: Stops the game on a PAL console (bit 4 of STAT78): starts
@@ -117,7 +142,6 @@ static void menu_frame(void)
 void MenuRegionCheck(void)
 {
     uint8_t p = cpu.p, db = cpu.db, s = rd8(STAT78) & 0x10;
-    uint16_t x;
 
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | s);
     if (!s) {
@@ -126,26 +150,27 @@ void MenuRegionCheck(void)
         return;
     }
     cpu.db = 0x00;
-    x = actor_find8(0x0F, cpu.x);
-    if (rd8((uint16_t)(x + 0x14)) != 0x1E) {
-        wr8((uint16_t)(x + 0x14), 0x1E);
-        wr8((uint16_t)(x + 0x16), 0x00);
-        wr8((uint16_t)(x + 0x18), 0x00);
-    }
-    wr8((uint16_t)(x + 0x06), 0x60);
-    x = actor_find8(0x10, x);
-    wr8((uint16_t)(x + 0x10), 0x00);
-    cpu.x = x;
-    MenuActorsRun();
-    cpu.a = MenuOamBuild(&cpu.x, &cpu.y);
-    wr8(0x0011D7, (uint8_t)(rd8(0x0011D7) | 0x0F));
-    for (;;)
-        ;
+    region_stop();
 }
 
 void abi_MenuRegionCheck(void)
 {
     MenuRegionCheck();
+}
+
+/*
+ * @routine 0B:AE58 MenuRegionPal
+ * WHAT IT DOES: MenuRegionCheck's stop on a PAL console, which no NTSC
+ * run reaches: the region screen's objects set (animation $1E on the
+ * kind $0F object at Y $60, +$10 of the kind $10 object cleared), one
+ * frame's objects and sprites, then a loop for ever.
+ * HOW: As inside MenuRegionCheck.
+ * Entry: M 8-bit, X 16-bit, D = $0000; DB = 0; P and DB on the stack.
+ * Exit: does not return.
+ */
+void abi_MenuRegionPal(void)
+{
+    region_stop();
 }
 
 /* Any of bits 0-3 of either player's held buttons ($0309, $030D), or

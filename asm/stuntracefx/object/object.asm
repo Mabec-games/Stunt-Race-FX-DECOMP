@@ -2315,24 +2315,42 @@ ObjectTrailPlace:
     sta.b !dp_02
     sta.b !dp_04
     bit.b #$80
-    beq .x_positive
+    beq ObjectTrailPlace_xpos
+
+; @routine 08:E96A ObjectTrailSignX
+; WHAT IT DOES: ObjectTrailPlace's store of $FF as the offset's x sign
+; ($05), which nothing reaches (the test is of bit 7 of the x, 0); then
+; the rest of the placing.
+; HOW: As ObjectTrailPlace from there.
+; Entry: M 8-bit, X 16-bit; X = object, Y = its parent; $1F58 = its +$32,
+; $02 = $04 = 0. Exit: as ObjectTrailStep.
+ObjectTrailSignX:
     lda.b #$FF
     sta.b !dp_05
-    bra .y
-.x_positive:
+    bra ObjectTrailPlace_y
+ObjectTrailPlace_xpos:
     stz.b !dp_05
-.y:
+ObjectTrailPlace_y:
     lda.b #$F6
     sta.b !dp_08
     sta.b !dp_0a
     bit.b #$80
-    beq .y_positive
+    beq ObjectTrailSignY
     lda.b #$FF
     sta.b !dp_0b
-    bra .z
-.y_positive:
+    bra ObjectTrailPlace_z
+
+; @routine 08:E982 ObjectTrailSignY
+; WHAT IT DOES: ObjectTrailPlace's store of 0 as the offset's y sign ($0B),
+; which nothing reaches (the test is of bit 7 of the y, $F6); then the
+; rest of the placing.
+; HOW: As ObjectTrailPlace from there.
+; Entry: M 8-bit, X 16-bit; X = object, Y = its parent; $1F58 = its +$32,
+; $02 = $04 = 0, $05 the x sign, $08 = $0A = the y. Exit: as
+; ObjectTrailStep.
+ObjectTrailSignY:
     stz.b !dp_0b
-.z:
+ObjectTrailPlace_z:
     lda.w !wram_1F58
     sta.b !dp_94
     sta.w !rot_z
@@ -2480,24 +2498,33 @@ ObjectAttachedPlace:
     sta.b !dp_02
     sta.b !dp_04
     bit.b #$80
-    beq .x_positive
+    beq ObjectAttachedPlace_xpos
+
+; @routine 08:EBF5 ObjectAttachedSignX
+; WHAT IT DOES: ObjectAttachedPlace's store of $FF as the offset's x sign
+; ($05), which nothing reaches (the test is of bit 7 of the x, 0); then
+; the rest of the placing.
+; HOW: As ObjectAttachedPlace from there.
+; Entry: M 8-bit, X 16-bit; X = object, Y = its parent; $1F59/$1F5A = its
+; +$30/+$32, $02 = $04 = 0. Exit: as ObjectAttachedStep.
+ObjectAttachedSignX:
     lda.b #$FF
     sta.b !dp_05
-    bra .y
-.x_positive:
+    bra ObjectAttachedPlace_y
+ObjectAttachedPlace_xpos:
     stz.b !dp_05
-.y:
+ObjectAttachedPlace_y:
     lda.w !attach_y
     sta.b !dp_08
     sta.b !dp_0a
     bit.b #$80
-    beq .y_positive
+    beq ObjectAttachedPlace_ypos
     lda.b #$FF
     sta.b !dp_0b
-    bra .z
-.y_positive:
+    bra ObjectAttachedPlace_z
+ObjectAttachedPlace_ypos:
     stz.b !dp_0b
-.z:
+ObjectAttachedPlace_z:
     lda.w !attach_z
     sta.b !dp_94
     sta.w !rot_z

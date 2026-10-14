@@ -1,10 +1,12 @@
 /*
  * crash.c: the stop screen. Each entry stores a backdrop colour in $1A2E
- * and a code in X, then all of them share one body: interrupts and HDMA off,
- * the screen blanked and rebuilt as BG1 alone with that colour as colour 0,
- * HDMA channel 1 feeding BG1HOFS from the table at $00:812E; then BG1 is
- * scrolled down step by step until its vertical scroll ($0719) reaches the
- * code ($0717), and the CPU stops in a loop forever.
+ * and a code in X, then all of them share one body: interrupts and HDMA
+ * off (stores through the caller's data bank, so only from banks $00-$3F
+ * and $80-$BF), the screen blanked and rebuilt as BG1 alone with that
+ * colour as colour 0, HDMA channel 1 feeding BG1HOFS from the table at
+ * $00:812E; then BG1 is scrolled down step by step until its vertical
+ * scroll ($0719) reaches the code ($0717), and the CPU stops in a loop
+ * forever.
  */
 #include "machine.h"
 #include "hw.h"
@@ -20,10 +22,13 @@ static void crash_body(uint8_t bank, uint16_t code)
     uint16_t a, step;
 
     wr16((uint32_t)bank << 16 | (uint16_t)CRASH_CODE, code);
-    wr8(NMITIMEN, 0x00);
-    wr8(HDMAEN, 0x00);
-    wr8(TM, 0x00);
-    wr8(TS, 0x00);
+    /* Through the caller's data bank: from bank $7E or $7F these four land
+       in work RAM, and interrupts and HDMA stay on. */
+    wr8((uint32_t)bank << 16 | (uint16_t)NMITIMEN, 0x00);
+    wr8((uint32_t)bank << 16 | (uint16_t)HDMAEN, 0x00);
+    cpu.p |= P_I;
+    wr8((uint32_t)bank << 16 | (uint16_t)TM, 0x00);
+    wr8((uint32_t)bank << 16 | (uint16_t)TS, 0x00);
     wr8(INIDISP, 0x80);
     wr8(CGADD, 0x00);
     wr8(CGDATA, rd8(CRASH_COLOUR));
@@ -57,9 +62,15 @@ static void crash_body(uint8_t bank, uint16_t code)
     wr8(HDMAEN, 0x02);
     for (;;) {
         a = rd16(CRASH_CODE);
-        if (a == rd16(CRASH_SCROLL))
-            for (;;)
-                ;
+        if (a == rd16(CRASH_SCROLL)) {
+            /* As the loop leaves them: 16-bit, IRQs masked, Z and C from
+               the compare, X the HDMA table, Y the delay's end. */
+            cpu.a = a;
+            cpu.x = 0x812E;
+            cpu.y = 0x0000;
+            cpu.p = (uint8_t)((cpu.p & (P_V | P_D)) | P_I | P_Z | P_C);
+            jump_original_code(0x00812C);
+        }
         step = (uint16_t)((uint16_t)(a - rd16(CRASH_SCROLL)) >> 3);
         if (!step)
             step = 0x0001;

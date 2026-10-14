@@ -326,15 +326,27 @@ static int entry_byte_bad(uint8_t v, int which)
  * Entry: M 8-bit, D = $0000; DB = $70. Exit: A = $020C; X = $0B; Y = 0;
  * $F3 = $0C; M 8-bit, X 16-bit; C, Z set, N clear; V from the last add.
  */
-void SaveBlocksValidate(uint8_t bank, uint8_t *p)
+/* From the top, or (from_bad) at the fourth entry byte's failure, which
+   cannot happen: the block in $F3 reset, its offset from $F5. */
+static void save_blocks_validate(uint8_t bank, uint8_t *p, int from_bad)
 {
     uint32_t b = (uint32_t)bank << 16;
     uint16_t block = 0, base, x;
     uint8_t sum, v;
     int i, j, bad;
 
-    wr16(0x0000F3, 0x0000);
+    if (from_bad) {
+        block = rd16(0x0000F3);
+        base = rd16(0x0000F5);
+    } else {
+        wr16(0x0000F3, 0x0000);
+    }
     while (block < 12) {
+        if (from_bad) {
+            from_bad = 0;
+            bad = 1;
+            goto reset;
+        }
         x = (uint16_t)(block << 2);
         sum = rd8(0x70FFD0 + x);
         wr8(0x0000F1, sum);
@@ -358,6 +370,7 @@ void SaveBlocksValidate(uint8_t bank, uint8_t *p)
         wr8(0x0000F1, sum);
         if (!bad && rd8(b | (uint16_t)(0xFC33 + block)) != sum)
             bad = 1;
+    reset:
         if (bad) {
             wr8(0x001FFE, 0x11);
             for (i = 0; i < 48; i++)
@@ -372,11 +385,38 @@ void SaveBlocksValidate(uint8_t bank, uint8_t *p)
     }
 }
 
+void SaveBlocksValidate(uint8_t bank, uint8_t *p)
+{
+    save_blocks_validate(bank, p, 0);
+}
+
 void abi_SaveBlocksValidate(void)
 {
     uint8_t p = cpu.p;
 
     SaveBlocksValidate(cpu.db, &p);
+    cpu.a = 0x020C;
+    cpu.x = 0x000B;
+    cpu.y = 0x0000;
+    cpu.p = (uint8_t)(((p & ~(P_N | P_X)) | P_M | P_C | P_Z));
+}
+
+/*
+ * @routine 07:B2B8 SaveBlocksFourthBad
+ * WHAT IT DOES: SaveBlocksValidate's failure of an entry's fourth byte,
+ * which cannot happen (its low two bits are never $38 or more): the block
+ * $F3 is reset as for any failure and checked again, then the rest.
+ * HOW: Pulls the byte the test pushed, then as SaveBlocksValidate's reset.
+ * Entry: M 8-bit, X 16-bit, D = $0000; DB = $70; $F3 = the block, $F5 its
+ * offset; the entry byte on the stack above the return address. Exit: as
+ * SaveBlocksValidate.
+ */
+void abi_SaveBlocksFourthBad(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.s++;
+    save_blocks_validate(cpu.db, &p, 1);
     cpu.a = 0x020C;
     cpu.x = 0x000B;
     cpu.y = 0x0000;

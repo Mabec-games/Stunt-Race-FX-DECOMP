@@ -1,0 +1,60 @@
+# unit_dead_paths: paths no play reaches, as calls from the start of a
+# Novice race. GaugeFromSpeed (7F:11E9) with $02 = 0 and with a speed of
+# $0300 (above the cap); GaugeFromSpeedZero (7F:120E), its LDA #0 after a
+# BRA, entered with P on the stack; PlayerColoursFlash (7E:B5C1) with
+# level $A0 (the add of $60 carries) and its lone RTS
+# PlayerColoursFlashRts (7E:B5E3); MenuRegionPal (0B:AE58), the PAL stop,
+# on menu screen 0 for 20 frames; SaveBlocksFourthBad (07:B2B8), block 0
+# reset by the fourth-byte failure that cannot happen; and the trail and
+# attached objects' placing with object 1 made one (its own parent, count
+# +$4B = 5): ObjectTrailStep (08:E934) with +$32 positive,
+# ObjectAttachedStep (08:EBB9) with +$30 and +$32 negative, and the sign
+# stores that cannot run as entries with Y = the parent: ObjectTrailSignX
+# (08:E96A), ObjectTrailSignY (08:E982) and ObjectAttachedSignX (08:EBF5).
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0002 00,00
+call 7F:11E9 p=30 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0002 02,00
+set 70004C 00,03
+call 7F:11E9 p=30 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 7F:120E php p=00 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 7E:B5C1 a=00A0 y=0000 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 7E:B5E3 p=20 db=7E d=0000
+load build/stuntracefx/states/menu_screen0.state
+call 0B:AE58 p=20 db=00 d=0000 noreturn frames=20 vblank
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E00F3 00,00
+set 7E00F5 00,00
+call 07:B2B8 php p=20 x=0000 y=000C db=70 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E204C 05
+set 7E2028 01,00
+set 7E2033 05
+call 08:E934 long p=20 x=0001 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E204C 05
+set 7E2028 01,00
+set 7E2031 F0
+set 7E2033 F0
+call 08:EBB9 long p=20 x=0001 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1F58 05
+set 7E0002 00
+set 7E0004 00
+call 08:E96A long p=20 x=0001 y=0001 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1F58 05
+set 7E0002 00
+set 7E0004 00,00
+set 7E0008 F6
+set 7E000A F6
+call 08:E982 long p=20 x=0001 y=0001 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1F59 F0,F0
+set 7E0002 00
+set 7E0004 00
+call 08:EBF5 long p=20 x=0001 y=0001 db=7E d=0000

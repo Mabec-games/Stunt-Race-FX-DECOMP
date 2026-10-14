@@ -770,6 +770,16 @@ void abi_PlayerColoursFlash(void)
 }
 
 /*
+ * @routine 7E:B5E3 PlayerColoursFlashRts
+ * WHAT IT DOES: An RTS inside PlayerColoursFlash that nothing branches to.
+ * HOW: Returns.
+ * Entry: any. Exit: all unchanged.
+ */
+void abi_PlayerColoursFlashRts(void)
+{
+}
+
+/*
  * @routine 7E:B53F StatusColourPick
  * WHAT IT DOES: Picks the colour for item Y and stores it at $7E:FD8B: 0
  * while its timer $0DDA + Y is 0; with flag $0400 (of $0DF0/$0DF2 + Y) and

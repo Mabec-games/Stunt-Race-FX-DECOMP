@@ -154,30 +154,39 @@ GaugeFromSpeed:
     rep.b #$30
     lda.b !dp_02
     cmp.w #$0000
-    bne .l11F6
-    brl .l121B
-.l11F6:
+    bne GaugeFromSpeed_11F6
+    brl GaugeFromSpeed_121B
+GaugeFromSpeed_11F6:
     tax
     lda.l !gsu_speeds,x
-    bpl .l1202
+    bpl GaugeFromSpeed_1202
     eor.w #$FFFF
     inc a
     lsr a
-.l1202:
+GaugeFromSpeed_1202:
     cmp.w #$0257
-    bcc .l120A
+    bcc GaugeFromSpeed_120A
     lda.w #$0257
-.l120A:
+GaugeFromSpeed_120A:
     lsr a
     lsr a
-    bra .l1211
+    bra GaugeFromSpeed_1211
+
+; @routine 7F:120E GaugeFromSpeedZero
+; WHAT IT DOES: GaugeFromSpeed's LDA #0 after the BRA that ends the
+; scaling, which nothing reaches: the gauge for 0 (the byte at $0B:B158 +
+; GaugeTableIndex of 0) into $02.
+; HOW: As GaugeFromSpeed from there; ends pulling the P its start pushed.
+; Entry: M 16-bit, X 16-bit, D = $0000; P on the stack above the return
+; address. Exit: as GaugeFromSpeed.
+GaugeFromSpeedZero:
     lda.w #$0000
-.l1211:
+GaugeFromSpeed_1211:
     tax
     jsr.w GaugeTableIndex
     sep.b #$20
     lda.l !gauge_table,x
-.l121B:
+GaugeFromSpeed_121B:
     rep.b #$20
     and.w #$00FF
     sta.b !dp_02

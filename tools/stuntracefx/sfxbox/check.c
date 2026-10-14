@@ -1272,22 +1272,27 @@ static void leave_frame(struct SfxboxRegs *out)
     core_set_regs(&mine);
 }
 
-static void jump_original(uint32_t addr, const uint8_t *pushed, int n)
+static uint32_t ls_entry_pc;   /* where the C call ls_exec swapped in started */
+static int ls_unit_noreturn;   /* that call is a unit call marked noreturn */
+
+static void jump_original(uint32_t addr, const uint8_t *pushed, int n, int search)
 {
-    uint32_t j, c = cur_n;
+    uint32_t j = 0, c = cur_n;
     int nest = 0;
     uint16_t s = (uint16_t)(cpu.s - n), hs = cpu.s;
     unsigned inner = 0;
 
-    int found;
-    for (j = cur_i; j + 1 < cur_n || fetch_more(j + 2); j++)
-        if (cur_ops[j] >> 4 == 9 && cur_addr[j] == addr && cur_ops[j + 1] >> 4 == 0xA) break;
-    found = j + 1 < cur_n;
+    int found = 0;
+    if (search) {
+        for (j = cur_i; j + 1 < cur_n || fetch_more(j + 2); j++)
+            if (cur_ops[j] >> 4 == 9 && cur_addr[j] == addr && cur_ops[j + 1] >> 4 == 0xA) break;
+        found = j + 1 < cur_n;
+    }
     if (found) {
         replay_to(j);
         s = (uint16_t)cur_addr[j + 1];
         inner = restore_frames(j, (uint16_t)(s + n), hs);
-    } else if (!past_end) {
+    } else if (search && !past_end) {
         if (asm_unplaced++ < 5) fprintf(lsrep, "OFF frame %ld: jump to %06X not in the original's record\n", cur_frame, addr);
     }
     /* What the original pushed before it went there, at its S. */
@@ -1319,6 +1324,12 @@ static void jump_original(uint32_t addr, const uint8_t *pushed, int n)
         }
         return;
     }
+    /* A noreturn unit call whose original code has reset the stack (the
+       game restarting): the original keeps the call's record open and runs
+       on as the game, and so does the hybrid, as original code, for the
+       rest of the run (the frames are still compared). */
+    if (ls_unit_noreturn && out.s > ls_exit_s)
+        for (;;) core_run_out(&out, 0xFFFF);
     /* Otherwise it left the routine's frame: its own return when the C
        was entered from original code, or through its caller's. */
     leave_frame(&out);
@@ -1339,12 +1350,24 @@ void jump_routine_pushed(uint32_t addr, const uint8_t *pushed, int n)
         if (c_running) longjmp(abort_c, 1);
         return;
     }
-    jump_original(addr, pushed, n);
+    jump_original(addr, pushed, n, 1);
 }
 
 void jump_routine(uint32_t addr)
 {
     jump_routine_pushed(addr, NULL, 0);
+}
+
+void jump_original_code(uint32_t addr)
+{
+    if (!machine_live) {
+        if (cur) cur->needs_asm = 1;
+        if (c_running) longjmp(abort_c, 1);
+        return;
+    }
+    /* A branch back to the start of the routine whose C is running (Hang)
+       is no entry the original marks: nothing to look for in its record. */
+    jump_original(addr, NULL, 0, addr != ls_entry_pc);
 }
 
 void call_routine(uint32_t addr, int long_call)
@@ -1497,6 +1520,9 @@ static int ls_exec(uint32_t pc)
     uint32_t ret; uint16_t exit_s;
     if (!entry(pc, &r, &ret, &exit_s)) { calls_fallback++; return 0; }
     ls_cur_name = routines[idx].name;
+    ls_entry_pc = pc;
+    ls_unit_noreturn = ls_noreturn_pc == pc;
+    if (ls_unit_noreturn) ls_noreturn_pc = (uint32_t)-1;
     /* The original's next call: wait until it has returned, then take a
        private copy of its cycles (the ring moves on). */
     uint64_t k = LOAD(sh->h_calls);
