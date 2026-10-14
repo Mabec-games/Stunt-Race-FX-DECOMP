@@ -776,7 +776,7 @@ RaceLoad_modes:
     lda.w #$0FFF
     ldx.w #$3000
     ldy.w #$93D7
-    mvn $7F,$70
+    mvn !tilemap_7f93d7>>16,!gsu_picture>>16
     plp
     plb
     phb
@@ -785,7 +785,7 @@ RaceLoad_modes:
     lda.w #$0FFF
     ldx.w #$3000
     ldy.w #$BBD7
-    mvn $7F,$70
+    mvn !tilemap_7f93d7>>16,!gsu_picture>>16
     plp
     plb
     bra .lF21E
@@ -800,7 +800,7 @@ RaceLoad_modes:
     lda.w #$0FFF
     ldx.w #$3000
     ldy.w #$93D7
-    mvn $7F,$70
+    mvn !tilemap_7f93d7>>16,!gsu_picture>>16
     plp
     plb
     phb
@@ -809,7 +809,7 @@ RaceLoad_modes:
     lda.w #$0FFF
     ldx.w #$3000
     ldy.w #$BBD7
-    mvn $7F,$70
+    mvn !tilemap_7f93d7>>16,!gsu_picture>>16
     plp
     plb
 .lF21E:
@@ -845,7 +845,7 @@ RaceLoad_modes:
     lda.w #$0FFF
     ldx.w #$3000
     ldy.w #$93D7
-    mvn $7F,$70
+    mvn !tilemap_7f93d7>>16,!gsu_picture>>16
     plp
     plb
     phb
@@ -854,7 +854,7 @@ RaceLoad_modes:
     lda.w #$0FFF
     ldx.w #$3000
     ldy.w #$BBD7
-    mvn $7F,$70
+    mvn !tilemap_7f93d7>>16,!gsu_picture>>16
     plp
     plb
     rep.b #$30
@@ -880,7 +880,7 @@ RaceLoad_modes:
     lda.w #$0FFF
     ldx.w #$3000
     ldy.w #$93D7
-    mvn $7F,$70
+    mvn !tilemap_7f93d7>>16,!gsu_picture>>16
     plp
     plb
     phb
@@ -889,7 +889,7 @@ RaceLoad_modes:
     lda.w #$0FFF
     ldx.w #$3000
     ldy.w #$BBD7
-    mvn $7F,$70
+    mvn !tilemap_7f93d7>>16,!gsu_picture>>16
     plp
     plb
     rep.b #$30
