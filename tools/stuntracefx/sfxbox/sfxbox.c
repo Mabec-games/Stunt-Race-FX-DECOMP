@@ -485,6 +485,7 @@ static void exec_range(int from, int to) {
             /* Calls still open (one that never returns, as a stop screen)
                belong to the machine the load replaced: they never end. */
             if (checklib_on) check_rollback(0);
+            if (lockstep) lockstep_state_loaded();
             free(p);
         }
         else die("%s:%d: bad command", script_path, i + 1);

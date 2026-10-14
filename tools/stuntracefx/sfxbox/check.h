@@ -9,6 +9,7 @@ int check_depth(void);
 void check_rollback(int d);
 int lockstep_begin(void *core, const char *lib, const char *only, const char *report_path);
 int lockstep_role(void);
+void lockstep_state_loaded(void);
 int lockstep_call_ok(uint32_t pc);
 uint32_t lockstep_clock(void);
 void lockstep_debug_state(void);

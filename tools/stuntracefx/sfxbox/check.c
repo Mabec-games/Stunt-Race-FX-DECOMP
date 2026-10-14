@@ -569,7 +569,7 @@ void check_end(void)
 #define OPRING (1u << 24)
 #define SNAP (0x20000 + 0x10000 + 0x10000 + 544 + 512 + 0x10000)
 
-typedef struct { long frame; uint64_t opoff; uint32_t opn; int done; } CallRec;
+typedef struct { long frame; uint64_t opoff; uint32_t opn; int done, cut; } CallRec;
 typedef struct {
     long frame;
     uint32_t ncalls;
@@ -611,6 +611,9 @@ static uint32_t hk;          /* hybrid: calls made this frame */
 
 static long cur_frame;
 static FILE *lsrep;
+/* SFXBOX_LS_CALLS=frame: from that frame, each swapped call as each side
+   opens it (the original's on stderr) and the original's returns. */
+static long calls_from = -1;
 static const char *ls_cur_name;
 static void stuck_report(const char *cond)
 {
@@ -731,6 +734,8 @@ static void ls_insn(uint32_t pc)
            exit level: it left through its caller's frame. */
         if ((pc == m.ret_pc && r.s == m.exit_s)
             || (r.s > m.exit_s && (prev == 0x60 || prev == 0x6B))) {
+            if (calls_from >= 0 && cur_frame >= calls_from)
+                fprintf(stderr, "ODONE frame %ld call %llu at %06X S=%04X\n", cur_frame, (unsigned long long)m.call, pc, r.s);
             STORE(sh->calls[m.call % CALLRING].done, 1);
             m.active = 0;
             m.irq_resumed = 0;
@@ -795,9 +800,12 @@ static void ls_insn(uint32_t pc)
     WAIT_UNTIL(k - LOAD(sh->h_calls) < CALLRING);
     CallRec *rec = &sh->calls[k % CALLRING];
     rec->frame = cur_frame; rec->opoff = LOAD(sh->o_ops); rec->opn = 0;
+    STORE(rec->cut, 0);
     STORE(rec->done, 0);
     STORE(sh->o_calls, k + 1);
     sh->fs[cur_frame % NSLOT].ncalls++;
+    if (calls_from >= 0 && cur_frame >= calls_from)
+        fprintf(stderr, "OCALL frame %ld call %llu %06X S=%04X\n", cur_frame, (unsigned long long)k, pc, r.s);
     m.active = 1; m.in_irq = 0; m.call = k; m.depth = 0; m.entry_s = r.s;
     m_pc = pc;
 }
@@ -856,6 +864,9 @@ static uint32_t cur_n, cur_i, cur_cap;
    the record is complete; 1 when there are. */
 static CallRec *cur_rec;
 static int cur_open;
+/* The record ended at a state load in the script (lockstep_state_loaded):
+   the original's call was cut there, at a frame's end, and never returned. */
+static int cur_cut;
 static void hybrid_finish(long frames);
 static int past_end;
 /* What has come of the record so far, without waiting (each frame, so the
@@ -909,7 +920,7 @@ static int fetch_more(uint32_t need)
             spins = 0;
             continue;
         }
-        if (done) { cur_open = 0; return 0; }
+        if (done) { cur_open = 0; cur_cut = LOAD(cur_rec->cut); return 0; }
         if (LOAD(sh->o_done)) {
             /* The script ended on the original side inside this call: as
                for a call that never returned (ls_exec), nothing after it
@@ -1133,17 +1144,23 @@ static void record_rest(void)
 }
 
 /* ls_escape is the C's way out when original code it called left through
-   its caller's frame: the C is abandoned there (ls_exec). ls_entry_s: S at
-   the swapped routine's entry; code that lands still inside its frame runs
-   on as original code until it leaves it. */
-static uint16_t ls_entry_s;
+   its caller's frame: the C is abandoned there (ls_exec). Code that lands
+   still inside the swapped routine's call runs on as original code until
+   the call ends as the original's record of it ends (ls_insn): at its
+   return address with S at ls_exit_s, or at a return that takes S above
+   ls_exit_s. A return to S between the routine's entry S and ls_exit_s
+   elsewhere (code that has reset the stack and runs at its top, 0B:F7C3)
+   is not the call's end. */
+static uint16_t ls_exit_s;
+static uint32_t ls_ret;
 static void leave_frame(struct SfxboxRegs *out)
 {
-    if (out->s > ls_entry_s) return;
     struct SfxboxRegs mine;
     core_regs(&mine);
-    core_run_out(out, ls_entry_s);
-    core_regs(out);
+    while (!(out->s > ls_exit_s || (out->s == ls_exit_s && out->pc == ls_ret))) {
+        core_run_out(out, (uint16_t)(ls_exit_s - 1));
+        core_regs(out);
+    }
     core_set_regs(&mine);
 }
 
@@ -1306,9 +1323,9 @@ static uint8_t live_access(int write, uint32_t addr, uint8_t value)
             placed = q > 0 && cur_ops[q - 1] >> 4 == 2 && snap_offset(cur_addr[q - 1]) == o;
         }
         pair_lo = -1;
-        uint32_t from_i = cur_i;
+        uint32_t from_i = cur_i, j = cur_i;
         if (o >= 0 && !placed)
-            for (uint32_t j = cur_i; j < cur_n || fetch_more(j + 1); j++) {
+            for (; j < cur_n || fetch_more(j + 1); j++) {
                 uint8_t k = cur_ops[j] >> 4;
                 if ((k == 1 || k == 2) && timed(cur_addr[j])) break;
                 /* Nor past the original's entry into a routine with no C
@@ -1327,6 +1344,15 @@ static uint8_t live_access(int write, uint32_t addr, uint8_t value)
             }
         if (place_from >= 0 && cur_frame >= place_from && cur_frame <= place_to)
             fprintf(lsrep, "PLACE %ld %s %06X %u -> %u%s\n", cur_frame, write ? "w" : "r", addr, from_i, cur_i, placed ? " pair" : "");
+        /* Past the end of a record cut by a load: the rest of it is
+           replayed and the access made with the CPU's own timing, so the
+           clock reaches the frame's end, where the hybrid makes the same
+           load (a C waiting for the vertical blank would otherwise spin
+           with the clock standing still). */
+        if (cur_cut && o >= 0 && !placed && j >= cur_n) {
+            replay_to(cur_n);
+            return core_access(write, addr, value);
+        }
         if (write) { core_bus_write(addr, value); return value; }
         return core_bus_read(addr);
     }
@@ -1347,6 +1373,7 @@ static uint8_t live_access(int write, uint32_t addr, uint8_t value)
        diverged. The access is still made as a real, timed CPU access, so the
        clock moves and a polling loop in the C can end. */
     if (past_end) return core_access(write, addr, value);
+    if (cur_cut) { replay_to(cur_n); return core_access(write, addr, value); }
     if (timed_unmatched++ < 5)
         fprintf(lsrep, "OFF frame %ld: %s %06X with %u of %u recorded cycles used (in %s)\n", cur_frame, write ? "write" : "read",
                 addr, cur_i, cur_n, ls_cur_name ? ls_cur_name : "-");
@@ -1366,7 +1393,7 @@ static int ls_exec(uint32_t pc)
        private copy of its cycles (the ring moves on). */
     uint64_t k = LOAD(sh->h_calls);
     WAIT_UNTIL(k < LOAD(sh->o_calls) || LOAD(sh->o_done));
-    cur_n = 0; cur_i = 0; pair_lo = -1; cur_open = 0;
+    cur_n = 0; cur_i = 0; pair_lo = -1; cur_open = 0; cur_cut = 0;
     if (k < LOAD(sh->o_calls)) {
         CallRec *rec = &sh->calls[k % CALLRING];
         if (rec->frame != cur_frame) mismatched_calls++;
@@ -1386,9 +1413,12 @@ static int ls_exec(uint32_t pc)
         hybrid_finish(cur_frame + 1);
     } else mismatched_calls++;
     hk++;
+    if (calls_from >= 0 && cur_frame >= calls_from)
+        fprintf(lsrep, "HCALL frame %ld call %llu %s S=%04X\n", cur_frame, (unsigned long long)k, routines[idx].name, r.s);
     cpu.a = r.a; cpu.x = r.x; cpu.y = r.y; cpu.s = r.s; cpu.d = r.d; cpu.db = r.db; cpu.p = r.p; cpu.e = r.e; cpu.pc = r.pc;
     cpu.unwound = 0;
-    ls_entry_s = r.s;
+    ls_exit_s = exit_s;
+    ls_ret = ret;
     machine_live = 1;
     if (setjmp(ls_escape) == 0) {
         ls_escape_set = 1;
@@ -1400,6 +1430,9 @@ static int ls_exec(uint32_t pc)
     replay_to(cur_n);
     struct SfxboxRegs out = {cpu.a, cpu.x, cpu.y, cpu.unwound ? cpu.s : exit_s, cpu.d, cpu.db, cpu.p, cpu.e, cpu.unwound ? cpu.pc : ret};
     core_set_regs(&out);
+    if (calls_from >= 0 && cur_frame >= calls_from)
+        fprintf(lsrep, "HDONE frame %ld call %llu at %06X S=%04X%s\n", cur_frame, (unsigned long long)(LOAD(sh->h_calls) - 1),
+                out.pc, out.s, cpu.unwound ? " unwound" : "");
     calls_swapped++;
     return 1;
 }
@@ -1444,6 +1477,7 @@ int lockstep_begin(void *core, const char *lib, const char *only, const char *re
     gsu_lockstep_role(role, lsrep, &sh->stuck);
     if (getenv("SFXBOX_LS_PLACE")) sscanf(getenv("SFXBOX_LS_PLACE"), "%ld,%ld", &place_from, &place_to);
     if (getenv("SFXBOX_LS_SKIPS")) skips_from = atol(getenv("SFXBOX_LS_SKIPS"));
+    if (getenv("SFXBOX_LS_CALLS")) calls_from = atol(getenv("SFXBOX_LS_CALLS"));
     if (tr && sscanf(tr, "%ld,%ld", &tr_lo, &tr_hi) == 2) {
         char p[4096]; snprintf(p, sizeof p, "%s.%s", report_path, role == 1 ? "orig" : "hyb");
         trf = fopen(p, "w");
@@ -1453,6 +1487,34 @@ int lockstep_begin(void *core, const char *lib, const char *only, const char *re
 }
 
 int lockstep_role(void) { return role; }
+
+/* A state loaded by the script: a call the original has open belongs to
+   the machine the load replaced and never returns. Its record ends here,
+   marked cut, so the hybrid can finish the frame in the same place and
+   make the same load; later calls are recorded as calls of their own. */
+void lockstep_state_loaded(void)
+{
+    if (role == 2) {
+        /* The hybrid's C (or original code it ran, an interrupt handler
+           taken in a replay, with routine swapping off) was left where the
+           frame ended: it never resumes. */
+        *core_exec = ls_exec;
+        machine_live = 0;
+        ls_escape_set = 0;
+        cur_open = 0;
+        cur_cut = 0;
+        return;
+    }
+    if (role != 1 || !m.active) return;
+    if (calls_from >= 0 && cur_frame >= calls_from)
+        fprintf(stderr, "OCUT frame %ld call %llu\n", cur_frame, (unsigned long long)m.call);
+    STORE(sh->calls[m.call % CALLRING].cut, 1);
+    STORE(sh->calls[m.call % CALLRING].done, 1);
+    m.active = 0;
+    m.in_irq = 0;
+    m.irq_resumed = 0;
+    m.depth = 0;
+}
 
 /* Whether a unit call (sfxbox call) may start at this instruction. The
    hybrid runs a routine with C in one step, so it is never inside one at
