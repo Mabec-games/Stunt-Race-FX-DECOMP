@@ -314,8 +314,9 @@ def pieces(script):
     calls (each put back, so the machine is as if it had not run) and their
     `set`s, then the call, which is the run's last (nothing to put back),
     and the commands after it up to the next call or load. A call marked
-    noreturn (a routine that stops the game) never returns, in the original
-    or as C, so there is no call to compare: it has no piece."""
+    noreturn (a routine that stops or restarts the game) never returns, in
+    the original or as C: its piece compares the frames it runs (frames=),
+    the only judge of such a routine's C (A5 has no return to compare)."""
     lines = [l.split('#')[0].strip() for l in open(script)]
     lines = [l for l in lines if l]
     if not any(l.split()[0] in ('call', 'fx') for l in lines):
@@ -336,8 +337,6 @@ def pieces(script):
             if 'keep' in w:
                 prefix += sets + [l]
             sets_now, sets = sets, []
-            if 'noreturn' in w:
-                continue
             tail = []
             for t in lines[i + 1:]:
                 if t.split()[0] in ('call', 'fx', 'load', 'set'):
@@ -534,6 +533,19 @@ def span_of(addr, asm_path):
     return span
 
 
+def noreturn_scripts(addr):
+    """The scripts with a unit call of addr marked noreturn."""
+    out = []
+    for path in sorted(glob.glob(os.path.join(SCRIPTS, '*.sfx'))):
+        for l in open(path):
+            w = l.split('#')[0].split()
+            if len(w) >= 2 and w[0] == 'call' and 'noreturn' in w \
+                    and int(w[1].replace('$', '').replace(':', ''), 16) == addr:
+                out.append(os.path.splitext(os.path.basename(path))[0])
+                break
+    return out
+
+
 def assess(addrs, image_ok=None):
     """Every gate for each routine: [(key, name, tier, [(gate, ok, why)])]."""
     live = {r['routine']: r for r in csv.DictReader(open(LIVE))} if os.path.exists(LIVE) else {}
@@ -569,8 +581,20 @@ def assess(addrs, image_ok=None):
         # A5 can judge; with no divergent call it is left to A7.
         a5ok = bool(lr) and (lr['verdict'] == 'IDENTICAL' or (lr['verdict'] == 'UNVERIFIED' and int(lr['diff']) == 0))
         g5 = a5ok and contains(lr['source'], cpath) and not dirty(cpath)
-        gates.append(('A5 live', g5, ('%s on %s' % (lr['verdict'], lr['source']) if lr else 'never run')
-                      + ('; the C has uncommitted changes' if dirty(cpath) else '')))
+        why5 = ('%s on %s' % (lr['verdict'], lr['source']) if lr else 'never run')
+        # A routine that never returns (it stops or restarts the game) gives
+        # A5 no call to compare. Its unit calls marked noreturn run as
+        # lockstep pieces that compare the frames after it, with its C in
+        # its place: when every script with one is IDENTICAL, that is its
+        # per-call judgement.
+        if not g5 and (not lr or int(lr['calls']) == 0) and not dirty(cpath):
+            scripts = noreturn_scripts(addr)
+            rows = {r['script']: r for r in image_rows}
+            if scripts and all(n in rows and rows[n]['verdict'] == 'IDENTICAL' and contains(rows[n]['source'], cpath)
+                               for n in scripts):
+                g5 = True
+                why5 = 'never returns; its noreturn unit calls IDENTICAL in A7 (%s)' % ', '.join(scripts)
+        gates.append(('A5 live', g5, why5 + ('; the C has uncommitted changes' if dirty(cpath) else '')))
         vs = [r['verdict'] for r in image_rows]
         g7 = bool(image_rows) and all(v in ('IDENTICAL', 'UNCOVERED') for v in vs) and 'IDENTICAL' in vs \
             and all(contains(r['source'], cpath) for r in image_rows) and not dirty(cpath)
