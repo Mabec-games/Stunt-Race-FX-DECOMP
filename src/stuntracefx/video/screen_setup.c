@@ -611,5 +611,8 @@ void abi_RaceHudLoad(void)
     wr16(0x700050, cpu.a);
     op_sep(P_M);
     op_lda8(b | 0x0D62);
-    jump_routine_pushed((uint8_t)cpu.a ? 0x03E6FA : 0x03DECA, pushed, 2);
+    if ((uint8_t)cpu.a)
+        jump_routine_pushed(0x03E6FA, pushed, 2);
+    else
+        jump_routine_pushed(0x03DECA, pushed, 2);
 }
