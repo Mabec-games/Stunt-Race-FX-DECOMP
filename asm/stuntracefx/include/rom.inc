@@ -218,6 +218,7 @@ includeonce
 ; Per-course picture records in bank $03, three bytes per course, read
 ; through the data bank by RaceVideoSetup (video/screen_setup.asm): an
 ; input word and byte for program $01:CF42. $F807 is read and not used.
+!course_picture_a_w = $F4F9
 !course_picture_b_w = $F5A1
 !course_picture_c_w = $F54D
 !course_picture_d_w = $F5F5

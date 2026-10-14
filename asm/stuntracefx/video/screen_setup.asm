@@ -333,7 +333,7 @@ RaceVideoSetup:
     pla
     pha
     clc
-    adc.w #!course_picture_a&$FFFF
+    adc.w #!course_picture_a_w
     tax
     ldy.w #$F853
     jsl.l GsuCF42ToVram
