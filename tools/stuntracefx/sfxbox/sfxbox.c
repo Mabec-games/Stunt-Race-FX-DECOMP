@@ -22,7 +22,7 @@
  *                        as poke, but written when the next call starts, so
  *                        the game itself never runs on those bytes
  *   call ADDR [long] [keep] [noreturn] [a=HEX] [x=] [y=] [p=] [db=] [d=] [frames=N]
- *        [press=B[+B...]@F ...] [frame=PPDD]
+ *        [press=B[+B...]@F ...] [frame=PPDD] [php]
  *                        run the routine at ADDR once as a unit test: entered
  *                        by a JSR (by a JSL with long) from a stub in work RAM
  *                        with those registers, the game's state as the script
@@ -38,7 +38,10 @@
  *                        start leaves the stack: a JSL to a trampoline
  *                        that pushes P = PP and DB = DD above the return
  *                        address (PEA) and jumps (JML) to ADDR, for code
- *                        that ends by pulling them (PLB, PLP, RTL)
+ *                        that ends by pulling them (PLB, PLP, RTL); php
+ *                        (without long) is the same for code that ends
+ *                        PLP, RTS: a JSR to a trampoline that pushes P
+ *                        (PHP, so P = p=) and jumps (JMP) to ADDR
  *   repeat N ... end     run the enclosed lines N times (nests)
  * Buttons: B Y SELECT START UP DOWN LEFT RIGHT A X L R, player 1; prefix
  * with 2. for player 2 (2.START). Joined with +.
@@ -264,6 +267,7 @@ static int call_state;   /* 1 to start at the next boundary, 2 running, 0 done *
 static int checklib_on;  /* --check: the checker is told when a call starts */
 static int call_keep;    /* keep: the machine is not put back after the call */
 static long call_frame = -1;  /* frame=: the P and DB pushed above the return */
+static int call_php;           /* php: (JSR) the entry P pushed above the return */
 static int call_noreturn;     /* noreturn: told to lockstep when the call starts */
 static uint32_t call_target;
 
@@ -296,6 +300,10 @@ static int call_exec(uint32_t pc)
         if (call_frame >= 0) {
             if (checklib_on) check_unit_entry(call_target, call_loop, call_from.s, (uint16_t)(call_from.s - 5));
             if (lockstep) lockstep_unit_entry(call_target, call_loop, call_from.s, (uint16_t)(call_from.s - 5));
+        }
+        if (call_php) {
+            if (checklib_on) check_unit_entry(call_target, call_stub + 3, call_from.s, (uint16_t)(call_from.s - 3));
+            if (lockstep) lockstep_unit_entry(call_target, call_stub + 3, call_from.s, (uint16_t)(call_from.s - 3));
         }
         for (int i = 0; i < nstaged; i++) poke(staged[i], staged_line[i]);
         struct SfxboxRegs r = call_regs;
@@ -341,6 +349,7 @@ static void call(const char *line, int lineno) {
         else if (!strncmp(tok[i], "d=", 2)) call_regs.d = (uint16_t)v;
         else if (!strncmp(tok[i], "frames=", 7)) frames_max = strtol(tok[i] + 7, NULL, 10);
         else if (!strncmp(tok[i], "frame=", 6)) call_frame = (long)(v & 0xFFFF);
+        else if (!strcmp(tok[i], "php")) call_php = 1;
         else if (!strncmp(tok[i], "press=", 6) && strchr(tok[i], '@') && npress < 8) {
             char pb[64]; snprintf(pb, sizeof pb, "%s", tok[i] + 6);
             *strchr(pb, '@') = 0;
@@ -358,12 +367,18 @@ static void call(const char *line, int lineno) {
     else die("%s:%d: call: a JSR can't reach bank %02X from work RAM; use long", script_path, lineno, bank);
     uint8_t stub[16]; int m = 0;
     if (call_frame >= 0 && !lng) die("%s:%d: call: frame= needs long", script_path, lineno);
+    if (call_php && lng) die("%s:%d: call: php is for a JSR call (frame= for long)", script_path, lineno);
     call_target = addr;
     call_noreturn = noreturn;
     if (call_frame >= 0) {
         /* JSL to the trampoline at +6; there PEA #frame, JML ADDR. */
         uint16_t t = (uint16_t)(at + 6);
         stub[m++] = 0x22; stub[m++] = (uint8_t)t; stub[m++] = (uint8_t)(t >> 8); stub[m++] = (uint8_t)sb;
+    } else if (call_php) {
+        /* JSR to the trampoline at +6; there PHP, JMP ADDR (the stub runs
+           in the routine's bank). The RTS lands on the NOP at +3. */
+        uint16_t t = (uint16_t)(at + 6);
+        stub[m++] = 0x20; stub[m++] = (uint8_t)t; stub[m++] = (uint8_t)(t >> 8); stub[m++] = 0xEA;
     } else if (lng) { stub[m++] = 0x22; stub[m++] = (uint8_t)addr; stub[m++] = (uint8_t)(addr >> 8); stub[m++] = (uint8_t)bank; }
     else { stub[m++] = 0x20; stub[m++] = (uint8_t)addr; stub[m++] = (uint8_t)(addr >> 8); stub[m++] = 0xEA; }
     stub[m++] = 0x80; stub[m++] = 0xFE;
@@ -372,6 +387,10 @@ static void call(const char *line, int lineno) {
     if (call_frame >= 0) {
         stub[m++] = 0xF4; stub[m++] = (uint8_t)call_frame; stub[m++] = (uint8_t)(call_frame >> 8);
         stub[m++] = 0x5C; stub[m++] = (uint8_t)addr; stub[m++] = (uint8_t)(addr >> 8); stub[m++] = (uint8_t)bank;
+    }
+    if (call_php) {
+        stub[m++] = 0x08;
+        stub[m++] = 0x4C; stub[m++] = (uint8_t)addr; stub[m++] = (uint8_t)(addr >> 8);
     }
     memcpy(w + at, stub, (size_t)m);
     /* The machine as it was, put back when the call returns, so that the
@@ -417,6 +436,7 @@ static void call(const char *line, int lineno) {
     if (call_state && !noreturn) die("%s:%d: call %06X did not return in %ld frames", script_path, lineno, addr, frames_max);
     call_state = 0;
     call_frame = -1;
+    call_php = 0;
 }
 
 /* fx: a unit test of a Super FX routine. A stub in work RAM at $7F:F000

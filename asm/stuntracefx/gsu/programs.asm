@@ -2169,8 +2169,8 @@ BigSpritesRow5:
 ; @routine 07:89E4 HudHoldDraw
 ; WHAT IT DOES: When the HUD hold flag $0E5D is set, sets the renderer
 ; bytes 0, $BF, $B3, $BE (GsuBytes200_BFB3BE) and draws the sequence at
-; $0F69 at (147, 108) (GsuF329Sequence, through the tail of the routine at
-; $07:89F5).
+; $0F69 at (147, 108) (GsuF329Sequence, through HudTimesSecondRow, the
+; tail of HudTimesDraw).
 ; HOW: P saved and restored; 16-bit.
 ; Entry: any widths. Exit: P restored; A, X, Y as the draw leaves them
 ; (A = $0E5D when not set).
@@ -2184,7 +2184,432 @@ HudHoldDraw:
     rts
 .l89EE:
     jsl.l GsuBytes200_BFB3BE
-    jmp.w GsuF329At93x6C
+    jmp.w HudTimesSecondRow
+
+; @routine 07:89F5 HudTimesDraw
+; WHAT IT DOES: Unless the low byte of $10CD is set, and only while the
+; HUD hold flag $0E5D is set: in HUD mode 3 with $0D4C set, the two packed
+; times (HudTimesPackedDraw); with no time at $0F2B ($FFFF), the sequence
+; at $0F69 alone at (147, 108); with $0E57 set, the lap digits
+; (HudLapDigitsDraw) and, when player 1 leads, the word at (60, 72)
+; (HudLeadWordDraw); otherwise the sequences at $0F64 and $0F69 at (147,
+; 88) and (147, 108), coloured by player 1's lead $0FA3.
+; HOW: P saved and restored; 16-bit tests, 8-bit for the lead. The first
+; row's colour test is BMI then BPL, so its zero case (07:8A47) is never
+; reached; 07:8A90 is the second row's tail HudHoldDraw jumps to.
+; Entry: any widths. Exit: P restored; A, X, Y as the last step leaves
+; them.
+%at($0789F5)
+HudTimesDraw:
+    php
+    rep.b #$30
+    lda.w !wram_10CD
+    and.w #$00FF
+    bne .done
+    lda.w !hud_hold
+    bne .held
+.done:
+    plp
+    rts
+.held:
+    lda.w !hud_mode
+    cmp.w #$0003
+    bne .times
+    lda.w !digit62_override
+    beq .times
+    jsr.w HudTimesPackedDraw
+    plp
+    rts
+.times:
+    lda.w !wram_0F2B
+    cmp.w #$FFFF
+    bne .any
+    jsl.l GsuBytes200_BFB3BE
+    jmp.w HudTimesSecondRow
+.any:
+    sep.b #$20
+    lda.w !wram_0E57
+    beq .rows
+    jsr.w HudLapDigitsDraw
+    sep.b #$20
+    lda.w !p1_lead
+    bmi .end
+    beq .end
+    jsr.w HudLeadWordDraw
+.end:
+    plp
+    rts
+.rows:
+    lda.w !p1_lead
+    bmi HudTimesDraw_behind
+    bpl HudTimesDraw_ahead
+
+; @routine 07:8A47 HudTimesDrawEven
+; WHAT IT DOES: HudTimesDraw's first row for no lead, which nothing
+; reaches (the test before it branches on both signs): the renderer
+; bytes 0, $BF, $10, $B9 (GsuBytes200_BF10B9), then both rows as
+; HudTimesDraw.
+; HOW: As inside HudTimesDraw; ends pulling the P its start pushed.
+; Entry: M 8-bit, X 16-bit; P on the stack above the return address.
+; Exit: as HudTimesDraw.
+%at($078A47)
+HudTimesDrawEven:
+    rep.b #$30
+    jsl.l GsuBytes200_BF10B9
+    bra HudTimesDraw_first
+HudTimesDraw_ahead:
+    rep.b #$30
+    jsl.l GsuBytes200_BFB2B3
+    bra HudTimesDraw_first
+HudTimesDraw_behind:
+    rep.b #$30
+    jsl.l GsuBytes200_BFB3BE
+HudTimesDraw_first:
+    lda.w #$0093
+    sta.l !fx_draw_x
+    lda.w #$0058
+    sta.l !fx_draw_y
+    ldy.w #!lap_record_a
+    jsr.w GsuF329Sequence
+    sep.b #$20
+    lda.w !p1_lead
+    bmi .behind
+    bne .ahead
+    rep.b #$30
+    jsl.l GsuBytes200_BF10B9
+    bra HudTimesSecondRow
+.behind:
+    rep.b #$30
+    jsl.l GsuBytes200_BFB2B3
+    bra HudTimesSecondRow
+.ahead:
+    rep.b #$30
+    jsl.l GsuBytes200_BF11BD
+HudTimesSecondRow:
+    lda.w #$0093
+    sta.l !fx_draw_x
+    lda.w #$006C
+    sta.l !fx_draw_y
+    ldy.w #!lap_digits
+    jsr.w GsuF329Sequence
+    plp
+    rts
+
+; @routine 07:8AF5 TimeDigitsStore
+; WHAT IT DOES: Stores a time unpacked by TimeUnpackBcd as five digits at
+; $0F64: the minutes A, then the seconds X and the hundredths Y, each as
+; its high and low nibble.
+; HOW: 8-bit; four LSRs for each high nibble, AND #$0F for each low.
+; Entry: A, X, Y as TimeUnpackBcd leaves them. Exit: M and X 8-bit (X and
+; Y high bytes 0); A = Y AND $0F; N, Z from it, C bit 3 of Y.
+%at($078AF5)
+TimeDigitsStore:
+    sep.b #$30
+    sta.w !lap_record_a
+    txa
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    sta.w !lap_record_a+1
+    txa
+    and.b #$0F
+    sta.w !lap_record_a+2
+    tya
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    sta.w !lap_record_a+3
+    tya
+    and.b #$0F
+    sta.w !lap_record_a+4
+    rts
+
+; @routine 07:8B17 HudTimesPackedDraw
+; WHAT IT DOES: HudTimesDraw's rows from the packed times: $1163 (unless
+; $FFFF, no time) at (147, 88) and $1161 at (147, 108), each unpacked to
+; the digits at $0F64 (TimeUnpackBcd, TimeDigitsStore) and drawn from
+; there, coloured by player 1's lead $0FA3.
+; HOW: 8-bit for the lead, else 16-bit. The first colour test is BMI then
+; BPL, so its zero case (07:8B22) is never reached.
+; Entry: any widths. Exit: M 16-bit, X 16-bit; A, X, Y as
+; GsuF329Sequence leaves them.
+%at($078B17)
+HudTimesPackedDraw:
+    rep.b #$30
+    sep.b #$20
+    lda.w !p1_lead
+    bmi HudTimesPacked_behind
+    bpl HudTimesPacked_ahead
+
+; @routine 07:8B22 HudTimesPackedEven
+; WHAT IT DOES: HudTimesPackedDraw's first row for no lead, which nothing
+; reaches: the renderer bytes 0, $BF, $10, $B9 (GsuBytes200_BF10B9), then
+; both rows as HudTimesPackedDraw.
+; HOW: As inside HudTimesPackedDraw.
+; Entry: M 8-bit, X 16-bit. Exit: as HudTimesPackedDraw.
+%at($078B22)
+HudTimesPackedEven:
+    rep.b #$30
+    jsl.l GsuBytes200_BF10B9
+    bra HudTimesPacked_first
+HudTimesPacked_ahead:
+    rep.b #$30
+    jsl.l GsuBytes200_BFB2B3
+    bra HudTimesPacked_first
+HudTimesPacked_behind:
+    rep.b #$30
+    jsl.l GsuBytes200_BFB3BE
+HudTimesPacked_first:
+    lda.w #$0093
+    sta.l !fx_draw_x
+    lda.w #$0058
+    sta.l !fx_draw_y
+    lda.w !packed_time_a
+    cmp.w #$FFFF
+    beq .second
+    jsr.w TimeUnpackBcd
+    jsr.w TimeDigitsStore
+    rep.b #$30
+    ldy.w #!lap_record_a
+    jsr.w GsuF329Sequence
+.second:
+    sep.b #$20
+    lda.w !p1_lead
+    bmi .behind
+    bne .ahead
+    rep.b #$30
+    jsl.l GsuBytes200_BF10B9
+    bra .row
+.behind:
+    rep.b #$30
+    jsl.l GsuBytes200_BFB2B3
+    bra .row
+.ahead:
+    rep.b #$30
+    jsl.l GsuBytes200_BF11BD
+.row:
+    lda.w #$0093
+    sta.l !fx_draw_x
+    lda.w #$006C
+    sta.l !fx_draw_y
+    lda.w !packed_time_b
+    jsr.w TimeUnpackBcd
+    jsr.w TimeDigitsStore
+    rep.b #$30
+    ldy.w #!lap_record_a
+    jsr.w GsuF329Sequence
+    rts
+
+
+; @routine 07:A7AE HudLeadWordDraw
+; WHAT IT DOES: Draws a word of glyphs at (60, 72) with the renderer bytes
+; 0, $BF, $11, $BD (GsuBytes200_BF11BD): four glyphs, the position moved 8
+; right, then six more.
+; HOW: Each glyph by a long store to $70:0216 and Super FX program
+; $07:F329.
+; Entry: any widths. Exit: M 16-bit, X 16-bit; X = $F329; A as GsuRun
+; leaves it.
+%at($07A7AE)
+HudLeadWordDraw:
+    rep.b #$30
+    jsl.l GsuBytes200_BF11BD
+    lda.w #$003C
+    sta.l !fx_draw_x
+    lda.w #$0048
+    sta.l !fx_draw_y
+    rep.b #$20
+    lda.w #$9416
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F329
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$941C
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F329
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$9618
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F329
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$961A
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F329
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.l !fx_draw_x
+    clc
+    adc.w #$0008
+    sta.l !fx_draw_x
+    rep.b #$20
+    lda.w #$9616
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F329
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$941C
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F329
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$9418
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F329
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$9610
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F329
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$9616
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F329
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$941A
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F329
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rts
+
+; @routine 07:A8D3 HudLapDigitsDraw
+; WHAT IT DOES: Draws the five digits at $0F69 at (48, 40) with the
+; renderer bytes 0, $BF, $B3, $BE (GsuBytes200_BFB3BE), as M:SS:HH: the
+; separators glyphs $9014 and $9018 by program $07:FAB0.
+; HOW: Each digit through the table GsuParam216A reads and Super FX
+; program $07:F6DF.
+; Entry: any widths; data bank $07 (GsuParam216A's table). Exit: M 16-bit,
+; X 16-bit; X = $F6DF; A as GsuRun leaves it.
+%at($07A8D3)
+HudLapDigitsDraw:
+    rep.b #$30
+    jsl.l GsuBytes200_BFB3BE
+    lda.w #$0030
+    sta.l !fx_draw_x
+    lda.w #$0028
+    sta.l !fx_draw_y
+    lda.w !lap_digits
+    and.w #$00FF
+    jsr.w GsuParam216A
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F6DF
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.w #$9014
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FAB0
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.w !lap_digits+1
+    and.w #$00FF
+    jsr.w GsuParam216A
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F6DF
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.w !lap_digits+2
+    and.w #$00FF
+    jsr.w GsuParam216A
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F6DF
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.w #$9018
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FAB0
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.w !lap_digits+3
+    and.w #$00FF
+    jsr.w GsuParam216A
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F6DF
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.w !lap_digits+4
+    and.w #$00FF
+    jsr.w GsuParam216A
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F6DF
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rts
 
 
 ; @routine 04:DDB0 GlyphAtY60

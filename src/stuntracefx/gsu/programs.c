@@ -1447,8 +1447,8 @@ void abi_GsuF329Sequence(void);
  * @routine 07:89E4 HudHoldDraw
  * WHAT IT DOES: When the HUD hold flag $0E5D is set, sets the renderer
  * bytes 0, $BF, $B3, $BE (GsuBytes200_BFB3BE) and draws the sequence at
- * $0F69 at (147, 108) (GsuF329Sequence, through the tail of the routine at
- * $07:89F5).
+ * $0F69 at (147, 108) (GsuF329Sequence, through HudTimesSecondRow, the
+ * tail of HudTimesDraw).
  * HOW: P saved and restored; 16-bit.
  * Entry: any widths. Exit: P restored; A, X, Y as the draw leaves them
  * (A = $0E5D when not set).
@@ -2387,4 +2387,335 @@ void abi_GlyphSpritesDrawAll(void)
     }
     abi_GlyphGrid1A();
     abi_GlyphGrid1D();
+}
+
+void abi_GsuBytes200_BFB2B3(void);
+void abi_GsuBytes200_BF10B9(void);
+void abi_GsuBytes200_BF11BD(void);
+void abi_GsuParam216A(void);
+void abi_TimeUnpackBcd(void);
+
+/* REP #$30, then the renderer bytes by player 1's lead ($0FA3, signed):
+   negative, positive or 0. */
+static void lead_bytes(int8_t lead, void (*neg)(void), void (*pos)(void), void (*zero)(void))
+{
+    op_rep(P_M | P_X);
+    if (lead < 0)
+        neg();
+    else if (lead > 0)
+        pos();
+    else
+        zero();
+}
+
+/* SEP #$20, LDA $0FA3 (8-bit): player 1's lead, the flags from it. */
+static int8_t lead_read(uint32_t b)
+{
+    op_sep(P_M);
+    op_lda8(b | 0x0FA3);
+    return (int8_t)cpu.a;
+}
+
+/* LDA #$0093, STA.L $70:020A, LDA #y, STA.L $70:020C: the draw position. */
+static void times_at(uint16_t y)
+{
+    op_lda16_imm(0x0093);
+    wr16(0x70020A, 0x0093);
+    op_lda16_imm(y);
+    wr16(0x70020C, y);
+}
+
+/* LDY #seq, JSR GsuF329Sequence. */
+static void times_seq(uint16_t seq)
+{
+    cpu.y = seq;
+    cpu.p = nz16(cpu.p, seq);
+    abi_GsuF329Sequence();
+}
+
+/* 07:8A5D on: the first row ($0F64 at y 88), then the second's renderer
+   bytes by the lead (negative B2B3, positive 11BD, 0 10B9) and the second
+   row ($0F69 at y 108); then P pulled. */
+static void times_rows(uint32_t b, uint8_t p0)
+{
+    times_at(0x0058);
+    times_seq(0x0F64);
+    lead_bytes(lead_read(b), abi_GsuBytes200_BFB2B3, abi_GsuBytes200_BF11BD, abi_GsuBytes200_BF10B9);
+    times_at(0x006C);
+    times_seq(0x0F69);
+    op_plp(p0);
+}
+
+void abi_HudLapDigitsDraw(void);
+void abi_HudLeadWordDraw(void);
+void abi_HudTimesPackedDraw(void);
+
+/*
+ * @routine 07:89F5 HudTimesDraw
+ * WHAT IT DOES: Unless the low byte of $10CD is set, and only while the
+ * HUD hold flag $0E5D is set: in HUD mode 3 with $0D4C set, the two packed
+ * times (HudTimesPackedDraw); with no time at $0F2B ($FFFF), the sequence
+ * at $0F69 alone at (147, 108); with $0E57 set, the lap digits
+ * (HudLapDigitsDraw) and, when player 1 leads, the word at (60, 72)
+ * (HudLeadWordDraw); otherwise the sequences at $0F64 and $0F69 at (147,
+ * 88) and (147, 108), coloured by player 1's lead $0FA3.
+ * HOW: P saved and restored; 16-bit tests, 8-bit for the lead. The first
+ * row's colour test is BMI then BPL, so its zero case (07:8A47) is never
+ * reached; 07:8A90 is the second row's tail HudHoldDraw jumps to.
+ * Entry: any widths. Exit: P restored; A, X, Y as the last step leaves
+ * them.
+ */
+void abi_HudTimesDraw(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t p0 = cpu.p;
+    int8_t lead;
+
+    op_rep(P_M | P_X);
+    op_lda16(b | 0x10CD);
+    op_and16(0x00FF);
+    if (cpu.a) {
+        op_plp(p0);
+        return;
+    }
+    op_lda16(b | 0x0E5D);
+    if (!cpu.a) {
+        op_plp(p0);
+        return;
+    }
+    op_lda16(b | 0x0D2B);
+    op_cmp16(0x0003);
+    if (cpu.p & P_Z) {
+        op_lda16(b | 0x0D4C);
+        if (cpu.a) {
+            abi_HudTimesPackedDraw();
+            op_plp(p0);
+            return;
+        }
+    }
+    op_lda16(b | 0x0F2B);
+    op_cmp16(0xFFFF);
+    if (cpu.p & P_Z) {
+        abi_GsuBytes200_BFB3BE();
+        times_at(0x006C);
+        times_seq(0x0F69);
+        op_plp(p0);
+        return;
+    }
+    op_sep(P_M);
+    op_lda8(b | 0x0E57);
+    if (cpu.a & 0xFF) {
+        abi_HudLapDigitsDraw();
+        lead = lead_read(b);
+        if (lead > 0)
+            abi_HudLeadWordDraw();
+        op_plp(p0);
+        return;
+    }
+    op_lda8(b | 0x0FA3);
+    op_rep(P_M | P_X);
+    if ((int8_t)cpu.a < 0)
+        abi_GsuBytes200_BFB3BE();
+    else
+        abi_GsuBytes200_BFB2B3();
+    times_rows(b, p0);
+}
+
+/*
+ * @routine 07:8A47 HudTimesDrawEven
+ * WHAT IT DOES: HudTimesDraw's first row for no lead, which nothing
+ * reaches (the test before it branches on both signs): the renderer
+ * bytes 0, $BF, $10, $B9 (GsuBytes200_BF10B9), then both rows as
+ * HudTimesDraw.
+ * HOW: As inside HudTimesDraw; ends pulling the P its start pushed.
+ * Entry: M 8-bit, X 16-bit; P on the stack above the return address.
+ * Exit: as HudTimesDraw.
+ */
+void abi_HudTimesDrawEven(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    op_rep(P_M | P_X);
+    abi_GsuBytes200_BF10B9();
+    cpu.s++;
+    times_rows(b, rd8((uint16_t)cpu.s));
+}
+
+/*
+ * @routine 07:8AF5 TimeDigitsStore
+ * WHAT IT DOES: Stores a time unpacked by TimeUnpackBcd as five digits at
+ * $0F64: the minutes A, then the seconds X and the hundredths Y, each as
+ * its high and low nibble.
+ * HOW: 8-bit; four LSRs for each high nibble, AND #$0F for each low.
+ * Entry: A, X, Y as TimeUnpackBcd leaves them. Exit: M and X 8-bit (X and
+ * Y high bytes 0); A = Y AND $0F; N, Z from it, C bit 3 of Y.
+ */
+void abi_TimeDigitsStore(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t x, y;
+
+    op_sep(P_M | P_X);
+    x = (uint8_t)cpu.x;
+    y = (uint8_t)cpu.y;
+    wr8(b | 0x0F64, (uint8_t)cpu.a);
+    wr8(b | 0x0F65, (uint8_t)(x >> 4));
+    wr8(b | 0x0F66, (uint8_t)(x & 0x0F));
+    wr8(b | 0x0F67, (uint8_t)(y >> 4));
+    wr8(b | 0x0F68, (uint8_t)(y & 0x0F));
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | (y & 0x0F));
+    cpu.p = nz8(cpu.p, (uint8_t)(y & 0x0F));
+    cpu.p = (uint8_t)((cpu.p & ~P_C) | ((y >> 3) & 1 ? P_C : 0));
+}
+
+/* LDA time, JSR TimeUnpackBcd, JSR TimeDigitsStore, REP #$30, then the
+   sequence at $0F64. */
+static void packed_time_draw(uint32_t b, uint16_t at)
+{
+    op_lda16(b | at);
+    abi_TimeUnpackBcd();
+    abi_TimeDigitsStore();
+    op_rep(P_M | P_X);
+    times_seq(0x0F64);
+}
+
+/* 07:8B38 on: the first packed time ($1163, unless $FFFF) at (147, 88),
+   then the second's colour by the lead and the second ($1161) at (147,
+   108). */
+static void packed_rows(uint32_t b)
+{
+    times_at(0x0058);
+    op_lda16(b | 0x1163);
+    op_cmp16(0xFFFF);
+    if (!(cpu.p & P_Z)) {
+        abi_TimeUnpackBcd();
+        abi_TimeDigitsStore();
+        op_rep(P_M | P_X);
+        times_seq(0x0F64);
+    }
+    lead_bytes(lead_read(b), abi_GsuBytes200_BFB2B3, abi_GsuBytes200_BF11BD, abi_GsuBytes200_BF10B9);
+    times_at(0x006C);
+    packed_time_draw(b, 0x1161);
+}
+
+/*
+ * @routine 07:8B17 HudTimesPackedDraw
+ * WHAT IT DOES: HudTimesDraw's rows from the packed times: $1163 (unless
+ * $FFFF, no time) at (147, 88) and $1161 at (147, 108), each unpacked to
+ * the digits at $0F64 (TimeUnpackBcd, TimeDigitsStore) and drawn from
+ * there, coloured by player 1's lead $0FA3.
+ * HOW: 8-bit for the lead, else 16-bit. The first colour test is BMI then
+ * BPL, so its zero case (07:8B22) is never reached.
+ * Entry: any widths. Exit: M 16-bit, X 16-bit; A, X, Y as
+ * GsuF329Sequence leaves them.
+ */
+void abi_HudTimesPackedDraw(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    int8_t lead;
+
+    op_rep(P_M | P_X);
+    lead = lead_read(b);
+    op_rep(P_M | P_X);
+    if (lead < 0)
+        abi_GsuBytes200_BFB3BE();
+    else
+        abi_GsuBytes200_BFB2B3();
+    packed_rows(b);
+}
+
+/*
+ * @routine 07:8B22 HudTimesPackedEven
+ * WHAT IT DOES: HudTimesPackedDraw's first row for no lead, which nothing
+ * reaches: the renderer bytes 0, $BF, $10, $B9 (GsuBytes200_BF10B9), then
+ * both rows as HudTimesPackedDraw.
+ * HOW: As inside HudTimesPackedDraw.
+ * Entry: M 8-bit, X 16-bit. Exit: as HudTimesPackedDraw.
+ */
+void abi_HudTimesPackedEven(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    op_rep(P_M | P_X);
+    abi_GsuBytes200_BF10B9();
+    packed_rows(b);
+}
+
+/* REP #$20, LDA #glyph, STA.L $70:0216, then Super FX program $07:F329. */
+static void word_glyph(uint16_t glyph)
+{
+    op_rep(P_M);
+    glyph_prog(0xF329, glyph);
+}
+
+/*
+ * @routine 07:A7AE HudLeadWordDraw
+ * WHAT IT DOES: Draws a word of glyphs at (60, 72) with the renderer bytes
+ * 0, $BF, $11, $BD (GsuBytes200_BF11BD): four glyphs, the position moved 8
+ * right, then six more.
+ * HOW: Each glyph by a long store to $70:0216 and Super FX program
+ * $07:F329.
+ * Entry: any widths. Exit: M 16-bit, X 16-bit; X = $F329; A as GsuRun
+ * leaves it.
+ */
+void abi_HudLeadWordDraw(void)
+{
+    static const uint16_t first[4] = {0x9416, 0x941C, 0x9618, 0x961A};
+    static const uint16_t rest[6] = {0x9616, 0x941C, 0x9418, 0x9610, 0x9616, 0x941A};
+    uint16_t v;
+    int i;
+
+    op_rep(P_M | P_X);
+    abi_GsuBytes200_BF11BD();
+    op_lda16_imm(0x003C);
+    wr16(0x70020A, 0x003C);
+    op_lda16_imm(0x0048);
+    wr16(0x70020C, 0x0048);
+    for (i = 0; i < 4; i++)
+        word_glyph(first[i]);
+    v = rd16(0x70020A);
+    cpu.p &= (uint8_t)~P_C;
+    cpu.a = op_adc16(v, 0x0008, &cpu.p);
+    wr16(0x70020A, cpu.a);
+    for (i = 0; i < 6; i++)
+        word_glyph(rest[i]);
+}
+
+/* LDA digit, AND #$00FF, JSR GsuParam216A, then Super FX program
+   $07:F6DF. */
+static void lap_digit(uint32_t b, uint16_t at)
+{
+    op_lda16(b | at);
+    op_and16(0x00FF);
+    abi_GsuParam216A();
+    glyph_prog_run(0xF6DF);
+}
+
+/*
+ * @routine 07:A8D3 HudLapDigitsDraw
+ * WHAT IT DOES: Draws the five digits at $0F69 at (48, 40) with the
+ * renderer bytes 0, $BF, $B3, $BE (GsuBytes200_BFB3BE), as M:SS:HH: the
+ * separators glyphs $9014 and $9018 by program $07:FAB0.
+ * HOW: Each digit through the table GsuParam216A reads and Super FX
+ * program $07:F6DF.
+ * Entry: any widths; data bank $07 (GsuParam216A's table). Exit: M 16-bit,
+ * X 16-bit; X = $F6DF; A as GsuRun leaves it.
+ */
+void abi_HudLapDigitsDraw(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    op_rep(P_M | P_X);
+    abi_GsuBytes200_BFB3BE();
+    op_lda16_imm(0x0030);
+    wr16(0x70020A, 0x0030);
+    op_lda16_imm(0x0028);
+    wr16(0x70020C, 0x0028);
+    lap_digit(b, 0x0F69);
+    glyph_prog(0xFAB0, 0x9014);
+    lap_digit(b, 0x0F6A);
+    lap_digit(b, 0x0F6B);
+    glyph_prog(0xFAB0, 0x9018);
+    lap_digit(b, 0x0F6C);
+    lap_digit(b, 0x0F6D);
 }
