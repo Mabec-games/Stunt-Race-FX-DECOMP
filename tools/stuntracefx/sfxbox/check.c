@@ -138,7 +138,7 @@ typedef struct {
     int io_mismatch;
 } Watch;
 
-#define DEPTH 6
+#define DEPTH 12
 static Watch ws[DEPTH];
 static int depth;
 static Watch *cur;  /* the watch whose C is running */
