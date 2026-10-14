@@ -1,0 +1,235 @@
+# unit_course_select: the course select steps the $0D40 tables jump to,
+# each as a call from its own screen: SpeedCourseSelectStep (02:E7F5,
+# speed_all_courses_06) before the fade is full, scrolling in and out
+# (and the clamp to 0), and on pages 0 and 1 each row with Up, Down,
+# Start and nothing, groups open and closed; StuntCourseSelectStep
+# (02:E9AB, stunt_bluelake_02) the same, page 1 (the time-up select)
+# with $0D4E clear and set; BattleCourseSelectStep (02:EA32,
+# battle_courses_06) before the fade and with nothing, and with Start
+# (from battle_courses_07: in 06's frame the NMI lands between a sprite's
+# stores, where its own writes to them pair with the C's).
+load build/stuntracefx/states/speed_all_courses_06.state
+set 7E0D61 00
+call 02:E7F5 p=30 db=00 d=0000
+load build/stuntracefx/states/speed_all_courses_06.state
+set 7E0D61 0F
+set 7E0D63 00
+set 7E0E37 10
+call 02:E7F5 p=30 db=00 d=0000
+load build/stuntracefx/states/speed_all_courses_06.state
+set 7E0D61 0F
+set 7E0D63 00
+set 7E0E37 4E
+call 02:E7F5 p=30 db=00 d=0000
+load build/stuntracefx/states/speed_all_courses_06.state
+set 7E0D61 0F
+set 7E0D63 01
+set 7E0E37 08
+call 02:E7F5 p=30 db=00 d=0000
+load build/stuntracefx/states/speed_all_courses_06.state
+set 7E0D61 0F
+set 7E0D63 01
+set 7E0E37 02
+call 02:E7F5 p=30 db=00 d=0000
+load build/stuntracefx/states/speed_all_courses_06.state
+set 7E0D61 0F
+set 7E0D63 00
+set 7E0E37 50
+set 7E0D4A 00
+set 70FC0B 07
+set 7E0D1A 00,08
+call 02:E7F5 p=30 db=00 d=0000
+load build/stuntracefx/states/speed_all_courses_06.state
+set 7E0D61 0F
+set 7E0D63 00
+set 7E0E37 50
+set 7E0D4A 00
+set 70FC0B 05
+set 7E0D1A 00,08
+call 02:E7F5 p=30 db=00 d=0000
+load build/stuntracefx/states/speed_all_courses_06.state
+set 7E0D61 0F
+set 7E0D63 00
+set 7E0E37 50
+set 7E0D4A 00
+set 70FC0B 07
+set 7E0D1A 00,90
+call 02:E7F5 p=30 db=00 d=0000
+load build/stuntracefx/states/speed_all_courses_06.state
+set 7E0D61 0F
+set 7E0D63 00
+set 7E0E37 50
+set 7E0D4A 00
+set 70FC0B 07
+set 7E0D1A 00,00
+call 02:E7F5 p=30 db=00 d=0000
+load build/stuntracefx/states/speed_all_courses_06.state
+set 7E0D61 0F
+set 7E0D63 00
+set 7E0E37 50
+set 7E0D4A 01
+set 70FC0B 07
+set 7E0D1A 00,08
+call 02:E7F5 p=30 db=00 d=0000
+load build/stuntracefx/states/speed_all_courses_06.state
+set 7E0D61 0F
+set 7E0D63 00
+set 7E0E37 50
+set 7E0D4A 01
+set 70FC0B 03
+set 7E0D1A 00,04
+call 02:E7F5 p=30 db=00 d=0000
+load build/stuntracefx/states/speed_all_courses_06.state
+set 7E0D61 0F
+set 7E0D63 00
+set 7E0E37 50
+set 7E0D4A 01
+set 70FC0B 02
+set 7E0D1A 00,04
+call 02:E7F5 p=30 db=00 d=0000
+load build/stuntracefx/states/speed_all_courses_06.state
+set 7E0D61 0F
+set 7E0D63 00
+set 7E0E37 50
+set 7E0D4A 01
+set 70FC0B 07
+set 7E0D1A 00,00
+call 02:E7F5 p=30 db=00 d=0000
+load build/stuntracefx/states/speed_all_courses_06.state
+set 7E0D61 0F
+set 7E0D63 01
+set 7E0E37 00
+set 7E0D4A 01
+set 70FC0B 07
+set 7E0D1A 00,04
+call 02:E7F5 p=30 db=00 d=0000
+load build/stuntracefx/states/speed_all_courses_06.state
+set 7E0D61 0F
+set 7E0D63 01
+set 7E0E37 00
+set 7E0D4A 01
+set 70FC0B 06
+set 7E0D1A 00,04
+call 02:E7F5 p=30 db=00 d=0000
+load build/stuntracefx/states/speed_all_courses_06.state
+set 7E0D61 0F
+set 7E0D63 01
+set 7E0E37 00
+set 7E0D4A 01
+set 70FC0B 07
+set 7E0D1A 00,08
+call 02:E7F5 p=30 db=00 d=0000
+load build/stuntracefx/states/speed_all_courses_06.state
+set 7E0D61 0F
+set 7E0D63 01
+set 7E0E37 00
+set 7E0D4A 01
+set 70FC0B 03
+set 7E0D1A 00,08
+call 02:E7F5 p=30 db=00 d=0000
+load build/stuntracefx/states/speed_all_courses_06.state
+set 7E0D61 0F
+set 7E0D63 01
+set 7E0E37 00
+set 7E0D4A 01
+set 70FC0B 07
+set 7E0D1A 00,90
+call 02:E7F5 p=30 db=00 d=0000
+load build/stuntracefx/states/speed_all_courses_06.state
+set 7E0D61 0F
+set 7E0D63 01
+set 7E0E37 00
+set 7E0D4A 01
+set 70FC0B 07
+set 7E0D1A 00,00
+call 02:E7F5 p=30 db=00 d=0000
+load build/stuntracefx/states/speed_all_courses_06.state
+set 7E0D61 0F
+set 7E0D63 01
+set 7E0E37 00
+set 7E0D4A 02
+set 70FC0B 07
+set 7E0D1A 00,04
+call 02:E7F5 p=30 db=00 d=0000
+load build/stuntracefx/states/speed_all_courses_06.state
+set 7E0D61 0F
+set 7E0D63 01
+set 7E0E37 00
+set 7E0D4A 02
+set 70FC0B 07
+set 7E0D1A 00,00
+call 02:E7F5 p=30 db=00 d=0000
+load build/stuntracefx/states/speed_all_courses_06.state
+set 7E0D61 0F
+set 7E0D63 01
+set 7E0E37 00
+set 7E0D4A 00
+set 70FC0B 07
+set 7E0D1A 00,00
+call 02:E7F5 p=30 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E0D61 00
+call 02:E9AB p=30 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E0D61 0F
+set 7E0D63 00
+set 7E0E37 10
+call 02:E9AB p=30 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E0D61 0F
+set 7E0D63 00
+set 7E0E37 4E
+call 02:E9AB p=30 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E0D61 0F
+set 7E0D63 01
+set 7E0E37 08
+call 02:E9AB p=30 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E0D61 0F
+set 7E0D63 01
+set 7E0E37 02
+call 02:E9AB p=30 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E0D61 0F
+set 7E0D63 00
+set 7E0E37 50
+set 7E0D1A 00,90
+call 02:E9AB p=30 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E0D61 0F
+set 7E0D63 00
+set 7E0E37 50
+set 7E0D1A 00,00
+call 02:E9AB p=30 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E0D61 0F
+set 7E0D63 01
+set 7E0E37 00
+set 7E0D4E 00
+set 7E0D1A 00,90
+call 02:E9AB p=30 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E0D61 0F
+set 7E0D63 01
+set 7E0E37 00
+set 7E0D4E 01
+set 7E0D1A 00,90
+call 02:E9AB p=30 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E0D61 0F
+set 7E0D63 01
+set 7E0E37 00
+set 7E0D1A 00,00
+call 02:E9AB p=30 db=00 d=0000
+load build/stuntracefx/states/battle_courses_06.state
+set 7E0D61 00
+call 02:EA32 p=30 db=00 d=0000
+load build/stuntracefx/states/battle_courses_07.state
+set 7E0D61 0F
+set 7E0D1A 00,90
+call 02:EA32 p=30 db=00 d=0000
+load build/stuntracefx/states/battle_courses_06.state
+set 7E0D61 0F
+set 7E0D1A 00,00
+call 02:EA32 p=30 db=00 d=0000

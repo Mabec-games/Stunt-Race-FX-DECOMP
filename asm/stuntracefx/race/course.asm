@@ -464,3 +464,355 @@ CourseZoomInStep:
     stz.w !wram_10D8
 .lED6C:
     rts
+
+; @routine 02:E7E8 LevelColumnsSet4
+; WHAT IT DOES: Stores A in the four bytes of $0F05 + X (a level column
+; group).
+; HOW: Four STA.W abs,X, as wide as M.
+; Entry: M 8-bit; X = the offset; data bank $7E or a mirror. Exit: all
+; unchanged.
+%at($02E7E8)
+LevelColumnsSet4:
+    sta.w !level_columns,x
+    sta.w !level_columns+1,x
+    sta.w !level_columns+2,x
+    sta.w !level_columns+3,x
+    rts
+
+; @routine 02:E7F5 SpeedCourseSelectStep
+; WHAT IT DOES: The Speed Trax course select's frame: the level columns
+; for groups 0-2 by the save's opened bits ($70:FC0B bits 0-2: 0 open, 4
+; closed; group 0 open with bit 0 set, groups 1 and 2 with theirs) drawn
+; (TilemapLevelColumns); once the fade is full ($0D61 = $0F), on page 0
+; ($0D63 = 0) the scroll $0E37 runs up to $50 by 4, on page 1 down to 0;
+; there, the cursor's rows: Up ($0800) and Down ($0400) move it between
+; the open groups (sound $45, $0D4A, and $0D63 down on page 1's top), and
+; otherwise Start or A zooms into the course and the cursor moves.
+; HOW: 8-bit; the pads' word 16-bit.
+; Entry: M 8-bit, X 8-bit; data bank $7E or a mirror. Exit: M 8-bit; as
+; the last step leaves it.
+%at($02E7F5)
+SpeedCourseSelectStep:
+    lda.l !save_progress
+    bit.b #$01
+    bne .lE801
+    lda.b #$04
+    bra .lE803
+.lE801:
+    lda.b #$00
+.lE803:
+    ldx.b #$00
+    jsr.w LevelColumnsSet4
+    lda.l !save_progress
+    bit.b #$02
+    beq .lE814
+    lda.b #$00
+    bra .lE816
+.lE814:
+    lda.b #$04
+.lE816:
+    ldx.b #$04
+    jsr.w LevelColumnsSet4
+    lda.l !save_progress
+    bit.b #$04
+    beq .lE827
+    lda.b #$00
+    bra .lE829
+.lE827:
+    lda.b #$04
+.lE829:
+    ldx.b #$08
+    jsr.w LevelColumnsSet4
+    jsr.w TilemapLevelColumns
+    lda.w !fade_level_hi
+    cmp.b #$0F
+    beq .lE839
+    rts
+.lE839:
+    sep.b #$20
+    lda.w !wram_0D63
+    bne .lE85E
+    lda.w !scroll_value
+    cmp.b #$50
+    beq .lE87B
+    inc a
+    inc a
+    inc a
+    inc a
+    cmp.b #$50
+    bcc .lE851
+    lda.b #$50
+.lE851:
+    sta.w !scroll_value
+    lda.b #$F0
+    sta.w !wram_0E92
+    jsl.l OamBufferHideLargeLong
+    rts
+.lE85E:
+    lda.w !scroll_value
+    bne .lE866
+    brl .lE8ED
+.lE866:
+    dec a
+    dec a
+    dec a
+    dec a
+    bpl .lE86E
+    lda.b #$00
+.lE86E:
+    sta.w !scroll_value
+    lda.b #$F0
+    sta.w !wram_0E92
+    jsl.l OamBufferHideLargeLong
+    rts
+.lE87B:
+    jsr.w FlashingMetaspriteDrawByMode
+    lda.w !wram_0D4A
+    bne .lE8A8
+    sep.b #$20
+    lda.l !save_progress
+    bit.b #$02
+    beq .lE899
+    rep.b #$20
+    lda.w !joy1_pressed_copy
+    bit.w #$0800
+    sep.b #$20
+    bne .lE89C
+.lE899:
+    jmp.w .lE954
+.lE89C:
+    lda.b #$45
+    jsl.l SoundPort0QueuePush
+    lda.b #$01
+    sta.w !wram_0D4A
+    rts
+.lE8A8:
+    sep.b #$20
+    lda.l !save_progress
+    bit.b #$04
+    beq .lE8CD
+    rep.b #$20
+    lda.w !joy1_pressed_copy
+    bit.w #$0800
+    sep.b #$20
+    beq .lE8CD
+    lda.b #$45
+    jsl.l SoundPort0QueuePush
+    dec.w !wram_0D63
+    lda.b #$02
+    sta.w !wram_0D4A
+    rts
+.lE8CD:
+    sep.b #$20
+    lda.l !save_progress
+    bit.b #$01
+    beq .lE954
+    rep.b #$20
+    lda.w !joy1_pressed_copy
+    bit.w #$0400
+    sep.b #$20
+    beq .lE954
+    lda.b #$45
+    jsl.l SoundPort0QueuePush
+    stz.w !wram_0D4A
+    rts
+.lE8ED:
+    jsr.w FlashingMetaspriteDrawByMode
+    lda.w !wram_0D4A
+    cmp.b #$01
+    bne .lE93C
+    rep.b #$20
+    lda.w !joy1_pressed_copy
+    bit.w #$0400
+    sep.b #$20
+    beq .lE91A
+    sep.b #$20
+    lda.l !save_progress
+    bit.b #$01
+    beq .lE91A
+    lda.b #$45
+    jsl.l SoundPort0QueuePush
+    stz.w !wram_0D63
+    stz.w !wram_0D4A
+    rts
+.lE91A:
+    rep.b #$20
+    lda.w !joy1_pressed_copy
+    bit.w #$0800
+    sep.b #$20
+    beq .lE954
+    sep.b #$20
+    lda.l !save_progress
+    bit.b #$04
+    beq .lE954
+    lda.b #$45
+    jsl.l SoundPort0QueuePush
+    lda.b #$02
+    sta.w !wram_0D4A
+    rts
+.lE93C:
+    rep.b #$20
+    lda.w !joy1_pressed_copy
+    bit.w #$0400
+    sep.b #$20
+    beq .lE954
+    lda.b #$45
+    jsl.l SoundPort0QueuePush
+    lda.b #$01
+    sta.w !wram_0D4A
+    rts
+.lE954:
+    lda.w !wram_0D63
+    bne .lE981
+    rep.b #$20
+    lda.w !joy1_pressed_copy
+    bit.w #$9000
+    beq .lE968
+    jsl.l CourseZoomFromSelection
+    rts
+.lE968:
+    sep.b #$20
+    lda.w !wram_0D4A
+    bne .lE978
+    lda.b #$B0
+    sta.w !flash_sprite_y
+    jsr.w MenuCursorFourWay
+    rts
+.lE978:
+    lda.b #$60
+    sta.w !flash_sprite_y
+    jsr.w MenuCursorFourWay
+    rts
+.lE981:
+    rep.b #$20
+    lda.w !joy1_pressed_copy
+    bit.w #$9000
+    beq .lE990
+    jsl.l CourseZoomFromSelection4
+    rts
+.lE990:
+    sep.b #$20
+    lda.w !wram_0D4A
+    cmp.b #$01
+    bne .lE9A2
+    lda.b #$B0
+    sta.w !flash_sprite_y
+    jsr.w MenuCursorFourWay
+    rts
+.lE9A2:
+    lda.b #$60
+    sta.w !flash_sprite_y
+    jsr.w MenuCursorFourWay
+    rts
+
+; @routine 02:E9AB StuntCourseSelectStep
+; WHAT IT DOES: The Stunt Trax course select's frame, once the fade is
+; full ($0D61 = $0F): on page 0 ($0D63 = 0) the scroll $0E37 runs up to
+; $50 by 4, then the course's picture setting (Set0D37FromTable), the
+; flashing sprite, and Start or A zooms in (CourseZoomStunt), otherwise
+; the cursor (RaceFadeStageDispatch); on page 1 (which no run shows) the
+; scroll runs down to 0, then TimeUpSelectDraw, the flashing sprite, and
+; Start or A zooms by $0D4E (CourseZoomTimeUp or CourseZoomTimeUpNext),
+; otherwise TimeUpCursorStep.
+; HOW: 8-bit; the pads' word 16-bit.
+; Entry: M 8-bit, X 8-bit; data bank $7E or a mirror. Exit: M 8-bit, or
+; 16-bit after a zoom; as the last step leaves it.
+%at($02E9AB)
+StuntCourseSelectStep:
+    lda.w !fade_level_hi
+    cmp.b #$0F
+    beq .lE9B3
+    rts
+.lE9B3:
+    lda.w !wram_0D63
+    bne .lE9D6
+    lda.w !scroll_value
+    cmp.b #$50
+    beq .lEA17
+    inc a
+    inc a
+    inc a
+    inc a
+    cmp.b #$50
+    bcc .lE9C9
+    lda.b #$50
+.lE9C9:
+    sta.w !scroll_value
+    lda.b #$F0
+    sta.w !wram_0E92
+    jsl.l OamBufferHideLargeLong
+    rts
+.lE9D6:
+    lda.w !scroll_value
+    beq .lE9F0
+    dec a
+    dec a
+    dec a
+    dec a
+    bpl .lE9E3
+    lda.b #$00
+.lE9E3:
+    sta.w !scroll_value
+    lda.b #$F0
+    sta.w !wram_0E92
+    jsl.l OamBufferHideLargeLong
+    rts
+.lE9F0:
+    jsr.w TimeUpSelectDraw
+    jsr.w FlashingMetaspriteDraw
+    rep.b #$20
+    lda.w !joy1_pressed_copy
+    bit.w #$9000
+    beq .lEA11
+    sep.b #$20
+    lda.w !hud_blank
+    bne .lEA0C
+    jsl.l CourseZoomTimeUp
+    rts
+.lEA0C:
+    jsl.l CourseZoomTimeUpNext
+    rts
+.lEA11:
+    sep.b #$20
+    jsr.w TimeUpCursorStep
+    rts
+.lEA17:
+    jsr.w Set0D37FromTable
+    jsr.w FlashingMetaspriteDraw
+    rep.b #$20
+    lda.w !joy1_pressed_copy
+    bit.w #$9000
+    beq .lEA2C
+    jsl.l CourseZoomStunt
+    rts
+.lEA2C:
+    sep.b #$20
+    jsr.w RaceFadeStageDispatch
+    rts
+
+; @routine 02:EA32 BattleCourseSelectStep
+; WHAT IT DOES: The Battle Trax course select's frame, once the fade is
+; full ($0D61 = $0F): the course's picture setting (Set0D37FromTable),
+; the flashing sprite, and Start or A zooms in (CourseZoomBattle),
+; otherwise the cursor (CourseCursorStep).
+; HOW: The pads' word 16-bit.
+; Entry: M 8-bit; data bank $7E or a mirror. Exit: M 16-bit; as the last
+; step leaves it.
+%at($02EA32)
+BattleCourseSelectStep:
+    lda.w !fade_level_hi
+    cmp.b #$0F
+    beq .lEA3A
+    rts
+.lEA3A:
+    jsr.w Set0D37FromTable
+    jsr.w FlashingMetaspriteDraw
+    rep.b #$20
+    lda.w !joy1_pressed_copy
+    bit.w #$9000
+    beq .lEA4F
+    jsl.l CourseZoomBattle
+    rts
+.lEA4F:
+    jsr.w CourseCursorStep
+    rts

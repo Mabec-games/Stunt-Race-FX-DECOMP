@@ -505,3 +505,350 @@ void abi_CourseZoomFromSelection(void)
     else
         course_zoom_box(0x0000);
 }
+
+void abi_TilemapLevelColumns(void);
+void abi_OamBufferHideLargeLong(void);
+void abi_FlashingMetaspriteDrawByMode(void);
+void abi_FlashingMetaspriteDraw(void);
+void abi_MenuCursorFourWay(void);
+void abi_Set0D37FromTable(void);
+void abi_SoundPort0QueuePush(void);
+
+/*
+ * @routine 02:E7E8 LevelColumnsSet4
+ * WHAT IT DOES: Stores A in the four bytes of $0F05 + X (a level column
+ * group).
+ * HOW: Four STA.W abs,X, as wide as M.
+ * Entry: M 8-bit; X = the offset; data bank $7E or a mirror. Exit: all
+ * unchanged.
+ */
+void abi_LevelColumnsSet4(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    int i;
+
+    for (i = 0; i < 4; i++) {
+        if (cpu.p & P_M)
+            wr8(b | (uint16_t)(0x0F05 + i + cpu.x), (uint8_t)cpu.a);
+        else
+            wr16(b | (uint16_t)(0x0F05 + i + cpu.x), cpu.a);
+    }
+}
+
+/* LDA.L $70:FC0B, BIT #bit: whether that course group is open; N, V from
+   the save byte, Z from the test. */
+static int sel_open(uint8_t bit)
+{
+    uint8_t v = rd8(0x70FC0B);
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_V | P_Z)) | (v & 0xC0) | ((v & bit) ? 0 : P_Z));
+    return (v & bit) != 0;
+}
+
+/* REP #$20, LDA $0D1A, BIT #mask, SEP #$20: whether pressed. */
+static int sel_pressed(uint32_t b, uint16_t mask)
+{
+    uint16_t v;
+
+    op_rep(P_M);
+    v = rd16(b | 0x0D1A);
+    cpu.a = v;
+    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_V | P_Z)) | ((v >> 8) & 0xC0) | ((v & mask) ? 0 : P_Z));
+    op_sep(P_M);
+    return (v & mask) != 0;
+}
+
+/* REP #$20, LDA $0D1A, BIT #mask (left 16-bit): whether pressed. */
+static int sel_pressed16(uint32_t b, uint16_t mask)
+{
+    op_rep(P_M);
+    op_lda16(b | 0x0D1A);
+    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_V | P_Z)) | ((cpu.a >> 8) & 0xC0) | ((cpu.a & mask) ? 0 : P_Z));
+    return (cpu.a & mask) != 0;
+}
+
+/* LDA #$45, JSL SoundPort0QueuePush: the move sound. */
+static void sel_sound(void)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x45);
+    cpu.p = nz8(cpu.p, 0x45);
+    abi_SoundPort0QueuePush();
+}
+
+/* LDA #v, STA $0D4A: the cursor's row. */
+static void sel_row(uint32_t b, uint8_t v)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+    wr8(b | 0x0D4A, v);
+}
+
+/* The scroll $0E37 moved 4 toward $50 (in) or 0 (out), then $0E92 = $F0
+   and the large sprites hidden. */
+static void sel_scroll(uint32_t b, uint8_t v)
+{
+    wr8(b | 0x0E37, v);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xF0);
+    cpu.p = nz8(cpu.p, 0xF0);
+    wr8(b | 0x0E92, 0xF0);
+    abi_OamBufferHideLargeLong();
+}
+
+/* LDA #y, STA $0D38, JSR MenuCursorFourWay. */
+static void sel_cursor(uint32_t b, uint8_t y)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | y);
+    cpu.p = nz8(cpu.p, y);
+    wr8(b | 0x0D38, y);
+    abi_MenuCursorFourWay();
+}
+
+/* 02:E954: Start or A ($9000) zooms into the course (the page's own
+   zoom); otherwise the four-way cursor with its sprite at y $B0 on the
+   page's first row, $60 on the other. */
+static void sel_choose(uint32_t b)
+{
+    uint8_t page = rd8(b | 0x0D63), v;
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | page);
+    cpu.p = nz8(cpu.p, page);
+    if (sel_pressed16(b, 0x9000)) {
+        if (page)
+            abi_CourseZoomFromSelection4();
+        else
+            abi_CourseZoomFromSelection();
+        return;
+    }
+    op_sep(P_M);
+    op_lda8(b | 0x0D4A);
+    v = (uint8_t)cpu.a;
+    if (page) {
+        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x01)) & ~P_C) | (v >= 0x01 ? P_C : 0));
+        sel_cursor(b, v == 0x01 ? 0xB0 : 0x60);
+    } else {
+        sel_cursor(b, v ? 0x60 : 0xB0);
+    }
+}
+
+/*
+ * @routine 02:E7F5 SpeedCourseSelectStep
+ * WHAT IT DOES: The Speed Trax course select's frame: the level columns
+ * for groups 0-2 by the save's opened bits ($70:FC0B bits 0-2: 0 open, 4
+ * closed; group 0 open with bit 0 set, groups 1 and 2 with theirs) drawn
+ * (TilemapLevelColumns); once the fade is full ($0D61 = $0F), on page 0
+ * ($0D63 = 0) the scroll $0E37 runs up to $50 by 4, on page 1 down to 0;
+ * there, the cursor's rows: Up ($0800) and Down ($0400) move it between
+ * the open groups (sound $45, $0D4A, and $0D63 down on page 1's top), and
+ * otherwise Start or A zooms into the course and the cursor moves.
+ * HOW: 8-bit; the pads' word 16-bit.
+ * Entry: M 8-bit, X 8-bit; data bank $7E or a mirror. Exit: M 8-bit; as
+ * the last step leaves it.
+ */
+void abi_SpeedCourseSelectStep(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    static const uint8_t bits[3] = {0x01, 0x02, 0x04};
+    uint8_t v;
+    int i, open;
+
+    for (i = 0; i < 3; i++) {
+        open = sel_open(bits[i]);
+        v = open ? 0x00 : 0x04;
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+        cpu.p = nz8(cpu.p, v);
+        cpu.x = (uint16_t)(i * 4);
+        cpu.p = nz8(cpu.p, (uint8_t)cpu.x);
+        abi_LevelColumnsSet4();
+    }
+    abi_TilemapLevelColumns();
+    op_lda8(b | 0x0D61);
+    v = (uint8_t)cpu.a;
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x0F)) & ~P_C) | (v >= 0x0F ? P_C : 0));
+    if (v != 0x0F)
+        return;
+    op_sep(P_M);
+    op_lda8(b | 0x0D63);
+    if (!(uint8_t)cpu.a) {
+        op_lda8(b | 0x0E37);
+        v = (uint8_t)cpu.a;
+        if (v != 0x50) {
+            v = (uint8_t)(v + 4);
+            cpu.p = (uint8_t)((cpu.p & ~P_C) | (v >= 0x50 ? P_C : 0));
+            if (v >= 0x50)
+                v = 0x50;
+            sel_scroll(b, v);
+            return;
+        }
+        abi_FlashingMetaspriteDrawByMode();
+        op_lda8(b | 0x0D4A);
+        if (!(uint8_t)cpu.a) {
+            op_sep(P_M);
+            if (sel_open(0x02) && sel_pressed(b, 0x0800)) {
+                sel_sound();
+                sel_row(b, 0x01);
+                return;
+            }
+            sel_choose(b);
+            return;
+        }
+        op_sep(P_M);
+        if (sel_open(0x04) && sel_pressed(b, 0x0800)) {
+            sel_sound();
+            v = (uint8_t)(rd8(b | 0x0D63) - 1);
+            wr8(b | 0x0D63, v);
+            sel_row(b, 0x02);
+            return;
+        }
+        op_sep(P_M);
+        if (sel_open(0x01) && sel_pressed(b, 0x0400)) {
+            sel_sound();
+            wr8(b | 0x0D4A, 0x00);
+            return;
+        }
+        sel_choose(b);
+        return;
+    }
+    op_lda8(b | 0x0E37);
+    v = (uint8_t)cpu.a;
+    if (v) {
+        v = (uint8_t)(v - 4);
+        if (v & 0x80)
+            v = 0x00;
+        sel_scroll(b, v);
+        return;
+    }
+    abi_FlashingMetaspriteDrawByMode();
+    op_lda8(b | 0x0D4A);
+    v = (uint8_t)cpu.a;
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x01)) & ~P_C) | (v >= 0x01 ? P_C : 0));
+    if (v == 0x01) {
+        if (sel_pressed(b, 0x0400)) {
+            op_sep(P_M);
+            if (sel_open(0x01)) {
+                sel_sound();
+                wr8(b | 0x0D63, 0x00);
+                wr8(b | 0x0D4A, 0x00);
+                return;
+            }
+        }
+        if (sel_pressed(b, 0x0800)) {
+            op_sep(P_M);
+            if (sel_open(0x04)) {
+                sel_sound();
+                sel_row(b, 0x02);
+                return;
+            }
+        }
+        sel_choose(b);
+        return;
+    }
+    if (sel_pressed(b, 0x0400)) {
+        sel_sound();
+        sel_row(b, 0x01);
+        return;
+    }
+    sel_choose(b);
+}
+
+void abi_StuntSelectMarks(void);
+void abi_StuntSelectCursor(void);
+
+/*
+ * @routine 02:E9AB StuntCourseSelectStep
+ * WHAT IT DOES: The Stunt Trax course select's frame, once the fade is
+ * full ($0D61 = $0F): on page 0 ($0D63 = 0) the scroll $0E37 runs up to
+ * $50 by 4, then the course's picture setting (Set0D37FromTable), the
+ * flashing sprite, and Start or A zooms in (CourseZoomStunt), otherwise
+ * the cursor (RaceFadeStageDispatch); on page 1 (which no run shows) the
+ * scroll runs down to 0, then TimeUpSelectDraw, the flashing sprite, and
+ * Start or A zooms by $0D4E (CourseZoomTimeUp or CourseZoomTimeUpNext),
+ * otherwise TimeUpCursorStep.
+ * HOW: 8-bit; the pads' word 16-bit.
+ * Entry: M 8-bit, X 8-bit; data bank $7E or a mirror. Exit: M 8-bit, or
+ * 16-bit after a zoom; as the last step leaves it.
+ */
+void abi_StuntCourseSelectStep(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v;
+
+    op_lda8(b | 0x0D61);
+    v = (uint8_t)cpu.a;
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x0F)) & ~P_C) | (v >= 0x0F ? P_C : 0));
+    if (v != 0x0F)
+        return;
+    op_lda8(b | 0x0D63);
+    if (!(uint8_t)cpu.a) {
+        op_lda8(b | 0x0E37);
+        v = (uint8_t)cpu.a;
+        if (v != 0x50) {
+            v = (uint8_t)(v + 4);
+            cpu.p = (uint8_t)((cpu.p & ~P_C) | (v >= 0x50 ? P_C : 0));
+            if (v >= 0x50)
+                v = 0x50;
+            sel_scroll(b, v);
+            return;
+        }
+        abi_Set0D37FromTable();
+        abi_FlashingMetaspriteDraw();
+        if (sel_pressed16(b, 0x9000)) {
+            abi_CourseZoomStunt();
+            return;
+        }
+        op_sep(P_M);
+        abi_RaceFadeStageDispatch();
+        return;
+    }
+    op_lda8(b | 0x0E37);
+    v = (uint8_t)cpu.a;
+    if (v) {
+        v = (uint8_t)(v - 4);
+        if (v & 0x80)
+            v = 0x00;
+        sel_scroll(b, v);
+        return;
+    }
+    call_routine(0x02FC60, 0);  /* TimeUpSelectDraw */
+    abi_FlashingMetaspriteDraw();
+    if (sel_pressed16(b, 0x9000)) {
+        op_sep(P_M);
+        op_lda8(b | 0x0D4E);
+        if ((uint8_t)cpu.a)
+            call_routine(0x03FADB, 1);  /* CourseZoomTimeUpNext */
+        else
+            call_routine(0x03FAFF, 1);  /* CourseZoomTimeUp */
+        return;
+    }
+    op_sep(P_M);
+    call_routine(0x02EB6D, 0);  /* TimeUpCursorStep */
+}
+
+/*
+ * @routine 02:EA32 BattleCourseSelectStep
+ * WHAT IT DOES: The Battle Trax course select's frame, once the fade is
+ * full ($0D61 = $0F): the course's picture setting (Set0D37FromTable),
+ * the flashing sprite, and Start or A zooms in (CourseZoomBattle),
+ * otherwise the cursor (CourseCursorStep).
+ * HOW: The pads' word 16-bit.
+ * Entry: M 8-bit; data bank $7E or a mirror. Exit: M 16-bit; as the last
+ * step leaves it.
+ */
+void abi_BattleCourseSelectStep(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v;
+
+    op_lda8(b | 0x0D61);
+    v = (uint8_t)cpu.a;
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x0F)) & ~P_C) | (v >= 0x0F ? P_C : 0));
+    if (v != 0x0F)
+        return;
+    abi_Set0D37FromTable();
+    abi_FlashingMetaspriteDraw();
+    if (sel_pressed16(b, 0x9000)) {
+        abi_CourseZoomBattle();
+        return;
+    }
+    abi_CourseCursorStep();
+}
