@@ -247,3 +247,218 @@ CourseZoomFromSelection:
     tax
     ldy.w #$0000
     jmp.w CourseZoomBattle_zoom
+
+; @routine 02:EC20 CourseCursorStep
+; WHAT IT DOES: Moves the course cursor $0D48 by the pressed buttons: the
+; handler for its place from the table at $02:EC28 (CourseCursorAt0 to
+; CourseCursorAt3).
+; HOW: LDA, ASL, TAX in the current widths (with M 8-bit and X 16-bit, TAX
+; takes A's high byte too), then JMP (table,X).
+; Entry: any widths. Exit: as the handler leaves it.
+%at($02EC20)
+CourseCursorStep:
+    lda.w !wram_0D48
+    asl a
+    tax
+    jmp.w (CourseCursorStep_table,x)
+CourseCursorStep_table:
+    dw CourseCursorAt0, CourseCursorAt1, CourseCursorAt2, CourseCursorAt3
+
+; @routine 02:EC30 CourseCursorAt2Open
+; WHAT IT DOES: As CourseCursorAt2 where a fourth course can open: first,
+; Up ($0800) with the low four bits of $70:FC06 all set gives sound $45
+; and $0D63 = $FF; otherwise Right ($0100) moves the cursor to 3, Down
+; ($0400) to 0.
+; HOW: As CourseCursorAt0; the Up test is 8-bit. Up is not reached in the
+; traces so far.
+; Entry: any widths. Exit: as CourseCursorAt0; after Up, A low byte $FF.
+CourseCursorAt2Open:
+    rep.b #$20
+    lda.w !joy1_pressed_copy
+    bit.w #$0800
+    beq .lEC52
+    sep.b #$20
+    lda.l !save_bytes
+    and.b #$0F
+    cmp.b #$0F
+    bne .lEC52
+    lda.b #$45
+    jsl.l SoundPort0QueuePush
+    lda.b #$FF
+    sta.w !wram_0D63
+    rts
+.lEC52:
+    rep.b #$20
+    lda.w !joy1_pressed_copy
+    bit.w #$0100
+    bne CourseCursorStep_to3_open
+    lda.w !joy1_pressed_copy
+    bit.w #$0400
+    bne CourseCursorStep_to0
+    rts
+CourseCursorStep_to2_open:
+    sep.b #$20
+    lda.b #$45
+    jsl.l SoundPort0QueuePush
+    lda.b #$02
+    sta.w !wram_0D48
+    rts
+
+; @routine 02:EC73 CourseCursorAt3Open
+; WHAT IT DOES: As CourseCursorAt3 where a fourth course can open: Up as
+; in CourseCursorAt2Open; otherwise Left ($0200) moves the cursor to 2,
+; Down ($0400) to 1.
+; HOW: As CourseCursorAt2Open. Up and Down are not reached in the traces
+; so far.
+; Entry: any widths. Exit: as CourseCursorAt2Open.
+CourseCursorAt3Open:
+    rep.b #$20
+    lda.w !joy1_pressed_copy
+    bit.w #$0800
+    beq .lEC95
+    sep.b #$20
+    lda.l !save_bytes
+    and.b #$0F
+    cmp.b #$0F
+    bne .lEC95
+    lda.b #$45
+    jsl.l SoundPort0QueuePush
+    lda.b #$FF
+    sta.w !wram_0D63
+    rts
+.lEC95:
+    rep.b #$20
+    lda.w !joy1_pressed_copy
+    bit.w #$0200
+    bne CourseCursorStep_to2_open
+    lda.w !joy1_pressed_copy
+    bit.w #$0400
+    beq CourseCursorStep_done
+    jmp.w $ECEC
+CourseCursorStep_to3_open:
+    sep.b #$20
+    lda.b #$45
+    jsl.l SoundPort0QueuePush
+    lda.b #$03
+    sta.w !wram_0D48
+    rts
+
+; @routine 02:ECB8 CourseCursorAt0
+; WHAT IT DOES: The course cursor at 0 (bottom left): Right ($0100 in the
+; pressed buttons $0D1A) moves it to 1, Up ($0800) to 2, each with sound
+; $45.
+; HOW: 16-bit BIT tests; the move is 8-bit.
+; Entry: any widths. Exit: M 8-bit after a move (A low byte the new
+; place), else M 16-bit with A = the buttons and Z set.
+CourseCursorAt0:
+    rep.b #$20
+    lda.w !joy1_pressed_copy
+    bit.w #$0100
+    bne CourseCursorStep_to1
+    lda.w !joy1_pressed_copy
+    bit.w #$0800
+    bne CourseCursorStep_to2
+    rts
+CourseCursorStep_to0:
+    sep.b #$20
+    lda.b #$45
+    jsl.l SoundPort0QueuePush
+    lda.b #$00
+    sta.w !wram_0D48
+    rts
+
+; @routine 02:ECD9 CourseCursorAt1
+; WHAT IT DOES: The course cursor at 1 (bottom right): Left ($0200) moves
+; it to 0, Up ($0800) to 3.
+; HOW: As CourseCursorAt0.
+; Entry: any widths. Exit: as CourseCursorAt0.
+CourseCursorAt1:
+    rep.b #$20
+    lda.w !joy1_pressed_copy
+    bit.w #$0200
+    bne CourseCursorStep_to0
+    lda.w !joy1_pressed_copy
+    bit.w #$0800
+    bne CourseCursorStep_to3
+    rts
+CourseCursorStep_to1:
+    sep.b #$20
+    lda.b #$45
+    jsl.l SoundPort0QueuePush
+    lda.b #$01
+    sta.w !wram_0D48
+CourseCursorStep_done:
+    rts
+
+; @routine 02:ECFA CourseCursorAt2
+; WHAT IT DOES: The course cursor at 2 (top left): Right ($0100) moves it
+; to 3, Down ($0400) to 0.
+; HOW: As CourseCursorAt0.
+; Entry: any widths. Exit: as CourseCursorAt0.
+CourseCursorAt2:
+    rep.b #$20
+    lda.w !joy1_pressed_copy
+    bit.w #$0100
+    bne CourseCursorStep_to3
+    lda.w !joy1_pressed_copy
+    bit.w #$0400
+    bne CourseCursorStep_to0
+    rts
+CourseCursorStep_to2:
+    sep.b #$20
+    lda.b #$45
+    jsl.l SoundPort0QueuePush
+    lda.b #$02
+    sta.w !wram_0D48
+    rts
+
+; @routine 02:ED1B CourseCursorAt3
+; WHAT IT DOES: The course cursor at 3 (top right): Left ($0200) moves it
+; to 2, Down ($0400) to 1.
+; HOW: As CourseCursorAt0. The move to 1 is not reached in the traces so
+; far.
+; Entry: any widths. Exit: as CourseCursorAt0.
+CourseCursorAt3:
+    rep.b #$20
+    lda.w !joy1_pressed_copy
+    bit.w #$0200
+    bne CourseCursorStep_to2
+    lda.w !joy1_pressed_copy
+    bit.w #$0400
+    beq CourseCursorStep_done
+    jmp.w $ECEC
+CourseCursorStep_to3:
+    sep.b #$20
+    lda.b #$45
+    jsl.l SoundPort0QueuePush
+    lda.b #$03
+    sta.w !wram_0D48
+    rts
+
+; @routine 02:ED3E CourseZoomInStep
+; WHAT IT DOES: A step of the course window's zoom: colour maths $A3
+; (ColourMathA3Long), the blend one step on (BlendStepUp) and the fixed
+; colour from it (FixedColourFromStep); at the last step, $0D50 = 0, the
+; course's records loaded (RecordsLoadForCourse), $0D41 = $20, $0D40 = 6
+; and $10D8 = 0.
+; HOW: 16-bit compare of $7F:3408 with $7F:340A; 8-bit stores.
+; Entry: any widths. Exit: M, X 16-bit with A the blend factor and Z clear
+; before the last step; then M 8-bit, A low byte 6.
+CourseZoomInStep:
+    jsl.l ColourMathA3Long
+    rep.b #$30
+    jsl.l BlendStepUp
+    jsl.l FixedColourFromStep
+    lda.l !fixed_colour_step
+    cmp.l !scale_divisor
+    bne .lED6C
+    sep.b #$20
+    stz.w !hud_blank+2
+    jsl.l RecordsLoadForCourse
+    lda.b #$20
+    sta.w !wram_0D3F+2
+    lda.b #$06
+    sta.w !wram_0D3F+1
+    stz.w !wram_10D8
+.lED6C:
+    rts

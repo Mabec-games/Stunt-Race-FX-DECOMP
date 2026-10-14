@@ -62,6 +62,9 @@
 #   place and none.
 # - CoursePaletteCycle for course $0B with $7F:3460 at $18 and at 0, the
 #   step wrapping from $15.
+# - CourseCursorStep at 3 with Down; RaceFadeStageDispatch at 2 and 3 with
+#   Up and the fourth course open, at 2 with Up and Right while it is shut,
+#   and at 3 with Left and with Down.
 load build/stuntracefx/states/novice_coupe_race1.state
 set 7E3437 FE
 call 03:FDF7 p=30 db=7E d=0000
@@ -830,4 +833,40 @@ set 7E0E3D 0B
 set 7E0D30 03
 set 7F3460 00
 call 04:E32D long p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D48 03,00
+set 7E0D1A 00,04
+set 70FC06 00
+call 02:EC20 p=10 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D48 02,00
+set 7E0D1A 00,08
+set 70FC06 0F
+call 02:EC10 p=30 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D48 02,00
+set 7E0D1A 00,09
+set 70FC06 00
+call 02:EC10 p=30 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D48 03,00
+set 7E0D1A 00,08
+set 70FC06 0F
+call 02:EC10 p=30 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D48 03,00
+set 7E0D1A 00,02
+set 70FC06 00
+call 02:EC10 p=30 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D48 03,00
+set 7E0D1A 00,04
+set 70FC06 00
+call 02:EC10 p=30 db=7E d=0000
 wait 1

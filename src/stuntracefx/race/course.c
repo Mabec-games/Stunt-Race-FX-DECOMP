@@ -60,6 +60,219 @@ void abi_CourseFromSelectionLong(void)
     abi_CourseFromSelection();
 }
 
+void abi_SoundPort0QueuePush(void);
+void abi_ColourMathA3Long(void);
+void abi_BlendStepUp(void);
+void abi_FixedColourFromStep(void);
+void abi_RecordsLoadForCourse(void);
+
+/* LDA $0D1A, BIT #mask (16-bit): whether a button in mask was pressed; Z
+   from the BIT, N from the load. */
+static int cursor_pressed(uint32_t b, uint16_t mask)
+{
+    op_lda16(b | 0x0D1A);
+    cpu.p = (cpu.a & mask) ? (uint8_t)(cpu.p & ~P_Z) : (uint8_t)(cpu.p | P_Z);
+    return (cpu.a & mask) != 0;
+}
+
+/* SEP #$20, sound $45, then the cursor $0D48 = to. */
+static void cursor_to(uint32_t b, uint8_t to)
+{
+    op_sep(P_M);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x45);
+    cpu.p = nz8(cpu.p, 0x45);
+    abi_SoundPort0QueuePush();
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | to);
+    cpu.p = nz8(cpu.p, to);
+    wr8(b | 0x0D48, to);
+}
+
+/* Up to the fourth course when it is open (the low four bits of $70:FC06
+   all set): sound $45 and $0D63 = $FF; 1 when it went there. */
+static int cursor_up_open(uint32_t b)
+{
+    uint8_t v;
+
+    op_sep(P_M);
+    v = (uint8_t)(rd8(0x70FC06) & 0x0F);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x0F)) & ~P_C) | (v >= 0x0F ? P_C : 0));
+    if (v != 0x0F)
+        return 0;
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x45);
+    cpu.p = nz8(cpu.p, 0x45);
+    abi_SoundPort0QueuePush();
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xFF);
+    cpu.p = nz8(cpu.p, 0xFF);
+    wr8(b | 0x0D63, 0xFF);
+    return 1;
+}
+
+/* REP #$20, then the first of two buttons pressed moves the cursor. */
+static void cursor_two(uint32_t b, uint16_t m1, uint8_t to1, uint16_t m2, uint8_t to2)
+{
+    op_rep(P_M);
+    if (cursor_pressed(b, m1))
+        cursor_to(b, to1);
+    else if (cursor_pressed(b, m2))
+        cursor_to(b, to2);
+}
+
+/*
+ * @routine 02:ECB8 CourseCursorAt0
+ * WHAT IT DOES: The course cursor at 0 (bottom left): Right ($0100 in the
+ * pressed buttons $0D1A) moves it to 1, Up ($0800) to 2, each with sound
+ * $45.
+ * HOW: 16-bit BIT tests; the move is 8-bit.
+ * Entry: any widths. Exit: M 8-bit after a move (A low byte the new
+ * place), else M 16-bit with A = the buttons and Z set.
+ */
+void abi_CourseCursorAt0(void)
+{
+    cursor_two((uint32_t)cpu.db << 16, 0x0100, 0x01, 0x0800, 0x02);
+}
+
+/*
+ * @routine 02:ECD9 CourseCursorAt1
+ * WHAT IT DOES: The course cursor at 1 (bottom right): Left ($0200) moves
+ * it to 0, Up ($0800) to 3.
+ * HOW: As CourseCursorAt0.
+ * Entry: any widths. Exit: as CourseCursorAt0.
+ */
+void abi_CourseCursorAt1(void)
+{
+    cursor_two((uint32_t)cpu.db << 16, 0x0200, 0x00, 0x0800, 0x03);
+}
+
+/*
+ * @routine 02:ECFA CourseCursorAt2
+ * WHAT IT DOES: The course cursor at 2 (top left): Right ($0100) moves it
+ * to 3, Down ($0400) to 0.
+ * HOW: As CourseCursorAt0.
+ * Entry: any widths. Exit: as CourseCursorAt0.
+ */
+void abi_CourseCursorAt2(void)
+{
+    cursor_two((uint32_t)cpu.db << 16, 0x0100, 0x03, 0x0400, 0x00);
+}
+
+/*
+ * @routine 02:ED1B CourseCursorAt3
+ * WHAT IT DOES: The course cursor at 3 (top right): Left ($0200) moves it
+ * to 2, Down ($0400) to 1.
+ * HOW: As CourseCursorAt0. The move to 1 is not reached in the traces so
+ * far.
+ * Entry: any widths. Exit: as CourseCursorAt0.
+ */
+void abi_CourseCursorAt3(void)
+{
+    cursor_two((uint32_t)cpu.db << 16, 0x0200, 0x02, 0x0400, 0x01);
+}
+
+/*
+ * @routine 02:EC30 CourseCursorAt2Open
+ * WHAT IT DOES: As CourseCursorAt2 where a fourth course can open: first,
+ * Up ($0800) with the low four bits of $70:FC06 all set gives sound $45
+ * and $0D63 = $FF; otherwise Right ($0100) moves the cursor to 3, Down
+ * ($0400) to 0.
+ * HOW: As CourseCursorAt0; the Up test is 8-bit. Up is not reached in the
+ * traces so far.
+ * Entry: any widths. Exit: as CourseCursorAt0; after Up, A low byte $FF.
+ */
+void abi_CourseCursorAt2Open(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    op_rep(P_M);
+    if (cursor_pressed(b, 0x0800) && cursor_up_open(b))
+        return;
+    cursor_two(b, 0x0100, 0x03, 0x0400, 0x00);
+}
+
+/*
+ * @routine 02:EC73 CourseCursorAt3Open
+ * WHAT IT DOES: As CourseCursorAt3 where a fourth course can open: Up as
+ * in CourseCursorAt2Open; otherwise Left ($0200) moves the cursor to 2,
+ * Down ($0400) to 1.
+ * HOW: As CourseCursorAt2Open. Up and Down are not reached in the traces
+ * so far.
+ * Entry: any widths. Exit: as CourseCursorAt2Open.
+ */
+void abi_CourseCursorAt3Open(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    op_rep(P_M);
+    if (cursor_pressed(b, 0x0800) && cursor_up_open(b))
+        return;
+    cursor_two(b, 0x0200, 0x02, 0x0400, 0x01);
+}
+
+/*
+ * @routine 02:EC20 CourseCursorStep
+ * WHAT IT DOES: Moves the course cursor $0D48 by the pressed buttons: the
+ * handler for its place from the table at $02:EC28 (CourseCursorAt0 to
+ * CourseCursorAt3).
+ * HOW: LDA, ASL, TAX in the current widths (with M 8-bit and X 16-bit, TAX
+ * takes A's high byte too), then JMP (table,X).
+ * Entry: any widths. Exit: as the handler leaves it.
+ */
+void abi_CourseCursorStep(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    if (cpu.p & P_M) {
+        uint8_t v = rd8(b | 0x0D48);
+
+        cpu.p = (uint8_t)((cpu.p & ~P_C) | (v >> 7));
+        v = (uint8_t)(v << 1);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    } else {
+        uint16_t v = rd16(b | 0x0D48);
+
+        cpu.p = (uint8_t)((cpu.p & ~P_C) | (v >> 15));
+        cpu.a = (uint16_t)(v << 1);
+    }
+    cpu.x = (cpu.p & P_X) ? (uint8_t)cpu.a : cpu.a;
+    cpu.p = (cpu.p & P_X) ? nz8(cpu.p, (uint8_t)cpu.x) : nz16(cpu.p, cpu.x);
+    call_routine(0x020000 | rd16(0x020000 | (uint16_t)(0xEC28 + cpu.x)), 0);
+}
+
+/*
+ * @routine 02:ED3E CourseZoomInStep
+ * WHAT IT DOES: A step of the course window's zoom: colour maths $A3
+ * (ColourMathA3Long), the blend one step on (BlendStepUp) and the fixed
+ * colour from it (FixedColourFromStep); at the last step, $0D50 = 0, the
+ * course's records loaded (RecordsLoadForCourse), $0D41 = $20, $0D40 = 6
+ * and $10D8 = 0.
+ * HOW: 16-bit compare of $7F:3408 with $7F:340A; 8-bit stores.
+ * Entry: any widths. Exit: M, X 16-bit with A the blend factor and Z clear
+ * before the last step; then M 8-bit, A low byte 6.
+ */
+void abi_CourseZoomInStep(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    abi_ColourMathA3Long();
+    op_rep(P_M | P_X);
+    abi_BlendStepUp();
+    abi_FixedColourFromStep();
+    cpu.a = rd16(0x7F3408);
+    op_cmp16(rd16(0x7F340A));
+    if (!(cpu.p & P_Z))
+        return;
+    op_sep(P_M);
+    wr8(b | 0x0D50, 0x00);
+    abi_RecordsLoadForCourse();
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x20);
+    cpu.p = nz8(cpu.p, 0x20);
+    wr8(b | 0x0D41, 0x20);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x06);
+    cpu.p = nz8(cpu.p, 0x06);
+    wr8(b | 0x0D40, 0x06);
+    wr8(b | 0x10D8, 0x00);
+}
+
 /*
  * @routine 02:EC10 RaceFadeStageDispatch
  * WHAT IT DOES: Runs the handler for stage $0D48 from the table at
