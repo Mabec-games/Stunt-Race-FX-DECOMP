@@ -648,7 +648,7 @@ ViewParamsTwo:
 ; eighth frame the next of four sprite pieces ($10BB), $10C1 = $10C5 = 0,
 ; $0D7F = 1, the soft reset check, the scroll HDMA, the large sprites hidden,
 ; LoopLeaveWhenEnded (which leaves the loop when the race's fade out is done)
-; and 02:E356.
+; and the course screen's step (CourseScreenStep).
 ; HOW: The packing through direct page $F1; then P and the data bank pushed
 ; (the data bank $02) for LoopLeaveWhenEnded to pull on the way out.
 ; Entry: any widths; D = $0000; called by JSL. Exit: through
@@ -734,7 +734,7 @@ RaceLoop:
     jsl.l ScrollHdmaSet
     jsl.l OamBufferHideLargeLong
     jsr.w LoopLeaveWhenEnded
-    jsr.w RaceFrameTail
+    jsr.w CourseScreenStep
     bra .lE2E7
 RaceLoop_players:
     db $00,$00,$02,$00,$00

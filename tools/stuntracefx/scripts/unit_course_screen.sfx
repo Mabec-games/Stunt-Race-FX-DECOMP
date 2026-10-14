@@ -1,0 +1,304 @@
+# unit_course_screen: the course screens' step and its state handlers,
+# each as a call from its screen: CourseScreenStep (02:E356) for every
+# mode's every state (those going on into code not filed yet as
+# noreturn), the unlock (player 2 holding L and pressing Select:
+# the seventh press, an earlier one, another button held, and the
+# unlocked table); the handlers the tables jump to on the paths no run
+# reaches: CourseScreenWindowStep, CourseScreenWipeOut and
+# CourseScreenWipeIn at and before their ends, CoursePreviewRowsStunt and
+# CoursePreviewRowsAll (pressed, done, counting, at the count's end),
+# CoursePreviewReset, the state 0 starts, CourseScreenNothing,
+# CourseScreenZoomOut and CourseScreenZoomIn (moving and at the end) and
+# CourseRecordsDispatch (before the fade, then each panel state).
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D2B 00
+set 7E0D40 00
+set 7E0D24 00
+call 02:E356 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D2B 00
+set 7E0D40 02
+set 7E0D24 00
+call 02:E356 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D2B 00
+set 7E0D40 04
+set 7E0D24 00
+call 02:E356 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D2B 00
+set 7E0D40 0A
+set 7E0D24 00
+call 02:E356 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D2B 00
+set 7E0D40 0C
+set 7E0D24 00
+call 02:E356 p=30 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E0D2B 01
+set 7E0D40 00
+set 7E0D24 00
+call 02:E356 p=30 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E0D2B 01
+set 7E0D40 02
+set 7E0D24 00
+call 02:E356 p=30 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E0D2B 01
+set 7E0D40 04
+set 7E0D24 00
+call 02:E356 p=30 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E0D2B 01
+set 7E0D40 0A
+set 7E0D24 00
+call 02:E356 p=30 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E0D2B 01
+set 7E0D40 0C
+set 7E0D24 00
+call 02:E356 p=30 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E0D2B 01
+set 7E0D40 0E
+set 7E0D24 00
+call 02:E356 p=30 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E0D2B 01
+set 7E0D40 10
+set 7E0D24 00
+call 02:E356 p=30 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E0D2B 01
+set 7E0D40 12
+set 7E0D24 00
+call 02:E356 p=30 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E0D2B 01
+set 7E0D40 14
+set 7E0D24 00
+call 02:E356 p=30 db=00 d=0000
+load build/stuntracefx/states/battle_courses_06.state
+set 7E0D2B 02
+set 7E0D40 00
+set 7E0D24 00
+call 02:E356 p=30 db=00 d=0000
+load build/stuntracefx/states/battle_courses_06.state
+set 7E0D2B 02
+set 7E0D40 02
+set 7E0D24 00
+call 02:E356 p=30 db=00 d=0000
+load build/stuntracefx/states/battle_courses_06.state
+set 7E0D2B 02
+set 7E0D40 04
+set 7E0D24 00
+call 02:E356 p=30 db=00 d=0000
+load build/stuntracefx/states/battle_courses_06.state
+set 7E0D2B 02
+set 7E0D40 0A
+set 7E0D24 00
+call 02:E356 p=30 db=00 d=0000
+load build/stuntracefx/states/speed_all_courses_06.state
+set 7E0D2B 03
+set 7E0D40 00
+set 7E0D24 00
+call 02:E356 p=30 db=00 d=0000
+load build/stuntracefx/states/speed_all_courses_06.state
+set 7E0D2B 03
+set 7E0D40 02
+set 7E0D24 00
+call 02:E356 p=30 db=00 d=0000
+load build/stuntracefx/states/speed_all_courses_06.state
+set 7E0D2B 03
+set 7E0D40 04
+set 7E0D24 00
+call 02:E356 p=30 db=00 d=0000
+load build/stuntracefx/states/speed_all_courses_06.state
+set 7E0D2B 03
+set 7E0D40 0A
+set 7E0D24 00
+call 02:E356 p=30 db=00 d=0000
+load build/stuntracefx/states/speed_all_courses_06.state
+set 7E0D2B 03
+set 7E0D40 0C
+set 7E0D24 00
+call 02:E356 p=30 db=00 d=0000
+load build/stuntracefx/states/speed_all_courses_06.state
+set 7E0D2B 03
+set 7E0D40 0E
+set 7E0D24 00
+call 02:E356 p=30 db=00 d=0000
+load build/stuntracefx/states/speed_all_courses_06.state
+set 7E0D2B 03
+set 7E0D40 10
+set 7E0D24 00
+call 02:E356 p=30 db=00 d=0000
+load build/stuntracefx/states/speed_all_courses_06.state
+set 7E0D2B 03
+set 7E0D40 12
+set 7E0D24 00
+call 02:E356 p=30 db=00 d=0000
+load build/stuntracefx/states/speed_all_courses_06.state
+set 7E0D2B 03
+set 7E0D40 14
+set 7E0D24 00
+call 02:E356 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D2B 00
+set 7E0D24 00
+set 7E0D25 06
+set 7E030D 20,00
+set 7E0D1C 00,20
+set 7E0D40 00
+call 02:E356 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D2B 00
+set 7E0D24 00
+set 7E0D25 02
+set 7E030D 20,00
+set 7E0D1C 00,20
+set 7E0D40 00
+call 02:E356 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D2B 00
+set 7E0D24 00
+set 7E0D25 02
+set 7E030D 80,00
+set 7E0D40 00
+call 02:E356 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D2B 00
+set 7E0D24 00
+set 7E0D25 02
+set 7E030D 00,00
+set 7E0D1C 00,20
+set 7E0D40 00
+call 02:E356 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D2B 00
+set 7E0D24 03
+set 7E0D40 00
+call 02:E356 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+call 02:E3F1 p=30 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E10AD 10
+call 02:E414 p=30 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E10AD 02
+call 02:E414 p=30 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E10AD 10
+call 02:E44B p=30 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E10AD 4D
+call 02:E44B p=30 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E0D1A 00,10
+call 02:E4BD p=30 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E0D1A 00,00
+set 7E0FAA 03,00
+call 02:E4BD p=30 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E0D1A 00,00
+set 7E0FAA 00,00
+set 7E0FA6 02,00
+call 02:E4BD p=30 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E0D1A 00,00
+set 7E0FAA 00,00
+set 7E0FA6 06,00
+call 02:E4BD p=30 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E0D1A 00,10
+call 02:E51E p=30 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E0D1A 00,00
+set 7E0FAA 03,00
+call 02:E51E p=30 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E0D1A 00,00
+set 7E0FAA 00,00
+set 7E0FA6 02,00
+call 02:E51E p=30 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7E0D1A 00,00
+set 7E0FAA 00,00
+set 7E0FA6 07,00
+call 02:E51E p=30 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+call 02:E503 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+call 02:E564 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+call 02:E56D p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+call 02:E573 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+call 02:E579 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+call 02:E57F p=30 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7F3434 00,10
+set 7F3438 00,40
+call 02:E580 p=30 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7F3434 00,10
+set 7F3438 00,18
+call 02:E580 p=30 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7F3434 00,40
+set 7F343C 00,10
+set 7F3438 00,10
+call 02:E5B4 p=30 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7F3434 00,12
+set 7F343C 00,10
+set 7F3440 00,30
+call 02:E5B4 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D61 00
+call 02:E5F0 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D61 0F
+set 7E0D43 00
+set 7E0D42 05
+call 02:E5F0 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D61 0F
+set 7E0D43 02
+set 7E0D42 05
+call 02:E5F0 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D61 0F
+set 7E0D43 04
+set 7E0D42 05
+call 02:E5F0 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D61 0F
+set 7E0D43 06
+set 7E0D42 05
+call 02:E5F0 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D61 0F
+set 7E0D43 08
+set 7E0D42 05
+call 02:E5F0 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0D2B 00
+set 7E0D40 0E
+set 7E0D24 00
+call 02:E356 p=30 db=00 d=0000 noreturn frames=30
+load build/stuntracefx/states/battle_courses_06.state
+set 7E0D2B 02
+set 7E0D40 08
+set 7E0D24 00
+call 02:E356 p=30 db=00 d=0000 noreturn frames=30
+load build/stuntracefx/states/speed_all_courses_06.state
+set 7E0D2B 03
+set 7E0D40 08
+set 7E0D24 00
+call 02:E356 p=30 db=00 d=0000 noreturn frames=30

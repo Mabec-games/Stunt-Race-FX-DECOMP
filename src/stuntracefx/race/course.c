@@ -1368,3 +1368,540 @@ void abi_CourseRecordsShown(void)
         return;
     records_pulse(b);
 }
+
+void abi_WindowEdgesStep(void);
+void abi_ColourMathOffLong(void);
+void abi_ColourMathA3Long(void);
+void abi_SaveChecksum(void);
+void abi_CourseRecordsSelectStep(void);
+void abi_CourseRecordsOpening(void);
+void abi_CourseRecordsShown(void);
+void abi_CourseRecordsClosing(void);
+void abi_CourseRecordsReopen(void);
+void abi_SpeedCourseSelectStep(void);
+void abi_StuntCourseSelectStep(void);
+void abi_BattleCourseSelectStep(void);
+
+/*
+ * @routine 02:E3F1 CourseScreenWindowStep
+ * WHAT IT DOES: The course screens' state 10: the window's edges
+ * (WindowEdgesStep).
+ * HOW: JSL, RTS.
+ * Entry: as WindowEdgesStep. Exit: as WindowEdgesStep.
+ */
+void abi_CourseScreenWindowStep(void)
+{
+    abi_WindowEdgesStep();
+}
+
+/*
+ * @routine 02:E414 CourseScreenWipeOut
+ * WHAT IT DOES: State 14 (Stunt Trax and the all-courses select): $0D45 =
+ * 6, the scroll HDMA's first count ($10AD) down by 4 and the next two
+ * ($10B0, $10B3) up by 4; once the first would pass 0 it is 1, $10B3 goes
+ * up by 2 and state $10 follows.
+ * HOW: 8-bit through the data bank; the adds chain the carry.
+ * Entry: any widths; data bank $7E or a mirror. Exit: M 8-bit; A as the
+ * last store leaves it.
+ */
+void abi_CourseScreenWipeOut(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v, p;
+
+    op_sep(P_M);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x06);
+    cpu.p = nz8(cpu.p, 0x06);
+    wr8(b | 0x0D45, 0x06);
+    p = (uint8_t)(cpu.p | P_C);
+    v = op_sbc8(rd8(b | 0x10AD), 0x04, &p);
+    cpu.p = p;
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    if (cpu.p & P_C) {
+        wr8(b | 0x10AD, v);
+        p = (uint8_t)(cpu.p & ~P_C);
+        v = op_adc8(rd8(b | 0x10B0), 0x04, &p);
+        wr8(b | 0x10B0, v);
+        v = op_adc8(rd8(b | 0x10B3), 0x04, &p);
+        cpu.p = p;
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+        wr8(b | 0x10B3, v);
+        return;
+    }
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
+    wr8(b | 0x10AD, 0x01);
+    v = (uint8_t)(rd8(b | 0x10B3) + 1);
+    wr8(b | 0x10B3, v);
+    v = (uint8_t)(rd8(b | 0x10B3) + 1);
+    wr8(b | 0x10B3, v);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x10);
+    cpu.p = nz8(cpu.p, 0x10);
+    wr8(b | 0x0D40, 0x10);
+}
+
+/*
+ * @routine 02:E44B CourseScreenWipeIn
+ * WHAT IT DOES: State 18: $0D45 = 6, the scroll HDMA's first count ($10AD)
+ * up by 4 and the next two ($10B0, $10B3) down by 4; at $4F the counts are
+ * $4F, 1 and 1, state $14 and $0D45 = 2.
+ * HOW: 8-bit through the data bank; the subtracts chain the borrow.
+ * Entry: any widths; data bank $7E or a mirror. Exit: M 8-bit; A as the
+ * last store leaves it.
+ */
+void abi_CourseScreenWipeIn(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v, p;
+
+    op_sep(P_M);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x06);
+    cpu.p = nz8(cpu.p, 0x06);
+    wr8(b | 0x0D45, 0x06);
+    p = (uint8_t)(cpu.p & ~P_C);
+    v = op_adc8(rd8(b | 0x10AD), 0x04, &p);
+    cpu.p = (uint8_t)((nz8(p, (uint8_t)(v - 0x4F)) & ~P_C) | (v >= 0x4F ? P_C : 0));
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    if (v < 0x4F) {
+        wr8(b | 0x10AD, v);
+        p = (uint8_t)(cpu.p | P_C);
+        v = op_sbc8(rd8(b | 0x10B0), 0x04, &p);
+        wr8(b | 0x10B0, v);
+        v = op_sbc8(rd8(b | 0x10B3), 0x04, &p);
+        cpu.p = p;
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+        wr8(b | 0x10B3, v);
+        return;
+    }
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x4F);
+    wr8(b | 0x10AD, 0x4F);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
+    wr8(b | 0x10B0, 0x01);
+    wr8(b | 0x10B3, 0x01);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x14);
+    wr8(b | 0x0D40, 0x14);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x02);
+    cpu.p = nz8(cpu.p, 0x02);
+    wr8(b | 0x0D45, 0x02);
+}
+
+/* 02:E4BD / 02:E51E: a pressed button leaves for state $12 (sound $2F);
+   otherwise, until $0FAA reaches 3, the four preview rows
+   (PreviewRowDrawStunt, or PreviewRowDrawAll with `all`, at $0FA8 = 0-3),
+   then $0FA6 counts to `last` and $0FAA steps. */
+static void preview_rows(int all, uint16_t last)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t v;
+
+    op_rep(P_M | P_X);
+    op_lda16(b | 0x0D1A);
+    if (cpu.a) {
+        op_sep(P_M);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x12);
+        wr8(b | 0x0D40, 0x12);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x2F);
+        cpu.p = nz8(cpu.p, 0x2F);
+        abi_SoundPort0QueuePush();
+        return;
+    }
+    op_lda16(b | 0x0FAA);
+    op_cmp16(0x0003);
+    if (cpu.a >= 0x0003)
+        return;
+    wr16(b | 0x0FA8, 0x0000);
+    for (;;) {
+        if (all)
+            call_routine(0x07C673, 1);
+        else
+            call_routine(0x07C663, 1);
+        op_lda16(b | 0x0FA8);
+        v = (uint16_t)(cpu.a + 1);
+        cpu.a = v;
+        cpu.p = nz16(cpu.p, v);
+        op_cmp16(0x0004);
+        if (v >= 0x0004)
+            break;
+        wr16(b | 0x0FA8, v);
+    }
+    op_lda16(b | 0x0FA6);
+    op_cmp16(last);
+    if (cpu.a < last) {
+        v = (uint16_t)(rd16(b | 0x0FA6) + 1);
+        wr16(b | 0x0FA6, v);
+        cpu.p = nz16(cpu.p, v);
+        return;
+    }
+    wr16(b | 0x0FA6, 0x0000);
+    v = (uint16_t)(rd16(b | 0x0FAA) + 1);
+    wr16(b | 0x0FAA, v);
+    cpu.p = nz16(cpu.p, v);
+}
+
+/*
+ * @routine 02:E4BD CoursePreviewRowsStunt
+ * WHAT IT DOES: Stunt Trax's state 16: any button pressed ($0D1A) leaves
+ * for state $12 with sound $2F; otherwise, until $0FAA reaches 3, the
+ * four preview rows (PreviewRowDrawStunt with $0FA8 = 0-3), then $0FA6
+ * counts to 6 and $0FAA steps.
+ * HOW: 16-bit through the data bank.
+ * Entry: any widths; data bank $7E or a mirror. Exit: M 16-bit, X 16-bit
+ * or M 8-bit after the sound; A as the last step leaves it.
+ */
+void abi_CoursePreviewRowsStunt(void)
+{
+    preview_rows(0, 0x0006);
+}
+
+/*
+ * @routine 02:E51E CoursePreviewRowsAll
+ * WHAT IT DOES: The all-courses select's state 16: as
+ * CoursePreviewRowsStunt with PreviewRowDrawAll and $0FA6 counting to 7.
+ * HOW: As CoursePreviewRowsStunt.
+ * Entry: as CoursePreviewRowsStunt. Exit: as CoursePreviewRowsStunt.
+ */
+void abi_CoursePreviewRowsAll(void)
+{
+    preview_rows(1, 0x0007);
+}
+
+/*
+ * @routine 02:E503 CoursePreviewReset
+ * WHAT IT DOES: The preview's counts $0FAA and $0FA6 cleared and $800
+ * bytes copied from $7F:C3D7 to $7F:9BD7.
+ * HOW: MVN, with P and the data bank kept (MVN leaves the data bank $7F).
+ * Entry: any widths. Exit: P and the data bank unchanged; A = $FFFF, X =
+ * $CBD7, Y = $A3D7.
+ */
+void abi_CoursePreviewReset(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t p0, db0;
+    unsigned i;
+
+    op_rep(P_M);
+    wr16(b | 0x0FAA, 0x0000);
+    wr16(b | 0x0FA6, 0x0000);
+    db0 = cpu.db;
+    p0 = cpu.p;
+    op_rep(P_M | P_X);
+    for (i = 0; i < 0x0800; i++)
+        wr8(0x7F9BD7 + i, rd8(0x7FC3D7 + i));
+    cpu.a = 0xFFFF;
+    cpu.x = 0xCBD7;
+    cpu.y = 0xA3D7;
+    op_plp(p0);
+    cpu.db = db0;
+    cpu.p = nz8(cpu.p, db0);
+}
+
+/* LDA #2, STA $0D40: the select's state 2. */
+static void screen_state2(uint32_t b)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x02);
+    cpu.p = nz8(cpu.p, 0x02);
+    wr8(b | 0x0D40, 0x02);
+}
+
+/*
+ * @routine 02:E564 CourseScreenStartSpeed
+ * WHAT IT DOES: The Speed Trax course select's state 0: state 2 and $10D8
+ * cleared.
+ * HOW: 8-bit stores through the data bank.
+ * Entry: M 8-bit; data bank $7E or a mirror. Exit: A low byte 2.
+ */
+void abi_CourseScreenStartSpeed(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    screen_state2(b);
+    wr8(b | 0x10D8, 0x00);
+}
+
+/*
+ * @routine 02:E56D CourseScreenStartAll
+ * WHAT IT DOES: The all-courses select's state 0: state 2.
+ * HOW: An 8-bit store through the data bank.
+ * Entry: M 8-bit; data bank $7E or a mirror. Exit: A low byte 2.
+ */
+void abi_CourseScreenStartAll(void)
+{
+    screen_state2((uint32_t)cpu.db << 16);
+}
+
+/*
+ * @routine 02:E573 CourseScreenStartBattle
+ * WHAT IT DOES: The Battle Trax course select's state 0: state 2.
+ * HOW: As CourseScreenStartAll.
+ * Entry: as CourseScreenStartAll. Exit: as CourseScreenStartAll.
+ */
+void abi_CourseScreenStartBattle(void)
+{
+    screen_state2((uint32_t)cpu.db << 16);
+}
+
+/*
+ * @routine 02:E579 CourseScreenStartStunt
+ * WHAT IT DOES: The Stunt Trax course select's state 0: state 2.
+ * HOW: As CourseScreenStartAll.
+ * Entry: as CourseScreenStartAll. Exit: as CourseScreenStartAll.
+ */
+void abi_CourseScreenStartStunt(void)
+{
+    screen_state2((uint32_t)cpu.db << 16);
+}
+
+/*
+ * @routine 02:E57F CourseScreenNothing
+ * WHAT IT DOES: The Speed Trax course select's state 12, which nothing
+ * reaches: returns.
+ * HOW: RTS.
+ * Entry: any. Exit: all unchanged.
+ */
+void abi_CourseScreenNothing(void)
+{
+}
+
+/*
+ * @routine 02:E580 CourseScreenZoomOut
+ * WHAT IT DOES: State 12 (Stunt Trax and the all-courses select): the
+ * window's scaled words $7F:3434 up by $300 and $7F:3438 down by $300;
+ * once they are less than $700 apart, state $0E, colour maths off
+ * (ColourMathOffLong) and the preview reset (CoursePreviewReset).
+ * HOW: 16-bit long accesses.
+ * Entry: any widths. Exit: M 16-bit, X 16-bit, or M 8-bit at the end; as
+ * the last step leaves it.
+ */
+void abi_CourseScreenZoomOut(void)
+{
+    uint16_t v, w;
+    uint8_t p;
+
+    op_rep(P_M | P_X);
+    p = (uint8_t)(cpu.p & ~P_C);
+    v = op_adc16(rd16(0x7F3434), 0x0300, &p);
+    wr16(0x7F3434, v);
+    p = (uint8_t)(p | P_C);
+    w = op_sbc16(rd16(0x7F3438), 0x0300, &p);
+    wr16(0x7F3438, w);
+    p = (uint8_t)(p | P_C);
+    w = op_sbc16(w, rd16(0x7F3434), &p);
+    cpu.p = (uint8_t)((nz16(p, (uint16_t)(w - 0x0700)) & ~P_C) | (w >= 0x0700 ? P_C : 0));
+    cpu.a = w;
+    if (w >= 0x0700)
+        return;
+    op_sep(P_M);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x0E);
+    cpu.p = nz8(cpu.p, 0x0E);
+    wr8(((uint32_t)cpu.db << 16) | 0x0D40, 0x0E);
+    abi_ColourMathOffLong();
+    abi_CoursePreviewReset();
+}
+
+/*
+ * @routine 02:E5B4 CourseScreenZoomIn
+ * WHAT IT DOES: State 20: colour maths $A3 (ColourMathA3Long), the scaled
+ * words $7F:3438 up by $300 and $7F:3434 down by $300; once $7F:3434 is
+ * below its target $7F:343C, both are set to their targets ($7F:343C,
+ * $7F:3440) and state 6 follows.
+ * HOW: 16-bit long accesses.
+ * Entry: any widths. Exit: M 16-bit, X 16-bit, or M 8-bit at the end; as
+ * the last step leaves it.
+ */
+void abi_CourseScreenZoomIn(void)
+{
+    uint16_t v, t;
+    uint8_t p;
+
+    abi_ColourMathA3Long();
+    op_rep(P_M | P_X);
+    p = (uint8_t)(cpu.p & ~P_C);
+    v = op_adc16(rd16(0x7F3438), 0x0300, &p);
+    wr16(0x7F3438, v);
+    p = (uint8_t)(p | P_C);
+    v = op_sbc16(rd16(0x7F3434), 0x0300, &p);
+    wr16(0x7F3434, v);
+    t = rd16(0x7F343C);
+    cpu.p = (uint8_t)((nz16(p, (uint16_t)(v - t)) & ~P_C) | (v >= t ? P_C : 0));
+    cpu.a = v;
+    if (v >= t)
+        return;
+    op_lda16(0x7F343C);
+    wr16(0x7F3434, cpu.a);
+    op_lda16(0x7F3440);
+    wr16(0x7F3438, cpu.a);
+    op_sep(P_M);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x06);
+    cpu.p = nz8(cpu.p, 0x06);
+    wr8(((uint32_t)cpu.db << 16) | 0x0D40, 0x06);
+}
+
+/*
+ * @routine 02:E5F0 CourseRecordsDispatch
+ * WHAT IT DOES: The Speed Trax course select's state 2: the level columns
+ * drawn (TilemapLevelColumns); once the fade is full ($0D61 = $0F), the
+ * records panel's state $0D43 from the table at $02:E603
+ * (CourseRecordsSelectStep, CourseRecordsOpening, CourseRecordsShown,
+ * CourseRecordsClosing, CourseRecordsReopen).
+ * HOW: JMP (abs,X) with X 8-bit as the caller left it.
+ * Entry: X 8-bit; data bank $7E or a mirror. Exit: as the state's step
+ * leaves it.
+ */
+void abi_CourseRecordsDispatch(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v;
+
+    abi_TilemapLevelColumns();
+    op_sep(P_M);
+    op_lda8(b | 0x0D61);
+    v = (uint8_t)cpu.a;
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x0F)) & ~P_C) | (v >= 0x0F ? P_C : 0));
+    if (v != 0x0F)
+        return;
+    cpu.x = rd8(b | 0x0D43);
+    cpu.p = nz8(cpu.p, (uint8_t)cpu.x);
+    switch (rd16(0x02E603 + cpu.x)) {
+    case 0xE648: abi_CourseRecordsSelectStep(); break;
+    case 0xE750: abi_CourseRecordsOpening(); break;
+    case 0xE795: abi_CourseRecordsShown(); break;
+    case 0xE781: abi_CourseRecordsClosing(); break;
+    case 0xE76B: abi_CourseRecordsReopen(); break;
+    }
+}
+
+/* JMP (table,X) with X = $0D40 (8-bit): the state's step; the targets
+   without C run as original code. */
+static void screen_state(uint32_t b, uint16_t table)
+{
+    cpu.x = rd8(b | 0x0D40);
+    cpu.p = nz8(cpu.p, (uint8_t)cpu.x);
+    switch (rd16(0x020000 | (uint16_t)(table + cpu.x))) {
+    case 0xE564: abi_CourseScreenStartSpeed(); break;
+    case 0xE56D: abi_CourseScreenStartAll(); break;
+    case 0xE573: abi_CourseScreenStartBattle(); break;
+    case 0xE579: abi_CourseScreenStartStunt(); break;
+    case 0xE5F0: abi_CourseRecordsDispatch(); break;
+    case 0xE7F5: abi_SpeedCourseSelectStep(); break;
+    case 0xE9AB: abi_StuntCourseSelectStep(); break;
+    case 0xEA32: abi_BattleCourseSelectStep(); break;
+    case 0xED3E: abi_CourseZoomInStep(); break;
+    case 0xE3F1: abi_CourseScreenWindowStep(); break;
+    case 0xE57F: abi_CourseScreenNothing(); break;
+    case 0xE580: abi_CourseScreenZoomOut(); break;
+    case 0xE414: abi_CourseScreenWipeOut(); break;
+    case 0xE4BD: abi_CoursePreviewRowsStunt(); break;
+    case 0xE51E: abi_CoursePreviewRowsAll(); break;
+    case 0xE44B: abi_CourseScreenWipeIn(); break;
+    case 0xE5B4: abi_CourseScreenZoomIn(); break;
+    case 0xED98: jump_routine(0x02ED98); break;
+    case 0xEDD2: jump_routine(0x02EDD2); break;
+    case 0xED75: jump_routine(0x02ED75); break;
+    case 0xF148: jump_routine(0x02F148); break;
+    case 0xF30A: jump_routine(0x02F30A); break;
+    case 0xF37A: jump_routine(0x02F37A); break;
+    default: jump_routine(0x020000 | rd16(0x020000 | (uint16_t)(table + cpu.x))); break;
+    }
+}
+
+/*
+ * @routine 02:E356 CourseScreenStep
+ * WHAT IT DOES: The course screens' frame by HUD mode $0D2B, each running
+ * its state $0D40 from its table: mode 0 Speed Trax ($02:E3E1; with all
+ * courses opened, the all-courses table), 1 Stunt Trax ($02:E3FE), 2
+ * Battle Trax ($02:E493), 3 the all-courses select ($02:E4A7). In mode 0
+ * player 2 holding L ($0020) with nothing else and pressing Select seven
+ * times opens every course: $0D24 = 3, the level columns cleared, sound
+ * $36, the save's course bytes $0F and $0F and its progress 7
+ * (SaveChecksum); another button clears the count ($0D25).
+ * HOW: JMP (abs,X) by mode, then by state; 8-bit, the pads' words
+ * 16-bit.
+ * Entry: any widths; data bank $7E or a mirror. Exit: as the state's step
+ * leaves it.
+ */
+void abi_CourseScreenStep(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v;
+    int i;
+
+    op_sep(P_M | P_X);
+    op_lda8(b | 0x0D2B);
+    v = (uint8_t)(cpu.a << 1);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.x = v;
+    cpu.p = nz8(cpu.p, v);
+    switch (rd16(0x02E360 + cpu.x)) {
+    case 0xE3F6:
+        op_sep(P_M | P_X);
+        screen_state(b, 0xE3FE);
+        return;
+    case 0xE48B:
+        op_sep(P_M | P_X);
+        screen_state(b, 0xE493);
+        return;
+    case 0xE49F:
+        op_sep(P_M | P_X);
+        screen_state(b, 0xE4A7);
+        return;
+    }
+    op_sep(P_M);
+    op_lda8(b | 0x0D24);
+    if ((uint8_t)cpu.a != 0x03) {
+        op_rep(P_M);
+        op_lda16(b | 0x030D);
+        op_and16(0xDFD0);
+        if (cpu.a) {
+            op_sep(P_M);
+            wr8(b | 0x0D24, 0x00);
+            wr8(b | 0x0D25, 0x00);
+        } else {
+            op_lda16(b | 0x0D1C);
+            cpu.p = (uint8_t)((cpu.p & ~(P_N | P_V | P_Z)) | ((cpu.a >> 8) & 0xC0) | ((cpu.a & 0x2000) ? 0 : P_Z));
+            if (cpu.a & 0x2000) {
+                op_lda16(b | 0x030D);
+                cpu.p = (uint8_t)((cpu.p & ~(P_N | P_V | P_Z)) | ((cpu.a >> 8) & 0xC0) | ((cpu.a & 0x0020) ? 0 : P_Z));
+                if (!(cpu.a & 0x0020)) {
+                    op_sep(P_M);
+                    wr8(b | 0x0D24, 0x00);
+                    wr8(b | 0x0D25, 0x00);
+                } else {
+                    op_sep(P_M);
+                    v = (uint8_t)(rd8(b | 0x0D25) + 1);
+                    wr8(b | 0x0D25, v);
+                    op_lda8(b | 0x0D25);
+                    v = (uint8_t)cpu.a;
+                    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x07)) & ~P_C) | (v >= 0x07 ? P_C : 0));
+                    if (v >= 0x07) {
+                        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x03);
+                        wr8(b | 0x0D24, 0x03);
+                        cpu.a = (uint16_t)(cpu.a & 0xFF00);
+                        for (i = 0x0B; i >= 0; i--)
+                            wr8(0x000F05 + (uint32_t)i, 0x00);
+                        cpu.x = 0xFF;
+                        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x36);
+                        cpu.p = nz8(cpu.p, 0x36);
+                        abi_SoundPort0QueuePush();
+                        op_sep(P_M | P_X);
+                        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x0F);
+                        wr8(0x70FC06, 0x0F);
+                        wr8(0x70FC07, 0x0F);
+                        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x07);
+                        cpu.p = nz8(cpu.p, 0x07);
+                        wr8(0x70FC0B, 0x07);
+                        abi_SaveChecksum();
+                    }
+                }
+            }
+        }
+    }
+    op_sep(P_M | P_X);
+    op_lda8(b | 0x0D24);
+    v = (uint8_t)cpu.a;
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x03)) & ~P_C) | (v >= 0x03 ? P_C : 0));
+    if (v == 0x03) {
+        op_sep(P_M | P_X);
+        screen_state(b, 0xE4A7);
+        return;
+    }
+    screen_state(b, 0xE3E1);
+}

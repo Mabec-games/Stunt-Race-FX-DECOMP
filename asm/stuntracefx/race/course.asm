@@ -1288,3 +1288,433 @@ CourseRecordsPulse:                     ; the level column pulse (CourseRecordsC
 .lE7E3:
     sta.l !level_columns,x
     rts
+
+; @routine 02:E356 CourseScreenStep
+; WHAT IT DOES: The course screens' frame by HUD mode $0D2B, each running
+; its state $0D40 from its table: mode 0 Speed Trax ($02:E3E1; with all
+; courses opened, the all-courses table), 1 Stunt Trax ($02:E3FE), 2
+; Battle Trax ($02:E493), 3 the all-courses select ($02:E4A7). In mode 0
+; player 2 holding L ($0020) with nothing else and pressing Select seven
+; times opens every course: $0D24 = 3, the level columns cleared, sound
+; $36, the save's course bytes $0F and $0F and its progress 7
+; (SaveChecksum); another button clears the count ($0D25).
+; HOW: JMP (abs,X) by mode, then by state; 8-bit, the pads' words
+; 16-bit.
+; Entry: any widths; data bank $7E or a mirror. Exit: as the state's step
+; leaves it.
+%at($02E356)
+CourseScreenStep:
+    sep.b #$30
+    lda.w !hud_mode
+    asl a
+    tax
+    jmp.w (.modes,x)
+.modes:
+    dw .mode0,CourseScreenStep_stunt,CourseScreenStep_battle,CourseScreenStep_all
+.mode0:
+    sep.b #$20
+    lda.w !wram_0D24
+    cmp.b #$03
+    beq .lE3CF
+    rep.b #$20
+    lda.w !joy2_held
+    and.w #$DFD0
+    bne .lE39E
+    lda.w !joy2_pressed_copy
+    bit.w #$2000
+    beq .lE3CF
+    lda.w !joy2_held
+    bit.w #$0020
+    beq .lE39E
+    sep.b #$20
+    inc.w !wram_0D25
+    lda.w !wram_0D25
+    cmp.b #$07
+    bcc .lE3CF
+    lda.b #$03
+    sta.w !wram_0D24
+    bra .lE3A8
+.lE39E:
+    sep.b #$20
+    stz.w !wram_0D24
+    stz.w !wram_0D25
+    bra .lE3CF
+.lE3A8:
+    ldx.b #$0B
+    lda.b #$00
+.lE3AC:
+    sta.l !level_columns,x
+    dex
+    bpl .lE3AC
+    lda.b #$36
+    jsl.l SoundPort0QueuePush
+    sep.b #$30
+    lda.b #$0F
+    sta.l !save_bytes
+    sta.l !save_bytes+1
+    lda.b #$07
+    sta.l !save_progress
+    jsl.l SaveChecksum
+.lE3CF:
+    sep.b #$30
+    lda.w !wram_0D24
+    cmp.b #$03
+    bne .speed
+    jmp.w CourseScreenStep_all
+.speed:
+    ldx.w !wram_0D3F+1
+    jmp.w (.speed_states,x)
+.speed_states:
+    dw CourseScreenStartSpeed,CourseRecordsDispatch,CourseZoomInStep,$EDD2,$ED98,CourseScreenWindowStep,CourseScreenNothing,$ED75
+
+; @routine 02:E3F1 CourseScreenWindowStep
+; WHAT IT DOES: The course screens' state 10: the window's edges
+; (WindowEdgesStep).
+; HOW: JSL, RTS.
+; Entry: as WindowEdgesStep. Exit: as WindowEdgesStep.
+%at($02E3F1)
+CourseScreenWindowStep:
+    jsl.l WindowEdgesStep
+    rts
+CourseScreenStep_stunt:
+    sep.b #$30
+    ldx.w !wram_0D3F+1
+    jmp.w (.states,x)
+.states:
+    dw CourseScreenStartStunt,StuntCourseSelectStep,CourseZoomInStep,$F148,$ED98,CourseScreenWindowStep
+    dw CourseScreenZoomOut,CourseScreenWipeOut,CoursePreviewRowsStunt,CourseScreenWipeIn,CourseScreenZoomIn
+
+; @routine 02:E414 CourseScreenWipeOut
+; WHAT IT DOES: State 14 (Stunt Trax and the all-courses select): $0D45 =
+; 6, the scroll HDMA's first count ($10AD) down by 4 and the next two
+; ($10B0, $10B3) up by 4; once the first would pass 0 it is 1, $10B3 goes
+; up by 2 and state $10 follows.
+; HOW: 8-bit through the data bank; the adds chain the carry.
+; Entry: any widths; data bank $7E or a mirror. Exit: M 8-bit; A as the
+; last store leaves it.
+%at($02E414)
+CourseScreenWipeOut:
+    sep.b #$20
+    lda.b #$06
+    sta.w !wram_0D45
+    lda.w !scroll_hdma+3
+    sec
+    sbc.b #$04
+    bcc .lE438
+    sta.w !scroll_hdma+3
+    lda.w !scroll_hdma+6
+    clc
+    adc.b #$04
+    sta.w !scroll_hdma+6
+    lda.w !scroll_hdma+9
+    adc.b #$04
+    sta.w !scroll_hdma+9
+    rts
+.lE438:
+    lda.b #$01
+    sta.w !scroll_hdma+3
+    inc.w !scroll_hdma+9
+    inc.w !scroll_hdma+9
+    sep.b #$20
+    lda.b #$10
+    sta.w !wram_0D3F+1
+    rts
+
+; @routine 02:E44B CourseScreenWipeIn
+; WHAT IT DOES: State 18: $0D45 = 6, the scroll HDMA's first count ($10AD)
+; up by 4 and the next two ($10B0, $10B3) down by 4; at $4F the counts are
+; $4F, 1 and 1, state $14 and $0D45 = 2.
+; HOW: 8-bit through the data bank; the subtracts chain the borrow.
+; Entry: any widths; data bank $7E or a mirror. Exit: M 8-bit; A as the
+; last store leaves it.
+%at($02E44B)
+CourseScreenWipeIn:
+    sep.b #$20
+    lda.b #$06
+    sta.w !wram_0D45
+    lda.w !scroll_hdma+3
+    clc
+    adc.b #$04
+    cmp.b #$4F
+    bcs .lE471
+    sta.w !scroll_hdma+3
+    lda.w !scroll_hdma+6
+    sec
+    sbc.b #$04
+    sta.w !scroll_hdma+6
+    lda.w !scroll_hdma+9
+    sbc.b #$04
+    sta.w !scroll_hdma+9
+    rts
+.lE471:
+    sep.b #$20
+    lda.b #$4F
+    sta.w !scroll_hdma+3
+    lda.b #$01
+    sta.w !scroll_hdma+6
+    sta.w !scroll_hdma+9
+    lda.b #$14
+    sta.w !wram_0D3F+1
+    lda.b #$02
+    sta.w !wram_0D45
+    rts
+CourseScreenStep_battle:
+    sep.b #$30
+    ldx.w !wram_0D3F+1
+    jmp.w (.states,x)
+.states:
+    dw CourseScreenStartBattle,BattleCourseSelectStep,CourseZoomInStep,$F30A,$ED98,CourseScreenWindowStep
+CourseScreenStep_all:
+    sep.b #$30
+    ldx.w !wram_0D3F+1
+    jmp.w (.states,x)
+.states:
+    dw CourseScreenStartAll,SpeedCourseSelectStep,CourseZoomInStep,$F37A,$ED98,CourseScreenWindowStep
+    dw CourseScreenZoomOut,CourseScreenWipeOut,CoursePreviewRowsAll,CourseScreenWipeIn,CourseScreenZoomIn
+
+; @routine 02:E4BD CoursePreviewRowsStunt
+; WHAT IT DOES: Stunt Trax's state 16: any button pressed ($0D1A) leaves
+; for state $12 with sound $2F; otherwise, until $0FAA reaches 3, the
+; four preview rows (PreviewRowDrawStunt with $0FA8 = 0-3), then $0FA6
+; counts to 6 and $0FAA steps.
+; HOW: 16-bit through the data bank.
+; Entry: any widths; data bank $7E or a mirror. Exit: M 16-bit, X 16-bit
+; or M 8-bit after the sound; A as the last step leaves it.
+%at($02E4BD)
+CoursePreviewRowsStunt:
+    rep.b #$30
+    lda.w !joy1_pressed_copy
+    bne .lE4F5
+    lda.w !p1_lead+7
+    cmp.w #$0003
+    bcc .lE4CD
+    rts
+.lE4CD:
+    stz.w !p1_lead+5
+.lE4D0:
+    jsl.l PreviewRowDrawStunt
+    lda.w !p1_lead+5
+    inc a
+    cmp.w #$0004
+    bcs .lE4E2
+    sta.w !p1_lead+5
+    bra .lE4D0
+.lE4E2:
+    lda.w !p1_lead+3
+    cmp.w #$0006
+    bcs .lE4EE
+    inc.w !p1_lead+3
+    rts
+.lE4EE:
+    stz.w !p1_lead+3
+    inc.w !p1_lead+7
+    rts
+.lE4F5:
+    sep.b #$20
+    lda.b #$12
+    sta.w !wram_0D3F+1
+    lda.b #$2F
+    jsl.l SoundPort0QueuePush
+    rts
+
+; @routine 02:E503 CoursePreviewReset
+; WHAT IT DOES: The preview's counts $0FAA and $0FA6 cleared and $800
+; bytes copied from $7F:C3D7 to $7F:9BD7.
+; HOW: MVN, with P and the data bank kept (MVN leaves the data bank $7F).
+; Entry: any widths. Exit: P and the data bank unchanged; A = $FFFF, X =
+; $CBD7, Y = $A3D7.
+%at($02E503)
+CoursePreviewReset:
+    rep.b #$20
+    stz.w !p1_lead+7
+    stz.w !p1_lead+3
+    phb
+    php
+    rep.b #$30
+    lda.w #$07FF
+    ldx.w #$C3D7
+    ldy.w #$9BD7
+    mvn !tilemap_7f9bd7>>16,!tilemap_7f9bd7>>16
+    plp
+    plb
+    rts
+
+; @routine 02:E51E CoursePreviewRowsAll
+; WHAT IT DOES: The all-courses select's state 16: as
+; CoursePreviewRowsStunt with PreviewRowDrawAll and $0FA6 counting to 7.
+; HOW: As CoursePreviewRowsStunt.
+; Entry: as CoursePreviewRowsStunt. Exit: as CoursePreviewRowsStunt.
+%at($02E51E)
+CoursePreviewRowsAll:
+    rep.b #$30
+    lda.w !joy1_pressed_copy
+    bne .lE556
+    lda.w !p1_lead+7
+    cmp.w #$0003
+    bcc .lE52E
+    rts
+.lE52E:
+    stz.w !p1_lead+5
+.lE531:
+    jsl.l PreviewRowDrawAll
+    lda.w !p1_lead+5
+    inc a
+    cmp.w #$0004
+    bcs .lE543
+    sta.w !p1_lead+5
+    bra .lE531
+.lE543:
+    lda.w !p1_lead+3
+    cmp.w #$0007
+    bcs .lE54F
+    inc.w !p1_lead+3
+    rts
+.lE54F:
+    stz.w !p1_lead+3
+    inc.w !p1_lead+7
+    rts
+.lE556:
+    sep.b #$20
+    lda.b #$12
+    sta.w !wram_0D3F+1
+    lda.b #$2F
+    jsl.l SoundPort0QueuePush
+    rts
+
+; @routine 02:E564 CourseScreenStartSpeed
+; WHAT IT DOES: The Speed Trax course select's state 0: state 2 and $10D8
+; cleared.
+; HOW: 8-bit stores through the data bank.
+; Entry: M 8-bit; data bank $7E or a mirror. Exit: A low byte 2.
+%at($02E564)
+CourseScreenStartSpeed:
+    lda.b #$02
+    sta.w !wram_0D3F+1
+    stz.w !wram_10D8
+    rts
+
+; @routine 02:E56D CourseScreenStartAll
+; WHAT IT DOES: The all-courses select's state 0: state 2.
+; HOW: An 8-bit store through the data bank.
+; Entry: M 8-bit; data bank $7E or a mirror. Exit: A low byte 2.
+%at($02E56D)
+CourseScreenStartAll:
+    lda.b #$02
+    sta.w !wram_0D3F+1
+    rts
+
+; @routine 02:E573 CourseScreenStartBattle
+; WHAT IT DOES: The Battle Trax course select's state 0: state 2.
+; HOW: As CourseScreenStartAll.
+; Entry: as CourseScreenStartAll. Exit: as CourseScreenStartAll.
+%at($02E573)
+CourseScreenStartBattle:
+    lda.b #$02
+    sta.w !wram_0D3F+1
+    rts
+
+; @routine 02:E579 CourseScreenStartStunt
+; WHAT IT DOES: The Stunt Trax course select's state 0: state 2.
+; HOW: As CourseScreenStartAll.
+; Entry: as CourseScreenStartAll. Exit: as CourseScreenStartAll.
+%at($02E579)
+CourseScreenStartStunt:
+    lda.b #$02
+    sta.w !wram_0D3F+1
+    rts
+
+; @routine 02:E57F CourseScreenNothing
+; WHAT IT DOES: The Speed Trax course select's state 12, which nothing
+; reaches: returns.
+; HOW: RTS.
+; Entry: any. Exit: all unchanged.
+%at($02E57F)
+CourseScreenNothing:
+    rts
+
+; @routine 02:E580 CourseScreenZoomOut
+; WHAT IT DOES: State 12 (Stunt Trax and the all-courses select): the
+; window's scaled words $7F:3434 up by $300 and $7F:3438 down by $300;
+; once they are less than $700 apart, state $0E, colour maths off
+; (ColourMathOffLong) and the preview reset (CoursePreviewReset).
+; HOW: 16-bit long accesses.
+; Entry: any widths. Exit: M 16-bit, X 16-bit, or M 8-bit at the end; as
+; the last step leaves it.
+%at($02E580)
+CourseScreenZoomOut:
+    rep.b #$30
+    lda.l !scaled_words+2
+    clc
+    adc.w #$0300
+    sta.l !scaled_words+2
+    lda.l !scaled_words+6
+    sec
+    sbc.w #$0300
+    sta.l !scaled_words+6
+    sec
+    sbc.l !scaled_words+2
+    cmp.w #$0700
+    bcc .lE5A5
+    rts
+.lE5A5:
+    sep.b #$20
+    lda.b #$0E
+    sta.w !wram_0D3F+1
+    jsl.l ColourMathOffLong
+    jsr.w CoursePreviewReset
+    rts
+
+; @routine 02:E5B4 CourseScreenZoomIn
+; WHAT IT DOES: State 20: colour maths $A3 (ColourMathA3Long), the scaled
+; words $7F:3438 up by $300 and $7F:3434 down by $300; once $7F:3434 is
+; below its target $7F:343C, both are set to their targets ($7F:343C,
+; $7F:3440) and state 6 follows.
+; HOW: 16-bit long accesses.
+; Entry: any widths. Exit: M 16-bit, X 16-bit, or M 8-bit at the end; as
+; the last step leaves it.
+%at($02E5B4)
+CourseScreenZoomIn:
+    jsl.l ColourMathA3Long
+    rep.b #$30
+    lda.l !scaled_words+6
+    clc
+    adc.w #$0300
+    sta.l !scaled_words+6
+    lda.l !scaled_words+2
+    sec
+    sbc.w #$0300
+    sta.l !scaled_words+2
+    cmp.l !scaled_words_target+2
+    bcs .lE5EF
+    lda.l !scaled_words_target+2
+    sta.l !scaled_words+2
+    lda.l !scaled_words_target+6
+    sta.l !scaled_words+6
+    sep.b #$20
+    lda.b #$06
+    sta.w !wram_0D3F+1
+.lE5EF:
+    rts
+
+; @routine 02:E5F0 CourseRecordsDispatch
+; WHAT IT DOES: The Speed Trax course select's state 2: the level columns
+; drawn (TilemapLevelColumns); once the fade is full ($0D61 = $0F), the
+; records panel's state $0D43 from the table at $02:E603
+; (CourseRecordsSelectStep, CourseRecordsOpening, CourseRecordsShown,
+; CourseRecordsClosing, CourseRecordsReopen).
+; HOW: JMP (abs,X) with X 8-bit as the caller left it.
+; Entry: X 8-bit; data bank $7E or a mirror. Exit: as the state's step
+; leaves it.
+%at($02E5F0)
+CourseRecordsDispatch:
+    jsr.w TilemapLevelColumns
+    sep.b #$20
+    lda.w !fade_level_hi
+    cmp.b #$0F
+    beq .lE5FD
+    rts
+.lE5FD:
+    ldx.w !wram_0D3F+4
+    jmp.w (.states,x)
+.states:
+    dw CourseRecordsSelectStep,CourseRecordsOpening,CourseRecordsShown,CourseRecordsClosing,CourseRecordsReopen
