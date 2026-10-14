@@ -55,7 +55,7 @@
 <rect x="347.3" y="214.6" width="27.8" height="31.1" fill="#3fb950"><title>MenuActorCopyGroup  0BE1C5  90B  T4  [menu]</title></rect>
 <rect x="137.7" y="246.3" width="26.5" height="29.7" fill="#3fb950"><title>MenuChoiceObjectUpdate  0BCA67  82B  T4  [menu]</title></rect>
 <rect x="137.7" y="276.6" width="26.5" height="29.7" fill="#3fb950"><title>ResultsDigitTiles  0BDE83  82B  T4  [menu]</title></rect>
-<rect x="137.7" y="306.9" width="26.5" height="29.0" fill="#d29922"><title>MenuPreviewRunFade  0BAFBC  80B  T2  [menu]</title></rect>
+<rect x="137.7" y="306.9" width="26.5" height="29.0" fill="#3fb950"><title>MenuPreviewRunFade  0BAFBC  80B  T4  [menu]</title></rect>
 <rect x="137.7" y="336.5" width="26.5" height="29.0" fill="#3fb950"><title>MenuChoiceUpDown  0BC59F  80B  T4  [menu]</title></rect>
 <rect x="137.7" y="366.1" width="26.5" height="29.0" fill="#3fb950"><title>MenuSlideInDone  0BC8BF  80B  T4  [menu]</title></rect>
 <rect x="137.7" y="395.6" width="26.5" height="28.6" fill="#3fb950"><title>MenuSelectionFramesCycle  0BDF7C  79B  T4  [menu]</title></rect>
@@ -88,7 +88,7 @@
 <rect x="286.8" y="270.4" width="21.9" height="24.3" fill="#d29922"><title>GaugeFromSpeed  7F11E9  56B  T2  [menu]</title></rect>
 <rect x="309.3" y="270.4" width="21.9" height="24.3" fill="#3fb950"><title>MenuPreviewIdle  0BBC9A  56B  T4  [menu]</title></rect>
 <rect x="331.9" y="270.4" width="21.5" height="24.3" fill="#d29922"><title>ResultsPlace0  0BDFDB  55B  T2  [menu]</title></rect>
-<rect x="354.0" y="270.4" width="21.1" height="24.3" fill="#d29922"><title>ChampionScreenRun  0BADD4  54B  T2  [menu]</title></rect>
+<rect x="354.0" y="270.4" width="21.1" height="24.3" fill="#3fb950"><title>ChampionScreenRun  0BADD4  54B  T4  [menu]</title></rect>
 <rect x="216.0" y="295.4" width="22.7" height="22.6" fill="#3fb950"><title>MenuInitialsPresses  0BC34F  54B  T4  [menu]</title></rect>
 <rect x="216.0" y="318.6" width="22.7" height="22.2" fill="#3fb950"><title>MenuGaugeSlideToTarget  7F1177  53B  T4  [menu]</title></rect>
 <rect x="216.0" y="341.4" width="22.7" height="22.2" fill="#3fb950"><title>MenuSinePosition  0BC9FD  53B  T4  [menu]</title></rect>
@@ -1040,4 +1040,4 @@
 <rect x="1553.7" y="882.9" width="26.5" height="15.0" fill="#d29922"><title>JoypadPortCheck  7F10CD  46B  T2  [input]</title></rect>
 <rect x="1580.8" y="882.9" width="15.3" height="15.0" fill="#3fb950"><title>FrameSoundAndJoypads  7EA7A3  27B  T4  [input]</title></rect>
 <rect x="1599.7" y="853.9" width="0.4" height="44.0" fill="#c8ccd2"><title>(unnamed)  00FE88  8B  T1  [bank 00 S-CPU]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 885 &#183; T3 behaviour-exact 17 &#183; 77,294/137,217 bytes exact (56.3%) &#183; green=T4 blue=T3 amber=T2 gray=T1</text></svg>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 887 &#183; T3 behaviour-exact 17 &#183; 77,428/137,217 bytes exact (56.4%) &#183; green=T4 blue=T3 amber=T2 gray=T1</text></svg>
