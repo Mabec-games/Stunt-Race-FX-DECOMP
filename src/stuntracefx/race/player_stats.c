@@ -768,3 +768,345 @@ void abi_PlayerOnePhaseStep(void)
         break;
     }
 }
+
+void abi_PauseOnStart(void);
+void abi_SoundPort0QueuePushRaw(void);
+void abi_OamHideForHudMode(void);
+void abi_GsuF15BTwoLines(void);
+void abi_OverlayFramesUntilFaded(void);
+void abi_WindowSlideUpSound(void);
+void abi_PaletteDarkenFour(void);
+void abi_SoundReset(void);
+void abi_OamHide75Up(void);
+void abi_SaveChecksum(void);
+
+/* LDA $0E3F, TAX, LDA $E115,X, REP #$20, AND #$00FF: the panel step's
+   byte for the count $0E3F, through the data bank. */
+static void stunt_count_byte(uint32_t b)
+{
+    op_lda8(b | 0x0E3F);
+    cpu.x = (uint8_t)cpu.a;
+    cpu.p = nz8(cpu.p, (uint8_t)cpu.x);
+    op_lda8(b | (uint16_t)(0xE115 + cpu.x));
+    op_rep(P_M);
+    op_and16(0x00FF);
+}
+
+/* DEC $0E3F (8-bit); at 0, $0E41 = 0. */
+static void stunt_count_down(uint32_t b)
+{
+    uint8_t v = (uint8_t)(rd8(b | 0x0E3F) - 1);
+
+    wr8(b | 0x0E3F, v);
+    cpu.p = nz8(cpu.p, v);
+    if (!v)
+        wr8(b | 0x0E41, 0x00);
+}
+
+/*
+ * @routine 07:E17D StuntCourseMark
+ * WHAT IT DOES: StuntPanelWait's end once all 8 stunts are done: for
+ * courses $0C-$0F the course's bit (1, 2, 4, 8) set in the save byte
+ * $70:FC06, then SaveChecksum; for any other course nothing (which no run
+ * reaches: off the stunt courses the calls before it never return).
+ * HOW: 8-bit compares of $0E3D; a long OR into the save.
+ * Entry: any widths; data bank $07. Exit: M 8-bit; A low byte the save
+ * byte, N, Z from it, C set; or N, Z, C from the compare with $0F.
+ */
+void abi_StuntCourseMark(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v, bit;
+
+    op_sep(P_M);
+    op_lda8(b | 0x0E3D);
+    switch ((uint8_t)cpu.a) {
+    case 0x0C: bit = 0x01; break;
+    case 0x0D: bit = 0x02; break;
+    case 0x0E: bit = 0x04; break;
+    case 0x0F: bit = 0x08; break;
+    default:
+        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)((uint8_t)cpu.a - 0x0F)) & ~P_C) | ((uint8_t)cpu.a >= 0x0F ? P_C : 0));
+        return;
+    }
+    cpu.p |= P_C;  /* the compare that matched */
+    v = (uint8_t)(rd8(0x70FC06) | bit);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+    wr8(0x70FC06, v);
+    abi_SaveChecksum();
+}
+
+/*
+ * @routine 07:E137 StuntPanelWait
+ * WHAT IT DOES: The Stunt Trax panel's first state: the pause
+ * (PauseOnStart); then, when the stunt count $19ED is new (not 0 and not
+ * $1A2D), keeps it in $1A2D and, below 8, shows it (state 4, $0E3F = 15);
+ * at 8 (all done), sound 2, WindowDigitStep, state 6 with $0E3F = $20,
+ * $0E5B and $0D55 cleared, the HUD's sprites hidden (OamHideForHudMode),
+ * StuntRecordTime and RecordsLoadSpecialCourseLong, and the course's
+ * mark (StuntCourseMark).
+ * HOW: 8-bit registers; the calls without C run as original code.
+ * Entry: any widths; data bank $07. Exit: M and X 8-bit; A as the last
+ * step leaves it.
+ */
+void abi_StuntPanelWait(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v, m;
+
+    abi_PauseOnStart();
+    op_sep(P_M | P_X);
+    op_lda8(b | 0x19ED);
+    v = (uint8_t)cpu.a;
+    if (!v)
+        return;
+    m = rd8(b | 0x1A2D);
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - m)) & ~P_C) | (v >= m ? P_C : 0));
+    if (v == m)
+        return;
+    wr8(b | 0x1A2D, v);
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x08)) & ~P_C) | (v >= 0x08 ? P_C : 0));
+    if (v != 0x08) {
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x04);
+        wr8(b | 0x0E41, 0x04);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x0F);
+        cpu.p = nz8(cpu.p, 0x0F);
+        wr8(b | 0x0E3F, 0x0F);
+        return;
+    }
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x02);
+    cpu.p = nz8(cpu.p, 0x02);
+    abi_SoundPort0QueuePushRaw();
+    call_routine(0x07E944, 0);
+    op_sep(P_M | P_X);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x06);
+    wr8(b | 0x0E41, 0x06);
+    wr8(b | 0x0E5B, 0x00);
+    wr8(b | 0x0D55, 0x00);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x20);
+    cpu.p = nz8(cpu.p, 0x20);
+    wr8(b | 0x0E3F, 0x20);
+    abi_OamHideForHudMode();
+    call_routine(0x07AE07, 0);
+    call_routine(0x07B31B, 1);
+    abi_StuntCourseMark();
+}
+
+/*
+ * @routine 07:E1AE StuntPanelCount
+ * WHAT IT DOES: The Stunt Trax panel's state 2: draws the line for the
+ * count $0E3F (the byte at $07:E115 + $0E3F, GsuF15BTwoLines) and counts
+ * it down; at 0 the panel goes back to state 0.
+ * HOW: The byte through the data bank; 8-bit count.
+ * Entry: any widths; data bank $07. Exit: M and X 8-bit; N, Z from the
+ * count.
+ */
+void abi_StuntPanelCount(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    stunt_count_byte(b);
+    abi_GsuF15BTwoLines();
+    op_sep(P_M | P_X);
+    stunt_count_down(b);
+}
+
+/*
+ * @routine 07:E1C8 StuntPanelShow
+ * WHAT IT DOES: The Stunt Trax panel's state 4: as StuntPanelCount with
+ * GlyphRowsAt32 drawing the line.
+ * HOW: As StuntPanelCount; M 8-bit after the draw.
+ * Entry: any widths; data bank $07. Exit: M 8-bit; X as GlyphRowsAt32
+ * leaves it; N, Z from the count.
+ */
+void abi_StuntPanelShow(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    stunt_count_byte(b);
+    call_routine(0x078821, 0);
+    op_sep(P_M);
+    stunt_count_down(b);
+}
+
+/*
+ * @routine 07:E1E2 StuntPhaseEnd
+ * WHAT IT DOES: The Stunt Trax panel's state 8 and the race's phase 8:
+ * once the split window is in state 5 ($19D8), clears $0D59, $0E80 and
+ * $0E81, waits until the overlay has faded (OverlayFramesUntilFaded) and
+ * goes on at WindowDigitStepEC6B with $0DD4 set, else at
+ * WindowDigitStepEC80.
+ * HOW: 8-bit; the two continuations are jumps, reached as original code.
+ * Entry: any widths. Exit: M and X 8-bit; A low byte $19D8 with nothing
+ * to do; otherwise as the continuation leaves it.
+ */
+void abi_StuntPhaseEnd(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v;
+
+    op_sep(P_M | P_X);
+    op_lda8(b | 0x19D8);
+    v = (uint8_t)cpu.a;
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x05)) & ~P_C) | (v >= 0x05 ? P_C : 0));
+    if (v != 0x05)
+        return;
+    wr8(b | 0x0D59, 0x00);
+    wr8(b | 0x0E80, 0x00);
+    wr8(b | 0x0E81, 0x00);
+    abi_OverlayFramesUntilFaded();
+    op_sep(P_M);
+    op_lda8(b | 0x0DD4);
+    if ((uint8_t)cpu.a)
+        jump_routine(0x07EC6B);
+    else
+        jump_routine(0x07EC80);
+}
+
+/*
+ * @routine 07:E205 StuntPanelDone
+ * WHAT IT DOES: The Stunt Trax panel's state 6: GlyphRowsAt56 with A =
+ * $20, then counts $0E3F down; at 0, state 8, $19DF cleared, the split
+ * screen on ($0D22 = 1, $0D23 = 0) and the window slid up
+ * (WindowSlideUpSound).
+ * HOW: 16-bit for the call, 8-bit for the count.
+ * Entry: any widths; data bank $07. Exit: M 8-bit, X 16-bit; N, Z from
+ * the count, or as WindowSlideUpSound leaves them.
+ */
+void abi_StuntPanelDone(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v;
+
+    op_rep(P_M | P_X);
+    op_lda16_imm(0x0020);
+    call_routine(0x078929, 0);
+    op_sep(P_M);
+    v = (uint8_t)(rd8(b | 0x0E3F) - 1);
+    wr8(b | 0x0E3F, v);
+    cpu.p = nz8(cpu.p, v);
+    if (v)
+        return;
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x08);
+    cpu.p = nz8(cpu.p, 0x08);
+    wr8(b | 0x0E41, 0x08);
+    op_sep(P_M);
+    wr8(b | 0x19DF, 0x00);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
+    cpu.p = nz8(cpu.p, 0x01);
+    wr8(b | 0x0D22, 0x01);
+    wr8(b | 0x0D23, 0x00);
+    abi_WindowSlideUpSound();
+}
+
+/*
+ * @routine 07:E0B7 StuntPhaseRace
+ * WHAT IT DOES: The Stunt Trax race's phases 6 and 8 (and the panel): when
+ * the time $0E70 has run out, phase $0C ($0DD6 + Y), $0D55 cleared,
+ * $0E5A = $80 and sound $31; with bit 0 of the player's record +$40 set
+ * (never in the traces), the screen darkened (PaletteDarkenFour, A =
+ * $801F), $0D5B and $0E5B cleared, $0E18 = $F0, phase $0E, $0E56 = $0E4B
+ * = $0C, sprites 75 on hidden (OamHide75Up), the sounds reset and sound
+ * $37; otherwise the panel's state $0E41 from the table at $07:E12D
+ * (StuntPanelWait, StuntPanelCount, StuntPanelShow, StuntPanelDone,
+ * StuntPhaseEnd).
+ * HOW: 16-bit for the time and the record word, 8-bit stores; JMP
+ * (abs,X) for the panel.
+ * Entry: M 8-bit, X 8-bit; data bank $07; Y = player (0). Exit: as the
+ * step taken leaves it.
+ */
+void abi_StuntPhaseRace(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t w;
+
+    op_rep(P_M);
+    op_lda16(b | 0x0E70);
+    if (!cpu.a) {
+        op_sep(P_M);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x0C);
+        wr8(b | (uint16_t)(0x0DD6 + cpu.y), 0x0C);
+        wr8(b | 0x0D55, 0x00);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x80);
+        wr8(b | 0x0E5A, 0x80);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x31);
+        cpu.p = nz8(cpu.p, 0x31);
+        abi_SoundPort0QueuePush();
+        return;
+    }
+    op_sep(P_M);
+    w = (uint16_t)(rd8(b | (uint16_t)(0x0DEE + cpu.y)) << 8);
+    w |= rd8(b | (uint16_t)(0x0DEC + cpu.y));
+    op_rep(P_M);
+    cpu.a = (uint16_t)(w & 0x0001);
+    cpu.p = nz16(cpu.p, cpu.a);
+    if (cpu.a) {
+        op_rep(P_M);
+        op_lda16_imm(0x801F);
+        abi_PaletteDarkenFour();
+        op_sep(P_M);
+        wr8(b | 0x0D5B, 0x00);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xF0);
+        wr8(b | 0x0E18, 0xF0);
+        wr8(b | 0x0E5B, 0x00);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x0E);
+        wr8(b | (uint16_t)(0x0DD6 + cpu.y), 0x0E);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x0C);
+        cpu.p = nz8(cpu.p, 0x0C);
+        wr8(b | 0x0E56, 0x0C);
+        wr8(b | 0x0E4B, 0x0C);
+        abi_OamHide75Up();
+        abi_SoundReset();
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x37);
+        cpu.p = nz8(cpu.p, 0x37);
+        abi_SoundPort0QueuePush();
+        return;
+    }
+    op_sep(P_M | P_X);
+    cpu.x = rd8(b | 0x0E41);
+    cpu.p = nz8(cpu.p, (uint8_t)cpu.x);
+    switch (rd16(0x070000 | (uint16_t)(0xE12D + cpu.x))) {
+    case 0xE137: abi_StuntPanelWait(); break;
+    case 0xE1AE: abi_StuntPanelCount(); break;
+    case 0xE1C8: abi_StuntPanelShow(); break;
+    case 0xE205: abi_StuntPanelDone(); break;
+    case 0xE1E2: abi_StuntPhaseEnd(); break;
+    }
+}
+
+/*
+ * @routine 07:E08F StuntPhaseStep
+ * WHAT IT DOES: The Stunt Trax (HUD mode 1) race phase each frame, as
+ * PlayerOnePhaseStep with its own table at $07:E0A7: 0, 2 and 4 into
+ * 07:E265's handlers ($E292, $E2E9, $E404), 6 StuntPhaseRace, 8
+ * StuntPhaseEnd, 10 $07:EBDC, 12 $07:ECF4, 14 $07:E99D.
+ * HOW: As PlayerOnePhaseStep.
+ * Entry: any widths; data bank $07. Exit: as the handler leaves it.
+ */
+void abi_StuntPhaseStep(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    op_rep(P_M | P_X);
+    cpu.y = 0x0000;
+    cpu.p = nz16(cpu.p, 0);
+    op_lda16(0x702476);
+    op_tax16();
+    op_sep(P_M);
+    abi_PlayerStatsFromRecord();
+    op_sep(P_M | P_X);
+    op_lda8(b | 0x0DD6);
+    cpu.x = (uint8_t)cpu.a;
+    cpu.p = nz8(cpu.p, (uint8_t)cpu.x);
+    switch (rd16(0x07E0A7 + cpu.x)) {
+    case 0xE292: jump_routine(0x07E292); break;
+    case 0xE2E9: jump_routine(0x07E2E9); break;
+    case 0xE404: jump_routine(0x07E404); break;
+    case 0xE0B7: abi_StuntPhaseRace(); break;
+    case 0xE1E2: abi_StuntPhaseEnd(); break;
+    case 0xEBDC: jump_routine(0x07EBDC); break;
+    case 0xECF4: jump_routine(0x07ECF4); break;
+    case 0xE99D: jump_routine(0x07E99D); break;
+    }
+}

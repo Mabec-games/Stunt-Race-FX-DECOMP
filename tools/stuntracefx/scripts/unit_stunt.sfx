@@ -1,0 +1,115 @@
+# unit_stunt: the Stunt Trax race's phase handlers on the paths no play
+# reaches, each as a call from the race at Icedance (stunt_icedance_07):
+# StuntPhaseRace (07:E0B7) with the time run out, with bit 0 of the
+# record's +$40, and for each panel state $0E41; StuntPanelWait (07:E137)
+# with a new stunt count below 8 and with all 8 done (course $0C);
+# StuntCourseMark (07:E17D) for courses $0C-$0F and another (off the
+# stunt courses the calls before it never return); StuntPanelCount
+# (07:E1AE), StuntPanelShow (07:E1C8) and StuntPanelDone (07:E205)
+# counting and at their last count;
+# StuntPhaseEnd (07:E1E2) with the window in state 5, the fade done
+# ($0D61 negative) and $0DD4 clear and set (its continuations end the
+# race: noreturn); StuntPanelCount at count 0; StuntPhaseStep (07:E08F)
+# for phases 8, 10 and 14 (the last two go on into code that ends the
+# race: noreturn).
+load build/stuntracefx/states/stunt_icedance_07.state
+set 7E0E70 00,00
+call 07:E0B7 p=30 y=0000 db=07 d=0000
+load build/stuntracefx/states/stunt_icedance_07.state
+set 7E0E70 00,01
+set 7E0DEC 01
+call 07:E0B7 p=30 y=0000 db=07 d=0000
+load build/stuntracefx/states/stunt_icedance_07.state
+set 7E0E70 00,01
+set 7E0DEC 00
+set 7E0E41 00
+set 7E0E3F 05
+call 07:E0B7 p=30 y=0000 db=07 d=0000
+load build/stuntracefx/states/stunt_icedance_07.state
+set 7E0E70 00,01
+set 7E0DEC 00
+set 7E0E41 02
+set 7E0E3F 05
+call 07:E0B7 p=30 y=0000 db=07 d=0000
+load build/stuntracefx/states/stunt_icedance_07.state
+set 7E0E70 00,01
+set 7E0DEC 00
+set 7E0E41 04
+set 7E0E3F 05
+call 07:E0B7 p=30 y=0000 db=07 d=0000
+load build/stuntracefx/states/stunt_icedance_07.state
+set 7E0E70 00,01
+set 7E0DEC 00
+set 7E0E41 06
+set 7E0E3F 05
+call 07:E0B7 p=30 y=0000 db=07 d=0000
+load build/stuntracefx/states/stunt_icedance_07.state
+set 7E0E70 00,01
+set 7E0DEC 00
+set 7E0E41 08
+set 7E0E3F 05
+call 07:E0B7 p=30 y=0000 db=07 d=0000
+load build/stuntracefx/states/stunt_icedance_07.state
+set 7E19ED 03
+set 7E1A2D 00
+call 07:E137 p=30 db=07 d=0000
+load build/stuntracefx/states/stunt_icedance_07.state
+set 7E19ED 08
+set 7E1A2D 00
+set 7E0E3D 0C
+call 07:E137 p=30 db=07 d=0000
+load build/stuntracefx/states/stunt_icedance_07.state
+set 7E0E3F 05
+call 07:E1AE p=30 db=07 d=0000
+load build/stuntracefx/states/stunt_icedance_07.state
+set 7E0E3F 01
+call 07:E1AE p=30 db=07 d=0000
+load build/stuntracefx/states/stunt_icedance_07.state
+set 7E0E3F 05
+call 07:E1C8 p=30 db=07 d=0000
+load build/stuntracefx/states/stunt_icedance_07.state
+set 7E0E3F 01
+call 07:E1C8 p=30 db=07 d=0000
+load build/stuntracefx/states/stunt_icedance_07.state
+set 7E0E3F 05
+call 07:E205 p=30 db=07 d=0000
+load build/stuntracefx/states/stunt_icedance_07.state
+set 7E0E3F 01
+call 07:E205 p=30 db=07 d=0000
+load build/stuntracefx/states/stunt_icedance_07.state
+set 7E19D8 05
+set 7E0DD4 00
+set 7E0D61 80
+call 07:E1E2 p=30 db=07 d=0000 noreturn frames=30
+load build/stuntracefx/states/stunt_icedance_07.state
+set 7E19D8 05
+set 7E0DD4 01
+set 7E0D61 80
+call 07:E1E2 p=30 db=07 d=0000 noreturn frames=30
+load build/stuntracefx/states/stunt_icedance_07.state
+set 7E0E3D 0C
+call 07:E17D p=30 db=07 d=0000
+load build/stuntracefx/states/stunt_icedance_07.state
+set 7E0E3D 0D
+call 07:E17D p=30 db=07 d=0000
+load build/stuntracefx/states/stunt_icedance_07.state
+set 7E0E3D 0E
+call 07:E17D p=30 db=07 d=0000
+load build/stuntracefx/states/stunt_icedance_07.state
+set 7E0E3D 0F
+call 07:E17D p=30 db=07 d=0000
+load build/stuntracefx/states/stunt_icedance_07.state
+set 7E0E3D 00
+call 07:E17D p=30 db=07 d=0000
+load build/stuntracefx/states/stunt_icedance_07.state
+set 7E0E3F 00
+call 07:E1AE p=30 db=07 d=0000
+load build/stuntracefx/states/stunt_icedance_07.state
+set 7E0DD6 08
+call 07:E08F p=30 db=07 d=0000
+load build/stuntracefx/states/stunt_icedance_07.state
+set 7E0DD6 0A
+call 07:E08F p=30 db=07 d=0000 noreturn frames=30
+load build/stuntracefx/states/stunt_icedance_07.state
+set 7E0DD6 0E
+call 07:E08F p=30 db=07 d=0000 noreturn frames=30

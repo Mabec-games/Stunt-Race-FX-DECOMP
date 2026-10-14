@@ -623,3 +623,267 @@ PlayerOnePhase_lE06E:
 %at($07E08E)
 PlayerOnePhaseReturn:
     rts
+
+; @routine 07:E08F StuntPhaseStep
+; WHAT IT DOES: The Stunt Trax (HUD mode 1) race phase each frame, as
+; PlayerOnePhaseStep with its own table at $07:E0A7: 0, 2 and 4 into
+; 07:E265's handlers ($E292, $E2E9, $E404), 6 StuntPhaseRace, 8
+; StuntPhaseEnd, 10 $07:EBDC, 12 $07:ECF4, 14 $07:E99D.
+; HOW: As PlayerOnePhaseStep.
+; Entry: any widths; data bank $07. Exit: as the handler leaves it.
+%at($07E08F)
+StuntPhaseStep:
+    rep.b #$30
+    ldy.w #$0000
+    lda.l !gsu_match_2476
+    tax
+    sep.b #$20
+    jsr.w PlayerStatsFromRecord
+    sep.b #$30
+    lda.w !engine_phase_p1
+    tax
+    jmp.w (StuntPhaseStep_handlers,x)
+StuntPhaseStep_handlers:
+    dw $E292,$E2E9,$E404,StuntPhaseRace,StuntPhaseEnd,$EBDC,$ECF4,$E99D
+
+; @routine 07:E0B7 StuntPhaseRace
+; WHAT IT DOES: The Stunt Trax race's phases 6 and 8 (and the panel): when
+; the time $0E70 has run out, phase $0C ($0DD6 + Y), $0D55 cleared,
+; $0E5A = $80 and sound $31; with bit 0 of the player's record +$40 set
+; (never in the traces), the screen darkened (PaletteDarkenFour, A =
+; $801F), $0D5B and $0E5B cleared, $0E18 = $F0, phase $0E, $0E56 = $0E4B
+; = $0C, sprites 75 on hidden (OamHide75Up), the sounds reset and sound
+; $37; otherwise the panel's state $0E41 from the table at $07:E12D
+; (StuntPanelWait, StuntPanelCount, StuntPanelShow, StuntPanelDone,
+; StuntPhaseEnd).
+; HOW: 16-bit for the time and the record word, 8-bit stores; JMP
+; (abs,X) for the panel.
+; Entry: M 8-bit, X 8-bit; data bank $07; Y = player (0). Exit: as the
+; step taken leaves it.
+%at($07E0B7)
+StuntPhaseRace:
+    rep.b #$20
+    lda.w !race_time_bcd
+    bne .time_left
+    sep.b #$20
+    lda.b #$0C
+    sta.w !engine_phase_p1,y
+    stz.w !panel_b_shown
+    lda.b #$80
+    sta.w !wram_0E59+1
+    lda.b #$31
+    jsl.l SoundPort0QueuePush
+    rts
+.time_left:
+    sep.b #$20
+    lda.w !player_rec_41,y
+    xba
+    lda.w !player_rec_40,y
+    rep.b #$20
+    and.w #$0001
+    beq StuntPanelStep
+    rep.b #$20
+    lda.w #$801F
+    jsl.l PaletteDarkenFour
+    sep.b #$20
+    stz.w !wram_0D5B
+    lda.b #$F0
+    sta.w !wram_0E16+2
+    stz.w !wram_0E5B
+    lda.b #$0E
+    sta.w !engine_phase_p1,y
+    lda.b #$0C
+    sta.w !wram_0E54+2
+    sta.w !wram_0E4B
+    jsr.w OamHide75Up
+    jsl.l SoundReset
+    lda.b #$37
+    jsl.l SoundPort0QueuePush
+    rts
+StuntPanelLines:                        ; the panel's line for each count
+    db $20,$20,$20,$20,$20,$20,$20,$20,$1C,$18,$14,$10,$0C,$08,$04,$02
+StuntPanelStep:                         ; the panel's state $0E41
+    sep.b #$30
+    ldx.w !wram_0E41
+    jmp.w (.states,x)
+.states:
+    dw StuntPanelWait,StuntPanelCount,StuntPanelShow,StuntPanelDone,StuntPhaseEnd
+
+; @routine 07:E137 StuntPanelWait
+; WHAT IT DOES: The Stunt Trax panel's first state: the pause
+; (PauseOnStart); then, when the stunt count $19ED is new (not 0 and not
+; $1A2D), keeps it in $1A2D and, below 8, shows it (state 4, $0E3F = 15);
+; at 8 (all done), sound 2, WindowDigitStep, state 6 with $0E3F = $20,
+; $0E5B and $0D55 cleared, the HUD's sprites hidden (OamHideForHudMode),
+; StuntRecordTime and RecordsLoadSpecialCourseLong, and the course's
+; mark (StuntCourseMark).
+; HOW: 8-bit registers; the calls without C run as original code.
+; Entry: any widths; data bank $07. Exit: M and X 8-bit; A as the last
+; step leaves it.
+%at($07E137)
+StuntPanelWait:
+    jsr.w PauseOnStart
+    sep.b #$30
+    lda.w !wram_19ED
+    beq StuntPanelWait_done
+    cmp.w !wram_1A2D
+    beq StuntPanelWait_done
+    sta.w !wram_1A2D
+    cmp.b #$08
+    beq .all
+    lda.b #$04
+    sta.w !wram_0E41
+    lda.b #$0F
+    sta.w !wram_0E3F
+    rts
+.all:
+    lda.b #$02
+    jsl.l SoundPort0QueuePushRaw
+    jsr.w WindowDigitStep
+    sep.b #$30
+    lda.b #$06
+    sta.w !wram_0E41
+    stz.w !wram_0E5B
+    stz.w !panel_b_shown
+    lda.b #$20
+    sta.w !wram_0E3F
+    jsr.w OamHideForHudMode
+    jsr.w StuntRecordTime
+    jsl.l RecordsLoadSpecialCourseLong
+
+; @routine 07:E17D StuntCourseMark
+; WHAT IT DOES: StuntPanelWait's end once all 8 stunts are done: for
+; courses $0C-$0F the course's bit (1, 2, 4, 8) set in the save byte
+; $70:FC06, then SaveChecksum; for any other course nothing (which no run
+; reaches: off the stunt courses the calls before it never return).
+; HOW: 8-bit compares of $0E3D; a long OR into the save.
+; Entry: any widths; data bank $07. Exit: M 8-bit; A low byte the save
+; byte, N, Z from it, C set; or N, Z, C from the compare with $0F.
+%at($07E17D)
+StuntCourseMark:
+    sep.b #$20
+    lda.w !course
+    cmp.b #$0C
+    beq .c0C
+    cmp.b #$0D
+    beq .c0D
+    cmp.b #$0E
+    beq .c0E
+    cmp.b #$0F
+    beq .c0F
+    rts
+.c0F:
+    lda.b #$08
+    bra .mark
+.c0E:
+    lda.b #$04
+    bra .mark
+.c0D:
+    lda.b #$02
+    bra .mark
+.c0C:
+    lda.b #$01
+.mark:
+    ora.l !save_bytes
+    sta.l !save_bytes
+    jsl.l SaveChecksum
+StuntPanelWait_done:
+    rts
+
+; @routine 07:E1AE StuntPanelCount
+; WHAT IT DOES: The Stunt Trax panel's state 2: draws the line for the
+; count $0E3F (the byte at $07:E115 + $0E3F, GsuF15BTwoLines) and counts
+; it down; at 0 the panel goes back to state 0.
+; HOW: The byte through the data bank; 8-bit count.
+; Entry: any widths; data bank $07. Exit: M and X 8-bit; N, Z from the
+; count.
+%at($07E1AE)
+StuntPanelCount:
+    lda.w !wram_0E3F
+    tax
+    lda.w StuntPanelLines,x
+    rep.b #$20
+    and.w #$00FF
+    jsr.w GsuF15BTwoLines
+    sep.b #$30
+    dec.w !wram_0E3F
+    bne .done
+    stz.w !wram_0E41
+.done:
+    rts
+
+; @routine 07:E1C8 StuntPanelShow
+; WHAT IT DOES: The Stunt Trax panel's state 4: as StuntPanelCount with
+; GlyphRowsAt32 drawing the line.
+; HOW: As StuntPanelCount; M 8-bit after the draw.
+; Entry: any widths; data bank $07. Exit: M 8-bit; X as GlyphRowsAt32
+; leaves it; N, Z from the count.
+%at($07E1C8)
+StuntPanelShow:
+    lda.w !wram_0E3F
+    tax
+    lda.w StuntPanelLines,x
+    rep.b #$20
+    and.w #$00FF
+    jsr.w GlyphRowsAt32
+    sep.b #$20
+    dec.w !wram_0E3F
+    bne .done
+    stz.w !wram_0E41
+.done:
+    rts
+
+; @routine 07:E1E2 StuntPhaseEnd
+; WHAT IT DOES: The Stunt Trax panel's state 8 and the race's phase 8:
+; once the split window is in state 5 ($19D8), clears $0D59, $0E80 and
+; $0E81, waits until the overlay has faded (OverlayFramesUntilFaded) and
+; goes on at WindowDigitStepEC6B with $0DD4 set, else at
+; WindowDigitStepEC80.
+; HOW: 8-bit; the two continuations are jumps, reached as original code.
+; Entry: any widths. Exit: M and X 8-bit; A low byte $19D8 with nothing
+; to do; otherwise as the continuation leaves it.
+%at($07E1E2)
+StuntPhaseEnd:
+    sep.b #$30
+    lda.w !window_hdma_off
+    cmp.b #$05
+    bne .done
+    stz.w !wram_0D59
+    stz.w !time_bonus_step+4
+    stz.w !time_bonus_step+5
+    jsr.w OverlayFramesUntilFaded
+    sep.b #$20
+    lda.w !sound_port1_last+2
+    beq .other
+    jmp.w WindowDigitStepEC6B
+.other:
+    jmp.w WindowDigitStepEC80
+.done:
+    rts
+
+; @routine 07:E205 StuntPanelDone
+; WHAT IT DOES: The Stunt Trax panel's state 6: GlyphRowsAt56 with A =
+; $20, then counts $0E3F down; at 0, state 8, $19DF cleared, the split
+; screen on ($0D22 = 1, $0D23 = 0) and the window slid up
+; (WindowSlideUpSound).
+; HOW: 16-bit for the call, 8-bit for the count.
+; Entry: any widths; data bank $07. Exit: M 8-bit, X 16-bit; N, Z from
+; the count, or as WindowSlideUpSound leaves them.
+%at($07E205)
+StuntPanelDone:
+    rep.b #$30
+    lda.w #$0020
+    jsr.w GlyphRowsAt56
+    sep.b #$20
+    dec.w !wram_0E3F
+    bne .done
+    lda.b #$08
+    sta.w !wram_0E41
+    sep.b #$20
+    stz.w !wram_19DF
+    lda.b #$01
+    sta.w !wram_0D22
+    stz.w !wram_0D23
+    jsl.l WindowSlideUpSound
+.done:
+    rts
