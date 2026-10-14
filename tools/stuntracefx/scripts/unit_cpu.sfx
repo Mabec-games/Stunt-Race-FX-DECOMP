@@ -57,6 +57,9 @@
 #   called on their own.
 # - CourseZoomFromSelection4 and CourseZoomFromSelection with a HUD mode
 #   ($0D2B = 1) for course 4.
+# - RecordTimeInsert with $0D24 = 3, and for course 0 with a time of
+#   1'30"00 against records of 1'00"00 or 2'00"00: second place, third
+#   place and none.
 load build/stuntracefx/states/novice_coupe_race1.state
 set 7E3437 FE
 call 03:FDF7 p=30 db=7E d=0000
@@ -777,4 +780,40 @@ set 7E0D4C 00
 set 7E0D4A 01
 set 7E0D48 00
 call 03:FAA8 long p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D24 03
+set 7E0D4A 00,00
+set 7E0EED 00,30,01
+set 7E0F7F 00,00,01
+set 7E0F8B 00,00,02
+set 7E0F97 00,00,02
+call 07:B7DE p=30 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D24 00
+set 7E0D4A 00,00
+set 7E0EED 00,30,01
+set 7E0F7F 00,00,01
+set 7E0F8B 00,00,02
+set 7E0F97 00,00,02
+call 07:B7DE p=30 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D24 00
+set 7E0D4A 00,00
+set 7E0EED 00,30,01
+set 7E0F7F 00,00,01
+set 7E0F8B 00,00,01
+set 7E0F97 00,00,02
+call 07:B7DE p=30 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D24 00
+set 7E0D4A 00,00
+set 7E0EED 00,30,01
+set 7E0F7F 00,00,01
+set 7E0F8B 00,00,01
+set 7E0F97 00,00,01
+call 07:B7DE p=30 db=7E d=0000
 wait 1

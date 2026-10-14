@@ -584,3 +584,146 @@ TimePackBcd:
     ora.b !dp_f3
     rts
 
+; @routine 07:B7DE RecordTimeInsert
+; WHAT IT DOES: Unless $0D24 is 3, places the race time ($0EED-$0EEF) in
+; the course $0D4A's records: below the first record (TimeBelowRecord) it
+; becomes the first, the first two moving down (RecordShiftFrom1, then
+; From0, RecordNameStore0; place 1 in $0FAC, page 0); below the second it
+; becomes the second (RecordShiftFrom1, RecordNameStore3; place 2, page
+; 8); below the third, the third (RecordNameStore6; place 3, page $10);
+; otherwise $10C7 = $FF and $0FAC = 0, and nothing else. Then its four lap
+; times ($0EF9 + 3n: hundredths, seconds, minutes) go packed (TimePackBcd)
+; to $70:FC88 + course * 24 + page + 2n, and the course's checksum at
+; $70:FC2D + course is remade: the sum of its 24 time bytes and its nine
+; name bytes at $70:FC6D + course * 9.
+; HOW: P pushed; 8-bit compares, the offset at $F7 (16-bit, with the
+; carry of its last shift), 16-bit loads for TimePackBcd, then the 8-bit
+; sums at $F1. Only the first place and the end are reached in the traces
+; so far.
+; Entry: any widths; D = $0000. Exit: P restored; A low byte the checksum
+; (high byte the last packed time's), X = course, Y = 0; or, at $0D24 = 3,
+; A low byte 3; with no record, A low byte 0 and X = $18.
+%at($07B7DE)
+RecordTimeInsert:
+    php
+    sep.b #$30
+    lda.w !wram_0D24
+    cmp.b #$03
+    bne .lB7EA
+    plp
+    rts
+.lB7EA:
+    sep.b #$30
+    ldx.b #$00
+    jsr.w TimeBelowRecord
+    bcs .lB805
+    jsr.w RecordShiftFrom1
+    jsr.w RecordShiftFrom0
+    jsr.w RecordNameStore0
+    lda.b #$01
+    sta.w !p1_lead+9
+    lda.b #$00
+    bra .lB838
+.lB805:
+    ldx.b #$0C
+    jsr.w TimeBelowRecord
+    bcs .lB81B
+    jsr.w RecordShiftFrom1
+    jsr.w RecordNameStore3
+    lda.b #$02
+    sta.w !p1_lead+9
+    lda.b #$08
+    bra .lB838
+.lB81B:
+    ldx.b #$18
+    jsr.w TimeBelowRecord
+    bcc .lB82E
+    lda.b #$FF
+    sta.w !player_tag
+    lda.b #$00
+    sta.w !p1_lead+9
+    plp
+    rts
+.lB82E:
+    jsr.w RecordNameStore6
+    lda.b #$03
+    sta.w !p1_lead+9
+    lda.b #$10
+.lB838:
+    rep.b #$30
+    and.w #$00FF
+    sta.b !record_page
+    lda.w !wram_0D4A
+    asl a
+    clc
+    adc.w !wram_0D4A
+    and.w #$00FF
+    asl a
+    asl a
+    asl a
+    adc.b !record_page
+    sta.b !record_page
+    lda.w !lap_times+9
+    ldx.w !lap_times+10
+    ldy.w !lap_times+11
+    jsr.w TimePackBcd
+    ldx.b !record_page
+    sta.l !save_course_times,x
+    lda.w !lap_times+12
+    ldx.w !lap_times+13
+    ldy.w !lap_times+14
+    jsr.w TimePackBcd
+    ldx.b !record_page
+    sta.l !save_course_times+2,x
+    lda.w !lap_times+15
+    ldx.w !lap_times+16
+    ldy.w !lap_times+17
+    jsr.w TimePackBcd
+    ldx.b !record_page
+    sta.l !save_course_times+4,x
+    lda.w !lap_times+18
+    ldx.w !lap_times+19
+    ldy.w !lap_times+20
+    jsr.w TimePackBcd
+    ldx.b !record_page
+    sta.l !save_course_times+6,x
+    sep.b #$30
+    stz.b !digit_count
+    lda.w !wram_0D4A
+    asl a
+    clc
+    adc.w !wram_0D4A
+    asl a
+    asl a
+    asl a
+    tax
+    ldy.b #$18
+.lB8AB:
+    clc
+    lda.l !save_course_times,x
+    adc.b !digit_count
+    sta.b !digit_count
+    inx
+    dey
+    bne .lB8AB
+    lda.w !wram_0D4A
+    asl a
+    asl a
+    asl a
+    clc
+    adc.w !wram_0D4A
+    tax
+    ldy.b #$09
+.lB8C5:
+    clc
+    lda.l !save_course_names,x
+    adc.b !digit_count
+    sta.b !digit_count
+    inx
+    dey
+    bne .lB8C5
+    ldx.w !wram_0D4A
+    lda.b !digit_count
+    sta.l !save_table_sums,x
+    plp
+    rts

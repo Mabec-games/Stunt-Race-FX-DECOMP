@@ -905,7 +905,8 @@ void abi_FadeValueStep(void)
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
         if (v) {
             cpu.p &= (uint8_t)~(P_M | P_C);
-            w = op_adc16(rd16(b | 0x19FE), rd16(b | 0x1A00), &cpu.p);
+            w = rd16(b | 0x19FE);
+            w = op_adc16(w, rd16(b | 0x1A00), &cpu.p);
             cpu.a = w;
             op_cmp16(rd16(b | 0x1A02));
             if (!(cpu.p & P_Z))

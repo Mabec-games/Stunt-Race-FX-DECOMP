@@ -1116,7 +1116,8 @@ void abi_WindowSplitAnimate(void)
     for (i = 0; i < 6; i++)
         wr8(b | (uint16_t)(0x19AC + i), v);
     cpu.p &= (uint8_t)~(P_M | P_C);
-    a = op_adc16(rd16(0x0019DB), rd16(0x0019DD), &cpu.p);
+    a = rd16(0x0019DB);
+    a = op_adc16(a, rd16(0x0019DD), &cpu.p);
     cpu.a = a;
     op_cmp16(rd16(b | 0x19D9));
     if (!(cpu.p & P_Z)) {
@@ -1298,8 +1299,9 @@ void abi_ColdataLevelStep(void)
     uint8_t x, v;
 
     op_rep(P_M | P_X);
+    cpu.a = rd16(0x0019C3);
     cpu.p &= (uint8_t)~P_C;
-    cpu.a = op_adc16(rd16(0x0019C3), rd16((uint32_t)cpu.db << 16 | 0x19C5), &cpu.p);
+    cpu.a = op_adc16(cpu.a, rd16((uint32_t)cpu.db << 16 | 0x19C5), &cpu.p);
     op_cmp16(0xE000);
     if (cpu.p & P_Z)
         return;

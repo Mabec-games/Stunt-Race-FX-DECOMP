@@ -555,3 +555,119 @@ void abi_TimePackBcd(void)
     cpu.a |= rd16(0x0000F3);
     cpu.p = nz16(cpu.p, cpu.a);
 }
+
+/* CLC, LDA.L, ADC $F1, STA $F1 over n bytes from addr + x (8-bit X). */
+static void sum_into_f1(uint32_t addr, uint8_t x, unsigned n)
+{
+    uint8_t a = 0;
+
+    while (n--) {
+        cpu.p &= (uint8_t)~P_C;
+        a = rd8(addr + x);
+        a = op_adc8(a, rd8(0x0000F1), &cpu.p);
+        wr8(0x0000F1, a);
+        x++;
+    }
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
+    cpu.x = x;
+    cpu.y = 0;
+}
+
+/* ASL A (16-bit), C the bit out. */
+static uint16_t asl16(uint16_t a)
+{
+    cpu.p = (uint8_t)((cpu.p & ~P_C) | (a >> 15));
+    return (uint16_t)(a << 1);
+}
+
+/*
+ * @routine 07:B7DE RecordTimeInsert
+ * WHAT IT DOES: Unless $0D24 is 3, places the race time ($0EED-$0EEF) in
+ * the course $0D4A's records: below the first record (TimeBelowRecord) it
+ * becomes the first, the first two moving down (RecordShiftFrom1, then
+ * From0, RecordNameStore0; place 1 in $0FAC, page 0); below the second it
+ * becomes the second (RecordShiftFrom1, RecordNameStore3; place 2, page
+ * 8); below the third, the third (RecordNameStore6; place 3, page $10);
+ * otherwise $10C7 = $FF and $0FAC = 0, and nothing else. Then its four lap
+ * times ($0EF9 + 3n: hundredths, seconds, minutes) go packed (TimePackBcd)
+ * to $70:FC88 + course * 24 + page + 2n, and the course's checksum at
+ * $70:FC2D + course is remade: the sum of its 24 time bytes and its nine
+ * name bytes at $70:FC6D + course * 9.
+ * HOW: P pushed; 8-bit compares, the offset at $F7 (16-bit, with the
+ * carry of its last shift), 16-bit loads for TimePackBcd, then the 8-bit
+ * sums at $F1. Only the first place and the end are reached in the traces
+ * so far.
+ * Entry: any widths; D = $0000. Exit: P restored; A low byte the checksum
+ * (high byte the last packed time's), X = course, Y = 0; or, at $0D24 = 3,
+ * A low byte 3; with no record, A low byte 0 and X = $18.
+ */
+void abi_RecordTimeInsert(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t p0 = cpu.p, place, page;
+    uint16_t a;
+    unsigned i;
+
+    op_sep(P_M | P_X);
+    op_lda8(b | 0x0D24);
+    if ((uint8_t)cpu.a == 0x03) {
+        op_plp(p0);
+        return;
+    }
+    cpu.x = 0x00;
+    abi_TimeBelowRecord();
+    if (!(cpu.p & P_C)) {
+        abi_RecordShiftFrom1();
+        abi_RecordShiftFrom0();
+        abi_RecordNameStore0();
+        place = 0x01;
+        page = 0x00;
+    } else {
+        cpu.x = 0x0C;
+        abi_TimeBelowRecord();
+        if (!(cpu.p & P_C)) {
+            abi_RecordShiftFrom1();
+            abi_RecordNameStore3();
+            place = 0x02;
+            page = 0x08;
+        } else {
+            cpu.x = 0x18;
+            abi_TimeBelowRecord();
+            if (cpu.p & P_C) {
+                wr8(b | 0x10C7, 0xFF);
+                wr8(b | 0x0FAC, 0x00);
+                cpu.a = (uint16_t)(cpu.a & 0xFF00);
+                op_plp(p0);
+                return;
+            }
+            abi_RecordNameStore6();
+            place = 0x03;
+            page = 0x10;
+        }
+    }
+    wr8(b | 0x0FAC, place);
+    op_rep(P_M | P_X);
+    wr16(0x0000F7, page);
+    a = asl16(rd16(b | 0x0D4A));
+    cpu.p &= (uint8_t)~P_C;
+    a = (uint16_t)(op_adc16(a, rd16(b | 0x0D4A), &cpu.p) & 0x00FF);
+    for (i = 0; i < 3; i++)
+        a = asl16(a);
+    a = op_adc16(a, rd16(0x0000F7), &cpu.p);
+    wr16(0x0000F7, a);
+    for (i = 0; i < 4; i++) {
+        cpu.a = rd16(b | (uint16_t)(0x0EF9 + 3 * i));
+        cpu.x = rd16(b | (uint16_t)(0x0EFA + 3 * i));
+        cpu.y = rd16(b | (uint16_t)(0x0EFB + 3 * i));
+        abi_TimePackBcd();
+        cpu.x = rd16(0x0000F7);
+        wr16(0x70FC88 + cpu.x + 2 * i, cpu.a);
+    }
+    op_sep(P_M | P_X);
+    wr8(0x0000F1, 0x00);
+    sum_into_f1(0x70FC88, course_times_24(), 24);
+    sum_into_f1(0x70FC6D, course_times_9(), 9);
+    cpu.x = rd8(b | 0x0D4A);
+    wr8(0x70FC2D + cpu.x, rd8(0x0000F1));
+    op_plp(p0);
+}
