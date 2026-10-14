@@ -182,7 +182,7 @@
 <rect x="367.6" y="453.7" width="3.6" height="1.8" fill="#3fb950"><title>MenuActorNoStepE0DF  0BE0DF  1B  T4  [menu]</title></rect>
 <text x="3.0" y="468.1" font-size="10" fill="#8b949e">video</text>
 <rect x="1.5" y="473.1" width="103.6" height="78.1" fill="#3fb950"><title>TimesKeepAndAdvance  07D029  820B  T4  [video]</title></rect>
-<rect x="105.7" y="473.1" width="96.9" height="78.1" fill="#d29922"><title>RaceVideoSetup  03D9B9  767B  T2  [video]</title></rect>
+<rect x="105.7" y="473.1" width="96.9" height="78.1" fill="#58a6ff"><title>RaceVideoSetup  03D9B9  767B  T3  [video]</title></rect>
 <rect x="203.3" y="473.1" width="88.4" height="78.1" fill="#3fb950"><title>CgramUploadAll  7EA8E6  700B  T4  [video]</title></rect>
 <rect x="292.2" y="473.1" width="79.0" height="78.1" fill="#3fb950"><title>WindowsInit  09ECE0  626B  T4  [video]</title></rect>
 <rect x="1.5" y="551.8" width="56.5" height="59.4" fill="#d29922"><title>OverlaySpritesStep  04E048  342B  T2  [video]</title></rect>
@@ -1040,4 +1040,4 @@
 <rect x="1580.7" y="856.3" width="15.3" height="26.0" fill="#d29922"><title>JoypadPortCheck  7F10CD  46B  T2  [input]</title></rect>
 <rect x="1580.7" y="882.9" width="15.3" height="15.0" fill="#3fb950"><title>FrameSoundAndJoypads  7EA7A3  27B  T4  [input]</title></rect>
 <rect x="1599.6" y="856.3" width="0.4" height="41.6" fill="#c8ccd2"><title>(unnamed)  00FE88  8B  T1  [bank 00 S-CPU]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 882 &#183; T3 behaviour-exact 17 &#183; 76,214/137,217 bytes exact (55.5%) &#183; green=T4 blue=T3 amber=T2 gray=T1</text></svg>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 882 &#183; T3 behaviour-exact 18 &#183; 76,214/137,217 bytes exact (55.5%) &#183; green=T4 blue=T3 amber=T2 gray=T1</text></svg>
