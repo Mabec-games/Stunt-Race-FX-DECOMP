@@ -534,6 +534,16 @@ static int load_routines(void *core, const char *lib, const char *only)
         }
         sel[nroutines++] = table[i];
     }
+    /* A selected routine's other addresses (@alias) come with it. */
+    if (only)
+        for (int i = 0; i < *count && nroutines < 4096; i++) {
+            int have = 0, alias = 0;
+            for (int j = 0; j < nroutines; j++) {
+                if (sel[j].addr == table[i].addr) have = 1;
+                if (sel[j].abi == table[i].abi) alias = 1;
+            }
+            if (alias && !have) sel[nroutines++] = table[i];
+        }
     routines = sel;
     all_routines = table; all_count = *count;
     stats = calloc((size_t)(nroutines ? nroutines : 1), sizeof *stats);
@@ -567,8 +577,19 @@ int check_begin(void *core, const char *lib, const char *only, const char *repor
 void check_end(void)
 {
     fprintf(report, "routine,name,calls,match,diff,inconclusive,skipped,verdict\n");
+    /* A routine's other addresses (@alias: its code run from a copy) are
+       counted under its first. */
+    for (int i = 0; i < nroutines; i++)
+        for (int j = 0; j < i; j++)
+            if (routines[j].abi == routines[i].abi) {
+                stats[j].calls += stats[i].calls; stats[j].match += stats[i].match; stats[j].diff += stats[i].diff;
+                stats[j].inconclusive += stats[i].inconclusive; stats[j].skipped += stats[i].skipped;
+                stats[i].calls = -1;
+                break;
+            }
     for (int i = 0; i < nroutines; i++) {
         Stat *s = &stats[i];
+        if (s->calls < 0) continue;
         const char *v = s->diff ? "DIVERGENT" : s->calls == 0 ? "UNCOVERED" : s->inconclusive ? "UNVERIFIED" : "IDENTICAL";
         fprintf(report, "%06X,%s,%ld,%ld,%ld,%ld,%ld,%s\n", routines[i].addr, routines[i].name, s->calls, s->match,
                 s->diff, s->inconclusive, s->skipped, v);
@@ -847,7 +868,10 @@ static void ls_insn(uint32_t pc)
         int again = !computed && prev != 0x20 && prev != 0x22 && prev != 0xFC
                     && ((m.depth && m.open_pc[m.depth - 1] == pc && m.open[m.depth - 1] == r.s)
                         || (!m.depth && pc == m_pc && r.s == m.entry_s));
-        if ((computed || is_catalog_entry(pc)) && !again && m.depth < 64) {
+        /* Entries of routines with C count too: an @alias address (a work
+           RAM routine run from its ROM copy) is not in the catalog. */
+        int with_c = has_c[pc >> 3] >> (pc & 7) & 1;
+        if ((computed || is_catalog_entry(pc) || with_c) && !again && m.depth < 64) {
             ls_op(0x90, pc);
             ls_op(0xA0, r.s);
             /* Op B: the return address a JSR or JSL pushed to enter it
