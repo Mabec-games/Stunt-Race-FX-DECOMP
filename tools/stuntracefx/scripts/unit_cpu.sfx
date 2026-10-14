@@ -70,6 +70,8 @@
 # - RaceLoad in HUD modes 3 and 4, and in mode 1 with $0D63 set.
 # - CourseSoundLoad with $10DC set: $10DE at 0 (the other set loaded) and
 #   at 1 (nothing).
+# - RaceVideoSetup for course 1 (its third picture and second tilemap), in
+#   HUD mode 3 with $10CD clear, in mode 1 with $0D4E set, and in mode 2.
 load build/stuntracefx/states/novice_coupe_race1.state
 set 7E3437 FE
 call 03:FDF7 p=30 db=7E d=0000
@@ -982,4 +984,34 @@ set 7E10DA 00
 set 7E10DC 01
 set 7E10DE 01
 call 04:D0DB long p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0E3D 01
+set 7E0D2B 00
+set 7E10CD 00
+set 7E0D4E 00
+set 7E0D62 00
+call 03:D9B9 long p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0E3D 00
+set 7E0D2B 03
+set 7E10CD 00
+set 7E0D4E 00
+set 7E0D62 00
+call 03:D9B9 long p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0E3D 00
+set 7E0D2B 01
+set 7E10CD 00
+set 7E0D4E 01
+set 7E0D62 00
+call 03:D9B9 long p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0E3D 00
+set 7E0D2B 02
+set 7E0D62 00
+call 03:D9B9 long p=30 db=00 d=0000
 wait 1
