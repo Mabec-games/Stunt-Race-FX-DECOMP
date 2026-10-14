@@ -10,3 +10,14 @@ call 08:B1FC long p=00 x=0001 db=7E d=0000 noreturn frames=60
 load build/stuntracefx/states/novice_coupe_race1.state
 set 70238E 00,00
 call 08:B99A long p=00 x=0001 db=7E d=0000
+# ObjectCarFrame (08:B23D), the handler the object dispatch jumps to, as a
+# call: its steps for object 1, then its other path with object 1 as the
+# player's car (+$25 bit 3) and record 0 given +$1C bit 4.
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:B23D long p=20 x=0001 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0346 01,00
+set 7E2026 08
+set 7E2023 00,00
+set 70001C 10,00
+call 08:B23D long p=20 x=0001 db=7E d=0000
