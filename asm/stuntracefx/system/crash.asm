@@ -88,7 +88,7 @@ CrashBody:                          ; every stop screen entry joins here
     sta.w !BBAD1
     lda.b #$00
     sta.w !A1B1
-    ldx.w #!crash_hofs_table&$FFFF
+    ldx.w #!crash_hofs_table
     stx.w !A1T1L
     stz.w !DASB1
     stz.w !BG1VOFS

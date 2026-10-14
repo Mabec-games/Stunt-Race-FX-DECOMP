@@ -1,0 +1,12 @@
+# unit_held_restart: MenuHeldRestart (0B:AE8F) on menu screen 0, 120
+# frames after power-on, with bits 0-3 of a held word set (a joypad never
+# sets them, so no script reaches the restart): player 1's, then player
+# 2's. The next frame's joypad read clears the word and the loop ends.
+# The screen runs with the NMI off and its loop's original code only in
+# the vertical blank, so the calls may start there (vblank).
+load build/stuntracefx/states/menu_screen0.state
+set 7E0309 0F,00
+call 0B:AE8F p=30 db=00 d=0000 frames=30 vblank
+load build/stuntracefx/states/menu_screen0.state
+set 7E030D 0F,00
+call 0B:AE8F p=30 db=00 d=0000 frames=30 vblank

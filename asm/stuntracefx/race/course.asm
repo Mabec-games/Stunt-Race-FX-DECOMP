@@ -441,9 +441,11 @@ CourseCursorStep_to3:
 ; colour from it (FixedColourFromStep); at the last step, $0D50 = 0, the
 ; course's records loaded (RecordsLoadForCourse), $0D41 = $20, $0D40 = 6
 ; and $10D8 = 0.
-; HOW: 16-bit compare of $7F:3408 with $7F:340A; 8-bit stores.
-; Entry: any widths. Exit: M, X 16-bit with A the blend factor and Z clear
-; before the last step; then M 8-bit, A low byte 6.
+; HOW: FixedColourFromStep leaves M and X 8-bit, so the compare of
+; $7F:3408 with $7F:340A is of their low bytes; 8-bit stores.
+; Entry: any widths. Exit: M, X 8-bit; before the last step A low byte the
+; blend factor's (high byte as FixedColourFromStep left it), Z clear;
+; then A low byte 6.
 CourseZoomInStep:
     jsl.l ColourMathA3Long
     rep.b #$30

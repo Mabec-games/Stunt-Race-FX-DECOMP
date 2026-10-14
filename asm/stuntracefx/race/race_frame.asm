@@ -547,79 +547,94 @@ ViewParamsByPlayers:
     lda.w !wram_0D62
     beq ViewParamsOne
     bra ViewParamsTwo
-ViewParamsSpeedLong:                    ; 7E:F6F2, not reached in the traces so far
+
+; @routine 7E:F6F2 ViewParamsSpeedLong
+; WHAT IT DOES: A long way into ObjectLinkEventTrigger2's tail, which
+; nothing reaches: stores A at $1A21.
+; HOW: JSR ObjectLinkEventTrigger2_speed, RTL.
+; Entry: any widths; data bank $7E. Exit: M and X 8-bit (X and Y high
+; bytes 0); A unchanged.
+ViewParamsSpeedLong:
     jsr.w ObjectLinkEventTrigger2_speed
     rtl
 ViewParamsOne:
     lda.b #$00
-    sta.b $2A
+    sta.b !dp_2a
     lda.b #$00
-    sta.b $2B
+    sta.b !dp_2a+1
     lda.b #$CF
-    sta.b $2E
+    sta.b !dp_2e
     lda.b #$00
-    sta.b $2F
+    sta.b !dp_2e+1
     lda.b #$00
-    sta.b $2C
+    sta.b !dp_2c
     lda.b #$00
-    sta.b $2D
+    sta.b !dp_2c+1
     lda.b #$80
-    sta.b $30
+    sta.b !dp_30
     lda.b #$00
-    sta.b $31
+    sta.b !dp_30+1
     lda.b #$68
-    sta.b $CE
+    sta.b !dp_ce
     lda.b #$00
-    sta.b $CF
+    sta.b !dp_ce+1
     lda.b #$40
-    sta.b $D0
+    sta.b !dp_d0
     lda.b #$00
-    sta.b $D1
+    sta.b !dp_d0+1
     lda.b #$00
-    sta.b $34
+    sta.b !dp_34
     lda.b #$40
-    sta.b $35
+    sta.b !dp_34+1
     lda.b #$C4
-    sta.b $32
+    sta.b !dp_32
     lda.b #$4E
-    sta.b $33
+    sta.b !dp_32+1
     rts
-ViewParamsBobLong:                      ; 7E:F737, not reached in the traces so far
+
+; @routine 7E:F737 ViewParamsBobLong
+; WHAT IT DOES: A long way into ObjectLinkEventTrigger2's tail, which
+; nothing reaches: starts bob 1 with A as its kind ($1A1D = A, $1A1F =
+; $1A23 = 0, $1A21 = $FE).
+; HOW: JSR ObjectLinkEventTrigger2_bob, RTL.
+; Entry: M 8-bit (the code is 8-bit); data bank $7E. Exit: M and X 8-bit
+; (X and Y high bytes 0); A low byte = $FE; N set, Z clear.
+ViewParamsBobLong:
     jsr.w ObjectLinkEventTrigger2_bob
     rtl
 ViewParamsTwo:
     lda.b #$00
-    sta.b $2A
+    sta.b !dp_2a
     lda.b #$00
-    sta.b $2B
+    sta.b !dp_2a+1
     lda.b #$8F
-    sta.b $2E
+    sta.b !dp_2e
     lda.b #$00
-    sta.b $2F
+    sta.b !dp_2e+1
     lda.b #$00
-    sta.b $2C
+    sta.b !dp_2c
     lda.b #$00
-    sta.b $2D
+    sta.b !dp_2c+1
     lda.b #$50
-    sta.b $30
+    sta.b !dp_30
     lda.b #$00
-    sta.b $31
+    sta.b !dp_30+1
     lda.b #$48
-    sta.b $CE
+    sta.b !dp_ce
     lda.b #$00
-    sta.b $CF
+    sta.b !dp_ce+1
     lda.b #$28
-    sta.b $D0
+    sta.b !dp_d0
     lda.b #$00
-    sta.b $D1
+    sta.b !dp_d0+1
     lda.b #$66
-    sta.b $34
+    sta.b !dp_34
     lda.b #$66
-    sta.b $35
+    sta.b !dp_34+1
     lda.b #$C7
-    sta.b $32
+    sta.b !dp_32
     lda.b #$71
-    sta.b $33
+    sta.b !dp_32+1
     rts
 
 ; @routine 02:E289 RaceLoop

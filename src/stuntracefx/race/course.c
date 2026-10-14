@@ -245,21 +245,26 @@ void abi_CourseCursorStep(void)
  * colour from it (FixedColourFromStep); at the last step, $0D50 = 0, the
  * course's records loaded (RecordsLoadForCourse), $0D41 = $20, $0D40 = 6
  * and $10D8 = 0.
- * HOW: 16-bit compare of $7F:3408 with $7F:340A; 8-bit stores.
- * Entry: any widths. Exit: M, X 16-bit with A the blend factor and Z clear
- * before the last step; then M 8-bit, A low byte 6.
+ * HOW: FixedColourFromStep leaves M and X 8-bit, so the compare of
+ * $7F:3408 with $7F:340A is of their low bytes; 8-bit stores.
+ * Entry: any widths. Exit: M, X 8-bit; before the last step A low byte the
+ * blend factor's (high byte as FixedColourFromStep left it), Z clear;
+ * then A low byte 6.
  */
 void abi_CourseZoomInStep(void)
 {
     uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t a8, m8;
 
     abi_ColourMathA3Long();
     op_rep(P_M | P_X);
     abi_BlendStepUp();
     abi_FixedColourFromStep();
-    cpu.a = rd16(0x7F3408);
-    op_cmp16(rd16(0x7F340A));
-    if (!(cpu.p & P_Z))
+    op_lda8(0x7F3408);
+    a8 = (uint8_t)cpu.a;
+    m8 = rd8(0x7F340A);
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(a8 - m8)) & ~P_C) | (a8 >= m8 ? P_C : 0));
+    if (a8 != m8)
         return;
     op_sep(P_M);
     wr8(b | 0x0D50, 0x00);

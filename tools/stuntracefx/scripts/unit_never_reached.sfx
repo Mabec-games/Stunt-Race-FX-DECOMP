@@ -1,0 +1,20 @@
+# unit_never_reached: code inside routines that no path reaches, entered as
+# a call from the start of a Novice race: ViewParamsSpeedLong (7E:F6F2) and
+# ViewParamsBobLong (7E:F737), the long ways into ObjectLinkEventTrigger2's
+# tail, with A 8-bit and 16-bit; ResultsPlace0Hide (0B:E006), the hiding
+# store after a BCC that never branches; RecordRowDraw (02:F077) on a row
+# with a time (BCD bytes $01, $23, $45; name letters $8C41, car 5), which
+# no records screen in the scripts shows.
+load build/stuntracefx/states/novice_coupe_race1.state
+call 7E:F6F2 long a=1234 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 7E:F6F2 long a=1234 p=00 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 7E:F737 long a=001A p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 0B:E006 x=0F00 p=00 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E00F2 00,41,8C,05
+set 7E00F7 00
+set 7E0F76 01,23,45
+call 02:F077 y=0004 p=30 db=00 d=0000

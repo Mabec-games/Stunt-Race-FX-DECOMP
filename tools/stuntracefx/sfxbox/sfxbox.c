@@ -22,7 +22,7 @@
  *                        as poke, but written when the next call starts, so
  *                        the game itself never runs on those bytes
  *   call ADDR [long] [keep] [noreturn] [a=HEX] [x=] [y=] [p=] [db=] [d=] [frames=N]
- *        [press=B[+B...]@F ...] [frame=PPDD] [php]
+ *        [press=B[+B...]@F ...] [frame=PPDD] [php] [vblank]
  *                        run the routine at ADDR once as a unit test: entered
  *                        by a JSR (by a JSL with long) from a stub in work RAM
  *                        with those registers, the game's state as the script
@@ -41,7 +41,10 @@
  *                        that ends by pulling them (PLB, PLP, RTL); php
  *                        (without long) is the same for code that ends
  *                        PLP, RTS: a JSR to a trampoline that pushes P
- *                        (PHP, so P = p=) and jumps (JMP) to ADDR
+ *                        (PHP, so P = p=) and jumps (JMP) to ADDR; vblank
+ *                        lets the call start in the vertical blank, for a
+ *                        screen that runs with the NMI off and whose loop
+ *                        runs original code only then
  *   repeat N ... end     run the enclosed lines N times (nests)
  * Buttons: B Y SELECT START UP DOWN LEFT RIGHT A X L R, player 1; prefix
  * with 2. for player 2 (2.START). Joined with +.
@@ -268,6 +271,7 @@ static int checklib_on;  /* --check: the checker is told when a call starts */
 static int call_keep;    /* keep: the machine is not put back after the call */
 static long call_frame = -1;  /* frame=: the P and DB pushed above the return */
 static int call_php;           /* php: (JSR) the entry P pushed above the return */
+static int call_vblank;        /* vblank: may start in the vertical blank (NMI off) */
 static int call_noreturn;     /* noreturn: told to lockstep when the call starts */
 static uint32_t call_target;
 
@@ -288,7 +292,11 @@ static int call_exec(uint32_t pc)
     if (call_state == 1 && getenv("SFXBOX_CALL_WHY") && (pc & 0xFFFFF0) == strtoul(getenv("SFXBOX_CALL_WHY"), NULL, 16))
         fprintf(stderr, "why side %d pc %06X ok %d 3030 %02X 4212 %02X clock %u\n", lockstep ? lockstep_role() : 0, pc,
                 lockstep_call_ok(pc), sfxbox_core_bus_read_p(0x003030), sfxbox_core_bus_read_p(0x004212), lockstep_clock());
-    if (call_state == 1 && lockstep_call_ok(pc) && !(sfxbox_core_bus_read_p(0x003030) & 0x20) && !(sfxbox_core_bus_read_p(0x004212) & 0x80)) {
+    /* With vblank, also in the vertical blank: for a screen that runs with
+       the NMI off (no NMI can land between the JSR and the routine) and
+       whose loop runs original code only then (the rest of it is C). */
+    if (call_state == 1 && lockstep_call_ok(pc) && !(sfxbox_core_bus_read_p(0x003030) & 0x20)
+        && (call_vblank || !(sfxbox_core_bus_read_p(0x004212) & 0x80))) {
         sfxbox_core_regs_p(&call_from);
         if (getenv("SFXBOX_CALL_DEBUG"))
             fprintf(stderr, "call starts (side %d) frame %ld at %06X S=%04X clock %u\n", lockstep ? lockstep_role() : 0, frames, call_from.pc, call_from.s, lockstep_clock());
@@ -350,6 +358,7 @@ static void call(const char *line, int lineno) {
         else if (!strncmp(tok[i], "frames=", 7)) frames_max = strtol(tok[i] + 7, NULL, 10);
         else if (!strncmp(tok[i], "frame=", 6)) call_frame = (long)(v & 0xFFFF);
         else if (!strcmp(tok[i], "php")) call_php = 1;
+        else if (!strcmp(tok[i], "vblank")) call_vblank = 1;
         else if (!strncmp(tok[i], "press=", 6) && strchr(tok[i], '@') && npress < 8) {
             char pb[64]; snprintf(pb, sizeof pb, "%s", tok[i] + 6);
             *strchr(pb, '@') = 0;
@@ -437,6 +446,7 @@ static void call(const char *line, int lineno) {
     call_state = 0;
     call_frame = -1;
     call_php = 0;
+    call_vblank = 0;
 }
 
 /* fx: a unit test of a Super FX routine. A stub in work RAM at $7F:F000

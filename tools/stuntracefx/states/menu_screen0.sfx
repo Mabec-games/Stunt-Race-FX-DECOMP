@@ -1,0 +1,5 @@
+# menu_screen0: menu screen 0 after power-on, for unit calls that need its
+# objects (scripts/unit_held_restart.sfx). A load leaves the hybrid outside
+# the C of MenuScreen0Run, so a call can start there.
+wait 120
+save menu_screen0

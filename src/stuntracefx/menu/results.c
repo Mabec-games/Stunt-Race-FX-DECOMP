@@ -1046,6 +1046,19 @@ void abi_ResultsPlace0(void)
 }
 
 /*
+ * @routine 0B:E006 ResultsPlace0Hide
+ * WHAT IT DOES: ResultsPlace0's hiding store, which nothing reaches (the
+ * BCC after CMP #0 before it never branches): +$10 = $FFFF.
+ * HOW: A 16-bit direct page store indexed by the object.
+ * Entry: M 16-bit, D = $0000; X = the object. Exit: A = $FFFF; N set, Z
+ * clear.
+ */
+void abi_ResultsPlace0Hide(void)
+{
+    set_field(0x10, 0xFFFF);
+}
+
+/*
  * @routine 0B:E01C ResultsPlace1
  * WHAT IT DOES: As ResultsPlace0 for place 1 (handler ResultsPlace1Animate).
  * HOW: As ResultsPlace0, with 1.

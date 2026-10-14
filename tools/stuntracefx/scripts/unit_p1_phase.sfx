@@ -2,7 +2,9 @@
 # of a Novice race, on the paths no play reaches: phase 8 (the race again)
 # and phase 12 (into 07:ECA4) from the dispatch table; the race's end with
 # the lead count $0FAE at 0 (the result's words for no lead); and
-# PlayerOnePhaseReturn (07:E08E), the lone RTS nothing reaches.
+# PlayerOnePhaseReturn (07:E08E), the lone RTS nothing reaches; then the
+# handlers the dispatch jumps to, each as a call: PlayerOnePhaseRace
+# (07:DE6E), PlayerOnePhaseTally (07:DFD2) and PlayerOnePhaseEnd (07:E044).
 load build/stuntracefx/states/novice_coupe_race1.state
 set 7E0DD6 08
 call 07:DE46 p=00 db=07 d=0000
@@ -13,3 +15,11 @@ set 7E0E70 00,00
 set 7E0FAE 00,00
 call 07:DE46 p=00 db=07 d=0000
 call 07:E08E p=00 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:DE6E p=30 x=0006 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0DD6 0A
+call 07:DFD2 p=30 x=000A db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0DD6 0E
+call 07:E044 p=30 x=000E db=07 d=0000

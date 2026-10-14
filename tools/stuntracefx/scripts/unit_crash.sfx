@@ -1,0 +1,8 @@
+# unit_crash: the stop screens nothing reaches, as noreturn calls from the
+# start of a Novice race: CrashWhite (00:8014, code $AA) and CrashGreen
+# (00:8048, code $E2, what ObjectSpawnFromScript does with no object
+# free), each run for 30 frames of its scroll.
+load build/stuntracefx/states/novice_coupe_race1.state
+call 00:8014 p=30 db=00 d=0000 noreturn frames=30
+load build/stuntracefx/states/novice_coupe_race1.state
+call 00:8048 p=30 db=00 d=0000 noreturn frames=30

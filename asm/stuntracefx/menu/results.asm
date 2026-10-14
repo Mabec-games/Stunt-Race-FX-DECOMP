@@ -1013,22 +1013,29 @@ ResultsPlace0:
     lda.l !engine_phase_p1
     and.w #$00FF
     cmp.w #$0008
-    beq .lE00C
+    beq ResultsPlace0_points
     lda.l !wram_0D48
     and.w #$00FF
     cmp.w #$0000
     beq .lE002
-    bcc .lE006
-    bne .lE00C
+    bcc ResultsPlace0Hide
+    bne ResultsPlace0_points
 .lE002:
     jsr.w ResultsPhaseAnim
 .lE005:
     rts
-.lE006:
+
+; @routine 0B:E006 ResultsPlace0Hide
+; WHAT IT DOES: ResultsPlace0's hiding store, which nothing reaches (the
+; BCC after CMP #0 before it never branches): +$10 = $FFFF.
+; HOW: A 16-bit direct page store indexed by the object.
+; Entry: M 16-bit, D = $0000; X = the object. Exit: A = $FFFF; N set, Z
+; clear.
+ResultsPlace0Hide:
     lda.w #$FFFF
     sta.b !actor_10,x
     rts
-.lE00C:
+ResultsPlace0_points:
     lda.w #$0000
     jsr.w ResultsPoints
     lda.w #$E0DF

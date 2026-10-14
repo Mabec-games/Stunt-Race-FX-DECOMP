@@ -1,7 +1,7 @@
 # unit_hud_times: HudTimesDraw (07:89F5), whose HUD hold work nothing in
 # the traces reaches, on each of its paths from the start of a Novice
 # race: $10CD set; the two packed times (HUD mode 3, $0D4C set) with player
-# 1 behind and level; no time at $0F2B; the lap digits with player 1 ahead
+# 1 behind, level and ahead; no time at $0F2B; the lap digits with player 1 ahead
 # and behind; both rows with player 1 behind, ahead and level. Then the
 # rows' unreached zero cases as inner entries: HudTimesDrawEven (07:8A47,
 # entered with P on the stack) and HudTimesPackedEven (07:8B22).
@@ -24,6 +24,14 @@ set 7E0D4C 01,00
 set 7E1163 FF,FF
 set 7E1161 FF,FF
 set 7E0FA3 00
+call 07:89F5 p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0E5D 01,00
+set 7E0D2B 03,00
+set 7E0D4C 01,00
+set 7E1163 85,2A
+set 7E1161 13,05
+set 7E0FA3 02
 call 07:89F5 p=30 db=07 d=0000
 load build/stuntracefx/states/novice_coupe_race1.state
 set 7E0E5D 01,00

@@ -871,28 +871,28 @@ RecordRowDraw:
     lsr a
     lsr a
     lsr a
-    sta.w !oam_buffer+$26,y
+    sta.w !oam_buffer+38,y
     lda.w !record_times,x
     and.b #$0F
-    sta.w !oam_buffer+$2A,y
+    sta.w !oam_buffer+42,y
     lda.w !record_times+1,x
     lsr a
     lsr a
     lsr a
     lsr a
-    sta.w !oam_buffer+$1A,y
+    sta.w !oam_buffer+26,y
     lda.w !record_times+1,x
     and.b #$0F
-    sta.w !oam_buffer+$1E,y
+    sta.w !oam_buffer+30,y
     lda.w !record_times+2,x
     lsr a
     lsr a
     lsr a
     lsr a
-    sta.w !oam_buffer+$0E,y
+    sta.w !oam_buffer+14,y
     lda.w !record_times+2,x
     and.b #$0F
-    sta.w !oam_buffer+$12,y
+    sta.w !oam_buffer+18,y
     rep.b #$20
     lda.b !record_row_name+2
     asl a
@@ -935,7 +935,7 @@ RecordNameLetters:
     clc
     adc.w #$000A
     sep.b #$20
-    sta.w !oam_buffer+$2A,y
+    sta.w !oam_buffer+42,y
     rep.b #$20
     pla
     pha
@@ -947,7 +947,7 @@ RecordNameLetters:
     clc
     adc.w #$000A
     sep.b #$20
-    sta.w !oam_buffer+$2E,y
+    sta.w !oam_buffer+46,y
     rep.b #$20
     pla
     lsr a
@@ -957,7 +957,7 @@ RecordNameLetters:
     clc
     adc.w #$000A
     sep.b #$20
-    sta.w !oam_buffer+$32,y
+    sta.w !oam_buffer+50,y
     rep.b #$20
     rts
 
