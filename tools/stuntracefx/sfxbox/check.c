@@ -688,6 +688,7 @@ static struct {
     int depth;               /* catalog routines entered inside the call */
     uint8_t pre_irq_op;      /* the last opcode before an interrupt */
     int stack_reset;         /* a TXS or TCS ran in the call */
+    int noreturn;            /* a unit call marked noreturn */
     int irq_resumed;         /* the handler has just returned */
     uint16_t open[64];       /* their stack pointers at entry */
     uint32_t open_pc[64];    /* and their entries */
@@ -697,6 +698,14 @@ static struct {
 static uint32_t m_pc;        /* the routine of the open call */
 
 static struct { int set; uint32_t pc, ret; uint16_t exit_s, entry_s; } lue;
+
+/* The routine a unit call marked noreturn enters (sfxbox call noreturn). */
+static uint32_t ls_noreturn_pc = (uint32_t)-1;
+
+void lockstep_unit_noreturn(uint32_t pc)
+{
+    ls_noreturn_pc = pc;
+}
 
 void lockstep_unit_entry(uint32_t pc, uint32_t ret, uint16_t exit_s, uint16_t entry_s)
 {
@@ -786,10 +795,12 @@ static void ls_insn(uint32_t pc)
         uint8_t prev = m.irq_resumed ? m.pre_irq_op : *core_opcode;
         /* The call ends at its return, or where a return took S above its
            exit level: it left through its caller's frame. */
-        /* A call that set S itself (the game's start resetting the stack)
-           has left every frame below it and never returns: a return above
-           its exit level after that is its own code's, not its end. */
-        if (prev == 0x9A || prev == 0x1B)
+        /* A unit call marked noreturn that set S itself (the game's start
+           resetting the stack) has left every frame below it and never
+           returns: a return above its exit level after that is its own
+           code's, not its end. (In play, such a call ends there, as the
+           hybrid's original code does: leave_frame.) */
+        if (m.noreturn && (prev == 0x9A || prev == 0x1B))
             m.stack_reset = 1;
         if ((pc == m.ret_pc && r.s == m.exit_s)
             || (!m.stack_reset && r.s > m.exit_s && (prev == 0x60 || prev == 0x6B))) {
@@ -866,6 +877,8 @@ static void ls_insn(uint32_t pc)
     if (calls_from >= 0 && cur_frame >= calls_from)
         fprintf(stderr, "OCALL frame %ld call %llu %06X S=%04X\n", cur_frame, (unsigned long long)k, pc, r.s);
     m.active = 1; m.in_irq = 0; m.call = k; m.depth = 0; m.entry_s = r.s; m.stack_reset = 0;
+    m.noreturn = ls_noreturn_pc == pc;
+    ls_noreturn_pc = (uint32_t)-1;
     m_pc = pc;
 }
 

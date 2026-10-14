@@ -264,6 +264,7 @@ static int call_state;   /* 1 to start at the next boundary, 2 running, 0 done *
 static int checklib_on;  /* --check: the checker is told when a call starts */
 static int call_keep;    /* keep: the machine is not put back after the call */
 static long call_frame = -1;  /* frame=: the P and DB pushed above the return */
+static int call_noreturn;     /* noreturn: told to lockstep when the call starts */
 static uint32_t call_target;
 
 /* set: bytes staged for the next call, written when it starts (after the
@@ -291,6 +292,7 @@ static int call_exec(uint32_t pc)
         if (checklib_on) check_unit_call(call_from.pc, call_from.s);
         /* Entered by a JML from the trampoline: the checker is told where
            the call starts (S after the return and the frame) and ends. */
+        if (call_noreturn && lockstep) lockstep_unit_noreturn(call_target);
         if (call_frame >= 0) {
             if (checklib_on) check_unit_entry(call_target, call_loop, call_from.s, (uint16_t)(call_from.s - 5));
             if (lockstep) lockstep_unit_entry(call_target, call_loop, call_from.s, (uint16_t)(call_from.s - 5));
@@ -357,6 +359,7 @@ static void call(const char *line, int lineno) {
     uint8_t stub[16]; int m = 0;
     if (call_frame >= 0 && !lng) die("%s:%d: call: frame= needs long", script_path, lineno);
     call_target = addr;
+    call_noreturn = noreturn;
     if (call_frame >= 0) {
         /* JSL to the trampoline at +6; there PEA #frame, JML ADDR. */
         uint16_t t = (uint16_t)(at + 6);
