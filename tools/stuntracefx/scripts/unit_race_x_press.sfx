@@ -1,0 +1,8 @@
+# unit_race_x_press: the X-press blocks of the two-player race frame's
+# player halves, RaceXPressPlayer1 (07:DA44) and RaceXPressPlayer2
+# (07:DA86), which nothing reaches (the code before each loads 0 after its
+# test, so its branch always passes it), entered with the frame their
+# routines push (P $30, data bank 0) from a battle race.
+load build/stuntracefx/states/battle_02.state
+call 07:DA44 long frame=3000 p=10 db=07 d=0000
+call 07:DA86 long frame=3000 p=10 db=07 d=0000

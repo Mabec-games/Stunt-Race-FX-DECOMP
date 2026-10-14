@@ -238,3 +238,119 @@ PlayerStatsThenPhaseDD35:
     lda.w !engine_phase_p1
     tax
     jmp.w (!phase_handlers_dd35,x)
+
+; @routine 07:DA02 RaceSoundsPlayer1
+; WHAT IT DOES: Player 1's share of a two-player race frame: the soft reset
+; check, both players' stats from their records (PlayerStatsFromRecord, Y =
+; 0 with X = $70:2476, Y = 1 with X = $70:2478), player 1's engine sounds
+; ($1A5D = 0), the race phase (PhaseDispatchE24F); then $0D1A cleared. Its
+; X-press block (RaceXPressPlayer1) is never run: the test loads 0 after its
+; BIT, so the branch always passes it.
+; HOW: Data bank $07, its own; P and the data bank put back.
+; Entry: any widths. Exit: P and the data bank unchanged; A = 0.
+%at($07DA02)
+RaceSoundsPlayer1:
+    php
+    phb
+    phk
+    plb
+    sep.b #$30
+    jsr.w SoftResetCheck
+    rep.b #$30
+    ldy.w #$0000
+    lda.l !gsu_match_2476
+    tax
+    sep.b #$20
+    jsr.w PlayerStatsFromRecord
+    rep.b #$30
+    ldy.w #$0001
+    lda.l !gsu_match_2478
+    tax
+    sep.b #$20
+    jsr.w PlayerStatsFromRecord
+    sep.b #$10
+    ldy.b #$00
+    sty.w !current_player
+    jsl.l EngineSoundsPlayer1
+    jsr.w PhaseDispatchE24F
+    rep.b #$20
+    lda.w !joy1_pressed_copy
+    bit.w #$0040
+    lda.w #$0000
+    beq RaceXPressPlayer1_end
+
+; @routine 07:DA44 RaceXPressPlayer1
+; WHAT IT DOES: RaceSoundsPlayer1's X-press block, which nothing reaches:
+; the palette's first colour $1CC4, $0D22 = $0D23 = $0C, $0D5C = $FF, the
+; sprites parked (OamHighBits18Park48); then $0D1A cleared and the frame's
+; end.
+; HOW: As inside RaceSoundsPlayer1; ends pulling the data bank and P its
+; start pushed.
+; Entry: M 16-bit, X 8-bit, data bank $07; the data bank and P on the
+; stack above the return address. Exit: as RaceSoundsPlayer1.
+%at($07DA44)
+RaceXPressPlayer1:
+    lda.w #$1CC4
+    sta.l !palette_buffer
+    sep.b #$20
+    lda.b #$0C
+    sta.w !wram_0D22
+    sta.w !wram_0D23
+    lda.b #$FF
+    sta.w !wram_0D5C
+    jsr.w OamHighBits18Park48
+    rep.b #$20
+RaceXPressPlayer1_end:
+    stz.w !joy1_pressed_copy
+    plb
+    plp
+    rtl
+
+; @routine 07:DA65 RaceSoundsPlayer2
+; WHAT IT DOES: Player 2's share of a two-player race frame: player 2's
+; engine sounds ($1A5D = 1) and 07:E265; then $0D1C cleared. Its X-press
+; block (RaceXPressPlayer2) is never run, as RaceSoundsPlayer1's.
+; HOW: As RaceSoundsPlayer1.
+; Entry: any widths. Exit: P and the data bank unchanged; A = 0.
+%at($07DA65)
+RaceSoundsPlayer2:
+    php
+    phb
+    phk
+    plb
+    sep.b #$30
+    ldy.b #$01
+    sty.w !current_player
+    jsl.l EngineSoundsPlayer2
+    sep.b #$10
+    jsr.w PlayerTwoFrameWork
+    rep.b #$20
+    lda.w !joy2_pressed_copy
+    bit.w #$0040
+    lda.w #$0000
+    beq RaceXPressPlayer2_end
+
+; @routine 07:DA86 RaceXPressPlayer2
+; WHAT IT DOES: RaceSoundsPlayer2's X-press block, which nothing reaches:
+; the palette's first colour $1CC4, $0D22 = $0D23 = $0E, $0D5D = 1, the
+; sprites parked (OamHighBits58Park112); then $0D1C cleared and the frame's
+; end.
+; HOW: As RaceXPressPlayer1.
+; Entry: as RaceXPressPlayer1. Exit: as RaceSoundsPlayer2.
+%at($07DA86)
+RaceXPressPlayer2:
+    lda.w #$1CC4
+    sta.l !palette_buffer
+    sep.b #$20
+    lda.b #$0E
+    sta.w !wram_0D22
+    sta.w !wram_0D23
+    lda.b #$01
+    sta.w !wram_0D5D
+    jsr.w OamHighBits58Park112
+    rep.b #$20
+RaceXPressPlayer2_end:
+    stz.w !joy2_pressed_copy
+    plb
+    plp
+    rtl

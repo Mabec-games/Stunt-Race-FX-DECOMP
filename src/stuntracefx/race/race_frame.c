@@ -959,6 +959,8 @@ void abi_RaceFrameRun(void)
 }
 
 void abi_GsuScreenFlipMenu(void);
+void abi_RaceSoundsPlayer1(void);
+void abi_RaceSoundsPlayer2(void);
 void abi_FrameRunGsuAB13A(void);
 void abi_SpeedGauge2Update(void);
 
@@ -1016,7 +1018,7 @@ void abi_RaceFrameRunTwoPlayers(void)
     op_lda16(0x702476);
     abi_SpeedGaugeUpdate();
     op_sep(P_M);
-    call_routine(0x07DA02, 1);
+    abi_RaceSoundsPlayer1();
     abi_GsuScreenFlipMenu();
     op_sep(P_M);
     wr8((uint32_t)cpu.db << 16 | 0x0357, 0x00);
@@ -1034,7 +1036,7 @@ void abi_RaceFrameRunTwoPlayers(void)
     cpu.p = nz16(cpu.p, cpu.x);
     op_lda16(0x702478);
     abi_SpeedGauge2Update();
-    call_routine(0x07DA65, 1);
+    abi_RaceSoundsPlayer2();
     op_sep(P_M);
     abi_GsuScreenFlipMenu();
     op_sep(P_M);
