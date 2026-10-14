@@ -180,3 +180,193 @@ MusicLoadForCourse:
     jsl.l ApuUpload
     jsl.l ApuSettleDelay
     rts
+
+; @routine 04:D0DB CourseSoundLoad
+; WHAT IT DOES: Loads the course's sound unless $10DA is set. With $10DC
+; set it is the other set, loaded once ($10DE counted down from 0 first):
+; block $19:8D4C, the $1518 bytes from $1E:9B2C through $70:6000, block
+; $1B:B8A0, then SoundReset and 4 on APU port 0. Otherwise, by the course
+; $0E3D (entry course * 3 of the tables in bank 04): the samples
+; (SoundDataLoad, block and input from $04:D322), the effects block from
+; $04:D376 and, after the music for the car $0D89 (MusicLoadForCourse),
+; the block from $04:D3CA (each skipped at $FFFF); in HUD mode 1 with
+; $0D4E clear also block $F9B8 (input $1D). Last it waits until all four
+; APU ports read 0.
+; HOW: P pushed; each upload after 5 on APU port 1 or ApuPort1Send05,
+; then a settling delay; X (the table offset) kept on the stack. The
+; $10DC set is not reached in the traces so far.
+; Entry: any widths; the data bank where work RAM and the APU ports are
+; mapped, D = $0000. Exit: P restored; A low byte 0 after the wait.
+%at($04D0DB)
+CourseSoundLoad:
+    php
+    sep.b #$20
+    lda.w !wram_10DA
+    beq .lD0E5
+    plp
+    rtl
+.lD0E5:
+    lda.w !wram_10DC
+    bne .lD0ED
+    brl .lD18A
+.lD0ED:
+    lda.w !wram_10DC+2
+    beq .lD0F5
+    brl .lD188
+.lD0F5:
+    dec.w !wram_10DC+2
+    rep.b #$30
+    jsl.l ApuPort1Send05
+    php
+    rep.b #$30
+    lda.w #$0005
+    sta.l !APUIO1
+    lda.w #$4000
+.lD10B:
+    dec a
+    bne .lD10B
+    lda.w #$0019
+    ldy.w #$8D4C
+    jsl.l ApuUpload
+    rep.b #$20
+    lda.w #$4000
+.lD11D:
+    dec a
+    bne .lD11D
+    plp
+    lda.w #$4000
+.lD124:
+    dec a
+    bne .lD124
+    lda.w #$0005
+    sta.l !APUIO1
+    rep.b #$20
+    lda.w #$4000
+.lD133:
+    dec a
+    bne .lD133
+    ldx.w #$0000
+.lD139:
+    lda.l !course_sound_alt,x
+    sta.l !sound_block,x
+    inx
+    inx
+    cpx.w #$1518
+    bcc .lD139
+    ldy.w #$6000
+    lda.w #$0070
+    jsl.l ApuUpload
+    rep.b #$20
+    lda.w #$4000
+.lD157:
+    dec a
+    bne .lD157
+    php
+    rep.b #$30
+    lda.w #$0005
+    sta.l !APUIO1
+    lda.w #$4000
+.lD167:
+    dec a
+    bne .lD167
+    lda.w #$001B
+    ldy.w #$B8A0
+    jsl.l ApuUpload
+    rep.b #$20
+    lda.w #$4000
+.lD179:
+    dec a
+    bne .lD179
+    plp
+    jsl.l SoundReset
+    sep.b #$20
+    lda.b #$04
+    sta.w !APUIO0
+.lD188:
+    plp
+    rtl
+.lD18A:
+    rep.b #$30
+    lda.w !course
+    asl a
+    clc
+    adc.w !course
+    and.w #$00FF
+    tax
+    phx
+    rep.b #$30
+    jsl.l ApuPort1Send05
+    lda.l !course_sound_samples+2,x
+    and.w #$00FF
+    tay
+    lda.l !course_sound_samples,x
+    jsl.l SoundDataLoad
+    rep.b #$20
+    rep.b #$10
+    jsl.l ApuSettleDelay
+    rep.b #$30
+    plx
+    phx
+    rep.b #$30
+    lda.l !course_sound_effects,x
+    cmp.w #$FFFF
+    beq .lD1D6
+    tay
+    jsl.l ApuPort1Send05
+    lda.l !course_sound_effects+2,x
+    and.w #$00FF
+    jsl.l ApuUpload
+.lD1D6:
+    rep.b #$20
+    rep.b #$10
+    jsl.l ApuSettleDelay
+    rep.b #$20
+    lda.w !wram_0D89
+    jsr.w MusicLoadForCourse
+    jsl.l ApuSettleDelay
+    rep.b #$30
+    plx
+    rep.b #$30
+    lda.l !course_sound_extra,x
+    cmp.w #$FFFF
+    beq .lD208
+    tay
+    jsl.l ApuPort1Send05
+    lda.l !course_sound_extra+2,x
+    and.w #$00FF
+    jsl.l ApuUpload
+.lD208:
+    rep.b #$20
+    rep.b #$10
+    jsl.l ApuSettleDelay
+    sep.b #$20
+    lda.w !hud_mode
+    cmp.b #$01
+    bne .lD239
+    lda.w !hud_blank
+    bne .lD239
+    php
+    rep.b #$30
+    lda.w #$0005
+    sta.l !APUIO1
+    lda.w #$4000
+.lD22B:
+    dec a
+    bne .lD22B
+    lda.w #$F9B8
+    ldy.w #$001D
+    jsl.l SoundDataLoad
+    plp
+.lD239:
+    sep.b #$20
+.lD23B:
+    lda.w !APUIO0
+    bne .lD23B
+    lda.w !APUIO1
+    bne .lD23B
+    lda.w !APUIO2
+    bne .lD23B
+    lda.w !APUIO3
+    bne .lD23B
+    plp
+    rtl

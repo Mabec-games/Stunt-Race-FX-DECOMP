@@ -356,3 +356,7 @@ DemoRunBody = $038683                           ; 03:8683, inside the routine at
 !palette_cycle_b_dim = $04E407    ; course $0B: colour 15's low byte otherwise
 !car_select_choices = $07C1BF     ; CarSelectTwoPlayers: the choice for each car (2, 0, 1, 3)
 !race_palette = $1F8200            ; RaceLoad: the race's 256 colours
+!course_sound_alt = $1E9B2C        ; CourseSoundLoad: the other set's block, $1518 bytes
+!course_sound_samples = $04D322    ; CourseSoundLoad: by course * 3, the samples' block and input
+!course_sound_effects = $04D376    ; CourseSoundLoad: by course * 3, the effects' block and bank ($FFFF none)
+!course_sound_extra = $04D3CA      ; CourseSoundLoad: by course * 3, a last block and bank ($FFFF none)

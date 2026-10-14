@@ -4,6 +4,7 @@
  * unpacked there by Super FX program $01:CF42, then uploaded from there.
  */
 #include "machine.h"
+#include "cpu_ops.h"
 
 uint8_t GsuRun(uint8_t bank, uint16_t start);
 void ApuUpload(uint8_t bank, uint16_t addr);
@@ -199,4 +200,182 @@ void abi_MusicLoadForCourse(void)
     cpu.a = 0x0070;
     abi_ApuUpload();
     abi_ApuSettleDelay();
+}
+
+void abi_SoundReset(void);
+void abi_MusicLoadForCourse(void);
+
+/* LDA #$4000, DEC A until 0 (16-bit A): A = 0, Z set. */
+static void delay_4000(void)
+{
+    cpu.a = 0x0000;
+    cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
+}
+
+/* 5 on APU port 1 (a word store), then the delay. */
+static void port1_5_delay(void)
+{
+    cpu.a = 0x0005;
+    wr16(0x002141, 0x0005);
+    delay_4000();
+}
+
+/* PHP, REP #$30, port1_5_delay, the upload or load with A and Y, (REP
+   #$20 and the delay after an upload), PLP. */
+static void apu_step(void (*load)(void), uint16_t a, uint16_t y, int delay_after)
+{
+    uint8_t p = cpu.p;
+
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    port1_5_delay();
+    cpu.a = a;
+    cpu.y = y;
+    cpu.p = nz16(cpu.p, y);
+    load();
+    if (delay_after) {
+        cpu.p &= (uint8_t)~P_M;
+        delay_4000();
+    }
+    op_plp(p);
+}
+
+/* The upload of the word list entry at $04:list + X when it is not $FFFF:
+   Y = its address, A = the bank byte after it, after ApuPort1Send05. */
+static void upload_listed(uint16_t list)
+{
+    uint16_t w;
+
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    w = rd16(0x040000 + list + cpu.x);
+    cpu.a = w;
+    cpu.p = (uint8_t)((nz16(cpu.p, (uint16_t)(w - 0xFFFF)) & ~P_C) | (w >= 0xFFFF ? P_C : 0));
+    if (w == 0xFFFF)
+        return;
+    cpu.y = w;
+    cpu.p = nz16(cpu.p, w);
+    abi_ApuPort1Send05();
+    cpu.a = (uint16_t)(rd16(0x040000 + list + 2 + cpu.x) & 0x00FF);
+    cpu.p = nz16(cpu.p, cpu.a);
+    abi_ApuUpload();
+}
+
+/*
+ * @routine 04:D0DB CourseSoundLoad
+ * WHAT IT DOES: Loads the course's sound unless $10DA is set. With $10DC
+ * set it is the other set, loaded once ($10DE counted down from 0 first):
+ * block $19:8D4C, the $1518 bytes from $1E:9B2C through $70:6000, block
+ * $1B:B8A0, then SoundReset and 4 on APU port 0. Otherwise, by the course
+ * $0E3D (entry course * 3 of the tables in bank 04): the samples
+ * (SoundDataLoad, block and input from $04:D322), the effects block from
+ * $04:D376 and, after the music for the car $0D89 (MusicLoadForCourse),
+ * the block from $04:D3CA (each skipped at $FFFF); in HUD mode 1 with
+ * $0D4E clear also block $F9B8 (input $1D). Last it waits until all four
+ * APU ports read 0.
+ * HOW: P pushed; each upload after 5 on APU port 1 or ApuPort1Send05,
+ * then a settling delay; X (the table offset) kept on the stack. The
+ * $10DC set is not reached in the traces so far.
+ * Entry: any widths; the data bank where work RAM and the APU ports are
+ * mapped, D = $0000. Exit: P restored; A low byte 0 after the wait.
+ */
+void abi_CourseSoundLoad(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t p0 = cpu.p, v;
+    uint16_t x, a;
+
+    op_sep(P_M);
+    op_lda8(b | 0x10DA);
+    if ((uint8_t)cpu.a) {
+        op_plp(p0);
+        return;
+    }
+    op_lda8(b | 0x10DC);
+    if ((uint8_t)cpu.a) {
+        op_lda8(b | 0x10DE);
+        if ((uint8_t)cpu.a) {
+            op_plp(p0);
+            return;
+        }
+        v = (uint8_t)(rd8(b | 0x10DE) - 1);
+        wr8(b | 0x10DE, v);
+        cpu.p = nz8(cpu.p, v);
+        cpu.p &= (uint8_t)~(P_M | P_X);
+        abi_ApuPort1Send05();
+        apu_step(abi_ApuUpload, 0x0019, 0x8D4C, 1);
+        delay_4000();
+        cpu.a = 0x0005;
+        wr16(0x002141, 0x0005);
+        cpu.p &= (uint8_t)~P_M;
+        delay_4000();
+        for (x = 0x0000; x < 0x1518; x = (uint16_t)(x + 2)) {
+            cpu.a = rd16(0x1E9B2C + x);
+            wr16(0x706000 + x, cpu.a);
+        }
+        cpu.x = x;
+        cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z | P_C);
+        cpu.y = 0x6000;
+        cpu.a = 0x0070;
+        cpu.p = nz16(cpu.p, 0x0070);
+        abi_ApuUpload();
+        cpu.p &= (uint8_t)~P_M;
+        delay_4000();
+        apu_step(abi_ApuUpload, 0x001B, 0xB8A0, 1);
+        abi_SoundReset();
+        op_sep(P_M);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x04);
+        cpu.p = nz8(cpu.p, 0x04);
+        wr8(b | 0x2140, 0x04);
+        op_plp(p0);
+        return;
+    }
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    a = rd16(b | 0x0E3D);
+    cpu.p = (uint8_t)((cpu.p & ~P_C) | (a >> 15));
+    a = (uint16_t)(a << 1);
+    cpu.p &= (uint8_t)~P_C;
+    a = op_adc16(a, rd16(b | 0x0E3D), &cpu.p);
+    x = (uint16_t)(a & 0x00FF);
+    cpu.a = x;
+    cpu.x = x;
+    cpu.p = nz16(cpu.p, x);
+    abi_ApuPort1Send05();
+    cpu.y = (uint16_t)(rd16(0x04D324 + x) & 0x00FF);
+    cpu.a = rd16(0x04D322 + x);
+    cpu.p = nz16(cpu.p, cpu.a);
+    abi_SoundDataLoad();
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    abi_ApuSettleDelay();
+    cpu.x = x;
+    upload_listed(0xD376);
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    abi_ApuSettleDelay();
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(b | 0x0D89);
+    abi_MusicLoadForCourse();
+    abi_ApuSettleDelay();
+    cpu.x = x;
+    upload_listed(0xD3CA);
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    abi_ApuSettleDelay();
+    op_sep(P_M);
+    op_lda8(b | 0x0D2B);
+    if ((uint8_t)cpu.a == 0x01) {
+        op_lda8(b | 0x0D4E);
+        if (!(uint8_t)cpu.a)
+            apu_step(abi_SoundDataLoad, 0xF9B8, 0x001D, 0);
+    }
+    op_sep(P_M);
+    do {
+        op_lda8(b | 0x2140);
+        if ((uint8_t)cpu.a)
+            continue;
+        op_lda8(b | 0x2141);
+        if ((uint8_t)cpu.a)
+            continue;
+        op_lda8(b | 0x2142);
+        if ((uint8_t)cpu.a)
+            continue;
+        op_lda8(b | 0x2143);
+    } while ((uint8_t)cpu.a);
+    op_plp(p0);
 }
