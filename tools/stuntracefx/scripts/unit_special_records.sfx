@@ -1,0 +1,26 @@
+# unit_special_records: unit calls of SpecialRecordInsert (07:AEF3) and of
+# its jump-entered tail SpecialRecordsChecksum (07:AFFC) on the paths no
+# play reaches, from a championship cut (course 1, car 1; that car's
+# times at $70:FD0C):
+# - course $0C (no special course) and car 4 (no such car);
+# - a time between the first and second, between the second and third,
+#   and above the third (no place: the tag $10C7 = $FFFF);
+# - a first place that another car's time on the course still beats;
+# - SpecialRecordsChecksum for course $0C, which only a jump from inside
+#   SpecialRecordInsert reaches, where the course is always below $0C.
+load build/stuntracefx/states/speed_championship_09.state
+set 7E0E3D 0C
+call 07:AEF3 a=0200 p=00 db=00 d=0000
+set 7E0D89 04
+call 07:AEF3 a=0200 p=00 db=00 d=0000
+set 70FD0C 00,01,00,00,00,03,00,00,00,05,00,00
+call 07:AEF3 a=0200 p=00 db=00 d=0000
+set 70FD0C 00,01,00,00,00,03,00,00,00,05,00,00
+call 07:AEF3 a=0400 p=00 db=00 d=0000
+set 70FD0C 00,01,00,00,00,03,00,00,00,05,00,00
+call 07:AEF3 a=0600 p=00 db=00 d=0000
+set 70FD00 50,00
+call 07:AEF3 a=0100 p=00 db=00 d=0000
+set 7E0E3D 0C
+set 7E0D14 00,00
+call 07:AFFC p=00 db=00 d=0000

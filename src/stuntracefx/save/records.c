@@ -1106,6 +1106,252 @@ void abi_RecordsLoadCourseLong(void)
     op_plp(p0);
 }
 
+void abi_RecordTagCar0(void);
+void abi_RecordTagCar4(void);
+void abi_RecordTagCar8(void);
+void abi_TimePackBcd(void);
+
+#define SPECIAL_SAVES 0x70FCD0u
+#define SPECIAL_LAPS 0x70FFD0u
+
+/* A direct page address (bank 0). */
+static uint32_t special_dp(uint8_t off)
+{
+    return (uint16_t)(cpu.d + off);
+}
+
+/* CPX (16-bit): N, Z and C. */
+static void special_cpx(uint16_t m)
+{
+    cpu.p = (uint8_t)((nz16(cpu.p, (uint16_t)(cpu.x - m)) & ~P_C) | (cpu.x >= m ? P_C : 0));
+}
+
+/* CLC; ADC (8-bit) of a direct page byte. */
+static void special_add8(uint8_t off)
+{
+    uint8_t v;
+
+    cpu.p &= (uint8_t)~P_C;
+    v = op_adc8((uint8_t)cpu.a, rd8(special_dp(off)), &cpu.p);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+}
+
+/*
+ * @routine 07:AFFC SpecialRecordsChecksum
+ * WHAT IT DOES: The check sum of a special course's records: the bytes of
+ * its four packed lap times at $70:FFD0 + course * 4 (0 for course $0C or
+ * more) and its 48 bytes from $70:FCD0 + $0D14, summed with carries, at
+ * $70:FC33 + course.
+ * HOW: 8-bit sums through $F1 (direct page), X 8-bit for the store.
+ * Entry: M 16-bit, X 16-bit; $0D14 = the course's offset. Exit: A = $00 and
+ * the low byte of the sum; X = the course, Y = 0; M 16-bit, X 16-bit; N, Z
+ * from the last count; C, V from the last add.
+ */
+void abi_SpecialRecordsChecksum(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    int i;
+
+    op_lda16(b | 0x0E3D);
+    op_and16(0x00FF);
+    op_cmp16(0x000C);
+    if (cpu.p & P_C) {
+        op_sep(P_M);
+        cpu.a &= 0xFF00;
+        cpu.p = nz8(cpu.p, 0x00);
+    } else {
+        op_asl16();
+        op_asl16();
+        op_tax16();
+        op_sep(P_M);
+        op_lda8(SPECIAL_LAPS + cpu.x);
+        for (i = 1; i < 4; i++) {
+            wr8(special_dp(0xF1), (uint8_t)cpu.a);
+            op_lda8(SPECIAL_LAPS + i + cpu.x);
+            special_add8(0xF1);
+        }
+    }
+    wr8(special_dp(0xF1), (uint8_t)cpu.a);
+    cpu.y = 0x0030;
+    cpu.p = nz16(cpu.p, cpu.y);
+    cpu.x = rd16(b | 0x0D14);
+    cpu.p = nz16(cpu.p, cpu.x);
+    cpu.p &= (uint8_t)~P_C;
+    do {
+        op_lda8(SPECIAL_SAVES + cpu.x);
+        special_add8(0xF1);
+        wr8(special_dp(0xF1), (uint8_t)cpu.a);
+        cpu.x++;
+        cpu.p = nz16(cpu.p, cpu.x);
+        cpu.y--;
+        cpu.p = nz16(cpu.p, cpu.y);
+    } while (cpu.y);
+    op_sep(P_X);
+    cpu.x = rd8(b | 0x0E3D);
+    cpu.p = nz8(cpu.p, (uint8_t)cpu.x);
+    op_lda8(special_dp(0xF1));
+    wr8(0x70FC33 + cpu.x, (uint8_t)cpu.a);
+    op_rep(P_M | P_X);
+}
+
+/* Entry +a's word to entry +b (the course's entries, from X). */
+static void special_move(uint16_t from, uint16_t to)
+{
+    op_lda16(SPECIAL_SAVES + from + cpu.x);
+    wr16(SPECIAL_SAVES + to + cpu.x, cpu.a);
+}
+
+/* LDA abs, LDX abs, LDY abs; TimePackBcd: one lap's packed time. */
+static uint16_t special_pack(uint32_t b, uint16_t at)
+{
+    op_lda16(b | at);
+    cpu.x = rd16(b | (uint16_t)(at + 1));
+    cpu.p = nz16(cpu.p, cpu.x);
+    cpu.y = rd16(b | (uint16_t)(at + 2));
+    cpu.p = nz16(cpu.p, cpu.y);
+    abi_TimePackBcd();
+    return cpu.a;
+}
+
+/*
+ * @routine 07:AEF3 SpecialRecordInsert
+ * WHAT IT DOES: Puts time A into a special course's three best times for
+ * car $0D89, at $70:FCD0 + course * 48 + car * 12 (each entry the time and
+ * the player's level $0F11): a time below the first moves the others down
+ * (the third lost) and tags the car's first place (RecordTagCar0), then,
+ * unless the time is still above another of the course's entries, keeps
+ * the lap's packed times (TimePackBcd of $0EF0-$0EF2 and $0EF3-$0EF5) at
+ * $70:FFD0 + course * 4; below the second or third likewise (RecordTagCar4,
+ * RecordTagCar8); no place: the tag $10C7 = $FFFF. Then the course's check
+ * sum (SpecialRecordsChecksum). First, with HUD mode $0D2B at 0, the word at
+ * $0F6E + $0D48 * 2 is set to it. Course $0C or more, or car 4 or more:
+ * nothing else.
+ * HOW: $F1, $F3, $F5 and $F7 (direct page) hold the course's offset, the
+ * car, a loop count and the entry's offset ($0D14 keeps the course's).
+ * Entry: M 16-bit, X 16-bit; A = the time. Exit: as SpecialRecordsChecksum
+ * leaves it; or A = $FFFF; or, for no special course or car, A = the time
+ * and N, Z from it.
+ */
+void abi_SpecialRecordInsert(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t t = cpu.a, r1, r2, n;
+
+    op_lda16(b | 0x0D2B);
+    if (!cpu.a) {
+        op_lda16(b | 0x0D48);
+        op_asl16();
+        op_and16(0x00FF);
+        op_tax16();
+        wr16(b + 0x0F6E + cpu.x, cpu.a);
+    }
+    op_lda16(b | 0x0E3D);
+    op_and16(0x00FF);
+    op_cmp16(0x000C);
+    if (cpu.p & P_C)
+        goto none;
+    wr16(special_dp(0xF1), cpu.a);
+    op_asl16();
+    op_add16(rd16(special_dp(0xF1)));
+    op_asl16();
+    op_asl16();
+    op_asl16();
+    op_asl16();
+    wr16(special_dp(0xF1), cpu.a);
+    wr16(b | 0x0D14, cpu.a);
+    op_tay16();
+    op_lda16(b | 0x0D89);
+    op_and16(0x00FF);
+    op_cmp16(0x0004);
+    if (cpu.p & P_C)
+        goto none;
+    wr16(special_dp(0xF3), cpu.a);
+    op_asl16();
+    op_add16(rd16(special_dp(0xF3)));
+    op_asl16();
+    op_asl16();
+    op_add16(rd16(special_dp(0xF1)));
+    op_tax16();
+    wr16(special_dp(0xF7), cpu.a);
+    cpu.a = t;
+    cpu.p = nz16(cpu.p, t);
+    op_cmp16(rd16(SPECIAL_SAVES + cpu.x));
+    if (!(cpu.p & P_C)) {
+        abi_RecordTagCar0();
+        special_move(4, 8);
+        special_move(6, 10);
+        special_move(0, 4);
+        special_move(2, 6);
+        op_lda16(b | 0x0F11);
+        wr16(SPECIAL_SAVES + 2 + cpu.x, cpu.a);
+        cpu.a = t;
+        cpu.p = nz16(cpu.p, t);
+        wr16(SPECIAL_SAVES + cpu.x, t);
+        wr16(special_dp(0xF1), cpu.x);
+        cpu.x = 0x000C;
+        cpu.p = nz16(cpu.p, cpu.x);
+        wr16(special_dp(0xF5), cpu.x);
+        cpu.x = cpu.y;
+        cpu.p = nz16(cpu.p, cpu.x);
+        do {
+            special_cpx(rd16(special_dp(0xF1)));
+            if (!(cpu.p & P_Z)) {
+                op_cmp16(rd16(SPECIAL_SAVES + cpu.x));
+                if (cpu.p & P_C)
+                    goto checksum;
+            }
+            cpu.x = (uint16_t)(cpu.x + 4);
+            cpu.p = nz16(cpu.p, cpu.x);
+            n = (uint16_t)(rd16(special_dp(0xF5)) - 1);
+            wr16(special_dp(0xF5), n);
+            cpu.p = nz16(cpu.p, n);
+        } while (n);
+        r1 = special_pack(b, 0x0EF0);
+        r2 = special_pack(b, 0x0EF3);
+        op_lda16(b | 0x0E3D);
+        op_and16(0x00FF);
+        op_asl16();
+        op_asl16();
+        op_tax16();
+        cpu.a = r2;
+        cpu.p = nz16(cpu.p, r2);
+        wr16(SPECIAL_LAPS + 2 + cpu.x, r2);
+        cpu.a = r1;
+        cpu.p = nz16(cpu.p, r1);
+        wr16(SPECIAL_LAPS + cpu.x, r1);
+        goto checksum;
+    }
+    op_cmp16(rd16(SPECIAL_SAVES + 4 + cpu.x));
+    if (!(cpu.p & P_C)) {
+        abi_RecordTagCar4();
+        special_move(4, 8);
+        special_move(6, 10);
+        cpu.a = t;
+        cpu.p = nz16(cpu.p, t);
+        wr16(SPECIAL_SAVES + 4 + cpu.x, t);
+        op_lda16(b | 0x0F11);
+        wr16(SPECIAL_SAVES + 6 + cpu.x, cpu.a);
+        goto checksum;
+    }
+    op_cmp16(rd16(SPECIAL_SAVES + 8 + cpu.x));
+    if (cpu.p & P_C) {
+        op_rep(P_M | P_X);
+        op_lda16_imm(0xFFFF);
+        wr16(b | 0x10C7, 0xFFFF);
+        return;
+    }
+    wr16(SPECIAL_SAVES + 8 + cpu.x, t);
+    abi_RecordTagCar8();
+    op_lda16(b | 0x0F11);
+    wr16(SPECIAL_SAVES + 10 + cpu.x, cpu.a);
+checksum:
+    abi_SpecialRecordsChecksum();
+    return;
+none:
+    cpu.a = t;
+    cpu.p = nz16(cpu.p, t);
+}
+
 /*
  * @routine 07:B077 RecordCarTimes12
  * WHAT IT DOES: A = $0D89 * 12, low byte only.

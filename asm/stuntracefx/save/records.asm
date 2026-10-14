@@ -1372,6 +1372,206 @@ RecordsLoadCourse:
     sep.b #$20
     rts
 
+; @routine 07:AEF3 SpecialRecordInsert
+; WHAT IT DOES: Puts time A into a special course's three best times for
+; car $0D89, at $70:FCD0 + course * 48 + car * 12 (each entry the time and
+; the player's level $0F11): a time below the first moves the others down
+; (the third lost) and tags the car's first place (RecordTagCar0), then,
+; unless the time is still above another of the course's entries, keeps
+; the lap's packed times (TimePackBcd of $0EF0-$0EF2 and $0EF3-$0EF5) at
+; $70:FFD0 + course * 4; below the second or third likewise (RecordTagCar4,
+; RecordTagCar8); no place: the tag $10C7 = $FFFF. Then the course's check
+; sum (SpecialRecordsChecksum). First, with HUD mode $0D2B at 0, the word at
+; $0F6E + $0D48 * 2 is set to it. Course $0C or more, or car 4 or more:
+; nothing else.
+; HOW: $F1, $F3, $F5 and $F7 (direct page) hold the course's offset, the
+; car, a loop count and the entry's offset ($0D14 keeps the course's).
+; Entry: M 16-bit, X 16-bit; A = the time. Exit: as SpecialRecordsChecksum
+; leaves it; or A = $FFFF; or, for no special course or car, A = the time
+; and N, Z from it.
+%at($07AEF3)
+SpecialRecordInsert:
+    pha
+    lda.w !hud_mode
+    bne .lAF04
+    lda.w !wram_0D48
+    asl a
+    and.w #$00FF
+    tax
+    sta.w !lap_digits+5,x
+.lAF04:
+    lda.w !course
+    and.w #$00FF
+    cmp.w #$000C
+    bcc .lAF11
+.lAF0F:
+    pla
+    rts
+.lAF11:
+    sta.b !digit_count
+    asl a
+    clc
+    adc.b !digit_count
+    asl a
+    asl a
+    asl a
+    asl a
+    sta.b !digit_count
+    sta.w !wram_0D12+2
+    tay
+    lda.w !wram_0D89
+    and.w #$00FF
+    cmp.w #$0004
+    bcs .lAF0F
+    sta.b !dp_f3
+    asl a
+    clc
+    adc.b !dp_f3
+    asl a
+    asl a
+    clc
+    adc.b !digit_count
+    tax
+    sta.b !record_page
+    pla
+    cmp.l !special_saves,x
+    bcc .lAF44
+    jmp.w .lAFC0
+.lAF44:
+    pha
+    jsr.w RecordTagCar0
+    lda.l !special_saves+4,x
+    sta.l !special_saves+8,x
+    lda.l !special_saves+6,x
+    sta.l !special_saves+10,x
+    lda.l !special_saves,x
+    sta.l !special_saves+4,x
+    lda.l !special_saves+2,x
+    sta.l !special_saves+6,x
+    lda.w !level_columns+12
+    sta.l !special_saves+2,x
+    pla
+    sta.l !special_saves,x
+    stx.b !digit_count
+    ldx.w #$000C
+    stx.b !save_block_offset
+    tyx
+.lAF7C:
+    cpx.b !digit_count
+    beq .lAF89
+    cmp.l !special_saves,x
+    bcc .lAF89
+    jmp.w SpecialRecordsChecksum
+.lAF89:
+    inx
+    inx
+    inx
+    inx
+    dec.b !save_block_offset
+    bne .lAF7C
+    lda.w !lap_times
+    ldx.w !lap_times+1
+    ldy.w !lap_times+2
+    jsr.w TimePackBcd
+    pha
+    lda.w !lap_times+3
+    ldx.w !lap_times+4
+    ldy.w !lap_times+5
+    jsr.w TimePackBcd
+    pha
+    lda.w !course
+    and.w #$00FF
+    asl a
+    asl a
+    tax
+    pla
+    sta.l !save_block_groups+2,x
+    pla
+    sta.l !save_block_groups,x
+    bra SpecialRecordsChecksum
+.lAFC0:
+    cmp.l !special_saves+4,x
+    bcs .lAFE8
+    pha
+    jsr.w RecordTagCar4
+    lda.l !special_saves+4,x
+    sta.l !special_saves+8,x
+    lda.l !special_saves+6,x
+    sta.l !special_saves+10,x
+    pla
+    sta.l !special_saves+4,x
+    lda.w !level_columns+12
+    sta.l !special_saves+6,x
+    bra SpecialRecordsChecksum
+.lAFE8:
+    cmp.l !special_saves+8,x
+    bcs SpecialRecordInsert_slow
+    sta.l !special_saves+8,x
+    jsr.w RecordTagCar8
+    lda.w !level_columns+12
+    sta.l !special_saves+10,x
+
+; @routine 07:AFFC SpecialRecordsChecksum
+; WHAT IT DOES: The check sum of a special course's records: the bytes of
+; its four packed lap times at $70:FFD0 + course * 4 (0 for course $0C or
+; more) and its 48 bytes from $70:FCD0 + $0D14, summed with carries, at
+; $70:FC33 + course.
+; HOW: 8-bit sums through $F1 (direct page), X 8-bit for the store.
+; Entry: M 16-bit, X 16-bit; $0D14 = the course's offset. Exit: A = $00 and
+; the low byte of the sum; X = the course, Y = 0; M 16-bit, X 16-bit; N, Z
+; from the last count; C, V from the last add.
+%at($07AFFC)
+SpecialRecordsChecksum:
+    lda.w !course
+    and.w #$00FF
+    cmp.w #$000C
+    bcs .lB02D
+    asl a
+    asl a
+    tax
+    sep.b #$20
+    lda.l !save_block_groups,x
+    sta.b !digit_count
+    lda.l !save_block_groups+1,x
+    clc
+    adc.b !digit_count
+    sta.b !digit_count
+    lda.l !save_block_groups+2,x
+    clc
+    adc.b !digit_count
+    sta.b !digit_count
+    lda.l !save_block_groups+3,x
+    clc
+    adc.b !digit_count
+    bra .lB031
+.lB02D:
+    sep.b #$20
+    lda.b #$00
+.lB031:
+    sta.b !digit_count
+    ldy.w #$0030
+    ldx.w !wram_0D12+2
+    clc
+.lB03A:
+    lda.l !special_saves,x
+    clc
+    adc.b !digit_count
+    sta.b !digit_count
+    inx
+    dey
+    bne .lB03A
+    sep.b #$10
+    ldx.w !course
+    lda.b !digit_count
+    sta.l !save_table_sums+6,x
+    rep.b #$30
+    rts
+SpecialRecordInsert_slow:
+    rep.b #$30
+    lda.w #$FFFF
+    sta.w !player_tag
+    rts
+
 ; @routine 07:B077 RecordCarTimes12
 ; WHAT IT DOES: A = $0D89 * 12, low byte only.
 ; HOW: ASL, CLC, ADC $0D89, ASL, ASL, AND #$FF (16-bit); through the data
