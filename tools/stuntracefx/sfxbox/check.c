@@ -128,6 +128,7 @@ static void io_add(IoLog *l, uint32_t addr, uint8_t v)
    watches form a stack; every access is recorded in every open watch. */
 typedef struct {
     int idx, in_irq, interrupted, dma, gsu, needs_asm, overflow;
+    int stack_reset;         /* a TXS or TCS ran inside the call */
     uint32_t ret_pc, irq_pc;
     uint16_t exit_s, irq_s;
     struct SfxboxRegs entry;
@@ -349,7 +350,12 @@ static void finish(Watch *w)
        see them, so such a call is only judged by the lockstep run. */
     /* A call whose C reached a routine that has no C yet (through
        call_routine) cannot be finished here; the lockstep run judges it. */
-    int unsure = w->interrupted || w->dma || w->gsu || w->needs_asm;
+    /* The original set S (TXS, TCS: the game's start resetting the
+       stack) and left the call's frame that way; the C goes on past where
+       the original's call was taken as ended, so only lockstep's frames
+       can judge it. */
+    int reset_left = w->stack_reset && !cpu.unwound && out.s != w->exit_s;
+    int unsure = w->interrupted || w->dma || w->gsu || w->needs_asm || reset_left;
     if (unsure) st->inconclusive++; else st->diff++;
     if (st->shown < 8) {
         st->shown++;
@@ -380,6 +386,9 @@ static void on_insn(uint32_t pc)
     struct SfxboxRegs r;
     int have = 0;
     uint8_t prev_op = *core_opcode;
+    if (prev_op == 0x9A || prev_op == 0x1B)
+        for (int i = 0; i < depth; i++)
+            if (!ws[i].in_irq) ws[i].stack_reset = 1;
     while (nirqs && pc == irqs[nirqs - 1].pc) {
         if (!have) { core_regs(&r); have = 1; }
         if (r.s != irqs[nirqs - 1].s) break;
@@ -426,6 +435,7 @@ static void on_insn(uint32_t pc)
     } else { stats[idx].skipped++; return; }
     w->idx = idx; w->entry = r;
     w->in_irq = w->interrupted = w->dma = w->gsu = w->needs_asm = w->overflow = 0;
+    w->stack_reset = 0;
     map_clear(&w->undo); map_clear(&w->orig);
     w->oread.n = w->owrite.n = w->oseq.n = 0;
     depth++;
@@ -677,6 +687,7 @@ static struct {
     uint64_t call;
     int depth;               /* catalog routines entered inside the call */
     uint8_t pre_irq_op;      /* the last opcode before an interrupt */
+    int stack_reset;         /* a TXS or TCS ran in the call */
     int irq_resumed;         /* the handler has just returned */
     uint16_t open[64];       /* their stack pointers at entry */
     uint32_t open_pc[64];    /* and their entries */
@@ -775,8 +786,13 @@ static void ls_insn(uint32_t pc)
         uint8_t prev = m.irq_resumed ? m.pre_irq_op : *core_opcode;
         /* The call ends at its return, or where a return took S above its
            exit level: it left through its caller's frame. */
+        /* A call that set S itself (the game's start resetting the stack)
+           has left every frame below it and never returns: a return above
+           its exit level after that is its own code's, not its end. */
+        if (prev == 0x9A || prev == 0x1B)
+            m.stack_reset = 1;
         if ((pc == m.ret_pc && r.s == m.exit_s)
-            || (r.s > m.exit_s && (prev == 0x60 || prev == 0x6B))) {
+            || (!m.stack_reset && r.s > m.exit_s && (prev == 0x60 || prev == 0x6B))) {
             if (calls_from >= 0 && cur_frame >= calls_from)
                 fprintf(stderr, "ODONE frame %ld call %llu at %06X S=%04X\n", cur_frame, (unsigned long long)m.call, pc, r.s);
             STORE(sh->calls[m.call % CALLRING].done, 1);
@@ -849,7 +865,7 @@ static void ls_insn(uint32_t pc)
     sh->fs[cur_frame % NSLOT].ncalls++;
     if (calls_from >= 0 && cur_frame >= calls_from)
         fprintf(stderr, "OCALL frame %ld call %llu %06X S=%04X\n", cur_frame, (unsigned long long)k, pc, r.s);
-    m.active = 1; m.in_irq = 0; m.call = k; m.depth = 0; m.entry_s = r.s;
+    m.active = 1; m.in_irq = 0; m.call = k; m.depth = 0; m.entry_s = r.s; m.stack_reset = 0;
     m_pc = pc;
 }
 
@@ -1096,20 +1112,32 @@ static void run_original(uint32_t addr, int long_call)
            hardware access): nothing after it is compared. */
         if (asm_unplaced++ < 5) fprintf(lsrep, "OFF frame %ld: call to %06X not in the original's record\n", cur_frame, addr);
     }
-    /* Stand-in return address: $FFFF, so the return lands on $0000 (bank 0
-       after an RTL, the routine's bank after an RTS). */
-    core_bus_write((uint32_t)(uint16_t)(s + 1), 0xFF);
-    core_bus_write((uint32_t)(uint16_t)(s + 2), 0xFF);
-    if (long_call) core_bus_write((uint32_t)(uint16_t)(s + 3), 0x00);
+    /* The return address: the one the original's JSR or JSL pushed (op B
+       after the entry's marks), so the stack holds what the original's
+       does while the routine runs (a frame can end there); else a
+       stand-in, $FFFF, so the return lands on $0000 (bank 0 after an RTL,
+       the routine's bank after an RTS). */
+    uint32_t back = long_call ? 0x000000 : (addr & 0xFF0000);
+    if (found && j + 2 < cur_n && cur_ops[j + 2] >> 4 == 0xB && cur_addr[j + 2] >> 24 == (uint32_t)(long_call ? 3 : 2)) {
+        uint32_t v = cur_addr[j + 2];
+        core_bus_write((uint32_t)(uint16_t)(s + 1), (uint8_t)v);
+        core_bus_write((uint32_t)(uint16_t)(s + 2), (uint8_t)(v >> 8));
+        if (long_call) core_bus_write((uint32_t)(uint16_t)(s + 3), (uint8_t)(v >> 16));
+        back = (long_call ? (v & 0xFF0000) : (addr & 0xFF0000)) | (uint16_t)((v & 0xFFFF) + 1);
+    } else {
+        core_bus_write((uint32_t)(uint16_t)(s + 1), 0xFF);
+        core_bus_write((uint32_t)(uint16_t)(s + 2), 0xFF);
+        if (long_call) core_bus_write((uint32_t)(uint16_t)(s + 3), 0x00);
+    }
     struct SfxboxRegs from = {cpu.a, cpu.x, cpu.y, s, cpu.d, cpu.db, cpu.p, cpu.e, addr}, out, mine;
     core_regs(&mine);
     core_run_out(&from, s);
     core_regs(&out);
     core_set_regs(&mine);
     cpu.a = out.a; cpu.x = out.x; cpu.y = out.y; cpu.d = out.d; cpu.db = out.db; cpu.p = out.p; cpu.e = out.e;
-    /* Not back at the stand-in: it left through the C's frame (02:E33D's
-       way out of a loop); the C is abandoned where it landed. */
-    if (out.pc != (long_call ? 0x000000 : (addr & 0xFF0000)) || out.s != (uint16_t)(s + (long_call ? 3 : 2))) {
+    /* Not back at the return address: it left through the C's frame
+       (02:E33D's way out of a loop); the C is abandoned where it landed. */
+    if (out.pc != back || out.s != (uint16_t)(s + (long_call ? 3 : 2))) {
         leave_frame(&out);
         cpu.a = out.a; cpu.x = out.x; cpu.y = out.y; cpu.d = out.d; cpu.db = out.db; cpu.p = out.p; cpu.e = out.e;
         cpu.s = out.s; cpu.pc = out.pc; cpu.unwound = 1;
