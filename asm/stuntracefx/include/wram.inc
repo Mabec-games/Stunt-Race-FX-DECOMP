@@ -1291,6 +1291,9 @@ includeonce
 !wram_19CF = $19CF
 !wram_19C5 = $19C5
 !wram_19C3 = $19C3
+!wram_19C7 = $19C7
+!wram_19C9 = $19C9
+!wram_19CD = $19CD
 !wram_19F3 = $19F3
 !wram_19F5 = $19F5
 !wram_19E0 = $19E0

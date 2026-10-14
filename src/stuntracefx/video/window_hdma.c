@@ -1189,25 +1189,224 @@ void abi_WindowHdmaChannelsSetup(void)
     op_plp(p0);
 }
 
+/* CMP (8-bit) of v with m: N, Z and C. */
+static void cmp8(uint8_t v, uint8_t m)
+{
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - m)) & ~P_C) | (v >= m ? P_C : 0));
+}
+
+/* LDA, CLC, ADC (8-bit) of two bytes, then CMP with the limit pair at
+   `limits`: the sum is stored back at `at` unless it equals the first limit
+   or is below the second. */
+static void band_step(uint32_t at, uint32_t step, uint32_t limits)
+{
+    uint8_t v = rd8(at);
+
+    cpu.p &= (uint8_t)~P_C;
+    v = op_adc8(v, rd8(step), &cpu.p);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cmp8(v, rd8(limits));
+    if (cpu.p & P_Z)
+        return;
+    cmp8(v, rd8(limits + 1));
+    if (!(cpu.p & P_C))
+        return;
+    wr8(at, v);
+}
+
+/*
+ * @routine 7E:D4F6 ColdataTopBandStep
+ * WHAT IT DOES: Moves the line count of the COLDATA table's first band
+ * ($19CB) by $19C7, unless the new count equals the first byte of the
+ * limit pair $19D1 in the list at $7E:D5AA or is below the second.
+ * HOW: 8-bit; the pair's offset is $19D1.
+ * Entry: any widths; data bank $7E. Exit: M and X 8-bit; A low byte the
+ * new count; X = $19D1; N, Z, C from the last compare.
+ */
+void abi_ColdataTopBandStep(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    op_sep(P_M | P_X);
+    cpu.x = rd8(b | 0x19D1);
+    band_step(0x0019CB, b | 0x19C7, 0x7ED5AA + cpu.x);
+}
+
+/*
+ * @routine 7E:D514 ColdataLowBandStep
+ * WHAT IT DOES: Moves the line count of the COLDATA table's band at
+ * $7F:FFAB ($19CF) by $19CD, within the limit pair at $7E:D56E: pair 0
+ * normally, pair $02 (from direct page $02) while bit 14 is set in the
+ * word that the player object's ($0346) link word ($204F) leads to by two
+ * links. Each change of that bit restarts the count, at $20 (clear) or
+ * $40 (set), as $19D3 records it.
+ * HOW: 16-bit for the links, then 8-bit; the step as ColdataTopBandStep.
+ * The bit set, and each restart, are not reached in the traces so far.
+ * Entry: any widths; data bank $7E. Exit: M and X 8-bit; A low byte the
+ * new count; X the pair's offset; Y the second link (high byte clear); N,
+ * Z, C from the last compare.
+ */
+void abi_ColdataLowBandStep(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v;
+
+    op_rep(P_M | P_X);
+    cpu.x = rd16(b | 0x0346);
+    cpu.y = rd16(b + 0x204F + cpu.x);
+    cpu.a = rd16(b + 0x204F + cpu.y);
+    cpu.y = cpu.a;
+    cpu.a = (uint16_t)(rd16(b + cpu.y) & 0x4000);
+    cpu.p = nz16(cpu.p, cpu.a);
+    op_sep(P_M | P_X);
+    v = rd8(b | 0x19D3);
+    if (cpu.a) {
+        if (!v) {
+            wr8(b | 0x19D3, 0x01);
+            wr8(0x0019CF, 0x40);
+            v = 0x40;
+        }
+        cpu.x = rd8((uint16_t)(cpu.d + 0x02));
+    } else {
+        if (v) {
+            wr8(b | 0x19D3, 0x00);
+            wr8(0x0019CF, 0x20);
+            v = 0x20;
+        }
+        cpu.x = 0x00;
+    }
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    band_step(0x0019CF, b | 0x19CD, 0x7ED56E + cpu.x);
+}
+
+/*
+ * @routine 7E:D572 ColdataLevelStep
+ * WHAT IT DOES: Moves the fixed colour level $19C3 (whole part in $19C4,
+ * $E0 to $EF: COLDATA for all three colours) by $19C5; unless the sum is
+ * $E000 or $EF00 (then nothing is stored), stores it and lowers each band
+ * of the COLDATA HDMA table at $7F:FF8E that is at or above the new whole
+ * part to it. The bands are every other byte of the list at $7E:D5B3, to
+ * its $FF.
+ * HOW: A 16-bit add, then 8-bit with X stepping by 2 from 0.
+ * Entry: any widths; data bank $7E (for $19C5). Exit: at a limit, M and X
+ * 16-bit and A the sum; otherwise M and X 8-bit, A low byte $FF (high byte
+ * the new whole part) and X at the list's end; Z and C set, V from the
+ * add.
+ */
+void abi_ColdataLevelStep(void)
+{
+    uint8_t x, v;
+
+    op_rep(P_M | P_X);
+    cpu.p &= (uint8_t)~P_C;
+    cpu.a = op_adc16(rd16(0x0019C3), rd16((uint32_t)cpu.db << 16 | 0x19C5), &cpu.p);
+    op_cmp16(0xE000);
+    if (cpu.p & P_Z)
+        return;
+    op_cmp16(0xEF00);
+    if (cpu.p & P_Z)
+        return;
+    wr16(0x0019C3, cpu.a);
+    op_sep(P_M | P_X);
+    for (x = 0;; x = (uint8_t)(x + 2)) {
+        v = rd8(0x7ED5B3 + x);
+        if (v == 0xFF)
+            break;
+        cmp8(v, rd8(0x0019C4));
+        if (cpu.p & P_C)
+            wr8(0x7FFF8E + x, rd8(0x0019C4));
+    }
+    cpu.x = x;
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xFF);
+    cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z | P_C);
+}
+
 /*
  * @routine 7E:D423 WindowSlideCheck
  * WHAT IT DOES: Steps the sliding window when one is under way: with the
  * window's HDMA on ($19D8 = 0), a slide set up ($19BC not $FF) and bit 0 of
- * $0DA5 set, goes on to the slide's step at $7E:D440; otherwise returns.
- * HOW: P and the data bank pushed ($7E), then 8-bit tests; the step at
- * $D440 (not reached in the traces so far) is reached as original code
- * (jump_routine_pushed) with them on the stack, and pulls them itself.
- * Entry: any widths. Exit: P and the data bank restored; A low byte the
- * last value loaded (0 after the $0DA5 test).
+ * $0DA5 set: window setup 6 ($19A9) with $E0 in $19AC-$19AE (and
+ * WindowHdmaFFD1 once the colour level's whole part $19C4 is $E1 or more),
+ * then ColdataLevelStep. When the level would reach $E000 the slide ends
+ * (bit 0 of $0DA5 and bit 5 of $0D45 cleared); otherwise, if the player
+ * object's ($0346) Y ($200E) has changed since $19C9, the band steps go up
+ * ($02 and $FF) or down ($FE and $01) for ColdataTopBandStep and
+ * ColdataLowBandStep; then the two band counts go to the COLDATA table at
+ * $7F:FF8B and $7F:FFAB, the Y to $19C9, and bit 5 of $0D45 is set.
+ * HOW: P and the data bank pushed ($7E) around it. The level's limit check
+ * repeats ColdataLevelStep's add. The end of the slide, the $E1 case and a
+ * Y below $19C9 are not reached in the traces so far.
+ * Entry: any widths. Exit: P and the data bank restored; A, X, Y as the
+ * last step left them (A low byte $0D45 after the slide's steps, 0 when no
+ * slide).
  */
+static void window_slide_check_step(void)
+{
+    const uint32_t b = 0x7E0000;
+    uint8_t v;
+    uint16_t m;
+
+    op_sep(P_M);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xE0);
+    wr8(0x0019AC, 0xE0);
+    wr8(0x0019AD, 0xE0);
+    wr8(0x0019AE, 0xE0);
+    op_lda8(0x0019C4);
+    cmp8((uint8_t)cpu.a, 0xE1);
+    if (cpu.p & P_C)
+        abi_WindowHdmaFFD1();
+    op_sep(P_M);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x06);
+    wr8(b | 0x19A9, 0x06);
+    abi_ColdataLevelStep();
+    op_rep(P_M);
+    cpu.a = rd16(0x0019C3);
+    cpu.p &= (uint8_t)~P_C;
+    cpu.a = op_adc16(cpu.a, rd16(b | 0x19C5), &cpu.p);
+    if (cpu.a == 0xE000) {
+        op_sep(P_M | P_X);
+        v = (uint8_t)(rd8(0x000DA5) & 0xFE);
+        wr8(0x000DA5, v);
+        v = (uint8_t)(rd8(0x000D45) & 0xDF);
+        wr8(0x000D45, v);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+        return;
+    }
+    op_rep(P_M | P_X);
+    cpu.x = rd16(b | 0x0346);
+    cpu.a = rd16(0x0019C9);
+    m = rd16(b + 0x200E + cpu.x);
+    if (cpu.a != m) {
+        int down = cpu.a >= m;
+
+        op_sep(P_M);
+        wr8(0x0019C7, down ? 0xFE : 0x02);
+        wr8(0x0019CD, down ? 0x01 : 0xFF);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | (down ? 0x01 : 0xFF));
+        abi_ColdataTopBandStep();
+        abi_ColdataLowBandStep();
+    }
+    op_sep(P_M);
+    v = rd8(0x0019CB);
+    wr8(0x7FFF8B, v);
+    v = rd8(0x0019CF);
+    wr8(0x7FFFAB, v);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    op_rep(P_M | P_X);
+    cpu.x = rd16(b | 0x0346);
+    cpu.a = rd16(b + 0x200E + cpu.x);
+    wr16(0x0019C9, cpu.a);
+    op_sep(P_M);
+    v = (uint8_t)(rd8(0x000D45) | 0x20);
+    wr8(0x000D45, v);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+}
+
 void abi_WindowSlideCheck(void)
 {
     const uint32_t b = 0x7E0000;
     uint8_t p0 = cpu.p, db0 = cpu.db;
-    uint8_t pushed[2];
 
-    pushed[0] = p0;
-    pushed[1] = db0;
     cpu.db = 0x7E;
     op_sep(P_M);
     op_lda8(b | 0x19D8);
@@ -1215,13 +1414,10 @@ void abi_WindowSlideCheck(void)
         op_lda8(0x0019BC);
         if ((uint8_t)cpu.a != 0xFF) {
             op_lda8(b | 0x0DA5);
-            if (cpu.a & 0x01) {
-                cpu.a = (uint16_t)(cpu.a & 0xFF01);
-                cpu.p = nz8(cpu.p, 0x01);
-                jump_routine_pushed(0x7ED440, pushed, 2);
-                return;
-            }
-            cpu.a = (uint16_t)(cpu.a & 0xFF00);
+            if (cpu.a & 0x01)
+                window_slide_check_step();
+            else
+                cpu.a = (uint16_t)(cpu.a & 0xFF00);
         }
     }
     cpu.db = db0;

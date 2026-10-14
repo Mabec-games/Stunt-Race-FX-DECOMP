@@ -1330,15 +1330,140 @@ WindowHdmaChannelsSetup:
     rts
 
 
+; @routine 7E:D4F6 ColdataTopBandStep
+; WHAT IT DOES: Moves the line count of the COLDATA table's first band
+; ($19CB) by $19C7, unless the new count equals the first byte of the
+; limit pair $19D1 in the list at $7E:D5AA or is below the second.
+; HOW: 8-bit; the pair's offset is $19D1.
+; Entry: any widths; data bank $7E. Exit: M and X 8-bit; A low byte the
+; new count; X = $19D1; N, Z, C from the last compare.
+%ramcode($7ED4F6, $01321D)
+ColdataTopBandStep:
+    sep.b #$30
+    ldx.w !wram_19D1
+    lda.l !wram_19CB
+    clc
+    adc.w !wram_19C7
+    cmp.l !coldata_top_band_limits,x
+    beq .lD513
+    cmp.l !coldata_top_band_limits+1,x
+    bcc .lD513
+    sta.l !wram_19CB
+.lD513:
+    rts
+
+; @routine 7E:D514 ColdataLowBandStep
+; WHAT IT DOES: Moves the line count of the COLDATA table's band at
+; $7F:FFAB ($19CF) by $19CD, within the limit pair at $7E:D56E: pair 0
+; normally, pair $02 (from direct page $02) while bit 14 is set in the
+; word that the player object's ($0346) link word ($204F) leads to by two
+; links. Each change of that bit restarts the count, at $20 (clear) or
+; $40 (set), as $19D3 records it.
+; HOW: 16-bit for the links, then 8-bit; the step as ColdataTopBandStep.
+; The bit set, and each restart, are not reached in the traces so far.
+; Entry: any widths; data bank $7E. Exit: M and X 8-bit; A low byte the
+; new count; X the pair's offset; Y the second link (high byte clear); N,
+; Z, C from the last compare.
+%ramcode($7ED514, $01323B)
+ColdataLowBandStep:
+    rep.b #$30
+    ldx.w !wram_0346
+    ldy.w !obj_link_w,x
+    lda.w !obj_link_w,y
+    tay
+    lda.w !bank0_base,y
+    and.w #$4000
+    beq .lD53F
+    sep.b #$30
+    lda.w !wram_19D3
+    bne .lD53A
+    lda.b #$01
+    sta.w !wram_19D3
+    lda.b #$40
+    sta.l !wram_19CF
+.lD53A:
+    ldx.b !dp_02
+    jmp.w .lD553
+.lD53F:
+    sep.b #$30
+    lda.w !wram_19D3
+    beq .lD551
+    lda.b #$00
+    sta.w !wram_19D3
+    lda.b #$20
+    sta.l !wram_19CF
+.lD551:
+    ldx.b #$00
+.lD553:
+    sep.b #$30
+    lda.l !wram_19CF
+    clc
+    adc.w !wram_19CD
+    cmp.l !coldata_low_band_limits,x
+    beq .lD56D
+    cmp.l !coldata_low_band_limits+1,x
+    bcc .lD56D
+    sta.l !wram_19CF
+.lD56D:
+    rts
+
+; @routine 7E:D572 ColdataLevelStep
+; WHAT IT DOES: Moves the fixed colour level $19C3 (whole part in $19C4,
+; $E0 to $EF: COLDATA for all three colours) by $19C5; unless the sum is
+; $E000 or $EF00 (then nothing is stored), stores it and lowers each band
+; of the COLDATA HDMA table at $7F:FF8E that is at or above the new whole
+; part to it. The bands are every other byte of the list at $7E:D5B3, to
+; its $FF.
+; HOW: A 16-bit add, then 8-bit with X stepping by 2 from 0.
+; Entry: any widths; data bank $7E (for $19C5). Exit: at a limit, M and X
+; 16-bit and A the sum; otherwise M and X 8-bit, A low byte $FF (high byte
+; the new whole part) and X at the list's end; Z and C set, V from the
+; add.
+%ramcode($7ED572, $013299)
+ColdataLevelStep:
+    rep.b #$30
+    lda.l !wram_19C3
+    clc
+    adc.w !wram_19C5
+    cmp.w #$E000
+    beq .lD5A9
+    cmp.w #$EF00
+    beq .lD5A9
+    sta.l !wram_19C3
+    sep.b #$30
+    ldx.b #$00
+.lD58E:
+    lda.l !coldata_band_levels,x
+    cmp.b #$FF
+    beq .lD5A9
+    cmp.l !wram_19C3+1
+    bcc .lD5A4
+    lda.l !wram_19C3+1
+    sta.l !window_colour_hdma+3,x
+.lD5A4:
+    inx
+    inx
+    jmp.w .lD58E
+.lD5A9:
+    rts
+
 ; @routine 7E:D423 WindowSlideCheck
 ; WHAT IT DOES: Steps the sliding window when one is under way: with the
 ; window's HDMA on ($19D8 = 0), a slide set up ($19BC not $FF) and bit 0 of
-; $0DA5 set, goes on to the slide's step at $7E:D440; otherwise returns.
-; HOW: P and the data bank pushed ($7E), then 8-bit tests; the step at
-; $D440 (not reached in the traces so far) is reached as original code
-; (jump_routine_pushed) with them on the stack, and pulls them itself.
-; Entry: any widths. Exit: P and the data bank restored; A low byte the
-; last value loaded (0 after the $0DA5 test).
+; $0DA5 set: window setup 6 ($19A9) with $E0 in $19AC-$19AE (and
+; WindowHdmaFFD1 once the colour level's whole part $19C4 is $E1 or more),
+; then ColdataLevelStep. When the level would reach $E000 the slide ends
+; (bit 0 of $0DA5 and bit 5 of $0D45 cleared); otherwise, if the player
+; object's ($0346) Y ($200E) has changed since $19C9, the band steps go up
+; ($02 and $FF) or down ($FE and $01) for ColdataTopBandStep and
+; ColdataLowBandStep; then the two band counts go to the COLDATA table at
+; $7F:FF8B and $7F:FFAB, the Y to $19C9, and bit 5 of $0D45 is set.
+; HOW: P and the data bank pushed ($7E) around it. The level's limit check
+; repeats ColdataLevelStep's add. The end of the slide, the $E1 case and a
+; Y below $19C9 are not reached in the traces so far.
+; Entry: any widths. Exit: P and the data bank restored; A, X, Y as the
+; last step left them (A low byte $0D45 after the slide's steps, 0 when no
+; slide).
 %ramcode($7ED423, $01314A)
 WindowSlideCheck:
     php
@@ -1353,8 +1478,82 @@ WindowSlideCheck:
     beq .lD43D
     lda.w !slide_flags
     and.b #$01
-    bne WindowSlideCheckD440
+    bne .lD440
 .lD43D:
+    plb
+    plp
+    rtl
+.lD440:
+    sep.b #$20
+    lda.b #$E0
+    sta.l !window_setup_bytes
+    lda.b #$E0
+    sta.l !wram_19AD
+    lda.b #$E0
+    sta.l !wram_19AE
+    lda.l !wram_19C3+1
+    cmp.b #$E1
+    bcc .lD45F
+    jsr.w WindowHdmaFFD1
+.lD45F:
+    sep.b #$20
+    lda.b #$06
+    sta.w !windows_setup_index
+    jsr.w ColdataLevelStep
+    rep.b #$20
+    lda.l !wram_19C3
+    clc
+    adc.w !wram_19C5
+    cmp.w #$E000
+    beq .lD47B
+    jmp.w .lD494
+.lD47B:
+    sep.b #$30
+    lda.l !slide_flags
+    and.b #$FE
+    sta.l !slide_flags
+    lda.l !wram_0D45
+    and.b #$DF
+    sta.l !wram_0D45
+    plb
+    plp
+    rtl
+.lD494:
+    rep.b #$30
+    ldx.w !wram_0346
+    lda.l !wram_19C9
+    cmp.w !obj_pos_y,x
+    beq .lD4C9
+    bcs .lD4B5
+    sep.b #$20
+    lda.b #$02
+    sta.l !wram_19C7
+    lda.b #$FF
+    sta.l !wram_19CD
+    jmp.w .lD4C3
+.lD4B5:
+    sep.b #$20
+    lda.b #$FE
+    sta.l !wram_19C7
+    lda.b #$01
+    sta.l !wram_19CD
+.lD4C3:
+    jsr.w ColdataTopBandStep
+    jsr.w ColdataLowBandStep
+.lD4C9:
+    sep.b #$20
+    lda.l !wram_19CB
+    sta.l !window_colour_hdma
+    lda.l !wram_19CF
+    sta.l !window_colour_hdma+32
+    rep.b #$30
+    ldx.w !wram_0346
+    lda.w !obj_pos_y,x
+    sta.l !wram_19C9
+    sep.b #$20
+    lda.l !wram_0D45
+    ora.b #$20
+    sta.l !wram_0D45
     plb
     plp
     rtl

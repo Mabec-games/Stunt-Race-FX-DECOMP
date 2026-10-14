@@ -45,7 +45,13 @@
 # - OverlaySpritesStep in states 5 and 6 (x at $A0, then at $9B).
 # - WindowClosedDigitStep in state 5 without the override (on to $07:EBDD,
 #   the end of the race, which does not return: noreturn, 60 frames).
-# - WindowSlideCheck with a slide under way (on to $7E:D440).
+# - WindowSlideCheck with a slide under way: as the race leaves it; with
+#   the colour level at $E1 (WindowHdmaFFD1), the player's Y below $19C9,
+#   the top band moving within its limits and bit 14 set in the word the
+#   links lead to ($1A64) for the first time (the low band restarts at $40,
+#   limit pair 2 from $02); with the level reaching $E000 (the slide ends);
+#   with the level at its $EF00 limit and bit 14 set again; with bit 14
+#   clear after it was set (the low band restarts at $20).
 # - RasterStage at the stages no script reaches (0, 2, $16, $18, $1A, $1C)
 #   and stage $0E with $0D5C negative; WindowTable7F and its long form
 #   called on their own.
@@ -677,6 +683,46 @@ load build/stuntracefx/states/novice_coupe_race1.state
 set 7E19D8 00
 set 7E19BC 00
 set 7E0DA5 01
+call 7E:D423 long p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E19D8 00
+set 7E19BC 00
+set 7E0DA5 01
+set 7E19C3 00,E1
+set 7E19C5 20,00
+set 7E19C9 FF,FF
+set 7E19D1 00
+set 7E19CB 12
+set 7E1A64 01,40
+set 7E19D3 00
+set 7E0002 02
+call 7E:D423 long p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E19D8 00
+set 7E19BC 00
+set 7E0DA5 01
+set 7E19C3 20,E0
+set 7E19C5 E0,FF
+call 7E:D423 long p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E19D8 00
+set 7E19BC 00
+set 7E0DA5 01
+set 7E19C3 00,EE
+set 7E19C5 00,01
+set 7E1A64 01,40
+set 7E19D3 01
+set 7E0002 02
+call 7E:D423 long p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E19D8 00
+set 7E19BC 00
+set 7E0DA5 01
+set 7E19D3 01
 call 7E:D423 long p=30 db=00 d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
