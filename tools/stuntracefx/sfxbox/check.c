@@ -629,8 +629,12 @@ static void stuck_report(const char *cond)
 
 /* Wait for a condition the other side will make true; give up (and say so)
    if it never does, rather than hang. */
+/* The hybrid is a child of the original's process: if that one is killed
+   (a timeout), the child must not run on alone. */
+static pid_t parent_pid;
+#define PARENT_GONE() (role == 2 && getppid() != parent_pid)
 #define WAIT_UNTIL(cond) do { long spins_ = 0; while (!(cond)) { \
-        if (LOAD(sh->stuck)) _exit(6); \
+        if (LOAD(sh->stuck) || PARENT_GONE()) _exit(6); \
         if (++spins_ > 600000) { stuck_report(#cond); STORE(sh->stuck, 1); _exit(6); } usleep(50); } } while (0)
 
 static struct {
@@ -914,7 +918,7 @@ static int fetch_more(uint32_t need)
             gsu_lockstep_past_end();
             hybrid_finish(cur_frame + 1);
         }
-        if (LOAD(sh->stuck)) _exit(6);
+        if (LOAD(sh->stuck) || PARENT_GONE()) _exit(6);
         if (++spins > 600000) { stuck_report("more of the call's record"); STORE(sh->stuck, 1); _exit(6); }
         usleep(50);
     }
@@ -1418,6 +1422,7 @@ int lockstep_begin(void *core, const char *lib, const char *only, const char *re
     if (gsu_lockstep_prepare()) return -1;
     (void)core_bus_peek;
     fflush(NULL);
+    parent_pid = getpid();
     child = fork();
     if (child < 0) return -1;
     const char *tr = getenv("SFXBOX_LS_TRACE");
@@ -1501,7 +1506,7 @@ void lockstep_before_frame(long f)
         long spins = 0;
         while (!(LOAD(sh->o_frames) > f || LOAD(sh->o_done))) {
             fetch_avail();
-            if (LOAD(sh->stuck)) _exit(6);
+            if (LOAD(sh->stuck) || PARENT_GONE()) _exit(6);
             if (++spins > 600000) { stuck_report("LOAD(sh->o_frames) > f || LOAD(sh->o_done)"); STORE(sh->stuck, 1); _exit(6); }
             usleep(50);
         }
