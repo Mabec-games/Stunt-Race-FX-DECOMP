@@ -342,3 +342,7 @@ DemoRunBody = $038683                           ; 03:8683, inside the routine at
 !coldata_low_band_limits = $7ED56E ; ColdataLowBandStep: two limit pairs
 !coldata_top_band_limits = $7ED5AA ; ColdataTopBandStep: limit pairs
 !coldata_band_levels = $7ED5B3     ; ColdataLevelStep: the bands' levels, every other byte, to $FF
+!course_list_stunt = $03FB86      ; CourseZoomStunt: the courses by cursor
+!course_list_battle = $03FB8A     ; CourseZoomBattle: the courses by cursor
+!course_zoom_targets = $FB8E      ; CourseWindowZoomSetup: four words a target (bank $03)
+!course_zoom_boxes = $FC11        ; CourseWindowZoomSetup: four words a start box (bank $03)

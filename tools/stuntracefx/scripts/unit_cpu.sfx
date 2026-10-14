@@ -55,6 +55,8 @@
 # - RasterStage at the stages no script reaches (0, 2, $16, $18, $1A, $1C)
 #   and stage $0E with $0D5C negative; WindowTable7F and its long form
 #   called on their own.
+# - CourseZoomFromSelection4 and CourseZoomFromSelection with a HUD mode
+#   ($0D2B = 1) for course 4.
 load build/stuntracefx/states/novice_coupe_race1.state
 set 7E3437 FE
 call 03:FDF7 p=30 db=7E d=0000
@@ -761,4 +763,18 @@ wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
 set 7F3432 10,20,30,40,90,A0,C0,D0
 call 7E:A467 long p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D2B 01,00
+set 7E0D4C 00
+set 7E0D4A 01
+set 7E0D48 00
+call 03:FA51 long p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D2B 01,00
+set 7E0D4C 00
+set 7E0D4A 01
+set 7E0D48 00
+call 03:FAA8 long p=30 db=00 d=0000
 wait 1
