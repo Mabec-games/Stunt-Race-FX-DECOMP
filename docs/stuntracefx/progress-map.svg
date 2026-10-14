@@ -671,10 +671,10 @@
 <rect x="1259.6" y="148.2" width="29.0" height="26.9" fill="#3fb950"><title>GsuFA35FromTables  079718  83B  T4  [gsu]</title></rect>
 <rect x="1289.2" y="148.2" width="29.0" height="26.9" fill="#3fb950"><title>GsuFA1BFromTables  07976B  83B  T4  [gsu]</title></rect>
 <rect x="1165.8" y="175.7" width="27.1" height="27.4" fill="#3fb950"><title>GsuF329Sequence  078AA6  79B  T4  [gsu]</title></rect>
-<rect x="1165.8" y="203.7" width="27.1" height="26.3" fill="#d29922"><title>HudFrameWhileGsuRuns  7EE303  76B  T2  [gsu]</title></rect>
+<rect x="1165.8" y="203.7" width="27.1" height="26.3" fill="#3fb950"><title>HudFrameWhileGsuRuns  7EE303  76B  T4  [gsu]</title></rect>
 <rect x="1165.8" y="230.6" width="27.1" height="26.3" fill="#3fb950"><title>GsuEE88Ramp  03FE8D  76B  T4  [gsu]</title></rect>
 <rect x="1165.8" y="257.5" width="27.1" height="25.3" fill="#3fb950"><title>GsuF441Player2  07A694  73B  T4  [gsu]</title></rect>
-<rect x="1165.8" y="283.4" width="27.1" height="22.1" fill="#d29922"><title>FrameRunGsuAB13B  7EE258  64B  T2  [gsu]</title></rect>
+<rect x="1165.8" y="283.4" width="27.1" height="22.1" fill="#3fb950"><title>FrameRunGsuAB13B  7EE258  64B  T4  [gsu]</title></rect>
 <rect x="1193.5" y="175.7" width="24.8" height="21.8" fill="#3fb950"><title>GsuParamsUpdate  7EE2C9  58B  T4  [gsu]</title></rect>
 <rect x="1218.9" y="175.7" width="24.8" height="21.8" fill="#3fb950"><title>Gsu82CE  03AFD7  58B  T4  [gsu]</title></rect>
 <rect x="1244.3" y="175.7" width="24.8" height="21.8" fill="#3fb950"><title>GsuEEF5OrEFCD  078619  58B  T4  [gsu]</title></rect>
@@ -684,7 +684,7 @@
 <rect x="1193.5" y="220.9" width="23.0" height="21.4" fill="#3fb950"><title>GsuTableEntryTo1F4C  08DC13  53B  T4  [gsu]</title></rect>
 <rect x="1193.5" y="242.9" width="23.0" height="21.4" fill="#3fb950"><title>GsuAB13WithParams  7F0919  53B  T4  [gsu]</title></rect>
 <rect x="1193.5" y="264.9" width="23.0" height="20.2" fill="#3fb950"><title>FrameRunGsu8FCA  7EE221  50B  T4  [gsu]</title></rect>
-<rect x="1193.5" y="285.7" width="23.0" height="19.7" fill="#d29922"><title>FrameRunGsuAB13A  7EE298  49B  T2  [gsu]</title></rect>
+<rect x="1193.5" y="285.7" width="23.0" height="19.7" fill="#3fb950"><title>FrameRunGsuAB13A  7EE298  49B  T4  [gsu]</title></rect>
 <rect x="1217.1" y="198.1" width="21.2" height="19.2" fill="#3fb950"><title>GsuRun  7EE1F5  44B  T4  [gsu]</title></rect>
 <rect x="1239.0" y="198.1" width="20.7" height="19.2" fill="#3fb950"><title>ObjectGsu80BC  03C9EE  43B  T4  [gsu]</title></rect>
 <rect x="1260.3" y="198.1" width="20.7" height="19.2" fill="#3fb950"><title>GlyphSpriteDraw  07A426  43B  T4  [gsu]</title></rect>
@@ -1040,4 +1040,4 @@
 <rect x="1553.7" y="882.9" width="26.5" height="15.0" fill="#d29922"><title>JoypadPortCheck  7F10CD  46B  T2  [input]</title></rect>
 <rect x="1580.8" y="882.9" width="15.3" height="15.0" fill="#3fb950"><title>FrameSoundAndJoypads  7EA7A3  27B  T4  [input]</title></rect>
 <rect x="1599.7" y="853.9" width="0.4" height="44.0" fill="#c8ccd2"><title>(unnamed)  00FE88  8B  T1  [bank 00 S-CPU]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 888 &#183; T3 behaviour-exact 17 &#183; 77,444/137,217 bytes exact (56.4%) &#183; green=T4 blue=T3 amber=T2 gray=T1</text></svg>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 891 &#183; T3 behaviour-exact 17 &#183; 77,633/137,217 bytes exact (56.6%) &#183; green=T4 blue=T3 amber=T2 gray=T1</text></svg>
