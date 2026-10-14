@@ -1183,3 +1183,116 @@ void abi_RaceLoop(void)
         call_routine(0x02E356, 0);
     }
 }
+
+void abi_Set7EBC2BTrio(void);
+void abi_WaitScanline(void);
+void abi_SpriteSlotFirstLong(void);
+void abi_RaceHudLoad(void);
+void abi_ViewParamsByPlayers(void);
+
+/*
+ * @routine 7E:F29F AttractViewStart
+ * @alias 02:CFC6
+ * WHAT IT DOES: Starts the attract race's view: $70:01D0 = $1234, $70:01C4 =
+ * 1, $70:108C = the players ($0D62), direct page $A0 = $80, $05EF = $FF and
+ * $00 = 0, the view's parameters for the players (ViewParamsByPlayers), then
+ * on at 03:AE73, which returns to this routine's caller.
+ * HOW: Run from its ROM copy at $02:CFC6 (the JSR reaches $02:D410, the
+ * copy of ViewParamsByPlayers); P pushed first, a long jump to finish.
+ * Entry: any widths; D = $0000. Exit: as 03:AE73 leaves it.
+ */
+void abi_AttractViewStart(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t pushed[1] = {cpu.p};
+
+    op_rep(P_M);
+    op_lda16_imm(0x1234);
+    wr16(0x7001D0, 0x1234);
+    op_lda16_imm(0x0001);
+    wr16(0x7001C4, 0x0001);
+    op_sep(P_M);
+    op_lda8(b | 0x0D62);
+    wr8(0x70108C, (uint8_t)cpu.a);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x80);
+    cpu.p = nz8(cpu.p, 0x80);
+    wr8((uint16_t)(cpu.d + 0xA0), 0x80);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xFF);
+    cpu.p = nz8(cpu.p, 0xFF);
+    wr8(b | 0x05EF, 0xFF);
+    wr8((uint16_t)cpu.d, 0x00);
+    op_sep(P_M | P_X);
+    abi_ViewParamsByPlayers();
+    /* 03:AE73 ends with the PLP of this routine's PHP. */
+    jump_routine_pushed(0x03AE73, pushed, 1);
+}
+
+/*
+ * @routine 7E:F21E AttractCourseSetup
+ * @alias 02:CF45
+ * WHAT IT DOES: Sets up the attract race's course: data bank 0, interrupts
+ * and HDMA off, the screen blanked (A = $80 after Set7EBC2BTrio), $084B and
+ * $084C cleared, waits for lines $6E and $64 (WaitScanline), clears the held
+ * buttons $0309, $1168, $08EF and $05D5, starts the view (AttractViewStart),
+ * the first sprite slot and the HUD (RaceHudLoad), then Super FX program
+ * $01:D1EB; P and the data bank put back and interrupts on.
+ * HOW: Run from its ROM copy at $02:CF45; the clears as the original makes
+ * them, $1168 seven times.
+ * Entry: any widths. Exit: P and the data bank as they were, then I clear;
+ * A, X, Y as GsuRun leaves them.
+ */
+void abi_AttractCourseSetup(void)
+{
+    uint8_t p0 = cpu.p, db0 = cpu.db;
+    static const uint32_t clear16[] = {0x0309, 0x1168, 0x1168, 0x1168};
+    static const uint32_t clear8[] = {0x08EF, 0x1168, 0x1168, 0x1168, 0x05D5, 0x1168, 0x1168, 0x1168, 0x1168};
+    unsigned i;
+
+    op_sep(P_M);
+    cpu.a = (uint16_t)(cpu.a & 0xFF00);
+    cpu.p = nz8(cpu.p, 0x00);
+    cpu.db = 0x00;
+    cpu.p = nz8(cpu.p, 0x00);
+    cpu.p |= P_I;
+    op_sep(P_M);
+    wr8(HDMAEN, 0x00);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x80);
+    cpu.p = nz8(cpu.p, 0x80);
+    abi_Set7EBC2BTrio();
+    wr8(INIDISP, (uint8_t)cpu.a);
+    wr8(0x00084B, 0x00);
+    wr8(0x00084C, 0x00);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x6E);
+    cpu.p = nz8(cpu.p, 0x6E);
+    wr8(0x0006E3, 0x6E);
+    abi_WaitScanline();
+    op_sep(P_M);
+    op_rep(P_X);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x64);
+    cpu.p = nz8(cpu.p, 0x64);
+    wr8(0x0006E3, 0x64);
+    abi_WaitScanline();
+    op_sep(P_M);
+    op_rep(P_X);
+    op_rep(P_M | P_X);
+    for (i = 0; i < sizeof clear16 / sizeof clear16[0]; i++)
+        wr16(clear16[i], 0x0000);
+    op_sep(P_M);
+    for (i = 0; i < sizeof clear8 / sizeof clear8[0]; i++)
+        wr8(clear8[i], 0x00);
+    abi_AttractViewStart();
+    abi_SpriteSlotFirstLong();
+    abi_RaceHudLoad();
+    op_sep(P_M);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
+    cpu.p = nz8(cpu.p, 0x01);
+    cpu.x = 0xD1EB;
+    cpu.p = nz16(cpu.p, cpu.x);
+    abi_GsuRun();
+    op_sep(P_M);
+    op_rep(P_X);
+    cpu.db = db0;
+    cpu.p = nz8(cpu.p, db0);
+    op_plp(p0);
+    cpu.p &= (uint8_t)~P_I;
+}

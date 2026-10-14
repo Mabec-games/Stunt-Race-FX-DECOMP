@@ -1605,3 +1605,6 @@ includeonce
 
 ; FxUnpackProgram (data/unpack.asm): the output's end.
 !gsu_unpack_end = $700060
+!wram_084B = $084B                 ; AttractCourseSetup clears these
+!wram_084C = $084C
+!wram_08EF = $08EF

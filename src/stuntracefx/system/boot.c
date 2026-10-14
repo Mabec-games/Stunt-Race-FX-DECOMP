@@ -229,7 +229,7 @@ static void boot_dma(uint32_t b, uint16_t to, uint8_t wbank, uint8_t from_bank, 
     wr8(b | MDMAEN, 0x01);
 }
 
-enum { BOOT_COLD, BOOT_START, BOOT_WARM, BOOT_SOFT };
+enum { BOOT_COLD, BOOT_START, BOOT_WARM, BOOT_SOFT, BOOT_SOFT_REST };
 
 /* The boot's code from one of its four entries; none returns. */
 static void boot_run(int from)
@@ -244,6 +244,8 @@ static void boot_run(int from)
         goto warm;
     case BOOT_SOFT:
         goto soft;
+    case BOOT_SOFT_REST:
+        goto soft_rest;
     }
     op_sep(P_M | P_X);
     cpu.p |= P_I;
@@ -402,6 +404,7 @@ soft:
     wr16(b | 0x10DC, 0xFFFF);
     wr16(b | 0x10DE, 0x0000);
     abi_DemoRunThird();
+soft_rest:
     op_sep(P_M);
     b = (uint32_t)cpu.db << 16;
     boot_lda8(0x06);
@@ -484,4 +487,18 @@ void abi_BootWarm(void)
 void abi_BootSoftRestart(void)
 {
     boot_run(BOOT_SOFT);
+}
+
+/*
+ * @routine 03:8C95 BootSoftRestartRest
+ * WHAT IT DOES: BootSoftRestart after its demo run (DemoRunThird, which never
+ * returns, so nothing reaches this): command $06 to APU port 1, the screen
+ * blanked, the NMI, DMA and HDMA off, work RAM and Super FX RAM cleared,
+ * the sound restarted (SoftResetApuLong), then BootStart.
+ * HOW: As BootSoftRestart from the call's return. Never returns.
+ * Entry: data bank $03. Exit: never returns.
+ */
+void abi_BootSoftRestartRest(void)
+{
+    boot_run(BOOT_SOFT_REST);
 }

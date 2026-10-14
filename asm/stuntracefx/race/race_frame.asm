@@ -1280,3 +1280,99 @@ RaceFrameRunTwoPlayers:
     plb
     plp
     rtl
+
+; @routine 7E:F21E AttractCourseSetup
+; @alias 02:CF45
+; WHAT IT DOES: Sets up the attract race's course: data bank 0, interrupts
+; and HDMA off, the screen blanked (A = $80 after Set7EBC2BTrio), $084B and
+; $084C cleared, waits for lines $6E and $64 (WaitScanline), clears the held
+; buttons $0309, $1168, $08EF and $05D5, starts the view (AttractViewStart),
+; the first sprite slot and the HUD (RaceHudLoad), then Super FX program
+; $01:D1EB; P and the data bank put back and interrupts on.
+; HOW: Run from its ROM copy at $02:CF45; the clears as the original makes
+; them, $1168 seven times.
+; Entry: any widths. Exit: P and the data bank as they were, then I clear;
+; A, X, Y as GsuRun leaves them.
+%ramcode($7EF21E, $014F45)
+AttractCourseSetup:
+    php
+    phb
+    sep.b #$20
+    lda.b #$00
+    pha
+    plb
+    sei
+    sep.b #$20
+    stz.w !HDMAEN
+    lda.b #$80
+    jsl.l Set7EBC2BTrio
+    sta.w !INIDISP
+    stz.w !wram_084B
+    stz.w !wram_084C
+    lda.b #$6E
+    sta.w !scanline_wait
+    jsl.l WaitScanline
+    sep.b #$20
+    rep.b #$10
+    lda.b #$64
+    sta.w !scanline_wait
+    jsl.l WaitScanline
+    sep.b #$20
+    rep.b #$10
+    rep.b #$30
+    stz.w !joy1_held
+    stz.w !packed_time_a+5
+    stz.w !packed_time_a+5
+    stz.w !packed_time_a+5
+    sep.b #$20
+    stz.w !wram_08EF
+    stz.w !packed_time_a+5
+    stz.w !packed_time_a+5
+    stz.w !packed_time_a+5
+    stz.w !slot_mask
+    stz.w !packed_time_a+5
+    stz.w !packed_time_a+5
+    stz.w !packed_time_a+5
+    stz.w !packed_time_a+5
+    jsl.l AttractViewStartRom
+    jsl.l SpriteSlotFirstLong
+    jsl.l RaceHudLoad
+    sep.b #$20
+    lda.b #$01
+    ldx.w #$D1EB
+    jsl.l GsuRun
+    sep.b #$20
+    rep.b #$10
+    plb
+    plp
+    cli
+    rtl
+
+; @routine 7E:F29F AttractViewStart
+; @alias 02:CFC6
+; WHAT IT DOES: Starts the attract race's view: $70:01D0 = $1234, $70:01C4 =
+; 1, $70:108C = the players ($0D62), direct page $A0 = $80, $05EF = $FF and
+; $00 = 0, the view's parameters for the players (ViewParamsByPlayers), then
+; on at 03:AE73, which returns to this routine's caller.
+; HOW: Run from its ROM copy at $02:CFC6 (the JSR reaches $02:D410, the
+; copy of ViewParamsByPlayers); P pushed first, a long jump to finish.
+; Entry: any widths; D = $0000. Exit: as 03:AE73 leaves it.
+%ramcode($7EF29F, $014FC6)
+AttractViewStart:
+    php
+    rep.b #$20
+    lda.w #$1234
+    sta.l !gsu_word_1d0
+    lda.w #$0001
+    sta.l !gsu_word_1c4
+    sep.b #$20
+    lda.w !wram_0D62
+    sta.l !gsu_word_108c
+    lda.b #$80
+    sta.b !dp_a0
+    lda.b #$FF
+    sta.w !wram_05EF
+    stz.b !bank0_base
+    sep.b #$30
+    jsr.w ViewParamsByPlayersRom
+    jml.l AttractViewRest

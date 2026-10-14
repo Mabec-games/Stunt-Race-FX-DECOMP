@@ -308,7 +308,7 @@ BootWarm:
     sei
     sep.b #$20
     rep.b #$10
-    jsl.l AttractCourseSetup
+    jsl.l AttractCourseSetupRom
     jsl.l CourseDataPointer
     jsl.l CourseScriptRun
     jsl.l ObjectPlaceAll
@@ -360,6 +360,16 @@ BootSoftRestart:
     sta.w !wram_10DC
     stz.w !wram_10DC+2
     jsl.l DemoRunThird
+
+; @routine 03:8C95 BootSoftRestartRest
+; WHAT IT DOES: BootSoftRestart after its demo run (DemoRunThird, which never
+; returns, so nothing reaches this): command $06 to APU port 1, the screen
+; blanked, the NMI, DMA and HDMA off, work RAM and Super FX RAM cleared,
+; the sound restarted (SoftResetApuLong), then BootStart.
+; HOW: As BootSoftRestart from the call's return. Never returns.
+; Entry: data bank $03. Exit: never returns.
+%at($038C95)
+BootSoftRestartRest:
     sep.b #$20
     lda.b #$06
     sta.w !APUIO1
