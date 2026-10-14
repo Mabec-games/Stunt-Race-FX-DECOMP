@@ -22,6 +22,7 @@
  *                        as poke, but written when the next call starts, so
  *                        the game itself never runs on those bytes
  *   call ADDR [long] [keep] [noreturn] [a=HEX] [x=] [y=] [p=] [db=] [d=] [frames=N]
+ *        [press=B[+B...]@F ...]
  *                        run the routine at ADDR once as a unit test: entered
  *                        by a JSR (by a JSL with long) from a stub in work RAM
  *                        with those registers, the game's state as the script
@@ -29,7 +30,10 @@
  *                        before the call (with keep, the game goes on from
  *                        where it was, the call's changes kept); with
  *                        noreturn, for a path that stops the game, the
- *                        frames run and the machine stays as it left it
+ *                        frames run and the machine stays as it left it;
+ *                        each press (up to 8) holds those buttons in
+ *                        frames F and F+1 of the call (counted from 0), for
+ *                        a loop that waits for the player
  *   repeat N ... end     run the enclosed lines N times (nests)
  * Buttons: B Y SELECT START UP DOWN LEFT RIGHT A X L R, player 1; prefix
  * with 2. for player 2 (2.START). Joined with +.
@@ -289,13 +293,16 @@ static int call_exec(uint32_t pc)
 }
 
 static void call(const char *line, int lineno) {
-    char tok[16][64]; int k = sscanf(line, "%*s %63s %63s %63s %63s %63s %63s %63s %63s %63s", tok[0], tok[1], tok[2], tok[3], tok[4], tok[5], tok[6], tok[7], tok[8]);
-    if (k < 1) die("%s:%d: call ADDR [long] [keep] [noreturn] [a=] [x=] [y=] [p=] [db=] [d=] [frames=]", script_path, lineno);
+    char tok[16][64]; int k = sscanf(line, "%*s %63s %63s %63s %63s %63s %63s %63s %63s %63s %63s %63s %63s %63s %63s %63s %63s",
+                                     tok[0], tok[1], tok[2], tok[3], tok[4], tok[5], tok[6], tok[7], tok[8], tok[9], tok[10], tok[11],
+                                     tok[12], tok[13], tok[14], tok[15]);
+    if (k < 1) die("%s:%d: call ADDR [long] [keep] [noreturn] [a=] [x=] [y=] [p=] [db=] [d=] [frames=] [press=B@F]", script_path, lineno);
     char ab[64]; int j = 0;
     for (const char *c = tok[0]; *c; c++) if (*c != '$' && *c != ':') ab[j++] = *c;
     ab[j] = 0;
     uint32_t addr = (uint32_t)strtoul(ab, NULL, 16), bank = addr >> 16;
-    int lng = 0, noreturn = 0; long frames_max = 600;
+    int lng = 0, noreturn = 0, npress = 0; long frames_max = 600, press_at[8];
+    unsigned press_mask[8];
     call_keep = 0;
     struct SfxboxRegs cur; sfxbox_core_regs_p(&cur);
     call_regs = cur;
@@ -311,6 +318,12 @@ static void call(const char *line, int lineno) {
         else if (!strncmp(tok[i], "db=", 3)) call_regs.db = (uint8_t)v;
         else if (!strncmp(tok[i], "d=", 2)) call_regs.d = (uint16_t)v;
         else if (!strncmp(tok[i], "frames=", 7)) frames_max = strtol(tok[i] + 7, NULL, 10);
+        else if (!strncmp(tok[i], "press=", 6) && strchr(tok[i], '@') && npress < 8) {
+            char pb[64]; snprintf(pb, sizeof pb, "%s", tok[i] + 6);
+            *strchr(pb, '@') = 0;
+            press_mask[npress] = parse_buttons(pb);
+            press_at[npress++] = strtol(strchr(tok[i], '@') + 1, NULL, 10);
+        }
         else die("%s:%d: call: bad option %s", script_path, lineno, tok[i]);
     }
     if (call_regs.p & 0x10) { call_regs.x &= 0x00FF; call_regs.y &= 0x00FF; }  /* 8-bit index */
@@ -336,7 +349,14 @@ static void call(const char *line, int lineno) {
     *cpu_exec_hook = call_exec;
     call_state = 1;
     long f = 0;
-    while (call_state && f < frames_max) { run(1); f++; }
+    while (call_state && f < frames_max) {
+        buttons = 0;
+        for (int q = 0; q < npress; q++)
+            if (f >= press_at[q] && f < press_at[q] + 2) buttons |= press_mask[q];
+        run(1);
+        f++;
+    }
+    buttons = 0;
     if (lockstep && !call_state)
         for (long end = lockstep_unit_end(frames); frames < end; f++) run(1);
     *cpu_exec_hook = exec_before;

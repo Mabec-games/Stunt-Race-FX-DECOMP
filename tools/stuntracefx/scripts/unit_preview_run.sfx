@@ -1,0 +1,6 @@
+# unit_preview_run: MenuPreviewRun (0B:AFAC), which the game reaches only by
+# a jump after resetting the stack (never as a call), as a unit call from
+# the course grid menu: the course choice, then START three times to leave
+# the preview.
+load build/stuntracefx/states/menus_course_grid_01.state
+call 0B:AFAC long p=00 db=00 d=0000 frames=900 press=START@100 press=START@250 press=START@400
