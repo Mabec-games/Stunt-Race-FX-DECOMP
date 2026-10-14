@@ -733,7 +733,7 @@ RaceHudLoad_modes:
     lda.w #$2FFF
     ldx.w #$3000
     ldy.w #$63D7
-    mvn $7F,$70
+    mvn !tilemap_7f93d7>>16,!gsu_picture>>16
     plp
     plb
     sep.b #$20
