@@ -1099,3 +1099,107 @@ PaletteFadeStep:
 .lD5FC:
     rtl                             ; not reached in the traces so far
 
+; @routine 04:E32D CoursePaletteCycle
+; WHAT IT DOES: Steps the colour cycle of courses 3, 7 and $0B: the step
+; $0D30 goes round 0 to $15, and its entry in word tables in bank 04 sets
+; colours 12-15 of the palette: for course 3 in $7E:FD7D from the tables
+; at $04:E45F, $E48B, $E4B7 and $E4E3; for course 7 in $7F:39EF from those
+; at $E50F, $E53B, $E4B7 and $E4E3, with fixed colours $14A7, $1086,
+; $15FF and $269F in $7F:37EF; for course $0B only the low byte of colour
+; 15, in all three copies, from the byte tables at $04:E433 (when
+; $7F:3460 is $18 or more) or $04:E407. Other courses: nothing.
+; HOW: P and the data bank ($04) pushed; 8-bit step, 16-bit colours (8-bit
+; for course $0B). Course $0B is not reached in the traces so far.
+; Entry: any widths. Exit: P and the data bank restored; A the last value
+; loaded; X the step's offset.
+%at($04E32D)
+CoursePaletteCycle:
+    php
+    sep.b #$20
+    phb
+    phk
+    plb
+    lda.w !course
+    cmp.b #$03
+    bne .lE36E
+    lda.w !wram_0D2F+1
+    inc a
+    cmp.b #$16
+    bcc .lE344
+    lda.b #$00
+.lE344:
+    sta.w !wram_0D2F+1
+    asl a
+    tax
+    rep.b #$20
+    lda.l !palette_cycle_3_12,x
+    sta.l !palette_buffer+24
+    lda.l !palette_cycle_3_13,x
+    sta.l !palette_buffer+26
+    lda.l !palette_cycle_14,x
+    sta.l !palette_buffer+28
+    lda.l !palette_cycle_15,x
+    sta.l !palette_buffer+30
+    jmp.w .lE402
+.lE36E:
+    cmp.b #$07
+    beq .lE375
+    brl .lE3C5
+.lE375:
+    lda.w !wram_0D2F+1
+    inc a
+    cmp.b #$16
+    bcc .lE37F
+    lda.b #$00
+.lE37F:
+    sta.w !wram_0D2F+1
+    asl a
+    tax
+    rep.b #$20
+    lda.w #$14A7
+    sta.l !palette_work_b+24
+    lda.w #$1086
+    sta.l !palette_work_b+26
+    lda.w #$15FF
+    sta.l !palette_work_b+28
+    lda.w #$269F
+    sta.l !palette_work_b+30
+    lda.l !palette_cycle_7_12,x
+    sta.l !palette_work_c+24
+    lda.l !palette_cycle_7_13,x
+    sta.l !palette_work_c+26
+    lda.l !palette_cycle_14,x
+    sta.l !palette_work_c+28
+    lda.l !palette_cycle_15,x
+    sta.l !palette_work_c+30
+    jmp.w .lE402
+.lE3C5:
+    cmp.b #$0B
+    bne .lE402
+    lda.w !wram_0D2F+1
+    inc a
+    cmp.b #$16
+    bcc .lE3D3
+    lda.b #$00
+.lE3D3:
+    sta.w !wram_0D2F+1
+    asl a
+    tax
+    lda.l !wram_7F3460
+    cmp.b #$18
+    bcc .lE3F2
+    lda.l !palette_cycle_b_bright,x
+    sta.l !palette_buffer+30
+    sta.l !palette_work_b+30
+    sta.l !palette_work_c+30
+    bra .lE402
+.lE3F2:
+    lda.l !palette_cycle_b_dim,x
+    sta.l !palette_buffer+30
+    sta.l !palette_work_b+30
+    sta.l !palette_work_c+30
+.lE402:
+    sep.b #$20
+    plb
+    plp
+    rtl

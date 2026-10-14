@@ -1007,3 +1007,77 @@ void abi_PaletteFadeStep(void)
         cpu.p = nz16(cpu.p, cpu.a);
     } while (cpu.a);
 }
+
+/* LDA $0D30, INC, back to 0 at $16, STA $0D30, ASL, TAX (M 8-bit): the
+   cycle's next step and its table offset (with X 16-bit, TAX also takes
+   A's high byte). */
+static void palette_cycle_step(uint32_t b)
+{
+    uint8_t v = (uint8_t)(rd8(b | 0x0D30) + 1);
+
+    if (v >= 0x16)
+        v = 0x00;
+    wr8(b | 0x0D30, v);
+    v = (uint8_t)(v << 1);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.x = (cpu.p & P_X) ? v : cpu.a;
+    cpu.p = nz8(cpu.p, v);
+}
+
+/*
+ * @routine 04:E32D CoursePaletteCycle
+ * WHAT IT DOES: Steps the colour cycle of courses 3, 7 and $0B: the step
+ * $0D30 goes round 0 to $15, and its entry in word tables in bank 04 sets
+ * colours 12-15 of the palette: for course 3 in $7E:FD7D from the tables
+ * at $04:E45F, $E48B, $E4B7 and $E4E3; for course 7 in $7F:39EF from those
+ * at $E50F, $E53B, $E4B7 and $E4E3, with fixed colours $14A7, $1086,
+ * $15FF and $269F in $7F:37EF; for course $0B only the low byte of colour
+ * 15, in all three copies, from the byte tables at $04:E433 (when
+ * $7F:3460 is $18 or more) or $04:E407. Other courses: nothing.
+ * HOW: P and the data bank ($04) pushed; 8-bit step, 16-bit colours (8-bit
+ * for course $0B). Course $0B is not reached in the traces so far.
+ * Entry: any widths. Exit: P and the data bank restored; A the last value
+ * loaded; X the step's offset.
+ */
+void abi_CoursePaletteCycle(void)
+{
+    const uint32_t b = 0x040000;
+    uint8_t p0 = cpu.p, db0 = cpu.db, c, v;
+    static const uint16_t c3[4] = {0xE45F, 0xE48B, 0xE4B7, 0xE4E3};
+    static const uint16_t c7[4] = {0xE50F, 0xE53B, 0xE4B7, 0xE4E3};
+    static const uint16_t fixed7[4] = {0x14A7, 0x1086, 0x15FF, 0x269F};
+    unsigned i;
+
+    op_sep(P_M);
+    cpu.db = 0x04;
+    op_lda8(b | 0x0E3D);
+    c = (uint8_t)cpu.a;
+    if (c == 0x03) {
+        palette_cycle_step(b);
+        op_rep(P_M);
+        for (i = 0; i < 4; i++) {
+            cpu.a = rd16(b + c3[i] + cpu.x);
+            wr16(0x7EFD7D + 2 * i, cpu.a);
+        }
+    } else if (c == 0x07) {
+        palette_cycle_step(b);
+        op_rep(P_M);
+        for (i = 0; i < 4; i++)
+            wr16(0x7F37EF + 2 * i, fixed7[i]);
+        for (i = 0; i < 4; i++) {
+            cpu.a = rd16(b + c7[i] + cpu.x);
+            wr16(0x7F39EF + 2 * i, cpu.a);
+        }
+    } else if (c == 0x0B) {
+        palette_cycle_step(b);
+        v = rd8(0x7F3460);
+        v = rd8(b + (v >= 0x18 ? 0xE433 : 0xE407) + cpu.x);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+        wr8(0x7EFD83, v);
+        wr8(0x7F37F5, v);
+        wr8(0x7F39F5, v);
+    }
+    op_sep(P_M);
+    cpu.db = db0;
+    op_plp(p0);
+}
