@@ -5,6 +5,7 @@
  * +$0C/+$0E/+$10 the position, +$16 flags, +$1A a mode word.
  */
 #include "machine.h"
+#include "cpu_ops.h"
 
 /* The object's record address, read through the data bank. */
 static uint16_t record_of(uint8_t bank, uint16_t obj)
@@ -1085,6 +1086,353 @@ static uint8_t cmp16(uint8_t p, uint16_t a, uint16_t m)
 #define SEQ_COUNT 0x1A33u
 #define SEQ_STAGE 0x1A35u
 #define SEQ_INPUT 0x1AF0u
+
+void abi_RecordButtonSequence(void);
+void abi_RandomStepLong(void);
+void abi_SoundPort0QueuePush(void);
+void abi_ObjectLinkedHandlerByState(void);
+
+#define SEQ_PREV 0x1AF2u
+#define CTL_PLAYER 0x1A5Du
+
+/* An object's field at DB:at + X, as abs,X reaches it ($2000 + offset). */
+static uint32_t ctl_field(uint32_t b, uint16_t obj, uint16_t off)
+{
+    return b + off + obj;
+}
+
+/* BIT # (16-bit or 8-bit): Z from A AND m. */
+static void ctl_bit(uint16_t m)
+{
+    cpu.p = (uint8_t)((cpu.p & ~P_Z) | ((cpu.a & m) ? 0 : P_Z));
+}
+
+/* LDA abs; BIT #m: is button m held (in $1AF0, or $1AF2 last frame)? */
+static int ctl_held(uint32_t b, uint16_t at, uint16_t m)
+{
+    op_lda16(b | at);
+    ctl_bit(m);
+    return (cpu.a & m) != 0;
+}
+
+/* LDA long; ORA #m; STA long: a record word gains bits. */
+static void ctl_rec_or(uint32_t w, uint16_t m)
+{
+    cpu.a = (uint16_t)(rd16(w) | m);
+    cpu.p = nz16(cpu.p, cpu.a);
+    wr16(w, cpu.a);
+}
+
+/* LDA abs,Y; ORA #m; STA abs,Y (8-bit): object Y's +$25 gains bits. */
+static void ctl_flags_or(uint32_t b, uint8_t m)
+{
+    uint32_t w = ctl_field(b, cpu.y, 0x2025);
+    uint8_t v = (uint8_t)(rd8(w) | m);
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+    wr8(w, v);
+}
+
+/* PHY; the linked object (+$4F) into Y; its +$25 flags; PLY. */
+static void ctl_linked_flags(uint32_t b, uint8_t m1, uint8_t m2)
+{
+    uint16_t y = cpu.y;
+
+    op_lda16(ctl_field(b, cpu.y, 0x204F));
+    op_tay16();
+    op_sep(P_M);
+    ctl_flags_or(b, m1);
+    if (m2)
+        ctl_flags_or(b, m2);
+    op_rep(P_M);
+    cpu.y = y;
+    cpu.p = nz16(cpu.p, y);
+}
+
+/* The player's flag word: $1A60 for player 2 ($1A5D set), else $1A5E. */
+static uint16_t ctl_player_word(uint32_t b)
+{
+    op_lda16(b | CTL_PLAYER);
+    op_and16(0x00FF);
+    return cpu.a ? 0x1A60 : 0x1A5E;
+}
+
+/* PHA ... PLA around the player test, then the word stored back. */
+static void ctl_player_store(uint32_t b, uint16_t v)
+{
+    uint16_t at = ctl_player_word(b);
+
+    cpu.a = v;
+    cpu.p = nz16(cpu.p, v);
+    wr16(b | at, v);
+}
+
+/*
+ * @routine 08:C60F CarControlsToRecord
+ * WHAT IT DOES: Turns a player's buttons ($1AF0; last frame's at $1AF2) into
+ * car X's controls in its Super FX record (+$22; none: nothing). With bit 2
+ * of the car's +$25 set it only marks the record: +$40 bit 9, and +$42 kept
+ * to $D800 unless it has bit 12. Otherwise, unless the record's +$1C has bit
+ * 4: SELECT newly pressed runs the button sequence (RecordButtonSequence) and
+ * sets bit 0 of the linked object's (+$4F) +$25, and bit 1 with L and R held;
+ * in a two-player race ($0D62) the car's +$29 counts up to a random limit
+ * $6E-$71 ($1F2B), and is reset to $FFFF by B, Y, A or X once it is past 9;
+ * at the limit record +$64 gets bit 3 and the linked object bits 0 and 1.
+ * Then, with $0D53 clear and +$42 bit 12 clear: +$40 loses bit 9, +$42 keeps
+ * only $D800, and the buttons held set +$42 bits: LEFT 0 (else RIGHT 1), L 2
+ * (else R 3), A $2040 (and $20 below speed $32 at +$4A), Y $400 when +$6A is
+ * not 0 (else sound $5E and the player's flag $10, at $1A5E or $1A60 by
+ * $1A5D, once), B $10; X newly pressed 7 when +$5E is 0 and +$40 bit 8 is
+ * clear. Without Y the player's flag $10 is cleared. With +$40 bit 8 set,
+ * DOWN takes $600 from +$26 and UP adds it.
+ * HOW: 16-bit A for the button and record words, 8-bit for the +$25 flags;
+ * the record through long accesses to bank $70, the rest through the data
+ * bank. Most tests branch over a long jump to the next one.
+ * Entry: data bank $7E; X = the car's object. Exit: X, Y = the object; M
+ * 8-bit, X 16-bit; N, Z from X; A, C and V as the last test or sum left
+ * them.
+ */
+void abi_CarControlsToRecord(void)
+{
+    static const uint16_t clear_timer[4] = {0x8000, 0x4000, 0x0080, 0x0040};
+    uint32_t b = (uint32_t)cpu.db << 16, r;
+    uint16_t obj = cpu.x, v;
+    uint8_t f;
+    int i;
+
+    op_sep(P_M);
+    op_rep(P_X);
+    wr16(b | 0x1F18, cpu.x);
+    f = (uint8_t)(rd8(ctl_field(b, obj, 0x2025)) & 0x04);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | f);
+    cpu.p = nz8(cpu.p, f);
+    op_rep(P_M);
+    cpu.y = obj;
+    cpu.p = nz16(cpu.p, obj);
+    op_lda16(ctl_field(b, obj, 0x2022));
+    if (f) {
+        if (cpu.a) {
+            op_tax16();
+            r = 0x700000u + cpu.x;
+            ctl_rec_or(r + 0x40, 0x0200);
+            op_lda16(r + 0x42);
+            ctl_bit(0x1000);
+            if (!(cpu.a & 0x1000)) {
+                op_and16(0xD800);
+                wr16(r + 0x42, cpu.a);
+            }
+        }
+        goto out;
+    }
+    if (!cpu.a)
+        goto out;
+    op_tax16();
+    r = 0x700000u + cpu.x;
+    op_lda16(r + 0x1C);
+    op_and16(0x0010);
+    if (cpu.a)
+        goto out;
+    if (ctl_held(b, SEQ_INPUT, 0x2000)) {
+        abi_RecordButtonSequence();
+        if (!ctl_held(b, SEQ_PREV, 0x2000)) {
+            uint16_t y = cpu.y;
+
+            op_lda16(ctl_field(b, cpu.y, 0x204F));
+            op_tay16();
+            op_sep(P_M);
+            ctl_flags_or(b, 0x01);
+            op_lda8(b | SEQ_INPUT);
+            ctl_bit(0x20);
+            if (cpu.a & 0x20) {
+                op_lda8(b | SEQ_INPUT);
+                ctl_bit(0x10);
+                if (cpu.a & 0x10)
+                    ctl_flags_or(b, 0x02);
+            }
+            op_rep(P_M);
+            cpu.y = y;
+            cpu.p = nz16(cpu.p, y);
+        }
+    }
+    op_lda16(b | 0x0D62);
+    op_and16(0x00FF);
+    if (cpu.a) {
+        abi_RandomStepLong();
+        op_and16(0x0003);
+        op_add16(0x006E);
+        wr16(b | 0x1F2B, cpu.a);
+        op_lda16(ctl_field(b, cpu.y, 0x2029));
+        if (!(cpu.a & 0x8000)) {
+            op_cmp16(rd16(b | 0x1F2B));
+            if (cpu.p & P_N) {
+                cpu.a++;
+                cpu.p = nz16(cpu.p, cpu.a);
+                wr16(ctl_field(b, cpu.y, 0x2029), cpu.a);
+                op_cmp16(0x000A);
+                if (!(cpu.p & P_N)) {
+                    for (i = 0; i < 4; i++)
+                        if (ctl_held(b, SEQ_INPUT, clear_timer[i]))
+                            break;
+                    if (i < 4) {
+                        op_lda16_imm(0xFFFF);
+                        wr16(ctl_field(b, cpu.y, 0x2029), 0xFFFF);
+                    }
+                }
+            } else {
+                op_lda16(r + 0x64);
+                ctl_bit(0x0008);
+                if (!(cpu.a & 0x0008)) {
+                    cpu.a |= 0x0008;
+                    cpu.p = nz16(cpu.p, cpu.a);
+                    wr16(r + 0x64, cpu.a);
+                    ctl_linked_flags(b, 0x01, 0x02);
+                }
+            }
+        }
+    }
+    op_lda16(b | 0x0D53);
+    op_and16(0x00FF);
+    if (cpu.a)
+        goto out;
+    op_lda16(r + 0x40);
+    op_and16(0xFDFF);
+    wr16(r + 0x40, cpu.a);
+    op_lda16(r + 0x42);
+    ctl_bit(0x1000);
+    if (cpu.a & 0x1000)
+        goto out;
+    op_lda16(r + 0x42);
+    op_and16(0xD800);
+    wr16(r + 0x42, cpu.a);
+    if (ctl_held(b, SEQ_INPUT, 0x0200))
+        ctl_rec_or(r + 0x42, 0x0001);
+    else if (ctl_held(b, SEQ_INPUT, 0x0100))
+        ctl_rec_or(r + 0x42, 0x0002);
+    if (ctl_held(b, SEQ_INPUT, 0x0020))
+        ctl_rec_or(r + 0x42, 0x0004);
+    else if (ctl_held(b, SEQ_INPUT, 0x0010))
+        ctl_rec_or(r + 0x42, 0x0008);
+    if (ctl_held(b, SEQ_INPUT, 0x0080)) {
+        ctl_rec_or(r + 0x42, 0x2040);
+        op_lda16(r + 0x4A);
+        op_sub16(0x0032);
+        if (cpu.p & P_N)
+            ctl_rec_or(r + 0x42, 0x0020);
+    }
+    if (ctl_held(b, SEQ_INPUT, 0x4000)) {
+        op_lda16(r + 0x6A);
+        if (cpu.a)
+            ctl_rec_or(r + 0x42, 0x0400);
+        else {
+            op_lda16(b | ctl_player_word(b));
+            ctl_bit(0x0010);
+            if (!(cpu.a & 0x0010)) {
+                v = cpu.a;
+                op_lda16_imm(0x005E);
+                abi_SoundPort0QueuePush();
+                v |= 0x0010;
+                ctl_player_store(b, v);
+            }
+        }
+    } else {
+        op_lda16(b | ctl_player_word(b));
+        ctl_bit(0x0010);
+        if (cpu.a & 0x0010)
+            ctl_player_store(b, (uint16_t)(cpu.a & 0xFFEF));
+    }
+    if (ctl_held(b, SEQ_INPUT, 0x0040) && !ctl_held(b, SEQ_PREV, 0x0040)) {
+        op_lda16(r + 0x5E);
+        if (!cpu.a) {
+            op_lda16(r + 0x40);
+            op_and16(0x0100);
+            if (!cpu.a)
+                ctl_rec_or(r + 0x42, 0x0080);
+        }
+    }
+    if (ctl_held(b, SEQ_INPUT, 0x8000))
+        ctl_rec_or(r + 0x42, 0x0010);
+    op_lda16(r + 0x40);
+    op_and16(0x0100);
+    if (cpu.a) {
+        if (ctl_held(b, SEQ_INPUT, 0x0400)) {
+            op_lda16(r + 0x26);
+            op_sub16(0x0600);
+            wr16(r + 0x26, cpu.a);
+        }
+        if (ctl_held(b, SEQ_INPUT, 0x0800)) {
+            op_lda16(r + 0x26);
+            op_add16(0x0600);
+            wr16(r + 0x26, cpu.a);
+        }
+    }
+out:
+    cpu.x = obj;
+    cpu.p = nz16(cpu.p, obj);
+    op_sep(P_M);
+}
+
+/* One player's controls: buttons, player, the car's controls and its
+   linked object's handler. */
+static void ctl_player(uint16_t held, uint16_t prev, uint8_t player, uint16_t car)
+{
+    op_rep(P_M);
+    op_lda16(0x7E0000u | held);
+    wr16(0x7E0000u | SEQ_INPUT, cpu.a);
+    op_lda16(0x7E0000u | prev);
+    wr16(0x7E0000u | SEQ_PREV, cpu.a);
+    op_sep(P_M);
+    if (player) {
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | player);
+        cpu.p = nz8(cpu.p, player);
+    }
+    wr8(0x7E0000u | CTL_PLAYER, player);
+    cpu.x = rd16(0x7E0000u | car);
+    cpu.p = nz16(cpu.p, cpu.x);
+    abi_CarControlsToRecord();
+    cpu.y = player;
+    cpu.p = nz16(cpu.p, cpu.y);
+    abi_ObjectLinkedHandlerByState();
+}
+
+/*
+ * @routine 08:C5A5 PlayerControlsFrame
+ * WHAT IT DOES: The players' controls for a race frame: for player 1, and
+ * player 2 when $0D62 is set, puts the buttons held this frame ($0309 or
+ * $030D) and last frame ($1F23 or $1F25) at $1AF0 and $1AF2, the player at
+ * $1A5D, and runs the car's controls (CarControlsToRecord on the object at
+ * $0346 or $034A) and its linked object's handler (ObjectLinkedHandlerByState
+ * with Y = the player); then keeps this frame's buttons as last frame's and
+ * clears $0309 and $030D.
+ * HOW: Data bank $7E, the caller's put back at the end; 8-bit A except for
+ * the button words.
+ * Entry: any widths. Exit: A = player 2's buttons (read before $030D is
+ * cleared); M 8-bit, X 16-bit; X, Y as the last handler left them; N, Z from
+ * the caller's data bank.
+ */
+void abi_PlayerControlsFrame(void)
+{
+    uint8_t db = cpu.db;
+
+    op_sep(P_M);
+    op_rep(P_X);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x7E);
+    cpu.db = 0x7E;
+    ctl_player(0x0309, 0x1F23, 0, 0x0346);
+    op_lda8(0x7E0D62);
+    if ((uint8_t)cpu.a)
+        ctl_player(0x030D, 0x1F25, 1, 0x034A);
+    op_rep(P_M);
+    op_lda16(0x7E0309);
+    wr16(0x7E1F23, cpu.a);
+    op_lda16(0x7E030D);
+    wr16(0x7E1F25, cpu.a);
+    wr16(0x7E0309, 0x0000);
+    wr16(0x7E030D, 0x0000);
+    op_sep(P_M);
+    cpu.db = db;
+    cpu.p = nz8(cpu.p, db);
+}
 
 /*
  * @routine 08:C8FF RecordButtonSequence

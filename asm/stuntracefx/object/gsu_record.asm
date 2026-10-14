@@ -1065,6 +1065,415 @@ RecordContactSummary:
     lda.b #$00
     rtl
 
+; @routine 08:C5A5 PlayerControlsFrame
+; WHAT IT DOES: The players' controls for a race frame: for player 1, and
+; player 2 when $0D62 is set, puts the buttons held this frame ($0309 or
+; $030D) and last frame ($1F23 or $1F25) at $1AF0 and $1AF2, the player at
+; $1A5D, and runs the car's controls (CarControlsToRecord on the object at
+; $0346 or $034A) and its linked object's handler (ObjectLinkedHandlerByState
+; with Y = the player); then keeps this frame's buttons as last frame's and
+; clears $0309 and $030D.
+; HOW: Data bank $7E, the caller's put back at the end; 8-bit A except for
+; the button words.
+; Entry: any widths. Exit: A = player 2's buttons (read before $030D is
+; cleared); M 8-bit, X 16-bit; X, Y as the last handler left them; N, Z from
+; the caller's data bank.
+%at($08C5A5)
+PlayerControlsFrame:
+    sep.b #$20
+    rep.b #$10
+    phb
+    lda.b #$7E
+    pha
+    plb
+    rep.b #$20
+    lda.w !joy1_held
+    sta.w !seq_input
+    lda.w !gsu_ab13_polls+2
+    sta.w !seq_input+2
+    sep.b #$20
+    stz.w !current_player
+    ldx.w !wram_0346
+    jsl.l CarControlsToRecord
+    ldy.w #$0000
+    jsl.l ObjectLinkedHandlerByState
+    lda.w !wram_0D62
+    beq .lC5F7
+    rep.b #$20
+    lda.w !joy2_held
+    sta.w !seq_input
+    lda.w !gsu_ab13_polls+4
+    sta.w !seq_input+2
+    sep.b #$20
+    lda.b #$01
+    sta.w !current_player
+    ldx.w !wram_034A
+    jsl.l CarControlsToRecord
+    ldy.w #$0001
+    jsl.l ObjectLinkedHandlerByState
+.lC5F7:
+    rep.b #$20
+    lda.w !joy1_held
+    sta.w !gsu_ab13_polls+2
+    lda.w !joy2_held
+    sta.w !gsu_ab13_polls+4
+    stz.w !joy1_held
+    stz.w !joy2_held
+    sep.b #$20
+    plb
+    rtl
+
+; @routine 08:C60F CarControlsToRecord
+; WHAT IT DOES: Turns a player's buttons ($1AF0; last frame's at $1AF2) into
+; car X's controls in its Super FX record (+$22; none: nothing). With bit 2
+; of the car's +$25 set it only marks the record: +$40 bit 9, and +$42 kept
+; to $D800 unless it has bit 12. Otherwise, unless the record's +$1C has bit
+; 4: SELECT newly pressed runs the button sequence (RecordButtonSequence) and
+; sets bit 0 of the linked object's (+$4F) +$25, and bit 1 with L and R held;
+; in a two-player race ($0D62) the car's +$29 counts up to a random limit
+; $6E-$71 ($1F2B), and is reset to $FFFF by B, Y, A or X once it is past 9;
+; at the limit record +$64 gets bit 3 and the linked object bits 0 and 1.
+; Then, with $0D53 clear and +$42 bit 12 clear: +$40 loses bit 9, +$42 keeps
+; only $D800, and the buttons held set +$42 bits: LEFT 0 (else RIGHT 1), L 2
+; (else R 3), A $2040 (and $20 below speed $32 at +$4A), Y $400 when +$6A is
+; not 0 (else sound $5E and the player's flag $10, at $1A5E or $1A60 by
+; $1A5D, once), B $10; X newly pressed 7 when +$5E is 0 and +$40 bit 8 is
+; clear. Without Y the player's flag $10 is cleared. With +$40 bit 8 set,
+; DOWN takes $600 from +$26 and UP adds it.
+; HOW: 16-bit A for the button and record words, 8-bit for the +$25 flags;
+; the record through long accesses to bank $70, the rest through the data
+; bank. Most tests branch over a long jump to the next one.
+; Entry: data bank $7E; X = the car's object. Exit: X, Y = the object; M
+; 8-bit, X 16-bit; N, Z from X; A, C and V as the last test or sum left
+; them.
+%at($08C60F)
+CarControlsToRecord:
+    sep.b #$20
+    rep.b #$10
+    stx.w !draw_side+17
+    lda.w !obj_25,x
+    and.b #$04
+    bne .lC621
+    jml.l .lC64A
+.lC621:
+    rep.b #$20
+    phx
+    txy
+    lda.w !obj_22,x
+    beq .lC646
+    tax
+    lda.l !gsu_rec_40,x
+    ora.w #$0200
+    sta.l !gsu_rec_40,x
+    lda.l !gsu_rec_42,x
+    bit.w #$1000
+    bne .lC646
+    and.w #$D800
+    sta.l !gsu_rec_42,x
+.lC646:
+    plx
+    sep.b #$20
+    rtl
+.lC64A:
+    rep.b #$20
+    phx
+    txy
+    lda.w !obj_22,x
+    bne .lC656
+    brl .lC8FB
+.lC656:
+    tax
+    lda.l !gsu_rec_1c,x
+    and.w #$0010
+    beq .lC663
+    brl .lC8FB
+.lC663:
+    lda.w !seq_input
+    bit.w #$2000
+    bne .lC66F
+    jml.l .lC6AE
+.lC66F:
+    jsr.w RecordButtonSequence
+    lda.w !seq_input+2
+    bit.w #$2000
+    beq .lC67E
+    jml.l .lC6AE
+.lC67E:
+    phy
+    lda.w !obj_link_w,y
+    tay
+    sep.b #$20
+    lda.w !obj_25,y
+    ora.b #$01
+    sta.w !obj_25,y
+    lda.w !seq_input
+    bit.b #$20
+    bne .lC698
+    jml.l .lC6AB
+.lC698:
+    lda.w !seq_input
+    bit.b #$10
+    bne .lC6A3
+    jml.l .lC6AB
+.lC6A3:
+    lda.w !obj_25,y
+    ora.b #$02
+    sta.w !obj_25,y
+.lC6AB:
+    rep.b #$20
+    ply
+.lC6AE:
+    lda.w !wram_0D62
+    and.w #$00FF
+    bne .lC6B9
+    brl .lC73E
+.lC6B9:
+    jsl.l RandomStepLong
+    and.w #$0003
+    clc
+    adc.w #$006E
+    sta.w !wram_1F2B
+    lda.w !obj_29,y
+    bmi .lC73E
+    cmp.w !wram_1F2B
+    bpl .lC714
+    inc a
+    sta.w !obj_29,y
+    cmp.w #$000A
+    bmi .lC73E
+    lda.w !seq_input
+    bit.w #$8000
+    beq .lC6E6
+    jml.l .lC70C
+.lC6E6:
+    lda.w !seq_input
+    bit.w #$4000
+    beq .lC6F2
+    jml.l .lC70C
+.lC6F2:
+    lda.w !seq_input
+    bit.w #$0080
+    beq .lC6FE
+    jml.l .lC70C
+.lC6FE:
+    lda.w !seq_input
+    bit.w #$0040
+    beq .lC70A
+    jml.l .lC70C
+.lC70A:
+    bra .lC73E
+.lC70C:
+    lda.w #$FFFF
+    sta.w !obj_29,y
+    bra .lC73E
+.lC714:
+    lda.l !gsu_rec_64,x
+    bit.w #$0008
+    bne .lC73E
+    ora.w #$0008
+    sta.l !gsu_rec_64,x
+    phy
+    lda.w !obj_link_w,y
+    tay
+    sep.b #$20
+    lda.w !obj_25,y
+    ora.b #$01
+    sta.w !obj_25,y
+    lda.w !obj_25,y
+    ora.b #$02
+    sta.w !obj_25,y
+    rep.b #$20
+    ply
+.lC73E:
+    lda.w !wram_0D53
+    and.w #$00FF
+    beq .lC749
+    brl .lC8FB
+.lC749:
+    lda.l !gsu_rec_40,x
+    and.w #$FDFF
+    sta.l !gsu_rec_40,x
+    lda.l !gsu_rec_42,x
+    bit.w #$1000
+    beq .lC760
+    brl .lC8FB
+.lC760:
+    lda.l !gsu_rec_42,x
+    and.w #$D800
+    sta.l !gsu_rec_42,x
+    lda.w !seq_input
+    bit.w #$0200
+    bne .lC777
+    jml.l .lC784
+.lC777:
+    lda.l !gsu_rec_42,x
+    ora.w #$0001
+    sta.l !gsu_rec_42,x
+    bra .lC79B
+.lC784:
+    lda.w !seq_input
+    bit.w #$0100
+    bne .lC790
+    jml.l .lC79B
+.lC790:
+    lda.l !gsu_rec_42,x
+    ora.w #$0002
+    sta.l !gsu_rec_42,x
+.lC79B:
+    lda.w !seq_input
+    bit.w #$0020
+    bne .lC7A7
+    jml.l .lC7B4
+.lC7A7:
+    lda.l !gsu_rec_42,x
+    ora.w #$0004
+    sta.l !gsu_rec_42,x
+    bra .lC7CB
+.lC7B4:
+    lda.w !seq_input
+    bit.w #$0010
+    bne .lC7C0
+    jml.l .lC7CB
+.lC7C0:
+    lda.l !gsu_rec_42,x
+    ora.w #$0008
+    sta.l !gsu_rec_42,x
+.lC7CB:
+    lda.w !seq_input
+    bit.w #$0080
+    bne .lC7D7
+    jml.l .lC7F7
+.lC7D7:
+    lda.l !gsu_rec_42,x
+    ora.w #$2040
+    sta.l !gsu_rec_42,x
+    lda.l !gsu_speeds,x
+    sec
+    sbc.w #$0032
+    bpl .lC7F7
+    lda.l !gsu_rec_42,x
+    ora.w #$0020
+    sta.l !gsu_rec_42,x
+.lC7F7:
+    lda.w !seq_input
+    bit.w #$4000
+    bne .lC803
+    jml.l .lC84C
+.lC803:
+    lda.l !gsu_in_6a,x
+    beq .lC816
+    lda.l !gsu_rec_42,x
+    ora.w #$0400
+    sta.l !gsu_rec_42,x
+    bra .lC84C
+.lC816:
+    lda.w !current_player
+    and.w #$00FF
+    beq .lC823
+    lda.w !current_player+3
+    bra .lC826
+.lC823:
+    lda.w !current_player+1
+.lC826:
+    bit.w #$0010
+    bne .lC84A
+    pha
+    lda.w #$005E
+    jsl.l SoundPort0QueuePush
+    pla
+    ora.w #$0010
+    pha
+    lda.w !current_player
+    and.w #$00FF
+    beq .lC846
+    pla
+    sta.w !current_player+3
+    bra .lC84A
+.lC846:
+    pla
+    sta.w !current_player+1
+.lC84A:
+    bra .lC879
+.lC84C:
+    lda.w !current_player
+    and.w #$00FF
+    beq .lC859
+    lda.w !current_player+3
+    bra .lC85C
+.lC859:
+    lda.w !current_player+1
+.lC85C:
+    bit.w #$0010
+    beq .lC879
+    pha
+    pla
+    and.w #$FFEF
+    pha
+    lda.w !current_player
+    and.w #$00FF
+    beq .lC875
+    pla
+    sta.w !current_player+3
+    bra .lC879
+.lC875:
+    pla
+    sta.w !current_player+1
+.lC879:
+    lda.w !seq_input
+    bit.w #$0040
+    bne .lC885
+    jml.l .lC8AB
+.lC885:
+    lda.w !seq_input+2
+    bit.w #$0040
+    beq .lC891
+    jml.l .lC8AB
+.lC891:
+    lda.l !gsu_rec_5e,x
+    bne .lC8AB
+    lda.l !gsu_rec_40,x
+    and.w #$0100
+    bne .lC8AB
+    lda.l !gsu_rec_42,x
+    ora.w #$0080
+    sta.l !gsu_rec_42,x
+.lC8AB:
+    lda.w !seq_input
+    bit.w #$8000
+    bne .lC8B7
+    jml.l .lC8C2
+.lC8B7:
+    lda.l !gsu_rec_42,x
+    ora.w #$0010
+    sta.l !gsu_rec_42,x
+.lC8C2:
+    lda.l !gsu_rec_40,x
+    and.w #$0100
+    beq .lC8FB
+    lda.w !seq_input
+    bit.w #$0400
+    bne .lC8D7
+    jml.l .lC8E3
+.lC8D7:
+    lda.l !gsu_out_26,x
+    sec
+    sbc.w #$0600
+    sta.l !gsu_out_26,x
+.lC8E3:
+    lda.w !seq_input
+    bit.w #$0800
+    bne .lC8EF
+    jml.l .lC8FB
+.lC8EF:
+    lda.l !gsu_out_26,x
+    clc
+    adc.w #$0600
+    sta.l !gsu_out_26,x
+.lC8FB:
+    plx
+    sep.b #$20
+    rtl
+
 ; @routine 08:C8FF RecordButtonSequence
 ; WHAT IT DOES: Watches the buttons in $1AF0 for a four-press sequence: bit
 ; 6, then bit 7, then bit 14, each within 5 frames of the last, then bit 11

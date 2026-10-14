@@ -1,0 +1,48 @@
+# unit_car_controls: unit calls of CarControlsToRecord (08:C60F) on the paths
+# no play reaches, from the start of a Novice race (car object 1, record
+# $70:1CD8; $0D53 cleared so the buttons are read):
+# - the record's +$1C with bit 4 (nothing done);
+# - SELECT newly pressed with L and R held (the linked object's bit 1);
+# - a two-player race, the timer +$29 past 9, with Y, A and X held;
+# - Y held with +$6A at 0, for each player, the flag $10 clear and set;
+# - no Y with the player's flag $10 set, for each player.
+load build/stuntracefx/states/novice_coupe_race1.state
+set 701CF4 18,00
+call 08:C60F long x=0001 db=7E p=20
+set 7E1AF0 30,20,00,00
+call 08:C60F long x=0001 db=7E p=20
+set 7E0D62 01
+set 7E202A 0A,00
+set 7E1AF0 00,40,00,00
+call 08:C60F long x=0001 db=7E p=20
+set 7E0D62 01
+set 7E202A 0A,00
+set 7E1AF0 80,00,00,00
+call 08:C60F long x=0001 db=7E p=20
+set 7E0D62 01
+set 7E202A 0A,00
+set 7E1AF0 40,00,00,00
+call 08:C60F long x=0001 db=7E p=20
+set 7E0D53 00
+set 701D42 00,00
+set 7E1AF0 00,40,00,00
+call 08:C60F long x=0001 db=7E p=20
+set 7E0D53 00
+set 701D42 00,00
+set 7E1AF0 00,40,00,00
+set 7E1A5D 01
+call 08:C60F long x=0001 db=7E p=20
+set 7E0D53 00
+set 701D42 00,00
+set 7E1AF0 00,40,00,00
+set 7E1A5E 10,00
+call 08:C60F long x=0001 db=7E p=20
+set 7E0D53 00
+set 7E1AF0 00,00,00,00
+set 7E1A5E 10,00
+call 08:C60F long x=0001 db=7E p=20
+set 7E0D53 00
+set 7E1AF0 00,00,00,00
+set 7E1A5D 01
+set 7E1A60 10,00
+call 08:C60F long x=0001 db=7E p=20
