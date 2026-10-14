@@ -271,6 +271,11 @@ static int call_exec(uint32_t pc)
        vertical blank, where the NMI would land between the JSR and the
        routine's first instruction (a script line runs at a frame's end).
        Under --lockstep, not where the original and the hybrid differ. */
+    /* SFXBOX_CALL_WHY=ADDR: while a unit call waits to start, the
+       conditions at each instruction in ADDR's 16-byte line. */
+    if (call_state == 1 && getenv("SFXBOX_CALL_WHY") && (pc & 0xFFFFF0) == strtoul(getenv("SFXBOX_CALL_WHY"), NULL, 16))
+        fprintf(stderr, "why side %d pc %06X ok %d 3030 %02X 4212 %02X clock %u\n", lockstep ? lockstep_role() : 0, pc,
+                lockstep_call_ok(pc), sfxbox_core_bus_read_p(0x003030), sfxbox_core_bus_read_p(0x004212), lockstep_clock());
     if (call_state == 1 && lockstep_call_ok(pc) && !(sfxbox_core_bus_read_p(0x003030) & 0x20) && !(sfxbox_core_bus_read_p(0x004212) & 0x80)) {
         sfxbox_core_regs_p(&call_from);
         if (getenv("SFXBOX_CALL_DEBUG"))
@@ -286,6 +291,8 @@ static int call_exec(uint32_t pc)
     }
     if (call_state == 2 && pc == call_loop) {
         call_state = 0;
+        if (getenv("SFXBOX_CALL_DEBUG"))
+            fprintf(stderr, "call ends (side %d) frame %ld clock %u\n", lockstep ? lockstep_role() : 0, frames, lockstep_clock());
         if (call_keep) { sfxbox_core_set_regs_p(&call_from); return 1; }   /* the game goes on from where it was */
         return 0;   /* parked in the stub's loop until the machine is put back: see call() */
     }
@@ -342,12 +349,20 @@ static void call(const char *line, int lineno) {
     call_loop = call_stub + (uint32_t)(m - 2);
     /* The machine as it was, put back when the call returns, so that the
        game goes on as if the call had not been made. */
-    size_t sn = retro_serialize_size_p(); void *snap = malloc(sn);
-    if (!snap || !retro_serialize_p(snap, sn)) die("%s:%d: call: serialize failed", script_path, lineno);
+    /* Not under --lockstep, which never puts the machine back (below): to
+       serialize, bsnes first runs the machine to a point where every
+       thread can be saved, and the hybrid's CPU can be inside a C call
+       that spans the frame's end, so it would run that call on, off the
+       record (4 frames in unit_fx's second call). */
+    size_t sn = 0; void *snap = NULL;
+    if (!lockstep) {
+        sn = retro_serialize_size_p(); snap = malloc(sn);
+        if (!snap || !retro_serialize_p(snap, sn)) die("%s:%d: call: serialize failed", script_path, lineno);
+    }
     int open_calls = checklib_on ? check_depth() : 0;
-    exec_before = *cpu_exec_hook;
-    *cpu_exec_hook = call_exec;
     call_state = 1;
+    if (getenv("SFXBOX_CALL_DEBUG"))
+        fprintf(stderr, "call command (side %d) frame %ld clock %u\n", lockstep ? lockstep_role() : 0, frames, lockstep_clock());
     long f = 0;
     while (call_state && f < frames_max) {
         buttons = 0;
@@ -359,7 +374,8 @@ static void call(const char *line, int lineno) {
     buttons = 0;
     if (lockstep && !call_state)
         for (long end = lockstep_unit_end(frames); frames < end; f++) run(1);
-    *cpu_exec_hook = exec_before;
+    if (getenv("SFXBOX_CALL_DEBUG"))
+        fprintf(stderr, "call command done (side %d) frame %ld clock %u\n", lockstep ? lockstep_role() : 0, frames, lockstep_clock());
     nstaged = 0;
     /* Under --lockstep the machine is not put back: the two sides' records
        of calls would go out of step. A lockstep script has a call as its
@@ -506,6 +522,11 @@ static void exec_range(int from, int to) {
                belong to the machine the load replaced: they never end. */
             if (checklib_on) check_rollback(0);
             if (lockstep) lockstep_state_loaded();
+            /* The core takes the hook away while it runs original code
+               for the checker (an interrupt handler, a routine with no C)
+               and puts it back after; a load can leave such a run where it
+               stopped, with the hook still away. */
+            *cpu_exec_hook = call_exec;
             free(p);
         }
         else die("%s:%d: bad command", script_path, i + 1);
@@ -574,6 +595,13 @@ int main(int argc, char **argv) {
         if (lockstep_begin(core, locklib, only, rp) < 0) die("lockstep setup failed");
         lockstep = 1;
     }
+    /* The unit-call hook, in front of the checker's for good: the core
+       saves and restores the hook around the original code it runs for
+       the checker, and a hook swapped in for one call while such a run was
+       open (a frame ending in an interrupt handler the hybrid took inside
+       its C) was undone when it ended, so the call never started. */
+    exec_before = *cpu_exec_hook;
+    *cpu_exec_hook = call_exec;
     script(scr);
     if (checklib) check_end();
     if (lockstep) lockstep_end(frames);

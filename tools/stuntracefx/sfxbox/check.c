@@ -1497,8 +1497,7 @@ void lockstep_state_loaded(void)
     if (role == 2) {
         /* The hybrid's C (or original code it ran, an interrupt handler
            taken in a replay, with routine swapping off) was left where the
-           frame ended: it never resumes. */
-        *core_exec = ls_exec;
+           frame ended: it never resumes. (sfxbox puts its hook back.) */
         machine_live = 0;
         ls_escape_set = 0;
         cur_open = 0;
@@ -1552,7 +1551,11 @@ long lockstep_unit_end(long f)
 }
 int lockstep_call_ok(uint32_t pc)
 {
+    /* Asked at every instruction while a unit call waits for a place to
+       start: a hybrid that never finds one must not outlive its parent. */
+    static unsigned asked;
     if (!role) return 1;
+    if (!(++asked & 0xFFFF) && PARENT_GONE()) _exit(6);
     return !m.active && !machine_live && routine_at(pc) < 0;
 }
 
