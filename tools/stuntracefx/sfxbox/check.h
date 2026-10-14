@@ -5,6 +5,8 @@
 int check_begin(void *core, const char *lib, const char *only, const char *report_path);
 void check_end(void);
 void check_unit_call(uint32_t resume_pc, uint16_t s);
+void check_unit_entry(uint32_t pc, uint32_t ret, uint16_t exit_s, uint16_t entry_s);
+void lockstep_unit_entry(uint32_t pc, uint32_t ret, uint16_t exit_s, uint16_t entry_s);
 int check_depth(void);
 void check_rollback(int d);
 int lockstep_begin(void *core, const char *lib, const char *only, const char *report_path);

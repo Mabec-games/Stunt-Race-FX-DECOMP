@@ -366,6 +366,15 @@ static void finish(Watch *w)
 static struct { uint32_t pc; uint16_t s; uint8_t op; } irqs[16];
 static int nirqs;
 
+/* A unit call entered by a jump (sfxbox call frame=): where it starts (PC
+   and S) and where it ends, given since no JSR or JSL says. */
+static struct { int set; uint32_t pc, ret; uint16_t exit_s, entry_s; } ue;
+
+void check_unit_entry(uint32_t pc, uint32_t ret, uint16_t exit_s, uint16_t entry_s)
+{
+    ue.set = 1; ue.pc = pc; ue.ret = ret; ue.exit_s = exit_s; ue.entry_s = entry_s;
+}
+
 static void on_insn(uint32_t pc)
 {
     struct SfxboxRegs r;
@@ -404,7 +413,11 @@ static void on_insn(uint32_t pc)
     if (sp + 3 >= wram_n || r.e || depth == DEPTH) { stats[idx].skipped++; return; }
     Watch *w = &ws[depth];
     uint16_t word = (uint16_t)(wram[(sp + 1) & 0xFFFF] | wram[(sp + 2) & 0xFFFF] << 8);
-    if (via == 0x20 || via == 0xFC) {
+    if (ue.set && pc == ue.pc && r.s == ue.entry_s) {
+        w->ret_pc = ue.ret;
+        w->exit_s = ue.exit_s;
+        ue.set = 0;
+    } else if (via == 0x20 || via == 0xFC) {
         w->ret_pc = (pc & 0xFF0000) | (uint16_t)(word + 1);
         w->exit_s = (uint16_t)(sp + 2);
     } else if (via == 0x22) {
@@ -672,10 +685,23 @@ static struct {
 } m;
 static uint32_t m_pc;        /* the routine of the open call */
 
+static struct { int set; uint32_t pc, ret; uint16_t exit_s, entry_s; } lue;
+
+void lockstep_unit_entry(uint32_t pc, uint32_t ret, uint16_t exit_s, uint16_t entry_s)
+{
+    lue.set = 1; lue.pc = pc; lue.ret = ret; lue.exit_s = exit_s; lue.entry_s = entry_s;
+}
+
 static int entry(uint32_t pc, struct SfxboxRegs *r, uint32_t *ret, uint16_t *exit_s)
 {
     uint8_t via = *core_opcode;
     uint32_t sp = r->s;
+    if (lue.set && pc == lue.pc && r->s == lue.entry_s) {
+        *ret = lue.ret;
+        *exit_s = lue.exit_s;
+        lue.set = 0;
+        return 1;
+    }
     if (r->e || sp + 3 >= wram_n) return 0;
     uint16_t word = (uint16_t)(wram[(sp + 1) & 0xFFFF] | wram[(sp + 2) & 0xFFFF] << 8);
     if (via == 0x20 || via == 0xFC) { *ret = (pc & 0xFF0000) | (uint16_t)(word + 1); *exit_s = (uint16_t)(sp + 2); return 1; }

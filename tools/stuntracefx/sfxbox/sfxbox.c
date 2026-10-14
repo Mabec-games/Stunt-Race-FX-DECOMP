@@ -22,7 +22,7 @@
  *                        as poke, but written when the next call starts, so
  *                        the game itself never runs on those bytes
  *   call ADDR [long] [keep] [noreturn] [a=HEX] [x=] [y=] [p=] [db=] [d=] [frames=N]
- *        [press=B[+B...]@F ...]
+ *        [press=B[+B...]@F ...] [frame=PPDD]
  *                        run the routine at ADDR once as a unit test: entered
  *                        by a JSR (by a JSL with long) from a stub in work RAM
  *                        with those registers, the game's state as the script
@@ -33,7 +33,12 @@
  *                        frames run and the machine stays as it left it;
  *                        each press (up to 8) holds those buttons in
  *                        frames F and F+1 of the call (counted from 0), for
- *                        a loop that waits for the player
+ *                        a loop that waits for the player; frame (with
+ *                        long) enters a routine's inside the way its own
+ *                        start leaves the stack: a JSL to a trampoline
+ *                        that pushes P = PP and DB = DD above the return
+ *                        address (PEA) and jumps (JML) to ADDR, for code
+ *                        that ends by pulling them (PLB, PLP, RTL)
  *   repeat N ... end     run the enclosed lines N times (nests)
  * Buttons: B Y SELECT START UP DOWN LEFT RIGHT A X L R, player 1; prefix
  * with 2. for player 2 (2.START). Joined with +.
@@ -258,6 +263,8 @@ static uint32_t call_stub, call_loop;
 static int call_state;   /* 1 to start at the next boundary, 2 running, 0 done */
 static int checklib_on;  /* --check: the checker is told when a call starts */
 static int call_keep;    /* keep: the machine is not put back after the call */
+static long call_frame = -1;  /* frame=: the P and DB pushed above the return */
+static uint32_t call_target;
 
 /* set: bytes staged for the next call, written when it starts (after the
    state it is put back to was taken), so the game never runs on them. */
@@ -282,6 +289,12 @@ static int call_exec(uint32_t pc)
             fprintf(stderr, "call starts (side %d) frame %ld at %06X S=%04X clock %u\n", lockstep ? lockstep_role() : 0, frames, call_from.pc, call_from.s, lockstep_clock());
         if (getenv("SFXBOX_CALL_DEBUG") && lockstep) lockstep_debug_state();
         if (checklib_on) check_unit_call(call_from.pc, call_from.s);
+        /* Entered by a JML from the trampoline: the checker is told where
+           the call starts (S after the return and the frame) and ends. */
+        if (call_frame >= 0) {
+            if (checklib_on) check_unit_entry(call_target, call_loop, call_from.s, (uint16_t)(call_from.s - 5));
+            if (lockstep) lockstep_unit_entry(call_target, call_loop, call_from.s, (uint16_t)(call_from.s - 5));
+        }
         for (int i = 0; i < nstaged; i++) poke(staged[i], staged_line[i]);
         struct SfxboxRegs r = call_regs;
         r.s = call_from.s; r.e = 0; r.pc = call_stub;
@@ -325,6 +338,7 @@ static void call(const char *line, int lineno) {
         else if (!strncmp(tok[i], "db=", 3)) call_regs.db = (uint8_t)v;
         else if (!strncmp(tok[i], "d=", 2)) call_regs.d = (uint16_t)v;
         else if (!strncmp(tok[i], "frames=", 7)) frames_max = strtol(tok[i] + 7, NULL, 10);
+        else if (!strncmp(tok[i], "frame=", 6)) call_frame = (long)(v & 0xFFFF);
         else if (!strncmp(tok[i], "press=", 6) && strchr(tok[i], '@') && npress < 8) {
             char pb[64]; snprintf(pb, sizeof pb, "%s", tok[i] + 6);
             *strchr(pb, '@') = 0;
@@ -340,13 +354,23 @@ static void call(const char *line, int lineno) {
     else if (bank == 0x7F) { at = 0x1FFE0; sb = 0x7F; }   /* $7F:FFE0: outside the code copied to $7F:0800 */
     else if (bank == 0x7E || bank < 0x40 || (bank >= 0x80 && bank < 0xC0)) { at = 0x1FE0; sb = bank; }
     else die("%s:%d: call: a JSR can't reach bank %02X from work RAM; use long", script_path, lineno, bank);
-    uint8_t stub[6]; int m = 0;
-    if (lng) { stub[m++] = 0x22; stub[m++] = (uint8_t)addr; stub[m++] = (uint8_t)(addr >> 8); stub[m++] = (uint8_t)bank; }
+    uint8_t stub[16]; int m = 0;
+    if (call_frame >= 0 && !lng) die("%s:%d: call: frame= needs long", script_path, lineno);
+    call_target = addr;
+    if (call_frame >= 0) {
+        /* JSL to the trampoline at +6; there PEA #frame, JML ADDR. */
+        uint16_t t = (uint16_t)(at + 6);
+        stub[m++] = 0x22; stub[m++] = (uint8_t)t; stub[m++] = (uint8_t)(t >> 8); stub[m++] = (uint8_t)sb;
+    } else if (lng) { stub[m++] = 0x22; stub[m++] = (uint8_t)addr; stub[m++] = (uint8_t)(addr >> 8); stub[m++] = (uint8_t)bank; }
     else { stub[m++] = 0x20; stub[m++] = (uint8_t)addr; stub[m++] = (uint8_t)(addr >> 8); stub[m++] = 0xEA; }
     stub[m++] = 0x80; stub[m++] = 0xFE;
-    memcpy(w + at, stub, (size_t)m);
     call_stub = sb << 16 | (uint32_t)(at & 0xFFFF);
     call_loop = call_stub + (uint32_t)(m - 2);
+    if (call_frame >= 0) {
+        stub[m++] = 0xF4; stub[m++] = (uint8_t)call_frame; stub[m++] = (uint8_t)(call_frame >> 8);
+        stub[m++] = 0x5C; stub[m++] = (uint8_t)addr; stub[m++] = (uint8_t)(addr >> 8); stub[m++] = (uint8_t)bank;
+    }
+    memcpy(w + at, stub, (size_t)m);
     /* The machine as it was, put back when the call returns, so that the
        game goes on as if the call had not been made. */
     /* Not under --lockstep, which never puts the machine back (below): to
@@ -389,6 +413,7 @@ static void call(const char *line, int lineno) {
     free(snap);
     if (call_state && !noreturn) die("%s:%d: call %06X did not return in %ld frames", script_path, lineno, addr, frames_max);
     call_state = 0;
+    call_frame = -1;
 }
 
 /* fx: a unit test of a Super FX routine. A stub in work RAM at $7F:F000
