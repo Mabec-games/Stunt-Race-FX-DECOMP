@@ -1046,8 +1046,13 @@ static void run_original(uint32_t addr, int long_call)
        (between its RTS/RTL and the next instruction at the caller's level)
        is recorded before the return mark: the run above stops at the stand-in
        return with it still pending, so it is left in the record to be taken
-       at its place. */
-    if (c < cur_n && c >= j + 6 && cur_ops[c - 4] >> 4 == 5) cur_i = c - 4;
+       at its place; return marks of inner levels closed there too come
+       between them. */
+    if (c < cur_n) {
+        uint32_t e = c;
+        while (e > j + 2 && cur_ops[e - 1] >> 4 == 0xC) e--;
+        if (e >= j + 6 && cur_ops[e - 4] >> 4 == 5) cur_i = e - 4;
+    }
 }
 
 /* jump_routine on the live machine: as run_original, but in the calling
@@ -1149,7 +1154,14 @@ static void jump_original(uint32_t addr, const uint8_t *pushed, int n)
         for (c = j + 2; c < cur_n || fetch_more(c + 1); c++)
             if (cur_ops[c] >> 4 == 1 && (cur_addr[c] & 0xFFFFFF) == out.pc) break;
         cur_i = c < cur_n ? c : cur_n;
-        if (c < cur_n && c >= j + 6 && cur_ops[c - 4] >> 4 == 5) cur_i = c - 4;
+        /* An interrupt the original took right at the landing is marked
+           before the fetch, ahead of the return marks of the levels it
+           closed there: it is taken in its place. */
+        if (c < cur_n) {
+            uint32_t e = c;
+            while (e > j + 2 && cur_ops[e - 1] >> 4 == 0xC) e--;
+            if (e >= j + 6 && cur_ops[e - 4] >> 4 == 5) cur_i = e - 4;
+        }
         return;
     }
     /* Otherwise it left the routine's frame: its own return when the C
