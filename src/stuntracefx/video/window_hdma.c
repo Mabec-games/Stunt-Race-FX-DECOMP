@@ -1188,3 +1188,42 @@ void abi_WindowHdmaChannelsSetup(void)
     wr8(0x7F130F, 0x00);
     op_plp(p0);
 }
+
+/*
+ * @routine 7E:D423 WindowSlideCheck
+ * WHAT IT DOES: Steps the sliding window when one is under way: with the
+ * window's HDMA on ($19D8 = 0), a slide set up ($19BC not $FF) and bit 0 of
+ * $0DA5 set, goes on to the slide's step at $7E:D440; otherwise returns.
+ * HOW: P and the data bank pushed ($7E), then 8-bit tests; the step at
+ * $D440 (not reached in the traces so far) is reached as original code
+ * (jump_routine) with them on the stack, and pulls them itself.
+ * Entry: any widths. Exit: P and the data bank restored; A low byte the
+ * last value loaded (0 after the $0DA5 test).
+ */
+void abi_WindowSlideCheck(void)
+{
+    const uint32_t b = 0x7E0000;
+    uint8_t p0 = cpu.p, db0 = cpu.db;
+
+    op_push8(p0);
+    op_push8(db0);
+    cpu.db = 0x7E;
+    op_sep(P_M);
+    op_lda8(b | 0x19D8);
+    if (!(uint8_t)cpu.a) {
+        op_lda8(0x0019BC);
+        if ((uint8_t)cpu.a != 0xFF) {
+            op_lda8(b | 0x0DA5);
+            if (cpu.a & 0x01) {
+                cpu.a = (uint16_t)(cpu.a & 0xFF01);
+                cpu.p = nz8(cpu.p, 0x01);
+                jump_routine(0x7ED440);
+                return;
+            }
+            cpu.a = (uint16_t)(cpu.a & 0xFF00);
+        }
+    }
+    cpu.s = (uint16_t)(cpu.s + 2);
+    cpu.db = db0;
+    op_plp(p0);
+}

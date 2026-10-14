@@ -1329,3 +1329,33 @@ WindowHdmaChannelsSetup:
     plp
     rts
 
+
+; @routine 7E:D423 WindowSlideCheck
+; WHAT IT DOES: Steps the sliding window when one is under way: with the
+; window's HDMA on ($19D8 = 0), a slide set up ($19BC not $FF) and bit 0 of
+; $0DA5 set, goes on to the slide's step at $7E:D440; otherwise returns.
+; HOW: P and the data bank pushed ($7E), then 8-bit tests; the step at
+; $D440 (not reached in the traces so far) is reached as original code
+; (jump_routine) with them on the stack, and pulls them itself.
+; Entry: any widths. Exit: P and the data bank restored; A low byte the
+; last value loaded (0 after the $0DA5 test).
+%ramcode($7ED423, $01314A)
+WindowSlideCheck:
+    php
+    phb
+    phk
+    plb
+    sep.b #$20
+    lda.w !window_hdma_off
+    bne .lD43D
+    lda.l !window_hdma_19bc
+    cmp.b #$FF
+    beq .lD43D
+    lda.w !slide_flags
+    and.b #$01
+    bne WindowSlideCheckD440
+.lD43D:
+    plb
+    plp
+    rtl
+

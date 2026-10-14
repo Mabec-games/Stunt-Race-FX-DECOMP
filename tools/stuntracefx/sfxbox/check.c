@@ -755,12 +755,14 @@ static void ls_insn(uint32_t pc)
             returned = m.ret[at] == (pc | 0x1000000);
             if (returned) m.ret[at] = 0;
         }
-        /* Or a jump (BRL, JML, JMP) to code the C reaches with call_routine
-           that the catalog does not have as an entry (07:9EE9, the tail
-           jump of BigSpritesRow6): only those, since a jump inside a loop
-           would open a level each time round. */
+        /* Or a jump or branch (BRL, JML, JMP, BRA, Bxx) to code the C
+           reaches with call_routine or jump_routine that the catalog does
+           not have as an entry (07:9EE9, the tail jump of BigSpritesRow6):
+           only those, since a jump inside a loop would open a level each
+           time round. */
         int computed = (!returned && (prev == 0x6B || prev == 0x60)) || prev == 0x6C || prev == 0x7C || prev == 0xDC || prev == 0xFC
-                       || ((prev == 0x82 || prev == 0x5C || prev == 0x4C) && is_jump_entry(pc));
+                       || ((prev == 0x82 || prev == 0x5C || prev == 0x4C || prev == 0x80 || (prev & 0x1F) == 0x10)
+                           && is_jump_entry(pc));
         /* Back at the entry of the level open at this S (the call's own,
            or a routine's inside it) by a branch: a loop, not an entry. */
         int again = !computed && prev != 0x20 && prev != 0x22 && prev != 0xFC

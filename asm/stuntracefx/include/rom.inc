@@ -339,3 +339,4 @@ ChampionshipStageCCBF = $07CCBF                ; ChampionshipScreenStep: a stage
 !championship_palette = $1F8600     ; ChampionshipScreenStep: the screen's 256 colours
 ObjectExitPlx = $09C3EB                         ; 09:C3EB, PLX then RTS (a shared exit, not filed yet)
 DemoRunBody = $038683                           ; 03:8683, inside the routine at 03:8648 (not filed yet)
+WindowSlideCheckD440 = $7ED440                  ; 7E:D440, the slide step after WindowSlideCheck (not filed yet)
