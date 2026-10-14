@@ -1905,3 +1905,93 @@ void abi_CourseScreenStep(void)
     }
     screen_state(b, 0xE3E1);
 }
+
+void abi_BlendStepDown(void);
+
+/*
+ * @routine 02:ED6D CourseScreenState8
+ * WHAT IT DOES: The course screens' state 8 ($0D40).
+ * HOW: An 8-bit store through the data bank.
+ * Entry: any widths; data bank $7E or a mirror. Exit: M 8-bit; A low byte
+ * 8.
+ */
+void abi_CourseScreenState8(void)
+{
+    op_sep(P_M);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x08);
+    cpu.p = nz8(cpu.p, 0x08);
+    wr8(((uint32_t)cpu.db << 16) | 0x0D40, 0x08);
+}
+
+/* REP #$20, BlendStepDown, REP #$20, LDA.L $7F:3408: whether the blend is
+   down to 0. */
+static int fade_step(void)
+{
+    op_rep(P_M);
+    abi_BlendStepDown();
+    op_rep(P_M);
+    op_lda16(0x7F3408);
+    return cpu.a == 0;
+}
+
+/* SEP #$20, $0D43 = panel, $0D42 = 0, $0D40 = state, colour maths off. */
+static void fade_done(uint32_t b, uint8_t panel, uint8_t state)
+{
+    op_sep(P_M);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | panel);
+    wr8(b | 0x0D43, panel);
+    wr8(b | 0x0D42, 0x00);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | state);
+    cpu.p = nz8(cpu.p, state);
+    wr8(b | 0x0D40, state);
+    abi_ColourMathOffLong();
+}
+
+/*
+ * @routine 02:ED75 CourseScreenFadeLeave
+ * WHAT IT DOES: The Speed Trax course select's state 14: the blend one
+ * step down (BlendStepDown); at 0, the records panel's state 8 ($0D43,
+ * $0D42 = 0), state 0 and colour maths off (ColourMathOffLong).
+ * HOW: 16-bit for the blend, 8-bit stores.
+ * Entry: any widths; data bank $7E or a mirror. Exit: M 16-bit with A the
+ * blend factor; or M 8-bit as ColourMathOffLong leaves it.
+ */
+void abi_CourseScreenFadeLeave(void)
+{
+    if (fade_step())
+        fade_done((uint32_t)cpu.db << 16, 0x08, 0x00);
+}
+
+/*
+ * @routine 02:ED98 CourseScreenFadeBack
+ * WHAT IT DOES: The course screens' state 8: the blend one step down
+ * (BlendStepDown); at 0, the records panel's state 6 ($0D43, $0D42 = 0),
+ * state 2, colour maths off (ColourMathOffLong) and, in HUD mode 0 with
+ * the courses not all opened ($0D24 not 3) and $0D4C clear, sound $2D.
+ * HOW: As CourseScreenFadeLeave.
+ * Entry: as CourseScreenFadeLeave. Exit: as CourseScreenFadeLeave, or as
+ * the sound's push leaves it.
+ */
+void abi_CourseScreenFadeBack(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    if (!fade_step())
+        return;
+    fade_done(b, 0x06, 0x02);
+    op_lda8(b | 0x0D2B);
+    if ((uint8_t)cpu.a)
+        return;
+    op_lda8(b | 0x0D24);
+    if ((uint8_t)cpu.a == 0x03) {
+        cpu.p = (uint8_t)((nz8(cpu.p, 0) | P_C));
+        return;
+    }
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)((uint8_t)cpu.a - 0x03)) & ~P_C) | ((uint8_t)cpu.a >= 0x03 ? P_C : 0));
+    op_lda8(b | 0x0D4C);
+    if ((uint8_t)cpu.a)
+        return;
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x2D);
+    cpu.p = nz8(cpu.p, 0x2D);
+    abi_SoundPort0QueuePush();
+}

@@ -1718,3 +1718,76 @@ CourseRecordsDispatch:
     jmp.w (.states,x)
 .states:
     dw CourseRecordsSelectStep,CourseRecordsOpening,CourseRecordsShown,CourseRecordsClosing,CourseRecordsReopen
+
+; @routine 02:ED6D CourseScreenState8
+; WHAT IT DOES: The course screens' state 8 ($0D40).
+; HOW: An 8-bit store through the data bank.
+; Entry: any widths; data bank $7E or a mirror. Exit: M 8-bit; A low byte
+; 8.
+%at($02ED6D)
+CourseScreenState8:
+    sep.b #$20
+    lda.b #$08
+    sta.w !wram_0D3F+1
+    rts
+
+; @routine 02:ED75 CourseScreenFadeLeave
+; WHAT IT DOES: The Speed Trax course select's state 14: the blend one
+; step down (BlendStepDown); at 0, the records panel's state 8 ($0D43,
+; $0D42 = 0), state 0 and colour maths off (ColourMathOffLong).
+; HOW: 16-bit for the blend, 8-bit stores.
+; Entry: any widths; data bank $7E or a mirror. Exit: M 16-bit with A the
+; blend factor; or M 8-bit as ColourMathOffLong leaves it.
+%at($02ED75)
+CourseScreenFadeLeave:
+    rep.b #$20
+    jsl.l BlendStepDown
+    rep.b #$20
+    lda.l !fixed_colour_step
+    beq .lED84
+    rts
+.lED84:
+    sep.b #$20
+    lda.b #$08
+    sta.w !wram_0D3F+4
+    stz.w !wram_0D3F+3
+    lda.b #$00
+    sta.w !wram_0D3F+1
+    jsl.l ColourMathOffLong
+    rts
+
+; @routine 02:ED98 CourseScreenFadeBack
+; WHAT IT DOES: The course screens' state 8: the blend one step down
+; (BlendStepDown); at 0, the records panel's state 6 ($0D43, $0D42 = 0),
+; state 2, colour maths off (ColourMathOffLong) and, in HUD mode 0 with
+; the courses not all opened ($0D24 not 3) and $0D4C clear, sound $2D.
+; HOW: As CourseScreenFadeLeave.
+; Entry: as CourseScreenFadeLeave. Exit: as CourseScreenFadeLeave, or as
+; the sound's push leaves it.
+%at($02ED98)
+CourseScreenFadeBack:
+    rep.b #$20
+    jsl.l BlendStepDown
+    rep.b #$20
+    lda.l !fixed_colour_step
+    beq .lEDA7
+    rts
+.lEDA7:
+    sep.b #$20
+    lda.b #$06
+    sta.w !wram_0D3F+4
+    stz.w !wram_0D3F+3
+    lda.b #$02
+    sta.w !wram_0D3F+1
+    jsl.l ColourMathOffLong
+    lda.w !hud_mode
+    bne .lEDD1
+    lda.w !wram_0D24
+    cmp.b #$03
+    beq .lEDD1
+    lda.w !digit62_override
+    bne .lEDD1
+    lda.b #$2D
+    jsl.l SoundPort0QueuePush
+.lEDD1:
+    rts

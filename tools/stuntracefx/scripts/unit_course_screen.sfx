@@ -8,8 +8,10 @@
 # CourseScreenWipeIn at and before their ends, CoursePreviewRowsStunt and
 # CoursePreviewRowsAll (pressed, done, counting, at the count's end),
 # CoursePreviewReset, the state 0 starts, CourseScreenNothing,
-# CourseScreenZoomOut and CourseScreenZoomIn (moving and at the end) and
-# CourseRecordsDispatch (before the fade, then each panel state).
+# CourseScreenZoomOut and CourseScreenZoomIn (moving and at the end),
+# CourseRecordsDispatch (before the fade, then each panel state),
+# CourseScreenState8, and CourseScreenFadeLeave and CourseScreenFadeBack
+# (fading, and at 0 by mode, unlock and $0D4C).
 load build/stuntracefx/states/menus_course_grid_01.state
 set 7E0D2B 00
 set 7E0D40 00
@@ -302,3 +304,35 @@ set 7E0D2B 03
 set 7E0D40 08
 set 7E0D24 00
 call 02:E356 p=30 db=00 d=0000 noreturn frames=30
+load build/stuntracefx/states/menus_course_grid_01.state
+call 02:ED6D p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7F3408 01,00
+call 02:ED75 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7F3408 05,00
+call 02:ED75 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7F3408 05,00
+call 02:ED98 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7F3408 01,00
+set 7E0D2B 00
+set 7E0D24 00
+set 7E0D4C 00
+call 02:ED98 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7F3408 01,00
+set 7E0D2B 00
+set 7E0D24 03
+call 02:ED98 p=30 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7F3408 01,00
+set 7E0D2B 00
+set 7E0D24 00
+set 7E0D4C 01
+call 02:ED98 p=30 db=00 d=0000
+load build/stuntracefx/states/stunt_bluelake_02.state
+set 7F3408 01,00
+set 7E0D2B 01
+call 02:ED98 p=30 db=00 d=0000
