@@ -1597,3 +1597,5 @@ includeonce
 !glyph_time_high = $F5               ; GlyphListMessageAndTime: the time's digits (direct page)
 !glyph_time_mid = $F6
 !glyph_time_low = $F7
+!window_width_7f = $7F3402         ; WindowTable7F: the window's width
+!window_middle_7f = $7F3406        ; and its middle
