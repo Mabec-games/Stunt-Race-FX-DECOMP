@@ -1112,11 +1112,11 @@ static void leave_frame(struct SfxboxRegs *out)
     core_set_regs(&mine);
 }
 
-static void jump_original(uint32_t addr)
+static void jump_original(uint32_t addr, const uint8_t *pushed, int n)
 {
     uint32_t j, c = cur_n;
     int nest = 0;
-    uint16_t s = cpu.s, hs = cpu.s;
+    uint16_t s = (uint16_t)(cpu.s - n), hs = cpu.s;
     unsigned inner = 0;
 
     int found;
@@ -1126,10 +1126,13 @@ static void jump_original(uint32_t addr)
     if (found) {
         replay_to(j);
         s = (uint16_t)cur_addr[j + 1];
-        inner = restore_frames(j, s, hs);
+        inner = restore_frames(j, (uint16_t)(s + n), hs);
     } else if (!past_end) {
         if (asm_unplaced++ < 5) fprintf(lsrep, "OFF frame %ld: jump to %06X not in the original's record\n", cur_frame, addr);
     }
+    /* What the original pushed before it went there, at its S. */
+    for (int k = 0; k < n; k++)
+        core_bus_write((uint32_t)(uint16_t)(s + n - k), pushed[k]);
     struct SfxboxRegs from = {cpu.a, cpu.x, cpu.y, s, cpu.d, cpu.db, cpu.p, cpu.e, addr}, out, mine;
     core_regs(&mine);
     core_run_out(&from, s);
@@ -1138,12 +1141,14 @@ static void jump_original(uint32_t addr)
     cpu.a = out.a; cpu.x = out.x; cpu.y = out.y; cpu.d = out.d; cpu.db = out.db; cpu.p = out.p; cpu.e = out.e;
     /* Called from C (a frame put back): back through that frame is the
        routine's return to the C that called it, which goes on. */
-    if (found && hs != s && inner && out.s == (uint16_t)(s + inner)) {
-        for (c = j + 2; c < cur_n || fetch_more(c + 1); c++) {
-            if (cur_ops[c] >> 4 == 9) nest++;
-            else if (cur_ops[c] >> 4 == 0xC && !nest--) break;
-        }
-        cur_i = c < cur_n ? c + 1 : cur_n;
+    if (found && hs != (uint16_t)(s + n) && inner && out.s == (uint16_t)(s + n + inner)) {
+        /* The C goes on from the original's first fetch at the landing
+           (return marks are no guide: a level whose code pulls what it
+           pushed is marked returned at the pull). */
+        (void)nest;
+        for (c = j + 2; c < cur_n || fetch_more(c + 1); c++)
+            if (cur_ops[c] >> 4 == 1 && (cur_addr[c] & 0xFFFFFF) == out.pc) break;
+        cur_i = c < cur_n ? c : cur_n;
         if (c < cur_n && c >= j + 6 && cur_ops[c - 4] >> 4 == 5) cur_i = c - 4;
         return;
     }
@@ -1154,19 +1159,25 @@ static void jump_original(uint32_t addr)
     cpu.s = out.s; cpu.pc = out.pc; cpu.unwound = 1;
     if (found) record_rest();
     else cur_i = cur_n;
-    if (hs != s && ls_escape_set) longjmp(ls_escape, 1);
+    if (hs != (uint16_t)(s + n) && ls_escape_set) longjmp(ls_escape, 1);
 }
 
-void jump_routine(uint32_t addr)
+void jump_routine_pushed(uint32_t addr, const uint8_t *pushed, int n)
 {
-    for (int i = 0; i < nroutines; i++)
-        if (routines[i].addr == addr) { routines[i].abi(); return; }
+    if (!n)
+        for (int i = 0; i < nroutines; i++)
+            if (routines[i].addr == addr) { routines[i].abi(); return; }
     if (!machine_live) {
         if (cur) cur->needs_asm = 1;
         if (c_running) longjmp(abort_c, 1);
         return;
     }
-    jump_original(addr);
+    jump_original(addr, pushed, n);
+}
+
+void jump_routine(uint32_t addr)
+{
+    jump_routine_pushed(addr, NULL, 0);
 }
 
 void call_routine(uint32_t addr, int long_call)

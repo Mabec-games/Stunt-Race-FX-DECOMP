@@ -223,14 +223,6 @@ static inline void op_rep(uint8_t bits)
     cpu.p &= (uint8_t)~bits;
 }
 
-/* A push to the real stack (bank 0, S down by one): for code that jumps on
-   to original code expecting what it pushed (PHP, PHB) to be there. */
-static inline void op_push8(uint8_t v)
-{
-    wr8((uint16_t)cpu.s, v);
-    cpu.s = (uint16_t)(cpu.s - 1);
-}
-
 /* PLP: restoring 8-bit index registers clears the high bytes of X and Y. */
 static inline void op_plp(uint8_t p)
 {

@@ -85,5 +85,8 @@ void call_routine(uint32_t addr, int long_call);
    in the calling routine's own frame, to wherever it leaves that frame (its
    return, or through its caller's). The calling routine's last action. */
 void jump_routine(uint32_t addr);
+/* As jump_routine, for code the original reaches with values it pushed
+   first (PHP, PHB...) still on the stack: pushed[0] the first pushed. */
+void jump_routine_pushed(uint32_t addr, const uint8_t *pushed, int n);
 
 #endif
