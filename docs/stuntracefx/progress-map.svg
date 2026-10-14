@@ -16,7 +16,7 @@
 <rect x="163.4" y="96.1" width="49.3" height="48.1" fill="#3fb950"><title>GradientSetup  0BFE12  244B  T4  [video]</title></rect>
 <rect x="213.3" y="96.1" width="45.0" height="48.1" fill="#3fb950"><title>BackdropRowsUpdate  7EE815  223B  T4  [video]</title></rect>
 <rect x="258.9" y="96.1" width="44.0" height="48.1" fill="#3fb950"><title>CoursePaletteCycle  04E32D  218B  T4  [video]</title></rect>
-<rect x="303.5" y="96.1" width="42.5" height="48.1" fill="#3fb950"><title>WindowSlideCheck  7ED423  211B  T4  [video]</title></rect>
+<rect x="303.4" y="96.1" width="42.5" height="48.1" fill="#3fb950"><title>WindowSlideCheck  7ED423  211B  T4  [video]</title></rect>
 <rect x="346.6" y="96.1" width="40.9" height="48.1" fill="#3fb950"><title>OamDirectStage  7EAD26  203B  T4  [video]</title></rect>
 <rect x="61.0" y="144.8" width="40.9" height="47.9" fill="#3fb950"><title>PaletteKeptColoursStep  7EB41F  202B  T4  [video]</title></rect>
 <rect x="61.0" y="193.3" width="40.9" height="47.9" fill="#3fb950"><title>FlashingMetaspriteDraw  02F94F  202B  T4  [video]</title></rect>
@@ -28,27 +28,27 @@
 <rect x="102.5" y="144.8" width="39.9" height="37.5" fill="#3fb950"><title>WindowLayoutStep  7EDA75  155B  T4  [video]</title></rect>
 <rect x="143.0" y="144.8" width="38.6" height="37.5" fill="#3fb950"><title>OscillatorStep  7EDD43  150B  T4  [video]</title></rect>
 <rect x="182.2" y="144.8" width="37.3" height="37.5" fill="#3fb950"><title>PaletteCycle  7EB63A  145B  T4  [video]</title></rect>
-<rect x="220.1" y="144.8" width="33.6" height="37.5" fill="#3fb950"><title>TilemapPaletteFill  07CF14  131B  T4  [video]</title></rect>
+<rect x="220.0" y="144.8" width="33.6" height="37.5" fill="#3fb950"><title>TilemapPaletteFill  07CF14  131B  T4  [video]</title></rect>
 <rect x="254.3" y="144.8" width="33.6" height="37.5" fill="#3fb950"><title>DigitTiles1184  07CFA3  131B  T4  [video]</title></rect>
 <rect x="288.5" y="144.8" width="32.8" height="37.5" fill="#3fb950"><title>OamPlaceRows75And112  07C3DD  128B  T4  [video]</title></rect>
 <rect x="322.0" y="144.8" width="32.6" height="37.5" fill="#3fb950"><title>WindowHdmaChannelsSetup  0BF567  127B  T4  [video]</title></rect>
-<rect x="355.2" y="144.8" width="32.3" height="37.5" fill="#3fb950"><title>WindowHdmaLayout  7EDB47  126B  T4  [video]</title></rect>
-<rect x="102.5" y="182.9" width="33.9" height="35.2" fill="#3fb950"><title>RasterColoursCycling  7EB31E  124B  T4  [video]</title></rect>
-<rect x="102.5" y="218.7" width="33.9" height="34.1" fill="#d29922"><title>PlayerColoursFlash  7EB5C1  120B  T2  [video]</title></rect>
-<rect x="102.5" y="253.4" width="33.9" height="33.5" fill="#3fb950"><title>WindowSweepStep  7EDE88  118B  T4  [video]</title></rect>
-<rect x="102.5" y="287.5" width="33.9" height="33.2" fill="#3fb950"><title>WindowHdmaBands  7EDC18  117B  T4  [video]</title></rect>
-<rect x="102.5" y="321.3" width="33.9" height="33.2" fill="#3fb950"><title>VideoRegsReset  03EB0E  117B  T4  [video]</title></rect>
-<rect x="102.5" y="355.1" width="33.9" height="32.9" fill="#3fb950"><title>MetaspriteDraw  02FA19  116B  T4  [video]</title></rect>
-<rect x="102.5" y="388.6" width="33.9" height="32.3" fill="#3fb950"><title>StatusColourPick  7EB53F  114B  T4  [video]</title></rect>
-<rect x="102.5" y="421.6" width="33.9" height="31.2" fill="#3fb950"><title>SpriteSlot1Countdown  02E0A9  110B  T4  [video]</title></rect>
+<rect x="355.1" y="144.8" width="32.3" height="37.5" fill="#3fb950"><title>WindowHdmaLayout  7EDB47  126B  T4  [video]</title></rect>
+<rect x="102.5" y="182.9" width="33.8" height="35.2" fill="#3fb950"><title>RasterColoursCycling  7EB31E  124B  T4  [video]</title></rect>
+<rect x="102.5" y="218.7" width="33.8" height="34.1" fill="#d29922"><title>PlayerColoursFlash  7EB5C1  120B  T2  [video]</title></rect>
+<rect x="102.5" y="253.4" width="33.8" height="33.5" fill="#3fb950"><title>WindowSweepStep  7EDE88  118B  T4  [video]</title></rect>
+<rect x="102.5" y="287.5" width="33.8" height="33.2" fill="#3fb950"><title>WindowHdmaBands  7EDC18  117B  T4  [video]</title></rect>
+<rect x="102.5" y="321.3" width="33.8" height="33.2" fill="#3fb950"><title>VideoRegsReset  03EB0E  117B  T4  [video]</title></rect>
+<rect x="102.5" y="355.1" width="33.8" height="32.9" fill="#3fb950"><title>MetaspriteDraw  02FA19  116B  T4  [video]</title></rect>
+<rect x="102.5" y="388.6" width="33.8" height="32.3" fill="#3fb950"><title>StatusColourPick  7EB53F  114B  T4  [video]</title></rect>
+<rect x="102.5" y="421.6" width="33.8" height="31.2" fill="#3fb950"><title>SpriteSlot1Countdown  02E0A9  110B  T4  [video]</title></rect>
 <rect x="136.9" y="182.9" width="32.7" height="32.0" fill="#3fb950"><title>TilemapLevelColumns  02FA91  109B  T4  [video]</title></rect>
 <rect x="170.2" y="182.9" width="31.8" height="32.0" fill="#3fb950"><title>PauseOnStart  07BBB2  106B  T4  [video]</title></rect>
 <rect x="202.6" y="182.9" width="31.5" height="32.0" fill="#3fb950"><title>BobStep  7EDF61  105B  T4  [video]</title></rect>
 <rect x="234.7" y="182.9" width="31.5" height="32.0" fill="#3fb950"><title>SpritePieces3  07B985  105B  T4  [video]</title></rect>
 <rect x="266.8" y="182.9" width="31.2" height="32.0" fill="#3fb950"><title>SpritePiecesTwoCars  07C22B  104B  T4  [video]</title></rect>
-<rect x="298.6" y="182.9" width="29.6" height="32.0" fill="#3fb950"><title>WindowEdgesFromList  09F0B2  99B  T4  [video]</title></rect>
+<rect x="298.5" y="182.9" width="29.6" height="32.0" fill="#3fb950"><title>WindowEdgesFromList  09F0B2  99B  T4  [video]</title></rect>
 <rect x="328.8" y="182.9" width="29.3" height="32.0" fill="#3fb950"><title>VramPictureRows1B0  03EA91  98B  T4  [video]</title></rect>
-<rect x="358.8" y="182.9" width="28.7" height="32.0" fill="#3fb950"><title>OamTextLine  07AA6E  96B  T4  [video]</title></rect>
+<rect x="358.7" y="182.9" width="28.7" height="32.0" fill="#3fb950"><title>OamTextLine  07AA6E  96B  T4  [video]</title></rect>
 <rect x="136.9" y="215.5" width="29.2" height="31.1" fill="#3fb950"><title>BackdropAnglesFromView  03D306  95B  T4  [video]</title></rect>
 <rect x="136.9" y="247.2" width="29.2" height="31.1" fill="#3fb950"><title>OamPalettesE28D  04E28D  95B  T4  [video]</title></rect>
 <rect x="136.9" y="279.0" width="29.2" height="30.5" fill="#3fb950"><title>BobWindowsRun  7ED33A  93B  T4  [video]</title></rect>
@@ -61,7 +61,7 @@
 <rect x="194.7" y="215.5" width="27.4" height="27.1" fill="#3fb950"><title>OamStagePause  07BAE6  78B  T4  [video]</title></rect>
 <rect x="222.7" y="215.5" width="27.4" height="27.1" fill="#3fb950"><title>OamStagePause2  07BB4C  78B  T4  [video]</title></rect>
 <rect x="250.7" y="215.5" width="27.4" height="27.1" fill="#3fb950"><title>SpriteBar4WithMarker  7F094E  78B  T4  [video]</title></rect>
-<rect x="278.7" y="215.5" width="27.0" height="27.1" fill="#3fb950"><title>OamHideForHudMode  07ABBB  77B  T4  [video]</title></rect>
+<rect x="278.6" y="215.5" width="27.0" height="27.1" fill="#3fb950"><title>OamHideForHudMode  07ABBB  77B  T4  [video]</title></rect>
 <rect x="306.3" y="215.5" width="27.0" height="27.1" fill="#3fb950"><title>WindowEdgesFromPair  09F065  77B  T4  [video]</title></rect>
 <rect x="333.9" y="215.5" width="26.7" height="27.1" fill="#3fb950"><title>WindowHdmaAt  7ED85C  76B  T4  [video]</title></rect>
 <rect x="361.2" y="215.5" width="26.3" height="27.1" fill="#3fb950"><title>RasterColours  7EB755  75B  T4  [video]</title></rect>
@@ -91,11 +91,11 @@
 <rect x="193.1" y="430.8" width="22.8" height="21.9" fill="#3fb950"><title>TilemapPaletteCycle  07CEDF  53B  T4  [video]</title></rect>
 <rect x="216.5" y="267.6" width="21.9" height="22.4" fill="#3fb950"><title>FadeStep  7EAC69  52B  T4  [video]</title></rect>
 <rect x="239.0" y="267.6" width="21.9" height="22.4" fill="#3fb950"><title>PlayerVehicleRaised  7F1278  52B  T4  [video]</title></rect>
-<rect x="261.5" y="267.6" width="20.6" height="22.4" fill="#3fb950"><title>VramDmaFromGsuRam  7EABD7  49B  T4  [video]</title></rect>
+<rect x="261.4" y="267.6" width="20.6" height="22.4" fill="#3fb950"><title>VramDmaFromGsuRam  7EABD7  49B  T4  [video]</title></rect>
 <rect x="282.6" y="267.6" width="20.6" height="22.4" fill="#3fb950"><title>OscillatorWindow  7EDD12  49B  T4  [video]</title></rect>
 <rect x="303.8" y="267.6" width="20.6" height="22.4" fill="#3fb950"><title>WindowsColourSub81  7EE054  49B  T4  [video]</title></rect>
 <rect x="325.0" y="267.6" width="20.6" height="22.4" fill="#3fb950"><title>SpriteStrip4  7F099C  49B  T4  [video]</title></rect>
-<rect x="346.2" y="267.6" width="20.6" height="22.4" fill="#3fb950"><title>SpriteStrip6  7F0A35  49B  T4  [video]</title></rect>
+<rect x="346.1" y="267.6" width="20.6" height="22.4" fill="#3fb950"><title>SpriteStrip6  7F0A35  49B  T4  [video]</title></rect>
 <rect x="367.3" y="267.6" width="20.1" height="22.4" fill="#3fb950"><title>WindowHdmaFromList  7ED6E8  48B  T4  [video]</title></rect>
 <rect x="216.5" y="290.6" width="21.9" height="20.6" fill="#3fb950"><title>OamFromList  03E9FE  48B  T4  [video]</title></rect>
 <rect x="216.5" y="311.8" width="21.9" height="20.2" fill="#3fb950"><title>WindowsAllInverted  7EE085  47B  T4  [video]</title></rect>
@@ -107,10 +107,10 @@
 <rect x="216.5" y="433.9" width="21.9" height="18.9" fill="#3fb950"><title>TilemapRowToE3D7  7EE8F4  44B  T4  [video]</title></rect>
 <rect x="239.0" y="290.6" width="21.3" height="19.4" fill="#3fb950"><title>OamHighBits58  07C50E  44B  T4  [video]</title></rect>
 <rect x="260.9" y="290.6" width="20.8" height="19.4" fill="#3fb950"><title>PalettesStep  7EB3F4  43B  T4  [video]</title></rect>
-<rect x="282.3" y="290.6" width="20.8" height="19.4" fill="#3fb950"><title>WindowLayoutStepForScreen  7ED28F  43B  T4  [video]</title></rect>
+<rect x="282.2" y="290.6" width="20.8" height="19.4" fill="#3fb950"><title>WindowLayoutStepForScreen  7ED28F  43B  T4  [video]</title></rect>
 <rect x="303.6" y="290.6" width="20.8" height="19.4" fill="#3fb950"><title>WindowsColourWindowOnly  7EE01D  43B  T4  [video]</title></rect>
 <rect x="325.0" y="290.6" width="20.8" height="19.4" fill="#3fb950"><title>OamPaletteFromTableE26A  04E23F  43B  T4  [video]</title></rect>
-<rect x="346.4" y="290.6" width="20.3" height="19.4" fill="#3fb950"><title>RasterPaletteUpload  7EB72B  42B  T4  [video]</title></rect>
+<rect x="346.3" y="290.6" width="20.3" height="19.4" fill="#3fb950"><title>RasterPaletteUpload  7EB72B  42B  T4  [video]</title></rect>
 <rect x="367.2" y="290.6" width="20.3" height="19.4" fill="#3fb950"><title>WindowSweep  7EDE5E  42B  T4  [video]</title></rect>
 <rect x="239.0" y="310.7" width="18.9" height="20.4" fill="#3fb950"><title>WindowSweepIfOn  7ED311  41B  T4  [video]</title></rect>
 <rect x="239.0" y="331.6" width="18.9" height="20.4" fill="#3fb950"><title>TilemapRowFromFB4E  02FAFE  41B  T4  [video]</title></rect>
@@ -121,8 +121,8 @@
 <rect x="239.0" y="433.4" width="18.9" height="19.3" fill="#3fb950"><title>OverlayFramesUntilFaded  07C683  39B  T4  [video]</title></rect>
 <rect x="258.5" y="310.7" width="18.5" height="19.2" fill="#3fb950"><title>WindowHdmaFFD5  7EDCC6  38B  T4  [video]</title></rect>
 <rect x="277.6" y="310.7" width="18.5" height="19.2" fill="#3fb950"><title>WindowHdmaFFD9  7EDCEC  38B  T4  [video]</title></rect>
-<rect x="296.7" y="310.7" width="18.5" height="19.2" fill="#3fb950"><title>OamBufferHideLarge  03FEF9  38B  T4  [video]</title></rect>
-<rect x="315.8" y="310.7" width="18.0" height="19.2" fill="#3fb950"><title>SpriteSlotFirst  02D932  37B  T4  [video]</title></rect>
+<rect x="296.6" y="310.7" width="18.5" height="19.2" fill="#3fb950"><title>OamBufferHideLarge  03FEF9  38B  T4  [video]</title></rect>
+<rect x="315.7" y="310.7" width="18.0" height="19.2" fill="#3fb950"><title>SpriteSlotFirst  02D932  37B  T4  [video]</title></rect>
 <rect x="334.3" y="310.7" width="18.0" height="19.2" fill="#3fb950"><title>VramNoiseTiles  03F47B  37B  T4  [video]</title></rect>
 <rect x="352.9" y="310.7" width="17.0" height="19.2" fill="#3fb950"><title>RaceVideoInit  03D996  35B  T4  [video]</title></rect>
 <rect x="370.5" y="310.7" width="17.0" height="19.2" fill="#3fb950"><title>OamBufferClear  03ECD1  35B  T4  [video]</title></rect>
@@ -135,7 +135,7 @@
 <rect x="258.5" y="436.4" width="17.6" height="16.3" fill="#3fb950"><title>OamPaletteFromTableE30F  04E2EC  31B  T4  [video]</title></rect>
 <rect x="276.7" y="330.5" width="18.2" height="15.3" fill="#3fb950"><title>ColdataTopBandStep  7ED4F6  30B  T4  [video]</title></rect>
 <rect x="295.5" y="330.5" width="18.2" height="15.3" fill="#3fb950"><title>SpritePiecesAtRight  02FD4D  30B  T4  [video]</title></rect>
-<rect x="314.3" y="330.5" width="18.2" height="15.3" fill="#3fb950"><title>OamBlock52Left  07C33A  30B  T4  [video]</title></rect>
+<rect x="314.2" y="330.5" width="18.2" height="15.3" fill="#3fb950"><title>OamBlock52Left  07C33A  30B  T4  [video]</title></rect>
 <rect x="333.0" y="330.5" width="18.2" height="15.3" fill="#3fb950"><title>OamBlock52Right  07C36A  30B  T4  [video]</title></rect>
 <rect x="351.8" y="330.5" width="17.5" height="15.3" fill="#3fb950"><title>FlashingMetaspriteDrawByMode  02F932  29B  T4  [video]</title></rect>
 <rect x="369.9" y="330.5" width="17.5" height="15.3" fill="#3fb950"><title>WindowClosedDigitStep  07C30B  29B  T4  [video]</title></rect>
@@ -148,9 +148,9 @@
 <rect x="292.3" y="346.4" width="16.6" height="15.6" fill="#3fb950"><title>TilemapRow187Palette5  07C2EF  28B  T4  [video]</title></rect>
 <rect x="309.5" y="346.4" width="16.0" height="15.6" fill="#3fb950"><title>OamWriteSprites36To46  7EADFD  27B  T4  [video]</title></rect>
 <rect x="326.1" y="346.4" width="16.0" height="15.6" fill="#3fb950"><title>VramFillGradient  03EAF3  27B  T4  [video]</title></rect>
-<rect x="342.7" y="346.4" width="14.7" height="15.6" fill="#3fb950"><title>Bg2ScrollFromTable  7EB28C  25B  T4  [video]</title></rect>
+<rect x="342.6" y="346.4" width="14.7" height="15.6" fill="#3fb950"><title>Bg2ScrollFromTable  7EB28C  25B  T4  [video]</title></rect>
 <rect x="358.0" y="346.4" width="14.7" height="15.6" fill="#3fb950"><title>PaletteCopy16To7F39D7  03EDC6  25B  T4  [video]</title></rect>
-<rect x="373.4" y="346.4" width="14.1" height="15.6" fill="#3fb950"><title>ColourBlendToTarget  7EE6A2  24B  T4  [video]</title></rect>
+<rect x="373.3" y="346.4" width="14.1" height="15.6" fill="#3fb950"><title>ColourBlendToTarget  7EE6A2  24B  T4  [video]</title></rect>
 <rect x="292.3" y="362.6" width="15.1" height="14.6" fill="#3fb950"><title>ColourBlendBy  7EE6D1  24B  T4  [video]</title></rect>
 <rect x="292.3" y="377.8" width="15.1" height="14.6" fill="#3fb950"><title>OamPaletteForD75  04E227  24B  T4  [video]</title></rect>
 <rect x="292.3" y="393.1" width="15.1" height="14.6" fill="#3fb950"><title>TilemapRow187Palette4  07CE97  24B  T4  [video]</title></rect>
@@ -170,9 +170,9 @@
 <rect x="308.0" y="440.7" width="12.8" height="12.1" fill="#3fb950"><title>OamHighBits58Park112  07C4F1  17B  T4  [video]</title></rect>
 <rect x="321.4" y="376.6" width="13.1" height="11.0" fill="#3fb950"><title>OamDmaAll  7EAD16  16B  T4  [video]</title></rect>
 <rect x="335.1" y="376.6" width="13.1" height="11.0" fill="#3fb950"><title>WindowsSetupSelect  7EDFCA  16B  T4  [video]</title></rect>
-<rect x="348.8" y="376.6" width="13.1" height="11.0" fill="#3fb950"><title>FixedColourFromStep  03FE6B  16B  T4  [video]</title></rect>
+<rect x="348.7" y="376.6" width="13.1" height="11.0" fill="#3fb950"><title>FixedColourFromStep  03FE6B  16B  T4  [video]</title></rect>
 <rect x="362.4" y="376.6" width="12.2" height="11.0" fill="#3fb950"><title>SpritePiecesAtLeft  02FD3E  15B  T4  [video]</title></rect>
-<rect x="375.3" y="376.6" width="12.2" height="11.0" fill="#3fb950"><title>WindowStep3437By3  03FDF7  15B  T4  [video]</title></rect>
+<rect x="375.2" y="376.6" width="12.2" height="11.0" fill="#3fb950"><title>WindowStep3437By3  03FDF7  15B  T4  [video]</title></rect>
 <rect x="321.4" y="388.3" width="10.7" height="12.6" fill="#3fb950"><title>WindowStep3437  03FE06  15B  T4  [video]</title></rect>
 <rect x="321.4" y="401.5" width="10.7" height="12.6" fill="#3fb950"><title>WindowStep3433By2  03FE26  15B  T4  [video]</title></rect>
 <rect x="321.4" y="414.7" width="10.7" height="12.6" fill="#3fb950"><title>WindowStep3433By3  03FE35  15B  T4  [video]</title></rect>
@@ -190,37 +190,37 @@
 <rect x="332.7" y="442.6" width="10.5" height="10.1" fill="#3fb950"><title>SpriteTextAt895E  02FBE5  12B  T4  [video]</title></rect>
 <rect x="343.8" y="399.6" width="10.5" height="10.2" fill="#3fb950"><title>TilemapPaletteCycle87  07C293  12B  T4  [video]</title></rect>
 <rect x="354.9" y="399.6" width="10.5" height="10.2" fill="#3fb950"><title>TilemapPaletteCycle107  07C29F  12B  T4  [video]</title></rect>
-<rect x="366.0" y="399.6" width="10.5" height="10.2" fill="#3fb950"><title>TilemapPaletteCycle187  07C2AB  12B  T4  [video]</title></rect>
+<rect x="365.9" y="399.6" width="10.5" height="10.2" fill="#3fb950"><title>TilemapPaletteCycle187  07C2AB  12B  T4  [video]</title></rect>
 <rect x="377.0" y="399.6" width="10.5" height="10.2" fill="#3fb950"><title>OamHighBits18  07C502  12B  T4  [video]</title></rect>
 <rect x="343.8" y="410.4" width="9.1" height="10.6" fill="#3fb950"><title>VramPictureRows2B0  03EA86  11B  T4  [video]</title></rect>
 <rect x="343.8" y="421.7" width="9.1" height="10.6" fill="#3fb950"><title>OamFillEvery4  07AC08  11B  T4  [video]</title></rect>
 <rect x="343.8" y="432.9" width="9.1" height="9.6" fill="#3fb950"><title>SpriteSlotFirstLong  02D928  10B  T4  [video]</title></rect>
 <rect x="343.8" y="443.1" width="9.1" height="9.6" fill="#3fb950"><title>OamHideEntries3And9  02FC83  10B  T4  [video]</title></rect>
-<rect x="353.6" y="410.4" width="8.5" height="10.4" fill="#3fb950"><title>GradientFillCgadd  03ED7F  10B  T4  [video]</title></rect>
+<rect x="353.5" y="410.4" width="8.5" height="10.4" fill="#3fb950"><title>GradientFillCgadd  03ED7F  10B  T4  [video]</title></rect>
 <rect x="362.6" y="410.4" width="8.5" height="10.4" fill="#3fb950"><title>GradientFillCgaddB  0BFB1C  10B  T4  [video]</title></rect>
 <rect x="371.7" y="410.4" width="7.6" height="10.4" fill="#3fb950"><title>SpriteTextAt8152  02FBF1  9B  T4  [video]</title></rect>
 <rect x="379.9" y="410.4" width="7.6" height="10.4" fill="#3fb950"><title>SpriteTextAt8152B  02FBFA  9B  T4  [video]</title></rect>
-<rect x="353.6" y="421.4" width="7.8" height="10.1" fill="#3fb950"><title>SpriteTextAt8952  02FC03  9B  T4  [video]</title></rect>
-<rect x="353.6" y="432.0" width="7.8" height="10.1" fill="#3fb950"><title>SpriteTextAt8152C  02FC0C  9B  T4  [video]</title></rect>
-<rect x="353.6" y="442.7" width="7.8" height="10.1" fill="#3fb950"><title>OamBlock59Left  07C328  9B  T4  [video]</title></rect>
-<rect x="362.0" y="421.4" width="8.8" height="8.9" fill="#3fb950"><title>OamBlock123Left  07C331  9B  T4  [video]</title></rect>
-<rect x="371.4" y="421.4" width="7.8" height="8.9" fill="#3fb950"><title>OamSprite0AddY  02FB8A  8B  T4  [video]</title></rect>
+<rect x="353.5" y="421.4" width="7.8" height="10.1" fill="#3fb950"><title>SpriteTextAt8952  02FC03  9B  T4  [video]</title></rect>
+<rect x="353.5" y="432.0" width="7.8" height="10.1" fill="#3fb950"><title>SpriteTextAt8152C  02FC0C  9B  T4  [video]</title></rect>
+<rect x="353.5" y="442.7" width="7.8" height="10.1" fill="#3fb950"><title>OamBlock59Left  07C328  9B  T4  [video]</title></rect>
+<rect x="361.9" y="421.4" width="8.8" height="8.9" fill="#3fb950"><title>OamBlock123Left  07C331  9B  T4  [video]</title></rect>
+<rect x="371.3" y="421.4" width="7.8" height="8.9" fill="#3fb950"><title>OamSprite0AddY  02FB8A  8B  T4  [video]</title></rect>
 <rect x="379.7" y="421.4" width="7.8" height="8.9" fill="#3fb950"><title>VramFrameRows2B0  03EA76  8B  T4  [video]</title></rect>
-<rect x="362.0" y="430.9" width="10.0" height="6.9" fill="#3fb950"><title>VramFrameRows1B0  03EA7E  8B  T4  [video]</title></rect>
-<rect x="362.0" y="438.4" width="10.0" height="6.9" fill="#3fb950"><title>ColourMathA3  03FE57  8B  T4  [video]</title></rect>
-<rect x="362.0" y="445.9" width="10.0" height="6.9" fill="#3fb950"><title>ColourMathOff  03FE63  8B  T4  [video]</title></rect>
+<rect x="361.9" y="430.9" width="10.0" height="6.9" fill="#3fb950"><title>VramFrameRows1B0  03EA7E  8B  T4  [video]</title></rect>
+<rect x="361.9" y="438.4" width="10.0" height="6.9" fill="#3fb950"><title>ColourMathA3  03FE57  8B  T4  [video]</title></rect>
+<rect x="361.9" y="445.9" width="10.0" height="6.9" fill="#3fb950"><title>ColourMathOff  03FE63  8B  T4  [video]</title></rect>
 <rect x="372.6" y="430.9" width="7.2" height="9.7" fill="#3fb950"><title>OamStageDispatchBB3C  07BB34  8B  T4  [video]</title></rect>
 <rect x="380.3" y="430.9" width="7.2" height="9.7" fill="#3fb950"><title>OamStageDispatchBBA2  07BB9A  8B  T4  [video]</title></rect>
 <rect x="372.6" y="441.2" width="8.4" height="7.2" fill="#3fb950"><title>SpriteYOnScreen  7EB005  7B  T4  [video]</title></rect>
 <rect x="372.6" y="448.9" width="8.4" height="3.8" fill="#3fb950"><title>ColourMathA3Long  03FE53  4B  T4  [video]</title></rect>
-<rect x="381.6" y="441.2" width="5.9" height="5.5" fill="#3fb950"><title>ColourMathOffLong  03FE5F  4B  T4  [video]</title></rect>
-<rect x="381.6" y="447.3" width="5.9" height="5.5" fill="#3fb950"><title>OamBufferHideLargeLong  03FEF5  4B  T4  [video]</title></rect>
+<rect x="381.5" y="441.2" width="5.9" height="5.5" fill="#3fb950"><title>ColourMathOffLong  03FE5F  4B  T4  [video]</title></rect>
+<rect x="381.5" y="447.3" width="5.9" height="5.5" fill="#3fb950"><title>OamBufferHideLargeLong  03FEF5  4B  T4  [video]</title></rect>
 <text x="3.0" y="465.4" font-size="10" fill="#8b949e">menu</text>
 <rect x="1.5" y="470.4" width="103.7" height="82.2" fill="#3fb950"><title>ChampionScreenOpen  0BEA3B  868B  T4  [menu]</title></rect>
 <rect x="105.8" y="470.4" width="79.8" height="82.2" fill="#3fb950"><title>MenuScreenOpenPreviewFade  0BF09F  669B  T4  [menu]</title></rect>
 <rect x="186.1" y="470.4" width="75.7" height="82.2" fill="#3fb950"><title>MenuScreenOpen6  0BEE24  635B  T4  [menu]</title></rect>
 <rect x="262.4" y="470.4" width="70.0" height="82.2" fill="#3fb950"><title>MenuSettingsFrame  0BBA4E  588B  T4  [menu]</title></rect>
-<rect x="333.1" y="470.4" width="54.4" height="82.2" fill="#3fb950"><title>MenuOamBuild  0BB64A  458B  T4  [menu]</title></rect>
+<rect x="333.0" y="470.4" width="54.4" height="82.2" fill="#3fb950"><title>MenuOamBuild  0BB64A  458B  T4  [menu]</title></rect>
 <rect x="1.5" y="553.1" width="59.0" height="75.2" fill="#3fb950"><title>MenuScreenOpenPreview  0BF784  454B  T4  [menu]</title></rect>
 <rect x="1.5" y="628.9" width="59.0" height="68.2" fill="#3fb950"><title>ResultsLower  0BDAD1  412B  T4  [menu]</title></rect>
 <rect x="1.5" y="697.7" width="59.0" height="53.5" fill="#3fb950"><title>MenuActorNew  0BB506  324B  T4  [menu]</title></rect>
@@ -231,9 +231,9 @@
 <rect x="111.4" y="553.1" width="48.7" height="47.8" fill="#3fb950"><title>SpeedGauge2Update  7F0BEF  240B  T4  [menu]</title></rect>
 <rect x="160.8" y="553.1" width="48.3" height="47.8" fill="#3fb950"><title>MenuCursorFourWay  02EA53  238B  T4  [menu]</title></rect>
 <rect x="209.7" y="553.1" width="47.1" height="47.8" fill="#3fb950"><title>MenuInitialsStep  0BC385  232B  T4  [menu]</title></rect>
-<rect x="257.4" y="553.1" width="44.2" height="47.8" fill="#3fb950"><title>MenuCourseGraphics  0BF94A  218B  T4  [menu]</title></rect>
+<rect x="257.3" y="553.1" width="44.2" height="47.8" fill="#3fb950"><title>MenuCourseGraphics  0BF94A  218B  T4  [menu]</title></rect>
 <rect x="302.2" y="553.1" width="43.0" height="47.8" fill="#3fb950"><title>MenuPreviewCountdown  0BBD55  212B  T4  [menu]</title></rect>
-<rect x="345.8" y="553.1" width="41.7" height="47.8" fill="#3fb950"><title>MenuDropAwayFinish  0BD07C  206B  T4  [menu]</title></rect>
+<rect x="345.7" y="553.1" width="41.7" height="47.8" fill="#3fb950"><title>MenuDropAwayFinish  0BD07C  206B  T4  [menu]</title></rect>
 <rect x="61.1" y="601.5" width="42.1" height="46.3" fill="#3fb950"><title>MenuSettingsHandler  0BBEEF  201B  T4  [menu]</title></rect>
 <rect x="61.1" y="648.4" width="42.1" height="44.4" fill="#3fb950"><title>MenuCourseScreenSetup  0BFA24  193B  T4  [menu]</title></rect>
 <rect x="61.1" y="693.4" width="42.1" height="42.5" fill="#3fb950"><title>MenuActorUploadFrames  0BCBC3  185B  T4  [menu]</title></rect>
@@ -259,9 +259,9 @@
 <rect x="177.9" y="638.9" width="36.9" height="30.7" fill="#3fb950"><title>ResultsPhaseAnim  0BE14F  118B  T4  [menu]</title></rect>
 <rect x="215.4" y="638.9" width="36.5" height="30.7" fill="#3fb950"><title>MenuDropAway  0BCF27  117B  T4  [menu]</title></rect>
 <rect x="252.5" y="638.9" width="35.0" height="30.7" fill="#3fb950"><title>MenuDropBounce  0BCE19  112B  T4  [menu]</title></rect>
-<rect x="288.1" y="638.9" width="33.1" height="30.7" fill="#3fb950"><title>ResultsOpenBottom  0BD91B  106B  T4  [menu]</title></rect>
+<rect x="288.1" y="638.9" width="33.0" height="30.7" fill="#3fb950"><title>ResultsOpenBottom  0BD91B  106B  T4  [menu]</title></rect>
 <rect x="321.7" y="638.9" width="32.7" height="30.7" fill="#3fb950"><title>ResultsInitials  0BDD1E  105B  T4  [menu]</title></rect>
-<rect x="355.1" y="638.9" width="32.4" height="30.7" fill="#3fb950"><title>MenuModeSelect  0BB952  104B  T4  [menu]</title></rect>
+<rect x="355.0" y="638.9" width="32.4" height="30.7" fill="#3fb950"><title>MenuModeSelect  0BB952  104B  T4  [menu]</title></rect>
 <rect x="140.1" y="670.3" width="32.3" height="30.6" fill="#3fb950"><title>MenuButtonSequence  0BD606  103B  T4  [menu]</title></rect>
 <rect x="140.1" y="701.5" width="32.3" height="29.7" fill="#3fb950"><title>MenuPreviewStart  0BBCF1  100B  T4  [menu]</title></rect>
 <rect x="140.1" y="731.7" width="32.3" height="27.9" fill="#3fb950"><title>ResultsLapTimes  0BDE0B  94B  T4  [menu]</title></rect>
@@ -272,7 +272,7 @@
 <rect x="140.1" y="871.3" width="32.3" height="26.6" fill="#3fb950"><title>MenuActorCopyGroup  0BE1C5  90B  T4  [menu]</title></rect>
 <rect x="173.0" y="670.3" width="27.2" height="28.8" fill="#3fb950"><title>MenuChoiceObjectUpdate  0BCA67  82B  T4  [menu]</title></rect>
 <rect x="200.8" y="670.3" width="27.2" height="28.8" fill="#3fb950"><title>ResultsDigitTiles  0BDE83  82B  T4  [menu]</title></rect>
-<rect x="228.6" y="670.3" width="26.5" height="28.8" fill="#3fb950"><title>MenuPreviewRunFade  0BAFBC  80B  T4  [menu]</title></rect>
+<rect x="228.5" y="670.3" width="26.5" height="28.8" fill="#3fb950"><title>MenuPreviewRunFade  0BAFBC  80B  T4  [menu]</title></rect>
 <rect x="255.6" y="670.3" width="26.5" height="28.8" fill="#3fb950"><title>MenuChoiceUpDown  0BC59F  80B  T4  [menu]</title></rect>
 <rect x="282.7" y="670.3" width="26.5" height="28.8" fill="#3fb950"><title>MenuSlideInDone  0BC8BF  80B  T4  [menu]</title></rect>
 <rect x="309.8" y="670.3" width="26.2" height="28.8" fill="#3fb950"><title>MenuSelectionFramesCycle  0BDF7C  79B  T4  [menu]</title></rect>
@@ -285,28 +285,28 @@
 <rect x="173.0" y="815.9" width="24.5" height="27.6" fill="#3fb950"><title>ResultsWaitButton  0BDA8A  71B  T4  [menu]</title></rect>
 <rect x="173.0" y="844.1" width="24.5" height="26.8" fill="#3fb950"><title>ResultsRise  0BD8B5  69B  T4  [menu]</title></rect>
 <rect x="173.0" y="871.5" width="24.5" height="26.4" fill="#3fb950"><title>MenuActorSetTiles  0BC4E4  68B  T4  [menu]</title></rect>
-<rect x="198.1" y="699.6" width="24.4" height="25.6" fill="#3fb950"><title>MenuChoiceObjectFrames  0BCB81  66B  T4  [menu]</title></rect>
+<rect x="198.0" y="699.6" width="24.4" height="25.6" fill="#3fb950"><title>MenuChoiceObjectFrames  0BCB81  66B  T4  [menu]</title></rect>
 <rect x="223.1" y="699.6" width="24.4" height="25.6" fill="#3fb950"><title>ResultsTimeDigits  0BDCBF  66B  T4  [menu]</title></rect>
 <rect x="248.1" y="699.6" width="23.7" height="25.6" fill="#3fb950"><title>MenuLoadClearGsu  0BD3D8  64B  T4  [menu]</title></rect>
 <rect x="272.4" y="699.6" width="22.5" height="25.6" fill="#3fb950"><title>MenuGaugeFromButtonB  7F11AC  61B  T4  [menu]</title></rect>
 <rect x="295.5" y="699.6" width="22.5" height="25.6" fill="#3fb950"><title>MenuScreen0Run  0BAE0A  61B  T4  [menu]</title></rect>
 <rect x="318.7" y="699.6" width="22.5" height="25.6" fill="#3fb950"><title>MenuSelectConfirm  0BD025  61B  T4  [menu]</title></rect>
 <rect x="341.8" y="699.6" width="22.5" height="25.6" fill="#3fb950"><title>MenuLoadPictureCC78  0BD1F7  61B  T4  [menu]</title></rect>
-<rect x="365.0" y="699.6" width="22.5" height="25.6" fill="#3fb950"><title>ResultsPlace1  0BE01C  61B  T4  [menu]</title></rect>
-<rect x="198.1" y="725.9" width="23.7" height="24.4" fill="#3fb950"><title>ResultsPlace2  0BE05D  61B  T4  [menu]</title></rect>
-<rect x="198.1" y="750.9" width="23.7" height="24.4" fill="#3fb950"><title>ResultsPlace3  0BE09E  61B  T4  [menu]</title></rect>
-<rect x="198.1" y="775.9" width="23.7" height="24.4" fill="#3fb950"><title>MenuActorAnimate  0BE250  61B  T4  [menu]</title></rect>
-<rect x="198.1" y="800.9" width="23.7" height="24.4" fill="#3fb950"><title>PictureCellAttributes  0BEDE7  61B  T4  [menu]</title></rect>
-<rect x="198.1" y="825.9" width="23.7" height="23.6" fill="#3fb950"><title>MenuRowBlinkSettings  0BC4A9  59B  T4  [menu]</title></rect>
-<rect x="198.1" y="850.1" width="23.7" height="23.6" fill="#3fb950"><title>MenuLoadPictureCE78  0BD234  59B  T4  [menu]</title></rect>
-<rect x="198.1" y="874.3" width="23.7" height="23.6" fill="#3fb950"><title>MenuLoadPictureDD8C  0BD2C9  59B  T4  [menu]</title></rect>
+<rect x="364.9" y="699.6" width="22.5" height="25.6" fill="#3fb950"><title>ResultsPlace1  0BE01C  61B  T4  [menu]</title></rect>
+<rect x="198.0" y="725.9" width="23.6" height="24.4" fill="#3fb950"><title>ResultsPlace2  0BE05D  61B  T4  [menu]</title></rect>
+<rect x="198.0" y="750.9" width="23.6" height="24.4" fill="#3fb950"><title>ResultsPlace3  0BE09E  61B  T4  [menu]</title></rect>
+<rect x="198.0" y="775.9" width="23.6" height="24.4" fill="#3fb950"><title>MenuActorAnimate  0BE250  61B  T4  [menu]</title></rect>
+<rect x="198.0" y="800.9" width="23.6" height="24.4" fill="#3fb950"><title>PictureCellAttributes  0BEDE7  61B  T4  [menu]</title></rect>
+<rect x="198.0" y="825.9" width="23.6" height="23.6" fill="#3fb950"><title>MenuRowBlinkSettings  0BC4A9  59B  T4  [menu]</title></rect>
+<rect x="198.0" y="850.1" width="23.6" height="23.6" fill="#3fb950"><title>MenuLoadPictureCE78  0BD234  59B  T4  [menu]</title></rect>
+<rect x="198.0" y="874.3" width="23.6" height="23.6" fill="#3fb950"><title>MenuLoadPictureDD8C  0BD2C9  59B  T4  [menu]</title></rect>
 <rect x="222.3" y="725.9" width="24.4" height="22.9" fill="#3fb950"><title>ResultsPlaceCar  0BD9AF  59B  T4  [menu]</title></rect>
-<rect x="247.3" y="725.9" width="23.9" height="22.9" fill="#3fb950"><title>MenuCrossFadeStep  0BCFAB  58B  T4  [menu]</title></rect>
+<rect x="247.2" y="725.9" width="23.9" height="22.9" fill="#3fb950"><title>MenuCrossFadeStep  0BCFAB  58B  T4  [menu]</title></rect>
 <rect x="271.8" y="725.9" width="23.1" height="22.9" fill="#d29922"><title>GaugeFromSpeed  7F11E9  56B  T2  [menu]</title></rect>
-<rect x="295.5" y="725.9" width="23.1" height="22.9" fill="#3fb950"><title>MenuPreviewIdle  0BBC9A  56B  T4  [menu]</title></rect>
-<rect x="319.2" y="725.9" width="22.7" height="22.9" fill="#d29922"><title>ResultsPlace0  0BDFDB  55B  T2  [menu]</title></rect>
+<rect x="295.4" y="725.9" width="23.1" height="22.9" fill="#3fb950"><title>MenuPreviewIdle  0BBC9A  56B  T4  [menu]</title></rect>
+<rect x="319.1" y="725.9" width="22.7" height="22.9" fill="#d29922"><title>ResultsPlace0  0BDFDB  55B  T2  [menu]</title></rect>
 <rect x="342.4" y="725.9" width="22.2" height="22.9" fill="#3fb950"><title>ChampionScreenRun  0BADD4  54B  T4  [menu]</title></rect>
-<rect x="365.3" y="725.9" width="22.2" height="22.9" fill="#3fb950"><title>MenuInitialsPresses  0BC34F  54B  T4  [menu]</title></rect>
+<rect x="365.2" y="725.9" width="22.2" height="22.9" fill="#3fb950"><title>MenuInitialsPresses  0BC34F  54B  T4  [menu]</title></rect>
 <rect x="222.3" y="749.4" width="23.5" height="21.2" fill="#3fb950"><title>MenuGaugeSlideToTarget  7F1177  53B  T4  [menu]</title></rect>
 <rect x="222.3" y="771.2" width="23.5" height="21.2" fill="#3fb950"><title>MenuSinePosition  0BC9FD  53B  T4  [menu]</title></rect>
 <rect x="222.3" y="793.0" width="23.5" height="21.2" fill="#3fb950"><title>MenuSinePosition7F  0BCA32  53B  T4  [menu]</title></rect>
@@ -328,11 +328,11 @@
 <rect x="246.4" y="858.5" width="20.3" height="19.4" fill="#3fb950"><title>MenuChoicePressesP1  0BC64C  42B  T4  [menu]</title></rect>
 <rect x="246.4" y="878.5" width="20.3" height="19.4" fill="#3fb950"><title>MenuChoicePressesP2  0BC760  42B  T4  [menu]</title></rect>
 <rect x="267.3" y="772.7" width="20.5" height="19.2" fill="#3fb950"><title>ResultsPlaceWait  0BD985  42B  T4  [menu]</title></rect>
-<rect x="288.5" y="772.7" width="20.0" height="19.2" fill="#3fb950"><title>MenuActorsRun  0BB450  41B  T4  [menu]</title></rect>
+<rect x="288.4" y="772.7" width="20.0" height="19.2" fill="#3fb950"><title>MenuActorsRun  0BB450  41B  T4  [menu]</title></rect>
 <rect x="309.1" y="772.7" width="20.0" height="19.2" fill="#3fb950"><title>MenuFadeInHandler  0BC896  41B  T4  [menu]</title></rect>
 <rect x="329.7" y="772.7" width="20.0" height="19.2" fill="#3fb950"><title>MenuScrollReset  0BF4B2  41B  T4  [menu]</title></rect>
 <rect x="350.3" y="772.7" width="18.5" height="19.2" fill="#3fb950"><title>MenuFadeUpHandler  0BC95F  38B  T4  [menu]</title></rect>
-<rect x="369.5" y="772.7" width="18.0" height="19.2" fill="#3fb950"><title>MenuFixedColourDown  0BC90F  37B  T4  [menu]</title></rect>
+<rect x="369.4" y="772.7" width="18.0" height="19.2" fill="#3fb950"><title>MenuFixedColourDown  0BC90F  37B  T4  [menu]</title></rect>
 <rect x="267.3" y="792.4" width="19.6" height="17.7" fill="#3fb950"><title>ResultsCarIndex  0BD9EA  37B  T4  [menu]</title></rect>
 <rect x="267.3" y="810.7" width="19.6" height="17.7" fill="#3fb950"><title>MenuPictureToVram  0BE3D2  37B  T4  [menu]</title></rect>
 <rect x="267.3" y="828.9" width="19.6" height="17.2" fill="#3fb950"><title>MenuSlideInHandler  0BC872  36B  T4  [menu]</title></rect>
@@ -343,8 +343,8 @@
 <rect x="304.5" y="792.4" width="16.4" height="19.3" fill="#3fb950"><title>MenuRunFrames  0BE2E1  34B  T4  [menu]</title></rect>
 <rect x="321.5" y="792.4" width="16.4" height="19.3" fill="#3fb950"><title>MenuActorSpawnList  0BE458  34B  T4  [menu]</title></rect>
 <rect x="338.5" y="792.4" width="15.9" height="19.3" fill="#3fb950"><title>MenuActorFree  0BB4E5  33B  T4  [menu]</title></rect>
-<rect x="355.1" y="792.4" width="15.9" height="19.3" fill="#3fb950"><title>ResultsOpenTop  0BD8FA  33B  T4  [menu]</title></rect>
-<rect x="371.6" y="792.4" width="15.9" height="19.3" fill="#3fb950"><title>ResultsPointsTile  0BE12E  33B  T4  [menu]</title></rect>
+<rect x="355.0" y="792.4" width="15.9" height="19.3" fill="#3fb950"><title>ResultsOpenTop  0BD8FA  33B  T4  [menu]</title></rect>
+<rect x="371.5" y="792.4" width="15.9" height="19.3" fill="#3fb950"><title>ResultsPointsTile  0BE12E  33B  T4  [menu]</title></rect>
 <rect x="287.5" y="812.3" width="17.2" height="17.3" fill="#3fb950"><title>MenuSpritePalettesScale  0BC9DD  32B  T4  [menu]</title></rect>
 <rect x="287.5" y="830.2" width="17.2" height="17.3" fill="#3fb950"><title>ResultsWaitEnd  0BDC9F  32B  T4  [menu]</title></rect>
 <rect x="287.5" y="848.1" width="17.2" height="16.8" fill="#3fb950"><title>MenuWaitFor0357  0BBCD2  31B  T4  [menu]</title></rect>
@@ -353,8 +353,8 @@
 <rect x="305.2" y="812.3" width="17.0" height="15.2" fill="#d29922"><title>MenuHeldRestart  0BAE8F  28B  T2  [menu]</title></rect>
 <rect x="322.8" y="812.3" width="15.7" height="15.2" fill="#3fb950"><title>ResultsBcdPair  0BDE69  26B  T4  [menu]</title></rect>
 <rect x="339.1" y="812.3" width="15.7" height="15.2" fill="#3fb950"><title>ResultsBlankLetters  0BDF61  26B  T4  [menu]</title></rect>
-<rect x="355.5" y="812.3" width="15.7" height="15.2" fill="#3fb950"><title>ResultsPointsPair  0BE114  26B  T4  [menu]</title></rect>
-<rect x="371.8" y="812.3" width="15.7" height="15.2" fill="#3fb950"><title>MenuActorFind  0BE28D  26B  T4  [menu]</title></rect>
+<rect x="355.4" y="812.3" width="15.7" height="15.2" fill="#3fb950"><title>ResultsPointsPair  0BE114  26B  T4  [menu]</title></rect>
+<rect x="371.7" y="812.3" width="15.7" height="15.2" fill="#3fb950"><title>MenuActorFind  0BE28D  26B  T4  [menu]</title></rect>
 <rect x="305.2" y="828.2" width="14.0" height="17.2" fill="#3fb950"><title>MenuPaletteLoad  0BF4DB  26B  T4  [menu]</title></rect>
 <rect x="305.2" y="845.9" width="14.0" height="17.2" fill="#3fb950"><title>MenuPictureDC8CGrid0  0BF6B6  26B  T4  [menu]</title></rect>
 <rect x="305.2" y="863.7" width="14.0" height="17.2" fill="#3fb950"><title>MenuPictureDC8CGrid58  0BF6D0  26B  T4  [menu]</title></rect>
@@ -362,7 +362,7 @@
 <rect x="319.8" y="828.2" width="13.9" height="15.1" fill="#3fb950"><title>MenuActorBlink  0BC576  23B  T4  [menu]</title></rect>
 <rect x="334.3" y="828.2" width="13.9" height="15.1" fill="#3fb950"><title>MenuPaletteSave  0BF4F5  23B  T4  [menu]</title></rect>
 <rect x="348.9" y="828.2" width="12.7" height="15.1" fill="#3fb950"><title>MenuChoiceObject48Start  0BCB28  21B  T4  [menu]</title></rect>
-<rect x="362.2" y="828.2" width="12.7" height="15.1" fill="#3fb950"><title>MenuSelectStart  0BD4AE  21B  T4  [menu]</title></rect>
+<rect x="362.1" y="828.2" width="12.7" height="15.1" fill="#3fb950"><title>MenuSelectStart  0BD4AE  21B  T4  [menu]</title></rect>
 <rect x="375.4" y="828.2" width="12.0" height="15.1" fill="#d29922"><title>MenuRegionCheck  0BAE47  20B  T2  [menu]</title></rect>
 <rect x="319.8" y="843.9" width="13.8" height="13.2" fill="#3fb950"><title>MenuDropAwayCheck  0BD068  20B  T4  [menu]</title></rect>
 <rect x="319.8" y="857.7" width="13.8" height="13.2" fill="#3fb950"><title>ResultsLeaderBlinkResume  0BDA1F  20B  T4  [menu]</title></rect>
@@ -394,247 +394,249 @@
 <rect x="367.9" y="892.6" width="6.1" height="5.3" fill="#3fb950"><title>ResultsPlace0Animate  0BE018  4B  T4  [menu]</title></rect>
 <rect x="374.6" y="886.7" width="6.1" height="5.3" fill="#3fb950"><title>ResultsPlace1Animate  0BE059  4B  T4  [menu]</title></rect>
 <rect x="374.6" y="892.6" width="6.1" height="5.3" fill="#3fb950"><title>ResultsPlace2Animate  0BE09A  4B  T4  [menu]</title></rect>
-<rect x="381.4" y="886.7" width="6.1" height="5.3" fill="#3fb950"><title>ResultsPlace3Animate  0BE0DB  4B  T4  [menu]</title></rect>
-<rect x="381.4" y="892.6" width="2.8" height="2.4" fill="#3fb950"><title>MenuActorIdleC47B  0BC47B  1B  T4  [menu]</title></rect>
-<rect x="381.4" y="895.5" width="2.8" height="2.4" fill="#3fb950"><title>MenuActorIdleCE89  0BCE89  1B  T4  [menu]</title></rect>
+<rect x="381.3" y="886.7" width="6.1" height="5.3" fill="#3fb950"><title>ResultsPlace3Animate  0BE0DB  4B  T4  [menu]</title></rect>
+<rect x="381.3" y="892.6" width="2.8" height="2.4" fill="#3fb950"><title>MenuActorIdleC47B  0BC47B  1B  T4  [menu]</title></rect>
+<rect x="381.3" y="895.5" width="2.8" height="2.4" fill="#3fb950"><title>MenuActorIdleCE89  0BCE89  1B  T4  [menu]</title></rect>
 <rect x="384.7" y="892.6" width="2.8" height="2.4" fill="#3fb950"><title>MenuActorNoStep  0BDF7B  1B  T4  [menu]</title></rect>
 <rect x="384.7" y="895.5" width="2.8" height="2.4" fill="#3fb950"><title>MenuActorNoStepE0DF  0BE0DF  1B  T4  [menu]</title></rect>
 <text x="392.6" y="10.5" font-size="10" fill="#8b949e">object</text>
-<rect x="391.1" y="15.5" width="104.7" height="70.5" fill="#3fb950"><title>CarControlsToRecord  08C60F  752B  T4  [object]</title></rect>
+<rect x="391.1" y="15.5" width="104.8" height="70.5" fill="#3fb950"><title>CarControlsToRecord  08C60F  752B  T4  [object]</title></rect>
 <rect x="496.4" y="15.5" width="82.6" height="70.5" fill="#3fb950"><title>CourseScriptRun  08801C  594B  T4  [object]</title></rect>
 <rect x="579.6" y="15.5" width="61.9" height="70.5" fill="#3fb950"><title>FxCarNew  048CC6  446B  T4  [object]</title></rect>
 <rect x="642.1" y="15.5" width="60.5" height="70.5" fill="#58a6ff"><title>FxParticlesDraw  01BA13  436B  T3  [object]</title></rect>
-<rect x="391.1" y="86.6" width="63.5" height="59.5" fill="#3fb950"><title>ObjectDrawListBuild  7EEF50  387B  T4  [object]</title></rect>
+<rect x="391.1" y="86.6" width="63.6" height="59.5" fill="#3fb950"><title>ObjectDrawListBuild  7EEF50  387B  T4  [object]</title></rect>
 <rect x="455.2" y="86.6" width="58.4" height="59.5" fill="#3fb950"><title>FxCarHit  04BB17  356B  T4  [object]</title></rect>
 <rect x="514.2" y="86.6" width="49.8" height="59.5" fill="#3fb950"><title>FxPushApply  04944C  304B  T4  [object]</title></rect>
 <rect x="564.6" y="86.6" width="47.3" height="59.5" fill="#3fb950"><title>ObjectPoseFromRecord  08C9A9  289B  T4  [object]</title></rect>
 <rect x="612.5" y="86.6" width="45.3" height="59.5" fill="#d29922"><title>FxCarMoveParts  04A4ED  277B  T2  [object]</title></rect>
-<rect x="658.4" y="86.6" width="44.1" height="59.5" fill="#3fb950"><title>ObjectPathCommand  0888D8  270B  T4  [object]</title></rect>
-<rect x="391.1" y="146.6" width="52.8" height="46.7" fill="#58a6ff"><title>ObjectPlaceOnParent  08E798  254B  T3  [object]</title></rect>
-<rect x="444.5" y="146.6" width="52.4" height="46.7" fill="#3fb950"><title>FxContactNote  04A345  252B  T4  [object]</title></rect>
-<rect x="497.5" y="146.6" width="51.8" height="46.7" fill="#3fb950"><title>FxCollidePush  049301  249B  T4  [object]</title></rect>
-<rect x="549.9" y="146.6" width="51.1" height="46.7" fill="#3fb950"><title>FxRecordTouches  04A20B  246B  T4  [object]</title></rect>
-<rect x="601.6" y="146.6" width="51.1" height="46.7" fill="#3fb950"><title>ObjectSpawnFromScript  08826E  246B  T4  [object]</title></rect>
-<rect x="653.3" y="146.6" width="49.2" height="46.7" fill="#3fb950"><title>ObjectLinkedHandlerByState  08B4C6  237B  T4  [object]</title></rect>
-<rect x="391.1" y="193.9" width="43.7" height="50.8" fill="#3fb950"><title>FxRecordsApart  04CA99  229B  T4  [object]</title></rect>
-<rect x="391.1" y="245.3" width="43.7" height="49.5" fill="#3fb950"><title>ObjectFaceTied  02DE45  223B  T4  [object]</title></rect>
-<rect x="391.1" y="295.4" width="43.7" height="46.1" fill="#3fb950"><title>ObjectTrailStart  08E919  208B  T4  [object]</title></rect>
-<rect x="391.1" y="342.1" width="43.7" height="43.6" fill="#3fb950"><title>FxRecordMove  0495BE  197B  T4  [object]</title></rect>
-<rect x="391.1" y="386.3" width="43.7" height="43.4" fill="#3fb950"><title>FxCarAddPart  048E84  196B  T4  [object]</title></rect>
-<rect x="391.1" y="430.3" width="43.7" height="42.7" fill="#3fb950"><title>ObjectAttachedStart  08EBA3  193B  T4  [object]</title></rect>
-<rect x="435.4" y="193.9" width="43.3" height="43.0" fill="#3fb950"><title>FxPoolTake  04893A  192B  T4  [object]</title></rect>
-<rect x="479.3" y="193.9" width="41.0" height="43.0" fill="#3fb950"><title>FxTimersProgram  01BBC7  182B  T4  [object]</title></rect>
-<rect x="520.9" y="193.9" width="38.0" height="43.0" fill="#3fb950"><title>RecordButtonSequence  08C8FF  169B  T4  [object]</title></rect>
-<rect x="559.5" y="193.9" width="37.5" height="43.0" fill="#d29922"><title>ObjectMoveForward  08B34B  167B  T2  [object]</title></rect>
-<rect x="597.6" y="193.9" width="35.0" height="43.0" fill="#3fb950"><title>ObjectSparkleStart  08EA6B  156B  T4  [object]</title></rect>
-<rect x="633.2" y="193.9" width="34.6" height="43.0" fill="#3fb950"><title>FxObjectFree  048A08  154B  T4  [object]</title></rect>
-<rect x="668.4" y="193.9" width="34.1" height="43.0" fill="#3fb950"><title>ObjectBillboardTilt  08BFA4  152B  T4  [object]</title></rect>
-<rect x="435.4" y="237.5" width="34.9" height="40.8" fill="#3fb950"><title>ObjectAttachLinked  088525  148B  T4  [object]</title></rect>
-<rect x="435.4" y="278.9" width="34.9" height="40.3" fill="#3fb950"><title>ObjectStep48To8  09B0A1  146B  T4  [object]</title></rect>
-<rect x="435.4" y="319.8" width="34.9" height="39.7" fill="#3fb950"><title>BucketTriggersFromArea  7EC58D  144B  T4  [object]</title></rect>
-<rect x="435.4" y="360.2" width="34.9" height="38.6" fill="#3fb950"><title>RecordContactSummary  08CF92  140B  T4  [object]</title></rect>
-<rect x="435.4" y="399.4" width="34.9" height="36.9" fill="#3fb950"><title>ObjectNearFocus  08B5FA  134B  T4  [object]</title></rect>
-<rect x="435.4" y="436.9" width="34.9" height="36.1" fill="#3fb950"><title>ViewFromRecord  02DAD6  131B  T4  [object]</title></rect>
-<rect x="471.0" y="237.5" width="34.7" height="36.1" fill="#3fb950"><title>FxCarFromScript  048F48  130B  T4  [object]</title></rect>
-<rect x="506.2" y="237.5" width="33.3" height="36.1" fill="#3fb950"><title>FxPoolsMerge  048898  125B  T4  [object]</title></rect>
-<rect x="540.1" y="237.5" width="33.0" height="36.1" fill="#3fb950"><title>FxSumsPushWorld  0496C3  124B  T4  [object]</title></rect>
-<rect x="573.8" y="237.5" width="33.0" height="36.1" fill="#3fb950"><title>FxSumsPushLocal  04973F  124B  T4  [object]</title></rect>
-<rect x="607.4" y="237.5" width="31.7" height="36.1" fill="#3fb950"><title>ObjectSyncFromRecord  08CE02  119B  T4  [object]</title></rect>
-<rect x="639.7" y="237.5" width="31.7" height="36.1" fill="#3fb950"><title>ObjectSpawnSparklePair  08E9F4  119B  T4  [object]</title></rect>
-<rect x="672.0" y="237.5" width="30.6" height="36.1" fill="#3fb950"><title>FxListSweep  04A462  115B  T4  [object]</title></rect>
-<rect x="471.0" y="274.2" width="31.2" height="35.4" fill="#3fb950"><title>ObjectSpawnPuff  09C37A  115B  T4  [object]</title></rect>
-<rect x="471.0" y="310.2" width="31.2" height="34.5" fill="#3fb950"><title>GsuRecordSet2AHigh  08CD08  112B  T4  [object]</title></rect>
-<rect x="471.0" y="345.2" width="31.2" height="32.6" fill="#3fb950"><title>PlayerControlsFrame  08C5A5  106B  T4  [object]</title></rect>
-<rect x="471.0" y="378.4" width="31.2" height="31.3" fill="#3fb950"><title>FxRecordAlignment  04BCBA  102B  T4  [object]</title></rect>
-<rect x="471.0" y="410.4" width="31.2" height="31.0" fill="#3fb950"><title>FxSumsRotateLocal  0497BB  101B  T4  [object]</title></rect>
-<rect x="471.0" y="442.0" width="31.2" height="31.0" fill="#3fb950"><title>GsuRecordLand  08B402  101B  T4  [object]</title></rect>
-<rect x="502.8" y="274.2" width="30.5" height="30.1" fill="#3fb950"><title>ObjectGroupsActivate  7EF0E1  96B  T4  [object]</title></rect>
-<rect x="502.8" y="304.9" width="30.5" height="29.1" fill="#3fb950"><title>ObjectPlaceFromTable  08B8F9  93B  T4  [object]</title></rect>
-<rect x="502.8" y="334.6" width="30.5" height="28.2" fill="#3fb950"><title>FxSumsApply  049BD2  90B  T4  [object]</title></rect>
-<rect x="502.8" y="363.3" width="30.5" height="27.8" fill="#3fb950"><title>FxCarPose  04B9AC  89B  T4  [object]</title></rect>
-<rect x="502.8" y="391.8" width="30.5" height="26.9" fill="#3fb950"><title>ObjectsRunHandlers  03D388  86B  T4  [object]</title></rect>
-<rect x="502.8" y="419.3" width="30.5" height="26.9" fill="#3fb950"><title>ObjectSpawnAttached  08EB4D  86B  T4  [object]</title></rect>
-<rect x="502.8" y="446.7" width="30.5" height="26.2" fill="#3fb950"><title>ObjectAlloc  03CB5C  84B  T4  [object]</title></rect>
-<rect x="533.9" y="274.2" width="29.6" height="26.7" fill="#3fb950"><title>GsuRecordFromObject  08D86F  83B  T4  [object]</title></rect>
-<rect x="564.1" y="274.2" width="29.2" height="26.7" fill="#3fb950"><title>RecordContactFlags  08D01E  82B  T4  [object]</title></rect>
-<rect x="594.0" y="274.2" width="28.9" height="26.7" fill="#3fb950"><title>RecordNextContact  08CF41  81B  T4  [object]</title></rect>
-<rect x="623.4" y="274.2" width="26.3" height="26.7" fill="#3fb950"><title>ObjectSpawnTrail  08E8CF  74B  T4  [object]</title></rect>
-<rect x="650.4" y="274.2" width="26.0" height="26.7" fill="#3fb950"><title>FxRecordNew422  048B64  73B  T4  [object]</title></rect>
-<rect x="676.9" y="274.2" width="25.6" height="26.7" fill="#3fb950"><title>ObjectSyncToRecord  08CEC3  72B  T4  [object]</title></rect>
-<rect x="533.9" y="301.5" width="27.9" height="24.2" fill="#3fb950"><title>ObjectRecordFlag70Step  08B5B3  71B  T4  [object]</title></rect>
-<rect x="562.4" y="301.5" width="27.9" height="24.2" fill="#3fb950"><title>ObjectVelocityFromRecordOf  08DC6D  71B  T4  [object]</title></rect>
-<rect x="591.0" y="301.5" width="27.5" height="24.2" fill="#3fb950"><title>ObjectLinkEventTrigger  7ED397  70B  T4  [object]</title></rect>
-<rect x="619.1" y="301.5" width="27.5" height="24.2" fill="#3fb950"><title>ObjectLinkEventTrigger2  7ED3DD  70B  T4  [object]</title></rect>
-<rect x="647.3" y="301.5" width="27.5" height="24.2" fill="#3fb950"><title>ObjectSparkleStep  08EB07  70B  T4  [object]</title></rect>
-<rect x="675.4" y="301.5" width="27.1" height="24.2" fill="#3fb950"><title>ObjectPlaceAll  08B8B4  69B  T4  [object]</title></rect>
-<rect x="533.9" y="326.3" width="24.8" height="25.3" fill="#3fb950"><title>ObjectFree  03B8A5  66B  T4  [object]</title></rect>
-<rect x="533.9" y="352.1" width="24.8" height="25.3" fill="#3fb950"><title>GsuRecordStep6A  08B2E9  66B  T4  [object]</title></rect>
-<rect x="533.9" y="378.0" width="24.8" height="24.5" fill="#3fb950"><title>GsuRecordNew426  08CC63  64B  T4  [object]</title></rect>
-<rect x="533.9" y="403.1" width="24.8" height="23.7" fill="#3fb950"><title>ObjectSpawnChanceD460  08D181  62B  T4  [object]</title></rect>
-<rect x="533.9" y="427.4" width="24.8" height="22.9" fill="#3fb950"><title>ObjectVelocityFromRecordScaled  08D5DF  60B  T4  [object]</title></rect>
-<rect x="533.9" y="450.9" width="24.8" height="22.1" fill="#3fb950"><title>BucketTriggersFixedArea  7EC553  58B  T4  [object]</title></rect>
-<rect x="559.3" y="326.3" width="24.4" height="22.5" fill="#3fb950"><title>ObjectRunHandlerB  03CAEB  58B  T4  [object]</title></rect>
-<rect x="584.3" y="326.3" width="23.5" height="22.5" fill="#3fb950"><title>ObjectSet5DByKind  08B48E  56B  T4  [object]</title></rect>
-<rect x="608.4" y="326.3" width="23.5" height="22.5" fill="#3fb950"><title>ObjectCountStep5F  08E760  56B  T4  [object]</title></rect>
-<rect x="632.5" y="326.3" width="23.1" height="22.5" fill="#3fb950"><title>ObjectInit  03CB25  55B  T4  [object]</title></rect>
-<rect x="656.2" y="326.3" width="23.1" height="22.5" fill="#3fb950"><title>ObjectSpawnD460UnlessFlag  08D14A  55B  T4  [object]</title></rect>
-<rect x="679.9" y="326.3" width="22.7" height="22.5" fill="#3fb950"><title>ObjectBucketRemove  088392  54B  T4  [object]</title></rect>
-<rect x="559.3" y="349.4" width="23.8" height="20.6" fill="#3fb950"><title>GsuRecordRaise6A  08B7D6  52B  T4  [object]</title></rect>
-<rect x="559.3" y="370.6" width="23.8" height="20.6" fill="#3fb950"><title>ObjectVelocityFromRecord  08D5AB  52B  T4  [object]</title></rect>
-<rect x="559.3" y="391.7" width="23.8" height="20.2" fill="#3fb950"><title>BucketTriggersFromView  7EC520  51B  T4  [object]</title></rect>
-<rect x="559.3" y="412.5" width="23.8" height="20.2" fill="#3fb950"><title>ObjectRunHandlerA  03CAB8  51B  T4  [object]</title></rect>
-<rect x="559.3" y="433.3" width="23.8" height="19.8" fill="#3fb950"><title>GsuRecordVelocity  08D83D  50B  T4  [object]</title></rect>
-<rect x="559.3" y="453.6" width="23.8" height="19.4" fill="#3fb950"><title>FxRecordNew426  048B33  49B  T4  [object]</title></rect>
-<rect x="583.7" y="349.4" width="23.6" height="19.6" fill="#3fb950"><title>FxRecordNew424  048C0A  49B  T4  [object]</title></rect>
-<rect x="607.9" y="349.4" width="23.6" height="19.6" fill="#3fb950"><title>FxRecordNew42D  048C95  49B  T4  [object]</title></rect>
-<rect x="632.1" y="349.4" width="23.1" height="19.6" fill="#3fb950"><title>ObjectSpawn  03CCBB  48B  T4  [object]</title></rect>
-<rect x="655.8" y="349.4" width="23.1" height="19.6" fill="#3fb950"><title>FxPushesApply  04941C  48B  T4  [object]</title></rect>
-<rect x="679.5" y="349.4" width="23.1" height="19.6" fill="#3fb950"><title>GsuRecordWords88  08B863  48B  T4  [object]</title></rect>
-<rect x="583.7" y="369.6" width="20.9" height="20.7" fill="#3fb950"><title>FxObjectFreeChildren  048AA2  46B  T4  [object]</title></rect>
-<rect x="583.7" y="390.8" width="20.9" height="20.7" fill="#3fb950"><title>ObjectBucketInsert  088364  46B  T4  [object]</title></rect>
-<rect x="583.7" y="412.1" width="20.9" height="20.7" fill="#3fb950"><title>GsuRecordFlag4  08D070  46B  T4  [object]</title></rect>
-<rect x="583.7" y="433.4" width="20.9" height="19.7" fill="#3fb950"><title>ObjectPoolInit  03D3DE  44B  T4  [object]</title></rect>
-<rect x="583.7" y="453.7" width="20.9" height="19.3" fill="#3fb950"><title>ObjectCallHandler  08AB46  43B  T4  [object]</title></rect>
-<rect x="605.3" y="369.6" width="19.9" height="19.8" fill="#3fb950"><title>FxRecordHoldY  04BC7B  42B  T4  [object]</title></rect>
-<rect x="625.7" y="369.6" width="19.4" height="19.8" fill="#3fb950"><title>GsuRecordBits60  09FBB2  41B  T4  [object]</title></rect>
-<rect x="645.7" y="369.6" width="19.4" height="19.8" fill="#3fb950"><title>ObjectLinkFlag4000Step  7F12AC  41B  T4  [object]</title></rect>
-<rect x="665.6" y="369.6" width="18.4" height="19.8" fill="#3fb950"><title>ObjectListAppend  08B75B  39B  T4  [object]</title></rect>
-<rect x="684.6" y="369.6" width="17.9" height="19.8" fill="#3fb950"><title>GsuRecordLower82  08B80A  38B  T4  [object]</title></rect>
-<rect x="605.3" y="390.0" width="16.5" height="20.9" fill="#3fb950"><title>GsuRecordWord58  08E401  37B  T4  [object]</title></rect>
-<rect x="605.3" y="411.5" width="16.5" height="20.3" fill="#3fb950"><title>FxPushSet  049683  36B  T4  [object]</title></rect>
-<rect x="605.3" y="432.4" width="16.5" height="20.3" fill="#3fb950"><title>FxRecordRaise6A  04BF51  36B  T4  [object]</title></rect>
-<rect x="605.3" y="453.3" width="16.5" height="19.7" fill="#3fb950"><title>ObjectApplyVelocity  03C06C  35B  T4  [object]</title></rect>
-<rect x="622.4" y="390.0" width="17.1" height="19.1" fill="#3fb950"><title>FxRecordLower82  04BF75  35B  T4  [object]</title></rect>
-<rect x="640.1" y="390.0" width="16.0" height="19.1" fill="#3fb950"><title>FxListClearBit0  04A441  33B  T4  [object]</title></rect>
-<rect x="656.7" y="390.0" width="15.0" height="19.1" fill="#3fb950"><title>FxAllTouches  04A1EC  31B  T4  [object]</title></rect>
-<rect x="672.4" y="390.0" width="15.0" height="19.1" fill="#3fb950"><title>GsuRecordPosition  08CCD2  31B  T4  [object]</title></rect>
-<rect x="688.0" y="390.0" width="14.5" height="19.1" fill="#3fb950"><title>FxBearingTo  04CBE8  30B  T4  [object]</title></rect>
-<rect x="622.4" y="409.7" width="16.4" height="15.8" fill="#3fb950"><title>FxSumsClear  0496A7  28B  T4  [object]</title></rect>
-<rect x="622.4" y="426.1" width="16.4" height="15.8" fill="#3fb950"><title>ObjectRebucket  0883CC  28B  T4  [object]</title></rect>
-<rect x="622.4" y="442.5" width="16.4" height="15.2" fill="#3fb950"><title>GsuRecordFlag10  08CCA3  27B  T4  [object]</title></rect>
-<rect x="622.4" y="458.4" width="16.4" height="14.6" fill="#3fb950"><title>ObjectTableC056  08C03C  26B  T4  [object]</title></rect>
-<rect x="639.4" y="409.7" width="15.6" height="15.3" fill="#3fb950"><title>GsuRecordNew422  08CB98  26B  T4  [object]</title></rect>
-<rect x="655.7" y="409.7" width="15.6" height="15.3" fill="#3fb950"><title>GsuRecordNew42D  08CBB2  26B  T4  [object]</title></rect>
-<rect x="671.9" y="409.7" width="15.0" height="15.3" fill="#3fb950"><title>GsuRecordNew424  08CBE6  25B  T4  [object]</title></rect>
-<rect x="687.5" y="409.7" width="15.0" height="15.3" fill="#3fb950"><title>GsuRecordNew424Alt  08CC18  25B  T4  [object]</title></rect>
-<rect x="639.4" y="425.7" width="14.1" height="16.3" fill="#3fb950"><title>ObjectTableE8AF  08E896  25B  T4  [object]</title></rect>
-<rect x="639.4" y="442.5" width="14.1" height="14.9" fill="#3fb950"><title>ObjectCopyPositionTo  03D1E6  23B  T4  [object]</title></rect>
-<rect x="639.4" y="458.1" width="14.1" height="14.9" fill="#3fb950"><title>ObjectCopyPositionFrom  03D1FD  23B  T4  [object]</title></rect>
-<rect x="654.1" y="425.7" width="13.3" height="15.9" fill="#3fb950"><title>GsuRecordSetFlags  08CCF1  23B  T4  [object]</title></rect>
-<rect x="654.1" y="442.1" width="13.3" height="15.1" fill="#3fb950"><title>ObjectFlag40IfMatch  08B830  22B  T4  [object]</title></rect>
-<rect x="654.1" y="457.8" width="13.3" height="15.1" fill="#3fb950"><title>ObjectAdvance5DIfFlag  08F911  22B  T4  [object]</title></rect>
-<rect x="668.1" y="425.7" width="11.5" height="15.9" fill="#3fb950"><title>GsuRecordMode2  08CCBE  20B  T4  [object]</title></rect>
-<rect x="680.2" y="425.7" width="10.9" height="15.9" fill="#3fb950"><title>ObjectCopy14To  03D214  19B  T4  [object]</title></rect>
-<rect x="691.6" y="425.7" width="10.9" height="15.9" fill="#3fb950"><title>ObjectCopy14From  03D227  19B  T4  [object]</title></rect>
-<rect x="668.1" y="442.1" width="10.8" height="16.0" fill="#3fb950"><title>GsuRecordWord88  08E3EE  19B  T4  [object]</title></rect>
-<rect x="668.1" y="458.7" width="10.8" height="14.3" fill="#58a6ff"><title>ObjectPathStart  0888C7  17B  T3  [object]</title></rect>
-<rect x="679.4" y="442.1" width="11.6" height="12.4" fill="#3fb950"><title>ObjectTurnFromRecord  08BF94  16B  T4  [object]</title></rect>
-<rect x="691.7" y="442.1" width="10.9" height="12.4" fill="#3fb950"><title>ObjectRelease  03CCA1  15B  T4  [object]</title></rect>
-<rect x="679.4" y="455.1" width="11.8" height="9.0" fill="#3fb950"><title>ObjectLinkedSet1A  0389A8  12B  T4  [object]</title></rect>
-<rect x="679.4" y="464.8" width="11.8" height="8.2" fill="#3fb950"><title>ObjectReleaseY  03CCB0  11B  T4  [object]</title></rect>
-<rect x="691.8" y="455.1" width="10.7" height="8.2" fill="#3fb950"><title>FxPoolsMergeProgram  04888E  10B  T4  [object]</title></rect>
-<rect x="691.8" y="463.9" width="6.6" height="9.1" fill="#3fb950"><title>ObjectReleaseLong  08F927  7B  T4  [object]</title></rect>
-<rect x="699.0" y="463.9" width="3.5" height="9.1" fill="#3fb950"><title>ObjectFreeLong  03B8A1  4B  T4  [object]</title></rect>
-<text x="392.6" y="485.6" font-size="10" fill="#8b949e">bank 08 S-CPU</text>
-<rect x="391.1" y="490.6" width="167.5" height="113.5" fill="#c8ccd2"><title>(unnamed)  08A034  1937B  T1  [bank 08 S-CPU]</title></rect>
-<rect x="559.2" y="490.6" width="143.3" height="113.5" fill="#c8ccd2"><title>(unnamed)  08DCB4  1658B  T1  [bank 08 S-CPU]</title></rect>
-<rect x="391.1" y="604.7" width="122.8" height="101.8" fill="#c8ccd2"><title>(unnamed)  089A4F  1275B  T1  [bank 08 S-CPU]</title></rect>
-<rect x="391.1" y="707.1" width="122.8" height="100.4" fill="#c8ccd2"><title>(unnamed)  08AB71  1258B  T1  [bank 08 S-CPU]</title></rect>
-<rect x="391.1" y="808.1" width="122.8" height="89.8" fill="#c8ccd2"><title>(unnamed)  08C124  1126B  T1  [bank 08 S-CPU]</title></rect>
-<rect x="514.5" y="604.7" width="101.9" height="103.8" fill="#c8ccd2"><title>(unnamed)  08EC9C  1080B  T1  [bank 08 S-CPU]</title></rect>
-<rect x="617.0" y="604.7" width="85.6" height="103.8" fill="#c8ccd2"><title>(unnamed)  0889E6  908B  T1  [bank 08 S-CPU]</title></rect>
-<rect x="514.5" y="709.2" width="95.2" height="77.6" fill="#c8ccd2"><title>(unnamed)  08D1BF  756B  T1  [bank 08 S-CPU]</title></rect>
-<rect x="610.3" y="709.2" width="92.2" height="77.6" fill="#c8ccd2"><title>(unnamed)  088F03  732B  T1  [bank 08 S-CPU]</title></rect>
-<rect x="514.5" y="787.3" width="61.7" height="110.6" fill="#c8ccd2"><title>(unnamed)  08BA57  699B  T1  [bank 08 S-CPU]</title></rect>
-<rect x="576.8" y="787.3" width="85.7" height="63.9" fill="#c8ccd2"><title>(unnamed)  08BD22  562B  T1  [bank 08 S-CPU]</title></rect>
-<rect x="576.8" y="851.8" width="85.7" height="46.1" fill="#c8ccd2"><title>(unnamed)  08E426  407B  T1  [bank 08 S-CPU]</title></rect>
-<rect x="663.1" y="787.3" width="39.4" height="41.5" fill="#c8ccd2"><title>(unnamed)  08B1E5  170B  T1  [bank 08 S-CPU]</title></rect>
-<rect x="663.1" y="829.4" width="39.4" height="35.8" fill="#c8ccd2"><title>(unnamed)  08958F  147B  T1  [bank 08 S-CPU]</title></rect>
-<rect x="663.1" y="865.8" width="39.4" height="32.1" fill="#c8ccd2"><title>(unnamed)  08B956  132B  T1  [bank 08 S-CPU]</title></rect>
-<text x="707.6" y="10.5" font-size="10" fill="#8b949e">race</text>
-<rect x="706.1" y="15.5" width="94.4" height="74.0" fill="#3fb950"><title>CameraFollowStep  02DB71  724B  T4  [race]</title></rect>
-<rect x="801.1" y="15.5" width="74.0" height="74.0" fill="#3fb950"><title>RaceLoad  03F0E6  569B  T4  [race]</title></rect>
+<rect x="658.5" y="86.6" width="44.2" height="59.5" fill="#3fb950"><title>ObjectPathCommand  0888D8  270B  T4  [object]</title></rect>
+<rect x="391.1" y="146.7" width="52.8" height="46.7" fill="#58a6ff"><title>ObjectPlaceOnParent  08E798  254B  T3  [object]</title></rect>
+<rect x="444.5" y="146.7" width="52.4" height="46.7" fill="#3fb950"><title>FxContactNote  04A345  252B  T4  [object]</title></rect>
+<rect x="497.5" y="146.7" width="51.8" height="46.7" fill="#3fb950"><title>FxCollidePush  049301  249B  T4  [object]</title></rect>
+<rect x="549.9" y="146.7" width="51.1" height="46.7" fill="#3fb950"><title>FxRecordTouches  04A20B  246B  T4  [object]</title></rect>
+<rect x="601.6" y="146.7" width="51.1" height="46.7" fill="#3fb950"><title>ObjectSpawnFromScript  08826E  246B  T4  [object]</title></rect>
+<rect x="653.4" y="146.7" width="49.3" height="46.7" fill="#3fb950"><title>ObjectLinkedHandlerByState  08B4C6  237B  T4  [object]</title></rect>
+<rect x="391.1" y="194.0" width="42.2" height="52.6" fill="#3fb950"><title>FxRecordsApart  04CA99  229B  T4  [object]</title></rect>
+<rect x="391.1" y="247.2" width="42.2" height="51.3" fill="#3fb950"><title>ObjectFaceTied  02DE45  223B  T4  [object]</title></rect>
+<rect x="391.1" y="299.1" width="42.2" height="47.8" fill="#3fb950"><title>ObjectTrailStart  08E919  208B  T4  [object]</title></rect>
+<rect x="391.1" y="347.5" width="42.2" height="45.2" fill="#3fb950"><title>FxRecordMove  0495BE  197B  T4  [object]</title></rect>
+<rect x="391.1" y="393.3" width="42.2" height="45.0" fill="#3fb950"><title>FxCarAddPart  048E84  196B  T4  [object]</title></rect>
+<rect x="391.1" y="438.8" width="42.2" height="44.3" fill="#3fb950"><title>ObjectAttachedStart  08EBA3  193B  T4  [object]</title></rect>
+<rect x="433.9" y="194.0" width="43.4" height="42.8" fill="#3fb950"><title>FxPoolTake  04893A  192B  T4  [object]</title></rect>
+<rect x="477.9" y="194.0" width="41.2" height="42.8" fill="#3fb950"><title>FxTimersProgram  01BBC7  182B  T4  [object]</title></rect>
+<rect x="519.7" y="194.0" width="38.2" height="42.8" fill="#3fb950"><title>RecordButtonSequence  08C8FF  169B  T4  [object]</title></rect>
+<rect x="558.5" y="194.0" width="37.7" height="42.8" fill="#d29922"><title>ObjectMoveForward  08B34B  167B  T2  [object]</title></rect>
+<rect x="596.8" y="194.0" width="35.2" height="42.8" fill="#3fb950"><title>ObjectSparkleStart  08EA6B  156B  T4  [object]</title></rect>
+<rect x="632.6" y="194.0" width="34.7" height="42.8" fill="#3fb950"><title>FxObjectFree  048A08  154B  T4  [object]</title></rect>
+<rect x="667.9" y="194.0" width="34.7" height="42.8" fill="#3fb950"><title>ObjectCarSpawnPlace  08B1FC  154B  T4  [object]</title></rect>
+<rect x="433.9" y="237.4" width="34.3" height="42.7" fill="#3fb950"><title>ObjectBillboardTilt  08BFA4  152B  T4  [object]</title></rect>
+<rect x="433.9" y="280.7" width="34.3" height="41.6" fill="#3fb950"><title>ObjectAttachLinked  088525  148B  T4  [object]</title></rect>
+<rect x="433.9" y="322.9" width="34.3" height="41.0" fill="#3fb950"><title>ObjectStep48To8  09B0A1  146B  T4  [object]</title></rect>
+<rect x="433.9" y="364.6" width="34.3" height="40.5" fill="#3fb950"><title>BucketTriggersFromArea  7EC58D  144B  T4  [object]</title></rect>
+<rect x="433.9" y="405.6" width="34.3" height="39.3" fill="#3fb950"><title>RecordContactSummary  08CF92  140B  T4  [object]</title></rect>
+<rect x="433.9" y="445.5" width="34.3" height="37.6" fill="#3fb950"><title>ObjectNearFocus  08B5FA  134B  T4  [object]</title></rect>
+<rect x="468.8" y="237.4" width="34.6" height="36.4" fill="#3fb950"><title>ViewFromRecord  02DAD6  131B  T4  [object]</title></rect>
+<rect x="504.0" y="237.4" width="34.3" height="36.4" fill="#3fb950"><title>FxCarFromScript  048F48  130B  T4  [object]</title></rect>
+<rect x="539.0" y="237.4" width="33.0" height="36.4" fill="#3fb950"><title>FxPoolsMerge  048898  125B  T4  [object]</title></rect>
+<rect x="572.6" y="237.4" width="32.7" height="36.4" fill="#3fb950"><title>FxSumsPushWorld  0496C3  124B  T4  [object]</title></rect>
+<rect x="605.9" y="237.4" width="32.7" height="36.4" fill="#3fb950"><title>FxSumsPushLocal  04973F  124B  T4  [object]</title></rect>
+<rect x="639.2" y="237.4" width="31.4" height="36.4" fill="#3fb950"><title>ObjectSyncFromRecord  08CE02  119B  T4  [object]</title></rect>
+<rect x="671.2" y="237.4" width="31.4" height="36.4" fill="#3fb950"><title>ObjectSpawnSparklePair  08E9F4  119B  T4  [object]</title></rect>
+<rect x="468.8" y="274.5" width="30.4" height="36.4" fill="#3fb950"><title>FxListSweep  04A462  115B  T4  [object]</title></rect>
+<rect x="468.8" y="311.4" width="30.4" height="36.4" fill="#3fb950"><title>ObjectSpawnPuff  09C37A  115B  T4  [object]</title></rect>
+<rect x="468.8" y="348.4" width="30.4" height="35.4" fill="#3fb950"><title>GsuRecordSet2AHigh  08CD08  112B  T4  [object]</title></rect>
+<rect x="468.8" y="384.4" width="30.4" height="33.5" fill="#3fb950"><title>PlayerControlsFrame  08C5A5  106B  T4  [object]</title></rect>
+<rect x="468.8" y="418.5" width="30.4" height="32.2" fill="#3fb950"><title>FxRecordAlignment  04BCBA  102B  T4  [object]</title></rect>
+<rect x="468.8" y="451.2" width="30.4" height="31.9" fill="#3fb950"><title>FxSumsRotateLocal  0497BB  101B  T4  [object]</title></rect>
+<rect x="499.8" y="274.5" width="31.5" height="30.8" fill="#3fb950"><title>GsuRecordLand  08B402  101B  T4  [object]</title></rect>
+<rect x="531.9" y="274.5" width="29.9" height="30.8" fill="#3fb950"><title>ObjectGroupsActivate  7EF0E1  96B  T4  [object]</title></rect>
+<rect x="562.3" y="274.5" width="28.9" height="30.8" fill="#3fb950"><title>ObjectPlaceFromTable  08B8F9  93B  T4  [object]</title></rect>
+<rect x="591.8" y="274.5" width="28.0" height="30.8" fill="#3fb950"><title>FxSumsApply  049BD2  90B  T4  [object]</title></rect>
+<rect x="620.4" y="274.5" width="27.6" height="30.8" fill="#3fb950"><title>FxCarPose  04B9AC  89B  T4  [object]</title></rect>
+<rect x="648.6" y="274.5" width="26.7" height="30.8" fill="#3fb950"><title>ObjectsRunHandlers  03D388  86B  T4  [object]</title></rect>
+<rect x="675.9" y="274.5" width="26.7" height="30.8" fill="#3fb950"><title>ObjectSpawnAttached  08EB4D  86B  T4  [object]</title></rect>
+<rect x="499.8" y="305.8" width="26.1" height="30.7" fill="#3fb950"><title>ObjectAlloc  03CB5C  84B  T4  [object]</title></rect>
+<rect x="499.8" y="337.2" width="26.1" height="30.4" fill="#3fb950"><title>GsuRecordFromObject  08D86F  83B  T4  [object]</title></rect>
+<rect x="499.8" y="368.1" width="26.1" height="30.0" fill="#3fb950"><title>RecordContactFlags  08D01E  82B  T4  [object]</title></rect>
+<rect x="499.8" y="398.7" width="26.1" height="29.6" fill="#3fb950"><title>RecordNextContact  08CF41  81B  T4  [object]</title></rect>
+<rect x="499.8" y="428.9" width="26.1" height="27.0" fill="#3fb950"><title>ObjectSpawnTrail  08E8CF  74B  T4  [object]</title></rect>
+<rect x="499.8" y="456.5" width="26.1" height="26.6" fill="#3fb950"><title>FxRecordNew422  048B64  73B  T4  [object]</title></rect>
+<rect x="526.5" y="305.8" width="25.2" height="27.2" fill="#3fb950"><title>ObjectSyncToRecord  08CEC3  72B  T4  [object]</title></rect>
+<rect x="552.3" y="305.8" width="24.8" height="27.2" fill="#3fb950"><title>ObjectRecordFlag70Step  08B5B3  71B  T4  [object]</title></rect>
+<rect x="577.8" y="305.8" width="24.8" height="27.2" fill="#3fb950"><title>ObjectVelocityFromRecordOf  08DC6D  71B  T4  [object]</title></rect>
+<rect x="603.2" y="305.8" width="24.5" height="27.2" fill="#3fb950"><title>ObjectLinkEventTrigger  7ED397  70B  T4  [object]</title></rect>
+<rect x="628.3" y="305.8" width="24.5" height="27.2" fill="#3fb950"><title>ObjectLinkEventTrigger2  7ED3DD  70B  T4  [object]</title></rect>
+<rect x="653.4" y="305.8" width="24.5" height="27.2" fill="#3fb950"><title>ObjectSparkleStep  08EB07  70B  T4  [object]</title></rect>
+<rect x="678.5" y="305.8" width="24.1" height="27.2" fill="#3fb950"><title>ObjectPlaceAll  08B8B4  69B  T4  [object]</title></rect>
+<rect x="526.5" y="333.6" width="25.5" height="25.4" fill="#3fb950"><title>ObjectCarRecordNew  08B956  68B  T4  [object]</title></rect>
+<rect x="526.5" y="359.6" width="25.5" height="25.0" fill="#3fb950"><title>ObjectCarRecordTake  08B99A  67B  T4  [object]</title></rect>
+<rect x="526.5" y="385.2" width="25.5" height="24.6" fill="#3fb950"><title>ObjectFree  03B8A5  66B  T4  [object]</title></rect>
+<rect x="526.5" y="410.4" width="25.5" height="24.6" fill="#3fb950"><title>GsuRecordStep6A  08B2E9  66B  T4  [object]</title></rect>
+<rect x="526.5" y="435.6" width="25.5" height="23.8" fill="#3fb950"><title>GsuRecordNew426  08CC63  64B  T4  [object]</title></rect>
+<rect x="526.5" y="460.0" width="25.5" height="23.1" fill="#3fb950"><title>ObjectSpawnChanceD460  08D181  62B  T4  [object]</title></rect>
+<rect x="552.6" y="333.6" width="22.2" height="25.7" fill="#3fb950"><title>ObjectVelocityFromRecordScaled  08D5DF  60B  T4  [object]</title></rect>
+<rect x="552.6" y="359.9" width="22.2" height="24.8" fill="#3fb950"><title>BucketTriggersFixedArea  7EC553  58B  T4  [object]</title></rect>
+<rect x="552.6" y="385.3" width="22.2" height="24.8" fill="#3fb950"><title>ObjectRunHandlerB  03CAEB  58B  T4  [object]</title></rect>
+<rect x="552.6" y="410.6" width="22.2" height="23.9" fill="#3fb950"><title>ObjectSet5DByKind  08B48E  56B  T4  [object]</title></rect>
+<rect x="552.6" y="435.1" width="22.2" height="23.9" fill="#3fb950"><title>ObjectCountStep5F  08E760  56B  T4  [object]</title></rect>
+<rect x="552.6" y="459.6" width="22.2" height="23.5" fill="#3fb950"><title>ObjectInit  03CB25  55B  T4  [object]</title></rect>
+<rect x="575.4" y="333.6" width="21.7" height="23.9" fill="#3fb950"><title>ObjectSpawnD460UnlessFlag  08D14A  55B  T4  [object]</title></rect>
+<rect x="597.7" y="333.6" width="21.3" height="23.9" fill="#3fb950"><title>ObjectBucketRemove  088392  54B  T4  [object]</title></rect>
+<rect x="619.6" y="333.6" width="20.5" height="23.9" fill="#3fb950"><title>GsuRecordRaise6A  08B7D6  52B  T4  [object]</title></rect>
+<rect x="640.7" y="333.6" width="20.5" height="23.9" fill="#3fb950"><title>ObjectVelocityFromRecord  08D5AB  52B  T4  [object]</title></rect>
+<rect x="661.8" y="333.6" width="20.1" height="23.9" fill="#3fb950"><title>BucketTriggersFromView  7EC520  51B  T4  [object]</title></rect>
+<rect x="682.5" y="333.6" width="20.1" height="23.9" fill="#3fb950"><title>ObjectRunHandlerA  03CAB8  51B  T4  [object]</title></rect>
+<rect x="575.4" y="358.2" width="22.6" height="20.8" fill="#3fb950"><title>GsuRecordVelocity  08D83D  50B  T4  [object]</title></rect>
+<rect x="575.4" y="379.6" width="22.6" height="20.4" fill="#3fb950"><title>FxRecordNew426  048B33  49B  T4  [object]</title></rect>
+<rect x="575.4" y="400.6" width="22.6" height="20.4" fill="#3fb950"><title>FxRecordNew424  048C0A  49B  T4  [object]</title></rect>
+<rect x="575.4" y="421.6" width="22.6" height="20.4" fill="#3fb950"><title>FxRecordNew42D  048C95  49B  T4  [object]</title></rect>
+<rect x="575.4" y="442.6" width="22.6" height="20.0" fill="#3fb950"><title>ObjectSpawn  03CCBB  48B  T4  [object]</title></rect>
+<rect x="575.4" y="463.1" width="22.6" height="20.0" fill="#3fb950"><title>FxPushesApply  04941C  48B  T4  [object]</title></rect>
+<rect x="598.6" y="358.2" width="21.2" height="21.3" fill="#3fb950"><title>GsuRecordWords88  08B863  48B  T4  [object]</title></rect>
+<rect x="620.4" y="358.2" width="20.3" height="21.3" fill="#3fb950"><title>FxObjectFreeChildren  048AA2  46B  T4  [object]</title></rect>
+<rect x="641.3" y="358.2" width="20.3" height="21.3" fill="#3fb950"><title>ObjectBucketInsert  088364  46B  T4  [object]</title></rect>
+<rect x="662.3" y="358.2" width="20.3" height="21.3" fill="#3fb950"><title>GsuRecordFlag4  08D070  46B  T4  [object]</title></rect>
+<rect x="683.2" y="358.2" width="19.4" height="21.3" fill="#3fb950"><title>ObjectPoolInit  03D3DE  44B  T4  [object]</title></rect>
+<rect x="598.6" y="380.1" width="19.2" height="21.0" fill="#3fb950"><title>ObjectCallHandler  08AB46  43B  T4  [object]</title></rect>
+<rect x="598.6" y="401.7" width="19.2" height="20.5" fill="#3fb950"><title>FxRecordHoldY  04BC7B  42B  T4  [object]</title></rect>
+<rect x="598.6" y="422.8" width="19.2" height="20.0" fill="#3fb950"><title>GsuRecordBits60  09FBB2  41B  T4  [object]</title></rect>
+<rect x="598.6" y="443.5" width="19.2" height="20.0" fill="#3fb950"><title>ObjectLinkFlag4000Step  7F12AC  41B  T4  [object]</title></rect>
+<rect x="598.6" y="464.1" width="19.2" height="19.0" fill="#3fb950"><title>ObjectListAppend  08B75B  39B  T4  [object]</title></rect>
+<rect x="618.4" y="380.1" width="21.3" height="16.7" fill="#3fb950"><title>GsuRecordLower82  08B80A  38B  T4  [object]</title></rect>
+<rect x="640.3" y="380.1" width="20.8" height="16.7" fill="#3fb950"><title>GsuRecordWord58  08E401  37B  T4  [object]</title></rect>
+<rect x="661.7" y="380.1" width="20.2" height="16.7" fill="#3fb950"><title>FxPushSet  049683  36B  T4  [object]</title></rect>
+<rect x="682.4" y="380.1" width="20.2" height="16.7" fill="#3fb950"><title>FxRecordRaise6A  04BF51  36B  T4  [object]</title></rect>
+<rect x="618.4" y="397.3" width="17.4" height="18.8" fill="#3fb950"><title>ObjectApplyVelocity  03C06C  35B  T4  [object]</title></rect>
+<rect x="636.4" y="397.3" width="17.4" height="18.8" fill="#3fb950"><title>FxRecordLower82  04BF75  35B  T4  [object]</title></rect>
+<rect x="654.4" y="397.3" width="16.4" height="18.8" fill="#3fb950"><title>FxListClearBit0  04A441  33B  T4  [object]</title></rect>
+<rect x="671.3" y="397.3" width="15.3" height="18.8" fill="#3fb950"><title>FxAllTouches  04A1EC  31B  T4  [object]</title></rect>
+<rect x="687.3" y="397.3" width="15.3" height="18.8" fill="#3fb950"><title>GsuRecordPosition  08CCD2  31B  T4  [object]</title></rect>
+<rect x="618.4" y="416.7" width="16.2" height="17.2" fill="#3fb950"><title>FxBearingTo  04CBE8  30B  T4  [object]</title></rect>
+<rect x="618.4" y="434.5" width="16.2" height="16.0" fill="#3fb950"><title>FxSumsClear  0496A7  28B  T4  [object]</title></rect>
+<rect x="618.4" y="451.1" width="16.2" height="16.0" fill="#3fb950"><title>ObjectRebucket  0883CC  28B  T4  [object]</title></rect>
+<rect x="618.4" y="467.7" width="16.2" height="15.4" fill="#3fb950"><title>GsuRecordFlag10  08CCA3  27B  T4  [object]</title></rect>
+<rect x="635.2" y="416.7" width="14.7" height="16.3" fill="#3fb950"><title>ObjectTableC056  08C03C  26B  T4  [object]</title></rect>
+<rect x="635.2" y="433.6" width="14.7" height="16.3" fill="#3fb950"><title>GsuRecordNew422  08CB98  26B  T4  [object]</title></rect>
+<rect x="635.2" y="450.5" width="14.7" height="16.3" fill="#3fb950"><title>GsuRecordNew42D  08CBB2  26B  T4  [object]</title></rect>
+<rect x="635.2" y="467.4" width="14.7" height="15.7" fill="#3fb950"><title>GsuRecordNew424  08CBE6  25B  T4  [object]</title></rect>
+<rect x="650.5" y="416.7" width="17.5" height="13.2" fill="#3fb950"><title>GsuRecordNew424Alt  08CC18  25B  T4  [object]</title></rect>
+<rect x="668.5" y="416.7" width="17.5" height="13.2" fill="#3fb950"><title>ObjectTableE8AF  08E896  25B  T4  [object]</title></rect>
+<rect x="686.6" y="416.7" width="16.0" height="13.2" fill="#3fb950"><title>ObjectCopyPositionTo  03D1E6  23B  T4  [object]</title></rect>
+<rect x="650.5" y="430.5" width="12.7" height="16.6" fill="#3fb950"><title>ObjectCopyPositionFrom  03D1FD  23B  T4  [object]</title></rect>
+<rect x="663.8" y="430.5" width="12.7" height="16.6" fill="#3fb950"><title>ObjectCarSpawn  08B1E5  23B  T4  [object]</title></rect>
+<rect x="677.1" y="430.5" width="12.7" height="16.6" fill="#3fb950"><title>GsuRecordSetFlags  08CCF1  23B  T4  [object]</title></rect>
+<rect x="690.5" y="430.5" width="12.2" height="16.6" fill="#3fb950"><title>ObjectFlag40IfMatch  08B830  22B  T4  [object]</title></rect>
+<rect x="650.5" y="447.6" width="16.2" height="12.4" fill="#3fb950"><title>ObjectAdvance5DIfFlag  08F911  22B  T4  [object]</title></rect>
+<rect x="650.5" y="460.7" width="16.2" height="11.2" fill="#3fb950"><title>GsuRecordMode2  08CCBE  20B  T4  [object]</title></rect>
+<rect x="650.5" y="472.5" width="16.2" height="10.6" fill="#3fb950"><title>ObjectCopy14To  03D214  19B  T4  [object]</title></rect>
+<rect x="667.3" y="447.6" width="11.8" height="14.7" fill="#3fb950"><title>ObjectCopy14From  03D227  19B  T4  [object]</title></rect>
+<rect x="679.7" y="447.6" width="11.8" height="14.7" fill="#3fb950"><title>GsuRecordWord88  08E3EE  19B  T4  [object]</title></rect>
+<rect x="692.1" y="447.6" width="10.5" height="14.7" fill="#58a6ff"><title>ObjectPathStart  0888C7  17B  T3  [object]</title></rect>
+<rect x="667.3" y="462.9" width="14.2" height="10.1" fill="#3fb950"><title>ObjectTurnFromRecord  08BF94  16B  T4  [object]</title></rect>
+<rect x="667.3" y="473.6" width="14.2" height="9.5" fill="#3fb950"><title>ObjectRelease  03CCA1  15B  T4  [object]</title></rect>
+<rect x="682.2" y="462.9" width="10.4" height="10.3" fill="#3fb950"><title>ObjectLinkedSet1A  0389A8  12B  T4  [object]</title></rect>
+<rect x="682.2" y="473.8" width="10.4" height="9.4" fill="#3fb950"><title>ObjectReleaseY  03CCB0  11B  T4  [object]</title></rect>
+<rect x="693.2" y="462.9" width="9.5" height="9.3" fill="#3fb950"><title>FxPoolsMergeProgram  04888E  10B  T4  [object]</title></rect>
+<rect x="693.2" y="472.8" width="9.5" height="6.3" fill="#3fb950"><title>ObjectReleaseLong  08F927  7B  T4  [object]</title></rect>
+<rect x="693.2" y="479.7" width="9.5" height="3.4" fill="#3fb950"><title>ObjectFreeLong  03B8A1  4B  T4  [object]</title></rect>
+<text x="392.6" y="495.7" font-size="10" fill="#8b949e">bank 08 S-CPU</text>
+<rect x="391.1" y="500.7" width="167.6" height="113.4" fill="#c8ccd2"><title>(unnamed)  08A034  1937B  T1  [bank 08 S-CPU]</title></rect>
+<rect x="559.2" y="500.7" width="143.4" height="113.4" fill="#c8ccd2"><title>(unnamed)  08DCB4  1658B  T1  [bank 08 S-CPU]</title></rect>
+<rect x="391.1" y="614.7" width="127.0" height="98.3" fill="#c8ccd2"><title>(unnamed)  089A4F  1276B  T1  [bank 08 S-CPU]</title></rect>
+<rect x="391.1" y="713.6" width="127.0" height="96.9" fill="#c8ccd2"><title>(unnamed)  08AB71  1258B  T1  [bank 08 S-CPU]</title></rect>
+<rect x="391.1" y="811.2" width="127.0" height="86.7" fill="#c8ccd2"><title>(unnamed)  08C124  1126B  T1  [bank 08 S-CPU]</title></rect>
+<rect x="518.7" y="614.7" width="99.6" height="106.0" fill="#c8ccd2"><title>(unnamed)  08EC9C  1080B  T1  [bank 08 S-CPU]</title></rect>
+<rect x="618.9" y="614.7" width="83.7" height="106.0" fill="#c8ccd2"><title>(unnamed)  0889E6  908B  T1  [bank 08 S-CPU]</title></rect>
+<rect x="518.7" y="721.3" width="82.5" height="89.4" fill="#c8ccd2"><title>(unnamed)  08D1BF  756B  T1  [bank 08 S-CPU]</title></rect>
+<rect x="518.7" y="811.3" width="82.5" height="86.6" fill="#c8ccd2"><title>(unnamed)  088F03  732B  T1  [bank 08 S-CPU]</title></rect>
+<rect x="601.8" y="721.3" width="100.8" height="67.6" fill="#c8ccd2"><title>(unnamed)  08BA57  699B  T1  [bank 08 S-CPU]</title></rect>
+<rect x="601.8" y="789.6" width="100.8" height="54.3" fill="#c8ccd2"><title>(unnamed)  08BD22  562B  T1  [bank 08 S-CPU]</title></rect>
+<rect x="601.8" y="844.4" width="73.9" height="53.5" fill="#c8ccd2"><title>(unnamed)  08E426  407B  T1  [bank 08 S-CPU]</title></rect>
+<rect x="676.3" y="844.4" width="26.3" height="53.5" fill="#c8ccd2"><title>(unnamed)  08958F  147B  T1  [bank 08 S-CPU]</title></rect>
+<text x="707.7" y="10.5" font-size="10" fill="#8b949e">race</text>
+<rect x="706.2" y="15.5" width="94.4" height="74.0" fill="#3fb950"><title>CameraFollowStep  02DB71  724B  T4  [race]</title></rect>
+<rect x="801.2" y="15.5" width="74.0" height="74.0" fill="#3fb950"><title>RaceLoad  03F0E6  569B  T4  [race]</title></rect>
 <rect x="875.8" y="15.5" width="68.9" height="74.0" fill="#3fb950"><title>TimeBonusTally  078E90  530B  T4  [race]</title></rect>
-<rect x="945.3" y="15.5" width="61.3" height="74.0" fill="#3fb950"><title>PlayerOnePhaseStep  07DE46  472B  T4  [race]</title></rect>
-<rect x="706.1" y="90.1" width="60.4" height="72.3" fill="#3fb950"><title>RaceVarsReset  03E838  454B  T4  [race]</title></rect>
-<rect x="706.1" y="163.0" width="60.4" height="56.9" fill="#3fb950"><title>FxTrafficSides  04C933  358B  T4  [race]</title></rect>
-<rect x="706.1" y="220.5" width="60.4" height="55.6" fill="#3fb950"><title>FxDriveDecide  04C7D5  350B  T4  [race]</title></rect>
-<rect x="706.1" y="276.7" width="60.4" height="54.6" fill="#3fb950"><title>TimeLeftDigits  078C82  344B  T4  [race]</title></rect>
-<rect x="767.1" y="90.1" width="64.3" height="48.4" fill="#3fb950"><title>CourseCursorStep  02EC20  325B  T4  [race]</title></rect>
-<rect x="832.0" y="90.1" width="61.7" height="48.4" fill="#3fb950"><title>FxNearestCar  04CF08  312B  T4  [race]</title></rect>
+<rect x="945.4" y="15.5" width="61.3" height="74.0" fill="#3fb950"><title>PlayerOnePhaseStep  07DE46  472B  T4  [race]</title></rect>
+<rect x="706.2" y="90.1" width="60.4" height="72.3" fill="#3fb950"><title>RaceVarsReset  03E838  454B  T4  [race]</title></rect>
+<rect x="706.2" y="163.0" width="60.4" height="56.9" fill="#3fb950"><title>FxTrafficSides  04C933  358B  T4  [race]</title></rect>
+<rect x="706.2" y="220.5" width="60.4" height="55.6" fill="#3fb950"><title>FxDriveDecide  04C7D5  350B  T4  [race]</title></rect>
+<rect x="706.2" y="276.7" width="60.4" height="54.6" fill="#3fb950"><title>TimeLeftDigits  078C82  344B  T4  [race]</title></rect>
+<rect x="767.2" y="90.1" width="64.3" height="48.4" fill="#3fb950"><title>CourseCursorStep  02EC20  325B  T4  [race]</title></rect>
+<rect x="832.1" y="90.1" width="61.7" height="48.4" fill="#3fb950"><title>FxNearestCar  04CF08  312B  T4  [race]</title></rect>
 <rect x="894.4" y="90.1" width="57.5" height="48.4" fill="#3fb950"><title>RaceFrameRunTwoPlayers  0BFB26  291B  T4  [race]</title></rect>
 <rect x="952.5" y="90.1" width="54.1" height="48.4" fill="#3fb950"><title>FxSteerFromInput  04BA05  274B  T4  [race]</title></rect>
-<rect x="767.1" y="139.2" width="46.9" height="52.2" fill="#3fb950"><title>RaceFrameRun  02D7CD  256B  T4  [race]</title></rect>
-<rect x="767.1" y="191.9" width="46.9" height="48.7" fill="#3fb950"><title>FxSpreadCars  04BF98  239B  T4  [race]</title></rect>
-<rect x="767.1" y="241.2" width="46.9" height="46.2" fill="#3fb950"><title>RaceModeSetup  03D8B3  227B  T4  [race]</title></rect>
-<rect x="767.1" y="288.0" width="46.9" height="43.3" fill="#58a6ff"><title>FxCarPlaceOnSegment  04C65A  213B  T3  [race]</title></rect>
-<rect x="814.6" y="139.2" width="42.9" height="43.8" fill="#58a6ff"><title>FxCarCatchUp  04C595  197B  T3  [race]</title></rect>
+<rect x="767.2" y="139.2" width="46.9" height="52.2" fill="#3fb950"><title>RaceFrameRun  02D7CD  256B  T4  [race]</title></rect>
+<rect x="767.2" y="191.9" width="46.9" height="48.7" fill="#3fb950"><title>FxSpreadCars  04BF98  239B  T4  [race]</title></rect>
+<rect x="767.2" y="241.2" width="46.9" height="46.2" fill="#3fb950"><title>RaceModeSetup  03D8B3  227B  T4  [race]</title></rect>
+<rect x="767.2" y="288.0" width="46.9" height="43.3" fill="#58a6ff"><title>FxCarPlaceOnSegment  04C65A  213B  T3  [race]</title></rect>
+<rect x="814.7" y="139.2" width="42.9" height="43.8" fill="#58a6ff"><title>FxCarCatchUp  04C595  197B  T3  [race]</title></rect>
 <rect x="858.1" y="139.2" width="40.7" height="43.8" fill="#3fb950"><title>TimeBonusTransfer  078BB3  187B  T4  [race]</title></rect>
-<rect x="899.3" y="139.2" width="38.0" height="43.8" fill="#d29922"><title>RaceLoop  02E289  175B  T2  [race]</title></rect>
-<rect x="937.9" y="139.2" width="34.3" height="43.8" fill="#3fb950"><title>FxCourseNearest  04CC06  158B  T4  [race]</title></rect>
-<rect x="972.8" y="139.2" width="33.8" height="43.8" fill="#3fb950"><title>RaceStart  03B5DF  156B  T4  [race]</title></rect>
-<rect x="814.6" y="183.5" width="34.8" height="38.9" fill="#3fb950"><title>TimeDigitBytes  0790EE  143B  T4  [race]</title></rect>
-<rect x="814.6" y="223.1" width="34.8" height="37.8" fill="#d29922"><title>ViewParamsByPlayers  7EF6E9  139B  T2  [race]</title></rect>
-<rect x="814.6" y="261.5" width="34.8" height="35.1" fill="#3fb950"><title>AttractCourseSetup  7EF21E  129B  T4  [race]</title></rect>
-<rect x="814.6" y="297.1" width="34.8" height="34.2" fill="#3fb950"><title>GsuTimeDigits  0791B1  126B  T4  [race]</title></rect>
-<rect x="850.0" y="183.5" width="30.1" height="37.6" fill="#3fb950"><title>SpeedSampleAdd  07DDCE  120B  T4  [race]</title></rect>
-<rect x="850.0" y="221.7" width="30.1" height="37.3" fill="#3fb950"><title>RaceFrameStep  03B7C5  119B  T4  [race]</title></rect>
-<rect x="850.0" y="259.7" width="30.1" height="36.0" fill="#3fb950"><title>RaceClockStep  7EB072  115B  T4  [race]</title></rect>
-<rect x="850.0" y="296.3" width="30.1" height="35.1" fill="#d29922"><title>FxRankNext  04CE65  112B  T2  [race]</title></rect>
+<rect x="899.4" y="139.2" width="38.0" height="43.8" fill="#d29922"><title>RaceLoop  02E289  175B  T2  [race]</title></rect>
+<rect x="938.0" y="139.2" width="34.3" height="43.8" fill="#3fb950"><title>FxCourseNearest  04CC06  158B  T4  [race]</title></rect>
+<rect x="972.9" y="139.2" width="33.8" height="43.8" fill="#3fb950"><title>RaceStart  03B5DF  156B  T4  [race]</title></rect>
+<rect x="814.7" y="183.5" width="34.8" height="38.9" fill="#3fb950"><title>TimeDigitBytes  0790EE  143B  T4  [race]</title></rect>
+<rect x="814.7" y="223.1" width="34.8" height="37.8" fill="#d29922"><title>ViewParamsByPlayers  7EF6E9  139B  T2  [race]</title></rect>
+<rect x="814.7" y="261.5" width="34.8" height="35.1" fill="#3fb950"><title>AttractCourseSetup  7EF21E  129B  T4  [race]</title></rect>
+<rect x="814.7" y="297.1" width="34.8" height="34.2" fill="#3fb950"><title>GsuTimeDigits  0791B1  126B  T4  [race]</title></rect>
+<rect x="850.1" y="183.5" width="30.1" height="37.6" fill="#3fb950"><title>SpeedSampleAdd  07DDCE  120B  T4  [race]</title></rect>
+<rect x="850.1" y="221.7" width="30.1" height="37.3" fill="#3fb950"><title>RaceFrameStep  03B7C5  119B  T4  [race]</title></rect>
+<rect x="850.1" y="259.7" width="30.1" height="36.0" fill="#3fb950"><title>RaceClockStep  7EB072  115B  T4  [race]</title></rect>
+<rect x="850.1" y="296.3" width="30.1" height="35.1" fill="#d29922"><title>FxRankNext  04CE65  112B  T2  [race]</title></rect>
 <rect x="880.8" y="183.5" width="33.6" height="30.9" fill="#3fb950"><title>PlayerStatsFromRecord  07DD60  110B  T4  [race]</title></rect>
-<rect x="914.9" y="183.5" width="30.8" height="30.9" fill="#3fb950"><title>LapSplit  07D5C7  101B  T4  [race]</title></rect>
-<rect x="946.3" y="183.5" width="30.2" height="30.9" fill="#3fb950"><title>RaceSoundsPlayer1  07DA02  99B  T4  [race]</title></rect>
+<rect x="915.0" y="183.5" width="30.8" height="30.9" fill="#3fb950"><title>LapSplit  07D5C7  101B  T4  [race]</title></rect>
+<rect x="946.4" y="183.5" width="30.2" height="30.9" fill="#3fb950"><title>RaceSoundsPlayer1  07DA02  99B  T4  [race]</title></rect>
 <rect x="977.1" y="183.5" width="29.5" height="30.9" fill="#3fb950"><title>FxCourseNextEntry  04CCA4  97B  T4  [race]</title></rect>
 <rect x="880.8" y="215.0" width="28.5" height="30.1" fill="#3fb950"><title>CourseWindowZoomSetup  03FBB6  91B  T4  [race]</title></rect>
 <rect x="880.8" y="245.7" width="28.5" height="28.7" fill="#3fb950"><title>CourseZoomFromSelection4  03FA51  87B  T4  [race]</title></rect>
 <rect x="880.8" y="275.0" width="28.5" height="28.0" fill="#3fb950"><title>RaceFinishPhases10  07AA0B  85B  T4  [race]</title></rect>
 <rect x="880.8" y="303.7" width="28.5" height="27.7" fill="#3fb950"><title>RaceTimeInit  03EF3F  84B  T4  [race]</title></rect>
-<rect x="909.8" y="215.0" width="32.8" height="23.7" fill="#3fb950"><title>FxLapSegment  04CDCA  83B  T4  [race]</title></rect>
-<rect x="943.2" y="215.0" width="32.0" height="23.7" fill="#3fb950"><title>FxCoursePrevEntry  04CD05  81B  T4  [race]</title></rect>
-<rect x="975.8" y="215.0" width="30.8" height="23.7" fill="#d29922"><title>FxCarVelocityFromSegment  04C72F  78B  T2  [race]</title></rect>
-<rect x="909.8" y="239.4" width="28.4" height="24.1" fill="#3fb950"><title>GsuDigitPair0E74At  07925C  73B  T4  [race]</title></rect>
-<rect x="909.8" y="264.0" width="28.4" height="23.7" fill="#3fb950"><title>FxRankCars  04CE1D  72B  T4  [race]</title></rect>
-<rect x="909.8" y="288.4" width="28.4" height="21.7" fill="#3fb950"><title>RaceSoundsPlayer2  07DA65  66B  T4  [race]</title></rect>
-<rect x="909.8" y="310.7" width="28.4" height="20.7" fill="#3fb950"><title>CourseZoomBattle  03FB47  63B  T4  [race]</title></rect>
-<rect x="938.8" y="239.4" width="22.7" height="21.3" fill="#3fb950"><title>RaceFinishPhases0E  07A9D7  52B  T4  [race]</title></rect>
+<rect x="909.9" y="215.0" width="32.8" height="23.7" fill="#3fb950"><title>FxLapSegment  04CDCA  83B  T4  [race]</title></rect>
+<rect x="943.3" y="215.0" width="32.0" height="23.7" fill="#3fb950"><title>FxCoursePrevEntry  04CD05  81B  T4  [race]</title></rect>
+<rect x="975.9" y="215.0" width="30.8" height="23.7" fill="#d29922"><title>FxCarVelocityFromSegment  04C72F  78B  T2  [race]</title></rect>
+<rect x="909.9" y="239.4" width="28.4" height="24.1" fill="#3fb950"><title>GsuDigitPair0E74At  07925C  73B  T4  [race]</title></rect>
+<rect x="909.9" y="264.0" width="28.4" height="23.7" fill="#3fb950"><title>FxRankCars  04CE1D  72B  T4  [race]</title></rect>
+<rect x="909.9" y="288.4" width="28.4" height="21.7" fill="#3fb950"><title>RaceSoundsPlayer2  07DA65  66B  T4  [race]</title></rect>
+<rect x="909.9" y="310.7" width="28.4" height="20.7" fill="#3fb950"><title>CourseZoomBattle  03FB47  63B  T4  [race]</title></rect>
+<rect x="938.9" y="239.4" width="22.7" height="21.3" fill="#3fb950"><title>RaceFinishPhases0E  07A9D7  52B  T4  [race]</title></rect>
 <rect x="962.1" y="239.4" width="22.2" height="21.3" fill="#3fb950"><title>CourseZoomFromSelection  03FAA8  51B  T4  [race]</title></rect>
 <rect x="984.9" y="239.4" width="21.8" height="21.3" fill="#3fb950"><title>FxCourseNextDistance  04CED6  50B  T4  [race]</title></rect>
-<rect x="938.8" y="261.3" width="23.7" height="19.6" fill="#3fb950"><title>PlayerStatsThenPhaseDD35  07DD03  50B  T4  [race]</title></rect>
+<rect x="938.9" y="261.3" width="23.7" height="19.6" fill="#3fb950"><title>PlayerStatsThenPhaseDD35  07DD03  50B  T4  [race]</title></rect>
 <rect x="963.1" y="261.3" width="21.7" height="19.6" fill="#3fb950"><title>AttractViewStart  7EF29F  46B  T4  [race]</title></rect>
 <rect x="985.4" y="261.3" width="21.2" height="19.6" fill="#3fb950"><title>FxCourseEntryRead  04CD56  45B  T4  [race]</title></rect>
-<rect x="938.8" y="281.4" width="20.3" height="19.0" fill="#3fb950"><title>FxRecordHeadingAhead  04C378  42B  T4  [race]</title></rect>
-<rect x="938.8" y="301.1" width="20.3" height="15.3" fill="#3fb950"><title>CourseZoomStunt  03FB25  34B  T4  [race]</title></rect>
-<rect x="938.8" y="317.0" width="20.3" height="14.4" fill="#3fb950"><title>FxRecordSegment  04C3B5  32B  T4  [race]</title></rect>
-<rect x="959.7" y="281.4" width="16.0" height="15.9" fill="#3fb950"><title>CourseFromSelection  02EB51  28B  T4  [race]</title></rect>
+<rect x="938.9" y="281.4" width="20.3" height="19.0" fill="#3fb950"><title>FxRecordHeadingAhead  04C378  42B  T4  [race]</title></rect>
+<rect x="938.9" y="301.1" width="20.3" height="15.3" fill="#3fb950"><title>CourseZoomStunt  03FB25  34B  T4  [race]</title></rect>
+<rect x="938.9" y="317.0" width="20.3" height="14.4" fill="#3fb950"><title>FxRecordSegment  04C3B5  32B  T4  [race]</title></rect>
+<rect x="959.8" y="281.4" width="16.0" height="15.9" fill="#3fb950"><title>CourseFromSelection  02EB51  28B  T4  [race]</title></rect>
 <rect x="976.4" y="281.4" width="15.4" height="15.9" fill="#3fb950"><title>RaceTimeAddD815  03EF9F  27B  T4  [race]</title></rect>
 <rect x="992.4" y="281.4" width="14.2" height="15.9" fill="#3fb950"><title>LoopLeaveWhenEnded  02E33D  25B  T4  [race]</title></rect>
-<rect x="959.7" y="297.9" width="13.2" height="17.1" fill="#3fb950"><title>PlayerStatsAndPaletteAnimate  07DD47  25B  T4  [race]</title></rect>
-<rect x="959.7" y="315.7" width="13.2" height="15.7" fill="#3fb950"><title>PlayerStatsThenPhaseE232  07DCEC  23B  T4  [race]</title></rect>
+<rect x="959.8" y="297.9" width="13.2" height="17.1" fill="#3fb950"><title>PlayerStatsAndPaletteAnimate  07DD47  25B  T4  [race]</title></rect>
+<rect x="959.8" y="315.7" width="13.2" height="15.7" fill="#3fb950"><title>PlayerStatsThenPhaseE232  07DCEC  23B  T4  [race]</title></rect>
 <rect x="973.6" y="297.9" width="18.0" height="10.4" fill="#3fb950"><title>RaceTimeKeep  07D5B2  21B  T4  [race]</title></rect>
 <rect x="992.2" y="297.9" width="14.5" height="10.4" fill="#3fb950"><title>GsuBonusDigitsFull  079241  17B  T4  [race]</title></rect>
 <rect x="973.6" y="309.0" width="9.2" height="11.4" fill="#3fb950"><title>RaceTimeAddD814  03EF93  12B  T4  [race]</title></rect>
 <rect x="973.6" y="321.0" width="9.2" height="10.4" fill="#3fb950"><title>GsuTimeDigitsFull  0791A6  11B  T4  [race]</title></rect>
 <rect x="983.4" y="309.0" width="7.1" height="10.9" fill="#3fb950"><title>GsuTimeDigitsGrow  07919D  9B  T4  [race]</title></rect>
 <rect x="983.4" y="320.5" width="7.1" height="10.9" fill="#3fb950"><title>GsuBonusDigitsGrow  07922F  9B  T4  [race]</title></rect>
-<rect x="991.0" y="309.0" width="7.5" height="10.3" fill="#3fb950"><title>GsuBonusDigitsBounce  079238  9B  T4  [race]</title></rect>
-<rect x="999.1" y="309.0" width="7.5" height="10.3" fill="#3fb950"><title>PhaseDispatchE24F  07E246  9B  T4  [race]</title></rect>
-<rect x="991.0" y="319.9" width="5.9" height="11.5" fill="#3fb950"><title>RaceFadeStageDispatch  02EC10  8B  T4  [race]</title></rect>
-<rect x="997.5" y="319.9" width="9.1" height="6.5" fill="#3fb950"><title>PhaseDispatchE232  07E22B  7B  T4  [race]</title></rect>
-<rect x="997.5" y="326.9" width="7.2" height="4.4" fill="#3fb950"><title>CourseFromSelectionLong  02EB4D  4B  T4  [race]</title></rect>
+<rect x="991.1" y="309.0" width="7.5" height="10.3" fill="#3fb950"><title>GsuBonusDigitsBounce  079238  9B  T4  [race]</title></rect>
+<rect x="999.2" y="309.0" width="7.5" height="10.3" fill="#3fb950"><title>PhaseDispatchE24F  07E246  9B  T4  [race]</title></rect>
+<rect x="991.1" y="319.9" width="5.9" height="11.5" fill="#3fb950"><title>RaceFadeStageDispatch  02EC10  8B  T4  [race]</title></rect>
+<rect x="997.6" y="319.9" width="9.1" height="6.5" fill="#3fb950"><title>PhaseDispatchE232  07E22B  7B  T4  [race]</title></rect>
+<rect x="997.6" y="326.9" width="7.2" height="4.4" fill="#3fb950"><title>CourseFromSelectionLong  02EB4D  4B  T4  [race]</title></rect>
 <rect x="1005.3" y="326.9" width="1.3" height="4.4" fill="#3fb950"><title>PlayerOnePhaseReturn  07E08E  1B  T4  [race]</title></rect>
-<text x="1011.7" y="10.5" font-size="10" fill="#8b949e">render</text>
-<rect x="1010.2" y="15.5" width="83.9" height="63.2" fill="#3fb950"><title>FxGlyph16x32Double  07F7F4  551B  T4  [render]</title></rect>
-<rect x="1094.7" y="15.5" width="71.8" height="63.2" fill="#3fb950"><title>FxProjectPoint  01947A  472B  T4  [render]</title></rect>
+<text x="1011.8" y="10.5" font-size="10" fill="#8b949e">render</text>
+<rect x="1010.3" y="15.5" width="83.9" height="63.2" fill="#3fb950"><title>FxGlyph16x32Double  07F7F4  551B  T4  [render]</title></rect>
+<rect x="1094.8" y="15.5" width="71.8" height="63.2" fill="#3fb950"><title>FxProjectPoint  01947A  472B  T4  [render]</title></rect>
 <rect x="1167.1" y="15.5" width="67.8" height="63.2" fill="#58a6ff"><title>FxClipYPlane  01C4AA  446B  T3  [render]</title></rect>
 <rect x="1235.5" y="15.5" width="67.0" height="63.2" fill="#58a6ff"><title>FxClipXPlane  01C77A  441B  T3  [render]</title></rect>
-<rect x="1010.2" y="79.3" width="58.3" height="70.7" fill="#58a6ff"><title>FxClipNear  01CC87  429B  T3  [render]</title></rect>
-<rect x="1010.2" y="150.7" width="58.3" height="65.1" fill="#3fb950"><title>FxProjectScaled  01B2A4  395B  T4  [render]</title></rect>
-<rect x="1010.2" y="216.4" width="58.3" height="64.6" fill="#3fb950"><title>FxGlyph24x16  07F441  392B  T4  [render]</title></rect>
-<rect x="1010.2" y="281.6" width="58.3" height="49.8" fill="#3fb950"><title>FxSortObjectsProgram  01AEF8  303B  T4  [render]</title></rect>
+<rect x="1010.3" y="79.3" width="58.3" height="70.7" fill="#58a6ff"><title>FxClipNear  01CC87  429B  T3  [render]</title></rect>
+<rect x="1010.3" y="150.7" width="58.3" height="65.1" fill="#3fb950"><title>FxProjectScaled  01B2A4  395B  T4  [render]</title></rect>
+<rect x="1010.3" y="216.4" width="58.3" height="64.6" fill="#3fb950"><title>FxGlyph24x16  07F441  392B  T4  [render]</title></rect>
+<rect x="1010.3" y="281.6" width="58.3" height="49.8" fill="#3fb950"><title>FxSortObjectsProgram  01AEF8  303B  T4  [render]</title></rect>
 <rect x="1069.1" y="79.3" width="58.4" height="48.0" fill="#3fb950"><title>FxGlyph16RowsFromTop  07F15B  293B  T4  [render]</title></rect>
-<rect x="1128.0" y="79.3" width="58.2" height="48.0" fill="#58a6ff"><title>FxPolygonClipBottom  01CB63  292B  T3  [render]</title></rect>
-<rect x="1186.8" y="79.3" width="57.6" height="48.0" fill="#3fb950"><title>FxMatrixFromAngles01  01832F  289B  T4  [render]</title></rect>
-<rect x="1244.9" y="79.3" width="57.6" height="48.0" fill="#58a6ff"><title>FxPolygonClipLeft  01CA42  289B  T3  [render]</title></rect>
+<rect x="1128.1" y="79.3" width="58.1" height="48.0" fill="#58a6ff"><title>FxPolygonClipBottom  01CB63  292B  T3  [render]</title></rect>
+<rect x="1186.8" y="79.3" width="57.5" height="48.0" fill="#3fb950"><title>FxMatrixFromAngles01  01832F  289B  T4  [render]</title></rect>
+<rect x="1245.0" y="79.3" width="57.5" height="48.0" fill="#58a6ff"><title>FxPolygonClipLeft  01CA42  289B  T3  [render]</title></rect>
 <rect x="1069.1" y="128.0" width="52.8" height="51.4" fill="#3fb950"><title>FxTable2702Program  01D1EB  284B  T4  [render]</title></rect>
 <rect x="1069.1" y="180.0" width="52.8" height="50.3" fill="#3fb950"><title>FxGlyph16x16  07F5C9  278B  T4  [render]</title></rect>
 <rect x="1069.1" y="231.0" width="52.8" height="50.2" fill="#3fb950"><title>FxGlyph16x32  07F6DF  277B  T4  [render]</title></rect>
@@ -646,12 +648,12 @@
 <rect x="1122.5" y="181.9" width="39.1" height="52.6" fill="#3fb950"><title>FxPictureRiseSplit60  07EFCD  216B  T4  [render]</title></rect>
 <rect x="1122.5" y="235.1" width="39.1" height="49.7" fill="#3fb950"><title>FxScaledSpriteAdvance  07FAF2  204B  T4  [render]</title></rect>
 <rect x="1122.5" y="285.4" width="39.1" height="46.0" fill="#58a6ff"><title>FxSegmentCrossZ  01981A  189B  T3  [render]</title></rect>
-<rect x="1162.2" y="181.9" width="48.0" height="33.5" fill="#3fb950"><title>FxGlyph8x8  07F280  169B  T4  [render]</title></rect>
-<rect x="1210.8" y="181.9" width="48.0" height="33.5" fill="#3fb950"><title>FxGlyph8x16  07F329  169B  T4  [render]</title></rect>
+<rect x="1162.3" y="181.9" width="48.0" height="33.5" fill="#3fb950"><title>FxGlyph8x8  07F280  169B  T4  [render]</title></rect>
+<rect x="1210.9" y="181.9" width="48.0" height="33.5" fill="#3fb950"><title>FxGlyph8x16  07F329  169B  T4  [render]</title></rect>
 <rect x="1259.4" y="181.9" width="43.1" height="33.5" fill="#3fb950"><title>FxModelPoints  04A154  152B  T4  [render]</title></rect>
-<rect x="1162.2" y="216.0" width="30.4" height="39.9" fill="#3fb950"><title>FxAtan2  0181F7  128B  T4  [render]</title></rect>
-<rect x="1162.2" y="256.4" width="30.4" height="39.9" fill="#3fb950"><title>FxEffectsAge  01C060  128B  T4  [render]</title></rect>
-<rect x="1162.2" y="296.9" width="30.4" height="34.5" fill="#3fb950"><title>FxGlyph24x32Bank04  07F3D2  111B  T4  [render]</title></rect>
+<rect x="1162.3" y="216.0" width="30.4" height="39.9" fill="#3fb950"><title>FxAtan2  0181F7  128B  T4  [render]</title></rect>
+<rect x="1162.3" y="256.4" width="30.4" height="39.9" fill="#3fb950"><title>FxEffectsAge  01C060  128B  T4  [render]</title></rect>
+<rect x="1162.3" y="296.9" width="30.4" height="34.5" fill="#3fb950"><title>FxGlyph24x32Bank04  07F3D2  111B  T4  [render]</title></rect>
 <rect x="1193.2" y="216.0" width="28.9" height="35.6" fill="#3fb950"><title>FxPictureRise60  07F0B4  109B  T4  [render]</title></rect>
 <rect x="1222.7" y="216.0" width="27.5" height="35.6" fill="#3fb950"><title>FxRatioClamp  019658  104B  T4  [render]</title></rect>
 <rect x="1250.9" y="216.0" width="25.7" height="35.6" fill="#3fb950"><title>FxNoiseFillScreen  07EE94  97B  T4  [render]</title></rect>
@@ -659,10 +661,10 @@
 <rect x="1193.2" y="252.1" width="27.7" height="29.5" fill="#3fb950"><title>FxMatrixRotateProgram  0182CE  87B  T4  [render]</title></rect>
 <rect x="1193.2" y="282.2" width="27.7" height="26.4" fill="#3fb950"><title>FxMatrixApply  01978B  78B  T4  [render]</title></rect>
 <rect x="1193.2" y="309.2" width="27.7" height="22.2" fill="#3fb950"><title>FxSprite16x32  07FAB0  66B  T4  [render]</title></rect>
-<rect x="1221.5" y="252.1" width="24.9" height="21.7" fill="#3fb950"><title>FxGlyph16RowsFromBottom  07F121  58B  T4  [render]</title></rect>
-<rect x="1221.5" y="274.4" width="24.9" height="20.1" fill="#3fb950"><title>FxDivideSigned  018186  54B  T4  [render]</title></rect>
-<rect x="1221.5" y="295.1" width="24.9" height="17.8" fill="#3fb950"><title>FxMatrixTranspose  01972B  48B  T4  [render]</title></rect>
-<rect x="1221.5" y="313.5" width="24.9" height="17.8" fill="#3fb950"><title>FxMatrixApplyVectors  01975B  48B  T4  [render]</title></rect>
+<rect x="1221.6" y="252.1" width="24.9" height="21.7" fill="#3fb950"><title>FxGlyph16RowsFromBottom  07F121  58B  T4  [render]</title></rect>
+<rect x="1221.6" y="274.4" width="24.9" height="20.1" fill="#3fb950"><title>FxDivideSigned  018186  54B  T4  [render]</title></rect>
+<rect x="1221.6" y="295.1" width="24.9" height="17.8" fill="#3fb950"><title>FxMatrixTranspose  01972B  48B  T4  [render]</title></rect>
+<rect x="1221.6" y="313.5" width="24.9" height="17.8" fill="#3fb950"><title>FxMatrixApplyVectors  01975B  48B  T4  [render]</title></rect>
 <rect x="1247.1" y="252.1" width="19.1" height="22.8" fill="#3fb950"><title>FxTiles2bppTo4bppLow  07EE59  47B  T4  [render]</title></rect>
 <rect x="1266.7" y="252.1" width="18.6" height="22.8" fill="#3fb950"><title>FxScaledSpriteEighth  07FA5A  46B  T4  [render]</title></rect>
 <rect x="1286.0" y="252.1" width="16.5" height="22.8" fill="#3fb950"><title>FxLengthProgram  0180BC  41B  T4  [render]</title></rect>
@@ -673,13 +675,13 @@
 <rect x="1247.1" y="317.1" width="16.5" height="14.2" fill="#3fb950"><title>FxScaledSprite13  07FA1B  26B  T4  [render]</title></rect>
 <rect x="1264.2" y="296.0" width="11.6" height="18.6" fill="#3fb950"><title>FxDivide32By16  0181CB  24B  T4  [render]</title></rect>
 <rect x="1264.2" y="315.2" width="11.6" height="16.2" fill="#3fb950"><title>FxTableEntryWords  04CD83  21B  T4  [render]</title></rect>
-<rect x="1276.4" y="296.0" width="13.8" height="13.0" fill="#3fb950"><title>FxAngleProgram  0181E3  20B  T4  [render]</title></rect>
-<rect x="1290.8" y="296.0" width="11.7" height="13.0" fill="#3fb950"><title>FxScreenClear  01AEB9  17B  T4  [render]</title></rect>
-<rect x="1276.4" y="309.6" width="12.5" height="10.6" fill="#3fb950"><title>FxDivide32By16Halving  0181BC  15B  T4  [render]</title></rect>
-<rect x="1276.4" y="320.8" width="12.5" height="10.6" fill="#3fb950"><title>FxPictureRise40  07F0A5  15B  T4  [render]</title></rect>
-<rect x="1289.5" y="309.6" width="13.0" height="8.1" fill="#3fb950"><title>FxNoiseFill  07EE88  12B  T4  [render]</title></rect>
-<rect x="1289.5" y="318.2" width="13.0" height="6.6" fill="#3fb950"><title>FxMatrixFromAnglesProgram  018325  10B  T4  [render]</title></rect>
-<rect x="1289.5" y="325.5" width="13.0" height="5.9" fill="#3fb950"><title>FxTiles2bppTo4bppHigh  07EE50  9B  T4  [render]</title></rect>
+<rect x="1276.5" y="296.0" width="13.8" height="13.0" fill="#3fb950"><title>FxAngleProgram  0181E3  20B  T4  [render]</title></rect>
+<rect x="1290.9" y="296.0" width="11.6" height="13.0" fill="#3fb950"><title>FxScreenClear  01AEB9  17B  T4  [render]</title></rect>
+<rect x="1276.5" y="309.6" width="12.5" height="10.6" fill="#3fb950"><title>FxDivide32By16Halving  0181BC  15B  T4  [render]</title></rect>
+<rect x="1276.5" y="320.8" width="12.5" height="10.6" fill="#3fb950"><title>FxPictureRise40  07F0A5  15B  T4  [render]</title></rect>
+<rect x="1289.6" y="309.6" width="12.9" height="8.1" fill="#3fb950"><title>FxNoiseFill  07EE88  12B  T4  [render]</title></rect>
+<rect x="1289.6" y="318.2" width="12.9" height="6.6" fill="#3fb950"><title>FxMatrixFromAnglesProgram  018325  10B  T4  [render]</title></rect>
+<rect x="1289.6" y="325.5" width="12.9" height="5.9" fill="#3fb950"><title>FxTiles2bppTo4bppHigh  07EE50  9B  T4  [render]</title></rect>
 <text x="1307.6" y="10.5" font-size="10" fill="#8b949e">bank 01 Super FX</text>
 <rect x="1306.1" y="15.5" width="100.8" height="122.7" fill="#c8ccd2"><title>(unnamed)  018561  1277B  T1  [bank 01 Super FX]</title></rect>
 <rect x="1407.5" y="15.5" width="95.6" height="122.7" fill="#c8ccd2"><title>(unnamed)  0198D7  1212B  T1  [bank 01 Super FX]</title></rect>
@@ -689,10 +691,10 @@
 <rect x="1373.8" y="138.8" width="79.0" height="68.6" fill="#c8ccd2"><title>(unnamed)  01BC7D  563B  T1  [bank 01 Super FX]</title></rect>
 <rect x="1373.8" y="208.0" width="79.0" height="66.3" fill="#c8ccd2"><title>(unnamed)  01A710  544B  T1  [bank 01 Super FX]</title></rect>
 <rect x="1373.8" y="274.8" width="79.0" height="56.5" fill="#c8ccd2"><title>(unnamed)  01AB81  465B  T1  [bank 01 Super FX]</title></rect>
-<rect x="1453.4" y="138.8" width="79.9" height="52.5" fill="#c8ccd2"><title>(unnamed)  01B0D9  437B  T1  [bank 01 Super FX]</title></rect>
+<rect x="1453.5" y="138.8" width="79.9" height="52.5" fill="#c8ccd2"><title>(unnamed)  01B0D9  437B  T1  [bank 01 Super FX]</title></rect>
 <rect x="1534.0" y="138.8" width="63.9" height="52.5" fill="#c8ccd2"><title>(unnamed)  019276  350B  T1  [bank 01 Super FX]</title></rect>
-<rect x="1453.4" y="191.9" width="45.8" height="70.3" fill="#c8ccd2"><title>(unnamed)  01A9C1  336B  T1  [bank 01 Super FX]</title></rect>
-<rect x="1453.4" y="262.8" width="45.8" height="68.6" fill="#c8ccd2"><title>(unnamed)  01B6D5  328B  T1  [bank 01 Super FX]</title></rect>
+<rect x="1453.5" y="191.9" width="45.8" height="70.3" fill="#c8ccd2"><title>(unnamed)  01A9C1  336B  T1  [bank 01 Super FX]</title></rect>
+<rect x="1453.5" y="262.8" width="45.8" height="68.6" fill="#c8ccd2"><title>(unnamed)  01B6D5  328B  T1  [bank 01 Super FX]</title></rect>
 <rect x="1499.8" y="191.9" width="55.2" height="49.0" fill="#c8ccd2"><title>(unnamed)  01C21E  283B  T1  [bank 01 Super FX]</title></rect>
 <rect x="1555.7" y="191.9" width="42.2" height="49.0" fill="#c8ccd2"><title>(unnamed)  01C339  217B  T1  [bank 01 Super FX]</title></rect>
 <rect x="1499.8" y="241.5" width="35.4" height="47.5" fill="#c8ccd2"><title>(unnamed)  01D311  177B  T1  [bank 01 Super FX]</title></rect>
@@ -704,118 +706,118 @@
 <rect x="1572.4" y="286.9" width="25.5" height="23.4" fill="#c8ccd2"><title>(unnamed)  018000  64B  T1  [bank 01 Super FX]</title></rect>
 <rect x="1572.4" y="311.0" width="20.8" height="20.4" fill="#c8ccd2"><title>(unnamed)  01C175  46B  T1  [bank 01 Super FX]</title></rect>
 <rect x="1593.8" y="311.0" width="4.1" height="20.4" fill="#c8ccd2"><title>(unnamed)  01D307  10B  T1  [bank 01 Super FX]</title></rect>
-<text x="707.6" y="344.0" font-size="10" fill="#8b949e">bank 09 S-CPU</text>
-<rect x="706.1" y="349.0" width="142.4" height="147.5" fill="#c8ccd2"><title>(unnamed)  098B3B  2176B  T1  [bank 09 S-CPU]</title></rect>
-<rect x="706.1" y="497.1" width="142.4" height="130.0" fill="#c8ccd2"><title>(unnamed)  09B876  1919B  T1  [bank 09 S-CPU]</title></rect>
-<rect x="849.1" y="349.0" width="101.1" height="147.8" fill="#c8ccd2"><title>(unnamed)  09C438  1551B  T1  [bank 09 S-CPU]</title></rect>
-<rect x="950.8" y="349.0" width="83.1" height="147.8" fill="#c8ccd2"><title>(unnamed)  09B30B  1277B  T1  [bank 09 S-CPU]</title></rect>
-<rect x="849.1" y="497.4" width="88.7" height="129.7" fill="#c8ccd2"><title>(unnamed)  09D1AB  1196B  T1  [bank 09 S-CPU]</title></rect>
-<rect x="938.4" y="497.4" width="95.5" height="91.3" fill="#c8ccd2"><title>(unnamed)  09E47D  908B  T1  [bank 09 S-CPU]</title></rect>
-<rect x="938.4" y="589.3" width="95.5" height="37.8" fill="#c8ccd2"><title>(unnamed)  09C11F  379B  T1  [bank 09 S-CPU]</title></rect>
-<text x="707.6" y="639.7" font-size="10" fill="#8b949e">gsu</text>
-<rect x="706.1" y="644.7" width="70.6" height="88.7" fill="#3fb950"><title>GsuPiecesStep10CB  07833B  657B  T4  [gsu]</title></rect>
-<rect x="706.1" y="734.0" width="70.6" height="62.2" fill="#3fb950"><title>GsuF15BTwoLines  078653  462B  T4  [gsu]</title></rect>
-<rect x="706.1" y="796.7" width="70.6" height="57.6" fill="#58a6ff"><title>GlyphTimesSequence  04DB87  428B  T3  [gsu]</title></rect>
-<rect x="706.1" y="854.9" width="70.6" height="43.0" fill="#3fb950"><title>GlyphListMessageAndTime  04DE2C  321B  T4  [gsu]</title></rect>
+<text x="707.7" y="344.0" font-size="10" fill="#8b949e">bank 09 S-CPU</text>
+<rect x="706.2" y="349.0" width="142.4" height="147.5" fill="#c8ccd2"><title>(unnamed)  098B3B  2176B  T1  [bank 09 S-CPU]</title></rect>
+<rect x="706.2" y="497.1" width="142.4" height="130.0" fill="#c8ccd2"><title>(unnamed)  09B876  1919B  T1  [bank 09 S-CPU]</title></rect>
+<rect x="849.2" y="349.0" width="101.1" height="147.8" fill="#c8ccd2"><title>(unnamed)  09C438  1551B  T1  [bank 09 S-CPU]</title></rect>
+<rect x="950.9" y="349.0" width="83.1" height="147.8" fill="#c8ccd2"><title>(unnamed)  09B30B  1277B  T1  [bank 09 S-CPU]</title></rect>
+<rect x="849.2" y="497.4" width="88.7" height="129.7" fill="#c8ccd2"><title>(unnamed)  09D1AB  1196B  T1  [bank 09 S-CPU]</title></rect>
+<rect x="938.5" y="497.4" width="95.5" height="91.3" fill="#c8ccd2"><title>(unnamed)  09E47D  908B  T1  [bank 09 S-CPU]</title></rect>
+<rect x="938.5" y="589.3" width="95.5" height="37.8" fill="#c8ccd2"><title>(unnamed)  09C11F  379B  T1  [bank 09 S-CPU]</title></rect>
+<text x="707.7" y="639.7" font-size="10" fill="#8b949e">gsu</text>
+<rect x="706.2" y="644.7" width="70.6" height="88.7" fill="#3fb950"><title>GsuPiecesStep10CB  07833B  657B  T4  [gsu]</title></rect>
+<rect x="706.2" y="734.0" width="70.6" height="62.2" fill="#3fb950"><title>GsuF15BTwoLines  078653  462B  T4  [gsu]</title></rect>
+<rect x="706.2" y="796.7" width="70.6" height="57.6" fill="#58a6ff"><title>GlyphTimesSequence  04DB87  428B  T3  [gsu]</title></rect>
+<rect x="706.2" y="854.9" width="70.6" height="43.0" fill="#3fb950"><title>GlyphListMessageAndTime  04DE2C  321B  T4  [gsu]</title></rect>
 <rect x="777.4" y="644.7" width="54.6" height="52.2" fill="#3fb950"><title>GsuFA5ASixLeft  079533  301B  T4  [gsu]</title></rect>
 <rect x="777.4" y="697.5" width="54.6" height="50.8" fill="#3fb950"><title>GlyphGrid1A  07A158  293B  T4  [gsu]</title></rect>
 <rect x="777.4" y="748.8" width="54.6" height="49.9" fill="#3fb950"><title>GsuFA5ASix  079366  288B  T4  [gsu]</title></rect>
 <rect x="777.4" y="799.3" width="54.6" height="49.4" fill="#3fb950"><title>GlyphGrid1D  07A27D  285B  T4  [gsu]</title></rect>
 <rect x="777.4" y="849.2" width="54.6" height="48.7" fill="#3fb950"><title>GlyphWordAt1C28  07A03F  281B  T4  [gsu]</title></rect>
 <rect x="832.6" y="644.7" width="49.6" height="48.1" fill="#3fb950"><title>BigSpritesRow5  079E3B  253B  T4  [gsu]</title></rect>
-<rect x="882.8" y="644.7" width="41.5" height="48.1" fill="#3fb950"><title>BigSpritesRow6  079D67  212B  T4  [gsu]</title></rect>
-<rect x="924.9" y="644.7" width="37.3" height="48.1" fill="#3fb950"><title>HudSixGlyphs  079AB0  191B  T4  [gsu]</title></rect>
+<rect x="882.9" y="644.7" width="41.5" height="48.1" fill="#3fb950"><title>BigSpritesRow6  079D67  212B  T4  [gsu]</title></rect>
+<rect x="925.0" y="644.7" width="37.3" height="48.1" fill="#3fb950"><title>HudSixGlyphs  079AB0  191B  T4  [gsu]</title></rect>
 <rect x="962.9" y="644.7" width="35.9" height="48.1" fill="#3fb950"><title>GsuFA5AFromTables  079660  184B  T4  [gsu]</title></rect>
-<rect x="999.4" y="644.7" width="34.6" height="48.1" fill="#3fb950"><title>GsuFA5AThree  0792B5  177B  T4  [gsu]</title></rect>
+<rect x="999.5" y="644.7" width="34.5" height="48.1" fill="#3fb950"><title>GsuFA5AThree  0792B5  177B  T4  [gsu]</title></rect>
 <rect x="832.6" y="693.4" width="42.2" height="38.5" fill="#3fb950"><title>GsuFA5AThreeShifted  079486  173B  T4  [gsu]</title></rect>
 <rect x="875.4" y="693.4" width="40.2" height="38.5" fill="#3fb950"><title>GlyphSpritesGrowAndTimes  04DAE2  165B  T4  [gsu]</title></rect>
-<rect x="916.1" y="693.4" width="40.2" height="38.5" fill="#3fb950"><title>GsuF15BFive  07997F  165B  T4  [gsu]</title></rect>
-<rect x="956.9" y="693.4" width="39.4" height="38.5" fill="#3fb950"><title>GsuRecordsUpload  02DA34  162B  T4  [gsu]</title></rect>
+<rect x="916.2" y="693.4" width="40.2" height="38.5" fill="#3fb950"><title>GsuF15BFive  07997F  165B  T4  [gsu]</title></rect>
+<rect x="957.0" y="693.4" width="39.4" height="38.5" fill="#3fb950"><title>GsuRecordsUpload  02DA34  162B  T4  [gsu]</title></rect>
 <rect x="997.0" y="693.4" width="37.0" height="38.5" fill="#3fb950"><title>ViewReset  03AF05  152B  T4  [gsu]</title></rect>
 <rect x="832.6" y="732.6" width="34.3" height="37.1" fill="#d29922"><title>FxInit  048800  136B  T2  [gsu]</title></rect>
 <rect x="832.6" y="770.2" width="34.3" height="35.7" fill="#3fb950"><title>GlyphSpritesDrawAll  07A39A  131B  T4  [gsu]</title></rect>
 <rect x="832.6" y="806.5" width="34.3" height="30.7" fill="#3fb950"><title>GsuF15BThree  079883  113B  T4  [gsu]</title></rect>
 <rect x="832.6" y="837.8" width="34.3" height="30.1" fill="#3fb950"><title>GlyphSlideThree  079814  111B  T4  [gsu]</title></rect>
 <rect x="832.6" y="868.6" width="34.3" height="29.3" fill="#3fb950"><title>GsuCF42ToVram  03EB83  108B  T4  [gsu]</title></rect>
-<rect x="867.5" y="732.6" width="28.1" height="35.5" fill="#3fb950"><title>ViewDefaults  03B67B  107B  T4  [gsu]</title></rect>
-<rect x="867.5" y="768.7" width="28.1" height="34.5" fill="#3fb950"><title>Gsu8325  03B011  104B  T4  [gsu]</title></rect>
-<rect x="867.5" y="803.7" width="28.1" height="33.5" fill="#3fb950"><title>GsuScreenFlip  03B83C  101B  T4  [gsu]</title></rect>
-<rect x="867.5" y="837.8" width="28.1" height="30.1" fill="#3fb950"><title>GlyphListDraw  04DDD1  91B  T4  [gsu]</title></rect>
-<rect x="867.5" y="868.5" width="28.1" height="29.4" fill="#3fb950"><title>GsuScreenToggle  02D8CD  89B  T4  [gsu]</title></rect>
-<rect x="896.2" y="732.6" width="28.8" height="28.7" fill="#3fb950"><title>GsuScreenFlipMenu  0BFC49  89B  T4  [gsu]</title></rect>
-<rect x="925.6" y="732.6" width="27.5" height="28.7" fill="#3fb950"><title>ViewMatrixUpdateAndSave  02DF24  85B  T4  [gsu]</title></rect>
+<rect x="867.6" y="732.6" width="28.1" height="35.5" fill="#3fb950"><title>ViewDefaults  03B67B  107B  T4  [gsu]</title></rect>
+<rect x="867.6" y="768.7" width="28.1" height="34.5" fill="#3fb950"><title>Gsu8325  03B011  104B  T4  [gsu]</title></rect>
+<rect x="867.6" y="803.7" width="28.1" height="33.5" fill="#3fb950"><title>GsuScreenFlip  03B83C  101B  T4  [gsu]</title></rect>
+<rect x="867.6" y="837.8" width="28.1" height="30.1" fill="#3fb950"><title>GlyphListDraw  04DDD1  91B  T4  [gsu]</title></rect>
+<rect x="867.6" y="868.5" width="28.1" height="29.4" fill="#3fb950"><title>GsuScreenToggle  02D8CD  89B  T4  [gsu]</title></rect>
+<rect x="896.3" y="732.6" width="28.8" height="28.7" fill="#3fb950"><title>GsuScreenFlipMenu  0BFC49  89B  T4  [gsu]</title></rect>
+<rect x="925.7" y="732.6" width="27.5" height="28.7" fill="#3fb950"><title>ViewMatrixUpdateAndSave  02DF24  85B  T4  [gsu]</title></rect>
 <rect x="953.7" y="732.6" width="26.8" height="28.7" fill="#3fb950"><title>GsuFA35FromTables  079718  83B  T4  [gsu]</title></rect>
 <rect x="981.1" y="732.6" width="26.8" height="28.7" fill="#3fb950"><title>GsuFA1BFromTables  07976B  83B  T4  [gsu]</title></rect>
 <rect x="1008.5" y="732.6" width="25.5" height="28.7" fill="#3fb950"><title>GsuF329Sequence  078AA6  79B  T4  [gsu]</title></rect>
-<rect x="896.2" y="761.9" width="24.0" height="29.3" fill="#3fb950"><title>HudFrameWhileGsuRuns  7EE303  76B  T4  [gsu]</title></rect>
-<rect x="896.2" y="791.8" width="24.0" height="29.3" fill="#3fb950"><title>GsuEE88Ramp  03FE8D  76B  T4  [gsu]</title></rect>
-<rect x="896.2" y="821.7" width="24.0" height="28.1" fill="#3fb950"><title>GsuF441Player2  07A694  73B  T4  [gsu]</title></rect>
-<rect x="896.2" y="850.5" width="24.0" height="24.6" fill="#3fb950"><title>FrameRunGsuAB13B  7EE258  64B  T4  [gsu]</title></rect>
-<rect x="896.2" y="875.7" width="24.0" height="22.2" fill="#3fb950"><title>GsuParamsUpdate  7EE2C9  58B  T4  [gsu]</title></rect>
-<rect x="920.8" y="761.9" width="22.7" height="23.5" fill="#3fb950"><title>Gsu82CE  03AFD7  58B  T4  [gsu]</title></rect>
-<rect x="944.1" y="761.9" width="22.7" height="23.5" fill="#3fb950"><title>GsuEEF5OrEFCD  078619  58B  T4  [gsu]</title></rect>
-<rect x="967.4" y="761.9" width="21.9" height="23.5" fill="#3fb950"><title>GsuParamsFromDp  03AEB6  56B  T4  [gsu]</title></rect>
-<rect x="989.9" y="761.9" width="21.9" height="23.5" fill="#3fb950"><title>GsuF0A5OrF0B4  0785E1  56B  T4  [gsu]</title></rect>
+<rect x="896.3" y="761.9" width="24.0" height="29.3" fill="#3fb950"><title>HudFrameWhileGsuRuns  7EE303  76B  T4  [gsu]</title></rect>
+<rect x="896.3" y="791.8" width="24.0" height="29.3" fill="#3fb950"><title>GsuEE88Ramp  03FE8D  76B  T4  [gsu]</title></rect>
+<rect x="896.3" y="821.7" width="24.0" height="28.1" fill="#3fb950"><title>GsuF441Player2  07A694  73B  T4  [gsu]</title></rect>
+<rect x="896.3" y="850.5" width="24.0" height="24.6" fill="#3fb950"><title>FrameRunGsuAB13B  7EE258  64B  T4  [gsu]</title></rect>
+<rect x="896.3" y="875.7" width="24.0" height="22.2" fill="#3fb950"><title>GsuParamsUpdate  7EE2C9  58B  T4  [gsu]</title></rect>
+<rect x="920.9" y="761.9" width="22.7" height="23.5" fill="#3fb950"><title>Gsu82CE  03AFD7  58B  T4  [gsu]</title></rect>
+<rect x="944.2" y="761.9" width="22.7" height="23.5" fill="#3fb950"><title>GsuEEF5OrEFCD  078619  58B  T4  [gsu]</title></rect>
+<rect x="967.5" y="761.9" width="21.9" height="23.5" fill="#3fb950"><title>GsuParamsFromDp  03AEB6  56B  T4  [gsu]</title></rect>
+<rect x="990.0" y="761.9" width="21.9" height="23.5" fill="#3fb950"><title>GsuF0A5OrF0B4  0785E1  56B  T4  [gsu]</title></rect>
 <rect x="1012.5" y="761.9" width="21.5" height="23.5" fill="#3fb950"><title>GlyphSpritesInit  04DA3C  55B  T4  [gsu]</title></rect>
-<rect x="920.8" y="786.0" width="20.8" height="23.4" fill="#3fb950"><title>GsuTableEntryTo1F4C  08DC13  53B  T4  [gsu]</title></rect>
-<rect x="920.8" y="809.9" width="20.8" height="23.4" fill="#3fb950"><title>GsuAB13WithParams  7F0919  53B  T4  [gsu]</title></rect>
-<rect x="920.8" y="833.9" width="20.8" height="22.0" fill="#3fb950"><title>FrameRunGsu8FCA  7EE221  50B  T4  [gsu]</title></rect>
-<rect x="920.8" y="856.5" width="20.8" height="21.5" fill="#3fb950"><title>FrameRunGsuAB13A  7EE298  49B  T4  [gsu]</title></rect>
-<rect x="920.8" y="878.6" width="20.8" height="19.3" fill="#3fb950"><title>GsuRun  7EE1F5  44B  T4  [gsu]</title></rect>
-<rect x="942.2" y="786.0" width="19.7" height="19.9" fill="#3fb950"><title>ObjectGsu80BC  03C9EE  43B  T4  [gsu]</title></rect>
+<rect x="920.9" y="786.0" width="20.8" height="23.4" fill="#3fb950"><title>GsuTableEntryTo1F4C  08DC13  53B  T4  [gsu]</title></rect>
+<rect x="920.9" y="809.9" width="20.8" height="23.4" fill="#3fb950"><title>GsuAB13WithParams  7F0919  53B  T4  [gsu]</title></rect>
+<rect x="920.9" y="833.9" width="20.8" height="22.0" fill="#3fb950"><title>FrameRunGsu8FCA  7EE221  50B  T4  [gsu]</title></rect>
+<rect x="920.9" y="856.5" width="20.8" height="21.5" fill="#3fb950"><title>FrameRunGsuAB13A  7EE298  49B  T4  [gsu]</title></rect>
+<rect x="920.9" y="878.6" width="20.8" height="19.3" fill="#3fb950"><title>GsuRun  7EE1F5  44B  T4  [gsu]</title></rect>
+<rect x="942.3" y="786.0" width="19.7" height="19.9" fill="#3fb950"><title>ObjectGsu80BC  03C9EE  43B  T4  [gsu]</title></rect>
 <rect x="962.5" y="786.0" width="19.7" height="19.9" fill="#3fb950"><title>GlyphSpriteDraw  07A426  43B  T4  [gsu]</title></rect>
-<rect x="982.7" y="786.0" width="17.3" height="19.9" fill="#3fb950"><title>Gsu81E3  02E01C  38B  T4  [gsu]</title></rect>
-<rect x="1000.6" y="786.0" width="16.8" height="19.9" fill="#3fb950"><title>GsuTableEntryNext  08DC48  37B  T4  [gsu]</title></rect>
+<rect x="982.8" y="786.0" width="17.3" height="19.9" fill="#3fb950"><title>Gsu81E3  02E01C  38B  T4  [gsu]</title></rect>
+<rect x="1000.7" y="786.0" width="16.8" height="19.9" fill="#3fb950"><title>GsuTableEntryNext  08DC48  37B  T4  [gsu]</title></rect>
 <rect x="1018.1" y="786.0" width="15.9" height="19.9" fill="#3fb950"><title>GsuCF42To3000  03EC01  35B  T4  [gsu]</title></rect>
-<rect x="942.2" y="806.5" width="18.2" height="16.4" fill="#3fb950"><title>GlyphAtY60  04DDB0  33B  T4  [gsu]</title></rect>
-<rect x="942.2" y="823.5" width="18.2" height="14.8" fill="#3fb950"><title>ObjectGsu81E3  03C9B4  30B  T4  [gsu]</title></rect>
-<rect x="942.2" y="838.9" width="18.2" height="14.3" fill="#3fb950"><title>GsuBytes200_BFB7B6  04D7BF  29B  T4  [gsu]</title></rect>
-<rect x="942.2" y="853.8" width="18.2" height="14.3" fill="#3fb950"><title>GsuBytes200_BFB5BB  04D7DC  29B  T4  [gsu]</title></rect>
-<rect x="942.2" y="868.7" width="18.2" height="14.3" fill="#3fb950"><title>GsuBytes200_BFBCBD  04D7F9  29B  T4  [gsu]</title></rect>
-<rect x="942.2" y="883.6" width="18.2" height="14.3" fill="#3fb950"><title>GsuBytes200_BFBAB9  04D816  29B  T4  [gsu]</title></rect>
-<rect x="961.0" y="806.5" width="17.8" height="14.7" fill="#3fb950"><title>GsuBytes200_BFB3BE  04D833  29B  T4  [gsu]</title></rect>
-<rect x="979.4" y="806.5" width="17.8" height="14.7" fill="#3fb950"><title>GsuBytes200_BFB2B3  04D850  29B  T4  [gsu]</title></rect>
+<rect x="942.3" y="806.5" width="18.2" height="16.4" fill="#3fb950"><title>GlyphAtY60  04DDB0  33B  T4  [gsu]</title></rect>
+<rect x="942.3" y="823.5" width="18.2" height="14.8" fill="#3fb950"><title>ObjectGsu81E3  03C9B4  30B  T4  [gsu]</title></rect>
+<rect x="942.3" y="838.9" width="18.2" height="14.3" fill="#3fb950"><title>GsuBytes200_BFB7B6  04D7BF  29B  T4  [gsu]</title></rect>
+<rect x="942.3" y="853.8" width="18.2" height="14.3" fill="#3fb950"><title>GsuBytes200_BFB5BB  04D7DC  29B  T4  [gsu]</title></rect>
+<rect x="942.3" y="868.7" width="18.2" height="14.3" fill="#3fb950"><title>GsuBytes200_BFBCBD  04D7F9  29B  T4  [gsu]</title></rect>
+<rect x="942.3" y="883.6" width="18.2" height="14.3" fill="#3fb950"><title>GsuBytes200_BFBAB9  04D816  29B  T4  [gsu]</title></rect>
+<rect x="961.1" y="806.5" width="17.8" height="14.7" fill="#3fb950"><title>GsuBytes200_BFB3BE  04D833  29B  T4  [gsu]</title></rect>
+<rect x="979.5" y="806.5" width="17.8" height="14.7" fill="#3fb950"><title>GsuBytes200_BFB2B3  04D850  29B  T4  [gsu]</title></rect>
 <rect x="997.8" y="806.5" width="17.8" height="14.7" fill="#3fb950"><title>GsuBytes200_BF12B6  04D86D  29B  T4  [gsu]</title></rect>
 <rect x="1016.2" y="806.5" width="17.8" height="14.7" fill="#3fb950"><title>GsuBytes200_BF11BD  04D88A  29B  T4  [gsu]</title></rect>
-<rect x="961.0" y="821.8" width="17.8" height="14.7" fill="#3fb950"><title>GsuBytes200_BF10B9  04D8A7  29B  T4  [gsu]</title></rect>
-<rect x="979.4" y="821.8" width="17.8" height="14.7" fill="#3fb950"><title>GsuBytes200_BFB7B6_D8C4  04D8C4  29B  T4  [gsu]</title></rect>
+<rect x="961.1" y="821.8" width="17.8" height="14.7" fill="#3fb950"><title>GsuBytes200_BF10B9  04D8A7  29B  T4  [gsu]</title></rect>
+<rect x="979.5" y="821.8" width="17.8" height="14.7" fill="#3fb950"><title>GsuBytes200_BFB7B6_D8C4  04D8C4  29B  T4  [gsu]</title></rect>
 <rect x="997.8" y="821.8" width="17.8" height="14.7" fill="#3fb950"><title>GsuBytes200_BFBAB9_D8E1  04D8E1  29B  T4  [gsu]</title></rect>
 <rect x="1016.2" y="821.8" width="17.8" height="14.7" fill="#3fb950"><title>GsuBytes200_BFB3BE_D8FE  04D8FE  29B  T4  [gsu]</title></rect>
-<rect x="961.0" y="837.0" width="17.7" height="14.8" fill="#3fb950"><title>GsuBytes200_BFBBBE  04D91B  29B  T4  [gsu]</title></rect>
-<rect x="961.0" y="852.4" width="17.7" height="14.8" fill="#3fb950"><title>GsuBytes200_0F060E  04D938  29B  T4  [gsu]</title></rect>
-<rect x="961.0" y="867.8" width="17.7" height="14.8" fill="#3fb950"><title>GsuBytes200_0F0405  04D972  29B  T4  [gsu]</title></rect>
-<rect x="961.0" y="883.1" width="17.7" height="14.8" fill="#3fb950"><title>GsuBytes200_0F090A  04D9AC  29B  T4  [gsu]</title></rect>
+<rect x="961.1" y="837.0" width="17.7" height="14.8" fill="#3fb950"><title>GsuBytes200_BFBBBE  04D91B  29B  T4  [gsu]</title></rect>
+<rect x="961.1" y="852.4" width="17.7" height="14.8" fill="#3fb950"><title>GsuBytes200_0F060E  04D938  29B  T4  [gsu]</title></rect>
+<rect x="961.1" y="867.8" width="17.7" height="14.8" fill="#3fb950"><title>GsuBytes200_0F0405  04D972  29B  T4  [gsu]</title></rect>
+<rect x="961.1" y="883.1" width="17.7" height="14.8" fill="#3fb950"><title>GsuBytes200_0F090A  04D9AC  29B  T4  [gsu]</title></rect>
 <rect x="979.3" y="837.0" width="18.0" height="14.5" fill="#3fb950"><title>GsuBytes200_0F050E  04D9E6  29B  T4  [gsu]</title></rect>
-<rect x="997.9" y="837.0" width="18.0" height="14.5" fill="#3fb950"><title>GsuBytes200_0F080E  04DA03  29B  T4  [gsu]</title></rect>
+<rect x="998.0" y="837.0" width="18.0" height="14.5" fill="#3fb950"><title>GsuBytes200_0F080E  04DA03  29B  T4  [gsu]</title></rect>
 <rect x="1016.6" y="837.0" width="17.4" height="14.5" fill="#3fb950"><title>ObjectGsu80BCThen81E3  03C998  28B  T4  [gsu]</title></rect>
 <rect x="979.3" y="852.1" width="14.0" height="15.3" fill="#3fb950"><title>ViewUpdateAndGsuAEF8  02DB59  24B  T4  [gsu]</title></rect>
 <rect x="979.3" y="868.0" width="14.0" height="15.3" fill="#3fb950"><title>GsuF329Entry  078B9B  24B  T4  [gsu]</title></rect>
 <rect x="979.3" y="883.9" width="14.0" height="14.0" fill="#3fb950"><title>GsuWait  7EE1CB  22B  T4  [gsu]</title></rect>
 <rect x="993.9" y="852.1" width="14.7" height="12.0" fill="#3fb950"><title>FrameObjectsWhileGsuRuns  7EE1E1  20B  T4  [gsu]</title></rect>
-<rect x="1009.2" y="852.1" width="12.4" height="12.0" fill="#3fb950"><title>HudHoldDraw  0789E4  17B  T4  [gsu]</title></rect>
+<rect x="1009.3" y="852.1" width="12.4" height="12.0" fill="#3fb950"><title>HudHoldDraw  0789E4  17B  T4  [gsu]</title></rect>
 <rect x="1022.3" y="852.1" width="11.7" height="12.0" fill="#3fb950"><title>GsuF441Player1  07A684  16B  T4  [gsu]</title></rect>
 <rect x="993.9" y="864.7" width="10.9" height="11.2" fill="#3fb950"><title>GlyphRowY60From5  04DDA2  14B  T4  [gsu]</title></rect>
 <rect x="993.9" y="876.5" width="10.9" height="10.4" fill="#3fb950"><title>GlyphRowY60From0  04DD61  13B  T4  [gsu]</title></rect>
 <rect x="993.9" y="887.5" width="10.9" height="10.4" fill="#3fb950"><title>GlyphRowY60From1  04DD6E  13B  T4  [gsu]</title></rect>
 <rect x="1005.4" y="864.7" width="9.1" height="12.3" fill="#3fb950"><title>GlyphRowY60From2  04DD7B  13B  T4  [gsu]</title></rect>
 <rect x="1015.1" y="864.7" width="9.1" height="12.3" fill="#3fb950"><title>GlyphRowY60From3  04DD88  13B  T4  [gsu]</title></rect>
-<rect x="1024.8" y="864.7" width="9.1" height="12.3" fill="#3fb950"><title>GlyphRowY60From4  04DD95  13B  T4  [gsu]</title></rect>
+<rect x="1024.9" y="864.7" width="9.1" height="12.3" fill="#3fb950"><title>GlyphRowY60From4  04DD95  13B  T4  [gsu]</title></rect>
 <rect x="1005.4" y="877.6" width="8.7" height="9.8" fill="#3fb950"><title>GsuParam216A  078E2A  10B  T4  [gsu]</title></rect>
 <rect x="1005.4" y="888.1" width="8.7" height="9.8" fill="#3fb950"><title>GsuParam216B  078E34  10B  T4  [gsu]</title></rect>
-<rect x="1014.6" y="877.6" width="9.9" height="8.6" fill="#3fb950"><title>GsuDigitPair0E74  079252  10B  T4  [gsu]</title></rect>
-<rect x="1025.1" y="877.6" width="8.8" height="8.6" fill="#3fb950"><title>GsuCF42ToC000  03EBEF  9B  T4  [gsu]</title></rect>
-<rect x="1014.6" y="886.8" width="6.9" height="11.1" fill="#3fb950"><title>GsuCF42To4000  03EBF8  9B  T4  [gsu]</title></rect>
+<rect x="1014.7" y="877.6" width="9.9" height="8.6" fill="#3fb950"><title>GsuDigitPair0E74  079252  10B  T4  [gsu]</title></rect>
+<rect x="1025.2" y="877.6" width="8.8" height="8.6" fill="#3fb950"><title>GsuCF42ToC000  03EBEF  9B  T4  [gsu]</title></rect>
+<rect x="1014.7" y="886.8" width="6.9" height="11.1" fill="#3fb950"><title>GsuCF42To4000  03EBF8  9B  T4  [gsu]</title></rect>
 <rect x="1022.1" y="886.8" width="6.9" height="11.1" fill="#3fb950"><title>GlyphSpriteDrawLeft8  07A41D  9B  T4  [gsu]</title></rect>
 <rect x="1029.6" y="886.8" width="4.4" height="11.1" fill="#3fb950"><title>Gsu81E3Long  02E016  6B  T4  [gsu]</title></rect>
 <text x="1039.1" y="344.0" font-size="10" fill="#8b949e">bank 04 Super FX</text>
 <rect x="1037.6" y="349.0" width="117.8" height="194.8" fill="#c8ccd2"><title>(unnamed)  04AF54  2434B  T1  [bank 04 Super FX]</title></rect>
-<rect x="1155.9" y="349.0" width="130.3" height="114.7" fill="#c8ccd2"><title>(unnamed)  04A893  1589B  T1  [bank 04 Super FX]</title></rect>
-<rect x="1155.9" y="464.3" width="130.3" height="79.5" fill="#c8ccd2"><title>(unnamed)  049C3D  1103B  T1  [bank 04 Super FX]</title></rect>
-<rect x="1286.8" y="349.0" width="85.2" height="52.4" fill="#c8ccd2"><title>(unnamed)  04987D  479B  T1  [bank 04 Super FX]</title></rect>
-<rect x="1286.8" y="402.0" width="44.6" height="70.8" fill="#c8ccd2"><title>(unnamed)  04BD20  340B  T1  [bank 04 Super FX]</title></rect>
+<rect x="1156.0" y="349.0" width="130.3" height="114.7" fill="#c8ccd2"><title>(unnamed)  04A893  1589B  T1  [bank 04 Super FX]</title></rect>
+<rect x="1156.0" y="464.3" width="130.3" height="79.5" fill="#c8ccd2"><title>(unnamed)  049C3D  1103B  T1  [bank 04 Super FX]</title></rect>
+<rect x="1286.9" y="349.0" width="85.2" height="52.4" fill="#c8ccd2"><title>(unnamed)  04987D  479B  T1  [bank 04 Super FX]</title></rect>
+<rect x="1286.9" y="402.0" width="44.6" height="70.8" fill="#c8ccd2"><title>(unnamed)  04BD20  340B  T1  [bank 04 Super FX]</title></rect>
 <rect x="1332.1" y="402.0" width="40.0" height="70.8" fill="#c8ccd2"><title>(unnamed)  048FCA  305B  T1  [bank 04 Super FX]</title></rect>
-<rect x="1286.8" y="473.4" width="64.3" height="35.1" fill="#c8ccd2"><title>(unnamed)  04C3D5  244B  T1  [bank 04 Super FX]</title></rect>
-<rect x="1286.8" y="509.1" width="64.3" height="34.7" fill="#c8ccd2"><title>(unnamed)  0491FF  241B  T1  [bank 04 Super FX]</title></rect>
+<rect x="1286.9" y="473.4" width="64.3" height="35.1" fill="#c8ccd2"><title>(unnamed)  04C3D5  244B  T1  [bank 04 Super FX]</title></rect>
+<rect x="1286.9" y="509.1" width="64.3" height="34.7" fill="#c8ccd2"><title>(unnamed)  0491FF  241B  T1  [bank 04 Super FX]</title></rect>
 <rect x="1351.8" y="473.4" width="20.3" height="38.1" fill="#c8ccd2"><title>(unnamed)  04AEFF  85B  T1  [bank 04 Super FX]</title></rect>
 <rect x="1351.8" y="512.0" width="20.3" height="31.7" fill="#c8ccd2"><title>(unnamed)  04A607  71B  T1  [bank 04 Super FX]</title></rect>
 <text x="1377.2" y="344.0" font-size="10" fill="#8b949e">system</text>
@@ -859,9 +861,9 @@
 <rect x="1566.0" y="500.1" width="11.0" height="11.6" fill="#3fb950"><title>BootSoftRestart  038C86  15B  T4  [system]</title></rect>
 <rect x="1577.6" y="500.1" width="10.2" height="11.6" fill="#3fb950"><title>SoftResetLong  07AACE  14B  T4  [system]</title></rect>
 <rect x="1588.4" y="500.1" width="9.5" height="11.6" fill="#d29922"><title>CrashWhite  008014  13B  T2  [system]</title></rect>
-<rect x="1566.0" y="512.3" width="9.5" height="10.7" fill="#3fb950"><title>DemoRunThird  03865E  12B  T4  [system]</title></rect>
-<rect x="1566.0" y="523.6" width="9.5" height="9.8" fill="#3fb950"><title>DemoRunFirst  03863D  11B  T4  [system]</title></rect>
-<rect x="1566.0" y="534.0" width="9.5" height="9.8" fill="#3fb950"><title>DemoRunSecond  038648  11B  T4  [system]</title></rect>
+<rect x="1566.0" y="512.3" width="9.4" height="10.7" fill="#3fb950"><title>DemoRunThird  03865E  12B  T4  [system]</title></rect>
+<rect x="1566.0" y="523.6" width="9.4" height="9.8" fill="#3fb950"><title>DemoRunFirst  03863D  11B  T4  [system]</title></rect>
+<rect x="1566.0" y="534.0" width="9.4" height="9.8" fill="#3fb950"><title>DemoRunSecond  038648  11B  T4  [system]</title></rect>
 <rect x="1576.0" y="512.3" width="11.2" height="8.2" fill="#3fb950"><title>DemoRunFourth  038653  11B  T4  [system]</title></rect>
 <rect x="1587.8" y="512.3" width="10.1" height="8.2" fill="#3fb950"><title>ApproachTargetFull  0BE2C5  10B  T4  [system]</title></rect>
 <rect x="1576.0" y="521.2" width="6.9" height="9.5" fill="#3fb950"><title>ResetVector  00FE88  8B  T4  [system]</title></rect>
@@ -878,7 +880,7 @@
 <rect x="1037.6" y="561.3" width="79.2" height="95.7" fill="#c8ccd2"><title>(unnamed)  07BC1C  818B  T1  [bank 07 S-CPU]</title></rect>
 <rect x="1037.6" y="657.7" width="79.2" height="89.4" fill="#c8ccd2"><title>(unnamed)  07E944  764B  T1  [bank 07 S-CPU]</title></rect>
 <rect x="1117.4" y="561.3" width="60.4" height="104.8" fill="#c8ccd2"><title>(unnamed)  07E265  684B  T1  [bank 07 S-CPU]</title></rect>
-<rect x="1178.4" y="561.3" width="52.2" height="104.8" fill="#c8ccd2"><title>(unnamed)  07E557  592B  T1  [bank 07 S-CPU]</title></rect>
+<rect x="1178.5" y="561.3" width="52.2" height="104.8" fill="#c8ccd2"><title>(unnamed)  07E557  592B  T1  [bank 07 S-CPU]</title></rect>
 <rect x="1117.4" y="666.8" width="61.9" height="80.3" fill="#c8ccd2"><title>(unnamed)  07C6AA  538B  T1  [bank 07 S-CPU]</title></rect>
 <rect x="1180.0" y="666.8" width="50.7" height="46.2" fill="#c8ccd2"><title>(unnamed)  07DAA7  255B  T1  [bank 07 S-CPU]</title></rect>
 <rect x="1180.0" y="713.5" width="30.8" height="33.5" fill="#c8ccd2"><title>(unnamed)  07E08F  114B  T1  [bank 07 S-CPU]</title></rect>
@@ -889,23 +891,23 @@
 <rect x="1037.6" y="831.8" width="51.4" height="66.1" fill="#3fb950"><title>RotateXZFrom08  03C3FF  381B  T4  [math]</title></rect>
 <rect x="1089.6" y="764.6" width="44.6" height="75.1" fill="#3fb950"><title>RotateXY  03C57C  376B  T4  [math]</title></rect>
 <rect x="1089.6" y="840.3" width="44.6" height="57.6" fill="#3fb950"><title>FxMatrixFromAngles  04C1A7  289B  T4  [math]</title></rect>
-<rect x="1134.8" y="764.6" width="35.5" height="33.7" fill="#3fb950"><title>FxNormalize  04C087  136B  T4  [math]</title></rect>
-<rect x="1170.9" y="764.6" width="33.4" height="33.7" fill="#3fb950"><title>FxAngleOf  04C2F8  128B  T4  [math]</title></rect>
-<rect x="1204.9" y="764.6" width="25.7" height="33.7" fill="#3fb950"><title>BlendStepDown  03FD46  99B  T4  [math]</title></rect>
-<rect x="1134.8" y="798.9" width="34.3" height="24.4" fill="#3fb950"><title>ApproachSixtyFourthMin64  03CF1A  96B  T4  [math]</title></rect>
+<rect x="1134.9" y="764.6" width="35.5" height="33.7" fill="#3fb950"><title>FxNormalize  04C087  136B  T4  [math]</title></rect>
+<rect x="1171.0" y="764.6" width="33.4" height="33.7" fill="#3fb950"><title>FxAngleOf  04C2F8  128B  T4  [math]</title></rect>
+<rect x="1205.0" y="764.6" width="25.7" height="33.7" fill="#3fb950"><title>BlendStepDown  03FD46  99B  T4  [math]</title></rect>
+<rect x="1134.9" y="798.9" width="34.3" height="24.4" fill="#3fb950"><title>ApproachSixtyFourthMin64  03CF1A  96B  T4  [math]</title></rect>
 <rect x="1169.8" y="798.9" width="31.0" height="24.4" fill="#3fb950"><title>ApproachThirtySecondMin32  03CEC3  87B  T4  [math]</title></rect>
 <rect x="1201.4" y="798.9" width="29.2" height="24.4" fill="#3fb950"><title>Mode7ScaleProduct  03FCE0  82B  T4  [math]</title></rect>
-<rect x="1134.8" y="824.0" width="24.2" height="24.7" fill="#3fb950"><title>ApproachEighthMin8  03CE30  69B  T4  [math]</title></rect>
-<rect x="1134.8" y="849.3" width="24.2" height="24.4" fill="#3fb950"><title>ScaleDp02Dp94  0883F8  68B  T4  [math]</title></rect>
-<rect x="1134.8" y="874.3" width="24.2" height="23.6" fill="#3fb950"><title>ApproachEighthMin8Byte  03D042  66B  T4  [math]</title></rect>
-<rect x="1159.6" y="824.0" width="25.8" height="21.8" fill="#3fb950"><title>FxTurn  04C15C  65B  T4  [math]</title></rect>
+<rect x="1134.9" y="824.0" width="24.2" height="24.7" fill="#3fb950"><title>ApproachEighthMin8  03CE30  69B  T4  [math]</title></rect>
+<rect x="1134.9" y="849.3" width="24.2" height="24.4" fill="#3fb950"><title>ScaleDp02Dp94  0883F8  68B  T4  [math]</title></rect>
+<rect x="1134.9" y="874.3" width="24.2" height="23.6" fill="#3fb950"><title>ApproachEighthMin8Byte  03D042  66B  T4  [math]</title></rect>
+<rect x="1159.7" y="824.0" width="25.8" height="21.8" fill="#3fb950"><title>FxTurn  04C15C  65B  T4  [math]</title></rect>
 <rect x="1186.1" y="824.0" width="23.8" height="21.8" fill="#3fb950"><title>ApproachQuarterMin4  03CDF4  60B  T4  [math]</title></rect>
 <rect x="1210.5" y="824.0" width="20.1" height="21.8" fill="#3fb950"><title>ApproachQuarterMin4Byte  03D00F  51B  T4  [math]</title></rect>
-<rect x="1159.6" y="846.4" width="25.1" height="17.1" fill="#3fb950"><title>FxAngleVector  04CD98  50B  T4  [math]</title></rect>
-<rect x="1159.6" y="864.1" width="25.1" height="16.8" fill="#3fb950"><title>RandomWordStep  07D9D1  49B  T4  [math]</title></rect>
-<rect x="1159.6" y="881.5" width="25.1" height="16.4" fill="#3fb950"><title>FxMatrixTranspose04  04C2C8  48B  T4  [math]</title></rect>
+<rect x="1159.7" y="846.4" width="25.1" height="17.1" fill="#3fb950"><title>FxAngleVector  04CD98  50B  T4  [math]</title></rect>
+<rect x="1159.7" y="864.1" width="25.1" height="16.8" fill="#3fb950"><title>RandomWordStep  07D9D1  49B  T4  [math]</title></rect>
+<rect x="1159.7" y="881.5" width="25.1" height="16.4" fill="#3fb950"><title>FxMatrixTranspose04  04C2C8  48B  T4  [math]</title></rect>
 <rect x="1185.3" y="846.4" width="24.0" height="15.7" fill="#3fb950"><title>ApproachHalfMin2Byte  03CFE3  44B  T4  [math]</title></rect>
-<rect x="1209.9" y="846.4" width="20.7" height="15.7" fill="#3fb950"><title>FxSquareRoot  04C10F  38B  T4  [math]</title></rect>
+<rect x="1210.0" y="846.4" width="20.7" height="15.7" fill="#3fb950"><title>FxSquareRoot  04C10F  38B  T4  [math]</title></rect>
 <rect x="1185.3" y="862.6" width="12.6" height="18.7" fill="#3fb950"><title>ScaleFiveThirtySeconds  03CC0D  28B  T4  [math]</title></rect>
 <rect x="1185.3" y="881.9" width="12.6" height="16.0" fill="#3fb950"><title>RandomStep  02DF7D  24B  T4  [math]</title></rect>
 <rect x="1198.5" y="862.6" width="16.1" height="12.5" fill="#3fb950"><title>FxDivide  04C144  24B  T4  [math]</title></rect>
@@ -921,16 +923,16 @@
 <rect x="1234.2" y="561.3" width="143.8" height="71.2" fill="#c8ccd2"><title>(unnamed)  02F115  1120B  T1  [bank 02 S-CPU]</title></rect>
 <rect x="1234.2" y="633.1" width="51.6" height="93.2" fill="#c8ccd2"><title>(unnamed)  02E7E8  529B  T1  [bank 02 S-CPU]</title></rect>
 <rect x="1286.4" y="633.1" width="49.5" height="61.8" fill="#c8ccd2"><title>(unnamed)  02ED6D  338B  T1  [bank 02 S-CPU]</title></rect>
-<rect x="1336.5" y="633.1" width="41.5" height="61.8" fill="#c8ccd2"><title>(unnamed)  02E60D  284B  T1  [bank 02 S-CPU]</title></rect>
+<rect x="1336.6" y="633.1" width="41.5" height="61.8" fill="#c8ccd2"><title>(unnamed)  02E60D  284B  T1  [bank 02 S-CPU]</title></rect>
 <rect x="1286.4" y="695.6" width="57.2" height="30.8" fill="#c8ccd2"><title>(unnamed)  02E356  196B  T1  [bank 02 S-CPU]</title></rect>
 <rect x="1344.2" y="695.6" width="33.9" height="30.8" fill="#c8ccd2"><title>(unnamed)  02EEF2  117B  T1  [bank 02 S-CPU]</title></rect>
 <text x="1235.7" y="739.0" font-size="10" fill="#8b949e">save</text>
 <rect x="1234.2" y="744.0" width="72.1" height="45.3" fill="#3fb950"><title>SpecialRecordInsert  07AEF3  363B  T4  [save]</title></rect>
-<rect x="1306.9" y="744.0" width="71.1" height="45.3" fill="#3fb950"><title>RecordsUnpackCourse  07B518  358B  T4  [save]</title></rect>
+<rect x="1307.0" y="744.0" width="71.1" height="45.3" fill="#3fb950"><title>RecordsUnpackCourse  07B518  358B  T4  [save]</title></rect>
 <rect x="1234.2" y="789.9" width="41.6" height="56.8" fill="#d29922"><title>SaveBlocksValidate  07B211  263B  T2  [save]</title></rect>
 <rect x="1234.2" y="847.2" width="41.6" height="50.7" fill="#3fb950"><title>RecordsLoadCourse  07B400  235B  T4  [save]</title></rect>
 <rect x="1276.4" y="789.9" width="40.3" height="37.9" fill="#3fb950"><title>RecordsLoadSpecialCourse  07B329  171B  T4  [save]</title></rect>
-<rect x="1317.2" y="789.9" width="30.2" height="37.9" fill="#3fb950"><title>SaveBlocksCheck  07B190  129B  T4  [save]</title></rect>
+<rect x="1317.3" y="789.9" width="30.2" height="37.9" fill="#3fb950"><title>SaveBlocksCheck  07B190  129B  T4  [save]</title></rect>
 <rect x="1348.1" y="789.9" width="30.0" height="37.9" fill="#3fb950"><title>RecordTimeCompare  07D6E8  128B  T4  [save]</title></rect>
 <rect x="1276.4" y="828.4" width="27.7" height="40.6" fill="#3fb950"><title>SaveTablesCheck  07B10B  127B  T4  [save]</title></rect>
 <rect x="1276.4" y="869.6" width="27.7" height="28.3" fill="#3fb950"><title>SaveUnlocksCheck  03EFD2  89B  T4  [save]</title></rect>
@@ -943,13 +945,13 @@
 <rect x="1326.5" y="847.0" width="15.7" height="18.6" fill="#3fb950"><title>RecordRowsFirstTimes  02EFEC  34B  T4  [save]</title></rect>
 <rect x="1326.5" y="866.3" width="15.7" height="16.4" fill="#3fb950"><title>RecordsLoadForCourse  07B3D4  30B  T4  [save]</title></rect>
 <rect x="1326.5" y="883.2" width="15.7" height="14.7" fill="#3fb950"><title>RecordRow1  02F016  27B  T4  [save]</title></rect>
-<rect x="1342.7" y="847.0" width="17.4" height="13.2" fill="#3fb950"><title>RecordRow2  02F039  27B  T4  [save]</title></rect>
+<rect x="1342.8" y="847.0" width="17.4" height="13.2" fill="#3fb950"><title>RecordRow2  02F039  27B  T4  [save]</title></rect>
 <rect x="1360.7" y="847.0" width="17.4" height="13.2" fill="#3fb950"><title>RecordRow3  02F05C  27B  T4  [save]</title></rect>
-<rect x="1342.7" y="860.9" width="13.5" height="11.2" fill="#3fb950"><title>SaveValidate  07B085  18B  T4  [save]</title></rect>
+<rect x="1342.8" y="860.9" width="13.5" height="11.2" fill="#3fb950"><title>SaveValidate  07B085  18B  T4  [save]</title></rect>
 <rect x="1356.8" y="860.9" width="10.3" height="11.2" fill="#3fb950"><title>SaveRecordSumA  07ADCC  14B  T4  [save]</title></rect>
 <rect x="1367.7" y="860.9" width="10.3" height="11.2" fill="#3fb950"><title>SaveRecordSumB  07ADF9  14B  T4  [save]</title></rect>
-<rect x="1342.7" y="872.6" width="9.4" height="12.3" fill="#3fb950"><title>RecordCarTimes12  07B077  14B  T4  [save]</title></rect>
-<rect x="1342.7" y="885.6" width="9.4" height="12.3" fill="#3fb950"><title>RecordsLoadCourseLong  07B3F2  14B  T4  [save]</title></rect>
+<rect x="1342.8" y="872.6" width="9.4" height="12.3" fill="#3fb950"><title>RecordCarTimes12  07B077  14B  T4  [save]</title></rect>
+<rect x="1342.8" y="885.6" width="9.4" height="12.3" fill="#3fb950"><title>RecordsLoadCourseLong  07B3F2  14B  T4  [save]</title></rect>
 <rect x="1352.7" y="872.6" width="10.1" height="8.9" fill="#3fb950"><title>RecordTagCar8  07B06C  11B  T4  [save]</title></rect>
 <rect x="1352.7" y="882.1" width="10.1" height="8.0" fill="#3fb950"><title>RecordRowsGroupFirsts  02EFE2  10B  T4  [save]</title></rect>
 <rect x="1352.7" y="890.7" width="10.1" height="7.2" fill="#3fb950"><title>RecordTagCar4  07B063  9B  T4  [save]</title></rect>
@@ -973,7 +975,7 @@
 <rect x="1498.2" y="611.9" width="23.1" height="21.0" fill="#3fb950"><title>TimeAddToTotal  07B75B  59B  T4  [hud]</title></rect>
 <rect x="1498.2" y="633.6" width="23.1" height="20.7" fill="#3fb950"><title>MapMarkersPanelB  7EEF16  58B  T4  [hud]</title></rect>
 <rect x="1521.9" y="561.3" width="19.9" height="23.6" fill="#3fb950"><title>HudDrawNumber3  7EE95E  57B  T4  [hud]</title></rect>
-<rect x="1542.4" y="561.3" width="18.5" height="23.6" fill="#3fb950"><title>HudGaugesPanelA  7EEE46  53B  T4  [hud]</title></rect>
+<rect x="1542.4" y="561.3" width="18.4" height="23.6" fill="#3fb950"><title>HudGaugesPanelA  7EEE46  53B  T4  [hud]</title></rect>
 <rect x="1561.5" y="561.3" width="18.1" height="23.6" fill="#3fb950"><title>TimeRunningTotals  07B727  52B  T4  [hud]</title></rect>
 <rect x="1580.2" y="561.3" width="17.7" height="23.6" fill="#3fb950"><title>OamClassName  02EFA3  51B  T4  [hud]</title></rect>
 <rect x="1521.9" y="585.5" width="17.5" height="23.0" fill="#3fb950"><title>TimeUnpackBcd  07AC46  49B  T4  [hud]</title></rect>
@@ -990,10 +992,10 @@
 <rect x="1585.0" y="604.7" width="12.9" height="17.4" fill="#3fb950"><title>HudCountUp19EC  09C072  28B  T4  [hud]</title></rect>
 <rect x="1557.5" y="622.8" width="11.6" height="16.5" fill="#3fb950"><title>HudPanelASlide  7EAE18  24B  T4  [hud]</title></rect>
 <rect x="1557.5" y="639.9" width="11.6" height="14.4" fill="#3fb950"><title>HudDigitSprites62  7EE7FC  21B  T4  [hud]</title></rect>
-<rect x="1569.7" y="622.8" width="14.6" height="9.7" fill="#3fb950"><title>HudSlideIn  7EAECE  18B  T4  [hud]</title></rect>
+<rect x="1569.8" y="622.8" width="14.6" height="9.7" fill="#3fb950"><title>HudSlideIn  7EAECE  18B  T4  [hud]</title></rect>
 <rect x="1585.0" y="622.8" width="12.9" height="9.7" fill="#3fb950"><title>HudDrawValueC  7EE7C6  16B  T4  [hud]</title></rect>
-<rect x="1569.7" y="633.0" width="10.6" height="11.8" fill="#3fb950"><title>RecordShiftFrom0  07B90C  16B  T4  [hud]</title></rect>
-<rect x="1569.7" y="645.5" width="10.6" height="8.7" fill="#3fb950"><title>HudDrawValueA  7EE7AE  12B  T4  [hud]</title></rect>
+<rect x="1569.8" y="633.0" width="10.6" height="11.8" fill="#3fb950"><title>RecordShiftFrom0  07B90C  16B  T4  [hud]</title></rect>
+<rect x="1569.8" y="645.5" width="10.6" height="8.7" fill="#3fb950"><title>HudDrawValueA  7EE7AE  12B  T4  [hud]</title></rect>
 <rect x="1580.9" y="633.0" width="8.2" height="11.3" fill="#3fb950"><title>HudDrawValueB  7EE7BA  12B  T4  [hud]</title></rect>
 <rect x="1589.7" y="633.0" width="8.2" height="11.3" fill="#3fb950"><title>RecordSlotCopy0  07B93C  12B  T4  [hud]</title></rect>
 <rect x="1580.9" y="644.9" width="9.9" height="9.3" fill="#3fb950"><title>Gauge6BPlace  07C53A  12B  T4  [hud]</title></rect>
@@ -1003,13 +1005,13 @@
 <rect x="1381.7" y="671.8" width="71.0" height="47.9" fill="#3fb950"><title>CourseSoundLoad  04D0DB  374B  T4  [audio]</title></rect>
 <rect x="1453.3" y="671.8" width="38.5" height="47.9" fill="#3fb950"><title>MusicLoadForCourse  04D251  204B  T4  [audio]</title></rect>
 <rect x="1381.7" y="720.3" width="42.9" height="32.7" fill="#3fb950"><title>SoundPortsSend  7EB112  156B  T4  [audio]</title></rect>
-<rect x="1425.1" y="720.3" width="35.6" height="32.7" fill="#3fb950"><title>SoundDataLoad  03F05E  130B  T4  [audio]</title></rect>
+<rect x="1425.2" y="720.3" width="35.6" height="32.7" fill="#3fb950"><title>SoundDataLoad  03F05E  130B  T4  [audio]</title></rect>
 <rect x="1461.4" y="720.3" width="30.3" height="32.7" fill="#3fb950"><title>SoundNearCarOnce  04D533  111B  T4  [audio]</title></rect>
 <rect x="1381.7" y="753.6" width="25.2" height="36.8" fill="#3fb950"><title>ApuUpload  04D720  104B  T4  [audio]</title></rect>
 <rect x="1381.7" y="791.0" width="25.2" height="34.0" fill="#3fb950"><title>PlayerStopHeldSound  04D49B  96B  T4  [audio]</title></rect>
 <rect x="1381.7" y="825.6" width="25.2" height="28.2" fill="#3fb950"><title>NearCarSoundUpdate  07EDC1  80B  T4  [audio]</title></rect>
 <rect x="1407.4" y="753.6" width="30.5" height="21.2" fill="#3fb950"><title>SoundPort0QueuePush  04D656  73B  T4  [audio]</title></rect>
-<rect x="1438.6" y="753.6" width="27.6" height="21.2" fill="#3fb950"><title>SoundPort1QueuePush  04D69F  66B  T4  [audio]</title></rect>
+<rect x="1438.6" y="753.6" width="27.5" height="21.2" fill="#3fb950"><title>SoundPort1QueuePush  04D69F  66B  T4  [audio]</title></rect>
 <rect x="1466.7" y="753.6" width="25.0" height="21.2" fill="#3fb950"><title>SoundHoldByFlags  04D082  60B  T4  [audio]</title></rect>
 <rect x="1407.4" y="775.4" width="20.3" height="22.1" fill="#3fb950"><title>SoundReset  04D6E1  51B  T4  [audio]</title></rect>
 <rect x="1407.4" y="798.0" width="20.3" height="18.9" fill="#3fb950"><title>SoundIndicesFromHandlers  03DCEF  44B  T4  [audio]</title></rect>
@@ -1024,7 +1026,7 @@
 <rect x="1428.3" y="824.0" width="16.5" height="14.6" fill="#3fb950"><title>PlayerHoldSound35  04D517  28B  T4  [audio]</title></rect>
 <rect x="1428.3" y="839.2" width="16.5" height="14.6" fill="#3fb950"><title>WindowSlideUpSound  04DA20  28B  T4  [audio]</title></rect>
 <rect x="1445.4" y="793.5" width="15.5" height="14.4" fill="#3fb950"><title>ApuUploadNextByte  04D788  26B  T4  [audio]</title></rect>
-<rect x="1461.4" y="793.5" width="14.8" height="14.4" fill="#3fb950"><title>PlayerSound23  04D5B3  25B  T4  [audio]</title></rect>
+<rect x="1461.5" y="793.5" width="14.8" height="14.4" fill="#3fb950"><title>PlayerSound23  04D5B3  25B  T4  [audio]</title></rect>
 <rect x="1476.9" y="793.5" width="14.8" height="14.4" fill="#3fb950"><title>PlayerSound24  04D5CC  25B  T4  [audio]</title></rect>
 <rect x="1445.4" y="808.5" width="14.6" height="14.7" fill="#3fb950"><title>PlayerSound0D  04D5E5  25B  T4  [audio]</title></rect>
 <rect x="1445.4" y="823.8" width="14.6" height="14.7" fill="#3fb950"><title>PlayerSound0B  04D5FE  25B  T4  [audio]</title></rect>
@@ -1055,4 +1057,4 @@
 <rect x="1552.1" y="883.1" width="29.6" height="14.8" fill="#3fb950"><title>JoypadRead  7EB1AE  51B  T4  [input]</title></rect>
 <rect x="1582.3" y="857.4" width="15.6" height="25.3" fill="#d29922"><title>JoypadPortCheck  7F10CD  46B  T2  [input]</title></rect>
 <rect x="1582.3" y="883.3" width="15.6" height="14.6" fill="#3fb950"><title>FrameSoundAndJoypads  7EA7A3  27B  T4  [input]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 926 &#183; T3 behaviour-exact 17 &#183; 83,398/138,192 bytes exact (60.3%) &#183; green=T4 blue=T3 amber=T2 gray=T1</text></svg>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 930 &#183; T3 behaviour-exact 17 &#183; 83,710/138,203 bytes exact (60.6%) &#183; green=T4 blue=T3 amber=T2 gray=T1</text></svg>
