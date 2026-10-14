@@ -43,6 +43,8 @@
 # - OamHideForHudMode in HUD modes 1, 2 and 3; OamStagePause2 with pad 2's
 #   Select pressed and one frame of pause ($0D2D = 1).
 # - OverlaySpritesStep in states 5 and 6 (x at $A0, then at $9B).
+# - WindowClosedDigitStep in state 5 without the override (on to $07:EBDD,
+#   the end of the race, which does not return: noreturn, 60 frames).
 load build/stuntracefx/states/novice_coupe_race1.state
 set 7E3437 FE
 call 03:FDF7 p=30 db=7E d=0000
@@ -661,4 +663,9 @@ load build/stuntracefx/states/novice_coupe_race1.state
 set 7E10A2 06,00
 set 7E10A4 9B,00
 call 04:E048 long p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E19D8 05
+set 7E0D4C 00
+call 07:C30B noreturn p=30 db=00 d=0000 frames=60
 wait 1
