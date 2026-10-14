@@ -354,3 +354,272 @@ RaceXPressPlayer2_end:
     plb
     plp
     rtl
+
+; @routine 07:DE46 PlayerOnePhaseStep
+; WHAT IT DOES: Player 1's race phase each frame: the stats from the record
+; (PlayerStatsFromRecord, Y = 0, X = $70:2476), then the handler for the
+; phase $0DD6 from the table after the dispatch: 0, 2 and 4 into 07:E265's
+; handlers ($E285, $E2E4, $E404), 6 and 8 PlayerOnePhaseRace, 10
+; PlayerOnePhaseTally, 12 07:ECA4, 14 PlayerOnePhaseEnd.
+; HOW: JMP (abs,X) through the table of eight words at $07:DE5E; M and X
+; 8-bit for the dispatch.
+; Entry: any widths; data bank $07. Exit: as the handler leaves it.
+%at($07DE46)
+PlayerOnePhaseStep:
+    rep.b #$30
+    ldy.w #$0000
+    lda.l !gsu_match_2476
+    tax
+    sep.b #$20
+    jsr.w PlayerStatsFromRecord
+    sep.b #$30
+    lda.w !engine_phase_p1
+    tax
+    jmp.w (PlayerOnePhaseStep_handlers,x)
+PlayerOnePhaseStep_handlers:
+    dw $E285,$E2E4,$E404,$DE6E,$DE6E,$DFD2,$ECA4,$E044
+
+; @routine 07:DE6E PlayerOnePhaseRace
+; WHAT IT DOES: The race phase: the pause check (PauseOnStart); while the
+; race time $0E70 runs, a new lap ($0DE8 against $0DEA) plays sound $35 and
+; counts $0DF8 and the lead $0FAE up. At time 0: sounds $02 (raw) and $15,
+; the sprites hidden for the HUD mode, phase $0A ($0DD6, $0D53), $0D5B and
+; $0E5B cleared, and the result's glyph sprites laid out: positions $0FB0
+; and $0FE0 + X for three rows of 7, 8 and 9 glyphs (y $34, $4C, $60, x
+; $38) from the glyphs at $07:DFA2, the two digits of $0E74 as glyphs
+; $1400 + 2n at $1016 and $1014, and the lead's words by $0FAE (0, 1, more).
+; HOW: 8-bit A for the flags, 16-bit for the sprites; ends with RTS.
+; Entry: M 8-bit, X 8-bit; data bank $07. Exit: A, X, Y as the last step
+; left them.
+%at($07DE6E)
+PlayerOnePhaseRace:
+    jsr.w PauseOnStart
+    rep.b #$20
+    lda.w !race_time_bcd
+    beq PlayerOnePhase_lDE92
+    sep.b #$20
+    lda.w !player_rec_7a
+    cmp.w !wram_0DEA
+    beq PlayerOnePhase_lDE91
+    sta.w !wram_0DEA
+    lda.b #$35
+    jsl.l SoundPort0QueuePush
+    inc.w !wram_0DF8
+    inc.w !p1_lead+11
+PlayerOnePhase_lDE91:
+    rts
+PlayerOnePhase_lDE92:
+    sep.b #$20
+    lda.b #$02
+    jsl.l SoundPort0QueuePushRaw
+    lda.b #$15
+    jsl.l SoundPort0QueuePush
+    jsr.w OamHideForHudMode
+    lda.b #$0A
+    sta.w !engine_phase_p1
+    sta.w !wram_0D53
+    stz.w !wram_0D5B
+    stz.w !wram_0E5B
+    rep.b #$20
+    lda.w #$0004
+    sta.w !glyph_spr_x
+    lda.w #$0008
+    sta.w !glyph_spr_y
+    rep.b #$30
+    ldx.w #$0002
+    ldy.w #$0007
+PlayerOnePhase_lDEC7:
+    lda.w #$0034
+    sta.w !glyph_spr_y,x
+    lda.w #$0038
+    sta.w !glyph_spr_x,x
+    lda.l PlayerOnePhase_glyphs-2,x
+    sta.w !glyph_spr_glyph,x
+    inx
+    inx
+    dey
+    bne PlayerOnePhase_lDEC7
+    ldy.w #$0008
+PlayerOnePhase_lDEE2:
+    lda.w #$004C
+    sta.w !glyph_spr_y,x
+    lda.w #$0038
+    sta.w !glyph_spr_x,x
+    lda.l PlayerOnePhase_glyphs-2,x
+    sta.w !glyph_spr_glyph,x
+    inx
+    inx
+    dey
+    bne PlayerOnePhase_lDEE2
+    ldy.w #$0009
+PlayerOnePhase_lDEFD:
+    lda.w #$0060
+    sta.w !glyph_spr_y,x
+    lda.w #$0038
+    sta.w !glyph_spr_x,x
+    lda.l PlayerOnePhase_glyphs-2,x
+    sta.w !glyph_spr_glyph,x
+    inx
+    inx
+    dey
+    bne PlayerOnePhase_lDEFD
+    lda.w !wram_0E74
+    and.w #$000F
+    asl a
+    clc
+    adc.w #$1400
+    sta.w !glyph_spr_glyph+6
+    lda.w !wram_0E74
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    and.w #$000F
+    asl a
+    clc
+    adc.w #$1400
+    sta.w !glyph_spr_glyph+4
+    lda.w !p1_lead+11
+    beq PlayerOnePhase_lDF5F
+    cmp.w #$0002
+    bcs PlayerOnePhase_lDF71
+    lda.w #$9610
+    sta.w !glyph_spr_glyph+18
+    lda.w #$960E
+    sta.w !glyph_spr_glyph+20
+    lda.w #$941C
+    sta.w !glyph_spr_glyph+22
+    lda.w #$0000
+    sta.w !glyph_spr_glyph+30
+    lda.w #$980E
+    sta.w !glyph_spr_1040
+    bra PlayerOnePhase_lDF71
+PlayerOnePhase_lDF5F:
+    lda.w #$960E
+    sta.w !glyph_spr_glyph+18
+    lda.w #$9610
+    sta.w !glyph_spr_glyph+20
+    lda.w #$0000
+    sta.w !glyph_spr_glyph+22
+PlayerOnePhase_lDF71:
+    rts
+PlayerOnePhase_limits:
+    dw $0054,$0060,$0068,$0074,$007C,$0084,$008C,$0054
+    dw $0060,$0068,$0070,$007C,$0084,$008C,$0094,$0060
+    dw $0068,$0070,$0078,$0080,$008C,$0094,$009C,$00A4
+PlayerOnePhase_glyphs:
+    dw $9A00,$9400,$9400,$9618,$941C,$9418,$9808,$9A00
+    dw $961A,$9800,$9610,$960A,$9414,$9612,$9618,$941C
+    dw $9802,$961A,$9616,$9414,$9418,$9414,$9616,$9618
+
+; @routine 07:DFD2 PlayerOnePhaseTally
+; WHAT IT DOES: The result's tally phase: slides the glyph sprites' x
+; ($0FB0 + 2..$30) right by $0B up to their limits at $07:DF72; once the
+; first passes $AC, sets the time $0E70 from $0E74, $0E58 = $40, phase $0E,
+; $0D65 = $0C, $0D6F = 6, $0D6B = $FFFE and $0E74 from $0E6C. Then draws:
+; $70:0210 = $20, GsuBytes200_BFBAB9, the digit pair at the first x and
+; every glyph sprite (GlyphSpritesDrawAll).
+; HOW: 16-bit registers; the limits read with long loads.
+; Entry: M 8-bit, X 8-bit; data bank $07. Exit: as GlyphSpritesDrawAll.
+%at($07DFD2)
+PlayerOnePhaseTally:
+    rep.b #$30
+    ldx.w #$0002
+PlayerOnePhase_lDFD7:
+    lda.w !glyph_spr_x,x
+    clc
+    adc.w #$000B
+    cmp.l PlayerOnePhase_limits-2,x
+    bcc PlayerOnePhase_lDFE8
+    lda.l PlayerOnePhase_limits-2,x
+PlayerOnePhase_lDFE8:
+    sta.w !glyph_spr_x,x
+    inx
+    inx
+    cpx.w #$0032
+    bcc PlayerOnePhase_lDFD7
+    lda.w !glyph_spr_x
+    clc
+    adc.w #$000B
+    cmp.w #$00AC
+    bcc PlayerOnePhase_lE02C
+    sep.b #$20
+    lda.w !wram_0E74
+    sta.w !race_time_bcd
+    lda.b #$40
+    sta.w !wram_0E58
+    lda.b #$0E
+    sta.w !engine_phase_p1
+    lda.b #$0C
+    sta.w !time_bonus_state
+    rep.b #$20
+    lda.w #$0006
+    sta.w !wram_0D6F
+    lda.w #$FFFE
+    sta.w !wram_0D6B
+    lda.w !wram_0E6C
+    sta.w !wram_0E74
+    lda.w #$00AC
+PlayerOnePhase_lE02C:
+    sta.w !glyph_spr_x
+    lda.w #$0020
+    sta.l !fx_draw_rows
+    jsl.l GsuBytes200_BFBAB9
+    lda.w !glyph_spr_x
+    jsr.w GsuDigitPair0E74At
+    jsr.w GlyphSpritesDrawAll
+    rts
+
+; @routine 07:E044 PlayerOnePhaseEnd
+; WHAT IT DOES: The last phase: counts $0E58 down (sound $04 on port 1 at
+; $0A; at 0 $19DF = 1 and WindowSlideUpSound); once it is 0 and the window
+; slide is done ($19D8 = 5), keeps $0E74 at $0E6C, clears $0D4C, sets $0D48
+; = 2, $0D89 from $0D8B and $18DB from $0D8C, and goes on at 07:EC6B.
+; Otherwise draws the glyph sprites (GlyphSpritesDrawAll).
+; HOW: 8-bit A; a long store to $18DB; a JMP to finish.
+; Entry: M 8-bit, X 8-bit; data bank $07. Exit: as GlyphSpritesDrawAll or
+; 07:EC6B leaves it.
+%at($07E044)
+PlayerOnePhaseEnd:
+    lda.w !wram_0E58
+    beq PlayerOnePhase_lE063
+    cmp.b #$0A
+    bne PlayerOnePhase_lE053
+    lda.b #$04
+    jsl.l SoundPort1QueuePush
+PlayerOnePhase_lE053:
+    dec.w !wram_0E58
+    bne PlayerOnePhase_lE061
+    lda.b #$01
+    sta.w !wram_19DF
+    jsl.l WindowSlideUpSound
+PlayerOnePhase_lE061:
+    bra PlayerOnePhase_lE06A
+PlayerOnePhase_lE063:
+    lda.w !window_hdma_off
+    cmp.b #$05
+    beq PlayerOnePhase_lE06E
+PlayerOnePhase_lE06A:
+    jsr.w GlyphSpritesDrawAll
+    rts
+PlayerOnePhase_lE06E:
+    lda.w !wram_0E74
+    sta.w !wram_0E6C
+    stz.w !digit62_override
+    lda.b #$02
+    sta.w !wram_0D48
+    lda.w !wram_0D8B
+    sta.w !wram_0D89
+    rep.b #$20
+    lda.w !wram_0D8C
+    sta.l !selection_handler_a
+    jmp.w WindowDigitStepEC6B
+
+; @routine 07:E08E PlayerOnePhaseReturn
+; WHAT IT DOES: A lone RTS after PlayerOnePhaseEnd's jump, which nothing
+; reaches.
+; HOW: Returns.
+; Entry: any. Exit: nothing changes.
+%at($07E08E)
+PlayerOnePhaseReturn:
+    rts

@@ -445,3 +445,326 @@ void abi_RaceXPressPlayer2(void)
     race_x_block(b, 0x0E, race_flag_p2, abi_OamHighBits58Park112);
     race_frame_end(b, 0x0D1C, 1, 0, 0);
 }
+
+void abi_PauseOnStart(void);
+void abi_SoundPort0QueuePush(void);
+void abi_SoundPort0QueuePushRaw(void);
+void abi_SoundPort1QueuePush(void);
+void abi_OamHideForHudMode(void);
+void abi_GsuBytes200_BFBAB9(void);
+void abi_GsuDigitPair0E74At(void);
+void abi_GlyphSpritesDrawAll(void);
+void abi_WindowSlideUpSound(void);
+
+/* LDA # (8-bit). */
+static void p1_lda8(uint8_t v)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+}
+
+/* CMP (8-bit) of A's low byte. */
+static void p1_cmp8(uint8_t m)
+{
+    uint8_t a = (uint8_t)cpu.a;
+
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(a - m)) & ~P_C) | (a >= m ? P_C : 0));
+}
+
+/* INC / DEC abs (8-bit). */
+static uint8_t p1_step8(uint32_t at, int d)
+{
+    uint8_t v = (uint8_t)(rd8(at) + d);
+
+    wr8(at, v);
+    cpu.p = nz8(cpu.p, v);
+    return v;
+}
+
+/* INX, INX and CPX # (16-bit). */
+static void p1_next(uint16_t end)
+{
+    cpu.x = (uint16_t)(cpu.x + 2);
+    cpu.p = (uint8_t)((nz16(cpu.p, (uint16_t)(cpu.x - end)) & ~P_C) | (cpu.x >= end ? P_C : 0));
+}
+
+/* One glyph of $0E74 (shift 0 or 4): glyph $1400 + 2 * digit. */
+static void p1_digit_glyph(uint32_t b, unsigned shift, uint16_t at)
+{
+    unsigned i;
+
+    op_lda16(b | 0x0E74);
+    for (i = 0; i < shift; i++)
+        op_lsr16();
+    op_and16(0x000F);
+    op_asl16();
+    op_add16(0x1400);
+    wr16(b | at, cpu.a);
+}
+
+/*
+ * @routine 07:DE6E PlayerOnePhaseRace
+ * WHAT IT DOES: The race phase: the pause check (PauseOnStart); while the
+ * race time $0E70 runs, a new lap ($0DE8 against $0DEA) plays sound $35 and
+ * counts $0DF8 and the lead $0FAE up. At time 0: sounds $02 (raw) and $15,
+ * the sprites hidden for the HUD mode, phase $0A ($0DD6, $0D53), $0D5B and
+ * $0E5B cleared, and the result's glyph sprites laid out: positions $0FB0
+ * and $0FE0 + X for three rows of 7, 8 and 9 glyphs (y $34, $4C, $60, x
+ * $38) from the glyphs at $07:DFA2, the two digits of $0E74 as glyphs
+ * $1400 + 2n at $1016 and $1014, and the lead's words by $0FAE (0, 1, more).
+ * HOW: 8-bit A for the flags, 16-bit for the sprites; ends with RTS.
+ * Entry: M 8-bit, X 8-bit; data bank $07. Exit: A, X, Y as the last step
+ * left them.
+ */
+void abi_PlayerOnePhaseRace(void)
+{
+    static const struct { uint16_t n, y; } rows[3] = {{7, 0x0034}, {8, 0x004C}, {9, 0x0060}};
+    uint32_t b = (uint32_t)cpu.db << 16;
+    unsigned r;
+
+    abi_PauseOnStart();
+    op_rep(P_M);
+    op_lda16(b | 0x0E70);
+    if (cpu.a) {
+        op_sep(P_M);
+        op_lda8(b | 0x0DE8);
+        p1_cmp8(rd8(b | 0x0DEA));
+        if (cpu.p & P_Z)
+            return;
+        wr8(b | 0x0DEA, (uint8_t)cpu.a);
+        p1_lda8(0x35);
+        abi_SoundPort0QueuePush();
+        p1_step8(b | 0x0DF8, 1);
+        p1_step8(b | 0x0FAE, 1);
+        return;
+    }
+    op_sep(P_M);
+    p1_lda8(0x02);
+    abi_SoundPort0QueuePushRaw();
+    p1_lda8(0x15);
+    abi_SoundPort0QueuePush();
+    abi_OamHideForHudMode();
+    p1_lda8(0x0A);
+    wr8(b | 0x0DD6, 0x0A);
+    wr8(b | 0x0D53, 0x0A);
+    wr8(b | 0x0D5B, 0x00);
+    wr8(b | 0x0E5B, 0x00);
+    op_rep(P_M);
+    op_lda16_imm(0x0004);
+    wr16(b | 0x0FB0, 0x0004);
+    op_lda16_imm(0x0008);
+    wr16(b | 0x0FE0, 0x0008);
+    op_rep(P_M | P_X);
+    cpu.x = 0x0002;
+    cpu.p = nz16(cpu.p, cpu.x);
+    for (r = 0; r < 3; r++) {
+        cpu.y = rows[r].n;
+        cpu.p = nz16(cpu.p, cpu.y);
+        do {
+            op_lda16_imm(rows[r].y);
+            wr16(b | (uint16_t)(0x0FE0 + cpu.x), cpu.a);
+            op_lda16_imm(0x0038);
+            wr16(b | (uint16_t)(0x0FB0 + cpu.x), cpu.a);
+            op_lda16(0x07DFA0 + cpu.x);
+            wr16(b | (uint16_t)(0x1010 + cpu.x), cpu.a);
+            cpu.x = (uint16_t)(cpu.x + 2);
+            cpu.y--;
+            cpu.p = nz16(cpu.p, cpu.y);
+        } while (cpu.y);
+    }
+    p1_digit_glyph(b, 0, 0x1016);
+    p1_digit_glyph(b, 4, 0x1014);
+    op_lda16(b | 0x0FAE);
+    if (!cpu.a) {
+        op_lda16_imm(0x960E);
+        wr16(b | 0x1022, 0x960E);
+        op_lda16_imm(0x9610);
+        wr16(b | 0x1024, 0x9610);
+        op_lda16_imm(0x0000);
+        wr16(b | 0x1026, 0x0000);
+        return;
+    }
+    op_cmp16(0x0002);
+    if (cpu.p & P_C)
+        return;
+    op_lda16_imm(0x9610);
+    wr16(b | 0x1022, 0x9610);
+    op_lda16_imm(0x960E);
+    wr16(b | 0x1024, 0x960E);
+    op_lda16_imm(0x941C);
+    wr16(b | 0x1026, 0x941C);
+    op_lda16_imm(0x0000);
+    wr16(b | 0x102E, 0x0000);
+    op_lda16_imm(0x980E);
+    wr16(b | 0x1040, 0x980E);
+}
+
+/*
+ * @routine 07:DFD2 PlayerOnePhaseTally
+ * WHAT IT DOES: The result's tally phase: slides the glyph sprites' x
+ * ($0FB0 + 2..$30) right by $0B up to their limits at $07:DF72; once the
+ * first passes $AC, sets the time $0E70 from $0E74, $0E58 = $40, phase $0E,
+ * $0D65 = $0C, $0D6F = 6, $0D6B = $FFFE and $0E74 from $0E6C. Then draws:
+ * $70:0210 = $20, GsuBytes200_BFBAB9, the digit pair at the first x and
+ * every glyph sprite (GlyphSpritesDrawAll).
+ * HOW: 16-bit registers; the limits read with long loads.
+ * Entry: M 8-bit, X 8-bit; data bank $07. Exit: as GlyphSpritesDrawAll.
+ */
+void abi_PlayerOnePhaseTally(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    op_rep(P_M | P_X);
+    cpu.x = 0x0002;
+    cpu.p = nz16(cpu.p, cpu.x);
+    do {
+        op_lda16(b | (uint16_t)(0x0FB0 + cpu.x));
+        op_add16(0x000B);
+        op_cmp16(rd16(0x07DF70 + cpu.x));
+        if (cpu.p & P_C)
+            op_lda16(0x07DF70 + cpu.x);
+        wr16(b | (uint16_t)(0x0FB0 + cpu.x), cpu.a);
+        p1_next(0x0032);
+    } while (!(cpu.p & P_C));
+    op_lda16(b | 0x0FB0);
+    op_add16(0x000B);
+    op_cmp16(0x00AC);
+    if (cpu.p & P_C) {
+        op_sep(P_M);
+        op_lda8(b | 0x0E74);
+        wr8(b | 0x0E70, (uint8_t)cpu.a);
+        p1_lda8(0x40);
+        wr8(b | 0x0E58, 0x40);
+        p1_lda8(0x0E);
+        wr8(b | 0x0DD6, 0x0E);
+        p1_lda8(0x0C);
+        wr8(b | 0x0D65, 0x0C);
+        op_rep(P_M);
+        op_lda16_imm(0x0006);
+        wr16(b | 0x0D6F, 0x0006);
+        op_lda16_imm(0xFFFE);
+        wr16(b | 0x0D6B, 0xFFFE);
+        op_lda16(b | 0x0E6C);
+        wr16(b | 0x0E74, cpu.a);
+        op_lda16_imm(0x00AC);
+    }
+    wr16(b | 0x0FB0, cpu.a);
+    op_lda16_imm(0x0020);
+    wr16(0x700210, 0x0020);
+    abi_GsuBytes200_BFBAB9();
+    op_lda16(b | 0x0FB0);
+    abi_GsuDigitPair0E74At();
+    abi_GlyphSpritesDrawAll();
+}
+
+/*
+ * @routine 07:E044 PlayerOnePhaseEnd
+ * WHAT IT DOES: The last phase: counts $0E58 down (sound $04 on port 1 at
+ * $0A; at 0 $19DF = 1 and WindowSlideUpSound); once it is 0 and the window
+ * slide is done ($19D8 = 5), keeps $0E74 at $0E6C, clears $0D4C, sets $0D48
+ * = 2, $0D89 from $0D8B and $18DB from $0D8C, and goes on at 07:EC6B.
+ * Otherwise draws the glyph sprites (GlyphSpritesDrawAll).
+ * HOW: 8-bit A; a long store to $18DB; a JMP to finish.
+ * Entry: M 8-bit, X 8-bit; data bank $07. Exit: as GlyphSpritesDrawAll or
+ * 07:EC6B leaves it.
+ */
+void abi_PlayerOnePhaseEnd(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    op_lda8(b | 0x0E58);
+    if ((uint8_t)cpu.a) {
+        p1_cmp8(0x0A);
+        if (cpu.p & P_Z) {
+            p1_lda8(0x04);
+            abi_SoundPort1QueuePush();
+        }
+        if (!p1_step8(b | 0x0E58, -1)) {
+            p1_lda8(0x01);
+            wr8(b | 0x19DF, 0x01);
+            abi_WindowSlideUpSound();
+        }
+    } else {
+        op_lda8(b | 0x19D8);
+        p1_cmp8(0x05);
+        if (cpu.p & P_Z) {
+            op_lda8(b | 0x0E74);
+            wr8(b | 0x0E6C, (uint8_t)cpu.a);
+            wr8(b | 0x0D4C, 0x00);
+            p1_lda8(0x02);
+            wr8(b | 0x0D48, 0x02);
+            op_lda8(b | 0x0D8B);
+            wr8(b | 0x0D89, (uint8_t)cpu.a);
+            op_rep(P_M);
+            op_lda16(b | 0x0D8C);
+            wr16(0x0018DB, cpu.a);
+            jump_routine(0x07EC6B);
+            return;
+        }
+    }
+    abi_GlyphSpritesDrawAll();
+}
+
+/*
+ * @routine 07:E08E PlayerOnePhaseReturn
+ * WHAT IT DOES: A lone RTS after PlayerOnePhaseEnd's jump, which nothing
+ * reaches.
+ * HOW: Returns.
+ * Entry: any. Exit: nothing changes.
+ */
+void abi_PlayerOnePhaseReturn(void)
+{
+}
+
+/*
+ * @routine 07:DE46 PlayerOnePhaseStep
+ * WHAT IT DOES: Player 1's race phase each frame: the stats from the record
+ * (PlayerStatsFromRecord, Y = 0, X = $70:2476), then the handler for the
+ * phase $0DD6 from the table after the dispatch: 0, 2 and 4 into 07:E265's
+ * handlers ($E285, $E2E4, $E404), 6 and 8 PlayerOnePhaseRace, 10
+ * PlayerOnePhaseTally, 12 07:ECA4, 14 PlayerOnePhaseEnd.
+ * HOW: JMP (abs,X) through the table of eight words at $07:DE5E; M and X
+ * 8-bit for the dispatch.
+ * Entry: any widths; data bank $07. Exit: as the handler leaves it.
+ */
+void abi_PlayerOnePhaseStep(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t h;
+
+    op_rep(P_M | P_X);
+    cpu.y = 0x0000;
+    cpu.p = nz16(cpu.p, 0);
+    op_lda16(0x702476);
+    op_tax16();
+    op_sep(P_M);
+    abi_PlayerStatsFromRecord();
+    op_sep(P_M | P_X);
+    op_lda8(b | 0x0DD6);
+    cpu.x = (uint8_t)cpu.a;
+    cpu.p = nz8(cpu.p, (uint8_t)cpu.x);
+    h = rd16(0x07DE5E + cpu.x);
+    switch (h) {
+    case 0xE285:
+        jump_routine(0x07E285);
+        break;
+    case 0xE2E4:
+        jump_routine(0x07E2E4);
+        break;
+    case 0xE404:
+        jump_routine(0x07E404);
+        break;
+    case 0xDE6E:
+        abi_PlayerOnePhaseRace();
+        break;
+    case 0xDFD2:
+        abi_PlayerOnePhaseTally();
+        break;
+    case 0xECA4:
+        jump_routine(0x07ECA4);
+        break;
+    case 0xE044:
+        abi_PlayerOnePhaseEnd();
+        break;
+    }
+}
