@@ -362,4 +362,78 @@ FxProjectPoint:
     ldw (r10)
     nop
 
+; @routine 01:B2A4 FxProjectScaled
+; WHAT IT DOES: Projects a point and a size at a depth: X (R1), Y (R2) and
+; the size (R5) times the scale for the depth (R3), X and Y moved to the
+; screen centre.
+; HOW: ROM bank $14. While the depth is above $4400 (SUB, BPL), ASR halves
+; X, Y, the size and the depth; while $100 - the depth is not negative,
+; ADD doubles them, so the depth ends from $101 to $4400. The scale is
+; the word at $14:896C + the depth AND NOT 1 (GETB, GETBH); FMULT by it
+; gives each, X plus $34 and Y plus $36.
+; Entry: R1 = X, R2 = Y, R3 = the depth (positive), R5 = the size; R11 =
+; return address. Exit: R1, R2 = the screen position; R5 = R0 = the size;
+; R3 = the depth as scaled, bit 0 clear; R6 = the scale; R14 = the
+; table's address + 1; the ROM bank $14; flags from the last FMULT.
+; R14 and the ROM buffer move as on the Super FX.
+%at($01B2A4)
+FxProjectScaled:
+    ibt r0,#$14
+    romb
+.halve:
+    iwt r0,#$4400
+    sub r3
+    bpl .double
+    nop
+    with r1
+    asr
+    with r2
+    asr
+    with r5
+    asr
+    with r3
+    bra .halve
+    asr
+.double:
+    iwt r0,#$0100
+    sub r3
+    bmi .scale
+    nop
+    with r5
+    add r5
+    with r1
+    add r1
+    with r2
+    add r2
+    with r3
+    bra .double
+    add r3
+.scale:
+    with r3
+    bic #1
+    iwt r0,#$896C
+    to r14
+    add r3
+    to r6
+    getb
+    inc r14
+    with r6
+    getbh
+    from r1
+    fmult
+    lms r1,(!gsu_in_34-!gsu_ram)
+    with r1
+    add r0
+    from r2
+    fmult
+    lms r2,(!gsu_in_36-!gsu_ram)
+    with r2
+    add r0
+    from r5
+    fmult
+    to r5                       ; a TO the next WITH overrides
+    move r5,r0
+    jmp r11
+    nop
+
 arch 65816

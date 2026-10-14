@@ -123,3 +123,64 @@ void abi_FxProjectPoint(void)
 {
     FxProjectPoint();
 }
+
+#define FX_SCALE_TABLE 0x896Cu  /* $14:896C: the scale for each even depth */
+
+/*
+ * @routine 01:B2A4 FxProjectScaled
+ * WHAT IT DOES: Projects a point and a size at a depth: X (R1), Y (R2) and
+ * the size (R5) times the scale for the depth (R3), X and Y moved to the
+ * screen centre.
+ * HOW: ROM bank $14. While the depth is above $4400 (SUB, BPL), ASR halves
+ * X, Y, the size and the depth; while $100 - the depth is not negative,
+ * ADD doubles them, so the depth ends from $101 to $4400. The scale is
+ * the word at $14:896C + the depth AND NOT 1 (GETB, GETBH); FMULT by it
+ * gives each, X plus $34 and Y plus $36.
+ * Entry: R1 = X, R2 = Y, R3 = the depth (positive), R5 = the size; R11 =
+ * return address. Exit: R1, R2 = the screen position; R5 = R0 = the size;
+ * R3 = the depth as scaled, bit 0 clear; R6 = the scale; R14 = the
+ * table's address + 1; the ROM bank $14; flags from the last FMULT.
+ * R14 and the ROM buffer move as on the Super FX.
+ */
+void FxProjectScaled(void)
+{
+    gsu.r[0] = 0x0014;
+    gsu.rombr = 0x14;
+    for (;;) {
+        gsu.r[0] = gsu_sub(0x4400, gsu.r[3], 0);
+        if (!gsu.s)
+            break;
+        gsu.r[1] = gsu_asr(gsu.r[1]);
+        gsu.r[2] = gsu_asr(gsu.r[2]);
+        gsu.r[5] = gsu_asr(gsu.r[5]);
+        gsu.r[3] = gsu_asr(gsu.r[3]);       /* BRA's delay slot */
+    }
+    for (;;) {
+        gsu.r[0] = gsu_sub(0x0100, gsu.r[3], 0);
+        if (gsu.s)
+            break;
+        gsu.r[5] = gsu_add(gsu.r[5], gsu.r[5], 0);
+        gsu.r[1] = gsu_add(gsu.r[1], gsu.r[1], 0);
+        gsu.r[2] = gsu_add(gsu.r[2], gsu.r[2], 0);
+        gsu.r[3] = gsu_add(gsu.r[3], gsu.r[3], 0);  /* BRA's delay slot */
+    }
+    gsu.r[3] = gsu_bic(gsu.r[3], 0x0001);
+    gsu.r[0] = FX_SCALE_TABLE;
+    gsu_r14(gsu_add(gsu.r[0], gsu.r[3], 0));
+    gsu.r[6] = gsu_getb();
+    gsu_r14(gsu_inc(gsu.r[14]));
+    gsu.r[6] = gsu_getbh(gsu.r[6]);
+    gsu.r[0] = gsu_fmult(gsu.r[1], gsu.r[6]);
+    gsu.r[1] = gsu_ldw(FX_CENTRE);
+    gsu.r[1] = gsu_add(gsu.r[1], gsu.r[0], 0);
+    gsu.r[0] = gsu_fmult(gsu.r[2], gsu.r[6]);
+    gsu.r[2] = gsu_ldw(FX_CENTRE + 2);
+    gsu.r[2] = gsu_add(gsu.r[2], gsu.r[0], 0);
+    gsu.r[0] = gsu_fmult(gsu.r[5], gsu.r[6]);
+    gsu.r[5] = gsu.r[0];
+}
+
+void abi_FxProjectScaled(void)
+{
+    FxProjectScaled();
+}
