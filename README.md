@@ -87,7 +87,7 @@ the M1 corpus.
 **What the bars measure.** Both bars count the executed code bytes of every
 routine the scripts have reached, on the S-CPU and the Super FX: 137,217 B in 1022
 routines. M1 counts routines whose C is certified behaviour exact (T3) or
-whose assembly is also byte exact (T4); M2 counts T4 only. 22 routine(s) are
+whose assembly is also byte exact (T4); M2 counts T4 only. 25 routine(s) are
 in the tree but not yet certified (T2).
 
 **The denominator grows.** Code no script has run is not counted yet. Of the
