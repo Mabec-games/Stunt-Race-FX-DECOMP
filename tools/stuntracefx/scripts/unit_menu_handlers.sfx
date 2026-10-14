@@ -2,6 +2,7 @@
 # a one-entry menu actor list built in low work RAM: the kind 4 animation
 # change of the slide to the preview, the initials frame's back (Y) and the
 # settings' exit (B); initials left and a letter wrapping up.
+# MenuBg1RiseAway with the background still below its start (y $20 >= 0).
 load build/stuntracefx/states/novice_coupe_race1.state
 set 7E11F7 02,00
 set 7E1239 80,1F
@@ -40,4 +41,13 @@ set 7E118F 00,08
 set 7E18ED 00,00
 set 7E18EF 19,00
 call 0B:C385 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E11F7 02,00
+set 7E1239 80,1F
+set 7E11F9 20,1F
+set 7E1F2A 00,00
+set 7E1F40 10,00
+set 7E1F42 01,00
+call 0B:CE8A x=1F20 p=00 db=00 d=0000
 wait 1
