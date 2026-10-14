@@ -10,12 +10,6 @@
 
 #define WINDOW_HDMA 0x7FF85Bu
 
-static void entry(unsigned i, uint8_t lines, uint16_t addr)
-{
-    wr8(WINDOW_HDMA + 3 * i, lines);
-    wr16(WINDOW_HDMA + 3 * i + 1, addr);
-}
-
 /*
  * @routine 7E:D8A8 WindowHdmaFFDD
  * WHAT IT DOES: Sets the window table to four bands (64, 64, 64, 62 lines),

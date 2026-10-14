@@ -321,9 +321,10 @@ void SoundPort0QueuePush(uint8_t command);
  */
 uint16_t MenuChoiceUpDown(uint8_t bank)
 {
-    uint16_t pad = rd16((uint32_t)bank << 16 | 0x118B), a;
+    uint16_t pad, a;
 
     wr16(0x0018C5, rd16(0x0018C3));
+    pad = rd16((uint32_t)bank << 16 | 0x118B);
     if (pad & 0x0800) {
         SoundPort0QueuePush(0x45);
         wr16(0x0018C3, (uint16_t)(rd16(0x0018C3) - 1) & 0x0003);

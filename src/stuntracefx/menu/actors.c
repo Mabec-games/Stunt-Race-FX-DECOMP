@@ -412,10 +412,11 @@ void abi_MenuActorCountdown(void)
 /* The two sine positions: the table byte for the angle in +$0A - $40
    ($00:96FE) sign-extended, $80 added, kept to 8 bits, then `step` (+1 or
    -1) added; stored at $18BF, and at $18C1 raised to at least $A8. C is the
-   compare with $A8, V the add of $80, N and Z from $11F9. */
-static uint16_t sine_position(uint8_t bank, uint16_t rec, uint16_t step, uint8_t *p)
+   compare with $A8, V the add of $80, N and Z from $11F9, which is read
+   once into *x. */
+static uint16_t sine_position(uint8_t bank, uint16_t *x, uint16_t step, uint8_t *p)
 {
-    uint16_t i = (uint16_t)(rd16((uint16_t)(rec + 0x0A)) - 0x40) & 0x00FF, v = rd16(0x0096FE + i) & 0x00FF, s;
+    uint16_t i = (uint16_t)(rd16((uint16_t)(*x + 0x0A)) - 0x40) & 0x00FF, v = rd16(0x0096FE + i) & 0x00FF, s;
 
     if (v >= 0x80)
         v |= 0xFF00;
@@ -428,7 +429,8 @@ static uint16_t sine_position(uint8_t bank, uint16_t rec, uint16_t step, uint8_t
     else
         v = 0x00A8;
     wr16(0x0018C1, v);
-    *p = nz16(*p, rd16((uint32_t)bank << 16 | 0x11F9));
+    *x = rd16((uint32_t)bank << 16 | 0x11F9);
+    *p = nz16(*p, *x);
     return v;
 }
 
@@ -443,17 +445,16 @@ static uint16_t sine_position(uint8_t bank, uint16_t rec, uint16_t step, uint8_t
  * stored at $18C1; X = $11F9; N, Z from X; C = (value before the minimum
  * >= $A8); V from the add of $80.
  */
-uint16_t MenuSinePosition(uint8_t bank, uint16_t rec, uint8_t *p)
+uint16_t MenuSinePosition(uint8_t bank, uint16_t *x, uint8_t *p)
 {
-    return sine_position(bank, rec, 0x0001, p);
+    return sine_position(bank, x, 0x0001, p);
 }
 
 void abi_MenuSinePosition(void)
 {
     uint8_t p = cpu.p;
 
-    cpu.a = MenuSinePosition(cpu.db, cpu.x, &p);
-    cpu.x = rd16((uint32_t)cpu.db << 16 | 0x11F9);
+    cpu.a = MenuSinePosition(cpu.db, &cpu.x, &p);
     cpu.p = p;
 }
 
@@ -465,17 +466,16 @@ void abi_MenuSinePosition(void)
  * increment; a value of 0 before it becomes $FFFF.
  * Entry: as MenuSinePosition. Exit: as MenuSinePosition.
  */
-uint16_t MenuSinePosition7F(uint8_t bank, uint16_t rec, uint8_t *p)
+uint16_t MenuSinePosition7F(uint8_t bank, uint16_t *x, uint8_t *p)
 {
-    return sine_position(bank, rec, 0xFFFF, p);
+    return sine_position(bank, x, 0xFFFF, p);
 }
 
 void abi_MenuSinePosition7F(void)
 {
     uint8_t p = cpu.p;
 
-    cpu.a = MenuSinePosition7F(cpu.db, cpu.x, &p);
-    cpu.x = rd16((uint32_t)cpu.db << 16 | 0x11F9);
+    cpu.a = MenuSinePosition7F(cpu.db, &cpu.x, &p);
     cpu.p = p;
 }
 
@@ -1041,8 +1041,7 @@ uint16_t MenuSlideInHandler(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     if (a & 0x8000)
         a = 0x0000;
     wr16((uint16_t)(*x + 0x0A), a);
-    MenuSinePosition7F(bank, *x, p);
-    *x = rd16(dbw(bank, CURRENT));
+    MenuSinePosition7F(bank, x, p);
     a = rd16((uint16_t)(*x + 0x0A));
     if (!a) {
         a = 0xB952;
