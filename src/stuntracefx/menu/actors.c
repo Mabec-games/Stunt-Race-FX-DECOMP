@@ -140,8 +140,9 @@ static uint8_t cmp16(uint8_t p, uint16_t a, uint16_t b)
  * @routine 0B:E28D MenuActorFind
  * WHAT IT DOES: Finds the live object of kind A (+$1A), searching from the
  * end of the list.
- * HOW: Compares each record's +$1A with A (kept at $11E1).
- * Entry: M 16-bit, X 16-bit, D = $0000; A = kind. Exit: A = the kind of
+ * HOW: Compares each record's +$1A with A (kept at $11E1); with M 8-bit
+ * (MenuRegionPal) as bytes, A's high byte kept.
+ * Entry: X 16-bit, D = $0000; A = kind. Exit: A = the kind of
  * the last record looked at (the kind searched for with an empty list);
  * found: X = the record, Y = its list offset, Z and C set. Not found: Y =
  * $FFFE, N set, Z clear, C from the last compare.
@@ -172,10 +173,41 @@ int MenuActorFind(uint8_t bank, uint16_t kind, uint16_t *x, uint16_t *y, uint8_t
     return 0;
 }
 
+/* MenuActorFind with an 8-bit accumulator (MenuRegionCheck's PAL stop):
+   the kind is stored and compared as a byte with the low byte of +$1A;
+   A's high byte is kept. */
+static void actor_find_m8(void)
+{
+    uint8_t bank = cpu.db, v = 0, m;
+    uint16_t i;
+
+    wr8(dbw(bank, 0x11E1), (uint8_t)cpu.a);
+    i = (uint16_t)(rd16(dbw(bank, LIVE_LEN)) - 2);
+    cpu.p = nz16(cpu.p, i);
+    while (!(i & 0x8000)) {
+        cpu.x = rd16(dbw(bank, (uint16_t)(LIVE_LIST + i)));
+        v = rd8((uint16_t)(cpu.x + 0x1A));
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+        m = rd8(dbw(bank, 0x11E1));
+        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - m)) & ~P_C) | (v >= m ? P_C : 0));
+        if (v == m) {
+            cpu.y = i;
+            return;
+        }
+        i = (uint16_t)(i - 2);
+        cpu.p = nz16(cpu.p, i);
+    }
+    cpu.y = i;
+}
+
 void abi_MenuActorFind(void)
 {
     uint8_t p = cpu.p;
 
+    if (cpu.p & P_M) {
+        actor_find_m8();
+        return;
+    }
     MenuActorFind(cpu.db, cpu.a, &cpu.x, &cpu.y, &p);
     cpu.a = find_last_kind;
     cpu.p = p;
