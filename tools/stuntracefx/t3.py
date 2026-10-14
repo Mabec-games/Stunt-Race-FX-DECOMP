@@ -38,8 +38,16 @@ LIVE = os.path.join(ROOT, 'config', 'stuntracefx', 't3_live.csv')
 IMAGE = os.path.join(ROOT, 'config', 'stuntracefx', 'whole_image.csv')
 
 
+# A run still going after this is stuck. The longest scripts take about 35
+# s alone, but the gate runs ten at a time and other work shares the
+# machine: at 120 s two of them timed out under load (load average 40)
+# while passing alone. A side really stuck waiting on the other gives up
+# by itself after about 30 s (WAIT_UNTIL in check.c).
+STUCK = 300
+
+
 def run(cmd):
-    p = subprocess.run(cmd, capture_output=True, text=True, cwd=ROOT, timeout=120)  # stuck: fails
+    p = subprocess.run(cmd, capture_output=True, text=True, cwd=ROOT, timeout=STUCK)  # stuck: fails
     if p.returncode:
         sys.stderr.write(p.stdout + p.stderr)
         raise SystemExit('failed: %s' % ' '.join(cmd))
@@ -354,13 +362,13 @@ def image_one(script):
         os.remove(rep)
     # A run that stops (a side stuck waiting) is that script's failure, not
     # the whole gate's: the other scripts' results still count.
-    # The longest gate script runs in well under a minute: one still running
-    # after two is stuck (a side waiting on the other), and fails.
+    # One still running after STUCK seconds is stuck (a side waiting on the
+    # other), and fails.
     try:
         p = subprocess.run([SFXBOX, '--rom', os.path.join(B, 'baserom.sfc'), '--script', script, '--out', d, '--lockstep', LIB],
-                           capture_output=True, text=True, cwd=ROOT, timeout=120)
+                           capture_output=True, text=True, cwd=ROOT, timeout=STUCK)
     except subprocess.TimeoutExpired:
-        return name, ['stopped (no result after 120s): FAILED']
+        return name, ['stopped (no result after %ds): FAILED' % STUCK]
     lines = open(rep).read().splitlines() if os.path.exists(rep) else []
     if p.returncode or not lines or ': ' not in lines[-1]:
         why = (p.stderr.strip().splitlines() or ['no report'])[-1]
