@@ -174,7 +174,7 @@ DemoRunSecond:
     rep.b #$30
     lda.w #$006B
     sta.w !seq_stage+34
-    jmp.w DemoRunBody
+    jmp.w DemoRun
 
 ; @routine 03:8653 DemoRunFourth
 ; WHAT IT DOES: Runs the third demo of the title screen's cycle: $1A57 = $FC
@@ -187,7 +187,399 @@ DemoRunFourth:
     rep.b #$30
     lda.w #$00FC
     sta.w !seq_stage+34
-    jmp.w DemoRunBody
+    jmp.w DemoRun
+
+; @routine 03:8683 DemoRun
+; WHAT IT DOES: Runs one attract demo from its script at $03:8004 +
+; $1A57: the course ($0E3D, script byte 2) and the selection handler
+; ($00:18DB, byte 0) from the script's head, $1A5B = $20, HUD mode 0, the
+; Super FX set (clock, config $20, screen base $0B), the race set up
+; (Set7EFFA6Sequence, RaceVideoInit, 02:CF3E, WindowsInit, the palette
+; flag, 02:CF45 as AttractCourseSetup, HUD mode 3, CourseDataPointer,
+; CourseScriptRun, ObjectPlaceAll, Super FX program $04:8800,
+; ObjectsRunHandlers), the player object's flag 8 set and $70:2732
+; cleared; then the script's commands, one race frame (RaceFrameRun,
+; $1A59 counting them) wherever a command waits:
+;   1 word: ObjectLinkedSet1A with it on object $0346; 2 word: to
+;   $70:2732 (and its high byte again to $70:2733); 3 word: wait until
+;   frame $1A59 is the word; 5: fade out; 6: wait for the fade's end; 7:
+;   $19DF = 0, $19D8 = 1; 8: wait until $19D8 is 5; 9 word word: the
+;   camera object's +$08 and +$0C set, then moved (CameraFollowStep,
+;   ObjectFaceTied); $0A word: added to its +$0A, then moved; $0B: wait
+;   for a button held, then fade out to the end; $0C word, $0D word: ORA,
+;   AND into $1A5B; any other byte ends the script.
+; Each frame, with $1A5B bit 0 set the demo runs on to the fade's end;
+; with bit 1 clear a button held ($030A) ends it (bits $41, fade out).
+; At the end the screen is blanked, NMI, DMA and HDMA off.
+; HOW: Compare chain on the command byte, every script read long from
+; bank $03; PlayerStatsAndPaletteAnimate before each command; data bank
+; $03 from RaceVideoInit on (PHK, PLB), $7E around the camera's calls.
+; Commands 7, 8 and $0B are not reached in the traces so far.
+; Entry: M 16-bit, X 16-bit; $1A57 = the demo's script offset. Exit: C set
+; when a button ended the demo; A = $1A5B & $40, $1A5B cleared; M 16-bit,
+; X 16-bit.
+%at($038683)
+DemoRun:
+    rep.b #$30
+    ldx.w !seq_stage+34
+    lda.l DemoScripts+2,x
+    sta.w !course
+    lda.w #$0020
+    sta.w !seq_stage+38
+    ldx.w !seq_stage+34
+    lda.l DemoScripts,x
+    sta.l !selection_handler_a
+    lda.w #$0000
+    sta.w !hud_mode
+    sep.b #$20
+    lda.b #$01
+    sta.w !gsu_scmr_shadow
+    lda.b #$01
+    sta.w !GSU_CLSR
+    lda.b #$20
+    sta.w !GSU_CFGR
+    lda.b #$0B
+    sta.w !GSU_SCBR
+    jsl.l Set7EFFA6Sequence
+    sep.b #$20
+    stz.w !HDMAEN
+    lda.b #$80
+    sta.w !INIDISP
+    sei
+    jsl.l RaceVideoInit
+    phk
+    plb
+    sep.b #$20
+    stz.w !HDMAEN
+    lda.b #$80
+    sta.w !INIDISP
+    sei
+    sep.b #$30
+    jsl.l AttractRaceSetup
+    jsl.l WindowsInit
+    sep.b #$20
+    rep.b #$10
+    lda.b #$01
+    sta.w !GSU_CLSR
+    lda.b #$01
+    sta.l !palette_saved
+    sei
+    jsl.l AttractCourseSetupRom
+    sep.b #$20
+    lda.b #$03
+    sta.w !hud_mode
+    jsl.l CourseDataPointer
+    jsl.l CourseScriptRun
+    jsl.l ObjectPlaceAll
+    sep.b #$20
+    rep.b #$10
+    lda.b #$04
+    ldx.w #$8800
+    jsl.l GsuRun
+    sep.b #$20
+    lda.b #$01
+    sta.w !wram_0357
+    stz.w !wram_05E9
+    rep.b #$20
+    stz.w !seq_stage+36
+    jsl.l ObjectsRunHandlers
+    sep.b #$20
+    lda.l !TIMEUP
+    rep.b #$20
+    cli
+    rep.b #$30
+    lda.l !gsu_match_2476
+    tax
+    lda.l !gsu_rec_64,x
+    ora.w #$0008
+    sta.l !gsu_rec_64,x
+    lda.w #$0000
+    sta.l !fx_init_2732
+    lda.w !seq_stage+34
+    clc
+    adc.w #$0003
+    sta.w !seq_stage+34
+.l8759:
+    jsl.l PlayerStatsAndPaletteAnimate
+    rep.b #$30
+    ldx.w !seq_stage+34
+.l8762:
+    stx.w !seq_stage+34
+    lda.l DemoScripts,x
+    and.w #$00FF
+    cmp.w #$0001
+    bne .l8774
+    brl .l87FD
+.l8774:
+    cmp.w #$0003
+    bne .l877C
+    brl .l87E8
+.l877C:
+    cmp.w #$0002
+    bne .l8784
+    brl .l87CF
+.l8784:
+    cmp.w #$0005
+    bne .l878C
+    brl .l8815
+.l878C:
+    cmp.w #$0006
+    bne .l8794
+    brl .l8827
+.l8794:
+    cmp.w #$0007
+    bne .l879C
+    brl .l8845                      ; not reached in the traces so far
+.l879C:
+    cmp.w #$0008
+    bne .l87A4
+    brl .l885C                      ; not reached in the traces so far
+.l87A4:
+    cmp.w #$0009
+    bne .l87AC
+    brl .l8873
+.l87AC:
+    cmp.w #$000A
+    bne .l87B4
+    brl .l88AE
+.l87B4:
+    cmp.w #$000B
+    bne .l87BC
+    brl .l8908                      ; not reached in the traces so far
+.l87BC:
+    cmp.w #$000C
+    bne .l87C4
+    brl .l88E2
+.l87C4:
+    cmp.w #$000D
+    bne .l87CC
+    brl .l88F5
+.l87CC:
+    jmp.w .l8973
+.l87CF:
+    lda.l DemoScripts+1,x
+    sta.l !fx_init_2732
+    lda.l DemoScripts+2,x
+    sta.l !fx_init_2732+1
+    txa
+    clc
+    adc.w #$0004
+    tax
+    jmp.w .l8762
+.l87E8:
+    lda.l DemoScripts+1,x
+    cmp.w !seq_stage+36
+    beq .l87F4
+    brl .l892E
+.l87F4:
+    txa
+    clc
+    adc.w #$0003
+    tax
+    jmp.w .l8762
+.l87FD:
+    phx
+    lda.l DemoScripts+1,x
+    ldx.w !wram_0346
+    jsl.l ObjectLinkedSet1A
+    plx
+    rep.b #$30
+    txa
+    clc
+    adc.w #$0003
+    tax
+    jmp.w .l8762
+.l8815:
+    txa
+    clc
+    adc.w #$0001
+    tax
+    sep.b #$20
+    lda.b #$01
+    sta.w !fade_out
+    rep.b #$20
+    jmp.w .l8762
+.l8827:
+    lda.w !fade_level_hi
+    bit.w #$0080
+    beq .l8834
+    ora.w #$FF00
+    bra .l8837
+.l8834:
+    and.w #$00FF
+.l8837:
+    bmi .l883C
+    brl .l892E
+.l883C:
+    txa
+    clc
+    adc.w #$0001
+    tax
+    jmp.w .l8762
+.l8845:
+    txa                             ; not reached in the traces so far
+    clc
+    adc.w #$0001
+    tax
+    sep.b #$20
+    lda.b #$00
+    sta.w !wram_19DF
+    lda.b #$01
+    sta.w !window_hdma_off
+    rep.b #$20
+    jmp.w .l8762
+.l885C:
+    lda.w !window_hdma_off
+    and.w #$00FF
+    cmp.w #$0005
+    beq .l886A
+    brl .l892E
+.l886A:
+    txa
+    clc
+    adc.w #$0001
+    tax
+    jmp.w .l8762
+.l8873:
+    lda.l DemoScripts+1,x
+    sta.b !dp_02
+    lda.l DemoScripts+3,x
+    sta.b !dp_94
+    phx
+    ldx.w #$1A64
+    lda.b !dp_02
+    sta.l $000008,x
+    lda.b !dp_94
+    sta.l $00000C,x
+    sep.b #$20
+    phb
+    lda.b #$7E
+    pha
+    plb
+    ldx.w #$1A64
+    jsl.l CameraFollowStep
+    jsl.l ObjectFaceTied
+    plb
+    rep.b #$30
+    plx
+    txa
+    clc
+    adc.w #$0005
+    tax
+    jmp.w .l8762
+.l88AE:
+    lda.l DemoScripts+1,x
+    sta.b !dp_08
+    phx
+    ldx.w #$1A64
+    lda.l $00000A,x
+    clc
+    adc.b !dp_08
+    sta.l $00000A,x
+    sep.b #$20
+    phb
+    lda.b #$7E
+    pha
+    plb
+    ldx.w #$1A64
+    jsl.l CameraFollowStep
+    jsl.l ObjectFaceTied
+    plb
+    rep.b #$30
+    plx
+    txa
+    clc
+    adc.w #$0003
+    tax
+    jmp.w .l8762
+.l88E2:
+    lda.w !seq_stage+38
+    ora.l DemoScripts+1,x
+    sta.w !seq_stage+38
+    txa
+    clc
+    adc.w #$0003
+    tax
+    jmp.w .l8762
+.l88F5:
+    lda.w !seq_stage+38
+    and.l DemoScripts+1,x
+    sta.w !seq_stage+38
+    txa
+    clc
+    adc.w #$0003
+    tax
+    jmp.w .l8762
+.l8908:
+    lda.w !joy1_held+1              ; not reached in the traces so far
+    bne .l8910
+    brl .l8759
+.l8910:
+    sep.b #$20
+    lda.b #$01
+    sta.w !fade_out
+    rep.b #$20
+.l8919:
+    lda.w !fade_level_hi
+    bit.w #$0080
+    beq .l8926
+    ora.w #$FF00
+    bra .l8929
+.l8926:
+    and.w #$00FF
+.l8929:
+    bpl .l8919
+    jmp.w .l8973
+.l892E:
+    jsl.l RaceFrameRun
+    rep.b #$30
+    inc.w !seq_stage+36
+    lda.w !seq_stage+38
+    bit.w #$0001
+    bne .l8961
+    bit.w #$0002
+    beq .l8947
+    brl .l8759
+.l8947:
+    lda.w !joy1_held+1
+    bne .l894F
+    brl .l8759
+.l894F:
+    lda.w !seq_stage+38
+    ora.w #$0041
+    sta.w !seq_stage+38
+    sep.b #$20
+    lda.b #$01
+    sta.w !fade_out
+    rep.b #$20
+.l8961:
+    lda.w !fade_level_hi
+    bit.w #$0080
+    beq .l896E
+    ora.w #$FF00
+    bra .l8971
+.l896E:
+    and.w #$00FF
+.l8971:
+    bpl .l892E
+.l8973:
+    sep.b #$20
+    lda.b #$80
+    sta.w !INIDISP
+    stz.w !NMITIMEN
+    stz.w !MDMAEN
+    stz.w !HDMAEN
+    rep.b #$20
+    lda.w !seq_stage+38
+    and.w #$0040
+    bne .l8992
+    stz.w !seq_stage+38
+    clc
+    rtl
+.l8992:
+    stz.w !seq_stage+38
+    sec
+    rtl
 
 ; @routine 03:865E DemoRunThird
 ; WHAT IT DOES: Runs the third of the attract demos: $1A57 = $159, then the
@@ -200,7 +592,7 @@ DemoRunThird:
     rep.b #$30
     lda.w #$0159
     sta.w !seq_stage+34
-    jsl.l DemoRunBody
+    jsl.l DemoRun
 
 ; @routine 03:8CF2 WramFillZeroLong
 ; WHAT IT DOES: WramFillZero for callers in other banks: clears Y bytes of
@@ -245,5 +637,5 @@ DemoRunFirst:
     rep.b #$30
     lda.w #$0000
     sta.w !seq_stage+34
-    jmp.w DemoRunBody
+    jmp.w DemoRun
 
