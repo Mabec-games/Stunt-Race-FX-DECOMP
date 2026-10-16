@@ -3669,3 +3669,75 @@ void abi_DataBank7E(void)
     cpu.db = 0x7E;
     cpu.p = nz8(cpu.p, 0x7E);
 }
+
+void abi_ApproachEighthMin8(void);
+void abi_ObjectPathCommand(void);
+void abi_CameraFollowStep(void);
+void abi_ObjectFaceTied(void);
+
+/*
+ * @routine 08:89E6 CameraApproachTarget
+ * WHAT IT DOES: Moves object X's camera point (its link +$4F) an eighth of
+ * the way (at least 8: ApproachEighthMin8) from its position (+$1A, +$1C,
+ * +$1E) to its target (+$20, +$22, +$24); while the object's count +$27
+ * runs, the target moves by the object's velocity and C is clear;
+ * otherwise the object's path's next command (ObjectPathCommand) decides
+ * C.
+ * HOW: The point through the data bank with Y; 16-bit.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; C as above; Y = the
+ * point.
+ */
+void abi_CameraApproachTarget(void)
+{
+    uint32_t b = db();
+    uint16_t w;
+    unsigned i;
+    static const uint16_t pos[3] = {0x1A, 0x1C, 0x1E}, tgt[3] = {0x20, 0x22, 0x24};
+
+    cpu.y = rd16(b | (uint16_t)(0x204F + cpu.x));
+    for (i = 0; i < 3; i++) {
+        cpu.p &= (uint8_t)~P_M;
+        wr16(0x00003E, rd16(b | (uint16_t)(pos[i] + cpu.y)));
+        op_lda16(b | (uint16_t)(tgt[i] + cpu.y));
+        abi_ApproachEighthMin8();
+        wr16(b | (uint16_t)(pos[i] + cpu.y), cpu.a);
+        cpu.p |= P_M;
+    }
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(b | (uint16_t)(0x2027 + cpu.x));
+    if (cpu.a) {
+        w = (uint16_t)(cpu.a - 1);
+        cpu.a = w;
+        wr16(b | (uint16_t)(0x2027 + cpu.x), w);
+        for (i = 0; i < 3; i++) {
+            op_lda16(b | (uint16_t)(0x202E + i * 2 + cpu.x));
+            op_add16(rd16(b | (uint16_t)(tgt[i] + cpu.y)));
+            wr16(b | (uint16_t)(tgt[i] + cpu.y), cpu.a);
+        }
+        cpu.p |= P_M;
+        cpu.p &= (uint8_t)~P_C;
+        return;
+    }
+    cpu.p |= P_M;
+    abi_ObjectPathCommand();
+}
+
+/*
+ * @routine 08:958F CameraFollowLink
+ * WHAT IT DOES: Steps object X's camera point (its link +$4F): it follows
+ * its target (CameraFollowStep) and faces it (ObjectFaceTied).
+ * HOW: The point in X between them; X kept (PHX, PLX).
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; X = the object.
+ */
+void abi_CameraFollowLink(void)
+{
+    uint16_t x = cpu.x;
+
+    cpu.y = rd16(db() | (uint16_t)(0x204F + cpu.x));
+    cpu.x = cpu.y;
+    cpu.p = nz16(cpu.p, cpu.x);
+    abi_CameraFollowStep();
+    abi_ObjectFaceTied();
+    cpu.x = x;
+    cpu.p = (uint8_t)(nz16(cpu.p, x) | P_M);
+}

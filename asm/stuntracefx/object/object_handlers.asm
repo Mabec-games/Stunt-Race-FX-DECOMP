@@ -4655,3 +4655,81 @@ DataBank7E:
     plb
 RtlA033:
     rtl
+
+; @routine 08:89E6 CameraApproachTarget
+; WHAT IT DOES: Moves object X's camera point (its link +$4F) an eighth of
+; the way (at least 8: ApproachEighthMin8) from its position (+$1A, +$1C,
+; +$1E) to its target (+$20, +$22, +$24); while the object's count +$27
+; runs, the target moves by the object's velocity and C is clear;
+; otherwise the object's path's next command (ObjectPathCommand) decides
+; C.
+; HOW: The point through the data bank with Y; 16-bit.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; C as above; Y = the
+; point.
+%at($0889E6)
+CameraApproachTarget:
+    ldy.w !obj_link_w,x
+    rep.b #$20
+    lda.w !actor_kind,y
+    sta.b !scale_scratch
+    lda.w !actor_20,y
+    jsl.l ApproachEighthMin8
+    sta.w !actor_kind,y
+    sep.b #$20
+    rep.b #$20
+    lda.w !actor_1c,y
+    sta.b !scale_scratch
+    lda.w !actor_22,y
+    jsl.l ApproachEighthMin8
+    sta.w !actor_1c,y
+    sep.b #$20
+    rep.b #$20
+    lda.w !actor_1e,y
+    sta.b !scale_scratch
+    lda.w !actor_palette,y
+    jsl.l ApproachEighthMin8
+    sta.w !actor_1e,y
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_27,x
+    beq .l8A4F
+    dec a
+    sta.w !obj_27,x
+    lda.w !obj_vel_x,x
+    clc
+    adc.w !actor_20,y
+    sta.w !actor_20,y
+    lda.w !obj_vel_y,x
+    clc
+    adc.w !actor_22,y
+    sta.w !actor_22,y
+    lda.w !obj_vel_z,x
+    clc
+    adc.w !actor_palette,y
+    sta.w !actor_palette,y
+    sep.b #$20
+    bra .l8A57
+.l8A4F:
+    sep.b #$20
+    jsl.l ObjectPathCommand
+    bcs .l8A58
+.l8A57:
+    clc
+.l8A58:
+    rtl
+
+; @routine 08:958F CameraFollowLink
+; WHAT IT DOES: Steps object X's camera point (its link +$4F): it follows
+; its target (CameraFollowStep) and faces it (ObjectFaceTied).
+; HOW: The point in X between them; X kept (PHX, PLX).
+; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; X = the object.
+%at($08958F)
+CameraFollowLink:
+    phx
+    ldy.w !obj_link_w,x
+    tyx
+    jsl.l CameraFollowStep
+    jsl.l ObjectFaceTied
+    plx
+    sep.b #$20
+    rtl
