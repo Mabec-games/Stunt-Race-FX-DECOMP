@@ -1623,3 +1623,1467 @@ ObjectBallDropStep:
     jsl.l ObjectRelease
 .l96FB:
     rtl
+
+; @routine 09:96FC ObjectCannonGate
+; WHAT IT DOES: Sets up a cannon gate: restart $09:971F
+; (ObjectCannonGateRecord), frame $09:9746 (ObjectCannonGateStep), its lap
+; +$0A = 4; then its record and frame.
+; HOW: Word and byte stores.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+; leaves it.
+%at($0996FC)
+ObjectCannonGate:
+    rep.b #$20
+    lda.w #$971F
+    sta.w !obj_1d,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1f,x
+    rep.b #$20
+    lda.w #$9746
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,x
+    lda.b #$04
+    sta.w !obj_09+1,x
+
+; @routine 09:971F ObjectCannonGateRecord
+; WHAT IT DOES: The cannon gate's restart: its record ($42D, flag bit 4, at
+; ($F00, $F00, $F00)), then its frame.
+; HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
+; Entry: as ObjectCannonGate. Exit: as ObjectCannonGate.
+%at($09971F)
+ObjectCannonGateRecord:
+    jsl.l GsuRecordNew42D
+    jsl.l GsuRecordFlag10
+    rep.b #$20
+    lda.w #$0F00
+    sta.b !dp_02
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0F00
+    sta.b !dp_08
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0F00
+    sta.b !dp_94
+    sep.b #$20
+    jsl.l GsuRecordPosition
+
+; @routine 09:9746 ObjectCannonGateStep
+; WHAT IT DOES: The cannon gate's frame: when a car hits it on a lap ($0DEA)
+; other than the one it last fired on (+$0A), it takes that lap; on lap 0
+; it fires three cannon balls to one side (kind $AA34, handler
+; ObjectCannonBallLeft), on lap 2 three to the other (ObjectCannonBallRight),
+; each with its own drop, rise and drift, sound $0E.
+; HOW: ObjectSyncFromRecord, RecordContactSummary; the lap compared through
+; $1F58. The firing is reached only by unit_objects_09.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+; it.
+%at($099746)
+ObjectCannonGateStep:
+    jsl.l ObjectSyncFromRecord
+    and.b #$01
+    beq .l9792
+    jsl.l RecordContactSummary
+    and.b #$01
+    beq .l9792
+    lda.w !obj_09+1,x
+    sta.w !wram_1F58
+    sep.b #$20
+    lda.w !wram_0DEA
+    cmp.w !wram_1F58
+    beq .l9792
+    lda.w !wram_0DEA
+    sta.w !wram_1F58
+    lda.w !wram_1F58
+    sta.w !obj_09+1,x
+    sep.b #$20
+    lda.w !wram_0DEA
+    cmp.b #$00
+    beq .l9786
+    cmp.b #$01
+    beq .l978C
+    cmp.b #$02
+    beq .l978F
+    jmp.w .l9792
+.l9786:
+    jsr.w .l9793
+    jmp.w .l9792
+.l978C:
+    jmp.w .l9792
+.l978F:
+    jsr.w .l992F
+.l9792:
+    rtl
+.l9793:
+    rep.b #$20
+    lda.w #$AA34
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .l97A7
+    jml.l .l981C
+.l97A7:
+    jsl.l ObjectCopyPositionTo
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_27,y
+    sep.b #$20
+    pla
+    rep.b #$20
+    lda.w #$9ACB
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,y
+    rep.b #$20
+    lda.w !obj_pos_x,y
+    clc
+    adc.w #$C400
+    sta.w !obj_pos_x,y
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_y,y
+    clc
+    adc.w #$F880
+    sta.w !obj_pos_y,y
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_z,y
+    clc
+    adc.w #$0500
+    sta.w !obj_pos_z,y
+    sep.b #$20
+    lda.b #$C0
+    sta.w !obj_15,y
+    lda.b #$00
+    sta.w !obj_48,y
+    rep.b #$20
+    lda.w #$FD60
+    sta.w !obj_29,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0000
+    sta.w !obj_29+2,y
+    sep.b #$20
+    lda.b #$05
+    sta.w !obj_09+1,y
+    lda.b #$09
+    sta.w !obj_49,y
+    lda.b #$0E
+    jsl.l SoundPort0QueuePush
+.l981C:
+    rep.b #$20
+    lda.w #$AA34
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .l9830
+    jml.l .l98A5
+.l9830:
+    jsl.l ObjectCopyPositionTo
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_27,y
+    sep.b #$20
+    pla
+    rep.b #$20
+    lda.w #$9ACB
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,y
+    rep.b #$20
+    lda.w !obj_pos_x,y
+    clc
+    adc.w #$C400
+    sta.w !obj_pos_x,y
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_y,y
+    clc
+    adc.w #$FC40
+    sta.w !obj_pos_y,y
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_z,y
+    clc
+    adc.w #$F880
+    sta.w !obj_pos_z,y
+    sep.b #$20
+    lda.b #$C0
+    sta.w !obj_15,y
+    lda.b #$00
+    sta.w !obj_48,y
+    rep.b #$20
+    lda.w #$FD40
+    sta.w !obj_29,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$FE00
+    sta.w !obj_29+2,y
+    sep.b #$20
+    lda.b #$05
+    sta.w !obj_09+1,y
+    lda.b #$09
+    sta.w !obj_49,y
+    lda.b #$0E
+    jsl.l SoundPort0QueuePush
+.l98A5:
+    rep.b #$20
+    lda.w #$AA34
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .l98B9
+    jml.l .l992E
+.l98B9:
+    jsl.l ObjectCopyPositionTo
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_27,y
+    sep.b #$20
+    pla
+    rep.b #$20
+    lda.w #$9ACB
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,y
+    rep.b #$20
+    lda.w !obj_pos_x,y
+    clc
+    adc.w #$C400
+    sta.w !obj_pos_x,y
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_y,y
+    clc
+    adc.w #$F9C0
+    sta.w !obj_pos_y,y
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_z,y
+    clc
+    adc.w #$0000
+    sta.w !obj_pos_z,y
+    sep.b #$20
+    lda.b #$C0
+    sta.w !obj_15,y
+    lda.b #$00
+    sta.w !obj_48,y
+    rep.b #$20
+    lda.w #$FD20
+    sta.w !obj_29,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0200
+    sta.w !obj_29+2,y
+    sep.b #$20
+    lda.b #$05
+    sta.w !obj_09+1,y
+    lda.b #$09
+    sta.w !obj_49,y
+    lda.b #$0E
+    jsl.l SoundPort0QueuePush
+.l992E:
+    rts
+.l992F:
+    rep.b #$20
+    lda.w #$AA34
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .l9943
+    jml.l .l99B8
+.l9943:
+    jsl.l ObjectCopyPositionTo
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_27,y
+    sep.b #$20
+    pla
+    rep.b #$20
+    lda.w #$9AE8
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,y
+    rep.b #$20
+    lda.w !obj_pos_x,y
+    clc
+    adc.w #$2580
+    sta.w !obj_pos_x,y
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_y,y
+    clc
+    adc.w #$F880
+    sta.w !obj_pos_y,y
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_z,y
+    clc
+    adc.w #$0500
+    sta.w !obj_pos_z,y
+    sep.b #$20
+    lda.b #$40
+    sta.w !obj_15,y
+    lda.b #$00
+    sta.w !obj_48,y
+    rep.b #$20
+    lda.w #$FDC0
+    sta.w !obj_29,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0000
+    sta.w !obj_29+2,y
+    sep.b #$20
+    lda.b #$12
+    sta.w !obj_09+1,y
+    lda.b #$06
+    sta.w !obj_49,y
+    lda.b #$0E
+    jsl.l SoundPort0QueuePush
+.l99B8:
+    rep.b #$20
+    lda.w #$AA34
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .l99CC
+    jml.l .l9A41
+.l99CC:
+    jsl.l ObjectCopyPositionTo
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_27,y
+    sep.b #$20
+    pla
+    rep.b #$20
+    lda.w #$9AE8
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,y
+    rep.b #$20
+    lda.w !obj_pos_x,y
+    clc
+    adc.w #$2580
+    sta.w !obj_pos_x,y
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_y,y
+    clc
+    adc.w #$FC40
+    sta.w !obj_pos_y,y
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_z,y
+    clc
+    adc.w #$F880
+    sta.w !obj_pos_z,y
+    sep.b #$20
+    lda.b #$40
+    sta.w !obj_15,y
+    lda.b #$00
+    sta.w !obj_48,y
+    rep.b #$20
+    lda.w #$FDA0
+    sta.w !obj_29,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$FF00
+    sta.w !obj_29+2,y
+    sep.b #$20
+    lda.b #$12
+    sta.w !obj_09+1,y
+    lda.b #$06
+    sta.w !obj_49,y
+    lda.b #$0E
+    jsl.l SoundPort0QueuePush
+.l9A41:
+    rep.b #$20
+    lda.w #$AA34
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .l9A55
+    jml.l .l9ACA
+.l9A55:
+    jsl.l ObjectCopyPositionTo
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_27,y
+    sep.b #$20
+    pla
+    rep.b #$20
+    lda.w #$9AE8
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,y
+    rep.b #$20
+    lda.w !obj_pos_x,y
+    clc
+    adc.w #$2580
+    sta.w !obj_pos_x,y
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_y,y
+    clc
+    adc.w #$F9C0
+    sta.w !obj_pos_y,y
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_z,y
+    clc
+    adc.w #$0000
+    sta.w !obj_pos_z,y
+    sep.b #$20
+    lda.b #$40
+    sta.w !obj_15,y
+    lda.b #$00
+    sta.w !obj_48,y
+    rep.b #$20
+    lda.w #$FDC0
+    sta.w !obj_29,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0100
+    sta.w !obj_29+2,y
+    sep.b #$20
+    lda.b #$12
+    sta.w !obj_09+1,y
+    lda.b #$06
+    sta.w !obj_49,y
+    lda.b #$0E
+    jsl.l SoundPort0QueuePush
+.l9ACA:
+    rts
+
+; @routine 09:9ACB ObjectCannonBallLeft
+; WHAT IT DOES: A cannon ball's frame: for +$49 frames it homes on its gate
+; (+$27; X and Z eased to the gate's, then its drift +$2B and rise +$29
+; added), then it flies off ($100 a frame along X, drifting) until its life
+; +$0A runs out; rebucketed.
+; HOW: ApproachQuarterMin4, 03:CDC1 (original code), ObjectRelease,
+; ObjectRebucket. Reached only by unit_objects_09.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket.
+%at($099ACB)
+ObjectCannonBallLeft:
+    nop
+    ldy.w !obj_27,x
+    lda.w !obj_49,x
+    bne .l9AD8
+    jml.l .l9AE0
+.l9AD8:
+    dec.w !obj_49,x
+    jsr.w ObjectCannonBallRight_l9B6D
+    bra .l9AE3
+.l9AE0:
+    jsr.w ObjectCannonBallRight_l9B05
+.l9AE3:
+    jsl.l ObjectRebucket
+    rtl
+
+; @routine 09:9AE8 ObjectCannonBallRight
+; WHAT IT DOES: As ObjectCannonBallLeft, flying off the other way ($380 a
+; frame back along X).
+; HOW: As ObjectCannonBallLeft. Reached only by unit_objects_09.
+; Entry: as ObjectCannonBallLeft. Exit: as ObjectCannonBallLeft.
+%at($099AE8)
+ObjectCannonBallRight:
+    nop
+    ldy.w !obj_27,x
+    lda.w !obj_49,x
+    bne .l9AF5
+    jml.l .l9AFD
+.l9AF5:
+    dec.w !obj_49,x
+    jsr.w .l9B6D
+    bra .l9B00
+.l9AFD:
+    jsr.w .l9B39
+.l9B00:
+    jsl.l ObjectRebucket
+    rtl
+.l9B05:
+    rep.b #$20
+    lda.w !obj_29+2,x
+    sta.w !wram_1F4C
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_z,x
+    clc
+    adc.w !wram_1F4C
+    sta.w !obj_pos_z,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_x,x
+    clc
+    adc.w #$0100
+    sta.w !obj_pos_x,x
+    sep.b #$20
+    dec.w !obj_09+1,x
+    beq .l9B34
+    jml.l .l9B38
+.l9B34:
+    jsl.l ObjectRelease
+.l9B38:
+    rts
+.l9B39:
+    rep.b #$20
+    lda.w !obj_29+2,x
+    sta.w !wram_1F4C
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_z,x
+    clc
+    adc.w !wram_1F4C
+    sta.w !obj_pos_z,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_x,x
+    clc
+    adc.w #$FC80
+    sta.w !obj_pos_x,x
+    sep.b #$20
+    dec.w !obj_09+1,x
+    beq .l9B68
+    jml.l .l9B6C
+.l9B68:
+    jsl.l ObjectRelease
+.l9B6C:
+    rts
+.l9B6D:
+    rep.b #$20
+    lda.w !obj_pos_x,x
+    sta.b !scale_scratch
+    lda.w !obj_pos_x,y
+    jsl.l ApproachQuarterMin4
+    sta.w !obj_pos_x,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_z,x
+    sta.b !scale_scratch
+    lda.w !obj_pos_z,y
+    jsl.l ApproachQuarterMin4
+    sta.w !obj_pos_z,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_29+2,x
+    sta.w !wram_1F4C
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_z,x
+    clc
+    adc.w !wram_1F4C
+    sta.w !obj_pos_z,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_y,x
+    sta.b !scale_scratch
+    lda.w !obj_pos_y,y
+    jsl.l ApproachCDC1
+    sta.w !obj_pos_y,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_29,x
+    sta.w !wram_1F4C
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_y,x
+    clc
+    adc.w !wram_1F4C
+    sta.w !obj_pos_y,x
+    sep.b #$20
+    rts
+
+; @routine 09:9BD7 ObjectWaveGateA
+; WHAT IT DOES: Sets up the first wave gate: restart $09:9BF5
+; (ObjectWaveGateRecord), frame $09:9C1C (ObjectWaveGateAStep); its record
+; and frame.
+; HOW: Word and byte stores.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+; leaves it.
+%at($099BD7)
+ObjectWaveGateA:
+    rep.b #$20
+    lda.w #$9BF5
+    sta.w !obj_1d,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1f,x
+    rep.b #$20
+    lda.w #$9C1C
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,x
+
+; @routine 09:9BF5 ObjectWaveGateRecord
+; WHAT IT DOES: A wave gate's restart (all three use it): its record
+; ($42D, flag bit 4, at ($F00, $F00, $F00)), then the first gate's frame
+; (ObjectWaveGateAStep).
+; HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
+; Entry: as ObjectWaveGateA. Exit: as ObjectWaveGateA.
+%at($099BF5)
+ObjectWaveGateRecord:
+    jsl.l GsuRecordNew42D
+    jsl.l GsuRecordFlag10
+    rep.b #$20
+    lda.w #$0F00
+    sta.b !dp_02
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0F00
+    sta.b !dp_08
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0F00
+    sta.b !dp_94
+    sep.b #$20
+    jsl.l GsuRecordPosition
+
+; @routine 09:9C1C ObjectWaveGateAStep
+; WHAT IT DOES: The first wave gate's frame: when a car hits it on lap 1
+; ($0DEA), the first time (+$25 bit 0), a wave ball (kind $AA34, handler
+; ObjectWaveBallBig) $2580 left, $180 up and $2300 back, and the gate moves
+; $F00 on in X and Z.
+; HOW: ObjectSyncToRecord, RecordContactSummary, ObjectSpawn.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+; it.
+%at($099C1C)
+ObjectWaveGateAStep:
+    jsl.l ObjectSyncToRecord
+    and.b #$01
+    beq .l9C49
+    jsl.l RecordContactSummary
+    and.b #$01
+    beq .l9C49
+    lda.w !wram_0DEA
+    cmp.b #$01
+    bne .l9C49
+    lda.w !obj_25,x
+    and.b #$01
+    beq .l9C3E
+    jml.l .l9C49
+.l9C3E:
+    lda.w !obj_25,x
+    ora.b #$01
+    sta.w !obj_25,x
+    jsr.w ObjectWaveGateCStep_l9CE4
+.l9C49:
+    rtl
+
+; @routine 09:9C4A ObjectWaveGateB
+; WHAT IT DOES: Sets up the second wave gate: restart $09:9BF5
+; (ObjectWaveGateRecord), frame $09:9C69 (ObjectWaveGateBStep).
+; HOW: Word and byte stores.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte = 9.
+%at($099C4A)
+ObjectWaveGateB:
+    rep.b #$20
+    lda.w #$9BF5
+    sta.w !obj_1d,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1f,x
+    rep.b #$20
+    lda.w #$9C69
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,x
+    rtl
+
+; @routine 09:9C69 ObjectWaveGateBStep
+; WHAT IT DOES: As ObjectWaveGateAStep with a smaller ball (handler
+; ObjectWaveBallStep, $2300 right, $3C0 up, $1E00 back, scale $20, life
+; $A); the gate moves $F00 back in X and on in Z.
+; HOW: As ObjectWaveGateAStep.
+; Entry: as ObjectWaveGateAStep. Exit: as ObjectWaveGateAStep.
+%at($099C69)
+ObjectWaveGateBStep:
+    jsl.l ObjectSyncToRecord
+    and.b #$01
+    beq .l9C96
+    jsl.l RecordContactSummary
+    and.b #$01
+    beq .l9C96
+    lda.w !wram_0DEA
+    cmp.b #$01
+    bne .l9C96
+    lda.w !obj_25,x
+    and.b #$01
+    beq .l9C8B
+    jml.l .l9C96
+.l9C8B:
+    lda.w !obj_25,x
+    ora.b #$01
+    sta.w !obj_25,x
+    jsr.w ObjectWaveGateCStep_l9D76
+.l9C96:
+    rtl
+
+; @routine 09:9C97 ObjectWaveGateC
+; WHAT IT DOES: Sets up the third wave gate: restart $09:9BF5
+; (ObjectWaveGateRecord), frame $09:9CB6 (ObjectWaveGateCStep).
+; HOW: Word and byte stores.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte = 9.
+%at($099C97)
+ObjectWaveGateC:
+    rep.b #$20
+    lda.w #$9BF5
+    sta.w !obj_1d,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1f,x
+    rep.b #$20
+    lda.w #$9CB6
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,x
+    rtl
+
+; @routine 09:9CB6 ObjectWaveGateCStep
+; WHAT IT DOES: As ObjectWaveGateBStep with the ball $1E00 on (scale $60,
+; life $C); the gate moves $F00 back in X and Z.
+; HOW: As ObjectWaveGateAStep.
+; Entry: as ObjectWaveGateAStep. Exit: as ObjectWaveGateAStep.
+%at($099CB6)
+ObjectWaveGateCStep:
+    jsl.l ObjectSyncToRecord
+    and.b #$01
+    beq .l9CE3
+    jsl.l RecordContactSummary
+    and.b #$01
+    beq .l9CE3
+    lda.w !wram_0DEA
+    cmp.b #$01
+    bne .l9CE3
+    lda.w !obj_25,x
+    and.b #$01
+    beq .l9CD8
+    jml.l .l9CE3
+.l9CD8:
+    lda.w !obj_25,x
+    ora.b #$01
+    sta.w !obj_25,x
+    jsr.w .l9E08
+.l9CE3:
+    rtl
+.l9CE4:
+    rep.b #$20
+    lda.w #$AA34
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .l9CF8
+    jml.l .l9D75
+.l9CF8:
+    jsl.l ObjectCopyPositionTo
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_27,y
+    sep.b #$20
+    pla
+    rep.b #$20
+    lda.w #$9F05
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,y
+    rep.b #$20
+    lda.w !obj_pos_x,y
+    clc
+    adc.w #$DA80
+    sta.w !obj_pos_x,y
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_y,y
+    clc
+    adc.w #$FE80
+    sta.w !obj_pos_y,y
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_z,y
+    clc
+    adc.w #$DD00
+    sta.w !obj_pos_z,y
+    sep.b #$20
+    lda.b #$E0
+    sta.w !obj_15,y
+    rep.b #$20
+    lda.w #$FF00
+    sta.w !obj_29,y
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_x,x
+    clc
+    adc.w #$0F00
+    sta.w !obj_pos_x,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_z,x
+    clc
+    adc.w #$0F00
+    sta.w !obj_pos_z,x
+    sep.b #$20
+    lda.b #$0F
+    sta.w !obj_09+1,y
+    lda.b #$0E
+    jsl.l SoundPort0QueuePush
+.l9D75:
+    rts
+.l9D76:
+    rep.b #$20
+    lda.w #$AA34
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .l9D8A
+    jml.l .l9E07
+.l9D8A:
+    jsl.l ObjectCopyPositionTo
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_27,y
+    sep.b #$20
+    pla
+    rep.b #$20
+    lda.w #$9E9A
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,y
+    rep.b #$20
+    lda.w !obj_pos_x,y
+    clc
+    adc.w #$2300
+    sta.w !obj_pos_x,y
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_y,y
+    clc
+    adc.w #$FC40
+    sta.w !obj_pos_y,y
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_z,y
+    clc
+    adc.w #$E200
+    sta.w !obj_pos_z,y
+    sep.b #$20
+    lda.b #$20
+    sta.w !obj_15,y
+    rep.b #$20
+    lda.w #$FF60
+    sta.w !obj_29,y
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_x,x
+    clc
+    adc.w #$F100
+    sta.w !obj_pos_x,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_z,x
+    clc
+    adc.w #$0F00
+    sta.w !obj_pos_z,x
+    sep.b #$20
+    lda.b #$0A
+    sta.w !obj_09+1,y
+    lda.b #$0E
+    jsl.l SoundPort0QueuePush
+.l9E07:
+    rts
+.l9E08:
+    rep.b #$20
+    lda.w #$AA34
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .l9E1C
+    jml.l .l9E99
+.l9E1C:
+    jsl.l ObjectCopyPositionTo
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_27,y
+    sep.b #$20
+    pla
+    rep.b #$20
+    lda.w #$9E9A
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,y
+    rep.b #$20
+    lda.w !obj_pos_x,y
+    clc
+    adc.w #$2300
+    sta.w !obj_pos_x,y
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_y,y
+    clc
+    adc.w #$FC40
+    sta.w !obj_pos_y,y
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_z,y
+    clc
+    adc.w #$1E00
+    sta.w !obj_pos_z,y
+    sep.b #$20
+    lda.b #$60
+    sta.w !obj_15,y
+    rep.b #$20
+    lda.w #$FF60
+    sta.w !obj_29,y
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_x,x
+    clc
+    adc.w #$F100
+    sta.w !obj_pos_x,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_z,x
+    clc
+    adc.w #$F100
+    sta.w !obj_pos_z,x
+    sep.b #$20
+    lda.b #$0C
+    sta.w !obj_09+1,y
+    lda.b #$0E
+    jsl.l SoundPort0QueuePush
+.l9E99:
+    rts
+
+; @routine 09:9E9A ObjectWaveBallStep
+; WHAT IT DOES: A wave ball's frame: it homes on its gate (+$27; X, Z and
+; Y eased by ApproachQuarterMin4), rises by +$29, is released when its
+; life +$0A runs out; rebucketed.
+; HOW: The NOP first, as the course pointers expect. Reached only by
+; unit_objects_09.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket.
+%at($099E9A)
+ObjectWaveBallStep:
+    nop
+    ldy.w !obj_27,x
+    jsr.w .l9EA6
+    jsl.l ObjectRebucket
+    rtl
+.l9EA6:
+    rep.b #$20
+    lda.w !obj_pos_x,x
+    sta.b !scale_scratch
+    lda.w !obj_pos_x,y
+    jsl.l ApproachQuarterMin4
+    sta.w !obj_pos_x,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_z,x
+    sta.b !scale_scratch
+    lda.w !obj_pos_z,y
+    jsl.l ApproachQuarterMin4
+    sta.w !obj_pos_z,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_y,x
+    sta.b !scale_scratch
+    lda.w !obj_pos_y,y
+    jsl.l ApproachQuarterMin4
+    sta.w !obj_pos_y,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_29,x
+    sta.w !wram_1F4C
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_y,x
+    clc
+    adc.w !wram_1F4C
+    sta.w !obj_pos_y,x
+    sep.b #$20
+    dec.w !obj_09+1,x
+    beq .l9F00
+    jml.l .l9F04
+.l9F00:
+    jsl.l ObjectRelease
+.l9F04:
+    rts
+
+; @routine 09:9F05 ObjectWaveBallBig
+; WHAT IT DOES: The first wave gate's ball: its handler $09:9F14
+; (ObjectWaveBallBigSetup), then that set-up at once.
+; HOW: Word and byte stores. Reached only by unit_objects_09.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+; leaves it.
+%at($099F05)
+ObjectWaveBallBig:
+    rep.b #$20
+    lda.w #$9F14
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,x
+
+; @routine 09:9F14 ObjectWaveBallBigSetup
+; WHAT IT DOES: The big wave ball's set-up: restart $09:9F3C
+; (ObjectWaveBallBigRecord), frame $09:9F63 (ObjectWaveBallBigStep), rise
+; +$29 = -$50; its record ($42D, flag bit 4, at ($320, $320, $320)) and
+; frame.
+; HOW: Word and byte stores. Reached only by unit_objects_09.
+; Entry: as ObjectWaveBallBig. Exit: as ObjectWaveBallBig.
+%at($099F14)
+ObjectWaveBallBigSetup:
+    rep.b #$20
+    lda.w #$9F3C
+    sta.w !obj_1d,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1f,x
+    rep.b #$20
+    lda.w #$9F63
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,x
+    rep.b #$20
+    lda.w #$FFB0
+    sta.w !obj_29,x
+    sep.b #$20
+
+; @routine 09:9F3C ObjectWaveBallBigRecord
+; WHAT IT DOES: The big wave ball's restart: its record ($42D, flag bit 4,
+; at ($320, $320, $320)), then its frame.
+; HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition. Reached only
+; by unit_objects_09.
+; Entry: as ObjectWaveBallBig. Exit: as ObjectWaveBallBig.
+%at($099F3C)
+ObjectWaveBallBigRecord:
+    jsl.l GsuRecordNew42D
+    jsl.l GsuRecordFlag10
+    rep.b #$20
+    lda.w #$0320
+    sta.b !dp_02
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0320
+    sta.b !dp_08
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0320
+    sta.b !dp_94
+    sep.b #$20
+    jsl.l GsuRecordPosition
+
+; @routine 09:9F63 ObjectWaveBallBigStep
+; WHAT IT DOES: The big wave ball's frame: once a car has hit it (+$25 bit
+; 0) it grows (+$16, +$15 by $18), flies off ($32 back, $28A right, $FA
+; up) and leaves a sparkle (kind $A158, handler ObjectStarSparkleStep) each
+; frame; until then it homes on its gate. A hit sets +$25 bit 0 the first
+; time with sound $59.
+; HOW: ObjectSyncToRecord, RecordContactSummary. Reached only by
+; unit_objects_09.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+; it.
+%at($099F63)
+ObjectWaveBallBigStep:
+    lda.w !obj_25,x
+    and.b #$01
+    bne .l9F6E
+    jml.l .l9FAF
+.l9F6E:
+    lda.w !obj_16,x
+    clc
+    adc.b #$18
+    sta.w !obj_16,x
+    lda.w !obj_15,x
+    clc
+    adc.b #$18
+    sta.w !obj_15,x
+    rep.b #$20
+    lda.w !obj_pos_z,x
+    clc
+    adc.w #$FFCE
+    sta.w !obj_pos_z,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_x,x
+    clc
+    adc.w #$028A
+    sta.w !obj_pos_x,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_y,x
+    clc
+    adc.w #$FF06
+    sta.w !obj_pos_y,x
+    sep.b #$20
+    jsr.w .l9FE1
+    bra .l9FB7
+.l9FAF:
+    phy
+    ldy.w !obj_27,x
+    jsr.w ObjectWaveBallStep_l9EA6
+    ply
+.l9FB7:
+    jsl.l ObjectSyncToRecord
+    and.b #$01
+    beq .l9FE0
+    jsl.l RecordContactSummary
+    and.b #$01
+    beq .l9FE0
+    lda.w !obj_25,x
+    and.b #$01
+    beq .l9FD2
+    jml.l .l9FE0
+.l9FD2:
+    lda.w !obj_25,x
+    ora.b #$01
+    sta.w !obj_25,x
+    lda.b #$59
+    jsl.l SoundPort0QueuePush
+.l9FE0:
+    rtl
+.l9FE1:
+    rep.b #$20
+    lda.w #$A158
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .l9FF5
+    jml.l .lA03E
+.l9FF5:
+    rep.b #$20
+    lda.w #$997C
+    sta.w !obj_5d,y
+    sep.b #$20
+    lda.b #$02
+    ora.b #$80
+    sta.w !obj_18,y
+    lda.w !obj_24,y
+    ora.b #$08
+    sta.w !obj_24,y
+    lda.b #$00
+    sta.w !obj_3a,y
+    lda.b #$64
+    sta.w !obj_5f,y
+    jsl.l ObjectCopyPositionTo
+    rep.b #$20
+    lda.w !obj_pos_z,y
+    clc
+    adc.w #$FF38
+    sta.w !obj_pos_z,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_09+1,y
+    rep.b #$20
+    lda.w #$A03F
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,y
+.lA03E:
+    rts
+
+; @routine 09:A03F ObjectStarSparkleStep
+; WHAT IT DOES: A sparkle's frame: released when its life +$0A runs out;
+; its picture frame +$18 steps through 0-5 (bit 7 kept); rebucketed.
+; HOW: Byte adds and compares. Reached only by unit_objects_09.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket.
+%at($09A03F)
+ObjectStarSparkleStep:
+    dec.w !obj_09+1,x
+    beq .lA048
+    jml.l .lA04C
+.lA048:
+    jsl.l ObjectRelease
+.lA04C:
+    lda.w !obj_18,x
+    clc
+    adc.b #$01
+    bmi .lA057
+    clc
+    adc.b #$06
+.lA057:
+    and.b #$7F
+    cmp.b #$06
+    bcc .lA060
+    sec
+    sbc.b #$06
+.lA060:
+    ora.b #$80
+    sta.w !obj_18,x
+    jsl.l ObjectRebucket
+    rtl
+
+; @routine 09:A06A ObjectLantern
+; WHAT IT DOES: Sets up a lantern: $78 higher, lit by $996D (+$24 bit 3,
+; +$3A = 0, +$5F = $64), restart $09:A0B2 (ObjectLanternRecord), frame
+; $09:A0C0 (ObjectLanternStep); its record and frame.
+; HOW: Word and byte stores.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+; leaves it.
+%at($09A06A)
+ObjectLantern:
+    rep.b #$20
+    lda.w !obj_pos_y,x
+    clc
+    adc.w #$FF88
+    sta.w !obj_pos_y,x
+    sep.b #$20
+    rep.b #$20
+    lda.w #$996D
+    sta.w !obj_5d,x
+    sep.b #$20
+    lda.w !obj_24,x
+    ora.b #$08
+    sta.w !obj_24,x
+    lda.b #$00
+    sta.w !obj_3a,x
+    lda.b #$64
+    sta.w !obj_5f,x
+    rep.b #$20
+    lda.w #$A0B2
+    sta.w !obj_1d,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1f,x
+    rep.b #$20
+    lda.w #$A0C0
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,x
+
+; @routine 09:A0B2 ObjectLanternRecord
+; WHAT IT DOES: The lantern's restart: its record (GsuRecordNew424Alt, flag
+; bit 4, +$2A high 2), then its frame.
+; HOW: GsuRecordNew424Alt, GsuRecordFlag10, GsuRecordSet2AHigh.
+; Entry: as ObjectLantern. Exit: as ObjectLantern.
+%at($09A0B2)
+ObjectLanternRecord:
+    jsl.l GsuRecordNew424Alt
+    jsl.l GsuRecordFlag10
+    lda.b #$02
+    jsl.l GsuRecordSet2AHigh
+
+; @routine 09:A0C0 ObjectLanternStep
+; WHAT IT DOES: The lantern's frame: when a car hits it the first time
+; (+$25 bit 0), sound $10, it is released and bursts into four sparks
+; (kind $A0CC, handler ObjectFlyingPiece); no hit clears the bit.
+; HOW: ObjectSyncFromRecord, RecordContactSummary, ObjectSpawn.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+; it.
+%at($09A0C0)
+ObjectLanternStep:
+    jsl.l ObjectSyncFromRecord
+    and.b #$01
+    beq .lA0F1
+    jsl.l RecordContactSummary
+    and.b #$01
+    beq .lA0F1
+    lda.w !obj_25,x
+    and.b #$01
+    beq .lA0DB
+    jml.l .lA0F0
+.lA0DB:
+    lda.w !obj_25,x
+    ora.b #$01
+    sta.w !obj_25,x
+    lda.b #$10
+    jsl.l SoundPort0QueuePush
+    jsl.l ObjectRelease
+    jsr.w .lA0FA
+.lA0F0:
+    rtl
+.lA0F1:
+    lda.w !obj_25,x
+    and.b #$FE
+    sta.w !obj_25,x
+    rtl
+.lA0FA:
+    rep.b #$20
+    lda.w #$A0CC
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lA10E
+    jml.l .lA160
+.lA10E:
+    rep.b #$20
+    lda.w #$996B
+    sta.w !obj_5d,y
+    sep.b #$20
+    lda.w !obj_24,y
+    ora.b #$08
+    sta.w !obj_24,y
+    lda.b #$00
+    sta.w !obj_3a,y
+    lda.b #$14
+    sta.w !obj_5f,y
+    jsl.l ObjectCopyPositionTo
+    rep.b #$20
+    lda.w #$8DDF
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,y
+    rep.b #$20
+    lda.w #$0028
+    sta.w !obj_vel_x,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$FFD3
+    sta.w !obj_vel_y,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0000
+    sta.w !obj_vel_z,y
+    sep.b #$20
+    lda.b #$0F
+    sta.w !obj_09+1,y
+.lA160:
+    rep.b #$20
+    lda.w #$A0CC
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lA174
+    jml.l .lA1C6
+.lA174:
+    rep.b #$20
+    lda.w #$996B
+    sta.w !obj_5d,y
+    sep.b #$20
+    lda.w !obj_24,y
+    ora.b #$08
+    sta.w !obj_24,y
+    lda.b #$00
+    sta.w !obj_3a,y
+    lda.b #$03
+    sta.w !obj_5f,y
+    jsl.l ObjectCopyPositionTo
+    rep.b #$20
+    lda.w #$8DDF
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,y
+    rep.b #$20
+    lda.w #$FFD8
+    sta.w !obj_vel_x,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$FFD3
+    sta.w !obj_vel_y,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0000
+    sta.w !obj_vel_z,y
+    sep.b #$20
+    lda.b #$0F
+    sta.w !obj_09+1,y
+.lA1C6:
+    rep.b #$20
+    lda.w #$A0CC
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lA1DA
+    jml.l .lA22C
+.lA1DA:
+    rep.b #$20
+    lda.w #$996B
+    sta.w !obj_5d,y
+    sep.b #$20
+    lda.w !obj_24,y
+    ora.b #$08
+    sta.w !obj_24,y
+    lda.b #$00
+    sta.w !obj_3a,y
+    lda.b #$0A
+    sta.w !obj_5f,y
+    jsl.l ObjectCopyPositionTo
+    rep.b #$20
+    lda.w #$8DDF
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,y
+    rep.b #$20
+    lda.w #$0000
+    sta.w !obj_vel_x,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$FFCE
+    sta.w !obj_vel_y,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0028
+    sta.w !obj_vel_z,y
+    sep.b #$20
+    lda.b #$0F
+    sta.w !obj_09+1,y
+.lA22C:
+    rep.b #$20
+    lda.w #$A0CC
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lA240
+    jml.l .lA292
+.lA240:
+    rep.b #$20
+    lda.w #$996B
+    sta.w !obj_5d,y
+    sep.b #$20
+    lda.w !obj_24,y
+    ora.b #$08
+    sta.w !obj_24,y
+    lda.b #$00
+    sta.w !obj_3a,y
+    lda.b #$01
+    sta.w !obj_5f,y
+    jsl.l ObjectCopyPositionTo
+    rep.b #$20
+    lda.w #$8DDF
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,y
+    rep.b #$20
+    lda.w #$0000
+    sta.w !obj_vel_x,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$FFCE
+    sta.w !obj_vel_y,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$FFD8
+    sta.w !obj_vel_z,y
+    sep.b #$20
+    lda.b #$0F
+    sta.w !obj_09+1,y
+.lA292:
+    rts

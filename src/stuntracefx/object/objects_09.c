@@ -1337,3 +1337,651 @@ void abi_ObjectBallDropStep(void)
 {
     drop_frame();
 }
+
+/* REP #$20, LDA src, STA $1F4C, then LDA dst, CLC, ADC $1F4C, STA dst,
+   SEP #$20: dst += src through $1F4C. */
+static void add16_via(uint32_t dst, uint32_t src)
+{
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(src);
+    wr16(db() | 0x1F4C, cpu.a);
+    cpu.p |= P_M;
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(dst);
+    op_add16(rd16(db() | 0x1F4C));
+    wr16(dst, cpu.a);
+    cpu.p |= P_M;
+}
+
+/* A cannon ball: a new object of kind $AA34 linked to object X (+$27),
+   handler h, moved (dx, dy, dz), scale s, +$48 = 0, its rise +$29 and
+   drift +$2B, life +$0A, homing frames +$49, sound $0E. */
+static void cannon_ball(uint16_t h, uint16_t dx, uint16_t dy, uint16_t dz, uint8_t s,
+                        uint16_t rise, uint16_t drift, uint8_t life, uint8_t home)
+{
+    uint8_t a;
+
+    if (!spawn(0xAA34))
+        return;
+    abi_ObjectCopyPositionTo();
+    a = (uint8_t)cpu.a;
+    cpu.p &= (uint8_t)~P_M;
+    cpu.a = cpu.x;
+    cpu.p = nz16(cpu.p, cpu.a);
+    wr16(F(0x2027, cpu.y), cpu.x);
+    cpu.p |= P_M;
+    lda8(a);
+    handler(cpu.y, h);
+    add16(F(0x200C, cpu.y), dx);
+    add16(F(0x200E, cpu.y), dy);
+    add16(F(0x2010, cpu.y), dz);
+    st8i(F(0x2015, cpu.y), s);
+    st8i(F(0x2048, cpu.y), 0x00);
+    st16i(F(0x2029, cpu.y), rise);
+    st16i(F(0x202B, cpu.y), drift);
+    st8i(F(0x200A, cpu.y), life);
+    st8i(F(0x2049, cpu.y), home);
+    lda8(0x0E);
+    abi_SoundPort0QueuePush();
+}
+
+/* 09:9746: the lap gate's frame: a hit when the lap $0DEA differs from its
+   +$0A takes the lap; lap 0 fires three balls to the left ($09:9ACB),
+   lap 2 three to the right ($09:9AE8). */
+static void lap_gate_frame(void)
+{
+    uint8_t lap;
+
+    if (!hit())
+        return;
+    wr8(db() | 0x1F58, ld8(F(0x200A, cpu.x)));
+    cpu.p |= P_M;
+    lap = ld8(db() | 0x0DEA);
+    {
+        uint8_t m = rd8(db() | 0x1F58);
+
+        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(lap - m)) & ~P_C) | (lap >= m ? P_C : 0));
+        if (lap == m)
+            return;
+    }
+    wr8(db() | 0x1F58, ld8(db() | 0x0DEA));
+    wr8(F(0x200A, cpu.x), ld8(db() | 0x1F58));
+    cpu.p |= P_M;
+    lap = ld8(db() | 0x0DEA);
+    cmp8(0x00);
+    if (lap == 0x00) {
+        cannon_ball(0x9ACB, 0xC400, 0xF880, 0x0500, 0xC0, 0xFD60, 0x0000, 0x05, 0x09);
+        cannon_ball(0x9ACB, 0xC400, 0xFC40, 0xF880, 0xC0, 0xFD40, 0xFE00, 0x05, 0x09);
+        cannon_ball(0x9ACB, 0xC400, 0xF9C0, 0x0000, 0xC0, 0xFD20, 0x0200, 0x05, 0x09);
+        return;
+    }
+    cmp8(0x01);
+    if (lap == 0x01)
+        return;
+    cmp8(0x02);
+    if (lap != 0x02)
+        return;
+    cannon_ball(0x9AE8, 0x2580, 0xF880, 0x0500, 0x40, 0xFDC0, 0x0000, 0x12, 0x06);
+    cannon_ball(0x9AE8, 0x2580, 0xFC40, 0xF880, 0x40, 0xFDA0, 0xFF00, 0x12, 0x06);
+    cannon_ball(0x9AE8, 0x2580, 0xF9C0, 0x0000, 0x40, 0xFDC0, 0x0100, 0x12, 0x06);
+}
+
+/* 09:971F: the lap gate's record ($42D) with flag bit 4 at ($F00, $F00,
+   $F00); then its frame. */
+static void lap_gate_record(void)
+{
+    post_record(0x0F00);
+    lap_gate_frame();
+}
+
+/*
+ * @routine 09:96FC ObjectCannonGate
+ * WHAT IT DOES: Sets up a cannon gate: restart $09:971F
+ * (ObjectCannonGateRecord), frame $09:9746 (ObjectCannonGateStep), its lap
+ * +$0A = 4; then its record and frame.
+ * HOW: Word and byte stores.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectCannonGate(void)
+{
+    handlers2(0x971F, 0x9746);
+    st8i(F(0x200A, cpu.x), 0x04);
+    lap_gate_record();
+}
+
+/*
+ * @routine 09:971F ObjectCannonGateRecord
+ * WHAT IT DOES: The cannon gate's restart: its record ($42D, flag bit 4, at
+ * ($F00, $F00, $F00)), then its frame.
+ * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
+ * Entry: as ObjectCannonGate. Exit: as ObjectCannonGate.
+ */
+void abi_ObjectCannonGateRecord(void)
+{
+    lap_gate_record();
+}
+
+/*
+ * @routine 09:9746 ObjectCannonGateStep
+ * WHAT IT DOES: The cannon gate's frame: when a car hits it on a lap ($0DEA)
+ * other than the one it last fired on (+$0A), it takes that lap; on lap 0
+ * it fires three cannon balls to one side (kind $AA34, handler
+ * ObjectCannonBallLeft), on lap 2 three to the other (ObjectCannonBallRight),
+ * each with its own drop, rise and drift, sound $0E.
+ * HOW: ObjectSyncFromRecord, RecordContactSummary; the lap compared through
+ * $1F58. The firing is reached only by unit_objects_09.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectCannonGateStep(void)
+{
+    lap_gate_frame();
+}
+
+/* 09:9B6D: the ball homes on its gate (Y): X and Z eased toward the gate's
+   (ApproachQuarterMin4), Z += +$2B; Y eased toward the gate's (03:CDC1),
+   Y += +$29. */
+static void ball_home(void)
+{
+    ease16(F(0x200C, cpu.x), F(0x200C, cpu.y), abi_ApproachQuarterMin4);
+    ease16(F(0x2010, cpu.x), F(0x2010, cpu.y), abi_ApproachQuarterMin4);
+    add16_via(F(0x2010, cpu.x), F(0x202B, cpu.x));
+    ease16(F(0x200E, cpu.x), F(0x200E, cpu.y), ease_cdc1);
+    add16_via(F(0x200E, cpu.x), F(0x2029, cpu.x));
+}
+
+/* 09:9B05 / 9B39: the ball flies: Z += +$2B, X += dx; released when +$0A
+   runs out. */
+static void ball_fly(uint16_t dx)
+{
+    add16_via(F(0x2010, cpu.x), F(0x202B, cpu.x));
+    add16(F(0x200C, cpu.x), dx);
+    if (dec8(F(0x200A, cpu.x)) == 0)
+        abi_ObjectRelease();
+}
+
+/* The ball's frame: Y = its gate; for +$49 frames it homes, then it flies
+   (dx a frame); rebucketed. */
+static void cannon_ball_frame(uint16_t dx)
+{
+    uint8_t v;
+
+    cpu.y = rd16(F(0x2027, cpu.x));
+    cpu.p = nz16(cpu.p, cpu.y);
+    v = ld8(F(0x2049, cpu.x));
+    if (v) {
+        dec8(F(0x2049, cpu.x));
+        ball_home();
+    } else {
+        ball_fly(dx);
+    }
+    abi_ObjectRebucket();
+}
+
+/*
+ * @routine 09:9ACB ObjectCannonBallLeft
+ * WHAT IT DOES: A cannon ball's frame: for +$49 frames it homes on its gate
+ * (+$27; X and Z eased to the gate's, then its drift +$2B and rise +$29
+ * added), then it flies off ($100 a frame along X, drifting) until its life
+ * +$0A runs out; rebucketed.
+ * HOW: ApproachQuarterMin4, 03:CDC1 (original code), ObjectRelease,
+ * ObjectRebucket. Reached only by unit_objects_09.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket.
+ */
+void abi_ObjectCannonBallLeft(void)
+{
+    cannon_ball_frame(0x0100);
+}
+
+/*
+ * @routine 09:9AE8 ObjectCannonBallRight
+ * WHAT IT DOES: As ObjectCannonBallLeft, flying off the other way ($380 a
+ * frame back along X).
+ * HOW: As ObjectCannonBallLeft. Reached only by unit_objects_09.
+ * Entry: as ObjectCannonBallLeft. Exit: as ObjectCannonBallLeft.
+ */
+void abi_ObjectCannonBallRight(void)
+{
+    cannon_ball_frame(0xFC80);
+}
+
+void abi_ObjectSyncToRecord(void);
+
+/* As hit(), with the object's position given to its record
+   (ObjectSyncToRecord) instead. */
+static int hit_to(void)
+{
+    abi_ObjectSyncToRecord();
+    lda8((uint8_t)(cpu.a & 0x01));
+    if (!(uint8_t)cpu.a)
+        return 0;
+    abi_RecordContactSummary();
+    lda8((uint8_t)(cpu.a & 0x01));
+    return (uint8_t)cpu.a != 0;
+}
+
+/* A wave ball: a new object of kind $AA34 linked to gate X (+$27),
+   handler h, moved (dx, dy, dz), scale s, rise +$29 = rise; the gate moves
+   (gx, gz); life +$0A, sound $0E. Nothing without a free object. */
+static void wave_ball(uint16_t h, uint16_t dx, uint16_t dy, uint16_t dz, uint8_t s,
+                      uint16_t rise, uint16_t gx, uint16_t gz, uint8_t life)
+{
+    uint8_t a;
+
+    if (!spawn(0xAA34))
+        return;
+    abi_ObjectCopyPositionTo();
+    a = (uint8_t)cpu.a;
+    cpu.p &= (uint8_t)~P_M;
+    cpu.a = cpu.x;
+    cpu.p = nz16(cpu.p, cpu.a);
+    wr16(F(0x2027, cpu.y), cpu.x);
+    cpu.p |= P_M;
+    lda8(a);
+    handler(cpu.y, h);
+    add16(F(0x200C, cpu.y), dx);
+    add16(F(0x200E, cpu.y), dy);
+    add16(F(0x2010, cpu.y), dz);
+    st8i(F(0x2015, cpu.y), s);
+    st16i(F(0x2029, cpu.y), rise);
+    add16(F(0x200C, cpu.x), gx);
+    add16(F(0x2010, cpu.x), gz);
+    st8i(F(0x200A, cpu.y), life);
+    lda8(0x0E);
+    abi_SoundPort0QueuePush();
+}
+
+/* A wave gate's frame: on a hit on lap 1, the first time (+$25 bit 0),
+   its wave ball. */
+static void wave_gate_frame(int which)
+{
+    if (!hit_to())
+        return;
+    ld8(db() | 0x0DEA);
+    cmp8(0x01);
+    if ((uint8_t)cpu.a != 0x01)
+        return;
+    lda8((uint8_t)(ld8(F(0x2025, cpu.x)) & 0x01));
+    if ((uint8_t)cpu.a)
+        return;
+    or8(F(0x2025, cpu.x), 0x01);
+    if (which == 0)
+        wave_ball(0x9F05, 0xDA80, 0xFE80, 0xDD00, 0xE0, 0xFF00, 0x0F00, 0x0F00, 0x0F);
+    else if (which == 1)
+        wave_ball(0x9E9A, 0x2300, 0xFC40, 0xE200, 0x20, 0xFF60, 0xF100, 0x0F00, 0x0A);
+    else
+        wave_ball(0x9E9A, 0x2300, 0xFC40, 0x1E00, 0x60, 0xFF60, 0xF100, 0xF100, 0x0C);
+}
+
+/* 09:9BF5: the wave gate's record ($42D) with flag bit 4 at ($F00, $F00,
+   $F00); then the first gate's frame. */
+static void wave_gate_record(void)
+{
+    post_record(0x0F00);
+    wave_gate_frame(0);
+}
+
+/*
+ * @routine 09:9BD7 ObjectWaveGateA
+ * WHAT IT DOES: Sets up the first wave gate: restart $09:9BF5
+ * (ObjectWaveGateRecord), frame $09:9C1C (ObjectWaveGateAStep); its record
+ * and frame.
+ * HOW: Word and byte stores.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectWaveGateA(void)
+{
+    handlers2(0x9BF5, 0x9C1C);
+    wave_gate_record();
+}
+
+/*
+ * @routine 09:9BF5 ObjectWaveGateRecord
+ * WHAT IT DOES: A wave gate's restart (all three use it): its record
+ * ($42D, flag bit 4, at ($F00, $F00, $F00)), then the first gate's frame
+ * (ObjectWaveGateAStep).
+ * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
+ * Entry: as ObjectWaveGateA. Exit: as ObjectWaveGateA.
+ */
+void abi_ObjectWaveGateRecord(void)
+{
+    wave_gate_record();
+}
+
+/*
+ * @routine 09:9C1C ObjectWaveGateAStep
+ * WHAT IT DOES: The first wave gate's frame: when a car hits it on lap 1
+ * ($0DEA), the first time (+$25 bit 0), a wave ball (kind $AA34, handler
+ * ObjectWaveBallBig) $2580 left, $180 up and $2300 back, and the gate moves
+ * $F00 on in X and Z.
+ * HOW: ObjectSyncToRecord, RecordContactSummary, ObjectSpawn.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectWaveGateAStep(void)
+{
+    wave_gate_frame(0);
+}
+
+/*
+ * @routine 09:9C4A ObjectWaveGateB
+ * WHAT IT DOES: Sets up the second wave gate: restart $09:9BF5
+ * (ObjectWaveGateRecord), frame $09:9C69 (ObjectWaveGateBStep).
+ * HOW: Word and byte stores.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte = 9.
+ */
+void abi_ObjectWaveGateB(void)
+{
+    handlers2(0x9BF5, 0x9C69);
+}
+
+/*
+ * @routine 09:9C69 ObjectWaveGateBStep
+ * WHAT IT DOES: As ObjectWaveGateAStep with a smaller ball (handler
+ * ObjectWaveBallStep, $2300 right, $3C0 up, $1E00 back, scale $20, life
+ * $A); the gate moves $F00 back in X and on in Z.
+ * HOW: As ObjectWaveGateAStep.
+ * Entry: as ObjectWaveGateAStep. Exit: as ObjectWaveGateAStep.
+ */
+void abi_ObjectWaveGateBStep(void)
+{
+    wave_gate_frame(1);
+}
+
+/*
+ * @routine 09:9C97 ObjectWaveGateC
+ * WHAT IT DOES: Sets up the third wave gate: restart $09:9BF5
+ * (ObjectWaveGateRecord), frame $09:9CB6 (ObjectWaveGateCStep).
+ * HOW: Word and byte stores.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte = 9.
+ */
+void abi_ObjectWaveGateC(void)
+{
+    handlers2(0x9BF5, 0x9CB6);
+}
+
+/*
+ * @routine 09:9CB6 ObjectWaveGateCStep
+ * WHAT IT DOES: As ObjectWaveGateBStep with the ball $1E00 on (scale $60,
+ * life $C); the gate moves $F00 back in X and Z.
+ * HOW: As ObjectWaveGateAStep.
+ * Entry: as ObjectWaveGateAStep. Exit: as ObjectWaveGateAStep.
+ */
+void abi_ObjectWaveGateCStep(void)
+{
+    wave_gate_frame(2);
+}
+
+/* 09:9EA6: the ball homes on Y (X, Z, Y eased by ApproachQuarterMin4),
+   rises by +$29, and is released when +$0A runs out. */
+static void wave_home(void)
+{
+    ease16(F(0x200C, cpu.x), F(0x200C, cpu.y), abi_ApproachQuarterMin4);
+    ease16(F(0x2010, cpu.x), F(0x2010, cpu.y), abi_ApproachQuarterMin4);
+    ease16(F(0x200E, cpu.x), F(0x200E, cpu.y), abi_ApproachQuarterMin4);
+    add16_via(F(0x200E, cpu.x), F(0x2029, cpu.x));
+    if (dec8(F(0x200A, cpu.x)) == 0)
+        abi_ObjectRelease();
+}
+
+/*
+ * @routine 09:9E9A ObjectWaveBallStep
+ * WHAT IT DOES: A wave ball's frame: it homes on its gate (+$27; X, Z and
+ * Y eased by ApproachQuarterMin4), rises by +$29, is released when its
+ * life +$0A runs out; rebucketed.
+ * HOW: The NOP first, as the course pointers expect. Reached only by
+ * unit_objects_09.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket.
+ */
+void abi_ObjectWaveBallStep(void)
+{
+    cpu.y = rd16(F(0x2027, cpu.x));
+    cpu.p = nz16(cpu.p, cpu.y);
+    wave_home();
+    abi_ObjectRebucket();
+}
+
+/* 09:A03F: a sparkle's frame: released when +$0A runs out; its frame
+   +$18 steps through 0-5 (bit 7 kept); rebucketed. */
+static void sparkle_frame(void)
+{
+    uint8_t v;
+
+    if (dec8(F(0x200A, cpu.x)) == 0)
+        abi_ObjectRelease();
+    v = ld8(F(0x2018, cpu.x));
+    cpu.p &= (uint8_t)~P_C;
+    v = op_adc8(v, 0x01, &cpu.p);
+    if (!(v & 0x80)) {
+        cpu.p &= (uint8_t)~P_C;
+        v = op_adc8(v, 0x06, &cpu.p);
+    }
+    v &= 0x7F;
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cmp8(0x06);
+    if (v >= 0x06) {
+        cpu.p |= P_C;
+        v = op_sbc8(v, 0x06, &cpu.p);
+    }
+    v |= 0x80;
+    lda8(v);
+    wr8(F(0x2018, cpu.x), v);
+    abi_ObjectRebucket();
+}
+
+/* 09:9FE1: a sparkle: a new object of kind $A158 lit by $997C (+$5F
+   $64), frame +$18 = $82, at object X's position $C8 back, life 8,
+   handler $09:A03F (ObjectStarSparkleStep). */
+static void sparkle(void)
+{
+    if (!spawn(0xA158))
+        return;
+    st16i(F(0x205D, cpu.y), 0x997C);
+    lda8(0x02);
+    lda8(0x82);
+    wr8(F(0x2018, cpu.y), 0x82);
+    lamp(cpu.y, 0x64);
+    abi_ObjectCopyPositionTo();
+    add16(F(0x2010, cpu.y), 0xFF38);
+    st8i(F(0x200A, cpu.y), 0x08);
+    handler(cpu.y, 0xA03F);
+}
+
+/* 09:9F63: the big wave ball's frame: once hit (+$25 bit 0) it grows
+   (+$16, +$15 by $18), flies ($32 back, $28A right, $FA up) and leaves a
+   sparkle each frame; before, it homes on its gate. A hit (its position
+   given to the record) sets +$25 bit 0 the first time with sound $59. */
+static void big_ball_frame(void)
+{
+    lda8((uint8_t)(ld8(F(0x2025, cpu.x)) & 0x01));
+    if ((uint8_t)cpu.a) {
+        add8(F(0x2016, cpu.x), 0x18);
+        add8(F(0x2015, cpu.x), 0x18);
+        add16(F(0x2010, cpu.x), 0xFFCE);
+        add16(F(0x200C, cpu.x), 0x028A);
+        add16(F(0x200E, cpu.x), 0xFF06);
+        sparkle();
+    } else {
+        uint16_t sy = cpu.y;
+
+        cpu.y = rd16(F(0x2027, cpu.x));
+        cpu.p = nz16(cpu.p, cpu.y);
+        wave_home();
+        cpu.y = sy;
+        cpu.p = nz16(cpu.p, sy);
+    }
+    if (!hit_to())
+        return;
+    lda8((uint8_t)(ld8(F(0x2025, cpu.x)) & 0x01));
+    if ((uint8_t)cpu.a)
+        return;
+    or8(F(0x2025, cpu.x), 0x01);
+    lda8(0x59);
+    abi_SoundPort0QueuePush();
+}
+
+/* 09:9F3C: the big ball's record ($42D) with flag bit 4 at ($320, $320,
+   $320); then its frame. */
+static void big_ball_record(void)
+{
+    post_record(0x0320);
+    big_ball_frame();
+}
+
+/* 09:9F14: restart $09:9F3C, frame $09:9F63, rise +$29 = -$50; then the
+   record and frame. */
+static void big_ball_setup(void)
+{
+    handlers2(0x9F3C, 0x9F63);
+    st16i(F(0x2029, cpu.x), 0xFFB0);
+    big_ball_record();
+}
+
+/*
+ * @routine 09:9F05 ObjectWaveBallBig
+ * WHAT IT DOES: The first wave gate's ball: its handler $09:9F14
+ * (ObjectWaveBallBigSetup), then that set-up at once.
+ * HOW: Word and byte stores. Reached only by unit_objects_09.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectWaveBallBig(void)
+{
+    handler(cpu.x, 0x9F14);
+    big_ball_setup();
+}
+
+/*
+ * @routine 09:9F14 ObjectWaveBallBigSetup
+ * WHAT IT DOES: The big wave ball's set-up: restart $09:9F3C
+ * (ObjectWaveBallBigRecord), frame $09:9F63 (ObjectWaveBallBigStep), rise
+ * +$29 = -$50; its record ($42D, flag bit 4, at ($320, $320, $320)) and
+ * frame.
+ * HOW: Word and byte stores. Reached only by unit_objects_09.
+ * Entry: as ObjectWaveBallBig. Exit: as ObjectWaveBallBig.
+ */
+void abi_ObjectWaveBallBigSetup(void)
+{
+    big_ball_setup();
+}
+
+/*
+ * @routine 09:9F3C ObjectWaveBallBigRecord
+ * WHAT IT DOES: The big wave ball's restart: its record ($42D, flag bit 4,
+ * at ($320, $320, $320)), then its frame.
+ * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition. Reached only
+ * by unit_objects_09.
+ * Entry: as ObjectWaveBallBig. Exit: as ObjectWaveBallBig.
+ */
+void abi_ObjectWaveBallBigRecord(void)
+{
+    big_ball_record();
+}
+
+/*
+ * @routine 09:9F63 ObjectWaveBallBigStep
+ * WHAT IT DOES: The big wave ball's frame: once a car has hit it (+$25 bit
+ * 0) it grows (+$16, +$15 by $18), flies off ($32 back, $28A right, $FA
+ * up) and leaves a sparkle (kind $A158, handler ObjectStarSparkleStep) each
+ * frame; until then it homes on its gate. A hit sets +$25 bit 0 the first
+ * time with sound $59.
+ * HOW: ObjectSyncToRecord, RecordContactSummary. Reached only by
+ * unit_objects_09.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectWaveBallBigStep(void)
+{
+    big_ball_frame();
+}
+
+/*
+ * @routine 09:A03F ObjectStarSparkleStep
+ * WHAT IT DOES: A sparkle's frame: released when its life +$0A runs out;
+ * its picture frame +$18 steps through 0-5 (bit 7 kept); rebucketed.
+ * HOW: Byte adds and compares. Reached only by unit_objects_09.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket.
+ */
+void abi_ObjectStarSparkleStep(void)
+{
+    sparkle_frame();
+}
+
+/* 09:A0C0: the lantern's frame: when a car hits it the first time (+$25
+   bit 0), sound $10, it is released and bursts into four sparks; no hit
+   clears the bit. */
+static void lantern_frame(void)
+{
+    if (!hit()) {
+        and8(F(0x2025, cpu.x), 0xFE);
+        return;
+    }
+    lda8((uint8_t)(ld8(F(0x2025, cpu.x)) & 0x01));
+    if ((uint8_t)cpu.a)
+        return;
+    or8(F(0x2025, cpu.x), 0x01);
+    lda8(0x10);
+    abi_SoundPort0QueuePush();
+    abi_ObjectRelease();
+    spark(0x14, 0x0028, 0xFFD3, 0x0000);
+    spark(0x03, 0xFFD8, 0xFFD3, 0x0000);
+    spark(0x0A, 0x0000, 0xFFCE, 0x0028);
+    spark(0x01, 0x0000, 0xFFCE, 0xFFD8);
+}
+
+/* 09:A0B2: the lantern's record ($424, +$0A $90E8) with flag bit 4 and
+   +$2A high 2; then its frame. */
+static void lantern_record(void)
+{
+    abi_GsuRecordNew424Alt();
+    abi_GsuRecordFlag10();
+    lda8(0x02);
+    abi_GsuRecordSet2AHigh();
+    lantern_frame();
+}
+
+/*
+ * @routine 09:A06A ObjectLantern
+ * WHAT IT DOES: Sets up a lantern: $78 higher, lit by $996D (+$24 bit 3,
+ * +$3A = 0, +$5F = $64), restart $09:A0B2 (ObjectLanternRecord), frame
+ * $09:A0C0 (ObjectLanternStep); its record and frame.
+ * HOW: Word and byte stores.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectLantern(void)
+{
+    add16(F(0x200E, cpu.x), 0xFF88);
+    st16i(F(0x205D, cpu.x), 0x996D);
+    lamp(cpu.x, 0x64);
+    handlers2(0xA0B2, 0xA0C0);
+    lantern_record();
+}
+
+/*
+ * @routine 09:A0B2 ObjectLanternRecord
+ * WHAT IT DOES: The lantern's restart: its record (GsuRecordNew424Alt, flag
+ * bit 4, +$2A high 2), then its frame.
+ * HOW: GsuRecordNew424Alt, GsuRecordFlag10, GsuRecordSet2AHigh.
+ * Entry: as ObjectLantern. Exit: as ObjectLantern.
+ */
+void abi_ObjectLanternRecord(void)
+{
+    lantern_record();
+}
+
+/*
+ * @routine 09:A0C0 ObjectLanternStep
+ * WHAT IT DOES: The lantern's frame: when a car hits it the first time
+ * (+$25 bit 0), sound $10, it is released and bursts into four sparks
+ * (kind $A0CC, handler ObjectFlyingPiece); no hit clears the bit.
+ * HOW: ObjectSyncFromRecord, RecordContactSummary, ObjectSpawn.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectLanternStep(void)
+{
+    lantern_frame();
+}
