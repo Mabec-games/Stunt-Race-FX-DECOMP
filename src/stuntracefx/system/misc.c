@@ -22,6 +22,7 @@ void abi_DataBankTest(void)
 
 /*
  * @routine 7E:F217 KeepRegisters
+ * @alias 02:CF3E
  * WHAT IT DOES: Nothing: it saves P, changes the widths and restores P.
  * HOW: PHP, SEP #$20, REP #$30, PLP.
  * Entry: any widths. Exit: every register unchanged.

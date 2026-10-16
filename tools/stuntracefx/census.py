@@ -402,8 +402,12 @@ def known():
     for dirpath, _, files in os.walk(os.path.join(ROOT, 'src', 'stuntracefx')):
         for fn in files:
             if fn.endswith('.c'):
-                for m in re.finditer(r'@routine ([0-9A-F]{2}):([0-9A-F]{4}) (\w+)', open(os.path.join(dirpath, fn)).read()):
+                text = open(os.path.join(dirpath, fn)).read()
+                for m in re.finditer(r'@routine ([0-9A-F]{2}):([0-9A-F]{4}) (\w+)((?:\n \* @alias [0-9A-F]{2}:[0-9A-F]{4})*)', text):
                     tags[int(m.group(1) + m.group(2), 16)] = m.group(3)
+                    # @alias: the same code run from its ROM copy is named too
+                    for a in re.findall(r'@alias ([0-9A-F]{2}):([0-9A-F]{4})', m.group(4)):
+                        tags[int(a[0] + a[1], 16)] = m.group(3)
     return cat, tags
 
 
