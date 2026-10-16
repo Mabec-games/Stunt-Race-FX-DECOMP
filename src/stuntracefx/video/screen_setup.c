@@ -530,6 +530,9 @@ static void hud_tile(uint32_t b, uint16_t from, uint16_t w, uint16_t vram)
     abi_VramDmaTileFromGsuRam();
 }
 
+void RaceHudSetup(uint8_t p, uint8_t db);
+void RaceHudSetupTwoPlayers(uint8_t p, uint8_t db);
+
 /*
  * @routine 03:DD1B RaceHudLoad
  * WHAT IT DOES: Loads a race's sound and HUD graphics: the sound reset, the
@@ -543,13 +546,14 @@ static void hud_tile(uint32_t b, uint16_t from, uint16_t w, uint16_t vram)
  * $18E3 (from $3000) at $62E0, the Super FX blocks $F845/$F804 to VRAM
  * and $18:D920 drawn, $3000 bytes of it copied to $7F:63D7, the sound reset
  * again, the race time set up (RaceTimeInit), the Super FX's speed $70:0050
- * from the course's word at $03:F799; then on to $03:DECA, or $03:E6FA
- * with $0D62 set, which pull P and the data bank pushed here.
+ * from the course's word at $03:F799; then on to RaceHudSetup, or
+ * RaceHudSetupTwoPlayers with $0D62 set, which pull P and the data bank
+ * pushed here.
  * HOW: P and the data bank ($03) pushed; MVN for the copy; the last part
- * is a jump (jump_routine_pushed with the two bytes). HUD modes above 3
+ * is a jump (the C passes the two bytes). HUD modes above 3
  * would take code bytes as addresses and are not modelled.
- * Entry: any widths; D = $0000. Exit: as the code at $03:DECA or $03:E6FA
- * leaves it.
+ * Entry: any widths; D = $0000. Exit: as RaceHudSetup or
+ * RaceHudSetupTwoPlayers leaves it.
  */
 void abi_RaceHudLoad(void)
 {
@@ -612,7 +616,7 @@ void abi_RaceHudLoad(void)
     op_sep(P_M);
     op_lda8(b | 0x0D62);
     if ((uint8_t)cpu.a)
-        jump_routine_pushed(0x03E6FA, pushed, 2);
+        RaceHudSetupTwoPlayers(pushed[0], pushed[1]);
     else
-        jump_routine_pushed(0x03DECA, pushed, 2);
+        RaceHudSetup(pushed[0], pushed[1]);
 }
