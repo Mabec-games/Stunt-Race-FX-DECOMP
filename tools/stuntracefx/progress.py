@@ -7,8 +7,13 @@
 Every routine in the catalog (catalog.py) gets a tier: T4 and T3 from the
 gates (t3.py), T2 when the C or the assembly is filed but not certified, T1
 otherwise. The bars and the map read the same classification, so they cannot
-disagree. Bytes are the routines' executed code bytes; the denominator grows
-as the scripts reach more code. Do not edit the generated blocks by hand.
+disagree. The bars measure bytes, not routines: the denominator is every code
+byte of the game, the ones the scripts ran and the ones the routine census
+(census.py) finds statically; the numerator is the code bytes inside
+certified routines (their executed bytes and the untraced paths between
+them). A routine count is no measure of the whole: every entry point filed
+or traced splits the code into more routines, while its bytes stay put. Do
+not edit the generated blocks by hand.
 """
 import datetime, html, os, re, sys
 
@@ -72,31 +77,49 @@ def fmt(n):
     return '{:,}'.format(n)
 
 
-def blocks(rows, mp, est):
-    total = sum(r['bytes'] for r in rows)
+def code_bytes(rows, c):
+    """Each catalog routine's code bytes (traced or found by the census, of
+    its own processor, from its start to its last traced byte) and the
+    game's code bytes per processor."""
+    mp = c.mp
+    gsu = bytearray(len(mp))
+    for o in range(len(mp)):
+        if mp[o] & 0x30 or (c.gcode[o] and not mp[o] & 0x03):
+            gsu[o] = 2
+        elif mp[o] & 0x03 or c.code[o]:
+            gsu[o] = 1
+    for r in rows:
+        want = 2 if r['cpu'] == 'gsu' else 1
+        r['code'] = sum(1 for o in range(int(r['offset'], 16), int(r['end'], 16)) if gsu[o] == want)
+    return {'cpu': gsu.count(1), 'gsu': gsu.count(2)}
+
+
+def blocks(rows, mp, est, game):
+    total = game['cpu'] + game['gsu']
     m1 = [r for r in rows if r['tier'] in ('T3', 'T4')]
     m2 = [r for r in rows if r['tier'] == 'T4']
-    b1, b2 = sum(r['bytes'] for r in m1), sum(r['bytes'] for r in m2)
+    b1, b2 = sum(r['code'] for r in m1), sum(r['code'] for r in m2)
+    traced = sum(r['bytes'] for r in rows)
     today = datetime.date.today().isoformat()
     lines = ['_Snapshot %s._' % today, '', '```',
              'M1  Behaviour exact (T3 + T4)',
-             '    %s  %5.1f%%   %s / %s B   %d / %d routines' % (bar(pct(b1, total) / 100, BAR_W), pct(b1, total), fmt(b1), fmt(total), len(m1), len(rows)),
+             '    %s  %5.1f%%   %s / %s B of the game\'s code' % (bar(pct(b1, total) / 100, BAR_W), pct(b1, total), fmt(b1), fmt(total)),
              'M2  Byte exact (T4)',
-             '    %s  %5.1f%%   %s / %s B   %d / %d routines' % (bar(pct(b2, total) / 100, BAR_W), pct(b2, total), fmt(b2), fmt(total), len(m2), len(rows)),
+             '    %s  %5.1f%%   %s / %s B of the game\'s code' % (bar(pct(b2, total) / 100, BAR_W), pct(b2, total), fmt(b2), fmt(total)),
              '```', '',
-             'The game has about **%s routines** (%s to %s, by the [routine census](docs/stuntracefx/ROUTINE_CENSUS.md)); '
-             'the bars measure the %s the scripts have run so far.' % (fmt(est['expected']), fmt(est['low']), fmt(est['high']), fmt(len(rows))),
+             'The bars measure the whole game\'s S-CPU and Super FX code, %s B: %s B the scripts have run and %s B the '
+             '[routine census](docs/stuntracefx/ROUTINE_CENSUS.md) finds that no script has run yet. '
+             'Certified so far: %d routines behaviour exact, %d of them byte exact.' % (
+                 fmt(total), fmt(traced), fmt(total - traced), len(m1), len(m2)),
              '', '| Processor | M1: behaviour exact | M2: byte exact |', '|---|---|---|']
     for cpu in ('cpu', 'gsu'):
         rs = [r for r in rows if r['cpu'] == cpu]
-        t = sum(r['bytes'] for r in rs)
-        x1 = sum(r['bytes'] for r in rs if r['tier'] in ('T3', 'T4'))
-        x2 = sum(r['bytes'] for r in rs if r['tier'] == 'T4')
-        n1 = sum(1 for r in rs if r['tier'] in ('T3', 'T4'))
-        n2 = sum(1 for r in rs if r['tier'] == 'T4')
-        lines.append('| **%s** | `%s` %.1f%%: %d/%d routines, %s/%s B | `%s` %.1f%%: %d/%d routines, %s/%s B |' % (
-            LANE[cpu], bar(pct(x1, t) / 100, CELL_W), pct(x1, t), n1, len(rs), fmt(x1), fmt(t),
-            bar(pct(x2, t) / 100, CELL_W), pct(x2, t), n2, len(rs), fmt(x2), fmt(t)))
+        t = game[cpu]
+        x1 = sum(r['code'] for r in rs if r['tier'] in ('T3', 'T4'))
+        x2 = sum(r['code'] for r in rs if r['tier'] == 'T4')
+        lines.append('| **%s** | `%s` %.1f%%: %s/%s B | `%s` %.1f%%: %s/%s B |' % (
+            LANE[cpu], bar(pct(x1, t) / 100, CELL_W), pct(x1, t), fmt(x1), fmt(t),
+            bar(pct(x2, t) / 100, CELL_W), pct(x2, t), fmt(x2), fmt(t)))
     lines.append('| **SPC700 (sound)** | not yet measured | not yet measured |')
     status = '\n'.join(lines)
 
@@ -105,20 +128,20 @@ def blocks(rows, mp, est):
     untouched = sum(1 for v in mp if not v)
     t2 = [r for r in rows if r['tier'] == 'T2']
     detail = '\n'.join([
-        '**What the bars measure.** Both bars count the executed code bytes of every',
-        'routine the scripts have reached, on the S-CPU and the Super FX: %s B in %d' % (fmt(total), len(rows)),
-        'routines. M1 counts routines whose C is certified behaviour exact (T3) or',
-        'whose assembly is also byte exact (T4); M2 counts T4 only. %d routine(s) are' % len(t2),
-        'in the tree but not yet certified (T2).',
+        '**What the bars measure.** Bytes of code, not routines. The denominator is',
+        'every S-CPU and Super FX code byte of the game, %s B: the %s B the scripts' % (fmt(total), fmt(traced)),
+        'have run and the %s B the routine census (`tools/stuntracefx/census.py`) finds' % fmt(total - traced),
+        'by following the code statically (calls, jumps, tables, handler pointers,',
+        'Super FX calls, orphans) where no script has gone. The numerator is the code',
+        'bytes inside routines whose C is certified behaviour exact (T3) or whose',
+        'assembly is also byte exact (T4), for M1, and T4 only for M2. %d routine(s)' % len(t2),
+        'are in the tree but not yet certified (T2).',
         '',
-        '**The denominator grows.** Code no script has run is not counted yet. The',
-        'routine census (`tools/stuntracefx/census.py`) follows the code statically from',
-        'the routines that ran and the ones filed, and puts the game at about %s:' % fmt(est['expected']),
-        '%s named (%s of them filed but never run), %s found by calls, handler' % (
-            fmt(est['named']), fmt(est['named'] - len(rows)), fmt(est['sure'])),
-        'pointers and Super FX calls, %s orphans nothing refers to, and about %s of %s' % (
-            fmt(est['orphan']), fmt(round(est['rate'] * est['tables'])), fmt(est['tables'])),
-        'jump-table targets in code not filed yet. Of the',
+        '**Why not routines.** A routine count keeps growing as the work goes on:',
+        'every entry point filed in C or reached by a new script splits code already',
+        'counted into more routines (the census now counts about %s, %s of them' % (fmt(est['expected']), fmt(est['named'])),
+        'named), while the bytes stay put: tracing a new script moves bytes from',
+        '"found" to "run" and barely changes the total. Of the',
         'ROM\'s %s B, the scripts have run %s B as code and read %s B as data;' % (fmt(len(mp)), fmt(code), fmt(data)),
         '%s B have not been touched by any script. The sound CPU\'s program is' % fmt(untouched),
         'uploaded from ROM and is not measured yet.',
@@ -170,7 +193,7 @@ def squarify(items, x, y, w, h):
         i = j
 
 
-def render_svg(rows, path):
+def render_svg(rows, path, game):
     W, H = 1600, 900
     groups = {}
     for r in rows:
@@ -178,22 +201,26 @@ def render_svg(rows, path):
         groups.setdefault(key, []).append(r)
     parts = ['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 %d %d" font-family="sans-serif">' % (W, H + 30),
              '<rect width="%d" height="%d" fill="#161b22"/>' % (W, H + 30)]
-    gitems = sorted(((sum(r['bytes'] for r in rs), (k, rs)) for k, rs in groups.items()), key=lambda it: -it[0])
+    # Code no script has run (the census found it) is one gray area, so the
+    # map's areas are the bars' bytes.
+    unrun = game['cpu'] + game['gsu'] - sum(r['code'] for r in rows)
+    groups['not run by any script yet'] = [{'name': 'code the census found', 'addr': '', 'code': unrun, 'tier': 'T1'}]
+    gitems = sorted(((sum(r['code'] for r in rs), (k, rs)) for k, rs in groups.items()), key=lambda it: -it[0])
     for gx, gy, gw, gh, (gname, rs) in squarify(gitems, 0, 0, W, H):
         pad = 1.5
         label = gw > 70 and gh > 26
         top = 14 if label else 0
         if label:
             parts.append('<text x="%.1f" y="%.1f" font-size="10" fill="#8b949e">%s</text>' % (gx + 3, gy + 10.5, html.escape(gname)))
-        items = sorted(((r['bytes'], r) for r in rs), key=lambda it: -it[0])
+        items = sorted(((r['code'], r) for r in rs), key=lambda it: -it[0])
         for x, y, w, h, r in squarify(items, gx + pad, gy + pad + top, max(gw - 2 * pad, .1), max(gh - 2 * pad - top, .1)):
-            tip = '%s  %s  %dB  %s  [%s]' % (r['name'] or '(unnamed)', r['addr'], r['bytes'], r['tier'], gname)
+            tip = '%s  %s  %dB  %s  [%s]' % (r['name'] or '(unnamed)', r['addr'], r['code'], r['tier'], gname)
             parts.append('<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" fill="%s"><title>%s</title></rect>'
                          % (x, y, max(w - .6, .4), max(h - .6, .4), COLOR[r['tier']], html.escape(tip)))
-    total = sum(r['bytes'] for r in rows)
+    total = game['cpu'] + game['gsu']
     n4 = sum(1 for r in rows if r['tier'] == 'T4')
     n3 = sum(1 for r in rows if r['tier'] == 'T3')
-    b4 = sum(r['bytes'] for r in rows if r['tier'] == 'T4')
+    b4 = sum(r['code'] for r in rows if r['tier'] == 'T4')
     parts.append('<text x="8" y="%d" font-size="13" fill="#e6edf3">T4 byte-exact %d &#183; T3 behaviour-exact %d &#183; '
                  '%s/%s bytes exact (%.1f%%) &#183; green=T4 blue=T3 amber=T2 gray=T1</text></svg>'
                  % (H + 20, n4, n3, fmt(b4), fmt(total), pct(b4, total)))
@@ -203,7 +230,9 @@ def render_svg(rows, path):
 
 def main(argv):
     rows, mp, image_ok = classify()
-    status, detail = blocks(rows, mp, census.estimate())
+    state = census.census()
+    game = code_bytes(rows, state[0])
+    status, detail = blocks(rows, mp, census.estimate(state), game)
     if '--print' in argv:
         print(status)
         return 0
@@ -211,7 +240,7 @@ def main(argv):
     text = replace_block(text, 'PROGRESS', status)
     text = replace_block(text, 'PROGRESS-DETAIL', detail)
     open(README, 'w').write(text)
-    render_svg(rows, SVG)
+    render_svg(rows, SVG, game)
     print(status.split('```')[1].strip())
     print('README.md and %s updated' % os.path.relpath(SVG, ROOT))
     return 0
