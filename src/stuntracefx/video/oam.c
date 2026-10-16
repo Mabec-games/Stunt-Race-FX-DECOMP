@@ -517,6 +517,40 @@ void abi_OamBlock52Left(void)
 }
 
 /*
+ * @routine 07:C358 OamBlock59Right
+ * WHAT IT DOES: Places sprites 59 and 60 at X = $5F and $79 and gives
+ * sprites 61-63 the attribute bytes $06, $06, $0C.
+ * HOW: OamBlock52Right's stores with X = $2C.
+ * Entry: M 8-bit. Exit: A low byte = $0C; X = $2C (16-bit); N, Z clear; C,
+ * V from the add.
+ */
+void abi_OamBlock59Right(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | oam_block(cpu.db, 0x002C, 0x5F, 0x1A, 0x06, 0x0C, &p));
+    cpu.x = 0x002C;
+    cpu.p = (uint8_t)(p & ~(P_N | P_Z | P_X));
+}
+
+/*
+ * @routine 07:C361 OamBlock123Right
+ * WHAT IT DOES: Places sprites 123 and 124 at X = $AD and $C7 and gives
+ * sprites 125-127 the attribute bytes $06, $06, $0C.
+ * HOW: OamBlock52Right's stores with X = $12C.
+ * Entry: M 8-bit. Exit: A low byte = $0C; X = $12C (16-bit); N, Z clear; C,
+ * V from the add.
+ */
+void abi_OamBlock123Right(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | oam_block(cpu.db, 0x012C, 0xAD, 0x1A, 0x06, 0x0C, &p));
+    cpu.x = 0x012C;
+    cpu.p = (uint8_t)(p & ~(P_N | P_Z | P_X));
+}
+
+/*
  * @routine 07:C36A OamBlock52Right
  * WHAT IT DOES: Places sprites 52 and 53 at X = $87 and $A1 and gives
  * sprites 54-56 the attribute bytes $06, $06, $0C.
@@ -1519,6 +1553,52 @@ static void car_pieces(uint16_t y)
     attr = SpritePieces3(cpu.db, &cpu.x, &cpu.y, &p, &set);
     cpu.a = (uint16_t)((set & 0xFF00) | attr);
     cpu.p = p;
+}
+
+/*
+ * @routine 07:C1C3 SpritePiecesTwoCarsTop
+ * WHAT IT DOES: As SpritePiecesTwoCars higher on the screen: the selector
+ * $10BB steps every eighth frame; Y $38; player 1's car at X $34 (sprite
+ * offset $C0), player 2's at X $7C ($CC); then the bytes $20, $58 at
+ * $0581-$0582.
+ * HOW: As SpritePiecesTwoCars, entered with SEP #$20 only; the selector
+ * steps when the frame count's low three bits are 7. Reached only by
+ * unit_pause.
+ * Entry: D = $0000. Exit: as SpritePiecesTwoCars.
+ */
+void abi_SpritePiecesTwoCarsTop(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v, n;
+
+    cpu.p |= P_M;
+    if ((rd8(b | 0x0E3B) & 0x07) == 0x07) {
+        v = (uint8_t)(rd8(b | 0x10BB) + 1);
+        if (v >= 0x04)
+            v = 0x00;
+        wr8(b | 0x10BB, v);
+    }
+    wr8(b | 0x10C1, 0x30);
+    wr8(b | 0x10C5, 0x30);
+    wr8(b | 0x10BF, 0x38);
+    wr8(b | 0x10BD, 0x34);
+    n = rd8(b | 0x0D89);
+    n = (uint8_t)((n << 1) + rd8(b | 0x0D89));
+    wr8(b | 0x10C3, n);
+    car_pieces(0x00C0);
+    cpu.p |= P_M | P_X;
+    cpu.x &= 0x00FF;
+    cpu.y &= 0x00FF;
+    n = rd8(b | 0x0D8A);
+    n = (uint8_t)((n << 1) + rd8(b | 0x0D8A));
+    wr8(b | 0x10C3, n);
+    wr8(b | 0x10BD, 0x7C);
+    car_pieces(0x00CC);
+    cpu.p |= P_M;
+    wr8(b | 0x0581, 0x20);
+    wr8(b | 0x0582, 0x58);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x58);
+    cpu.p = nz8(cpu.p, 0x58);
 }
 
 /*

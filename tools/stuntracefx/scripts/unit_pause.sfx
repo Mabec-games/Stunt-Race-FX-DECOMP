@@ -1,0 +1,134 @@
+# unit_pause: the pause stages' paths no play reaches, as calls from a
+# Novice race: PauseStageResumeA counting and at its end; PauseStageLeave
+# to the race again ($0DD4 set) and its lone RTS at 07:BD08;
+# PauseStageChoiceP1's move right; PauseStageChoiceP2 (taken on quit and
+# continue, left, right, nothing); PauseStageContinueP2 counting and at its
+# end; PauseStageQuitMenuP2 with the window open; PauseQuitMenuP2 (taken at
+# each cursor, the cars first and again, each cursor's moves, the cars
+# drawn at frame counts 7 and 0); PauseQuitMenu's moves up from 2 and 4 and
+# its bytes no code reaches (07:C021, 07:C03E).
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D5F 01
+call 07:BC58 p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D5F 05
+call 07:BC58 p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E10CD 00
+set 7E0DD4 01
+set 7E0D61 80
+call 07:BCE0 p=30 db=07 d=0000 noreturn frames=60
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:BD08 p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D3D 01
+set 7E0D1A 00,01
+call 07:BD8D p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D3D 01
+set 7E0D1C 00,90
+call 07:BDFB p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D3D 00
+set 7E0D1C 00,90
+call 07:BDFB p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D3D 00
+set 7E0D1C 00,02
+call 07:BDFB p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D3D 01
+set 7E0D1C 00,01
+call 07:BDFB p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D3D 00
+set 7E0D1C 00,00
+call 07:BDFB p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D3D 01
+set 7E0D1C 00,00
+call 07:BDFB p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D5F 00
+call 07:BE40 p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D5F 05
+call 07:BE40 p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E19D8 00
+call 07:BE71 p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D1C 00,90
+set 7E0D50 00
+set 7E10BA 00
+call 07:BEDB p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D1C 00,90
+set 7E0D50 02
+set 7E10BA 00
+call 07:BEDB p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D1C 00,90
+set 7E0D50 04
+set 7E10BA 00
+call 07:BEDB p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D1C 00,90
+set 7E0D50 04
+set 7E10BA FF
+call 07:BEDB p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D1C 00,90
+set 7E0D50 06
+set 7E10BA 00
+call 07:BEDB p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D1C 00,04
+set 7E0D50 00
+call 07:BEDB p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D1C 00,00
+set 7E0D50 00
+call 07:BEDB p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D1C 00,04
+set 7E0D50 02
+call 07:BEDB p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D1C 00,08
+set 7E0D50 02
+call 07:BEDB p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D1C 00,00
+set 7E0D50 02
+call 07:BEDB p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D1C 00,08
+set 7E0D50 04
+call 07:BEDB p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D1C 00,00
+set 7E0D50 04
+call 07:BEDB p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D1C 00,00
+set 7E0D50 06
+set 7E0E3B 07
+call 07:BEDB p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D1C 00,00
+set 7E0D50 06
+set 7E0E3B 00
+call 07:BEDB p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D1A 00,08
+set 7E0D50 02
+call 07:BFC9 p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D1A 00,08
+set 7E0D50 04
+call 07:BFC9 p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:C021 p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:C03E p=30 db=07 d=0000

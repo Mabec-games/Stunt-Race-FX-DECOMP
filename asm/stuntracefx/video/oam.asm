@@ -411,6 +411,32 @@ OamBlockPlace:
     sta.w !oam_sprite56_attr-16,x
     rts
 
+; @routine 07:C358 OamBlock59Right
+; WHAT IT DOES: Places sprites 59 and 60 at X = $5F and $79 and gives
+; sprites 61-63 the attribute bytes $06, $06, $0C.
+; HOW: OamBlock52Right's stores with X = $2C.
+; Entry: M 8-bit. Exit: A low byte = $0C; X = $2C (16-bit); N, Z clear; C,
+; V from the add.
+%at($07C358)
+OamBlock59Right:
+    rep.b #$10
+    ldx.w #$002C
+    lda.b #$5F
+    bra OamBlockPlaceRight
+
+; @routine 07:C361 OamBlock123Right
+; WHAT IT DOES: Places sprites 123 and 124 at X = $AD and $C7 and gives
+; sprites 125-127 the attribute bytes $06, $06, $0C.
+; HOW: OamBlock52Right's stores with X = $12C.
+; Entry: M 8-bit. Exit: A low byte = $0C; X = $12C (16-bit); N, Z clear; C,
+; V from the add.
+%at($07C361)
+OamBlock123Right:
+    rep.b #$10
+    ldx.w #$012C
+    lda.b #$AD
+    bra OamBlockPlaceRight
+
 ; @routine 07:C36A OamBlock52Right
 ; WHAT IT DOES: Places sprites 52 and 53 at X = $87 and $A1 and gives
 ; sprites 54-56 the attribute bytes $06, $06, $0C.
@@ -421,6 +447,7 @@ OamBlock52Right:
     rep.b #$10
     ldx.w #$0010
     lda.b #$87
+OamBlockPlaceRight:
     sta.w !oam_sprite52_x-16,x
     clc
     adc.b #$1A
@@ -1483,6 +1510,62 @@ SpritePieces3:
     dec.b !sprite_piece_count
     bne .piece
     rtl
+
+; @routine 07:C1C3 SpritePiecesTwoCarsTop
+; WHAT IT DOES: As SpritePiecesTwoCars higher on the screen: the selector
+; steps every eighth frame; Y $38; player 1's car at X $34 (sprite offset
+; $C0), player 2's at X $7C ($CC); then the bytes $20, $58 at $0581-$0582.
+; HOW: As SpritePiecesTwoCars, entered with SEP #$20 only; the selector steps
+; when the frame count's low three bits are 7. Reached only by unit_pause.
+; Entry: D = $0000. Exit: as SpritePiecesTwoCars.
+%at($07C1C3)
+SpritePiecesTwoCarsTop:
+    sep.b #$20
+    lda.w !frame_count
+    and.b #$07
+    cmp.b #$07
+    bne .bases
+    lda.w !sprite_piece_select
+    inc a
+    cmp.b #$04
+    bcc .select
+    lda.b #$00
+.select:
+    sta.w !sprite_piece_select
+.bases:
+    lda.b #$30
+    sta.w !sprite_piece_tile
+    lda.b #$30
+    sta.w !sprite_piece_palette
+    lda.b #$38
+    sta.w !sprite_piece_y
+    lda.b #$34
+    sta.w !sprite_piece_x
+    lda.w !wram_0D89
+    asl a
+    clc
+    adc.w !wram_0D89
+    sta.w !sprite_piece_frame
+    rep.b #$30
+    ldy.w #$00C0
+    jsl.l SpritePieces3
+    sep.b #$30
+    lda.w !wram_0D8A
+    asl a
+    clc
+    adc.w !wram_0D8A
+    sta.w !sprite_piece_frame
+    lda.b #$7C
+    sta.w !sprite_piece_x
+    rep.b #$30
+    ldy.w #$00CC
+    jsl.l SpritePieces3
+    sep.b #$20
+    lda.b #$20
+    sta.w !oam_high_table+12
+    lda.b #$58
+    sta.w !oam_high_table+13
+    rts
 
 ; @routine 07:C22B SpritePiecesTwoCars
 ; WHAT IT DOES: Shows the two players' cars as three-piece sprites: every

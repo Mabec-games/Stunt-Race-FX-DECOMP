@@ -359,11 +359,12 @@ void abi_TilemapPaletteFill(void)
 int TilemapPaletteCycle(uint8_t bank, uint16_t *x, uint16_t *y, uint16_t *a)
 {
     uint32_t b = (uint32_t)bank << 16;
-    uint8_t phase, pal;
+    uint8_t phase, pal, frame;
     uint16_t mode, table;
 
-    if (rd8(b | 0x0E3B) & 0x03) {
-        *a = (uint16_t)((*a & 0xFF00) | (rd8(b | 0x0E3B) & 0x03));
+    frame = rd8(b | 0x0E3B);
+    if (frame & 0x03) {
+        *a = (uint16_t)((*a & 0xFF00) | (frame & 0x03));
         return 0;
     }
     phase = (uint8_t)(rd8(b | 0x0DD5) + 1);
