@@ -389,3 +389,5 @@ DemoScripts = $038004                           ; 03:8004, the attract demos' sc
 !records_columns_all = $07D8EB                ; RecordsCharOffsetAll: eight bytes
 SaveSumADDA = $07ADDA                          ; 07:ADDA, a save block's sum (not filed yet)
 RaceFinishSplit = $07A99A                      ; 07:A99A, the split screen's finish (not filed yet)
+ObjectCarCD7E = $08CD7E                         ; 08:CD7E, the pace car step's tail (not filed yet)
+ObjectReleaseD337 = $08D337                     ; 08:D337, the burst piece's contact tail (not filed yet)
