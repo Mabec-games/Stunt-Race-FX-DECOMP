@@ -267,6 +267,7 @@ BootWarm:
     jsl.l CourseMenuRun
     jsl.l RaceModeSetup
     jsl.l Set7EFFA6Sequence
+.race:
     phk
     plb
     sep.b #$20
@@ -286,6 +287,7 @@ BootWarm:
     sta.w !INIDISP
     sei
     jsl.l RaceVideoInit
+.attract:
     phk
     plb
     sep.b #$20

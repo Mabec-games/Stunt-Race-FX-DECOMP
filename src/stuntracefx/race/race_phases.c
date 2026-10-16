@@ -1300,3 +1300,802 @@ void abi_RacePhaseLap(void)
     abi_PauseOnStart();
     race_phase();
 }
+
+void abi_GsuF15BFive(void);
+void abi_HudSixGlyphs(void);
+void abi_GsuF15BThree(void);
+void abi_BigSpritesRow5(void);
+void abi_BigSpritesRow6(void);
+void abi_RaceEndCountdownFade(void);
+void abi_RaceEndCountdown(void);
+void abi_WindowSlideUpSound(void);
+void abi_OverlayFramesUntilFaded(void);
+void abi_GlyphSpritesGrowAndTimes(void);
+void abi_GlyphSlideThree(void);
+void abi_ChampionScreenRun(void);
+void abi_SoundDataLoad(void);
+void abi_ApuUpload(void);
+void abi_RaceVideoInit(void);
+
+/*
+ * @routine 07:E972 PhaseGlyphsFive
+ * WHAT IT DOES: Draws five glyphs with Super FX program $07:F15B
+ * (GsuF15BFive): a phase's whole work.
+ * HOW: JSR, RTS.
+ * Entry: D = $0000. Exit: as GsuF15BFive leaves it.
+ */
+void abi_PhaseGlyphsFive(void)
+{
+    abi_GsuF15BFive();
+}
+
+/*
+ * @routine 07:E976 PhaseGlyphsSix
+ * WHAT IT DOES: Draws six HUD glyphs (HudSixGlyphs): a phase's whole work.
+ * HOW: JSR, RTS.
+ * Entry: D = $0000. Exit: as HudSixGlyphs leaves it.
+ */
+void abi_PhaseGlyphsSix(void)
+{
+    abi_HudSixGlyphs();
+}
+
+/* Once the slide out at $7F:3468 has reached $1F: $0E5F cleared, $0D22 =
+   the slide, $0D23 = 6, $0E56 = $78, $0D55 cleared and the race's end
+   (RaceEndCountdownFade); before, draw() for the frame. */
+static void race_end_wait(void (*draw)(void))
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    op_lda8(0x7F3468);
+    cmp8_imm(0x1F);
+    if ((uint8_t)cpu.a < 0x1F) {
+        draw();
+        return;
+    }
+    wr8(b | 0x0E5F, 0x00);
+    wr8(b | 0x0D22, (uint8_t)cpu.a);
+    lda8_imm(0x06);
+    wr8(b | 0x0D23, 0x06);
+    lda8_imm(0x78);
+    wr8(b | 0x0E56, 0x78);
+    wr8(b | 0x0D55, 0x00);
+    abi_RaceEndCountdownFade();
+}
+
+/* 07:9C9F (not filed yet). */
+static void sprites_9c9f(void)
+{
+    call_routine(0x079C9F, 0);
+}
+
+/*
+ * @routine 07:E97A RaceEndWait9C9F
+ * WHAT IT DOES: Draws with 07:9C9F each frame until the slide out at
+ * $7F:3468 reaches $1F; then $0E5F cleared, $0D22 = the slide, $0D23 = 6,
+ * $0E56 = $78, $0D55 cleared and the race's end (RaceEndCountdownFade).
+ * HOW: An 8-bit compare of the long byte. Reached only by
+ * unit_race_phases.
+ * Entry: M 8-bit, X 8-bit. Exit: as 07:9C9F leaves it, or does not return.
+ */
+void abi_RaceEndWait9C9F(void)
+{
+    race_end_wait(sprites_9c9f);
+}
+
+/*
+ * @routine 07:E99D RaceEndWaitBigSprites
+ * WHAT IT DOES: As RaceEndWait9C9F, drawing the five big sprites
+ * (BigSpritesRow5) each frame.
+ * HOW: As RaceEndWait9C9F. The race's end is not reached in the traces so
+ * far.
+ * Entry: M 8-bit, X 8-bit. Exit: as BigSpritesRow5 leaves it, or does not
+ * return.
+ */
+void abi_RaceEndWaitBigSprites(void)
+{
+    race_end_wait(abi_BigSpritesRow5);
+}
+
+/* $0D22 = 1, $0D23 cleared and the window slid up with its sound. */
+static void window_up(uint32_t b)
+{
+    lda8_imm(0x01);
+    wr8(b | 0x0D22, 0x01);
+    wr8(b | 0x0D23, 0x00);
+    abi_WindowSlideUpSound();
+}
+
+/* The B / START test of the presses $0D1A (bits 15 and 12), 16-bit. */
+static int pressed_b_start(uint32_t b)
+{
+    op_rep(P_M);
+    op_lda16(b | 0x0D1A);
+    cpu.p = (uint8_t)((cpu.p & ~P_Z) | ((cpu.a & 0x9000) ? 0 : P_Z));
+    return (cpu.a & 0x9000) != 0;
+}
+
+void abi_RaceRestart(void);
+void abi_RaceEndToAttract(void);
+void abi_RaceEndVideoReset(void);
+void abi_SoftResetToBootWarm(void);
+
+/* 07:EA6A / EADD: once the split window is in state 5 ($19D8), $0D59
+   cleared, OverlayFramesUntilFaded, then on. */
+static int window_closed_overlay(uint32_t b)
+{
+    op_lda8(b | 0x19D8);
+    cmp8_imm(0x05);
+    if ((uint8_t)cpu.a != 0x05)
+        return 0;
+    wr8(b | 0x0D59, 0x00);
+    abi_OverlayFramesUntilFaded();
+    op_sep(P_M);
+    return 1;
+}
+
+/*
+ * @routine 07:EA1B ResultsWindowWait
+ * WHAT IT DOES: The results' window: with $10CD set, the soft reset
+ * (SoftResetToBootWarm) once the fade is done ($0D61 negative); else
+ * counts $0E58 down: at $10, or below $58 on B or START (unless the split
+ * window is moving), slides the window up; at 0, once the window is
+ * closed, runs the overlay frames and goes on to the race again
+ * (RaceRestart, with $0DD4) or the video reset (RaceEndVideoReset).
+ * HOW: 8-bit tests; the presses 16-bit. Reached only by unit_race_phases.
+ * Entry: M 8-bit, X 8-bit. Exit: as the path leaves it, or does not
+ * return.
+ */
+void abi_ResultsWindowWait(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v;
+
+    op_lda8(b | 0x10CD);
+    if ((uint8_t)cpu.a) {
+        op_lda8(b | 0x0D61);
+        if ((uint8_t)cpu.a & 0x80)
+            abi_SoftResetToBootWarm();
+        return;
+    }
+    op_lda8(b | 0x0E58);
+    v = (uint8_t)cpu.a;
+    if (!v) {
+        if (!window_closed_overlay(b))
+            return;
+        op_lda8(b | 0x0DD4);
+        if ((uint8_t)cpu.a)
+            abi_RaceRestart();
+        else
+            abi_RaceEndVideoReset();
+        return;
+    }
+    cmp8_imm(0x10);
+    if (v == 0x10) {
+        window_up(b);
+    } else {
+        cmp8_imm(0x58);
+        if (v < 0x58 && pressed_b_start(b)) {
+            op_sep(P_M);
+            op_lda8(b | 0x19D8);
+            if ((uint8_t)cpu.a)
+                return;
+            wr8(b | 0x0E58, 0x00);
+            window_up(b);
+            return;
+        }
+    }
+    op_sep(P_M);
+    dec8_mem(b | 0x0E58);
+}
+
+/*
+ * @routine 07:EA85 RaceEndWindowSteps
+ * WHAT IT DOES: The race's end window: with $0D48 = 3 the glyph sprites
+ * grow (GlyphSpritesGrowAndTimes); else counts $0E58 down: at $10 slides
+ * the window up ($19DF cleared), at $58 sets $0D65 = $A, below $58 slides
+ * the three glyphs (GlyphSlideThree), at $2B with $0D65 set sets it to
+ * $10; once the window is closed, the overlay frames, then: with $0D24 =
+ * 3 or $0D48 other than 1 ($0D48 one more) the race again (RaceRestart);
+ * with $0D48 = 1 the override $0D4C = $FF, the course $0D4A + $14, car 4
+ * and the race again.
+ * HOW: SEP #$30; A kept on the stack around GlyphSlideThree.
+ * Entry: any widths. Exit: as the path leaves it, or does not return.
+ */
+void abi_RaceEndWindowSteps(void)
+{
+    uint32_t b;
+    uint8_t v;
+
+    op_sep(P_M | P_X);
+    b = (uint32_t)cpu.db << 16;
+    op_lda8(b | 0x0D48);
+    cmp8_imm(0x03);
+    if ((uint8_t)cpu.a == 0x03) {
+        abi_GlyphSpritesGrowAndTimes();
+        return;
+    }
+    if (window_closed_overlay(b)) {
+        op_lda8(b | 0x0D24);
+        cmp8_imm(0x03);
+        if ((uint8_t)cpu.a != 0x03) {
+            op_lda8(b | 0x0D48);
+            cmp8_imm(0x01);
+            if ((uint8_t)cpu.a == 0x01) {
+                lda8_imm(0xFF);
+                wr8(b | 0x0D4C, 0xFF);
+                op_lda8(b | 0x0D4A);
+                cpu.p &= (uint8_t)~P_C;
+                cpu.a = (uint16_t)((cpu.a & 0xFF00) | op_adc8((uint8_t)cpu.a, 0x14, &cpu.p));
+                wr8(b | 0x0E3D, (uint8_t)cpu.a);
+                lda8_imm(0x04);
+                wr8(b | 0x0D89, 0x04);
+            } else {
+                inc8_mem(b | 0x0D48);
+            }
+        }
+        abi_RaceRestart();
+        return;
+    }
+    op_lda8(b | 0x0E58);
+    v = (uint8_t)cpu.a;
+    cmp8_imm(0x10);
+    if (v == 0x10) {
+        wr8(b | 0x19DF, 0x00);
+        window_up(b);
+        op_lda8(b | 0x0E58);
+        v = (uint8_t)cpu.a;
+    }
+    cmp8_imm(0x58);
+    if (v == 0x58) {
+        lda8_imm(0x0A);
+        wr8(b | 0x0D65, 0x0A);
+        op_lda8(b | 0x0E58);
+        v = (uint8_t)cpu.a;
+        abi_GlyphSlideThree();
+        lda8_imm(v);                            /* PLA */
+    } else if (v < 0x58) {
+        abi_GlyphSlideThree();
+        lda8_imm(v);                            /* PLA */
+    }
+    cmp8_imm(0x2B);
+    if (v == 0x2B) {
+        op_lda8(b | 0x0D65);
+        if ((uint8_t)cpu.a) {
+            lda8_imm(0x10);
+            wr8(b | 0x0D65, 0x10);
+            op_lda8(b | 0x0E58);
+        }
+    }
+    dec8_mem(b | 0x0E58);
+}
+
+/* $0D2F = $0D2D = $A: the pause's stage loop from its start. */
+static void pause_stage_ten(uint32_t b)
+{
+    lda8_imm(0x0A);
+    wr8(b | 0x0D2F, 0x0A);
+    wr8(b | 0x0D2D, 0x0A);
+}
+
+/*
+ * @routine 07:EB10 PauseResultsP2
+ * WHAT IT DOES: The paused results for player 2: three glyphs
+ * (GsuF15BThree); counts $0E58 down, at its end sets $0D2E = 1, slides the
+ * window up and sets $0D2F and the delay $0D5F to 8; then counts the delay
+ * down, and at its end sets $0D2F = $0D2D = $A and runs pad 2's pause loop
+ * (07:BB7C, in OamStagePause2).
+ * HOW: 8-bit; the pause loop is a jump that leaves through the caller's
+ * frame.
+ * Entry: D = $0000. Exit: as the path leaves it.
+ */
+void abi_PauseResultsP2(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    abi_GsuF15BThree();
+    op_sep(P_M);
+    op_lda8(b | 0x0E58);
+    if ((uint8_t)cpu.a) {
+        if (dec8_mem(b | 0x0E58))
+            return;
+        lda8_imm(0x01);
+        wr8(b | 0x0D2E, 0x01);
+        abi_WindowSlideUpSound();
+        lda8_imm(0x08);
+        wr8(b | 0x0D2F, 0x08);
+        wr8(b | 0x0D5F, 0x08);
+        return;
+    }
+    op_lda8(b | 0x0D5F);
+    if ((uint8_t)cpu.a) {
+        dec8_mem(b | 0x0D5F);
+        return;
+    }
+    pause_stage_ten(b);
+    jump_routine(0x07BB7C);
+}
+
+/* 07:9A24 (not filed yet). */
+static void draw_9a24(void)
+{
+    call_routine(0x079A24, 0);
+}
+
+/*
+ * @routine 07:EB45 PhaseDraw9A24
+ * WHAT IT DOES: Draws with 07:9A24: a phase's whole work.
+ * HOW: JSR, RTS. Reached only by unit_race_phases.
+ * Entry: D = $0000. Exit: as 07:9A24 leaves it.
+ */
+void abi_PhaseDraw9A24(void)
+{
+    draw_9a24();
+}
+
+/* 07:EB51: the paused results: counts $0E58 down, at its end sound $51,
+   $0D2E cleared, the window slid up, $0D2F = 8, the delay $0D5F = $14;
+   then counts the delay down; at its end the time-up sound $30 at 9:59,
+   $0D2F = $0D2D = $A and pad 1's pause loop (07:BB16, in OamStagePause). */
+static void pause_results(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    op_sep(P_M);
+    op_lda8(b | 0x0E58);
+    if ((uint8_t)cpu.a) {
+        if (dec8_mem(b | 0x0E58))
+            return;
+        lda8_imm(0x51);
+        abi_SoundPort0QueuePush();
+        lda8_imm(0x00);
+        wr8(b | 0x0D2E, 0x00);
+        abi_WindowSlideUpSound();
+        lda8_imm(0x08);
+        wr8(b | 0x0D2F, 0x08);
+        lda8_imm(0x14);
+        wr8(b | 0x0D5F, 0x14);
+        return;
+    }
+    op_lda8(b | 0x0D5F);
+    if ((uint8_t)cpu.a) {
+        dec8_mem(b | 0x0D5F);
+        return;
+    }
+    op_lda8(b | 0x0E66);
+    cmp8_imm(0x09);
+    if ((uint8_t)cpu.a == 0x09) {
+        op_lda8(b | 0x0E64);
+        cmp8_imm(0x59);
+        if ((uint8_t)cpu.a == 0x59) {
+            lda8_imm(0x30);
+            abi_SoundPort0QueuePushRaw();
+        }
+    }
+    pause_stage_ten(b);
+    jump_routine(0x07BB16);
+}
+
+/*
+ * @routine 07:EB49 PauseResults9A24
+ * WHAT IT DOES: The paused results (see PauseResults), drawing with
+ * 07:9A24.
+ * HOW: JSR, then PauseResults' code. Reached only by unit_race_phases.
+ * Entry: D = $0000. Exit: as the path leaves it.
+ */
+void abi_PauseResults9A24(void)
+{
+    draw_9a24();
+    pause_results();
+}
+
+/*
+ * @routine 07:EB4E PauseResults
+ * WHAT IT DOES: The paused results for player 1: three glyphs
+ * (GsuF15BThree); counts $0E58 down, at its end sound $51, $0D2E cleared,
+ * the window slid up, $0D2F = 8 and the delay $0D5F = $14; then counts the
+ * delay down; at its end sound $30 on port 0 when the time is 9:59,
+ * $0D2F = $0D2D = $A and pad 1's pause loop (07:BB16, in OamStagePause).
+ * HOW: 8-bit; the pause loop is a long jump that leaves through the
+ * caller's frame. The 9:59 sound is not reached in the traces so far.
+ * Entry: D = $0000. Exit: as the path leaves it.
+ */
+void abi_PauseResults(void)
+{
+    abi_GsuF15BThree();
+    pause_results();
+}
+
+/*
+ * @routine 07:EBA0 PhaseDraw98F4
+ * WHAT IT DOES: Draws with 07:98F4: a phase's whole work.
+ * HOW: JSR, RTS. Reached only by unit_race_phases.
+ * Entry: D = $0000. Exit: as 07:98F4 leaves it.
+ */
+void abi_PhaseDraw98F4(void)
+{
+    call_routine(0x0798F4, 0);
+}
+
+/*
+ * @routine 07:EBDC PhaseNothingEBDC
+ * WHAT IT DOES: Nothing: a phase handler with no work.
+ * HOW: RTS (RaceEndWindow9B6F's last).
+ * Entry: any widths. Exit: every register unchanged.
+ */
+void abi_PhaseNothingEBDC(void)
+{
+}
+
+void abi_RaceEndLeave(void);
+
+/*
+ * @routine 07:EBA4 RaceEndWindow9B6F
+ * WHAT IT DOES: Draws with 07:9B6F; counts $0E58 down: at 1, or below $28
+ * on B or START, clears it, sets $19DF = 1 and slides the window up; at 0,
+ * once the window is closed, leaves the race (RaceEndLeave).
+ * HOW: 8-bit; the presses 16-bit. Reached only by unit_race_phases.
+ * Entry: D = $0000. Exit: as the path leaves it, or does not return.
+ */
+void abi_RaceEndWindow9B6F(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v;
+
+    call_routine(0x079B6F, 0);
+    op_sep(P_M);
+    op_lda8(b | 0x0E58);
+    v = (uint8_t)cpu.a;
+    if (!v) {
+        op_lda8(b | 0x19D8);
+        cmp8_imm(0x05);
+        if ((uint8_t)cpu.a == 0x05)
+            abi_RaceEndLeave();
+        return;
+    }
+    cmp8_imm(0x01);
+    if (v != 0x01) {
+        cmp8_imm(0x28);
+        if (v >= 0x28 || !pressed_b_start(b)) {
+            op_sep(P_M);
+            dec8_mem(b | 0x0E58);
+            return;
+        }
+        op_sep(P_M);
+    }
+    wr8(b | 0x0E58, 0x00);
+    lda8_imm(0x01);
+    wr8(b | 0x19DF, 0x01);
+    abi_WindowSlideUpSound();
+}
+
+/* SEI, SEP #$20, the screen blanked ($80 to INIDISP), the NMI, DMA and
+   HDMA off. */
+static void screen_off(void)
+{
+    cpu.p |= P_I;
+    op_sep(P_M);
+    lda8_imm(0x80);
+    wr8(0x002100, 0x80);
+    wr8(0x004200, 0x00);
+    wr8(0x00420B, 0x00);
+    wr8(0x00420C, 0x00);
+}
+
+/* REP #$30, command 5 to APU port 1 (16-bit), the delay of $4000 counts
+   of A. */
+static void apu_command5(void)
+{
+    op_rep(P_M | P_X);
+    op_lda16_imm(0x0005);
+    wr16(0x002141, 0x0005);
+    cpu.a = 0x0000;
+    cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
+}
+
+/* ApuUpload of block a from y, then the delay of $4000 counts of A. */
+static void apu_upload(uint16_t a, uint16_t y)
+{
+    op_lda16_imm(a);
+    cpu.y = y;
+    cpu.p = nz16(cpu.p, y);
+    abi_ApuUpload();
+    op_rep(P_M);
+    cpu.a = 0x0000;
+    cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
+}
+
+/*
+ * @routine 07:EBE9 SoftResetToBootWarm
+ * WHAT IT DOES: Restarts the game after the race: the screen blanked, the
+ * NMI, DMA and HDMA off; the sound driver's data reloaded (SoundDataLoad
+ * of $F3B5, $1E) and blocks $1B ($85F8) and $19 ($9A98) uploaded, each
+ * after command 5 on APU port 1 and a delay; SoundReset, 1 to APU port 0;
+ * then BootWarm.
+ * HOW: Delay loops of $4000 counts of A; P saved around each step; BootWarm
+ * resets the stack, so it runs as original code.
+ * Entry: any widths. Exit: never returns.
+ */
+void abi_SoftResetToBootWarm(void)
+{
+    uint8_t p1;
+
+    screen_off();
+    p1 = cpu.p;
+    apu_command5();
+    op_lda16_imm(0xF3B5);
+    cpu.y = 0x001E;
+    cpu.p = nz16(cpu.p, 0x001E);
+    abi_SoundDataLoad();
+    op_plp(p1);
+    p1 = cpu.p;
+    apu_command5();
+    apu_upload(0x001B, 0x85F8);
+    op_plp(p1);
+    p1 = cpu.p;
+    apu_command5();
+    apu_upload(0x0019, 0x9A98);
+    op_plp(p1);
+    abi_SoundReset();
+    op_sep(P_M);
+    lda8_imm(0x01);
+    wr8(0x002140, 0x01);
+    cpu.p &= (uint8_t)~P_I;
+    jump_original_code(0x038BAA);
+}
+
+/*
+ * @routine 07:EC6B RaceRestart
+ * WHAT IT DOES: Runs the race again: the screen blanked, the NMI, DMA and
+ * HDMA off, then on in BootWarm at 03:8BCD (the stack reset, RaceLoop).
+ * HOW: A long jump into BootWarm, which resets the stack, so it runs as
+ * original code.
+ * Entry: any widths. Exit: never returns.
+ */
+void abi_RaceRestart(void)
+{
+    screen_off();
+    jump_original_code(0x038BCD);
+}
+
+/*
+ * @routine 07:EC8F RaceEndToAttract
+ * WHAT IT DOES: Leaves the race: the screen blanked, the NMI, DMA and HDMA
+ * off, then on in BootWarm at 03:8BF8 (after its race: the stack reset and
+ * the attract race).
+ * HOW: As RaceRestart.
+ * Entry: any widths. Exit: never returns.
+ */
+void abi_RaceEndToAttract(void)
+{
+    screen_off();
+    jump_original_code(0x038BF8);
+}
+
+/*
+ * @routine 07:EC80 RaceEndVideoReset
+ * WHAT IT DOES: HDMA off, the screen blanked, the video reset
+ * (RaceVideoInit), then RaceEndToAttract.
+ * HOW: SEP #$20, SEI; the code of RaceEndToAttract follows.
+ * Entry: any widths. Exit: never returns.
+ */
+void abi_RaceEndVideoReset(void)
+{
+    op_sep(P_M);
+    wr8(0x00420C, 0x00);
+    lda8_imm(0x80);
+    wr8(0x002100, 0x80);
+    cpu.p |= P_I;
+    abi_RaceVideoInit();
+    abi_RaceEndToAttract();
+}
+
+/*
+ * @routine 07:EBDD RaceEndLeave
+ * WHAT IT DOES: Leaves the race: with $0E5C set, the championship's
+ * closing screen (ChampionScreenRun) and the restart
+ * (SoftResetToBootWarm); else on in BootWarm (RaceEndToAttract).
+ * HOW: A long branch to RaceEndToAttract's code. The championship's screen is
+ * not reached in the traces so far.
+ * Entry: M 8-bit. Exit: never returns.
+ */
+void abi_RaceEndLeave(void)
+{
+    op_lda8(((uint32_t)cpu.db << 16) | 0x0E5C);
+    if (!(uint8_t)cpu.a) {
+        abi_RaceEndToAttract();
+        return;
+    }
+    abi_ChampionScreenRun();
+    abi_SoftResetToBootWarm();
+}
+
+/* SEP #$20, the time-up's end: $0D22 = $0D23 = 6, the timer $0E5A = t,
+   $0D55 cleared, sound $30 on port 0, then RaceEndCountdown. */
+static void time_up_end(uint32_t b, uint8_t t)
+{
+    lda8_imm(0x06);
+    wr8(b | 0x0D22, 0x06);
+    wr8(b | 0x0D23, 0x06);
+    lda8_imm(t);
+    wr8(b | 0x0E5A, t);
+    wr8(b | 0x0D55, 0x00);
+    lda8_imm(0x30);
+    abi_SoundPort0QueuePushRaw();
+    abi_RaceEndCountdown();
+}
+
+/*
+ * @routine 07:ECA4 TimeUpBattle
+ * WHAT IT DOES: The time up of a battle: the six big sprites
+ * (BigSpritesRow6); the first time sound $51, OamHide75Up and both timers
+ * $0E59, $0E5A = $3C; counts $0E5A down; once $0E59 is set, at the end of
+ * $0E5A the save's bad flag $00:1FFE = $11, $0D22 = $0D23 = 6, the timer
+ * $3C, $0D55 cleared, sound $30 and the race's end (RaceEndCountdown).
+ * HOW: 8-bit; the second part counts $0E5A down twice a frame. The second
+ * part is reached only by unit_race_phases.
+ * Entry: D = $0000. Exit: as the path leaves it, or does not return.
+ */
+void abi_TimeUpBattle(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t a;
+
+    abi_BigSpritesRow6();
+    op_sep(P_M);
+    op_lda8(b | 0x0E59);
+    if (!(uint8_t)cpu.a) {
+        op_lda8(b | 0x0E5A);
+        if (!(uint8_t)cpu.a) {
+            lda8_imm(0x51);
+            abi_SoundPort0QueuePush();
+            abi_OamHide75Up();
+            lda8_imm(0x3C);
+            wr8(b | 0x0E5A, 0x3C);
+            wr8(b | 0x0E59, 0x3C);
+        }
+        dec8_mem(b | 0x0E5A);
+        return;
+    }
+    op_sep(P_M);
+    if (dec8_mem(b | 0x0E5A)) {
+        dec8_mem(b | 0x0E5A);
+        return;
+    }
+    a = (uint8_t)cpu.a;                         /* PHA */
+    wr8(0x001FFE, 0x11);
+    lda8_imm(a);                                /* PLA */
+    time_up_end(b, 0x3C);
+}
+
+/*
+ * @routine 07:ECF3 PhaseNothingECF3
+ * WHAT IT DOES: Nothing: a phase handler with no work.
+ * HOW: RTS (TimeUpBattle's last).
+ * Entry: any widths. Exit: every register unchanged.
+ */
+void abi_PhaseNothingECF3(void)
+{
+}
+
+/* 07:ED10 / 07:ED80: $0E5A = t, $0E59 one less, sound $51, then after(). */
+static void time_up_tick(uint32_t b, uint8_t t, void (*after)(void))
+{
+    lda8_imm(t);
+    wr8(b | 0x0E5A, t);
+    dec8_mem(b | 0x0E59);
+    lda8_imm(0x51);
+    abi_SoundPort0QueuePush();
+    after();
+}
+
+/* The first part's wait: with $0DDA at $10 or more, phase 6 when the race
+   time is not 0, else $0E5A counted down; returns 1 to go on. */
+static int time_up_wait(uint32_t b)
+{
+    op_lda8(b | 0x0DDA);
+    cmp8_imm(0x10);
+    if ((uint8_t)cpu.a < 0x10)
+        return 1;
+    op_lda8(b | 0x0E70);
+    if ((uint8_t)cpu.a) {
+        lda8_imm(0x06);
+        wr8(b | 0x0DD6, 0x06);
+        return 0;
+    }
+    return dec8_mem(b | 0x0E5A) == 0;
+}
+
+/*
+ * @routine 07:ECF4 TimeUpStunt
+ * WHAT IT DOES: Stunt Trax's time up: the six big sprites
+ * (BigSpritesRow6); while $0E59 is 0: with $0DDA at $10 or more, phase 6
+ * when the time $0E70 is not 0, else counts $0E5A down; then $0E5A = $20,
+ * $0E59 one less, sound $51 and OamHide75Up. Once $0E59 is set: at $0E5A
+ * = 0, $0D22 = $0D23 = 6, the timer $78, $0D55 cleared, sound $30 and the
+ * race's end (RaceEndCountdown); else counts $0E5A down.
+ * HOW: 8-bit. Phase 6 is reached only by unit_race_phases.
+ * Entry: D = $0000. Exit: as the path leaves it, or does not return.
+ */
+void abi_TimeUpStunt(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    abi_BigSpritesRow6();
+    op_sep(P_M);
+    op_lda8(b | 0x0E59);
+    if (!(uint8_t)cpu.a) {
+        if (time_up_wait(b))
+            time_up_tick(b, 0x20, abi_OamHide75Up);
+        return;
+    }
+    op_sep(P_M);
+    op_lda8(b | 0x0E5A);
+    if ((uint8_t)cpu.a) {
+        dec8_mem(b | 0x0E5A);
+        return;
+    }
+    time_up_end(b, 0x78);
+}
+
+/*
+ * @routine 07:ED4C TimeUpRace
+ * WHAT IT DOES: A race's time up: the six big sprites (BigSpritesRow6);
+ * while $0E59 is 0: a lap crossed meanwhile ($0DE8 above $0DEA) goes to
+ * phase 6 and RaceLapCrossed; with $0DDA at $10 or more, phase 6 when the
+ * time is not 0, else counts $0E5A down; then $0E5A = $24, $0E59 one less,
+ * sound $51 and Countdown0DF8. Once $0E59 is set: at $0E5A = 0, once the
+ * window is closed, leaves the race (RaceEndLeave); else counts $0E5A
+ * down, at 1 setting $19DF = 1 and sliding the window up.
+ * HOW: SEP #$30; DEC A and compares. The lap crossed and phase 6 are
+ * reached only by unit_race_phases.
+ * Entry: Y = the player; D = $0000. Exit: as the path leaves it, or does
+ * not return.
+ */
+void abi_TimeUpRace(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v, m;
+
+    abi_BigSpritesRow6();
+    op_sep(P_M | P_X);
+    op_lda8(b | 0x0E59);
+    if (!(uint8_t)cpu.a) {
+        op_lda8(b | 0x0DE8);
+        v = (uint8_t)cpu.a;
+        m = rd8(b | 0x0DEA);
+        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - m)) & ~P_C) | (v >= m ? P_C : 0));
+        if (v > m) {
+            lda8_imm(0x06);
+            wr8(b | 0x0DD6, 0x06);
+            abi_RaceLapCrossed();
+            return;
+        }
+        if (time_up_wait(b))
+            time_up_tick(b, 0x24, abi_Countdown0DF8);
+        return;
+    }
+    op_sep(P_M);
+    op_lda8(b | 0x0E5A);
+    v = (uint8_t)cpu.a;
+    if (!v) {
+        op_lda8(b | 0x19D8);
+        cmp8_imm(0x05);
+        if ((uint8_t)cpu.a == 0x05)
+            abi_RaceEndLeave();
+        return;
+    }
+    v = (uint8_t)(v - 1);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+    cmp8_imm(0x01);
+    if (v == 0x01) {
+        wr8(b | 0x0E5A, v);
+        lda8_imm(0x01);
+        wr8(b | 0x19DF, 0x01);
+        abi_WindowSlideUpSound();
+        return;
+    }
+    cmp8_imm(0x18);
+    wr8(b | 0x0E5A, v);
+}

@@ -962,9 +962,9 @@ WindowClosedDigitStep:
     stz.w !digit62_override
     lda.b #$02
     sta.w !wram_0D48
-    jmp.w WindowDigitStepEC6B
+    jmp.w RaceRestart
 .lC324:
-    jmp.w WindowDigitStepEBDD                  ; not reached in the traces so far
+    jmp.w RaceEndLeave                  ; not reached in the traces so far
 .lC327:
     rts                             ; not reached in the traces so far
 

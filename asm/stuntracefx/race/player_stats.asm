@@ -613,7 +613,7 @@ PlayerOnePhase_lE06E:
     rep.b #$20
     lda.w !wram_0D8C
     sta.l !selection_handler_a
-    jmp.w WindowDigitStepEC6B
+    jmp.w RaceRestart
 
 ; @routine 07:E08E PlayerOnePhaseReturn
 ; WHAT IT DOES: A lone RTS after PlayerOnePhaseEnd's jump, which nothing
@@ -837,8 +837,8 @@ StuntPanelShow:
 ; WHAT IT DOES: The Stunt Trax panel's state 8 and the race's phase 8:
 ; once the split window is in state 5 ($19D8), clears $0D59, $0E80 and
 ; $0E81, waits until the overlay has faded (OverlayFramesUntilFaded) and
-; goes on at WindowDigitStepEC6B with $0DD4 set, else at
-; WindowDigitStepEC80.
+; goes on at RaceRestart with $0DD4 set, else at
+; RaceEndVideoReset.
 ; HOW: 8-bit; the two continuations are jumps, reached as original code.
 ; Entry: any widths. Exit: M and X 8-bit; A low byte $19D8 with nothing
 ; to do; otherwise as the continuation leaves it.
@@ -855,9 +855,9 @@ StuntPhaseEnd:
     sep.b #$20
     lda.w !sound_port1_last+2
     beq .other
-    jmp.w WindowDigitStepEC6B
+    jmp.w RaceRestart
 .other:
-    jmp.w WindowDigitStepEC80
+    jmp.w RaceEndVideoReset
 .done:
     rts
 
@@ -946,7 +946,7 @@ RaceSoundsAndHud:
     sta.w !fade_out
     lda.w !fade_level_hi
     bpl .end0
-    jmp.w WindowDigitStepEC6B
+    jmp.w RaceRestart
 .race:
     ldx.b #$00
     lda.w !digit62_override
@@ -1113,7 +1113,7 @@ TimeUpPhaseRace:
 ; WHAT IT DOES: TimeUpPhaseStep's phase 8: while $0E58 counts down, the
 ; lap digits (HudLapDigitsDraw) and, with player 1 behind, the word
 ; (HudLeadWordDraw); at 0, $0D59 cleared, the championship screen's loop
-; and on at WindowDigitStepEC6B ($0DD4 set) or WindowDigitStepEC80.
+; and on at RaceRestart ($0DD4 set) or RaceEndVideoReset.
 ; HOW: 8-bit count through the data bank; the CMP #$20 before the draw
 ; branches to the next instruction either way.
 ; Entry: any widths; data bank $07. Exit: M 8-bit; as the last step
@@ -1142,9 +1142,9 @@ TimeUpPhaseEnd:
     sep.b #$20
     lda.w !sound_port1_last+2
     beq .other
-    jmp.w WindowDigitStepEC6B
+    jmp.w RaceRestart
 .other:
-    jmp.w WindowDigitStepEC80
+    jmp.w RaceEndVideoReset
 
 ; @routine 07:DC47 RaceHudModeTwo
 ; WHAT IT DOES: RaceSoundsAndHud's frame for HUD modes 2 and 3: $0D29 =
@@ -1194,9 +1194,9 @@ RaceHudModeTwo:
 ; @routine 07:DC88 RaceEndCountdownFade
 ; WHAT IT DOES: The race's end, frame by frame: counts $0E56 down; at 0 in
 ; HUD mode 0 starts the fade out ($0E3A = 1) and, once it is done ($0D61
-; negative), goes on at WindowDigitStepEBDD; in other modes $0D59
+; negative), goes on at RaceEndLeave; in other modes $0D59
 ; cleared, sound $30, the championship screen's loop and on at
-; WindowDigitStepEC6B ($0DD4 set) or WindowDigitStepEC80.
+; RaceRestart ($0DD4 set) or RaceEndVideoReset.
 ; HOW: Waits for $0D52 each frame; 8-bit through the data bank.
 ; Entry: any widths; data bank $07. Exit: does not return (jumps on).
 %at($07DC88)
@@ -1219,7 +1219,7 @@ RaceEndCountdownFade:
 
 ; @routine 07:DCAE RaceEndCountdownFadeOn
 ; WHAT IT DOES: RaceEndCountdownFade's last step as an entry: on at
-; WindowDigitStepEC6B with $0DD4 set, else at WindowDigitStepEC80.
+; RaceRestart with $0DD4 set, else at RaceEndVideoReset.
 ; HOW: SEP #$20, LDA $0DD4, then the jump.
 ; Entry: any widths; data bank $07. Exit: does not return (jumps on).
 %at($07DCAE)
@@ -1227,9 +1227,9 @@ RaceEndCountdownFadeOn:
     sep.b #$20
     lda.w !sound_port1_last+2
     beq .other
-    jmp.w WindowDigitStepEC6B
+    jmp.w RaceRestart
 .other:
-    jmp.w WindowDigitStepEC80
+    jmp.w RaceEndVideoReset
 RaceEndCountdownFade_fade:
     lda.b #$01
     sta.w !fade_out
@@ -1237,12 +1237,12 @@ RaceEndCountdownFade_fade:
 RaceEndCountdownFade_count_done:
     lda.w !fade_level_hi
     bpl RaceEndCountdownFade
-    jmp.w WindowDigitStepEBDD
+    jmp.w RaceEndLeave
 
 ; @routine 07:DCCA RaceEndCountdown
 ; WHAT IT DOES: The race's end, frame by frame: counts $0E5A down; at 0,
 ; $0D59 cleared, the championship screen's loop and on at
-; WindowDigitStepEC6B ($0DD4 set) or WindowDigitStepEC80.
+; RaceRestart ($0DD4 set) or RaceEndVideoReset.
 ; HOW: Waits for $0D52 each frame; 8-bit through the data bank.
 ; Entry: any widths; data bank $07. Exit: does not return (jumps on).
 %at($07DCCA)
@@ -1258,7 +1258,7 @@ RaceEndCountdown:
 
 ; @routine 07:DCDF RaceEndCountdownOn
 ; WHAT IT DOES: RaceEndCountdown's last step as an entry: on at
-; WindowDigitStepEC6B with $0DD4 set, else at WindowDigitStepEC80.
+; RaceRestart with $0DD4 set, else at RaceEndVideoReset.
 ; HOW: SEP #$20, LDA $0DD4, then the jump.
 ; Entry: any widths; data bank $07. Exit: does not return (jumps on).
 %at($07DCDF)
@@ -1266,6 +1266,6 @@ RaceEndCountdownOn:
     sep.b #$20
     lda.w !sound_port1_last+2
     beq .other
-    jmp.w WindowDigitStepEC6B
+    jmp.w RaceRestart
 .other:
-    jmp.w WindowDigitStepEC80
+    jmp.w RaceEndVideoReset

@@ -935,8 +935,8 @@ void abi_StuntPanelShow(void)
  * WHAT IT DOES: The Stunt Trax panel's state 8 and the race's phase 8:
  * once the split window is in state 5 ($19D8), clears $0D59, $0E80 and
  * $0E81, waits until the overlay has faded (OverlayFramesUntilFaded) and
- * goes on at WindowDigitStepEC6B with $0DD4 set, else at
- * WindowDigitStepEC80.
+ * goes on at RaceRestart with $0DD4 set, else at
+ * RaceEndVideoReset.
  * HOW: 8-bit; the two continuations are jumps, reached as original code.
  * Entry: any widths. Exit: M and X 8-bit; A low byte $19D8 with nothing
  * to do; otherwise as the continuation leaves it.
@@ -1445,8 +1445,8 @@ void abi_TimeUpPhaseRace(void)
     call_routine(0x07AD1B, 0);
 }
 
-/* SEP #$20, LDA $0DD4: on at WindowDigitStepEC6B when set, else at
-   WindowDigitStepEC80 (jumps). */
+/* SEP #$20, LDA $0DD4: on at RaceRestart when set, else at
+   RaceEndVideoReset (jumps). */
 static void race_end_go_on(uint32_t b)
 {
     op_sep(P_M);
@@ -1462,7 +1462,7 @@ static void race_end_go_on(uint32_t b)
  * WHAT IT DOES: TimeUpPhaseStep's phase 8: while $0E58 counts down, the
  * lap digits (HudLapDigitsDraw) and, with player 1 behind, the word
  * (HudLeadWordDraw); at 0, $0D59 cleared, the championship screen's loop
- * and on at WindowDigitStepEC6B ($0DD4 set) or WindowDigitStepEC80.
+ * and on at RaceRestart ($0DD4 set) or RaceEndVideoReset.
  * HOW: 8-bit count through the data bank; the CMP #$20 before the draw
  * branches to the next instruction either way.
  * Entry: any widths; data bank $07. Exit: M 8-bit; as the last step
@@ -1549,9 +1549,9 @@ static void race_end_vblank(uint32_t b)
  * @routine 07:DC88 RaceEndCountdownFade
  * WHAT IT DOES: The race's end, frame by frame: counts $0E56 down; at 0 in
  * HUD mode 0 starts the fade out ($0E3A = 1) and, once it is done ($0D61
- * negative), goes on at WindowDigitStepEBDD; in other modes $0D59
+ * negative), goes on at RaceEndLeave; in other modes $0D59
  * cleared, sound $30, the championship screen's loop and on at
- * WindowDigitStepEC6B ($0DD4 set) or WindowDigitStepEC80.
+ * RaceRestart ($0DD4 set) or RaceEndVideoReset.
  * HOW: Waits for $0D52 each frame; 8-bit through the data bank.
  * Entry: any widths; data bank $07. Exit: does not return (jumps on).
  */
@@ -1598,7 +1598,7 @@ void abi_RaceEndCountdownFade(void)
  * @routine 07:DCCA RaceEndCountdown
  * WHAT IT DOES: The race's end, frame by frame: counts $0E5A down; at 0,
  * $0D59 cleared, the championship screen's loop and on at
- * WindowDigitStepEC6B ($0DD4 set) or WindowDigitStepEC80.
+ * RaceRestart ($0DD4 set) or RaceEndVideoReset.
  * HOW: Waits for $0D52 each frame; 8-bit through the data bank.
  * Entry: any widths; data bank $07. Exit: does not return (jumps on).
  */
@@ -1621,7 +1621,7 @@ void abi_RaceEndCountdown(void)
 /*
  * @routine 07:DCAE RaceEndCountdownFadeOn
  * WHAT IT DOES: RaceEndCountdownFade's last step as an entry: on at
- * WindowDigitStepEC6B with $0DD4 set, else at WindowDigitStepEC80.
+ * RaceRestart with $0DD4 set, else at RaceEndVideoReset.
  * HOW: SEP #$20, LDA $0DD4, then the jump.
  * Entry: any widths; data bank $07. Exit: does not return (jumps on).
  */
@@ -1633,7 +1633,7 @@ void abi_RaceEndCountdownFadeOn(void)
 /*
  * @routine 07:DCDF RaceEndCountdownOn
  * WHAT IT DOES: RaceEndCountdown's last step as an entry: on at
- * WindowDigitStepEC6B with $0DD4 set, else at WindowDigitStepEC80.
+ * RaceRestart with $0DD4 set, else at RaceEndVideoReset.
  * HOW: SEP #$20, LDA $0DD4, then the jump.
  * Entry: any widths; data bank $07. Exit: does not return (jumps on).
  */

@@ -1121,3 +1121,679 @@ RaceFinishSounds:
     jsl.l SoundPort0QueuePush
     plp
     rtl
+
+; @routine 07:E972 PhaseGlyphsFive
+; WHAT IT DOES: Draws five glyphs with Super FX program $07:F15B
+; (GsuF15BFive): a phase's whole work.
+; HOW: JSR, RTS.
+; Entry: D = $0000. Exit: as GsuF15BFive leaves it.
+%at($07E972)
+PhaseGlyphsFive:
+    jsr.w GsuF15BFive
+    rts
+
+; @routine 07:E976 PhaseGlyphsSix
+; WHAT IT DOES: Draws six HUD glyphs (HudSixGlyphs): a phase's whole work.
+; HOW: JSR, RTS.
+; Entry: D = $0000. Exit: as HudSixGlyphs leaves it.
+%at($07E976)
+PhaseGlyphsSix:
+    jsr.w HudSixGlyphs
+    rts
+
+; @routine 07:E97A RaceEndWait9C9F
+; WHAT IT DOES: Draws with 07:9C9F each frame until the slide out reaches
+; $1F; then $0E5F cleared, $0D22 = the slide, $0D23 = 6, $0E56 = $78, $0D55
+; cleared and the race's end (RaceEndCountdownFade).
+; HOW: An 8-bit compare of the long byte. Reached only by unit_race_phases.
+; Entry: M 8-bit, X 8-bit. Exit: as 07:9C9F leaves it, or does not return.
+%at($07E97A)
+RaceEndWait9C9F:
+    lda.l !slide_out
+    cmp.b #$1F
+    bcc .draw
+    stz.w !palette_animate
+    sta.w !wram_0D22
+    lda.b #$06
+    sta.w !wram_0D23
+    lda.b #$78
+    sta.w !wram_0E54+2
+    stz.w !panel_b_shown
+    jsr.w RaceEndCountdownFade
+    rts
+.draw:
+    jsr.w Draw9C9F
+    rts
+
+; @routine 07:E99D RaceEndWaitBigSprites
+; WHAT IT DOES: As RaceEndWait9C9F, drawing the five big sprites
+; (BigSpritesRow5) each frame.
+; HOW: As RaceEndWait9C9F. The race's end is not reached in the traces so
+; far.
+; Entry: M 8-bit, X 8-bit. Exit: as BigSpritesRow5 leaves it, or does not
+; return.
+%at($07E99D)
+RaceEndWaitBigSprites:
+    lda.l !slide_out
+    cmp.b #$1F
+    bcc .draw
+    stz.w !palette_animate
+    sta.w !wram_0D22
+    lda.b #$06
+    sta.w !wram_0D23
+    lda.b #$78
+    sta.w !wram_0E54+2
+    stz.w !panel_b_shown
+    jsr.w RaceEndCountdownFade
+    rts
+.draw:
+    jsr.w BigSpritesRow5
+    rts
+
+; @routine 07:EA1B ResultsWindowWait
+; WHAT IT DOES: The results' window: with $10CD set, the soft reset
+; (SoftResetToBootWarm) once the fade is done ($0D61 negative); else counts
+; $0E58 down: at $10, or below $58 on B or START (unless the split window is
+; moving), slides the window up; at 0, once the window is closed, runs the
+; overlay frames and goes on to the race again (RaceRestart, with $0DD4) or
+; the video reset (RaceEndVideoReset).
+; HOW: 8-bit tests; the presses 16-bit. Reached only by unit_race_phases.
+; Entry: M 8-bit, X 8-bit. Exit: as the path leaves it, or does not return.
+%at($07EA1B)
+ResultsWindowWait:
+    lda.w !wram_10CD
+    beq .lEA28
+    lda.w !fade_level_hi
+    bpl .lEA63
+    jmp.w SoftResetToBootWarm
+.lEA28:
+    lda.w !wram_0E58
+    beq .lEA6A
+    cmp.b #$10
+    bne .lEA3F
+    lda.b #$01
+    sta.w !wram_0D22
+    stz.w !wram_0D23
+    jsl.l WindowSlideUpSound
+    bra .lEA64
+.lEA3F:
+    cmp.b #$58
+    bcs .lEA64
+    rep.b #$20
+    lda.w !joy1_pressed_copy
+    bit.w #$9000
+    beq .lEA64
+    sep.b #$20
+    lda.w !window_hdma_off
+    bne .lEA63
+    stz.w !wram_0E58
+    lda.b #$01
+    sta.w !wram_0D22
+    stz.w !wram_0D23
+    jsl.l WindowSlideUpSound
+.lEA63:
+    rts
+.lEA64:
+    sep.b #$20
+    dec.w !wram_0E58
+    rts
+.lEA6A:
+    lda.w !window_hdma_off
+    cmp.b #$05
+    bne .lEA84
+    stz.w !wram_0D59
+    jsr.w OverlayFramesUntilFaded
+    sep.b #$20
+    lda.w !sound_port1_last+2
+    beq .lEA81
+    jmp.w RaceRestart
+.lEA81:
+    jmp.w RaceEndVideoReset
+.lEA84:
+    rts
+
+; @routine 07:EA85 RaceEndWindowSteps
+; WHAT IT DOES: The race's end window: with $0D48 = 3 the glyph sprites grow
+; (GlyphSpritesGrowAndTimes); else counts $0E58 down: at $10 slides the
+; window up ($19DF cleared), at $58 sets $0D65 = $A, below $58 slides the
+; three glyphs (GlyphSlideThree), at $2B with $0D65 set sets it to $10; once
+; the window is closed, the overlay frames, then: with $0D24 = 3 or $0D48
+; other than 1 ($0D48 one more) the race again (RaceRestart); with $0D48 = 1
+; the override $0D4C = $FF, the course $0D4A + $14, car 4 and the race
+; again.
+; HOW: SEP #$30; A kept on the stack around GlyphSlideThree.
+; Entry: any widths. Exit: as the path leaves it, or does not return.
+%at($07EA85)
+RaceEndWindowSteps:
+    sep.b #$30
+    lda.w !wram_0D48
+    cmp.b #$03
+    bne .lEA93
+    jsl.l GlyphSpritesGrowAndTimes
+    rts
+.lEA93:
+    lda.w !window_hdma_off
+    cmp.b #$05
+    beq .lEADD
+    lda.w !wram_0E58
+    cmp.b #$10
+    bne .lEAB3
+    stz.w !wram_19DF
+    lda.b #$01
+    sta.w !wram_0D22
+    stz.w !wram_0D23
+    jsl.l WindowSlideUpSound
+    lda.w !wram_0E58
+.lEAB3:
+    cmp.b #$58
+    bne .lEAC1
+    lda.b #$0A
+    sta.w !time_bonus_state
+    lda.w !wram_0E58
+    bra .lEAC3
+.lEAC1:
+    bcs .lEAC8
+.lEAC3:
+    pha
+    jsr.w GlyphSlideThree
+    pla
+.lEAC8:
+    cmp.b #$2B
+    bne .lEAD9
+    lda.w !time_bonus_state
+    beq .lEAD9
+    lda.b #$10
+    sta.w !time_bonus_state
+    lda.w !wram_0E58
+.lEAD9:
+    dec.w !wram_0E58
+    rts
+.lEADD:
+    stz.w !wram_0D59
+    jsr.w OverlayFramesUntilFaded
+    sep.b #$20
+    lda.w !wram_0D24
+    cmp.b #$03
+    beq .lEB0C
+    lda.w !wram_0D48
+    cmp.b #$01
+    bne .lEB09
+    lda.b #$FF
+    sta.w !digit62_override
+    lda.w !wram_0D4A
+    clc
+    adc.b #$14
+    sta.w !course
+    lda.b #$04
+    sta.w !wram_0D89
+    jmp.w RaceRestart
+.lEB09:
+    inc.w !wram_0D48
+.lEB0C:
+    jmp.w RaceRestart
+    rts
+
+; @routine 07:EB10 PauseResultsP2
+; WHAT IT DOES: The paused results for player 2: three glyphs (GsuF15BThree);
+; counts $0E58 down, at its end sets $0D2E = 1, slides the window up and sets
+; $0D2F and the delay $0D5F to 8; then counts the delay down, and at its end
+; sets $0D2F = $0D2D = $A and runs pad 2's pause loop (in OamStagePause2).
+; HOW: 8-bit; the pause loop is a jump that leaves through the caller's
+; frame.
+; Entry: D = $0000. Exit: as the path leaves it.
+%at($07EB10)
+PauseResultsP2:
+    jsr.w GsuF15BThree
+    sep.b #$20
+    lda.w !wram_0E58
+    beq .lEB31
+    dec.w !wram_0E58
+    bne .lEB30
+    lda.b #$01
+    sta.w !wram_0D2E
+    jsl.l WindowSlideUpSound
+    lda.b #$08
+    sta.w !wram_0D2F
+    sta.w !wram_0D5D+2
+.lEB30:
+    rts
+.lEB31:
+    lda.w !wram_0D5D+2
+    beq .lEB3A
+    dec.w !wram_0D5D+2
+    rts
+.lEB3A:
+    lda.b #$0A
+    sta.w !wram_0D2F
+    sta.w !wram_0D2D
+    jmp.w OamStagePause2_lBB7C
+
+; @routine 07:EB45 PhaseDraw9A24
+; WHAT IT DOES: Draws with 07:9A24: a phase's whole work.
+; HOW: JSR, RTS. Reached only by unit_race_phases.
+; Entry: D = $0000. Exit: as 07:9A24 leaves it.
+%at($07EB45)
+PhaseDraw9A24:
+    jsr.w Draw9A24
+    rts
+
+; @routine 07:EB49 PauseResults9A24
+; WHAT IT DOES: The paused results (see PauseResults), drawing with 07:9A24.
+; HOW: JSR, then PauseResults' code. Reached only by unit_race_phases.
+; Entry: D = $0000. Exit: as the path leaves it.
+%at($07EB49)
+PauseResults9A24:
+    jsr.w Draw9A24
+    bra PauseResults_lEB51
+
+; @routine 07:EB4E PauseResults
+; WHAT IT DOES: The paused results for player 1: three glyphs (GsuF15BThree);
+; counts $0E58 down, at its end sound $51, $0D2E cleared, the window slid
+; up, $0D2F = 8 and the delay $0D5F = $14; then counts the delay down; at its
+; end sound $30 on port 0 when the time is 9:59, $0D2F = $0D2D = $A and pad
+; 1's pause loop (in OamStagePause).
+; HOW: 8-bit; the pause loop is a long jump that leaves through the caller's
+; frame. The 9:59 sound is not reached in the traces so far.
+; Entry: D = $0000. Exit: as the path leaves it.
+%at($07EB4E)
+PauseResults:
+    jsr.w GsuF15BThree
+.lEB51:
+    sep.b #$20
+    lda.w !wram_0E58
+    beq .lEB77
+    dec.w !wram_0E58
+    bne .lEB76
+    lda.b #$51
+    jsl.l SoundPort0QueuePush
+    lda.b #$00
+    sta.w !wram_0D2E
+    jsl.l WindowSlideUpSound
+    lda.b #$08
+    sta.w !wram_0D2F
+    lda.b #$14
+    sta.w !wram_0D5D+2
+.lEB76:
+    rts
+.lEB77:
+    lda.w !wram_0D5D+2
+    beq .lEB80
+    dec.w !wram_0D5D+2
+    rts
+.lEB80:
+    lda.w !race_time_minutes
+    cmp.b #$09
+    bne .lEB94
+    lda.w !race_time_seconds
+    cmp.b #$59
+    bne .lEB94
+    lda.b #$30
+    jsl.l SoundPort0QueuePushRaw
+.lEB94:
+    lda.b #$0A
+    sta.w !wram_0D2F
+    sta.w !wram_0D2D
+    jml.l OamStagePause_lBB16
+
+; @routine 07:EBA0 PhaseDraw98F4
+; WHAT IT DOES: Draws with 07:98F4: a phase's whole work.
+; HOW: JSR, RTS. Reached only by unit_race_phases.
+; Entry: D = $0000. Exit: as 07:98F4 leaves it.
+%at($07EBA0)
+PhaseDraw98F4:
+    jsr.w Draw98F4
+    rts
+
+; @routine 07:EBA4 RaceEndWindow9B6F
+; WHAT IT DOES: Draws with 07:9B6F; counts $0E58 down: at 1, or below $28 on B
+; or START, clears it, sets $19DF = 1 and slides the window up; at 0, once
+; the window is closed, leaves the race (RaceEndLeave).
+; HOW: 8-bit; the presses 16-bit. Reached only by unit_race_phases.
+; Entry: D = $0000. Exit: as the path leaves it, or does not return.
+%at($07EBA4)
+RaceEndWindow9B6F:
+    jsr.w Draw9B6F
+    sep.b #$20
+    lda.w !wram_0E58
+    beq .lEBD5
+    cmp.b #$01
+    beq .lEBC2
+    cmp.b #$28
+    bcs .lEBCF
+    rep.b #$20
+    lda.w !joy1_pressed_copy
+    bit.w #$9000
+    beq .lEBCF
+    sep.b #$20
+.lEBC2:
+    stz.w !wram_0E58
+    lda.b #$01
+    sta.w !wram_19DF
+    jsl.l WindowSlideUpSound
+    rts
+.lEBCF:
+    sep.b #$20
+    dec.w !wram_0E58
+    rts
+.lEBD5:
+    lda.w !window_hdma_off
+    cmp.b #$05
+    beq RaceEndLeave
+
+; @routine 07:EBDC PhaseNothingEBDC
+; WHAT IT DOES: Nothing: a phase handler with no work.
+; HOW: RTS (RaceEndWindow9B6F's last).
+; Entry: any widths. Exit: every register unchanged.
+%at($07EBDC)
+PhaseNothingEBDC:
+    rts
+
+; @routine 07:EBDD RaceEndLeave
+; WHAT IT DOES: Leaves the race: with $0E5C set, the championship's closing
+; screen (ChampionScreenRun) and the restart (SoftResetToBootWarm); else on
+; in BootWarm (RaceEndToAttract).
+; HOW: A long branch to RaceEndToAttract's code. The championship's screen
+; is not reached in the traces so far.
+; Entry: M 8-bit. Exit: never returns.
+%at($07EBDD)
+RaceEndLeave:
+    lda.w !wram_0E5C
+    bne .lEBE5
+    brl RaceEndToAttract
+.lEBE5:
+    jsl.l ChampionScreenRun
+
+; @routine 07:EBE9 SoftResetToBootWarm
+; WHAT IT DOES: Restarts the game after the race: the screen blanked, the NMI,
+; DMA and HDMA off; the sound driver's data reloaded (SoundDataLoad of $F3B5,
+; $1E) and blocks $1B ($85F8) and $19 ($9A98) uploaded, each after command 5
+; on APU port 1 and a delay; SoundReset, 1 to APU port 0; then BootWarm.
+; HOW: Delay loops of $4000 counts of A; P saved around each step.
+; Entry: any widths. Exit: never returns.
+%at($07EBE9)
+SoftResetToBootWarm:
+    sei
+    sep.b #$20
+    lda.b #$80
+    sta.w !INIDISP
+    stz.w !NMITIMEN
+    stz.w !MDMAEN
+    stz.w !HDMAEN
+    php
+    rep.b #$30
+    lda.w #$0005
+    sta.l !APUIO1
+    lda.w #$4000
+.lEC07:
+    dec a
+    bne .lEC07
+    lda.w #$F3B5
+    ldy.w #$001E
+    jsl.l SoundDataLoad
+    plp
+    php
+    rep.b #$30
+    lda.w #$0005
+    sta.l !APUIO1
+    lda.w #$4000
+.lEC22:
+    dec a
+    bne .lEC22
+    lda.w #$001B
+    ldy.w #$85F8
+    jsl.l ApuUpload
+    rep.b #$20
+    lda.w #$4000
+.lEC34:
+    dec a
+    bne .lEC34
+    plp
+    php
+    rep.b #$30
+    lda.w #$0005
+    sta.l !APUIO1
+    lda.w #$4000
+.lEC45:
+    dec a
+    bne .lEC45
+    lda.w #$0019
+    ldy.w #$9A98
+    jsl.l ApuUpload
+    rep.b #$20
+    lda.w #$4000
+.lEC57:
+    dec a
+    bne .lEC57
+    plp
+    jsl.l SoundReset
+    sep.b #$20
+    lda.b #$01
+    sta.w !APUIO0
+    cli
+    jml.l BootWarm
+
+; @routine 07:EC6B RaceRestart
+; WHAT IT DOES: Runs the race again: the screen blanked, the NMI, DMA and HDMA
+; off, then on in BootWarm before its race (the stack reset, RaceLoop).
+; HOW: A long jump into BootWarm.
+; Entry: any widths. Exit: never returns.
+%at($07EC6B)
+RaceRestart:
+    sei
+    sep.b #$20
+    lda.b #$80
+    sta.w !INIDISP
+    stz.w !NMITIMEN
+    stz.w !MDMAEN
+    stz.w !HDMAEN
+    jml.l BootWarm_race
+
+; @routine 07:EC80 RaceEndVideoReset
+; WHAT IT DOES: HDMA off, the screen blanked, the video reset (RaceVideoInit),
+; then RaceEndToAttract.
+; HOW: SEP #$20, SEI; the code of RaceEndToAttract follows.
+; Entry: any widths. Exit: never returns.
+%at($07EC80)
+RaceEndVideoReset:
+    sep.b #$20
+    stz.w !HDMAEN
+    lda.b #$80
+    sta.w !INIDISP
+    sei
+    jsl.l RaceVideoInit
+
+; @routine 07:EC8F RaceEndToAttract
+; WHAT IT DOES: Leaves the race: the screen blanked, the NMI, DMA and HDMA
+; off, then on in BootWarm after its race (the stack reset and the attract
+; race).
+; HOW: As RaceRestart.
+; Entry: any widths. Exit: never returns.
+%at($07EC8F)
+RaceEndToAttract:
+    sei
+    sep.b #$20
+    lda.b #$80
+    sta.w !INIDISP
+    stz.w !NMITIMEN
+    stz.w !MDMAEN
+    stz.w !HDMAEN
+    jml.l BootWarm_attract
+
+; @routine 07:ECA4 TimeUpBattle
+; WHAT IT DOES: The time up of a battle: the six big sprites (BigSpritesRow6);
+; the first time sound $51, OamHide75Up and both timers $0E59, $0E5A = $3C;
+; counts $0E5A down; once $0E59 is set, at the end of $0E5A the save's bad
+; flag = $11, $0D22 = $0D23 = 6, the timer $3C, $0D55 cleared, sound $30 and
+; the race's end (RaceEndCountdown).
+; HOW: 8-bit; the second part counts $0E5A down twice a frame. The second
+; part is reached only by unit_race_phases.
+; Entry: D = $0000. Exit: as the path leaves it, or does not return.
+%at($07ECA4)
+TimeUpBattle:
+    jsr.w BigSpritesRow6
+    sep.b #$20
+    lda.w !wram_0E59
+    bne .lECC8
+    lda.w !wram_0E59+1
+    bne .lECC4
+    lda.b #$51
+    jsl.l SoundPort0QueuePush
+    jsr.w OamHide75Up
+    lda.b #$3C
+    sta.w !wram_0E59+1
+    sta.w !wram_0E59
+.lECC4:
+    dec.w !wram_0E59+1
+    rts
+.lECC8:
+    sep.b #$20
+    dec.w !wram_0E59+1
+    bne .lECF0
+    pha
+    lda.b #$11
+    sta.l !save_bad_flag
+    pla
+    lda.b #$06
+    sta.w !wram_0D22
+    sta.w !wram_0D23
+    lda.b #$3C
+    sta.w !wram_0E59+1
+    stz.w !panel_b_shown
+    lda.b #$30
+    jsl.l SoundPort0QueuePushRaw
+    jmp.w RaceEndCountdown
+.lECF0:
+    dec.w !wram_0E59+1
+
+; @routine 07:ECF3 PhaseNothingECF3
+; WHAT IT DOES: Nothing: a phase handler with no work.
+; HOW: RTS (TimeUpBattle's last).
+; Entry: any widths. Exit: every register unchanged.
+%at($07ECF3)
+PhaseNothingECF3:
+    rts
+
+; @routine 07:ECF4 TimeUpStunt
+; WHAT IT DOES: Stunt Trax's time up: the six big sprites (BigSpritesRow6);
+; while $0E59 is 0: with $0DDA at $10 or more, phase 6 when the time $0E70
+; is not 0, else counts $0E5A down; then $0E5A = $20, $0E59 one less, sound
+; $51 and OamHide75Up. Once $0E59 is set: at $0E5A = 0, $0D22 = $0D23 = 6,
+; the timer $78, $0D55 cleared, sound $30 and the race's end
+; (RaceEndCountdown); else counts $0E5A down.
+; HOW: 8-bit. Phase 6 is reached only by unit_race_phases.
+; Entry: D = $0000. Exit: as the path leaves it, or does not return.
+%at($07ECF4)
+TimeUpStunt:
+    jsr.w BigSpritesRow6
+    sep.b #$20
+    lda.w !wram_0E59
+    bne .lED28
+    lda.w !wram_0DDA
+    cmp.b #$10
+    bcc .lED10
+    lda.w !race_time_bcd
+    bne .lED22
+    dec.w !wram_0E59+1
+    beq .lED10
+    rts
+.lED10:
+    lda.b #$20
+    sta.w !wram_0E59+1
+    dec.w !wram_0E59
+    lda.b #$51
+    jsl.l SoundPort0QueuePush
+    jsr.w OamHide75Up
+    rts
+.lED22:
+    lda.b #$06
+    sta.w !engine_phase_p1
+    rts
+.lED28:
+    sep.b #$20
+    lda.w !wram_0E59+1
+    bne .lED48
+    lda.b #$06
+    sta.w !wram_0D22
+    sta.w !wram_0D23
+    lda.b #$78
+    sta.w !wram_0E59+1
+    stz.w !panel_b_shown
+    lda.b #$30
+    jsl.l SoundPort0QueuePushRaw
+    jmp.w RaceEndCountdown
+.lED48:
+    dec.w !wram_0E59+1
+    rts
+
+; @routine 07:ED4C TimeUpRace
+; WHAT IT DOES: A race's time up: the six big sprites (BigSpritesRow6); while
+; $0E59 is 0: a lap crossed meanwhile ($0DE8 above $0DEA) goes to phase 6 and
+; RaceLapCrossed; with $0DDA at $10 or more, phase 6 when the time is not 0,
+; else counts $0E5A down; then $0E5A = $24, $0E59 one less, sound $51 and
+; Countdown0DF8. Once $0E59 is set: at $0E5A = 0, once the window is closed,
+; leaves the race (RaceEndLeave); else counts $0E5A down, at 1 setting $19DF
+; = 1 and sliding the window up.
+; HOW: SEP #$30; DEC A and compares. The lap crossed and phase 6 are reached
+; only by unit_race_phases.
+; Entry: Y = the player; D = $0000. Exit: as the path leaves it, or does not
+; return.
+%at($07ED4C)
+TimeUpRace:
+    jsr.w BigSpritesRow6
+    sep.b #$30
+    lda.w !wram_0E59
+    bne .lED92
+    lda.w !player_rec_7a
+    cmp.w !wram_0DEA
+    beq .lED68
+    bcc .lED68
+    lda.b #$06
+    sta.w !engine_phase_p1
+    jmp.w RaceLapCrossed
+.lED68:
+    lda.w !wram_0DDA
+    cmp.b #$10
+    bcc .lED80
+    lda.w !race_time_bcd
+    bne .lED7A
+    dec.w !wram_0E59+1
+    beq .lED80
+    rts
+.lED7A:
+    lda.b #$06
+    sta.w !engine_phase_p1
+    rts
+.lED80:
+    lda.b #$24
+    sta.w !wram_0E59+1
+    dec.w !wram_0E59
+    lda.b #$51
+    jsl.l SoundPort0QueuePush
+    jsr.w Countdown0DF8
+    rts
+.lED92:
+    sep.b #$20
+    lda.w !wram_0E59+1
+    bne .lEDA3
+    lda.w !window_hdma_off
+    cmp.b #$05
+    bne .lEDB4
+    jmp.w RaceEndLeave
+.lEDA3:
+    dec a
+    cmp.b #$01
+    bne .lEDB5
+    sta.w !wram_0E59+1
+    lda.b #$01
+    sta.w !wram_19DF
+    jsl.l WindowSlideUpSound
+.lEDB4:
+    rts
+.lEDB5:
+    cmp.b #$18
+    bne .lEDBD
+    sta.w !wram_0E59+1
+    rts
+.lEDBD:
+    sta.w !wram_0E59+1
+    rts
