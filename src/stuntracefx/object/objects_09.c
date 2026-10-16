@@ -690,3 +690,650 @@ void abi_ObjectFinishGateStep(void)
 {
     finish_gate_frame();
 }
+
+void abi_GsuRecordNew424(void);
+void abi_GsuRecordNew424Alt(void);
+void abi_GsuRecordMode2(void);
+void abi_ApproachHalfMin2Byte(void);
+void abi_ApproachQuarterMin4(void);
+void abi_RecordNextContact(void);
+void abi_GsuRecordRaise6A(void);
+
+/* LDA addr, CLC, ADC #v, STA addr (8-bit). */
+static void add8(uint32_t addr, uint8_t v)
+{
+    uint8_t r = ld8(addr);
+
+    cpu.p &= (uint8_t)~P_C;
+    r = op_adc8(r, v, &cpu.p);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | r);
+    wr8(addr, r);
+}
+
+/* LDA addr, STA $3E, LDA #target, JSL to; STA addr: a byte eased toward
+   the target by the routine at `to`. Returns C. */
+static int ease8(uint32_t addr, uint8_t target, void (*to)(void))
+{
+    wr8(0x00003E, ld8(addr));
+    lda8(target);
+    to();
+    wr8(addr, (uint8_t)cpu.a);
+    return (cpu.p & P_C) != 0;
+}
+
+/* 03:D07C (not filed yet): a byte eased toward A. */
+static void ease_d07c(void)
+{
+    call_routine(0x03D07C, 1);
+}
+
+/* The two set-up stores of a two-handler object: restart +$1D/+$1F = r,
+   frame +$1A/+$1C = f. */
+static void handlers2(uint16_t r, uint16_t f)
+{
+    st16i(F(0x201D, cpu.x), r);
+    st8i(F(0x201F, cpu.x), 0x09);
+    handler(cpu.x, f);
+}
+
+/* Hit by a car: the record's sync and contact summary both with bit 0
+   (ObjectSyncFromRecord, RecordContactSummary, each AND #1). */
+static int hit(void)
+{
+    abi_ObjectSyncFromRecord();
+    lda8((uint8_t)(cpu.a & 0x01));
+    if (!(uint8_t)cpu.a)
+        return 0;
+    abi_RecordContactSummary();
+    lda8((uint8_t)(cpu.a & 0x01));
+    return (uint8_t)cpu.a != 0;
+}
+
+/* 09:91F6: the bumper's frame: while +$48 counts down, it bulges (+$15 by
+   6, +$14 and +$16 by $0A); after, +$14 eases back (ApproachHalfMin2Byte)
+   and, once that holds, +$16 too while +$15 grows by $0C; then a hit sets
+   +$25 bit 0 the first time (sound $54, +$48 = 6), no hit clears it. */
+static void bumper_frame(void)
+{
+    uint8_t v = ld8(F(0x2048, cpu.x));
+
+    if (v) {
+        add8(F(0x2015, cpu.x), 0x06);
+        add8(F(0x2014, cpu.x), 0x0A);
+        add8(F(0x2016, cpu.x), 0x0A);
+        add8(F(0x2048, cpu.x), 0xFF);
+    } else if (!ease8(F(0x2014, cpu.x), 0x00, abi_ApproachHalfMin2Byte)) {
+        ease8(F(0x2016, cpu.x), 0x00, abi_ApproachHalfMin2Byte);
+        add8(F(0x2015, cpu.x), 0x0C);
+    }
+    if (!hit()) {
+        and8(F(0x2025, cpu.x), 0xFE);
+        return;
+    }
+    lda8((uint8_t)(ld8(F(0x2025, cpu.x)) & 0x01));
+    if ((uint8_t)cpu.a)
+        return;
+    or8(F(0x2025, cpu.x), 0x01);
+    lda8(0x54);
+    abi_SoundPort0QueuePush();
+    st8i(F(0x2048, cpu.x), 0x06);
+}
+
+/* 09:91E8: the bumper's record ($424) with flag bit 4 and +$2A high 1;
+   then its frame. */
+static void bumper_record(void)
+{
+    abi_GsuRecordNew424();
+    abi_GsuRecordFlag10();
+    lda8(0x01);
+    abi_GsuRecordSet2AHigh();
+    bumper_frame();
+}
+
+/*
+ * @routine 09:91CA ObjectBumper
+ * WHAT IT DOES: Sets up a bumper: restart $09:91E8 (ObjectBumperRecord),
+ * frame $09:91F6 (ObjectBumperStep), then its record and frame.
+ * HOW: Word and byte stores.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectBumper(void)
+{
+    handlers2(0x91E8, 0x91F6);
+    bumper_record();
+}
+
+/*
+ * @routine 09:91E8 ObjectBumperRecord
+ * WHAT IT DOES: The bumper's restart: a Super FX record ($424) with flag
+ * bit 4 and +$2A's high byte 1, then its frame.
+ * HOW: GsuRecordNew424, GsuRecordFlag10, GsuRecordSet2AHigh.
+ * Entry: as ObjectBumper. Exit: as ObjectBumper.
+ */
+void abi_ObjectBumperRecord(void)
+{
+    bumper_record();
+}
+
+/*
+ * @routine 09:91F6 ObjectBumperStep
+ * WHAT IT DOES: The bumper's frame: while +$48 counts down it bulges
+ * (+$15 by 6, +$14 and +$16 by $0A a frame); then it settles back (+$14
+ * and +$16 eased to 0 by ApproachHalfMin2Byte, +$15 growing by $0C); a car
+ * hitting it sets +$25 bit 0 the first time with sound $54 and a new
+ * bulge (+$48 = 6); no hit clears the bit.
+ * HOW: ObjectSyncFromRecord, RecordContactSummary.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit.
+ */
+void abi_ObjectBumperStep(void)
+{
+    bumper_frame();
+}
+
+/* 09:92BC: the switch's frame: when on (+$25 bit 0), +$48 eased toward 3
+   (03:D07C); +$48 shown at +$5A with bit 7; off, a hit turns it on (+$15
+   by $0C, sound $55). */
+static void switch_frame(void)
+{
+    uint8_t v;
+
+    lda8((uint8_t)(ld8(F(0x2025, cpu.x)) & 0x01));
+    if ((uint8_t)cpu.a)
+        ease8(F(0x2048, cpu.x), 0x03, ease_d07c);
+    v = ld8(F(0x2048, cpu.x));
+    wr8(db() | 0x1F58, v);
+    v = (uint8_t)(ld8(db() | 0x1F58) | 0x80);
+    lda8(v);
+    wr8(F(0x205A, cpu.x), v);
+    lda8((uint8_t)(ld8(F(0x2025, cpu.x)) & 0x01));
+    if ((uint8_t)cpu.a)
+        return;
+    if (!hit())
+        return;
+    or8(F(0x2025, cpu.x), 0x01);
+    add8(F(0x2015, cpu.x), 0x0C);
+    lda8(0x55);
+    abi_SoundPort0QueuePush();
+}
+
+/* 09:92AE: the switch's record ($424) with flag bit 4 and +$2A high 1;
+   then its frame. */
+static void switch_record(void)
+{
+    abi_GsuRecordNew424();
+    abi_GsuRecordFlag10();
+    lda8(0x01);
+    abi_GsuRecordSet2AHigh();
+    switch_frame();
+}
+
+/*
+ * @routine 09:9289 ObjectSwitch
+ * WHAT IT DOES: Sets up a switch: restart $09:92AE (ObjectSwitchRecord),
+ * frame $09:92BC (ObjectSwitchStep), +$5A = $80; then its record and frame.
+ * HOW: Word and byte stores.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectSwitch(void)
+{
+    handlers2(0x92AE, 0x92BC);
+    lda8(0x00);
+    lda8(0x80);
+    wr8(F(0x205A, cpu.x), 0x80);
+    switch_record();
+}
+
+/*
+ * @routine 09:92AE ObjectSwitchRecord
+ * WHAT IT DOES: The switch's restart: a Super FX record ($424) with flag
+ * bit 4 and +$2A's high byte 1, then its frame.
+ * HOW: GsuRecordNew424, GsuRecordFlag10, GsuRecordSet2AHigh.
+ * Entry: as ObjectSwitch. Exit: as ObjectSwitch.
+ */
+void abi_ObjectSwitchRecord(void)
+{
+    switch_record();
+}
+
+/*
+ * @routine 09:92BC ObjectSwitchStep
+ * WHAT IT DOES: The switch's frame: once on (+$25 bit 0), its count +$48
+ * eases toward 3 (03:D07C); the count is shown at +$5A with bit 7; while
+ * off, a car hitting it turns it on (+$15 by $0C, sound $55). The bytes at
+ * 09:931C (clearing +$25 bit 0) are reached by no code.
+ * HOW: ObjectSyncFromRecord, RecordContactSummary; 03:D07C as original
+ * code.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit.
+ */
+void abi_ObjectSwitchStep(void)
+{
+    switch_frame();
+}
+
+/* 09:934D: the platform's record ($424, +$0A $90E8) in mode 2 with +$2A
+   high $50 at ($500, $1180, $500); then its frame (synced). */
+static void platform_record(void)
+{
+    abi_GsuRecordNew424Alt();
+    abi_GsuRecordMode2();
+    lda8(0x50);
+    abi_GsuRecordSet2AHigh();
+    record_at(0x0500, 0x1180, 0x0500);
+    abi_ObjectSyncFromRecord();
+}
+
+/*
+ * @routine 09:9325 ObjectPlatform
+ * WHAT IT DOES: Sets up a platform: +$20 = $EC60, restart $09:934D
+ * (ObjectPlatformRecord), frame $09:937A (ObjectPlatformStep); then its
+ * record (mode 2, +$2A high $50, at ($500, $1180, $500)) and sync.
+ * HOW: Word and byte stores. Reached only by unit_objects_09.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as
+ * ObjectSyncFromRecord.
+ */
+void abi_ObjectPlatform(void)
+{
+    st16i(F(0x2020, cpu.x), 0xEC60);
+    handlers2(0x934D, 0x937A);
+    platform_record();
+}
+
+/*
+ * @routine 09:934D ObjectPlatformRecord
+ * WHAT IT DOES: The platform's restart: its Super FX record (GsuRecordNew424Alt,
+ * GsuRecordMode2, +$2A high $50, at ($500, $1180, $500)), then synced.
+ * HOW: As ObjectPlatform. Reached only by unit_objects_09.
+ * Entry: as ObjectPlatform. Exit: as ObjectPlatform.
+ */
+void abi_ObjectPlatformRecord(void)
+{
+    platform_record();
+}
+
+/*
+ * @routine 09:937A ObjectPlatformStep
+ * WHAT IT DOES: The platform's frame: synced from its record.
+ * HOW: ObjectSyncFromRecord. Reached only by unit_objects_09.
+ * Entry: as ObjectSyncFromRecord. Exit: as ObjectSyncFromRecord.
+ */
+void abi_ObjectPlatformStep(void)
+{
+    abi_ObjectSyncFromRecord();
+}
+
+/* 09:93C4: the first switch post's frame: a hit squashes +$14 toward $33
+   and sets bit 0 of $1A07. */
+static void post1_frame(void)
+{
+    if (!hit())
+        return;
+    ease8(F(0x2014, cpu.x), 0x33, abi_ApproachHalfMin2Byte);
+    cpu.p |= P_M;
+    or8(db() | 0x1A07, 0x01);
+}
+
+/* 09:939D: a post's record ($42D) with flag bit 4 at (v, v, v). */
+static void post_record(uint16_t v)
+{
+    abi_GsuRecordNew42D();
+    abi_GsuRecordFlag10();
+    record_at(v, v, v);
+}
+
+/*
+ * @routine 09:937F ObjectPostA
+ * WHAT IT DOES: Sets up the first of a gate's two posts: restart $09:939D
+ * (ObjectPostARecord), frame $09:93C4 (ObjectPostAStep); its record ($42D,
+ * flag bit 4, at ($1E0, $1E0, $1E0)) and frame.
+ * HOW: Word and byte stores.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectPostA(void)
+{
+    handlers2(0x939D, 0x93C4);
+    post_record(0x01E0);
+    post1_frame();
+}
+
+/*
+ * @routine 09:939D ObjectPostARecord
+ * WHAT IT DOES: The first post's restart: its record ($42D, flag bit 4, at
+ * ($1E0, $1E0, $1E0)), then its frame.
+ * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
+ * Entry: as ObjectPostA. Exit: as ObjectPostA.
+ */
+void abi_ObjectPostARecord(void)
+{
+    post_record(0x01E0);
+    post1_frame();
+}
+
+/*
+ * @routine 09:93C4 ObjectPostAStep
+ * WHAT IT DOES: The first post's frame: when a car hits it, +$14 eases
+ * toward $33 (ApproachHalfMin2Byte) and bit 0 of $1A07 is set.
+ * HOW: ObjectSyncFromRecord, RecordContactSummary.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit.
+ */
+void abi_ObjectPostAStep(void)
+{
+    post1_frame();
+}
+
+void abi_ObjectSkyBallStep(void);
+
+/* 09:9496: the sky ball: a new object of kind $AA34 linked to post X
+   (+$27), handler $09:9520 (ObjectSkyBallStep), $C0 above and $2BC0 on,
+   scale $80, +$48 = 0, +$29 and +$2B cleared, +$0A = +$49 = $0A, sound
+   $0E; nothing without a free object. */
+static void sky_ball(void)
+{
+    uint8_t a;
+
+    if (!spawn(0xAA34))
+        return;
+    abi_ObjectCopyPositionTo();
+    a = (uint8_t)cpu.a;
+    cpu.p &= (uint8_t)~P_M;
+    cpu.a = cpu.x;
+    cpu.p = nz16(cpu.p, cpu.a);
+    wr16(F(0x2027, cpu.y), cpu.x);
+    cpu.p |= P_M;
+    lda8(a);
+    handler(cpu.y, 0x9520);
+    add16(F(0x200C, cpu.y), 0x0000);
+    add16(F(0x200E, cpu.y), 0xFF40);
+    add16(F(0x2010, cpu.y), 0x2BC0);
+    st8i(F(0x2015, cpu.y), 0x80);
+    st8i(F(0x2048, cpu.y), 0x00);
+    st16i(F(0x2029, cpu.y), 0x0000);
+    st16i(F(0x202B, cpu.y), 0x0000);
+    st8i(F(0x200A, cpu.y), 0x0A);
+    st8i(F(0x2049, cpu.y), 0x0A);
+    lda8(0x0E);
+    abi_SoundPort0QueuePush();
+}
+
+/* 09:9432: the second post's frame: a hit sets its +$25 bit 0 and bit 1 of
+   $1A07 the first time; with both posts hit ($1A07 = 3), the first time
+   (+$25 bit 1) the sky ball, its target +$27 = this post's +$10 - $2300. */
+static void post2_frame(void)
+{
+    if (!hit())
+        return;
+    lda8((uint8_t)(ld8(F(0x2025, cpu.x)) & 0x01));
+    if (!(uint8_t)cpu.a) {
+        or8(F(0x2025, cpu.x), 0x01);
+        cpu.p |= P_M;
+        or8(db() | 0x1A07, 0x02);
+    }
+    ld8(db() | 0x1A07);
+    cmp8(0x03);
+    if ((uint8_t)cpu.a != 0x03)
+        return;
+    lda8((uint8_t)(ld8(F(0x2025, cpu.x)) & 0x02));
+    if ((uint8_t)cpu.a)
+        return;
+    or8(F(0x2025, cpu.x), 0x02);
+    sky_ball();
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(F(0x2010, cpu.x));
+    wr16(F(0x2027, cpu.y), cpu.a);
+    cpu.p |= P_M;
+    add16(F(0x2027, cpu.y), 0xDD00);
+}
+
+/*
+ * @routine 09:93ED ObjectPostB
+ * WHAT IT DOES: Sets up the second post: restart $09:940B
+ * (ObjectPostBRecord), frame $09:9432 (ObjectPostBStep); its record ($42D,
+ * flag bit 4, at ($F00, $F00, $F00)) and frame.
+ * HOW: Word and byte stores.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectPostB(void)
+{
+    handlers2(0x940B, 0x9432);
+    post_record(0x0F00);
+    post2_frame();
+}
+
+/*
+ * @routine 09:940B ObjectPostBRecord
+ * WHAT IT DOES: The second post's restart: its record ($42D, flag bit 4,
+ * at ($F00, $F00, $F00)), then its frame.
+ * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
+ * Entry: as ObjectPostB. Exit: as ObjectPostB.
+ */
+void abi_ObjectPostBRecord(void)
+{
+    post_record(0x0F00);
+    post2_frame();
+}
+
+/*
+ * @routine 09:9432 ObjectPostBStep
+ * WHAT IT DOES: The second post's frame: when a car hits it, its +$25 bit
+ * 0 and bit 1 of $1A07 the first time; once both posts are hit ($1A07 =
+ * 3), the first time (its +$25 bit 1), a sky ball (kind $AA34, handler
+ * ObjectSkyBallStep) whose target +$27 is this post's +$10 less $2300.
+ * HOW: ObjectSyncFromRecord, RecordContactSummary, ObjectSpawn. The sky
+ * ball's spawn is reached only by unit_objects_09.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path
+ * leaves it.
+ */
+void abi_ObjectPostBStep(void)
+{
+    post2_frame();
+}
+
+/* 03:CDC1 (not filed yet): a word eased toward A. */
+static void ease_cdc1(void)
+{
+    call_routine(0x03CDC1, 1);
+}
+
+/* REP #$20, LDA addr, STA $3E, LDA target, JSL to, STA addr, SEP #$20. */
+static void ease16(uint32_t addr, uint32_t target, void (*to)(void))
+{
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(addr);
+    wr16(0x00003E, cpu.a);
+    op_lda16(target);
+    to();
+    wr16(addr, cpu.a);
+    cpu.p |= P_M;
+}
+
+/* 09:9599: the ball follows the player ($0346): its X eased toward the
+   player's (ApproachQuarterMin4), its Z toward the player's (03:CDC1),
+   then $380 back. */
+static void ball_follow(void)
+{
+    cpu.y = rd16(db() | 0x0346);
+    cpu.p = nz16(cpu.p, cpu.y);
+    ease16(F(0x200C, cpu.x), F(0x200C, cpu.y), abi_ApproachQuarterMin4);
+    ease16(F(0x2010, cpu.x), F(0x2010, cpu.y), ease_cdc1);
+    add16(F(0x2010, cpu.x), 0xFC80);
+}
+
+/* 09:95D1 / 95FC: the ball drops (dz, dy) with +$14 eased toward t
+   (03:D07C). */
+static void ball_drop(uint16_t dz, uint16_t dy, uint8_t t)
+{
+    add16(F(0x2010, cpu.x), dz);
+    add16(F(0x200E, cpu.x), dy);
+    ease8(F(0x2014, cpu.x), t, ease_d07c);
+}
+
+/*
+ * @routine 09:9520 ObjectSkyBallStep
+ * WHAT IT DOES: The sky ball's frame: while its +$10 has not passed its
+ * target +$27 it rises ($50 back, $F0 up, +$14 toward $C0) and is released
+ * when +$0A runs out; past it, for +$49 frames it follows the player, then
+ * the first time (+$25 bit 0) it drops a ball (kind $B7A8, handler
+ * $09:9634, ObjectBallDrop) and keeps falling ($180 back, $1E up, +$14
+ * toward $F8); rebucketed each frame.
+ * HOW: A 16-bit compare (BEQ or BMI); ApproachQuarterMin4, 03:CDC1 and
+ * 03:D07C (original code) ease the moves. Reached only by
+ * unit_objects_09.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket.
+ */
+void abi_ObjectSkyBallStep(void)
+{
+    uint16_t z, t;
+
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(F(0x2010, cpu.x));
+    wr16(db() | 0x1F4C, cpu.a);
+    cpu.p |= P_M;
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(F(0x2027, cpu.x));
+    t = cpu.a;
+    z = rd16(db() | 0x1F4C);
+    op_cmp16(z);
+    cpu.p |= P_M;
+    if (t == z || (cpu.p & P_N)) {
+        uint8_t v = ld8(F(0x2049, cpu.x));
+
+        if (v) {
+            dec8(F(0x2049, cpu.x));
+            ball_follow();
+        } else {
+            lda8((uint8_t)(ld8(F(0x2025, cpu.x)) & 0x01));
+            if (!(uint8_t)cpu.a) {
+                uint16_t sx = cpu.x, sy = cpu.y;
+
+                or8(F(0x2025, cpu.x), 0x01);
+                if (spawn(0xB7A8)) {
+                    abi_ObjectCopyPositionTo();
+                    handler(cpu.y, 0x9634);
+                }
+                cpu.y = sy;
+                cpu.x = sx;
+                cpu.p = nz16(cpu.p, sx);
+            }
+            ball_drop(0xFE80, 0xFFE2, 0xF8);
+        }
+    } else {
+        ball_drop(0xFFB0, 0xFF10, 0xC0);
+        if (dec8(F(0x200A, cpu.x)) == 0)
+            abi_ObjectRelease();
+    }
+    abi_ObjectRebucket();
+}
+
+void abi_ObjectBallDropStep(void);
+
+/* 09:967F: the dropped ball's frame: it grows (+$15, +$14 by $10); on a
+   car's contact (the record's contacts, RecordNextContact, with bit 0) it
+   raises that record's +$6A by $40 (GsuRecordRaise6A), sound $25, leaves
+   a spark (kind $B7A8 at the player $0346's position, +$0A = $0A, +$27 =
+   0, +$29 = the player, handler $09:AE60) and is released. */
+static void drop_frame(void)
+{
+    uint16_t sx;
+
+    add8(F(0x2015, cpu.x), 0x10);
+    add8(F(0x2014, cpu.x), 0x10);
+    abi_ObjectSyncFromRecord();
+    lda8((uint8_t)(cpu.a & 0x01));
+    if (!(uint8_t)cpu.a)
+        return;
+    for (;;) {
+        abi_RecordNextContact();
+        if (!(cpu.p & P_C))
+            return;
+        lda8((uint8_t)(cpu.a & 0x01));
+        if ((uint8_t)cpu.a)
+            break;
+    }
+    lda8(0x40);
+    abi_GsuRecordRaise6A();
+    cpu.p |= P_M;
+    lda8(0x25);
+    abi_SoundPort0QueuePush();
+    sx = cpu.x;                                 /* PHX */
+    cpu.x = cpu.y;                              /* TYX */
+    cpu.p = nz16(cpu.p, cpu.x);
+    if (spawn(0xB7A8)) {
+        uint8_t a;
+
+        cpu.x = rd16(db() | 0x0346);
+        cpu.p = nz16(cpu.p, cpu.x);
+        st8i(F(0x200A, cpu.y), 0x0A);
+        abi_ObjectCopyPositionTo();
+        st16i(F(0x2027, cpu.y), 0x0000);
+        a = (uint8_t)cpu.a;
+        cpu.p &= (uint8_t)~P_M;
+        cpu.a = cpu.x;
+        cpu.p = nz16(cpu.p, cpu.a);
+        wr16(F(0x2029, cpu.y), cpu.x);
+        cpu.p |= P_M;
+        lda8(a);
+        handler(cpu.y, 0xAE60);
+    }
+    cpu.x = sx;                                 /* PLX */
+    cpu.p = nz16(cpu.p, sx);
+    abi_ObjectRelease();
+}
+
+/* 09:9652: the dropped ball's record ($42D) with flag bit 4, +$2A high
+   $14, at ($A0, $A0, $A0); then its frame. */
+static void drop_record(void)
+{
+    abi_GsuRecordNew42D();
+    abi_GsuRecordFlag10();
+    lda8(0x14);
+    abi_GsuRecordSet2AHigh();
+    record_at(0x00A0, 0x00A0, 0x00A0);
+    drop_frame();
+}
+
+/*
+ * @routine 09:9634 ObjectBallDrop
+ * WHAT IT DOES: Sets up a dropped ball: restart $09:9652
+ * (ObjectBallDropRecord), frame $09:967F (ObjectBallDropStep); its record
+ * and frame.
+ * HOW: Word and byte stores. Reached only by unit_objects_09.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectBallDrop(void)
+{
+    handlers2(0x9652, 0x967F);
+    drop_record();
+}
+
+/*
+ * @routine 09:9652 ObjectBallDropRecord
+ * WHAT IT DOES: The dropped ball's restart: its record ($42D, flag bit 4,
+ * +$2A high $14, at ($A0, $A0, $A0)), then its frame.
+ * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordSet2AHigh,
+ * GsuRecordPosition. Reached only by unit_objects_09.
+ * Entry: as ObjectBallDrop. Exit: as ObjectBallDrop.
+ */
+void abi_ObjectBallDropRecord(void)
+{
+    drop_record();
+}
+
+/*
+ * @routine 09:967F ObjectBallDropStep
+ * WHAT IT DOES: The dropped ball's frame: it grows (+$15 and +$14 by $10);
+ * on a car's contact it raises that car's record +$6A by $40, plays sound
+ * $25, leaves a spark (kind $B7A8 at the player's position, handler
+ * $09:AE60) and is released.
+ * HOW: ObjectSyncFromRecord, then RecordNextContact over the contacts.
+ * Reached only by unit_objects_09.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectBallDropStep(void)
+{
+    drop_frame();
+}
