@@ -28,6 +28,7 @@ void abi_ObjectRebucket(void);
 void abi_ObjectCarSpawn(void);
 void abi_ObjectNearFocus(void);
 void abi_ObjectPoseFromRecord(void);
+void abi_GsuRecordFlag4(void);
 
 static uint32_t db(void)
 {
@@ -406,7 +407,7 @@ void abi_ObjectBlinkerStart(void)
     sta16_imm(b | (uint16_t)(0x2020 + cpu.x), 0xD354);
     abi_GsuRecordNew422();
     if (cpu.p & P_N) {
-        jump_routine(0x08A033);
+        return;                     /* JMP to the RTL at $08:A033 */
         return;
     }
     record_place(0x02D0, 0x0190, 0x02D0, 0x4000);
@@ -423,7 +424,7 @@ void abi_ObjectBlinkerStart(void)
  * code at $08:CD7E. At $1F71 = 2: the record's +$1C gets bit 4, its +$24
  * bits 5 and 3, its Y + $B1E0, and its handler cleared.
  * HOW: 16-bit record words through $70:0000 + its +$22; the code at
- * $08:CD7E runs as original code.
+ * $08:CD7E is a JSL to GsuRecordFlag4 and an RTL, called directly here.
  * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; Y = the object; as
  * the code at $08:CD7E leaves it, or A low byte 0 after the clear.
  */
@@ -469,7 +470,7 @@ void abi_ObjectPaceCarStep(void)
         cpu.p |= P_M;
         cpu.x = x;
         cpu.p = nz16(cpu.p, x);
-        jump_routine(0x08CD7E);
+        abi_GsuRecordFlag4();
         return;
     }
     op_lda16(0x70001C + cpu.x);
@@ -599,7 +600,7 @@ void abi_ObjectPaceCarSetup(void)
     wr16(b | (uint16_t)(0x200E + cpu.x), cpu.a);
     cpu.p |= P_M;
     if (!spawn(0xA040)) {
-        jump_routine(0x08A033);
+        return;                     /* JMP to the RTL at $08:A033 */
         return;
     }
     abi_ObjectCopyPositionTo();
@@ -615,7 +616,7 @@ void abi_ObjectPaceCarSetup(void)
     cpu.p |= P_M;
     set_handler(cpu.y, 0xEF06);
     if (!spawn(0xA7B0)) {
-        jump_routine(0x08A033);
+        return;                     /* JMP to the RTL at $08:A033 */
         return;
     }
     abi_ObjectCopyPositionTo();
@@ -634,11 +635,550 @@ void abi_ObjectPaceCarSetup(void)
     sta16_imm(b | (uint16_t)(0x2020 + cpu.x), 0xC6DC);
     abi_GsuRecordNew422();
     if (cpu.p & P_N) {
-        jump_routine(0x08A033);
+        return;                     /* JMP to the RTL at $08:A033 */
         return;
     }
     record_place(0x0640, 0x0640, 0x0640, 0xC100);
     lda8(0x14);
     wr8(b | (uint16_t)(0x2048 + cpu.x), 0x14);
     abi_ObjectSignalStep();
+}
+
+void abi_ObjectTurnFromRecord(void);
+
+/* |w| as the original takes it (EOR #$FFFF, INC A when negative). */
+static uint16_t abs16(uint16_t w)
+{
+    return (w & 0x8000) ? (uint16_t)((w ^ 0xFFFF) + 1) : w;
+}
+
+/* With record X: whether |+$2E| + |+$32| (kept in $1F2B) is at least $64,
+   signed (BPL after CMP #$0064). */
+static int child_fast(uint32_t b)
+{
+    uint16_t w;
+
+    w = abs16(rd16(0x70002E + cpu.x));
+    wr16(b | 0x1F2B, w);
+    cpu.a = (uint16_t)(abs16(rd16(0x700032 + cpu.x)) + rd16(b | 0x1F2B));
+    op_cmp16(0x0064);
+    return !(cpu.p & P_N);
+}
+
+/* JSR $08:D1BF (original code with X = the record, Y = the child): whether
+   it allows the change (C). */
+static int child_d1bf(void)
+{
+    call_routine(0x08D1BF, 0);
+    return (cpu.p & P_C) != 0;
+}
+
+/* The child Y's next handler `h` (bank $08). */
+static void child_handler(uint16_t h)
+{
+    set_handler(cpu.y, h);
+}
+
+/*
+ * @routine 08:BD22 ObjectChildFollow
+ * WHAT IT DOES: Keeps object X (a child of +$06) on its parent: rebucketed;
+ * when the parent's record has flag $0400, its own record gets $0480 and
+ * its +$24 bit 5, and nothing more. Otherwise its +$24 bit 5 and its
+ * record's $0480 are cleared; unless the parent's +$24 has bit 6 or its
+ * record's +$64 has neither bit 0 nor 1, and when its own record's +$46
+ * has bits 0 and 4: by its record's +$2C (bit 7, bit 13, bit 11, bit 12,
+ * bits 5-6) or, failing those, the parent's +$40 bit 11 or its +$46 bit 5,
+ * a new handler for it ($D1F7, $D249, $D39F, $D2CF; $D33F or $D303 by
+ * speed; $D3D3) when it moves fast enough (|+$2E| + |+$32| >= $64, where
+ * asked) and the code at $08:D1BF allows it (C). Then its position is its
+ * record's (+$1E + $4A, +$20 + $4C + $FFEC - its +$5F, +$22 + $4E) and
+ * its turn (ObjectTurnFromRecord).
+ * HOW: 16-bit record reads at $70:0000 + +$22; the object kept on the
+ * stack (PHX) and in Y.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; X = the object; Y
+ * as the path leaves it.
+ */
+void abi_ObjectChildFollow(void)
+{
+    uint32_t b = db();
+    uint16_t obj = cpu.x, me, w, d;
+
+    abi_ObjectRebucket();
+    me = cpu.x;
+    cpu.y = me;
+    cpu.p &= (uint8_t)~P_M;
+    cpu.x = rd16(b | (uint16_t)(0x2006 + cpu.x));
+    cpu.x = rd16(b | (uint16_t)(0x2022 + cpu.x));
+    op_lda16(0x700016 + cpu.x);
+    if (cpu.a & 0x0400) {
+        cpu.x = rd16(b | (uint16_t)(0x2022 + cpu.y));
+        op_lda16(0x700016 + cpu.x);
+        cpu.a |= 0x0480;
+        cpu.p = nz16(cpu.p, cpu.a);
+        wr16(0x700016 + cpu.x, cpu.a);
+        cpu.p |= P_M;
+        w = (uint8_t)(rd8(b | (uint16_t)(0x2024 + cpu.y)) | 0x20);
+        lda8((uint8_t)w);
+        wr8(b | (uint16_t)(0x2024 + cpu.y), (uint8_t)w);
+        cpu.x = obj;
+        cpu.p = nz16(cpu.p, obj);
+        return;
+    }
+    cpu.x = cpu.y;
+    cpu.p |= P_M;
+    w = (uint8_t)(rd8(b | (uint16_t)(0x2024 + cpu.x)) & 0xDF);
+    lda8((uint8_t)w);
+    wr8(b | (uint16_t)(0x2024 + cpu.x), (uint8_t)w);
+    cpu.p &= (uint8_t)~P_M;
+    cpu.x = rd16(b | (uint16_t)(0x2022 + cpu.x));
+    op_lda16(0x700016 + cpu.x);
+    op_and16(0xFB7F);
+    wr16(0x700016 + cpu.x, cpu.a);
+    cpu.x = rd16(b | (uint16_t)(0x2006 + cpu.y));
+    op_lda16(b | (uint16_t)(0x2024 + cpu.x));
+    if (cpu.a & 0x0040)
+        goto place;
+    cpu.x = rd16(b | (uint16_t)(0x2022 + cpu.x));
+    op_lda16(0x700040 + cpu.x);
+    wr16(b | 0x1F4C, cpu.a);
+    op_lda16(0x700064 + cpu.x);
+    if (!(cpu.a & 0x0003))
+        goto place;
+    cpu.x = rd16(b | (uint16_t)(0x2022 + me));
+    op_lda16(0x700046 + cpu.x);
+    if (!(cpu.a & 0x0001) || !(cpu.a & 0x0010))
+        goto place;
+    d = rd16(0x70002C + cpu.x);
+    cpu.a = d;
+    if (d & 0x0080) {
+        if (!child_d1bf())
+            goto place;
+        cpu.p &= (uint8_t)~P_M;
+        child_handler(child_fast(b) ? 0xD33F : 0xD303);
+        goto place;
+    }
+    if (d & 0x2000) {
+        if (child_fast(b) && child_d1bf())
+            child_handler(0xD2CF);
+        goto place;
+    }
+    if (d & 0x0800) {
+        if (child_fast(b) && child_d1bf())
+            child_handler(0xD249);
+        goto place;
+    }
+    if (d & 0x1000) {
+        if (child_fast(b) && child_d1bf())
+            child_handler(0xD1F7);
+        goto place;
+    }
+    if (d & 0x0060) {
+        if (child_fast(b) && child_d1bf())
+            child_handler(0xD39F);
+        goto place;
+    }
+    op_lda16(b | 0x1F4C);
+    if (!(cpu.a & 0x0800)) {
+        op_lda16(0x700046 + cpu.x);
+        if (!(cpu.a & 0x0020))
+            goto place;
+    }
+    if (child_d1bf())
+        child_handler(0xD3D3);
+place:
+    /* $08:BF53 */
+    cpu.y = me;
+    cpu.p &= (uint8_t)~P_M;
+    cpu.x = rd16(b | (uint16_t)(0x2022 + cpu.y));
+    op_lda16(0x70001E + cpu.x);
+    op_add16(rd16(0x70004A + cpu.x));
+    wr16(b | (uint16_t)(0x200C + cpu.y), cpu.a);
+    op_lda16(b | (uint16_t)(0x205F + cpu.y));
+    cpu.a = (uint16_t)(((cpu.a & 0x00FF) ^ 0xFFFF) + 1);
+    op_add16(0xFFEC);
+    op_add16(rd16(0x700020 + cpu.x));
+    op_add16(rd16(0x70004C + cpu.x));
+    wr16(b | (uint16_t)(0x200E + cpu.y), cpu.a);
+    op_lda16(0x700022 + cpu.x);
+    op_add16(rd16(0x70004E + cpu.x));
+    wr16(b | (uint16_t)(0x2010 + cpu.y), cpu.a);
+    abi_ObjectTurnFromRecord();
+    cpu.p |= P_M;
+    cpu.x = obj;
+    cpu.p = nz16(cpu.p, obj);
+}
+
+void abi_ObjectVelocityFromRecordOf(void);
+void abi_ObjectSpawnChanceD460(void);
+void abi_ApproachQuarterMin4(void);
+void abi_ObjectApplyVelocity(void);
+
+/*
+ * @routine 08:BA57 ObjectChildrenSpawn
+ * WHAT IT DOES: Gives object X a child object for each record in its
+ * record's chain (its record's +$3E, then each one's +$34, to 0), except
+ * records with +$46 bit 9: the child's kind, +$29 and +$5F from the three
+ * words at $09:8000 + the record's +$12; with a nonzero +$29 the child
+ * gets +$24 bit 3, +$3A = 0, +$5F and +$29 (+ 2 for two players);
+ * handler $08:BB16 (ObjectChildStart), +$22 = the record, +$06 = object
+ * X. With no record of its own it just returns ($08:A033).
+ * HOW: $1F50 keeps the parent; $1F4C, $1F52, $1F4E the table's words; a
+ * failed spawn skips the record.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; X = the object; Y
+ * the last child (or as ObjectSpawn left it).
+ */
+void abi_ObjectChildrenSpawn(void)
+{
+    uint32_t b = db();
+    uint16_t obj = cpu.x, rec, t;
+
+    wr16(b | 0x1F50, obj);
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(b | (uint16_t)(0x2022 + obj));
+    if (!cpu.a) {
+        return;                     /* JMP to the RTL at $08:A033 */
+        return;
+    }
+    cpu.x = cpu.a;
+    op_lda16(0x70003E + cpu.x);
+    for (;;) {
+        op_tax16();
+        if (!cpu.x)
+            break;
+        rec = cpu.x;
+        op_lda16(0x700046 + rec);
+        if (!(cpu.a & 0x0200)) {
+            t = rd16(0x700012 + rec);
+            wr16(b | 0x1F4C, rd16(0x098000 + t));
+            wr16(b | 0x1F52, rd16(0x098002 + t));
+            op_lda16(0x098004 + t);
+            wr16(b | 0x1F4E, cpu.a);
+            cpu.x = rec;
+            op_lda16(b | 0x1F4C);
+            wr16(b | 0x1F2B, cpu.a);
+            cpu.p |= P_M;
+            abi_ObjectSpawn();
+            if (cpu.p & P_C) {
+                op_lda8(b | 0x1F52);
+                cpu.a |= rd8(b | 0x1F53);
+                cpu.p = nz8(cpu.p, (uint8_t)cpu.a);
+                if ((uint8_t)cpu.a) {
+                    lda8((uint8_t)(rd8(b | (uint16_t)(0x2024 + cpu.y)) | 0x08));
+                    wr8(b | (uint16_t)(0x2024 + cpu.y), (uint8_t)cpu.a);
+                    lda8(0x00);
+                    wr8(b | (uint16_t)(0x203A + cpu.y), 0x00);
+                    op_lda8(b | 0x1F4E);
+                    wr8(b | (uint16_t)(0x205F + cpu.y), (uint8_t)cpu.a);
+                    cpu.p &= (uint8_t)~P_M;
+                    op_lda16(b | 0x1F52);
+                    wr16(b | (uint16_t)(0x2029 + cpu.y), cpu.a);
+                    cpu.p |= P_M;
+                    op_lda8(b | 0x0D62);
+                    if ((uint8_t)cpu.a) {
+                        cpu.p &= (uint8_t)~P_M;
+                        op_lda16(b | (uint16_t)(0x2029 + cpu.y));
+                        op_add16(0x0002);
+                        wr16(b | (uint16_t)(0x2029 + cpu.y), cpu.a);
+                        cpu.p |= P_M;
+                    }
+                }
+                set_handler(cpu.y, 0xBB16);
+                wr16(b | (uint16_t)(0x2022 + cpu.y), cpu.x);
+                cpu.p &= (uint8_t)~P_M;
+                op_lda16(b | 0x1F50);
+                wr16(b | (uint16_t)(0x2006 + cpu.y), cpu.a);
+                cpu.p |= P_M;
+            }
+        }
+        cpu.p &= (uint8_t)~P_M;
+        op_lda16(0x700034 + cpu.x);
+    }
+    cpu.x = obj;
+    cpu.p |= P_M;
+}
+
+/* $08:BB4E: object X's +$24 bit 6 cleared, then its bit 5 set when its
+   parent's +$24 has bit 3, or its bit 6 when the parent's has bit 6;
+   +$36 = 3. */
+static void child_flags(void)
+{
+    uint32_t b = db();
+    uint8_t v, pv;
+
+    cpu.y = rd16(b | (uint16_t)(0x2006 + cpu.x));
+    cpu.p = nz16(cpu.p, cpu.y);
+    v = (uint8_t)(rd8(b | (uint16_t)(0x2024 + cpu.x)) & 0xBF);
+    lda8(v);
+    wr8(b | (uint16_t)(0x2024 + cpu.x), v);
+    pv = rd8(b | (uint16_t)(0x2024 + cpu.y));
+    lda8(pv);
+    if (pv & 0x08) {
+        v = (uint8_t)(rd8(b | (uint16_t)(0x2024 + cpu.x)) | 0x20);
+        lda8(v);
+        wr8(b | (uint16_t)(0x2024 + cpu.x), v);
+    } else if (pv & 0x40) {
+        v = (uint8_t)(rd8(b | (uint16_t)(0x2024 + cpu.x)) | 0x40);
+        lda8(v);
+        wr8(b | (uint16_t)(0x2024 + cpu.x), v);
+    }
+    lda8(0x03);
+    wr8(b | (uint16_t)(0x2036 + cpu.x), 0x03);
+}
+
+/*
+ * @routine 08:BB2E ObjectChildStep
+ * WHAT IT DOES: A child object's frame on its parent: follows it
+ * (ObjectChildFollow); when the parent's +$25 has bit 2 its handler
+ * becomes $08:BB7C (ObjectChildLoose, next frame); then its +$24 flags
+ * from the parent's and +$36 = 3.
+ * HOW: Byte tests through the data bank.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte 3; Y =
+ * the parent.
+ */
+void abi_ObjectChildStep(void)
+{
+    uint32_t b = db();
+
+    abi_ObjectChildFollow();
+    cpu.y = rd16(b | (uint16_t)(0x2006 + cpu.x));
+    cpu.p = nz16(cpu.p, cpu.y);
+    lda8((uint8_t)(rd8(b | (uint16_t)(0x2025 + cpu.y)) & 0x04));
+    if ((uint8_t)cpu.a)
+        set_handler(cpu.x, 0xBB7C);
+    child_flags();
+}
+
+/*
+ * @routine 08:BB16 ObjectChildStart
+ * WHAT IT DOES: A child object's first frame: handler $08:BB2E
+ * (ObjectChildStep), its +$26 from its parent's; then its first step.
+ * HOW: Falls into ObjectChildStep.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectChildStep.
+ */
+void abi_ObjectChildStart(void)
+{
+    uint32_t b = db();
+
+    set_handler(cpu.x, 0xBB2E);
+    cpu.y = rd16(b | (uint16_t)(0x2006 + cpu.x));
+    cpu.p = nz16(cpu.p, cpu.y);
+    op_lda8(b | (uint16_t)(0x2026 + cpu.y));
+    wr8(b | (uint16_t)(0x2026 + cpu.x), (uint8_t)cpu.a);
+    abi_ObjectChildStep();
+}
+
+/* $08:BD06: back on the parent: +$22 = +$27 (its record again), handler
+   $08:BB2E (ObjectChildStep), then the flags. */
+static void child_back(void)
+{
+    uint32_t b = db();
+
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(b | (uint16_t)(0x2027 + cpu.x));
+    wr16(b | (uint16_t)(0x2022 + cpu.x), cpu.a);
+    cpu.p |= P_M;
+    set_handler(cpu.x, 0xBB2E);
+    child_flags();
+}
+
+/* LDA +$5F (low byte), negated, + $FFEC, + a: a Y offset below the
+   parent by the child's +$5F and $14. */
+static uint16_t child_y(uint16_t f5, uint16_t a)
+{
+    cpu.a = (uint16_t)(((f5 & 0x00FF) ^ 0xFFFF) + 1);
+    op_add16(0xFFEC);
+    op_add16(a);
+    return cpu.a;
+}
+
+/*
+ * @routine 08:BC73 ObjectChildReturn
+ * WHAT IT DOES: A loose child going back: its velocity from its parent's
+ * record (ObjectVelocityFromRecordOf); its position a step (a quarter, at
+ * least 4: ApproachQuarterMin4) toward its place on the parent's record
+ * (+$1E + $4A, +$20 + $4C + $FFEC - its +$5F, +$22 + $4E, its turn by
+ * ObjectTurnFromRecord), moved (ObjectApplyVelocity) and rebucketed; once
+ * the parent's +$25 bit 2 is clear it is back (+$22 = +$27, handler
+ * $08:BB2E). Then its +$24 flags and +$36 = 3.
+ * HOW: The target kept in direct page $04, $0A and $05F2.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte 3.
+ */
+void abi_ObjectChildReturn(void)
+{
+    uint32_t b = db();
+    uint16_t obj;
+
+    cpu.y = rd16(b | (uint16_t)(0x2006 + cpu.x));
+    cpu.p = nz16(cpu.p, cpu.y);
+    abi_ObjectVelocityFromRecordOf();
+    cpu.p &= (uint8_t)~P_M;
+    obj = cpu.x;
+    op_lda16(b | (uint16_t)(0x2027 + cpu.x));
+    cpu.y = cpu.x;
+    op_tax16();
+    op_lda16(0x70001E + cpu.x);
+    op_add16(rd16(0x70004A + cpu.x));
+    wr16(0x000004, cpu.a);
+    child_y(rd16(b | (uint16_t)(0x205F + cpu.y)), rd16(0x700020 + cpu.x));
+    op_add16(rd16(0x70004C + cpu.x));
+    wr16(0x00000A, cpu.a);
+    op_lda16(0x700022 + cpu.x);
+    op_add16(rd16(0x70004E + cpu.x));
+    wr16(b | 0x05F2, cpu.a);
+    abi_ObjectTurnFromRecord();
+    cpu.x = obj;
+    cpu.p |= P_M;
+    cpu.y = rd16(b | (uint16_t)(0x2006 + cpu.x));
+    cpu.p = nz16(cpu.p, cpu.y);
+    cpu.p &= (uint8_t)~P_M;
+    wr16(0x00003E, rd16(b | (uint16_t)(0x200C + cpu.x)));
+    op_lda16(0x000004);
+    abi_ApproachQuarterMin4();
+    wr16(b | (uint16_t)(0x200C + cpu.x), cpu.a);
+    wr16(0x00003E, rd16(b | (uint16_t)(0x200E + cpu.x)));
+    op_lda16(0x00000A);
+    abi_ApproachQuarterMin4();
+    wr16(b | (uint16_t)(0x200E + cpu.x), cpu.a);
+    wr16(0x00003E, rd16(b | (uint16_t)(0x2010 + cpu.x)));
+    op_lda16(b | 0x05F2);
+    abi_ApproachQuarterMin4();
+    wr16(b | (uint16_t)(0x2010 + cpu.x), cpu.a);
+    cpu.p |= P_M;
+    abi_ObjectApplyVelocity();
+    abi_ObjectRebucket();
+    lda8((uint8_t)(rd8(b | (uint16_t)(0x2025 + cpu.y)) & 0x04));
+    if (!(uint8_t)cpu.a) {
+        child_back();
+        return;
+    }
+    child_flags();
+}
+
+/*
+ * @routine 08:BBE2 ObjectChildFlying
+ * WHAT IT DOES: A loose child's flight: synced from its record
+ * (ObjectSyncFromRecord); with the parent's +$25 bit 4 and a contact
+ * (RecordContactSummary bit 7, the sync's bit 0 clear) the code at
+ * $08:D337. While its count +$4B runs it drops ($14 + its +$5F lower)
+ * and may spawn (ObjectSpawnChanceD460); at 0 with the parent's +$25 bit
+ * 4 it is released if the parent's record +$64 has bit 4, else may spawn;
+ * at 0 otherwise it goes back (handler $08:BC73, ObjectChildReturn, at
+ * once). Then its +$24 flags and +$36 = 3.
+ * HOW: Byte tests through the data bank; the release is a jump.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; as the path
+ * leaves it.
+ */
+void abi_ObjectChildFlying(void)
+{
+    uint32_t b = db();
+    uint16_t x;
+    uint8_t v;
+
+    abi_ObjectSyncFromRecord();
+    lda8((uint8_t)(cpu.a & 0x01));
+    if (!(uint8_t)cpu.a) {
+        cpu.y = rd16(b | (uint16_t)(0x2006 + cpu.x));
+        cpu.p = nz16(cpu.p, cpu.y);
+        lda8((uint8_t)(rd8(b | (uint16_t)(0x2025 + cpu.y)) & 0x10));
+        if ((uint8_t)cpu.a) {
+            abi_RecordContactSummary();
+            lda8((uint8_t)(cpu.a & 0x80));
+            if ((uint8_t)cpu.a) {
+                jump_routine(0x08D337);
+                return;
+            }
+        }
+    }
+    cpu.y = rd16(b | (uint16_t)(0x2006 + cpu.x));
+    cpu.p = nz16(cpu.p, cpu.y);
+    lda8((uint8_t)(rd8(b | (uint16_t)(0x2025 + cpu.y)) & 0x10));
+    if ((uint8_t)cpu.a) {
+        op_lda8(b | (uint16_t)(0x204B + cpu.x));
+        if (!(uint8_t)cpu.a) {
+            x = cpu.x;
+            cpu.p &= (uint8_t)~P_M;
+            cpu.y = rd16(b | (uint16_t)(0x2006 + cpu.x));
+            cpu.x = rd16(b | (uint16_t)(0x2022 + cpu.y));
+            op_lda16(0x700064 + cpu.x);
+            cpu.x = x;
+            op_and16(0x0010);
+            cpu.p |= P_M;
+            if (cpu.a) {
+                abi_ObjectReleaseLong();
+                return;
+            }
+            abi_ObjectSpawnChanceD460();
+            child_flags();
+            return;
+        }
+    }
+    op_lda8(b | (uint16_t)(0x204B + cpu.x));
+    if (!(uint8_t)cpu.a) {
+        set_handler(cpu.x, 0xBC73);
+        abi_ObjectChildReturn();
+        return;
+    }
+    v = (uint8_t)(rd8(b | (uint16_t)(0x204B + cpu.x)) - 1);
+    wr8(b | (uint16_t)(0x204B + cpu.x), v);
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(b | (uint16_t)(0x205F + cpu.x));
+    child_y(cpu.a, rd16(b | (uint16_t)(0x200E + cpu.x)));
+    wr16(b | (uint16_t)(0x200E + cpu.x), cpu.a);
+    cpu.p |= P_M;
+    abi_ObjectSpawnChanceD460();
+    child_flags();
+}
+
+/*
+ * @routine 08:BB7C ObjectChildLoose
+ * WHAT IT DOES: A child comes loose from its parent: handler $08:BBE2
+ * (ObjectChildFlying), +$27 = its record (+$22), a record of its own
+ * (GsuRecordNew426) with the parent's record's velocity
+ * (ObjectVelocityFromRecordOf), then X and Z halved (+$36, +$3A of the
+ * old record, arithmetic shift) and Y $FFCE (GsuRecordVelocity); count
+ * +$4B = random 0-$0F + $0A; then its first flight.
+ * HOW: Falls into ObjectChildFlying; the halving is CMP #$8000, ROR A.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectChildFlying.
+ */
+void abi_ObjectChildLoose(void)
+{
+    uint32_t b = db();
+    uint16_t x, w;
+    uint8_t v;
+
+    set_handler(cpu.x, 0xBBE2);
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(b | (uint16_t)(0x2022 + cpu.x));
+    wr16(b | (uint16_t)(0x2027 + cpu.x), cpu.a);
+    cpu.p |= P_M;
+    abi_GsuRecordNew426();
+    cpu.y = rd16(b | (uint16_t)(0x2006 + cpu.x));
+    cpu.p = nz16(cpu.p, cpu.y);
+    abi_ObjectVelocityFromRecordOf();
+    if (cpu.p & P_N) {
+        child_back();
+        return;
+    }
+    cpu.p &= (uint8_t)~P_M;
+    x = cpu.x;
+    cpu.y = cpu.x;
+    cpu.x = rd16(b | (uint16_t)(0x2027 + cpu.x));
+    w = rd16(0x700036 + cpu.x);
+    wr16(b | (uint16_t)(0x202E + cpu.y), (uint16_t)((w >> 1) | (w & 0x8000)));
+    wr16(b | (uint16_t)(0x2030 + cpu.y), 0xFFCE);
+    w = rd16(0x70003A + cpu.x);
+    cpu.a = (uint16_t)((w >> 1) | (w & 0x8000));
+    cpu.p = (uint8_t)(nz16(cpu.p, cpu.a) & ~P_C) | (w & 1);
+    wr16(b | (uint16_t)(0x2032 + cpu.y), cpu.a);
+    cpu.x = x;
+    cpu.p |= P_M;
+    abi_GsuRecordVelocity();
+    abi_RandomStepLong();
+    v = (uint8_t)(cpu.a & 0x0F);
+    lda8(v);
+    wr8(b | (uint16_t)(0x204B + cpu.x), v);
+    v = (uint8_t)(rd8(b | (uint16_t)(0x204B + cpu.x)) + 0x0A);
+    lda8(v);
+    wr8(b | (uint16_t)(0x204B + cpu.x), v);
+    abi_ObjectChildFlying();
 }

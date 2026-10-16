@@ -385,3 +385,4 @@ DemoScripts = $038004                           ; 03:8004, the attract demos' sc
 !records_columns_all = $07D8EB                ; RecordsCharOffsetAll: eight bytes
 ObjectCarCD7E = $08CD7E                         ; 08:CD7E, the pace car step's tail (not filed yet)
 ObjectReleaseD337 = $08D337                     ; 08:D337, the burst piece's contact tail (not filed yet)
+ObjectChildD1BF = $08D1BF                       ; 08:D1BF, a child's change of handler allowed (not filed yet)

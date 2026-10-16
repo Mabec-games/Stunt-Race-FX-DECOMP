@@ -632,3 +632,688 @@ ObjectSignalStep:
     lda.b #$02
     sta.w !script_byte_1f71
     rtl
+
+; @routine 08:BA57 ObjectChildrenSpawn
+; WHAT IT DOES: Gives object X a child object for each record in its
+; record's chain (its record's +$3E, then each one's +$34, to 0), except
+; records with +$46 bit 9: the child's kind, +$29 and +$5F from the three
+; words at $09:8000 + the record's +$12; with a nonzero +$29 the child
+; gets +$24 bit 3, +$3A = 0, +$5F and +$29 (+ 2 for two players);
+; handler $08:BB16 (ObjectChildStart), +$22 = the record, +$06 = object
+; X. With no record of its own it just returns ($08:A033).
+; HOW: $1F50 keeps the parent; $1F4C, $1F52, $1F4E the table's words; a
+; failed spawn skips the record.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; X = the object; Y
+; the last child (or as ObjectSpawn left it).
+%at($08BA57)
+ObjectChildrenSpawn:
+    stx.w !wram_1F50
+    rep.b #$20
+    lda.w !obj_22,x
+    bne .lBA64
+    brl RtlA033                     ; not reached in the traces so far
+.lBA64:
+    phx
+    tax
+    lda.l !gsu_in_3e,x
+.lBA6A:
+    tax
+    bne .lBA70
+    brl .lBB12
+.lBA70:
+    lda.l !gsu_speed_44+2,x
+    and.w #$0200
+    beq .lBA7C
+    brl .lBB09                      ; not reached in the traces so far
+.lBA7C:
+    phx
+    lda.l !gsu_rec_12,x
+    tax
+    lda.l $098000,x
+    sta.w !wram_1F4C
+    lda.l $098002,x
+    sta.w !wram_1F52
+    lda.l $098004,x
+    sta.w !wram_1F4E
+    plx
+    sep.b #$20
+    rep.b #$20
+    lda.w !wram_1F4C
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lBAAE
+    jml.l .lBB09                    ; not reached in the traces so far
+.lBAAE:
+    lda.w !wram_1F52
+    ora.w !wram_1F52+1
+    beq .lBAE6
+    lda.w !obj_24,y
+    ora.b #$08
+    sta.w !obj_24,y
+    lda.b #$00
+    sta.w !obj_3a,y
+    lda.w !wram_1F4E
+    sta.w !obj_5f,y
+    rep.b #$20
+    lda.w !wram_1F52
+    sta.w !obj_29,y
+    sep.b #$20
+    lda.w !wram_0D62
+    beq .lBAE6
+    rep.b #$20
+    lda.w !obj_29,y
+    clc
+    adc.w #$0002
+    sta.w !obj_29,y
+    sep.b #$20
+.lBAE6:
+    rep.b #$20
+    lda.w #$BB16
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_22,y
+    sep.b #$20
+    pla
+    rep.b #$20
+    lda.w !wram_1F50
+    sta.w !obj_06,y
+    sep.b #$20
+.lBB09:
+    rep.b #$20
+    lda.l !gsu_in_34,x
+    jmp.w .lBA6A
+.lBB12:
+    plx
+    sep.b #$20
+    rtl
+
+; @routine 08:BB16 ObjectChildStart
+; WHAT IT DOES: A child object's first frame: handler $08:BB2E
+; (ObjectChildStep), its +$26 from its parent's; then its first step.
+; HOW: Falls into ObjectChildStep.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectChildStep.
+%at($08BB16)
+ObjectChildStart:
+    rep.b #$20
+    lda.w #$BB2E
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+    ldy.w !obj_06,x
+    lda.w !obj_26,y
+    sta.w !obj_26,x
+
+; @routine 08:BB2E ObjectChildStep
+; WHAT IT DOES: A child object's frame on its parent: follows it
+; (ObjectChildFollow); when the parent's +$25 has bit 2 its handler
+; becomes $08:BB7C (ObjectChildLoose, next frame); then its +$24 flags
+; from the parent's and +$36 = 3.
+; HOW: Byte tests through the data bank.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte 3; Y =
+; the parent.
+%at($08BB2E)
+ObjectChildStep:
+    jsr.w ObjectChildFollow
+    ldy.w !obj_06,x
+    lda.w !obj_25,y
+    and.b #$04
+    bne .lBB3F
+    jml.l ObjectChildFlags
+.lBB3F:
+    rep.b #$20
+    lda.w #$BB7C
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+ObjectChildFlags:
+    ldy.w !obj_06,x
+    lda.w !obj_24,x
+    and.b #$BF
+    sta.w !obj_24,x
+    lda.w !obj_24,y
+    bit.b #$08
+    bne .lBB6E
+    bit.b #$40
+    beq .lBB76
+    lda.w !obj_24,x
+    ora.b #$40
+    sta.w !obj_24,x
+    bra .lBB76
+.lBB6E:
+    lda.w !obj_24,x
+    ora.b #$20
+    sta.w !obj_24,x
+.lBB76:
+    lda.b #$03
+    sta.w !obj_36,x
+    rtl
+
+; @routine 08:BB7C ObjectChildLoose
+; WHAT IT DOES: A child comes loose from its parent: handler $08:BBE2
+; (ObjectChildFlying), +$27 = its record (+$22), a record of its own
+; (GsuRecordNew426) with the parent's record's velocity
+; (ObjectVelocityFromRecordOf), then X and Z halved (+$36, +$3A of the
+; old record, arithmetic shift) and Y $FFCE (GsuRecordVelocity); count
+; +$4B = random 0-$0F + $0A; then its first flight.
+; HOW: Falls into ObjectChildFlying; the halving is CMP #$8000, ROR A.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectChildFlying.
+%at($08BB7C)
+ObjectChildLoose:
+    rep.b #$20
+    lda.w #$BBE2
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+    rep.b #$20
+    lda.w !obj_22,x
+    sta.w !obj_27,x
+    sep.b #$20
+    jsl.l GsuRecordNew426
+    ldy.w !obj_06,x
+    jsl.l ObjectVelocityFromRecordOf
+    bpl .lBBA5
+    brl ObjectChildBack             ; not reached in the traces so far
+.lBBA5:
+    rep.b #$20
+    phx
+    txy
+    lda.w !obj_27,x
+    tax
+    lda.l !gsu_in_36,x
+    cmp.w #$8000
+    ror a
+    sta.w !obj_vel_x,y
+    lda.w #$FFCE
+    sta.w !obj_vel_y,y
+    lda.l !gsu_in_3a,x
+    cmp.w #$8000
+    ror a
+    sta.w !obj_vel_z,y
+    plx
+    sep.b #$20
+    jsl.l GsuRecordVelocity
+    jsl.l RandomStepLong
+    and.b #$0F
+    sta.w !obj_4b,x
+    lda.w !obj_4b,x
+    clc
+    adc.b #$0A
+    sta.w !obj_4b,x
+
+; @routine 08:BBE2 ObjectChildFlying
+; WHAT IT DOES: A loose child's flight: synced from its record
+; (ObjectSyncFromRecord); with the parent's +$25 bit 4 and a contact
+; (RecordContactSummary bit 7, the sync's bit 0 clear) the code at
+; $08:D337. While its count +$4B runs it drops ($14 + its +$5F lower)
+; and may spawn (ObjectSpawnChanceD460); at 0 with the parent's +$25 bit
+; 4 it is released if the parent's record +$64 has bit 4, else may spawn;
+; at 0 otherwise it goes back (handler $08:BC73, ObjectChildReturn, at
+; once). Then its +$24 flags and +$36 = 3.
+; HOW: Byte tests through the data bank; the release is a jump.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; as the path
+; leaves it.
+%at($08BBE2)
+ObjectChildFlying:
+    jsl.l ObjectSyncFromRecord
+    and.b #$01
+    bne .lBC03
+    ldy.w !obj_06,x
+    lda.w !obj_25,y
+    and.b #$10
+    bne .lBBF8
+    jml.l .lBC03
+.lBBF8:
+    jsl.l RecordContactSummary
+    and.b #$80
+    beq .lBC03
+    jmp.w ObjectReleaseD337
+.lBC03:
+    ldy.w !obj_06,x
+    lda.w !obj_25,y
+    and.b #$10
+    bne .lBC11
+    jml.l .lBC1A
+.lBC11:
+    lda.w !obj_4b,x
+    bne .lBC1A
+    jml.l .lBC45
+.lBC1A:
+    lda.w !obj_4b,x
+    bne .lBC23
+    jml.l .lBC64
+.lBC23:
+    dec.w !obj_4b,x
+    rep.b #$20
+    lda.w !obj_5f,x
+    and.w #$00FF
+    eor.w #$FFFF
+    inc a
+    clc
+    adc.w #$FFEC
+    clc
+    adc.w !obj_pos_y,x
+    sta.w !obj_pos_y,x
+    sep.b #$20
+    jsr.w ObjectSpawnChanceD460
+    jmp.w ObjectChildFlags
+.lBC45:
+    phx
+    rep.b #$20
+    ldy.w !obj_06,x
+    lda.w !obj_22,y
+    tax
+    lda.l !gsu_rec_64,x
+    plx
+    and.w #$0010
+    sep.b #$20
+    beq .lBC5E
+    brl ObjectReleaseLong           ; not reached in the traces so far
+.lBC5E:
+    jsr.w ObjectSpawnChanceD460
+    jmp.w ObjectChildFlags
+.lBC64:
+    rep.b #$20
+    lda.w #$BC73
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+
+; @routine 08:BC73 ObjectChildReturn
+; WHAT IT DOES: A loose child going back: its velocity from its parent's
+; record (ObjectVelocityFromRecordOf); its position a step (a quarter, at
+; least 4: ApproachQuarterMin4) toward its place on the parent's record
+; (+$1E + $4A, +$20 + $4C + $FFEC - its +$5F, +$22 + $4E, its turn by
+; ObjectTurnFromRecord), moved (ObjectApplyVelocity) and rebucketed; once
+; the parent's +$25 bit 2 is clear it is back (+$22 = +$27, handler
+; $08:BB2E). Then its +$24 flags and +$36 = 3.
+; HOW: The target kept in direct page $04, $0A and $05F2.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte 3.
+%at($08BC73)
+ObjectChildReturn:
+    ldy.w !obj_06,x
+    jsl.l ObjectVelocityFromRecordOf
+    rep.b #$20
+    phx
+    lda.w !obj_27,x
+    txy
+    tax
+    lda.l !gsu_rec_1e,x
+    clc
+    adc.l !gsu_speeds,x
+    sta.b !dp_04
+    lda.w !obj_5f,y
+    and.w #$00FF
+    eor.w #$FFFF
+    inc a
+    clc
+    adc.w #$FFEC
+    clc
+    adc.l !gsu_in_20,x
+    clc
+    adc.l !gsu_speeds+2,x
+    sta.b !actor_0a
+    lda.l !gsu_in_22,x
+    clc
+    adc.l !gsu_rec_4e,x
+    sta.w !rot_z
+    jsr.w ObjectTurnFromRecord
+    plx
+    sep.b #$20
+    ldy.w !obj_06,x
+    rep.b #$20
+    lda.w !obj_pos_x,x
+    sta.b !scale_scratch
+    lda.b !dp_04
+    jsl.l ApproachQuarterMin4
+    sta.w !obj_pos_x,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_y,x
+    sta.b !scale_scratch
+    lda.b !actor_0a
+    jsl.l ApproachQuarterMin4
+    sta.w !obj_pos_y,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_z,x
+    sta.b !scale_scratch
+    lda.w !rot_z
+    jsl.l ApproachQuarterMin4
+    sta.w !obj_pos_z,x
+    sep.b #$20
+    jsl.l ObjectApplyVelocity
+    jsl.l ObjectRebucket
+    lda.w !obj_25,y
+    and.b #$04
+    beq ObjectChildBack
+    jml.l ObjectChildFlags
+ObjectChildBack:
+    rep.b #$20
+    lda.w !obj_27,x
+    sta.w !obj_22,x
+    sep.b #$20
+    rep.b #$20
+    lda.w #$BB2E
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+    jmp.w ObjectChildFlags
+
+; @routine 08:BD22 ObjectChildFollow
+; WHAT IT DOES: Keeps object X (a child of +$06) on its parent: rebucketed;
+; when the parent's record has flag $0400, its own record gets $0480 and
+; its +$24 bit 5, and nothing more. Otherwise its +$24 bit 5 and its
+; record's $0480 are cleared; unless the parent's +$24 has bit 6 or its
+; record's +$64 has neither bit 0 nor 1, and when its own record's +$46
+; has bits 0 and 4: by its record's +$2C (bit 7, bit 13, bit 11, bit 12,
+; bits 5-6) or, failing those, the parent's +$40 bit 11 or its +$46 bit 5,
+; a new handler for it ($D1F7, $D249, $D39F, $D2CF; $D33F or $D303 by
+; speed; $D3D3) when it moves fast enough (|+$2E| + |+$32| >= $64, where
+; asked) and the code at $08:D1BF allows it (C). Then its position is its
+; record's (+$1E + $4A, +$20 + $4C + $FFEC - its +$5F, +$22 + $4E) and
+; its turn (ObjectTurnFromRecord).
+; HOW: 16-bit record reads at $70:0000 + +$22; the object kept on the
+; stack (PHX) and in Y.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; X = the object; Y
+; as the path leaves it.
+%at($08BD22)
+ObjectChildFollow:
+    phx
+    jsl.l ObjectRebucket
+    txy
+    rep.b #$20
+    lda.w !obj_06,x
+    tax
+    lda.w !obj_22,x
+    tax
+    lda.l !gsu_rec_flags,x
+    and.w #$0400
+    beq .lBD57
+    lda.w !obj_22,y
+    tax
+    lda.l !gsu_rec_flags,x
+    ora.w #$0480
+    sta.l !gsu_rec_flags,x
+    sep.b #$20
+    lda.w !obj_24,y
+    ora.b #$20
+    sta.w !obj_24,y
+    jmp.w .lBF90
+.lBD57:
+    tyx
+    sep.b #$20
+    lda.w !obj_24,x
+    and.b #$DF
+    sta.w !obj_24,x
+    phx
+    rep.b #$20
+    lda.w !obj_22,x
+    tax
+    lda.l !gsu_rec_flags,x
+    and.w #$FB7F
+    sta.l !gsu_rec_flags,x
+    tyx
+    lda.w !obj_06,x
+    tax
+    lda.w !obj_24,x
+    and.w #$0040
+    beq .lBD84
+    brl .lBF53
+.lBD84:
+    lda.w !obj_22,x
+    tax
+    lda.l !gsu_rec_40,x
+    sta.w !wram_1F4C
+    lda.l !gsu_rec_64,x
+    and.w #$0003
+    bne .lBD9B
+    brl .lBF53
+.lBD9B:
+    plx
+    phx
+    lda.w !obj_22,x
+    tax
+    lda.l !gsu_speed_44+2,x
+    bit.w #$0001
+    bne .lBDAD
+    brl .lBF53
+.lBDAD:
+    bit.w #$0010
+    bne .lBDB5
+    brl .lBF53
+.lBDB5:
+    lda.l !gsu_dest,x
+    bit.w #$0080
+    beq .lBDC1
+    brl .lBEEF
+.lBDC1:
+    bit.w #$2000
+    beq .lBDC9
+    brl .lBEB2
+.lBDC9:
+    bit.w #$0800
+    beq .lBDD1
+    brl .lBE38                      ; not reached in the traces so far
+.lBDD1:
+    bit.w #$1000
+    beq .lBDD9
+    brl .lBDFB
+.lBDD9:
+    bit.w #$0060
+    beq .lBDE1
+    brl .lBE75
+.lBDE1:
+    lda.w !wram_1F4C
+    bit.w #$0800
+    beq .lBDEC
+    brl .lBF3F
+.lBDEC:
+    lda.l !gsu_speed_44+2,x
+    bit.w #$0020
+    beq .lBDF8
+    brl .lBF3F
+.lBDF8:
+    jmp.w .lBF53
+.lBDFB:
+    lda.l !gsu_in_2e,x
+    bpl .lBE05
+    eor.w #$FFFF
+    inc a
+.lBE05:
+    sta.w !wram_1F2B
+    lda.l !gsu_rec_vel_z,x
+    bpl .lBE12
+    eor.w #$FFFF
+    inc a
+.lBE12:
+    clc
+    adc.w !wram_1F2B
+    cmp.w #$0064
+    bpl .lBE1E
+    brl .lBF53
+.lBE1E:
+    jsr.w ObjectChildD1BF
+    bcs .lBE26
+    brl .lBF53
+.lBE26:
+    rep.b #$20
+    lda.w #$D1F7
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    jmp.w .lBF53
+.lBE38:
+    lda.l !gsu_in_2e,x              ; not reached in the traces so far
+    bpl .lBE42
+    eor.w #$FFFF
+    inc a
+.lBE42:
+    sta.w !wram_1F2B
+    lda.l !gsu_rec_vel_z,x
+    bpl .lBE4F
+    eor.w #$FFFF
+    inc a
+.lBE4F:
+    clc
+    adc.w !wram_1F2B
+    cmp.w #$0064
+    bpl .lBE5B
+    brl .lBF53
+.lBE5B:
+    jsr.w ObjectChildD1BF
+    bcs .lBE63
+    brl .lBF53
+.lBE63:
+    rep.b #$20
+    lda.w #$D249
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    jmp.w .lBF53
+.lBE75:
+    lda.l !gsu_in_2e,x
+    bpl .lBE7F
+    eor.w #$FFFF
+    inc a
+.lBE7F:
+    sta.w !wram_1F2B
+    lda.l !gsu_rec_vel_z,x
+    bpl .lBE8C
+    eor.w #$FFFF
+    inc a
+.lBE8C:
+    clc
+    adc.w !wram_1F2B
+    cmp.w #$0064
+    bpl .lBE98
+    brl .lBF53
+.lBE98:
+    jsr.w ObjectChildD1BF
+    bcs .lBEA0
+    brl .lBF53
+.lBEA0:
+    rep.b #$20
+    lda.w #$D39F
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    jmp.w .lBF53
+.lBEB2:
+    lda.l !gsu_in_2e,x
+    bpl .lBEBC
+    eor.w #$FFFF
+    inc a
+.lBEBC:
+    sta.w !wram_1F2B
+    lda.l !gsu_rec_vel_z,x
+    bpl .lBEC9
+    eor.w #$FFFF
+    inc a
+.lBEC9:
+    clc
+    adc.w !wram_1F2B
+    cmp.w #$0064
+    bpl .lBED5
+    brl .lBF53
+.lBED5:
+    jsr.w ObjectChildD1BF
+    bcs .lBEDD
+    brl .lBF53
+.lBEDD:
+    rep.b #$20
+    lda.w #$D2CF
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    jmp.w .lBF53
+.lBEEF:
+    jsr.w ObjectChildD1BF
+    bcc .lBF53
+    rep.b #$20
+    lda.l !gsu_in_2e,x
+    bpl .lBF00
+    eor.w #$FFFF
+    inc a
+.lBF00:
+    sta.w !wram_1F2B
+    lda.l !gsu_rec_vel_z,x
+    bpl .lBF0D
+    eor.w #$FFFF
+    inc a
+.lBF0D:
+    clc
+    adc.w !wram_1F2B
+    cmp.w #$0064
+    bpl .lBF19
+    brl .lBF2C
+.lBF19:
+    sep.b #$20
+    rep.b #$20
+    lda.w #$D33F
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    bra .lBF53
+.lBF2C:
+    sep.b #$20
+    rep.b #$20
+    lda.w #$D303
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    bra .lBF53
+.lBF3F:
+    jsr.w ObjectChildD1BF
+    bcc .lBF53
+    rep.b #$20
+    lda.w #$D3D3
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+.lBF53:
+    ply
+    rep.b #$20
+    lda.w !obj_22,y
+    tax
+    lda.l !gsu_rec_1e,x
+    clc
+    adc.l !gsu_speeds,x
+    sta.w !obj_pos_x,y
+    lda.w !obj_5f,y
+    and.w #$00FF
+    eor.w #$FFFF
+    inc a
+    clc
+    adc.w #$FFEC
+    clc
+    adc.l !gsu_in_20,x
+    clc
+    adc.l !gsu_speeds+2,x
+    sta.w !obj_pos_y,y
+    lda.l !gsu_in_22,x
+    clc
+    adc.l !gsu_rec_4e,x
+    sta.w !obj_pos_z,y
+    jsr.w ObjectTurnFromRecord
+.lBF90:
+    sep.b #$20
+    plx
+    rts
