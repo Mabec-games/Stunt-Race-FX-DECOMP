@@ -384,3 +384,4 @@ DemoScripts = $038004                           ; 03:8004, the attract demos' sc
 !records_columns_all = $07D8EB                ; RecordsCharOffsetAll: eight bytes
 ObjectCarCD7E = $08CD7E                         ; 08:CD7E, the pace car step's tail (not filed yet)
 PlayerCarA034 = $08A034                         ; 08:A034, a car's crash (not filed yet)
+CameraDirector8F03 = $088F03                    ; 08:8F03, the replay camera's set-up (not filed yet)

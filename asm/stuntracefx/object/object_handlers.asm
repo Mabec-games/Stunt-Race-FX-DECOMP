@@ -4733,3 +4733,624 @@ CameraFollowLink:
     plx
     sep.b #$20
     rtl
+
+; @routine 08:8A59 CameraDirectorFixedStart
+; WHAT IT DOES: The replay camera fixed: handler $08:8A75
+; (CameraDirectorFixed), mode 2; then its first frame.
+; HOW: Falls into CameraDirectorFixed. Not reached in the traces so far.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as CameraDirectorFixed.
+%at($088A59)
+CameraDirectorFixedStart:
+    rep.b #$20                      ; not reached in the traces so far
+    lda.w #$8A75
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+    ldy.w !obj_link_w,x
+    rep.b #$20
+    lda.w #$0002
+    sta.w !bank0_base,y
+    sep.b #$20
+
+; @routine 08:8A75 CameraDirectorFixed
+; WHAT IT DOES: The fixed replay camera: the point's $04 = 0 and $06 =
+; $7D0; the point's step ($08:8EF9).
+; HOW: Two stores. Not reached in the traces so far.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte 3.
+%at($088A75)
+CameraDirectorFixed:
+    ldy.w !obj_link_w,x             ; not reached in the traces so far
+    lda.b #$00
+    sta.w !dp_04,y
+    rep.b #$20
+    lda.w #$07D0
+    sta.w !actor_06,y
+    sep.b #$20
+    jmp.w CameraDirectorTail
+
+; @routine 08:8A8A CameraNearestCar
+; WHAT IT DOES: Points the camera ($1A64) at the car nearest object X: on
+; its first frame ($04 = 0) $04 = 1 and mode bit 0 cleared; the distance
+; (half-sums of |dx|, |dy|, |dz| / 4) to the first car of the list at
+; $7E:FFAE, when below the camera's $06, becomes $06 and that car the
+; camera's target ($02) with object X's position at $08/$0A/$0C and mode
+; bit 0 set. +$36 = 3.
+; HOW: Only the list's first entry is looked at. With no car the code at
+; $08:8B55 runs with A 16-bit, as original code. Not reached in the traces
+; so far.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte 3.
+%at($088A8A)
+CameraNearestCar:
+    ldy.w #$1A64                    ; not reached in the traces so far
+    lda.w !dp_04,y
+    bne .l8AA4
+    lda.b #$01
+    sta.w !dp_04,y
+    rep.b #$20
+    lda.w !bank0_base,y
+    and.w #$FFFE
+    sta.w !bank0_base,y
+    sep.b #$20
+.l8AA4:
+    rep.b #$20
+    phx
+    lda.w !obj_pos_x,x
+    sta.w !wram_1F4C
+    lda.w !obj_pos_y,x
+    sta.w !wram_1F4E
+    lda.w !obj_pos_z,x
+    sta.w !wram_1F50
+    stz.w !wram_1F52
+    lda.w !actor_06,y
+    sta.w !wram_1F2D
+    ldx.w #$0000
+    lda.l !object_list_b,x
+    beq .l8B26
+    tay
+    lda.w !obj_pos_x,y
+    sec
+    sbc.w !wram_1F4C
+    bpl .l8AD9
+    eor.w #$FFFF
+    inc a
+.l8AD9:
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    sta.w !wram_1F2B
+    lda.w !obj_pos_y,y
+    sec
+    sbc.w !wram_1F4E
+    bpl .l8AF1
+    eor.w #$FFFF
+    inc a
+.l8AF1:
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    clc
+    adc.w !wram_1F2B
+    sta.w !wram_1F2B
+    lda.w !obj_pos_z,y
+    sec
+    sbc.w !wram_1F50
+    bpl .l8B0D
+    eor.w #$FFFF
+    inc a
+.l8B0D:
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    clc
+    adc.w !wram_1F2B
+    cmp.w !wram_1F2D
+    bpl .l8B24
+    sta.w !wram_1F2D
+    sty.w !wram_1F52
+.l8B24:
+    inx
+    inx
+.l8B26:
+    plx
+    ldy.w #$1A64
+    lda.w !wram_1F2D
+    sta.w !actor_06,y
+    lda.w !wram_1F52
+    beq .l8B55
+    sta.w !dp_02,y
+    lda.w !obj_pos_x,x
+    sta.w !dp_08,y
+    lda.w !obj_pos_y,x
+    sta.w !actor_0a,y
+    lda.w !obj_pos_z,x
+    sta.w !actor_0c,y
+    lda.w !bank0_base,y
+    ora.w #$0001
+    sta.w !bank0_base,y
+    sep.b #$20
+.l8B55:
+    lda.b #$03
+    sta.w !obj_36,x
+    rtl
+
+; @routine 08:8B5B CameraDirectorNext
+; WHAT IT DOES: The replay camera on the next entry of the course's camera
+; table at its place, $C8 up; handler $08:8D2D (CameraDirectorTrack), mode
+; 3, still; then tracking.
+; HOW: GsuTableEntryNext once. Not reached in the traces so far.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as CameraDirectorTrack.
+%at($088B5B)
+CameraDirectorNext:
+    rep.b #$20                      ; not reached in the traces so far
+    lda.w #$8D2D
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+    ldy.w !obj_link_w,x
+    rep.b #$20
+    lda.w #$0003
+    sta.w !bank0_base,y
+    sep.b #$20
+    phx
+    ldy.w !obj_06,x
+    rep.b #$20
+    lda.w !obj_22,y
+    tax
+    lda.l !gsu_rec_58,x
+    plx
+    jsl.l GsuTableEntryNext
+    sta.w !wram_1F2B
+    jsl.l GsuTableEntryTo1F4C
+    ldy.w !obj_link_w,x
+    lda.w !wram_1F4C
+    sta.w !dp_08,y
+    lda.w !wram_1F4E
+    clc
+    adc.w #$FF38
+    sta.w !actor_0a,y
+    lda.w !wram_1F50
+    sta.w !actor_0c,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0000
+    sta.w !obj_27,x
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0000
+    sta.w !obj_vel_x,x
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0000
+    sta.w !obj_vel_y,x
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0000
+    sta.w !obj_vel_z,x
+    sep.b #$20
+    jmp.w CameraDirectorTrack
+
+; @routine 08:8BD7 CameraDirectorHold
+; WHAT IT DOES: The replay camera held: this handler again, mode 3, the
+; point stepped twice (CameraFollowLink, then the tail at $08:8EF9).
+; HOW: Two CameraFollowLink calls.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte 3.
+%at($088BD7)
+CameraDirectorHold:
+    rep.b #$20
+    lda.w #$8BD7
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+    ldy.w !obj_link_w,x
+    rep.b #$20
+    lda.w #$0003
+    sta.w !bank0_base,y
+    sep.b #$20
+    jsl.l CameraFollowLink
+    jml.l CameraDirectorTail
+
+; @routine 08:8BFB CameraDirectorSkip3
+; WHAT IT DOES: The replay camera three entries on in the course's camera
+; table at that place + ($3E8, -$1F4, $3E8), then tracking
+; ($08:8CDA, CameraDirectorTrack).
+; HOW: GsuTableEntryNext three times.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as CameraDirectorTrack.
+%at($088BFB)
+CameraDirectorSkip3:
+    phx
+    ldy.w !obj_06,x
+    rep.b #$20
+    lda.w !obj_22,y
+    tax
+    lda.l !gsu_rec_58,x
+    plx
+    jsl.l GsuTableEntryNext
+    jsl.l GsuTableEntryNext
+    jsl.l GsuTableEntryNext
+    sta.w !wram_1F2B
+    jsl.l GsuTableEntryTo1F4C
+    ldy.w !obj_link_w,x
+    lda.w !wram_1F4C
+    clc
+    adc.w #$03E8
+    sta.w !dp_08,y
+    lda.w !wram_1F4E
+    clc
+    adc.w #$FE0C
+    sta.w !actor_0a,y
+    lda.w !wram_1F50
+    clc
+    adc.w #$03E8
+    sta.w !actor_0c,y
+    sep.b #$20
+    jmp.w CameraDirectorTrackStart
+
+; @routine 08:8C43 CameraDirectorSkip5
+; WHAT IT DOES: The replay camera five entries on, the point's $04 = that
+; entry, at its place + ($3E8, -$1F4, $3E8); then held
+; (CameraDirectorHold).
+; HOW: GsuTableEntryNext five times.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as CameraDirectorHold.
+%at($088C43)
+CameraDirectorSkip5:
+    phx
+    ldy.w !obj_06,x
+    rep.b #$20
+    lda.w !obj_22,y
+    tax
+    lda.l !gsu_rec_58,x
+    plx
+    jsl.l GsuTableEntryNext
+    jsl.l GsuTableEntryNext
+    jsl.l GsuTableEntryNext
+    jsl.l GsuTableEntryNext
+    jsl.l GsuTableEntryNext
+    sta.w !wram_1F2B
+    jsl.l GsuTableEntryTo1F4C
+    ldy.w !obj_link_w,x
+    lda.w !wram_1F2B
+    sta.w !dp_04,y
+    lda.w !wram_1F4C
+    clc
+    adc.w #$03E8
+    sta.w !dp_08,y
+    lda.w !wram_1F4E
+    clc
+    adc.w #$FE0C
+    sta.w !actor_0a,y
+    lda.w !wram_1F50
+    clc
+    adc.w #$03E8
+    sta.w !actor_0c,y
+    sep.b #$20
+    jmp.w CameraDirectorHold
+
+; @routine 08:8C99 CameraDirectorSkip2
+; WHAT IT DOES: As CameraDirectorSkip3 two entries on.
+; HOW: GsuTableEntryNext twice.
+; Entry: as CameraDirectorSkip3. Exit: as CameraDirectorSkip3.
+%at($088C99)
+CameraDirectorSkip2:
+    phx
+    ldy.w !obj_06,x
+    rep.b #$20
+    lda.w !obj_22,y
+    tax
+    lda.l !gsu_rec_58,x
+    plx
+    jsl.l GsuTableEntryNext
+    jsl.l GsuTableEntryNext
+    sta.w !wram_1F2B
+    jsl.l GsuTableEntryTo1F4C
+    ldy.w !obj_link_w,x
+    lda.w !wram_1F4C
+    clc
+    adc.w #$03E8
+    sta.w !dp_08,y
+    lda.w !wram_1F4E
+    clc
+    adc.w #$FE0C
+    sta.w !actor_0a,y
+    lda.w !wram_1F50
+    clc
+    adc.w #$03E8
+    sta.w !actor_0c,y
+    sep.b #$20
+CameraDirectorTrackStart:
+    rep.b #$20
+    lda.w #$8D2D
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+    ldy.w !obj_link_w,x
+    rep.b #$20
+    lda.w #$0003
+    sta.w !bank0_base,y
+    sep.b #$20
+    rep.b #$20
+    lda.l !fx_init_273c
+    and.w #$FFFE
+    sta.l !fx_init_273c
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0000
+    sta.w !obj_27,x
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0000
+    sta.w !obj_vel_x,x
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0000
+    sta.w !obj_vel_y,x
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0000
+    sta.w !obj_vel_z,x
+    sep.b #$20
+
+; @routine 08:8D2D CameraDirectorTrack
+; WHAT IT DOES: The replay camera on the course's camera table: when the
+; parent's record +$58 moves to a new entry (not 0, not the point's $04,
+; low two bits clear) the point's $04 = it, the camera ($08, $0A, $0C) at
+; the next entry's place + ($3E8, -$5DC, $3E8), +$27 = $18 and a velocity
+; a thirty-second of the way to the entry after; then while +$27 runs the
+; camera rises $19 a frame, and it moves by the velocity (X and Z; the Y
+; add is not stored); then the point's step ($08:8EF9).
+; HOW: GsuTableEntryNext and GsuTableEntryTo1F4C through the record's
+; table; 16-bit.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte 3.
+%at($088D2D)
+CameraDirectorTrack:
+    phx
+    ldy.w !obj_06,x
+    rep.b #$20
+    lda.w !obj_22,y
+    tax
+    lda.l !gsu_rec_58,x
+    plx
+    cmp.w #$0000
+    bne .l8D44
+    brl .l8DF4                      ; not reached in the traces so far
+.l8D44:
+    ldy.w !obj_link_w,x
+    cmp.w !dp_04,y
+    bne .l8D4F
+    brl .l8DF4
+.l8D4F:
+    bit.w #$0003
+    beq .l8D57
+    brl .l8DF4
+.l8D57:
+    sta.w !dp_04,y
+    jsl.l GsuTableEntryNext
+    sta.w !wram_1F2B
+    jsl.l GsuTableEntryTo1F4C
+    ldy.w !obj_link_w,x
+    lda.w !wram_1F4C
+    clc
+    adc.w #$03E8
+    sta.w !dp_08,y
+    lda.w !wram_1F4E
+    clc
+    adc.w #$FA24
+    sta.w !actor_0a,y
+    lda.w !wram_1F50
+    clc
+    adc.w #$03E8
+    sta.w !actor_0c,y
+    lda.w #$0018
+    sta.w !obj_27,x
+    lda.w !wram_1F2B
+    jsl.l GsuTableEntryNext
+    jsl.l GsuTableEntryTo1F4C
+    ldy.w !obj_link_w,x
+    lda.w !wram_1F4C
+    sec
+    sbc.w !dp_08,y
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    sta.w !obj_vel_x,x
+    lda.w !wram_1F4E
+    sec
+    sbc.w !actor_0a,y
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    sta.w !obj_vel_y,x
+    lda.w !wram_1F50
+    sec
+    sbc.w !actor_0c,y
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    sta.w !obj_vel_z,x
+.l8DF4:
+    lda.w !obj_27,x
+    beq .l8E0A
+    dec a
+    sta.w !obj_27,x
+    ldy.w !obj_link_w,x
+    lda.w !actor_0a,y
+    clc
+    adc.w #$0019
+    sta.w !actor_0a,y
+.l8E0A:
+    lda.w !dp_08,y
+    clc
+    adc.w !obj_vel_x,x
+    sta.w !dp_08,y
+    lda.w !actor_0a,y
+    clc
+    adc.w !obj_vel_y,x
+    lda.w !actor_0c,y
+    clc
+    adc.w !obj_vel_z,x
+    sta.w !actor_0c,y
+    sep.b #$20
+    jmp.w CameraDirectorTail
+
+; @routine 08:8E2A CameraDirectorPathStart
+; WHAT IT DOES: The replay camera starts on path $87F1 (ObjectPathStart):
+; handler $08:8E51 (CameraDirectorPath), mode 1, the point stepped once;
+; then its first frame.
+; HOW: Falls into CameraDirectorPath.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as CameraDirectorPath.
+%at($088E2A)
+CameraDirectorPathStart:
+    rep.b #$20
+    lda.w #$8E51
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+    ldy.w !obj_link_w,x
+    rep.b #$20
+    lda.w #$0001
+    sta.w !bank0_base,y
+    sep.b #$20
+    ldy.w #$87F1
+    jsl.l ObjectPathStart
+    jsl.l CameraFollowLink
+
+; @routine 08:8E51 CameraDirectorPath
+; WHAT IT DOES: The replay camera along its path (CameraApproachTarget);
+; at the path's end it goes to the table ($08:8EC1), else the point's
+; step.
+; HOW: By C from CameraApproachTarget.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as the path leaves it.
+%at($088E51)
+CameraDirectorPath:
+    jsl.l CameraApproachTarget
+    bcs .l8E5A
+    brl CameraDirectorTail
+.l8E5A:
+    jmp.w CameraDirectorTableStart
+
+; @routine 08:8E5D CameraDirectorBehind
+; WHAT IT DOES: The replay camera behind the car: mode $21, target offset
+; (0, -$8C, -$1F4), the code at $08:8F03, handler $08:8EA2
+; (CameraDirectorWait) with count $50; then its first frame.
+; HOW: Falls into CameraDirectorWait; $08:8F03 runs as original code.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as CameraDirectorWait.
+%at($088E5D)
+CameraDirectorBehind:
+    ldy.w !obj_link_w,x
+    rep.b #$20
+    lda.w #$0021
+    sta.w !bank0_base,y
+    sep.b #$20
+    ldy.w !obj_link_w,x
+    rep.b #$20
+    lda.w #$0000
+    sta.w !actor_20,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$FF74
+    sta.w !actor_22,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$FE0C
+    sta.w !actor_palette,y
+    sep.b #$20
+    jsr.w CameraDirector8F03
+    rep.b #$20
+    lda.w #$8EA2
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+    lda.b #$50
+    sta.w !obj_48,x
+
+; @routine 08:8EA2 CameraDirectorWait
+; WHAT IT DOES: The replay camera waits out its count +$48 (stepping the
+; point), then goes to the table ($08:8EC1).
+; HOW: DEC of the count.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as the path leaves it.
+%at($088EA2)
+CameraDirectorWait:
+    lda.w !obj_48,x
+    bne .l8EAB
+    jml.l CameraDirectorTableStart
+.l8EAB:
+    dec.w !obj_48,x
+    jmp.w CameraDirectorTail
+
+; @routine 08:8EB1 CameraDirectorReset
+; WHAT IT DOES: The replay camera in mode $655, the code at $08:8F03,
+; then to the table ($08:8EC1).
+; HOW: As CameraDirectorBehind. Not reached in the traces so far.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as CameraDirectorTable.
+%at($088EB1)
+CameraDirectorReset:
+    ldy.w !obj_link_w,x             ; not reached in the traces so far
+    rep.b #$20
+    lda.w #$0655
+    sta.w !bank0_base,y
+    sep.b #$20
+    jsr.w CameraDirector8F03
+CameraDirectorTableStart:
+    ldy.w !obj_link_w,x
+    rep.b #$20
+    lda.w #$0000
+    sta.w !dp_04,y
+    sep.b #$20
+    ldy.w !obj_link_w,x
+    lda.b #$00
+    sta.w !dp_34,y
+    lda.w !obj_25,x
+    and.b #$FE
+    sta.w !obj_25,x
+    lda.w !obj_25,x
+    and.b #$FD
+    sta.w !obj_25,x
+    rep.b #$20
+    lda.w #$8EF5
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+
+; @routine 08:8EF5 CameraDirectorTable
+; WHAT IT DOES: The replay camera from the camera point table
+; (CameraPointFromTable), then the point's step ($08:8EF9).
+; HOW: Two calls.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte 3.
+%at($088EF5)
+CameraDirectorTable:
+    jsl.l CameraPointFromTable
+CameraDirectorTail:
+    jsl.l CameraFollowLink
+    lda.b #$03
+    sta.w !obj_36,x
+    rtl

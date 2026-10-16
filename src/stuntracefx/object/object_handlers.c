@@ -1827,8 +1827,13 @@ void abi_ObjectAttachSpawn(void)
                 wr16(b | (uint16_t)(0x2032 + cpu.y), sext_word(0x098094 + cpu.x));
                 cpu.p |= P_M;
             }
-            cpu.x = (uint16_t)(cpu.x + 5);
+            cpu.p &= (uint8_t)~P_M;
+            op_txa16();
+            op_add16(0x0005);
+            op_tax16();
+            cpu.p |= P_M;
             n--;
+            lda8(n);
         } while (n);
     }
     cpu.x = rd16(b | 0x1F4C);
@@ -2403,6 +2408,13 @@ static void latch(uint16_t bit, int on, AbiFn snd)
     cpu.p = nz16(cpu.p, w);
 }
 
+/* CMP #k (8-bit) on v: N, Z, C set; whether v - k is negative. */
+static int cmp8n(uint8_t v, uint8_t k)
+{
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - k)) & ~P_C) | (v >= k ? P_C : 0));
+    return ((uint8_t)(v - k) & 0x80) != 0;
+}
+
 /* CMP #k / BMI on A (16-bit): whether A - k is negative. */
 static int below16(uint16_t a, uint16_t k)
 {
@@ -2518,16 +2530,16 @@ void abi_PlayerCarEvents(void)
     op_lda8(0x700057 + cpu.x);
     v = (uint8_t)cpu.a;
     wr8(b | 0x1F5E, v);
-    if (!(v & 0x80)) {
-        if ((uint8_t)(v - 0x01) & 0x80)
+    if (!cmp8n(v, 0x00)) {
+        if (cmp8n(v, 0x01))
             abi_PlayerStopHeldSound();
-        else if ((uint8_t)(v - 0x02) & 0x80)
+        else if (cmp8n(v, 0x02))
             abi_PlayerHoldSound32();
-        else if ((uint8_t)(v - 0x04) & 0x80)
+        else if (cmp8n(v, 0x04))
             abi_PlayerHoldSound33();
-        else if ((uint8_t)(v - 0x05) & 0x80)
+        else if (cmp8n(v, 0x05))
             abi_PlayerHoldSound34();
-        else if ((uint8_t)(v - 0x64) & 0x80)
+        else if (cmp8n(v, 0x64))
             abi_PlayerHoldSound35();
     }
     lda8(v);
@@ -2655,7 +2667,8 @@ void abi_PlayerCarEvents(void)
         if (cpu.a & 0x0400) {
             cpu.p |= P_M;
             abi_RandomStepLong();
-            if ((uint8_t)cpu.a >= 0xF2) {
+            cmp8n((uint8_t)cpu.a, 0xF2);
+            if (cpu.p & P_C) {
                 x = cpu.x;
                 cpu.x = rd16(b | 0x1F18);
                 abi_ObjectSpawnTrail();
@@ -2690,7 +2703,8 @@ void abi_PlayerCarEvents(void)
         lda8((uint8_t)(rd8(b | (uint16_t)(0x2025 + cpu.x)) & 0x04));
         if (!(uint8_t)cpu.a) {
             abi_RandomStepLong();
-            if ((uint8_t)cpu.a >= 0x4C)
+            cmp8n((uint8_t)cpu.a, 0x4C);
+            if (cpu.p & P_C)
                 abi_ObjectSpawnD460UnlessFlag();
         }
         cpu.x = x;
@@ -3740,4 +3754,508 @@ void abi_CameraFollowLink(void)
     abi_ObjectFaceTied();
     cpu.x = x;
     cpu.p = (uint8_t)(nz16(cpu.p, x) | P_M);
+}
+
+void abi_GsuTableEntryNext(void);
+void abi_GsuTableEntryTo1F4C(void);
+void abi_ObjectPathStart(void);
+
+/* $08:8EF9: the camera point steps (CameraFollowLink), +$36 = 3. */
+static void director_tail(void)
+{
+    abi_CameraFollowLink();
+    lda8(0x03);
+    wr8(db() | (uint16_t)(0x2036 + cpu.x), 0x03);
+}
+
+/* LDY +$4F,X; REP #$20; LDA #v; STA $0000,Y; SEP #$20: the camera
+   point's mode. */
+static void director_mode(uint16_t v)
+{
+    uint32_t b = db();
+
+    cpu.y = rd16(b | (uint16_t)(0x204F + cpu.x));
+    sta16_imm(b | cpu.y, v);
+}
+
+/* PHX, the parent's (+$06) record +$58, PLX, then GsuTableEntryNext n
+   times: an entry of the course's camera table. */
+static void director_entry(unsigned n)
+{
+    uint32_t b = db();
+    uint16_t x = cpu.x;
+
+    cpu.y = rd16(b | (uint16_t)(0x2006 + cpu.x));
+    cpu.p &= (uint8_t)~P_M;
+    cpu.x = rd16(b | (uint16_t)(0x2022 + cpu.y));
+    op_lda16(0x700058 + cpu.x);
+    cpu.x = x;
+    while (n--)
+        abi_GsuTableEntryNext();
+}
+
+/* STA $1F2B, GsuTableEntryTo1F4C, then the point's $08/$0A/$0C =
+   $1F4C/$1F4E/$1F50 plus (dx, dy, dz). */
+static void director_place(uint16_t dx, uint16_t dy, uint16_t dz)
+{
+    uint32_t b = db();
+
+    wr16(b | 0x1F2B, cpu.a);
+    abi_GsuTableEntryTo1F4C();
+    cpu.y = rd16(b | (uint16_t)(0x204F + cpu.x));
+    op_lda16(b | 0x1F4C);
+    if (dx)
+        op_add16(dx);
+    wr16(b | (uint16_t)(0x0008 + cpu.y), cpu.a);
+    op_lda16(b | 0x1F4E);
+    op_add16(dy);
+    wr16(b | (uint16_t)(0x000A + cpu.y), cpu.a);
+    op_lda16(b | 0x1F50);
+    if (dz)
+        op_add16(dz);
+    wr16(b | (uint16_t)(0x000C + cpu.y), cpu.a);
+}
+
+/* +$27 and the velocity cleared (four 16-bit stores). */
+static void director_still(void)
+{
+    uint32_t b = db();
+
+    sta16_imm(b | (uint16_t)(0x2027 + cpu.x), 0x0000);
+    sta16_imm(b | (uint16_t)(0x202E + cpu.x), 0x0000);
+    sta16_imm(b | (uint16_t)(0x2030 + cpu.x), 0x0000);
+    sta16_imm(b | (uint16_t)(0x2032 + cpu.x), 0x0000);
+}
+
+/* (A - the point's word) >> 5, arithmetic (CMP #$8000, ROR A five
+   times). */
+static uint16_t director_slope(uint16_t a)
+{
+    int i;
+
+    for (i = 0; i < 5; i++)
+        a = (uint16_t)((a >> 1) | (a & 0x8000));
+    cpu.a = a;
+    cpu.p = nz16(cpu.p, a);
+    return a;
+}
+
+/*
+ * @routine 08:8D2D CameraDirectorTrack
+ * WHAT IT DOES: The replay camera on the course's camera table: when the
+ * parent's record +$58 moves to a new entry (not 0, not the point's $04,
+ * low two bits clear) the point's $04 = it, the camera ($08, $0A, $0C) at
+ * the next entry's place + ($3E8, -$5DC, $3E8), +$27 = $18 and a velocity
+ * a thirty-second of the way to the entry after; then while +$27 runs the
+ * camera rises $19 a frame, and it moves by the velocity (X and Z; the Y
+ * add is not stored); then the point's step ($08:8EF9).
+ * HOW: GsuTableEntryNext and GsuTableEntryTo1F4C through the record's
+ * table; 16-bit.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte 3.
+ */
+void abi_CameraDirectorTrack(void)
+{
+    uint32_t b = db();
+    uint16_t e;
+
+    director_entry(0);
+    e = cpu.a;
+    op_cmp16(0x0000);
+    if (e) {
+        cpu.y = rd16(b | (uint16_t)(0x204F + cpu.x));
+        op_cmp16(rd16(b | (uint16_t)(0x0004 + cpu.y)));
+        if (!(cpu.p & P_Z) && !(e & 0x0003)) {
+            wr16(b | (uint16_t)(0x0004 + cpu.y), e);
+            abi_GsuTableEntryNext();
+            director_place(0x03E8, 0xFA24, 0x03E8);
+            op_lda16_imm(0x0018);
+            wr16(b | (uint16_t)(0x2027 + cpu.x), 0x0018);
+            op_lda16(b | 0x1F2B);
+            abi_GsuTableEntryNext();
+            abi_GsuTableEntryTo1F4C();
+            cpu.y = rd16(b | (uint16_t)(0x204F + cpu.x));
+            op_lda16(b | 0x1F4C);
+            op_sub16(rd16(b | (uint16_t)(0x0008 + cpu.y)));
+            wr16(b | (uint16_t)(0x202E + cpu.x), director_slope(cpu.a));
+            op_lda16(b | 0x1F4E);
+            op_sub16(rd16(b | (uint16_t)(0x000A + cpu.y)));
+            wr16(b | (uint16_t)(0x2030 + cpu.x), director_slope(cpu.a));
+            op_lda16(b | 0x1F50);
+            op_sub16(rd16(b | (uint16_t)(0x000C + cpu.y)));
+            wr16(b | (uint16_t)(0x2032 + cpu.x), director_slope(cpu.a));
+        }
+    }
+    /* $08:8DF4 */
+    op_lda16(b | (uint16_t)(0x2027 + cpu.x));
+    if (cpu.a) {
+        wr16(b | (uint16_t)(0x2027 + cpu.x), (uint16_t)(cpu.a - 1));
+        cpu.y = rd16(b | (uint16_t)(0x204F + cpu.x));
+        op_lda16(b | (uint16_t)(0x000A + cpu.y));
+        op_add16(0x0019);
+        wr16(b | (uint16_t)(0x000A + cpu.y), cpu.a);
+    }
+    op_lda16(b | (uint16_t)(0x0008 + cpu.y));
+    op_add16(rd16(b | (uint16_t)(0x202E + cpu.x)));
+    wr16(b | (uint16_t)(0x0008 + cpu.y), cpu.a);
+    op_lda16(b | (uint16_t)(0x000A + cpu.y));
+    op_add16(rd16(b | (uint16_t)(0x2030 + cpu.x)));
+    op_lda16(b | (uint16_t)(0x000C + cpu.y));
+    op_add16(rd16(b | (uint16_t)(0x2032 + cpu.x)));
+    wr16(b | (uint16_t)(0x000C + cpu.y), cpu.a);
+    cpu.p |= P_M;
+    director_tail();
+}
+
+/* $08:8CDA: handler $08:8D2D (CameraDirectorTrack), mode 3, $70:273C bit 0
+   cleared, still; then its first frame. */
+static void director_track_start(void)
+{
+    set_handler(cpu.x, 0x8D2D);
+    director_mode(0x0003);
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(0x70273C);
+    op_and16(0xFFFE);
+    wr16(0x70273C, cpu.a);
+    cpu.p |= P_M;
+    director_still();
+    abi_CameraDirectorTrack();
+}
+
+/*
+ * @routine 08:8BD7 CameraDirectorHold
+ * WHAT IT DOES: The replay camera held: this handler again, mode 3, the
+ * point stepped twice (CameraFollowLink, then the tail at $08:8EF9).
+ * HOW: Two CameraFollowLink calls.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte 3.
+ */
+void abi_CameraDirectorHold(void)
+{
+    set_handler(cpu.x, 0x8BD7);
+    director_mode(0x0003);
+    abi_CameraFollowLink();
+    director_tail();
+}
+
+/*
+ * @routine 08:8BFB CameraDirectorSkip3
+ * WHAT IT DOES: The replay camera three entries on in the course's camera
+ * table at that place + ($3E8, -$1F4, $3E8), then tracking
+ * ($08:8CDA, CameraDirectorTrack).
+ * HOW: GsuTableEntryNext three times.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as CameraDirectorTrack.
+ */
+void abi_CameraDirectorSkip3(void)
+{
+    director_entry(3);
+    director_place(0x03E8, 0xFE0C, 0x03E8);
+    cpu.p |= P_M;
+    director_track_start();
+}
+
+/*
+ * @routine 08:8C43 CameraDirectorSkip5
+ * WHAT IT DOES: The replay camera five entries on, the point's $04 = that
+ * entry, at its place + ($3E8, -$1F4, $3E8); then held
+ * (CameraDirectorHold).
+ * HOW: GsuTableEntryNext five times.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as CameraDirectorHold.
+ */
+void abi_CameraDirectorSkip5(void)
+{
+    uint32_t b = db();
+
+    director_entry(5);
+    wr16(b | 0x1F2B, cpu.a);
+    abi_GsuTableEntryTo1F4C();
+    cpu.y = rd16(b | (uint16_t)(0x204F + cpu.x));
+    op_lda16(b | 0x1F2B);
+    wr16(b | (uint16_t)(0x0004 + cpu.y), cpu.a);
+    op_lda16(b | 0x1F4C);
+    op_add16(0x03E8);
+    wr16(b | (uint16_t)(0x0008 + cpu.y), cpu.a);
+    op_lda16(b | 0x1F4E);
+    op_add16(0xFE0C);
+    wr16(b | (uint16_t)(0x000A + cpu.y), cpu.a);
+    op_lda16(b | 0x1F50);
+    op_add16(0x03E8);
+    wr16(b | (uint16_t)(0x000C + cpu.y), cpu.a);
+    cpu.p |= P_M;
+    abi_CameraDirectorHold();
+}
+
+/*
+ * @routine 08:8C99 CameraDirectorSkip2
+ * WHAT IT DOES: As CameraDirectorSkip3 two entries on.
+ * HOW: GsuTableEntryNext twice.
+ * Entry: as CameraDirectorSkip3. Exit: as CameraDirectorSkip3.
+ */
+void abi_CameraDirectorSkip2(void)
+{
+    director_entry(2);
+    director_place(0x03E8, 0xFE0C, 0x03E8);
+    cpu.p |= P_M;
+    director_track_start();
+}
+
+/*
+ * @routine 08:8B5B CameraDirectorNext
+ * WHAT IT DOES: The replay camera on the next entry of the course's camera
+ * table at its place, $C8 up; handler $08:8D2D (CameraDirectorTrack), mode
+ * 3, still; then tracking.
+ * HOW: GsuTableEntryNext once. Not reached in the traces so far.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as CameraDirectorTrack.
+ */
+void abi_CameraDirectorNext(void)
+{
+    set_handler(cpu.x, 0x8D2D);
+    director_mode(0x0003);
+    director_entry(1);
+    director_place(0x0000, 0xFF38, 0x0000);
+    cpu.p |= P_M;
+    director_still();
+    abi_CameraDirectorTrack();
+}
+
+void abi_CameraDirectorFixed(void);
+
+/* $08:8EC1: the point's $04 = 0 and $34 = 0, +$25 bits 0 and 1 cleared,
+   handler $08:8EF5 (CameraDirectorTable); then its first frame. */
+void abi_CameraDirectorTable(void);
+
+static void director_table_start(void)
+{
+    uint32_t b = db();
+
+    cpu.y = rd16(b | (uint16_t)(0x204F + cpu.x));
+    sta16_imm(b | (uint16_t)(0x0004 + cpu.y), 0x0000);
+    cpu.y = rd16(b | (uint16_t)(0x204F + cpu.x));
+    lda8(0x00);
+    wr8(b | (uint16_t)(0x0034 + cpu.y), 0x00);
+    lda8((uint8_t)(rd8(b | (uint16_t)(0x2025 + cpu.x)) & 0xFE));
+    wr8(b | (uint16_t)(0x2025 + cpu.x), (uint8_t)cpu.a);
+    lda8((uint8_t)(rd8(b | (uint16_t)(0x2025 + cpu.x)) & 0xFD));
+    wr8(b | (uint16_t)(0x2025 + cpu.x), (uint8_t)cpu.a);
+    set_handler(cpu.x, 0x8EF5);
+    abi_CameraDirectorTable();
+}
+
+/*
+ * @routine 08:8EF5 CameraDirectorTable
+ * WHAT IT DOES: The replay camera from the camera point table
+ * (CameraPointFromTable), then the point's step ($08:8EF9).
+ * HOW: Two calls.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte 3.
+ */
+void abi_CameraDirectorTable(void)
+{
+    abi_CameraPointFromTable();
+    director_tail();
+}
+
+/*
+ * @routine 08:8E51 CameraDirectorPath
+ * WHAT IT DOES: The replay camera along its path (CameraApproachTarget);
+ * at the path's end it goes to the table ($08:8EC1), else the point's
+ * step.
+ * HOW: By C from CameraApproachTarget.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as the path leaves it.
+ */
+void abi_CameraDirectorPath(void)
+{
+    abi_CameraApproachTarget();
+    if (cpu.p & P_C) {
+        director_table_start();
+        return;
+    }
+    director_tail();
+}
+
+/*
+ * @routine 08:8E2A CameraDirectorPathStart
+ * WHAT IT DOES: The replay camera starts on path $87F1 (ObjectPathStart):
+ * handler $08:8E51 (CameraDirectorPath), mode 1, the point stepped once;
+ * then its first frame.
+ * HOW: Falls into CameraDirectorPath.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as CameraDirectorPath.
+ */
+void abi_CameraDirectorPathStart(void)
+{
+    set_handler(cpu.x, 0x8E51);
+    director_mode(0x0001);
+    cpu.y = 0x87F1;
+    cpu.p = nz16(cpu.p, 0x87F1);
+    abi_ObjectPathStart();
+    abi_CameraFollowLink();
+    abi_CameraDirectorPath();
+}
+
+/*
+ * @routine 08:8EA2 CameraDirectorWait
+ * WHAT IT DOES: The replay camera waits out its count +$48 (stepping the
+ * point), then goes to the table ($08:8EC1).
+ * HOW: DEC of the count.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as the path leaves it.
+ */
+void abi_CameraDirectorWait(void)
+{
+    uint32_t b = db();
+    uint8_t v;
+
+    op_lda8(b | (uint16_t)(0x2048 + cpu.x));
+    if (!(uint8_t)cpu.a) {
+        director_table_start();
+        return;
+    }
+    v = (uint8_t)(rd8(b | (uint16_t)(0x2048 + cpu.x)) - 1);
+    wr8(b | (uint16_t)(0x2048 + cpu.x), v);
+    cpu.p = nz8(cpu.p, v);
+    director_tail();
+}
+
+/*
+ * @routine 08:8E5D CameraDirectorBehind
+ * WHAT IT DOES: The replay camera behind the car: mode $21, target offset
+ * (0, -$8C, -$1F4), the code at $08:8F03, handler $08:8EA2
+ * (CameraDirectorWait) with count $50; then its first frame.
+ * HOW: Falls into CameraDirectorWait; $08:8F03 runs as original code.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as CameraDirectorWait.
+ */
+void abi_CameraDirectorBehind(void)
+{
+    uint32_t b = db();
+
+    director_mode(0x0021);
+    cpu.y = rd16(b | (uint16_t)(0x204F + cpu.x));
+    sta16_imm(b | (uint16_t)(0x0020 + cpu.y), 0x0000);
+    sta16_imm(b | (uint16_t)(0x0022 + cpu.y), 0xFF74);
+    sta16_imm(b | (uint16_t)(0x0024 + cpu.y), 0xFE0C);
+    call_routine(0x088F03, 0);
+    set_handler(cpu.x, 0x8EA2);
+    lda8(0x50);
+    wr8(b | (uint16_t)(0x2048 + cpu.x), 0x50);
+    abi_CameraDirectorWait();
+}
+
+/*
+ * @routine 08:8EB1 CameraDirectorReset
+ * WHAT IT DOES: The replay camera in mode $655, the code at $08:8F03,
+ * then to the table ($08:8EC1).
+ * HOW: As CameraDirectorBehind. Not reached in the traces so far.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as CameraDirectorTable.
+ */
+void abi_CameraDirectorReset(void)
+{
+    director_mode(0x0655);
+    call_routine(0x088F03, 0);
+    director_table_start();
+}
+
+/*
+ * @routine 08:8A59 CameraDirectorFixedStart
+ * WHAT IT DOES: The replay camera fixed: handler $08:8A75
+ * (CameraDirectorFixed), mode 2; then its first frame.
+ * HOW: Falls into CameraDirectorFixed. Not reached in the traces so far.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as CameraDirectorFixed.
+ */
+void abi_CameraDirectorFixedStart(void)
+{
+    set_handler(cpu.x, 0x8A75);
+    director_mode(0x0002);
+    abi_CameraDirectorFixed();
+}
+
+/*
+ * @routine 08:8A75 CameraDirectorFixed
+ * WHAT IT DOES: The fixed replay camera: the point's $04 = 0 and $06 =
+ * $7D0; the point's step ($08:8EF9).
+ * HOW: Two stores. Not reached in the traces so far.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte 3.
+ */
+void abi_CameraDirectorFixed(void)
+{
+    uint32_t b = db();
+
+    cpu.y = rd16(b | (uint16_t)(0x204F + cpu.x));
+    lda8(0x00);
+    wr8(b | (uint16_t)(0x0004 + cpu.y), 0x00);
+    sta16_imm(b | (uint16_t)(0x0006 + cpu.y), 0x07D0);
+    director_tail();
+}
+
+/*
+ * @routine 08:8A8A CameraNearestCar
+ * WHAT IT DOES: Points the camera ($1A64) at the car nearest object X: on
+ * its first frame ($04 = 0) $04 = 1 and mode bit 0 cleared; the distance
+ * (half-sums of |dx|, |dy|, |dz| / 4) to the first car of the list at
+ * $7E:FFAE, when below the camera's $06, becomes $06 and that car the
+ * camera's target ($02) with object X's position at $08/$0A/$0C and mode
+ * bit 0 set. +$36 = 3.
+ * HOW: Only the list's first entry is looked at. With no car the code at
+ * $08:8B55 runs with A 16-bit, as original code. Not reached in the traces
+ * so far.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte 3.
+ */
+void abi_CameraNearestCar(void)
+{
+    uint32_t b = db();
+    uint16_t x = cpu.x, p = 0x1A64, car, d, t;
+
+    cpu.y = p;
+    op_lda8(b | (uint16_t)(0x0004 + p));
+    if (!(uint8_t)cpu.a) {
+        lda8(0x01);
+        wr8(b | (uint16_t)(0x0004 + p), 0x01);
+        cpu.p &= (uint8_t)~P_M;
+        op_lda16(b | p);
+        op_and16(0xFFFE);
+        wr16(b | p, cpu.a);
+        cpu.p |= P_M;
+    }
+    cpu.p &= (uint8_t)~P_M;
+    wr16(b | 0x1F4C, rd16(b | (uint16_t)(0x200C + x)));
+    wr16(b | 0x1F4E, rd16(b | (uint16_t)(0x200E + x)));
+    wr16(b | 0x1F50, rd16(b | (uint16_t)(0x2010 + x)));
+    wr16(b | 0x1F52, 0x0000);
+    op_lda16(b | (uint16_t)(0x0006 + p));
+    wr16(b | 0x1F2D, cpu.a);
+    op_lda16(0x7EFFAE);
+    if (cpu.a) {
+        car = cpu.a;
+        cpu.y = car;
+        d = abs16((uint16_t)(rd16(b | (uint16_t)(0x200C + car)) - rd16(b | 0x1F4C)));
+        d = (uint16_t)((d >> 2) | ((d & 0x8000) ? 0xC000 : 0));
+        wr16(b | 0x1F2B, d);
+        t = abs16((uint16_t)(rd16(b | (uint16_t)(0x200E + car)) - rd16(b | 0x1F4E)));
+        t = (uint16_t)((t >> 2) | ((t & 0x8000) ? 0xC000 : 0));
+        t = (uint16_t)(t + rd16(b | 0x1F2B));
+        wr16(b | 0x1F2B, t);
+        d = abs16((uint16_t)(rd16(b | (uint16_t)(0x2010 + car)) - rd16(b | 0x1F50)));
+        d = (uint16_t)((d >> 2) | ((d & 0x8000) ? 0xC000 : 0));
+        d = (uint16_t)(d + rd16(b | 0x1F2B));
+        cpu.a = d;
+        op_cmp16(rd16(b | 0x1F2D));
+        if (cpu.p & P_N) {
+            wr16(b | 0x1F2D, d);
+            wr16(b | 0x1F52, car);
+        }
+    }
+    cpu.x = x;
+    cpu.y = p;
+    op_lda16(b | 0x1F2D);
+    wr16(b | (uint16_t)(0x0006 + p), cpu.a);
+    op_lda16(b | 0x1F52);
+    if (!cpu.a) {
+        jump_routine(0x088B55);
+        return;
+    }
+    wr16(b | (uint16_t)(0x0002 + p), cpu.a);
+    wr16(b | (uint16_t)(0x0008 + p), rd16(b | (uint16_t)(0x200C + x)));
+    wr16(b | (uint16_t)(0x000A + p), rd16(b | (uint16_t)(0x200E + x)));
+    wr16(b | (uint16_t)(0x000C + p), rd16(b | (uint16_t)(0x2010 + x)));
+    op_lda16(b | p);
+    cpu.a |= 0x0001;
+    wr16(b | p, cpu.a);
+    cpu.p |= P_M;
+    lda8(0x03);
+    wr8(b | (uint16_t)(0x2036 + cpu.x), 0x03);
 }
