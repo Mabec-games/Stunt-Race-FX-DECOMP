@@ -55,16 +55,16 @@ _Snapshot 2026-10-16._
 
 ```
 M1  Behaviour exact (T3 + T4)
-    ████████████████████████████░░░░░░░░░░░░   71.2%   105,149 / 147,582 B   1113 / 1190 routines
+    █████████████████████████████░░░░░░░░░░░   71.5%   105,556 / 147,582 B   1114 / 1190 routines
 M2  Byte exact (T4)
-    ███████████████████████████░░░░░░░░░░░░░   67.3%   99,318 / 147,582 B   1089 / 1190 routines
+    ███████████████████████████░░░░░░░░░░░░░   67.6%   99,725 / 147,582 B   1090 / 1190 routines
 ```
 
-The game has about **1,492 routines** (1,444 to 1,502, by the [routine census](docs/stuntracefx/ROUTINE_CENSUS.md)); the bars measure the 1,190 the scripts have run so far.
+The game has about **1,536 routines** (1,485 to 1,546, by the [routine census](docs/stuntracefx/ROUTINE_CENSUS.md)); the bars measure the 1,190 the scripts have run so far.
 
 | Processor | M1: behaviour exact | M2: byte exact |
 |---|---|---|
-| **S-CPU (65816)** | `███████████████░░░░░` 77.3%: 991/1031 routines, 86,773/112,259 B | `███████████████░░░░░` 75.4%: 979/1031 routines, 84,689/112,259 B |
+| **S-CPU (65816)** | `████████████████░░░░` 77.7%: 992/1031 routines, 87,180/112,259 B | `███████████████░░░░░` 75.8%: 980/1031 routines, 85,096/112,259 B |
 | **Super FX (GSU-1)** | `██████████░░░░░░░░░░` 52.0%: 122/159 routines, 18,376/35,323 B | `████████░░░░░░░░░░░░` 41.4%: 110/159 routines, 14,629/35,323 B |
 | **SPC700 (sound)** | not yet measured | not yet measured |
 <!-- PROGRESS:END -->
@@ -89,14 +89,14 @@ the M1 corpus.
 **What the bars measure.** Both bars count the executed code bytes of every
 routine the scripts have reached, on the S-CPU and the Super FX: 147,582 B in 1190
 routines. M1 counts routines whose C is certified behaviour exact (T3) or
-whose assembly is also byte exact (T4); M2 counts T4 only. 19 routine(s) are
+whose assembly is also byte exact (T4); M2 counts T4 only. 22 routine(s) are
 in the tree but not yet certified (T2).
 
 **The denominator grows.** Code no script has run is not counted yet. The
 routine census (`tools/stuntracefx/census.py`) follows the code statically from
-the routines that ran and the ones filed, and puts the game at about 1,492:
-1,335 named (145 of them filed but never run), 71 found by calls, handler
-pointers and Super FX calls, 76 orphans nothing refers to, and about 10 of 20
+the routines that ran and the ones filed, and puts the game at about 1,536:
+1,369 named (179 of them filed but never run), 76 found by calls, handler
+pointers and Super FX calls, 81 orphans nothing refers to, and about 10 of 20
 jump-table targets in code not filed yet. Of the
 ROM's 1,048,576 B, the scripts have run 147,582 B as code and read 571,246 B as data;
 329,748 B have not been touched by any script. The sound CPU's program is
