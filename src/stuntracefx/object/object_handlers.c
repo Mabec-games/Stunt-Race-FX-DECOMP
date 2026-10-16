@@ -1666,7 +1666,16 @@ static int attach_parent_gone(void)
    $1F5A) as signed direct page words $04, $0A and $05F2, turned by parent
    Y's +$16 (RotateXY), +$14 (RotateXZFrom08) and +$15 (RotateXZ), shifted
    left `sh` times and added to the parent's position into object X's. */
+static void offset_on_parent_ex(int sh, int with14);
+
 static void offset_on_parent(int sh)
+{
+    offset_on_parent_ex(sh, 1);
+}
+
+/* As offset_on_parent; without the +$14 turn (RotateXZFrom08) when
+   `with14` is 0. */
+static void offset_on_parent_ex(int sh, int with14)
 {
     uint32_t b = db();
     uint8_t v;
@@ -1716,14 +1725,16 @@ static void offset_on_parent(int sh)
     wr8(0x000008, (uint8_t)cpu.a);
     op_lda8(b | 0x05F2);
     wr8(0x000094, (uint8_t)cpu.a);
-    op_lda8(b | (uint16_t)(0x2014 + cpu.y));
-    abi_RotateXZFrom08();
-    op_lda8(0x000004);
-    wr8(0x000002, (uint8_t)cpu.a);
-    op_lda8(0x00000A);
-    wr8(0x000008, (uint8_t)cpu.a);
-    op_lda8(b | 0x05F2);
-    wr8(0x000094, (uint8_t)cpu.a);
+    if (with14) {
+        op_lda8(b | (uint16_t)(0x2014 + cpu.y));
+        abi_RotateXZFrom08();
+        op_lda8(0x000004);
+        wr8(0x000002, (uint8_t)cpu.a);
+        op_lda8(0x00000A);
+        wr8(0x000008, (uint8_t)cpu.a);
+        op_lda8(b | 0x05F2);
+        wr8(0x000094, (uint8_t)cpu.a);
+    }
     op_lda8(b | (uint16_t)(0x2015 + cpu.y));
     abi_RotateXZ();
     cpu.p &= (uint8_t)~P_M;
@@ -3027,4 +3038,634 @@ void abi_ObjectLampDropBStart(void)
     lda8((uint8_t)(rd8(b | (uint16_t)(0x2025 + cpu.x)) | 0x01));
     wr8(b | (uint16_t)(0x2025 + cpu.x), (uint8_t)cpu.a);
     abi_ObjectLampDropB();
+}
+
+void abi_ApproachQuarterMin4(void);
+
+/* A bank $00 direct page word at the pointer X (D = $0000): dp,X. */
+static uint32_t dpx(uint16_t off, uint16_t x)
+{
+    return (uint16_t)(cpu.d + off + x);
+}
+
+/*
+ * @routine 08:9A4F CameraPointFromTable
+ * WHAT IT DOES: Steps the camera point of object X (its link +$4F, a
+ * pointer Y): unless the point's word has bit 5, when the object's +$25
+ * bit 0 is set (sound $24) the point's index ($34,Y) moves one through the
+ * course's list (from $09:8090 + $32,Y: count, start), back when +$25
+ * bit 1 asks; then the point's flags ($00,Y) and target offset ($02, $08,
+ * $94) from the list's entry (index * 8 + 2; entry 0 while the parent is
+ * loose, with +$27 = 7). A point with bit 7 counts the object's +$27
+ * down, with flags $8201 and offset (0, 0, -$32), or at 0 gets bit 14.
+ * The target is the offset plus the point's +$26/+$28/+$2A and
+ * +$2C/+$2E/+$30; the point's position (+$1A, +$1C, +$1E) moves a quarter
+ * of the way (ApproachQuarterMin4) and the target is kept at +$20, +$22,
+ * +$24.
+ * HOW: The point through direct page + X with X and Y swapped (PHX, TYX,
+ * PLY) and swapped back at the end.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; X = the object, Y
+ * = the point.
+ */
+void abi_CameraPointFromTable(void)
+{
+    uint32_t b = db();
+    uint16_t obj = cpu.x, pt, x, w, i;
+    uint8_t v, n;
+    static const uint16_t pos[3] = {0x1A, 0x1C, 0x1E}, tgt[3] = {0x20, 0x22, 0x24};
+    static const uint16_t off[3] = {0x02, 0x08, 0x94}, a1[3] = {0x26, 0x28, 0x2A}, a2[3] = {0x2C, 0x2E, 0x30};
+
+    pt = rd16(b | (uint16_t)(0x204F + obj));
+    cpu.y = pt;
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(b | pt);
+    op_and16(0x0020);
+    cpu.p |= P_M;
+    if (!cpu.a) {
+        lda8((uint8_t)(rd8(b | (uint16_t)(0x2025 + obj)) & 0x01));
+        if ((uint8_t)cpu.a) {
+            lda8((uint8_t)(rd8(b | (uint16_t)(0x2025 + obj)) & 0xFE));
+            wr8(b | (uint16_t)(0x2025 + obj), (uint8_t)cpu.a);
+            lda8(0x24);
+            abi_SoundPort0QueuePush();
+            cpu.p &= (uint8_t)~P_M;
+            op_lda16(b | (uint16_t)(0x0032 + cpu.y));
+            op_tax16();
+            cpu.p |= P_M;
+            op_lda8(0x098090 + cpu.x);
+            wr8(b | 0x1F2B, (uint8_t)cpu.a);
+            op_lda8(0x098091 + cpu.x);
+            wr8(b | 0x1F2D, (uint8_t)cpu.a);
+            cpu.x = obj;
+            lda8((uint8_t)(rd8(b | (uint16_t)(0x2025 + obj)) & 0x02));
+            if ((uint8_t)cpu.a) {
+                lda8((uint8_t)(rd8(b | (uint16_t)(0x2025 + obj)) & 0xFD));
+                wr8(b | (uint16_t)(0x2025 + obj), (uint8_t)cpu.a);
+                op_lda8(b | 0x1F2D);
+                n = (uint8_t)cpu.a;
+                if (n) {
+                    uint8_t p = (uint8_t)(cpu.p & ~P_C);
+
+                    v = op_adc8(n, rd8(b | 0x1F2B), &p);
+                    v--;
+                    cpu.p = p;
+                    w = rd8(b | (uint16_t)(0x0034 + cpu.y));
+                    if (v == (uint8_t)w)
+                        v = 0x00;
+                    lda8(v);
+                    goto store;
+                }
+            }
+            v = (uint8_t)(rd8(b | (uint16_t)(0x0034 + cpu.y)) + 1);
+            n = rd8(b | 0x1F2B);
+            if (!((uint8_t)(v - n) & 0x80))
+                v = 0x00;
+            lda8(v);
+store:
+            wr8(b | (uint16_t)(0x0034 + cpu.y), v);
+            sta16_imm(b | (uint16_t)(0x2027 + obj), 0x0007);
+        }
+    }
+    /* $08:9ACD: the entry by the parent's +$25 bit 2. */
+    cpu.y = rd16(b | (uint16_t)(0x2006 + obj));
+    lda8((uint8_t)(rd8(b | (uint16_t)(0x2025 + cpu.y)) & 0x04));
+    cpu.y = pt;
+    cpu.p = nz16(cpu.p, pt);
+    if ((uint8_t)cpu.a) {
+        sta16_imm(b | (uint16_t)(0x2027 + obj), 0x0007);
+        cpu.p &= (uint8_t)~P_M;
+        x = 0x0000;
+    } else {
+        cpu.p &= (uint8_t)~P_M;
+        op_lda16(b | (uint16_t)(0x0034 + cpu.y));
+        op_and16(0x00FF);
+        op_asl16();
+        op_asl16();
+        op_asl16();
+        op_add16(rd16(b | (uint16_t)(0x0032 + cpu.y)));
+        x = cpu.a;
+    }
+    x = (uint16_t)(x + 2);
+    op_lda16(0x098090 + x);
+    wr16(b | cpu.y, cpu.a);
+    wr16(0x000002, rd16(0x098092 + x));
+    wr16(0x000008, rd16(0x098094 + x));
+    op_lda16(0x098096 + x);
+    wr16(0x000094, cpu.a);
+    /* PHX, TYX, PLY: X = the point, Y = the object. */
+    cpu.x = pt;
+    cpu.y = obj;
+    op_lda16(dpx(0x00, cpu.x));
+    if (cpu.a & 0x0080) {
+        op_lda16(b | (uint16_t)(0x2027 + cpu.y));
+        if (cpu.a) {
+            w = (uint16_t)(cpu.a - 1);
+            wr16(b | (uint16_t)(0x2027 + cpu.y), w);
+            op_lda16(dpx(0x00, cpu.x));
+            cpu.a |= 0x8201;
+            wr16(dpx(0x00, cpu.x), cpu.a);
+            wr16(0x000002, 0x0000);
+            wr16(0x000008, 0x0000);
+            op_lda16_imm(0xFFCE);
+            wr16(0x000094, 0xFFCE);
+        } else {
+            op_lda16(dpx(0x00, cpu.x));
+            cpu.a |= 0x4000;
+            wr16(dpx(0x00, cpu.x), cpu.a);
+        }
+    }
+    for (i = 0; i < 3; i++) {
+        op_lda16(off[i]);
+        op_add16(rd16(dpx(a1[i], cpu.x)));
+        wr16(off[i], cpu.a);
+    }
+    for (i = 0; i < 3; i++) {
+        op_lda16(off[i]);
+        op_add16(rd16(dpx(a2[i], cpu.x)));
+        wr16(off[i], cpu.a);
+    }
+    for (i = 0; i < 3; i++) {
+        wr16(0x00003E, rd16(dpx(pos[i], cpu.x)));
+        op_lda16(off[i]);
+        abi_ApproachQuarterMin4();
+        wr16(dpx(pos[i], cpu.x), cpu.a);
+    }
+    for (i = 0; i < 3; i++) {
+        op_lda16(off[i]);
+        wr16(dpx(tgt[i], cpu.x), cpu.a);
+    }
+    cpu.p |= P_M;
+    cpu.x = obj;
+    cpu.y = pt;
+    cpu.p = nz16(cpu.p, pt);
+}
+
+void abi_ObjectSet5DByKind(void);
+
+/* The ring's four parts: kinds, X velocities. */
+static const uint16_t ring_kind[4] = {0xA660, 0xA6D0, 0xA67C, 0xA5D4};
+static const uint16_t ring_vx[4] = {0xFF90, 0xFFDB, 0x0025, 0x0070};
+
+/* $08:9C4F: in engine phase 8 ($0DD6) with a record in hand ($70:2476):
+   its Y = the record's +$20 - $1B58 and +$27 = the record's +$20 - $1F4
+   ($1F4C, $1F4E); four parts (handler $08:9DF1, ObjectRingPartStart)
+   counted in $1F58; with all four +$16 = $40, +$15 + $20 and handler
+   $08:9DBE (ObjectRingSpin), else handler $08:9DAE (ObjectRingIdle).
+   +$36 = 3 unless it went idle. */
+static void ring_spawn(void)
+{
+    uint32_t b = db();
+    uint16_t x = cpu.x;
+    unsigned i;
+    uint8_t v, p;
+
+    op_lda8(b | 0x0DD6);
+    if ((uint8_t)cpu.a != 0x08)
+        goto done;
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(0x702476);
+    if (!cpu.a) {
+        cpu.p |= P_M;
+        goto done;
+    }
+    cpu.x = cpu.a;
+    op_lda16(0x700020 + cpu.x);
+    wr16(b | 0x1F4E, cpu.a);
+    op_add16(0xE4A8);
+    wr16(b | 0x1F4C, cpu.a);
+    cpu.x = x;
+    op_lda16(b | 0x1F4C);
+    wr16(b | (uint16_t)(0x200E + cpu.x), cpu.a);
+    op_lda16(b | 0x1F4E);
+    op_add16(0xFE0C);
+    wr16(b | 0x1F4E, cpu.a);
+    op_lda16(b | 0x1F4E);
+    wr16(b | (uint16_t)(0x2027 + cpu.x), cpu.a);
+    cpu.p |= P_M;
+    wr8(b | 0x1F58, 0x00);
+    for (i = 0; i < 4; i++) {
+        if (spawn(ring_kind[i])) {
+            set_handler(cpu.y, 0x9DF1);
+            sta16_imm(b | (uint16_t)(0x202E + cpu.y), ring_vx[i]);
+            set_child_of_x();
+            v = (uint8_t)(rd8(b | 0x1F58) + 1);
+            wr8(b | 0x1F58, v);
+        }
+    }
+    op_lda8(b | 0x1F58);
+    if ((uint8_t)cpu.a != 0x04) {
+        set_handler(cpu.x, 0x9DAE);
+        return;
+    }
+    lda8(0x40);
+    wr8(b | (uint16_t)(0x2016 + cpu.x), 0x40);
+    v = rd8(b | (uint16_t)(0x2015 + cpu.x));
+    p = (uint8_t)(cpu.p & ~P_C);
+    v = op_adc8(v, 0x20, &p);
+    cpu.p = p;
+    wr8(b | (uint16_t)(0x2015 + cpu.x), v);
+    set_handler(cpu.x, 0x9DBE);
+done:
+    lda8(0x03);
+    wr8(b | (uint16_t)(0x2036 + cpu.x), 0x03);
+}
+
+/* A ring's start: heading +$15 and velocity, then $08:9C4F. */
+static void ring_start(uint8_t h, uint16_t vx, uint16_t vy, uint16_t vz)
+{
+    uint32_t b = db();
+
+    lda8(h);
+    wr8(b | (uint16_t)(0x2015 + cpu.x), h);
+    sta16_imm(b | (uint16_t)(0x202E + cpu.x), vx);
+    sta16_imm(b | (uint16_t)(0x2030 + cpu.x), vy);
+    sta16_imm(b | (uint16_t)(0x2032 + cpu.x), vz);
+    ring_spawn();
+}
+
+/*
+ * @routine 08:9BD9 ObjectRingStartZ
+ * WHAT IT DOES: A spinning ring's first frame heading $00 with velocity
+ * (0, 0, -$258): in engine phase 8 its Y from the record in hand and its
+ * four parts made ($08:9C4F); +$36 = 3.
+ * HOW: NOP, then the shared start at $08:9C4F.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte 3.
+ */
+void abi_ObjectRingStartZ(void)
+{
+    ring_start(0x00, 0x0000, 0x0000, 0xFDA8);
+}
+
+/*
+ * @routine 08:9BF7 ObjectRingStartX
+ * WHAT IT DOES: As ObjectRingStartZ heading $C0 with velocity (-$258, 0,
+ * 0).
+ * HOW: As ObjectRingStartZ.
+ * Entry: as ObjectRingStartZ. Exit: as ObjectRingStartZ.
+ */
+void abi_ObjectRingStartX(void)
+{
+    ring_start(0xC0, 0xFDA8, 0x0000, 0x0000);
+}
+
+/*
+ * @routine 08:9C15 ObjectRingStartBackZ
+ * WHAT IT DOES: As ObjectRingStartZ heading $80 with velocity (0, 0,
+ * $258).
+ * HOW: As ObjectRingStartZ.
+ * Entry: as ObjectRingStartZ. Exit: as ObjectRingStartZ.
+ */
+void abi_ObjectRingStartBackZ(void)
+{
+    ring_start(0x80, 0x0000, 0x0000, 0x0258);
+}
+
+/*
+ * @routine 08:9C33 ObjectRingStartBackX
+ * WHAT IT DOES: As ObjectRingStartZ heading $40 with velocity ($258, 0,
+ * 0).
+ * HOW: As ObjectRingStartZ.
+ * Entry: as ObjectRingStartZ. Exit: as ObjectRingStartZ.
+ */
+void abi_ObjectRingStartBackX(void)
+{
+    ring_start(0x40, 0x0258, 0x0000, 0x0000);
+}
+
+/*
+ * @routine 08:9DAE ObjectRingIdle
+ * WHAT IT DOES: A ring whose parts were not all made: keeps this handler
+ * and does nothing more.
+ * HOW: Stores its own address. Not reached in the traces so far.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte 8.
+ */
+void abi_ObjectRingIdle(void)
+{
+    set_handler(cpu.x, 0x9DAE);
+}
+
+/*
+ * @routine 08:9DBE ObjectRingSpin
+ * WHAT IT DOES: A ring's frame: moved by its velocity, its Y a quarter of
+ * the way to +$27 (ApproachQuarterMin4), its +$16 down 6 and +$15 down 1
+ * (it spins), rebucketed; +$36 = 3.
+ * HOW: 8-bit adds of $FA and $FF.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte 3.
+ */
+void abi_ObjectRingSpin(void)
+{
+    uint32_t b = db();
+    uint8_t v, p;
+
+    abi_ObjectApplyVelocity();
+    cpu.p &= (uint8_t)~P_M;
+    wr16(0x00003E, rd16(b | (uint16_t)(0x200E + cpu.x)));
+    op_lda16(b | (uint16_t)(0x2027 + cpu.x));
+    abi_ApproachQuarterMin4();
+    wr16(b | (uint16_t)(0x200E + cpu.x), cpu.a);
+    cpu.p |= P_M;
+    v = rd8(b | (uint16_t)(0x2016 + cpu.x));
+    p = (uint8_t)(cpu.p & ~P_C);
+    v = op_adc8(v, 0xFA, &p);
+    wr8(b | (uint16_t)(0x2016 + cpu.x), v);
+    v = rd8(b | (uint16_t)(0x2015 + cpu.x));
+    p &= (uint8_t)~P_C;
+    v = op_adc8(v, 0xFF, &p);
+    cpu.p = p;
+    wr8(b | (uint16_t)(0x2015 + cpu.x), v);
+    abi_ObjectRebucket();
+    lda8(0x03);
+    wr8(b | (uint16_t)(0x2036 + cpu.x), 0x03);
+}
+
+/*
+ * @routine 08:9E05 ObjectRingPartStep
+ * WHAT IT DOES: A ring part's frame: on its parent at its velocity bytes
+ * turned by the parent's +$16 (RotateXY) and +$15 (RotateXZ), times 16;
+ * the parent's +$16 and +$15 copied; rebucketed; +$36 = 3; released once
+ * its count +$48 runs out, else counted down.
+ * HOW: As ObjectAttachTurned's placement without the +$14 turn.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; as the path leaves
+ * it.
+ */
+void abi_ObjectRingPartStep(void)
+{
+    uint32_t b = db();
+    uint8_t v;
+
+    cpu.y = rd16(b | (uint16_t)(0x2006 + cpu.x));
+    cpu.p = nz16(cpu.p, cpu.y);
+    offset_on_parent_ex(4, 0);
+    op_lda8(b | (uint16_t)(0x2016 + cpu.y));
+    wr8(b | (uint16_t)(0x2016 + cpu.x), (uint8_t)cpu.a);
+    op_lda8(b | (uint16_t)(0x2015 + cpu.y));
+    wr8(b | (uint16_t)(0x2015 + cpu.x), (uint8_t)cpu.a);
+    abi_ObjectRebucket();
+    lda8(0x03);
+    wr8(b | (uint16_t)(0x2036 + cpu.x), 0x03);
+    op_lda8(b | (uint16_t)(0x2048 + cpu.x));
+    if (!(uint8_t)cpu.a) {
+        abi_ObjectReleaseLong();
+        return;
+    }
+    v = (uint8_t)(rd8(b | (uint16_t)(0x2048 + cpu.x)) - 1);
+    wr8(b | (uint16_t)(0x2048 + cpu.x), v);
+    cpu.p = nz8(cpu.p, v);
+}
+
+/*
+ * @routine 08:9DF1 ObjectRingPartStart
+ * WHAT IT DOES: A ring part's first frame: count +$48 = $28, handler
+ * $08:9E05 (ObjectRingPartStep); then its first step.
+ * HOW: Falls into ObjectRingPartStep.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectRingPartStep.
+ */
+void abi_ObjectRingPartStart(void)
+{
+    uint32_t b = db();
+
+    lda8(0x28);
+    wr8(b | (uint16_t)(0x2048 + cpu.x), 0x28);
+    set_handler(cpu.x, 0x9E05);
+    abi_ObjectRingPartStep();
+}
+
+/*
+ * @routine 08:9ECD ObjectHandlerEmptyC
+ * WHAT IT DOES: Nothing: an empty object handler.
+ * HOW: RTL. Not reached in the traces so far.
+ * Entry: any. Exit: every register unchanged.
+ */
+void abi_ObjectHandlerEmptyC(void)
+{
+}
+
+/*
+ * @routine 08:9EFD ObjectMarkerFollow
+ * WHAT IT DOES: A marker on the car named by the ($1168 & 3)th word of
+ * the table at $116C: that car's +$27 kept at $1174, the car at $1176;
+ * at the car's position (ObjectCopyPositionFrom) $12C higher, rebucketed,
+ * +$36 = 3; released when $116A is nonzero.
+ * HOW: 16-bit table reads through the data bank. Not reached in the traces
+ * so far.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; as the path leaves
+ * it.
+ */
+void abi_ObjectMarkerFollow(void)
+{
+    uint32_t b = db();
+
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(b | 0x1168);
+    op_and16(0x0003);
+    op_asl16();
+    op_tay16();
+    op_lda16(b | (uint16_t)(0x116C + cpu.y));
+    op_tay16();
+    op_lda16(b | (uint16_t)(0x2027 + cpu.y));
+    wr16(b | 0x1176, cpu.y);
+    wr16(b | 0x1174, cpu.a);
+    cpu.p |= P_M;
+    abi_ObjectCopyPositionFrom();
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(b | (uint16_t)(0x200E + cpu.x));
+    op_add16(0xFED4);
+    wr16(b | (uint16_t)(0x200E + cpu.x), cpu.a);
+    cpu.p |= P_M;
+    abi_ObjectRebucket();
+    lda8(0x03);
+    wr8(b | (uint16_t)(0x2036 + cpu.x), 0x03);
+    op_lda8(b | 0x116A);
+    if ((uint8_t)cpu.a)
+        abi_ObjectRelease();
+}
+
+/*
+ * @routine 08:9ECE ObjectMarkerStart
+ * WHAT IT DOES: A marker's first frame: data bank $7E, handler $08:9EFD
+ * (ObjectMarkerFollow), +$24 bit 3, +$3A = 0, +$5F = $64, +$04 = $A158;
+ * then its first frame.
+ * HOW: PHA, PLB for the bank; falls into ObjectMarkerFollow. Not reached
+ * in the traces so far.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectMarkerFollow.
+ */
+void abi_ObjectMarkerStart(void)
+{
+    uint32_t b;
+
+    lda8(0x7E);
+    cpu.db = 0x7E;
+    cpu.p = nz8(cpu.p, 0x7E);
+    b = db();
+    set_handler(cpu.x, 0x9EFD);
+    lda8((uint8_t)(rd8(b | (uint16_t)(0x2024 + cpu.x)) | 0x08));
+    wr8(b | (uint16_t)(0x2024 + cpu.x), (uint8_t)cpu.a);
+    lda8(0x00);
+    wr8(b | (uint16_t)(0x203A + cpu.x), 0x00);
+    lda8(0x64);
+    wr8(b | (uint16_t)(0x205F + cpu.x), 0x64);
+    sta16_imm(b | (uint16_t)(0x2004 + cpu.x), 0xA158);
+    abi_ObjectMarkerFollow();
+}
+
+/*
+ * @routine 08:9FB2 ObjectDemoCarStep
+ * WHAT IT DOES: A demo car's frame: its look by kind (ObjectSet5DByKind
+ * with $00:18D3); while its count +$48 runs it counts down, at 0 its
+ * record gets +$1C bit 4; rebucketed, posed from its record
+ * (ObjectPoseFromRecord), +$36 = 3 and the record marked (GsuRecordFlag4,
+ * the code at $08:CD7E).
+ * HOW: The record through +$22.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as GsuRecordFlag4.
+ */
+void abi_ObjectDemoCarStep(void)
+{
+    uint32_t b = db();
+    uint16_t x;
+    uint8_t v;
+
+    op_lda8(0x0018D3);
+    abi_ObjectSet5DByKind();
+    op_lda8(b | (uint16_t)(0x2048 + cpu.x));
+    if ((uint8_t)cpu.a) {
+        v = (uint8_t)(rd8(b | (uint16_t)(0x2048 + cpu.x)) - 1);
+        wr8(b | (uint16_t)(0x2048 + cpu.x), v);
+        cpu.p = nz8(cpu.p, v);
+    } else {
+        x = cpu.x;
+        cpu.p &= (uint8_t)~P_M;
+        cpu.x = rd16(b | (uint16_t)(0x2022 + cpu.x));
+        op_lda16(0x70001C + cpu.x);
+        cpu.a |= 0x0010;
+        cpu.p = nz16(cpu.p, cpu.a);
+        wr16(0x70001C + cpu.x, cpu.a);
+        cpu.p |= P_M;
+        cpu.x = x;
+        cpu.p = nz16(cpu.p, x);
+    }
+    abi_ObjectRebucket();
+    abi_ObjectPoseFromRecord();
+    lda8(0x03);
+    wr8(b | (uint16_t)(0x2036 + cpu.x), 0x03);
+    abi_GsuRecordFlag4();
+}
+
+/* The camera $1A64 on car `car` at offset (0, y, z), mode 1. */
+static void camera_on(uint16_t car, uint16_t y, uint16_t z, int by_x)
+{
+    uint32_t b = db();
+    uint16_t p = 0x1A64;
+
+    if (by_x) {
+        wr16(dpx(0x02, p), car);
+        wr16(dpx(0x1A, p), 0x0000);
+        wr16(dpx(0x1C, p), y);
+        wr16(dpx(0x1E, p), z);
+        wr8(dpx(0x00, p), 0x01);
+    } else {
+        wr16(b | (uint16_t)(0x0002 + p), car);
+        wr16(b | (uint16_t)(0x001A + p), 0x0000);
+        wr16(b | (uint16_t)(0x001C + p), y);
+        wr16(b | (uint16_t)(0x001E + p), z);
+        wr8(b | p, 0x01);
+    }
+}
+
+/*
+ * @routine 08:9F3B ObjectDemoCarStart
+ * WHAT IT DOES: A demo car's first frame: a car record (ObjectCarRecordNew
+ * with A = 4) with +$70 bit 3 and +$16 bit 7; the camera ($1A64) on it at
+ * (0, -$C8, $258), mode 1; handler $08:9FB2 (ObjectDemoCarStep); its
+ * number in the table at $116C ($116A counted up); count +$48 = 4; then
+ * its first step.
+ * HOW: Falls into ObjectDemoCarStep.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectDemoCarStep.
+ */
+void abi_ObjectDemoCarStart(void)
+{
+    uint32_t b = db();
+    uint16_t x = cpu.x, n;
+
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16_imm(0x0004);
+    abi_ObjectCarRecordNew();
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(b | (uint16_t)(0x2022 + cpu.x));
+    if (cpu.a) {
+        x = cpu.x;
+        cpu.x = cpu.a;
+        op_lda16(0x700070 + cpu.x);
+        cpu.a |= 0x0008;
+        wr16(0x700070 + cpu.x, cpu.a);
+        op_lda16(0x700016 + cpu.x);
+        cpu.a |= 0x0080;
+        cpu.p = nz16(cpu.p, cpu.a);
+        wr16(0x700016 + cpu.x, cpu.a);
+        cpu.x = x;
+    }
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    cpu.y = 0x1A64;
+    camera_on(cpu.x, 0xFF38, 0x0258, 0);
+    cpu.p |= P_M;
+    set_handler(cpu.x, 0x9FB2);
+    op_lda8(b | 0x116A);
+    n = (uint16_t)(((uint8_t)cpu.a << 1) & 0x00FF);
+    x = cpu.x;
+    wr16(0x00116C + n, x);
+    cpu.x = x;
+    cpu.p |= P_M;
+    wr8(b | 0x116A, (uint8_t)(rd8(b | 0x116A) + 1));
+    lda8(0x04);
+    wr8(b | (uint16_t)(0x2048 + cpu.x), 0x04);
+    abi_ObjectDemoCarStep();
+}
+
+/*
+ * @routine 08:9FEC CameraOnCarNear
+ * WHAT IT DOES: The camera ($1A64) on object X at (0, -$1F4, $258), mode
+ * 1.
+ * HOW: Stores through Y = $1A64. Not reached in the traces so far.
+ * Entry: X 16-bit; X = object. Exit: M 8-bit, X 16-bit; Y = $1A64; A low
+ * byte 1.
+ */
+void abi_CameraOnCarNear(void)
+{
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    cpu.y = 0x1A64;
+    camera_on(cpu.x, 0xFE0C, 0x0258, 0);
+    cpu.p |= P_M;
+    lda8(0x01);
+}
+
+/*
+ * @routine 08:A00F CameraOnMarkedCar
+ * WHAT IT DOES: The camera ($1A64) on the car at $1176 at (0, -$C8, $2BC),
+ * mode 1.
+ * HOW: Stores through direct page + X = $1A64. Not reached in the traces
+ * so far.
+ * Entry: any. Exit: M 8-bit, X 16-bit; X = $1A64, Y = the car; A low byte
+ * 1.
+ */
+void abi_CameraOnMarkedCar(void)
+{
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    cpu.x = 0x1A64;
+    cpu.y = rd16(db() | 0x1176);
+    camera_on(cpu.y, 0xFF38, 0x02BC, 1);
+    cpu.p |= P_M;
+    lda8(0x01);
+}
+
+/*
+ * @routine 08:A02F DataBank7E
+ * WHAT IT DOES: Sets the data bank to $7E.
+ * HOW: LDA #$7E, PHA, PLB; ends at the RTL at $08:A033 that other code
+ * jumps to. Not reached in the traces so far.
+ * Entry: M 8-bit. Exit: data bank $7E; A low byte $7E; N clear, Z clear.
+ */
+void abi_DataBank7E(void)
+{
+    lda8(0x7E);
+    cpu.db = 0x7E;
+    cpu.p = nz8(cpu.p, 0x7E);
 }

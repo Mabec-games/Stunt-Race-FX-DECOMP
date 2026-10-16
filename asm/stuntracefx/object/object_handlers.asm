@@ -3807,3 +3807,851 @@ ObjectLampDropB:
     and.b #$FE
     sta.w !obj_25,x
     jmp.w ObjectLampPlace
+
+; @routine 08:9A4F CameraPointFromTable
+; WHAT IT DOES: Steps the camera point of object X (its link +$4F, a
+; pointer Y): unless the point's word has bit 5, when the object's +$25
+; bit 0 is set (sound $24) the point's index ($34,Y) moves one through the
+; course's list (from $09:8090 + $32,Y: count, start), back when +$25
+; bit 1 asks; then the point's flags ($00,Y) and target offset ($02, $08,
+; $94) from the list's entry (index * 8 + 2; entry 0 while the parent is
+; loose, with +$27 = 7). A point with bit 7 counts the object's +$27
+; down, with flags $8201 and offset (0, 0, -$32), or at 0 gets bit 14.
+; The target is the offset plus the point's +$26/+$28/+$2A and
+; +$2C/+$2E/+$30; the point's position (+$1A, +$1C, +$1E) moves a quarter
+; of the way (ApproachQuarterMin4) and the target is kept at +$20, +$22,
+; +$24.
+; HOW: The point through direct page + X with X and Y swapped (PHX, TYX,
+; PLY) and swapped back at the end.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; X = the object, Y
+; = the point.
+%at($089A4F)
+CameraPointFromTable:
+    ldy.w !obj_link_w,x
+    rep.b #$20
+    lda.w !bank0_base,y
+    and.w #$0020
+    sep.b #$20
+    bne .l9ACD
+    lda.w !obj_25,x
+    and.b #$01
+    bne .l9A69
+    jml.l .l9ACD
+.l9A69:
+    lda.w !obj_25,x
+    and.b #$FE
+    sta.w !obj_25,x
+    lda.b #$24
+    jsl.l SoundPort0QueuePush
+    phx
+    rep.b #$20
+    lda.w !dp_32,y
+    tax
+    sep.b #$20
+    lda.l !attach_values,x
+    sta.w !wram_1F2B
+    lda.l !attach_values+1,x
+    sta.w !wram_1F2D
+    plx
+    lda.w !obj_25,x
+    and.b #$02
+    bne .l9A9A
+    jml.l .l9AB5
+.l9A9A:
+    lda.w !obj_25,x
+    and.b #$FD
+    sta.w !obj_25,x
+    lda.w !wram_1F2D
+    beq .l9AB5
+    clc
+    adc.w !wram_1F2B
+    dec a
+    cmp.w !dp_34,y
+    bne .l9AC0
+    lda.b #$00                      ; not reached in the traces so far
+    bra .l9AC0
+.l9AB5:
+    lda.w !dp_34,y
+    inc a
+    cmp.w !wram_1F2B
+    bmi .l9AC0
+    lda.b #$00
+.l9AC0:
+    sta.w !dp_34,y
+    rep.b #$20
+    lda.w #$0007
+    sta.w !obj_27,x
+    sep.b #$20
+.l9ACD:
+    phy
+    ldy.w !obj_06,x
+    lda.w !obj_25,y
+    and.b #$04
+    bne .l9ADC
+    jml.l .l9AEF
+.l9ADC:
+    ply
+    rep.b #$20
+    lda.w #$0007
+    sta.w !obj_27,x
+    sep.b #$20
+    rep.b #$20
+    phx
+    ldx.w #$0000
+    bra .l9B01
+.l9AEF:
+    ply
+    phx
+    rep.b #$20
+    lda.w !dp_34,y
+    and.w #$00FF
+    asl a
+    asl a
+    asl a
+    clc
+    adc.w !dp_32,y
+    tax
+.l9B01:
+    inx
+    inx
+    lda.l !attach_values,x
+    sta.w !bank0_base,y
+    lda.l !attach_values+2,x
+    sta.b !dp_02
+    lda.l !attach_values+4,x
+    sta.b !dp_08
+    lda.l !attach_values+6,x
+    sta.b !dp_94
+    plx
+    phx
+    tyx
+    ply
+    lda.b !bank0_base,x
+    bit.w #$0080
+    beq .l9B49
+    lda.w !obj_27,y
+    beq .l9B42
+    dec a
+    sta.w !obj_27,y
+    lda.b !bank0_base,x
+    ora.w #$8201
+    sta.b !bank0_base,x
+    stz.b !dp_02
+    stz.b !dp_08
+    lda.w #$FFCE
+    sta.b !dp_94
+    bra .l9B49
+.l9B42:
+    lda.b !bank0_base,x
+    ora.w #$4000
+    sta.b !bank0_base,x
+.l9B49:
+    sep.b #$20
+    rep.b #$20
+    lda.b !dp_02
+    clc
+    adc.b !fxrec_link_422,x
+    sta.b !dp_02
+    sep.b #$20
+    rep.b #$20
+    lda.b !dp_08
+    clc
+    adc.b !fxcar_roll,x
+    sta.b !dp_08
+    sep.b #$20
+    rep.b #$20
+    lda.b !dp_94
+    clc
+    adc.b !dp_2a,x
+    sta.b !dp_94
+    sep.b #$20
+    rep.b #$20
+    lda.b !dp_02
+    clc
+    adc.b !dp_2c,x
+    sta.b !dp_02
+    sep.b #$20
+    rep.b #$20
+    lda.b !dp_08
+    clc
+    adc.b !dp_2e,x
+    sta.b !dp_08
+    sep.b #$20
+    rep.b #$20
+    lda.b !dp_94
+    clc
+    adc.b !dp_30,x
+    sta.b !dp_94
+    sep.b #$20
+    rep.b #$20
+    lda.b !actor_kind,x
+    sta.b !scale_scratch
+    lda.b !dp_02
+    jsl.l ApproachQuarterMin4
+    sta.b !actor_kind,x
+    sep.b #$20
+    rep.b #$20
+    lda.b !actor_1c,x
+    sta.b !scale_scratch
+    lda.b !dp_08
+    jsl.l ApproachQuarterMin4
+    sta.b !actor_1c,x
+    sep.b #$20
+    rep.b #$20
+    lda.b !actor_1e,x
+    sta.b !scale_scratch
+    lda.b !dp_94
+    jsl.l ApproachQuarterMin4
+    sta.b !actor_1e,x
+    sep.b #$20
+    rep.b #$20
+    lda.b !dp_02
+    sta.b !actor_20,x
+    sep.b #$20
+    rep.b #$20
+    lda.b !dp_08
+    sta.b !actor_22,x
+    sep.b #$20
+    rep.b #$20
+    lda.b !dp_94
+    sta.b !actor_palette,x
+    sep.b #$20
+    phx
+    tyx
+    ply
+    rtl
+
+; @routine 08:9BD9 ObjectRingStartZ
+; WHAT IT DOES: A spinning ring's first frame heading $00 with velocity
+; (0, 0, -$258): in engine phase 8 its Y from the record in hand and its
+; four parts made ($08:9C4F); +$36 = 3.
+; HOW: NOP, then the shared start at $08:9C4F.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte 3.
+%at($089BD9)
+ObjectRingStartZ:
+    nop
+    lda.b #$00
+    sta.w !obj_15,x
+    rep.b #$20
+    lda.w #$0000
+    sta.w !obj_vel_x,x
+    lda.w #$0000
+    sta.w !obj_vel_y,x
+    lda.w #$FDA8
+    sta.w !obj_vel_z,x
+    sep.b #$20
+    bra ObjectRingSpawn
+
+; @routine 08:9BF7 ObjectRingStartX
+; WHAT IT DOES: As ObjectRingStartZ heading $C0 with velocity (-$258, 0,
+; 0).
+; HOW: As ObjectRingStartZ.
+; Entry: as ObjectRingStartZ. Exit: as ObjectRingStartZ.
+%at($089BF7)
+ObjectRingStartX:
+    nop
+    lda.b #$C0
+    sta.w !obj_15,x
+    rep.b #$20
+    lda.w #$FDA8
+    sta.w !obj_vel_x,x
+    lda.w #$0000
+    sta.w !obj_vel_y,x
+    lda.w #$0000
+    sta.w !obj_vel_z,x
+    sep.b #$20
+    bra ObjectRingSpawn
+
+; @routine 08:9C15 ObjectRingStartBackZ
+; WHAT IT DOES: As ObjectRingStartZ heading $80 with velocity (0, 0,
+; $258).
+; HOW: As ObjectRingStartZ.
+; Entry: as ObjectRingStartZ. Exit: as ObjectRingStartZ.
+%at($089C15)
+ObjectRingStartBackZ:
+    nop
+    lda.b #$80
+    sta.w !obj_15,x
+    rep.b #$20
+    lda.w #$0000
+    sta.w !obj_vel_x,x
+    lda.w #$0000
+    sta.w !obj_vel_y,x
+    lda.w #$0258
+    sta.w !obj_vel_z,x
+    sep.b #$20
+    bra ObjectRingSpawn
+
+; @routine 08:9C33 ObjectRingStartBackX
+; WHAT IT DOES: As ObjectRingStartZ heading $40 with velocity ($258, 0,
+; 0).
+; HOW: As ObjectRingStartZ.
+; Entry: as ObjectRingStartZ. Exit: as ObjectRingStartZ.
+%at($089C33)
+ObjectRingStartBackX:
+    nop
+    lda.b #$40
+    sta.w !obj_15,x
+    rep.b #$20
+    lda.w #$0258
+    sta.w !obj_vel_x,x
+    lda.w #$0000
+    sta.w !obj_vel_y,x
+    lda.w #$0000
+    sta.w !obj_vel_z,x
+    sep.b #$20
+ObjectRingSpawn:
+    lda.w !engine_phase_p1
+    cmp.b #$08
+    beq .l9C59
+    brl .l9DA8
+.l9C59:
+    rep.b #$20
+    lda.l !gsu_match_2476
+    bne .l9C64
+    brl .l9DA8                      ; not reached in the traces so far
+.l9C64:
+    phx
+    tax
+    lda.l !gsu_in_20,x
+    sta.w !wram_1F4E
+    clc
+    adc.w #$E4A8
+    sta.w !wram_1F4C
+    sep.b #$20
+    plx
+    rep.b #$20
+    lda.w !wram_1F4C
+    sta.w !obj_pos_y,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !wram_1F4E
+    clc
+    adc.w #$FE0C
+    sta.w !wram_1F4E
+    sep.b #$20
+    rep.b #$20
+    lda.w !wram_1F4E
+    sta.w !obj_27,x
+    sep.b #$20
+    stz.w !wram_1F58
+    rep.b #$20
+    lda.w #$A660
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .l9CB0
+    jml.l .l9CD6                    ; not reached in the traces so far
+.l9CB0:
+    rep.b #$20
+    lda.w #$9DF1
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    rep.b #$20
+    lda.w #$FF90
+    sta.w !obj_vel_x,y
+    sep.b #$20
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_06,y
+    sep.b #$20
+    pla
+    inc.w !wram_1F58
+.l9CD6:
+    rep.b #$20
+    lda.w #$A6D0
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .l9CEA
+    jml.l .l9D10                    ; not reached in the traces so far
+.l9CEA:
+    rep.b #$20
+    lda.w #$9DF1
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    rep.b #$20
+    lda.w #$FFDB
+    sta.w !obj_vel_x,y
+    sep.b #$20
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_06,y
+    sep.b #$20
+    pla
+    inc.w !wram_1F58
+.l9D10:
+    rep.b #$20
+    lda.w #$A67C
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .l9D24
+    jml.l .l9D4A                    ; not reached in the traces so far
+.l9D24:
+    rep.b #$20
+    lda.w #$9DF1
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    rep.b #$20
+    lda.w #$0025
+    sta.w !obj_vel_x,y
+    sep.b #$20
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_06,y
+    sep.b #$20
+    pla
+    inc.w !wram_1F58
+.l9D4A:
+    rep.b #$20
+    lda.w #$A5D4
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .l9D5E
+    jml.l .l9D84                    ; not reached in the traces so far
+.l9D5E:
+    rep.b #$20
+    lda.w #$9DF1
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    rep.b #$20
+    lda.w #$0070
+    sta.w !obj_vel_x,y
+    sep.b #$20
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_06,y
+    sep.b #$20
+    pla
+    inc.w !wram_1F58
+.l9D84:
+    lda.w !wram_1F58
+    cmp.b #$04
+    bne ObjectRingIdle
+    lda.b #$40
+    sta.w !obj_16,x
+    lda.w !obj_15,x
+    clc
+    adc.b #$20
+    sta.w !obj_15,x
+    rep.b #$20
+    lda.w #$9DBE
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+.l9DA8:
+    lda.b #$03
+    sta.w !obj_36,x
+    rtl
+
+; @routine 08:9DAE ObjectRingIdle
+; WHAT IT DOES: A ring whose parts were not all made: keeps this handler
+; and does nothing more.
+; HOW: Stores its own address. Not reached in the traces so far.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte 8.
+%at($089DAE)
+ObjectRingIdle:
+    rep.b #$20                      ; not reached in the traces so far
+    lda.w #$9DAE
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+    rtl
+
+; @routine 08:9DBE ObjectRingSpin
+; WHAT IT DOES: A ring's frame: moved by its velocity, its Y a quarter of
+; the way to +$27 (ApproachQuarterMin4), its +$16 down 6 and +$15 down 1
+; (it spins), rebucketed; +$36 = 3.
+; HOW: 8-bit adds of $FA and $FF.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte 3.
+%at($089DBE)
+ObjectRingSpin:
+    jsl.l ObjectApplyVelocity
+    rep.b #$20
+    lda.w !obj_pos_y,x
+    sta.b !scale_scratch
+    lda.w !obj_27,x
+    jsl.l ApproachQuarterMin4
+    sta.w !obj_pos_y,x
+    sep.b #$20
+    lda.w !obj_16,x
+    clc
+    adc.b #$FA
+    sta.w !obj_16,x
+    lda.w !obj_15,x
+    clc
+    adc.b #$FF
+    sta.w !obj_15,x
+    jsl.l ObjectRebucket
+    lda.b #$03
+    sta.w !obj_36,x
+    rtl
+
+; @routine 08:9DF1 ObjectRingPartStart
+; WHAT IT DOES: A ring part's first frame: count +$48 = $28, handler
+; $08:9E05 (ObjectRingPartStep); then its first step.
+; HOW: Falls into ObjectRingPartStep.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectRingPartStep.
+%at($089DF1)
+ObjectRingPartStart:
+    lda.b #$28
+    sta.w !obj_48,x
+    rep.b #$20
+    lda.w #$9E05
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+
+; @routine 08:9E05 ObjectRingPartStep
+; WHAT IT DOES: A ring part's frame: on its parent at its velocity bytes
+; turned by the parent's +$16 (RotateXY) and +$15 (RotateXZ), times 16;
+; the parent's +$16 and +$15 copied; rebucketed; +$36 = 3; released once
+; its count +$48 runs out, else counted down.
+; HOW: As ObjectAttachTurned's placement without the +$14 turn.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; as the path leaves
+; it.
+%at($089E05)
+ObjectRingPartStep:
+    ldy.w !obj_06,x
+    lda.w !obj_vel_x,x
+    sta.w !wram_1F58
+    lda.w !obj_vel_y,x
+    sta.w !wram_1F59
+    lda.w !obj_vel_z,x
+    sta.w !wram_1F5A
+    lda.w !wram_1F58
+    sta.b !dp_02
+    sta.b !dp_04
+    bit.b #$80
+    beq .l9E2B
+    lda.b #$FF
+    sta.b !dp_05
+    bra .l9E2D
+.l9E2B:
+    stz.b !dp_05
+.l9E2D:
+    lda.w !wram_1F59
+    sta.b !dp_08
+    sta.b !actor_0a
+    bit.b #$80
+    beq .l9E3E
+    lda.b #$FF                      ; not reached in the traces so far
+    sta.b !dp_0b
+    bra .l9E40
+.l9E3E:
+    stz.b !dp_0b
+.l9E40:
+    lda.w !wram_1F5A
+    sta.b !dp_94
+    sta.w !rot_z
+    bit.b #$80
+    beq .l9E53
+    lda.b #$FF                      ; not reached in the traces so far
+    sta.w !rot_z_high
+    bra .l9E56
+.l9E53:
+    stz.w !rot_z_high
+.l9E56:
+    lda.w !obj_16,y
+    jsl.l RotateXY
+    lda.b !dp_04
+    sta.b !dp_02
+    lda.b !actor_0a
+    sta.b !dp_08
+    lda.w !rot_z
+    sta.b !dp_94
+    lda.w !obj_15,y
+    jsl.l RotateXZ
+    rep.b #$20
+    lda.b !dp_04
+    asl a
+    asl a
+    asl a
+    asl a
+    sta.b !dp_04
+    lda.b !actor_0a
+    asl a
+    asl a
+    asl a
+    asl a
+    sta.b !actor_0a
+    lda.w !rot_z
+    asl a
+    asl a
+    asl a
+    asl a
+    sta.w !rot_z
+    lda.w !obj_pos_x,y
+    clc
+    adc.b !dp_04
+    sta.w !obj_pos_x,x
+    lda.w !obj_pos_z,y
+    clc
+    adc.w !rot_z
+    sta.w !obj_pos_z,x
+    lda.w !obj_pos_y,y
+    clc
+    adc.b !actor_0a
+    sta.w !obj_pos_y,x
+    sep.b #$20
+    lda.w !obj_16,y
+    sta.w !obj_16,x
+    lda.w !obj_15,y
+    sta.w !obj_15,x
+    jsl.l ObjectRebucket
+    lda.b #$03
+    sta.w !obj_36,x
+    lda.w !obj_48,x
+    bne .l9EC9
+    jml.l ObjectReleaseLong
+.l9EC9:
+    dec.w !obj_48,x
+    rtl
+
+; @routine 08:9ECD ObjectHandlerEmptyC
+; WHAT IT DOES: Nothing: an empty object handler.
+; HOW: RTL. Not reached in the traces so far.
+; Entry: any. Exit: every register unchanged.
+%at($089ECD)
+ObjectHandlerEmptyC:
+    rtl                             ; not reached in the traces so far
+
+; @routine 08:9ECE ObjectMarkerStart
+; WHAT IT DOES: A marker's first frame: data bank $7E, handler $08:9EFD
+; (ObjectMarkerFollow), +$24 bit 3, +$3A = 0, +$5F = $64, +$04 = $A158;
+; then its first frame.
+; HOW: PHA, PLB for the bank; falls into ObjectMarkerFollow. Not reached
+; in the traces so far.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectMarkerFollow.
+%at($089ECE)
+ObjectMarkerStart:
+    lda.b #$7E                      ; not reached in the traces so far
+    pha
+    plb
+    rep.b #$20
+    lda.w #$9EFD
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+    lda.w !obj_24,x
+    ora.b #$08
+    sta.w !obj_24,x
+    lda.b #$00
+    sta.w !obj_3a,x
+    lda.b #$64
+    sta.w !obj_5f,x
+    rep.b #$20
+    lda.w #$A158
+    sta.w !obj_04,x
+    sep.b #$20
+
+; @routine 08:9EFD ObjectMarkerFollow
+; WHAT IT DOES: A marker on the car named by the ($1168 & 3)th word of
+; the table at $116C: that car's +$27 kept at $1174, the car at $1176;
+; at the car's position (ObjectCopyPositionFrom) $12C higher, rebucketed,
+; +$36 = 3; released when $116A is nonzero.
+; HOW: 16-bit table reads through the data bank. Not reached in the traces
+; so far.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; as the path leaves
+; it.
+%at($089EFD)
+ObjectMarkerFollow:
+    rep.b #$20                      ; not reached in the traces so far
+    lda.w !packed_time_a+5
+    and.w #$0003
+    asl a
+    tay
+    lda.w !table_116c,y
+    tay
+    lda.w !obj_27,y
+    sty.w !table_116c+10
+    sta.w !table_116c+8
+    sep.b #$20
+    jsl.l ObjectCopyPositionFrom
+    rep.b #$20
+    lda.w !obj_pos_y,x
+    clc
+    adc.w #$FED4
+    sta.w !obj_pos_y,x
+    sep.b #$20
+    jsl.l ObjectRebucket
+    lda.b #$03
+    sta.w !obj_36,x
+    lda.w !race_word_116a
+    beq .l9F3A
+    jsl.l ObjectRelease
+.l9F3A:
+    rtl
+
+; @routine 08:9F3B ObjectDemoCarStart
+; WHAT IT DOES: A demo car's first frame: a car record (ObjectCarRecordNew
+; with A = 4) with +$70 bit 3 and +$16 bit 7; the camera ($1A64) on it at
+; (0, -$C8, $258), mode 1; handler $08:9FB2 (ObjectDemoCarStep); its
+; number in the table at $116C ($116A counted up); count +$48 = 4; then
+; its first step.
+; HOW: Falls into ObjectDemoCarStep.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectDemoCarStep.
+%at($089F3B)
+ObjectDemoCarStart:
+    rep.b #$20
+    lda.w #$0004
+    jsl.l ObjectCarRecordNew
+    rep.b #$20
+    lda.w !obj_22,x
+    beq .l9F64
+    phx
+    tax
+    lda.l !gsu_rec_70,x
+    ora.w #$0008
+    sta.l !gsu_rec_70,x
+    lda.l !gsu_rec_flags,x
+    ora.w #$0080
+    sta.l !gsu_rec_flags,x
+    plx
+.l9F64:
+    rep.b #$30
+    ldy.w #$1A64
+    txa
+    sta.w !dp_02,y
+    lda.w #$0000
+    sta.w !actor_kind,y
+    lda.w #$FF38
+    sta.w !actor_1c,y
+    lda.w #$0258
+    sta.w !actor_1e,y
+    sep.b #$20
+    lda.b #$01
+    sta.w !bank0_base,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$9FB2
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+    lda.w !race_word_116a
+    asl a
+    rep.b #$20
+    and.w #$00FF
+    phx
+    tax
+    pla
+    sta.l !table_116c,x
+    tax
+    sep.b #$20
+    inc.w !race_word_116a
+    lda.b #$04
+    sta.w !obj_48,x
+
+; @routine 08:9FB2 ObjectDemoCarStep
+; WHAT IT DOES: A demo car's frame: its look by kind (ObjectSet5DByKind
+; with $00:18D3); while its count +$48 runs it counts down, at 0 its
+; record gets +$1C bit 4; rebucketed, posed from its record
+; (ObjectPoseFromRecord), +$36 = 3 and the record marked (GsuRecordFlag4,
+; the code at $08:CD7E).
+; HOW: The record through +$22.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as GsuRecordFlag4.
+%at($089FB2)
+ObjectDemoCarStep:
+    lda.l !selection_out
+    jsr.w ObjectSet5DByKind
+    lda.w !obj_48,x
+    bne .l9FC2
+    jml.l .l9FC7
+.l9FC2:
+    dec.w !obj_48,x
+    bra .l9FDC
+.l9FC7:
+    phx
+    rep.b #$20
+    lda.w !obj_22,x
+    tax
+    lda.l !gsu_rec_1c,x
+    ora.w #$0010
+    sta.l !gsu_rec_1c,x
+    sep.b #$20
+    plx
+.l9FDC:
+    jsl.l ObjectRebucket
+    jsl.l ObjectPoseFromRecord
+    lda.b #$03
+    sta.w !obj_36,x
+    jmp.w ObjectCarCD7E
+
+; @routine 08:9FEC CameraOnCarNear
+; WHAT IT DOES: The camera ($1A64) on object X at (0, -$1F4, $258), mode
+; 1.
+; HOW: Stores through Y = $1A64. Not reached in the traces so far.
+; Entry: X 16-bit; X = object. Exit: M 8-bit, X 16-bit; Y = $1A64; A low
+; byte 1.
+%at($089FEC)
+CameraOnCarNear:
+    rep.b #$30                      ; not reached in the traces so far
+    ldy.w #$1A64
+    txa
+    sta.w !dp_02,y
+    lda.w #$0000
+    sta.w !actor_kind,y
+    lda.w #$FE0C
+    sta.w !actor_1c,y
+    lda.w #$0258
+    sta.w !actor_1e,y
+    sep.b #$20
+    lda.b #$01
+    sta.w !bank0_base,y
+    rtl
+
+; @routine 08:A00F CameraOnMarkedCar
+; WHAT IT DOES: The camera ($1A64) on the car at $1176 at (0, -$C8, $2BC),
+; mode 1.
+; HOW: Stores through direct page + X = $1A64. Not reached in the traces
+; so far.
+; Entry: any. Exit: M 8-bit, X 16-bit; X = $1A64, Y = the car; A low byte
+; 1.
+%at($08A00F)
+CameraOnMarkedCar:
+    rep.b #$30                      ; not reached in the traces so far
+    ldx.w #$1A64
+    ldy.w !table_116c+10
+    sty.b !dp_02,x
+    lda.w #$0000
+    sta.b !actor_kind,x
+    lda.w #$FF38
+    sta.b !actor_1c,x
+    lda.w #$02BC
+    sta.b !actor_1e,x
+    sep.b #$20
+    lda.b #$01
+    sta.b !bank0_base,x
+    rtl
+
+; @routine 08:A02F DataBank7E
+; WHAT IT DOES: Sets the data bank to $7E.
+; HOW: LDA #$7E, PHA, PLB; ends at the RTL at $08:A033 that other code
+; jumps to. Not reached in the traces so far.
+; Entry: M 8-bit. Exit: data bank $7E; A low byte $7E; N clear, Z clear.
+%at($08A02F)
+DataBank7E:
+    lda.b #$7E                      ; not reached in the traces so far
+    pha
+    plb
+RtlA033:
+    rtl
