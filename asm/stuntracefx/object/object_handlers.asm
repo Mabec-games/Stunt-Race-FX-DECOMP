@@ -3378,3 +3378,432 @@ PlayerCarEvents:
     sta.w !obj_24,x
 .lC5A4:
     rtl
+
+; @routine 08:E443 ObjectOffsetOnParent2
+; WHAT IT DOES: An attachment placed at its velocity bytes turned by its
+; parent's angles, times 2: hidden ($08:E13C) when the parent's +$24 has
+; bit 3 or 5; +$18 = $80; then +$24 bit 5 cleared and rebucketed.
+; HOW: As ObjectAttachTurned's placement with one shift. No caller found:
+; not reached in the traces so far.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; as ObjectRebucket.
+%at($08E443)
+ObjectOffsetOnParent2:
+    ldy.w !obj_06,x                 ; not reached in the traces so far
+    lda.w !obj_24,y
+    and.b #$08
+    beq .lE451
+    jml.l ObjectAttachHide
+.lE451:
+    lda.w !obj_24,y
+    and.b #$20
+    beq .lE45C
+    jml.l ObjectAttachHide
+.lE45C:
+    lda.b #$00
+    ora.b #$80
+    sta.w !obj_18,x
+    lda.w !obj_vel_x,x
+    sta.w !wram_1F58
+    lda.w !obj_vel_y,x
+    sta.w !wram_1F59
+    lda.w !obj_vel_z,x
+    sta.w !wram_1F5A
+    lda.w !wram_1F58
+    sta.b !dp_02
+    sta.b !dp_04
+    bit.b #$80
+    beq .lE486
+    lda.b #$FF
+    sta.b !dp_05
+    bra .lE488
+.lE486:
+    stz.b !dp_05
+.lE488:
+    lda.w !wram_1F59
+    sta.b !dp_08
+    sta.b !actor_0a
+    bit.b #$80
+    beq .lE499
+    lda.b #$FF
+    sta.b !dp_0b
+    bra .lE49B
+.lE499:
+    stz.b !dp_0b
+.lE49B:
+    lda.w !wram_1F5A
+    sta.b !dp_94
+    sta.w !rot_z
+    bit.b #$80
+    beq .lE4AE
+    lda.b #$FF
+    sta.w !rot_z_high
+    bra .lE4B1
+.lE4AE:
+    stz.w !rot_z_high
+.lE4B1:
+    lda.w !obj_16,y
+    jsl.l RotateXY
+    lda.b !dp_04
+    sta.b !dp_02
+    lda.b !actor_0a
+    sta.b !dp_08
+    lda.w !rot_z
+    sta.b !dp_94
+    lda.w !obj_14,y
+    jsl.l RotateXZFrom08
+    lda.b !dp_04
+    sta.b !dp_02
+    lda.b !actor_0a
+    sta.b !dp_08
+    lda.w !rot_z
+    sta.b !dp_94
+    lda.w !obj_15,y
+    jsl.l RotateXZ
+    rep.b #$20
+    lda.b !dp_04
+    asl a
+    sta.b !dp_04
+    lda.b !actor_0a
+    asl a
+    sta.b !actor_0a
+    lda.w !rot_z
+    asl a
+    sta.w !rot_z
+    lda.w !obj_pos_x,y
+    clc
+    adc.b !dp_04
+    sta.w !obj_pos_x,x
+    lda.w !obj_pos_z,y
+    clc
+    adc.w !rot_z
+    sta.w !obj_pos_z,x
+    lda.w !obj_pos_y,y
+    clc
+    adc.b !actor_0a
+    sta.w !obj_pos_y,x
+    sep.b #$20
+    lda.w !obj_24,x
+    and.b #$DF
+    sta.w !obj_24,x
+    jsl.l ObjectRebucket
+    rtl
+
+; @routine 08:E51E ObjectLampAnimate
+; WHAT IT DOES: A lamp's look by $1A5B bits 2-4: 4, 8, $0C, $1C step its
+; count +$4B up to 4 through the looks at $08:E57F, $08:E5AD, $08:E5DB,
+; $08:E609; $10 sets look $9AAF; anything else clears the count; then its
+; frame on the parent (ObjectLampOnParent).
+; HOW: Compare chain; the paths for $0C and $1C are not reached in the
+; traces so far.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectLampOnParent.
+%at($08E51E)
+ObjectLampAnimate:
+    lda.w !seq_stage+38
+    and.b #$1C
+    cmp.b #$08
+    bne .lE52A
+    brl .lE589
+.lE52A:
+    cmp.b #$04
+    bne .lE531
+    brl .lE55B
+.lE531:
+    cmp.b #$0C
+    bne .lE538
+    brl .lE5B7                      ; not reached in the traces so far
+.lE538:
+    cmp.b #$1C
+    bne .lE53F
+    brl .lE5E5                      ; not reached in the traces so far
+.lE53F:
+    cmp.b #$10
+    bne .lE546
+    brl .lE54E
+.lE546:
+    lda.b #$00
+    sta.w !obj_4b,x
+    jmp.w ObjectLampOnParent
+.lE54E:
+    rep.b #$20
+    lda.w #$9AAF
+    sta.w !obj_5d,x
+    sep.b #$20
+    jmp.w ObjectLampOnParent
+.lE55B:
+    lda.w !obj_4b,x
+    cmp.b #$04
+    bne .lE565
+    brl ObjectLampOnParent
+.lE565:
+    inc a
+    sta.w !obj_4b,x
+    phx
+    asl a
+    sep.b #$10
+    tax
+    rep.b #$20
+    lda.l $08E57F,x
+    rep.b #$10
+    plx
+    sta.w !obj_5d,x
+    sep.b #$20
+    jmp.w ObjectLampOnParent
+    dw $9AAF, $9AB3, $9AB5, $9AB3, $9AAF
+.lE589:
+    lda.w !obj_4b,x
+    cmp.b #$04
+    bne .lE593
+    brl ObjectLampOnParent
+.lE593:
+    inc a
+    sta.w !obj_4b,x
+    phx
+    asl a
+    sep.b #$10
+    tax
+    rep.b #$20
+    lda.l $08E5AD,x
+    rep.b #$10
+    plx
+    sta.w !obj_5d,x
+    sep.b #$20
+    jmp.w ObjectLampOnParent
+    dw $9AAF, $9AB3, $9AB5, $9AB7, $9AB1
+.lE5B7:
+    lda.w !obj_4b,x                 ; not reached in the traces so far
+    cmp.b #$04
+    bne .lE5C1
+    brl ObjectLampOnParent
+.lE5C1:
+    inc a
+    sta.w !obj_4b,x
+    phx
+    asl a
+    sep.b #$10
+    tax
+    rep.b #$20
+    lda.l $08E5DB,x
+    rep.b #$10
+    plx
+    sta.w !obj_5d,x
+    sep.b #$20
+    jmp.w ObjectLampOnParent
+    dw $9AB1, $9AB7, $9AB5, $9AB3, $9AAF
+.lE5E5:
+    lda.w !obj_4b,x                 ; not reached in the traces so far
+    cmp.b #$04
+    bne .lE5EF
+    brl ObjectLampOnParent
+.lE5EF:
+    inc a
+    sta.w !obj_4b,x
+    phx
+    asl a
+    sep.b #$10
+    tax
+    rep.b #$20
+    lda.l $08E609,x
+    rep.b #$10
+    plx
+    sta.w !obj_5d,x
+    sep.b #$20
+    jmp.w ObjectLampOnParent
+    dw $9AB1, $9AB7, $9AB5, $9AB7, $9AB1
+
+; @routine 08:E613 ObjectLampStart
+; WHAT IT DOES: A lamp's first frame: its +$26 from its parent's; then as
+; ObjectLampWait.
+; HOW: Falls into ObjectLampWait.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectLampWait.
+%at($08E613)
+ObjectLampStart:
+    ldy.w !obj_06,x
+    lda.w !obj_26,y
+    sta.w !obj_26,x
+
+; @routine 08:E61C ObjectLampWait
+; WHAT IT DOES: A lamp waiting: with $1A5B bit 5 its count +$4B = 0 and
+; handler $08:E51E (ObjectLampAnimate), run at once; otherwise look $9AAF,
+; handler $08:E653 (ObjectLampOnParent), run at once.
+; HOW: Falls into the chosen handler.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as the handler leaves it.
+%at($08E61C)
+ObjectLampWait:
+    lda.w !seq_stage+38
+    and.b #$20
+    beq .lE63A
+    lda.b #$00
+    sta.w !obj_4b,x
+    rep.b #$20
+    lda.w #$E51E
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+    jmp.w ObjectLampAnimate
+.lE63A:
+    rep.b #$20
+    lda.w #$9AAF
+    sta.w !obj_5d,x
+    sep.b #$20
+    rep.b #$20
+    lda.w #$E653
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+
+; @routine 08:E653 ObjectLampOnParent
+; WHAT IT DOES: A lamp's frame on its parent (+$06): hidden ($08:E13C)
+; when the parent is gone (+$24 bit 3); when the parent is loose (+$25 bit
+; 2) it drops ($08:E6BE); with +$25 bit 5 it bounces ($08:E712,
+; ObjectLampDropBStart); with bit 6 it takes look $9AB1 and drops;
+; otherwise placed on the parent ($08:E682).
+; HOW: Byte tests through the data bank.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; as the path leaves
+; it.
+%at($08E653)
+ObjectLampOnParent:
+    ldy.w !obj_06,x
+    lda.w !obj_24,y
+    and.b #$08
+    beq .lE661
+    jml.l ObjectAttachHide
+.lE661:
+    lda.w !obj_25,y
+    and.b #$04
+    beq .lE66C
+    jml.l ObjectLampDropStart
+.lE66C:
+    lda.w !obj_25,y
+    and.b #$20
+    beq .lE677
+    jml.l ObjectLampDropBStart      ; not reached in the traces so far
+.lE677:
+    lda.w !obj_25,y
+    and.b #$40
+    beq ObjectLampPlace
+    jml.l ObjectLampDropLook
+ObjectLampPlace:
+    ldy.w !obj_06,x
+    phx
+    tyx
+    ply
+    jsr.w ObjectPlaceOnParent
+    tyx
+    jsl.l ObjectRebucket
+    lda.w !obj_24,x
+    and.b #$DF
+    sta.w !obj_24,x
+    lda.w !obj_24,x
+    and.b #$BF
+    sta.w !obj_24,x
+    ldy.w !obj_06,x
+    lda.w !obj_24,y
+    and.b #$40
+    beq .lE6AE
+    jml.l ObjectAttachBit6
+.lE6AE:
+    lda.b #$03
+    sta.w !obj_36,x
+    rtl
+ObjectLampDropLook:
+    rep.b #$20
+    lda.w #$9AB1
+    sta.w !obj_5d,x
+    sep.b #$20
+ObjectLampDropStart:
+    ldy.w !obj_06,x
+    lda.w !obj_25,y
+    and.b #$10
+    beq .lE6CC
+    jml.l ObjectReleaseLong
+.lE6CC:
+    rep.b #$20
+    lda.w #$E6DE
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+    stz.w !obj_49,x
+
+; @routine 08:E6DE ObjectLampDrop
+; WHAT IT DOES: A dropping lamp: +$48 up $10; the count +$5F stepped
+; (ObjectCountStep5F with $1F58 = 8, $1F59 = $10, $1F5A = 5); when done,
+; +$48 = 0 and handler $08:E61C (ObjectLampWait); placed on its parent
+; either way.
+; HOW: Ends in the placement at $08:E682.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as the placement leaves it.
+%at($08E6DE)
+ObjectLampDrop:
+    lda.w !obj_48,x
+    clc
+    adc.b #$10
+    sta.w !obj_48,x
+    lda.b #$08
+    sta.w !wram_1F58
+    lda.b #$10
+    sta.w !wram_1F59
+    lda.b #$05
+    sta.w !wram_1F5A
+    jsr.w ObjectCountStep5F
+    bcc ObjectLampPlace
+    lda.b #$00
+    sta.w !obj_48,x
+    rep.b #$20
+    lda.w #$E61C
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+    jmp.w ObjectLampPlace
+
+; @routine 08:E712 ObjectLampDropBStart
+; WHAT IT DOES: A lamp starts bouncing: handler $08:E72C
+; (ObjectLampDropB), +$49 = 0, +$25 bit 0; then its first frame.
+; HOW: Falls into ObjectLampDropB. Not reached in the traces so far.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectLampDropB.
+%at($08E712)
+ObjectLampDropBStart:
+    rep.b #$20                      ; not reached in the traces so far
+    lda.w #$E72C
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+    stz.w !obj_49,x
+    lda.w !obj_25,x
+    ora.b #$01
+    sta.w !obj_25,x
+
+; @routine 08:E72C ObjectLampDropB
+; WHAT IT DOES: A bouncing lamp: the count +$5F stepped
+; (ObjectCountStep5F with $1F58 = 3, $1F59 = 6, $1F5A = $0A); when done,
+; +$49 = 0, handler $08:E61C (ObjectLampWait) and +$25 bit 0 cleared;
+; placed on its parent either way.
+; HOW: Ends in the placement at $08:E682. Not reached in the traces so
+; far.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as the placement leaves it.
+%at($08E72C)
+ObjectLampDropB:
+    lda.b #$03                      ; not reached in the traces so far
+    sta.w !wram_1F58
+    lda.b #$06
+    sta.w !wram_1F59
+    lda.b #$0A
+    sta.w !wram_1F5A
+    jsr.w ObjectCountStep5F
+    bcs .lE743
+    brl ObjectLampPlace
+.lE743:
+    stz.w !obj_49,x
+    rep.b #$20
+    lda.w #$E61C
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+    lda.w !obj_25,x
+    and.b #$FE
+    sta.w !obj_25,x
+    jmp.w ObjectLampPlace

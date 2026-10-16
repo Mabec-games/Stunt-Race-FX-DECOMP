@@ -2715,3 +2715,316 @@ link:
         wr8(b | (uint16_t)(0x2024 + cpu.x), (uint8_t)cpu.a);
     }
 }
+
+void abi_ObjectPlaceOnParent(void);
+void abi_ObjectCountStep5F(void);
+
+/*
+ * @routine 08:E443 ObjectOffsetOnParent2
+ * WHAT IT DOES: An attachment placed at its velocity bytes turned by its
+ * parent's angles, times 2: hidden ($08:E13C) when the parent's +$24 has
+ * bit 3 or 5; +$18 = $80; then +$24 bit 5 cleared and rebucketed.
+ * HOW: As ObjectAttachTurned's placement with one shift. No caller found:
+ * not reached in the traces so far.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; as ObjectRebucket.
+ */
+void abi_ObjectOffsetOnParent2(void)
+{
+    uint32_t b = db();
+
+    cpu.y = rd16(b | (uint16_t)(0x2006 + cpu.x));
+    cpu.p = nz16(cpu.p, cpu.y);
+    lda8((uint8_t)(rd8(b | (uint16_t)(0x2024 + cpu.y)) & 0x08));
+    if ((uint8_t)cpu.a) {
+        attach_hide();
+        return;
+    }
+    lda8((uint8_t)(rd8(b | (uint16_t)(0x2024 + cpu.y)) & 0x20));
+    if ((uint8_t)cpu.a) {
+        attach_hide();
+        return;
+    }
+    lda8(0x80);
+    wr8(b | (uint16_t)(0x2018 + cpu.x), 0x80);
+    offset_on_parent(1);
+    lda8((uint8_t)(rd8(b | (uint16_t)(0x2024 + cpu.x)) & 0xDF));
+    wr8(b | (uint16_t)(0x2024 + cpu.x), (uint8_t)cpu.a);
+    abi_ObjectRebucket();
+}
+
+/* $08:E682: on its parent (ObjectPlaceOnParent with X = the parent, Y =
+   the lamp), rebucketed, +$24 bits 5 and 6 cleared, bit 6 again when the
+   parent has it ($08:E14A); +$36 = 3. */
+static void lamp_place(void)
+{
+    uint32_t b = db();
+
+    cpu.y = rd16(b | (uint16_t)(0x2006 + cpu.x));
+    swap_xy();
+    abi_ObjectPlaceOnParent();
+    cpu.x = cpu.y;
+    cpu.p = nz16(cpu.p, cpu.x);
+    abi_ObjectRebucket();
+    lda8((uint8_t)(rd8(b | (uint16_t)(0x2024 + cpu.x)) & 0xDF));
+    wr8(b | (uint16_t)(0x2024 + cpu.x), (uint8_t)cpu.a);
+    lda8((uint8_t)(rd8(b | (uint16_t)(0x2024 + cpu.x)) & 0xBF));
+    wr8(b | (uint16_t)(0x2024 + cpu.x), (uint8_t)cpu.a);
+    cpu.y = rd16(b | (uint16_t)(0x2006 + cpu.x));
+    cpu.p = nz16(cpu.p, cpu.y);
+    lda8((uint8_t)(rd8(b | (uint16_t)(0x2024 + cpu.y)) & 0x40));
+    if ((uint8_t)cpu.a) {
+        attach_bit6();
+        return;
+    }
+    lda8(0x03);
+    wr8(b | (uint16_t)(0x2036 + cpu.x), 0x03);
+}
+
+void abi_ObjectLampDrop(void);
+void abi_ObjectLampDropB(void);
+void abi_ObjectLampDropBStart(void);
+
+/* $08:E6BE: with the parent's +$25 bit 4 released; otherwise handler
+   $08:E6DE (ObjectLampDrop), +$49 = 0, and its first frame. */
+static void lamp_drop_start(void)
+{
+    uint32_t b = db();
+
+    cpu.y = rd16(b | (uint16_t)(0x2006 + cpu.x));
+    cpu.p = nz16(cpu.p, cpu.y);
+    lda8((uint8_t)(rd8(b | (uint16_t)(0x2025 + cpu.y)) & 0x10));
+    if ((uint8_t)cpu.a) {
+        abi_ObjectReleaseLong();
+        return;
+    }
+    set_handler(cpu.x, 0xE6DE);
+    wr8(b | (uint16_t)(0x2049 + cpu.x), 0x00);
+    abi_ObjectLampDrop();
+}
+
+/*
+ * @routine 08:E653 ObjectLampOnParent
+ * WHAT IT DOES: A lamp's frame on its parent (+$06): hidden ($08:E13C)
+ * when the parent is gone (+$24 bit 3); when the parent is loose (+$25 bit
+ * 2) it drops ($08:E6BE); with +$25 bit 5 it bounces ($08:E712,
+ * ObjectLampDropBStart); with bit 6 it takes look $9AB1 and drops;
+ * otherwise placed on the parent ($08:E682).
+ * HOW: Byte tests through the data bank.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; as the path leaves
+ * it.
+ */
+void abi_ObjectLampOnParent(void)
+{
+    uint32_t b = db();
+
+    cpu.y = rd16(b | (uint16_t)(0x2006 + cpu.x));
+    cpu.p = nz16(cpu.p, cpu.y);
+    lda8((uint8_t)(rd8(b | (uint16_t)(0x2024 + cpu.y)) & 0x08));
+    if ((uint8_t)cpu.a) {
+        attach_hide();
+        return;
+    }
+    lda8((uint8_t)(rd8(b | (uint16_t)(0x2025 + cpu.y)) & 0x04));
+    if ((uint8_t)cpu.a) {
+        lamp_drop_start();
+        return;
+    }
+    lda8((uint8_t)(rd8(b | (uint16_t)(0x2025 + cpu.y)) & 0x20));
+    if ((uint8_t)cpu.a) {
+        abi_ObjectLampDropBStart();
+        return;
+    }
+    lda8((uint8_t)(rd8(b | (uint16_t)(0x2025 + cpu.y)) & 0x40));
+    if ((uint8_t)cpu.a) {
+        sta16_imm(b | (uint16_t)(0x205D + cpu.x), 0x9AB1);
+        lamp_drop_start();
+        return;
+    }
+    lamp_place();
+}
+
+/* One step of a lamp's look animation: unless its count +$4B is 4, the
+   count up one and its look +$5D the word for it in the table at
+   $08:table (X 8-bit for the index). */
+static void lamp_look_step(uint16_t table)
+{
+    uint32_t b = db();
+    uint8_t n;
+    uint16_t x = cpu.x;
+
+    op_lda8(b | (uint16_t)(0x204B + cpu.x));
+    n = (uint8_t)cpu.a;
+    if (n == 0x04)
+        return;
+    n++;
+    lda8(n);
+    wr8(b | (uint16_t)(0x204B + cpu.x), n);
+    cpu.x = (uint8_t)(n << 1);
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(0x080000 | (uint16_t)(table + cpu.x));
+    cpu.x = x;
+    wr16(b | (uint16_t)(0x205D + cpu.x), cpu.a);
+    cpu.p |= P_M;
+}
+
+/*
+ * @routine 08:E51E ObjectLampAnimate
+ * WHAT IT DOES: A lamp's look by $1A5B bits 2-4: 4, 8, $0C, $1C step its
+ * count +$4B up to 4 through the looks at $08:E57F, $08:E5AD, $08:E5DB,
+ * $08:E609; $10 sets look $9AAF; anything else clears the count; then its
+ * frame on the parent (ObjectLampOnParent).
+ * HOW: Compare chain; the paths for $0C and $1C are not reached in the
+ * traces so far.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectLampOnParent.
+ */
+void abi_ObjectLampAnimate(void)
+{
+    uint32_t b = db();
+    uint8_t v;
+
+    op_lda8(b | 0x1A5B);
+    v = (uint8_t)(cpu.a & 0x1C);
+    lda8(v);
+    if (v == 0x08)
+        lamp_look_step(0xE5AD);
+    else if (v == 0x04)
+        lamp_look_step(0xE57F);
+    else if (v == 0x0C)
+        lamp_look_step(0xE5DB);
+    else if (v == 0x1C)
+        lamp_look_step(0xE609);
+    else if (v == 0x10)
+        sta16_imm(b | (uint16_t)(0x205D + cpu.x), 0x9AAF);
+    else {
+        lda8(0x00);
+        wr8(b | (uint16_t)(0x204B + cpu.x), 0x00);
+    }
+    abi_ObjectLampOnParent();
+}
+
+/*
+ * @routine 08:E61C ObjectLampWait
+ * WHAT IT DOES: A lamp waiting: with $1A5B bit 5 its count +$4B = 0 and
+ * handler $08:E51E (ObjectLampAnimate), run at once; otherwise look $9AAF,
+ * handler $08:E653 (ObjectLampOnParent), run at once.
+ * HOW: Falls into the chosen handler.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as the handler leaves it.
+ */
+void abi_ObjectLampWait(void)
+{
+    uint32_t b = db();
+
+    op_lda8(b | 0x1A5B);
+    lda8((uint8_t)(cpu.a & 0x20));
+    if ((uint8_t)cpu.a) {
+        lda8(0x00);
+        wr8(b | (uint16_t)(0x204B + cpu.x), 0x00);
+        set_handler(cpu.x, 0xE51E);
+        abi_ObjectLampAnimate();
+        return;
+    }
+    sta16_imm(b | (uint16_t)(0x205D + cpu.x), 0x9AAF);
+    set_handler(cpu.x, 0xE653);
+    abi_ObjectLampOnParent();
+}
+
+/*
+ * @routine 08:E613 ObjectLampStart
+ * WHAT IT DOES: A lamp's first frame: its +$26 from its parent's; then as
+ * ObjectLampWait.
+ * HOW: Falls into ObjectLampWait.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectLampWait.
+ */
+void abi_ObjectLampStart(void)
+{
+    uint32_t b = db();
+
+    cpu.y = rd16(b | (uint16_t)(0x2006 + cpu.x));
+    cpu.p = nz16(cpu.p, cpu.y);
+    op_lda8(b | (uint16_t)(0x2026 + cpu.y));
+    wr8(b | (uint16_t)(0x2026 + cpu.x), (uint8_t)cpu.a);
+    abi_ObjectLampWait();
+}
+
+/*
+ * @routine 08:E6DE ObjectLampDrop
+ * WHAT IT DOES: A dropping lamp: +$48 up $10; the count +$5F stepped
+ * (ObjectCountStep5F with $1F58 = 8, $1F59 = $10, $1F5A = 5); when done,
+ * +$48 = 0 and handler $08:E61C (ObjectLampWait); placed on its parent
+ * either way.
+ * HOW: Ends in the placement at $08:E682.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as the placement leaves it.
+ */
+void abi_ObjectLampDrop(void)
+{
+    uint32_t b = db();
+    uint8_t p, v;
+
+    v = rd8(b | (uint16_t)(0x2048 + cpu.x));
+    p = (uint8_t)(cpu.p & ~P_C);
+    v = op_adc8(v, 0x10, &p);
+    cpu.p = p;
+    lda8(v);
+    wr8(b | (uint16_t)(0x2048 + cpu.x), v);
+    lda8(0x08);
+    wr8(b | 0x1F58, 0x08);
+    lda8(0x10);
+    wr8(b | 0x1F59, 0x10);
+    lda8(0x05);
+    wr8(b | 0x1F5A, 0x05);
+    abi_ObjectCountStep5F();
+    if (cpu.p & P_C) {
+        lda8(0x00);
+        wr8(b | (uint16_t)(0x2048 + cpu.x), 0x00);
+        set_handler(cpu.x, 0xE61C);
+    }
+    lamp_place();
+}
+
+/*
+ * @routine 08:E72C ObjectLampDropB
+ * WHAT IT DOES: A bouncing lamp: the count +$5F stepped
+ * (ObjectCountStep5F with $1F58 = 3, $1F59 = 6, $1F5A = $0A); when done,
+ * +$49 = 0, handler $08:E61C (ObjectLampWait) and +$25 bit 0 cleared;
+ * placed on its parent either way.
+ * HOW: Ends in the placement at $08:E682. Not reached in the traces so
+ * far.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as the placement leaves it.
+ */
+void abi_ObjectLampDropB(void)
+{
+    uint32_t b = db();
+
+    lda8(0x03);
+    wr8(b | 0x1F58, 0x03);
+    lda8(0x06);
+    wr8(b | 0x1F59, 0x06);
+    lda8(0x0A);
+    wr8(b | 0x1F5A, 0x0A);
+    abi_ObjectCountStep5F();
+    if (cpu.p & P_C) {
+        wr8(b | (uint16_t)(0x2049 + cpu.x), 0x00);
+        set_handler(cpu.x, 0xE61C);
+        lda8((uint8_t)(rd8(b | (uint16_t)(0x2025 + cpu.x)) & 0xFE));
+        wr8(b | (uint16_t)(0x2025 + cpu.x), (uint8_t)cpu.a);
+    }
+    lamp_place();
+}
+
+/*
+ * @routine 08:E712 ObjectLampDropBStart
+ * WHAT IT DOES: A lamp starts bouncing: handler $08:E72C
+ * (ObjectLampDropB), +$49 = 0, +$25 bit 0; then its first frame.
+ * HOW: Falls into ObjectLampDropB. Not reached in the traces so far.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectLampDropB.
+ */
+void abi_ObjectLampDropBStart(void)
+{
+    uint32_t b = db();
+
+    set_handler(cpu.x, 0xE72C);
+    wr8(b | (uint16_t)(0x2049 + cpu.x), 0x00);
+    lda8((uint8_t)(rd8(b | (uint16_t)(0x2025 + cpu.x)) | 0x01));
+    wr8(b | (uint16_t)(0x2025 + cpu.x), (uint8_t)cpu.a);
+    abi_ObjectLampDropB();
+}
