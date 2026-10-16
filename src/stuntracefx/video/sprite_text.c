@@ -23,9 +23,9 @@
 void OamTextLine(uint8_t bank, uint16_t *xp, uint16_t *yp, uint16_t *ap)
 {
     uint32_t b = (uint32_t)bank << 16;
-    uint16_t y = (uint16_t)((rd8(0x0000F2) & 0xFF) << 2);
+    uint16_t y = (uint16_t)((rd16(0x0000F2) & 0xFF) << 2);
     uint16_t x = rd16(0x078000 + ((rd16(b | 0x0E3D) << 1) & 0x00FF));
-    uint8_t c;
+    uint8_t c, pen, attr = 0;
 
     *ap = x;
     c = rd8(b | x);
@@ -42,10 +42,12 @@ void OamTextLine(uint8_t bank, uint16_t *xp, uint16_t *yp, uint16_t *ap)
         }
         wr8(b | (uint16_t)(OAM_BUFFER + 2 + y), (uint8_t)(c + rd8(0x0000F1)));
         x++;
-        wr8(b | (uint16_t)(OAM_BUFFER + y), rd8(0x0000F3));
-        wr8(0x0000F3, (uint8_t)(rd8(0x0000F3) + 8));
+        pen = rd8(0x0000F3);
+        wr8(b | (uint16_t)(OAM_BUFFER + y), pen);
+        wr8(0x0000F3, (uint8_t)(pen + 8));
         wr8(b | (uint16_t)(OAM_BUFFER + 1 + y), rd8(0x0000F4));
-        wr8(b | (uint16_t)(OAM_BUFFER + 3 + y), rd8(0x0000F5));
+        attr = rd8(0x0000F5);
+        wr8(b | (uint16_t)(OAM_BUFFER + 3 + y), attr);
         y += 4;
         c = (uint8_t)(rd8(0x0000F2) - 1);
         wr8(0x0000F2, c);
@@ -54,7 +56,7 @@ void OamTextLine(uint8_t bank, uint16_t *xp, uint16_t *yp, uint16_t *ap)
     }
     *xp = x;
     *yp = y;
-    *ap = (uint16_t)((*ap & 0xFF00) | rd8(0x0000F5));
+    *ap = (uint16_t)((*ap & 0xFF00) | attr);
 }
 
 void abi_OamTextLine(void)
