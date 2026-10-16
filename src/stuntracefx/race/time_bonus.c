@@ -536,14 +536,16 @@ static void count_bonus(uint32_t b)
     v = sbc_decimal16(v, rd16(b | 0x0E7C), &c);
     if (!c) {
         c = 0;
-        v = adc_decimal16(rd16(b | TIME_BCD), rd16(b | 0x0E74), &c);
+        v = rd16(b | TIME_BCD);                 /* LDA, then ADC */
+        v = adc_decimal16(v, rd16(b | 0x0E74), &c);
         wr16(b | TIME_BCD, v);
         cpu.a = 0x0000;
         wr16(b | 0x0E74, 0x0000);
     } else {
         wr16(b | 0x0E74, v);
         c = 0;
-        cpu.a = adc_decimal16(rd16(b | TIME_BCD), rd16(b | 0x0E7C), &c);
+        cpu.a = rd16(b | TIME_BCD);             /* LDA, then ADC */
+        cpu.a = adc_decimal16(cpu.a, rd16(b | 0x0E7C), &c);
         wr16(b | TIME_BCD, cpu.a);
     }
 }
@@ -656,7 +658,8 @@ void TimeBonusTally(void)
         if ((rd16(b | 0x0D5A) & 0x00FF) >= 0x0008) {
             int c = 0;
 
-            cpu.a = adc_decimal16(rd16(b | TIME_BCD), rd16(b | 0x0E74), &c);
+            cpu.a = rd16(b | TIME_BCD);         /* LDA, then ADC */
+            cpu.a = adc_decimal16(cpu.a, rd16(b | 0x0E74), &c);
             wr16(b | TIME_BCD, cpu.a);
             wr16(b | 0x0E74, 0x0000);
             wr16(b | 0x0D5B, (uint16_t)(rd16(b | 0x0D5B) - 1));

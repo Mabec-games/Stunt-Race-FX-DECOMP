@@ -71,7 +71,8 @@ uint8_t LapSplit(uint8_t bank, uint8_t x, uint8_t *p)
     }
     wr8(b | (uint16_t)(0x0EDF + x), v);
     *p |= P_C;
-    v = sbc_bcd8(rd8(0x0000F1), rd8(b | 0x0EDD), p);
+    v = rd8(0x0000F1);                          /* LDA, then SBC */
+    v = sbc_bcd8(v, rd8(b | 0x0EDD), p);
     wr8(b | (uint16_t)(0x0EE0 + x), v);
 
     frac = rd8(b | 0x0E63);

@@ -385,3 +385,6 @@ DemoScripts = $038004                           ; 03:8004, the attract demos' sc
 ObjectCarCD7E = $08CD7E                         ; 08:CD7E, the pace car step's tail (not filed yet)
 PlayerCarA034 = $08A034                         ; 08:A034, a car's crash (not filed yet)
 CameraDirector8F03 = $088F03                    ; 08:8F03, the replay camera's set-up (not filed yet)
+ObjectReleaseD337 = $08D337                     ; 08:D337, the burst piece's contact tail (not filed yet)
+ObjectChildD1BF = $08D1BF                       ; 08:D1BF, a child's change of handler allowed (not filed yet)
+GsuRecordNewCBCC = $08CBCC                     ; 08:CBCC, a new Super FX record for a flying piece (not filed yet)

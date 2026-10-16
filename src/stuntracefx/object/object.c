@@ -1307,13 +1307,17 @@ void abi_ObjectAlloc(void)
 int ObjectSpawn(uint8_t bank, uint16_t *a, uint16_t x, uint16_t *y)
 {
     uint32_t b = (uint32_t)bank << 16;
-    uint8_t n = rd8(b | 0x0CEE);
+    uint8_t n;
     uint16_t ax, rx = 0, ry = 0;
+    int got;
 
-    wr16(0x00003E, x);
+    wr16(0x00003E, x);                          /* STX $3E, then LDA */
+    n = rd8(b | 0x0CEE);
     *a = (uint16_t)((*a & 0xFF00) | n);
     ax = *a;
-    if (((uint8_t)(n - 0x2E) & 0x80) && ObjectAlloc(&ax, &rx, &ry)) {
+    got = ((uint8_t)(n - 0x2E) & 0x80) && ObjectAlloc(&ax, &rx, &ry);
+    (void)rd16(0x00003E);                       /* LDX $3E on both paths */
+    if (got) {
         *y = rx;
         ObjectInit(rx);
         wr8(b | (uint16_t)(0x2036 + rx), 0x03);

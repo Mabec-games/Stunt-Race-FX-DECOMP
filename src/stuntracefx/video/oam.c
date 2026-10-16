@@ -422,7 +422,8 @@ uint8_t OamSetPalette(uint8_t bank, uint8_t bits, uint16_t count, uint16_t *y)
 
     wr8(0x0000F1, bits);
     do {
-        v = (uint8_t)((rd8(b | (uint16_t)(0x0378 + *y)) & 0xF1) | rd8(0x0000F1));
+        v = (uint8_t)(rd8(b | (uint16_t)(0x0378 + *y)) & 0xF1);
+        v = (uint8_t)(v | rd8(0x0000F1));
         wr8(b | (uint16_t)(0x0378 + *y), v);
         *y = (uint16_t)(*y + 4);
     } while (--count);
