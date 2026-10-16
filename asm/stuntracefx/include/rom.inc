@@ -387,3 +387,7 @@ DemoScripts = $038004                           ; 03:8004, the attract demos' sc
 !records_columns_stunt = $07D8DC              ; RecordsCharOffsetStunt: seven bytes, each character's column
 !records_rows_all = $07D8E3                   ; RecordsCharOffsetAll: four words
 !records_columns_all = $07D8EB                ; RecordsCharOffsetAll: eight bytes
+LapSaveOffset = $03DEFD                        ; 03:DEFD, X = (course - $14) * 5: a lap time's save entry (not filed yet)
+LapSaveMark = $03DF10                          ; 03:DF10, after a lap time kept (not filed yet)
+SaveSumADDA = $07ADDA                          ; 07:ADDA, a save block's sum (not filed yet)
+RaceFinishSplit = $07A99A                      ; 07:A99A, the split screen's finish (not filed yet)

@@ -207,7 +207,10 @@ static void time_digits_full(void)
  * (GsuTimeDigitsFull); 4 waits (at once while $0D54 is 0), then $0D54 =
  * 8 and the timer 3; 6 waits, then clears $0D56 and sets both players'
  * phases 4.
- * HOW: JMP ($E2EF,X) on $0D5A.
+ * HOW: JMP ($E2EF,X) on $0D5A. The timer counts from 7, so the size
+ * table's word at timer 9 is never read: its byte $07:E343 is dead (read
+ * only at timers 8 and 9, whose size 0 runs the digit program some 230
+ * frames).
  * Entry: M 8-bit, X 8-bit; D = $0000. Exit: as the step leaves it: M
  * 16-bit, X 8-bit after a drawing.
  */

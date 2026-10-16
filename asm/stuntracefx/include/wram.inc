@@ -1615,3 +1615,9 @@ includeonce
 !entry_first_hi = $F2
 !entry_name = $F3                 ; its second word: three five-bit letters
 !entry_name_hi = $F4
+!results_line_y = $0406           ; ResultsPanelSteps: the results lines' sprites (36-38), Y; +4 each
+!results_line_tile = $0407        ; their tiles
+!results_split_y = $0426          ; on the split screen, sprites 44-46 (Y)
+!results_split_tile = $0427
+!results_split2_y = $0526         ; and sprites 108-110 (Y)
+!results_split2_tile = $0527

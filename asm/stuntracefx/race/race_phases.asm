@@ -126,7 +126,9 @@ RaceStartGlyphsSteps:
 ; $0D5B one less and the time drawn full size (GsuTimeDigitsFull); 4 waits
 ; (at once while $0D54 is 0), then $0D54 = 8 and the timer 3; 6 waits, then
 ; clears $0D56 and sets both players' phases 4.
-; HOW: JMP (table,X) on $0D5A.
+; HOW: JMP (table,X) on $0D5A. The timer counts from 7, so the size table's
+; word at timer 9 is never read: its byte $07:E343 is dead (read only at
+; timers 8 and 9, whose size 0 runs the digit program some 230 frames).
 ; Entry: M 8-bit, X 8-bit; D = $0000. Exit: as the step leaves it: M
 ; 16-bit, X 8-bit after a drawing.
 %at($07E2E9)
@@ -334,13 +336,13 @@ ResultsPanelSteps:
     lda.w !wram_0D62
     beq .line1One
     lda.b #$20
-    sta.w $0426
+    sta.w !results_split_y
     lda.b #$88
-    sta.w $0526
+    sta.w !results_split2_y
     bra .line1Next
 .line1One:
     lda.b #$28
-    sta.w $0406
+    sta.w !results_line_y
 .line1Next:
     inc.w !panel_b_shown+1
     inc.w !panel_b_shown+1
@@ -356,13 +358,13 @@ ResultsPanelSteps:
     lda.w !wram_0D62
     beq .line2One
     lda.b #$20
-    sta.w $042A
+    sta.w !results_split_y+4
     lda.b #$88
-    sta.w $052A
+    sta.w !results_split2_y+4
     bra .line2Next
 .line2One:
     lda.b #$28
-    sta.w $040A
+    sta.w !results_line_y+4
 .line2Next:
     inc.w !panel_b_shown+1
     inc.w !panel_b_shown+1
@@ -378,13 +380,13 @@ ResultsPanelSteps:
     lda.w !wram_0D62
     beq .line3One
     lda.b #$20
-    sta.w $042E
+    sta.w !results_split_y+8
     lda.b #$88
-    sta.w $052E
+    sta.w !results_split2_y+8
     bra .line3Next
 .line3One:
     lda.b #$28
-    sta.w $040E
+    sta.w !results_line_y+8
 .line3Next:
     inc.w !panel_b_shown+1
     inc.w !panel_b_shown+1
@@ -400,18 +402,18 @@ ResultsPanelSteps:
     lda.w !wram_0D62
     beq .marksOne
     lda.b #$A2
-    sta.w $0427
-    sta.w $0527
-    sta.w $042B
-    sta.w $052B
-    sta.w $042F
-    sta.w $052F
+    sta.w !results_split_tile
+    sta.w !results_split2_tile
+    sta.w !results_split_tile+4
+    sta.w !results_split2_tile+4
+    sta.w !results_split_tile+8
+    sta.w !results_split2_tile+8
     bra .marksNext
 .marksOne:
     lda.b #$A2
-    sta.w $0407
-    sta.w $040B
-    sta.w $040F
+    sta.w !results_line_tile
+    sta.w !results_line_tile+4
+    sta.w !results_line_tile+8
 .marksNext:
     inc.w !panel_b_shown+1
     inc.w !panel_b_shown+1
@@ -710,7 +712,7 @@ RaceLapCrossed:
     lda.w !race_time_minutes
     sta.w !wram_0EDD
     rep.b #$30
-    jsl.l $03DEFD
+    jsl.l LapSaveOffset
     phx
     lda.l !save_record_b,x
     sta.w !packed_time_a
@@ -730,14 +732,14 @@ RaceLapCrossed:
     bcs .lE758
     sta.l !save_record_b,x
     phx
-    jsl.l $03DF10
+    jsl.l LapSaveMark
     plx
     lda.w !level_columns+12
     sta.l !save_record_b+2,x
     sep.b #$20
     lda.w !wram_0D89
     sta.l !save_record_b+4,x
-    jsr.w $ADDA
+    jsr.w SaveSumADDA
     lda.b #$01
     bra .lE764
 .lE758:
@@ -809,7 +811,7 @@ RaceLapCrossed:
     beq .lE7F5
     lda.b #$FF
     sta.w !wram_0D53
-    jsr.w $A99A
+    jsr.w RaceFinishSplit
     rts
 .lE7F5:
     lda.w !hud_mode
