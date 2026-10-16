@@ -599,3 +599,41 @@ GsuRecordsUpload:
 .lDAD4:
     plb
     rtl
+
+; @routine 04:D98F GsuBytes200_0F0708
+; WHAT IT DOES: As GsuBytes200_BFB7B6, with 0, $0F, $07, $08.
+; HOW: As GsuBytes200_BFB7B6.
+; Entry: any widths. Exit: A low byte = $08; P unchanged.
+%at($04D98F)
+GsuBytes200_0F0708:
+    php
+    sep.b #$20
+    lda.b #$00
+    sta.l !gsu_bytes_200
+    lda.b #$0F
+    sta.l !gsu_bytes_200+1
+    lda.b #$07
+    sta.l !gsu_bytes_200+2
+    lda.b #$08
+    sta.l !gsu_bytes_200+3
+    plp
+    rtl
+
+; @routine 04:D9C9 GsuBytes200_0F0D03
+; WHAT IT DOES: As GsuBytes200_BFB7B6, with 0, $0F, $0D, $03.
+; HOW: As GsuBytes200_BFB7B6.
+; Entry: any widths. Exit: A low byte = $03; P unchanged.
+%at($04D9C9)
+GsuBytes200_0F0D03:
+    php
+    sep.b #$20
+    lda.b #$00
+    sta.l !gsu_bytes_200
+    lda.b #$0F
+    sta.l !gsu_bytes_200+1
+    lda.b #$0D
+    sta.l !gsu_bytes_200+2
+    lda.b #$03
+    sta.l !gsu_bytes_200+3
+    plp
+    rtl

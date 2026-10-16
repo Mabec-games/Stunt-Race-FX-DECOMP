@@ -388,7 +388,3 @@ SaveSumADDA = $07ADDA                          ; 07:ADDA, a save block's sum (no
 RaceFinishSplit = $07A99A                      ; 07:A99A, the split screen's finish (not filed yet)
 ObjectCarCD7E = $08CD7E                         ; 08:CD7E, the pace car step's tail (not filed yet)
 ObjectReleaseD337 = $08D337                     ; 08:D337, the burst piece's contact tail (not filed yet)
-Draw98F4 = $0798F4                             ; 07:98F4 (not filed yet)
-Draw9A24 = $079A24                             ; 07:9A24 (not filed yet)
-Draw9B6F = $079B6F                             ; 07:9B6F (not filed yet)
-Draw9C9F = $079C9F                             ; 07:9C9F (not filed yet)

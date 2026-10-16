@@ -518,3 +518,35 @@ void abi_GsuBytes200_BFBABD(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0xBF, 0xBA, 0xBD));
 }
 
+
+/*
+ * @routine 04:D98F GsuBytes200_0F0708
+ * WHAT IT DOES: As GsuBytes200_BFB7B6, with 0, $0F, $07, $08.
+ * HOW: As GsuBytes200_BFB7B6.
+ * Entry: any widths. Exit: A low byte = $08; P unchanged.
+ */
+void GsuBytes200_0F0708(void)
+{
+    gsu_200(0x0F, 0x07, 0x08);
+}
+
+void abi_GsuBytes200_0F0708(void)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0x0F, 0x07, 0x08));
+}
+
+/*
+ * @routine 04:D9C9 GsuBytes200_0F0D03
+ * WHAT IT DOES: As GsuBytes200_BFB7B6, with 0, $0F, $0D, $03.
+ * HOW: As GsuBytes200_BFB7B6.
+ * Entry: any widths. Exit: A low byte = $03; P unchanged.
+ */
+void GsuBytes200_0F0D03(void)
+{
+    gsu_200(0x0F, 0x0D, 0x03);
+}
+
+void abi_GsuBytes200_0F0D03(void)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0x0F, 0x0D, 0x03));
+}

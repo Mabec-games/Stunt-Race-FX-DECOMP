@@ -1141,14 +1141,14 @@ PhaseGlyphsSix:
     jsr.w HudSixGlyphs
     rts
 
-; @routine 07:E97A RaceEndWait9C9F
-; WHAT IT DOES: Draws with 07:9C9F each frame until the slide out reaches
+; @routine 07:E97A RaceEndWaitRow6B
+; WHAT IT DOES: Draws with BigSpritesRow6B each frame until the slide out reaches
 ; $1F; then $0E5F cleared, $0D22 = the slide, $0D23 = 6, $0E56 = $78, $0D55
 ; cleared and the race's end (RaceEndCountdownFade).
 ; HOW: An 8-bit compare of the long byte. Reached only by unit_race_phases.
-; Entry: M 8-bit, X 8-bit. Exit: as 07:9C9F leaves it, or does not return.
+; Entry: M 8-bit, X 8-bit. Exit: as BigSpritesRow6B leaves it, or does not return.
 %at($07E97A)
-RaceEndWait9C9F:
+RaceEndWaitRow6B:
     lda.l !slide_out
     cmp.b #$1F
     bcc .draw
@@ -1162,13 +1162,13 @@ RaceEndWait9C9F:
     jsr.w RaceEndCountdownFade
     rts
 .draw:
-    jsr.w Draw9C9F
+    jsr.w BigSpritesRow6B
     rts
 
 ; @routine 07:E99D RaceEndWaitBigSprites
-; WHAT IT DOES: As RaceEndWait9C9F, drawing the five big sprites
+; WHAT IT DOES: As RaceEndWaitRow6B, drawing the five big sprites
 ; (BigSpritesRow5) each frame.
-; HOW: As RaceEndWait9C9F. The race's end is not reached in the traces so
+; HOW: As RaceEndWaitRow6B. The race's end is not reached in the traces so
 ; far.
 ; Entry: M 8-bit, X 8-bit. Exit: as BigSpritesRow5 leaves it, or does not
 ; return.
@@ -1368,22 +1368,22 @@ PauseResultsP2:
     sta.w !wram_0D2D
     jmp.w OamStagePause2_lBB7C
 
-; @routine 07:EB45 PhaseDraw9A24
-; WHAT IT DOES: Draws with 07:9A24: a phase's whole work.
+; @routine 07:EB45 PhaseGlyphsFourB
+; WHAT IT DOES: Draws with GsuF15BFourB: a phase's whole work.
 ; HOW: JSR, RTS. Reached only by unit_race_phases.
-; Entry: D = $0000. Exit: as 07:9A24 leaves it.
+; Entry: D = $0000. Exit: as GsuF15BFourB leaves it.
 %at($07EB45)
-PhaseDraw9A24:
-    jsr.w Draw9A24
+PhaseGlyphsFourB:
+    jsr.w GsuF15BFourB
     rts
 
-; @routine 07:EB49 PauseResults9A24
-; WHAT IT DOES: The paused results (see PauseResults), drawing with 07:9A24.
+; @routine 07:EB49 PauseResultsFourB
+; WHAT IT DOES: The paused results (see PauseResults), drawing with GsuF15BFourB.
 ; HOW: JSR, then PauseResults' code. Reached only by unit_race_phases.
 ; Entry: D = $0000. Exit: as the path leaves it.
 %at($07EB49)
-PauseResults9A24:
-    jsr.w Draw9A24
+PauseResultsFourB:
+    jsr.w GsuF15BFourB
     bra PauseResults_lEB51
 
 ; @routine 07:EB4E PauseResults
@@ -1435,24 +1435,24 @@ PauseResults:
     sta.w !wram_0D2D
     jml.l OamStagePause_lBB16
 
-; @routine 07:EBA0 PhaseDraw98F4
-; WHAT IT DOES: Draws with 07:98F4: a phase's whole work.
+; @routine 07:EBA0 PhaseGlyphsFourA
+; WHAT IT DOES: Draws with GsuF15BFourA: a phase's whole work.
 ; HOW: JSR, RTS. Reached only by unit_race_phases.
-; Entry: D = $0000. Exit: as 07:98F4 leaves it.
+; Entry: D = $0000. Exit: as GsuF15BFourA leaves it.
 %at($07EBA0)
-PhaseDraw98F4:
-    jsr.w Draw98F4
+PhaseGlyphsFourA:
+    jsr.w GsuF15BFourA
     rts
 
-; @routine 07:EBA4 RaceEndWindow9B6F
-; WHAT IT DOES: Draws with 07:9B6F; counts $0E58 down: at 1, or below $28 on B
+; @routine 07:EBA4 RaceEndWindowNine
+; WHAT IT DOES: Draws with BigSpritesNine; counts $0E58 down: at 1, or below $28 on B
 ; or START, clears it, sets $19DF = 1 and slides the window up; at 0, once
 ; the window is closed, leaves the race (RaceEndLeave).
 ; HOW: 8-bit; the presses 16-bit. Reached only by unit_race_phases.
 ; Entry: D = $0000. Exit: as the path leaves it, or does not return.
 %at($07EBA4)
-RaceEndWindow9B6F:
-    jsr.w Draw9B6F
+RaceEndWindowNine:
+    jsr.w BigSpritesNine
     sep.b #$20
     lda.w !wram_0E58
     beq .lEBD5
@@ -1482,7 +1482,7 @@ RaceEndWindow9B6F:
 
 ; @routine 07:EBDC PhaseNothingEBDC
 ; WHAT IT DOES: Nothing: a phase handler with no work.
-; HOW: RTS (RaceEndWindow9B6F's last).
+; HOW: RTS (RaceEndWindowNine's last).
 ; Entry: any widths. Exit: every register unchanged.
 %at($07EBDC)
 PhaseNothingEBDC:

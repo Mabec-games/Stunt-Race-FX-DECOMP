@@ -1363,31 +1363,27 @@ static void race_end_wait(void (*draw)(void))
     abi_RaceEndCountdownFade();
 }
 
-/* 07:9C9F (not filed yet). */
-static void sprites_9c9f(void)
-{
-    call_routine(0x079C9F, 0);
-}
+void abi_BigSpritesRow6B(void);
 
 /*
- * @routine 07:E97A RaceEndWait9C9F
- * WHAT IT DOES: Draws with 07:9C9F each frame until the slide out at
+ * @routine 07:E97A RaceEndWaitRow6B
+ * WHAT IT DOES: Draws with BigSpritesRow6B each frame until the slide out at
  * $7F:3468 reaches $1F; then $0E5F cleared, $0D22 = the slide, $0D23 = 6,
  * $0E56 = $78, $0D55 cleared and the race's end (RaceEndCountdownFade).
  * HOW: An 8-bit compare of the long byte. Reached only by
  * unit_race_phases.
- * Entry: M 8-bit, X 8-bit. Exit: as 07:9C9F leaves it, or does not return.
+ * Entry: M 8-bit, X 8-bit. Exit: as BigSpritesRow6B leaves it, or does not return.
  */
-void abi_RaceEndWait9C9F(void)
+void abi_RaceEndWaitRow6B(void)
 {
-    race_end_wait(sprites_9c9f);
+    race_end_wait(abi_BigSpritesRow6B);
 }
 
 /*
  * @routine 07:E99D RaceEndWaitBigSprites
- * WHAT IT DOES: As RaceEndWait9C9F, drawing the five big sprites
+ * WHAT IT DOES: As RaceEndWaitRow6B, drawing the five big sprites
  * (BigSpritesRow5) each frame.
- * HOW: As RaceEndWait9C9F. The race's end is not reached in the traces so
+ * HOW: As RaceEndWaitRow6B. The race's end is not reached in the traces so
  * far.
  * Entry: M 8-bit, X 8-bit. Exit: as BigSpritesRow5 leaves it, or does not
  * return.
@@ -1616,21 +1612,20 @@ void abi_PauseResultsP2(void)
     jump_routine(0x07BB7C);
 }
 
-/* 07:9A24 (not filed yet). */
-static void draw_9a24(void)
-{
-    call_routine(0x079A24, 0);
-}
+void abi_GsuF15BFourA(void);
+void abi_GsuF15BFourB(void);
+void abi_BigSpritesNine(void);
+void abi_BigSpritesRow6B(void);
 
 /*
- * @routine 07:EB45 PhaseDraw9A24
- * WHAT IT DOES: Draws with 07:9A24: a phase's whole work.
+ * @routine 07:EB45 PhaseGlyphsFourB
+ * WHAT IT DOES: Draws with GsuF15BFourB: a phase's whole work.
  * HOW: JSR, RTS. Reached only by unit_race_phases.
- * Entry: D = $0000. Exit: as 07:9A24 leaves it.
+ * Entry: D = $0000. Exit: as GsuF15BFourB leaves it.
  */
-void abi_PhaseDraw9A24(void)
+void abi_PhaseGlyphsFourB(void)
 {
-    draw_9a24();
+    abi_GsuF15BFourB();
 }
 
 /* 07:EB51: the paused results: counts $0E58 down, at its end sound $51,
@@ -1677,15 +1672,15 @@ static void pause_results(void)
 }
 
 /*
- * @routine 07:EB49 PauseResults9A24
+ * @routine 07:EB49 PauseResultsFourB
  * WHAT IT DOES: The paused results (see PauseResults), drawing with
- * 07:9A24.
+ * GsuF15BFourB.
  * HOW: JSR, then PauseResults' code. Reached only by unit_race_phases.
  * Entry: D = $0000. Exit: as the path leaves it.
  */
-void abi_PauseResults9A24(void)
+void abi_PauseResultsFourB(void)
 {
-    draw_9a24();
+    abi_GsuF15BFourB();
     pause_results();
 }
 
@@ -1707,20 +1702,20 @@ void abi_PauseResults(void)
 }
 
 /*
- * @routine 07:EBA0 PhaseDraw98F4
- * WHAT IT DOES: Draws with 07:98F4: a phase's whole work.
+ * @routine 07:EBA0 PhaseGlyphsFourA
+ * WHAT IT DOES: Draws with GsuF15BFourA: a phase's whole work.
  * HOW: JSR, RTS. Reached only by unit_race_phases.
- * Entry: D = $0000. Exit: as 07:98F4 leaves it.
+ * Entry: D = $0000. Exit: as GsuF15BFourA leaves it.
  */
-void abi_PhaseDraw98F4(void)
+void abi_PhaseGlyphsFourA(void)
 {
-    call_routine(0x0798F4, 0);
+    abi_GsuF15BFourA();
 }
 
 /*
  * @routine 07:EBDC PhaseNothingEBDC
  * WHAT IT DOES: Nothing: a phase handler with no work.
- * HOW: RTS (RaceEndWindow9B6F's last).
+ * HOW: RTS (RaceEndWindowNine's last).
  * Entry: any widths. Exit: every register unchanged.
  */
 void abi_PhaseNothingEBDC(void)
@@ -1730,19 +1725,19 @@ void abi_PhaseNothingEBDC(void)
 void abi_RaceEndLeave(void);
 
 /*
- * @routine 07:EBA4 RaceEndWindow9B6F
- * WHAT IT DOES: Draws with 07:9B6F; counts $0E58 down: at 1, or below $28
+ * @routine 07:EBA4 RaceEndWindowNine
+ * WHAT IT DOES: Draws with BigSpritesNine; counts $0E58 down: at 1, or below $28
  * on B or START, clears it, sets $19DF = 1 and slides the window up; at 0,
  * once the window is closed, leaves the race (RaceEndLeave).
  * HOW: 8-bit; the presses 16-bit. Reached only by unit_race_phases.
  * Entry: D = $0000. Exit: as the path leaves it, or does not return.
  */
-void abi_RaceEndWindow9B6F(void)
+void abi_RaceEndWindowNine(void)
 {
     uint32_t b = (uint32_t)cpu.db << 16;
     uint8_t v;
 
-    call_routine(0x079B6F, 0);
+    abi_BigSpritesNine();
     op_sep(P_M);
     op_lda8(b | 0x0E58);
     v = (uint8_t)cpu.a;

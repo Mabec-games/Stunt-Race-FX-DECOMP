@@ -4337,3 +4337,335 @@ HudBlankDraw:
     rep.b #$10
     plp
     rts
+
+; @routine 07:98F4 GsuF15BFourA
+; WHAT IT DOES: Runs Super FX program $07:F15B four times, with $70:0216 =
+; $8814, $8C00, $8C10 and $8418, after setting $70:0210 = $20, $70:020E =
+; $10, $70:020A = $28, $70:020C = $18 and the bytes $0F, $07, $08 at
+; $70:0200.
+; HOW: GsuBytes200_0F0708, then GsuRun for each value.
+; Entry: any widths, D = $0000. Exit: A = $84 and the screen mode value; X =
+; $F15B; M 16-bit, X 16-bit; N, Z from the data bank.
+%at($0798F4)
+GsuF15BFourA:
+    rep.b #$30
+    lda.w #$0020
+    sta.l !gsu_bytes_200+16
+    lda.w #$0010
+    sta.l !gsu_bytes_200+14
+    lda.w #$0028
+    sta.l !gsu_bytes_200+10
+    lda.w #$0018
+    sta.l !gsu_bytes_200+12
+    jsl.l GsuBytes200_0F0708
+    rep.b #$20
+    lda.w #$8814
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8C00
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8C10
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8418
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rts
+
+; @routine 07:9A24 GsuF15BFourB
+; WHAT IT DOES: As GsuF15BFourA with $70:0216 = $8414, $8C0C, $8408 and
+; $9000 and the bytes $0F, $0D, $03.
+; HOW: GsuBytes200_0F0D03, then GsuRun for each value.
+; Entry: any widths, D = $0000. Exit: as GsuF15BFourA, A = $90 and the
+; screen mode value.
+%at($079A24)
+GsuF15BFourB:
+    rep.b #$30
+    lda.w #$0020
+    sta.l !gsu_bytes_200+16
+    lda.w #$0010
+    sta.l !gsu_bytes_200+14
+    lda.w #$0028
+    sta.l !gsu_bytes_200+10
+    lda.w #$0018
+    sta.l !gsu_bytes_200+12
+    jsl.l GsuBytes200_0F0D03
+    rep.b #$20
+    lda.w #$8414
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8C0C
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$8408
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$9000
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F15B
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rts
+
+; @routine 07:9B6F BigSpritesNine
+; WHAT IT DOES: Unless $0E5C is set, draws nine 24 x 40 sprites
+; (FxSprite24x40): from (41, 33) $AA06, $B006, $B000, then 6 further on
+; $AA06 and $A012; from (56, 80) $AA12, $A000, $AA00 and $A50C. With $0E5C
+; set it goes to 07:9EE9 instead.
+; HOW: GsuBytes200_BFB7B6 first; GsuRun for each sprite; the x the program
+; leaves is read back for the gap.
+; Entry: any widths, D = $0000. Exit: as BigSpritesRow6.
+%at($079B6F)
+BigSpritesNine:
+    rep.b #$20
+    jsl.l GsuBytes200_BFB7B6
+    sep.b #$20
+    lda.w !wram_0E5C
+    beq .draw
+    brl BigSpritesCountDraw
+.draw:
+    rep.b #$30
+    lda.w #$0029
+    sta.l !fx_draw_x
+    lda.w #$0021
+    sta.l !fx_draw_y
+    lda.w #$0100
+    sta.l !fx_draw_step_x
+    sta.l !fx_draw_step_y
+    rep.b #$20
+    lda.w #$AA06
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #FxSprite24x40
+    lda.b #FxSprite24x40>>16
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$B006
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #FxSprite24x40
+    lda.b #FxSprite24x40>>16
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$B000
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #FxSprite24x40
+    lda.b #FxSprite24x40>>16
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.l !fx_draw_x
+    clc
+    adc.w #$0006
+    sta.l !fx_draw_x
+    rep.b #$20
+    lda.w #$AA06
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #FxSprite24x40
+    lda.b #FxSprite24x40>>16
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$A012
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #FxSprite24x40
+    lda.b #FxSprite24x40>>16
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    lda.w #$0038
+    sta.l !fx_draw_x
+    lda.w #$0050
+    sta.l !fx_draw_y
+    rep.b #$20
+    lda.w #$AA12
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #FxSprite24x40
+    lda.b #FxSprite24x40>>16
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$A000
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #FxSprite24x40
+    lda.b #FxSprite24x40>>16
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$AA00
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #FxSprite24x40
+    lda.b #FxSprite24x40>>16
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$A50C
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #FxSprite24x40
+    lda.b #FxSprite24x40>>16
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rts
+
+; @routine 07:9C9F BigSpritesRow6B
+; WHAT IT DOES: Unless $0E5C is set, draws six 24 x 40 sprites
+; (FxSprite24x40) from (24, 40): $AA18, $AA0C, $A512, $A000, $AA18 and
+; $A500. With $0E5C set it goes to 07:9EE9 instead.
+; HOW: GsuBytes200_BFB3BE first; GsuRun for each sprite.
+; Entry: any widths, D = $0000. Exit: as BigSpritesRow5.
+%at($079C9F)
+BigSpritesRow6B:
+    rep.b #$20
+    jsl.l GsuBytes200_BFB3BE
+    sep.b #$20
+    lda.w !wram_0E5C
+    beq .draw
+    brl BigSpritesCountDraw
+.draw:
+    rep.b #$30
+    lda.w #$0018
+    sta.l !fx_draw_x
+    lda.w #$0028
+    sta.l !fx_draw_y
+    lda.w #$0100
+    sta.l !fx_draw_step_x
+    sta.l !fx_draw_step_y
+    rep.b #$20
+    lda.w #$AA18
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #FxSprite24x40
+    lda.b #FxSprite24x40>>16
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$AA0C
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #FxSprite24x40
+    lda.b #FxSprite24x40>>16
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$A512
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #FxSprite24x40
+    lda.b #FxSprite24x40>>16
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$A000
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #FxSprite24x40
+    lda.b #FxSprite24x40>>16
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$AA18
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #FxSprite24x40
+    lda.b #FxSprite24x40>>16
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$20
+    lda.w #$A500
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #FxSprite24x40
+    lda.b #FxSprite24x40>>16
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rts

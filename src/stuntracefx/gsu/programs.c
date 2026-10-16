@@ -3016,3 +3016,120 @@ void abi_GlyphSpritesSlideIn(void)
     glyph_slide_draw(b);
 }
 
+
+void GsuBytes200_0F0708(void);
+void GsuBytes200_0F0D03(void);
+
+/* $70:0210 = $20, $70:020E = $10, $70:020A = $28, $70:020C = $18, the
+   renderer bytes (setter), then program $07:F15B for each $70:0216. */
+static uint8_t f15b_four(void (*setter)(void), const uint16_t *in216)
+{
+    uint8_t mode = 0;
+    unsigned i;
+
+    wr16(0x700210, 0x0020);
+    wr16(0x70020E, 0x0010);
+    wr16(0x70020A, 0x0028);
+    wr16(0x70020C, 0x0018);
+    setter();
+    for (i = 0; i < 4; i++) {
+        wr16(0x700216, in216[i]);
+        mode = f15b();
+    }
+    return mode;
+}
+
+/*
+ * @routine 07:98F4 GsuF15BFourA
+ * WHAT IT DOES: Runs Super FX program $07:F15B four times, with $70:0216 =
+ * $8814, $8C00, $8C10 and $8418, after setting $70:0210 = $20, $70:020E =
+ * $10, $70:020A = $28, $70:020C = $18 and the bytes $0F, $07, $08 at
+ * $70:0200.
+ * HOW: GsuBytes200_0F0708, then GsuRun for each value.
+ * Entry: any widths, D = $0000. Exit: A = $84 and the screen mode value; X
+ * = $F15B; M 16-bit, X 16-bit; N, Z from the data bank.
+ */
+void abi_GsuF15BFourA(void)
+{
+    static const uint16_t in216[4] = {0x8814, 0x8C00, 0x8C10, 0x8418};
+
+    cpu.a = (uint16_t)(0x8400 | f15b_four(GsuBytes200_0F0708, in216));
+    cpu.x = 0xF15B;
+    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X));
+}
+
+/*
+ * @routine 07:9A24 GsuF15BFourB
+ * WHAT IT DOES: As GsuF15BFourA with $70:0216 = $8414, $8C0C, $8408 and
+ * $9000 and the bytes $0F, $0D, $03.
+ * HOW: GsuBytes200_0F0D03, then GsuRun for each value.
+ * Entry: any widths, D = $0000. Exit: as GsuF15BFourA, A = $90 and the
+ * screen mode value.
+ */
+void abi_GsuF15BFourB(void)
+{
+    static const uint16_t in216[4] = {0x8414, 0x8C0C, 0x8408, 0x9000};
+
+    cpu.a = (uint16_t)(0x9000 | f15b_four(GsuBytes200_0F0D03, in216));
+    cpu.x = 0xF15B;
+    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X));
+}
+
+void abi_GsuBytes200_BFB7B6(void);
+
+/*
+ * @routine 07:9B6F BigSpritesNine
+ * WHAT IT DOES: Unless $0E5C is set, draws nine 24 x 40 sprites
+ * (FxSprite24x40): from (41, 33) $AA06, $B006, $B000, then 6 further on
+ * $AA06 and $A012; from (56, 80) $AA12, $A000, $AA00 and $A50C. With $0E5C
+ * set it goes to 07:9EE9 instead.
+ * HOW: GsuBytes200_BFB7B6 first; GsuRun for each sprite; the x the program
+ * leaves is read back for the gap.
+ * Entry: any widths, D = $0000. Exit: as BigSpritesRow6.
+ */
+void abi_BigSpritesNine(void)
+{
+    static const uint16_t first[3] = {0xAA06, 0xB006, 0xB000}, second[2] = {0xAA06, 0xA012};
+    static const uint16_t third[4] = {0xAA12, 0xA000, 0xAA00, 0xA50C};
+    uint16_t w;
+    unsigned i;
+
+    if (!big_sprites_start(abi_GsuBytes200_BFB7B6))
+        return;
+    big_sprites_at(0x0029, 0x0021);
+    for (i = 0; i < 3; i++)
+        sprite24x40(first[i]);
+    w = rd16(0x70020A);
+    cpu.p &= (uint8_t)~P_C;
+    cpu.a = op_adc16(w, 0x0006, &cpu.p);
+    wr16(0x70020A, cpu.a);
+    for (i = 0; i < 2; i++)
+        sprite24x40(second[i]);
+    cpu.a = 0x0038;
+    wr16(0x70020A, 0x0038);
+    cpu.a = 0x0050;
+    cpu.p = nz16(cpu.p, 0x0050);
+    wr16(0x70020C, 0x0050);
+    for (i = 0; i < 4; i++)
+        sprite24x40(third[i]);
+}
+
+/*
+ * @routine 07:9C9F BigSpritesRow6B
+ * WHAT IT DOES: Unless $0E5C is set, draws six 24 x 40 sprites
+ * (FxSprite24x40) from (24, 40): $AA18, $AA0C, $A512, $A000, $AA18 and
+ * $A500. With $0E5C set it goes to 07:9EE9 instead.
+ * HOW: GsuBytes200_BFB3BE first; GsuRun for each sprite.
+ * Entry: any widths, D = $0000. Exit: as BigSpritesRow5.
+ */
+void abi_BigSpritesRow6B(void)
+{
+    static const uint16_t src[6] = {0xAA18, 0xAA0C, 0xA512, 0xA000, 0xAA18, 0xA500};
+    unsigned i;
+
+    if (!big_sprites_start(abi_GsuBytes200_BFB3BE))
+        return;
+    big_sprites_at(0x0018, 0x0028);
+    for (i = 0; i < 6; i++)
+        sprite24x40(src[i]);
+}
