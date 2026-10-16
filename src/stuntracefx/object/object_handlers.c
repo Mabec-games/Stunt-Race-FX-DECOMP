@@ -24,6 +24,8 @@ void abi_RecordContactSummary(void);
 void abi_ObjectReleaseLong(void);
 void abi_ObjectReleaseY(void);
 void abi_ObjectRelease(void);
+void abi_ObjectBreakOffContact(void);
+void abi_ObjectBreakOffChance(void);
 void abi_ObjectRebucket(void);
 void abi_ObjectCarSpawn(void);
 void abi_ObjectNearFocus(void);
@@ -219,7 +221,7 @@ void abi_ObjectBurstPieceStep(void)
         abi_RecordContactSummary();
         lda8((uint8_t)(cpu.a & 0x80));
         if (cpu.a & 0x80) {
-            jump_routine(0x08D337);
+            abi_ObjectBreakOffContact();
             return;
         }
     }
@@ -665,11 +667,11 @@ static int child_fast(uint32_t b)
     return !(cpu.p & P_N);
 }
 
-/* JSR $08:D1BF (original code with X = the record, Y = the child): whether
-   it allows the change (C). */
+/* ObjectBreakOffChance with X = the record, Y = the child: whether a
+   piece was made (C). */
 static int child_d1bf(void)
 {
-    call_routine(0x08D1BF, 0);
+    abi_ObjectBreakOffChance();
     return (cpu.p & P_C) != 0;
 }
 
@@ -1084,7 +1086,7 @@ void abi_ObjectChildFlying(void)
             abi_RecordContactSummary();
             lda8((uint8_t)(cpu.a & 0x80));
             if ((uint8_t)cpu.a) {
-                jump_routine(0x08D337);
+                abi_ObjectBreakOffContact();
                 return;
             }
         }
@@ -1181,4 +1183,413 @@ void abi_ObjectChildLoose(void)
     lda8(v);
     wr8(b | (uint16_t)(0x204B + cpu.x), v);
     abi_ObjectChildFlying();
+}
+
+void abi_ObjectVelocityFromRecord(void);
+void abi_ObjectVelocityFromRecordScaled(void);
+void abi_ObjectAdvance5DIfFlag(void);
+void abi_RotateXZFrom08(void);
+void abi_RotateXZ(void);
+
+/*
+ * @routine 08:D1BF ObjectBreakOffChance
+ * WHAT IT DOES: For child Y breaking off: on a random byte of $7F or more,
+ * a new object (kind $A1AC) at Y's position with Y's parent (+$06) as its
+ * +$27; C set when one was made, clear otherwise.
+ * HOW: X kept (PHX, PLX); ObjectSpawn and ObjectCopyPositionTo from Y
+ * (TYX).
+ * Entry: X 16-bit; Y = the child. Exit: M 8-bit; X kept; C as above; Y =
+ * the new object when there is one.
+ */
+void abi_ObjectBreakOffChance(void)
+{
+    uint32_t b = db();
+    uint16_t x = cpu.x;
+
+    cpu.p |= P_M;
+    cpu.x = cpu.y;
+    cpu.p = nz16(cpu.p, cpu.x);
+    abi_RandomStepLong();
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)((uint8_t)cpu.a - 0x7F)) & ~P_C) | ((uint8_t)cpu.a >= 0x7F ? P_C : 0));
+    if ((uint8_t)cpu.a >= 0x7F && spawn(0xA1AC)) {
+        abi_ObjectCopyPositionTo();
+        cpu.p &= (uint8_t)~P_M;
+        op_lda16(b | (uint16_t)(0x2006 + cpu.x));
+        wr16(b | (uint16_t)(0x2027 + cpu.y), cpu.a);
+        cpu.p |= P_M;
+        cpu.x = x;
+        cpu.p = nz16(cpu.p, x) | P_C;
+        return;
+    }
+    cpu.x = x;
+    cpu.p = (uint8_t)(nz16(cpu.p, x) & ~P_C);
+}
+
+/*
+ * @routine 08:D549 ObjectPieceFall
+ * WHAT IT DOES: A broken-off piece's frame: rebucketed; its +$18 and +$19
+ * = its frame count +$48 with bit 7; released once the count reaches its
+ * end +$49, otherwise counted up and moved (ObjectApplyVelocity); +$36 =
+ * 3.
+ * HOW: $1F58 and $1F59 hold the count and the end.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte 3, or as
+ * ObjectReleaseLong leaves it.
+ */
+void abi_ObjectPieceFall(void)
+{
+    uint32_t b = db();
+    uint8_t v;
+
+    abi_ObjectRebucket();
+    op_lda8(b | (uint16_t)(0x2048 + cpu.x));
+    wr8(b | 0x1F58, (uint8_t)cpu.a);
+    v = (uint8_t)(rd8(b | 0x1F58) | 0x80);
+    lda8(v);
+    wr8(b | (uint16_t)(0x2018 + cpu.x), v);
+    op_lda8(b | (uint16_t)(0x2018 + cpu.x));
+    wr8(b | (uint16_t)(0x2019 + cpu.x), (uint8_t)cpu.a);
+    op_lda8(b | (uint16_t)(0x2049 + cpu.x));
+    wr8(b | 0x1F59, (uint8_t)cpu.a);
+    op_lda8(b | (uint16_t)(0x2048 + cpu.x));
+    v = rd8(b | 0x1F59);
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)((uint8_t)cpu.a - v)) & ~P_C) | ((uint8_t)cpu.a >= v ? P_C : 0));
+    if ((uint8_t)cpu.a == v) {
+        abi_ObjectReleaseLong();
+        return;
+    }
+    v = (uint8_t)(rd8(b | (uint16_t)(0x2048 + cpu.x)) + 1);
+    wr8(b | (uint16_t)(0x2048 + cpu.x), v);
+    cpu.p = nz8(cpu.p, v);
+    abi_ObjectApplyVelocity();
+    lda8(0x03);
+    wr8(b | (uint16_t)(0x2036 + cpu.x), 0x03);
+}
+
+/* Handler $08:D549 (ObjectPieceFall), count +$48 = 0, end +$49. */
+static void piece_handler(uint8_t end)
+{
+    uint32_t b = db();
+
+    set_handler(cpu.x, 0xD549);
+    lda8(0x00);
+    wr8(b | (uint16_t)(0x2048 + cpu.x), 0x00);
+    if (end == 0x06)
+        return;
+    lda8((uint8_t)(rd8(b | (uint16_t)(0x2025 + cpu.x)) | 0x01));
+    wr8(b | (uint16_t)(0x2025 + cpu.x), (uint8_t)cpu.a);
+    lda8(end);
+    wr8(b | (uint16_t)(0x2049 + cpu.x), end);
+}
+
+/* The break-off look: +$5D = `look`, ObjectAdvance5DIfFlag when `adv`,
+   +$24 bit 3, +$3A = 0, +$5F = `f5`. */
+static void piece_look(uint16_t look, int adv, uint8_t f5)
+{
+    uint32_t b = db();
+
+    sta16_imm(b | (uint16_t)(0x205D + cpu.x), look);
+    if (adv)
+        abi_ObjectAdvance5DIfFlag();
+    lda8((uint8_t)(rd8(b | (uint16_t)(0x2024 + cpu.x)) | 0x08));
+    wr8(b | (uint16_t)(0x2024 + cpu.x), (uint8_t)cpu.a);
+    lda8(0x00);
+    wr8(b | (uint16_t)(0x203A + cpu.x), 0x00);
+    lda8(f5);
+    wr8(b | (uint16_t)(0x205F + cpu.x), f5);
+}
+
+/* +$0E (Y) + $28. */
+static void piece_drop(void)
+{
+    uint32_t b = db();
+
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(b | (uint16_t)(0x200E + cpu.x));
+    op_add16(0x0028);
+    wr16(b | (uint16_t)(0x200E + cpu.x), cpu.a);
+    cpu.p |= P_M;
+}
+
+/* $08:D403: handler ObjectPieceFall, count 0, end 4, run at once. */
+static void piece_fall4(void)
+{
+    piece_handler(0x04);
+    abi_ObjectPieceFall();
+}
+
+/*
+ * @routine 08:D1F7 ObjectBreakOffA
+ * WHAT IT DOES: A child broken off (look $998D): +$24 bit 3, +$3A = 0,
+ * +$5F = $14, its parent's record velocity scaled
+ * (ObjectVelocityFromRecordScaled), $28 lower; then falls
+ * (ObjectPieceFall, 4 frames).
+ * HOW: Ends in ObjectPieceFall with +$25 bit 0 set.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectPieceFall.
+ */
+void abi_ObjectBreakOffA(void)
+{
+    piece_look(0x998D, 0, 0x14);
+    abi_ObjectVelocityFromRecordScaled();
+    piece_drop();
+    piece_fall4();
+}
+
+/*
+ * @routine 08:D249 ObjectBreakOffB
+ * WHAT IT DOES: As ObjectBreakOffA with look $9B96, the record's velocity
+ * unscaled (ObjectVelocityFromRecord) and 3 frames.
+ * HOW: As ObjectBreakOffA. Not reached in the traces so far.
+ * Entry: as ObjectBreakOffA. Exit: as ObjectBreakOffA.
+ */
+void abi_ObjectBreakOffB(void)
+{
+    piece_look(0x9B96, 0, 0x14);
+    abi_ObjectVelocityFromRecord();
+    piece_drop();
+    piece_handler(0x03);
+    abi_ObjectPieceFall();
+}
+
+/*
+ * @routine 08:D29B ObjectBreakOffC
+ * WHAT IT DOES: As ObjectBreakOffB with look $9B9F (ObjectAdvance5DIfFlag)
+ * and 4 frames.
+ * HOW: As ObjectBreakOffA. Not reached in the traces so far.
+ * Entry: as ObjectBreakOffA. Exit: as ObjectBreakOffA.
+ */
+void abi_ObjectBreakOffC(void)
+{
+    piece_look(0x9B9F, 1, 0x14);
+    abi_ObjectVelocityFromRecord();
+    piece_drop();
+    piece_fall4();
+}
+
+/*
+ * @routine 08:D2CF ObjectBreakOffD
+ * WHAT IT DOES: As ObjectBreakOffC with look $9B8F.
+ * HOW: As ObjectBreakOffA.
+ * Entry: as ObjectBreakOffA. Exit: as ObjectBreakOffA.
+ */
+void abi_ObjectBreakOffD(void)
+{
+    piece_look(0x9B8F, 1, 0x14);
+    abi_ObjectVelocityFromRecord();
+    piece_drop();
+    piece_fall4();
+}
+
+/*
+ * @routine 08:D303 ObjectBreakOffE
+ * WHAT IT DOES: As ObjectBreakOffC with look $9B79.
+ * HOW: As ObjectBreakOffA.
+ * Entry: as ObjectBreakOffA. Exit: as ObjectBreakOffA.
+ */
+void abi_ObjectBreakOffE(void)
+{
+    piece_look(0x9B79, 1, 0x14);
+    abi_ObjectVelocityFromRecord();
+    piece_drop();
+    piece_fall4();
+}
+
+/* $08:D36D: look $9B63 (advanced), +$5F = $1F58, $28 lower, falls. */
+static void break_off_f(void)
+{
+    uint32_t b = db();
+
+    sta16_imm(b | (uint16_t)(0x205D + cpu.x), 0x9B63);
+    abi_ObjectAdvance5DIfFlag();
+    lda8((uint8_t)(rd8(b | (uint16_t)(0x2024 + cpu.x)) | 0x08));
+    wr8(b | (uint16_t)(0x2024 + cpu.x), (uint8_t)cpu.a);
+    lda8(0x00);
+    wr8(b | (uint16_t)(0x203A + cpu.x), 0x00);
+    op_lda8(b | 0x1F58);
+    wr8(b | (uint16_t)(0x205F + cpu.x), (uint8_t)cpu.a);
+    piece_drop();
+    piece_fall4();
+}
+
+/*
+ * @routine 08:D337 ObjectBreakOffContact
+ * WHAT IT DOES: A piece hit on contact: look $9B63 with +$5F = $6E, $28
+ * lower, falls (4 frames).
+ * HOW: $1F58 = $6E, then the tail of ObjectBreakOffF.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectPieceFall.
+ */
+void abi_ObjectBreakOffContact(void)
+{
+    lda8(0x6E);
+    wr8(db() | 0x1F58, 0x6E);
+    break_off_f();
+}
+
+/*
+ * @routine 08:D33F ObjectBreakOffF
+ * WHAT IT DOES: As ObjectBreakOffC with look $9B63 and +$5F = half the
+ * speed of its parent's (+$27) record ($4A, its size) + $14, at most $78.
+ * HOW: The halving is CMP #$8000, ROR A; $1F58 holds +$5F.
+ * Entry: as ObjectBreakOffA. Exit: as ObjectBreakOffA.
+ */
+void abi_ObjectBreakOffF(void)
+{
+    uint32_t b = db();
+    uint16_t x = cpu.x, w;
+
+    cpu.p &= (uint8_t)~P_M;
+    cpu.x = rd16(b | (uint16_t)(0x2027 + cpu.x));
+    cpu.x = rd16(b | (uint16_t)(0x2022 + cpu.x));
+    w = abs16(rd16(0x70004A + cpu.x));
+    cpu.a = (uint16_t)((w >> 1) | (w & 0x8000));
+    op_add16(0x0014);
+    op_cmp16(0x0078);
+    if (!(cpu.p & P_N))
+        op_lda16_imm(0x0078);
+    cpu.p |= P_M;
+    wr8(b | 0x1F58, (uint8_t)cpu.a);
+    cpu.x = x;
+    cpu.p = nz16(cpu.p, x);
+    abi_ObjectVelocityFromRecord();
+    break_off_f();
+}
+
+/*
+ * @routine 08:D39F ObjectBreakOffG
+ * WHAT IT DOES: As ObjectBreakOffD with look $9B56, $28 lower before the
+ * scaled velocity (ObjectVelocityFromRecordScaled).
+ * HOW: As ObjectBreakOffA.
+ * Entry: as ObjectBreakOffA. Exit: as ObjectBreakOffA.
+ */
+void abi_ObjectBreakOffG(void)
+{
+    piece_look(0x9B56, 1, 0x14);
+    piece_drop();
+    abi_ObjectVelocityFromRecordScaled();
+    piece_fall4();
+}
+
+/*
+ * @routine 08:D3D3 ObjectBreakOffH
+ * WHAT IT DOES: As ObjectBreakOffG with look $9B40 and +$5F = $0A.
+ * HOW: As ObjectBreakOffA.
+ * Entry: as ObjectBreakOffA. Exit: as ObjectBreakOffA.
+ */
+void abi_ObjectBreakOffH(void)
+{
+    piece_look(0x9B40, 1, 0x0A);
+    piece_drop();
+    abi_ObjectVelocityFromRecordScaled();
+    piece_fall4();
+}
+
+/*
+ * @routine 08:D428 ObjectPieceFallStart
+ * WHAT IT DOES: A piece's first frame: falls for 6 frames
+ * (ObjectPieceFall), look $997C, +$24 bit 3, +$3A = 0, +$5F = $0A.
+ * HOW: Falls into ObjectPieceFall. No caller found: not reached in the
+ * traces so far.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectPieceFall.
+ */
+void abi_ObjectPieceFallStart(void)
+{
+    uint32_t b = db();
+
+    piece_handler(0x06);
+    lda8(0x06);
+    wr8(b | (uint16_t)(0x2049 + cpu.x), 0x06);
+    piece_look(0x997C, 0, 0x0A);
+    abi_ObjectPieceFall();
+}
+
+/*
+ * @routine 08:D460 ObjectPieceSpray
+ * WHAT IT DOES: A spray piece's first frame (from ObjectSpawnChanceD460):
+ * falls for 6 frames (ObjectPieceFall), look $997C, +$24 bit 3, +$3A = 0,
+ * +$5F = $0A; its offset ($00, $00, random -$28 to -$19) turned by its
+ * parent's (+$27) angles +$14 (RotateXZFrom08) and +$15 (RotateXZ),
+ * doubled and added to its position; its parent's record velocity scaled
+ * (ObjectVelocityFromRecordScaled), Y - $14, ObjectAdvance5DIfFlag; then
+ * its first fall.
+ * HOW: The offset in direct page $02/$04, $08/$0A, $94/$05F2 with their
+ * sign bytes; the copies between the turns are 8-bit.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectPieceFall.
+ */
+void abi_ObjectPieceSpray(void)
+{
+    uint32_t b = db();
+    uint16_t w;
+    uint8_t v;
+
+    piece_handler(0x06);
+    lda8(0x06);
+    wr8(b | (uint16_t)(0x2049 + cpu.x), 0x06);
+    abi_RandomStepLong();
+    v = (uint8_t)(cpu.a & 0x0F);
+    lda8(v);
+    wr8(b | 0x1F4C, v);
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(b | 0x1F4C);
+    op_add16(0xFFD8);
+    wr16(b | 0x1F4C, cpu.a);
+    cpu.p |= P_M;
+    piece_look(0x997C, 0, 0x0A);
+    cpu.y = rd16(b | (uint16_t)(0x2027 + cpu.x));
+    cpu.p = nz16(cpu.p, cpu.y);
+    lda8(0x00);
+    wr8(0x000002, 0x00);
+    wr8(0x000004, 0x00);
+    wr8(0x000005, 0x00);
+    lda8(0x00);
+    wr8(0x000008, 0x00);
+    wr8(0x00000A, 0x00);
+    wr8(0x00000B, 0x00);
+    op_lda8(b | 0x1F4C);
+    v = (uint8_t)cpu.a;
+    wr8(0x000094, v);
+    wr8(b | 0x05F2, v);
+    if (v & 0x80) {
+        lda8(0xFF);
+        wr8(b | 0x05F3, 0xFF);
+    } else {
+        wr8(b | 0x05F3, 0x00);
+    }
+    op_lda8(b | (uint16_t)(0x2014 + cpu.y));
+    abi_RotateXZFrom08();
+    op_lda8(0x000004);
+    wr8(0x000002, (uint8_t)cpu.a);
+    op_lda8(0x00000A);
+    wr8(0x000008, (uint8_t)cpu.a);
+    op_lda8(b | 0x05F2);
+    wr8(0x000094, (uint8_t)cpu.a);
+    op_lda8(b | (uint16_t)(0x2015 + cpu.y));
+    abi_RotateXZ();
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(0x000004);
+    op_asl16();
+    wr16(0x000004, cpu.a);
+    op_lda16(0x00000A);
+    op_asl16();
+    wr16(0x00000A, cpu.a);
+    op_lda16(b | 0x05F2);
+    op_asl16();
+    wr16(b | 0x05F2, cpu.a);
+    op_lda16(b | (uint16_t)(0x200C + cpu.x));
+    op_add16(rd16(0x000004));
+    wr16(b | (uint16_t)(0x200C + cpu.x), cpu.a);
+    op_lda16(b | (uint16_t)(0x2010 + cpu.x));
+    op_add16(rd16(b | 0x05F2));
+    wr16(b | (uint16_t)(0x2010 + cpu.x), cpu.a);
+    op_lda16(b | (uint16_t)(0x200E + cpu.x));
+    op_add16(rd16(0x00000A));
+    wr16(b | (uint16_t)(0x200E + cpu.x), cpu.a);
+    cpu.p |= P_M;
+    abi_ObjectVelocityFromRecordScaled();
+    cpu.p &= (uint8_t)~P_M;
+    w = rd16(b | (uint16_t)(0x2030 + cpu.x));
+    cpu.a = w;
+    op_add16(0xFFEC);
+    wr16(b | (uint16_t)(0x2030 + cpu.x), cpu.a);
+    cpu.p |= P_M;
+    abi_ObjectAdvance5DIfFlag();
+    abi_ObjectPieceFall();
 }

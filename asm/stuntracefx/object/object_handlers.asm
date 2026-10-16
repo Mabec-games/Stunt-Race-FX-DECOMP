@@ -166,7 +166,7 @@ ObjectBurstPieceStep:
     jsl.l RecordContactSummary
     and.b #$80
     beq .lEDCE
-    jmp.w ObjectReleaseD337         ; not reached in the traces so far
+    jmp.w ObjectBreakOffContact         ; not reached in the traces so far
 .lEDCE:
     lda.w !obj_48,x
     bne .lEDD7
@@ -875,7 +875,7 @@ ObjectChildFlying:
     jsl.l RecordContactSummary
     and.b #$80
     beq .lBC03
-    jmp.w ObjectReleaseD337
+    jmp.w ObjectBreakOffContact
 .lBC03:
     ldy.w !obj_06,x
     lda.w !obj_25,y
@@ -1143,7 +1143,7 @@ ObjectChildFollow:
     bpl .lBE1E
     brl .lBF53
 .lBE1E:
-    jsr.w ObjectChildD1BF
+    jsr.w ObjectBreakOffChance
     bcs .lBE26
     brl .lBF53
 .lBE26:
@@ -1172,7 +1172,7 @@ ObjectChildFollow:
     bpl .lBE5B
     brl .lBF53
 .lBE5B:
-    jsr.w ObjectChildD1BF
+    jsr.w ObjectBreakOffChance
     bcs .lBE63
     brl .lBF53
 .lBE63:
@@ -1201,7 +1201,7 @@ ObjectChildFollow:
     bpl .lBE98
     brl .lBF53
 .lBE98:
-    jsr.w ObjectChildD1BF
+    jsr.w ObjectBreakOffChance
     bcs .lBEA0
     brl .lBF53
 .lBEA0:
@@ -1230,7 +1230,7 @@ ObjectChildFollow:
     bpl .lBED5
     brl .lBF53
 .lBED5:
-    jsr.w ObjectChildD1BF
+    jsr.w ObjectBreakOffChance
     bcs .lBEDD
     brl .lBF53
 .lBEDD:
@@ -1242,7 +1242,7 @@ ObjectChildFollow:
     sta.w !obj_1c,y
     jmp.w .lBF53
 .lBEEF:
-    jsr.w ObjectChildD1BF
+    jsr.w ObjectBreakOffChance
     bcc .lBF53
     rep.b #$20
     lda.l !gsu_in_2e,x
@@ -1280,7 +1280,7 @@ ObjectChildFollow:
     sta.w !obj_1c,y
     bra .lBF53
 .lBF3F:
-    jsr.w ObjectChildD1BF
+    jsr.w ObjectBreakOffChance
     bcc .lBF53
     rep.b #$20
     lda.w #$D3D3
@@ -1317,3 +1317,518 @@ ObjectChildFollow:
     sep.b #$20
     plx
     rts
+
+; @routine 08:D1BF ObjectBreakOffChance
+; WHAT IT DOES: For child Y breaking off: on a random byte of $7F or more,
+; a new object (kind $A1AC) at Y's position with Y's parent (+$06) as its
+; +$27; C set when one was made, clear otherwise.
+; HOW: X kept (PHX, PLX); ObjectSpawn and ObjectCopyPositionTo from Y
+; (TYX).
+; Entry: X 16-bit; Y = the child. Exit: M 8-bit; X kept; C as above; Y =
+; the new object when there is one.
+%at($08D1BF)
+ObjectBreakOffChance:
+    sep.b #$20
+    phx
+    tyx
+    jsl.l RandomStepLong
+    cmp.b #$7F
+    bcs .lD1CF
+    jml.l .lD1F4
+.lD1CF:
+    rep.b #$20
+    lda.w #$A1AC
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lD1E3
+    jml.l .lD1F4
+.lD1E3:
+    jsl.l ObjectCopyPositionTo
+    rep.b #$20
+    lda.w !obj_06,x
+    sta.w !obj_27,y
+    sep.b #$20
+    plx
+    sec
+    rts
+.lD1F4:
+    plx
+    clc
+    rts
+
+; @routine 08:D1F7 ObjectBreakOffA
+; WHAT IT DOES: A child broken off (look $998D): +$24 bit 3, +$3A = 0,
+; +$5F = $14, its parent's record velocity scaled
+; (ObjectVelocityFromRecordScaled), $28 lower; then falls
+; (ObjectPieceFall, 4 frames).
+; HOW: Ends in ObjectPieceFall with +$25 bit 0 set.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectPieceFall.
+%at($08D1F7)
+ObjectBreakOffA:
+    rep.b #$20
+    lda.w #$998D
+    sta.w !obj_5d,x
+    sep.b #$20
+    lda.w !obj_24,x
+    ora.b #$08
+    sta.w !obj_24,x
+    lda.b #$00
+    sta.w !obj_3a,x
+    lda.b #$14
+    sta.w !obj_5f,x
+    jsr.w ObjectVelocityFromRecordScaled
+    rep.b #$20
+    lda.w !obj_pos_y,x
+    clc
+    adc.w #$0028
+    sta.w !obj_pos_y,x
+    sep.b #$20
+    rep.b #$20
+    lda.w #$D549
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+    lda.b #$00
+    sta.w !obj_48,x
+    lda.w !obj_25,x
+    ora.b #$01
+    sta.w !obj_25,x
+    lda.b #$04
+    sta.w !obj_49,x
+    jml.l ObjectPieceFall
+
+; @routine 08:D249 ObjectBreakOffB
+; WHAT IT DOES: As ObjectBreakOffA with look $9B96, the record's velocity
+; unscaled (ObjectVelocityFromRecord) and 3 frames.
+; HOW: As ObjectBreakOffA. Not reached in the traces so far.
+; Entry: as ObjectBreakOffA. Exit: as ObjectBreakOffA.
+%at($08D249)
+ObjectBreakOffB:
+    rep.b #$20                      ; not reached in the traces so far
+    lda.w #$9B96
+    sta.w !obj_5d,x
+    sep.b #$20
+    lda.w !obj_24,x
+    ora.b #$08
+    sta.w !obj_24,x
+    lda.b #$00
+    sta.w !obj_3a,x
+    lda.b #$14
+    sta.w !obj_5f,x
+    jsr.w ObjectVelocityFromRecord
+    rep.b #$20
+    lda.w !obj_pos_y,x
+    clc
+    adc.w #$0028
+    sta.w !obj_pos_y,x
+    sep.b #$20
+    rep.b #$20
+    lda.w #$D549
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+    lda.b #$00
+    sta.w !obj_48,x
+    lda.w !obj_25,x
+    ora.b #$01
+    sta.w !obj_25,x
+    lda.b #$03
+    sta.w !obj_49,x
+    jml.l ObjectPieceFall
+
+; @routine 08:D29B ObjectBreakOffC
+; WHAT IT DOES: As ObjectBreakOffB with look $9B9F (ObjectAdvance5DIfFlag)
+; and 4 frames.
+; HOW: As ObjectBreakOffA. Not reached in the traces so far.
+; Entry: as ObjectBreakOffA. Exit: as ObjectBreakOffA.
+%at($08D29B)
+ObjectBreakOffC:
+    rep.b #$20                      ; not reached in the traces so far
+    lda.w #$9B9F
+    sta.w !obj_5d,x
+    sep.b #$20
+    jsr.w ObjectAdvance5DIfFlag
+    lda.w !obj_24,x
+    ora.b #$08
+    sta.w !obj_24,x
+    lda.b #$00
+    sta.w !obj_3a,x
+    lda.b #$14
+    sta.w !obj_5f,x
+    jsr.w ObjectVelocityFromRecord
+    rep.b #$20
+    lda.w !obj_pos_y,x
+    clc
+    adc.w #$0028
+    sta.w !obj_pos_y,x
+    sep.b #$20
+    jml.l ObjectPieceFall4
+
+; @routine 08:D2CF ObjectBreakOffD
+; WHAT IT DOES: As ObjectBreakOffC with look $9B8F.
+; HOW: As ObjectBreakOffA.
+; Entry: as ObjectBreakOffA. Exit: as ObjectBreakOffA.
+%at($08D2CF)
+ObjectBreakOffD:
+    rep.b #$20
+    lda.w #$9B8F
+    sta.w !obj_5d,x
+    sep.b #$20
+    jsr.w ObjectAdvance5DIfFlag
+    lda.w !obj_24,x
+    ora.b #$08
+    sta.w !obj_24,x
+    lda.b #$00
+    sta.w !obj_3a,x
+    lda.b #$14
+    sta.w !obj_5f,x
+    jsr.w ObjectVelocityFromRecord
+    rep.b #$20
+    lda.w !obj_pos_y,x
+    clc
+    adc.w #$0028
+    sta.w !obj_pos_y,x
+    sep.b #$20
+    jml.l ObjectPieceFall4
+
+; @routine 08:D303 ObjectBreakOffE
+; WHAT IT DOES: As ObjectBreakOffC with look $9B79.
+; HOW: As ObjectBreakOffA.
+; Entry: as ObjectBreakOffA. Exit: as ObjectBreakOffA.
+%at($08D303)
+ObjectBreakOffE:
+    rep.b #$20
+    lda.w #$9B79
+    sta.w !obj_5d,x
+    sep.b #$20
+    jsr.w ObjectAdvance5DIfFlag
+    lda.w !obj_24,x
+    ora.b #$08
+    sta.w !obj_24,x
+    lda.b #$00
+    sta.w !obj_3a,x
+    lda.b #$14
+    sta.w !obj_5f,x
+    jsr.w ObjectVelocityFromRecord
+    rep.b #$20
+    lda.w !obj_pos_y,x
+    clc
+    adc.w #$0028
+    sta.w !obj_pos_y,x
+    sep.b #$20
+    jml.l ObjectPieceFall4
+
+; @routine 08:D337 ObjectBreakOffContact
+; WHAT IT DOES: A piece hit on contact: look $9B63 with +$5F = $6E, $28
+; lower, falls (4 frames).
+; HOW: $1F58 = $6E, then the tail of ObjectBreakOffF.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectPieceFall.
+%at($08D337)
+ObjectBreakOffContact:
+    lda.b #$6E
+    sta.w !wram_1F58
+    jmp.w ObjectBreakOffFTail
+
+; @routine 08:D33F ObjectBreakOffF
+; WHAT IT DOES: As ObjectBreakOffC with look $9B63 and +$5F = half the
+; speed of its parent's (+$27) record ($4A, its size) + $14, at most $78.
+; HOW: The halving is CMP #$8000, ROR A; $1F58 holds +$5F.
+; Entry: as ObjectBreakOffA. Exit: as ObjectBreakOffA.
+%at($08D33F)
+ObjectBreakOffF:
+    rep.b #$20
+    phx
+    lda.w !obj_27,x
+    tax
+    lda.w !obj_22,x
+    tax
+    lda.l !gsu_speeds,x
+    bpl .lD354
+    eor.w #$FFFF
+    inc a
+.lD354:
+    cmp.w #$8000
+    ror a
+    clc
+    adc.w #$0014
+    cmp.w #$0078
+    bmi .lD364
+    lda.w #$0078
+.lD364:
+    sep.b #$20
+    sta.w !wram_1F58
+    plx
+    jsr.w ObjectVelocityFromRecord
+ObjectBreakOffFTail:
+    rep.b #$20
+    lda.w #$9B63
+    sta.w !obj_5d,x
+    sep.b #$20
+    jsr.w ObjectAdvance5DIfFlag
+    lda.w !obj_24,x
+    ora.b #$08
+    sta.w !obj_24,x
+    lda.b #$00
+    sta.w !obj_3a,x
+    lda.w !wram_1F58
+    sta.w !obj_5f,x
+    rep.b #$20
+    lda.w !obj_pos_y,x
+    clc
+    adc.w #$0028
+    sta.w !obj_pos_y,x
+    sep.b #$20
+    jml.l ObjectPieceFall4
+
+; @routine 08:D39F ObjectBreakOffG
+; WHAT IT DOES: As ObjectBreakOffD with look $9B56, $28 lower before the
+; scaled velocity (ObjectVelocityFromRecordScaled).
+; HOW: As ObjectBreakOffA.
+; Entry: as ObjectBreakOffA. Exit: as ObjectBreakOffA.
+%at($08D39F)
+ObjectBreakOffG:
+    rep.b #$20
+    lda.w #$9B56
+    sta.w !obj_5d,x
+    sep.b #$20
+    jsr.w ObjectAdvance5DIfFlag
+    lda.w !obj_24,x
+    ora.b #$08
+    sta.w !obj_24,x
+    lda.b #$00
+    sta.w !obj_3a,x
+    lda.b #$14
+    sta.w !obj_5f,x
+    rep.b #$20
+    lda.w !obj_pos_y,x
+    clc
+    adc.w #$0028
+    sta.w !obj_pos_y,x
+    sep.b #$20
+    jsr.w ObjectVelocityFromRecordScaled
+    jml.l ObjectPieceFall4
+
+; @routine 08:D3D3 ObjectBreakOffH
+; WHAT IT DOES: As ObjectBreakOffG with look $9B40 and +$5F = $0A.
+; HOW: As ObjectBreakOffA.
+; Entry: as ObjectBreakOffA. Exit: as ObjectBreakOffA.
+%at($08D3D3)
+ObjectBreakOffH:
+    rep.b #$20
+    lda.w #$9B40
+    sta.w !obj_5d,x
+    sep.b #$20
+    jsr.w ObjectAdvance5DIfFlag
+    lda.w !obj_24,x
+    ora.b #$08
+    sta.w !obj_24,x
+    lda.b #$00
+    sta.w !obj_3a,x
+    lda.b #$0A
+    sta.w !obj_5f,x
+    rep.b #$20
+    lda.w !obj_pos_y,x
+    clc
+    adc.w #$0028
+    sta.w !obj_pos_y,x
+    sep.b #$20
+    jsr.w ObjectVelocityFromRecordScaled
+ObjectPieceFall4:
+    rep.b #$20
+    lda.w #$D549
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+    lda.b #$00
+    sta.w !obj_48,x
+    lda.w !obj_25,x
+    ora.b #$01
+    sta.w !obj_25,x
+    lda.b #$04
+    sta.w !obj_49,x
+    jml.l ObjectPieceFall
+
+; @routine 08:D428 ObjectPieceFallStart
+; WHAT IT DOES: A piece's first frame: falls for 6 frames
+; (ObjectPieceFall), look $997C, +$24 bit 3, +$3A = 0, +$5F = $0A.
+; HOW: Falls into ObjectPieceFall. No caller found: not reached in the
+; traces so far.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectPieceFall.
+%at($08D428)
+ObjectPieceFallStart:
+    rep.b #$20                      ; not reached in the traces so far
+    lda.w #$D549
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+    lda.b #$00
+    sta.w !obj_48,x
+    lda.b #$06
+    sta.w !obj_49,x
+    rep.b #$20
+    lda.w #$997C
+    sta.w !obj_5d,x
+    sep.b #$20
+    lda.w !obj_24,x
+    ora.b #$08
+    sta.w !obj_24,x
+    lda.b #$00
+    sta.w !obj_3a,x
+    lda.b #$0A
+    sta.w !obj_5f,x
+    jmp.w ObjectPieceFall
+
+; @routine 08:D460 ObjectPieceSpray
+; WHAT IT DOES: A spray piece's first frame (from ObjectSpawnChanceD460):
+; falls for 6 frames (ObjectPieceFall), look $997C, +$24 bit 3, +$3A = 0,
+; +$5F = $0A; its offset ($00, $00, random -$28 to -$19) turned by its
+; parent's (+$27) angles +$14 (RotateXZFrom08) and +$15 (RotateXZ),
+; doubled and added to its position; its parent's record velocity scaled
+; (ObjectVelocityFromRecordScaled), Y - $14, ObjectAdvance5DIfFlag; then
+; its first fall.
+; HOW: The offset in direct page $02/$04, $08/$0A, $94/$05F2 with their
+; sign bytes; the copies between the turns are 8-bit.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectPieceFall.
+%at($08D460)
+ObjectPieceSpray:
+    rep.b #$20
+    lda.w #$D549
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+    lda.b #$00
+    sta.w !obj_48,x
+    lda.b #$06
+    sta.w !obj_49,x
+    jsl.l RandomStepLong
+    and.b #$0F
+    sta.w !wram_1F4C
+    rep.b #$20
+    lda.w !wram_1F4C
+    clc
+    adc.w #$FFD8
+    sta.w !wram_1F4C
+    sep.b #$20
+    rep.b #$20
+    lda.w #$997C
+    sta.w !obj_5d,x
+    sep.b #$20
+    lda.w !obj_24,x
+    ora.b #$08
+    sta.w !obj_24,x
+    lda.b #$00
+    sta.w !obj_3a,x
+    lda.b #$0A
+    sta.w !obj_5f,x
+    ldy.w !obj_27,x
+    lda.b #$00
+    sta.b !dp_02
+    sta.b !dp_04
+    bit.b #$80
+    beq .lD4BF
+    lda.b #$FF                      ; not reached in the traces so far
+    sta.b !dp_05
+    bra .lD4C1
+.lD4BF:
+    stz.b !dp_05
+.lD4C1:
+    lda.b #$00
+    sta.b !dp_08
+    sta.b !actor_0a
+    bit.b #$80
+    beq .lD4D1
+    lda.b #$FF                      ; not reached in the traces so far
+    sta.b !dp_0b
+    bra .lD4D3
+.lD4D1:
+    stz.b !dp_0b
+.lD4D3:
+    lda.w !wram_1F4C
+    sta.b !dp_94
+    sta.w !rot_z
+    bit.b #$80
+    beq .lD4E6
+    lda.b #$FF
+    sta.w !rot_z_high
+    bra .lD4E9
+.lD4E6:
+    stz.w !rot_z_high               ; not reached in the traces so far
+.lD4E9:
+    lda.w !obj_14,y
+    jsl.l RotateXZFrom08
+    lda.b !dp_04
+    sta.b !dp_02
+    lda.b !actor_0a
+    sta.b !dp_08
+    lda.w !rot_z
+    sta.b !dp_94
+    lda.w !obj_15,y
+    jsl.l RotateXZ
+    rep.b #$20
+    lda.b !dp_04
+    asl a
+    sta.b !dp_04
+    lda.b !actor_0a
+    asl a
+    sta.b !actor_0a
+    lda.w !rot_z
+    asl a
+    sta.w !rot_z
+    lda.w !obj_pos_x,x
+    clc
+    adc.b !dp_04
+    sta.w !obj_pos_x,x
+    lda.w !obj_pos_z,x
+    clc
+    adc.w !rot_z
+    sta.w !obj_pos_z,x
+    lda.w !obj_pos_y,x
+    clc
+    adc.b !actor_0a
+    sta.w !obj_pos_y,x
+    sep.b #$20
+    jsr.w ObjectVelocityFromRecordScaled
+    rep.b #$20
+    lda.w !obj_vel_y,x
+    clc
+    adc.w #$FFEC
+    sta.w !obj_vel_y,x
+    sep.b #$20
+    jsr.w ObjectAdvance5DIfFlag
+
+; @routine 08:D549 ObjectPieceFall
+; WHAT IT DOES: A broken-off piece's frame: rebucketed; its +$18 and +$19
+; = its frame count +$48 with bit 7; released once the count reaches its
+; end +$49, otherwise counted up and moved (ObjectApplyVelocity); +$36 =
+; 3.
+; HOW: $1F58 and $1F59 hold the count and the end.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte 3, or as
+; ObjectReleaseLong leaves it.
+%at($08D549)
+ObjectPieceFall:
+    jsl.l ObjectRebucket
+    lda.w !obj_48,x
+    sta.w !wram_1F58
+    lda.w !wram_1F58
+    ora.b #$80
+    sta.w !obj_18,x
+    lda.w !obj_18,x
+    sta.w !obj_19,x
+    lda.w !obj_49,x
+    sta.w !wram_1F59
+    lda.w !obj_48,x
+    cmp.w !wram_1F59
+    bne .lD573
+    jml.l ObjectReleaseLong
+.lD573:
+    inc.w !obj_48,x
+    jsl.l ObjectApplyVelocity
+    lda.b #$03
+    sta.w !obj_36,x
+    rtl
