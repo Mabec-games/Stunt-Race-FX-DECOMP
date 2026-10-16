@@ -842,7 +842,7 @@ void abi_StuntCourseMark(void)
  * WHAT IT DOES: The Stunt Trax panel's first state: the pause
  * (PauseOnStart); then, when the stunt count $19ED is new (not 0 and not
  * $1A2D), keeps it in $1A2D and, below 8, shows it (state 4, $0E3F = 15);
- * at 8 (all done), sound 2, WindowDigitStep, state 6 with $0E3F = $20,
+ * at 8 (all done), sound 2, CarFinishSound, state 6 with $0E3F = $20,
  * $0E5B and $0D55 cleared, the HUD's sprites hidden (OamHideForHudMode),
  * StuntRecordTime and RecordsLoadSpecialCourseLong, and the course's
  * mark (StuntCourseMark).
