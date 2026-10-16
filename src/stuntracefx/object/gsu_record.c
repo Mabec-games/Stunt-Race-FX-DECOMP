@@ -814,10 +814,16 @@ static uint16_t sync_start(uint8_t bank, uint16_t obj)
 uint16_t ObjectSyncFromRecord(uint8_t bank, uint16_t obj, uint16_t *y, uint8_t *p)
 {
     uint32_t b = (uint32_t)bank << 16;
-    uint16_t rec = sync_start(bank, obj), a;
+    uint16_t rec, a;
     uint8_t f;
+    int has;
 
+    /* Rebucket, GsuRecordFlag4, then +$24 bit 1 cleared before the record
+       (+$22) is read, in the asm's order. */
+    ObjectRebucket(obj);
+    GsuRecordFlag4(bank, obj, &has);
     wr8(b | (uint16_t)(0x2024 + obj), rd8(b | (uint16_t)(0x2024 + obj)) & 0xFD);
+    rec = record_of(bank, obj);
     if (!rec) {
         *y = obj;
         return sync_none(bank, p);

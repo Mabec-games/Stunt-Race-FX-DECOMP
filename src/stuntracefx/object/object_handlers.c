@@ -662,7 +662,8 @@ static int child_fast(uint32_t b)
 
     w = abs16(rd16(0x70002E + cpu.x));
     wr16(b | 0x1F2B, w);
-    cpu.a = (uint16_t)(abs16(rd16(0x700032 + cpu.x)) + rd16(b | 0x1F2B));
+    w = abs16(rd16(0x700032 + cpu.x));
+    cpu.a = (uint16_t)(w + rd16(b | 0x1F2B));
     op_cmp16(0x0064);
     return !(cpu.p & P_N);
 }
@@ -826,8 +827,8 @@ void abi_ObjectApplyVelocity(void);
  * X. With no record of its own it just returns ($08:A033).
  * HOW: $1F50 keeps the parent; $1F4C, $1F52, $1F4E the table's words; a
  * failed spawn skips the record.
- * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; X = the object; Y
- * the last child (or as ObjectSpawn left it).
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; X = the object, N
+ * and Z from it (PLX); Y the last child (or as ObjectSpawn left it).
  */
 void abi_ObjectChildrenSpawn(void)
 {
@@ -896,7 +897,7 @@ void abi_ObjectChildrenSpawn(void)
         op_lda16(0x700034 + cpu.x);
     }
     cpu.x = obj;
-    cpu.p |= P_M;
+    cpu.p = (uint8_t)(nz16(cpu.p, obj) | P_M);
 }
 
 /* $08:BB4E: object X's +$24 bit 6 cleared, then its bit 5 set when its
@@ -1008,7 +1009,7 @@ static uint16_t child_y(uint16_t f5, uint16_t a)
 void abi_ObjectChildReturn(void)
 {
     uint32_t b = db();
-    uint16_t obj;
+    uint16_t obj, w;
 
     cpu.y = rd16(b | (uint16_t)(0x2006 + cpu.x));
     cpu.p = nz16(cpu.p, cpu.y);
@@ -1021,7 +1022,8 @@ void abi_ObjectChildReturn(void)
     op_lda16(0x70001E + cpu.x);
     op_add16(rd16(0x70004A + cpu.x));
     wr16(0x000004, cpu.a);
-    child_y(rd16(b | (uint16_t)(0x205F + cpu.y)), rd16(0x700020 + cpu.x));
+    w = rd16(b | (uint16_t)(0x205F + cpu.y));
+    child_y(w, rd16(0x700020 + cpu.x));
     op_add16(rd16(0x70004C + cpu.x));
     wr16(0x00000A, cpu.a);
     op_lda16(0x700022 + cpu.x);
