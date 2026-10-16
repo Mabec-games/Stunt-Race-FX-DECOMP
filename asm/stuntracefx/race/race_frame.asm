@@ -158,6 +158,44 @@ RaceStart:
     plp
     rtl
 
+; @routine 07:A99A RaceFinishSplit
+; WHAT IT DOES: A finish on the split screen: for player 1 (Y = 0, unless
+; $0DE9 is 3 with player mode other than 1) the car's sound (CarFinishSound),
+; player 1's phase $12 and player 2's $0A; for player 2 CarFinishSoundP2 and
+; the phases the other way round; sound 8 on port 0; then
+; RaceFinishPhasesTail.
+; HOW: CPY #0; a jump to the shared tail. Reached only by unit_race_phases.
+; Entry: M 8-bit, X 8-bit; Y = player. Exit: as RaceFinishPhases0E.
+%at($07A99A)
+RaceFinishSplit:
+    cpy.b #$00
+    bne .player2
+    lda.w !wram_0DE9
+    cmp.b #$03
+    beq .mode
+.player1:
+    jsr.w CarFinishSound
+    lda.b #$12
+    sta.w !engine_phase_p1
+    lda.b #$0A
+    sta.w !engine_phase_p2
+    lda.b #$08
+    jsl.l SoundPort0QueuePush
+    jmp.w RaceFinishPhasesTail
+.mode:
+    lda.w !player_mode
+    cmp.b #$01
+    beq .player1
+.player2:
+    jsr.w CarFinishSoundP2
+    lda.b #$12
+    sta.w !engine_phase_p2
+    lda.b #$0A
+    sta.w !engine_phase_p1
+    lda.b #$08
+    jsl.l SoundPort0QueuePush
+    bra RaceFinishPhasesTail
+
 ; @routine 07:A9D7 RaceFinishPhases0E
 ; WHAT IT DOES: Sets the race phases after a finish: sound $37; with Y not
 ; 0 (player 2), player 1 $12 and player 2 $0E; with Y = 0, both $14 (after
@@ -227,7 +265,7 @@ RaceFinishPhases10:
     bra RaceFinishPhasesTail        ; not reached in the traces so far
 RaceFinishPhasesBoth:               ; bit 0 of $0DED: not reached in the traces so far
     sep.b #$20
-    jsr.w !race_e944
+    jsr.w CarFinishSound
     lda.b #$14
     sta.w !engine_phase_p1
     sta.w !engine_phase_p2

@@ -17,7 +17,8 @@
 # PauseResults at 9:59 and 9:58, RaceEndWindowNine on each path,
 # RaceEndLeave to the championship screen, TimeUpBattle's second part,
 # TimeUpStunt's and TimeUpRace's phase 6 and TimeUpRace's lap crossed;
-# BigSpritesNine and BigSpritesRow6B with $0E5C set.
+# BigSpritesNine and BigSpritesRow6B with $0E5C set; RaceFinishSplit for
+# each player and $0DE9 / player mode case.
 load build/stuntracefx/states/novice_coupe_race1.state
 set 7E0DD7 00
 call 07:E265 p=30 db=07 d=0000 y=01
@@ -404,3 +405,16 @@ call 07:9B6F p=30 db=07 d=0000
 load build/stuntracefx/states/novice_coupe_race1.state
 set 7E0E5C 01
 call 07:9C9F p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0DE9 00
+call 07:A99A p=30 db=07 d=0000 y=00
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0DE9 03
+set 7E0DF4 01
+call 07:A99A p=30 db=07 d=0000 y=00
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0DE9 03
+set 7E0DF4 02
+call 07:A99A p=30 db=07 d=0000 y=00
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:A99A p=30 db=07 d=0000 y=01

@@ -303,7 +303,6 @@ includeonce
 !preview_picture_a = $17CC78
 !preview_picture_b = $17CE78
 !preview_picture_c = $17DD8C
-!race_e944 = $E944
 BigSpritesCountDraw = $079EE9                   ; 07:9EE9, the $0E5C alternative to BigSpritesRow5/6 (not filed yet; a label so branches reach it)
 !course_values_d813 = $03D813
 !course_values_d810 = $03D810          ; by $0D4A
@@ -384,7 +383,5 @@ DemoScripts = $038004                           ; 03:8004, the attract demos' sc
 !records_columns_stunt = $07D8DC              ; RecordsCharOffsetStunt: seven bytes, each character's column
 !records_rows_all = $07D8E3                   ; RecordsCharOffsetAll: four words
 !records_columns_all = $07D8EB                ; RecordsCharOffsetAll: eight bytes
-SaveSumADDA = $07ADDA                          ; 07:ADDA, a save block's sum (not filed yet)
-RaceFinishSplit = $07A99A                      ; 07:A99A, the split screen's finish (not filed yet)
 ObjectCarCD7E = $08CD7E                         ; 08:CD7E, the pace car step's tail (not filed yet)
 ObjectReleaseD337 = $08D337                     ; 08:D337, the burst piece's contact tail (not filed yet)

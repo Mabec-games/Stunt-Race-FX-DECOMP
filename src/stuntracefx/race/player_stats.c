@@ -7,6 +7,8 @@
 #include "hw.h"
 #include "cpu_ops.h"
 
+void abi_CarFinishSound(void);
+
 void abi_GsuRecordBits60(void);
 
 /*
@@ -878,7 +880,7 @@ void abi_StuntPanelWait(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x02);
     cpu.p = nz8(cpu.p, 0x02);
     abi_SoundPort0QueuePushRaw();
-    call_routine(0x07E944, 0);
+    abi_CarFinishSound();
     op_sep(P_M | P_X);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x06);
     wr8(b | 0x0E41, 0x06);

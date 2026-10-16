@@ -65,6 +65,29 @@ void abi_SaveRecordSumB(void)
     cpu.p = p;
 }
 
+/*
+ * @routine 07:ADDA SaveSumsRecordsB
+ * WHAT IT DOES: Keeps the sums of the first three records at $70:FC5E
+ * (SaveRecordSumB) in the sum bytes $70:FC43-$70:FC45, after clearing
+ * direct page $F1; then returns the fourth record's sum.
+ * HOW: SEP #$30; three JSRs, then SaveRecordSumB's code, which follows.
+ * Entry: D = $0000. Exit: as SaveRecordSumB, X = $14.
+ */
+void abi_SaveSumsRecordsB(void)
+{
+    unsigned i;
+
+    op_sep(P_M | P_X);
+    wr8(0x0000F1, 0x00);
+    for (i = 0; i < 3; i++) {
+        cpu.x = (uint16_t)(i * 5);
+        cpu.p = nz8(cpu.p, (uint8_t)cpu.x);
+        abi_SaveRecordSumB();
+        wr8((uint32_t)(0x70FC43 + i), (uint8_t)cpu.a);
+    }
+    abi_SaveRecordSumB();
+}
+
 /* Check `count` records from `base` against their sum bytes at `sums`; a
    record whose sum differs or whose first byte is 0 is reset to FF FF 00 00
    00 with sum byte $FE. Returns A's low byte as the loop leaves it; V is

@@ -582,6 +582,8 @@ void abi_GsuF0A5OrF0B4(void);
 void abi_GsuEEF5OrEFCD(void);
 void abi_RecordTimeCompare(void);
 void abi_PlayerSound35(void);
+void abi_SaveSumsRecordsB(void);
+void abi_RaceFinishSplit(void);
 
 /* Player y's byte at `at`: work RAM through the data bank, indexed by Y. */
 #define PY(b, at) ((b) | (uint16_t)((at) + cpu.y))
@@ -823,7 +825,7 @@ static void finish_alone(uint32_t b, uint16_t colour, uint8_t phase, uint8_t t)
    less the last mark at $0EDB-$0EDD into $0EDE-$0EE0, the mark moved on,
    then the split packed (TimePackBcd) and kept in the course's save entry
    ($70:FC5E + X from RecordOffsetAllCourses) when it is better, with the
-   level $0F11 and the car $0D89 (HudBestTimeDigits, 07:ADDA); $0FA3 = 1
+   level $0F11 and the car $0D89 (HudBestTimeDigits, SaveSumsRecordsB); $0FA3 = 1
    (kept), $FF (worse) or 0 (equal); $0E5D = $12C. Reached only by
    unit_race_phases. */
 static void lap_override(uint32_t b)
@@ -893,7 +895,7 @@ static void lap_override(uint32_t b)
         op_sep(P_M);
         op_lda8(b | 0x0D89);
         wr8(0x70FC62 + cpu.x, (uint8_t)cpu.a);
-        call_routine(0x07ADDA, 0);
+        abi_SaveSumsRecordsB();
         lda8_imm(0x01);
     } else if (cpu.a != t) {
         op_sep(P_M);
@@ -927,7 +929,7 @@ static void lap_finish(uint32_t b)
     if ((uint8_t)cpu.a) {
         lda8_imm(0xFF);
         wr8(b | 0x0D53, 0xFF);
-        call_routine(0x07A99A, 0);
+        abi_RaceFinishSplit();
         return;
     }
     op_lda8(b | 0x0D2B);

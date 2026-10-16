@@ -26,6 +26,26 @@ SaveRecordSumA:
     bne .lADD0
     rts
 
+; @routine 07:ADDA SaveSumsRecordsB
+; WHAT IT DOES: Keeps the sums of the first three records at !save_record_b
+; (SaveRecordSumB) in the sum bytes !save_table_sums+22 to +24, after
+; clearing direct page $F1; then returns the fourth record's sum.
+; HOW: SEP #$30; three JSRs, then SaveRecordSumB's code, which follows.
+; Entry: D = $0000. Exit: as SaveRecordSumB, X = $14.
+%at($07ADDA)
+SaveSumsRecordsB:
+    sep.b #$30
+    stz.b !digit_count
+    ldx.b #$00
+    jsr.w SaveRecordSumB
+    sta.l !save_table_sums+22
+    ldx.b #$05
+    jsr.w SaveRecordSumB
+    sta.l !save_table_sums+23
+    ldx.b #$0A
+    jsr.w SaveRecordSumB
+    sta.l !save_table_sums+24
+
 ; @routine 07:ADF9 SaveRecordSumB
 ; WHAT IT DOES: Returns the 8-bit sum of the five bytes at $70:FC5E + X.
 ; HOW: As SaveRecordSumA.

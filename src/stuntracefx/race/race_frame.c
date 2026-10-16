@@ -150,6 +150,20 @@ void abi_SoundPort0QueuePushRaw(void);
    not 0), else by bit 0 of $0DED: set, both $14 after $07:E944; clear,
    player 1 `p1` and player 2 $12. Then $0E58 = $30, $0E5B = $0E5F = 0 and
    sound 2 on port 0. */
+void abi_CarFinishSound(void);
+void abi_CarFinishSoundP2(void);
+
+/* RaceFinishPhasesTail ($07:AA4E): $0E58 = $30, $0E5B = $0E5F = 0 and
+   sound 2 on port 0. */
+static void finish_tail(uint32_t b)
+{
+    wr8(b | 0x0E58, 0x30);
+    wr8(b | 0x0E5B, 0x00);
+    wr8(b | 0x0E5F, 0x00);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x02);
+    abi_SoundPort0QueuePushRaw();
+}
+
 static void finish_phases(uint8_t p1, uint8_t p2)
 {
     uint32_t b = (uint32_t)cpu.db << 16;
@@ -171,7 +185,7 @@ static void finish_phases(uint8_t p1, uint8_t p2)
         cpu.p &= (uint8_t)~P_M;
         if (lo & 0x01) {
             cpu.p |= P_M;
-            call_routine(0x07E944, 0);
+            abi_CarFinishSound();
             cpu.p |= P_M;
             wr8(b | 0x0DD6, 0x14);
             wr8(b | 0x0DD7, 0x14);
@@ -181,11 +195,54 @@ static void finish_phases(uint8_t p1, uint8_t p2)
             wr8(b | 0x0DD6, p1);
         }
     }
-    wr8(b | 0x0E58, 0x30);
-    wr8(b | 0x0E5B, 0x00);
-    wr8(b | 0x0E5F, 0x00);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x02);
-    abi_SoundPort0QueuePushRaw();
+    finish_tail(b);
+}
+
+
+/*
+ * @routine 07:A99A RaceFinishSplit
+ * WHAT IT DOES: A finish on the split screen: for player 1 (Y = 0, unless
+ * $0DE9 is 3 with player mode other than 1) the car's sound
+ * (CarFinishSound), player 1's phase $12 and player 2's $0A; for player 2
+ * CarFinishSoundP2 and the phases the other way round; sound 8 on port 0;
+ * then RaceFinishPhasesTail.
+ * HOW: CPY #0; a jump to the shared tail at $07:AA4E. Reached only by
+ * unit_race_phases.
+ * Entry: M 8-bit, X 8-bit; Y = player. Exit: as RaceFinishPhases0E.
+ */
+void abi_RaceFinishSplit(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v;
+    int one;
+
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)cpu.y) & ~P_C) | P_C);     /* CPY #0 */
+    one = 0;
+    if (!(uint8_t)cpu.y) {
+        v = rd8(b | 0x0DE9);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x03)) & ~P_C) | (v >= 0x03 ? P_C : 0));
+        one = 1;
+        if (v == 0x03) {
+            v = rd8(b | 0x0DF4);
+            cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+            cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x01)) & ~P_C) | (v >= 0x01 ? P_C : 0));
+            one = v == 0x01;
+        }
+    }
+    if (one) {
+        abi_CarFinishSound();
+        wr8(b | 0x0DD6, 0x12);
+        wr8(b | 0x0DD7, 0x0A);
+    } else {
+        abi_CarFinishSoundP2();
+        wr8(b | 0x0DD7, 0x12);
+        wr8(b | 0x0DD6, 0x0A);
+    }
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x08);
+    cpu.p = nz8(cpu.p, 0x08);
+    abi_SoundPort0QueuePush();
+    finish_tail(b);
 }
 
 /*

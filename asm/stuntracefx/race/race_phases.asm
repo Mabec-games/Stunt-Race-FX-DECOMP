@@ -739,7 +739,7 @@ RaceLapCrossed:
     sep.b #$20
     lda.w !wram_0D89
     sta.l !save_record_b+4,x
-    jsr.w SaveSumADDA
+    jsr.w SaveSumsRecordsB
     lda.b #$01
     bra .lE764
 .lE758:
