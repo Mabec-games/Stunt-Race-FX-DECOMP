@@ -2184,3 +2184,356 @@ StuntRecordTime:
 .done:
     rep.b #$30
     rts
+
+; The records panel of the course screens: four rows of three saved entries
+; drawn one character a frame into the tilemap buffer at $7F:93D7.
+; !records_char is the character (0-6 for Stunt Trax, 0-7 for the other
+; courses), !records_row the row (0-3), !records_place the place (0-2).
+
+; @routine 07:C663 PreviewRowDrawStunt
+; WHAT IT DOES: RecordsCharDrawStunt for a JSL caller (the course screens'
+; records panel): data bank $07, P and the data bank kept.
+; HOW: PHP, SEP #$20, PHB, PHK, PLB, REP #$20, JSR; then SEP #$20, PLB, PLP,
+; RTL.
+; Entry: X 16-bit; D = $0000. Exit: P and the data bank unchanged; A, X, Y
+; as RecordsCharDrawStunt leaves them.
+%at($07C663)
+PreviewRowDrawStunt:
+    php
+    sep.b #$20
+    phb
+    phk
+    plb
+    rep.b #$20
+    jsr.w RecordsCharDrawStunt
+    sep.b #$20
+    plb
+    plp
+    rtl
+
+; @routine 07:C673 PreviewRowDrawAll
+; WHAT IT DOES: As PreviewRowDrawStunt with RecordsCharDrawAll.
+; HOW: As PreviewRowDrawStunt.
+; Entry: X 16-bit; D = $0000. Exit: as PreviewRowDrawStunt.
+%at($07C673)
+PreviewRowDrawAll:
+    php
+    sep.b #$20
+    phb
+    phk
+    plb
+    rep.b #$20
+    jsr.w RecordsCharDrawAll
+    sep.b #$20
+    plb
+    plp
+    rtl
+
+; @routine 07:D768 RecordsCharDrawStunt
+; WHAT IT DOES: Draws the current character of the Stunt Trax records panel:
+; when the entry's first word is not 0, its tile (RecordsCharTileStunt) at
+; the offset from RecordsCharOffsetStunt.
+; HOW: RecordsCharOffsetStunt, RecordsEntryLoad, BEQ on the loaded word.
+; Entry: M 16-bit, X 16-bit; D = $0000. Exit: M 16-bit; Y = the offset; A =
+; the tile and X = Y, or as RecordsEntryLoad leaves them for an empty entry.
+%at($07D768)
+RecordsCharDrawStunt:
+    jsr.w RecordsCharOffsetStunt
+    jsr.w RecordsEntryLoad
+    beq .empty
+    jsr.w RecordsCharTileStunt
+    sep.b #$20
+    tyx
+    sta.l !tilemap_7f93d7,x
+    rep.b #$20
+.empty:
+    rts
+
+; @routine 07:D77D RecordsCharDrawAll
+; WHAT IT DOES: As RecordsCharDrawStunt for the other courses; an entry is
+; empty when its first word is $FFFF.
+; HOW: RecordsCharOffsetAll, RecordsEntryLoad, CMP #$FFFF. Drawing is not
+; reached in the traces so far.
+; Entry: M 16-bit, X 16-bit; D = $0000. Exit: as RecordsCharDrawStunt; for
+; an empty entry C and Z set.
+%at($07D77D)
+RecordsCharDrawAll:
+    jsr.w RecordsCharOffsetAll
+    jsr.w RecordsEntryLoad
+    cmp.w #$FFFF
+    beq .empty
+    jsr.w RecordsCharTileAll
+    sep.b #$20
+    tyx
+    sta.l !tilemap_7f93d7,x
+    rep.b #$20
+.empty:
+    rts
+
+; @routine 07:D795 RecordsCharTileStunt
+; WHAT IT DOES: The tile of Stunt Trax records character !records_char for
+; the entry loaded by RecordsEntryLoad: 0-1 the score's digits (the high
+; byte, high then low nibble; $6D and $6E when it is $40 or more), 2-3 the
+; digits of the low byte, 4-6 the three letters of the name word (five bits
+; each, + $0A).
+; HOW: JMP (table,X) on the character * 2. The low score digit, the low
+; digit of the low byte and the blanks are not reached in the traces so far.
+; Entry: M 16-bit, X 16-bit; D = $0000. Exit: M 16-bit; A = the tile; X =
+; the character * 2.
+%at($07D795)
+RecordsCharTileStunt:
+    lda.w !records_char
+    asl a
+    tax
+    jmp.w (.table,x)
+.table:
+    dw .scoreHigh, .scoreLow, .digitHigh, .digitLow, .letter0, .letter1, .letter2
+.scoreHigh:
+    sep.b #$20
+    lda.b !entry_first_hi
+    cmp.b #$40
+    bcs .blankHigh
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    rep.b #$20
+    and.w #$000F
+    rts
+.blankHigh:
+    rep.b #$20
+    lda.w #$006D
+    rts
+.scoreLow:
+    sep.b #$20
+    lda.b !entry_first_hi
+    cmp.b #$40
+    bcs .blankLow
+    rep.b #$20
+    and.w #$000F
+    rts
+.blankLow:
+    rep.b #$20
+    lda.w #$006E
+    rts
+.digitHigh:
+    lda.b !entry_first
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    and.w #$000F
+    rts
+.digitLow:
+    lda.b !entry_first
+    and.w #$000F
+    rts
+.letter0:
+    lda.b !entry_name
+    bra .letter
+.letter1:
+    lda.b !entry_name
+    asl a
+    asl a
+    asl a
+    xba
+    bra .letter
+.letter2:
+    lda.b !entry_name_hi
+    lsr a
+    lsr a
+.letter:
+    and.w #$001F
+    clc
+    adc.w #$000A
+    rts
+
+; @routine 07:D7FF RecordsCharTileAll
+; WHAT IT DOES: As RecordsCharTileStunt for the other courses, whose entries
+; hold a packed time: character 0 the minutes (bits 13-15), 1-2 the seconds'
+; tens and units (bits 7-12), 3-4 the hundredths' (bits 0-6), all through
+; BinaryToBcd; 5-7 the three letters of the name word.
+; HOW: JMP (table,X) on the character * 2; the minutes come out of four ROLs
+; through carry. Not reached in the traces so far.
+; Entry: M 16-bit, X 16-bit; D = $0000. Exit: M 16-bit; A = the tile; X =
+; the character * 2.
+%at($07D7FF)
+RecordsCharTileAll:
+    lda.w !records_char
+    asl a
+    tax
+    jmp.w (.table,x)
+.table:
+    dw .minutes, .secondsTens, .secondsUnits, .hundredthsTens, .hundredthsUnits, .letter0, .letter1, .letter2
+.minutes:
+    lda.b !entry_first
+    rol a
+    rol a
+    rol a
+    rol a
+    and.w #$0007
+    jsl.l BinaryToBcd
+    and.w #$000F
+    rts
+.secondsTens:
+    lda.b !entry_first
+    asl a
+    xba
+    and.w #$003F
+    jsl.l BinaryToBcd
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    rts
+.secondsUnits:
+    lda.b !entry_first
+    asl a
+    xba
+    and.w #$003F
+    jsl.l BinaryToBcd
+    and.w #$000F
+    rts
+.hundredthsTens:
+    lda.b !entry_first
+    and.w #$007F
+    jsl.l BinaryToBcd
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    rts
+.hundredthsUnits:
+    lda.b !entry_first
+    and.w #$007F
+    jsl.l BinaryToBcd
+    and.w #$000F
+    rts
+.letter0:
+    lda.b !entry_name
+    bra .letter
+.letter1:
+    lda.b !entry_name
+    asl a
+    asl a
+    asl a
+    xba
+    bra .letter
+.letter2:
+    lda.b !entry_name_hi
+    lsr a
+    lsr a
+.letter:
+    and.w #$001F
+    clc
+    adc.w #$000A
+    rts
+
+; @routine 07:D87A RecordsCharOffsetStunt
+; WHAT IT DOES: The tilemap offset of the Stunt Trax records character: the
+; row's start (!records_rows_stunt) + place * 64 + the character's column
+; (!records_columns_stunt).
+; HOW: Summed in direct page !entry_name.
+; Entry: M 16-bit, X 16-bit; D = $0000. Exit: A = Y = $F3 = the offset; X =
+; the character; N, Z from Y; C, V from the last add.
+%at($07D87A)
+RecordsCharOffsetStunt:
+    lda.w !records_row
+    asl a
+    tax
+    lda.l !records_rows_stunt,x
+    sta.b !entry_name
+    lda.w !records_place
+    and.w #$00FF
+    asl a
+    asl a
+    asl a
+    asl a
+    asl a
+    asl a
+    clc
+    adc.b !entry_name
+    sta.b !entry_name
+    ldx.w !records_char
+    lda.l !records_columns_stunt,x
+    and.w #$00FF
+    clc
+    adc.b !entry_name
+    sta.b !entry_name
+    tay
+    rts
+
+; @routine 07:D8A7 RecordsCharOffsetAll
+; WHAT IT DOES: As RecordsCharOffsetStunt for the other courses' records:
+; row starts at !records_rows_all, columns at !records_columns_all.
+; HOW: As RecordsCharOffsetStunt.
+; Entry: M 16-bit, X 16-bit; D = $0000. Exit: as RecordsCharOffsetStunt.
+%at($07D8A7)
+RecordsCharOffsetAll:
+    lda.w !records_row
+    asl a
+    tax
+    lda.l !records_rows_all,x
+    sta.b !entry_name
+    lda.w !records_place
+    and.w #$00FF
+    asl a
+    asl a
+    asl a
+    asl a
+    asl a
+    asl a
+    clc
+    adc.b !entry_name
+    sta.b !entry_name
+    ldx.w !records_char
+    lda.l !records_columns_all,x
+    and.w #$00FF
+    clc
+    adc.b !entry_name
+    sta.b !entry_name
+    tay
+    rts
+
+; @routine 07:D8F3 RecordsEntryLoad
+; WHAT IT DOES: Loads saved entry (row * 3 + place) of the course from
+; !special_saves (48 bytes a course, 4 an entry): !entry_first = its first
+; word, !entry_name its second.
+; HOW: The offset summed in $F1: (course * 3, low byte) * 16, + row * 12, +
+; place * 4.
+; Entry: M 16-bit, X 16-bit; D = $0000. Exit: A = $F1 = the first word, N
+; and Z from it; X = the offset; C, V from the last add.
+%at($07D8F3)
+RecordsEntryLoad:
+    lda.w !course
+    asl a
+    clc
+    adc.w !course
+    and.w #$00FF
+    asl a
+    asl a
+    asl a
+    asl a
+    sta.b !entry_first
+    lda.w !records_row
+    and.w #$00FF
+    asl a
+    clc
+    adc.w !records_row
+    asl a
+    asl a
+    clc
+    adc.b !entry_first
+    sta.b !entry_first
+    lda.w !records_place
+    asl a
+    asl a
+    clc
+    adc.b !entry_first
+    sta.b !entry_first
+    tax
+    lda.l !special_saves+2,x
+    sta.b !entry_name
+    lda.l !special_saves,x
+    sta.b !entry_first
+    rts

@@ -1992,3 +1992,377 @@ void abi_StuntRecordTime(void)
     wr8(0x70FC33 + cpu.x, (uint8_t)k);
     op_rep(P_M | P_X);
 }
+
+/*
+ * The records panel of the course screens: four rows of three saved entries
+ * drawn one character a frame into the tilemap buffer at $7F:93D7.
+ * $0FA6 is the character (0-6 for Stunt Trax, 0-7 for the other courses),
+ * $0FA8 the row (0-3) and $0FAA the place (0-2).
+ */
+
+/* LDA $0FA8; ASL; TAX; LDA.L row_table,X; STA $F3; then + $0FAA * 64 and +
+   the character's byte from char_table at $0FA6: Y = A = $F3, X = $0FA6. */
+static void records_char_offset(uint32_t row_table, uint32_t char_table)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    unsigned i;
+
+    op_lda16(b | 0x0FA8);
+    op_asl16();
+    op_tax16();
+    op_lda16(row_table + cpu.x);
+    wr16(0x0000F3, cpu.a);
+    op_lda16(b | 0x0FAA);
+    op_and16(0x00FF);
+    for (i = 0; i < 6; i++)
+        op_asl16();
+    op_add16(rd16(0x0000F3));
+    wr16(0x0000F3, cpu.a);
+    cpu.x = rd16(b | 0x0FA6);
+    cpu.p = nz16(cpu.p, cpu.x);
+    op_lda16(char_table + cpu.x);
+    op_and16(0x00FF);
+    op_add16(rd16(0x0000F3));
+    wr16(0x0000F3, cpu.a);
+    op_tay16();
+}
+
+/*
+ * @routine 07:D87A RecordsCharOffsetStunt
+ * WHAT IT DOES: The tilemap offset of the Stunt Trax records character:
+ * the row's start (words at $07:D8D4) + place * 64 + the character's
+ * column (bytes at $07:D8DC).
+ * HOW: Summed in direct page $F3.
+ * Entry: M 16-bit, X 16-bit; D = $0000. Exit: A = Y = $F3 = the offset;
+ * X = $0FA6; N, Z from Y; C, V from the last add.
+ */
+void abi_RecordsCharOffsetStunt(void)
+{
+    records_char_offset(0x07D8D4, 0x07D8DC);
+}
+
+/*
+ * @routine 07:D8A7 RecordsCharOffsetAll
+ * WHAT IT DOES: As RecordsCharOffsetStunt for the other courses' records:
+ * row starts at $07:D8E3, columns at $07:D8EB.
+ * HOW: As RecordsCharOffsetStunt.
+ * Entry: M 16-bit, X 16-bit; D = $0000. Exit: as RecordsCharOffsetStunt.
+ */
+void abi_RecordsCharOffsetAll(void)
+{
+    records_char_offset(0x07D8E3, 0x07D8EB);
+}
+
+/*
+ * @routine 07:D8F3 RecordsEntryLoad
+ * WHAT IT DOES: Loads saved entry ($0FA8 * 3 + $0FAA) of the course
+ * ($0E3D) from $70:FCD0 (48 bytes a course, 4 an entry): $F1 = its first
+ * word, $F3 its second.
+ * HOW: The offset summed in $F1: (course * 3, low byte) * 16, + row * 12,
+ * + place * 4.
+ * Entry: M 16-bit, X 16-bit; D = $0000. Exit: A = $F1 = the first word,
+ * N and Z from it; X = the offset; C, V from the last add.
+ */
+void abi_RecordsEntryLoad(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    op_lda16(b | 0x0E3D);
+    op_asl16();
+    op_add16(rd16(b | 0x0E3D));
+    op_and16(0x00FF);
+    op_asl16();
+    op_asl16();
+    op_asl16();
+    op_asl16();
+    wr16(0x0000F1, cpu.a);
+    op_lda16(b | 0x0FA8);
+    op_and16(0x00FF);
+    op_asl16();
+    op_add16(rd16(b | 0x0FA8));
+    op_asl16();
+    op_asl16();
+    op_add16(rd16(0x0000F1));
+    wr16(0x0000F1, cpu.a);
+    op_lda16(b | 0x0FAA);
+    op_asl16();
+    op_asl16();
+    op_add16(rd16(0x0000F1));
+    wr16(0x0000F1, cpu.a);
+    op_tax16();
+    op_lda16(0x70FCD2 + cpu.x);
+    wr16(0x0000F3, cpu.a);
+    op_lda16(0x70FCD0 + cpu.x);
+    wr16(0x0000F1, cpu.a);
+}
+
+void abi_BinaryToBcd(void);
+
+/* LDA $0FA6; ASL; TAX: the handler index, C from the shift. */
+static uint16_t records_char_index(void)
+{
+    op_lda16(((uint32_t)cpu.db << 16) | 0x0FA6);
+    op_asl16();
+    op_tax16();
+    return cpu.x;
+}
+
+/* A digit of $F2 (the high nibble, or the low one with `low`) when $F2 is
+   below $40, else `blank`. */
+static void stunt_score_digit(int low, uint16_t blank)
+{
+    op_sep(P_M);
+    op_lda8(0x0000F2);
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(cpu.a - 0x40)) & ~P_C) | ((uint8_t)cpu.a >= 0x40 ? P_C : 0));
+    if ((uint8_t)cpu.a >= 0x40) {
+        op_rep(P_M);
+        op_lda16_imm(blank);
+        return;
+    }
+    if (!low) {
+        unsigned i;
+        uint8_t v = (uint8_t)cpu.a;
+
+        for (i = 0; i < 4; i++) {
+            cpu.p = (uint8_t)((cpu.p & ~P_C) | (v & 1));
+            v >>= 1;
+        }
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+        cpu.p = nz8(cpu.p, v);
+    }
+    op_rep(P_M);
+    op_and16(0x000F);
+}
+
+/* Letter `which` (0-2) of the name word at $F3: bits 0-4 (LDA $F3), 5-9
+   (three ASLs and XBA) or 10-14 (LDA $F4, two LSRs); AND #$1F, + $0A. */
+static void records_letter(int which)
+{
+    unsigned i;
+
+    if (which == 0) {
+        op_lda16(0x0000F3);
+    } else if (which == 1) {
+        op_lda16(0x0000F3);
+        for (i = 0; i < 3; i++)
+            op_asl16();
+        op_xba();
+    } else {
+        op_lda16(0x0000F4);
+        op_lsr16();
+        op_lsr16();
+    }
+    op_and16(0x001F);
+    op_add16(0x000A);
+}
+
+/*
+ * @routine 07:D795 RecordsCharTileStunt
+ * WHAT IT DOES: The tile of Stunt Trax records character $0FA6 for the
+ * entry loaded at $F1 (RecordsEntryLoad): 0-1 the score's digits (high
+ * byte $F2, high then low nibble; $6D and $6E when $F2 is $40 or more),
+ * 2-3 the digits of $F1, 4-6 the three letters of the name word at $F3
+ * (five bits each, + $0A).
+ * HOW: JMP ($D79D,X) on $0FA6 * 2. The low score digit, the low digit of
+ * $F1 and the blanks are not reached in the traces so far.
+ * Entry: M 16-bit, X 16-bit; D = $0000. Exit: M 16-bit; A = the tile;
+ * X = $0FA6 * 2.
+ */
+void abi_RecordsCharTileStunt(void)
+{
+    switch (records_char_index()) {
+    case 0:
+        stunt_score_digit(0, 0x006D);
+        break;
+    case 2:
+        stunt_score_digit(1, 0x006E);
+        break;
+    case 4:
+        op_lda16(0x0000F1);
+        op_lsr16();
+        op_lsr16();
+        op_lsr16();
+        op_lsr16();
+        op_and16(0x000F);
+        break;
+    case 6:
+        op_lda16(0x0000F1);
+        op_and16(0x000F);
+        break;
+    case 8:
+        records_letter(0);
+        break;
+    case 10:
+        records_letter(1);
+        break;
+    case 12:
+        records_letter(2);
+        break;
+    default:
+        jump_routine(0x070000 | rd16(0x07D79D + cpu.x));
+        break;
+    }
+}
+
+/* A field of the packed time at $F1 (the seconds, ASL and XBA first, with
+   `seconds`), masked, through BinaryToBcd: the tens with `tens`, else the
+   units. */
+static void records_time_digit(uint16_t mask, int seconds, int tens)
+{
+    op_lda16(0x0000F1);
+    if (seconds) {
+        op_asl16();
+        op_xba();
+    }
+    op_and16(mask);
+    abi_BinaryToBcd();
+    if (tens) {
+        op_lsr16();
+        op_lsr16();
+        op_lsr16();
+        op_lsr16();
+    } else {
+        op_and16(0x000F);
+    }
+}
+
+/*
+ * @routine 07:D7FF RecordsCharTileAll
+ * WHAT IT DOES: As RecordsCharTileStunt for the other courses, whose
+ * entries hold a packed time at $F1: character 0 the minutes (bits 13-15),
+ * 1-2 the seconds' tens and units (bits 7-12), 3-4 the hundredths' (bits
+ * 0-6), all through BinaryToBcd; 5-7 the three letters of $F3.
+ * HOW: JMP ($D807,X) on $0FA6 * 2; the minutes come out of four ROLs
+ * through carry. Not reached in the traces so far.
+ * Entry: M 16-bit, X 16-bit; D = $0000. Exit: M 16-bit; A = the tile;
+ * X = $0FA6 * 2.
+ */
+void abi_RecordsCharTileAll(void)
+{
+    unsigned i;
+
+    switch (records_char_index()) {
+    case 0:
+        op_lda16(0x0000F1);
+        for (i = 0; i < 4; i++)
+            op_rol16();
+        op_and16(0x0007);
+        abi_BinaryToBcd();
+        op_and16(0x000F);
+        break;
+    case 2:
+        records_time_digit(0x003F, 1, 1);
+        break;
+    case 4:
+        records_time_digit(0x003F, 1, 0);
+        break;
+    case 6:
+        records_time_digit(0x007F, 0, 1);
+        break;
+    case 8:
+        records_time_digit(0x007F, 0, 0);
+        break;
+    case 10:
+        records_letter(0);
+        break;
+    case 12:
+        records_letter(1);
+        break;
+    case 14:
+        records_letter(2);
+        break;
+    default:
+        jump_routine(0x070000 | rd16(0x07D807 + cpu.x));
+        break;
+    }
+}
+
+/* The tile's low byte to $7F:93D7 + Y (SEP #$20, TYX, STA.L, REP #$20). */
+static void records_char_store(void)
+{
+    op_sep(P_M);
+    cpu.x = cpu.y;
+    cpu.p = nz16(cpu.p, cpu.x);
+    wr8(0x7F93D7 + cpu.x, (uint8_t)cpu.a);
+    op_rep(P_M);
+}
+
+/*
+ * @routine 07:D768 RecordsCharDrawStunt
+ * WHAT IT DOES: Draws the current character of the Stunt Trax records
+ * panel: when the entry's first word is not 0, its tile
+ * (RecordsCharTileStunt) at the offset from RecordsCharOffsetStunt.
+ * HOW: RecordsCharOffsetStunt, RecordsEntryLoad, BEQ on the loaded word.
+ * Entry: M 16-bit, X 16-bit; D = $0000. Exit: M 16-bit; Y = the offset;
+ * A = the tile and X = Y, or as RecordsEntryLoad leaves them for an empty
+ * entry.
+ */
+void abi_RecordsCharDrawStunt(void)
+{
+    abi_RecordsCharOffsetStunt();
+    abi_RecordsEntryLoad();
+    if (cpu.p & P_Z)
+        return;
+    abi_RecordsCharTileStunt();
+    records_char_store();
+}
+
+/*
+ * @routine 07:D77D RecordsCharDrawAll
+ * WHAT IT DOES: As RecordsCharDrawStunt for the other courses; an entry
+ * is empty when its first word is $FFFF.
+ * HOW: RecordsCharOffsetAll, RecordsEntryLoad, CMP #$FFFF. Drawing is not
+ * reached in the traces so far.
+ * Entry: M 16-bit, X 16-bit; D = $0000. Exit: as RecordsCharDrawStunt;
+ * for an empty entry C and Z set.
+ */
+void abi_RecordsCharDrawAll(void)
+{
+    abi_RecordsCharOffsetAll();
+    abi_RecordsEntryLoad();
+    op_cmp16(0xFFFF);
+    if (cpu.a == 0xFFFF)
+        return;
+    abi_RecordsCharTileAll();
+    records_char_store();
+}
+
+/* PHP, SEP #$20, PHB, PHK, PLB, REP #$20, the JSR, SEP #$20, PLB, PLP. */
+static void records_char_long(void (*draw)(void))
+{
+    uint8_t p0 = cpu.p, db0 = cpu.db;
+
+    op_sep(P_M);
+    cpu.db = 0x07;
+    cpu.p = nz8(cpu.p, 0x07);
+    op_rep(P_M);
+    draw();
+    op_sep(P_M);
+    cpu.db = db0;
+    op_plp(p0);
+}
+
+/*
+ * @routine 07:C663 PreviewRowDrawStunt
+ * WHAT IT DOES: RecordsCharDrawStunt for a JSL caller (the course screens'
+ * records panel): data bank $07, P and the data bank kept.
+ * HOW: PHP, SEP #$20, PHB, PHK, PLB, REP #$20, JSR; then SEP #$20, PLB,
+ * PLP, RTL.
+ * Entry: X 16-bit; D = $0000. Exit: P and the data bank unchanged; A, X,
+ * Y as RecordsCharDrawStunt leaves them.
+ */
+void abi_PreviewRowDrawStunt(void)
+{
+    records_char_long(abi_RecordsCharDrawStunt);
+}
+
+/*
+ * @routine 07:C673 PreviewRowDrawAll
+ * WHAT IT DOES: As PreviewRowDrawStunt with RecordsCharDrawAll.
+ * HOW: As PreviewRowDrawStunt.
+ * Entry: X 16-bit; D = $0000. Exit: as PreviewRowDrawStunt.
+ */
+void abi_PreviewRowDrawAll(void)
+{
+    records_char_long(abi_RecordsCharDrawAll);
+}

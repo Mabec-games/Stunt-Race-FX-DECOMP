@@ -1608,3 +1608,10 @@ includeonce
 !wram_084B = $084B                 ; AttractCourseSetup clears these
 !wram_084C = $084C
 !wram_08EF = $08EF
+!records_char = $0FA6             ; the course screens' records panel: the character drawn (0-7)
+!records_row = $0FA8              ; its row (0-3)
+!records_place = $0FAA            ; its place (0-2)
+!entry_first = $F1                ; RecordsEntryLoad: the saved entry's first word (score or time)
+!entry_first_hi = $F2
+!entry_name = $F3                 ; its second word: three five-bit letters
+!entry_name_hi = $F4
