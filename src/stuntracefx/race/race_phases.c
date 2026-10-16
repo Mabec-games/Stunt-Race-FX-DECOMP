@@ -822,9 +822,10 @@ static void finish_alone(uint32_t b, uint16_t colour, uint8_t phase, uint8_t t)
    more, the lap's split (BCD, decimal mode) from the time at $0E63-$0E66
    less the last mark at $0EDB-$0EDD into $0EDE-$0EE0, the mark moved on,
    then the split packed (TimePackBcd) and kept in the course's save entry
-   ($70:FC5E + X from 03:DEFD) when it is better, with the level $0F11 and
-   the car $0D89 (03:DF10, 07:ADDA); $0FA3 = 1 (kept), $FF (worse) or 0
-   (equal); $0E5D = $12C. Not reached in the traces so far. */
+   ($70:FC5E + X from RecordOffsetAllCourses) when it is better, with the
+   level $0F11 and the car $0D89 (HudBestTimeDigits, 07:ADDA); $0FA3 = 1
+   (kept), $FF (worse) or 0 (equal); $0E5D = $12C. Reached only by
+   unit_race_phases. */
 static void lap_override(uint32_t b)
 {
     uint8_t v, m;

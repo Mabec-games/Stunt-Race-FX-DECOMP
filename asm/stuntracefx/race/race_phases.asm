@@ -712,7 +712,7 @@ RaceLapCrossed:
     lda.w !race_time_minutes
     sta.w !wram_0EDD
     rep.b #$30
-    jsl.l LapSaveOffset
+    jsl.l RecordOffsetAllCourses
     phx
     lda.l !save_record_b,x
     sta.w !packed_time_a
@@ -732,7 +732,7 @@ RaceLapCrossed:
     bcs .lE758
     sta.l !save_record_b,x
     phx
-    jsl.l LapSaveMark
+    jsl.l HudBestTimeDigits
     plx
     lda.w !level_columns+12
     sta.l !save_record_b+2,x
