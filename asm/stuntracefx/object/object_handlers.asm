@@ -2807,3 +2807,574 @@ ObjectParentRecordBit8:
     plx
     sec
     rts
+
+; @routine 08:C124 PlayerCarEvents
+; WHAT IT DOES: The player car X's per-frame events from its Super FX
+; record: unless its +$25 has bit 4 or the record +$40 bit 8: with $1AEC
+; bit 5, the engine sound at its speed (SoundAtRateForLevel) when one of
+; its parts' records (the +$3E/+$34 chain) is a loose wheel (+$2C bit 7,
+; +$46 bits 0 and 4), else the latch for record +$92 bit 5 (sounds $12 /
+; $0C). Then the latches for +$42 bit 10 (sounds $23 / $24) and for a
+; landing (+$42 bit 13 with +$40 bit 11, not bit 8: sounds $0D / $0B); the
+; held sound by +$57 (stop, $32-$35); a hit by +$94 (sounds $54-$57 by
+; size, sparks from $50 on); sounds $0A / $0D for +$2C bits 8 / 9; a
+; scrape by -$62 (sounds $16-$19, from $46 on +$25 bit 5 and an attached
+; object); a crash by +$40 bit 0 (the code at $08:A034 with A = 1, then
+; unless it says so (C) +$25 bit 4 and a burst for one player), bit 6
+; (+$25 bit 5, sparks, $08:A034 with A = 0) or bit 5 ($08:A034 with A =
+; 1, a burst); unless the car's +$24 has bit 6, trails for +$40 bit 1
+; (and a spray chance) or, 14 in 256, for +$42 bit 10; a record +$82 of
+; $199 or more latches bit 5 once ($00:1FFE = $11, sound $3D) and may
+; spray. Last its +$24 bit 5 follows +$25 bits 2 and 7 and bit 6 the
+; link chain's end (bit 14).
+; HOW: The car in $1F18; the record in X; the latches through $1A5D; the
+; code at $08:A034 runs as original code.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; X = the object.
+%at($08C124)
+PlayerCarEvents:
+    stx.w !draw_side+17
+    rep.b #$20
+    phx
+    txy
+    lda.w !obj_22,x
+    tax
+    lda.w !obj_25,y
+    and.w #$0010
+    beq .lC13B
+    jml.l .lC554
+.lC13B:
+    lda.l !gsu_rec_40,x
+    and.w #$0100
+    beq .lC147
+    brl .lC213
+.lC147:
+    lda.w !wram_1AEC
+    and.w #$0020
+    bne .lC152
+    brl .lC1A6
+.lC152:
+    stz.w !wram_1F4C
+    phx
+    lda.l !gsu_in_3e,x
+.lC15A:
+    tax
+    lda.l !gsu_dest,x
+    bit.w #$0080
+    beq .lC178
+    lda.l !gsu_speed_44+2,x
+    bit.w #$0001
+    beq .lC178
+    bit.w #$0010
+    beq .lC178
+    lda.w #$0001
+    sta.w !wram_1F4C
+.lC178:
+    lda.l !gsu_in_34,x
+    bne .lC15A
+    plx
+    lda.w !wram_1F4C
+    bne .lC187
+    brl .lC213
+.lC187:
+    lda.w !wram_0D62
+    and.w #$00FF
+    bne .lC196
+    lda.w #$0010
+    sta.l $7026EE
+.lC196:
+    lda.l !gsu_speeds,x
+    bpl .lC1A0
+    eor.w #$FFFF
+    inc a
+.lC1A0:
+    jsr.w SoundAtRateForLevel
+    jmp.w .lC213
+.lC1A6:
+    lda.l !gsu_in_92,x
+    bit.w #$0020
+    beq .lC1E2
+    lda.w !current_player
+    and.w #$00FF
+    beq .lC1BC
+    lda.w !current_player+3
+    bra .lC1BF
+.lC1BC:
+    lda.w !current_player+1
+.lC1BF:
+    bit.w #$0004
+    bne .lC1E0
+    pha
+    jsl.l PlayerSound12
+    pla
+    ora.w #$0004
+    pha
+    lda.w !current_player
+    and.w #$00FF
+    beq .lC1DC
+    pla
+    sta.w !current_player+3
+    bra .lC1E0
+.lC1DC:
+    pla
+    sta.w !current_player+1
+.lC1E0:
+    bra .lC213
+.lC1E2:
+    lda.w !current_player
+    and.w #$00FF
+    beq .lC1EF
+    lda.w !current_player+3
+    bra .lC1F2
+.lC1EF:
+    lda.w !current_player+1
+.lC1F2:
+    bit.w #$0004
+    beq .lC213
+    pha
+    jsl.l PlayerSound0C
+    pla
+    and.w #$FFFB
+    pha
+    lda.w !current_player
+    and.w #$00FF
+    beq .lC20F
+    pla
+    sta.w !current_player+3
+    bra .lC213
+.lC20F:
+    pla
+    sta.w !current_player+1
+.lC213:
+    lda.l !gsu_rec_42,x
+    and.w #$0400
+    beq .lC24F
+    lda.w !current_player
+    and.w #$00FF
+    beq .lC229
+    lda.w !current_player+3
+    bra .lC22C
+.lC229:
+    lda.w !current_player+1
+.lC22C:
+    bit.w #$0001
+    bne .lC24D
+    pha
+    jsl.l PlayerSound23
+    pla
+    ora.w #$0001
+    pha
+    lda.w !current_player
+    and.w #$00FF
+    beq .lC249
+    pla
+    sta.w !current_player+3
+    bra .lC24D
+.lC249:
+    pla
+    sta.w !current_player+1
+.lC24D:
+    bra .lC280
+.lC24F:
+    lda.w !current_player
+    and.w #$00FF
+    beq .lC25C
+    lda.w !current_player+3
+    bra .lC25F
+.lC25C:
+    lda.w !current_player+1
+.lC25F:
+    bit.w #$0001
+    beq .lC280
+    pha
+    jsl.l PlayerSound24
+    pla
+    and.w #$FFFE
+    pha
+    lda.w !current_player
+    and.w #$00FF
+    beq .lC27C
+    pla
+    sta.w !current_player+3
+    bra .lC280
+.lC27C:
+    pla
+    sta.w !current_player+1
+.lC280:
+    lda.l !gsu_rec_42,x
+    and.w #$0080
+    beq .lC289
+.lC289:
+    lda.l !gsu_rec_42,x
+    bit.w #$2000
+    beq .lC2D3
+    lda.l !gsu_rec_40,x
+    bit.w #$0800
+    beq .lC2D3
+    bit.w #$0100
+    bne .lC2D3
+    lda.w !current_player
+    and.w #$00FF
+    beq .lC2AD
+    lda.w !current_player+3
+    bra .lC2B0
+.lC2AD:
+    lda.w !current_player+1
+.lC2B0:
+    bit.w #$0002
+    bne .lC2D1
+    pha
+    jsl.l PlayerSound0D
+    pla
+    ora.w #$0002
+    pha
+    lda.w !current_player
+    and.w #$00FF
+    beq .lC2CD
+    pla
+    sta.w !current_player+3
+    bra .lC2D1
+.lC2CD:
+    pla
+    sta.w !current_player+1
+.lC2D1:
+    bra .lC304
+.lC2D3:
+    lda.w !current_player
+    and.w #$00FF
+    beq .lC2E0
+    lda.w !current_player+3
+    bra .lC2E3
+.lC2E0:
+    lda.w !current_player+1
+.lC2E3:
+    bit.w #$0002
+    beq .lC304
+    pha
+    jsl.l PlayerSound0B
+    pla
+    and.w #$FFFD
+    pha
+    lda.w !current_player
+    and.w #$00FF
+    beq .lC300
+    pla
+    sta.w !current_player+3
+    bra .lC304
+.lC300:
+    pla
+    sta.w !current_player+1
+.lC304:
+    sep.b #$20
+    lda.l !gsu_speed_50+7,x
+    sta.w !wram_1F5A+4
+    pha
+    cmp.b #$00
+    bmi .lC344
+    cmp.b #$01
+    bpl .lC31C
+    jsl.l PlayerStopHeldSound
+    bra .lC344
+.lC31C:
+    cmp.b #$02
+    bpl .lC326
+    jsl.l PlayerHoldSound32
+    bra .lC344
+.lC326:
+    cmp.b #$04
+    bpl .lC330
+    jsl.l PlayerHoldSound33
+    bra .lC344
+.lC330:
+    cmp.b #$05
+    bpl .lC33A
+    jsl.l PlayerHoldSound34
+    bra .lC344
+.lC33A:
+    cmp.b #$64
+    bpl .lC344
+    jsl.l PlayerHoldSound35
+    bra .lC344
+.lC344:
+    pla
+    rep.b #$20
+    lda.l !gsu_in_94,x
+    beq .lC3A3
+    bmi .lC3A3
+    pha
+    pha
+    cmp.w #$0032
+    bmi .lC38E
+    cmp.w #$01F4
+    bpl .lC364
+    lda.w #$0054                    ; not reached in the traces so far
+    jsl.l SoundPort0QueuePush
+    bra .lC38E
+.lC364:
+    cmp.w #$0320
+    bpl .lC372
+    lda.w #$0055                    ; not reached in the traces so far
+    jsl.l SoundPort0QueuePush
+    bra .lC38E
+.lC372:
+    cmp.w #$044C
+    bpl .lC380
+    lda.w #$0056                    ; not reached in the traces so far
+    jsl.l SoundPort0QueuePush
+    bra .lC38E
+.lC380:
+    cmp.w #$07D0
+    bpl .lC38E
+    lda.w #$0057
+    jsl.l SoundPort0QueuePush
+    bra .lC38E
+.lC38E:
+    pla
+    pla
+    cmp.w #$0032
+    bmi .lC3A3
+    nop
+    phx
+    sep.b #$20
+    ldx.w !draw_side+17
+    jsl.l ObjectSpawnSparklePair
+    rep.b #$20
+    plx
+.lC3A3:
+    lda.l !gsu_dest,x
+    bit.w #$0100
+    beq .lC3B5
+    lda.w #$000A
+    jsl.l SoundPort0QueuePush
+    bra .lC3C1
+.lC3B5:
+    bit.w #$0200
+    beq .lC3C1
+    lda.w #$000D
+    jsl.l SoundPort0QueuePush
+.lC3C1:
+    lda.l !gsu_unpack_end+2,x
+    bpl .lC42E
+    eor.w #$FFFF
+    inc a
+    pha
+    cmp.w #$0041
+    bmi .lC409
+    cmp.w #$0050
+    bpl .lC3DF
+    lda.w #$0016
+    jsl.l SoundPort0QueuePush
+    bra .lC409
+.lC3DF:
+    cmp.w #$005A
+    bpl .lC3ED
+    lda.w #$0017
+    jsl.l SoundPort0QueuePush
+    bra .lC409
+.lC3ED:
+    cmp.w #$006E
+    bpl .lC3FB
+    lda.w #$0018
+    jsl.l SoundPort0QueuePush
+    bra .lC409
+.lC3FB:
+    cmp.w #$03E8
+    bpl .lC409
+    lda.w #$0019
+    jsl.l SoundPort0QueuePush
+    bra .lC409
+.lC409:
+    pla
+    cmp.w #$0046
+    bmi .lC42E
+    phx
+    phy
+    tyx
+    sep.b #$20
+    lda.w !obj_25,x
+    ora.b #$20
+    sta.w !obj_25,x
+    lda.b #$0A
+    sta.w !wram_1F59
+    lda.b #$00
+    sta.w !wram_1F5A
+    jsl.l ObjectSpawnAttached
+    rep.b #$20
+    ply
+    plx
+.lC42E:
+    lda.l !gsu_rec_40,x
+    and.w #$0001
+    beq .lC45B
+    sep.b #$20
+    phx
+    ldx.w !draw_side+17
+    lda.b #$01
+    jsl.l PlayerCarA034
+    bcs .lC456
+    lda.w !obj_25,x
+    ora.b #$10
+    sta.w !obj_25,x
+    lda.w !wram_0D62
+    bne .lC456
+    jsl.l ObjectBurstSpawn
+.lC456:
+    rep.b #$20
+    plx
+    bra .lC4A2
+.lC45B:
+    lda.l !gsu_rec_40,x
+    and.w #$0040
+    beq .lC481
+    phx
+    sep.b #$20
+    ldx.w !draw_side+17
+    lda.w !obj_25,x
+    ora.b #$20
+    sta.w !obj_25,x
+    jsl.l ObjectSpawnSparklePair
+    lda.b #$00
+    jsl.l PlayerCarA034
+    rep.b #$20
+    plx
+    bra .lC4A2
+.lC481:
+    lda.l !gsu_rec_40,x
+    and.w #$0020
+    beq .lC4A2
+    phx
+    sep.b #$20
+    ldx.w !draw_side+17
+    lda.b #$01
+    jsl.l PlayerCarA034
+    lda.w !wram_0D62
+    bne .lC49F
+    jsl.l ObjectBurstSpawn
+.lC49F:
+    rep.b #$20
+    plx
+.lC4A2:
+    ldy.w !draw_side+17
+    lda.w !obj_24,y
+    and.w #$0040
+    beq .lC4B0
+    brl .lC554
+.lC4B0:
+    lda.l !gsu_rec_40,x
+    and.w #$0002
+    beq .lC4CB
+    phx
+    sep.b #$20
+    ldx.w !draw_side+17
+    jsl.l ObjectSpawnTrail
+    jsr.w ObjectSpawnD460UnlessFlag
+    rep.b #$20
+    plx
+    bra .lC4EF
+.lC4CB:
+    lda.l !gsu_rec_42,x
+    and.w #$0400
+    beq .lC4EF
+    sep.b #$20
+    jsl.l RandomStepLong
+    cmp.b #$F2
+    bcs .lC4E2
+    jml.l .lC4EF
+.lC4E2:
+    phx
+    sep.b #$20
+    ldx.w !draw_side+17
+    jsl.l ObjectSpawnTrail
+    rep.b #$20
+    plx
+.lC4EF:
+    rep.b #$20
+    lda.l !gsu_rec_82,x
+    cmp.w #$0199
+    bmi .lC554
+    sep.b #$20
+    lda.w !current_player
+    and.b #$FF
+    beq .lC508
+    lda.w !current_player+3
+    bra .lC50B
+.lC508:
+    lda.w !current_player+1
+.lC50B:
+    bit.b #$20
+    bne .lC533
+    pha
+    pha
+    lda.b #$11
+    sta.l !save_bad_flag
+    pla
+    lda.b #$3D
+    jsl.l SoundPort0QueuePush
+    pla
+    ora.b #$20
+    pha
+    lda.w !current_player
+    and.b #$FF
+    beq .lC52F
+    pla
+    sta.w !current_player+3
+    bra .lC533
+.lC52F:
+    pla
+    sta.w !current_player+1
+.lC533:
+    phx
+    ldx.w !draw_side+17
+    lda.w !obj_25,x
+    and.b #$04
+    beq .lC542
+    jml.l .lC551
+.lC542:
+    jsl.l RandomStepLong
+    cmp.b #$4C
+    bcs .lC54E
+    jml.l .lC551
+.lC54E:
+    jsr.w ObjectSpawnD460UnlessFlag
+.lC551:
+    rep.b #$20
+    plx
+.lC554:
+    plx
+    sep.b #$20
+    lda.w !obj_25,x
+    and.b #$04
+    beq .lC562
+    jml.l .lC577
+.lC562:
+    lda.w !obj_25,x
+    and.b #$80
+    beq .lC56D
+    jml.l .lC577
+.lC56D:
+    lda.w !obj_24,x
+    and.b #$DF
+    sta.w !obj_24,x
+    bra .lC57F
+.lC577:
+    lda.w !obj_24,x
+    ora.b #$20
+    sta.w !obj_24,x
+.lC57F:
+    ldy.w !obj_link_w,x
+    rep.b #$20
+    lda.w !obj_link_w,y
+    tay
+    lda.w !bank0_base,y
+    and.w #$4000
+    sep.b #$20
+    beq .lC59C
+    lda.w !obj_24,x
+    ora.b #$40
+    sta.w !obj_24,x
+    bra .lC5A4
+.lC59C:
+    lda.w !obj_24,x
+    and.b #$BF
+    sta.w !obj_24,x
+.lC5A4:
+    rtl
