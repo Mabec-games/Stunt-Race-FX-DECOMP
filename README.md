@@ -1,4 +1,4 @@
-# Stunt Race FX: decompilation
+# Stunt Race FX: byte-exact decompilation
 
 **Started October 11, 2026.** The whole retail ROM rebuilds byte for byte
 from source, and the verification pipeline that certifies decompiled C
