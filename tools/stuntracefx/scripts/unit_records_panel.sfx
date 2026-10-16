@@ -1,0 +1,139 @@
+# unit_records_panel: the course screens' records panel, one character
+# at a time: PreviewRowDrawStunt (07:C663) for every character of a
+# Stunt Trax entry (score high byte below $40, and $40 or more for the
+# blanks) and for an empty entry; PreviewRowDrawAll (07:C673) for every
+# character of a timed entry (RecordsCharTileAll, never reached by a run)
+# and for an empty one ($FFFF). Row 1, place 2 of course $0C and $03.
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0E3D 0C,00
+set 7E0FA6 00,00
+set 7E0FA8 01,00
+set 7E0FAA 02,00
+set 70FF24 34,12,3C,5A
+call 07:C663 long p=00 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0E3D 0C,00
+set 7E0FA6 01,00
+set 7E0FA8 01,00
+set 7E0FAA 02,00
+set 70FF24 34,12,3C,5A
+call 07:C663 long p=00 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0E3D 0C,00
+set 7E0FA6 02,00
+set 7E0FA8 01,00
+set 7E0FAA 02,00
+set 70FF24 34,12,3C,5A
+call 07:C663 long p=00 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0E3D 0C,00
+set 7E0FA6 03,00
+set 7E0FA8 01,00
+set 7E0FAA 02,00
+set 70FF24 34,12,3C,5A
+call 07:C663 long p=00 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0E3D 0C,00
+set 7E0FA6 04,00
+set 7E0FA8 01,00
+set 7E0FAA 02,00
+set 70FF24 34,12,3C,5A
+call 07:C663 long p=00 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0E3D 0C,00
+set 7E0FA6 05,00
+set 7E0FA8 01,00
+set 7E0FAA 02,00
+set 70FF24 34,12,3C,5A
+call 07:C663 long p=00 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0E3D 0C,00
+set 7E0FA6 06,00
+set 7E0FA8 01,00
+set 7E0FAA 02,00
+set 70FF24 34,12,3C,5A
+call 07:C663 long p=00 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0E3D 0C,00
+set 7E0FA6 00,00
+set 7E0FA8 01,00
+set 7E0FAA 02,00
+set 70FF24 34,45,3C,5A
+call 07:C663 long p=00 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0E3D 0C,00
+set 7E0FA6 01,00
+set 7E0FA8 01,00
+set 7E0FAA 02,00
+set 70FF24 34,45,3C,5A
+call 07:C663 long p=00 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0E3D 0C,00
+set 7E0FA6 00,00
+set 7E0FA8 01,00
+set 7E0FAA 02,00
+set 70FF24 00,00,3C,5A
+call 07:C663 long p=00 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0E3D 03,00
+set 7E0FA6 00,00
+set 7E0FA8 01,00
+set 7E0FAA 02,00
+set 70FD74 C3,A5,3C,5A
+call 07:C673 long p=00 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0E3D 03,00
+set 7E0FA6 01,00
+set 7E0FA8 01,00
+set 7E0FAA 02,00
+set 70FD74 C3,A5,3C,5A
+call 07:C673 long p=00 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0E3D 03,00
+set 7E0FA6 02,00
+set 7E0FA8 01,00
+set 7E0FAA 02,00
+set 70FD74 C3,A5,3C,5A
+call 07:C673 long p=00 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0E3D 03,00
+set 7E0FA6 03,00
+set 7E0FA8 01,00
+set 7E0FAA 02,00
+set 70FD74 C3,A5,3C,5A
+call 07:C673 long p=00 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0E3D 03,00
+set 7E0FA6 04,00
+set 7E0FA8 01,00
+set 7E0FAA 02,00
+set 70FD74 C3,A5,3C,5A
+call 07:C673 long p=00 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0E3D 03,00
+set 7E0FA6 05,00
+set 7E0FA8 01,00
+set 7E0FAA 02,00
+set 70FD74 C3,A5,3C,5A
+call 07:C673 long p=00 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0E3D 03,00
+set 7E0FA6 06,00
+set 7E0FA8 01,00
+set 7E0FAA 02,00
+set 70FD74 C3,A5,3C,5A
+call 07:C673 long p=00 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0E3D 03,00
+set 7E0FA6 07,00
+set 7E0FA8 01,00
+set 7E0FAA 02,00
+set 70FD74 C3,A5,3C,5A
+call 07:C673 long p=00 db=00 d=0000
+load build/stuntracefx/states/menus_course_grid_01.state
+set 7E0E3D 03,00
+set 7E0FA6 00,00
+set 7E0FA8 01,00
+set 7E0FAA 02,00
+set 70FD74 FF,FF,3C,5A
+call 07:C673 long p=00 db=00 d=0000
