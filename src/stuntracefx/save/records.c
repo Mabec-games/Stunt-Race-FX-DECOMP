@@ -632,6 +632,284 @@ void abi_RecordNameLetters(void)
     cpu.p &= (uint8_t)~(P_N | P_Z | P_C | P_V | P_M);
 }
 
+void abi_TimeUnpackBcdLong(void);
+
+/*
+ * @routine 02:FD89 RecordTagCarSet
+ * WHAT IT DOES: Turns a record's tag byte (A, its time offset 0-$2F) into
+ * the car's piece set: 0, 3, 6 or 9 for each block of $0C.
+ * HOW: 8-bit compares from the top ($24, $18, $0C). Not reached in the
+ * traces so far.
+ * Entry: any widths; A low byte = the tag. Exit: A low byte = the set, the
+ * high byte kept; M 16-bit; N clear, Z set for set 0; C set unless the tag
+ * is below $0C.
+ */
+void abi_RecordTagCarSet(void)
+{
+    uint8_t t = (uint8_t)cpu.a, v;
+
+    op_sep(P_M);
+    if (t >= 0x24)
+        v = 0x09;
+    else if (t >= 0x18)
+        v = 0x06;
+    else if (t >= 0x0C)
+        v = 0x03;
+    else
+        v = 0x00;
+    cpu.p = (uint8_t)((nz8(cpu.p, v) & ~P_C) | (t >= 0x0C ? P_C : 0));
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    op_rep(P_M);
+}
+
+/* The time in A unpacked (TimeUnpackBcdLong) with Y kept: the hundredths
+   to direct page $F1 and the seconds to $F3 (words, X 16-bit), then
+   SEP #$20 with A = the minutes. */
+static void record_time_unpack(void)
+{
+    uint16_t y = cpu.y;
+
+    abi_TimeUnpackBcdLong();
+    wr16(dp(0xF1), cpu.y);
+    wr16(dp(0xF3), cpu.x);
+    cpu.y = y;
+    cpu.p = nz16(cpu.p, y);
+    op_sep(P_M);
+}
+
+/* Large digit d (0-9) at sprite buffer offset `at` + Y: its top tile $50 +
+   d and its bottom tile $60 + d four bytes on, as CLC / ADC #$50 then ADC
+   #$10 leave them. */
+static void large_digit(uint32_t b, uint16_t at, uint8_t d)
+{
+    uint8_t p = (uint8_t)(cpu.p & ~P_C), v;
+
+    v = op_adc8(d, 0x50, &p);
+    wr8(b | (uint16_t)(at + cpu.y), v);
+    v = op_adc8(v, 0x10, &p);
+    wr8(b | (uint16_t)(at + 4 + cpu.y), v);
+    cpu.p = p;
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+}
+
+/*
+ * @routine 02:FDA8 RecordTimeDigitsLarge
+ * WHAT IT DOES: Draws the packed time A as five large digits (two tiles
+ * each) from sprite buffer offset Y: minutes into sprite Y / 4 + 4,
+ * seconds into + 8 and + 10, hundredths into + 14 and + 16.
+ * HOW: TimeUnpackBcdLong, then each BCD nibble + $50 and + $60 to the tile
+ * bytes. Not reached in the traces so far.
+ * Entry: M 16-bit, X 16-bit, D = $0000; A = the packed time, Y = sprite
+ * buffer offset. Exit: P as on entry (PLP); A low byte = the last bottom
+ * tile, high byte the minutes'; X = the seconds (BCD); Y kept; $F1 = the
+ * hundredths, $F3 = the seconds.
+ */
+void abi_RecordTimeDigitsLarge(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t p = cpu.p, v;
+
+    record_time_unpack();
+    large_digit(b, 0x0387, (uint8_t)(cpu.a & 0x0F));
+    v = rd8(dp(0xF3));
+    large_digit(b, 0x0397, (uint8_t)(v >> 4));
+    v = rd8(dp(0xF3));
+    large_digit(b, 0x039F, (uint8_t)(v & 0x0F));
+    v = rd8(dp(0xF1));
+    large_digit(b, 0x03AF, (uint8_t)(v >> 4));
+    v = rd8(dp(0xF1));
+    large_digit(b, 0x03B7, (uint8_t)(v & 0x0F));
+    op_plp(p);
+}
+
+/* SEP'd A low byte to `v`, N and Z from it (an 8-bit LDA, AND or LSR). */
+static void set_a8(uint8_t v)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+}
+
+/* LDA dp, LSR x 4: the high nibble, C = bit 3. */
+static uint8_t dp_high_nibble(uint8_t a)
+{
+    uint8_t v = rd8(dp(a));
+
+    cpu.p = (uint8_t)((cpu.p & ~P_C) | ((v >> 3) & 1));
+    set_a8((uint8_t)(v >> 4));
+    return (uint8_t)(v >> 4);
+}
+
+/*
+ * @routine 02:FE04 RecordTimeDigitsSmall
+ * WHAT IT DOES: Draws the packed time A as five small digits from sprite
+ * buffer offset Y: minutes into sprite Y / 4 + 3, seconds into + 5 and +
+ * 6, hundredths into + 8 and + 9.
+ * HOW: TimeUnpackBcdLong, then each BCD nibble to a tile byte. Not reached
+ * in the traces so far.
+ * Entry: M 16-bit, X 16-bit, D = $0000; A = the packed time, Y = sprite
+ * buffer offset. Exit: A low byte = the hundredths' low digit, high byte
+ * the minutes'; X = the seconds (BCD); Y kept; M 16-bit; N clear, Z from
+ * the digit, C = bit 3 of the hundredths; $F1, $F3 as RecordTimeDigitsLarge.
+ */
+void abi_RecordTimeDigitsSmall(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v;
+
+    record_time_unpack();
+    v = (uint8_t)(cpu.a & 0x0F);
+    set_a8(v);
+    wr8(b | (uint16_t)(0x0383 + cpu.y), v);
+    wr8(b | (uint16_t)(0x038B + cpu.y), dp_high_nibble(0xF3));
+    v = (uint8_t)(rd8(dp(0xF3)) & 0x0F);
+    set_a8(v);
+    wr8(b | (uint16_t)(0x038F + cpu.y), v);
+    wr8(b | (uint16_t)(0x0397 + cpu.y), dp_high_nibble(0xF1));
+    v = (uint8_t)(rd8(dp(0xF1)) & 0x0F);
+    set_a8(v);
+    wr8(b | (uint16_t)(0x039B + cpu.y), v);
+    op_rep(P_M);
+}
+
+/*
+ * @routine 02:FE38 RecordScoreDigits
+ * WHAT IT DOES: Draws a Stunt Trax score A from sprite buffer offset Y:
+ * below $4000 its four BCD digits into sprites Y / 4 + 4, + 5, + 10 and +
+ * 11 with sprites + 3 and + 9 hidden; from $4000 on, the low byte's two
+ * digits and the word PERFECT (sprites + 3 to + 9).
+ * HOW: The score kept in direct page $F1; 8-bit digit stores; PERFECT as
+ * seven tile and attribute words ($36 attributes). Not reached in the
+ * traces so far.
+ * Entry: M 16-bit, X 16-bit, D = $0000; A = the score, Y = sprite buffer
+ * offset. Exit: below $4000: A low byte $F0, M 16-bit, N set, Z clear, C
+ * = bit 11 of the score; from $4000: A = $361D, N and Z clear, C = bit 3
+ * of the score.
+ */
+void abi_RecordScoreDigits(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t s = cpu.a;
+    uint8_t v;
+    unsigned i;
+    static const uint16_t perfect[7] = {0x3619, 0x360E, 0x361B, 0x360F, 0x360E, 0x360C, 0x361D};
+
+    wr16(dp(0xF1), s);
+    op_cmp16(0x4000);
+    op_sep(P_M);
+    v = (uint8_t)(s & 0x0F);
+    set_a8(v);
+    wr8(b | (uint16_t)(0x03A3 + cpu.y), v);
+    if (s >= 0x4000) {
+        v = (uint8_t)s;
+        cpu.p = (uint8_t)((cpu.p & ~P_C) | ((v >> 3) & 1));
+        set_a8((uint8_t)(v >> 4));
+        wr8(b | (uint16_t)(0x039F + cpu.y), (uint8_t)(v >> 4));
+        op_rep(P_M);
+        for (i = 0; i < 7; i++)
+            wr16(b | (uint16_t)(0x0383 + i * 4 + cpu.y), perfect[i]);
+        cpu.a = perfect[6];
+        cpu.p = nz16(cpu.p, cpu.a);
+        return;
+    }
+    wr8(b | (uint16_t)(0x039F + cpu.y), dp_high_nibble(0xF1));
+    v = (uint8_t)(rd8(dp(0xF2)) & 0x0F);
+    set_a8(v);
+    wr8(b | (uint16_t)(0x038B + cpu.y), v);
+    wr8(b | (uint16_t)(0x0387 + cpu.y), dp_high_nibble(0xF2));
+    set_a8(0xF0);
+    wr8(b | (uint16_t)(0x0382 + cpu.y), 0xF0);
+    wr8(b | (uint16_t)(0x039A + cpu.y), 0xF0);
+    op_rep(P_M);
+}
+
+/*
+ * @routine 02:FEA7 RecordLetterTile
+ * WHAT IT DOES: The top tile of large letter A (0-31, plus $0A: letters
+ * follow the ten digits): $50 + the low four bits, + $20 for each of the
+ * next two bits (the sheet's rows of 16, each two tiles high).
+ * HOW: The letter + $0A in direct page $F1, its bits 4-5 doubled in $F3.
+ * Not reached in the traces so far.
+ * Entry: M 16-bit, D = $0000; A = the letter. Exit: A = the tile; N, Z, C,
+ * V from the last add (C and V clear).
+ */
+void abi_RecordLetterTile(void)
+{
+    uint16_t v;
+
+    op_add16(0x000A);
+    wr16(dp(0xF1), cpu.a);
+    op_and16(0x0030);
+    op_asl16();
+    wr16(dp(0xF3), cpu.a);
+    op_lda16(dp(0xF1));
+    op_and16(0x000F);
+    v = rd16(dp(0xF3));
+    cpu.a |= v;
+    op_add16(0x0050);
+}
+
+/* RecordLetterTile for letter `n`, then its top tile at `at` + Y and its
+   bottom tile (+ $10, with the add's carry) four bytes on. */
+static void large_letter(uint32_t b, uint16_t at, uint16_t n)
+{
+    uint8_t p, v;
+
+    cpu.a = n;
+    cpu.p = nz16(cpu.p, n);
+    abi_RecordLetterTile();
+    op_sep(P_M);
+    v = (uint8_t)cpu.a;
+    wr8(b | (uint16_t)(at + cpu.y), v);
+    p = cpu.p;
+    v = op_adc8(v, 0x10, &p);
+    cpu.p = p;
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    wr8(b | (uint16_t)(at + 4 + cpu.y), v);
+    op_rep(P_M);
+}
+
+/*
+ * @routine 02:FEBF RecordNameLettersLarge
+ * WHAT IT DOES: Draws the three 5-bit letters of A (bits 0-4, 5-9, 10-14)
+ * as large letters (two tiles each) into sprites Y / 4 + 18, + 20 and +
+ * 22.
+ * HOW: RecordLetterTile for each; the name word is kept on the stack
+ * between them. Not reached in the traces so far.
+ * Entry: M 16-bit, X 16-bit, D = $0000; A = the letters, Y = sprite buffer
+ * offset. Exit: A = the third letter's bottom tile; M 16-bit; N, Z, C, V
+ * from its 8-bit add.
+ */
+void abi_RecordNameLettersLarge(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t v = cpu.a;
+
+    large_letter(b, 0x03BF, (uint16_t)(v & 0x001F));
+    large_letter(b, 0x03C7, (uint16_t)(((uint16_t)(v << 3) >> 8) & 0x001F));
+    large_letter(b, 0x03CF, (uint16_t)(((uint16_t)(v >> 2) >> 8) & 0x001F));
+}
+
+/*
+ * @routine 02:FF37 RecordNameLettersSmall
+ * WHAT IT DOES: As RecordNameLetters into sprites Y / 4 + 15, + 16 and +
+ * 17.
+ * HOW: As RecordNameLetters. Not reached in the traces so far.
+ * Entry: as RecordNameLetters. Exit: as RecordNameLetters.
+ */
+void abi_RecordNameLettersSmall(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t v = cpu.a;
+    unsigned i;
+    static const uint8_t shift[3] = {0, 5, 10};
+
+    for (i = 0; i < 3; i++) {
+        cpu.a = (uint16_t)(((v >> shift[i]) & 0x001F) + 0x000A);
+        wr8(b | (uint16_t)(0x03B3 + i * 4 + cpu.y), (uint8_t)cpu.a);
+    }
+    cpu.p &= (uint8_t)~(P_N | P_Z | P_C | P_V | P_M);
+}
+
 /*
  * @routine 02:F077 RecordRowDraw
  * WHAT IT DOES: Draws one records row from sprite Y: the time at $0F76 +

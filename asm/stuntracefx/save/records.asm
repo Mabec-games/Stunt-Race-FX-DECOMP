@@ -931,6 +931,276 @@ RecordRowDraw:
     sta.w !oam_buffer+9,y
     rts
 
+; @routine 02:FD89 RecordTagCarSet
+; WHAT IT DOES: Turns a record's tag byte (A, its time offset 0-$2F) into
+; the car's piece set: 0, 3, 6 or 9 for each block of $0C.
+; HOW: 8-bit compares from the top ($24, $18, $0C). Not reached in the
+; traces so far.
+; Entry: any widths; A low byte = the tag. Exit: A low byte = the set, the
+; high byte kept; M 16-bit; N clear, Z set for set 0; C set unless the tag
+; is below $0C.
+%at($02FD89)
+RecordTagCarSet:
+    sep.b #$20                      ; not reached in the traces so far
+    cmp.b #$24
+    bcs .set9
+    cmp.b #$18
+    bcs .set6
+    cmp.b #$0C
+    bcs .set3
+    lda.b #$00
+    bra .done
+.set3:
+    lda.b #$03
+    bra .done
+.set6:
+    lda.b #$06
+    bra .done
+.set9:
+    lda.b #$09
+.done:
+    rep.b #$20
+    rts
+
+; @routine 02:FDA8 RecordTimeDigitsLarge
+; WHAT IT DOES: Draws the packed time A as five large digits (two tiles
+; each) from sprite buffer offset Y: minutes into sprite Y / 4 + 4,
+; seconds into + 8 and + 10, hundredths into + 14 and + 16.
+; HOW: TimeUnpackBcdLong, then each BCD nibble + $50 and + $60 to the tile
+; bytes. Not reached in the traces so far.
+; Entry: M 16-bit, X 16-bit, D = $0000; A = the packed time, Y = sprite
+; buffer offset. Exit: P as on entry (PLP); A low byte = the last bottom
+; tile, high byte the minutes'; X = the seconds (BCD); Y kept; $F1 = the
+; hundredths, $F3 = the seconds.
+%at($02FDA8)
+RecordTimeDigitsLarge:
+    php                             ; not reached in the traces so far
+    phy
+    jsl.l TimeUnpackBcdLong
+    sty.b !digit_count
+    stx.b !dp_f3
+    ply
+    sep.b #$20
+    and.b #$0F
+    clc
+    adc.b #$50
+    sta.w !oam_buffer+18,y
+    adc.b #$10
+    sta.w !oam_buffer+22,y
+    lda.b !dp_f3
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    clc
+    adc.b #$50
+    sta.w !oam_buffer+34,y
+    adc.b #$10
+    sta.w !oam_buffer+38,y
+    lda.b !dp_f3
+    and.b #$0F
+    clc
+    adc.b #$50
+    sta.w !oam_buffer+42,y
+    adc.b #$10
+    sta.w !oam_buffer+46,y
+    lda.b !digit_count
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    clc
+    adc.b #$50
+    sta.w !oam_buffer+58,y
+    adc.b #$10
+    sta.w !oam_buffer+62,y
+    lda.b !digit_count
+    and.b #$0F
+    clc
+    adc.b #$50
+    sta.w !oam_buffer+66,y
+    adc.b #$10
+    sta.w !oam_buffer+70,y
+    plp
+    rts
+
+; @routine 02:FE04 RecordTimeDigitsSmall
+; WHAT IT DOES: Draws the packed time A as five small digits from sprite
+; buffer offset Y: minutes into sprite Y / 4 + 3, seconds into + 5 and +
+; 6, hundredths into + 8 and + 9.
+; HOW: TimeUnpackBcdLong, then each BCD nibble to a tile byte. Not reached
+; in the traces so far.
+; Entry: M 16-bit, X 16-bit, D = $0000; A = the packed time, Y = sprite
+; buffer offset. Exit: A low byte = the hundredths' low digit, high byte
+; the minutes'; X = the seconds (BCD); Y kept; M 16-bit; N clear, Z from
+; the digit, C = bit 3 of the hundredths; $F1, $F3 as RecordTimeDigitsLarge.
+%at($02FE04)
+RecordTimeDigitsSmall:
+    phy                             ; not reached in the traces so far
+    jsl.l TimeUnpackBcdLong
+    sty.b !digit_count
+    stx.b !dp_f3
+    ply
+    sep.b #$20
+    and.b #$0F
+    sta.w !oam_buffer+14,y
+    lda.b !dp_f3
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    sta.w !oam_buffer+22,y
+    lda.b !dp_f3
+    and.b #$0F
+    sta.w !oam_buffer+26,y
+    lda.b !digit_count
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    sta.w !oam_buffer+34,y
+    lda.b !digit_count
+    and.b #$0F
+    sta.w !oam_buffer+38,y
+    rep.b #$20
+    rts
+
+; @routine 02:FE38 RecordScoreDigits
+; WHAT IT DOES: Draws a Stunt Trax score A from sprite buffer offset Y:
+; below $4000 its four BCD digits into sprites Y / 4 + 4, + 5, + 10 and +
+; 11 with sprites + 3 and + 9 hidden; from $4000 on, the low byte's two
+; digits and the word PERFECT (sprites + 3 to + 9).
+; HOW: The score kept in direct page $F1; 8-bit digit stores; PERFECT as
+; seven tile and attribute words ($36 attributes). Not reached in the
+; traces so far.
+; Entry: M 16-bit, X 16-bit, D = $0000; A = the score, Y = sprite buffer
+; offset. Exit: below $4000: A low byte $F0, M 16-bit, N set, Z clear, C
+; = bit 11 of the score; from $4000: A = $361D, N and Z clear, C = bit 3
+; of the score.
+%at($02FE38)
+RecordScoreDigits:
+    sta.b !digit_count              ; not reached in the traces so far
+    cmp.w #$4000
+    bcs .perfect
+    sep.b #$20
+    and.b #$0F
+    sta.w !oam_buffer+46,y
+    lda.b !digit_count
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    sta.w !oam_buffer+42,y
+    lda.b !text_count
+    and.b #$0F
+    sta.w !oam_buffer+22,y
+    lda.b !text_count
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    sta.w !oam_buffer+18,y
+    lda.b #$F0
+    sta.w !oam_buffer+13,y
+    sta.w !oam_buffer+37,y
+    rep.b #$20
+    rts
+.perfect:
+    sep.b #$20
+    pha
+    and.b #$0F
+    sta.w !oam_buffer+46,y
+    pla
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    sta.w !oam_buffer+42,y
+    rep.b #$20
+    lda.w #$3619                    ; P
+    sta.w !oam_buffer+14,y
+    lda.w #$360E                    ; E
+    sta.w !oam_buffer+18,y
+    lda.w #$361B                    ; R
+    sta.w !oam_buffer+22,y
+    lda.w #$360F                    ; F
+    sta.w !oam_buffer+26,y
+    lda.w #$360E                    ; E
+    sta.w !oam_buffer+30,y
+    lda.w #$360C                    ; C
+    sta.w !oam_buffer+34,y
+    lda.w #$361D                    ; T
+    sta.w !oam_buffer+38,y
+    rts
+
+; @routine 02:FEA7 RecordLetterTile
+; WHAT IT DOES: The top tile of large letter A (0-31, plus $0A: letters
+; follow the ten digits): $50 + the low four bits, + $20 for each of the
+; next two bits (the sheet's rows of 16, each two tiles high).
+; HOW: The letter + $0A in direct page $F1, its bits 4-5 doubled in $F3.
+; Not reached in the traces so far.
+; Entry: M 16-bit, D = $0000; A = the letter. Exit: A = the tile; N, Z, C,
+; V from the last add (C and V clear).
+%at($02FEA7)
+RecordLetterTile:
+    clc                             ; not reached in the traces so far
+    adc.w #$000A
+    sta.b !digit_count
+    and.w #$0030
+    asl a
+    sta.b !dp_f3
+    lda.b !digit_count
+    and.w #$000F
+    ora.b !dp_f3
+    clc
+    adc.w #$0050
+    rts
+
+; @routine 02:FEBF RecordNameLettersLarge
+; WHAT IT DOES: Draws the three 5-bit letters of A (bits 0-4, 5-9, 10-14)
+; as large letters (two tiles each) into sprites Y / 4 + 18, + 20 and +
+; 22.
+; HOW: RecordLetterTile for each; the name word is kept on the stack
+; between them. Not reached in the traces so far.
+; Entry: M 16-bit, X 16-bit, D = $0000; A = the letters, Y = sprite buffer
+; offset. Exit: A = the third letter's bottom tile; M 16-bit; N, Z, C, V
+; from its 8-bit add.
+%at($02FEBF)
+RecordNameLettersLarge:
+    pha                             ; not reached in the traces so far
+    and.w #$001F
+    jsr.w RecordLetterTile
+    sep.b #$20
+    sta.w !oam_buffer+74,y
+    adc.b #$10
+    sta.w !oam_buffer+78,y
+    rep.b #$20
+    pla
+    pha
+    asl a
+    asl a
+    asl a
+    xba
+    and.w #$001F
+    jsr.w RecordLetterTile
+    sep.b #$20
+    sta.w !oam_buffer+82,y
+    adc.b #$10
+    sta.w !oam_buffer+86,y
+    rep.b #$20
+    pla
+    lsr a
+    lsr a
+    xba
+    and.w #$001F
+    jsr.w RecordLetterTile
+    sep.b #$20
+    sta.w !oam_buffer+90,y
+    adc.b #$10
+    sta.w !oam_buffer+94,y
+    rep.b #$20
+    rts
+
 ; @routine 02:FF01 RecordNameLetters
 ; WHAT IT DOES: Puts the three 5-bit letters of A (bits 0-4, 5-9, 10-14) plus
 ; $0A into the tile bytes of sprites Y / 4, + 1 and + 2.
@@ -968,6 +1238,44 @@ RecordNameLetters:
     adc.w #$000A
     sep.b #$20
     sta.w !oam_buffer+50,y
+    rep.b #$20
+    rts
+
+; @routine 02:FF37 RecordNameLettersSmall
+; WHAT IT DOES: As RecordNameLetters into sprites Y / 4 + 15, + 16 and +
+; 17.
+; HOW: As RecordNameLetters. Not reached in the traces so far.
+; Entry: as RecordNameLetters. Exit: as RecordNameLetters.
+%at($02FF37)
+RecordNameLettersSmall:
+    pha                             ; not reached in the traces so far
+    and.w #$001F
+    clc
+    adc.w #$000A
+    sep.b #$20
+    sta.w !oam_buffer+62,y
+    rep.b #$20
+    pla
+    pha
+    asl a
+    asl a
+    asl a
+    xba
+    and.w #$001F
+    clc
+    adc.w #$000A
+    sep.b #$20
+    sta.w !oam_buffer+66,y
+    rep.b #$20
+    pla
+    lsr a
+    lsr a
+    xba
+    and.w #$001F
+    clc
+    adc.w #$000A
+    sep.b #$20
+    sta.w !oam_buffer+70,y
     rep.b #$20
     rts
 

@@ -105,6 +105,17 @@ void abi_TimeUnpackBcd(void)
     abi_BinaryToBcd();
 }
 
+/*
+ * @routine 07:AC42 TimeUnpackBcdLong
+ * WHAT IT DOES: TimeUnpackBcd for a JSL caller.
+ * HOW: JSR TimeUnpackBcd, RTL. Not reached in the traces so far.
+ * Entry: as TimeUnpackBcd. Exit: as TimeUnpackBcd.
+ */
+void abi_TimeUnpackBcdLong(void)
+{
+    abi_TimeUnpackBcd();
+}
+
 /* Adds the BCD time at $0F76 + X (hundredths, seconds, minutes) to the
    time at `to` (three bytes), with the decimal carries the original makes:
    hundredths into seconds, seconds past 59 (once on the add's carry, once

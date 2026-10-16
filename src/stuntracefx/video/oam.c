@@ -1235,6 +1235,17 @@ void abi_OamAttr38x4(void)
 }
 
 /*
+ * @routine 02:FBAA OamAttr36x7
+ * WHAT IT DOES: Gives 7 sprites from entry A attribute byte $36.
+ * HOW: As OamAttr36x4. Not reached in the traces so far.
+ * Entry: as OamAttr36x4. Exit: as OamAttr36x4.
+ */
+void abi_OamAttr36x7(void)
+{
+    abi_oam_attr_fill(7, 0x36);
+}
+
+/*
  * @routine 07:C4E0 OamHighBits18Park48
  * WHAT IT DOES: OamHighBits18, then sets the X-high bit of sprites 48-63
  * (high table bytes 12-15 = $55), which puts them off the left edge.
@@ -1357,6 +1368,143 @@ void abi_SpritePiecesAtLeft(void)
 void abi_SpritePiecesAtRight(void)
 {
     pieces_at(0x0081 + 0x0024);
+}
+
+/* The position (x, y) of the piece set in $10C3 (Y stored first when
+   `y_first`), then SpritePieces3 from sprite buffer offset Y and REP #$20.
+   The set-up subtracts leave C set and N, Z, V clear for SpritePieces3 to
+   overwrite. */
+static void pieces_xy(uint16_t x, uint16_t y, int y_first)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    if (y_first) {
+        wr16(b | 0x10BF, y);
+        wr16(b | 0x10BD, x);
+    } else {
+        wr16(b | 0x10BD, x);
+        wr16(b | 0x10BF, y);
+    }
+    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_V)) | P_C);
+    abi_SpritePieces3();
+    cpu.p &= (uint8_t)~P_M;
+}
+
+/* Piece set A to $10C3, then pieces_xy. */
+static void pieces_at_xy(uint16_t x, uint16_t y, int y_first)
+{
+    wr16(((uint32_t)cpu.db << 16) | 0x10C3, cpu.a);
+    pieces_xy(x, y, y_first);
+}
+
+/*
+ * @routine 02:FC9A SpritePiecesAt46Y71
+ * WHAT IT DOES: Writes the three sprites of piece set A at screen X = $46,
+ * Y = $71 from sprite buffer offset Y: the car of the records screen's
+ * first row.
+ * HOW: Stores the set, Y ($89 - $18) and X ($81 - $3B), then
+ * SpritePieces3. Not reached in the traces so far.
+ * Entry: as SpritePiecesAtLeft. Exit: as SpritePiecesAtLeft.
+ */
+void abi_SpritePiecesAt46Y71(void)
+{
+    pieces_at_xy(0x0081 - 0x003B, 0x0089 - 0x0018, 1);
+}
+
+/*
+ * @routine 02:FCA9 SpritePiecesAt46Y82
+ * WHAT IT DOES: As SpritePiecesAt46Y71 at Y = $82 (the second row).
+ * HOW: As SpritePiecesAt46Y71 ($89 - $07). Not reached in the traces so
+ * far.
+ * Entry: as SpritePiecesAtLeft. Exit: as SpritePiecesAtLeft.
+ */
+void abi_SpritePiecesAt46Y82(void)
+{
+    pieces_at_xy(0x0081 - 0x003B, 0x0089 - 0x0007, 1);
+}
+
+/*
+ * @routine 02:FCB8 SpritePiecesAt46Y93
+ * WHAT IT DOES: As SpritePiecesAt46Y71 at Y = $93 (the third row).
+ * HOW: As SpritePiecesAt46Y71 ($89 + $0A). Not reached in the traces so
+ * far.
+ * Entry: as SpritePiecesAtLeft. Exit: as SpritePiecesAtLeft.
+ */
+void abi_SpritePiecesAt46Y93(void)
+{
+    pieces_at_xy(0x0081 - 0x003B, 0x0089 + 0x000A, 1);
+}
+
+/*
+ * @routine 02:FCD6 SpritePiecesAt62Y71
+ * WHAT IT DOES: As SpritePiecesAt46Y71 at X = $62.
+ * HOW: Stores the set, Y ($89 - $18) and X ($89 - $27), then
+ * SpritePieces3. Not reached in the traces so far.
+ * Entry: as SpritePiecesAtLeft. Exit: as SpritePiecesAtLeft.
+ */
+void abi_SpritePiecesAt62Y71(void)
+{
+    pieces_at_xy(0x0089 - 0x0027, 0x0089 - 0x0018, 1);
+}
+
+/*
+ * @routine 02:FCE5 SpritePiecesAt62Y83
+ * WHAT IT DOES: As SpritePiecesAt62Y71 at Y = $83.
+ * HOW: As SpritePiecesAt62Y71 ($89 - $06). Not reached in the traces so
+ * far.
+ * Entry: as SpritePiecesAtLeft. Exit: as SpritePiecesAtLeft.
+ */
+void abi_SpritePiecesAt62Y83(void)
+{
+    pieces_at_xy(0x0089 - 0x0027, 0x0089 - 0x0006, 1);
+}
+
+/*
+ * @routine 02:FCF4 SpritePiecesAt62Y95
+ * WHAT IT DOES: As SpritePiecesAt62Y71 at Y = $95.
+ * HOW: As SpritePiecesAt62Y71 ($89 + $0C). Not reached in the traces so
+ * far.
+ * Entry: as SpritePiecesAtLeft. Exit: as SpritePiecesAtLeft.
+ */
+void abi_SpritePiecesAt62Y95(void)
+{
+    pieces_at_xy(0x0089 - 0x0027, 0x0089 + 0x000C, 1);
+}
+
+/*
+ * @routine 02:FD12 SpritePiecesCarAt51
+ * WHAT IT DOES: Writes car A's three sprites (piece set A * 3, low four
+ * bits) with palette 0 at screen X = $51, Y = $87 from sprite buffer
+ * offset Y: the car of a records screen's best time.
+ * HOW: The set worked out in $10C3 itself (store, double, add it back,
+ * mask), $10C5 cleared, then X ($81 - $30), Y ($89 - $02) and
+ * SpritePieces3. Not reached in the traces so far.
+ * Entry: as SpritePiecesAtLeft; A = the car. Exit: as SpritePiecesAtLeft.
+ */
+void abi_SpritePiecesCarAt51(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t v;
+
+    wr16(b | 0x10C3, cpu.a);
+    v = (uint16_t)(cpu.a << 1);
+    v = (uint16_t)((v + rd16(b | 0x10C3)) & 0x000F);
+    wr16(b | 0x10C3, v);
+    wr16(b | 0x10C5, 0x0000);
+    pieces_xy(0x0081 - 0x0030, 0x0089 - 0x0002, 0);
+}
+
+/*
+ * @routine 02:FD6B SpritePiecesAt59Y87
+ * WHAT IT DOES: Writes the three sprites of piece set A at screen X = $59,
+ * Y = $87 from sprite buffer offset Y.
+ * HOW: As SpritePiecesCarAt51 without the set's working out. No caller
+ * found: not reached in the traces so far.
+ * Entry: as SpritePiecesAtLeft. Exit: as SpritePiecesAtLeft.
+ */
+void abi_SpritePiecesAt59Y87(void)
+{
+    pieces_at_xy(0x0089 - 0x0030, 0x0089 - 0x0002, 0);
 }
 
 /* SpritePieces3 into sprite offset `y`, keeping its A, X, Y and flags. */

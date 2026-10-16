@@ -10,6 +10,15 @@ incsrc "../include/rom.inc"
 
 arch 65816
 
+; @routine 07:AC42 TimeUnpackBcdLong
+; WHAT IT DOES: TimeUnpackBcd for a JSL caller.
+; HOW: JSR TimeUnpackBcd, RTL. Not reached in the traces so far.
+; Entry: as TimeUnpackBcd. Exit: as TimeUnpackBcd.
+%at($07AC42)
+TimeUnpackBcdLong:
+    jsr.w TimeUnpackBcd             ; not reached in the traces so far
+    rtl
+
 ; @routine 07:AC46 TimeUnpackBcd
 ; WHAT IT DOES: Unpacks a packed time word into BCD: A = the minutes (bits
 ; 13-15), X = the seconds (bits 7-12), Y = the hundredths (bits 0-6); $FFFF

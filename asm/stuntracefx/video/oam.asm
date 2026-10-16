@@ -1200,6 +1200,20 @@ OamAttr38x4:
     lda.b #$38
     bra OamAttrFillLoop
 
+; @routine 02:FBAA OamAttr36x7
+; WHAT IT DOES: Gives 7 sprites from entry A attribute byte $36.
+; HOW: As OamAttr36x4. Not reached in the traces so far.
+; Entry: as OamAttr36x4. Exit: as OamAttr36x4.
+%at($02FBAA)
+OamAttr36x7:
+    asl a                           ; not reached in the traces so far
+    asl a
+    tax
+    ldy.w #$0007
+    sep.b #$20
+    lda.b #$36
+    bra OamAttrFillLoop
+
 ; @routine 07:C4E0 OamHighBits18Park48
 ; WHAT IT DOES: OamHighBits18, then sets the X-high bit of sprites 48-63
 ; (high table bytes 12-15 = $55), which puts them off the left edge.
@@ -1215,6 +1229,135 @@ OamHighBits18Park48:
     sta.w !oam_buffer_high+12
     sta.w !oam_buffer_high+14
     plp
+    rts
+
+; @routine 02:FC9A SpritePiecesAt46Y71
+; WHAT IT DOES: Writes the three sprites of piece set A at screen X = $46,
+; Y = $71 from sprite buffer offset Y: the car of the records screen's
+; first row.
+; HOW: Stores the set, Y ($89 - $18) and X ($81 - $3B), then
+; SpritePieces3. Not reached in the traces so far.
+; Entry: as SpritePiecesAtLeft. Exit: as SpritePiecesAtLeft.
+%at($02FC9A)
+SpritePiecesAt46Y71:
+    sta.w !sprite_piece_frame       ; not reached in the traces so far
+    lda.w #$0089
+    sec
+    sbc.w #$0018
+    sta.w !sprite_piece_y
+    bra SpritePiecesAt46
+
+; @routine 02:FCA9 SpritePiecesAt46Y82
+; WHAT IT DOES: As SpritePiecesAt46Y71 at Y = $82 (the second row).
+; HOW: As SpritePiecesAt46Y71 ($89 - $07). Not reached in the traces so
+; far.
+; Entry: as SpritePiecesAtLeft. Exit: as SpritePiecesAtLeft.
+%at($02FCA9)
+SpritePiecesAt46Y82:
+    sta.w !sprite_piece_frame       ; not reached in the traces so far
+    lda.w #$0089
+    sec
+    sbc.w #$0007
+    sta.w !sprite_piece_y
+    bra SpritePiecesAt46
+
+; @routine 02:FCB8 SpritePiecesAt46Y93
+; WHAT IT DOES: As SpritePiecesAt46Y71 at Y = $93 (the third row).
+; HOW: As SpritePiecesAt46Y71 ($89 + $0A); the tail at $02:FCC5 is shared
+; with the two above. Not reached in the traces so far.
+; Entry: as SpritePiecesAtLeft. Exit: as SpritePiecesAtLeft.
+%at($02FCB8)
+SpritePiecesAt46Y93:
+    sta.w !sprite_piece_frame       ; not reached in the traces so far
+    lda.w #$0089
+    clc
+    adc.w #$000A
+    sta.w !sprite_piece_y
+SpritePiecesAt46:                   ; shared with SpritePiecesAt46Y71 and 46Y82
+    lda.w #$0081
+    sec
+    sbc.w #$003B
+    sta.w !sprite_piece_x
+    jsl.l SpritePieces3
+    rep.b #$20
+    rts
+
+; @routine 02:FCD6 SpritePiecesAt62Y71
+; WHAT IT DOES: As SpritePiecesAt46Y71 at X = $62.
+; HOW: Stores the set, Y ($89 - $18) and X ($89 - $27), then
+; SpritePieces3. Not reached in the traces so far.
+; Entry: as SpritePiecesAtLeft. Exit: as SpritePiecesAtLeft.
+%at($02FCD6)
+SpritePiecesAt62Y71:
+    sta.w !sprite_piece_frame       ; not reached in the traces so far
+    lda.w #$0089
+    sec
+    sbc.w #$0018
+    sta.w !sprite_piece_y
+    bra SpritePiecesAt62
+
+; @routine 02:FCE5 SpritePiecesAt62Y83
+; WHAT IT DOES: As SpritePiecesAt62Y71 at Y = $83.
+; HOW: As SpritePiecesAt62Y71 ($89 - $06). Not reached in the traces so
+; far.
+; Entry: as SpritePiecesAtLeft. Exit: as SpritePiecesAtLeft.
+%at($02FCE5)
+SpritePiecesAt62Y83:
+    sta.w !sprite_piece_frame       ; not reached in the traces so far
+    lda.w #$0089
+    sec
+    sbc.w #$0006
+    sta.w !sprite_piece_y
+    bra SpritePiecesAt62
+
+; @routine 02:FCF4 SpritePiecesAt62Y95
+; WHAT IT DOES: As SpritePiecesAt62Y71 at Y = $95.
+; HOW: As SpritePiecesAt62Y71 ($89 + $0C); the tail at $02:FD01 is shared
+; with the two above. Not reached in the traces so far.
+; Entry: as SpritePiecesAtLeft. Exit: as SpritePiecesAtLeft.
+%at($02FCF4)
+SpritePiecesAt62Y95:
+    sta.w !sprite_piece_frame       ; not reached in the traces so far
+    lda.w #$0089
+    clc
+    adc.w #$000C
+    sta.w !sprite_piece_y
+SpritePiecesAt62:                   ; shared with SpritePiecesAt62Y71 and 62Y83
+    lda.w #$0089
+    sec
+    sbc.w #$0027
+    sta.w !sprite_piece_x
+    jsl.l SpritePieces3
+    rep.b #$20
+    rts
+
+; @routine 02:FD12 SpritePiecesCarAt51
+; WHAT IT DOES: Writes car A's three sprites (piece set A * 3, low four
+; bits) with palette 0 at screen X = $51, Y = $87 from sprite buffer
+; offset Y: the car of a records screen's best time.
+; HOW: The set worked out in $10C3 itself (store, double, add it back,
+; mask), $10C5 cleared, then X ($81 - $30), Y ($89 - $02) and
+; SpritePieces3. Not reached in the traces so far.
+; Entry: as SpritePiecesAtLeft; A = the car. Exit: as SpritePiecesAtLeft.
+%at($02FD12)
+SpritePiecesCarAt51:
+    sta.w !sprite_piece_frame       ; not reached in the traces so far
+    asl a
+    clc
+    adc.w !sprite_piece_frame
+    and.w #$000F
+    sta.w !sprite_piece_frame
+    stz.w !sprite_piece_palette
+    lda.w #$0081
+    sec
+    sbc.w #$0030
+    sta.w !sprite_piece_x
+    lda.w #$0089
+    sec
+    sbc.w #$0002
+    sta.w !sprite_piece_y
+    jsl.l SpritePieces3
+    rep.b #$20
     rts
 
 ; @routine 02:FD3E SpritePiecesAtLeft
@@ -1248,6 +1391,27 @@ SpritePiecesAtY:
     lda.w #$0089
     sec
     sbc.w #$000B
+    sta.w !sprite_piece_y
+    jsl.l SpritePieces3
+    rep.b #$20
+    rts
+
+; @routine 02:FD6B SpritePiecesAt59Y87
+; WHAT IT DOES: Writes the three sprites of piece set A at screen X = $59,
+; Y = $87 from sprite buffer offset Y.
+; HOW: As SpritePiecesCarAt51 without the set's working out. No caller
+; found: not reached in the traces so far.
+; Entry: as SpritePiecesAtLeft. Exit: as SpritePiecesAtLeft.
+%at($02FD6B)
+SpritePiecesAt59Y87:
+    sta.w !sprite_piece_frame       ; not reached in the traces so far
+    lda.w #$0089
+    sec
+    sbc.w #$0030
+    sta.w !sprite_piece_x
+    lda.w #$0089
+    sec
+    sbc.w #$0002
     sta.w !sprite_piece_y
     jsl.l SpritePieces3
     rep.b #$20
