@@ -1832,3 +1832,978 @@ ObjectPieceFall:
     lda.b #$03
     sta.w !obj_36,x
     rtl
+
+; @routine 08:DCB4 ObjectAttachSpawn
+; WHAT IT DOES: Gives object X the attachments listed for the course
+; script's entry ($70:2392 indexes the list at $09:8090: a count, then five
+; bytes each): for each, a new object (kind $A040) with object X as its
+; +$06, its +$04, look, handler and bank from the five words at $09:8000 +
+; the entry's first word (+$04, $1F50, $1F52, +$1A, +$1C); with a look
+; ($1F50 nonzero) +$24 bit 3, +$3A = 0, +$5F = $1F52, +$5D = $1F50; and
+; the entry's three signed bytes as its velocity (+$2E, +$30, +$32).
+; HOW: The list index in X, the count on the stack; $1F4C keeps object X;
+; a failed spawn skips its entry.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; X = the object; Y
+; the last attachment (or as ObjectSpawn left it).
+%at($08DCB4)
+ObjectAttachSpawn:
+    stx.w !wram_1F4C
+    rep.b #$20
+    lda.l !fx_script_at
+    tax
+    sep.b #$20
+    lda.l !attach_values,x
+    bne .lDCC9
+    brl .lDD89
+.lDCC9:
+    inx
+.lDCCA:
+    pha
+    rep.b #$20
+    lda.w #$A040
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lDCDF
+    jml.l .lDD78                    ; not reached in the traces so far
+.lDCDF:
+    phx
+    rep.b #$20
+    lda.w !wram_1F4C
+    sta.w !obj_06,y
+    lda.l !attach_values,x
+    tax
+    lda.l $098000,x
+    sta.w !obj_04,y
+    lda.l $098002,x
+    sta.w !wram_1F50
+    lda.l $098004,x
+    sta.w !wram_1F52
+    lda.l $098006,x
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.l $098008,x
+    sta.w !obj_1c,y
+    plx
+    lda.w !wram_1F50
+    ora.w !wram_1F50+1
+    beq .lDD38
+    lda.w !obj_24,y
+    ora.b #$08
+    sta.w !obj_24,y
+    lda.b #$00
+    sta.w !obj_3a,y
+    lda.w !wram_1F52
+    sta.w !obj_5f,y
+    rep.b #$20
+    lda.w !wram_1F50
+    sta.w !obj_5d,y
+    sep.b #$20
+.lDD38:
+    rep.b #$20
+    lda.l !attach_values+2,x
+    bit.w #$0080
+    beq .lDD48
+    ora.w #$FF00
+    bra .lDD4B
+.lDD48:
+    and.w #$00FF
+.lDD4B:
+    sta.w !obj_vel_x,y
+    lda.l !attach_values+3,x
+    bit.w #$0080
+    beq .lDD5C
+    ora.w #$FF00
+    bra .lDD5F
+.lDD5C:
+    and.w #$00FF
+.lDD5F:
+    sta.w !obj_vel_y,y
+    lda.l !attach_values+4,x
+    bit.w #$0080
+    beq .lDD70
+    ora.w #$FF00                    ; not reached in the traces so far
+    bra .lDD73
+.lDD70:
+    and.w #$00FF
+.lDD73:
+    sta.w !obj_vel_z,y
+    sep.b #$20
+.lDD78:
+    rep.b #$20
+    txa
+    clc
+    adc.w #$0005
+    tax
+    sep.b #$20
+    pla
+    dec a
+    beq .lDD89
+    brl .lDCCA
+.lDD89:
+    ldx.w !wram_1F4C
+    rtl
+
+; @routine 08:DD8D ObjectAttachStart
+; WHAT IT DOES: An attachment's first frame: handler $08:DDB4
+; (ObjectAttachFollow), its Y velocity's low byte sign-extended and
+; doubled; then its first frame.
+; HOW: Falls into ObjectAttachFollow.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectAttachFollow.
+%at($08DD8D)
+ObjectAttachStart:
+    rep.b #$20
+    lda.w #$DDB4
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+    rep.b #$20
+    lda.w !obj_vel_y,x
+    bit.w #$0080
+    beq .lDDAB
+    ora.w #$FF00                    ; not reached in the traces so far
+    bra .lDDAE
+.lDDAB:
+    and.w #$00FF
+.lDDAE:
+    asl a
+    sta.w !obj_vel_y,x
+    sep.b #$20
+
+; @routine 08:DDB4 ObjectAttachFollow
+; WHAT IT DOES: An attachment's frame: hidden ($08:E13C) when its parent
+; is gone or loose, or when the parent's record has +$1C bit 4; otherwise
+; placed at the parent's record position (+$1E, +$60, +$22) with its
+; heading (+$27 to +$14, +$25 to +$15), moved by its velocity
+; (ObjectApplyVelocity), rebucketed, +$24 bits 5 and 6 cleared, and bit 6
+; set again ($08:E14A) when the parent's +$24 has it.
+; HOW: Y = the attachment and X = the parent's record while copying.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; as the path leaves
+; it.
+%at($08DDB4)
+ObjectAttachFollow:
+    ldy.w !obj_06,x
+    lda.w !obj_24,y
+    and.b #$08
+    beq .lDDC2
+    jml.l ObjectAttachHide
+.lDDC2:
+    lda.w !obj_25,y
+    and.b #$04
+    beq .lDDCD
+    jml.l ObjectAttachHide
+.lDDCD:
+    phx
+    rep.b #$20
+    lda.w !obj_22,y
+    txy
+    tax
+    lda.l !gsu_rec_1c,x
+    and.w #$0010
+    beq .lDDE4
+    sep.b #$20
+    plx
+    jmp.w ObjectAttachHide
+.lDDE4:
+    lda.l !gsu_rec_1e,x
+    sta.w !obj_pos_x,y
+    lda.l !gsu_in_22,x
+    sta.w !obj_pos_z,y
+    lda.l !gsu_unpack_end,x
+    sta.w !obj_pos_y,y
+    sep.b #$20
+    lda.l !gsu_rec_27,x
+    sta.w !obj_14,y
+    lda.l !gsu_rec_25,x
+    sta.w !obj_15,y
+    plx
+    jsl.l ObjectApplyVelocity
+    jsl.l ObjectRebucket
+    lda.w !obj_24,x
+    and.b #$DF
+    sta.w !obj_24,x
+    lda.w !obj_24,x
+    and.b #$BF
+    sta.w !obj_24,x
+    ldy.w !obj_06,x
+    lda.w !obj_24,y
+    and.b #$40
+    beq .lDE30
+    jml.l ObjectAttachBit6
+.lDE30:
+    rtl
+
+; @routine 08:DE31 ObjectSparksStart
+; WHAT IT DOES: Gives object X four sparks (kind $A1E4, handler $08:E048
+; ObjectSparkStart) at offsets (-$1E or $1E, $0A, $3C or -$14), its own
+; handler $08:DF4C (ObjectAttachTurned); then its first frame.
+; HOW: Falls into ObjectAttachTurned; a failed spawn skips its spark.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectAttachTurned.
+%at($08DE31)
+ObjectSparksStart:
+    rep.b #$20
+    lda.w #$DF4C
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+    rep.b #$20
+    lda.w #$A1E4
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lDE54
+    jml.l .lDE83                    ; not reached in the traces so far
+.lDE54:
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_06,y
+    sep.b #$20
+    pla
+    rep.b #$20
+    lda.w #$E048
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    rep.b #$20
+    lda.w #$FFE2
+    sta.w !obj_vel_x,y
+    lda.w #$000A
+    sta.w !obj_vel_y,y
+    lda.w #$003C
+    sta.w !obj_vel_z,y
+    sep.b #$20
+.lDE83:
+    rep.b #$20
+    lda.w #$A1E4
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lDE97
+    jml.l .lDEC6                    ; not reached in the traces so far
+.lDE97:
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_06,y
+    sep.b #$20
+    pla
+    rep.b #$20
+    lda.w #$E048
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    rep.b #$20
+    lda.w #$001E
+    sta.w !obj_vel_x,y
+    lda.w #$000A
+    sta.w !obj_vel_y,y
+    lda.w #$003C
+    sta.w !obj_vel_z,y
+    sep.b #$20
+.lDEC6:
+    rep.b #$20
+    lda.w #$A1E4
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lDEDA
+    jml.l .lDF09                    ; not reached in the traces so far
+.lDEDA:
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_06,y
+    sep.b #$20
+    pla
+    rep.b #$20
+    lda.w #$E048
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    rep.b #$20
+    lda.w #$FFE2
+    sta.w !obj_vel_x,y
+    lda.w #$000A
+    sta.w !obj_vel_y,y
+    lda.w #$FFEC
+    sta.w !obj_vel_z,y
+    sep.b #$20
+.lDF09:
+    rep.b #$20
+    lda.w #$A1E4
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lDF1D
+    jml.l ObjectAttachTurned        ; not reached in the traces so far
+.lDF1D:
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_06,y
+    sep.b #$20
+    pla
+    rep.b #$20
+    lda.w #$E048
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    rep.b #$20
+    lda.w #$001E
+    sta.w !obj_vel_x,y
+    lda.w #$000A
+    sta.w !obj_vel_y,y
+    lda.w #$FFEC
+    sta.w !obj_vel_z,y
+    sep.b #$20
+
+; @routine 08:DF4C ObjectAttachTurned
+; WHAT IT DOES: An attachment turned with its parent: hidden ($08:E13C)
+; when the parent is gone or loose; its heading +$15 = the parent's +$15 +
+; the high byte of the parent's record +$3A, +$14 and +$16 the parent's;
+; its position the parent's plus its velocity bytes turned by the
+; parent's angles, times 8; rebucketed; +$36 = 3.
+; HOW: RotateXY, RotateXZFrom08 and RotateXZ on the offset in direct page.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte 3.
+%at($08DF4C)
+ObjectAttachTurned:
+    ldy.w !obj_06,x
+    lda.w !obj_24,y
+    and.b #$08
+    beq .lDF5A
+    jml.l ObjectAttachHide          ; not reached in the traces so far
+.lDF5A:
+    lda.w !obj_25,y
+    and.b #$04
+    beq .lDF65
+    jml.l ObjectAttachHide          ; not reached in the traces so far
+.lDF65:
+    phx
+    phy
+    rep.b #$20
+    tyx
+    lda.w !obj_22,x
+    tax
+    lda.l !gsu_in_3a,x
+    xba
+    sep.b #$20
+    ply
+    plx
+    clc
+    adc.w !obj_15,y
+    sta.w !obj_15,x
+    lda.w !obj_14,y
+    sta.w !obj_14,x
+    lda.w !obj_16,y
+    sta.w !obj_16,x
+    lda.w !obj_vel_x,x
+    sta.w !wram_1F58
+    lda.w !obj_vel_y,x
+    sta.w !wram_1F59
+    lda.w !obj_vel_z,x
+    sta.w !wram_1F5A
+    lda.w !wram_1F58
+    sta.b !dp_02
+    sta.b !dp_04
+    bit.b #$80
+    beq .lDFAD
+    lda.b #$FF                      ; not reached in the traces so far
+    sta.b !dp_05
+    bra .lDFAF
+.lDFAD:
+    stz.b !dp_05
+.lDFAF:
+    lda.w !wram_1F59
+    sta.b !dp_08
+    sta.b !actor_0a
+    bit.b #$80
+    beq .lDFC0
+    lda.b #$FF                      ; not reached in the traces so far
+    sta.b !dp_0b
+    bra .lDFC2
+.lDFC0:
+    stz.b !dp_0b
+.lDFC2:
+    lda.w !wram_1F5A
+    sta.b !dp_94
+    sta.w !rot_z
+    bit.b #$80
+    beq .lDFD5
+    lda.b #$FF                      ; not reached in the traces so far
+    sta.w !rot_z_high
+    bra .lDFD8
+.lDFD5:
+    stz.w !rot_z_high
+.lDFD8:
+    lda.w !obj_16,y
+    jsl.l RotateXY
+    lda.b !dp_04
+    sta.b !dp_02
+    lda.b !actor_0a
+    sta.b !dp_08
+    lda.w !rot_z
+    sta.b !dp_94
+    lda.w !obj_14,y
+    jsl.l RotateXZFrom08
+    lda.b !dp_04
+    sta.b !dp_02
+    lda.b !actor_0a
+    sta.b !dp_08
+    lda.w !rot_z
+    sta.b !dp_94
+    lda.w !obj_15,y
+    jsl.l RotateXZ
+    rep.b #$20
+    lda.b !dp_04
+    asl a
+    asl a
+    asl a
+    sta.b !dp_04
+    lda.b !actor_0a
+    asl a
+    asl a
+    asl a
+    sta.b !actor_0a
+    lda.w !rot_z
+    asl a
+    asl a
+    asl a
+    sta.w !rot_z
+    lda.w !obj_pos_x,y
+    clc
+    adc.b !dp_04
+    sta.w !obj_pos_x,x
+    lda.w !obj_pos_z,y
+    clc
+    adc.w !rot_z
+    sta.w !obj_pos_z,x
+    lda.w !obj_pos_y,y
+    clc
+    adc.b !actor_0a
+    sta.w !obj_pos_y,x
+    sep.b #$20
+    jsl.l ObjectRebucket
+    lda.b #$03
+    sta.w !obj_36,x
+    rtl
+
+; @routine 08:E048 ObjectSparkStart
+; WHAT IT DOES: A spark's first frame: +$24 bit 3, +$3A = 0, +$5F = $6E,
+; handler $08:E073 (ObjectSparkStep), +$29 = $9BBF; then its first step.
+; HOW: Falls into ObjectSparkStep.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectSparkStep.
+%at($08E048)
+ObjectSparkStart:
+    lda.w !obj_24,x
+    ora.b #$08
+    sta.w !obj_24,x
+    lda.b #$00
+    sta.w !obj_3a,x
+    lda.b #$6E
+    sta.w !obj_5f,x
+    rep.b #$20
+    lda.w #$E073
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+    rep.b #$20
+    lda.w #$9BBF
+    sta.w !obj_29,x
+    sep.b #$20
+
+; @routine 08:E073 ObjectSparkStep
+; WHAT IT DOES: A spark's frame: its position its parent's plus its
+; velocity bytes turned by the parent's angles, times 8; the parent's
+; +$14-$16 copied (ObjectCopy14From); tilted toward the camera
+; (ObjectBillboardTilt); rebucketed; +$36 = 3.
+; HOW: As ObjectAttachTurned without the heading's add.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte 3.
+%at($08E073)
+ObjectSparkStep:
+    ldy.w !obj_06,x
+    lda.w !obj_vel_x,x
+    sta.w !wram_1F58
+    lda.w !obj_vel_y,x
+    sta.w !wram_1F59
+    lda.w !obj_vel_z,x
+    sta.w !wram_1F5A
+    lda.w !wram_1F58
+    sta.b !dp_02
+    sta.b !dp_04
+    bit.b #$80
+    beq .lE099
+    lda.b #$FF
+    sta.b !dp_05
+    bra .lE09B
+.lE099:
+    stz.b !dp_05
+.lE09B:
+    lda.w !wram_1F59
+    sta.b !dp_08
+    sta.b !actor_0a
+    bit.b #$80
+    beq .lE0AC
+    lda.b #$FF                      ; not reached in the traces so far
+    sta.b !dp_0b
+    bra .lE0AE
+.lE0AC:
+    stz.b !dp_0b
+.lE0AE:
+    lda.w !wram_1F5A
+    sta.b !dp_94
+    sta.w !rot_z
+    bit.b #$80
+    beq .lE0C1
+    lda.b #$FF
+    sta.w !rot_z_high
+    bra .lE0C4
+.lE0C1:
+    stz.w !rot_z_high
+.lE0C4:
+    lda.w !obj_16,y
+    jsl.l RotateXY
+    lda.b !dp_04
+    sta.b !dp_02
+    lda.b !actor_0a
+    sta.b !dp_08
+    lda.w !rot_z
+    sta.b !dp_94
+    lda.w !obj_14,y
+    jsl.l RotateXZFrom08
+    lda.b !dp_04
+    sta.b !dp_02
+    lda.b !actor_0a
+    sta.b !dp_08
+    lda.w !rot_z
+    sta.b !dp_94
+    lda.w !obj_15,y
+    jsl.l RotateXZ
+    rep.b #$20
+    lda.b !dp_04
+    asl a
+    asl a
+    asl a
+    sta.b !dp_04
+    lda.b !actor_0a
+    asl a
+    asl a
+    asl a
+    sta.b !actor_0a
+    lda.w !rot_z
+    asl a
+    asl a
+    asl a
+    sta.w !rot_z
+    lda.w !obj_pos_x,y
+    clc
+    adc.b !dp_04
+    sta.w !obj_pos_x,x
+    lda.w !obj_pos_z,y
+    clc
+    adc.w !rot_z
+    sta.w !obj_pos_z,x
+    lda.w !obj_pos_y,y
+    clc
+    adc.b !actor_0a
+    sta.w !obj_pos_y,x
+    sep.b #$20
+    jsl.l ObjectCopy14From
+    txy
+    jsr.w ObjectBillboardTilt
+    jsl.l ObjectRebucket
+    lda.b #$03
+    sta.w !obj_36,x
+    rtl
+ObjectAttachHide:
+    lda.w !obj_24,x
+    ora.b #$20
+    sta.w !obj_24,x
+    lda.b #$03
+    sta.w !obj_36,x
+    rtl
+ObjectAttachBit6:
+    lda.w !obj_24,x
+    ora.b #$40
+    sta.w !obj_24,x
+    lda.b #$03
+    sta.w !obj_36,x
+    rtl
+
+; @routine 08:E158 ObjectCarAttachedStart
+; WHAT IT DOES: A car carried on its parent (+$06): at the parent's
+; position, $640 back and $1E0 up, a car record of its own
+; (ObjectCarRecordNew with A = 0) marked carried (+$1C bit 3), each
+; record's +$8E naming the other's record; handler $08:E1C7
+; (ObjectCarAttachedStep), run at once.
+; HOW: The records through X with the objects swapped in X and Y. Not
+; reached in the traces so far.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectCarAttachedStep.
+%at($08E158)
+ObjectCarAttachedStart:
+    ldy.w !obj_06,x                 ; not reached in the traces so far
+    jsl.l ObjectCopyPositionFrom
+    rep.b #$20
+    lda.w !obj_pos_z,x
+    sec
+    sbc.w #$0640
+    sta.w !obj_pos_z,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_y,x
+    clc
+    adc.w #$FE20
+    sta.w !obj_pos_y,x
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0000
+    jsl.l ObjectCarRecordNew
+    sep.b #$20
+    ldy.w !obj_06,x
+    rep.b #$20
+    phx
+    lda.w !obj_22,x
+    tax
+    lda.w !obj_22,y
+    sta.l !gsu_rec_8a+4,x
+    lda.l !gsu_rec_1c,x
+    ora.w #$0008
+    sta.l !gsu_rec_1c,x
+    plx
+    phx
+    tyx
+    ply
+    phx
+    lda.w !obj_22,x
+    tax
+    lda.w !obj_22,y
+    sta.l !gsu_rec_8a+4,x
+    plx
+    phx
+    tyx
+    ply
+    sep.b #$20
+    rep.b #$20
+    lda.w #$E1C7
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+
+; @routine 08:E1C7 ObjectCarAttachedStep
+; WHAT IT DOES: A car carried on another: rebucketed, posed from its
+; record (ObjectPoseFromRecord) and its record marked (GsuRecordFlag4, the
+; code at $08:CD7E).
+; HOW: Three calls. Not reached in the traces so far.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as GsuRecordFlag4.
+%at($08E1C7)
+ObjectCarAttachedStep:
+    jsl.l ObjectRebucket            ; not reached in the traces so far
+    jsl.l ObjectPoseFromRecord
+    jmp.w ObjectCarCD7E
+
+; @routine 08:E1D2 ObjectExhaustStart
+; WHAT IT DOES: An exhaust flame's first frame: released when its
+; parent's record has +$70 bit 3, or $70:26F2 lacks bit 8, or in HUD
+; modes 1-3; otherwise handler $08:E244 (ObjectExhaustStep), +$4A = the
+; parent's record +$58, +$49 = 0, its Y velocity's low byte
+; sign-extended and doubled, start count +$4B = $0A, state +$39 = 1; then
+; its first step.
+; HOW: Falls into ObjectExhaustStep; the release is ObjectRelease.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectExhaustStep or
+; ObjectRelease.
+%at($08E1D2)
+ObjectExhaustStart:
+    phx
+    rep.b #$20
+    lda.w !obj_06,x
+    tax
+    lda.w !obj_22,x
+    tax
+    lda.l !gsu_rec_70,x
+    plx
+    and.w #$0008
+    bne .lE201
+    lda.l !gsu_control_26f2
+    and.w #$0100
+    beq .lE201
+    sep.b #$20
+    lda.w !hud_mode
+    cmp.b #$01
+    beq .lE201
+    cmp.b #$02
+    beq .lE201
+    cmp.b #$03
+    bne .lE208
+.lE201:
+    sep.b #$20
+    jsl.l ObjectRelease
+    rtl
+.lE208:
+    rep.b #$20
+    lda.w #$E244
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+    jsr.w GsuRecordWord58
+    sta.w !obj_4a,x
+    lda.b #$00
+    sta.w !obj_49,x
+    rep.b #$20
+    lda.w !obj_vel_y,x
+    bit.w #$0080
+    beq .lE231
+    ora.w #$FF00
+    bra .lE234
+.lE231:
+    and.w #$00FF                    ; not reached in the traces so far
+.lE234:
+    asl a
+    sta.w !obj_vel_y,x
+    sep.b #$20
+    lda.b #$0A
+    sta.w !obj_4b,x
+    lda.b #$01
+    sta.w !obj_36+3,x
+
+; @routine 08:E244 ObjectExhaustStep
+; WHAT IT DOES: An exhaust flame's frame by its state +$39: after its
+; start count +$4B, +$48 = the parent's record +$88 - 1; hidden (+$24 bit
+; 5) while the parent is gone or loose (+$25 bits 3, 4) or its record has
+; +$40 bit 8 (ObjectParentRecordBit8). State 1: a changed +$88 starts
+; state 2 for 8 frames; a drop in the parent's record +$58 of 2 to 9 since
+; the last ($1F2B, +$4A) starts state 3 for 8 frames with sound $3B.
+; State 2 shows frame +$88 - 1, state 3 frame 4 (+$18 with bit 7). While
+; +$49 counts down, every fourth frame it is at the parent's position,
+; moved by its velocity, +$24 bit 7 set when the parent's link chain's
+; end has bit 14 (there it is rebucketed at the link's +$08, +$0A, +$0C
+; offset from (0, -$64, $1F4)), else rebucketed; back to state 1 at 0.
+; +$36 = 3.
+; HOW: GsuRecordWord88 and GsuRecordWord58 read the parent's record; 8-bit
+; with 16-bit position adds.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte 3.
+%at($08E244)
+ObjectExhaustStep:
+    lda.w !obj_4b,x
+    bne .lE24D
+    jml.l .lE256
+.lE24D:
+    dec.w !obj_4b,x
+    jsr.w GsuRecordWord88
+    sta.w !obj_48,x
+.lE256:
+    ldy.w !obj_06,x
+    lda.w !obj_25,y
+    and.b #$08
+    beq .lE264
+    jml.l .lE3E0
+.lE264:
+    lda.w !obj_25,y
+    and.b #$10
+    beq .lE26F
+    jml.l .lE3E0                    ; not reached in the traces so far
+.lE26F:
+    jsr.w ObjectParentRecordBit8
+    bcc .lE277
+    brl .lE3E0
+.lE277:
+    lda.w !obj_36+3,x
+    cmp.b #$01
+    beq .lE282
+    jml.l .lE2CD
+.lE282:
+    jsr.w GsuRecordWord88
+    cmp.w !obj_48,x
+    beq .lE29E
+    bpl .lE291
+    sta.w !obj_48,x
+    bra .lE294
+.lE291:
+    sta.w !obj_48,x
+.lE294:
+    lda.b #$02
+    sta.w !obj_36+3,x
+    lda.b #$08
+    sta.w !obj_49,x
+.lE29E:
+    jsr.w GsuRecordWord58
+    sta.w !wram_1F2B
+    bcs .lE2C7
+    sec
+    sbc.w !obj_4a,x
+    bpl .lE2C7
+    eor.b #$FF
+    inc a
+    cmp.b #$02
+    bmi .lE2CD
+    cmp.b #$0A
+    bpl .lE2C7
+    lda.b #$03
+    sta.w !obj_36+3,x
+    lda.b #$08
+    sta.w !obj_49,x
+    lda.b #$3B
+    jsl.l SoundPort0QueuePush
+.lE2C7:
+    lda.w !wram_1F2B
+    sta.w !obj_4a,x
+.lE2CD:
+    lda.w !obj_36+3,x
+    cmp.b #$02
+    beq .lE2D8
+    jml.l .lE2E6
+.lE2D8:
+    jsr.w GsuRecordWord88
+    sta.w !wram_1F58
+    lda.w !wram_1F58
+    ora.b #$80
+    sta.w !obj_18,x
+.lE2E6:
+    lda.w !obj_36+3,x
+    cmp.b #$03
+    beq .lE2F1
+    jml.l .lE2FE
+.lE2F1:
+    lda.b #$04
+    ora.b #$80
+    sta.w !obj_18,x
+    jsr.w GsuRecordWord58
+    sta.w !obj_4a,x
+.lE2FE:
+    lda.w !obj_49,x
+    bne .lE306
+    brl .lE3E0
+.lE306:
+    dec a
+    beq .lE315
+    sta.w !obj_49,x
+    and.b #$03
+    bne .lE313
+    brl .lE3E0
+.lE313:
+    bra .lE320
+.lE315:
+    sta.w !obj_49,x
+    lda.b #$01
+    sta.w !obj_36+3,x
+    jmp.w .lE3E0
+.lE320:
+    lda.w !obj_24,x
+    and.b #$DF
+    sta.w !obj_24,x
+    ldy.w !obj_06,x
+    jsl.l ObjectCopyPositionFrom
+    jsl.l ObjectApplyVelocity
+    lda.w !obj_24,x
+    and.b #$7F
+    sta.w !obj_24,x
+    rep.b #$20
+    lda.w !obj_link_w,y
+    tay
+    lda.w !obj_link_w,y
+    tay
+    lda.w !dp_08,y
+    sta.w !wram_1F4C
+    lda.w !actor_0a,y
+    sta.w !wram_1F4E
+    lda.w !actor_0c,y
+    sta.w !wram_1F50
+    lda.w !bank0_base,y
+    and.w #$4000
+    bne .lE362
+    brl .lE3D8
+.lE362:
+    lda.w #$0000
+    sta.w !obj_pos_x,x
+    lda.w #$FF9C
+    sta.w !obj_pos_y,x
+    lda.w #$01F4
+    sta.w !obj_pos_z,x
+    sep.b #$20
+    lda.w !obj_24,x
+    ora.b #$80
+    sta.w !obj_24,x
+    rep.b #$20
+    lda.w !obj_pos_x,x
+    clc
+    adc.w !wram_1F4C
+    sta.w !obj_pos_x,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_y,x
+    clc
+    adc.w !wram_1F4E
+    sta.w !obj_pos_y,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_z,x
+    clc
+    adc.w !wram_1F50
+    sta.w !obj_pos_z,x
+    sep.b #$20
+    jsl.l ObjectRebucket
+    rep.b #$20
+    lda.w !obj_pos_x,x
+    sec
+    sbc.w !wram_1F4C
+    sta.w !obj_pos_x,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_y,x
+    sec
+    sbc.w !wram_1F4E
+    sta.w !obj_pos_y,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_z,x
+    sec
+    sbc.w !wram_1F50
+    sta.w !obj_pos_z,x
+    sep.b #$20
+    bra .lE3E8
+.lE3D8:
+    sep.b #$20
+    jsl.l ObjectRebucket
+    bra .lE3E8
+.lE3E0:
+    lda.w !obj_24,x
+    ora.b #$20
+    sta.w !obj_24,x
+.lE3E8:
+    lda.b #$03
+    sta.w !obj_36,x
+    rtl
+
+; @routine 08:E426 ObjectParentRecordBit8
+; WHAT IT DOES: Whether object X's parent's (+$06) record has +$40 bit 8,
+; in C.
+; HOW: 16-bit through the parent's +$22; X kept.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; Y = the parent; C
+; as above; X kept, N and Z from it.
+%at($08E426)
+ObjectParentRecordBit8:
+    ldy.w !obj_06,x
+    phx
+    rep.b #$20
+    lda.w !obj_22,y
+    tax
+    lda.l !gsu_rec_40,x
+    and.w #$0100
+    bne .lE43E
+    sep.b #$20
+    plx
+    clc
+    rts
+.lE43E:
+    sep.b #$20
+    plx
+    sec
+    rts

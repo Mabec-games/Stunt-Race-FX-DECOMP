@@ -1595,3 +1595,748 @@ void abi_ObjectPieceSpray(void)
     abi_ObjectAdvance5DIfFlag();
     abi_ObjectPieceFall();
 }
+
+void abi_RotateXY(void);
+void abi_ObjectCopy14From(void);
+void abi_ObjectBillboardTilt(void);
+void abi_ObjectCopyPositionFrom(void);
+void abi_ObjectCarRecordNew(void);
+void abi_GsuRecordWord58(void);
+void abi_GsuRecordWord88(void);
+void abi_SoundPort0QueuePush(void);
+
+/* LDA.L word,X (16-bit) with its low byte sign-extended (BIT #$80, ORA
+   #$FF00 or AND #$00FF). */
+static uint16_t sext_word(uint32_t at)
+{
+    uint16_t w = rd16(at);
+
+    w = (w & 0x0080) ? (uint16_t)(w | 0xFF00) : (uint16_t)(w & 0x00FF);
+    cpu.a = w;
+    cpu.p = nz16(cpu.p, w);
+    return w;
+}
+
+/* $08:E13C: +$24 bit 5 (hidden), +$36 = 3. */
+static void attach_hide(void)
+{
+    uint32_t b = db();
+
+    lda8((uint8_t)(rd8(b | (uint16_t)(0x2024 + cpu.x)) | 0x20));
+    wr8(b | (uint16_t)(0x2024 + cpu.x), (uint8_t)cpu.a);
+    lda8(0x03);
+    wr8(b | (uint16_t)(0x2036 + cpu.x), 0x03);
+}
+
+/* $08:E14A: +$24 bit 6, +$36 = 3. */
+static void attach_bit6(void)
+{
+    uint32_t b = db();
+
+    lda8((uint8_t)(rd8(b | (uint16_t)(0x2024 + cpu.x)) | 0x40));
+    wr8(b | (uint16_t)(0x2024 + cpu.x), (uint8_t)cpu.a);
+    lda8(0x03);
+    wr8(b | (uint16_t)(0x2036 + cpu.x), 0x03);
+}
+
+/* LDY +$06,X; whether the parent is gone or loose (its +$24 bit 3 or +$25
+   bit 2): then the object hides ($08:E13C). */
+static int attach_parent_gone(void)
+{
+    uint32_t b = db();
+
+    cpu.y = rd16(b | (uint16_t)(0x2006 + cpu.x));
+    cpu.p = nz16(cpu.p, cpu.y);
+    lda8((uint8_t)(rd8(b | (uint16_t)(0x2024 + cpu.y)) & 0x08));
+    if ((uint8_t)cpu.a) {
+        attach_hide();
+        return 1;
+    }
+    lda8((uint8_t)(rd8(b | (uint16_t)(0x2025 + cpu.y)) & 0x04));
+    if ((uint8_t)cpu.a) {
+        attach_hide();
+        return 1;
+    }
+    return 0;
+}
+
+/* The offset in object X's velocity bytes (+$2E, +$30, +$32, via $1F58-
+   $1F5A) as signed direct page words $04, $0A and $05F2, turned by parent
+   Y's +$16 (RotateXY), +$14 (RotateXZFrom08) and +$15 (RotateXZ), shifted
+   left `sh` times and added to the parent's position into object X's. */
+static void offset_on_parent(int sh)
+{
+    uint32_t b = db();
+    uint8_t v;
+    int i;
+
+    op_lda8(b | (uint16_t)(0x202E + cpu.x));
+    wr8(b | 0x1F58, (uint8_t)cpu.a);
+    op_lda8(b | (uint16_t)(0x2030 + cpu.x));
+    wr8(b | 0x1F59, (uint8_t)cpu.a);
+    op_lda8(b | (uint16_t)(0x2032 + cpu.x));
+    wr8(b | 0x1F5A, (uint8_t)cpu.a);
+    op_lda8(b | 0x1F58);
+    v = (uint8_t)cpu.a;
+    wr8(0x000002, v);
+    wr8(0x000004, v);
+    if (v & 0x80) {
+        lda8(0xFF);
+        wr8(0x000005, 0xFF);
+    } else {
+        wr8(0x000005, 0x00);
+    }
+    op_lda8(b | 0x1F59);
+    v = (uint8_t)cpu.a;
+    wr8(0x000008, v);
+    wr8(0x00000A, v);
+    if (v & 0x80) {
+        lda8(0xFF);
+        wr8(0x00000B, 0xFF);
+    } else {
+        wr8(0x00000B, 0x00);
+    }
+    op_lda8(b | 0x1F5A);
+    v = (uint8_t)cpu.a;
+    wr8(0x000094, v);
+    wr8(b | 0x05F2, v);
+    if (v & 0x80) {
+        lda8(0xFF);
+        wr8(b | 0x05F3, 0xFF);
+    } else {
+        wr8(b | 0x05F3, 0x00);
+    }
+    op_lda8(b | (uint16_t)(0x2016 + cpu.y));
+    abi_RotateXY();
+    op_lda8(0x000004);
+    wr8(0x000002, (uint8_t)cpu.a);
+    op_lda8(0x00000A);
+    wr8(0x000008, (uint8_t)cpu.a);
+    op_lda8(b | 0x05F2);
+    wr8(0x000094, (uint8_t)cpu.a);
+    op_lda8(b | (uint16_t)(0x2014 + cpu.y));
+    abi_RotateXZFrom08();
+    op_lda8(0x000004);
+    wr8(0x000002, (uint8_t)cpu.a);
+    op_lda8(0x00000A);
+    wr8(0x000008, (uint8_t)cpu.a);
+    op_lda8(b | 0x05F2);
+    wr8(0x000094, (uint8_t)cpu.a);
+    op_lda8(b | (uint16_t)(0x2015 + cpu.y));
+    abi_RotateXZ();
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(0x000004);
+    for (i = 0; i < sh; i++)
+        op_asl16();
+    wr16(0x000004, cpu.a);
+    op_lda16(0x00000A);
+    for (i = 0; i < sh; i++)
+        op_asl16();
+    wr16(0x00000A, cpu.a);
+    op_lda16(b | 0x05F2);
+    for (i = 0; i < sh; i++)
+        op_asl16();
+    wr16(b | 0x05F2, cpu.a);
+    op_lda16(b | (uint16_t)(0x200C + cpu.y));
+    op_add16(rd16(0x000004));
+    wr16(b | (uint16_t)(0x200C + cpu.x), cpu.a);
+    op_lda16(b | (uint16_t)(0x2010 + cpu.y));
+    op_add16(rd16(b | 0x05F2));
+    wr16(b | (uint16_t)(0x2010 + cpu.x), cpu.a);
+    op_lda16(b | (uint16_t)(0x200E + cpu.y));
+    op_add16(rd16(0x00000A));
+    wr16(b | (uint16_t)(0x200E + cpu.x), cpu.a);
+    cpu.p |= P_M;
+}
+
+/*
+ * @routine 08:DCB4 ObjectAttachSpawn
+ * WHAT IT DOES: Gives object X the attachments listed for the course
+ * script's entry ($70:2392 indexes the list at $09:8090: a count, then five
+ * bytes each): for each, a new object (kind $A040) with object X as its
+ * +$06, its +$04, look, handler and bank from the five words at $09:8000 +
+ * the entry's first word (+$04, $1F50, $1F52, +$1A, +$1C); with a look
+ * ($1F50 nonzero) +$24 bit 3, +$3A = 0, +$5F = $1F52, +$5D = $1F50; and
+ * the entry's three signed bytes as its velocity (+$2E, +$30, +$32).
+ * HOW: The list index in X, the count on the stack; $1F4C keeps object X;
+ * a failed spawn skips its entry.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; X = the object; Y
+ * the last attachment (or as ObjectSpawn left it).
+ */
+void abi_ObjectAttachSpawn(void)
+{
+    uint32_t b = db();
+    uint16_t t, i;
+    uint8_t n;
+
+    wr16(b | 0x1F4C, cpu.x);
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(0x702392);
+    op_tax16();
+    cpu.p |= P_M;
+    op_lda8(0x098090 + cpu.x);
+    n = (uint8_t)cpu.a;
+    if (n) {
+        cpu.x++;
+        do {
+            if (spawn(0xA040)) {
+                i = cpu.x;
+                cpu.p &= (uint8_t)~P_M;
+                op_lda16(b | 0x1F4C);
+                wr16(b | (uint16_t)(0x2006 + cpu.y), cpu.a);
+                t = rd16(0x098090 + i);
+                wr16(b | (uint16_t)(0x2004 + cpu.y), rd16(0x098000 + t));
+                wr16(b | 0x1F50, rd16(0x098002 + t));
+                wr16(b | 0x1F52, rd16(0x098004 + t));
+                wr16(b | (uint16_t)(0x201A + cpu.y), rd16(0x098006 + t));
+                cpu.p |= P_M;
+                op_lda8(0x098008 + t);
+                wr8(b | (uint16_t)(0x201C + cpu.y), (uint8_t)cpu.a);
+                cpu.x = i;
+                op_lda8(b | 0x1F50);
+                cpu.a |= rd8(b | 0x1F51);
+                cpu.p = nz8(cpu.p, (uint8_t)cpu.a);
+                if ((uint8_t)cpu.a) {
+                    lda8((uint8_t)(rd8(b | (uint16_t)(0x2024 + cpu.y)) | 0x08));
+                    wr8(b | (uint16_t)(0x2024 + cpu.y), (uint8_t)cpu.a);
+                    lda8(0x00);
+                    wr8(b | (uint16_t)(0x203A + cpu.y), 0x00);
+                    op_lda8(b | 0x1F52);
+                    wr8(b | (uint16_t)(0x205F + cpu.y), (uint8_t)cpu.a);
+                    cpu.p &= (uint8_t)~P_M;
+                    op_lda16(b | 0x1F50);
+                    wr16(b | (uint16_t)(0x205D + cpu.y), cpu.a);
+                    cpu.p |= P_M;
+                }
+                cpu.p &= (uint8_t)~P_M;
+                wr16(b | (uint16_t)(0x202E + cpu.y), sext_word(0x098092 + cpu.x));
+                wr16(b | (uint16_t)(0x2030 + cpu.y), sext_word(0x098093 + cpu.x));
+                wr16(b | (uint16_t)(0x2032 + cpu.y), sext_word(0x098094 + cpu.x));
+                cpu.p |= P_M;
+            }
+            cpu.x = (uint16_t)(cpu.x + 5);
+            n--;
+        } while (n);
+    }
+    cpu.x = rd16(b | 0x1F4C);
+    cpu.p = nz16(cpu.p, cpu.x);
+}
+
+/*
+ * @routine 08:DDB4 ObjectAttachFollow
+ * WHAT IT DOES: An attachment's frame: hidden ($08:E13C) when its parent
+ * is gone or loose, or when the parent's record has +$1C bit 4; otherwise
+ * placed at the parent's record position (+$1E, +$60, +$22) with its
+ * heading (+$27 to +$14, +$25 to +$15), moved by its velocity
+ * (ObjectApplyVelocity), rebucketed, +$24 bits 5 and 6 cleared, and bit 6
+ * set again ($08:E14A) when the parent's +$24 has it.
+ * HOW: Y = the attachment and X = the parent's record while copying.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; as the path leaves
+ * it.
+ */
+void abi_ObjectAttachFollow(void)
+{
+    uint32_t b = db();
+    uint16_t obj = cpu.x;
+
+    if (attach_parent_gone())
+        return;
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(b | (uint16_t)(0x2022 + cpu.y));
+    cpu.y = obj;
+    op_tax16();
+    op_lda16(0x70001C + cpu.x);
+    op_and16(0x0010);
+    if (cpu.a) {
+        cpu.p |= P_M;
+        cpu.x = obj;
+        cpu.p = nz16(cpu.p, obj);
+        attach_hide();
+        return;
+    }
+    op_lda16(0x70001E + cpu.x);
+    wr16(b | (uint16_t)(0x200C + cpu.y), cpu.a);
+    op_lda16(0x700022 + cpu.x);
+    wr16(b | (uint16_t)(0x2010 + cpu.y), cpu.a);
+    op_lda16(0x700060 + cpu.x);
+    wr16(b | (uint16_t)(0x200E + cpu.y), cpu.a);
+    cpu.p |= P_M;
+    op_lda8(0x700027 + cpu.x);
+    wr8(b | (uint16_t)(0x2014 + cpu.y), (uint8_t)cpu.a);
+    op_lda8(0x700025 + cpu.x);
+    wr8(b | (uint16_t)(0x2015 + cpu.y), (uint8_t)cpu.a);
+    cpu.x = obj;
+    cpu.p = nz16(cpu.p, obj);
+    abi_ObjectApplyVelocity();
+    abi_ObjectRebucket();
+    lda8((uint8_t)(rd8(b | (uint16_t)(0x2024 + cpu.x)) & 0xDF));
+    wr8(b | (uint16_t)(0x2024 + cpu.x), (uint8_t)cpu.a);
+    lda8((uint8_t)(rd8(b | (uint16_t)(0x2024 + cpu.x)) & 0xBF));
+    wr8(b | (uint16_t)(0x2024 + cpu.x), (uint8_t)cpu.a);
+    cpu.y = rd16(b | (uint16_t)(0x2006 + cpu.x));
+    cpu.p = nz16(cpu.p, cpu.y);
+    lda8((uint8_t)(rd8(b | (uint16_t)(0x2024 + cpu.y)) & 0x40));
+    if ((uint8_t)cpu.a)
+        attach_bit6();
+}
+
+/*
+ * @routine 08:DD8D ObjectAttachStart
+ * WHAT IT DOES: An attachment's first frame: handler $08:DDB4
+ * (ObjectAttachFollow), its Y velocity's low byte sign-extended and
+ * doubled; then its first frame.
+ * HOW: Falls into ObjectAttachFollow.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectAttachFollow.
+ */
+void abi_ObjectAttachStart(void)
+{
+    uint32_t b = db();
+
+    set_handler(cpu.x, 0xDDB4);
+    cpu.p &= (uint8_t)~P_M;
+    sext_word(b | (uint16_t)(0x2030 + cpu.x));
+    op_asl16();
+    wr16(b | (uint16_t)(0x2030 + cpu.x), cpu.a);
+    cpu.p |= P_M;
+    abi_ObjectAttachFollow();
+}
+
+/*
+ * @routine 08:DF4C ObjectAttachTurned
+ * WHAT IT DOES: An attachment turned with its parent: hidden ($08:E13C)
+ * when the parent is gone or loose; its heading +$15 = the parent's +$15 +
+ * the high byte of the parent's record +$3A, +$14 and +$16 the parent's;
+ * its position the parent's plus its velocity bytes turned by the
+ * parent's angles, times 8; rebucketed; +$36 = 3.
+ * HOW: RotateXY, RotateXZFrom08 and RotateXZ on the offset in direct page.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte 3.
+ */
+void abi_ObjectAttachTurned(void)
+{
+    uint32_t b = db();
+    uint16_t x, y;
+    uint8_t p;
+
+    if (attach_parent_gone())
+        return;
+    x = cpu.x;
+    y = cpu.y;
+    cpu.p &= (uint8_t)~P_M;
+    cpu.x = rd16(b | (uint16_t)(0x2022 + y));
+    op_lda16(0x70003A + cpu.x);
+    op_xba();
+    cpu.p |= P_M;
+    cpu.y = y;
+    cpu.x = x;
+    cpu.p = nz16(cpu.p, x);
+    p = (uint8_t)(cpu.p & ~P_C);
+    lda8(op_adc8((uint8_t)cpu.a, rd8(b | (uint16_t)(0x2015 + cpu.y)), &p));
+    cpu.p = (uint8_t)((cpu.p & ~(P_C | P_V)) | (p & (P_C | P_V)));
+    wr8(b | (uint16_t)(0x2015 + cpu.x), (uint8_t)cpu.a);
+    op_lda8(b | (uint16_t)(0x2014 + cpu.y));
+    wr8(b | (uint16_t)(0x2014 + cpu.x), (uint8_t)cpu.a);
+    op_lda8(b | (uint16_t)(0x2016 + cpu.y));
+    wr8(b | (uint16_t)(0x2016 + cpu.x), (uint8_t)cpu.a);
+    offset_on_parent(3);
+    abi_ObjectRebucket();
+    lda8(0x03);
+    wr8(b | (uint16_t)(0x2036 + cpu.x), 0x03);
+}
+
+/* PHA, REP #$20, TXA, STA +$06,Y, SEP #$20, PLA: object X as the new
+   object's parent. */
+static void set_child_of_x(void)
+{
+    wr16(db() | (uint16_t)(0x2006 + cpu.y), cpu.x);
+}
+
+/* One spark (kind $A1E4, handler $08:E048, parent X) with velocity
+   (vx, $0A, vz); none when the spawn fails. */
+static void spark(uint16_t vx, uint16_t vz)
+{
+    uint32_t b = db();
+
+    if (!spawn(0xA1E4))
+        return;
+    set_child_of_x();
+    set_handler(cpu.y, 0xE048);
+    sta16_imm(b | (uint16_t)(0x202E + cpu.y), vx);
+    sta16_imm(b | (uint16_t)(0x2030 + cpu.y), 0x000A);
+    sta16_imm(b | (uint16_t)(0x2032 + cpu.y), vz);
+}
+
+/*
+ * @routine 08:DE31 ObjectSparksStart
+ * WHAT IT DOES: Gives object X four sparks (kind $A1E4, handler $08:E048
+ * ObjectSparkStart) at offsets (-$1E or $1E, $0A, $3C or -$14), its own
+ * handler $08:DF4C (ObjectAttachTurned); then its first frame.
+ * HOW: Falls into ObjectAttachTurned; a failed spawn skips its spark.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectAttachTurned.
+ */
+void abi_ObjectSparksStart(void)
+{
+    set_handler(cpu.x, 0xDF4C);
+    spark(0xFFE2, 0x003C);
+    spark(0x001E, 0x003C);
+    spark(0xFFE2, 0xFFEC);
+    spark(0x001E, 0xFFEC);
+    abi_ObjectAttachTurned();
+}
+
+/*
+ * @routine 08:E073 ObjectSparkStep
+ * WHAT IT DOES: A spark's frame: its position its parent's plus its
+ * velocity bytes turned by the parent's angles, times 8; the parent's
+ * +$14-$16 copied (ObjectCopy14From); tilted toward the camera
+ * (ObjectBillboardTilt); rebucketed; +$36 = 3.
+ * HOW: As ObjectAttachTurned without the heading's add.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte 3.
+ */
+void abi_ObjectSparkStep(void)
+{
+    uint32_t b = db();
+
+    cpu.y = rd16(b | (uint16_t)(0x2006 + cpu.x));
+    cpu.p = nz16(cpu.p, cpu.y);
+    offset_on_parent(3);
+    abi_ObjectCopy14From();
+    cpu.y = cpu.x;
+    cpu.p = nz16(cpu.p, cpu.y);
+    abi_ObjectBillboardTilt();
+    abi_ObjectRebucket();
+    lda8(0x03);
+    wr8(b | (uint16_t)(0x2036 + cpu.x), 0x03);
+}
+
+/*
+ * @routine 08:E048 ObjectSparkStart
+ * WHAT IT DOES: A spark's first frame: +$24 bit 3, +$3A = 0, +$5F = $6E,
+ * handler $08:E073 (ObjectSparkStep), +$29 = $9BBF; then its first step.
+ * HOW: Falls into ObjectSparkStep.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectSparkStep.
+ */
+void abi_ObjectSparkStart(void)
+{
+    uint32_t b = db();
+
+    lda8((uint8_t)(rd8(b | (uint16_t)(0x2024 + cpu.x)) | 0x08));
+    wr8(b | (uint16_t)(0x2024 + cpu.x), (uint8_t)cpu.a);
+    lda8(0x00);
+    wr8(b | (uint16_t)(0x203A + cpu.x), 0x00);
+    lda8(0x6E);
+    wr8(b | (uint16_t)(0x205F + cpu.x), 0x6E);
+    set_handler(cpu.x, 0xE073);
+    sta16_imm(b | (uint16_t)(0x2029 + cpu.x), 0x9BBF);
+    abi_ObjectSparkStep();
+}
+
+/*
+ * @routine 08:E1C7 ObjectCarAttachedStep
+ * WHAT IT DOES: A car carried on another: rebucketed, posed from its
+ * record (ObjectPoseFromRecord) and its record marked (GsuRecordFlag4, the
+ * code at $08:CD7E).
+ * HOW: Three calls. Not reached in the traces so far.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as GsuRecordFlag4.
+ */
+void abi_ObjectCarAttachedStep(void)
+{
+    abi_ObjectRebucket();
+    abi_ObjectPoseFromRecord();
+    abi_GsuRecordFlag4();
+}
+
+/*
+ * @routine 08:E158 ObjectCarAttachedStart
+ * WHAT IT DOES: A car carried on its parent (+$06): at the parent's
+ * position, $640 back and $1E0 up, a car record of its own
+ * (ObjectCarRecordNew with A = 0) marked carried (+$1C bit 3), each
+ * record's +$8E naming the other's record; handler $08:E1C7
+ * (ObjectCarAttachedStep), run at once.
+ * HOW: The records through X with the objects swapped in X and Y. Not
+ * reached in the traces so far.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectCarAttachedStep.
+ */
+void abi_ObjectCarAttachedStart(void)
+{
+    uint32_t b = db();
+    uint16_t obj = cpu.x, par;
+
+    cpu.y = rd16(b | (uint16_t)(0x2006 + cpu.x));
+    cpu.p = nz16(cpu.p, cpu.y);
+    abi_ObjectCopyPositionFrom();
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(b | (uint16_t)(0x2010 + cpu.x));
+    op_sub16(0x0640);
+    wr16(b | (uint16_t)(0x2010 + cpu.x), cpu.a);
+    op_lda16(b | (uint16_t)(0x200E + cpu.x));
+    op_add16(0xFE20);
+    wr16(b | (uint16_t)(0x200E + cpu.x), cpu.a);
+    op_lda16_imm(0x0000);
+    abi_ObjectCarRecordNew();
+    cpu.p |= P_M;
+    par = rd16(b | (uint16_t)(0x2006 + cpu.x));
+    cpu.y = par;
+    cpu.p &= (uint8_t)~P_M;
+    cpu.x = rd16(b | (uint16_t)(0x2022 + obj));
+    op_lda16(b | (uint16_t)(0x2022 + par));
+    wr16(0x70008E + cpu.x, cpu.a);
+    op_lda16(0x70001C + cpu.x);
+    cpu.a |= 0x0008;
+    cpu.p = nz16(cpu.p, cpu.a);
+    wr16(0x70001C + cpu.x, cpu.a);
+    cpu.x = rd16(b | (uint16_t)(0x2022 + par));
+    op_lda16(b | (uint16_t)(0x2022 + obj));
+    wr16(0x70008E + cpu.x, cpu.a);
+    cpu.x = obj;
+    cpu.y = par;
+    cpu.p = (uint8_t)(nz16(cpu.p, par) | P_M);
+    set_handler(cpu.x, 0xE1C7);
+    abi_ObjectCarAttachedStep();
+}
+
+/*
+ * @routine 08:E426 ObjectParentRecordBit8
+ * WHAT IT DOES: Whether object X's parent's (+$06) record has +$40 bit 8,
+ * in C.
+ * HOW: 16-bit through the parent's +$22; X kept.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; Y = the parent; C
+ * as above; X kept, N and Z from it.
+ */
+void abi_ObjectParentRecordBit8(void)
+{
+    uint32_t b = db();
+    uint16_t x = cpu.x;
+
+    cpu.y = rd16(b | (uint16_t)(0x2006 + cpu.x));
+    cpu.p &= (uint8_t)~P_M;
+    cpu.x = rd16(b | (uint16_t)(0x2022 + cpu.y));
+    op_lda16(0x700040 + cpu.x);
+    op_and16(0x0100);
+    cpu.p |= P_M;
+    cpu.x = x;
+    cpu.p = (uint8_t)((nz16(cpu.p, x) & ~P_C) | (cpu.a ? P_C : 0));
+}
+
+/*
+ * @routine 08:E244 ObjectExhaustStep
+ * WHAT IT DOES: An exhaust flame's frame by its state +$39: after its
+ * start count +$4B, +$48 = the parent's record +$88 - 1; hidden (+$24 bit
+ * 5) while the parent is gone or loose (+$25 bits 3, 4) or its record has
+ * +$40 bit 8 (ObjectParentRecordBit8). State 1: a changed +$88 starts
+ * state 2 for 8 frames; a drop in the parent's record +$58 of 2 to 9 since
+ * the last ($1F2B, +$4A) starts state 3 for 8 frames with sound $3B.
+ * State 2 shows frame +$88 - 1, state 3 frame 4 (+$18 with bit 7). While
+ * +$49 counts down, every fourth frame it is at the parent's position,
+ * moved by its velocity, +$24 bit 7 set when the parent's link chain's
+ * end has bit 14 (there it is rebucketed at the link's +$08, +$0A, +$0C
+ * offset from (0, -$64, $1F4)), else rebucketed; back to state 1 at 0.
+ * +$36 = 3.
+ * HOW: GsuRecordWord88 and GsuRecordWord58 read the parent's record; 8-bit
+ * with 16-bit position adds.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte 3.
+ */
+void abi_ObjectExhaustStep(void)
+{
+    uint32_t b = db();
+    uint8_t v, w, p;
+    uint16_t t;
+
+    op_lda8(b | (uint16_t)(0x204B + cpu.x));
+    if ((uint8_t)cpu.a) {
+        v = (uint8_t)(rd8(b | (uint16_t)(0x204B + cpu.x)) - 1);
+        wr8(b | (uint16_t)(0x204B + cpu.x), v);
+        abi_GsuRecordWord88();
+        wr8(b | (uint16_t)(0x2048 + cpu.x), (uint8_t)cpu.a);
+    }
+    cpu.y = rd16(b | (uint16_t)(0x2006 + cpu.x));
+    cpu.p = nz16(cpu.p, cpu.y);
+    lda8((uint8_t)(rd8(b | (uint16_t)(0x2025 + cpu.y)) & 0x08));
+    if ((uint8_t)cpu.a)
+        goto hide;
+    lda8((uint8_t)(rd8(b | (uint16_t)(0x2025 + cpu.y)) & 0x10));
+    if ((uint8_t)cpu.a)
+        goto hide;
+    abi_ObjectParentRecordBit8();
+    if (cpu.p & P_C)
+        goto hide;
+    op_lda8(b | (uint16_t)(0x2039 + cpu.x));
+    if ((uint8_t)cpu.a == 0x01) {
+        abi_GsuRecordWord88();
+        v = (uint8_t)cpu.a;
+        w = rd8(b | (uint16_t)(0x2048 + cpu.x));
+        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - w)) & ~P_C) | (v >= w ? P_C : 0));
+        if (v != w) {
+            wr8(b | (uint16_t)(0x2048 + cpu.x), v);
+            lda8(0x02);
+            wr8(b | (uint16_t)(0x2039 + cpu.x), 0x02);
+            lda8(0x08);
+            wr8(b | (uint16_t)(0x2049 + cpu.x), 0x08);
+        }
+        abi_GsuRecordWord58();
+        v = (uint8_t)cpu.a;
+        wr8(b | 0x1F2B, v);
+        if (!(cpu.p & P_C)) {
+            p = (uint8_t)(cpu.p | P_C);
+            w = op_sbc8(v, rd8(b | (uint16_t)(0x204A + cpu.x)), &p);
+            cpu.p = p;
+            if (w & 0x80) {
+                w = (uint8_t)((w ^ 0xFF) + 1);
+                cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(w - 0x02)) & ~P_C) | (w >= 0x02 ? P_C : 0));
+                if ((uint8_t)(w - 0x02) & 0x80)
+                    goto state2;
+                cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(w - 0x0A)) & ~P_C) | (w >= 0x0A ? P_C : 0));
+                if ((uint8_t)(w - 0x0A) & 0x80) {
+                    lda8(0x03);
+                    wr8(b | (uint16_t)(0x2039 + cpu.x), 0x03);
+                    lda8(0x08);
+                    wr8(b | (uint16_t)(0x2049 + cpu.x), 0x08);
+                    lda8(0x3B);
+                    abi_SoundPort0QueuePush();
+                }
+            }
+        }
+        op_lda8(b | 0x1F2B);
+        wr8(b | (uint16_t)(0x204A + cpu.x), (uint8_t)cpu.a);
+    }
+state2:
+    op_lda8(b | (uint16_t)(0x2039 + cpu.x));
+    if ((uint8_t)cpu.a == 0x02) {
+        abi_GsuRecordWord88();
+        wr8(b | 0x1F58, (uint8_t)cpu.a);
+        v = (uint8_t)(rd8(b | 0x1F58) | 0x80);
+        lda8(v);
+        wr8(b | (uint16_t)(0x2018 + cpu.x), v);
+    }
+    op_lda8(b | (uint16_t)(0x2039 + cpu.x));
+    if ((uint8_t)cpu.a == 0x03) {
+        lda8(0x84);
+        wr8(b | (uint16_t)(0x2018 + cpu.x), 0x84);
+        abi_GsuRecordWord58();
+        wr8(b | (uint16_t)(0x204A + cpu.x), (uint8_t)cpu.a);
+    }
+    op_lda8(b | (uint16_t)(0x2049 + cpu.x));
+    v = (uint8_t)cpu.a;
+    if (!v)
+        goto hide;
+    v--;
+    lda8(v);
+    if (!v) {
+        wr8(b | (uint16_t)(0x2049 + cpu.x), 0x00);
+        lda8(0x01);
+        wr8(b | (uint16_t)(0x2039 + cpu.x), 0x01);
+        goto hide;
+    }
+    wr8(b | (uint16_t)(0x2049 + cpu.x), v);
+    lda8((uint8_t)(v & 0x03));
+    if (!(uint8_t)cpu.a)
+        goto hide;
+    lda8((uint8_t)(rd8(b | (uint16_t)(0x2024 + cpu.x)) & 0xDF));
+    wr8(b | (uint16_t)(0x2024 + cpu.x), (uint8_t)cpu.a);
+    cpu.y = rd16(b | (uint16_t)(0x2006 + cpu.x));
+    cpu.p = nz16(cpu.p, cpu.y);
+    abi_ObjectCopyPositionFrom();
+    abi_ObjectApplyVelocity();
+    lda8((uint8_t)(rd8(b | (uint16_t)(0x2024 + cpu.x)) & 0x7F));
+    wr8(b | (uint16_t)(0x2024 + cpu.x), (uint8_t)cpu.a);
+    cpu.p &= (uint8_t)~P_M;
+    cpu.y = rd16(b | (uint16_t)(0x204F + cpu.y));
+    cpu.y = rd16(b | (uint16_t)(0x204F + cpu.y));
+    wr16(b | 0x1F4C, rd16(b | (uint16_t)(0x0008 + cpu.y)));
+    wr16(b | 0x1F4E, rd16(b | (uint16_t)(0x000A + cpu.y)));
+    wr16(b | 0x1F50, rd16(b | (uint16_t)(0x000C + cpu.y)));
+    op_lda16(b | cpu.y);
+    op_and16(0x4000);
+    if (!cpu.a) {
+        cpu.p |= P_M;
+        abi_ObjectRebucket();
+    } else {
+        sta16_imm(b | (uint16_t)(0x200C + cpu.x), 0x0000);
+        cpu.p &= (uint8_t)~P_M;
+        op_lda16_imm(0xFF9C);
+        wr16(b | (uint16_t)(0x200E + cpu.x), 0xFF9C);
+        op_lda16_imm(0x01F4);
+        wr16(b | (uint16_t)(0x2010 + cpu.x), 0x01F4);
+        cpu.p |= P_M;
+        lda8((uint8_t)(rd8(b | (uint16_t)(0x2024 + cpu.x)) | 0x80));
+        wr8(b | (uint16_t)(0x2024 + cpu.x), (uint8_t)cpu.a);
+        for (t = 0; t < 3; t++) {
+            static const uint16_t f[3] = {0x200C, 0x200E, 0x2010}, s[3] = {0x1F4C, 0x1F4E, 0x1F50};
+
+            cpu.p &= (uint8_t)~P_M;
+            op_lda16(b | (uint16_t)(f[t] + cpu.x));
+            op_add16(rd16(b | s[t]));
+            wr16(b | (uint16_t)(f[t] + cpu.x), cpu.a);
+            cpu.p |= P_M;
+        }
+        abi_ObjectRebucket();
+        for (t = 0; t < 3; t++) {
+            static const uint16_t f[3] = {0x200C, 0x200E, 0x2010}, s[3] = {0x1F4C, 0x1F4E, 0x1F50};
+
+            cpu.p &= (uint8_t)~P_M;
+            op_lda16(b | (uint16_t)(f[t] + cpu.x));
+            op_sub16(rd16(b | s[t]));
+            wr16(b | (uint16_t)(f[t] + cpu.x), cpu.a);
+            cpu.p |= P_M;
+        }
+    }
+    lda8(0x03);
+    wr8(b | (uint16_t)(0x2036 + cpu.x), 0x03);
+    return;
+hide:
+    attach_hide();
+}
+
+/*
+ * @routine 08:E1D2 ObjectExhaustStart
+ * WHAT IT DOES: An exhaust flame's first frame: released when its
+ * parent's record has +$70 bit 3, or $70:26F2 lacks bit 8, or in HUD
+ * modes 1-3; otherwise handler $08:E244 (ObjectExhaustStep), +$4A = the
+ * parent's record +$58, +$49 = 0, its Y velocity's low byte
+ * sign-extended and doubled, start count +$4B = $0A, state +$39 = 1; then
+ * its first step.
+ * HOW: Falls into ObjectExhaustStep; the release is ObjectRelease.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectExhaustStep or
+ * ObjectRelease.
+ */
+void abi_ObjectExhaustStart(void)
+{
+    uint32_t b = db();
+    uint16_t x = cpu.x;
+    uint8_t v;
+
+    cpu.p &= (uint8_t)~P_M;
+    cpu.x = rd16(b | (uint16_t)(0x2006 + cpu.x));
+    cpu.x = rd16(b | (uint16_t)(0x2022 + cpu.x));
+    op_lda16(0x700070 + cpu.x);
+    cpu.x = x;
+    op_and16(0x0008);
+    if (!cpu.a) {
+        op_lda16(0x7026F2);
+        op_and16(0x0100);
+        if (cpu.a) {
+            cpu.p |= P_M;
+            op_lda8(b | 0x0D2B);
+            v = (uint8_t)cpu.a;
+            if (v != 0x01 && v != 0x02 && v != 0x03) {
+                set_handler(cpu.x, 0xE244);
+                abi_GsuRecordWord58();
+                wr8(b | (uint16_t)(0x204A + cpu.x), (uint8_t)cpu.a);
+                lda8(0x00);
+                wr8(b | (uint16_t)(0x2049 + cpu.x), 0x00);
+                cpu.p &= (uint8_t)~P_M;
+                sext_word(b | (uint16_t)(0x2030 + cpu.x));
+                op_asl16();
+                wr16(b | (uint16_t)(0x2030 + cpu.x), cpu.a);
+                cpu.p |= P_M;
+                lda8(0x0A);
+                wr8(b | (uint16_t)(0x204B + cpu.x), 0x0A);
+                lda8(0x01);
+                wr8(b | (uint16_t)(0x2039 + cpu.x), 0x01);
+                abi_ObjectExhaustStep();
+                return;
+            }
+        }
+    }
+    cpu.p |= P_M;
+    abi_ObjectRelease();
+}
