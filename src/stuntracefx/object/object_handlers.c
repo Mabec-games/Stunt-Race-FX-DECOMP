@@ -2154,6 +2154,8 @@ void abi_ObjectParentRecordBit8(void)
  * with 16-bit position adds.
  * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte 3.
  */
+static int cmp8n(uint8_t v, uint8_t k);
+
 void abi_ObjectExhaustStep(void)
 {
     uint32_t b = db();
@@ -2179,6 +2181,7 @@ void abi_ObjectExhaustStep(void)
     if (cpu.p & P_C)
         goto hide;
     op_lda8(b | (uint16_t)(0x2039 + cpu.x));
+    cmp8n((uint8_t)cpu.a, 0x01);
     if ((uint8_t)cpu.a == 0x01) {
         abi_GsuRecordWord88();
         v = (uint8_t)cpu.a;
@@ -2219,6 +2222,7 @@ void abi_ObjectExhaustStep(void)
     }
 state2:
     op_lda8(b | (uint16_t)(0x2039 + cpu.x));
+    cmp8n((uint8_t)cpu.a, 0x02);
     if ((uint8_t)cpu.a == 0x02) {
         abi_GsuRecordWord88();
         wr8(b | 0x1F58, (uint8_t)cpu.a);
@@ -2227,6 +2231,7 @@ state2:
         wr8(b | (uint16_t)(0x2018 + cpu.x), v);
     }
     op_lda8(b | (uint16_t)(0x2039 + cpu.x));
+    cmp8n((uint8_t)cpu.a, 0x03);
     if ((uint8_t)cpu.a == 0x03) {
         lda8(0x84);
         wr8(b | (uint16_t)(0x2018 + cpu.x), 0x84);
@@ -3235,13 +3240,17 @@ static void ring_spawn(void)
     uint8_t v, p;
 
     op_lda8(b | 0x0DD6);
+    cmp8n((uint8_t)cpu.a, 0x08);
     if ((uint8_t)cpu.a != 0x08)
         goto done;
     cpu.p &= (uint8_t)~P_M;
     op_lda16(0x702476);
     if (!cpu.a) {
-        cpu.p |= P_M;
-        goto done;
+        /* With no matched record the original branches to 08:9DA8 with M
+           still 16-bit, where LDA #$03, STA $2036,X decode as LDA #$9D03,
+           ROL $20,X, then the RTL: run as the original. */
+        jump_routine(0x089DA8);
+        return;
     }
     cpu.x = cpu.a;
     op_lda16(0x700020 + cpu.x);
@@ -3303,7 +3312,10 @@ static void ring_start(uint8_t h, uint16_t vx, uint16_t vy, uint16_t vz)
  * WHAT IT DOES: A spinning ring's first frame heading $00 with velocity
  * (0, 0, -$258): in engine phase 8 its Y from the record in hand and its
  * four parts made ($08:9C4F); +$36 = 3.
- * HOW: NOP, then the shared start at $08:9C4F.
+ * HOW: NOP, then the shared start at $08:9C4F. With no record in hand
+ * ($70:2476 = 0) the start branches to 08:9DA8 with M still 16-bit, so
+ * its LDA #$03, STA $2036,X run as LDA #$9D03, ROL $20,X: that path runs
+ * as the original.
  * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte 3.
  */
 void abi_ObjectRingStartZ(void)
@@ -3584,6 +3596,7 @@ static void camera_on(uint16_t car, uint16_t y, uint16_t z, int by_x)
         wr16(b | (uint16_t)(0x001E + p), z);
         wr8(b | p, 0x01);
     }
+    cpu.a = z;                                  /* the last LDA # (16-bit) */
 }
 
 /*

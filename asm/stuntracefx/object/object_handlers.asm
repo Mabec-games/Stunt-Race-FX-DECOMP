@@ -4025,7 +4025,10 @@ CameraPointFromTable:
 ; WHAT IT DOES: A spinning ring's first frame heading $00 with velocity
 ; (0, 0, -$258): in engine phase 8 its Y from the record in hand and its
 ; four parts made ($08:9C4F); +$36 = 3.
-; HOW: NOP, then the shared start at $08:9C4F.
+; HOW: NOP, then the shared start at $08:9C4F. With no record in hand
+; ($70:2476 = 0) the start branches to 08:9DA8 with M still 16-bit, so
+; its LDA #$03, STA $2036,X run as LDA #$9D03, ROL $20,X: that path runs
+; as the original.
 ; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte 3.
 %at($089BD9)
 ObjectRingStartZ:

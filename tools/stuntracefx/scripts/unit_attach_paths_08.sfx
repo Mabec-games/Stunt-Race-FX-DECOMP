@@ -1,0 +1,59 @@
+# unit_attach_paths_08: paths of bank $08's attached objects, sparks, car
+# attachment and exhaust that no play takes, as calls on object 1 ($2001)
+# of a Novice race's state (its parent +$06 = itself where one is read):
+# the attach list at its first entry ($70:2392 = 0) with no free object,
+# no free object or only one (the free list cut at $7E:4FDB), negative
+# velocity bytes (+$2E, +$30, +$32 low byte $80), the parent's +$24 bit 3 and
+# +$25 bits 2 and 4, a positive +$30, and the attached car's set-up 08:E158.
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0CEE 2E
+set 702392 00,00
+call 08:DCB4 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2031 80
+call 08:DD8D long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0CEE 2E
+call 08:DE31 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E4FDB 00,00
+call 08:DE31 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2007 01,00
+set 7E2025 08
+call 08:DF4C long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2007 01,00
+set 7E2025 00
+set 7E202F 80
+call 08:DF4C long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2007 01,00
+set 7E2025 00
+set 7E2026 04
+call 08:DF4C long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2007 01,00
+set 7E2025 00
+set 7E2031 80
+call 08:DF4C long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2007 01,00
+set 7E2025 00
+set 7E2033 80
+call 08:DF4C long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2007 01,00
+set 7E2031 80
+call 08:E073 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2007 01,00
+call 08:E158 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2007 01,00
+set 7E2031 10,00
+call 08:E1D2 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2007 01,00
+set 7E2026 10
+call 08:E244 long x=0001 p=20 db=7E d=0000

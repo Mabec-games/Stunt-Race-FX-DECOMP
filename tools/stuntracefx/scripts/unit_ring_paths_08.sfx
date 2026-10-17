@@ -1,0 +1,48 @@
+# unit_ring_paths_08: paths of bank $08's rings, markers and camera
+# handlers that no play takes, as calls on object 1 ($2001) of a Novice
+# race's state: a ring started in engine phase 8 ($0DD6) with no matched
+# record ($70:2476 = 0), with no free object and with only one (the free
+# list cut at $7E:4FDB); a ring part with negative Y and Z spin bytes; the
+# ring's idle frame, the empty handler, the marker's start and its follow
+# frame (the car table $116C all object 1, $116A clear and set), the two
+# camera points and DataBank7E.
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0DD6 08
+set 702476 00,00
+call 08:9C33 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0DD6 08
+set 7E0CEE 2E
+call 08:9C33 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0DD6 08
+set 7E4FDB 00,00
+call 08:9C33 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2007 01,00
+set 7E2031 80
+call 08:9E05 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2007 01,00
+set 7E2033 80
+call 08:9E05 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:9DAE long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:9ECD long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:9ECE long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E116C 01,00,01,00,01,00,01,00
+set 7E116A 00,00
+call 08:9EFD long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E116C 01,00,01,00,01,00,01,00
+set 7E116A 01,00
+call 08:9EFD long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:9FEC long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:A00F long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:A02F long x=0001 p=20 db=7E d=0000
