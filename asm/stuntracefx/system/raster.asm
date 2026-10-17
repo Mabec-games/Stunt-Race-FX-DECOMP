@@ -583,8 +583,6 @@ RasterStage_s20:
 ; WHAT IT DOES: Records the time now (frame and line, as time_stamp says)
 ; in the word at $1A39 + X: the start of a timed stretch of a frame.
 ; Nothing in the game calls it.
-; The path for lines $100 and over (the last 6 of vertical blank) is
-; not reached in the traces so far.
 ; HOW: Long accesses to bank $00; see time_stamp.
 ; Entry: X 16-bit; X = the slot's offset. Exit: M 16-bit; A = the time;
 ; X, Y unchanged; I clear; N, Z, C, V from the last add.
@@ -624,8 +622,6 @@ TimeMarkStart:
 ; running total at $1A37 + X. A start late in its frame (low byte $D1 or
 ; more) is taken as is; an earlier one first has the frames between, each
 ; as 64 lines, taken off the end time. Nothing in the game calls it.
-; The path for lines $100 and over (the last 6 of vertical blank) is
-; not reached in the traces so far.
 ; HOW: The end time in $1A37 (time_stamp); the start's frame byte kept in
 ; $1A39 for the correction (read back through the data bank); 16-bit
 ; long adds and subtracts.

@@ -2,7 +2,9 @@
 # the frame timer 7E:F14F-F217, which nothing in the game calls:
 # TimeMarkStart on slot 0, in the frame and in vertical blank (lines $100
 # and over count as $FF); TimeMarkEnd with a start late in its frame ($D8)
-# and with an earlier one ($20, corrected by the frames between).
+# and with an earlier one ($20, corrected by the frames between); then
+# both from a battle state whose vertical blank call starts in the last
+# lines of the blank ($100 and over, taken as $FF).
 load build/stuntracefx/states/novice_coupe_race1.state
 call 7E:F14F long x=0000 p=00 db=00 d=0000
 wait 1
@@ -15,6 +17,14 @@ set 7E1A37 00,00
 call 7E:F18F long x=0000 p=00 db=00 d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1A39 20,01
+set 7E1A37 34,00
+call 7E:F18F long x=0000 p=00 db=00 d=0000 vblank
+wait 1
+load build/stuntracefx/states/battle_04.state
+call 7E:F14F long x=0004 p=00 db=00 d=0000 vblank
+wait 1
+load build/stuntracefx/states/battle_04.state
 set 7E1A39 20,01
 set 7E1A37 34,00
 call 7E:F18F long x=0000 p=00 db=00 d=0000 vblank
