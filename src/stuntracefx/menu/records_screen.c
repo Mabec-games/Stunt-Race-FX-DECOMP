@@ -267,8 +267,7 @@ void abi_RecordsMenuAllTop(void)
  * choice: B or Start, unless every course is opened ($0D24 = 3), takes it
  * (state $0C, sound $24); Up and Down move the cursor (sound $45);
  * otherwise the middle choice stays highlighted.
- * HOW: An 8-bit compare, then 16-bit pad tests. Not reached in the traces
- * so far.
+ * HOW: An 8-bit compare, then 16-bit pad tests.
  * Entry: M 16-bit; data bank $7E or a mirror. Exit: as the push of sound
  * $24 leaves it, or as OamSprite0AddY.
  */
@@ -308,7 +307,7 @@ void abi_RecordsMenuAllMiddle(void)
  * choice: B or Start goes back to the course select (RecordsMenuBack); Up
  * moves to the middle choice (sound $45); otherwise the last choice stays
  * highlighted.
- * HOW: 16-bit pad tests. Not reached in the traces so far.
+ * HOW: 16-bit pad tests.
  * Entry: M 16-bit; data bank $7E or a mirror. Exit: as RecordsMenuBack, or
  * as OamSprite0AddY.
  */
@@ -529,7 +528,7 @@ void abi_RecordsMenuSpeedAltTop(void)
  * WHAT IT DOES: As RecordsMenuSpeedAltTop with the cursor on the second
  * choice: Y, B or Start leave ($0D4C cleared, sound $2F, state $0E); Up
  * moves to the first (sound $45); otherwise the second stays highlighted.
- * HOW: 16-bit pad tests. Not reached in the traces so far.
+ * HOW: 16-bit pad tests.
  * Entry: M 8-bit; data bank $7E or a mirror. Exit: as the path's last
  * call leaves it.
  */
@@ -602,7 +601,7 @@ void abi_RecordsMenuTwoTop(void)
  * WHAT IT DOES: The two-choice records menu with the cursor on its second
  * choice: B or Start goes back (RecordsMenuBack); Up moves to the first
  * (sound $45); otherwise the second stays highlighted.
- * HOW: 16-bit pad tests. Not reached in the traces so far.
+ * HOW: 16-bit pad tests.
  * Entry: M 16-bit; data bank $7E or a mirror. Exit: as RecordsMenuBack, or
  * as OamSprite0AddY.
  */
@@ -671,7 +670,7 @@ void abi_RecordsMenuThreeTop(void)
  * WHAT IT DOES: The Stunt Trax records menu with the cursor on its middle
  * choice: B or Start takes it (state $0C, sound $24); Up and Down move the
  * cursor (sound $45); otherwise the middle stays highlighted.
- * HOW: 16-bit pad tests. Not reached in the traces so far.
+ * HOW: 16-bit pad tests.
  * Entry: M 16-bit; data bank $7E or a mirror. Exit: as the push of sound
  * $24 leaves it, or as OamSprite0AddY.
  */
@@ -699,7 +698,7 @@ void abi_RecordsMenuThreeMiddle(void)
  * WHAT IT DOES: The Stunt Trax records menu with the cursor on its last
  * choice: B or Start goes back (RecordsMenuBack); Up moves to the middle
  * (sound $45); otherwise the last stays highlighted.
- * HOW: 16-bit pad tests. Not reached in the traces so far.
+ * HOW: 16-bit pad tests.
  * Entry: M 16-bit; data bank $7E or a mirror. Exit: as RecordsMenuBack, or
  * as OamSprite0AddY.
  */
@@ -781,7 +780,7 @@ static void page_mark_flip(uint8_t p)
  * @routine 02:F0FA RecordsPageMarkFlipHide
  * WHAT IT DOES: RecordsPageMarkFlip with the group's sprites 1, 3 and 5
  * hidden (Y = $F0) first: the Speed Trax records' last page.
- * HOW: Shares RecordsPageMarkFlip's tail. Not reached in the traces so far.
+ * HOW: Shares RecordsPageMarkFlip's tail.
  * Entry: any widths; data bank $7E or a mirror. Exit: as
  * RecordsPageMarkFlip.
  */
@@ -929,7 +928,9 @@ void abi_SpeedRecordsPage(void)
  * $0D89 = 4 and the selection handler $00:18DB = $8669, colour maths $A7
  * (ColourMathA7Start).
  * HOW: The groups' slots chain from the sizes at $04:EDCB (MetaspriteDraw
- * from slot 0, origin $89, $89); 16-bit, 8-bit stores.
+ * from slot 0, origin $89, $89); 16-bit, 8-bit stores. The $0D4C test
+ * after B or Start (02:EEDD) is dead: that path runs only with $0D4C
+ * clear, and nothing on it writes $0D4C.
  * Entry: any widths; data bank $7E or a mirror. Exit: as the last call
  * leaves it.
  */
@@ -1084,8 +1085,7 @@ static void special_row(uint16_t slot, uint16_t k, int stunt, AbiFn place)
  * five groups ($12, 7, 8, 9, 6), the title, the three special scores
  * ($0F2B-$0F2F) with their names and cars, palettes
  * (OamPaletteFromTableE30F) and the three-choice menu (RecordsMenuThree).
- * HOW: As SpeedRecordsScreen (origin $81, $89). The $0D4E path is not
- * reached in the traces so far.
+ * HOW: As SpeedRecordsScreen (origin $81, $89).
  * Entry: any widths; data bank $7E or a mirror. Exit: as the menu leaves
  * it.
  */

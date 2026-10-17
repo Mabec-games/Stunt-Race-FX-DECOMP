@@ -1,0 +1,80 @@
+# unit_records_pages_02: unit calls (call) from the start of a Novice race
+# for the records pages' paths unit_records_02 leaves untaken. Speed Trax
+# pages (02:EEF2): Left from page 3 to page 2, pages 3 and 4, and a page
+# number past 4. Stunt Trax screen
+# (02:F148) with $0D4E set: Right from course $1A (wraps to $17, a record
+# time at $70:FC4A), Left from course $17 (wraps to $1A, no time), no press
+# on course $18. All-courses screen (02:F37A): $0D4C set with a record time
+# at $70:FC5E (course $14); $0D4C clear with the three special times at
+# $0F2B-$0F30 set, Y pressed (back), and the menu's cursor at 2 and 4.
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E10D8 03
+set 7E0D1A 00,02
+call 02:EEF2 p=00 y=0040 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E10D8 03
+set 7E0D1A 00,00
+call 02:EEF2 p=00 y=0040 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E10D8 04
+set 7E0D1A 00,00
+call 02:EEF2 p=00 y=0040 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E10D8 07
+set 7E0D1A 00,00
+call 02:EEF2 p=00 y=0040 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D4E 01
+set 7E0D41 00
+set 7E0E3D 1A,00
+set 7E0D1A 00,01
+set 70FC4A 59,23
+call 02:F148 p=00 y=0040 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D4E 01
+set 7E0D41 00
+set 7E0E3D 17,00
+set 7E0D1A 00,02
+set 70FC59 FF,FF
+call 02:F148 p=00 y=0040 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D4E 01
+set 7E0D41 00
+set 7E0E3D 18,00
+set 7E0D1A 00,00
+call 02:F148 p=00 y=0040 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D4C 01
+set 7E0D41 00
+set 7E0E3D 14,00
+set 70FC5E 59,23
+call 02:F37A p=00 y=0040 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D4C 00
+set 7E0D41 00
+set 7E0F2B 59,23,58,23,57,23
+set 7E0D1A 00,40
+call 02:F37A p=00 y=0040 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D4C 00
+set 7E0D41 00
+set 7E0D50 02
+set 7E0D1A 00,00
+call 02:F37A p=00 y=0040 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D4C 00
+set 7E0D41 00
+set 7E0D50 04
+set 7E0D1A 00,00
+call 02:F37A p=00 y=0040 db=7E d=0000
+wait 1

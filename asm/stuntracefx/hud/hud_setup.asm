@@ -96,8 +96,7 @@ RaceHudSpritesHide:
 ; $70:01C4 = 1, RaceVarsReset; then the data bank and P pushed by
 ; RaceHudLoad are pulled and it returns to RaceHudLoad's caller.
 ; HOW: Sprite bytes by long stores in runs of a macro; JMP (abs,X) by HUD
-; mode. The non-Speed modes' special paths are not reached in the traces
-; so far.
+; mode.
 ; Entry: data bank $03; RaceHudLoad's P and data bank on the stack. Exit:
 ; P and the data bank as RaceHudLoad found them; A, X, Y as
 ; RaceVarsReset leaves them.
@@ -126,13 +125,12 @@ RaceHudSetup:
 ; @routine 03:DEFD RecordOffsetAllCourses
 ; WHAT IT DOES: The all-courses records' offset of course $0E3D: (course -
 ; $14) * 5, in X.
-; HOW: 16-bit, the course kept in direct page $F1. Not reached in the
-; traces so far.
+; HOW: 16-bit, the course kept in direct page $F1.
 ; Entry: M 16-bit, X 16-bit, D = $0000. Exit: A = X = the offset; N
 ; clear, Z from it; C, V from the add.
 %at($03DEFD)
 RecordOffsetAllCourses:
-    lda.w !course                   ; not reached in the traces so far
+    lda.w !course
     sec
     sbc.w #$0014
     sta.b !digit_count
@@ -148,13 +146,13 @@ RecordOffsetAllCourses:
 ; WHAT IT DOES: Shows the packed time A as the best time: its five digits
 ; as two tiles each, then the sprites placed (HudBestTimeSprites).
 ; HOW: TimeUnpackBcdLong, then 8-bit (X, Y high bytes cleared); P kept
-; (PHP, PLP). Not reached in the traces so far.
+; (PHP, PLP).
 ; Entry: M 16-bit, X 16-bit, D = $0000; A = the packed time. Exit: P as on
 ; entry; A low byte $36; X = the seconds, Y = the hundredths (BCD, 8
 ; bits).
 %at($03DF10)
 HudBestTimeDigits:
-    php                             ; not reached in the traces so far
+    php
     jsl.l TimeUnpackBcdLong
     sep.b #$30
     and.b #$0F
@@ -199,11 +197,11 @@ HudBestTimeDigits:
 ; @routine 03:DF61 HudBestTimeSprites
 ; WHAT IT DOES: Places the best time's ten sprites (X, Y, attributes $36):
 ; two rows at Y $B8 and $C0 from X $AC to $DC; the tiles are the digits'.
-; HOW: Ten sprite macros. Not reached in the traces so far.
+; HOW: Ten sprite macros.
 ; Entry: any widths. Exit: M 8-bit, X 8-bit; A low byte $36; N, Z clear.
 %at($03DF61)
 HudBestTimeSprites:
-    sep.b #$20                      ; not reached in the traces so far
+    sep.b #$20
     lda.b #$AC
     sta.l !oam_sprite56_attr+13
     lda.b #$B8
@@ -304,7 +302,7 @@ RaceHudModeAll:
     beq .lE062
     brl RaceHudModeSpeed
 .lE062:
-    lda.b #$EC                      ; not reached in the traces so far
+    lda.b #$EC
     sta.w !wram_0E16
     lda.b #$E8
     sta.w !wram_0E16+2
@@ -367,7 +365,7 @@ RaceHudModeAll:
     jsl.l HudBestTimeSprites
     jmp.w RaceHudFlags
 RaceHudNoTime:
-    sep.b #$20                      ; not reached in the traces so far
+    sep.b #$20
     sep.b #$20
     lda.b #$AB
     sta.l !oam_sprite56_attr+13
@@ -479,7 +477,7 @@ RaceHudNoTime:
     sep.b #$20
     rep.b #$10
 RaceHudFlags:
-    sep.b #$20                      ; not reached in the traces so far
+    sep.b #$20
     lda.b #$B4
     sta.l !oam_buffer+(4*94)
     lda.b #$B8
@@ -507,7 +505,7 @@ RaceHudModeStunt:
     bne .lE26B
     brl .lE383
 .lE26B:
-    rep.b #$20                      ; not reached in the traces so far
+    rep.b #$20
     lda.w #$7FFF
     sta.l !slide_done
     lda.w #$00AC

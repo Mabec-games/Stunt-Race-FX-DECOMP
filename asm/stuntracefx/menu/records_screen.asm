@@ -22,7 +22,9 @@ arch 65816
 ; $0D89 = 4 and the selection handler $00:18DB = $8669, colour maths $A7
 ; (ColourMathA7Start).
 ; HOW: The groups' slots chain from the sizes at $04:EDCB (MetaspriteDraw
-; from slot 0, origin $89, $89); 16-bit, 8-bit stores.
+; from slot 0, origin $89, $89); 16-bit, 8-bit stores. The $0D4C test
+; after B or Start (02:EEDD) is dead: that path runs only with $0D4C
+; clear, and nothing on it writes $0D4C.
 ; Entry: any widths; data bank $7E or a mirror. Exit: as the last call
 ; leaves it.
 %at($02EDD2)
@@ -131,7 +133,7 @@ SpeedRecordsScreen:
     sta.w !wram_0D3F+1
     lda.w !digit62_override
     beq .colours
-    lda.b #$04                      ; not reached in the traces so far
+    lda.b #$04                      ; dead: $0D4C is clear on this path
     sta.w !wram_0D89
     rep.b #$20
     lda.w #$8669
@@ -167,7 +169,7 @@ SpeedRecordsPage:
     sep.b #$20
     lda.w !wram_10D8
     beq .page
-    lda.b #$45                      ; not reached in the traces so far
+    lda.b #$45
     jsl.l SoundPort0QueuePush
     dec.w !wram_10D8
     bra .page
@@ -184,7 +186,7 @@ SpeedRecordsPage:
     lda.w !wram_10D8
     cmp.b #$05
     bcc .valid
-    lda.b #$00                      ; not reached in the traces so far
+    lda.b #$00
     sta.w !wram_10D8
 .valid:
     asl a
@@ -204,19 +206,19 @@ SpeedRecordsPage:
     jsr.w RecordRowsGroupFirsts
     bra .title
 .group2:
-    jsr.w RecordsPageMarkFlip       ; not reached in the traces so far
+    jsr.w RecordsPageMarkFlip
     lda.b #$03
     sta.b !record_page
     jsr.w RecordRowsGroupFirsts
     bra .title
 .group3:
-    jsr.w RecordsPageMarkFlip       ; not reached in the traces so far
+    jsr.w RecordsPageMarkFlip
     lda.b #$06
     sta.b !record_page
     jsr.w RecordRowsGroupFirsts
     bra .title
 .group4:
-    jsr.w RecordsPageMarkFlipHide   ; not reached in the traces so far
+    jsr.w RecordsPageMarkFlipHide
     lda.b #$09
     sta.b !record_page
     jsr.w RecordRowsGroupFirsts
@@ -247,12 +249,12 @@ SpeedRecordsPage:
 ; @routine 02:F0FA RecordsPageMarkFlipHide
 ; WHAT IT DOES: RecordsPageMarkFlip with the group's sprites 1, 3 and 5
 ; hidden (Y = $F0) first: the Speed Trax records' last page.
-; HOW: Shares RecordsPageMarkFlip's tail. Not reached in the traces so far.
+; HOW: Shares RecordsPageMarkFlip's tail.
 ; Entry: any widths; data bank $7E or a mirror. Exit: as
 ; RecordsPageMarkFlip.
 %at($02F0FA)
 RecordsPageMarkFlipHide:
-    php                             ; not reached in the traces so far
+    php
     rep.b #$30
     lda.w !wram_0D6F+4
     and.w #$00FF
@@ -310,8 +312,7 @@ RecordsPageMarkFlipTiles:           ; shared with RecordsPageMarkFlipHide
 ; five groups ($12, 7, 8, 9, 6), the title, the three special scores
 ; ($0F2B-$0F2F) with their names and cars, palettes
 ; (OamPaletteFromTableE30F) and the three-choice menu (RecordsMenuThree).
-; HOW: As SpeedRecordsScreen (origin $81, $89). The $0D4E path is not
-; reached in the traces so far.
+; HOW: As SpeedRecordsScreen (origin $81, $89).
 ; Entry: any widths; data bank $7E or a mirror. Exit: as the menu leaves
 ; it.
 %at($02F148)
@@ -321,7 +322,7 @@ StuntRecordsScreen:
     bne .course
     brl .scores
 .course:
-    sep.b #$20                      ; not reached in the traces so far
+    sep.b #$20
     lda.b #$81
     sta.w !metasprite_origin_x
     lda.b #$89
@@ -458,7 +459,7 @@ StuntRecordsScreen:
     tay
     lda.l !wram_0F2B+4
     beq .no_score3
-    phy                             ; not reached in the traces so far
+    phy
     jsr.w RecordScoreDigits
     lda.l !special_words+4
     jsr.w RecordNameLettersSmall
@@ -477,7 +478,7 @@ StuntRecordsScreen:
     tay
     lda.l !wram_0F2B+2
     beq .no_score2
-    phy                             ; not reached in the traces so far
+    phy
     jsr.w RecordScoreDigits
     lda.l !special_words+2
     jsr.w RecordNameLettersSmall
@@ -496,7 +497,7 @@ StuntRecordsScreen:
     tay
     lda.l !wram_0F2B
     beq .no_score1
-    phy                             ; not reached in the traces so far
+    phy
     jsr.w RecordScoreDigits
     lda.l !special_words
     jsr.w RecordNameLettersSmall
@@ -630,7 +631,7 @@ AllRecordsScreen:
     lda.l !save_record_b,x
     cmp.w #$FFFF
     beq .no_time
-    phx                             ; not reached in the traces so far
+    phx
     lda.l !save_record_b,x
     jsr.w RecordTimeDigitsLarge
     plx
@@ -702,7 +703,7 @@ AllRecordsScreen:
     lda.l !wram_0F2B+4
     cmp.w #$FFFF
     beq .no_time3
-    phy                             ; not reached in the traces so far
+    phy
     jsr.w RecordTimeDigitsSmall
     lda.l !special_words+4
     jsr.w RecordNameLetters
@@ -721,7 +722,7 @@ AllRecordsScreen:
     lda.l !wram_0F2B+2
     cmp.w #$FFFF
     beq .no_time2
-    phy                             ; not reached in the traces so far
+    phy
     jsr.w RecordTimeDigitsSmall
     lda.l !special_words+2
     jsr.w RecordNameLetters
@@ -740,7 +741,7 @@ AllRecordsScreen:
     lda.l !wram_0F2B
     cmp.w #$FFFF
     beq .no_time1
-    phy                             ; not reached in the traces so far
+    phy
     jsr.w RecordTimeDigitsSmall
     lda.l !special_words
     jsr.w RecordNameLetters
@@ -763,7 +764,7 @@ AllRecordsScreen:
     lda.w !joy1_pressed_copy
     bit.w #$4000
     beq .choice
-    brl RecordsMenuBack             ; not reached in the traces so far
+    brl RecordsMenuBack
 .choice:
     ldx.w !hud_blank+2
     jmp.w (.menu_table,x)
@@ -787,7 +788,7 @@ RecordsMenuAllTop:
     lda.w !joy1_pressed_copy
     bit.w #$0400
     beq RecordsMenuAllTopShow
-    lda.w #$0045                    ; not reached in the traces so far
+    lda.w #$0045
     jsl.l SoundPort0QueuePush
     bra RecordsMenuAllMiddleShow
 RecordsMenuAllTopShow:              ; also RecordsMenuAllMiddle's on Up
@@ -811,13 +812,12 @@ RecordsMenuAllTopShow:              ; also RecordsMenuAllMiddle's on Up
 ; choice: B or Start, unless every course is opened ($0D24 = 3), takes it
 ; (state $0C, sound $24); Up and Down move the cursor (sound $45);
 ; otherwise the middle choice stays highlighted.
-; HOW: An 8-bit compare, then 16-bit pad tests. Not reached in the traces
-; so far.
+; HOW: An 8-bit compare, then 16-bit pad tests.
 ; Entry: M 16-bit; data bank $7E or a mirror. Exit: as the push of sound
 ; $24 leaves it, or as OamSprite0AddY.
 %at($02F55E)
 RecordsMenuAllMiddle:
-    sep.b #$20                      ; not reached in the traces so far
+    sep.b #$20
     lda.w !wram_0D24
     cmp.b #$03
     beq .move
@@ -866,12 +866,12 @@ RecordsMenuAllMiddleShow:           ; also RecordsMenuAllTop's and Bottom's
 ; choice: B or Start goes back to the course select (RecordsMenuBack); Up
 ; moves to the middle choice (sound $45); otherwise the last choice stays
 ; highlighted.
-; HOW: 16-bit pad tests. Not reached in the traces so far.
+; HOW: 16-bit pad tests.
 ; Entry: M 16-bit; data bank $7E or a mirror. Exit: as RecordsMenuBack, or
 ; as OamSprite0AddY.
 %at($02F5C6)
 RecordsMenuAllBottom:
-    lda.w !joy1_pressed_copy        ; not reached in the traces so far
+    lda.w !joy1_pressed_copy
     bit.w #$9000
     beq .up
     jmp.w RecordsMenuBack
@@ -976,7 +976,7 @@ RecordsMenuSpeedBottom:
     lda.w !joy1_pressed_copy
     bit.w #$0800
     beq RecordsMenuSpeedBottomShow
-    lda.w #$0045                    ; not reached in the traces so far
+    lda.w #$0045
     jsl.l SoundPort0QueuePush
     bra RecordsMenuSpeedTopShow
 RecordsMenuSpeedBottomShow:         ; also RecordsMenuSpeedTop's on Down
@@ -1029,7 +1029,7 @@ RecordsMenuSpeedAltTop:
     lda.w !joy1_pressed_copy
     bit.w #$4000
     beq .go
-    brl RecordsMenuSpeedAltLeave    ; not reached in the traces so far
+    brl RecordsMenuSpeedAltLeave
 .go:
     lda.w !joy1_pressed_copy
     bit.w #$9000
@@ -1039,7 +1039,7 @@ RecordsMenuSpeedAltTop:
     lda.w !joy1_pressed_copy
     bit.w #$0400
     beq RecordsMenuSpeedAltTopShow
-    lda.w #$0045                    ; not reached in the traces so far
+    lda.w #$0045
     jsl.l SoundPort0QueuePush
     bra RecordsMenuSpeedAltBottomShow
 RecordsMenuSpeedAltTopShow:         ; also RecordsMenuSpeedAltBottom's on Up
@@ -1060,12 +1060,12 @@ RecordsMenuSpeedAltTopShow:         ; also RecordsMenuSpeedAltBottom's on Up
 ; WHAT IT DOES: As RecordsMenuSpeedAltTop with the cursor on the second
 ; choice: Y, B or Start leave ($0D4C cleared, sound $2F, state $0E); Up
 ; moves to the first (sound $45); otherwise the second stays highlighted.
-; HOW: 16-bit pad tests. Not reached in the traces so far.
+; HOW: 16-bit pad tests.
 ; Entry: M 8-bit; data bank $7E or a mirror. Exit: as the path's last
 ; call leaves it.
 %at($02F6F8)
 RecordsMenuSpeedAltBottom:
-    rep.b #$20                      ; not reached in the traces so far
+    rep.b #$20
     lda.w !joy1_pressed_copy
     bit.w #$4000
     beq .back
@@ -1129,7 +1129,7 @@ RecordsMenuTwo:
     lda.w !joy1_pressed_copy
     bit.w #$4000
     beq .choice
-    brl RecordsMenuBack             ; not reached in the traces so far
+    brl RecordsMenuBack
 .choice:
     ldx.w !hud_blank+2
     jmp.w (.table,x)
@@ -1154,7 +1154,7 @@ RecordsMenuTwoTop:
     lda.w !joy1_pressed_copy
     bit.w #$0400
     beq RecordsMenuTwoTopShow
-    lda.w #$0045                    ; not reached in the traces so far
+    lda.w #$0045
     jsl.l SoundPort0QueuePush
     bra RecordsMenuTwoBottomShow
 RecordsMenuTwoTopShow:              ; also RecordsMenuTwoBottom's on Up
@@ -1175,12 +1175,12 @@ RecordsMenuTwoTopShow:              ; also RecordsMenuTwoBottom's on Up
 ; WHAT IT DOES: The two-choice records menu with the cursor on its second
 ; choice: B or Start goes back (RecordsMenuBack); Up moves to the first
 ; (sound $45); otherwise the second stays highlighted.
-; HOW: 16-bit pad tests. Not reached in the traces so far.
+; HOW: 16-bit pad tests.
 ; Entry: M 16-bit; data bank $7E or a mirror. Exit: as RecordsMenuBack, or
 ; as OamSprite0AddY.
 %at($02F7BB)
 RecordsMenuTwoBottom:
-    lda.w !joy1_pressed_copy        ; not reached in the traces so far
+    lda.w !joy1_pressed_copy
     bit.w #$9000
     beq .up
     brl RecordsMenuBack
@@ -1250,7 +1250,7 @@ RecordsMenuThreeTop:
     lda.w !joy1_pressed_copy
     bit.w #$0400
     beq RecordsMenuThreeTopShow
-    lda.w #$0045                    ; not reached in the traces so far
+    lda.w #$0045
     jsl.l SoundPort0QueuePush
     bra RecordsMenuThreeTopDown
 RecordsMenuThreeTopShow:            ; also RecordsMenuThreeMiddle's on Up
@@ -1269,18 +1269,18 @@ RecordsMenuThreeTopShow:            ; also RecordsMenuThreeMiddle's on Up
     jsr.w OamSprite0AddY
     rts
 RecordsMenuThreeTopDown:
-    bra RecordsMenuThreeMiddleShow  ; not reached in the traces so far
+    bra RecordsMenuThreeMiddleShow
 
 ; @routine 02:F85B RecordsMenuThreeMiddle
 ; WHAT IT DOES: The Stunt Trax records menu with the cursor on its middle
 ; choice: B or Start takes it (state $0C, sound $24); Up and Down move the
 ; cursor (sound $45); otherwise the middle stays highlighted.
-; HOW: 16-bit pad tests. Not reached in the traces so far.
+; HOW: 16-bit pad tests.
 ; Entry: M 16-bit; data bank $7E or a mirror. Exit: as the push of sound
 ; $24 leaves it, or as OamSprite0AddY.
 %at($02F85B)
 RecordsMenuThreeMiddle:
-    lda.w !joy1_pressed_copy        ; not reached in the traces so far
+    lda.w !joy1_pressed_copy
     bit.w #$9000
     beq .up
     lda.w #$000C
@@ -1322,12 +1322,12 @@ RecordsMenuThreeMiddleShow:         ; also RecordsMenuThreeTop's and Bottom's
 ; WHAT IT DOES: The Stunt Trax records menu with the cursor on its last
 ; choice: B or Start goes back (RecordsMenuBack); Up moves to the middle
 ; (sound $45); otherwise the last stays highlighted.
-; HOW: 16-bit pad tests. Not reached in the traces so far.
+; HOW: 16-bit pad tests.
 ; Entry: M 16-bit; data bank $7E or a mirror. Exit: as RecordsMenuBack, or
 ; as OamSprite0AddY.
 %at($02F8B6)
 RecordsMenuThreeBottom:
-    lda.w !joy1_pressed_copy        ; not reached in the traces so far
+    lda.w !joy1_pressed_copy
     bit.w #$9000
     beq .up
     jmp.w RecordsMenuBack

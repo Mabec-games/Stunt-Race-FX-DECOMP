@@ -164,7 +164,7 @@ void abi_RaceHudSpritesHide(void)
  * @routine 03:DF61 HudBestTimeSprites
  * WHAT IT DOES: Places the best time's ten sprites (X, Y, attributes $36):
  * two rows at Y $B8 and $C0 from X $AC to $DC; the tiles are the digits'.
- * HOW: Ten sprite macros. Not reached in the traces so far.
+ * HOW: Ten sprite macros.
  * Entry: any widths. Exit: M 8-bit, X 8-bit; A low byte $36; N, Z clear.
  */
 void abi_HudBestTimeSprites(void)
@@ -177,7 +177,7 @@ void abi_HudBestTimeSprites(void)
  * WHAT IT DOES: Shows the packed time A as the best time: its five digits
  * as two tiles each, then the sprites placed (HudBestTimeSprites).
  * HOW: TimeUnpackBcdLong, then 8-bit (X, Y high bytes cleared); P kept
- * (PHP, PLP). Not reached in the traces so far.
+ * (PHP, PLP).
  * Entry: M 16-bit, X 16-bit, D = $0000; A = the packed time. Exit: P as on
  * entry; A low byte $36; X = the seconds, Y = the hundredths (BCD, 8
  * bits).
@@ -197,8 +197,7 @@ void abi_HudBestTimeDigits(void)
  * @routine 03:DEFD RecordOffsetAllCourses
  * WHAT IT DOES: The all-courses records' offset of course $0E3D: (course -
  * $14) * 5, in X.
- * HOW: 16-bit, the course kept in direct page $F1. Not reached in the
- * traces so far.
+ * HOW: 16-bit, the course kept in direct page $F1.
  * Entry: M 16-bit, X 16-bit, D = $0000. Exit: A = X = the offset; N
  * clear, Z from it; C, V from the add.
  */
@@ -243,8 +242,8 @@ static void slide_word(uint16_t v)
    $0E16 = $EC, $0E18 = $E8, $7F:3470 = $7FFF and the best time: with
    $0D4C set the course's record from the save ($70:FC5E,
    RecordOffsetAllCourses, HudBestTimeDigits), else the best time at
-   $0F61-$0F63 when $0F2B holds one; no time shows the dashes. Not
-   reached in the traces so far. Returns 1 to go on as mode 0. */
+   $0F61-$0F63 when $0F2B holds one; no time shows the dashes. Returns 1
+   to go on as mode 0. */
 static int mode_all(uint32_t b)
 {
     op_lda8(b | 0x10CD);
@@ -304,10 +303,10 @@ static int mode_all(uint32_t b)
     return 0;
 }
 
-/* HUD mode 1 (Stunt Trax). With $0D4E set (a course's records run, not
-   reached in the traces so far): $7F:3470 = $7FFF, $0E16 = $AC, $0E18 =
-   $8C, sprites 116-127 placed, and the course's record time from the save
-   ($70:FC4A + (course - $17) * 5) as the best time (or the dashes).
+/* HUD mode 1 (Stunt Trax). With $0D4E set (a course's records run):
+   $7F:3470 = $7FFF, $0E16 = $AC, $0E18 = $8C, sprites 116-127 placed, and
+   the course's record time from the save ($70:FC4A + (course - $17) * 5)
+   as the best time (or the dashes).
    Otherwise: $0E18 = $F0, sprites 116-127 hidden, the score's sprites and
    $7F:3470 = $2127. */
 static void mode_stunt(uint32_t b)
@@ -682,8 +681,7 @@ static void hud_leave_stack(void)
  * $70:01C4 = 1, RaceVarsReset; then the data bank and P pushed by
  * RaceHudLoad are pulled and it returns to RaceHudLoad's caller.
  * HOW: Sprite bytes by long stores in runs of a macro; JMP (abs,X) by HUD
- * mode. The non-Speed modes' special paths are not reached in the traces
- * so far.
+ * mode.
  * Entry: data bank $03; RaceHudLoad's P and data bank on the stack. Exit:
  * P and the data bank as RaceHudLoad found them; A, X, Y as
  * RaceVarsReset leaves them.
