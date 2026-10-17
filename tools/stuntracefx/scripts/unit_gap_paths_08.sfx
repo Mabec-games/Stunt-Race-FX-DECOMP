@@ -1,0 +1,79 @@
+# unit_gap_paths_08: the paths of bank $08 routines with C that neither a
+# play nor the other unit scripts reach, as calls in a Novice race's
+# state. CameraNearestCar on object 1 with car 2 ($2063, behind it on all
+# three axes) first in the car list at $7E:FFAE and the camera's distance
+# $7FFF, so car 2 is taken. CameraPointFromTable on object 1 made a
+# director (link $1A64) with +$25 bits 0 and 1 and the point on the last
+# place of list $0A (3 places from 1), so the back step wraps to 0.
+# ObjectChildFollow on car 2 as a child of car 1 whose record's +$2C has
+# bit 11 and +$46 bits 0 and 4: fast backwards with a free object, fast
+# forwards with none ($0CEE = $2E) and still. ObjectSyncAngles on object 1
+# with no record (+$22 = 0). ObjectAttachSpawn with its list (from
+# $70:2392) in low RAM through the bank $0A mirror: one piece of template
+# 9 (handler $08:DE31) with a Z speed of -$70. ObjectOffsetOnParent2 with
+# the parent hidden (+$24 bit 3), dropped (+$24 bit 5) and with every
+# speed negative. ObjectLampOnParent with the parent's +$25 bit 5.
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7EFFAE 63,00
+set 7E1A6A FF,7F
+call 08:8A8A long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2007 01,00
+set 7E2050 64,1A
+set 7E2026 03
+set 7E1A96 0A,00
+set 7E1A98 03
+call 08:9A4F long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2069 01,00
+set 701B24 00,08
+set 701B3E 11,00
+set 701B26 80,FF
+set 701B2A 80,FF
+set 7E00E6 00,00,00,00
+call 08:BD22 x=0063 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2069 01,00
+set 701B24 00,08
+set 701B3E 11,00
+set 701B26 80,00
+set 701B2A 80,00
+set 7E00E6 00,00,00,00
+set 7E0CEE 2E
+call 08:BD22 x=0063 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2069 01,00
+set 701B24 00,08
+set 701B3E 11,00
+set 701B26 00,00
+set 701B2A 00,00
+call 08:BD22 x=0063 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2023 00,00
+call 08:CF0B long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1100 01,09,00,00,00,90
+set 702392 70,90
+call 08:DCB4 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2007 01,00
+set 7E2050 64,1A
+set 7E2025 18
+call 08:E443 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2007 01,00
+set 7E2050 64,1A
+set 7E2025 30
+call 08:E443 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2007 01,00
+set 7E2050 64,1A
+set 7E202F 80
+set 7E2031 80
+set 7E2033 80
+call 08:E443 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2007 01,00
+set 7E2050 64,1A
+set 7E2026 20
+call 08:E653 long x=0001 p=20 db=7E d=0000
