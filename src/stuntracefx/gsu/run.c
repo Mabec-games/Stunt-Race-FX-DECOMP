@@ -12,12 +12,20 @@
 #include "wram.h"
 #include "cpu_ops.h"
 
-/* Poll until the Super FX stops (status bit 5 clear), counting each poll. */
+/* Poll until the Super FX stops (status bit 5 clear), counting each poll:
+   an 8-bit INC of $FE, and of $FF only when $FE wraps to 0. */
 static void gsu_wait(void)
 {
-    do
-        wr16(GSU_WAIT_COUNT, (uint16_t)(rd16(GSU_WAIT_COUNT) + 1));
-    while (rd8(GSU_SFR) & 0x20);
+    uint8_t n;
+
+    do {
+        n = (uint8_t)(rd8(GSU_WAIT_COUNT) + 1);
+        wr8(GSU_WAIT_COUNT, n);
+        if (!n) {
+            n = (uint8_t)(rd8(GSU_WAIT_COUNT + 1) + 1);
+            wr8(GSU_WAIT_COUNT + 1, n);
+        }
+    } while (rd8(GSU_SFR) & 0x20);
 }
 
 /*

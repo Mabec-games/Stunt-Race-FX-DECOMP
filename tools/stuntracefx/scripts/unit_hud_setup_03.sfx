@@ -1,0 +1,19 @@
+# unit_hud_setup_03: unit tests (call) from the start of a Novice race for
+# set-ups that the game only enters by jumps or from ROM copies: the one-
+# and two-player race HUD set-ups (03:DECA, 03:E6FA, entered with the P and
+# data bank RaceHudLoad pushes) and the view parameters (7E:F6E9) for one
+# player and two.
+load build/stuntracefx/states/novice_coupe_race1.state
+call 03:DECA long frame=2000 p=30 db=03 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 03:E6FA long frame=2000 p=30 db=03 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D62 00
+call 7E:F6E9 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D62 01
+call 7E:F6E9 p=20 db=7E d=0000
+wait 1

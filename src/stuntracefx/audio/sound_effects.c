@@ -278,18 +278,30 @@ void SoundPort0QueuePushRaw(uint8_t command);
  * Entry: any widths. Exit: A low byte = the command; X = $0D89 (high byte
  * zero); P unchanged.
  */
+/* The lookup and push, with the index read once (LDX) and returned. */
+static uint8_t sound_d89(uint8_t *index)
+{
+    uint8_t i = rd8(0x000D89), command;
+
+    command = rd8(0x03EDEF + i);
+    SoundPort0QueuePushRaw(command);
+    *index = i;
+    return command;
+}
+
 uint8_t SoundFromTableD89(void)
 {
-    uint8_t i = rd8(0x000D89), command = rd8(0x03EDEF + i);
+    uint8_t i;
 
-    SoundPort0QueuePushRaw(command);
-    return command;
+    return sound_d89(&i);
 }
 
 void abi_SoundFromTableD89(void)
 {
-    cpu.x = rd8(0x000D89);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | SoundFromTableD89());
+    uint8_t i, command = sound_d89(&i);
+
+    cpu.x = i;
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | command);
 }
 
 /*

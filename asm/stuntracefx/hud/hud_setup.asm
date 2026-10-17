@@ -993,14 +993,14 @@ RaceHudSetupTwoPlayers:
     ldx.w #$00BC
     ldy.w #$0000
 .lE722:
-    lda.w $E7EA,y
+    lda.w !hud_split_pos,y
     sec
     sbc.w #$0800
     sta.l !oam_buffer,x
     clc
     adc.w #$6850
     sta.l !oam_sprite56_attr+29,x
-    lda.w $E7EC,y
+    lda.w !hud_split_pos+2,y
     sta.l !oam_buffer+2,x
     sta.l !oam_sprite56_attr+31,x
     inx
@@ -1014,27 +1014,27 @@ RaceHudSetupTwoPlayers:
     cpy.w #$0020
     bcc .lE722
     lda.w #$0000
-    sta.w $0425
-    sta.w $0429
-    sta.w $042D
-    sta.w $0525
-    sta.w $0529
-    sta.w $052D
+    sta.w !oam_buffer+176
+    sta.w !oam_buffer+180
+    sta.w !oam_buffer+184
+    sta.w !oam_buffer+432
+    sta.w !oam_buffer+436
+    sta.w !oam_buffer+440
     lda.w #$26A0
-    sta.w $0427
-    sta.w $042B
-    sta.w $042F
-    sta.w $0527
-    sta.w $052B
-    sta.w $052F
+    sta.w !oam_buffer+178
+    sta.w !oam_buffer+182
+    sta.w !oam_buffer+186
+    sta.w !oam_buffer+434
+    sta.w !oam_buffer+438
+    sta.w !oam_buffer+442
     ldx.w #$00DC
     ldy.w #$0000
 .lE77D:
-    lda.w $E80F,y
+    lda.w !hud_split_tiles,y
     clc
     adc.w #$2C28
     sta.w !oam_buffer,x
-    lda.w $E811,y
+    lda.w !hud_split_tiles+2,y
     sta.w !oam_buffer+2,x
     inx
     inx
@@ -1049,11 +1049,11 @@ RaceHudSetupTwoPlayers:
     ldx.w #$01DC
     ldy.w #$0000
 .lE7A0:
-    lda.w $E80F,y
+    lda.w !hud_split_tiles,y
     clc
     adc.w #$9476
     sta.w !oam_buffer,x
-    lda.w $E811,y
+    lda.w !hud_split_tiles+2,y
     sta.w !oam_buffer+2,x
     inx
     inx
@@ -1069,7 +1069,7 @@ RaceHudSetupTwoPlayers:
     ldx.w #$000B
     ldy.w #$0000
 .lE7C5:
-    lda.w $E80A,y
+    lda.w !hud_split_size,y
     sta.w !oam_buffer_high,x
     sta.w !oam_buffer_high+16,x
     inx

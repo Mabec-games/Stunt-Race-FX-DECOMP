@@ -1042,38 +1042,45 @@ static MetaspriteEnd metasprite_draw(uint8_t bank, uint16_t group, uint16_t slot
 {
     uint32_t b = (uint32_t)bank << 16;
     MetaspriteEnd e;
-    uint16_t x = (uint16_t)(group << 2), y = (uint16_t)(slot << 2), mask, hi;
-    uint8_t n, lo = 0, v;
+    uint16_t x = (uint16_t)(group << 2), y = (uint16_t)(slot << 2), mask, hi, n16;
+    uint8_t n, lo = 0, v, o;
     unsigned s;
 
-    n = (uint8_t)rd16(0x04EDCD + x);
-    wr16(0x0000F1, rd16(0x04EDCD + x));
+    n16 = rd16(0x04EDCD + x);
+    wr16(0x0000F1, n16);
     x = rd16(0x04EDCB + x);
     hi = (uint16_t)(x & 0xFF00);
     do {
-        s = (unsigned)rd8(0x04EE4B + x) + rd8(b | 0x0D3B);
-        wr8(b | (uint16_t)(0x0375 + y), (uint8_t)s);
+        v = rd8(0x04EE4B + x);
+        o = rd8(b | 0x0D3B);
+        wr8(b | (uint16_t)(0x0375 + y), (uint8_t)(v + o));
         v = rd8(0x04EE4C + x);
-        s = (unsigned)v + rd8(b | 0x0D3C);
+        o = rd8(b | 0x0D3C);
+        s = (unsigned)v + o;
         p = (uint8_t)(p & ~(P_C | P_V));
         if (s > 0xFF)
             p |= P_C;
-        if (~(v ^ rd8(b | 0x0D3C)) & (v ^ s) & 0x80)
+        if (~(v ^ o) & (v ^ s) & 0x80)
             p |= P_V;
         wr8(b | (uint16_t)(0x0376 + y), (uint8_t)s);
-        wr8(b | (uint16_t)(0x0377 + y), rd8(0x04EE4D + x));
-        wr8(b | (uint16_t)(0x0378 + y), rd8(0x04EE4E + x));
+        v = rd8(0x04EE4D + x);
+        wr8(b | (uint16_t)(0x0377 + y), v);
+        v = rd8(0x04EE4E + x);
+        wr8(b | (uint16_t)(0x0378 + y), v);
         lo = rd8(0x04EE4F + x);
         if (!(lo & 0x01)) {
             mask = rd16(b | (uint16_t)(0xFA8D + ((y >> 2) & 0x0003)));
             wr16(0x0000F3, mask);
             hi = (uint16_t)(mask & 0xFF00);
-            lo = (uint8_t)(rd8(0x000575 + (y >> 4)) & (uint8_t)mask);
+            v = rd8(0x000575 + (y >> 4));
+            o = rd8(0x0000F3);
+            lo = (uint8_t)(v & o);
             wr8(0x000575 + (y >> 4), lo);
             p = (uint8_t)((p & ~P_C) | ((y >> 3) & 1 ? P_C : 0));
         }
         x = (uint16_t)(x + 5);
         y = (uint16_t)(y + 4);
+        n = rd8(0x0000F1);
         n = (uint8_t)(n - 1);
         wr8(0x0000F1, n);
     } while (n);
