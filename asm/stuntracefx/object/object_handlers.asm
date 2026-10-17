@@ -1104,7 +1104,7 @@ ObjectChildFollow:
 .lBDC9:
     bit.w #$0800
     beq .lBDD1
-    brl .lBE38                      ; not reached in the traces so far
+    brl .lBE38
 .lBDD1:
     bit.w #$1000
     beq .lBDD9
@@ -1155,7 +1155,7 @@ ObjectChildFollow:
     sta.w !obj_1c,y
     jmp.w .lBF53
 .lBE38:
-    lda.l !gsu_in_2e,x              ; not reached in the traces so far
+    lda.l !gsu_in_2e,x
     bpl .lBE42
     eor.w #$FFFF
     inc a
@@ -1865,7 +1865,7 @@ ObjectAttachSpawn:
     sep.b #$20
     jsl.l ObjectSpawn
     bcs .lDCDF
-    jml.l .lDD78                    ; not reached in the traces so far
+    jml.l .lDD78
 .lDCDF:
     phx
     rep.b #$20
@@ -1873,16 +1873,16 @@ ObjectAttachSpawn:
     sta.w !obj_06,y
     lda.l !attach_values,x
     tax
-    lda.l $098000,x
+    lda.l !attach_templates,x
     sta.w !obj_04,y
-    lda.l $098002,x
+    lda.l !attach_templates+2,x
     sta.w !wram_1F50
-    lda.l $098004,x
+    lda.l !attach_templates+4,x
     sta.w !wram_1F52
-    lda.l $098006,x
+    lda.l !attach_templates+6,x
     sta.w !obj_1a_w,y
     sep.b #$20
-    lda.l $098008,x
+    lda.l !attach_templates+8,x
     sta.w !obj_1c,y
     plx
     lda.w !wram_1F50
@@ -1922,7 +1922,7 @@ ObjectAttachSpawn:
     lda.l !attach_values+4,x
     bit.w #$0080
     beq .lDD70
-    ora.w #$FF00                    ; not reached in the traces so far
+    ora.w #$FF00
     bra .lDD73
 .lDD70:
     and.w #$00FF
@@ -3383,12 +3383,12 @@ PlayerCarEvents:
 ; WHAT IT DOES: An attachment placed at its velocity bytes turned by its
 ; parent's angles, times 2: hidden ($08:E13C) when the parent's +$24 has
 ; bit 3 or 5; +$18 = $80; then +$24 bit 5 cleared and rebucketed.
-; HOW: As ObjectAttachTurned's placement with one shift. No caller found:
-; not reached in the traces so far.
+; HOW: As ObjectAttachTurned's placement with one shift. No caller found;
+; reached only by unit calls.
 ; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; as ObjectRebucket.
 %at($08E443)
 ObjectOffsetOnParent2:
-    ldy.w !obj_06,x                 ; not reached in the traces so far
+    ldy.w !obj_06,x
     lda.w !obj_24,y
     and.b #$08
     beq .lE451
@@ -3678,7 +3678,7 @@ ObjectLampOnParent:
     lda.w !obj_25,y
     and.b #$20
     beq .lE677
-    jml.l ObjectLampDropBStart      ; not reached in the traces so far
+    jml.l ObjectLampDropBStart
 .lE677:
     lda.w !obj_25,y
     and.b #$40
@@ -3868,7 +3868,7 @@ CameraPointFromTable:
     dec a
     cmp.w !dp_34,y
     bne .l9AC0
-    lda.b #$00                      ; not reached in the traces so far
+    lda.b #$00
     bra .l9AC0
 .l9AB5:
     lda.w !dp_34,y

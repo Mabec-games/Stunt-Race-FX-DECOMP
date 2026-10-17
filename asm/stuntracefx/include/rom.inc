@@ -141,6 +141,9 @@ includeonce
 
 ; Words for an attached block's +$32, by entry (object/object.asm).
 !attach_values = $098090
+; Attachment templates, 9 bytes each: look, +$5D look, +$5F, handler and
+; its bank (object/object_handlers.asm, ObjectAttachSpawn).
+!attach_templates = $098000
 ; Window setup jump table, called through the data bank (video/windows.asm).
 !windows_setup_table = $DFDA
 
