@@ -7212,3 +7212,408 @@ void abi_ObjectSlideGateUpStep(void)
 {
     slide_gate_frame();
 }
+
+/* ---- 09:B30B, 09:C11F-C437: the shatter, bouncing markers, lap lights ---- */
+
+void abi_ObjectCopy14To(void);
+void abi_ObjectSpawnPuff(void);
+void abi_ApproachEighthMin8(void);
+
+/* The colour +$5A stepped through 0 to n-1 with bit 7 (SBC #n at n). */
+static void colour_cycle(uint8_t n)
+{
+    uint8_t v;
+
+    if (colour_step(n)) {
+        cpu.p |= P_C;
+        v = op_sbc8((uint8_t)cpu.a, n, &cpu.p);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    }
+    v = (uint8_t)(cpu.a | 0x80);
+    lda8(v);
+    wr8(F(0x205A, cpu.x), v);
+}
+
+/* LDA src, STA lo, STA lo2, BIT #$80: the sign byte `hi` = $FF for a
+   negative value, else 0. */
+static void axis_from(uint32_t src, uint32_t lo, uint32_t lo2, uint32_t hi)
+{
+    uint8_t r = ld8(src);
+
+    wr8(lo, r);
+    wr8(lo2, r);
+    if (r & 0x80) {
+        lda8(0xFF);
+        wr8(hi, 0xFF);
+    } else {
+        wr8(hi, 0x00);
+    }
+}
+
+/* One shard: a new object of `kind` with spin bytes +$48-$4A, at X's
+   position and size (+$14-$16), placed at 4 times the vector (vx, vy, dp
+   $00) turned by X's angles +$16, +$14 and +$15 (RotateXY,
+   RotateXZFrom08, RotateXZ; vx and vy through $1F58/$1F59), life +$0A =
+   6, handler $09:BDE1; nothing without a free object. */
+static void shard(uint16_t kind, uint8_t s48, uint8_t s49, uint8_t s4a, uint8_t vx, uint8_t vy)
+{
+    int i;
+
+    if (!spawn(kind))
+        return;
+    st8i(F(0x2048, cpu.y), s48);
+    st8i(F(0x2049, cpu.y), s49);
+    st8i(F(0x204A, cpu.y), s4a);
+    abi_ObjectCopyPositionTo();
+    abi_ObjectCopy14To();
+    st8i(db() | 0x1F58, vx);
+    st8i(db() | 0x1F59, vy);
+    axis_from(db() | 0x1F58, dp(0x02), dp(0x04), dp(0x05));
+    axis_from(db() | 0x1F59, dp(0x08), dp(0x0A), dp(0x0B));
+    axis_from(dp(0x00), dp(0x94), db() | 0x05F2, db() | 0x05F3);
+    ld8(F(0x2016, cpu.x));
+    abi_RotateXY();
+    orbit_again();
+    ld8(F(0x2014, cpu.x));
+    abi_RotateXZFrom08();
+    orbit_again();
+    ld8(F(0x2015, cpu.x));
+    abi_RotateXZ();
+    cpu.p &= (uint8_t)~P_M;
+    {
+        static const uint8_t lo[2] = {0x04, 0x0A};
+
+        for (i = 0; i < 2; i++) {
+            op_lda16(dp(lo[i]));
+            op_asl16();
+            op_asl16();
+            wr16(dp(lo[i]), cpu.a);
+        }
+    }
+    op_lda16(db() | 0x05F2);
+    op_asl16();
+    op_asl16();
+    wr16(db() | 0x05F2, cpu.a);
+    op_lda16(F(0x200C, cpu.x));
+    op_add16(rd16(dp(0x04)));
+    wr16(F(0x200C, cpu.y), cpu.a);
+    op_lda16(F(0x2010, cpu.x));
+    op_add16(rd16(db() | 0x05F2));
+    wr16(F(0x2010, cpu.y), cpu.a);
+    op_lda16(F(0x200E, cpu.x));
+    op_add16(rd16(dp(0x0A)));
+    wr16(F(0x200E, cpu.y), cpu.a);
+    cpu.p |= P_M;
+    st8i(F(0x200A, cpu.y), 0x06);
+    handler(cpu.y, 0xBDE1);
+}
+
+/*
+ * @routine 09:B30B ObjectShatter
+ * WHAT IT DOES: Shatters object X into six shards (kinds $B08C, $B0A8,
+ * $B0C4, $B0E0, $B0FC, $B118, handler $09:BDE1), each with its spin bytes
+ * +$48-$4A, at object X's position plus its own offset ((-$10, -$46),
+ * (-$1B, -$28), (0, -$12), ($1B, -$28), ($10, -$46), (0, $0F), the third
+ * component direct page $00) turned by X's angles and times 4, life 6; a
+ * shard is skipped without a free object.
+ * HOW: Six ObjectSpawn blocks; ObjectCopyPositionTo, ObjectCopy14To;
+ * RotateXY, RotateXZFrom08, RotateXZ through direct page. The offsets are
+ * constants (stored and read back through $1F58/$1F59), so the sign
+ * branches not taken for them never run (09:B351, B364, B438, B44B, ...):
+ * those bytes are dead.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the last
+ * shard leaves it.
+ */
+void abi_ObjectShatter(void)
+{
+    shard(0xB08C, 0xEE, 0xF3, 0xF0, 0xF0, 0xBA);
+    shard(0xB0A8, 0xEE, 0x0D, 0xF0, 0xE5, 0xD8);
+    shard(0xB0C4, 0x00, 0x0C, 0xFC, 0x00, 0xEE);
+    shard(0xB0E0, 0x12, 0x0D, 0x10, 0x1B, 0xD8);
+    shard(0xB0FC, 0x12, 0xF3, 0x10, 0x10, 0xBA);
+    shard(0xB118, 0x00, 0x0C, 0x04, 0x00, 0x0F);
+}
+
+/* The bounce: +$29 added to +$27, turning back at +-lim; field `pos`
+   moved by +$27 (through $1F4C); the colour steps through 0-9; the scale
+   +$15 grows by 8. */
+static void bounce_colour(uint16_t lim, uint16_t pos)
+{
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(F(0x2027, cpu.x));
+    op_add16(rd16(F(0x2029, cpu.x)));
+    wr16(F(0x2027, cpu.x), cpu.a);
+    op_cmp16(lim);
+    if (cpu.a == lim || (op_cmp16((uint16_t)-lim), cpu.a == (uint16_t)-lim)) {
+        op_lda16(F(0x2029, cpu.x));
+        cpu.a ^= 0xFFFF;
+        cpu.p = nz16(cpu.p, cpu.a);
+        cpu.a++;
+        cpu.p = nz16(cpu.p, cpu.a);
+        wr16(F(0x2029, cpu.x), cpu.a);
+    }
+    cpu.p |= P_M;
+    add16_via(F(pos, cpu.x), F(0x2027, cpu.x));
+    colour_cycle(0x0A);
+    add8(F(0x2015, cpu.x), 0x08);
+}
+
+/*
+ * @routine 09:C11F MarkerBounceY
+ * WHAT IT DOES: Bounces object X up and down: the speed +$29 is added to
+ * the offset +$27, turning round at $0E and -$0E, and the height +$0E moves
+ * by the offset; its colour +$5A steps through 0-9 and its scale +$15
+ * grows by 8.
+ * HOW: 16-bit ADC/CMP/EOR+INC; the offset added through $1F4C.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte = the
+ * new scale; N, Z, C, V from its add.
+ */
+void abi_MarkerBounceY(void)
+{
+    bounce_colour(0x000E, 0x200E);
+}
+
+/*
+ * @routine 09:C17C MarkerBounceX
+ * WHAT IT DOES: As MarkerBounceY, sideways: turning at $30 and -$30, the
+ * offset moving +$0C.
+ * HOW: As MarkerBounceY. Nothing in the game reaches it; reached only by
+ * unit_objects_09f.
+ * Entry: as MarkerBounceY. Exit: as MarkerBounceY.
+ */
+void abi_MarkerBounceX(void)
+{
+    bounce_colour(0x0030, 0x200C);
+}
+
+/* 09:C225: the marker bounces (MarkerBounceY), syncs to its record; a car's
+   contact (flags bit 0) shatters it (ObjectShatter) and releases it. */
+static void shatter_marker_frame(void)
+{
+    abi_MarkerBounceY();
+    abi_ObjectSyncToRecord();
+    lda8((uint8_t)(cpu.a & 0x01));
+    if (!(uint8_t)cpu.a)
+        return;
+    if (!next_contact())
+        return;
+    {
+        uint16_t sx = cpu.x;
+
+        abi_ObjectShatter();
+        cpu.x = sx;
+        cpu.p = nz16(cpu.p, sx);
+    }
+    abi_ObjectRelease();
+}
+
+/* 09:C217: the marker's record ($42D, flag bit 4, +$2A high 1). */
+static void shatter_marker_record(void)
+{
+    abi_GsuRecordNew42D();
+    abi_GsuRecordFlag10();
+    lda8(0x01);
+    abi_GsuRecordSet2AHigh();
+}
+
+/*
+ * @routine 09:C1D9 ObjectShatterMarker
+ * WHAT IT DOES: Sets up a shattering marker: colour 0 with bit 7, offset
+ * +$27 = 0, speed +$29 = 2, +$48 = 1, restart $09:C217
+ * (ObjectShatterMarkerRecord), frame $09:C225 (ObjectShatterMarkerStep);
+ * its record and frame.
+ * HOW: Word and byte stores. Nothing in the game reaches it; reached only
+ * by unit_objects_09f.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectShatterMarker(void)
+{
+    st8i_hi(F(0x205A, cpu.x), 0x00);
+    st16i(F(0x2027, cpu.x), 0x0000);
+    st16i(F(0x2029, cpu.x), 0x0002);
+    st8i(F(0x2048, cpu.x), 0x01);
+    handlers2(0xC217, 0xC225);
+    shatter_marker_record();
+    shatter_marker_frame();
+}
+
+/*
+ * @routine 09:C217 ObjectShatterMarkerRecord
+ * WHAT IT DOES: The marker's restart: its record ($42D, flag bit 4, +$2A
+ * high 1), then its frame.
+ * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordSet2AHigh. Reached only
+ * by unit_objects_09f.
+ * Entry: as ObjectShatterMarker. Exit: as ObjectShatterMarker.
+ */
+void abi_ObjectShatterMarkerRecord(void)
+{
+    shatter_marker_record();
+    shatter_marker_frame();
+}
+
+/*
+ * @routine 09:C225 ObjectShatterMarkerStep
+ * WHAT IT DOES: The marker's frame: it bounces (MarkerBounceY) and syncs to
+ * its record; a car's contact (flags bit 0) shatters it (ObjectShatter) and
+ * releases it.
+ * HOW: ObjectSyncToRecord, RecordNextContact; PHX/PLX around the JSR.
+ * Reached only by unit_objects_09f.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectShatterMarkerStep(void)
+{
+    shatter_marker_frame();
+}
+
+/* A lap light's set-up in a one-player race: colour 0 with bit 7, +$0A =
+   4 (no lap), the scale +$15 moved by ds (none when 0), restart $09:C30A,
+   frame $09:C312; with a HUD mode released. */
+static void lap_light(uint8_t ds)
+{
+    if (released_by_hud())
+        return;
+    cpu.p |= P_M;
+    st8i_hi(F(0x205A, cpu.x), 0x00);
+    st8i(F(0x200A, cpu.x), 0x04);
+    if (ds)
+        add8(F(0x2015, cpu.x), ds);
+    handlers2(0xC30A, 0xC312);
+}
+
+/*
+ * @routine 09:C244 ObjectLapLight
+ * WHAT IT DOES: Sets up a lap light in a one-player race: colour 0 with bit
+ * 7, +$0A = 4, restart $09:C30A (ObjectLapLightRecord), frame $09:C312
+ * (ObjectLapLightStep); with a HUD mode ($0D2B) it is released.
+ * HOW: Word and byte stores; starts with a NOP, as the course data's
+ * pointers expect.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit; A low
+ * byte = 9, or as ObjectRelease leaves it.
+ */
+void abi_ObjectLapLight(void)
+{
+    lap_light(0x00);
+}
+
+/*
+ * @routine 09:C280 ObjectLapLightLeft
+ * WHAT IT DOES: Sets up a lap light in a one-player race: colour 0 with bit
+ * 7, +$0A = 4, its scale +$15 down by $20, restart $09:C30A (ObjectLapLightRecord), frame $09:C312
+ * (ObjectLapLightStep); with a HUD mode ($0D2B) it is released.
+ * HOW: Word and byte stores; starts with a NOP, as the course data's
+ * pointers expect.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit; A low
+ * byte = 9, or as ObjectRelease leaves it.
+ */
+void abi_ObjectLapLightLeft(void)
+{
+    lap_light(0xE0);
+}
+
+/*
+ * @routine 09:C2C5 ObjectLapLightRight
+ * WHAT IT DOES: Sets up a lap light in a one-player race: colour 0 with bit
+ * 7, +$0A = 4, its scale +$15 up by $20, restart $09:C30A (ObjectLapLightRecord), frame $09:C312
+ * (ObjectLapLightStep); with a HUD mode ($0D2B) it is released.
+ * HOW: Word and byte stores; starts with a NOP, as the course data's
+ * pointers expect.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit; A low
+ * byte = 9, or as ObjectRelease leaves it.
+ */
+void abi_ObjectLapLightRight(void)
+{
+    lap_light(0x20);
+}
+
+/* 09:C312: a new lap ($0DEA against +$0A) clears the light (+$25 bit 0,
+   colour 0, +$48 = 0); lit, it syncs and counts +$48 up to 2
+   (ObjectCountUpTo2); unlit, a car's hit lights it for this lap (+$0A),
+   sound $5C, and puts a puff at the player ($0346, ObjectSpawnPuff). */
+static void lap_light_frame(void)
+{
+    if (!lap_eq(0x200A)) {
+        and8(F(0x2025, cpu.x), 0xFE);
+        st8i_hi(F(0x205A, cpu.x), 0x00);
+        st8i(F(0x2048, cpu.x), 0x00);
+    }
+    if (bit25(0x01)) {
+        abi_ObjectSyncFromRecord();
+        abi_ObjectCountUpTo2();
+        return;
+    }
+    if (!hit())
+        return;
+    lap_store(0x200A);
+    sound0(0x5C);
+    or8(F(0x2025, cpu.x), 0x01);
+    cpu.y = rd16(db() | 0x0346);
+    cpu.p = nz16(cpu.p, cpu.y);
+    abi_ObjectSpawnPuff();
+}
+
+/*
+ * @routine 09:C30A ObjectLapLightRecord
+ * WHAT IT DOES: The lap light's restart: its record ($42D, flag bit 4),
+ * then its frame.
+ * HOW: GsuRecordNew42D, GsuRecordFlag10.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectLapLightRecord(void)
+{
+    abi_GsuRecordNew42D();
+    abi_GsuRecordFlag10();
+    lap_light_frame();
+}
+
+/*
+ * @routine 09:C312 ObjectLapLightStep
+ * WHAT IT DOES: The lap light's frame: on a new lap ($0DEA against +$0A) it
+ * goes out (+$25 bit 0, colour 0, +$48 = 0); lit, it syncs and counts +$48
+ * up to 2; unlit, a car's hit lights it for this lap with sound $5C and a
+ * puff at the player ($0346).
+ * HOW: The laps through $1F58; ObjectSyncFromRecord, RecordContactSummary;
+ * JSR ObjectSpawnPuff with Y = the player, JSR ObjectCountUpTo2.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectLapLightStep(void)
+{
+    lap_light_frame();
+}
+
+/*
+ * @routine 09:C3ED ObjectPuffFollow
+ * WHAT IT DOES: A puff following the player ($0346): at its position,
+ * colour 1 with bit 7, its rise speed +$29 eased toward -$640
+ * (ApproachEighthMin8) and added to its height +$0E (through $1F4E);
+ * released when its life +$0A runs out.
+ * HOW: ObjectCopyPositionFrom, ObjectRebucket first; DEC. Nothing in the
+ * game reaches it; reached only by unit_objects_09f.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as DEC or
+ * ObjectRelease leaves it.
+ */
+void abi_ObjectPuffFollow(void)
+{
+    cpu.y = rd16(db() | 0x0346);
+    cpu.p = nz16(cpu.p, cpu.y);
+    abi_ObjectCopyPositionFrom();
+    abi_ObjectRebucket();
+    st8i_hi(F(0x2018, cpu.x), 0x01);
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(F(0x2029, cpu.x));
+    wr16(0x00003E, cpu.a);
+    op_lda16_imm(0xF9C0);
+    abi_ApproachEighthMin8();
+    wr16(F(0x2029, cpu.x), cpu.a);
+    cpu.p |= P_M;
+    copy16(db() | 0x1F4E, F(0x2029, cpu.x));
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(F(0x200E, cpu.x));
+    op_add16(rd16(db() | 0x1F4E));
+    wr16(F(0x200E, cpu.x), cpu.a);
+    cpu.p |= P_M;
+    life_down();
+}
