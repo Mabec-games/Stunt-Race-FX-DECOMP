@@ -1668,3 +1668,5 @@ includeonce
 !fx_push_rot_w = $0132            ; the push in the object's axes: x, (cleared), y at +8, z at +16
 !fx_push_point = $7026F6          ; the point pushed at, times 16: x, y, z
 !fx_spin = $70233A                ; the spin sums: z, x, y
+!obj_39 = $2039
+!frame_step = $1168

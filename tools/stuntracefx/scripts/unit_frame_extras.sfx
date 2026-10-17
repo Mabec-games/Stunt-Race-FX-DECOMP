@@ -1,0 +1,29 @@
+# unit_frame_extras: unit tests (call) for RAM code no play runs: the race
+# frame-step pause (7E:F2CD) from the start of a Novice race, skipped by
+# $1168 and by $08FB, and taken with START pressed in its third frame;
+# and the queue flush (7F:0D20) with 16-bit and 8-bit registers.
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1168 01
+call 7E:F2CD p=20 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1168 00
+set 7E08FB 00
+call 7E:F2CD p=20 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1168 00
+set 7E08FB FF
+call 7E:F2CD p=20 db=00 d=0000 press=START@10 press=START@30 press=START@60 press=START@100
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1168 00
+set 7E08FB FF
+call 7E:F2CD p=30 db=00 d=0000 press=START@12 press=START@40 press=START@80 press=START@120
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 7F:0D20 long p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 7F:0D20 long p=30 db=00 d=0000
+wait 1
