@@ -9,7 +9,11 @@
 #   8048, to FxModelReturn);
 # - FxModelIfSprite (01:8F05) and FxModelSprite (01:8F18), each started
 #   directly and by its table entry (01:8054, 01:8050), with the registers
-#   of an FxModelFaces entry in speed_novice_coupe_07;
+#   of an FxModelFaces entry in speed_novice_coupe_07; then with the point
+#   deep enough to draw ($002A = $1000, the bank to go back to $001C =
+#   $0E): FxModelIfSprite with its flag byte ($07CA) $80 and 0, and
+#   FxModelSprite with the model flags $0054 = $2000 (the flat colour,
+#   FxModelSpriteColour) and the texture mask $00D4 = $50, and $3000;
 # - FxModelPointsFull (01:886C; entries 01:8008 and 01:804C) and
 #   FxModelPointsScaled (01:88F3; entry 01:8034) on the bytes at $0E:8EC4
 #   (one point, then the end command), from speed_novice_coupe_07 (bank
@@ -57,6 +61,39 @@ load build/stuntracefx/states/speed_novice_coupe_07.state
 set 700244 E3,80,43,92
 set 70005C AA,08
 fx 01:8050 stop=80E3 r10=0248 r0=00FF r1=0000 r2=FFFF r3=0002 r4=FFFC r5=30E3 r6=0002 r7=0000 r8=0504 r9=04E4 r12=0000 r13=9427 r14=E0D8
+wait 1
+load build/stuntracefx/states/speed_novice_coupe_07.state
+set 700244 E3,80,43,92
+set 70005C AA,08
+set 70001C 0E,00
+set 70002A 00,10
+set 7007CA 80
+fx 01:8F05 stop=80E3 r10=0248 r0=00FF r1=0000 r2=FFFF r3=0002 r4=FFFC r5=30E3 r6=0002 r7=0000 r8=0504 r9=04E4 r12=0000 r13=9427 r14=E0D8
+wait 1
+load build/stuntracefx/states/speed_novice_coupe_07.state
+set 700244 E3,80,43,92
+set 70005C AA,08
+set 70001C 0E,00
+set 70002A 00,10
+set 7007CA 00
+fx 01:8F05 stop=80E3 r10=0248 r0=00FF r1=0000 r2=FFFF r3=0002 r4=FFFC r5=30E3 r6=0002 r7=0000 r8=0504 r9=04E4 r12=0000 r13=9427 r14=E0D8
+wait 1
+load build/stuntracefx/states/speed_novice_coupe_07.state
+set 700244 E3,80,43,92
+set 70005C AA,08
+set 70001C 0E,00
+set 70002A 00,10
+set 700054 00,20
+set 7000D4 50,00
+fx 01:8F18 stop=80E3 r10=0248 r0=00FF r1=0000 r2=FFFF r3=0002 r4=FFFC r5=30E3 r6=0002 r7=0000 r8=0504 r9=04E4 r12=0000 r13=9427 r14=E0D8
+wait 1
+load build/stuntracefx/states/speed_novice_coupe_07.state
+set 700244 E3,80,43,92
+set 70005C AA,08
+set 70001C 0E,00
+set 70002A 00,10
+set 700054 00,30
+fx 01:8F18 stop=80E3 r10=0248 r0=00FF r1=0000 r2=FFFF r3=0002 r4=FFFC r5=30E3 r6=0002 r7=0000 r8=0504 r9=04E4 r12=0000 r13=9427 r14=E0D8
 wait 1
 load build/stuntracefx/states/speed_novice_coupe_07.state
 set 700244 E3,80,43,92
