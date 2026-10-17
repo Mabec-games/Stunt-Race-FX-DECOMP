@@ -669,11 +669,11 @@ ObjectChildrenSpawn:
     phx
     lda.l !gsu_rec_12,x
     tax
-    lda.l $098000,x
+    lda.l !attach_templates,x
     sta.w !wram_1F4C
-    lda.l $098002,x
+    lda.l !attach_templates+2,x
     sta.w !wram_1F52
-    lda.l $098004,x
+    lda.l !attach_templates+4,x
     sta.w !wram_1F4E
     plx
     sep.b #$20
@@ -2880,7 +2880,7 @@ PlayerCarEvents:
     and.w #$00FF
     bne .lC196
     lda.w #$0010
-    sta.l $7026EE
+    sta.l !fx_effect_max
 .lC196:
     lda.l !gsu_speeds,x
     bpl .lC1A0
@@ -3542,12 +3542,13 @@ ObjectLampAnimate:
     sep.b #$10
     tax
     rep.b #$20
-    lda.l $08E57F,x
+    lda.l .looks_04,x
     rep.b #$10
     plx
     sta.w !obj_5d,x
     sep.b #$20
     jmp.w ObjectLampOnParent
+.looks_04:                          ; word 0 is never read (the count is 1-4)
     dw $9AAF, $9AB3, $9AB5, $9AB3, $9AAF
 .lE589:
     lda.w !obj_4b,x
@@ -3562,12 +3563,13 @@ ObjectLampAnimate:
     sep.b #$10
     tax
     rep.b #$20
-    lda.l $08E5AD,x
+    lda.l .looks_08,x
     rep.b #$10
     plx
     sta.w !obj_5d,x
     sep.b #$20
     jmp.w ObjectLampOnParent
+.looks_08:                          ; word 0 is never read (the count is 1-4)
     dw $9AAF, $9AB3, $9AB5, $9AB7, $9AB1
 .lE5B7:
     lda.w !obj_4b,x                 ; not reached in the traces so far
@@ -3582,12 +3584,13 @@ ObjectLampAnimate:
     sep.b #$10
     tax
     rep.b #$20
-    lda.l $08E5DB,x
+    lda.l .looks_0C,x
     rep.b #$10
     plx
     sta.w !obj_5d,x
     sep.b #$20
     jmp.w ObjectLampOnParent
+.looks_0C:                          ; word 0 is never read (the count is 1-4)
     dw $9AB1, $9AB7, $9AB5, $9AB3, $9AAF
 .lE5E5:
     lda.w !obj_4b,x                 ; not reached in the traces so far
@@ -3602,12 +3605,13 @@ ObjectLampAnimate:
     sep.b #$10
     tax
     rep.b #$20
-    lda.l $08E609,x
+    lda.l .looks_1C,x
     rep.b #$10
     plx
     sta.w !obj_5d,x
     sep.b #$20
     jmp.w ObjectLampOnParent
+.looks_1C:                          ; word 0 is never read (the count is 1-4)
     dw $9AB1, $9AB7, $9AB5, $9AB7, $9AB1
 
 ; @routine 08:E613 ObjectLampStart
