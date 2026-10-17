@@ -1,12 +1,1713 @@
 ; raster.asm: the Super FX drawing the frame's queued shapes (flat
 ; polygons, lines, textured polygons) from the draw list at $70:08AA into
-; its screen buffer. C: src/stuntracefx/render/raster.c, which describes
-; the list's entries.
+; its screen buffer, and the steps that feed it: a shape's points gathered
+; and projected (01:98D7) and clipped to the screen's edges (01:9F01-A661).
+; C: src/stuntracefx/render/raster.c, which describes the list's entries.
 
 incsrc "../include/macros.inc"
 incsrc "../include/wram.inc"
 
 arch superfx
+
+;
+; @routine 01:98D7 FxPolygonGather
+; WHAT IT DOES: Takes a shape of R0 points (index bytes in ROM at R14)
+; to the screen: each point's x, y, z from the object's points at $0340
+; (6 bytes each) plus the object's position ($0026-$002A) into the list
+; at the word at $005A; the shape clipped against the near plane (z < 0
+; is behind) into $0688, $0040 = the count left; then each vertex
+; projected (FxProjectVertex), screen x and y back at $005A and the
+; outcodes ORed into $014A. R0 = the count, or 0 when fewer than 3 are
+; left or not every one of the outcode bits $0F00 is set.
+; HOW: Pushes R11 on the R10 stack. A LOOP of R12 = the count (R13 =
+; $98ED) of GETB, UMULT #6, three LDW and ADD. A line (2 points) is
+; clipped as one segment (FxSegmentCrossZ) and both ends kept. Else each
+; edge, the last back to the first: both ends behind (z AND z negative)
+; gives nothing, the start behind its crossing, the start in front
+; itself and the crossing when the end is behind; each written counts
+; $0040 up. The projection (ROMB $14, R3, R13, R9 from $0026-$002A, R14
+; saved at $001A, $014A cleared) is a count of DEC R12 with the SBK of
+; the outcode in the branch's delay slot; then ROMB from $001C, R14 from
+; $001A, R3 = $005A. Returns by pulling R15. The jump at 99E6 (fewer
+; than 3 left) is decoded from the ROM bytes; the bytes after the routine
+; (01:9A52-9F00) are not filed.
+; Entry: R0 = the count; R14 at the index bytes; R10 = stack; R11 =
+; return address. Exit: R0 as above; R1 = $0F00 and R0's AND (or the
+; last clip's when it ended early); R3 = $005A; R8 past the screen
+; points; R12 = 0; R14 as saved; S and Z from R10; the last RAM address
+; R10. The rest as the last call leaves them. The ROM buffer moves as on
+; the Super FX.
+%at($0198D7)
+FxPolygonGather:
+    from r11
+    stw (r10)
+    inc r10
+    inc r10
+    move r9,r0
+    lms r5,(!fx_object_x-!gsu_ram)
+    lms r6,(!fx_object_y-!gsu_ram)
+    lms r7,(!fx_object_z-!gsu_ram)
+    lms r2,(!fx_poly_out-!gsu_ram)
+    move r12,r9
+    move r13,r15
+    getb
+    inc r14
+    umult #6
+    iwt r1,#$0340
+    with r1
+    add r0
+    ldw (r1)
+    inc r1
+    inc r1
+    add r5
+    stw (r2)
+    inc r2
+    inc r2
+    ldw (r1)
+    inc r1
+    inc r1
+    add r6
+    stw (r2)
+    inc r2
+    inc r2
+    ldw (r1)
+    add r7
+    stw (r2)
+    inc r2
+    loop
+    inc r2
+    move r9,r9
+    sub r0
+    sms (!fx_vertex_count-!gsu_ram),r0
+    lms r7,(!fx_poly_out-!gsu_ram)
+    iwt r8,#$0688
+    from r9
+    sub #2
+    bne .l9958
+    nop
+    to r1
+    ldw (r7)
+    inc r7
+    inc r7
+    to r2
+    ldw (r7)
+    inc r7
+    inc r7
+    to r3
+    ldw (r7)
+    inc r7
+    inc r7
+    to r4
+    ldw (r7)
+    inc r7
+    inc r7
+    to r5
+    ldw (r7)
+    inc r7
+    inc r7
+    to r6
+    ldw (r7)
+    link #4
+    iwt r15,#FxSegmentCrossZ
+    nop
+    from r1
+    stw (r8)
+    inc r8
+    inc r8
+    from r2
+    stw (r8)
+    inc r8
+    inc r8
+    from r3
+    stw (r8)
+    inc r8
+    inc r8
+    from r4
+    stw (r8)
+    inc r8
+    inc r8
+    from r5
+    stw (r8)
+    inc r8
+    inc r8
+    from r6
+    stw (r8)
+    inc r8
+    inc r8
+    ibt r0,#$02
+    sms (!fx_vertex_count-!gsu_ram),r0
+    iwt r15,#.l99EA
+    nop
+.l9958:
+    to r1
+    ldw (r7)
+    inc r7
+    inc r7
+    to r2
+    ldw (r7)
+    inc r7
+    inc r7
+    to r3
+    ldw (r7)
+    inc r7
+    inc r7
+    move r0,r9
+    dec r0
+    bne .l996D
+    nop
+    lms r7,(!fx_poly_out-!gsu_ram)
+.l996D:
+    to r4
+    ldw (r7)
+    inc r7
+    inc r7
+    to r5
+    ldw (r7)
+    inc r7
+    inc r7
+    to r6
+    ldw (r7)
+    with r7
+    sub #4
+    from r6
+    and r3
+    bpl .l9983
+    nop
+    iwt r15,#.l99D6
+    nop
+.l9983:
+    moves r3,r3
+    bpl .l998C
+    nop
+    iwt r15,#.l99C0
+    nop
+.l998C:
+    from r1
+    stw (r8)
+    inc r8
+    inc r8
+    from r2
+    stw (r8)
+    inc r8
+    inc r8
+    from r3
+    stw (r8)
+    inc r8
+    inc r8
+    lms r0,(!fx_vertex_count-!gsu_ram)
+    inc r0
+    sbk
+    moves r6,r6
+    bmi .l99A6
+    nop
+    iwt r15,#.l99D6
+    nop
+.l99A6:
+    link #4
+    iwt r15,#FxSegmentCrossZ
+    nop
+    from r4
+    stw (r8)
+    inc r8
+    inc r8
+    from r5
+    stw (r8)
+    inc r8
+    inc r8
+    from r6
+    stw (r8)
+    inc r8
+    inc r8
+    lms r0,(!fx_vertex_count-!gsu_ram)
+    inc r0
+    sbk
+    iwt r15,#.l99D6
+    nop
+.l99C0:
+    link #4
+    iwt r15,#FxSegmentCrossZ
+    nop
+    from r1
+    stw (r8)
+    inc r8
+    inc r8
+    from r2
+    stw (r8)
+    inc r8
+    inc r8
+    from r3
+    stw (r8)
+    inc r8
+    inc r8
+    lms r0,(!fx_vertex_count-!gsu_ram)
+    inc r0
+    sbk
+.l99D6:
+    dec r9
+    beq .l99DE
+    nop
+    iwt r15,#.l9958
+    nop
+.l99DE:
+    lms r0,(!fx_vertex_count-!gsu_ram)
+    sub #3
+    bpl .l99EA
+    nop
+    iwt r15,#.l9A4C
+    nop
+.l99EA:
+    lms r3,(!fx_object_x-!gsu_ram)
+    lms r13,(!fx_object_y-!gsu_ram)
+    lms r9,(!fx_object_z-!gsu_ram)
+    ibt r0,#$14
+    romb
+    sub r0
+    sms (!fx_outcodes-!gsu_ram),r0
+    sms (!fx_rom_r14-!gsu_ram),r14
+    lms r12,(!fx_vertex_count-!gsu_ram)
+    iwt r7,#$0688
+    lms r8,(!fx_poly_out-!gsu_ram)
+.l9A07:
+    to r1
+    ldw (r7)
+    inc r7
+    inc r7
+    to r2
+    ldw (r7)
+    inc r7
+    inc r7
+    to r6
+    ldw (r7)
+    inc r7
+    inc r7
+    link #4
+    iwt r15,#FxProjectVertex
+    nop
+    from r1
+    stw (r8)
+    inc r8
+    inc r8
+    from r2
+    stw (r8)
+    inc r8
+    inc r8
+    lms r6,(!fx_outcodes-!gsu_ram)
+    or r6
+    dec r12
+    bne .l9A07
+    sbk
+    lms r0,(!fx_rom_bank-!gsu_ram)
+    romb
+    lms r14,(!fx_rom_r14-!gsu_ram)
+    lms r3,(!fx_poly_out-!gsu_ram)
+    lms r0,(!fx_outcodes-!gsu_ram)
+    iwt r1,#$0F00
+    and r1
+    cmp r1
+    beq .l9A43
+    nop
+    iwt r15,#.l9A4C
+    nop
+.l9A43:
+    nop
+    lms r0,(!fx_vertex_count-!gsu_ram)
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+.l9A4C:
+    sub r0
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+
+
+; FxClipLine (9F01, from FxPolygonClipScreen with fewer than 3 points):
+; the line at $005A clipped against all four screen edges, from $005A to
+; $0688 and back twice, each edge's pass as in FxPolygonClipScreen (the
+; bottom edge's crossings one row inside it); fewer than 2 points left
+; ends at A65C. Ends with R0 = 2, pulling R15. The passes' untraced
+; paths (both ends outside the left or right edge, nothing left after
+; them) are decoded from the ROM bytes: 9F6D, 9FC7, A03D, A09A.
+%at($019F01)
+FxClipLine:
+    sms (!fx_vertex_count-!gsu_ram),r0
+    lms r8,(!fx_poly_out-!gsu_ram)
+    iwt r9,#$0688
+    to r1
+    ldw (r8)
+    inc r8
+    inc r8
+    to r2
+    ldw (r8)
+    with r8
+    sub #2
+    lms r0,(!fx_vertex_count-!gsu_ram)
+    mult #4
+    add r8
+    from r1
+    stw (r0)
+    inc r0
+    inc r0
+    from r2
+    stw (r0)
+.l9F1F:
+    to r1
+    ldw (r8)
+    inc r8
+    inc r8
+    to r2
+    ldw (r8)
+    inc r8
+    inc r8
+    to r3
+    ldw (r8)
+    inc r8
+    inc r8
+    to r6
+    ldw (r8)
+    with r8
+    sub #2
+    lms r0,(!fx_screen_left-!gsu_ram)
+    from r1
+    sub r0
+    bge .l9F75
+    nop
+    lms r0,(!fx_screen_left-!gsu_ram)
+    from r3
+    sub r0
+    blt .l9F6D
+    nop
+    move r0,r1
+    move r1,r3
+    move r3,r0
+    move r0,r2
+    move r2,r6
+    move r6,r0
+    with r3
+    sub r1
+    with r6
+    sub r2
+    lms r0,(!fx_screen_left-!gsu_ram)
+    sub r1
+    to r5
+    lmult
+    move r6,r3
+    link #4
+    iwt r15,#FxDivideSigned
+    nop
+    from r4
+    add r2
+    lms r6,(!fx_screen_left-!gsu_ram)
+    from r6
+    stw (r9)
+    inc r9
+    inc r9
+    stw (r9)
+    inc r9
+    inc r9
+    bra .l9FB3
+    nop
+.l9F6D:
+    lms r0,(!fx_vertex_count_save-!gsu_ram)
+    dec r0
+    sbk
+    bra .l9FB3
+    nop
+.l9F75:
+    lms r0,(!fx_screen_left-!gsu_ram)
+    from r3
+    sub r0
+    bge .l9FAB
+    nop
+    lms r0,(!fx_vertex_count_save-!gsu_ram)
+    inc r0
+    sbk
+    from r1
+    stw (r9)
+    inc r9
+    inc r9
+    from r2
+    stw (r9)
+    inc r9
+    inc r9
+    with r3
+    sub r1
+    with r6
+    sub r2
+    lms r0,(!fx_screen_left-!gsu_ram)
+    sub r1
+    to r5
+    lmult
+    move r6,r3
+    link #4
+    iwt r15,#FxDivideSigned
+    nop
+    from r4
+    add r2
+    lms r6,(!fx_screen_left-!gsu_ram)
+    from r6
+    stw (r9)
+    inc r9
+    inc r9
+    stw (r9)
+    inc r9
+    inc r9
+    bra .l9FB3
+    nop
+.l9FAB:
+    from r1
+    stw (r9)
+    inc r9
+    inc r9
+    from r2
+    stw (r9)
+    inc r9
+    inc r9
+.l9FB3:
+    lms r0,(!fx_vertex_count-!gsu_ram)
+    dec r0
+    sbk
+    beq .l9FBF
+    nop
+    iwt r15,#.l9F1F
+    nop
+.l9FBF:
+    lms r0,(!fx_vertex_count_save-!gsu_ram)
+    sub #2
+    bpl .l9FCB
+    nop
+    iwt r15,#FxPolygonClipScreen_lA65C
+    nop
+.l9FCB:
+    add #2
+    sms (!fx_vertex_count-!gsu_ram),r0
+    iwt r8,#$0688
+    lms r9,(!fx_poly_out-!gsu_ram)
+    to r1
+    ldw (r8)
+    inc r8
+    inc r8
+    to r2
+    ldw (r8)
+    with r8
+    sub #2
+    lms r0,(!fx_vertex_count-!gsu_ram)
+    mult #4
+    add r8
+    from r1
+    stw (r0)
+    inc r0
+    inc r0
+    from r2
+    stw (r0)
+.l9FEB:
+    to r1
+    ldw (r8)
+    inc r8
+    inc r8
+    to r2
+    ldw (r8)
+    inc r8
+    inc r8
+    to r3
+    ldw (r8)
+    inc r8
+    inc r8
+    to r6
+    ldw (r8)
+    with r8
+    sub #2
+    lms r0,(!fx_screen_right-!gsu_ram)
+    from r1
+    sub r0
+    sub #1
+    blt .lA046
+    nop
+    lms r0,(!fx_screen_right-!gsu_ram)
+    from r3
+    sub r0
+    sub #1
+    bge .lA03D
+    nop
+    move r0,r1
+    move r1,r3
+    move r3,r0
+    move r0,r2
+    move r2,r6
+    move r6,r0
+    with r3
+    sub r1
+    with r6
+    sub r2
+    lms r0,(!fx_screen_right-!gsu_ram)
+    sub r1
+    to r5
+    lmult
+    move r6,r3
+    link #4
+    iwt r15,#FxDivideSigned
+    nop
+    from r4
+    add r2
+    lms r6,(!fx_screen_right-!gsu_ram)
+    from r6
+    stw (r9)
+    inc r9
+    inc r9
+    stw (r9)
+    inc r9
+    inc r9
+    bra .lA086
+    nop
+.lA03D:
+    lms r0,(!fx_vertex_count_save-!gsu_ram)
+    dec r0
+    sbk
+    iwt r15,#.lA086
+    nop
+.lA046:
+    lms r0,(!fx_screen_right-!gsu_ram)
+    from r3
+    sub r0
+    sub #1
+    blt .lA07E
+    nop
+    lms r0,(!fx_vertex_count_save-!gsu_ram)
+    inc r0
+    sbk
+    from r1
+    stw (r9)
+    inc r9
+    inc r9
+    from r2
+    stw (r9)
+    inc r9
+    inc r9
+    with r3
+    sub r1
+    with r6
+    sub r2
+    lms r0,(!fx_screen_right-!gsu_ram)
+    sub r1
+    to r5
+    lmult
+    move r6,r3
+    link #4
+    iwt r15,#FxDivideSigned
+    nop
+    from r4
+    add r2
+    lms r6,(!fx_screen_right-!gsu_ram)
+    from r6
+    stw (r9)
+    inc r9
+    inc r9
+    stw (r9)
+    inc r9
+    inc r9
+    bra .lA086
+    nop
+.lA07E:
+    from r1
+    stw (r9)
+    inc r9
+    inc r9
+    from r2
+    stw (r9)
+    inc r9
+    inc r9
+.lA086:
+    lms r0,(!fx_vertex_count-!gsu_ram)
+    dec r0
+    sbk
+    beq .lA092
+    nop
+    iwt r15,#.l9FEB
+    nop
+.lA092:
+    lms r0,(!fx_vertex_count_save-!gsu_ram)
+    sub #2
+    bpl .lA09E
+    nop
+    iwt r15,#FxPolygonClipScreen_lA65C
+    nop
+.lA09E:
+    add #2
+    sms (!fx_vertex_count-!gsu_ram),r0
+    lms r8,(!fx_poly_out-!gsu_ram)
+    iwt r9,#$0688
+    to r1
+    ldw (r8)
+    inc r8
+    inc r8
+    to r2
+    ldw (r8)
+    with r8
+    sub #2
+    lms r0,(!fx_vertex_count-!gsu_ram)
+    mult #4
+    add r8
+    from r1
+    stw (r0)
+    inc r0
+    inc r0
+    from r2
+    stw (r0)
+.lA0BE:
+    to r1
+    ldw (r8)
+    inc r8
+    inc r8
+    to r2
+    ldw (r8)
+    inc r8
+    inc r8
+    to r3
+    ldw (r8)
+    inc r8
+    inc r8
+    to r6
+    ldw (r8)
+    with r8
+    sub #2
+    lms r0,(!fx_screen_top-!gsu_ram)
+    from r2
+    sub r0
+    bge .lA11A
+    nop
+    lms r0,(!fx_screen_top-!gsu_ram)
+    from r6
+    sub r0
+    blt .lA112
+    nop
+    move r0,r1
+    move r1,r3
+    move r3,r0
+    move r0,r2
+    move r2,r6
+    move r6,r0
+    with r3
+    sub r1
+    with r6
+    sub r2
+    move r0,r3
+    move r3,r6
+    move r6,r0
+    lms r0,(!fx_screen_top-!gsu_ram)
+    sub r2
+    to r5
+    lmult
+    move r6,r3
+    link #4
+    iwt r15,#FxDivideSigned
+    nop
+    from r4
+    add r1
+    lms r6,(!fx_screen_top-!gsu_ram)
+    stw (r9)
+    inc r9
+    inc r9
+    from r6
+    stw (r9)
+    inc r9
+    inc r9
+    bra .lA15E
+    nop
+.lA112:
+    lms r0,(!fx_vertex_count_save-!gsu_ram)
+    dec r0
+    sbk
+    bra .lA15E
+    nop
+.lA11A:
+    lms r0,(!fx_screen_top-!gsu_ram)
+    from r6
+    sub r0
+    bge .lA156
+    nop
+    lms r0,(!fx_vertex_count_save-!gsu_ram)
+    inc r0
+    sbk
+    from r1
+    stw (r9)
+    inc r9
+    inc r9
+    from r2
+    stw (r9)
+    inc r9
+    inc r9
+    with r3
+    sub r1
+    with r6
+    sub r2
+    move r0,r3
+    move r3,r6
+    move r6,r0
+    lms r0,(!fx_screen_top-!gsu_ram)
+    sub r2
+    to r5
+    lmult
+    move r6,r3
+    link #4
+    iwt r15,#FxDivideSigned
+    nop
+    from r4
+    add r1
+    lms r6,(!fx_screen_top-!gsu_ram)
+    stw (r9)
+    inc r9
+    inc r9
+    from r6
+    stw (r9)
+    inc r9
+    inc r9
+    bra .lA15E
+    nop
+.lA156:
+    from r1
+    stw (r9)
+    inc r9
+    inc r9
+    from r2
+    stw (r9)
+    inc r9
+    inc r9
+.lA15E:
+    lms r0,(!fx_vertex_count-!gsu_ram)
+    dec r0
+    sbk
+    beq .lA16A
+    nop
+    iwt r15,#.lA0BE
+    nop
+.lA16A:
+    lms r0,(!fx_vertex_count_save-!gsu_ram)
+    sub #2
+    bpl .lA176
+    nop
+    iwt r15,#FxPolygonClipScreen_lA65C
+    nop
+.lA176:
+    add #2
+    sms (!fx_vertex_count-!gsu_ram),r0
+    iwt r8,#$0688
+    lms r9,(!fx_poly_out-!gsu_ram)
+    to r1
+    ldw (r8)
+    inc r8
+    inc r8
+    to r2
+    ldw (r8)
+    with r8
+    sub #2
+    lms r0,(!fx_vertex_count-!gsu_ram)
+    mult #4
+    add r8
+    from r1
+    stw (r0)
+    inc r0
+    inc r0
+    from r2
+    stw (r0)
+.lA196:
+    to r1
+    ldw (r8)
+    inc r8
+    inc r8
+    to r2
+    ldw (r8)
+    inc r8
+    inc r8
+    to r3
+    ldw (r8)
+    inc r8
+    inc r8
+    to r6
+    ldw (r8)
+    with r8
+    sub #2
+    lms r0,(!fx_screen_bottom-!gsu_ram)
+    from r2
+    sub r0
+    sub #1
+    blt .lA1F7
+    nop
+    lms r0,(!fx_screen_bottom-!gsu_ram)
+    from r6
+    sub r0
+    sub #1
+    bge .lA1EF
+    nop
+    move r0,r1
+    move r1,r3
+    move r3,r0
+    move r0,r2
+    move r2,r6
+    move r6,r0
+    with r3
+    sub r1
+    with r6
+    sub r2
+    move r0,r3
+    move r3,r6
+    move r6,r0
+    lms r0,(!fx_screen_bottom-!gsu_ram)
+    sub r2
+    to r5
+    lmult
+    move r6,r3
+    link #4
+    iwt r15,#FxDivideSigned
+    nop
+    from r4
+    add r1
+    lms r6,(!fx_screen_bottom-!gsu_ram)
+    dec r6
+    stw (r9)
+    inc r9
+    inc r9
+    from r6
+    stw (r9)
+    inc r9
+    inc r9
+    bra .lA23E
+    nop
+.lA1EF:
+    lms r0,(!fx_vertex_count_save-!gsu_ram)
+    dec r0
+    sbk
+    bra .lA23E
+    nop
+.lA1F7:
+    lms r0,(!fx_screen_bottom-!gsu_ram)
+    from r6
+    sub r0
+    sub #1
+    blt .lA236
+    nop
+    lms r0,(!fx_vertex_count_save-!gsu_ram)
+    inc r0
+    sbk
+    from r1
+    stw (r9)
+    inc r9
+    inc r9
+    from r2
+    stw (r9)
+    inc r9
+    inc r9
+    with r3
+    sub r1
+    with r6
+    sub r2
+    move r0,r3
+    move r3,r6
+    move r6,r0
+    lms r0,(!fx_screen_bottom-!gsu_ram)
+    sub r2
+    to r5
+    lmult
+    move r6,r3
+    link #4
+    iwt r15,#FxDivideSigned
+    nop
+    from r4
+    add r1
+    lms r6,(!fx_screen_bottom-!gsu_ram)
+    dec r6
+    stw (r9)
+    inc r9
+    inc r9
+    from r6
+    stw (r9)
+    inc r9
+    inc r9
+    bra .lA23E
+    nop
+.lA236:
+    from r1
+    stw (r9)
+    inc r9
+    inc r9
+    from r2
+    stw (r9)
+    inc r9
+    inc r9
+.lA23E:
+    lms r0,(!fx_vertex_count-!gsu_ram)
+    dec r0
+    sbk
+    beq .lA24A
+    nop
+    iwt r15,#.lA196
+    nop
+.lA24A:
+    lms r0,(!fx_vertex_count_save-!gsu_ram)
+    sub #2
+    bpl .lA256
+    nop
+    iwt r15,#FxPolygonClipScreen_lA65C
+    nop
+.lA256:
+    add #2
+    ibt r0,#$02
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+;
+; @routine 01:A25F FxPolygonClipScreen
+; WHAT IT DOES: Clips the projected polygon at the word at $005A (R0
+; vertices, x and y words each) against the edges of the screen ($38
+; and $3A in x, $3C and $3E in y) that its outcodes at $014A cross (bit
+; 2 left, 3 right, 0 top, 1 bottom), leaving the result at $005A again;
+; a line (fewer than 3 points) is clipped against all four
+; (FxClipLine). R0 = the count left, 0 when fewer than 3 (2 for a line)
+; are.
+; HOW: $0060 = $005A, $0062 = $0688, the count at $0098; pushes R11
+; on the R10 stack. For each edge clipped: the count to $0040, the first
+; vertex copied after the last, then for each edge of the polygon the
+; start written when inside, the crossing (LMULT, FxDivideSigned) when
+; it crosses, $0098 counted up or down; the lists swapped; fewer than 3
+; left goes to A65C (R0 = 0). Then, unless the list read last is
+; $005A's, the vertices are copied back there (LOOP) and R0 = $0098.
+; Returns by pulling R15. The incoming and outgoing crossings are the
+; same code twice, with their own LINK. (The catalog's routine runs on
+; through FxDrawTextured to 01:A90C.)
+; Entry: R0 = the vertex count; R10 = stack; R11 = return address. Exit:
+; R0 as above; R11 = the last LINK's return; R4-R6 from the last
+; division (when any); R8, R9 past the last vertices read and written;
+; R12 = 0 and R13 the copy's LOOP when it ran; S and Z from R10, the
+; last RAM address R10. The rest as the last step leaves them.
+FxPolygonClipScreen:
+    lms r8,(!fx_poly_out-!gsu_ram)
+    iwt r9,#$0688
+    sms (!fx_list_in-!gsu_ram),r8
+    sms (!fx_list_out-!gsu_ram),r9
+    sms (!fx_vertex_count_save-!gsu_ram),r0
+    from r11
+    stw (r10)
+    inc r10
+    inc r10
+    ibt r1,#$03
+    cmp r1
+    bpl .lA27D
+    nop
+    iwt r15,#FxClipLine
+    nop
+.lA27D:
+    lms r1,(!fx_outcodes-!gsu_ram)
+    with r1
+    and #4
+    bne .lA28A
+    nop
+    iwt r15,#.lA362
+    nop
+.lA28A:
+    lms r8,(!fx_list_in-!gsu_ram)
+    lms r9,(!fx_list_out-!gsu_ram)
+    sms (!fx_vertex_count-!gsu_ram),r0
+    to r1
+    ldw (r8)
+    inc r8
+    inc r8
+    to r2
+    ldw (r8)
+    with r8
+    sub #2
+    lms r0,(!fx_vertex_count-!gsu_ram)
+    mult #4
+    add r8
+    from r1
+    stw (r0)
+    inc r0
+    inc r0
+    from r2
+    stw (r0)
+.lA2A8:
+    to r1
+    ldw (r8)
+    inc r8
+    inc r8
+    to r2
+    ldw (r8)
+    inc r8
+    inc r8
+    to r3
+    ldw (r8)
+    inc r8
+    inc r8
+    to r6
+    ldw (r8)
+    with r8
+    sub #2
+    lms r0,(!fx_screen_left-!gsu_ram)
+    from r1
+    sub r0
+    bge .lA2FE
+    nop
+    lms r0,(!fx_screen_left-!gsu_ram)
+    from r3
+    sub r0
+    blt .lA2F6
+    nop
+    move r0,r1
+    move r1,r3
+    move r3,r0
+    move r0,r2
+    move r2,r6
+    move r6,r0
+    with r3
+    sub r1
+    with r6
+    sub r2
+    lms r0,(!fx_screen_left-!gsu_ram)
+    sub r1
+    to r5
+    lmult
+    move r6,r3
+    link #4
+    iwt r15,#FxDivideSigned
+    nop
+    from r4
+    add r2
+    lms r6,(!fx_screen_left-!gsu_ram)
+    from r6
+    stw (r9)
+    inc r9
+    inc r9
+    stw (r9)
+    inc r9
+    inc r9
+    bra .lA33C
+    nop
+.lA2F6:
+    lms r0,(!fx_vertex_count_save-!gsu_ram)
+    dec r0
+    sbk
+    bra .lA33C
+    nop
+.lA2FE:
+    lms r0,(!fx_screen_left-!gsu_ram)
+    from r3
+    sub r0
+    bge .lA334
+    nop
+    lms r0,(!fx_vertex_count_save-!gsu_ram)
+    inc r0
+    sbk
+    from r1
+    stw (r9)
+    inc r9
+    inc r9
+    from r2
+    stw (r9)
+    inc r9
+    inc r9
+    with r3
+    sub r1
+    with r6
+    sub r2
+    lms r0,(!fx_screen_left-!gsu_ram)
+    sub r1
+    to r5
+    lmult
+    move r6,r3
+    link #4
+    iwt r15,#FxDivideSigned
+    nop
+    from r4
+    add r2
+    lms r6,(!fx_screen_left-!gsu_ram)
+    from r6
+    stw (r9)
+    inc r9
+    inc r9
+    stw (r9)
+    inc r9
+    inc r9
+    bra .lA33C
+    nop
+.lA334:
+    from r1
+    stw (r9)
+    inc r9
+    inc r9
+    from r2
+    stw (r9)
+    inc r9
+    inc r9
+.lA33C:
+    lms r0,(!fx_vertex_count-!gsu_ram)
+    dec r0
+    sbk
+    beq .lA348
+    nop
+    iwt r15,#.lA2A8
+    nop
+.lA348:
+    lms r1,(!fx_list_in-!gsu_ram)
+    lms r2,(!fx_list_out-!gsu_ram)
+    sms (!fx_list_in-!gsu_ram),r2
+    sms (!fx_list_out-!gsu_ram),r1
+    lms r0,(!fx_vertex_count_save-!gsu_ram)
+    sub #3
+    bpl .lA360
+    nop
+    iwt r15,#.lA65C
+    nop
+.lA360:
+    add #3
+.lA362:
+    lms r1,(!fx_outcodes-!gsu_ram)
+    with r1
+    and #8
+    bne .lA36F
+    nop
+    iwt r15,#.lA44D
+    nop
+.lA36F:
+    lms r8,(!fx_list_in-!gsu_ram)
+    lms r9,(!fx_list_out-!gsu_ram)
+    sms (!fx_vertex_count-!gsu_ram),r0
+    to r1
+    ldw (r8)
+    inc r8
+    inc r8
+    to r2
+    ldw (r8)
+    with r8
+    sub #2
+    lms r0,(!fx_vertex_count-!gsu_ram)
+    mult #4
+    add r8
+    from r1
+    stw (r0)
+    inc r0
+    inc r0
+    from r2
+    stw (r0)
+.lA38D:
+    to r1
+    ldw (r8)
+    inc r8
+    inc r8
+    to r2
+    ldw (r8)
+    inc r8
+    inc r8
+    to r3
+    ldw (r8)
+    inc r8
+    inc r8
+    to r6
+    ldw (r8)
+    with r8
+    sub #2
+    lms r0,(!fx_screen_right-!gsu_ram)
+    from r1
+    sub r0
+    sub #1
+    blt .lA3E7
+    nop
+    lms r0,(!fx_screen_right-!gsu_ram)
+    from r3
+    sub r0
+    sub #1
+    bge .lA3DF
+    nop
+    move r0,r1
+    move r1,r3
+    move r3,r0
+    move r0,r2
+    move r2,r6
+    move r6,r0
+    with r3
+    sub r1
+    with r6
+    sub r2
+    lms r0,(!fx_screen_right-!gsu_ram)
+    sub r1
+    to r5
+    lmult
+    move r6,r3
+    link #4
+    iwt r15,#FxDivideSigned
+    nop
+    from r4
+    add r2
+    lms r6,(!fx_screen_right-!gsu_ram)
+    from r6
+    stw (r9)
+    inc r9
+    inc r9
+    stw (r9)
+    inc r9
+    inc r9
+    bra .lA427
+    nop
+.lA3DF:
+    lms r0,(!fx_vertex_count_save-!gsu_ram)
+    dec r0
+    sbk
+    bra .lA427
+    nop
+.lA3E7:
+    lms r0,(!fx_screen_right-!gsu_ram)
+    from r3
+    sub r0
+    sub #1
+    blt .lA41F
+    nop
+    lms r0,(!fx_vertex_count_save-!gsu_ram)
+    inc r0
+    sbk
+    from r1
+    stw (r9)
+    inc r9
+    inc r9
+    from r2
+    stw (r9)
+    inc r9
+    inc r9
+    with r3
+    sub r1
+    with r6
+    sub r2
+    lms r0,(!fx_screen_right-!gsu_ram)
+    sub r1
+    to r5
+    lmult
+    move r6,r3
+    link #4
+    iwt r15,#FxDivideSigned
+    nop
+    from r4
+    add r2
+    lms r6,(!fx_screen_right-!gsu_ram)
+    from r6
+    stw (r9)
+    inc r9
+    inc r9
+    stw (r9)
+    inc r9
+    inc r9
+    bra .lA427
+    nop
+.lA41F:
+    from r1
+    stw (r9)
+    inc r9
+    inc r9
+    from r2
+    stw (r9)
+    inc r9
+    inc r9
+.lA427:
+    lms r0,(!fx_vertex_count-!gsu_ram)
+    dec r0
+    sbk
+    beq .lA433
+    nop
+    iwt r15,#.lA38D
+    nop
+.lA433:
+    lms r1,(!fx_list_in-!gsu_ram)
+    lms r2,(!fx_list_out-!gsu_ram)
+    sms (!fx_list_in-!gsu_ram),r2
+    sms (!fx_list_out-!gsu_ram),r1
+    lms r0,(!fx_vertex_count_save-!gsu_ram)
+    sub #3
+    bpl .lA44B
+    nop
+    iwt r15,#.lA65C
+    nop
+.lA44B:
+    add #3
+.lA44D:
+    lms r1,(!fx_outcodes-!gsu_ram)
+    with r1
+    and #1
+    bne .lA45A
+    nop
+    iwt r15,#.lA53E
+    nop
+.lA45A:
+    lms r8,(!fx_list_in-!gsu_ram)
+    lms r9,(!fx_list_out-!gsu_ram)
+    sms (!fx_vertex_count-!gsu_ram),r0
+    to r1
+    ldw (r8)
+    inc r8
+    inc r8
+    to r2
+    ldw (r8)
+    with r8
+    sub #2
+    lms r0,(!fx_vertex_count-!gsu_ram)
+    mult #4
+    add r8
+    from r1
+    stw (r0)
+    inc r0
+    inc r0
+    from r2
+    stw (r0)
+.lA478:
+    to r1
+    ldw (r8)
+    inc r8
+    inc r8
+    to r2
+    ldw (r8)
+    inc r8
+    inc r8
+    to r3
+    ldw (r8)
+    inc r8
+    inc r8
+    to r6
+    ldw (r8)
+    with r8
+    sub #2
+    lms r0,(!fx_screen_top-!gsu_ram)
+    from r2
+    sub r0
+    bge .lA4D4
+    nop
+    lms r0,(!fx_screen_top-!gsu_ram)
+    from r6
+    sub r0
+    blt .lA4CC
+    nop
+    move r0,r1
+    move r1,r3
+    move r3,r0
+    move r0,r2
+    move r2,r6
+    move r6,r0
+    with r3
+    sub r1
+    with r6
+    sub r2
+    move r0,r3
+    move r3,r6
+    move r6,r0
+    lms r0,(!fx_screen_top-!gsu_ram)
+    sub r2
+    to r5
+    lmult
+    move r6,r3
+    link #4
+    iwt r15,#FxDivideSigned
+    nop
+    from r4
+    add r1
+    lms r6,(!fx_screen_top-!gsu_ram)
+    stw (r9)
+    inc r9
+    inc r9
+    from r6
+    stw (r9)
+    inc r9
+    inc r9
+    bra .lA518
+    nop
+.lA4CC:
+    lms r0,(!fx_vertex_count_save-!gsu_ram)
+    dec r0
+    sbk
+    bra .lA518
+    nop
+.lA4D4:
+    lms r0,(!fx_screen_top-!gsu_ram)
+    from r6
+    sub r0
+    bge .lA510
+    nop
+    lms r0,(!fx_vertex_count_save-!gsu_ram)
+    inc r0
+    sbk
+    from r1
+    stw (r9)
+    inc r9
+    inc r9
+    from r2
+    stw (r9)
+    inc r9
+    inc r9
+    with r3
+    sub r1
+    with r6
+    sub r2
+    move r0,r3
+    move r3,r6
+    move r6,r0
+    lms r0,(!fx_screen_top-!gsu_ram)
+    sub r2
+    to r5
+    lmult
+    move r6,r3
+    link #4
+    iwt r15,#FxDivideSigned
+    nop
+    from r4
+    add r1
+    lms r6,(!fx_screen_top-!gsu_ram)
+    stw (r9)
+    inc r9
+    inc r9
+    from r6
+    stw (r9)
+    inc r9
+    inc r9
+    bra .lA518
+    nop
+.lA510:
+    from r1
+    stw (r9)
+    inc r9
+    inc r9
+    from r2
+    stw (r9)
+    inc r9
+    inc r9
+.lA518:
+    lms r0,(!fx_vertex_count-!gsu_ram)
+    dec r0
+    sbk
+    beq .lA524
+    nop
+    iwt r15,#.lA478
+    nop
+.lA524:
+    lms r1,(!fx_list_in-!gsu_ram)
+    lms r2,(!fx_list_out-!gsu_ram)
+    sms (!fx_list_in-!gsu_ram),r2
+    sms (!fx_list_out-!gsu_ram),r1
+    lms r0,(!fx_vertex_count_save-!gsu_ram)
+    sub #3
+    bpl .lA53C
+    nop
+    iwt r15,#.lA65C
+    nop
+.lA53C:
+    add #3
+.lA53E:
+    lms r1,(!fx_outcodes-!gsu_ram)
+    with r1
+    and #2
+    bne .lA54B
+    nop
+    iwt r15,#.lA635
+    nop
+.lA54B:
+    lms r8,(!fx_list_in-!gsu_ram)
+    lms r9,(!fx_list_out-!gsu_ram)
+    sms (!fx_vertex_count-!gsu_ram),r0
+    to r1
+    ldw (r8)
+    inc r8
+    inc r8
+    to r2
+    ldw (r8)
+    with r8
+    sub #2
+    lms r0,(!fx_vertex_count-!gsu_ram)
+    mult #4
+    add r8
+    from r1
+    stw (r0)
+    inc r0
+    inc r0
+    from r2
+    stw (r0)
+.lA569:
+    to r1
+    ldw (r8)
+    inc r8
+    inc r8
+    to r2
+    ldw (r8)
+    inc r8
+    inc r8
+    to r3
+    ldw (r8)
+    inc r8
+    inc r8
+    to r6
+    ldw (r8)
+    with r8
+    sub #2
+    lms r0,(!fx_screen_bottom-!gsu_ram)
+    from r2
+    sub r0
+    sub #1
+    blt .lA5C9
+    nop
+    lms r0,(!fx_screen_bottom-!gsu_ram)
+    from r6
+    sub r0
+    sub #1
+    bge .lA5C1
+    nop
+    move r0,r1
+    move r1,r3
+    move r3,r0
+    move r0,r2
+    move r2,r6
+    move r6,r0
+    with r3
+    sub r1
+    with r6
+    sub r2
+    move r0,r3
+    move r3,r6
+    move r6,r0
+    lms r0,(!fx_screen_bottom-!gsu_ram)
+    sub r2
+    to r5
+    lmult
+    move r6,r3
+    link #4
+    iwt r15,#FxDivideSigned
+    nop
+    from r4
+    add r1
+    lms r6,(!fx_screen_bottom-!gsu_ram)
+    stw (r9)
+    inc r9
+    inc r9
+    from r6
+    stw (r9)
+    inc r9
+    inc r9
+    bra .lA60F
+    nop
+.lA5C1:
+    lms r0,(!fx_vertex_count_save-!gsu_ram)
+    dec r0
+    sbk
+    bra .lA60F
+    nop
+.lA5C9:
+    lms r0,(!fx_screen_bottom-!gsu_ram)
+    from r6
+    sub r0
+    sub #1
+    blt .lA607
+    nop
+    lms r0,(!fx_vertex_count_save-!gsu_ram)
+    inc r0
+    sbk
+    from r1
+    stw (r9)
+    inc r9
+    inc r9
+    from r2
+    stw (r9)
+    inc r9
+    inc r9
+    with r3
+    sub r1
+    with r6
+    sub r2
+    move r0,r3
+    move r3,r6
+    move r6,r0
+    lms r0,(!fx_screen_bottom-!gsu_ram)
+    sub r2
+    to r5
+    lmult
+    move r6,r3
+    link #4
+    iwt r15,#FxDivideSigned
+    nop
+    from r4
+    add r1
+    lms r6,(!fx_screen_bottom-!gsu_ram)
+    stw (r9)
+    inc r9
+    inc r9
+    from r6
+    stw (r9)
+    inc r9
+    inc r9
+    bra .lA60F
+    nop
+.lA607:
+    from r1
+    stw (r9)
+    inc r9
+    inc r9
+    from r2
+    stw (r9)
+    inc r9
+    inc r9
+.lA60F:
+    lms r0,(!fx_vertex_count-!gsu_ram)
+    dec r0
+    sbk
+    beq .lA61B
+    nop
+    iwt r15,#.lA569
+    nop
+.lA61B:
+    lms r1,(!fx_list_in-!gsu_ram)
+    lms r2,(!fx_list_out-!gsu_ram)
+    sms (!fx_list_in-!gsu_ram),r2
+    sms (!fx_list_out-!gsu_ram),r1
+    lms r0,(!fx_vertex_count_save-!gsu_ram)
+    sub #3
+    bpl .lA633
+    nop
+    iwt r15,#.lA65C
+    nop
+.lA633:
+    add #3
+.lA635:
+    lms r1,(!fx_poly_out-!gsu_ram)
+    lms r8,(!fx_list_in-!gsu_ram)
+    with r1
+    sub r8
+    beq .lA657
+    nop
+    lms r9,(!fx_list_out-!gsu_ram)
+    move r12,r0
+    move r13,r15
+    ldw (r8)
+    stw (r9)
+    inc r9
+    inc r9
+    inc r8
+    inc r8
+    ldw (r8)
+    stw (r9)
+    inc r9
+    inc r9
+    inc r8
+    loop
+    inc r8
+    lms r0,(!fx_vertex_count_save-!gsu_ram)
+.lA657:
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+.lA65C:
+    sub r0
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+
 
 ; FxDrawTextured (A662, reached from FxDrawListDispatch with R0 = NOT the
 ; type): a textured polygon. Its vertices are copied below the entry (u
@@ -14,7 +1715,8 @@ arch superfx
 ; the top vertex (A7D9 / A870, set up at A7E2 / A879) and the rows between
 ; them filled (A710-A7D2): each texel from MERGE of v and u, the mask at
 ; $00D4 and the texture's address, GETC, PLOT. Ends at A909, back to the
-; list. (Inside the catalog's 01:A25F; the CACHE at A90D is never run.)
+; list. (Inside the catalog's 01:A25F, after FxPolygonClipScreen's code;
+; the CACHE at A90D is never run and is left in the raw bank.)
 
 %at($01A662)
 FxDrawTextured:

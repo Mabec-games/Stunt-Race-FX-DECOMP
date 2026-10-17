@@ -1705,3 +1705,10 @@ includeonce
 !fx_tex_u_off = $7000C0           ; added to u and v across a row
 !fx_tex_v_off = $7000C2
 !fx_tex_mask = $7000D4            ; MERGE of v and u ANDed with it
+!fx_screen_left = $700038         ; the screen's edges the clips use: x from left to right,
+!fx_screen_right = $70003A        ; y from top to bottom
+!fx_screen_top = $70003C
+!fx_screen_bottom = $70003E
+!fx_object_x = $700026            ; the object's position, added to each of its points
+!fx_object_y = $700028
+!fx_object_z = $70002A
