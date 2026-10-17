@@ -2,10 +2,14 @@
  * halt.c: where the game stops when a fixed-size list overflows. No script
  * reaches these routines; they are the targets of the overflow checks in
  * FrameByteWritePush (SystemHalt), MenuActorSpawnList (SystemHaltSpawn) and
- * MenuActorCopyGroup (Hang).
+ * MenuActorCopyGroup (Hang). DebugByteHalt is a debug stop that nothing
+ * calls.
  */
 #include "machine.h"
 #include "hw.h"
+#include "cpu_ops.h"
+
+void abi_DebugPrintHexByte(void);
 
 /*
  * @routine 0B:E41D SystemHalt
@@ -78,4 +82,60 @@ void Hang(void)
 void abi_Hang(void)
 {
     Hang();
+}
+
+/*
+ * @routine 03:D40A DebugByteHalt
+ * WHAT IT DOES: A debug stop that nothing calls: for ever, the screen on at
+ * full brightness, $0D61 = $0F, $00 = 2, the byte $69 printed as two hex
+ * digits (DebugPrintHexByte) at text position $0680 ($46, half $0307 = 0);
+ * $0357 and the Super FX buffer select $0D7F cleared; the Super FX screen
+ * mode from $0374 with its RAM taken back (bit 3 off), the screen start
+ * $70:021A and $48 = $2C00, the mode again with RAM and ROM given to the
+ * Super FX (bits $18), and the screen base $0B.
+ * HOW: PHP, SEP #$20, REP #$10, PHB, PHK, PLB (never pulled), then a BRA
+ * loop; the $69 kept across the stores by PHA, PLA. Never returns.
+ * Entry: D = $0000. Exit: does not return.
+ */
+void DebugByteHalt(void)
+{
+    uint32_t b;
+    uint16_t v;
+
+    op_sep(P_M);
+    op_rep(P_X);
+    cpu.db = 0x03;
+    cpu.p = nz8(cpu.p, cpu.db);
+    b = (uint32_t)cpu.db << 16;
+    for (;;) {
+        wr8(INIDISP, 0x0F);
+        wr8(b | 0x0D61, 0x0F);
+        wr8((uint16_t)(cpu.d + 0x00), 0x02);
+        wr8((uint16_t)(cpu.d + 0x46), 0x80);
+        wr8((uint16_t)(cpu.d + 0x47), 0x06);
+        wr8(b | 0x0307, 0x00);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x69);
+        cpu.p = nz8(cpu.p, 0x69);
+        abi_DebugPrintHexByte();
+        op_sep(P_M);
+        wr8(b | 0x0357, 0x00);
+        op_rep(P_M);
+        wr16(b | 0x0D7F, 0x0000);
+        v = (uint16_t)(rd16(b | 0x0374) & 0xFFF7);
+        wr16(b | 0x303A, v);
+        wr16(0x70021A, 0x2C00);
+        wr16((uint16_t)(cpu.d + 0x48), 0x2C00);
+        v = (uint16_t)(rd16(b | 0x0374) | 0x0018);
+        cpu.a = v;
+        wr16(b | 0x303A, v);
+        op_sep(P_M);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x0B);
+        cpu.p = nz8(cpu.p, 0x0B);
+        wr8(GSU_SCBR, 0x0B);
+    }
+}
+
+void abi_DebugByteHalt(void)
+{
+    DebugByteHalt();
 }

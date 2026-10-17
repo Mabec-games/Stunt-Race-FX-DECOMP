@@ -1,0 +1,5 @@
+# unit_debug_halt_03: DebugByteHalt (03:D40A), a debug stop that nothing
+# calls, as a noreturn call from the start of a Novice race, run for 20
+# frames and compared in lockstep over them.
+load build/stuntracefx/states/novice_coupe_race1.state
+call 03:D40A long p=30 db=00 d=0000 noreturn frames=20
