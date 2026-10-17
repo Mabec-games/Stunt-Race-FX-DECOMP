@@ -1,0 +1,28 @@
+# unit_bitmaps: unit tests (fx) of the Super FX bitmap blits no script
+# reaches, from the start of a Novice race (R11 = the STOP at $01:80E3),
+# each drawing at (16, 8) through the palette at $2702 from the bitmap the
+# text code that calls it would use ($8000 plus its offset, in the ROM
+# bank the race left): FxDrawBitmap16x32, FxDrawBitmap8x16,
+# FxDrawBitmap120x48, FxDrawBitmap120x24, FxDrawBitmap120x32,
+# FxDrawBitmap120x16 and FxDrawBitmap64x16.
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:D4E4 stop=80E3 r4=0010 r2=0008 r9=2702 r14=B700
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:D5D2 stop=80E3 r4=0010 r2=0008 r9=2702 r14=B700
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:D652 stop=80E3 r4=0010 r2=0008 r9=2702 r14=BA00
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:DCD6 stop=80E3 r4=0010 r2=0008 r9=2702 r14=B700
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:E35A stop=80E3 r4=0010 r2=0008 r9=2702 r14=B700
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:E9DE stop=80E3 r4=0010 r2=0008 r9=2702 r14=BB00
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:F062 stop=80E3 r4=0010 r2=0008 r9=2702 r14=9810
+wait 1
