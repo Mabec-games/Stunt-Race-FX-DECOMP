@@ -1,0 +1,62 @@
+# unit_push_at: unit tests (fx) of the Super FX pushes at a point
+# (04:987D-9BC5) from the start of a Novice race, with the world sum at
+# $2340 set to ($1000, $F000, $0800) (R11 = the STOP at $04:888C, R10 = the
+# stack at $0244):
+# - FxHitAddScaled with a vector of mixed signs scaled by $4000, and with a
+#   zero vector; FxHitAddUnit (FxNormalize) likewise;
+# - each push variant the table at $04:9BC6 picks (FxPushAt4, FxPushAt2,
+#   FxPushAt1, FxPushAtHalf, FxPushAtQuarter, FxPushAt4Twist) and the two
+#   nothing calls (FxPushAt4Kept, FxPushAtTurned) at one point;
+# - FxSumScale by $0180.
+load build/stuntracefx/states/novice_coupe_race1.state
+set 702340 00,10,00,F0,00,08
+fx 04:987D stop=888C r1=0100 r2=FF00 r3=0040 r6=4000 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 702340 00,10,00,F0,00,08
+fx 04:987D stop=888C r1=0000 r2=0000 r3=0000 r6=4000 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 702340 00,10,00,F0,00,08
+fx 04:98AB stop=888C r1=0100 r2=FE00 r3=0300 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 702340 00,10,00,F0,00,08
+fx 04:98AB stop=888C r1=0000 r2=0000 r3=0000 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 702340 00,10,00,F0,00,08
+fx 04:9A9B stop=888C r1=0010 r2=FFF0 r3=0008 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 702340 00,10,00,F0,00,08
+fx 04:99A1 stop=888C r1=0010 r2=FFF0 r3=0008 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 702340 00,10,00,F0,00,08
+fx 04:99C9 stop=888C r1=0010 r2=FFF0 r3=0008 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 702340 00,10,00,F0,00,08
+fx 04:99EE stop=888C r1=0010 r2=FFF0 r3=0008 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 702340 00,10,00,F0,00,08
+fx 04:9A19 stop=888C r1=0010 r2=FFF0 r3=0008 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 702340 00,10,00,F0,00,08
+fx 04:9A4A stop=888C r1=0010 r2=FFF0 r3=0008 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 702340 00,10,00,F0,00,08
+fx 04:9985 stop=888C r1=0010 r2=FFF0 r3=0008 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 702340 00,10,00,F0,00,08
+fx 04:9927 stop=888C r1=0010 r2=FFF0 r3=0008 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 702340 00,10,00,F0,00,08
+fx 04:9A65 stop=888C r6=0180
+wait 1

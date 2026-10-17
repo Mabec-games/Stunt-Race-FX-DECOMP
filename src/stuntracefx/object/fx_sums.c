@@ -427,3 +427,381 @@ void abi_FxPushesApply(void)
     gsu.r[0] = gsu_ldw(FX_PUSH_FLAGS);
     gsu_pull(&gsu.r[10]);
 }
+
+/* ---- pushes at a point: 04:987D-9BC5 ---- */
+
+#define FX_HIT 0x2334u          /* the hit point: x, y, z */
+#define FX_PUSH_POINT 0x26F6u   /* the point pushed at, sixteen times: x, y, z */
+#define FX_PUSH_ROT 0x0132u     /* the push in the object's axes: x at $132, y at $13A, z at $142 */
+#define FX_PUSH_ROT_GAP 0x0134u /* cleared */
+#define FX_TURN_CROSS 0x0068u   /* the point crossed with the push: x at $68, y at $2E, z at $2C */
+#define FX_SPIN 0x233Au         /* the spin sums: z at $233A, x at $233C, y at $233E */
+
+/* The three pushes of the registers the variants keep: R11, R9, R8 on the
+   R10 stack, and back in the other order. */
+static void push3(void)
+{
+    gsu_push(&gsu.r[10], gsu.r[11]);
+    gsu_push(&gsu.r[10], gsu.r[9]);
+    gsu_push(&gsu.r[10], gsu.r[8]);
+}
+
+static void pull3(int r11)
+{
+    gsu.r[8] = gsu_pull(&gsu.r[10]);
+    gsu.r[9] = gsu_pull(&gsu.r[10]);
+    if (r11)
+        gsu.r[11] = gsu_pull(&gsu.r[10]);
+    else
+        gsu_pull(&gsu.r[10]);   /* the return address, into R15 */
+}
+
+/* One component through the matrix: FMULT and ROL of each of R1, R2, R3
+   with the words at m, m + step, m + 2 * step, summed (R5 the running
+   sum, R0 the result). */
+static uint16_t fx_row(uint16_t m, uint16_t step)
+{
+    gsu.r[6] = gsu_ldw(m);
+    gsu.r[5] = gsu_rol(gsu_fmult(gsu.r[1], gsu.r[6]));
+    gsu.r[6] = gsu_ldw((uint16_t)(m + step));
+    gsu.r[0] = gsu_rol(gsu_fmult(gsu.r[2], gsu.r[6]));
+    gsu.r[5] = gsu_add(gsu.r[5], gsu.r[0], 0);
+    gsu.r[6] = gsu_ldw((uint16_t)(m + 2 * step));
+    gsu.r[0] = gsu_rol(gsu_fmult(gsu.r[3], gsu.r[6]));
+    gsu.r[0] = gsu_add(gsu.r[0], gsu.r[5], 0);
+    return gsu.r[0];
+}
+
+/* One component of the cross product: a * R6(at p) - b * R6(at q) as 32
+   bits (LMULT, SUB, SBC), doubled, its high word (ADD, ROL). */
+static uint16_t fx_cross(uint16_t a, uint16_t p, uint16_t b, uint16_t q)
+{
+    uint32_t m;
+
+    gsu.r[6] = gsu_ldw(p);
+    m = gsu_lmult(a, gsu.r[6]);
+    gsu.r[0] = (uint16_t)(m >> 16);
+    gsu.r[4] = (uint16_t)m;
+    gsu.r[7] = gsu.r[4];
+    gsu.r[6] = gsu_ldw(q);
+    m = gsu_lmult(b, gsu.r[6]);
+    gsu.r[5] = (uint16_t)(m >> 16);
+    gsu.r[4] = (uint16_t)m;
+    gsu.r[7] = gsu_sub(gsu.r[7], gsu.r[4], 0);
+    gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[5], !gsu.cy);
+    gsu.r[7] = gsu_add(gsu.r[7], gsu.r[7], 0);
+    gsu.r[0] = gsu_rol(gsu.r[0]);
+    return gsu.r[0];
+}
+
+/* LM, three ADDs or two, ADD of the sum's word, SBK. */
+static void spin_add(uint16_t from, uint16_t sum, int reg, int times4)
+{
+    gsu.r[0] = gsu_ldw(from);
+    gsu.r[reg] = gsu_ldw(sum);
+    gsu.r[0] = gsu_add(gsu.r[0], gsu.r[0], 0);
+    gsu.r[0] = gsu_add(gsu.r[0], gsu.r[0], 0);
+    if (!times4)
+        gsu.r[0] = gsu_add(gsu.r[0], gsu.r[0], 0);
+    gsu.r[0] = gsu_add(gsu.r[0], gsu.r[reg], 0);
+    gsu_sbk(gsu.r[0]);
+}
+
+/* 04:9AC2, the variants' shared part: the point (R1, R2, R3) times 16 to
+   $26F6; the push at $0132/$013A/$0142 turned into the object's axes by
+   the matrix at $00E4; the point crossed with it into $68/$2C/$2E and
+   four times each added to the spin sums; R8, R9 pulled and return. */
+static void push_at_tail(void)
+{
+    int i;
+
+    for (i = 0; i < 4; i++) {
+        gsu.r[1] = gsu_add(gsu.r[1], gsu.r[1], 0);
+        gsu.r[2] = gsu_add(gsu.r[2], gsu.r[2], 0);
+        gsu.r[3] = gsu_add(gsu.r[3], gsu.r[3], 0);
+    }
+    gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[0], 0);
+    gsu_stw(FX_PUSH_ROT_GAP, gsu.r[0]);
+    gsu_stw(FX_PUSH_POINT, gsu.r[1]);
+    gsu_stw(FX_PUSH_POINT + 2, gsu.r[2]);
+    gsu_stw(FX_PUSH_POINT + 4, gsu.r[3]);
+    gsu.r[1] = gsu_ldw(FX_PUSH_ROT);
+    gsu.r[2] = gsu_ldw(FX_PUSH_ROT + 8);
+    gsu.r[3] = gsu_ldw(FX_PUSH_ROT + 16);
+    gsu_stw(FX_PUSH_ROT, fx_row(FX_MATRIX, 2));
+    gsu_stw(FX_PUSH_ROT + 8, fx_row(FX_MATRIX + 6, 2));
+    gsu_stw(FX_PUSH_ROT + 16, fx_row(FX_MATRIX + 12, 2));
+    gsu.r[1] = gsu_ldw(FX_PUSH_POINT);
+    gsu.r[2] = gsu_ldw(FX_PUSH_POINT + 2);
+    gsu.r[3] = gsu_ldw(FX_PUSH_POINT + 4);
+    gsu_stw(FX_TURN_CROSS, fx_cross(gsu.r[3], FX_PUSH_ROT + 8, gsu.r[2], FX_PUSH_ROT + 16));
+    gsu_stw(0x002C, fx_cross(gsu.r[1], FX_PUSH_ROT + 16, gsu.r[3], FX_PUSH_ROT));
+    gsu_stw(0x002E, fx_cross(gsu.r[2], FX_PUSH_ROT, gsu.r[1], FX_PUSH_ROT + 8));
+    spin_add(FX_TURN_CROSS, FX_SPIN + 2, 4, 1);
+    spin_add(0x002E, FX_SPIN + 4, 5, 1);
+    spin_add(0x002C, FX_SPIN, 6, 1);
+    pull3(0);
+}
+
+/* The push from the world sum, each word scaled by `shift`: 2 (two ADDs),
+   1 (one ADD), 0, -1 (DIV2) or -2 (two DIV2s), to $0132/$013A/$0142. */
+static void push_from_sum(int shift)
+{
+    int i, k;
+
+    for (i = 0; i < 3; i++) {
+        gsu.r[0] = gsu_ldw((uint16_t)(FX_WORLD_SUM + 2 * i));
+        for (k = 0; k < shift; k++)
+            gsu.r[0] = gsu_add(gsu.r[0], gsu.r[0], 0);
+        for (k = 0; k > shift; k--)
+            gsu.r[0] = gsu_div2(gsu.r[0]);
+        gsu_stw((uint16_t)(FX_PUSH_ROT + 8 * i), gsu.r[0]);
+    }
+}
+
+/*
+ * @routine 04:9A9B FxPushAt4
+ * WHAT IT DOES: Pushes the object at the point (R1, R2, R3) in its own
+ * axes with four times the world sum: the sum, turned into the object's
+ * axes, goes to $0132/$013A/$0142, and the point (times 16) crossed with
+ * it is added, four times, to the spin sums at $233C, $233E and $233A.
+ * HOW: R11, R9, R8 pushed on the R10 stack; two ADDs per word of the
+ * world sum; then the part all the variants share (04:9AC2): sixteen
+ * times the point to $26F6/$26F8/$26FA, $0134 cleared, the matrix at
+ * $00E4 (FMULT, ROL), the cross product (LMULT, SUB, SBC, ADD, ROL) to
+ * $0068/$002C/$002E and the sums by SBK. Returns by pulling R15.
+ * Entry: R1, R2, R3 = the point; R10 = stack; R11 = return address.
+ * Exit: R1-R3 = the point times 16; R0 the last spin sum; R4, R5, R6, R7
+ * as the cross product and sums leave them; R8, R9 restored; S, Z from
+ * R10; the last RAM address R10. Its variants are picked by $2654
+ * through the table at $04:9BC6.
+ */
+void abi_FxPushAt4(void)
+{
+    push3();
+    push_from_sum(2);
+    push_at_tail();
+}
+
+/*
+ * @routine 04:99A1 FxPushAt2
+ * WHAT IT DOES: As FxPushAt4 with twice the world sum.
+ * HOW: As FxPushAt4, one ADD per word. Not reached in the traces so far.
+ * Entry: as FxPushAt4. Exit: as FxPushAt4.
+ */
+void abi_FxPushAt2(void)
+{
+    push3();
+    push_from_sum(1);
+    push_at_tail();
+}
+
+/*
+ * @routine 04:99C9 FxPushAt1
+ * WHAT IT DOES: As FxPushAt4 with the world sum as it is.
+ * HOW: As FxPushAt4, the words as loaded. Not reached in the traces so
+ * far.
+ * Entry: as FxPushAt4. Exit: as FxPushAt4.
+ */
+void abi_FxPushAt1(void)
+{
+    push3();
+    push_from_sum(0);
+    push_at_tail();
+}
+
+/*
+ * @routine 04:99EE FxPushAtHalf
+ * WHAT IT DOES: As FxPushAt4 with half the world sum.
+ * HOW: As FxPushAt4, one DIV2 per word.
+ * Entry: as FxPushAt4. Exit: as FxPushAt4.
+ */
+void abi_FxPushAtHalf(void)
+{
+    push3();
+    push_from_sum(-1);
+    push_at_tail();
+}
+
+/*
+ * @routine 04:9A19 FxPushAtQuarter
+ * WHAT IT DOES: As FxPushAt4 with a quarter of the world sum.
+ * HOW: As FxPushAt4, two DIV2s per word. Not reached in the traces so far.
+ * Entry: as FxPushAt4. Exit: as FxPushAt4.
+ */
+void abi_FxPushAtQuarter(void)
+{
+    push3();
+    push_from_sum(-2);
+    push_at_tail();
+}
+
+/*
+ * @routine 04:9A4A FxPushAt4Twist
+ * WHAT IT DOES: FxPushAt4, then the cross product's x ($0068) eight times
+ * more into the spin sum at $233C.
+ * HOW: R11 pushed on the R10 stack around the call; three ADDs and SBK.
+ * Not reached in the traces so far.
+ * Entry: as FxPushAt4. Exit: as FxPushAt4, R4 = the old spin sum, R11 =
+ * $9A53; S, Z from R10.
+ */
+void abi_FxPushAt4Twist(void)
+{
+    gsu_push(&gsu.r[10], gsu.r[11]);
+    gsu.r[11] = 0x9A53;
+    abi_FxPushAt4();
+    spin_add(FX_TURN_CROSS, FX_SPIN + 2, 4, 0);
+    gsu_pull(&gsu.r[10]);       /* the return address, into R15 */
+}
+
+/*
+ * @routine 04:9985 FxPushAt4Kept
+ * WHAT IT DOES: As FxPushAt4.
+ * HOW: R11, R9 and R8 are pushed and pulled straight back (R11 into R11)
+ * before the jump to FxPushAt4. Nothing calls it.
+ * Entry: as FxPushAt4. Exit: as FxPushAt4.
+ */
+void abi_FxPushAt4Kept(void)
+{
+    push3();
+    pull3(1);
+    abi_FxPushAt4();
+}
+
+/*
+ * @routine 04:9927 FxPushAtTurned
+ * WHAT IT DOES: As FxPushAt4 at the point (R1, R2, R3) turned by the
+ * matrix at $00E4 first (left at $26F6/$26F8/$26FA).
+ * HOW: The matrix rows (FMULT, ROL) as in the shared part, SM to
+ * $26F6-$26FA, LM back into R1-R3, then a jump to FxPushAt4. Nothing
+ * calls it.
+ * Entry: as FxPushAt4. Exit: as FxPushAt4.
+ */
+void abi_FxPushAtTurned(void)
+{
+    gsu_stw(FX_PUSH_POINT, fx_row(FX_MATRIX, 6));
+    gsu_stw(FX_PUSH_POINT + 2, fx_row(FX_MATRIX + 2, 6));
+    gsu_stw(FX_PUSH_POINT + 4, fx_row(FX_MATRIX + 4, 6));
+    gsu.r[1] = gsu_ldw(FX_PUSH_POINT);
+    gsu.r[2] = gsu_ldw(FX_PUSH_POINT + 2);
+    gsu.r[3] = gsu_ldw(FX_PUSH_POINT + 4);
+    abi_FxPushAt4();
+}
+
+/*
+ * @routine 04:9A65 FxSumScale
+ * WHAT IT DOES: Scales the world sum by R6 as an 8.8 fraction: each word
+ * becomes bits 8-23 of its product with R6.
+ * HOW: LMULT per word: the high word's low byte (LOB, SWAP) ORed with the
+ * low word's high byte (HIB), then three SMs. Returns with MOVE R15,R11.
+ * Not reached in the traces so far.
+ * Entry: R6 = the scale; R11 = return address. Exit: R1-R3 the new sum;
+ * R0 = the high byte part of z, R4 its low byte part; flags from the
+ * last OR; the last RAM address $2344.
+ */
+void abi_FxSumScale(void)
+{
+    int i;
+    uint32_t m;
+
+    for (i = 0; i < 3; i++)
+        gsu.r[1 + i] = gsu_ldw((uint16_t)(FX_WORLD_SUM + 2 * i));
+    for (i = 0; i < 3; i++) {
+        m = gsu_lmult(gsu.r[1 + i], gsu.r[6]);
+        gsu.r[4] = (uint16_t)m;
+        gsu.r[0] = gsu_swap(gsu_lob((uint16_t)(m >> 16)));
+        gsu.r[4] = gsu_hib(gsu.r[4]);
+        gsu.r[1 + i] = gsu_or(gsu.r[0], gsu.r[4]);
+    }
+    for (i = 0; i < 3; i++)
+        gsu_stw((uint16_t)(FX_WORLD_SUM + 2 * i), gsu.r[1 + i]);
+}
+
+/* 04:98CC-9926: |R1|, |R2|, |R3| (unless skip_abs); then each times half
+   the world sum's word (DIV2, FMULT) added to the hit point; R8, R9 and
+   the return pulled. */
+static void hit_add(int skip_abs)
+{
+    int i;
+
+    if (!skip_abs)
+        for (i = 1; i <= 3; i++) {
+            gsu_moves(gsu.r[i]);
+            if (gsu.s)
+                gsu.r[i] = gsu_inc(gsu_not(gsu.r[i]));
+        }
+    for (i = 0; i < 3; i++) {
+        gsu.r[6] = gsu_ldw((uint16_t)(FX_WORLD_SUM + 2 * i));
+        gsu.r[6] = gsu_div2(gsu.r[6]);
+        gsu.r[1 + i] = gsu_fmult(gsu.r[1 + i], gsu.r[6]);
+        gsu.r[0] = gsu_ldw((uint16_t)(FX_HIT + 2 * i));
+        gsu.r[0] = gsu_add(gsu.r[0], gsu.r[1 + i], 0);
+        gsu_stw((uint16_t)(FX_HIT + 2 * i), gsu.r[0]);
+    }
+    pull3(0);
+}
+
+/*
+ * @routine 04:987D FxHitAddScaled
+ * WHAT IT DOES: Adds to the hit point at $2334 the vector (R1, R2, R3)
+ * scaled by R6 (the low words of LMULT), made positive, each times half
+ * the world sum's word (FMULT); a zero vector counts as $7FFF on each
+ * axis.
+ * HOW: R11, R9, R8 pushed on the R10 stack; OR of the three tests for
+ * zero; MOVES, NOT, INC for the magnitudes; DIV2, FMULT, ADD, SM per axis.
+ * Returns by pulling R15.
+ * Entry: R1-R3 = the vector, R6 = the scale; R10 = stack; R11 = return
+ * address. Exit: R1-R3 the amounts added; R0 the new hit z; R6 half the
+ * world z; R4 the last low product; R8, R9 restored; S, Z from R10; the
+ * last RAM address R10.
+ */
+void abi_FxHitAddScaled(void)
+{
+    uint32_t m;
+    int i;
+
+    push3();
+    gsu.r[0] = gsu_or(gsu_or(gsu.r[1], gsu.r[2]), gsu.r[3]);
+    if (gsu.z) {
+        gsu.r[1] = 0x7FFF;
+        gsu.r[2] = gsu.r[1];
+        gsu.r[3] = gsu.r[1];
+        hit_add(1);
+        return;
+    }
+    for (i = 1; i <= 3; i++) {
+        m = gsu_lmult(gsu.r[i], gsu.r[6]);
+        gsu.r[0] = (uint16_t)(m >> 16);
+        gsu.r[4] = (uint16_t)m;
+        gsu.r[i] = gsu.r[4];
+    }
+    hit_add(0);
+}
+
+/*
+ * @routine 04:98AB FxHitAddUnit
+ * WHAT IT DOES: As FxHitAddScaled with the vector made a unit vector
+ * (FxNormalize) instead of scaled.
+ * HOW: As FxHitAddScaled. Not reached in the traces so far.
+ * Entry: R1-R3 = the vector; R10 = stack; R11 = return address. Exit: as
+ * FxHitAddScaled, the rest as FxNormalize leaves them.
+ */
+void abi_FxHitAddUnit(void)
+{
+    FxRegs g;
+
+    push3();
+    gsu.r[0] = gsu_or(gsu_or(gsu.r[1], gsu.r[2]), gsu.r[3]);
+    if (gsu.z) {
+        gsu.r[1] = 0x7FFF;
+        gsu.r[2] = gsu.r[1];
+        gsu.r[3] = gsu.r[1];
+        hit_add(1);
+        return;
+    }
+    gsu.r[11] = 0x98CC;
+    memcpy(g.r, gsu.r, sizeof g.r);
+    g = FxNormalize(g);
+    memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
+    hit_add(0);
+}

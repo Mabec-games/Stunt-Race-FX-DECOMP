@@ -552,4 +552,648 @@ FxSumsApply:
     move r15,r11
     nop
 
+; ---- pushes at a point: 04:987D-9BC5 ----
+
+; @routine 04:987D FxHitAddScaled
+; WHAT IT DOES: Adds to the hit point at $2334 the vector (R1, R2, R3)
+; scaled by R6 (the low words of LMULT), made positive, each times half
+; the world sum's word (FMULT); a zero vector counts as $7FFF on each
+; axis.
+; HOW: R11, R9, R8 pushed on the R10 stack; OR of the three tests for
+; zero; MOVES, NOT, INC for the magnitudes; DIV2, FMULT, ADD, SM per axis.
+; Returns by pulling R15.
+; Entry: R1-R3 = the vector, R6 = the scale; R10 = stack; R11 = return
+; address. Exit: R1-R3 the amounts added; R0 the new hit z; R6 half the
+; world z; R4 the last low product; R8, R9 restored; S, Z from R10; the
+; last RAM address R10.
+%at($04987D)
+FxHitAddScaled:
+    from r11
+    stw (r10)
+    inc r10
+    inc r10
+    from r9
+    stw (r10)
+    inc r10
+    inc r10
+    from r8
+    stw (r10)
+    inc r10
+    inc r10
+    from r1
+    or r2
+    or r3
+    bne .l9899
+    nop
+    iwt r1,#$7FFF
+    move r2,r1
+    move r3,r1
+    bra FxHitAddSum
+    nop
+.l9899:
+    from r1
+    lmult
+    move r1,r4
+    from r2
+    lmult
+    move r2,r4
+    from r3
+    lmult
+    move r3,r4
+    bra FxHitAddAbs
+    nop
+
+; @routine 04:98AB FxHitAddUnit
+; WHAT IT DOES: As FxHitAddScaled with the vector made a unit vector
+; (FxNormalize) instead of scaled.
+; HOW: As FxHitAddScaled. Not reached in the traces so far.
+; Entry: R1-R3 = the vector; R10 = stack; R11 = return address. Exit: as
+; FxHitAddScaled, the rest as FxNormalize leaves them.
+%at($0498AB)
+FxHitAddUnit:
+    from r11
+    stw (r10)
+    inc r10
+    inc r10
+    from r9
+    stw (r10)
+    inc r10
+    inc r10
+    from r8
+    stw (r10)
+    inc r10
+    inc r10
+    from r1
+    or r2
+    or r3
+    bne .l98C7
+    nop
+    iwt r1,#$7FFF
+    move r2,r1
+    move r3,r1
+    bra FxHitAddSum
+    nop
+.l98C7:
+    link #4
+    iwt r15,#FxNormalize
+    nop
+FxHitAddAbs:
+    moves r1,r1
+    bpl .l98D4
+    nop
+    with r1
+    not
+    inc r1
+.l98D4:
+    moves r2,r2
+    bpl .l98DC
+    nop
+    with r2
+    not
+    inc r2
+.l98DC:
+    moves r3,r3
+    bpl FxHitAddSum
+    nop
+    with r3
+    not
+    inc r3
+FxHitAddSum:
+    lm r6,(!fx_world_sum)
+    with r6
+    div2
+    with r1
+    fmult
+    lm r0,(!fx_hit)
+    add r1
+    sm (!fx_hit),r0
+    lm r6,(!fx_world_sum+2)
+    with r6
+    div2
+    with r2
+    fmult
+    lm r0,(!fx_hit+2)
+    add r2
+    sm (!fx_hit+2),r0
+    lm r6,(!fx_world_sum+4)
+    with r6
+    div2
+    with r3
+    fmult
+    lm r0,(!fx_hit+4)
+    add r3
+    sm (!fx_hit+4),r0
+    dec r10
+    dec r10
+    to r8
+    ldw (r10)
+    dec r10
+    dec r10
+    to r9
+    ldw (r10)
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+
+; @routine 04:9927 FxPushAtTurned
+; WHAT IT DOES: As FxPushAt4 at the point (R1, R2, R3) turned by the
+; matrix at $00E4 first (left at $26F6/$26F8/$26FA).
+; HOW: The matrix rows (FMULT, ROL) as in the shared part, SM to
+; $26F6-$26FA, LM back into R1-R3, then a jump to FxPushAt4. Nothing
+; calls it.
+; Entry: as FxPushAt4. Exit: as FxPushAt4.
+%at($049927)
+FxPushAtTurned:
+    lms r6,(!fx_matrix_w)
+    from r1
+    fmult
+    to r5
+    rol
+    lms r6,(!fx_matrix_w+6)
+    from r2
+    fmult
+    rol
+    with r5
+    add r0
+    lms r6,(!fx_matrix_w+12)
+    from r3
+    fmult
+    rol
+    add r5
+    sm (!fx_push_point),r0
+    lms r6,(!fx_matrix_w+2)
+    from r1
+    fmult
+    to r5
+    rol
+    lms r6,(!fx_matrix_w+8)
+    from r2
+    fmult
+    rol
+    with r5
+    add r0
+    lms r6,(!fx_matrix_w+14)
+    from r3
+    fmult
+    rol
+    add r5
+    sm (!fx_push_point+2),r0
+    lms r6,(!fx_matrix_w+4)
+    from r1
+    fmult
+    to r5
+    rol
+    lms r6,(!fx_matrix_w+10)
+    from r2
+    fmult
+    rol
+    with r5
+    add r0
+    lms r6,(!fx_matrix_w+16)
+    from r3
+    fmult
+    rol
+    add r5
+    sm (!fx_push_point+4),r0
+    lm r1,(!fx_push_point)
+    lm r2,(!fx_push_point+2)
+    lm r3,(!fx_push_point+4)
+    iwt r15,#FxPushAt4
+    nop
+
+; @routine 04:9985 FxPushAt4Kept
+; WHAT IT DOES: As FxPushAt4.
+; HOW: R11, R9 and R8 are pushed and pulled straight back (R11 into R11)
+; before the jump to FxPushAt4. Nothing calls it.
+; Entry: as FxPushAt4. Exit: as FxPushAt4.
+%at($049985)
+FxPushAt4Kept:
+    from r11
+    stw (r10)
+    inc r10
+    inc r10
+    from r9
+    stw (r10)
+    inc r10
+    inc r10
+    from r8
+    stw (r10)
+    inc r10
+    inc r10
+    dec r10
+    dec r10
+    to r8
+    ldw (r10)
+    dec r10
+    dec r10
+    to r9
+    ldw (r10)
+    dec r10
+    dec r10
+    to r11
+    ldw (r10)
+    iwt r15,#FxPushAt4
+    nop
+
+; @routine 04:99A1 FxPushAt2
+; WHAT IT DOES: As FxPushAt4 with twice the world sum.
+; HOW: As FxPushAt4, one ADD per word. Not reached in the traces so far.
+; Entry: as FxPushAt4. Exit: as FxPushAt4.
+%at($0499A1)
+FxPushAt2:
+    from r11
+    stw (r10)
+    inc r10
+    inc r10
+    from r9
+    stw (r10)
+    inc r10
+    inc r10
+    from r8
+    stw (r10)
+    inc r10
+    inc r10
+    lm r0,(!fx_world_sum)
+    add r0
+    sms (!fx_push_rot_w),r0
+    lm r0,(!fx_world_sum+2)
+    add r0
+    sms (!fx_push_rot_w+8),r0
+    lm r0,(!fx_world_sum+4)
+    add r0
+    sms (!fx_push_rot_w+16),r0
+    iwt r15,#FxPushAtShared
+    nop
+
+; @routine 04:99C9 FxPushAt1
+; WHAT IT DOES: As FxPushAt4 with the world sum as it is.
+; HOW: As FxPushAt4, the words as loaded. Not reached in the traces so
+; far.
+; Entry: as FxPushAt4. Exit: as FxPushAt4.
+%at($0499C9)
+FxPushAt1:
+    from r11
+    stw (r10)
+    inc r10
+    inc r10
+    from r9
+    stw (r10)
+    inc r10
+    inc r10
+    from r8
+    stw (r10)
+    inc r10
+    inc r10
+    lm r0,(!fx_world_sum)
+    sms (!fx_push_rot_w),r0
+    lm r0,(!fx_world_sum+2)
+    sms (!fx_push_rot_w+8),r0
+    lm r0,(!fx_world_sum+4)
+    sms (!fx_push_rot_w+16),r0
+    iwt r15,#FxPushAtShared
+    nop
+
+; @routine 04:99EE FxPushAtHalf
+; WHAT IT DOES: As FxPushAt4 with half the world sum.
+; HOW: As FxPushAt4, one DIV2 per word.
+; Entry: as FxPushAt4. Exit: as FxPushAt4.
+%at($0499EE)
+FxPushAtHalf:
+    from r11
+    stw (r10)
+    inc r10
+    inc r10
+    from r9
+    stw (r10)
+    inc r10
+    inc r10
+    from r8
+    stw (r10)
+    inc r10
+    inc r10
+    lm r0,(!fx_world_sum)
+    div2
+    sms (!fx_push_rot_w),r0
+    lm r0,(!fx_world_sum+2)
+    div2
+    sms (!fx_push_rot_w+8),r0
+    lm r0,(!fx_world_sum+4)
+    div2
+    sms (!fx_push_rot_w+16),r0
+    iwt r15,#FxPushAtShared
+    nop
+
+; @routine 04:9A19 FxPushAtQuarter
+; WHAT IT DOES: As FxPushAt4 with a quarter of the world sum.
+; HOW: As FxPushAt4, two DIV2s per word. Not reached in the traces so far.
+; Entry: as FxPushAt4. Exit: as FxPushAt4.
+%at($049A19)
+FxPushAtQuarter:
+    from r11
+    stw (r10)
+    inc r10
+    inc r10
+    from r9
+    stw (r10)
+    inc r10
+    inc r10
+    from r8
+    stw (r10)
+    inc r10
+    inc r10
+    lm r0,(!fx_world_sum)
+    div2
+    div2
+    sms (!fx_push_rot_w),r0
+    lm r0,(!fx_world_sum+2)
+    div2
+    div2
+    sms (!fx_push_rot_w+8),r0
+    lm r0,(!fx_world_sum+4)
+    div2
+    div2
+    sms (!fx_push_rot_w+16),r0
+    iwt r15,#FxPushAtShared
+    nop
+
+; @routine 04:9A4A FxPushAt4Twist
+; WHAT IT DOES: FxPushAt4, then the cross product's x ($0068) eight times
+; more into the spin sum at $233C.
+; HOW: R11 pushed on the R10 stack around the call; three ADDs and SBK.
+; Not reached in the traces so far.
+; Entry: as FxPushAt4. Exit: as FxPushAt4, R4 = the old spin sum, R11 =
+; $9A53; S, Z from R10.
+%at($049A4A)
+FxPushAt4Twist:
+    from r11
+    stw (r10)
+    inc r10
+    inc r10
+    link #4
+    iwt r15,#FxPushAt4
+    nop
+    lm r0,(!fx_normal_x_w)
+    lm r4,(!fx_spin+2)
+    add r0
+    add r0
+    add r0
+    add r4
+    sbk
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+
+; @routine 04:9A65 FxSumScale
+; WHAT IT DOES: Scales the world sum by R6 as an 8.8 fraction: each word
+; becomes bits 8-23 of its product with R6.
+; HOW: LMULT per word: the high word's low byte (LOB, SWAP) ORed with the
+; low word's high byte (HIB), then three SMs. Returns with MOVE R15,R11.
+; Not reached in the traces so far.
+; Entry: R6 = the scale; R11 = return address. Exit: R1-R3 the new sum;
+; R0 = the high byte part of z, R4 its low byte part; flags from the
+; last OR; the last RAM address $2344.
+%at($049A65)
+FxSumScale:
+    lm r1,(!fx_world_sum)
+    lm r2,(!fx_world_sum+2)
+    lm r3,(!fx_world_sum+4)
+    from r1
+    lmult
+    lob
+    swap
+    with r4
+    hib
+    to r1
+    or r4
+    from r2
+    lmult
+    lob
+    swap
+    with r4
+    hib
+    to r2
+    or r4
+    from r3
+    lmult
+    lob
+    swap
+    with r4
+    hib
+    to r3
+    or r4
+    sm (!fx_world_sum),r1
+    sm (!fx_world_sum+2),r2
+    sm (!fx_world_sum+4),r3
+    move r15,r11
+    nop
+
+; @routine 04:9A9B FxPushAt4
+; WHAT IT DOES: Pushes the object at the point (R1, R2, R3) in its own
+; axes with four times the world sum: the sum, turned into the object's
+; axes, goes to $0132/$013A/$0142, and the point (times 16) crossed with
+; it is added, four times, to the spin sums at $233C, $233E and $233A.
+; HOW: R11, R9, R8 pushed on the R10 stack; two ADDs per word of the
+; world sum; then the part all the variants share (04:9AC2): sixteen
+; times the point to $26F6/$26F8/$26FA, $0134 cleared, the matrix at
+; $00E4 (FMULT, ROL), the cross product (LMULT, SUB, SBC, ADD, ROL) to
+; $0068/$002C/$002E and the sums by SBK. Returns by pulling R15.
+; Entry: R1, R2, R3 = the point; R10 = stack; R11 = return address.
+; Exit: R1-R3 = the point times 16; R0 the last spin sum; R4, R5, R6, R7
+; as the cross product and sums leave them; R8, R9 restored; S, Z from
+; R10; the last RAM address R10. Its variants are picked by $2654
+; through the table at $04:9BC6.
+%at($049A9B)
+FxPushAt4:
+    from r11
+    stw (r10)
+    inc r10
+    inc r10
+    from r9
+    stw (r10)
+    inc r10
+    inc r10
+    from r8
+    stw (r10)
+    inc r10
+    inc r10
+    lm r0,(!fx_world_sum)
+    add r0
+    add r0
+    sms (!fx_push_rot_w),r0
+    lm r0,(!fx_world_sum+2)
+    add r0
+    add r0
+    sms (!fx_push_rot_w+8),r0
+    lm r0,(!fx_world_sum+4)
+    add r0
+    add r0
+    sms (!fx_push_rot_w+16),r0
+FxPushAtShared:
+    with r1
+    add r1
+    with r2
+    add r2
+    with r3
+    add r3
+    with r1
+    add r1
+    with r2
+    add r2
+    with r3
+    add r3
+    with r1
+    add r1
+    with r2
+    add r2
+    with r3
+    add r3
+    with r1
+    add r1
+    with r2
+    add r2
+    with r3
+    add r3
+    sub r0
+    sms (!fx_push_rot_w+2),r0
+    sm (!fx_push_point),r1
+    sm (!fx_push_point+2),r2
+    sm (!fx_push_point+4),r3
+    lms r1,(!fx_push_rot_w)
+    lms r2,(!fx_push_rot_w+8)
+    lms r3,(!fx_push_rot_w+16)
+    lms r6,(!fx_matrix_w)
+    from r1
+    fmult
+    to r5
+    rol
+    lms r6,(!fx_matrix_w+2)
+    from r2
+    fmult
+    rol
+    with r5
+    add r0
+    lms r6,(!fx_matrix_w+4)
+    from r3
+    fmult
+    rol
+    add r5
+    sms (!fx_push_rot_w),r0
+    lms r6,(!fx_matrix_w+6)
+    from r1
+    fmult
+    to r5
+    rol
+    lms r6,(!fx_matrix_w+8)
+    from r2
+    fmult
+    rol
+    with r5
+    add r0
+    lms r6,(!fx_matrix_w+10)
+    from r3
+    fmult
+    rol
+    add r5
+    sms (!fx_push_rot_w+8),r0
+    lms r6,(!fx_matrix_w+12)
+    from r1
+    fmult
+    to r5
+    rol
+    lms r6,(!fx_matrix_w+14)
+    from r2
+    fmult
+    rol
+    with r5
+    add r0
+    lms r6,(!fx_matrix_w+16)
+    from r3
+    fmult
+    rol
+    add r5
+    sms (!fx_push_rot_w+16),r0
+    lm r1,(!fx_push_point)
+    lm r2,(!fx_push_point+2)
+    lm r3,(!fx_push_point+4)
+    lms r6,(!fx_push_rot_w+8)
+    from r3
+    lmult
+    move r7,r4
+    lms r6,(!fx_push_rot_w+16)
+    from r2
+    to r5
+    lmult
+    with r7
+    sub r4
+    sbc r5
+    with r7
+    add r7
+    rol
+    sms (!fx_normal_x_w),r0
+    lms r6,(!fx_push_rot_w+16)
+    from r1
+    lmult
+    move r7,r4
+    lms r6,(!fx_push_rot_w)
+    from r3
+    to r5
+    lmult
+    with r7
+    sub r4
+    sbc r5
+    with r7
+    add r7
+    rol
+    sms (!fx_normal_y_w),r0
+    lms r6,(!fx_push_rot_w)
+    from r2
+    lmult
+    move r7,r4
+    lms r6,(!fx_push_rot_w+8)
+    from r1
+    to r5
+    lmult
+    with r7
+    sub r4
+    sbc r5
+    with r7
+    add r7
+    rol
+    sms (!fx_normal_z_w),r0
+    lm r0,(!fx_normal_x_w)
+    lm r4,(!fx_spin+2)
+    add r0
+    add r0
+    add r4
+    sbk
+    lm r0,(!fx_normal_z_w)
+    lm r5,(!fx_spin+4)
+    add r0
+    add r0
+    add r5
+    sbk
+    lm r0,(!fx_normal_y_w)
+    lm r6,(!fx_spin)
+    add r0
+    add r0
+    add r6
+    sbk
+    dec r10
+    dec r10
+    to r8
+    ldw (r10)
+    dec r10
+    dec r10
+    to r9
+    ldw (r10)
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+
 arch 65816
