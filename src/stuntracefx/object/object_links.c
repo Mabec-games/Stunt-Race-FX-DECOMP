@@ -1,0 +1,273 @@
+/*
+ * object_links.c: object helpers of bank $03 that walk the links between
+ * object records ($62-byte records from $7E:2000, addressed by their offset
+ * in X or Y): the list whose head is at $0325 (next at +$00), and the chain
+ * of children through +$27, each child tagged at +$48 with its parent at
+ * +$06. No play runs them; unit_objects_03 calls them.
+ */
+#include "machine.h"
+#include "cpu_ops.h"
+
+void abi_ObjectFreeLong(void);
+void ObjectInit(uint16_t obj);
+int ObjectAlloc(uint16_t *a, uint16_t *x, uint16_t *y);
+
+#define LINKS_SCRATCH 0x00003Eu
+
+/* ObjectListFreeAll and its copy: free each object of the list at $0325
+   in turn, reading the next link before the free rewrites it. */
+static void free_list(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t x = cpu.x, obj, next;
+
+    cpu.p &= (uint8_t)~P_X;
+    obj = rd16(b | 0x0325);
+    while (obj) {
+        next = rd16(b | (uint16_t)(0x2000 + obj));
+        cpu.p |= P_M;
+        cpu.x = obj;
+        cpu.y = next;
+        abi_ObjectFreeLong();
+        cpu.y = next;
+        obj = next;
+    }
+    cpu.x = x;
+    cpu.p = nz16(cpu.p, x);
+}
+
+/*
+ * @routine 03:B8E7 ObjectListTableFirst
+ * WHAT IT DOES: Clears the count at $0D04 and walks the list at $0325 to
+ * its end. Only for its first object, and only when A's low byte is not 0
+ * and the object's +$08 has bit 0 clear, it writes a 5-word entry at
+ * $7E:96AD: the object, then the words at +$08, +$0A, +$0C and +$0E of the
+ * record its +$04 points to, and counts it in $0D04.
+ * HOW: 16-bit, P saved and restored. The test that skips an object is a
+ * BNE on the flags of the instruction before the loop's PHX: LDY #0 for
+ * the first object, the TAX of its next link for the others (never 0
+ * there), so the table gets one entry at most. Through the caller's data
+ * bank.
+ * Entry: any widths; A = the flag tested. Exit: P unchanged; X = 0; list
+ * not empty: A = 0, Y = 10 when an entry was written, else 0; empty: A, Y
+ * unchanged.
+ */
+void ObjectListTableFirst(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t p = cpu.p;
+    uint16_t x, a = cpu.a, at, v;
+
+    wr16(b | 0x0D04, 0x0000);
+    x = rd16(b | 0x0325);
+    if (x) {
+        cpu.y = 0x0000;
+        if (a & 0x00FF) {
+            a = rd16(b | (uint16_t)(0x2008 + x));
+            if (!(a & 0x0001)) {
+                at = rd16(b | (uint16_t)(0x2004 + x));
+                wr16(0x7E96AD, x);
+                v = rd16(b | (uint16_t)(0x0008 + at));
+                wr16(0x7E96AF, v);
+                v = rd16(b | (uint16_t)(0x000A + at));
+                wr16(0x7E96B1, v);
+                v = rd16(b | (uint16_t)(0x000C + at));
+                wr16(0x7E96B3, v);
+                v = rd16(b | (uint16_t)(0x000E + at));
+                wr16(0x7E96B5, v);
+                v = rd16(b | 0x0D04);
+                wr16(b | 0x0D04, (uint16_t)(v + 1));
+                cpu.y = 0x000A;
+            }
+        }
+        do {
+            x = rd16(b | (uint16_t)(0x2000 + x));
+        } while (x);
+        cpu.a = 0x0000;
+    }
+    cpu.x = 0x0000;
+    op_plp(p);
+}
+
+void abi_ObjectListTableFirst(void)
+{
+    ObjectListTableFirst();
+}
+
+/*
+ * @routine 03:CBB0 ObjectListFreeAll
+ * WHAT IT DOES: Frees every object of the list whose head is at $0325,
+ * following each one's +$00 link (ObjectFreeLong on each).
+ * HOW: X 16-bit from the start; X saved and restored; the next link is
+ * kept in Y across each free. Through the caller's data bank.
+ * Entry: any widths. Exit: X unchanged, X 16-bit; N, Z from X (16-bit); if
+ * the list was not empty, M 8-bit, Y = 0 and A from the last free (the free
+ * list's old head); otherwise A, Y and M unchanged.
+ */
+void ObjectListFreeAll(void)
+{
+    free_list();
+}
+
+void abi_ObjectListFreeAll(void)
+{
+    free_list();
+}
+
+/*
+ * @routine 03:CBC8 ObjectListFreeAllCopy
+ * WHAT IT DOES: The same bytes as ObjectListFreeAll, at another address.
+ * HOW: As ObjectListFreeAll.
+ * Entry: as ObjectListFreeAll. Exit: as ObjectListFreeAll.
+ */
+void ObjectListFreeAllCopy(void)
+{
+    free_list();
+}
+
+void abi_ObjectListFreeAllCopy(void)
+{
+    free_list();
+}
+
+/*
+ * @routine 03:CCEB ObjectLinkChild
+ * WHAT IT DOES: Makes object Y a child of object X tagged A: stores the tag
+ * at $1F2B and at Y's +$48, X at Y's +$06, clears Y's +$27, then puts Y at
+ * the end of the +$27 chain that starts at X.
+ * HOW: Y kept in direct page $3E while the chain is walked (16-bit) to the
+ * record whose +$27 is 0. Through the caller's data bank.
+ * Entry: M 8-bit, X 16-bit, D = $0000; A = tag, X = parent, Y = child.
+ * Exit: A = Y = the child (A 16 bits wide in M 8-bit); X unchanged; M 8-bit;
+ * N, Z from Y.
+ */
+void ObjectLinkChild(uint8_t bank, uint8_t tag, uint16_t parent, uint16_t child)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t at = parent, next;
+
+    wr8(b | 0x1F2B, tag);
+    tag = rd8(b | 0x1F2B);
+    wr8(b | (uint16_t)(0x2048 + child), tag);
+    wr16(b | (uint16_t)(0x2006 + child), parent);
+    wr16(b | (uint16_t)(0x2027 + child), 0x0000);
+    wr16(LINKS_SCRATCH, child);
+    for (;;) {
+        next = rd16(b | (uint16_t)(0x2027 + at));
+        if (!next)
+            break;
+        at = next;
+    }
+    child = rd16(LINKS_SCRATCH);
+    wr16(b | (uint16_t)(0x2027 + at), child);
+    (void)rd16(LINKS_SCRATCH);
+}
+
+void abi_ObjectLinkChild(void)
+{
+    ObjectLinkChild(cpu.db, (uint8_t)cpu.a, cpu.x, cpu.y);
+    cpu.a = cpu.y;
+    cpu.p = (uint8_t)(nz16(cpu.p, cpu.y) | P_M);
+}
+
+/* The two chain searches: from `from`, follow +$27 until a child whose
+   +$48 is the tag (stored first at $1A30) or the end of the chain. The
+   flags are those of the last compare, then N, Z from the pulled index. */
+static uint16_t find_tag(uint8_t bank, uint8_t tag, uint16_t from, uint8_t *a, uint8_t *p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t at = from, next;
+    uint8_t t, want;
+
+    wr8(b | 0x1A30, tag);
+    for (;;) {
+        next = rd16(b | (uint16_t)(0x2027 + at));
+        if (!next)
+            return 0;
+        t = rd8(b | (uint16_t)(0x2048 + next));
+        *a = t;
+        want = rd8(b | 0x1A30);
+        *p = (uint8_t)((*p & ~P_C) | (t >= want ? P_C : 0));
+        if (t == want)
+            return next;
+        at = next;
+    }
+}
+
+/*
+ * @routine 03:D2DA ObjectChildFindTagX
+ * WHAT IT DOES: Finds the child of object X tagged A: Y = the first record
+ * along X's +$27 chain whose +$48 is A, or 0 when there is none.
+ * HOW: The tag kept at $1A30; X saved, walked along the chain, restored.
+ * Through the caller's data bank.
+ * Entry: M 8-bit, X 16-bit; A = tag, X = object. Exit: Y = the child or 0;
+ * X unchanged; A = the last tag read (unchanged if none); C from the last
+ * compare; N, Z from X.
+ */
+uint16_t ObjectChildFindTagX(uint8_t bank, uint8_t tag, uint16_t obj, uint8_t *a, uint8_t *p)
+{
+    return find_tag(bank, tag, obj, a, p);
+}
+
+void abi_ObjectChildFindTagX(void)
+{
+    uint8_t a = (uint8_t)cpu.a, p = cpu.p;
+
+    cpu.y = ObjectChildFindTagX(cpu.db, (uint8_t)cpu.a, cpu.x, &a, &p);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
+    cpu.p = nz16(p, cpu.x);
+}
+
+/*
+ * @routine 03:D2F0 ObjectChildFindTagY
+ * WHAT IT DOES: ObjectChildFindTagX with X and Y the other way: X = the
+ * child of object Y tagged A, or 0.
+ * HOW: As ObjectChildFindTagX, Y saved and restored.
+ * Entry: M 8-bit, X 16-bit; A = tag, Y = object. Exit: X = the child or 0;
+ * Y unchanged; A, C as ObjectChildFindTagX; N, Z from Y.
+ */
+uint16_t ObjectChildFindTagY(uint8_t bank, uint8_t tag, uint16_t obj, uint8_t *a, uint8_t *p)
+{
+    return find_tag(bank, tag, obj, a, p);
+}
+
+void abi_ObjectChildFindTagY(void)
+{
+    uint8_t a = (uint8_t)cpu.a, p = cpu.p;
+
+    cpu.x = ObjectChildFindTagY(cpu.db, (uint8_t)cpu.a, cpu.y, &a, &p);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
+    cpu.p = nz16(p, cpu.y);
+}
+
+/*
+ * @routine 03:D365 ObjectSpawnA040
+ * WHAT IT DOES: Takes a new object (ObjectAlloc) and clears it (ObjectInit),
+ * then sets its +$36 to 3 and its +$04 (its handler) to $A040. Carry set
+ * and X = Y = the object when it got one; carry clear and X = 0 otherwise.
+ * HOW: As ObjectSpawn without the count limit, the fields written with
+ * long stores into bank $7E.
+ * Entry: X 16-bit. Exit: got one: A = $A040, M 16-bit, N set, Z clear;
+ * none: X = 0, N clear, Z set, A, Y and M as ObjectAlloc leaves them.
+ */
+int ObjectSpawnA040(uint16_t *a, uint16_t *x, uint16_t *y)
+{
+    if (!ObjectAlloc(a, x, y)) {
+        *x = 0x0000;
+        return 0;
+    }
+    *y = *x;
+    ObjectInit(*y);
+    wr8(0x7E2036 + *x, 0x03);
+    *a = 0xA040;
+    wr16(0x7E2004 + *x, *a);
+    return 1;
+}
+
+void abi_ObjectSpawnA040(void)
+{
+    if (ObjectSpawnA040(&cpu.a, &cpu.x, &cpu.y))
+        cpu.p = (uint8_t)((nz16(cpu.p, cpu.a) & ~P_M) | P_C);
+    else
+        cpu.p = (uint8_t)(nz16(cpu.p, 0) & ~P_C);
+}

@@ -1639,3 +1639,23 @@ includeonce
 !fx_haze_x = $7026F6              ; the sample's left edge
 !fx_haze_x8 = $7026F8             ; the left edge less 8, where it goes back
 !fx_effect_seed = $7001D0         ; the effects' random seed
+
+; bank 03 object helpers and headings (object/object_links.asm, object_fields.asm, math/heading.asm)
+!object_list_0325 = $0325
+!obj_17 = $2017
+!child_search_tag = $1A30
+!object_table_count = $0D04
+!obj_08 = $2008
+!object_table = $7E96AD
+!heading_speed = $82
+!heading_save_x = $7A
+!heading_save_y = $7C
+!heading_sin_a = $7E
+!heading_cos_a = $7F
+!heading_sin_b = $86
+!heading_cos_b = $87
+!heading_pitch = $1F7C
+!heading_turn = $1F7D
+!dp_03 = $03
+!dp_09 = $09
+!dp_95 = $95
