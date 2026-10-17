@@ -862,3 +862,23 @@ NmiFrameUpload_split:
     plp
     rts
 
+
+; @routine 03:ECBE VramClearWords
+; WHAT IT DOES: Clears X words of VRAM from word address A. Nothing in the
+; game calls it.
+; HOW: VMAIN = $80 (a 16-bit store of Y = $0080, which also writes 0 to
+; VMADDL), VMADDL = A, then X 16-bit zero stores to VMDATAL; the
+; registers through the data bank.
+; Entry: M 16-bit, X 16-bit; A = VRAM word address, X = count (not 0).
+; Exit: A = 0; X = 0; Y = $0080; Z set, N clear.
+%at($03ECBE)
+VramClearWords:
+    ldy.w #$0080
+    sty.w !VMAIN
+    sta.w !VMADDL
+    lda.w #$0000
+.loop:
+    sta.w !VMDATAL
+    dex
+    bne .loop
+    rts

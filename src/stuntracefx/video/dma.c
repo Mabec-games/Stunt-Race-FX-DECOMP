@@ -916,3 +916,34 @@ void abi_NmiFrameUpload(void)
     }
     op_plp(p0);
 }
+
+/*
+ * @routine 03:ECBE VramClearWords
+ * WHAT IT DOES: Clears X words of VRAM from word address A. Nothing in the
+ * game calls it.
+ * HOW: VMAIN = $80 (a 16-bit store of Y = $0080, which also writes 0 to
+ * VMADDL), VMADDL = A, then X 16-bit zero stores to VMDATAL; the
+ * registers through the data bank.
+ * Entry: M 16-bit, X 16-bit; A = VRAM word address, X = count (not 0).
+ * Exit: A = 0; X = 0; Y = $0080; Z set, N clear.
+ */
+void VramClearWords(uint8_t bank, uint16_t at, uint16_t n)
+{
+    uint32_t b = (uint32_t)bank << 16;
+
+    wr16(b | 0x2115, 0x0080);
+    wr16(b | 0x2116, at);
+    do {
+        wr16(b | 0x2118, 0x0000);
+        n = (uint16_t)(n - 1);
+    } while (n);
+}
+
+void abi_VramClearWords(void)
+{
+    VramClearWords(cpu.db, cpu.a, cpu.x);
+    cpu.a = 0x0000;
+    cpu.x = 0x0000;
+    cpu.y = 0x0080;
+    cpu.p = nz16(cpu.p, 0x0000);
+}

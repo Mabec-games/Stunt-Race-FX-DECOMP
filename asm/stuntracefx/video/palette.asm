@@ -1639,3 +1639,32 @@ HudColourStep_lE697:
     rtl
 HudColourStep_bands:
     dw $0000,$0100,$0200
+
+; @routine 7E:B6CB PaletteCycleFourth
+; WHAT IT DOES: A fourth colour-cycle step after PaletteCycle's code that
+; nothing reaches: the phase at $FD61 (a byte offset stepping by 2 and
+; wrapping at $10) picks one of the eight colours at $7E:B6EB, copied a
+; byte at a time to $FD8B + Y and $FD8C + Y.
+; HOW: 8-bit loads and stores (the phase as a 16-bit index), work RAM
+; through the data bank; it ends with PaletteCycle's PLB, RTS, so the
+; data bank comes back from the stack.
+; Entry: M 8-bit, X 16-bit; Y = offset; a data bank byte on the stack
+; above the return address. Exit: A low byte = the colour's high byte; X =
+; the new phase; DB = the pulled byte, N, Z from it; C set when the phase
+; wrapped.
+%ramcode($7EB6CB, $0113F2)
+PaletteCycleFourth:
+    ldx.w !cycle_phase_c+2
+    lda.l !cycle_colours_d,x
+    sta.w !cycle_colour_c+2,y
+    lda.l !cycle_colours_d+1,x
+    sta.w !cycle_colour_c+3,y
+    inx
+    inx
+    cpx.w #$0010
+    bcc .keep
+    ldx.w #$0000
+.keep:
+    stx.w !cycle_phase_c+2
+    plb
+    rts

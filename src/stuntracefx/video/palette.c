@@ -1588,3 +1588,44 @@ void abi_HudColourStepFrom14(void)
 {
     hud_colour_step(HC_FROM14);
 }
+
+/*
+ * @routine 7E:B6CB PaletteCycleFourth
+ * WHAT IT DOES: A fourth colour-cycle step after PaletteCycle's code that
+ * nothing reaches: the phase at $FD61 (a byte offset stepping by 2 and
+ * wrapping at $10) picks one of the eight colours at $7E:B6EB, copied a
+ * byte at a time to $FD8B + Y and $FD8C + Y.
+ * HOW: 8-bit loads and stores (the phase as a 16-bit index), work RAM
+ * through the data bank; it ends with PaletteCycle's PLB, RTS, so the
+ * data bank comes back from the stack.
+ * Entry: M 8-bit, X 16-bit; Y = offset; a data bank byte on the stack
+ * above the return address. Exit: A low byte = the colour's high byte; X =
+ * the new phase; DB = the pulled byte, N, Z from it; C set when the phase
+ * wrapped.
+ */
+void abi_PaletteCycleFourth(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t x;
+    uint8_t v, db;
+
+    x = rd16(b | 0xFD61);
+    v = rd8(0x7EB6EB + x);
+    wr8(b | (uint16_t)(0xFD8B + cpu.y), v);
+    v = rd8(0x7EB6EC + x);
+    wr8(b | (uint16_t)(0xFD8C + cpu.y), v);
+    x = (uint16_t)(x + 2);
+    if (x >= 0x0010) {
+        cpu.p |= P_C;
+        x = 0x0000;
+    } else {
+        cpu.p &= (uint8_t)~P_C;
+    }
+    wr16(b | 0xFD61, x);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.x = x;
+    cpu.s++;
+    db = rd8((uint16_t)cpu.s);
+    cpu.db = db;
+    cpu.p = nz8(cpu.p, db);
+}

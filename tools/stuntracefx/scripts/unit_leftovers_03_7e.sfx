@@ -1,0 +1,16 @@
+# unit_leftovers_03_7e: unit tests (call) from the start of a Novice race
+# for two pieces nothing in the game reaches: VramClearWords (03:ECBE, 16
+# words at $4000) and PaletteCycleFourth (7E:B6CB), entered with a byte
+# on the stack (the php call) for its closing PLB, phase 4 and phase $0E
+# (which wraps to 0).
+load build/stuntracefx/states/novice_coupe_race1.state
+call 03:ECBE a=4000 x=0010 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7EFD61 04,00
+call 7E:B6CB php p=20 y=0000 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7EFD61 0E,00
+call 7E:B6CB php p=20 y=0002 db=7E d=0000
+wait 1

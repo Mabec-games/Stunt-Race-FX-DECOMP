@@ -1864,3 +1864,4 @@ includeonce
 !fx_param_slide_limit = $702680 ; handling: the side speed a slide starts at
 !fx_param_jump = $702682        ; handling: the jump strength
 !fx_drive_level = $7026F4       ; the drive level picking the course speed (low byte)
+!cycle_colours_d = $7EB6EB          ; PaletteCycleFourth: its eight colours (in the work-RAM code)
