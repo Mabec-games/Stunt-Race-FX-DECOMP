@@ -1,0 +1,54 @@
+# unit_polygon: unit tests (fx) of the polygon pipeline from the start of a
+# Novice race (R11 = the STOP at $01:80E3, R10 = the stack at $024C):
+# - FxProjectVertex for a far point left of and above the screen, one right
+#   of and below it, one inside, one past depth $4400 (halved first) and a
+#   near one (FxProjectPoint);
+# - FxPolygonProject on a 3-vertex list at $082A (far and outside, near,
+#   past $4400) written out at $7E40 in unused Super FX RAM;
+# - FxPolygonNearClip on a polygon in list $0688 from depth $100 to $4000
+#   (split by the near plane, its header at $7E38) and on one in list
+#   $082A from $1000 to $1200 (copied over and measured only).
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:8BFF stop=80E3 r1=FF00 r2=FF00 r6=0800 r10=024C
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:8BFF stop=80E3 r1=7000 r2=7000 r6=0800 r10=024C
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:8BFF stop=80E3 r1=0000 r2=0000 r6=0800 r10=024C
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:8BFF stop=80E3 r1=2000 r2=E000 r6=7000 r10=024C
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:8BFF stop=80E3 r1=0400 r2=FA00 r6=0040 r10=024C r12=0001
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700040 03,00
+set 700060 2A,08
+set 70005A 40,7E
+set 70082A 00,80,00,01,00,08,10,00,20,00
+set 700834 00,04,00,FA,40,00,30,00,40,00
+set 70083E 00,60,00,60,00,50,50,00,60,00
+fx 01:C412 stop=80E3 r10=024C
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700040 03,00
+set 700060 88,06
+set 700062 2A,08
+set 70005A 40,7E
+set 707E38 00,00,00,00,00,00,00,00
+set 700688 00,FF,00,01,00,01,10,00,20,00
+set 700692 00,04,00,FA,00,02,30,00,40,00
+set 70069C 00,10,00,10,00,40,50,00,60,00
+fx 01:C21E stop=80E3 r10=024C
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700040 03,00
+set 700060 2A,08
+set 700062 88,06
+set 70082A 00,FF,00,01,00,10,10,00,20,00
+set 700834 00,04,00,FA,00,11,30,00,40,00
+set 70083E 00,10,00,10,00,12,50,00,60,00
+fx 01:C21E stop=80E3 r10=024C
+wait 1

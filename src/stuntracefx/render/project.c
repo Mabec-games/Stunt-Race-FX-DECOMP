@@ -184,3 +184,104 @@ void abi_FxProjectScaled(void)
 {
     FxProjectScaled();
 }
+
+/* MULT #4: the low byte, signed, times 4; S and Z from the product. */
+static uint16_t mult4(uint16_t v)
+{
+    uint16_t r = (uint16_t)((int8_t)v * 4);
+
+    gsu_sz(r);
+    return r;
+}
+
+/*
+ * @routine 01:8BFF FxProjectVertex
+ * WHAT IT DOES: Projects the point (R1, R2) at depth R6 to the screen and
+ * returns its outcode. A point farther than $100 is scaled by the table at
+ * $14:896C (as FxProjectScaled) and moved to the centre at $0034; its
+ * outcode has bit 2 for X below 0, bit 3 for X at or past $003A, bit 0 for
+ * Y below 0, bit 1 for Y at or past $003E. A nearer point goes through
+ * FxProjectPoint, which divides by the depth instead.
+ * HOW: While $4400 - the depth is negative (SUB, BPL), ASR halves X, Y
+ * and the depth (the last in the BRA's delay slot). For a far point the
+ * scale is the word at $896C + the depth AND NOT 1 (GETB, GETBH), FMULT
+ * by it gives X and Y, each plus the centre. R6 counts the outcode: X
+ * first (MOVES, then SUB against the right edge; MULT #4 moves it up),
+ * then Y. R0 = ((R6 XOR $1F) << 8) | R6. For a near point: R14 = R12,
+ * R3 = the depth, R11 pushed on the R10 stack, FxProjectPoint, then R12 =
+ * R14 and R3, R13, R9 reloaded from $0026-$002A; return by pulling R15.
+ * Entry: R1 = X, R2 = Y, R6 = the depth; R12 = the next index byte's
+ * address (near points only); R10 = stack; R11 = return address; the ROM
+ * bank $14. Exit, far: R1, R2 = the screen position; R6 = the outcode, R0
+ * as above; R5 = the last edge read (when one was); R14 = the scale's
+ * address + 1; S and Z from the OR; OV and CY from the last SUB or ADD;
+ * the last RAM address the last word loaded. Exit, near: as FxProjectPoint
+ * with R12 = R14, R3, R13, R9 from $0026, $0028, $002A; S, Z from R10;
+ * the last RAM address R10. R14 and the ROM buffer move as on the Super
+ * FX.
+ */
+void abi_FxProjectVertex(void)
+{
+    for (;;) {
+        gsu.r[0] = gsu_sub(0x4400, gsu.r[6], 0);
+        if (!gsu.s)
+            break;
+        gsu.r[1] = gsu_asr(gsu.r[1]);
+        gsu.r[2] = gsu_asr(gsu.r[2]);
+        gsu.r[6] = gsu_asr(gsu.r[6]);       /* BRA's delay slot */
+    }
+    gsu.r[0] = gsu_sub(0x0100, gsu.r[6], 0);
+    if (!gsu.s) {
+        gsu_r14(gsu.r[12]);
+        gsu.r[3] = gsu.r[6];
+        gsu_push(&gsu.r[10], gsu.r[11]);
+        gsu.r[11] = 0x8C69;
+        abi_FxProjectPoint();
+        gsu.r[12] = gsu.r[14];
+        gsu.r[3] = gsu_ldw(0x0026);
+        gsu.r[13] = gsu_ldw(0x0028);
+        gsu.r[9] = gsu_ldw(0x002A);
+        gsu_pull(&gsu.r[10]);       /* the return address, into R15 */
+        return;
+    }
+    gsu.r[6] = gsu_bic(gsu.r[6], 0x0001);
+    gsu.r[0] = FX_SCALE_TABLE;
+    gsu_r14(gsu_add(gsu.r[0], gsu.r[6], 0));
+    gsu.r[6] = gsu_getb();
+    gsu_r14(gsu_inc(gsu.r[14]));
+    gsu.r[6] = gsu_getbh(gsu.r[6]);
+    gsu.r[0] = gsu_fmult(gsu.r[1], gsu.r[6]);
+    gsu.r[1] = gsu_ldw(FX_CENTRE);
+    gsu.r[0] = gsu_add(gsu.r[0], gsu.r[1], 0);
+    gsu.r[1] = gsu.r[0];
+    gsu.r[0] = gsu_fmult(gsu.r[2], gsu.r[6]);
+    gsu.r[2] = gsu_ldw(FX_CENTRE + 2);
+    gsu.r[0] = gsu_add(gsu.r[0], gsu.r[2], 0);
+    gsu.r[2] = gsu.r[0];
+
+    gsu.r[6] = 0;
+    gsu.r[0] = gsu.r[1];
+    gsu_moves(gsu.r[0]);
+    if (!gsu.s) {
+        gsu.r[5] = gsu_ldw(FX_EDGES + 2);
+        gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[5], 0);
+        if (gsu.s)
+            goto y_axis;
+        gsu.r[6] = gsu_inc(gsu.r[6]);
+    }
+    gsu.r[6] = gsu_inc(gsu.r[6]);
+    gsu.r[6] = mult4(gsu.r[6]);
+y_axis:
+    gsu.r[0] = gsu.r[2];
+    gsu_moves(gsu.r[0]);
+    if (!gsu.s) {
+        gsu.r[5] = gsu_ldw(FX_EDGES + 6);
+        gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[5], 0);
+        if (gsu.s)
+            goto code;
+        gsu.r[6] = gsu_inc(gsu.r[6]);
+    }
+    gsu.r[6] = gsu_inc(gsu.r[6]);
+code:
+    gsu.r[0] = gsu_or(gsu_swap(gsu_xor(0x1F, gsu.r[6])), gsu.r[6]);
+}

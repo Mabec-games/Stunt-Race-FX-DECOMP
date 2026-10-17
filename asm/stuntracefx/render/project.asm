@@ -436,4 +436,117 @@ FxProjectScaled:
     jmp r11
     nop
 
+; @routine 01:8BFF FxProjectVertex
+; WHAT IT DOES: Projects the point (R1, R2) at depth R6 to the screen and
+; returns its outcode. A point farther than $100 is scaled by the table at
+; $14:896C (as FxProjectScaled) and moved to the centre at $0034; its
+; outcode has bit 2 for X below 0, bit 3 for X at or past $003A, bit 0 for
+; Y below 0, bit 1 for Y at or past $003E. A nearer point goes through
+; FxProjectPoint, which divides by the depth instead.
+; HOW: While $4400 - the depth is negative (SUB, BPL), ASR halves X, Y
+; and the depth (the last in the BRA's delay slot). For a far point the
+; scale is the word at $896C + the depth AND NOT 1 (GETB, GETBH), FMULT
+; by it gives X and Y, each plus the centre. R6 counts the outcode: X
+; first (MOVES, then SUB against the right edge; MULT #4 moves it up),
+; then Y. R0 = ((R6 XOR $1F) << 8) | R6. For a near point: R14 = R12,
+; R3 = the depth, R11 pushed on the R10 stack, FxProjectPoint, then R12 =
+; R14 and R3, R13, R9 reloaded from $0026-$002A; return by pulling R15.
+; Entry: R1 = X, R2 = Y, R6 = the depth; R12 = the next index byte's
+; address (near points only); R10 = stack; R11 = return address; the ROM
+; bank $14. Exit, far: R1, R2 = the screen position; R6 = the outcode, R0
+; as above; R5 = the last edge read (when one was); R14 = the scale's
+; address + 1; S and Z from the OR; OV and CY from the last SUB or ADD;
+; the last RAM address the last word loaded. Exit, near: as FxProjectPoint
+; with R12 = R14, R3, R13, R9 from $0026, $0028, $002A; S, Z from R10;
+; the last RAM address R10. R14 and the ROM buffer move as on the Super
+; FX.
+%at($018BFF)
+FxProjectVertex:
+    iwt r0,#$4400
+    sub r6
+    bpl .l8C0E
+    nop
+    with r1
+    asr
+    with r2
+    asr
+    with r6
+    bra FxProjectVertex
+    asr
+.l8C0E:
+    iwt r0,#$0100
+    sub r6
+    bpl .l8C5C
+    nop
+    with r6
+    bic #1
+    iwt r0,#$896C
+    to r14
+    add r6
+    to r6
+    getb
+    inc r14
+    with r6
+    getbh
+    from r1
+    fmult
+    lms r1,(!gsu_in_34-!gsu_ram)
+    add r1
+    move r1,r0
+    from r2
+    fmult
+    lms r2,(!gsu_in_36-!gsu_ram)
+    add r2
+    move r2,r0
+    ibt r6,#$00
+    moves r0,r1
+    bmi .l8C42
+    nop
+    lms r5,(!gsu_in_3a-!gsu_ram)
+    sub r5
+    bmi .l8C46
+    nop
+    inc r6
+.l8C42:
+    inc r6
+    with r6
+    mult #4
+.l8C46:
+    moves r0,r2
+    bmi .l8C53
+    nop
+    lms r5,(!gsu_in_3e-!gsu_ram)
+    sub r5
+    bmi .l8C54
+    nop
+    inc r6
+.l8C53:
+    inc r6
+.l8C54:
+    ibt r0,#$1F
+    xor r6
+    swap
+    or r6
+    jmp r11
+    nop
+.l8C5C:
+    move r14,r12
+    move r3,r6
+    from r11
+    stw (r10)
+    inc r10
+    inc r10
+    link #4
+    iwt r15,#FxProjectPoint
+    nop
+    move r12,r14
+    lms r3,(!gsu_out_26-!gsu_ram)
+    lms r13,(!gsu_out_28-!gsu_ram)
+    lms r9,(!gsu_out_2a-!gsu_ram)
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+
 arch 65816
