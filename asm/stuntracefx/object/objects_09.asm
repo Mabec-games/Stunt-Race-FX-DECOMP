@@ -5439,3 +5439,2355 @@ ObjectCountMarkerStep:
 .lB09C:
     jsl.l ObjectSyncFromRecord
     rtl
+
+; @routine 09:C438 ObjectCountUpTo2
+; WHAT IT DOES: Counts object X's +$48 up, to at most 2, and shows it at
+; +$5A with bit 7 ($1F58 = the count).
+; HOW: CMP #2 and INC; the count through $1F58.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: A low byte = the count | $80;
+; N, Z from it.
+%at($09C438)
+ObjectCountUpTo2:
+    lda.w !obj_48,x
+    cmp.b #$02
+    bne .lC443
+    jml.l .lC446
+.lC443:
+    inc.w !obj_48,x
+.lC446:
+    lda.w !obj_48,x
+    sta.w !wram_1F58
+    lda.w !wram_1F58
+    ora.b #$80
+    sta.w !obj_5a,x
+    rts
+
+; @routine 09:C455 ObjectBob
+; WHAT IT DOES: Sets up a bobbing object: offset +$27 = 1, speed +$29 = 1,
+; frame $09:C478 (ObjectBobStep); then its frame.
+; HOW: Word and byte stores. Reached only by unit_objects_09c.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+; leaves it.
+%at($09C455)
+ObjectBob:
+    rep.b #$20
+    lda.w #$0001
+    sta.w !obj_27,x
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0001
+    sta.w !obj_29,x
+    sep.b #$20
+    rep.b #$20
+    lda.w #$C478
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,x
+
+; @routine 09:C478 ObjectBobStep
+; WHAT IT DOES: The bob's frame: the speed +$29 is added to the offset
+; +$27, the speed turning round when the offset reaches $10 or -$10; the
+; height +$0E moves by the offset and the scale +$15 grows by 4.
+; HOW: 16-bit ADC, CMP, EOR #$FFFF + INC; the offset added through $1F4C;
+; ObjectRebucket. Reached only by unit_objects_09c.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket
+; leaves it.
+%at($09C478)
+ObjectBobStep:
+    rep.b #$20
+    lda.w !obj_27,x
+    clc
+    adc.w !obj_29,x
+    sta.w !obj_27,x
+    cmp.w #$0010
+    beq .lC48E
+    cmp.w #$FFF0
+    bne .lC498
+.lC48E:
+    lda.w !obj_29,x
+    eor.w #$FFFF
+    inc a
+    sta.w !obj_29,x
+.lC498:
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_27,x
+    sta.w !wram_1F4C
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_y,x
+    clc
+    adc.w !wram_1F4C
+    sta.w !obj_pos_y,x
+    sep.b #$20
+    lda.w !obj_15,x
+    clc
+    adc.b #$04
+    sta.w !obj_15,x
+    jsl.l ObjectRebucket
+    rtl
+
+; @routine 09:C4C0 ObjectBreakablePiece
+; WHAT IT DOES: Sets up a piece of a burst (09:D79C's): frame $09:C4E1
+; (ObjectBreakablePieceStep), a flying piece's record (GsuRecordNew424Piece)
+; with its velocity and +$2A high 0, then its frame; with no record free it
+; is released.
+; HOW: GsuRecordNew424Piece (N set: none), GsuRecordVelocity,
+; GsuRecordSet2AHigh.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame or
+; ObjectRelease leaves it.
+%at($09C4C0)
+ObjectBreakablePiece:
+    sep.b #$20
+    rep.b #$20
+    lda.w #$C4E1
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,x
+    jsl.l GsuRecordNew424Piece
+    bmi ObjectBreakablePieceStep_lC50E
+    jsl.l GsuRecordVelocity
+    lda.b #$00
+    jsl.l GsuRecordSet2AHigh
+
+; @routine 09:C4E1 ObjectBreakablePieceStep
+; WHAT IT DOES: A burst piece's frame: synced from its record, released
+; when its life +$0A runs out, and it grows (+$14, +$15, +$16 by $18).
+; HOW: ObjectSyncFromRecord, DEC, ADCs.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: A low byte = the
+; new +$16; N, Z, C, V from its add.
+%at($09C4E1)
+ObjectBreakablePieceStep:
+    jsl.l ObjectSyncFromRecord
+    dec.w !obj_09+1,x
+    beq .lC4EE
+    jml.l .lC4F2
+.lC4EE:
+    jsl.l ObjectRelease
+.lC4F2:
+    lda.w !obj_14,x
+    clc
+    adc.b #$18
+    sta.w !obj_14,x
+    lda.w !obj_15,x
+    clc
+    adc.b #$18
+    sta.w !obj_15,x
+    lda.w !obj_16,x
+    clc
+    adc.b #$18
+    sta.w !obj_16,x
+    rtl
+.lC50E:
+    jsl.l ObjectRelease
+    rtl
+
+; @routine 09:C513 ObjectBreakable
+; WHAT IT DOES: Sets up a breakable object: frame $09:C560
+; (ObjectBreakableStep), restart $09:C531 (ObjectBreakableRecord); its
+; record and frame.
+; HOW: Word and byte stores (the frame's first). Reached only by
+; unit_objects_09c.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+; leaves it.
+%at($09C513)
+ObjectBreakable:
+    rep.b #$20
+    lda.w #$C560
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,x
+    rep.b #$20
+    lda.w #$C531
+    sta.w !obj_1d,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1f,x
+
+; @routine 09:C531 ObjectBreakableRecord
+; WHAT IT DOES: The breakable's restart: a flying piece's record
+; (GsuRecordNew424Piece) with flag bit 4, +$2A high $46, at ($C0, $C0,
+; $C0), then its frame; with no record free it is released.
+; HOW: GsuRecordNew424Piece (N set: none; the release is 09:C50E's),
+; GsuRecordFlag10, GsuRecordSet2AHigh, GsuRecordPosition.
+; Reached only by unit_objects_09c.
+; Entry: as ObjectBreakable. Exit: as ObjectBreakable.
+%at($09C531)
+ObjectBreakableRecord:
+    jsl.l GsuRecordNew424Piece
+    bmi ObjectBreakablePieceStep_lC50E
+    jsl.l GsuRecordFlag10
+    lda.b #$46
+    jsl.l GsuRecordSet2AHigh
+    rep.b #$20
+    lda.w #$00C0
+    sta.b !dp_02
+    sep.b #$20
+    rep.b #$20
+    lda.w #$00C0
+    sta.b !dp_08
+    sep.b #$20
+    rep.b #$20
+    lda.w #$00C0
+    sta.b !dp_94
+    sep.b #$20
+    jsl.l GsuRecordPosition
+
+; @routine 09:C560 ObjectBreakableStep
+; WHAT IT DOES: The breakable's frame: released when its life +$0A runs
+; out; it grows by $0C (the words at +$14, +$15 and +$16 in turn); a car's
+; hit releases it with sound $5A and bursts it into eight pieces
+; (ObjectBreakableBurst).
+; HOW: DEC, 16-bit ADCs, ObjectSyncFromRecord, RecordContactSummary.
+; Reached only by unit_objects_09c.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+; it.
+%at($09C560)
+ObjectBreakableStep:
+    dec.w !obj_09+1,x
+    beq .lC569
+    jml.l .lC56D
+.lC569:
+    jsl.l ObjectRelease
+.lC56D:
+    rep.b #$20
+    lda.w !obj_14,x
+    clc
+    adc.w #$000C
+    sta.w !obj_14,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_15,x
+    clc
+    adc.w #$000C
+    sta.w !obj_15,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_16,x
+    clc
+    adc.w #$000C
+    sta.w !obj_16,x
+    sep.b #$20
+    jsl.l ObjectSyncFromRecord
+    and.b #$01
+    beq .lC5B5
+    jsl.l RecordContactSummary
+    and.b #$01
+    beq .lC5B5
+    jsl.l ObjectRelease
+    lda.b #$5A
+    jsl.l SoundPort0QueuePush
+    jsl.l ObjectBreakableBurst
+.lC5B5:
+    rtl
+
+; @routine 09:C5B6 ObjectColour0
+; WHAT IT DOES: Sets object X's colour +$18 to 0 with bit 7.
+; HOW: LDA #0, ORA #$80; starts with a NOP, as the course data's pointers
+; expect. Reached only by unit_objects_09c.
+; Entry: M 8-bit; X = object. Exit: A low byte = $80; N set.
+%at($09C5B6)
+ObjectColour0:
+    nop
+    lda.b #$00
+    ora.b #$80
+    sta.w !obj_18,x
+    rtl
+
+; @routine 09:C5BF ObjectColour1
+; WHAT IT DOES: Sets object X's colour +$18 to 1 with bit 7.
+; HOW: LDA #1, ORA #$80; starts with a NOP, as the course data's pointers
+; expect. Reached only by unit_objects_09c.
+; Entry: M 8-bit; X = object. Exit: A low byte = $81; N set.
+%at($09C5BF)
+ObjectColour1:
+    nop
+    lda.b #$01
+    ora.b #$80
+    sta.w !obj_18,x
+    rtl
+
+; @routine 09:C5C8 ObjectColour2
+; WHAT IT DOES: Sets object X's colour +$18 to 2 with bit 7.
+; HOW: LDA #2, ORA #$80; starts with a NOP, as the course data's pointers
+; expect.
+; Entry: M 8-bit; X = object. Exit: A low byte = $82; N set.
+%at($09C5C8)
+ObjectColour2:
+    nop
+    lda.b #$02
+    ora.b #$80
+    sta.w !obj_18,x
+    rtl
+
+; @routine 09:C5D1 ObjectColour3
+; WHAT IT DOES: Sets object X's colour +$18 to 3 with bit 7.
+; HOW: LDA #3, ORA #$80; starts with a NOP, as the course data's pointers
+; expect.
+; Entry: M 8-bit; X = object. Exit: A low byte = $83; N set.
+%at($09C5D1)
+ObjectColour3:
+    nop
+    lda.b #$03
+    ora.b #$80
+    sta.w !obj_18,x
+    rtl
+
+; @routine 09:C5DA ObjectColour4
+; WHAT IT DOES: Sets object X's colour +$18 to 4 with bit 7.
+; HOW: LDA #4, ORA #$80; starts with a NOP, as the course data's pointers
+; expect.
+; Entry: M 8-bit; X = object. Exit: A low byte = $84; N set.
+%at($09C5DA)
+ObjectColour4:
+    nop
+    lda.b #$04
+    ora.b #$80
+    sta.w !obj_18,x
+    rtl
+
+; @routine 09:C5E3 ObjectColour5
+; WHAT IT DOES: Sets object X's colour +$18 to 5 with bit 7.
+; HOW: LDA #5, ORA #$80; starts with a NOP, as the course data's pointers
+; expect.
+; Entry: M 8-bit; X = object. Exit: A low byte = $85; N set.
+%at($09C5E3)
+ObjectColour5:
+    nop
+    lda.b #$05
+    ora.b #$80
+    sta.w !obj_18,x
+    rtl
+
+; @routine 09:C5EC ObjectColour6
+; WHAT IT DOES: Sets object X's colour +$18 to 6 with bit 7.
+; HOW: LDA #6, ORA #$80; starts with a NOP, as the course data's pointers
+; expect.
+; Entry: M 8-bit; X = object. Exit: A low byte = $86; N set.
+%at($09C5EC)
+ObjectColour6:
+    nop
+    lda.b #$06
+    ora.b #$80
+    sta.w !obj_18,x
+    rtl
+
+; @routine 09:C5F5 ObjectColour7
+; WHAT IT DOES: Sets object X's colour +$18 to 7 with bit 7.
+; HOW: LDA #7, ORA #$80; starts with a NOP, as the course data's pointers
+; expect.
+; Entry: M 8-bit; X = object. Exit: A low byte = $87; N set.
+%at($09C5F5)
+ObjectColour7:
+    nop
+    lda.b #$07
+    ora.b #$80
+    sta.w !obj_18,x
+    rtl
+
+; @routine 09:C5FE ObjectScaleE0
+; WHAT IT DOES: Sets object X's scale +$15 to $E0.
+; HOW: One store; starts with a NOP, as the course data's pointers expect.
+; Entry: M 8-bit; X = object. Exit: A low byte = $E0.
+%at($09C5FE)
+ObjectScaleE0:
+    nop
+    lda.b #$E0
+    sta.w !obj_15,x
+    rtl
+
+; @routine 09:C605 ObjectScaleA0
+; WHAT IT DOES: Sets object X's scale +$15 to $A0.
+; HOW: One store; starts with a NOP, as the course data's pointers expect.
+; Entry: M 8-bit; X = object. Exit: A low byte = $A0.
+%at($09C605)
+ObjectScaleA0:
+    nop
+    lda.b #$A0
+    sta.w !obj_15,x
+    rtl
+
+; @routine 09:C60C ObjectScale20
+; WHAT IT DOES: Sets object X's scale +$15 to $20.
+; HOW: One store; starts with a NOP, as the course data's pointers expect.
+; Entry: M 8-bit; X = object. Exit: A low byte = $20.
+%at($09C60C)
+ObjectScale20:
+    nop
+    lda.b #$20
+    sta.w !obj_15,x
+    rtl
+
+; @routine 09:C613 ObjectSwing
+; WHAT IT DOES: Sets up a swinging object: scale +$15 = 0, +$0A = $28,
+; frame $09:C62D (ObjectSwingStep); then its frame.
+; HOW: Byte and word stores; starts with a NOP, as the course data's
+; pointers expect.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+; leaves it.
+%at($09C613)
+ObjectSwing:
+    nop
+    lda.b #$00
+    sta.w !obj_15,x
+    lda.b #$28
+    sta.w !obj_09+1,x
+    rep.b #$20
+    lda.w #$C62D
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,x
+
+; @routine 09:C62D ObjectSwingStep
+; WHAT IT DOES: The swing's frame: it moves $28 to one side (+$25 bit 0:
+; right) with its scale +$15 eased toward $40 (left) or $C0 (right); every
+; $50 frames (+$0A) it turns to the other side.
+; HOW: 16-bit ADC on +$0C; ApproachEighthMin8Byte through $3E;
+; ObjectRebucket.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket
+; leaves it.
+%at($09C62D)
+ObjectSwingStep:
+    lda.w !obj_25,x
+    and.b #$01
+    beq .lC638
+    jml.l .lC657
+.lC638:
+    rep.b #$20
+    lda.w !obj_pos_x,x
+    clc
+    adc.w #$FFD8
+    sta.w !obj_pos_x,x
+    sep.b #$20
+    lda.w !obj_15,x
+    sta.b !scale_scratch
+    lda.b #$40
+    jsl.l ApproachEighthMin8Byte
+    sta.w !obj_15,x
+    jmp.w .lC673
+.lC657:
+    rep.b #$20
+    lda.w !obj_pos_x,x
+    clc
+    adc.w #$0028
+    sta.w !obj_pos_x,x
+    sep.b #$20
+    lda.w !obj_15,x
+    sta.b !scale_scratch
+    lda.b #$C0
+    jsl.l ApproachEighthMin8Byte
+    sta.w !obj_15,x
+.lC673:
+    lda.w !obj_09+1,x
+    bne .lC67C
+    jml.l .lC682
+.lC67C:
+    dec.w !obj_09+1,x
+    jmp.w .lC68F
+.lC682:
+    lda.w !obj_25,x
+    eor.b #$01
+    sta.w !obj_25,x
+    lda.b #$50
+    sta.w !obj_09+1,x
+.lC68F:
+    jsl.l ObjectRebucket
+    rtl
+
+; @routine 09:C694 LapCrowdSpawn0
+; WHAT IT DOES: The lap crowd gate's lap 0 crowd: kind $B770 at the gate
+; moved ($F00, -$1C0, -$2800), scale $40, life $1C, handler $09:C7C9
+; (LapCrowdStep0), sound $52; nothing without a free object.
+; HOW: ObjectSpawn, ObjectCopyPositionTo, 16-bit ADCs. Reached only by
+; unit_objects_09c.
+; Entry: M 8-bit, X 16-bit; X = the gate. Exit: as SoundPort0QueuePush or
+; ObjectSpawn leaves it.
+%at($09C694)
+LapCrowdSpawn0:
+    rep.b #$20
+    lda.w #$B770
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lC6A8
+    jml.l .lC6FA
+.lC6A8:
+    jsl.l ObjectCopyPositionTo
+    rep.b #$20
+    lda.w !obj_pos_x,y
+    clc
+    adc.w #$0F00
+    sta.w !obj_pos_x,y
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_y,y
+    clc
+    adc.w #$FE40
+    sta.w !obj_pos_y,y
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_z,y
+    clc
+    adc.w #$D800
+    sta.w !obj_pos_z,y
+    sep.b #$20
+    lda.b #$40
+    sta.w !obj_15,y
+    lda.b #$F8
+    sta.w !obj_14,y
+    lda.b #$1C
+    sta.w !obj_09+1,y
+    rep.b #$20
+    lda.w #$C7C9
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,y
+    lda.b #$52
+    jsl.l SoundPort0QueuePush
+.lC6FA:
+    rts
+
+; @routine 09:C6FB LapCrowdSpawn1
+; WHAT IT DOES: The lap 1 crowd: kind $B770 moved (-$A00, -$1E0, -$2BC0),
+; scale $E0, life $16, handler $09:C7FC (LapCrowdStep1), sound $52.
+; HOW: As LapCrowdSpawn0. Reached only by unit_objects_09c.
+; Entry: as LapCrowdSpawn0. Exit: as LapCrowdSpawn0.
+%at($09C6FB)
+LapCrowdSpawn1:
+    rep.b #$20
+    lda.w #$B770
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lC70F
+    jml.l .lC761
+.lC70F:
+    jsl.l ObjectCopyPositionTo
+    rep.b #$20
+    lda.w !obj_pos_x,y
+    clc
+    adc.w #$F600
+    sta.w !obj_pos_x,y
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_y,y
+    clc
+    adc.w #$FE20
+    sta.w !obj_pos_y,y
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_z,y
+    clc
+    adc.w #$D440
+    sta.w !obj_pos_z,y
+    sep.b #$20
+    lda.b #$E0
+    sta.w !obj_15,y
+    lda.b #$F8
+    sta.w !obj_14,y
+    lda.b #$16
+    sta.w !obj_09+1,y
+    rep.b #$20
+    lda.w #$C7FC
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,y
+    lda.b #$52
+    jsl.l SoundPort0QueuePush
+.lC761:
+    rts
+
+; @routine 09:C762 LapCrowdSpawn2
+; WHAT IT DOES: The lap 2 crowd: kind $B770 moved ($3C0, -$1E0, -$2F80),
+; scale 0, life $16, handler $09:C83D (LapCrowdStep2), sound $52.
+; HOW: As LapCrowdSpawn0. Reached only by unit_objects_09c.
+; Entry: as LapCrowdSpawn0. Exit: as LapCrowdSpawn0.
+%at($09C762)
+LapCrowdSpawn2:
+    rep.b #$20
+    lda.w #$B770
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lC776
+    jml.l .lC7C8
+.lC776:
+    jsl.l ObjectCopyPositionTo
+    rep.b #$20
+    lda.w !obj_pos_x,y
+    clc
+    adc.w #$03C0
+    sta.w !obj_pos_x,y
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_y,y
+    clc
+    adc.w #$FE20
+    sta.w !obj_pos_y,y
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_z,y
+    clc
+    adc.w #$D080
+    sta.w !obj_pos_z,y
+    sep.b #$20
+    lda.b #$00
+    sta.w !obj_15,y
+    lda.b #$F8
+    sta.w !obj_14,y
+    lda.b #$16
+    sta.w !obj_09+1,y
+    rep.b #$20
+    lda.w #$C83D
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,y
+    lda.b #$52
+    jsl.l SoundPort0QueuePush
+.lC7C8:
+    rts
+
+; @routine 09:C7C9 LapCrowdStep0
+; WHAT IT DOES: The lap 0 crowd's frame: LapCrowdMove0, then ObjectRebucket.
+; HOW: Starts with a NOP, as the handler pointers expect. Reached only by
+; unit_objects_09c.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectRebucket leaves it.
+%at($09C7C9)
+LapCrowdStep0:
+    nop
+    jsr.w LapCrowdMove0
+    jsl.l ObjectRebucket
+    rtl
+
+; @routine 09:C7D2 LapCrowdMove0
+; WHAT IT DOES: Moves the lap 0 crowd by (-$B4, -$0A, 0); released when its
+; life +$0A runs out.
+; HOW: 16-bit ADCs, DEC. Reached only by unit_objects_09c.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as DEC or ObjectRelease
+; leaves it.
+%at($09C7D2)
+LapCrowdMove0:
+    rep.b #$20
+    lda.w !obj_pos_x,x
+    clc
+    adc.w #$FF4C
+    sta.w !obj_pos_x,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_y,x
+    clc
+    adc.w #$FFF6
+    sta.w !obj_pos_y,x
+    sep.b #$20
+    dec.w !obj_09+1,x
+    beq .lC7F7
+    jml.l .lC7FB
+.lC7F7:
+    jsl.l ObjectRelease
+.lC7FB:
+    rts
+
+; @routine 09:C7FC LapCrowdStep1
+; WHAT IT DOES: The lap 1 crowd's frame: LapCrowdMove1, then ObjectRebucket.
+; HOW: Starts with a NOP. Reached only by unit_objects_09c.
+; Entry: as LapCrowdStep0. Exit: as LapCrowdStep0.
+%at($09C7FC)
+LapCrowdStep1:
+    nop
+    jsr.w LapCrowdMove1
+    jsl.l ObjectRebucket
+    rtl
+
+; @routine 09:C805 LapCrowdMove1
+; WHAT IT DOES: Moves the lap 1 crowd by ($104, -$0A, $C8); released when
+; its life +$0A runs out.
+; HOW: 16-bit ADCs, DEC. Reached only by unit_objects_09c.
+; Entry: as LapCrowdMove0. Exit: as LapCrowdMove0.
+%at($09C805)
+LapCrowdMove1:
+    rep.b #$20
+    lda.w !obj_pos_x,x
+    clc
+    adc.w #$0104
+    sta.w !obj_pos_x,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_y,x
+    clc
+    adc.w #$FFF6
+    sta.w !obj_pos_y,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_z,x
+    clc
+    adc.w #$00C8
+    sta.w !obj_pos_z,x
+    sep.b #$20
+    dec.w !obj_09+1,x
+    beq .lC838
+    jml.l .lC83C
+.lC838:
+    jsl.l ObjectRelease
+.lC83C:
+    rts
+
+; @routine 09:C83D LapCrowdStep2
+; WHAT IT DOES: The lap 2 crowd's frame: LapCrowdMove2, then ObjectRebucket.
+; HOW: Starts with a NOP. Reached only by unit_objects_09c.
+; Entry: as LapCrowdStep0. Exit: as LapCrowdStep0.
+%at($09C83D)
+LapCrowdStep2:
+    nop
+    jsr.w LapCrowdMove2
+    jsl.l ObjectRebucket
+    rtl
+
+; @routine 09:C846 LapCrowdMove2
+; WHAT IT DOES: Moves the lap 2 crowd by (0, -$0D, $C8); released when its
+; life +$0A runs out.
+; HOW: 16-bit ADCs, DEC. Reached only by unit_objects_09c.
+; Entry: as LapCrowdMove0. Exit: as LapCrowdMove0.
+%at($09C846)
+LapCrowdMove2:
+    rep.b #$20
+    lda.w !obj_pos_y,x
+    clc
+    adc.w #$FFF3
+    sta.w !obj_pos_y,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_z,x
+    clc
+    adc.w #$00C8
+    sta.w !obj_pos_z,x
+    sep.b #$20
+    dec.w !obj_09+1,x
+    beq .lC86B
+    jml.l .lC86F
+.lC86B:
+    jsl.l ObjectRelease
+.lC86F:
+    rts
+
+; @routine 09:C870 ObjectLapCrowdGate
+; WHAT IT DOES: Sets up the lap crowd gate: restart $09:C893
+; (ObjectLapCrowdGateRecord), frame $09:C8BA (ObjectLapCrowdGateStep), +$48
+; = 4 (no lap counted); its record and frame.
+; HOW: Word and byte stores.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+; leaves it.
+%at($09C870)
+ObjectLapCrowdGate:
+    rep.b #$20
+    lda.w #$C893
+    sta.w !obj_1d,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1f,x
+    rep.b #$20
+    lda.w #$C8BA
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,x
+    lda.b #$04
+    sta.w !obj_48,x
+
+; @routine 09:C893 ObjectLapCrowdGateRecord
+; WHAT IT DOES: The gate's restart: its record ($42D, flag bit 4, at
+; ($780, $780, $780)), then its frame.
+; HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
+; Entry: as ObjectLapCrowdGate. Exit: as ObjectLapCrowdGate.
+%at($09C893)
+ObjectLapCrowdGateRecord:
+    jsl.l GsuRecordNew42D
+    jsl.l GsuRecordFlag10
+    rep.b #$20
+    lda.w #$0780
+    sta.b !dp_02
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0780
+    sta.b !dp_08
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0780
+    sta.b !dp_94
+    sep.b #$20
+    jsl.l GsuRecordPosition
+
+; @routine 09:C8BA ObjectLapCrowdGateStep
+; WHAT IT DOES: The gate's frame: synced to its record; a car's hit on a lap
+; ($0DEA) it has not counted (+$48) counts that lap and, on laps 0, 1 and
+; 2, brings out that lap's crowd (LapCrowdSpawn0-2).
+; HOW: ObjectSyncToRecord, RecordContactSummary; the laps compared through
+; $1F58; JSRs.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+; it.
+%at($09C8BA)
+ObjectLapCrowdGateStep:
+    jsl.l ObjectSyncToRecord
+    and.b #$01
+    beq .lC90B
+    jsl.l RecordContactSummary
+    and.b #$01
+    beq .lC90B
+    lda.w !obj_48,x
+    sta.w !wram_1F58
+    sep.b #$20
+    lda.w !wram_0DEA
+    cmp.w !wram_1F58
+    beq .lC90B
+    sep.b #$20
+    lda.w !wram_0DEA
+    sta.w !wram_1F58
+    lda.w !wram_1F58
+    sta.w !obj_48,x
+    sep.b #$20
+    lda.w !wram_0DEA
+    cmp.b #$00
+    beq .lC8FC
+    cmp.b #$01
+    beq .lC902
+    cmp.b #$02
+    beq .lC908
+    jmp.w .lC90B
+.lC8FC:
+    jsr.w LapCrowdSpawn0
+    jmp.w .lC90B
+.lC902:
+    jsr.w LapCrowdSpawn1
+    jmp.w .lC90B
+.lC908:
+    jsr.w LapCrowdSpawn2
+.lC90B:
+    rtl
+
+; @routine 09:C90C ObjectFloaterSpawner
+; WHAT IT DOES: Sets object X's frame to $09:C956 (ObjectFloaterSpawnerStep)
+; and puts a floater (kind $B3B8) $6E0 lower with life +$0A = $28 and
+; handler $09:C95C (ObjectFloaterStep); no floater without a free object.
+; HOW: ObjectSpawn, ObjectCopyPositionTo.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the last store
+; or ObjectSpawn leaves it.
+%at($09C90C)
+ObjectFloaterSpawner:
+    rep.b #$20
+    lda.w #$C956
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,x
+    rep.b #$20
+    lda.w #$B3B8
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lC92F
+    jml.l .lC955
+.lC92F:
+    jsl.l ObjectCopyPositionTo
+    rep.b #$20
+    lda.w !obj_pos_y,y
+    clc
+    adc.w #$06E0
+    sta.w !obj_pos_y,y
+    sep.b #$20
+    lda.b #$28
+    sta.w !obj_09+1,y
+    rep.b #$20
+    lda.w #$C95C
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,y
+.lC955:
+    rtl
+
+; @routine 09:C956 ObjectFloaterSpawnerStep
+; WHAT IT DOES: The spawner's frame: its scale +$15 = $40.
+; HOW: One store.
+; Entry: M 8-bit; X = object. Exit: A low byte = $40.
+%at($09C956)
+ObjectFloaterSpawnerStep:
+    lda.b #$40
+    sta.w !obj_15,x
+    rtl
+
+; @routine 09:C95C ObjectFloaterStep
+; WHAT IT DOES: The floater's frame: rebucketed, its scale +$15 grows by 8;
+; it rises $14 (+$25 bit 0 clear) or sinks $14; every $28 frames (+$0A) the
+; direction flips.
+; HOW: ObjectRebucket first; 16-bit ADC on +$0E; EOR #1.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the last store
+; leaves it.
+%at($09C95C)
+ObjectFloaterStep:
+    jsl.l ObjectRebucket
+    lda.w !obj_15,x
+    clc
+    adc.b #$08
+    sta.w !obj_15,x
+    lda.w !obj_25,x
+    and.b #$01
+    beq .lC974
+    jml.l .lC985
+.lC974:
+    rep.b #$20
+    lda.w !obj_pos_y,x
+    clc
+    adc.w #$0014
+    sta.w !obj_pos_y,x
+    sep.b #$20
+    jmp.w .lC993
+.lC985:
+    rep.b #$20
+    lda.w !obj_pos_y,x
+    clc
+    adc.w #$FFEC
+    sta.w !obj_pos_y,x
+    sep.b #$20
+.lC993:
+    lda.w !obj_09+1,x
+    bne .lC99C
+    jml.l .lC9A2
+.lC99C:
+    dec.w !obj_09+1,x
+    jmp.w .lC9AF
+.lC9A2:
+    lda.w !obj_25,x
+    eor.b #$01
+    sta.w !obj_25,x
+    lda.b #$28
+    sta.w !obj_09+1,x
+.lC9AF:
+    rtl
+
+; @routine 09:C9B0 ObjectRing
+; WHAT IT DOES: Sets up a ring piece circling a centre: the centre (kind
+; $A040, handler $09:CAA3 ObjectRingCentreStep) at its position, its frame
+; $09:C9F0 (ObjectRingStep); then that frame.
+; HOW: ObjectSpawn, ObjectCopyPositionTo; +$27 = the centre. Reached only
+; by unit_objects_09c.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+; leaves it.
+%at($09C9B0)
+ObjectRing:
+    rep.b #$20
+    lda.w #$A040
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lC9C4
+    jml.l .lC9E1
+.lC9C4:
+    jsl.l ObjectCopyPositionTo
+    pha
+    rep.b #$20
+    tya
+    sta.w !obj_27,x
+    sep.b #$20
+    pla
+    rep.b #$20
+    lda.w #$CAA3
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,y
+.lC9E1:
+    rep.b #$20
+    lda.w #$C9F0
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,x
+
+; @routine 09:C9F0 ObjectRingStep
+; WHAT IT DOES: The ring piece's frame: at its centre (+$27) plus ($64, 0,
+; 0) turned by the centre's angles +$16, +$14 and +$15, times 32; it takes
+; the centre's scale +$15.
+; HOW: RotateXY, RotateXZFrom08, RotateXZ through direct page; five ASLs;
+; ObjectRebucket. The sign bytes come from constants: their $FF stores
+; (09:C9FD, 09:CA0F, 09:CA22) never run. Reached only by unit_objects_09c.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket
+; leaves it.
+%at($09C9F0)
+ObjectRingStep:
+    ldy.w !obj_27,x
+    lda.b #$64
+    sta.b !dp_02
+    sta.b !dp_04
+    bit.b #$80
+    beq .lCA03
+    lda.b #$FF
+    sta.b !dp_05
+    bra .lCA05
+.lCA03:
+    stz.b !dp_05
+.lCA05:
+    lda.b #$00
+    sta.b !dp_08
+    sta.b !actor_0a
+    bit.b #$80
+    beq .lCA15
+    lda.b #$FF
+    sta.b !dp_0b
+    bra .lCA17
+.lCA15:
+    stz.b !dp_0b
+.lCA17:
+    lda.b #$00
+    sta.b !dp_94
+    sta.w !rot_z
+    bit.b #$80
+    beq .lCA29
+    lda.b #$FF
+    sta.w !rot_z_high
+    bra .lCA2C
+.lCA29:
+    stz.w !rot_z_high
+.lCA2C:
+    lda.w !obj_16,y
+    jsl.l RotateXY
+    lda.b !dp_04
+    sta.b !dp_02
+    lda.b !actor_0a
+    sta.b !dp_08
+    lda.w !rot_z
+    sta.b !dp_94
+    lda.w !obj_14,y
+    jsl.l RotateXZFrom08
+    lda.b !dp_04
+    sta.b !dp_02
+    lda.b !actor_0a
+    sta.b !dp_08
+    lda.w !rot_z
+    sta.b !dp_94
+    lda.w !obj_15,y
+    jsl.l RotateXZ
+    rep.b #$20
+    lda.b !dp_04
+    asl a
+    asl a
+    asl a
+    asl a
+    asl a
+    sta.b !dp_04
+    lda.b !actor_0a
+    asl a
+    asl a
+    asl a
+    asl a
+    asl a
+    sta.b !actor_0a
+    lda.w !rot_z
+    asl a
+    asl a
+    asl a
+    asl a
+    asl a
+    sta.w !rot_z
+    lda.w !obj_pos_x,y
+    clc
+    adc.b !dp_04
+    sta.w !obj_pos_x,x
+    lda.w !obj_pos_z,y
+    clc
+    adc.w !rot_z
+    sta.w !obj_pos_z,x
+    lda.w !obj_pos_y,y
+    clc
+    adc.b !actor_0a
+    sta.w !obj_pos_y,x
+    sep.b #$20
+    lda.w !obj_15,y
+    sta.w !obj_15,x
+    jsl.l ObjectRebucket
+    rtl
+
+; @routine 09:CAA3 ObjectRingCentreStep
+; WHAT IT DOES: The ring centre's frame: its scale +$15 grows by 1.
+; HOW: ADC; ObjectRebucket. Reached only by unit_objects_09c.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectRebucket leaves it.
+%at($09CAA3)
+ObjectRingCentreStep:
+    lda.w !obj_15,x
+    clc
+    adc.b #$01
+    sta.w !obj_15,x
+    jsl.l ObjectRebucket
+    rtl
+
+; @routine 09:CAB1 ObjectSpinner
+; WHAT IT DOES: Sets up a spinner: colour +$5A = 0 with bit 7, a centre
+; (kind $A040, handler $09:CBC4 ObjectSpinnerCentreStep) at its position,
+; its frame $09:CAF8 (ObjectSpinnerStep); then that frame.
+; HOW: ObjectSpawn, ObjectCopyPositionTo; +$27 = the centre.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+; leaves it.
+%at($09CAB1)
+ObjectSpinner:
+    lda.b #$00
+    ora.b #$80
+    sta.w !obj_5a,x
+    rep.b #$20
+    lda.w #$A040
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lCACC
+    jml.l .lCAE9
+.lCACC:
+    jsl.l ObjectCopyPositionTo
+    pha
+    rep.b #$20
+    tya
+    sta.w !obj_27,x
+    sep.b #$20
+    pla
+    rep.b #$20
+    lda.w #$CBC4
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,y
+.lCAE9:
+    rep.b #$20
+    lda.w #$CAF8
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,x
+
+; @routine 09:CAF8 ObjectSpinnerStep
+; WHAT IT DOES: The spinner's frame: at its centre (+$27) plus ($28, $0A,
+; 0) turned by the centre's angles, times 32, with the centre's scale; its
+; colour +$5A steps on through 0-5 (bit 7 kept).
+; HOW: As ObjectRingStep; the colour by ADC, AND #$7F, SBC #6. The sign
+; bytes come from constants: their $FF stores (09:CB05, 09:CB17, 09:CB2A)
+; never run.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket
+; leaves it.
+%at($09CAF8)
+ObjectSpinnerStep:
+    ldy.w !obj_27,x
+    lda.b #$28
+    sta.b !dp_02
+    sta.b !dp_04
+    bit.b #$80
+    beq .lCB0B
+    lda.b #$FF
+    sta.b !dp_05
+    bra .lCB0D
+.lCB0B:
+    stz.b !dp_05
+.lCB0D:
+    lda.b #$0A
+    sta.b !dp_08
+    sta.b !actor_0a
+    bit.b #$80
+    beq .lCB1D
+    lda.b #$FF
+    sta.b !dp_0b
+    bra .lCB1F
+.lCB1D:
+    stz.b !dp_0b
+.lCB1F:
+    lda.b #$00
+    sta.b !dp_94
+    sta.w !rot_z
+    bit.b #$80
+    beq .lCB31
+    lda.b #$FF
+    sta.w !rot_z_high
+    bra .lCB34
+.lCB31:
+    stz.w !rot_z_high
+.lCB34:
+    lda.w !obj_16,y
+    jsl.l RotateXY
+    lda.b !dp_04
+    sta.b !dp_02
+    lda.b !actor_0a
+    sta.b !dp_08
+    lda.w !rot_z
+    sta.b !dp_94
+    lda.w !obj_14,y
+    jsl.l RotateXZFrom08
+    lda.b !dp_04
+    sta.b !dp_02
+    lda.b !actor_0a
+    sta.b !dp_08
+    lda.w !rot_z
+    sta.b !dp_94
+    lda.w !obj_15,y
+    jsl.l RotateXZ
+    rep.b #$20
+    lda.b !dp_04
+    asl a
+    asl a
+    asl a
+    asl a
+    asl a
+    sta.b !dp_04
+    lda.b !actor_0a
+    asl a
+    asl a
+    asl a
+    asl a
+    asl a
+    sta.b !actor_0a
+    lda.w !rot_z
+    asl a
+    asl a
+    asl a
+    asl a
+    asl a
+    sta.w !rot_z
+    lda.w !obj_pos_x,y
+    clc
+    adc.b !dp_04
+    sta.w !obj_pos_x,x
+    lda.w !obj_pos_z,y
+    clc
+    adc.w !rot_z
+    sta.w !obj_pos_z,x
+    lda.w !obj_pos_y,y
+    clc
+    adc.b !actor_0a
+    sta.w !obj_pos_y,x
+    sep.b #$20
+    lda.w !obj_15,y
+    sta.w !obj_15,x
+    lda.w !obj_5a,x
+    clc
+    adc.b #$01
+    bmi .lCBB1
+    clc
+    adc.b #$06
+.lCBB1:
+    and.b #$7F
+    cmp.b #$06
+    bcc .lCBBA
+    sec
+    sbc.b #$06
+.lCBBA:
+    ora.b #$80
+    sta.w !obj_5a,x
+    jsl.l ObjectRebucket
+    rtl
+
+; @routine 09:CBC4 ObjectSpinnerCentreStep
+; WHAT IT DOES: The spinner centre's frame: scale +$15 down by 8, +$14 up by
+; $0C.
+; HOW: ADCs; ObjectRebucket.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectRebucket leaves it.
+%at($09CBC4)
+ObjectSpinnerCentreStep:
+    lda.w !obj_15,x
+    clc
+    adc.b #$F8
+    sta.w !obj_15,x
+    lda.w !obj_14,x
+    clc
+    adc.b #$0C
+    sta.w !obj_14,x
+    jsl.l ObjectRebucket
+    rtl
+
+; @routine 09:CBDB ObjectBellGate
+; WHAT IT DOES: Sets up a bell gate: restart $09:CBF9 (ObjectBellGateRecord),
+; frame $09:CC20 (ObjectBellGateStep); its record and frame.
+; HOW: Word and byte stores.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+; leaves it.
+%at($09CBDB)
+ObjectBellGate:
+    rep.b #$20
+    lda.w #$CBF9
+    sta.w !obj_1d,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1f,x
+    rep.b #$20
+    lda.w #$CC20
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,x
+
+; @routine 09:CBF9 ObjectBellGateRecord
+; WHAT IT DOES: The bell gate's restart: its record ($42D, flag bit 4, at
+; ($F00, $F00, $F00)), then its frame.
+; HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
+; Entry: as ObjectBellGate. Exit: as ObjectBellGate.
+%at($09CBF9)
+ObjectBellGateRecord:
+    jsl.l GsuRecordNew42D
+    jsl.l GsuRecordFlag10
+    rep.b #$20
+    lda.w #$0F00
+    sta.b !dp_02
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0F00
+    sta.b !dp_08
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0F00
+    sta.b !dp_94
+    sep.b #$20
+    jsl.l GsuRecordPosition
+
+; @routine 09:CC20 ObjectBellGateStep
+; WHAT IT DOES: The bell gate's frame: a car's hit, the first time (+$25 bit
+; 0), plays sound $2E; no hit clears the bit.
+; HOW: ObjectSyncFromRecord, RecordContactSummary.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+; it.
+%at($09CC20)
+ObjectBellGateStep:
+    jsl.l ObjectSyncFromRecord
+    and.b #$01
+    beq .lCC4A
+    jsl.l RecordContactSummary
+    and.b #$01
+    beq .lCC4A
+    lda.w !obj_25,x
+    and.b #$01
+    beq .lCC3B
+    jml.l .lCC49
+.lCC3B:
+    lda.w !obj_25,x
+    ora.b #$01
+    sta.w !obj_25,x
+    lda.b #$2E
+    jsl.l SoundPort0QueuePush
+.lCC49:
+    rtl
+.lCC4A:
+    lda.w !obj_25,x
+    and.b #$FE
+    sta.w !obj_25,x
+    rtl
+
+; @routine 09:CC53 ObjectLapSignGate
+; WHAT IT DOES: Sets up the lap sign gate: restart $09:CC76
+; (ObjectLapSignGateRecord), frame $09:CC9D (ObjectLapSignGateStep), +$48 =
+; 0; its record and frame.
+; HOW: Word and byte stores. Reached only by unit_objects_09c.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+; leaves it.
+%at($09CC53)
+ObjectLapSignGate:
+    rep.b #$20
+    lda.w #$CC76
+    sta.w !obj_1d,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1f,x
+    rep.b #$20
+    lda.w #$CC9D
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,x
+    lda.b #$00
+    sta.w !obj_48,x
+
+; @routine 09:CC76 ObjectLapSignGateRecord
+; WHAT IT DOES: The gate's restart: its record ($42D, flag bit 4, at ($F00,
+; $F00, $F00)), then its frame.
+; HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition. Reached only
+; by unit_objects_09c.
+; Entry: as ObjectLapSignGate. Exit: as ObjectLapSignGate.
+%at($09CC76)
+ObjectLapSignGateRecord:
+    jsl.l GsuRecordNew42D
+    jsl.l GsuRecordFlag10
+    rep.b #$20
+    lda.w #$0F00
+    sta.b !dp_02
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0F00
+    sta.b !dp_08
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0F00
+    sta.b !dp_94
+    sep.b #$20
+    jsl.l GsuRecordPosition
+
+; @routine 09:CC9D ObjectLapSignGateStep
+; WHAT IT DOES: The gate's frame: a car's hit on a lap ($0DEA) it has not
+; counted (+$48) counts it and, on laps 0, 1 and 2, puts up that lap's
+; sign (LapSignSpawn0-2).
+; HOW: ObjectSyncFromRecord, RecordContactSummary; the laps compared
+; through $1F58; JSRs. Reached only by unit_objects_09c.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+; it.
+%at($09CC9D)
+ObjectLapSignGateStep:
+    jsl.l ObjectSyncFromRecord
+    and.b #$01
+    beq .lCCEE
+    jsl.l RecordContactSummary
+    and.b #$01
+    beq .lCCEE
+    lda.w !obj_48,x
+    sta.w !wram_1F58
+    sep.b #$20
+    lda.w !wram_0DEA
+    cmp.w !wram_1F58
+    beq .lCCEE
+    sep.b #$20
+    lda.w !wram_0DEA
+    sta.w !wram_1F58
+    lda.w !wram_1F58
+    sta.w !obj_48,x
+    sep.b #$20
+    lda.w !wram_0DEA
+    cmp.b #$00
+    beq .lCCDF
+    cmp.b #$01
+    beq .lCCE5
+    cmp.b #$02
+    beq .lCCEB
+    jmp.w .lCCEE
+.lCCDF:
+    jsr.w LapSignSpawn0
+    jmp.w .lCCEE
+.lCCE5:
+    jsr.w LapSignSpawn1
+    jmp.w .lCCEE
+.lCCEB:
+    jsr.w LapSignSpawn2
+.lCCEE:
+    rtl
+
+; @routine 09:CCEF LapSignSpawn0
+; WHAT IT DOES: The lap sign gate's lap 0 sign: kind $ABD8 moved ($A00,
+; -$100, $140), life $14, handler $09:CDF4 (LapSignStep0); nothing without
+; a free object.
+; HOW: ObjectSpawn, ObjectCopyPositionTo, 16-bit ADCs. Reached only by
+; unit_objects_09c.
+; Entry: M 8-bit, X 16-bit; X = the gate. Exit: as the last store or
+; ObjectSpawn leaves it.
+%at($09CCEF)
+LapSignSpawn0:
+    rep.b #$20
+    lda.w #$ABD8
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lCD03
+    jml.l .lCD45
+.lCD03:
+    jsl.l ObjectCopyPositionTo
+    rep.b #$20
+    lda.w !obj_pos_x,y
+    clc
+    adc.w #$0A00
+    sta.w !obj_pos_x,y
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_y,y
+    clc
+    adc.w #$FF00
+    sta.w !obj_pos_y,y
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_z,y
+    clc
+    adc.w #$0140
+    sta.w !obj_pos_z,y
+    sep.b #$20
+    lda.b #$14
+    sta.w !obj_09+1,y
+    rep.b #$20
+    lda.w #$CDF4
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,y
+.lCD45:
+    rts
+
+; @routine 09:CD46 LapSignSpawn1
+; WHAT IT DOES: The lap 1 sign: kind $ABD8 moved (-$A00, -$100, $140), life
+; $14, handler $09:CE30 (LapSignStep1).
+; HOW: As LapSignSpawn0. Reached only by unit_objects_09c.
+; Entry: as LapSignSpawn0. Exit: as LapSignSpawn0.
+%at($09CD46)
+LapSignSpawn1:
+    rep.b #$20
+    lda.w #$ABD8
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lCD5A
+    jml.l .lCD9C
+.lCD5A:
+    jsl.l ObjectCopyPositionTo
+    rep.b #$20
+    lda.w !obj_pos_x,y
+    clc
+    adc.w #$F600
+    sta.w !obj_pos_x,y
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_y,y
+    clc
+    adc.w #$FF00
+    sta.w !obj_pos_y,y
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_z,y
+    clc
+    adc.w #$0140
+    sta.w !obj_pos_z,y
+    sep.b #$20
+    lda.b #$14
+    sta.w !obj_09+1,y
+    rep.b #$20
+    lda.w #$CE30
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,y
+.lCD9C:
+    rts
+
+; @routine 09:CD9D LapSignSpawn2
+; WHAT IT DOES: The lap 2 sign: kind $ABD8 at the gate (moved by 0), life
+; $14, handler $09:CE6C (LapSignStep2).
+; HOW: As LapSignSpawn0. Reached only by unit_objects_09c.
+; Entry: as LapSignSpawn0. Exit: as LapSignSpawn0.
+%at($09CD9D)
+LapSignSpawn2:
+    rep.b #$20
+    lda.w #$ABD8
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lCDB1
+    jml.l .lCDF3
+.lCDB1:
+    jsl.l ObjectCopyPositionTo
+    rep.b #$20
+    lda.w !obj_pos_x,y
+    clc
+    adc.w #$0000
+    sta.w !obj_pos_x,y
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_y,y
+    clc
+    adc.w #$0000
+    sta.w !obj_pos_y,y
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_z,y
+    clc
+    adc.w #$0000
+    sta.w !obj_pos_z,y
+    sep.b #$20
+    lda.b #$14
+    sta.w !obj_09+1,y
+    rep.b #$20
+    lda.w #$CE6C
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,y
+.lCDF3:
+    rts
+
+; @routine 09:CDF4 LapSignStep0
+; WHAT IT DOES: The lap 0 sign's frame: it slides -$E0 sideways and is
+; released when its life +$0A runs out.
+; HOW: 16-bit ADCs (two of 0), DEC, ObjectRebucket. Reached only by
+; unit_objects_09c.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectRebucket leaves it.
+%at($09CDF4)
+LapSignStep0:
+    rep.b #$20
+    lda.w !obj_pos_x,x
+    clc
+    adc.w #$FF20
+    sta.w !obj_pos_x,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_y,x
+    clc
+    adc.w #$0000
+    sta.w !obj_pos_y,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_z,x
+    clc
+    adc.w #$0000
+    sta.w !obj_pos_z,x
+    sep.b #$20
+    dec.w !obj_09+1,x
+    beq .lCE27
+    jml.l .lCE2B
+.lCE27:
+    jsl.l ObjectRelease
+.lCE2B:
+    jsl.l ObjectRebucket
+    rtl
+
+; @routine 09:CE30 LapSignStep1
+; WHAT IT DOES: The lap 1 sign's frame: it slides $E0 sideways and is
+; released when its life +$0A runs out.
+; HOW: As LapSignStep0. Reached only by unit_objects_09c.
+; Entry: as LapSignStep0. Exit: as LapSignStep0.
+%at($09CE30)
+LapSignStep1:
+    rep.b #$20
+    lda.w !obj_pos_x,x
+    clc
+    adc.w #$00E0
+    sta.w !obj_pos_x,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_y,x
+    clc
+    adc.w #$0000
+    sta.w !obj_pos_y,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_z,x
+    clc
+    adc.w #$0000
+    sta.w !obj_pos_z,x
+    sep.b #$20
+    dec.w !obj_09+1,x
+    beq .lCE63
+    jml.l .lCE67
+.lCE63:
+    jsl.l ObjectRelease
+.lCE67:
+    jsl.l ObjectRebucket
+    rtl
+
+; @routine 09:CE6C LapSignStep2
+; WHAT IT DOES: The lap 2 sign's frame: it rises $20 and is released when
+; its life +$0A runs out.
+; HOW: As LapSignStep0. Reached only by unit_objects_09c.
+; Entry: as LapSignStep0. Exit: as LapSignStep0.
+%at($09CE6C)
+LapSignStep2:
+    rep.b #$20
+    lda.w !obj_pos_x,x
+    clc
+    adc.w #$0000
+    sta.w !obj_pos_x,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_y,x
+    clc
+    adc.w #$FFE0
+    sta.w !obj_pos_y,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_z,x
+    clc
+    adc.w #$0000
+    sta.w !obj_pos_z,x
+    sep.b #$20
+    dec.w !obj_09+1,x
+    beq .lCE9F
+    jml.l .lCEA3
+.lCE9F:
+    jsl.l ObjectRelease
+.lCEA3:
+    jsl.l ObjectRebucket
+    rtl
+
+; @routine 09:CEA8 ObjectFan
+; WHAT IT DOES: Sets up a fan blade circling a centre: the centre (kind
+; $A040, handler $09:CFD5 ObjectFanCentreStep), its frame $09:CEE8
+; (ObjectFanStep); then that frame.
+; HOW: ObjectSpawn, ObjectCopyPositionTo; +$27 = the centre.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+; leaves it.
+%at($09CEA8)
+ObjectFan:
+    rep.b #$20
+    lda.w #$A040
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lCEBC
+    jml.l .lCED9
+.lCEBC:
+    jsl.l ObjectCopyPositionTo
+    pha
+    rep.b #$20
+    tya
+    sta.w !obj_27,x
+    sep.b #$20
+    pla
+    rep.b #$20
+    lda.w #$CFD5
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,y
+.lCED9:
+    rep.b #$20
+    lda.w #$CEE8
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,x
+
+; @routine 09:CEE8 ObjectFanStep
+; WHAT IT DOES: The blade's frame: at its centre (+$27) plus ($64, $46, 0)
+; turned by the centre's angle +$16, times 32, with that angle; at angles
+; from $3B to $BF (signed compares with $3A and $C0) it shows model $AF04
+; (+$25 bit 0 set), otherwise $A040 (bit 0 cleared); its angle then steps
+; by $AA.
+; HOW: RotateXY only; five ASLs; ObjectRebucket. The sign bytes come from
+; constants: their $FF stores (09:CEF5, 09:CF07, 09:CF1A) never run.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket
+; leaves it.
+%at($09CEE8)
+ObjectFanStep:
+    ldy.w !obj_27,x
+    lda.b #$64
+    sta.b !dp_02
+    sta.b !dp_04
+    bit.b #$80
+    beq .lCEFB
+    lda.b #$FF
+    sta.b !dp_05
+    bra .lCEFD
+.lCEFB:
+    stz.b !dp_05
+.lCEFD:
+    lda.b #$46
+    sta.b !dp_08
+    sta.b !actor_0a
+    bit.b #$80
+    beq .lCF0D
+    lda.b #$FF
+    sta.b !dp_0b
+    bra .lCF0F
+.lCF0D:
+    stz.b !dp_0b
+.lCF0F:
+    lda.b #$00
+    sta.b !dp_94
+    sta.w !rot_z
+    bit.b #$80
+    beq .lCF21
+    lda.b #$FF
+    sta.w !rot_z_high
+    bra .lCF24
+.lCF21:
+    stz.w !rot_z_high
+.lCF24:
+    lda.w !obj_16,y
+    jsl.l RotateXY
+    lda.b !dp_04
+    sta.b !dp_02
+    lda.b !actor_0a
+    sta.b !dp_08
+    lda.w !rot_z
+    sta.b !dp_94
+    rep.b #$20
+    lda.b !dp_04
+    asl a
+    asl a
+    asl a
+    asl a
+    asl a
+    sta.b !dp_04
+    lda.b !actor_0a
+    asl a
+    asl a
+    asl a
+    asl a
+    asl a
+    sta.b !actor_0a
+    lda.w !rot_z
+    asl a
+    asl a
+    asl a
+    asl a
+    asl a
+    sta.w !rot_z
+    lda.w !obj_pos_x,y
+    clc
+    adc.b !dp_04
+    sta.w !obj_pos_x,x
+    lda.w !obj_pos_z,y
+    clc
+    adc.w !rot_z
+    sta.w !obj_pos_z,x
+    lda.w !obj_pos_y,y
+    clc
+    adc.b !actor_0a
+    sta.w !obj_pos_y,x
+    sep.b #$20
+    lda.w !obj_16,y
+    sta.w !obj_16,x
+    lda.w !obj_16,x
+    cmp.b #$3A
+    beq .lCF88
+    bmi .lCF88
+    jml.l .lCF9D
+.lCF88:
+    rep.b #$20
+    lda.w #$A040
+    sta.w !obj_04,x
+    sep.b #$20
+    lda.w !obj_25,x
+    and.b #$FE
+    sta.w !obj_25,x
+    jmp.w .lCFC7
+.lCF9D:
+    lda.w !obj_16,x
+    cmp.b #$C0
+    beq .lCFAA
+    bmi .lCFAA
+    jml.l .lCF88
+.lCFAA:
+    rep.b #$20
+    lda.w #$AF04
+    sta.w !obj_04,x
+    sep.b #$20
+    lda.w !obj_25,x
+    and.b #$01
+    beq .lCFBF
+    jml.l .lCFC7
+.lCFBF:
+    lda.w !obj_25,x
+    ora.b #$01
+    sta.w !obj_25,x
+.lCFC7:
+    lda.w !obj_16,x
+    clc
+    adc.b #$AA
+    sta.w !obj_16,x
+    jsl.l ObjectRebucket
+    rtl
+
+; @routine 09:CFD5 ObjectFanCentreStep
+; WHAT IT DOES: The fan centre's frame: its angle +$16 turns by -8.
+; HOW: ADC; ObjectRebucket.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectRebucket leaves it.
+%at($09CFD5)
+ObjectFanCentreStep:
+    lda.w !obj_16,x
+    clc
+    adc.b #$F8
+    sta.w !obj_16,x
+    jsl.l ObjectRebucket
+    rtl
+
+; @routine 09:CFE3 ObjectWheel
+; WHAT IT DOES: Sets up a wheel piece circling a centre: the centre (kind
+; $A040, handler $09:D131 ObjectWheelCentreStep), its frame $09:D023
+; (ObjectWheelStep); then that frame.
+; HOW: ObjectSpawn, ObjectCopyPositionTo; +$27 = the centre.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+; leaves it.
+%at($09CFE3)
+ObjectWheel:
+    rep.b #$20
+    lda.w #$A040
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lCFF7
+    jml.l .lD014
+.lCFF7:
+    jsl.l ObjectCopyPositionTo
+    pha
+    rep.b #$20
+    tya
+    sta.w !obj_27,x
+    sep.b #$20
+    pla
+    rep.b #$20
+    lda.w #$D131
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,y
+.lD014:
+    rep.b #$20
+    lda.w #$D023
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,x
+
+; @routine 09:D023 ObjectWheelStep
+; WHAT IT DOES: The wheel piece's frame: as ObjectFanStep, turned three ways
+; (+$16, +$14, +$15), lit as model $AF20 with sound $38 the first time.
+; HOW: RotateXY, RotateXZFrom08, RotateXZ; five ASLs; ObjectRebucket. The
+; sign bytes come from constants: their $FF stores (09:D030, 09:D042,
+; 09:D055) never run.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket
+; leaves it.
+%at($09D023)
+ObjectWheelStep:
+    ldy.w !obj_27,x
+    lda.b #$64
+    sta.b !dp_02
+    sta.b !dp_04
+    bit.b #$80
+    beq .lD036
+    lda.b #$FF
+    sta.b !dp_05
+    bra .lD038
+.lD036:
+    stz.b !dp_05
+.lD038:
+    lda.b #$46
+    sta.b !dp_08
+    sta.b !actor_0a
+    bit.b #$80
+    beq .lD048
+    lda.b #$FF
+    sta.b !dp_0b
+    bra .lD04A
+.lD048:
+    stz.b !dp_0b
+.lD04A:
+    lda.b #$00
+    sta.b !dp_94
+    sta.w !rot_z
+    bit.b #$80
+    beq .lD05C
+    lda.b #$FF
+    sta.w !rot_z_high
+    bra .lD05F
+.lD05C:
+    stz.w !rot_z_high
+.lD05F:
+    lda.w !obj_16,y
+    jsl.l RotateXY
+    lda.b !dp_04
+    sta.b !dp_02
+    lda.b !actor_0a
+    sta.b !dp_08
+    lda.w !rot_z
+    sta.b !dp_94
+    lda.w !obj_14,y
+    jsl.l RotateXZFrom08
+    lda.b !dp_04
+    sta.b !dp_02
+    lda.b !actor_0a
+    sta.b !dp_08
+    lda.w !rot_z
+    sta.b !dp_94
+    lda.w !obj_15,y
+    jsl.l RotateXZ
+    rep.b #$20
+    lda.b !dp_04
+    asl a
+    asl a
+    asl a
+    asl a
+    asl a
+    sta.b !dp_04
+    lda.b !actor_0a
+    asl a
+    asl a
+    asl a
+    asl a
+    asl a
+    sta.b !actor_0a
+    lda.w !rot_z
+    asl a
+    asl a
+    asl a
+    asl a
+    asl a
+    sta.w !rot_z
+    lda.w !obj_pos_x,y
+    clc
+    adc.b !dp_04
+    sta.w !obj_pos_x,x
+    lda.w !obj_pos_z,y
+    clc
+    adc.w !rot_z
+    sta.w !obj_pos_z,x
+    lda.w !obj_pos_y,y
+    clc
+    adc.b !actor_0a
+    sta.w !obj_pos_y,x
+    sep.b #$20
+    lda.w !obj_16,y
+    sta.w !obj_16,x
+    lda.w !obj_16,x
+    cmp.b #$3A
+    beq .lD0DE
+    bmi .lD0DE
+    jml.l .lD0F3
+.lD0DE:
+    rep.b #$20
+    lda.w #$A040
+    sta.w !obj_04,x
+    sep.b #$20
+    lda.w !obj_25,x
+    and.b #$FE
+    sta.w !obj_25,x
+    jmp.w .lD123
+.lD0F3:
+    lda.w !obj_16,x
+    cmp.b #$C0
+    beq .lD100
+    bmi .lD100
+    jml.l .lD0DE
+.lD100:
+    rep.b #$20
+    lda.w #$AF20
+    sta.w !obj_04,x
+    sep.b #$20
+    lda.w !obj_25,x
+    and.b #$01
+    beq .lD115
+    jml.l .lD123
+.lD115:
+    lda.w !obj_25,x
+    ora.b #$01
+    sta.w !obj_25,x
+    lda.b #$38
+    jsl.l SoundPort0QueuePush
+.lD123:
+    lda.w !obj_16,x
+    clc
+    adc.b #$AA
+    sta.w !obj_16,x
+    jsl.l ObjectRebucket
+    rtl
+
+; @routine 09:D131 ObjectWheelCentreStep
+; WHAT IT DOES: The wheel centre's frame: its angle +$16 turns by 8.
+; HOW: ADC; ObjectRebucket.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectRebucket leaves it.
+%at($09D131)
+ObjectWheelCentreStep:
+    lda.w !obj_16,x
+    clc
+    adc.b #$08
+    sta.w !obj_16,x
+    jsl.l ObjectRebucket
+    rtl
+
+; @routine 09:D79C ObjectBreakableBurst
+; WHAT IT DOES: Bursts the breakable into eight pieces (kind $ABF4, handler
+; ObjectBreakablePiece, life $0F) flying out at ($1B3, -5, $302), ($186, -7,
+; $2B2), (-$15E, -$0A, 0), (-$1A4, -$0A, $316), ($258, -$0A, $212), (-$127,
+; -$14, $19F), (-$1A4, -5, 0) and (-$104, -$0A, -$244); a piece is skipped
+; without a free object.
+; HOW: Eight ObjectSpawn blocks from object X's position. Reached only by
+; unit_objects_09c.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the last piece
+; leaves it.
+%at($09D79C)
+ObjectBreakableBurst:
+    rep.b #$20
+    lda.w #$ABF4
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lD7B0
+    jml.l .lD7F4
+.lD7B0:
+    jsl.l ObjectCopyPositionTo
+    rep.b #$20
+    lda.w #$C4C0
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,y
+    rep.b #$20
+    lda.w !obj_pos_y,y
+    clc
+    adc.w #$0000
+    sta.w !obj_pos_y,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$01B3
+    sta.w !obj_vel_x,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$FFFB
+    sta.w !obj_vel_y,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0302
+    sta.w !obj_vel_z,y
+    sep.b #$20
+    lda.b #$0F
+    sta.w !obj_09+1,y
+.lD7F4:
+    rep.b #$20
+    lda.w #$ABF4
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lD808
+    jml.l .lD84C
+.lD808:
+    jsl.l ObjectCopyPositionTo
+    rep.b #$20
+    lda.w #$C4C0
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,y
+    rep.b #$20
+    lda.w !obj_pos_y,y
+    clc
+    adc.w #$0000
+    sta.w !obj_pos_y,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0186
+    sta.w !obj_vel_x,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$FFF9
+    sta.w !obj_vel_y,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$02B2
+    sta.w !obj_vel_z,y
+    sep.b #$20
+    lda.b #$0F
+    sta.w !obj_09+1,y
+.lD84C:
+    rep.b #$20
+    lda.w #$ABF4
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lD860
+    jml.l .lD8A4
+.lD860:
+    jsl.l ObjectCopyPositionTo
+    rep.b #$20
+    lda.w #$C4C0
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,y
+    rep.b #$20
+    lda.w !obj_pos_y,y
+    clc
+    adc.w #$0000
+    sta.w !obj_pos_y,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$FEA2
+    sta.w !obj_vel_x,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$FFF6
+    sta.w !obj_vel_y,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0000
+    sta.w !obj_vel_z,y
+    sep.b #$20
+    lda.b #$0F
+    sta.w !obj_09+1,y
+.lD8A4:
+    rep.b #$20
+    lda.w #$ABF4
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lD8B8
+    jml.l .lD8FC
+.lD8B8:
+    jsl.l ObjectCopyPositionTo
+    rep.b #$20
+    lda.w #$C4C0
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,y
+    rep.b #$20
+    lda.w !obj_pos_y,y
+    clc
+    adc.w #$0000
+    sta.w !obj_pos_y,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$FE5C
+    sta.w !obj_vel_x,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$FFF6
+    sta.w !obj_vel_y,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0316
+    sta.w !obj_vel_z,y
+    sep.b #$20
+    lda.b #$0F
+    sta.w !obj_09+1,y
+.lD8FC:
+    rep.b #$20
+    lda.w #$ABF4
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lD910
+    jml.l .lD954
+.lD910:
+    jsl.l ObjectCopyPositionTo
+    rep.b #$20
+    lda.w #$C4C0
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,y
+    rep.b #$20
+    lda.w !obj_pos_y,y
+    clc
+    adc.w #$0000
+    sta.w !obj_pos_y,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0258
+    sta.w !obj_vel_x,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$FFF6
+    sta.w !obj_vel_y,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0212
+    sta.w !obj_vel_z,y
+    sep.b #$20
+    lda.b #$0F
+    sta.w !obj_09+1,y
+.lD954:
+    rep.b #$20
+    lda.w #$ABF4
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lD968
+    jml.l .lD9AC
+.lD968:
+    jsl.l ObjectCopyPositionTo
+    rep.b #$20
+    lda.w #$C4C0
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,y
+    rep.b #$20
+    lda.w !obj_pos_y,y
+    clc
+    adc.w #$0000
+    sta.w !obj_pos_y,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$FED9
+    sta.w !obj_vel_x,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$FFEC
+    sta.w !obj_vel_y,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$019F
+    sta.w !obj_vel_z,y
+    sep.b #$20
+    lda.b #$0F
+    sta.w !obj_09+1,y
+.lD9AC:
+    rep.b #$20
+    lda.w #$ABF4
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lD9C0
+    jml.l .lDA04
+.lD9C0:
+    jsl.l ObjectCopyPositionTo
+    rep.b #$20
+    lda.w #$C4C0
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,y
+    rep.b #$20
+    lda.w !obj_pos_y,y
+    clc
+    adc.w #$0000
+    sta.w !obj_pos_y,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$FE5C
+    sta.w !obj_vel_x,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$FFFB
+    sta.w !obj_vel_y,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0000
+    sta.w !obj_vel_z,y
+    sep.b #$20
+    lda.b #$0F
+    sta.w !obj_09+1,y
+.lDA04:
+    rep.b #$20
+    lda.w #$ABF4
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lDA18
+    jml.l .lDA5C
+.lDA18:
+    jsl.l ObjectCopyPositionTo
+    rep.b #$20
+    lda.w #$C4C0
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,y
+    rep.b #$20
+    lda.w !obj_pos_y,y
+    clc
+    adc.w #$0000
+    sta.w !obj_pos_y,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$FEFC
+    sta.w !obj_vel_x,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$FFF6
+    sta.w !obj_vel_y,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$FDBC
+    sta.w !obj_vel_z,y
+    sep.b #$20
+    lda.b #$0F
+    sta.w !obj_09+1,y
+.lDA5C:
+    rtl

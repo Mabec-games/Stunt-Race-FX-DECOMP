@@ -3983,3 +3983,1357 @@ void abi_ObjectCountMarkerStep(void)
 {
     count_marker_frame();
 }
+
+/* ---- 09:C438-D13E: bobbing, breakable, swinging, orbiting objects ---- */
+
+void abi_RotateXY(void);
+void abi_RotateXZFrom08(void);
+void abi_RotateXZ(void);
+void abi_ApproachEighthMin8Byte(void);
+void abi_GsuRecordNew424Piece(void);
+void abi_ObjectBreakableBurst(void);
+
+/* Direct page byte or word at off. */
+static uint32_t dp(uint8_t off)
+{
+    return (uint16_t)(cpu.d + off);
+}
+
+/* LDA addr, EOR #m, STA addr (8-bit). */
+static void eor8(uint32_t addr, uint8_t m)
+{
+    uint8_t v = (uint8_t)(ld8(addr) ^ m);
+
+    lda8(v);
+    wr8(addr, v);
+}
+
+/* NOP, LDA #v, ORA #$80, STA +f: a value shown with bit 7. */
+static void st8i_hi(uint32_t addr, uint8_t v)
+{
+    lda8(v);
+    lda8((uint8_t)(v | 0x80));
+    wr8(addr, (uint8_t)(v | 0x80));
+}
+
+/* LDA +f, STA $1F58, SEP #$20, LDA $0DEA, CMP $1F58: 1 when the lap
+   $0DEA is the one in field f. */
+static int lap_eq(uint16_t f)
+{
+    uint8_t v, r;
+
+    v = ld8(F(f, cpu.x));
+    wr8(db() | 0x1F58, v);
+    cpu.p |= P_M;
+    v = ld8(db() | 0x0DEA);
+    r = rd8(db() | 0x1F58);
+    cmp8(r);
+    return v == r;
+}
+
+/* SEP #$20, field f = the lap $0DEA through $1F58. */
+static void lap_store(uint16_t f)
+{
+    uint8_t v;
+
+    cpu.p |= P_M;
+    v = ld8(db() | 0x0DEA);
+    wr8(db() | 0x1F58, v);
+    v = ld8(db() | 0x1F58);
+    wr8(F(f, cpu.x), v);
+}
+
+/*
+ * @routine 09:C438 ObjectCountUpTo2
+ * WHAT IT DOES: Counts object X's +$48 up, to at most 2, and shows it at
+ * +$5A with bit 7 ($1F58 = the count).
+ * HOW: CMP #2 and INC; the count through $1F58.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: A low byte = the count | $80;
+ * N, Z from it.
+ */
+void abi_ObjectCountUpTo2(void)
+{
+    uint8_t v;
+
+    v = ld8(F(0x2048, cpu.x));
+    cmp8(0x02);
+    if (v != 0x02)
+        inc8(F(0x2048, cpu.x));
+    v = ld8(F(0x2048, cpu.x));
+    wr8(db() | 0x1F58, v);
+    v = ld8(db() | 0x1F58);
+    st8i_hi(F(0x205A, cpu.x), v);
+}
+
+/* 09:C478: the bob: the speed +$29 added to the offset +$27, turning back
+   at $10 and -$10; the height +$0E moved by the offset (through $1F4C) and
+   the scale +$15 grown by 4. */
+static void bob_frame(void)
+{
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(F(0x2027, cpu.x));
+    op_add16(rd16(F(0x2029, cpu.x)));
+    wr16(F(0x2027, cpu.x), cpu.a);
+    op_cmp16(0x0010);
+    if (cpu.a == 0x0010 || (op_cmp16(0xFFF0), cpu.a == 0xFFF0)) {
+        op_lda16(F(0x2029, cpu.x));
+        cpu.a ^= 0xFFFF;
+        cpu.p = nz16(cpu.p, cpu.a);
+        cpu.a++;
+        cpu.p = nz16(cpu.p, cpu.a);
+        wr16(F(0x2029, cpu.x), cpu.a);
+    }
+    cpu.p |= P_M;
+    add16_via(F(0x200E, cpu.x), F(0x2027, cpu.x));
+    add8(F(0x2015, cpu.x), 0x04);
+    abi_ObjectRebucket();
+}
+
+/*
+ * @routine 09:C455 ObjectBob
+ * WHAT IT DOES: Sets up a bobbing object: offset +$27 = 1, speed +$29 = 1,
+ * frame $09:C478 (ObjectBobStep); then its frame.
+ * HOW: Word and byte stores. Reached only by unit_objects_09c.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectBob(void)
+{
+    st16i(F(0x2027, cpu.x), 0x0001);
+    st16i(F(0x2029, cpu.x), 0x0001);
+    handler(cpu.x, 0xC478);
+    bob_frame();
+}
+
+/*
+ * @routine 09:C478 ObjectBobStep
+ * WHAT IT DOES: The bob's frame: the speed +$29 is added to the offset
+ * +$27, the speed turning round when the offset reaches $10 or -$10; the
+ * height +$0E moves by the offset and the scale +$15 grows by 4.
+ * HOW: 16-bit ADC, CMP, EOR #$FFFF + INC; the offset added through $1F4C;
+ * ObjectRebucket. Reached only by unit_objects_09c.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket
+ * leaves it.
+ */
+void abi_ObjectBobStep(void)
+{
+    bob_frame();
+}
+
+/* 09:C4E1: a burst piece's frame: synced; released when +$0A runs out; it
+   grows (+$14, +$15, +$16 by $18). */
+static void burst_piece_frame(void)
+{
+    abi_ObjectSyncFromRecord();
+    if (!dec8(F(0x200A, cpu.x)))
+        abi_ObjectRelease();
+    add8(F(0x2014, cpu.x), 0x18);
+    add8(F(0x2015, cpu.x), 0x18);
+    add8(F(0x2016, cpu.x), 0x18);
+}
+
+/*
+ * @routine 09:C4C0 ObjectBreakablePiece
+ * WHAT IT DOES: Sets up a piece of a burst (09:D79C's): frame $09:C4E1
+ * (ObjectBreakablePieceStep), a flying piece's record (GsuRecordNew424Piece)
+ * with its velocity and +$2A high 0, then its frame; with no record free it
+ * is released.
+ * HOW: GsuRecordNew424Piece (N set: none), GsuRecordVelocity,
+ * GsuRecordSet2AHigh.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame or
+ * ObjectRelease leaves it.
+ */
+void abi_ObjectBreakablePiece(void)
+{
+    cpu.p |= P_M;
+    handler(cpu.x, 0xC4E1);
+    abi_GsuRecordNew424Piece();
+    if (cpu.p & P_N) {
+        abi_ObjectRelease();
+        return;
+    }
+    abi_GsuRecordVelocity();
+    lda8(0x00);
+    abi_GsuRecordSet2AHigh();
+    burst_piece_frame();
+}
+
+/*
+ * @routine 09:C4E1 ObjectBreakablePieceStep
+ * WHAT IT DOES: A burst piece's frame: synced from its record, released
+ * when its life +$0A runs out, and it grows (+$14, +$15, +$16 by $18).
+ * HOW: ObjectSyncFromRecord, DEC, ADCs.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: A low byte = the
+ * new +$16; N, Z, C, V from its add.
+ */
+void abi_ObjectBreakablePieceStep(void)
+{
+    burst_piece_frame();
+}
+
+/* 09:C560: the breakable's frame: its life +$0A runs out (released); it
+   grows by $0C (the words at +$14, +$15, +$16); a car's hit releases it
+   with sound $5A and bursts it into eight pieces (09:D79C). */
+static void breakable_frame(void)
+{
+    if (!dec8(F(0x200A, cpu.x)))
+        abi_ObjectRelease();
+    add16(F(0x2014, cpu.x), 0x000C);
+    add16(F(0x2015, cpu.x), 0x000C);
+    add16(F(0x2016, cpu.x), 0x000C);
+    if (!hit())
+        return;
+    abi_ObjectRelease();
+    sound0(0x5A);
+    abi_ObjectBreakableBurst();
+}
+
+/* 09:C531: the breakable's record (GsuRecordNew424Piece; none: released)
+   with flag bit 4, +$2A high $46, at ($C0, $C0, $C0); then its frame. */
+static void breakable_record(void)
+{
+    abi_GsuRecordNew424Piece();
+    if (cpu.p & P_N) {
+        abi_ObjectRelease();
+        return;
+    }
+    abi_GsuRecordFlag10();
+    lda8(0x46);
+    abi_GsuRecordSet2AHigh();
+    record_at(0x00C0, 0x00C0, 0x00C0);
+    breakable_frame();
+}
+
+/*
+ * @routine 09:C513 ObjectBreakable
+ * WHAT IT DOES: Sets up a breakable object: frame $09:C560
+ * (ObjectBreakableStep), restart $09:C531 (ObjectBreakableRecord); its
+ * record and frame.
+ * HOW: Word and byte stores (the frame's first). Reached only by
+ * unit_objects_09c.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectBreakable(void)
+{
+    handler(cpu.x, 0xC560);
+    st16i(F(0x201D, cpu.x), 0xC531);
+    st8i(F(0x201F, cpu.x), 0x09);
+    breakable_record();
+}
+
+/*
+ * @routine 09:C531 ObjectBreakableRecord
+ * WHAT IT DOES: The breakable's restart: a flying piece's record
+ * (GsuRecordNew424Piece) with flag bit 4, +$2A high $46, at ($C0, $C0,
+ * $C0), then its frame; with no record free it is released.
+ * HOW: GsuRecordNew424Piece (N set: none; the release is 09:C50E's),
+ * GsuRecordFlag10, GsuRecordSet2AHigh, GsuRecordPosition.
+ * Reached only by unit_objects_09c.
+ * Entry: as ObjectBreakable. Exit: as ObjectBreakable.
+ */
+void abi_ObjectBreakableRecord(void)
+{
+    breakable_record();
+}
+
+/*
+ * @routine 09:C560 ObjectBreakableStep
+ * WHAT IT DOES: The breakable's frame: released when its life +$0A runs
+ * out; it grows by $0C (the words at +$14, +$15 and +$16 in turn); a car's
+ * hit releases it with sound $5A and bursts it into eight pieces
+ * (ObjectBreakableBurst).
+ * HOW: DEC, 16-bit ADCs, ObjectSyncFromRecord, RecordContactSummary.
+ * Reached only by unit_objects_09c.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectBreakableStep(void)
+{
+    breakable_frame();
+}
+
+/*
+ * @routine 09:C5B6 ObjectColour0
+ * WHAT IT DOES: Sets object X's colour +$18 to 0 with bit 7.
+ * HOW: LDA #0, ORA #$80; starts with a NOP, as the course data's pointers
+ * expect. Reached only by unit_objects_09c.
+ * Entry: M 8-bit; X = object. Exit: A low byte = $80; N set.
+ */
+void abi_ObjectColour0(void)
+{
+    st8i_hi(F(0x2018, cpu.x), 0x00);
+}
+
+/*
+ * @routine 09:C5BF ObjectColour1
+ * WHAT IT DOES: Sets object X's colour +$18 to 1 with bit 7.
+ * HOW: LDA #1, ORA #$80; starts with a NOP, as the course data's pointers
+ * expect. Reached only by unit_objects_09c.
+ * Entry: M 8-bit; X = object. Exit: A low byte = $81; N set.
+ */
+void abi_ObjectColour1(void)
+{
+    st8i_hi(F(0x2018, cpu.x), 0x01);
+}
+
+/*
+ * @routine 09:C5C8 ObjectColour2
+ * WHAT IT DOES: Sets object X's colour +$18 to 2 with bit 7.
+ * HOW: LDA #2, ORA #$80; starts with a NOP, as the course data's pointers
+ * expect.
+ * Entry: M 8-bit; X = object. Exit: A low byte = $82; N set.
+ */
+void abi_ObjectColour2(void)
+{
+    st8i_hi(F(0x2018, cpu.x), 0x02);
+}
+
+/*
+ * @routine 09:C5D1 ObjectColour3
+ * WHAT IT DOES: Sets object X's colour +$18 to 3 with bit 7.
+ * HOW: LDA #3, ORA #$80; starts with a NOP, as the course data's pointers
+ * expect.
+ * Entry: M 8-bit; X = object. Exit: A low byte = $83; N set.
+ */
+void abi_ObjectColour3(void)
+{
+    st8i_hi(F(0x2018, cpu.x), 0x03);
+}
+
+/*
+ * @routine 09:C5DA ObjectColour4
+ * WHAT IT DOES: Sets object X's colour +$18 to 4 with bit 7.
+ * HOW: LDA #4, ORA #$80; starts with a NOP, as the course data's pointers
+ * expect.
+ * Entry: M 8-bit; X = object. Exit: A low byte = $84; N set.
+ */
+void abi_ObjectColour4(void)
+{
+    st8i_hi(F(0x2018, cpu.x), 0x04);
+}
+
+/*
+ * @routine 09:C5E3 ObjectColour5
+ * WHAT IT DOES: Sets object X's colour +$18 to 5 with bit 7.
+ * HOW: LDA #5, ORA #$80; starts with a NOP, as the course data's pointers
+ * expect.
+ * Entry: M 8-bit; X = object. Exit: A low byte = $85; N set.
+ */
+void abi_ObjectColour5(void)
+{
+    st8i_hi(F(0x2018, cpu.x), 0x05);
+}
+
+/*
+ * @routine 09:C5EC ObjectColour6
+ * WHAT IT DOES: Sets object X's colour +$18 to 6 with bit 7.
+ * HOW: LDA #6, ORA #$80; starts with a NOP, as the course data's pointers
+ * expect.
+ * Entry: M 8-bit; X = object. Exit: A low byte = $86; N set.
+ */
+void abi_ObjectColour6(void)
+{
+    st8i_hi(F(0x2018, cpu.x), 0x06);
+}
+
+/*
+ * @routine 09:C5F5 ObjectColour7
+ * WHAT IT DOES: Sets object X's colour +$18 to 7 with bit 7.
+ * HOW: LDA #7, ORA #$80; starts with a NOP, as the course data's pointers
+ * expect.
+ * Entry: M 8-bit; X = object. Exit: A low byte = $87; N set.
+ */
+void abi_ObjectColour7(void)
+{
+    st8i_hi(F(0x2018, cpu.x), 0x07);
+}
+
+/*
+ * @routine 09:C5FE ObjectScaleE0
+ * WHAT IT DOES: Sets object X's scale +$15 to $E0.
+ * HOW: One store; starts with a NOP, as the course data's pointers expect.
+ * Entry: M 8-bit; X = object. Exit: A low byte = $E0.
+ */
+void abi_ObjectScaleE0(void)
+{
+    st8i(F(0x2015, cpu.x), 0xE0);
+}
+
+/*
+ * @routine 09:C605 ObjectScaleA0
+ * WHAT IT DOES: Sets object X's scale +$15 to $A0.
+ * HOW: One store; starts with a NOP, as the course data's pointers expect.
+ * Entry: M 8-bit; X = object. Exit: A low byte = $A0.
+ */
+void abi_ObjectScaleA0(void)
+{
+    st8i(F(0x2015, cpu.x), 0xA0);
+}
+
+/*
+ * @routine 09:C60C ObjectScale20
+ * WHAT IT DOES: Sets object X's scale +$15 to $20.
+ * HOW: One store; starts with a NOP, as the course data's pointers expect.
+ * Entry: M 8-bit; X = object. Exit: A low byte = $20.
+ */
+void abi_ObjectScale20(void)
+{
+    st8i(F(0x2015, cpu.x), 0x20);
+}
+
+/* 09:C62D: the swing's frame: by +$25 bit 0 it moves $28 left with its
+   scale +$15 eased toward $40, or $28 right toward $C0
+   (ApproachEighthMin8Byte); +$0A counts down, and at 0 the side flips and
+   +$0A = $50. */
+static void swing_frame(void)
+{
+    if (bit25(0x01)) {
+        add16(F(0x200C, cpu.x), 0x0028);
+        ease8(F(0x2015, cpu.x), 0xC0, abi_ApproachEighthMin8Byte);
+    } else {
+        add16(F(0x200C, cpu.x), 0xFFD8);
+        ease8(F(0x2015, cpu.x), 0x40, abi_ApproachEighthMin8Byte);
+    }
+    if (ld8(F(0x200A, cpu.x))) {
+        dec8(F(0x200A, cpu.x));
+    } else {
+        eor8(F(0x2025, cpu.x), 0x01);
+        st8i(F(0x200A, cpu.x), 0x50);
+    }
+    abi_ObjectRebucket();
+}
+
+/*
+ * @routine 09:C613 ObjectSwing
+ * WHAT IT DOES: Sets up a swinging object: scale +$15 = 0, +$0A = $28,
+ * frame $09:C62D (ObjectSwingStep); then its frame.
+ * HOW: Byte and word stores; starts with a NOP, as the course data's
+ * pointers expect.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectSwing(void)
+{
+    st8i(F(0x2015, cpu.x), 0x00);
+    st8i(F(0x200A, cpu.x), 0x28);
+    handler(cpu.x, 0xC62D);
+    swing_frame();
+}
+
+/*
+ * @routine 09:C62D ObjectSwingStep
+ * WHAT IT DOES: The swing's frame: it moves $28 to one side (+$25 bit 0:
+ * right) with its scale +$15 eased toward $40 (left) or $C0 (right); every
+ * $50 frames (+$0A) it turns to the other side.
+ * HOW: 16-bit ADC on +$0C; ApproachEighthMin8Byte through $3E;
+ * ObjectRebucket.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket
+ * leaves it.
+ */
+void abi_ObjectSwingStep(void)
+{
+    swing_frame();
+}
+
+/* A new object of `kind` at X's position moved (dx, dy, dz), scale +$15 =
+   s15, +$14 = $F8, life +$0A = t, handler h, sound $52; nothing without a
+   free object. */
+static void crowd_spawn(uint16_t dx, uint16_t dy, uint16_t dz, uint8_t s15, uint8_t t, uint16_t h)
+{
+    if (!spawn(0xB770))
+        return;
+    abi_ObjectCopyPositionTo();
+    add16(F(0x200C, cpu.y), dx);
+    add16(F(0x200E, cpu.y), dy);
+    add16(F(0x2010, cpu.y), dz);
+    st8i(F(0x2015, cpu.y), s15);
+    st8i(F(0x2014, cpu.y), 0xF8);
+    st8i(F(0x200A, cpu.y), t);
+    handler(cpu.y, h);
+    sound0(0x52);
+}
+
+/*
+ * @routine 09:C694 LapCrowdSpawn0
+ * WHAT IT DOES: The lap crowd gate's lap 0 crowd: kind $B770 at the gate
+ * moved ($F00, -$1C0, -$2800), scale $40, life $1C, handler $09:C7C9
+ * (LapCrowdStep0), sound $52; nothing without a free object.
+ * HOW: ObjectSpawn, ObjectCopyPositionTo, 16-bit ADCs. Reached only by
+ * unit_objects_09c.
+ * Entry: M 8-bit, X 16-bit; X = the gate. Exit: as SoundPort0QueuePush or
+ * ObjectSpawn leaves it.
+ */
+void abi_LapCrowdSpawn0(void)
+{
+    crowd_spawn(0x0F00, 0xFE40, 0xD800, 0x40, 0x1C, 0xC7C9);
+}
+
+/*
+ * @routine 09:C6FB LapCrowdSpawn1
+ * WHAT IT DOES: The lap 1 crowd: kind $B770 moved (-$A00, -$1E0, -$2BC0),
+ * scale $E0, life $16, handler $09:C7FC (LapCrowdStep1), sound $52.
+ * HOW: As LapCrowdSpawn0. Reached only by unit_objects_09c.
+ * Entry: as LapCrowdSpawn0. Exit: as LapCrowdSpawn0.
+ */
+void abi_LapCrowdSpawn1(void)
+{
+    crowd_spawn(0xF600, 0xFE20, 0xD440, 0xE0, 0x16, 0xC7FC);
+}
+
+/*
+ * @routine 09:C762 LapCrowdSpawn2
+ * WHAT IT DOES: The lap 2 crowd: kind $B770 moved ($3C0, -$1E0, -$2F80),
+ * scale 0, life $16, handler $09:C83D (LapCrowdStep2), sound $52.
+ * HOW: As LapCrowdSpawn0. Reached only by unit_objects_09c.
+ * Entry: as LapCrowdSpawn0. Exit: as LapCrowdSpawn0.
+ */
+void abi_LapCrowdSpawn2(void)
+{
+    crowd_spawn(0x03C0, 0xFE20, 0xD080, 0x00, 0x16, 0xC83D);
+}
+
+/* DEC +$0A; at 0, ObjectRelease. */
+static void life_down(void)
+{
+    if (!dec8(F(0x200A, cpu.x)))
+        abi_ObjectRelease();
+}
+
+/*
+ * @routine 09:C7D2 LapCrowdMove0
+ * WHAT IT DOES: Moves the lap 0 crowd by (-$B4, -$0A, 0); released when its
+ * life +$0A runs out.
+ * HOW: 16-bit ADCs, DEC. Reached only by unit_objects_09c.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as DEC or ObjectRelease
+ * leaves it.
+ */
+void abi_LapCrowdMove0(void)
+{
+    add16(F(0x200C, cpu.x), 0xFF4C);
+    add16(F(0x200E, cpu.x), 0xFFF6);
+    life_down();
+}
+
+/*
+ * @routine 09:C805 LapCrowdMove1
+ * WHAT IT DOES: Moves the lap 1 crowd by ($104, -$0A, $C8); released when
+ * its life +$0A runs out.
+ * HOW: 16-bit ADCs, DEC. Reached only by unit_objects_09c.
+ * Entry: as LapCrowdMove0. Exit: as LapCrowdMove0.
+ */
+void abi_LapCrowdMove1(void)
+{
+    add16(F(0x200C, cpu.x), 0x0104);
+    add16(F(0x200E, cpu.x), 0xFFF6);
+    add16(F(0x2010, cpu.x), 0x00C8);
+    life_down();
+}
+
+/*
+ * @routine 09:C846 LapCrowdMove2
+ * WHAT IT DOES: Moves the lap 2 crowd by (0, -$0D, $C8); released when its
+ * life +$0A runs out.
+ * HOW: 16-bit ADCs, DEC. Reached only by unit_objects_09c.
+ * Entry: as LapCrowdMove0. Exit: as LapCrowdMove0.
+ */
+void abi_LapCrowdMove2(void)
+{
+    add16(F(0x200E, cpu.x), 0xFFF3);
+    add16(F(0x2010, cpu.x), 0x00C8);
+    life_down();
+}
+
+/*
+ * @routine 09:C7C9 LapCrowdStep0
+ * WHAT IT DOES: The lap 0 crowd's frame: LapCrowdMove0, then ObjectRebucket.
+ * HOW: Starts with a NOP, as the handler pointers expect. Reached only by
+ * unit_objects_09c.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectRebucket leaves it.
+ */
+void abi_LapCrowdStep0(void)
+{
+    abi_LapCrowdMove0();
+    abi_ObjectRebucket();
+}
+
+/*
+ * @routine 09:C7FC LapCrowdStep1
+ * WHAT IT DOES: The lap 1 crowd's frame: LapCrowdMove1, then ObjectRebucket.
+ * HOW: Starts with a NOP. Reached only by unit_objects_09c.
+ * Entry: as LapCrowdStep0. Exit: as LapCrowdStep0.
+ */
+void abi_LapCrowdStep1(void)
+{
+    abi_LapCrowdMove1();
+    abi_ObjectRebucket();
+}
+
+/*
+ * @routine 09:C83D LapCrowdStep2
+ * WHAT IT DOES: The lap 2 crowd's frame: LapCrowdMove2, then ObjectRebucket.
+ * HOW: Starts with a NOP. Reached only by unit_objects_09c.
+ * Entry: as LapCrowdStep0. Exit: as LapCrowdStep0.
+ */
+void abi_LapCrowdStep2(void)
+{
+    abi_LapCrowdMove2();
+    abi_ObjectRebucket();
+}
+
+/* 09:C8BA: synced to its record (ObjectSyncToRecord); a car's hit on a lap
+   not counted yet (+$48) counts it and brings out that lap's crowd (laps 0
+   to 2). */
+static void crowd_gate_frame(void)
+{
+    uint8_t lap;
+
+    abi_ObjectSyncToRecord();
+    lda8((uint8_t)(cpu.a & 0x01));
+    if (!(uint8_t)cpu.a)
+        return;
+    abi_RecordContactSummary();
+    lda8((uint8_t)(cpu.a & 0x01));
+    if (!(uint8_t)cpu.a)
+        return;
+    if (lap_eq(0x2048))
+        return;
+    lap_store(0x2048);
+    cpu.p |= P_M;
+    lap = ld8(db() | 0x0DEA);
+    cmp8(0x00);
+    if (lap == 0x00) {
+        abi_LapCrowdSpawn0();
+        return;
+    }
+    cmp8(0x01);
+    if (lap == 0x01) {
+        abi_LapCrowdSpawn1();
+        return;
+    }
+    cmp8(0x02);
+    if (lap == 0x02)
+        abi_LapCrowdSpawn2();
+}
+
+/*
+ * @routine 09:C870 ObjectLapCrowdGate
+ * WHAT IT DOES: Sets up the lap crowd gate: restart $09:C893
+ * (ObjectLapCrowdGateRecord), frame $09:C8BA (ObjectLapCrowdGateStep), +$48
+ * = 4 (no lap counted); its record and frame.
+ * HOW: Word and byte stores.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectLapCrowdGate(void)
+{
+    handlers2(0xC893, 0xC8BA);
+    st8i(F(0x2048, cpu.x), 0x04);
+    gate42d(0x0780);
+    crowd_gate_frame();
+}
+
+/*
+ * @routine 09:C893 ObjectLapCrowdGateRecord
+ * WHAT IT DOES: The gate's restart: its record ($42D, flag bit 4, at
+ * ($780, $780, $780)), then its frame.
+ * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
+ * Entry: as ObjectLapCrowdGate. Exit: as ObjectLapCrowdGate.
+ */
+void abi_ObjectLapCrowdGateRecord(void)
+{
+    gate42d(0x0780);
+    crowd_gate_frame();
+}
+
+/*
+ * @routine 09:C8BA ObjectLapCrowdGateStep
+ * WHAT IT DOES: The gate's frame: synced to its record; a car's hit on a lap
+ * ($0DEA) it has not counted (+$48) counts that lap and, on laps 0, 1 and
+ * 2, brings out that lap's crowd (LapCrowdSpawn0-2).
+ * HOW: ObjectSyncToRecord, RecordContactSummary; the laps compared through
+ * $1F58; JSRs.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectLapCrowdGateStep(void)
+{
+    crowd_gate_frame();
+}
+
+/*
+ * @routine 09:C90C ObjectFloaterSpawner
+ * WHAT IT DOES: Sets object X's frame to $09:C956 (ObjectFloaterSpawnerStep)
+ * and puts a floater (kind $B3B8) $6E0 lower with life +$0A = $28 and
+ * handler $09:C95C (ObjectFloaterStep); no floater without a free object.
+ * HOW: ObjectSpawn, ObjectCopyPositionTo.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the last store
+ * or ObjectSpawn leaves it.
+ */
+void abi_ObjectFloaterSpawner(void)
+{
+    handler(cpu.x, 0xC956);
+    if (!spawn(0xB3B8))
+        return;
+    abi_ObjectCopyPositionTo();
+    add16(F(0x200E, cpu.y), 0x06E0);
+    st8i(F(0x200A, cpu.y), 0x28);
+    handler(cpu.y, 0xC95C);
+}
+
+/*
+ * @routine 09:C956 ObjectFloaterSpawnerStep
+ * WHAT IT DOES: The spawner's frame: its scale +$15 = $40.
+ * HOW: One store.
+ * Entry: M 8-bit; X = object. Exit: A low byte = $40.
+ */
+void abi_ObjectFloaterSpawnerStep(void)
+{
+    st8i(F(0x2015, cpu.x), 0x40);
+}
+
+/*
+ * @routine 09:C95C ObjectFloaterStep
+ * WHAT IT DOES: The floater's frame: rebucketed, its scale +$15 grows by 8;
+ * it rises $14 (+$25 bit 0 clear) or sinks $14; every $28 frames (+$0A) the
+ * direction flips.
+ * HOW: ObjectRebucket first; 16-bit ADC on +$0E; EOR #1.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the last store
+ * leaves it.
+ */
+void abi_ObjectFloaterStep(void)
+{
+    abi_ObjectRebucket();
+    add8(F(0x2015, cpu.x), 0x08);
+    if (bit25(0x01))
+        add16(F(0x200E, cpu.x), 0xFFEC);
+    else
+        add16(F(0x200E, cpu.x), 0x0014);
+    if (ld8(F(0x200A, cpu.x))) {
+        dec8(F(0x200A, cpu.x));
+        return;
+    }
+    eor8(F(0x2025, cpu.x), 0x01);
+    st8i(F(0x200A, cpu.x), 0x28);
+}
+
+/* LDA #r, STA lo, STA lo2, BIT #$80: the sign byte `hi` = $FF for a
+   negative r, else 0 (r is a constant, so one of the two stores never
+   runs). */
+static void orbit_axis(uint8_t r, uint32_t lo, uint32_t lo2, uint32_t hi)
+{
+    lda8(r);
+    wr8(lo, r);
+    wr8(lo2, r);
+    if (r & 0x80) {
+        lda8(0xFF);
+        wr8(hi, 0xFF);
+    } else {
+        wr8(hi, 0x00);
+    }
+}
+
+/* LDA lo, STA hi (8-bit): the turned vector back as the next input. */
+static void orbit_again(void)
+{
+    wr8(dp(0x02), ld8(dp(0x04)));
+    wr8(dp(0x08), ld8(dp(0x0A)));
+    wr8(dp(0x94), ld8(db() | 0x05F2));
+}
+
+/* A word at `at` shifted left five times (16-bit). */
+static void asl5(uint32_t at)
+{
+    int i;
+
+    op_lda16(at);
+    for (i = 0; i < 5; i++)
+        op_asl16();
+    wr16(at, cpu.a);
+}
+
+/* dst field of X = src field of Y + the word at `by` (16-bit). */
+static void orbit_add(uint16_t f, uint32_t by)
+{
+    op_lda16(F(f, cpu.y));
+    op_add16(rd16(by));
+    wr16(F(f, cpu.x), cpu.a);
+}
+
+/* The orbit: Y = the centre (+$27); the vector (r1, r2, r3) turned by the
+   centre's angle +$16 (RotateXY) and, with `xz`, +$14 (RotateXZFrom08) and
+   +$15 (RotateXZ); 32 times the result from the centre's position is X's
+   position. Direct page $02/$08/$94 in, $04/$0A/$05F2 out. */
+static void orbit(uint8_t r1, uint8_t r2, uint8_t r3, int xz)
+{
+    cpu.y = rd16(F(0x2027, cpu.x));
+    cpu.p = nz16(cpu.p, cpu.y);
+    orbit_axis(r1, dp(0x02), dp(0x04), dp(0x05));
+    orbit_axis(r2, dp(0x08), dp(0x0A), dp(0x0B));
+    orbit_axis(r3, dp(0x94), db() | 0x05F2, db() | 0x05F3);
+    ld8(F(0x2016, cpu.y));
+    abi_RotateXY();
+    orbit_again();
+    if (xz) {
+        ld8(F(0x2014, cpu.y));
+        abi_RotateXZFrom08();
+        orbit_again();
+        ld8(F(0x2015, cpu.y));
+        abi_RotateXZ();
+    }
+    cpu.p &= (uint8_t)~P_M;
+    asl5(dp(0x04));
+    asl5(dp(0x0A));
+    asl5(db() | 0x05F2);
+    orbit_add(0x200C, dp(0x04));
+    orbit_add(0x2010, db() | 0x05F2);
+    orbit_add(0x200E, dp(0x0A));
+    cpu.p |= P_M;
+}
+
+/* An orbiter's set-up: a centre of kind $A040 at X's position with handler
+   h (+$27 of X = the centre), X's frame f; no centre without a free
+   object. */
+static void orbiter(uint16_t h, uint16_t f)
+{
+    if (spawn(0xA040)) {
+        uint8_t a;
+
+        abi_ObjectCopyPositionTo();
+        a = (uint8_t)cpu.a;
+        cpu.p &= (uint8_t)~P_M;
+        cpu.a = cpu.y;
+        cpu.p = nz16(cpu.p, cpu.a);
+        wr16(F(0x2027, cpu.x), cpu.y);
+        cpu.p |= P_M;
+        lda8(a);
+        handler(cpu.y, h);
+    }
+    handler(cpu.x, f);
+}
+
+/* LDA +15 of Y, STA +15 of X; ObjectRebucket. */
+static void orbit_scale_done(void)
+{
+    ld8(F(0x2015, cpu.y));
+    wr8(F(0x2015, cpu.x), (uint8_t)cpu.a);
+}
+
+/* 09:C9F0: circles its centre at radius ($64, 0, 0) turned three ways. */
+static void ring_frame(void)
+{
+    orbit(0x64, 0x00, 0x00, 1);
+    orbit_scale_done();
+    abi_ObjectRebucket();
+}
+
+/*
+ * @routine 09:C9B0 ObjectRing
+ * WHAT IT DOES: Sets up a ring piece circling a centre: the centre (kind
+ * $A040, handler $09:CAA3 ObjectRingCentreStep) at its position, its frame
+ * $09:C9F0 (ObjectRingStep); then that frame.
+ * HOW: ObjectSpawn, ObjectCopyPositionTo; +$27 = the centre. Reached only
+ * by unit_objects_09c.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectRing(void)
+{
+    orbiter(0xCAA3, 0xC9F0);
+    ring_frame();
+}
+
+/*
+ * @routine 09:C9F0 ObjectRingStep
+ * WHAT IT DOES: The ring piece's frame: at its centre (+$27) plus ($64, 0,
+ * 0) turned by the centre's angles +$16, +$14 and +$15, times 32; it takes
+ * the centre's scale +$15.
+ * HOW: RotateXY, RotateXZFrom08, RotateXZ through direct page; five ASLs;
+ * ObjectRebucket. The sign bytes come from constants: their $FF stores
+ * (09:C9FD, 09:CA0F, 09:CA22) never run. Reached only by unit_objects_09c.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket
+ * leaves it.
+ */
+void abi_ObjectRingStep(void)
+{
+    ring_frame();
+}
+
+/*
+ * @routine 09:CAA3 ObjectRingCentreStep
+ * WHAT IT DOES: The ring centre's frame: its scale +$15 grows by 1.
+ * HOW: ADC; ObjectRebucket. Reached only by unit_objects_09c.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectRebucket leaves it.
+ */
+void abi_ObjectRingCentreStep(void)
+{
+    add8(F(0x2015, cpu.x), 0x01);
+    abi_ObjectRebucket();
+}
+
+/* 09:CAF8: circles its centre at ($28, $0A, 0); its colour +$5A steps
+   through 0-5 with bit 7. */
+static void spinner_frame(void)
+{
+    uint8_t v;
+
+    orbit(0x28, 0x0A, 0x00, 1);
+    orbit_scale_done();
+    v = ld8(F(0x205A, cpu.x));
+    cpu.p &= (uint8_t)~P_C;
+    v = op_adc8(v, 0x01, &cpu.p);
+    if (!(v & 0x80)) {
+        cpu.p &= (uint8_t)~P_C;
+        v = op_adc8(v, 0x06, &cpu.p);
+    }
+    v &= 0x7F;
+    lda8(v);
+    cmp8(0x06);
+    if (v >= 0x06) {
+        cpu.p |= P_C;
+        v = op_sbc8(v, 0x06, &cpu.p);
+    }
+    v |= 0x80;
+    lda8(v);
+    wr8(F(0x205A, cpu.x), v);
+    abi_ObjectRebucket();
+}
+
+/*
+ * @routine 09:CAB1 ObjectSpinner
+ * WHAT IT DOES: Sets up a spinner: colour +$5A = 0 with bit 7, a centre
+ * (kind $A040, handler $09:CBC4 ObjectSpinnerCentreStep) at its position,
+ * its frame $09:CAF8 (ObjectSpinnerStep); then that frame.
+ * HOW: ObjectSpawn, ObjectCopyPositionTo; +$27 = the centre.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectSpinner(void)
+{
+    lda8(0x00);
+    lda8(0x80);
+    wr8(F(0x205A, cpu.x), 0x80);
+    orbiter(0xCBC4, 0xCAF8);
+    spinner_frame();
+}
+
+/*
+ * @routine 09:CAF8 ObjectSpinnerStep
+ * WHAT IT DOES: The spinner's frame: at its centre (+$27) plus ($28, $0A,
+ * 0) turned by the centre's angles, times 32, with the centre's scale; its
+ * colour +$5A steps on through 0-5 (bit 7 kept).
+ * HOW: As ObjectRingStep; the colour by ADC, AND #$7F, SBC #6. The sign
+ * bytes come from constants: their $FF stores (09:CB05, 09:CB17, 09:CB2A)
+ * never run.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket
+ * leaves it.
+ */
+void abi_ObjectSpinnerStep(void)
+{
+    spinner_frame();
+}
+
+/*
+ * @routine 09:CBC4 ObjectSpinnerCentreStep
+ * WHAT IT DOES: The spinner centre's frame: scale +$15 down by 8, +$14 up by
+ * $0C.
+ * HOW: ADCs; ObjectRebucket.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectRebucket leaves it.
+ */
+void abi_ObjectSpinnerCentreStep(void)
+{
+    add8(F(0x2015, cpu.x), 0xF8);
+    add8(F(0x2014, cpu.x), 0x0C);
+    abi_ObjectRebucket();
+}
+
+/* 09:CC20: a car's hit, the first time (+$25 bit 0), rings sound $2E; no
+   hit clears the bit. */
+static void bell_frame(void)
+{
+    if (hit()) {
+        if (bit25(0x01))
+            return;
+        or8(F(0x2025, cpu.x), 0x01);
+        sound0(0x2E);
+        return;
+    }
+    and8(F(0x2025, cpu.x), 0xFE);
+}
+
+/*
+ * @routine 09:CBDB ObjectBellGate
+ * WHAT IT DOES: Sets up a bell gate: restart $09:CBF9 (ObjectBellGateRecord),
+ * frame $09:CC20 (ObjectBellGateStep); its record and frame.
+ * HOW: Word and byte stores.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectBellGate(void)
+{
+    handlers2(0xCBF9, 0xCC20);
+    gate42d(0x0F00);
+    bell_frame();
+}
+
+/*
+ * @routine 09:CBF9 ObjectBellGateRecord
+ * WHAT IT DOES: The bell gate's restart: its record ($42D, flag bit 4, at
+ * ($F00, $F00, $F00)), then its frame.
+ * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
+ * Entry: as ObjectBellGate. Exit: as ObjectBellGate.
+ */
+void abi_ObjectBellGateRecord(void)
+{
+    gate42d(0x0F00);
+    bell_frame();
+}
+
+/*
+ * @routine 09:CC20 ObjectBellGateStep
+ * WHAT IT DOES: The bell gate's frame: a car's hit, the first time (+$25 bit
+ * 0), plays sound $2E; no hit clears the bit.
+ * HOW: ObjectSyncFromRecord, RecordContactSummary.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectBellGateStep(void)
+{
+    bell_frame();
+}
+
+/* A lap sign: kind $ABD8 at X's position moved (dx, dy, dz), life +$0A =
+   $14, handler h; nothing without a free object. */
+static void sign_spawn(uint16_t dx, uint16_t dy, uint16_t dz, uint16_t h)
+{
+    if (!spawn(0xABD8))
+        return;
+    abi_ObjectCopyPositionTo();
+    add16(F(0x200C, cpu.y), dx);
+    add16(F(0x200E, cpu.y), dy);
+    add16(F(0x2010, cpu.y), dz);
+    st8i(F(0x200A, cpu.y), 0x14);
+    handler(cpu.y, h);
+}
+
+/*
+ * @routine 09:CCEF LapSignSpawn0
+ * WHAT IT DOES: The lap sign gate's lap 0 sign: kind $ABD8 moved ($A00,
+ * -$100, $140), life $14, handler $09:CDF4 (LapSignStep0); nothing without
+ * a free object.
+ * HOW: ObjectSpawn, ObjectCopyPositionTo, 16-bit ADCs. Reached only by
+ * unit_objects_09c.
+ * Entry: M 8-bit, X 16-bit; X = the gate. Exit: as the last store or
+ * ObjectSpawn leaves it.
+ */
+void abi_LapSignSpawn0(void)
+{
+    sign_spawn(0x0A00, 0xFF00, 0x0140, 0xCDF4);
+}
+
+/*
+ * @routine 09:CD46 LapSignSpawn1
+ * WHAT IT DOES: The lap 1 sign: kind $ABD8 moved (-$A00, -$100, $140), life
+ * $14, handler $09:CE30 (LapSignStep1).
+ * HOW: As LapSignSpawn0. Reached only by unit_objects_09c.
+ * Entry: as LapSignSpawn0. Exit: as LapSignSpawn0.
+ */
+void abi_LapSignSpawn1(void)
+{
+    sign_spawn(0xF600, 0xFF00, 0x0140, 0xCE30);
+}
+
+/*
+ * @routine 09:CD9D LapSignSpawn2
+ * WHAT IT DOES: The lap 2 sign: kind $ABD8 at the gate (moved by 0), life
+ * $14, handler $09:CE6C (LapSignStep2).
+ * HOW: As LapSignSpawn0. Reached only by unit_objects_09c.
+ * Entry: as LapSignSpawn0. Exit: as LapSignSpawn0.
+ */
+void abi_LapSignSpawn2(void)
+{
+    sign_spawn(0x0000, 0x0000, 0x0000, 0xCE6C);
+}
+
+/* A lap sign's frame: moved (dx, dy, dz), released when +$0A runs out,
+   rebucketed. */
+static void sign_frame(uint16_t dx, uint16_t dy, uint16_t dz)
+{
+    add16(F(0x200C, cpu.x), dx);
+    add16(F(0x200E, cpu.x), dy);
+    add16(F(0x2010, cpu.x), dz);
+    life_down();
+    abi_ObjectRebucket();
+}
+
+/*
+ * @routine 09:CDF4 LapSignStep0
+ * WHAT IT DOES: The lap 0 sign's frame: it slides -$E0 sideways and is
+ * released when its life +$0A runs out.
+ * HOW: 16-bit ADCs (two of 0), DEC, ObjectRebucket. Reached only by
+ * unit_objects_09c.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectRebucket leaves it.
+ */
+void abi_LapSignStep0(void)
+{
+    sign_frame(0xFF20, 0x0000, 0x0000);
+}
+
+/*
+ * @routine 09:CE30 LapSignStep1
+ * WHAT IT DOES: The lap 1 sign's frame: it slides $E0 sideways and is
+ * released when its life +$0A runs out.
+ * HOW: As LapSignStep0. Reached only by unit_objects_09c.
+ * Entry: as LapSignStep0. Exit: as LapSignStep0.
+ */
+void abi_LapSignStep1(void)
+{
+    sign_frame(0x00E0, 0x0000, 0x0000);
+}
+
+/*
+ * @routine 09:CE6C LapSignStep2
+ * WHAT IT DOES: The lap 2 sign's frame: it rises $20 and is released when
+ * its life +$0A runs out.
+ * HOW: As LapSignStep0. Reached only by unit_objects_09c.
+ * Entry: as LapSignStep0. Exit: as LapSignStep0.
+ */
+void abi_LapSignStep2(void)
+{
+    sign_frame(0x0000, 0xFFE0, 0x0000);
+}
+
+/* 09:CC9D: a car's hit on a lap not counted yet (+$48) counts it and puts
+   up that lap's sign (laps 0 to 2). */
+static void sign_gate_frame(void)
+{
+    uint8_t lap;
+
+    if (!hit())
+        return;
+    if (lap_eq(0x2048))
+        return;
+    lap_store(0x2048);
+    cpu.p |= P_M;
+    lap = ld8(db() | 0x0DEA);
+    cmp8(0x00);
+    if (lap == 0x00) {
+        abi_LapSignSpawn0();
+        return;
+    }
+    cmp8(0x01);
+    if (lap == 0x01) {
+        abi_LapSignSpawn1();
+        return;
+    }
+    cmp8(0x02);
+    if (lap == 0x02)
+        abi_LapSignSpawn2();
+}
+
+/*
+ * @routine 09:CC53 ObjectLapSignGate
+ * WHAT IT DOES: Sets up the lap sign gate: restart $09:CC76
+ * (ObjectLapSignGateRecord), frame $09:CC9D (ObjectLapSignGateStep), +$48 =
+ * 0; its record and frame.
+ * HOW: Word and byte stores. Reached only by unit_objects_09c.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectLapSignGate(void)
+{
+    handlers2(0xCC76, 0xCC9D);
+    st8i(F(0x2048, cpu.x), 0x00);
+    gate42d(0x0F00);
+    sign_gate_frame();
+}
+
+/*
+ * @routine 09:CC76 ObjectLapSignGateRecord
+ * WHAT IT DOES: The gate's restart: its record ($42D, flag bit 4, at ($F00,
+ * $F00, $F00)), then its frame.
+ * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition. Reached only
+ * by unit_objects_09c.
+ * Entry: as ObjectLapSignGate. Exit: as ObjectLapSignGate.
+ */
+void abi_ObjectLapSignGateRecord(void)
+{
+    gate42d(0x0F00);
+    sign_gate_frame();
+}
+
+/*
+ * @routine 09:CC9D ObjectLapSignGateStep
+ * WHAT IT DOES: The gate's frame: a car's hit on a lap ($0DEA) it has not
+ * counted (+$48) counts it and, on laps 0, 1 and 2, puts up that lap's
+ * sign (LapSignSpawn0-2).
+ * HOW: ObjectSyncFromRecord, RecordContactSummary; the laps compared
+ * through $1F58; JSRs. Reached only by unit_objects_09c.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectLapSignGateStep(void)
+{
+    sign_gate_frame();
+}
+
+/* 09:CEE8 / D023: circles its centre at ($64, $46, 0) (turned by +$16
+   only, or three ways with `xz`) taking the centre's angle +$16; at angles
+   up to $3A or from $C0 (signed, against $3A and $C0) it is the plain model
+   $A040 and +$25 bit 0 clears, between them model `lit` and the first
+   time (+$25 bit 0) sound `snd` (none when 0); the angle steps by $AA. */
+static void fan_frame(int xz, uint16_t lit, uint8_t snd)
+{
+    uint8_t a;
+
+    orbit(0x64, 0x46, 0x00, xz);
+    ld8(F(0x2016, cpu.y));
+    wr8(F(0x2016, cpu.x), (uint8_t)cpu.a);
+    a = ld8(F(0x2016, cpu.x));
+    cmp8(0x3A);
+    if (a == 0x3A || ((uint8_t)(a - 0x3A) & 0x80))
+        goto plain;
+    ld8(F(0x2016, cpu.x));
+    cmp8(0xC0);
+    if (!(a == 0xC0 || ((uint8_t)(a - 0xC0) & 0x80)))
+        goto plain;
+    st16i(F(0x2004, cpu.x), lit);
+    if (!bit25(0x01)) {
+        or8(F(0x2025, cpu.x), 0x01);
+        if (snd)
+            sound0(snd);
+    }
+    goto step;
+plain:
+    st16i(F(0x2004, cpu.x), 0xA040);
+    and8(F(0x2025, cpu.x), 0xFE);
+step:
+    add8(F(0x2016, cpu.x), 0xAA);
+    abi_ObjectRebucket();
+}
+
+/*
+ * @routine 09:CEA8 ObjectFan
+ * WHAT IT DOES: Sets up a fan blade circling a centre: the centre (kind
+ * $A040, handler $09:CFD5 ObjectFanCentreStep), its frame $09:CEE8
+ * (ObjectFanStep); then that frame.
+ * HOW: ObjectSpawn, ObjectCopyPositionTo; +$27 = the centre.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectFan(void)
+{
+    orbiter(0xCFD5, 0xCEE8);
+    fan_frame(0, 0xAF04, 0x00);
+}
+
+/*
+ * @routine 09:CEE8 ObjectFanStep
+ * WHAT IT DOES: The blade's frame: at its centre (+$27) plus ($64, $46, 0)
+ * turned by the centre's angle +$16, times 32, with that angle; at angles
+ * from $3B to $BF (signed compares with $3A and $C0) it shows model $AF04
+ * (+$25 bit 0 set), otherwise $A040 (bit 0 cleared); its angle then steps
+ * by $AA.
+ * HOW: RotateXY only; five ASLs; ObjectRebucket. The sign bytes come from
+ * constants: their $FF stores (09:CEF5, 09:CF07, 09:CF1A) never run.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket
+ * leaves it.
+ */
+void abi_ObjectFanStep(void)
+{
+    fan_frame(0, 0xAF04, 0x00);
+}
+
+/*
+ * @routine 09:CFD5 ObjectFanCentreStep
+ * WHAT IT DOES: The fan centre's frame: its angle +$16 turns by -8.
+ * HOW: ADC; ObjectRebucket.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectRebucket leaves it.
+ */
+void abi_ObjectFanCentreStep(void)
+{
+    add8(F(0x2016, cpu.x), 0xF8);
+    abi_ObjectRebucket();
+}
+
+/*
+ * @routine 09:CFE3 ObjectWheel
+ * WHAT IT DOES: Sets up a wheel piece circling a centre: the centre (kind
+ * $A040, handler $09:D131 ObjectWheelCentreStep), its frame $09:D023
+ * (ObjectWheelStep); then that frame.
+ * HOW: ObjectSpawn, ObjectCopyPositionTo; +$27 = the centre.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectWheel(void)
+{
+    orbiter(0xD131, 0xD023);
+    fan_frame(1, 0xAF20, 0x38);
+}
+
+/*
+ * @routine 09:D023 ObjectWheelStep
+ * WHAT IT DOES: The wheel piece's frame: as ObjectFanStep, turned three ways
+ * (+$16, +$14, +$15), lit as model $AF20 with sound $38 the first time.
+ * HOW: RotateXY, RotateXZFrom08, RotateXZ; five ASLs; ObjectRebucket. The
+ * sign bytes come from constants: their $FF stores (09:D030, 09:D042,
+ * 09:D055) never run.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket
+ * leaves it.
+ */
+void abi_ObjectWheelStep(void)
+{
+    fan_frame(1, 0xAF20, 0x38);
+}
+
+/*
+ * @routine 09:D131 ObjectWheelCentreStep
+ * WHAT IT DOES: The wheel centre's frame: its angle +$16 turns by 8.
+ * HOW: ADC; ObjectRebucket.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectRebucket leaves it.
+ */
+void abi_ObjectWheelCentreStep(void)
+{
+    add8(F(0x2016, cpu.x), 0x08);
+    abi_ObjectRebucket();
+}
+
+/* One piece of the breakable's burst: kind $ABF4 at X's position, handler
+   $09:C4C0 (ObjectBreakablePiece), the height moved by 0, velocity (vx, vy,
+   vz), life +$0A = $0F; nothing without a free object. */
+static void burst_piece(uint16_t vx, uint16_t vy, uint16_t vz)
+{
+    if (!spawn(0xABF4))
+        return;
+    abi_ObjectCopyPositionTo();
+    handler(cpu.y, 0xC4C0);
+    add16(F(0x200E, cpu.y), 0x0000);
+    st16i(F(0x202E, cpu.y), vx);
+    st16i(F(0x2030, cpu.y), vy);
+    st16i(F(0x2032, cpu.y), vz);
+    st8i(F(0x200A, cpu.y), 0x0F);
+}
+
+/*
+ * @routine 09:D79C ObjectBreakableBurst
+ * WHAT IT DOES: Bursts the breakable into eight pieces (kind $ABF4, handler
+ * ObjectBreakablePiece, life $0F) flying out at ($1B3, -5, $302), ($186, -7,
+ * $2B2), (-$15E, -$0A, 0), (-$1A4, -$0A, $316), ($258, -$0A, $212), (-$127,
+ * -$14, $19F), (-$1A4, -5, 0) and (-$104, -$0A, -$244); a piece is skipped
+ * without a free object.
+ * HOW: Eight ObjectSpawn blocks from object X's position. Reached only by
+ * unit_objects_09c.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the last piece
+ * leaves it.
+ */
+void abi_ObjectBreakableBurst(void)
+{
+    burst_piece(0x01B3, 0xFFFB, 0x0302);
+    burst_piece(0x0186, 0xFFF9, 0x02B2);
+    burst_piece(0xFEA2, 0xFFF6, 0x0000);
+    burst_piece(0xFE5C, 0xFFF6, 0x0316);
+    burst_piece(0x0258, 0xFFF6, 0x0212);
+    burst_piece(0xFED9, 0xFFEC, 0x019F);
+    burst_piece(0xFE5C, 0xFFFB, 0x0000);
+    burst_piece(0xFEFC, 0xFFF6, 0xFDBC);
+}
