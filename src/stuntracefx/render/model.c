@@ -3602,6 +3602,34 @@ void abi_FxModelDrawFlagged(void)
 }
 
 /*
+ * @routine 01:8584 FxModelDrawFlags8000
+ * WHAT IT DOES: An entry inside FxModelDrawFlagged's set-up: draws the
+ * model with the model flags $0054 = $8000. Only the uncalled program
+ * FxModelMirrorProgram (01:84DA) calls it.
+ * HOW: Pushes R11 and pulls it straight back, R0 = $8000, then on as at
+ * 01:858F.
+ * Entry: as FxModelDrawFlagged. Exit: as FxModelDrawFlagged.
+ */
+void abi_FxModelDrawFlags8000(void)
+{
+    model_run(0x8584, R[11]);
+}
+
+/*
+ * @routine 01:858F FxModelDrawWithFlags
+ * WHAT IT DOES: The draw both set-ups lead to: the model flags $0054 = R0,
+ * then the model drawn as FxModelDraw draws it. Called directly only by
+ * the uncalled program FxModelRecordProgram (01:8515).
+ * HOW: SMS $0054, R0, then on in the model interpreter.
+ * Entry: R0 = the model flags; otherwise as FxModelDrawFlagged. Exit: as
+ * FxModelDrawFlagged.
+ */
+void abi_FxModelDrawWithFlags(void)
+{
+    model_run(0x858F, R[11]);
+}
+
+/*
  * @routine 01:8000 FxModelCommands
  * WHAT IT DOES: The model interpreter's command table: command byte cc
  * (0, 4, ... $64) runs the entry at 01:80cc, which jumps to that

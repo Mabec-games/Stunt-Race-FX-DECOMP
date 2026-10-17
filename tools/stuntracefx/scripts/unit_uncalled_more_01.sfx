@@ -1,0 +1,142 @@
+# unit_uncalled_more_01: unit tests (fx) from the start of a Novice race for
+# the Super FX code at 01:8450-8560 and 01:B42F-B6D4 that nothing in the
+# game calls or starts (R11 = the STOP at $01:80E3): the byte matrix 01:8450 with angles
+# $10 and $20 in R2 and R3, stored at $0B00; the pixel test program
+# 01:84CB; and the two model programs 01:84DA and 01:8515 with the draw
+# list emptied ($005C = $08AA) so each draws only its own faces, 8515 with
+# the record at $001A the pace car's kind ($A040); the 3D text drawer
+# 01:B42F (R10 = the stack at $0244) on the string "GAME_TM:" at
+# $08:FE5E in colour 7: at depth $80 (nothing drawn), far with sizes $10
+# and $90 ($00C8, the two drawing loops) and off the screen's right; the
+# row copy program 01:B69A from $00:8000 to row 2, column 4; each program
+# kept and followed by another start so the NOP after its STOP runs; and
+# the text past each edge of the screen at both sizes.
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:8450 stop=80E3 r2=0010 r3=0020 r9=0B00
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:84CB stop=80E3 keep
+wait 1
+fx 01:84CB stop=80E3
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70005C AA,08
+fx 01:84DA stop=80E3 keep
+wait 1
+fx 01:84CB stop=80E3
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70005C AA,08
+set 70001A 40,A0
+fx 01:8515 stop=80E3 keep
+wait 1
+fx 01:84CB stop=80E3
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70001A 5E,FE,08,00
+set 700026 00,00,00,00,80,00
+fx 01:B42F stop=80E3 r0=0007 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70001A 5E,FE,08,00
+set 700026 00,00,00,00,00,04
+set 7000C8 10,00
+fx 01:B42F stop=80E3 r0=0007 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70001A 5E,FE,08,00
+set 700026 00,00,00,00,00,04
+set 7000C8 90,00
+fx 01:B42F stop=80E3 r0=0007 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70001A 5E,FE,08,00
+set 700026 00,30,00,00,00,02
+set 7000C8 40,00
+fx 01:B42F stop=80E3 r0=0007 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700018 00,80
+set 700026 02,00,04,00
+fx 01:B69A stop=80E3 keep
+wait 1
+fx 01:84CB stop=80E3
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70001A 5E,FE,08,00
+set 700026 00,FD,00,00,00,04
+set 7000C8 10,00
+fx 01:B42F stop=80E3 r0=0007 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70001A 5E,FE,08,00
+set 700026 00,03,00,00,00,04
+set 7000C8 10,00
+fx 01:B42F stop=80E3 r0=0007 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70001A 5E,FE,08,00
+set 700026 00,00,00,FE,00,04
+set 7000C8 10,00
+fx 01:B42F stop=80E3 r0=0007 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70001A 5E,FE,08,00
+set 700026 00,00,00,02,00,04
+set 7000C8 10,00
+fx 01:B42F stop=80E3 r0=0007 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70001A 5E,FE,08,00
+set 700026 00,FD,00,00,00,04
+set 7000C8 90,00
+fx 01:B42F stop=80E3 r0=0007 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70001A 5E,FE,08,00
+set 700026 00,03,00,00,00,04
+set 7000C8 90,00
+fx 01:B42F stop=80E3 r0=0007 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70001A 5E,FE,08,00
+set 700026 00,00,00,FE,00,04
+set 7000C8 90,00
+fx 01:B42F stop=80E3 r0=0007 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70001A 5E,FE,08,00
+set 700026 00,00,00,02,00,04
+set 7000C8 90,00
+fx 01:B42F stop=80E3 r0=0007 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70001A 5E,FE,08,00
+set 700026 00,01,80,00,00,04
+set 7000C8 90,00
+fx 01:B42F stop=80E3 r0=0007 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70001A 5E,FE,08,00
+set 700026 00,FF,80,FF,00,04
+set 7000C8 10,00
+fx 01:B42F stop=80E3 r0=0007 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70001A 5E,FE,08,00
+set 700026 80,FF,00,FF,00,04
+set 7000C8 80,01
+fx 01:B42F stop=80E3 r0=0007 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70001A 5E,FE,08,00
+set 700026 00,02,00,FF,00,04
+set 7000C8 80,01
+fx 01:B42F stop=80E3 r0=0007 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70001A 5E,FE,08,00
+set 700026 00,FC,00,FF,00,04
+set 7000C8 30,00
+fx 01:B42F stop=80E3 r0=0007 r10=0244
+wait 1

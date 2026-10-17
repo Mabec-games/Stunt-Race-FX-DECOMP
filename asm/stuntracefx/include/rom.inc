@@ -403,3 +403,8 @@ ObjectChildD1BF = $08D1BF                       ; 08:D1BF, a child's change of h
 ; The timer list the bank 08 debug panel prints (system/debug_panels.asm):
 ; nine bytes of name and a long pointer an entry, a zero byte at the end.
 !debug_timer_list = $08FE5E
+
+; Entries inside FxModelDrawFlagged's block (render/model.asm), called by
+; the uncalled programs of render/unused.asm.
+FxModelDrawFlags8000 = $018584
+FxModelDrawWithFlags = $01858F

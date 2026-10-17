@@ -130,6 +130,14 @@ FxModelDrawFlagged:
     or r1
     bra .l858F
     nop
+; @routine 01:8584 FxModelDrawFlags8000
+; WHAT IT DOES: An entry inside FxModelDrawFlagged's set-up: draws the
+; model with the model flags $0054 = $8000. Only the uncalled program
+; FxModelMirrorProgram (01:84DA) calls it.
+; HOW: Pushes R11 and pulls it straight back, R0 = $8000, then on as at
+; 01:858F.
+; Entry: as FxModelDrawFlagged. Exit: as FxModelDrawFlagged.
+%at($018584)
 .l8584:
     from r11
     stw (r10)
@@ -140,6 +148,14 @@ FxModelDrawFlagged:
     to r11
     ldw (r10)
     iwt r0,#$8000
+; @routine 01:858F FxModelDrawWithFlags
+; WHAT IT DOES: The draw both set-ups lead to: the model flags $0054 = R0,
+; then the model drawn as FxModelDraw draws it. Called directly only by
+; the uncalled program FxModelRecordProgram (01:8515).
+; HOW: SMS $0054, R0, then on in the model interpreter.
+; Entry: R0 = the model flags; otherwise as FxModelDrawFlagged. Exit: as
+; FxModelDrawFlagged.
+%at($01858F)
 .l858F:
     sms (!fx_model_flags-!gsu_ram),r0
     from r11

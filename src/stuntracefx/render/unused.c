@@ -1,9 +1,11 @@
 /*
- * unused.c: Super FX code at 01:AD68-B0D8 that nothing in the game calls
- * or starts: two gauges at the screen's foot and one at its top right,
- * the rectangle fill, rectangle frame and pixel run they plot with, four
- * programs that clear stretches of Super FX RAM, and two sprite programs
- * (a 32 by 32 texture and a scaled object sprite).
+ * unused.c: Super FX code at 01:AD68-B0D8, 01:8450-8560 and 01:B42F-B6D4
+ * that nothing in the game calls or starts: two gauges at the screen's
+ * foot and one at its top right, the rectangle fill, rectangle frame and
+ * pixel run they plot with, four programs that clear stretches of Super FX
+ * RAM, two sprite programs (a 32 by 32 texture and a scaled object
+ * sprite), a byte rotation matrix, a pixel test, two model-drawing
+ * programs, a text drawer at a 3D point and a row-copy program.
  *
  * The C was drafted instruction for instruction from the ROM bytes and is
  * kept so: every register, flag and RAM access as the code makes them,
@@ -662,4 +664,806 @@ void abi_FxSprite32Program(void)
 void abi_FxObjectSpriteProgram(void)
 {
     unused_run(0xB08A, 0xFFFF);
+}
+
+void abi_FxModelDrawFlagged(void);
+void abi_FxModelDrawFlags8000(void);
+void abi_FxModelDrawWithFlags(void);
+
+/* The code of 01:8450-8560 from address at until it jumps to ret (as
+   unused_run). */
+static void unused84_run(uint16_t at, uint16_t ret)
+{
+    int t;
+    uint16_t nx;
+
+    (void)t;
+    (void)nx;
+    goto dispatch;
+l8450:
+    R[1] = 0x973E;
+    gsu_r14(gsu_add(R[1], R[1], 0));
+    R[4] = gsu_getb();
+    gsu_r14(gsu_add(R[1], R[2], 0));
+    R[6] = gsu_getb();
+    gsu_r14(gsu_add(R[1], R[3], 0));
+    R[8] = gsu_getb();
+    R[1] = 0x96FE;
+    gsu_r14(gsu_add(R[1], R[1], 0));
+    R[5] = gsu_getb();
+    gsu_r14(gsu_add(R[1], R[2], 0));
+    R[7] = gsu_getb();
+    gsu_r14(gsu_add(R[1], R[3], 0));
+    R[3] = gsu_getb();
+    R[0] = gsu_mult(R[8], R[7]);
+    R[1] = gsu_add(R[0], R[0], 0);
+    R[0] = gsu_mult(R[8], R[6]);
+    R[2] = gsu_add(R[0], R[0], 0);
+    R[0] = gsu_mult(R[3], R[7]);
+    R[12] = gsu_add(R[0], R[0], 0);
+    R[0] = gsu_mult(R[3], R[6]);
+    R[13] = gsu_add(R[0], R[0], 0);
+    R[0] = gsu_hib(R[12]);
+    R[0] = gsu_mult(R[0], R[5]);
+    R[0] = gsu_add(R[0], R[0], 0);
+    R[0] = gsu_add(R[0], R[2], 0);
+    R[0] = gsu_hib(R[0]);
+    gsu_stb(R[9], (uint8_t)R[0]);
+    R[9] = gsu_inc(R[9]);
+    R[0] = gsu_hib(R[1]);
+    R[0] = gsu_mult(R[0], R[5]);
+    R[0] = gsu_add(R[0], R[0], 0);
+    R[0] = gsu_sub(R[0], R[13], 0);
+    R[0] = gsu_hib(R[0]);
+    gsu_stb(R[9], (uint8_t)R[0]);
+    R[9] = gsu_inc(R[9]);
+    R[0] = gsu_mult(R[7], R[4]);
+    R[0] = gsu_add(R[0], R[0], 0);
+    R[0] = gsu_hib(R[0]);
+    gsu_stb(R[9], (uint8_t)R[0]);
+    R[9] = gsu_inc(R[9]);
+    R[0] = gsu_mult(R[4], R[3]);
+    R[0] = gsu_add(R[0], R[0], 0);
+    R[0] = gsu_hib(R[0]);
+    gsu_stb(R[9], (uint8_t)R[0]);
+    R[9] = gsu_inc(R[9]);
+    R[0] = gsu_mult(R[4], R[8]);
+    R[0] = gsu_add(R[0], R[0], 0);
+    R[0] = gsu_hib(R[0]);
+    gsu_stb(R[9], (uint8_t)R[0]);
+    R[9] = gsu_inc(R[9]);
+    R[0] = gsu_not(R[5]);
+    R[0] = gsu_inc(R[0]);
+    gsu_stb(R[9], (uint8_t)R[0]);
+    R[9] = gsu_inc(R[9]);
+    R[0] = gsu_hib(R[13]);
+    R[0] = gsu_mult(R[0], R[5]);
+    R[0] = gsu_add(R[0], R[0], 0);
+    R[0] = gsu_sub(R[0], R[1], 0);
+    R[0] = gsu_hib(R[0]);
+    gsu_stb(R[9], (uint8_t)R[0]);
+    R[9] = gsu_inc(R[9]);
+    R[0] = gsu_hib(R[2]);
+    R[0] = gsu_mult(R[0], R[5]);
+    R[0] = gsu_add(R[0], R[0], 0);
+    R[0] = gsu_add(R[0], R[12], 0);
+    R[0] = gsu_hib(R[0]);
+    gsu_stb(R[9], (uint8_t)R[0]);
+    R[9] = gsu_inc(R[9]);
+    R[0] = gsu_mult(R[6], R[4]);
+    R[0] = gsu_add(R[0], R[0], 0);
+    R[0] = gsu_hib(R[0]);
+    gsu_stb(R[9], (uint8_t)R[0]);
+    nx = (uint16_t)(R[11]);
+    at = nx;
+    goto dispatch;
+l84CB:
+    R[0] = 0xFFFF;
+    gsu_color((uint8_t)R[0]);
+    R[1] = 0x0000;
+    R[2] = 0x0040;
+    R[12] = 0x0020;
+    R[13] = 0x84D6;
+l84D6:
+    t = gsu_count_down(&R[12]);
+    gsu_plot_r1();
+    if (t) goto l84D6;
+    return;   /* the STOP: the program ends here */
+l84DA:
+    R[0] = gsu_sub(R[0], R[0], 0);
+    gsu.rambr = (uint8_t)(R[0] & 1);
+    gsu_romb(R[0]);
+    R[10] = 0x0240;
+    R[0] = gsu_ldw(0x0028);
+    gsu_stw(R[10], R[0]);
+    R[10] = gsu_inc(R[10]);
+    R[10] = gsu_inc(R[10]);
+    R[1] = 0x0080;
+    R[0] = gsu_add(R[0], R[1], 0);
+    R[0] = gsu_sub(R[0], R[0], 0);
+    gsu_sbk(R[0]);
+    R[11] = 0x84F3;
+    abi_FxModelDrawFlagged();
+l84F3:
+    R[0] = gsu_ldw(0x0020);
+    R[0] = gsu_swap(R[0]);
+    R[0] = gsu_not(R[0]);
+    R[0] = gsu_inc(R[0]);
+    gsu_sbk(R[0]);
+    R[0] = gsu_ldw(0x0022);
+    R[0] = gsu_swap(R[0]);
+    R[0] = gsu_not(R[0]);
+    R[0] = gsu_inc(R[0]);
+    gsu_sbk(R[0]);
+    R[0] = gsu_ldw(0x0024);
+    R[0] = gsu_swap(R[0]);
+    R[0] = gsu_not(R[0]);
+    R[0] = gsu_inc(R[0]);
+    gsu_sbk(R[0]);
+    R[10] = gsu_dec(R[10]);
+    R[10] = gsu_dec(R[10]);
+    R[0] = gsu_ldw(R[10]);
+    gsu_stw(0x0028, R[0]);
+    R[11] = 0x8513;
+    abi_FxModelDrawFlags8000();
+l8513:
+    return;   /* the STOP: the program ends here */
+l8515:
+    R[0] = gsu_sub(R[0], R[0], 0);
+    gsu.rambr = (uint8_t)(R[0] & 1);
+    gsu_romb(R[0]);
+    R[10] = 0x0240;
+    R[4] = gsu_ldw(0x001A);
+    gsu_r14(0x0012);
+    gsu_r14(gsu_add(R[4], R[14], 0));
+    R[0] = gsu_getb();
+    gsu_r14(gsu_inc(R[14]));
+    R[0] = gsu_getbh(R[0]);
+    gsu_stw(0x004A, R[0]);
+    gsu_r14(0x0007);
+    gsu_r14(gsu_add(R[4], R[14], 0));
+    R[0] = gsu_getb();
+    gsu_stw(0x0032, R[0]);
+    gsu_r14(0x0000);
+    gsu_r14(gsu_add(R[4], R[14], 0));
+    R[0] = gsu_getb();
+    gsu_r14(gsu_inc(R[14]));
+    R[0] = gsu_getbh(R[0]);
+    gsu_stw(0x0016, R[0]);
+    gsu_r14(0x0002);
+    gsu_r14(gsu_add(R[4], R[14], 0));
+    R[0] = gsu_getb();
+    gsu_stw(0x001C, R[0]);
+    gsu_r14(0x0003);
+    gsu_r14(gsu_add(R[4], R[14], 0));
+    R[0] = gsu_getb();
+    gsu_r14(gsu_inc(R[14]));
+    R[0] = gsu_getbh(R[0]);
+    gsu_stw(0x0018, R[0]);
+    R[0] = 0x8000;
+    R[11] = 0x855F;
+    abi_FxModelDrawWithFlags();
+l855F:
+    return;   /* the STOP: the program ends here */
+dispatch:
+    if (at == ret)
+        return;
+    switch (at) {
+    case 0x8450: goto l8450;
+    case 0x84CB: goto l84CB;
+    case 0x84D6: goto l84D6;
+    case 0x84DA: goto l84DA;
+    case 0x84F3: goto l84F3;
+    case 0x8513: goto l8513;
+    case 0x8515: goto l8515;
+    case 0x855F: goto l855F;
+    }
+    return;   /* not an address the code jumps to */
+}
+
+/*
+ * @routine 01:8450 FxMatrixFromAnglesBytes
+ * WHAT IT DOES: Meant to build a rotation matrix of signed bytes at R9
+ * from the angle bytes in R1, R2 and R3 (the sines at $01:973E and the
+ * cosines at $01:96FE, a byte an angle): nine bytes, the rows as
+ * FxMatrixFromAngles01's. The first angle's two lookups do not use R1:
+ * IWT R1 overwrites it with the table address before it is added, so they
+ * read the bytes at twice the table addresses. Nothing in the game calls
+ * it.
+ * HOW: GETB from each table at its address + the angle; products with
+ * MULT (signed 8 by 8), doubled (ADD R0), the high byte (HIB) kept; each
+ * element stored with STB, R9 stepping by one.
+ * Entry: R2, R3 = the second and third angles; R9 = where to store; R11 =
+ * return address. Exit: R9 = R9 + 8; R0 = the last element; R1-R8, R12,
+ * R13 as the code leaves them; R14 and the ROM buffer move as on the Super
+ * FX.
+ */
+void abi_FxMatrixFromAnglesBytes(void)
+{
+    unused84_run(0x8450, R[11]);
+}
+
+/*
+ * @routine 01:84CB FxPlotTestProgram
+ * WHAT IT DOES: A program: plots 32 pixels in colour $FF along the row at
+ * Y $40 from X 0, then STOP.
+ * HOW: COLOR, then a LOOP of PLOT (R12 = $20, R13 the loop).
+ * Entry: run as a program (nothing in the game starts it). Exit: (at the
+ * STOP) R1 = $20, R2 = $40, R12 = 0.
+ */
+void abi_FxPlotTestProgram(void)
+{
+    unused84_run(0x84CB, 0xFFFF);
+}
+
+/*
+ * @routine 01:84DA FxModelMirrorProgram
+ * WHAT IT DOES: A program: draws the object as FxModelDrawFlagged does,
+ * then once more with its three angles ($0020-$0024) negated in place
+ * (each word's bytes swapped, then the two's complement) and the model
+ * flags $8000 (FxModelDrawFlags8000), with $0028 kept on the stack across
+ * the first draw and put back; then STOP. On the way it stores $0028 +
+ * $80 and clears it again into the last RAM address (SBK of 0).
+ * HOW: The RAM and ROM banks 0, the stack R10 at $0240; two LINK calls.
+ * Entry: run as a program (nothing in the game starts it); the object's
+ * set-up in RAM. Exit: (at the STOP) as the second draw leaves the
+ * registers.
+ */
+void abi_FxModelMirrorProgram(void)
+{
+    unused84_run(0x84DA, 0xFFFF);
+}
+
+/*
+ * @routine 01:8515 FxModelRecordProgram
+ * WHAT IT DOES: A program: takes an object's set-up from its record (the
+ * address at $001A, in ROM bank 0): +$12 (word) to $004A, +$07 (byte) to
+ * $0032, +$00 (word) to $0016, +$02 (byte) to $001C and +$03 (word) to
+ * $0018; then draws it with model flags $8000 (FxModelDrawWithFlags);
+ * then STOP.
+ * HOW: The RAM and ROM banks 0, the stack R10 at $0240; GETB, GETBH from
+ * R14 = the record + the field.
+ * Entry: run as a program (nothing in the game starts it); $001A = the
+ * record. Exit: (at the STOP) as the draw leaves the registers.
+ */
+void abi_FxModelRecordProgram(void)
+{
+    unused84_run(0x8515, 0xFFFF);
+}
+
+void abi_FxProjectPoint(void);
+void abi_FxDivide32By16Halving(void);
+
+/* The code of 01:B42F-B6D4 from address at until it jumps to ret (as
+   unused_run). */
+static void unusedb4_run(uint16_t at, uint16_t ret)
+{
+    int t;
+    uint16_t nx;
+
+    (void)t;
+    (void)nx;
+    goto dispatch;
+lB42F:
+    gsu_stw(R[10], R[11]);
+    R[10] = gsu_inc(R[10]);
+    R[10] = gsu_inc(R[10]);
+    gsu_color((uint8_t)R[0]);
+    R[0] = gsu_sub(R[0], R[0], 0);
+    gsu.rambr = (uint8_t)(R[0] & 1);
+    gsu_cmode(R[0]);
+    R[0] = 0x0080;
+    R[1] = gsu_ldw(0x0026);
+    R[2] = gsu_ldw(0x0028);
+    R[3] = gsu_ldw(0x002A);
+    gsu_sub(R[0], R[3], 0);   /* CMP */
+    t = gsu.s;
+    if (t) goto lB44F;
+    R[10] = gsu_dec(R[10]);
+    R[10] = gsu_dec(R[10]);
+    nx = (uint16_t)(gsu_ldw(R[10]));
+    at = nx;
+    goto dispatch;
+lB44F:
+    R[11] = 0xB454;
+    abi_FxProjectPoint();
+lB454:
+    gsu_stw(0x0026, R[1]);
+    gsu_stw(0x0028, R[2]);
+    R[0] = gsu_ldw(0x001C);
+    gsu_romb(R[0]);
+    /* CACHE */
+    gsu_r14(gsu_ldw(0x001A));
+    R[12] = 0xFFFF;
+lB465:
+    R[0] = gsu_getb();
+    gsu_r14(gsu_inc(R[14]));
+    R[0] = gsu_lob(R[0]);
+    t = !gsu.z;
+    R[12] = gsu_inc(R[12]);
+    if (t) goto lB465;
+    R[3] = 0x0010;
+    R[0] = gsu_mult(R[12], R[3]);
+    gsu_stw(R[10], R[0]);
+    R[10] = gsu_inc(R[10]);
+    R[10] = gsu_inc(R[10]);
+    R[2] = 0x007F;
+    R[1] = gsu_ldw(0x00C8);
+    R[1] = gsu_add(R[1], R[2], 0);
+    R[2] = gsu_umult(R[1], R[12]);
+    R[3] = gsu_ldw(0x002A);
+    R[11] = 0xB485;
+    abi_FxProjectPoint();
+lB485:
+    R[0] = 0x0065;
+    R[1] = gsu_sub(R[1], R[0], 0);
+    R[0] = 0x0033;
+    R[2] = gsu_sub(R[2], R[0], 0);
+    R[1] = gsu_lob(R[1]);
+    gsu_stw(0x00C8, R[1]);
+    R[3] = 0xFFFF;
+    R[0] = gsu_add(R[0], 0, 0);
+    R[0] = gsu_ror(R[2]);
+    R[0] = gsu_sub(R[0], R[3], !gsu.cy);
+    R[3] = gsu_ldw(0x0026);
+    R[0] = gsu_sub(R[3], R[0], 0);
+    gsu_sbk(R[0]);
+    R[3] = 0xFFFF;
+    R[0] = gsu_add(R[0], 0, 0);
+    R[0] = gsu_ror(R[1]);
+    R[0] = gsu_sub(R[0], R[3], !gsu.cy);
+    R[3] = gsu_ldw(0x0028);
+    R[0] = gsu_sub(R[3], R[0], 0);
+    gsu_sbk(R[0]);
+    R[3] = gsu_not(R[1]);
+    R[3] = gsu_inc(R[3]);
+    gsu_stw(0x00B2, R[3]);
+    R[3] = 0x00E0;
+    R[3] = gsu_sub(R[3], R[1], 0);
+    gsu_stw(0x00B4, R[3]);
+    R[10] = gsu_dec(R[10]);
+    R[10] = gsu_dec(R[10]);
+    R[6] = gsu_ldw(R[10]);
+    R[0] = gsu_sub(R[2], R[6], 0);
+    t = !gsu.cy;
+    if (t) goto lB4CC;
+    goto lB57D;
+lB4CC:
+    R[0] = R[2];
+    R[4] = 0x0000;
+    R[11] = 0xB4D5;
+    abi_FxDivide32By16Halving();
+lB4D5:
+    R[9] = R[4];
+    R[8] = R[4];
+    R[3] = 0x0000;
+    gsu_stw(0x00B2, R[3]);
+    /* CACHE */
+    R[2] = gsu_ldw(0x0028);
+    R[6] = 0x0000;
+    R[4] = 0x0000;
+lB4E6:
+    R[2] = R[2];
+    gsu_moves(R[2]);
+    t = !gsu.s;
+    if (t) goto lB4EF;
+    goto lB55A;
+lB4EF:
+    R[0] = 0x00BF;
+    gsu_sub(R[0], R[2], 0);   /* CMP */
+    t = !gsu.s;
+    if (t) goto lB4FB;
+    goto lB55A;
+lB4FB:
+    R[1] = gsu_ldw(0x0026);
+    R[7] = 0x0000;
+    R[5] = gsu_ldw(0x001A);
+lB503:
+    R[0] = gsu_ldw(0x001C);
+    gsu_romb(R[0]);
+    gsu_r14(R[5]);
+    R[0] = gsu_getb();
+    R[5] = gsu_inc(R[5]);
+    R[0] = gsu_add(R[0], R[0], 0);
+    t = gsu.z;
+    if (t) goto lB55A;
+    R[3] = 0x0014;
+    gsu_romb(R[3]);
+    R[3] = 0x0010;
+    R[0] = gsu_umult(R[0], R[3]);
+    R[3] = 0xD2BA;
+    R[0] = gsu_add(R[0], R[4], 0);
+    R[0] = gsu_add(R[0], R[4], 0);
+    gsu_r14(gsu_add(R[0], R[3], 0));
+    R[0] = gsu_ldw(0x00B2);
+    gsu_sub(R[0], R[1], 0);   /* CMP */
+    t = gsu.s;
+    if (t) goto lB530;
+    R[0] = gsu_ldw(0x00C8);
+    R[1] = gsu_add(R[0], R[1], 0);
+    t = 1;
+    if (t) goto lB503;
+lB530:
+    R[3] = gsu_ldw(0x00B4);
+    R[3] = gsu_dec(R[3]);
+    R[3] = gsu_dec(R[3]);
+    gsu_sub(R[3], R[1], 0);   /* CMP */
+    t = gsu.s;
+    if (t) goto lB55A;
+    R[0] = gsu_getb();
+    gsu_r14(gsu_inc(R[14]));
+    R[0] = gsu_getbh(R[0]);
+    R[12] = 0x0010;
+    R[13] = 0xB543;
+lB543:
+    R[7] = gsu_sub(R[7], R[9], 0);
+    t = !gsu.cy;
+    R[0] = gsu_rol(R[0]);
+    if (t) goto lB54D;
+    t = gsu_count_down(&R[12]);
+    if (t) goto lB543;
+    t = 1;
+    if (t) goto lB503;
+lB54D:
+    t = gsu.cy;
+    if (t) goto lB555;
+    t = gsu_count_down(&R[12]);
+    R[1] = gsu_inc(R[1]);
+    if (t) goto lB543;
+    t = 1;
+    if (t) goto lB503;
+lB555:
+    t = gsu_count_down(&R[12]);
+    gsu_plot_r1();
+    if (t) goto lB543;
+    t = 1;
+    if (t) goto lB503;
+lB55A:
+    R[6] = gsu_sub(R[6], R[8], 0);
+    t = !gsu.cy;
+    if (t) goto lB56A;
+    R[4] = gsu_inc(R[4]);
+    R[3] = 0x0010;
+    R[0] = gsu_sub(R[4], R[3], 0);
+    t = !gsu.z;
+    if (t) goto lB55A;
+    t = 1;
+    if (t) goto lB578;
+lB56A:
+    R[2] = gsu_inc(R[2]);
+    R[4] = gsu_inc(R[4]);
+    R[3] = 0x0010;
+    R[0] = gsu_sub(R[4], R[3], 0);
+    t = gsu.z;
+    if (t) goto lB577;
+    goto lB4E6;
+lB577:
+lB578:
+    R[10] = gsu_dec(R[10]);
+    R[10] = gsu_dec(R[10]);
+    nx = (uint16_t)(gsu_ldw(R[10]));
+    at = nx;
+    goto dispatch;
+lB57D:
+    R[0] = R[6];
+    R[6] = R[2];
+    gsu_sub(R[0], R[6], 0);   /* CMP */
+    t = !gsu.z;
+    if (t) goto lB58C;
+    R[4] = 0xFFFF;
+    t = 1;
+    if (t) goto lB593;
+lB58C:
+    R[4] = 0x0000;
+    R[11] = 0xB593;
+    abi_FxDivide32By16Halving();
+lB593:
+    R[9] = R[4];
+    R[8] = R[4];
+    /* CACHE */
+    R[2] = gsu_ldw(0x0028);
+    R[6] = 0x0000;
+    R[4] = 0x0000;
+lB59F:
+    R[2] = R[2];
+    gsu_moves(R[2]);
+    t = !gsu.s;
+    if (t) goto lB5A8;
+    goto lB67E;
+lB5A8:
+    R[0] = 0x00BF;
+    gsu_sub(R[0], R[2], 0);   /* CMP */
+    t = !gsu.s;
+    if (t) goto lB5B4;
+    goto lB67E;
+lB5B4:
+    R[1] = gsu_ldw(0x0026);
+    R[7] = 0x0000;
+    R[5] = gsu_ldw(0x001A);
+lB5BC:
+    R[0] = gsu_ldw(0x001C);
+    gsu_romb(R[0]);
+    gsu_r14(R[5]);
+    R[0] = gsu_getb();
+    R[5] = gsu_inc(R[5]);
+    R[0] = gsu_add(R[0], R[0], 0);
+    t = !gsu.z;
+    if (t) goto lB5CD;
+    goto lB67E;
+lB5CD:
+    R[3] = 0x0014;
+    gsu_romb(R[3]);
+    R[3] = 0x0010;
+    R[0] = gsu_umult(R[0], R[3]);
+    R[3] = 0xD2BA;
+    R[0] = gsu_add(R[0], R[4], 0);
+    R[0] = gsu_add(R[0], R[4], 0);
+    gsu_r14(gsu_add(R[0], R[3], 0));
+    R[0] = gsu_ldw(0x00B2);
+    gsu_sub(R[0], R[1], 0);   /* CMP */
+    t = gsu.s;
+    if (t) goto lB5E9;
+    goto lB66E;
+lB5E9:
+    R[1] = R[1];
+    gsu_moves(R[1]);
+    t = !gsu.s;
+    R[0] = gsu_getb();
+    if (t) goto lB618;
+    gsu_r14(gsu_inc(R[14]));
+    R[0] = gsu_getbh(R[0]);
+    R[12] = 0x0010;
+    R[13] = 0xB5F5;
+lB5F5:
+    R[0] = gsu_rol(R[0]);
+    t = gsu.cy;
+    if (t) goto lB603;
+lB5F9:
+    R[7] = gsu_sub(R[7], R[9], 0);
+    t = gsu.cy;
+    R[1] = gsu_inc(R[1]);
+    if (t) goto lB5F9;
+    t = gsu_count_down(&R[12]);
+    if (t) goto lB5F5;
+    t = 1;
+    if (t) goto lB5BC;
+lB603:
+    R[7] = gsu_sub(R[7], R[9], 0);
+    t = gsu.cy;
+    R[1] = gsu_inc(R[1]);
+    if (t) goto lB603;
+    t = gsu.s;
+    if (t) goto lB613;
+    R[13] = 0xB629;
+    t = gsu_count_down(&R[12]);
+    if (t) goto lB629;
+    t = 1;
+    if (t) goto lB5BC;
+lB613:
+    t = gsu_count_down(&R[12]);
+    if (t) goto lB5F5;              /* R13 is still $B5F5 on this path */
+    t = 1;
+    if (t) goto lB5BC;
+lB618:
+    gsu_r14(gsu_inc(R[14]));
+    R[3] = gsu_ldw(0x00B4);
+    R[3] = gsu_dec(R[3]);
+    gsu_sub(R[3], R[1], 0);   /* CMP */
+    t = gsu.s;
+    if (t) goto lB642;
+    R[0] = gsu_getbh(R[0]);
+    R[12] = 0x0010;
+    R[13] = 0xB629;
+lB629:
+    R[0] = gsu_rol(R[0]);
+    t = gsu.cy;
+    if (t) goto lB637;
+lB62D:
+    R[7] = gsu_sub(R[7], R[9], 0);
+    t = gsu.cy;
+    R[1] = gsu_inc(R[1]);
+    if (t) goto lB62D;
+    t = gsu_count_down(&R[12]);
+    if (t) goto lB629;
+    t = 1;
+    if (t) goto lB5BC;
+lB637:
+    R[7] = gsu_sub(R[7], R[9], 0);
+    t = gsu.cy;
+    gsu_plot_r1();
+    if (t) goto lB637;
+    t = gsu_count_down(&R[12]);
+    if (t) goto lB629;
+    goto lB5BC;
+lB642:
+    R[0] = gsu_getbh(R[0]);
+    R[3] = 0x00DF;
+    R[12] = 0x0010;
+    R[13] = 0xB64B;
+lB64B:
+    R[0] = gsu_rol(R[0]);
+    t = gsu.cy;
+    if (t) goto lB65F;
+lB64F:
+    R[7] = gsu_sub(R[7], R[9], 0);
+    t = gsu.cy;
+    R[1] = gsu_inc(R[1]);
+    if (t) goto lB64F;
+    gsu_sub(R[1], R[3], 0);   /* CMP */
+    t = !gsu.s;
+    if (t) goto lB67E;
+    t = gsu_count_down(&R[12]);
+    if (t) goto lB64B;
+    t = 1;
+    if (t) goto lB67E;
+lB65F:
+    gsu_sub(R[1], R[3], 0);   /* CMP */
+    t = !gsu.s;
+    if (t) goto lB67E;
+    R[7] = gsu_sub(R[7], R[9], 0);
+    t = gsu.cy;
+    gsu_plot_r1();
+    if (t) goto lB65F;
+    t = gsu_count_down(&R[12]);
+    if (t) goto lB64B;
+    t = 1;
+    if (t) goto lB67E;
+lB66E:
+    R[3] = gsu_ldw(0x00C8);
+    R[1] = gsu_add(R[1], R[3], 0);
+    R[7] = gsu_sub(R[7], R[9], 0);
+    t = !gsu.cy;
+    if (t) goto lB679;
+    R[1] = gsu_inc(R[1]);
+lB679:
+    goto lB5BC;
+lB67E:
+    R[2] = gsu_inc(R[2]);
+    R[6] = gsu_sub(R[6], R[8], 0);
+    t = !gsu.cy;
+    if (t) goto lB689;
+    goto lB59F;
+lB689:
+    R[4] = gsu_inc(R[4]);
+    R[3] = 0x0010;
+    R[0] = gsu_sub(R[4], R[3], 0);
+    t = gsu.z;
+    if (t) goto lB695;
+    goto lB59F;
+lB695:
+    R[10] = gsu_dec(R[10]);
+    R[10] = gsu_dec(R[10]);
+    nx = (uint16_t)(gsu_ldw(R[10]));
+    at = nx;
+    goto dispatch;
+lB69A:
+    R[0] = gsu_sub(R[0], R[0], 0);
+    gsu.rambr = (uint8_t)(R[0] & 1);
+    gsu_romb(R[0]);
+    /* CACHE */
+    R[4] = gsu_ldw(0x0026);
+    R[0] = 0x0100;
+    R[0] = gsu_umult(R[0], R[4]);
+    R[0] = gsu_add(R[0], R[0], 0);
+    R[4] = gsu_add(R[0], R[0], 0);
+    R[0] = gsu_ldw(0x0028);
+    R[0] = gsu_umult(R[0], 4);
+    R[0] = gsu_add(R[0], R[4], 0);
+    R[4] = 0x2C00;
+    R[4] = gsu_add(R[0], R[4], 0);
+    R[5] = 0x0400;
+    gsu_r14(gsu_ldw(0x0018));
+    R[3] = 0x0004;
+lB6BE:
+    R[1] = R[4];
+    R[12] = 0x0050;
+    R[13] = 0xB6C4;
+lB6C4:
+    R[0] = gsu_getb();
+    gsu_r14(gsu_inc(R[14]));
+    R[0] = gsu_getbh(R[0]);
+    gsu_r14(gsu_inc(R[14]));
+    gsu_stw(R[1], R[0]);
+    R[1] = gsu_inc(R[1]);
+    t = gsu_count_down(&R[12]);
+    R[1] = gsu_inc(R[1]);
+    if (t) goto lB6C4;
+    R[4] = gsu_add(R[4], R[5], 0);
+    R[3] = gsu_dec(R[3]);
+    t = !gsu.z;
+    if (t) goto lB6BE;
+    return;   /* the STOP: the program ends here */
+dispatch:
+    if (at == ret)
+        return;
+    switch (at) {
+    case 0xB42F: goto lB42F;
+    case 0xB44F: goto lB44F;
+    case 0xB454: goto lB454;
+    case 0xB465: goto lB465;
+    case 0xB485: goto lB485;
+    case 0xB4CC: goto lB4CC;
+    case 0xB4D5: goto lB4D5;
+    case 0xB4E6: goto lB4E6;
+    case 0xB4EF: goto lB4EF;
+    case 0xB4FB: goto lB4FB;
+    case 0xB503: goto lB503;
+    case 0xB530: goto lB530;
+    case 0xB543: goto lB543;
+    case 0xB54D: goto lB54D;
+    case 0xB555: goto lB555;
+    case 0xB55A: goto lB55A;
+    case 0xB56A: goto lB56A;
+    case 0xB577: goto lB577;
+    case 0xB578: goto lB578;
+    case 0xB57D: goto lB57D;
+    case 0xB58C: goto lB58C;
+    case 0xB593: goto lB593;
+    case 0xB59F: goto lB59F;
+    case 0xB5A8: goto lB5A8;
+    case 0xB5B4: goto lB5B4;
+    case 0xB5BC: goto lB5BC;
+    case 0xB5CD: goto lB5CD;
+    case 0xB5E9: goto lB5E9;
+    case 0xB5F5: goto lB5F5;
+    case 0xB5F9: goto lB5F9;
+    case 0xB603: goto lB603;
+    case 0xB613: goto lB613;
+    case 0xB618: goto lB618;
+    case 0xB629: goto lB629;
+    case 0xB62D: goto lB62D;
+    case 0xB637: goto lB637;
+    case 0xB642: goto lB642;
+    case 0xB64B: goto lB64B;
+    case 0xB64F: goto lB64F;
+    case 0xB65F: goto lB65F;
+    case 0xB66E: goto lB66E;
+    case 0xB679: goto lB679;
+    case 0xB67E: goto lB67E;
+    case 0xB689: goto lB689;
+    case 0xB695: goto lB695;
+    case 0xB69A: goto lB69A;
+    case 0xB6BE: goto lB6BE;
+    case 0xB6C4: goto lB6C4;
+    }
+    return;   /* not an address the code jumps to */
+}
+
+/*
+ * @routine 01:B42F FxText3D
+ * WHAT IT DOES: Draws the zero-terminated string at $001A (ROM bank
+ * $001C) at the 3D point ($0026, $0028, $002A) in colour R0: the point
+ * is projected (FxProjectPoint) and kept at $0026/$0028, the string's
+ * width (16 a character) and the scale from $00C8 projected again, and
+ * each character drawn from the 16 by 16 font at $14:D2BA, scaled
+ * (FxDivide32By16Halving) and clipped to the screen ($00B2/$00B4, rows
+ * up to $BF, columns up to $DF). Nothing is drawn when the point is at
+ * depth $80 or nearer. Nothing in the game calls it.
+ * HOW: R11 kept on the R10 stack; RAM bank 0, CMODE 0; two drawing loops
+ * (a character narrower or wider than its scaled size) of GETB/GETBH rows,
+ * ROL out of each bit, LOOP and PLOT; returns by pulling R15.
+ * Entry: R0 = colour; R10 = stack; R11 = return address; $001A/$001C =
+ * the string; $0026-$002A = the point; $00C8 = the size. Exit: as the
+ * code leaves the registers, flags and RAM; R14 and the ROM buffer move
+ * as on the Super FX.
+ */
+void abi_FxText3D(void)
+{
+    unusedb4_run(0xB42F, R[11]);
+}
+
+/*
+ * @routine 01:B69A FxRowsCopyProgram
+ * WHAT IT DOES: A program: copies four rows of $50 words from the ROM at
+ * $0018 (bank 0) into the screen in Super FX RAM at $2C00 + $0026 * $400
+ * + $0028 * 4, a row every $400 bytes; then STOP. Nothing in the game
+ * starts it.
+ * HOW: RAM and ROM banks 0; GETB, GETBH and STW in a LOOP (R12 = $50),
+ * the destination stepping two bytes a word.
+ * Entry: run as a program; $0018 = the source, $0026/$0028 = the place.
+ * Exit: (at the STOP) R3 = 0, R12 = 0; R14 past the last word read.
+ */
+void abi_FxRowsCopyProgram(void)
+{
+    unusedb4_run(0xB69A, 0xFFFF);
 }
