@@ -1,0 +1,34 @@
+# unit_uncalled_04: unit tests (fx) from the start of a Novice race for the
+# Super FX code of bank 04 nothing calls or starts (R11 = the STOP at
+# $04:888C): the pool checksum program 04:8915 (kept and followed by
+# another start so the NOP after its STOP runs) and its checksum 04:8923;
+# the object-free program 04:89FA on the car record at $1918; the
+# object-new program 04:8AD0 at ($100, $200, $300), with a free object and
+# with the pool at $1098 empty, each kept and followed by another start.
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 04:8915 stop=888C keep
+wait 1
+fx 04:8923 stop=888C
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 04:8923 stop=888C
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70238E 18,19
+fx 04:89FA stop=888C keep
+wait 1
+fx 04:8923 stop=888C
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70238E 00,01,00,02,00,03
+fx 04:8AD0 stop=888C keep
+wait 1
+fx 04:8923 stop=888C
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 701098 00,00,00,00
+set 70238E 00,01,00,02,00,03
+fx 04:8AD0 stop=888C keep
+wait 1
+fx 04:8923 stop=888C
+wait 1
