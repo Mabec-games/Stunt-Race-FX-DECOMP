@@ -198,6 +198,20 @@ static void time_digits_full(void)
     abi_GsuTimeDigitsFull();
 }
 
+/* RaceStartStepsDraw's body: LDX the timer, the size byte from the table at
+   $07:E33A read as a word and masked, into $70:0210; the time drawn. */
+static void start_draw(uint32_t b)
+{
+    cpu.x = rd8(b | 0x0E55);
+    cpu.p = nz8(cpu.p, (uint8_t)cpu.x);
+    op_rep(P_M);
+    cpu.a = rd16(b | (uint16_t)(0xE33A + cpu.x));
+    op_and16(0x00FF);
+    wr16(0x700210, cpu.a);
+    abi_GsuBytes200_BFB5BB();
+    abi_GsuTimeDigits();
+}
+
 /*
  * @routine 07:E2E9 RaceStartSteps
  * WHAT IT DOES: Steps the start's sub-state $0D5A, the timer $0E55
@@ -207,17 +221,14 @@ static void time_digits_full(void)
  * (GsuTimeDigitsFull); 4 waits (at once while $0D54 is 0), then $0D54 =
  * 8 and the timer 3; 6 waits, then clears $0D56 and sets both players'
  * phases 4.
- * HOW: JMP ($E2EF,X) on $0D5A. The timer counts from 7, so the size
- * table's word at timer 9 is never read: its byte $07:E343 is dead (read
- * only at timers 8 and 9, whose size 0 runs the digit program some 230
- * frames).
+ * HOW: JMP ($E2EF,X) on $0D5A; the drawing at the timer is
+ * RaceStartStepsDraw (07:E323).
  * Entry: M 8-bit, X 8-bit; D = $0000. Exit: as the step leaves it: M
  * 16-bit, X 8-bit after a drawing.
  */
 void abi_RaceStartSteps(void)
 {
     uint32_t b = (uint32_t)cpu.db << 16;
-    uint16_t w;
 
     cpu.x = rd8(b | 0x0D5A);
     cpu.p = nz8(cpu.p, (uint8_t)cpu.x);
@@ -231,15 +242,7 @@ void abi_RaceStartSteps(void)
         return;
     case 2:
         if (dec8_mem(b | 0x0E55)) {
-            cpu.x = rd8(b | 0x0E55);
-            cpu.p = nz8(cpu.p, (uint8_t)cpu.x);
-            op_rep(P_M);
-            w = rd16(b | (uint16_t)(0xE33A + cpu.x));
-            cpu.a = w;
-            op_and16(0x00FF);
-            wr16(0x700210, cpu.a);
-            abi_GsuBytes200_BFB5BB();
-            abi_GsuTimeDigits();
+            start_draw(b);
             return;
         }
         substate_next(b);
@@ -2095,4 +2098,76 @@ void abi_TimeUpRace(void)
     }
     cmp8_imm(0x18);
     wr8(b | 0x0E5A, v);
+}
+
+/*
+ * @routine 07:E323 RaceStartStepsDraw
+ * WHAT IT DOES: RaceStartSteps' drawing at the timer $0E55: the race time
+ * drawn (GsuBytes200_BFB5BB, GsuTimeDigits) at the digit size from the
+ * table at $07:E33A by the timer.
+ * HOW: The size byte read as a 16-bit word, ANDed to its low byte, into
+ * $70:0210. The timer counts from 7, so the table's word at timer 9 is
+ * never read: its byte $07:E343 is dead (read only at timers 8 and 9,
+ * whose size 0 runs the digit program some 230 frames).
+ * Entry: M 8-bit, X 8-bit; D = $0000. Exit: M 16-bit, X = the timer; as
+ * GsuTimeDigits leaves the rest.
+ */
+void abi_RaceStartStepsDraw(void)
+{
+    start_draw((uint32_t)cpu.db << 16);
+}
+
+/*
+ * @routine 07:E3E6 RaceStartTimerStepsRts
+ * WHAT IT DOES: The second RTS ending RaceStartTimerSteps, which no code
+ * reaches: returns at once.
+ * HOW: RTS.
+ * Entry: any. Exit: everything unchanged.
+ */
+void abi_RaceStartTimerStepsRts(void)
+{
+}
+
+/*
+ * @routine 07:E556 ResultsPanelStepsRts
+ * WHAT IT DOES: The second RTS ending ResultsPanelSteps, which no code
+ * reaches: returns at once.
+ * HOW: RTS.
+ * Entry: any. Exit: everything unchanged.
+ */
+void abi_ResultsPanelStepsRts(void)
+{
+}
+
+/*
+ * @routine 07:E998 RaceEndWaitRow6BRts
+ * WHAT IT DOES: The RTS after RaceEndWaitRow6B's call of
+ * RaceEndCountdownFade, which never returns: returns at once.
+ * HOW: RTS.
+ * Entry: any. Exit: everything unchanged.
+ */
+void abi_RaceEndWaitRow6BRts(void)
+{
+}
+
+/*
+ * @routine 07:E9BB RaceEndWaitBigSpritesRts
+ * WHAT IT DOES: The RTS after RaceEndWaitBigSprites' call of
+ * RaceEndCountdownFade, which never returns: returns at once.
+ * HOW: RTS.
+ * Entry: any. Exit: everything unchanged.
+ */
+void abi_RaceEndWaitBigSpritesRts(void)
+{
+}
+
+/*
+ * @routine 07:EB0F RaceEndWindowStepsRts
+ * WHAT IT DOES: The RTS after RaceEndWindowSteps' last JMP, which no code
+ * reaches: returns at once.
+ * HOW: RTS.
+ * Entry: any. Exit: everything unchanged.
+ */
+void abi_RaceEndWindowStepsRts(void)
+{
 }

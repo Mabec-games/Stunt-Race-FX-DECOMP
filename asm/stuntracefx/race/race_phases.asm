@@ -126,9 +126,8 @@ RaceStartGlyphsSteps:
 ; $0D5B one less and the time drawn full size (GsuTimeDigitsFull); 4 waits
 ; (at once while $0D54 is 0), then $0D54 = 8 and the timer 3; 6 waits, then
 ; clears $0D56 and sets both players' phases 4.
-; HOW: JMP (table,X) on $0D5A. The timer counts from 7, so the size table's
-; word at timer 9 is never read: its byte $07:E343 is dead (read only at
-; timers 8 and 9, whose size 0 runs the digit program some 230 frames).
+; HOW: JMP (table,X) on $0D5A; the drawing at the timer is
+; RaceStartStepsDraw (07:E323).
 ; Entry: M 8-bit, X 8-bit; D = $0000. Exit: as the step leaves it: M
 ; 16-bit, X 8-bit after a drawing.
 %at($07E2E9)
@@ -158,6 +157,18 @@ RaceStartSteps:
     dec.w !wram_0D5B
     jmp.w .full
 .growDraw:
+
+; @routine 07:E323 RaceStartStepsDraw
+; WHAT IT DOES: RaceStartSteps' drawing at the timer $0E55: the race time
+; drawn (GsuBytes200_BFB5BB, GsuTimeDigits) at the digit size from
+; .sizes by the timer.
+; HOW: The size byte read as a 16-bit word, ANDed to its low byte, into
+; $70:0210. The timer counts from 7, so the table's word at timer 9 is
+; never read: its byte $07:E343 is dead (read only at timers 8 and 9,
+; whose size 0 runs the digit program some 230 frames).
+; Entry: M 8-bit, X 8-bit; D = $0000. Exit: M 16-bit, X = the timer; as
+; GsuTimeDigits leaves the rest.
+%at($07E323)
     ldx.w !wram_0E54+1
     rep.b #$20
     lda.w .sizes,x
@@ -274,6 +285,13 @@ RaceStartTimerSteps:
     inc.w !wram_0D5A
 .done21:
     rts
+
+; @routine 07:E3E6 RaceStartTimerStepsRts
+; WHAT IT DOES: The second RTS ending RaceStartTimerSteps, which no code
+; reaches: returns at once.
+; HOW: RTS.
+; Entry: any. Exit: everything unchanged.
+%at($07E3E6)
     rts                             ; a second RTS no code reaches
 .at19:
     sec
@@ -463,6 +481,13 @@ ResultsPanelSteps:
     sta.w !engine_phase_p2
 .endDone:
     rts
+
+; @routine 07:E556 ResultsPanelStepsRts
+; WHAT IT DOES: The second RTS ending ResultsPanelSteps, which no code
+; reaches: returns at once.
+; HOW: RTS.
+; Entry: any. Exit: everything unchanged.
+%at($07E556)
     rts                             ; a second RTS no code reaches
 
 ; @routine 07:E557 PanelDelayCount
@@ -1160,6 +1185,13 @@ RaceEndWaitRow6B:
     sta.w !wram_0E54+2
     stz.w !panel_b_shown
     jsr.w RaceEndCountdownFade
+
+; @routine 07:E998 RaceEndWaitRow6BRts
+; WHAT IT DOES: The RTS after RaceEndWaitRow6B's call of
+; RaceEndCountdownFade, which never returns: returns at once.
+; HOW: RTS.
+; Entry: any. Exit: everything unchanged.
+%at($07E998)
     rts
 .draw:
     jsr.w BigSpritesRow6B
@@ -1185,6 +1217,13 @@ RaceEndWaitBigSprites:
     sta.w !wram_0E54+2
     stz.w !panel_b_shown
     jsr.w RaceEndCountdownFade
+
+; @routine 07:E9BB RaceEndWaitBigSpritesRts
+; WHAT IT DOES: The RTS after RaceEndWaitBigSprites' call of
+; RaceEndCountdownFade, which never returns: returns at once.
+; HOW: RTS.
+; Entry: any. Exit: everything unchanged.
+%at($07E9BB)
     rts
 .draw:
     jsr.w BigSpritesRow5
@@ -1331,6 +1370,13 @@ RaceEndWindowSteps:
     inc.w !wram_0D48
 .lEB0C:
     jmp.w RaceRestart
+
+; @routine 07:EB0F RaceEndWindowStepsRts
+; WHAT IT DOES: The RTS after RaceEndWindowSteps' last JMP, which no code
+; reaches: returns at once.
+; HOW: RTS.
+; Entry: any. Exit: everything unchanged.
+%at($07EB0F)
     rts
 
 ; @routine 07:EB10 PauseResultsP2

@@ -192,6 +192,13 @@ PauseStageLeave:
     jmp.w RaceRestart
 .lBD05:
     jmp.w RaceEndVideoReset
+
+; @routine 07:BD08 PauseStageLeaveRts
+; WHAT IT DOES: The RTS after PauseStageLeave's last JMP, which no code
+; reaches: returns at once.
+; HOW: RTS.
+; Entry: any. Exit: everything unchanged.
+%at($07BD08)
     rts
 
 ; @routine 07:BD09 PauseStageChoice
@@ -598,8 +605,8 @@ PauseQuitMenuP2:
 ; up parked; 2 and 6 go back to 0; sound $46); else down and up move the
 ; cursor (sound $45) and the rows show it (the cursor's row cycling its
 ; palette); at 6 the cars (CarSelectTwoPlayers, SpritePiecesTwoCars). The
-; bytes at 07:C021 (cursor 0, RTS) and 07:C03E (sound $46, cursor 0) are
-; reached by no code.
+; bytes at 07:C021 (cursor 0, RTS: PauseQuitMenuCursor0) and 07:C03E
+; (sound $46, cursor 0: PauseQuitMenuBack) are reached by no code.
 ; HOW: JMP (table,X) on the cursor. The move up from 2 is not reached in the
 ; traces so far.
 ; Entry: any widths. Exit: as the path leaves it.
@@ -644,6 +651,13 @@ PauseQuitMenu:
     lda.b #$06
     sta.w !hud_blank+2
     rts
+
+; @routine 07:C021 PauseQuitMenuCursor0
+; WHAT IT DOES: Bytes in PauseQuitMenu after an RTS that no code reaches:
+; the quit menu's cursor $0D50 = 0.
+; HOW: LDA #0, STA, RTS.
+; Entry: M 8-bit. Exit: A low byte 0; Z set, N clear.
+%at($07C021)
     lda.b #$00
     sta.w !hud_blank+2
     rts
@@ -657,6 +671,14 @@ PauseQuitMenu:
     jsr.w SpritePiecesTwoCars
     jmp.w .lC0BE
 .lC03E:
+
+; @routine 07:C03E PauseQuitMenuBack
+; WHAT IT DOES: Bytes in PauseQuitMenu that no code reaches: sound $46 and
+; the quit menu's cursor $0D50 = 0.
+; HOW: SEP #$20, LDA #$46, JSL SoundPort0QueuePush, STZ, RTS.
+; Entry: any widths. Exit: M 8-bit; as SoundPort0QueuePush leaves the
+; rest.
+%at($07C03E)
     sep.b #$20
     lda.b #$46
     jsl.l SoundPort0QueuePush

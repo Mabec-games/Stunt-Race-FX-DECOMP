@@ -714,3 +714,43 @@ void abi_PauseReplayStages(void)
     cpu.p = nz8(cpu.p, (uint8_t)cpu.x);
     jump_routine(0x070000 | rd16(0x07BC24 + cpu.x));
 }
+
+/*
+ * @routine 07:BD08 PauseStageLeaveRts
+ * WHAT IT DOES: The RTS after PauseStageLeave's last JMP, which no code
+ * reaches: returns at once.
+ * HOW: RTS.
+ * Entry: any. Exit: everything unchanged.
+ */
+void abi_PauseStageLeaveRts(void)
+{
+}
+
+/*
+ * @routine 07:C021 PauseQuitMenuCursor0
+ * WHAT IT DOES: Bytes in PauseQuitMenu after an RTS that no code reaches:
+ * the quit menu's cursor $0D50 = 0.
+ * HOW: LDA #0, STA, RTS.
+ * Entry: M 8-bit. Exit: A low byte 0; Z set, N clear.
+ */
+void abi_PauseQuitMenuCursor0(void)
+{
+    lda8_imm(0x00);
+    wr8((uint32_t)cpu.db << 16 | 0x0D50, 0x00);
+}
+
+/*
+ * @routine 07:C03E PauseQuitMenuBack
+ * WHAT IT DOES: Bytes in PauseQuitMenu that no code reaches: sound $46 and
+ * the quit menu's cursor $0D50 = 0.
+ * HOW: SEP #$20, LDA #$46, JSL SoundPort0QueuePush, STZ, RTS.
+ * Entry: any widths. Exit: M 8-bit; as SoundPort0QueuePush leaves the
+ * rest.
+ */
+void abi_PauseQuitMenuBack(void)
+{
+    op_sep(P_M);
+    lda8_imm(0x46);
+    abi_SoundPort0QueuePush();
+    wr8((uint32_t)cpu.db << 16 | 0x0D50, 0x00);
+}
