@@ -55,17 +55,17 @@ _Snapshot 2026-10-16._
 
 ```
 M1  Behaviour exact (T3 + T4)
-    █████████████████████████████░░░░░░░░░░░   73.3%   136,581 / 186,386 B of the game's code
+    █████████████████████████████░░░░░░░░░░░   73.5%   137,061 / 186,386 B of the game's code
 M2  Byte exact (T4)
-    ████████████████████████████░░░░░░░░░░░░   70.7%   131,723 / 186,386 B of the game's code
+    ████████████████████████████░░░░░░░░░░░░   70.9%   132,203 / 186,386 B of the game's code
 ```
 
-The bars measure the whole game's S-CPU and Super FX code, 186,386 B: 168,356 B the scripts have run and 18,030 B the [routine census](docs/stuntracefx/ROUTINE_CENSUS.md) finds that no script has run yet. Certified so far: 1335 routines behaviour exact, 1317 of them byte exact.
+The bars measure the whole game's S-CPU and Super FX code, 186,386 B: 168,356 B the scripts have run and 18,030 B the [routine census](docs/stuntracefx/ROUTINE_CENSUS.md) finds that no script has run yet. Certified so far: 1336 routines behaviour exact, 1318 of them byte exact.
 
 | Processor | M1: behaviour exact | M2: byte exact |
 |---|---|---|
 | **S-CPU (65816)** | `███████████████░░░░░` 75.4%: 102,840/136,312 B | `███████████████░░░░░` 74.6%: 101,729/136,312 B |
-| **Super FX (GSU-1)** | `█████████████░░░░░░░` 67.4%: 33,741/50,074 B | `████████████░░░░░░░░` 59.9%: 29,994/50,074 B |
+| **Super FX (GSU-1)** | `██████████████░░░░░░` 68.3%: 34,221/50,074 B | `████████████░░░░░░░░` 60.9%: 30,474/50,074 B |
 | **SPC700 (sound)** | not yet measured | not yet measured |
 <!-- PROGRESS:END -->
 
@@ -92,7 +92,7 @@ have run and the 18,030 B the routine census (`tools/stuntracefx/census.py`) fin
 by following the code statically (calls, jumps, tables, handler pointers,
 Super FX calls, orphans) where no script has gone. The numerator is the code
 bytes inside routines whose C is certified behaviour exact (T3) or whose
-assembly is also byte exact (T4), for M1, and T4 only for M2. 21 routine(s)
+assembly is also byte exact (T4), for M1, and T4 only for M2. 20 routine(s)
 are in the tree but not yet certified (T2).
 
 **Why not routines.** A routine count keeps growing as the work goes on:

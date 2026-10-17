@@ -280,7 +280,7 @@
 <rect x="116.1" y="625.5" width="69.6" height="93.4" fill="#3fb950"><title>FxDrawBitmap64x16  01F062  898B  T4  [render]</title></rect>
 <rect x="116.1" y="719.5" width="69.6" height="70.5" fill="#3fb950"><title>FxProjectVertex  018BFF  680B  T4  [render]</title></rect>
 <rect x="116.1" y="790.6" width="69.6" height="57.0" fill="#3fb950"><title>FxGlyph16x32Double  07F7F4  551B  T4  [render]</title></rect>
-<rect x="116.1" y="848.3" width="69.6" height="49.6" fill="#d29922"><title>FxDrawList  01A931  480B  T2  [render]</title></rect>
+<rect x="116.1" y="848.3" width="69.6" height="49.6" fill="#3fb950"><title>FxDrawList  01A931  480B  T4  [render]</title></rect>
 <rect x="186.3" y="625.5" width="60.1" height="56.5" fill="#3fb950"><title>FxProjectPoint  01947A  472B  T4  [render]</title></rect>
 <rect x="186.3" y="682.7" width="60.1" height="55.9" fill="#3fb950"><title>FxTextDraw  01D311  467B  T4  [render]</title></rect>
 <rect x="186.3" y="739.2" width="60.1" height="53.4" fill="#58a6ff"><title>FxClipYPlane  01C4AA  446B  T3  [render]</title></rect>
@@ -1411,4 +1411,4 @@
 <rect x="1578.0" y="846.8" width="19.9" height="26.4" fill="#3fb950"><title>JoypadAccumulate  7EB1E1  85B  T4  [input]</title></rect>
 <rect x="1578.0" y="873.7" width="19.9" height="15.6" fill="#3fb950"><title>JoypadRead  7EB1AE  51B  T4  [input]</title></rect>
 <rect x="1578.0" y="889.9" width="19.9" height="8.0" fill="#3fb950"><title>FrameSoundAndJoypads  7EA7A3  27B  T4  [input]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 1317 &#183; T3 behaviour-exact 18 &#183; 131,723/186,386 bytes exact (70.7%) &#183; green=T4 blue=T3 amber=T2 gray=T1</text></svg>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 1318 &#183; T3 behaviour-exact 18 &#183; 132,203/186,386 bytes exact (70.9%) &#183; green=T4 blue=T3 amber=T2 gray=T1</text></svg>
