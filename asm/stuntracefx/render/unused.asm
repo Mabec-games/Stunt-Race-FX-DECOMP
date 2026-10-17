@@ -1,8 +1,10 @@
-; unused.asm: Super FX code at 01:AD68-B0D8, 01:8450-8560 and
-; 01:B42F-B6D4 that nothing in the game calls or starts: three gauges and
-; the rectangle and run plotters they use, four screen-clearing programs,
-; two sprite programs, a byte rotation matrix, a pixel test, two
-; model-drawing programs, a 3D text drawer and a row-copy program.
+; unused.asm: Super FX code of bank 01 that nothing in the game calls or
+; starts (01:AD68-B0D8, 01:8450-8560, 01:B42F-B6D4 and smaller pieces):
+; three gauges and the rectangle and run plotters they use, four
+; screen-clearing programs, two sprite programs, a byte rotation matrix, a
+; pixel test, two model-drawing programs, a 3D text drawer, a row-copy
+; program, a point-list projector, a byte-angle turn, a RAM-clear program,
+; a NOP run and a spare return.
 ; C: src/stuntracefx/render/unused.c.
 
 incsrc "../include/macros.inc"
@@ -1267,5 +1269,266 @@ FxRowsCopyProgram:
     bne .lB6BE
     nop
     stop
+    nop
+
+
+; @routine 01:C0E0 FxNopReturn
+; WHAT IT DOES: Returns to R11 after a run of 70 NOPs (and a CACHE at
+; 01:C126): padding with a return at its end. Nothing in the game calls
+; it.
+; HOW: NOPs, CACHE, MOVE R15, R11.
+; Entry: R11 = return address. Exit: registers and flags unchanged; the
+; cache base at 01:C120.
+%at($01C0E0)
+FxNopReturn:
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+; @routine 01:C126 FxNopReturnCache
+; WHAT IT DOES: The end of FxNopReturn: CACHE, six NOPs, return to R11.
+; HOW: As FxNopReturn.
+; Entry: R11 = return address. Exit: as FxNopReturn.
+%at($01C126)
+FxNopReturnCache:
+    cache
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    move r15,r11
+    nop
+
+
+; @routine 01:96E7 FxProjectPoints
+; WHAT IT DOES: Projects R0 points: each three words at R7 (X, Y, Z),
+; moved by ($0026, $0028, $002A), goes through FxProjectPoint, and its
+; screen X, Y and result word are stored at R8; the results are ORed
+; together into $014A. Nothing in the game calls it.
+; HOW: The count kept at $0040 (DEC, SBK); R11 on the R10 stack;
+; returns by pulling R15.
+; Entry: R0 = count (1 or more); R7 = the points; R8 = where to store;
+; R10 = stack; R11 = return address. Exit: R7, R8 past the lists; $0040 =
+; 0; $014A = the OR of the results; the rest as the last FxProjectPoint
+; leaves them.
+%at($0196E7)
+FxProjectPoints:
+    from r11
+    stw (r10)
+    inc r10
+    inc r10
+    sms (!gsu_rec_40-!gsu_ram),r0
+    sub r0
+    sms (!fx_outcodes-!gsu_ram),r0
+.l96F2:
+    ldw (r7)
+    inc r7
+    inc r7
+    lms r9,(!gsu_out_26-!gsu_ram)
+    to r1
+    add r9
+    ldw (r7)
+    inc r7
+    inc r7
+    lms r9,(!gsu_out_28-!gsu_ram)
+    to r2
+    add r9
+    ldw (r7)
+    inc r7
+    inc r7
+    lms r9,(!gsu_out_2a-!gsu_ram)
+    to r3
+    add r9
+    link #4
+    iwt r15,#FxProjectPoint
+    nop
+    from r1
+    stw (r8)
+    inc r8
+    inc r8
+    from r2
+    stw (r8)
+    inc r8
+    inc r8
+    stw (r8)
+    inc r8
+    inc r8
+    lms r3,(!fx_outcodes-!gsu_ram)
+    or r3
+    sbk
+    lms r0,(!gsu_rec_40-!gsu_ram)
+    dec r0
+    bne .l96F2
+    sbk
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+
+
+; @routine 01:97D9 FxRotateXZByte
+; WHAT IT DOES: Turns the point (X, Z) = (R1, R3) by the angle byte R2,
+; with s and c the signed bytes at $01:973E + R2 and $01:96FE + R2:
+; R1 = R2 = (X c + Z s) / 512 and R3 = (X s - Z c) / 512, each the high
+; word of a 32-bit sum, halved. Nothing in the game calls it.
+; HOW: GETB from each table, SWAP into the high byte; LMULT products
+; summed with ADD/ADC and SUB/SBC, then ASR; R11 on the R10 stack;
+; returns by pulling R15.
+; Entry: R1, R3 = the point; R2 = the angle; R10 = stack; R11 = return
+; address. Exit: R1 = R2 = the new X, R3 = the new Z; R4-R9 as the code
+; leaves them; R14 and the ROM buffer move as on the Super FX.
+%at($0197D9)
+FxRotateXZByte:
+    from r11
+    stw (r10)
+    inc r10
+    inc r10
+    iwt r0,#$973E
+    to r14
+    add r2
+    getb
+    to r5
+    swap
+    iwt r0,#$96FE
+    to r14
+    add r2
+    getb
+    to r9
+    swap
+    move r6,r1
+    from r9
+    to r8
+    lmult
+    move r7,r4
+    move r6,r3
+    from r5
+    lmult
+    with r7
+    add r4
+    adc r8
+    to r2
+    asr
+    move r6,r3
+    from r9
+    to r8
+    lmult
+    move r7,r4
+    move r6,r1
+    from r5
+    lmult
+    with r7
+    sub r4
+    sbc r8
+    to r3
+    asr
+    move r1,r2
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+
+
+; @routine 01:D120 FxClearRam200Program
+; WHAT IT DOES: A program: clears $3F00 words of Super FX RAM from
+; $0200 (to $7E00), then STOP. Nothing in the game starts it.
+; HOW: A LOOP of STW, INC R1 twice (R12 = $3F00).
+; Entry: run as a program. Exit: (at the STOP) R0 = 0, R1 = $7E00, R12
+; = 0.
+%at($01D120)
+FxClearRam200Program:
+    iwt r1,#$0200
+    iwt r12,#$3F00
+    move r13,r15
+    sub r0
+    stw (r1)
+    inc r1
+    loop
+    inc r1
+    stop
+    nop
+
+
+; @routine 01:C4A5 FxPopReturnC4A5
+; WHAT IT DOES: Returns to the address on top of the R10 stack: a second
+; copy of the return just before it at 01:C4A0, which nothing reaches.
+; HOW: DEC R10 twice, TO R15, LDW (R10).
+; Entry: R10 = stack, the return address on its top. Exit: R10 two
+; lower.
+%at($01C4A5)
+FxPopReturnC4A5:
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
     nop
 

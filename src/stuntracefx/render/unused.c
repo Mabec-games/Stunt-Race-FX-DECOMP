@@ -1,11 +1,13 @@
 /*
- * unused.c: Super FX code at 01:AD68-B0D8, 01:8450-8560 and 01:B42F-B6D4
- * that nothing in the game calls or starts: two gauges at the screen's
- * foot and one at its top right, the rectangle fill, rectangle frame and
- * pixel run they plot with, four programs that clear stretches of Super FX
- * RAM, two sprite programs (a 32 by 32 texture and a scaled object
- * sprite), a byte rotation matrix, a pixel test, two model-drawing
- * programs, a text drawer at a 3D point and a row-copy program.
+ * unused.c: Super FX code of bank 01 that nothing in the game calls or
+ * starts (01:AD68-B0D8, 01:8450-8560, 01:B42F-B6D4 and smaller pieces):
+ * two gauges at the screen's foot and one at its top right, the rectangle
+ * fill, rectangle frame and pixel run they plot with, four programs that
+ * clear stretches of Super FX RAM, two sprite programs (a 32 by 32
+ * texture and a scaled object sprite), a byte rotation matrix, a pixel
+ * test, two model-drawing programs, a text drawer at a 3D point, a
+ * row-copy program, a point-list projector, a byte-angle turn, a
+ * RAM-clear program, a NOP run and a spare return.
  *
  * The C was drafted instruction for instruction from the ROM bytes and is
  * kept so: every register, flag and RAM access as the code makes them,
@@ -1466,4 +1468,224 @@ void abi_FxText3D(void)
 void abi_FxRowsCopyProgram(void)
 {
     unusedb4_run(0xB69A, 0xFFFF);
+}
+
+/* The smaller uncalled pieces of bank 01 (01:96E7, 97D9, C0E0, C4A5,
+   D120) from address at until they jump to ret (as unused_run). */
+static void unused_misc_run(uint16_t at, uint16_t ret)
+{
+    int t;
+    uint16_t nx;
+
+    (void)t;
+    (void)nx;
+    goto dispatch;
+lC0E0:
+lC126:
+    /* CACHE */
+    nx = (uint16_t)(R[11]);
+    at = nx;
+    goto dispatch;
+l96E7:
+    gsu_stw(R[10], R[11]);
+    R[10] = gsu_inc(R[10]);
+    R[10] = gsu_inc(R[10]);
+    gsu_stw(0x0040, R[0]);
+    R[0] = gsu_sub(R[0], R[0], 0);
+    gsu_stw(0x014A, R[0]);
+l96F2:
+    R[0] = gsu_ldw(R[7]);
+    R[7] = gsu_inc(R[7]);
+    R[7] = gsu_inc(R[7]);
+    R[9] = gsu_ldw(0x0026);
+    R[1] = gsu_add(R[0], R[9], 0);
+    R[0] = gsu_ldw(R[7]);
+    R[7] = gsu_inc(R[7]);
+    R[7] = gsu_inc(R[7]);
+    R[9] = gsu_ldw(0x0028);
+    R[2] = gsu_add(R[0], R[9], 0);
+    R[0] = gsu_ldw(R[7]);
+    R[7] = gsu_inc(R[7]);
+    R[7] = gsu_inc(R[7]);
+    R[9] = gsu_ldw(0x002A);
+    R[3] = gsu_add(R[0], R[9], 0);
+    R[11] = 0x970F;
+    abi_FxProjectPoint();
+l970F:
+    gsu_stw(R[8], R[1]);
+    R[8] = gsu_inc(R[8]);
+    R[8] = gsu_inc(R[8]);
+    gsu_stw(R[8], R[2]);
+    R[8] = gsu_inc(R[8]);
+    R[8] = gsu_inc(R[8]);
+    gsu_stw(R[8], R[0]);
+    R[8] = gsu_inc(R[8]);
+    R[8] = gsu_inc(R[8]);
+    R[3] = gsu_ldw(0x014A);
+    R[0] = gsu_or(R[0], R[3]);
+    gsu_sbk(R[0]);
+    R[0] = gsu_ldw(0x0040);
+    R[0] = gsu_dec(R[0]);
+    t = !gsu.z;
+    gsu_sbk(R[0]);
+    if (t) goto l96F2;
+    R[10] = gsu_dec(R[10]);
+    R[10] = gsu_dec(R[10]);
+    nx = (uint16_t)(gsu_ldw(R[10]));
+    at = nx;
+    goto dispatch;
+l97D9:
+    gsu_stw(R[10], R[11]);
+    R[10] = gsu_inc(R[10]);
+    R[10] = gsu_inc(R[10]);
+    R[0] = 0x973E;
+    gsu_r14(gsu_add(R[0], R[2], 0));
+    R[0] = gsu_getb();
+    R[5] = gsu_swap(R[0]);
+    R[0] = 0x96FE;
+    gsu_r14(gsu_add(R[0], R[2], 0));
+    R[0] = gsu_getb();
+    R[9] = gsu_swap(R[0]);
+    R[6] = R[1];
+    { uint32_t p = gsu_lmult(R[9], R[6]); R[4] = (uint16_t)p; R[8] = (uint16_t)(p >> 16); }
+    R[7] = R[4];
+    R[6] = R[3];
+    { uint32_t p = gsu_lmult(R[5], R[6]); R[4] = (uint16_t)p; R[0] = (uint16_t)(p >> 16); }
+    R[7] = gsu_add(R[7], R[4], 0);
+    R[0] = gsu_add(R[0], R[8], gsu.cy);
+    R[2] = gsu_asr(R[0]);
+    R[6] = R[3];
+    { uint32_t p = gsu_lmult(R[9], R[6]); R[4] = (uint16_t)p; R[8] = (uint16_t)(p >> 16); }
+    R[7] = R[4];
+    R[6] = R[1];
+    { uint32_t p = gsu_lmult(R[5], R[6]); R[4] = (uint16_t)p; R[0] = (uint16_t)(p >> 16); }
+    R[7] = gsu_sub(R[7], R[4], 0);
+    R[0] = gsu_sub(R[0], R[8], !gsu.cy);
+    R[3] = gsu_asr(R[0]);
+    R[1] = R[2];
+    R[10] = gsu_dec(R[10]);
+    R[10] = gsu_dec(R[10]);
+    nx = (uint16_t)(gsu_ldw(R[10]));
+    at = nx;
+    goto dispatch;
+lD120:
+    R[1] = 0x0200;
+    R[12] = 0x3F00;
+    R[13] = 0xD128;
+lD128:
+    R[0] = gsu_sub(R[0], R[0], 0);
+    gsu_stw(R[1], R[0]);
+    R[1] = gsu_inc(R[1]);
+    t = gsu_count_down(&R[12]);
+    R[1] = gsu_inc(R[1]);
+    if (t) goto lD128;
+    return;   /* the STOP: the program ends here */
+lC4A5:
+    R[10] = gsu_dec(R[10]);
+    R[10] = gsu_dec(R[10]);
+    nx = (uint16_t)(gsu_ldw(R[10]));
+    at = nx;
+    goto dispatch;
+dispatch:
+    if (at == ret)
+        return;
+    switch (at) {
+    case 0x96E7: goto l96E7;
+    case 0x96F2: goto l96F2;
+    case 0x970F: goto l970F;
+    case 0x97D9: goto l97D9;
+    case 0xC0E0: goto lC0E0;
+    case 0xC126: goto lC126;
+    case 0xC4A5: goto lC4A5;
+    case 0xD120: goto lD120;
+    case 0xD128: goto lD128;
+    }
+    return;   /* not an address the code jumps to */
+}
+
+/*
+ * @routine 01:C0E0 FxNopReturn
+ * WHAT IT DOES: Returns to R11 after a run of 70 NOPs (and a CACHE at
+ * 01:C126): padding with a return at its end. Nothing in the game calls
+ * it.
+ * HOW: NOPs, CACHE, MOVE R15, R11.
+ * Entry: R11 = return address. Exit: registers and flags unchanged; the
+ * cache base at 01:C120.
+ */
+void abi_FxNopReturn(void)
+{
+    unused_misc_run(0xC0E0, R[11]);
+}
+
+/*
+ * @routine 01:C126 FxNopReturnCache
+ * WHAT IT DOES: The end of FxNopReturn: CACHE, six NOPs, return to R11.
+ * HOW: As FxNopReturn.
+ * Entry: R11 = return address. Exit: as FxNopReturn.
+ */
+void abi_FxNopReturnCache(void)
+{
+    unused_misc_run(0xC126, R[11]);
+}
+
+/*
+ * @routine 01:96E7 FxProjectPoints
+ * WHAT IT DOES: Projects R0 points: each three words at R7 (X, Y, Z),
+ * moved by ($0026, $0028, $002A), goes through FxProjectPoint, and its
+ * screen X, Y and result word are stored at R8; the results are ORed
+ * together into $014A. Nothing in the game calls it.
+ * HOW: The count kept at $0040 (DEC, SBK); R11 on the R10 stack;
+ * returns by pulling R15.
+ * Entry: R0 = count (1 or more); R7 = the points; R8 = where to store;
+ * R10 = stack; R11 = return address. Exit: R7, R8 past the lists; $0040 =
+ * 0; $014A = the OR of the results; the rest as the last FxProjectPoint
+ * leaves them.
+ */
+void abi_FxProjectPoints(void)
+{
+    unused_misc_run(0x96E7, R[11]);
+}
+
+/*
+ * @routine 01:97D9 FxRotateXZByte
+ * WHAT IT DOES: Turns the point (X, Z) = (R1, R3) by the angle byte R2,
+ * with s and c the signed bytes at $01:973E + R2 and $01:96FE + R2:
+ * R1 = R2 = (X c + Z s) / 512 and R3 = (X s - Z c) / 512, each the high
+ * word of a 32-bit sum, halved. Nothing in the game calls it.
+ * HOW: GETB from each table, SWAP into the high byte; LMULT products
+ * summed with ADD/ADC and SUB/SBC, then ASR; R11 on the R10 stack;
+ * returns by pulling R15.
+ * Entry: R1, R3 = the point; R2 = the angle; R10 = stack; R11 = return
+ * address. Exit: R1 = R2 = the new X, R3 = the new Z; R4-R9 as the code
+ * leaves them; R14 and the ROM buffer move as on the Super FX.
+ */
+void abi_FxRotateXZByte(void)
+{
+    unused_misc_run(0x97D9, R[11]);
+}
+
+/*
+ * @routine 01:D120 FxClearRam200Program
+ * WHAT IT DOES: A program: clears $3F00 words of Super FX RAM from
+ * $0200 (to $7E00), then STOP. Nothing in the game starts it.
+ * HOW: A LOOP of STW, INC R1 twice (R12 = $3F00).
+ * Entry: run as a program. Exit: (at the STOP) R0 = 0, R1 = $7E00, R12
+ * = 0.
+ */
+void abi_FxClearRam200Program(void)
+{
+    unused_misc_run(0xD120, 0xFFFF);
+}
+
+/*
+ * @routine 01:C4A5 FxPopReturnC4A5
+ * WHAT IT DOES: Returns to the address on top of the R10 stack: a second
+ * copy of the return just before it at 01:C4A0, which nothing reaches.
+ * HOW: DEC R10 twice, TO R15, LDW (R10).
+ * Entry: R10 = stack, the return address on its top. Exit: R10 two
+ * lower.
+ */
+void abi_FxPopReturnC4A5(void)
+{
+    unused_misc_run(0xC4A5, R[11]);
 }

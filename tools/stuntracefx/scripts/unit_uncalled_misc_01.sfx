@@ -1,0 +1,31 @@
+# unit_uncalled_misc_01: unit tests (fx) from the start of a Novice race for
+# small pieces of bank 01 Super FX code nothing calls or starts (R11 = the
+# STOP at $01:80E3, R10 = the stack at $0244): the NOP run 01:C0E0 and its
+# CACHE entry 01:C126; FxProjectPoints 01:96E7 on two points staged at
+# $0B00 (results at $0B40); FxRotateXZByte 01:97D9 on ($100, $200) by $20;
+# the RAM-clear program 01:D120, kept and followed by another start so the
+# NOP after its STOP runs; and the spare return 01:C4A5 with the STOP's
+# address on the stack.
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:C0E0 stop=80E3
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:C126 stop=80E3
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700B00 00,00,00,00,00,04,00,01,00,00,00,02
+set 700026 00,00,00,00,00,00
+fx 01:96E7 stop=80E3 r0=0002 r7=0B00 r8=0B40 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:97D9 stop=80E3 r1=0100 r2=0020 r3=0200 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:D120 stop=80E3 keep
+wait 1
+fx 01:C126 stop=80E3
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700242 E3,80
+fx 01:C4A5 stop=80E3 r10=0244
+wait 1
