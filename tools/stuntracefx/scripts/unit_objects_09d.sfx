@@ -1,0 +1,506 @@
+# unit_objects_09d: the course objects of bank $09 from 09:D13F to 09:E3E3
+# that no play reaches (or not on every path), as calls on object 1
+# ($2001) from a Novice race's state: each set-up, restart and frame on its
+# paths, with a car's contact staged in Super FX RAM as in unit_gates_09
+# (contact words 1 and 2), the lap ($0DEA) against +$0A, the clock
+# fraction, +$25 bits, the slide target +$27 against the position +$10,
+# the colour step +$5A, the count +$48, and without a free object ($0CEE =
+# $2E); the spawners 09:D1AB and 09:D695 by JSR.
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:D13F long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:D15D long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:D184 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2023 00,50
+set 70501C 00,00
+set 70502C 00,00
+set 705018 00,51
+set 705110 02,00
+set 70510E 00,00
+set 70510C 00,52
+set 705216 02,00
+set 705264 01,00
+set 7E0DEA 00
+call 09:D184 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2023 00,50
+set 70501C 00,00
+set 70502C 00,00
+set 705018 00,51
+set 705110 02,00
+set 70510E 00,00
+set 70510C 00,52
+set 705216 02,00
+set 705264 01,00
+set 7E0DEA 02
+call 09:D184 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2023 00,50
+set 70501C 00,00
+set 70502C 00,00
+set 705018 00,51
+set 705110 02,00
+set 70510E 00,00
+set 70510C 00,52
+set 705216 02,00
+set 705264 01,00
+set 7E0DEA 02
+set 7E0CEE 2E
+call 09:D184 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:D1AB x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0CEE 2E
+call 09:D1AB x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E205B 05
+set 7E2028 00,10
+set 7E2011 00,10
+call 09:D3AF long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E205B 85
+set 7E2028 00,10
+set 7E2011 00,08
+call 09:D3AF long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E205B 80
+set 7E2028 00,08
+set 7E2011 00,10
+call 09:D3AF long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E205B 05
+set 7E2028 00,10
+set 7E2011 00,10
+call 09:D498 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E205B 85
+set 7E2028 00,10
+set 7E2011 00,08
+call 09:D498 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E205B 80
+set 7E2028 00,08
+set 7E2011 00,10
+call 09:D498 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:D3FC long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E205B 80
+call 09:D40C long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E205B 80
+call 09:D42C long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E205B 86
+call 09:D42C long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E205B 05
+call 09:D42C long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E205B 80
+call 09:D460 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:D4EA long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:D4F4 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:D517 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:D53E long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2023 00,50
+set 70501C 00,00
+set 70502C 00,00
+set 705018 00,51
+set 705110 02,00
+set 70510E 00,00
+set 70510C 00,52
+set 705216 02,00
+set 705264 01,00
+set 7E200B 04
+set 7E0DEA 00
+call 09:D53E long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2023 00,50
+set 70501C 00,00
+set 70502C 00,00
+set 705018 00,51
+set 705110 02,00
+set 70510E 00,00
+set 70510C 00,52
+set 705216 02,00
+set 705264 01,00
+set 7E200B 04
+set 7E0DEA 01
+call 09:D53E long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2023 00,50
+set 70501C 00,00
+set 70502C 00,00
+set 705018 00,51
+set 705110 02,00
+set 70510E 00,00
+set 70510C 00,52
+set 705216 02,00
+set 705264 01,00
+set 7E200B 04
+set 7E0DEA 02
+call 09:D53E long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2023 00,50
+set 70501C 00,00
+set 70502C 00,00
+set 705018 00,51
+set 705110 02,00
+set 70510E 00,00
+set 70510C 00,52
+set 705216 02,00
+set 705264 01,00
+set 7E200B 04
+set 7E0DEA 03
+call 09:D53E long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2023 00,50
+set 70501C 00,00
+set 70502C 00,00
+set 705018 00,51
+set 705110 02,00
+set 70510E 00,00
+set 70510C 00,52
+set 705216 02,00
+set 705264 01,00
+set 7E200B 04
+set 7E0DEA 02
+set 7E0CEE 2E
+call 09:D53E long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2023 00,50
+set 70501C 00,00
+set 70502C 00,00
+set 705018 00,51
+set 705110 02,00
+set 70510E 00,00
+set 70510C 00,52
+set 705216 02,00
+set 705264 01,00
+set 7E200B 00
+set 7E0DEA 00
+call 09:D53E long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:D695 x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0CEE 2E
+call 09:D695 x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:DA5D long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0CEE 2E
+call 09:DA5D long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:DD1E long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:DD41 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:DD68 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2023 00,50
+set 70501C 00,00
+set 70502C 00,00
+set 705018 00,51
+set 705110 02,00
+set 70510E 00,00
+set 70510C 00,52
+set 705216 02,00
+set 705264 01,00
+set 7E200B 04
+set 7E0DEA 00
+set 7E0E63 00
+call 09:DD68 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2023 00,50
+set 70501C 00,00
+set 70502C 00,00
+set 705018 00,51
+set 705110 02,00
+set 70510E 00,00
+set 70510C 00,52
+set 705216 02,00
+set 705264 01,00
+set 7E200B 04
+set 7E0DEA 00
+set 7E0E63 10
+call 09:DD68 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2023 00,50
+set 70501C 00,00
+set 70502C 00,00
+set 705018 00,51
+set 705110 02,00
+set 70510E 00,00
+set 70510C 00,52
+set 705216 02,00
+set 705264 01,00
+set 7E200B 04
+set 7E0DEA 01
+call 09:DD68 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2023 00,50
+set 70501C 00,00
+set 70502C 00,00
+set 705018 00,51
+set 705110 02,00
+set 70510E 00,00
+set 70510C 00,52
+set 705216 02,00
+set 705264 01,00
+set 7E200B 04
+set 7E0DEA 02
+call 09:DD68 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2023 00,50
+set 70501C 00,00
+set 70502C 00,00
+set 705018 00,51
+set 705110 02,00
+set 70510E 00,00
+set 70510C 00,52
+set 705216 02,00
+set 705264 01,00
+set 7E200B 04
+set 7E0DEA 03
+call 09:DD68 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2023 00,50
+set 70501C 00,00
+set 70502C 00,00
+set 705018 00,51
+set 705110 02,00
+set 70510E 00,00
+set 70510C 00,52
+set 705216 02,00
+set 705264 01,00
+set 7E200B 04
+set 7E0DEA 01
+set 7E0CEE 2E
+call 09:DD68 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2023 00,50
+set 70501C 00,00
+set 70502C 00,00
+set 705018 00,51
+set 705110 02,00
+set 70510E 00,00
+set 70510C 00,52
+set 705216 02,00
+set 705264 01,00
+set 7E200B 04
+set 7E0DEA 02
+set 7E0CEE 2E
+call 09:DD68 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2023 00,50
+set 70501C 00,00
+set 70502C 00,00
+set 705018 00,51
+set 705110 02,00
+set 70510E 00,00
+set 70510C 00,52
+set 705216 02,00
+set 705264 01,00
+set 7E200B 00
+set 7E0DEA 00
+call 09:DD68 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:DFEC long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:E00A long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2026 03
+call 09:E018 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2023 00,50
+set 70501C 00,00
+set 70502C 00,00
+set 705018 00,51
+set 705110 02,00
+set 70510E 00,00
+set 70510C 00,52
+set 705216 02,00
+set 705264 01,00
+set 7E2026 00
+call 09:E018 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2023 00,50
+set 70501C 00,00
+set 70502C 00,00
+set 705018 00,51
+set 705110 02,00
+set 70510E 00,00
+set 70510C 00,52
+set 705216 02,00
+set 705264 01,00
+set 7E2026 01
+call 09:E018 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2023 00,50
+set 70501C 00,00
+set 70502C 00,00
+set 705018 00,51
+set 705110 02,00
+set 70510E 00,00
+set 70510C 00,52
+set 705216 02,00
+set 705264 02,00
+set 7E2026 00
+call 09:E018 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2023 00,50
+set 70501C 00,00
+set 70502C 00,00
+set 705018 00,51
+set 705110 02,00
+set 70510E 00,00
+set 70510C 00,52
+set 705216 02,00
+set 705264 02,00
+set 7E2026 02
+call 09:E018 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:E097 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:E0BA long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:E0C8 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2023 00,50
+set 70501C 00,00
+set 70502C 00,00
+set 705018 00,51
+set 705110 02,00
+set 70510E 00,00
+set 70510C 00,52
+set 705216 02,00
+set 705264 01,00
+set 7E2026 00
+call 09:E0C8 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2023 00,50
+set 70501C 00,00
+set 70502C 00,00
+set 705018 00,51
+set 705110 02,00
+set 70510E 00,00
+set 70510C 00,52
+set 705216 02,00
+set 705264 01,00
+set 7E2026 01
+call 09:E0C8 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2023 00,50
+set 70501C 00,00
+set 70502C 00,00
+set 705018 00,51
+set 705110 02,00
+set 70510E 00,00
+set 70510C 00,52
+set 705216 02,00
+set 705264 01,00
+set 7E2026 00
+set 7E0CEE 2E
+call 09:E0C8 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:E0FF long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0CEE 2E
+call 09:E0FF long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:E185 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:E1A3 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:E1B1 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2023 00,50
+set 70501C 00,00
+set 70502C 00,00
+set 705018 00,51
+set 705110 02,00
+set 70510E 00,00
+set 70510C 00,52
+set 705216 02,00
+set 705264 01,00
+set 7E2026 00
+call 09:E1B1 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2023 00,50
+set 70501C 00,00
+set 70502C 00,00
+set 705018 00,51
+set 705110 02,00
+set 70510E 00,00
+set 70510C 00,52
+set 705216 02,00
+set 705264 01,00
+set 7E2026 04
+call 09:E1B1 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2023 00,50
+set 70501C 00,00
+set 70502C 00,00
+set 705018 00,51
+set 705110 02,00
+set 70510E 00,00
+set 70510C 00,52
+set 705216 02,00
+set 705264 01,00
+set 7E2026 05
+call 09:E1B1 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2023 00,50
+set 70501C 00,00
+set 70502C 00,00
+set 705018 00,51
+set 705110 02,00
+set 70510E 00,00
+set 70510C 00,52
+set 705216 02,00
+set 705264 01,00
+set 7E2026 00
+set 7E0CEE 2E
+call 09:E1B1 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:E360 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:E383 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2049 00
+call 09:E391 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2049 03
+call 09:E391 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2023 00,50
+set 70501C 00,00
+set 70502C 00,00
+set 705018 00,51
+set 705110 02,00
+set 70510E 00,00
+set 70510C 00,52
+set 705216 02,00
+set 705264 01,00
+set 7E2026 00
+call 09:E391 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2023 00,50
+set 70501C 00,00
+set 70502C 00,00
+set 705018 00,51
+set 705110 02,00
+set 70510E 00,00
+set 70510C 00,52
+set 705216 02,00
+set 705264 01,00
+set 7E2026 01
+call 09:E391 long x=0001 p=20 db=7E d=0000

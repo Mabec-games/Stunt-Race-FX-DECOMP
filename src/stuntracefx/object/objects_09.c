@@ -5337,3 +5337,922 @@ void abi_ObjectBreakableBurst(void)
     burst_piece(0xFE5C, 0xFFFB, 0x0000);
     burst_piece(0xFEFC, 0xFFF6, 0xFDBC);
 }
+
+/* ---- 09:D13F-E3E3: rails, breakable lap gates, bursts, lamp posts ---- */
+
+void abi_GsuRecordNew424(void);
+
+/* The colour +$5A stepped on through 0 to n-1 (bit 7 kept): ADC #1, and
+   from a value without bit 7, ADC #n first; AND #$7F, CMP #n. Returns
+   whether it reached n (carry), A = the masked step. */
+static int colour_step(uint8_t n)
+{
+    uint8_t v;
+
+    v = ld8(F(0x205A, cpu.x));
+    cpu.p &= (uint8_t)~P_C;
+    v = op_adc8(v, 0x01, &cpu.p);
+    if (!(v & 0x80)) {
+        cpu.p &= (uint8_t)~P_C;
+        v = op_adc8(v, n, &cpu.p);
+    }
+    v &= 0x7F;
+    lda8(v);
+    cmp8(n);
+    return v >= n;
+}
+
+/* The colour +$5A stepped through 0-5 (SBC #6 at 6). */
+static void colour_cycle6(void)
+{
+    uint8_t v;
+
+    if (colour_step(0x06)) {
+        cpu.p |= P_C;
+        v = op_sbc8((uint8_t)cpu.a, 0x06, &cpu.p);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    }
+    v = (uint8_t)(cpu.a | 0x80);
+    lda8(v);
+    wr8(F(0x205A, cpu.x), v);
+}
+
+/* LDA dp $00, ORA #$80, STA field f of object o: the colour from the
+   direct page's first byte. */
+static void colour_from_dp0(uint32_t at)
+{
+    uint8_t v = (uint8_t)(ld8(dp(0x00)) | 0x80);
+
+    lda8(v);
+    wr8(at, v);
+}
+
+/* REP #$20, LDA src, STA dst, SEP #$20 (16-bit copy). */
+static void copy16(uint32_t dst, uint32_t src)
+{
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(src);
+    wr16(dst, cpu.a);
+    cpu.p |= P_M;
+}
+
+/* The rail's slide: +$10 stepped by `step` toward the target +$27
+   (through $1F4C); returns 1 when it was already there (nothing stored),
+   else steps and syncs to the record (ObjectSyncToRecord). */
+static int rail_slide(uint16_t step)
+{
+    uint16_t t;
+
+    copy16(db() | 0x1F4C, F(0x2027, cpu.x));
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(F(0x2010, cpu.x));
+    t = rd16(db() | 0x1F4C);
+    op_cmp16(t);
+    cpu.p |= P_M;
+    if (cpu.a == t)
+        return 1;
+    cpu.p &= (uint8_t)~P_M;
+    if (cpu.p & P_N)
+        op_add16(step);
+    else
+        op_sub16(step);
+    wr16(F(0x2010, cpu.x), cpu.a);
+    cpu.p |= P_M;
+    abi_ObjectSyncToRecord();
+    return 0;
+}
+
+/*
+ * @routine 09:D3FC RailStop
+ * WHAT IT DOES: The rail has reached its target: its frame becomes $09:D40C
+ * (RailDrop).
+ * HOW: Word and byte stores.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: A low byte = 9.
+ */
+void abi_RailStop(void)
+{
+    handler(cpu.x, 0xD40C);
+}
+
+/*
+ * @routine 09:D3AF RailStep
+ * WHAT IT DOES: A rail's frame: its colour +$5A steps through 0-5; it
+ * slides $280 at a time toward its target +$27 (+$10), and there its frame
+ * becomes RailDrop.
+ * HOW: ADC/AND/SBC on the colour; a 16-bit CMP, then ADC or SBC #$280 by
+ * N; ObjectSyncToRecord; at the target a JML into RailStop.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as
+ * ObjectSyncToRecord or RailStop leaves it.
+ */
+void abi_RailStep(void)
+{
+    colour_cycle6();
+    if (rail_slide(0x0280))
+        abi_RailStop();
+}
+
+/* 09:D42C: the drop's frame: the colour counts up to 6 (then the rise,
+   09:D460); until then +$10 grows by $40 and it syncs to its record. */
+static void rail_drop_frame(void);
+
+/*
+ * @routine 09:D460 RailRise
+ * WHAT IT DOES: The rail rises back: its target +$27 = +$10 + $500, the
+ * colour from direct page $00, model +$04 = $B2D8, frame $09:D498
+ * (RailRiseStep); then that frame.
+ * HOW: 16-bit copy and ADC; word and byte stores.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_RailRiseStep(void);
+
+void abi_RailRise(void)
+{
+    copy16(F(0x2027, cpu.x), F(0x2010, cpu.x));
+    colour_from_dp0(F(0x205A, cpu.x));
+    st16i(F(0x2004, cpu.x), 0xB2D8);
+    add16(F(0x2027, cpu.x), 0x0500);
+    handler(cpu.x, 0xD498);
+    abi_RailRiseStep();
+}
+
+/*
+ * @routine 09:D498 RailRiseStep
+ * WHAT IT DOES: The rising rail's frame: its colour steps through 0-5; it
+ * slides $140 at a time toward its target +$27, and there it is released.
+ * HOW: As RailStep with $140; at the target ObjectRelease.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as
+ * ObjectSyncToRecord or ObjectRelease leaves it.
+ */
+void abi_RailRiseStep(void)
+{
+    colour_cycle6();
+    if (rail_slide(0x0140))
+        abi_ObjectRelease();
+}
+
+static void rail_drop_frame(void)
+{
+    uint8_t v;
+
+    if (colour_step(0x07)) {
+        lda8(0x07);
+        lda8(0x06);
+        lda8(0x86);
+        wr8(F(0x205A, cpu.x), 0x86);
+        abi_RailRise();
+        return;
+    }
+    v = (uint8_t)(cpu.a | 0x80);
+    lda8(v);
+    wr8(F(0x205A, cpu.x), v);
+    add16(F(0x2010, cpu.x), 0x0040);
+    abi_ObjectSyncToRecord();
+}
+
+/*
+ * @routine 09:D40C RailDrop
+ * WHAT IT DOES: The rail drops: colour from direct page $00, model +$04 =
+ * $B2F4, frame $09:D42C (RailDropStep); then that frame.
+ * HOW: Word and byte stores.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_RailDrop(void)
+{
+    colour_from_dp0(F(0x205A, cpu.x));
+    st16i(F(0x2004, cpu.x), 0xB2F4);
+    handler(cpu.x, 0xD42C);
+    rail_drop_frame();
+}
+
+/*
+ * @routine 09:D42C RailDropStep
+ * WHAT IT DOES: The dropping rail's frame: its colour counts on, and at 7
+ * (set to 6) the rail rises back (RailRise); until then it moves $40 on
+ * (+$10) and syncs to its record.
+ * HOW: ADC/AND/CMP #7 on the colour; LDA #7, DEC A for the last one; a
+ * JMP into RailRise.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as
+ * ObjectSyncToRecord or RailRise leaves it.
+ */
+void abi_RailDropStep(void)
+{
+    rail_drop_frame();
+}
+
+/* One rail: kind $B2D8 coloured from direct page $00, scale $80, at X's
+   position moved (dx, 0, dz), its target +$27 = its +$10 + t, handler
+   $09:D3AF (RailStep); nothing without a free object. */
+static void rail(uint16_t dx, uint16_t dz, uint16_t t)
+{
+    if (!spawn(0xB2D8))
+        return;
+    colour_from_dp0(F(0x205A, cpu.y));
+    st8i(F(0x2015, cpu.y), 0x80);
+    abi_ObjectCopyPositionTo();
+    add16(F(0x200C, cpu.y), dx);
+    add16(F(0x2010, cpu.y), dz);
+    copy16(F(0x2027, cpu.y), F(0x2010, cpu.y));
+    add16(F(0x2027, cpu.y), t);
+    handler(cpu.y, 0xD3AF);
+}
+
+/*
+ * @routine 09:D1AB RailsSpawn
+ * WHAT IT DOES: Puts up the five rails of the finale gate: kind $B2D8 at
+ * object X moved (0, 0), (-$280, -$280), (-$500, 0), (-$640, -$500) and
+ * (-$8C0, 0) on X and Z, each sliding on to its +$10 + $1180, $1400,
+ * $1180, $1680 and $1180 (RailStep); a rail is skipped without a free
+ * object.
+ * HOW: Five ObjectSpawn blocks.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the last rail
+ * leaves it.
+ */
+void abi_RailsSpawn(void)
+{
+    rail(0x0000, 0x0000, 0x1180);
+    rail(0xFD80, 0xFD80, 0x1400);
+    rail(0xFB00, 0x0000, 0x1180);
+    rail(0xF9C0, 0xFB00, 0x1680);
+    rail(0xF740, 0x0000, 0x1180);
+}
+
+/* 09:D184: a car's hit on lap 2 puts up the rails (RailsSpawn), plays sound
+   $33 and releases the gate. */
+static void finale_frame(void)
+{
+    if (!hit())
+        return;
+    if (!lap_is(0x02))
+        return;
+    abi_RailsSpawn();
+    sound0(0x33);
+    abi_ObjectRelease();
+}
+
+/*
+ * @routine 09:D13F ObjectFinaleGate
+ * WHAT IT DOES: Sets up the finale gate: restart $09:D15D
+ * (ObjectFinaleGateRecord), frame $09:D184 (ObjectFinaleGateStep); its
+ * record and frame.
+ * HOW: Word and byte stores.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectFinaleGate(void)
+{
+    handlers2(0xD15D, 0xD184);
+    gate42d(0x2A80);
+    finale_frame();
+}
+
+/*
+ * @routine 09:D15D ObjectFinaleGateRecord
+ * WHAT IT DOES: The finale gate's restart: its record ($42D, flag bit 4, at
+ * ($2A80, $2A80, $2A80)), then its frame.
+ * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
+ * Entry: as ObjectFinaleGate. Exit: as ObjectFinaleGate.
+ */
+void abi_ObjectFinaleGateRecord(void)
+{
+    gate42d(0x2A80);
+    finale_frame();
+}
+
+/*
+ * @routine 09:D184 ObjectFinaleGateStep
+ * WHAT IT DOES: The finale gate's frame: a car's hit on lap 2 ($0DEA) puts
+ * up the rails (RailsSpawn), plays sound $33 and releases the gate.
+ * HOW: ObjectSyncFromRecord, RecordContactSummary; JSR RailsSpawn.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectFinaleGateStep(void)
+{
+    finale_frame();
+}
+
+/*
+ * @routine 09:D4EA ObjectScaleUp6
+ * WHAT IT DOES: Grows object X's scale +$15 by 6.
+ * HOW: CLC, ADC. Reached only by unit_objects_09d.
+ * Entry: M 8-bit; X = object. Exit: A low byte = the new scale; N, Z, C, V
+ * from the add.
+ */
+void abi_ObjectScaleUp6(void)
+{
+    add8(F(0x2015, cpu.x), 0x06);
+}
+
+/* A breakable (kind $B4D0, handler $09:C513 ObjectBreakable) at X's
+   position moved (dx, dy, dz) at rest, life +$0A = $1C; X's own size
+   bytes +$14-$16 set to s; nothing without a free object. */
+static void breakable_put(uint16_t dy, uint16_t dz, uint16_t dx, uint8_t s)
+{
+    if (!spawn(0xB4D0))
+        return;
+    abi_ObjectCopyPositionTo();
+    handler(cpu.y, 0xC513);
+    add16(F(0x200E, cpu.y), dy);
+    add16(F(0x2010, cpu.y), dz);
+    add16(F(0x200C, cpu.y), dx);
+    st16i(F(0x202E, cpu.y), 0x0000);
+    st16i(F(0x2030, cpu.y), 0x0000);
+    st16i(F(0x2032, cpu.y), 0x0000);
+    st8i(F(0x2014, cpu.x), s);
+    st8i(F(0x2015, cpu.x), s);
+    st8i(F(0x2016, cpu.x), s);
+    st8i(F(0x200A, cpu.y), 0x1C);
+}
+
+/*
+ * @routine 09:D58E BreakablePairA
+ * WHAT IT DOES: Puts two breakables (ObjectBreakable) by object X: moved
+ * (+$B40, -$320, -$680) and (+$F00, -$3C0, -$6E0) on X, Y and Z; X's size
+ * bytes become $5A, then $23.
+ * HOW: Two ObjectSpawn blocks. Reached only by unit_objects_09d.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the last
+ * block leaves it.
+ */
+void abi_BreakablePairA(void)
+{
+    breakable_put(0xFCE0, 0xF980, 0x0B40, 0x5A);
+    breakable_put(0xFC40, 0xF920, 0x0F00, 0x23);
+}
+
+/*
+ * @routine 09:D695 BreakablePairB
+ * WHAT IT DOES: Puts two breakables by object X: moved (+$500, -$640,
+ * -$3C0) and (+$B40, -$780, -$280); X's size bytes become $5A, then $23.
+ * HOW: As BreakablePairA. Nothing in the game reaches it; reached only by
+ * unit_objects_09d.
+ * Entry: as BreakablePairA. Exit: as BreakablePairA.
+ */
+void abi_BreakablePairB(void)
+{
+    breakable_put(0xF9C0, 0xFC40, 0x0500, 0x5A);
+    breakable_put(0xF880, 0xFD80, 0x0B40, 0x23);
+}
+
+/*
+ * @routine 09:DDDE BreakablePairC
+ * WHAT IT DOES: Puts two breakables by object X: moved (-$1180, -$500,
+ * -$780) and (-$F00, -$5A0, -$6E0); X's size bytes become $5A, then $23.
+ * HOW: As BreakablePairA. Reached only by unit_objects_09d.
+ * Entry: as BreakablePairA. Exit: as BreakablePairA.
+ */
+void abi_BreakablePairC(void)
+{
+    breakable_put(0xFB00, 0xF880, 0xEE80, 0x5A);
+    breakable_put(0xFA60, 0xF920, 0xF100, 0x23);
+}
+
+/*
+ * @routine 09:DEE5 BreakablePairD
+ * WHAT IT DOES: Puts two breakables by object X: moved (-$1180, -$500,
+ * -$4C0) and (-$F00, -$5A0, -$5A0); X's size bytes become $5A, then $23.
+ * HOW: As BreakablePairA. Reached only by unit_objects_09d.
+ * Entry: as BreakablePairA. Exit: as BreakablePairA.
+ */
+void abi_BreakablePairD(void)
+{
+    breakable_put(0xFB00, 0xFB40, 0xEE80, 0x5A);
+    breakable_put(0xFA60, 0xFA60, 0xF100, 0x23);
+}
+
+/* 09:D53E: a car's hit on a lap not counted yet (+$0A) counts it; on lap 2
+   two breakables (BreakablePairA) and sound $53. */
+static void breakable_gate_frame(void)
+{
+    uint8_t lap;
+
+    if (!hit())
+        return;
+    if (lap_eq(0x200A))
+        return;
+    lap_store(0x200A);
+    cpu.p |= P_M;
+    lap = ld8(db() | 0x0DEA);
+    cmp8(0x00);
+    if (lap == 0x00)
+        return;
+    cmp8(0x01);
+    if (lap == 0x01)
+        return;
+    cmp8(0x02);
+    if (lap != 0x02)
+        return;
+    abi_BreakablePairA();
+    sound0(0x53);
+}
+
+/*
+ * @routine 09:D4F4 ObjectBreakableGate
+ * WHAT IT DOES: Sets up the breakable gate: restart $09:D517
+ * (ObjectBreakableGateRecord), frame $09:D53E (ObjectBreakableGateStep),
+ * +$0A = 4 (no lap counted); its record and frame.
+ * HOW: Word and byte stores.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectBreakableGate(void)
+{
+    handlers2(0xD517, 0xD53E);
+    st8i(F(0x200A, cpu.x), 0x04);
+    gate42d(0x1E00);
+    breakable_gate_frame();
+}
+
+/*
+ * @routine 09:D517 ObjectBreakableGateRecord
+ * WHAT IT DOES: The gate's restart: its record ($42D, flag bit 4, at
+ * ($1E00, $1E00, $1E00)), then its frame.
+ * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
+ * Entry: as ObjectBreakableGate. Exit: as ObjectBreakableGate.
+ */
+void abi_ObjectBreakableGateRecord(void)
+{
+    gate42d(0x1E00);
+    breakable_gate_frame();
+}
+
+/*
+ * @routine 09:D53E ObjectBreakableGateStep
+ * WHAT IT DOES: The gate's frame: a car's hit on a lap ($0DEA) it has not
+ * counted (+$0A) counts it, and on lap 2 puts up two breakables
+ * (BreakablePairA) with sound $53.
+ * HOW: ObjectSyncFromRecord, RecordContactSummary; the laps compared
+ * through $1F58.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectBreakableGateStep(void)
+{
+    breakable_gate_frame();
+}
+
+/* One piece of a burst: kind `kind` at X's position moved dy, handler
+   $09:C4C0 (ObjectBreakablePiece), velocity (vx, vy, vz), life +$0A = $0F;
+   nothing without a free object. */
+static void burst_piece_k(uint16_t kind, uint16_t dy, uint16_t vx, uint16_t vy, uint16_t vz)
+{
+    if (!spawn(kind))
+        return;
+    abi_ObjectCopyPositionTo();
+    handler(cpu.y, 0xC4C0);
+    add16(F(0x200E, cpu.y), dy);
+    st16i(F(0x202E, cpu.y), vx);
+    st16i(F(0x2030, cpu.y), vy);
+    st16i(F(0x2032, cpu.y), vz);
+    st8i(F(0x200A, cpu.y), 0x0F);
+}
+
+/*
+ * @routine 09:DA5D ObjectBreakableBurst2
+ * WHAT IT DOES: As ObjectBreakableBurst, the pieces alternating kinds $AC10
+ * and $ABF4 (the last two both $AC10).
+ * HOW: Eight ObjectSpawn blocks from object X's position.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the last piece
+ * leaves it.
+ */
+void abi_ObjectBreakableBurst2(void)
+{
+    burst_piece_k(0xAC10, 0x0000, 0x01B3, 0xFFFB, 0x0302);
+    burst_piece_k(0xABF4, 0x0000, 0x0186, 0xFFF9, 0x02B2);
+    burst_piece_k(0xAC10, 0x0000, 0xFEA2, 0xFFF6, 0x0000);
+    burst_piece_k(0xABF4, 0x0000, 0xFE5C, 0xFFF6, 0x0316);
+    burst_piece_k(0xAC10, 0x0000, 0x0258, 0xFFF6, 0x0212);
+    burst_piece_k(0xABF4, 0x0000, 0xFED9, 0xFFEC, 0x019F);
+    burst_piece_k(0xAC10, 0x0000, 0xFE5C, 0xFFFB, 0x0000);
+    burst_piece_k(0xAC10, 0x0000, 0xFEFC, 0xFFF6, 0xFDBC);
+}
+
+/* 09:DD68: a car's hit on a lap not counted yet (+$0A) counts it: lap 0, a
+   sweep with sound $36 on even clock ticks; lap 1, BreakablePairC; lap 2,
+   BreakablePairD; each pair with sound $53. */
+static void breakable_gate2_frame(void)
+{
+    uint8_t lap, v;
+
+    if (!hit())
+        return;
+    if (lap_eq(0x200A))
+        return;
+    lap_store(0x200A);
+    cpu.p |= P_M;
+    lap = ld8(db() | 0x0DEA);
+    cmp8(0x00);
+    if (lap == 0x00) {
+        cpu.p |= P_M;
+        v = ld8(db() | 0x0E63);
+        cpu.p = (uint8_t)((cpu.p & ~P_C) | ((v & 0x08) ? P_C : 0));
+        lda8((uint8_t)((v >> 4) & 0x01));
+        if ((uint8_t)cpu.a)
+            return;
+        or8(0x000DA5, 0x10);
+        sound0(0x36);
+        return;
+    }
+    cmp8(0x01);
+    if (lap == 0x01) {
+        abi_BreakablePairC();
+        sound0(0x53);
+        return;
+    }
+    cmp8(0x02);
+    if (lap != 0x02)
+        return;
+    abi_BreakablePairD();
+    sound0(0x53);
+}
+
+/*
+ * @routine 09:DD1E ObjectBreakableGate2
+ * WHAT IT DOES: Sets up the second breakable gate: restart $09:DD41
+ * (ObjectBreakableGate2Record), frame $09:DD68 (ObjectBreakableGate2Step),
+ * +$0A = 4; its record and frame.
+ * HOW: Word and byte stores. Reached only by unit_objects_09d.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectBreakableGate2(void)
+{
+    handlers2(0xDD41, 0xDD68);
+    st8i(F(0x200A, cpu.x), 0x04);
+    gate42d(0x0780);
+    breakable_gate2_frame();
+}
+
+/*
+ * @routine 09:DD41 ObjectBreakableGate2Record
+ * WHAT IT DOES: The gate's restart: its record ($42D, flag bit 4, at
+ * ($780, $780, $780)), then its frame.
+ * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition. Reached only
+ * by unit_objects_09d.
+ * Entry: as ObjectBreakableGate2. Exit: as ObjectBreakableGate2.
+ */
+void abi_ObjectBreakableGate2Record(void)
+{
+    gate42d(0x0780);
+    breakable_gate2_frame();
+}
+
+/*
+ * @routine 09:DD68 ObjectBreakableGate2Step
+ * WHAT IT DOES: The gate's frame: a car's hit on a lap ($0DEA) it has not
+ * counted (+$0A) counts it: on lap 0 a sweep ($0DA5 bit 4) with sound $36
+ * when bit 4 of the clock fraction $0E63 is clear; on laps 1 and 2 two
+ * breakables (BreakablePairC, BreakablePairD) with sound $53.
+ * HOW: ObjectSyncFromRecord, RecordContactSummary; the laps through $1F58;
+ * $0DA5 by long accesses. Reached only by unit_objects_09d.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectBreakableGate2Step(void)
+{
+    breakable_gate2_frame();
+}
+
+/* 09:E018: the two-player gate's frame: with contacts, the summary's bit 0
+   (player 1) the first time (+$25 bit 0) plays sound $5A for player 0
+   ($1A5D = 0), its bit 1 the first time (+$25 bit 1) for player 1; each
+   bit cleared when its contact is gone; no contacts clears both. */
+static void duo_frame(void)
+{
+    if (!synced()) {
+        and8(F(0x2025, cpu.x), 0xFE);
+        and8(F(0x2025, cpu.x), 0xFD);
+        return;
+    }
+    abi_RecordContactSummary();
+    lda8((uint8_t)(cpu.a & 0x01));
+    if (!(uint8_t)cpu.a) {
+        and8(F(0x2025, cpu.x), 0xFE);
+    } else if (!bit25(0x01)) {
+        or8(F(0x2025, cpu.x), 0x01);
+        cpu.p |= P_M;
+        st8i(db() | 0x1A5D, 0x00);
+        sound0(0x5A);
+    }
+    abi_RecordContactSummary();
+    lda8((uint8_t)(cpu.a & 0x02));
+    if (!(uint8_t)cpu.a) {
+        and8(F(0x2025, cpu.x), 0xFD);
+        return;
+    }
+    if (bit25(0x02))
+        return;
+    or8(F(0x2025, cpu.x), 0x02);
+    cpu.p |= P_M;
+    st8i(db() | 0x1A5D, 0x01);
+    sound0(0x5A);
+}
+
+/* 09:E00A: a gate's record ($424, +$0A $90E8) with flag bit 4 and +$2A
+   high h. */
+static void record424alt(uint8_t h)
+{
+    abi_GsuRecordNew424Alt();
+    abi_GsuRecordFlag10();
+    lda8(h);
+    abi_GsuRecordSet2AHigh();
+}
+
+/*
+ * @routine 09:DFEC ObjectDuoGate
+ * WHAT IT DOES: Sets up the two-player gate: restart $09:E00A
+ * (ObjectDuoGateRecord), frame $09:E018 (ObjectDuoGateStep); its record
+ * and frame.
+ * HOW: Word and byte stores.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectDuoGate(void)
+{
+    handlers2(0xE00A, 0xE018);
+    record424alt(0x14);
+    duo_frame();
+}
+
+/*
+ * @routine 09:E00A ObjectDuoGateRecord
+ * WHAT IT DOES: The gate's restart: its record (GsuRecordNew424Alt, flag
+ * bit 4, +$2A high $14), then its frame.
+ * HOW: GsuRecordNew424Alt, GsuRecordFlag10, GsuRecordSet2AHigh.
+ * Entry: as ObjectDuoGate. Exit: as ObjectDuoGate.
+ */
+void abi_ObjectDuoGateRecord(void)
+{
+    record424alt(0x14);
+    duo_frame();
+}
+
+/*
+ * @routine 09:E018 ObjectDuoGateStep
+ * WHAT IT DOES: The two-player gate's frame: with contacts, the contact
+ * summary's bit 0, the first time (+$25 bit 0), plays sound $5A for player
+ * 0 ($1A5D = 0) and its bit 1, the first time (+$25 bit 1), for player 1;
+ * a bit whose contact is gone is cleared, and both with no contacts.
+ * HOW: ObjectSyncFromRecord, RecordContactSummary twice.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectDuoGateStep(void)
+{
+    duo_frame();
+}
+
+/* 09:E0C8: a car's hit, the first time (+$25 bit 0), bursts the gate
+   (ObjectBreakableBurst2) with sound $5A; no hit clears the bit. */
+static void burst_gate_frame(void)
+{
+    if (!hit()) {
+        and8(F(0x2025, cpu.x), 0xFE);
+        return;
+    }
+    if (bit25(0x01))
+        return;
+    or8(F(0x2025, cpu.x), 0x01);
+    abi_ObjectBreakableBurst2();
+    sound0(0x5A);
+}
+
+/*
+ * @routine 09:E097 ObjectBurstGate
+ * WHAT IT DOES: Sets up a burst gate: restart $09:E0BA
+ * (ObjectBurstGateRecord), frame $09:E0C8 (ObjectBurstGateStep), +$14 =
+ * direct page $80; its record and frame.
+ * HOW: Word and byte stores.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectBurstGate(void)
+{
+    handlers2(0xE0BA, 0xE0C8);
+    ld8(dp(0x80));
+    wr8(F(0x2014, cpu.x), (uint8_t)cpu.a);
+    record424alt(0x14);
+    burst_gate_frame();
+}
+
+/*
+ * @routine 09:E0BA ObjectBurstGateRecord
+ * WHAT IT DOES: The gate's restart: its record (GsuRecordNew424Alt, flag
+ * bit 4, +$2A high $14), then its frame.
+ * HOW: GsuRecordNew424Alt, GsuRecordFlag10, GsuRecordSet2AHigh.
+ * Entry: as ObjectBurstGate. Exit: as ObjectBurstGate.
+ */
+void abi_ObjectBurstGateRecord(void)
+{
+    record424alt(0x14);
+    burst_gate_frame();
+}
+
+/*
+ * @routine 09:E0C8 ObjectBurstGateStep
+ * WHAT IT DOES: The burst gate's frame: a car's hit, the first time (+$25
+ * bit 0), bursts it into eight pieces (ObjectBreakableBurst2) with sound
+ * $5A; no hit clears the bit.
+ * HOW: ObjectSyncFromRecord, RecordContactSummary.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectBurstGateStep(void)
+{
+    burst_gate_frame();
+}
+
+/*
+ * @routine 09:E0FF ObjectLampPost
+ * WHAT IT DOES: Sets up a lamp post: $8C higher, lit by $9971 (+$24 bit 3,
+ * +$3A = 0, +$5F = $64), frame $09:E185 (ObjectLampPostLight), and its lamp
+ * (kind $A0E8, lit by $9973) $26C above it; no lamp without a free object.
+ * HOW: ObjectSpawn, ObjectCopyPositionTo; the lamp rebucketed with X and
+ * Y swapped (PHX, TYX, PLY) around ObjectRebucket. Reached only by
+ * unit_objects_09d.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the last swap
+ * or ObjectSpawn leaves it.
+ */
+void abi_ObjectLampPost(void)
+{
+    add16(F(0x200E, cpu.x), 0xFF74);
+    st16i(F(0x205D, cpu.x), 0x9971);
+    lamp(cpu.x, 0x64);
+    handler(cpu.x, 0xE185);
+    if (!spawn(0xA0E8))
+        return;
+    lamp(cpu.y, 0x64);
+    st16i(F(0x205D, cpu.y), 0x9973);
+    abi_ObjectCopyPositionTo();
+    add16(F(0x200E, cpu.y), 0xFD94);
+    swap_xy();
+    abi_ObjectRebucket();
+    swap_xy();
+}
+
+/*
+ * @routine 09:E1FF LampPostBurst
+ * WHAT IT DOES: Bursts a lamp post into four pieces (kind $ABF4, handler
+ * ObjectBreakablePiece, life $0F) at heights -$5A, -$A0, -$5A and -$B4,
+ * flying out at ($23, -2, $0A), (-$1E, -1, $0F), ($1E, -2, -$0D) and
+ * (-$23, -1, -$0A).
+ * HOW: Four ObjectSpawn blocks from object X's position. Reached only by
+ * unit_objects_09d.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the last piece
+ * leaves it.
+ */
+void abi_LampPostBurst(void)
+{
+    burst_piece_k(0xABF4, 0xFFA6, 0x0023, 0xFFFE, 0x000A);
+    burst_piece_k(0xABF4, 0xFF60, 0xFFE2, 0xFFFF, 0x000F);
+    burst_piece_k(0xABF4, 0xFFA6, 0x001E, 0xFFFE, 0xFFF3);
+    burst_piece_k(0xABF4, 0xFF4C, 0xFFDD, 0xFFFF, 0xFFF6);
+}
+
+/*
+ * @routine 09:E1CE LampPostHit
+ * WHAT IT DOES: A car hits the lamp post: the first time ever (+$25 bit 2)
+ * it bursts (LampPostBurst); the first time of this contact (+$25 bit 0)
+ * sound $58.
+ * HOW: Bit tests and ORs on +$25. Reached only by unit_objects_09d.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the last step
+ * leaves it.
+ */
+void abi_LampPostHit(void)
+{
+    if (!bit25(0x04)) {
+        or8(F(0x2025, cpu.x), 0x04);
+        abi_LampPostBurst();
+    }
+    if (bit25(0x01))
+        return;
+    or8(F(0x2025, cpu.x), 0x01);
+    sound0(0x58);
+}
+
+/* 09:E1B1: a car's hit, LampPostHit; no hit clears +$25 bit 0. */
+static void lamp_post_frame(void)
+{
+    if (hit()) {
+        abi_LampPostHit();
+        return;
+    }
+    and8(F(0x2025, cpu.x), 0xFE);
+}
+
+/*
+ * @routine 09:E185 ObjectLampPostLight
+ * WHAT IT DOES: The lamp post's first frame: restart $09:E1A3
+ * (ObjectLampPostRecord), frame $09:E1B1 (ObjectLampPostStep); its record
+ * and frame.
+ * HOW: Word and byte stores. Reached only by unit_objects_09d.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectLampPostLight(void)
+{
+    handlers2(0xE1A3, 0xE1B1);
+    record424alt(0x08);
+    lamp_post_frame();
+}
+
+/*
+ * @routine 09:E1A3 ObjectLampPostRecord
+ * WHAT IT DOES: The lamp post's restart: its record (GsuRecordNew424Alt,
+ * flag bit 4, +$2A high 8), then its frame.
+ * HOW: GsuRecordNew424Alt, GsuRecordFlag10, GsuRecordSet2AHigh. Reached
+ * only by unit_objects_09d.
+ * Entry: as ObjectLampPostLight. Exit: as ObjectLampPostLight.
+ */
+void abi_ObjectLampPostRecord(void)
+{
+    record424alt(0x08);
+    lamp_post_frame();
+}
+
+/*
+ * @routine 09:E1B1 ObjectLampPostStep
+ * WHAT IT DOES: The lamp post's frame: a car's hit runs LampPostHit (burst
+ * the first time, sound $58 each new contact); no hit clears +$25 bit 0.
+ * HOW: ObjectSyncFromRecord, RecordContactSummary; JSR LampPostHit.
+ * Reached only by unit_objects_09d.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectLampPostStep(void)
+{
+    lamp_post_frame();
+}
+
+/* 09:E391: while +$48 counts down, the bump grows (+$15 by 6); a car's hit,
+   the first time (+$25 bit 0), sound $59 and +$48 = 6; no hit clears the
+   bit. */
+static void bump_post_frame(void)
+{
+    if (ld8(F(0x2048, cpu.x))) {
+        add8(F(0x2015, cpu.x), 0x06);
+        add8(F(0x2048, cpu.x), 0xFF);
+    }
+    if (!hit()) {
+        and8(F(0x2025, cpu.x), 0xFE);
+        return;
+    }
+    if (bit25(0x01))
+        return;
+    or8(F(0x2025, cpu.x), 0x01);
+    sound0(0x59);
+    st8i(F(0x2048, cpu.x), 0x06);
+}
+
+/* 09:E383: the bump post's record ($424) with flag bit 4 and +$2A high 1. */
+static void bump_post_record(void)
+{
+    abi_GsuRecordNew424();
+    abi_GsuRecordFlag10();
+    lda8(0x01);
+    abi_GsuRecordSet2AHigh();
+}
+
+/*
+ * @routine 09:E360 ObjectBumpPost
+ * WHAT IT DOES: Sets up a bump post: restart $09:E383 (ObjectBumpPostRecord),
+ * frame $09:E391 (ObjectBumpPostStep), +$48 = 0; its record and frame.
+ * HOW: Word and byte stores.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectBumpPost(void)
+{
+    handlers2(0xE383, 0xE391);
+    st8i(F(0x2048, cpu.x), 0x00);
+    bump_post_record();
+    bump_post_frame();
+}
+
+/*
+ * @routine 09:E383 ObjectBumpPostRecord
+ * WHAT IT DOES: The bump post's restart: its record ($424, flag bit 4,
+ * +$2A high 1), then its frame.
+ * HOW: GsuRecordNew424, GsuRecordFlag10, GsuRecordSet2AHigh.
+ * Entry: as ObjectBumpPost. Exit: as ObjectBumpPost.
+ */
+void abi_ObjectBumpPostRecord(void)
+{
+    bump_post_record();
+    bump_post_frame();
+}
+
+/*
+ * @routine 09:E391 ObjectBumpPostStep
+ * WHAT IT DOES: The bump post's frame: while +$48 counts down it bulges
+ * (+$15 by 6); a car's hit, the first time (+$25 bit 0), plays sound $59
+ * and sets +$48 = 6; no hit clears the bit.
+ * HOW: ADCs; ObjectSyncFromRecord, RecordContactSummary.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectBumpPostStep(void)
+{
+    bump_post_frame();
+}
