@@ -1621,3 +1621,14 @@ includeonce
 !results_split_tile = $0427
 !results_split2_y = $0526         ; and sprites 108-110 (Y)
 !results_split2_tile = $0527
+
+; Super FX polygon pipeline (render/polygon.asm)
+!fx_vertex_count = $700040        ; vertices in the polygon
+!fx_poly_out = $70005A            ; where the projected vertices go
+!fx_list_in = $700060             ; the vertex list being read ($0688 or $082A)
+!fx_list_out = $700062            ; the vertex list being written
+!fx_vertex_count_save = $700098
+!fx_point_count = $700146         ; points to gather; FxPolygonProject leaves the count
+!fx_outcodes = $70014A            ; outcodes ORed; the edges to clip against
+!fx_rom_r14 = $70001A             ; R14 kept while the ROM bank is $14
+!fx_rom_bank = $70001C            ; the ROM bank to go back to

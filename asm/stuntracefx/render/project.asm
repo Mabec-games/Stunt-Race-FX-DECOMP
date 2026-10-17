@@ -453,10 +453,10 @@ FxProjectScaled:
 ; R14 and R3, R13, R9 reloaded from $0026-$002A; return by pulling R15.
 ; Entry: R1 = X, R2 = Y, R6 = the depth; R12 = the next index byte's
 ; address (near points only); R10 = stack; R11 = return address; the ROM
-; bank $14. Exit, far: R1, R2 = the screen position; R6 = the outcode, R0
+; bank $14. Exit: (far) R1, R2 = the screen position; R6 = the outcode, R0
 ; as above; R5 = the last edge read (when one was); R14 = the scale's
 ; address + 1; S and Z from the OR; OV and CY from the last SUB or ADD;
-; the last RAM address the last word loaded. Exit, near: as FxProjectPoint
+; the last RAM address the last word loaded. Exit (near): as FxProjectPoint
 ; with R12 = R14, R3, R13, R9 from $0026, $0028, $002A; S, Z from R10;
 ; the last RAM address R10. R14 and the ROM buffer move as on the Super
 ; FX.

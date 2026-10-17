@@ -39,9 +39,9 @@ FxPolygonNearClip:
     inc r10
     iwt r5,#$3E80
     iwt r4,#$C180
-    lms r12,($0040)
+    lms r12,(!fx_vertex_count-!gsu_ram)
     iwt r0,#$082A
-    lms r7,($0060)
+    lms r7,(!fx_list_in-!gsu_ram)
     sub r7
     beq .lC255
     nop
@@ -71,7 +71,7 @@ FxPolygonNearClip:
     bra .lC299
     nop
 .lC255:
-    lms r2,($0062)
+    lms r2,(!fx_list_out-!gsu_ram)
     move r13,r15
     ldw (r7)
     inc r7
@@ -121,13 +121,13 @@ FxPolygonNearClip:
     inc r2
     loop
     nop
-    lms r1,($0060)
-    lms r2,($0062)
-    sms ($0060),r2
-    sms ($0062),r1
+    lms r1,(!fx_list_in-!gsu_ram)
+    lms r2,(!fx_list_out-!gsu_ram)
+    sms (!fx_list_in-!gsu_ram),r2
+    sms (!fx_list_out-!gsu_ram),r1
 .lC299:
-    lms r0,($0040)
-    sms ($0098),r0
+    lms r0,(!fx_vertex_count-!gsu_ram)
+    sms (!fx_vertex_count_save-!gsu_ram),r0
     from r5
     add r5
     add r5
@@ -149,10 +149,10 @@ FxPolygonNearClip:
     link #4
     iwt r15,#FxPolygonClipNear
     nop
-    lms r1,($0060)
-    lms r2,($0062)
-    sms ($0060),r2
-    sms ($0062),r1
+    lms r1,(!fx_list_in-!gsu_ram)
+    lms r2,(!fx_list_out-!gsu_ram)
+    sms (!fx_list_in-!gsu_ram),r2
+    sms (!fx_list_out-!gsu_ram),r1
     dec r10
     dec r10
     to r1
@@ -164,7 +164,7 @@ FxPolygonNearClip:
     stw (r10)
     inc r10
     inc r10
-    lms r2,($005A)
+    lms r2,(!fx_poly_out-!gsu_ram)
     with r2
     sub #8
     not
@@ -206,13 +206,13 @@ FxPolygonNearClip:
     stw (r8)
     inc r8
     inc r8
-    sms ($005A),r8
+    sms (!fx_poly_out-!gsu_ram),r8
     iwt r0,#$082A
-    sms ($0062),r0
+    sms (!fx_list_out-!gsu_ram),r0
     iwt r0,#$0688
-    sms ($0060),r0
-    lms r0,($0098)
-    sms ($0040),r0
+    sms (!fx_list_in-!gsu_ram),r0
+    lms r0,(!fx_vertex_count_save-!gsu_ram)
+    sms (!fx_vertex_count-!gsu_ram),r0
     dec r10
     dec r10
     ldw (r10)
@@ -224,12 +224,12 @@ FxPolygonNearClip:
     moves r0,r0
     beq .lC334
     nop
-    lms r1,($0060)
-    lms r2,($0062)
-    sms ($0060),r2
-    sms ($0062),r1
+    lms r1,(!fx_list_in-!gsu_ram)
+    lms r2,(!fx_list_out-!gsu_ram)
+    sms (!fx_list_in-!gsu_ram),r2
+    sms (!fx_list_out-!gsu_ram),r1
 .lC331:
-    lms r0,($0040)
+    lms r0,(!fx_vertex_count-!gsu_ram)
 .lC334:
     dec r10
     dec r10
@@ -260,26 +260,26 @@ FxPolygonDraw:
     stw (r10)
     inc r10
     inc r10
-    sms ($014A),r5
-    lms r9,($0146)
-    sms ($0040),r9
+    sms (!fx_outcodes-!gsu_ram),r5
+    lms r9,(!fx_point_count-!gsu_ram)
+    sms (!fx_vertex_count-!gsu_ram),r9
     with r14
     sub r9
     link #4
     iwt r15,#FxPointsGather
     nop
     iwt r0,#$082A
-    sms ($0060),r0
+    sms (!fx_list_in-!gsu_ram),r0
     iwt r0,#$0688
-    sms ($0062),r0
-    lms r5,($014A)
+    sms (!fx_list_out-!gsu_ram),r0
+    lms r5,(!fx_outcodes-!gsu_ram)
     ibt r1,#$10
     with r1
     and r5
     beq .lC368
     nop
     ibt r5,#$0F
-    sms ($014A),r5
+    sms (!fx_outcodes-!gsu_ram),r5
 .lC368:
     from r5
     to r1
@@ -289,17 +289,17 @@ FxPolygonDraw:
     link #4
     iwt r15,#FxPolygonClipTop
     nop
-    lms r1,($0060)
-    lms r2,($0062)
-    sms ($0060),r2
-    sms ($0062),r1
+    lms r1,(!fx_list_in-!gsu_ram)
+    lms r2,(!fx_list_out-!gsu_ram)
+    sms (!fx_list_in-!gsu_ram),r2
+    sms (!fx_list_out-!gsu_ram),r1
     moves r0,r0
     bne .lC389
     nop
     iwt r15,#.lC409
     nop
 .lC389:
-    lms r5,($014A)
+    lms r5,(!fx_outcodes-!gsu_ram)
 .lC38C:
     from r5
     to r1
@@ -309,17 +309,17 @@ FxPolygonDraw:
     link #4
     iwt r15,#FxPolygonClipBottom
     nop
-    lms r1,($0060)
-    lms r2,($0062)
-    sms ($0060),r2
-    sms ($0062),r1
+    lms r1,(!fx_list_in-!gsu_ram)
+    lms r2,(!fx_list_out-!gsu_ram)
+    sms (!fx_list_in-!gsu_ram),r2
+    sms (!fx_list_out-!gsu_ram),r1
     moves r0,r0
     bne .lC3AD
     nop
     iwt r15,#.lC409
     nop
 .lC3AD:
-    lms r5,($014A)
+    lms r5,(!fx_outcodes-!gsu_ram)
 .lC3B0:
     from r5
     to r1
@@ -329,17 +329,17 @@ FxPolygonDraw:
     link #4
     iwt r15,#FxPolygonClipRight
     nop
-    lms r1,($0060)
-    lms r2,($0062)
-    sms ($0060),r2
-    sms ($0062),r1
+    lms r1,(!fx_list_in-!gsu_ram)
+    lms r2,(!fx_list_out-!gsu_ram)
+    sms (!fx_list_in-!gsu_ram),r2
+    sms (!fx_list_out-!gsu_ram),r1
     moves r0,r0
     bne .lC3D1
     nop
     iwt r15,#.lC409
     nop
 .lC3D1:
-    lms r5,($014A)
+    lms r5,(!fx_outcodes-!gsu_ram)
 .lC3D4:
     from r5
     to r1
@@ -349,10 +349,10 @@ FxPolygonDraw:
     link #4
     iwt r15,#FxPolygonClipLeft
     nop
-    lms r1,($0060)
-    lms r2,($0062)
-    sms ($0060),r2
-    sms ($0062),r1
+    lms r1,(!fx_list_in-!gsu_ram)
+    lms r2,(!fx_list_out-!gsu_ram)
+    sms (!fx_list_in-!gsu_ram),r2
+    sms (!fx_list_out-!gsu_ram),r1
     moves r0,r0
     bne .lC3F5
     nop
@@ -375,7 +375,7 @@ FxPolygonDraw:
     nop
 .lC409:
     sub r0
-    sms ($0040),r0
+    sms (!fx_vertex_count-!gsu_ram),r0
     dec r10
     dec r10
     to r15
@@ -408,17 +408,17 @@ FxPolygonProject:
     inc r10
     inc r10
     cache
-    lms r3,($0026)
-    lms r13,($0028)
-    lms r9,($002A)
+    lms r3,(!gsu_out_26-!gsu_ram)
+    lms r13,(!gsu_out_28-!gsu_ram)
+    lms r9,(!gsu_out_2a-!gsu_ram)
     ibt r0,#$14
     romb
     sub r0
-    sms ($014A),r0
-    sms ($001A),r14
-    lms r12,($0040)
-    lms r7,($0060)
-    lms r8,($005A)
+    sms (!fx_outcodes-!gsu_ram),r0
+    sms (!fx_rom_r14-!gsu_ram),r14
+    lms r12,(!fx_vertex_count-!gsu_ram)
+    lms r7,(!fx_list_in-!gsu_ram)
+    lms r8,(!fx_poly_out-!gsu_ram)
 .lC434:
     to r1
     ldw (r7)
@@ -443,20 +443,20 @@ FxPolygonProject:
     lsr
     bcc .lC453
     lsr
-    lms r2,($003C)
+    lms r2,(!gsu_in_3c-!gsu_ram)
 .lC453:
     bcc .lC459
     lsr
-    lms r2,($003E)
+    lms r2,(!gsu_in_3e-!gsu_ram)
 .lC459:
     bcc .lC461
     lsr
-    lms r1,($0038)
+    lms r1,(!gsu_in_38-!gsu_ram)
     ibt r1,#$00
 .lC461:
     bcc .lC467
     nop
-    lms r1,($003A)
+    lms r1,(!gsu_in_3a-!gsu_ram)
 .lC467:
     dec r10
     dec r10
@@ -489,18 +489,18 @@ FxPolygonProject:
     stw (r8)
     inc r8
     inc r8
-    lms r6,($014A)
+    lms r6,(!fx_outcodes-!gsu_ram)
     or r6
     dec r12
     bne .lC434
     sbk
-    lms r0,($001C)
+    lms r0,(!fx_rom_bank-!gsu_ram)
     romb
-    lms r14,($001A)
+    lms r14,(!fx_rom_r14-!gsu_ram)
     sub r0
-    sms ($014A),r0
-    lms r0,($0040)
-    sms ($0146),r0
+    sms (!fx_outcodes-!gsu_ram),r0
+    lms r0,(!fx_vertex_count-!gsu_ram)
+    sms (!fx_point_count-!gsu_ram),r0
     dec r10
     dec r10
     to r15
