@@ -69,7 +69,7 @@ wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
 set 7E08ED 01
 set 7E0342 00,FC
-set 7E08E8 02,8C
+set 7E08E8 C2,8C
 call 02:D95B p=00 db=00 d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state

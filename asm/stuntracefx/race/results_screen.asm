@@ -671,7 +671,7 @@ TimedRecordsDraw:
 
 ; @routine 07:CB7C ResultsPanelF38E
 ; WHAT IT DOES: Draws the panel of picture $F38E (X $1C); the next step.
-; HOW: As ResultsPanelFAB5. Reached only by unit_results_screen.
+; HOW: As ResultsPanelFAB5. Reached only by unit_results_screen and unit_entries_07.
 ; Entry: D = $0000. Exit: M 8-bit, X 16-bit.
 %at($07CB7C)
 ResultsPanelF38E:
@@ -763,7 +763,7 @@ TimedRecordsChoice:
 ; @routine 07:CC11 ResultsPanelFB99
 ; WHAT IT DOES: $0D23, the menu choice $0DD4 and the palette phase $0DD5
 ; cleared; the panel of picture $FB99; the next step, $0D23 = 2.
-; HOW: As ResultsPanelFAB5. Reached only by unit_results_screen.
+; HOW: As ResultsPanelFAB5. Reached only by unit_results_screen and unit_entries_07.
 ; Entry: D = $0000. Exit: M 8-bit, X 16-bit.
 %at($07CC11)
 ResultsPanelFB99:

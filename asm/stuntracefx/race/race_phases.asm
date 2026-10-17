@@ -1425,7 +1425,7 @@ PhaseGlyphsFourB:
 
 ; @routine 07:EB49 PauseResultsFourB
 ; WHAT IT DOES: The paused results (see PauseResults), drawing with GsuF15BFourB.
-; HOW: JSR, then PauseResults' code. Reached only by unit_race_phases.
+; HOW: JSR, then PauseResults' code. Reached only by unit_race_phases and unit_entries_07.
 ; Entry: D = $0000. Exit: as the path leaves it.
 %at($07EB49)
 PauseResultsFourB:
@@ -1483,7 +1483,7 @@ PauseResults:
 
 ; @routine 07:EBA0 PhaseGlyphsFourA
 ; WHAT IT DOES: Draws with GsuF15BFourA: a phase's whole work.
-; HOW: JSR, RTS. Reached only by unit_race_phases.
+; HOW: JSR, RTS. Reached only by unit_race_phases and unit_entries_07.
 ; Entry: D = $0000. Exit: as GsuF15BFourA leaves it.
 %at($07EBA0)
 PhaseGlyphsFourA:

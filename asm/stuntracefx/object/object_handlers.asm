@@ -2501,11 +2501,11 @@ ObjectCarAttachedStart:
 ; WHAT IT DOES: A car carried on another: rebucketed, posed from its
 ; record (ObjectPoseFromRecord) and its record marked (GsuRecordFlag4, the
 ; code at $08:CD7E).
-; HOW: Three calls. Not reached in the traces so far.
+; HOW: Three calls. Reached only by unit_entries_08.
 ; Entry: M 8-bit, X 16-bit; X = object. Exit: as GsuRecordFlag4.
 %at($08E1C7)
 ObjectCarAttachedStep:
-    jsl.l ObjectRebucket            ; not reached in the traces so far
+    jsl.l ObjectRebucket
     jsl.l ObjectPoseFromRecord
     jmp.w ObjectCarCD7E
 
@@ -3765,11 +3765,11 @@ ObjectLampDrop:
 ; @routine 08:E712 ObjectLampDropBStart
 ; WHAT IT DOES: A lamp starts bouncing: handler $08:E72C
 ; (ObjectLampDropB), +$49 = 0, +$25 bit 0; then its first frame.
-; HOW: Falls into ObjectLampDropB. Not reached in the traces so far.
+; HOW: Falls into ObjectLampDropB. Reached only by unit_entries_08.
 ; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectLampDropB.
 %at($08E712)
 ObjectLampDropBStart:
-    rep.b #$20                      ; not reached in the traces so far
+    rep.b #$20
     lda.w #$E72C
     sta.w !obj_1a_w,x
     sep.b #$20
@@ -3785,12 +3785,12 @@ ObjectLampDropBStart:
 ; (ObjectCountStep5F with $1F58 = 3, $1F59 = 6, $1F5A = $0A); when done,
 ; +$49 = 0, handler $08:E61C (ObjectLampWait) and +$25 bit 0 cleared;
 ; placed on its parent either way.
-; HOW: Ends in the placement at $08:E682. Not reached in the traces so
-; far.
+; HOW: Ends in the placement at $08:E682. Reached only by
+; unit_entries_08.
 ; Entry: M 8-bit, X 16-bit; X = object. Exit: as the placement leaves it.
 %at($08E72C)
 ObjectLampDropB:
-    lda.b #$03                      ; not reached in the traces so far
+    lda.b #$03
     sta.w !wram_1F58
     lda.b #$06
     sta.w !wram_1F59
@@ -4890,11 +4890,11 @@ CameraNearestCar:
 ; WHAT IT DOES: The replay camera on the next entry of the course's camera
 ; table at its place, $C8 up; handler $08:8D2D (CameraDirectorTrack), mode
 ; 3, still; then tracking.
-; HOW: GsuTableEntryNext once. Not reached in the traces so far.
+; HOW: GsuTableEntryNext once. Reached only by unit_entries_08.
 ; Entry: M 8-bit, X 16-bit; X = object. Exit: as CameraDirectorTrack.
 %at($088B5B)
 CameraDirectorNext:
-    rep.b #$20                      ; not reached in the traces so far
+    rep.b #$20
     lda.w #$8D2D
     sta.w !obj_1a_w,x
     sep.b #$20

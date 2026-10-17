@@ -1,0 +1,101 @@
+# unit_entries_07: the bank $07 handlers a play enters only by their
+# dispatch tables (JMP (table,X)), so no call of their own reaches A5: each
+# called directly from a Novice race's state. The pause stages, with the
+# timer $0D5F mid-count; the results screen's steps and panels; the race
+# phase handlers (countdowns, ready, start timers, lap phases for each
+# player, glyph phases, the end window, the paused results, the empty
+# handlers). The five that leave the race (PauseStageQuitTaken,
+# SoftResetToBootWarm, RaceRestart, RaceEndVideoReset, RaceEndToAttract)
+# run as noreturn calls.
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:BC32 p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D5F 05
+call 07:BC3F p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D5F 05
+call 07:BC4C p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D5F 05
+call 07:BC64 p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D5F 05
+call 07:BCA0 p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D5F 05
+call 07:BCD0 p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:BD09 p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:BE52 p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:BE8F p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:BEC6 p=30 db=07 d=0000 noreturn frames=60
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:C8FA p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:C8FE p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:CAD5 p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:CB7C p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:CC11 p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:CC83 p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:CC9B p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:E284 p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:E285 p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:E292 p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:E2BD p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:E2CA p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:E2E4 p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0E55 20
+call 07:E376 p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0E55 40
+set 7E0D5A 00
+call 07:E3A3 p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:E404 p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:E562 p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:E56A p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:E972 p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:E976 p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:E9E1 p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:EA85 p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0E58 05
+call 07:EB10 p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0E58 05
+call 07:EB49 p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:EBA0 p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:EBDC p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:EBE9 p=30 db=07 d=0000 noreturn frames=60
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:EC6B p=30 db=07 d=0000 noreturn frames=60
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:EC80 p=30 db=07 d=0000 noreturn frames=60
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:EC8F p=30 db=07 d=0000 noreturn frames=60
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:ECF3 p=30 db=07 d=0000
