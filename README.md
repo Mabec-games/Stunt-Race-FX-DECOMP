@@ -92,7 +92,7 @@ have run and the 19,856 B the routine census (`tools/stuntracefx/census.py`) fin
 by following the code statically (calls, jumps, tables, handler pointers,
 Super FX calls, orphans) where no script has gone. The numerator is the code
 bytes inside routines whose C is certified behaviour exact (T3) or whose
-assembly is also byte exact (T4), for M1, and T4 only for M2. 24 routine(s)
+assembly is also byte exact (T4), for M1, and T4 only for M2. 25 routine(s)
 are in the tree but not yet certified (T2).
 
 **Why not routines.** A routine count keeps growing as the work goes on:
