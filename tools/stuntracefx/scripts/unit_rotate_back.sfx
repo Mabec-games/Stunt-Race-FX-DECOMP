@@ -1,0 +1,9 @@
+# unit_rotate_back: unit tests (fx) from the start of a Novice race:
+# FxMatrixRotateBackProgram kept (the machine not put back), so the next
+# program start runs the NOP after its STOP, then FxMatrixRotateBackProgram
+# again.
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700068 00,10,00,F0,00,08
+fx 01:8277 stop=80E3 keep
+fx 01:8277 stop=80E3
+wait 1
