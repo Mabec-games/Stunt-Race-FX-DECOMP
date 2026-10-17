@@ -283,9 +283,8 @@ void abi_DemoRunSecond(void)
 /*
  * @routine 03:865E DemoRunThird
  * WHAT IT DOES: Runs the third of the attract demos: $1A57 = $159, then the
- * shared demo run at $03:8683; the code after the call (more demos, at
- * $03:866A) has not been reached in the traces so far.
- * HOW: A JSL to the demo run, then on into $03:866A as original code.
+ * shared demo run at $03:8683, then two more (DemoRunThirdRest, $03:866A).
+ * HOW: A JSL to the demo run, then on into DemoRunThirdRest.
  * Entry: D = $0000. Exit: as the demo run leaves it.
  */
 void abi_DemoRunThird(void)
@@ -296,6 +295,29 @@ void abi_DemoRunThird(void)
     wr16((uint32_t)cpu.db << 16 | 0x1A57, 0x0159);
     call_routine(0x038683, 1);
     jump_routine(0x03866A);
+}
+
+/*
+ * @routine 03:866A DemoRunThirdRest
+ * WHAT IT DOES: DemoRunThird after its first demo returns: two more attract
+ * demos, $1A57 = $1FA and $287 (the last one waits for a button held,
+ * command $0B), each by the shared demo run at $03:8683, then the return
+ * to DemoRunThird's caller.
+ * HOW: REP #$30, LDA #offset, STA $1A57, JSL to the demo run, twice; RTL.
+ * Entry: D = $0000. Exit: as the second demo run leaves it.
+ */
+void abi_DemoRunThirdRest(void)
+{
+    op_rep(P_M | P_X);
+    cpu.a = 0x01FA;
+    cpu.p = nz16(cpu.p, cpu.a);
+    wr16((uint32_t)cpu.db << 16 | 0x1A57, 0x01FA);
+    call_routine(0x038683, 1);
+    op_rep(P_M | P_X);
+    cpu.a = 0x0287;
+    cpu.p = nz16(cpu.p, cpu.a);
+    wr16((uint32_t)cpu.db << 16 | 0x1A57, 0x0287);
+    call_routine(0x038683, 1);
 }
 
 /*

@@ -583,9 +583,8 @@ DemoRun:
 
 ; @routine 03:865E DemoRunThird
 ; WHAT IT DOES: Runs the third of the attract demos: $1A57 = $159, then the
-; shared demo run at $03:8683; the code after the call (more demos, at
-; $03:866A) has not been reached in the traces so far.
-; HOW: A JSL to the demo run, then on into $03:866A as original code.
+; shared demo run at $03:8683, then two more (DemoRunThirdRest, $03:866A).
+; HOW: A JSL to the demo run, then on into DemoRunThirdRest.
 ; Entry: D = $0000. Exit: as the demo run leaves it.
 %at($03865E)
 DemoRunThird:
@@ -593,6 +592,25 @@ DemoRunThird:
     lda.w #$0159
     sta.w !seq_stage+34
     jsl.l DemoRun
+
+; @routine 03:866A DemoRunThirdRest
+; WHAT IT DOES: DemoRunThird after its first demo returns: two more attract
+; demos, $1A57 = $1FA and $287 (the last one waits for a button held,
+; command $0B), each by the shared demo run at $03:8683, then the return
+; to DemoRunThird's caller.
+; HOW: REP #$30, LDA #offset, STA $1A57, JSL to the demo run, twice; RTL.
+; Entry: D = $0000. Exit: as the second demo run leaves it.
+%at($03866A)
+DemoRunThirdRest:
+    rep.b #$30
+    lda.w #$01FA
+    sta.w !seq_stage+34
+    jsl.l DemoRun
+    rep.b #$30
+    lda.w #$0287
+    sta.w !seq_stage+34
+    jsl.l DemoRun
+    rtl
 
 ; @routine 03:8CF2 WramFillZeroLong
 ; WHAT IT DOES: WramFillZero for callers in other banks: clears Y bytes of

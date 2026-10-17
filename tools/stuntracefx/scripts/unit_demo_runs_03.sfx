@@ -1,0 +1,13 @@
+# unit_demo_runs_03: unit calls (call) from the start of a Novice race of
+# the attract demo run (03:8683) on the two scripts the title's demo cycle
+# never runs, both reached only through DemoRunThird: $1A57 = $159 (its
+# commands 7 and 8, the window fade and its wait) and $287 (command $0B,
+# the wait for a button held, given B after its last frame wait at 735).
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1A57 59,01
+call 03:8683 long p=00 db=00 d=0000 frames=1500
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1A57 87,02
+call 03:8683 long p=00 db=00 d=0000 frames=1500 press=B@760 press=B@800 press=B@900
+wait 1
