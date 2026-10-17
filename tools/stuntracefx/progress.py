@@ -12,14 +12,23 @@ byte of the game, the ones the scripts ran and the ones the routine census
 (census.py) finds statically; the numerator is the code bytes inside
 certified routines (their executed bytes and the untraced paths between
 them). A routine count is no measure of the whole: every entry point filed
-or traced splits the code into more routines, while its bytes stay put. Do
-not edit the generated blocks by hand.
+or traced splits the code into more routines, while its bytes stay put.
+
+Each code byte takes the tier of the tagged routine whose filed span
+(t3.span_of: from its address through the filed bytes up to the next tag)
+holds it; a byte no filed span holds takes the tier of the catalog routine
+whose traced extent holds it. A catalog routine can run over several tagged
+ones (an entry no script calls has no catalog row of its own), so crediting
+its whole extent with the tier at its start would count the others' bytes
+at the wrong tier. Do not edit the generated blocks by hand.
 """
 import datetime, html, os, re, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(ROOT, 'tools', 'stuntracefx'))
+import build    # noqa: E402
 import catalog  # noqa: E402
+import codemap  # noqa: E402
 import census   # noqa: E402
 import t3       # noqa: E402
 
@@ -53,6 +62,17 @@ def classify():
     tags = tagged()
     image_ok = os.system('%s %s >/dev/null' % (sys.executable, os.path.join(ROOT, 'tools', 'stuntracefx', 'image.py'))) == 0
     assessed = {k: (name, tier) for k, name, tier, _ in t3.assess(['%06X' % a for a in sorted(tags)], image_ok)}
+    # The filed bytes as build.py claims them from the tree now (the build's
+    # claimed.txt can be older than the tree).
+    owned = set(build.claims(build.filed_sources(), os.path.getsize(build.BASEROM))) if build.filed_sources() else set()
+    others = t3.asm_tag_offsets()
+    have = {int(r['addr'], 16) for r in rows}
+    for a in sorted(tags):
+        if tags[a][1] and a not in have:
+            # A tagged routine no script has called: no catalog row, but its
+            # filed span holds code bytes.
+            o = codemap.rom_offset(a)
+            rows.append({'addr': '%06X' % a, 'offset': '%06X' % o, 'end': '%06X' % o, 'cpu': None, 'bytes': 0})
     for r in rows:
         a = int(r['addr'], 16)
         name, tier = assessed.get(r['addr'], ('', 'T1'))
@@ -61,6 +81,8 @@ def classify():
         path = (tags.get(a) or [None, None])[0] or (tags.get(a) or [None, None])[1]
         r['area'] = path.split('/')[2] if path else ''
         r['bytes'] = int(r['bytes'])
+        # Only an assembly-tagged routine has a filed span (as in t3.assess).
+        r['span'] = t3.filed_span(a, owned, others) if a in tags and tags[a][1] else []
     return rows, mp, image_ok
 
 
@@ -78,9 +100,10 @@ def fmt(n):
 
 
 def code_bytes(rows, c):
-    """Each catalog routine's code bytes (traced or found by the census, of
-    its own processor, from its start to its last traced byte) and the
-    game's code bytes per processor."""
+    """Each routine's code bytes (traced or found by the census, of its own
+    processor) and the game's code bytes per processor. A byte belongs to the
+    routine whose filed span holds it, else to the catalog routine whose
+    extent (its start to its last traced byte) holds it."""
     mp = c.mp
     gsu = bytearray(len(mp))
     for o in range(len(mp)):
@@ -88,9 +111,20 @@ def code_bytes(rows, c):
             gsu[o] = 2
         elif mp[o] & 0x03 or c.code[o]:
             gsu[o] = 1
+    owner = [None] * len(mp)
+    for i, r in enumerate(rows):
+        for o in range(int(r['offset'], 16), int(r['end'], 16)):
+            owner[o] = i
+    for i, r in enumerate(rows):
+        for o in r['span']:
+            owner[o] = i
+        if r['cpu'] is None:
+            r['cpu'] = 'gsu' if gsu[int(r['offset'], 16)] == 2 else 'cpu'
     for r in rows:
-        want = 2 if r['cpu'] == 'gsu' else 1
-        r['code'] = sum(1 for o in range(int(r['offset'], 16), int(r['end'], 16)) if gsu[o] == want)
+        r['code'] = 0
+    for o, i in enumerate(owner):
+        if i is not None and gsu[o] == (2 if rows[i]['cpu'] == 'gsu' else 1):
+            rows[i]['code'] += 1
     return {'cpu': gsu.count(1), 'gsu': gsu.count(2)}
 
 
