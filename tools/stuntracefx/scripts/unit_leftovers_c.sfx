@@ -3,7 +3,10 @@
 # Super FX record makers 08:CBFF and 08:CC31, the second copy of
 # RecordsUnpackCourseRunning, the BG1/BG2 scroll reset of bank $0B with
 # 16-bit and 8-bit index registers, and the timed object's set-up and step
-# on object 1 with its count +$4B at 0 and not.
+# on object 1 with its count +$4B at 0 and not; and the time bonus step
+# 07:917D (entered with P pushed, as the tally's steps are) on the time
+# bonus screen of a Stunt Trax run, four inputs after the rockfield cut 14,
+# where its pieces draw as the tally's do.
 load build/stuntracefx/states/novice_coupe_race1.state
 call 07:C484 p=20 db=7E d=0000
 wait 1
@@ -38,4 +41,11 @@ wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
 set 7E204C 05
 call 08:EC8B long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/stunt_rockfield_14.state
+hold B+RIGHT 14
+hold A 10
+press SELECT
+hold B 80
+call 07:917D php p=00 db=00 d=0000
 wait 1
