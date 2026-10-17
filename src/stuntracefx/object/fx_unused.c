@@ -1,7 +1,9 @@
 /*
  * fx_unused.c: Super FX code of bank 04 that nothing in the game calls or
  * starts: a checksum program over the object pools' RAM, an object-free
- * program and an object-new program.
+ * program, an object-new program, a matrix program and eight small
+ * routines (a turned push, a clamp, a record's aim, two scalings, a
+ * record step, a spare exit).
  *
  * The C was drafted instruction for instruction from the ROM bytes and is
  * kept so: every register, flag and RAM access as the code makes them,
@@ -183,4 +185,396 @@ void abi_FxObjectFreeProgram(void)
 void abi_FxObjectNewProgram(void)
 {
     fx_unused_run(0x8AD0, 0xFFFF);
+}
+
+void abi_FxHitAddUnit(void);
+void abi_FxMatrixFromAngles(void);
+
+/* The other uncalled pieces of bank 04 (04:93FA, 9820, 9C2C, A301, BCA5,
+   C19D, C3A2, CB7E) from address at until they jump to ret. */
+static void fx_unused2_run(uint16_t at, uint16_t ret)
+{
+    int t;
+    uint16_t nx;
+
+    (void)t;
+    (void)nx;
+    goto dispatch;
+l9820:
+    R[6] = gsu_ldw(0x00E4);
+    R[0] = gsu_fmult(R[1], R[6]);
+    R[5] = gsu_rol(R[0]);
+    R[6] = gsu_ldw(0x00EA);
+    R[0] = gsu_fmult(R[2], R[6]);
+    R[0] = gsu_rol(R[0]);
+    R[5] = gsu_add(R[5], R[0], 0);
+    R[6] = gsu_ldw(0x00F0);
+    R[0] = gsu_fmult(R[3], R[6]);
+    R[0] = gsu_rol(R[0]);
+    R[0] = gsu_add(R[0], R[5], 0);
+    gsu_stw(0x26F6, R[0]);
+    R[6] = gsu_ldw(0x00E6);
+    R[0] = gsu_fmult(R[1], R[6]);
+    R[5] = gsu_rol(R[0]);
+    R[6] = gsu_ldw(0x00EC);
+    R[0] = gsu_fmult(R[2], R[6]);
+    R[0] = gsu_rol(R[0]);
+    R[5] = gsu_add(R[5], R[0], 0);
+    R[6] = gsu_ldw(0x00F2);
+    R[0] = gsu_fmult(R[3], R[6]);
+    R[0] = gsu_rol(R[0]);
+    R[0] = gsu_add(R[0], R[5], 0);
+    gsu_stw(0x26F8, R[0]);
+    R[6] = gsu_ldw(0x00E8);
+    R[0] = gsu_fmult(R[1], R[6]);
+    R[5] = gsu_rol(R[0]);
+    R[6] = gsu_ldw(0x00EE);
+    R[0] = gsu_fmult(R[2], R[6]);
+    R[0] = gsu_rol(R[0]);
+    R[5] = gsu_add(R[5], R[0], 0);
+    R[6] = gsu_ldw(0x00F4);
+    R[0] = gsu_fmult(R[3], R[6]);
+    R[0] = gsu_rol(R[0]);
+    R[0] = gsu_add(R[0], R[5], 0);
+    gsu_stw(0x26FA, R[0]);
+    R[1] = gsu_ldw(0x26F6);
+    R[2] = gsu_ldw(0x26F8);
+    R[3] = gsu_ldw(0x26FA);
+    abi_FxHitAddUnit();           /* BRA into it: its return is ours */
+    return;
+lCB7E:
+    gsu_stw(R[10], R[11]);
+    R[10] = gsu_inc(R[10]);
+    R[10] = gsu_inc(R[10]);
+    gsu_stw(R[10], R[1]);
+    R[10] = gsu_inc(R[10]);
+    R[10] = gsu_inc(R[10]);
+    R[1] = 0x001E;
+    R[1] = gsu_add(R[1], R[8], 0);
+    R[1] = gsu_ldw(R[1]);
+    R[2] = 0x0020;
+    R[2] = gsu_add(R[2], R[8], 0);
+    R[2] = gsu_ldw(R[2]);
+    R[3] = 0x0022;
+    R[3] = gsu_add(R[3], R[8], 0);
+    R[3] = gsu_ldw(R[3]);
+    R[5] = R[5];
+    gsu_moves(R[5]);
+    t = gsu.z;
+    if (t) goto lCBDD;
+    R[1] = 0x0026;
+    R[1] = gsu_add(R[1], R[5], 0);
+    R[1] = gsu_ldw(R[1]);
+    R[1] = R[1];
+    gsu_moves(R[1]);
+    t = gsu.z;
+    if (t) goto lCBAA;
+    R[5] = R[1];
+lCBAA:
+    R[0] = 0x0058;
+    R[0] = gsu_add(R[0], R[8], 0);
+    gsu_stw(R[0], R[5]);
+    R[1] = R[0];
+    R[0] = 0x0024;
+    R[0] = gsu_add(R[0], R[8], 0);
+    R[0] = gsu_ldw(R[0]);
+    R[1] = gsu_sub(R[1], R[0], 0);
+    R[10] = gsu_dec(R[10]);
+    R[10] = gsu_dec(R[10]);
+    R[3] = gsu_ldw(R[10]);
+    R[2] = R[3];
+    R[2] = gsu_not(R[2]);
+    R[2] = gsu_inc(R[2]);
+    R[1] = R[1];
+    gsu_moves(R[1]);
+    t = gsu.s;
+    if (t) goto lCBD0;
+    gsu_sub(R[1], R[3], 0);   /* CMP */
+    t = gsu.s;
+    if (t) goto lCBD8;
+    R[1] = R[3];
+    t = 1;
+    if (t) goto lCBD8;
+lCBD0:
+    gsu_sub(R[1], R[2], 0);   /* CMP */
+    t = !gsu.s;
+    if (t) goto lCBD8;
+    R[1] = R[2];
+lCBD8:
+    R[10] = gsu_dec(R[10]);
+    R[10] = gsu_dec(R[10]);
+    nx = (uint16_t)(gsu_ldw(R[10]));
+    at = nx;
+    goto dispatch;
+lCBDD:
+    R[10] = gsu_dec(R[10]);
+    R[10] = gsu_dec(R[10]);
+    R[0] = gsu_ldw(R[10]);
+    R[1] = 0x0000;
+    R[10] = gsu_dec(R[10]);
+    R[10] = gsu_dec(R[10]);
+    nx = (uint16_t)(gsu_ldw(R[10]));
+    at = nx;
+    goto dispatch;
+lA301:
+    gsu_stw(R[10], R[11]);
+    R[10] = gsu_inc(R[10]);
+    R[10] = gsu_inc(R[10]);
+    R[1] = 0x0018;
+    R[1] = gsu_add(R[1], R[7], 0);
+    R[1] = gsu_ldw(R[1]);
+    R[1] = R[1];
+    gsu_moves(R[1]);
+    t = gsu.z;
+    if (t) goto lA328;
+    R[0] = 0x0004;
+    R[0] = gsu_add(R[0], R[1], 0);
+    R[0] = gsu_ldw(R[0]);
+    gsu_stw(0x0068, R[0]);
+    R[0] = 0x0006;
+    R[0] = gsu_add(R[0], R[1], 0);
+    R[0] = gsu_ldw(R[0]);
+    gsu_stw(0x002E, R[0]);
+    R[0] = gsu_sub(R[0], R[0], 0);
+    gsu_stw(0x002C, R[0]);
+    t = 1;
+    if (t) goto lA340;
+lA328:
+    R[0] = 0x002E;
+    R[0] = gsu_add(R[0], R[7], 0);
+    R[0] = gsu_ldw(R[0]);
+    gsu_stw(0x0068, R[0]);
+    R[0] = 0x0030;
+    R[0] = gsu_add(R[0], R[7], 0);
+    R[0] = gsu_ldw(R[0]);
+    gsu_stw(0x002C, R[0]);
+    R[0] = 0x0032;
+    R[0] = gsu_add(R[0], R[7], 0);
+    R[0] = gsu_ldw(R[0]);
+    gsu_stw(0x002E, R[0]);
+lA340:
+    R[10] = gsu_dec(R[10]);
+    R[10] = gsu_dec(R[10]);
+    nx = (uint16_t)(gsu_ldw(R[10]));
+    at = nx;
+    goto dispatch;
+l93FA:
+    R[1] = 0x0100;
+    R[0] = 0x0014;
+    gsu_romb(R[0]);
+    gsu_r14(0x896C);
+    R[0] = 0x0200;
+    R[0] = gsu_bic(R[0], 1);
+    gsu_r14(gsu_add(R[14], R[0], 0));
+    R[6] = gsu_getb();
+    gsu_r14(gsu_inc(R[14]));
+    R[6] = gsu_getbh(R[6]);
+    R[0] = gsu_fmult(R[1], R[6]);
+    R[0] = gsu_add(R[0], R[0], 0);
+    nx = (uint16_t)(R[11]);
+    at = nx;
+    goto dispatch;
+    R[10] = gsu_dec(R[10]);
+    R[10] = gsu_dec(R[10]);
+    nx = (uint16_t)(gsu_ldw(R[10]));
+    at = nx;
+    goto dispatch;
+lBCA5:
+    R[1] = 0x0100;
+    R[0] = gsu_sub(R[0], R[1], 0);
+    t = gsu.s;
+    if (t) goto lBCB7;
+    R[6] = 0x0080;
+    { uint32_t p = gsu_lmult(R[0], R[6]); R[4] = (uint16_t)p; R[0] = (uint16_t)(p >> 16); }
+    R[0] = gsu_swap(R[4]);
+    R[0] = gsu_lob(R[0]);
+    nx = (uint16_t)(R[11]);
+    at = nx;
+    goto dispatch;
+lBCB7:
+    nx = (uint16_t)(R[11]);
+    at = nx;
+    goto dispatch;
+lC3A2:
+    gsu_stw(R[10], R[11]);
+    R[10] = gsu_inc(R[10]);
+    R[10] = gsu_inc(R[10]);
+    R[11] = 0xC3AB;
+    abi_FxRecordSegment();
+lC3AB:
+    R[11] = 0xC3B0;
+    abi_FxCourseNextEntry();
+lC3B0:
+    R[10] = gsu_dec(R[10]);
+    R[10] = gsu_dec(R[10]);
+    nx = (uint16_t)(gsu_ldw(R[10]));
+    at = nx;
+    goto dispatch;
+l9C2C:
+    R[0] = 0x0001;
+    R[10] = gsu_dec(R[10]);
+    R[10] = gsu_dec(R[10]);
+    R[9] = gsu_ldw(R[10]);
+    R[10] = gsu_dec(R[10]);
+    R[10] = gsu_dec(R[10]);
+    R[8] = gsu_ldw(R[10]);
+    R[10] = gsu_dec(R[10]);
+    R[10] = gsu_dec(R[10]);
+    R[11] = gsu_ldw(R[10]);
+    nx = (uint16_t)(R[11]);
+    at = nx;
+    goto dispatch;
+lC19D:
+    R[9] = 0x00E4;
+    R[11] = 0xC1A5;
+    abi_FxMatrixFromAngles();
+lC1A5:
+    return;   /* the STOP: the program ends here */
+dispatch:
+    if (at == ret)
+        return;
+    switch (at) {
+    case 0x93FA: goto l93FA;
+    case 0x9820: goto l9820;
+    case 0x9C2C: goto l9C2C;
+    case 0xA301: goto lA301;
+    case 0xA328: goto lA328;
+    case 0xA340: goto lA340;
+    case 0xBCA5: goto lBCA5;
+    case 0xBCB7: goto lBCB7;
+    case 0xC19D: goto lC19D;
+    case 0xC1A5: goto lC1A5;
+    case 0xC3A2: goto lC3A2;
+    case 0xC3AB: goto lC3AB;
+    case 0xC3B0: goto lC3B0;
+    case 0xCB7E: goto lCB7E;
+    case 0xCBAA: goto lCBAA;
+    case 0xCBD0: goto lCBD0;
+    case 0xCBD8: goto lCBD8;
+    case 0xCBDD: goto lCBDD;
+    }
+    return;   /* not an address the code jumps to */
+}
+
+/*
+ * @routine 04:9820 FxHitAddRotated
+ * WHAT IT DOES: Turns the push (R1, R2, R3) by the current matrix at
+ * $00E4 (each result the sum of the three products with one column:
+ * $E4/$EA/$F0, $E6/$EC/$F2, $E8/$EE/$F4) into $26F6-$26FA, then
+ * adds it as FxHitAddUnit does. Nothing in the game calls it.
+ * HOW: FMULT, ROL for each product (1.15); the sums stored with SM and
+ * read back into R1-R3; BRA into FxHitAddUnit.
+ * Entry: R1-R3 = the push; R10 = stack; R11 = return address. Exit: as
+ * FxHitAddUnit.
+ */
+void abi_FxHitAddRotated(void)
+{
+    fx_unused2_run(0x9820, R[11]);
+}
+
+/*
+ * @routine 04:CB7E FxObjectSlideClamp
+ * WHAT IT DOES: For the object at R8 and the one at R5: none (R5 = 0)
+ * gives R1 = 0; otherwise R5 is replaced by the one at its +$26 when that
+ * is set, stored at R8's +$58, and R1 = (R8 + $58) - R8's +$24, kept
+ * within plus or minus R1 as it came in (pushed at the start, pulled into
+ * R3, its negative in R2). R8's position (+$1E/+$20/+$22) is loaded into
+ * R1-R3 first. Nothing in the game calls it.
+ * HOW: R11 and R1 on the R10 stack; signed compares (CMP, BMI); returns by
+ * pulling R15.
+ * Entry: R1 = the limit; R5, R8 = the objects; R10 = stack; R11 = return
+ * address. Exit: R1 as above; R0 = R8 + $58, or the limit with no R5.
+ */
+void abi_FxObjectSlideClamp(void)
+{
+    fx_unused2_run(0xCB7E, R[11]);
+}
+
+/*
+ * @routine 04:A301 FxRecordAimFromLink
+ * WHAT IT DOES: Sets the aim words $0068, $002C, $002E for the record at
+ * R7: from the record linked at its +$18 ($68 = its +$04, $2E = its +$06,
+ * $2C = 0) when there is one, else from the record's own +$2E, +$30 and
+ * +$32. Nothing in the game calls it.
+ * HOW: LDW from R7 + each field; R11 on the R10 stack; returns by pulling
+ * R15.
+ * Entry: R7 = the record; R10 = stack; R11 = return address. Exit: R0 the
+ * last word stored; R1 = the link.
+ */
+void abi_FxRecordAimFromLink(void)
+{
+    fx_unused2_run(0xA301, R[11]);
+}
+
+/*
+ * @routine 04:93FA FxScaleFromTable14
+ * WHAT IT DOES: R0 = 2 * FMULT($0100, the word at $14:896C + $0200):
+ * an entry of the bank $14 table at $896C halved, ROM bank $14 left set.
+ * Its last five bytes (a pull return after the JMP R11's delay slot) are
+ * never reached. Nothing in the game calls it.
+ * HOW: ROMB $14, R14 = the table + ($0200 BIC 1), GETB, GETBH, FMULT, ADD
+ * R0.
+ * Entry: R11 = return address. Exit: R0 as above; R1 = $0100; R6 = the
+ * table word; ROM bank $14; R14 and the ROM buffer move as on the Super
+ * FX.
+ */
+void abi_FxScaleFromTable14(void)
+{
+    fx_unused2_run(0x93FA, R[11]);
+}
+
+/*
+ * @routine 04:BCA5 FxAbove100Scaled
+ * WHAT IT DOES: When R0 is $0100 or more, R0 = the low byte of the middle
+ * bytes of (R0 - $0100) * $80 (that is ((R0 - $100) >> 1) & $FF); below
+ * $0100 R0 is left R0 - $0100. Nothing in the game calls it.
+ * HOW: SUB, BMI; LMULT by $80, SWAP of the low word, LOB.
+ * Entry: R0 = the value; R11 = return address. Exit: R0 as above; R1 =
+ * $0100; R4, R6 as the LMULT leaves them.
+ */
+void abi_FxAbove100Scaled(void)
+{
+    fx_unused2_run(0xBCA5, R[11]);
+}
+
+/*
+ * @routine 04:C3A2 FxRecordSegmentNext
+ * WHAT IT DOES: FxRecordSegment, then FxCourseNextEntry. Nothing in the
+ * game calls it.
+ * HOW: R11 on the R10 stack around the two LINK calls; returns by pulling
+ * R15.
+ * Entry: as FxRecordSegment; R10 = stack; R11 = return address. Exit: as
+ * FxCourseNextEntry.
+ */
+void abi_FxRecordSegmentNext(void)
+{
+    fx_unused2_run(0xC3A2, R[11]);
+}
+
+/*
+ * @routine 04:9C2C FxReturnOneRestore
+ * WHAT IT DOES: Returns R0 = 1 to the caller whose R11, R8 and R9 are
+ * pushed on the R10 stack: pulls R9, R8 and R11, then jumps to R11. A spare
+ * exit nothing reaches.
+ * HOW: IBT R0, three pulls, MOVE R15, R11.
+ * Entry: R10 = stack (R11, R8, R9 pushed in that order). Exit: R0 = 1;
+ * R8, R9, R11 as pulled; R10 six lower.
+ */
+void abi_FxReturnOneRestore(void)
+{
+    fx_unused2_run(0x9C2C, R[11]);
+}
+
+/*
+ * @routine 04:C19D FxMatrixFromAnglesProgram04
+ * WHAT IT DOES: A program: the rotation matrix for the angles into $00E4
+ * (FxMatrixFromAngles, R9 = $00E4), then STOP. Nothing in the game starts
+ * it.
+ * HOW: IWT R9, LINK, STOP.
+ * Entry: run as a program. Exit: (at the STOP) as FxMatrixFromAngles
+ * leaves the registers, R11 = $C1A5.
+ */
+void abi_FxMatrixFromAnglesProgram04(void)
+{
+    fx_unused2_run(0xC19D, 0xFFFF);
 }
