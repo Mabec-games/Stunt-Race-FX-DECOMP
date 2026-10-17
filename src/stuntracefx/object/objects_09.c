@@ -7617,3 +7617,262 @@ void abi_ObjectPuffFollow(void)
     cpu.p |= P_M;
     life_down();
 }
+
+/* ---- 09:B876-C071: the second shatter, shards, bonus markers ---- */
+
+void abi_HudCountUp19EC(void);
+
+/*
+ * @routine 09:B876 ObjectShatter2
+ * WHAT IT DOES: As ObjectShatter with the shard kinds $B134, $B150, $B16C,
+ * $B188, $B1A4 and $B1C0.
+ * HOW: As ObjectShatter; the untaken sign stores for the constant offsets
+ * (09:B8BC, B8CF, B9A3, B9B6, ...) never run: those bytes are dead.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the last
+ * shard leaves it.
+ */
+void abi_ObjectShatter2(void)
+{
+    shard(0xB134, 0xEE, 0xF3, 0xF0, 0xF0, 0xBA);
+    shard(0xB150, 0xEE, 0x0D, 0xF0, 0xE5, 0xD8);
+    shard(0xB16C, 0x00, 0x0C, 0xFC, 0x00, 0xEE);
+    shard(0xB188, 0x12, 0x0D, 0x10, 0x1B, 0xD8);
+    shard(0xB1A4, 0x12, 0xF3, 0x10, 0x10, 0xBA);
+    shard(0xB1C0, 0x00, 0x0C, 0x04, 0x00, 0x0F);
+}
+
+/*
+ * @routine 09:BDE1 ObjectShardStep
+ * WHAT IT DOES: A shard's frame: it flies by 4 times its spin vector (+$48,
+ * +$49 through $1F58/$1F59, direct page $00) turned by its angles +$14
+ * (RotateXZFrom08) and +$15 (RotateXZ), grows (+$15 by $12), and is
+ * released when its life +$0A runs out.
+ * HOW: Direct page $02/$08/$94 in, $04/$0A/$05F2 out; two ASLs; DEC;
+ * ObjectRebucket.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket
+ * leaves it.
+ */
+void abi_ObjectShardStep(void)
+{
+    uint8_t v;
+    int i;
+    static const uint8_t lo[2] = {0x04, 0x0A};
+
+    v = ld8(F(0x2048, cpu.x));
+    wr8(db() | 0x1F58, v);
+    v = ld8(F(0x2049, cpu.x));
+    wr8(db() | 0x1F59, v);
+    axis_from(db() | 0x1F58, dp(0x02), dp(0x04), dp(0x05));
+    axis_from(db() | 0x1F59, dp(0x08), dp(0x0A), dp(0x0B));
+    axis_from(dp(0x00), dp(0x94), db() | 0x05F2, db() | 0x05F3);
+    ld8(F(0x2014, cpu.x));
+    abi_RotateXZFrom08();
+    orbit_again();
+    ld8(F(0x2015, cpu.x));
+    abi_RotateXZ();
+    cpu.p &= (uint8_t)~P_M;
+    for (i = 0; i < 2; i++) {
+        op_lda16(dp(lo[i]));
+        op_asl16();
+        op_asl16();
+        wr16(dp(lo[i]), cpu.a);
+    }
+    op_lda16(db() | 0x05F2);
+    op_asl16();
+    op_asl16();
+    wr16(db() | 0x05F2, cpu.a);
+    op_lda16(F(0x200C, cpu.x));
+    op_add16(rd16(dp(0x04)));
+    wr16(F(0x200C, cpu.x), cpu.a);
+    op_lda16(F(0x2010, cpu.x));
+    op_add16(rd16(db() | 0x05F2));
+    wr16(F(0x2010, cpu.x), cpu.a);
+    op_lda16(F(0x200E, cpu.x));
+    op_add16(rd16(dp(0x0A)));
+    wr16(F(0x200E, cpu.x), cpu.a);
+    cpu.p |= P_M;
+    add8(F(0x2015, cpu.x), 0x12);
+    life_down();
+    abi_ObjectRebucket();
+}
+
+/*
+ * @routine 09:BE92 ObjectRisingSpark
+ * WHAT IT DOES: A bonus spark's frame: at its object's (+$29) position,
+ * released when its life +$0A runs out; it rises by $80 and a speed +$27
+ * that grows by $28 each frame, and grows (+$15 by $12).
+ * HOW: ObjectCopyPositionFrom; the speed added through $1F4C;
+ * ObjectRebucket.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket
+ * leaves it.
+ */
+void abi_ObjectRisingSpark(void)
+{
+    cpu.y = rd16(F(0x2029, cpu.x));
+    cpu.p = nz16(cpu.p, cpu.y);
+    abi_ObjectCopyPositionFrom();
+    life_down();
+    add16(F(0x200E, cpu.x), 0xFF80);
+    add16(F(0x2027, cpu.x), 0xFFD8);
+    add16_via(F(0x200E, cpu.x), F(0x2027, cpu.x));
+    add8(F(0x2015, cpu.x), 0x12);
+    abi_ObjectRebucket();
+}
+
+/* 09:BF34 / BFF6: the marker bounces and syncs to its record; a car's
+   contact (flags bit 0) counts $19EC up (HudCountUp19EC), shatters it, puts
+   a rising spark of `kind` at the player ($0346; +$0A = $0A, +$27 = 0,
+   +$29 = the player, handler $09:BE92), adds `bonus` to the count $19EE
+   (BCD) and releases it. */
+static void bonus_marker2_frame(void (*shatter)(void), uint16_t kind, uint8_t bonus)
+{
+    uint16_t sx;
+    uint8_t v;
+
+    abi_MarkerBounceY();
+    abi_ObjectSyncToRecord();
+    lda8((uint8_t)(cpu.a & 0x01));
+    if (!(uint8_t)cpu.a)
+        return;
+    if (!next_contact())
+        return;
+    abi_HudCountUp19EC();
+    sx = cpu.x;
+    shatter();
+    cpu.x = sx;
+    cpu.p = nz16(cpu.p, sx);
+    if (spawn(kind)) {
+        uint8_t a;
+
+        cpu.x = rd16(db() | 0x0346);
+        cpu.p = nz16(cpu.p, cpu.x);
+        st8i(F(0x200A, cpu.y), 0x0A);
+        abi_ObjectCopyPositionTo();
+        st16i(F(0x2027, cpu.y), 0x0000);
+        a = (uint8_t)cpu.a;
+        cpu.p &= (uint8_t)~P_M;
+        cpu.a = cpu.x;
+        cpu.p = nz16(cpu.p, cpu.a);
+        wr16(F(0x2029, cpu.y), cpu.x);
+        cpu.p |= P_M;
+        lda8(a);
+        handler(cpu.y, 0xBE92);
+    }
+    cpu.x = sx;
+    cpu.p = nz16(cpu.p, sx);
+    cpu.p |= P_M;
+    cpu.p |= P_D;
+    v = ld8(db() | 0x19EE);
+    cpu.p &= (uint8_t)~P_C;
+    v = op_adc8(v, bonus, &cpu.p);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    wr8(db() | 0x19EE, v);
+    v = ld8(db() | 0x19EF);
+    v = op_adc8(v, 0x00, &cpu.p);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    wr8(db() | 0x19EF, v);
+    cpu.p &= (uint8_t)~P_D;
+    abi_ObjectRelease();
+}
+
+/* The bonus marker's start: colour 0 with bit 7, offset +$27 = 0, speed
+   +$29 = 2. */
+static void bonus_marker2_init(void)
+{
+    st8i_hi(F(0x205A, cpu.x), 0x00);
+    st16i(F(0x2027, cpu.x), 0x0000);
+    st16i(F(0x2029, cpu.x), 0x0002);
+}
+
+/*
+ * @routine 09:BEE8 ObjectBonusMarker2
+ * WHAT IT DOES: Sets up a bonus marker worth 2: colour 0, offset +$27 = 0,
+ * speed +$29 = 2, +$48 = 1, restart $09:BF26 (ObjectBonusMarker2Record),
+ * frame $09:BF34 (ObjectBonusMarker2Step); its record and frame.
+ * HOW: Word and byte stores.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectBonusMarker2(void)
+{
+    bonus_marker2_init();
+    st8i(F(0x2048, cpu.x), 0x01);
+    handlers2(0xBF26, 0xBF34);
+    shatter_marker_record();
+    bonus_marker2_frame(abi_ObjectShatter, 0xB674, 0x02);
+}
+
+/*
+ * @routine 09:BF26 ObjectBonusMarker2Record
+ * WHAT IT DOES: The marker's restart: its record ($42D, flag bit 4, +$2A
+ * high 1), then its frame.
+ * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordSet2AHigh.
+ * Entry: as ObjectBonusMarker2. Exit: as ObjectBonusMarker2.
+ */
+void abi_ObjectBonusMarker2Record(void)
+{
+    shatter_marker_record();
+    bonus_marker2_frame(abi_ObjectShatter, 0xB674, 0x02);
+}
+
+/*
+ * @routine 09:BF34 ObjectBonusMarker2Step
+ * WHAT IT DOES: The marker's frame: it bounces (MarkerBounceY) and syncs to
+ * its record; a car's contact counts $19EC up, shatters it (ObjectShatter),
+ * sends up a spark (kind $B674) at the player, adds 2 to the count $19EE
+ * (BCD) and releases it.
+ * HOW: ObjectSyncToRecord, RecordNextContact; JSRs HudCountUp19EC and
+ * ObjectShatter; SED, ADC, CLD.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectBonusMarker2Step(void)
+{
+    bonus_marker2_frame(abi_ObjectShatter, 0xB674, 0x02);
+}
+
+/*
+ * @routine 09:BFB0 ObjectBonusMarker5
+ * WHAT IT DOES: Sets up a bonus marker worth 5: colour 0, offset +$27 = 0,
+ * speed +$29 = 2, restart $09:BFEE (ObjectBonusMarker5Record), frame
+ * $09:BFF6 (ObjectBonusMarker5Step), +$48 = 1; its record and frame.
+ * HOW: Word and byte stores.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectBonusMarker5(void)
+{
+    bonus_marker2_init();
+    handlers2(0xBFEE, 0xBFF6);
+    st8i(F(0x2048, cpu.x), 0x01);
+    abi_GsuRecordNew42D();
+    abi_GsuRecordFlag10();
+    bonus_marker2_frame(abi_ObjectShatter2, 0xB604, 0x05);
+}
+
+/*
+ * @routine 09:BFEE ObjectBonusMarker5Record
+ * WHAT IT DOES: The marker's restart: its record ($42D, flag bit 4), then
+ * its frame.
+ * HOW: GsuRecordNew42D, GsuRecordFlag10.
+ * Entry: as ObjectBonusMarker5. Exit: as ObjectBonusMarker5.
+ */
+void abi_ObjectBonusMarker5Record(void)
+{
+    abi_GsuRecordNew42D();
+    abi_GsuRecordFlag10();
+    bonus_marker2_frame(abi_ObjectShatter2, 0xB604, 0x05);
+}
+
+/*
+ * @routine 09:BFF6 ObjectBonusMarker5Step
+ * WHAT IT DOES: The marker's frame: as ObjectBonusMarker2Step with
+ * ObjectShatter2, a spark of kind $B604 and 5 added to $19EE.
+ * HOW: As ObjectBonusMarker2Step.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectBonusMarker5Step(void)
+{
+    bonus_marker2_frame(abi_ObjectShatter2, 0xB604, 0x05);
+}
