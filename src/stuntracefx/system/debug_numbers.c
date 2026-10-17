@@ -207,8 +207,11 @@ void abi_DebugPrintSignedByte(void)
  * byte, which the second XBA brings down.
  * HOW: XBA, DebugPrintHexByte, XBA, DebugPrintHexByte; A pushed and pulled
  * (one byte).
- * Entry: M 8-bit, D = $0000; A = the word. Exit: A low byte unchanged, its
- * high byte as the second print leaves it; N, Z from the low byte.
+ * With M 16-bit (the debug panels of bank 08) the long wrapper keeps the
+ * whole of A, both bytes print right and the word comes back whole.
+ * Entry: M 8-bit or 16-bit, D = $0000; A = the word. Exit: with M 8-bit A
+ * low byte unchanged, its high byte as the second print leaves it, N, Z
+ * from the low byte; with M 16-bit A unchanged, N, Z from it.
  */
 void DebugPrintHexWord(void)
 {
@@ -218,8 +221,13 @@ void DebugPrintHexWord(void)
     abi_DebugPrintHexByte();
     cpu.a = (uint16_t)(cpu.a << 8 | cpu.a >> 8);
     abi_DebugPrintHexByte();
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | (a & 0x00FF));
-    cpu.p = nz8(cpu.p, (uint8_t)a);
+    if (cpu.p & P_M) {
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | (a & 0x00FF));
+        cpu.p = nz8(cpu.p, (uint8_t)a);
+    } else {
+        cpu.a = a;
+        cpu.p = nz16(cpu.p, a);
+    }
 }
 
 void abi_DebugPrintHexWord(void)

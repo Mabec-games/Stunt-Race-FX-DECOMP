@@ -101,18 +101,24 @@ void abi_DebugDrawChar(void)
  * direct page $54 with DebugDrawChar, starting in the low nibbles; lower
  * case letters print as upper case.
  * HOW: Each character from $61 up loses $20 more, then all lose $20 (the
- * font starts at the space). Data bank 0 inside; every register and P are
- * saved and restored.
- * Entry: any widths; D = $0000. Exit: every register and P unchanged.
+ * font starts at the space). The pointer is read again for each character
+ * (LDA [$54],Y). Data bank 0 inside; every register and P are saved and
+ * restored.
+ * Entry: any widths; D = $0000. Exit: every register and P unchanged but
+ * N, Z, which the final PLB sets from the data bank.
  */
 void DebugPrint(uint8_t bank)
 {
-    uint32_t s = rd24(0x000054);
+    uint32_t s;
     uint16_t y = 0, a = 0, x = 0, yy = 0;
     uint8_t c;
 
     wr16((uint32_t)bank << 16 | TEXT_HALF, 0x0000);
-    while ((c = rd8((s + y) & 0xFFFFFF)) != 0) {
+    for (;;) {
+        s = rd24(0x000054);
+        c = rd8((s + y) & 0xFFFFFF);
+        if (!c)
+            break;
         if (c >= 0x61)
             c = (uint8_t)(c - 0x20);
         c = (uint8_t)(c - 0x20);
@@ -124,6 +130,7 @@ void DebugPrint(uint8_t bank)
 void abi_DebugPrint(void)
 {
     DebugPrint(cpu.db);
+    cpu.p = nz8(cpu.p, cpu.db);
 }
 
 /* The three messages, in bank 08, and where each is printed. */

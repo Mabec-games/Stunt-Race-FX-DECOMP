@@ -16,8 +16,11 @@ arch 65816
 ; byte, which the second XBA brings down.
 ; HOW: XBA, DebugPrintHexByte, XBA, DebugPrintHexByte; A pushed and pulled
 ; (one byte).
-; Entry: M 8-bit, D = $0000; A = the word. Exit: A low byte unchanged, its
-; high byte as the second print leaves it; N, Z from the low byte.
+; With M 16-bit (the debug panels of bank 08) the long wrapper keeps the
+; whole of A, both bytes print right and the word comes back whole.
+; Entry: M 8-bit or 16-bit, D = $0000; A = the word. Exit: with M 8-bit A
+; low byte unchanged, its high byte as the second print leaves it, N, Z
+; from the low byte; with M 16-bit A unchanged, N, Z from it.
 %at($03D499)
 DebugPrintHexWord:
     pha

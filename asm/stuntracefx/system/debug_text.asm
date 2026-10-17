@@ -161,9 +161,11 @@ DebugDrawChar:
 ; direct page $54 with DebugDrawChar, starting in the low nibbles; lower
 ; case letters print as upper case.
 ; HOW: Each character from $61 up loses $20 more, then all lose $20 (the
-; font starts at the space). Data bank 0 inside; every register and P are
-; saved and restored.
-; Entry: any widths; D = $0000. Exit: every register and P unchanged.
+; font starts at the space). The pointer is read again for each character
+; (LDA [$54],Y). Data bank 0 inside; every register and P are saved and
+; restored.
+; Entry: any widths; D = $0000. Exit: every register and P unchanged but
+; N, Z, which the final PLB sets from the data bank.
 %at($03D465)
 DebugPrint:
     phb

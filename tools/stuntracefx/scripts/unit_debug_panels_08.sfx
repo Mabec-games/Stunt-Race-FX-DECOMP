@@ -1,0 +1,64 @@
+# unit_debug_panels_08: the developers' debug panels of bank 08
+# (08:F10D-F910), which nothing calls, called from a Novice race's state:
+# each prints its numbers and names into the Super FX picture with the
+# printers of bank 03. DebugBucketsPanel a second time with the view's
+# area bucket ($1EF5) set to the viewed object's ($040C, seven objects), so
+# its second row runs to the fifth object too.
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:F10D long p=30 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:F171 long p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:F18E long p=00 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:F1A9 long p=00 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:F1AA long p=00 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:F337 long p=00 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:F362 long p=00 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:F3B1 long p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:F431 long p=00 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:F4CF long p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:F54B long p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:F5CD long p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:F61B long p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:F668 long p=30 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1EF5 0C,04
+call 08:F668 long p=30 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:F7C5 long p=00 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:F7F5 long p=00 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:F8F3 long p=00 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:F8F6 long p=30 db=7E d=0000
+wait 1

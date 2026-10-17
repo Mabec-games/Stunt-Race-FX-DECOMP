@@ -399,3 +399,7 @@ ObjectChildD1BF = $08D1BF                       ; 08:D1BF, a child's change of h
 !log_table = $8368                  ; bank 03: a byte's log (ScaledOffset)
 !exp_table_hi = $8268               ; bank 03: the exponent's high byte, by log
 !exp_table_lo = $8168               ; bank 03: its low byte
+
+; The timer list the bank 08 debug panel prints (system/debug_panels.asm):
+; nine bytes of name and a long pointer an entry, a zero byte at the end.
+!debug_timer_list = $08FE5E
