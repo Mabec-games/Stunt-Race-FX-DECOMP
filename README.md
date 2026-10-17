@@ -55,17 +55,17 @@ _Snapshot 2026-10-16._
 
 ```
 M1  Behaviour exact (T3 + T4)
-    ████████████████████████░░░░░░░░░░░░░░░░   61.0%   111,536 / 182,745 B of the game's code
+    █████████████████████████░░░░░░░░░░░░░░░   61.4%   112,183 / 182,745 B of the game's code
 M2  Byte exact (T4)
     ███████████████████████░░░░░░░░░░░░░░░░░   57.8%   105,705 / 182,745 B of the game's code
 ```
 
-The bars measure the whole game's S-CPU and Super FX code, 182,745 B: 153,115 B the scripts have run and 29,630 B the [routine census](docs/stuntracefx/ROUTINE_CENSUS.md) finds that no script has run yet. Certified so far: 1171 routines behaviour exact, 1147 of them byte exact.
+The bars measure the whole game's S-CPU and Super FX code, 182,745 B: 153,115 B the scripts have run and 29,630 B the [routine census](docs/stuntracefx/ROUTINE_CENSUS.md) finds that no script has run yet. Certified so far: 1174 routines behaviour exact, 1147 of them byte exact.
 
 | Processor | M1: behaviour exact | M2: byte exact |
 |---|---|---|
 | **S-CPU (65816)** | `██████████████░░░░░░` 70.1%: 93,160/132,933 B | `██████████████░░░░░░` 68.5%: 91,076/132,933 B |
-| **Super FX (GSU-1)** | `███████░░░░░░░░░░░░░` 36.9%: 18,376/49,812 B | `██████░░░░░░░░░░░░░░` 29.4%: 14,629/49,812 B |
+| **Super FX (GSU-1)** | `████████░░░░░░░░░░░░` 38.2%: 19,023/49,812 B | `██████░░░░░░░░░░░░░░` 29.4%: 14,629/49,812 B |
 | **SPC700 (sound)** | not yet measured | not yet measured |
 <!-- PROGRESS:END -->
 
@@ -92,7 +92,7 @@ have run and the 29,630 B the routine census (`tools/stuntracefx/census.py`) fin
 by following the code statically (calls, jumps, tables, handler pointers,
 Super FX calls, orphans) where no script has gone. The numerator is the code
 bytes inside routines whose C is certified behaviour exact (T3) or whose
-assembly is also byte exact (T4), for M1, and T4 only for M2. 22 routine(s)
+assembly is also byte exact (T4), for M1, and T4 only for M2. 23 routine(s)
 are in the tree but not yet certified (T2).
 
 **Why not routines.** A routine count keeps growing as the work goes on:
@@ -100,8 +100,8 @@ every entry point filed in C or reached by a new script splits code already
 counted into more routines (the census now counts about 1,611, 1,462 of them
 named), while the bytes stay put: tracing a new script moves bytes from
 "found" to "run" and barely changes the total. Of the
-ROM's 1,048,576 B, the scripts have run 153,115 B as code and read 571,239 B as data;
-324,222 B have not been touched by any script. The sound CPU's program is
+ROM's 1,048,576 B, the scripts have run 153,115 B as code and read 571,243 B as data;
+324,218 B have not been touched by any script. The sound CPU's program is
 uploaded from ROM and is not measured yet.
 
 **Byte-exact rebuild.** Independently of the tiers, the whole ROM already
