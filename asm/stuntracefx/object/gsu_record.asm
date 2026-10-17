@@ -551,6 +551,26 @@ GsuRecordNew424Alt:
     sep.b #$20
     bra GsuRecordNew_tail
 
+; @routine 08:CC4A GsuRecordNewCamera
+; WHAT IT DOES: As GsuRecordNew424, from Super FX program $04:8C6C, with
+; +$0A = $916D: the record of a replay camera's follower.
+; HOW: Runs Super FX program $04:8C6C; then the shared tail at $08:CC7C.
+; Entry: as GsuRecordNew422. Exit: as GsuRecordNew422.
+%at($08CC4A)
+GsuRecordNewCamera:
+    phx
+    phy
+    lda.b #$04
+    ldx.w #$8C6C
+    jsl.l GsuRun
+    ply
+    plx
+    rep.b #$20
+    lda.w #$916D
+    sta.w !wram_1F4C
+    sep.b #$20
+    bra GsuRecordNew_tail
+
 ; @routine 08:CC63 GsuRecordNew426
 ; WHAT IT DOES: Gives object X a new Super FX record from the first pool
 ; (mode $0426, flags 8, +$2A = $40), with +$0A = $910A, filled from the
@@ -1001,6 +1021,39 @@ GsuRecordLand:
     plx
     sep.b #$20
     rts
+
+; @routine 08:CF0B ObjectSyncAngles
+; WHAT IT DOES: As ObjectSyncToRecord without the position: the object is
+; rebucketed, its record marked (GsuRecordFlag4) and given its heading
+; (+$15 as the high byte of +$24) and +$12 (+$5A's low 7 bits), $1F3C =
+; the record's +$18.
+; HOW: As ObjectSyncToRecord, ending in the tail at $08:CE60 (or $08:CE69
+; with no record).
+; Entry: as ObjectSyncFromRecord. Exit: as ObjectSyncFromRecord, except
+; that with a record and $1F3C zero A = the record's +$18.
+%at($08CF0B)
+ObjectSyncAngles:
+    jsl.l ObjectRebucket
+    jsl.l GsuRecordFlag4
+    rep.b #$20
+    txy
+    lda.w !obj_22,y
+    bne .record
+    brl ObjectSync_none
+.record:
+    tax
+    lda.w !obj_15,y
+    and.w #$00FF
+    xba
+    sta.l !gsu_rec_24,x
+    lda.w !obj_5a,y
+    and.w #$007F
+    sta.l !gsu_rec_12,x
+    lda.l !gsu_rec_18,x
+    sta.w !wram_1F3C
+    tyx
+    sep.b #$20
+    jmp.w ObjectSync_tail
 
 ; @routine 08:CF41 RecordNextContact
 ; WHAT IT DOES: Walks the contact list from the entry at $1F3C (entries

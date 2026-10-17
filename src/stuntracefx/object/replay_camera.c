@@ -895,3 +895,719 @@ void abi_CameraStill(void)
     st16i(cam(0x0037), 0x8000);
     abi_CameraStillStep();
 }
+
+/* ---- 08:95A0-9A4E: the camera following a car ---- */
+
+void abi_GsuRecordNewCamera(void);
+void abi_ObjectSyncToRecord(void);
+void abi_ObjectSyncAngles(void);
+void abi_RecordContactSummary(void);
+void abi_CameraFollowStep(void);
+void abi_ObjectFaceTied(void);
+void abi_ObjectGsu81E3(void);
+void abi_ObjectGsu80BCThen81E3(void);
+
+/* Direct page word at off (bank 0). */
+static uint32_t dpw(uint8_t off)
+{
+    return (uint16_t)(cpu.d + off);
+}
+
+/* PHX, PHB, CameraFollowStep, SEP #$20, PLB, PLX. */
+static void follow_step(void)
+{
+    uint16_t sx = cpu.x;
+    uint8_t sb = cpu.db;
+
+    abi_CameraFollowStep();
+    cpu.p |= P_M;
+    cpu.db = sb;
+    cpu.p = nz8(cpu.p, sb);
+    cpu.x = sx;
+    cpu.p = nz16(cpu.p, sx);
+}
+
+/* LDA #v, STA $05FA (the camera's view kind). */
+static void view(uint8_t v)
+{
+    st8i(db() | 0x05FA, v);
+}
+
+/* A word divided by 2 or 4 keeping its sign (CMP #$8000, ROR, n times). */
+static void asr_n(int n)
+{
+    while (n--) {
+        uint8_t c;
+
+        op_cmp16(0x8000);
+        c = (uint8_t)(cpu.a & 1);
+        cpu.a = (uint16_t)((cpu.a >> 1) | ((cpu.p & P_C) ? 0x8000 : 0));
+        cpu.p = (uint8_t)(nz16((uint8_t)(cpu.p & ~P_C), cpu.a) | c);
+    }
+}
+
+/* 08:95C7: the follower's frame (see CameraFollowCarStep). */
+static void follower_frame(void)
+{
+    uint32_t r;
+    static const uint8_t dpo[3] = {0xC5, 0xC7, 0xC9};
+    static const uint16_t keep[3] = {0x1F64, 0x1F66, 0x1F68};
+    static const uint16_t to[3] = {0x1F4C, 0x1F4E, 0x1F50};
+    int i;
+
+    car();
+    wr8(db() | 0x1F41, 0x00);
+    for (i = 0; i < 3; i++)
+        copy16(db() | keep[i], dpw(dpo[i]));
+    follow_step();
+    cpu.p &= (uint8_t)~P_M;
+    cpu.y = cpu.x;
+    cpu.p = nz16(cpu.p, cpu.y);
+    op_lda16(F(0x2022, cpu.x));
+    cpu.x = cpu.a;
+    cpu.p = nz16(cpu.p, cpu.x);
+    r = cpu.x;
+    for (i = 0; i < 3; i++) {
+        op_lda16((0x70001E + 2 * i + r) & 0xFFFFFF);
+        wr16(db() | to[i], cpu.a);
+    }
+    op_lda16(dpw(0xB7));
+    asr_n(2);
+    cpu.p &= (uint8_t)~P_C;
+    cpu.a = op_adc16(cpu.a, rd16(F(0x200C, cpu.y)), &cpu.p);
+    wr16((0x70001E + r) & 0xFFFFFF, cpu.a);
+    op_lda16_imm(0x00C8);
+    cpu.p &= (uint8_t)~P_C;
+    cpu.a = op_adc16(cpu.a, rd16(F(0x200E, cpu.y)), &cpu.p);
+    wr16((0x700020 + r) & 0xFFFFFF, cpu.a);
+    op_lda16(dpw(0xBB));
+    asr_n(2);
+    cpu.p &= (uint8_t)~P_C;
+    cpu.a = op_adc16(cpu.a, rd16(F(0x2010, cpu.y)), &cpu.p);
+    wr16((0x700022 + r) & 0xFFFFFF, cpu.a);
+    cpu.x = cpu.y;
+    cpu.p = nz16(cpu.p, cpu.x);
+    cpu.p |= P_M;
+    st8i(db() | 0x1F41, 0xFF);
+    abi_ObjectSyncAngles();
+    lda8((uint8_t)(cpu.a & 0x01));
+    if ((uint8_t)cpu.a) {
+        abi_RecordContactSummary();
+        lda8((uint8_t)(cpu.a & 0x18));
+        if ((uint8_t)cpu.a) {
+            copy16(dpw(0xC5), db() | 0x1F4C);
+            copy16(dpw(0xC7), db() | 0x1F4E);
+            cpu.p &= (uint8_t)~P_M;
+            op_lda16(dpw(0xC7));
+            op_add16(0xFF38);
+            wr16(dpw(0xC7), cpu.a);
+            cpu.p |= P_M;
+            copy16(dpw(0xC9), db() | 0x1F50);
+        }
+    } else {
+        for (i = 0; i < 3; i++)
+            copy16(dpw(dpo[i]), db() | keep[i]);
+    }
+    abi_ObjectFaceTied();
+    st8i(F(0x2036, cpu.x), 0x03);
+}
+
+/*
+ * @routine 08:95A0 CameraFollowCar
+ * WHAT IT DOES: The follow shot: view $05FA = 5, frame $08:95C7
+ * (CameraFollowCarStep), a record of its own (GsuRecordNewCamera), one
+ * CameraFollowStep, then synced to its record.
+ * HOW: PHX/PHB around CameraFollowStep. Reached only by
+ * unit_replay_camera_08.
+ * Entry: M 8-bit, X 16-bit; X = the director; D = $0000. Exit: as
+ * ObjectSyncToRecord leaves it.
+ */
+void abi_CameraFollowCar(void)
+{
+    view(0x05);
+    handler(cpu.x, 0x95C7);
+    abi_GsuRecordNewCamera();
+    follow_step();
+    abi_ObjectSyncToRecord();
+}
+
+/*
+ * @routine 08:95C7 CameraFollowCarStep
+ * WHAT IT DOES: The follower's frame: the camera point (direct page
+ * $C5-$C9) kept at $1F64-$1F68, CameraFollowStep; its record placed a
+ * quarter of $B7/$BB from the car (+$06) and $C8 up (the old place kept
+ * at $1F4C-$1F50), synced (ObjectSyncAngles, $1F41 = $FF); touching
+ * something (contact flags 3-4) puts the camera point at the old place
+ * $C8 higher, no contacts puts it back; ObjectFaceTied, +$36 = 3.
+ * HOW: 16-bit long record accesses; CMP #$8000/ROR twice for the
+ * quarters. Reached only by unit_replay_camera_08.
+ * Entry: M 8-bit, X 16-bit; X = the director; D = $0000. Exit: A low byte
+ * = 3.
+ */
+void abi_CameraFollowCarStep(void)
+{
+    follower_frame();
+}
+
+void abi_CameraReturnStep(void);
+
+/*
+ * @routine 08:9833 CameraReturn
+ * WHAT IT DOES: The director heads back to its table: frame $08:9847
+ * (CameraReturnStep), +$48 = $0F; then that frame.
+ * HOW: Word and byte stores; entered by JMLs from the shots below.
+ * Entry: M 8-bit, X 16-bit; X = the director. Exit: as the frame leaves it.
+ */
+void abi_CameraReturn(void)
+{
+    handler(cpu.x, 0x9847);
+    st8i(F(0x2048, cpu.x), 0x0F);
+    abi_CameraReturnStep();
+}
+
+/*
+ * @routine 08:9847 CameraReturnStep
+ * WHAT IT DOES: The return's frame: view $05FA = 9; +$48 counts down with
+ * the director's table shot (CameraDirectorTable) each frame; at 0 the
+ * car's +$48 = 0 and the director goes back to its table (08:8EC1).
+ * HOW: DEC, JML CameraDirectorTable; JML to 08:8EC1.
+ * Entry: M 8-bit, X 16-bit; X = the director. Exit: as the path leaves it.
+ */
+void abi_CameraReturnStep(void)
+{
+    uint8_t n;
+
+    view(0x09);
+    n = (uint8_t)(rd8(F(0x2048, cpu.x)) - 1);
+    wr8(F(0x2048, cpu.x), n);
+    cpu.p = nz8(cpu.p, n);
+    if (n) {
+        abi_CameraDirectorTable();
+        return;
+    }
+    car();
+    st8i(F(0x2048, cpu.y), 0x00);
+    table_start();
+}
+
+
+/* (a - b)/2 + b with the sign kept (no rounding). */
+static uint16_t mid(uint16_t a, uint32_t at)
+{
+    cpu.p |= P_C;
+    cpu.a = op_sbc16(a, rd16(at), &cpu.p);
+    asr_n(1);
+    cpu.p &= (uint8_t)~P_C;
+    cpu.a = op_adc16(cpu.a, rd16(at), &cpu.p);
+    return cpu.a;
+}
+
+/* 08:9825: the track shot's frame: a cue (+$25 bit 0) sends the director
+   back (CameraReturn), else the tail. */
+static void track_half_frame(void)
+{
+    lda8((uint8_t)(rd8(F(0x2025, cpu.x)) & 0x01));
+    if ((uint8_t)cpu.a) {
+        abi_CameraReturn();
+        return;
+    }
+    tail();
+}
+
+/*
+ * @routine 08:9797 CameraTrackHalf
+ * WHAT IT DOES: The track shot: view 2, frame $08:9825 (CameraTrackHalfStep);
+ * the director half way between the car's track table entry (+$29) and
+ * the next one ($1F4 higher), turned by the Super FX (ObjectGsu81E3,
+ * ObjectGsu80BCThen81E3, the result negated); then that frame.
+ * HOW: GsuTableEntryNext, GsuTableEntryTo1F4C through direct page
+ * $04/$0A and $05F2; CMP #$8000/ROR for the halves.
+ * Entry: M 8-bit, X 16-bit; X = the director; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_CameraTrackHalf(void)
+{
+    view(0x02);
+    handler(cpu.x, 0x9825);
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(F(0x2029, cpu.x));
+    abi_GsuTableEntryNext();
+    abi_GsuTableEntryTo1F4C();
+    copy16(dpw(0x04), db() | 0x1F4C);
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(db() | 0x1F4E);
+    wr16(dpw(0x0A), cpu.a);
+    op_lda16(db() | 0x1F50);
+    wr16(db() | 0x05F2, cpu.a);
+    op_lda16(F(0x2029, cpu.x));
+    abi_GsuTableEntryTo1F4C();
+    op_lda16(db() | 0x1F4E);
+    op_add16(0xFE0C);
+    wr16(db() | 0x1F4E, cpu.a);
+    op_lda16(dpw(0x04));
+    wr16(F(0x200C, cpu.x), mid(cpu.a, db() | 0x1F4C));
+    op_lda16(dpw(0x0A));
+    op_add16(0xFE0C);
+    wr16(F(0x200E, cpu.x), mid(cpu.a, db() | 0x1F4E));
+    op_lda16(db() | 0x05F2);
+    wr16(F(0x2010, cpu.x), mid(cpu.a, db() | 0x1F50));
+    abi_ObjectGsu81E3();
+    abi_ObjectGsu80BCThen81E3();
+    cpu.a ^= 0xFFFF;
+    cpu.p = nz16(cpu.p, cpu.a);
+    cpu.a++;
+    cpu.p = nz16(cpu.p, cpu.a);
+    cpu.p |= P_M;
+    car();
+    cpu.p = nz16(cpu.p, cpu.x);
+    track_half_frame();
+}
+
+/*
+ * @routine 08:9825 CameraTrackHalfStep
+ * WHAT IT DOES: The track shot's frame: a cue (+$25 bit 0) sends the
+ * director back (CameraReturn), else the director's tail.
+ * HOW: AND #1; JML CameraReturn.
+ * Entry: M 8-bit, X 16-bit; X = the director. Exit: as the path leaves it.
+ */
+void abi_CameraTrackHalfStep(void)
+{
+    track_half_frame();
+}
+
+/*
+ * @routine 08:9787 CameraBesideWait
+ * WHAT IT DOES: The side shot's frame: while +$48 counts down the
+ * director's tail, then the track shot (CameraTrackHalf).
+ * HOW: DEC; JMLs.
+ * Entry: M 8-bit, X 16-bit; X = the director. Exit: as the path leaves it.
+ */
+void abi_CameraBesideWait(void)
+{
+    op_lda8(F(0x2048, cpu.x));
+    if (!(uint8_t)cpu.a) {
+        abi_CameraTrackHalf();
+        return;
+    }
+    {
+        uint8_t n = (uint8_t)(rd8(F(0x2048, cpu.x)) - 1);
+
+        wr8(F(0x2048, cpu.x), n);
+        cpu.p = nz8(cpu.p, n);
+    }
+    tail();
+}
+
+/*
+ * @routine 08:9711 CameraBesideStep
+ * WHAT IT DOES: The side shot's first frame: the director at the car's
+ * (+$06) X and Z plus $258 each, height -$C8; frame $08:9787
+ * (CameraBesideWait); the car's record velocity and +$34-$38 cleared;
+ * +$48 = $3C; then that frame.
+ * HOW: 16-bit copies and ADCs; the record words through X (PHX/PLX).
+ * Entry: M 8-bit, X 16-bit; X = the director. Exit: as the frame leaves it.
+ */
+void abi_CameraBesideStep(void)
+{
+    uint16_t sx;
+    uint32_t r;
+    static const uint8_t f[6] = {0x2E, 0x30, 0x32, 0x36, 0x34, 0x38};
+    int i;
+
+    car();
+    copy16(F(0x200C, cpu.x), F(0x200C, cpu.y));
+    copy16(F(0x2010, cpu.x), F(0x2010, cpu.y));
+    st16i(F(0x200E, cpu.x), 0xFF38);
+    {
+        cpu.p &= (uint8_t)~P_M;
+        op_lda16(F(0x200C, cpu.x));
+        op_add16(0x0258);
+        wr16(F(0x200C, cpu.x), cpu.a);
+        cpu.p |= P_M;
+        cpu.p &= (uint8_t)~P_M;
+        op_lda16(F(0x2010, cpu.x));
+        op_add16(0x0258);
+        wr16(F(0x2010, cpu.x), cpu.a);
+        cpu.p |= P_M;
+    }
+    handler(cpu.x, 0x9787);
+    sx = cpu.x;
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(F(0x2022, cpu.y));
+    cpu.x = cpu.a;
+    cpu.p = nz16(cpu.p, cpu.x);
+    r = cpu.x;
+    op_lda16_imm(0x0000);
+    for (i = 0; i < 6; i++)
+        wr16((0x700000 + f[i] + r) & 0xFFFFFF, 0x0000);
+    cpu.p |= P_M;
+    cpu.x = sx;
+    cpu.p = nz16(cpu.p, sx);
+    st8i(F(0x2048, cpu.x), 0x3C);
+    abi_CameraBesideWait();
+}
+
+/*
+ * @routine 08:9702 CameraBeside
+ * WHAT IT DOES: The side shot: frame $08:9711 (CameraBesideStep); then
+ * that frame.
+ * HOW: Word and byte stores; entered by a JML from CameraLiftOffStep.
+ * Entry: M 8-bit, X 16-bit; X = the director. Exit: as the frame leaves it.
+ */
+void abi_CameraBeside(void)
+{
+    handler(cpu.x, 0x9711);
+    abi_CameraBesideStep();
+}
+
+/* 08:96D1: the lift-off's frame (see CameraLiftOffStep). */
+static void lift_frame(void)
+{
+    op_lda8(F(0x2048, cpu.x));
+    if (!(uint8_t)cpu.a) {
+        abi_CameraReturn();
+        return;
+    }
+    {
+        uint8_t n = (uint8_t)(rd8(F(0x2048, cpu.x)) - 1);
+
+        wr8(F(0x2048, cpu.x), n);
+        cpu.p = nz8(cpu.p, n);
+    }
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(F(0x200E, cpu.x));
+    op_add16(0xFFCE);
+    wr16(F(0x200E, cpu.x), cpu.a);
+    cpu.p |= P_M;
+    car();
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(F(0x200E, cpu.y));
+    op_cmp16(0xFC18);
+    cpu.p |= P_M;
+    if (cpu.p & P_N) {
+        tail();
+        return;
+    }
+    abi_CameraBeside();
+}
+
+/*
+ * @routine 08:96D1 CameraLiftOffStep
+ * WHAT IT DOES: The lift-off's frame: while +$48 counts down the director
+ * rises $32; once the car (+$06) is no higher than -$3E8 the side shot
+ * (CameraBeside), else the tail; at 0 back (CameraReturn).
+ * HOW: 16-bit ADC and CMP; JMLs.
+ * Entry: M 8-bit, X 16-bit; X = the director. Exit: as the path leaves it.
+ */
+void abi_CameraLiftOffStep(void)
+{
+    lift_frame();
+}
+
+/*
+ * @routine 08:96A3 CameraLiftOff
+ * WHAT IT DOES: The lift-off: view 3, the car's track entry +$29 taken,
+ * frame $08:96D1 (CameraLiftOffStep), +$48 = $96, +$25 bit 0 cleared; then
+ * that frame.
+ * HOW: 16-bit copy; word and byte stores.
+ * Entry: M 8-bit, X 16-bit; X = the director. Exit: as the frame leaves it.
+ */
+void abi_CameraLiftOff(void)
+{
+    view(0x03);
+    car();
+    copy16(F(0x2029, cpu.x), F(0x2029, cpu.y));
+    handler(cpu.x, 0x96D1);
+    st8i(F(0x2048, cpu.x), 0x96);
+    and8(F(0x2025, cpu.x), 0xFE);
+    lift_frame();
+}
+
+/*
+ * @routine 08:9888 CameraPathFollowStep
+ * WHAT IT DOES: The followed path's frame: +$36 = 3, CameraApproachTarget,
+ * CameraFollowLink.
+ * HOW: Two JSLs.
+ * Entry: M 8-bit, X 16-bit; X = the director. Exit: as CameraFollowLink
+ * leaves it.
+ */
+void abi_CameraPathFollowStep(void)
+{
+    st8i(F(0x2036, cpu.x), 0x03);
+    abi_CameraApproachTarget();
+    abi_CameraFollowLink();
+}
+
+/*
+ * @routine 08:9861 CameraPathFollow
+ * WHAT IT DOES: The director on path $85C3 (ObjectPathStart), frame
+ * $08:9888 (CameraPathFollowStep), mode 1, CameraFollowLink; then that
+ * frame.
+ * HOW: JSLs and word stores.
+ * Entry: M 8-bit, X 16-bit; X = the director. Exit: as the frame leaves it.
+ */
+void abi_CameraPathFollow(void)
+{
+    cpu.y = 0x85C3;
+    cpu.p = nz16(cpu.p, cpu.y);
+    abi_ObjectPathStart();
+    handler(cpu.x, 0x9888);
+    mode(0x0001);
+    abi_CameraFollowLink();
+    abi_CameraPathFollowStep();
+}
+
+/*
+ * @routine 08:998B CameraPathGoStep
+ * WHAT IT DOES: A path shot's frame: CameraApproachTarget, then the
+ * director's tail.
+ * HOW: JSL, JMP to 08:8EF9.
+ * Entry: M 8-bit, X 16-bit; X = the director. Exit: as the tail leaves it.
+ */
+void abi_CameraPathGoStep(void)
+{
+    abi_CameraApproachTarget();
+    tail();
+}
+
+/*
+ * @routine 08:997C CameraPathGo
+ * WHAT IT DOES: The path shots' shared end: frame $08:998B
+ * (CameraPathGoStep); then that frame.
+ * HOW: Word and byte stores; entered by JMPs.
+ * Entry: M 8-bit, X 16-bit; X = the director. Exit: as the frame leaves it.
+ */
+void abi_CameraPathGo(void)
+{
+    handler(cpu.x, 0x998B);
+    abi_CameraPathGoStep();
+}
+
+/* A path shot: the director on path p, mode 1 (unless `free`),
+   CameraFollowLink, then CameraPathGo. */
+static void path_go(uint16_t p, int set_mode)
+{
+    cpu.y = p;
+    cpu.p = nz16(cpu.p, cpu.y);
+    abi_ObjectPathStart();
+    if (set_mode)
+        mode(0x0001);
+    abi_CameraFollowLink();
+    abi_CameraPathGo();
+}
+
+/*
+ * @routine 08:9896 CameraPath8603
+ * WHAT IT DOES: A path shot: the director on path $8603 (ObjectPathStart), mode 1,
+ * CameraFollowLink, then CameraPathGo.
+ * HOW: JSLs; a JMP into CameraPathGo.
+ * Entry: M 8-bit, X 16-bit; X = the director. Exit: as CameraPathGo leaves it.
+ */
+void abi_CameraPath8603(void)
+{
+    path_go(0x8603, 1);
+}
+
+/*
+ * @routine 08:98B1 CameraPath8643
+ * WHAT IT DOES: A path shot: the director on path $8643 (ObjectPathStart), mode 1,
+ * CameraFollowLink, then CameraPathGo.
+ * HOW: JSLs; a JMP into CameraPathGo.
+ * Entry: M 8-bit, X 16-bit; X = the director. Exit: as CameraPathGo leaves it.
+ */
+void abi_CameraPath8643(void)
+{
+    path_go(0x8643, 1);
+}
+
+/*
+ * @routine 08:98CC CameraPath8679
+ * WHAT IT DOES: A path shot: the director on path $8679 (ObjectPathStart), mode 1,
+ * CameraFollowLink, then CameraPathGo.
+ * HOW: JSLs; a JMP into CameraPathGo.
+ * Entry: M 8-bit, X 16-bit; X = the director. Exit: as CameraPathGo leaves it.
+ */
+void abi_CameraPath8679(void)
+{
+    path_go(0x8679, 1);
+}
+
+/*
+ * @routine 08:98E7 CameraPath869B
+ * WHAT IT DOES: A path shot: the director on path $869B (ObjectPathStart), mode 1,
+ * CameraFollowLink, then CameraPathGo.
+ * HOW: JSLs; a JMP into CameraPathGo.
+ * Entry: M 8-bit, X 16-bit; X = the director. Exit: as CameraPathGo leaves it.
+ */
+void abi_CameraPath869B(void)
+{
+    path_go(0x869B, 1);
+}
+
+/*
+ * @routine 08:9902 CameraPath86B3
+ * WHAT IT DOES: A path shot: the director on path $86B3 (ObjectPathStart), mode 1,
+ * CameraFollowLink, then CameraPathGo.
+ * HOW: JSLs; a JMP into CameraPathGo.
+ * Entry: M 8-bit, X 16-bit; X = the director. Exit: as CameraPathGo leaves it.
+ */
+void abi_CameraPath86B3(void)
+{
+    path_go(0x86B3, 1);
+}
+
+/*
+ * @routine 08:991D CameraPath86CB
+ * WHAT IT DOES: A path shot: the director on path $86CB (ObjectPathStart), mode 1,
+ * CameraFollowLink, then CameraPathGo.
+ * HOW: JSLs; a JMP into CameraPathGo.
+ * Entry: M 8-bit, X 16-bit; X = the director. Exit: as CameraPathGo leaves it.
+ */
+void abi_CameraPath86CB(void)
+{
+    path_go(0x86CB, 1);
+}
+
+/*
+ * @routine 08:9938 CameraPath8709
+ * WHAT IT DOES: A path shot: the director on path $8709 (ObjectPathStart),
+ * CameraFollowLink, then CameraPathGo.
+ * HOW: JSLs; a JMP into CameraPathGo.
+ * Entry: M 8-bit, X 16-bit; X = the director. Exit: as CameraPathGo leaves it.
+ */
+void abi_CameraPath8709(void)
+{
+    path_go(0x8709, 0);
+}
+
+/*
+ * @routine 08:9946 CameraPath86E3
+ * WHAT IT DOES: A path shot: the director on path $86E3 (ObjectPathStart), mode 1,
+ * CameraFollowLink, then CameraPathGo.
+ * HOW: JSLs; a JMP into CameraPathGo.
+ * Entry: M 8-bit, X 16-bit; X = the director. Exit: as CameraPathGo leaves it.
+ */
+void abi_CameraPath86E3(void)
+{
+    path_go(0x86E3, 1);
+}
+
+/*
+ * @routine 08:9961 CameraPath86FB
+ * WHAT IT DOES: A path shot: the director on path $86FB (ObjectPathStart), mode 1,
+ * CameraFollowLink, then CameraPathGo.
+ * HOW: JSLs; a JMP into CameraPathGo.
+ * Entry: M 8-bit, X 16-bit; X = the director. Exit: as CameraPathGo leaves it.
+ */
+void abi_CameraPath86FB(void)
+{
+    path_go(0x86FB, 1);
+}
+
+/* 08:9A25: the low shot's frame: the camera's +$1A-$1E = (0, -$64, 0);
+   the tail. */
+static void low_frame(void)
+{
+    link();
+    st16i(cam(0x001A), 0x0000);
+    link();
+    st16i(cam(0x001C), 0xFF9C);
+    link();
+    st16i(cam(0x001E), 0x0000);
+}
+
+/*
+ * @routine 08:9A25 CameraLowHoldStep
+ * WHAT IT DOES: The low shot's frame: the camera's offset +$1A-$1E = (0,
+ * -$64, 0), then the director's tail.
+ * HOW: Word stores; JMP to 08:8EF9.
+ * Entry: M 8-bit, X 16-bit; X = the director. Exit: as the tail leaves it.
+ */
+void abi_CameraLowHoldStep(void)
+{
+    low_frame();
+    tail();
+}
+
+/*
+ * @routine 08:9992 CameraLowBehind
+ * WHAT IT DOES: The low shot from behind: mode $C080, frame $08:9A25
+ * (CameraLowHoldStep), the camera's offset (0, -$64, 0), CameraFollowLink;
+ * then that frame.
+ * HOW: Word stores; a JMP into the frame.
+ * Entry: M 8-bit, X 16-bit; X = the director. Exit: as the frame leaves it.
+ */
+void abi_CameraLowBehind(void)
+{
+    mode(0xC080);
+    handler(cpu.x, 0x9A25);
+    low_frame();
+    abi_CameraFollowLink();
+    abi_CameraLowHoldStep();
+}
+
+/*
+ * @routine 08:9A16 CameraLowHold
+ * WHAT IT DOES: The low shot held: frame $08:9A25 (CameraLowHoldStep);
+ * then that frame.
+ * HOW: Word and byte stores.
+ * Entry: M 8-bit, X 16-bit; X = the director. Exit: as the frame leaves it.
+ */
+void abi_CameraLowHold(void)
+{
+    handler(cpu.x, 0x9A25);
+    abi_CameraLowHoldStep();
+}
+
+/*
+ * @routine 08:9A0D CameraPathLowStep
+ * WHAT IT DOES: The low path shot's frame: CameraApproachTarget; once there
+ * the low hold (CameraLowHold), else the tail.
+ * HOW: Carry from CameraApproachTarget; BRL to 08:8EF9.
+ * Entry: M 8-bit, X 16-bit; X = the director. Exit: as the path leaves it.
+ */
+void abi_CameraPathLowStep(void)
+{
+    abi_CameraApproachTarget();
+    if (cpu.p & P_C) {
+        abi_CameraLowHold();
+        return;
+    }
+    tail();
+}
+
+/* The low path shots: the director on path p, mode 1, CameraFollowLink,
+   frame $08:9A0D (CameraPathLowStep), then that frame. */
+static void path_low(uint16_t p)
+{
+    cpu.y = p;
+    cpu.p = nz16(cpu.p, cpu.y);
+    abi_ObjectPathStart();
+    mode(0x0001);
+    abi_CameraFollowLink();
+    handler(cpu.x, 0x9A0D);
+    abi_CameraPathLowStep();
+}
+
+/*
+ * @routine 08:99DC CameraPathLow87B7
+ * WHAT IT DOES: A low path shot on path $87B7: ObjectPathStart, mode 1,
+ * CameraFollowLink, frame $08:9A0D (CameraPathLowStep); then that frame.
+ * HOW: JSLs; a JMP into the shared part at 08:99ED.
+ * Entry: M 8-bit, X 16-bit; X = the director. Exit: as the frame leaves it.
+ */
+void abi_CameraPathLow87B7(void)
+{
+    path_low(0x87B7);
+}
+
+/*
+ * @routine 08:99E6 CameraPathLow875B
+ * WHAT IT DOES: As CameraPathLow87B7 on path $875B.
+ * HOW: As CameraPathLow87B7.
+ * Entry: as CameraPathLow87B7. Exit: as CameraPathLow87B7.
+ */
+void abi_CameraPathLow875B(void)
+{
+    path_low(0x875B);
+}

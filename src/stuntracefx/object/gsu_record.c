@@ -613,6 +613,23 @@ void abi_GsuRecordNew424Alt(void)
 }
 
 /*
+ * @routine 08:CC4A GsuRecordNewCamera
+ * WHAT IT DOES: As GsuRecordNew424, from Super FX program $04:8C6C, with
+ * +$0A = $916D: the record of a replay camera's follower.
+ * HOW: Runs Super FX program $04:8C6C; then the shared tail at $08:CC7C.
+ * Entry: as GsuRecordNew422. Exit: as GsuRecordNew422.
+ */
+uint8_t GsuRecordNewCamera(uint8_t bank, uint16_t obj)
+{
+    return record_new(bank, obj, 0x8C6C, 0x916D);
+}
+
+void abi_GsuRecordNewCamera(void)
+{
+    abi_record_new(0x8C6C, 0x916D);
+}
+
+/*
  * @routine 08:CC63 GsuRecordNew426
  * WHAT IT DOES: Gives object X a new Super FX record from the first pool
  * (mode $0426, flags 8, +$2A = $40), with +$0A = $910A, filled from the
@@ -1039,6 +1056,42 @@ void abi_GsuRecordLand(void)
 
     cpu.a = GsuRecordLand(cpu.db, cpu.x, &p);
     cpu.p = (uint8_t)(nz16(p, cpu.x) | P_M);
+}
+
+/*
+ * @routine 08:CF0B ObjectSyncAngles
+ * WHAT IT DOES: As ObjectSyncToRecord without the position: the object is
+ * rebucketed, its record marked (GsuRecordFlag4) and given its heading
+ * (+$15 as the high byte of +$24) and +$12 (+$5A's low 7 bits), $1F3C =
+ * the record's +$18.
+ * HOW: As ObjectSyncToRecord, ending in the tail at $08:CE60 (or $08:CE69
+ * with no record).
+ * Entry: as ObjectSyncFromRecord. Exit: as ObjectSyncFromRecord, except
+ * that with a record and $1F3C zero A = the record's +$18.
+ */
+uint16_t ObjectSyncAngles(uint8_t bank, uint16_t obj, uint16_t *y, uint8_t *p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t rec = sync_start(bank, obj), a;
+
+    if (!rec) {
+        *y = obj;
+        return sync_none(bank, p);
+    }
+    wr16(0x700024 + rec, (uint16_t)(rd8(b | (uint16_t)(0x2015 + obj)) << 8));
+    wr16(0x700012 + rec, rd16(b | (uint16_t)(0x205A + obj)) & 0x007F);
+    a = rd16(0x700018 + rec);
+    wr16(b | 0x1F3C, a);
+    *p &= (uint8_t)~P_C;
+    return sync_tail(bank, a, y, p);
+}
+
+void abi_ObjectSyncAngles(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = ObjectSyncAngles(cpu.db, cpu.x, &cpu.y, &p);
+    cpu.p = (uint8_t)(p | P_M);
 }
 
 /*

@@ -919,3 +919,730 @@ CameraEnd:
 %at($08958C)
 CameraEndStep:
     jmp.w CameraDirectorTail
+
+; @routine 08:95A0 CameraFollowCar
+; WHAT IT DOES: The follow shot: view $05FA = 5, frame $08:95C7
+; (CameraFollowCarStep), a record of its own (GsuRecordNewCamera), one
+; CameraFollowStep, then synced to its record.
+; HOW: PHX/PHB around CameraFollowStep. Reached only by
+; unit_replay_camera_08.
+; Entry: M 8-bit, X 16-bit; X = the director; D = $0000. Exit: as
+; ObjectSyncToRecord leaves it.
+%at($0895A0)
+CameraFollowCar:
+    lda.b #$05
+    sta.w !wram_05FA
+    rep.b #$20
+    lda.w #$95C7
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+    jsl.l GsuRecordNewCamera
+    phx
+    phb
+    jsl.l CameraFollowStep
+    sep.b #$20
+    plb
+    plx
+    jsl.l ObjectSyncToRecord
+    rtl
+
+; @routine 08:95C7 CameraFollowCarStep
+; WHAT IT DOES: The follower's frame: the camera point (direct page
+; $C5-$C9) kept at $1F64-$1F68, CameraFollowStep; its record placed a
+; quarter of $B7/$BB from the car (+$06) and $C8 up (the old place kept
+; at $1F4C-$1F50), synced (ObjectSyncAngles, $1F41 = $FF); touching
+; something (contact flags 3-4) puts the camera point at the old place
+; $C8 higher, no contacts puts it back; ObjectFaceTied, +$36 = 3.
+; HOW: 16-bit long record accesses; CMP #$8000/ROR twice for the
+; quarters. Reached only by unit_replay_camera_08.
+; Entry: M 8-bit, X 16-bit; X = the director; D = $0000. Exit: A low byte
+; = 3.
+%at($0895C7)
+CameraFollowCarStep:
+    ldy.w !obj_06,x
+    stz.w !wram_1F3C+5
+    rep.b #$20
+    lda.b !dp_c5
+    sta.w !wram_1F5A+10
+    sep.b #$20
+    rep.b #$20
+    lda.b !dp_c7
+    sta.w !wram_1F5A+12
+    sep.b #$20
+    rep.b #$20
+    lda.b !dp_c9
+    sta.w !wram_1F5A+14
+    sep.b #$20
+    phx
+    phb
+    jsl.l CameraFollowStep
+    sep.b #$20
+    plb
+    plx
+    rep.b #$20
+    txy
+    lda.w !obj_22,x
+    tax
+    lda.l !gsu_rec_1e,x
+    sta.w !wram_1F4C
+    lda.l !gsu_in_20,x
+    sta.w !wram_1F4E
+    lda.l !gsu_in_22,x
+    sta.w !wram_1F50
+    lda.b !dp_b7
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    clc
+    adc.w !obj_pos_x,y
+    sta.l !gsu_rec_1e,x
+    lda.w #$00C8
+    clc
+    adc.w !obj_pos_y,y
+    sta.l !gsu_in_20,x
+    lda.b !dp_bb
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    clc
+    adc.w !obj_pos_z,y
+    sta.l !gsu_in_22,x
+    tyx
+    sep.b #$20
+    lda.b #$FF
+    sta.w !wram_1F3C+5
+    jsl.l ObjectSyncAngles
+    and.b #$01
+    beq .l967E
+    jsl.l RecordContactSummary
+    and.b #$18
+    beq .l9699
+    rep.b #$20
+    lda.w !wram_1F4C
+    sta.b !dp_c5
+    sep.b #$20
+    rep.b #$20
+    lda.w !wram_1F4E
+    sta.b !dp_c7
+    sep.b #$20
+    rep.b #$20
+    lda.b !dp_c7
+    clc
+    adc.w #$FF38
+    sta.b !dp_c7
+    sep.b #$20
+    rep.b #$20
+    lda.w !wram_1F50
+    sta.b !dp_c9
+    sep.b #$20
+    bra .l9699
+.l967E:
+    rep.b #$20
+    lda.w !wram_1F5A+10
+    sta.b !dp_c5
+    sep.b #$20
+    rep.b #$20
+    lda.w !wram_1F5A+12
+    sta.b !dp_c7
+    sep.b #$20
+    rep.b #$20
+    lda.w !wram_1F5A+14
+    sta.b !dp_c9
+    sep.b #$20
+.l9699:
+    jsl.l ObjectFaceTied
+    lda.b #$03
+    sta.w !obj_36,x
+    rtl
+
+; @routine 08:96A3 CameraLiftOff
+; WHAT IT DOES: The lift-off: view 3, the car's track entry +$29 taken,
+; frame $08:96D1 (CameraLiftOffStep), +$48 = $96, +$25 bit 0 cleared; then
+; that frame.
+; HOW: 16-bit copy; word and byte stores.
+; Entry: M 8-bit, X 16-bit; X = the director. Exit: as the frame leaves it.
+%at($0896A3)
+CameraLiftOff:
+    lda.b #$03
+    sta.w !wram_05FA
+    ldy.w !obj_06,x
+    rep.b #$20
+    lda.w !obj_29,y
+    sta.w !obj_29,x
+    sep.b #$20
+    rep.b #$20
+    lda.w #$96D1
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+    lda.b #$96
+    sta.w !obj_48,x
+    lda.w !obj_25,x
+    and.b #$FE
+    sta.w !obj_25,x
+
+; @routine 08:96D1 CameraLiftOffStep
+; WHAT IT DOES: The lift-off's frame: while +$48 counts down the director
+; rises $32; once the car (+$06) is no higher than -$3E8 the side shot
+; (CameraBeside), else the tail; at 0 back (CameraReturn).
+; HOW: 16-bit ADC and CMP; JMLs.
+; Entry: M 8-bit, X 16-bit; X = the director. Exit: as the path leaves it.
+%at($0896D1)
+CameraLiftOffStep:
+    lda.w !obj_48,x
+    bne .l96DA
+    jml.l CameraReturn
+.l96DA:
+    dec.w !obj_48,x
+    rep.b #$20
+    lda.w !obj_pos_y,x
+    clc
+    adc.w #$FFCE
+    sta.w !obj_pos_y,x
+    sep.b #$20
+    ldy.w !obj_06,x
+    rep.b #$20
+    lda.w !obj_pos_y,y
+    cmp.w #$FC18
+    sep.b #$20
+    bmi .l96FE
+    jml.l CameraBeside
+.l96FE:
+    jml.l CameraDirectorTail
+
+; @routine 08:9702 CameraBeside
+; WHAT IT DOES: The side shot: frame $08:9711 (CameraBesideStep); then
+; that frame.
+; HOW: Word and byte stores; entered by a JML from CameraLiftOffStep.
+; Entry: M 8-bit, X 16-bit; X = the director. Exit: as the frame leaves it.
+%at($089702)
+CameraBeside:
+    rep.b #$20
+    lda.w #$9711
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+
+; @routine 08:9711 CameraBesideStep
+; WHAT IT DOES: The side shot's first frame: the director at the car's
+; (+$06) X and Z plus $258 each, height -$C8; frame $08:9787
+; (CameraBesideWait); the car's record velocity and +$34-$38 cleared;
+; +$48 = $3C; then that frame.
+; HOW: 16-bit copies and ADCs; the record words through X (PHX/PLX).
+; Entry: M 8-bit, X 16-bit; X = the director. Exit: as the frame leaves it.
+%at($089711)
+CameraBesideStep:
+    ldy.w !obj_06,x
+    rep.b #$20
+    lda.w !obj_pos_x,y
+    sta.w !obj_pos_x,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_z,y
+    sta.w !obj_pos_z,x
+    sep.b #$20
+    rep.b #$20
+    lda.w #$FF38
+    sta.w !obj_pos_y,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_x,x
+    clc
+    adc.w #$0258
+    sta.w !obj_pos_x,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_z,x
+    clc
+    adc.w #$0258
+    sta.w !obj_pos_z,x
+    sep.b #$20
+    rep.b #$20
+    lda.w #$9787
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+    phx
+    rep.b #$20
+    lda.w !obj_22,y
+    tax
+    lda.w #$0000
+    sta.l !gsu_in_2e,x
+    sta.l !gsu_rec_vel_y,x
+    sta.l !gsu_rec_vel_z,x
+    sta.l !gsu_in_36,x
+    sta.l !gsu_in_34,x
+    sta.l !gsu_in_38,x
+    sep.b #$20
+    plx
+    lda.b #$3C
+    sta.w !obj_48,x
+
+; @routine 08:9787 CameraBesideWait
+; WHAT IT DOES: The side shot's frame: while +$48 counts down the
+; director's tail, then the track shot (CameraTrackHalf).
+; HOW: DEC; JMLs.
+; Entry: M 8-bit, X 16-bit; X = the director. Exit: as the path leaves it.
+%at($089787)
+CameraBesideWait:
+    lda.w !obj_48,x
+    bne .l9790
+    jml.l CameraTrackHalf
+.l9790:
+    dec.w !obj_48,x
+    jml.l CameraDirectorTail
+
+; @routine 08:9797 CameraTrackHalf
+; WHAT IT DOES: The track shot: view 2, frame $08:9825 (CameraTrackHalfStep);
+; the director half way between the car's track table entry (+$29) and
+; the next one ($1F4 higher), turned by the Super FX (ObjectGsu81E3,
+; ObjectGsu80BCThen81E3, the result negated); then that frame.
+; HOW: GsuTableEntryNext, GsuTableEntryTo1F4C through direct page
+; $04/$0A and $05F2; CMP #$8000/ROR for the halves.
+; Entry: M 8-bit, X 16-bit; X = the director; D = $0000. Exit: as the frame
+; leaves it.
+%at($089797)
+CameraTrackHalf:
+    lda.b #$02
+    sta.w !wram_05FA
+    rep.b #$20
+    lda.w #$9825
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+    rep.b #$20
+    lda.w !obj_29,x
+    jsl.l GsuTableEntryNext
+    jsl.l GsuTableEntryTo1F4C
+    lda.w !wram_1F4C
+    sta.b !dp_04
+    lda.w !wram_1F4E
+    sta.b !actor_0a
+    lda.w !wram_1F50
+    sta.w !rot_z
+    lda.w !obj_29,x
+    jsl.l GsuTableEntryTo1F4C
+    lda.w !wram_1F4E
+    clc
+    adc.w #$FE0C
+    sta.w !wram_1F4E
+    lda.b !dp_04
+    sec
+    sbc.w !wram_1F4C
+    cmp.w #$8000
+    ror a
+    clc
+    adc.w !wram_1F4C
+    sta.w !obj_pos_x,x
+    lda.b !actor_0a
+    clc
+    adc.w #$FE0C
+    sec
+    sbc.w !wram_1F4E
+    cmp.w #$8000
+    ror a
+    clc
+    adc.w !wram_1F4E
+    sta.w !obj_pos_y,x
+    lda.w !rot_z
+    sec
+    sbc.w !wram_1F50
+    cmp.w #$8000
+    ror a
+    clc
+    adc.w !wram_1F50
+    sta.w !obj_pos_z,x
+    jsl.l ObjectGsu81E3
+    jsl.l ObjectGsu80BCThen81E3
+    eor.w #$FFFF
+    inc a
+    sep.b #$20
+    ldy.w !obj_06,x
+    phx
+    tyx
+    plx
+
+; @routine 08:9825 CameraTrackHalfStep
+; WHAT IT DOES: The track shot's frame: a cue (+$25 bit 0) sends the
+; director back (CameraReturn), else the director's tail.
+; HOW: AND #1; JML CameraReturn.
+; Entry: M 8-bit, X 16-bit; X = the director. Exit: as the path leaves it.
+%at($089825)
+CameraTrackHalfStep:
+    lda.w !obj_25,x
+    and.b #$01
+    beq .l9830
+    jml.l CameraReturn
+.l9830:
+    jmp.w CameraDirectorTail
+
+; @routine 08:9833 CameraReturn
+; WHAT IT DOES: The director heads back to its table: frame $08:9847
+; (CameraReturnStep), +$48 = $0F; then that frame.
+; HOW: Word and byte stores; entered by JMLs from the shots below.
+; Entry: M 8-bit, X 16-bit; X = the director. Exit: as the frame leaves it.
+%at($089833)
+CameraReturn:
+    rep.b #$20
+    lda.w #$9847
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+    lda.b #$0F
+    sta.w !obj_48,x
+
+; @routine 08:9847 CameraReturnStep
+; WHAT IT DOES: The return's frame: view $05FA = 9; +$48 counts down with
+; the director's table shot (CameraDirectorTable) each frame; at 0 the
+; car's +$48 = 0 and the director goes back to its table (08:8EC1).
+; HOW: DEC, JML CameraDirectorTable; JML to 08:8EC1.
+; Entry: M 8-bit, X 16-bit; X = the director. Exit: as the path leaves it.
+%at($089847)
+CameraReturnStep:
+    lda.b #$09
+    sta.w !wram_05FA
+    dec.w !obj_48,x
+    beq .l9855
+    jml.l CameraDirectorTable
+.l9855:
+    ldy.w !obj_06,x
+    lda.b #$00
+    sta.w !obj_48,y
+    jml.l CameraDirectorTableStart
+
+; @routine 08:9861 CameraPathFollow
+; WHAT IT DOES: The director on path $85C3 (ObjectPathStart), frame
+; $08:9888 (CameraPathFollowStep), mode 1, CameraFollowLink; then that
+; frame.
+; HOW: JSLs and word stores.
+; Entry: M 8-bit, X 16-bit; X = the director. Exit: as the frame leaves it.
+%at($089861)
+CameraPathFollow:
+    ldy.w #$85C3
+    jsl.l ObjectPathStart
+    rep.b #$20
+    lda.w #$9888
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+    ldy.w !obj_link_w,x
+    rep.b #$20
+    lda.w #$0001
+    sta.w !bank0_base,y
+    sep.b #$20
+    jsl.l CameraFollowLink
+
+; @routine 08:9888 CameraPathFollowStep
+; WHAT IT DOES: The followed path's frame: +$36 = 3, CameraApproachTarget,
+; CameraFollowLink.
+; HOW: Two JSLs.
+; Entry: M 8-bit, X 16-bit; X = the director. Exit: as CameraFollowLink
+; leaves it.
+%at($089888)
+CameraPathFollowStep:
+    lda.b #$03
+    sta.w !obj_36,x
+    jsl.l CameraApproachTarget
+    jsl.l CameraFollowLink
+    rtl
+
+; @routine 08:9896 CameraPath8603
+; WHAT IT DOES: A path shot: the director on path $8603 (ObjectPathStart), mode 1,
+; CameraFollowLink, then CameraPathGo.
+; HOW: JSLs; a JMP into CameraPathGo.
+; Entry: M 8-bit, X 16-bit; X = the director. Exit: as CameraPathGo leaves it.
+%at($089896)
+CameraPath8603:
+    ldy.w #$8603
+    jsl.l ObjectPathStart
+    ldy.w !obj_link_w,x
+    rep.b #$20
+    lda.w #$0001
+    sta.w !bank0_base,y
+    sep.b #$20
+    jsl.l CameraFollowLink
+    jmp.w CameraPathGo
+
+; @routine 08:98B1 CameraPath8643
+; WHAT IT DOES: A path shot: the director on path $8643 (ObjectPathStart), mode 1,
+; CameraFollowLink, then CameraPathGo.
+; HOW: JSLs; a JMP into CameraPathGo.
+; Entry: M 8-bit, X 16-bit; X = the director. Exit: as CameraPathGo leaves it.
+%at($0898B1)
+CameraPath8643:
+    ldy.w #$8643
+    jsl.l ObjectPathStart
+    ldy.w !obj_link_w,x
+    rep.b #$20
+    lda.w #$0001
+    sta.w !bank0_base,y
+    sep.b #$20
+    jsl.l CameraFollowLink
+    jmp.w CameraPathGo
+
+; @routine 08:98CC CameraPath8679
+; WHAT IT DOES: A path shot: the director on path $8679 (ObjectPathStart), mode 1,
+; CameraFollowLink, then CameraPathGo.
+; HOW: JSLs; a JMP into CameraPathGo.
+; Entry: M 8-bit, X 16-bit; X = the director. Exit: as CameraPathGo leaves it.
+%at($0898CC)
+CameraPath8679:
+    ldy.w #$8679
+    jsl.l ObjectPathStart
+    ldy.w !obj_link_w,x
+    rep.b #$20
+    lda.w #$0001
+    sta.w !bank0_base,y
+    sep.b #$20
+    jsl.l CameraFollowLink
+    jmp.w CameraPathGo
+
+; @routine 08:98E7 CameraPath869B
+; WHAT IT DOES: A path shot: the director on path $869B (ObjectPathStart), mode 1,
+; CameraFollowLink, then CameraPathGo.
+; HOW: JSLs; a JMP into CameraPathGo.
+; Entry: M 8-bit, X 16-bit; X = the director. Exit: as CameraPathGo leaves it.
+%at($0898E7)
+CameraPath869B:
+    ldy.w #$869B
+    jsl.l ObjectPathStart
+    ldy.w !obj_link_w,x
+    rep.b #$20
+    lda.w #$0001
+    sta.w !bank0_base,y
+    sep.b #$20
+    jsl.l CameraFollowLink
+    jmp.w CameraPathGo
+
+; @routine 08:9902 CameraPath86B3
+; WHAT IT DOES: A path shot: the director on path $86B3 (ObjectPathStart), mode 1,
+; CameraFollowLink, then CameraPathGo.
+; HOW: JSLs; a JMP into CameraPathGo.
+; Entry: M 8-bit, X 16-bit; X = the director. Exit: as CameraPathGo leaves it.
+%at($089902)
+CameraPath86B3:
+    ldy.w #$86B3
+    jsl.l ObjectPathStart
+    ldy.w !obj_link_w,x
+    rep.b #$20
+    lda.w #$0001
+    sta.w !bank0_base,y
+    sep.b #$20
+    jsl.l CameraFollowLink
+    jmp.w CameraPathGo
+
+; @routine 08:991D CameraPath86CB
+; WHAT IT DOES: A path shot: the director on path $86CB (ObjectPathStart), mode 1,
+; CameraFollowLink, then CameraPathGo.
+; HOW: JSLs; a JMP into CameraPathGo.
+; Entry: M 8-bit, X 16-bit; X = the director. Exit: as CameraPathGo leaves it.
+%at($08991D)
+CameraPath86CB:
+    ldy.w #$86CB
+    jsl.l ObjectPathStart
+    ldy.w !obj_link_w,x
+    rep.b #$20
+    lda.w #$0001
+    sta.w !bank0_base,y
+    sep.b #$20
+    jsl.l CameraFollowLink
+    jmp.w CameraPathGo
+
+; @routine 08:9938 CameraPath8709
+; WHAT IT DOES: A path shot: the director on path $8709 (ObjectPathStart),
+; CameraFollowLink, then CameraPathGo.
+; HOW: JSLs; a JMP into CameraPathGo.
+; Entry: M 8-bit, X 16-bit; X = the director. Exit: as CameraPathGo leaves it.
+%at($089938)
+CameraPath8709:
+    ldy.w #$8709
+    jsl.l ObjectPathStart
+    jsl.l CameraFollowLink
+    jmp.w CameraPathGo
+
+; @routine 08:9946 CameraPath86E3
+; WHAT IT DOES: A path shot: the director on path $86E3 (ObjectPathStart), mode 1,
+; CameraFollowLink, then CameraPathGo.
+; HOW: JSLs; a JMP into CameraPathGo.
+; Entry: M 8-bit, X 16-bit; X = the director. Exit: as CameraPathGo leaves it.
+%at($089946)
+CameraPath86E3:
+    ldy.w #$86E3
+    jsl.l ObjectPathStart
+    ldy.w !obj_link_w,x
+    rep.b #$20
+    lda.w #$0001
+    sta.w !bank0_base,y
+    sep.b #$20
+    jsl.l CameraFollowLink
+    jmp.w CameraPathGo
+
+; @routine 08:9961 CameraPath86FB
+; WHAT IT DOES: A path shot: the director on path $86FB (ObjectPathStart), mode 1,
+; CameraFollowLink, then CameraPathGo.
+; HOW: JSLs; a JMP into CameraPathGo.
+; Entry: M 8-bit, X 16-bit; X = the director. Exit: as CameraPathGo leaves it.
+%at($089961)
+CameraPath86FB:
+    ldy.w #$86FB
+    jsl.l ObjectPathStart
+    ldy.w !obj_link_w,x
+    rep.b #$20
+    lda.w #$0001
+    sta.w !bank0_base,y
+    sep.b #$20
+    jsl.l CameraFollowLink
+    jmp.w CameraPathGo
+
+; @routine 08:997C CameraPathGo
+; WHAT IT DOES: The path shots' shared end: frame $08:998B
+; (CameraPathGoStep); then that frame.
+; HOW: Word and byte stores; entered by JMPs.
+; Entry: M 8-bit, X 16-bit; X = the director. Exit: as the frame leaves it.
+%at($08997C)
+CameraPathGo:
+    rep.b #$20
+    lda.w #$998B
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+
+; @routine 08:998B CameraPathGoStep
+; WHAT IT DOES: A path shot's frame: CameraApproachTarget, then the
+; director's tail.
+; HOW: JSL, JMP to 08:8EF9.
+; Entry: M 8-bit, X 16-bit; X = the director. Exit: as the tail leaves it.
+%at($08998B)
+CameraPathGoStep:
+    jsl.l CameraApproachTarget
+    jmp.w CameraDirectorTail
+
+; @routine 08:9992 CameraLowBehind
+; WHAT IT DOES: The low shot from behind: mode $C080, frame $08:9A25
+; (CameraLowHoldStep), the camera's offset (0, -$64, 0), CameraFollowLink;
+; then that frame.
+; HOW: Word stores; a JMP into the frame.
+; Entry: M 8-bit, X 16-bit; X = the director. Exit: as the frame leaves it.
+%at($089992)
+CameraLowBehind:
+    ldy.w !obj_link_w,x
+    rep.b #$20
+    lda.w #$C080
+    sta.w !bank0_base,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$9A25
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+    ldy.w !obj_link_w,x
+    rep.b #$20
+    lda.w #$0000
+    sta.w !actor_kind,y
+    sep.b #$20
+    ldy.w !obj_link_w,x
+    rep.b #$20
+    lda.w #$FF9C
+    sta.w !actor_1c,y
+    sep.b #$20
+    ldy.w !obj_link_w,x
+    rep.b #$20
+    lda.w #$0000
+    sta.w !actor_1e,y
+    sep.b #$20
+    jsl.l CameraFollowLink
+    jmp.w CameraLowHoldStep
+
+; @routine 08:99DC CameraPathLow87B7
+; WHAT IT DOES: A low path shot on path $87B7: ObjectPathStart, mode 1,
+; CameraFollowLink, frame $08:9A0D (CameraPathLowStep); then that frame.
+; HOW: JSLs; a JMP into the shared part at 08:99ED.
+; Entry: M 8-bit, X 16-bit; X = the director. Exit: as the frame leaves it.
+%at($0899DC)
+CameraPathLow87B7:
+    ldy.w #$87B7
+    jsl.l ObjectPathStart
+    jmp.w CameraPathLow875B_l99ED
+
+; @routine 08:99E6 CameraPathLow875B
+; WHAT IT DOES: As CameraPathLow87B7 on path $875B.
+; HOW: As CameraPathLow87B7.
+; Entry: as CameraPathLow87B7. Exit: as CameraPathLow87B7.
+%at($0899E6)
+CameraPathLow875B:
+    ldy.w #$875B
+    jsl.l ObjectPathStart
+.l99ED:
+    ldy.w !obj_link_w,x
+    rep.b #$20
+    lda.w #$0001
+    sta.w !bank0_base,y
+    sep.b #$20
+    jsl.l CameraFollowLink
+    rep.b #$20
+    lda.w #$9A0D
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+
+; @routine 08:9A0D CameraPathLowStep
+; WHAT IT DOES: The low path shot's frame: CameraApproachTarget; once there
+; the low hold (CameraLowHold), else the tail.
+; HOW: Carry from CameraApproachTarget; BRL to 08:8EF9.
+; Entry: M 8-bit, X 16-bit; X = the director. Exit: as the path leaves it.
+%at($089A0D)
+CameraPathLowStep:
+    jsl.l CameraApproachTarget
+    bcs CameraLowHold
+    brl CameraDirectorTail
+
+; @routine 08:9A16 CameraLowHold
+; WHAT IT DOES: The low shot held: frame $08:9A25 (CameraLowHoldStep);
+; then that frame.
+; HOW: Word and byte stores.
+; Entry: M 8-bit, X 16-bit; X = the director. Exit: as the frame leaves it.
+%at($089A16)
+CameraLowHold:
+    rep.b #$20
+    lda.w #$9A25
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+
+; @routine 08:9A25 CameraLowHoldStep
+; WHAT IT DOES: The low shot's frame: the camera's offset +$1A-$1E = (0,
+; -$64, 0), then the director's tail.
+; HOW: Word stores; JMP to 08:8EF9.
+; Entry: M 8-bit, X 16-bit; X = the director. Exit: as the tail leaves it.
+%at($089A25)
+CameraLowHoldStep:
+    ldy.w !obj_link_w,x
+    rep.b #$20
+    lda.w #$0000
+    sta.w !actor_kind,y
+    sep.b #$20
+    ldy.w !obj_link_w,x
+    rep.b #$20
+    lda.w #$FF9C
+    sta.w !actor_1c,y
+    sep.b #$20
+    ldy.w !obj_link_w,x
+    rep.b #$20
+    lda.w #$0000
+    sta.w !actor_1e,y
+    sep.b #$20
+    jmp.w CameraDirectorTail
