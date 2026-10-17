@@ -29,9 +29,9 @@ static const struct { uint8_t off, high, cleared; } cell[8] = {
  * WHAT IT DOES: Draws character A of the debug font at $46 + $48 in Super
  * FX RAM, then moves $46 on: every second character to the next cell
  * (+$400, wrapping from $6800 back by $67C0).
- * HOW: Six font bytes, each split into two nibbles placed in the high or
- * the low half by bit 2 of $0307 ($1F2B the bits, $1F2C the keep mask,
- * $0308 the second nibble); writing the low half first fills the cell's
+ * HOW: Six font bytes, each kept at $1F2B while it is split into two
+ * nibbles placed in the high or the low half by bit 2 of $0307 ($1F2B then
+ * the bits, $1F2C the keep mask, $0308 the second nibble); writing the low half first fills the cell's
  * rows with $FF/$00. Direct page $40 counts the rows.
  * Entry: A low byte = character; D = $0000. Exit: P unchanged; A = the new
  * $46; X, Y past the cell.
@@ -39,31 +39,33 @@ static const struct { uint8_t off, high, cleared; } cell[8] = {
 void DebugDrawChar(uint8_t bank, uint8_t ch, uint16_t *a, uint16_t *x, uint16_t *y)
 {
     uint32_t b = (uint32_t)bank << 16;
-    uint16_t dest = (uint16_t)(rd16(TEXT_POS) + rd16(TEXT_BASE)), pos;
+    uint16_t dest, pos, rows, half;
     uint8_t f, bits, high, v;
     unsigned i;
 
+    dest = rd16(TEXT_POS);
+    dest = (uint16_t)(dest + rd16(TEXT_BASE));
     *x = dest;
     wr16(TEXT_ROWS, (uint16_t)(ch << 1));
     *y = (uint16_t)((ch << 2) + rd16(TEXT_ROWS));
     wr16(TEXT_ROWS, 0x0006);
     do {
+        v = rd8(b | TEXT_HALF);
         f = rd8(b | (uint16_t)(TEXT_FONT + *y));
-        if (rd8(b | TEXT_HALF) & 0x04) {
-            high = (uint8_t)(f >> 4);
-            bits = (uint8_t)(f & 0x0F);
-        } else {
-            high = (uint8_t)(f & 0xF0);
-            bits = (uint8_t)(f << 4);
-        }
+        wr8(b | TEXT_BITS, f);
+        high = (v & 0x04) ? (uint8_t)(f >> 4) : (uint8_t)(f & 0xF0);
         wr8(b | TEXT_HIGH, high);
+        bits = rd8(b | TEXT_BITS);
+        bits = (v & 0x04) ? (uint8_t)(bits & 0x0F) : (uint8_t)(bits << 4);
         wr8(b | TEXT_BITS, bits);
+        high = rd8(b | TEXT_HIGH);
         wr8(b | TEXT_MASK, (uint8_t)~(bits | high));
         if (!(rd8(b | TEXT_HALF) & 0x04))
             for (i = 0; i < 8; i++)
                 wr8(0x700000 + cell[i].off + *x, cell[i].cleared);
         for (i = 0; i < 8; i++) {
-            v = (uint8_t)(rd8(0x700000 + cell[i].off + *x) & rd8(b | TEXT_MASK));
+            v = rd8(0x700000 + cell[i].off + *x);
+            v = (uint8_t)(v & rd8(b | TEXT_MASK));
             if (cell[i].high < 2)
                 v |= rd8(b | TEXT_BITS);
             if (cell[i].high == 1)
@@ -72,11 +74,13 @@ void DebugDrawChar(uint8_t bank, uint8_t ch, uint16_t *a, uint16_t *x, uint16_t 
         }
         *x = (uint16_t)(*x + 2);
         *y = (uint16_t)(*y + 1);
-        wr16(TEXT_ROWS, (uint16_t)(rd16(TEXT_ROWS) - 1));
-    } while (rd16(TEXT_ROWS));
+        rows = (uint16_t)(rd16(TEXT_ROWS) - 1);
+        wr16(TEXT_ROWS, rows);
+    } while (rows);
     pos = (uint16_t)(dest - rd16(TEXT_BASE));
-    wr16(b | TEXT_HALF, (uint16_t)(rd16(b | TEXT_HALF) ^ 0x0004));
-    if (!rd16(b | TEXT_HALF)) {
+    half = (uint16_t)(rd16(b | TEXT_HALF) ^ 0x0004);
+    wr16(b | TEXT_HALF, half);
+    if (!half) {
         pos = (uint16_t)(pos + 0x0400);
         *x = pos;
         if (pos >= 0x6800)

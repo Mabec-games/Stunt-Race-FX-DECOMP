@@ -1188,3 +1188,122 @@ ObjectMoveByVectorAdd:
     sta.w !obj_pos_z,x
     sep.b #$20
     rtl
+
+; @routine 03:CD1D ObjectVelocityFromHeading
+; WHAT IT DOES: Sets object X's velocity (+$2E, +$30, +$32) to the vector
+; HeadingPitchedFrom1F7C makes for the speed in $82 and the angles at
+; $1F7C/$1F7D.
+; HOW: The vector's words copied, 16-bit, through the caller's data bank.
+; Entry: M 8-bit, X 16-bit, D = $0000; X = object. Exit: A = the z word;
+; M 8-bit; N, Z from it; C, V as HeadingPitchedFrom1F7C leaves them.
+%at($03CD1D)
+ObjectVelocityFromHeading:
+    jsl.l HeadingPitchedFrom1F7C
+    rep.b #$20
+    lda.b !dp_02
+    sta.w !obj_vel_x,x
+    lda.b !dp_08
+    sta.w !obj_vel_y,x
+    lda.b !dp_94
+    sta.w !obj_vel_z,x
+    sep.b #$20
+    rtl
+
+; @routine 03:CD35 ObjectVelocityFromHeadingTimes2
+; WHAT IT DOES: As ObjectVelocityFromHeading with each word doubled.
+; HOW: One ASL A on each word before it is stored.
+; Entry: as ObjectVelocityFromHeading. Exit: as ObjectVelocityFromHeading,
+; C from the last shift.
+%at($03CD35)
+ObjectVelocityFromHeadingTimes2:
+    jsl.l HeadingPitchedFrom1F7C
+    rep.b #$20
+    lda.b !dp_02
+    asl a
+    sta.w !obj_vel_x,x
+    lda.b !dp_08
+    asl a
+    sta.w !obj_vel_y,x
+    lda.b !dp_94
+    asl a
+    sta.w !obj_vel_z,x
+    sep.b #$20
+    rtl
+
+; @routine 03:CD50 ObjectVelocityFromHeadingTimes4
+; WHAT IT DOES: As ObjectVelocityFromHeading with each word times 4.
+; HOW: Two ASL A on each word.
+; Entry: as ObjectVelocityFromHeading. Exit: as
+; ObjectVelocityFromHeadingTimes2.
+%at($03CD50)
+ObjectVelocityFromHeadingTimes4:
+    jsl.l HeadingPitchedFrom1F7C
+    rep.b #$20
+    lda.b !dp_02
+    asl a
+    asl a
+    sta.w !obj_vel_x,x
+    lda.b !dp_08
+    asl a
+    asl a
+    sta.w !obj_vel_y,x
+    lda.b !dp_94
+    asl a
+    asl a
+    sta.w !obj_vel_z,x
+    sep.b #$20
+    rtl
+
+; @routine 03:CD6E ObjectVelocityFromHeadingTimes8
+; WHAT IT DOES: As ObjectVelocityFromHeading with each word times 8.
+; HOW: Three ASL A on each word.
+; Entry: as ObjectVelocityFromHeading. Exit: as
+; ObjectVelocityFromHeadingTimes2.
+%at($03CD6E)
+ObjectVelocityFromHeadingTimes8:
+    jsl.l HeadingPitchedFrom1F7C
+    rep.b #$20
+    lda.b !dp_02
+    asl a
+    asl a
+    asl a
+    sta.w !obj_vel_x,x
+    lda.b !dp_08
+    asl a
+    asl a
+    asl a
+    sta.w !obj_vel_y,x
+    lda.b !dp_94
+    asl a
+    asl a
+    asl a
+    sta.w !obj_vel_z,x
+    sep.b #$20
+    rtl
+
+; @routine 03:D1C2 ObjectVelocityLevelFromDp
+; WHAT IT DOES: Sets object X's velocity to the vector for the speed in
+; $94, the pitch in $02 and the heading -$40 (HeadingPitchedFrom1F7C),
+; with the z velocity (+$32) cleared instead of set.
+; HOW: $02 to $1F7C, $94 to $82, $40 to $1F7D (8-bit, the first and last
+; through the caller's data bank), then the words at $02 and $08 copied to
+; +$2E and +$30.
+; Entry: M 8-bit, X 16-bit, D = $0000; X = object. Exit: A = the word at
+; $08; M 8-bit; N, Z from it; C, V as HeadingPitchedFrom1F7C leaves them.
+%at($03D1C2)
+ObjectVelocityLevelFromDp:
+    lda.b !dp_02
+    sta.w !heading_pitch
+    lda.b !dp_94
+    sta.b !heading_speed
+    lda.b #$40
+    sta.w !heading_turn
+    jsl.l HeadingPitchedFrom1F7C
+    rep.b #$20
+    lda.b !dp_02
+    sta.w !obj_vel_x,x
+    lda.b !dp_08
+    sta.w !obj_vel_y,x
+    stz.w !obj_vel_z,x
+    sep.b #$20
+    rtl

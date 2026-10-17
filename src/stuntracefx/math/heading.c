@@ -425,3 +425,135 @@ void abi_ObjectMoveByVector(void)
 {
     ObjectMoveByVector();
 }
+
+/* Object X's velocity (+$2E, +$30, +$32) from the vector at $02, $08, $94
+   after HeadingPitchedFrom1F7C, each word shifted left `shift` times (each
+   shift a 16-bit ASL of A). */
+static void velocity_from_vector(int shift)
+{
+    static const uint32_t from[3] = {H_X, H_Y, H_Z};
+    uint32_t b;
+    uint16_t v = 0;
+    unsigned i;
+    int k;
+
+    abi_HeadingPitchedFrom1F7C();
+    b = (uint32_t)cpu.db << 16;
+    for (i = 0; i < 3; i++) {
+        v = rd16(from[i]);
+        cpu.p = nz16(cpu.p, v);
+        for (k = 0; k < shift; k++) {
+            cpu.p = (uint8_t)((cpu.p & ~P_C) | (v >> 15));
+            v = (uint16_t)(v << 1);
+            cpu.p = nz16(cpu.p, v);
+        }
+        wr16(b | (uint16_t)(0x202E + 2 * i + cpu.x), v);
+    }
+    cpu.a = v;
+    cpu.p |= P_M;
+}
+
+/*
+ * @routine 03:CD1D ObjectVelocityFromHeading
+ * WHAT IT DOES: Sets object X's velocity (+$2E, +$30, +$32) to the vector
+ * HeadingPitchedFrom1F7C makes for the speed in $82 and the angles at
+ * $1F7C/$1F7D.
+ * HOW: The vector's words copied, 16-bit, through the caller's data bank.
+ * Entry: M 8-bit, X 16-bit, D = $0000; X = object. Exit: A = the z word;
+ * M 8-bit; N, Z from it; C, V as HeadingPitchedFrom1F7C leaves them.
+ */
+void ObjectVelocityFromHeading(void)
+{
+    velocity_from_vector(0);
+}
+
+void abi_ObjectVelocityFromHeading(void)
+{
+    velocity_from_vector(0);
+}
+
+/*
+ * @routine 03:CD35 ObjectVelocityFromHeadingTimes2
+ * WHAT IT DOES: As ObjectVelocityFromHeading with each word doubled.
+ * HOW: One ASL A on each word before it is stored.
+ * Entry: as ObjectVelocityFromHeading. Exit: as ObjectVelocityFromHeading,
+ * C from the last shift.
+ */
+void ObjectVelocityFromHeadingTimes2(void)
+{
+    velocity_from_vector(1);
+}
+
+void abi_ObjectVelocityFromHeadingTimes2(void)
+{
+    velocity_from_vector(1);
+}
+
+/*
+ * @routine 03:CD50 ObjectVelocityFromHeadingTimes4
+ * WHAT IT DOES: As ObjectVelocityFromHeading with each word times 4.
+ * HOW: Two ASL A on each word.
+ * Entry: as ObjectVelocityFromHeading. Exit: as
+ * ObjectVelocityFromHeadingTimes2.
+ */
+void ObjectVelocityFromHeadingTimes4(void)
+{
+    velocity_from_vector(2);
+}
+
+void abi_ObjectVelocityFromHeadingTimes4(void)
+{
+    velocity_from_vector(2);
+}
+
+/*
+ * @routine 03:CD6E ObjectVelocityFromHeadingTimes8
+ * WHAT IT DOES: As ObjectVelocityFromHeading with each word times 8.
+ * HOW: Three ASL A on each word.
+ * Entry: as ObjectVelocityFromHeading. Exit: as
+ * ObjectVelocityFromHeadingTimes2.
+ */
+void ObjectVelocityFromHeadingTimes8(void)
+{
+    velocity_from_vector(3);
+}
+
+void abi_ObjectVelocityFromHeadingTimes8(void)
+{
+    velocity_from_vector(3);
+}
+
+/*
+ * @routine 03:D1C2 ObjectVelocityLevelFromDp
+ * WHAT IT DOES: Sets object X's velocity to the vector for the speed in
+ * $94, the pitch in $02 and the heading -$40 (HeadingPitchedFrom1F7C),
+ * with the z velocity (+$32) cleared instead of set.
+ * HOW: $02 to $1F7C, $94 to $82, $40 to $1F7D (8-bit, the first and last
+ * through the caller's data bank), then the words at $02 and $08 copied to
+ * +$2E and +$30.
+ * Entry: M 8-bit, X 16-bit, D = $0000; X = object. Exit: A = the word at
+ * $08; M 8-bit; N, Z from it; C, V as HeadingPitchedFrom1F7C leaves them.
+ */
+void ObjectVelocityLevelFromDp(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t v;
+
+    wr8(b | 0x1F7C, rd8(H_X));
+    wr8(H_SPEED, rd8(H_Z));
+    wr8(b | 0x1F7D, 0x40);
+    abi_HeadingPitchedFrom1F7C();
+    b = (uint32_t)cpu.db << 16;
+    v = rd16(H_X);
+    wr16(b | (uint16_t)(0x202E + cpu.x), v);
+    v = rd16(H_Y);
+    wr16(b | (uint16_t)(0x2030 + cpu.x), v);
+    wr16(b | (uint16_t)(0x2032 + cpu.x), 0x0000);
+    cpu.a = v;
+    cpu.p = (uint8_t)(nz16(cpu.p, v) | P_M);
+}
+
+void abi_ObjectVelocityLevelFromDp(void)
+{
+    ObjectVelocityLevelFromDp();
+}

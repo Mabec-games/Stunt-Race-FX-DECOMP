@@ -1659,3 +1659,7 @@ includeonce
 !dp_03 = $03
 !dp_09 = $09
 !dp_95 = $95
+!debug_byte = $06E7
+!debug_value = $42
+!debug_digit = $3E
+!debug_bits = $40

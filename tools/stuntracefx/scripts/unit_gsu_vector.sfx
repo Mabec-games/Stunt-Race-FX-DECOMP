@@ -1,0 +1,41 @@
+# unit_gsu_vector: unit tests (call) from the start of a Novice race for
+# two Super FX program wrappers of bank 03 no play runs (03:AF9D, 03:C9D2),
+# on vectors in direct page $02, $08, $94 and the point at $04/$05F2.
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0002 10,00
+set 7E0008 00,FF
+set 7E0094 00,02
+call 03:AF9D long x=0189 y=0311 p=00 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0002 10,00
+set 7E0008 00,FF
+set 7E0094 00,02
+call 03:AF9D long x=0189 y=0311 p=30 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0002 00,80
+set 7E0008 01,00
+set 7E0094 FF,7F
+call 03:AF9D long x=0189 y=0311 p=00 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0002 00,80
+set 7E0008 01,00
+set 7E0094 FF,7F
+call 03:AF9D long x=0189 y=0311 p=30 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0002 10,00
+set 7E0004 00,02
+set 7E0094 00,10
+set 7E05F2 00,30
+call 03:C9D2 long x=0189 y=0311 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0002 00,80
+set 7E0004 FF,7F
+set 7E0094 01,00
+set 7E05F2 FF,FF
+call 03:C9D2 long x=0189 y=0311 p=20 db=7E d=0000
+wait 1
