@@ -104,3 +104,311 @@ void abi_FxEffectsAge(void)
 {
     FxEffectsAge();
 }
+
+#define FX_EFFECT_FLAGS 0x2736u /* bit 14: the haze effects are on */
+#define FX_EFFECT_MAX 0x26EEu   /* the most effects started at once */
+#define FX_RANDOM 0x01D0u       /* the effects' random seed */
+#define FX_HAZE_X 0x26F6u       /* the sample's left edge */
+#define FX_HAZE_X8 0x26F8u      /* the left edge less 8: where it goes back */
+#define FX_HAZE_COUNT 0x0340u   /* the pixels saved, then four bytes each */
+#define FX_HAZE_PIXELS 0x0342u
+#define FX_HAZE_SHAPES 0xF92Eu  /* $08:F92E: per time, a row-offset list and a shape */
+
+/* COLOR: the plot colour from a byte, as the plot options shape it (high
+   nibble from the source's high nibble, or the high nibble kept). */
+static void fx_color(uint8_t v)
+{
+    if (gsu.por & 0x04)
+        gsu.colr = (uint8_t)((gsu.colr & 0xF0) | v >> 4);
+    else if (gsu.por & 0x08)
+        gsu.colr = (uint8_t)((gsu.colr & 0xF0) | (v & 0x0F));
+    else
+        gsu.colr = v;
+}
+
+/* The random step: SWAP of the seed, ROR (through the carry), ADD the
+   seed into R0; then the seed = R0 + the seed + carry (ADC). */
+static void random_step(void)
+{
+    gsu.r[0] = gsu_add(gsu_ror(gsu_swap(gsu.r[4])), gsu.r[4], 0);
+    gsu.r[4] = gsu_add(gsu.r[0], gsu.r[4], gsu.cy);
+}
+
+/*
+ * @routine 01:C130 FxEffectsSpawn
+ * WHAT IT DOES: Starts an effect in each free one of the first R0 effect
+ * records: time 8, its byte 1 or 2 at random, and a random X and Y (the
+ * low and high bytes of a random word).
+ * HOW: The seed from $01D0 in R4; a LOOP of R0 records from $2688 (R13 =
+ * $C13A), each taken by LDB, LOB; a record in use is skipped with ADD #6.
+ * Each random number is one random step (SWAP, ROR, ADD, ADC). The seed
+ * goes back to $01D0; returns with MOVE R15,R11.
+ * Entry: R0 = the number of records to look at; R11 = return address.
+ * Exit: R4 = the seed; R1 past the last record looked at; R12 = 0; R13 =
+ * $C13A; R0, R2, R3 as the last record left them; S, Z from the LOOP
+ * (Z set), OV and CY from the last ADD or ADC; the last RAM address $01D0.
+ */
+void abi_FxEffectsSpawn(void)
+{
+    gsu.r[4] = gsu_ldw(FX_RANDOM);
+    gsu.r[1] = FX_EFFECTS;
+    gsu.r[12] = gsu.r[0];
+    gsu.r[13] = 0xC13A;
+    do {
+        gsu.r[0] = gsu_lob(gsu_ldb(gsu.r[1]));
+        if (!gsu.z) {
+            gsu.r[1] = gsu_add(gsu.r[1], FX_EFFECT_SIZE, 0);
+            continue;
+        }
+        gsu.r[0] = 8;
+        gsu_stb(gsu.r[1], (uint8_t)gsu.r[0]);
+        gsu.r[1] = gsu_inc(gsu.r[1]);
+        random_step();
+        gsu.r[0] = gsu_and(gsu.r[0], 1);
+        gsu.r[0] = gsu_inc(gsu.r[0]);
+        gsu_stb(gsu.r[1], (uint8_t)gsu.r[0]);
+        gsu.r[1] = gsu_inc(gsu.r[1]);
+        random_step();
+        gsu.r[2] = gsu_lob(gsu.r[0]);
+        gsu.r[3] = gsu_hib(gsu.r[0]);
+        gsu_stw(gsu.r[1], gsu.r[2]);
+        gsu.r[1] = gsu_inc(gsu_inc(gsu.r[1]));
+        gsu_stw(gsu.r[1], gsu.r[3]);
+        gsu.r[1] = gsu_inc(gsu_inc(gsu.r[1]));
+    } while (gsu_count_down(&gsu.r[12]));
+    gsu_stw(FX_RANDOM, gsu.r[4]);
+}
+
+/*
+ * @routine 01:BFB7 FxHazeSample
+ * WHAT IT DOES: Reads the pixels of a 16 x 16 shape at (R1, R2), each row
+ * moved down or up by its own offset, and lists the ones the shape covers
+ * at $0342 with where each goes back: X - 8 + its column, Y - 8 + its row
+ * (the pixel word, then those two bytes). $0340 counts them.
+ * HOW: The shape for the time R0 is found at $08:F92E + 4 * R0: a word
+ * pointing to sixteen signed row offsets and one pointing to the shape's
+ * 256 bytes (ROM bank 8). CACHE; sixteen rows (R7, BNE), each with a LOOP
+ * of sixteen columns (R12, R13 = $C008): a shape byte (GETB, SEX) of 0
+ * skips the pixel; otherwise its value moves X and RPIX reads the pixel
+ * at that X and the row's Y. R5 and R6 step the return position (INC in
+ * the delay slots). The count, (R11 - $0342) / 4 by two DIV2s, is added
+ * to $0340 by SBK. Returns by pulling R15.
+ * Entry: R0 = the time; R1 = X, R2 = Y; R10 = stack; R11 = return address.
+ * Exit: R11 past the list; R7 = R12 = 0; R1 = $0340; R2 its old value; R0
+ * = the new count; R3 = X, R4 = the last row's Y, R5, R6 past the last
+ * return position, R8 past the row offsets, R9 = Y; R14 past the shape; the
+ * ROM bank 8; S and Z from R10; the last RAM address R10. R14 and the ROM
+ * buffer move as on the Super FX.
+ */
+void abi_FxHazeSample(void)
+{
+    int skip, more;
+
+    gsu_push(&gsu.r[10], gsu.r[11]);
+    gsu_stw(FX_HAZE_X, gsu.r[1]);
+    gsu.r[1] = gsu_sub(gsu.r[1], 8, 0);
+    gsu_stw(FX_HAZE_X8, gsu.r[1]);
+    gsu.r[9] = gsu.r[2];
+    gsu.r[6] = gsu.r[2];
+    gsu.r[6] = gsu_sub(gsu.r[6], 8, 0);
+    gsu.r[0] = gsu_add(gsu.r[0], gsu.r[0], 0);
+    gsu.r[1] = gsu_add(gsu.r[0], gsu.r[0], 0);
+    gsu.r[0] = 0x0008;
+    gsu.rombr = 0x08;
+    gsu_r14(FX_HAZE_SHAPES);
+    gsu_r14(gsu_add(gsu.r[14], gsu.r[1], 0));
+    gsu.r[1] = gsu_getb();
+    gsu_r14(gsu_inc(gsu.r[14]));
+    gsu.r[1] = gsu_getbh(gsu.r[1]);
+    gsu_r14(gsu_inc(gsu.r[14]));
+    gsu.r[8] = gsu_getb();
+    gsu_r14(gsu_inc(gsu.r[14]));
+    gsu.r[8] = gsu_getbh(gsu.r[8]);
+    gsu_r14(gsu_inc(gsu.r[14]));
+    gsu_r14(gsu.r[1]);
+    gsu.r[7] = 0x0010;
+    gsu.r[11] = FX_HAZE_PIXELS;
+    do {
+        gsu.r[1] = gsu.r[14];
+        gsu_r14(gsu.r[8]);
+        gsu.r[0] = gsu_getbs();
+        gsu.r[8] = gsu_inc(gsu.r[8]);
+        gsu.r[4] = gsu_add(gsu.r[0], gsu.r[9], 0);
+        gsu_r14(gsu.r[1]);
+        gsu.r[3] = gsu_ldw(FX_HAZE_X);
+        gsu.r[5] = gsu_ldw(FX_HAZE_X8);
+        gsu.r[12] = 0x0010;
+        gsu.r[13] = 0xC008;
+        do {
+            gsu.r[0] = (uint16_t)(int16_t)(int8_t)gsu_getb();      /* GETB, SEX */
+            gsu_sz(gsu.r[0]);
+            skip = gsu.z;
+            gsu_r14(gsu_inc(gsu.r[14]));    /* BEQ's delay slot */
+            if (!skip) {
+                gsu.r[1] = gsu_add(gsu.r[0], gsu.r[3], 0);
+                gsu.r[2] = gsu.r[4];
+                gsu.r[0] = gsu_rpix((uint8_t)gsu.r[1], (uint8_t)gsu.r[2]);
+                gsu_sz(gsu.r[0]);
+                gsu_stw(gsu.r[11], gsu.r[0]);
+                gsu.r[11] = gsu_inc(gsu_inc(gsu.r[11]));
+                gsu_stb(gsu.r[11], (uint8_t)gsu.r[5]);
+                gsu.r[11] = gsu_inc(gsu.r[11]);
+                gsu_stb(gsu.r[11], (uint8_t)gsu.r[6]);
+                gsu.r[11] = gsu_inc(gsu.r[11]);
+            }
+            more = gsu_count_down(&gsu.r[12]);
+            gsu.r[5] = gsu_inc(gsu.r[5]);   /* LOOP's delay slot */
+        } while (more);
+        gsu.r[7] = gsu_dec(gsu.r[7]);
+        more = !gsu.z;
+        gsu.r[6] = gsu_inc(gsu.r[6]);       /* BNE's delay slot */
+    } while (more);
+    gsu.r[1] = FX_HAZE_PIXELS;
+    gsu.r[0] = gsu_sub(gsu.r[11], gsu.r[1], 0);
+    gsu.r[0] = gsu_div2(gsu.r[0]);
+    gsu.r[0] = gsu_div2(gsu.r[0]);
+    gsu.r[1] = FX_HAZE_COUNT;
+    gsu.r[2] = gsu_ldw(gsu.r[1]);
+    gsu.r[0] = gsu_add(gsu.r[0], gsu.r[2], 0);
+    gsu_sbk(gsu.r[0]);
+    gsu_pull(&gsu.r[10]);       /* the return address, into R15 */
+}
+
+/*
+ * @routine 01:C039 FxHazePlot
+ * WHAT IT DOES: Plots back the pixels FxHazeSample listed, each at its
+ * return position, so the shape's patch of screen is drawn again moved:
+ * a shimmer.
+ * HOW: The count from $0340; none returns at once. CMODE 1 (colour 0 is
+ * plotted); CACHE; a LOOP (R13 = $C04B) of COLOR from the pixel word, R1
+ * and R2 from the two bytes (LDB) and PLOT in the delay slot. Returns
+ * with MOVE R15,R11.
+ * Entry: R11 = return address. Exit: R3 past the list; R1 one past the
+ * last X (PLOT steps it), R2 the last Y; R12 = 0; R13 = $C04B; R0 the
+ * last pixel word; the plot options 1; flags from the LOOP; the last RAM
+ * address the last Y's.
+ */
+void abi_FxHazePlot(void)
+{
+    gsu.r[3] = FX_HAZE_COUNT;
+    gsu.r[0] = gsu_ldw(gsu.r[3]);
+    gsu.r[3] = gsu_inc(gsu_inc(gsu.r[3]));
+    gsu.r[12] = gsu.r[0];
+    gsu_moves(gsu.r[0]);
+    if (gsu.z)
+        return;
+    gsu.r[0] = 0x0001;
+    gsu.por = (uint8_t)gsu.r[0];
+    gsu.r[13] = 0xC04B;
+    do {
+        int more;
+
+        gsu.r[0] = gsu_ldw(gsu.r[3]);
+        gsu.r[3] = gsu_inc(gsu_inc(gsu.r[3]));
+        fx_color((uint8_t)gsu.r[0]);
+        gsu.r[1] = gsu_sub(gsu.r[0], gsu.r[0], 0);
+        gsu.r[2] = gsu.r[1];
+        gsu.r[1] = gsu_ldb(gsu.r[3]);
+        gsu.r[3] = gsu_inc(gsu.r[3]);
+        gsu.r[2] = gsu_ldb(gsu.r[3]);
+        gsu.r[3] = gsu_inc(gsu.r[3]);
+        more = gsu_count_down(&gsu.r[12]);
+        gsu_plot((uint8_t)gsu.r[1], (uint8_t)gsu.r[2]);     /* LOOP's delay slot */
+        gsu.r[1] = (uint16_t)(gsu.r[1] + 1);
+        if (!more)
+            break;
+    } while (1);
+}
+
+/*
+ * @routine 01:C175 FxEffectsDraw
+ * WHAT IT DOES: Draws each effect in use: FxHazeSample at its X and Y
+ * with its time, then FxHazePlot.
+ * HOW: Pushes R11 on the R10 stack; sixteen records from $2688 (R4
+ * counting, BNE), R4 and R3 kept on the R10 stack around each. For a
+ * record in use (its time by LDB, LOB, MOVES) $0340 is cleared first.
+ * Returns by pulling R15.
+ * Entry: R10 = stack; R11 = return address. Exit: R3 = $26E8, R4 = 0;
+ * the rest as the last effect drawn leaves them; S and Z from R10; the
+ * last RAM address R10.
+ */
+void abi_FxEffectsDraw(void)
+{
+    gsu_push(&gsu.r[10], gsu.r[11]);
+    gsu.r[3] = FX_EFFECTS;
+    gsu.r[4] = FX_EFFECT_COUNT;
+    do {
+        gsu_push(&gsu.r[10], gsu.r[4]);
+        gsu_push(&gsu.r[10], gsu.r[3]);
+        gsu.r[0] = gsu_lob(gsu_ldb(gsu.r[3]));
+        gsu_moves(gsu.r[0]);
+        if (!gsu.z) {
+            gsu.r[1] = FX_HAZE_COUNT;
+            gsu.r[2] = 0;
+            gsu_stw(gsu.r[1], gsu.r[2]);
+            gsu.r[3] = gsu_inc(gsu_inc(gsu.r[3]));
+            gsu.r[1] = gsu_ldw(gsu.r[3]);
+            gsu.r[3] = gsu_inc(gsu_inc(gsu.r[3]));
+            gsu.r[2] = gsu_ldw(gsu.r[3]);
+            gsu.r[3] = gsu_inc(gsu_inc(gsu.r[3]));
+            gsu.r[11] = 0xC1A5;
+            abi_FxHazeSample();
+            gsu.r[11] = 0xC1AA;
+            abi_FxHazePlot();
+        }
+        gsu.r[3] = gsu_pull(&gsu.r[10]);
+        gsu.r[4] = gsu_pull(&gsu.r[10]);
+        gsu.r[3] = gsu_add(gsu.r[3], FX_EFFECT_SIZE, 0);
+        gsu.r[4] = gsu_dec(gsu.r[4]);
+    } while (!gsu.z);
+    gsu_pull(&gsu.r[10]);       /* the return address, into R15 */
+}
+
+/*
+ * @routine 01:BF6D FxEffectsRun
+ * WHAT IT DOES: With bit 14 of $2736 set, starts new effects (as many as
+ * the tied object's speed, +$4A of the record at $247A, over 8, at most
+ * $26EE; none when it is negative), ages them and draws them.
+ * HOW: Pushes R11 on the R10 stack; three DIV2s; CMP against $26EE keeps
+ * the smaller. FxEffectsSpawn (when there are any to start),
+ * FxEffectsAge and FxEffectsDraw. Returns by pulling R15.
+ * Entry: R10 = stack; R11 = return address. Exit: as FxEffectsDraw, or
+ * with the bit clear R0 = 0, R1 = $2736, Z set by the AND then S and Z
+ * from R10; the last RAM address R10.
+ */
+void abi_FxEffectsRun(void)
+{
+    gsu_push(&gsu.r[10], gsu.r[11]);
+    gsu.r[1] = gsu_ldw(FX_EFFECT_FLAGS);
+    gsu.r[0] = 0x4000;
+    gsu.r[0] = gsu_and(gsu.r[0], gsu.r[1]);
+    if (!gsu.z) {
+        gsu.r[2] = 0;
+        gsu.r[1] = gsu_ldw(FX_TIED_RECORD);
+        gsu.r[0] = 0x004A;
+        gsu.r[0] = gsu_add(gsu.r[0], gsu.r[1], 0);
+        gsu.r[0] = gsu_ldw(gsu.r[0]);
+        gsu_moves(gsu.r[0]);
+        if (!gsu.s) {
+            gsu.r[0] = gsu_div2(gsu.r[0]);
+            gsu.r[0] = gsu_div2(gsu.r[0]);
+            gsu.r[0] = gsu_div2(gsu.r[0]);
+            gsu.r[2] = gsu.r[0];
+            gsu.r[0] = gsu_ldw(FX_EFFECT_MAX);
+            gsu_sub(gsu.r[0], gsu.r[2], 0);     /* CMP */
+            if (gsu.s)
+                gsu.r[2] = gsu.r[0];
+        }
+        gsu.r[0] = gsu.r[2];
+        gsu_moves(gsu.r[0]);
+        if (!gsu.z) {
+            gsu.r[11] = 0xBFA8;
+            abi_FxEffectsSpawn();
+        }
+        gsu.r[11] = 0xBFAD;
+        abi_FxEffectsAge();
+        gsu.r[11] = 0xBFB2;
+        abi_FxEffectsDraw();
+    }
+    gsu_pull(&gsu.r[10]);       /* the return address, into R15 */
+}

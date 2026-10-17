@@ -1,0 +1,47 @@
+# unit_effects_haze: unit tests (fx) of the Super FX haze effects, which no
+# script turns on, from the start of a Novice race (R11 = the STOP at
+# $01:80E3, R10 = the stack at $024C):
+# - FxEffectsRun with bit 14 of $2736 set, the tied record at $1738 with
+#   speed (+$4A) $40, at most 4 to start ($26EE) and every record free:
+#   four start, age and are drawn (FxHazeSample, FxHazePlot);
+# - FxEffectsRun with the speed negative (none start) and two records in
+#   use, one about to run out; and with bit 14 clear (nothing done);
+# - FxEffectsSpawn over sixteen records, every other one in use;
+# - FxEffectsDraw with three records in use at the screen's middle and
+#   corners, times 8, 4 and 1; FxHazePlot with nothing saved ($0340 = 0).
+load build/stuntracefx/states/novice_coupe_race1.state
+set 702736 00,40
+set 70247A 38,17
+set 701782 40,00
+set 7026EE 04,00
+set 702688 00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00
+set 7026B8 00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00
+fx 01:BF6D stop=80E3 r10=024C
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 702736 00,40
+set 70247A 38,17
+set 701782 00,80
+set 702688 06,01,60,00,40,00,01,02,30,00,30,00
+fx 01:BF6D stop=80E3 r10=024C
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 702736 FF,3F
+fx 01:BF6D stop=80E3 r10=024C
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7001D0 34,12
+set 702688 05,01,50,00,40,00,00,00,00,00,00,00,05,02,50,00,40,00,00,00,00,00,00,00,05,01,50,00,40,00,00,00,00,00,00,00,05,02,50,00,40,00,00,00,00,00,00,00
+set 7026B8 05,01,50,00,40,00,00,00,00,00,00,00,05,02,50,00,40,00,00,00,00,00,00,00,05,01,50,00,40,00,00,00,00,00,00,00,05,02,50,00,40,00,00,00,00,00,00,00
+fx 01:C130 stop=80E3 r0=0010
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 702688 08,01,60,00,40,00,04,02,10,00,10,00,01,01,B0,00,70,00
+set 70269A 00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00
+set 7026CA 00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00
+fx 01:C175 stop=80E3 r10=024C
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700340 00,00
+fx 01:C039 stop=80E3
+wait 1
