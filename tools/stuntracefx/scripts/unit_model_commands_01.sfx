@@ -10,8 +10,12 @@
 # so the list runs on to its end and the program stops there; a start
 # inside a sub-list's walk (return 01:8E7D) has the walker's table of
 # sub-list returns ($0056) emptied, so the walk ends at once. Starts whose
-# list then runs on for many frames from the race's RAM are left out
-# (FxModelPoints01, FxModelIfCall and FxModelIfSkip have none here).
+# list then runs on for many frames from the race's RAM are left out;
+# FxModelIfSkip has none here. The starts of FxModelPoints01,
+# FxModelIfCall, FxModelFramePick and FxModelJump (all but FxModelIfCall
+# with registers from the attract_04 and stunt_rockfield_06 plays) also
+# empty the draw list ($005C = $08AA), so the program draws only its own
+# faces.
 load build/stuntracefx/states/speed_novice_coupe_08.state
 set 700244 E3,80,43,92
 fx 01:8B0E stop=80E3 r10=0248 r0=0820 r1=0500 r2=FB00 r3=0A00 r4=02DC r5=FE73 r6=7BE1 r7=7C2A r8=E121 r9=0364 r12=0000 r13=08FF r14=D9DA
@@ -86,4 +90,35 @@ wait 1
 load build/stuntracefx/states/speed_novice_coupe_08.state
 set 700244 E3,80,43,92
 fx 01:93A7 stop=80E3 r10=0248 r0=C000 r1=4000 r2=F5B6 r3=FE11 r4=F8FF r5=26D2 r6=0272 r7=0374 r8=0514 r9=0040 r12=0000 r13=0080 r14=D9E0
+wait 1
+load build/stuntracefx/states/speed_novice_coupe_07.state
+set 700244 E3,80,43,92
+set 70005C AA,08
+fx 01:8A97 stop=80E3 r10=0248 r0=9243 r1=0000 r2=393E r3=727C r4=8001 r5=F571 r6=2A48 r7=0000 r8=8778 r9=0144 r12=0000 r13=0000 r14=A7E2
+wait 1
+load build/stuntracefx/states/speed_novice_coupe_07.state
+set 700244 E3,80,43,92
+set 70005C AA,08
+fx 01:8A97 stop=80E3 r10=0248 r0=9243 r1=0000 r2=393E r3=727C r4=7FFF r5=0A8E r6=D5B7 r7=0000 r8=8778 r9=0144 r12=0000 r13=0000 r14=B5F8
+wait 1
+load build/stuntracefx/states/speed_novice_coupe_07.state
+set 700244 E3,80,43,92,7D,8E
+set 700056 88,07
+set 70005C AA,08
+fx 01:8D7A stop=80E3 r10=024A r0=0019 r1=078A r2=0000 r3=FFFC r4=0022 r5=15CC r6=FFFC r7=FFFF r8=051C r9=04E4 r12=0000 r13=9427 r14=9892
+wait 1
+load build/stuntracefx/states/speed_novice_coupe_08.state
+set 700244 E3,80,43,92
+set 70005C AA,08
+fx 01:884F stop=80E3 r10=0248 r0=FFAC r1=0012 r2=00B7 r3=0000 r4=F498 r5=047F r6=00F1 r7=2879 r8=D70F r9=7804 r12=0000 r13=FEF2 r14=D754
+wait 1
+load build/stuntracefx/states/speed_novice_coupe_08.state
+set 700244 E3,80,43,92
+set 70005C AA,08
+fx 01:8863 stop=80E3 r10=0248 r0=0000 r1=0008 r2=003F r3=0780 r4=4A84 r5=FE66 r6=2892 r7=626E r8=05B1 r9=040C r12=0000 r13=749B r14=BFAF
+wait 1
+load build/stuntracefx/states/speed_novice_coupe_08.state
+set 700244 E3,80,43,92
+set 70005C AA,08
+fx 01:8863 stop=80E3 r10=0248 r0=000A r1=000C r2=003F r3=0000 r4=F498 r5=047F r6=00F1 r7=2879 r8=D70F r9=7804 r12=0000 r13=FEF2 r14=D75F
 wait 1
