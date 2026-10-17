@@ -1,0 +1,36 @@
+# unit_rival_cars_08: the rival cars' set-ups 08:B079/B0B1 and frame
+# 08:B0F4 of bank $08, as calls on object 1 ($2001, the player's car of a
+# Novice race's state, record $1CD8): the frame with $1AEC bit 10 set and
+# clear, +$36 = 1 and 3, the random generator ($E6-$E9) giving $FE and
+# $EE against $F2, the record's +$2C bit 2 (the car crashes,
+# CarCrashParts) and +$25 bit 2 (the crash refused, +$24 bit 5).
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:B079 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:B0B1 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1AEC 00,04
+set 7E2037 01
+set 7E00E6 00,00,00,00
+set 701D04 04,00
+set 7E2026 00
+call 08:B0F4 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1AEC 00,04
+set 7E2037 03
+set 7E00E6 00,00,00,10
+set 701D04 00,00
+set 7E2026 00
+call 08:B0F4 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1AEC 00,00
+set 7E00E6 00,00,00,10
+set 701D04 04,00
+set 7E2026 04
+call 08:B0F4 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1AEC 00,00
+set 7E00E6 00,00,00,00
+set 701D04 00,00
+set 7E2026 04
+call 08:B0F4 long x=0001 p=20 db=7E d=0000

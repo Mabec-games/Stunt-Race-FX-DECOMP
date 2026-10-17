@@ -2046,3 +2046,168 @@ CarCrashParts:
 .lAB44:
     clc
     rtl
+
+; @routine 08:B079 ObjectRivalCar
+; WHAT IT DOES: Sets up a rival car: counted in $1F71, +$48 = 0, list kind
+; 0, spawned as a car (ObjectCarSpawnListed), its record's +$64 bit 4 set,
+; frame $08:B0F4 (ObjectRivalCarStep); then that frame.
+; HOW: Byte stores, the record word through X (PHX/PLX); a JMP into the
+; frame. Reached only by unit_rival_cars_08.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+; leaves it.
+%at($08B079)
+ObjectRivalCar:
+    inc.w !script_byte_1f71
+    lda.b #$00
+    sta.w !obj_48,x
+    lda.b #$00
+    sta.w !obj_26,x
+    jsl.l ObjectCarSpawnListed
+    phx
+    rep.b #$20
+    lda.w !obj_22,x
+    tax
+    lda.l !gsu_rec_64,x
+    ora.w #$0010
+    sta.l !gsu_rec_64,x
+    plx
+    sep.b #$20
+    rep.b #$20
+    lda.w #$B0F4
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+    jmp.w ObjectRivalCarStep
+
+; @routine 08:B0B1 ObjectRivalCarB
+; WHAT IT DOES: As ObjectRivalCar, the record's +$70 bit 1 set as well.
+; HOW: As ObjectRivalCar. Nothing in the game reaches it; reached only by
+; unit_rival_cars_08.
+; Entry: as ObjectRivalCar. Exit: as ObjectRivalCar.
+%at($08B0B1)
+ObjectRivalCarB:
+    inc.w !script_byte_1f71
+    lda.b #$00
+    sta.w !obj_48,x
+    lda.b #$00
+    sta.w !obj_26,x
+    jsl.l ObjectCarSpawnListed
+    phx
+    rep.b #$20
+    lda.w !obj_22,x
+    tax
+    lda.l !gsu_rec_64,x
+    ora.w #$0010
+    sta.l !gsu_rec_64,x
+    lda.l !gsu_rec_70,x
+    ora.w #$0002
+    sta.l !gsu_rec_70,x
+    plx
+    sep.b #$20
+    rep.b #$20
+    lda.w #$B0F4
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+    jmp.w ObjectRivalCarStep
+
+; @routine 08:B0F4 ObjectRivalCarStep
+; WHAT IT DOES: The rival car's frame: with $1AEC bit 10, its record's +$1C
+; bit 5 follows +$36 = 1 (then +$36 = 2); one frame in 14 (the random step
+; at $F2 or above) its record's +$70 bit 1 flips; when its record's +$2C
+; bit 2 is set it is marked (+$25 bit 4) and crashes (CarCrashParts with
+; flags 3), and if it did, $1F71 counts down and the record's flags +$16
+; bit 5 and +$1C bit 4 are set; with +$25 bit 2, +$24 bit 5; then the car's
+; frame (ObjectCarFrame).
+; HOW: The record words through X = +$22 (long, 16-bit); the car kept at
+; $1F18 across; JMP ObjectCarFrame. Reached only by unit_rival_cars_08.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectCarFrame
+; leaves it.
+%at($08B0F4)
+ObjectRivalCarStep:
+    rep.b #$20
+    lda.w !wram_1AEC
+    and.w #$0400
+    sep.b #$20
+    beq .lB138
+    lda.w !obj_36,x
+    cmp.b #$01
+    beq .lB11E
+    phx
+    rep.b #$20
+    lda.w !obj_22,x
+    tax
+    lda.l !gsu_rec_1c,x
+    and.w #$FFDF
+    sta.l !gsu_rec_1c,x
+    sep.b #$20
+    plx
+    bra .lB138
+.lB11E:
+    lda.b #$02
+    sta.w !obj_36,x
+    phx
+    rep.b #$20
+    lda.w !obj_22,x
+    tax
+    lda.l !gsu_rec_1c,x
+    ora.w #$0020
+    sta.l !gsu_rec_1c,x
+    sep.b #$20
+    plx
+.lB138:
+    jsl.l RandomStepLong
+    cmp.b #$F2
+    bcs .lB144
+    jml.l .lB159
+.lB144:
+    phx
+    rep.b #$20
+    lda.w !obj_22,x
+    tax
+    lda.l !gsu_rec_70,x
+    eor.w #$0002
+    sta.l !gsu_rec_70,x
+    plx
+    sep.b #$20
+.lB159:
+    stx.w !draw_side+17
+    rep.b #$20
+    lda.w !obj_22,x
+    tax
+    lda.l !gsu_dest,x
+    and.w #$0004
+    beq .lB19F
+    ldx.w !draw_side+17
+    sep.b #$20
+    lda.w !obj_25,x
+    ora.b #$10
+    sta.w !obj_25,x
+    lda.b #$03
+    jsl.l CarCrashParts
+    bcs .lB19F
+    dec.w !script_byte_1f71
+    rep.b #$20
+    lda.w !obj_22,x
+    tax
+    lda.l !gsu_rec_flags,x
+    ora.w #$0020
+    sta.l !gsu_rec_flags,x
+    lda.l !gsu_rec_1c,x
+    ora.w #$0010
+    sta.l !gsu_rec_1c,x
+.lB19F:
+    sep.b #$20
+    ldx.w !draw_side+17
+    lda.w !obj_25,x
+    and.b #$04
+    bne .lB1AF
+    jml.l .lB1B7
+.lB1AF:
+    lda.w !obj_24,x
+    ora.b #$20
+    sta.w !obj_24,x
+.lB1B7:
+    jmp.w ObjectCarFrame

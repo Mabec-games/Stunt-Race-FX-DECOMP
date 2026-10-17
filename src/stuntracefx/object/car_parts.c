@@ -1007,3 +1007,172 @@ fail:
     cpu.p |= P_M;
     cpu.p |= P_C;
 }
+
+void abi_RandomStepLong(void);
+void abi_ObjectCarFrame(void);
+
+/* PHX, REP #$20, the object's record word at `field` (long, through X =
+   +$22) changed by `op` with m, PLX, SEP #$20 (the SEP after the PLX when
+   `sep_last`). 0: OR, 1: AND, 2: EOR. */
+static void rec_word(uint32_t field, int op, uint16_t m)
+{
+    uint16_t sx = cpu.x;
+    uint32_t at;
+
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(F(0x2022, cpu.x));
+    cpu.x = cpu.a;
+    cpu.p = nz16(cpu.p, cpu.x);
+    at = (field + cpu.x) & 0xFFFFFF;
+    op_lda16(at);
+    cpu.a = op == 0 ? (uint16_t)(cpu.a | m) : op == 1 ? (uint16_t)(cpu.a & m) : (uint16_t)(cpu.a ^ m);
+    cpu.p = nz16(cpu.p, cpu.a);
+    wr16(at, cpu.a);
+    cpu.x = sx;
+    cpu.p = nz16(cpu.p, sx);
+    cpu.p |= P_M;
+}
+
+/* 08:B0F4: the rival car's frame (see ObjectRivalCarStep). */
+static void rival_frame(void)
+{
+    uint16_t car;
+
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(db() | 0x1AEC);
+    op_and16(0x0400);
+    cpu.p |= P_M;
+    if (cpu.a) {
+        ld8(F(0x2036, cpu.x));
+        cmp8(0x01);
+        if ((uint8_t)cpu.a == 0x01) {
+            st8i(F(0x2036, cpu.x), 0x02);
+            rec_word(0x70001C, 0, 0x0020);
+        } else {
+            rec_word(0x70001C, 1, 0xFFDF);
+        }
+    }
+    abi_RandomStepLong();
+    cmp8(0xF2);
+    if ((uint8_t)cpu.a >= 0xF2)
+        rec_word(0x700070, 2, 0x0002);
+    car = cpu.x;
+    wr16(db() | 0x1F18, car);
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(F(0x2022, cpu.x));
+    cpu.x = cpu.a;
+    cpu.p = nz16(cpu.p, cpu.x);
+    op_lda16((0x70002C + cpu.x) & 0xFFFFFF);
+    op_and16(0x0004);
+    if (cpu.a) {
+        cpu.x = rd16(db() | 0x1F18);
+        cpu.p = nz16(cpu.p, cpu.x);
+        cpu.p |= P_M;
+        or8(F(0x2025, cpu.x), 0x10);
+        lda8(0x03);
+        abi_CarCrashParts();
+        if (!(cpu.p & P_C)) {
+            dec8(db() | 0x1F71);
+            cpu.p &= (uint8_t)~P_M;
+            op_lda16(F(0x2022, cpu.x));
+            cpu.x = cpu.a;
+            cpu.p = nz16(cpu.p, cpu.x);
+            op_lda16((0x700016 + cpu.x) & 0xFFFFFF);
+            cpu.a |= 0x0020;
+            cpu.p = nz16(cpu.p, cpu.a);
+            wr16((0x700016 + cpu.x) & 0xFFFFFF, cpu.a);
+            op_lda16((0x70001C + cpu.x) & 0xFFFFFF);
+            cpu.a |= 0x0010;
+            cpu.p = nz16(cpu.p, cpu.a);
+            wr16((0x70001C + cpu.x) & 0xFFFFFF, cpu.a);
+        }
+    }
+    cpu.p |= P_M;
+    cpu.x = rd16(db() | 0x1F18);
+    cpu.p = nz16(cpu.p, cpu.x);
+    if (bits25(cpu.x, 0x04))
+        or8(F(0x2024, cpu.x), 0x20);
+    abi_ObjectCarFrame();
+}
+
+/* A rival car's set-up: counted in $1F71, +$48 = 0, list kind +$26 = 0,
+   spawned (ObjectCarSpawnListed), its record's +$64 bit 4 set (and +$70 bit
+   1 with `b`), frame $08:B0F4; then that frame. */
+static void rival_car(int b)
+{
+    uint16_t sx;
+    uint32_t at;
+
+    inc8(db() | 0x1F71);
+    st8i(F(0x2048, cpu.x), 0x00);
+    st8i(F(0x2026, cpu.x), 0x00);
+    abi_ObjectCarSpawnListed();
+    sx = cpu.x;
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(F(0x2022, cpu.x));
+    cpu.x = cpu.a;
+    cpu.p = nz16(cpu.p, cpu.x);
+    at = (0x700064 + cpu.x) & 0xFFFFFF;
+    op_lda16(at);
+    cpu.a |= 0x0010;
+    cpu.p = nz16(cpu.p, cpu.a);
+    wr16(at, cpu.a);
+    if (b) {
+        at = (0x700070 + cpu.x) & 0xFFFFFF;
+        op_lda16(at);
+        cpu.a |= 0x0002;
+        cpu.p = nz16(cpu.p, cpu.a);
+        wr16(at, cpu.a);
+    }
+    cpu.x = sx;
+    cpu.p = nz16(cpu.p, sx);
+    cpu.p |= P_M;
+    handler(cpu.x, 0xB0F4);
+    rival_frame();
+}
+
+/*
+ * @routine 08:B079 ObjectRivalCar
+ * WHAT IT DOES: Sets up a rival car: counted in $1F71, +$48 = 0, list kind
+ * 0, spawned as a car (ObjectCarSpawnListed), its record's +$64 bit 4 set,
+ * frame $08:B0F4 (ObjectRivalCarStep); then that frame.
+ * HOW: Byte stores, the record word through X (PHX/PLX); a JMP into the
+ * frame. Reached only by unit_rival_cars_08.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectRivalCar(void)
+{
+    rival_car(0);
+}
+
+/*
+ * @routine 08:B0B1 ObjectRivalCarB
+ * WHAT IT DOES: As ObjectRivalCar, the record's +$70 bit 1 set as well.
+ * HOW: As ObjectRivalCar. Nothing in the game reaches it; reached only by
+ * unit_rival_cars_08.
+ * Entry: as ObjectRivalCar. Exit: as ObjectRivalCar.
+ */
+void abi_ObjectRivalCarB(void)
+{
+    rival_car(1);
+}
+
+/*
+ * @routine 08:B0F4 ObjectRivalCarStep
+ * WHAT IT DOES: The rival car's frame: with $1AEC bit 10, its record's +$1C
+ * bit 5 follows +$36 = 1 (then +$36 = 2); one frame in 14 (the random step
+ * at $F2 or above) its record's +$70 bit 1 flips; when its record's +$2C
+ * bit 2 is set it is marked (+$25 bit 4) and crashes (CarCrashParts with
+ * flags 3), and if it did, $1F71 counts down and the record's flags +$16
+ * bit 5 and +$1C bit 4 are set; with +$25 bit 2, +$24 bit 5; then the car's
+ * frame (ObjectCarFrame).
+ * HOW: The record words through X = +$22 (long, 16-bit); the car kept at
+ * $1F18 across; JMP ObjectCarFrame. Reached only by unit_rival_cars_08.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectCarFrame
+ * leaves it.
+ */
+void abi_ObjectRivalCarStep(void)
+{
+    rival_frame();
+}
