@@ -1,0 +1,95 @@
+# unit_model_table_01: unit tests (fx) for the 3D model interpreter's
+# command table at 01:8000 and the commands no play reaches, each run
+# from a race state whose ROM bank register holds the bank of the bytes
+# it reads (the start cannot set it), the R10 stack holding the STOP at
+# $01:80E3 (under the end command 01:9243 where the list ends) and the
+# draw list emptied ($005C = $08AA):
+# - the table entry for command 0 (01:8000, to FxModelEnd) and the four
+#   entries of the return command no list uses (01:8018, 8024, 802C and
+#   8048, to FxModelReturn);
+# - FxModelIfSprite (01:8F05) and FxModelSprite (01:8F18), each started
+#   directly and by its table entry (01:8054, 01:8050), with the registers
+#   of an FxModelFaces entry in speed_novice_coupe_07;
+# - FxModelPointsFull (01:886C; entries 01:8008 and 01:804C) and
+#   FxModelPointsScaled (01:88F3; entry 01:8034) on the bytes at $0E:8EC4
+#   (one point, then the end command), from speed_novice_coupe_07 (bank
+#   $0E);
+# - FxModelDepthSort (01:8EA7; entry 01:8010) on the bytes at $18:98AE
+#   (one sub-list, point 1, at $18:8401, a return command), from
+#   speed_novice_coupe_02 (bank $18).
+load build/stuntracefx/states/speed_novice_coupe_07.state
+set 700244 E3,80
+fx 01:8018 stop=80E3 r10=0246 
+wait 1
+load build/stuntracefx/states/speed_novice_coupe_07.state
+set 700244 E3,80
+fx 01:8024 stop=80E3 r10=0246 
+wait 1
+load build/stuntracefx/states/speed_novice_coupe_07.state
+set 700244 E3,80
+fx 01:802C stop=80E3 r10=0246 
+wait 1
+load build/stuntracefx/states/speed_novice_coupe_07.state
+set 700244 E3,80
+fx 01:8048 stop=80E3 r10=0246 
+wait 1
+load build/stuntracefx/states/speed_novice_coupe_07.state
+set 700244 E3,80,43,92
+set 70005C AA,08
+fx 01:8000 stop=80E3 r10=0248 
+wait 1
+load build/stuntracefx/states/speed_novice_coupe_07.state
+set 700244 E3,80,43,92
+set 70005C AA,08
+fx 01:8F05 stop=80E3 r10=0248 r0=00FF r1=0000 r2=FFFF r3=0002 r4=FFFC r5=30E3 r6=0002 r7=0000 r8=0504 r9=04E4 r12=0000 r13=9427 r14=E0D8
+wait 1
+load build/stuntracefx/states/speed_novice_coupe_07.state
+set 700244 E3,80,43,92
+set 70005C AA,08
+fx 01:8F18 stop=80E3 r10=0248 r0=00FF r1=0000 r2=FFFF r3=0002 r4=FFFC r5=30E3 r6=0002 r7=0000 r8=0504 r9=04E4 r12=0000 r13=9427 r14=E0D8
+wait 1
+load build/stuntracefx/states/speed_novice_coupe_07.state
+set 700244 E3,80,43,92
+set 70005C AA,08
+fx 01:8054 stop=80E3 r10=0248 r0=00FF r1=0000 r2=FFFF r3=0002 r4=FFFC r5=30E3 r6=0002 r7=0000 r8=0504 r9=04E4 r12=0000 r13=9427 r14=E0D8
+wait 1
+load build/stuntracefx/states/speed_novice_coupe_07.state
+set 700244 E3,80,43,92
+set 70005C AA,08
+fx 01:8050 stop=80E3 r10=0248 r0=00FF r1=0000 r2=FFFF r3=0002 r4=FFFC r5=30E3 r6=0002 r7=0000 r8=0504 r9=04E4 r12=0000 r13=9427 r14=E0D8
+wait 1
+load build/stuntracefx/states/speed_novice_coupe_07.state
+set 700244 E3,80,43,92
+set 70005C AA,08
+fx 01:886C stop=80E3 r10=0248 r0=9243 r1=0000 r2=393E r3=727C r4=8001 r5=F571 r6=2A48 r7=0000 r8=8778 r9=0144 r12=0000 r13=0000 r14=8EC4
+wait 1
+load build/stuntracefx/states/speed_novice_coupe_07.state
+set 700244 E3,80,43,92
+set 70005C AA,08
+fx 01:8008 stop=80E3 r10=0248 r0=9243 r1=0000 r2=393E r3=727C r4=8001 r5=F571 r6=2A48 r7=0000 r8=8778 r9=0144 r12=0000 r13=0000 r14=8EC4
+wait 1
+load build/stuntracefx/states/speed_novice_coupe_07.state
+set 700244 E3,80,43,92
+set 70005C AA,08
+fx 01:804C stop=80E3 r10=0248 r0=9243 r1=0000 r2=393E r3=727C r4=8001 r5=F571 r6=2A48 r7=0000 r8=8778 r9=0144 r12=0000 r13=0000 r14=8EC4
+wait 1
+load build/stuntracefx/states/speed_novice_coupe_07.state
+set 700244 E3,80,43,92
+set 70005C AA,08
+fx 01:88F3 stop=80E3 r10=0248 r0=9243 r1=0000 r2=393E r3=727C r4=8001 r5=F571 r6=2A48 r7=0000 r8=8778 r9=0144 r12=0000 r13=0000 r14=8EC4
+wait 1
+load build/stuntracefx/states/speed_novice_coupe_07.state
+set 700244 E3,80,43,92
+set 70005C AA,08
+fx 01:8034 stop=80E3 r10=0248 r0=9243 r1=0000 r2=393E r3=727C r4=8001 r5=F571 r6=2A48 r7=0000 r8=8778 r9=0144 r12=0000 r13=0000 r14=8EC4
+wait 1
+load build/stuntracefx/states/speed_novice_coupe_02.state
+set 700244 E3,80,43,92
+set 70005C AA,08
+fx 01:8EA7 stop=80E3 r10=0248 r0=00FF r1=0000 r2=FFFF r3=0002 r4=FFFC r5=30E3 r6=0002 r7=0000 r8=0504 r9=04E4 r12=0000 r13=9427 r14=98AE
+wait 1
+load build/stuntracefx/states/speed_novice_coupe_02.state
+set 700244 E3,80,43,92
+set 70005C AA,08
+fx 01:8010 stop=80E3 r10=0248 r0=00FF r1=0000 r2=FFFF r3=0002 r4=FFFC r5=30E3 r6=0002 r7=0000 r8=0504 r9=04E4 r12=0000 r13=9427 r14=98AE
+wait 1
