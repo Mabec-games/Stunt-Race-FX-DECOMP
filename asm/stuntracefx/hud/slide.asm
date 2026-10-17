@@ -171,98 +171,98 @@ HudPanelBY:                             ; jumped to by HudPanelsStep, ends its P
     lda.w !map_b_y_w
     sec
     sbc.b #$0D
-    sta.w !oam_buffer+$1C0
-    sta.w !oam_buffer+$1C8
+    sta.w !oam_buffer+(4*112)
+    sta.w !oam_buffer+(4*114)
     clc
     adc.b #$10
-    sta.w !oam_buffer+$1C4
-    sta.w !oam_buffer+$1CC
+    sta.w !oam_buffer+(4*113)
+    sta.w !oam_buffer+(4*115)
     plp
     rts
 HudMarkerY:                             ; jumped to by HudPanelsStep, ends its PLP
     lda.w !wram_0E16
-    sta.w !oam_buffer+$1F8
-    sta.w !oam_buffer+$1FC
+    sta.w !oam_buffer+(4*126)
+    sta.w !oam_buffer+(4*127)
     clc
     adc.b #$08
     bcc .m0
     lda.b #$FF
 .m0:
-    sta.w !oam_buffer+$1D0
+    sta.w !oam_buffer+(4*116)
     clc
     adc.b #$06
     bcc .m1
     lda.b #$FF
 .m1:
-    sta.w !oam_buffer+$1E8
-    sta.w !oam_buffer+$1EC
+    sta.w !oam_buffer+(4*122)
+    sta.w !oam_buffer+(4*123)
     clc
     adc.b #$08
     bcc .m2
     lda.b #$FF
 .m2:
-    sta.w !oam_buffer+$1F0
-    sta.w !oam_buffer+$1F4
+    sta.w !oam_buffer+(4*124)
+    sta.w !oam_buffer+(4*125)
     clc
     adc.b #$08
     bcc .m3
     lda.b #$FF
 .m3:
-    sta.w !oam_buffer+$1D4
+    sta.w !oam_buffer+(4*117)
     clc
     adc.b #$08
     bcc .m4
     lda.b #$FF
 .m4:
-    sta.w !oam_buffer+$1D8
-    sta.w !oam_buffer+$1DC
+    sta.w !oam_buffer+(4*118)
+    sta.w !oam_buffer+(4*119)
     clc
     adc.b #$08
     bcc .m5
     lda.b #$FF
 .m5:
-    sta.w !oam_buffer+$1E0
-    sta.w !oam_buffer+$1E4
+    sta.w !oam_buffer+(4*120)
+    sta.w !oam_buffer+(4*121)
     plp
     rts
 HudGaugeBX:                             ; jumped to by HudPanelsStep, ends its PLP
     lda.w !gauge_b6_x
     bmi .g0
-    sta.w !oam_buffer+$12C
+    sta.w !oam_buffer+(4*75)
 .g0:
     sec
     sbc.b #$08
     bmi .g1
-    sta.w !oam_buffer+$148
+    sta.w !oam_buffer+(4*82)
 .g1:
     clc
     adc.b #$10
     bmi .g2
-    sta.w !oam_buffer+$130
+    sta.w !oam_buffer+(4*76)
 .g2:
     clc
     adc.b #$08
     bmi .g3
-    sta.w !oam_buffer+$134
+    sta.w !oam_buffer+(4*77)
 .g3:
     clc
     adc.b #$08
     bmi .g4
-    sta.w !oam_buffer+$138
+    sta.w !oam_buffer+(4*78)
 .g4:
     adc.b #$08
-    sta.w !oam_buffer+$140
+    sta.w !oam_buffer+(4*80)
     adc.b #$08
-    sta.w !oam_buffer+$144
-    sta.w !oam_buffer+$13C
+    sta.w !oam_buffer+(4*81)
+    sta.w !oam_buffer+(4*79)
     adc.b #$08
-    sta.w !oam_buffer+$14C
+    sta.w !oam_buffer+(4*83)
     adc.b #$04
-    sta.w !oam_buffer+$150
+    sta.w !oam_buffer+(4*84)
     adc.b #$08
-    sta.w !oam_buffer+$154
+    sta.w !oam_buffer+(4*85)
     adc.b #$08
-    sta.w !oam_buffer+$158
+    sta.w !oam_buffer+(4*86)
     plp
     rts
 HudSpritesY:                            ; jumped to by the panel slides, ends their PLP
@@ -274,42 +274,42 @@ HudSpritesY:                            ; jumped to by the panel slides, ends th
     pha
     pha
     jsr.w SpriteYOnScreen
-    sta.w !oam_buffer+$9C,x
-    sta.w !oam_buffer+$AC,x
+    sta.w !oam_buffer+(4*39),x
+    sta.w !oam_buffer+(4*43),x
     pla
     clc
     adc.b #$10
     pha
     jsr.w SpriteYOnScreen
-    sta.w !oam_buffer+$A0,x
-    sta.w !oam_buffer+$B0,x
+    sta.w !oam_buffer+(4*40),x
+    sta.w !oam_buffer+(4*44),x
     pla
     clc
     adc.b #$10
     pha
     jsr.w SpriteYOnScreen
-    sta.w !oam_buffer+$A4,x
-    sta.w !oam_buffer+$B4,x
+    sta.w !oam_buffer+(4*41),x
+    sta.w !oam_buffer+(4*45),x
     pla
     clc
     adc.b #$10
     jsr.w SpriteYOnScreen
-    sta.w !oam_buffer+$A8,x
-    sta.w !oam_buffer+$B8,x
+    sta.w !oam_buffer+(4*42),x
+    sta.w !oam_buffer+(4*46),x
     pla
     pha
     adc.b #$0A
     jsr.w SpriteYOnScreen
-    sta.w !oam_buffer+$90,x
+    sta.w !oam_buffer+(4*36),x
     pla
     pha
     adc.b #$18
     jsr.w SpriteYOnScreen
-    sta.w !oam_buffer+$94,x
+    sta.w !oam_buffer+(4*37),x
     pla
     clc
     adc.b #$26
     jsr.w SpriteYOnScreen
-    sta.w !oam_buffer+$98,x
+    sta.w !oam_buffer+(4*38),x
     plp
     rts

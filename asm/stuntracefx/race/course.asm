@@ -334,7 +334,7 @@ CourseCursorAt3Open:
     lda.w !joy1_pressed_copy
     bit.w #$0400
     beq CourseCursorStep_done
-    jmp.w $ECEC
+    jmp.w CourseCursorStep_to1
 CourseCursorStep_to3_open:
     sep.b #$20
     lda.b #$45
@@ -426,7 +426,7 @@ CourseCursorAt3:
     lda.w !joy1_pressed_copy
     bit.w #$0400
     beq CourseCursorStep_done
-    jmp.w $ECEC
+    jmp.w CourseCursorStep_to1
 CourseCursorStep_to3:
     sep.b #$20
     lda.b #$45

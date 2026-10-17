@@ -21,62 +21,62 @@ arch 65816
 RaceHudSpritesHide:
     sep.b #$20
     lda.b #$F0
-    sta.l $000546
+    sta.l !oam_buffer+(4*116)+1
     sep.b #$20
     sep.b #$10
     sep.b #$20
     lda.b #$F0
-    sta.l $00054A
+    sta.l !oam_buffer+(4*117)+1
     sep.b #$20
     sep.b #$10
     sep.b #$20
     lda.b #$F0
-    sta.l $00054E
+    sta.l !oam_buffer+(4*118)+1
     sep.b #$20
     sep.b #$10
     sep.b #$20
     lda.b #$F0
-    sta.l $000552
+    sta.l !oam_buffer+(4*119)+1
     sep.b #$20
     sep.b #$10
     sep.b #$20
     lda.b #$F0
-    sta.l $000556
+    sta.l !oam_buffer+(4*120)+1
     sep.b #$20
     sep.b #$10
     sep.b #$20
     lda.b #$F0
-    sta.l $00055A
+    sta.l !oam_buffer+(4*121)+1
     sep.b #$20
     sep.b #$10
     sep.b #$20
     lda.b #$F0
-    sta.l $00055E
+    sta.l !oam_buffer+(4*122)+1
     sep.b #$20
     sep.b #$10
     sep.b #$20
     lda.b #$F0
-    sta.l $000562
+    sta.l !oam_buffer+(4*123)+1
     sep.b #$20
     sep.b #$10
     sep.b #$20
     lda.b #$F0
-    sta.l $000566
+    sta.l !oam_buffer+(4*124)+1
     sep.b #$20
     sep.b #$10
     sep.b #$20
     lda.b #$F0
-    sta.l $00056A
+    sta.l !oam_buffer+(4*125)+1
     sep.b #$20
     sep.b #$10
     sep.b #$20
     lda.b #$F0
-    sta.l $00056E
+    sta.l !oam_buffer+(4*126)+1
     sep.b #$20
     sep.b #$10
     sep.b #$20
     lda.b #$F0
-    sta.l $000572
+    sta.l !oam_buffer+(4*127)+1
     sep.b #$20
     sep.b #$10
     rts
@@ -174,24 +174,24 @@ HudBestTimeDigits:
     txa
     and.b #$0F
     asl a
-    sta.l $0004D7
+    sta.l !oam_buffer+(4*88)+2
     inc a
-    sta.l $0004DB
+    sta.l !oam_buffer+(4*89)+2
     tya
     lsr a
     lsr a
     lsr a
     lsr a
     asl a
-    sta.l $0004DF
+    sta.l !oam_buffer+(4*90)+2
     inc a
-    sta.l $0004E3
+    sta.l !oam_buffer+(4*91)+2
     tya
     and.b #$0F
     asl a
-    sta.l $0004E7
+    sta.l !oam_buffer+(4*92)+2
     inc a
-    sta.l $0004EB
+    sta.l !oam_buffer+(4*93)+2
     jsl.l HudBestTimeSprites
     plp
     rtl
@@ -241,56 +241,56 @@ HudBestTimeSprites:
     sep.b #$10
     sep.b #$20
     lda.b #$C4
-    sta.l $0004D5
+    sta.l !oam_buffer+(4*88)
     lda.b #$B8
-    sta.l $0004D6
+    sta.l !oam_buffer+(4*88)+1
     lda.b #$36
-    sta.l $0004D8
+    sta.l !oam_buffer+(4*88)+3
     sep.b #$20
     sep.b #$10
     sep.b #$20
     lda.b #$C4
-    sta.l $0004D9
+    sta.l !oam_buffer+(4*89)
     lda.b #$C0
-    sta.l $0004DA
+    sta.l !oam_buffer+(4*89)+1
     lda.b #$36
-    sta.l $0004DC
+    sta.l !oam_buffer+(4*89)+3
     sep.b #$20
     sep.b #$10
     sep.b #$20
     lda.b #$D4
-    sta.l $0004DD
+    sta.l !oam_buffer+(4*90)
     lda.b #$B8
-    sta.l $0004DE
+    sta.l !oam_buffer+(4*90)+1
     lda.b #$36
-    sta.l $0004E0
+    sta.l !oam_buffer+(4*90)+3
     sep.b #$20
     sep.b #$10
     sep.b #$20
     lda.b #$D4
-    sta.l $0004E1
+    sta.l !oam_buffer+(4*91)
     lda.b #$C0
-    sta.l $0004E2
+    sta.l !oam_buffer+(4*91)+1
     lda.b #$36
-    sta.l $0004E4
+    sta.l !oam_buffer+(4*91)+3
     sep.b #$20
     sep.b #$10
     sep.b #$20
     lda.b #$DC
-    sta.l $0004E5
+    sta.l !oam_buffer+(4*92)
     lda.b #$B8
-    sta.l $0004E6
+    sta.l !oam_buffer+(4*92)+1
     lda.b #$36
-    sta.l $0004E8
+    sta.l !oam_buffer+(4*92)+3
     sep.b #$20
     sep.b #$10
     sep.b #$20
     lda.b #$DC
-    sta.l $0004E9
+    sta.l !oam_buffer+(4*93)
     lda.b #$C0
-    sta.l $0004EA
+    sta.l !oam_buffer+(4*93)+1
     lda.b #$36
-    sta.l $0004EC
+    sta.l !oam_buffer+(4*93)+3
     sep.b #$20
     sep.b #$10
     rtl
@@ -346,24 +346,24 @@ RaceHudModeAll:
     lda.w !record_time_bcd+7
     and.b #$0F
     asl a
-    sta.l $0004D7
+    sta.l !oam_buffer+(4*88)+2
     inc a
-    sta.l $0004DB
+    sta.l !oam_buffer+(4*89)+2
     lda.w !record_time_bcd+6
     lsr a
     lsr a
     lsr a
     lsr a
     asl a
-    sta.l $0004DF
+    sta.l !oam_buffer+(4*90)+2
     inc a
-    sta.l $0004E3
+    sta.l !oam_buffer+(4*91)+2
     lda.w !record_time_bcd+6
     and.b #$0F
     asl a
-    sta.l $0004E7
+    sta.l !oam_buffer+(4*92)+2
     inc a
-    sta.l $0004EB
+    sta.l !oam_buffer+(4*93)+2
     jsl.l HudBestTimeSprites
     jmp.w RaceHudFlags
 RaceHudNoTime:
@@ -414,91 +414,91 @@ RaceHudNoTime:
     rep.b #$10
     sep.b #$20
     lda.b #$C3
-    sta.l $0004D5
+    sta.l !oam_buffer+(4*88)
     lda.b #$BC
-    sta.l $0004D6
+    sta.l !oam_buffer+(4*88)+1
     lda.b #$3F
-    sta.l $0004D7
+    sta.l !oam_buffer+(4*88)+2
     lda.b #$36
-    sta.l $0004D8
+    sta.l !oam_buffer+(4*88)+3
     sep.b #$20
     rep.b #$10
     sep.b #$20
     lda.b #$C3
-    sta.l $0004D9
+    sta.l !oam_buffer+(4*89)
     lda.b #$BC
-    sta.l $0004DA
+    sta.l !oam_buffer+(4*89)+1
     lda.b #$3F
-    sta.l $0004DB
+    sta.l !oam_buffer+(4*89)+2
     lda.b #$36
-    sta.l $0004DC
+    sta.l !oam_buffer+(4*89)+3
     sep.b #$20
     rep.b #$10
     sep.b #$20
     lda.b #$D5
-    sta.l $0004DD
+    sta.l !oam_buffer+(4*90)
     lda.b #$BC
-    sta.l $0004DE
+    sta.l !oam_buffer+(4*90)+1
     lda.b #$3F
-    sta.l $0004DF
+    sta.l !oam_buffer+(4*90)+2
     lda.b #$36
-    sta.l $0004E0
+    sta.l !oam_buffer+(4*90)+3
     sep.b #$20
     rep.b #$10
     sep.b #$20
     lda.b #$D5
-    sta.l $0004E9
+    sta.l !oam_buffer+(4*93)
     lda.b #$BC
-    sta.l $0004EA
+    sta.l !oam_buffer+(4*93)+1
     lda.b #$3F
-    sta.l $0004EB
+    sta.l !oam_buffer+(4*93)+2
     lda.b #$36
-    sta.l $0004EC
+    sta.l !oam_buffer+(4*93)+3
     sep.b #$20
     rep.b #$10
     sep.b #$20
     lda.b #$DD
-    sta.l $0004E5
+    sta.l !oam_buffer+(4*92)
     lda.b #$BC
-    sta.l $0004E6
+    sta.l !oam_buffer+(4*92)+1
     lda.b #$3F
-    sta.l $0004E7
+    sta.l !oam_buffer+(4*92)+2
     lda.b #$36
-    sta.l $0004E8
+    sta.l !oam_buffer+(4*92)+3
     sep.b #$20
     rep.b #$10
     sep.b #$20
     lda.b #$DD
-    sta.l $0004E9
+    sta.l !oam_buffer+(4*93)
     lda.b #$BC
-    sta.l $0004EA
+    sta.l !oam_buffer+(4*93)+1
     lda.b #$3F
-    sta.l $0004EB
+    sta.l !oam_buffer+(4*93)+2
     lda.b #$36
-    sta.l $0004EC
+    sta.l !oam_buffer+(4*93)+3
     sep.b #$20
     rep.b #$10
 RaceHudFlags:
     sep.b #$20                      ; not reached in the traces so far
     lda.b #$B4
-    sta.l $0004ED
+    sta.l !oam_buffer+(4*94)
     lda.b #$B8
-    sta.l $0004EE
+    sta.l !oam_buffer+(4*94)+1
     lda.b #$14
-    sta.l $0004EF
+    sta.l !oam_buffer+(4*94)+2
     lda.b #$36
-    sta.l $0004F0
+    sta.l !oam_buffer+(4*94)+3
     sep.b #$20
     rep.b #$10
     sep.b #$20
     lda.b #$CC
-    sta.l $0004F1
+    sta.l !oam_buffer+(4*95)
     lda.b #$B8
-    sta.l $0004F2
+    sta.l !oam_buffer+(4*95)+1
     lda.b #$15
-    sta.l $0004F3
+    sta.l !oam_buffer+(4*95)+2
     lda.b #$36
-    sta.l $0004F4
+    sta.l !oam_buffer+(4*95)+3
     sep.b #$20
     rep.b #$10
     jmp.w RaceHudCommon
@@ -517,62 +517,62 @@ RaceHudModeStunt:
     sep.b #$20
     sep.b #$20
     lda.b #$B4
-    sta.l $000545
+    sta.l !oam_buffer+(4*116)
     sep.b #$20
     rep.b #$10
     sep.b #$20
     lda.b #$CA
-    sta.l $000549
+    sta.l !oam_buffer+(4*117)
     sep.b #$20
     rep.b #$10
     sep.b #$20
     lda.b #$D2
-    sta.l $00054D
+    sta.l !oam_buffer+(4*118)
     sep.b #$20
     rep.b #$10
     sep.b #$20
     lda.b #$D2
-    sta.l $000551
+    sta.l !oam_buffer+(4*119)
     sep.b #$20
     rep.b #$10
     sep.b #$20
     lda.b #$DA
-    sta.l $000555
+    sta.l !oam_buffer+(4*120)
     sep.b #$20
     rep.b #$10
     sep.b #$20
     lda.b #$DA
-    sta.l $000559
+    sta.l !oam_buffer+(4*121)
     sep.b #$20
     rep.b #$10
     sep.b #$20
     lda.b #$BA
-    sta.l $00055D
+    sta.l !oam_buffer+(4*122)
     sep.b #$20
     rep.b #$10
     sep.b #$20
     lda.b #$BA
-    sta.l $000561
+    sta.l !oam_buffer+(4*123)
     sep.b #$20
     rep.b #$10
     sep.b #$20
     lda.b #$C2
-    sta.l $000565
+    sta.l !oam_buffer+(4*124)
     sep.b #$20
     rep.b #$10
     sep.b #$20
     lda.b #$C2
-    sta.l $000569
+    sta.l !oam_buffer+(4*125)
     sep.b #$20
     rep.b #$10
     sep.b #$20
     lda.b #$AC
-    sta.l $00056D
+    sta.l !oam_buffer+(4*126)
     sep.b #$20
     rep.b #$10
     sep.b #$20
     lda.b #$AC
-    sta.l $000571
+    sta.l !oam_buffer+(4*127)
     sep.b #$20
     rep.b #$10
     rep.b #$30
@@ -610,24 +610,24 @@ RaceHudModeStunt:
     txa
     and.b #$0F
     asl a
-    sta.l $0004D7
+    sta.l !oam_buffer+(4*88)+2
     inc a
-    sta.l $0004DB
+    sta.l !oam_buffer+(4*89)+2
     tya
     lsr a
     lsr a
     lsr a
     lsr a
     asl a
-    sta.l $0004DF
+    sta.l !oam_buffer+(4*90)+2
     inc a
-    sta.l $0004E3
+    sta.l !oam_buffer+(4*91)+2
     tya
     and.b #$0F
     asl a
-    sta.l $0004E7
+    sta.l !oam_buffer+(4*92)+2
     inc a
-    sta.l $0004EB
+    sta.l !oam_buffer+(4*93)+2
     jsl.l HudBestTimeSprites
     jmp.w RaceHudFlags
 .lE383:
@@ -669,90 +669,90 @@ RaceHudModeStunt:
     sep.b #$10
     sep.b #$20
     lda.b #$BD
-    sta.l $0004D5
+    sta.l !oam_buffer+(4*88)
     lda.b #$B8
-    sta.l $0004D6
+    sta.l !oam_buffer+(4*88)+1
     lda.b #$00
-    sta.l $0004D7
+    sta.l !oam_buffer+(4*88)+2
     lda.b #$36
-    sta.l $0004D8
+    sta.l !oam_buffer+(4*88)+3
     sep.b #$20
     sep.b #$10
     sep.b #$20
     lda.b #$BD
-    sta.l $0004D9
+    sta.l !oam_buffer+(4*89)
     lda.b #$C0
-    sta.l $0004DA
+    sta.l !oam_buffer+(4*89)+1
     lda.b #$01
-    sta.l $0004DB
+    sta.l !oam_buffer+(4*89)+2
     lda.b #$36
-    sta.l $0004DC
+    sta.l !oam_buffer+(4*89)+3
     sep.b #$20
     sep.b #$10
     sep.b #$20
     lda.b #$C5
-    sta.l $0004DD
+    sta.l !oam_buffer+(4*90)
     lda.b #$B8
-    sta.l $0004DE
+    sta.l !oam_buffer+(4*90)+1
     lda.b #$00
-    sta.l $0004DF
+    sta.l !oam_buffer+(4*90)+2
     lda.b #$36
-    sta.l $0004E0
+    sta.l !oam_buffer+(4*90)+3
     sep.b #$20
     sep.b #$10
     sep.b #$20
     lda.b #$C5
-    sta.l $0004E1
+    sta.l !oam_buffer+(4*91)
     lda.b #$C0
-    sta.l $0004E2
+    sta.l !oam_buffer+(4*91)+1
     lda.b #$01
-    sta.l $0004E3
+    sta.l !oam_buffer+(4*91)+2
     lda.b #$36
-    sta.l $0004E4
+    sta.l !oam_buffer+(4*91)+3
     sep.b #$20
     sep.b #$10
     sep.b #$20
     lda.b #$DD
-    sta.l $0004E5
+    sta.l !oam_buffer+(4*92)
     lda.b #$B8
-    sta.l $0004E6
+    sta.l !oam_buffer+(4*92)+1
     lda.b #$08
-    sta.l $0004E7
+    sta.l !oam_buffer+(4*92)+2
     lda.b #$36
-    sta.l $0004E8
+    sta.l !oam_buffer+(4*92)+3
     sep.b #$20
     sep.b #$10
     sep.b #$20
     lda.b #$DD
-    sta.l $0004E9
+    sta.l !oam_buffer+(4*93)
     lda.b #$C0
-    sta.l $0004EA
+    sta.l !oam_buffer+(4*93)+1
     lda.b #$09
-    sta.l $0004EB
+    sta.l !oam_buffer+(4*93)+2
     lda.b #$36
-    sta.l $0004EC
+    sta.l !oam_buffer+(4*93)+3
     sep.b #$20
     sep.b #$10
     sep.b #$20
     lda.b #$E5
-    sta.l $0004ED
+    sta.l !oam_buffer+(4*94)
     lda.b #$B8
-    sta.l $0004EE
+    sta.l !oam_buffer+(4*94)+1
     lda.b #$00
-    sta.l $0004EF
+    sta.l !oam_buffer+(4*94)+2
     lda.b #$36
-    sta.l $0004F0
+    sta.l !oam_buffer+(4*94)+3
     sep.b #$20
     sep.b #$10
     sep.b #$20
     lda.b #$E5
-    sta.l $0004F1
+    sta.l !oam_buffer+(4*95)
     lda.b #$C0
-    sta.l $0004F2
+    sta.l !oam_buffer+(4*95)+1
     lda.b #$01
-    sta.l $0004F3
+    sta.l !oam_buffer+(4*95)+2
     lda.b #$36
-    sta.l $0004F4
+    sta.l !oam_buffer+(4*95)+3
     sep.b #$20
     sep.b #$10
     rep.b #$20

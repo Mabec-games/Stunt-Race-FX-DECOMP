@@ -407,10 +407,10 @@ PaletteCourseLoad:
     lda.b #$00
     ldx.w #$0000
 .clear:
-    sta.l !palette_buffer+$160,x
-    sta.l !palette_work_b+$160,x
-    sta.l !palette_work_c+$160,x
-    sta.l !palette_work_a+$160,x
+    sta.l !palette_buffer+(2*176),x
+    sta.l !palette_work_b+(2*176),x
+    sta.l !palette_work_c+(2*176),x
+    sta.l !palette_work_a+(2*176),x
     inx
     cpx.w #$0020
     bne .clear
