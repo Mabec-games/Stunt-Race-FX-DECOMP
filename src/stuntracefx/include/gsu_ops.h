@@ -126,6 +126,60 @@ static inline uint16_t gsu_getbh(uint16_t a)
     return (uint16_t)(gsu_getb() << 8 | (a & 0xFF));
 }
 
+/* SEX: the low byte sign-extended; S and Z from the result. */
+static inline uint16_t gsu_sex(uint16_t a)
+{
+    uint16_t r = (uint16_t)(int16_t)(int8_t)a;
+
+    gsu_sz(r);
+    return r;
+}
+
+/* MERGE: the high bytes of R7 and R8; the flags from its bit pairs, as
+   the core sets them (Z is set when any of the bits $F0F0 is). */
+static inline uint16_t gsu_merge(void)
+{
+    uint16_t r = (uint16_t)((gsu.r[7] & 0xFF00) | gsu.r[8] >> 8);
+
+    gsu.ov = (r & 0xC0C0) != 0;
+    gsu.s = (r & 0x8080) != 0;
+    gsu.cy = (r & 0xE0E0) != 0;
+    gsu.z = (r & 0xF0F0) != 0;
+    return r;
+}
+
+/* COLOR (and GETC, from the ROM buffer): the plot colour from a byte, as
+   the plot options shape it: the source's high nibble into the low one
+   (bit 2), or the colour's high nibble kept (bit 3). */
+static inline void gsu_color(uint8_t v)
+{
+    if (gsu.por & 0x04)
+        gsu.colr = (uint8_t)((gsu.colr & 0xF0) | v >> 4);
+    else if (gsu.por & 0x08)
+        gsu.colr = (uint8_t)((gsu.colr & 0xF0) | (v & 0x0F));
+    else
+        gsu.colr = v;
+}
+
+/* CMODE: the plot options, five bits of the source. */
+static inline void gsu_cmode(uint16_t a)
+{
+    gsu.por = (uint8_t)(a & 0x1F);
+}
+
+/* ROMB: the ROM bank, seven bits of the source. */
+static inline void gsu_romb(uint16_t a)
+{
+    gsu.rombr = (uint8_t)(a & 0x7F);
+}
+
+/* PLOT: a pixel at (R1, R2), then R1 steps right. */
+static inline void gsu_plot_r1(void)
+{
+    gsu_plot((uint8_t)gsu.r[1], (uint8_t)gsu.r[2]);
+    gsu.r[1] = (uint16_t)(gsu.r[1] + 1);
+}
+
 /* A word pushed on the R10 stack (STW, INC, INC) and pulled back (DEC,
    DEC, LDW). */
 static inline void gsu_push(uint16_t *sp, uint16_t v)

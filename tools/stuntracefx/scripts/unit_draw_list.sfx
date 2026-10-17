@@ -1,0 +1,22 @@
+# unit_draw_list: unit tests (fx) of FxDrawList from the start of a Novice
+# race (R11 = the STOP at $01:80E3, R10 = the stack at $024C):
+# - an empty list ($005C = $08AA): returns at once;
+# - one list of each shape: a flat polygon of 4 vertices, a flat one a row
+#   high (drawn as one row), a line along x, a line along y back up, and a
+#   textured polygon of 4 vertices (texture in ROM bank $14 at $8000, mask
+#   $1F3F), ending at $0906.
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70005C AA,08
+fx 01:A931 stop=80E3 r10=024C
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7008AA 04,23,14,00,0A,00,3C,00,0F,00,32,00,28,00,0F,00,23,00
+set 7008BC 03,11,0A,00,32,00,28,00,32,00,19,00,33,00
+set 7008CA 02,31,05,00,3C,00,50,00,46,00
+set 7008D4 02,32,50,00,46,00,48,00,08,00
+set 7008DE FB,14,00,00,00,80,3F,1F
+set 7008E6 50,00,0A,00,00,00,00,00,78,00,0C,00,00,28,00,00
+set 7008F6 73,00,32,00,00,28,00,1E,4E,00,2D,00,00,00,00,1E
+set 70005C 06,09
+fx 01:A931 stop=80E3 r10=024C
+wait 1

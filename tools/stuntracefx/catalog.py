@@ -50,6 +50,9 @@ def build():
     starts = {}  # offset -> (cpu, how)
     o = rom_offset(RESET)
     starts[o] = ('cpu', 'reset')
+    # Super FX code some jump or branch lands on: a jump table's IWT R15 is
+    # reached by the computed jump into the table, never by running into it.
+    gsu_landed = {rom_offset(int(r['to'], 16)) for r in edges if r['cpu'] == 'gsu'}
     for r in edges:
         kind, src, dst = int(r['kind'], 16), int(r['from'], 16), int(r['to'], 16)
         o = rom_offset(dst)
@@ -70,7 +73,9 @@ def build():
             elif so is not None and so >= 4 and rom[so - 3] == 0xFF:
                 if 0x91 <= rom[so - 4] <= 0x94:
                     starts.setdefault(o, ('gsu', 'call'))
-                elif rom[so - 1] == 0x01 or rom[so + 1:so + 2] == b'\xff':
+                # An IWT R15 the code ran into (01:AA6C, 01:A905) is a plain
+                # jump, even when another IWT R15 follows it.
+                elif (rom[so - 1] == 0x01 or rom[so + 1:so + 2] == b'\xff') and so - 3 in gsu_landed:
                     starts.setdefault(o, ('gsu', 'table'))
     # Code reached only by jumps (for example the interrupt handlers the RAM
     # vectors jump to) and found before any known entry in its bank.

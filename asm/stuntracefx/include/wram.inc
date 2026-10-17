@@ -1678,3 +1678,30 @@ includeonce
 !fx_text_x = $702738              ; where it starts: X, then Y
 !fx_text_y = $70273A
 !fx_text_flags = $70273C          ; bit 0: the nearest car's label is shown
+
+; The Super FX draw list (render/raster.asm): shapes queued at $70:08AA.
+!fx_list_end = $70005C            ; past the last entry of the draw list
+!fx_list_stack = $70005E          ; R10 as FxDrawList left it
+!fx_left_at = $700060             ; the left edges' walk through a polygon's vertices
+!fx_right_at = $700062            ; the right edges' walk
+!fx_left_rows = $700064           ; rows left on the left edge after a run of rows
+!fx_right_rows = $700066
+!fx_left_slope = $70006C          ; the left edge's x step a row, 8.8
+!fx_right_slope = $70006E
+!fx_left_u = $700070              ; u and v at each edge (textured polygons), 8.8
+!fx_right_u = $700072
+!fx_left_u_prev = $700074
+!fx_right_u_prev = $700076
+!fx_left_du = $700078             ; their steps a row
+!fx_right_du = $70007A
+!fx_left_v = $70007C
+!fx_right_v = $70007E
+!fx_left_v_prev = $700080
+!fx_right_v_prev = $700082
+!fx_left_dv = $700084
+!fx_right_dv = $700086
+!fx_tex_bank = $7000A6            ; the texture's ROM bank
+!fx_tex_base = $7000A8            ; its address
+!fx_tex_u_off = $7000C0           ; added to u and v across a row
+!fx_tex_v_off = $7000C2
+!fx_tex_mask = $7000D4            ; MERGE of v and u ANDed with it
