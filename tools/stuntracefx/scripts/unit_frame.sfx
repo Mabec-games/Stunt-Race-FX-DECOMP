@@ -1,0 +1,170 @@
+# unit_frame: unit tests (fx) of the frame chain from the start of a Novice
+# race (R11 = the STOP at $01:80E3, R10 = the stack at $0244):
+# - FxEffectsAdd for each kind 1 to 7, three particles at (16, 32);
+# - FxWeatherDraw for rain (1) and snow (2) with $50 drops: set afresh
+#   (FxWeatherReset, $2B94 not R0), then drawn over eight kept calls each
+#   ($2B94 = R0), and with no drops (R1 = 0);
+# - FxFrameProgram with the weather record ($247A) at $7E00 in unused
+#   Super FX RAM, its +$8A word 1 (rain), so the first weather's set-up
+#   ($26EE = $10) runs;
+# - FxWeatherDraw again for rain and snow over eight kept calls with the
+#   view's turn $00E0 going 0, $800, $1000 and back to -$1000 (the drops
+#   drifting both ways; larger turns make the original loop for good),
+#   with the weather record's +$4A word negative (no drops drawn), and
+#   with R0 = 3 (neither weather: it returns);
+# - FxObjectsDraw on the state's draw list with the first slot's flags 2
+#   (the material table $8D30) and with $108A set (its shape's +$12 is
+#   $8F91: the other material table);
+# - FxWeatherDraw on one drop (R1 = 1) after a reset: spawned, then its y
+#   set to $FE00 (far above: put back to the bottom), then its z to $0300
+#   (past the far limit: put back to 0), then the view turned a little
+#   ($40, $C0: a streak mostly down) and by $1000 each way (mostly across),
+#   then with the drop near (z $30-$60) and turns of $100-$400 each way.
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:B6D5 stop=80E3 r0=0001 r1=0010 r2=0020 r3=0003 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:B6D5 stop=80E3 r0=0002 r1=0010 r2=0020 r3=0003 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:B6D5 stop=80E3 r0=0003 r1=0010 r2=0020 r3=0003 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:B6D5 stop=80E3 r0=0004 r1=0010 r2=0020 r3=0003 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:B6D5 stop=80E3 r0=0005 r1=0010 r2=0020 r3=0003 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:B6D5 stop=80E3 r0=0006 r1=0010 r2=0020 r3=0003 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:B6D5 stop=80E3 r0=0007 r1=0010 r2=0020 r3=0003 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 702B94 00,00
+fx 01:BC7D stop=80E3 r0=0001 r1=0050 r10=0244 keep
+fx 01:BC7D stop=80E3 r0=0001 r1=0050 r10=0244 keep
+fx 01:BC7D stop=80E3 r0=0001 r1=0050 r10=0244 keep
+fx 01:BC7D stop=80E3 r0=0001 r1=0050 r10=0244 keep
+fx 01:BC7D stop=80E3 r0=0001 r1=0050 r10=0244 keep
+fx 01:BC7D stop=80E3 r0=0001 r1=0050 r10=0244 keep
+fx 01:BC7D stop=80E3 r0=0001 r1=0050 r10=0244 keep
+fx 01:BC7D stop=80E3 r0=0001 r1=0050 r10=0244 keep
+fx 01:BC7D stop=80E3 r0=0001 r1=0050 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 702B94 00,00
+fx 01:BC7D stop=80E3 r0=0002 r1=0050 r10=0244 keep
+fx 01:BC7D stop=80E3 r0=0002 r1=0050 r10=0244 keep
+fx 01:BC7D stop=80E3 r0=0002 r1=0050 r10=0244 keep
+fx 01:BC7D stop=80E3 r0=0002 r1=0050 r10=0244 keep
+fx 01:BC7D stop=80E3 r0=0002 r1=0050 r10=0244 keep
+fx 01:BC7D stop=80E3 r0=0002 r1=0050 r10=0244 keep
+fx 01:BC7D stop=80E3 r0=0002 r1=0050 r10=0244 keep
+fx 01:BC7D stop=80E3 r0=0002 r1=0050 r10=0244 keep
+fx 01:BC7D stop=80E3 r0=0002 r1=0050 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 702B94 01,00
+fx 01:BC7D stop=80E3 r0=0001 r1=0000 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70247A 00,7E
+set 707E8A 01,00
+fx 01:AB13 stop=80E3 r10=0240
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 702B94 01,00
+set 7000E0 00,00
+fx 01:BC7D stop=80E3 r0=0001 r1=0050 r10=0244 keep
+set 7000E0 00,08
+fx 01:BC7D stop=80E3 r0=0001 r1=0050 r10=0244 keep
+set 7000E0 00,10
+fx 01:BC7D stop=80E3 r0=0001 r1=0050 r10=0244 keep
+set 7000E0 00,08
+fx 01:BC7D stop=80E3 r0=0001 r1=0050 r10=0244 keep
+set 7000E0 00,00
+fx 01:BC7D stop=80E3 r0=0001 r1=0050 r10=0244 keep
+set 7000E0 00,F8
+fx 01:BC7D stop=80E3 r0=0001 r1=0050 r10=0244 keep
+set 7000E0 00,F0
+fx 01:BC7D stop=80E3 r0=0001 r1=0050 r10=0244 keep
+set 7000E0 00,F8
+fx 01:BC7D stop=80E3 r0=0001 r1=0050 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 702B94 02,00
+set 7000E0 00,00
+fx 01:BC7D stop=80E3 r0=0002 r1=0050 r10=0244 keep
+set 7000E0 00,08
+fx 01:BC7D stop=80E3 r0=0002 r1=0050 r10=0244 keep
+set 7000E0 00,10
+fx 01:BC7D stop=80E3 r0=0002 r1=0050 r10=0244 keep
+set 7000E0 00,08
+fx 01:BC7D stop=80E3 r0=0002 r1=0050 r10=0244 keep
+set 7000E0 00,00
+fx 01:BC7D stop=80E3 r0=0002 r1=0050 r10=0244 keep
+set 7000E0 00,F8
+fx 01:BC7D stop=80E3 r0=0002 r1=0050 r10=0244 keep
+set 7000E0 00,F0
+fx 01:BC7D stop=80E3 r0=0002 r1=0050 r10=0244 keep
+set 7000E0 00,F8
+fx 01:BC7D stop=80E3 r0=0002 r1=0050 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 702B94 01,00
+set 70247A 00,7E
+set 707E4A 00,80
+fx 01:BC7D stop=80E3 r0=0001 r1=0050 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 702B94 03,00
+fx 01:BC7D stop=80E3 r0=0003 r1=0050 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700D63 02
+fx 01:AB81 stop=80E3 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70108A 01,00
+fx 01:AB81 stop=80E3 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 702B94 00,00
+fx 01:BC7D stop=80E3 r0=0001 r1=0001 r10=0244 keep
+fx 01:BC7D stop=80E3 r0=0001 r1=0001 r10=0244 keep
+fx 01:BC7D stop=80E3 r0=0001 r1=0001 r10=0244 keep
+set 702868 00,FE
+fx 01:BC7D stop=80E3 r0=0001 r1=0001 r10=0244 keep
+set 702868 10,00
+set 70286A 00,03
+fx 01:BC7D stop=80E3 r0=0001 r1=0001 r10=0244 keep
+set 7000E0 40,00
+fx 01:BC7D stop=80E3 r0=0001 r1=0001 r10=0244 keep
+set 7000E0 C0,00
+fx 01:BC7D stop=80E3 r0=0001 r1=0001 r10=0244 keep
+set 7000E0 00,10
+fx 01:BC7D stop=80E3 r0=0001 r1=0001 r10=0244 keep
+set 7000E0 00,F0
+fx 01:BC7D stop=80E3 r0=0001 r1=0001 r10=0244 keep
+set 70286A 30,00
+set 7000E0 00,F1
+fx 01:BC7D stop=80E3 r0=0001 r1=0001 r10=0244 keep
+set 70286A 30,00
+set 7000E0 00,F3
+fx 01:BC7D stop=80E3 r0=0001 r1=0001 r10=0244 keep
+set 70286A 40,00
+set 7000E0 00,F7
+fx 01:BC7D stop=80E3 r0=0001 r1=0001 r10=0244 keep
+set 70286A 60,00
+set 7000E0 00,F9
+fx 01:BC7D stop=80E3 r0=0001 r1=0001 r10=0244 keep
+set 70286A 30,00
+set 7000E0 00,F8
+fx 01:BC7D stop=80E3 r0=0001 r1=0001 r10=0244 keep
+set 70286A 40,00
+set 7000E0 00,F6
+fx 01:BC7D stop=80E3 r0=0001 r1=0001 r10=0244 keep
+fx 01:BC7D stop=80E3 r0=0001 r1=0001 r10=0244
+wait 1

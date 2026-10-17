@@ -476,7 +476,7 @@ FxParticlesDraw:
     to r3
     add r1
     sbk
-    lms r4,($26)
+    lms r4,(!fx_object_x-!gsu_ram)
     to r1
     add r4
     ibt r0,#$04
@@ -492,7 +492,7 @@ FxParticlesDraw:
     to r9
     add r2
     sbk
-    lms r4,($28)
+    lms r4,(!fx_object_y-!gsu_ram)
     to r2
     add r4
     ibt r0,#$05
@@ -508,7 +508,7 @@ FxParticlesDraw:
     to r13
     add r6
     sbk
-    lms r4,($2A)
+    lms r4,(!fx_object_z-!gsu_ram)
     to r6
     add r4
     ibt r5,#$01
@@ -568,10 +568,10 @@ FxParticlesDraw:
     getbh
     from r1
     fmult
-    lms r5,($34)
+    lms r5,(!fx_model_34-!gsu_ram)
     to r1
     add r5
-    lms r4,($3A)
+    lms r4,(!fx_screen_right-!gsu_ram)
     from r1
     sub r4
     bcc .lBADA
@@ -582,10 +582,10 @@ FxParticlesDraw:
     add r4
     from r2
     fmult
-    lms r5,($36)
+    lms r5,(!fx_model_36-!gsu_ram)
     to r2
     add r5
-    lms r5,($3E)
+    lms r5,(!fx_screen_bottom-!gsu_ram)
     from r2
     sub r5
     bcc .lBAEE
@@ -621,13 +621,13 @@ FxParticlesDraw:
     iwt r15,#.lBA29
     nop
 .lBB14:
-    lms r0,($26)
+    lms r0,(!fx_object_x-!gsu_ram)
     to r3
     add r3
-    lms r0,($28)
+    lms r0,(!fx_object_y-!gsu_ram)
     to r9
     add r9
-    lms r0,($2A)
+    lms r0,(!fx_object_z-!gsu_ram)
     to r13
     add r13
     with r13
@@ -659,10 +659,10 @@ FxParticlesDraw:
     getbh
     from r3
     fmult
-    lms r5,($34)
+    lms r5,(!fx_model_34-!gsu_ram)
     to r3
     add r5
-    lms r4,($3A)
+    lms r4,(!fx_screen_right-!gsu_ram)
     from r3
     sub r4
     bcc .lBB5E
@@ -673,10 +673,10 @@ FxParticlesDraw:
     add r4
     from r9
     fmult
-    lms r5,($36)
+    lms r5,(!fx_model_36-!gsu_ram)
     to r9
     add r5
-    lms r5,($3E)
+    lms r5,(!fx_screen_bottom-!gsu_ram)
     from r9
     sub r5
     bcc .lBB72
@@ -685,7 +685,7 @@ FxParticlesDraw:
     nop
 .lBB72:
     add r5
-    sms ($40),r12
+    sms (!fx_vertex_count-!gsu_ram),r12
     ibt r5,#$01
     with r3
     sub r1
@@ -728,7 +728,7 @@ FxParticlesDraw:
     add r5
     loop
     sub r9
-    lms r12,($40)
+    lms r12,(!fx_vertex_count-!gsu_ram)
     iwt r15,#.lBB0D
     nop
 .lBBAC:
@@ -752,7 +752,7 @@ FxParticlesDraw:
     add r6
     loop
     sub r3
-    lms r12,($40)
+    lms r12,(!fx_vertex_count-!gsu_ram)
     iwt r15,#.lBB0D
     nop
 

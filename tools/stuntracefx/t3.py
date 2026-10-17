@@ -343,6 +343,13 @@ def pieces(script):
                     break
                 tail.append(t)
             body = prefix + ([] if 'keep' in w else sets_now + [l]) + tail
+            # A kept call's piece ends at the call: the frame program the
+            # game started (FxFrameProgram runs over several frames, one C
+            # call in the hybrid) must reach its STOP in the original's
+            # record, or every frame of the piece is past the record's end
+            # and none is compared.
+            if 'keep' in w:
+                body.append('wait 8')
             path = os.path.join(d, '%s_p%03d.sfx' % (name, len(out)))
             with open(path, 'w') as f:
                 f.write('\n'.join(body) + '\n')

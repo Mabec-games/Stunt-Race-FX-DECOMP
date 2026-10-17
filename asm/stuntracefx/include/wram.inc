@@ -1782,3 +1782,14 @@ includeonce
 !fx_model_150 = $700150
 !fx_model_1b4 = $7001B4
 !fx_model_1b6 = $7001B6
+
+; frame.asm
+!fx_object_kind = $700048         ; an object's kind byte (its record +$0E)
+!fx_sprite_size = $7000AA         ; a sprite's size from its shape
+!fx_sprite_clip_x = $7000B2
+!fx_sprite_clip_w = $7000B4
+!fx_sprite_material = $7000D6     ; the sprite's material index
+!fx_weather_life = $7026FC       ; a new drop's life (FxWeatherDraw; FxTraffic uses it as fx_me_vx)
+!fx_weather_colour = $7026FE     ; a new drop's colour
+!fx_weather_turn = $702B8E       ; the view's turn ($00E0) at the last drawing
+!fx_weather_drift = $702B90      ; the drops' sideways drift, eased towards a random aim
