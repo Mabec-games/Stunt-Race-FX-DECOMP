@@ -5668,7 +5668,9 @@ void abi_FxCarCollide(void)
 }
 
 /*
- * @routine 04:C3D5 FxCarFollowCourse
+ * FxCarFollowCourse (04:C3D5), part of the program C, not tagged:
+ * entered on its own it would end two levels up, past the R11 the
+ * harness ends a call at.
  * WHAT IT DOES: Keeps car R8 on the course: off the course (+$16 bit
  * 10 clear) a car marked fallen (+$1C bit 4) is put back (FxCarPose,
  * FxCarAimAlongCourse); then, unless it is driven by the course data
@@ -5680,13 +5682,11 @@ void abi_FxCarCollide(void)
  * Entry: R8 = the car; R10 = stack; R11 = return address.
  * Exit: R0 = 1 or 0; the rest as the last call leaves them.
  */
-void abi_FxCarFollowCourse(void)
-{
-    physics_run(0xC3D5, R[11]);
-}
 
 /*
- * @routine 04:C72F FxCarAimAlongCourse
+ * FxCarAimAlongCourse (04:C72F), part of the program C, not tagged:
+ * entered on its own it would end two levels up, past the R11 the
+ * harness ends a call at.
  * WHAT IT DOES: Aims a fallen car along the course: when it has a
  * course entry (+$58) its direction there (FxTableEntryWords,
  * FxCourseEntryRead, FxAngleVector) times the speed of the drive
@@ -5699,7 +5699,3 @@ void abi_FxCarFollowCourse(void)
  * R8 = the car.
  * Exit: R1-R3 the speed; R11 = FxCarFollowCourse's return address.
  */
-void abi_FxCarAimAlongCourse(void)
-{
-    physics_run(0xC72F, R[11]);
-}

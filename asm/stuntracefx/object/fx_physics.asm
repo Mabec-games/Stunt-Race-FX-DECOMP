@@ -5375,7 +5375,9 @@ FxCarCollide:
     ldw (r10)
     nop
 ;
-; @routine 04:C3D5 FxCarFollowCourse
+; FxCarFollowCourse (04:C3D5), part of the program C, not tagged:
+; entered on its own it would end two levels up, past the R11 the
+; harness ends a call at.
 ; WHAT IT DOES: Keeps car R8 on the course: off the course (+$16 bit
 ; 10 clear) a car marked fallen (+$1C bit 4) is put back (FxCarPose,
 ; FxCarAimAlongCourse); then, unless it is driven by the course data
@@ -5575,7 +5577,9 @@ FxCarFollowCourse:
     ldw (r10)
     nop
 ;
-; @routine 04:C72F FxCarAimAlongCourse
+; FxCarAimAlongCourse (04:C72F), part of the program C, not tagged:
+; entered on its own it would end two levels up, past the R11 the
+; harness ends a call at.
 ; WHAT IT DOES: Aims a fallen car along the course: when it has a
 ; course entry (+$58) its direction there (FxTableEntryWords,
 ; FxCourseEntryRead, FxAngleVector) times the speed of the drive level
