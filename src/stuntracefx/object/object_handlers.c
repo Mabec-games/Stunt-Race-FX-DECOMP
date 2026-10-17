@@ -28,6 +28,7 @@ void abi_ObjectBreakOffContact(void);
 void abi_ObjectBreakOffChance(void);
 void abi_ObjectRebucket(void);
 void abi_ObjectCarSpawn(void);
+void abi_CarCrashParts(void);
 void abi_ObjectNearFocus(void);
 void abi_ObjectPoseFromRecord(void);
 void abi_GsuRecordFlag4(void);
@@ -2609,7 +2610,7 @@ void abi_PlayerCarEvents(void)
         cpu.p |= P_M;
         cpu.x = rd16(b | 0x1F18);
         lda8(0x01);
-        call_routine(0x08A034, 1);
+        abi_CarCrashParts();
         if (!(cpu.p & P_C)) {
             lda8((uint8_t)(rd8(b | (uint16_t)(0x2025 + cpu.x)) | 0x10));
             wr8(b | (uint16_t)(0x2025 + cpu.x), (uint8_t)cpu.a);
@@ -2629,7 +2630,7 @@ void abi_PlayerCarEvents(void)
             wr8(b | (uint16_t)(0x2025 + cpu.x), (uint8_t)cpu.a);
             abi_ObjectSpawnSparklePair();
             lda8(0x00);
-            call_routine(0x08A034, 1);
+            abi_CarCrashParts();
             cpu.p &= (uint8_t)~P_M;
             cpu.x = x;
         } else {
@@ -2639,7 +2640,7 @@ void abi_PlayerCarEvents(void)
                 cpu.p |= P_M;
                 cpu.x = rd16(b | 0x1F18);
                 lda8(0x01);
-                call_routine(0x08A034, 1);
+                abi_CarCrashParts();
                 op_lda8(b | 0x0D62);
                 if (!(uint8_t)cpu.a)
                     abi_ObjectBurstSpawn();

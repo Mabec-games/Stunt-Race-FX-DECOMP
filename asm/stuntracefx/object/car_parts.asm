@@ -751,3 +751,1298 @@ ObjectCarKind5:
 %at($08B1E1)
 ObjectCarSpawnListed:
     jsl.l ObjectListAppend
+
+; @routine 08:A034 CarCrashParts
+; WHAT IT DOES: A car crashes and sheds its six parts, by its model +$27
+; ($81B9/$876E, $853D/$8AA8, $8411/$8990, $82E5/$8886 each pick a set of
+; part kinds and offsets): flags in A (kept at $1F58), bit 0 a hit (the
+; parts knocked off flying, the first at once), bit 1 a 20-frame life;
+; then sound $5B (hit) or $43, carry clear. Carry set with nothing done
+; when the car has already crashed (+$25 bit 2 or 7), its model is none
+; of these or no first part could be made, or carry set after the first
+; part's hit when that left the car's +$25 bit 2 clear.
+; HOW: 16-bit compares, BRL to each set; ObjectSpawn blocks, each storing
+; the part's bytes and frame; ObjectCallHandler for the first hit part.
+; Entry: M 8-bit, X 16-bit, D = $0000; X = the car; A low byte = flags.
+; Exit: M 8-bit; carry as above.
+%at($08A034)
+CarCrashParts:
+    sta.w !wram_1F58
+    lda.w !obj_25,x
+    and.b #$04
+    beq .lA042
+    jml.l .lA092
+.lA042:
+    lda.w !obj_25,x
+    and.b #$80
+    beq .lA04D
+    jml.l .lA092
+.lA04D:
+    rep.b #$20
+    lda.w !obj_27,x
+    cmp.w #$81B9
+    bne .lA05A
+    brl .lA5E4
+.lA05A:
+    cmp.w #$853D
+    bne .lA062
+    brl .lA88B
+.lA062:
+    cmp.w #$8411
+    bne .lA06A
+    brl .lA33D
+.lA06A:
+    cmp.w #$82E5
+    bne .lA072
+    brl .lA096
+.lA072:
+    cmp.w #$876E
+    bne .lA07A
+    brl .lA5E4
+.lA07A:
+    cmp.w #$8AA8
+    bne .lA082
+    brl .lA88B
+.lA082:
+    cmp.w #$8990
+    bne .lA08A
+    brl .lA33D
+.lA08A:
+    cmp.w #$8886
+    bne .lA092
+    brl .lA096
+.lA092:
+    sep.b #$20
+    sec
+    rtl
+.lA096:
+    sep.b #$20
+    rep.b #$20
+    lda.w #$A8C8
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lA0AC
+    jml.l .lA092
+.lA0AC:
+    lda.b #$D8
+    sta.w !obj_48,y
+    lda.b #$EC
+    sta.w !obj_49,y
+    lda.b #$B6
+    sta.w !obj_4a,y
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_06,y
+    sep.b #$20
+    pla
+    lda.b #$23
+    sta.w !obj_4b,y
+    lda.b #$FF
+    sta.w !obj_27,y
+    lda.w !wram_1F58
+    and.b #$02
+    beq .lA0DB
+    lda.b #$14
+    sta.w !obj_27,y
+.lA0DB:
+    lda.w !obj_25,y
+    ora.b #$02
+    sta.w !obj_25,y
+    lda.w !wram_1F58
+    and.b #$01
+    bne .lA0FB
+    rep.b #$20
+    lda.w #$AC04
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    bra .lA118
+.lA0FB:
+    rep.b #$20
+    lda.w #$AC97
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    jsr.w ObjectCallHandler
+    lda.w !obj_25,x
+    and.b #$04
+    bne .lA118
+    jml.l .lA092
+.lA118:
+    rep.b #$20
+    lda.w #$A83C
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lA12C
+    jml.l .lA182
+.lA12C:
+    lda.b #$00
+    sta.w !obj_48,y
+    lda.b #$DC
+    sta.w !obj_49,y
+    lda.b #$14
+    sta.w !obj_4a,y
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_06,y
+    sep.b #$20
+    pla
+    lda.b #$00
+    sta.w !obj_4b,y
+    lda.b #$FF
+    sta.w !obj_27,y
+    lda.w !wram_1F58
+    and.b #$02
+    beq .lA15B
+    lda.b #$14
+    sta.w !obj_27,y
+.lA15B:
+    lda.w !wram_1F58
+    and.b #$01
+    bne .lA173
+    rep.b #$20
+    lda.w #$AC04
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    bra .lA182
+.lA173:
+    rep.b #$20
+    lda.w #$ACB9
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+.lA182:
+    rep.b #$20
+    lda.w #$A858
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lA196
+    jml.l .lA1F4
+.lA196:
+    lda.b #$00
+    sta.w !obj_48,y
+    lda.b #$EC
+    sta.w !obj_49,y
+    lda.b #$1C
+    sta.w !obj_4a,y
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_06,y
+    sep.b #$20
+    pla
+    lda.b #$0A
+    sta.w !obj_4b,y
+    lda.b #$FF
+    sta.w !obj_27,y
+    lda.w !wram_1F58
+    and.b #$02
+    beq .lA1C5
+    lda.b #$14
+    sta.w !obj_27,y
+.lA1C5:
+    lda.w !obj_25,y
+    ora.b #$02
+    sta.w !obj_25,y
+    lda.w !wram_1F58
+    and.b #$01
+    bne .lA1E5
+    rep.b #$20
+    lda.w #$AC04
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    bra .lA1F4
+.lA1E5:
+    rep.b #$20
+    lda.w #$ACB9
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+.lA1F4:
+    rep.b #$20
+    lda.w #$A874
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lA208
+    jml.l .lA25E
+.lA208:
+    lda.b #$00
+    sta.w !obj_48,y
+    lda.b #$E0
+    sta.w !obj_49,y
+    lda.b #$E2
+    sta.w !obj_4a,y
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_06,y
+    sep.b #$20
+    pla
+    lda.b #$14
+    sta.w !obj_4b,y
+    lda.b #$FF
+    sta.w !obj_27,y
+    lda.w !wram_1F58
+    and.b #$02
+    beq .lA237
+    lda.b #$14
+    sta.w !obj_27,y
+.lA237:
+    lda.w !wram_1F58
+    and.b #$01
+    bne .lA24F
+    rep.b #$20
+    lda.w #$AC04
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    bra .lA25E
+.lA24F:
+    rep.b #$20
+    lda.w #$ACB9
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+.lA25E:
+    rep.b #$20
+    lda.w #$A890
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lA272
+    jml.l .lA2D0
+.lA272:
+    lda.b #$00
+    sta.w !obj_48,y
+    lda.b #$E8
+    sta.w !obj_49,y
+    lda.b #$C6
+    sta.w !obj_4a,y
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_06,y
+    sep.b #$20
+    pla
+    lda.b #$19
+    sta.w !obj_4b,y
+    lda.b #$FF
+    sta.w !obj_27,y
+    lda.w !wram_1F58
+    and.b #$02
+    beq .lA2A1
+    lda.b #$14
+    sta.w !obj_27,y
+.lA2A1:
+    lda.w !obj_25,y
+    ora.b #$02
+    sta.w !obj_25,y
+    lda.w !wram_1F58
+    and.b #$01
+    bne .lA2C1
+    rep.b #$20
+    lda.w #$AC04
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    bra .lA2D0
+.lA2C1:
+    rep.b #$20
+    lda.w #$ACB9
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+.lA2D0:
+    rep.b #$20
+    lda.w #$A8AC
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lA2E4
+    jml.l .lA33A
+.lA2E4:
+    lda.b #$28
+    sta.w !obj_48,y
+    lda.b #$EC
+    sta.w !obj_49,y
+    lda.b #$B6
+    sta.w !obj_4a,y
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_06,y
+    sep.b #$20
+    pla
+    lda.b #$1E
+    sta.w !obj_4b,y
+    lda.b #$FF
+    sta.w !obj_27,y
+    lda.w !wram_1F58
+    and.b #$02
+    beq .lA313
+    lda.b #$14
+    sta.w !obj_27,y
+.lA313:
+    lda.w !wram_1F58
+    and.b #$01
+    bne .lA32B
+    rep.b #$20
+    lda.w #$AC04
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    bra .lA33A
+.lA32B:
+    rep.b #$20
+    lda.w #$ACB9
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+.lA33A:
+    jmp.w .lAB2F
+.lA33D:
+    sep.b #$20
+    rep.b #$20
+    lda.w #$A44C
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lA353
+    jml.l .lA092
+.lA353:
+    lda.b #$00
+    sta.w !obj_48,y
+    lda.b #$EE
+    sta.w !obj_49,y
+    lda.b #$42
+    sta.w !obj_4a,y
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_06,y
+    sep.b #$20
+    pla
+    lda.b #$23
+    sta.w !obj_4b,y
+    lda.b #$FF
+    sta.w !obj_27,y
+    lda.w !wram_1F58
+    and.b #$02
+    beq .lA382
+    lda.b #$14
+    sta.w !obj_27,y
+.lA382:
+    lda.w !obj_25,y
+    ora.b #$02
+    sta.w !obj_25,y
+    lda.w !wram_1F58
+    and.b #$01
+    bne .lA3A2
+    rep.b #$20
+    lda.w #$AC04
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    bra .lA3BF
+.lA3A2:
+    rep.b #$20
+    lda.w #$AC97
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    jsr.w ObjectCallHandler
+    lda.w !obj_25,x
+    and.b #$04
+    bne .lA3BF
+    jml.l .lA092
+.lA3BF:
+    rep.b #$20
+    lda.w #$A430
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lA3D3
+    jml.l .lA429
+.lA3D3:
+    lda.b #$00
+    sta.w !obj_48,y
+    lda.b #$F1
+    sta.w !obj_49,y
+    lda.b #$3C
+    sta.w !obj_4a,y
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_06,y
+    sep.b #$20
+    pla
+    lda.b #$00
+    sta.w !obj_4b,y
+    lda.b #$FF
+    sta.w !obj_27,y
+    lda.w !wram_1F58
+    and.b #$02
+    beq .lA402
+    lda.b #$14
+    sta.w !obj_27,y
+.lA402:
+    lda.w !wram_1F58
+    and.b #$01
+    bne .lA41A
+    rep.b #$20
+    lda.w #$AC04
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    bra .lA429
+.lA41A:
+    rep.b #$20
+    lda.w #$ACB9
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+.lA429:
+    rep.b #$20
+    lda.w #$A3C0
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lA43D
+    jml.l .lA49B
+.lA43D:
+    lda.b #$00
+    sta.w !obj_48,y
+    lda.b #$CE
+    sta.w !obj_49,y
+    lda.b #$0F
+    sta.w !obj_4a,y
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_06,y
+    sep.b #$20
+    pla
+    lda.b #$0A
+    sta.w !obj_4b,y
+    lda.b #$FF
+    sta.w !obj_27,y
+    lda.w !wram_1F58
+    and.b #$02
+    beq .lA46C
+    lda.b #$14
+    sta.w !obj_27,y
+.lA46C:
+    lda.w !obj_25,y
+    ora.b #$02
+    sta.w !obj_25,y
+    lda.w !wram_1F58
+    and.b #$01
+    bne .lA48C
+    rep.b #$20
+    lda.w #$AC04
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    bra .lA49B
+.lA48C:
+    rep.b #$20
+    lda.w #$ACB9
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+.lA49B:
+    rep.b #$20
+    lda.w #$A3DC
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lA4AF
+    jml.l .lA505
+.lA4AF:
+    lda.b #$00
+    sta.w !obj_48,y
+    lda.b #$D0
+    sta.w !obj_49,y
+    lda.b #$E9
+    sta.w !obj_4a,y
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_06,y
+    sep.b #$20
+    pla
+    lda.b #$14
+    sta.w !obj_4b,y
+    lda.b #$FF
+    sta.w !obj_27,y
+    lda.w !wram_1F58
+    and.b #$02
+    beq .lA4DE
+    lda.b #$14
+    sta.w !obj_27,y
+.lA4DE:
+    lda.w !wram_1F58
+    and.b #$01
+    bne .lA4F6
+    rep.b #$20
+    lda.w #$AC04
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    bra .lA505
+.lA4F6:
+    rep.b #$20
+    lda.w #$ACB9
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+.lA505:
+    rep.b #$20
+    lda.w #$A3F8
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lA519
+    jml.l .lA577
+.lA519:
+    lda.b #$00
+    sta.w !obj_48,y
+    lda.b #$EF
+    sta.w !obj_49,y
+    lda.b #$F6
+    sta.w !obj_4a,y
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_06,y
+    sep.b #$20
+    pla
+    lda.b #$19
+    sta.w !obj_4b,y
+    lda.b #$FF
+    sta.w !obj_27,y
+    lda.w !wram_1F58
+    and.b #$02
+    beq .lA548
+    lda.b #$14
+    sta.w !obj_27,y
+.lA548:
+    lda.w !obj_25,y
+    ora.b #$02
+    sta.w !obj_25,y
+    lda.w !wram_1F58
+    and.b #$01
+    bne .lA568
+    rep.b #$20
+    lda.w #$AC04
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    bra .lA577
+.lA568:
+    rep.b #$20
+    lda.w #$ACB9
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+.lA577:
+    rep.b #$20
+    lda.w #$A414
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lA58B
+    jml.l .lA5E1
+.lA58B:
+    lda.b #$00
+    sta.w !obj_48,y
+    lda.b #$0F
+    sta.w !obj_49,y
+    lda.b #$02
+    sta.w !obj_4a,y
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_06,y
+    sep.b #$20
+    pla
+    lda.b #$1E
+    sta.w !obj_4b,y
+    lda.b #$FF
+    sta.w !obj_27,y
+    lda.w !wram_1F58
+    and.b #$02
+    beq .lA5BA
+    lda.b #$14
+    sta.w !obj_27,y
+.lA5BA:
+    lda.w !wram_1F58
+    and.b #$01
+    bne .lA5D2
+    rep.b #$20
+    lda.w #$AC04
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    bra .lA5E1
+.lA5D2:
+    rep.b #$20
+    lda.w #$ACB9
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+.lA5E1:
+    jmp.w .lAB2F
+.lA5E4:
+    sep.b #$20
+    rep.b #$20
+    lda.w #$A3A4
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lA5FA
+    jml.l .lA092
+.lA5FA:
+    lda.b #$00
+    sta.w !obj_48,y
+    lda.b #$E3
+    sta.w !obj_49,y
+    lda.b #$C5
+    sta.w !obj_4a,y
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_06,y
+    sep.b #$20
+    pla
+    lda.b #$23
+    sta.w !obj_4b,y
+    lda.b #$FF
+    sta.w !obj_27,y
+    lda.w !wram_1F58
+    and.b #$02
+    beq .lA629
+    lda.b #$14
+    sta.w !obj_27,y
+.lA629:
+    lda.w !obj_25,y
+    ora.b #$02
+    sta.w !obj_25,y
+    lda.w !wram_1F58
+    and.b #$01
+    bne .lA649
+    rep.b #$20
+    lda.w #$AC04
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    bra .lA666
+.lA649:
+    rep.b #$20
+    lda.w #$AC97
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    jsr.w ObjectCallHandler
+    lda.w !obj_25,x
+    and.b #$04
+    bne .lA666
+    jml.l .lA092
+.lA666:
+    rep.b #$20
+    lda.w #$A318
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lA67A
+    jml.l .lA6D0
+.lA67A:
+    lda.b #$00
+    sta.w !obj_48,y
+    lda.b #$F9
+    sta.w !obj_49,y
+    lda.b #$2D
+    sta.w !obj_4a,y
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_06,y
+    sep.b #$20
+    pla
+    lda.b #$00
+    sta.w !obj_4b,y
+    lda.b #$FF
+    sta.w !obj_27,y
+    lda.w !wram_1F58
+    and.b #$02
+    beq .lA6A9
+    lda.b #$14
+    sta.w !obj_27,y
+.lA6A9:
+    lda.w !wram_1F58
+    and.b #$01
+    bne .lA6C1
+    rep.b #$20
+    lda.w #$AC04
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    bra .lA6D0
+.lA6C1:
+    rep.b #$20
+    lda.w #$ACB9
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+.lA6D0:
+    rep.b #$20
+    lda.w #$A334
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lA6E4
+    jml.l .lA742
+.lA6E4:
+    lda.b #$E9
+    sta.w !obj_48,y
+    lda.b #$FA
+    sta.w !obj_49,y
+    lda.b #$F8
+    sta.w !obj_4a,y
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_06,y
+    sep.b #$20
+    pla
+    lda.b #$0A
+    sta.w !obj_4b,y
+    lda.b #$FF
+    sta.w !obj_27,y
+    lda.w !wram_1F58
+    and.b #$02
+    beq .lA713
+    lda.b #$14
+    sta.w !obj_27,y
+.lA713:
+    lda.w !obj_25,y
+    ora.b #$02
+    sta.w !obj_25,y
+    lda.w !wram_1F58
+    and.b #$01
+    bne .lA733
+    rep.b #$20
+    lda.w #$AC04
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    bra .lA742
+.lA733:
+    rep.b #$20
+    lda.w #$ACB9
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+.lA742:
+    rep.b #$20
+    lda.w #$A350
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lA756
+    jml.l .lA7AC
+.lA756:
+    lda.b #$17
+    sta.w !obj_48,y
+    lda.b #$FA
+    sta.w !obj_49,y
+    lda.b #$F8
+    sta.w !obj_4a,y
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_06,y
+    sep.b #$20
+    pla
+    lda.b #$14
+    sta.w !obj_4b,y
+    lda.b #$FF
+    sta.w !obj_27,y
+    lda.w !wram_1F58
+    and.b #$02
+    beq .lA785
+    lda.b #$14
+    sta.w !obj_27,y
+.lA785:
+    lda.w !wram_1F58
+    and.b #$01
+    bne .lA79D
+    rep.b #$20
+    lda.w #$AC04
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    bra .lA7AC
+.lA79D:
+    rep.b #$20
+    lda.w #$ACB9
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+.lA7AC:
+    rep.b #$20
+    lda.w #$A36C
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lA7C0
+    jml.l .lA81E
+.lA7C0:
+    lda.b #$00
+    sta.w !obj_48,y
+    lda.b #$F6
+    sta.w !obj_49,y
+    lda.b #$F6
+    sta.w !obj_4a,y
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_06,y
+    sep.b #$20
+    pla
+    lda.b #$19
+    sta.w !obj_4b,y
+    lda.b #$FF
+    sta.w !obj_27,y
+    lda.w !wram_1F58
+    and.b #$02
+    beq .lA7EF
+    lda.b #$14
+    sta.w !obj_27,y
+.lA7EF:
+    lda.w !obj_25,y
+    ora.b #$02
+    sta.w !obj_25,y
+    lda.w !wram_1F58
+    and.b #$01
+    bne .lA80F
+    rep.b #$20
+    lda.w #$AC04
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    bra .lA81E
+.lA80F:
+    rep.b #$20
+    lda.w #$ACB9
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+.lA81E:
+    rep.b #$20
+    lda.w #$A388
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lA832
+    jml.l .lA888
+.lA832:
+    lda.b #$00
+    sta.w !obj_48,y
+    lda.b #$F7
+    sta.w !obj_49,y
+    lda.b #$DA
+    sta.w !obj_4a,y
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_06,y
+    sep.b #$20
+    pla
+    lda.b #$1E
+    sta.w !obj_4b,y
+    lda.b #$FF
+    sta.w !obj_27,y
+    lda.w !wram_1F58
+    and.b #$02
+    beq .lA861
+    lda.b #$14
+    sta.w !obj_27,y
+.lA861:
+    lda.w !wram_1F58
+    and.b #$01
+    bne .lA879
+    rep.b #$20
+    lda.w #$AC04
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    bra .lA888
+.lA879:
+    rep.b #$20
+    lda.w #$ACB9
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+.lA888:
+    jmp.w .lAB2F
+.lA88B:
+    sep.b #$20
+    rep.b #$20
+    lda.w #$A4F4
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lA8A1
+    jml.l .lA092
+.lA8A1:
+    lda.b #$00
+    sta.w !obj_48,y
+    lda.b #$EC
+    sta.w !obj_49,y
+    lda.b #$C5
+    sta.w !obj_4a,y
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_06,y
+    sep.b #$20
+    pla
+    lda.b #$23
+    sta.w !obj_4b,y
+    lda.b #$FF
+    sta.w !obj_27,y
+    lda.w !wram_1F58
+    and.b #$02
+    beq .lA8D0
+    lda.b #$14
+    sta.w !obj_27,y
+.lA8D0:
+    lda.w !obj_25,y
+    ora.b #$02
+    sta.w !obj_25,y
+    lda.w !wram_1F58
+    and.b #$01
+    bne .lA8F0
+    rep.b #$20
+    lda.w #$AC04
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    bra .lA90D
+.lA8F0:
+    rep.b #$20
+    lda.w #$AC97
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    jsr.w ObjectCallHandler
+    lda.w !obj_25,x
+    and.b #$04
+    bne .lA90D
+    jml.l .lA092
+.lA90D:
+    rep.b #$20
+    lda.w #$A468
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lA921
+    jml.l .lA977
+.lA921:
+    lda.b #$00
+    sta.w !obj_48,y
+    lda.b #$FA
+    sta.w !obj_49,y
+    lda.b #$21
+    sta.w !obj_4a,y
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_06,y
+    sep.b #$20
+    pla
+    lda.b #$00
+    sta.w !obj_4b,y
+    lda.b #$FF
+    sta.w !obj_27,y
+    lda.w !wram_1F58
+    and.b #$02
+    beq .lA950
+    lda.b #$14
+    sta.w !obj_27,y
+.lA950:
+    lda.w !wram_1F58
+    and.b #$01
+    bne .lA968
+    rep.b #$20
+    lda.w #$AC04
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    bra .lA977
+.lA968:
+    rep.b #$20
+    lda.w #$ACB9
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+.lA977:
+    rep.b #$20
+    lda.w #$A484
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lA98B
+    jml.l .lA9E9
+.lA98B:
+    lda.b #$00
+    sta.w !obj_48,y
+    lda.b #$D5
+    sta.w !obj_49,y
+    lda.b #$EE
+    sta.w !obj_4a,y
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_06,y
+    sep.b #$20
+    pla
+    lda.b #$0A
+    sta.w !obj_4b,y
+    lda.b #$FF
+    sta.w !obj_27,y
+    lda.w !wram_1F58
+    and.b #$02
+    beq .lA9BA
+    lda.b #$14
+    sta.w !obj_27,y
+.lA9BA:
+    lda.w !obj_25,y
+    ora.b #$02
+    sta.w !obj_25,y
+    lda.w !wram_1F58
+    and.b #$01
+    bne .lA9DA
+    rep.b #$20
+    lda.w #$AC04
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    bra .lA9E9
+.lA9DA:
+    rep.b #$20
+    lda.w #$ACB9
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+.lA9E9:
+    rep.b #$20
+    lda.w #$A4A0
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lA9FD
+    jml.l .lAA53
+.lA9FD:
+    lda.b #$EF
+    sta.w !obj_48,y
+    lda.b #$F6
+    sta.w !obj_49,y
+    lda.b #$EC
+    sta.w !obj_4a,y
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_06,y
+    sep.b #$20
+    pla
+    lda.b #$14
+    sta.w !obj_4b,y
+    lda.b #$FF
+    sta.w !obj_27,y
+    lda.w !wram_1F58
+    and.b #$02
+    beq .lAA2C
+    lda.b #$14
+    sta.w !obj_27,y
+.lAA2C:
+    lda.w !wram_1F58
+    and.b #$01
+    bne .lAA44
+    rep.b #$20
+    lda.w #$AC04
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    bra .lAA53
+.lAA44:
+    rep.b #$20
+    lda.w #$ACB9
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+.lAA53:
+    rep.b #$20
+    lda.w #$A4BC
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lAA67
+    jml.l .lAAC5
+.lAA67:
+    lda.b #$11
+    sta.w !obj_48,y
+    lda.b #$F6
+    sta.w !obj_49,y
+    lda.b #$EC
+    sta.w !obj_4a,y
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_06,y
+    sep.b #$20
+    pla
+    lda.b #$19
+    sta.w !obj_4b,y
+    lda.b #$FF
+    sta.w !obj_27,y
+    lda.w !wram_1F58
+    and.b #$02
+    beq .lAA96
+    lda.b #$14
+    sta.w !obj_27,y
+.lAA96:
+    lda.w !obj_25,y
+    ora.b #$02
+    sta.w !obj_25,y
+    lda.w !wram_1F58
+    and.b #$01
+    bne .lAAB6
+    rep.b #$20
+    lda.w #$AC04
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    bra .lAAC5
+.lAAB6:
+    rep.b #$20
+    lda.w #$ACB9
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+.lAAC5:
+    rep.b #$20
+    lda.w #$A4D8
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lAAD9
+    jml.l .lAB2F
+.lAAD9:
+    lda.b #$00
+    sta.w !obj_48,y
+    lda.b #$F8
+    sta.w !obj_49,y
+    lda.b #$C9
+    sta.w !obj_4a,y
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_06,y
+    sep.b #$20
+    pla
+    lda.b #$1E
+    sta.w !obj_4b,y
+    lda.b #$FF
+    sta.w !obj_27,y
+    lda.w !wram_1F58
+    and.b #$02
+    beq .lAB08
+    lda.b #$14
+    sta.w !obj_27,y
+.lAB08:
+    lda.w !wram_1F58
+    and.b #$01
+    bne .lAB20
+    rep.b #$20
+    lda.w #$AC04
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    bra .lAB2F
+.lAB20:
+    rep.b #$20
+    lda.w #$ACB9
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+.lAB2F:
+    lda.w !wram_1F58
+    and.b #$01
+    beq .lAB3E
+    lda.b #$5B
+    jsl.l SoundPort0QueuePush
+    bra .lAB44
+.lAB3E:
+    lda.b #$43
+    jsl.l SoundPort0QueuePush
+.lAB44:
+    clc
+    rtl

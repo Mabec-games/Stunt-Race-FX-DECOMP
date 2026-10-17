@@ -3209,7 +3209,7 @@ PlayerCarEvents:
     phx
     ldx.w !draw_side+17
     lda.b #$01
-    jsl.l PlayerCarA034
+    jsl.l CarCrashParts
     bcs .lC456
     lda.w !obj_25,x
     ora.b #$10
@@ -3233,7 +3233,7 @@ PlayerCarEvents:
     sta.w !obj_25,x
     jsl.l ObjectSpawnSparklePair
     lda.b #$00
-    jsl.l PlayerCarA034
+    jsl.l CarCrashParts
     rep.b #$20
     plx
     bra .lC4A2
@@ -3245,7 +3245,7 @@ PlayerCarEvents:
     sep.b #$20
     ldx.w !draw_side+17
     lda.b #$01
-    jsl.l PlayerCarA034
+    jsl.l CarCrashParts
     lda.w !wram_0D62
     bne .lC49F
     jsl.l ObjectBurstSpawn

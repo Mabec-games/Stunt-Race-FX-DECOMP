@@ -853,3 +853,157 @@ void abi_ObjectCarKind5(void)
 {
     car_of_kind(0x00, 0x05);
 }
+
+void abi_ObjectSpawn(void);
+void abi_ObjectCallHandler(void);
+
+/* A new object of `kind` ($1F2B, ObjectSpawn): 1 when one was made (C
+   set), Y = it. */
+static int spawn(uint16_t kind)
+{
+    st16i(db() | 0x1F2B, kind);
+    abi_ObjectSpawn();
+    return (cpu.p & P_C) != 0;
+}
+
+/* One shed part: kind `kind` with offset bytes +$48-$4A (o48, o49, o4a),
+   its car +$06 = X, +$4B = c, a life +$27 of $FF ($14 with flag bit 1 of
+   $1F58), +$25 bit 1 with `mark`; with flag bit 0 (hit) frame $08:ACB9
+   (PartKnockOff) or, for the set's first part, $08:AC97 (PartHit) run at
+   once (ObjectCallHandler); else $08:AC04 (PartDetach). Returns 1 when the
+   crash must end with carry set: no first part, or the first part's hit
+   left the car's +$25 bit 2 clear. */
+static int shed(uint16_t kind, uint8_t o48, uint8_t o49, uint8_t o4a, uint8_t c, int mark, int first)
+{
+    uint8_t a;
+
+    if (!spawn(kind))
+        return first;
+    st8i(F(0x2048, cpu.y), o48);
+    st8i(F(0x2049, cpu.y), o49);
+    st8i(F(0x204A, cpu.y), o4a);
+    a = (uint8_t)cpu.a;
+    cpu.p &= (uint8_t)~P_M;
+    cpu.a = cpu.x;
+    cpu.p = nz16(cpu.p, cpu.a);
+    wr16(F(0x2006, cpu.y), cpu.x);
+    cpu.p |= P_M;
+    lda8(a);
+    st8i(F(0x204B, cpu.y), c);
+    st8i(F(0x2027, cpu.y), 0xFF);
+    lda8((uint8_t)(ld8(db() | 0x1F58) & 0x02));
+    if ((uint8_t)cpu.a)
+        st8i(F(0x2027, cpu.y), 0x14);
+    if (mark)
+        or8(F(0x2025, cpu.y), 0x02);
+    lda8((uint8_t)(ld8(db() | 0x1F58) & 0x01));
+    if (!(uint8_t)cpu.a) {
+        handler(cpu.y, 0xAC04);
+        return 0;
+    }
+    if (!first) {
+        handler(cpu.y, 0xACB9);
+        return 0;
+    }
+    handler(cpu.y, 0xAC97);
+    abi_ObjectCallHandler();
+    return !bits25(cpu.x, 0x04);
+}
+
+/* 08:A096: the six parts of one car set. */
+static int crash_set_a096(void)
+{
+    cpu.p |= P_M;
+    if (shed(0xA8C8, 0xD8, 0xEC, 0xB6, 0x23, 1, 1))
+        return 1;
+    shed(0xA83C, 0x00, 0xDC, 0x14, 0x00, 0, 0);
+    shed(0xA858, 0x00, 0xEC, 0x1C, 0x0A, 1, 0);
+    shed(0xA874, 0x00, 0xE0, 0xE2, 0x14, 0, 0);
+    shed(0xA890, 0x00, 0xE8, 0xC6, 0x19, 1, 0);
+    shed(0xA8AC, 0x28, 0xEC, 0xB6, 0x1E, 0, 0);
+    return 0;
+}
+
+/* 08:A33D: the six parts of one car set. */
+static int crash_set_a33d(void)
+{
+    cpu.p |= P_M;
+    if (shed(0xA44C, 0x00, 0xEE, 0x42, 0x23, 1, 1))
+        return 1;
+    shed(0xA430, 0x00, 0xF1, 0x3C, 0x00, 0, 0);
+    shed(0xA3C0, 0x00, 0xCE, 0x0F, 0x0A, 1, 0);
+    shed(0xA3DC, 0x00, 0xD0, 0xE9, 0x14, 0, 0);
+    shed(0xA3F8, 0x00, 0xEF, 0xF6, 0x19, 1, 0);
+    shed(0xA414, 0x00, 0x0F, 0x02, 0x1E, 0, 0);
+    return 0;
+}
+
+/* 08:A5E4: the six parts of one car set. */
+static int crash_set_a5e4(void)
+{
+    cpu.p |= P_M;
+    if (shed(0xA3A4, 0x00, 0xE3, 0xC5, 0x23, 1, 1))
+        return 1;
+    shed(0xA318, 0x00, 0xF9, 0x2D, 0x00, 0, 0);
+    shed(0xA334, 0xE9, 0xFA, 0xF8, 0x0A, 1, 0);
+    shed(0xA350, 0x17, 0xFA, 0xF8, 0x14, 0, 0);
+    shed(0xA36C, 0x00, 0xF6, 0xF6, 0x19, 1, 0);
+    shed(0xA388, 0x00, 0xF7, 0xDA, 0x1E, 0, 0);
+    return 0;
+}
+
+/* 08:A88B: the six parts of one car set. */
+static int crash_set_a88b(void)
+{
+    cpu.p |= P_M;
+    if (shed(0xA4F4, 0x00, 0xEC, 0xC5, 0x23, 1, 1))
+        return 1;
+    shed(0xA468, 0x00, 0xFA, 0x21, 0x00, 0, 0);
+    shed(0xA484, 0x00, 0xD5, 0xEE, 0x0A, 1, 0);
+    shed(0xA4A0, 0xEF, 0xF6, 0xEC, 0x14, 0, 0);
+    shed(0xA4BC, 0x11, 0xF6, 0xEC, 0x19, 1, 0);
+    shed(0xA4D8, 0x00, 0xF8, 0xC9, 0x1E, 0, 0);
+    return 0;
+}
+
+/*
+ * @routine 08:A034 CarCrashParts
+ * WHAT IT DOES: A car crashes and sheds its six parts, by its model +$27
+ * ($81B9/$876E, $853D/$8AA8, $8411/$8990, $82E5/$8886 each pick a set of
+ * part kinds and offsets): flags in A (kept at $1F58), bit 0 a hit (the
+ * parts knocked off flying, the first at once), bit 1 a 20-frame life;
+ * then sound $5B (hit) or $43, carry clear. Carry set with nothing done
+ * when the car has already crashed (+$25 bit 2 or 7), its model is none
+ * of these or no first part could be made, or carry set after the first
+ * part's hit when that left the car's +$25 bit 2 clear.
+ * HOW: 16-bit compares, BRL to each set; ObjectSpawn blocks, each storing
+ * the part's bytes and frame; ObjectCallHandler for the first hit part.
+ * Entry: M 8-bit, X 16-bit, D = $0000; X = the car; A low byte = flags.
+ * Exit: M 8-bit; carry as above.
+ */
+void abi_CarCrashParts(void)
+{
+    static const uint16_t model[8] = {0x81B9, 0x853D, 0x8411, 0x82E5, 0x876E, 0x8AA8, 0x8990, 0x8886};
+    static int (*const set[4])(void) = {crash_set_a5e4, crash_set_a88b, crash_set_a33d, crash_set_a096};
+    int i;
+
+    wr8(db() | 0x1F58, (uint8_t)cpu.a);
+    if (bits25(cpu.x, 0x04) || bits25(cpu.x, 0x80))
+        goto fail;
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(F(0x2027, cpu.x));
+    for (i = 0; i < 8; i++) {
+        op_cmp16(model[i]);
+        if (cpu.a == model[i])
+            break;
+    }
+    if (i == 8 || set[i & 3]())
+        goto fail;
+    lda8((uint8_t)(ld8(db() | 0x1F58) & 0x01));
+    sound0((uint8_t)cpu.a ? 0x5B : 0x43);
+    cpu.p &= (uint8_t)~P_C;
+    return;
+fail:
+    cpu.p |= P_M;
+    cpu.p |= P_C;
+}
