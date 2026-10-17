@@ -1,0 +1,55 @@
+# unit_physics_04d: unit tests (fx) of the car handler FxCarHandler
+# (04:B1A1) on the car $1738 from the start of a Novice race: as it is;
+# with its +$1C bit 5 set (handled apart), bit 4 with +$64 bit 3 clear
+# and set; +$40 bit 13 set; +$8A bit 8 clear and set; its speeds
+# (+$2E, +$30, +$32) high each way; its spin (+$4A) large; and the race
+# timer $2472 running (pose only).
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 04:B1A1 stop=888C r8=1738 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 701754 20,00
+fx 04:B1A1 stop=888C r8=1738 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 701754 10,00
+set 70179C 04,00
+fx 04:B1A1 stop=888C r8=1738 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 701754 10,00
+set 70179C 0C,00
+fx 04:B1A1 stop=888C r8=1738 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 701778 00,20
+fx 04:B1A1 stop=888C r8=1738 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7017C2 00,00
+fx 04:B1A1 stop=888C r8=1738 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7017C2 00,01
+fx 04:B1A1 stop=888C r8=1738 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 701766 00,70,00,70,00,70
+fx 04:B1A1 stop=888C r8=1738 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 701766 00,90,00,90,00,90
+fx 04:B1A1 stop=888C r8=1738 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 701782 00,70
+fx 04:B1A1 stop=888C r8=1738 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 701782 00,90
+fx 04:B1A1 stop=888C r8=1738 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 702472 05,00
+fx 04:B1A1 stop=888C r8=1738 r10=0244
+wait 1

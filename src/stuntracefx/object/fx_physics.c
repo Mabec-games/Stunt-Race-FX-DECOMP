@@ -5617,7 +5617,10 @@ void abi_FxContactsResolve(void)
  * $2480, notes the shallowest depth in $237E, and from the depth and
  * the face's normal works the force pushing the wheel out ($239E
  * across, $23A0 up). The code after it to 04:B9AB holds the car
- * handler (FxCarHandler, 04:B1A1) and its helpers.
+ * handler (FxCarHandler, 04:B1A1) and its helpers. The bytes
+ * 04:AF90-AF92 never run: the depth's sign was tested just before (a
+ * negative one branches to 04:B191), so the BPL at 04:AF8E always
+ * branches.
  * HOW: Pushes R11 for slots it resolves; R3 steps through the slot;
  * returns by pulling R15 (or JMP R11 for an empty or skipped slot,
  * 04:B185-B19A).
