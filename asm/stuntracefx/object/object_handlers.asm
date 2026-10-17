@@ -4778,14 +4778,16 @@ CameraDirectorFixed:
 ; (half-sums of |dx|, |dy|, |dz| / 4) to the first car of the list at
 ; $7E:FFAE, when below the camera's $06, becomes $06 and that car the
 ; camera's target ($02) with object X's position at $08/$0A/$0C and mode
-; bit 0 set. +$36 = 3.
-; HOW: Only the list's first entry is looked at. With no car the code at
-; $08:8B55 runs with A 16-bit, as original code. Not reached in the traces
-; so far.
-; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte 3.
+; bit 0 set. +$36 = 3. With no car taken, A = $9D03 and the word at
+; direct page $20 + X is rotated left through C instead.
+; HOW: Only the list's first entry is looked at. With no car taken the
+; code reaches $08:8B55 with A 16-bit, where its bytes read LDA #$9D03,
+; ROL $20,X, RTL.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit, A low byte 3; with
+; no car taken M 16-bit, A = $9D03, N, Z, C from the rotate.
 %at($088A8A)
 CameraNearestCar:
-    ldy.w #$1A64                    ; not reached in the traces so far
+    ldy.w #$1A64
     lda.w !dp_04,y
     bne .l8AA4
     lda.b #$01

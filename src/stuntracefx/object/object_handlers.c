@@ -4204,11 +4204,13 @@ void abi_CameraDirectorFixed(void)
  * (half-sums of |dx|, |dy|, |dz| / 4) to the first car of the list at
  * $7E:FFAE, when below the camera's $06, becomes $06 and that car the
  * camera's target ($02) with object X's position at $08/$0A/$0C and mode
- * bit 0 set. +$36 = 3.
- * HOW: Only the list's first entry is looked at. With no car the code at
- * $08:8B55 runs with A 16-bit, as original code. Not reached in the traces
- * so far.
- * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte 3.
+ * bit 0 set. +$36 = 3. With no car taken, A = $9D03 and the word at
+ * direct page $20 + X is rotated left through C instead.
+ * HOW: Only the list's first entry is looked at. With no car taken the
+ * code reaches $08:8B55 with A 16-bit, where its bytes read LDA #$9D03,
+ * ROL $20,X, RTL.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit, A low byte 3; with
+ * no car taken M 16-bit, A = $9D03, N, Z, C from the rotate.
  */
 void abi_CameraNearestCar(void)
 {
@@ -4237,14 +4239,17 @@ void abi_CameraNearestCar(void)
     if (cpu.a) {
         car = cpu.a;
         cpu.y = car;
-        d = abs16((uint16_t)(rd16(b | (uint16_t)(0x200C + car)) - rd16(b | 0x1F4C)));
+        d = rd16(b | (uint16_t)(0x200C + car));
+        d = abs16((uint16_t)(d - rd16(b | 0x1F4C)));
         d = (uint16_t)((d >> 2) | ((d & 0x8000) ? 0xC000 : 0));
         wr16(b | 0x1F2B, d);
-        t = abs16((uint16_t)(rd16(b | (uint16_t)(0x200E + car)) - rd16(b | 0x1F4E)));
+        t = rd16(b | (uint16_t)(0x200E + car));
+        t = abs16((uint16_t)(t - rd16(b | 0x1F4E)));
         t = (uint16_t)((t >> 2) | ((t & 0x8000) ? 0xC000 : 0));
         t = (uint16_t)(t + rd16(b | 0x1F2B));
         wr16(b | 0x1F2B, t);
-        d = abs16((uint16_t)(rd16(b | (uint16_t)(0x2010 + car)) - rd16(b | 0x1F50)));
+        d = rd16(b | (uint16_t)(0x2010 + car));
+        d = abs16((uint16_t)(d - rd16(b | 0x1F50)));
         d = (uint16_t)((d >> 2) | ((d & 0x8000) ? 0xC000 : 0));
         d = (uint16_t)(d + rd16(b | 0x1F2B));
         cpu.a = d;
@@ -4260,7 +4265,12 @@ void abi_CameraNearestCar(void)
     wr16(b | (uint16_t)(0x0006 + p), cpu.a);
     op_lda16(b | 0x1F52);
     if (!cpu.a) {
-        jump_routine(0x088B55);
+        t = (uint16_t)(cpu.d + 0x20 + x);
+        d = rd16(t);
+        car = (uint16_t)(d << 1 | (cpu.p & P_C));
+        cpu.a = 0x9D03;
+        wr16(t, car);
+        cpu.p = (uint8_t)(nz16((uint8_t)(cpu.p & ~P_C), car) | d >> 15);
         return;
     }
     wr16(b | (uint16_t)(0x0002 + p), cpu.a);
