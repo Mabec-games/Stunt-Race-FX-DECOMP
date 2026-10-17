@@ -1,0 +1,49 @@
+# unit_uncalled_01b: unit tests (fx) from the start of a Novice race for the
+# NOP after the STOP of each uncalled 01 program (the Super FX runs it only
+# when it is next started) and for two routines nothing reaches:
+# - 01:AE99, 01:AEA9, 01:AECA and 01:AEE1 (with $01C4 = 1), and 01:B027
+#   and 01:B08A (sprite $00AA 0, colour 3, at $01D2 = $40, $01D4 = $30,
+#   size $00CE $0100), each kept, then the next start runs its NOP;
+# - that next start is FxReturnR11 (01:AB11) with R11 = the STOP at
+#   $01:80E3, or FxModelReturn (01:884A) pulling the STOP from the R10
+#   stack ($0244).
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:AE99 stop=80E3 keep
+wait 1
+fx 01:AB11 stop=80E3 r11=80E3
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:AEA9 stop=80E3 keep
+wait 1
+set 700244 E3,80
+fx 01:884A stop=80E3 r10=0246
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7001C4 01,00
+fx 01:AECA stop=80E3 keep
+wait 1
+fx 01:AB11 stop=80E3 r11=80E3
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7001C4 01,00
+fx 01:AEE1 stop=80E3 keep
+wait 1
+set 700244 E3,80
+fx 01:884A stop=80E3 r10=0246
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7000AA 00,00,03,00
+set 7001D2 40,00,30,00
+fx 01:B027 stop=80E3 keep
+wait 1
+fx 01:AB11 stop=80E3 r11=80E3
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7000AA 00,00,03,00
+set 7001D2 40,00,30,00
+set 7000CE 00,01
+fx 01:B08A stop=80E3 keep
+wait 1
+set 700244 E3,80
+fx 01:884A stop=80E3 r10=0246
+wait 1
