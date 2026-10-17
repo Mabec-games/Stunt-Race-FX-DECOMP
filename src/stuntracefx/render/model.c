@@ -183,6 +183,7 @@ l8571:
     nx = (uint16_t)(gsu_ldw(R[10]));
     at = nx;
     goto dispatch;
+    /* FxModelDrawFlagged */
 l8576:
     R[2] = 0x1000;
     R[1] = 0x2000;
@@ -3594,6 +3595,23 @@ dispatch:
 void abi_FxModelDraw(void)
 {
     model_run(0x8561, R[11]);
+}
+
+/*
+ * @routine 01:8576 FxModelDrawFlagged
+ * WHAT IT DOES: FxModelDraw's set-up when $01B4 is set (01:8561 calls
+ * it with R11 = $8571): the model flags $0054 become bit 12 of them
+ * with bit 13 set, then the model is drawn as FxModelDraw draws it.
+ * HOW: R2 = $1000, R1 = $2000: ($0054 AND R2) OR R1 into $0054
+ * (01:858F), the rest as in FxModelDraw; its end command's pull returns
+ * to R11.
+ * Entry: R10 = stack; R11 = return address; the object's set-up in RAM.
+ * Exit: as the code leaves the registers, flags and RAM; R14 and the
+ * ROM buffer move as on the Super FX.
+ */
+void abi_FxModelDrawFlagged(void)
+{
+    model_run(0x8576, R[11]);
 }
 
 /*

@@ -31,21 +31,33 @@ arch superfx
 FxModelDraw:
     lms r0,(!fx_model_1b4-!gsu_ram)
     lob
-    beq .l8584
+    beq FxModelDrawFlagged_l8584
     nop
     from r11
     stw (r10)
     inc r10
     inc r10
     link #4
-    iwt r15,#.l8576
+    iwt r15,#FxModelDrawFlagged
     nop
     dec r10
     dec r10
     to r15
     ldw (r10)
     nop
-.l8576:
+;
+; @routine 01:8576 FxModelDrawFlagged
+; WHAT IT DOES: FxModelDraw's set-up when $01B4 is set (01:8561 calls
+; it with R11 = $8571): the model flags $0054 become bit 12 of them
+; with bit 13 set, then the model is drawn as FxModelDraw draws it.
+; HOW: R2 = $1000, R1 = $2000: ($0054 AND R2) OR R1 into $0054
+; (01:858F), the rest as in FxModelDraw; its end command's pull returns
+; to R11.
+; Entry: R10 = stack; R11 = return address; the object's set-up in RAM.
+; Exit: as the code leaves the registers, flags and RAM; R14 and the
+; ROM buffer move as on the Super FX.
+%at($018576)
+FxModelDrawFlagged:
     iwt r2,#$1000
     iwt r1,#$2000
     lms r0,(!fx_model_flags-!gsu_ram)
