@@ -5,6 +5,60 @@ incsrc "../include/wram.inc"
 
 arch 65816
 
+; @routine 03:CC29 ScaleQuarter
+; WHAT IT DOES: Returns a quarter of a signed 16-bit value.
+; HOW: Two arithmetic shifts right (CMP #$8000 / ROR A), rounding toward
+; minus infinity.
+; Entry: M 16-bit; A = value. Exit: A = v/4; N, Z from it; C = bit 1 of v;
+; V unchanged.
+%at($03CC29)
+ScaleQuarter:
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    rtl
+
+; @routine 03:CC32 ScaleNineSixteenths
+; WHAT IT DOES: Returns v/2 + v/16 of a signed 16-bit value (9/16).
+; HOW: Halves the value (arithmetic shift), keeps the half in $3E, halves
+; it three more times and adds $3E back.
+; Entry: M 16-bit, D = $0000; A = value. Exit: A = the result; $3E = v/2;
+; N, Z, C, V from the add.
+%at($03CC32)
+ScaleNineSixteenths:
+    cmp.w #$8000
+    ror a
+    sta.b !scale_scratch
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    clc
+    adc.b !scale_scratch
+    rtl
+
+; @routine 03:CC48 ScaleFiveEighths
+; WHAT IT DOES: Returns v/2 + v/8 of a signed 16-bit value (5/8).
+; HOW: As ScaleNineSixteenths, with two halvings after the first instead
+; of three.
+; Entry: M 16-bit, D = $0000; A = value. Exit: A = the result; $3E = v/2;
+; N, Z, C, V from the add.
+%at($03CC48)
+ScaleFiveEighths:
+    cmp.w #$8000
+    ror a
+    sta.b !scale_scratch
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    clc
+    adc.b !scale_scratch
+    rtl
+
 ; @routine 03:CC5A ScaleThreeQuarters
 ; WHAT IT DOES: Returns three quarters of a signed 16-bit value.
 ; HOW: CMP #$8000 / ROR A is an arithmetic shift right (the sign bit comes
@@ -20,6 +74,57 @@ ScaleThreeQuarters:
     ror a
     clc
     adc.b !scale_scratch
+    rtl
+
+; @routine 03:CC68 ScaleSevenEighths
+; WHAT IT DOES: Returns v/2 + v/4 + v/8 of a signed 16-bit value (7/8).
+; HOW: Halves three times, keeping v/2 in $3E and v/4 in $40, then adds
+; them to v/8 in that order.
+; Entry: M 16-bit, D = $0000; A = value. Exit: A = the result; $3E = v/2,
+; $40 = v/4; N, Z, C, V from the last add.
+%at($03CC68)
+ScaleSevenEighths:
+    cmp.w #$8000
+    ror a
+    sta.b !scale_scratch
+    cmp.w #$8000
+    ror a
+    sta.b !dp_40
+    cmp.w #$8000
+    ror a
+    clc
+    adc.b !scale_scratch
+    clc
+    adc.b !dp_40
+    rtl
+
+; @routine 03:CC7F ScaleFifteenSixteenths
+; WHAT IT DOES: Returns v/2 + v/4 + v/8 + v/16 of a signed 16-bit value
+; (15/16).
+; HOW: Halves four times, keeping v/2 in $3E, v/4 in $40 and v/8 at $1F2B
+; (through the data bank), then adds v/8, v/2 and v/4 to v/16 in that
+; order.
+; Entry: M 16-bit, D = $0000; A = value. Exit: A = the result; $3E, $40,
+; $1F2B as above; N, Z, C, V from the last add.
+%at($03CC7F)
+ScaleFifteenSixteenths:
+    cmp.w #$8000
+    ror a
+    sta.b !scale_scratch
+    cmp.w #$8000
+    ror a
+    sta.b !dp_40
+    cmp.w #$8000
+    ror a
+    sta.w !wram_1F2B
+    cmp.w #$8000
+    ror a
+    clc
+    adc.w !wram_1F2B
+    clc
+    adc.b !scale_scratch
+    clc
+    adc.b !dp_40
     rtl
 
 ; @routine 03:FCE0 Mode7ScaleProduct

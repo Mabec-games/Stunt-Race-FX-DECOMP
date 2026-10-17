@@ -20,20 +20,31 @@ static uint16_t halve(uint16_t v, uint16_t sign)
     return r;
 }
 
-/* The shared tails: A = $3E; N, Z from it; C clear when it moved; when it
-   moved, V from the add of the step. */
+/* The value at $3E: a word or a byte, as the routine's width reads it. */
+static uint16_t value(int wide)
+{
+    return wide ? rd16(APPROACH_VALUE) : rd8(APPROACH_VALUE);
+}
+
+/* The step as each routine makes it, reading and writing $3E as often and
+   in the order the routine does (CMP, SBC, ADC, STA, then the tail's LDA),
+   and the shared tails: A = $3E; N, Z from it; C clear when it moved; when
+   it moved, V from the add of the step. */
 static uint16_t approach(uint16_t target, int wide, uint16_t min, int shifts, int *moved, uint8_t *p)
 {
     uint16_t mask = wide ? 0xFFFF : 0x00FF, sign = wide ? 0x8000 : 0x0080;
-    uint16_t cur = (wide ? rd16(APPROACH_VALUE) : rd8(APPROACH_VALUE)) & mask, d, s;
+    uint16_t cur, d, s;
     int i;
 
     target &= mask;
+    cur = value(wide);
     *moved = target != cur;
     if (!*moved) {
+        cur = value(wide);
         *p = (uint8_t)(wide ? nz16(*p, cur) : nz8(*p, (uint8_t)cur)) | P_C;
         return cur;
     }
+    cur = value(wide);
     d = (uint16_t)(target - cur) & mask;
     if (!(d & sign)) {
         if (d < min)
@@ -43,12 +54,14 @@ static uint16_t approach(uint16_t target, int wide, uint16_t min, int shifts, in
     }
     for (i = 0; i < shifts; i++)
         d = halve(d, sign) & mask;
+    cur = value(wide);
     s = (uint16_t)(d + cur) & mask;
     *p = (uint8_t)((*p & ~(P_C | P_V)) | ((~(d ^ cur) & (d ^ s) & sign) ? P_V : 0));
     if (wide)
         wr16(APPROACH_VALUE, s);
     else
         wr8(APPROACH_VALUE, (uint8_t)s);
+    s = value(wide);
     *p = wide ? nz16(*p, s) : nz8(*p, (uint8_t)s);
     return s;
 }
@@ -61,6 +74,22 @@ static void abi_approach(int wide, uint16_t min, int shifts)
 
     cpu.a = wide ? v : (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.p = p;
+}
+
+/*
+ * @routine 03:CDC1 ApproachHalfMin2
+ * WHAT IT DOES: Moves $3E half of the way toward A, by at least 1.
+ * HOW: The difference, at least 2 either way, halved once.
+ * Entry: as ApproachQuarterMin4. Exit: as ApproachQuarterMin4.
+ */
+uint16_t ApproachHalfMin2(uint16_t target, int *moved, uint8_t *p)
+{
+    return approach(target, 1, 2, 1, moved, p);
+}
+
+void abi_ApproachHalfMin2(void)
+{
+    abi_approach(1, 2, 1);
 }
 
 /*
@@ -98,6 +127,22 @@ void abi_ApproachEighthMin8(void)
 }
 
 /*
+ * @routine 03:CE75 ApproachSixteenthMin16
+ * WHAT IT DOES: Moves $3E a sixteenth of the way toward A, by at least 1.
+ * HOW: The difference, at least $10 either way, halved four times.
+ * Entry: as ApproachQuarterMin4. Exit: as ApproachQuarterMin4.
+ */
+uint16_t ApproachSixteenthMin16(uint16_t target, int *moved, uint8_t *p)
+{
+    return approach(target, 1, 16, 4, moved, p);
+}
+
+void abi_ApproachSixteenthMin16(void)
+{
+    abi_approach(1, 16, 4);
+}
+
+/*
  * @routine 03:CEC3 ApproachThirtySecondMin32
  * WHAT IT DOES: Moves $3E a thirty-second of the way toward A, by at least 1.
  * HOW: The difference, at least $20 either way, halved five times.
@@ -127,6 +172,22 @@ uint16_t ApproachSixtyFourthMin64(uint16_t target, int *moved, uint8_t *p)
 void abi_ApproachSixtyFourthMin64(void)
 {
     abi_approach(1, 64, 6);
+}
+
+/*
+ * @routine 03:CF7A ApproachOneTwentyEighthMin128
+ * WHAT IT DOES: Moves $3E a 128th of the way toward A, by at least 1.
+ * HOW: The difference, at least $80 either way, halved seven times.
+ * Entry: as ApproachQuarterMin4. Exit: as ApproachQuarterMin4.
+ */
+uint16_t ApproachOneTwentyEighthMin128(uint16_t target, int *moved, uint8_t *p)
+{
+    return approach(target, 1, 128, 7, moved, p);
+}
+
+void abi_ApproachOneTwentyEighthMin128(void)
+{
+    abi_approach(1, 128, 7);
 }
 
 /*
@@ -176,4 +237,80 @@ uint16_t ApproachQuarterMin4Byte(uint8_t target, int *moved, uint8_t *p)
 void abi_ApproachQuarterMin4Byte(void)
 {
     abi_approach(0, 4, 2);
+}
+
+/*
+ * @routine 03:D07C ApproachSixteenthMin16Byte
+ * WHAT IT DOES: Moves the byte at $3E a sixteenth of the way toward A, by at
+ * least 1.
+ * HOW: The difference, at least $10 either way, halved four times, with
+ * 8-bit arithmetic.
+ * Entry: M 8-bit, D = $0000; A = target. Exit: as ApproachQuarterMin4 (A
+ * low byte).
+ */
+uint16_t ApproachSixteenthMin16Byte(uint8_t target, int *moved, uint8_t *p)
+{
+    return approach(target, 0, 16, 4, moved, p);
+}
+
+void abi_ApproachSixteenthMin16Byte(void)
+{
+    abi_approach(0, 16, 4);
+}
+
+/*
+ * @routine 03:D0BD ApproachThirtySecondMin32Byte
+ * WHAT IT DOES: Moves the byte at $3E a thirty-second of the way toward A, by
+ * at least 1.
+ * HOW: The difference, at least $20 either way, halved five times, with
+ * 8-bit arithmetic.
+ * Entry: M 8-bit, D = $0000; A = target. Exit: as ApproachQuarterMin4 (A
+ * low byte).
+ */
+uint16_t ApproachThirtySecondMin32Byte(uint8_t target, int *moved, uint8_t *p)
+{
+    return approach(target, 0, 32, 5, moved, p);
+}
+
+void abi_ApproachThirtySecondMin32Byte(void)
+{
+    abi_approach(0, 32, 5);
+}
+
+/*
+ * @routine 03:D105 ApproachSixtyFourthMin64Byte
+ * WHAT IT DOES: Moves the byte at $3E a sixty-fourth of the way toward A, by
+ * at least 1.
+ * HOW: The difference, at least $40 either way, halved six times, with
+ * 8-bit arithmetic.
+ * Entry: M 8-bit, D = $0000; A = target. Exit: as ApproachQuarterMin4 (A
+ * low byte).
+ */
+uint16_t ApproachSixtyFourthMin64Byte(uint8_t target, int *moved, uint8_t *p)
+{
+    return approach(target, 0, 64, 6, moved, p);
+}
+
+void abi_ApproachSixtyFourthMin64Byte(void)
+{
+    abi_approach(0, 64, 6);
+}
+
+/*
+ * @routine 03:D154 ApproachOneTwentyEighthMin128Byte
+ * WHAT IT DOES: Meant to move the byte at $3E a 128th of the way toward A;
+ * unless it is already there, it always steps it down by 1.
+ * HOW: The difference is raised to $80 either way, and $80 is -128 as a
+ * byte: halved seven times it is -1 whichever side the target is on.
+ * Entry: M 8-bit, D = $0000; A = target. Exit: as ApproachQuarterMin4 (A
+ * low byte).
+ */
+uint16_t ApproachOneTwentyEighthMin128Byte(uint8_t target, int *moved, uint8_t *p)
+{
+    return approach(target, 0, 128, 7, moved, p);
+}
+
+void abi_ApproachOneTwentyEighthMin128Byte(void)
+{
+    abi_approach(0, 128, 7);
 }

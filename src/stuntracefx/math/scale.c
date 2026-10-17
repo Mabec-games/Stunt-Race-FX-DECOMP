@@ -5,14 +5,26 @@
 #include "hw.h"
 #include "cpu_ops.h"
 
-/* Direct page $3E: scratch the routines below leave behind. */
+/* Direct page $3E and $40: scratch the routines below leave behind. */
 #define SCALE_SCRATCH 0x00003Eu
+#define SCALE_SCRATCH2 0x000040u
 
 /* An arithmetic shift right by one, as CMP #$8000 / ROR A does it: the sign
    bit stays, the low bit falls out into carry. */
 static uint16_t asr1(uint16_t v)
 {
     return (uint16_t)((v >> 1) | (v & 0x8000));
+}
+
+/* ScaleThreeQuarters with the flags of its add. */
+static uint16_t three_quarters(uint16_t v, uint8_t *p)
+{
+    uint16_t half = asr1(v), quarter;
+
+    wr16(SCALE_SCRATCH, half);
+    quarter = asr1(half);
+    *p &= (uint8_t)~P_C;
+    return op_adc16(quarter, rd16(SCALE_SCRATCH), p);
 }
 
 /*
@@ -26,22 +38,160 @@ static uint16_t asr1(uint16_t v)
  */
 uint16_t ScaleThreeQuarters(uint16_t v)
 {
-    uint16_t half = asr1(v);
+    uint8_t p = 0;
 
-    wr16(SCALE_SCRATCH, half);
-    return (uint16_t)(half + asr1(half));
+    return three_quarters(v, &p);
 }
 
 void abi_ScaleThreeQuarters(void)
 {
-    uint16_t half = asr1(cpu.a), quarter = asr1(half);
-    uint32_t sum = (uint32_t)half + quarter;
-    uint16_t r = ScaleThreeQuarters(cpu.a);
+    uint8_t p = cpu.p;
 
-    cpu.a = r;
-    cpu.p = nz16(cpu.p, r);
-    cpu.p = (uint8_t)((cpu.p & ~(P_C | P_V)) | (sum > 0xFFFF ? P_C : 0)
-                      | ((~(half ^ quarter) & (half ^ r) & 0x8000) ? P_V : 0));
+    cpu.a = three_quarters(cpu.a, &p);
+    cpu.p = p;
+}
+
+/*
+ * @routine 03:CC29 ScaleQuarter
+ * WHAT IT DOES: Returns a quarter of a signed 16-bit value.
+ * HOW: Two arithmetic shifts right (CMP #$8000 / ROR A), rounding toward
+ * minus infinity.
+ * Entry: M 16-bit; A = value. Exit: A = v/4; N, Z from it; C = bit 1 of v;
+ * V unchanged.
+ */
+uint16_t ScaleQuarter(uint16_t v, uint8_t *p)
+{
+    uint16_t r = asr1(asr1(v));
+
+    *p = (uint8_t)((nz16(*p, r) & ~P_C) | (v >> 1 & 1));
+    return r;
+}
+
+void abi_ScaleQuarter(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = ScaleQuarter(cpu.a, &p);
+    cpu.p = p;
+}
+
+/*
+ * @routine 03:CC32 ScaleNineSixteenths
+ * WHAT IT DOES: Returns v/2 + v/16 of a signed 16-bit value (9/16).
+ * HOW: Halves the value (arithmetic shift), keeps the half in $3E, halves
+ * it three more times and adds $3E back.
+ * Entry: M 16-bit, D = $0000; A = value. Exit: A = the result; $3E = v/2;
+ * N, Z, C, V from the add.
+ */
+uint16_t ScaleNineSixteenths(uint16_t v, uint8_t *p)
+{
+    uint16_t half = asr1(v), sixteenth;
+
+    wr16(SCALE_SCRATCH, half);
+    sixteenth = asr1(asr1(asr1(half)));
+    *p &= (uint8_t)~P_C;
+    return op_adc16(sixteenth, rd16(SCALE_SCRATCH), p);
+}
+
+void abi_ScaleNineSixteenths(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = ScaleNineSixteenths(cpu.a, &p);
+    cpu.p = p;
+}
+
+/*
+ * @routine 03:CC48 ScaleFiveEighths
+ * WHAT IT DOES: Returns v/2 + v/8 of a signed 16-bit value (5/8).
+ * HOW: As ScaleNineSixteenths, with two halvings after the first instead
+ * of three.
+ * Entry: M 16-bit, D = $0000; A = value. Exit: A = the result; $3E = v/2;
+ * N, Z, C, V from the add.
+ */
+uint16_t ScaleFiveEighths(uint16_t v, uint8_t *p)
+{
+    uint16_t half = asr1(v), eighth;
+
+    wr16(SCALE_SCRATCH, half);
+    eighth = asr1(asr1(half));
+    *p &= (uint8_t)~P_C;
+    return op_adc16(eighth, rd16(SCALE_SCRATCH), p);
+}
+
+void abi_ScaleFiveEighths(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = ScaleFiveEighths(cpu.a, &p);
+    cpu.p = p;
+}
+
+/*
+ * @routine 03:CC68 ScaleSevenEighths
+ * WHAT IT DOES: Returns v/2 + v/4 + v/8 of a signed 16-bit value (7/8).
+ * HOW: Halves three times, keeping v/2 in $3E and v/4 in $40, then adds
+ * them to v/8 in that order.
+ * Entry: M 16-bit, D = $0000; A = value. Exit: A = the result; $3E = v/2,
+ * $40 = v/4; N, Z, C, V from the last add.
+ */
+uint16_t ScaleSevenEighths(uint16_t v, uint8_t *p)
+{
+    uint16_t half = asr1(v), quarter, r;
+
+    wr16(SCALE_SCRATCH, half);
+    quarter = asr1(half);
+    wr16(SCALE_SCRATCH2, quarter);
+    r = asr1(quarter);
+    *p &= (uint8_t)~P_C;
+    r = op_adc16(r, rd16(SCALE_SCRATCH), p);
+    *p &= (uint8_t)~P_C;
+    return op_adc16(r, rd16(SCALE_SCRATCH2), p);
+}
+
+void abi_ScaleSevenEighths(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = ScaleSevenEighths(cpu.a, &p);
+    cpu.p = p;
+}
+
+/*
+ * @routine 03:CC7F ScaleFifteenSixteenths
+ * WHAT IT DOES: Returns v/2 + v/4 + v/8 + v/16 of a signed 16-bit value
+ * (15/16).
+ * HOW: Halves four times, keeping v/2 in $3E, v/4 in $40 and v/8 at $1F2B
+ * (through the data bank), then adds v/8, v/2 and v/4 to v/16 in that
+ * order.
+ * Entry: M 16-bit, D = $0000; A = value. Exit: A = the result; $3E, $40,
+ * $1F2B as above; N, Z, C, V from the last add.
+ */
+uint16_t ScaleFifteenSixteenths(uint8_t bank, uint16_t v, uint8_t *p)
+{
+    uint32_t eighth_at = (uint32_t)bank << 16 | 0x1F2B;
+    uint16_t half = asr1(v), quarter, eighth, r;
+
+    wr16(SCALE_SCRATCH, half);
+    quarter = asr1(half);
+    wr16(SCALE_SCRATCH2, quarter);
+    eighth = asr1(quarter);
+    wr16(eighth_at, eighth);
+    r = asr1(eighth);
+    *p &= (uint8_t)~P_C;
+    r = op_adc16(r, rd16(eighth_at), p);
+    *p &= (uint8_t)~P_C;
+    r = op_adc16(r, rd16(SCALE_SCRATCH), p);
+    *p &= (uint8_t)~P_C;
+    return op_adc16(r, rd16(SCALE_SCRATCH2), p);
+}
+
+void abi_ScaleFifteenSixteenths(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = ScaleFifteenSixteenths(cpu.db, cpu.a, &p);
+    cpu.p = p;
 }
 
 /*
@@ -162,12 +312,13 @@ void abi_ScaleDp02Dp94Long(void)
  */
 uint16_t ScaleFiveThirtySeconds(uint8_t bank, uint16_t v, uint8_t *p)
 {
-    uint16_t e = asr1(asr1(asr1(v))), t = asr1(asr1(e)), s = (uint16_t)(t + e);
+    uint32_t eighth_at = (uint32_t)bank << 16 | 0x1F2B;
+    uint16_t e = asr1(asr1(asr1(v))), t;
 
-    wr16((uint32_t)bank << 16 | 0x1F2B, e);
-    *p = (uint8_t)((nz16(*p, s) & ~(P_C | P_V)) | ((unsigned)t + e > 0xFFFF ? P_C : 0)
-                   | ((~(t ^ e) & (t ^ s) & 0x8000) ? P_V : 0));
-    return s;
+    wr16(eighth_at, e);
+    t = asr1(asr1(e));
+    *p &= (uint8_t)~P_C;
+    return op_adc16(t, rd16(eighth_at), p);
 }
 
 void abi_ScaleFiveThirtySeconds(void)
