@@ -13317,3 +13317,369 @@ ObjectBonusMarker5Step:
     jsl.l ObjectRelease
 .lC071:
     rtl
+
+
+; @routine 09:C0BE ObjectRiderSpawn
+; WHAT IT DOES: Makes a rider (kind $AD44) at object X's position $A0
+; lower (+$0E + $A0), with X as its parent (+$27) and the handler
+; $09:C0FE (ObjectRiderStep); nothing without a free object. Nothing in
+; the game calls it.
+; HOW: ObjectSpawn, ObjectCopyPositionTo; A's low byte pushed and pulled
+; (8-bit) round the parent's store (TXA, 16-bit). Ends in RTS.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; made: A low byte =
+; $09; none: as ObjectSpawn.
+%at($09C0BE)
+ObjectRiderSpawn:
+    rep.b #$20
+    lda.w #$AD44
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lC0D2
+    jml.l .lC0FD
+.lC0D2:
+    jsl.l ObjectCopyPositionTo
+    rep.b #$20
+    lda.w !obj_pos_y,y
+    clc
+    adc.w #$00A0
+    sta.w !obj_pos_y,y
+    sep.b #$20
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_27,y
+    sep.b #$20
+    pla
+    rep.b #$20
+    lda.w #$C0FE
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,y
+.lC0FD:
+    rts
+
+; @routine 09:C0FE ObjectRiderStep
+; WHAT IT DOES: The handler of the object ObjectRiderSpawn makes: once its
+; parent (+$27) has +$25 bit 0 set it is released (ObjectRelease);
+; otherwise its heading +$15 turns by 4 and it is rebucketed.
+; HOW: An 8-bit test of the parent's +$25; JML to the release at
+; $09:C11A.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectRebucket or
+; ObjectRelease.
+%at($09C0FE)
+ObjectRiderStep:
+    ldy.w !obj_27,x
+    lda.w !obj_25,y
+    and.b #$01
+    beq .lC10C
+    jml.l .lC11A
+.lC10C:
+    lda.w !obj_15,x
+    clc
+    adc.b #$04
+    sta.w !obj_15,x
+    jsl.l ObjectRebucket
+    rtl
+.lC11A:
+    jsl.l ObjectRelease
+    rtl
+
+
+; @routine 09:B133 ObjectSwitchLampB
+; WHAT IT DOES: Sets up a lamp switch B lights: +$1D = $09:B16E, handler
+; $09:B19B (ObjectSwitchLampBStep), shape $ECD0, dark (+$5A = $80), +$48 =
+; 4; then its record and frame. No course in the scripts places it.
+; HOW: Stores, then falls into ObjectSwitchLampBRecord.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectSwitchLampBStep.
+%at($09B133)
+ObjectSwitchLampB:
+    rep.b #$20
+    lda.w #$B16E
+    sta.w !obj_1d,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1f,x
+    rep.b #$20
+    lda.w #$B19B
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,x
+    rep.b #$20
+    lda.w #$ECD0
+    sta.w !obj_20,x
+    sep.b #$20
+    lda.b #$00
+    ora.b #$80
+    sta.w !obj_5a,x
+    lda.b #$04
+    sta.w !obj_48,x
+    lda.b #$00
+    ora.b #$80
+    sta.w !obj_5a,x
+
+; @routine 09:B16E ObjectSwitchLampBRecord
+; WHAT IT DOES: The lamp's record (GsuRecordNew424Alt, mode 2, $14 in the
+; high byte of +$2A, at $500, $500, $500), then its first frame
+; (ObjectSwitchLampBStep). Also its +$1D pointer.
+; HOW: Falls into ObjectSwitchLampBStep.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectSwitchLampBStep.
+%at($09B16E)
+ObjectSwitchLampBRecord:
+    jsl.l GsuRecordNew424Alt
+    jsl.l GsuRecordMode2
+    lda.b #$14
+    jsl.l GsuRecordSet2AHigh
+    rep.b #$20
+    lda.w #$0500
+    sta.b !dp_02
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0500
+    sta.b !dp_08
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0500
+    sta.b !dp_94
+    sep.b #$20
+    jsl.l GsuRecordPosition
+
+; @routine 09:B19B ObjectSwitchLampBStep
+; WHAT IT DOES: The frame of a lamp that lights up once switch B ($19E9)
+; has been hit: a step brighter (ObjectStep48To8) while $19E9 is set, then
+; it follows its record.
+; HOW: An 8-bit test of $19E9; ObjectSyncFromRecord.
+; Entry: X 16-bit; X = object. Exit: M 8-bit; as ObjectSyncFromRecord.
+%at($09B19B)
+ObjectSwitchLampBStep:
+    sep.b #$20
+    lda.w !wram_19E9
+    beq .lB1A5
+    jsr.w ObjectStep48To8
+.lB1A5:
+    jsl.l ObjectSyncFromRecord
+    rtl
+
+; @routine 09:B1AA ObjectSwitchB
+; WHAT IT DOES: Sets up switch B: +$1D = $09:B1C8, handler $09:B1EF
+; (ObjectSwitchBStep); then its record and frame. No course in the
+; scripts places it.
+; HOW: Stores, then falls into ObjectSwitchBRecord.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectSwitchBStep.
+%at($09B1AA)
+ObjectSwitchB:
+    rep.b #$20
+    lda.w #$B1C8
+    sta.w !obj_1d,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1f,x
+    rep.b #$20
+    lda.w #$B1EF
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,x
+
+; @routine 09:B1C8 ObjectSwitchBRecord
+; WHAT IT DOES: Switch B's record (GsuRecordNew42D, flag $10, at $3C0,
+; $3C0, $3C0), then its first frame (ObjectSwitchBStep). Also its +$1D
+; pointer.
+; HOW: Falls into ObjectSwitchBStep.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectSwitchBStep.
+%at($09B1C8)
+ObjectSwitchBRecord:
+    jsl.l GsuRecordNew42D
+    jsl.l GsuRecordFlag10
+    rep.b #$20
+    lda.w #$03C0
+    sta.b !dp_02
+    sep.b #$20
+    rep.b #$20
+    lda.w #$03C0
+    sta.b !dp_08
+    sep.b #$20
+    rep.b #$20
+    lda.w #$03C0
+    sta.b !dp_94
+    sep.b #$20
+    jsl.l GsuRecordPosition
+
+; @routine 09:B1EF ObjectSwitchBStep
+; WHAT IT DOES: The frame of switch B: it follows its record; on a car's
+; contact $19E9 = 1, and the first time its +$25 bit 0 is set and the
+; count moved (HudCountMove19EE).
+; HOW: ObjectSyncFromRecord, then RecordNextContact over the contacts; the
+; repeat hit is a long jump past the count.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: hit: A low byte
+; = 1; otherwise as the last call leaves it.
+%at($09B1EF)
+ObjectSwitchBStep:
+    jsl.l ObjectSyncFromRecord
+    and.b #$01
+    beq .lB21E
+.lB1F7:
+    jsl.l RecordNextContact
+    bcc .lB21E
+    and.b #$01
+    beq .lB1F7
+    lda.w !obj_25,x
+    and.b #$01
+    beq .lB20C
+    jml.l .lB217
+.lB20C:
+    lda.w !obj_25,x
+    ora.b #$01
+    sta.w !obj_25,x
+    jsr.w HudCountMove19EE
+.lB217:
+    sep.b #$20
+    lda.b #$01
+    sta.w !wram_19E9
+.lB21E:
+    rtl
+
+; @routine 09:B21F ObjectSwitchLampC
+; WHAT IT DOES: As ObjectSwitchLampB for switch C: +$1D = $09:B25A,
+; handler $09:B287 (ObjectSwitchLampCStep). No course in the scripts
+; places it.
+; HOW: Stores, then falls into ObjectSwitchLampCRecord.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectSwitchLampCStep.
+%at($09B21F)
+ObjectSwitchLampC:
+    rep.b #$20
+    lda.w #$B25A
+    sta.w !obj_1d,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1f,x
+    rep.b #$20
+    lda.w #$B287
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,x
+    rep.b #$20
+    lda.w #$ECD0
+    sta.w !obj_20,x
+    sep.b #$20
+    lda.b #$00
+    ora.b #$80
+    sta.w !obj_5a,x
+    lda.b #$04
+    sta.w !obj_48,x
+    lda.b #$00
+    ora.b #$80
+    sta.w !obj_5a,x
+
+; @routine 09:B25A ObjectSwitchLampCRecord
+; WHAT IT DOES: As ObjectSwitchLampBRecord, then ObjectSwitchLampCStep.
+; HOW: Falls into ObjectSwitchLampCStep.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectSwitchLampCStep.
+%at($09B25A)
+ObjectSwitchLampCRecord:
+    jsl.l GsuRecordNew424Alt
+    jsl.l GsuRecordMode2
+    lda.b #$14
+    jsl.l GsuRecordSet2AHigh
+    rep.b #$20
+    lda.w #$0500
+    sta.b !dp_02
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0500
+    sta.b !dp_08
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0500
+    sta.b !dp_94
+    sep.b #$20
+    jsl.l GsuRecordPosition
+
+; @routine 09:B287 ObjectSwitchLampCStep
+; WHAT IT DOES: As ObjectSwitchLampBStep for switch C ($19EA).
+; HOW: As ObjectSwitchLampBStep.
+; Entry: as ObjectSwitchLampBStep. Exit: as ObjectSwitchLampBStep.
+%at($09B287)
+ObjectSwitchLampCStep:
+    sep.b #$20
+    lda.w !wram_19EA
+    beq .lB291
+    jsr.w ObjectStep48To8
+.lB291:
+    jsl.l ObjectSyncFromRecord
+    rtl
+
+; @routine 09:B296 ObjectSwitchC
+; WHAT IT DOES: As ObjectSwitchB for switch C: +$1D = $09:B2B4, handler
+; $09:B2DB (ObjectSwitchCStep). No course in the scripts places it.
+; HOW: Stores, then falls into ObjectSwitchCRecord.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectSwitchCStep.
+%at($09B296)
+ObjectSwitchC:
+    rep.b #$20
+    lda.w #$B2B4
+    sta.w !obj_1d,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1f,x
+    rep.b #$20
+    lda.w #$B2DB
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,x
+
+; @routine 09:B2B4 ObjectSwitchCRecord
+; WHAT IT DOES: As ObjectSwitchBRecord, then ObjectSwitchCStep.
+; HOW: Falls into ObjectSwitchCStep.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectSwitchCStep.
+%at($09B2B4)
+ObjectSwitchCRecord:
+    jsl.l GsuRecordNew42D
+    jsl.l GsuRecordFlag10
+    rep.b #$20
+    lda.w #$03C0
+    sta.b !dp_02
+    sep.b #$20
+    rep.b #$20
+    lda.w #$03C0
+    sta.b !dp_08
+    sep.b #$20
+    rep.b #$20
+    lda.w #$03C0
+    sta.b !dp_94
+    sep.b #$20
+    jsl.l GsuRecordPosition
+
+; @routine 09:B2DB ObjectSwitchCStep
+; WHAT IT DOES: As ObjectSwitchBStep for switch C: a hit sets $19EA = 1.
+; HOW: As ObjectSwitchBStep.
+; Entry: as ObjectSwitchBStep. Exit: as ObjectSwitchBStep.
+%at($09B2DB)
+ObjectSwitchCStep:
+    jsl.l ObjectSyncFromRecord
+    and.b #$01
+    beq .lB30A
+.lB2E3:
+    jsl.l RecordNextContact
+    bcc .lB30A
+    and.b #$01
+    beq .lB2E3
+    lda.w !obj_25,x
+    and.b #$01
+    beq .lB2F8
+    jml.l .lB303
+.lB2F8:
+    lda.w !obj_25,x
+    ora.b #$01
+    sta.w !obj_25,x
+    jsr.w HudCountMove19EE
+.lB303:
+    sep.b #$20
+    lda.b #$01
+    sta.w !wram_19EA
+.lB30A:
+    rtl

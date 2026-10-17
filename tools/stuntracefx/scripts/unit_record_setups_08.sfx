@@ -1,0 +1,41 @@
+# unit_record_setups_08: object set-ups and handlers of bank $08 that keep
+# a Super FX record and that no course in the scripts places (08:B296-B2E8,
+# 08:B9DD-BA56, 08:CD84-CE01, 08:CE79-CEC2), called on object 1 (the
+# player's car) of a Novice race: the car record set-up and its step, the
+# car record program run again, the record-marking set-up and step, the
+# falling sync and its handler, and the spinning object's set-up, record and
+# step, the step also with no record (+$22 = 0).
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:B296 long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:B2DE long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:B9DD long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:CD84 long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:CDA4 long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:CE79 long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:CDAD long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:CDB2 long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:CDD0 long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:CDDE long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2023 00,00
+call 08:CDDE long x=0001 p=20 db=7E d=0000
+wait 1

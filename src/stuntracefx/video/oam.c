@@ -2397,3 +2397,40 @@ void abi_PauseOnStart(void)
     } while ((uint8_t)cpu.a);
     op_plp(p0);
 }
+
+/* PHP, SEP #$20, REP #$10, OamHideRange from `offset` for 9 sprites,
+   PLP: A low byte = $F0, X past the run (its low byte with X 8-bit after
+   the pull), Y = 0, P unchanged. */
+static void hide9(uint16_t offset)
+{
+    OamHideRange(offset, 0x0009);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xF0);
+    cpu.x = (uint16_t)(offset + 4 * 9);
+    if (cpu.p & P_X)
+        cpu.x &= 0x00FF;
+    cpu.y = 0x0000;
+}
+
+/*
+ * @routine 07:C484 OamHide55To63
+ * WHAT IT DOES: Hides sprites 55-63. Nothing in the game calls it.
+ * HOW: OamHideRange from offset $DC for 9 sprites; P saved and restored.
+ * Entry: any widths. Exit: A low byte = $F0; X = $0100 ($00 when X is
+ * 8-bit); Y = 0; P unchanged.
+ */
+void abi_OamHide55To63(void)
+{
+    hide9(0x00DC);
+}
+
+/*
+ * @routine 07:C494 OamHide119To127
+ * WHAT IT DOES: Hides sprites 119-127. Nothing in the game calls it.
+ * HOW: OamHideRange from offset $1DC for 9 sprites; P saved and restored.
+ * Entry: any widths. Exit: A low byte = $F0; X = $0200 ($00 when X is
+ * 8-bit); Y = 0; P unchanged.
+ */
+void abi_OamHide119To127(void)
+{
+    hide9(0x01DC);
+}

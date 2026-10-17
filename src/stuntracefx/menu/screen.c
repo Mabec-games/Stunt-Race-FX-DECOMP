@@ -1187,3 +1187,25 @@ void abi_ChampionScreenRun(void)
    with their C, the course menu reached from a demo diverges in lockstep
    (unit_title, frame 757) while the title's objects run as C; their
    assembly is filed in menu/screen.asm. */
+
+/*
+ * @routine 0B:F443 MenuScrollZeroBg12
+ * WHAT IT DOES: Queues writes for the next vertical blank that put BG1 and
+ * BG2 back at scroll 0 (both bytes of BG1HOFS, BG2HOFS, BG1VOFS and
+ * BG2VOFS). Nothing in the game calls it.
+ * HOW: Eight FrameByteWritePush calls with 0; X is pushed around each.
+ * SEP #$30 first, so X and Y keep only their low bytes.
+ * Entry: any widths. Exit: A low byte = 0, A high byte unchanged; X and Y
+ * their low bytes (high bytes 0); P unchanged.
+ */
+void abi_MenuScrollZeroBg12(void)
+{
+    static const uint16_t reg[8] = {BG1HOFS, BG1HOFS, BG2HOFS, BG2HOFS, BG1VOFS, BG1VOFS, BG2VOFS, BG2VOFS};
+    unsigned i;
+
+    cpu.x &= 0x00FF;
+    cpu.y &= 0x00FF;
+    cpu.a &= 0xFF00;
+    for (i = 0; i < 8; i++)
+        FrameByteWritePush(cpu.db, reg[i], 0x00);
+}

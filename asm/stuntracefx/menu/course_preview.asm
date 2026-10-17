@@ -881,3 +881,117 @@ CourseMenuRun:
     sta.w !INIDISP
     plp
     rtl
+
+
+; @routine 0B:BE29 MenuPreviewBackOut
+; WHAT IT DOES: The course preview after player 2 backs out with Y
+; (MenuPreviewCountdown's $4000 case): two fixed colour steps down, a race
+; frame shown, $18FD = 1; once $1905 is clear, makes $BE65
+; (MenuPreviewBackWait) the object's handler, clears the selection out
+; ($18D3), sets $1A66 and the pair's animations from the selection ($18CB)
+; and shows another race frame.
+; HOW: Calls in turn; the object is the current one ($11F9). No play
+; reaches it; unit_preview_back_0b calls it.
+; Entry: M 16-bit, X 16-bit, D = $0000. Exit: as the last call leaves it.
+%at($0BBE29)
+MenuPreviewBackOut:
+    jsr.w MenuFixedColourDown
+    jsr.w MenuFixedColourDown
+    lda.w #$0000
+    jsl.l RaceFrameStep
+    lda.w #$0001
+    sta.l !wram_18FD
+    lda.l !menu_1905
+    beq .lBE44
+    rts
+.lBE44:
+    ldx.w !actor_current
+    lda.w #$BE65
+    sta.b !dp_08,x
+    lda.w #$0000
+    sta.l !selection_out
+    lda.l !selection
+    jsr.w MenuSet1A66
+    jsr.w MenuSetPairAnimations
+    lda.w #$0000
+    jsl.l RaceFrameStep
+    rts
+
+; @routine 0B:BE65 MenuPreviewBackWait
+; WHAT IT DOES: Waits for the byte $0357; once it is set, $1905 = 2, $1907
+; = 0 and the object's handler becomes $BE84 (MenuPreviewBackEnd).
+; HOW: An 8-bit test of $0357, then 16-bit long stores.
+; Entry: M 16-bit, X 16-bit, D = $0000; X = the object. Exit: M 16-bit;
+; waiting: A low byte = 0, Z set; else A = $BE84, N set.
+%at($0BBE65)
+MenuPreviewBackWait:
+    sep.b #$20
+    lda.w !wram_0357
+    beq .lBE81
+    rep.b #$20
+    lda.w #$0002
+    sta.l !menu_1905
+    lda.w #$0000
+    sta.l !menu_1907
+    lda.w #$BE84
+    sta.b !dp_08,x
+.lBE81:
+    rep.b #$20
+    rts
+
+; @routine 0B:BE84 MenuPreviewBackEnd
+; WHAT IT DOES: The last frame of backing out of the preview: two fixed
+; colour steps down, a race frame shown, $18FD = 1; once $1905 is clear,
+; the object's handler becomes $BA4E with a count of 20 (+$0A), the kind 4
+; object gets animation $CE (unless it has it), +$10 of groups 4 and 5 is
+; cleared (MenuActorsSet10 with Y = 0), the word list's size $1191 = 0 and
+; HDMA channels 6 and 7 are asked for ($C0 to HDMAEN on the frame write
+; list).
+; HOW: As MenuPreviewStart.
+; Entry: M 16-bit, X 16-bit, D = $0000. Exit: as FrameByteWritePush
+; leaves it, with X the kind 4 object and M 16-bit.
+%at($0BBE84)
+MenuPreviewBackEnd:
+    jsr.w MenuFixedColourDown
+    jsr.w MenuFixedColourDown
+    lda.w #$0000
+    jsl.l RaceFrameStep
+    lda.w #$0001
+    sta.l !wram_18FD
+    lda.l !menu_1905
+    beq .lBE9F
+    rts
+.lBE9F:
+    ldx.w !actor_current
+    lda.w #$BA4E
+    sta.b !dp_08,x
+    lda.w #$0014
+    sta.b !actor_0a,x
+    lda.w #$0004
+    jsr.w MenuActorFind
+    lda.b !actor_anim,x
+    cmp.w #$00CE
+    beq .lBEC2
+    lda.w #$00CE
+    sta.b !actor_anim,x
+    stz.b !actor_anim_pos,x
+    stz.b !actor_anim_timer,x
+.lBEC2:
+    lda.w #$0004
+    ldy.w #$0000
+    jsr.w MenuActorsSet10
+    lda.w #$0005
+    ldy.w #$0000
+    jsr.w MenuActorsSet10
+    lda.w #$0000
+    sta.l !word_list_a_size
+    sep.b #$20
+    lda.b #$C0
+    sep.b #$20
+    rep.b #$10
+    phx
+    ldx.w #!HDMAEN
+    jsl.l FrameByteWritePush
+    plx
+    rep.b #$20
+    rts

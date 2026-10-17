@@ -1,0 +1,163 @@
+# unit_menu_erase_0b: the menu's erase-the-save questions after its
+# button sequence (0B:D6F8-D8A8), which no play reaches, as calls from a
+# Novice race on a record staged at $1F20 ($11F9): MenuEraseConfirm and
+# MenuEraseConfirm2 with Left, Right, B and nothing pressed ($118B), the
+# choice +$0A yes and no, and the animation +$14 already the one each
+# starts and not; MenuEraseDone waiting and done; MenuSequenceColourOff,
+# MenuEraseSave and the lone RTS called alone.
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E11F9 20,1F
+set 7E118B 00,02
+set 7E1F2A 00,00
+set 7E1F34 00,00
+call 0B:D71B x=1F20 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E11F9 20,1F
+set 7E118B 00,02
+set 7E1F2A 00,00
+set 7E1F34 48,01
+call 0B:D71B x=1F20 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E11F9 20,1F
+set 7E118B 00,02
+set 7E1F2A 01,00
+set 7E1F34 00,00
+call 0B:D71B x=1F20 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E11F9 20,1F
+set 7E118B 00,01
+set 7E1F2A 01,00
+set 7E1F34 00,00
+call 0B:D71B x=1F20 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E11F9 20,1F
+set 7E118B 00,01
+set 7E1F2A 01,00
+set 7E1F34 52,01
+call 0B:D71B x=1F20 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E11F9 20,1F
+set 7E118B 00,80
+set 7E1F2A 01,00
+set 7E1F34 00,00
+call 0B:D71B x=1F20 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E11F9 20,1F
+set 7E118B 00,80
+set 7E1F2A 01,00
+set 7E1F34 66,01
+call 0B:D71B x=1F20 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E11F9 20,1F
+set 7E118B 00,80
+set 7E1F2A 00,00
+set 7E1F34 00,00
+call 0B:D71B x=1F20 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E11F9 20,1F
+set 7E118B 00,80
+set 7E1F2A 00,00
+set 7E1F34 02,00
+call 0B:D71B x=1F20 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E11F9 20,1F
+set 7E118B 00,00
+set 7E1F2A 00,00
+set 7E1F34 00,00
+call 0B:D71B x=1F20 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E11F9 20,1F
+set 7E118B 00,02
+set 7E1F2A 00,00
+set 7E1F34 00,00
+call 0B:D7C2 x=1F20 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E11F9 20,1F
+set 7E118B 00,02
+set 7E1F2A 00,00
+set 7E1F34 5C,01
+call 0B:D7C2 x=1F20 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E11F9 20,1F
+set 7E118B 00,01
+set 7E1F2A 01,00
+set 7E1F34 00,00
+call 0B:D7C2 x=1F20 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E11F9 20,1F
+set 7E118B 00,01
+set 7E1F2A 01,00
+set 7E1F34 66,01
+call 0B:D7C2 x=1F20 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E11F9 20,1F
+set 7E118B 00,80
+set 7E1F2A 01,00
+set 7E1F34 00,00
+call 0B:D7C2 x=1F20 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E11F9 20,1F
+set 7E118B 00,80
+set 7E1F2A 01,00
+set 7E1F34 70,01
+call 0B:D7C2 x=1F20 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E11F9 20,1F
+set 7E118B 00,80
+set 7E1F2A 00,00
+set 7E1F34 00,00
+call 0B:D7C2 x=1F20 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E11F9 20,1F
+set 7E118B 00,80
+set 7E1F2A 00,00
+set 7E1F34 02,00
+call 0B:D7C2 x=1F20 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E11F9 20,1F
+set 7E118B 00,00
+set 7E1F2A 05,00
+set 7E1F34 00,00
+call 0B:D872 x=1F20 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E11F9 20,1F
+set 7E118B 00,00
+set 7E1F2A 00,00
+set 7E1F34 00,00
+call 0B:D872 x=1F20 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E11F9 20,1F
+set 7E118B 00,00
+set 7E1F2A 00,00
+set 7E1F34 02,00
+call 0B:D872 x=1F20 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 0B:D6F8 x=1F20 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 0B:D892 x=1F20 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 0B:D8A8 x=1F20 p=00 db=00 d=0000
+wait 1

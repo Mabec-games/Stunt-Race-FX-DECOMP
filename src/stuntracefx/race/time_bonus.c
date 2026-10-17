@@ -1160,3 +1160,27 @@ void abi_GsuDigitPair0E74At(void)
     abi_GsuParam216A();
     run_f15b();
 }
+
+/*
+ * @routine 07:917D TimeBonusPiecesMirrored
+ * WHAT IT DOES: A step of the time bonus screen nothing reaches: the
+ * mirrored renderer bytes (GsuBytes200_BFB7B6), then the second screen's
+ * pieces as TimeBonusTally draws them at $07:9157 (without setting
+ * $0D6D first).
+ * HOW: GsuBytes200_BFB7B6, GsuFA5AThree, GsuFA5AFromTables, GsuFA5ASix,
+ * GsuFA1BFromTables; ends pulling the P its caller pushed (PLP, RTS) as
+ * the tally's steps do.
+ * Entry: M 16-bit, X 16-bit; P on the stack above the return address.
+ * Exit: P as pulled; A, X, Y as GsuFA1BFromTables leaves them.
+ */
+void abi_TimeBonusPiecesMirrored(void)
+{
+    abi_GsuBytes200_BFB7B6();
+    abi_GsuFA5AThree();
+    abi_GsuFA5AFromTables();
+    abi_GsuFA5ASix();
+    abi_GsuFA1BFromTables();
+    cpu.s++;
+    op_plp(rd8((uint16_t)cpu.s));
+}
+

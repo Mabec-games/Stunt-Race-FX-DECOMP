@@ -420,3 +420,272 @@ MenuSelectionFramesCycle:
 %at($0BE0DF)
 MenuActorNoStepE0DF:
     rts
+
+
+; @routine 0B:D6F8 MenuSequenceColourOff
+; WHAT IT DOES: Undoes MenuSequenceColourMath: queues writes for the next
+; vertical blank that leave only HDMA channel 4 on and clear TSW.
+; HOW: Two FrameByteWritePush calls: HDMAEN $10, TSW 0; X is pushed around
+; each.
+; Entry: X 16-bit or 8-bit; D any. Exit: A low byte = 0, A high byte
+; unchanged; X unchanged; M 16-bit, X 16-bit; N, Z from X; C, V unchanged.
+%at($0BD6F8)
+MenuSequenceColourOff:
+    sep.b #$20
+    lda.b #$10
+    sep.b #$20
+    rep.b #$10
+    phx
+    ldx.w #!HDMAEN
+    jsl.l FrameByteWritePush
+    plx
+    lda.b #$00
+    sep.b #$20
+    rep.b #$10
+    phx
+    ldx.w #!TSW
+    jsl.l FrameByteWritePush
+    plx
+    rep.b #$20
+    rts
+
+; @routine 0B:D71B MenuEraseConfirm
+; WHAT IT DOES: The handler after the menu's button sequence: the first
+; "erase?" question. Left ($0200) picks yes (+$0A = 1, animation $148,
+; sound $45), Right ($0100) picks no (+$0A = 0, sound $45, animation
+; $152); B ($8000) answers: yes asks again (animation $166, handler $D7C2
+; MenuEraseConfirm2, +$0A = 0, sound $46); no goes back to the sequence
+; (handler $D606, MenuSequenceColourOff, sound $47, animation 2).
+; HOW: MenuActorAnimateFrame, then three 16-bit tests of the buttons
+; newly pressed ($118B), each read again.
+; Entry: M 16-bit, X 16-bit, D = $0000; X = record. Exit: M 16-bit; A and
+; P from the last load, compare or sound (A low byte = the command, N, Z
+; from the data bank).
+%at($0BD71B)
+MenuEraseConfirm:
+    jsr.w MenuActorAnimateFrame
+    lda.w !menu_joy1_pressed
+    and.w #$0200
+    beq .lD749
+    lda.b !actor_0a,x
+    bne .lD749
+    lda.w #$0001
+    sta.b !actor_0a,x
+    lda.b !actor_anim,x
+    cmp.w #$0148
+    beq .lD73F
+    lda.w #$0148
+    sta.b !actor_anim,x
+    stz.b !actor_anim_pos,x
+    stz.b !actor_anim_timer,x
+.lD73F:
+    sep.b #$20
+    lda.b #$45
+    jsl.l SoundPort0QueuePush
+    rep.b #$20
+.lD749:
+    lda.w !menu_joy1_pressed
+    and.w #$0100
+    beq .lD771
+    lda.b !actor_0a,x
+    beq .lD771
+    sep.b #$20
+    lda.b #$45
+    jsl.l SoundPort0QueuePush
+    rep.b #$20
+    stz.b !actor_0a,x
+    lda.b !actor_anim,x
+    cmp.w #$0152
+    beq .lD771
+    lda.w #$0152
+    sta.b !actor_anim,x
+    stz.b !actor_anim_pos,x
+    stz.b !actor_anim_timer,x
+.lD771:
+    lda.w !menu_joy1_pressed
+    and.w #$8000
+    beq .lD79E
+    lda.b !actor_0a,x
+    beq .lD79F
+    lda.b !actor_anim,x
+    cmp.w #$0166
+    beq .lD78D
+    lda.w #$0166
+    sta.b !actor_anim,x
+    stz.b !actor_anim_pos,x
+    stz.b !actor_anim_timer,x
+.lD78D:
+    lda.w #$D7C2
+    sta.b !dp_08,x
+    stz.b !actor_0a,x
+    sep.b #$20
+    lda.b #$46
+    jsl.l SoundPort0QueuePush
+    rep.b #$20
+.lD79E:
+    rts
+.lD79F:
+    lda.w #$D606
+    sta.b !dp_08,x
+    jsr.w MenuSequenceColourOff
+    sep.b #$20
+    lda.b #$47
+    jsl.l SoundPort0QueuePush
+    rep.b #$20
+    lda.b !actor_anim,x
+    cmp.w #$0002
+    beq .lD7C1
+    lda.w #$0002
+    sta.b !actor_anim,x
+    stz.b !actor_anim_pos,x
+    stz.b !actor_anim_timer,x
+.lD7C1:
+    rts
+
+; @routine 0B:D7C2 MenuEraseConfirm2
+; WHAT IT DOES: The second "erase?" question: Left picks yes (+$0A = 1,
+; animation $15C, sound $45), Right picks no (+$0A = 0, animation $166,
+; sound $45); B answers: yes erases the save (MenuEraseSave), starts
+; animation $170 on the record at $11F9, plays sound $36 and waits $40
+; frames (handler $D872 MenuEraseDone, +$0A = $40); no goes back to the
+; sequence as MenuEraseConfirm's no.
+; HOW: As MenuEraseConfirm; X is reloaded from $11F9 after the erase.
+; Entry: M 16-bit, X 16-bit, D = $0000; X = record. Exit: M 16-bit; erase:
+; A = $40, N, Z clear; otherwise as MenuEraseConfirm.
+%at($0BD7C2)
+MenuEraseConfirm2:
+    jsr.w MenuActorAnimateFrame
+    lda.w !menu_joy1_pressed
+    and.w #$0200
+    beq .lD7F0
+    lda.b !actor_0a,x
+    bne .lD7F0
+    lda.w #$0001
+    sta.b !actor_0a,x
+    lda.b !actor_anim,x
+    cmp.w #$015C
+    beq .lD7E6
+    lda.w #$015C
+    sta.b !actor_anim,x
+    stz.b !actor_anim_pos,x
+    stz.b !actor_anim_timer,x
+.lD7E6:
+    sep.b #$20
+    lda.b #$45
+    jsl.l SoundPort0QueuePush
+    rep.b #$20
+.lD7F0:
+    lda.w !menu_joy1_pressed
+    and.w #$0100
+    beq .lD818
+    lda.b !actor_0a,x
+    beq .lD818
+    stz.b !actor_0a,x
+    lda.b !actor_anim,x
+    cmp.w #$0166
+    beq .lD80E
+    lda.w #$0166
+    sta.b !actor_anim,x
+    stz.b !actor_anim_pos,x
+    stz.b !actor_anim_timer,x
+.lD80E:
+    sep.b #$20
+    lda.b #$45
+    jsl.l SoundPort0QueuePush
+    rep.b #$20
+.lD818:
+    lda.w !menu_joy1_pressed
+    and.w #$8000
+    beq .lD84E
+    lda.b !actor_0a,x
+    beq .lD84F
+    jsr.w MenuEraseSave
+    ldx.w !actor_current
+    lda.b !actor_anim,x
+    cmp.w #$0170
+    beq .lD83A
+    lda.w #$0170
+    sta.b !actor_anim,x
+    stz.b !actor_anim_pos,x
+    stz.b !actor_anim_timer,x
+.lD83A:
+    sep.b #$20
+    lda.b #$36
+    jsl.l SoundPort0QueuePush
+    rep.b #$20
+    lda.w #$D872
+    sta.b !dp_08,x
+    lda.w #$0040
+    sta.b !actor_0a,x
+.lD84E:
+    rts
+.lD84F:
+    lda.w #$D606
+    sta.b !dp_08,x
+    jsr.w MenuSequenceColourOff
+    sep.b #$20
+    lda.b #$47
+    jsl.l SoundPort0QueuePush
+    rep.b #$20
+    lda.b !actor_anim,x
+    cmp.w #$0002
+    beq .lD871
+    lda.w #$0002
+    sta.b !actor_anim,x
+    stz.b !actor_anim_pos,x
+    stz.b !actor_anim_timer,x
+.lD871:
+    rts
+
+; @routine 0B:D872 MenuEraseDone
+; WHAT IT DOES: Waits out the count +$0A after the erase, then goes back
+; to the button sequence (handler $D606, MenuSequenceColourOff, animation
+; 2) with no sound.
+; HOW: MenuActorAnimateFrame, a memory decrement of +$0A; BPL waits.
+; Entry: M 16-bit, X 16-bit, D = $0000; X = record. Exit: waiting: A as
+; MenuActorAnimateFrame leaves it, N, Z from the count; done: as the
+; animation's compare or start.
+%at($0BD872)
+MenuEraseDone:
+    jsr.w MenuActorAnimateFrame
+    dec.b !actor_0a,x
+    bpl .lD891
+    lda.w #$D606
+    sta.b !dp_08,x
+    jsr.w MenuSequenceColourOff
+    lda.b !actor_anim,x
+    cmp.w #$0002
+    beq .lD891
+    lda.w #$0002
+    sta.b !actor_anim,x
+    stz.b !actor_anim_pos,x
+    stz.b !actor_anim_timer,x
+.lD891:
+    rts
+
+; @routine 0B:D892 MenuEraseSave
+; WHAT IT DOES: Erases the save: clears the $400 bytes at $70:FC00, then
+; lets SaveUnlocksCheck put back an empty, valid save.
+; HOW: 16-bit zero stores from X = 0 to $3FE; SaveUnlocksCheck.
+; Entry: M 16-bit, X 16-bit, D = $0000. Exit: as SaveUnlocksCheck; P from
+; the last CPX (Z and C set, N clear).
+%at($0BD892)
+MenuEraseSave:
+    ldx.w #$0000
+    lda.w #$0000
+.lD898:
+    sta.l !save_area,x
+    inx
+    inx
+    cpx.w #$0400
+    bne .lD898
+    jsl.l SaveUnlocksCheck
+    rts
+
+; @routine 0B:D8A8 MenuActorNoStepD8A8
+; WHAT IT DOES: Nothing: a handler that only returns.
+; HOW: RTS.
+; Entry: any. Exit: unchanged.
+%at($0BD8A8)
+MenuActorNoStepD8A8:
+    rts

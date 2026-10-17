@@ -2557,3 +2557,15 @@ RecordsEntryLoad:
     lda.l !special_saves,x
     sta.b !entry_first
     rts
+
+
+; @routine 07:B511 RecordsUnpackCourseRunningB
+; WHAT IT DOES: A second copy of RecordsUnpackCourseRunning, which nothing
+; calls.
+; HOW: The same two calls.
+; Entry: as RecordsUnpackCourse. Exit: as TimeRunningTotals.
+%at($07B511)
+RecordsUnpackCourseRunningB:
+    jsr.w RecordsUnpackCourse
+    jsr.w TimeRunningTotals
+    rts

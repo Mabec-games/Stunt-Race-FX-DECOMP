@@ -3061,3 +3061,158 @@ ObjectCar_lB9A5:
     sta.w !obj_4b+2,x
     sep.b #$20
     rtl
+
+
+; @routine 08:B296 ObjectCarRecordSetup
+; WHAT IT DOES: Sets up a car-like object: $A0 higher ($FF60 on +$0E), a
+; car record made with amount 4 (ObjectCarRecordNew), and when it has one
+; its record's +$64 bit 3 and +$70 bit 2 set; handler $08:B2DE
+; (ObjectCarPoseStep), which it runs at once. No course in the scripts
+; places it.
+; HOW: 16-bit adds and ORs in place; falls into ObjectCarPoseStep.
+; Entry: M 8-bit, X 16-bit, data bank $7E; X = object. Exit: as
+; ObjectCarPoseStep.
+%at($08B296)
+ObjectCarRecordSetup:
+    rep.b #$20
+    lda.w !obj_pos_y,x
+    clc
+    adc.w #$FF60
+    sta.w !obj_pos_y,x
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0004
+    jsl.l ObjectCarRecordNew
+    rep.b #$20
+    lda.w !obj_22,x
+    beq .lB2CD
+    phx
+    tax
+    lda.l !gsu_rec_64,x
+    ora.w #$0008
+    sta.l !gsu_rec_64,x
+    lda.l !gsu_rec_70,x
+    ora.w #$0004
+    sta.l !gsu_rec_70,x
+    plx
+.lB2CD:
+    sep.b #$20
+    rep.b #$20
+    lda.w #$B2DE
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+
+; @routine 08:B2DE ObjectCarPoseStep
+; WHAT IT DOES: The handler of the car ObjectCarRecordSetup makes: each
+; frame it is rebucketed, posed from its record (ObjectPoseFromRecord) and
+; the record marked (GsuRecordFlag4).
+; HOW: ObjectRebucket, ObjectPoseFromRecord, then JMP to $08:CD7E (JSL
+; GsuRecordFlag4, RTL).
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as GsuRecordFlag4.
+%at($08B2DE)
+ObjectCarPoseStep:
+    jsl.l ObjectRebucket
+    jsl.l ObjectPoseFromRecord
+    jmp.w ObjectCarCD7E
+
+
+; @routine 08:B9DD ObjectCarRecordRestart
+; WHAT IT DOES: Runs the car record program (Super FX 04:8CC6) again on
+; the inputs already in Super FX RAM, then takes what it made: $70:2390 to
+; +$04 and the record ($70:238E; none: a return by the RTL at 08:A033) to
+; +$22; the object's position (+$0C/+$0E/+$10) and heading (+$15 as the
+; high byte) go to the record's +$1E/+$20/+$22/+$24; +$53 = $8C, +$55 =
+; $3C, +$57 = $8C; then GsuRecordFromObject and ObjectChildrenSpawn. No
+; play reaches it.
+; HOW: GsuRun with A = $04, X = $8CC6, X and Y pushed round it; the
+; object in Y and the record in X while copying.
+; Entry: X 16-bit, data bank $7E; X = the object. Exit: as
+; ObjectChildrenSpawn.
+%at($08B9DD)
+ObjectCarRecordRestart:
+    rep.b #$20
+    sep.b #$20
+    phx
+    phy
+    lda.b #$04
+    ldx.w #$8CC6
+    jsl.l GsuRun
+    ply
+    plx
+    rep.b #$20
+    lda.l !gsu_in_amount
+    sta.w !obj_04,x
+    sep.b #$20
+    rep.b #$20
+    lda.l !gsu_record_arg
+    bne .lBA04
+    brl RtlA033
+.lBA04:
+    sta.w !obj_22,x
+    txy
+    lda.l !gsu_record_arg
+    tax
+    lda.w !obj_pos_x,y
+    sta.l !gsu_rec_1e,x
+    lda.w !obj_pos_y,y
+    sta.l !gsu_in_20,x
+    lda.w !obj_pos_z,y
+    sta.l !gsu_in_22,x
+    lda.w !obj_15,y
+    and.w #$00FF
+    xba
+    sta.l !gsu_in_24,x
+    tyx
+    sep.b #$20
+    rep.b #$20
+    lda.w #$008C
+    sta.w !obj_53,x
+    sep.b #$20
+    rep.b #$20
+    lda.w #$003C
+    sta.w !obj_55,x
+    sep.b #$20
+    rep.b #$20
+    lda.w #$008C
+    sta.w !obj_57,x
+    sep.b #$20
+    jsl.l GsuRecordFromObject
+    jsl.l ObjectChildrenSpawn
+    rtl
+
+
+; @routine 08:EC77 ObjectTimedSetup
+; WHAT IT DOES: Sets up an object that stays for 21 frames: handler
+; $08:EC8B (ObjectTimedStep), count +$4B = $14, then its first frame. No
+; course in the scripts places it.
+; HOW: Stores, then falls into ObjectTimedStep.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectTimedStep.
+%at($08EC77)
+ObjectTimedSetup:
+    rep.b #$20
+    lda.w #$EC8B
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+    lda.b #$14
+    sta.w !obj_4b,x
+
+; @routine 08:EC8B ObjectTimedStep
+; WHAT IT DOES: The handler ObjectTimedSetup installs: rebuckets object X;
+; when its count +$4B is 0 it is released (ObjectReleaseLong), otherwise
+; the count goes down by one.
+; HOW: ObjectRebucket, an 8-bit test, the release a long jump, DEC.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: counting: A as ObjectRebucket
+; left it, N, Z from the new count; done: as ObjectReleaseLong.
+%at($08EC8B)
+ObjectTimedStep:
+    jsl.l ObjectRebucket
+    lda.w !obj_4b,x
+    bne .lEC98
+    jml.l ObjectReleaseLong
+.lEC98:
+    dec.w !obj_4b,x
+    rtl

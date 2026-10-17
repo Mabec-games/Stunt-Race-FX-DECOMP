@@ -1,0 +1,41 @@
+# unit_leftovers_c: small pieces of code nothing in the game calls, as
+# calls from a Novice race: the two nine-sprite OAM hides of bank $07, the
+# Super FX record makers 08:CBFF and 08:CC31, the second copy of
+# RecordsUnpackCourseRunning, the BG1/BG2 scroll reset of bank $0B with
+# 16-bit and 8-bit index registers, and the timed object's set-up and step
+# on object 1 with its count +$4B at 0 and not.
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:C484 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:C484 p=30 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:C494 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:CBFF long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:CC31 long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:B511 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 0B:F443 p=00 x=1234 y=5678 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 0B:F443 p=30 x=0034 y=0078 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:EC77 long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E204C 00
+call 08:EC8B long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E204C 05
+call 08:EC8B long x=0001 p=20 db=7E d=0000
+wait 1

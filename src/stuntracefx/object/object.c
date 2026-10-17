@@ -3135,3 +3135,191 @@ void abi_ObjectCarRecordNew(void)
     cpu.p = nz16(cpu.p, x);
     abi_ObjectCarRecordTake();
 }
+
+void abi_GsuRecordFromObject(void);
+void abi_ObjectChildrenSpawn(void);
+void abi_ObjectPoseFromRecord(void);
+void abi_GsuRecordFlag4(void);
+
+/*
+ * @routine 08:B9DD ObjectCarRecordRestart
+ * WHAT IT DOES: Runs the car record program (Super FX 04:8CC6) again on
+ * the inputs already in Super FX RAM, then takes what it made: $70:2390 to
+ * +$04 and the record ($70:238E; none: a return by the RTL at 08:A033) to
+ * +$22; the object's position (+$0C/+$0E/+$10) and heading (+$15 as the
+ * high byte) go to the record's +$1E/+$20/+$22/+$24; +$53 = $8C, +$55 =
+ * $3C, +$57 = $8C; then GsuRecordFromObject and ObjectChildrenSpawn. No
+ * play reaches it.
+ * HOW: GsuRun with A = $04, X = $8CC6, X and Y pushed round it; the
+ * object in Y and the record in X while copying.
+ * Entry: X 16-bit, data bank $7E; X = the object. Exit: as
+ * ObjectChildrenSpawn.
+ */
+void abi_ObjectCarRecordRestart(void)
+{
+    uint16_t x = cpu.x, y = cpu.y, rec, v;
+
+    op_rep(P_M);
+    op_sep(P_M);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x04);
+    cpu.p = nz8(cpu.p, 0x04);
+    cpu.x = 0x8CC6;
+    cpu.p = nz16(cpu.p, cpu.x);
+    abi_GsuRun();
+    cpu.y = y;
+    cpu.x = x;
+    cpu.p = nz16(cpu.p, x);
+    op_rep(P_M);
+    op_lda16(0x702390);
+    wr16(car_field(0x2004), cpu.a);
+    op_sep(P_M);
+    op_rep(P_M);
+    op_lda16(0x70238E);
+    if (!cpu.a) {
+        jump_routine(0x08A033);
+        return;
+    }
+    wr16(car_field(0x2022), cpu.a);
+    cpu.y = x;
+    rec = rd16(0x70238E);
+    v = rd16(car_field(0x200C));
+    wr16(0x70001E + rec, v);
+    v = rd16(car_field(0x200E));
+    wr16(0x700020 + rec, v);
+    v = rd16(car_field(0x2010));
+    wr16(0x700022 + rec, v);
+    v = rd16(car_field(0x2015));
+    v = (uint16_t)((v & 0x00FF) << 8);
+    wr16(0x700024 + rec, v);
+    cpu.a = v;
+    op_sep(P_M);
+    op_rep(P_M);
+    op_lda16_imm(0x008C);
+    wr16(car_field(0x2053), 0x008C);
+    op_sep(P_M);
+    op_rep(P_M);
+    op_lda16_imm(0x003C);
+    wr16(car_field(0x2055), 0x003C);
+    op_sep(P_M);
+    op_rep(P_M);
+    op_lda16_imm(0x008C);
+    wr16(car_field(0x2057), 0x008C);
+    op_sep(P_M);
+    abi_GsuRecordFromObject();
+    abi_ObjectChildrenSpawn();
+}
+
+/*
+ * @routine 08:B2DE ObjectCarPoseStep
+ * WHAT IT DOES: The handler of the car ObjectCarRecordSetup makes: each
+ * frame it is rebucketed, posed from its record (ObjectPoseFromRecord) and
+ * the record marked (GsuRecordFlag4).
+ * HOW: ObjectRebucket, ObjectPoseFromRecord, then JMP to $08:CD7E (JSL
+ * GsuRecordFlag4, RTL).
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as GsuRecordFlag4.
+ */
+void abi_ObjectCarPoseStep(void)
+{
+    abi_ObjectRebucket();
+    abi_ObjectPoseFromRecord();
+    abi_GsuRecordFlag4();
+}
+
+/*
+ * @routine 08:B296 ObjectCarRecordSetup
+ * WHAT IT DOES: Sets up a car-like object: $A0 higher ($FF60 on +$0E), a
+ * car record made with amount 4 (ObjectCarRecordNew), and when it has one
+ * its record's +$64 bit 3 and +$70 bit 2 set; handler $08:B2DE
+ * (ObjectCarPoseStep), which it runs at once. No course in the scripts
+ * places it.
+ * HOW: 16-bit adds and ORs in place; falls into ObjectCarPoseStep.
+ * Entry: M 8-bit, X 16-bit, data bank $7E; X = object. Exit: as
+ * ObjectCarPoseStep.
+ */
+void abi_ObjectCarRecordSetup(void)
+{
+    uint16_t rec, v;
+
+    op_rep(P_M);
+    op_lda16(car_field(0x200E));
+    op_add16(0xFF60);
+    wr16(car_field(0x200E), cpu.a);
+    op_sep(P_M);
+    op_rep(P_M);
+    op_lda16_imm(0x0004);
+    abi_ObjectCarRecordNew();
+    op_rep(P_M);
+    op_lda16(car_field(0x2022));
+    rec = cpu.a;
+    if (rec) {
+        v = (uint16_t)(rd16(0x700064 + rec) | 0x0008);
+        cpu.a = v;
+        cpu.p = nz16(cpu.p, v);
+        wr16(0x700064 + rec, v);
+        v = (uint16_t)(rd16(0x700070 + rec) | 0x0004);
+        cpu.a = v;
+        wr16(0x700070 + rec, v);
+        cpu.p = nz16(cpu.p, cpu.x);
+    }
+    op_sep(P_M);
+    op_rep(P_M);
+    op_lda16_imm(0xB2DE);
+    wr16(car_field(0x201A), 0xB2DE);
+    op_sep(P_M);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x08);
+    cpu.p = nz8(cpu.p, 0x08);
+    wr8(car_field(0x201C), 0x08);
+    abi_ObjectCarPoseStep();
+}
+
+/*
+ * @routine 08:EC8B ObjectTimedStep
+ * WHAT IT DOES: The handler ObjectTimedSetup installs: rebuckets object X;
+ * when its count +$4B is 0 it is released (ObjectReleaseLong), otherwise
+ * the count goes down by one.
+ * HOW: ObjectRebucket, an 8-bit test, the release a long jump, DEC.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: counting: A as ObjectRebucket
+ * left it, N, Z from the new count; done: as ObjectReleaseLong.
+ */
+void abi_ObjectTimedStep(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v;
+
+    abi_ObjectRebucket();
+    v = rd8(b | (uint16_t)(0x204B + cpu.x));
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+    if (!v) {
+        abi_ObjectReleaseLong();
+        return;
+    }
+    v = (uint8_t)(rd8(b | (uint16_t)(0x204B + cpu.x)) - 1);
+    wr8(b | (uint16_t)(0x204B + cpu.x), v);
+    cpu.p = nz8(cpu.p, v);
+}
+
+/*
+ * @routine 08:EC77 ObjectTimedSetup
+ * WHAT IT DOES: Sets up an object that stays for 21 frames: handler
+ * $08:EC8B (ObjectTimedStep), count +$4B = $14, then its first frame. No
+ * course in the scripts places it.
+ * HOW: Stores, then falls into ObjectTimedStep.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectTimedStep.
+ */
+void abi_ObjectTimedSetup(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    op_rep(P_M);
+    op_lda16_imm(0xEC8B);
+    wr16(b | (uint16_t)(0x201A + cpu.x), 0xEC8B);
+    op_sep(P_M);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x08);
+    cpu.p = nz8(cpu.p, 0x08);
+    wr8(b | (uint16_t)(0x201C + cpu.x), 0x08);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x14);
+    cpu.p = nz8(cpu.p, 0x14);
+    wr8(b | (uint16_t)(0x204B + cpu.x), 0x14);
+    abi_ObjectTimedStep();
+}

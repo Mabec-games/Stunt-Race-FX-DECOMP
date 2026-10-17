@@ -1767,3 +1767,194 @@ GsuRecordSet2AHigh:
 .lCD22:
     sep.b #$20
     rtl
+
+
+; @routine 08:CD84 ObjectRecordMarkSetup
+; WHAT IT DOES: Sets up an object that keeps a Super FX record and only
+; marks it: handler $08:CDA4 (ObjectRecordMarkStep), ObjectStubZero, a
+; record (GsuRecordNew422), then +$09 bit 0 set. No course in the scripts
+; places it.
+; HOW: Stores and calls in turn; a failed record is not checked.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte = the
+; new +$09, N, Z from it.
+%at($08CD84)
+ObjectRecordMarkSetup:
+    rep.b #$20
+    lda.w #$CDA4
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+    jsl.l ObjectStubZero
+    jsl.l GsuRecordNew422
+    lda.w !obj_09,x
+    ora.b #$01
+    sta.w !obj_09,x
+    rtl
+
+; @routine 08:CDA4 ObjectRecordMarkStep
+; WHAT IT DOES: A handler that only rebuckets object X and marks its
+; record (GsuRecordFlag4) each frame.
+; HOW: ObjectRebucket, GsuRecordFlag4.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as GsuRecordFlag4.
+%at($08CDA4)
+ObjectRecordMarkStep:
+    jsl.l ObjectRebucket
+    jsl.l GsuRecordFlag4
+    rtl
+
+; @routine 08:CDAD ObjectSyncFallStep
+; WHAT IT DOES: A handler: ObjectSyncFromRecordFall.
+; HOW: JSL to it.
+; Entry: as ObjectSyncFromRecordFall. Exit: as ObjectSyncFromRecordFall.
+%at($08CDAD)
+ObjectSyncFallStep:
+    jsl.l ObjectSyncFromRecordFall
+    rtl
+
+; @routine 08:CDB2 ObjectSpinSetup
+; WHAT IT DOES: Sets up a spinning object: +$1D = $08:CDD0
+; (ObjectSpinRecord), handler $08:CDDE (ObjectSpinStep), then its record
+; (ObjectSpinRecord). No course in the scripts places it.
+; HOW: Stores, then falls into ObjectSpinRecord.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectSyncFromRecord.
+%at($08CDB2)
+ObjectSpinSetup:
+    rep.b #$20
+    lda.w #$CDD0
+    sta.w !obj_1d,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1f,x
+    rep.b #$20
+    lda.w #$CDDE
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+
+; @routine 08:CDD0 ObjectSpinRecord
+; WHAT IT DOES: Gives the spinning object its Super FX record
+; (GsuRecordNew424) in mode 2 with $20 in the high byte of +$2A, then its
+; first step (ObjectSpinStep). Also its +$1D pointer.
+; HOW: GsuRecordNew424, GsuRecordMode2, LDA #$20, GsuRecordSet2AHigh;
+; falls into ObjectSpinStep.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectSyncFromRecord.
+%at($08CDD0)
+ObjectSpinRecord:
+    jsl.l GsuRecordNew424
+    jsl.l GsuRecordMode2
+    lda.b #$20
+    jsl.l GsuRecordSet2AHigh
+
+; @routine 08:CDDE ObjectSpinStep
+; WHAT IT DOES: The spinning object's handler: its heading +$15 turns by
+; one a frame and goes to its record's +$24 (low byte), then the object
+; follows its record (ObjectSyncFromRecord).
+; HOW: An 8-bit add to +$15 (CLC, ADC, which sets V); with a record, a
+; 16-bit read of +$15 masked to its low byte stored at the record's +$24.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectSyncFromRecord, V
+; from the add.
+%at($08CDDE)
+ObjectSpinStep:
+    lda.w !obj_15,x
+    clc
+    adc.b #$01
+    sta.w !obj_15,x
+    txy
+    rep.b #$20
+    lda.w !obj_22,y
+    beq .lCDFB
+    tax
+    lda.w !obj_15,y
+    and.w #$00FF
+    sta.l !gsu_in_24,x
+    tyx
+.lCDFB:
+    sep.b #$20
+    jsl.l ObjectSyncFromRecord
+    rtl
+
+
+; @routine 08:CE79 ObjectSyncFromRecordFall
+; WHAT IT DOES: As ObjectSyncFromRecord for an object whose record is
+; known to be there, with its Y speed (+$30) added to the height taken
+; back from the record, and +$24 bit 1 neither cleared nor set.
+; HOW: Rebucket, GsuRecordFlag4; the object in Y and the record in X while
+; copying; $1F3C = the record's +$18 after the heading and +$12; ends in
+; ObjectSyncFromRecord's tail at $08:CE60. The record address is not
+; tested.
+; Entry: M 8-bit, X 16-bit, D = $0000; X = object. Exit: X = the object; M
+; 8-bit; carry clear; V from the height's add; Y = $1F3C; A low byte = 1
+; when it is not zero (N, Z from that), else A = the record's +$22 and Z
+; set.
+%at($08CE79)
+ObjectSyncFromRecordFall:
+    jsl.l ObjectRebucket
+    jsl.l GsuRecordFlag4
+    rep.b #$20
+    txy
+    lda.w !obj_22,y
+    tax
+    lda.w !obj_15,y
+    and.w #$00FF
+    xba
+    sta.l !gsu_in_24,x
+    lda.w !obj_5a,y
+    and.w #$007F
+    sta.l !gsu_rec_12,x
+    lda.l !gsu_rec_18,x
+    sta.w !wram_1F3C
+    lda.l !gsu_rec_1e,x
+    sta.w !obj_pos_x,y
+    lda.l !gsu_in_20,x
+    clc
+    adc.w !obj_vel_y,y
+    sta.w !obj_pos_y,y
+    lda.l !gsu_in_22,x
+    sta.w !obj_pos_z,y
+    tyx
+    sep.b #$20
+    jmp.w ObjectSync_tail
+
+
+; @routine 08:CBFF GsuRecordNew424Zero
+; WHAT IT DOES: As GsuRecordNew424Alt, with +$0A = 0. Nothing in the game
+; calls it.
+; HOW: Runs Super FX program $04:8C0A; then the shared tail at $08:CC7C.
+; Entry: as GsuRecordNew422. Exit: as GsuRecordNew422.
+%at($08CBFF)
+GsuRecordNew424Zero:
+    phx
+    phy
+    lda.b #$04
+    ldx.w #$8C0A
+    jsl.l GsuRun
+    ply
+    plx
+    rep.b #$20
+    lda.w #$0000
+    sta.w !wram_1F4C
+    sep.b #$20
+    bra GsuRecordNew_tail
+
+
+; @routine 08:CC31 GsuRecordNew424B
+; WHAT IT DOES: As GsuRecordNew424, from Super FX program $04:8C3B, with
+; +$0A = $9185. Nothing in the game calls it.
+; HOW: Runs Super FX program $04:8C3B; then the shared tail at $08:CC7C.
+; Entry: as GsuRecordNew422. Exit: as GsuRecordNew422.
+%at($08CC31)
+GsuRecordNew424B:
+    phx
+    phy
+    lda.b #$04
+    ldx.w #$8C3B
+    jsl.l GsuRun
+    ply
+    plx
+    rep.b #$20
+    lda.w #$9185
+    sta.w !wram_1F4C
+    sep.b #$20
+    bra GsuRecordNew_tail

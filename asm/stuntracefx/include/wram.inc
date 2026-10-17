@@ -1876,3 +1876,6 @@ includeonce
 !fx_drive_level = $7026F4       ; the drive level picking the course speed (low byte)
 !cycle_colours_d = $7EB6EB          ; PaletteCycleFourth: its eight colours (in the work-RAM code)
 !fx_segment_point = $7026F6     ; FxCarPlaceOnSegment: the segment entry's point, x, y, z
+
+; The whole save in battery-backed Super FX RAM, $400 bytes (MenuEraseSave).
+!save_area = $70FC00

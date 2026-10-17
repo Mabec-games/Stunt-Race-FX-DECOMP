@@ -852,3 +852,24 @@ GsuDigitPair0E74At:
     rep.b #$10
     rts
 
+
+
+; @routine 07:917D TimeBonusPiecesMirrored
+; WHAT IT DOES: A step of the time bonus screen nothing reaches: the
+; mirrored renderer bytes (GsuBytes200_BFB7B6), then the second screen's
+; pieces as TimeBonusTally draws them at $07:9157 (without setting
+; $0D6D first).
+; HOW: GsuBytes200_BFB7B6, GsuFA5AThree, GsuFA5AFromTables, GsuFA5ASix,
+; GsuFA1BFromTables; ends pulling the P its caller pushed (PLP, RTS) as
+; the tally's steps do.
+; Entry: M 16-bit, X 16-bit; P on the stack above the return address.
+; Exit: P as pulled; A, X, Y as GsuFA1BFromTables leaves them.
+%at($07917D)
+TimeBonusPiecesMirrored:
+    jsl.l GsuBytes200_BFB7B6
+    jsr.w GsuFA5AThree
+    jsr.w GsuFA5AFromTables
+    jsr.w GsuFA5ASix
+    jsr.w GsuFA1BFromTables
+    plp
+    rts

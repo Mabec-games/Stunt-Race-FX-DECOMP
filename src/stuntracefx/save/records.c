@@ -650,6 +650,19 @@ void abi_RecordsUnpackCourseRunning(void)
     abi_TimeRunningTotals();
 }
 
+/*
+ * @routine 07:B511 RecordsUnpackCourseRunningB
+ * WHAT IT DOES: A second copy of RecordsUnpackCourseRunning, which nothing
+ * calls.
+ * HOW: The same two calls.
+ * Entry: as RecordsUnpackCourse. Exit: as TimeRunningTotals.
+ */
+void abi_RecordsUnpackCourseRunningB(void)
+{
+    abi_RecordsUnpackCourse();
+    abi_TimeRunningTotals();
+}
+
 /* The records screen's rows: direct page $F2 = the time's offset in the
    record times, $F3-$F5 = the row's name entry (two bytes of three 5-bit
    letters, then the car), $F7 = the page's offset. */

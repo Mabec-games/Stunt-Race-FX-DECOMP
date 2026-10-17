@@ -449,3 +449,235 @@ void abi_MenuSelectionFramesCycle(void)
     cpu.x = rd16(b | 0x11F9);
     cpu.p = nz16(cpu.p, cpu.x);
 }
+
+void abi_SoundPort0QueuePush(void);
+void abi_SaveUnlocksCheck(void);
+
+/* The save area MenuEraseConfirm2 clears: $400 bytes of Super FX RAM. */
+#define SAVE_AREA 0x70FC00u
+
+/* SEP #$20, LDA #cmd, JSL SoundPort0QueuePush, REP #$20. */
+static void menu_sound(uint8_t cmd)
+{
+    cpu.p |= P_M;
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | cmd);
+    cpu.p = nz8(cpu.p, cmd);
+    abi_SoundPort0QueuePush();
+    cpu.p &= (uint8_t)~P_M;
+}
+
+/* LDA +$14,X, CMP #a, BEQ; else LDA #a, STA +$14,X, STZ +$16,X, STZ
+   +$18,X: animation a started unless it is the one playing. */
+static void menu_anim(uint16_t a)
+{
+    uint16_t x = cpu.x, v = rd16((uint16_t)(x + 0x14));
+
+    cpu.a = v;
+    cpu.p = cmp16(cpu.p, v, a);
+    if (v == a)
+        return;
+    cpu.a = a;
+    cpu.p = nz16(cpu.p, a);
+    wr16((uint16_t)(x + 0x14), a);
+    wr16((uint16_t)(x + 0x16), 0x0000);
+    wr16((uint16_t)(x + 0x18), 0x0000);
+}
+
+/* LDA $118B, AND #mask: the buttons newly pressed under mask. */
+static uint16_t menu_pressed(uint16_t mask)
+{
+    uint16_t v = rd16(dbw(cpu.db, 0x118B));
+
+    cpu.a = (uint16_t)(v & mask);
+    cpu.p = nz16(cpu.p, cpu.a);
+    return cpu.a;
+}
+
+/* LDA +$0A,X: the choice (0 no, else yes). */
+static uint16_t menu_choice(void)
+{
+    uint16_t v = rd16((uint16_t)(cpu.x + 0x0A));
+
+    cpu.a = v;
+    cpu.p = nz16(cpu.p, v);
+    return v;
+}
+
+/* LDA #h, STA +$08,X: the next handler. */
+static void menu_handler(uint16_t h)
+{
+    cpu.a = h;
+    cpu.p = nz16(cpu.p, h);
+    wr16((uint16_t)(cpu.x + 0x08), h);
+}
+
+/*
+ * @routine 0B:D6F8 MenuSequenceColourOff
+ * WHAT IT DOES: Undoes MenuSequenceColourMath: queues writes for the next
+ * vertical blank that leave only HDMA channel 4 on and clear TSW.
+ * HOW: Two FrameByteWritePush calls: HDMAEN $10, TSW 0; X is pushed around
+ * each.
+ * Entry: X 16-bit or 8-bit; D any. Exit: A low byte = 0, A high byte
+ * unchanged; X unchanged; M 16-bit, X 16-bit; N, Z from X; C, V unchanged.
+ */
+void MenuSequenceColourOff(uint8_t bank)
+{
+    FrameByteWritePush(bank, HDMAEN, 0x10);
+    FrameByteWritePush(bank, TSW, 0x00);
+}
+
+void abi_MenuSequenceColourOff(void)
+{
+    MenuSequenceColourOff(cpu.db);
+    cpu.a &= 0xFF00;
+    cpu.p = nz16((uint8_t)(cpu.p & ~(P_M | P_X)), cpu.x);
+}
+
+/* B with "no" chosen: back to MenuButtonSequence ($D606) with the colour
+   maths off, sound $47 and animation 2 ($0B:D79F, $0B:D84F, $0B:D879
+   without the sound). */
+static void menu_erase_cancel(int sound)
+{
+    menu_handler(0xD606);
+    abi_MenuSequenceColourOff();
+    if (sound)
+        menu_sound(0x47);
+    menu_anim(0x0002);
+}
+
+/*
+ * @routine 0B:D71B MenuEraseConfirm
+ * WHAT IT DOES: The handler after the menu's button sequence: the first
+ * "erase?" question. Left ($0200) picks yes (+$0A = 1, animation $148,
+ * sound $45), Right ($0100) picks no (+$0A = 0, sound $45, animation
+ * $152); B ($8000) answers: yes asks again (animation $166, handler $D7C2
+ * MenuEraseConfirm2, +$0A = 0, sound $46); no goes back to the sequence
+ * (handler $D606, MenuSequenceColourOff, sound $47, animation 2).
+ * HOW: MenuActorAnimateFrame, then three 16-bit tests of the buttons
+ * newly pressed ($118B), each read again.
+ * Entry: M 16-bit, X 16-bit, D = $0000; X = record. Exit: M 16-bit; A and
+ * P from the last load, compare or sound (A low byte = the command, N, Z
+ * from the data bank).
+ */
+void abi_MenuEraseConfirm(void)
+{
+    abi_MenuActorAnimateFrame();
+    if (menu_pressed(0x0200) && !menu_choice()) {
+        cpu.a = 0x0001;
+        cpu.p = nz16(cpu.p, 0x0001);
+        wr16((uint16_t)(cpu.x + 0x0A), 0x0001);
+        menu_anim(0x0148);
+        menu_sound(0x45);
+    }
+    if (menu_pressed(0x0100) && menu_choice()) {
+        menu_sound(0x45);
+        wr16((uint16_t)(cpu.x + 0x0A), 0x0000);
+        menu_anim(0x0152);
+    }
+    if (!menu_pressed(0x8000))
+        return;
+    if (!menu_choice()) {
+        menu_erase_cancel(1);
+        return;
+    }
+    menu_anim(0x0166);
+    menu_handler(0xD7C2);
+    wr16((uint16_t)(cpu.x + 0x0A), 0x0000);
+    menu_sound(0x46);
+}
+
+/*
+ * @routine 0B:D892 MenuEraseSave
+ * WHAT IT DOES: Erases the save: clears the $400 bytes at $70:FC00, then
+ * lets SaveUnlocksCheck put back an empty, valid save.
+ * HOW: 16-bit zero stores from X = 0 to $3FE; SaveUnlocksCheck.
+ * Entry: M 16-bit, X 16-bit, D = $0000. Exit: as SaveUnlocksCheck; P from
+ * the last CPX (Z and C set, N clear).
+ */
+void abi_MenuEraseSave(void)
+{
+    uint16_t x;
+
+    for (x = 0; x != 0x0400; x = (uint16_t)(x + 2))
+        wr16(SAVE_AREA + x, 0x0000);
+    cpu.a = 0x0000;
+    cpu.x = 0x0400;
+    cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z | P_C);
+    abi_SaveUnlocksCheck();
+}
+
+/*
+ * @routine 0B:D7C2 MenuEraseConfirm2
+ * WHAT IT DOES: The second "erase?" question: Left picks yes (+$0A = 1,
+ * animation $15C, sound $45), Right picks no (+$0A = 0, animation $166,
+ * sound $45); B answers: yes erases the save (MenuEraseSave), starts
+ * animation $170 on the record at $11F9, plays sound $36 and waits $40
+ * frames (handler $D872 MenuEraseDone, +$0A = $40); no goes back to the
+ * sequence as MenuEraseConfirm's no.
+ * HOW: As MenuEraseConfirm; X is reloaded from $11F9 after the erase.
+ * Entry: M 16-bit, X 16-bit, D = $0000; X = record. Exit: M 16-bit; erase:
+ * A = $40, N, Z clear; otherwise as MenuEraseConfirm.
+ */
+void abi_MenuEraseConfirm2(void)
+{
+    abi_MenuActorAnimateFrame();
+    if (menu_pressed(0x0200) && !menu_choice()) {
+        cpu.a = 0x0001;
+        cpu.p = nz16(cpu.p, 0x0001);
+        wr16((uint16_t)(cpu.x + 0x0A), 0x0001);
+        menu_anim(0x015C);
+        menu_sound(0x45);
+    }
+    if (menu_pressed(0x0100) && menu_choice()) {
+        wr16((uint16_t)(cpu.x + 0x0A), 0x0000);
+        menu_anim(0x0166);
+        menu_sound(0x45);
+    }
+    if (!menu_pressed(0x8000))
+        return;
+    if (!menu_choice()) {
+        menu_erase_cancel(1);
+        return;
+    }
+    abi_MenuEraseSave();
+    cpu.x = rd16(dbw(cpu.db, 0x11F9));
+    cpu.p = nz16(cpu.p, cpu.x);
+    menu_anim(0x0170);
+    menu_sound(0x36);
+    menu_handler(0xD872);
+    cpu.a = 0x0040;
+    cpu.p = nz16(cpu.p, 0x0040);
+    wr16((uint16_t)(cpu.x + 0x0A), 0x0040);
+}
+
+/*
+ * @routine 0B:D872 MenuEraseDone
+ * WHAT IT DOES: Waits out the count +$0A after the erase, then goes back
+ * to the button sequence (handler $D606, MenuSequenceColourOff, animation
+ * 2) with no sound.
+ * HOW: MenuActorAnimateFrame, a memory decrement of +$0A; BPL waits.
+ * Entry: M 16-bit, X 16-bit, D = $0000; X = record. Exit: waiting: A as
+ * MenuActorAnimateFrame leaves it, N, Z from the count; done: as the
+ * animation's compare or start.
+ */
+void abi_MenuEraseDone(void)
+{
+    uint16_t c;
+
+    abi_MenuActorAnimateFrame();
+    c = dec_field(cpu.x, 0x0A);
+    cpu.p = nz16(cpu.p, c);
+    if (!(c & 0x8000))
+        return;
+    menu_erase_cancel(0);
+}
+
+/*
+ * @routine 0B:D8A8 MenuActorNoStepD8A8
+ * WHAT IT DOES: Nothing: a handler that only returns.
+ * HOW: RTS.
+ * Entry: any. Exit: unchanged.
+ */
+void abi_MenuActorNoStepD8A8(void)
+{
+}

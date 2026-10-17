@@ -7876,3 +7876,293 @@ void abi_ObjectBonusMarker5Step(void)
 {
     bonus_marker2_frame(abi_ObjectShatter2, 0xB604, 0x05);
 }
+
+/*
+ * @routine 09:C0FE ObjectRiderStep
+ * WHAT IT DOES: The handler of the object ObjectRiderSpawn makes: once its
+ * parent (+$27) has +$25 bit 0 set it is released (ObjectRelease);
+ * otherwise its heading +$15 turns by 4 and it is rebucketed.
+ * HOW: An 8-bit test of the parent's +$25; JML to the release at
+ * $09:C11A.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectRebucket or
+ * ObjectRelease.
+ */
+void abi_ObjectRiderStep(void)
+{
+    uint16_t par = rd16(F(0x2027, cpu.x));
+    uint8_t v;
+
+    cpu.y = par;
+    cpu.p = nz16(cpu.p, par);
+    v = (uint8_t)(ld8(F(0x2025, par)) & 0x01);
+    lda8(v);
+    if (v) {
+        abi_ObjectRelease();
+        return;
+    }
+    v = ld8(F(0x2015, cpu.x));
+    cpu.p &= (uint8_t)~P_C;
+    v = op_adc8(v, 0x04, &cpu.p);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    wr8(F(0x2015, cpu.x), v);
+    abi_ObjectRebucket();
+}
+
+/*
+ * @routine 09:C0BE ObjectRiderSpawn
+ * WHAT IT DOES: Makes a rider (kind $AD44) at object X's position $A0
+ * lower (+$0E + $A0), with X as its parent (+$27) and the handler
+ * $09:C0FE (ObjectRiderStep); nothing without a free object. Nothing in
+ * the game calls it.
+ * HOW: ObjectSpawn, ObjectCopyPositionTo; A's low byte pushed and pulled
+ * (8-bit) round the parent's store (TXA, 16-bit). Ends in RTS.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; made: A low byte =
+ * $09; none: as ObjectSpawn.
+ */
+void abi_ObjectRiderSpawn(void)
+{
+    uint8_t lo;
+
+    if (!spawn(0xAD44))
+        return;
+    abi_ObjectCopyPositionTo();
+    add16(F(0x200E, cpu.y), 0x00A0);
+    lo = (uint8_t)cpu.a;
+    cpu.p &= (uint8_t)~P_M;
+    cpu.a = cpu.x;
+    wr16(F(0x2027, cpu.y), cpu.x);
+    cpu.p |= P_M;
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | lo);
+    cpu.p = nz8(cpu.p, lo);
+    handler(cpu.y, 0xC0FE);
+}
+
+void abi_ObjectStep48To8(void);
+void abi_HudCountMove19EE(void);
+
+/* A switch lamp's set-up: +$1D = rec (its record set-up), handler step,
+   shape +$20 = $ECD0, +$5A = $80 (dark), count +$48 = 4, +$5A = $80
+   again. */
+static void hit_lamp(uint16_t rec, uint16_t step)
+{
+    st16i(F(0x201D, cpu.x), rec);
+    st8i(F(0x201F, cpu.x), 0x09);
+    handler(cpu.x, step);
+    st16i(F(0x2020, cpu.x), 0xECD0);
+    lda8(0x00);
+    lda8(0x80);
+    wr8(F(0x205A, cpu.x), 0x80);
+    st8i(F(0x2048, cpu.x), 0x04);
+    lda8(0x00);
+    lda8(0x80);
+    wr8(F(0x205A, cpu.x), 0x80);
+}
+
+/* The switch lamp's record: GsuRecordNew424Alt in mode 2 with $14 in the
+   high byte of +$2A, at ($500, $500, $500). */
+static void hit_lamp_record(void)
+{
+    abi_GsuRecordNew424Alt();
+    abi_GsuRecordMode2();
+    lda8(0x14);
+    abi_GsuRecordSet2AHigh();
+    record_at(0x0500, 0x0500, 0x0500);
+}
+
+/* The switch lamp's frame: while the switch byte at `flag` is set, it
+   lights up a step (ObjectStep48To8); then it follows its record. */
+static void hit_lamp_frame(uint16_t flag)
+{
+    cpu.p |= P_M;
+    if (ld8(db() | flag))
+        abi_ObjectStep48To8();
+    abi_ObjectSyncFromRecord();
+}
+
+/* The switch's record: GsuRecordNew42D with flag $10 at ($3C0, $3C0,
+   $3C0). */
+static void hit_switch_record(void)
+{
+    abi_GsuRecordNew42D();
+    abi_GsuRecordFlag10();
+    record_at(0x03C0, 0x03C0, 0x03C0);
+}
+
+/* The switch's frame: on a car's contact (bit 0 of a contact's flags) the
+   switch byte at `flag` = 1, and the first time (+$25 bit 0 clear) +$25
+   bit 0 is set and the count moved (HudCountMove19EE). */
+static void hit_switch_frame(uint16_t flag)
+{
+    abi_ObjectSyncFromRecord();
+    lda8((uint8_t)(cpu.a & 0x01));
+    if (!(uint8_t)cpu.a || !next_contact())
+        return;
+    lda8((uint8_t)(ld8(F(0x2025, cpu.x)) & 0x01));
+    if (!(uint8_t)cpu.a) {
+        or8(F(0x2025, cpu.x), 0x01);
+        abi_HudCountMove19EE();
+    }
+    cpu.p |= P_M;
+    st8i(db() | flag, 0x01);
+}
+
+/*
+ * @routine 09:B19B ObjectSwitchLampBStep
+ * WHAT IT DOES: The frame of a lamp that lights up once switch B ($19E9)
+ * has been hit: a step brighter (ObjectStep48To8) while $19E9 is set, then
+ * it follows its record.
+ * HOW: An 8-bit test of $19E9; ObjectSyncFromRecord.
+ * Entry: X 16-bit; X = object. Exit: M 8-bit; as ObjectSyncFromRecord.
+ */
+void abi_ObjectSwitchLampBStep(void)
+{
+    hit_lamp_frame(0x19E9);
+}
+
+/*
+ * @routine 09:B16E ObjectSwitchLampBRecord
+ * WHAT IT DOES: The lamp's record (GsuRecordNew424Alt, mode 2, $14 in the
+ * high byte of +$2A, at $500, $500, $500), then its first frame
+ * (ObjectSwitchLampBStep). Also its +$1D pointer.
+ * HOW: Falls into ObjectSwitchLampBStep.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectSwitchLampBStep.
+ */
+void abi_ObjectSwitchLampBRecord(void)
+{
+    hit_lamp_record();
+    abi_ObjectSwitchLampBStep();
+}
+
+/*
+ * @routine 09:B133 ObjectSwitchLampB
+ * WHAT IT DOES: Sets up a lamp switch B lights: +$1D = $09:B16E, handler
+ * $09:B19B (ObjectSwitchLampBStep), shape $ECD0, dark (+$5A = $80), +$48 =
+ * 4; then its record and frame. No course in the scripts places it.
+ * HOW: Stores, then falls into ObjectSwitchLampBRecord.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectSwitchLampBStep.
+ */
+void abi_ObjectSwitchLampB(void)
+{
+    hit_lamp(0xB16E, 0xB19B);
+    abi_ObjectSwitchLampBRecord();
+}
+
+/*
+ * @routine 09:B1EF ObjectSwitchBStep
+ * WHAT IT DOES: The frame of switch B: it follows its record; on a car's
+ * contact $19E9 = 1, and the first time its +$25 bit 0 is set and the
+ * count moved (HudCountMove19EE).
+ * HOW: ObjectSyncFromRecord, then RecordNextContact over the contacts; the
+ * repeat hit is a long jump past the count.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: hit: A low byte
+ * = 1; otherwise as the last call leaves it.
+ */
+void abi_ObjectSwitchBStep(void)
+{
+    hit_switch_frame(0x19E9);
+}
+
+/*
+ * @routine 09:B1C8 ObjectSwitchBRecord
+ * WHAT IT DOES: Switch B's record (GsuRecordNew42D, flag $10, at $3C0,
+ * $3C0, $3C0), then its first frame (ObjectSwitchBStep). Also its +$1D
+ * pointer.
+ * HOW: Falls into ObjectSwitchBStep.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectSwitchBStep.
+ */
+void abi_ObjectSwitchBRecord(void)
+{
+    hit_switch_record();
+    abi_ObjectSwitchBStep();
+}
+
+/*
+ * @routine 09:B1AA ObjectSwitchB
+ * WHAT IT DOES: Sets up switch B: +$1D = $09:B1C8, handler $09:B1EF
+ * (ObjectSwitchBStep); then its record and frame. No course in the
+ * scripts places it.
+ * HOW: Stores, then falls into ObjectSwitchBRecord.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectSwitchBStep.
+ */
+void abi_ObjectSwitchB(void)
+{
+    st16i(F(0x201D, cpu.x), 0xB1C8);
+    st8i(F(0x201F, cpu.x), 0x09);
+    handler(cpu.x, 0xB1EF);
+    abi_ObjectSwitchBRecord();
+}
+
+/*
+ * @routine 09:B287 ObjectSwitchLampCStep
+ * WHAT IT DOES: As ObjectSwitchLampBStep for switch C ($19EA).
+ * HOW: As ObjectSwitchLampBStep.
+ * Entry: as ObjectSwitchLampBStep. Exit: as ObjectSwitchLampBStep.
+ */
+void abi_ObjectSwitchLampCStep(void)
+{
+    hit_lamp_frame(0x19EA);
+}
+
+/*
+ * @routine 09:B25A ObjectSwitchLampCRecord
+ * WHAT IT DOES: As ObjectSwitchLampBRecord, then ObjectSwitchLampCStep.
+ * HOW: Falls into ObjectSwitchLampCStep.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectSwitchLampCStep.
+ */
+void abi_ObjectSwitchLampCRecord(void)
+{
+    hit_lamp_record();
+    abi_ObjectSwitchLampCStep();
+}
+
+/*
+ * @routine 09:B21F ObjectSwitchLampC
+ * WHAT IT DOES: As ObjectSwitchLampB for switch C: +$1D = $09:B25A,
+ * handler $09:B287 (ObjectSwitchLampCStep). No course in the scripts
+ * places it.
+ * HOW: Stores, then falls into ObjectSwitchLampCRecord.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectSwitchLampCStep.
+ */
+void abi_ObjectSwitchLampC(void)
+{
+    hit_lamp(0xB25A, 0xB287);
+    abi_ObjectSwitchLampCRecord();
+}
+
+/*
+ * @routine 09:B2DB ObjectSwitchCStep
+ * WHAT IT DOES: As ObjectSwitchBStep for switch C: a hit sets $19EA = 1.
+ * HOW: As ObjectSwitchBStep.
+ * Entry: as ObjectSwitchBStep. Exit: as ObjectSwitchBStep.
+ */
+void abi_ObjectSwitchCStep(void)
+{
+    hit_switch_frame(0x19EA);
+}
+
+/*
+ * @routine 09:B2B4 ObjectSwitchCRecord
+ * WHAT IT DOES: As ObjectSwitchBRecord, then ObjectSwitchCStep.
+ * HOW: Falls into ObjectSwitchCStep.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectSwitchCStep.
+ */
+void abi_ObjectSwitchCRecord(void)
+{
+    hit_switch_record();
+    abi_ObjectSwitchCStep();
+}
+
+/*
+ * @routine 09:B296 ObjectSwitchC
+ * WHAT IT DOES: As ObjectSwitchB for switch C: +$1D = $09:B2B4, handler
+ * $09:B2DB (ObjectSwitchCStep). No course in the scripts places it.
+ * HOW: Stores, then falls into ObjectSwitchCRecord.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectSwitchCStep.
+ */
+void abi_ObjectSwitchC(void)
+{
+    st16i(F(0x201D, cpu.x), 0xB2B4);
+    st8i(F(0x201F, cpu.x), 0x09);
+    handler(cpu.x, 0xB2DB);
+    abi_ObjectSwitchCRecord();
+}

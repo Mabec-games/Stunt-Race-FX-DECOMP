@@ -1721,3 +1721,213 @@ void abi_GsuRecordSet2AHigh(void)
     cpu.a = GsuRecordSet2AHigh(cpu.db, cpu.x, (uint8_t)cpu.a, &p);
     cpu.p = (uint8_t)(p | P_M);
 }
+
+void abi_ObjectStubZero(void);
+void abi_ObjectRebucket(void);
+
+/* The handler of object X: +$1A = h, +$1C = $08 (16-bit then 8-bit
+   immediate stores). */
+static void set_handler08(uint16_t h)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    cpu.p &= (uint8_t)~P_M;
+    cpu.a = h;
+    cpu.p = nz16(cpu.p, h);
+    wr16(b | (uint16_t)(0x201A + cpu.x), h);
+    cpu.p |= P_M;
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x08);
+    cpu.p = nz8(cpu.p, 0x08);
+    wr8(b | (uint16_t)(0x201C + cpu.x), 0x08);
+}
+
+/*
+ * @routine 08:CDA4 ObjectRecordMarkStep
+ * WHAT IT DOES: A handler that only rebuckets object X and marks its
+ * record (GsuRecordFlag4) each frame.
+ * HOW: ObjectRebucket, GsuRecordFlag4.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as GsuRecordFlag4.
+ */
+void abi_ObjectRecordMarkStep(void)
+{
+    abi_ObjectRebucket();
+    abi_GsuRecordFlag4();
+}
+
+/*
+ * @routine 08:CD84 ObjectRecordMarkSetup
+ * WHAT IT DOES: Sets up an object that keeps a Super FX record and only
+ * marks it: handler $08:CDA4 (ObjectRecordMarkStep), ObjectStubZero, a
+ * record (GsuRecordNew422), then +$09 bit 0 set. No course in the scripts
+ * places it.
+ * HOW: Stores and calls in turn; a failed record is not checked.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte = the
+ * new +$09, N, Z from it.
+ */
+void abi_ObjectRecordMarkSetup(void)
+{
+    uint32_t b;
+    uint8_t v;
+
+    set_handler08(0xCDA4);
+    abi_ObjectStubZero();
+    abi_GsuRecordNew422();
+    b = (uint32_t)cpu.db << 16 | (uint16_t)(0x2009 + cpu.x);
+    v = (uint8_t)(rd8(b) | 0x01);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+    wr8(b, v);
+}
+
+/*
+ * @routine 08:CE79 ObjectSyncFromRecordFall
+ * WHAT IT DOES: As ObjectSyncFromRecord for an object whose record is
+ * known to be there, with its Y speed (+$30) added to the height taken
+ * back from the record, and +$24 bit 1 neither cleared nor set.
+ * HOW: Rebucket, GsuRecordFlag4; the object in Y and the record in X while
+ * copying; $1F3C = the record's +$18 after the heading and +$12; ends in
+ * ObjectSyncFromRecord's tail at $08:CE60. The record address is not
+ * tested.
+ * Entry: M 8-bit, X 16-bit, D = $0000; X = object. Exit: X = the object; M
+ * 8-bit; carry clear; V from the height's add; Y = $1F3C; A low byte = 1
+ * when it is not zero (N, Z from that), else A = the record's +$22 and Z
+ * set.
+ */
+uint16_t ObjectSyncFromRecordFall(uint8_t bank, uint16_t obj, uint16_t *y, uint8_t *p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t rec, v;
+    int has;
+
+    ObjectRebucket(obj);
+    GsuRecordFlag4(bank, obj, &has);
+    rec = record_of(bank, obj);
+    v = rd16(b | (uint16_t)(0x2015 + obj));
+    wr16(0x700024 + rec, (uint16_t)((v & 0x00FF) << 8));
+    v = rd16(b | (uint16_t)(0x205A + obj));
+    wr16(0x700012 + rec, v & 0x007F);
+    v = rd16(0x700018 + rec);
+    wr16(b | 0x1F3C, v);
+    v = rd16(0x70001E + rec);
+    wr16(b | (uint16_t)(0x200C + obj), v);
+    v = rd16(0x700020 + rec);
+    *p &= (uint8_t)~P_C;
+    v = op_adc16(v, rd16(b | (uint16_t)(0x2030 + obj)), p);
+    wr16(b | (uint16_t)(0x200E + obj), v);
+    v = rd16(0x700022 + rec);
+    wr16(b | (uint16_t)(0x2010 + obj), v);
+    *p &= (uint8_t)~P_C;
+    return sync_tail(bank, v, y, p);
+}
+
+void abi_ObjectSyncFromRecordFall(void)
+{
+    uint8_t p = cpu.p;
+
+    cpu.a = ObjectSyncFromRecordFall(cpu.db, cpu.x, &cpu.y, &p);
+    cpu.p = (uint8_t)(p | P_M);
+}
+
+/*
+ * @routine 08:CDAD ObjectSyncFallStep
+ * WHAT IT DOES: A handler: ObjectSyncFromRecordFall.
+ * HOW: JSL to it.
+ * Entry: as ObjectSyncFromRecordFall. Exit: as ObjectSyncFromRecordFall.
+ */
+void abi_ObjectSyncFallStep(void)
+{
+    abi_ObjectSyncFromRecordFall();
+}
+
+/*
+ * @routine 08:CDDE ObjectSpinStep
+ * WHAT IT DOES: The spinning object's handler: its heading +$15 turns by
+ * one a frame and goes to its record's +$24 (low byte), then the object
+ * follows its record (ObjectSyncFromRecord).
+ * HOW: An 8-bit add to +$15 (CLC, ADC, which sets V); with a record, a
+ * 16-bit read of +$15 masked to its low byte stored at the record's +$24.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectSyncFromRecord, V
+ * from the add.
+ */
+void abi_ObjectSpinStep(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t obj = cpu.x, rec, v;
+    uint8_t h;
+
+    h = rd8(b | (uint16_t)(0x2015 + obj));
+    cpu.p &= (uint8_t)~P_C;
+    h = op_adc8(h, 0x01, &cpu.p);
+    wr8(b | (uint16_t)(0x2015 + obj), h);
+    rec = record_of(cpu.db, obj);
+    if (rec) {
+        v = rd16(b | (uint16_t)(0x2015 + obj));
+        wr16(0x700024 + rec, v & 0x00FF);
+    }
+    abi_ObjectSyncFromRecord();
+}
+
+/*
+ * @routine 08:CDD0 ObjectSpinRecord
+ * WHAT IT DOES: Gives the spinning object its Super FX record
+ * (GsuRecordNew424) in mode 2 with $20 in the high byte of +$2A, then its
+ * first step (ObjectSpinStep). Also its +$1D pointer.
+ * HOW: GsuRecordNew424, GsuRecordMode2, LDA #$20, GsuRecordSet2AHigh;
+ * falls into ObjectSpinStep.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectSyncFromRecord.
+ */
+void abi_ObjectSpinRecord(void)
+{
+    abi_GsuRecordNew424();
+    abi_GsuRecordMode2();
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x20);
+    cpu.p = nz8(cpu.p, 0x20);
+    abi_GsuRecordSet2AHigh();
+    abi_ObjectSpinStep();
+}
+
+/*
+ * @routine 08:CDB2 ObjectSpinSetup
+ * WHAT IT DOES: Sets up a spinning object: +$1D = $08:CDD0
+ * (ObjectSpinRecord), handler $08:CDDE (ObjectSpinStep), then its record
+ * (ObjectSpinRecord). No course in the scripts places it.
+ * HOW: Stores, then falls into ObjectSpinRecord.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectSyncFromRecord.
+ */
+void abi_ObjectSpinSetup(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    cpu.p &= (uint8_t)~P_M;
+    cpu.a = 0xCDD0;
+    wr16(b | (uint16_t)(0x201D + cpu.x), 0xCDD0);
+    cpu.p |= P_M;
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x08);
+    wr8(b | (uint16_t)(0x201F + cpu.x), 0x08);
+    set_handler08(0xCDDE);
+    abi_ObjectSpinRecord();
+}
+
+/*
+ * @routine 08:CBFF GsuRecordNew424Zero
+ * WHAT IT DOES: As GsuRecordNew424Alt, with +$0A = 0. Nothing in the game
+ * calls it.
+ * HOW: Runs Super FX program $04:8C0A; then the shared tail at $08:CC7C.
+ * Entry: as GsuRecordNew422. Exit: as GsuRecordNew422.
+ */
+void abi_GsuRecordNew424Zero(void)
+{
+    abi_record_new(0x8C0A, 0x0000);
+}
+
+/*
+ * @routine 08:CC31 GsuRecordNew424B
+ * WHAT IT DOES: As GsuRecordNew424, from Super FX program $04:8C3B, with
+ * +$0A = $9185. Nothing in the game calls it.
+ * HOW: Runs Super FX program $04:8C3B; then the shared tail at $08:CC7C.
+ * Entry: as GsuRecordNew422. Exit: as GsuRecordNew422.
+ */
+void abi_GsuRecordNew424B(void)
+{
+    abi_record_new(0x8C3B, 0x9185);
+}

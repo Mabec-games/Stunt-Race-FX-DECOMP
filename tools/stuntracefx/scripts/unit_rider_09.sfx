@@ -1,0 +1,22 @@
+# unit_rider_09: the rider object of bank $09 nothing in the game makes
+# (09:C0BE-C11E), called on object 1 of a Novice race: ObjectRiderSpawn
+# (a JSR target) with a free object and with none (the count $0CEE at its
+# limit $2E); ObjectRiderStep on object 1 made its own parent (+$27 = 1)
+# with the parent's +$25 bit 0 clear and set.
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:C0BE x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0CEE 2E
+call 09:C0BE x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2028 01,00
+set 7E2026 00
+call 09:C0FE long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2028 01,00
+set 7E2026 01
+call 09:C0FE long x=0001 p=20 db=7E d=0000
+wait 1

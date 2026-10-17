@@ -766,3 +766,93 @@ chosen:
     wr8(b | 0x2100, 0x80);
     op_plp(p0);
 }
+
+/*
+ * @routine 0B:BE29 MenuPreviewBackOut
+ * WHAT IT DOES: The course preview after player 2 backs out with Y
+ * (MenuPreviewCountdown's $4000 case): two fixed colour steps down, a race
+ * frame shown, $18FD = 1; once $1905 is clear, makes $BE65
+ * (MenuPreviewBackWait) the object's handler, clears the selection out
+ * ($18D3), sets $1A66 and the pair's animations from the selection ($18CB)
+ * and shows another race frame.
+ * HOW: Calls in turn; the object is the current one ($11F9). No play
+ * reaches it; unit_preview_back_0b calls it.
+ * Entry: M 16-bit, X 16-bit, D = $0000. Exit: as the last call leaves it.
+ */
+void abi_MenuPreviewBackOut(void)
+{
+    uint16_t x;
+
+    if (preview_frame(2))
+        return;
+    x = rd16((uint32_t)cpu.db << 16 | 0x11F9);
+    cpu.x = x;
+    cpu.a = 0xBE65;
+    wr16(ACTOR(x, 0x08), 0xBE65);
+    cpu.a = 0x0000;
+    wr16(0x0018D3, 0x0000);
+    cpu.a = rd16(0x0018CB);
+    abi_MenuSet1A66();
+    abi_MenuSetPairAnimations();
+    cpu.a = 0x0000;
+    abi_RaceFrameStep();
+}
+
+/*
+ * @routine 0B:BE65 MenuPreviewBackWait
+ * WHAT IT DOES: Waits for the byte $0357; once it is set, $1905 = 2, $1907
+ * = 0 and the object's handler becomes $BE84 (MenuPreviewBackEnd).
+ * HOW: An 8-bit test of $0357, then 16-bit long stores.
+ * Entry: M 16-bit, X 16-bit, D = $0000; X = the object. Exit: M 16-bit;
+ * waiting: A low byte = 0, Z set; else A = $BE84, N set.
+ */
+void abi_MenuPreviewBackWait(void)
+{
+    uint8_t v;
+
+    cpu.p |= P_M;
+    v = rd8((uint32_t)cpu.db << 16 | 0x0357);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+    if (v) {
+        cpu.p &= (uint8_t)~P_M;
+        cpu.a = 0x0002;
+        wr16(0x001905, 0x0002);
+        cpu.a = 0x0000;
+        wr16(0x001907, 0x0000);
+        cpu.a = 0xBE84;
+        cpu.p = nz16(cpu.p, 0xBE84);
+        wr16(ACTOR(cpu.x, 0x08), 0xBE84);
+    }
+    cpu.p &= (uint8_t)~P_M;
+}
+
+/*
+ * @routine 0B:BE84 MenuPreviewBackEnd
+ * WHAT IT DOES: The last frame of backing out of the preview: two fixed
+ * colour steps down, a race frame shown, $18FD = 1; once $1905 is clear,
+ * the object's handler becomes $BA4E with a count of 20 (+$0A), the kind 4
+ * object gets animation $CE (unless it has it), +$10 of groups 4 and 5 is
+ * cleared (MenuActorsSet10 with Y = 0), the word list's size $1191 = 0 and
+ * HDMA channels 6 and 7 are asked for ($C0 to HDMAEN on the frame write
+ * list).
+ * HOW: As MenuPreviewStart.
+ * Entry: M 16-bit, X 16-bit, D = $0000. Exit: as FrameByteWritePush
+ * leaves it, with X the kind 4 object and M 16-bit.
+ */
+void abi_MenuPreviewBackEnd(void)
+{
+    uint16_t x;
+
+    if (preview_frame(2))
+        return;
+    x = rd16((uint32_t)cpu.db << 16 | 0x11F9);
+    cpu.x = x;
+    wr16(ACTOR(x, 0x08), 0xBA4E);
+    wr16(ACTOR(x, 0x0A), 0x0014);
+    kind4_animation(0x00CE);
+    groups_45(0x0000);
+    cpu.a = 0x0000;
+    wr16(0x001191, 0x0000);
+    hdma_on(0xC0);
+}

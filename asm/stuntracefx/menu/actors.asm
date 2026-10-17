@@ -249,7 +249,7 @@ MenuActorBlink:
 ; and sets the sprite group (+$12) and timer from the entry.
 ; HOW: Entries are four bytes: a duration word and a sprite group word; the
 ; timer is set to duration - 1. No animation when +$14 is negative. The
-; offset is kept at $11DF while it is used.
+; offset is kept at $11DF while it is used and read back for the add.
 ; Entry: M 16-bit, X 16-bit, D = $0000; X = the object being run ($11F9).
 ; Exit: no animation: A = +$14; N set. Timer running: A = +$14; N, Z from
 ; the timer. Stepped: A = the new timer; X = $11F9; N, Z from A; C, V from

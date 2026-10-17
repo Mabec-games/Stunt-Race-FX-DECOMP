@@ -357,7 +357,7 @@ void abi_MenuActorBlink(void)
  * and sets the sprite group (+$12) and timer from the entry.
  * HOW: Entries are four bytes: a duration word and a sprite group word; the
  * timer is set to duration - 1. No animation when +$14 is negative. The
- * offset is kept at $11DF while it is used.
+ * offset is kept at $11DF while it is used and read back for the add.
  * Entry: M 16-bit, X 16-bit, D = $0000; X = the object being run ($11F9).
  * Exit: no animation: A = +$14; N set. Timer running: A = +$14; N, Z from
  * the timer. Stepped: A = the new timer; X = $11F9; N, Z from A; C, V from
@@ -366,7 +366,7 @@ void abi_MenuActorBlink(void)
 uint16_t MenuActorAnimate(uint8_t bank, uint16_t rec, uint16_t *x, uint8_t *p)
 {
     uint32_t b = (uint32_t)bank << 16;
-    uint16_t anim = rd16((uint16_t)(rec + 0x14)), t, pos, i, d, g;
+    uint16_t anim = rd16((uint16_t)(rec + 0x14)), t, pos, i, d, g, m;
     unsigned s;
 
     if (anim & 0x8000) {
@@ -382,8 +382,9 @@ uint16_t MenuActorAnimate(uint8_t bank, uint16_t rec, uint16_t *x, uint8_t *p)
     wr16(b | 0x11DF, anim);
     pos = (uint16_t)(rd16((uint16_t)(rec + 0x16)) + 4);
     wr16((uint16_t)(rec + 0x16), pos);
-    s = (unsigned)pos + anim;
-    *p = (uint8_t)((*p & ~(P_C | P_V)) | (s > 0xFFFF ? P_C : 0) | ((~(pos ^ anim) & (pos ^ (uint16_t)s) & 0x8000) ? P_V : 0));
+    m = rd16(b | 0x11DF);
+    s = (unsigned)pos + m;
+    *p = (uint8_t)((*p & ~(P_C | P_V)) | (s > 0xFFFF ? P_C : 0) | ((~(pos ^ m) & (pos ^ (uint16_t)s) & 0x8000) ? P_V : 0));
     i = (uint16_t)s;
     d = rd16(0x0BAB60 + i);
     if (d & 0x8000) {

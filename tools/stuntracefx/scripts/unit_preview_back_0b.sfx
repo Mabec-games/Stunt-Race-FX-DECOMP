@@ -1,0 +1,64 @@
+# unit_preview_back_0b: the course preview's back-out steps after player
+# 2's Y (0B:BE29-BEEE), which no play reaches, as calls from a Novice race
+# through a one-entry menu actor list in low work RAM (as
+# unit_preview_countdown): MenuPreviewBackOut with $1905 set (its path with
+# $1905 clear shows two race frames in one call, which a lockstep piece
+# cannot judge: the frame ends inside the second, with the original's
+# return addresses on the stack), MenuPreviewBackEnd with $1905 set and
+# clear, the kind 4 object's animation $CE already playing and not;
+# MenuPreviewBackWait with $0357 clear and set.
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E11F9 20,1F
+set 7E11F7 02,00
+set 7E1239 80,1F
+set 7E1F9A 04,00
+set 7E1193 02,00
+set 7E1905 01,00
+call 0B:BE29 x=1F20 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E11F9 20,1F
+set 7E11F7 02,00
+set 7E1239 80,1F
+set 7E1F9A 04,00
+set 7E1193 02,00
+set 7E0357 00
+call 0B:BE65 x=1F20 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E11F9 20,1F
+set 7E11F7 02,00
+set 7E1239 80,1F
+set 7E1F9A 04,00
+set 7E1193 02,00
+set 7E0357 01
+call 0B:BE65 x=1F20 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E11F9 20,1F
+set 7E11F7 02,00
+set 7E1239 80,1F
+set 7E1F9A 04,00
+set 7E1193 02,00
+set 7E1905 01,00
+call 0B:BE84 x=1F20 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E11F9 20,1F
+set 7E11F7 02,00
+set 7E1239 80,1F
+set 7E1F9A 04,00
+set 7E1193 02,00
+set 7E1905 00,00
+call 0B:BE84 x=1F20 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E11F9 20,1F
+set 7E11F7 02,00
+set 7E1239 80,1F
+set 7E1F9A 04,00
+set 7E1193 02,00
+set 7E1905 00,00
+set 7E1F94 CE,00
+call 0B:BE84 x=1F20 p=00 db=00 d=0000
+wait 1

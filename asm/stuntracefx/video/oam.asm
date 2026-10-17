@@ -2430,3 +2430,36 @@ PauseOnStart:
     bne .lBBFB
     plp
     rts
+
+
+; @routine 07:C484 OamHide55To63
+; WHAT IT DOES: Hides sprites 55-63. Nothing in the game calls it.
+; HOW: OamHideRange from offset $DC for 9 sprites; P saved and restored.
+; Entry: any widths. Exit: A low byte = $F0; X = $0100 ($00 when X is
+; 8-bit); Y = 0; P unchanged.
+%at($07C484)
+OamHide55To63:
+    php
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$00DC
+    ldy.w #$0009
+    jsr.w OamHideRange
+    plp
+    rts
+
+; @routine 07:C494 OamHide119To127
+; WHAT IT DOES: Hides sprites 119-127. Nothing in the game calls it.
+; HOW: OamHideRange from offset $1DC for 9 sprites; P saved and restored.
+; Entry: any widths. Exit: A low byte = $F0; X = $0200 ($00 when X is
+; 8-bit); Y = 0; P unchanged.
+%at($07C494)
+OamHide119To127:
+    php
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$01DC
+    ldy.w #$0009
+    jsr.w OamHideRange
+    plp
+    rts

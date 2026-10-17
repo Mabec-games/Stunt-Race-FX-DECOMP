@@ -1657,3 +1657,68 @@ TitleScreenLoop_quit:
     rep.b #$30
     lda.w #$FFFF
     rtl
+
+
+; @routine 0B:F443 MenuScrollZeroBg12
+; WHAT IT DOES: Queues writes for the next vertical blank that put BG1 and
+; BG2 back at scroll 0 (both bytes of BG1HOFS, BG2HOFS, BG1VOFS and
+; BG2VOFS). Nothing in the game calls it.
+; HOW: Eight FrameByteWritePush calls with 0; X is pushed around each.
+; SEP #$30 first, so X and Y keep only their low bytes.
+; Entry: any widths. Exit: A low byte = 0, A high byte unchanged; X and Y
+; their low bytes (high bytes 0); P unchanged.
+%at($0BF443)
+MenuScrollZeroBg12:
+    php
+    sep.b #$30
+    lda.b #$00
+    sep.b #$20
+    rep.b #$10
+    phx
+    ldx.w #!BG1HOFS
+    jsl.l FrameByteWritePush
+    plx
+    sep.b #$20
+    rep.b #$10
+    phx
+    ldx.w #!BG1HOFS
+    jsl.l FrameByteWritePush
+    plx
+    sep.b #$20
+    rep.b #$10
+    phx
+    ldx.w #!BG2HOFS
+    jsl.l FrameByteWritePush
+    plx
+    sep.b #$20
+    rep.b #$10
+    phx
+    ldx.w #!BG2HOFS
+    jsl.l FrameByteWritePush
+    plx
+    sep.b #$20
+    rep.b #$10
+    phx
+    ldx.w #!BG1VOFS
+    jsl.l FrameByteWritePush
+    plx
+    sep.b #$20
+    rep.b #$10
+    phx
+    ldx.w #!BG1VOFS
+    jsl.l FrameByteWritePush
+    plx
+    sep.b #$20
+    rep.b #$10
+    phx
+    ldx.w #!BG2VOFS
+    jsl.l FrameByteWritePush
+    plx
+    sep.b #$20
+    rep.b #$10
+    phx
+    ldx.w #!BG2VOFS
+    jsl.l FrameByteWritePush
+    plx
+    plp
+    rts
