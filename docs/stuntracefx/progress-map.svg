@@ -1080,7 +1080,7 @@
 <rect x="924.7" y="834.1" width="11.6" height="10.0" fill="#3fb950"><title>ResultsNext  07C8FE  19B  T4  [race]</title></rect>
 <rect x="936.9" y="834.1" width="11.0" height="10.0" fill="#3fb950"><title>PauseStageContinueP2  07BE40  18B  T4  [race]</title></rect>
 <rect x="948.4" y="834.1" width="11.0" height="10.0" fill="#3fb950"><title>LapCharsLap1  07D0F5  18B  T4  [race]</title></rect>
-<rect x="960.0" y="834.1" width="11.0" height="10.0" fill="#d29922"><title>TimeBonusPiecesMirrored  07917D  18B  T2  [race]</title></rect>
+<rect x="960.0" y="834.1" width="11.0" height="10.0" fill="#3fb950"><title>TimeBonusPiecesMirrored  07917D  18B  T4  [race]</title></rect>
 <rect x="912.5" y="844.8" width="8.8" height="11.7" fill="#3fb950"><title>GsuBonusDigitsFull  079241  17B  T4  [race]</title></rect>
 <rect x="912.5" y="857.1" width="8.8" height="11.0" fill="#3fb950"><title>PauseStageQuitWait  07BCD0  16B  T4  [race]</title></rect>
 <rect x="912.5" y="868.7" width="8.8" height="10.3" fill="#3fb950"><title>RaceEndVideoReset  07EC80  15B  T4  [race]</title></rect>
@@ -2077,4 +2077,4 @@
 <rect x="1587.9" y="853.8" width="10.0" height="23.2" fill="#c8ccd2"><title>(unnamed)  048C3B  48B  T1  [bank 04 Super FX]</title></rect>
 <rect x="1587.9" y="877.7" width="10.0" height="19.8" fill="#c8ccd2"><title>(unnamed)  048C6C  41B  T1  [bank 04 Super FX]</title></rect>
 <rect x="1587.9" y="898.0" width="10.0" height="0.4" fill="#c8ccd2"><title>(unnamed)  048000  1B  T1  [bank 04 Super FX]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 2014 &#183; T3 behaviour-exact 0 &#183; 183,108/199,389 bytes exact (91.8%) &#183; green=T4 blue=T3 amber=T2 gray=T1</text></svg>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 2015 &#183; T3 behaviour-exact 0 &#183; 183,126/199,389 bytes exact (91.8%) &#183; green=T4 blue=T3 amber=T2 gray=T1</text></svg>
