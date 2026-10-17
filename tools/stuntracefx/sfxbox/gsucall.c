@@ -357,7 +357,7 @@ void gsu_state_loaded(int running)
 {
     halted = !running;
     starting = 0;
-    if (mode == 1)
+    if (stats)   /* the per-call checks are on (mode is 1 only while a C runs) */
         while (depth) stats[ws[--depth].idx].skipped++;
 }
 
