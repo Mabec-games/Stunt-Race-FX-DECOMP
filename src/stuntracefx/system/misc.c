@@ -304,6 +304,8 @@ void abi_DemoRunThird(void)
  * command $0B), each by the shared demo run at $03:8683, then the return
  * to DemoRunThird's caller.
  * HOW: REP #$30, LDA #offset, STA $1A57, JSL to the demo run, twice; RTL.
+ * Not reached in the traces so far: a unit call of it runs about 6,150
+ * frames, longer than the gate gives one lockstep run.
  * Entry: D = $0000. Exit: as the second demo run leaves it.
  */
 void abi_DemoRunThirdRest(void)
