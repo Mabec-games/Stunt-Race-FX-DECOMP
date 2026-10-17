@@ -1812,3 +1812,14 @@ includeonce
 !tile_row_level = $0342             ; its high byte picks the row
 !palette_buffer_e997 = $7EE997      ; 16 colours
 !palette_buffer_0802 = $0802        ; 16 colours (bank $7E)
+!mul_word = $67                     ; MulWordByte: the signed word
+!mul_byte = $69                     ; MulWordByte: the signed byte
+!mul_product = $6A                  ; MulWordByte: the product word
+!mul_zero = $6C                     ; MulWordByte: cleared, the zero added to
+!rot_wide_sin = $05F6               ; RotateXZWide: sin of the angle
+!rot_wide_cos = $05F7               ; RotateXZWide: cos of the angle
+!slot_01 = $01
+!slot_02 = $02
+!slot_03 = $03
+!time_now = $1A37                   ; TimeMarkStart/End: the time stamp, then the total base
+!time_marks = $1A39                 ; TimeMarkStart/End: starts and totals by slot

@@ -730,3 +730,256 @@ RotateXY:
     plx
     ply
     rtl
+
+; @routine 02:DF95 MulWordByteLong
+; WHAT IT DOES: MulWordByte for callers in other banks.
+; HOW: JSR, RTL.
+; Entry: M 8-bit, X 8-bit, D = $0000. Exit: as MulWordByte.
+%at($02DF95)
+MulWordByteLong:
+    jsr.w MulWordByte
+    rtl
+
+; @routine 02:DF99 MulWordByte
+; WHAT IT DOES: Multiplies the signed word in direct page $67 by the signed
+; byte at $69 times 2, keeping the product's top 16 of 24 bits: $6A = v *
+; 2s / 256. Nothing in the game calls it.
+; HOW: The hardware multiplier, on magnitudes: 2|s| times the low byte,
+; then (after reading the high byte of that product) times the high byte;
+; the two products are added, or subtracted from 0 when the signs differ.
+; The multiplier's registers through the data bank; $6C-$6D are cleared
+; and used as the zero to add to.
+; Entry: M 8-bit, X 8-bit, D = $0000. Exit: M 8-bit; A = the product
+; (both bytes); Y = the first product's high byte; N, Z, C, V from the
+; last add or subtract.
+MulWordByte:
+    stz.b !mul_zero
+    stz.b !mul_zero+1
+    stz.b !mul_product+1
+    lda.b !mul_byte
+    bmi .neg_s
+    asl a
+    sta.w !WRMPYA
+    lda.b !mul_word+1
+    bmi .pos_s_neg_v
+    lda.b !mul_word
+    sta.w !WRMPYB
+    nop
+    nop
+    lda.b !mul_word+1
+    jmp.w .add
+.pos_s_neg_v:
+    lda.b #$00
+    sec
+    sbc.b !mul_word
+    sta.w !WRMPYB
+    lda.b #$00
+    sbc.b !mul_word+1
+    jmp.w .sub
+.neg_s:
+    eor.b #$FF
+    inc a
+    asl a
+    sta.w !WRMPYA
+    lda.b !mul_word+1
+    bmi .neg_s_neg_v
+    lda.b !mul_word
+    sta.w !WRMPYB
+    nop
+    nop
+    nop
+    lda.b !mul_word+1
+.sub:
+    ldy.w !RDMPYH
+    sta.w !WRMPYB
+    sty.b !mul_product
+    rep.b #$20
+    lda.b !mul_zero
+    sec
+    sbc.w !RDMPYL
+    sec
+    sbc.b !mul_product
+    jmp.w .store
+.neg_s_neg_v:
+    lda.b #$00
+    sec
+    sbc.b !mul_word
+    sta.w !WRMPYB
+    nop
+    nop
+    lda.b #$00
+    sbc.b !mul_word+1
+.add:
+    ldy.w !RDMPYH
+    sta.w !WRMPYB
+    sty.b !mul_product
+    rep.b #$21
+    lda.b !mul_zero
+    adc.w !RDMPYL
+    clc
+    adc.b !mul_product
+.store:
+    sta.b !mul_product
+    sep.b #$20
+    rts
+
+; @routine 03:C6F4 RotateXZWide
+; WHAT IT DOES: Rotates the 16-bit vector (x, z) in direct page $02 and
+; $94 by the angle A: z' = x sin + z cos goes to $05F2, x' = x cos - z
+; sin to direct page $04, at 16-bit precision (RotateXZ works in 8 bits).
+; Nothing in the game calls it.
+; HOW: sin and cos of A from the byte tables at $00:96FE and $00:973E
+; (kept at $05F6 and $05F7); four MulWordByteLong products, added and
+; subtracted a byte at a time. X and Y are kept in direct page $3E and
+; $40; P and DB are saved and restored; the data bank is 0 inside.
+; Entry: M 8-bit, D = $0000; A = angle. Exit: A low byte = x''s high
+; byte; X, Y, DB, P unchanged (X and Y reloaded from $3E and $40).
+%at($03C6F4)
+RotateXZWide:
+    stx.b !scale_scratch
+    sty.b !dp_40
+    php
+    phb
+    sep.b #$10
+    tax
+    lda.b #$00
+    pha
+    plb
+    lda.w !rot_sin_table,x
+    sta.w !rot_wide_sin
+    lda.w !rot_cos_table,x
+    sta.w !rot_wide_cos
+    lda.b !dp_02
+    sta.b !mul_word
+    lda.b !dp_03
+    sta.b !mul_word+1
+    lda.w !rot_wide_sin
+    sta.b !mul_byte
+    jsl.l MulWordByteLong
+    lda.b !mul_product
+    sta.w !rot_z
+    lda.b !mul_product+1
+    sta.w !rot_z+1
+    lda.b !dp_94
+    sta.b !mul_word
+    lda.b !dp_95
+    sta.b !mul_word+1
+    lda.w !rot_wide_cos
+    sta.b !mul_byte
+    jsl.l MulWordByteLong
+    lda.b !mul_product
+    clc
+    adc.w !rot_z
+    sta.w !rot_z
+    lda.b !mul_product+1
+    adc.w !rot_z+1
+    sta.w !rot_z+1
+    lda.b !dp_94
+    sta.b !mul_word
+    lda.b !dp_95
+    sta.b !mul_word+1
+    lda.w !rot_wide_sin
+    sta.b !mul_byte
+    jsl.l MulWordByteLong
+    lda.b !mul_product
+    sta.b !dp_04
+    lda.b !mul_product+1
+    sta.b !dp_05
+    lda.b !dp_02
+    sta.b !mul_word
+    lda.b !dp_03
+    sta.b !mul_word+1
+    lda.w !rot_wide_cos
+    sta.b !mul_byte
+    jsl.l MulWordByteLong
+    lda.b !mul_product
+    sec
+    sbc.b !dp_04
+    sta.b !dp_04
+    lda.b !mul_product+1
+    sbc.b !dp_05
+    sta.b !dp_05
+    plb
+    plp
+    ldy.b !dp_40
+    ldx.b !scale_scratch
+    rtl
+
+; @routine 03:C788 RotateXZWideFrom08
+; WHAT IT DOES: As RotateXZWide for the vector (x, z) in direct page $08
+; and $94 and the angle -A: z' to $05F2, x' to direct page $0A. Nothing
+; in the game calls it.
+; HOW: As RotateXZWide, the angle negated first (EOR #$FF, INC).
+; Entry: M 8-bit, D = $0000; A = angle. Exit: A low byte = x''s high
+; byte; X, Y, DB, P unchanged (X and Y reloaded from $3E and $40).
+RotateXZWideFrom08:
+    stx.b !scale_scratch
+    sty.b !dp_40
+    php
+    phb
+    sep.b #$10
+    eor.b #$FF
+    inc a
+    tax
+    lda.b #$00
+    pha
+    plb
+    lda.w !rot_sin_table,x
+    sta.w !rot_wide_sin
+    lda.w !rot_cos_table,x
+    sta.w !rot_wide_cos
+    lda.b !dp_08
+    sta.b !mul_word
+    lda.b !dp_09
+    sta.b !mul_word+1
+    lda.w !rot_wide_sin
+    sta.b !mul_byte
+    jsl.l MulWordByteLong
+    lda.b !mul_product
+    sta.w !rot_z
+    lda.b !mul_product+1
+    sta.w !rot_z+1
+    lda.b !dp_94
+    sta.b !mul_word
+    lda.b !dp_95
+    sta.b !mul_word+1
+    lda.w !rot_wide_cos
+    sta.b !mul_byte
+    jsl.l MulWordByteLong
+    lda.b !mul_product
+    clc
+    adc.w !rot_z
+    sta.w !rot_z
+    lda.b !mul_product+1
+    adc.w !rot_z+1
+    sta.w !rot_z+1
+    lda.b !dp_94
+    sta.b !mul_word
+    lda.b !dp_95
+    sta.b !mul_word+1
+    lda.w !rot_wide_sin
+    sta.b !mul_byte
+    jsl.l MulWordByteLong
+    lda.b !mul_product
+    sta.b !actor_0a
+    lda.b !mul_product+1
+    sta.b !dp_0b
+    lda.b !dp_08
+    sta.b !mul_word
+    lda.b !dp_09
+    sta.b !mul_word+1
+    lda.w !rot_wide_cos
+    sta.b !mul_byte
+    jsl.l MulWordByteLong
+    lda.b !mul_product
+    sec
+    sbc.b !actor_0a
+    sta.b !actor_0a
+    lda.b !mul_product+1
+    sbc.b !dp_0b
+    sta.b !dp_0b
+    plb
+    plp
+    ldy.b !dp_40
+    ldx.b !scale_scratch
+    rtl

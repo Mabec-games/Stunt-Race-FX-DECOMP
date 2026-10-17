@@ -5,6 +5,7 @@
  * Fields used here: +$00, +$04, +$05, +$06 and +$07 (bytes).
  */
 #include "machine.h"
+#include "cpu_ops.h"
 
 #define SLOT_MASK 0x05D5u
 #define SLOTS 0x0595u
@@ -264,4 +265,251 @@ uint8_t SpriteSlot4Full(uint8_t bank)
 void abi_SpriteSlot4Full(void)
 {
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | SpriteSlot4Full(cpu.db));
+}
+
+void abi_SpriteSlot1Countdown(void);
+
+/* Marks record r in use (mask bit) and sets +$04 = 0, +$05 = 2, +$06 = k. */
+static void slot_show(uint8_t bank, uint16_t r, uint8_t bit, uint8_t k)
+{
+    uint8_t a;
+
+    a = rd8(dbw(bank, SLOT_MASK));
+    wr8(dbw(bank, SLOT_MASK), (uint8_t)(a | bit));
+    wr8((uint16_t)(r + 4), 0x00);
+    wr8((uint16_t)(r + 5), 0x02);
+    wr8((uint16_t)(r + 6), k);
+}
+
+/*
+ * @routine 02:E046 SpriteSlot2Brighten
+ * WHAT IT DOES: Shows record 2 ($05A5) and brightens it a step: marks it in
+ * use and sets +$04 = 0, +$05 = 2, +$06 = $07, +$00 = +$07 OR $E0, then
+ * steps +$07 up by 1 until it reaches $1F. Nothing in the game calls it.
+ * HOW: As SpriteSlot4Brighten, for record 2.
+ * Entry: D = $0000. Exit: A low byte = +$07's new value; X, P unchanged.
+ */
+uint8_t SpriteSlot2Brighten(uint8_t bank)
+{
+    uint16_t r = 0x05A5;
+    uint8_t a;
+
+    slot_show(bank, r, 0x04, 0x07);
+    a = rd8((uint16_t)(r + 7));
+    wr8((uint16_t)(r + 0), (uint8_t)(a | 0xE0));
+    a = rd8((uint16_t)(r + 7));
+    if (a != 0x1F) {
+        a = (uint8_t)(a + 1);
+        wr8((uint16_t)(r + 7), a);
+    }
+    return a;
+}
+
+void abi_SpriteSlot2Brighten(void)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | SpriteSlot2Brighten(cpu.db));
+}
+
+/*
+ * @routine 02:E042 SpriteSlot2BrightenLong
+ * WHAT IT DOES: SpriteSlot2Brighten for callers in other banks.
+ * HOW: JSR, RTL.
+ * Entry: D = $0000. Exit: as SpriteSlot2Brighten.
+ */
+void abi_SpriteSlot2BrightenLong(void)
+{
+    abi_SpriteSlot2Brighten();
+}
+
+/*
+ * @routine 02:E07B SpriteSlot1Start
+ * WHAT IT DOES: Starts record 1's countdown: $08FB = $28, record 1 marked
+ * in use with +$07 = $1E and +$04 = 0, then a first SpriteSlot1Countdown;
+ * $084C is cleared. Nothing in the game calls it.
+ * HOW: 8-bit stores through the data bank and direct page (D = $0000).
+ * P is saved and restored.
+ * Entry: D = $0000. Exit: A low byte and X as SpriteSlot1Countdown leaves
+ * them (X's low byte when X is 8-bit); P unchanged.
+ */
+void abi_SpriteSlot1Start(void)
+{
+    uint8_t b = cpu.db, p = cpu.p, a;
+
+    wr8(dbw(b, 0x08FB), 0x28);
+    a = rd8(dbw(b, SLOT_MASK));
+    wr8(dbw(b, SLOT_MASK), (uint8_t)(a | 0x02));
+    cpu.x = 0x059D;
+    wr8(0x05A4, 0x1E);
+    wr8(0x05A1, 0x00);
+    cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
+    abi_SpriteSlot1Countdown();
+    wr8(dbw(b, 0x084C), 0x00);
+    op_plp(p);
+}
+
+/* Records 5 and 6 with +$01, +$02, +$03 and +$00: the shared stores. */
+static void slot_colour(uint8_t bank, uint16_t r, uint8_t bit, uint8_t c1, uint8_t c23, int c1_last)
+{
+    slot_show(bank, r, bit, 0x27);
+    if (!c1_last) {
+        wr8((uint16_t)(r + 1), c1);
+        wr8((uint16_t)(r + 2), c23);
+        wr8((uint16_t)(r + 3), c23);
+        wr8((uint16_t)(r + 0), 0x00);
+    } else {
+        wr8((uint16_t)(r + 0), 0x00);
+        wr8((uint16_t)(r + 1), c1);
+        wr8((uint16_t)(r + 2), c23);
+        wr8((uint16_t)(r + 3), c23);
+    }
+}
+
+/*
+ * @routine 02:E117 SpriteSlot6Yellow
+ * WHAT IT DOES: Shows record 6 ($05C5) with +$04 = 0, +$05 = 2, +$06 =
+ * $27, +$01 = 0, +$02 = +$03 = $1F and +$00 = 0. Nothing in the game
+ * calls it.
+ * HOW: 8-bit stores through the data bank and direct page (D = $0000);
+ * P and X are saved and restored.
+ * Entry: D = $0000. Exit: A low byte = $1F; X, P unchanged.
+ */
+void abi_SpriteSlot6Yellow(void)
+{
+    slot_colour(cpu.db, 0x05C5, 0x40, 0x00, 0x1F, 0);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x1F);
+}
+
+/*
+ * @routine 02:E147 SpriteSlot6DimYellow
+ * WHAT IT DOES: As SpriteSlot6Yellow with +$02 = +$03 = $07. Nothing in
+ * the game calls it.
+ * HOW: As SpriteSlot6Yellow.
+ * Entry: D = $0000. Exit: A low byte = $07; X, P unchanged.
+ */
+void abi_SpriteSlot6DimYellow(void)
+{
+    slot_colour(cpu.db, 0x05C5, 0x40, 0x00, 0x07, 0);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x07);
+}
+
+/*
+ * @routine 02:E177 SpriteSlot6Red
+ * WHAT IT DOES: Shows record 6 ($05C5) with +$04 = 0, +$05 = 2, +$06 =
+ * $27, +$00 = 0, +$01 = $1F and +$02 = +$03 = 0. Nothing in the game
+ * calls it.
+ * HOW: As SpriteSlot6Yellow, +$00 stored first.
+ * Entry: D = $0000. Exit: A low byte = $1F; X, P unchanged.
+ */
+void abi_SpriteSlot6Red(void)
+{
+    slot_colour(cpu.db, 0x05C5, 0x40, 0x1F, 0x00, 1);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x1F);
+}
+
+/*
+ * @routine 02:E1A7 SpriteSlot5DimRed
+ * WHAT IT DOES: Shows record 5 ($05BD) with +$04 = 0, +$05 = 2, +$06 =
+ * $27, +$00 = 0, +$01 = $0A and +$02 = +$03 = 0. Nothing in the game
+ * calls it.
+ * HOW: As SpriteSlot6Red, for record 5.
+ * Entry: D = $0000. Exit: A low byte = $0A; X, P unchanged.
+ */
+void abi_SpriteSlot5DimRed(void)
+{
+    slot_colour(cpu.db, 0x05BD, 0x20, 0x0A, 0x00, 1);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x0A);
+}
+
+/*
+ * @routine 02:E1D7 SpriteSlot5Off
+ * WHAT IT DOES: Marks record 5 unused. Nothing in the game calls it.
+ * HOW: Clears bit 5 of the mask through the data bank; P and X are saved
+ * and restored.
+ * Entry: any widths. Exit: A low byte = the new mask; X, P unchanged.
+ */
+void abi_SpriteSlot5Off(void)
+{
+    uint8_t a;
+
+    a = rd8(dbw(cpu.db, SLOT_MASK));
+    a = (uint8_t)(a & 0xDF);
+    wr8(dbw(cpu.db, SLOT_MASK), a);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
+}
+
+/*
+ * @routine 02:E215 SpriteSlot2Darken
+ * WHAT IT DOES: Shows record 2 ($05A5) and darkens it a step: marks it in
+ * use and sets +$04 = 0, +$05 = 2, +$06 = $07, +$00 = +$07 OR $E0, then
+ * steps +$07 down by 1; once +$07 is 0 the record is marked unused
+ * instead. Nothing in the game calls it.
+ * HOW: As SpriteSlot4Darken, for record 2.
+ * Entry: D = $0000. Exit: A low byte = +$07's new value, or the new mask
+ * at 0; X, P unchanged.
+ */
+uint8_t SpriteSlot2Darken(uint8_t bank)
+{
+    uint16_t r = 0x05A5;
+    uint8_t a;
+
+    slot_show(bank, r, 0x04, 0x07);
+    a = rd8((uint16_t)(r + 7));
+    wr8((uint16_t)(r + 0), (uint8_t)(a | 0xE0));
+    a = rd8((uint16_t)(r + 7));
+    if (a) {
+        a = (uint8_t)(a - 1);
+        wr8((uint16_t)(r + 7), a);
+        return a;
+    }
+    a = rd8(dbw(bank, SLOT_MASK));
+    a = (uint8_t)(a & 0xFB);
+    wr8(dbw(bank, SLOT_MASK), a);
+    return a;
+}
+
+void abi_SpriteSlot2Darken(void)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | SpriteSlot2Darken(cpu.db));
+}
+
+/*
+ * @routine 02:E211 SpriteSlot2DarkenLong
+ * WHAT IT DOES: SpriteSlot2Darken for callers in other banks.
+ * HOW: JSR, RTL.
+ * Entry: D = $0000. Exit: as SpriteSlot2Darken.
+ */
+void abi_SpriteSlot2DarkenLong(void)
+{
+    abi_SpriteSlot2Darken();
+}
+
+/*
+ * @routine 02:E1EE SpriteSlot2FadeOut
+ * WHAT IT DOES: Starts record 2's fade out from full: marks it in use with
+ * +$07 = $1F, then SpriteSlot2Darken. Nothing in the game calls it.
+ * HOW: P and X saved and restored around the first stores; JSR to
+ * SpriteSlot2Darken, RTL.
+ * Entry: D = $0000. Exit: as SpriteSlot2Darken.
+ */
+void abi_SpriteSlot2FadeOut(void)
+{
+    uint8_t a;
+
+    a = rd8(dbw(cpu.db, SLOT_MASK));
+    wr8(dbw(cpu.db, SLOT_MASK), (uint8_t)(a | 0x04));
+    wr8(0x05AC, 0x1F);
+    abi_SpriteSlot2Darken();
+}
+
+/*
+ * @routine 02:E259 SpriteSlot5Yellow
+ * WHAT IT DOES: As SpriteSlot6Yellow for record 5 ($05BD). Nothing in the
+ * game calls it.
+ * HOW: As SpriteSlot6Yellow.
+ * Entry: D = $0000. Exit: A low byte = $1F; X, P unchanged.
+ */
+void abi_SpriteSlot5Yellow(void)
+{
+    slot_colour(cpu.db, 0x05BD, 0x20, 0x00, 0x1F, 0);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x1F);
 }

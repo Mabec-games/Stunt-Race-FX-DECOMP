@@ -1,0 +1,53 @@
+# unit_sprite_slots_02: unit tests (call) from the start of a Novice race
+# for the sprite record helpers at 02:E042-E288 that nothing in the game
+# calls: record 2 brightened below $1F and at $1F (and long), record 1's
+# countdown start, records 5 and 6 coloured and record 5 turned off,
+# record 2 darkened above 0 and at 0 (and long, and from full). +$07 of
+# record 2 is $05AC.
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E05AC 03
+call 02:E046 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E05AC 1F
+call 02:E046 p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 02:E042 long p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 02:E07B long p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 02:E117 long p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 02:E147 long p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 02:E177 long p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 02:E1A7 long p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 02:E1D7 long p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E05AC 05
+call 02:E215 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E05AC 00
+call 02:E215 p=20 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E05AC 05
+call 02:E211 long p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 02:E1EE long p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 02:E259 long p=00 db=00 d=0000
+wait 1

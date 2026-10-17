@@ -578,3 +578,116 @@ RasterStage_s20:
     lda.w !TIMEUP
     rtl
 
+
+; @routine 7E:F14F TimeMarkStart
+; WHAT IT DOES: Records the time now (frame and line, as time_stamp says)
+; in the word at $1A39 + X: the start of a timed stretch of a frame.
+; Nothing in the game calls it.
+; The path for lines $100 and over (the last 6 of vertical blank) is
+; not reached in the traces so far.
+; HOW: Long accesses to bank $00; see time_stamp.
+; Entry: X 16-bit; X = the slot's offset. Exit: M 16-bit; A = the time;
+; X, Y unchanged; I clear; N, Z, C, V from the last add.
+%ramcode($7EF14F, $014E76)
+TimeMarkStart:
+    rep.b #$20
+    sei
+    lda.l !frames_since_tick
+    xba
+    and.w #$FF00
+    sta.l !time_now
+    sep.b #$20
+    lda.l !SLHV
+    cli
+    lda.l !OPVCT
+    xba
+    lda.l !OPVCT
+    xba
+    rep.b #$20
+    and.w #$01FF
+    cmp.w #$0100
+    bmi .lF17C
+    lda.w #$00FF
+.lF17C:
+    cmp.w #$0011
+    bpl .lF185
+    clc
+    adc.w #$0100
+.lF185:
+    clc
+    adc.l !time_now
+    sta.l !time_marks,x
+    rtl
+
+; @routine 7E:F18F TimeMarkEnd
+; WHAT IT DOES: Adds the time since the start recorded at $1A39 + X to the
+; running total at $1A37 + X. A start late in its frame (low byte $D1 or
+; more) is taken as is; an earlier one first has the frames between, each
+; as 64 lines, taken off the end time. Nothing in the game calls it.
+; The path for lines $100 and over (the last 6 of vertical blank) is
+; not reached in the traces so far.
+; HOW: The end time in $1A37 (time_stamp); the start's frame byte kept in
+; $1A39 for the correction (read back through the data bank); 16-bit
+; long adds and subtracts.
+; Entry: X 16-bit; X = the slot's offset; data bank $00. Exit: M 16-bit;
+; A = the new total; X, Y unchanged; I clear; N, Z, C, V from the last
+; add.
+TimeMarkEnd:
+    rep.b #$20
+    sei
+    lda.l !frames_since_tick
+    xba
+    and.w #$FF00
+    sta.l !time_now
+    sep.b #$20
+    lda.l !SLHV
+    cli
+    lda.l !OPVCT
+    xba
+    lda.l !OPVCT
+    xba
+    rep.b #$20
+    and.w #$01FF
+    cmp.w #$0100
+    bmi .lF1BC
+    lda.w #$00FF
+.lF1BC:
+    cmp.w #$0011
+    bpl .lF1C5
+    clc
+    adc.w #$0100
+.lF1C5:
+    clc
+    adc.l !time_now
+    sta.l !time_now
+    lda.l !time_marks,x
+    and.w #$00FF
+    cmp.w #$00D1
+    bpl .lF204
+    lda.l !time_marks,x
+    and.w #$FF00
+    sta.l !time_marks
+    lda.l !time_now
+    and.w #$FF00
+    sec
+    sbc.w !time_marks
+    xba
+    asl a
+    asl a
+    asl a
+    asl a
+    asl a
+    asl a
+    eor.w #$FFFF
+    inc a
+    clc
+    adc.l !time_now
+    sta.l !time_now
+.lF204:
+    lda.l !time_now
+    sec
+    sbc.l !time_marks,x
+    clc
+    adc.l !time_now,x
+    sta.l !time_now,x
+    rtl

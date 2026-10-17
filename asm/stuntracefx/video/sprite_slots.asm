@@ -251,3 +251,346 @@ SpriteSlot4Full:
     plx
     plp
     rts
+
+; @routine 02:E042 SpriteSlot2BrightenLong
+; WHAT IT DOES: SpriteSlot2Brighten for callers in other banks.
+; HOW: JSR, RTL.
+; Entry: D = $0000. Exit: as SpriteSlot2Brighten.
+%at($02E042)
+SpriteSlot2BrightenLong:
+    jsr.w SpriteSlot2Brighten
+    rtl
+
+; @routine 02:E046 SpriteSlot2Brighten
+; WHAT IT DOES: Shows record 2 ($05A5) and brightens it a step: marks it in
+; use and sets +$04 = 0, +$05 = 2, +$06 = $07, +$00 = +$07 OR $E0, then
+; steps +$07 up by 1 until it reaches $1F. Nothing in the game calls it.
+; HOW: As SpriteSlot4Brighten, for record 2.
+; Entry: D = $0000. Exit: A low byte = +$07's new value; X, P unchanged.
+SpriteSlot2Brighten:
+    php
+    sep.b #$20
+    rep.b #$10
+    phx
+    sep.b #$20
+    rep.b #$10
+    lda.w !slot_mask
+    ora.b #$04
+    sta.w !slot_mask
+    ldx.w #$05A5
+    sep.b #$20
+    rep.b #$10
+    stz.b !slot_04,x
+    lda.b #$02
+    sta.b !slot_05,x
+    lda.b #$07
+    sta.b !slot_06,x
+    lda.b #$E0
+    ora.b !slot_07,x
+    sta.b !slot_00,x
+    lda.b !slot_07,x
+    cmp.b #$1F
+    beq .lE078
+    inc a
+    sta.b !slot_07,x
+.lE078:
+    plx
+    plp
+    rts
+
+; @routine 02:E07B SpriteSlot1Start
+; WHAT IT DOES: Starts record 1's countdown: $08FB = $28, record 1 marked
+; in use with +$07 = $1E and +$04 = 0, then a first SpriteSlot1Countdown;
+; $084C is cleared. Nothing in the game calls it.
+; HOW: 8-bit stores through the data bank and direct page (D = $0000).
+; P is saved and restored.
+; Entry: D = $0000. Exit: A low byte and X as SpriteSlot1Countdown leaves
+; them (X's low byte when X is 8-bit); P unchanged.
+SpriteSlot1Start:
+    php
+    sep.b #$20
+    rep.b #$10
+    lda.b #$28
+    sta.w !slot1_count
+    sep.b #$20
+    rep.b #$10
+    lda.w !slot_mask
+    ora.b #$02
+    sta.w !slot_mask
+    ldx.w #$059D
+    sep.b #$20
+    rep.b #$10
+    lda.b #$1E
+    sta.b !slot_07,x
+    stz.b !slot_04,x
+    jsl.l SpriteSlot1Countdown
+    sep.b #$20
+    stz.w !wram_084C
+    plp
+    rtl
+
+; @routine 02:E117 SpriteSlot6Yellow
+; WHAT IT DOES: Shows record 6 ($05C5) with +$04 = 0, +$05 = 2, +$06 =
+; $27, +$01 = 0, +$02 = +$03 = $1F and +$00 = 0. Nothing in the game
+; calls it.
+; HOW: 8-bit stores through the data bank and direct page (D = $0000);
+; P and X are saved and restored.
+; Entry: D = $0000. Exit: A low byte = $1F; X, P unchanged.
+%at($02E117)
+SpriteSlot6Yellow:
+    php
+    sep.b #$20
+    rep.b #$10
+    phx
+    sep.b #$20
+    rep.b #$10
+    lda.w !slot_mask
+    ora.b #$40
+    sta.w !slot_mask
+    ldx.w #$05C5
+    sep.b #$20
+    rep.b #$10
+    stz.b !slot_04,x
+    lda.b #$02
+    sta.b !slot_05,x
+    lda.b #$27
+    sta.b !slot_06,x
+    stz.b !slot_01,x
+    lda.b #$1F
+    sta.b !slot_02,x
+    sta.b !slot_03,x
+    stz.b !slot_00,x
+    plx
+    plp
+    rtl
+
+; @routine 02:E147 SpriteSlot6DimYellow
+; WHAT IT DOES: As SpriteSlot6Yellow with +$02 = +$03 = $07. Nothing in
+; the game calls it.
+; HOW: As SpriteSlot6Yellow.
+; Entry: D = $0000. Exit: A low byte = $07; X, P unchanged.
+SpriteSlot6DimYellow:
+    php
+    sep.b #$20
+    rep.b #$10
+    phx
+    sep.b #$20
+    rep.b #$10
+    lda.w !slot_mask
+    ora.b #$40
+    sta.w !slot_mask
+    ldx.w #$05C5
+    sep.b #$20
+    rep.b #$10
+    stz.b !slot_04,x
+    lda.b #$02
+    sta.b !slot_05,x
+    lda.b #$27
+    sta.b !slot_06,x
+    stz.b !slot_01,x
+    lda.b #$07
+    sta.b !slot_02,x
+    sta.b !slot_03,x
+    stz.b !slot_00,x
+    plx
+    plp
+    rtl
+
+; @routine 02:E177 SpriteSlot6Red
+; WHAT IT DOES: Shows record 6 ($05C5) with +$04 = 0, +$05 = 2, +$06 =
+; $27, +$00 = 0, +$01 = $1F and +$02 = +$03 = 0. Nothing in the game
+; calls it.
+; HOW: As SpriteSlot6Yellow, +$00 stored first.
+; Entry: D = $0000. Exit: A low byte = $1F; X, P unchanged.
+SpriteSlot6Red:
+    php
+    sep.b #$20
+    rep.b #$10
+    phx
+    sep.b #$20
+    rep.b #$10
+    lda.w !slot_mask
+    ora.b #$40
+    sta.w !slot_mask
+    ldx.w #$05C5
+    sep.b #$20
+    rep.b #$10
+    stz.b !slot_04,x
+    lda.b #$02
+    sta.b !slot_05,x
+    lda.b #$27
+    sta.b !slot_06,x
+    stz.b !slot_00,x
+    lda.b #$1F
+    sta.b !slot_01,x
+    stz.b !slot_02,x
+    stz.b !slot_03,x
+    plx
+    plp
+    rtl
+
+; @routine 02:E1A7 SpriteSlot5DimRed
+; WHAT IT DOES: Shows record 5 ($05BD) with +$04 = 0, +$05 = 2, +$06 =
+; $27, +$00 = 0, +$01 = $0A and +$02 = +$03 = 0. Nothing in the game
+; calls it.
+; HOW: As SpriteSlot6Red, for record 5.
+; Entry: D = $0000. Exit: A low byte = $0A; X, P unchanged.
+SpriteSlot5DimRed:
+    php
+    sep.b #$20
+    rep.b #$10
+    phx
+    sep.b #$20
+    rep.b #$10
+    lda.w !slot_mask
+    ora.b #$20
+    sta.w !slot_mask
+    ldx.w #$05BD
+    sep.b #$20
+    rep.b #$10
+    stz.b !slot_04,x
+    lda.b #$02
+    sta.b !slot_05,x
+    lda.b #$27
+    sta.b !slot_06,x
+    stz.b !slot_00,x
+    lda.b #$0A
+    sta.b !slot_01,x
+    stz.b !slot_02,x
+    stz.b !slot_03,x
+    plx
+    plp
+    rtl
+
+; @routine 02:E1D7 SpriteSlot5Off
+; WHAT IT DOES: Marks record 5 unused. Nothing in the game calls it.
+; HOW: Clears bit 5 of the mask through the data bank; P and X are saved
+; and restored.
+; Entry: any widths. Exit: A low byte = the new mask; X, P unchanged.
+SpriteSlot5Off:
+    php
+    sep.b #$20
+    rep.b #$10
+    phx
+    sep.b #$20
+    lda.w !slot_mask
+    and.b #$DF
+    sta.w !slot_mask
+    sep.b #$20
+    rep.b #$10
+    plx
+    plp
+    rtl
+
+; @routine 02:E1EE SpriteSlot2FadeOut
+; WHAT IT DOES: Starts record 2's fade out from full: marks it in use with
+; +$07 = $1F, then SpriteSlot2Darken. Nothing in the game calls it.
+; HOW: P and X saved and restored around the first stores; JSR to
+; SpriteSlot2Darken, RTL.
+; Entry: D = $0000. Exit: as SpriteSlot2Darken.
+SpriteSlot2FadeOut:
+    php
+    sep.b #$20
+    rep.b #$10
+    phx
+    sep.b #$20
+    rep.b #$10
+    lda.w !slot_mask
+    ora.b #$04
+    sta.w !slot_mask
+    ldx.w #$05A5
+    sep.b #$20
+    rep.b #$10
+    lda.b #$1F
+    sta.b !slot_07,x
+    plx
+    plp
+    jsr.w SpriteSlot2Darken
+    rtl
+
+; @routine 02:E211 SpriteSlot2DarkenLong
+; WHAT IT DOES: SpriteSlot2Darken for callers in other banks.
+; HOW: JSR, RTL.
+; Entry: D = $0000. Exit: as SpriteSlot2Darken.
+SpriteSlot2DarkenLong:
+    jsr.w SpriteSlot2Darken
+    rtl
+
+; @routine 02:E215 SpriteSlot2Darken
+; WHAT IT DOES: Shows record 2 ($05A5) and darkens it a step: marks it in
+; use and sets +$04 = 0, +$05 = 2, +$06 = $07, +$00 = +$07 OR $E0, then
+; steps +$07 down by 1; once +$07 is 0 the record is marked unused
+; instead. Nothing in the game calls it.
+; HOW: As SpriteSlot4Darken, for record 2.
+; Entry: D = $0000. Exit: A low byte = +$07's new value, or the new mask
+; at 0; X, P unchanged.
+SpriteSlot2Darken:
+    php
+    sep.b #$20
+    rep.b #$10
+    phx
+    sep.b #$20
+    rep.b #$10
+    lda.w !slot_mask
+    ora.b #$04
+    sta.w !slot_mask
+    ldx.w #$05A5
+    sep.b #$20
+    rep.b #$10
+    stz.b !slot_04,x
+    lda.b #$02
+    sta.b !slot_05,x
+    lda.b #$07
+    sta.b !slot_06,x
+    lda.b #$E0
+    ora.b !slot_07,x
+    sta.b !slot_00,x
+    lda.b !slot_07,x
+    beq .lE248
+    dec a
+    sta.b !slot_07,x
+    plx
+    plp
+    rts
+.lE248:
+    sep.b #$20
+    lda.w !slot_mask
+    and.b #$FB
+    sta.w !slot_mask
+    sep.b #$20
+    rep.b #$10
+    plx
+    plp
+    rts
+
+; @routine 02:E259 SpriteSlot5Yellow
+; WHAT IT DOES: As SpriteSlot6Yellow for record 5 ($05BD). Nothing in the
+; game calls it.
+; HOW: As SpriteSlot6Yellow.
+; Entry: D = $0000. Exit: A low byte = $1F; X, P unchanged.
+SpriteSlot5Yellow:
+    php
+    sep.b #$20
+    rep.b #$10
+    phx
+    sep.b #$20
+    rep.b #$10
+    lda.w !slot_mask
+    ora.b #$20
+    sta.w !slot_mask
+    ldx.w #$05BD
+    sep.b #$20
+    rep.b #$10
+    stz.b !slot_04,x
+    lda.b #$02
+    sta.b !slot_05,x
+    lda.b #$27
+    sta.b !slot_06,x
+    stz.b !slot_01,x
+    lda.b #$1F
+    sta.b !slot_02,x
+    sta.b !slot_03,x
+    stz.b !slot_00,x
+    plx
+    plp
+    rtl

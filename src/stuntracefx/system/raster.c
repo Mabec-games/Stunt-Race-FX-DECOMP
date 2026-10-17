@@ -607,3 +607,106 @@ void abi_RasterIrq(void)
     cpu.a = a0;
     cpu.p = nz16(cpu.p, a0);
 }
+
+/* The time stamp both marks take: the frame counter $0306 as the high
+   byte and the PPU's line (latched by SLHV, read from OPVCT low then high,
+   9 bits) as the low, where lines $100 and over count as $FF and lines
+   below $11 (the top of the next frame) as $100 on. $1A37 = the frame part
+   (its low byte 0). Interrupts are off around the counter read. Returns
+   the line part plus $1A37, with the flags of that add. */
+static uint16_t time_stamp(void)
+{
+    uint16_t f, v, m;
+    uint8_t lo, hi;
+
+    cpu.p |= P_I;
+    f = rd16(0x000306);
+    f = (uint16_t)(((f >> 8) | (f << 8)) & 0xFF00);
+    wr16(0x001A37, f);
+    rd8(0x002137);
+    cpu.p &= (uint8_t)~P_I;
+    lo = rd8(0x00213D);
+    hi = rd8(0x00213D);
+    v = (uint16_t)(((hi << 8) | lo) & 0x01FF);
+    if (!((uint16_t)(v - 0x0100) & 0x8000))
+        v = 0x00FF;
+    if ((uint16_t)(v - 0x0011) & 0x8000)
+        v = (uint16_t)(v + 0x0100);
+    m = rd16(0x001A37);
+    cpu.p &= (uint8_t)~P_C;
+    return op_adc16(v, m, &cpu.p);
+}
+
+/*
+ * @routine 7E:F14F TimeMarkStart
+ * WHAT IT DOES: Records the time now (frame and line, as time_stamp says)
+ * in the word at $1A39 + X: the start of a timed stretch of a frame.
+ * Nothing in the game calls it.
+ * The path for lines $100 and over (the last 6 of vertical blank) is
+ * not reached in the traces so far.
+ * HOW: Long accesses to bank $00; see time_stamp.
+ * Entry: X 16-bit; X = the slot's offset. Exit: M 16-bit; A = the time;
+ * X, Y unchanged; I clear; N, Z, C, V from the last add.
+ */
+void abi_TimeMarkStart(void)
+{
+    uint16_t t;
+
+    cpu.p &= (uint8_t)~P_M;
+    t = time_stamp();
+    wr16(0x001A39 + cpu.x, t);
+    cpu.a = t;
+}
+
+/*
+ * @routine 7E:F18F TimeMarkEnd
+ * WHAT IT DOES: Adds the time since the start recorded at $1A39 + X to the
+ * running total at $1A37 + X. A start late in its frame (low byte $D1 or
+ * more) is taken as is; an earlier one first has the frames between, each
+ * as 64 lines, taken off the end time. Nothing in the game calls it.
+ * The path for lines $100 and over (the last 6 of vertical blank) is
+ * not reached in the traces so far.
+ * HOW: The end time in $1A37 (time_stamp); the start's frame byte kept in
+ * $1A39 for the correction (read back through the data bank); 16-bit
+ * long adds and subtracts.
+ * Entry: X 16-bit; X = the slot's offset; data bank $00. Exit: M 16-bit;
+ * A = the new total; X, Y unchanged; I clear; N, Z, C, V from the last
+ * add.
+ */
+void abi_TimeMarkEnd(void)
+{
+    uint16_t t, a, m;
+
+    cpu.p &= (uint8_t)~P_M;
+    t = time_stamp();
+    wr16(0x001A37, t);
+    a = rd16(0x001A39 + cpu.x);
+    a = (uint16_t)(a & 0x00FF);
+    cpu.p = nz16(cpu.p, a);
+    if ((uint16_t)(a - 0x00D1) & 0x8000) {
+        a = rd16(0x001A39 + cpu.x);
+        a = (uint16_t)(a & 0xFF00);
+        wr16(0x001A39, a);
+        a = rd16(0x001A37);
+        a = (uint16_t)(a & 0xFF00);
+        m = rd16((uint32_t)cpu.db << 16 | 0x1A39);
+        cpu.p |= P_C;
+        a = op_sbc16(a, m, &cpu.p);
+        a = (uint16_t)((a >> 8) | (a << 8));
+        a = (uint16_t)(a << 6);
+        a = (uint16_t)(~a + 1);
+        m = rd16(0x001A37);
+        cpu.p &= (uint8_t)~P_C;
+        a = op_adc16(a, m, &cpu.p);
+        wr16(0x001A37, a);
+    }
+    a = rd16(0x001A37);
+    m = rd16(0x001A39 + cpu.x);
+    cpu.p |= P_C;
+    a = op_sbc16(a, m, &cpu.p);
+    m = rd16(0x001A37 + cpu.x);
+    cpu.p &= (uint8_t)~P_C;
+    a = op_adc16(a, m, &cpu.p);
+    wr16(0x001A37 + cpu.x, a);
+    cpu.a = a;
+}
