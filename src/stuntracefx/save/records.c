@@ -177,6 +177,16 @@ static uint8_t add8(uint8_t a, uint8_t m, uint8_t *p)
     return r;
 }
 
+/* One byte of a check's running sum: the byte at `at` added to $F1. */
+static void sum_byte(uint32_t at, uint8_t *p)
+{
+    uint8_t v = rd8(at), s;
+
+    s = rd8(0x0000F1);
+    s = add8(v, s, p);
+    wr8(0x0000F1, s);
+}
+
 /*
  * @routine 07:B190 SaveBlocksCheck
  * WHAT IT DOES: Validates blocks 12-15 of the 48-byte blocks at $70:FCD0:
@@ -194,44 +204,49 @@ static uint8_t add8(uint8_t a, uint8_t m, uint8_t *p)
 void SaveBlocksCheck(uint8_t bank, uint8_t *p)
 {
     uint32_t b = (uint32_t)bank << 16;
-    uint16_t block, base, x;
-    uint8_t sum;
+    uint16_t base, w, x;
+    uint8_t v, s, blk;
     unsigned i;
-    int bad;
 
-    for (block = 12; block < 16; block++) {
-        base = (uint16_t)(block * 48);
-        wr16(0x0000F3, block);
+    wr16(0x0000F3, 0x000C);
+    do {
+        w = rd16(0x0000F3);
+        base = (uint16_t)(w << 1);
+        w = rd16(0x0000F3);
+        base = (uint16_t)((uint16_t)(base + w) << 4);
         wr16(0x0000F5, base);
-        sum = 0;
-        bad = 0;
-        for (i = 0, x = base; i < 12 && !bad; i++, x += 4) {
-            uint8_t second;
-
-            sum = add8(sum, rd8(b | (uint16_t)(0xFCD0 + x)), p);
-            second = rd8(b | (uint16_t)(0xFCD1 + x));
-            if (second >= 0x41) {
-                bad = 1;
-                break;
-            }
-            sum = add8(sum, second, p);
-            sum = add8(sum, rd8(b | (uint16_t)(0xFCD2 + x)), p);
-            sum = add8(sum, rd8(b | (uint16_t)(0xFCD3 + x)), p);
+        wr16(0x0000F1, 0x0000);
+        for (i = 0, x = base; i < 12; i++, x += 4) {
+            sum_byte(b | (uint16_t)(0xFCD0 + x), p);
+            v = rd8(b | (uint16_t)(0xFCD1 + x));
+            if (v >= 0x41)
+                goto reset;
+            s = rd8(0x0000F1);
+            s = add8(v, s, p);
+            wr8(0x0000F1, s);
+            sum_byte(b | (uint16_t)(0xFCD2 + x), p);
+            sum_byte(b | (uint16_t)(0xFCD3 + x), p);
         }
-        wr8(0x0000F1, sum);
-        if (!bad && rd8(b | (uint16_t)(0xFC33 + block)) != sum)
-            bad = 1;
-        if (bad) {
-            for (i = 0, x = base; i < 12; i++, x += 4) {
-                wr8(b | (uint16_t)(0xFCD0 + x), 0x00);
-                wr8(b | (uint16_t)(0xFCD1 + x), 0x00);
-                wr8(b | (uint16_t)(0xFCD2 + x), 0xFF);
-                wr8(b | (uint16_t)(0xFCD3 + x), 0xFF);
-            }
-            wr8(b | (uint16_t)(0xFC33 + block), 0xE8);
+        x = rd16(0x0000F3);
+        v = rd8(b | (uint16_t)(0xFC33 + x));
+        s = rd8(0x0000F1);
+        if (v == s)
+            goto next;
+reset:
+        x = rd16(0x0000F5);
+        for (i = 0; i < 12; i++, x += 4) {
+            wr8(b | (uint16_t)(0xFCD0 + x), 0x00);
+            wr8(b | (uint16_t)(0xFCD1 + x), 0x00);
+            wr8(b | (uint16_t)(0xFCD2 + x), 0xFF);
+            wr8(b | (uint16_t)(0xFCD3 + x), 0xFF);
         }
-    }
-    wr8(0x0000F3, 0x10);
+        x = rd16(0x0000F3);
+        wr8(b | (uint16_t)(0xFC33 + x), 0xE8);
+next:
+        blk = rd8(0x0000F3);
+        wr8(0x0000F3, (uint8_t)(blk + 1));
+        blk = rd8(0x0000F3);
+    } while (blk < 0x10);
 }
 
 void abi_SaveBlocksCheck(void)
@@ -267,43 +282,50 @@ uint8_t SaveTablesCheck(uint8_t bank, uint8_t *p)
     uint32_t b = (uint32_t)bank << 16;
     uint8_t a = 0, sum, v;
     uint16_t x;
-    int k, i, bad;
+    int k, i;
 
     wr8(0x0000F4, 0x00);
     wr8(0x0000F6, 0x00);
     for (k = 2; k >= 0; k--) {
         wr8(0x0000F3, first[k]);
         wr8(0x0000F5, second[k]);
-        sum = 0;
-        bad = 0;
-        for (i = 0, x = first[k]; i < 12; i++, x += 2) {
-            sum = add8(sum, rd8(b | (uint16_t)(0xFC88 + x)), p);
+        wr8(0x0000F1, 0x00);
+        x = rd16(0x0000F3);
+        for (i = 0; i < 12; i++, x += 2) {
+            v = rd8(b | (uint16_t)(0xFC88 + x));
+            sum = rd8(0x0000F1);
+            sum = add8(v, sum, p);
+            wr8(0x0000F1, sum);
             v = rd8(b | (uint16_t)(0xFC89 + x));
             if (v < 0x1F) {
                 *p &= (uint8_t)~P_C;
-                bad = 1;
-                break;
+                goto reset;
             }
-            sum = add8(sum, v, p);
+            sum = rd8(0x0000F1);
+            sum = add8(v, sum, p);
+            wr8(0x0000F1, sum);
         }
-        if (!bad) {
-            for (i = 0, x = second[k]; i < 9; i++, x++)
-                sum = add8(sum, rd8(b | (uint16_t)(0xFC6D + x)), p);
+        x = rd16(0x0000F5);
+        for (i = 0; i < 9; i++, x++) {
+            v = rd8(b | (uint16_t)(0xFC6D + x));
+            sum = rd8(0x0000F1);
+            sum = add8(v, sum, p);
+            wr8(0x0000F1, sum);
         }
-        wr8(0x0000F1, sum);
-        if (!bad) {
-            a = rd8(b | (uint16_t)(0xFC2D + k));
-            *p = (uint8_t)((*p & ~P_C) | (a >= sum ? P_C : 0));
-            bad = a != sum;
-        }
-        if (bad) {
-            for (i = 0, x = first[k]; i < 24; i++, x++)
-                wr8(b | (uint16_t)(0xFC88 + x), 0xFF);
-            for (i = 0, x = second[k]; i < 9; i++, x++)
-                wr8(b | (uint16_t)(0xFC6D + x), 0x00);
-            a = 0xE8;
-            wr8(0x70FC2D + k, a);
-        }
+        a = rd8(b | (uint16_t)(0xFC2D + k));
+        sum = rd8(0x0000F1);
+        *p = (uint8_t)((*p & ~P_C) | (a >= sum ? P_C : 0));
+        if (a == sum)
+            continue;
+reset:
+        x = rd16(0x0000F3);
+        for (i = 0; i < 24; i++, x++)
+            wr8(b | (uint16_t)(0xFC88 + x), 0xFF);
+        x = rd16(0x0000F5);
+        for (i = 0; i < 9; i++, x++)
+            wr8(b | (uint16_t)(0xFC6D + x), 0x00);
+        a = 0xE8;
+        wr8(0x70FC2D + k, a);
     }
     return a;
 }
@@ -354,57 +376,63 @@ static int entry_byte_bad(uint8_t v, int which)
 static void save_blocks_validate(uint8_t bank, uint8_t *p, int from_bad)
 {
     uint32_t b = (uint32_t)bank << 16;
-    uint16_t block = 0, base, x;
-    uint8_t sum, v;
-    int i, j, bad;
+    uint16_t w, x, y;
+    uint8_t v, s, blk;
+    int i, j;
 
-    if (from_bad) {
-        block = rd16(0x0000F3);
-        base = rd16(0x0000F5);
-    } else {
-        wr16(0x0000F3, 0x0000);
-    }
-    while (block < 12) {
-        if (from_bad) {
-            from_bad = 0;
-            bad = 1;
-            goto reset;
+    if (from_bad)
+        goto reset;
+    wr16(0x0000F3, 0x0000);
+    for (;;) {
+        w = rd16(0x0000F3);
+        x = (uint16_t)(w << 2);
+        v = rd8(0x70FFD0 + x);
+        wr8(0x0000F1, v);
+        for (j = 1; j < 4; j++) {
+            v = rd8(0x70FFD0 + x + j);
+            s = rd8(0x0000F1);
+            s = add8(v, s, p);
+            if (j < 3)
+                wr8(0x0000F1, s);
         }
-        x = (uint16_t)(block << 2);
-        sum = rd8(0x70FFD0 + x);
-        wr8(0x0000F1, sum);
-        sum = add8(rd8(0x70FFD1 + x), sum, p);
-        sum = add8(rd8(0x70FFD2 + x), sum, p);
-        sum = add8(rd8(0x70FFD3 + x), sum, p);
-        wr16(0x0000F1, sum);
-        base = (uint16_t)(block * 48);
-        wr16(0x0000F5, base);
-        bad = 0;
-        for (i = 0, x = base; i < 12 && !bad; i++, x += 4) {
+        wr16(0x0000F1, s);
+        w = rd16(0x0000F3);
+        x = (uint16_t)(w << 1);
+        w = rd16(0x0000F3);
+        x = (uint16_t)((uint16_t)(x + w) << 4);
+        wr16(0x0000F5, x);
+        for (i = 0; i < 12; i++, x += 4) {
             for (j = 0; j < 4; j++) {
                 v = rd8(b | (uint16_t)(0xFCD0 + x + j));
-                if (entry_byte_bad(v, j)) {
-                    bad = 1;
-                    break;
-                }
-                sum = add8(sum, v, p);
+                if (entry_byte_bad(v, j))
+                    goto reset;
+                s = rd8(0x0000F1);
+                s = add8(v, s, p);
+                wr8(0x0000F1, s);
             }
         }
-        wr8(0x0000F1, sum);
-        if (!bad && rd8(b | (uint16_t)(0xFC33 + block)) != sum)
-            bad = 1;
-    reset:
-        if (bad) {
-            wr8(0x001FFE, 0x11);
-            for (i = 0; i < 48; i++)
-                wr8(b | (uint16_t)(0xFCD0 + base + i), 0xFF);
-            for (i = 0; i < 4; i++)
-                wr8(b | (uint16_t)(0xFFD0 + (block << 2) + i), 0xFF);
-            wr8(b | (uint16_t)(0xFC33 + block), 0xCC);
-            continue;  /* checked again */
-        }
-        block++;
-        wr8(0x0000F3, (uint8_t)block);
+        x = rd16(0x0000F3);
+        v = rd8(b | (uint16_t)(0xFC33 + x));
+        s = rd8(0x0000F1);
+        if (v != s)
+            goto reset;
+        blk = rd8(0x0000F3);
+        wr8(0x0000F3, (uint8_t)(blk + 1));
+        blk = rd8(0x0000F3);
+        if (blk >= 0x0C)
+            return;
+        continue;
+reset:
+        wr8(0x001FFE, 0x11);
+        x = rd16(0x0000F5);
+        for (i = 0; i < 48; i++, x++)
+            wr8(b | (uint16_t)(0xFCD0 + x), 0xFF);
+        x = rd16(0x0000F3);
+        w = rd16(0x0000F3);
+        y = (uint16_t)((w & 0x00FF) << 2);
+        for (j = 0; j < 4; j++)
+            wr8(b | (uint16_t)(0xFFD0 + y + j), 0xFF);
+        wr8(b | (uint16_t)(0xFC33 + x), 0xCC);
     }
 }
 
