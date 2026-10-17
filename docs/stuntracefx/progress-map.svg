@@ -1560,7 +1560,7 @@
 <rect x="1064.4" y="868.5" width="39.0" height="29.4" fill="#3fb950"><title>GsuPictureUploadStep  7F0800  185B  T4  [system]</title></rect>
 <rect x="1104.0" y="757.3" width="31.9" height="32.2" fill="#3fb950"><title>SoftResetCheck  07AADC  166B  T4  [system]</title></rect>
 <rect x="1136.5" y="757.3" width="26.6" height="32.2" fill="#3fb950"><title>BootColdStart  038AA9  139B  T4  [system]</title></rect>
-<rect x="1163.7" y="757.3" width="26.0" height="32.2" fill="#d29922"><title>TimeMarkEnd  7EF18F  136B  T2  [system]</title></rect>
+<rect x="1163.7" y="757.3" width="26.0" height="32.2" fill="#3fb950"><title>TimeMarkEnd  7EF18F  136B  T4  [system]</title></rect>
 <rect x="1190.3" y="757.3" width="24.4" height="32.2" fill="#3fb950"><title>DebugPrintDecimalWord  03D4FA  128B  T4  [system]</title></rect>
 <rect x="1215.3" y="757.3" width="23.8" height="32.2" fill="#3fb950"><title>VblankUpdates  7F0D2B  125B  T4  [system]</title></rect>
 <rect x="1104.0" y="790.1" width="25.2" height="28.8" fill="#3fb950"><title>BootStart  038B34  118B  T4  [system]</title></rect>
@@ -1573,7 +1573,7 @@
 <rect x="1129.8" y="872.5" width="21.9" height="25.4" fill="#3fb950"><title>DebugByteHalt  03D40A  91B  T4  [system]</title></rect>
 <rect x="1152.3" y="790.1" width="23.8" height="20.2" fill="#3fb950"><title>DebugDecimalByte  03D59E  79B  T4  [system]</title></rect>
 <rect x="1176.7" y="790.1" width="23.8" height="20.2" fill="#3fb950"><title>DebugPrintBinaryByte  03D7C1  79B  T4  [system]</title></rect>
-<rect x="1201.1" y="790.1" width="19.2" height="20.2" fill="#d29922"><title>TimeMarkStart  7EF14F  64B  T2  [system]</title></rect>
+<rect x="1201.1" y="790.1" width="19.2" height="20.2" fill="#3fb950"><title>TimeMarkStart  7EF14F  64B  T4  [system]</title></rect>
 <rect x="1220.9" y="790.1" width="18.2" height="20.2" fill="#3fb950"><title>ByteWritesIfPending  7F0F3A  61B  T4  [system]</title></rect>
 <rect x="1152.3" y="810.9" width="17.4" height="20.4" fill="#3fb950"><title>Countdown0DF8  07EE11  59B  T4  [system]</title></rect>
 <rect x="1170.4" y="810.9" width="17.1" height="20.4" fill="#3fb950"><title>OamDmaIfPending  7F0EC9  58B  T4  [system]</title></rect>
@@ -1847,4 +1847,4 @@
 <rect x="1563.7" y="869.0" width="17.5" height="28.9" fill="#3fb950"><title>JoypadAccumulate  7EB1E1  85B  T4  [input]</title></rect>
 <rect x="1581.9" y="869.0" width="16.0" height="18.7" fill="#3fb950"><title>JoypadRead  7EB1AE  51B  T4  [input]</title></rect>
 <rect x="1581.9" y="888.3" width="16.0" height="9.6" fill="#3fb950"><title>FrameSoundAndJoypads  7EA7A3  27B  T4  [input]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 1791 &#183; T3 behaviour-exact 3 &#183; 176,316/197,995 bytes exact (89.1%) &#183; green=T4 blue=T3 amber=T2 gray=T1</text></svg>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 1793 &#183; T3 behaviour-exact 3 &#183; 176,516/197,995 bytes exact (89.2%) &#183; green=T4 blue=T3 amber=T2 gray=T1</text></svg>
