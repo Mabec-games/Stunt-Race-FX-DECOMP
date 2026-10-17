@@ -413,3 +413,283 @@ void abi_TileRowUploadLong(void)
     cpu.x = 0x0040;
     op_plp(cpu.p);
 }
+
+void CrashWhite(uint8_t bank);
+void abi_SpriteSlotFirstLong(void);
+void abi_Set7EBC2BTrio(void);
+void abi_WaitScanline(void);
+void abi_GsuClearScreenIfSet(void);
+
+/*
+ * @routine 7E:F5EC UnusedScreenTiles
+ * @alias 02:D313
+ * WHAT IT DOES: Writes the unused screen's tilemaps to VRAM: from $2C40,
+ * 16 rows of three $39A0 words, 26 words counting up by $10 and three more
+ * $39A0 words (row r starting at $1C00 + r); when the Super FX RAM byte
+ * $70:023A is set, ten single words at $2F03-$2F07 and $2F18-$2F1C; then
+ * 16 words of $FFFF at $1A00 and 16 at $4A00. The work-RAM copy is called
+ * at its ROM address $02:D313.
+ * HOW: Data bank $00; VMAIN = $80; 16-bit stores to VMADDL and VMDATAL.
+ * DB is saved and restored; the count of the inner loop is on the stack.
+ * Entry: any widths. Exit: M 8-bit, X 16-bit; A = $2A86, or 0 when
+ * $70:023A is 0; X = $FFFF, Y = 0; N, Z from DB; C set, V clear.
+ */
+uint16_t UnusedScreenTiles(void)
+{
+    static const uint16_t marks[10][2] = {
+        {0x2F03, 0x282E}, {0x2F04, 0x2846}, {0x2F05, 0x285E}, {0x2F06, 0x2876},
+        {0x2F07, 0x288E}, {0x2F18, 0x2A26}, {0x2F19, 0x2A3E}, {0x2F1A, 0x2A56},
+        {0x2F1B, 0x2A6E}, {0x2F1C, 0x2A86}};
+    uint16_t a = 0x1C00, y, x, r;
+    unsigned i;
+
+    wr8(0x002115, 0x80);
+    wr16(0x002116, 0x2C40);
+    for (y = 0; y != 0x10; y++) {
+        wr16(0x002118, 0x39A0);
+        wr16(0x002118, 0x39A0);
+        wr16(0x002118, 0x39A0);
+        for (x = 0; x != 0x1A; x++) {
+            wr16(0x002118, a);
+            a = (uint16_t)(a + 0x10);
+        }
+        wr16(0x002118, 0x39A0);
+        wr16(0x002118, 0x39A0);
+        wr16(0x002118, 0x39A0);
+        a = (uint16_t)(a - 0x019F);
+    }
+    r = (uint16_t)(rd16(0x70023A) & 0x00FF);
+    if (r) {
+        for (i = 0; i < 10; i++) {
+            wr16(0x002116, marks[i][0]);
+            wr16(0x002118, marks[i][1]);
+        }
+        r = 0x2A86;
+    }
+    wr16(0x002116, 0x1A00);
+    for (y = 0x10; y; y--)
+        wr16(0x002118, 0xFFFF);
+    wr16(0x002116, 0x4A00);
+    for (y = 0x10; y; y--)
+        wr16(0x002118, 0xFFFF);
+    return r;
+}
+
+void abi_UnusedScreenTiles(void)
+{
+    cpu.a = UnusedScreenTiles();
+    cpu.x = 0xFFFF;
+    cpu.y = 0x0000;
+    cpu.p = (uint8_t)((nz8(cpu.p, cpu.db) & ~(P_X | P_V)) | P_M | P_C);
+}
+
+/*
+ * @routine 7E:F5DF UnusedScreenTilesLocked
+ * WHAT IT DOES: UnusedScreenTiles with interrupts off, then clears any
+ * pending IRQ and turns interrupts on.
+ * HOW: PHP, SEI, JSL to the ROM copy $02:D313, a long read of TIMEUP,
+ * CLI, PLP.
+ * Entry: any widths. Exit: A = UnusedScreenTiles' high byte and TIMEUP's
+ * value; X = $FFFF, Y = 0 (their low bytes when X is 8-bit); P unchanged.
+ */
+void abi_UnusedScreenTilesLocked(void)
+{
+    uint8_t p = cpu.p;
+
+    abi_UnusedScreenTiles();
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | rd8(TIMEUP));
+    op_plp(p);
+}
+
+/*
+ * @routine 7E:F40E UnusedScreenSetup
+ * WHAT IT DOES: Sets up the unused screen, interrupts off: the NMI off,
+ * the frame flags $00 and $084C cleared, the Super FX's SCMR shadow $0374 =
+ * $21; HDMA off, the screen blanked and two scanline waits
+ * (ScreenBlankAndWait); all of VRAM cleared and the tilemap at $2C00
+ * filled with $01A1, then UnusedScreenTiles; the Super FX picture at
+ * $2C00 ($48 = $4A = $2C00, $50 = $3000, $4E = 0; SCBR and BG12NBA from
+ * them); mode 2 with BG1 at $2C00 and BG2 at $7300; the tile row
+ * (TileRowBuildLong, TileRowUploadLong); palette 1 to colours $70-$7F;
+ * colours $80-$FF by DMA from $7F:FA17; windows for the sprites only;
+ * BG1-3 and sprites on the main screen, BG1-3 on the sub; the $7E:BC2A
+ * values; HDMA channels 1-4 from $7E:BC28, $BC50, $B7A0, $C22E; $0316 =
+ * $1E and the HDMA pointers at $084D, $084F, $083E, $0840 (and $0842 =
+ * 0); the scroll cleared; a raster IRQ at line $8F; then, with $80 at
+ * $7E:BC2B-BC2F, the screen still blanked and HDMA channel 1 on, it waits
+ * for lines $BE and $64 and turns on the NMI, the vertical IRQ and the
+ * joypad read ($31), sets $05D9 = $FF and turns interrupts on.
+ * HOW: Registers through the data bank (16-bit stores where M is 16-bit
+ * write the next register too); direct page with D = $0000; reads TIMEUP,
+ * the Super FX status and RDNMI to acknowledge them.
+ * Entry: D = $0000. Exit: M 8-bit, X 16-bit; A = TIMEUP's value (high
+ * byte 0); X = 0, Y = $20; I clear, N, Z from A; C and V as TileRowBuild
+ * left them (C from bit 3 of $4F when it built nothing).
+ */
+void abi_UnusedScreenSetup(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t a;
+    uint8_t v;
+    int i, j;
+
+    op_sep(P_M | P_X);
+    cpu.p |= P_I;
+    wr8(b | 0x4200, 0x00);
+    wr8(0x000000, 0x00);
+    wr8(b | 0x084C, 0x00);
+    rd8(b | 0x4211);
+    op_rep(P_M);
+    rd16(0x003030);
+    wr16(b | 0x0374, 0x0021);
+    abi_ScreenBlankAndWait();
+    wr16(b | 0x2121, 0x0000);
+    wr16(b | 0x2116, 0x0000);
+    wr16(b | 0x2117, 0x0000);
+    wr16(b | 0x2100, 0x0080);
+    wr16(b | 0x2115, 0x0080);
+    for (i = 0x7F; i; i--)
+        for (j = 0x100; j; j--) {
+            wr16(b | 0x2118, 0x0000);
+            wr16(b | 0x2119, 0x0000);
+        }
+    op_rep(P_M | P_X);
+    wr16(b | 0x2116, 0x2C00);
+    for (i = 0x400; i; i--)
+        wr16(b | 0x2118, 0x01A1);
+    op_sep(P_M);
+    abi_UnusedScreenTiles();
+    wr16(0x00004E, 0x0000);
+    wr16(0x000050, 0x3000);
+    wr16(0x000048, 0x2C00);
+    wr16(0x00004A, 0x2C00);
+    v = rd8(0x000049);
+    wr8(b | 0x3038, (uint8_t)(v >> 2));
+    v = rd8(0x00004F);
+    cpu.p = (uint8_t)((cpu.p & ~P_C) | (v & 0x08 ? P_C : 0));
+    wr8(b | 0x210B, (uint8_t)(v >> 4 | 0x50));
+    wr8(b | 0x2101, 0x03);
+    wr8(b | 0x2107, 0x2C);
+    wr8(b | 0x2108, 0x73);
+    wr8(b | 0x2105, 0x02);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x02);
+    abi_TileRowBuildLong();
+    abi_TileRowUploadLong();
+    op_sep(P_M);
+    op_rep(P_X);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
+    abi_PaletteLoad70();
+    wr8(b | 0x4301, 0x22);
+    wr8(b | 0x2121, 0x80);
+    wr16(b | 0x4302, 0xFA17);
+    wr8(b | 0x4304, 0x7F);
+    wr16(b | 0x4305, 0x0100);
+    wr8(b | 0x4300, 0x00);
+    wr8(b | 0x420B, 0x01);
+    wr8(b | 0x2123, 0x00);
+    wr8(b | 0x2124, 0x00);
+    wr8(b | 0x2125, 0x20);
+    wr8(b | 0x212A, 0x00);
+    wr8(b | 0x212B, 0x0C);
+    wr8(b | 0x212E, 0x00);
+    wr8(b | 0x212F, 0x00);
+    wr8(b | 0x2126, 0x00);
+    wr8(b | 0x2127, 0x00);
+    wr8(b | 0x212C, 0x17);
+    wr8(b | 0x212D, 0x07);
+    abi_Set7EBC2AValues();
+    op_sep(P_M);
+    wr8(b | 0x4310, 0x00);
+    wr8(b | 0x4311, 0x00);
+    wr16(b | 0x4312, 0xBC28);
+    wr8(b | 0x4314, 0x7E);
+    wr8(b | 0x4317, 0x00);
+    wr8(b | 0x4320, 0x02);
+    wr8(b | 0x4321, 0x0F);
+    wr16(b | 0x4322, 0xBC50);
+    wr8(b | 0x4324, 0x7E);
+    wr8(b | 0x4327, 0x00);
+    wr8(b | 0x4330, 0x01);
+    wr8(b | 0x4331, 0x26);
+    wr16(b | 0x4332, 0xB7A0);
+    wr8(b | 0x4334, 0x7E);
+    wr8(b | 0x4337, 0x00);
+    wr8(b | 0x4340, 0x02);
+    wr8(b | 0x4341, 0x10);
+    wr16(b | 0x4342, 0xC22E);
+    wr8(b | 0x4344, 0x7E);
+    wr8(b | 0x4347, 0x00);
+    wr8(b | 0x0316, 0x1E);
+    wr16(b | 0x084D, 0xBC50);
+    wr16(b | 0x084F, 0xBF3F);
+    wr16(b | 0x083E, 0xB7A0);
+    wr16(b | 0x0840, 0xB9E4);
+    wr8(b | 0x0842, 0x00);
+    abi_ScrollRegsClear();
+    op_sep(P_M);
+    wr16(b | 0x4209, 0x008F);
+    wr16(b | 0x4207, 0x0000);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x80);
+    abi_Set7EBC2BTrio();
+    wr8(b | 0x2100, 0x80);
+    wr8(b | 0x084C, 0x00);
+    wr8(b | 0x420C, 0x02);
+    wr8(b | 0x06E3, 0xBE);
+    abi_WaitScanline();
+    wr8(b | 0x06E3, 0x64);
+    abi_WaitScanline();
+    rd8(b | 0x4210);
+    wr8(b | 0x4200, 0x31);
+    wr8(b | 0x05D9, 0xFF);
+    v = rd8(TIMEUP);
+    a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.a = a;
+    cpu.x = 0x0000;
+    cpu.p = (uint8_t)(nz8(cpu.p, v) & ~P_I);
+}
+
+/*
+ * @routine 7E:F3E3 UnusedScreenStart
+ * WHAT IT DOES: Waits for the frame flag $00 to clear, sets it to 2 and
+ * clears $0306; waits for $0854 to be set, runs GsuClearScreenIfSet,
+ * waits for $0854 to be 2 and clears it; then SpriteSlotFirstLong and the
+ * stop screen (CrashWhite). Nothing in the game calls it.
+ * HOW: Polling loops on direct page $00 (D = $0000) and on $0854 through
+ * the data bank; 8-bit A, 16-bit index registers.
+ * Entry: D = $0000. Exit: never returns.
+ */
+void abi_UnusedScreenStart(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    op_sep(P_M);
+    op_rep(P_X);
+    while (rd8(0x000000))
+        ;
+    wr8(0x000000, 0x02);
+    wr8(b | 0x0306, 0x00);
+    while (!rd8(b | 0x0854))
+        ;
+    abi_GsuClearScreenIfSet();
+    while (rd8(b | 0x0854) != 0x02)
+        ;
+    wr8(b | 0x0854, 0x00);
+    abi_SpriteSlotFirstLong();
+    CrashWhite(cpu.db);
+}
+
+void abi_ObjectLinkBobStart(void);
+
+/*
+ * @routine 7E:F6E5 ObjectLinkBobStartLong
+ * WHAT IT DOES: A second copy of ViewParamsBobLong ($7E:F737), which
+ * nothing calls: starts bob 1 with A as its kind ($1A1D = A, $1A1F =
+ * $1A23 = 0, $1A21 = $FE).
+ * HOW: JSR ObjectLinkBobStart, RTL.
+ * Entry: M 8-bit (the code is 8-bit); data bank $7E. Exit: M and X 8-bit
+ * (X and Y high bytes 0); A low byte = $FE; N set, Z clear.
+ */
+void abi_ObjectLinkBobStartLong(void)
+{
+    abi_ObjectLinkBobStart();
+}

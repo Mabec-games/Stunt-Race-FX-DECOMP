@@ -393,3 +393,6 @@ ObjectChildD1BF = $08D1BF                       ; 08:D1BF, a child's change of h
 !path_table_offset = !path_table&$FFFF        ; ObjectPathStart: the path table's address in its bank
 !palettes_a145 = $03A145            ; 16-colour palettes, 32 bytes each (unused screen)
 !tile_row_table = $008BAE           ; eight row addresses in bank 0 (TileRowBuild)
+!log_table = $8368                  ; bank 03: a byte's log (ScaledOffset)
+!exp_table_hi = $8268               ; bank 03: the exponent's high byte, by log
+!exp_table_lo = $8168               ; bank 03: its low byte

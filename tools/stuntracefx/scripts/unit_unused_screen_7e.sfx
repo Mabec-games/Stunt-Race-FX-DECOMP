@@ -1,0 +1,35 @@
+# unit_unused_screen_7e: unit tests (call) from the start of a Novice race
+# for the unused screen's work-RAM code at 7E:F3E3-F6E8, which nothing in
+# the game calls: the tilemap writer (with the Super FX RAM byte $70:023A
+# clear and set, and once at its ROM copy 02:D313), its interrupts-off
+# wrapper (16-bit and 8-bit index registers), the screen set-up, the start
+# (with $00 clear and $0854 = 2 so its waits end at once; it ends on the
+# stop screen) and the copy of ViewParamsBobLong.
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70023A 00
+call 7E:F5EC long p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70023A 01
+call 7E:F5EC long p=30 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70023A 01
+call 02:D313 long p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 7E:F5DF long p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 7E:F5DF long p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 7E:F40E long p=00 db=00 d=0000
+wait 2
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0000 00
+set 7E0854 02
+call 7E:F3E3 long p=00 db=00 d=0000 noreturn frames=30
+load build/stuntracefx/states/novice_coupe_race1.state
+call 7E:F6E5 long a=0003 p=20 db=7E d=0000
+wait 1

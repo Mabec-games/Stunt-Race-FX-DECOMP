@@ -484,3 +484,386 @@ TileRowUpload:
     lda.b #$01
     sta.w !MDMAEN
     rts
+
+%ramcode($7EF3E3, $01510A)
+
+; @routine 7E:F3E3 UnusedScreenStart
+; WHAT IT DOES: Waits for the frame flag $00 to clear, sets it to 2 and
+; clears $0306; waits for $0854 to be set, runs GsuClearScreenIfSet,
+; waits for $0854 to be 2 and clears it; then SpriteSlotFirstLong and the
+; stop screen (CrashWhite). Nothing in the game calls it.
+; HOW: Polling loops on direct page $00 (D = $0000) and on $0854 through
+; the data bank; 8-bit A, 16-bit index registers.
+; Entry: D = $0000. Exit: never returns.
+UnusedScreenStart:
+    php
+    sep.b #$20
+    rep.b #$10
+.lF3E8:
+    lda.b !dp_00
+    bne .lF3E8
+    lda.b #$02
+    sta.b !dp_00
+    stz.w !frames_since_tick
+.lF3F3:
+    lda.w !wram_084C+8
+    beq .lF3F3
+    jsl.l GsuClearScreenIfSet
+.lF3FC:
+    lda.w !wram_084C+8
+    cmp.b #$02
+    bne .lF3FC
+    stz.w !wram_084C+8
+    jsl.l SpriteSlotFirstLong
+    jsl.l CrashWhite
+
+; @routine 7E:F40E UnusedScreenSetup
+; WHAT IT DOES: Sets up the unused screen, interrupts off: the NMI off,
+; the frame flags $00 and $084C cleared, the Super FX's SCMR shadow $0374 =
+; $21; HDMA off, the screen blanked and two scanline waits
+; (ScreenBlankAndWait); all of VRAM cleared and the tilemap at $2C00
+; filled with $01A1, then UnusedScreenTiles; the Super FX picture at
+; $2C00 ($48 = $4A = $2C00, $50 = $3000, $4E = 0; SCBR and BG12NBA from
+; them); mode 2 with BG1 at $2C00 and BG2 at $7300; the tile row
+; (TileRowBuildLong, TileRowUploadLong); palette 1 to colours $70-$7F;
+; colours $80-$FF by DMA from $7F:FA17; windows for the sprites only;
+; BG1-3 and sprites on the main screen, BG1-3 on the sub; the $7E:BC2A
+; values; HDMA channels 1-4 from $7E:BC28, $BC50, $B7A0, $C22E; $0316 =
+; $1E and the HDMA pointers at $084D, $084F, $083E, $0840 (and $0842 =
+; 0); the scroll cleared; a raster IRQ at line $8F; then, with $80 at
+; $7E:BC2B-BC2F, the screen still blanked and HDMA channel 1 on, it waits
+; for lines $BE and $64 and turns on the NMI, the vertical IRQ and the
+; joypad read ($31), sets $05D9 = $FF and turns interrupts on.
+; HOW: Registers through the data bank (16-bit stores where M is 16-bit
+; write the next register too); direct page with D = $0000; reads TIMEUP,
+; the Super FX status and RDNMI to acknowledge them.
+; Entry: D = $0000. Exit: M 8-bit, X 16-bit; A = TIMEUP's value (high
+; byte 0); X = 0, Y = $20; I clear, N, Z from A; C and V as TileRowBuild
+; left them (C from bit 3 of $4F when it built nothing).
+UnusedScreenSetup:
+    sep.b #$30
+    sei
+    stz.w !NMITIMEN
+    stz.b !dp_00
+    stz.w !wram_084C
+    lda.w !TIMEUP
+    rep.b #$20
+    lda.l !GSU_SFR
+    lda.w #$0021
+    sta.w !gsu_scmr_shadow
+    jsl.l ScreenBlankAndWait
+    stz.w !CGADD
+    stz.w !VMADDL
+    stz.w !VMADDH
+    lda.w #$0080
+    sta.w !INIDISP
+    sta.w !VMAIN
+    lda.w #$0000
+    ldx.b #$7F
+.lF443:
+    ldy.b #$00
+.lF445:
+    sta.w !VMDATAL
+    sta.w !VMDATAH
+    dey
+    bne .lF445
+    dex
+    bne .lF443
+    rep.b #$30
+    lda.w #$2C00
+    sta.w !VMADDL
+    lda.w #$01A1
+    ldx.w #$0400
+.lF45F:
+    sta.w !VMDATAL
+    dex
+    bne .lF45F
+    sep.b #$20
+    rep.b #$10
+    jsl.l UnusedScreenTilesRom
+    rep.b #$10
+    ldx.w #$0000
+    stx.b !fxrec_speed+4
+    ldx.w #$3000
+    stx.b !fxpart_50
+    ldx.w #$2C00
+    stx.b !gsu_screen_start_dp
+    ldx.w #$2C00
+    stx.b !fxrec_speed
+    lda.b !gsu_screen_start_dp+1
+    lsr a
+    lsr a
+    sta.w !GSU_SCBR
+    lda.b !fxrec_speed+5
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    ora.b #$50
+    sta.w !BG12NBA
+    lda.b #$03
+    sta.w !OBSEL
+    lda.b #$2C
+    sta.w !BG1SC
+    lda.b #$73
+    sta.w !BG2SC
+    lda.b #$02
+    sta.w !BGMODE
+    jsl.l TileRowBuildLong
+    jsl.l TileRowUploadLong
+    sep.b #$20
+    rep.b #$10
+    lda.b #$01
+    jsl.l PaletteLoad70
+    lda.b #$22
+    sta.w !BBAD0
+    lda.b #$80
+    sta.w !CGADD
+    ldx.w #$FA17
+    stx.w !A1T0L
+    lda.b #$7F
+    sta.w !A1B0
+    ldx.w #$0100
+    stx.w !DAS0L
+    lda.b #$00
+    sta.w !DMAP0
+    lda.b #$01
+    sta.w !MDMAEN
+    stz.w !W12SEL
+    stz.w !W34SEL
+    lda.b #$20
+    sta.w !WOBJSEL
+    stz.w !WBGLOG
+    lda.b #$0C
+    sta.w !WOBJLOG
+    stz.w !TMW
+    stz.w !TSW
+    stz.w !WH0
+    stz.w !WH1
+    lda.b #$17
+    sta.w !TM
+    lda.b #$07
+    sta.w !TS
+    jsl.l Set7EBC2AValues
+    sep.b #$20
+    lda.b #$00
+    sta.w !DMAP1
+    lda.b #$00
+    sta.w !BBAD1
+    ldx.w #$BC28
+    stx.w !A1T1L
+    lda.b #$7E
+    sta.w !A1B1
+    stz.w !DASB1
+    lda.b #$02
+    sta.w !DMAP2
+    lda.b #$0F
+    sta.w !BBAD2
+    ldx.w #$BC50
+    stx.w !A1T2L
+    lda.b #$7E
+    sta.w !A1B2
+    stz.w !DASB2
+    lda.b #$01
+    sta.w !DMAP3
+    lda.b #$26
+    sta.w !BBAD3
+    ldx.w #$B7A0
+    stx.w !A1T3L
+    lda.b #$7E
+    sta.w !A1B3
+    stz.w !DASB3
+    lda.b #$02
+    sta.w !DMAP4
+    lda.b #$10
+    sta.w !BBAD4
+    ldx.w #$C22E
+    stx.w !A1T4L
+    lda.b #$7E
+    sta.w !A1B4
+    stz.w !DASB4
+    lda.b #$1E
+    sta.w !joy2_pressed+3
+    ldx.w #$BC50
+    stx.w !wram_084C+1
+    ldx.w #$BF3F
+    stx.w !wram_084C+3
+    ldx.w #$B7A0
+    stx.w !palette_buffer_0802+60
+    ldx.w #$B9E4
+    stx.w !palette_buffer_0802+62
+    stz.w !palette_buffer_0802+64
+    jsl.l ScrollRegsClear
+    sep.b #$20
+    ldx.w #$008F
+    stx.w !VTIMEL
+    ldx.w #$0000
+    stx.w !HTIMEL
+    lda.b #$80
+    jsl.l Set7EBC2BTrio
+    sta.w !INIDISP
+    stz.w !wram_084C
+    lda.b #$02
+    sta.w !HDMAEN
+    lda.b #$BE
+    sta.w !scanline_wait
+    jsl.l WaitScanline
+    sep.b #$20
+    rep.b #$10
+    lda.b #$64
+    sta.w !scanline_wait
+    jsl.l WaitScanline
+    sep.b #$20
+    rep.b #$10
+    lda.w !RDNMI
+    lda.b #$31
+    sta.w !NMITIMEN
+    lda.b #$FF
+    sta.w !slot_mask+4
+    lda.l !TIMEUP
+    cli
+    rtl
+
+; @routine 7E:F5DF UnusedScreenTilesLocked
+; WHAT IT DOES: UnusedScreenTiles with interrupts off, then clears any
+; pending IRQ and turns interrupts on.
+; HOW: PHP, SEI, JSL to the ROM copy $02:D313, a long read of TIMEUP,
+; CLI, PLP.
+; Entry: any widths. Exit: A = UnusedScreenTiles' high byte and TIMEUP's
+; value; X = $FFFF, Y = 0 (their low bytes when X is 8-bit); P unchanged.
+UnusedScreenTilesLocked:
+    php
+    sei
+    jsl.l UnusedScreenTilesRom
+    lda.l !TIMEUP
+    cli
+    plp
+    rtl
+
+; @routine 7E:F5EC UnusedScreenTiles
+; WHAT IT DOES: Writes the unused screen's tilemaps to VRAM: from $2C40,
+; 16 rows of three $39A0 words, 26 words counting up by $10 and three more
+; $39A0 words (row r starting at $1C00 + r); when the Super FX RAM byte
+; $70:023A is set, ten single words at $2F03-$2F07 and $2F18-$2F1C; then
+; 16 words of $FFFF at $1A00 and 16 at $4A00. The work-RAM copy is called
+; at its ROM address $02:D313.
+; HOW: Data bank $00; VMAIN = $80; 16-bit stores to VMADDL and VMDATAL.
+; DB is saved and restored; the count of the inner loop is on the stack.
+; Entry: any widths. Exit: M 8-bit, X 16-bit; A = $2A86, or 0 when
+; $70:023A is 0; X = $FFFF, Y = 0; N, Z from DB; C set, V clear.
+UnusedScreenTiles:
+    sep.b #$20
+    phb
+    lda.b #$00
+    pha
+    plb
+    lda.b #$80
+    sta.w !VMAIN
+    rep.b #$30
+    lda.w #$2C40
+    sta.w !VMADDL
+    lda.w #$1C00
+    ldy.w #$0000
+.lF606:
+    pha
+    lda.w #$39A0
+    sta.w !VMDATAL
+    sta.w !VMDATAL
+    sta.w !VMDATAL
+    pla
+    ldx.w #$0000
+.lF617:
+    sta.w !VMDATAL
+    clc
+    adc.w #$0010
+    inx
+    cpx.w #$001A
+    bne .lF617
+    pha
+    lda.w #$39A0
+    sta.w !VMDATAL
+    sta.w !VMDATAL
+    sta.w !VMDATAL
+    pla
+    sec
+    sbc.w #$019F
+    iny
+    cpy.w #$0010
+    bne .lF606
+    lda.l !fx_noise_seed+30
+    and.w #$00FF
+    beq .lF6BD
+    lda.w #$2F03
+    sta.w !VMADDL
+    lda.w #$282E
+    sta.w !VMDATAL
+    lda.w #$2F04
+    sta.w !VMADDL
+    lda.w #$2846
+    sta.w !VMDATAL
+    lda.w #$2F05
+    sta.w !VMADDL
+    lda.w #$285E
+    sta.w !VMDATAL
+    lda.w #$2F06
+    sta.w !VMADDL
+    lda.w #$2876
+    sta.w !VMDATAL
+    lda.w #$2F07
+    sta.w !VMADDL
+    lda.w #$288E
+    sta.w !VMDATAL
+    lda.w #$2F18
+    sta.w !VMADDL
+    lda.w #$2A26
+    sta.w !VMDATAL
+    lda.w #$2F19
+    sta.w !VMADDL
+    lda.w #$2A3E
+    sta.w !VMDATAL
+    lda.w #$2F1A
+    sta.w !VMADDL
+    lda.w #$2A56
+    sta.w !VMDATAL
+    lda.w #$2F1B
+    sta.w !VMADDL
+    lda.w #$2A6E
+    sta.w !VMDATAL
+    lda.w #$2F1C
+    sta.w !VMADDL
+    lda.w #$2A86
+    sta.w !VMDATAL
+.lF6BD:
+    ldx.w #$1A00
+    stx.w !VMADDL
+    ldx.w #$FFFF
+    ldy.w #$0010
+.lF6C9:
+    stx.w !VMDATAL
+    dey
+    bne .lF6C9
+    ldx.w #$4A00
+    stx.w !VMADDL
+    ldx.w #$FFFF
+    ldy.w #$0010
+.lF6DB:
+    stx.w !VMDATAL
+    dey
+    bne .lF6DB
+    plb
+    sep.b #$20
+    rtl
+
+UnusedScreenTilesRom = $02D313    ; UnusedScreenTiles' ROM copy, which the screen calls
+
+; @routine 7E:F6E5 ObjectLinkBobStartLong
+; WHAT IT DOES: A second copy of ViewParamsBobLong ($7E:F737), which
+; nothing calls: starts bob 1 with A as its kind ($1A1D = A, $1A1F =
+; $1A23 = 0, $1A21 = $FE).
+; HOW: JSR ObjectLinkBobStart, RTL.
+; Entry: M 8-bit (the code is 8-bit); data bank $7E. Exit: M and X 8-bit
+; (X and Y high bytes 0); A low byte = $FE; N set, Z clear.
+%ramcode($7EF6E5, $01540C)
+ObjectLinkBobStartLong:
+    jsr.w ObjectLinkBobStart
+    rtl
