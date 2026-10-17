@@ -1,0 +1,107 @@
+# unit_clip_uv_01: unit tests (fx) from the start of a Novice race for
+# FxPolygonClipScreenUV (01:9A52), the textured polygon clip that only
+# FxModelFaces' textured faces call, which no play reaches: a polygon of
+# x, y, u, v words put at $0B00 ($005A pointing at it), the screen's
+# edges at $0038-$003E set to x $10-$EF, y $10-$AF, R0 the vertex count,
+# returning to the STOP at $01:80E3: a square inside, one across each
+# edge, one past every edge, a diamond and a triangle cutting the
+# corners, one wholly beyond each edge, two vertices only, and a square
+# across three edges wound the other way.
+# inside
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700038 10,00,EF,00,10,00,AF,00
+set 70005A 00,0B
+set 700B00 28,00,28,00,00,00,00,00,50,00,28,00,1F,00,00,00,50,00,50,00,1F,00,1F,00,28,00,50,00,00,00,1F,00
+fx 01:9A52 stop=80E3 r10=0244 r0=0004
+wait 1
+# left
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700038 10,00,EF,00,10,00,AF,00
+set 70005A 00,0B
+set 700B00 EC,FF,28,00,00,00,00,00,50,00,28,00,1F,00,00,00,50,00,50,00,1F,00,1F,00,EC,FF,50,00,00,00,1F,00
+fx 01:9A52 stop=80E3 r10=0244 r0=0004
+wait 1
+# right
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700038 10,00,EF,00,10,00,AF,00
+set 70005A 00,0B
+set 700B00 28,00,28,00,00,00,00,00,20,01,28,00,1F,00,00,00,20,01,50,00,1F,00,1F,00,28,00,50,00,00,00,1F,00
+fx 01:9A52 stop=80E3 r10=0244 r0=0004
+wait 1
+# top
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700038 10,00,EF,00,10,00,AF,00
+set 70005A 00,0B
+set 700B00 28,00,EC,FF,00,00,00,00,50,00,EC,FF,1F,00,00,00,50,00,50,00,1F,00,1F,00,28,00,50,00,00,00,1F,00
+fx 01:9A52 stop=80E3 r10=0244 r0=0004
+wait 1
+# bottom
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700038 10,00,EF,00,10,00,AF,00
+set 70005A 00,0B
+set 700B00 28,00,28,00,00,00,00,00,50,00,28,00,1F,00,00,00,50,00,D0,00,1F,00,1F,00,28,00,D0,00,00,00,1F,00
+fx 01:9A52 stop=80E3 r10=0244 r0=0004
+wait 1
+# all
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700038 10,00,EF,00,10,00,AF,00
+set 70005A 00,0B
+set 700B00 CE,FF,CE,FF,00,00,00,00,50,01,CE,FF,3F,00,00,00,50,01,00,01,3F,00,3F,00,CE,FF,00,01,00,00,3F,00
+fx 01:9A52 stop=80E3 r10=0244 r0=0004
+wait 1
+# diamond
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700038 10,00,EF,00,10,00,AF,00
+set 70005A 00,0B
+set 700B00 80,00,E2,FF,10,00,00,00,30,01,60,00,20,00,10,00,80,00,E0,00,10,00,20,00,E2,FF,60,00,00,00,10,00
+fx 01:9A52 stop=80E3 r10=0244 r0=0004
+wait 1
+# tri
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700038 10,00,EF,00,10,00,AF,00
+set 70005A 00,0B
+set 700B00 D8,FF,D8,FF,00,00,00,00,30,01,50,00,3F,00,10,00,40,00,F0,00,10,00,3F,00
+fx 01:9A52 stop=80E3 r10=0244 r0=0003
+wait 1
+# outleft
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700038 10,00,EF,00,10,00,AF,00
+set 70005A 00,0B
+set 700B00 00,00,28,00,00,00,00,00,08,00,28,00,1F,00,00,00,08,00,50,00,1F,00,1F,00,00,00,50,00,00,00,1F,00
+fx 01:9A52 stop=80E3 r10=0244 r0=0004
+wait 1
+# outright
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700038 10,00,EF,00,10,00,AF,00
+set 70005A 00,0B
+set 700B00 00,01,28,00,00,00,00,00,10,01,28,00,1F,00,00,00,10,01,50,00,1F,00,1F,00,00,01,50,00,00,00,1F,00
+fx 01:9A52 stop=80E3 r10=0244 r0=0004
+wait 1
+# outtop
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700038 10,00,EF,00,10,00,AF,00
+set 70005A 00,0B
+set 700B00 28,00,00,00,00,00,00,00,50,00,00,00,1F,00,00,00,50,00,08,00,1F,00,1F,00,28,00,08,00,00,00,1F,00
+fx 01:9A52 stop=80E3 r10=0244 r0=0004
+wait 1
+# outbottom
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700038 10,00,EF,00,10,00,AF,00
+set 70005A 00,0B
+set 700B00 28,00,C0,00,00,00,00,00,50,00,C0,00,1F,00,00,00,50,00,D0,00,1F,00,1F,00,28,00,D0,00,00,00,1F,00
+fx 01:9A52 stop=80E3 r10=0244 r0=0004
+wait 1
+# two
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700038 10,00,EF,00,10,00,AF,00
+set 70005A 00,0B
+set 700B00 28,00,28,00,00,00,00,00,50,00,50,00,1F,00,1F,00
+fx 01:9A52 stop=80E3 r10=0244 r0=0002
+wait 1
+# rev
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700038 10,00,EF,00,10,00,AF,00
+set 70005A 00,0B
+set 700B00 28,00,50,00,00,00,1F,00,20,01,50,00,1F,00,1F,00,20,01,EC,FF,1F,00,00,00,EC,FF,EC,FF,00,00,00,00
+fx 01:9A52 stop=80E3 r10=0244 r0=0004
+wait 1
