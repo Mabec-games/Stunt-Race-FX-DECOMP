@@ -1632,3 +1632,10 @@ includeonce
 !fx_outcodes = $70014A            ; outcodes ORed; the edges to clip against
 !fx_rom_r14 = $70001A             ; R14 kept while the ROM bank is $14
 !fx_rom_bank = $70001C            ; the ROM bank to go back to
+
+; Super FX haze effects (render/effects.asm)
+!fx_effect_flags = $702736        ; bit 14: the haze effects are on
+!fx_effect_max = $7026EE          ; the most effects started at once
+!fx_haze_x = $7026F6              ; the sample's left edge
+!fx_haze_x8 = $7026F8             ; the left edge less 8, where it goes back
+!fx_effect_seed = $7001D0         ; the effects' random seed

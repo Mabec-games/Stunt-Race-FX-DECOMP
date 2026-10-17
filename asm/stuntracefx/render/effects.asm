@@ -127,13 +127,13 @@ FxEffectsRun:
     stw (r10)
     inc r10
     inc r10
-    lm r1,($2736)
+    lm r1,(!fx_effect_flags)
     iwt r0,#$4000
     and r1
     beq .lBFB2
     nop
     ibt r2,#$00
-    lm r1,($247A)
+    lm r1,(!gsu_record_247a)
     ibt r0,#$4A
     add r1
     ldw (r0)
@@ -144,7 +144,7 @@ FxEffectsRun:
     div2
     div2
     move r2,r0
-    lm r0,($26EE)
+    lm r0,(!fx_effect_max)
     cmp r2
     bpl .lBF9E
     nop
@@ -195,10 +195,10 @@ FxHazeSample:
     stw (r10)
     inc r10
     inc r10
-    sm ($26F6),r1
+    sm (!fx_haze_x),r1
     with r1
     sub #8
-    sm ($26F8),r1
+    sm (!fx_haze_x8),r1
     move r9,r2
     move r6,r2
     with r6
@@ -235,8 +235,8 @@ FxHazeSample:
     to r4
     add r9
     move r14,r1
-    lm r3,($26F6)
-    lm r5,($26F8)
+    lm r3,(!fx_haze_x)
+    lm r5,(!fx_haze_x8)
     iwt r12,#$0010
     move r13,r15
     getb
@@ -336,7 +336,7 @@ FxHazePlot:
 ; (Z set), OV and CY from the last ADD or ADC; the last RAM address $01D0.
 %at($01C130)
 FxEffectsSpawn:
-    lms r4,($01D0)
+    lms r4,(!fx_effect_seed-!gsu_ram)
     iwt r1,#$2688
     move r12,r0
     move r13,r15
@@ -385,7 +385,7 @@ FxEffectsSpawn:
     loop
     nop
 .lC16F:
-    sms ($01D0),r4
+    sms (!fx_effect_seed-!gsu_ram),r4
     move r15,r11
     nop
 
