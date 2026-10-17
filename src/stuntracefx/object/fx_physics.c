@@ -1418,6 +1418,8 @@ lA117:
     nx = (uint16_t)(gsu_ldw(R[10]));
     at = nx;
     goto dispatch;
+    /* FxCollideModelUnused */
+lA124:
     t = 1;
     if (t) goto lA0F8;
     R[11] = 0x23A4;
@@ -5052,6 +5054,7 @@ dispatch:
     case 0xA10E: goto lA10E;
     case 0xA115: goto lA115;
     case 0xA117: goto lA117;
+    case 0xA124: goto lA124;
     case 0xA145: goto lA145;
     case 0xA607: goto lA607;
     case 0xA620: goto lA620;
@@ -5338,13 +5341,14 @@ dispatch:
     case 0xC74A: goto lC74A;
     case 0xC76D: goto lC76D;
     case 0xC77C: goto lC77C;
-    /* the FxPushAt variants the table at $04:9BC6 picks (JMP R12) */
-    case 0x99A1: abi_FxPushAt2(); at = R[11]; goto dispatch;
-    case 0x99C9: abi_FxPushAt1(); at = R[11]; goto dispatch;
-    case 0x99EE: abi_FxPushAtHalf(); at = R[11]; goto dispatch;
-    case 0x9A19: abi_FxPushAtQuarter(); at = R[11]; goto dispatch;
-    case 0x9A4A: abi_FxPushAt4Twist(); at = R[11]; goto dispatch;
-    case 0x9A9B: abi_FxPushAt4(); at = R[11]; goto dispatch;
+    /* the FxPushAt variants the table at $04:9BC6 picks (JMP R12),
+       each returning to the R11 it was entered with */
+    case 0x99A1: nx = R[11]; abi_FxPushAt2(); at = nx; goto dispatch;
+    case 0x99C9: nx = R[11]; abi_FxPushAt1(); at = nx; goto dispatch;
+    case 0x99EE: nx = R[11]; abi_FxPushAtHalf(); at = nx; goto dispatch;
+    case 0x9A19: nx = R[11]; abi_FxPushAtQuarter(); at = nx; goto dispatch;
+    case 0x9A4A: nx = R[11]; abi_FxPushAt4Twist(); at = nx; goto dispatch;
+    case 0x9A9B: nx = R[11]; abi_FxPushAt4(); at = nx; goto dispatch;
     }
     return;   /* not an address the code jumps to */
 }
@@ -5512,6 +5516,22 @@ void abi_FxContactsAnyTouch(void)
 void abi_FxCollideModel(void)
 {
     physics_run(0x9C3D, R[11]);
+}
+
+/*
+ * @routine 04:A124 FxCollideModelUnused
+ * WHAT IT DOES: Code no jump or branch reaches, after
+ * FxCollideModel's return: a branch back to its slot scan (04:A0F8)
+ * and a store of the record's x plus z (low seven bits negated) plus
+ * y into the slot at R11 (not reached in the traces so far, and
+ * never: nothing jumps here).
+ * HOW: BRA to 04:A0F8; ADD, AND, NOT, INC, STW (R11); BRA to 04:A0F8.
+ * Entry: none (unreachable).
+ * Exit: none.
+ */
+void abi_FxCollideModelUnused(void)
+{
+    physics_run(0xA124, R[11]);
 }
 
 /*

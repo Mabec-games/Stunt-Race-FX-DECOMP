@@ -1,0 +1,109 @@
+# unit_physics_04b: more unit tests (fx) from the start of a Novice race
+# for paths of the bank 04 physics tree unit_physics_04 leaves:
+# - FxObjectBounce on six more records with touch lists ($1642, $1694,
+#   $16E6, $17D0, $19B0, $1A54), for a hit from below;
+# - FxPartsUpdate on the car $1738 with its wheel $16E6 a pulled part:
+#   with the car's +$64 bit 0 set and the part's bit 2 clear; and with
+#   the part far below, far above and close to the record $1918's
+#   first part, its speeds of the other sign;
+# - FxCarFollowCourse on $1738 with its +$2C bit 6 set, placed far off
+#   the course (no nearest entry), and marked fallen (+$1C bit 4) with
+#   no course entry (+$58 = 0: FxCarAimAlongCourse does nothing);
+# - FxCarCollide on $1738 with its +$16 bit 4 clear and a touch list
+#   ($1576), and also with its +$64 bit 4 set.
+# - FxCollideModel of $1738 against the record $21DE turned by $2000
+#   (not a quarter turn: FxTurn), by $4000, $8000 and $C000, with no
+#   collision list (+$14 = 0) and with a list whose +$0C word is 0.
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 04:907A stop=888C r8=1642 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 04:907A stop=888C r8=1694 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 04:907A stop=888C r8=16E6 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 04:907A stop=888C r8=17D0 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 04:907A stop=888C r8=19B0 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 04:907A stop=888C r8=1A54 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70172C 02,08
+set 7017C6 18,19
+set 70179C 0D,00
+fx 04:A607 stop=888C r8=1738 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70172C 06,08
+set 7017C6 18,19
+set 701704 D2,B4,23,FD,61,01
+set 701714 00,01,00,01,00,01
+fx 04:A607 stop=888C r8=1738 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70172C 06,08
+set 7017C6 18,19
+set 701704 D2,B0,23,F9,61,FD
+set 701714 00,FF,00,FF,00,FF
+fx 04:A607 stop=888C r8=1738 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70172C 06,08
+set 7017C6 18,19
+set 701704 E2,B2,33,FB,71,FF
+set 701714 00,01,00,01,00,01
+fx 04:A607 stop=888C r8=1738 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 701764 40,00
+fx 04:C3D5 stop=888C r8=1738 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 701756 00,7F,00,7F,00,7F
+fx 04:C3D5 stop=888C r8=1738 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 701754 10,00
+set 701790 00,00
+fx 04:C3D5 stop=888C r8=1738 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70174E 02,00
+set 701750 76,15
+fx 04:BD20 stop=888C r8=1738 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70174E 02,00
+set 701750 76,15
+set 70179C 1C,00
+fx 04:BD20 stop=888C r8=1738 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 702202 00,20
+fx 04:9C3D stop=888C r7=21DE r8=1738 r9=1738 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 702202 00,40
+fx 04:9C3D stop=888C r7=21DE r8=1738 r9=1738 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 702202 00,80
+fx 04:9C3D stop=888C r7=21DE r8=1738 r9=1738 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 702202 00,C0
+fx 04:9C3D stop=888C r7=21DE r8=1738 r9=1738 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7021F2 00,00
+fx 04:9C3D stop=888C r7=21DE r8=1738 r9=1738 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7021F2 5C,83
+fx 04:9C3D stop=888C r7=21DE r8=1738 r9=1738 r10=0244
+wait 1

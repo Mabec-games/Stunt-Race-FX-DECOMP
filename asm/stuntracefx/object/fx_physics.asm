@@ -825,7 +825,7 @@ FxCollideModel:
     moves r1,r1
     bne .l9D01
     nop
-    iwt r15,#.lA145
+    iwt r15,#FxCollideModelUnused_lA145
     nop
 .l9D01:
     move r14,r1
@@ -838,7 +838,7 @@ FxCollideModel:
     moves r0,r0
     bne .l9D15
     nop
-    iwt r15,#.lA145
+    iwt r15,#FxCollideModelUnused_lA145
     nop
 .l9D15:
     move r14,r1
@@ -1553,7 +1553,19 @@ FxCollideModel:
     to r15
     ldw (r10)
     nop
-    bra .lA0F8
+;
+; @routine 04:A124 FxCollideModelUnused
+; WHAT IT DOES: Code no jump or branch reaches, after FxCollideModel's
+; return: a branch back to its slot scan (04:A0F8) and a store of the
+; record's x plus z (low seven bits negated) plus y into the slot at
+; R11 (not reached in the traces so far, and never: nothing jumps
+; here).
+; HOW: BRA to 04:A0F8; ADD, AND, NOT, INC, STW (R11); BRA to 04:A0F8.
+; Entry: none (unreachable).
+; Exit: none.
+%at($04A124)
+FxCollideModelUnused:
+    bra FxCollideModel_lA0F8
     nop
     iwt r11,#$23A4
     ibt r0,#$1E
@@ -1576,7 +1588,7 @@ FxCollideModel:
     ldw (r2)
     add r2
     stw (r11)
-    bra .lA0F8
+    bra FxCollideModel_lA0F8
     nop
 .lA145:
     ibt r0,#$00
