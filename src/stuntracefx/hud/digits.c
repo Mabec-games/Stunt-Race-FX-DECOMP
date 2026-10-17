@@ -344,11 +344,12 @@ void HudCountMove19EE(uint8_t bank, uint16_t rec)
     wr8(b | 0x19F2, 0x01);
 }
 
+void abi_HudCountMove19EECopy(void);
+
 void abi_HudCountMove19EE(void)
 {
     uint32_t b = (uint32_t)cpu.db << 16;
     uint8_t v = rd8(b | 0x0E59);
-    uint16_t n;
 
     cpu.p |= P_M;
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
@@ -363,6 +364,23 @@ void abi_HudCountMove19EE(void)
     cpu.p |= P_M;
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x7F);
     abi_GsuRecordLower82();
+    abi_HudCountMove19EECopy();
+}
+
+/*
+ * @routine 09:C0AB HudCountMove19EECopy
+ * WHAT IT DOES: HudCountMove19EE's last part, also entered by the count
+ * gate (09:AFFC): moves the count at $19EE to $19F0 (clearing $19EE) and
+ * sets $19F2 to 1.
+ * HOW: 16-bit copy and STZ through the data bank, then an 8-bit store.
+ * Entry: any widths. Exit: A = the old $19EE's high byte and 1; N, Z from
+ * 1; M 8-bit.
+ */
+void abi_HudCountMove19EECopy(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t n;
+
     n = rd16(b | 0x19EE);
     wr16(b | 0x19F0, n);
     wr16(b | 0x19EE, 0x0000);

@@ -678,6 +678,54 @@ void abi_GsuRecordLower82(void)
     cpu.p = (uint8_t)((nz16(p, cpu.x) | P_M) & ~P_X);
 }
 
+/* PHX, PHY, TYX, REP #$20, AND #$00FF, then the record's +$8A word set or
+   cleared by the bits in A, SEP #$20, PLY, PLX: A = the new word; N, Z
+   from X. */
+static void flags8a(int set)
+{
+    uint32_t at = (0x70008A + cpu.y) & 0xFFFFFF;
+    uint16_t a = cpu.a & 0x00FF;
+
+    cpu.p &= (uint8_t)~P_M;
+    if (set) {
+        a = (uint16_t)(a | rd16(at));
+    } else {
+        a ^= 0x00FF;
+        a = (uint16_t)(a & rd16(at));
+    }
+    wr16(at, a);
+    cpu.a = a;
+    cpu.p |= P_M;
+    cpu.p = (cpu.p & P_X) ? nz8(cpu.p, (uint8_t)cpu.x) : nz16(cpu.p, cpu.x);
+}
+
+/*
+ * @routine 08:B72E GsuRecordFlags8ASet
+ * WHAT IT DOES: Sets the bits in A's low byte in the word at +$8A of the
+ * Super FX record Y.
+ * HOW: The record in X (pushed and pulled around it); 16-bit long
+ * accesses.
+ * Entry: X 16-bit; Y = record; A low byte = bits. Exit: A = the new word;
+ * M 8-bit; X, Y unchanged; N, Z from X.
+ */
+void abi_GsuRecordFlags8ASet(void)
+{
+    flags8a(1);
+}
+
+/*
+ * @routine 08:B743 GsuRecordFlags8AClear
+ * WHAT IT DOES: Clears the bits in A's low byte in the word at +$8A of the
+ * Super FX record Y.
+ * HOW: As GsuRecordFlags8ASet, with EOR #$00FF and AND.
+ * Entry: X 16-bit; Y = record; A low byte = bits. Exit: A = the new word;
+ * M 8-bit; X, Y unchanged; N, Z from X.
+ */
+void abi_GsuRecordFlags8AClear(void)
+{
+    flags8a(0);
+}
+
 /*
  * @routine 08:B7D6 GsuRecordRaise6A
  * WHAT IT DOES: Unless bit 0 of +$40 of the Super FX record Y is set,

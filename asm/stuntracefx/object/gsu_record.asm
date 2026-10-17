@@ -624,6 +624,49 @@ GsuRecordLower82:
     plx
     rtl
 
+; @routine 08:B72E GsuRecordFlags8ASet
+; WHAT IT DOES: Sets the bits in A's low byte in the word at +$8A of the
+; Super FX record Y.
+; HOW: The record in X (pushed and pulled around it); 16-bit long
+; accesses.
+; Entry: X 16-bit; Y = record; A low byte = bits. Exit: A = the new word;
+; M 8-bit; X, Y unchanged; N, Z from X.
+%at($08B72E)
+GsuRecordFlags8ASet:
+    phx
+    phy
+    tyx
+    rep.b #$20
+    and.w #$00FF
+    ora.l !gsu_rec_8a,x
+    sta.l !gsu_rec_8a,x
+    sep.b #$20
+    ply
+    plx
+    rtl
+
+; @routine 08:B743 GsuRecordFlags8AClear
+; WHAT IT DOES: Clears the bits in A's low byte in the word at +$8A of the
+; Super FX record Y.
+; HOW: As GsuRecordFlags8ASet, with EOR #$00FF and AND.
+; Entry: X 16-bit; Y = record; A low byte = bits. Exit: A = the new word;
+; M 8-bit; X, Y unchanged; N, Z from X.
+%at($08B743)
+GsuRecordFlags8AClear:
+    phx
+    phy
+    tyx
+    rep.b #$20
+    and.w #$00FF
+    eor.w #$00FF
+    and.l !gsu_rec_8a,x
+    sta.l !gsu_rec_8a,x
+    sep.b #$20
+    ply
+    plx
+    rtl
+
+
 ; @routine 08:B7D6 GsuRecordRaise6A
 ; WHAT IT DOES: Unless bit 0 of +$40 of the Super FX record Y is set,
 ; raises its word at +$6A by an amount scaled from A, to at most $180; when

@@ -2236,6 +2236,24 @@ void abi_ObjectStarSparkleStep(void)
     sparkle_frame();
 }
 
+/*
+ * @routine 09:A0FA ObjectLanternBurst
+ * WHAT IT DOES: Bursts the lantern into four sparks (kind $A0CC, lit by
+ * $996B, handler ObjectFlyingPiece, +$0A = $0F) flying out at ($28, -$2D,
+ * 0), (-$28, -$2D, 0), (0, -$32, $28) and (0, -$32, -$28); a spark is
+ * skipped without a free object.
+ * HOW: Four ObjectSpawn blocks, each from object X's position.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the last spark
+ * leaves it.
+ */
+void abi_ObjectLanternBurst(void)
+{
+    spark(0x14, 0x0028, 0xFFD3, 0x0000);
+    spark(0x03, 0xFFD8, 0xFFD3, 0x0000);
+    spark(0x0A, 0x0000, 0xFFCE, 0x0028);
+    spark(0x01, 0x0000, 0xFFCE, 0xFFD8);
+}
+
 /* 09:A0C0: the lantern's frame: when a car hits it the first time (+$25
    bit 0), sound $10, it is released and bursts into four sparks; no hit
    clears the bit. */
@@ -2252,10 +2270,7 @@ static void lantern_frame(void)
     lda8(0x10);
     abi_SoundPort0QueuePush();
     abi_ObjectRelease();
-    spark(0x14, 0x0028, 0xFFD3, 0x0000);
-    spark(0x03, 0xFFD8, 0xFFD3, 0x0000);
-    spark(0x0A, 0x0000, 0xFFCE, 0x0028);
-    spark(0x01, 0x0000, 0xFFCE, 0xFFD8);
+    abi_ObjectLanternBurst();
 }
 
 /* 09:A0B2: the lantern's record ($424, +$0A $90E8) with flag bit 4 and
@@ -2311,4 +2326,1660 @@ void abi_ObjectLanternRecord(void)
 void abi_ObjectLanternStep(void)
 {
     lantern_frame();
+}
+
+/* ---- 09:A293-B0A0: the course gates and markers ---- */
+
+void abi_SoundPort1QueuePush(void);
+void abi_GsuRecordLower82(void);
+void abi_ObjectCopyPositionFrom(void);
+void abi_ObjectStep48To8(void);
+void abi_HudCountMove19EECopy(void);
+void abi_GsuRecordFlags8ASet(void);
+void abi_GsuRecordFlags8AClear(void);
+
+/* LDA #v, STA addr with M already 16-bit. */
+static void st16w(uint32_t addr, uint16_t v)
+{
+    op_lda16_imm(v);
+    wr16(addr, v);
+}
+
+/* LDA #v, JSL SoundPort1QueuePush. */
+static void sound1(uint8_t v)
+{
+    lda8(v);
+    abi_SoundPort1QueuePush();
+}
+
+/* LDA #v, JSL SoundPort0QueuePush. */
+static void sound0(uint8_t v)
+{
+    lda8(v);
+    abi_SoundPort0QueuePush();
+}
+
+/* LDA +$25, AND #m: whether bit m of the gate's +$25 is set. */
+static int bit25(uint8_t m)
+{
+    lda8((uint8_t)(ld8(F(0x2025, cpu.x)) & m));
+    return (uint8_t)cpu.a != 0;
+}
+
+/* SEP #$20, LDA $0DEA, CMP #lap: whether this is lap `lap`. */
+static int lap_is(uint8_t lap)
+{
+    cpu.p |= P_M;
+    ld8(db() | 0x0DEA);
+    cmp8(lap);
+    return (uint8_t)cpu.a == lap;
+}
+
+/* A gate's record: a new one ($42D) with flag bit 4 at (s, s, s). */
+static void gate42d(uint16_t s)
+{
+    abi_GsuRecordNew42D();
+    abi_GsuRecordFlag10();
+    record_at(s, s, s);
+}
+
+/* ObjectSyncFromRecord, AND #1: whether the record has contacts. */
+static int synced(void)
+{
+    abi_ObjectSyncFromRecord();
+    lda8((uint8_t)(cpu.a & 0x01));
+    return (uint8_t)cpu.a != 0;
+}
+
+/* RecordNextContact until a contact whose flags AND #1 are set: 1 when
+   one is found, 0 when the list runs out (carry clear). */
+static int next_contact(void)
+{
+    for (;;) {
+        abi_RecordNextContact();
+        if (!(cpu.p & P_C))
+            return 0;
+        lda8((uint8_t)(cpu.a & 0x01));
+        if ((uint8_t)cpu.a)
+            return 1;
+    }
+}
+
+/* REP #$20, A = n (16-bit), JSL to: a car record's +$8A bits set or
+   cleared (08:B72E / 08:B743). */
+static void car_bits16(uint16_t n, void (*to)(void))
+{
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16_imm(n);
+    to();
+}
+
+/* The slide's step, target and direction ($19F8, $19FA, $19FC), M
+   16-bit. */
+static void slide_set(uint16_t step, uint16_t target, uint16_t dir)
+{
+    st16w(db() | 0x19F8, step);
+    st16w(db() | 0x19FA, target);
+    st16w(db() | 0x19FC, dir);
+}
+
+/* The fade's step $1A00 and end $1A02, M 16-bit. */
+static void fade_set(uint16_t step, uint16_t end)
+{
+    st16w(db() | 0x1A00, step);
+    st16w(db() | 0x1A02, end);
+}
+
+/* SEP #$20, $1A04 = $FF, $1A05 = 0. */
+static void slide_hold(void)
+{
+    cpu.p |= P_M;
+    st8i(db() | 0x1A04, 0xFF);
+    st8i(db() | 0x1A05, 0x00);
+}
+
+/* 09:A2D8: the chime gate's frame: a car's hit, the first time (+$25 bit
+   0, clearing bit 1), sound $13 on port 1; no hit, the first time (+$25
+   bit 1, clearing bit 0), sound $0E. */
+static void chime_frame(void)
+{
+    if (hit()) {
+        if (bit25(0x01))
+            return;
+        or8(F(0x2025, cpu.x), 0x01);
+        and8(F(0x2025, cpu.x), 0xFD);
+        sound1(0x13);
+        return;
+    }
+    if (bit25(0x02))
+        return;
+    or8(F(0x2025, cpu.x), 0x02);
+    and8(F(0x2025, cpu.x), 0xFE);
+    sound1(0x0E);
+}
+
+/*
+ * @routine 09:A293 ObjectChimeGate
+ * WHAT IT DOES: Sets up a chime gate: restart $09:A2B1
+ * (ObjectChimeGateRecord), frame $09:A2D8 (ObjectChimeGateStep); its record
+ * and frame.
+ * HOW: Word and byte stores. Reached only by unit_gates_09.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectChimeGate(void)
+{
+    handlers2(0xA2B1, 0xA2D8);
+    gate42d(0x0F00);
+    chime_frame();
+}
+
+/*
+ * @routine 09:A2B1 ObjectChimeGateRecord
+ * WHAT IT DOES: The chime gate's restart: its record ($42D, flag bit 4, at
+ * ($F00, $F00, $F00)), then its frame.
+ * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition. Reached only
+ * by unit_gates_09.
+ * Entry: as ObjectChimeGate. Exit: as ObjectChimeGate.
+ */
+void abi_ObjectChimeGateRecord(void)
+{
+    gate42d(0x0F00);
+    chime_frame();
+}
+
+/*
+ * @routine 09:A2D8 ObjectChimeGateStep
+ * WHAT IT DOES: The chime gate's frame: when a car enters it (contact bit
+ * 0) the first time, sound $13 on port 1; when it leaves, sound $0E; +$25
+ * bit 0 marks inside, bit 1 outside.
+ * HOW: ObjectSyncFromRecord, RecordContactSummary, SoundPort1QueuePush.
+ * Reached only by unit_gates_09.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectChimeGateStep(void)
+{
+    chime_frame();
+}
+
+/* 09:A371 / A408: a flash gate's frame: a car's hit, the first time (+$25
+   bit 0), flashes the screen ($19C5 = flash step) and starts a fade
+   ($1A00 step, $1A02 end; $0DA5 bits 0 and 5); no hit clears the bit. */
+static void flash_frame(uint16_t flash, uint16_t step, uint16_t end)
+{
+    if (hit()) {
+        if (bit25(0x01))
+            return;
+        or8(F(0x2025, cpu.x), 0x01);
+        cpu.p &= (uint8_t)~P_M;
+        st16w(0x0019C5, flash);
+        fade_set(step, end);
+        cpu.p |= P_M;
+        or8(db() | 0x0DA5, 0x21);
+        return;
+    }
+    cpu.p |= P_M;
+    and8(F(0x2025, cpu.x), 0xFE);
+}
+
+/*
+ * @routine 09:A32C ObjectBrightGate
+ * WHAT IT DOES: Sets up a bright gate: restart $09:A34A
+ * (ObjectBrightGateRecord), frame $09:A371 (ObjectBrightGateStep); its
+ * record and frame.
+ * HOW: Word and byte stores. Reached only by unit_gates_09.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectBrightGate(void)
+{
+    handlers2(0xA34A, 0xA371);
+    gate42d(0x0780);
+    flash_frame(0x0020, 0x0200, 0x2000);
+}
+
+/*
+ * @routine 09:A34A ObjectBrightGateRecord
+ * WHAT IT DOES: The bright gate's restart: its record ($42D, flag bit 4,
+ * at ($780, $780, $780)), then its frame.
+ * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition. Reached only
+ * by unit_gates_09.
+ * Entry: as ObjectBrightGate. Exit: as ObjectBrightGate.
+ */
+void abi_ObjectBrightGateRecord(void)
+{
+    gate42d(0x0780);
+    flash_frame(0x0020, 0x0200, 0x2000);
+}
+
+/*
+ * @routine 09:A371 ObjectBrightGateStep
+ * WHAT IT DOES: The bright gate's frame: a car's hit, the first time (+$25
+ * bit 0), brightens the screen (flash step $19C5 = $20, fade by $200 up to
+ * $2000, $0DA5 bits 0 and 5); no hit clears the bit.
+ * HOW: ObjectSyncFromRecord, RecordContactSummary; the flash word by a long
+ * store. Reached only by unit_gates_09.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectBrightGateStep(void)
+{
+    flash_frame(0x0020, 0x0200, 0x2000);
+}
+
+/*
+ * @routine 09:A3C3 ObjectDarkGate
+ * WHAT IT DOES: Sets up a dark gate: restart $09:A3E1
+ * (ObjectDarkGateRecord), frame $09:A408 (ObjectDarkGateStep); its record
+ * and frame.
+ * HOW: Word and byte stores.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectDarkGate(void)
+{
+    handlers2(0xA3E1, 0xA408);
+    gate42d(0x0780);
+    flash_frame(0xFFE0, 0xFE00, 0xFE00);
+}
+
+/*
+ * @routine 09:A3E1 ObjectDarkGateRecord
+ * WHAT IT DOES: The dark gate's restart: its record ($42D, flag bit 4, at
+ * ($780, $780, $780)), then its frame.
+ * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
+ * Entry: as ObjectDarkGate. Exit: as ObjectDarkGate.
+ */
+void abi_ObjectDarkGateRecord(void)
+{
+    gate42d(0x0780);
+    flash_frame(0xFFE0, 0xFE00, 0xFE00);
+}
+
+/*
+ * @routine 09:A408 ObjectDarkGateStep
+ * WHAT IT DOES: The dark gate's frame: a car's hit, the first time (+$25
+ * bit 0), darkens the screen (flash step $19C5 = -$20, fade by -$200 down
+ * to $FE00, $0DA5 bits 0 and 5); no hit clears the bit.
+ * HOW: ObjectSyncFromRecord, RecordContactSummary; the flash word by a long
+ * store.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectDarkGateStep(void)
+{
+    flash_frame(0xFFE0, 0xFE00, 0xFE00);
+}
+
+/* 09:A49D / A52C: a car flag gate's frame: a car's contact (bit 0), the
+   first time (+$25 bit 0), sets or clears bit 1 of the car's record +$8A
+   (unless $7F:3460 is set) and plays `snd` on port 1; no contact clears
+   the bit. `on` picks set (08:B72E) or clear (08:B743). */
+static void car_flag_frame(int on, uint8_t snd)
+{
+    if (!synced() || !next_contact()) {
+        and8(F(0x2025, cpu.x), 0xFE);
+        return;
+    }
+    if (bit25(0x01))
+        return;
+    or8(F(0x2025, cpu.x), 0x01);
+    cpu.p |= P_M;
+    if (!ld8(0x7F3460))
+        car_bits16(0x0002, on ? abi_GsuRecordFlags8ASet : abi_GsuRecordFlags8AClear);
+    if (!on)
+        cpu.p &= (uint8_t)~P_M;
+    cpu.p |= P_M;
+    sound1(snd);
+}
+
+/*
+ * @routine 09:A458 ObjectCarFlagOffGate
+ * WHAT IT DOES: Sets up a gate that takes bit 1 of a car's record +$8A
+ * away: restart $09:A476 (ObjectCarFlagOffGateRecord), frame $09:A49D
+ * (ObjectCarFlagOffGateStep); its record and frame.
+ * HOW: Word and byte stores.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectCarFlagOffGate(void)
+{
+    handlers2(0xA476, 0xA49D);
+    gate42d(0x0780);
+    car_flag_frame(0, 0x11);
+}
+
+/*
+ * @routine 09:A476 ObjectCarFlagOffGateRecord
+ * WHAT IT DOES: The gate's restart: its record ($42D, flag bit 4, at
+ * ($780, $780, $780)), then its frame.
+ * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
+ * Entry: as ObjectCarFlagOffGate. Exit: as ObjectCarFlagOffGate.
+ */
+void abi_ObjectCarFlagOffGateRecord(void)
+{
+    gate42d(0x0780);
+    car_flag_frame(0, 0x11);
+}
+
+/*
+ * @routine 09:A49D ObjectCarFlagOffGateStep
+ * WHAT IT DOES: The gate's frame: the first car contact (contact flags bit
+ * 0; +$25 bit 0 marks it) clears bit 1 of that car's record +$8A unless
+ * $7F:3460 is set, and plays sound $11 on port 1; no contact clears the
+ * mark.
+ * HOW: ObjectSyncFromRecord, then RecordNextContact over the contacts;
+ * 08:B743 with A = 2 (16-bit) and Y = the touched record.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectCarFlagOffGateStep(void)
+{
+    car_flag_frame(0, 0x11);
+}
+
+/*
+ * @routine 09:A4E7 ObjectCarFlagOnGate
+ * WHAT IT DOES: Sets up a gate that gives a car's record +$8A bit 1:
+ * restart $09:A505 (ObjectCarFlagOnGateRecord), frame $09:A52C
+ * (ObjectCarFlagOnGateStep); its record and frame.
+ * HOW: Word and byte stores.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectCarFlagOnGate(void)
+{
+    handlers2(0xA505, 0xA52C);
+    gate42d(0x0780);
+    car_flag_frame(1, 0x10);
+}
+
+/*
+ * @routine 09:A505 ObjectCarFlagOnGateRecord
+ * WHAT IT DOES: The gate's restart: its record ($42D, flag bit 4, at
+ * ($780, $780, $780)), then its frame.
+ * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
+ * Entry: as ObjectCarFlagOnGate. Exit: as ObjectCarFlagOnGate.
+ */
+void abi_ObjectCarFlagOnGateRecord(void)
+{
+    gate42d(0x0780);
+    car_flag_frame(1, 0x10);
+}
+
+/*
+ * @routine 09:A52C ObjectCarFlagOnGateStep
+ * WHAT IT DOES: The gate's frame: the first car contact (contact flags bit
+ * 0; +$25 bit 0 marks it) sets bit 1 of that car's record +$8A unless
+ * $7F:3460 is set, and plays sound $10 on port 1; no contact clears the
+ * mark.
+ * HOW: ObjectSyncFromRecord, then RecordNextContact over the contacts;
+ * 08:B72E with A = 2 (16-bit) and Y = the touched record.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectCarFlagOnGateStep(void)
+{
+    car_flag_frame(1, 0x10);
+}
+
+/* 09:A5B9: the lap 1 slide gate's frame: on lap 1 the first car contact
+   (+$25 bit 0) clears bit 1 of the car's record +$8A and starts the slide
+   down ($0DA5 bits 5 and 7: step $40 to -$40, direction $8000) and a fade
+   ($1A00 = $20 up to $2000). */
+static void slide1_frame(void)
+{
+    if (!synced() || !next_contact())
+        return;
+    if (!lap_is(0x01))
+        return;
+    if (bit25(0x01))
+        return;
+    or8(F(0x2025, cpu.x), 0x01);
+    cpu.p |= P_M;
+    or8(0x000DA5, 0xA0);
+    car_bits16(0x0002, abi_GsuRecordFlags8AClear);
+    cpu.p &= (uint8_t)~P_M;
+    fade_set(0x0020, 0x2000);
+    slide_set(0x0040, 0xFFC0, 0x8000);
+    cpu.p |= P_M;
+}
+
+/*
+ * @routine 09:A574 ObjectSlideGate
+ * WHAT IT DOES: Sets up the lap 1 slide gate: restart $09:A592
+ * (ObjectSlideGateRecord), frame $09:A5B9 (ObjectSlideGateStep); its record
+ * and frame.
+ * HOW: Word and byte stores.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectSlideGate(void)
+{
+    handlers2(0xA592, 0xA5B9);
+    gate42d(0x0780);
+    slide1_frame();
+}
+
+/*
+ * @routine 09:A592 ObjectSlideGateRecord
+ * WHAT IT DOES: The slide gate's restart: its record ($42D, flag bit 4, at
+ * ($780, $780, $780)), then its frame.
+ * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
+ * Entry: as ObjectSlideGate. Exit: as ObjectSlideGate.
+ */
+void abi_ObjectSlideGateRecord(void)
+{
+    gate42d(0x0780);
+    slide1_frame();
+}
+
+/*
+ * @routine 09:A5B9 ObjectSlideGateStep
+ * WHAT IT DOES: The slide gate's frame: on lap 1 ($0DEA) the first car
+ * contact (+$25 bit 0 marks it) clears bit 1 of the car's record +$8A,
+ * starts the slide down ($0DA5 bits 5 and 7; step $40 to target -$40,
+ * direction $8000) and a fade (step $20 up to $2000).
+ * HOW: ObjectSyncFromRecord, RecordNextContact; 08:B743 with A = 2;
+ * $0DA5 by long accesses.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectSlideGateStep(void)
+{
+    slide1_frame();
+}
+
+/*
+ * @routine 09:A6BE GateFlashOnClock
+ * WHAT IT DOES: When bit 4 of the race clock's fraction $0E63 is clear,
+ * sweeps the screen ($0DA5 bit 4) with sound $36.
+ * HOW: Four LSRs and AND #1 (the carry is the fraction's bit 3); $0DA5 by
+ * long accesses. Reached only by unit_gates_09.
+ * Entry: X 16-bit. Exit: M 8-bit; carry = bit 3 of $0E63; bit 4 set: A
+ * low byte = 1; else as SoundPort0QueuePush leaves it.
+ */
+void abi_GateFlashOnClock(void)
+{
+    uint8_t v;
+
+    cpu.p |= P_M;
+    v = ld8(db() | 0x0E63);
+    cpu.p = (uint8_t)((cpu.p & ~P_C) | ((v & 0x08) ? P_C : 0));
+    lda8((uint8_t)((v >> 4) & 0x01));
+    if ((uint8_t)cpu.a)
+        return;
+    or8(0x000DA5, 0x10);
+    sound0(0x36);
+}
+
+/*
+ * @routine 09:A6DC GateFadeUp
+ * WHAT IT DOES: Starts a fade ($0DA5 bit 5) by $80 up to $2000.
+ * HOW: $0DA5 by long accesses; the words through the data bank.
+ * Reached only by unit_gates_09.
+ * Entry: X 16-bit. Exit: M 8-bit; A = $2000; N, Z from it.
+ */
+void abi_GateFadeUp(void)
+{
+    cpu.p |= P_M;
+    or8(0x000DA5, 0x20);
+    cpu.p &= (uint8_t)~P_M;
+    fade_set(0x0080, 0x2000);
+    cpu.p |= P_M;
+}
+
+/* 09:A666: the lap gate's frame: a car's hit on lap 0 or 1, the first time
+   (+$25 bit 0), GateFlashOnClock; on lap 2, the first time (+$25 bit 1),
+   GateFadeUp and the gate is released. */
+static void lap_flash_frame(void)
+{
+    uint8_t lap;
+
+    if (!hit())
+        return;
+    cpu.p |= P_M;
+    lap = ld8(db() | 0x0DEA);
+    cmp8(0x00);
+    if (lap != 0x00) {
+        cmp8(0x01);
+        if (lap != 0x01) {
+            cmp8(0x02);
+            if (lap != 0x02)
+                return;
+            if (bit25(0x02))
+                return;
+            or8(F(0x2025, cpu.x), 0x02);
+            abi_GateFadeUp();
+            abi_ObjectRelease();
+            return;
+        }
+    }
+    if (bit25(0x01))
+        return;
+    or8(F(0x2025, cpu.x), 0x01);
+    abi_GateFlashOnClock();
+}
+
+/*
+ * @routine 09:A621 ObjectLapFlashGate
+ * WHAT IT DOES: Sets up a gate that flashes on laps 0 and 1 and fades on
+ * lap 2: restart $09:A63F (ObjectLapFlashGateRecord), frame $09:A666
+ * (ObjectLapFlashGateStep); its record and frame.
+ * HOW: Word and byte stores.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectLapFlashGate(void)
+{
+    handlers2(0xA63F, 0xA666);
+    gate42d(0x0780);
+    lap_flash_frame();
+}
+
+/*
+ * @routine 09:A63F ObjectLapFlashGateRecord
+ * WHAT IT DOES: The gate's restart: its record ($42D, flag bit 4, at
+ * ($780, $780, $780)), then its frame.
+ * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
+ * Entry: as ObjectLapFlashGate. Exit: as ObjectLapFlashGate.
+ */
+void abi_ObjectLapFlashGateRecord(void)
+{
+    gate42d(0x0780);
+    lap_flash_frame();
+}
+
+/*
+ * @routine 09:A666 ObjectLapFlashGateStep
+ * WHAT IT DOES: The gate's frame: a car's hit on lap 0 or 1 ($0DEA), the
+ * first time (+$25 bit 0), sweeps the screen on even clock ticks
+ * (GateFlashOnClock); on lap 2, the first time (+$25 bit 1), a fade
+ * (GateFadeUp) and the gate is released.
+ * HOW: ObjectSyncFromRecord, RecordContactSummary; the lap compared with
+ * 0, 1 and 2.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectLapFlashGateStep(void)
+{
+    lap_flash_frame();
+}
+
+/* 09:A73E: a car's hit on lap 0, the first time (+$25 bit 0): a sweep
+   ($0DA5 bit 4) with sound $36, and the gate is released; no hit clears
+   the bit. */
+static void sweep0_frame(void)
+{
+    if (!hit()) {
+        and8(F(0x2025, cpu.x), 0xFE);
+        return;
+    }
+    if (!lap_is(0x00))
+        return;
+    if (bit25(0x01))
+        return;
+    or8(F(0x2025, cpu.x), 0x01);
+    or8(0x000DA5, 0x10);
+    sound0(0x36);
+    abi_ObjectRelease();
+}
+
+/*
+ * @routine 09:A6F9 ObjectSweepGate
+ * WHAT IT DOES: Sets up the lap 0 sweep gate: restart $09:A717
+ * (ObjectSweepGateRecord), frame $09:A73E (ObjectSweepGateStep); its record
+ * and frame.
+ * HOW: Word and byte stores. Reached only by unit_gates_09.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectSweepGate(void)
+{
+    handlers2(0xA717, 0xA73E);
+    gate42d(0x0780);
+    sweep0_frame();
+}
+
+/*
+ * @routine 09:A717 ObjectSweepGateRecord
+ * WHAT IT DOES: The sweep gate's restart: its record ($42D, flag bit 4, at
+ * ($780, $780, $780)), then its frame.
+ * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition. Reached only
+ * by unit_gates_09.
+ * Entry: as ObjectSweepGate. Exit: as ObjectSweepGate.
+ */
+void abi_ObjectSweepGateRecord(void)
+{
+    gate42d(0x0780);
+    sweep0_frame();
+}
+
+/*
+ * @routine 09:A73E ObjectSweepGateStep
+ * WHAT IT DOES: The sweep gate's frame: a car's hit on lap 0, the first
+ * time (+$25 bit 0), sweeps the screen ($0DA5 bit 4) with sound $36 and
+ * releases the gate; no hit clears the bit.
+ * HOW: ObjectSyncFromRecord, RecordContactSummary; $0DA5 by long accesses.
+ * Reached only by unit_gates_09.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectSweepGateStep(void)
+{
+    sweep0_frame();
+}
+
+/* 09:A7CD: the slide chime gate's frame: synced and summed (the summary's
+   bit 0 is a hit): a hit, the first time (+$25 bit 1, clearing bit 2),
+   sound $13 on port 1; then on lap 1 the first time (+$25 bit 0) the slide
+   down ($0DA5 bits 5 and 7, step $80 to -$80, direction $8000, $1A04 =
+   $FF) and a fade ($20 up to $2000). No hit: the first time (+$25 bit 2)
+   sound $0E; +$25 bit 1 cleared. */
+static void slide_chime_frame(void)
+{
+    abi_ObjectSyncFromRecord();
+    abi_RecordContactSummary();
+    lda8((uint8_t)(cpu.a & 0x01));
+    if ((uint8_t)cpu.a) {
+        if (!bit25(0x02)) {
+            or8(F(0x2025, cpu.x), 0x02);
+            and8(F(0x2025, cpu.x), 0xFB);
+            sound1(0x13);
+        }
+        if (!lap_is(0x01))
+            return;
+        if (bit25(0x01))
+            return;
+        or8(F(0x2025, cpu.x), 0x01);
+        cpu.p |= P_M;
+        or8(0x000DA5, 0xA0);
+        cpu.p &= (uint8_t)~P_M;
+        slide_set(0x0080, 0xFF80, 0x8000);
+        slide_hold();
+        cpu.p &= (uint8_t)~P_M;
+        fade_set(0x0020, 0x2000);
+        cpu.p |= P_M;
+        return;
+    }
+    cpu.p |= P_M;
+    if (!bit25(0x04)) {
+        or8(F(0x2025, cpu.x), 0x04);
+        sound1(0x0E);
+    }
+    and8(F(0x2025, cpu.x), 0xFD);
+}
+
+/*
+ * @routine 09:A788 ObjectSlideChimeGate
+ * WHAT IT DOES: Sets up the slide chime gate: restart $09:A7A6
+ * (ObjectSlideChimeGateRecord), frame $09:A7CD (ObjectSlideChimeGateStep);
+ * its record and frame.
+ * HOW: Word and byte stores.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectSlideChimeGate(void)
+{
+    handlers2(0xA7A6, 0xA7CD);
+    gate42d(0x0F00);
+    slide_chime_frame();
+}
+
+/*
+ * @routine 09:A7A6 ObjectSlideChimeGateRecord
+ * WHAT IT DOES: The gate's restart: its record ($42D, flag bit 4, at
+ * ($F00, $F00, $F00)), then its frame.
+ * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
+ * Entry: as ObjectSlideChimeGate. Exit: as ObjectSlideChimeGate.
+ */
+void abi_ObjectSlideChimeGateRecord(void)
+{
+    gate42d(0x0F00);
+    slide_chime_frame();
+}
+
+/*
+ * @routine 09:A7CD ObjectSlideChimeGateStep
+ * WHAT IT DOES: The gate's frame: a car entering (contact summary bit 0)
+ * the first time plays sound $13 on port 1 (+$25 bit 1 marks inside); on
+ * lap 1 the first entry (+$25 bit 0) also starts the slide down (step $80
+ * to -$80, $1A04 = $FF) and a fade ($20 up to $2000). Leaving plays sound
+ * $0E the first time (+$25 bit 2 marks outside).
+ * HOW: ObjectSyncFromRecord, RecordContactSummary (not tested on the
+ * sync); $0DA5 by long accesses.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectSlideChimeGateStep(void)
+{
+    slide_chime_frame();
+}
+
+/* 09:A8BC / A94C: on lap `lap` the first car contact (+$25 bit 0) starts
+   a fade ($0DA5 bit 5, $1A00 = step, $1A02 = end). */
+static void fade_frame(uint8_t lap, uint16_t step, uint16_t end)
+{
+    if (!synced() || !next_contact())
+        return;
+    if (!lap_is(lap))
+        return;
+    if (bit25(0x01))
+        return;
+    or8(F(0x2025, cpu.x), 0x01);
+    cpu.p |= P_M;
+    or8(0x000DA5, 0x20);
+    cpu.p &= (uint8_t)~P_M;
+    fade_set(step, end);
+    cpu.p |= P_M;
+}
+
+/*
+ * @routine 09:A877 ObjectFadeGate0
+ * WHAT IT DOES: Sets up the lap 0 fade gate: restart $09:A895
+ * (ObjectFadeGate0Record), frame $09:A8BC (ObjectFadeGate0Step); its record
+ * and frame.
+ * HOW: Word and byte stores. Reached only by unit_gates_09.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectFadeGate0(void)
+{
+    handlers2(0xA895, 0xA8BC);
+    gate42d(0x0780);
+    fade_frame(0x00, 0x000A, 0x1FFE);
+}
+
+/*
+ * @routine 09:A895 ObjectFadeGate0Record
+ * WHAT IT DOES: The gate's restart: its record ($42D, flag bit 4, at
+ * ($780, $780, $780)), then its frame.
+ * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition. Reached only
+ * by unit_gates_09.
+ * Entry: as ObjectFadeGate0. Exit: as ObjectFadeGate0.
+ */
+void abi_ObjectFadeGate0Record(void)
+{
+    gate42d(0x0780);
+    fade_frame(0x00, 0x000A, 0x1FFE);
+}
+
+/*
+ * @routine 09:A8BC ObjectFadeGate0Step
+ * WHAT IT DOES: The gate's frame: on lap 0 the first car contact (+$25
+ * bit 0 marks it) starts a slow fade ($0DA5 bit 5, step $0A up to $1FFE).
+ * HOW: ObjectSyncFromRecord, RecordNextContact; $0DA5 by long accesses.
+ * Reached only by unit_gates_09.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectFadeGate0Step(void)
+{
+    fade_frame(0x00, 0x000A, 0x1FFE);
+}
+
+/*
+ * @routine 09:A907 ObjectFadeGate2
+ * WHAT IT DOES: Sets up the lap 2 fade gate: restart $09:A925
+ * (ObjectFadeGate2Record), frame $09:A94C (ObjectFadeGate2Step); its record
+ * and frame.
+ * HOW: Word and byte stores. Reached only by unit_gates_09.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectFadeGate2(void)
+{
+    handlers2(0xA925, 0xA94C);
+    gate42d(0x0780);
+    fade_frame(0x02, 0x0020, 0x1F20);
+}
+
+/*
+ * @routine 09:A925 ObjectFadeGate2Record
+ * WHAT IT DOES: The gate's restart: its record ($42D, flag bit 4, at
+ * ($780, $780, $780)), then its frame.
+ * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition. Reached only
+ * by unit_gates_09.
+ * Entry: as ObjectFadeGate2. Exit: as ObjectFadeGate2.
+ */
+void abi_ObjectFadeGate2Record(void)
+{
+    gate42d(0x0780);
+    fade_frame(0x02, 0x0020, 0x1F20);
+}
+
+/*
+ * @routine 09:A94C ObjectFadeGate2Step
+ * WHAT IT DOES: The gate's frame: on lap 2 the first car contact (+$25
+ * bit 0 marks it) starts a fade ($0DA5 bit 5, step $20 up to $1F20).
+ * HOW: ObjectSyncFromRecord, RecordNextContact; $0DA5 by long accesses;
+ * its no-contact exit is the RTL of 09:A8BC's code (09:A906). Reached only
+ * by unit_gates_09.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectFadeGate2Step(void)
+{
+    fade_frame(0x02, 0x0020, 0x1F20);
+}
+
+/* 09:A9DC: while a car is in the zone, the slide runs up (step $100 to
+   $1000, direction 0, $7F:3470 = $7FFF, $0DA5 bit 7); otherwise it runs
+   back down (to -$100, direction $8000, $1A04 = $FF). */
+static void slide_zone_frame(void)
+{
+    if (hit()) {
+        cpu.p &= (uint8_t)~P_M;
+        st16w(0x7F3470, 0x7FFF);
+        slide_set(0x0100, 0x1000, 0x0000);
+        cpu.p |= P_M;
+        or8(db() | 0x0DA5, 0x80);
+        return;
+    }
+    cpu.p &= (uint8_t)~P_M;
+    slide_set(0x0100, 0xFF00, 0x8000);
+    slide_hold();
+}
+
+/*
+ * @routine 09:A997 ObjectSlideZone
+ * WHAT IT DOES: Sets up a slide zone: restart $09:A9B5
+ * (ObjectSlideZoneRecord), frame $09:A9DC (ObjectSlideZoneStep); its record
+ * and frame.
+ * HOW: Word and byte stores. Reached only by unit_gates_09.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectSlideZone(void)
+{
+    handlers2(0xA9B5, 0xA9DC);
+    gate42d(0x0F00);
+    slide_zone_frame();
+}
+
+/*
+ * @routine 09:A9B5 ObjectSlideZoneRecord
+ * WHAT IT DOES: The zone's restart: its record ($42D, flag bit 4, at
+ * ($F00, $F00, $F00)), then its frame.
+ * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition. Reached only
+ * by unit_gates_09.
+ * Entry: as ObjectSlideZone. Exit: as ObjectSlideZone.
+ */
+void abi_ObjectSlideZoneRecord(void)
+{
+    gate42d(0x0F00);
+    slide_zone_frame();
+}
+
+/*
+ * @routine 09:A9DC ObjectSlideZoneStep
+ * WHAT IT DOES: The zone's frame: with a car's hit the slide runs up (step
+ * $100 to $1000, direction 0, done mark $7F:3470 = $7FFF, $0DA5 bit 7);
+ * without, back down (step $100 to -$100, direction $8000, $1A04 = $FF).
+ * HOW: ObjectSyncFromRecord, RecordContactSummary; word stores.
+ * Reached only by unit_gates_09.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectSlideZoneStep(void)
+{
+    slide_zone_frame();
+}
+
+/* 09:AA78: a car's contact on lap 0 counts $1A06 up, sets bit 0 of the
+   car's record +$8A (08:B72E), sweeps the screen with sound $36 unless
+   bits 4-5 of the clock fraction $0E63 are clear, and releases the
+   marker. */
+static void bonus_marker_frame(void)
+{
+    uint8_t v;
+
+    if (!synced() || !next_contact())
+        return;
+    if (!lap_is(0x00))
+        return;
+    inc8(db() | 0x1A06);
+    lda8(0x01);
+    abi_GsuRecordFlags8ASet();
+    cpu.p |= P_M;
+    v = ld8(db() | 0x0E63);
+    cpu.p = (uint8_t)((cpu.p & ~P_C) | ((v & 0x08) ? P_C : 0));
+    lda8((uint8_t)((v >> 4) & 0x03));
+    if ((uint8_t)cpu.a) {
+        or8(db() | 0x0DA5, 0x10);
+        sound0(0x36);
+    }
+    abi_ObjectRelease();
+}
+
+/*
+ * @routine 09:AA33 ObjectBonusMarker
+ * WHAT IT DOES: Sets up a bonus marker: restart $09:AA51
+ * (ObjectBonusMarkerRecord), frame $09:AA78 (ObjectBonusMarkerStep); its
+ * record and frame.
+ * HOW: Word and byte stores. Reached only by unit_gates_09.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectBonusMarker(void)
+{
+    handlers2(0xAA51, 0xAA78);
+    gate42d(0x0780);
+    bonus_marker_frame();
+}
+
+/*
+ * @routine 09:AA51 ObjectBonusMarkerRecord
+ * WHAT IT DOES: The marker's restart: its record ($42D, flag bit 4, at
+ * ($780, $780, $780)), then its frame.
+ * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition. Reached only
+ * by unit_gates_09.
+ * Entry: as ObjectBonusMarker. Exit: as ObjectBonusMarker.
+ */
+void abi_ObjectBonusMarkerRecord(void)
+{
+    gate42d(0x0780);
+    bonus_marker_frame();
+}
+
+/*
+ * @routine 09:AA78 ObjectBonusMarkerStep
+ * WHAT IT DOES: The marker's frame: a car's contact on lap 0 counts the
+ * markers at $1A06 up, sets bit 0 of the car's record +$8A, sweeps the
+ * screen ($0DA5 bit 4) with sound $36 unless bits 4-5 of the clock
+ * fraction $0E63 are clear, and releases the marker.
+ * HOW: ObjectSyncFromRecord, RecordNextContact; 08:B72E with A low byte 1.
+ * Reached only by unit_gates_09.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectBonusMarkerStep(void)
+{
+    bonus_marker_frame();
+}
+
+/* 09:AB01: a car's contact sets the window slide's bit 2 ($0DA5, bit 3
+   cleared); the first time (+$25 bit 0) sound $10 on port 1 and, on lap 0
+   with markers taken ($1A06), bit 0 of the car's record +$8A set. No
+   contact clears the mark. */
+static void bonus_gate_frame(void)
+{
+    uint8_t v;
+
+    if (!synced() || !next_contact()) {
+        and8(F(0x2025, cpu.x), 0xFE);
+        return;
+    }
+    cpu.p |= P_M;
+    v = (uint8_t)(ld8(db() | 0x0DA5) & 0xF7);
+    lda8((uint8_t)(v | 0x04));
+    wr8(db() | 0x0DA5, (uint8_t)(v | 0x04));
+    if (bit25(0x01))
+        return;
+    or8(F(0x2025, cpu.x), 0x01);
+    sound1(0x10);
+    if (!lap_is(0x00))
+        return;
+    if (!ld8(db() | 0x1A06))
+        return;
+    lda8(0x01);
+    abi_GsuRecordFlags8ASet();
+}
+
+/*
+ * @routine 09:AABC ObjectBonusGate
+ * WHAT IT DOES: Sets up the bonus gate: restart $09:AADA
+ * (ObjectBonusGateRecord), frame $09:AB01 (ObjectBonusGateStep); its record
+ * and frame.
+ * HOW: Word and byte stores. Reached only by unit_gates_09.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectBonusGate(void)
+{
+    handlers2(0xAADA, 0xAB01);
+    gate42d(0x0780);
+    bonus_gate_frame();
+}
+
+/*
+ * @routine 09:AADA ObjectBonusGateRecord
+ * WHAT IT DOES: The gate's restart: its record ($42D, flag bit 4, at
+ * ($780, $780, $780)), then its frame.
+ * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition. Reached only
+ * by unit_gates_09.
+ * Entry: as ObjectBonusGate. Exit: as ObjectBonusGate.
+ */
+void abi_ObjectBonusGateRecord(void)
+{
+    gate42d(0x0780);
+    bonus_gate_frame();
+}
+
+/*
+ * @routine 09:AB01 ObjectBonusGateStep
+ * WHAT IT DOES: The gate's frame: a car's contact sets bit 2 of $0DA5
+ * (clearing bit 3); the first contact (+$25 bit 0 marks it) plays sound
+ * $10 on port 1 and, on lap 0 with markers taken ($1A06), sets bit 0 of
+ * the car's record +$8A. No contact clears the mark.
+ * HOW: ObjectSyncFromRecord, RecordNextContact; 08:B72E with A low byte 1.
+ * Reached only by unit_gates_09.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectBonusGateStep(void)
+{
+    bonus_gate_frame();
+}
+
+/* 09:AB9B: a car's contact sets bits 1 and 3 of $0DA5; the first time
+   (+$25 bit 0) sound $0F on port 1 and, unless on lap 2, with markers
+   taken ($1A06), bit 0 of the car's record +$8A cleared. No contact clears
+   the mark. */
+static void bonus_end_frame(void)
+{
+    if (!synced() || !next_contact()) {
+        and8(F(0x2025, cpu.x), 0xFE);
+        return;
+    }
+    cpu.p |= P_M;
+    or8(db() | 0x0DA5, 0x0A);
+    if (bit25(0x01))
+        return;
+    or8(F(0x2025, cpu.x), 0x01);
+    sound1(0x0F);
+    if (lap_is(0x02))
+        return;
+    if (!ld8(db() | 0x1A06))
+        return;
+    car_bits16(0x0001, abi_GsuRecordFlags8AClear);
+    cpu.p |= P_M;
+}
+
+/*
+ * @routine 09:AB56 ObjectBonusEndGate
+ * WHAT IT DOES: Sets up the bonus end gate: restart $09:AB74
+ * (ObjectBonusEndGateRecord), frame $09:AB9B (ObjectBonusEndGateStep); its
+ * record and frame.
+ * HOW: Word and byte stores. Reached only by unit_gates_09.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectBonusEndGate(void)
+{
+    handlers2(0xAB74, 0xAB9B);
+    gate42d(0x0780);
+    bonus_end_frame();
+}
+
+/*
+ * @routine 09:AB74 ObjectBonusEndGateRecord
+ * WHAT IT DOES: The gate's restart: its record ($42D, flag bit 4, at
+ * ($780, $780, $780)), then its frame.
+ * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition. Reached only
+ * by unit_gates_09.
+ * Entry: as ObjectBonusEndGate. Exit: as ObjectBonusEndGate.
+ */
+void abi_ObjectBonusEndGateRecord(void)
+{
+    gate42d(0x0780);
+    bonus_end_frame();
+}
+
+/*
+ * @routine 09:AB9B ObjectBonusEndGateStep
+ * WHAT IT DOES: The gate's frame: a car's contact sets bits 1 and 3 of
+ * $0DA5; the first contact (+$25 bit 0 marks it) plays sound $0F on port 1
+ * and, unless on lap 2, with markers taken ($1A06), clears bit 0 of the
+ * car's record +$8A. No contact clears the mark.
+ * HOW: ObjectSyncFromRecord, RecordNextContact; 08:B743 with A = 1.
+ * Reached only by unit_gates_09.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectBonusEndGateStep(void)
+{
+    bonus_end_frame();
+}
+
+/* REP #$20, LDA $0D2B (the HUD mode), and with a mode (two players) SEP
+   #$20 and ObjectRelease: 1 when released. */
+static int released_by_hud(void)
+{
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(db() | 0x0D2B);
+    if (!cpu.a)
+        return 0;
+    cpu.p |= P_M;
+    abi_ObjectRelease();
+    return 1;
+}
+
+/*
+ * @routine 09:ABF3 ObjectPopMarker
+ * WHAT IT DOES: In a one-player race (HUD mode $0D2B = 0) puts a pop marker
+ * (kind $B7FC) at object X's position $1E0 higher with its scale +$15,
+ * handler $09:AD50 (ObjectPopMarkerStep), and clears X's handler; with a
+ * HUD mode X is released.
+ * HOW: ObjectSpawn, ObjectCopyPositionTo; starts with a NOP, as the course
+ * data's pointers expect.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit; released:
+ * as ObjectRelease leaves it; else A low byte = 0, Z set.
+ */
+void abi_ObjectPopMarker(void)
+{
+    if (released_by_hud())
+        return;
+    cpu.p |= P_M;
+    if (spawn(0xB7FC)) {
+        abi_ObjectCopyPositionTo();
+        ld8(F(0x2015, cpu.x));
+        wr8(F(0x2015, cpu.y), (uint8_t)cpu.a);
+        add16(F(0x200E, cpu.y), 0xFE20);
+        handler(cpu.y, 0xAD50);
+    }
+    handler_none(cpu.x);
+}
+
+/* 09:AD07: a car's hit on a lap other than the one in +$48 takes that lap
+   in +$48 (through $1F58), plays sound $41 and adds $19E6 to the race
+   time $0E70 in BCD. */
+static void time_gate_frame(void)
+{
+    uint8_t v, r;
+
+    if (!hit())
+        return;
+    v = ld8(F(0x2048, cpu.x));
+    wr8(db() | 0x1F58, v);
+    cpu.p |= P_M;
+    v = ld8(db() | 0x0DEA);
+    r = rd8(db() | 0x1F58);
+    cmp8(r);
+    if (v == r)
+        return;
+    cpu.p |= P_M;
+    v = ld8(db() | 0x0DEA);
+    wr8(db() | 0x1F58, v);
+    v = ld8(db() | 0x1F58);
+    wr8(F(0x2048, cpu.x), v);
+    sound0(0x41);
+    cpu.p |= P_D;
+    v = ld8(db() | 0x0E70);
+    cpu.p &= (uint8_t)~P_C;
+    r = rd8(db() | 0x19E6);
+    v = op_adc8(v, r, &cpu.p);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    wr8(db() | 0x0E70, v);
+    v = ld8(db() | 0x0E71);
+    v = op_adc8(v, 0x00, &cpu.p);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    wr8(db() | 0x0E71, v);
+    cpu.p &= (uint8_t)~P_D;
+}
+
+/* A time gate's set-up in a one-player race: restart r, frame $09:AD07
+   (ObjectTimeGateStep), +$48 = 4 (no lap taken yet). */
+static void time_gate(uint16_t r)
+{
+    if (released_by_hud())
+        return;
+    cpu.p |= P_M;
+    handlers2(r, 0xAD07);
+    st8i(F(0x2048, cpu.x), 0x04);
+}
+
+/*
+ * @routine 09:AC4F ObjectTimeGate
+ * WHAT IT DOES: Sets up a time gate in a one-player race: restart $09:AC83
+ * (ObjectTimeGateRecord), frame $09:AD07 (ObjectTimeGateStep), +$48 = 4;
+ * with a HUD mode ($0D2B) it is released.
+ * HOW: Word and byte stores.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit; A low
+ * byte = 4, or as ObjectRelease leaves it.
+ */
+void abi_ObjectTimeGate(void)
+{
+    time_gate(0xAC83);
+}
+
+/*
+ * @routine 09:AC83 ObjectTimeGateRecord
+ * WHAT IT DOES: The time gate's restart: its record ($42D, flag bit 4, at
+ * ($780, $780, $780)).
+ * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as
+ * GsuRecordPosition leaves it, M 8-bit.
+ */
+void abi_ObjectTimeGateRecord(void)
+{
+    gate42d(0x0780);
+}
+
+/*
+ * @routine 09:ACAB ObjectTimeGateSmall
+ * WHAT IT DOES: Sets up a small time gate in a one-player race: restart
+ * $09:ACDF (ObjectTimeGateSmallRecord), frame $09:AD07
+ * (ObjectTimeGateStep), +$48 = 4; with a HUD mode ($0D2B) it is released.
+ * HOW: Word and byte stores. Reached only by unit_gates_09.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit; A low
+ * byte = 4, or as ObjectRelease leaves it.
+ */
+void abi_ObjectTimeGateSmall(void)
+{
+    time_gate(0xACDF);
+}
+
+/*
+ * @routine 09:ACDF ObjectTimeGateSmallRecord
+ * WHAT IT DOES: The small time gate's restart: its record ($42D, flag bit
+ * 4, at ($3C0, $3C0, $3C0)).
+ * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition. Reached only
+ * by unit_gates_09.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as
+ * GsuRecordPosition leaves it, M 8-bit.
+ */
+void abi_ObjectTimeGateSmallRecord(void)
+{
+    gate42d(0x03C0);
+}
+
+/*
+ * @routine 09:AD07 ObjectTimeGateStep
+ * WHAT IT DOES: The time gates' frame: a car's hit on a lap ($0DEA) other
+ * than the one it last counted (+$48) counts this one, plays sound $41 and
+ * adds the bonus $19E6 to the race time $0E70-$0E71 (BCD).
+ * HOW: ObjectSyncFromRecord, RecordContactSummary; the laps compared
+ * through $1F58; SED, ADC, CLD.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it; D flag clear.
+ */
+void abi_ObjectTimeGateStep(void)
+{
+    time_gate_frame();
+}
+
+/*
+ * @routine 09:AD50 ObjectPopMarkerStep
+ * WHAT IT DOES: The pop marker's frame: its size +$14 shrinks by 8.
+ * HOW: ADC #$F8; ObjectRebucket.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectRebucket leaves it.
+ */
+void abi_ObjectPopMarkerStep(void)
+{
+    add8(F(0x2014, cpu.x), 0xF8);
+    abi_ObjectRebucket();
+}
+
+/* +$0A against the lap $0DEA (through $1F58): 1 when equal. */
+static int lap_matches_0a(void)
+{
+    uint8_t v, r;
+
+    v = ld8(F(0x200A, cpu.x));
+    wr8(db() | 0x1F58, v);
+    cpu.p |= P_M;
+    v = ld8(db() | 0x0DEA);
+    r = rd8(db() | 0x1F58);
+    cmp8(r);
+    return v == r;
+}
+
+/* +$0A = the lap $0DEA (through $1F58), +$04 = $A040 (the lit model). */
+static void lap_take_0a(void)
+{
+    uint8_t v;
+
+    v = ld8(db() | 0x0DEA);
+    wr8(db() | 0x1F58, v);
+    v = ld8(db() | 0x1F58);
+    wr8(F(0x200A, cpu.x), v);
+    st16i(F(0x2004, cpu.x), 0xA040);
+}
+
+/* PHX, TYX: a spark of `kind` at the player $0346's position following
+   it (+$29 = the player, +$27 = 0, +$0A = $0A, handler $09:AE60
+   ObjectSparkFollow); PLX. */
+static void spark_follow(uint16_t kind)
+{
+    uint16_t sx = cpu.x;
+
+    cpu.x = cpu.y;
+    cpu.p = nz16(cpu.p, cpu.x);
+    if (spawn(kind)) {
+        uint8_t a;
+
+        cpu.x = rd16(db() | 0x0346);
+        cpu.p = nz16(cpu.p, cpu.x);
+        st8i(F(0x200A, cpu.y), 0x0A);
+        abi_ObjectCopyPositionTo();
+        st16i(F(0x2027, cpu.y), 0x0000);
+        a = (uint8_t)cpu.a;
+        cpu.p &= (uint8_t)~P_M;
+        cpu.a = cpu.x;
+        cpu.p = nz16(cpu.p, cpu.a);
+        wr16(F(0x2029, cpu.y), cpu.x);
+        cpu.p |= P_M;
+        lda8(a);
+        handler(cpu.y, 0xAE60);
+    }
+    cpu.x = sx;
+    cpu.p = nz16(cpu.p, sx);
+}
+
+/* A lap ball's record ($42D, flag bit 4, +$2A high $14); its model +$04
+   lit ($A040) when +$0A is this lap, else `kind`. */
+static void lap_ball_record(uint16_t kind)
+{
+    abi_GsuRecordNew42D();
+    abi_GsuRecordFlag10();
+    lda8(0x14);
+    abi_GsuRecordSet2AHigh();
+    if (lap_matches_0a())
+        st16i(F(0x2004, cpu.x), 0xA040);
+    else
+        st16i(F(0x2004, cpu.x), kind);
+}
+
+/* 09:ADB6: the up ball's frame: it grows (+$15, +$14 by $10); on a car's
+   contact with flags 1 or 2 (AND #$0B) on a lap it has not lit yet (+$0A)
+   it takes the lap, lights up, raises that car's record +$6A by $40,
+   plays sound $25 and leaves a following spark ($B7A8). */
+static void ball_up_frame(void)
+{
+    add8(F(0x2015, cpu.x), 0x10);
+    add8(F(0x2014, cpu.x), 0x10);
+    if (!synced())
+        return;
+    for (;;) {
+        abi_RecordNextContact();
+        if (!(cpu.p & P_C))
+            return;
+        lda8((uint8_t)(cpu.a & 0x0B));
+        cmp8(0x01);
+        if ((uint8_t)cpu.a == 0x01)
+            break;
+        cmp8(0x02);
+        if ((uint8_t)cpu.a == 0x02)
+            break;
+    }
+    if (lap_matches_0a())
+        return;
+    lap_take_0a();
+    lda8(0x40);
+    abi_GsuRecordRaise6A();
+    cpu.p |= P_M;
+    sound0(0x25);
+    spark_follow(0xB7A8);
+}
+
+/*
+ * @routine 09:AD5E ObjectLapBallUp
+ * WHAT IT DOES: Sets up an up ball: restart $09:AD81 (ObjectLapBallUpRecord),
+ * frame $09:ADB6 (ObjectLapBallUpStep), +$0A = 4 (no lap lit); its record
+ * and frame.
+ * HOW: Word and byte stores.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectLapBallUp(void)
+{
+    handlers2(0xAD81, 0xADB6);
+    st8i(F(0x200A, cpu.x), 0x04);
+    lap_ball_record(0xB7A8);
+    ball_up_frame();
+}
+
+/*
+ * @routine 09:AD81 ObjectLapBallUpRecord
+ * WHAT IT DOES: The up ball's restart: its record ($42D, flag bit 4, +$2A
+ * high $14), its model lit ($A040) when +$0A is the current lap, else
+ * $B7A8; then its frame.
+ * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordSet2AHigh; the lap
+ * compared through $1F58.
+ * Entry: as ObjectLapBallUp. Exit: as ObjectLapBallUp.
+ */
+void abi_ObjectLapBallUpRecord(void)
+{
+    lap_ball_record(0xB7A8);
+    ball_up_frame();
+}
+
+/*
+ * @routine 09:ADB6 ObjectLapBallUpStep
+ * WHAT IT DOES: The up ball's frame: it grows (+$15 and +$14 by $10); on a
+ * car's contact with flags 1 or 2 (AND #$0B) on a lap it has not lit
+ * (+$0A), it takes the lap, lights up ($A040), raises that car's record
+ * +$6A by $40, plays sound $25 and leaves a spark (kind $B7A8) following
+ * the player.
+ * HOW: ObjectSyncFromRecord, RecordNextContact, GsuRecordRaise6A,
+ * ObjectSpawn.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectLapBallUpStep(void)
+{
+    ball_up_frame();
+}
+
+/*
+ * @routine 09:AE60 ObjectSparkFollow
+ * WHAT IT DOES: A following spark's frame: at its object's (+$29) position,
+ * released when +$0A runs out; it rises by $C0 and a speed +$27 that grows
+ * by $28 each frame, and grows (+$15, +$14 by $10).
+ * HOW: ObjectCopyPositionFrom; the speed added through $1F4C;
+ * ObjectRebucket.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket
+ * leaves it.
+ */
+void abi_ObjectSparkFollow(void)
+{
+    cpu.y = rd16(F(0x2029, cpu.x));
+    cpu.p = nz16(cpu.p, cpu.y);
+    abi_ObjectCopyPositionFrom();
+    if (!dec8(F(0x200A, cpu.x)))
+        abi_ObjectRelease();
+    add16(F(0x200E, cpu.x), 0xFF40);
+    add16(F(0x2027, cpu.x), 0xFFD8);
+    add16_via(F(0x200E, cpu.x), F(0x2027, cpu.x));
+    add8(F(0x2015, cpu.x), 0x10);
+    add8(F(0x2014, cpu.x), 0x10);
+    abi_ObjectRebucket();
+}
+
+/* 09:AF17: the down ball's frame: as the up ball's (contact flags bit 0),
+   lowering the car's record +$82 by $40 (GsuRecordLower82) with sound $1B
+   and a following spark $B7C4. */
+static void ball_down_frame(void)
+{
+    add8(F(0x2015, cpu.x), 0x10);
+    add8(F(0x2014, cpu.x), 0x10);
+    if (!synced() || !next_contact())
+        return;
+    if (lap_matches_0a())
+        return;
+    lap_take_0a();
+    lda8(0x40);
+    abi_GsuRecordLower82();
+    sound0(0x1B);
+    cpu.p |= P_M;
+    spark_follow(0xB7C4);
+}
+
+/*
+ * @routine 09:AEBF ObjectLapBallDown
+ * WHAT IT DOES: Sets up a down ball: restart $09:AEE2
+ * (ObjectLapBallDownRecord), frame $09:AF17 (ObjectLapBallDownStep), +$0A
+ * = 4 (no lap lit); its record and frame.
+ * HOW: Word and byte stores.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectLapBallDown(void)
+{
+    handlers2(0xAEE2, 0xAF17);
+    st8i(F(0x200A, cpu.x), 0x04);
+    lap_ball_record(0xB7C4);
+    ball_down_frame();
+}
+
+/*
+ * @routine 09:AEE2 ObjectLapBallDownRecord
+ * WHAT IT DOES: The down ball's restart: its record ($42D, flag bit 4,
+ * +$2A high $14), its model lit ($A040) when +$0A is the current lap, else
+ * $B7C4; then its frame.
+ * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordSet2AHigh; the lap
+ * compared through $1F58.
+ * Entry: as ObjectLapBallDown. Exit: as ObjectLapBallDown.
+ */
+void abi_ObjectLapBallDownRecord(void)
+{
+    lap_ball_record(0xB7C4);
+    ball_down_frame();
+}
+
+/*
+ * @routine 09:AF17 ObjectLapBallDownStep
+ * WHAT IT DOES: The down ball's frame: it grows (+$15 and +$14 by $10); on
+ * a car's contact (flags bit 0) on a lap it has not lit (+$0A), it takes
+ * the lap, lights up ($A040), lowers that car's record +$82 by $40, plays
+ * sound $1B and leaves a spark (kind $B7C4) following the player.
+ * HOW: ObjectSyncFromRecord, RecordNextContact, GsuRecordLower82,
+ * ObjectSpawn.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectLapBallDownStep(void)
+{
+    ball_down_frame();
+}
+
+/* 09:AFFC: a car's hit, the first time (+$25 bit 0), moves the count
+   $19EE to $19F0 (HudCountMove19EE's copy) and sets $19ED = 8. */
+static void count_gate_frame(void)
+{
+    if (!hit())
+        return;
+    if (bit25(0x01))
+        return;
+    or8(F(0x2025, cpu.x), 0x01);
+    abi_HudCountMove19EECopy();
+    cpu.p |= P_M;
+    st8i(db() | 0x19ED, 0x08);
+}
+
+/*
+ * @routine 09:AFB7 ObjectCountGate
+ * WHAT IT DOES: Sets up the count gate: restart $09:AFD5
+ * (ObjectCountGateRecord), frame $09:AFFC (ObjectCountGateStep); its record
+ * and frame.
+ * HOW: Word and byte stores.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectCountGate(void)
+{
+    handlers2(0xAFD5, 0xAFFC);
+    gate42d(0x0780);
+    count_gate_frame();
+}
+
+/*
+ * @routine 09:AFD5 ObjectCountGateRecord
+ * WHAT IT DOES: The count gate's restart: its record ($42D, flag bit 4, at
+ * ($780, $780, $780)), then its frame.
+ * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
+ * Entry: as ObjectCountGate. Exit: as ObjectCountGate.
+ */
+void abi_ObjectCountGateRecord(void)
+{
+    gate42d(0x0780);
+    count_gate_frame();
+}
+
+/*
+ * @routine 09:AFFC ObjectCountGateStep
+ * WHAT IT DOES: The count gate's frame: a car's hit, the first time (+$25
+ * bit 0), moves the count at $19EE to $19F0 (clearing $19EE, $19F2 = 1)
+ * and sets $19ED to 8.
+ * HOW: ObjectSyncFromRecord, RecordContactSummary; JSR into
+ * HudCountMove19EE at its copy (09:C0AB).
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectCountGateStep(void)
+{
+    count_gate_frame();
+}
+
+/* 09:B065: the counting marker's record ($424, +$0A $90E8) in mode 2 with
+   +$2A high $14 at ($500, $500, $500); then its frame. */
+static void count_marker_record(void)
+{
+    abi_GsuRecordNew424Alt();
+    abi_GsuRecordMode2();
+    lda8(0x14);
+    abi_GsuRecordSet2AHigh();
+    record_at(0x0500, 0x0500, 0x0500);
+}
+
+/* 09:B092: while $19E8 is set, ObjectStep48To8; then synced. */
+static void count_marker_frame(void)
+{
+    cpu.p |= P_M;
+    if (ld8(db() | 0x19E8))
+        abi_ObjectStep48To8();
+    abi_ObjectSyncFromRecord();
+}
+
+/*
+ * @routine 09:B02A ObjectCountMarker
+ * WHAT IT DOES: Sets up the counting marker: restart $09:B065
+ * (ObjectCountMarkerRecord), frame $09:B092 (ObjectCountMarkerStep), +$20
+ * = $ECD0, shown as 0 (+$5A = $80, twice), +$48 = 4; its record and frame.
+ * HOW: Word and byte stores; LDA #0, ORA #$80 for +$5A.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectCountMarker(void)
+{
+    handlers2(0xB065, 0xB092);
+    st16i(F(0x2020, cpu.x), 0xECD0);
+    lda8(0x00);
+    lda8(0x80);
+    wr8(F(0x205A, cpu.x), 0x80);
+    st8i(F(0x2048, cpu.x), 0x04);
+    lda8(0x00);
+    lda8(0x80);
+    wr8(F(0x205A, cpu.x), 0x80);
+    count_marker_record();
+    count_marker_frame();
+}
+
+/*
+ * @routine 09:B065 ObjectCountMarkerRecord
+ * WHAT IT DOES: The marker's restart: its record (GsuRecordNew424Alt) in
+ * mode 2 with +$2A high $14 at ($500, $500, $500), then its frame.
+ * HOW: GsuRecordNew424Alt, GsuRecordMode2, GsuRecordSet2AHigh,
+ * GsuRecordPosition.
+ * Entry: as ObjectCountMarker. Exit: as ObjectCountMarker.
+ */
+void abi_ObjectCountMarkerRecord(void)
+{
+    count_marker_record();
+    count_marker_frame();
+}
+
+/*
+ * @routine 09:B092 ObjectCountMarkerStep
+ * WHAT IT DOES: The marker's frame: while $19E8 is set its count +$48
+ * steps (ObjectStep48To8); then it is synced from its record.
+ * HOW: JSR ObjectStep48To8; ObjectSyncFromRecord.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as
+ * ObjectSyncFromRecord leaves it.
+ */
+void abi_ObjectCountMarkerStep(void)
+{
+    count_marker_frame();
 }

@@ -260,6 +260,16 @@ HudCountMove19EE:
     sep.b #$20
     lda.b #$7F
     jsl.l GsuRecordLower82
+
+; @routine 09:C0AB HudCountMove19EECopy
+; WHAT IT DOES: HudCountMove19EE's last part, also entered by the count
+; gate (09:AFFC): moves the count at $19EE to $19F0 (clearing $19EE) and
+; sets $19F2 to 1.
+; HOW: 16-bit copy and STZ through the data bank, then an 8-bit store.
+; Entry: any widths. Exit: A = the old $19EE's high byte and 1; N, Z from
+; 1; M 8-bit.
+%at($09C0AB)
+.copy:
     rep.b #$20
     lda.w !wram_19EE
     sta.w !wram_19F0
