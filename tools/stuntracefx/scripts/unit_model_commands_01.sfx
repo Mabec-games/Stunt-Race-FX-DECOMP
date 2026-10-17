@@ -1,0 +1,89 @@
+# unit_model_commands_01: unit tests (fx) that start each of the 3D model
+# interpreter's commands (render/model.asm) on its own, so its calls can be
+# judged; in the game each is reached by its command byte through the
+# table at 01:8000 inside FxModelDraw. Each start uses the registers the
+# command had at one of its entries in a Novice Coupe race (taken from
+# speed_novice_coupe_07/08), from the state of that race whose ROM bank
+# register holds the model's bank ($0C or $0E), as the start cannot set it.
+# The R10 stack is put back as it was down to the end command's slot
+# (01:9243), with the STOP at $01:80E3 in place of FxModelDraw's return,
+# so the list runs on to its end and the program stops there; a start
+# inside a sub-list's walk (return 01:8E7D) has the walker's table of
+# sub-list returns ($0056) emptied, so the walk ends at once. Starts whose
+# list then runs on for many frames from the race's RAM are left out
+# (FxModelPoints01, FxModelIfCall and FxModelIfSkip have none here).
+load build/stuntracefx/states/speed_novice_coupe_08.state
+set 700244 E3,80,43,92
+fx 01:8B0E stop=80E3 r10=0248 r0=0820 r1=0500 r2=FB00 r3=0A00 r4=02DC r5=FE73 r6=7BE1 r7=7C2A r8=E121 r9=0364 r12=0000 r13=08FF r14=D9DA
+wait 1
+load build/stuntracefx/states/speed_novice_coupe_08.state
+set 700244 E3,80,43,92
+fx 01:8BAA stop=80E3 r10=0248 r0=0D84 r1=F100 r2=0000 r3=0F00 r4=02DC r5=0000 r6=7BE1 r7=7C2A r8=0100 r9=0370 r12=0000 r13=08FF r14=D9DF
+wait 1
+load build/stuntracefx/states/speed_novice_coupe_08.state
+set 700244 E3,80,43,92
+fx 01:8BAA stop=80E3 r10=0248 r0=FE16 r1=0120 r2=FF60 r3=0240 r4=0870 r5=FFD9 r6=8959 r7=7C28 r8=FFAD r9=03AC r12=0000 r13=258C r14=DA80
+wait 1
+load build/stuntracefx/states/speed_novice_coupe_07.state
+set 700244 E3,80,43,92
+fx 01:8C79 stop=80E3 r10=0248 r0=000E r1=FFDD r2=006D r3=FE17 r4=0210 r5=0080 r6=1F1E r7=0448 r8=05EC r9=F56C r12=0000 r13=04F8 r14=8A6E
+wait 1
+load build/stuntracefx/states/speed_novice_coupe_07.state
+set 700244 E3,80,43,92
+fx 01:8D4D stop=80E3 r10=0248 r0=0080 r1=FE7D r2=0000 r3=FFFF r4=0176 r5=0010 r6=FFFF r7=FFFF r8=0518 r9=04E4 r12=0000 r13=93C1 r14=8AFB
+wait 1
+load build/stuntracefx/states/speed_novice_coupe_08.state
+set 700244 E3,80,43,92
+fx 01:8D4D stop=80E3 r10=0248 r0=00FF r1=0032 r2=0000 r3=FFFF r4=FFDD r5=26D2 r6=FFFF r7=0000 r8=0504 r9=04E4 r12=0000 r13=9427 r14=D9FA
+wait 1
+load build/stuntracefx/states/speed_novice_coupe_07.state
+set 700244 E3,80,43,92,7D,8E
+fx 01:8D5D stop=80E3 r10=024A r0=8E7D r1=0788 r2=0000 r3=FFFF r4=0176 r5=0010 r6=FFFF r7=FFFF r8=0518 r9=04E4 r12=0000 r13=93C1 r14=8AFC
+wait 1
+load build/stuntracefx/states/speed_novice_coupe_07.state
+set 700244 E3,80,43,92,7D,8E
+fx 01:8D75 stop=80E3 r10=024A r0=01FD r1=078A r2=0000 r3=FFFF r4=0176 r5=0010 r6=FFFF r7=FFFF r8=0518 r9=04E4 r12=0000 r13=93C1 r14=8CFB
+wait 1
+load build/stuntracefx/states/speed_novice_coupe_08.state
+set 700244 E3,80,43,92,7D,8E
+set 700056 88,07
+fx 01:8D75 stop=80E3 r10=024A r0=0053 r1=078A r2=0000 r3=FFFF r4=FFDD r5=26D2 r6=FFFF r7=0000 r8=0504 r9=04E4 r12=0000 r13=9427 r14=DA50
+wait 1
+load build/stuntracefx/states/speed_novice_coupe_08.state
+set 700244 E3,80,43,92
+fx 01:8DF6 stop=80E3 r10=0248 r0=0000 r1=001E r2=0000 r3=001E r4=001E r5=1F0F r6=001E r7=0000 r8=054C r9=04E4 r12=0000 r13=9427 r14=C465
+wait 1
+load build/stuntracefx/states/speed_novice_coupe_08.state
+set 700244 E3,80,43,92,7D,8E
+set 700056 88,07
+fx 01:8E06 stop=80E3 r10=024A r0=C4BB r1=078A r2=0000 r3=001E r4=001E r5=1F0F r6=001E r7=0000 r8=054C r9=04E4 r12=0000 r13=9427 r14=C46B
+wait 1
+load build/stuntracefx/states/speed_novice_coupe_08.state
+set 700244 E3,80,43,92,7D,8E
+set 700056 88,07
+fx 01:8E14 stop=80E3 r10=024A r0=C47D r1=078C r2=0000 r3=001E r4=001E r5=1F0F r6=001E r7=0000 r8=054C r9=04E4 r12=0000 r13=9427 r14=C46C
+wait 1
+load build/stuntracefx/states/speed_novice_coupe_07.state
+set 700244 E3,80,43,92
+fx 01:90CD stop=80E3 r10=0248 r0=00FF r1=0000 r2=FFFF r3=0002 r4=FFFC r5=30E3 r6=0002 r7=0000 r8=0504 r9=04E4 r12=0000 r13=9427 r14=E0D8
+wait 1
+load build/stuntracefx/states/speed_novice_coupe_08.state
+set 700244 E3,80,43,92
+fx 01:90CD stop=80E3 r10=0248 r0=00FF r1=0009 r2=0000 r3=0000 r4=FFF7 r5=30E3 r6=0000 r7=0000 r8=0504 r9=04E4 r12=0000 r13=9427 r14=C62D
+wait 1
+load build/stuntracefx/states/speed_novice_coupe_07.state
+set 700244 E3,80,43,92
+fx 01:9243 stop=80E3 r10=0248 r0=0000 r1=078C r2=8CF1 r3=00FC r4=001E r5=0B16 r6=08CA r7=08BA r8=059C r9=04E4 r12=0000 r13=914E r14=0000
+wait 1
+load build/stuntracefx/states/speed_novice_coupe_08.state
+set 700244 E3,80,43,92
+fx 01:9243 stop=80E3 r10=0248 r0=0000 r1=078C r2=DA47 r3=007E r4=0005 r5=1F00 r6=08F0 r7=08E4 r8=0506 r9=04E4 r12=0000 r13=914E r14=0000
+wait 1
+load build/stuntracefx/states/speed_novice_coupe_07.state
+set 700244 E3,80,43,92
+fx 01:93A7 stop=80E3 r10=0248 r0=001E r1=1F1E r2=006D r3=FE17 r4=0210 r5=0080 r6=1F1E r7=0448 r8=05EC r9=F56C r12=0000 r13=04F8 r14=8A6F
+wait 1
+load build/stuntracefx/states/speed_novice_coupe_08.state
+set 700244 E3,80,43,92
+fx 01:93A7 stop=80E3 r10=0248 r0=C000 r1=4000 r2=F5B6 r3=FE11 r4=F8FF r5=26D2 r6=0272 r7=0374 r8=0514 r9=0040 r12=0000 r13=0080 r14=D9E0
+wait 1
