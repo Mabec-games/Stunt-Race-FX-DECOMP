@@ -214,7 +214,6 @@ DemoRunFourth:
 ; HOW: Compare chain on the command byte, every script read long from
 ; bank $03; PlayerStatsAndPaletteAnimate before each command; data bank
 ; $03 from RaceVideoInit on (PHK, PLB), $7E around the camera's calls.
-; Commands 7, 8 and $0B are not reached in the traces so far.
 ; Entry: M 16-bit, X 16-bit; $1A57 = the demo's script offset. Exit: C set
 ; when a button ended the demo; A = $1A5B & $40, $1A5B cleared; M 16-bit,
 ; X 16-bit.
@@ -329,11 +328,11 @@ DemoRun:
 .l8794:
     cmp.w #$0007
     bne .l879C
-    brl .l8845                      ; not reached in the traces so far
+    brl .l8845
 .l879C:
     cmp.w #$0008
     bne .l87A4
-    brl .l885C                      ; not reached in the traces so far
+    brl .l885C
 .l87A4:
     cmp.w #$0009
     bne .l87AC
@@ -345,7 +344,7 @@ DemoRun:
 .l87B4:
     cmp.w #$000B
     bne .l87BC
-    brl .l8908                      ; not reached in the traces so far
+    brl .l8908
 .l87BC:
     cmp.w #$000C
     bne .l87C4
@@ -417,7 +416,7 @@ DemoRun:
     tax
     jmp.w .l8762
 .l8845:
-    txa                             ; not reached in the traces so far
+    txa
     clc
     adc.w #$0001
     tax
@@ -448,9 +447,9 @@ DemoRun:
     phx
     ldx.w #$1A64
     lda.b !dp_02
-    sta.l $000008,x
+    sta.l !bank0_base+8,x
     lda.b !dp_94
-    sta.l $00000C,x
+    sta.l !bank0_base+12,x
     sep.b #$20
     phb
     lda.b #$7E
@@ -472,10 +471,10 @@ DemoRun:
     sta.b !dp_08
     phx
     ldx.w #$1A64
-    lda.l $00000A,x
+    lda.l !bank0_base+10,x
     clc
     adc.b !dp_08
-    sta.l $00000A,x
+    sta.l !bank0_base+10,x
     sep.b #$20
     phb
     lda.b #$7E
@@ -511,7 +510,7 @@ DemoRun:
     tax
     jmp.w .l8762
 .l8908:
-    lda.w !joy1_held+1              ; not reached in the traces so far
+    lda.w !joy1_held+1
     bne .l8910
     brl .l8759
 .l8910:

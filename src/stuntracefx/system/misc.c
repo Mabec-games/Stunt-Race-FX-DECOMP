@@ -448,7 +448,6 @@ static void demo_next(uint16_t n)
  * HOW: Compare chain on the command byte, every script read long from
  * bank $03; PlayerStatsAndPaletteAnimate before each command; data bank
  * $03 from RaceVideoInit on (PHK, PLB), $7E around the camera's calls.
- * Commands 7, 8 and $0B are not reached in the traces so far.
  * Entry: M 16-bit, X 16-bit; $1A57 = the demo's script offset. Exit: C set
  * when a button ended the demo; A = $1A5B & $40, $1A5B cleared; M 16-bit,
  * X 16-bit.
