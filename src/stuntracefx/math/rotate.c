@@ -9,18 +9,20 @@
 /*
  * Signed 8 x 8 multiply through the unsigned multiplier: the magnitudes are
  * multiplied (the first doubled) and the high byte of the product taken,
- * then negated when the signs differ. Each path waits the multiplier's eight
- * cycles before reading RDMPYH.
+ * then negated when the signs differ. The second factor is read from work
+ * RAM at `b` after WRMPYA is written, as the assembly loads it. Each path
+ * waits the multiplier's eight cycles before reading RDMPYH.
  */
-static uint8_t smul(uint8_t a, uint8_t b)
+static uint8_t smul(uint8_t a, uint32_t at)
 {
-    uint8_t neg = 0, h;
+    uint8_t neg = 0, b, h;
 
     if (a & 0x80) {
         a = (uint8_t)-a;
         neg ^= 1;
     }
     wr8(WRMPYA, (uint8_t)(a << 1));
+    b = rd8(at);
     if (b & 0x80) {
         b = (uint8_t)-b;
         neg ^= 1;
@@ -28,6 +30,40 @@ static uint8_t smul(uint8_t a, uint8_t b)
     wr8(WRMPYB, b);
     h = rd8(RDMPYH);
     return neg ? (uint8_t)-h : h;
+}
+
+/*
+ * The shared body of RotateXZ, RotateXZFrom08 and RotateXY, with cos and
+ * sin already kept at $0625 and $0624: x (the byte at xa) and the second
+ * coordinate v (at va) rotated: x cos + v sin to the word at out, v cos -
+ * x sin to the word at out2, each sign-extended. Every factor is read
+ * from work RAM right before its multiply, as the assembly does. Returns
+ * A: the high byte of the second result, or its low byte when that is 0.
+ */
+static uint8_t rotate8(uint32_t xa, uint32_t va, uint32_t out, uint32_t out2)
+{
+    uint8_t t, r, hi;
+
+    t = rd8(xa);
+    r = smul(t, 0x000625);
+    wr8(out, r);
+    t = rd8(va);
+    r = smul(t, 0x000624);
+    t = rd8(out);
+    r = (uint8_t)(r + t);
+    wr8(out, r);
+    wr8(out + 1, (r & 0x80) ? 0xFF : 0x00);
+    t = rd8(xa);
+    r = smul(t, 0x000624);
+    wr8(out2, (uint8_t)-r);
+    t = rd8(va);
+    r = smul(t, 0x000625);
+    t = rd8(out2);
+    r = (uint8_t)(r + t);
+    wr8(out2, r);
+    hi = (r & 0x80) ? 0xFF : 0x00;
+    wr8(out2 + 1, hi);
+    return hi ? hi : r;
 }
 
 /*
@@ -44,21 +80,13 @@ static uint8_t smul(uint8_t a, uint8_t b)
  */
 uint8_t RotateXZ(uint8_t angle)
 {
-    uint8_t i = (uint8_t)-angle, c = rd8(0x00973E + i), s = rd8(0x0096FE + i), x = rd8(0x000002), z = rd8(0x000094);
-    uint8_t r, hi;
+    uint8_t i = (uint8_t)-angle, c, s;
 
+    c = rd8(0x00973E + i);
     wr8(0x000625, c);
+    s = rd8(0x0096FE + i);
     wr8(0x000624, s);
-    wr8(0x000004, smul(x, c));
-    r = (uint8_t)(smul(z, s) + rd8(0x000004));
-    wr8(0x000004, r);
-    wr8(0x000005, (r & 0x80) ? 0xFF : 0x00);
-    wr8(0x0005F2, (uint8_t)-smul(x, s));
-    r = (uint8_t)(smul(z, c) + rd8(0x0005F2));
-    wr8(0x0005F2, r);
-    hi = (r & 0x80) ? 0xFF : 0x00;
-    wr8(0x0005F3, hi);
-    return hi ? hi : r;
+    return rotate8(0x000002, 0x000094, 0x000004, 0x0005F2);
 }
 
 void abi_RotateXZ(void)
@@ -82,21 +110,13 @@ void abi_RotateXZ(void)
  */
 uint8_t RotateXZFrom08(uint8_t angle)
 {
-    uint8_t c = rd8(0x00973E + angle), s = rd8(0x0096FE + angle), x = rd8(0x000008), z = rd8(0x000094);
-    uint8_t r, hi;
+    uint8_t c, s;
 
+    c = rd8(0x00973E + angle);
     wr8(0x000625, c);
+    s = rd8(0x0096FE + angle);
     wr8(0x000624, s);
-    wr8(0x00000A, smul(x, c));
-    r = (uint8_t)(smul(z, s) + rd8(0x00000A));
-    wr8(0x00000A, r);
-    wr8(0x00000B, (r & 0x80) ? 0xFF : 0x00);
-    wr8(0x0005F2, (uint8_t)-smul(x, s));
-    r = (uint8_t)(smul(z, c) + rd8(0x0005F2));
-    wr8(0x0005F2, r);
-    hi = (r & 0x80) ? 0xFF : 0x00;
-    wr8(0x0005F3, hi);
-    return hi ? hi : r;
+    return rotate8(0x000008, 0x000094, 0x00000A, 0x0005F2);
 }
 
 void abi_RotateXZFrom08(void)
@@ -118,21 +138,13 @@ void abi_RotateXZFrom08(void)
  */
 uint8_t RotateXY(uint8_t angle)
 {
-    uint8_t c = rd8(0x00973E + angle), s = rd8(0x0096FE + angle), x = rd8(0x000002), y = rd8(0x000008);
-    uint8_t r, hi;
+    uint8_t c, s;
 
+    c = rd8(0x00973E + angle);
     wr8(0x000625, c);
+    s = rd8(0x0096FE + angle);
     wr8(0x000624, s);
-    wr8(0x000004, smul(x, c));
-    r = (uint8_t)(smul(y, s) + rd8(0x000004));
-    wr8(0x000004, r);
-    wr8(0x000005, (r & 0x80) ? 0xFF : 0x00);
-    wr8(0x00000A, (uint8_t)-smul(x, s));
-    r = (uint8_t)(smul(y, c) + rd8(0x00000A));
-    wr8(0x00000A, r);
-    hi = (r & 0x80) ? 0xFF : 0x00;
-    wr8(0x00000B, hi);
-    return hi ? hi : r;
+    return rotate8(0x000002, 0x000008, 0x000004, 0x00000A);
 }
 
 void abi_RotateXY(void)

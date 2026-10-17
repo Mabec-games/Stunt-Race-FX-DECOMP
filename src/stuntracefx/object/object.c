@@ -671,21 +671,30 @@ void abi_ObjectPlaceAll(void)
 int ObjectCountStep5F(uint8_t bank, uint16_t obj, uint8_t *a, uint8_t *p)
 {
     uint32_t c = field(bank, obj, 0x49), f = field(bank, obj, 0x5F), b = (uint32_t)bank << 16;
-    uint8_t n = (uint8_t)(rd8(c) + 1), d = rd8(b | 0x1F5A), v = rd8(f), r;
+    uint8_t n, lim, v, d, r;
 
-    wr8(c, n);
-    if (n == rd8(b | 0x1F58) || ((uint8_t)(n - rd8(b | 0x1F58)) & 0x80)) {
+    n = rd8(c);
+    wr8(c, (uint8_t)(n + 1));
+    n = rd8(c);
+    lim = rd8(b | 0x1F58);
+    if (n == lim || ((uint8_t)(n - lim) & 0x80)) {
+        v = rd8(f);
+        d = rd8(b | 0x1F5A);
         r = (uint8_t)(v + d);
         wr8(f, r);
         *p = (uint8_t)((nz8(*p, r) & ~(P_C | P_V)) | ((~(v ^ d) & (v ^ r) & 0x80) ? P_V : 0));
         *a = r;
         return 0;
     }
+    v = rd8(f);
+    d = rd8(b | 0x1F5A);
     r = (uint8_t)(v - d);
     wr8(f, r);
     *p = (uint8_t)((*p & ~P_V) | (((v ^ d) & (v ^ r) & 0x80) ? P_V : 0));
+    n = rd8(c);
     *a = n;
-    r = (uint8_t)(n - rd8(b | 0x1F59));
+    lim = rd8(b | 0x1F59);
+    r = (uint8_t)(n - lim);
     *p = (uint8_t)(nz8(*p, r) & ~P_C);
     if (r)
         return 0;

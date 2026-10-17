@@ -156,9 +156,14 @@ static uint16_t sub16(uint16_t a, uint16_t b, uint8_t *p)
 uint16_t ObjectGsu80BC(uint8_t bank, uint16_t obj, uint8_t *p)
 {
     uint32_t b = (uint32_t)bank << 16;
+    uint16_t m, s;
 
-    wr16(GSU_IN_68, sub16(rd16(0x000004), rd16(b | (uint16_t)(0x200C + obj)), p));
-    wr16(0x70002E, sub16(rd16(b | 0x05F2), rd16(b | (uint16_t)(0x2010 + obj)), p));
+    m = rd16(0x000004);
+    s = rd16(b | (uint16_t)(0x200C + obj));
+    wr16(GSU_IN_68, sub16(m, s, p));
+    m = rd16(b | 0x05F2);
+    s = rd16(b | (uint16_t)(0x2010 + obj));
+    wr16(0x70002E, sub16(m, s, p));
     GsuRun(0x01, 0x80BC);
     return rd16(GSU_IN_6A);
 }
@@ -472,10 +477,11 @@ void GsuBytes200_BFB7B6(void);
  * mode value (high byte clear); X = the program address's low byte; Y high
  * byte clear; M 16-bit, X 8-bit; N, Z from the data bank.
  */
-uint8_t GsuF0A5OrF0B4(uint8_t bank, uint16_t input)
+uint8_t GsuF0A5OrF0B4(uint8_t bank, uint16_t input, uint8_t *set)
 {
     wr16(0x70020C, input);
-    if (rd8((uint32_t)bank << 16 | 0x0D62)) {
+    *set = rd8((uint32_t)bank << 16 | 0x0D62);
+    if (*set) {
         GsuBytes200_0F090A();
         return GsuRun(0x07, 0xF0A5);
     }
@@ -485,9 +491,9 @@ uint8_t GsuF0A5OrF0B4(uint8_t bank, uint16_t input)
 
 void abi_GsuF0A5OrF0B4(void)
 {
-    uint8_t set = rd8((uint32_t)cpu.db << 16 | 0x0D62);
+    uint8_t set;
 
-    cpu.a = GsuF0A5OrF0B4(cpu.db, cpu.a);
+    cpu.a = GsuF0A5OrF0B4(cpu.db, cpu.a, &set);
     cpu.x = set ? 0x00A5 : 0x00B4;
     cpu.y &= 0x00FF;
     cpu.p = (uint8_t)((nz8(cpu.p, cpu.db) & ~P_M) | P_X);
@@ -503,10 +509,11 @@ void abi_GsuF0A5OrF0B4(void)
  * mode value (high byte clear); X = the program address; M 16-bit, X
  * 16-bit; N, Z from the data bank.
  */
-uint8_t GsuEEF5OrEFCD(uint8_t bank, uint16_t input)
+uint8_t GsuEEF5OrEFCD(uint8_t bank, uint16_t input, uint8_t *set)
 {
     wr16(0x70020C, input);
-    if (rd8((uint32_t)bank << 16 | 0x0D62)) {
+    *set = rd8((uint32_t)bank << 16 | 0x0D62);
+    if (*set) {
         GsuBytes200_0F0405();
         return GsuRun(0x07, 0xEEF5);
     }
@@ -516,9 +523,9 @@ uint8_t GsuEEF5OrEFCD(uint8_t bank, uint16_t input)
 
 void abi_GsuEEF5OrEFCD(void)
 {
-    uint8_t set = rd8((uint32_t)cpu.db << 16 | 0x0D62);
+    uint8_t set;
 
-    cpu.a = GsuEEF5OrEFCD(cpu.db, cpu.a);
+    cpu.a = GsuEEF5OrEFCD(cpu.db, cpu.a, &set);
     cpu.x = set ? 0xEEF5 : 0xEFCD;
     cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X));
 }
@@ -608,7 +615,7 @@ void abi_GsuF15BThree(void)
  * = $0D6B, Z set and N clear; otherwise A = $1E and the screen mode value,
  * X = $FA1B, N and Z from the data bank. C and V from the add of 8.
  */
-int GsuFA1BFromTables(uint8_t bank, uint8_t *mode, uint8_t *p)
+int GsuFA1BFromTables(uint8_t bank, uint8_t *mode, uint8_t *p, uint16_t *index)
 {
     uint32_t b = (uint32_t)bank << 16;
     uint16_t y = rd16(b | 0x0D6F), s = (uint16_t)(y + 8), x, v;
@@ -620,6 +627,7 @@ int GsuFA1BFromTables(uint8_t bank, uint8_t *mode, uint8_t *p)
     wr16(0x700210, 0x0100);
     wr16(0x700214, 0x0100);
     x = rd16(b | 0x0D6B);
+    *index = x;
     v = rd16(0x070000 | (uint16_t)(0x97D6 + x));
     if (!v)
         return 0;
@@ -632,10 +640,10 @@ int GsuFA1BFromTables(uint8_t bank, uint8_t *mode, uint8_t *p)
 
 void abi_GsuFA1BFromTables(void)
 {
-    uint16_t x = rd16((uint32_t)cpu.db << 16 | 0x0D6B);
+    uint16_t x;
     uint8_t p = cpu.p, mode = 0;
 
-    if (GsuFA1BFromTables(cpu.db, &mode, &p)) {
+    if (GsuFA1BFromTables(cpu.db, &mode, &p, &x)) {
         cpu.a = (uint16_t)(0x1E00 | mode);
         cpu.x = 0xFA1B;
         cpu.p = (uint8_t)(nz8(p, cpu.db) & ~(P_M | P_X));
@@ -1204,10 +1212,15 @@ void ObjectGsu81E3(void)
 {
     uint16_t x = cpu.x, y = cpu.y;
     uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t m, s;
 
     cpu.p &= (uint8_t)~P_M;
-    wr16(0x000002, sbc16(rd16(0x000004), rd16(b | (uint16_t)(0x200C + x))));
-    cpu.a = sbc16(rd16(b | 0x05F2), rd16(b | (uint16_t)(0x2010 + x)));
+    m = rd16(0x000004);
+    s = rd16(b | (uint16_t)(0x200C + x));
+    wr16(0x000002, sbc16(m, s));
+    m = rd16(b | 0x05F2);
+    s = rd16(b | (uint16_t)(0x2010 + x));
+    cpu.a = sbc16(m, s);
     wr16(0x000008, cpu.a);
     abi_Gsu81E3Long();
     restore_xy(x, y);
@@ -1325,7 +1338,7 @@ void abi_GsuFA5ASixLeft(void)
  * = $0D6B, Z set and N clear; otherwise A = $1C and the screen mode value,
  * X = $FA35, N and Z from the data bank. C and V from the add of 8.
  */
-int GsuFA35FromTables(uint8_t bank, uint8_t *mode, uint8_t *p)
+int GsuFA35FromTables(uint8_t bank, uint8_t *mode, uint8_t *p, uint16_t *index)
 {
     uint32_t b = (uint32_t)bank << 16;
     uint16_t x, v;
@@ -1336,6 +1349,7 @@ int GsuFA35FromTables(uint8_t bank, uint8_t *mode, uint8_t *p)
     wr16(0x700210, 0x0100);
     wr16(0x700214, 0x0100);
     x = rd16(b | 0x0D6B);
+    *index = x;
     v = rd16(0x070000 | (uint16_t)(0x97EE + x));
     if (!v)
         return 0;
@@ -1348,10 +1362,10 @@ int GsuFA35FromTables(uint8_t bank, uint8_t *mode, uint8_t *p)
 
 void abi_GsuFA35FromTables(void)
 {
-    uint16_t x = rd16((uint32_t)cpu.db << 16 | 0x0D6B);
+    uint16_t x;
     uint8_t p = cpu.p, mode = 0;
 
-    if (GsuFA35FromTables(cpu.db, &mode, &p)) {
+    if (GsuFA35FromTables(cpu.db, &mode, &p, &x)) {
         cpu.a = (uint16_t)(0x1C00 | mode);
         cpu.x = 0xFA35;
         cpu.p = (uint8_t)(nz8(p, cpu.db) & ~(P_M | P_X));
