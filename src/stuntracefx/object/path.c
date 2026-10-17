@@ -47,7 +47,9 @@ static uint16_t advance(uint8_t bank, uint16_t obj, uint16_t n, uint8_t *p)
  * command does nothing and returns carry set.
  * HOW: The command word at $08:85B9 + +$29 picks the case; the velocity is
  * the difference halved n times, rounding toward zero; $1F4C-$1F53 hold n
- * and the three differences. +$29 steps by 8, 4 or 10.
+ * and the three differences, each read back from there for every halving
+ * and for the velocity. The linked object is read only by the commands
+ * that use it. +$29 steps by 8, 4 or 10.
  * Entry: M 8-bit, X 16-bit; X = object. Exit: X unchanged; M 8-bit; N, Z
  * from X; carry set only for an unknown command (A = the command word, Y =
  * X); otherwise carry clear, A = the new +$29, V from its add, Y = X (3),
@@ -57,13 +59,13 @@ int ObjectPathCommand(uint8_t bank, uint16_t obj, uint16_t *a, uint16_t *y, uint
 {
     uint32_t b = (uint32_t)bank << 16;
     uint16_t t = rd16(field(bank, obj, 0x29)), cmd = rd16(PATH_TABLE + t);
-    uint16_t link = rd16(field(bank, obj, 0x4F)), n, d[3];
+    uint16_t link, n, v, w;
     unsigned i;
 
     if (cmd == 3) {
+        link = rd16(field(bank, obj, 0x4F));
         for (i = 0; i < 3; i++) {
-            uint16_t v = rd16(PATH_TABLE + 2 + 2 * i + t);
-
+            v = rd16(PATH_TABLE + 2 + 2 * i + t);
             wr16(b | (uint16_t)(link + 0x20 + 2 * i), v);
             wr16(b | (uint16_t)(link + 0x1A + 2 * i), v);
         }
@@ -74,26 +76,33 @@ int ObjectPathCommand(uint8_t bank, uint16_t obj, uint16_t *a, uint16_t *y, uint
         *a = advance(bank, obj, 8, p);
         *y = obj;
     } else if (cmd == 2) {
-        wr16(b | link, rd16(PATH_TABLE + 2 + t));
+        v = rd16(PATH_TABLE + 2 + t);
+        link = rd16(field(bank, obj, 0x4F));
+        wr16(b | link, v);
         *a = advance(bank, obj, 4, p);
         *y = link;
     } else if (cmd == 1) {
-        wr16(field(bank, obj, 0x27), rd16(PATH_TABLE + 2 + t) & 0x00FF);
-        n = rd16(PATH_TABLE + 3 + t) & 0x00FF;
-        wr16(b | 0x1F4C, n);
+        v = rd16(PATH_TABLE + 2 + t);
+        wr16(field(bank, obj, 0x27), v & 0x00FF);
+        link = rd16(field(bank, obj, 0x4F));
+        n = rd16(PATH_TABLE + 3 + t);
+        wr16(b | 0x1F4C, n & 0x00FF);
         for (i = 0; i < 3; i++) {
-            d[i] = (uint16_t)(rd16(PATH_TABLE + 4 + 2 * i + t) - rd16(b | (uint16_t)(link + 0x20 + 2 * i)));
-            wr16(b | (uint16_t)(0x1F4E + 2 * i), d[i]);
+            v = rd16(PATH_TABLE + 4 + 2 * i + t);
+            w = rd16(b | (uint16_t)(link + 0x20 + 2 * i));
+            wr16(b | (uint16_t)(0x1F4E + 2 * i), (uint16_t)(v - w));
         }
+        n = rd16(b | 0x1F4C);
         while (n--) {
             for (i = 0; i < 3; i++) {
-                d[i] = halve(d[i]);
-                wr16(b | (uint16_t)(0x1F4E + 2 * i), d[i]);
+                v = rd16(b | (uint16_t)(0x1F4E + 2 * i));
+                wr16(b | (uint16_t)(0x1F4E + 2 * i), halve(v));
             }
         }
-        wr16(field(bank, obj, 0x2E), d[0]);
-        wr16(field(bank, obj, 0x30), d[1]);
-        wr16(field(bank, obj, 0x32), d[2]);
+        for (i = 0; i < 3; i++) {
+            v = rd16(b | (uint16_t)(0x1F4E + 2 * i));
+            wr16(field(bank, obj, (uint16_t)(0x2E + 2 * i)), v);
+        }
         *a = advance(bank, obj, 10, p);
         *y = 0;
     } else {

@@ -46,15 +46,20 @@ void abi_WindowHdmaFFDD(void)
  * Entry: any widths. Exit: A low byte = 0 (high byte that of the middle
  * address); X = $19B6; M 8-bit, X 16-bit; Z set, N clear.
  */
-static uint16_t window_hdma_from_table(void)
+static uint16_t window_hdma_from_table(uint16_t *sel)
 {
-    uint16_t x = rd16(0x0019B6), mid = rd16(0x7EE0D2 + x);
+    uint16_t x = rd16(0x0019B6), mid;
+    uint8_t n;
 
+    *sel = x;
     wr16(WINDOW_HDMA + 1, 0xF857);
     wr16(WINDOW_HDMA + 7, 0xF857);
+    mid = rd16(0x7EE0D2 + x);
     wr16(WINDOW_HDMA + 4, mid);
-    wr8(WINDOW_HDMA + 0, rd8(0x7EE0B4 + x));
-    wr8(WINDOW_HDMA + 3, rd8(0x7EE0B5 + x));
+    n = rd8(0x7EE0B4 + x);
+    wr8(WINDOW_HDMA + 0, n);
+    n = rd8(0x7EE0B5 + x);
+    wr8(WINDOW_HDMA + 3, n);
     wr8(WINDOW_HDMA + 6, 0x30);
     wr8(WINDOW_HDMA + 9, 0x00);
     return mid;
@@ -62,15 +67,17 @@ static uint16_t window_hdma_from_table(void)
 
 void WindowHdmaFromTable(void)
 {
-    window_hdma_from_table();
+    uint16_t sel;
+
+    window_hdma_from_table(&sel);
 }
 
 void abi_WindowHdmaFromTable(void)
 {
-    uint16_t mid = window_hdma_from_table();
+    uint16_t sel, mid = window_hdma_from_table(&sel);
 
     cpu.a = (uint16_t)(mid & 0xFF00);
-    cpu.x = rd16(0x0019B6);
+    cpu.x = sel;
     cpu.p = (uint8_t)(((cpu.p & ~(P_N | P_X)) | P_Z | P_M));
 }
 
@@ -101,10 +108,12 @@ void abi_WindowHdmaFFD1(void)
     cpu.p = (uint8_t)((cpu.p & ~(P_Z | P_M)) | P_N);
 }
 
-/* Window HDMA in use, and a layout of $FF meaning none: both skip the builders below. */
-static int window_hdma_off(void)
+/* Window HDMA in use, and a layout of $FF meaning none: both skip the
+   builders below. *last gets the byte read, A when a builder skips. */
+static int window_hdma_off(uint8_t *last)
 {
-    return rd8(0x0019D8) != 0;
+    *last = rd8(0x0019D8);
+    return *last != 0;
 }
 
 /*
@@ -116,11 +125,14 @@ static int window_hdma_off(void)
  * Entry: any widths. Exit: A = $F857 when written; X and Y high bytes clear;
  * P unchanged.
  */
-static int window_hdma_normal(void)
+static int window_hdma_normal(uint8_t *last)
 {
     unsigned i;
 
-    if (window_hdma_off() || rd8(0x0019BC) == 0xFF)
+    if (window_hdma_off(last))
+        return 0;
+    *last = rd8(0x0019BC);
+    if (*last == 0xFF)
         return 0;
     for (i = 0; i < 4; i++)
         wr8(WINDOW_HDMA + 3 * i, 0x40);
@@ -132,17 +144,19 @@ static int window_hdma_normal(void)
 
 void WindowHdmaNormal(void)
 {
-    window_hdma_normal();
+    uint8_t last;
+
+    window_hdma_normal(&last);
 }
 
 void abi_WindowHdmaNormal(void)
 {
-    uint8_t off = rd8(0x0019D8), layout = rd8(0x0019BC);
+    uint8_t last;
 
-    if (window_hdma_normal())
+    if (window_hdma_normal(&last))
         cpu.a = 0xF857;
     else
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | (off ? off : layout));
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | last);
     cpu.x &= 0x00FF;
     cpu.y &= 0x00FF;
 }
@@ -155,12 +169,12 @@ void abi_WindowHdmaNormal(void)
  * Entry: any widths. Exit: A = $F857 when written, else $19D8; X and Y high
  * bytes clear; P unchanged.
  */
-static int window_hdma_bands(void)
+static int window_hdma_bands(uint8_t *last)
 {
     static const uint8_t lines[9] = {0x17, 0x10, 0x30, 0x10, 0x18, 0x10, 0x30, 0x10, 0x01};
     unsigned i;
 
-    if (window_hdma_off())
+    if (window_hdma_off(last))
         return 0;
     for (i = 0; i < 9; i++)
         wr8(WINDOW_HDMA + 3 * i, lines[i]);
@@ -172,17 +186,19 @@ static int window_hdma_bands(void)
 
 void WindowHdmaBands(void)
 {
-    window_hdma_bands();
+    uint8_t last;
+
+    window_hdma_bands(&last);
 }
 
 void abi_WindowHdmaBands(void)
 {
-    uint8_t off = rd8(0x0019D8);
+    uint8_t last;
 
-    if (window_hdma_bands())
+    if (window_hdma_bands(&last))
         cpu.a = 0xF857;
     else
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | off);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | last);
     cpu.x &= 0x00FF;
     cpu.y &= 0x00FF;
 }
@@ -428,7 +444,7 @@ void abi_WindowEdgesFromList(void)
  * @routine 7E:DB47 WindowHdmaLayout
  * WHAT IT DOES: Writes the window HDMA table's line counts and data for
  * layout $19B6: one screen (two entries) when $0D2E is clear; the split
- * screen (three entries) when it is set, which no script has reached yet.
+ * screen (three entries) when it is set, reached only by unit_fade_windows.
  * HOW: Long stores into the table at $7F:F85B. One screen: entry 0 lines
  * from $7E:E0C2 + X, entry 1 lines from $7E:E0C3 + X, data pointers $F857
  * and the word at $7E:E0D2 + X, then $10 lines and the end. Split: entries
@@ -442,6 +458,7 @@ uint16_t WindowHdmaLayout(uint8_t bank, uint16_t *x)
 {
     uint32_t b = (uint32_t)bank << 16;
     uint16_t w;
+    uint8_t n;
 
     if (!rd8(0x000D2E)) {
         *x = rd16(b | 0x19B6);
@@ -460,9 +477,11 @@ uint16_t WindowHdmaLayout(uint8_t bank, uint16_t *x)
         wr16(0x7FF865, 0xF857);
         w = rd16(0x7EE0E0 + *x);
         wr16(0x7FF862, w);
-        wr8(0x7FF85B, rd8(0x7EE0CA + *x));
-        wr8(0x7FF85E, rd8(0x7EE0CA + *x));
-        wr8(0x7FF861, rd8(0x7EE0CB + *x));
+        n = rd8(0x7EE0CA + *x);
+        wr8(0x7FF85B, n);
+        wr8(0x7FF85E, n);
+        n = rd8(0x7EE0CB + *x);
+        wr8(0x7FF861, n);
         wr8(0x7FF864, 0x10);
         wr8(0x7FF867, 0x00);
     }
@@ -481,7 +500,7 @@ void abi_WindowHdmaLayout(void);
 static void window_layout_apply(uint16_t y, uint8_t bank)
 {
     if (y == 0)
-        window_hdma_from_table();
+        WindowHdmaFromTable();
     else
         WindowHdmaLayout(bank, &y);
 }

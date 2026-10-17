@@ -11,10 +11,20 @@ uint16_t SpriteBar6WithMarker(uint8_t bank, uint8_t value, uint16_t pos, uint16_
 void abi_SpriteBar4WithMarker(void);
 void abi_SpriteBar6WithMarker(void);
 
-/* A position word from two bytes: X at lo_at, Y at hi_at. */
-static uint16_t pos_of(uint32_t b, uint16_t lo_at, uint16_t hi_at)
+/* One gauge as the code loads it: the Y byte, the X byte, then the value
+   (the Y byte stays in A's high byte through XBA). */
+typedef struct {
+    uint8_t y, x, value;
+} Gauge;
+
+static Gauge gauge_of(uint32_t b, uint16_t lo_at, uint16_t hi_at, uint16_t value_at)
 {
-    return (uint16_t)(rd8(b | hi_at) << 8 | rd8(b | lo_at));
+    Gauge g;
+
+    g.y = rd8(b | hi_at);
+    g.x = rd8(b | lo_at);
+    g.value = rd8(b | value_at);
+    return g;
 }
 
 /* For the abi_ wrappers: the registers as the code sets them for a gauge
@@ -22,10 +32,10 @@ static uint16_t pos_of(uint32_t b, uint16_t lo_at, uint16_t hi_at)
    then the gauge's own abi_. */
 static void abi_gauge(void (*gauge)(void), uint16_t lo_at, uint16_t hi_at, uint16_t value_at, uint16_t slot)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    Gauge g = gauge_of((uint32_t)cpu.db << 16, lo_at, hi_at, value_at);
 
-    cpu.x = pos_of(b, lo_at, hi_at);
-    cpu.a = (uint16_t)(rd8(b | hi_at) << 8 | rd8(b | value_at));
+    cpu.x = (uint16_t)(g.y << 8 | g.x);
+    cpu.a = (uint16_t)(g.y << 8 | g.value);
     cpu.y = slot;
     cpu.p = nz16((uint8_t)((cpu.p | P_M) & ~P_X), slot);
     gauge();
@@ -44,9 +54,12 @@ static void abi_gauge(void (*gauge)(void), uint16_t lo_at, uint16_t hi_at, uint1
 void HudGaugesPanelA(uint8_t bank)
 {
     uint32_t b = (uint32_t)bank << 16;
+    Gauge g;
 
-    SpriteBar4WithMarker(bank, rd8(b | 0x0DFA), pos_of(b, 0x0E0F, 0x0E11), 0x0140);
-    SpriteBar6WithMarker(bank, rd8(b | 0x0E06), pos_of(b, 0x0E13, 0x0E15), 0x016C);
+    g = gauge_of(b, 0x0E0F, 0x0E11, 0x0DFA);
+    SpriteBar4WithMarker(bank, g.value, (uint16_t)(g.y << 8 | g.x), 0x0140);
+    g = gauge_of(b, 0x0E13, 0x0E15, 0x0E06);
+    SpriteBar6WithMarker(bank, g.value, (uint16_t)(g.y << 8 | g.x), 0x016C);
 }
 
 void abi_HudGaugesPanelA(void)
@@ -71,12 +84,16 @@ void HudGaugesPanelB(uint8_t bank)
 {
     uint32_t b = (uint32_t)bank << 16;
     int split;
+    Gauge g;
 
     if (!rd8(0x000D55) && !rd8(0x000D62))
         return;
     split = rd8(b | 0x0D62) != 0;
-    SpriteBar4WithMarker(bank, rd8(b | 0x0DF9), pos_of(b, 0x0E0E, 0x0E10), split ? 0x0040 : 0x0100);
-    SpriteBar6WithMarker(bank, rd8(b | 0x0E05), pos_of(b, 0x0E12, 0x0E14), split ? 0x006C : 0x012C);
+    g = gauge_of(b, 0x0E0E, 0x0E10, 0x0DF9);
+    SpriteBar4WithMarker(bank, g.value, (uint16_t)(g.y << 8 | g.x), split ? 0x0040 : 0x0100);
+    split = rd8(b | 0x0D62) != 0;
+    g = gauge_of(b, 0x0E12, 0x0E14, 0x0E05);
+    SpriteBar6WithMarker(bank, g.value, (uint16_t)(g.y << 8 | g.x), split ? 0x006C : 0x012C);
 }
 
 void abi_HudGaugesPanelB(void)

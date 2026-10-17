@@ -93,26 +93,28 @@ void abi_SpriteYOnScreen(void)
 
 /* Build a strip of n+1 sprites: positions from direct page $02 stepping by
    `step` (in the X byte), tiles and attributes from a table in bank $7F.
-   Direct page $02 is restored; $08 ends at $FFFF. */
-static void sprite_strip(uint16_t index, uint16_t offset, uint32_t table, uint16_t step, uint16_t n)
+   Direct page $02 is restored and returned (A at the end); $08 ends at
+   $FFFF. */
+static uint16_t sprite_strip(uint16_t index, uint16_t offset, uint32_t table, uint16_t step, uint16_t n)
 {
-    uint16_t pos0 = rd16(0x000002), pos = pos0;
+    uint16_t pos0 = rd16(0x000002), pos, v;
 
     wr16(0x000008, n);
-    for (;;) {
-        wr16(0x000002, pos);
+    do {
+        pos = rd16(0x000002);
         wr16(OAM_BUFFER + offset, pos);
         pos = (uint16_t)(pos + step);
         wr16(0x000002, pos);
-        wr16(OAM_BUFFER + 2 + offset, rd16(table + index));
+        v = rd16(table + index);
+        wr16(OAM_BUFFER + 2 + offset, v);
         index = (uint16_t)(index + 2);
         offset = (uint16_t)(offset + 4);
+        n = rd16(0x000008);
         n = (uint16_t)(n - 1);
         wr16(0x000008, n);
-        if (n & 0x8000)
-            break;
-    }
+    } while (!(n & 0x8000));
     wr16(0x000002, pos0);
+    return pos0;
 }
 
 /*
@@ -125,17 +127,16 @@ static void sprite_strip(uint16_t index, uint16_t offset, uint32_t table, uint16
  * offset. Exit: A = the position; X = the table offset + 8; Y + 16; P
  * unchanged.
  */
-void SpriteStrip4(uint16_t selector, uint16_t offset)
+uint16_t SpriteStrip4(uint16_t selector, uint16_t offset)
 {
-    sprite_strip((uint16_t)((selector >> 1) & 0x00F8), offset, 0x7F09CD, 0x0010, 3);
+    return sprite_strip((uint16_t)((selector >> 1) & 0x00F8), offset, 0x7F09CD, 0x0010, 3);
 }
 
 void abi_SpriteStrip4(void)
 {
     uint16_t index = (uint16_t)((cpu.a >> 1) & 0x00F8);
 
-    SpriteStrip4(cpu.a, cpu.y);
-    cpu.a = rd16(0x000002);
+    cpu.a = SpriteStrip4(cpu.a, cpu.y);
     cpu.x = (uint16_t)(index + 8);
     cpu.y = (uint16_t)(cpu.y + 16);
     if (cpu.p & P_X) {
@@ -152,17 +153,16 @@ void abi_SpriteStrip4(void)
  * Entry: as SpriteStrip4. Exit: A = the position; X = the table offset +
  * 12; Y + 24; P unchanged.
  */
-void SpriteStrip6(uint16_t selector, uint16_t offset)
+uint16_t SpriteStrip6(uint16_t selector, uint16_t offset)
 {
-    sprite_strip((uint16_t)((selector & 0x0038) << 1), offset, 0x7F0A66, 0x0008, 5);
+    return sprite_strip((uint16_t)((selector & 0x0038) << 1), offset, 0x7F0A66, 0x0008, 5);
 }
 
 void abi_SpriteStrip6(void)
 {
     uint16_t index = (uint16_t)((cpu.a & 0x0038) << 1);
 
-    SpriteStrip6(cpu.a, cpu.y);
-    cpu.a = rd16(0x000002);
+    cpu.a = SpriteStrip6(cpu.a, cpu.y);
     cpu.x = (uint16_t)(index + 12);
     cpu.y = (uint16_t)(cpu.y + 24);
     if (cpu.p & P_X) {
@@ -948,14 +948,15 @@ void abi_OamPlaceRows75And112(void)
 }
 
 /* A strip with a marker sprite: the strip at the position in direct page
-   $02 (X at entry), then the marker at that position plus the value, less
+   $02 (X at entry), then the marker at that position (read back from $02)
+   plus the value, less
    the strip's span once the value reaches it, in the slot before the
    strip. The OAM writes for the marker go through the data bank. */
-static uint16_t bar_marker(uint8_t bank, uint16_t pos, uint16_t v, uint16_t y, uint16_t span,
+static uint16_t bar_marker(uint8_t bank, uint16_t v, uint16_t y, uint16_t span,
                            uint16_t tile_far, uint16_t tile_near)
 {
     uint32_t b = (uint32_t)bank << 16;
-    uint16_t tile;
+    uint16_t tile, pos = rd16(0x000002);
 
     if (v >= span) {
         wr16(b | (uint16_t)(0x0375 + y), (uint16_t)(v + pos - span));
@@ -986,8 +987,9 @@ uint16_t SpriteBar4WithMarker(uint8_t bank, uint8_t value, uint16_t pos, uint16_
 
     wr8(0x000004, (uint8_t)v);
     wr16(0x000002, pos);
+    v = rd8(0x000004);
     SpriteStrip4(v, (uint16_t)(y + 4));
-    return bar_marker(bank, pos, v, y, 0x0010, 0x3C20, 0x3622);
+    return bar_marker(bank, v, y, 0x0010, 0x3C20, 0x3622);
 }
 
 void abi_SpriteBar4WithMarker(void)
@@ -1014,10 +1016,13 @@ void abi_SpriteBar4WithMarker(void)
  */
 uint16_t SpriteBar6WithMarker(uint8_t bank, uint8_t value, uint16_t pos, uint16_t y)
 {
+    uint16_t v;
+
     wr8(0x000004, value);
     wr16(0x000002, pos);
-    SpriteStrip6(value, (uint16_t)(y + 4));
-    return bar_marker(bank, pos, value, y, 0x0008, 0x3C1F, 0x3C1E);
+    v = rd8(0x000004);
+    SpriteStrip6(v, (uint16_t)(y + 4));
+    return bar_marker(bank, v, y, 0x0008, 0x3C1F, 0x3C1E);
 }
 
 void abi_SpriteBar6WithMarker(void)

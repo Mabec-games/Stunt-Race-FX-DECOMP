@@ -23,6 +23,7 @@ uint8_t HalfRateApproach(void)
     target = rd8(0x0011DB);
     if (v == target)
         return v;
+    v = rd8(0x0011DA);
     v = (uint8_t)(v < target ? v + 1 : v - 1);
     wr8(0x0011DA, v);
     return v;

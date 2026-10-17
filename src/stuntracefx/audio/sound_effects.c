@@ -82,8 +82,9 @@ void abi_PlayerHoldSound33(void)
  */
 static uint8_t player_stop_held_sound(void)
 {
-    uint32_t held = rd8(CURRENT_PLAYER) == 0 ? PLAYER1_HELD_SOUND : PLAYER2_HELD_SOUND;
-    uint8_t stop = rd8(CURRENT_PLAYER) == 0 ? 0x0A : 0x1A;
+    uint8_t two = rd8(CURRENT_PLAYER) != 0;
+    uint32_t held = two ? PLAYER2_HELD_SOUND : PLAYER1_HELD_SOUND;
+    uint8_t stop = two ? 0x1A : 0x0A;
 
     if (rd8(held) == 0)
         return 0;
@@ -312,20 +313,32 @@ void abi_SoundFromTableD89(void)
  * Entry: any widths. Exit: A low byte = the second command; X = $0D89 (high
  * byte zero); P unchanged.
  */
-uint8_t SoundPairFromTable(void)
+static uint8_t sound_pair_from_table(uint8_t *x)
 {
-    uint8_t c = (uint8_t)(rd8(0x0BFB18 + rd8(0x000D8A)) | 0x80);
+    uint8_t c;
 
+    *x = rd8(0x000D8A);
+    c = (uint8_t)(rd8(0x0BFB18 + *x) | 0x80);
     SoundPort0QueuePushRaw(c);
-    c = rd8(0x0BFB18 + rd8(0x000D89));
+    *x = rd8(0x000D89);
+    c = rd8(0x0BFB18 + *x);
     SoundPort0QueuePushRaw(c);
     return c;
 }
 
+uint8_t SoundPairFromTable(void)
+{
+    uint8_t x;
+
+    return sound_pair_from_table(&x);
+}
+
 void abi_SoundPairFromTable(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | SoundPairFromTable());
-    cpu.x = rd8(0x000D89);
+    uint8_t x, c = sound_pair_from_table(&x);
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | c);
+    cpu.x = x;
 }
 
 /*

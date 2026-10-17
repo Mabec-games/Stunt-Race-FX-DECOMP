@@ -58,11 +58,17 @@ void abi_HandlerTableB(void)
  */
 uint8_t CourseIndex12(uint8_t a, uint8_t *p)
 {
-    uint8_t a3 = (uint8_t)(a + (uint8_t)(a << 1)), c = rd8(0x000E3D), c12;
+    uint8_t a3, c, c2, c12, f;
     unsigned s;
 
+    wr8(0x0000F1, a);
+    f = rd8(0x0000F1);
+    a3 = (uint8_t)((uint8_t)(a << 1) + f);
     wr8(0x0000F1, a3);
-    c12 = (uint8_t)((uint8_t)((uint8_t)(c << 1) + c) << 2);
+    c = rd8(0x000E3D);
+    c2 = rd8(0x000E3D);
+    c12 = (uint8_t)((uint8_t)((uint8_t)(c << 1) + c2) << 2);
+    a3 = rd8(0x0000F1);
     s = (unsigned)c12 + a3;
     *p = (uint8_t)((nz8(*p, (uint8_t)s) & ~(P_C | P_V)) | (s > 0xFF ? P_C : 0)
                    | ((~(c12 ^ a3) & (c12 ^ (uint8_t)s) & 0x80) ? P_V : 0));
@@ -124,27 +130,38 @@ void abi_CourseDataPointer(void)
 uint16_t SelectionTables18CB(uint8_t bank)
 {
     uint32_t b = (uint32_t)bank << 16;
-    uint16_t base, s1, s2, i3, x, v = 0;
+    uint16_t base, s1, i3, x, v = 0, w, u;
 
     base = rd16(0x0BB00C + (uint16_t)(rd16(0x0018CB) << 1));
     wr16(b | 0x11DF, base);
-    s1 = rd16(0x0018CD);
-    s1 = (uint16_t)((uint16_t)(s1 << 1) + s1);
+    v = rd16(0x0018CD);
+    w = rd16(0x0018CD);
+    s1 = (uint16_t)((uint16_t)(v << 1) + w);
     wr16(b | 0x11E1, s1);
-    s2 = rd16(0x0018CF);
-    s1 = (uint16_t)((uint16_t)(s2 << 3) + s2 + s1);
+    v = rd16(0x0018CF);
+    w = rd16(0x0018CF);
+    u = rd16(b | 0x11E1);
+    s1 = (uint16_t)((uint16_t)(v << 3) + w + u);
     wr16(b | 0x11E1, s1);
-    i3 = rd16(0x0018D1);
-    i3 = (uint16_t)((uint16_t)(i3 << 1) + i3);
+    v = rd16(0x0018D1);
+    w = rd16(0x0018D1);
+    i3 = (uint16_t)((uint16_t)(v << 1) + w);
     wr16(b | 0x11E3, i3);
-    x = (uint16_t)((uint16_t)(i3 << 3) + i3 + s1 + base);
+    u = rd16(b | 0x11E3);
+    x = (uint16_t)((uint16_t)(i3 << 3) + u);
+    u = rd16(b | 0x11E1);
+    x = (uint16_t)(x + u);
+    u = rd16(b | 0x11DF);
+    x = (uint16_t)(x + u);
     wr16(0x0018E5, rd16(0x0BB014 + x) & 3);
     wr16(0x0018E7, rd16(0x0BB015 + x) & 3);
     wr16(0x0018E9, rd16(0x0BB016 + x) & 3);
     wr16(0x0018E3, rd16(0x03B7B1 + rd16(0x0018CB)) & 3);
     for (x = 0; x < 8; x += 2) {
-        uint16_t idx = (uint16_t)((uint16_t)(rd16(0x0018CB + x) << 2) + rd16(0x0018E3 + x));
+        uint16_t idx = (uint16_t)(rd16(0x0018CB + x) << 2);
 
+        u = rd16(0x0018E3 + x);
+        idx = (uint16_t)(idx + u);
         v = rd16(0x03B7B5 + idx) & 3;
         wr16(0x0018D3 + x, v);
     }

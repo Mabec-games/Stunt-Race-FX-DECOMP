@@ -25,11 +25,12 @@
  * Entry: X 16-bit. Exit: A low byte = the flags after clearing, or 0 when
  * nothing was pending; X = 0 after a copy; P unchanged.
  */
-static uint8_t oam_dma_if_pending(void)
+static uint8_t oam_dma_if_pending(int *ran)
 {
     uint8_t flags = rd8(FRAME_UPDATE_FLAGS);
 
-    if (!(flags & 0x04))
+    *ran = (flags & 0x04) != 0;
+    if (!*ran)
         return 0;
     wr8(DMAP0, 0x00);
     wr8(DMAP0 + 1, 0x04);
@@ -45,14 +46,16 @@ static uint8_t oam_dma_if_pending(void)
 
 void OamDmaIfPending(void)
 {
-    oam_dma_if_pending();
+    int ran;
+
+    oam_dma_if_pending(&ran);
 }
 
 void abi_OamDmaIfPending(void)
 {
-    int pending = rd8(FRAME_UPDATE_FLAGS) & 0x04;
+    int pending;
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | oam_dma_if_pending());
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | oam_dma_if_pending(&pending));
     if (pending)
         cpu.x = 0;
 }
@@ -66,11 +69,12 @@ void abi_OamDmaIfPending(void)
  * Entry: X 16-bit. Exit: A low byte = the flags after clearing, or 0 when
  * nothing was pending; Y = $0200 after a copy; P unchanged.
  */
-static uint8_t cgram_dma_if_pending(void)
+static uint8_t cgram_dma_if_pending(int *ran)
 {
     uint8_t flags = rd8(FRAME_UPDATE_FLAGS);
 
-    if (!(flags & 0x08))
+    *ran = (flags & 0x08) != 0;
+    if (!*ran)
         return 0;
     wr8(DMAP0, 0x00);
     wr8(DMAP0 + 1, 0x22);
@@ -86,14 +90,16 @@ static uint8_t cgram_dma_if_pending(void)
 
 void CgramDmaIfPending(void)
 {
-    cgram_dma_if_pending();
+    int ran;
+
+    cgram_dma_if_pending(&ran);
 }
 
 void abi_CgramDmaIfPending(void)
 {
-    int pending = rd8(FRAME_UPDATE_FLAGS) & 0x08;
+    int pending;
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | cgram_dma_if_pending());
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | cgram_dma_if_pending(&pending));
     if (pending)
         cpu.y = 0x0200;
 }
@@ -183,6 +189,14 @@ static int vram_dma_queue_add(uint16_t *size_out)
     return 1;
 }
 
+/* As VramDmaQueueAdd; returns A as it leaves it from `a` on entry. */
+uint16_t VramDmaQueueAddA(uint16_t a)
+{
+    uint16_t size;
+
+    return vram_dma_queue_add(&size) ? size : a;
+}
+
 void VramDmaQueueAdd(void)
 {
     uint16_t size;
@@ -198,24 +212,24 @@ void abi_VramDmaQueueAdd(void)
         cpu.a = size;
 }
 
-/* Append A to a list of up to eight words; X keeps the new size. */
-static void word_list_append(uint32_t size_addr, uint32_t list, uint16_t value)
+/* Append A to a list of up to eight words; returns X, the new size (the
+   old one when the list is full). */
+static uint16_t word_list_append(uint32_t size_addr, uint32_t list, uint16_t value)
 {
     uint16_t x = rd16(size_addr);
 
     if (x == 0x0010)
-        return;
+        return x;
     wr16(list + x, value);
-    wr16(size_addr, (uint16_t)(x + 2));
+    x = (uint16_t)(x + 2);
+    wr16(size_addr, x);
+    return x;
 }
 
 static void abi_word_list(uint32_t size_addr, uint32_t list)
 {
-    uint16_t x = rd16(size_addr);
+    uint16_t x = word_list_append(size_addr, list, cpu.a);
 
-    word_list_append(size_addr, list, cpu.a);
-    if (x != 0x0010)
-        x = (uint16_t)(x + 2);
     cpu.x = (cpu.p & P_X) ? (uint8_t)x : x;
 }
 
@@ -348,15 +362,21 @@ void abi_FrameByteWritePush(void)
 }
 
 /* The body; returns the value the abi_ wrapper needs. */
-static uint8_t frame_input_and_count_end(uint8_t bank)
+static uint8_t frame_input_and_count_end(uint8_t bank, uint16_t *hi, uint16_t *x)
 {
     uint32_t b = (uint32_t)bank << 16;
+    uint16_t w;
     uint8_t v;
 
-    wr16(0x0018BB, rd16(0x0018BF));
-    wr16(0x0018BD, rd16(0x0018C1));
-    WordListAAppend(rd16(b | 0x0311));
-    WordListBAppend(rd16(b | 0x0313));
+    w = rd16(0x0018BF);
+    wr16(0x0018BB, w);
+    w = rd16(0x0018C1);
+    wr16(0x0018BD, w);
+    w = rd16(b | 0x0311);
+    word_list_append(0x001191, 0x001195, w);
+    w = rd16(b | 0x0313);
+    *hi = (uint16_t)(w & 0xFF00);
+    *x = word_list_append(0x001193, 0x0011B5, w);
     wr8(b | 0x0E3B, (uint8_t)(rd8(b | 0x0E3B) + 1));
     wr8(b | 0x0306, (uint8_t)(rd8(b | 0x0306) + 1));
     wr8(0x000006, (uint8_t)(rd8(0x000006) + 1));
@@ -378,14 +398,15 @@ static uint8_t frame_input_and_count_end(uint8_t bank)
  */
 void FrameInputAndCountEnd(uint8_t bank)
 {
-    frame_input_and_count_end(bank);
+    uint16_t hi, x;
+
+    frame_input_and_count_end(bank, &hi, &x);
 }
 
 void abi_FrameInputAndCountEnd(void)
 {
-    uint16_t hi = rd16((uint32_t)cpu.db << 16 | 0x0313) & 0xFF00;
-    uint8_t v = frame_input_and_count_end(cpu.db);
-    uint16_t x = rd16(0x001193);
+    uint16_t hi, x;
+    uint8_t v = frame_input_and_count_end(cpu.db, &hi, &x);
 
     cpu.a = (uint16_t)(hi | v);
     cpu.x = (cpu.p & P_X) ? (uint8_t)x : x;

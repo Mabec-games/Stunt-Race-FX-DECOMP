@@ -25,27 +25,37 @@
  * C set when the stream moved to the next bank; V from the same 16-bit add;
  * N and Z from the 16-bit A; M 8-bit; X, I, D unchanged.
  */
-uint8_t ApuUploadNextByte(uint16_t *offset)
+/* The byte, then the pointer's low word read again for the add (in *low). */
+static uint8_t apu_upload_next_byte(uint16_t *offset, uint16_t *low)
 {
     uint32_t base = rd24(APU_STREAM_PTR);
     uint8_t value = rd8((base + *offset) & 0xFFFFFF);
+    uint16_t bank;
 
     *offset += 1;
-    if ((uint32_t)(base & 0xFFFF) + *offset > 0xFFFF) {
+    *low = rd16(APU_STREAM_PTR);
+    if ((uint32_t)*low + *offset > 0xFFFF) {
         wr16(APU_STREAM_PTR, 0);
         *offset = 0x8000;
-        wr16(APU_STREAM_BANK, (uint16_t)(rd16(APU_STREAM_BANK) + 1));
+        bank = rd16(APU_STREAM_BANK);
+        wr16(APU_STREAM_BANK, (uint16_t)(bank + 1));
     }
     return value;
+}
+
+uint8_t ApuUploadNextByte(uint16_t *offset)
+{
+    uint16_t low;
+
+    return apu_upload_next_byte(offset, &low);
 }
 
 void abi_ApuUploadNextByte(void)
 {
     /* The carry and overflow the original's 16-bit add leaves behind. */
-    uint16_t low = rd16(APU_STREAM_PTR);
-    uint16_t next = (uint16_t)(cpu.y + 1);
+    uint16_t low, next = (uint16_t)(cpu.y + 1);
+    uint8_t value = apu_upload_next_byte(&cpu.y, &low);
     uint32_t sum = (uint32_t)low + next;
-    uint8_t value = ApuUploadNextByte(&cpu.y);
 
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | value);
     cpu.p = nz16(cpu.p, cpu.a);

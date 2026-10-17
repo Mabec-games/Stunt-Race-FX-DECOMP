@@ -239,19 +239,24 @@ void abi_MenuLoadPicturesTo7F(void)
  * Entry: M 16-bit, X 16-bit, D = $0000. Exit: A = $D418; X = the object; N
  * set, Z clear.
  */
-void MenuLoadClearGsu(uint8_t bank)
+static void clear_gsu_picture(void)
 {
     uint16_t x;
 
     for (x = 0; x != 0x3400; x = (uint16_t)(x + 2))
         wr16(0x703000 + x, 0x0000);
     queue_from_gsu_ram(0x1000, 0x3000, 0x0000);
+}
+
+void MenuLoadClearGsu(uint8_t bank)
+{
+    clear_gsu_picture();
     next_step(bank, 0xD418);
 }
 
 void abi_MenuLoadClearGsu(void)
 {
-    MenuLoadClearGsu(cpu.db);
+    clear_gsu_picture();
     step_exit(0xD418);
 }
 

@@ -548,24 +548,34 @@ static uint8_t f15b(void)
  * word's high byte and the screen mode value; X = $F15B; C clear; N, Z
  * from the data bank.
  */
-uint8_t GsuDigitPair0E74(uint8_t bank)
+static uint8_t gsu_digit_pair_0e74(uint8_t bank, uint16_t *index)
 {
-    uint16_t v = rd16((uint32_t)bank << 16 | 0x0E74);
+    uint16_t v;
 
     wr16(0x70020E, 0x0010);
     wr16(0x70020A, 0x0004);
     wr16(0x70020C, 0x0008);
+    v = rd16((uint32_t)bank << 16 | 0x0E74);
     GsuParam216A(bank, (uint16_t)(((v >> 4) & 0x000F) << 1));
     f15b();
-    GsuParam216A(bank, (uint16_t)((v & 0x000F) << 1));
+    v = rd16((uint32_t)bank << 16 | 0x0E74);
+    *index = (uint16_t)((v & 0x000F) << 1);
+    GsuParam216A(bank, *index);
     return f15b();
+}
+
+uint8_t GsuDigitPair0E74(uint8_t bank)
+{
+    uint16_t index;
+
+    return gsu_digit_pair_0e74(bank, &index);
 }
 
 void abi_GsuDigitPair0E74(void)
 {
-    uint16_t index = (uint16_t)((rd8((uint32_t)cpu.db << 16 | 0x0E74) & 0x0F) << 1);
+    uint16_t index;
+    uint8_t mode = gsu_digit_pair_0e74(cpu.db, &index);
     uint16_t hi = (uint16_t)(rd16((uint32_t)cpu.db << 16 | (uint16_t)(0x8E3E + index)) & 0xFF00);
-    uint8_t mode = GsuDigitPair0E74(cpu.db);
 
     cpu.a = (uint16_t)(hi | mode);
     cpu.x = 0xF15B;
@@ -761,30 +771,46 @@ void abi_ViewUpdateAndGsuAEF8(void)
  * five bytes at Y (through the data bank) via GsuF329Entry, with two runs
  * between them that set $70:0216 = $980A (after the first byte) and $980C
  * (after the third).
- * HOW: GsuF329Entry and GsuRun.
+ * HOW: GsuF329Entry and GsuRun; each byte is a word load (M 16-bit), of
+ * which GsuF329Entry keeps the low four bits.
  * Entry: M 16-bit, X 16-bit, D = $0000; Y = the bytes. Exit: as
  * GsuF329Entry for the fifth byte; Y unchanged.
  */
-uint8_t GsuF329Sequence(uint8_t bank, uint16_t y)
+static uint8_t gsu_f329_sequence(uint8_t bank, uint16_t y, uint16_t *last)
 {
     uint32_t b = (uint32_t)bank << 16;
+    uint16_t e;
 
-    GsuF329Entry(bank, rd8(b | y));
+    e = rd16(b | y);
+    GsuF329Entry(bank, e);
     wr16(0x700216, 0x980A);
     GsuRun(0x07, 0xF329);
-    GsuF329Entry(bank, rd8(b | (uint16_t)(y + 1)));
-    GsuF329Entry(bank, rd8(b | (uint16_t)(y + 2)));
+    e = rd16(b | (uint16_t)(y + 1));
+    GsuF329Entry(bank, e);
+    e = rd16(b | (uint16_t)(y + 2));
+    GsuF329Entry(bank, e);
     wr16(0x700216, 0x980C);
     GsuRun(0x07, 0xF329);
-    GsuF329Entry(bank, rd8(b | (uint16_t)(y + 3)));
-    return GsuF329Entry(bank, rd8(b | (uint16_t)(y + 4)));
+    e = rd16(b | (uint16_t)(y + 3));
+    GsuF329Entry(bank, e);
+    e = rd16(b | (uint16_t)(y + 4));
+    *last = e;
+    return GsuF329Entry(bank, e);
+}
+
+uint8_t GsuF329Sequence(uint8_t bank, uint16_t y)
+{
+    uint16_t last;
+
+    return gsu_f329_sequence(bank, y, &last);
 }
 
 void abi_GsuF329Sequence(void)
 {
-    uint16_t index = (uint16_t)((rd8((uint32_t)cpu.db << 16 | (uint16_t)(cpu.y + 4)) & 0x0F) << 1);
+    uint16_t last;
+    uint8_t mode = gsu_f329_sequence(cpu.db, cpu.y, &last);
+    uint16_t index = (uint16_t)((last & 0x000F) << 1);
     uint16_t hi = (uint16_t)(rd16((uint32_t)cpu.db << 16 | (uint16_t)(0x8E52 + index)) & 0xFF00);
-    uint8_t mode = GsuF329Sequence(cpu.db, cpu.y);
 
     cpu.a = (uint16_t)(hi | mode);
     cpu.x = 0xF329;

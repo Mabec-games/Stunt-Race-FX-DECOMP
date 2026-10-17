@@ -134,9 +134,10 @@ void abi_WindowsColourSub81(void)
  * setup leaves it; X = $19A9 (high byte clear); P and the data bank
  * unchanged.
  */
-uint8_t WindowsSetupSelect(void)
+static uint8_t windows_setup_select(uint8_t *sel)
 {
-    switch (rd8(0x7E19A9)) {
+    *sel = rd8(0x7E19A9);
+    switch (*sel) {
     case 0: WindowsColourAddBg12(); return 0x17;
     case 2: ColourMathSub83Windowed(); return 0x03;
     case 4: windows_colour_add03(); return 0x03;
@@ -145,11 +146,18 @@ uint8_t WindowsSetupSelect(void)
     }
 }
 
+uint8_t WindowsSetupSelect(void)
+{
+    uint8_t sel;
+
+    return windows_setup_select(&sel);
+}
+
 void abi_WindowsSetupSelect(void)
 {
-    uint8_t a = WindowsSetupSelect();
+    uint8_t sel, a = windows_setup_select(&sel);
 
-    cpu.x = rd8(0x7E19A9);
+    cpu.x = sel;
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
 }
 

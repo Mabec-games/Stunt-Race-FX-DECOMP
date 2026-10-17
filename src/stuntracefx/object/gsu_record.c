@@ -268,7 +268,7 @@ void abi_GsuRecordVelocity(void)
  */
 uint16_t GsuRecordWords88(void)
 {
-    uint16_t n = rd16(0x7EFFB8), x = 0, v = 0;
+    uint16_t n = rd16(0x7EFFB8), x = 0, v = 0, c;
 
     wr16(0x000002, (uint16_t)((n >> 1) | (n & 0x8000)));
     do {
@@ -277,8 +277,10 @@ uint16_t GsuRecordWords88(void)
         v = rd16(0x700088 + rd16(0x7E2022 + obj));
         wr16(0x7EFFA6 + x, v);
         x = (uint16_t)(x + 2);
-        wr16(0x000002, (uint16_t)(rd16(0x000002) - 1));
-    } while (rd16(0x000002));
+        c = rd16(0x000002);
+        c = (uint16_t)(c - 1);
+        wr16(0x000002, c);
+    } while (c);
     return v;
 }
 
@@ -1586,6 +1588,7 @@ uint16_t RecordButtonSequence(uint8_t bank, uint16_t rec, uint8_t *p)
     if (s != 0 && s != 1)
         *p = cmp16(*p, s, 0x0002);
     if (s <= 2) {
+        n = rd16(b | SEQ_COUNT);
         *p = cmp16(*p, n, 0x0005);
         if (!(*p & P_N))
             goto reset;
@@ -1596,12 +1599,14 @@ uint16_t RecordButtonSequence(uint8_t bank, uint16_t rec, uint8_t *p)
             return in;
         }
         wr16(b | SEQ_COUNT, 0x0000);
-        wr16(b | SEQ_STAGE, (uint16_t)(rd16(b | SEQ_STAGE) + 1));
-        *p = nz16(*p, rd16(b | SEQ_STAGE));
+        s = (uint16_t)(rd16(b | SEQ_STAGE) + 1);
+        wr16(b | SEQ_STAGE, s);
+        *p = nz16(*p, s);
         return in;
     }
     *p = cmp16(*p, s, 0x0003);
     if (s == 3) {
+        n = rd16(b | SEQ_COUNT);
         *p = cmp16(*p, n, 0x0011);
         if (!(*p & P_N))
             goto reset;

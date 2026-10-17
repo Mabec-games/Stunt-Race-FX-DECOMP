@@ -345,10 +345,11 @@ void abi_ObjectTableC056(void)
  * Entry: M 8-bit, X 16-bit; X = object. Exit: A = 0, or $40 when full (M
  * 8-bit); X, Y unchanged; N, Z from X; C from the full-length compare.
  */
-int ObjectListAppend(uint16_t obj)
+static int object_list_append(uint16_t obj, uint16_t *len)
 {
     uint16_t n = rd16(0x7EFFFD);
 
+    *len = n;
     if (n == 0x0040)
         return 0;
     wr16(0x7EFFBD + n, obj);
@@ -358,11 +359,18 @@ int ObjectListAppend(uint16_t obj)
     return 1;
 }
 
+int ObjectListAppend(uint16_t obj)
+{
+    uint16_t n;
+
+    return object_list_append(obj, &n);
+}
+
 void abi_ObjectListAppend(void)
 {
-    uint16_t n = rd16(0x7EFFFD);
+    uint16_t n;
 
-    cpu.a = ObjectListAppend(cpu.x) ? 0x0000 : 0x0040;
+    cpu.a = object_list_append(cpu.x, &n) ? 0x0000 : 0x0040;
     cpu.p = (uint8_t)((nz16(cpu.p, cpu.x) & ~P_C) | (n >= 0x0040 ? P_C : 0) | P_M);
 }
 
@@ -973,7 +981,7 @@ void abi_ObjectLinkedHandlerByState(void)
  * (M 8-bit), Z set; X unchanged; Y = the block; $1F4C = Y's +$1A, $1F4E =
  * the block; C (and V after an add) from the last compare or add.
  */
-uint16_t ObjectAttachLinked(uint8_t bank, uint16_t obj, uint16_t other, uint8_t *p)
+static uint16_t object_attach_linked(uint8_t bank, uint16_t obj, uint16_t other, uint8_t *p, uint16_t *y)
 {
     static const uint8_t clear[9] = {0x35, 0x37, 0x39, 0x26, 0x28, 0x2A, 0x2C, 0x2E, 0x30};
     uint32_t b = (uint32_t)bank << 16;
@@ -986,8 +994,11 @@ uint16_t ObjectAttachLinked(uint8_t bank, uint16_t obj, uint16_t other, uint8_t 
     kind = rd16(field(bank, other, 0x1A));
     wr16(b | 0x1F4C, kind);
     wr16(field(bank, other, 0x06), obj);
+    blk = rd16(b | 0x1F4E);
+    *y = blk;
     wr16(b | (uint16_t)(blk + 0x02), obj);
     t = rd16(0x702396);
+    kind = rd16(b | 0x1F4C);
     *p = (uint8_t)((*p & ~P_C) | (kind >= 0x8E2A ? P_C : 0));
     if (kind == 0x8E2A) {
         add = 2;
@@ -1022,12 +1033,20 @@ uint16_t ObjectAttachLinked(uint8_t bank, uint16_t obj, uint16_t other, uint8_t 
     return 0x0000;
 }
 
+uint16_t ObjectAttachLinked(uint8_t bank, uint16_t obj, uint16_t other, uint8_t *p)
+{
+    uint16_t y;
+
+    return object_attach_linked(bank, obj, other, p, &y);
+}
+
 void abi_ObjectAttachLinked(void)
 {
     uint8_t p = cpu.p;
+    uint16_t y;
 
-    cpu.a = ObjectAttachLinked(cpu.db, cpu.x, cpu.y, &p);
-    cpu.y = rd16((uint32_t)cpu.db << 16 | 0x1F4E);
+    cpu.a = object_attach_linked(cpu.db, cpu.x, cpu.y, &p, &y);
+    cpu.y = y;
     cpu.p = (uint8_t)(p | P_M);
 }
 
@@ -1049,7 +1068,7 @@ void abi_ObjectAttachLinked(void)
  */
 uint16_t ObjectGroupsActivate(uint16_t *y)
 {
-    uint16_t pos = 0, code, head;
+    uint16_t pos = 0, code, head, keep;
 
     wr16(0x7E1F2B, 0x0000);
     for (;;) {
@@ -1064,13 +1083,14 @@ uint16_t ObjectGroupsActivate(uint16_t *y)
         if (!head)
             continue;
         *y = head;
+        keep = rd16(0x00003E);
         do {
             if (!(rd8(0x7E1F2D) == 0x23 && (rd8(0x7E2024 + *y) & 0x10))
                 && !(rd8(0x7E2036 + *y) & 0x80))
                 wr8(0x7E2036 + *y, 0x03);
             *y = rd16(0x7E203C + *y);
         } while (*y);
-        wr16(0x00003E, rd16(0x00003E));
+        wr16(0x00003E, keep);
     }
 }
 
@@ -1093,31 +1113,51 @@ typedef struct {
 static AreaEnd bucket_triggers_from_area(uint8_t bank, uint16_t rec, uint8_t p)
 {
     uint32_t b = (uint32_t)bank << 16;
-    uint16_t x = 0, y = rec, v, row, col, n;
+    uint16_t x = 0, y = rec, v, w, n;
     AreaEnd e;
 
-    v = (uint16_t)(rd8(b + rec + 3) << 8);
+    v = (uint16_t)((rd16(b | (uint16_t)(rec + 3)) & 0x00FF) << 8);
     v = (uint16_t)((v >> 1) | (v & 0x8000));
     v = (uint16_t)((v >> 1) | (v & 0x8000));
     wr16(0x000094, v);
-    wr16(b | 0x05F2, rd8(b + rec + 1));
-    wr16(0x0000A5, (uint16_t)(-(uint16_t)rd8(b + rec + 2) << 1));
-    wr16(b | 0x1F2B, rd8(b + rec + 0));
+    v = rd16(b | (uint16_t)(rec + 1)) & 0x00FF;
+    wr16(b | 0x05F2, v);
+    v = rd16(b | (uint16_t)(rec + 2)) & 0x00FF;
+    wr16(0x0000A5, (uint16_t)(-v << 1));
+    v = rd16(b | (uint16_t)(rec + 0)) & 0x00FF;
+    wr16(b | 0x1F2B, v);
     do {
-        wr16(0x000002, rd16(0x0000A5));
-        wr16(0x000004, rd16(b | 0x1F2B));
+        v = rd16(0x0000A5);
+        wr16(0x000002, v);
+        v = rd16(b | 0x1F2B);
+        wr16(0x000004, v);
         do {
-            col = rd16(0x000002);
-            row = rd16(0x000094);
-            if (!((col + rd16(b | 0x1F03)) & 0xFFC0) && !((row + rd16(b | 0x1F05)) & 0xF800)
-                && (v = rd8(b + y + 4)) != 0x2E) {
-                wr16(b | (uint16_t)(0x1AF5 + x), v);
-                wr16(b | (uint16_t)(0x1AF7 + x), (uint16_t)(rd16(b | 0x1F01) + col + row));
-                x = (uint16_t)(x + 4);
+            v = rd16(0x000002);
+            w = rd16(b | 0x1F03);
+            if (!((uint16_t)(v + w) & 0xFFC0)) {
+                v = rd16(0x000094);
+                w = rd16(b | 0x1F05);
+                if (!((uint16_t)(v + w) & 0xF800)) {
+                    v = rd16(b | (uint16_t)(y + 4)) & 0x00FF;
+                    if (v != 0x002E) {
+                        wr16(b | (uint16_t)(0x1AF5 + x), v);
+                        v = rd16(b | 0x1F01);
+                        w = rd16(0x000002);
+                        v = (uint16_t)(v + w);
+                        w = rd16(0x000094);
+                        v = (uint16_t)(v + w);
+                        wr16(b | (uint16_t)(0x1AF7 + x), v);
+                        x = (uint16_t)(x + 4);
+                    }
+                }
             }
             y = (uint16_t)(y + 1);
-            wr16(0x000002, (uint16_t)(col + 2));
-            n = (uint16_t)(rd16(0x000004) - 1);
+            v = rd16(0x000002);
+            wr16(0x000002, (uint16_t)(v + 1));
+            v = rd16(0x000002);
+            wr16(0x000002, (uint16_t)(v + 1));
+            n = rd16(0x000004);
+            n = (uint16_t)(n - 1);
             wr16(0x000004, n);
         } while (n);
         v = rd16(0x000094);
@@ -1128,7 +1168,8 @@ static AreaEnd bucket_triggers_from_area(uint8_t bank, uint16_t rec, uint8_t p)
         if ((v ^ 0x0040) & (v ^ e.a) & 0x8000)
             p |= P_V;
         wr16(0x000094, e.a);
-        n = (uint16_t)(rd16(b | 0x05F2) - 1);
+        n = rd16(b | 0x05F2);
+        n = (uint16_t)(n - 1);
         wr16(b | 0x05F2, n);
     } while (n);
     wr16(b | (uint16_t)(0x1AF5 + x), 0x0000);
@@ -1171,17 +1212,41 @@ void abi_BucketTriggersFromArea(void)
     cpu.p = e.p;
 }
 
-/* For the abi_ wrappers: data bank $7E, the window and bucket origin from
-   three words at src, then BucketTriggersFromArea on the record. P on the
-   call: M 16-bit, X 16-bit, N, Z from the record address; afterwards M
-   8-bit and the data bank back, N, Z from it. */
-static void abi_triggers_from(uint16_t src, uint16_t rec, uint16_t x)
+/* The window and bucket origin: three words from src to $1F01-$1F06. */
+static void triggers_window(uint16_t src)
+{
+    unsigned i;
+    uint16_t v;
+
+    for (i = 0; i < 6; i += 2) {
+        v = rd16(0x7E0000 + src + i);
+        wr16(0x7E1F01 + i, v);
+    }
+}
+
+/* The record of BucketTriggersFromView: from the view's Y high byte. */
+static uint16_t view_area(uint16_t *x)
+{
+    *x = (uint16_t)((((rd16(0x7E0667) & 0x00FF) >> 3) + 1) & 0xFE);
+    return rd16(0x7EC61D + *x);
+}
+
+/* The record of BucketTriggersFixedArea: by $0D62 and bit 7 of $1AEC. */
+static uint16_t fixed_area(void)
+{
+    if (rd16(0x7E0D62) & 0x00FF)
+        return 0xC661;
+    return (rd16(0x7E1AEC) & 0x0080) ? 0xC661 : 0xC696;
+}
+
+/* For the abi_ wrappers, after the window is copied: data bank $7E, then
+   BucketTriggersFromArea on the record. P on the call: M 16-bit, X 16-bit,
+   N, Z from the record address; afterwards M 8-bit and the data bank
+   back, N, Z from it. */
+static void abi_triggers_from(uint16_t rec, uint16_t x)
 {
     uint8_t db = cpu.db;
-    unsigned i;
 
-    for (i = 0; i < 6; i += 2)
-        wr16(0x7E1F01 + i, rd16(0x7E0000 + src + i));
     cpu.db = 0x7E;
     cpu.a = rec;
     cpu.x = x;
@@ -1204,19 +1269,19 @@ static void abi_triggers_from(uint16_t src, uint16_t rec, uint16_t x)
  */
 void BucketTriggersFromView(void)
 {
-    uint16_t x = (uint16_t)((((rd8(0x7E0667) >> 3) + 1) & 0xFE));
-    unsigned i;
+    uint16_t x;
 
-    for (i = 0; i < 6; i += 2)
-        wr16(0x7E1F01 + i, rd16(0x7E1EF5 + i));
-    BucketTriggersFromArea(0x7E, rd16(0x7EC61D + x));
+    triggers_window(0x1EF5);
+    BucketTriggersFromArea(0x7E, view_area(&x));
 }
 
 void abi_BucketTriggersFromView(void)
 {
-    uint16_t x = (uint16_t)((((rd8(0x7E0667) >> 3) + 1) & 0xFE));
+    uint16_t x, rec;
 
-    abi_triggers_from(0x1EF5, rd16(0x7EC61D + x), x);
+    triggers_window(0x1EF5);
+    rec = view_area(&x);
+    abi_triggers_from(rec, x);
 }
 
 /*
@@ -1231,16 +1296,17 @@ void abi_BucketTriggersFromView(void)
  */
 void BucketTriggersFixedArea(void)
 {
-    unsigned i;
-
-    for (i = 0; i < 6; i += 2)
-        wr16(0x7E1F01 + i, rd16(0x7E1EFB + i));
-    BucketTriggersFromArea(0x7E, (rd8(0x7E0D62) || (rd8(0x7E1AEC) & 0x80)) ? 0xC661 : 0xC696);
+    triggers_window(0x1EFB);
+    BucketTriggersFromArea(0x7E, fixed_area());
 }
 
 void abi_BucketTriggersFixedArea(void)
 {
-    abi_triggers_from(0x1EFB, (rd8(0x7E0D62) || (rd8(0x7E1AEC) & 0x80)) ? 0xC661 : 0xC696, cpu.x);
+    uint16_t rec;
+
+    triggers_window(0x1EFB);
+    rec = fixed_area();
+    abi_triggers_from(rec, cpu.x);
 }
 
 #define OBJ_USED_HEAD 0x7E0329u

@@ -319,12 +319,14 @@ void SoundPort0QueuePush(uint8_t command);
  * Entry: M 16-bit, X 16-bit. Exit: A = $18F5; Y = $118B; N, Z from A; M
  * 16-bit.
  */
-uint16_t MenuChoiceUpDown(uint8_t bank)
+static uint16_t menu_choice_up_down(uint8_t bank, uint16_t *y)
 {
     uint16_t pad, a;
 
-    wr16(0x0018C5, rd16(0x0018C3));
+    a = rd16(0x0018C3);
+    wr16(0x0018C5, a);
     pad = rd16((uint32_t)bank << 16 | 0x118B);
+    *y = pad;
     if (pad & 0x0800) {
         SoundPort0QueuePush(0x45);
         wr16(0x0018C3, (uint16_t)(rd16(0x0018C3) - 1) & 0x0003);
@@ -338,10 +340,25 @@ uint16_t MenuChoiceUpDown(uint8_t bank)
     return a;
 }
 
+uint16_t MenuChoiceUpDown(uint8_t bank)
+{
+    uint16_t y;
+
+    return menu_choice_up_down(bank, &y);
+}
+
+/* As MenuChoiceUpDown, with the Y it leaves (the pad word it read). */
+uint16_t MenuChoiceUpDownY(uint8_t bank, uint16_t *y)
+{
+    return menu_choice_up_down(bank, y);
+}
+
 void abi_MenuChoiceUpDown(void)
 {
-    cpu.a = MenuChoiceUpDown(cpu.db);
-    cpu.y = rd16((uint32_t)cpu.db << 16 | 0x118B);
+    uint16_t y;
+
+    cpu.a = menu_choice_up_down(cpu.db, &y);
+    cpu.y = y;
     cpu.p = (uint8_t)(nz16(cpu.p, cpu.a) & ~P_M);
 }
 

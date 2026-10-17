@@ -239,25 +239,37 @@ void abi_CgramDmaAll(void)
  * Entry: M 16-bit, X 16-bit, D = $0000; A = VRAM word address.
  * Exit: A = the new offset; X = the old offset + $80; Y = $FFFF; P unchanged.
  */
-uint16_t VramWriteRowFromGsuRam(uint16_t vram)
+static uint16_t vram_write_row(uint16_t vram, uint16_t *x)
 {
-    uint16_t src = rd16(0x000002);
+    uint16_t src, w;
     unsigned i;
 
     wr16(VMADDL, vram);
-    for (i = 0; i < 64; i++)
-        wr16(0x002118, rd16(0x703000 + (uint16_t)(src + 2 * i)));
+    src = rd16(0x000002);
+    for (i = 0; i < 64; i++) {
+        w = rd16(0x703000 + (uint16_t)(src + 2 * i));
+        wr16(0x002118, w);
+    }
+    *x = (uint16_t)(src + 0x80);
+    src = rd16(0x000002);
     src = (uint16_t)(src + 0x0200);
     wr16(0x000002, src);
     return src;
 }
 
+uint16_t VramWriteRowFromGsuRam(uint16_t vram)
+{
+    uint16_t x;
+
+    return vram_write_row(vram, &x);
+}
+
 void abi_VramWriteRowFromGsuRam(void)
 {
-    uint16_t old = rd16(0x000002);
+    uint16_t x;
 
-    cpu.a = VramWriteRowFromGsuRam(cpu.a);
-    cpu.x = (uint16_t)(old + 0x80);
+    cpu.a = vram_write_row(cpu.a, &x);
+    cpu.x = x;
     cpu.y = 0xFFFF;
     if (cpu.p & P_X) {
         cpu.x &= 0x00FF;
@@ -277,9 +289,10 @@ void abi_VramWriteRowFromGsuRam(void)
  * Y = VRAM word address. Exit: A = the source high byte and the screen mode
  * value; X = $00FF; Y = 1; P unchanged.
  */
-uint8_t VramDmaWideRowsFromGsuRam(uint8_t rows_less_one, uint16_t src, uint16_t vram)
+uint8_t VramDmaWideRowsFromGsuRam(uint8_t rows_less_one, uint16_t src, uint16_t vram, uint16_t *next)
 {
     uint8_t mode;
+    uint16_t s;
 
     wr8(GSU_SCMR, rd8(GSU_SCMR_SHADOW) & 0xF7);
     wr16(0x0000FB, src);
@@ -290,20 +303,24 @@ uint8_t VramDmaWideRowsFromGsuRam(uint8_t rows_less_one, uint16_t src, uint16_t 
     wr8(DMAP0, 0x01);
     do {
         wr16(DAS0L, 0x02C0);
-        wr16(A1T0L, rd16(0x0000FB));
-        wr16(0x0000FB, (uint16_t)(rd16(0x0000FB) + 0x0400));
+        s = rd16(0x0000FB);
+        wr16(A1T0L, s);
+        s = (uint16_t)(s + 0x0400);
+        wr16(0x0000FB, s);
         wr8(MDMAEN, 0x01);
     } while (!(--rows_less_one & 0x80));
     mode = rd8(GSU_SCMR_SHADOW) | 0x18;
     wr8(GSU_SCMR, mode);
+    *next = s;
     return mode;
 }
 
 void abi_VramDmaWideRowsFromGsuRam(void)
 {
-    uint8_t mode = VramDmaWideRowsFromGsuRam((uint8_t)cpu.a, cpu.x, cpu.y);
+    uint16_t next;
+    uint8_t mode = VramDmaWideRowsFromGsuRam((uint8_t)cpu.a, cpu.x, cpu.y, &next);
 
-    cpu.a = (uint16_t)((rd16(0x0000FB) & 0xFF00) | mode);
+    cpu.a = (uint16_t)((next & 0xFF00) | mode);
     cpu.x = 0x00FF;
     cpu.y = 0x0001;
 }
@@ -401,6 +418,8 @@ uint16_t CoursePictureToVram(uint8_t bank)
     uint16_t t = (uint16_t)(w & 0xFFFC);
 
     t = (uint16_t)((uint16_t)(t >> 8 | t << 8) << 1);
+    wr16(0x000002, t);
+    t = rd16(0x000002);
     wr16(0x000002, (uint16_t)(t + ((w & 0x0003) << 7)));
     VramWriteRowFromGsuRam(0x6480);
     VramWriteRowFromGsuRam(0x6580);
@@ -421,7 +440,7 @@ void abi_CoursePictureToVram(void)
     }
 }
 
-void VramDmaQueueAdd(void);
+uint16_t VramDmaQueueAddA(uint16_t a);
 
 /*
  * @routine 7F:0CDF AnimTilesQueueNext
@@ -437,18 +456,17 @@ void VramDmaQueueAdd(void);
 uint8_t AnimTilesQueueNext(uint8_t bank, uint16_t *a)
 {
     uint32_t b = (uint32_t)bank << 16;
-    uint16_t off = (uint16_t)((rd16(0x0018F7) + 0x0400) & 0x1FFF);
+    uint16_t off;
     uint8_t f;
 
+    off = rd16(0x0018F7);
+    off = (uint16_t)((off + 0x0400) & 0x1FFF);
     wr16(0x0018F7, off);
     wr16(b | 0x16B3, (uint16_t)(off + 0xA7D7));
     wr16(b | 0x16B1, 0x0400);
     wr16(b | 0x16B5, 0x007F);
     wr16(b | 0x16B7, 0x2000);
-    *a = 0x2000;
-    if (rd16(0x0016AF) != 0x0200)
-        *a = (uint16_t)(rd16(0x0016AF) + 8);
-    VramDmaQueueAdd();
+    *a = VramDmaQueueAddA(0x2000);
     f = (uint8_t)(rd8(b | 0x11D7) | 0x02);
     wr8(b | 0x11D7, f);
     return f;

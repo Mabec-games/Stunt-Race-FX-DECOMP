@@ -57,17 +57,26 @@ void abi_ColourMathA7Start(void)
  * Entry: any widths. Exit: A low byte = the intensity; X = the step; M and X
  * 8-bit; N, Z from A.
  */
-uint8_t FixedColourFromStep(void)
+static uint8_t fixed_colour_from_step(uint8_t *step)
 {
-    uint8_t step = rd8(0x7F3408), v = rd8(0x03FE7B + step);
+    uint8_t v;
 
+    *step = rd8(0x7F3408);
+    v = rd8(0x03FE7B + *step);
     wr8(0x7F340D, v);
     return v;
 }
 
+uint8_t FixedColourFromStep(void)
+{
+    uint8_t step;
+
+    return fixed_colour_from_step(&step);
+}
+
 void abi_FixedColourFromStep(void)
 {
-    uint8_t step = rd8(0x7F3408), v = FixedColourFromStep();
+    uint8_t step, v = fixed_colour_from_step(&step);
 
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.x = step;

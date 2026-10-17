@@ -514,6 +514,7 @@ uint8_t TilemapRowsTo5C00(uint8_t bank)
         off = rd16(0x0000F9);
         for (i = 0; i < 26; i++)
             wr16(b | 0x2118, rd16(0x7F93D7 + (uint16_t)(off + 2 * i)));
+        off = rd16(0x0000F9);
         off = (uint16_t)(off + 0x0040);
         wr16(0x0000F9, off);
     } while (off != 0x0440);
@@ -627,6 +628,7 @@ static uint16_t backdrop_rows_update(uint8_t bank, uint16_t *xo, uint16_t *yo)
     wr16(0x0000F1, rd16(0x002134));
     x = (uint16_t)(((rd16(b | 0x06CF) >> 3) & 0x00FE) + rd16(0x0000F1));
     wr16(0x0000F1, 0x0011);
+    sel = rd16(0x000D7F);
     y = sel ? 0x0440 : 0x0000;
     end = sel ? 0x0880 : 0x0440;
     for (;;) {

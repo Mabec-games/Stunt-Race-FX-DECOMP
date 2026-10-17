@@ -416,7 +416,7 @@ WindowEdgesFromList:
 ; @routine 7E:DB47 WindowHdmaLayout
 ; WHAT IT DOES: Writes the window HDMA table's line counts and data for
 ; layout $19B6: one screen (two entries) when $0D2E is clear; the split
-; screen (three entries) when it is set, which no script has reached yet.
+; screen (three entries) when it is set, reached only by unit_fade_windows.
 ; HOW: Long stores into the table at $7F:F85B. One screen: entry 0 lines
 ; from $7E:E0C2 + X, entry 1 lines from $7E:E0C3 + X, data pointers $F857
 ; and the word at $7E:E0D2 + X, then $10 lines and the end. Split: entries
@@ -447,7 +447,7 @@ WindowHdmaLayout:
     lda.b #$00
     sta.l !window_hdma+9
     rts
-.split:                             ; not reached in the traces so far
+.split:
     rep.b #$30
     ldx.w !window_hdma_select
     lda.w #$F857

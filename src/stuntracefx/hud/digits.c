@@ -140,23 +140,27 @@ void abi_HudDrawDigits19EC(void)
  */
 uint8_t HudDrawNumber3(uint8_t n, uint16_t offset, uint8_t *p)
 {
-    uint8_t count = 0;
+    uint8_t count;
 
+    wr8(0x0000F1, 0x00);
     while (n >= 100) {
         *p = (uint8_t)((*p & ~P_V) | (((n ^ 100) & (n ^ (uint8_t)(n - 100)) & 0x80) ? P_V : 0));
         n = (uint8_t)(n - 100);
-        count++;
+        count = rd8(0x0000F1);
+        wr8(0x0000F1, (uint8_t)(count + 1));
     }
+    count = rd8(0x0000F1);
     digit(OAM_BUFFER + 2 + offset, count);
-    count = 0;
+    wr8(0x0000F1, 0x00);
     while (n >= 10) {
         *p = (uint8_t)((*p & ~P_V) | (((n ^ 10) & (n ^ (uint8_t)(n - 10)) & 0x80) ? P_V : 0));
         n = (uint8_t)(n - 10);
-        count++;
+        count = rd8(0x0000F1);
+        wr8(0x0000F1, (uint8_t)(count + 1));
     }
+    count = rd8(0x0000F1);
     digit(OAM_BUFFER + 0x0A + offset, count);
     digit(OAM_BUFFER + 0x12 + offset, n);
-    wr8(0x0000F1, count);
     return (uint8_t)((n << 1) + 1);
 }
 
@@ -290,21 +294,27 @@ void abi_HudCountUp19EC(void)
  * the data bank.
  * Entry: M 8-bit. Exit: A low byte = 2d + 1; N, Z from it; C = bit 7 of d.
  */
-uint8_t HudDigitSprites62(uint8_t bank)
+static uint8_t hud_digit_sprites_62(uint8_t bank, uint8_t *digit)
 {
     uint32_t b = (uint32_t)bank << 16;
     uint8_t d = rd8(b | 0x0D4C) ? 0x01 : rd8(b | 0x0DF4);
 
+    *digit = d;
     wr8(b | 0x046F, (uint8_t)(d << 1));
     wr8(b | 0x0473, (uint8_t)((d << 1) + 1));
     return (uint8_t)((d << 1) + 1);
 }
 
+uint8_t HudDigitSprites62(uint8_t bank)
+{
+    uint8_t d;
+
+    return hud_digit_sprites_62(bank, &d);
+}
+
 void abi_HudDigitSprites62(void)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint8_t d = rd8(b | 0x0D4C) ? 0x01 : rd8(b | 0x0DF4);
-    uint8_t v = HudDigitSprites62(cpu.db);
+    uint8_t d, v = hud_digit_sprites_62(cpu.db, &d);
 
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.p = (uint8_t)((nz8(cpu.p, v) & ~P_C) | ((d & 0x80) ? P_C : 0));

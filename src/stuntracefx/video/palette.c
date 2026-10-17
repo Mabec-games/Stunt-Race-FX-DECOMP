@@ -222,7 +222,7 @@ void abi_PaletteCycle(void)
  */
 uint16_t PaletteLoad16(uint8_t bank, uint16_t src)
 {
-    uint16_t c = 0;
+    uint16_t c = 0, n;
     unsigned i;
 
     wr16(0x0000F1, 0x0010);
@@ -231,7 +231,8 @@ uint16_t PaletteLoad16(uint8_t bank, uint16_t src)
         wr16(0x7F35D7 + 2 * i, c);
         wr16(0x7F37D7 + 2 * i, c);
         wr16(0x7EFD65 + 2 * i, c);
-        wr16(0x0000F1, (uint16_t)(0x000F - i));
+        n = rd16(0x0000F1);
+        wr16(0x0000F1, (uint16_t)(n - 1));
     }
     return c;
 }
@@ -311,14 +312,16 @@ void abi_PaletteDarkenFour(void)
  */
 uint16_t PaletteCopy16To7F39D7(uint8_t bank, uint16_t src)
 {
-    uint16_t w = 0;
+    uint16_t w = 0, n;
     unsigned i;
 
+    wr16(0x0000F1, 0x0010);
     for (i = 0; i < 16; i++) {
         w = rd16((uint32_t)bank << 16 | (uint16_t)(src + 2 * i));
         wr16(0x7F39D7 + 2 * i, w);
+        n = rd16(0x0000F1);
+        wr16(0x0000F1, (uint16_t)(n - 1));
     }
-    wr16(0x0000F1, 0);
     return w;
 }
 
@@ -446,25 +449,47 @@ typedef struct {
 } BlendEnd;
 
 /* The body of ColourBlend; p carries the flags it leaves. */
+/* One 5-bit field of the colour word at dp (the low five bits), stored at
+   `at`; the word is then shifted right 5 in place (five LSRs). */
+static void blend_split(uint32_t at, uint32_t dp)
+{
+    uint16_t v = rd16(dp), w;
+    int i;
+
+    for (i = 0; i < 5; i++) {
+        w = rd16(dp);
+        wr16(dp, (uint16_t)(w >> 1));
+    }
+    wr16(at, (uint16_t)(v & 0x1F));
+}
+
 static BlendEnd colour_blend(uint8_t bank, uint8_t p)
 {
     uint32_t b = (uint32_t)bank << 16;
-    uint16_t from = rd16(0x0000F1), to = rd16(0x0000F3), r, g, bl, m, s;
+    uint16_t r, g, bl, m, s, t, f;
     BlendEnd e;
 
-    wr16(b | 0x344E, from & 0x1F);
-    wr16(b | 0x3452, (from >> 5) & 0x1F);
-    wr16(b | 0x3456, (from >> 10) & 0x1F);
-    wr16(0x0000F1, (uint16_t)(from >> 15));
-    wr16(b | 0x3450, to & 0x1F);
-    wr16(b | 0x3454, (to >> 5) & 0x1F);
-    wr16(b | 0x3458, (to >> 10) & 0x1F);
-    wr16(0x0000F3, (uint16_t)(to >> 15));
-    r = (uint16_t)((PpuMultiply((uint8_t)(rd16(b | 0x3450) - rd16(b | 0x344E))) + rd16(b | 0x344E)) & 0x1F);
+    blend_split(b | 0x344E, 0x0000F1);
+    blend_split(b | 0x3452, 0x0000F1);
+    blend_split(b | 0x3456, 0x0000F1);
+    blend_split(b | 0x3450, 0x0000F3);
+    blend_split(b | 0x3454, 0x0000F3);
+    blend_split(b | 0x3458, 0x0000F3);
+    t = rd16(b | 0x3450);
+    f = rd16(b | 0x344E);
+    m = PpuMultiply((uint8_t)(t - f));
+    f = rd16(b | 0x344E);
+    r = (uint16_t)((m + f) & 0x1F);
     wr16(b | 0x344E, r);
-    g = (uint16_t)(PpuMultiply((uint8_t)(rd16(b | 0x3454) - rd16(b | 0x3452))) + rd16(b | 0x3452));
+    t = rd16(b | 0x3454);
+    f = rd16(b | 0x3452);
+    m = PpuMultiply((uint8_t)(t - f));
+    f = rd16(b | 0x3452);
+    g = (uint16_t)(m + f);
     wr16(b | 0x3452, g);
-    m = PpuMultiply((uint8_t)(rd16(b | 0x3458) - rd16(b | 0x3456)));
+    t = rd16(b | 0x3458);
+    f = rd16(b | 0x3456);
+    m = PpuMultiply((uint8_t)(t - f));
     bl = rd16(b | 0x3456);
     s = (uint16_t)(m + bl);
     p = (uint8_t)(p & ~(P_V | P_C));
@@ -472,8 +497,11 @@ static BlendEnd colour_blend(uint8_t bank, uint8_t p)
         p |= P_V;
     bl = (uint16_t)((uint16_t)((uint16_t)(s >> 8 | s << 8) << 2) & 0x7C00);
     wr16(0x0000F1, bl);
+    g = rd16(b | 0x3452);
     if (g & 0x0800)
         p |= P_C;
+    bl = rd16(0x0000F1);
+    r = rd16(b | 0x344E);
     e.a = (uint16_t)(((g << 5) & 0x03E0) | bl | r);
     e.p = (uint8_t)(nz16(p, e.a) & ~P_M);
     return e;
@@ -641,13 +669,13 @@ uint16_t PpuMultiplierSetLowByteTimes8(uint8_t v);
  */
 uint16_t ColourBlendBy(uint8_t bank)
 {
-    PpuMultiplierSetLowByteTimes8(rd8(0x0000F5));
+    PpuMultiplierSetLowByteTimes8((uint8_t)rd16(0x0000F5));
     return ColourBlend(bank);
 }
 
 void abi_ColourBlendBy(void)
 {
-    PpuMultiplierSetLowByteTimes8(rd8(0x0000F5));
+    PpuMultiplierSetLowByteTimes8((uint8_t)rd16(0x0000F5));
     abi_ColourBlend();
 }
 
@@ -667,11 +695,15 @@ void abi_ColourBlendBy(void);
 uint16_t ColourBlendToTarget(uint8_t bank, uint16_t colour, uint16_t x)
 {
     uint32_t b = (uint32_t)bank << 16;
-    uint16_t t = rd16(b | 0x3470), v;
+    uint16_t t, v;
 
     wr16(0x0000F1, colour);
-    wr16(0x0000F3, (t & 0x8000) ? colour : t);
-    wr16(0x0000F5, rd16(b | 0x3468));
+    t = rd16(b | 0x3470);
+    if (t & 0x8000)
+        t = rd16(0x0000F1);
+    wr16(0x0000F3, t);
+    t = rd16(b | 0x3468);
+    wr16(0x0000F5, t);
     v = ColourBlendBy(bank);
     wr16(0x000E21 + x, v);
     return v;
@@ -680,11 +712,15 @@ uint16_t ColourBlendToTarget(uint8_t bank, uint16_t colour, uint16_t x)
 void abi_ColourBlendToTarget(void)
 {
     uint32_t b = (uint32_t)cpu.db << 16;
-    uint16_t t = rd16(b | 0x3470);
+    uint16_t t;
 
     wr16(0x0000F1, cpu.a);
-    wr16(0x0000F3, (t & 0x8000) ? cpu.a : t);
-    wr16(0x0000F5, rd16(b | 0x3468));
+    t = rd16(b | 0x3470);
+    if (t & 0x8000)
+        t = rd16(0x0000F1);
+    wr16(0x0000F3, t);
+    t = rd16(b | 0x3468);
+    wr16(0x0000F5, t);
     abi_ColourBlendBy();
     wr16(0x000E21 + cpu.x, cpu.a);
 }

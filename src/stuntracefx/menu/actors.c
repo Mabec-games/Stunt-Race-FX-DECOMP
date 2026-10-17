@@ -83,8 +83,10 @@ uint16_t MenuActorAlloc(uint8_t bank, uint8_t *p)
     wr16(dbw(bank, FREE_DEPTH), (uint16_t)(depth + 2));
     len = rd16(dbw(bank, LIVE_LEN));
     wr16(dbw(bank, (uint16_t)(LIVE_LIST + len)), rec);
+    len = rd16(dbw(bank, LIVE_LEN));
     wr16(dbw(bank, LIVE_LEN), (uint16_t)(len + 1));
-    wr16(dbw(bank, LIVE_LEN), (uint16_t)(len + 2));
+    len = rd16(dbw(bank, LIVE_LEN));
+    wr16(dbw(bank, LIVE_LEN), (uint16_t)(len + 1));
     *p = nz16(*p, rec);
     return rec;
 }
@@ -1053,6 +1055,7 @@ void abi_MenuActorAnimateThenExit(void)
     cpu.p = p;
 }
 
+uint16_t MenuChoiceUpDownY(uint8_t bank, uint16_t *y);
 uint16_t MenuChoiceUpDown(uint8_t bank);
 
 /*
@@ -1082,11 +1085,11 @@ uint16_t MenuSlideInHandler(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
         *p = nz16(*p, a);
         return a;
     }
+    a = rd16((uint16_t)(*x + 0x0A));
     *p = cmp16(*p, a, 0x0060);
     if (*p & P_C)
         return a;
-    a = MenuChoiceUpDown(bank);
-    *y = rd16(dbw(bank, 0x118B));
+    a = MenuChoiceUpDownY(bank, y);
     *p = nz16(*p, a);
     return a;
 }
@@ -1850,7 +1853,7 @@ void abi_MenuDropAway(void)
  * Entry: D = $0000. Exit: A = $40; X = $11F9; Y = $FFFE; N, Z clear; C
  * from MenuActorsSet10's last compare; M 16-bit, X 16-bit.
  */
-void MenuDropAwayFinish(uint8_t bank, uint8_t *p)
+static uint16_t menu_drop_away_finish(uint8_t bank, uint8_t *p)
 {
     static const struct reg_write set[] = {
         {BG1VOFS, 0x00}, {BG1VOFS, 0x00}, {HDMAEN, 0x00}, {TSW, 0x00},
@@ -1865,15 +1868,20 @@ void MenuDropAwayFinish(uint8_t bank, uint8_t *p)
     wr16((uint16_t)(x + 0x08), 0xD14A);
     wr16((uint16_t)(x + 0x0A), 0x0040);
     *p = (uint8_t)(nz16(*p, 0x0040) & ~(P_M | P_X));
+    return x;
+}
+
+void MenuDropAwayFinish(uint8_t bank, uint8_t *p)
+{
+    menu_drop_away_finish(bank, p);
 }
 
 void abi_MenuDropAwayFinish(void)
 {
     uint8_t p = cpu.p;
 
-    MenuDropAwayFinish(cpu.db, &p);
+    cpu.x = menu_drop_away_finish(cpu.db, &p);
     cpu.a = 0x0040;
-    cpu.x = rd16((uint32_t)cpu.db << 16 | CURRENT);
     cpu.y = 0xFFFE;
     cpu.p = p;
 }
@@ -2093,7 +2101,10 @@ uint16_t MenuActorSpawnList(uint8_t bank, uint16_t list, uint16_t *a, uint16_t *
             break;
         if (MenuActorSpawn(bank, e, a, y, &p) == 0xFFFF)
             SystemHaltSpawn();
-        wr16(dbw(bank, 0x11FD), (uint16_t)(rd16(dbw(bank, 0x11FD)) + 2));
+        x = rd16(dbw(bank, 0x11FD));
+        wr16(dbw(bank, 0x11FD), (uint16_t)(x + 1));
+        x = rd16(dbw(bank, 0x11FD));
+        wr16(dbw(bank, 0x11FD), (uint16_t)(x + 1));
     }
     *a = e;
     return x;

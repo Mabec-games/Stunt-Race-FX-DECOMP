@@ -8,7 +8,7 @@
 #include "machine.h"
 #include "hw.h"
 
-uint8_t VramDmaWideRowsFromGsuRam(uint8_t rows_less_one, uint16_t src, uint16_t vram);
+uint8_t VramDmaWideRowsFromGsuRam(uint8_t rows_less_one, uint16_t src, uint16_t vram, uint16_t *next);
 void CgramDmaIfPending(void);
 void VramDmaQueueFlush(void);
 void OamDmaIfPending(void);
@@ -31,10 +31,10 @@ static uint32_t dbw(uint8_t bank, uint16_t a)
 static uint16_t upload_rows(uint8_t bank, uint16_t next, uint8_t rows_less_one, uint16_t src, uint16_t vram)
 {
     uint8_t mode;
-    uint16_t end = (uint16_t)(src + 0x0400 * (rows_less_one + 1));
+    uint16_t end;
 
     wr16(dbw(bank, 0x0D7D), next);
-    mode = VramDmaWideRowsFromGsuRam(rows_less_one, src, vram);
+    mode = VramDmaWideRowsFromGsuRam(rows_less_one, src, vram, &end);
     return (uint16_t)((end & 0xFF00) | mode);
 }
 
