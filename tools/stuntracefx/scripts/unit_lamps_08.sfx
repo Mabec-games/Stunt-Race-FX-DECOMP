@@ -1,0 +1,46 @@
+# unit_lamps_08: the course object set-ups of bank $08 no course in the
+# scripts places (08:D61B-D83C), called on object 1 of a Novice race: the
+# burst of fifteen break-off pieces, the lamp pair, the lamp stack, the low
+# lamp, both entries of the falling object, its record set-up and its
+# step; each spawning one also with one free object (the free list cut at
+# $7E:4FDB) and with none (the count $0CEE at its limit $2E).
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:D61B long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E4FDB 00,00
+call 08:D61B long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:D654 long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0CEE 2E
+call 08:D654 long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:D6D0 long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E4FDB 00,00
+call 08:D6D0 long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0CEE 2E
+call 08:D6D0 long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:D7A2 long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:D7BC long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:D7BE long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:D808 long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:D816 long x=0001 p=20 db=7E d=0000
+wait 1
