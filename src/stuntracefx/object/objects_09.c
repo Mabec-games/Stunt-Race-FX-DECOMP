@@ -21,6 +21,8 @@ void abi_GsuRecordFlag10(void);
 void abi_GsuRecordPosition(void);
 void abi_GsuRecordVelocity(void);
 void abi_ApproachQuarterMin4Byte(void);
+void abi_ApproachSixteenthMin16Byte(void);
+void abi_ApproachHalfMin2(void);
 void abi_SoundPort0QueuePush(void);
 
 static uint32_t db(void)
@@ -372,6 +374,22 @@ static void counter_tick(void)
     wr8(F(0x205A, o), v);
 }
 
+/*
+ * @routine 09:8D34 ObjectScoreCounterTick
+ * WHAT IT DOES: Every third frame (+$49 counting down from 2) follows its
+ * gate (+$27): while the gate's +$25 bit 0 is set, sets its own (sound $32
+ * the first time) and counts +$48 up to 9; else clears it and counts +$48
+ * down to 0; shows the count at +$5A with bit 7 ($1F58 = the count).
+ * HOW: Byte compares and JMLs inside the bank; ends RTS.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit; A low byte
+ * = the shown count with bit 7, or the countdown's value when it only
+ * counted down; N, Z from that.
+ */
+void abi_ObjectScoreCounterTick(void)
+{
+    counter_tick();
+}
+
 /* 09:8DB1: while +$0A runs down, the scale +$15 eased toward $40
    (ApproachQuarterMin4Byte via $3E) and the object $5A further right;
    then the tick. */
@@ -392,6 +410,20 @@ static void counter_slide(void)
         add16(F(0x200C, o), 0x005A);
     }
     counter_tick();
+}
+
+/*
+ * @routine 09:8DB1 ObjectScoreCounterSlide
+ * WHAT IT DOES: While +$0A runs down, eases the scale +$15 toward $40
+ * (ApproachQuarterMin4Byte via $3E) and moves the counter $5A right; then
+ * ObjectScoreCounterTick.
+ * HOW: 16-bit add for X; ends RTS.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as
+ * ObjectScoreCounterTick.
+ */
+void abi_ObjectScoreCounterSlide(void)
+{
+    counter_slide();
 }
 
 /*
@@ -442,7 +474,7 @@ static void piece_frame(void)
  * (ObjectFlyingPieceStep), a Super FX record from 08:CBCC (released at
  * once when there is none), its velocity (GsuRecordVelocity), then its
  * frame.
- * HOW: 08:CBCC as original code; its N flag tells the failure.
+ * HOW: GsuRecordNew424Piece (08:CBCC); its N flag tells the failure.
  * Entry: M 8-bit, X 16-bit; X = object. Exit: as the path leaves it.
  */
 void abi_ObjectFlyingPiece(void)
@@ -467,6 +499,18 @@ void abi_ObjectFlyingPiece(void)
 void abi_ObjectFlyingPieceStep(void)
 {
     piece_frame();
+}
+
+/*
+ * @routine 09:8E0A ObjectFlyingPieceRelease
+ * WHAT IT DOES: Releases object X (ObjectRelease): where a flying piece
+ * goes when it gets no Super FX record.
+ * HOW: JSL ObjectRelease, RTL.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectRelease.
+ */
+void abi_ObjectFlyingPieceRelease(void)
+{
+    abi_ObjectRelease();
 }
 
 void abi_GsuRecordSet2AHigh(void);
@@ -498,6 +542,31 @@ static void spark(uint8_t t, uint16_t vx, uint16_t vy, uint16_t vz)
     st8i(F(0x200A, cpu.y), 0x0F);
 }
 
+/* 09:8EAF: the shell's burst: four sparks flying out left, right, back and
+   on. */
+static void firework_burst(void)
+{
+    spark(0x14, 0x0028, 0xFFAB, 0x0000);
+    spark(0x03, 0xFFD8, 0xFFAB, 0x0000);
+    spark(0x0A, 0x0000, 0xFFA6, 0x0028);
+    spark(0x01, 0x0000, 0xFFA6, 0xFFD8);
+}
+
+/*
+ * @routine 09:8EAF ObjectFireworkBurst
+ * WHAT IT DOES: Bursts a firework into four sparks (kind $A0CC, lit by
+ * $996B, handler ObjectFlyingPiece, +$0A = $0F) at object X, flying out at
+ * ($28, -$55, 0), (-$28, -$55, 0), (0, -$5A, $28), (0, -$5A, -$28); a spark
+ * without a free object is skipped.
+ * HOW: ObjectSpawn, ObjectCopyPositionTo for each; ends RTS.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit; A, Y as
+ * the last spark leaves them.
+ */
+void abi_ObjectFireworkBurst(void)
+{
+    firework_burst();
+}
+
 /* 09:8E5A: the shell's frame: released when +$0A runs down (and goes on);
    its size bytes +$14-$16 grow ($0C added to the words at +$14, +$15 and
    +$16); synced from its record; on a hit (sync and contact bit 0) it is
@@ -520,10 +589,7 @@ static void shell_frame(void)
     abi_ObjectRelease();
     lda8(0x56);
     abi_SoundPort0QueuePush();
-    spark(0x14, 0x0028, 0xFFAB, 0x0000);
-    spark(0x03, 0xFFD8, 0xFFAB, 0x0000);
-    spark(0x0A, 0x0000, 0xFFA6, 0x0028);
-    spark(0x01, 0x0000, 0xFFA6, 0xFFD8);
+    firework_burst();
 }
 
 /* 09:8E2D: the shell's record (08:CBCC), velocity, +$2A high byte 8
@@ -543,7 +609,7 @@ static void shell_record(void)
  * WHAT IT DOES: Sets up a firework shell: frame handler $09:8E5A
  * (ObjectFireworkShellStep), restart $09:8E2D (ObjectFireworkShellRecord),
  * then its record and frame.
- * HOW: Word and byte stores; the record from 08:CBCC (original code).
+ * HOW: Word and byte stores; the record from GsuRecordNew424Piece (08:CBCC).
  * Reached only by unit_objects_09.
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
  * leaves it.
@@ -607,6 +673,28 @@ static void shell(uint16_t dx, uint8_t s14, uint8_t s15, uint8_t s16)
     st8i(F(0x200A, cpu.y), 0x1E);
 }
 
+/* 09:90C3: the finish gate's two firework shells, $3C0 right and $3C0
+   left. */
+static void shell_pair(void)
+{
+    shell(0x03C0, 0x3C, 0x32, 0x23);
+    shell(0xFC40, 0x78, 0x3C, 0x0C);
+}
+
+/*
+ * @routine 09:90C3 ObjectFireworkShellPair
+ * WHAT IT DOES: Fires the finish gate's two firework shells (kind $B6E4,
+ * handler ObjectFireworkShell), $3C0 to each side, $500 up, $1900 back,
+ * rising at $15E, with their sizes and +$0A = $1E.
+ * HOW: ObjectSpawn, ObjectCopyPositionTo for each; ends RTS.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit; A, Y as
+ * the second shell leaves them.
+ */
+void abi_ObjectFireworkShellPair(void)
+{
+    shell_pair();
+}
+
 /* 09:908D: the finish gate's frame: synced from its record; on a hit
    (sync and contact bit 0) on the second lap ($0DEA = 2), the first time
    (+$25 bit 0), sound $11 and two firework shells. */
@@ -631,8 +719,7 @@ static void finish_gate_frame(void)
     or8(F(0x2025, cpu.x), 0x01);
     lda8(0x11);
     abi_SoundPort0QueuePush();
-    shell(0x03C0, 0x3C, 0x32, 0x23);
-    shell(0xFC40, 0x78, 0x3C, 0x0C);
+    shell_pair();
 }
 
 /* 09:9066: the finish gate's record ($42D) with flag bit 4 at ($1680,
@@ -721,10 +808,10 @@ static int ease8(uint32_t addr, uint8_t target, void (*to)(void))
     return (cpu.p & P_C) != 0;
 }
 
-/* 03:D07C (not filed yet): a byte eased toward A. */
+/* 03:D07C (ApproachSixteenthMin16Byte): a byte eased toward A. */
 static void ease_d07c(void)
 {
-    call_routine(0x03D07C, 1);
+    abi_ApproachSixteenthMin16Byte();
 }
 
 /* The two set-up stores of a two-handler object: restart +$1D/+$1F = r,
@@ -902,14 +989,26 @@ void abi_ObjectSwitchRecord(void)
  * WHAT IT DOES: The switch's frame: once on (+$25 bit 0), its count +$48
  * eases toward 3 (03:D07C); the count is shown at +$5A with bit 7; while
  * off, a car hitting it turns it on (+$15 by $0C, sound $55). The bytes at
- * 09:931C (clearing +$25 bit 0) are reached by no code.
- * HOW: ObjectSyncFromRecord, RecordContactSummary; 03:D07C as original
- * code.
+ * 09:931C (ObjectClear25Bit0) are reached by no code in it.
+ * HOW: ObjectSyncFromRecord, RecordContactSummary,
+ * ApproachSixteenthMin16Byte (03:D07C).
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit.
  */
 void abi_ObjectSwitchStep(void)
 {
     switch_frame();
+}
+
+/*
+ * @routine 09:931C ObjectClear25Bit0
+ * WHAT IT DOES: Clears bit 0 of object X's +$25 (the switch's "on").
+ * HOW: LDA / AND #$FE / STA, 8-bit; RTL.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: A low byte = the new +$25;
+ * N, Z from it.
+ */
+void abi_ObjectClear25Bit0(void)
+{
+    and8(F(0x2025, cpu.x), 0xFE);
 }
 
 /* 09:934D: the platform's record ($424, +$0A $90E8) in mode 2 with +$2A
@@ -1057,6 +1156,20 @@ static void sky_ball(void)
     abi_SoundPort0QueuePush();
 }
 
+/*
+ * @routine 09:9496 ObjectSkyBallLaunch
+ * WHAT IT DOES: Launches the sky ball: a new object of kind $AA34 linked to
+ * object X (+$27), handler ObjectSkyBallStep, $C0 up and $2BC0 on, scale
+ * $80, +$0A = +$49 = $0A, sound $0E; nothing without a free object.
+ * HOW: ObjectSpawn, ObjectCopyPositionTo; ends RTS.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit; Y = the
+ * new object; A low byte as the sound push leaves it.
+ */
+void abi_ObjectSkyBallLaunch(void)
+{
+    sky_ball();
+}
+
 /* 09:9432: the second post's frame: a hit sets its +$25 bit 0 and bit 1 of
    $1A07 the first time; with both posts hit ($1A07 = 3), the first time
    (+$25 bit 1) the sky ball, its target +$27 = this post's +$10 - $2300. */
@@ -1131,10 +1244,10 @@ void abi_ObjectPostBStep(void)
     post2_frame();
 }
 
-/* 03:CDC1 (not filed yet): a word eased toward A. */
+/* 03:CDC1 (ApproachHalfMin2): a word eased toward A. */
 static void ease_cdc1(void)
 {
-    call_routine(0x03CDC1, 1);
+    abi_ApproachHalfMin2();
 }
 
 /* REP #$20, LDA addr, STA $3E, LDA target, JSL to, STA addr, SEP #$20. */
@@ -1161,6 +1274,20 @@ static void ball_follow(void)
     add16(F(0x2010, cpu.x), 0xFC80);
 }
 
+/*
+ * @routine 09:9599 ObjectBallFollowPlayer
+ * WHAT IT DOES: Moves object X toward the player ($0346): its X eased toward
+ * the player's (ApproachQuarterMin4), its Z toward the player's
+ * (ApproachHalfMin2), then $380 back.
+ * HOW: 16-bit; ends RTS.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit; Y = the
+ * player's object; A as the last add leaves it.
+ */
+void abi_ObjectBallFollowPlayer(void)
+{
+    ball_follow();
+}
+
 /* 09:95D1 / 95FC: the ball drops (dz, dy) with +$14 eased toward t
    (03:D07C). */
 static void ball_drop(uint16_t dz, uint16_t dy, uint8_t t)
@@ -1168,6 +1295,41 @@ static void ball_drop(uint16_t dz, uint16_t dy, uint8_t t)
     add16(F(0x2010, cpu.x), dz);
     add16(F(0x200E, cpu.x), dy);
     ease8(F(0x2014, cpu.x), t, ease_d07c);
+}
+
+/* 09:95FC: the rising ball's step, its life +$0A counted down and the
+   ball released when it runs out. */
+static void ball_rise(void)
+{
+    ball_drop(0xFFB0, 0xFF10, 0xC0);
+    if (dec8(F(0x200A, cpu.x)) == 0)
+        abi_ObjectRelease();
+}
+
+/*
+ * @routine 09:95FC ObjectSkyBallRise
+ * WHAT IT DOES: The rising sky ball's step: $50 back, $F0 up, +$14 eased
+ * toward $C0; released (ObjectRelease) when +$0A runs out.
+ * HOW: As ObjectSkyBallFall, then a byte DEC.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as
+ * ObjectSkyBallFall.
+ */
+void abi_ObjectSkyBallRise(void)
+{
+    ball_rise();
+}
+
+/*
+ * @routine 09:95D1 ObjectSkyBallFall
+ * WHAT IT DOES: The falling sky ball's step: $180 back, $1E up, +$14 eased
+ * toward $F8 (ApproachSixteenthMin16Byte).
+ * HOW: 16-bit adds, then the byte eased; ends RTS.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit; A low byte
+ * = the new +$14.
+ */
+void abi_ObjectSkyBallFall(void)
+{
+    ball_drop(0xFE80, 0xFFE2, 0xF8);
 }
 
 /*
@@ -1220,9 +1382,7 @@ void abi_ObjectSkyBallStep(void)
             ball_drop(0xFE80, 0xFFE2, 0xF8);
         }
     } else {
-        ball_drop(0xFFB0, 0xFF10, 0xC0);
-        if (dec8(F(0x200A, cpu.x)) == 0)
-            abi_ObjectRelease();
+        ball_rise();
     }
     abi_ObjectRebucket();
 }
@@ -1388,6 +1548,51 @@ static void cannon_ball(uint16_t h, uint16_t dx, uint16_t dy, uint16_t dz, uint8
 /* 09:9746: the lap gate's frame: a hit when the lap $0DEA differs from its
    +$0A takes the lap; lap 0 fires three balls to the left ($09:9ACB),
    lap 2 three to the right ($09:9AE8). */
+/* 09:9793: the first lap's three cannon balls (ObjectCannonBallLeft),
+   $3C00 to the left. */
+static void cannon_balls_left(void)
+{
+    cannon_ball(0x9ACB, 0xC400, 0xF880, 0x0500, 0xC0, 0xFD60, 0x0000, 0x05, 0x09);
+    cannon_ball(0x9ACB, 0xC400, 0xFC40, 0xF880, 0xC0, 0xFD40, 0xFE00, 0x05, 0x09);
+    cannon_ball(0x9ACB, 0xC400, 0xF9C0, 0x0000, 0xC0, 0xFD20, 0x0200, 0x05, 0x09);
+}
+
+/*
+ * @routine 09:9793 ObjectCannonBallsLeft
+ * WHAT IT DOES: Fires the first lap's three cannon balls (kind via
+ * ObjectSpawn, handler ObjectCannonBallLeft) from object X, $3C00 to the
+ * left, at three heights and spreads.
+ * HOW: ObjectSpawn, ObjectCopyPositionTo for each; ends RTS.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit; A, Y as
+ * the third ball leaves them.
+ */
+void abi_ObjectCannonBallsLeft(void)
+{
+    cannon_balls_left();
+}
+
+/* 09:992F: the third lap's three cannon balls (ObjectCannonBallRight),
+   $2580 to the right. */
+static void cannon_balls_right(void)
+{
+    cannon_ball(0x9AE8, 0x2580, 0xF880, 0x0500, 0x40, 0xFDC0, 0x0000, 0x12, 0x06);
+    cannon_ball(0x9AE8, 0x2580, 0xFC40, 0xF880, 0x40, 0xFDA0, 0xFF00, 0x12, 0x06);
+    cannon_ball(0x9AE8, 0x2580, 0xF9C0, 0x0000, 0x40, 0xFDC0, 0x0100, 0x12, 0x06);
+}
+
+/*
+ * @routine 09:992F ObjectCannonBallsRight
+ * WHAT IT DOES: As ObjectCannonBallsLeft for the third lap: handler
+ * ObjectCannonBallRight, $2580 to the right.
+ * HOW: As ObjectCannonBallsLeft.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as
+ * ObjectCannonBallsLeft.
+ */
+void abi_ObjectCannonBallsRight(void)
+{
+    cannon_balls_right();
+}
+
 static void lap_gate_frame(void)
 {
     uint8_t lap;
@@ -1410,9 +1615,7 @@ static void lap_gate_frame(void)
     lap = ld8(db() | 0x0DEA);
     cmp8(0x00);
     if (lap == 0x00) {
-        cannon_ball(0x9ACB, 0xC400, 0xF880, 0x0500, 0xC0, 0xFD60, 0x0000, 0x05, 0x09);
-        cannon_ball(0x9ACB, 0xC400, 0xFC40, 0xF880, 0xC0, 0xFD40, 0xFE00, 0x05, 0x09);
-        cannon_ball(0x9ACB, 0xC400, 0xF9C0, 0x0000, 0xC0, 0xFD20, 0x0200, 0x05, 0x09);
+        cannon_balls_left();
         return;
     }
     cmp8(0x01);
@@ -1421,9 +1624,7 @@ static void lap_gate_frame(void)
     cmp8(0x02);
     if (lap != 0x02)
         return;
-    cannon_ball(0x9AE8, 0x2580, 0xF880, 0x0500, 0x40, 0xFDC0, 0x0000, 0x12, 0x06);
-    cannon_ball(0x9AE8, 0x2580, 0xFC40, 0xF880, 0x40, 0xFDA0, 0xFF00, 0x12, 0x06);
-    cannon_ball(0x9AE8, 0x2580, 0xF9C0, 0x0000, 0x40, 0xFDC0, 0x0100, 0x12, 0x06);
+    cannon_balls_right();
 }
 
 /* 09:971F: the lap gate's record ($42D) with flag bit 4 at ($F00, $F00,
@@ -1491,6 +1692,20 @@ static void ball_home(void)
     add16_via(F(0x200E, cpu.x), F(0x2029, cpu.x));
 }
 
+/*
+ * @routine 09:9B6D ObjectCannonBallHome
+ * WHAT IT DOES: The cannon ball homes on its gate (Y): X and Z eased toward
+ * the gate's (ApproachQuarterMin4), Z += +$2B; Y eased toward the gate's
+ * (ApproachHalfMin2), Y += +$29.
+ * HOW: 16-bit eases and adds; ends RTS.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit; A as the
+ * last add leaves it.
+ */
+void abi_ObjectCannonBallHome(void)
+{
+    ball_home();
+}
+
 /* 09:9B05 / 9B39: the ball flies: Z += +$2B, X += dx; released when +$0A
    runs out. */
 static void ball_fly(uint16_t dx)
@@ -1499,6 +1714,31 @@ static void ball_fly(uint16_t dx)
     add16(F(0x200C, cpu.x), dx);
     if (dec8(F(0x200A, cpu.x)) == 0)
         abi_ObjectRelease();
+}
+
+/*
+ * @routine 09:9B39 ObjectCannonBallFlyRight
+ * WHAT IT DOES: As ObjectCannonBallFlyLeft with X -= $380.
+ * HOW: As ObjectCannonBallFlyLeft.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectCannonBallFlyRight(void)
+{
+    ball_fly(0xFC80);
+}
+
+/*
+ * @routine 09:9B05 ObjectCannonBallFlyLeft
+ * WHAT IT DOES: The left cannon ball flies: Z += +$2B, X += $100; released
+ * (ObjectRelease) when +$0A runs out.
+ * HOW: 16-bit adds, a byte DEC; ends RTS.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectCannonBallFlyLeft(void)
+{
+    ball_fly(0x0100);
 }
 
 /* The ball's frame: Y = its gate; for +$49 frames it homes, then it flies
@@ -1592,6 +1832,66 @@ static void wave_ball(uint16_t h, uint16_t dx, uint16_t dy, uint16_t dz, uint8_t
     abi_SoundPort0QueuePush();
 }
 
+/* 09:9CE4: the first gate's big wave ball (ObjectWaveBallBig). */
+static void wave_ball_a(void)
+{
+    wave_ball(0x9F05, 0xDA80, 0xFE80, 0xDD00, 0xE0, 0xFF00, 0x0F00, 0x0F00, 0x0F);
+}
+
+/*
+ * @routine 09:9CE4 ObjectWaveBallLaunchA
+ * WHAT IT DOES: Launches the first wave gate's big ball (kind $AA34, handler
+ * ObjectWaveBallBig) linked to gate X: $2580 left, $180 up, $2300 back,
+ * scale $E0, rise -$100, life $0F; the gate moves $F00 on in X and Z; sound
+ * $0E. Nothing without a free object.
+ * HOW: ObjectSpawn, ObjectCopyPositionTo, 16-bit adds; ends RTS.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit; Y = the
+ * new object; A low byte as the sound push leaves it.
+ */
+void abi_ObjectWaveBallLaunchA(void)
+{
+    wave_ball_a();
+}
+
+/* 09:9D76: the second gate's wave ball (ObjectWaveBallStep), $1E00 back. */
+static void wave_ball_b(void)
+{
+    wave_ball(0x9E9A, 0x2300, 0xFC40, 0xE200, 0x20, 0xFF60, 0xF100, 0x0F00, 0x0A);
+}
+
+/*
+ * @routine 09:9D76 ObjectWaveBallLaunchB
+ * WHAT IT DOES: As ObjectWaveBallLaunchA for the second gate: handler
+ * ObjectWaveBallStep, $2300 right, $3C0 up, $1E00 back, scale $20, rise
+ * -$A0, life $0A; the gate moves $F00 back in X and on in Z.
+ * HOW: As ObjectWaveBallLaunchA.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as
+ * ObjectWaveBallLaunchA.
+ */
+void abi_ObjectWaveBallLaunchB(void)
+{
+    wave_ball_b();
+}
+
+/* 09:9E08: the third gate's wave ball, $1E00 on. */
+static void wave_ball_c(void)
+{
+    wave_ball(0x9E9A, 0x2300, 0xFC40, 0x1E00, 0x60, 0xFF60, 0xF100, 0xF100, 0x0C);
+}
+
+/*
+ * @routine 09:9E08 ObjectWaveBallLaunchC
+ * WHAT IT DOES: As ObjectWaveBallLaunchB for the third gate: the ball $1E00
+ * on, scale $60, life $0C; the gate moves $F00 back in X and Z.
+ * HOW: As ObjectWaveBallLaunchA.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as
+ * ObjectWaveBallLaunchA.
+ */
+void abi_ObjectWaveBallLaunchC(void)
+{
+    wave_ball_c();
+}
+
 /* A wave gate's frame: on a hit on lap 1, the first time (+$25 bit 0),
    its wave ball. */
 static void wave_gate_frame(int which)
@@ -1607,11 +1907,11 @@ static void wave_gate_frame(int which)
         return;
     or8(F(0x2025, cpu.x), 0x01);
     if (which == 0)
-        wave_ball(0x9F05, 0xDA80, 0xFE80, 0xDD00, 0xE0, 0xFF00, 0x0F00, 0x0F00, 0x0F);
+        wave_ball_a();
     else if (which == 1)
-        wave_ball(0x9E9A, 0x2300, 0xFC40, 0xE200, 0x20, 0xFF60, 0xF100, 0x0F00, 0x0A);
+        wave_ball_b();
     else
-        wave_ball(0x9E9A, 0x2300, 0xFC40, 0x1E00, 0x60, 0xFF60, 0xF100, 0xF100, 0x0C);
+        wave_ball_c();
 }
 
 /* 09:9BF5: the wave gate's record ($42D) with flag bit 4 at ($F00, $F00,
@@ -1727,6 +2027,19 @@ static void wave_home(void)
 }
 
 /*
+ * @routine 09:9EA6 ObjectWaveBallHome
+ * WHAT IT DOES: The wave ball homes on Y: X, Z and Y eased toward Y's
+ * (ApproachQuarterMin4), rises by +$29, and is released when +$0A runs out.
+ * HOW: 16-bit eases and adds, a byte DEC; ends RTS.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectWaveBallHome(void)
+{
+    wave_home();
+}
+
+/*
  * @routine 09:9E9A ObjectWaveBallStep
  * WHAT IT DOES: A wave ball's frame: it homes on its gate (+$27; X, Z and
  * Y eased by ApproachQuarterMin4), rises by +$29, is released when its
@@ -1787,6 +2100,20 @@ static void sparkle(void)
     add16(F(0x2010, cpu.y), 0xFF38);
     st8i(F(0x200A, cpu.y), 0x08);
     handler(cpu.y, 0xA03F);
+}
+
+/*
+ * @routine 09:9FE1 ObjectStarSparkleSpawn
+ * WHAT IT DOES: Leaves a sparkle: a new object of kind $A158 lit by $997C
+ * (+$5F = $64), frame +$18 = $82, at object X's position $C8 back, life 8,
+ * handler ObjectStarSparkleStep; nothing without a free object.
+ * HOW: ObjectSpawn, ObjectCopyPositionTo; ends RTS.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit; Y = the
+ * new object; A low byte = 9.
+ */
+void abi_ObjectStarSparkleSpawn(void)
+{
+    sparkle();
 }
 
 /* 09:9F63: the big wave ball's frame: once hit (+$25 bit 0) it grows

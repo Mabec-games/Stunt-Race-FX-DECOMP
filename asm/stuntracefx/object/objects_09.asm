@@ -296,14 +296,25 @@ ObjectScoreCounterStep:
     sta.w !obj_04,x
     sep.b #$20
 .l8D27:
-    jsr.w .l8D34
+    jsr.w ObjectScoreCounterTick
     bra .l8D2F
 .l8D2C:
-    jsr.w .l8DB1
+    jsr.w ObjectScoreCounterSlide
 .l8D2F:
     jsl.l ObjectRebucket
     rtl
-.l8D34:
+
+; @routine 09:8D34 ObjectScoreCounterTick
+; WHAT IT DOES: Every third frame (+$49 counting down from 2) follows its
+; gate (+$27): while the gate's +$25 bit 0 is set, sets its own (sound $32
+; the first time) and counts +$48 up to 9; else clears it and counts +$48
+; down to 0; shows the count at +$5A with bit 7 ($1F58 = the count).
+; HOW: Byte compares and JMLs inside the bank; ends RTS.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit; A low byte
+; = the shown count with bit 7, or the countdown's value when it only
+; counted down; N, Z from that.
+%at($098D34)
+ObjectScoreCounterTick:
     lda.w !obj_49,x
     cmp.b #$00
     bne .l8D3F
@@ -361,7 +372,16 @@ ObjectScoreCounterStep:
     ora.b #$80
     sta.w !obj_5a,x
     rts
-.l8DB1:
+
+; @routine 09:8DB1 ObjectScoreCounterSlide
+; WHAT IT DOES: While +$0A runs down, eases the scale +$15 toward $40
+; (ApproachQuarterMin4Byte via $3E) and moves the counter $5A right; then
+; ObjectScoreCounterTick.
+; HOW: 16-bit add for X; ends RTS.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as
+; ObjectScoreCounterTick.
+%at($098DB1)
+ObjectScoreCounterSlide:
     lda.w !obj_09+1,x
     cmp.b #$00
     bne .l8DBC
@@ -380,7 +400,7 @@ ObjectScoreCounterStep:
     sta.w !obj_pos_x,x
     sep.b #$20
 .l8DDB:
-    jsr.w .l8D34
+    jsr.w ObjectScoreCounterTick
     rts
 
 ; @routine 09:8DDF ObjectFlyingPiece
@@ -388,7 +408,7 @@ ObjectScoreCounterStep:
 ; (ObjectFlyingPieceStep), a Super FX record from 08:CBCC (released at
 ; once when there is none), its velocity (GsuRecordVelocity), then its
 ; frame.
-; HOW: 08:CBCC as original code; its N flag tells the failure.
+; HOW: GsuRecordNew424Piece (08:CBCC); its N flag tells the failure.
 ; Entry: M 8-bit, X 16-bit; X = object. Exit: as the path leaves it.
 %at($098DDF)
 ObjectFlyingPiece:
@@ -398,8 +418,8 @@ ObjectFlyingPiece:
     sep.b #$20
     lda.b #$09
     sta.w !obj_1c,x
-    jsl.l GsuRecordNewCBCC
-    bmi ObjectFlyingPieceStep_l8E0A
+    jsl.l GsuRecordNew424Piece
+    bmi ObjectFlyingPieceRelease
     jsl.l GsuRecordVelocity
 
 ; @routine 09:8DF8 ObjectFlyingPieceStep
@@ -417,7 +437,14 @@ ObjectFlyingPieceStep:
     jsl.l ObjectRelease
 .l8E09:
     rtl
-.l8E0A:
+
+; @routine 09:8E0A ObjectFlyingPieceRelease
+; WHAT IT DOES: Releases object X (ObjectRelease): where a flying piece
+; goes when it gets no Super FX record.
+; HOW: JSL ObjectRelease, RTL.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectRelease.
+%at($098E0A)
+ObjectFlyingPieceRelease:
     jsl.l ObjectRelease
     rtl
 
@@ -425,7 +452,7 @@ ObjectFlyingPieceStep:
 ; WHAT IT DOES: Sets up a firework shell: frame handler $09:8E5A
 ; (ObjectFireworkShellStep), restart $09:8E2D (ObjectFireworkShellRecord),
 ; then its record and frame.
-; HOW: Word and byte stores; the record from 08:CBCC (original code).
+; HOW: Word and byte stores; the record from GsuRecordNew424Piece (08:CBCC).
 ; Reached only by unit_objects_09.
 ; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
 ; leaves it.
@@ -452,7 +479,7 @@ ObjectFireworkShell:
 ; Entry: as ObjectFireworkShell. Exit: as ObjectFireworkShell.
 %at($098E2D)
 ObjectFireworkShellRecord:
-    jsl.l GsuRecordNewCBCC
+    jsl.l GsuRecordNew424Piece
     jsl.l GsuRecordVelocity
     lda.b #$08
     jsl.l GsuRecordSet2AHigh
@@ -515,10 +542,20 @@ ObjectFireworkShellStep:
     jsl.l ObjectRelease
     lda.b #$56
     jsl.l SoundPort0QueuePush
-    jsr.w .l8EAF
+    jsr.w ObjectFireworkBurst
 .l8EAE:
     rtl
-.l8EAF:
+
+; @routine 09:8EAF ObjectFireworkBurst
+; WHAT IT DOES: Bursts a firework into four sparks (kind $A0CC, lit by
+; $996B, handler ObjectFlyingPiece, +$0A = $0F) at object X, flying out at
+; ($28, -$55, 0), (-$28, -$55, 0), (0, -$5A, $28), (0, -$5A, -$28); a spark
+; without a free object is skipped.
+; HOW: ObjectSpawn, ObjectCopyPositionTo for each; ends RTS.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit; A, Y as
+; the last spark leaves them.
+%at($098EAF)
+ObjectFireworkBurst:
     rep.b #$20
     lda.w #$A0CC
     sta.w !wram_1F2B
@@ -762,10 +799,19 @@ ObjectFinishGateStep:
     sta.w !obj_25,x
     lda.b #$11
     jsl.l SoundPort0QueuePush
-    jsr.w .l90C3
+    jsr.w ObjectFireworkShellPair
 .l90C2:
     rtl
-.l90C3:
+
+; @routine 09:90C3 ObjectFireworkShellPair
+; WHAT IT DOES: Fires the finish gate's two firework shells (kind $B6E4,
+; handler ObjectFireworkShell), $3C0 to each side, $500 up, $1900 back,
+; rising at $15E, with their sizes and +$0A = $1E.
+; HOW: ObjectSpawn, ObjectCopyPositionTo for each; ends RTS.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit; A, Y as
+; the second shell leaves them.
+%at($0990C3)
+ObjectFireworkShellPair:
     rep.b #$20
     lda.w #$B6E4
     sta.w !wram_1F2B
@@ -1039,7 +1085,7 @@ ObjectSwitchStep:
     lda.w !obj_48,x
     sta.b !scale_scratch
     lda.b #$03
-    jsl.l ApproachD07C
+    jsl.l ApproachSixteenthMin16Byte
     sta.w !obj_48,x
     bcc .l92DB
     jml.l .l92DB
@@ -1071,7 +1117,14 @@ ObjectSwitchStep:
     jsl.l SoundPort0QueuePush
 .l931B:
     rtl
-.l931C:
+
+; @routine 09:931C ObjectClear25Bit0
+; WHAT IT DOES: Clears bit 0 of object X's +$25 (the switch's "on").
+; HOW: LDA / AND #$FE / STA, 8-bit; RTL.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: A low byte = the new +$25;
+; N, Z from it.
+%at($09931C)
+ObjectClear25Bit0:
     lda.w !obj_25,x
     and.b #$FE
     sta.w !obj_25,x
@@ -1296,7 +1349,7 @@ ObjectPostBStep:
     lda.w !obj_25,x
     ora.b #$02
     sta.w !obj_25,x
-    jsr.w .l9496
+    jsr.w ObjectSkyBallLaunch
     rep.b #$20
     lda.w !obj_pos_z,x
     sta.w !obj_27,y
@@ -1309,7 +1362,16 @@ ObjectPostBStep:
     sep.b #$20
 .l9495:
     rtl
-.l9496:
+
+; @routine 09:9496 ObjectSkyBallLaunch
+; WHAT IT DOES: Launches the sky ball: a new object of kind $AA34 linked to
+; object X (+$27), handler ObjectSkyBallStep, $C0 up and $2BC0 on, scale
+; $80, +$0A = +$49 = $0A, sound $0E; nothing without a free object.
+; HOW: ObjectSpawn, ObjectCopyPositionTo; ends RTS.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit; Y = the
+; new object; A low byte as the sound push leaves it.
+%at($099496)
+ObjectSkyBallLaunch:
     rep.b #$20
     lda.w #$AA34
     sta.w !wram_1F2B
@@ -1401,7 +1463,7 @@ ObjectSkyBallStep:
     jml.l .l954E
 .l9546:
     dec.w !obj_49,x
-    jsr.w .l9599
+    jsr.w ObjectBallFollowPlayer
     bra .l9594
 .l954E:
     lda.w !obj_25,x
@@ -1433,14 +1495,23 @@ ObjectSkyBallStep:
     ply
     plx
 .l958C:
-    jsr.w .l95D1
+    jsr.w ObjectSkyBallFall
     bra .l9594
 .l9591:
-    jsr.w .l95FC
+    jsr.w ObjectSkyBallRise
 .l9594:
     jsl.l ObjectRebucket
     rtl
-.l9599:
+
+; @routine 09:9599 ObjectBallFollowPlayer
+; WHAT IT DOES: Moves object X toward the player ($0346): its X eased toward
+; the player's (ApproachQuarterMin4), its Z toward the player's
+; (ApproachHalfMin2), then $380 back.
+; HOW: 16-bit; ends RTS.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit; Y = the
+; player's object; A as the last add leaves it.
+%at($099599)
+ObjectBallFollowPlayer:
     ldy.w !wram_0346
     rep.b #$20
     lda.w !obj_pos_x,x
@@ -1453,7 +1524,7 @@ ObjectSkyBallStep:
     lda.w !obj_pos_z,x
     sta.b !scale_scratch
     lda.w !obj_pos_z,y
-    jsl.l ApproachCDC1
+    jsl.l ApproachHalfMin2
     sta.w !obj_pos_z,x
     sep.b #$20
     rep.b #$20
@@ -1463,7 +1534,15 @@ ObjectSkyBallStep:
     sta.w !obj_pos_z,x
     sep.b #$20
     rts
-.l95D1:
+
+; @routine 09:95D1 ObjectSkyBallFall
+; WHAT IT DOES: The falling sky ball's step: $180 back, $1E up, +$14 eased
+; toward $F8 (ApproachSixteenthMin16Byte).
+; HOW: 16-bit adds, then the byte eased; ends RTS.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit; A low byte
+; = the new +$14.
+%at($0995D1)
+ObjectSkyBallFall:
     rep.b #$20
     lda.w !obj_pos_z,x
     clc
@@ -1479,10 +1558,18 @@ ObjectSkyBallStep:
     lda.w !obj_14,x
     sta.b !scale_scratch
     lda.b #$F8
-    jsl.l ApproachD07C
+    jsl.l ApproachSixteenthMin16Byte
     sta.w !obj_14,x
     rts
-.l95FC:
+
+; @routine 09:95FC ObjectSkyBallRise
+; WHAT IT DOES: The rising sky ball's step: $50 back, $F0 up, +$14 eased
+; toward $C0.
+; HOW: As ObjectSkyBallFall.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as
+; ObjectSkyBallFall.
+%at($0995FC)
+ObjectSkyBallRise:
     rep.b #$20
     lda.w !obj_pos_z,x
     clc
@@ -1498,7 +1585,7 @@ ObjectSkyBallStep:
     lda.w !obj_14,x
     sta.b !scale_scratch
     lda.b #$C0
-    jsl.l ApproachD07C
+    jsl.l ApproachSixteenthMin16Byte
     sta.w !obj_14,x
     dec.w !obj_09+1,x
     beq .l962F
@@ -1709,15 +1796,24 @@ ObjectCannonGateStep:
     beq .l978F
     jmp.w .l9792
 .l9786:
-    jsr.w .l9793
+    jsr.w ObjectCannonBallsLeft
     jmp.w .l9792
 .l978C:
     jmp.w .l9792
 .l978F:
-    jsr.w .l992F
+    jsr.w ObjectCannonBallsRight
 .l9792:
     rtl
-.l9793:
+
+; @routine 09:9793 ObjectCannonBallsLeft
+; WHAT IT DOES: Fires the first lap's three cannon balls (kind via
+; ObjectSpawn, handler ObjectCannonBallLeft) from object X, $3C00 to the
+; left, at three heights and spreads.
+; HOW: ObjectSpawn, ObjectCopyPositionTo for each; ends RTS.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit; A, Y as
+; the third ball leaves them.
+%at($099793)
+ObjectCannonBallsLeft:
     rep.b #$20
     lda.w #$AA34
     sta.w !wram_1F2B
@@ -1893,7 +1989,15 @@ ObjectCannonGateStep:
     jsl.l SoundPort0QueuePush
 .l992E:
     rts
-.l992F:
+
+; @routine 09:992F ObjectCannonBallsRight
+; WHAT IT DOES: As ObjectCannonBallsLeft for the third lap: handler
+; ObjectCannonBallRight, $2580 to the right.
+; HOW: As ObjectCannonBallsLeft.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as
+; ObjectCannonBallsLeft.
+%at($09992F)
+ObjectCannonBallsRight:
     rep.b #$20
     lda.w #$AA34
     sta.w !wram_1F2B
@@ -2087,10 +2191,10 @@ ObjectCannonBallLeft:
     jml.l .l9AE0
 .l9AD8:
     dec.w !obj_49,x
-    jsr.w ObjectCannonBallRight_l9B6D
+    jsr.w ObjectCannonBallHome
     bra .l9AE3
 .l9AE0:
-    jsr.w ObjectCannonBallRight_l9B05
+    jsr.w ObjectCannonBallFlyLeft
 .l9AE3:
     jsl.l ObjectRebucket
     rtl
@@ -2109,14 +2213,22 @@ ObjectCannonBallRight:
     jml.l .l9AFD
 .l9AF5:
     dec.w !obj_49,x
-    jsr.w .l9B6D
+    jsr.w ObjectCannonBallHome
     bra .l9B00
 .l9AFD:
-    jsr.w .l9B39
+    jsr.w ObjectCannonBallFlyRight
 .l9B00:
     jsl.l ObjectRebucket
     rtl
-.l9B05:
+
+; @routine 09:9B05 ObjectCannonBallFlyLeft
+; WHAT IT DOES: The left cannon ball flies: Z += +$2B, X += $100; released
+; (ObjectRelease) when +$0A runs out.
+; HOW: 16-bit adds, a byte DEC; ends RTS.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+; it.
+%at($099B05)
+ObjectCannonBallFlyLeft:
     rep.b #$20
     lda.w !obj_29+2,x
     sta.w !wram_1F4C
@@ -2140,7 +2252,14 @@ ObjectCannonBallRight:
     jsl.l ObjectRelease
 .l9B38:
     rts
-.l9B39:
+
+; @routine 09:9B39 ObjectCannonBallFlyRight
+; WHAT IT DOES: As ObjectCannonBallFlyLeft with X -= $380.
+; HOW: As ObjectCannonBallFlyLeft.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+; it.
+%at($099B39)
+ObjectCannonBallFlyRight:
     rep.b #$20
     lda.w !obj_29+2,x
     sta.w !wram_1F4C
@@ -2164,7 +2283,16 @@ ObjectCannonBallRight:
     jsl.l ObjectRelease
 .l9B6C:
     rts
-.l9B6D:
+
+; @routine 09:9B6D ObjectCannonBallHome
+; WHAT IT DOES: The cannon ball homes on its gate (Y): X and Z eased toward
+; the gate's (ApproachQuarterMin4), Z += +$2B; Y eased toward the gate's
+; (ApproachHalfMin2), Y += +$29.
+; HOW: 16-bit eases and adds; ends RTS.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit; A as the
+; last add leaves it.
+%at($099B6D)
+ObjectCannonBallHome:
     rep.b #$20
     lda.w !obj_pos_x,x
     sta.b !scale_scratch
@@ -2193,7 +2321,7 @@ ObjectCannonBallRight:
     lda.w !obj_pos_y,x
     sta.b !scale_scratch
     lda.w !obj_pos_y,y
-    jsl.l ApproachCDC1
+    jsl.l ApproachHalfMin2
     sta.w !obj_pos_y,x
     sep.b #$20
     rep.b #$20
@@ -2281,7 +2409,7 @@ ObjectWaveGateAStep:
     lda.w !obj_25,x
     ora.b #$01
     sta.w !obj_25,x
-    jsr.w ObjectWaveGateCStep_l9CE4
+    jsr.w ObjectWaveBallLaunchA
 .l9C49:
     rtl
 
@@ -2331,7 +2459,7 @@ ObjectWaveGateBStep:
     lda.w !obj_25,x
     ora.b #$01
     sta.w !obj_25,x
-    jsr.w ObjectWaveGateCStep_l9D76
+    jsr.w ObjectWaveBallLaunchB
 .l9C96:
     rtl
 
@@ -2380,10 +2508,20 @@ ObjectWaveGateCStep:
     lda.w !obj_25,x
     ora.b #$01
     sta.w !obj_25,x
-    jsr.w .l9E08
+    jsr.w ObjectWaveBallLaunchC
 .l9CE3:
     rtl
-.l9CE4:
+
+; @routine 09:9CE4 ObjectWaveBallLaunchA
+; WHAT IT DOES: Launches the first wave gate's big ball (kind $AA34, handler
+; ObjectWaveBallBig) linked to gate X: $2580 left, $180 up, $2300 back,
+; scale $E0, rise -$100, life $0F; the gate moves $F00 on in X and Z; sound
+; $0E. Nothing without a free object.
+; HOW: ObjectSpawn, ObjectCopyPositionTo, 16-bit adds; ends RTS.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit; Y = the
+; new object; A low byte as the sound push leaves it.
+%at($099CE4)
+ObjectWaveBallLaunchA:
     rep.b #$20
     lda.w #$AA34
     sta.w !wram_1F2B
@@ -2447,7 +2585,16 @@ ObjectWaveGateCStep:
     jsl.l SoundPort0QueuePush
 .l9D75:
     rts
-.l9D76:
+
+; @routine 09:9D76 ObjectWaveBallLaunchB
+; WHAT IT DOES: As ObjectWaveBallLaunchA for the second gate: handler
+; ObjectWaveBallStep, $2300 right, $3C0 up, $1E00 back, scale $20, rise
+; -$A0, life $0A; the gate moves $F00 back in X and on in Z.
+; HOW: As ObjectWaveBallLaunchA.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as
+; ObjectWaveBallLaunchA.
+%at($099D76)
+ObjectWaveBallLaunchB:
     rep.b #$20
     lda.w #$AA34
     sta.w !wram_1F2B
@@ -2511,7 +2658,15 @@ ObjectWaveGateCStep:
     jsl.l SoundPort0QueuePush
 .l9E07:
     rts
-.l9E08:
+
+; @routine 09:9E08 ObjectWaveBallLaunchC
+; WHAT IT DOES: As ObjectWaveBallLaunchB for the third gate: the ball $1E00
+; on, scale $60, life $0C; the gate moves $F00 back in X and Z.
+; HOW: As ObjectWaveBallLaunchA.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as
+; ObjectWaveBallLaunchA.
+%at($099E08)
+ObjectWaveBallLaunchC:
     rep.b #$20
     lda.w #$AA34
     sta.w !wram_1F2B
@@ -2587,10 +2742,18 @@ ObjectWaveGateCStep:
 ObjectWaveBallStep:
     nop
     ldy.w !obj_27,x
-    jsr.w .l9EA6
+    jsr.w ObjectWaveBallHome
     jsl.l ObjectRebucket
     rtl
-.l9EA6:
+
+; @routine 09:9EA6 ObjectWaveBallHome
+; WHAT IT DOES: The wave ball homes on Y: X, Z and Y eased toward Y's
+; (ApproachQuarterMin4), rises by +$29, and is released when +$0A runs out.
+; HOW: 16-bit eases and adds, a byte DEC; ends RTS.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+; it.
+%at($099EA6)
+ObjectWaveBallHome:
     rep.b #$20
     lda.w !obj_pos_x,x
     sta.b !scale_scratch
@@ -2738,12 +2901,12 @@ ObjectWaveBallBigStep:
     adc.w #$FF06
     sta.w !obj_pos_y,x
     sep.b #$20
-    jsr.w .l9FE1
+    jsr.w ObjectStarSparkleSpawn
     bra .l9FB7
 .l9FAF:
     phy
     ldy.w !obj_27,x
-    jsr.w ObjectWaveBallStep_l9EA6
+    jsr.w ObjectWaveBallHome
     ply
 .l9FB7:
     jsl.l ObjectSyncToRecord
@@ -2764,7 +2927,16 @@ ObjectWaveBallBigStep:
     jsl.l SoundPort0QueuePush
 .l9FE0:
     rtl
-.l9FE1:
+
+; @routine 09:9FE1 ObjectStarSparkleSpawn
+; WHAT IT DOES: Leaves a sparkle: a new object of kind $A158 lit by $997C
+; (+$5F = $64), frame +$18 = $82, at object X's position $C8 back, life 8,
+; handler ObjectStarSparkleStep; nothing without a free object.
+; HOW: ObjectSpawn, ObjectCopyPositionTo; ends RTS.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit; Y = the
+; new object; A low byte = 9.
+%at($099FE1)
+ObjectStarSparkleSpawn:
     rep.b #$20
     lda.w #$A158
     sta.w !wram_1F2B

@@ -562,6 +562,23 @@ void abi_GsuRecordNew42D(void)
 }
 
 /*
+ * @routine 08:CBCC GsuRecordNew424Piece
+ * WHAT IT DOES: As GsuRecordNew424, with +$0A = $907A: the record of a
+ * flying piece or a firework shell (bank 09's course objects).
+ * HOW: Runs Super FX program $04:8C0A; then the shared tail at $08:CC7C.
+ * Entry: as GsuRecordNew422. Exit: as GsuRecordNew422.
+ */
+uint8_t GsuRecordNew424Piece(uint8_t bank, uint16_t obj)
+{
+    return record_new(bank, obj, 0x8C0A, 0x907A);
+}
+
+void abi_GsuRecordNew424Piece(void)
+{
+    abi_record_new(0x8C0A, 0x907A);
+}
+
+/*
  * @routine 08:CBE6 GsuRecordNew424
  * WHAT IT DOES: Gives object X a new Super FX record from the first pool
  * (mode $0424, flags 8, +$2A = $40), with +$0A = $910A, filled from the
