@@ -129,3 +129,125 @@ SpriteSlot1Countdown:
     sep.b #$20
     rep.b #$10
     jmp.w .lE104
+
+; @routine 7E:F33C SpriteSlot4Brighten
+; WHAT IT DOES: Shows record 4 ($05B5) and brightens it a step: marks it in
+; use and sets +$04 = 0, +$05 = 2, +$06 = $E6, +$00 = +$07 OR $E0, then
+; steps +$07 up by 1 until it reaches $0F. Nothing in the game calls it.
+; HOW: The record's fields as direct page offsets indexed by X = $05B5 (D
+; = $0000); the mask through the data bank. P and X are saved and restored.
+; Entry: D = $0000. Exit: A low byte = +$07's new value; X, P unchanged.
+%ramcode($7EF33C, $015063)
+SpriteSlot4Brighten:
+    php
+    sep.b #$20
+    rep.b #$10
+    phx
+    sep.b #$20
+    rep.b #$10
+    lda.w !slot_mask
+    ora.b #$10
+    sta.w !slot_mask
+    ldx.w #$05B5
+    sep.b #$20
+    rep.b #$10
+    stz.b !slot_04,x
+    lda.b #$02
+    sta.b !slot_05,x
+    lda.b #$E6
+    sta.b !slot_06,x
+    lda.b #$E0
+    ora.b !slot_07,x
+    sta.b !slot_00,x
+    lda.b !slot_07,x
+    cmp.b #$0F
+    beq .done
+    inc a
+    sta.b !slot_07,x
+.done:
+    plx
+    plp
+    rts
+
+; @routine 7E:F371 SpriteSlot4Darken
+; WHAT IT DOES: Shows record 4 ($05B5) and darkens it a step: marks it in
+; use and sets +$04 = 0, +$05 = 2, +$06 = $E6, +$00 = +$07 OR $E0, then
+; steps +$07 down by 1; once +$07 is 0 the record is marked unused
+; instead. Nothing in the game calls it.
+; HOW: The record's fields as direct page offsets indexed by X = $05B5 (D
+; = $0000); the mask through the data bank. P and X are saved and restored.
+; Entry: D = $0000. Exit: A low byte = +$07's new value, or the new mask
+; at 0; X, P unchanged.
+%ramcode($7EF371, $015098)
+SpriteSlot4Darken:
+    php
+    sep.b #$20
+    rep.b #$10
+    phx
+    sep.b #$20
+    rep.b #$10
+    lda.w !slot_mask
+    ora.b #$10
+    sta.w !slot_mask
+    ldx.w #$05B5
+    sep.b #$20
+    rep.b #$10
+    stz.b !slot_04,x
+    lda.b #$02
+    sta.b !slot_05,x
+    lda.b #$E6
+    sta.b !slot_06,x
+    lda.b #$E0
+    ora.b !slot_07,x
+    sta.b !slot_00,x
+    lda.b !slot_07,x
+    beq .off
+    dec a
+    sta.b !slot_07,x
+    plx
+    plp
+    rts
+.off:
+    sep.b #$20
+    lda.w !slot_mask
+    and.b #$EF
+    sta.w !slot_mask
+    sep.b #$20
+    rep.b #$10
+    plx
+    plp
+    rts
+
+; @routine 7E:F3B5 SpriteSlot4Full
+; WHAT IT DOES: Shows record 4 ($05B5) at full brightness: marks it in use
+; and sets +$04 = 0, +$05 = 2, +$06 = $E6, +$00 = $FF and +$07 = $1F.
+; Nothing in the game calls it.
+; HOW: The record's fields as direct page offsets indexed by X = $05B5 (D
+; = $0000); the mask through the data bank. P and X are saved and restored.
+; Entry: D = $0000. Exit: A low byte = $1F; X, P unchanged.
+%ramcode($7EF3B5, $0150DC)
+SpriteSlot4Full:
+    php
+    sep.b #$20
+    rep.b #$10
+    phx
+    sep.b #$20
+    rep.b #$10
+    lda.w !slot_mask
+    ora.b #$10
+    sta.w !slot_mask
+    ldx.w #$05B5
+    sep.b #$20
+    rep.b #$10
+    stz.b !slot_04,x
+    lda.b #$02
+    sta.b !slot_05,x
+    lda.b #$E6
+    sta.b !slot_06,x
+    lda.b #$FF
+    sta.b !slot_00,x
+    lda.b #$1F
+    sta.b !slot_07,x
+    plx
+    plp
+    rts

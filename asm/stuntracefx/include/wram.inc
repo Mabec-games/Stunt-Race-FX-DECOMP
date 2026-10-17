@@ -1802,3 +1802,13 @@ includeonce
 !fx_sprite_colour = $7000AC       ; a 32x32 sprite's colour (times 16)
 !fx_sprite_x = $7001D2            ; its centre
 !fx_sprite_y = $7001D4
+!colour_list = $0722                ; 128 colour words (unused screen)
+!colour_list_end = $0800            ; word cleared after the red doubling
+!tile_row = $0866                   ; 32 tilemap words sent to VRAM $2FA0
+!tile_row_add = $08E6               ; word added to each row word
+!tile_row_source = $08E8            ; the row address last built from
+!tile_row_built = $08EA             ; 1 when the row was rebuilt
+!tile_row_on = $08ED                ; 0: no row is built
+!tile_row_level = $0342             ; its high byte picks the row
+!palette_buffer_e997 = $7EE997      ; 16 colours
+!palette_buffer_0802 = $0802        ; 16 colours (bank $7E)

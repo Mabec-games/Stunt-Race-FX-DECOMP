@@ -3133,3 +3133,47 @@ void abi_BigSpritesRow6B(void)
     for (i = 0; i < 6; i++)
         sprite24x40(src[i]);
 }
+
+/*
+ * @routine 02:DA14 GsuClearScreenIfSet
+ * WHAT IT DOES: Runs Super FX program $01:AECA (FxClearScreenIfSet), which
+ * clears the picture from $2C00 when $01C4 is set. Nothing in the game
+ * calls it.
+ * HOW: 8-bit A, 16-bit index registers; GsuRun with A = $01, X = $AECA.
+ * P is saved and restored.
+ * Entry: any widths. Exit: A low byte = GsuRun's screen mode value; X =
+ * $AECA (its low byte when X is 8-bit); P unchanged.
+ */
+uint8_t GsuClearScreenIfSet(void)
+{
+    return GsuRun(0x01, 0xAECA);
+}
+
+void abi_GsuClearScreenIfSet(void)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | GsuClearScreenIfSet());
+    cpu.x = 0xAECA;
+    op_plp(cpu.p);
+}
+
+/*
+ * @routine 02:DA24 GsuClear6000IfSet
+ * WHAT IT DOES: Runs Super FX program $01:AEE1 (FxClear6000IfSet), which
+ * clears the picture from $6000 when $01C4 is set. Nothing in the game
+ * calls it.
+ * HOW: 8-bit A, 16-bit index registers; GsuRun with A = $01, X = $AEE1.
+ * P is saved and restored.
+ * Entry: any widths. Exit: A low byte = GsuRun's screen mode value; X =
+ * $AEE1 (its low byte when X is 8-bit); P unchanged.
+ */
+uint8_t GsuClear6000IfSet(void)
+{
+    return GsuRun(0x01, 0xAEE1);
+}
+
+void abi_GsuClear6000IfSet(void)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | GsuClear6000IfSet());
+    cpu.x = 0xAEE1;
+    op_plp(cpu.p);
+}

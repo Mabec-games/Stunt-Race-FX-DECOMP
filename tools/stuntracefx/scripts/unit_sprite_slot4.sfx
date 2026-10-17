@@ -1,0 +1,24 @@
+# unit_sprite_slot4: unit tests (call) from the start of a Novice race for
+# the sprite record 4 helpers at 7E:F33C-F3E2, which nothing in the game
+# calls: SpriteSlot4Brighten below $0F and at $0F, SpriteSlot4Darken above 0
+# and at 0 (the record marked unused), and SpriteSlot4Full. +$07 of record
+# 4 is $05BC.
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E05BC 03
+call 7E:F33C p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E05BC 0F
+call 7E:F33C p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E05BC 05
+call 7E:F371 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E05BC 00
+call 7E:F371 p=20 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 7E:F3B5 p=00 db=00 d=0000
+wait 1

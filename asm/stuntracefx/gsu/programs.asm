@@ -4669,3 +4669,40 @@ BigSpritesRow6B:
     rep.b #$20
     rep.b #$10
     rts
+
+; @routine 02:DA14 GsuClearScreenIfSet
+; WHAT IT DOES: Runs Super FX program $01:AECA (FxClearScreenIfSet), which
+; clears the picture from $2C00 when $01C4 is set. Nothing in the game
+; calls it.
+; HOW: 8-bit A, 16-bit index registers; GsuRun with A = $01, X = $AECA.
+; P is saved and restored.
+; Entry: any widths. Exit: A low byte = GsuRun's screen mode value; X =
+; $AECA (its low byte when X is 8-bit); P unchanged.
+%at($02DA14)
+GsuClearScreenIfSet:
+    php
+    sep.b #$20
+    rep.b #$10
+    lda.b #$01
+    ldx.w #$AECA
+    jsl.l GsuRun
+    plp
+    rtl
+
+; @routine 02:DA24 GsuClear6000IfSet
+; WHAT IT DOES: Runs Super FX program $01:AEE1 (FxClear6000IfSet), which
+; clears the picture from $6000 when $01C4 is set. Nothing in the game
+; calls it.
+; HOW: 8-bit A, 16-bit index registers; GsuRun with A = $01, X = $AEE1.
+; P is saved and restored.
+; Entry: any widths. Exit: A low byte = GsuRun's screen mode value; X =
+; $AEE1 (its low byte when X is 8-bit); P unchanged.
+GsuClear6000IfSet:
+    php
+    sep.b #$20
+    rep.b #$10
+    lda.b #$01
+    ldx.w #$AEE1
+    jsl.l GsuRun
+    plp
+    rtl

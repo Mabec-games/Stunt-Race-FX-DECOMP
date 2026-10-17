@@ -162,3 +162,106 @@ void abi_SpriteSlot1Countdown(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
     cpu.x = (cpu.p & P_X) ? (uint8_t)x : x;
 }
+
+/*
+ * @routine 7E:F33C SpriteSlot4Brighten
+ * WHAT IT DOES: Shows record 4 ($05B5) and brightens it a step: marks it in
+ * use and sets +$04 = 0, +$05 = 2, +$06 = $E6, +$00 = +$07 OR $E0, then
+ * steps +$07 up by 1 until it reaches $0F. Nothing in the game calls it.
+ * HOW: The record's fields as direct page offsets indexed by X = $05B5 (D
+ * = $0000); the mask through the data bank. P and X are saved and restored.
+ * Entry: D = $0000. Exit: A low byte = +$07's new value; X, P unchanged.
+ */
+uint8_t SpriteSlot4Brighten(uint8_t bank)
+{
+    uint16_t r = 0x05B5;
+    uint8_t a;
+
+    a = rd8(dbw(bank, SLOT_MASK));
+    wr8(dbw(bank, SLOT_MASK), (uint8_t)(a | 0x10));
+    wr8((uint16_t)(r + 4), 0x00);
+    wr8((uint16_t)(r + 5), 0x02);
+    wr8((uint16_t)(r + 6), 0xE6);
+    a = rd8((uint16_t)(r + 7));
+    wr8((uint16_t)(r + 0), (uint8_t)(a | 0xE0));
+    a = rd8((uint16_t)(r + 7));
+    if (a != 0x0F) {
+        a = (uint8_t)(a + 1);
+        wr8((uint16_t)(r + 7), a);
+    }
+    return a;
+}
+
+void abi_SpriteSlot4Brighten(void)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | SpriteSlot4Brighten(cpu.db));
+}
+
+/*
+ * @routine 7E:F371 SpriteSlot4Darken
+ * WHAT IT DOES: Shows record 4 ($05B5) and darkens it a step: marks it in
+ * use and sets +$04 = 0, +$05 = 2, +$06 = $E6, +$00 = +$07 OR $E0, then
+ * steps +$07 down by 1; once +$07 is 0 the record is marked unused
+ * instead. Nothing in the game calls it.
+ * HOW: The record's fields as direct page offsets indexed by X = $05B5 (D
+ * = $0000); the mask through the data bank. P and X are saved and restored.
+ * Entry: D = $0000. Exit: A low byte = +$07's new value, or the new mask
+ * at 0; X, P unchanged.
+ */
+uint8_t SpriteSlot4Darken(uint8_t bank)
+{
+    uint16_t r = 0x05B5;
+    uint8_t a;
+
+    a = rd8(dbw(bank, SLOT_MASK));
+    wr8(dbw(bank, SLOT_MASK), (uint8_t)(a | 0x10));
+    wr8((uint16_t)(r + 4), 0x00);
+    wr8((uint16_t)(r + 5), 0x02);
+    wr8((uint16_t)(r + 6), 0xE6);
+    a = rd8((uint16_t)(r + 7));
+    wr8((uint16_t)(r + 0), (uint8_t)(a | 0xE0));
+    a = rd8((uint16_t)(r + 7));
+    if (a) {
+        a = (uint8_t)(a - 1);
+        wr8((uint16_t)(r + 7), a);
+        return a;
+    }
+    a = rd8(dbw(bank, SLOT_MASK));
+    a = (uint8_t)(a & 0xEF);
+    wr8(dbw(bank, SLOT_MASK), a);
+    return a;
+}
+
+void abi_SpriteSlot4Darken(void)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | SpriteSlot4Darken(cpu.db));
+}
+
+/*
+ * @routine 7E:F3B5 SpriteSlot4Full
+ * WHAT IT DOES: Shows record 4 ($05B5) at full brightness: marks it in use
+ * and sets +$04 = 0, +$05 = 2, +$06 = $E6, +$00 = $FF and +$07 = $1F.
+ * Nothing in the game calls it.
+ * HOW: The record's fields as direct page offsets indexed by X = $05B5 (D
+ * = $0000); the mask through the data bank. P and X are saved and restored.
+ * Entry: D = $0000. Exit: A low byte = $1F; X, P unchanged.
+ */
+uint8_t SpriteSlot4Full(uint8_t bank)
+{
+    uint16_t r = 0x05B5;
+    uint8_t a;
+
+    a = rd8(dbw(bank, SLOT_MASK));
+    wr8(dbw(bank, SLOT_MASK), (uint8_t)(a | 0x10));
+    wr8((uint16_t)(r + 4), 0x00);
+    wr8((uint16_t)(r + 5), 0x02);
+    wr8((uint16_t)(r + 6), 0xE6);
+    wr8((uint16_t)(r + 0), 0xFF);
+    wr8((uint16_t)(r + 7), 0x1F);
+    return 0x1F;
+}
+
+void abi_SpriteSlot4Full(void)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | SpriteSlot4Full(cpu.db));
+}
