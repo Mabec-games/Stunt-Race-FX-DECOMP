@@ -1,0 +1,95 @@
+# unit_model: unit tests (fx) of the model interpreter FxModelDraw from the
+# start of a Novice race (R11 = the STOP at $01:80E3, R10 = the stack at
+# $0244, as AD53's call has it), drawing the model the frame drew last:
+# - as it is;
+# - with $01B4 set (the set-up through 01:8576, which sets bit 13 of the
+#   model flags $0054 for the paths that test it);
+# - with $01B6 set (the model list from $AE45);
+# - with $01B4 set and the angles $0020-$0024 all 0 (the matrix copied), and
+#   with only the y angle, $80 (copied in part negated);
+# - with $108C set and the object at depths $3000, $3800, $4000 and $7000:
+#   between and past the model's three distance thresholds ($2800, $3400,
+#   $3B00 for the header at 03:AE55), so each shade table is taken;
+# - FxModelMaterial and FxSpriteMaterial on material words of each kind,
+#   the table pointer $004A set to a word in bank 3 that has it (the
+#   index 0: FxModelMaterial reads it at R14 = $8000 of bank 0, where the
+#   byte is 0): $CC01 at $8007 (bits 15 and 14 set), $3F1A at $88F7 (high
+#   byte $3F), and for FxSpriteMaterial also $3E22 at $86DE and $00E4 at
+#   $8000 (the shade from the light, as the model flags $8000 have it),
+#   that one also with the light at $7F and the normal at R2 = $803A and
+#   $8078 of bank $0F (shades 9 and 18: the clamps to 6..15).
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:8561 stop=80E3 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7001B4 01,00
+fx 01:8561 stop=80E3 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7001B4 01,00
+set 700020 00,00,00,00,00,00
+fx 01:8561 stop=80E3 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7001B4 01,00
+set 700020 00,00,80,00,00,00
+fx 01:8561 stop=80E3 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7001B6 01,00
+fx 01:8561 stop=80E3 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70108C 01,00
+set 70002A 00,30
+fx 01:8561 stop=80E3 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70108C 01,00
+set 70002A 00,38
+fx 01:8561 stop=80E3 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70108C 01,00
+set 70002A 00,40
+fx 01:8561 stop=80E3 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70108C 01,00
+set 70002A 00,70
+fx 01:8561 stop=80E3 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70004A 07,80
+fx 01:8F7D stop=80E3 r14=8000 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70004A F7,88
+fx 01:8F7D stop=80E3 r14=8000 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70004A 07,80
+fx 01:9276 stop=80E3 r0=0000 r14=8000 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70004A F7,88
+fx 01:9276 stop=80E3 r0=0000 r14=8000 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70004A DE,86
+fx 01:9276 stop=80E3 r0=0000 r14=8000 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70004A 00,80
+fx 01:9276 stop=80E3 r0=0000 r14=8000 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70004A 00,80
+set 700106 7F,00,7F,00,7F,00
+fx 01:9276 stop=80E3 r0=0000 r2=803A r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70004A 00,80
+set 700106 7F,00,7F,00,7F,00
+fx 01:9276 stop=80E3 r0=0000 r2=8078 r10=0244
+wait 1
