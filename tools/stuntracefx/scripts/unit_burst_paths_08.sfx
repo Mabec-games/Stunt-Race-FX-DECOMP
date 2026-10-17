@@ -1,0 +1,60 @@
+# unit_burst_paths_08: paths of bank $08's bursts and blinker that no play
+# takes, as calls on object 1 ($2001) of a Novice race's state: the burst
+# with no free object and with only one (the free list cut after its
+# first record at $7E:4FDB), a burst piece with no record and with a
+# record whose contact summary has bit 7 (no contacts, record +$1C bit 0,
+# $70:26F2 bit 5), the two empty handlers, the blinker with no free object
+# and with the second record pool emptied ($70:1D70), and its fade with
+# the colour +$5A at 5; the pace car set-up with a HUD mode, with no free
+# object, only one, and the second pool emptied; the signal's frame with
+# $1F71 set and its light (+$06 = object 1) at colour 5.
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0CEE 2E
+call 08:EC9C long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E4FDB 00,00
+call 08:EC9C long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2023 00,00
+call 08:EDB6 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2023 00,50
+set 70501C 01,00
+set 70502C 00,00
+set 705018 00,00
+set 7026F2 20,00
+call 08:EDB6 long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:EDDB long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:EDDC long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0CEE 2E
+call 08:EDDD long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 701D70 00,00,00,00
+call 08:EDDD long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2049 03
+set 7E205B 05
+call 08:EE9F long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D2B 01,00
+call 08:EFAF long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D2B 00,00
+set 7E0CEE 2E
+call 08:EFAF long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D2B 00,00
+set 7E4FDB 00,00
+call 08:EFAF long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D2B 00,00
+set 701D70 00,00,00,00
+call 08:EFAF long x=0001 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1F71 01
+set 7E2007 01,00
+set 7E205B 05
+call 08:F0B1 long x=0001 p=20 db=7E d=0000
