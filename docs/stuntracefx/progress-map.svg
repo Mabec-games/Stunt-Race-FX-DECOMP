@@ -434,7 +434,7 @@
 <rect x="622.3" y="346.0" width="24.1" height="20.9" fill="#3fb950"><title>FxRankCars  04CE1D  72B  T4  [race]</title></rect>
 <rect x="622.3" y="367.5" width="24.1" height="20.0" fill="#3fb950"><title>ViewParamsSpeedLong  7EF6F2  69B  T4  [race]</title></rect>
 <rect x="622.3" y="388.1" width="24.1" height="20.0" fill="#3fb950"><title>ViewParamsBobLong  7EF737  69B  T4  [race]</title></rect>
-<rect x="622.3" y="408.7" width="24.1" height="20.0" fill="#58a6ff"><title>CourseCursorAt3Open  02EC73  69B  T3  [race]</title></rect>
+<rect x="622.3" y="408.7" width="24.1" height="20.0" fill="#3fb950"><title>CourseCursorAt3Open  02EC73  69B  T4  [race]</title></rect>
 <rect x="622.3" y="429.3" width="24.1" height="20.0" fill="#3fb950"><title>PauseStageChoiceP2  07BDFB  69B  T4  [race]</title></rect>
 <rect x="646.9" y="302.1" width="22.0" height="21.9" fill="#3fb950"><title>StuntRecordsChoice  07CBA3  69B  T4  [race]</title></rect>
 <rect x="669.5" y="302.1" width="21.3" height="21.9" fill="#3fb950"><title>CourseCursorAt2Open  02EC30  67B  T4  [race]</title></rect>
@@ -466,7 +466,7 @@
 <rect x="742.7" y="345.4" width="16.5" height="16.6" fill="#3fb950"><title>PauseStageLeave  07BCE0  40B  T4  [race]</title></rect>
 <rect x="759.9" y="345.4" width="15.7" height="16.6" fill="#3fb950"><title>CourseZoomTimeUp  03FAFF  38B  T4  [race]</title></rect>
 <rect x="687.9" y="362.7" width="14.2" height="17.4" fill="#3fb950"><title>CourseZoomTimeUpNext  03FADB  36B  T4  [race]</title></rect>
-<rect x="687.9" y="380.6" width="14.2" height="16.9" fill="#58a6ff"><title>CourseCursorAt3  02ED1B  35B  T3  [race]</title></rect>
+<rect x="687.9" y="380.6" width="14.2" height="16.9" fill="#3fb950"><title>CourseCursorAt3  02ED1B  35B  T4  [race]</title></rect>
 <rect x="687.9" y="398.1" width="14.2" height="16.9" fill="#3fb950"><title>CourseScreenFadeLeave  02ED75  35B  T4  [race]</title></rect>
 <rect x="687.9" y="415.5" width="14.2" height="16.9" fill="#3fb950"><title>TimeUpSelectDraw  02FC60  35B  T4  [race]</title></rect>
 <rect x="687.9" y="433.0" width="14.2" height="16.4" fill="#3fb950"><title>CourseZoomStunt  03FB25  34B  T4  [race]</title></rect>
@@ -527,8 +527,8 @@
 <rect x="669.0" y="466.9" width="59.7" height="71.3" fill="#3fb950"><title>MenuSettingsFrame  0BBA4E  588B  T4  [menu]</title></rect>
 <rect x="729.2" y="466.9" width="46.3" height="71.3" fill="#3fb950"><title>MenuOamBuild  0BB64A  458B  T4  [menu]</title></rect>
 <rect x="446.4" y="538.8" width="62.5" height="52.4" fill="#3fb950"><title>MenuScreenOpenPreview  0BF784  454B  T4  [menu]</title></rect>
-<rect x="509.5" y="538.8" width="61.9" height="52.4" fill="#d29922"><title>StuntRecordsScreen  02F148  450B  T2  [menu]</title></rect>
-<rect x="572.0" y="538.8" width="57.1" height="52.4" fill="#d29922"><title>AllRecordsScreen  02F37A  415B  T2  [menu]</title></rect>
+<rect x="509.5" y="538.8" width="61.9" height="52.4" fill="#3fb950"><title>StuntRecordsScreen  02F148  450B  T4  [menu]</title></rect>
+<rect x="572.0" y="538.8" width="57.1" height="52.4" fill="#3fb950"><title>AllRecordsScreen  02F37A  415B  T4  [menu]</title></rect>
 <rect x="629.7" y="538.8" width="56.6" height="52.4" fill="#3fb950"><title>ResultsLower  0BDAD1  412B  T4  [menu]</title></rect>
 <rect x="686.9" y="538.8" width="44.4" height="52.4" fill="#3fb950"><title>MenuActorNew  0BB506  324B  T4  [menu]</title></rect>
 <rect x="732.0" y="538.8" width="43.6" height="52.4" fill="#3fb950"><title>MenuSelectArrive  0BB814  318B  T4  [menu]</title></rect>
@@ -549,7 +549,7 @@
 <rect x="489.7" y="627.7" width="35.0" height="35.2" fill="#3fb950"><title>MenuChoiceStepP1  0BC676  173B  T4  [menu]</title></rect>
 <rect x="489.7" y="663.5" width="35.0" height="35.2" fill="#3fb950"><title>MenuCrossFadeOut  0BD14A  173B  T4  [menu]</title></rect>
 <rect x="489.7" y="699.2" width="35.0" height="34.3" fill="#3fb950"><title>MenuStateInit  0BD4C3  169B  T4  [menu]</title></rect>
-<rect x="489.7" y="734.2" width="35.0" height="33.9" fill="#d29922"><title>SpeedRecordsPage  02EEF2  167B  T2  [menu]</title></rect>
+<rect x="489.7" y="734.2" width="35.0" height="33.9" fill="#3fb950"><title>SpeedRecordsPage  02EEF2  167B  T4  [menu]</title></rect>
 <rect x="489.7" y="768.7" width="35.0" height="32.3" fill="#3fb950"><title>MenuSettingsInput  0BC048  159B  T4  [menu]</title></rect>
 <rect x="489.7" y="801.6" width="35.0" height="31.9" fill="#3fb950"><title>MenuDropStart  0BCD7C  157B  T4  [menu]</title></rect>
 <rect x="489.7" y="834.0" width="35.0" height="31.6" fill="#d29922"><title>TitleScreenLoop  0BAF10  156B  T2  [menu]</title></rect>
@@ -739,7 +739,7 @@
 <rect x="1034.5" y="15.5" width="68.5" height="65.7" fill="#3fb950"><title>WindowsInit  09ECE0  626B  T4  [video]</title></rect>
 <rect x="779.1" y="81.8" width="47.6" height="51.4" fill="#d29922"><title>OverlaySpritesStep  04E048  342B  T2  [video]</title></rect>
 <rect x="779.1" y="133.8" width="47.6" height="50.6" fill="#3fb950"><title>RaceScreenSetup  03F32A  337B  T4  [video]</title></rect>
-<rect x="779.1" y="185.0" width="47.6" height="44.8" fill="#58a6ff"><title>PaletteCourseLoad  03EDF4  299B  T3  [video]</title></rect>
+<rect x="779.1" y="185.0" width="47.6" height="44.8" fill="#3fb950"><title>PaletteCourseLoad  03EDF4  299B  T4  [video]</title></rect>
 <rect x="779.1" y="230.4" width="47.6" height="41.7" fill="#3fb950"><title>RaceHudLoad  03DD1B  278B  T4  [video]</title></rect>
 <rect x="779.1" y="272.7" width="47.6" height="38.0" fill="#3fb950"><title>WindowSplitAnimate  7ED75E  254B  T4  [video]</title></rect>
 <rect x="779.1" y="311.3" width="47.6" height="37.7" fill="#3fb950"><title>WindowBandsAnimate  7ED5EC  252B  T4  [video]</title></rect>
@@ -1250,17 +1250,17 @@
 <rect x="1593.6" y="617.8" width="4.3" height="5.2" fill="#3fb950"><title>RandomStepLong  02DF79  4B  T4  [math]</title></rect>
 <rect x="1593.6" y="623.5" width="4.3" height="5.2" fill="#3fb950"><title>ScaleDp02Dp94Long  0883E8  4B  T4  [math]</title></rect>
 <text x="1237.3" y="641.3" font-size="10" fill="#8b949e">hud</text>
-<rect x="1235.8" y="646.3" width="134.4" height="113.6" fill="#d29922"><title>HudBestTimeSprites  03DF61  2177B  T2  [hud]</title></rect>
-<rect x="1235.8" y="760.5" width="52.6" height="38.4" fill="#58a6ff"><title>HudSlideOut  7EAEE0  293B  T3  [hud]</title></rect>
+<rect x="1235.8" y="646.3" width="134.4" height="113.6" fill="#3fb950"><title>HudBestTimeSprites  03DF61  2177B  T4  [hud]</title></rect>
+<rect x="1235.8" y="760.5" width="52.6" height="38.4" fill="#3fb950"><title>HudSlideOut  7EAEE0  293B  T4  [hud]</title></rect>
 <rect x="1289.0" y="760.5" width="45.7" height="38.4" fill="#3fb950"><title>RecordTimeInsert  07B7DE  255B  T4  [hud]</title></rect>
-<rect x="1335.2" y="760.5" width="35.0" height="38.4" fill="#58a6ff"><title>RaceHudSpritesHide  03DE39  196B  T3  [hud]</title></rect>
+<rect x="1335.2" y="760.5" width="35.0" height="38.4" fill="#3fb950"><title>RaceHudSpritesHide  03DE39  196B  T4  [hud]</title></rect>
 <rect x="1235.8" y="799.5" width="28.4" height="40.7" fill="#3fb950"><title>TimeTotalsSum  07B67E  169B  T4  [hud]</title></rect>
 <rect x="1235.8" y="840.8" width="28.4" height="29.7" fill="#3fb950"><title>HudGaugesPanelB  7EEE7B  124B  T4  [hud]</title></rect>
 <rect x="1235.8" y="871.1" width="28.4" height="26.8" fill="#3fb950"><title>MapMarkerSprites  7F0AD6  112B  T4  [hud]</title></rect>
 <rect x="1264.8" y="799.5" width="26.7" height="25.9" fill="#3fb950"><title>HudDrawTime  7EB00C  102B  T4  [hud]</title></rect>
 <rect x="1264.8" y="826.0" width="26.7" height="25.4" fill="#3fb950"><title>HudPanelsStep  7EAE5E  100B  T4  [hud]</title></rect>
 <rect x="1264.8" y="852.0" width="26.7" height="24.9" fill="#3fb950"><title>BcdToBinary  07AC77  98B  T4  [hud]</title></rect>
-<rect x="1264.8" y="877.5" width="26.7" height="20.4" fill="#58a6ff"><title>HudBestTimeDigits  03DF10  81B  T3  [hud]</title></rect>
+<rect x="1264.8" y="877.5" width="26.7" height="20.4" fill="#3fb950"><title>HudBestTimeDigits  03DF10  81B  T4  [hud]</title></rect>
 <rect x="1292.0" y="799.5" width="21.6" height="22.3" fill="#3fb950"><title>TimeAddToNext  07B796  72B  T4  [hud]</title></rect>
 <rect x="1314.3" y="799.5" width="19.8" height="22.3" fill="#3fb950"><title>BinaryToBcd  07ACD9  66B  T4  [hud]</title></rect>
 <rect x="1334.6" y="799.5" width="17.6" height="22.3" fill="#3fb950"><title>TimeAddToTotal  07B75B  59B  T4  [hud]</title></rect>
@@ -1414,4 +1414,4 @@
 <rect x="1573.6" y="855.3" width="24.3" height="21.9" fill="#3fb950"><title>JoypadAccumulate  7EB1E1  85B  T4  [input]</title></rect>
 <rect x="1573.6" y="877.8" width="15.7" height="20.1" fill="#3fb950"><title>JoypadRead  7EB1AE  51B  T4  [input]</title></rect>
 <rect x="1589.9" y="877.8" width="8.0" height="20.1" fill="#3fb950"><title>FrameSoundAndJoypads  7EA7A3  27B  T4  [input]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 1305 &#183; T3 behaviour-exact 24 &#183; 123,385/186,379 bytes exact (66.2%) &#183; green=T4 blue=T3 amber=T2 gray=T1</text></svg>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 1315 &#183; T3 behaviour-exact 18 &#183; 127,567/186,379 bytes exact (68.4%) &#183; green=T4 blue=T3 amber=T2 gray=T1</text></svg>
