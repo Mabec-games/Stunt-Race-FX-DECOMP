@@ -988,6 +988,15 @@ static void fetch_avail(void)
     STORE(sh->h_ops, cur_rec->opoff + cur_n);
 }
 
+/* For the Super FX side's waits: while the hybrid waits for a Super FX
+   call of the original's to end, the original runs on in the S-CPU call
+   that started it and may be waiting for room in this ring, so it is
+   drained as in the frame wait. */
+void lockstep_drain(void)
+{
+    if (role == 2) fetch_avail();
+}
+
 static int fetch_more(uint32_t need)
 {
     long spins = 0;
@@ -1714,7 +1723,7 @@ void lockstep_before_frame(long f)
 {
     cur_frame = f;
     if (role == 1) {
-        WAIT_UNTIL(f - LOAD(sh->h_frames) < NSLOT - 1);
+        WAIT_UNTIL(f - LOAD(sh->h_frames) < NSLOT - 1 && gsu_lockstep_ring_room());
         FrameSlot *fs = &sh->fs[f % NSLOT];
         fs->frame = f; fs->ncalls = 0;
     } else if (role == 2) {

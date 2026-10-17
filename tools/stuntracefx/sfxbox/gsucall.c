@@ -583,6 +583,7 @@ static long frame_now;
 #define STORE(x, v) __atomic_store_n(&(x), (v), __ATOMIC_SEQ_CST)
 #define WAIT_UNTIL(cond) do { long spins_ = 0; while (!(cond)) { \
         if (*stuck || (role == 2 && getppid() == 1)) _exit(6); \
+        lockstep_drain(); \
         if (++spins_ > 600000) { \
             fprintf(stderr, "lockstep: %s side stuck in frame %ld waiting for Super FX %s; calls o/h %llu/%llu\n", \
                     role == 1 ? "original" : "hybrid", frame_now, #cond, (unsigned long long)LOAD(sh->o_calls), \
@@ -608,6 +609,22 @@ static void op(uint8_t kind, uint32_t arg)
     sh->arg[n % OPRING] = arg;
     sh->calls[m.call % CALLRING].opn++;
     STORE(sh->o_ops, n + 1);
+}
+
+/* Asked by the original side before each frame: whether it may run on.
+   It runs ahead of the hybrid by up to NSLOT frames, and every Super FX
+   access it makes then waits in the op ring until the hybrid takes the
+   call. A long program left open (the frame program runs over several
+   frames) with that backlog can fill the ring: the original then waits
+   inside the call for room, the hybrid for the call's end, and neither
+   moves. So with the ring half full the original waits at the frame's
+   start until the hybrid has taken every call before the open one (all
+   it can take, so the wait always ends). */
+int gsu_lockstep_ring_room(void)
+{
+    if (role != 1 || !sh) return 1;
+    if (LOAD(sh->o_ops) - LOAD(sh->h_ops) < OPRING / 2) return 1;
+    return LOAD(sh->h_calls) >= (m.active ? m.call : LOAD(sh->o_calls));
 }
 
 static void orig_insn(uint32_t pc, uint32_t prev_end, uint8_t opcode)
