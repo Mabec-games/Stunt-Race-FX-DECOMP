@@ -29,6 +29,7 @@ void abi_ObjectBreakOffChance(void);
 void abi_ObjectRebucket(void);
 void abi_ObjectCarSpawn(void);
 void abi_CarCrashParts(void);
+void abi_CameraSnapToCar(void);
 void abi_ObjectNearFocus(void);
 void abi_ObjectPoseFromRecord(void);
 void abi_GsuRecordFlag4(void);
@@ -4143,7 +4144,7 @@ void abi_CameraDirectorBehind(void)
     sta16_imm(b | (uint16_t)(0x0020 + cpu.y), 0x0000);
     sta16_imm(b | (uint16_t)(0x0022 + cpu.y), 0xFF74);
     sta16_imm(b | (uint16_t)(0x0024 + cpu.y), 0xFE0C);
-    call_routine(0x088F03, 0);
+    abi_CameraSnapToCar();
     set_handler(cpu.x, 0x8EA2);
     lda8(0x50);
     wr8(b | (uint16_t)(0x2048 + cpu.x), 0x50);
@@ -4160,7 +4161,7 @@ void abi_CameraDirectorBehind(void)
 void abi_CameraDirectorReset(void)
 {
     director_mode(0x0655);
-    call_routine(0x088F03, 0);
+    abi_CameraSnapToCar();
     director_table_start();
 }
 

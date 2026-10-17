@@ -5285,7 +5285,7 @@ CameraDirectorBehind:
     lda.w #$FE0C
     sta.w !actor_palette,y
     sep.b #$20
-    jsr.w CameraDirector8F03
+    jsr.w CameraSnapToCar
     rep.b #$20
     lda.w #$8EA2
     sta.w !obj_1a_w,x
@@ -5321,7 +5321,7 @@ CameraDirectorReset:
     lda.w #$0655
     sta.w !bank0_base,y
     sep.b #$20
-    jsr.w CameraDirector8F03
+    jsr.w CameraSnapToCar
 CameraDirectorTableStart:
     ldy.w !obj_link_w,x
     rep.b #$20
