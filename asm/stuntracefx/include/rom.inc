@@ -390,3 +390,4 @@ ObjectChildD1BF = $08D1BF                       ; 08:D1BF, a child's change of h
 !hud_split_pos = $E7EA     ; bank 03: the split screen sprites' X/Y words
 !hud_split_size = $E80A    ; bank 03: their size bits
 !hud_split_tiles = $E80F   ; bank 03: their tile and attribute words
+!path_table_offset = !path_table&$FFFF        ; ObjectPathStart: the path table's address in its bank

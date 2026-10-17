@@ -2631,14 +2631,14 @@ ObjectPlaceOnParent_fixed:              ; reached by the long jump above
 ObjectPlaceOnParent_attrs:
     phx
     ldx.w #$1A64
-    lda.b $11,x
+    lda.b !bank0_base+17,x
     plx
     jsr.w ObjectTableE8AF
     ora.b #$80
     sta.w !obj_18,y
     phx
     ldx.w #$1A9F
-    lda.b $11,x
+    lda.b !bank0_base+17,x
     plx
     jsr.w ObjectTableE8AF
     ora.b #$80

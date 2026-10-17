@@ -554,7 +554,7 @@ StuntRecordsDraw:
     lda.w #$043F
     ldx.w #$3000
     ldy.w #$93D7
-    mvn $7F,$70
+    mvn !tilemap_7f93d7>>16,!gsu_picture>>16
     plp
     plb
     jsr.w DigitTiles1184
@@ -601,7 +601,7 @@ ResultsPanelFAB5:
     lda.w #$043F
     ldx.w #$3000
     ldy.w #$93D7
-    mvn $7F,$70
+    mvn !tilemap_7f93d7>>16,!gsu_picture>>16
     plp
     plb
     jsr.w DigitTiles1184
@@ -628,7 +628,7 @@ TimedRecordsDraw:
     lda.w #$043F
     ldx.w #$3000
     ldy.w #$93D7
-    mvn $7F,$70
+    mvn !tilemap_7f93d7>>16,!gsu_picture>>16
     plp
     plb
     jsr.w DigitTiles1184
@@ -685,7 +685,7 @@ ResultsPanelF38E:
     lda.w #$043F
     ldx.w #$3000
     ldy.w #$93D7
-    mvn $7F,$70
+    mvn !tilemap_7f93d7>>16,!gsu_picture>>16
     plp
     plb
     jsr.w DigitTiles1184
@@ -782,7 +782,7 @@ ResultsPanelFB99:
     lda.w #$043F
     ldx.w #$3000
     ldy.w #$93D7
-    mvn $7F,$70
+    mvn !tilemap_7f93d7>>16,!gsu_picture>>16
     plp
     plb
     jsr.w DigitTiles1184
@@ -810,7 +810,7 @@ ResultsPanelFA39:
     lda.w #$043F
     ldx.w #$3000
     ldy.w #$93D7
-    mvn $7F,$70
+    mvn !tilemap_7f93d7>>16,!gsu_picture>>16
     plp
     plb
     jsr.w DigitTiles1184

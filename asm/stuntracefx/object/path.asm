@@ -161,7 +161,7 @@ ObjectPathStart:
     rep.b #$20
     tya
     sec
-    sbc.w #!path_table&$FFFF
+    sbc.w #!path_table_offset
     sta.w !obj_29,x
     sep.b #$20
     jsl.l ObjectPathCommand
