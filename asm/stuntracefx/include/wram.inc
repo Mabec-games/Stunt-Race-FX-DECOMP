@@ -1670,3 +1670,11 @@ includeonce
 !fx_spin = $70233A                ; the spin sums: z, x, y
 !obj_39 = $2039
 !frame_step = $1168
+
+
+; Super FX text (render/text.asm)
+!fx_text_at = $702732             ; the string's address (0: none)
+!fx_text_bank = $702734           ; its ROM bank
+!fx_text_x = $702738              ; where it starts: X, then Y
+!fx_text_y = $70273A
+!fx_text_flags = $70273C          ; bit 0: the nearest car's label is shown

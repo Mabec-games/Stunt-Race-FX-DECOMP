@@ -1,0 +1,50 @@
+# unit_text: unit tests (fx) of FxTextProgram (FxTextDraw) from the start
+# of a Novice race, with $2732/$2734 pointing at strings the game has in
+# ROM: the attract demos' captions at $03:83A7 ("PROGRAMMERS": position,
+# font, palette, half line, space, small glyphs, new lines), $03:8365
+# (the pictures $F7 and $F8) and $03:8636 (the picture $F9); "NK" at
+# $00:96AC (big glyphs); string tails at $00:C6A8 (the picture $FB),
+# $00:8367 (the picture $FA) and $00:95AC (a byte $F4, which only advances
+# X), $00:945F (a space in the big font) and $05:BDAB (the big font
+# chosen); and no string ($2732 = 0). R11 is the STOP at $01:80E3 (the program
+# has its own).
+load build/stuntracefx/states/novice_coupe_race1.state
+set 702732 A7,83,03,00
+fx 01:D307 stop=80E3
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 702732 65,83,03,00
+fx 01:D307 stop=80E3
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 702732 36,86,03,00
+fx 01:D307 stop=80E3
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 702732 AC,96,00,00
+fx 01:D307 stop=80E3
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 702732 A8,C6,00,00
+fx 01:D307 stop=80E3
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 702732 67,83,00,00
+fx 01:D307 stop=80E3
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 702732 AC,95,00,00
+fx 01:D307 stop=80E3
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 702732 00,00,00,00
+fx 01:D307 stop=80E3
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 702732 5F,94,00,00
+fx 01:D307 stop=80E3
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 702732 AB,BD,05,00
+fx 01:D307 stop=80E3
+wait 1
