@@ -374,6 +374,7 @@ AttractRaceSetup = $02CF3E                      ; 02:CF3E, the attract race's se
 AttractCourseSetupRom = $02CF45                    ; 02:CF45, the attract race's course (not filed yet)
 AttractViewStartRom = $02CFC6                   ; 02:CFC6, AttractViewStart's ROM copy, which the game runs
 ViewParamsByPlayersRom = $02D410                ; 02:D410, ViewParamsByPlayers's ROM copy
+UnusedScreenTilesRom = $02D313                  ; 02:D313, UnusedScreenTiles' ROM copy, which the unused screen calls
 AttractViewRest = $03AE73                       ; 03:AE73, where AttractViewStart goes on (not filed yet)
 CarSpawnCrash = $08B292                         ; 08:B292, ObjectCarSpawnPlace's crash screen for a car with no record (not filed yet)
 ObjectCarBA57 = $08BA57                         ; 08:BA57 (not filed yet)

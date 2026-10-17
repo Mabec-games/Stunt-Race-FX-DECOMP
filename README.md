@@ -67,14 +67,14 @@ _Snapshot 2026-10-17._
 M1  Behaviour exact (T3 + T4)
     ███████████████████████████████████░░░░░   88.7%   175,566 / 197,995 B of the game's code
 M2  Byte exact (T4)
-    ███████████████████████████████████░░░░░   87.7%   173,672 / 197,995 B of the game's code
+    ███████████████████████████████████░░░░░   87.9%   174,018 / 197,995 B of the game's code
 ```
 
-The bars measure the whole game's S-CPU and Super FX code, 197,995 B: 190,096 B the scripts have run and 7,899 B the [routine census](docs/stuntracefx/ROUTINE_CENSUS.md) finds that no script has run yet. Certified so far: 1787 routines behaviour exact, 1782 of them byte exact.
+The bars measure the whole game's S-CPU and Super FX code, 197,995 B: 190,096 B the scripts have run and 7,899 B the [routine census](docs/stuntracefx/ROUTINE_CENSUS.md) finds that no script has run yet. Certified so far: 1787 routines behaviour exact, 1785 of them byte exact.
 
 | Processor | M1: behaviour exact | M2: byte exact |
 |---|---|---|
-| **S-CPU (65816)** | `██████████████████░░` 91.6%: 134,933/147,349 B | `██████████████████░░` 90.3%: 133,039/147,349 B |
+| **S-CPU (65816)** | `██████████████████░░` 91.6%: 134,933/147,349 B | `██████████████████░░` 90.5%: 133,385/147,349 B |
 | **Super FX (GSU-1)** | `████████████████░░░░` 80.2%: 40,633/50,646 B | `████████████████░░░░` 80.2%: 40,633/50,646 B |
 | **SPC700 (sound)** | not yet measured | not yet measured |
 <!-- PROGRESS:END -->

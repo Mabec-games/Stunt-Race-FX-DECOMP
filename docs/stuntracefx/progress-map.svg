@@ -1174,7 +1174,7 @@
 <rect x="1526.3" y="79.4" width="35.7" height="47.9" fill="#3fb950"><title>WindowSplitAnimate  7ED75E  254B  T4  [video]</title></rect>
 <rect x="1562.5" y="79.4" width="35.4" height="47.9" fill="#3fb950"><title>WindowBandsAnimate  7ED5EC  252B  T4  [video]</title></rect>
 <rect x="1280.6" y="127.9" width="37.9" height="44.1" fill="#d29922"><title>NmiFrameUpload  7EA7BE  249B  T2  [video]</title></rect>
-<rect x="1280.6" y="172.6" width="37.9" height="44.1" fill="#58a6ff"><title>UnusedScreenTiles  7EF5EC  249B  T3  [video]</title></rect>
+<rect x="1280.6" y="172.6" width="37.9" height="44.1" fill="#3fb950"><title>UnusedScreenTiles  7EF5EC  249B  T4  [video]</title></rect>
 <rect x="1280.6" y="217.3" width="37.9" height="43.9" fill="#3fb950"><title>HardwareRegsInit02  02D6B3  248B  T4  [video]</title></rect>
 <rect x="1280.6" y="261.8" width="37.9" height="43.2" fill="#3fb950"><title>GradientSetup  0BFE12  244B  T4  [video]</title></rect>
 <rect x="1280.6" y="305.5" width="37.9" height="39.4" fill="#3fb950"><title>BackdropRowsUpdate  7EE815  223B  T4  [video]</title></rect>
@@ -1253,7 +1253,7 @@
 <rect x="1417.9" y="237.5" width="19.7" height="18.2" fill="#3fb950"><title>WindowSlideDown  7EDDF0  55B  T4  [video]</title></rect>
 <rect x="1438.2" y="237.5" width="19.7" height="18.2" fill="#3fb950"><title>WindowSlideUp  7EDE27  55B  T4  [video]</title></rect>
 <rect x="1458.5" y="237.5" width="19.7" height="18.2" fill="#3fb950"><title>BobWindow0  7EDEFE  55B  T4  [video]</title></rect>
-<rect x="1478.7" y="237.5" width="19.7" height="18.2" fill="#58a6ff"><title>PaletteToBuffers  02D506  55B  T3  [video]</title></rect>
+<rect x="1478.7" y="237.5" width="19.7" height="18.2" fill="#3fb950"><title>PaletteToBuffers  02D506  55B  T4  [video]</title></rect>
 <rect x="1499.0" y="237.5" width="19.7" height="18.2" fill="#3fb950"><title>VideoStartUploads  03EC6D  55B  T4  [video]</title></rect>
 <rect x="1519.3" y="237.5" width="19.7" height="18.2" fill="#3fb950"><title>OamWordRow5  07D576  55B  T4  [video]</title></rect>
 <rect x="1539.5" y="237.5" width="19.3" height="18.2" fill="#3fb950"><title>WindowHdmaFFDD  7ED8A8  54B  T4  [video]</title></rect>
@@ -1296,7 +1296,7 @@
 <rect x="1453.9" y="291.3" width="16.8" height="16.5" fill="#3fb950"><title>OamPaletteFromTableE26A  04E23F  43B  T4  [video]</title></rect>
 <rect x="1453.9" y="308.3" width="16.8" height="16.1" fill="#3fb950"><title>RasterPaletteUpload  7EB72B  42B  T4  [video]</title></rect>
 <rect x="1453.9" y="325.0" width="16.8" height="16.1" fill="#3fb950"><title>WindowSweep  7EDE5E  42B  T4  [video]</title></rect>
-<rect x="1453.9" y="341.7" width="16.8" height="16.1" fill="#58a6ff"><title>TileRowUpload  02D9EA  42B  T3  [video]</title></rect>
+<rect x="1453.9" y="341.7" width="16.8" height="16.1" fill="#3fb950"><title>TileRowUpload  02D9EA  42B  T4  [video]</title></rect>
 <rect x="1453.9" y="358.3" width="16.8" height="15.7" fill="#3fb950"><title>WindowSweepIfOn  7ED311  41B  T4  [video]</title></rect>
 <rect x="1453.9" y="374.6" width="16.8" height="15.7" fill="#3fb950"><title>TilemapRowFromFB4E  02FAFE  41B  T4  [video]</title></rect>
 <rect x="1453.9" y="390.8" width="16.8" height="15.7" fill="#3fb950"><title>PaletteDarkenFour  04E1FE  41B  T4  [video]</title></rect>
@@ -1847,4 +1847,4 @@
 <rect x="1563.7" y="869.0" width="17.6" height="28.9" fill="#3fb950"><title>JoypadAccumulate  7EB1E1  85B  T4  [input]</title></rect>
 <rect x="1581.8" y="869.0" width="16.1" height="18.7" fill="#3fb950"><title>JoypadRead  7EB1AE  51B  T4  [input]</title></rect>
 <rect x="1581.8" y="888.3" width="16.1" height="9.6" fill="#3fb950"><title>FrameSoundAndJoypads  7EA7A3  27B  T4  [input]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 1782 &#183; T3 behaviour-exact 5 &#183; 173,672/197,995 bytes exact (87.7%) &#183; green=T4 blue=T3 amber=T2 gray=T1</text></svg>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 1785 &#183; T3 behaviour-exact 2 &#183; 174,018/197,995 bytes exact (87.9%) &#183; green=T4 blue=T3 amber=T2 gray=T1</text></svg>

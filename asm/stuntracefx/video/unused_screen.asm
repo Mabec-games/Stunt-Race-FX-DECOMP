@@ -108,7 +108,7 @@ PaletteToBuffers:
     rep.b #$20
 .loop:
     lda.l !palettes_a145,x
-    sta.w !palette_buffer_e997&$FFFF,y
+    sta.w !palette_buffer_e997,y
     sta.w !palette_buffer_0802,y
     inx
     inx
@@ -470,7 +470,7 @@ TileRowUploadLong:
 TileRowUpload:
     lda.b #$80
     sta.w !VMAIN
-    lda.b #!VMDATAL&$FF
+    lda.b #$18                  ; B bus $2118, VRAM data
     sta.w !BBAD0
     ldx.w #!tile_row
     stx.w !A1T0L
@@ -853,8 +853,6 @@ UnusedScreenTiles:
     plb
     sep.b #$20
     rtl
-
-UnusedScreenTilesRom = $02D313    ; UnusedScreenTiles' ROM copy, which the screen calls
 
 ; @routine 7E:F6E5 ObjectLinkBobStartLong
 ; WHAT IT DOES: A second copy of ViewParamsBobLong ($7E:F737), which
