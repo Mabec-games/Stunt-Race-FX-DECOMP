@@ -1,0 +1,27 @@
+# unit_tilemap_dma: unit tests (call) from the start of a Novice race for
+# the BG2 tilemap uploads in RAM code no play runs (7E:B236-B2CF), with
+# 8-bit and 16-bit registers, entered with the data bank 0.
+load build/stuntracefx/states/novice_coupe_race1.state
+call 7E:B2B6 x=1234 y=0311 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 7E:B2B6 x=1234 y=0311 p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 7E:B2CF x=1234 y=0311 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 7E:B2CF x=1234 y=0311 p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 7E:B236 x=1234 y=0311 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 7E:B236 x=1234 y=0311 p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 7E:B241 x=1234 y=0311 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 7E:B241 x=1234 y=0311 p=30 db=00 d=0000
+wait 1
