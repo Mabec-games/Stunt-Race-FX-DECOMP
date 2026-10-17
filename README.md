@@ -55,16 +55,16 @@ _Snapshot 2026-10-17._
 
 ```
 M1  Behaviour exact (T3 + T4)
-    ██████████████████████████████░░░░░░░░░░   74.0%   138,114 / 186,725 B of the game's code
+    ██████████████████████████████░░░░░░░░░░   74.4%   138,873 / 186,725 B of the game's code
 M2  Byte exact (T4)
-    █████████████████████████████░░░░░░░░░░░   71.4%   133,256 / 186,725 B of the game's code
+    █████████████████████████████░░░░░░░░░░░   72.1%   134,698 / 186,725 B of the game's code
 ```
 
-The bars measure the whole game's S-CPU and Super FX code, 186,725 B: 169,170 B the scripts have run and 17,555 B the [routine census](docs/stuntracefx/ROUTINE_CENSUS.md) finds that no script has run yet. Certified so far: 1338 routines behaviour exact, 1320 of them byte exact.
+The bars measure the whole game's S-CPU and Super FX code, 186,725 B: 169,170 B the scripts have run and 17,555 B the [routine census](docs/stuntracefx/ROUTINE_CENSUS.md) finds that no script has run yet. Certified so far: 1347 routines behaviour exact, 1334 of them byte exact.
 
 | Processor | M1: behaviour exact | M2: byte exact |
 |---|---|---|
-| **S-CPU (65816)** | `███████████████░░░░░` 76.0%: 103,893/136,650 B | `███████████████░░░░░` 75.2%: 102,782/136,650 B |
+| **S-CPU (65816)** | `███████████████░░░░░` 76.6%: 104,652/136,650 B | `███████████████░░░░░` 76.3%: 104,224/136,650 B |
 | **Super FX (GSU-1)** | `██████████████░░░░░░` 68.3%: 34,221/50,075 B | `████████████░░░░░░░░` 60.9%: 30,474/50,075 B |
 | **SPC700 (sound)** | not yet measured | not yet measured |
 <!-- PROGRESS:END -->
@@ -97,7 +97,7 @@ are in the tree but not yet certified (T2).
 
 **Why not routines.** A routine count keeps growing as the work goes on:
 every entry point filed in C or reached by a new script splits code already
-counted into more routines (the census now counts about 1,661, 1,550 of them
+counted into more routines (the census now counts about 1,651, 1,550 of them
 named), while the bytes stay put: tracing a new script moves bytes from
 "found" to "run" and barely changes the total. Of the
 ROM's 1,048,576 B, the scripts have run 169,170 B as code and read 591,457 B as data;
