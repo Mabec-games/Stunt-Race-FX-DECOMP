@@ -180,6 +180,34 @@ static inline void gsu_plot_r1(void)
     gsu.r[1] = (uint16_t)(gsu.r[1] + 1);
 }
 
+/* MULT and UMULT (Rn or #n): the low bytes multiplied, signed or not;
+   S and Z from the product. */
+static inline uint16_t gsu_mult(uint16_t a, uint16_t b)
+{
+    uint16_t v = (uint16_t)((int8_t)a * (int8_t)b);
+
+    gsu_sz(v);
+    return v;
+}
+
+static inline uint16_t gsu_umult(uint16_t a, uint16_t b)
+{
+    uint16_t v = (uint16_t)((uint8_t)a * (uint8_t)b);
+
+    gsu_sz(v);
+    return v;
+}
+
+/* RPIX: the pixel at (x, y), the pixel caches written out first; S and Z
+   from it. */
+static inline uint16_t gsu_rpix_r(uint16_t x, uint16_t y)
+{
+    uint16_t v = gsu_rpix((uint8_t)x, (uint8_t)y);
+
+    gsu_sz(v);
+    return v;
+}
+
 /* A word pushed on the R10 stack (STW, INC, INC) and pulled back (DEC,
    DEC, LDW). */
 static inline void gsu_push(uint16_t *sp, uint16_t v)

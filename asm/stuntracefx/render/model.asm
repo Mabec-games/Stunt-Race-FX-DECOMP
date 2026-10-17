@@ -9,6 +9,71 @@ incsrc "../include/wram.inc"
 arch superfx
 
 ;
+; @routine 01:8000 FxModelCommands
+; WHAT IT DOES: The model interpreter's command table: command byte cc
+; (0, 4, ... $64) runs the entry at 01:80cc, which jumps to that
+; command's code. The code reaches an entry through the bank's mirror
+; (TO R15; GETB jumps to 01:00cc).
+; HOW: 26 entries of IWT R15,#code; NOP (the NOP is the jump's delay
+; slot).
+; Entry: R15 = 01:00cc (a command's last GETB); R10 = stack; R14 at the
+; command's bytes.
+; Exit: as the command's code leaves the registers, flags and RAM.
+%at($018000)
+FxModelCommands:
+    iwt r15,#FxModelEnd
+    nop
+    iwt r15,#FxModelPoints01
+    nop
+    iwt r15,#FxModelPointsFull
+    nop
+    iwt r15,#FxModelProject
+    nop
+    iwt r15,#FxModelDepthSort
+    nop
+    iwt r15,#FxModelFaces
+    nop
+    iwt r15,#FxModelReturn
+    nop
+    iwt r15,#FxModelFramePick
+    nop
+    iwt r15,#FxModelJump
+    nop
+    iwt r15,#FxModelReturn
+    nop
+    iwt r15,#FxModelIfSkip
+    nop
+    iwt r15,#FxModelReturn
+    nop
+    iwt r15,#FxModelFacing
+    nop
+    iwt r15,#FxModelPointsScaled
+    nop
+    iwt r15,#FxModelPointsMirrored
+    nop
+    iwt r15,#FxModelListStart3C
+    nop
+    iwt r15,#FxModelReturn40
+    nop
+    iwt r15,#FxModelPushReturn
+    nop
+    iwt r15,#FxModelReturn
+    nop
+    iwt r15,#FxModelPointsFull
+    nop
+    iwt r15,#FxModelSprite
+    nop
+    iwt r15,#FxModelIfSprite
+    nop
+    iwt r15,#FxModelListStart
+    nop
+    iwt r15,#FxModelIfCall
+    nop
+    iwt r15,#FxModelCall
+    nop
+    iwt r15,#FxModelReturnPull
+    nop
+;
 ; @routine 01:8561 FxModelDraw
 ; WHAT IT DOES: Draws a 3D model: sets up the object's rotation, light
 ; and point scale, then runs the model's command list from ROM ($0016,

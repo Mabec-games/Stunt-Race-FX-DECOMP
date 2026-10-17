@@ -1793,3 +1793,12 @@ includeonce
 !fx_weather_colour = $7026FE     ; a new drop's colour
 !fx_weather_turn = $702B8E       ; the view's turn ($00E0) at the last drawing
 !fx_weather_drift = $702B90      ; the drops' sideways drift, eased towards a random aim
+
+; unused.asm (01:AD68-B0D8, code nothing calls)
+!fx_gauge_top = $7001AC           ; the top gauge's length (bit 7: halved)
+!fx_gauge_top_inner = $7001AE     ; its inner bar, cleared once drawn
+!fx_gauge_left = $7001CA          ; the left gauge's bar length
+!fx_gauge_right = $7001CE         ; the right gauge's bar length
+!fx_sprite_colour = $7000AC       ; a 32x32 sprite's colour (times 16)
+!fx_sprite_x = $7001D2            ; its centre
+!fx_sprite_y = $7001D4

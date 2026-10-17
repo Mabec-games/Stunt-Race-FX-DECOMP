@@ -82,16 +82,6 @@ void abi_FxScreenClear(void);
 void abi_FxSpriteMaterial(void);
 void abi_FxTextNotice(void);
 
-/* RPIX: the pixel at (x, y), the pixel caches written out first; S and Z
-   from it. */
-static uint16_t gsu_rpix_r(uint16_t x, uint16_t y)
-{
-    uint16_t v = gsu_rpix((uint8_t)x, (uint8_t)y);
-
-    gsu_sz(v);
-    return v;
-}
-
 /* The code from address at until it jumps to ret (the caller's return;
    $FFFF for a program, which ends at its STOP). */
 static void frame_run(uint16_t at, uint16_t ret)
@@ -2228,6 +2218,21 @@ void abi_FxObjectSpriteRows(void)
 void abi_FxEffectsAdd(void)
 {
     frame_run(0xB6D5, R[11]);
+}
+
+/*
+ * @routine 01:B763 FxEffectsAddNext
+ * WHAT IT DOES: FxEffectsAdd's step to the next particle: one fewer to
+ * add (R9); when none are left, or after the last of the twenty slots,
+ * the seed is kept at $01D0 and FxEffectsAdd returns.
+ * HOW: DEC R9; the next slot R3 + 14 by LOOP (R13 = $B6F4); the return
+ * pulled from the R10 stack. Every kind's set-up jumps here.
+ * Entry: as FxEffectsAdd leaves them in its slot loop.
+ * Exit: as FxEffectsAdd.
+ */
+void abi_FxEffectsAddNext(void)
+{
+    frame_run(0xB763, R[11]);
 }
 
 /*

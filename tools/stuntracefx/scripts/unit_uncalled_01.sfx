@@ -1,0 +1,113 @@
+# unit_uncalled_01: unit tests (fx) from the start of a Novice race for the
+# Super FX code at 01:AD68-B0D8 that nothing in the game calls or starts
+# (R11 = the STOP at $01:80E3, R10 = the stack at $0244):
+# - the two gauge drawers 01:AD68 and 01:AD9F, each with its gauge byte
+#   ($01CE, $01CA) 0 (no bar: the fill's zero-width return), $10 and $40
+#   (past the $24 cap);
+# - the boost gauge 01:ADD4 with $01AC 0 (nothing drawn, $01AE cleared),
+#   $20 with $01AE 5, $10 with $01AE $30 (at least $01AC + 10: cleared, so
+#   no inner bar), and $90 (bit 7: halved) with $01AE $40;
+# - the rectangle fill 01:AE3A with no rows (R4 = 0), the frame 01:AE5F,
+#   and the run 01:AE8D with 0 and 12 pixels;
+# - the clear programs 01:AE99 and 01:AEA9, and 01:AECA and 01:AEE1 with
+#   the byte $01C4 0 (nothing cleared) and 1;
+# - the sprite programs 01:B027 and 01:B08A with sprite $00AA 0 and $21
+#   (bit 5: the other colour mode), colour $00AC 3, at $01D2 = $40,
+#   $01D4 = $30; B08A draws through FxObjectSpriteAt (01:B17D) with the
+#   size $00CE $0100 and $0040.
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7001CE 00,00
+fx 01:AD68 stop=80E3 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7001CE 10,00
+fx 01:AD68 stop=80E3 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7001CE 40,00
+fx 01:AD68 stop=80E3 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7001CA 00,00
+fx 01:AD9F stop=80E3 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7001CA 10,00
+fx 01:AD9F stop=80E3 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7001CA 40,00
+fx 01:AD9F stop=80E3 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7001AC 00,00,05,00
+fx 01:ADD4 stop=80E3 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7001AC 20,00,05,00
+fx 01:ADD4 stop=80E3 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7001AC 10,00,30,00
+fx 01:ADD4 stop=80E3 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7001AC 90,00,40,00
+fx 01:ADD4 stop=80E3 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:AE3A stop=80E3 r0=0005 r1=0020 r2=0020 r3=0010 r4=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:AE5F stop=80E3 r0=0006 r1=0030 r2=0028 r3=0018 r4=0006
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:AE8D stop=80E3 r0=0007 r1=0010 r2=0040 r3=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:AE8D stop=80E3 r0=0007 r1=0010 r2=0040 r3=000C
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:AE99 stop=80E3
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:AEA9 stop=80E3
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7001C4 00,00
+fx 01:AECA stop=80E3
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7001C4 01,00
+fx 01:AECA stop=80E3
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7001C4 00,00
+fx 01:AEE1 stop=80E3
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7001C4 01,00
+fx 01:AEE1 stop=80E3
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7000AA 00,00,03,00
+set 7001D2 40,00,30,00
+fx 01:B027 stop=80E3
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7000AA 21,00,03,00
+set 7001D2 40,00,30,00
+fx 01:B027 stop=80E3
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7000AA 00,00,03,00
+set 7001D2 40,00,30,00
+set 7000CE 00,01
+fx 01:B08A stop=80E3
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7000AA 21,00,03,00
+set 7001D2 40,00,30,00
+set 7000CE 40,00
+fx 01:B08A stop=80E3
+wait 1

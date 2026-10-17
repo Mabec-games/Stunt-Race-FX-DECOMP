@@ -140,23 +140,6 @@ static uint16_t model_command(uint16_t cmd)
     return commands[cmd >> 2];
 }
 
-/* MULT and UMULT of the low bytes (MULT Rn and #n). */
-static uint16_t gsu_mult(uint16_t a, uint16_t b)
-{
-    uint16_t v = (uint16_t)((int8_t)a * (int8_t)b);
-
-    gsu_sz(v);
-    return v;
-}
-
-static uint16_t gsu_umult(uint16_t a, uint16_t b)
-{
-    uint16_t v = (uint16_t)((uint8_t)a * (uint8_t)b);
-
-    gsu_sz(v);
-    return v;
-}
-
 /* The code from address at until it jumps to ret (the caller's return). */
 static void model_run(uint16_t at, uint16_t ret)
 {
@@ -3337,6 +3320,10 @@ lAB11:
 dispatch:
     if (at == ret)
         return;
+    /* An entry of the command table (01:8000): its IWT R15 goes to the
+       command's code. */
+    if (at >= 0x8000 && at < 0x8000 + 4 * 26 && !(at & 3))
+        at = commands[(at - 0x8000) >> 2];
     switch (at) {
     case 0x8561: goto l8561;
     case 0x8571: goto l8571;
@@ -3612,6 +3599,24 @@ void abi_FxModelDraw(void)
 void abi_FxModelDrawFlagged(void)
 {
     model_run(0x8576, R[11]);
+}
+
+/*
+ * @routine 01:8000 FxModelCommands
+ * WHAT IT DOES: The model interpreter's command table: command byte cc
+ * (0, 4, ... $64) runs the entry at 01:80cc, which jumps to that
+ * command's code (commands[] above). The code reaches an entry through
+ * the bank's mirror (TO R15; GETB jumps to 01:00cc).
+ * HOW: 26 entries of IWT R15,#code; NOP; model_run's dispatch takes an
+ * entry's address to its command's code.
+ * Entry: R15 = 01:00cc (a command's last GETB); R10 = stack; R11 =
+ * return address; R14 at the command's bytes (bank $001C).
+ * Exit: as the command's code leaves the registers, flags and RAM; R14
+ * and the ROM buffer move as on the Super FX.
+ */
+void abi_FxModelCommands(void)
+{
+    model_run(0x8000, R[11]);
 }
 
 /*
