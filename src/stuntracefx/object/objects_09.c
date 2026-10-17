@@ -6256,3 +6256,959 @@ void abi_ObjectBumpPostStep(void)
 {
     bump_post_frame();
 }
+
+/* ---- 09:E3E4-ECDF: slide gates, meter, trails, window and slide gates ---- */
+
+void abi_ApproachHalfMin2Byte(void);
+
+/*
+ * @routine 09:E47D GateSlideStep
+ * WHAT IT DOES: The slide gate's lap 1 step: the first time (+$25 bit 0)
+ * the meter $1A29 = 1 with sound $5F; then +$0C slides $280 at a time
+ * toward the target +$27, and once there $1A29 = 2.
+ * HOW: A 16-bit CMP through $1F4C, then ADC or SBC #$280 by N.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A as the last
+ * step leaves it.
+ */
+void abi_GateSlideStep(void)
+{
+    uint16_t t;
+
+    if (!bit25(0x01)) {
+        or8(F(0x2025, cpu.x), 0x01);
+        cpu.p |= P_M;
+        st8i(db() | 0x1A29, 0x01);
+        sound0(0x5F);
+    }
+    copy16(db() | 0x1F4C, F(0x2027, cpu.x));
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(F(0x200C, cpu.x));
+    t = rd16(db() | 0x1F4C);
+    op_cmp16(t);
+    cpu.p |= P_M;
+    if (cpu.a == t) {
+        cpu.p |= P_M;
+        st8i(db() | 0x1A29, 0x02);
+        return;
+    }
+    cpu.p &= (uint8_t)~P_M;
+    if (cpu.p & P_N)
+        op_add16(0x0280);
+    else
+        op_sub16(0x0280);
+    wr16(F(0x200C, cpu.x), cpu.a);
+    cpu.p |= P_M;
+}
+
+/* 09:E441: synced to its record; a car's hit on lap 1 runs GateSlideStep,
+   on lap 2 eases the scale +$15 toward $80 (ApproachHalfMin2Byte). */
+static void slide_lap_frame(void)
+{
+    uint8_t lap;
+
+    abi_ObjectSyncToRecord();
+    lda8((uint8_t)(cpu.a & 0x01));
+    if (!(uint8_t)cpu.a)
+        return;
+    abi_RecordContactSummary();
+    lda8((uint8_t)(cpu.a & 0x01));
+    if (!(uint8_t)cpu.a)
+        return;
+    cpu.p |= P_M;
+    lap = ld8(db() | 0x0DEA);
+    cmp8(0x00);
+    if (lap == 0x00)
+        return;
+    cmp8(0x01);
+    if (lap == 0x01) {
+        abi_GateSlideStep();
+        return;
+    }
+    cmp8(0x02);
+    if (lap == 0x02)
+        ease8(F(0x2015, cpu.x), 0x80, abi_ApproachHalfMin2Byte);
+}
+
+/*
+ * @routine 09:E3E4 ObjectSlideLapGate
+ * WHAT IT DOES: Sets up the sliding lap gate: restart $09:E41A
+ * (ObjectSlideLapGateRecord), frame $09:E441 (ObjectSlideLapGateStep), its
+ * slide target +$27 = +$0C - $2080; its record and frame.
+ * HOW: Word and byte stores; a 16-bit copy and ADC.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectSlideLapGate(void)
+{
+    handlers2(0xE41A, 0xE441);
+    copy16(F(0x2027, cpu.x), F(0x200C, cpu.x));
+    add16(F(0x2027, cpu.x), 0xDF80);
+    gate42d(0x2A80);
+    slide_lap_frame();
+}
+
+/*
+ * @routine 09:E41A ObjectSlideLapGateRecord
+ * WHAT IT DOES: The gate's restart: its record ($42D, flag bit 4, at
+ * ($2A80, $2A80, $2A80)), then its frame.
+ * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
+ * Entry: as ObjectSlideLapGate. Exit: as ObjectSlideLapGate.
+ */
+void abi_ObjectSlideLapGateRecord(void)
+{
+    gate42d(0x2A80);
+    slide_lap_frame();
+}
+
+/*
+ * @routine 09:E441 ObjectSlideLapGateStep
+ * WHAT IT DOES: The gate's frame: synced to its record; a car's hit on lap
+ * 1 slides it toward its target (GateSlideStep), on lap 2 eases its scale
+ * +$15 toward $80.
+ * HOW: ObjectSyncToRecord, RecordContactSummary; ApproachHalfMin2Byte
+ * through $3E.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectSlideLapGateStep(void)
+{
+    slide_lap_frame();
+}
+
+/* +$48 to $1F58, then +$5A = it with bit 7. */
+static void show48(void)
+{
+    uint8_t v;
+
+    v = ld8(F(0x2048, cpu.x));
+    wr8(db() | 0x1F58, v);
+    v = ld8(db() | 0x1F58);
+    st8i_hi(F(0x205A, cpu.x), v);
+}
+
+/* 09:E4F2: the meter follows $1A29: 1 counts +$48 up to 7, 2 down to 0,
+   shown at +$5A; 0 leaves it. */
+static void meter_frame(void)
+{
+    uint8_t v;
+
+    cpu.p |= P_M;
+    v = ld8(db() | 0x1A29);
+    if (v) {
+        cmp8(0x01);
+        if (v == 0x01) {
+            v = ld8(F(0x2048, cpu.x));
+            cmp8(0x07);
+            if (v != 0x07)
+                inc8(F(0x2048, cpu.x));
+        } else {
+            v = ld8(F(0x2048, cpu.x));
+            cmp8(0x00);
+            if (v != 0x00)
+                dec8(F(0x2048, cpu.x));
+        }
+        show48();
+    }
+    abi_ObjectRebucket();
+}
+
+/*
+ * @routine 09:E4D6 ObjectSlideMeter
+ * WHAT IT DOES: Sets up the slide meter: frame $09:E4F2
+ * (ObjectSlideMeterStep), +$48 = 0, +$5A = 0 with bit 7; then its frame.
+ * HOW: Word and byte stores; starts with a NOP, as the course data's
+ * pointers expect.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket
+ * leaves it.
+ */
+void abi_ObjectSlideMeter(void)
+{
+    handler(cpu.x, 0xE4F2);
+    st8i(F(0x2048, cpu.x), 0x00);
+    st8i_hi(F(0x205A, cpu.x), 0x00);
+    meter_frame();
+}
+
+/*
+ * @routine 09:E4F2 ObjectSlideMeterStep
+ * WHAT IT DOES: The meter's frame: while the slide gate runs ($1A29 = 1)
+ * +$48 counts up to 7, once it is there ($1A29 = 2) back down to 0; shown
+ * at +$5A with bit 7.
+ * HOW: CMP, INC/DEC; the count through $1F58; ObjectRebucket.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket
+ * leaves it.
+ */
+void abi_ObjectSlideMeterStep(void)
+{
+    meter_frame();
+}
+
+/* 09:E581: $19E7 = 1 while a car hits it, else 0. */
+static void trail_zone_frame(void)
+{
+    if (hit()) {
+        cpu.p |= P_M;
+        st8i(db() | 0x19E7, 0x01);
+        return;
+    }
+    wr8(db() | 0x19E7, 0x00);
+}
+
+/*
+ * @routine 09:E53C ObjectTrailZone
+ * WHAT IT DOES: Sets up the trail zone: restart $09:E55A
+ * (ObjectTrailZoneRecord), frame $09:E581 (ObjectTrailZoneStep); its record
+ * and frame.
+ * HOW: Word and byte stores. Reached only by unit_objects_09e.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectTrailZone(void)
+{
+    handlers2(0xE55A, 0xE581);
+    gate42d(0x1680);
+    trail_zone_frame();
+}
+
+/*
+ * @routine 09:E55A ObjectTrailZoneRecord
+ * WHAT IT DOES: The zone's restart: its record ($42D, flag bit 4, at
+ * ($1680, $1680, $1680)), then its frame.
+ * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition. Reached only
+ * by unit_objects_09e.
+ * Entry: as ObjectTrailZone. Exit: as ObjectTrailZone.
+ */
+void abi_ObjectTrailZoneRecord(void)
+{
+    gate42d(0x1680);
+    trail_zone_frame();
+}
+
+/*
+ * @routine 09:E581 ObjectTrailZoneStep
+ * WHAT IT DOES: The zone's frame: $19E7 = 1 while a car hits it, else 0
+ * (the trails follow the player while it is set).
+ * HOW: ObjectSyncFromRecord, RecordContactSummary; STZ. Reached only by
+ * unit_objects_09e.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectTrailZoneStep(void)
+{
+    trail_zone_frame();
+}
+
+/*
+ * @routine 09:E59D TrailFlip
+ * WHAT IT DOES: When the player's ($0346) record speed word (+$4A) is
+ * negative, turns object X round: the word at its +$15 grows by $80.
+ * HOW: PHX, TXY; the player's record through $7E:2022,X and $70:004A,X
+ * (long, 16-bit); PLX. Reached only by unit_objects_09e.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; X unchanged; Y =
+ * the object; N, Z from X.
+ */
+void abi_TrailFlip(void)
+{
+    uint16_t sx = cpu.x;
+
+    cpu.y = cpu.x;
+    cpu.p = nz16(cpu.p, cpu.y);
+    cpu.p &= (uint8_t)~P_M;
+    cpu.x = rd16(db() | 0x0346);
+    cpu.p = nz16(cpu.p, cpu.x);
+    op_lda16((0x7E2022 + cpu.x) & 0xFFFFFF);
+    cpu.x = cpu.a;
+    cpu.p = nz16(cpu.p, cpu.x);
+    op_lda16((0x70004A + cpu.x) & 0xFFFFFF);
+    if (cpu.a & 0x8000)
+        add16(F(0x2015, cpu.y), 0x0080);
+    cpu.p |= P_M;
+    cpu.x = sx;
+    cpu.p = nz16(cpu.p, sx);
+}
+
+/* A trail's frame: while $19E7 is set it takes the player's ($0346) scale
+   +$15 turned round ($80), eases its Z toward the player's
+   (ApproachHalfMin2) then moves dz, its X toward the player's
+   (ApproachQuarterMin4) then moves dx, life +$0A = $1A, TrailFlip, angle
+   +$16 = 0; otherwise it counts +$0A down while moving (0 dropping by
+   $100 a frame, and mx sideways). */
+static void trail_frame(uint16_t dz, uint16_t dx, uint16_t mx)
+{
+    cpu.p |= P_M;
+    if (ld8(db() | 0x19E7)) {
+        cpu.y = rd16(db() | 0x0346);
+        cpu.p = nz16(cpu.p, cpu.y);
+        ld8(F(0x2015, cpu.y));
+        wr8(F(0x2015, cpu.x), (uint8_t)cpu.a);
+        add8(F(0x2015, cpu.x), 0x80);
+        ease16(F(0x2010, cpu.x), F(0x2010, cpu.y), ease_cdc1);
+        add16(F(0x2010, cpu.x), dz);
+        ease16(F(0x200C, cpu.x), F(0x200C, cpu.y), abi_ApproachQuarterMin4);
+        if (dx)
+            add16(F(0x200C, cpu.x), dx);
+        st8i(F(0x200A, cpu.x), 0x1A);
+        abi_TrailFlip();
+        st8i(F(0x2016, cpu.x), 0x00);
+        abi_ObjectRebucket();
+        return;
+    }
+    if (ld8(F(0x200A, cpu.x))) {
+        add8(F(0x200A, cpu.x), 0xFF);
+        add16(F(0x2010, cpu.x), 0xFF00);
+        if (mx)
+            add16(F(0x200C, cpu.x), mx);
+    }
+    abi_ObjectRebucket();
+}
+
+/*
+ * @routine 09:E5BD ObjectTrailMidStep
+ * WHAT IT DOES: The middle trail's frame: while $19E7 is set it follows the
+ * player ($0346), 3 behind, turned round, with life $1A (TrailFlip turns it
+ * the player's way); otherwise it falls back $100 a frame while its life
+ * +$0A lasts.
+ * HOW: ApproachHalfMin2 and ApproachQuarterMin4 through $3E; JSR TrailFlip;
+ * ObjectRebucket. Reached only by unit_objects_09e.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket
+ * leaves it.
+ */
+void abi_ObjectTrailMidStep(void)
+{
+    trail_frame(0xFFFD, 0x0000, 0x0000);
+}
+
+/*
+ * @routine 09:E641 ObjectTrailLeftStep
+ * WHAT IT DOES: The left trail's frame: as ObjectTrailMidStep, 3 ahead and $1E
+ * to the left; falling back it also drifts $40 right.
+ * HOW: As ObjectTrailMidStep. Reached only by unit_objects_09e.
+ * Entry: as ObjectTrailMidStep. Exit: as ObjectTrailMidStep.
+ */
+void abi_ObjectTrailLeftStep(void)
+{
+    trail_frame(0x0003, 0xFFE2, 0x0040);
+}
+
+/*
+ * @routine 09:E6E1 ObjectTrailRightStep
+ * WHAT IT DOES: The right trail's frame: as ObjectTrailMidStep, 3 ahead and $1E
+ * to the right; falling back it also drifts $40 left.
+ * HOW: As ObjectTrailMidStep. Reached only by unit_objects_09e.
+ * Entry: as ObjectTrailMidStep. Exit: as ObjectTrailMidStep.
+ */
+void abi_ObjectTrailRightStep(void)
+{
+    trail_frame(0x0003, 0x001E, 0xFFC0);
+}
+
+/* 09:E7C6: a car's hit on lap 1, the first time (+$25 bit 0), starts a
+   fade ($0DA5 bit 5, $80 up to $2000), leaving M 16-bit. */
+static void lap1_fade_frame(void)
+{
+    if (!hit())
+        return;
+    if (!lap_is(0x01))
+        return;
+    if (bit25(0x01))
+        return;
+    or8(F(0x2025, cpu.x), 0x01);
+    cpu.p |= P_M;
+    or8(0x000DA5, 0x20);
+    cpu.p &= (uint8_t)~P_M;
+    fade_set(0x0080, 0x2000);
+}
+
+/*
+ * @routine 09:E781 ObjectFadeGate1
+ * WHAT IT DOES: Sets up the lap 1 fade gate: restart $09:E79F
+ * (ObjectFadeGate1Record), frame $09:E7C6 (ObjectFadeGate1Step); its record
+ * and frame.
+ * HOW: Word and byte stores.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectFadeGate1(void)
+{
+    handlers2(0xE79F, 0xE7C6);
+    gate42d(0x0780);
+    lap1_fade_frame();
+}
+
+/*
+ * @routine 09:E79F ObjectFadeGate1Record
+ * WHAT IT DOES: The gate's restart: its record ($42D, flag bit 4, at
+ * ($780, $780, $780)), then its frame.
+ * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
+ * Entry: as ObjectFadeGate1. Exit: as ObjectFadeGate1.
+ */
+void abi_ObjectFadeGate1Record(void)
+{
+    gate42d(0x0780);
+    lap1_fade_frame();
+}
+
+/*
+ * @routine 09:E7C6 ObjectFadeGate1Step
+ * WHAT IT DOES: The gate's frame: a car's hit on lap 1, the first time (+$25
+ * bit 0), starts a fade ($0DA5 bit 5, step $80 up to $2000).
+ * HOW: ObjectSyncFromRecord, RecordContactSummary; $0DA5 by long accesses.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it (after the fade with M 16-bit, A = $2000).
+ */
+void abi_ObjectFadeGate1Step(void)
+{
+    lap1_fade_frame();
+}
+
+/* 09:E852 / E8C4: with contacts, contact summary bit 0 (player 1) sets or
+   clears bit 6 of $0DA5, bit 1 (player 2) bit 6 of $0DA7. */
+static void window_gate_frame(int on)
+{
+    if (!synced())
+        return;
+    abi_RecordContactSummary();
+    lda8((uint8_t)(cpu.a & 0x01));
+    if ((uint8_t)cpu.a) {
+        cpu.p |= P_M;
+        if (on)
+            or8(db() | 0x0DA5, 0x40);
+        else
+            and8(db() | 0x0DA5, 0xBF);
+    }
+    abi_RecordContactSummary();
+    lda8((uint8_t)(cpu.a & 0x02));
+    if (!(uint8_t)cpu.a)
+        return;
+    cpu.p |= P_M;
+    if (on)
+        or8(db() | 0x0DA7, 0x40);
+    else
+        and8(db() | 0x0DA7, 0xBF);
+}
+
+/*
+ * @routine 09:E80D ObjectWindowOnGate
+ * WHAT IT DOES: Sets up the gate: restart $09:E82B (ObjectWindowOnGateRecord), frame
+ * $09:E852 (ObjectWindowOnGateStep); its record and frame.
+ * HOW: Word and byte stores.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectWindowOnGate(void)
+{
+    handlers2(0xE82B, 0xE852);
+    gate42d(0x0780);
+    window_gate_frame(1);
+}
+
+/*
+ * @routine 09:E82B ObjectWindowOnGateRecord
+ * WHAT IT DOES: The gate's restart: its record ($42D, flag bit 4, at
+ * ($780, $780, $780)), then its frame.
+ * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
+ * Entry: as ObjectWindowOnGate. Exit: as ObjectWindowOnGate.
+ */
+void abi_ObjectWindowOnGateRecord(void)
+{
+    gate42d(0x0780);
+    window_gate_frame(1);
+}
+
+/*
+ * @routine 09:E852 ObjectWindowOnGateStep
+ * WHAT IT DOES: The gate's frame: with contacts, a car (contact summary bit 0, player 1) sets bit 6 of $0DA5, one with
+ * bit 1 (player 2) bit 6 of $0DA7.
+ * HOW: ObjectSyncFromRecord, RecordContactSummary twice.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectWindowOnGateStep(void)
+{
+    window_gate_frame(1);
+}
+
+/*
+ * @routine 09:E87F ObjectWindowOffGate
+ * WHAT IT DOES: Sets up the gate: restart $09:E89D (ObjectWindowOffGateRecord), frame
+ * $09:E8C4 (ObjectWindowOffGateStep); its record and frame.
+ * HOW: Word and byte stores.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectWindowOffGate(void)
+{
+    handlers2(0xE89D, 0xE8C4);
+    gate42d(0x0780);
+    window_gate_frame(0);
+}
+
+/*
+ * @routine 09:E89D ObjectWindowOffGateRecord
+ * WHAT IT DOES: The gate's restart: its record ($42D, flag bit 4, at
+ * ($780, $780, $780)), then its frame.
+ * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
+ * Entry: as ObjectWindowOffGate. Exit: as ObjectWindowOffGate.
+ */
+void abi_ObjectWindowOffGateRecord(void)
+{
+    gate42d(0x0780);
+    window_gate_frame(0);
+}
+
+/*
+ * @routine 09:E8C4 ObjectWindowOffGateStep
+ * WHAT IT DOES: The gate's frame: with contacts, a car (contact summary bit 0, player 1) clears bit 6 of $0DA5, one with
+ * bit 1 (player 2) bit 6 of $0DA7.
+ * HOW: ObjectSyncFromRecord, RecordContactSummary twice.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectWindowOffGateStep(void)
+{
+    window_gate_frame(0);
+}
+
+/* 09:E936 / E9AE: a car's hit, the first time (+$25 bit 0), sound `snd` on
+   port 1; no hit clears the bit. */
+static void beep_frame(uint8_t snd)
+{
+    if (!hit()) {
+        and8(F(0x2025, cpu.x), 0xFE);
+        return;
+    }
+    if (bit25(0x01))
+        return;
+    or8(F(0x2025, cpu.x), 0x01);
+    sound1(snd);
+}
+
+/* 09:EA26 / EAA8: a car's hit sets the window slide bits ($0DA5: `or`
+   after AND `and`); the first time (+$25 bit 0) sound `snd` on port 1; no
+   hit clears the bit. */
+static void slide_bits_frame(uint8_t and_m, uint8_t or_m, uint8_t snd)
+{
+    uint8_t v;
+
+    if (!hit()) {
+        and8(F(0x2025, cpu.x), 0xFE);
+        return;
+    }
+    cpu.p |= P_M;
+    if (and_m == 0xFF) {
+        or8(db() | 0x0DA5, or_m);
+    } else {
+        v = (uint8_t)(ld8(db() | 0x0DA5) & and_m);
+        lda8((uint8_t)(v | or_m));
+        wr8(db() | 0x0DA5, (uint8_t)(v | or_m));
+    }
+    if (bit25(0x01))
+        return;
+    or8(F(0x2025, cpu.x), 0x01);
+    sound1(snd);
+}
+
+/* LDA addr, AND #a, ORA #o, STA addr (8-bit). */
+static void andor8(uint32_t addr, uint8_t a, uint8_t o)
+{
+    uint8_t v = (uint8_t)(ld8(addr) & a);
+
+    lda8(v);
+    lda8((uint8_t)(v | o));
+    wr8(addr, (uint8_t)(v | o));
+}
+
+/* 09:EB2C / EBAE: with contacts, contact summary bit 0 (player 1) sets
+   $7F:3460 = t3460 and $0DA5 = (and a1, ora o1), bit 1 (player 2) sets
+   $7F:3460 = t3460 and $0DA7 = (and a2, ora o2). */
+static void window_set_frame(uint8_t t3460, uint8_t a1, uint8_t o1, uint8_t a2, uint8_t o2)
+{
+    if (!synced())
+        return;
+    abi_RecordContactSummary();
+    lda8((uint8_t)(cpu.a & 0x01));
+    if ((uint8_t)cpu.a) {
+        cpu.p |= P_M;
+        st8i(0x7F3460, t3460);
+        andor8(db() | 0x0DA5, a1, o1);
+    }
+    abi_RecordContactSummary();
+    lda8((uint8_t)(cpu.a & 0x02));
+    if (!(uint8_t)cpu.a)
+        return;
+    cpu.p |= P_M;
+    st8i(0x7F3460, t3460);
+    andor8(db() | 0x0DA7, a2, o2);
+}
+
+/*
+ * @routine 09:E8F1 ObjectBeepGate11
+ * WHAT IT DOES: Sets up the gate: restart $09:E90F (ObjectBeepGate11Record), frame
+ * $09:E936 (ObjectBeepGate11Step); its record and frame.
+ * HOW: Word and byte stores. Reached only by
+ * unit_objects_09e.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectBeepGate11(void)
+{
+    handlers2(0xE90F, 0xE936);
+    gate42d(0x0780);
+    beep_frame(0x11);
+}
+
+/*
+ * @routine 09:E90F ObjectBeepGate11Record
+ * WHAT IT DOES: The gate's restart: its record ($42D, flag bit 4, at
+ * ($780, $780, $780)), then its frame.
+ * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition. Reached only by
+ * unit_objects_09e.
+ * Entry: as ObjectBeepGate11. Exit: as ObjectBeepGate11.
+ */
+void abi_ObjectBeepGate11Record(void)
+{
+    gate42d(0x0780);
+    beep_frame(0x11);
+}
+
+/*
+ * @routine 09:E936 ObjectBeepGate11Step
+ * WHAT IT DOES: The gate's frame: a car's hit, the first time (+$25 bit 0), plays sound $11 on port 1; no
+ * hit clears the bit.
+ * HOW: ObjectSyncFromRecord, RecordContactSummary. Reached only by
+ * unit_objects_09e.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectBeepGate11Step(void)
+{
+    beep_frame(0x11);
+}
+
+/*
+ * @routine 09:E969 ObjectBeepGate10
+ * WHAT IT DOES: Sets up the gate: restart $09:E987 (ObjectBeepGate10Record), frame
+ * $09:E9AE (ObjectBeepGate10Step); its record and frame.
+ * HOW: Word and byte stores. Reached only by
+ * unit_objects_09e.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectBeepGate10(void)
+{
+    handlers2(0xE987, 0xE9AE);
+    gate42d(0x0780);
+    beep_frame(0x10);
+}
+
+/*
+ * @routine 09:E987 ObjectBeepGate10Record
+ * WHAT IT DOES: The gate's restart: its record ($42D, flag bit 4, at
+ * ($780, $780, $780)), then its frame.
+ * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition. Reached only by
+ * unit_objects_09e.
+ * Entry: as ObjectBeepGate10. Exit: as ObjectBeepGate10.
+ */
+void abi_ObjectBeepGate10Record(void)
+{
+    gate42d(0x0780);
+    beep_frame(0x10);
+}
+
+/*
+ * @routine 09:E9AE ObjectBeepGate10Step
+ * WHAT IT DOES: The gate's frame: a car's hit, the first time (+$25 bit 0), plays sound $10 on port 1; no
+ * hit clears the bit.
+ * HOW: ObjectSyncFromRecord, RecordContactSummary. Reached only by
+ * unit_objects_09e.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectBeepGate10Step(void)
+{
+    beep_frame(0x10);
+}
+
+/*
+ * @routine 09:E9E1 ObjectSlideBitsGate
+ * WHAT IT DOES: Sets up the gate: restart $09:E9FF (ObjectSlideBitsGateRecord), frame
+ * $09:EA26 (ObjectSlideBitsGateStep); its record and frame.
+ * HOW: Word and byte stores.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectSlideBitsGate(void)
+{
+    handlers2(0xE9FF, 0xEA26);
+    gate42d(0x0780);
+    slide_bits_frame(0xFF, 0x0A, 0x0F);
+}
+
+/*
+ * @routine 09:E9FF ObjectSlideBitsGateRecord
+ * WHAT IT DOES: The gate's restart: its record ($42D, flag bit 4, at
+ * ($780, $780, $780)), then its frame.
+ * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
+ * Entry: as ObjectSlideBitsGate. Exit: as ObjectSlideBitsGate.
+ */
+void abi_ObjectSlideBitsGateRecord(void)
+{
+    gate42d(0x0780);
+    slide_bits_frame(0xFF, 0x0A, 0x0F);
+}
+
+/*
+ * @routine 09:EA26 ObjectSlideBitsGateStep
+ * WHAT IT DOES: The gate's frame: a car's hit sets bits 1 and 3 of $0DA5; the first time (+$25 bit 0)
+ * sound $0F on port 1; no hit clears the bit.
+ * HOW: ObjectSyncFromRecord, RecordContactSummary.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectSlideBitsGateStep(void)
+{
+    slide_bits_frame(0xFF, 0x0A, 0x0F);
+}
+
+/*
+ * @routine 09:EA63 ObjectSlideBitGate
+ * WHAT IT DOES: Sets up the gate: restart $09:EA81 (ObjectSlideBitGateRecord), frame
+ * $09:EAA8 (ObjectSlideBitGateStep); its record and frame.
+ * HOW: Word and byte stores.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectSlideBitGate(void)
+{
+    handlers2(0xEA81, 0xEAA8);
+    gate42d(0x0780);
+    slide_bits_frame(0xF7, 0x04, 0x10);
+}
+
+/*
+ * @routine 09:EA81 ObjectSlideBitGateRecord
+ * WHAT IT DOES: The gate's restart: its record ($42D, flag bit 4, at
+ * ($780, $780, $780)), then its frame.
+ * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
+ * Entry: as ObjectSlideBitGate. Exit: as ObjectSlideBitGate.
+ */
+void abi_ObjectSlideBitGateRecord(void)
+{
+    gate42d(0x0780);
+    slide_bits_frame(0xF7, 0x04, 0x10);
+}
+
+/*
+ * @routine 09:EAA8 ObjectSlideBitGateStep
+ * WHAT IT DOES: The gate's frame: a car's hit sets bit 2 of $0DA5 (clearing bit 3); the first time (+$25
+ * bit 0) sound $10 on port 1; no hit clears the bit.
+ * HOW: ObjectSyncFromRecord, RecordContactSummary.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectSlideBitGateStep(void)
+{
+    slide_bits_frame(0xF7, 0x04, 0x10);
+}
+
+/*
+ * @routine 09:EAE7 ObjectWindowSetGate
+ * WHAT IT DOES: Sets up the gate: restart $09:EB05 (ObjectWindowSetGateRecord), frame
+ * $09:EB2C (ObjectWindowSetGateStep); its record and frame.
+ * HOW: Word and byte stores. Reached only by
+ * unit_objects_09e.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectWindowSetGate(void)
+{
+    handlers2(0xEB05, 0xEB2C);
+    gate42d(0x0780);
+    window_set_frame(0x1F, 0x00, 0x44, 0x00, 0xC0);
+}
+
+/*
+ * @routine 09:EB05 ObjectWindowSetGateRecord
+ * WHAT IT DOES: The gate's restart: its record ($42D, flag bit 4, at
+ * ($780, $780, $780)), then its frame.
+ * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition. Reached only by
+ * unit_objects_09e.
+ * Entry: as ObjectWindowSetGate. Exit: as ObjectWindowSetGate.
+ */
+void abi_ObjectWindowSetGateRecord(void)
+{
+    gate42d(0x0780);
+    window_set_frame(0x1F, 0x00, 0x44, 0x00, 0xC0);
+}
+
+/*
+ * @routine 09:EB2C ObjectWindowSetGateStep
+ * WHAT IT DOES: The gate's frame: with contacts, a car (contact summary bit 0, player 1) sets $7F:3460 =
+ * $1F and $0DA5 = $44, one with bit 1 (player 2) $7F:3460 = $1F and $0DA7
+ * = $C0.
+ * HOW: ObjectSyncFromRecord, RecordContactSummary twice; AND #0 then ORA. Reached only by
+ * unit_objects_09e.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectWindowSetGateStep(void)
+{
+    window_set_frame(0x1F, 0x00, 0x44, 0x00, 0xC0);
+}
+
+/*
+ * @routine 09:EB69 ObjectWindowResetGate
+ * WHAT IT DOES: Sets up the gate: restart $09:EB87 (ObjectWindowResetGateRecord), frame
+ * $09:EBAE (ObjectWindowResetGateStep); its record and frame.
+ * HOW: Word and byte stores. Reached only by
+ * unit_objects_09e.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectWindowResetGate(void)
+{
+    handlers2(0xEB87, 0xEBAE);
+    gate42d(0x0780);
+    window_set_frame(0x00, 0x00, 0x0A, 0xBF, 0x08);
+}
+
+/*
+ * @routine 09:EB87 ObjectWindowResetGateRecord
+ * WHAT IT DOES: The gate's restart: its record ($42D, flag bit 4, at
+ * ($780, $780, $780)), then its frame.
+ * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition. Reached only by
+ * unit_objects_09e.
+ * Entry: as ObjectWindowResetGate. Exit: as ObjectWindowResetGate.
+ */
+void abi_ObjectWindowResetGateRecord(void)
+{
+    gate42d(0x0780);
+    window_set_frame(0x00, 0x00, 0x0A, 0xBF, 0x08);
+}
+
+/*
+ * @routine 09:EBAE ObjectWindowResetGateStep
+ * WHAT IT DOES: The gate's frame: with contacts, a car (contact summary bit 0, player 1) sets $7F:3460 =
+ * 0 and $0DA5 = $0A, one with bit 1 (player 2) $7F:3460 = 0 and bit 3 of
+ * $0DA7 (bit 6 cleared).
+ * HOW: ObjectSyncFromRecord, RecordContactSummary twice; AND then ORA. Reached only by
+ * unit_objects_09e.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectWindowResetGateStep(void)
+{
+    window_set_frame(0x00, 0x00, 0x0A, 0xBF, 0x08);
+}
+
+/* 09:EC2A: the slide gate's frame. A car's hit, unless the screen is
+   flashing ($0DA5 bit 0) or the slide is held ($7F:3470 = $7FFF), starts
+   the slide up ($7F:3470 = $800, step $100 to $700, direction 0, $0DA5 bit
+   7); the first time (+$25 bit 0, clearing bit 1) sound $11 on port 1. No
+   hit, unless held, sends the slide back down (to -$100, direction $8000);
+   the first time (+$25 bit 1, clearing bit 0, as words) sound $10.
+   Two paths reach code with the other register width than the code was
+   written for: a hit while the slide is held comes to 09:EC71 with M
+   16-bit, and no hit while flashing comes to 09:ECB9 with M 8-bit; the
+   original runs their operand bytes as other instructions, so the C hands
+   both to the original code. */
+static void slide_gate_frame(void)
+{
+    uint16_t v;
+
+    if (hit()) {
+        cpu.p |= P_M;
+        lda8((uint8_t)(ld8(db() | 0x0DA5) & 0x01));
+        if (!(uint8_t)cpu.a) {
+            cpu.p &= (uint8_t)~P_M;
+            op_lda16(0x7F3470);
+            op_cmp16(0x7FFF);
+            if (cpu.a == 0x7FFF) {
+                jump_routine(0x09EC71);
+                return;
+            }
+            st16w(0x7F3470, 0x0800);
+            slide_set(0x0100, 0x0700, 0x0000);
+            cpu.p |= P_M;
+            or8(db() | 0x0DA5, 0x80);
+        }
+        if (bit25(0x01))
+            return;
+        or8(F(0x2025, cpu.x), 0x01);
+        and8(F(0x2025, cpu.x), 0xFD);
+        cpu.p |= P_M;
+        sound1(0x11);
+        return;
+    }
+    lda8((uint8_t)(ld8(db() | 0x0DA5) & 0x01));
+    if ((uint8_t)cpu.a) {
+        jump_routine(0x09ECB9);
+        return;
+    }
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(0x7F3470);
+    op_cmp16(0x7FFF);
+    if (cpu.a != 0x7FFF)
+        slide_set(0x0100, 0xFF00, 0x8000);
+    op_lda16(F(0x2025, cpu.x));
+    op_and16(0x0002);
+    if (cpu.a)
+        return;
+    v = (uint16_t)(rd16(F(0x2025, cpu.x)) | 0x0002);
+    cpu.a = v;
+    cpu.p = nz16(cpu.p, v);
+    wr16(F(0x2025, cpu.x), v);
+    v = (uint16_t)(rd16(F(0x2025, cpu.x)) & 0xFFFE);
+    cpu.a = v;
+    cpu.p = nz16(cpu.p, v);
+    wr16(F(0x2025, cpu.x), v);
+    cpu.p |= P_M;
+    sound1(0x10);
+}
+
+/*
+ * @routine 09:EBE5 ObjectSlideGateUp
+ * WHAT IT DOES: Sets up the slide gate: restart $09:EC03
+ * (ObjectSlideGateUpRecord), frame $09:EC2A (ObjectSlideGateUpStep); its
+ * record and frame.
+ * HOW: Word and byte stores.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectSlideGateUp(void)
+{
+    handlers2(0xEC03, 0xEC2A);
+    gate42d(0x0780);
+    slide_gate_frame();
+}
+
+/*
+ * @routine 09:EC03 ObjectSlideGateUpRecord
+ * WHAT IT DOES: The gate's restart: its record ($42D, flag bit 4, at
+ * ($780, $780, $780)), then its frame.
+ * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
+ * Entry: as ObjectSlideGateUp. Exit: as ObjectSlideGateUp.
+ */
+void abi_ObjectSlideGateUpRecord(void)
+{
+    gate42d(0x0780);
+    slide_gate_frame();
+}
+
+/*
+ * @routine 09:EC2A ObjectSlideGateUpStep
+ * WHAT IT DOES: The slide gate's frame: a car's hit starts the slide up
+ * (unless the screen flashes or the slide is held at $7FFF) and plays
+ * sound $11 the first time; no hit sends it back down (unless held) and
+ * plays sound $10 the first time; +$25 bits 0 and 1 mark in and out.
+ * HOW: ObjectSyncFromRecord, RecordContactSummary; the out mark's +$25
+ * accesses are words (M 16-bit). A hit while held and no hit while
+ * flashing reach code with the other register width (09:EC71, 09:ECB9),
+ * which runs as the original.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+ * it.
+ */
+void abi_ObjectSlideGateUpStep(void)
+{
+    slide_gate_frame();
+}

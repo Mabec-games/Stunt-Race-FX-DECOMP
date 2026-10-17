@@ -9856,3 +9856,1374 @@ ObjectBumpPostStep:
     and.b #$FE
     sta.w !obj_25,x
     rtl
+
+; @routine 09:E3E4 ObjectSlideLapGate
+; WHAT IT DOES: Sets up the sliding lap gate: restart $09:E41A
+; (ObjectSlideLapGateRecord), frame $09:E441 (ObjectSlideLapGateStep), its
+; slide target +$27 = +$0C - $2080; its record and frame.
+; HOW: Word and byte stores; a 16-bit copy and ADC.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+; leaves it.
+%at($09E3E4)
+ObjectSlideLapGate:
+    rep.b #$20
+    lda.w #$E41A
+    sta.w !obj_1d,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1f,x
+    rep.b #$20
+    lda.w #$E441
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,x
+    rep.b #$20
+    lda.w !obj_pos_x,x
+    sta.w !obj_27,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_27,x
+    clc
+    adc.w #$DF80
+    sta.w !obj_27,x
+    sep.b #$20
+
+; @routine 09:E41A ObjectSlideLapGateRecord
+; WHAT IT DOES: The gate's restart: its record ($42D, flag bit 4, at
+; ($2A80, $2A80, $2A80)), then its frame.
+; HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
+; Entry: as ObjectSlideLapGate. Exit: as ObjectSlideLapGate.
+%at($09E41A)
+ObjectSlideLapGateRecord:
+    jsl.l GsuRecordNew42D
+    jsl.l GsuRecordFlag10
+    rep.b #$20
+    lda.w #$2A80
+    sta.b !dp_02
+    sep.b #$20
+    rep.b #$20
+    lda.w #$2A80
+    sta.b !dp_08
+    sep.b #$20
+    rep.b #$20
+    lda.w #$2A80
+    sta.b !dp_94
+    sep.b #$20
+    jsl.l GsuRecordPosition
+
+; @routine 09:E441 ObjectSlideLapGateStep
+; WHAT IT DOES: The gate's frame: synced to its record; a car's hit on lap
+; 1 slides it toward its target (GateSlideStep), on lap 2 eases its scale
+; +$15 toward $80.
+; HOW: ObjectSyncToRecord, RecordContactSummary; ApproachHalfMin2Byte
+; through $3E.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+; it.
+%at($09E441)
+ObjectSlideLapGateStep:
+    jsl.l ObjectSyncToRecord
+    and.b #$01
+    beq .lE47C
+    jsl.l RecordContactSummary
+    and.b #$01
+    beq .lE47C
+    sep.b #$20
+    lda.w !wram_0DEA
+    cmp.b #$00
+    beq .lE465
+    cmp.b #$01
+    beq .lE468
+    cmp.b #$02
+    beq .lE46E
+    jmp.w .lE47C
+.lE465:
+    jmp.w .lE47C
+.lE468:
+    jsr.w GateSlideStep
+    jmp.w .lE47C
+.lE46E:
+    lda.w !obj_15,x
+    sta.b !scale_scratch
+    lda.b #$80
+    jsl.l ApproachHalfMin2Byte
+    sta.w !obj_15,x
+.lE47C:
+    rtl
+
+; @routine 09:E47D GateSlideStep
+; WHAT IT DOES: The slide gate's lap 1 step: the first time (+$25 bit 0)
+; the meter $1A29 = 1 with sound $5F; then +$0C slides $280 at a time
+; toward the target +$27, and once there $1A29 = 2.
+; HOW: A 16-bit CMP through $1F4C, then ADC or SBC #$280 by N.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A as the last
+; step leaves it.
+%at($09E47D)
+GateSlideStep:
+    lda.w !obj_25,x
+    and.b #$01
+    beq .lE488
+    jml.l .lE49D
+.lE488:
+    lda.w !obj_25,x
+    ora.b #$01
+    sta.w !obj_25,x
+    sep.b #$20
+    lda.b #$01
+    sta.w !wram_1A26+3
+    lda.b #$5F
+    jsl.l SoundPort0QueuePush
+.lE49D:
+    rep.b #$20
+    lda.w !obj_27,x
+    sta.w !wram_1F4C
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_x,x
+    cmp.w !wram_1F4C
+    sep.b #$20
+    bne .lE4B7
+    jml.l .lE4CE
+.lE4B7:
+    rep.b #$20
+    beq .lE4C7
+    bmi .lE4C3
+    sec
+    sbc.w #$0280
+    bra .lE4C7
+.lE4C3:
+    clc
+    adc.w #$0280
+.lE4C7:
+    sta.w !obj_pos_x,x
+    sep.b #$20
+    bra .lE4D5
+.lE4CE:
+    sep.b #$20
+    lda.b #$02
+    sta.w !wram_1A26+3
+.lE4D5:
+    rts
+
+; @routine 09:E4D6 ObjectSlideMeter
+; WHAT IT DOES: Sets up the slide meter: frame $09:E4F2
+; (ObjectSlideMeterStep), +$48 = 0, +$5A = 0 with bit 7; then its frame.
+; HOW: Word and byte stores; starts with a NOP, as the course data's
+; pointers expect.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket
+; leaves it.
+%at($09E4D6)
+ObjectSlideMeter:
+    nop
+    rep.b #$20
+    lda.w #$E4F2
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,x
+    lda.b #$00
+    sta.w !obj_48,x
+    lda.b #$00
+    ora.b #$80
+    sta.w !obj_5a,x
+
+; @routine 09:E4F2 ObjectSlideMeterStep
+; WHAT IT DOES: The meter's frame: while the slide gate runs ($1A29 = 1)
+; +$48 counts up to 7, once it is there ($1A29 = 2) back down to 0; shown
+; at +$5A with bit 7.
+; HOW: CMP, INC/DEC; the count through $1F58; ObjectRebucket.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket
+; leaves it.
+%at($09E4F2)
+ObjectSlideMeterStep:
+    sep.b #$20
+    lda.w !wram_1A26+3
+    beq .lE537
+    cmp.b #$01
+    bne .lE51B
+    lda.w !obj_48,x
+    cmp.b #$07
+    bne .lE508
+    jml.l .lE50B
+.lE508:
+    inc.w !obj_48,x
+.lE50B:
+    lda.w !obj_48,x
+    sta.w !wram_1F58
+    lda.w !wram_1F58
+    ora.b #$80
+    sta.w !obj_5a,x
+    bra .lE537
+.lE51B:
+    lda.w !obj_48,x
+    cmp.b #$00
+    bne .lE526
+    jml.l .lE529
+.lE526:
+    dec.w !obj_48,x
+.lE529:
+    lda.w !obj_48,x
+    sta.w !wram_1F58
+    lda.w !wram_1F58
+    ora.b #$80
+    sta.w !obj_5a,x
+.lE537:
+    jsl.l ObjectRebucket
+    rtl
+
+; @routine 09:E53C ObjectTrailZone
+; WHAT IT DOES: Sets up the trail zone: restart $09:E55A
+; (ObjectTrailZoneRecord), frame $09:E581 (ObjectTrailZoneStep); its record
+; and frame.
+; HOW: Word and byte stores. Reached only by unit_objects_09e.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+; leaves it.
+%at($09E53C)
+ObjectTrailZone:
+    rep.b #$20
+    lda.w #$E55A
+    sta.w !obj_1d,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1f,x
+    rep.b #$20
+    lda.w #$E581
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,x
+
+; @routine 09:E55A ObjectTrailZoneRecord
+; WHAT IT DOES: The zone's restart: its record ($42D, flag bit 4, at
+; ($1680, $1680, $1680)), then its frame.
+; HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition. Reached only
+; by unit_objects_09e.
+; Entry: as ObjectTrailZone. Exit: as ObjectTrailZone.
+%at($09E55A)
+ObjectTrailZoneRecord:
+    jsl.l GsuRecordNew42D
+    jsl.l GsuRecordFlag10
+    rep.b #$20
+    lda.w #$1680
+    sta.b !dp_02
+    sep.b #$20
+    rep.b #$20
+    lda.w #$1680
+    sta.b !dp_08
+    sep.b #$20
+    rep.b #$20
+    lda.w #$1680
+    sta.b !dp_94
+    sep.b #$20
+    jsl.l GsuRecordPosition
+
+; @routine 09:E581 ObjectTrailZoneStep
+; WHAT IT DOES: The zone's frame: $19E7 = 1 while a car hits it, else 0
+; (the trails follow the player while it is set).
+; HOW: ObjectSyncFromRecord, RecordContactSummary; STZ. Reached only by
+; unit_objects_09e.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+; it.
+%at($09E581)
+ObjectTrailZoneStep:
+    jsl.l ObjectSyncFromRecord
+    and.b #$01
+    beq .lE599
+    jsl.l RecordContactSummary
+    and.b #$01
+    beq .lE599
+    sep.b #$20
+    lda.b #$01
+    sta.w !wram_19E6+1
+    rtl
+.lE599:
+    stz.w !wram_19E6+1
+    rtl
+
+; @routine 09:E59D TrailFlip
+; WHAT IT DOES: When the player's ($0346) record speed word (+$4A) is
+; negative, turns object X round: the word at its +$15 grows by $80.
+; HOW: PHX, TXY; the player's record through $7E:2022,X and $70:004A,X
+; (long, 16-bit); PLX. Reached only by unit_objects_09e.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; X unchanged; Y =
+; the object; N, Z from X.
+%at($09E59D)
+TrailFlip:
+    phx
+    txy
+    rep.b #$20
+    ldx.w !wram_0346
+    lda.l !obj_22_long,x
+    tax
+    lda.l !gsu_speeds,x
+    bpl .lE5B9
+    lda.w !obj_15,y
+    clc
+    adc.w #$0080
+    sta.w !obj_15,y
+.lE5B9:
+    sep.b #$20
+    plx
+    rts
+
+; @routine 09:E5BD ObjectTrailMidStep
+; WHAT IT DOES: The middle trail's frame: while $19E7 is set it follows the
+; player ($0346), 3 behind, turned round, with life $1A (TrailFlip turns it
+; the player's way); otherwise it falls back $100 a frame while its life
+; +$0A lasts.
+; HOW: ApproachHalfMin2 and ApproachQuarterMin4 through $3E; JSR TrailFlip;
+; ObjectRebucket. Reached only by unit_objects_09e.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket
+; leaves it.
+%at($09E5BD)
+ObjectTrailMidStep:
+    sep.b #$20
+    lda.w !wram_19E6+1
+    beq .lE61C
+    ldy.w !wram_0346
+    lda.w !obj_15,y
+    sta.w !obj_15,x
+    lda.w !obj_15,x
+    clc
+    adc.b #$80
+    sta.w !obj_15,x
+    rep.b #$20
+    lda.w !obj_pos_z,x
+    sta.b !scale_scratch
+    lda.w !obj_pos_z,y
+    jsl.l ApproachHalfMin2
+    sta.w !obj_pos_z,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_z,x
+    clc
+    adc.w #$FFFD
+    sta.w !obj_pos_z,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_x,x
+    sta.b !scale_scratch
+    lda.w !obj_pos_x,y
+    jsl.l ApproachQuarterMin4
+    sta.w !obj_pos_x,x
+    sep.b #$20
+    lda.b #$1A
+    sta.w !obj_09+1,x
+    jsr.w TrailFlip
+    lda.b #$00
+    sta.w !obj_16,x
+    jsl.l ObjectRebucket
+    rtl
+.lE61C:
+    lda.w !obj_09+1,x
+    bne .lE625
+    jml.l .lE63C
+.lE625:
+    lda.w !obj_09+1,x
+    clc
+    adc.b #$FF
+    sta.w !obj_09+1,x
+    rep.b #$20
+    lda.w !obj_pos_z,x
+    clc
+    adc.w #$FF00
+    sta.w !obj_pos_z,x
+    sep.b #$20
+.lE63C:
+    jsl.l ObjectRebucket
+    rtl
+
+; @routine 09:E641 ObjectTrailLeftStep
+; WHAT IT DOES: The left trail's frame: as ObjectTrailMidStep, 3 ahead and $1E
+; to the left; falling back it also drifts $40 right.
+; HOW: As ObjectTrailMidStep. Reached only by unit_objects_09e.
+; Entry: as ObjectTrailMidStep. Exit: as ObjectTrailMidStep.
+%at($09E641)
+ObjectTrailLeftStep:
+    sep.b #$20
+    lda.w !wram_19E6+1
+    beq .lE6AE
+    ldy.w !wram_0346
+    lda.w !obj_15,y
+    sta.w !obj_15,x
+    lda.w !obj_15,x
+    clc
+    adc.b #$80
+    sta.w !obj_15,x
+    rep.b #$20
+    lda.w !obj_pos_z,x
+    sta.b !scale_scratch
+    lda.w !obj_pos_z,y
+    jsl.l ApproachHalfMin2
+    sta.w !obj_pos_z,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_z,x
+    clc
+    adc.w #$0003
+    sta.w !obj_pos_z,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_x,x
+    sta.b !scale_scratch
+    lda.w !obj_pos_x,y
+    jsl.l ApproachQuarterMin4
+    sta.w !obj_pos_x,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_x,x
+    clc
+    adc.w #$FFE2
+    sta.w !obj_pos_x,x
+    sep.b #$20
+    lda.b #$1A
+    sta.w !obj_09+1,x
+    jsr.w TrailFlip
+    lda.b #$00
+    sta.w !obj_16,x
+    jsl.l ObjectRebucket
+    rtl
+.lE6AE:
+    lda.w !obj_09+1,x
+    bne .lE6B7
+    jml.l .lE6DC
+.lE6B7:
+    lda.w !obj_09+1,x
+    clc
+    adc.b #$FF
+    sta.w !obj_09+1,x
+    rep.b #$20
+    lda.w !obj_pos_z,x
+    clc
+    adc.w #$FF00
+    sta.w !obj_pos_z,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_x,x
+    clc
+    adc.w #$0040
+    sta.w !obj_pos_x,x
+    sep.b #$20
+.lE6DC:
+    jsl.l ObjectRebucket
+    rtl
+
+; @routine 09:E6E1 ObjectTrailRightStep
+; WHAT IT DOES: The right trail's frame: as ObjectTrailMidStep, 3 ahead and $1E
+; to the right; falling back it also drifts $40 left.
+; HOW: As ObjectTrailMidStep. Reached only by unit_objects_09e.
+; Entry: as ObjectTrailMidStep. Exit: as ObjectTrailMidStep.
+%at($09E6E1)
+ObjectTrailRightStep:
+    sep.b #$20
+    lda.w !wram_19E6+1
+    beq .lE74E
+    ldy.w !wram_0346
+    lda.w !obj_15,y
+    sta.w !obj_15,x
+    lda.w !obj_15,x
+    clc
+    adc.b #$80
+    sta.w !obj_15,x
+    rep.b #$20
+    lda.w !obj_pos_z,x
+    sta.b !scale_scratch
+    lda.w !obj_pos_z,y
+    jsl.l ApproachHalfMin2
+    sta.w !obj_pos_z,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_z,x
+    clc
+    adc.w #$0003
+    sta.w !obj_pos_z,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_x,x
+    sta.b !scale_scratch
+    lda.w !obj_pos_x,y
+    jsl.l ApproachQuarterMin4
+    sta.w !obj_pos_x,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_x,x
+    clc
+    adc.w #$001E
+    sta.w !obj_pos_x,x
+    sep.b #$20
+    lda.b #$1A
+    sta.w !obj_09+1,x
+    jsr.w TrailFlip
+    lda.b #$00
+    sta.w !obj_16,x
+    jsl.l ObjectRebucket
+    rtl
+.lE74E:
+    lda.w !obj_09+1,x
+    bne .lE757
+    jml.l .lE77C
+.lE757:
+    lda.w !obj_09+1,x
+    clc
+    adc.b #$FF
+    sta.w !obj_09+1,x
+    rep.b #$20
+    lda.w !obj_pos_z,x
+    clc
+    adc.w #$FF00
+    sta.w !obj_pos_z,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_pos_x,x
+    clc
+    adc.w #$FFC0
+    sta.w !obj_pos_x,x
+    sep.b #$20
+.lE77C:
+    jsl.l ObjectRebucket
+    rtl
+
+; @routine 09:E781 ObjectFadeGate1
+; WHAT IT DOES: Sets up the lap 1 fade gate: restart $09:E79F
+; (ObjectFadeGate1Record), frame $09:E7C6 (ObjectFadeGate1Step); its record
+; and frame.
+; HOW: Word and byte stores.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+; leaves it.
+%at($09E781)
+ObjectFadeGate1:
+    rep.b #$20
+    lda.w #$E79F
+    sta.w !obj_1d,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1f,x
+    rep.b #$20
+    lda.w #$E7C6
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,x
+
+; @routine 09:E79F ObjectFadeGate1Record
+; WHAT IT DOES: The gate's restart: its record ($42D, flag bit 4, at
+; ($780, $780, $780)), then its frame.
+; HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
+; Entry: as ObjectFadeGate1. Exit: as ObjectFadeGate1.
+%at($09E79F)
+ObjectFadeGate1Record:
+    jsl.l GsuRecordNew42D
+    jsl.l GsuRecordFlag10
+    rep.b #$20
+    lda.w #$0780
+    sta.b !dp_02
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0780
+    sta.b !dp_08
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0780
+    sta.b !dp_94
+    sep.b #$20
+    jsl.l GsuRecordPosition
+
+; @routine 09:E7C6 ObjectFadeGate1Step
+; WHAT IT DOES: The gate's frame: a car's hit on lap 1, the first time (+$25
+; bit 0), starts a fade ($0DA5 bit 5, step $80 up to $2000).
+; HOW: ObjectSyncFromRecord, RecordContactSummary; $0DA5 by long accesses.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+; it (after the fade with M 16-bit, A = $2000).
+%at($09E7C6)
+ObjectFadeGate1Step:
+    jsl.l ObjectSyncFromRecord
+    and.b #$01
+    beq .lE80C
+    jsl.l RecordContactSummary
+    and.b #$01
+    beq .lE80C
+    sep.b #$20
+    lda.w !wram_0DEA
+    cmp.b #$01
+    bne .lE80C
+    lda.w !obj_25,x
+    and.b #$01
+    beq .lE7EA
+    jml.l .lE80C
+.lE7EA:
+    lda.w !obj_25,x
+    ora.b #$01
+    sta.w !obj_25,x
+    sep.b #$20
+    lda.l !slide_flags
+    ora.b #$20
+    sta.l !slide_flags
+    rep.b #$20
+    lda.w #$0080
+    sta.w !wram_1A00
+    lda.w #$2000
+    sta.w !wram_1A02
+.lE80C:
+    rtl
+
+; @routine 09:E80D ObjectWindowOnGate
+; WHAT IT DOES: Sets up the gate: restart $09:E82B (ObjectWindowOnGateRecord), frame
+; $09:E852 (ObjectWindowOnGateStep); its record and frame.
+; HOW: Word and byte stores.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+; leaves it.
+%at($09E80D)
+ObjectWindowOnGate:
+    rep.b #$20
+    lda.w #$E82B
+    sta.w !obj_1d,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1f,x
+    rep.b #$20
+    lda.w #$E852
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,x
+
+; @routine 09:E82B ObjectWindowOnGateRecord
+; WHAT IT DOES: The gate's restart: its record ($42D, flag bit 4, at
+; ($780, $780, $780)), then its frame.
+; HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
+; Entry: as ObjectWindowOnGate. Exit: as ObjectWindowOnGate.
+%at($09E82B)
+ObjectWindowOnGateRecord:
+    jsl.l GsuRecordNew42D
+    jsl.l GsuRecordFlag10
+    rep.b #$20
+    lda.w #$0780
+    sta.b !dp_02
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0780
+    sta.b !dp_08
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0780
+    sta.b !dp_94
+    sep.b #$20
+    jsl.l GsuRecordPosition
+
+; @routine 09:E852 ObjectWindowOnGateStep
+; WHAT IT DOES: The gate's frame: with contacts, a car (contact summary bit 0, player 1) sets bit 6 of $0DA5, one with
+; bit 1 (player 2) bit 6 of $0DA7.
+; HOW: ObjectSyncFromRecord, RecordContactSummary twice.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+; it.
+%at($09E852)
+ObjectWindowOnGateStep:
+    jsl.l ObjectSyncFromRecord
+    and.b #$01
+    beq .lE87E
+    jsl.l RecordContactSummary
+    and.b #$01
+    beq .lE86C
+    sep.b #$20
+    lda.w !slide_flags
+    ora.b #$40
+    sta.w !slide_flags
+.lE86C:
+    jsl.l RecordContactSummary
+    and.b #$02
+    beq .lE87E
+    sep.b #$20
+    lda.w !wram_0DA6+1
+    ora.b #$40
+    sta.w !wram_0DA6+1
+.lE87E:
+    rtl
+
+; @routine 09:E87F ObjectWindowOffGate
+; WHAT IT DOES: Sets up the gate: restart $09:E89D (ObjectWindowOffGateRecord), frame
+; $09:E8C4 (ObjectWindowOffGateStep); its record and frame.
+; HOW: Word and byte stores.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+; leaves it.
+%at($09E87F)
+ObjectWindowOffGate:
+    rep.b #$20
+    lda.w #$E89D
+    sta.w !obj_1d,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1f,x
+    rep.b #$20
+    lda.w #$E8C4
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,x
+
+; @routine 09:E89D ObjectWindowOffGateRecord
+; WHAT IT DOES: The gate's restart: its record ($42D, flag bit 4, at
+; ($780, $780, $780)), then its frame.
+; HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
+; Entry: as ObjectWindowOffGate. Exit: as ObjectWindowOffGate.
+%at($09E89D)
+ObjectWindowOffGateRecord:
+    jsl.l GsuRecordNew42D
+    jsl.l GsuRecordFlag10
+    rep.b #$20
+    lda.w #$0780
+    sta.b !dp_02
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0780
+    sta.b !dp_08
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0780
+    sta.b !dp_94
+    sep.b #$20
+    jsl.l GsuRecordPosition
+
+; @routine 09:E8C4 ObjectWindowOffGateStep
+; WHAT IT DOES: The gate's frame: with contacts, a car (contact summary bit 0, player 1) clears bit 6 of $0DA5, one with
+; bit 1 (player 2) bit 6 of $0DA7.
+; HOW: ObjectSyncFromRecord, RecordContactSummary twice.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+; it.
+%at($09E8C4)
+ObjectWindowOffGateStep:
+    jsl.l ObjectSyncFromRecord
+    and.b #$01
+    beq .lE8F0
+    jsl.l RecordContactSummary
+    and.b #$01
+    beq .lE8DE
+    sep.b #$20
+    lda.w !slide_flags
+    and.b #$BF
+    sta.w !slide_flags
+.lE8DE:
+    jsl.l RecordContactSummary
+    and.b #$02
+    beq .lE8F0
+    sep.b #$20
+    lda.w !wram_0DA6+1
+    and.b #$BF
+    sta.w !wram_0DA6+1
+.lE8F0:
+    rtl
+
+; @routine 09:E8F1 ObjectBeepGate11
+; WHAT IT DOES: Sets up the gate: restart $09:E90F (ObjectBeepGate11Record), frame
+; $09:E936 (ObjectBeepGate11Step); its record and frame.
+; HOW: Word and byte stores. Reached only by
+; unit_objects_09e.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+; leaves it.
+%at($09E8F1)
+ObjectBeepGate11:
+    rep.b #$20
+    lda.w #$E90F
+    sta.w !obj_1d,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1f,x
+    rep.b #$20
+    lda.w #$E936
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,x
+
+; @routine 09:E90F ObjectBeepGate11Record
+; WHAT IT DOES: The gate's restart: its record ($42D, flag bit 4, at
+; ($780, $780, $780)), then its frame.
+; HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition. Reached only by
+; unit_objects_09e.
+; Entry: as ObjectBeepGate11. Exit: as ObjectBeepGate11.
+%at($09E90F)
+ObjectBeepGate11Record:
+    jsl.l GsuRecordNew42D
+    jsl.l GsuRecordFlag10
+    rep.b #$20
+    lda.w #$0780
+    sta.b !dp_02
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0780
+    sta.b !dp_08
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0780
+    sta.b !dp_94
+    sep.b #$20
+    jsl.l GsuRecordPosition
+
+; @routine 09:E936 ObjectBeepGate11Step
+; WHAT IT DOES: The gate's frame: a car's hit, the first time (+$25 bit 0), plays sound $11 on port 1; no
+; hit clears the bit.
+; HOW: ObjectSyncFromRecord, RecordContactSummary. Reached only by
+; unit_objects_09e.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+; it.
+%at($09E936)
+ObjectBeepGate11Step:
+    jsl.l ObjectSyncFromRecord
+    and.b #$01
+    beq .lE960
+    jsl.l RecordContactSummary
+    and.b #$01
+    beq .lE960
+    lda.w !obj_25,x
+    and.b #$01
+    beq .lE951
+    jml.l .lE95F
+.lE951:
+    lda.w !obj_25,x
+    ora.b #$01
+    sta.w !obj_25,x
+    lda.b #$11
+    jsl.l SoundPort1QueuePush
+.lE95F:
+    rtl
+.lE960:
+    lda.w !obj_25,x
+    and.b #$FE
+    sta.w !obj_25,x
+    rtl
+
+; @routine 09:E969 ObjectBeepGate10
+; WHAT IT DOES: Sets up the gate: restart $09:E987 (ObjectBeepGate10Record), frame
+; $09:E9AE (ObjectBeepGate10Step); its record and frame.
+; HOW: Word and byte stores. Reached only by
+; unit_objects_09e.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+; leaves it.
+%at($09E969)
+ObjectBeepGate10:
+    rep.b #$20
+    lda.w #$E987
+    sta.w !obj_1d,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1f,x
+    rep.b #$20
+    lda.w #$E9AE
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,x
+
+; @routine 09:E987 ObjectBeepGate10Record
+; WHAT IT DOES: The gate's restart: its record ($42D, flag bit 4, at
+; ($780, $780, $780)), then its frame.
+; HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition. Reached only by
+; unit_objects_09e.
+; Entry: as ObjectBeepGate10. Exit: as ObjectBeepGate10.
+%at($09E987)
+ObjectBeepGate10Record:
+    jsl.l GsuRecordNew42D
+    jsl.l GsuRecordFlag10
+    rep.b #$20
+    lda.w #$0780
+    sta.b !dp_02
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0780
+    sta.b !dp_08
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0780
+    sta.b !dp_94
+    sep.b #$20
+    jsl.l GsuRecordPosition
+
+; @routine 09:E9AE ObjectBeepGate10Step
+; WHAT IT DOES: The gate's frame: a car's hit, the first time (+$25 bit 0), plays sound $10 on port 1; no
+; hit clears the bit.
+; HOW: ObjectSyncFromRecord, RecordContactSummary. Reached only by
+; unit_objects_09e.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+; it.
+%at($09E9AE)
+ObjectBeepGate10Step:
+    jsl.l ObjectSyncFromRecord
+    and.b #$01
+    beq .lE9D8
+    jsl.l RecordContactSummary
+    and.b #$01
+    beq .lE9D8
+    lda.w !obj_25,x
+    and.b #$01
+    beq .lE9C9
+    jml.l .lE9D7
+.lE9C9:
+    lda.w !obj_25,x
+    ora.b #$01
+    sta.w !obj_25,x
+    lda.b #$10
+    jsl.l SoundPort1QueuePush
+.lE9D7:
+    rtl
+.lE9D8:
+    lda.w !obj_25,x
+    and.b #$FE
+    sta.w !obj_25,x
+    rtl
+
+; @routine 09:E9E1 ObjectSlideBitsGate
+; WHAT IT DOES: Sets up the gate: restart $09:E9FF (ObjectSlideBitsGateRecord), frame
+; $09:EA26 (ObjectSlideBitsGateStep); its record and frame.
+; HOW: Word and byte stores.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+; leaves it.
+%at($09E9E1)
+ObjectSlideBitsGate:
+    rep.b #$20
+    lda.w #$E9FF
+    sta.w !obj_1d,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1f,x
+    rep.b #$20
+    lda.w #$EA26
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,x
+
+; @routine 09:E9FF ObjectSlideBitsGateRecord
+; WHAT IT DOES: The gate's restart: its record ($42D, flag bit 4, at
+; ($780, $780, $780)), then its frame.
+; HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
+; Entry: as ObjectSlideBitsGate. Exit: as ObjectSlideBitsGate.
+%at($09E9FF)
+ObjectSlideBitsGateRecord:
+    jsl.l GsuRecordNew42D
+    jsl.l GsuRecordFlag10
+    rep.b #$20
+    lda.w #$0780
+    sta.b !dp_02
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0780
+    sta.b !dp_08
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0780
+    sta.b !dp_94
+    sep.b #$20
+    jsl.l GsuRecordPosition
+
+; @routine 09:EA26 ObjectSlideBitsGateStep
+; WHAT IT DOES: The gate's frame: a car's hit sets bits 1 and 3 of $0DA5; the first time (+$25 bit 0)
+; sound $0F on port 1; no hit clears the bit.
+; HOW: ObjectSyncFromRecord, RecordContactSummary.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+; it.
+%at($09EA26)
+ObjectSlideBitsGateStep:
+    jsl.l ObjectSyncFromRecord
+    and.b #$01
+    beq .lEA5A
+    jsl.l RecordContactSummary
+    and.b #$01
+    beq .lEA5A
+    sep.b #$20
+    lda.w !slide_flags
+    ora.b #$0A
+    sta.w !slide_flags
+    lda.w !obj_25,x
+    and.b #$01
+    beq .lEA4B
+    jml.l .lEA59
+.lEA4B:
+    lda.w !obj_25,x
+    ora.b #$01
+    sta.w !obj_25,x
+    lda.b #$0F
+    jsl.l SoundPort1QueuePush
+.lEA59:
+    rtl
+.lEA5A:
+    lda.w !obj_25,x
+    and.b #$FE
+    sta.w !obj_25,x
+    rtl
+
+; @routine 09:EA63 ObjectSlideBitGate
+; WHAT IT DOES: Sets up the gate: restart $09:EA81 (ObjectSlideBitGateRecord), frame
+; $09:EAA8 (ObjectSlideBitGateStep); its record and frame.
+; HOW: Word and byte stores.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+; leaves it.
+%at($09EA63)
+ObjectSlideBitGate:
+    rep.b #$20
+    lda.w #$EA81
+    sta.w !obj_1d,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1f,x
+    rep.b #$20
+    lda.w #$EAA8
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,x
+
+; @routine 09:EA81 ObjectSlideBitGateRecord
+; WHAT IT DOES: The gate's restart: its record ($42D, flag bit 4, at
+; ($780, $780, $780)), then its frame.
+; HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
+; Entry: as ObjectSlideBitGate. Exit: as ObjectSlideBitGate.
+%at($09EA81)
+ObjectSlideBitGateRecord:
+    jsl.l GsuRecordNew42D
+    jsl.l GsuRecordFlag10
+    rep.b #$20
+    lda.w #$0780
+    sta.b !dp_02
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0780
+    sta.b !dp_08
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0780
+    sta.b !dp_94
+    sep.b #$20
+    jsl.l GsuRecordPosition
+
+; @routine 09:EAA8 ObjectSlideBitGateStep
+; WHAT IT DOES: The gate's frame: a car's hit sets bit 2 of $0DA5 (clearing bit 3); the first time (+$25
+; bit 0) sound $10 on port 1; no hit clears the bit.
+; HOW: ObjectSyncFromRecord, RecordContactSummary.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+; it.
+%at($09EAA8)
+ObjectSlideBitGateStep:
+    jsl.l ObjectSyncFromRecord
+    and.b #$01
+    beq .lEADE
+    jsl.l RecordContactSummary
+    and.b #$01
+    beq .lEADE
+    sep.b #$20
+    lda.w !slide_flags
+    and.b #$F7
+    ora.b #$04
+    sta.w !slide_flags
+    lda.w !obj_25,x
+    and.b #$01
+    beq .lEACF
+    jml.l .lEADD
+.lEACF:
+    lda.w !obj_25,x
+    ora.b #$01
+    sta.w !obj_25,x
+    lda.b #$10
+    jsl.l SoundPort1QueuePush
+.lEADD:
+    rtl
+.lEADE:
+    lda.w !obj_25,x
+    and.b #$FE
+    sta.w !obj_25,x
+    rtl
+
+; @routine 09:EAE7 ObjectWindowSetGate
+; WHAT IT DOES: Sets up the gate: restart $09:EB05 (ObjectWindowSetGateRecord), frame
+; $09:EB2C (ObjectWindowSetGateStep); its record and frame.
+; HOW: Word and byte stores. Reached only by
+; unit_objects_09e.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+; leaves it.
+%at($09EAE7)
+ObjectWindowSetGate:
+    rep.b #$20
+    lda.w #$EB05
+    sta.w !obj_1d,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1f,x
+    rep.b #$20
+    lda.w #$EB2C
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,x
+
+; @routine 09:EB05 ObjectWindowSetGateRecord
+; WHAT IT DOES: The gate's restart: its record ($42D, flag bit 4, at
+; ($780, $780, $780)), then its frame.
+; HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition. Reached only by
+; unit_objects_09e.
+; Entry: as ObjectWindowSetGate. Exit: as ObjectWindowSetGate.
+%at($09EB05)
+ObjectWindowSetGateRecord:
+    jsl.l GsuRecordNew42D
+    jsl.l GsuRecordFlag10
+    rep.b #$20
+    lda.w #$0780
+    sta.b !dp_02
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0780
+    sta.b !dp_08
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0780
+    sta.b !dp_94
+    sep.b #$20
+    jsl.l GsuRecordPosition
+
+; @routine 09:EB2C ObjectWindowSetGateStep
+; WHAT IT DOES: The gate's frame: with contacts, a car (contact summary bit 0, player 1) sets $7F:3460 =
+; $1F and $0DA5 = $44, one with bit 1 (player 2) $7F:3460 = $1F and $0DA7
+; = $C0.
+; HOW: ObjectSyncFromRecord, RecordContactSummary twice; AND #0 then ORA. Reached only by
+; unit_objects_09e.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+; it.
+%at($09EB2C)
+ObjectWindowSetGateStep:
+    jsl.l ObjectSyncFromRecord
+    and.b #$01
+    beq .lEB68
+    jsl.l RecordContactSummary
+    and.b #$01
+    beq .lEB4E
+    sep.b #$20
+    lda.b #$1F
+    sta.l !wram_7F3460
+    lda.w !slide_flags
+    and.b #$00
+    ora.b #$44
+    sta.w !slide_flags
+.lEB4E:
+    jsl.l RecordContactSummary
+    and.b #$02
+    beq .lEB68
+    sep.b #$20
+    lda.b #$1F
+    sta.l !wram_7F3460
+    lda.w !wram_0DA6+1
+    and.b #$00
+    ora.b #$C0
+    sta.w !wram_0DA6+1
+.lEB68:
+    rtl
+
+; @routine 09:EB69 ObjectWindowResetGate
+; WHAT IT DOES: Sets up the gate: restart $09:EB87 (ObjectWindowResetGateRecord), frame
+; $09:EBAE (ObjectWindowResetGateStep); its record and frame.
+; HOW: Word and byte stores. Reached only by
+; unit_objects_09e.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+; leaves it.
+%at($09EB69)
+ObjectWindowResetGate:
+    rep.b #$20
+    lda.w #$EB87
+    sta.w !obj_1d,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1f,x
+    rep.b #$20
+    lda.w #$EBAE
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,x
+
+; @routine 09:EB87 ObjectWindowResetGateRecord
+; WHAT IT DOES: The gate's restart: its record ($42D, flag bit 4, at
+; ($780, $780, $780)), then its frame.
+; HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition. Reached only by
+; unit_objects_09e.
+; Entry: as ObjectWindowResetGate. Exit: as ObjectWindowResetGate.
+%at($09EB87)
+ObjectWindowResetGateRecord:
+    jsl.l GsuRecordNew42D
+    jsl.l GsuRecordFlag10
+    rep.b #$20
+    lda.w #$0780
+    sta.b !dp_02
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0780
+    sta.b !dp_08
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0780
+    sta.b !dp_94
+    sep.b #$20
+    jsl.l GsuRecordPosition
+
+; @routine 09:EBAE ObjectWindowResetGateStep
+; WHAT IT DOES: The gate's frame: with contacts, a car (contact summary bit 0, player 1) sets $7F:3460 =
+; 0 and $0DA5 = $0A, one with bit 1 (player 2) $7F:3460 = 0 and bit 3 of
+; $0DA7 (bit 6 cleared).
+; HOW: ObjectSyncFromRecord, RecordContactSummary twice; AND then ORA. Reached only by
+; unit_objects_09e.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+; it.
+%at($09EBAE)
+ObjectWindowResetGateStep:
+    jsl.l ObjectSyncFromRecord
+    and.b #$01
+    beq .lEBE4
+    jsl.l RecordContactSummary
+    and.b #$01
+    beq .lEBD0
+    sep.b #$20
+    lda.b #$00
+    sta.l !wram_7F3460
+    lda.w !slide_flags
+    and.b #$00
+    ora.b #$0A
+    sta.w !slide_flags
+.lEBD0:
+    jsl.l RecordContactSummary
+    and.b #$02
+    beq .lEBE4
+    sep.b #$20
+    lda.w !wram_0DA6+1
+    and.b #$BF
+    ora.b #$08
+    sta.w !wram_0DA6+1
+.lEBE4:
+    rtl
+
+; @routine 09:EBE5 ObjectSlideGateUp
+; WHAT IT DOES: Sets up the slide gate: restart $09:EC03
+; (ObjectSlideGateUpRecord), frame $09:EC2A (ObjectSlideGateUpStep); its
+; record and frame.
+; HOW: Word and byte stores.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+; leaves it.
+%at($09EBE5)
+ObjectSlideGateUp:
+    rep.b #$20
+    lda.w #$EC03
+    sta.w !obj_1d,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1f,x
+    rep.b #$20
+    lda.w #$EC2A
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$09
+    sta.w !obj_1c,x
+
+; @routine 09:EC03 ObjectSlideGateUpRecord
+; WHAT IT DOES: The gate's restart: its record ($42D, flag bit 4, at
+; ($780, $780, $780)), then its frame.
+; HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition.
+; Entry: as ObjectSlideGateUp. Exit: as ObjectSlideGateUp.
+%at($09EC03)
+ObjectSlideGateUpRecord:
+    jsl.l GsuRecordNew42D
+    jsl.l GsuRecordFlag10
+    rep.b #$20
+    lda.w #$0780
+    sta.b !dp_02
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0780
+    sta.b !dp_08
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0780
+    sta.b !dp_94
+    sep.b #$20
+    jsl.l GsuRecordPosition
+
+; @routine 09:EC2A ObjectSlideGateUpStep
+; WHAT IT DOES: The slide gate's frame: a car's hit starts the slide up
+; (unless the screen flashes or the slide is held at $7FFF) and plays
+; sound $11 the first time; no hit sends it back down (unless held) and
+; plays sound $10 the first time; +$25 bits 0 and 1 mark in and out.
+; HOW: ObjectSyncFromRecord, RecordContactSummary; the out mark's +$25
+; accesses are words (M 16-bit). A hit while held and no hit while
+; flashing reach code with the other register width (09:EC71, 09:ECB9),
+; which runs as the original.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
+; it.
+%at($09EC2A)
+ObjectSlideGateUpStep:
+    jsl.l ObjectSyncFromRecord
+    and.b #$01
+    beq .lEC95
+    jsl.l RecordContactSummary
+    and.b #$01
+    beq .lEC95
+    lda.w !slide_flags
+    and.b #$01
+    bne .lEC71
+    rep.b #$20
+    lda.l !slide_done
+    cmp.w #$7FFF
+    beq .lEC71
+    rep.b #$20
+    lda.w #$0800
+    sta.l !slide_done
+    lda.w #$0100
+    sta.w !slide_step
+    lda.w #$0700
+    sta.w !slide_target
+    lda.w #$0000
+    sta.w !slide_direction
+    sep.b #$20
+    lda.w !slide_flags
+    ora.b #$80
+    sta.w !slide_flags
+.lEC71:
+    lda.w !obj_25,x
+    and.b #$01
+    beq .lEC7C
+    jml.l .lEC94
+.lEC7C:
+    lda.w !obj_25,x
+    ora.b #$01
+    sta.w !obj_25,x
+    lda.w !obj_25,x
+    and.b #$FD
+    sta.w !obj_25,x
+    sep.b #$20
+    lda.b #$11
+    jsl.l SoundPort1QueuePush
+.lEC94:
+    rtl
+.lEC95:
+    lda.w !slide_flags
+    and.b #$01
+    bne .lECB9
+    rep.b #$20
+    lda.l !slide_done
+    cmp.w #$7FFF
+    beq .lECB9
+    lda.w #$0100
+    sta.w !slide_step
+    lda.w #$FF00
+    sta.w !slide_target
+    lda.w #$8000
+    sta.w !slide_direction
+.lECB9:
+    lda.w !obj_25,x
+    and.w #$0002
+    beq .lECC5
+    jml.l .lECDF
+.lECC5:
+    lda.w !obj_25,x
+    ora.w #$0002
+    sta.w !obj_25,x
+    lda.w !obj_25,x
+    and.w #$FFFE
+    sta.w !obj_25,x
+    sep.b #$20
+    lda.b #$10
+    jsl.l SoundPort1QueuePush
+.lECDF:
+    rtl
