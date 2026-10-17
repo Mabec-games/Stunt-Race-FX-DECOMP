@@ -1,0 +1,20 @@
+# unit_effects_next_01: unit tests (fx) from the start of a Novice race that
+# start FxEffectsAddNext (01:B763) itself, so its own calls can be judged;
+# in the game every kind's set-up jumps there inside FxEffectsAdd. The
+# return word on the R10 stack ($0244) is the STOP at $01:80E3:
+# - R9 = 1: none left to add, the seed R2 kept at $01D0 and the return
+#   pulled;
+# - R9 = 2, R12 = 1: the last slot (LOOP falls through), the same exit;
+# - R9 = 2, R12 = 3 with R13 = $B76C: the LOOP taken, to the same exit.
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700244 E3,80
+fx 01:B763 stop=80E3 r10=0246 r9=0001 r2=1234 r3=0400
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700244 E3,80
+fx 01:B763 stop=80E3 r10=0246 r9=0002 r12=0001 r13=B6F4 r2=5678 r3=0400
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700244 E3,80
+fx 01:B763 stop=80E3 r10=0246 r9=0002 r12=0003 r13=B76C r2=9ABC r3=0400
+wait 1

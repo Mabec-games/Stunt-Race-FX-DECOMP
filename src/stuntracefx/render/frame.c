@@ -1061,7 +1061,10 @@ lB763:
 lB767:
     R[3] = gsu_add(R[3], 14, 0);
     t = gsu_count_down(&R[12]);
-    if (t) goto lB6F4;
+    if (t) {
+        at = R[13];   /* FxEffectsAdd's slot loop, 01:B6F4 */
+        goto dispatch;
+    }
 lB76C:
     gsu_stw(FX_EFFECT_SEED, R[2]);
     R[10] = gsu_dec(R[10]);
