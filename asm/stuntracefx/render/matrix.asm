@@ -624,9 +624,9 @@ FxSegmentCrossZ:
     jmp r11
     nop
 .second_negative:
-    sms ($9A),r1
-    sms ($9C),r2
-    sms ($9E),r3
+    sms (!fx_clip_kept_x-!gsu_ram),r1
+    sms (!fx_clip_kept_y-!gsu_ram),r2
+    sms (!fx_clip_kept_z-!gsu_ram),r3
     move r0,r1
     move r1,r4
     move r4,r0
@@ -677,16 +677,16 @@ FxSegmentCrossZ:
     add r5
     to r5
     div2
-    lms r1,($9A)
-    lms r2,($9C)
-    lms r3,($9E)
+    lms r1,(!fx_clip_kept_x-!gsu_ram)
+    lms r2,(!fx_clip_kept_y-!gsu_ram)
+    lms r3,(!fx_clip_kept_z-!gsu_ram)
     ibt r0,#$01
     jmp r11
     nop
 .first_only:
-    sms ($9A),r4
-    sms ($9C),r5
-    sms ($9E),r6
+    sms (!fx_clip_kept_x-!gsu_ram),r4
+    sms (!fx_clip_kept_y-!gsu_ram),r5
+    sms (!fx_clip_kept_z-!gsu_ram),r6
 .search_b:
     from r3
     add r6
@@ -728,9 +728,9 @@ FxSegmentCrossZ:
     add r5
     to r2
     div2
-    lms r4,($9A)
-    lms r5,($9C)
-    lms r6,($9E)
+    lms r4,(!fx_clip_kept_x-!gsu_ram)
+    lms r5,(!fx_clip_kept_y-!gsu_ram)
+    lms r6,(!fx_clip_kept_z-!gsu_ram)
     ibt r0,#$01
     jmp r11
     nop
@@ -813,9 +813,9 @@ FxClipYPlane:
     ldw (r10)
     nop
 .lC4EE:
-    sms ($9A),r1
-    sms ($9C),r2
-    sms ($9E),r3
+    sms (!fx_clip_kept_x-!gsu_ram),r1
+    sms (!fx_clip_kept_y-!gsu_ram),r2
+    sms (!fx_clip_kept_z-!gsu_ram),r3
     from r8
     stw (r10)
     inc r10
@@ -832,7 +832,7 @@ FxClipYPlane:
     stw (r10)
     inc r10
     inc r10
-    sms ($A0),r10
+    sms (!fx_clip_stack-!gsu_ram),r10
     ibt r10,#$0C
     with r1
     to r0
@@ -852,10 +852,10 @@ FxClipYPlane:
     to r3
     with r0
     to r7
-    lms r8,($8C)
-    lms r9,($90)
-    lms r12,($8A)
-    lms r13,($8E)
+    lms r8,(!fx_clip_end2_attr1-!gsu_ram)
+    lms r9,(!fx_clip_end2_attr2-!gsu_ram)
+    lms r12,(!fx_clip_end1_attr1-!gsu_ram)
+    lms r13,(!fx_clip_end1_attr2-!gsu_ram)
 .lC52A:
     from r2
     add r5
@@ -934,12 +934,12 @@ FxClipYPlane:
     add r13
     to r13
     div2
-    lms r1,($9A)
-    lms r2,($9C)
-    lms r3,($9E)
-    sms ($8C),r12
-    sms ($90),r13
-    lms r10,($A0)
+    lms r1,(!fx_clip_kept_x-!gsu_ram)
+    lms r2,(!fx_clip_kept_y-!gsu_ram)
+    lms r3,(!fx_clip_kept_z-!gsu_ram)
+    sms (!fx_clip_end2_attr1-!gsu_ram),r12
+    sms (!fx_clip_end2_attr2-!gsu_ram),r13
+    lms r10,(!fx_clip_stack-!gsu_ram)
     dec r10
     dec r10
     to r13
@@ -967,9 +967,9 @@ FxClipYPlane:
     ldw (r10)
     nop
 .lC5B4:
-    sms ($9A),r4
-    sms ($9C),r5
-    sms ($9E),r7
+    sms (!fx_clip_kept_x-!gsu_ram),r4
+    sms (!fx_clip_kept_y-!gsu_ram),r5
+    sms (!fx_clip_kept_z-!gsu_ram),r7
     from r8
     stw (r10)
     inc r10
@@ -986,12 +986,12 @@ FxClipYPlane:
     stw (r10)
     inc r10
     inc r10
-    sms ($A0),r10
+    sms (!fx_clip_stack-!gsu_ram),r10
     ibt r10,#$0C
-    lms r8,($8A)
-    lms r9,($8E)
-    lms r12,($8C)
-    lms r13,($90)
+    lms r8,(!fx_clip_end1_attr1-!gsu_ram)
+    lms r9,(!fx_clip_end1_attr2-!gsu_ram)
+    lms r12,(!fx_clip_end2_attr1-!gsu_ram)
+    lms r13,(!fx_clip_end2_attr2-!gsu_ram)
 .lC5DE:
     from r2
     add r5
@@ -1070,12 +1070,12 @@ FxClipYPlane:
     add r13
     to r9
     div2
-    lms r4,($9A)
-    lms r5,($9C)
-    lms r7,($9E)
-    sms ($8A),r8
-    sms ($8E),r9
-    lms r10,($A0)
+    lms r4,(!fx_clip_kept_x-!gsu_ram)
+    lms r5,(!fx_clip_kept_y-!gsu_ram)
+    lms r7,(!fx_clip_kept_z-!gsu_ram)
+    sms (!fx_clip_end1_attr1-!gsu_ram),r8
+    sms (!fx_clip_end1_attr2-!gsu_ram),r9
+    lms r10,(!fx_clip_stack-!gsu_ram)
     dec r10
     dec r10
     to r13
@@ -1169,9 +1169,9 @@ FxClipXPlane:
     ldw (r10)
     nop
 .lC7BB:
-    sms ($9A),r1
-    sms ($9C),r2
-    sms ($9E),r3
+    sms (!fx_clip_kept_x-!gsu_ram),r1
+    sms (!fx_clip_kept_y-!gsu_ram),r2
+    sms (!fx_clip_kept_z-!gsu_ram),r3
     from r8
     stw (r10)
     inc r10
@@ -1188,7 +1188,7 @@ FxClipXPlane:
     stw (r10)
     inc r10
     inc r10
-    sms ($A0),r10
+    sms (!fx_clip_stack-!gsu_ram),r10
     ibt r10,#$0C
     with r1
     to r0
@@ -1208,10 +1208,10 @@ FxClipXPlane:
     to r3
     with r0
     to r7
-    lms r8,($8C)
-    lms r9,($90)
-    lms r12,($8A)
-    lms r13,($8E)
+    lms r8,(!fx_clip_end2_attr1-!gsu_ram)
+    lms r9,(!fx_clip_end2_attr2-!gsu_ram)
+    lms r12,(!fx_clip_end1_attr1-!gsu_ram)
+    lms r13,(!fx_clip_end1_attr2-!gsu_ram)
 .lC7F7:
     from r1
     add r4
@@ -1289,12 +1289,12 @@ FxClipXPlane:
     add r13
     to r13
     div2
-    lms r1,($9A)
-    lms r2,($9C)
-    lms r3,($9E)
-    sms ($8C),r12
-    sms ($90),r13
-    lms r10,($A0)
+    lms r1,(!fx_clip_kept_x-!gsu_ram)
+    lms r2,(!fx_clip_kept_y-!gsu_ram)
+    lms r3,(!fx_clip_kept_z-!gsu_ram)
+    sms (!fx_clip_end2_attr1-!gsu_ram),r12
+    sms (!fx_clip_end2_attr2-!gsu_ram),r13
+    lms r10,(!fx_clip_stack-!gsu_ram)
     dec r10
     dec r10
     to r13
@@ -1322,9 +1322,9 @@ FxClipXPlane:
     ldw (r10)
     nop
 .lC880:
-    sms ($9A),r4
-    sms ($9C),r5
-    sms ($9E),r7
+    sms (!fx_clip_kept_x-!gsu_ram),r4
+    sms (!fx_clip_kept_y-!gsu_ram),r5
+    sms (!fx_clip_kept_z-!gsu_ram),r7
     from r8
     stw (r10)
     inc r10
@@ -1341,12 +1341,12 @@ FxClipXPlane:
     stw (r10)
     inc r10
     inc r10
-    sms ($A0),r10
+    sms (!fx_clip_stack-!gsu_ram),r10
     ibt r10,#$0C
-    lms r8,($8A)
-    lms r9,($8E)
-    lms r12,($8C)
-    lms r13,($90)
+    lms r8,(!fx_clip_end1_attr1-!gsu_ram)
+    lms r9,(!fx_clip_end1_attr2-!gsu_ram)
+    lms r12,(!fx_clip_end2_attr1-!gsu_ram)
+    lms r13,(!fx_clip_end2_attr2-!gsu_ram)
 .lC8AA:
     from r1
     add r4
@@ -1424,12 +1424,12 @@ FxClipXPlane:
     add r13
     to r9
     div2
-    lms r4,($9A)
-    lms r5,($9C)
-    lms r7,($9E)
-    sms ($8A),r8
-    sms ($8E),r9
-    lms r10,($A0)
+    lms r4,(!fx_clip_kept_x-!gsu_ram)
+    lms r5,(!fx_clip_kept_y-!gsu_ram)
+    lms r7,(!fx_clip_kept_z-!gsu_ram)
+    sms (!fx_clip_end1_attr1-!gsu_ram),r8
+    sms (!fx_clip_end1_attr2-!gsu_ram),r9
+    lms r10,(!fx_clip_stack-!gsu_ram)
     dec r10
     dec r10
     to r13
@@ -1477,12 +1477,12 @@ FxPolygonClipTop:
     stw (r10)
     inc r10
     inc r10
-    lms r6,($94)
-    lms r14,($40)
+    lms r6,(!fx_clip_slope_y-!gsu_ram)
+    lms r14,(!fx_vertex_count-!gsu_ram)
     sub r0
-    sms ($40),r0
-    lms r8,($60)
-    lms r9,($62)
+    sms (!fx_vertex_count-!gsu_ram),r0
+    lms r8,(!fx_list_in-!gsu_ram)
+    lms r9,(!fx_list_out-!gsu_ram)
     from r14
     sub #2
     bne .lC68A
@@ -1507,17 +1507,17 @@ FxPolygonClipTop:
     ldw (r8)
     inc r8
     inc r8
-    sms ($8A),r0
+    sms (!fx_clip_end1_attr1-!gsu_ram),r0
     ldw (r8)
     inc r8
     inc r8
-    sms ($8E),r0
+    sms (!fx_clip_end1_attr2-!gsu_ram),r0
     with r14
     to r0
     dec r0
     bne .lC6AC
     nop
-    lms r8,($60)
+    lms r8,(!fx_list_in-!gsu_ram)
 .lC6AC:
     to r4
     ldw (r8)
@@ -1534,9 +1534,9 @@ FxPolygonClipTop:
     ldw (r8)
     inc r8
     inc r8
-    sms ($8C),r0
+    sms (!fx_clip_end2_attr1-!gsu_ram),r0
     ldw (r8)
-    sms ($90),r0
+    sms (!fx_clip_end2_attr2-!gsu_ram),r0
     with r8
     sub #8
     from r2
@@ -1575,15 +1575,15 @@ FxPolygonClipTop:
     stw (r9)
     inc r9
     inc r9
-    lms r0,($8A)
+    lms r0,(!fx_clip_end1_attr1-!gsu_ram)
     stw (r9)
     inc r9
     inc r9
-    lms r0,($8E)
+    lms r0,(!fx_clip_end1_attr2-!gsu_ram)
     stw (r9)
     inc r9
     inc r9
-    lms r0,($40)
+    lms r0,(!fx_vertex_count-!gsu_ram)
     inc r0
     sbk
     from r5
@@ -1610,15 +1610,15 @@ FxPolygonClipTop:
     stw (r9)
     inc r9
     inc r9
-    lms r0,($8C)
+    lms r0,(!fx_clip_end2_attr1-!gsu_ram)
     stw (r9)
     inc r9
     inc r9
-    lms r0,($90)
+    lms r0,(!fx_clip_end2_attr2-!gsu_ram)
     stw (r9)
     inc r9
     inc r9
-    lms r0,($40)
+    lms r0,(!fx_vertex_count-!gsu_ram)
     inc r0
     sbk
     iwt r15,#.lC752
@@ -1639,15 +1639,15 @@ FxPolygonClipTop:
     stw (r9)
     inc r9
     inc r9
-    lms r0,($8A)
+    lms r0,(!fx_clip_end1_attr1-!gsu_ram)
     stw (r9)
     inc r9
     inc r9
-    lms r0,($8E)
+    lms r0,(!fx_clip_end1_attr2-!gsu_ram)
     stw (r9)
     inc r9
     inc r9
-    lms r0,($40)
+    lms r0,(!fx_vertex_count-!gsu_ram)
     inc r0
     sbk
 .lC752:
@@ -1657,7 +1657,7 @@ FxPolygonClipTop:
     iwt r15,#.lC68B
     nop
 .lC75A:
-    lms r0,($40)
+    lms r0,(!fx_vertex_count-!gsu_ram)
     to r1
     sub #3
     bpl .lC767
@@ -1701,12 +1701,12 @@ FxPolygonClipRight:
     stw (r10)
     inc r10
     inc r10
-    lms r6,($92)
-    lms r14,($40)
+    lms r6,(!fx_clip_slope_x-!gsu_ram)
+    lms r14,(!fx_vertex_count-!gsu_ram)
     sub r0
-    sms ($40),r0
-    lms r8,($60)
-    lms r9,($62)
+    sms (!fx_vertex_count-!gsu_ram),r0
+    lms r8,(!fx_list_in-!gsu_ram)
+    lms r9,(!fx_list_out-!gsu_ram)
     from r14
     sub #2
     bne .lC955
@@ -1731,17 +1731,17 @@ FxPolygonClipRight:
     ldw (r8)
     inc r8
     inc r8
-    sms ($8A),r0
+    sms (!fx_clip_end1_attr1-!gsu_ram),r0
     ldw (r8)
     inc r8
     inc r8
-    sms ($8E),r0
+    sms (!fx_clip_end1_attr2-!gsu_ram),r0
     with r14
     to r0
     dec r0
     bne .lC977
     nop
-    lms r8,($60)
+    lms r8,(!fx_list_in-!gsu_ram)
 .lC977:
     to r4
     ldw (r8)
@@ -1758,9 +1758,9 @@ FxPolygonClipRight:
     ldw (r8)
     inc r8
     inc r8
-    sms ($8C),r0
+    sms (!fx_clip_end2_attr1-!gsu_ram),r0
     ldw (r8)
-    sms ($90),r0
+    sms (!fx_clip_end2_attr2-!gsu_ram),r0
     with r8
     sub #8
     from r1
@@ -1797,15 +1797,15 @@ FxPolygonClipRight:
     stw (r9)
     inc r9
     inc r9
-    lms r0,($8A)
+    lms r0,(!fx_clip_end1_attr1-!gsu_ram)
     stw (r9)
     inc r9
     inc r9
-    lms r0,($8E)
+    lms r0,(!fx_clip_end1_attr2-!gsu_ram)
     stw (r9)
     inc r9
     inc r9
-    lms r0,($40)
+    lms r0,(!fx_vertex_count-!gsu_ram)
     inc r0
     sbk
     from r4
@@ -1831,15 +1831,15 @@ FxPolygonClipRight:
     stw (r9)
     inc r9
     inc r9
-    lms r0,($8C)
+    lms r0,(!fx_clip_end2_attr1-!gsu_ram)
     stw (r9)
     inc r9
     inc r9
-    lms r0,($90)
+    lms r0,(!fx_clip_end2_attr2-!gsu_ram)
     stw (r9)
     inc r9
     inc r9
-    lms r0,($40)
+    lms r0,(!fx_vertex_count-!gsu_ram)
     inc r0
     sbk
     iwt r15,#.lCA1A
@@ -1860,15 +1860,15 @@ FxPolygonClipRight:
     stw (r9)
     inc r9
     inc r9
-    lms r0,($8A)
+    lms r0,(!fx_clip_end1_attr1-!gsu_ram)
     stw (r9)
     inc r9
     inc r9
-    lms r0,($8E)
+    lms r0,(!fx_clip_end1_attr2-!gsu_ram)
     stw (r9)
     inc r9
     inc r9
-    lms r0,($40)
+    lms r0,(!fx_vertex_count-!gsu_ram)
     inc r0
     sbk
 .lCA1A:
@@ -1878,7 +1878,7 @@ FxPolygonClipRight:
     iwt r15,#.lC956
     nop
 .lCA22:
-    lms r0,($40)
+    lms r0,(!fx_vertex_count-!gsu_ram)
     to r1
     sub #3
     bpl .lCA2F
@@ -1922,12 +1922,12 @@ FxPolygonClipLeft:
     stw (r10)
     inc r10
     inc r10
-    lms r6,($92)
-    lms r14,($40)
+    lms r6,(!fx_clip_slope_x-!gsu_ram)
+    lms r14,(!fx_vertex_count-!gsu_ram)
     sub r0
-    sms ($40),r0
-    lms r8,($60)
-    lms r9,($62)
+    sms (!fx_vertex_count-!gsu_ram),r0
+    lms r8,(!fx_list_in-!gsu_ram)
+    lms r9,(!fx_list_out-!gsu_ram)
     from r14
     sub #2
     bne .lCA64
@@ -1952,17 +1952,17 @@ FxPolygonClipLeft:
     ldw (r8)
     inc r8
     inc r8
-    sms ($8A),r0
+    sms (!fx_clip_end1_attr1-!gsu_ram),r0
     ldw (r8)
     inc r8
     inc r8
-    sms ($8E),r0
+    sms (!fx_clip_end1_attr2-!gsu_ram),r0
     with r14
     to r0
     dec r0
     bne .lCA86
     nop
-    lms r8,($60)
+    lms r8,(!fx_list_in-!gsu_ram)
 .lCA86:
     to r4
     ldw (r8)
@@ -1979,9 +1979,9 @@ FxPolygonClipLeft:
     ldw (r8)
     inc r8
     inc r8
-    sms ($8C),r0
+    sms (!fx_clip_end2_attr1-!gsu_ram),r0
     ldw (r8)
-    sms ($90),r0
+    sms (!fx_clip_end2_attr2-!gsu_ram),r0
     with r8
     sub #8
     from r1
@@ -2018,15 +2018,15 @@ FxPolygonClipLeft:
     stw (r9)
     inc r9
     inc r9
-    lms r0,($8A)
+    lms r0,(!fx_clip_end1_attr1-!gsu_ram)
     stw (r9)
     inc r9
     inc r9
-    lms r0,($8E)
+    lms r0,(!fx_clip_end1_attr2-!gsu_ram)
     stw (r9)
     inc r9
     inc r9
-    lms r0,($40)
+    lms r0,(!fx_vertex_count-!gsu_ram)
     inc r0
     sbk
     from r4
@@ -2061,15 +2061,15 @@ FxPolygonClipLeft:
     stw (r9)
     inc r9
     inc r9
-    lms r0,($8C)
+    lms r0,(!fx_clip_end2_attr1-!gsu_ram)
     stw (r9)
     inc r9
     inc r9
-    lms r0,($90)
+    lms r0,(!fx_clip_end2_attr2-!gsu_ram)
     stw (r9)
     inc r9
     inc r9
-    lms r0,($40)
+    lms r0,(!fx_vertex_count-!gsu_ram)
     inc r0
     sbk
     iwt r15,#.lCB3B
@@ -2099,15 +2099,15 @@ FxPolygonClipLeft:
     stw (r9)
     inc r9
     inc r9
-    lms r0,($8A)
+    lms r0,(!fx_clip_end1_attr1-!gsu_ram)
     stw (r9)
     inc r9
     inc r9
-    lms r0,($8E)
+    lms r0,(!fx_clip_end1_attr2-!gsu_ram)
     stw (r9)
     inc r9
     inc r9
-    lms r0,($40)
+    lms r0,(!fx_vertex_count-!gsu_ram)
     inc r0
     sbk
 .lCB3B:
@@ -2117,7 +2117,7 @@ FxPolygonClipLeft:
     iwt r15,#.lCA65
     nop
 .lCB43:
-    lms r0,($40)
+    lms r0,(!fx_vertex_count-!gsu_ram)
     to r1
     sub #3
     bpl .lCB50
@@ -2161,12 +2161,12 @@ FxPolygonClipBottom:
     stw (r10)
     inc r10
     inc r10
-    lms r6,($94)
-    lms r14,($40)
+    lms r6,(!fx_clip_slope_y-!gsu_ram)
+    lms r14,(!fx_vertex_count-!gsu_ram)
     sub r0
-    sms ($40),r0
-    lms r8,($60)
-    lms r9,($62)
+    sms (!fx_vertex_count-!gsu_ram),r0
+    lms r8,(!fx_list_in-!gsu_ram)
+    lms r9,(!fx_list_out-!gsu_ram)
     from r14
     sub #2
     bne .lCB85
@@ -2191,17 +2191,17 @@ FxPolygonClipBottom:
     ldw (r8)
     inc r8
     inc r8
-    sms ($8A),r0
+    sms (!fx_clip_end1_attr1-!gsu_ram),r0
     ldw (r8)
     inc r8
     inc r8
-    sms ($8E),r0
+    sms (!fx_clip_end1_attr2-!gsu_ram),r0
     with r14
     to r0
     dec r0
     bne .lCBA7
     nop
-    lms r8,($60)
+    lms r8,(!fx_list_in-!gsu_ram)
 .lCBA7:
     to r4
     ldw (r8)
@@ -2218,9 +2218,9 @@ FxPolygonClipBottom:
     ldw (r8)
     inc r8
     inc r8
-    sms ($8C),r0
+    sms (!fx_clip_end2_attr1-!gsu_ram),r0
     ldw (r8)
-    sms ($90),r0
+    sms (!fx_clip_end2_attr2-!gsu_ram),r0
     with r8
     sub #8
     from r2
@@ -2259,15 +2259,15 @@ FxPolygonClipBottom:
     stw (r9)
     inc r9
     inc r9
-    lms r0,($8A)
+    lms r0,(!fx_clip_end1_attr1-!gsu_ram)
     stw (r9)
     inc r9
     inc r9
-    lms r0,($8E)
+    lms r0,(!fx_clip_end1_attr2-!gsu_ram)
     stw (r9)
     inc r9
     inc r9
-    lms r0,($40)
+    lms r0,(!fx_vertex_count-!gsu_ram)
     inc r0
     sbk
     from r5
@@ -2303,15 +2303,15 @@ FxPolygonClipBottom:
     stw (r9)
     inc r9
     inc r9
-    lms r0,($8C)
+    lms r0,(!fx_clip_end2_attr1-!gsu_ram)
     stw (r9)
     inc r9
     inc r9
-    lms r0,($90)
+    lms r0,(!fx_clip_end2_attr2-!gsu_ram)
     stw (r9)
     inc r9
     inc r9
-    lms r0,($40)
+    lms r0,(!fx_vertex_count-!gsu_ram)
     inc r0
     sbk
     iwt r15,#.lCC5F
@@ -2341,15 +2341,15 @@ FxPolygonClipBottom:
     stw (r9)
     inc r9
     inc r9
-    lms r0,($8A)
+    lms r0,(!fx_clip_end1_attr1-!gsu_ram)
     stw (r9)
     inc r9
     inc r9
-    lms r0,($8E)
+    lms r0,(!fx_clip_end1_attr2-!gsu_ram)
     stw (r9)
     inc r9
     inc r9
-    lms r0,($40)
+    lms r0,(!fx_vertex_count-!gsu_ram)
     inc r0
     sbk
 .lCC5F:
@@ -2359,7 +2359,7 @@ FxPolygonClipBottom:
     iwt r15,#.lCB86
     nop
 .lCC67:
-    lms r0,($40)
+    lms r0,(!fx_vertex_count-!gsu_ram)
     to r1
     sub #3
     bpl .lCC74
@@ -2451,9 +2451,9 @@ FxClipNear:
     ldw (r10)
     nop
 .lCCBC:
-    sms ($9A),r1
-    sms ($9C),r2
-    sms ($9E),r3
+    sms (!fx_clip_kept_x-!gsu_ram),r1
+    sms (!fx_clip_kept_y-!gsu_ram),r2
+    sms (!fx_clip_kept_z-!gsu_ram),r3
     from r8
     stw (r10)
     inc r10
@@ -2470,7 +2470,7 @@ FxClipNear:
     stw (r10)
     inc r10
     inc r10
-    sms ($A0),r10
+    sms (!fx_clip_stack-!gsu_ram),r10
     ibt r10,#$0C
     with r1
     to r0
@@ -2490,10 +2490,10 @@ FxClipNear:
     to r3
     with r0
     to r7
-    lms r8,($8C)
-    lms r9,($90)
-    lms r12,($8A)
-    lms r13,($8E)
+    lms r8,(!fx_clip_end2_attr1-!gsu_ram)
+    lms r9,(!fx_clip_end2_attr2-!gsu_ram)
+    lms r12,(!fx_clip_end1_attr1-!gsu_ram)
+    lms r13,(!fx_clip_end1_attr2-!gsu_ram)
 .lCCF8:
     from r3
     add r7
@@ -2574,12 +2574,12 @@ FxClipNear:
     add r13
     to r13
     div2
-    lms r1,($9A)
-    lms r2,($9C)
-    lms r3,($9E)
-    sms ($8C),r12
-    sms ($90),r13
-    lms r10,($A0)
+    lms r1,(!fx_clip_kept_x-!gsu_ram)
+    lms r2,(!fx_clip_kept_y-!gsu_ram)
+    lms r3,(!fx_clip_kept_z-!gsu_ram)
+    sms (!fx_clip_end2_attr1-!gsu_ram),r12
+    sms (!fx_clip_end2_attr2-!gsu_ram),r13
+    lms r10,(!fx_clip_stack-!gsu_ram)
     dec r10
     dec r10
     to r13
@@ -2603,9 +2603,9 @@ FxClipNear:
     ldw (r10)
     nop
 .lCD81:
-    sms ($9A),r4
-    sms ($9C),r5
-    sms ($9E),r7
+    sms (!fx_clip_kept_x-!gsu_ram),r4
+    sms (!fx_clip_kept_y-!gsu_ram),r5
+    sms (!fx_clip_kept_z-!gsu_ram),r7
     from r8
     stw (r10)
     inc r10
@@ -2622,12 +2622,12 @@ FxClipNear:
     stw (r10)
     inc r10
     inc r10
-    sms ($A0),r10
+    sms (!fx_clip_stack-!gsu_ram),r10
     ibt r10,#$0C
-    lms r8,($8A)
-    lms r9,($8E)
-    lms r12,($8C)
-    lms r13,($90)
+    lms r8,(!fx_clip_end1_attr1-!gsu_ram)
+    lms r9,(!fx_clip_end1_attr2-!gsu_ram)
+    lms r12,(!fx_clip_end2_attr1-!gsu_ram)
+    lms r13,(!fx_clip_end2_attr2-!gsu_ram)
 .lCDAB:
     from r3
     add r7
@@ -2708,12 +2708,12 @@ FxClipNear:
     add r13
     to r9
     div2
-    lms r4,($9A)
-    lms r5,($9C)
-    lms r7,($9E)
-    sms ($8A),r8
-    sms ($8E),r9
-    lms r10,($A0)
+    lms r4,(!fx_clip_kept_x-!gsu_ram)
+    lms r5,(!fx_clip_kept_y-!gsu_ram)
+    lms r7,(!fx_clip_kept_z-!gsu_ram)
+    sms (!fx_clip_end1_attr1-!gsu_ram),r8
+    sms (!fx_clip_end1_attr2-!gsu_ram),r9
+    lms r10,(!fx_clip_stack-!gsu_ram)
     dec r10
     dec r10
     to r13
@@ -2756,11 +2756,11 @@ FxPolygonClipNear:
     inc r10
     with r0
     to r14
-    lms r9,($40)
+    lms r9,(!fx_vertex_count-!gsu_ram)
     sub r0
-    sms ($40),r0
-    lms r6,($60)
-    lms r8,($62)
+    sms (!fx_vertex_count-!gsu_ram),r0
+    lms r6,(!fx_list_in-!gsu_ram)
+    lms r8,(!fx_list_out-!gsu_ram)
     from r9
     sub #2
     bne .lCE55
@@ -2785,17 +2785,17 @@ FxPolygonClipNear:
     ldw (r6)
     inc r6
     inc r6
-    sms ($8A),r0
+    sms (!fx_clip_end1_attr1-!gsu_ram),r0
     ldw (r6)
     inc r6
     inc r6
-    sms ($8E),r0
+    sms (!fx_clip_end1_attr2-!gsu_ram),r0
     with r9
     to r0
     dec r0
     bne .lCE77
     nop
-    lms r6,($60)
+    lms r6,(!fx_list_in-!gsu_ram)
 .lCE77:
     to r4
     ldw (r6)
@@ -2812,9 +2812,9 @@ FxPolygonClipNear:
     ldw (r6)
     inc r6
     inc r6
-    sms ($8C),r0
+    sms (!fx_clip_end2_attr1-!gsu_ram),r0
     ldw (r6)
-    sms ($90),r0
+    sms (!fx_clip_end2_attr2-!gsu_ram),r0
     with r6
     sub #8
     with r0
@@ -2853,15 +2853,15 @@ FxPolygonClipNear:
     stw (r8)
     inc r8
     inc r8
-    lms r0,($8A)
+    lms r0,(!fx_clip_end1_attr1-!gsu_ram)
     stw (r8)
     inc r8
     inc r8
-    lms r0,($8E)
+    lms r0,(!fx_clip_end1_attr2-!gsu_ram)
     stw (r8)
     inc r8
     inc r8
-    lms r0,($40)
+    lms r0,(!fx_vertex_count-!gsu_ram)
     inc r0
     sbk
     with r0
@@ -2888,15 +2888,15 @@ FxPolygonClipNear:
     stw (r8)
     inc r8
     inc r8
-    lms r0,($8C)
+    lms r0,(!fx_clip_end2_attr1-!gsu_ram)
     stw (r8)
     inc r8
     inc r8
-    lms r0,($90)
+    lms r0,(!fx_clip_end2_attr2-!gsu_ram)
     stw (r8)
     inc r8
     inc r8
-    lms r0,($40)
+    lms r0,(!fx_vertex_count-!gsu_ram)
     inc r0
     sbk
     iwt r15,#.lCF1A
@@ -2917,15 +2917,15 @@ FxPolygonClipNear:
     stw (r8)
     inc r8
     inc r8
-    lms r0,($8A)
+    lms r0,(!fx_clip_end1_attr1-!gsu_ram)
     stw (r8)
     inc r8
     inc r8
-    lms r0,($8E)
+    lms r0,(!fx_clip_end1_attr2-!gsu_ram)
     stw (r8)
     inc r8
     inc r8
-    lms r0,($40)
+    lms r0,(!fx_vertex_count-!gsu_ram)
     inc r0
     sbk
 .lCF1A:
@@ -2935,7 +2935,7 @@ FxPolygonClipNear:
     iwt r15,#.lCE56
     nop
 .lCF22:
-    lms r0,($40)
+    lms r0,(!fx_vertex_count-!gsu_ram)
     to r1
     sub #3
     bpl .lCF2F

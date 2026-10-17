@@ -368,6 +368,7 @@ RaceHudLoadMenu = $03E6FA                       ; 03:E6FA, RaceHudLoad's way on 
 !course_gsu_speeds = $03F799      ; RaceHudLoad: the Super FX's speed word by course
 OverlayStepC6AA = $07C6AA                       ; 07:C6AA, OverlayFramesUntilFaded's frame work (not filed yet)
 PauseFrameBC1C = $07BC1C                        ; 07:BC1C, the pause's frame work (not filed yet)
+TimesScreenEE26 = $07EE26                       ; 07:EE26, the screen GlyphTimesSequence ends in (not filed yet)
 !boot_interrupt_stubs = $038D16                 ; BootColdStart: 16 bytes of interrupt stubs copied to $0101
 AttractRaceSetup = $02CF3E                      ; 02:CF3E, the attract race's setup (not filed yet)
 AttractCourseSetupRom = $02CF45                    ; 02:CF45, the attract race's course (not filed yet)

@@ -1628,6 +1628,16 @@ includeonce
 !fx_list_in = $700060             ; the vertex list being read ($0688 or $082A)
 !fx_list_out = $700062            ; the vertex list being written
 !fx_vertex_count_save = $700098
+!fx_clip_end1_attr1 = $70008A    ; FxClipYPlane/FxClipXPlane: the first end's attributes
+!fx_clip_end2_attr1 = $70008C    ; the second end's first attribute
+!fx_clip_end1_attr2 = $70008E    ; the first end's second attribute
+!fx_clip_end2_attr2 = $700090    ; the second end's second attribute
+!fx_clip_slope_x = $700092       ; the side planes' slope (FxPolygonClipLeft/Right)
+!fx_clip_slope_y = $700094       ; the top and bottom planes' slope
+!fx_clip_kept_x = $70009A        ; the end kept while halving: x, y, z
+!fx_clip_kept_y = $70009C
+!fx_clip_kept_z = $70009E
+!fx_clip_stack = $7000A0         ; R10 kept while the halving uses it
 !fx_point_count = $700146         ; points to gather; FxPolygonProject leaves the count
 !fx_outcodes = $70014A            ; outcodes ORed; the edges to clip against
 !fx_rom_r14 = $70001A             ; R14 kept while the ROM bank is $14
@@ -1865,3 +1875,4 @@ includeonce
 !fx_param_jump = $702682        ; handling: the jump strength
 !fx_drive_level = $7026F4       ; the drive level picking the course speed (low byte)
 !cycle_colours_d = $7EB6EB          ; PaletteCycleFourth: its eight colours (in the work-RAM code)
+!fx_segment_point = $7026F6     ; FxCarPlaceOnSegment: the segment entry's point, x, y, z

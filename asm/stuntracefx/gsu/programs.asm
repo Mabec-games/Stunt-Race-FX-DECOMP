@@ -3767,7 +3767,7 @@ GlyphTimesSequence:
     lda.b #$07
     pha
     plb
-    jml.l $07EE26
+    jml.l TimesScreenEE26
 .lDD5B:
     rep.b #$30
     jsr.w GlyphRowY60From0

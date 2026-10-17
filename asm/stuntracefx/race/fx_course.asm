@@ -528,7 +528,7 @@ FxCarCatchUp:
     ibt r0,#$04
     romb
     iwt r14,#$C4D1
-    lm r0,($26F4)
+    lm r0,(!fx_drive_level)
     lob
     add r0
     with r14
@@ -537,7 +537,7 @@ FxCarCatchUp:
     inc r14
     getbh
     move r14,r0
-    lm r2,($2476)
+    lm r2,(!fx_player)
     iwt r1,#$0088
     with r1
     add r2
@@ -717,9 +717,9 @@ FxCarPlaceOnSegment:
     iwt r0,#$FF60
     with r2
     add r0
-    sm ($26F6),r1
-    sm ($26F8),r2
-    sm ($26FA),r3
+    sm (!fx_segment_point),r1
+    sm (!fx_segment_point+2),r2
+    sm (!fx_segment_point+4),r3
     ibt r0,#$1E
     add r8
     ldw (r0)
@@ -887,7 +887,7 @@ FxCarVelocityFromSegment:
     nop
     ibt r0,#$04
     romb
-    lm r0,($26F4)
+    lm r0,(!fx_drive_level)
     lob
     add r0
     iwt r14,#$C781
