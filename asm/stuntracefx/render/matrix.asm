@@ -173,6 +173,74 @@ FxMatrixApplyVectors:
     jmp r11
     nop
 
+; @routine 01:8277 FxMatrixRotateBackProgram
+; WHAT IT DOES: A program the S-CPU starts: as FxMatrixRotateProgram with
+; the matrix transposed (the vector times its columns), back from the
+; object's axes: ($0068, $002C, $002E) to $0026, $0028, $002A.
+; HOW: As FxMatrixRotateProgram, output i summing the elements at $00E4 +
+; 2 * i, + 6 and + 12. Then STOP.
+; Entry: started by the S-CPU. Exit: as FxMatrixRotateProgram, R6 = the
+; element at $00F4.
+%at($018277)
+FxMatrixRotateBackProgram:
+    cache
+    lms r1,(!gsu_in_68-!gsu_ram)
+    lms r2,(!gsu_dest-!gsu_ram)
+    lms r3,(!gsu_in_2e-!gsu_ram)
+    lms r6,(!gsu_out_e4-!gsu_ram)
+    from r1
+    fmult
+    to r5
+    rol
+    lms r6,(!gsu_out_e4-!gsu_ram+6)
+    from r2
+    fmult
+    rol
+    with r5
+    add r0
+    lms r6,(!gsu_out_e4-!gsu_ram+12)
+    from r3
+    fmult
+    rol
+    add r5
+    sms (!gsu_out_26-!gsu_ram),r0
+    lms r6,(!gsu_out_e4-!gsu_ram+2)
+    from r1
+    fmult
+    to r5
+    rol
+    lms r6,(!gsu_out_e4-!gsu_ram+8)
+    from r2
+    fmult
+    rol
+    with r5
+    add r0
+    lms r6,(!gsu_out_e4-!gsu_ram+14)
+    from r3
+    fmult
+    rol
+    add r5
+    sms (!gsu_out_28-!gsu_ram),r0
+    lms r6,(!gsu_out_e4-!gsu_ram+4)
+    from r1
+    fmult
+    to r5
+    rol
+    lms r6,(!gsu_out_e4-!gsu_ram+10)
+    from r2
+    fmult
+    rol
+    with r5
+    add r0
+    lms r6,(!gsu_out_e4-!gsu_ram+16)
+    from r3
+    fmult
+    rol
+    add r5
+    sms (!gsu_out_2a-!gsu_ram),r0
+    stop
+    nop
+
 ; @routine 01:82CE FxMatrixRotateProgram
 ; WHAT IT DOES: A program the S-CPU starts: multiplies the current matrix
 ; by the column vector ($0068, $002C, $002E) and stores the result at

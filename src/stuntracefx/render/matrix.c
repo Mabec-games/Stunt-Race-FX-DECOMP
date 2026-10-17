@@ -192,6 +192,38 @@ void abi_FxMatrixRotateProgram(void)
     gsu.r[6] = e;
 }
 
+/*
+ * @routine 01:8277 FxMatrixRotateBackProgram
+ * WHAT IT DOES: A program the S-CPU starts: as FxMatrixRotateProgram with
+ * the matrix transposed (the vector times its columns), back from the
+ * object's axes: ($0068, $002C, $002E) to $0026, $0028, $002A.
+ * HOW: As FxMatrixRotateProgram, output i summing the elements at $00E4 +
+ * 2 * i, + 6 and + 12. Then STOP.
+ * Entry: started by the S-CPU. Exit: as FxMatrixRotateProgram, R6 = the
+ * element at $00F4.
+ */
+void abi_FxMatrixRotateBackProgram(void)
+{
+    int out;
+
+    gsu.r[1] = gsu_ldw(FX_ROTATE_IN_X);
+    gsu.r[2] = gsu_ldw(FX_ROTATE_IN_Y);
+    gsu.r[3] = gsu_ldw(FX_ROTATE_IN_Z);
+    for (out = 0; out < 3; out++) {
+        uint16_t m = (uint16_t)(FX_MATRIX + out * 2);
+
+        gsu.r[6] = gsu_ldw(m);
+        gsu.r[5] = gsu_rol(gsu_fmult(gsu.r[1], gsu.r[6]));
+        gsu.r[6] = gsu_ldw((uint16_t)(m + 6));
+        gsu.r[0] = gsu_rol(gsu_fmult(gsu.r[2], gsu.r[6]));
+        gsu.r[5] = gsu_add(gsu.r[5], gsu.r[0], 0);
+        gsu.r[6] = gsu_ldw((uint16_t)(m + 12));
+        gsu.r[0] = gsu_rol(gsu_fmult(gsu.r[3], gsu.r[6]));
+        gsu.r[0] = gsu_add(gsu.r[0], gsu.r[5], 0);
+        gsu_stw((uint16_t)(FX_ROTATE_OUT + out * 2), gsu.r[0]);
+    }
+}
+
 #define FX_ANGLES 0x0020u            /* three angles: $0020, $0022, $0024 */
 #define FX_SINE_TABLE 0x983Eu        /* ROM bank $00: 257 words, 1.15 */
 
