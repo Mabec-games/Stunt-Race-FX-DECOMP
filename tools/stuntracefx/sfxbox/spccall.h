@@ -21,4 +21,10 @@ int spc_after_frame(long f, char *buf, size_t n);  /* the hybrid: 1 if the frame
 void spc_lockstep_done(void);
 void spc_lockstep_past_end(void);
 int spc_lockstep_summary(char *buf, size_t n);
+/* SPC700 unit calls: spccall/spcset script commands. */
+int spc_unit_init(void *core);
+void spc_unit_set(uint16_t at, uint8_t v);
+void spc_unit_call(uint16_t target, uint16_t at, const int *has, const uint8_t *reg);
+int spc_unit_busy(void);
+
 #endif

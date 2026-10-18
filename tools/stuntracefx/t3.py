@@ -321,7 +321,7 @@ def pieces(script):
     the only judge of such a routine's C (A5 has no return to compare)."""
     lines = [l.split('#')[0].strip() for l in open(script)]
     lines = [l for l in lines if l]
-    if not any(l.split()[0] in ('call', 'fx') for l in lines):
+    if not any(l.split()[0] in ('call', 'fx', 'spccall') for l in lines):
         return [script]
     name = os.path.splitext(os.path.basename(script))[0]
     d = os.path.join(B, 'image', name, 'pieces')
@@ -333,15 +333,15 @@ def pieces(script):
         w = l.split()
         if w[0] == 'load':
             prefix, sets = [l], []
-        elif w[0] == 'set':
+        elif w[0] in ('set', 'spcset'):
             sets.append(l)
-        elif w[0] in ('call', 'fx'):
+        elif w[0] in ('call', 'fx', 'spccall'):
             if 'keep' in w:
                 prefix += sets + [l]
             sets_now, sets = sets, []
             tail = []
             for t in lines[i + 1:]:
-                if t.split()[0] in ('call', 'fx', 'load', 'set'):
+                if t.split()[0] in ('call', 'fx', 'spccall', 'load', 'set', 'spcset'):
                     break
                 tail.append(t)
             body = prefix + ([] if 'keep' in w else sets_now + [l]) + tail

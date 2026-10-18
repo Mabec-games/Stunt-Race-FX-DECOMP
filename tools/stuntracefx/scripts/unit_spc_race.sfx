@@ -1,0 +1,65 @@
+# unit_spc_race: SPC700 unit calls (spccall) of the race sound driver's
+# routines that no play reaches, from a Novice race's state (the race
+# driver resident), each started at the driver's timer wait ($0897):
+# the slide to a note with 4 steps, tremolo between ticks and its volume
+# factor on voice 2 with depth $40, the echo transition step in each state,
+# the effect channel stop for channel 4 with sound 2 playing, echo mode A,
+# taking and releasing voice 5, the engine toggle both ways, the rev timer
+# on channel 6, and the pan scale.
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 00A4 04
+spccall 0DDC a=30 x=04
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 00C5 40
+spcset 02D5 10
+spccall 104F x=04
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 00C5 40
+spccall 105C a=50 x=04
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0551 01
+spcset 0550 1D
+spccall 1624
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0551 02
+spccall 1624
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0551 00
+spcset 0550 3D
+spccall 1624
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0394 02
+spcset 040C 01
+spcset 0020 05
+spccall 1908
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spccall 1951
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spccall 1D63 x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spccall 1E31 x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spccall 2600
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0028 40
+spccall 2600
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0022 28,03,02
+spccall 2634 x=06
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0562 08
+spccall 26C0 a=40
+wait 10

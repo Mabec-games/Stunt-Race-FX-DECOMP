@@ -35,6 +35,34 @@ struct SmpState { uint16_t pc; uint8_t a, x, y, s, p; };
 
 static void (*core_get)(struct SmpState *);
 static void (*core_set_cb)(const struct SfxboxSmpCallbacks *, int (*)(uint16_t, uint16_t));
+
+/* SPC700 unit calls (script `spccall`, `spcset`). Every mode's exec hook is
+   chained behind unit_exec, which starts a staged call the next time the
+   SPC700 reaches the instruction at `at` (on both lockstep sides the same
+   point of the driver's loop): it puts CALL target; BRA $ in RAM no driver
+   uses ($01F0), runs it with the given registers, and at the BRA puts the
+   SPC700 back where it was and the stub's bytes back. The call is an
+   ordinary CALL into the routine, so the checks open their watch on it. */
+#define SPC_STUB 0x01F0
+static int (*next_exec)(uint16_t, uint16_t);
+static int unit_exec(uint16_t pc, uint16_t prev_end);
+static int hooked;
+static void set_cb(const struct SfxboxSmpCallbacks *cb, int (*ex)(uint16_t, uint16_t))
+{
+    next_exec = ex;
+    core_set_cb(cb, unit_exec);
+    hooked = 1;
+}
+static void (*u_put)(const struct SmpState *);
+static struct {
+    int state;                 /* 1 staged, 2 running */
+    uint16_t target, at;
+    int has[4]; uint8_t reg[4];   /* a, x, y, p */
+    struct SmpState saved;
+    uint8_t stub_save[5];
+    int nset; uint16_t set_at[256]; uint8_t set_v[256];
+} U;
+
 static uint8_t *apu, *rom;
 static size_t rom_n;
 
@@ -296,7 +324,7 @@ void spc_check_begin(FILE *rep)
     report = rep;
     stats = calloc((size_t)nrt, sizeof *stats);
     static struct SfxboxSmpCallbacks cb = {on_insn, on_mem, NULL};
-    core_set_cb(&cb, NULL);
+    set_cb(&cb, NULL);
 }
 
 void spc_check_rows(FILE *rep)
@@ -518,10 +546,10 @@ void spc_lockstep_role(int r, FILE *rep, volatile int *stk)
     srole = r; slsrep = rep; sstuck = stk;
     if (r == 1) {
         static struct SfxboxSmpCallbacks cb = {orig_insn, orig_mem, orig_step};
-        core_set_cb(&cb, NULL);
+        set_cb(&cb, NULL);
     } else if (r == 2) {
         static struct SfxboxSmpCallbacks cb = {hybrid_insn, NULL, NULL};
-        core_set_cb(&cb, hybrid_exec);
+        set_cb(&cb, hybrid_exec);
     }
 }
 
@@ -552,3 +580,67 @@ int spc_lockstep_summary(char *buf, size_t n)
     snprintf(buf, n, "; spc700 calls swapped %ld, unmatched %ld", hs_calls, hs_unmatched);
     return hs_unmatched != 0;
 }
+
+static int unit_exec(uint16_t pc, uint16_t prev_end)
+{
+    if (U.state == 1 && pc == U.at) {
+        core_get(&U.saved);
+        memcpy(U.stub_save, apu + SPC_STUB, 5);
+        apu[SPC_STUB] = 0x3F;   /* CALL target */
+        apu[SPC_STUB + 1] = (uint8_t)U.target;
+        apu[SPC_STUB + 2] = (uint8_t)(U.target >> 8);
+        apu[SPC_STUB + 3] = 0x2F;   /* BRA $ */
+        apu[SPC_STUB + 4] = 0xFE;
+        for (int i = 0; i < U.nset; i++) apu[U.set_at[i]] = U.set_v[i];
+        U.nset = 0;
+        struct SmpState r = U.saved;
+        r.pc = SPC_STUB;
+        if (U.has[0]) r.a = U.reg[0];
+        if (U.has[1]) r.x = U.reg[1];
+        if (U.has[2]) r.y = U.reg[2];
+        if (U.has[3]) r.p = U.reg[3];
+        u_put(&r);
+        U.state = 2;
+        return 1;
+    }
+    if (U.state == 2 && pc == SPC_STUB + 3) {
+        memcpy(apu + SPC_STUB, U.stub_save, 5);
+        u_put(&U.saved);
+        U.state = 0;
+        return 1;
+    }
+    return next_exec ? next_exec(pc, prev_end) : 0;
+}
+
+/* The core's SPC700 hooks for unit calls, whether or not the library has
+   SPC700 routines; 0 when the core has none. */
+int spc_unit_init(void *core)
+{
+    if (!core_get) *(void **)&core_get = dlsym(core, "sfxbox_smp_get");
+    if (!core_set_cb) *(void **)&core_set_cb = dlsym(core, "sfxbox_smp_set_callbacks");
+    *(void **)&u_put = dlsym(core, "sfxbox_smp_put");
+    if (!apu) {
+        uint8_t *(*mem)(const char *, size_t *) = dlsym(core, "sfxbox_memory");
+        size_t n;
+        apu = mem ? mem("apuram", &n) : NULL;
+    }
+    return core_get && core_set_cb && u_put && apu;
+}
+
+void spc_unit_set(uint16_t at, uint8_t v)
+{
+    if (U.nset < 256) { U.set_at[U.nset] = at; U.set_v[U.nset++] = v; }
+}
+
+void spc_unit_call(uint16_t target, uint16_t at, const int *has, const uint8_t *reg)
+{
+    U.target = target; U.at = at;
+    for (int i = 0; i < 4; i++) { U.has[i] = has[i]; U.reg[i] = reg[i]; }
+    U.state = 1;
+    if (!hooked) {
+        static struct SfxboxSmpCallbacks none = {NULL, NULL, NULL};
+        set_cb(&none, NULL);
+    }
+}
+
+int spc_unit_busy(void) { return U.state != 0; }

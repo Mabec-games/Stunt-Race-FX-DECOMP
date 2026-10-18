@@ -247,6 +247,54 @@ static void poke(const char *line, int lineno) {
     }
 }
 
+/* spcset APU BYTE[,BYTE...]: stage SPC700 RAM bytes for the next spccall.
+   spccall APU [a=..] [x=..] [y=..] [psw=..] [at=APU]: call the SPC700
+   routine at APU the next time the SPC700 reaches the instruction at `at`
+   (default $0897, the drivers' timer wait), with the staged bytes in RAM
+   and the registers given (the rest as they are); it returns to where the
+   SPC700 was (spccall.c). */
+static int spc_unit_ok = -1;
+static void spc_need(int lineno)
+{
+    if (spc_unit_ok < 0) spc_unit_ok = spc_unit_init(core);
+    if (!spc_unit_ok) die("%s:%d: the core has no SPC700 hooks (patch 0006)", script_path, lineno);
+}
+
+static void spcset(const char *line, int lineno) {
+    char addr[64] = "", bytes[1024] = "";
+    if (sscanf(line, "%*s %63s %1023s", addr, bytes) != 2) die("%s:%d: spcset APU BYTE[,BYTE...]", script_path, lineno);
+    spc_need(lineno);
+    unsigned long a = strtoul(addr[0] == '$' ? addr + 1 : addr, NULL, 16);
+    for (char *s = bytes, *e; *s; s = *e ? e + 1 : e) {
+        unsigned long v = strtoul(s, &e, 16);
+        if (e == s || v > 0xFF || (*e && *e != ',') || a > 0xFFFF) die("%s:%d: spcset: bad byte list", script_path, lineno);
+        spc_unit_set((uint16_t)a++, (uint8_t)v);
+    }
+}
+
+static void spccall(const char *line, int lineno) {
+    char tok[16][64]; int k = 0;
+    const char *s = line;
+    while (k < 16 && sscanf(s, "%63s", tok[k]) == 1) { s = strstr(s, tok[k]) + strlen(tok[k]); k++; }
+    if (k < 2) die("%s:%d: spccall APU [a= x= y= psw= at=]", script_path, lineno);
+    spc_need(lineno);
+    if (spc_unit_busy()) die("%s:%d: spccall: the previous one has not run yet", script_path, lineno);
+    unsigned long target = strtoul(tok[1][0] == '$' ? tok[1] + 1 : tok[1], NULL, 16), at = 0x0897;
+    int has[4] = {0, 0, 0, 0}; uint8_t reg[4] = {0, 0, 0, 0};
+    for (int i = 2; i < k; i++) {
+        char *eq = strchr(tok[i], '=');
+        if (!eq) die("%s:%d: spccall: bad option %s", script_path, lineno, tok[i]);
+        unsigned long v = strtoul(eq + 1, NULL, 16);
+        if (!strncmp(tok[i], "a=", 2)) { has[0] = 1; reg[0] = (uint8_t)v; }
+        else if (!strncmp(tok[i], "x=", 2)) { has[1] = 1; reg[1] = (uint8_t)v; }
+        else if (!strncmp(tok[i], "y=", 2)) { has[2] = 1; reg[2] = (uint8_t)v; }
+        else if (!strncmp(tok[i], "psw=", 4)) { has[3] = 1; reg[3] = (uint8_t)v; }
+        else if (!strncmp(tok[i], "at=", 3)) at = v;
+        else die("%s:%d: spccall: bad option %s", script_path, lineno, tok[i]);
+    }
+    spc_unit_call((uint16_t)target, (uint16_t)at, has, reg);
+}
+
 /* call: run one routine as a unit test, from the state the script has
    reached. At the next instruction boundary the CPU's registers are taken
    and it runs a stub in low work RAM ($1FE0; $7F:FFE0 for bank $7F, out of
@@ -575,6 +623,8 @@ static void exec_range(int from, int to) {
         else if (!strcmp(a, "poke") && k >= 3) poke(lines[i], i + 1);
         else if (!strcmp(a, "call") && k >= 2) call(lines[i], i + 1);
         else if (!strcmp(a, "fx") && k >= 2) fx(lines[i], i + 1);
+        else if (!strcmp(a, "spcset") && k >= 3) spcset(lines[i], i + 1);
+        else if (!strcmp(a, "spccall") && k >= 2) spccall(lines[i], i + 1);
         else if (!strcmp(a, "set") && k >= 3) {
             if (nstaged == 64) die("%s:%d: set: more than 64 for one call", script_path, i + 1);
             snprintf(staged[nstaged], sizeof staged[0], "%s", lines[i]);
