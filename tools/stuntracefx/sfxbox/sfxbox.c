@@ -276,12 +276,15 @@ static void spccall(const char *line, int lineno) {
     char tok[16][64]; int k = 0;
     const char *s = line;
     while (k < 16 && sscanf(s, "%63s", tok[k]) == 1) { s = strstr(s, tok[k]) + strlen(tok[k]); k++; }
-    if (k < 2) die("%s:%d: spccall APU [a= x= y= psw= at=]", script_path, lineno);
+    if (k < 2) die("%s:%d: spccall APU [a= x= y= psw= at=] [noreturn]", script_path, lineno);
     spc_need(lineno);
     if (spc_unit_busy()) die("%s:%d: spccall: the previous one has not run yet", script_path, lineno);
     unsigned long target = strtoul(tok[1][0] == '$' ? tok[1] + 1 : tok[1], NULL, 16), at = 0x0897;
     int has[4] = {0, 0, 0, 0}; uint8_t reg[4] = {0, 0, 0, 0};
     for (int i = 2; i < k; i++) {
+        /* noreturn: a routine that never returns (the driver's start); for
+           t3.py, which judges its C by the frames after it. */
+        if (!strcmp(tok[i], "noreturn")) continue;
         char *eq = strchr(tok[i], '=');
         if (!eq) die("%s:%d: spccall: bad option %s", script_path, lineno, tok[i]);
         unsigned long v = strtoul(eq + 1, NULL, 16);

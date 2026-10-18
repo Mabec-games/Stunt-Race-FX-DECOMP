@@ -559,14 +559,16 @@ def filed_span(addr, owned, others):
     return span
 
 
-def noreturn_scripts(addr):
-    """The scripts with a unit call of addr marked noreturn."""
+def noreturn_scripts(addr, spc=None):
+    """The scripts with a unit call of addr marked noreturn (spccall of its
+    APU address spc, for an SPC700 routine)."""
     out = []
     for path in sorted(glob.glob(os.path.join(SCRIPTS, '*.sfx'))):
         for l in open(path):
             w = l.split('#')[0].split()
-            if len(w) >= 2 and w[0] == 'call' and 'noreturn' in w \
-                    and int(w[1].replace('$', '').replace(':', ''), 16) == addr:
+            if len(w) >= 2 and 'noreturn' in w and (
+                    (w[0] == 'call' and int(w[1].replace('$', '').replace(':', ''), 16) == addr)
+                    or (w[0] == 'spccall' and spc is not None and int(w[1].replace('$', ''), 16) == spc)):
                 out.append(os.path.splitext(os.path.basename(path))[0])
                 break
     return out
@@ -616,7 +618,8 @@ def assess(addrs, image_ok=None):
         # its place: when every script with one is IDENTICAL, that is its
         # per-call judgement.
         if not g5 and (not lr or int(lr['calls']) == 0) and not dirty(cpath):
-            scripts = noreturn_scripts(addr)
+            sm = re.search(r'@spc\s+([0-9A-Fa-f]{4})', h)
+            scripts = noreturn_scripts(addr, int(sm.group(1), 16) if sm else None)
             rows = {r['script']: r for r in image_rows}
             if scripts and all(n in rows and rows[n]['verdict'] == 'IDENTICAL' and contains(rows[n]['source'], cpath)
                                for n in scripts):

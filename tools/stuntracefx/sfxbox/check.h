@@ -17,6 +17,8 @@ int lockstep_call_ok(uint32_t pc);
 uint32_t lockstep_clock(void);
 void lockstep_debug_state(void);
 long lockstep_unit_end(long f);
+/* Hybrid side: the original's script has ended; report and stop. */
+void lockstep_finish_now(void);
 void lockstep_before_frame(long f);
 void lockstep_after_frame(long f);
 void lockstep_end(long frames);

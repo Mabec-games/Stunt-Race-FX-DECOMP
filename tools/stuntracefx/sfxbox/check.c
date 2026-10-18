@@ -1141,6 +1141,12 @@ static void hybrid_finish(long frames)
     _exit(0);
 }
 
+void lockstep_finish_now(void)
+{
+    past_end = 1;
+    hybrid_finish(cur_frame + 1);
+}
+
 /* call_routine for a target without C, on the live machine: replay the
    original's cycles to where it entered the routine (op 9), run the
    routine as original code from there with the original's stack pointer

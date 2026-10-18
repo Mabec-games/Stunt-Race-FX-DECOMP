@@ -5,7 +5,8 @@
 # factor on voice 2 with depth $40, the echo transition step in each state,
 # the effect channel stop for channel 4 with sound 2 playing, echo mode A,
 # taking and releasing voice 5, the engine toggle both ways, the rev timer
-# on channel 6, and the pan scale.
+# on channel 6, and the pan scale; last, the driver's start (SpcReset), which
+# never returns: its C runs the driver's main loop for the frames after it.
 load build/stuntracefx/states/novice_coupe_race1.state
 spcset 00A4 04
 spccall 0DDC a=30 x=04
@@ -62,4 +63,7 @@ wait 10
 load build/stuntracefx/states/novice_coupe_race1.state
 spcset 0562 08
 spccall 26C0 a=40
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spccall 0800 noreturn
 wait 10

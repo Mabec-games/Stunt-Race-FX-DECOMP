@@ -25,6 +25,7 @@
 #include <string.h>
 #include "spccall.h"
 #include "spc.h"
+#include "check.h"
 
 struct SfxboxSmpCallbacks {
     void (*insn)(uint16_t pc, uint16_t prev_end, uint8_t opcode);
@@ -461,11 +462,62 @@ static void sreplay_to(uint32_t to)
     if (to > sci) sci = to;
 }
 
+/* The call's record is taken as it comes (a routine that never returns,
+   such as the driver's start, never completes one): srec while more of it
+   may come. sfetch copies what has come; with `wait`, it first waits for
+   more, or for the record's end. 0 when no more will come. */
+static SCall *srec;
+static int sopen;
+static int sfetch(int wait)
+{
+    if (!sopen) return 0;
+    uint32_t have = scn;
+    for (;;) {
+        int odone = SLOAD(ssh->o_done);   /* before the ops: none come after it */
+        int done = SLOAD(srec->done);
+        uint64_t top = done ? srec->opoff + srec->opn : SLOAD(ssh->o_ops);
+        uint32_t avail = (uint32_t)(top - srec->opoff);
+        if (avail > scn) {
+            if (avail > sccap) {
+                sccap = avail + (avail >> 1) + 1024;
+                scops = realloc(scops, sccap);
+                scarg = realloc(scarg, (size_t)sccap * sizeof *scarg);
+                if (!scops || !scarg) _exit(7);
+            }
+            for (uint32_t i = scn; i < avail; i++) {
+                uint64_t o = (srec->opoff + i) % SOPRING;
+                scops[i] = ssh->ops[o]; scarg[i] = ssh->arg[o];
+            }
+            scn = avail;
+            SSTORE(ssh->h_ops, srec->opoff + scn);
+        }
+        if (done) { sopen = 0; return scn > have; }
+        if (!wait || scn > have) return 1;
+        if (odone) {
+            /* The script ended on the original side inside this call: the
+               C has nothing more to follow, and nothing after can be
+               compared. */
+            spast_end = 1;
+            lockstep_finish_now();
+        }
+        SWAIT(SLOAD(ssh->o_ops) > srec->opoff + scn || SLOAD(srec->done) || SLOAD(ssh->o_done));
+    }
+}
+
+/* The whole record, before the original's steps after the C's last access
+   are replayed (at its return or its jump). */
+static void sfetch_all(void)
+{
+    while (sopen) sfetch(1);
+}
+
 static uint8_t live_access(int write, uint16_t a, uint8_t v)
 {
     uint8_t want = write ? SOP_WRITE : SOP_READ;
-    for (uint32_t j = sci; j < scn; j++)
+    for (uint32_t j = sci;; j++) {
+        if (j == scn && !sfetch(1)) break;
         if (scops[j] == want && scarg[j] == a) { sreplay_to(j); sci = j + 1; break; }
+    }
     return core_bus(write, a, v);
 }
 
@@ -485,30 +537,22 @@ static int hybrid_exec(uint16_t pc, uint16_t prev_end)
     int idx = routine_here(pc);
     if (idx < 0) return 0;
     uint64_t k = SLOAD(ssh->h_calls);
-    SWAIT((k < SLOAD(ssh->o_calls) && SLOAD(ssh->calls[k % SCALLRING].done)) || SLOAD(ssh->o_done));
+    SWAIT(k < SLOAD(ssh->o_calls) || SLOAD(ssh->o_done));
     SCall rec = {0};
     scn = sci = 0;
+    sopen = 0;
     struct SmpState st;
     core_get(&st);
-    if (k < SLOAD(ssh->o_calls) && SLOAD(ssh->calls[k % SCALLRING].done)) {
-        rec = ssh->calls[k % SCALLRING];
+    if (k < SLOAD(ssh->o_calls)) {
+        srec = &ssh->calls[k % SCALLRING];
+        rec = *srec;
         if (rec.frame != sframe && !spast_end) {
             hs_unmatched++;
             fprintf(slsrep, "SPC UNMATCHED call %llu %s %04X: original frame %ld, here %ld\n",
                     (unsigned long long)k, rt[idx].name, pc, rec.frame, sframe);
         }
-        scn = rec.opn;
-        if (scn > sccap) {
-            sccap = scn;
-            scops = realloc(scops, sccap);
-            scarg = realloc(scarg, (size_t)sccap * sizeof *scarg);
-            if (!scops || !scarg) _exit(7);
-        }
-        for (uint32_t i = 0; i < scn; i++) {
-            uint64_t o = (rec.opoff + i) % SOPRING;
-            scops[i] = ssh->ops[o]; scarg[i] = ssh->arg[o];
-        }
-        SSTORE(ssh->h_ops, rec.opoff + rec.opn);
+        sopen = 1;
+        sfetch(0);
         SSTORE(ssh->h_calls, k + 1);
     } else {
         spast_end = 1;
@@ -521,6 +565,7 @@ static int hybrid_exec(uint16_t pc, uint16_t prev_end)
         rt[idx].abi();
         live = 0;
         called_prev = 0;   /* the next instruction follows the C's RET */
+        sfetch_all();
         sreplay_to(scn);
         struct SmpState out = {rec.ret, spc.a, spc.x, spc.y, spc.sp, spc_psw()};
         core_put(&out);
@@ -534,6 +579,7 @@ static void live_jump(uint16_t addr)
 {
     live = 0;
     called_prev = 0;
+    sfetch_all();
     sreplay_to(scn);
     struct SmpState out = {addr, spc.a, spc.x, spc.y, spc.sp, spc_psw()};
     core_put(&out);
