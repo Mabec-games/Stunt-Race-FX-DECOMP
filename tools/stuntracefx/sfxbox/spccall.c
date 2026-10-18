@@ -4,8 +4,9 @@
    tags with an `@spc` APU address) are keyed by the ROM address of their
    first byte; the SPC700 runs them from APU RAM, where the race and battle
    drivers put different code at the same addresses. An instruction about
-   to run at a routine's APU address is that routine when the APU RAM there
-   holds its ROM bytes (the first four) and the instruction before it was a
+   to run at a routine's APU address is that routine when the APU RAM holds
+   the ROM bytes its C depends on (hybrid.py: the runs from its @spcuses
+   ranges, else its first four bytes) and the instruction before it was a
    CALL, PCALL or TCALL that jumped here.
 
    A call is watched from its entry to the instruction at the return address
@@ -37,7 +38,8 @@ static void (*core_set_cb)(const struct SfxboxSmpCallbacks *, int (*)(uint16_t, 
 static uint8_t *apu, *rom;
 static size_t rom_n;
 
-typedef struct { uint32_t addr; uint16_t apu; void (*abi)(void); const char *name; } SpcRoutine;
+typedef struct { uint16_t apu, len; uint32_t rom; } SpcUse;
+typedef struct { uint32_t addr; uint16_t apu; void (*abi)(void); const char *name; const SpcUse *uses; } SpcRoutine;
 static SpcRoutine *rt;
 static int nrt;
 static uint8_t at_apu[0x10000];   /* 1 where some routine starts */
@@ -50,8 +52,12 @@ static int routine_here(uint16_t pc)
     if (!at_apu[pc]) return -1;
     for (int i = 0; i < nrt; i++) {
         if (rt[i].apu != pc) continue;
-        uint32_t o = rom_off(rt[i].addr);
-        if (!memcmp(apu + pc, rom + o, 4)) return i;
+        /* Every APU byte its C depends on (hybrid.py: @spcuses, else the
+           entry's first four) holds the ROM byte it stands for. */
+        int ok = 1;
+        for (const SpcUse *u = rt[i].uses; ok && u && u->len; u++)
+            ok = !memcmp(apu + u->apu, rom + u->rom % rom_n, u->len);
+        if (ok) return i;
     }
     return -1;
 }

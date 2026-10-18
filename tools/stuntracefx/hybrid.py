@@ -29,6 +29,7 @@ def export_head():
 TAG = re.compile(r'@routine\s+([0-9A-Fa-f]{2}):([0-9A-Fa-f]{4})\s+(\w+)')
 ALIAS = re.compile(r'@alias\s+([0-9A-Fa-f]{2}):([0-9A-Fa-f]{4})')
 SPC = re.compile(r'@spc\s+([0-9A-Fa-f]{4})\b')
+USES = re.compile(r'@spcuses\s+([0-9A-Fa-f,\s-]+)')
 
 
 def main(src=None, lib=None):
@@ -39,7 +40,7 @@ def main(src=None, lib=None):
     if os.path.exists(LIB):
         os.remove(LIB)
     files = sorted(glob.glob(os.path.join(SRC, '**', '*.c'), recursive=True))
-    rows, bad, spc = [], [], {}
+    rows, bad, spc, uses = [], [], {}, {}
     for f in files:
         text = open(f).read()
         for m in TAG.finditer(text):
@@ -53,6 +54,12 @@ def main(src=None, lib=None):
             sp = SPC.search(text[m.end():text.find('*/', m.end())])
             if sp:
                 spc[addr] = int(sp.group(1), 16)
+                # @spcuses AAAA-BBBB,...: the APU bytes the C depends on (its
+                # code and its callees'), end exclusive; the checks use the C
+                # only while they hold these ROM bytes.
+                us = USES.search(text[m.end():text.find('*/', m.end())])
+                if us:
+                    uses[addr] = [tuple(int(x, 16) for x in r.split('-')) for r in re.split(r'[,\s]+', us.group(1).strip()) if '-' in r]
             # @alias BB:AAAA in the header: the same code run from another
             # address (work RAM code the game also runs from its ROM copy):
             # the C is entered there too.
@@ -77,13 +84,75 @@ def main(src=None, lib=None):
         for n in sorted({n for a, n in rows}):
             t.write('void abi_%s(void);\n' % n)
         t.write('typedef struct { uint32_t addr; void (*abi)(void); const char *name; } Routine;\n')
-        # SPC700 routines too, with their APU address.
-        t.write('typedef struct { uint32_t addr; uint16_t apu; void (*abi)(void); const char *name; } SpcRoutine;\n')
+        # SPC700 routines too, with their APU address and the APU bytes they
+        # depend on, as (APU address, length, ROM offset) runs: from the block
+        # list that holds the tag's ROM byte, else the race driver's (the
+        # boot upload, resident under the others).
+        sys.path.insert(0, os.path.join(ROOT, 'tools', 'stuntracefx'))
+        import spcmap
+        rom = open(os.path.join(ROOT, 'build', 'stuntracefx', 'baserom.sfc'), 'rb').read()
+        lists = spcmap.lists(rom)
+        def apu_rom(addr):
+            o = spcmap.rom_offset(addr >> 16, addr & 0xFFFF)
+            own = next((bl for bl, _ in lists.values() if any(off <= o < off + n for _, n, off in bl)), [])
+            m = {}
+            for bl in (lists.get('$19:C27C', ([], 0))[0], own):
+                for d, n, off in bl:
+                    for k in range(n):
+                        m[(d + k) & 0xFFFF] = off + k
+            return m
+        def walk(m, entry):
+            """The APU bytes reachable from entry in the code m maps: through
+            fall-through, branches, JMP and CALL/PCALL (transitively), up to
+            a RET, RETI, a JMP (!a+X) or STOP: what a translated C runs."""
+            import spc700
+            got, todo = set(), [entry]
+            while todo:
+                x = todo.pop()
+                while x in m and x not in got:
+                    op = rom[m[x]]
+                    ln = spc700.length(op)
+                    if any(((x + k) & 0xFFFF) not in m for k in range(ln)):
+                        break
+                    for k in range(ln):
+                        got.add((x + k) & 0xFFFF)
+                    v = spc700.operands(op, bytes(rom[m[(x + k) & 0xFFFF]] for k in range(1, ln)), x)
+                    if op in (0x3F, 0x5F):
+                        todo.append(v['a'])
+                    if op == 0x4F:
+                        todo.append(0xFF00 | v['u'])
+                    if 'r' in v:
+                        todo.append(v['r'])
+                    if op in (0x6F, 0x7F, 0x5F, 0x1F, 0xFF, 0xEF, 0x0F):
+                        break
+                    x = (x + ln) & 0xFFFF
+            out, lo = [], None
+            for x in sorted(got) + [None]:
+                if lo is not None and (x is None or x != prev + 1):
+                    out.append((lo, prev + 1)); lo = None
+                if x is not None and lo is None:
+                    lo = x
+                prev = x
+            return out
         sel = [x for x in rows if x[0] in spc]
+        t.write('typedef struct { uint16_t apu, len; uint32_t rom; } SpcUse;\n')
+        for a, n in sel:
+            m = apu_rom(a)
+            runs = []
+            for lo, hi in uses.get(a) or walk(m, spc[a]):
+                for x in range(lo, hi):
+                    if x not in m:
+                        print('@spcuses of %s: APU $%04X is in no uploaded block' % (n, x)); return 1
+                    if runs and runs[-1][0] + runs[-1][1] == x and runs[-1][2] + runs[-1][1] == m[x]:
+                        runs[-1][1] += 1
+                    else:
+                        runs.append([x, 1, m[x]])
+            t.write('static const SpcUse uses_%s[] = {%s{0, 0, 0}};\n' % (n, ''.join('{0x%04X, %d, 0x%06X}, ' % tuple(r) for r in runs)))
+        t.write('typedef struct { uint32_t addr; uint16_t apu; void (*abi)(void); const char *name; const SpcUse *uses; } SpcRoutine;\n')
         t.write('const SpcRoutine sfx_spc_routine_table[] = {\n')
         for a, n in sel:
-            t.write('    {0x%06X, 0x%04X, abi_%s, "%s"},\n' % (a, spc[a], n, n))
-        t.write('    {0, 0, 0, 0}\n};\nconst int sfx_spc_routine_count = %d;\n' % len(sel))
+            t.write('    {0x%06X, 0x%04X, abi_%s, "%s", uses_%s},\n' % (a, spc[a], n, n, n))
+        t.write('    {0, 0, 0, 0, 0}\n};\nconst int sfx_spc_routine_count = %d;\n' % len(sel))
         rows = [x for x in rows if x[0] not in spc]
         for var, sel in (('sfx_routine', [x for x in rows if x[0] not in gsu]), ('sfx_gsu_routine', [x for x in rows if x[0] in gsu])):
             t.write('const Routine %s_table[] = {\n' % var)
