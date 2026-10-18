@@ -1,0 +1,40 @@
+# unit_fx_collide_04: unit tests (fx) for FxCollideModel (04:9C3D) and
+# the code after it, from the start of a Novice race:
+# - FxCollideModel of the car $1738 with the touched model
+#   record $21DE given the shapes $00:EE20 and $00:D840 (+$14): models
+#   whose face lists start with the $3C preamble and its $40, $28 and $44
+#   skips, and hold a face with a zero slot byte;
+# - FxCollideModelSkipFace 04:A053 and FxCollideModelDepthCompare
+#   04:A0B8 (the slot at $23AE, R11 = it, with its depth and R0 both
+#   negative), the face list R14 on $00:801D (bytes $AA, 0: a skip mark
+#   and the list end), so the walk ends at once;
+# - FxCollideModelUnused 04:A124 and FxCollideModelUnusedStore 04:A127
+#   (record $15F0).
+# Each entry after the first two returns by pulling R15, R8 and R9: the
+# words below R10 = $0250 are set to the STOP at $04:888C, $1738 and
+# $15F0.
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7021F2 20,EE
+fx 04:9C3D stop=888C r7=21DE r8=1738 r9=1738 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7021F2 40,D8
+fx 04:9C3D stop=888C r7=21DE r8=1738 r9=1738 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70024A 8C,88,38,17,F0,15
+fx 04:A053 stop=888C r8=1738 r9=2488 r10=0250 r14=801D
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70024A 8C,88,38,17,F0,15
+set 7023B0 F0,FF
+fx 04:A0B8 stop=23AE r0=FFF8 r1=0100 r2=0200 r3=0300 r8=1738 r9=2488 r10=0250 r14=801D
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70024A 8C,88,38,17,F0,15
+fx 04:A124 stop=888C r8=1738 r9=15F0 r10=0250
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70024A 8C,88,38,17,F0,15
+fx 04:A127 stop=888C r8=1738 r9=15F0 r10=0250
+wait 1

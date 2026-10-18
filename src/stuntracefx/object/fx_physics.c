@@ -1298,6 +1298,7 @@ lA028:
     R[0] = gsu_hib(R[0]);
     t = gsu.z;
     if (t) goto lA057;
+lA053:
     goto l9E92;
 lA057:
     R[6] = R[4];
@@ -1422,6 +1423,7 @@ lA117:
 lA124:
     t = 1;
     if (t) goto lA0F8;
+lA127:
     R[11] = 0x23A4;
     R[0] = 0x001E;
     R[0] = gsu_add(R[0], R[9], 0);
@@ -5044,6 +5046,7 @@ dispatch:
     case 0x9F9E: goto l9F9E;
     case 0xA013: goto lA013;
     case 0xA028: goto lA028;
+    case 0xA053: goto lA053;
     case 0xA057: goto lA057;
     case 0xA09C: goto lA09C;
     case 0xA0B8: goto lA0B8;
@@ -5057,6 +5060,7 @@ dispatch:
     case 0xA115: goto lA115;
     case 0xA117: goto lA117;
     case 0xA124: goto lA124;
+    case 0xA127: goto lA127;
     case 0xA145: goto lA145;
     case 0xA607: goto lA607;
     case 0xA620: goto lA620;
@@ -5523,19 +5527,81 @@ void abi_FxCollideModel(void)
 }
 
 /*
+ * @routine 04:A053 FxCollideModelSkipFace
+ * WHAT IT DOES: FxCollideModel's skip of a face whose slot word has its
+ * high byte set: on to the next face of the list (04:A0F8 at its end).
+ * The game never runs it: the same slot word was tested just before
+ * with nothing written between, so the BEQ at 04:A050 always branches
+ * past it. A unit start runs it so the C is judged against the
+ * original.
+ * HOW: IWT R15 to 04:9E92 (NOP in the delay slot); then as
+ * FxCollideModel's face walk.
+ * Entry: R14 = the face list (ROM, the bank set); R10 = stack with the
+ * return address, R8 and R9 pushed, as FxCollideModel leaves it.
+ * Exit: as FxCollideModel's.
+ */
+void abi_FxCollideModelSkipFace(void)
+{
+    physics_run(0xA053, R[11]);
+}
+
+/*
+ * @routine 04:A0B8 FxCollideModelDepthCompare
+ * WHAT IT DOES: FxCollideModel's keep test for a face the place lies
+ * behind: the absolute depth kept in the slot (R11 + 2) against the
+ * absolute depth R0; a deeper one replaces the slot's flags, depth and
+ * normal (R1-R3); then the next face. The game reaches it only with
+ * both depths 0 or more (a slot's depth starts at $7D00 and only gets R0,
+ * which the BPL before it keeps positive), so their negations at
+ * 04:A0C1 and 04:A0C9 never run there; a unit start with both negative
+ * runs them so the C is judged against the original.
+ * HOW: LDW, MOVES and BPL with NOT, INC for each absolute value; CMP;
+ * STW of R0, the flags at $237C and R1-R3 into the slot; IWT R15 to
+ * 04:9E92.
+ * Entry: R0 = the depth; R1-R3 = the normal; R11 = the slot; R14 = the
+ * face list; R10 = stack with the return address, R8 and R9 pushed, as
+ * FxCollideModel leaves it.
+ * Exit: as FxCollideModel's.
+ */
+void abi_FxCollideModelDepthCompare(void)
+{
+    physics_run(0xA0B8, R[11]);
+}
+
+/*
  * @routine 04:A124 FxCollideModelUnused
- * WHAT IT DOES: Code no jump or branch reaches, after
- * FxCollideModel's return: a branch back to its slot scan (04:A0F8)
- * and a store of the record's x plus z (low seven bits negated) plus
- * y into the slot at R11 (not reached in the traces so far, and
- * never: nothing jumps here).
- * HOW: BRA to 04:A0F8; ADD, AND, NOT, INC, STW (R11); BRA to 04:A0F8.
- * Entry: none (unreachable).
- * Exit: none.
+ * WHAT IT DOES: Code no jump or branch reaches, after FxCollideModel's
+ * return: a branch back to its slot scan (04:A0F8), which then ends as
+ * FxCollideModel does (R0 = 1 when a slot holds a touch, else 0; R9, R8
+ * and R15 pulled). The store after it is FxCollideModelUnusedStore
+ * (04:A127). A unit start runs it so the C is judged against the
+ * original.
+ * HOW: BRA to 04:A0F8 (NOP in the delay slot).
+ * Entry: R10 = stack with the return address, R8 and R9 pushed, as
+ * FxCollideModel leaves it.
+ * Exit: as FxCollideModel's.
  */
 void abi_FxCollideModelUnused(void)
 {
     physics_run(0xA124, R[11]);
+}
+
+/*
+ * @routine 04:A127 FxCollideModelUnusedStore
+ * WHAT IT DOES: Code no jump or branch reaches, after FxCollideModel's
+ * return: stores record R9's y (+$20) minus the low seven bits of its x
+ * plus z (+$1E + +$22) in the slot word at $23A4, then the slot scan
+ * at 04:A0F8 as FxCollideModelUnused. A unit start runs it so the C is
+ * judged against the original.
+ * HOW: R11 = $23A4; ADD, AND #$7F, NOT, INC, ADD, STW (R11); BRA to
+ * 04:A0F8.
+ * Entry: R9 = the record; R10 = stack with the return address, R8 and
+ * R9 pushed, as FxCollideModel leaves it.
+ * Exit: as FxCollideModel's.
+ */
+void abi_FxCollideModelUnusedStore(void)
+{
+    physics_run(0xA127, R[11]);
 }
 
 /*

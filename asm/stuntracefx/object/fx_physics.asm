@@ -1404,6 +1404,20 @@ FxCollideModel:
     hib
     beq .lA057
     nop
+;
+; @routine 04:A053 FxCollideModelSkipFace
+; WHAT IT DOES: FxCollideModel's skip of a face whose slot word has its
+; high byte set: on to the next face of the list (04:A0F8 at its end).
+; The game never runs it: the same slot word was tested just before
+; with nothing written between, so the BEQ at 04:A050 always branches
+; past it. A unit start runs it so the C is judged against the
+; original.
+; HOW: IWT R15 to 04:9E92 (NOP in the delay slot); then as
+; FxCollideModel's face walk.
+; Entry: R14 = the face list (ROM, the bank set); R10 = stack with the
+; return address, R8 and R9 pushed, as FxCollideModel leaves it.
+; Exit: as FxCollideModel's.
+%at($04A053)
     iwt r15,#.l9E92
     nop
 .lA057:
@@ -1465,6 +1479,24 @@ FxCollideModel:
     sbk
     iwt r15,#.l9E92
     nop
+;
+; @routine 04:A0B8 FxCollideModelDepthCompare
+; WHAT IT DOES: FxCollideModel's keep test for a face the place lies
+; behind: the absolute depth kept in the slot (R11 + 2) against the
+; absolute depth R0; a deeper one replaces the slot's flags, depth and
+; normal (R1-R3); then the next face. The game reaches it only with
+; both depths 0 or more (a slot's depth starts at $7D00 and only gets R0,
+; which the BPL before it keeps positive), so their negations at
+; 04:A0C1 and 04:A0C9 never run there; a unit start with both negative
+; runs them so the C is judged against the original.
+; HOW: LDW, MOVES and BPL with NOT, INC for each absolute value; CMP;
+; STW of R0, the flags at $237C and R1-R3 into the slot; IWT R15 to
+; 04:9E92.
+; Entry: R0 = the depth; R1-R3 = the normal; R11 = the slot; R14 = the
+; face list; R10 = stack with the return address, R8 and R9 pushed, as
+; FxCollideModel leaves it.
+; Exit: as FxCollideModel's.
+%at($04A0B8)
 .lA0B8:
     inc r11
     inc r11
@@ -1556,17 +1588,32 @@ FxCollideModel:
 ;
 ; @routine 04:A124 FxCollideModelUnused
 ; WHAT IT DOES: Code no jump or branch reaches, after FxCollideModel's
-; return: a branch back to its slot scan (04:A0F8) and a store of the
-; record's x plus z (low seven bits negated) plus y into the slot at
-; R11 (not reached in the traces so far, and never: nothing jumps
-; here).
-; HOW: BRA to 04:A0F8; ADD, AND, NOT, INC, STW (R11); BRA to 04:A0F8.
-; Entry: none (unreachable).
-; Exit: none.
+; return: a branch back to its slot scan (04:A0F8), which then ends as
+; FxCollideModel does (R0 = 1 when a slot holds a touch, else 0; R9, R8
+; and R15 pulled). The store after it is FxCollideModelUnusedStore
+; (04:A127). A unit start runs it so the C is judged against the
+; original.
+; HOW: BRA to 04:A0F8 (NOP in the delay slot).
+; Entry: R10 = stack with the return address, R8 and R9 pushed, as
+; FxCollideModel leaves it.
+; Exit: as FxCollideModel's.
 %at($04A124)
 FxCollideModelUnused:
     bra FxCollideModel_lA0F8
     nop
+;
+; @routine 04:A127 FxCollideModelUnusedStore
+; WHAT IT DOES: Code no jump or branch reaches, after FxCollideModel's
+; return: stores record R9's y (+$20) minus the low seven bits of its x
+; plus z (+$1E + +$22) in the slot word at $23A4, then the slot scan
+; at 04:A0F8 as FxCollideModelUnused. A unit start runs it so the C is
+; judged against the original.
+; HOW: R11 = $23A4; ADD, AND #$7F, NOT, INC, ADD, STW (R11); BRA to
+; 04:A0F8.
+; Entry: R9 = the record; R10 = stack with the return address, R8 and
+; R9 pushed, as FxCollideModel leaves it.
+; Exit: as FxCollideModel's.
+%at($04A127)
     iwt r11,#$23A4
     ibt r0,#$1E
     add r9
