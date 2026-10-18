@@ -2857,7 +2857,7 @@ ObjectSpawnPuff:
     sep.b #$20
     jsl.l ObjectSpawn
     bcs .lC3AE
-    jml.l ObjectExitPlx             ; not reached in the traces so far
+    jml.l .exit                     ; not reached in the traces so far
 .lC3AE:
     rep.b #$20
     lda.w #$9BB4
@@ -2883,6 +2883,9 @@ ObjectSpawnPuff:
     sep.b #$20
     lda.b #$07
     sta.w !obj_09+1,y
+.exit:
+    plx
+    rts
 
 ; @routine 08:B1E5 ObjectCarSpawn
 ; WHAT IT DOES: Starts object X as a car: raises it ($200E - $1E0), makes
@@ -3062,6 +3065,14 @@ ObjectCar_lB9A5:
     sep.b #$20
     rtl
 
+; @routine 08:B292 CarSpawnCrash
+; WHAT IT DOES: The crash screen ObjectCarSpawnPlace branches to when the
+; car has no record: CrashWhite.
+; HOW: JSL to CrashWhite, which never returns.
+; Entry: any widths; D = $0000. Exit: never returns.
+%at($08B292)
+CarSpawnCrash:
+    jsl.l CrashWhite
 
 ; @routine 08:B296 ObjectCarRecordSetup
 ; WHAT IT DOES: Sets up a car-like object: $A0 higher ($FF60 on +$0E), a

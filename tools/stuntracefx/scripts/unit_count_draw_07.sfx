@@ -1,0 +1,41 @@
+# unit_count_draw_07: the big sprite rows' count draw (07:9EE9), which
+# play reaches only by a branch from the rows with $0E5C set, called
+# directly from the start of a Novice race at each count $1160 that ends
+# it at another sprite (0, 1, 2, 3, 5, 6, 7, 8) and at 11, which draws all
+# nine and stops the count at 12.
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1160 00
+call 07:9EE9 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1160 01
+call 07:9EE9 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1160 02
+call 07:9EE9 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1160 03
+call 07:9EE9 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1160 05
+call 07:9EE9 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1160 06
+call 07:9EE9 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1160 07
+call 07:9EE9 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1160 08
+call 07:9EE9 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1160 0B
+call 07:9EE9 p=00 db=00 d=0000
+wait 1

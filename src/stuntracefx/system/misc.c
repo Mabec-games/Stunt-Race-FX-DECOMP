@@ -147,6 +147,49 @@ void abi_Countdown0DF8(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | Countdown0DF8(cpu.db));
 }
 
+void abi_OverlayFramesUntilFaded(void);
+void abi_RecordTimeInsert(void);
+void abi_RecordsUnpackCourseRunning(void);
+void abi_ChampionScreenRun(void);
+void abi_BootSoftRestart(void);
+void abi_SoftResetToBootWarm(void);
+
+/*
+ * @routine 07:EE26 ChampionshipFinish
+ * WHAT IT DOES: The end of a championship after its last times screen:
+ * $0D59 = 0, the overlay faded out (OverlayFramesUntilFaded), $0D48 = 0,
+ * the run's time put in the records (RecordTimeInsert,
+ * RecordsUnpackCourseRunning), the champion's screen (ChampionScreenRun);
+ * then the game restarts: class 2 ($0D4A) by BootSoftRestart, the others
+ * by SoftResetToBootWarm. GlyphTimesSequence jumps here.
+ * HOW: Calls in turn through the data bank; JML or JMP to the restart.
+ * Entry: data bank $07, D = $0000. Exit: never returns.
+ */
+void abi_ChampionshipFinish(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v;
+
+    cpu.p |= P_M;
+    wr8(b | 0x0D59, 0x00);
+    abi_OverlayFramesUntilFaded();
+    cpu.p |= P_M;
+    wr8(b | 0x0D48, 0x00);
+    abi_RecordTimeInsert();
+    abi_RecordsUnpackCourseRunning();
+    cpu.p &= (uint8_t)~P_M;
+    abi_ChampionScreenRun();
+    cpu.p |= P_M;
+    v = rd8(b | 0x0D4A);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, (uint8_t)(v - 0x02));
+    cpu.p = (uint8_t)(v >= 0x02 ? cpu.p | P_C : cpu.p & ~P_C);
+    if (v == 0x02)
+        abi_BootSoftRestart();
+    else
+        abi_SoftResetToBootWarm();
+}
+
 /*
  * @routine 08:B893 Set7EFFA6Sequence
  * WHAT IT DOES: Stores the words 1, 2, 3, 4 at $7E:FFA6-$7E:FFAD.

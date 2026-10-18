@@ -534,6 +534,7 @@ PlayerSound35:
 .one:
     lda.b #$35
     jsl.l SoundPort0QueuePush
+    rts
 
 ; @routine 04:D040 EngineSoundsPlayer2
 ; WHAT IT DOES: Runs player 2's engine sounds: when $0E4B is 0 and $0DD7 is

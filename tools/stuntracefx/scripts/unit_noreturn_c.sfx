@@ -1,0 +1,11 @@
+# unit_noreturn_c: two routines that never return, each as a noreturn unit
+# call whose lockstep piece compares the frames after it: the championship's
+# end (ChampionshipFinish 07:EE26) from cut 32 of the championship play, and
+# the car spawn's crash screen (CarSpawnCrash 08:B292) from the start of a
+# Novice race.
+load build/stuntracefx/states/speed_championship_32.state
+call 07:EE26 noreturn frames=3 p=20 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:B292 long noreturn frames=3 p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+wait 1

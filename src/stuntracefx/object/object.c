@@ -3042,6 +3042,20 @@ void abi_ObjectCarFrame(void)
     abi_ObjectRebucket();
 }
 
+void abi_CrashWhite(void);
+
+/*
+ * @routine 08:B292 CarSpawnCrash
+ * WHAT IT DOES: The crash screen ObjectCarSpawnPlace branches to when the
+ * car has no record: CrashWhite.
+ * HOW: JSL to CrashWhite, which never returns.
+ * Entry: any widths; D = $0000. Exit: never returns.
+ */
+void abi_CarSpawnCrash(void)
+{
+    abi_CrashWhite();
+}
+
 /*
  * @routine 08:B1FC ObjectCarSpawnPlace
  * WHAT IT DOES: ObjectCarSpawn after the record is made: with no record
@@ -3062,7 +3076,7 @@ void abi_ObjectCarSpawnPlace(void)
     op_rep(P_M);
     op_lda16(car_field(0x2022));
     if (!cpu.a) {
-        jump_routine(0x08B292);
+        abi_CarSpawnCrash();
         return;
     }
     obj = cpu.x;

@@ -401,6 +401,7 @@ RecordShiftFrom1_copy:
     inx
     dey
     bne .copy_byte
+    rts
 
 ; @routine 07:B8DD RecordNameStore0
 ; WHAT IT DOES: Writes the entered name ($0F11, $0F12) and car ($0D89)
@@ -446,7 +447,8 @@ RecordNameStore_slot:
     lda.w !level_columns+13
     sta.l !save_course_names+1,x
     lda.w !wram_0D89
-
+    sta.l !save_course_names+2,x
+    rts
 
 ; @routine 07:B964 TimeBelowRecord
 ; WHAT IT DOES: Compares the time $0EEF/$0EEE/$0EED (most significant

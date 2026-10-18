@@ -2973,6 +2973,11 @@ GlyphSpriteDraw_at:
     lda.b #$07
     jsl.l GsuRun
     rep.b #$20
+    rep.b #$10
+    plx
+    inx
+    inx
+    rts
 
 ; @routine 04:DA3C GlyphSpritesInit
 ; WHAT IT DOES: Sets the 16 glyph sprites up: x from the table at
@@ -3175,6 +3180,161 @@ GlyphListMessageAndTime:
     sta.w !glyph_list_y,y
     rts
 
+
+; @routine 07:9EE9 BigSpritesCountDraw
+; WHAT IT DOES: The big sprite rows' draw when $0E5C is set: 24 x 40
+; sprites (FxSprite24x40) as many as the count $1160 allows, from (48, 16)
+; sources $A018 (always), $A000 (count 1 or more), $A518 (2), $A00C (3),
+; then from (64, 64) $AA06 (6), $B00C (7), $A00C (8), $AA12 (9); then the
+; count goes up by one, to at most 12. The sprite rows branch here (BRL)
+; and its RTS returns from them.
+; HOW: Both steps $100 and the place at $70:0212-$70:020C first; GsuRun
+; for each sprite with $70:0216 = the source; the count compared through
+; 8-bit A after each; INC A, CMP #$0C at the end.
+; Entry: any widths, D = $0000. Exit: M 8-bit, X 16-bit; X = $FA88; A low
+; byte = the new count; below 12: N, Z, C from the compare with 12, else
+; 12 with C set.
+%at($079EE9)
+BigSpritesCountDraw:
+    rep.b #$30
+    lda.w #$0100
+    sta.l !fx_draw_step_x
+    sta.l !fx_draw_step_y
+    lda.w #$0030
+    sta.l !fx_draw_x
+    lda.w #$0010
+    sta.l !fx_draw_y
+    rep.b #$20
+    lda.w #$A018
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FA88
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    sep.b #$20
+    lda.w !wram_1160
+    cmp.b #$01
+    bcs .l9F2A
+    brl .count
+.l9F2A:
+    rep.b #$20
+    lda.w #$A000
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FA88
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    sep.b #$20
+    lda.w !wram_1160
+    cmp.b #$02
+    bcs .l9F50
+    brl .count
+.l9F50:
+    rep.b #$20
+    lda.w #$A518
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FA88
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    sep.b #$20
+    lda.w !wram_1160
+    cmp.b #$03
+    bcs .l9F76
+    brl .count
+.l9F76:
+    rep.b #$20
+    lda.w #$A00C
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FA88
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    rep.b #$30
+    lda.w #$0040
+    sta.l !fx_draw_x
+    lda.w #$0040
+    sta.l !fx_draw_y
+    sep.b #$20
+    lda.w !wram_1160
+    cmp.b #$06
+    bcs .l9FAC
+    brl .count
+.l9FAC:
+    rep.b #$20
+    lda.w #$AA06
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FA88
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    sep.b #$20
+    lda.w !wram_1160
+    cmp.b #$07
+    bcc .count
+    rep.b #$20
+    lda.w #$B00C
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FA88
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    sep.b #$20
+    lda.w !wram_1160
+    cmp.b #$08
+    bcc .count
+    rep.b #$20
+    lda.w #$A00C
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FA88
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    sep.b #$20
+    lda.w !wram_1160
+    cmp.b #$09
+    bcc .count
+    rep.b #$20
+    lda.w #$AA12
+    sta.l !gsu_in_216
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FA88
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+.count:
+    sep.b #$20
+    lda.w !wram_1160
+    inc a
+    cmp.b #$0C
+    bcc .store
+    lda.b #$0C
+.store:
+    sta.w !wram_1160
+    rts
 
 ; @routine 07:A03F GlyphWordAt1C28
 ; WHAT IT DOES: Draws a nine-glyph word with program $07:F15B at (28, 40),
@@ -3767,7 +3927,7 @@ GlyphTimesSequence:
     lda.b #$07
     pha
     plb
-    jml.l TimesScreenEE26
+    jml.l ChampionshipFinish
 .lDD5B:
     rep.b #$30
     jsr.w GlyphRowY60From0

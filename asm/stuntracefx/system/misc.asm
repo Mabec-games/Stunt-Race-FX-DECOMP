@@ -118,6 +118,34 @@ Countdown0DF8:
     plp
     rts
 
+
+; @routine 07:EE26 ChampionshipFinish
+; WHAT IT DOES: The end of a championship after its last times screen:
+; $0D59 = 0, the overlay faded out (OverlayFramesUntilFaded), $0D48 = 0,
+; the run's time put in the records (RecordTimeInsert,
+; RecordsUnpackCourseRunning), the champion's screen (ChampionScreenRun);
+; then the game restarts: class 2 ($0D4A) by BootSoftRestart, the others
+; by SoftResetToBootWarm. GlyphTimesSequence jumps here.
+; HOW: Calls in turn through the data bank; JML or JMP to the restart.
+; Entry: data bank $07, D = $0000. Exit: never returns.
+%at($07EE26)
+ChampionshipFinish:
+    sep.b #$20
+    stz.w !wram_0D59
+    jsr.w OverlayFramesUntilFaded
+    sep.b #$20
+    stz.w !wram_0D48
+    jsr.w RecordTimeInsert
+    jsl.l RecordsUnpackCourseRunning
+    rep.b #$20
+    jsl.l ChampionScreenRun
+    sep.b #$20
+    lda.w !wram_0D4A
+    cmp.b #$02
+    bne .lEE4D
+    jml.l BootSoftRestart
+.lEE4D:
+    jmp.w SoftResetToBootWarm
 ; @routine 08:B893 Set7EFFA6Sequence
 ; WHAT IT DOES: Stores the words 1, 2, 3, 4 at $7E:FFA6-$7E:FFAD.
 ; HOW: Four 16-bit long stores.

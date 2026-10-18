@@ -1454,9 +1454,88 @@ static void sprite24x40(uint16_t src)
     cpu.p &= (uint8_t)~(P_M | P_X);
 }
 
+/* SEP #$20, LDA $1160, CMP #n: 1 when the count is n or more (carry). */
+static int count_at_least(uint8_t n)
+{
+    uint8_t v;
+
+    cpu.p |= P_M;
+    v = rd8((uint32_t)cpu.db << 16 | 0x1160);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, (uint8_t)(v - n));
+    cpu.p = (uint8_t)(v >= n ? cpu.p | P_C : cpu.p & ~P_C);
+    return v >= n;
+}
+
+/*
+ * @routine 07:9EE9 BigSpritesCountDraw
+ * WHAT IT DOES: The big sprite rows' draw when $0E5C is set: 24 x 40
+ * sprites (FxSprite24x40) as many as the count $1160 allows, from (48, 16)
+ * sources $A018 (always), $A000 (count 1 or more), $A518 (2), $A00C (3),
+ * then from (64, 64) $AA06 (6), $B00C (7), $A00C (8), $AA12 (9); then the
+ * count goes up by one, to at most 12. The sprite rows branch here (BRL)
+ * and its RTS returns from them.
+ * HOW: Both steps $100 and the place at $70:0212-$70:020C first; GsuRun
+ * for each sprite with $70:0216 = the source; the count compared through
+ * 8-bit A after each; INC A, CMP #$0C at the end.
+ * Entry: any widths, D = $0000. Exit: M 8-bit, X 16-bit; X = $FA88; A low
+ * byte = the new count; below 12: N, Z, C from the compare with 12, else
+ * 12 with C set.
+ */
+void abi_BigSpritesCountDraw(void)
+{
+    static const uint16_t near_[4] = {0xA018, 0xA000, 0xA518, 0xA00C}, far_[4] = {0xAA06, 0xB00C, 0xA00C, 0xAA12};
+    static const uint8_t need_far[3] = {7, 8, 9};
+    unsigned i;
+    uint8_t v;
+
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    cpu.a = 0x0100;
+    cpu.p = nz16(cpu.p, 0x0100);
+    wr16(0x700212, 0x0100);
+    wr16(0x700214, 0x0100);
+    cpu.a = 0x0030;
+    cpu.p = nz16(cpu.p, 0x0030);
+    wr16(0x70020A, 0x0030);
+    cpu.a = 0x0010;
+    cpu.p = nz16(cpu.p, 0x0010);
+    wr16(0x70020C, 0x0010);
+    for (i = 0; i < 4; i++) {
+        sprite24x40(near_[i]);
+        if (i < 3 && !count_at_least((uint8_t)(i + 1)))
+            goto count;
+    }
+    cpu.a = 0x0040;
+    cpu.p = nz16(cpu.p, 0x0040);
+    wr16(0x70020A, 0x0040);
+    cpu.a = 0x0040;
+    wr16(0x70020C, 0x0040);
+    if (!count_at_least(6))
+        goto count;
+    for (i = 0; i < 4; i++) {
+        sprite24x40(far_[i]);
+        if (i < 3 && !count_at_least(need_far[i]))
+            goto count;
+    }
+count:
+    cpu.p |= P_M;
+    v = rd8((uint32_t)cpu.db << 16 | 0x1160);
+    v++;
+    cpu.p = nz8(cpu.p, (uint8_t)(v - 0x0C));
+    if (v >= 0x0C) {
+        cpu.p |= P_C;
+        v = 0x0C;
+        cpu.p = nz8(cpu.p, v);
+    } else {
+        cpu.p &= (uint8_t)~P_C;
+    }
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    wr8((uint32_t)cpu.db << 16 | 0x1160, v);
+}
+
 /* The common start: the renderer bytes (setter), then, with $0E5C set,
-   07:9EE9 instead (a jump; not reached in the traces so far). Returns 0
-   when the jump was taken. */
+   BigSpritesCountDraw instead (a branch, so its RTS returns from the
+   caller). Returns 0 when the branch was taken. */
 static int big_sprites_start(void (*setter)(void))
 {
     uint8_t v;
@@ -1468,7 +1547,7 @@ static int big_sprites_start(void (*setter)(void))
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.p = nz8(cpu.p, v);
     if (v) {
-        call_routine(0x079EE9, 0);
+        abi_BigSpritesCountDraw();
         return 0;
     }
     return 1;
@@ -2150,6 +2229,8 @@ static void glyph_flag_step(uint32_t b, uint16_t flag, uint16_t reload)
     abi_GlyphListDraw();
 }
 
+void abi_ChampionshipFinish(void);
+
 /*
  * @routine 04:DB87 GlyphTimesSequence
  * WHAT IT DOES: One frame of the three best times' display, by its step
@@ -2249,7 +2330,7 @@ void abi_GlyphTimesSequence(void)
             cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x07);
             cpu.p = nz8(cpu.p, 0x07);
             cpu.db = 0x07;
-            call_routine(0x07EE26, 0);
+            abi_ChampionshipFinish();
             return;
         }
         op_rep(P_M | P_X);

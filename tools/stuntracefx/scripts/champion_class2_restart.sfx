@@ -1,0 +1,18 @@
+# champion_class2_restart: the championship's end for class 2 ($0D4A poked
+# after the load of cut 32), played through the champion's screen until it
+# is left, so ChampionshipFinish restarts the game by BootSoftRestart (the
+# other classes go to SoftResetToBootWarm), and on into the restarted game.
+load build/stuntracefx/states/speed_championship_32.state
+poke 7E0D4A 02
+press START
+wait 200
+press START
+wait 200
+press START
+wait 200
+press START
+wait 200
+press B
+wait 200
+press START
+wait 400
