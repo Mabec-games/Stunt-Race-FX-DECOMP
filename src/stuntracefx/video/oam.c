@@ -2163,6 +2163,75 @@ void abi_OamStagePause2(void)
     op_plp(p0);
 }
 
+/* OverlaySpritesStep's state 0: the overlay at (154, 106), plain, state
+   1. */
+static void overlay_state0(void)
+{
+    const uint32_t b = 0x040000;
+
+    op_rep(P_M);
+    wr16(b | 0x10A4, 0x009A);
+    wr16(b | 0x10A6, 0x006A);
+    wr16(b | 0x10A8, 0x0000);
+    wr16(b | 0x10A2, 0x0001);
+}
+
+/* OverlaySpritesStep after its state's step: the bob and tile step by the
+   frame count, the palette by the picture at $10A0, the twelve sprites
+   placed (or off screen), their high bits $AA. */
+static void overlay_draw(void)
+{
+    const uint32_t b = 0x040000;
+    uint8_t v, bob, step;
+    uint16_t a, pic;
+
+    op_sep(P_M);
+    if (rd8(b | 0x0E3B) & 0x04) {
+        bob = 0x00;
+        step = 0x00;
+    } else {
+        bob = 0x01;
+        step = 0x08;
+    }
+    wr8(0x0000F5, bob);
+    wr8(0x0000F1, step);
+    op_rep(P_M | P_X);
+    pic = rd16(b | 0x10A0);
+    a = pic == rd16(0x04E066) ? 0x0000 : pic == rd16(0x04E068) ? 0x0002
+        : pic == rd16(0x04E06A) ? 0x0004 : 0x0008;
+    op_sep(P_M);
+    v = rd8(b | 0x10A8);
+    wr8(0x0000F3, (uint8_t)(a | v));
+    cpu.x = rd8(b | 0x10A8) ? 0x0024 : 0x0000;
+    cpu.y = 0x0090;
+    do {
+        op_rep(P_M);
+        a = (uint16_t)(rd16(0x04E1B6 + (uint32_t)cpu.x) & 0x00FF);
+        a = (uint16_t)(a + rd16(b | 0x10A4));
+        cpu.a = a;
+        op_sep(P_M);
+        if ((a & 0x8000) || a >= 0x00F0) {
+            wr8(b | (uint16_t)(0x0376 + cpu.y), 0xF0);
+        } else {
+            wr8(b | (uint16_t)(0x0375 + cpu.y), (uint8_t)a);
+            v = rd8(0x04E1B7 + (uint32_t)cpu.x);
+            v = (uint8_t)(v + rd8(b | 0x10A6));
+            v = (uint8_t)(v - rd8(0x0000F5));
+            wr8(b | (uint16_t)(0x0376 + cpu.y), v);
+            v = rd8(0x04E1B8 + (uint32_t)cpu.x);
+            v = (uint8_t)(v + rd8(0x0000F1));
+            wr8(b | (uint16_t)(0x0377 + cpu.y), v);
+            wr8(b | (uint16_t)(0x0378 + cpu.y), (uint8_t)(0x10 | rd8(0x0000F3)));
+        }
+        cpu.x = (uint16_t)(cpu.x + 3);
+        cpu.y = (uint16_t)(cpu.y + 4);
+    } while (cpu.y < 0x00C0);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xAA);
+    wr8(b | 0x057E, 0xAA);
+    wr8(b | 0x057F, 0xAA);
+    wr8(b | 0x0580, 0xAA);
+}
+
 /*
  * @routine 04:E048 OverlaySpritesStep
  * WHAT IT DOES: Moves and draws a 12-sprite overlay (sprites 36 to 47) by
@@ -2186,8 +2255,8 @@ void abi_OamStagePause2(void)
 void abi_OverlaySpritesStep(void)
 {
     const uint32_t b = 0x040000;
-    uint8_t p0 = cpu.p, db0 = cpu.db, s, v, bob, step;
-    uint16_t a, pic;
+    uint8_t p0 = cpu.p, db0 = cpu.db, s;
+    uint16_t a;
 
     op_sep(P_M | P_X);
     cpu.db = 0x04;
@@ -2196,11 +2265,7 @@ void abi_OverlaySpritesStep(void)
     cpu.x = (uint8_t)(s << 1);
     switch (rd16(0x040000 | (uint16_t)(0xE056 + cpu.x))) {
     case 0xE06E:
-        op_rep(P_M);
-        wr16(b | 0x10A4, 0x009A);
-        wr16(b | 0x10A6, 0x006A);
-        wr16(b | 0x10A8, 0x0000);
-        wr16(b | 0x10A2, 0x0001);
+        overlay_state0();
         break;
     case 0xE088:
         op_rep(P_M);
@@ -2241,49 +2306,30 @@ void abi_OverlaySpritesStep(void)
         wr16(b | 0x10A2, 0x0007);
         break;
     }
-    op_sep(P_M);
-    if (rd8(b | 0x0E3B) & 0x04) {
-        bob = 0x00;
-        step = 0x00;
-    } else {
-        bob = 0x01;
-        step = 0x08;
-    }
-    wr8(0x0000F5, bob);
-    wr8(0x0000F1, step);
-    op_rep(P_M | P_X);
-    pic = rd16(b | 0x10A0);
-    a = pic == rd16(0x04E066) ? 0x0000 : pic == rd16(0x04E068) ? 0x0002
-        : pic == rd16(0x04E06A) ? 0x0004 : 0x0008;
-    op_sep(P_M);
-    wr8(0x0000F3, (uint8_t)(a | rd8(b | 0x10A8)));
-    cpu.x = rd8(b | 0x10A8) ? 0x0024 : 0x0000;
-    cpu.y = 0x0090;
-    do {
-        op_rep(P_M);
-        a = (uint16_t)((rd16(0x04E1B6 + (uint32_t)cpu.x) & 0x00FF) + rd16(b | 0x10A4));
-        cpu.a = a;
-        op_sep(P_M);
-        if ((a & 0x8000) || a >= 0x00F0) {
-            wr8(b | (uint16_t)(0x0376 + cpu.y), 0xF0);
-        } else {
-            wr8(b | (uint16_t)(0x0375 + cpu.y), (uint8_t)a);
-            v = (uint8_t)(rd8(0x04E1B7 + (uint32_t)cpu.x) + rd8(b | 0x10A6));
-            v = (uint8_t)(v - rd8(0x0000F5));
-            wr8(b | (uint16_t)(0x0376 + cpu.y), v);
-            v = (uint8_t)(rd8(0x04E1B8 + (uint32_t)cpu.x) + rd8(0x0000F1));
-            wr8(b | (uint16_t)(0x0377 + cpu.y), v);
-            wr8(b | (uint16_t)(0x0378 + cpu.y), (uint8_t)(0x10 | rd8(0x0000F3)));
-        }
-        cpu.x = (uint16_t)(cpu.x + 3);
-        cpu.y = (uint16_t)(cpu.y + 4);
-    } while (cpu.y < 0x00C0);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xAA);
-    wr8(b | 0x057E, 0xAA);
-    wr8(b | 0x057F, 0xAA);
-    wr8(b | 0x0580, 0xAA);
+    overlay_draw();
     cpu.db = db0;
     op_plp(p0);
+}
+
+/*
+ * @routine 04:E06E OverlaySpritesState0
+ * WHAT IT DOES: OverlaySpritesStep's state 0 entered from its jump table:
+ * the overlay set up at (154, 106), plain ($10A8 = 0), state $10A2 = 1;
+ * then the sprites drawn as OverlaySpritesStep, and the data bank and P
+ * that OverlaySpritesStep pushed pulled.
+ * HOW: Word stores, then OverlaySpritesStep's drawing; PLB, PLP, RTL.
+ * Entry: M and X 8-bit; data bank $04; D = $0000; OverlaySpritesStep's P
+ * and data bank on the stack. Exit: as OverlaySpritesStep.
+ */
+void abi_OverlaySpritesState0(void)
+{
+    overlay_state0();
+    overlay_draw();
+    cpu.db = rd8((uint16_t)(cpu.s + 1));
+    cpu.s = (uint16_t)(cpu.s + 1);
+    cpu.p = nz8(cpu.p, cpu.db);
+    op_plp(rd8((uint16_t)(cpu.s + 1)));
+    cpu.s = (uint16_t)(cpu.s + 1);
 }
 
 /* Waits for the vertical blank: $0D52, set by each, read until it is set,

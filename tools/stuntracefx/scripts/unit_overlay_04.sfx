@@ -1,0 +1,12 @@
+# unit_overlay_04: OverlaySpritesState0 04:E06E, OverlaySpritesStep's state
+# 0 entered from its jump table, called directly with the P and data bank
+# OverlaySpritesStep pushes on the stack, from a Novice race's state: with
+# the second picture at $10A0 and with no picture matched.
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E10A0 D7,6F
+call 04:E06E long frame=3000 p=30 db=04 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E10A0 00,00
+call 04:E06E long frame=3000 p=30 db=04 d=0000
+wait 1

@@ -2160,8 +2160,19 @@ OverlaySpritesStep:
 .table:
     dw .lE06E, .lE104, .lE088, .lE0A3, .lE0B6, .lE0D7, .lE0E7, .lE104
 .pictures:
-    ; the split screen's pictures in bank $7F (the fourth is not compared)
-    dw $63D7, $6FD7, $7BD7, $87D7
+    ; the split screen's pictures in bank $7F; a fourth word follows, $87D7
+    ; at $04:E06C, which nothing reads (raw intake, not code)
+    dw $63D7, $6FD7, $7BD7
+
+; @routine 04:E06E OverlaySpritesState0
+; WHAT IT DOES: OverlaySpritesStep's state 0 entered from its jump table:
+; the overlay set up at (154, 106), plain ($10A8 = 0), state $10A2 = 1;
+; then the sprites drawn as OverlaySpritesStep, and the data bank and P
+; that OverlaySpritesStep pushed pulled.
+; HOW: Word stores, then OverlaySpritesStep's drawing; PLB, PLP, RTL.
+; Entry: M and X 8-bit; data bank $04; D = $0000; OverlaySpritesStep's P
+; and data bank on the stack. Exit: as OverlaySpritesStep.
+%at($04E06E)
 .lE06E:
     rep.b #$20
     lda.w #$009A
