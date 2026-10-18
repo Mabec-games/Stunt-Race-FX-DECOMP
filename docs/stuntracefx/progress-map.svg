@@ -1322,7 +1322,7 @@
 <rect x="1282.5" y="349.5" width="13.2" height="15.3" fill="#3fb950"><title>ResultsWaitEnd  0BDC9F  32B  T4  [menu]</title></rect>
 <rect x="1213.3" y="365.4" width="14.3" height="13.7" fill="#3fb950"><title>MenuWaitFor0357  0BBCD2  31B  T4  [menu]</title></rect>
 <rect x="1213.3" y="379.6" width="14.3" height="13.7" fill="#3fb950"><title>MenuPreviewBackWait  0BBE65  31B  T4  [menu]</title></rect>
-<rect x="1213.3" y="393.9" width="14.3" height="13.2" fill="#d29922"><title>TitleScreenRun  0BAEF2  30B  T2  [menu]</title></rect>
+<rect x="1213.3" y="393.9" width="14.3" height="13.2" fill="#3fb950"><title>TitleScreenRun  0BAEF2  30B  T4  [menu]</title></rect>
 <rect x="1213.3" y="407.7" width="14.3" height="12.8" fill="#3fb950"><title>ResultsOverOrHide  0BDD01  29B  T4  [menu]</title></rect>
 <rect x="1213.3" y="421.1" width="14.3" height="11.8" fill="#3fb950"><title>RecordsPageMarkFlipHide  02F0FA  27B  T4  [menu]</title></rect>
 <rect x="1213.3" y="433.5" width="14.3" height="11.8" fill="#3fb950"><title>RecordsMenuBack  02F90B  27B  T4  [menu]</title></rect>
@@ -2094,4 +2094,4 @@
 <rect x="1560.3" y="846.3" width="24.4" height="12.2" fill="#3fb950"><title>JoypadRead  7EB1AE  51B  T4  [input]</title></rect>
 <rect x="1585.3" y="846.3" width="12.6" height="12.2" fill="#3fb950"><title>FrameSoundAndJoypads  7EA7A3  27B  T4  [input]</title></rect>
 <rect x="1560.3" y="862.1" width="37.6" height="35.8" fill="#c8ccd2"><title>code the census found    225B  T1  [not run by any script yet]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 2048 &#183; T3 behaviour-exact 0 &#183; 186,005/199,603 bytes exact (93.2%) &#183; green=T4 blue=T3 amber=T2 gray=T1</text></svg>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 2049 &#183; T3 behaviour-exact 0 &#183; 186,035/199,603 bytes exact (93.2%) &#183; green=T4 blue=T3 amber=T2 gray=T1</text></svg>
