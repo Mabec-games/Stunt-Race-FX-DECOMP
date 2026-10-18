@@ -44,14 +44,16 @@ index 90eaa36..9e622e9 100644
    *size = 0;
    return nullptr;
 diff --git a/bsnes/sfc/smp/memory.cpp b/bsnes/sfc/smp/memory.cpp
-index e241786..fa43bbb 100644
+index e241786..ec8f3d0 100644
 --- a/bsnes/sfc/smp/memory.cpp
 +++ b/bsnes/sfc/smp/memory.cpp
-@@ -21,18 +21,21 @@ auto SMP::read(uint16 address) -> uint8 {
+@@ -20,19 +20,23 @@ auto SMP::read(uint16 address) -> uint8 {
+     wait(address, 1);
      uint8 data = readRAM(address);
      if((address & 0xfff0) == 0x00f0) data = readIO(address);
++    //the access is between the two half waits: reported there, so a replay places it there
++    if(sfxbox_smp_cb.mem && !sfxbox_smp_fetching) sfxbox_smp_cb.mem(0, address, data);
      wait(address, 1);
-+    if(sfxbox_smp_cb.mem && !sfxbox_smp_fetching) sfxbox_smp_cb.mem(0, address, data);  //I/O: never the PC dummy
      return data;
    } else {
      wait(address, 0);

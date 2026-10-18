@@ -626,13 +626,7 @@ def assess(addrs, image_ok=None):
         vs = [r['verdict'] for r in image_rows]
         g7 = bool(image_rows) and all(v in ('IDENTICAL', 'UNCOVERED') for v in vs) and 'IDENTICAL' in vs \
             and all(contains(r['source'], cpath) for r in image_rows) and not dirty(cpath)
-        why7 = '%d scripts, %s' % (len(vs), image_rows[0]['source'] if image_rows else 'never run')
-        # The lockstep run does not put SPC700 C in place of the original
-        # yet, so it judges none: an SPC700 routine (@spc in its header) has
-        # no A7 until it does.
-        if re.search(r'@spc\s+[0-9A-Fa-f]{4}\b', h):
-            g7, why7 = False, 'the lockstep run does not swap SPC700 C yet'
-        gates.append(('A7 image', g7, why7))
+        gates.append(('A7 image', g7, '%d scripts, %s' % (len(vs), image_rows[0]['source'] if image_rows else 'never run')))
         t3 = all(g for _, g, _ in gates)
         t4 = False
         if apath:

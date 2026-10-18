@@ -41,6 +41,7 @@ typedef struct { uint32_t addr; uint16_t apu; void (*abi)(void); const char *nam
 static SpcRoutine *rt;
 static int nrt;
 static uint8_t at_apu[0x10000];   /* 1 where some routine starts */
+static uint8_t jump_at[0x10000];  /* 1 where the C jumps into original code (spc_jump_original) */
 
 static uint32_t rom_off(uint32_t a) { return ((a >> 16 & 0x7F) * 0x8000 + (a & 0x7FFF)) % (uint32_t)rom_n; }
 
@@ -82,6 +83,10 @@ int spc_load(void *core, void *lib, const char *only)
         return -1;
     }
     for (int i = 0; i < nrt; i++) at_apu[rt[i].apu] = 1;
+    const uint16_t *jt = dlsym(lib, "sfx_spc_jump_entries");
+    const int *jn = dlsym(lib, "sfx_spc_jump_entry_count");
+    if (jt && jn)
+        for (int i = 0; i < *jn; i++) jump_at[jt[i]] = 1;
     return nrt;
 }
 
@@ -113,6 +118,7 @@ static Watch *cur; static int curdepth;
 static uint32_t ior_at;
 static int c_running, c_bad;
 static jmp_buf c_abort;
+static long c_jumped;   /* where the C jumped into original code, or -1 */
 static long c_accesses;
 static int prev_call;           /* the last instruction was a CALL, PCALL or TCALL */
 
@@ -134,8 +140,12 @@ static uint8_t entry_byte(int d, uint16_t a)
     return undo_g[d][a] == ws[d].gen ? undo_v[d][a] : apu[a];
 }
 
+static int live;   /* the hybrid's C runs on the live machine (lockstep) */
+static uint8_t live_access(int write, uint16_t a, uint8_t v);
+
 uint8_t spc_rd(uint16_t a)
 {
+    if (live) return live_access(0, a, 0);
     if (!c_running) return apu[a];
     if (++c_accesses > (1L << 22)) { c_bad = 2; longjmp(c_abort, 1); }
     if (is_io(a) && a != 0xF2 && a != 0xF8 && a != 0xF9) {
@@ -149,8 +159,18 @@ uint8_t spc_rd(uint16_t a)
     return entry_byte(curdepth, a);
 }
 
+static jmp_buf live_abort;
+static void live_jump(uint16_t addr);
+
+void spc_jump_original(uint16_t addr)
+{
+    if (live) live_jump(addr);
+    if (c_running) { c_jumped = addr; longjmp(c_abort, 1); }
+}
+
 void spc_wr(uint16_t a, uint8_t v)
 {
+    if (live) { live_access(1, a, v); return; }
     if (!c_running) return;
     if (++c_accesses > (1L << 22)) { c_bad = 2; longjmp(c_abort, 1); }
     if (is_io(a)) push_io(&ciow, &nciow, &ciowcap, a, v);
@@ -161,7 +181,7 @@ void spc_wr(uint16_t a, uint8_t v)
     cw_g[a] = cw_gen; cw_v[a] = v;
 }
 
-static void finish(int d)
+static void finish(int d, long at_jump)
 {
     Watch *w = &ws[d];
     Stat *st = &stats[w->idx];
@@ -169,7 +189,7 @@ static void finish(int d)
     core_get(&fin);
     st->calls++;
 
-    cur = w; curdepth = d; cw_gen++; ntouched = 0; nciow = 0; ior_at = 0; c_bad = 0; c_accesses = 0;
+    cur = w; curdepth = d; cw_gen++; ntouched = 0; nciow = 0; ior_at = 0; c_bad = 0; c_accesses = 0; c_jumped = -1;
     spc.a = w->entry.a; spc.x = w->entry.x; spc.y = w->entry.y; spc.sp = w->entry.s;
     spc_set_psw(w->entry.p);
     c_running = 1;
@@ -201,6 +221,8 @@ static void finish(int d)
             break;
         }
     if (nciow != w->niow) WHY(" io writes %u/%u", nciow, w->niow);
+    if (c_jumped != at_jump)
+        WHY(" ends %s/%s", c_jumped < 0 ? "returning" : "jumping", at_jump < 0 ? "returning" : "jumping");
     if (c_bad == 2) WHY(" runaway");
     if (c_bad == 3) WHY(" hardware read the original did not make");
     if (!bad) { st->match++; return; }
@@ -218,7 +240,10 @@ static void on_insn(uint16_t pc, uint16_t prev_end, uint8_t opcode)
     if (depth) {
         struct SmpState now;
         core_get(&now);
-        while (depth && pc == ws[depth - 1].ret && now.s == ws[depth - 1].sp_after) { finish(depth - 1); depth--; }
+        while (depth && pc == ws[depth - 1].ret && now.s == ws[depth - 1].sp_after) { finish(depth - 1, -1); depth--; }
+        /* Original code the C jumps into: every open call ends here. */
+        if (jump_at[pc] && pc != prev_end)
+            while (depth) { finish(depth - 1, pc); depth--; }
     }
     int called = prev_call && pc != prev_end;
     prev_call = opcode == 0x3F || opcode == 0x4F || (opcode & 0x0F) == 0x01;
@@ -278,4 +303,246 @@ void spc_check_rows(FILE *rep)
         printf("%06X %-28s calls %ld match %ld diff %ld inconclusive %ld  %s\n", rt[i].addr, rt[i].name, s->calls,
                s->match, s->diff, s->inconclusive, v);
     }
+}
+
+/* ======================================================================
+ * A7: lockstep
+ *
+ * The original side records each call into a tagged SPC700 routine (its
+ * frame, every clock step and every data access by address, from its entry
+ * to its return) in rings shared with the hybrid. The hybrid, reaching the
+ * same entry, runs the C in place on the live machine: before each access
+ * the C makes, the original's steps up to its matching access (same kind
+ * and address, searched forward) are replayed, so the DSP, the timers and
+ * the S-CPU see the APU RAM and the ports change at the original's clocks;
+ * then the rest of the call's steps, the C's registers, and the SPC700 is
+ * put at the return address. Calls inside a recorded call are the C's. The
+ * frames are compared as the S-CPU's (the snapshot holds APU RAM).
+ * ====================================================================== */
+#include <sys/mman.h>
+#include <unistd.h>
+
+#define SNSLOT 128
+#define SCALLRING (1 << 18)
+#define SOPRING (1u << 22)
+enum { SOP_STEP = 1, SOP_READ = 2, SOP_WRITE = 3 };
+
+typedef struct { long frame; uint64_t opoff; uint32_t opn; int done; uint16_t ret; uint8_t sp_after; } SCall;
+typedef struct {
+    uint64_t o_calls, h_calls, o_ops, h_ops;
+    int o_done;
+    uint32_t fcalls[SNSLOT];
+    SCall calls[SCALLRING];
+    uint8_t ops[SOPRING];
+    uint32_t arg[SOPRING];
+} SShared;
+
+static SShared *ssh;
+static int srole;
+static volatile int *sstuck;
+static FILE *slsrep;
+static long sframe;
+static void (*core_put)(const struct SmpState *);
+static void (*core_time)(uint32_t);
+static uint8_t (*core_bus)(int, uint16_t, uint8_t);
+
+#define SLOAD(x) __atomic_load_n(&(x), __ATOMIC_SEQ_CST)
+#define SSTORE(x, v) __atomic_store_n(&(x), (v), __ATOMIC_SEQ_CST)
+#define SWAIT(cond) do { long spins_ = 0; while (!(cond)) { \
+        if (*sstuck || (srole == 2 && getppid() == 1)) _exit(6); \
+        if (++spins_ > 600000) { \
+            fprintf(stderr, "lockstep: %s side stuck in frame %ld waiting for SPC700 %s; calls o/h %llu/%llu\n", \
+                    srole == 1 ? "original" : "hybrid", sframe, #cond, (unsigned long long)SLOAD(ssh->o_calls), \
+                    (unsigned long long)SLOAD(ssh->h_calls)); \
+            *sstuck = 1; _exit(6); } usleep(50); } } while (0)
+
+int spc_lockstep_prepare(void *core)
+{
+    if (!nrt) return 0;
+    *(void **)&core_put = dlsym(core, "sfxbox_smp_put");
+    *(void **)&core_time = dlsym(core, "sfxbox_smp_time");
+    *(void **)&core_bus = dlsym(core, "sfxbox_smp_bus");
+    if (!core_put || !core_time || !core_bus) return -1;
+    ssh = mmap(NULL, sizeof(SShared), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANON, -1, 0);
+    return ssh == MAP_FAILED ? -1 : 0;
+}
+
+/* ---- original side ---- */
+
+static struct { int active; uint16_t ret; uint8_t sp_after; uint64_t call; } sm;
+static int sprev_call;
+
+static void sop(uint8_t kind, uint32_t arg)
+{
+    uint64_t n = SLOAD(ssh->o_ops);
+    SWAIT(n - SLOAD(ssh->h_ops) < SOPRING);
+    ssh->ops[n % SOPRING] = kind;
+    ssh->arg[n % SOPRING] = arg;
+    ssh->calls[sm.call % SCALLRING].opn++;
+    SSTORE(ssh->o_ops, n + 1);
+}
+
+static void orig_insn(uint16_t pc, uint16_t prev_end, uint8_t opcode)
+{
+    int called = sprev_call && pc != prev_end;
+    sprev_call = opcode == 0x3F || opcode == 0x4F || (opcode & 0x0F) == 0x01;
+    if (sm.active) {
+        struct SmpState now;
+        core_get(&now);
+        if ((pc == sm.ret && now.s == sm.sp_after) || (jump_at[pc] && pc != prev_end)) {
+            SSTORE(ssh->calls[sm.call % SCALLRING].done, 1);
+            sm.active = 0;
+        }
+        return;
+    }
+    if (!called) return;
+    if (routine_here(pc) < 0) return;
+    struct SmpState st;
+    core_get(&st);
+    uint64_t k = SLOAD(ssh->o_calls);
+    SWAIT(k - SLOAD(ssh->h_calls) < SCALLRING);
+    SCall *c = &ssh->calls[k % SCALLRING];
+    c->frame = sframe; c->opoff = SLOAD(ssh->o_ops); c->opn = 0;
+    c->ret = (uint16_t)(apu[0x100 | (uint8_t)(st.s + 1)] | apu[0x100 | (uint8_t)(st.s + 2)] << 8);
+    c->sp_after = (uint8_t)(st.s + 2);
+    SSTORE(c->done, 0);
+    SSTORE(ssh->o_calls, k + 1);
+    ssh->fcalls[sframe % SNSLOT]++;
+    sm.active = 1; sm.ret = c->ret; sm.sp_after = c->sp_after; sm.call = k;
+}
+
+static void orig_mem(int write, uint16_t a, uint8_t v) { (void)v; if (sm.active) sop(write ? SOP_WRITE : SOP_READ, a); }
+static void orig_step(uint32_t clocks) { if (sm.active) sop(SOP_STEP, clocks); }
+
+/* ---- hybrid side ---- */
+
+static uint8_t *scops; static uint32_t *scarg; static uint32_t scn, sci, sccap;
+static long hs_calls, hs_unmatched, hs_fcalls;
+static int spast_end, hprev_call, called_prev;
+
+static void sreplay_to(uint32_t to)
+{
+    for (uint32_t i = sci; i < to; i++)
+        if (scops[i] == SOP_STEP) core_time(scarg[i]);
+    if (to > sci) sci = to;
+}
+
+static uint8_t live_access(int write, uint16_t a, uint8_t v)
+{
+    uint8_t want = write ? SOP_WRITE : SOP_READ;
+    for (uint32_t j = sci; j < scn; j++)
+        if (scops[j] == want && scarg[j] == a) { sreplay_to(j); sci = j + 1; break; }
+    return core_bus(write, a, v);
+}
+
+static void hybrid_insn(uint16_t pc, uint16_t prev_end, uint8_t opcode)
+{
+    (void)pc; (void)prev_end;
+    hprev_call = opcode == 0x3F || opcode == 0x4F || (opcode & 0x0F) == 0x01;
+}
+
+static int hybrid_exec(uint16_t pc, uint16_t prev_end)
+{
+    /* hybrid_insn has already seen this instruction: the flag it left is
+       this one's; the call into it was the one before. */
+    int called = called_prev && pc != prev_end;
+    called_prev = hprev_call;
+    if (!called) return 0;
+    int idx = routine_here(pc);
+    if (idx < 0) return 0;
+    uint64_t k = SLOAD(ssh->h_calls);
+    SWAIT((k < SLOAD(ssh->o_calls) && SLOAD(ssh->calls[k % SCALLRING].done)) || SLOAD(ssh->o_done));
+    SCall rec = {0};
+    scn = sci = 0;
+    struct SmpState st;
+    core_get(&st);
+    if (k < SLOAD(ssh->o_calls) && SLOAD(ssh->calls[k % SCALLRING].done)) {
+        rec = ssh->calls[k % SCALLRING];
+        if (rec.frame != sframe && !spast_end) {
+            hs_unmatched++;
+            fprintf(slsrep, "SPC UNMATCHED call %llu %s %04X: original frame %ld, here %ld\n",
+                    (unsigned long long)k, rt[idx].name, pc, rec.frame, sframe);
+        }
+        scn = rec.opn;
+        if (scn > sccap) {
+            sccap = scn;
+            scops = realloc(scops, sccap);
+            scarg = realloc(scarg, (size_t)sccap * sizeof *scarg);
+            if (!scops || !scarg) _exit(7);
+        }
+        for (uint32_t i = 0; i < scn; i++) {
+            uint64_t o = (rec.opoff + i) % SOPRING;
+            scops[i] = ssh->ops[o]; scarg[i] = ssh->arg[o];
+        }
+        SSTORE(ssh->h_ops, rec.opoff + rec.opn);
+        SSTORE(ssh->h_calls, k + 1);
+    } else {
+        spast_end = 1;
+        rec.ret = (uint16_t)(apu[0x100 | (uint8_t)(st.s + 1)] | apu[0x100 | (uint8_t)(st.s + 2)] << 8);
+    }
+    hs_calls++; hs_fcalls++;
+    spc.a = st.a; spc.x = st.x; spc.y = st.y; spc.sp = st.s; spc_set_psw(st.p);
+    live = 1;
+    if (setjmp(live_abort) == 0) {
+        rt[idx].abi();
+        live = 0;
+        called_prev = 0;   /* the next instruction follows the C's RET */
+        sreplay_to(scn);
+        struct SmpState out = {rec.ret, spc.a, spc.x, spc.y, spc.sp, spc_psw()};
+        core_put(&out);
+    }
+    return 1;
+}
+
+/* The C jumps into original code: the call's record ends where the
+   original got there; the core goes on from there. */
+static void live_jump(uint16_t addr)
+{
+    live = 0;
+    called_prev = 0;
+    sreplay_to(scn);
+    struct SmpState out = {addr, spc.a, spc.x, spc.y, spc.sp, spc_psw()};
+    core_put(&out);
+    longjmp(live_abort, 1);
+}
+
+void spc_lockstep_role(int r, FILE *rep, volatile int *stk)
+{
+    if (!nrt || !ssh) return;
+    srole = r; slsrep = rep; sstuck = stk;
+    if (r == 1) {
+        static struct SfxboxSmpCallbacks cb = {orig_insn, orig_mem, orig_step};
+        core_set_cb(&cb, NULL);
+    } else if (r == 2) {
+        static struct SfxboxSmpCallbacks cb = {hybrid_insn, NULL, NULL};
+        core_set_cb(&cb, hybrid_exec);
+    }
+}
+
+void spc_before_frame(long f)
+{
+    sframe = f;
+    if (srole == 1 && ssh) ssh->fcalls[f % SNSLOT] = 0;
+    hs_fcalls = 0;
+}
+
+int spc_after_frame(long f, char *buf, size_t n)
+{
+    if (srole != 2 || !ssh || spast_end) return 0;
+    uint32_t o = ssh->fcalls[f % SNSLOT];
+    if ((uint32_t)hs_fcalls != o) {
+        snprintf(buf + strlen(buf), n - strlen(buf), " spc700 calls %ld/%u", hs_fcalls, o);
+        return 1;
+    }
+    return 0;
+}
+
+void spc_lockstep_done(void) { if (ssh) SSTORE(ssh->o_done, 1); }
+void spc_lockstep_past_end(void) { spast_end = 1; }
+
+int spc_lockstep_summary(char *buf, size_t n)
+{
+    if (!nrt || !ssh) { buf[0] = 0; return 0; }
+    snprintf(buf, n, "; spc700 calls swapped %ld, unmatched %ld", hs_calls, hs_unmatched);
+    return hs_unmatched != 0;
 }

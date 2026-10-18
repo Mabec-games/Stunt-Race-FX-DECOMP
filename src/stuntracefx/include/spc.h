@@ -53,6 +53,12 @@ static inline void spc_call(void (*abi)(void), uint16_t ret)
     abi();
 }
 
+/* A jump from the C into code that stays original (the driver's reload
+   loop, its start, the IPL ROM): the call ends here, as the checks end it
+   at the original's first instruction at `addr` (hybrid.py lists every
+   literal address passed). Write the address as a literal (0x0675). */
+void spc_jump_original(uint16_t addr);
+
 /* RET: the return address pulled (low byte first); the checks end the call
    at it. */
 static inline uint16_t spc_ret(void)

@@ -1040,6 +1040,7 @@ static int fetch_more(uint32_t need)
                can be compared. */
             past_end = 1;
             gsu_lockstep_past_end();
+            spc_lockstep_past_end();
             hybrid_finish(cur_frame + 1);
         }
         if (LOAD(sh->stuck) || PARENT_GONE()) _exit(6);
@@ -1128,12 +1129,14 @@ static long asm_unplaced;
 /* The hybrid's report, and its end. */
 static void hybrid_finish(long frames)
 {
-    char g[256];
+    char g[256], sg[128];
     int gbad = gsu_lockstep_summary(g, sizeof g);
+    gbad |= spc_lockstep_summary(sg, sizeof sg);
+    strncat(g, sg, sizeof g - strlen(g) - 1);
     fprintf(lsrep, "frames %ld compared %ld, differing %ld; calls swapped %ld, entered other ways %ld, unmatched %ld, "
             "hardware accesses off the timeline %ld, interrupts not pending where taken %ld, original-code calls not placed %ld%s: %s\n",
             frames, frames_compared, diff_frames, calls_swapped, calls_fallback, mismatched_calls, timed_unmatched, irq_missed, asm_unplaced,
-            g, diff_frames || mismatched_calls || timed_unmatched || irq_missed || asm_unplaced || gbad ? "DIVERGENT" : calls_swapped || gsu_count() ? "IDENTICAL" : "UNCOVERED");
+            g, diff_frames || mismatched_calls || timed_unmatched || irq_missed || asm_unplaced || gbad ? "DIVERGENT" : calls_swapped || gsu_count() || spc_count() ? "IDENTICAL" : "UNCOVERED");
     fclose(lsrep);
     _exit(0);
 }
@@ -1569,6 +1572,7 @@ static int ls_exec(uint32_t pc)
            left to compare it, or the frames after it, with. */
         past_end = 1;
         gsu_lockstep_past_end();
+        spc_lockstep_past_end();
         /* Its C would run live with no interrupts to come: one that waits
            for the vertical blank would never return. The hybrid ends here,
            at the frame the original's record ends in. */
@@ -1622,6 +1626,7 @@ int lockstep_begin(void *core, const char *lib, const char *only, const char *re
     sh = mmap(NULL, sizeof(Shared), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANON, -1, 0);
     if (sh == MAP_FAILED) return -1;
     if (gsu_lockstep_prepare()) return -1;
+    if (spc_lockstep_prepare(core)) return -1;
     (void)core_bus_peek;
     fflush(NULL);
     parent_pid = getpid();
@@ -1643,6 +1648,7 @@ int lockstep_begin(void *core, const char *lib, const char *only, const char *re
         set_cb(&cb);
     }
     gsu_lockstep_role(role, lsrep, &sh->stuck);
+    spc_lockstep_role(role, lsrep, &sh->stuck);
     if (getenv("SFXBOX_LS_PLACE")) sscanf(getenv("SFXBOX_LS_PLACE"), "%ld,%ld", &place_from, &place_to);
     if (getenv("SFXBOX_LS_SKIPS")) skips_from = atol(getenv("SFXBOX_LS_SKIPS"));
     if (getenv("SFXBOX_LS_CALLS")) calls_from = atol(getenv("SFXBOX_LS_CALLS"));
@@ -1747,6 +1753,7 @@ void lockstep_before_frame(long f)
         hk = 0;
     }
     gsu_before_frame(f);
+    spc_before_frame(f);
 }
 
 /* Where a CPU write lands in the frame snapshot: work RAM, or Super FX RAM
@@ -1806,6 +1813,7 @@ static void compare(long f)
     if (bad && sl->midcall) strncat(buf, " (frame ended inside a call)", sizeof buf - strlen(buf) - 1);
     if (hk != sl->ncalls) { bad = 1; snprintf(buf + strlen(buf), sizeof buf - strlen(buf), " calls %u/%u", hk, sl->ncalls); }
     if (gsu_after_frame(f, buf, sizeof buf)) bad = 1;
+    if (spc_after_frame(f, buf, sizeof buf)) bad = 1;
     {
         struct SfxboxRegs r; core_regs(&r);
         uint32_t c = core_clock();
@@ -1852,6 +1860,7 @@ void lockstep_end(long frames)
     if (role == 1) {
         STORE(sh->o_done, 1);
         gsu_lockstep_done();
+        spc_lockstep_done();
         int st = 0;
         waitpid(child, &st, 0);
         if (LOAD(sh->stuck)) fprintf(stderr, "lockstep: a side waited too long; see the report\n");
