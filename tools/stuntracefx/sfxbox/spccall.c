@@ -317,6 +317,11 @@ void spc_state_loaded(void)
 {
     if (stats) while (depth) stats[ws[--depth].idx].skipped++;
     prev_call = 0;
+    /* A unit call staged or still running belongs to the machine the load
+       replaced (one that never returns, or one that loops): it is dropped,
+       so the script's next spccall can start. */
+    U.state = 0;
+    U.nset = 0;
 }
 
 void spc_check_begin(FILE *rep)

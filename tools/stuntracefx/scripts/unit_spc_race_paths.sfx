@@ -1,0 +1,1346 @@
+# unit_spc_race_paths: SPC700 unit calls (spccall) that take the race sound
+# driver's paths no play reaches, from a Novice race's state: the voice
+# commands no song uses, run through the dispatcher on voice 0 with their
+# parameters at $01D0; the voice routines with the per-voice state that
+# takes their rarer branches (pitch envelope at note-on, vibrato fade,
+# tremolo at full depth, inverted pan, the fades ending); every port 1
+# command; and the game side's rarer branches with the RAM bytes that
+# decide them.
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 08
+spccall 0BA2 a=F0 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 10,40
+spccall 0BA2 a=E6 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 10,30
+spccall 0BA2 a=E8 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 02
+spccall 0BA2 a=E9 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 03
+spccall 0BA2 a=EA x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 04,10,80
+spccall 0BA2 a=EB x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 00
+spccall 0BA2 a=EC x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 02,04,05
+spccall 0BA2 a=F1 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 02,04,05
+spccall 0BA2 a=F2 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 00
+spccall 0BA2 a=F3 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 10,30,20
+spccall 0BA2 a=F8 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 00
+spccall 0BA2 a=F6 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 00,10,F2
+spccall 0BA2 a=E3 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 CA
+spccall 0BA2 a=E1 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0047 01
+spcset 0280 04
+spcset 0281 00
+spcset 0290 00
+spcset 0291 05
+spccall 08F3 x=00 y=A4
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0047 01
+spcset 0280 04
+spcset 0281 00
+spcset 0290 01
+spcset 0291 05
+spccall 08F3 x=00 y=A4
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0047 01
+spcset 0030 D0,01
+spcset 00B1 40
+spcset 00B0 00
+spcset 02B0 00
+spcset 0100 00
+spcset 02B1 04
+spcset 02C0 08
+spccall 0EE4 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0047 01
+spcset 00C1 FF
+spcset 00C0 00
+spcset 02E0 00
+spcset 02D0 80
+spcset 02D1 10
+spccall 0E1B x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0351 C0
+spcset 0010 00,0A
+spccall 0EA6 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0054 01
+spcset 0068 01
+spcset 005A 01
+spccall 0A6F
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spccall 09EF y=7D
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0590 80
+spcset 0047 01
+spccall 0BC1 a=00 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 004C 80
+spcset 004D 00
+spccall 0D73 a=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 00C5 40
+spccall 105C a=C0 x=04
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0581 08
+spcset 002D 20
+spcset 0397 01
+spccall 117C
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0581 08
+spcset 002D 20
+spcset 0397 00
+spcset 0396 72
+spccall 117C
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 001D 35
+spccall 11F8
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 001D 39
+spccall 11F8
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0397 32
+spcset 0394 38
+spccall 11F8
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 001D 30
+spcset 0580 0A
+spccall 1436
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 001D 29
+spccall 1436
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0560 01
+spcset 0561 05
+spccall 1436
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 055D 10
+spcset 002C 00
+spccall 1436
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 002C 08
+spccall 1523
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 001D 30
+spcset 0555 01
+spccall 15A1
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0551 02
+spcset 0028 01
+spcset 0550 10
+spccall 1624
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0551 02
+spcset 0028 02
+spcset 0550 10
+spccall 1624
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 40
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 01
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 02
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 03
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 04
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 05
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 06
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 07
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 08
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 09
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 0A
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 0B
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 0C
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 0D
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 0E
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 0F
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 10
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 11
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 12
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 13
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 14
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 15
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 16
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 17
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 18
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 19
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 1A
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 1B
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 1C
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 1D
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 1E
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 1F
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 20
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 21
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 22
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 23
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 24
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 25
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 26
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 27
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 28
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 29
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 2A
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 2B
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 2C
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 2D
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 2E
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 2F
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 30
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 31
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 32
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 33
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 34
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 35
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 36
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 37
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 38
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 39
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 3A
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 3B
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 3C
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0001 3D
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0029 81
+spcset 0001 16
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0029 00
+spcset 0551 01
+spcset 0001 15
+spcset 0009 00
+spccall 17DF
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 04FC 05
+spccall 1A54 x=04
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0029 40
+spcset 0564 03
+spcset 002E 00,00
+spcset 002C 00
+spcset 002D 00
+spccall 1AB0
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 001D 25
+spccall 1B7A
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0470 05
+spccall 1B92
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 001D 05
+spcset 001E 05
+spccall 1B92
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 03FD 03
+spcset 0415 00
+spcset 03ED 00
+spcset 03E5 08
+spcset 0395 05
+spccall 1CF8 x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 03FD 03
+spcset 0415 00
+spcset 03ED 00
+spcset 03E5 0A
+spcset 0395 05
+spccall 1CF8 x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 03FD 03
+spcset 0415 00
+spcset 03ED 00
+spcset 03E5 0B
+spcset 0395 05
+spccall 1CF8 x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 03FD 03
+spcset 0415 00
+spcset 03ED 00
+spcset 03E5 0C
+spcset 0395 05
+spccall 1CF8 x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 03FD 03
+spcset 0415 00
+spcset 03ED 00
+spcset 03E5 0E
+spcset 0395 05
+spccall 1CF8 x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 03FD 03
+spcset 0415 00
+spcset 03ED 00
+spcset 03E5 07
+spcset 04FD 00
+spcset 0485 00
+spccall 1CF8 x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 04F5 04
+spcset 0003 00
+spccall 2068 a=40 x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 04F5 04
+spcset 0003 FF
+spcset 0024 FF,7F
+spccall 2068 a=7F x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 01
+spcset 044D 00
+spcset 03F5 05
+spcset 041D 01
+spcset 0405 FF
+spcset 048D D0
+spcset 0495 01
+spcset 04F5 02
+spcset 002C 00
+spcset 01D0 E4,30,30,30,10,00
+spccall 1EA6 x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0024 D0,01
+spcset 01D0 05
+spcset 04F5 02
+spccall 219C a=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0018 00,00
+spccall EDF0
+wait 10
+# Every entry of the driver's tables: each voice command through the
+# dispatcher, each sound data command read on channel 5, each pan value,
+# and each sound of the special sound list (and one not in it).
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 01,02,03,00
+spccall 0BA2 a=E0 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 01,02,03,00
+spccall 0BA2 a=E1 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 01,02,03,00
+spccall 0BA2 a=E2 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 01,02,03,00
+spccall 0BA2 a=E3 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 01,02,03,00
+spccall 0BA2 a=E4 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 01,02,03,00
+spccall 0BA2 a=E5 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 01,02,03,00
+spccall 0BA2 a=E6 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 01,02,03,00
+spccall 0BA2 a=E7 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 01,02,03,00
+spccall 0BA2 a=E8 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 01,02,03,00
+spccall 0BA2 a=E9 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 01,02,03,00
+spccall 0BA2 a=EA x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 01,02,03,00
+spccall 0BA2 a=EB x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 01,02,03,00
+spccall 0BA2 a=EC x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 01,02,03,00
+spccall 0BA2 a=ED x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 01,02,03,00
+spccall 0BA2 a=EE x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 01,02,03,00
+spccall 0BA2 a=EF x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 01,02,03,00
+spccall 0BA2 a=F0 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 01,02,03,00
+spccall 0BA2 a=F1 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 01,02,03,00
+spccall 0BA2 a=F2 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 01,02,03,00
+spccall 0BA2 a=F3 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 01,02,03,00
+spccall 0BA2 a=F4 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 01,02,03,00
+spccall 0BA2 a=F5 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 01,02,03,00
+spccall 0BA2 a=F6 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 01,02,03,00
+spccall 0BA2 a=F7 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 01,02,03,00
+spccall 0BA2 a=F8 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 01,02,03,00
+spccall 0BA2 a=F9 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 01,02,03,00
+spccall 0BA2 a=FA x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 00,00
+spccall 0BA2 a=E1 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 01,00
+spccall 0BA2 a=E1 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 02,00
+spccall 0BA2 a=E1 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 03,00
+spccall 0BA2 a=E1 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 04,00
+spccall 0BA2 a=E1 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 05,00
+spccall 0BA2 a=E1 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 06,00
+spccall 0BA2 a=E1 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 07,00
+spccall 0BA2 a=E1 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 08,00
+spccall 0BA2 a=E1 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 09,00
+spccall 0BA2 a=E1 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 0A,00
+spccall 0BA2 a=E1 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 0B,00
+spccall 0BA2 a=E1 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 0C,00
+spccall 0BA2 a=E1 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 0D,00
+spccall 0BA2 a=E1 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 0E,00
+spccall 0BA2 a=E1 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 0F,00
+spccall 0BA2 a=E1 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 10,00
+spccall 0BA2 a=E1 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 11,00
+spccall 0BA2 a=E1 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 12,00
+spccall 0BA2 a=E1 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 13,00
+spccall 0BA2 a=E1 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0030 D0,01
+spcset 01D0 14,00
+spccall 0BA2 a=E1 x=00
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 01
+spcset 044D 00
+spcset 03F5 05
+spcset 041D 01
+spcset 0405 FF
+spcset 048D D0
+spcset 0495 01
+spcset 04F5 00
+spcset 01D0 E0,10,10,10,10,10,00
+spccall 1EA6 x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 01
+spcset 044D 00
+spcset 03F5 05
+spcset 041D 01
+spcset 0405 FF
+spcset 048D D0
+spcset 0495 01
+spcset 04F5 00
+spcset 01D0 E1,10,10,10,10,10,00
+spccall 1EA6 x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 01
+spcset 044D 00
+spcset 03F5 05
+spcset 041D 01
+spcset 0405 FF
+spcset 048D D0
+spcset 0495 01
+spcset 04F5 00
+spcset 01D0 E2,10,10,10,10,10,00
+spccall 1EA6 x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 01
+spcset 044D 00
+spcset 03F5 05
+spcset 041D 01
+spcset 0405 FF
+spcset 048D D0
+spcset 0495 01
+spcset 04F5 00
+spcset 01D0 E3,10,10,10,10,10,00
+spccall 1EA6 x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 01
+spcset 044D 00
+spcset 03F5 05
+spcset 041D 01
+spcset 0405 FF
+spcset 048D D0
+spcset 0495 01
+spcset 04F5 00
+spcset 01D0 E4,10,10,10,10,10,00
+spccall 1EA6 x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 01
+spcset 044D 00
+spcset 03F5 05
+spcset 041D 01
+spcset 0405 FF
+spcset 048D D0
+spcset 0495 01
+spcset 04F5 00
+spcset 01D0 E5,10,10,10,10,10,00
+spccall 1EA6 x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 01
+spcset 044D 00
+spcset 03F5 05
+spcset 041D 01
+spcset 0405 FF
+spcset 048D D0
+spcset 0495 01
+spcset 04F5 00
+spcset 01D0 E6,10,10,10,10,10,00
+spccall 1EA6 x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 01
+spcset 044D 00
+spcset 03F5 05
+spcset 041D 01
+spcset 0405 FF
+spcset 048D D0
+spcset 0495 01
+spcset 04F5 00
+spcset 01D0 E7,10,10,10,10,10,00
+spccall 1EA6 x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 01
+spcset 044D 00
+spcset 03F5 05
+spcset 041D 01
+spcset 0405 FF
+spcset 048D D0
+spcset 0495 01
+spcset 04F5 00
+spcset 01D0 E8,10,10,10,10,10,00
+spccall 1EA6 x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 01
+spcset 044D 00
+spcset 03F5 05
+spcset 041D 01
+spcset 0405 FF
+spcset 048D D0
+spcset 0495 01
+spcset 04F5 00
+spcset 01D0 E9,10,10,10,10,10,00
+spccall 1EA6 x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 01
+spcset 044D 00
+spcset 03F5 05
+spcset 041D 01
+spcset 0405 FF
+spcset 048D D0
+spcset 0495 01
+spcset 04F5 00
+spcset 01D0 EA,10,10,10,10,10,00
+spccall 1EA6 x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 01
+spcset 044D 00
+spcset 03F5 05
+spcset 041D 01
+spcset 0405 FF
+spcset 048D D0
+spcset 0495 01
+spcset 04F5 00
+spcset 01D0 EB,10,10,10,10,10,00
+spccall 1EA6 x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 01
+spcset 044D 00
+spcset 03F5 05
+spcset 041D 01
+spcset 0405 FF
+spcset 048D D0
+spcset 0495 01
+spcset 04F5 00
+spcset 01D0 EC,05,BD,10,10,10,00
+spccall 1EA6 x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 01
+spcset 044D 00
+spcset 03F5 05
+spcset 041D 01
+spcset 0405 FF
+spcset 048D D0
+spcset 0495 01
+spcset 04F5 00
+spcset 01D0 ED,10,10,10,10,10,00
+spccall 1EA6 x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 01
+spcset 044D 00
+spcset 03F5 05
+spcset 041D 01
+spcset 0405 FF
+spcset 048D D0
+spcset 0495 01
+spcset 04F5 00
+spcset 01D0 EE,10,10,10,10,10,00
+spccall 1EA6 x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 01
+spcset 044D 00
+spcset 03F5 05
+spcset 041D 01
+spcset 0405 FF
+spcset 048D D0
+spcset 0495 01
+spcset 04F5 00
+spcset 01D0 EF,10,10,10,10,10,00
+spccall 1EA6 x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 01
+spcset 044D 00
+spcset 03F5 05
+spcset 041D 01
+spcset 0405 FF
+spcset 048D D0
+spcset 0495 01
+spcset 04F5 00
+spcset 01D0 F0,10,10,10,10,10,00
+spccall 1EA6 x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 01
+spcset 044D 00
+spcset 03F5 05
+spcset 041D 01
+spcset 0405 FF
+spcset 048D D0
+spcset 0495 01
+spcset 04F5 00
+spcset 01D0 F1,10,10,10,10,10,00
+spccall 1EA6 x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 01
+spcset 044D 00
+spcset 03F5 05
+spcset 041D 01
+spcset 0405 FF
+spcset 048D D0
+spcset 0495 01
+spcset 04F5 00
+spcset 01D0 F2,10,10,10,10,10,00
+spccall 1EA6 x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 01
+spcset 044D 00
+spcset 03F5 05
+spcset 041D 01
+spcset 0405 FF
+spcset 048D D0
+spcset 0495 01
+spcset 04F5 00
+spcset 01D0 F3,10,10,10,10,10,00
+spccall 1EA6 x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 01
+spcset 044D 00
+spcset 03F5 05
+spcset 041D 01
+spcset 0405 FF
+spcset 048D D0
+spcset 0495 01
+spcset 04F5 00
+spcset 01D0 F4,10,10,10,10,10,00
+spccall 1EA6 x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 01
+spcset 044D 00
+spcset 03F5 05
+spcset 041D 01
+spcset 0405 FF
+spcset 048D D0
+spcset 0495 01
+spcset 04F5 00
+spcset 01D0 F5,10,10,10,10,10,00
+spccall 1EA6 x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 01
+spcset 044D 00
+spcset 03F5 05
+spcset 041D 01
+spcset 0405 FF
+spcset 048D D0
+spcset 0495 01
+spcset 04F5 00
+spcset 01D0 F6,10,10,10,10,10,00
+spccall 1EA6 x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 01
+spcset 044D 00
+spcset 03F5 05
+spcset 041D 01
+spcset 0405 FF
+spcset 048D D0
+spcset 0495 01
+spcset 04F5 00
+spcset 01D0 F7,10,10,10,10,10,00
+spccall 1EA6 x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 01
+spcset 044D 00
+spcset 03F5 05
+spcset 041D 01
+spcset 0405 FF
+spcset 048D D0
+spcset 0495 01
+spcset 04F5 00
+spcset 01D0 F8,10,10,10,10,10,00
+spccall 1EA6 x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 01
+spcset 044D 00
+spcset 03F5 05
+spcset 041D 01
+spcset 0405 FF
+spcset 048D D0
+spcset 0495 01
+spcset 04F5 00
+spcset 01D0 F9,10,10,10,10,10,00
+spccall 1EA6 x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 01
+spcset 044D 00
+spcset 03F5 05
+spcset 041D 01
+spcset 0405 FF
+spcset 048D D0
+spcset 0495 01
+spcset 04F5 00
+spcset 01D0 FA,10,10,10,10,10,00
+spccall 1EA6 x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 01
+spcset 044D 00
+spcset 03F5 05
+spcset 041D 01
+spcset 0405 FF
+spcset 048D D0
+spcset 0495 01
+spcset 04F5 00
+spcset 01D0 FB,10,10,10,10,10,00
+spccall 1EA6 x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 01
+spcset 044D 00
+spcset 03F5 05
+spcset 041D 01
+spcset 0405 FF
+spcset 048D D0
+spcset 0495 01
+spcset 04F5 00
+spcset 01D0 FC,10,10,10,10,10,00
+spccall 1EA6 x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 01
+spcset 044D 00
+spcset 03F5 05
+spcset 041D 01
+spcset 0405 FF
+spcset 048D D0
+spcset 0495 01
+spcset 04F5 00
+spcset 01D0 FD,10,10,10,10,10,00
+spccall 1EA6 x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 01
+spcset 044D 00
+spcset 03F5 05
+spcset 041D 01
+spcset 0405 FF
+spcset 048D D0
+spcset 0495 01
+spcset 04F5 00
+spcset 01D0 FE,10,10,10,10,10,00
+spccall 1EA6 x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 01
+spcset 044D 00
+spcset 03F5 05
+spcset 041D 01
+spcset 0405 FF
+spcset 048D D0
+spcset 0495 01
+spcset 04F5 00
+spcset 01D0 FF,10,10,10,10,10,00
+spccall 1EA6 x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 07
+spcset 03CD 07
+spccall 23CF x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 04
+spcset 03CD 04
+spccall 23CF x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 01
+spcset 03CD 01
+spccall 23CF x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 0A
+spcset 03CD 0A
+spccall 23CF x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 0D
+spcset 03CD 0D
+spccall 23CF x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 74
+spcset 03CD 74
+spccall 23CF x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 73
+spcset 03CD 73
+spccall 23CF x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 72
+spcset 03CD 72
+spccall 23CF x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 75
+spcset 03CD 75
+spccall 23CF x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 76
+spcset 03CD 76
+spccall 23CF x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 17
+spcset 03CD 17
+spccall 23CF x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 25
+spcset 03CD 25
+spccall 23CF x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 21
+spcset 03CD 21
+spccall 23CF x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 02
+spcset 03CD 02
+spccall 23CF x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 58
+spcset 03CD 58
+spccall 23CF x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 99
+spcset 03CD 99
+spccall 23CF x=05
+wait 10
