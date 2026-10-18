@@ -4,8 +4,9 @@
 The ROM map of each trace says how each ROM byte was touched. Code the S-CPU
 runs from work RAM was copied there from ROM (config/stuntracefx/ramcode.csv);
 its fetches are traced in RAM and folded back onto the ROM bytes they came
-from. Every tool that needs the code map or a byte's run address uses this
-module, so they agree.
+from. The SPC700's code and data, traced in APU RAM, are folded back onto the
+uploaded ROM bytes the same way (spcmap.py; SPC_CODE bits). Every tool that
+needs the code map or a byte's run address uses this module, so they agree.
 
     codemap.py          summary: executed bytes per processor, RAM-run code folded
 """
@@ -15,6 +16,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 B = os.path.join(ROOT, 'build', 'stuntracefx')
 RAMCODE = os.path.join(ROOT, 'config', 'stuntracefx', 'ramcode.csv')
 CPU_CODE, GSU_CODE = 0x03, 0x30
+SPC_CODE = 0x80 | 0x2000   # spcmap.SPC_OP | spcmap.SPC_OPND; 0x4000 read by the SPC700
 
 
 def ramcode():
@@ -97,14 +99,37 @@ def merged(dirs=None):
                 for i in range(n):
                     if w[rw + i]:
                         out[rom + i] |= w[rw + i]
+        if os.path.exists(os.path.join(d, 'spc_exec.bin')):
+            import spcmap
+            for o, v in spcmap.fold(d, _rom_bytes(), _spc_blocks())[0].items():
+                out[o] |= v
     return out or []
+
+
+_ROMB = _BLOCKS = None
+
+
+def _rom_bytes():
+    global _ROMB
+    if _ROMB is None:
+        _ROMB = open(os.path.join(B, 'baserom.sfc'), 'rb').read()
+    return _ROMB
+
+
+def _spc_blocks():
+    global _BLOCKS
+    if _BLOCKS is None:
+        import spcmap
+        _BLOCKS = [b for bl, _ in spcmap.lists(_rom_bytes()).values() for b in bl]
+    return _BLOCKS
 
 
 def main():
     mp = merged()
     folded = sum(n for _, _, _, n in _rc())
-    print('S-CPU code bytes %d, Super FX code bytes %d; RAM-run blocks %d (%d ROM bytes)' % (
-        sum(1 for v in mp if v & CPU_CODE), sum(1 for v in mp if v & GSU_CODE), len(_rc()), folded))
+    print('S-CPU code bytes %d, Super FX code bytes %d, SPC700 code bytes %d; RAM-run blocks %d (%d ROM bytes)' % (
+        sum(1 for v in mp if v & CPU_CODE), sum(1 for v in mp if v & GSU_CODE), sum(1 for v in mp if v & SPC_CODE),
+        len(_rc()), folded))
     return 0
 
 

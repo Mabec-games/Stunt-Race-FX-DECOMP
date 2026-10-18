@@ -73,7 +73,7 @@ index 4002855..b0f628e 100644
  }
  
 diff --git a/bsnes/target-libretro/sfxbox.cpp b/bsnes/target-libretro/sfxbox.cpp
-index 0118f94..9528569 100644
+index 0118f94..c9726e4 100644
 --- a/bsnes/target-libretro/sfxbox.cpp
 +++ b/bsnes/target-libretro/sfxbox.cpp
 @@ -16,6 +16,7 @@ int (*sfxbox_cpu_exec)(uint32_t pc) = nullptr;
@@ -84,16 +84,18 @@ index 0118f94..9528569 100644
  }
  
  // The harness installs its Super FX callbacks and its run-in-place hook here.
-@@ -57,6 +58,19 @@ static bool sfxboxGsuSkip = false, sfxboxGsuWasRunning = false;
+@@ -57,6 +58,21 @@ static bool sfxboxGsuSkip = false, sfxboxGsuWasRunning = false;
  // key: cpu(1) | kind(9) | from(24) | to(24) -> count
  static std::unordered_map<uint64_t, uint32_t> sfxboxEdges;
  
 +// SPC700, by APU RAM address: 1 opcode fetched, 2 operand fetched, 4 read
-+// as data, 8 fetched with two different values (the RAM was loaded again
-+// between), and the value fetched first; folded back onto the uploaded ROM
-+// blocks by tools/stuntracefx (their bytes match the values).
-+static uint8_t sfxboxSpcExec[0x10000];
-+static uint8_t sfxboxSpcByte[0x10000];
++// as data, 8 fetched with more than two different values; the value
++// fetched first; then the same flags and value for a second, different
++// value fetched there (the RAM was loaded again between: another version
++// of the code). Folded back onto the uploaded ROM blocks by
++// tools/stuntracefx (their bytes match the values).
++static uint8_t sfxboxSpcExec[0x10000], sfxboxSpcExec2[0x10000];
++static uint8_t sfxboxSpcByte[0x10000], sfxboxSpcByte2[0x10000];
 +static uint16_t sfxboxSmpPrev = 0, sfxboxSmpEnd = 0;
 +static bool sfxboxSmpHavePrev = false;
 +static uint8_t sfxboxSmpPrevOp = 0;
@@ -104,7 +106,7 @@ index 0118f94..9528569 100644
  static inline void sfxboxEdge(int gsu, uint32_t from, uint32_t to, uint32_t kind) {
    uint64_t key = (uint64_t)gsu << 63 | (uint64_t)(kind & 0x1ff) << 48 | (uint64_t)(from & 0xffffff) << 24 | (to & 0xffffff);
    sfxboxEdges[key]++;
-@@ -130,6 +144,33 @@ extern "C" void sfxbox_gsu_data(uint32_t addr) {
+@@ -130,6 +146,38 @@ extern "C" void sfxbox_gsu_data(uint32_t addr) {
    if(o >= 0) sfxboxRom[o] |= SFXBOX_GSU_DATA;
  }
  
@@ -123,9 +125,14 @@ index 0118f94..9528569 100644
 +  if(!sfxboxRom) return;
 +  int first = sfxboxSmpFirst;
 +  sfxboxSmpFirst = 0;
-+  if(!(sfxboxSpcExec[addr] & 3)) sfxboxSpcByte[addr] = data;
-+  else if(sfxboxSpcByte[addr] != data) sfxboxSpcExec[addr] |= 8;
-+  sfxboxSpcExec[addr] |= first ? 1 : 2;
++  uint8_t bit = first ? 1 : 2;
++  if(!(sfxboxSpcExec[addr] & 3) || sfxboxSpcByte[addr] == data) {
++    sfxboxSpcByte[addr] = data;
++    sfxboxSpcExec[addr] |= bit;
++  } else if(!(sfxboxSpcExec2[addr] & 3) || sfxboxSpcByte2[addr] == data) {
++    sfxboxSpcByte2[addr] = data;
++    sfxboxSpcExec2[addr] |= bit;
++  } else sfxboxSpcExec[addr] |= 8;
 +  if(first) sfxboxSmpPrevOp = data;
 +  sfxboxSmpEnd = (uint16_t)(addr + 1);
 +}
@@ -138,18 +145,20 @@ index 0118f94..9528569 100644
  // ---- call-oracle events, forwarded to the harness ----
  
  
-@@ -172,6 +213,10 @@ extern "C" RETRO_API void sfxbox_trace_begin() {
+@@ -172,6 +220,12 @@ extern "C" RETRO_API void sfxbox_trace_begin() {
    memset(sfxboxGsuRamExec, 0, sizeof sfxboxGsuRamExec);
    memset(sfxboxWramCode, 0, sizeof sfxboxWramCode);
    sfxboxEdges.clear();
 +  sfxboxSpcEdges.clear();
 +  memset(sfxboxSpcExec, 0, sizeof sfxboxSpcExec);
 +  memset(sfxboxSpcByte, 0, sizeof sfxboxSpcByte);
++  memset(sfxboxSpcExec2, 0, sizeof sfxboxSpcExec2);
++  memset(sfxboxSpcByte2, 0, sizeof sfxboxSpcByte2);
 +  sfxboxSmpHavePrev = false;
    sfxboxCpuPrev = sfxboxGsuPrev = sfxboxGsuEnd = ~0u;
    sfxboxGsuSkip = true;  // the first report names no address (power-on)
    sfxboxGsuWasRunning = false;
-@@ -181,6 +226,7 @@ extern "C" RETRO_API void sfxbox_trace_begin() {
+@@ -181,6 +235,7 @@ extern "C" RETRO_API void sfxbox_trace_begin() {
  // registers set): the next instruction was not reached from the last one.
  extern "C" RETRO_API void sfxbox_trace_break() {
    sfxboxCpuPrev = sfxboxGsuPrev = sfxboxGsuEnd = ~0u;
@@ -157,14 +166,16 @@ index 0118f94..9528569 100644
    sfxboxGsuSkip = true;
    sfxboxGsuWasRunning = sfxbox_gsu_running();
  }
-@@ -207,6 +253,16 @@ extern "C" RETRO_API int sfxbox_trace_write(const char* dir) {
+@@ -207,6 +262,18 @@ extern "C" RETRO_API int sfxbox_trace_write(const char* dir) {
      fprintf(f, "%s,%03x,%06x,%06x,%u\n", k >> 63 ? "gsu" : "cpu", (unsigned)(k >> 48 & 0x1ff),
              (unsigned)(k >> 24 & 0xffffff), (unsigned)(k & 0xffffff), n);
    fclose(f);
 +  snprintf(path, sizeof path, "%s/spc_exec.bin", dir);
 +  f = fopen(path, "wb"); if(!f) return -1;
 +  fwrite(sfxboxSpcExec, 1, sizeof sfxboxSpcExec, f);
-+  fwrite(sfxboxSpcByte, 1, sizeof sfxboxSpcByte, f); fclose(f);
++  fwrite(sfxboxSpcByte, 1, sizeof sfxboxSpcByte, f);
++  fwrite(sfxboxSpcExec2, 1, sizeof sfxboxSpcExec2, f);
++  fwrite(sfxboxSpcByte2, 1, sizeof sfxboxSpcByte2, f); fclose(f);
 +  snprintf(path, sizeof path, "%s/spc_edges.csv", dir);
 +  f = fopen(path, "w"); if(!f) return -1;
 +  fprintf(f, "opcode,from,to,count\n");

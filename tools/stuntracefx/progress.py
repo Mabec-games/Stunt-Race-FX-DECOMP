@@ -36,7 +36,7 @@ README = os.path.join(ROOT, 'README.md')
 SVG = os.path.join(ROOT, 'docs', 'stuntracefx', 'progress-map.svg')
 GREEN, BLUE, AMBER, GRAY = '#3fb950', '#58a6ff', '#d29922', '#c8ccd2'
 COLOR = {'T4': GREEN, 'T3': BLUE, 'T2': AMBER, 'T1': GRAY}
-LANE = {'cpu': 'S-CPU (65816)', 'gsu': 'Super FX (GSU-1)'}
+LANE = {'cpu': 'S-CPU (65816)', 'gsu': 'Super FX (GSU-1)', 'spc': 'SPC700 (sound)'}
 BAR_W, CELL_W = 40, 20
 
 
@@ -125,15 +125,19 @@ def code_bytes(rows, c):
     for o, i in enumerate(owner):
         if i is not None and gsu[o] == (2 if rows[i]['cpu'] == 'gsu' else 1):
             rows[i]['code'] += 1
-    return {'cpu': gsu.count(1), 'gsu': gsu.count(2)}
+    # The SPC700's code: the uploaded ROM bytes the traces saw it run
+    # (codemap folds them back); no SPC700 routine is filed yet, so none
+    # counts toward the bars' numerators.
+    spc = sum(1 for o in range(len(mp)) if mp[o] & codemap.SPC_CODE and not gsu[o])
+    return {'cpu': gsu.count(1), 'gsu': gsu.count(2), 'spc': spc}
 
 
 def blocks(rows, mp, est, game):
-    total = game['cpu'] + game['gsu']
+    total = game['cpu'] + game['gsu'] + game['spc']
     m1 = [r for r in rows if r['tier'] in ('T3', 'T4')]
     m2 = [r for r in rows if r['tier'] == 'T4']
     b1, b2 = sum(r['code'] for r in m1), sum(r['code'] for r in m2)
-    traced = sum(r['bytes'] for r in rows)
+    traced = sum(r['bytes'] for r in rows) + game['spc']
     today = datetime.date.today().isoformat()
     lines = ['_Snapshot %s._' % today, '', '```',
              'M1  Behaviour exact (T3 + T4)',
@@ -141,7 +145,7 @@ def blocks(rows, mp, est, game):
              'M2  Byte exact (T4)',
              '    %s  %5.1f%%   %s / %s B of the game\'s code' % (bar(pct(b2, total) / 100, BAR_W), pct(b2, total), fmt(b2), fmt(total)),
              '```', '',
-             'The bars measure the whole game\'s S-CPU and Super FX code, %s B: %s B the scripts have run and %s B the '
+             'The bars measure the whole game\'s S-CPU, Super FX and SPC700 code, %s B: %s B the scripts have run and %s B the '
              '[routine census](docs/stuntracefx/ROUTINE_CENSUS.md) finds that no script has run yet. '
              'Certified so far: %d routines behaviour exact, %d of them byte exact.' % (
                  fmt(total), fmt(traced), fmt(total - traced), len(m1), len(m2)),
@@ -154,7 +158,9 @@ def blocks(rows, mp, est, game):
         lines.append('| **%s** | `%s` %.1f%%: %s/%s B | `%s` %.1f%%: %s/%s B |' % (
             LANE[cpu], bar(pct(x1, t) / 100, CELL_W), pct(x1, t), fmt(x1), fmt(t),
             bar(pct(x2, t) / 100, CELL_W), pct(x2, t), fmt(x2), fmt(t)))
-    lines.append('| **SPC700 (sound)** | not yet measured | not yet measured |')
+    t = game['spc']
+    lines.append('| **%s** | `%s` %.1f%%: %s/%s B | `%s` %.1f%%: %s/%s B |' % (
+        LANE['spc'], bar(0, CELL_W), 0.0, fmt(0), fmt(t), bar(0, CELL_W), 0.0, fmt(0), fmt(t)))
     status = '\n'.join(lines)
 
     code = sum(1 for v in mp if v & 0x33)
@@ -163,7 +169,7 @@ def blocks(rows, mp, est, game):
     t2 = [r for r in rows if r['tier'] == 'T2']
     detail = '\n'.join([
         '**What the bars measure.** Bytes of code, not routines. The denominator is',
-        'every S-CPU and Super FX code byte of the game, %s B: the %s B the scripts' % (fmt(total), fmt(traced)),
+        'every S-CPU, Super FX and SPC700 code byte of the game, %s B: the %s B the scripts' % (fmt(total), fmt(traced)),
         'have run and the %s B the routine census (`tools/stuntracefx/census.py`) finds' % fmt(total - traced),
         'by following the code statically (calls, jumps, tables, handler pointers,',
         'Super FX calls, orphans) where no script has gone. The numerator is the code',
@@ -177,8 +183,10 @@ def blocks(rows, mp, est, game):
         'named), while the bytes stay put: tracing a new script moves bytes from',
         '"found" to "run" and barely changes the total. Of the',
         'ROM\'s %s B, the scripts have run %s B as code and read %s B as data;' % (fmt(len(mp)), fmt(code), fmt(data)),
-        '%s B have not been touched by any script. The sound CPU\'s program is' % fmt(untouched),
-        'uploaded from ROM and is not measured yet.',
+        '%s B have not been touched by any script. The SPC700 (sound CPU) runs' % fmt(untouched),
+        'code the S-CPU uploads from ROM; the %s B of it the scripts have run are' % fmt(game['spc']),
+        'counted (folded back from APU RAM onto the uploaded ROM bytes, `tools/stuntracefx/spcmap.py`);',
+        'what no script has run there is not counted yet.',
         '',
         '**Byte-exact rebuild.** Independently of the tiers, the whole ROM already',
         'rebuilds byte for byte from source: filed, commented assembly where it',
@@ -239,6 +247,7 @@ def render_svg(rows, path, game):
     # map's areas are the bars' bytes.
     unrun = game['cpu'] + game['gsu'] - sum(r['code'] for r in rows)
     groups['not run by any script yet'] = [{'name': 'code the census found', 'addr': '', 'code': unrun, 'tier': 'T1'}]
+    groups['SPC700 (sound), not filed yet'] = [{'name': 'SPC700 code the scripts ran', 'addr': '', 'code': game['spc'], 'tier': 'T1'}]
     gitems = sorted(((sum(r['code'] for r in rs), (k, rs)) for k, rs in groups.items()), key=lambda it: -it[0])
     for gx, gy, gw, gh, (gname, rs) in squarify(gitems, 0, 0, W, H):
         pad = 1.5
@@ -251,7 +260,7 @@ def render_svg(rows, path, game):
             tip = '%s  %s  %dB  %s  [%s]' % (r['name'] or '(unnamed)', r['addr'], r['code'], r['tier'], gname)
             parts.append('<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" fill="%s"><title>%s</title></rect>'
                          % (x, y, max(w - .6, .4), max(h - .6, .4), COLOR[r['tier']], html.escape(tip)))
-    total = game['cpu'] + game['gsu']
+    total = game['cpu'] + game['gsu'] + game['spc']
     n4 = sum(1 for r in rows if r['tier'] == 'T4')
     n3 = sum(1 for r in rows if r['tier'] == 'T3')
     b4 = sum(r['code'] for r in rows if r['tier'] == 'T4')

@@ -9,15 +9,19 @@ never carries the original's data bytes. Every instruction carries an explicit o
 never chooses one. Branch targets that are traced instruction starts in the
 same bank get labels; any other displacement is written raw.
 
+SPC700 code the traces saw run in APU RAM (folded back onto the uploaded ROM
+bytes, spcmap.py) is written as arch spc700 at its APU RAM address.
+
 Output: one file per 32 KB LoROM bank (raw/bankNN.asm) plus raw/main.asm,
 which assembles to the ROM with asar in norom mode. This is intake: address
 names only, nothing here is filed or described.
 """
 import argparse, csv, os, struct, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import codemap  # noqa: E402
+import codemap, spc700, spcmap  # noqa: E402
 
 CPU_OP, CPU_OPND, GSU_OP, GSU_OPND = 1, 2, 16, 32
+SPC_OP = spcmap.SPC_OP
 M8, M16, X8, X16 = 1 << 8, 1 << 9, 1 << 10, 1 << 11
 BANK = 0x8000
 
@@ -118,6 +122,12 @@ class Rom:
         self.length = [0] * len(rom)
         self.labels = {}                # offset -> name
         self.rejected = []
+        # ROM offset -> APU RAM address, for the uploaded SPC700 blocks.
+        self.apu = {}
+        for bl, _ in spcmap.lists(rom).values():
+            for dst, n, o in bl:
+                for k in range(n):
+                    self.apu.setdefault(o + k, (dst + k) & 0xFFFF)
         self.decode()
 
     def decode(self):
@@ -133,6 +143,9 @@ class Rom:
             elif v & GSU_OP:
                 n = gsu_len(rom[off])
                 kind = 'g'
+            elif v & SPC_OP and off in self.apu:
+                n = spc700.length(rom[off])
+                kind = 's'
             else:
                 continue
             span = range(off, off + n)
@@ -140,7 +153,8 @@ class Rom:
                 self.rejected.append((off, kind, 'runs into filed source'))
                 continue
             if off + n > len(rom) or (off // BANK) != ((off + n - 1) // BANK) or any(owner[i] for i in span) \
-                    or any(mp[i] & (CPU_OP | GSU_OP) for i in span[1:]):
+                    or any(mp[i] & (CPU_OP | GSU_OP | SPC_OP) for i in span[1:]) \
+                    or (kind == 's' and any(self.apu.get(i) != (self.apu[off] + i - off) & 0xFFFF for i in span)):
                 self.rejected.append((off, kind, 'overlap or bank crossing'))
                 continue
             for i in span:
@@ -158,6 +172,30 @@ class Rom:
                 t = self.gsu_target(off)
                 if t is not None and self.kind[t] == 'g':
                     self.labels.setdefault(t, 'gsu_%06X' % addr_of(t))
+            elif k == 's':
+                t = self.spc_target(off)
+                if t is not None and self.kind[t] == 's':
+                    self.labels.setdefault(t, 'spc_%04X_%06X' % (self.apu[t], t))
+
+    def spc_vals(self, off):
+        n = self.length[off]
+        return spc700.operands(self.rom[off], self.rom[off + 1:off + n], self.apu[off])
+
+    def spc_target(self, off):
+        """ROM offset of a relative branch's target in the same block, or None."""
+        v = self.spc_vals(off)
+        if 'r' not in v:
+            return None
+        d = (v['r'] - self.apu[off]) & 0xFFFF
+        t = off + (d - 0x10000 if d >= 0x8000 else d)
+        if t >= len(self.rom) or self.apu.get(t) != v['r'] or t // BANK != off // BANK:
+            return None
+        return t
+
+    def spc_text(self, off):
+        t = self.spc_target(off)
+        lab = self.labels.get(t) if t is not None else None
+        return spc700.text(self.rom[off], self.spc_vals(off), (lambda f, v: lab if f == 'r' else None) if lab else None)
 
     def rel_target(self, off, n, disp):
         a = addr_of(off)
@@ -317,8 +355,9 @@ class Rom:
         off = start
         gap = False
         prev = start
+        spc_next, spc_pc = [None], [None]
         while off < end:
-            if not self.claimed[off] and not gap and addr_of(off) - addr_of(prev) != off - prev:
+            if not self.claimed[off] and not gap and arch[0] != 'spc700' and addr_of(off) - addr_of(prev) != off - prev:
                 flush()
                 setarch('65816')
                 out.append('base %s' % h6(addr_of(off)))
@@ -332,10 +371,28 @@ class Rom:
                 setarch('65816')
                 out += ['', '; resumes after filed source', 'org %s' % h6(off), 'base %s' % h6(addr_of(off))]
                 gap = False
+            k = self.kind[off]
+            # SPC700 code runs at its APU RAM address: the base is set before
+            # its label, and kept across the data between its instructions
+            # (incbin or db need no address) until a 65816 or Super FX one.
+            if k == 's' and (arch[0] != 'spc700' or spc_next[0] != off or spc_pc[0] != self.apu[off]):
+                flush()
+                setarch('spc700')
+                out.append('base $%04X' % self.apu[off])
             if off in self.labels:
                 flush()
                 out.append('%s:' % self.labels[off])
-            k = self.kind[off]
+            if k == 's':
+                flush()
+                text = self.spc_text(off)
+                out.append('    %-28s ; %06X spc %04X' % (text, addr_of(off), self.apu[off]))
+                spc_next[0] = off + self.length[off]
+                spc_pc[0] = (self.apu[off] + self.length[off]) & 0xFFFF
+                off += self.length[off]
+                continue
+            if arch[0] == 'spc700' and (k or off in self.labels):
+                setarch('65816')
+                out.append('base %s' % h6(addr_of(off)))
             if k:
                 flush()
                 setarch('65816' if k == 'c' else 'superfx')
@@ -358,6 +415,7 @@ class Rom:
         setarch('65816')
         out += ['', 'base off', '']
         return out
+
 
 
 def main():
@@ -387,8 +445,8 @@ def main():
         for b in range(banks):
             f.write('incsrc "bank%02X.asm"\n' % b)
     ninsn = sum(1 for k in r.kind if k)
-    print('instructions %d (cpu %d, gsu %d), labels %d, rejected %d' % (
-        ninsn, r.kind.count('c'), r.kind.count('g'), len(r.labels), len(r.rejected)))
+    print('instructions %d (cpu %d, gsu %d, spc %d), labels %d, rejected %d' % (
+        ninsn, r.kind.count('c'), r.kind.count('g'), r.kind.count('s'), len(r.labels), len(r.rejected)))
     for off, kind, why in r.rejected[:20]:
         print('  rejected %06X %s: %s' % (off, kind, why))
     return 0
