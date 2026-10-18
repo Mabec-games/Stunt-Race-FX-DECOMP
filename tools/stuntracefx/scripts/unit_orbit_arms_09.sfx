@@ -1,0 +1,29 @@
+# unit_orbit_arms_09: the $FF sign stores of the orbiting objects' frames
+# (ObjectRingStep 09:C9F0, ObjectSpinnerStep 09:CAF8, ObjectFanStep
+# 09:CEE8, ObjectWheelStep 09:D023) that their positive constant offsets
+# never take, each called directly on object 1 ($2001) with object $032D
+# as the centre in Y, from a Novice race's state.
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:C9FD long x=0001 y=032D p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:CA0F long x=0001 y=032D p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:CA22 long x=0001 y=032D p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:CB05 long x=0001 y=032D p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:CB17 long x=0001 y=032D p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:CB2A long x=0001 y=032D p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:CEF5 long x=0001 y=032D p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:CF07 long x=0001 y=032D p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:CF1A long x=0001 y=032D p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:D030 long x=0001 y=032D p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:D042 long x=0001 y=032D p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:D055 long x=0001 y=032D p=20 db=7E d=0000

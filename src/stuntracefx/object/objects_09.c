@@ -4818,6 +4818,18 @@ static void orbit_axis(uint8_t r, uint32_t lo, uint32_t lo2, uint32_t hi)
     }
 }
 
+/* A sign byte's other arm: LDA #$FF, STA hi for a negative value, STZ hi
+   for a positive one. */
+static void sign_arm(uint32_t hi, int neg)
+{
+    if (neg) {
+        lda8(0xFF);
+        wr8(hi, 0xFF);
+    } else {
+        wr8(hi, 0x00);
+    }
+}
+
 /* LDA lo, STA hi (8-bit): the turned vector back as the next input. */
 static void orbit_again(void)
 {
@@ -4848,14 +4860,26 @@ static void orbit_add(uint16_t f, uint32_t by)
 /* The orbit: Y = the centre (+$27); the vector (r1, r2, r3) turned by the
    centre's angle +$16 (RotateXY) and, with `xz`, +$14 (RotateXZFrom08) and
    +$15 (RotateXZ); 32 times the result from the centre's position is X's
-   position. Direct page $02/$08/$94 in, $04/$0A/$05F2 out. */
-static void orbit(uint8_t r1, uint8_t r2, uint8_t r3, int xz)
+   position. Direct page $02/$08/$94 in, $04/$0A/$05F2 out. With arm 1-3
+   it is entered at the sign store of r1, r2 or r3 that the constant never
+   takes (Y already the centre). */
+static void orbit(int arm, uint8_t r1, uint8_t r2, uint8_t r3, int xz)
 {
-    cpu.y = rd16(F(0x2027, cpu.x));
-    cpu.p = nz16(cpu.p, cpu.y);
-    orbit_axis(r1, dp(0x02), dp(0x04), dp(0x05));
-    orbit_axis(r2, dp(0x08), dp(0x0A), dp(0x0B));
-    orbit_axis(r3, dp(0x94), db() | 0x05F2, db() | 0x05F3);
+    if (arm == 0) {
+        cpu.y = rd16(F(0x2027, cpu.x));
+        cpu.p = nz16(cpu.p, cpu.y);
+        orbit_axis(r1, dp(0x02), dp(0x04), dp(0x05));
+    } else if (arm == 1) {
+        sign_arm(dp(0x05), !(r1 & 0x80));
+    }
+    if (arm <= 1)
+        orbit_axis(r2, dp(0x08), dp(0x0A), dp(0x0B));
+    else if (arm == 2)
+        sign_arm(dp(0x0B), !(r2 & 0x80));
+    if (arm <= 2)
+        orbit_axis(r3, dp(0x94), db() | 0x05F2, db() | 0x05F3);
+    else
+        sign_arm(db() | 0x05F3, !(r3 & 0x80));
     ld8(F(0x2016, cpu.y));
     abi_RotateXY();
     orbit_again();
@@ -4905,9 +4929,9 @@ static void orbit_scale_done(void)
 }
 
 /* 09:C9F0: circles its centre at radius ($64, 0, 0) turned three ways. */
-static void ring_frame(void)
+static void ring_frame(int arm)
 {
-    orbit(0x64, 0x00, 0x00, 1);
+    orbit(arm, 0x64, 0x00, 0x00, 1);
     orbit_scale_done();
     abi_ObjectRebucket();
 }
@@ -4925,7 +4949,7 @@ static void ring_frame(void)
 void abi_ObjectRing(void)
 {
     orbiter(0xCAA3, 0xC9F0);
-    ring_frame();
+    ring_frame(0);
 }
 
 /*
@@ -4935,13 +4959,62 @@ void abi_ObjectRing(void)
  * the centre's scale +$15.
  * HOW: RotateXY, RotateXZFrom08, RotateXZ through direct page; five ASLs;
  * ObjectRebucket. The sign bytes come from constants: their $FF stores
- * (09:C9FD, 09:CA0F, 09:CA22) never run. Reached only by unit_objects_09c.
+ * (09:C9FD, 09:CA0F, 09:CA22) run only as the XSign, YSign and ZSign
+ * entries. Reached only by unit_objects_09c.
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket
  * leaves it.
  */
 void abi_ObjectRingStep(void)
 {
-    ring_frame();
+    ring_frame(0);
+}
+
+/*
+ * @routine 09:C9FD ObjectRingStepXSign
+ * WHAT IT DOES: ObjectRingStep entered at the sign store of its first
+ * offset component that the constant $64 never takes: $05 = $FF, then the
+ * rest of the frame as ObjectRingStep.
+ * HOW: LDA #$FF and the store (a positive constant takes the STZ), then
+ * the join; no code reaches these bytes, a direct call is their only way
+ * in.
+ * Entry: M 8-bit, X 16-bit; X = object, Y = its centre; D = $0000; DB =
+ * $7E. Exit: as ObjectRingStep.
+ */
+void abi_ObjectRingStepXSign(void)
+{
+    ring_frame(1);
+}
+
+/*
+ * @routine 09:CA0F ObjectRingStepYSign
+ * WHAT IT DOES: ObjectRingStep entered at the sign store of its second
+ * offset component that the constant $00 never takes: $0B = $FF, then the
+ * rest of the frame as ObjectRingStep.
+ * HOW: LDA #$FF and the store (a positive constant takes the STZ), then
+ * the join; no code reaches these bytes, a direct call is their only way
+ * in.
+ * Entry: M 8-bit, X 16-bit; X = object, Y = its centre; D = $0000; DB =
+ * $7E. Exit: as ObjectRingStep.
+ */
+void abi_ObjectRingStepYSign(void)
+{
+    ring_frame(2);
+}
+
+/*
+ * @routine 09:CA22 ObjectRingStepZSign
+ * WHAT IT DOES: ObjectRingStep entered at the sign store of its third
+ * offset component that the constant $00 never takes: $05F3 = $FF, then
+ * the rest of the frame as ObjectRingStep.
+ * HOW: LDA #$FF and the store (a positive constant takes the STZ), then
+ * the join; no code reaches these bytes, a direct call is their only way
+ * in.
+ * Entry: M 8-bit, X 16-bit; X = object, Y = its centre; D = $0000; DB =
+ * $7E. Exit: as ObjectRingStep.
+ */
+void abi_ObjectRingStepZSign(void)
+{
+    ring_frame(3);
 }
 
 /*
@@ -4958,11 +5031,11 @@ void abi_ObjectRingCentreStep(void)
 
 /* 09:CAF8: circles its centre at ($28, $0A, 0); its colour +$5A steps
    through 0-5 with bit 7. */
-static void spinner_frame(void)
+static void spinner_frame(int arm)
 {
     uint8_t v;
 
-    orbit(0x28, 0x0A, 0x00, 1);
+    orbit(arm, 0x28, 0x0A, 0x00, 1);
     orbit_scale_done();
     v = ld8(F(0x205A, cpu.x));
     cpu.p &= (uint8_t)~P_C;
@@ -4999,7 +5072,7 @@ void abi_ObjectSpinner(void)
     lda8(0x80);
     wr8(F(0x205A, cpu.x), 0x80);
     orbiter(0xCBC4, 0xCAF8);
-    spinner_frame();
+    spinner_frame(0);
 }
 
 /*
@@ -5009,13 +5082,61 @@ void abi_ObjectSpinner(void)
  * colour +$5A steps on through 0-5 (bit 7 kept).
  * HOW: As ObjectRingStep; the colour by ADC, AND #$7F, SBC #6. The sign
  * bytes come from constants: their $FF stores (09:CB05, 09:CB17, 09:CB2A)
- * never run.
+ * run only as the XSign, YSign and ZSign entries.
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket
  * leaves it.
  */
 void abi_ObjectSpinnerStep(void)
 {
-    spinner_frame();
+    spinner_frame(0);
+}
+
+/*
+ * @routine 09:CB05 ObjectSpinnerStepXSign
+ * WHAT IT DOES: ObjectSpinnerStep entered at the sign store of its first
+ * offset component that the constant $28 never takes: $05 = $FF, then the
+ * rest of the frame as ObjectSpinnerStep.
+ * HOW: LDA #$FF and the store (a positive constant takes the STZ), then
+ * the join; no code reaches these bytes, a direct call is their only way
+ * in.
+ * Entry: M 8-bit, X 16-bit; X = object, Y = its centre; D = $0000; DB =
+ * $7E. Exit: as ObjectSpinnerStep.
+ */
+void abi_ObjectSpinnerStepXSign(void)
+{
+    spinner_frame(1);
+}
+
+/*
+ * @routine 09:CB17 ObjectSpinnerStepYSign
+ * WHAT IT DOES: ObjectSpinnerStep entered at the sign store of its second
+ * offset component that the constant $0A never takes: $0B = $FF, then the
+ * rest of the frame as ObjectSpinnerStep.
+ * HOW: LDA #$FF and the store (a positive constant takes the STZ), then
+ * the join; no code reaches these bytes, a direct call is their only way
+ * in.
+ * Entry: M 8-bit, X 16-bit; X = object, Y = its centre; D = $0000; DB =
+ * $7E. Exit: as ObjectSpinnerStep.
+ */
+void abi_ObjectSpinnerStepYSign(void)
+{
+    spinner_frame(2);
+}
+
+/*
+ * @routine 09:CB2A ObjectSpinnerStepZSign
+ * WHAT IT DOES: ObjectSpinnerStep entered at the sign store of its third
+ * offset component that the constant $00 never takes: $05F3 = $FF, then
+ * the rest of the frame as ObjectSpinnerStep.
+ * HOW: LDA #$FF and the store (a positive constant takes the STZ), then
+ * the join; no code reaches these bytes, a direct call is their only way
+ * in.
+ * Entry: M 8-bit, X 16-bit; X = object, Y = its centre; D = $0000; DB =
+ * $7E. Exit: as ObjectSpinnerStep.
+ */
+void abi_ObjectSpinnerStepZSign(void)
+{
+    spinner_frame(3);
 }
 
 /*
@@ -5267,11 +5388,11 @@ void abi_ObjectLapSignGateStep(void)
    up to $3A or from $C0 (signed, against $3A and $C0) it is the plain model
    $A040 and +$25 bit 0 clears, between them model `lit` and the first
    time (+$25 bit 0) sound `snd` (none when 0); the angle steps by $AA. */
-static void fan_frame(int xz, uint16_t lit, uint8_t snd)
+static void fan_frame(int arm, int xz, uint16_t lit, uint8_t snd)
 {
     uint8_t a;
 
-    orbit(0x64, 0x46, 0x00, xz);
+    orbit(arm, 0x64, 0x46, 0x00, xz);
     ld8(F(0x2016, cpu.y));
     wr8(F(0x2016, cpu.x), (uint8_t)cpu.a);
     a = ld8(F(0x2016, cpu.x));
@@ -5309,7 +5430,7 @@ step:
 void abi_ObjectFan(void)
 {
     orbiter(0xCFD5, 0xCEE8);
-    fan_frame(0, 0xAF04, 0x00);
+    fan_frame(0, 0, 0xAF04, 0x00);
 }
 
 /*
@@ -5320,13 +5441,62 @@ void abi_ObjectFan(void)
  * (+$25 bit 0 set), otherwise $A040 (bit 0 cleared); its angle then steps
  * by $AA.
  * HOW: RotateXY only; five ASLs; ObjectRebucket. The sign bytes come from
- * constants: their $FF stores (09:CEF5, 09:CF07, 09:CF1A) never run.
+ * constants: their $FF stores (09:CEF5, 09:CF07, 09:CF1A) run
+ * only as the XSign, YSign and ZSign entries.
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket
  * leaves it.
  */
 void abi_ObjectFanStep(void)
 {
-    fan_frame(0, 0xAF04, 0x00);
+    fan_frame(0, 0, 0xAF04, 0x00);
+}
+
+/*
+ * @routine 09:CEF5 ObjectFanStepXSign
+ * WHAT IT DOES: ObjectFanStep entered at the sign store of its first
+ * offset component that the constant $64 never takes: $05 = $FF, then the
+ * rest of the frame as ObjectFanStep.
+ * HOW: LDA #$FF and the store (a positive constant takes the STZ), then
+ * the join; no code reaches these bytes, a direct call is their only way
+ * in.
+ * Entry: M 8-bit, X 16-bit; X = object, Y = its centre; D = $0000; DB =
+ * $7E. Exit: as ObjectFanStep.
+ */
+void abi_ObjectFanStepXSign(void)
+{
+    fan_frame(1, 0, 0xAF04, 0x00);
+}
+
+/*
+ * @routine 09:CF07 ObjectFanStepYSign
+ * WHAT IT DOES: ObjectFanStep entered at the sign store of its second
+ * offset component that the constant $46 never takes: $0B = $FF, then the
+ * rest of the frame as ObjectFanStep.
+ * HOW: LDA #$FF and the store (a positive constant takes the STZ), then
+ * the join; no code reaches these bytes, a direct call is their only way
+ * in.
+ * Entry: M 8-bit, X 16-bit; X = object, Y = its centre; D = $0000; DB =
+ * $7E. Exit: as ObjectFanStep.
+ */
+void abi_ObjectFanStepYSign(void)
+{
+    fan_frame(2, 0, 0xAF04, 0x00);
+}
+
+/*
+ * @routine 09:CF1A ObjectFanStepZSign
+ * WHAT IT DOES: ObjectFanStep entered at the sign store of its third
+ * offset component that the constant $00 never takes: $05F3 = $FF, then
+ * the rest of the frame as ObjectFanStep.
+ * HOW: LDA #$FF and the store (a positive constant takes the STZ), then
+ * the join; no code reaches these bytes, a direct call is their only way
+ * in.
+ * Entry: M 8-bit, X 16-bit; X = object, Y = its centre; D = $0000; DB =
+ * $7E. Exit: as ObjectFanStep.
+ */
+void abi_ObjectFanStepZSign(void)
+{
+    fan_frame(3, 0, 0xAF04, 0x00);
 }
 
 /*
@@ -5353,7 +5523,7 @@ void abi_ObjectFanCentreStep(void)
 void abi_ObjectWheel(void)
 {
     orbiter(0xD131, 0xD023);
-    fan_frame(1, 0xAF20, 0x38);
+    fan_frame(0, 1, 0xAF20, 0x38);
 }
 
 /*
@@ -5362,13 +5532,61 @@ void abi_ObjectWheel(void)
  * (+$16, +$14, +$15), lit as model $AF20 with sound $38 the first time.
  * HOW: RotateXY, RotateXZFrom08, RotateXZ; five ASLs; ObjectRebucket. The
  * sign bytes come from constants: their $FF stores (09:D030, 09:D042,
- * 09:D055) never run.
+ * 09:D055) run only as the XSign, YSign and ZSign entries.
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket
  * leaves it.
  */
 void abi_ObjectWheelStep(void)
 {
-    fan_frame(1, 0xAF20, 0x38);
+    fan_frame(0, 1, 0xAF20, 0x38);
+}
+
+/*
+ * @routine 09:D030 ObjectWheelStepXSign
+ * WHAT IT DOES: ObjectWheelStep entered at the sign store of its first
+ * offset component that the constant $64 never takes: $05 = $FF, then the
+ * rest of the frame as ObjectWheelStep.
+ * HOW: LDA #$FF and the store (a positive constant takes the STZ), then
+ * the join; no code reaches these bytes, a direct call is their only way
+ * in.
+ * Entry: M 8-bit, X 16-bit; X = object, Y = its centre; D = $0000; DB =
+ * $7E. Exit: as ObjectWheelStep.
+ */
+void abi_ObjectWheelStepXSign(void)
+{
+    fan_frame(1, 1, 0xAF20, 0x38);
+}
+
+/*
+ * @routine 09:D042 ObjectWheelStepYSign
+ * WHAT IT DOES: ObjectWheelStep entered at the sign store of its second
+ * offset component that the constant $46 never takes: $0B = $FF, then the
+ * rest of the frame as ObjectWheelStep.
+ * HOW: LDA #$FF and the store (a positive constant takes the STZ), then
+ * the join; no code reaches these bytes, a direct call is their only way
+ * in.
+ * Entry: M 8-bit, X 16-bit; X = object, Y = its centre; D = $0000; DB =
+ * $7E. Exit: as ObjectWheelStep.
+ */
+void abi_ObjectWheelStepYSign(void)
+{
+    fan_frame(2, 1, 0xAF20, 0x38);
+}
+
+/*
+ * @routine 09:D055 ObjectWheelStepZSign
+ * WHAT IT DOES: ObjectWheelStep entered at the sign store of its third
+ * offset component that the constant $00 never takes: $05F3 = $FF, then
+ * the rest of the frame as ObjectWheelStep.
+ * HOW: LDA #$FF and the store (a positive constant takes the STZ), then
+ * the join; no code reaches these bytes, a direct call is their only way
+ * in.
+ * Entry: M 8-bit, X 16-bit; X = object, Y = its centre; D = $0000; DB =
+ * $7E. Exit: as ObjectWheelStep.
+ */
+void abi_ObjectWheelStepZSign(void)
+{
+    fan_frame(3, 1, 0xAF20, 0x38);
 }
 
 /*
@@ -7424,18 +7642,6 @@ static void shatter_rest(const uint16_t *kinds, int from)
     for (k = from; k < 6; k++)
         shard(kinds[k], shatter_args[k][0], shatter_args[k][1], shatter_args[k][2],
               shatter_args[k][3], shatter_args[k][4]);
-}
-
-/* A sign byte's other arm: LDA #$FF, STA hi for a negative offset, STZ hi
-   for a positive one. */
-static void sign_arm(uint32_t hi, int neg)
-{
-    if (neg) {
-        lda8(0xFF);
-        wr8(hi, 0xFF);
-    } else {
-        wr8(hi, 0x00);
-    }
 }
 
 /* Shard k entered at its x sign store (direct page $05): the y offset, the

@@ -6415,7 +6415,8 @@ ObjectRing:
 ; the centre's scale +$15.
 ; HOW: RotateXY, RotateXZFrom08, RotateXZ through direct page; five ASLs;
 ; ObjectRebucket. The sign bytes come from constants: their $FF stores
-; (09:C9FD, 09:CA0F, 09:CA22) never run. Reached only by unit_objects_09c.
+; (09:C9FD, 09:CA0F, 09:CA22) run only as the XSign, YSign and ZSign
+; entries. Reached only by unit_objects_09c.
 ; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket
 ; leaves it.
 %at($09C9F0)
@@ -6426,6 +6427,17 @@ ObjectRingStep:
     sta.b !dp_04
     bit.b #$80
     beq .lCA03
+
+; @routine 09:C9FD ObjectRingStepXSign
+; WHAT IT DOES: ObjectRingStep entered at the sign store of its first
+; offset component that the constant $64 never takes: $05 = $FF, then the
+; rest of the frame as ObjectRingStep.
+; HOW: LDA #$FF and the store (a positive constant takes the STZ), then
+; the join; no code reaches these bytes, a direct call is their only way
+; in.
+; Entry: M 8-bit, X 16-bit; X = object, Y = its centre; D = $0000; DB =
+; $7E. Exit: as ObjectRingStep.
+%at($09C9FD)
     lda.b #$FF
     sta.b !dp_05
     bra .lCA05
@@ -6437,6 +6449,17 @@ ObjectRingStep:
     sta.b !actor_0a
     bit.b #$80
     beq .lCA15
+
+; @routine 09:CA0F ObjectRingStepYSign
+; WHAT IT DOES: ObjectRingStep entered at the sign store of its second
+; offset component that the constant $00 never takes: $0B = $FF, then the
+; rest of the frame as ObjectRingStep.
+; HOW: LDA #$FF and the store (a positive constant takes the STZ), then
+; the join; no code reaches these bytes, a direct call is their only way
+; in.
+; Entry: M 8-bit, X 16-bit; X = object, Y = its centre; D = $0000; DB =
+; $7E. Exit: as ObjectRingStep.
+%at($09CA0F)
     lda.b #$FF
     sta.b !dp_0b
     bra .lCA17
@@ -6448,6 +6471,17 @@ ObjectRingStep:
     sta.w !rot_z
     bit.b #$80
     beq .lCA29
+
+; @routine 09:CA22 ObjectRingStepZSign
+; WHAT IT DOES: ObjectRingStep entered at the sign store of its third
+; offset component that the constant $00 never takes: $05F3 = $FF, then
+; the rest of the frame as ObjectRingStep.
+; HOW: LDA #$FF and the store (a positive constant takes the STZ), then
+; the join; no code reaches these bytes, a direct call is their only way
+; in.
+; Entry: M 8-bit, X 16-bit; X = object, Y = its centre; D = $0000; DB =
+; $7E. Exit: as ObjectRingStep.
+%at($09CA22)
     lda.b #$FF
     sta.w !rot_z_high
     bra .lCA2C
@@ -6572,7 +6606,7 @@ ObjectSpinner:
 ; colour +$5A steps on through 0-5 (bit 7 kept).
 ; HOW: As ObjectRingStep; the colour by ADC, AND #$7F, SBC #6. The sign
 ; bytes come from constants: their $FF stores (09:CB05, 09:CB17, 09:CB2A)
-; never run.
+; run only as the XSign, YSign and ZSign entries.
 ; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket
 ; leaves it.
 %at($09CAF8)
@@ -6583,6 +6617,17 @@ ObjectSpinnerStep:
     sta.b !dp_04
     bit.b #$80
     beq .lCB0B
+
+; @routine 09:CB05 ObjectSpinnerStepXSign
+; WHAT IT DOES: ObjectSpinnerStep entered at the sign store of its first
+; offset component that the constant $28 never takes: $05 = $FF, then the
+; rest of the frame as ObjectSpinnerStep.
+; HOW: LDA #$FF and the store (a positive constant takes the STZ), then
+; the join; no code reaches these bytes, a direct call is their only way
+; in.
+; Entry: M 8-bit, X 16-bit; X = object, Y = its centre; D = $0000; DB =
+; $7E. Exit: as ObjectSpinnerStep.
+%at($09CB05)
     lda.b #$FF
     sta.b !dp_05
     bra .lCB0D
@@ -6594,6 +6639,17 @@ ObjectSpinnerStep:
     sta.b !actor_0a
     bit.b #$80
     beq .lCB1D
+
+; @routine 09:CB17 ObjectSpinnerStepYSign
+; WHAT IT DOES: ObjectSpinnerStep entered at the sign store of its second
+; offset component that the constant $0A never takes: $0B = $FF, then the
+; rest of the frame as ObjectSpinnerStep.
+; HOW: LDA #$FF and the store (a positive constant takes the STZ), then
+; the join; no code reaches these bytes, a direct call is their only way
+; in.
+; Entry: M 8-bit, X 16-bit; X = object, Y = its centre; D = $0000; DB =
+; $7E. Exit: as ObjectSpinnerStep.
+%at($09CB17)
     lda.b #$FF
     sta.b !dp_0b
     bra .lCB1F
@@ -6605,6 +6661,17 @@ ObjectSpinnerStep:
     sta.w !rot_z
     bit.b #$80
     beq .lCB31
+
+; @routine 09:CB2A ObjectSpinnerStepZSign
+; WHAT IT DOES: ObjectSpinnerStep entered at the sign store of its third
+; offset component that the constant $00 never takes: $05F3 = $FF, then
+; the rest of the frame as ObjectSpinnerStep.
+; HOW: LDA #$FF and the store (a positive constant takes the STZ), then
+; the join; no code reaches these bytes, a direct call is their only way
+; in.
+; Entry: M 8-bit, X 16-bit; X = object, Y = its centre; D = $0000; DB =
+; $7E. Exit: as ObjectSpinnerStep.
+%at($09CB2A)
     lda.b #$FF
     sta.w !rot_z_high
     bra .lCB34
@@ -7159,7 +7226,8 @@ ObjectFan:
 ; (+$25 bit 0 set), otherwise $A040 (bit 0 cleared); its angle then steps
 ; by $AA.
 ; HOW: RotateXY only; five ASLs; ObjectRebucket. The sign bytes come from
-; constants: their $FF stores (09:CEF5, 09:CF07, 09:CF1A) never run.
+; constants: their $FF stores (09:CEF5, 09:CF07, 09:CF1A) run
+; only as the XSign, YSign and ZSign entries.
 ; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket
 ; leaves it.
 %at($09CEE8)
@@ -7170,6 +7238,17 @@ ObjectFanStep:
     sta.b !dp_04
     bit.b #$80
     beq .lCEFB
+
+; @routine 09:CEF5 ObjectFanStepXSign
+; WHAT IT DOES: ObjectFanStep entered at the sign store of its first
+; offset component that the constant $64 never takes: $05 = $FF, then the
+; rest of the frame as ObjectFanStep.
+; HOW: LDA #$FF and the store (a positive constant takes the STZ), then
+; the join; no code reaches these bytes, a direct call is their only way
+; in.
+; Entry: M 8-bit, X 16-bit; X = object, Y = its centre; D = $0000; DB =
+; $7E. Exit: as ObjectFanStep.
+%at($09CEF5)
     lda.b #$FF
     sta.b !dp_05
     bra .lCEFD
@@ -7181,6 +7260,17 @@ ObjectFanStep:
     sta.b !actor_0a
     bit.b #$80
     beq .lCF0D
+
+; @routine 09:CF07 ObjectFanStepYSign
+; WHAT IT DOES: ObjectFanStep entered at the sign store of its second
+; offset component that the constant $46 never takes: $0B = $FF, then the
+; rest of the frame as ObjectFanStep.
+; HOW: LDA #$FF and the store (a positive constant takes the STZ), then
+; the join; no code reaches these bytes, a direct call is their only way
+; in.
+; Entry: M 8-bit, X 16-bit; X = object, Y = its centre; D = $0000; DB =
+; $7E. Exit: as ObjectFanStep.
+%at($09CF07)
     lda.b #$FF
     sta.b !dp_0b
     bra .lCF0F
@@ -7192,6 +7282,17 @@ ObjectFanStep:
     sta.w !rot_z
     bit.b #$80
     beq .lCF21
+
+; @routine 09:CF1A ObjectFanStepZSign
+; WHAT IT DOES: ObjectFanStep entered at the sign store of its third
+; offset component that the constant $00 never takes: $05F3 = $FF, then
+; the rest of the frame as ObjectFanStep.
+; HOW: LDA #$FF and the store (a positive constant takes the STZ), then
+; the join; no code reaches these bytes, a direct call is their only way
+; in.
+; Entry: M 8-bit, X 16-bit; X = object, Y = its centre; D = $0000; DB =
+; $7E. Exit: as ObjectFanStep.
+%at($09CF1A)
     lda.b #$FF
     sta.w !rot_z_high
     bra .lCF24
@@ -7340,7 +7441,7 @@ ObjectWheel:
 ; (+$16, +$14, +$15), lit as model $AF20 with sound $38 the first time.
 ; HOW: RotateXY, RotateXZFrom08, RotateXZ; five ASLs; ObjectRebucket. The
 ; sign bytes come from constants: their $FF stores (09:D030, 09:D042,
-; 09:D055) never run.
+; 09:D055) run only as the XSign, YSign and ZSign entries.
 ; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket
 ; leaves it.
 %at($09D023)
@@ -7351,6 +7452,17 @@ ObjectWheelStep:
     sta.b !dp_04
     bit.b #$80
     beq .lD036
+
+; @routine 09:D030 ObjectWheelStepXSign
+; WHAT IT DOES: ObjectWheelStep entered at the sign store of its first
+; offset component that the constant $64 never takes: $05 = $FF, then the
+; rest of the frame as ObjectWheelStep.
+; HOW: LDA #$FF and the store (a positive constant takes the STZ), then
+; the join; no code reaches these bytes, a direct call is their only way
+; in.
+; Entry: M 8-bit, X 16-bit; X = object, Y = its centre; D = $0000; DB =
+; $7E. Exit: as ObjectWheelStep.
+%at($09D030)
     lda.b #$FF
     sta.b !dp_05
     bra .lD038
@@ -7362,6 +7474,17 @@ ObjectWheelStep:
     sta.b !actor_0a
     bit.b #$80
     beq .lD048
+
+; @routine 09:D042 ObjectWheelStepYSign
+; WHAT IT DOES: ObjectWheelStep entered at the sign store of its second
+; offset component that the constant $46 never takes: $0B = $FF, then the
+; rest of the frame as ObjectWheelStep.
+; HOW: LDA #$FF and the store (a positive constant takes the STZ), then
+; the join; no code reaches these bytes, a direct call is their only way
+; in.
+; Entry: M 8-bit, X 16-bit; X = object, Y = its centre; D = $0000; DB =
+; $7E. Exit: as ObjectWheelStep.
+%at($09D042)
     lda.b #$FF
     sta.b !dp_0b
     bra .lD04A
@@ -7373,6 +7496,17 @@ ObjectWheelStep:
     sta.w !rot_z
     bit.b #$80
     beq .lD05C
+
+; @routine 09:D055 ObjectWheelStepZSign
+; WHAT IT DOES: ObjectWheelStep entered at the sign store of its third
+; offset component that the constant $00 never takes: $05F3 = $FF, then
+; the rest of the frame as ObjectWheelStep.
+; HOW: LDA #$FF and the store (a positive constant takes the STZ), then
+; the join; no code reaches these bytes, a direct call is their only way
+; in.
+; Entry: M 8-bit, X 16-bit; X = object, Y = its centre; D = $0000; DB =
+; $7E. Exit: as ObjectWheelStep.
+%at($09D055)
     lda.b #$FF
     sta.w !rot_z_high
     bra .lD05F
