@@ -15,3 +15,17 @@ macro ramcode(run, rom)
     org <rom>
     base <run>
 endmacro
+
+; %spc(apu, addr): place SPC700 code that the S-CPU uploads to the sound
+; CPU's RAM. It sits at the ROM byte of S-CPU address `addr` (LoROM, banks
+; $00-$3F); labels resolve to its APU RAM address `apu`. %spc_end() goes
+; back to 65816 code.
+macro spc(apu, addr)
+    arch spc700
+    org ((<addr>>>16)&$3F)*$8000+(<addr>&$7FFF)
+    base <apu>
+endmacro
+
+macro spc_end()
+    arch 65816
+endmacro
