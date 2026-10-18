@@ -1768,6 +1768,86 @@ GsuRecordSet2AHigh:
     sep.b #$20
     rtl
 
+; @routine 08:CD25 ObjectFlagsRecordSetup20
+; WHAT IT DOES: As ObjectFlagsRecordSetup, with bit 5 of object X's +$24
+; set first. Nothing in the game calls it.
+; HOW: An 8-bit OR into +$24, then falls into ObjectFlagsRecordSetup.
+; Entry: as ObjectFlagsRecordSetup. Exit: as ObjectFlagsRecordSetup.
+%at($08CD25)
+ObjectFlagsRecordSetup20:
+    lda.w !obj_24,x
+    ora.b #$20
+    sta.w !obj_24,x
+
+; @routine 08:CD2D ObjectFlagsRecordSetup
+; WHAT IT DOES: Sets up an object whose record takes the object's flags:
+; +$27 = 0, handler $08:CD7E (ObjectRecordFlag4Step), +$1D = $08:CD55
+; (ObjectFlagsRecord), then its record (ObjectFlagsRecord). Entered as an
+; object's handler.
+; HOW: Stores (16-bit then 8-bit), then falls into ObjectFlagsRecord.
+; Entry: M 8-bit, X 16-bit, D = $0000; X = object. Exit: as
+; ObjectFlagsRecord.
+%at($08CD2D)
+ObjectFlagsRecordSetup:
+    rep.b #$20
+    lda.w #$0000
+    sta.w !obj_27,x
+    sep.b #$20
+    rep.b #$20
+    lda.w #ObjectRecordFlag4Step
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #ObjectRecordFlag4Step>>16
+    sta.w !obj_1c,x
+    rep.b #$20
+    lda.w #ObjectFlagsRecord
+    sta.w !obj_1d,x
+    sep.b #$20
+    lda.b #ObjectFlagsRecord>>16
+    sta.w !obj_1f,x
+
+; @routine 08:CD55 ObjectFlagsRecord
+; WHAT IT DOES: Gives object X a record from the second pool
+; (GsuRecordNew422), ORs the object's +$06 word and then its +$27 word into
+; the record's flags (+$16), and marks it (ObjectRecordFlag4Step). With no
+; room in the pool it returns at once. Also the +$1D pointer
+; ObjectFlagsRecordSetup leaves.
+; HOW: BPL on GsuRecordNew422's result (BRL to an RTL when negative); the
+; object in Y and the record in X while ORing, two read-OR-write passes
+; over +$16.
+; Entry: M 8-bit, X 16-bit, D = $0000; X = object. Exit: no room: as
+; GsuRecordNew422 (A = $00FF, N set); otherwise as GsuRecordFlag4.
+%at($08CD55)
+ObjectFlagsRecord:
+    jsl.l GsuRecordNew422
+    bpl .lCD5E
+    brl ObjectRecordFlag4Step_lCD83
+.lCD5E:
+    rep.b #$20
+    txy
+    lda.w !obj_22,x
+    tax
+    lda.w !obj_06,y
+    ora.l !gsu_rec_flags,x
+    sta.l !gsu_rec_flags,x
+    lda.l !gsu_rec_flags,x
+    ora.w !obj_27,y
+    sta.l !gsu_rec_flags,x
+    tyx
+    sep.b #$20
+
+; @routine 08:CD7E ObjectRecordFlag4Step
+; WHAT IT DOES: A handler that only marks object X's record
+; (GsuRecordFlag4) each frame; also the tail other steps jump to.
+; HOW: JSL to GsuRecordFlag4.
+; Entry: as GsuRecordFlag4. Exit: as GsuRecordFlag4.
+%at($08CD7E)
+ObjectRecordFlag4Step:
+    jsl.l GsuRecordFlag4
+    rtl
+.lCD83:
+    rtl
+
 
 ; @routine 08:CD84 ObjectRecordMarkSetup
 ; WHAT IT DOES: Sets up an object that keeps a Super FX record and only

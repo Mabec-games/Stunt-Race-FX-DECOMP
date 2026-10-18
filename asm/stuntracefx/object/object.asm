@@ -3115,7 +3115,7 @@ ObjectCarRecordSetup:
 ObjectCarPoseStep:
     jsl.l ObjectRebucket
     jsl.l ObjectPoseFromRecord
-    jmp.w ObjectCarCD7E
+    jmp.w ObjectRecordFlag4Step
 
 
 ; @routine 08:B9DD ObjectCarRecordRestart

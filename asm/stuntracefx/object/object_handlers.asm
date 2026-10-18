@@ -425,7 +425,7 @@ ObjectPaceCarStep:
 .lEF6D:
     sep.b #$20
     plx
-    jmp.w ObjectCarCD7E
+    jmp.w ObjectRecordFlag4Step
 .lEF73:
     lda.l !gsu_rec_1c,x
     ora.w #$0010
@@ -2507,7 +2507,7 @@ ObjectCarAttachedStart:
 ObjectCarAttachedStep:
     jsl.l ObjectRebucket
     jsl.l ObjectPoseFromRecord
-    jmp.w ObjectCarCD7E
+    jmp.w ObjectRecordFlag4Step
 
 ; @routine 08:E1D2 ObjectExhaustStart
 ; WHAT IT DOES: An exhaust flame's first frame: released when its
@@ -4601,7 +4601,7 @@ ObjectDemoCarStep:
     jsl.l ObjectPoseFromRecord
     lda.b #$03
     sta.w !obj_36,x
-    jmp.w ObjectCarCD7E
+    jmp.w ObjectRecordFlag4Step
 
 ; @routine 08:9FEC CameraOnCarNear
 ; WHAT IT DOES: The camera ($1A64) on object X at (0, -$1F4, $258), mode

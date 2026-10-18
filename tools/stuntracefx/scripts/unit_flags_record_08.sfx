@@ -1,0 +1,27 @@
+# unit_flags_record_08: the flags-record object of bank $08 (08:CD25-CD83)
+# and ObjectCarRecordRestart's no-record return, called on object 1 (the
+# player's car) of a Novice race: the set-up with and without +$24 bit 5
+# (ObjectFlagsRecordSetup20, ObjectFlagsRecordSetup), the record step and
+# the mark step as their own calls, the record step with the second record
+# pool emptied ($70:1D70), and ObjectCarRecordRestart with the first pool
+# emptied ($70:1098).
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:CD25 long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:CD2D long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:CD55 long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:CD7E long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 701D70 00,00,00,00
+call 08:CD55 long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 701098 00,00,00,00
+call 08:B9DD long x=0001 p=20 db=7E d=0000
+wait 1
