@@ -192,7 +192,7 @@ SpcReset:
     adc.b a,!spc_tempo_acc            ; 08A1
     mov.b !spc_tempo_acc,a            ; 08A3
     bcc .l08B1                        ; 08A5
-    call Spc_10B0                     ; 08A7
+    call SpcSfxFrame                  ; 08A7
     cmp !spc_echo_delay_wait,!spc_echo_delay; 08AA
     beq .l08B1                        ; 08AD
     inc.b !spc_echo_delay_wait        ; 08AF
@@ -297,7 +297,7 @@ SpcNoteOn:
     mov.w a,!spc_env_semitones+x      ; 0950  ; not reached in the traces so far
     clrc                              ; 0953  ; not reached in the traces so far
     adc.w a,!spc_pitch+1+x            ; 0954  ; not reached in the traces so far
-    call $0DDC                        ; 0957  ; not reached in the traces so far
+    call SpcSlideToNote               ; 0957  ; not reached in the traces so far
 .l095A:
     call SpcLoadPitch                 ; 095A
 .l095D:
@@ -1066,10 +1066,10 @@ SpcVcmdPercussionBase:
 %spc($0DBC, $19CA48)
 SpcSlideCheck:
     mov.b a,!spc_slide_steps+x        ; 0DBC
-    bne SpcVcmdPitchSlide_l0DF3       ; 0DBE
+    bne SpcSlideToNote_l0DF3          ; 0DBE
     mov a,(!spc_track_ptr+x)          ; 0DC0
     cmp a,#$F9                        ; 0DC2
-    bne SpcVcmdPitchSlide_l0DF3       ; 0DC4
+    bne SpcSlideToNote_l0DF3          ; 0DC4
     call SpcTrackAdvance              ; 0DC6
     call SpcTrackRead                 ; 0DC9
 
@@ -1081,7 +1081,14 @@ SpcVcmdPitchSlide:
     clrc                              ; 0DD6
     adc.b a,!spc_transpose            ; 0DD7
     adc.w a,!spc_voice_transpose+x    ; 0DD9
-.l0DDC:
+
+; @routine 19:CA68 SpcSlideToNote
+; WHAT IT DOES: Starts voice X's pitch slide to note A (bits 0-6): the target kept at $0380 and the per-step delta over the slide's steps $A0 at $0370/$0371.
+; HOW: SpcFadeDelta on target minus pitch; X from the steps through the stack.
+; Entry: A = target note, X = voice * 2. Exit: X = voice * 2; YA = delta.
+; @spc 0DDC
+%spc($0DDC, $19CA68)
+SpcSlideToNote:
     and a,#$7F                        ; 0DDC
     mov.w !spc_slide_target+x,a       ; 0DDE
     setc                              ; 0DE1
@@ -1186,7 +1193,7 @@ SpcVoiceEffects:
     adc.w a,!spc_tremolo_rate+x       ; 0E5D  ; not reached in the traces so far
 .l0E60:
     mov.w !spc_tremolo_phase+x,a      ; 0E60  ; not reached in the traces so far
-    call $105C                        ; 0E63  ; not reached in the traces so far
+    call SpcTremoloFactor             ; 0E63  ; not reached in the traces so far
     bra .l0E6F                        ; 0E66  ; not reached in the traces so far
 .l0E68:
     inc.b !spc_tremolo_wait+x         ; 0E68  ; not reached in the traces so far
@@ -1438,7 +1445,7 @@ SpcVoiceBetweenTicks:
     beq .l0FE5                        ; 0FDA
     mov.w a,!spc_tremolo_delay+x      ; 0FDC  ; not reached in the traces so far
     cbne !spc_tremolo_wait+x,.l0FE5   ; 0FDF  ; not reached in the traces so far
-    call $104F                        ; 0FE2  ; not reached in the traces so far
+    call SpcTremoloBetweenTicks       ; 0FE2  ; not reached in the traces so far
 .l0FE5:
     mov.w a,!spc_pan+1+x              ; 0FE5
     mov y,a                           ; 0FE8
@@ -1508,7 +1515,14 @@ SpcAddDelta:
     addw ya,!spc_tmp_lo               ; 104A
     movw !spc_tmp_lo,ya               ; 104C
     ret                               ; 104E
-.l104F:
+
+; @routine 19:CCDB SpcTremoloBetweenTicks
+; WHAT IT DOES: Voice X's tremolo moved by the part of a tick elapsed ($51), then its volume factor (SpcTremoloFactor's code).
+; HOW: The rate $02D1 times $51 added to the phase $02D0; sets bit 7 of $13.
+; Entry: X = voice * 2. Exit: as SpcVolumeCalc.
+; @spc 104F
+%spc($104F, $19CCDB)
+SpcTremoloBetweenTicks:
     set1 !spc_voice_dirty.7           ; 104F  ; not reached in the traces so far
     mov.b y,!spc_sfx_tempo_acc        ; 1051  ; not reached in the traces so far
     mov.w a,!spc_tremolo_rate+x       ; 1053  ; not reached in the traces so far
@@ -1516,7 +1530,14 @@ SpcAddDelta:
     mov a,y                           ; 1057  ; not reached in the traces so far
     clrc                              ; 1058  ; not reached in the traces so far
     adc.w a,!spc_tremolo_phase+x      ; 1059  ; not reached in the traces so far
-.l105C:
+
+; @routine 19:CCE8 SpcTremoloFactor
+; WHAT IT DOES: The tremolo's volume factor from its phase A: a triangle of the phase times the depth $C1, inverted, then the volume (SpcVolumeCalc).
+; HOW: ASL with the carry folding the wave, MUL by the depth.
+; Entry: A = phase, X = voice * 2. Exit: as SpcVolumeCalc.
+; @spc 105C
+%spc($105C, $19CCE8)
+SpcTremoloFactor:
     asl a                             ; 105C  ; not reached in the traces so far
     bcc .l1061                        ; 105D  ; not reached in the traces so far
     eor a,#$FF                        ; 105F  ; not reached in the traces so far
@@ -1553,7 +1574,13 @@ SpcVolumeCalc:
 
 %spc($10B0, $19CD3A)
 
-Spc_10B0:
+; @routine 19:CD3A SpcSfxFrame
+; WHAT IT DOES: The game's sound tick: a new port 0 byte (one differing from the last, $04) becomes the command $00 (else $00 = 0); ports 1-3 copied to $01-$03 and $05-$07; a stop request (bit 1 of $29) clears bits 0 and 1; then the tick's game sound work in order (command remaps, echo and tempo effects, port commands, channel stops, the sound queue, timers, pitch and fade ramps, noise sample) and the sound effect channels (through the queue start at $1C07).
+; HOW: A chain of CALLs, then SpcPort1Command and a JMP to the queue start.
+; Entry: none (called from SpcReset's loop). Exit: as the sound effect channels leave it.
+; @spc 10B0
+%spc($10B0, $19CD3A)
+SpcSfxFrame:
     mov.w a,!spc_port_latch           ; 10B0
     cmp.b a,!spc_port_out             ; 10B3
     beq .l10C0                        ; 10B5
@@ -1577,33 +1604,35 @@ Spc_10B0:
     clr1 !spc_flags.0                 ; 10DB
     clr1 !spc_flags.1                 ; 10DD
 .l10DF:
-    call Spc_111B                     ; 10DF
-    call Spc_15C4                     ; 10E2
-    call Spc_1AB0                     ; 10E5
-    call Spc_17A5                     ; 10E8
-    call Spc_112F                     ; 10EB
-    call Spc_1B7A                     ; 10EE
-    call Spc_1B2C                     ; 10F1
-    call Spc_1523                     ; 10F4
-    call Spc_117C                     ; 10F7
-    call Spc_11F8                     ; 10FA
-    call Spc_1B92                     ; 10FD
-    call Spc_16F1                     ; 1100
-    call Spc_174B                     ; 1103
-    call Spc_16C1                     ; 1106
-    call Spc_13FA                     ; 1109
-    call Spc_1436                     ; 110C
-    call Spc_CAC0                     ; 110F
-    call Spc_16B1                     ; 1112
-
-Spc_1115:
-    call Spc_17DF                     ; 1115
+    call SpcPort1Remap                ; 10DF
+    call SpcEchoTransition            ; 10E2
+    call SpcMusicFade                 ; 10E5
+    call SpcPortCommand               ; 10E8
+    call SpcChannelGuards             ; 10EB
+    call SpcCommandBlock              ; 10EE
+    call SpcCommandChannelCheck       ; 10F1
+    call SpcTempoBend                 ; 10F4
+    call SpcStaggeredChecks           ; 10F7
+    call SpcGameStateTick             ; 10FA
+    call SpcSfxHolds                  ; 10FD
+    call SpcPitchRampB                ; 1100
+    call SpcPitchRampA                ; 1103
+    call SpcCommandFilter             ; 1106
+    call SpcCommand4C                 ; 1109
+    call SpcCommandTimers             ; 110C
+    call SpcNoiseSample               ; 110F
+    call SpcPort1Clamp                ; 1112
+    call SpcPort1Command              ; 1115
     jmp $1C07                         ; 1118
 
-Spc_111B:
-    bbc $2D.7,Spc_111E_l112E          ; 111B
-
-Spc_111E:
+; @routine 19:CDA5 SpcPort1Remap
+; WHAT IT DOES: With bit 7 of $2D set, port 1 command $09 becomes $12 and $0A becomes $0C.
+; HOW: CMP and MOV on $01.
+; Entry: none. Exit: flags from the last compare.
+; @spc 111B
+%spc($111B, $19CDA5)
+SpcPort1Remap:
+    bbc $2D.7,.l112E                  ; 111B
     cmp $01,#$09                      ; 111E
     bne .l1126                        ; 1121
     mov $01,#$12                      ; 1123
@@ -1614,34 +1643,38 @@ Spc_111E:
 .l112E:
     ret                               ; 112E
 
-Spc_112F:
-    bbc $2D.6,Spc_111E_l112E          ; 112F
+; @routine 19:CDB9 SpcChannelGuards
+; WHAT IT DOES: With bit 6 of $2D, stops channel 5 unless it plays sound $43; with bit 5, channel 7 stops when track $0397 is 1, 4, 7, $0A or $0D and channel 6 when channel 6's sound $0396 is $72-$76.
+; HOW: Compare chains into SpcSfxStop.
+; Entry: none. Exit: as SpcSfxStop or a RET.
+; @spc 112F
+%spc($112F, $19CDB9)
+SpcChannelGuards:
+    bbc $2D.6,SpcPort1Remap_l112E     ; 112F
     mov.w a,$0395                     ; 1132
     cmp a,#$43                        ; 1135
-    beq Spc_111E_l112E                ; 1137
+    beq SpcPort1Remap_l112E           ; 1137
     mov x,#$05                        ; 1139
-    jmp Spc_194C                      ; 113B
+    jmp SpcSfxStop                    ; 113B
 .l113E:
-    bbc $2D.5,Spc_1163_l116F          ; 113E
+    bbc $2D.5,.l116F                  ; 113E
     mov.w a,$0397                     ; 1141
     cmp a,#$01                        ; 1144
-    beq Spc_1163_l1170                ; 1146
+    beq .l1170                        ; 1146
     cmp a,#$04                        ; 1148
-    beq Spc_1163_l1170                ; 114A
+    beq .l1170                        ; 114A
     cmp a,#$07                        ; 114C
-    beq Spc_1163_l1170                ; 114E
+    beq .l1170                        ; 114E
     cmp a,#$0A                        ; 1150
-    beq Spc_1163_l1170                ; 1152
+    beq .l1170                        ; 1152
     cmp a,#$0D                        ; 1154
-    beq Spc_1163_l1170                ; 1156
+    beq .l1170                        ; 1156
 .l1158:
     mov.w a,$0396                     ; 1158
     cmp a,#$72                        ; 115B
-    beq Spc_1163_l1177                ; 115D
+    beq .l1177                        ; 115D
     cmp a,#$73                        ; 115F
-    beq Spc_1163_l1177                ; 1161
-
-Spc_1163:
+    beq .l1177                        ; 1161
     cmp a,#$74                        ; 1163
     beq .l1177                        ; 1165
     cmp a,#$75                        ; 1167
@@ -1652,19 +1685,25 @@ Spc_1163:
     ret                               ; 116F
 .l1170:
     mov x,#$07                        ; 1170  ; not reached in the traces so far
-    call Spc_194C                     ; 1172  ; not reached in the traces so far
-    bra Spc_112F_l1158                ; 1175  ; not reached in the traces so far
+    call SpcSfxStop                   ; 1172  ; not reached in the traces so far
+    bra .l1158                        ; 1175  ; not reached in the traces so far
 .l1177:
     mov x,#$06                        ; 1177  ; not reached in the traces so far
-    jmp Spc_194C                      ; 1179  ; not reached in the traces so far
+    jmp SpcSfxStop                    ; 1179  ; not reached in the traces so far
 
-Spc_117C:
+; @routine 19:CE06 SpcStaggeredChecks
+; WHAT IT DOES: Steps the counter $0581 through 0-$16 each tick and at 3, 9, $0C, $0F, $12 and $15 does one check: restarting a looping sound (channels by bits of $2A and $2D, stop through SpcSfxStopIf with $20 = the step) or queueing sound $17, $25 or $21; outside song 1, $2A is cleared.
+; HOW: A compare chain on the counter; the stop helpers are SpcSfxStopIf's entries.
+; Entry: none. Exit: as the chosen path leaves it.
+; @spc 117C
+%spc($117C, $19CE06)
+SpcStaggeredChecks:
     inc.w $0581                       ; 117C
     mov.w a,$0581                     ; 117F
     cmp a,#$03                        ; 1182
     beq .l11AC                        ; 1184
     cmp a,#$09                        ; 1186
-    beq Spc_112F_l113E                ; 1188
+    beq SpcChannelGuards_l113E        ; 1188
     cmp a,#$0C                        ; 118A
     beq .l11BC                        ; 118C
     cmp a,#$0F                        ; 118E
@@ -1689,39 +1728,43 @@ Spc_117C:
     cmp a,#$02                        ; 11B2
     bne .l11A3                        ; 11B4
     mov $20,#$08                      ; 11B6
-    jmp Spc_1908                      ; 11B9
+    jmp SpcSfxStopIf                  ; 11B9
 .l11BC:
     bbs $2A.0,.l11C5                  ; 11BC
     mov $20,#$0C                      ; 11BF
-    jmp Spc_192B                      ; 11C2
+    jmp $192B                         ; 11C2
 .l11C5:
     mov a,#$17                        ; 11C5
-    jmp Spc_1424                      ; 11C7
+    jmp SpcSoundQueuePush             ; 11C7
 .l11CA:
     bbs $2A.2,.l11D3                  ; 11CA
     mov $20,#$0A                      ; 11CD
-    jmp Spc_1915                      ; 11D0
+    jmp $1915                         ; 11D0
 .l11D3:
     bbs $2A.0,.l11A3                  ; 11D3
     bbs $2A.7,.l11A3                  ; 11D6
     bbs $2A.4,.l11A3                  ; 11D9
     mov a,#$25                        ; 11DC
-    jmp Spc_1424                      ; 11DE
+    jmp SpcSoundQueuePush             ; 11DE
 .l11E1:
     bbs $2A.4,.l11A3                  ; 11E1
     mov $20,#$0B                      ; 11E4
-    jmp Spc_1920                      ; 11E7
+    jmp $1920                         ; 11E7
 .l11EA:
-    bbs $2A.7,Spc_11ED_l11F3          ; 11EA
-
-Spc_11ED:
+    bbs $2A.7,.l11F3                  ; 11EA
     mov $20,#$0E                      ; 11ED
-    jmp Spc_1936                      ; 11F0
+    jmp $1936                         ; 11F0
 .l11F3:
     mov a,#$21                        ; 11F3
-    jmp Spc_1424                      ; 11F5
+    jmp SpcSoundQueuePush             ; 11F5
 
-Spc_11F8:
+; @routine 19:CE82 SpcGameStateTick
+; WHAT IT DOES: The game state's sound rules each tick: the countdown flags in $2D from the bytes $EE40 and $CB10; the counters $056A/$056B after song request 5; song request 3 $E6 ticks after request 2 ($0567); a tempo-dependent value $0586; the finish music trigger ($055F, $0582, pattern list $EE48 with key-up $50); then the port commands $39, $32, $03 (stopping channels, pausing the music), the timer $0579 and port 1 clears for some channel 5 sounds.
+; HOW: Compare chains on $1D, $01, $0394-$0397; SpcSfxStop, SpcSfxStopRequest, SpcMusicPause, SpcSoundQueuePush.
+; Entry: none. Exit: A, X, Y changed.
+; @spc 11F8
+%spc($11F8, $19CE82)
+SpcGameStateTick:
     mov.w a,$EE40                     ; 11F8
     cmp a,#$98                        ; 11FB
     bne .l1204                        ; 11FD
@@ -1814,53 +1857,50 @@ Spc_11F8:
     mov.w $0586,a                     ; 129C
     mov.w a,$0397                     ; 129F
     cmp a,#$0D                        ; 12A2
-    beq Spc_12FA_l1315                ; 12A4
+    beq .l1315                        ; 12A4
     mov.w a,$055F                     ; 12A6
     bne .l12B7                        ; 12A9
     cmp $01,#$1D                      ; 12AB
-    bne Spc_12FA_l1315                ; 12AE
+    bne .l1315                        ; 12AE
     mov a,#$01                        ; 12B0
     mov.w $055F,a                     ; 12B2
-    bra Spc_12FA_l1315                ; 12B5
+    bra .l1315                        ; 12B5
 .l12B7:
     mov.w a,$0582                     ; 12B7
     beq .l12CA                        ; 12BA
     dec.w $0582                       ; 12BC
     mov.w a,$0582                     ; 12BF
     cmp a,#$04                        ; 12C2
-    beq Spc_12FA                      ; 12C4
+    beq .l12FA                        ; 12C4
     cmp a,#$01                        ; 12C6
-    beq Spc_12FA_l130B                ; 12C8
+    beq .l130B                        ; 12C8
 .l12CA:
     cmp $1D,#$30                      ; 12CA
-    bne Spc_12FA_l1315                ; 12CD
+    bne .l1315                        ; 12CD
     inc.w $055F                       ; 12CF
-
-Spc_12D2:
     mov.w a,$055F                     ; 12D2
     cmp a,#$03                        ; 12D5
-    bne Spc_12FA_l1315                ; 12D7
+    bne .l1315                        ; 12D7
     mov !spc_pattern_ptr,#$48         ; 12D9
     mov !spc_pattern_ptr+1,#$EE       ; 12DC
     set1 !spc_track_flags.0           ; 12DF
     mov.w a,$0586                     ; 12E1
     mov.w $0582,a                     ; 12E4
     mov x,#$00                        ; 12E7
-    call Spc_1D63                     ; 12E9
+    call SpcSfxTakeVoice              ; 12E9
     inc x                             ; 12EC
-    call Spc_1D63                     ; 12ED
+    call SpcSfxTakeVoice              ; 12ED
     mov.b a,!spc_master_volume+1      ; 12F0
     mov.w $0587,a                     ; 12F2
     mov !spc_master_volume+1,#$BE     ; 12F5
-    bra Spc_12FA_l1315                ; 12F8
-
-Spc_12FA:
+    bra .l1315                        ; 12F8
+.l12FA:
     mov.w a,$0587                     ; 12FA
     mov.b !spc_master_volume+1,a      ; 12FD
     mov x,#$00                        ; 12FF
-    call Spc_1E31                     ; 1301
+    call SpcSfxRelease                ; 1301
     mov x,#$01                        ; 1304
-    call Spc_1E31                     ; 1306
+    call SpcSfxRelease                ; 1306
     bra .l1315                        ; 1309
 .l130B:
     inc.b !spc_transpose              ; 130B
@@ -1883,7 +1923,7 @@ Spc_12FA:
     cmp a,#$0D                        ; 1331
     beq .l133A                        ; 1333
     mov a,#$02                        ; 1335
-    call Spc_1424                     ; 1337
+    call SpcSoundQueuePush            ; 1337
 .l133A:
     mov.w a,$056A                     ; 133A
     cmp a,#$F0                        ; 133D
@@ -1896,7 +1936,7 @@ Spc_12FA:
     cmp !spc_song,#$05                ; 134D
     bne .l1357                        ; 1350
     mov a,#$24                        ; 1352
-    call Spc_1424                     ; 1354
+    call SpcSoundQueuePush            ; 1354
 .l1357:
     cmp $1D,#$39                      ; 1357
     bne .l1376                        ; 135A
@@ -1906,17 +1946,17 @@ Spc_12FA:
     mov a,#$01                        ; 1363  ; not reached in the traces so far
     mov.w $0579,a                     ; 1365  ; not reached in the traces so far
     mov x,#$07                        ; 1368  ; not reached in the traces so far
-    call Spc_1A92                     ; 136A  ; not reached in the traces so far
+    call SpcSfxStopRequest            ; 136A  ; not reached in the traces so far
     dec x                             ; 136D  ; not reached in the traces so far
-    call Spc_1A92                     ; 136E  ; not reached in the traces so far
+    call SpcSfxStopRequest            ; 136E  ; not reached in the traces so far
     mov x,#$08                        ; 1371  ; not reached in the traces so far
-    call Spc_1908                     ; 1373  ; not reached in the traces so far
+    call SpcSfxStopIf                 ; 1373  ; not reached in the traces so far
 .l1376:
     cmp $1D,#$32                      ; 1376
     bne .l139C                        ; 1379
     set1 $2D.5                        ; 137B
     mov x,#$04                        ; 137D
-    call Spc_194C                     ; 137F
+    call SpcSfxStop                   ; 137F
     mov a,#$00                        ; 1382
     mov.b $2A,a                       ; 1384
     mov.b !spc_song,a                 ; 1386
@@ -1924,19 +1964,19 @@ Spc_12FA:
     set1 $2D.3                        ; 138B
     set1 $2D.6                        ; 138D
     mov x,#$02                        ; 138F
-    call Spc_194C                     ; 1391
+    call SpcSfxStop                   ; 1391
     dec x                             ; 1394
-    call Spc_194C                     ; 1395
+    call SpcSfxStop                   ; 1395
     dec x                             ; 1398
-    call Spc_194C                     ; 1399
+    call SpcSfxStop                   ; 1399
 .l139C:
     cmp $1D,#$03                      ; 139C
     bne .l13B3                        ; 139F
     set1 $2D.5                        ; 13A1
     mov x,#$05                        ; 13A3
-    call Spc_194C                     ; 13A5
+    call SpcSfxStop                   ; 13A5
     dec x                             ; 13A8
-    call Spc_194C                     ; 13A9
+    call SpcSfxStop                   ; 13A9
     set1 $2D.3                        ; 13AC
     mov $2A,#$00                      ; 13AE
     set1 $2D.6                        ; 13B1
@@ -1974,23 +2014,29 @@ Spc_12FA:
     cmp a,#$38                        ; 13F0
     bne .l13F9                        ; 13F2
     mov x,#$04                        ; 13F4  ; not reached in the traces so far
-    call Spc_194C                     ; 13F6  ; not reached in the traces so far
+    call SpcSfxStop                   ; 13F6  ; not reached in the traces so far
 .l13F9:
     ret                               ; 13F9
 
-Spc_13FA:
+; @routine 19:D084 SpcCommand4C
+; WHAT IT DOES: Port command $4C: channels 7 and 6 stopped with their fades (SpcSfxStopRequest), 5, 4 and 3 stopped, the timer $0579 started, bits 3 and 6 of $2D set, $2A cleared, the music paused.
+; HOW: CALLs with X counting down.
+; Entry: none. Exit: as SpcMusicPause.
+; @spc 13FA
+%spc($13FA, $19D084)
+SpcCommand4C:
     cmp $1D,#$4C                      ; 13FA
     bne .l1423                        ; 13FD
     mov x,#$07                        ; 13FF
-    call Spc_1A92                     ; 1401
+    call SpcSfxStopRequest            ; 1401
     dec x                             ; 1404
-    call Spc_1A92                     ; 1405
+    call SpcSfxStopRequest            ; 1405
     dec x                             ; 1408
-    call Spc_194C                     ; 1409
+    call SpcSfxStop                   ; 1409
     dec x                             ; 140C
-    call Spc_194C                     ; 140D
+    call SpcSfxStop                   ; 140D
     dec x                             ; 1410
-    call Spc_194C                     ; 1411
+    call SpcSfxStop                   ; 1411
     mov a,#$01                        ; 1414
     mov.w $0579,a                     ; 1416
     set1 $2D.3                        ; 1419
@@ -2000,7 +2046,13 @@ Spc_13FA:
 .l1423:
     ret                               ; 1423
 
-Spc_1424:
+; @routine 19:D0AE SpcSoundQueuePush
+; WHAT IT DOES: Appends sound A to the zero-ended queue at $0588.
+; HOW: Scans for the first zero byte; X kept on the stack.
+; Entry: A = sound. Exit: A, X kept.
+; @spc 1424
+%spc($1424, $19D0AE)
+SpcSoundQueuePush:
     push x                            ; 1424
     push a                            ; 1425
     mov x,#$00                        ; 1426
@@ -2016,8 +2068,14 @@ Spc_1424:
 .l1435:
     ret                               ; 1435
 
-Spc_1436:
-    bbs !spc_flags.0,Spc_1424_l1435   ; 1436
+; @routine 19:D0C0 SpcCommandTimers
+; WHAT IT DOES: Unless stopped (bit 0 of $29): command $3E starts the count $0568, which at $2A queues sound $0F or $2F by the track $0397; commands $20 and $16 mark bits 4 and 5 of $2C, become command $1B or $27 by the track and start the count $055D, which at $11 queues $20 or $16; command $37 counts $0580, and command $30 queues $43 when that count is $0A; command $29 queues itself again after a random delay ($0560, $0561).
+; HOW: Byte counters in RAM; SpcSoundQueuePush.
+; Entry: none. Exit: A, X, Y changed.
+; @spc 1436
+%spc($1436, $19D0C0)
+SpcCommandTimers:
+    bbs !spc_flags.0,SpcSoundQueuePush_l1435; 1436
     cmp $1D,#$3E                      ; 1439
     bne .l1443                        ; 143C
     mov a,#$01                        ; 143E
@@ -2029,25 +2087,24 @@ Spc_1436:
 .l144B:
     mov.w a,$0568                     ; 144B
     cmp a,#$2A                        ; 144E
-    bne Spc_1467_l1475                ; 1450
+    bne .l1475                        ; 1450
     mov.w a,$0397                     ; 1452
     cmp a,#$01                        ; 1455
-    beq Spc_1467_l146B                ; 1457
+    beq .l146B                        ; 1457
     cmp a,#$04                        ; 1459
-    beq Spc_1467                      ; 145B
+    beq .l1467                        ; 145B
     cmp a,#$07                        ; 145D
-    beq Spc_1467_l146B                ; 145F
+    beq .l146B                        ; 145F
     cmp a,#$0A                        ; 1461
-    beq Spc_1467                      ; 1463
-    bra Spc_1467_l1470                ; 1465
-
-Spc_1467:
+    beq .l1467                        ; 1463
+    bra .l1470                        ; 1465
+.l1467:
     mov a,#$0F                        ; 1467
     bra .l146D                        ; 1469
 .l146B:
     mov a,#$2F                        ; 146B
 .l146D:
-    call Spc_1424                     ; 146D
+    call SpcSoundQueuePush            ; 146D
 .l1470:
     mov a,#$00                        ; 1470
     mov.w $0568,a                     ; 1472
@@ -2080,8 +2137,6 @@ Spc_1467:
     mov.w $055D,a                     ; 14A0
 .l14A3:
     mov.w a,$055D                     ; 14A3
-
-Spc_14A6:
     beq .l14AB                        ; 14A6
     inc.w $055D                       ; 14A8
 .l14AB:
@@ -2096,28 +2151,26 @@ Spc_14A6:
 .l14BF:
     clr1 !spc_track_flags.4           ; 14BF
     mov a,#$20                        ; 14C1
-    call Spc_1424                     ; 14C3
+    call SpcSoundQueuePush            ; 14C3
     bra .l14CF                        ; 14C6
 .l14C8:
     clr1 !spc_track_flags.5           ; 14C8
     mov a,#$16                        ; 14CA
-    call Spc_1424                     ; 14CC
+    call SpcSoundQueuePush            ; 14CC
 .l14CF:
     cmp $1D,#$37                      ; 14CF
     bne .l14D7                        ; 14D2
     inc.w $0580                       ; 14D4
 .l14D7:
     cmp $1D,#$30                      ; 14D7
-    bne Spc_14EA_l14ED                ; 14DA
+    bne .l14ED                        ; 14DA
     mov.w a,$0580                     ; 14DC
     cmp a,#$0A                        ; 14DF
     bne .l14E8                        ; 14E1
     mov a,#$43                        ; 14E3  ; not reached in the traces so far
-    call Spc_1424                     ; 14E5  ; not reached in the traces so far
+    call SpcSoundQueuePush            ; 14E5  ; not reached in the traces so far
 .l14E8:
     mov a,#$00                        ; 14E8
-
-Spc_14EA:
     mov.w $0580,a                     ; 14EA
 .l14ED:
     mov.w a,$0560                     ; 14ED
@@ -2139,7 +2192,7 @@ Spc_14EA:
     cmp.w a,$0561                     ; 150D  ; not reached in the traces so far
     bne .l1522                        ; 1510  ; not reached in the traces so far
     mov a,#$29                        ; 1512  ; not reached in the traces so far
-    call Spc_1424                     ; 1514  ; not reached in the traces so far
+    call SpcSoundQueuePush            ; 1514  ; not reached in the traces so far
     mov $1D,#$29                      ; 1517  ; not reached in the traces so far
     mov a,#$00                        ; 151A  ; not reached in the traces so far
     mov.w $0560,a                     ; 151C  ; not reached in the traces so far
@@ -2147,18 +2200,23 @@ Spc_14EA:
 .l1522:
     ret                               ; 1522
 
-Spc_1523:
-    call Spc_15A1                     ; 1523
-    bbs !spc_track_flags.2,Spc_152C_l152D; 1526
-    bbs !spc_track_flags.3,Spc_152C_l1538; 1529
-
-Spc_152C:
+; @routine 19:D1AD SpcTempoBend
+; WHAT IT DOES: The tempo bend (SpcTempoBendStart decides it): while bit 2 of $2C is set, each tick lowers the transpose by the step count / $15 and the tempo by an accumulated amount from its saved values ($0566, $0578); bit 3 restores them and stops.
+; HOW: Word accumulator $0553/$0554, DIV by $15.
+; Entry: none. Exit: A = the tempo high byte.
+; @spc 1523
+%spc($1523, $19D1AD)
+SpcTempoBend:
+    call SpcTempoBendStart            ; 1523
+    bbs !spc_track_flags.2,.l152D     ; 1526
+    bbs !spc_track_flags.3,.l1538     ; 1529
+.l152C:
     ret                               ; 152C
 .l152D:
     mov.w a,$0555                     ; 152D
     beq .l1554                        ; 1530
     cmp a,#$FE                        ; 1532
-    beq Spc_152C                      ; 1534
+    beq .l152C                        ; 1534
     bra .l156C                        ; 1536
 .l1538:
     clr1 !spc_track_flags.2           ; 1538  ; not reached in the traces so far
@@ -2171,7 +2229,7 @@ Spc_152C:
     mov.w a,$0578                     ; 154A  ; not reached in the traces so far
     mov.b !spc_transpose,a            ; 154D  ; not reached in the traces so far
     mov.w a,$0566                     ; 154F  ; not reached in the traces so far
-    bra Spc_1584_l159E                ; 1552  ; not reached in the traces so far
+    bra .l159E                        ; 1552  ; not reached in the traces so far
 .l1554:
     mov a,#$04                        ; 1554
     mov.w $0554,a                     ; 1556
@@ -2196,8 +2254,6 @@ Spc_152C:
     sbc.b a,$20                       ; 157D
     mov.b !spc_transpose,a            ; 157F
     mov.w a,$0569                     ; 1581
-
-Spc_1584:
     mov.b $20,a                       ; 1584
     mov $21,#$00                      ; 1586
     mov.w a,$0553                     ; 1589
@@ -2212,34 +2268,45 @@ Spc_1584:
     mov.b !spc_tempo+1,a              ; 159E
     ret                               ; 15A0
 
-Spc_15A1:
+; @routine 19:D22B SpcTempoBendStart
+; WHAT IT DOES: Command $2C during song 1 starts the tempo bend (bit 2 of $2C); commands $30 and $3C during a bend end it (bit 3).
+; HOW: SET1/CLR1 on $2C.
+; Entry: none. Exit: flags from the compares.
+; @spc 15A1
+%spc($15A1, $19D22B)
+SpcTempoBendStart:
     mov.b a,$1D                       ; 15A1
     cmp a,#$2C                        ; 15A3
     beq .l15B5                        ; 15A5
     mov.w x,$0555                     ; 15A7
-    beq Spc_15BE                      ; 15AA
+    beq .l15BE                        ; 15AA
     cmp a,#$30                        ; 15AC
-    beq Spc_15BE_l15BF                ; 15AE
+    beq .l15BF                        ; 15AE
     cmp a,#$3C                        ; 15B0
-    beq Spc_15BE_l15BF                ; 15B2
+    beq .l15BF                        ; 15B2
     ret                               ; 15B4
 .l15B5:
     cmp !spc_song,#$01                ; 15B5
-    bne Spc_15BE                      ; 15B8
+    bne .l15BE                        ; 15B8
     set1 !spc_track_flags.2           ; 15BA
     clr1 !spc_track_flags.3           ; 15BC
-
-Spc_15BE:
+.l15BE:
     ret                               ; 15BE
 .l15BF:
     clr1 !spc_track_flags.2           ; 15BF  ; not reached in the traces so far
     set1 !spc_track_flags.3           ; 15C1  ; not reached in the traces so far
     ret                               ; 15C3  ; not reached in the traces so far
 
-Spc_15C4:
+; @routine 19:D24E SpcEchoTransition
+; WHAT IT DOES: The echo transition by the state $0551 (0 idle; bit 0 or 1 of $28 starts it): the echo voices, feedback and volumes saved ($0570-$0573), then the step count $0550 runs up or down (SpcEchoTransitionStep) with every voice echoing ($4A bits 6, 7) and the feedback and echo volume interpolated from the saved values toward $64 by the count; state 3 restores the saved settings.
+; HOW: MUL and DIV by $3C for the interpolation.
+; Entry: none (unless bit 0 of $29). Exit: A, X, Y changed.
+; @spc 15C4
+%spc($15C4, $19D24E)
+SpcEchoTransition:
     bbs !spc_flags.0,.l15E3           ; 15C4
     mov.w a,$0550                     ; 15C7
-    bne Spc_160B_l1618                ; 15CA
+    bne .l1618                        ; 15CA
     mov.w a,$0551                     ; 15CC
     cmp a,#$01                        ; 15CF
     beq .l15E4                        ; 15D1
@@ -2271,8 +2338,6 @@ Spc_15C4:
     mov.w a,$0571                     ; 1603
     mov.b !spc_echo_feedback,a        ; 1606
     mov.w a,$0572                     ; 1608
-
-Spc_160B:
     mov.b $61,a                       ; 160B
     mov.w a,$0573                     ; 160D
     mov.b $63,a                       ; 1610
@@ -2283,20 +2348,24 @@ Spc_160B:
     mov !spc_echo_voices,#$00         ; 1618
     set1 !spc_echo_voices.7           ; 161B
     set1 !spc_echo_voices.6           ; 161D
-    call Spc_1624                     ; 161F
-    bra Spc_1637_l167C                ; 1622
+    call SpcEchoTransitionStep        ; 161F
+    bra SpcEchoTransitionStep_l167C   ; 1622
 
-Spc_1624:
+; @routine 19:D2AE SpcEchoTransitionStep
+; WHAT IT DOES: Steps the echo transition count $0550 by the state $0551 and the bits of $28 (up to $1E or $3C, down to $3C), changing the state at the ends.
+; HOW: Compare chains.
+; Entry: none. Exit: flags from the last compare.
+; @spc 1624
+%spc($1624, $19D2AE)
+SpcEchoTransitionStep:
     mov.w a,$0551                     ; 1624
     cmp a,#$01                        ; 1627
-    beq Spc_1637_l163E                ; 1629
+    beq .l163E                        ; 1629
     cmp a,#$02                        ; 162B
-    beq Spc_1637_l1656                ; 162D
+    beq .l1656                        ; 162D
     dec.w $0550                       ; 162F
     mov.w a,$0550                     ; 1632
     cmp a,#$3C                        ; 1635
-
-Spc_1637:
     beq .l163A                        ; 1637
     ret                               ; 1639
 .l163A:
@@ -2367,7 +2436,13 @@ Spc_1637:
     mov.b $63,a                       ; 16AE
     ret                               ; 16B0
 
-Spc_16B1:
+; @routine 19:D33B SpcPort1Clamp
+; WHAT IT DOES: Outside song 1, a port 1 command of 7 or more is ignored ($01 cleared).
+; HOW: SBC and BMI.
+; Entry: none. Exit: flags.
+; @spc 16B1
+%spc($16B1, $19D33B)
+SpcPort1Clamp:
     cmp !spc_song,#$01                ; 16B1
     beq .l16C0                        ; 16B4
     mov.b a,$01                       ; 16B6
@@ -2378,7 +2453,13 @@ Spc_16B1:
 .l16C0:
     ret                               ; 16C0
 
-Spc_16C1:
+; @routine 19:D34B SpcCommandFilter
+; WHAT IT DOES: Outside song 1, a port command $1D not in the list at $16D8 is dropped.
+; HOW: A zero-ended list scan.
+; Entry: none. Exit: X = list index.
+; @spc 16C1
+%spc($16C1, $19D34B)
+SpcCommandFilter:
     cmp !spc_song,#$01                ; 16C1
     beq .l16D7                        ; 16C4
     mov x,#$00                        ; 16C6
@@ -2398,42 +2479,54 @@ Spc_16C1:
     db $3B, $3F, $06, $22, $41, $40, $1F, $2A
     db $00
 
-Spc_16F1:
+; @routine 19:D37B SpcPitchRampB
+; WHAT IT DOES: Bit 2 of $28 ramps the offset $054D/$054F up (SpcPitchRampBUp), bit 3 down (SpcPitchRampBDown).
+; HOW: BBC tests.
+; Entry: none. Exit: as the ramp leaves it.
+; @spc 16F1
+%spc($16F1, $19D37B)
+SpcPitchRampB:
     bbc $28.2,.l16F7                  ; 16F1
-    call Spc_16FE                     ; 16F4
+    call SpcPitchRampBUp              ; 16F4
 .l16F7:
     bbc $28.3,.l16FD                  ; 16F7
-    call Spc_171F                     ; 16FA
+    call SpcPitchRampBDown            ; 16FA
 .l16FD:
     ret                               ; 16FD
 
-Spc_16FE:
+; @routine 19:D388 SpcPitchRampBUp
+; WHAT IT DOES: Up to $14 steps (count $0547), adds $20 to the pitch offset $054D/$054F.
+; HOW: ADDW through $20/$21.
+; Entry: none. Exit: YA = the offset.
+; @spc 16FE
+%spc($16FE, $19D388)
+SpcPitchRampBUp:
     mov.w a,$0547                     ; 16FE
     cmp a,#$14                        ; 1701
-    beq Spc_171B_l171E                ; 1703
+    beq .l171E                        ; 1703
     inc.w $0547                       ; 1705
     mov.w a,$054D                     ; 1708
     mov.b $20,a                       ; 170B
     mov.w a,$054F                     ; 170D
-
-Spc_1710:
     mov.b $21,a                       ; 1710
     mov a,#$20                        ; 1712
     mov y,#$00                        ; 1714
     addw ya,$20                       ; 1716
     mov.w $054D,a                     ; 1718
-
-Spc_171B:
     mov.w $054F,y                     ; 171B
 .l171E:
     ret                               ; 171E
 
-Spc_171F:
+; @routine 19:D3A9 SpcPitchRampBDown
+; WHAT IT DOES: Counts $0547 down, taking $20 from the offset; at 0 clears bits 2 and 3 of $28 and the offset.
+; HOW: SUBW through $20/$21.
+; Entry: none. Exit: A = 0 at the end.
+; @spc 171F
+%spc($171F, $19D3A9)
+SpcPitchRampBDown:
     mov.w a,$0547                     ; 171F
     cmp a,#$00                        ; 1722
-    beq Spc_1726_l173E                ; 1724
-
-Spc_1726:
+    beq .l173E                        ; 1724
     dec.w $0547                       ; 1726
     mov.w a,$054D                     ; 1729
     mov.w y,$054F                     ; 172C
@@ -2448,21 +2541,31 @@ Spc_1726:
     clr1 $28.3                        ; 1740
     mov a,#$00                        ; 1742
     mov.w $054D,a                     ; 1744
-
-Spc_1747:
     mov.w $054F,a                     ; 1747
     ret                               ; 174A
 
-Spc_174B:
+; @routine 19:D3D5 SpcPitchRampA
+; WHAT IT DOES: Bit 2 of $29 ramps the offset $0549/$054B up (SpcPitchRampAUp), bit 3 down (SpcPitchRampADown).
+; HOW: BBC tests.
+; Entry: none. Exit: as the ramp leaves it.
+; @spc 174B
+%spc($174B, $19D3D5)
+SpcPitchRampA:
     bbc !spc_flags.2,.l1751           ; 174B
-    call Spc_1758                     ; 174E
+    call SpcPitchRampAUp              ; 174E
 .l1751:
     bbc !spc_flags.3,.l1757           ; 1751
-    call Spc_1779                     ; 1754
+    call SpcPitchRampADown            ; 1754
 .l1757:
     ret                               ; 1757
 
-Spc_1758:
+; @routine 19:D3E2 SpcPitchRampAUp
+; WHAT IT DOES: Up to $19 steps (count $0543), adds $3C to the offset $0549/$054B.
+; HOW: ADDW through $20/$21.
+; Entry: none. Exit: YA = the offset.
+; @spc 1758
+%spc($1758, $19D3E2)
+SpcPitchRampAUp:
     mov.w a,$0543                     ; 1758
     cmp a,#$19                        ; 175B
     beq .l1778                        ; 175D
@@ -2479,12 +2582,16 @@ Spc_1758:
 .l1778:
     ret                               ; 1778
 
-Spc_1779:
+; @routine 19:D403 SpcPitchRampADown
+; WHAT IT DOES: Counts $0543 down, taking $3C from the offset; at 0 clears bits 2 and 3 of $29 and the offset.
+; HOW: SUBW through $20/$21.
+; Entry: none. Exit: A = 0 at the end.
+; @spc 1779
+%spc($1779, $19D403)
+SpcPitchRampADown:
     mov.w a,$0543                     ; 1779
     cmp a,#$00                        ; 177C
-    beq Spc_1780_l1798                ; 177E
-
-Spc_1780:
+    beq .l1798                        ; 177E
     dec.w $0543                       ; 1780
     mov.w a,$0549                     ; 1783
     mov.w y,$054B                     ; 1786
@@ -2502,16 +2609,18 @@ Spc_1780:
     mov.w $054B,a                     ; 17A1
     ret                               ; 17A4
 
-Spc_17A5:
+; @routine 19:D42F SpcPortCommand
+; WHAT IT DOES: The port 0 command $00 (bit 7 dropped): 6 and up is a sound command, $1D = value - 5; 1-5 (unless stopped, bit 0 of $29) is a song request, which also clears the tempo bend and fade state and flags 0, 1, 6 of $29 and 2, 3 of $2C; 0 leaves $1D = 0.
+; HOW: SBC #6 and BMI.
+; Entry: none. Exit: A as stored.
+; @spc 17A5
+%spc($17A5, $19D42F)
+SpcPortCommand:
     mov $1D,#$00                      ; 17A5
     mov.b a,!spc_port_in              ; 17A8
     and a,#$7F                        ; 17AA
-    beq Spc_17AF_l17B7                ; 17AC
-
-Spc_17AE:
+    beq .l17B7                        ; 17AC
     setc                              ; 17AE
-
-Spc_17AF:
     sbc a,#$06                        ; 17AF
     bmi .l17BA                        ; 17B1
     inc a                             ; 17B3
@@ -2521,11 +2630,9 @@ Spc_17AF:
     mov.b $1D,a                       ; 17B7
     ret                               ; 17B9
 .l17BA:
-    bbs !spc_flags.0,Spc_17C1_l17DE   ; 17BA
+    bbs !spc_flags.0,.l17DE           ; 17BA
     mov.b a,!spc_port_in              ; 17BD
     mov.b !spc_song_request,a         ; 17BF
-
-Spc_17C1:
     cmp a,#$02                        ; 17C1
     bne .l17C5                        ; 17C3
 .l17C5:
@@ -2543,7 +2650,13 @@ Spc_17C1:
 .l17DE:
     ret                               ; 17DE
 
-Spc_17DF:
+; @routine 19:D469 SpcPort1Command
+; WHAT IT DOES: A new port 1 command ($01 differing from the last, $09; below $3E) runs its handler from the table at $1804: the handlers set flags in $28, $29, $2A and $2D, start or stop sounds and loops, ramps, the echo transition, pause, resume and fade the music.
+; HOW: JMP ($1804+X); the handlers end in RETs or tail jumps.
+; Entry: none. Exit: as the handler leaves it.
+; @spc 17DF
+%spc($17DF, $19D469)
+SpcPort1Command:
     mov.b a,$01                       ; 17DF
     cmp.b a,$09                       ; 17E1
     bne .l17EA                        ; 17E3
@@ -2560,7 +2673,7 @@ Spc_17DF:
     mov $20,#$00                      ; 17F7  ; not reached in the traces so far
 .l17FA:
     mov.b a,$20                       ; 17FA
-    beq Spc_17C1_l17DE                ; 17FC
+    beq SpcPortCommand_l17DE          ; 17FC
     dec a                             ; 17FE
     asl a                             ; 17FF
     mov x,a                           ; 1800
@@ -2581,48 +2694,34 @@ Spc_17DF:
     db $FF, $18, $D5, $18, $D5, $18, $D5, $18
     db $D5, $18, $D6, $18, $E3, $18, $D5, $18
     db $D5, $18
-
-Spc_187E:
-    bbs $2D.3,Spc_18D5                ; 187E
+    bbs $2D.3,.l18D5                  ; 187E
     set1 $2A.6                        ; 1881
     mov a,#$02                        ; 1883
-    bra Spc_18A2_l18A9                ; 1885
-
-Spc_1887:
-    bbs $2D.6,Spc_18D5                ; 1887
+    bra .l18A9                        ; 1885
+    bbs $2D.6,.l18D5                  ; 1887
     set1 $2A.2                        ; 188A
     mov a,#$25                        ; 188C
-    bra Spc_18A2_l18A9                ; 188E
-
-Spc_1890:
-    bbs $2D.6,Spc_18D5                ; 1890
+    bra .l18A9                        ; 188E
+    bbs $2D.6,.l18D5                  ; 1890
     set1 $2A.4                        ; 1893
     mov a,#$15                        ; 1895
-    bra Spc_18A2_l18A9                ; 1897
-
-Spc_1899:
-    bbs $2D.6,Spc_18D5                ; 1899
+    bra .l18A9                        ; 1897
+    bbs $2D.6,.l18D5                  ; 1899
     set1 $2A.0                        ; 189C
     mov a,#$17                        ; 189E
-    bra Spc_18A2_l18A9                ; 18A0
-
-Spc_18A2:
-    bbs $2D.6,Spc_18D5                ; 18A2
+    bra .l18A9                        ; 18A0
+    bbs $2D.6,.l18D5                  ; 18A2
     set1 $2A.7                        ; 18A5
     mov a,#$21                        ; 18A7
 .l18A9:
-    jmp Spc_1424                      ; 18A9
-
-Spc_18AC:
-    bbs !spc_flags.2,Spc_18D5         ; 18AC
+    jmp SpcSoundQueuePush             ; 18A9
+    bbs !spc_flags.2,.l18D5           ; 18AC
     set1 !spc_flags.2                 ; 18AF
     clr1 !spc_flags.3                 ; 18B1
     mov a,#$00                        ; 18B3
     mov y,#$02                        ; 18B5
-    bra Spc_18B9_l18CE                ; 18B7
-
-Spc_18B9:
-    bbc !spc_flags.2,Spc_18D5         ; 18B9
+    bra .l18CE                        ; 18B7
+    bbc !spc_flags.2,.l18D5           ; 18B9
     clr1 !spc_flags.2                 ; 18BC
     set1 !spc_flags.3                 ; 18BE
     mov.w a,$0549                     ; 18C0
@@ -2634,20 +2733,15 @@ Spc_18B9:
     mov.w $0549,a                     ; 18CE
     mov.w $054B,y                     ; 18D1
     ret                               ; 18D4
-
-Spc_18D5:
+.l18D5:
     ret                               ; 18D5
-
-Spc_18D6:
-    bbs $28.2,Spc_18D5                ; 18D6
+    bbs $28.2,.l18D5                  ; 18D6
     set1 $28.2                        ; 18D9
     clr1 $28.3                        ; 18DB
     mov a,#$40                        ; 18DD
     mov y,#$00                        ; 18DF
-    bra Spc_18E3_l18F8                ; 18E1
-
-Spc_18E3:
-    bbc $28.2,Spc_18D5                ; 18E3
+    bra .l18F8                        ; 18E1
+    bbc $28.2,.l18D5                  ; 18E3
     clr1 $28.2                        ; 18E6
     set1 $28.3                        ; 18E8
     mov.w a,$054D                     ; 18EA
@@ -2659,46 +2753,44 @@ Spc_18E3:
     mov.w $054D,a                     ; 18F8
     mov.w $054F,y                     ; 18FB
     ret                               ; 18FE
-
-Spc_18FF:
     mov.b a,$20                       ; 18FF
     setc                              ; 1901
     sbc a,#$32                        ; 1902
     mov.w $0530,a                     ; 1904
     ret                               ; 1907
 
-Spc_1908:
+; @routine 19:D592 SpcSfxStopIf
+; WHAT IT DOES: Clears bit 6 of $2A and, when channel 4's sound ($0394) is 2, requests channel 4's stop with the reason $20; the entries after it do the same for channel 5 and its sounds $25, $15, $17, $21.
+; HOW: The stop request at $03E0 + X when the channel is active ($0408 + X).
+; Entry: $20 = reason. Exit: A, X changed.
+; @spc 1908
+%spc($1908, $19D592)
+SpcSfxStopIf:
     clr1 $2A.6                        ; 1908
     mov.w a,$0394                     ; 190A
     cmp a,#$02                        ; 190D
-    bne Spc_1936_l194B                ; 190F
+    bne .l194B                        ; 190F
     mov x,#$04                        ; 1911
-    bra Spc_1936_l1941                ; 1913
-
-Spc_1915:
+    bra .l1941                        ; 1913
+.l1915:
     clr1 $2A.2                        ; 1915
-
-Spc_1917:
     mov.w a,$0395                     ; 1917
     cmp a,#$25                        ; 191A
-    bne Spc_1936_l194B                ; 191C
-    bra Spc_1936_l193F                ; 191E
-
-Spc_1920:
+    bne .l194B                        ; 191C
+    bra .l193F                        ; 191E
+.l1920:
     clr1 $2A.4                        ; 1920
     mov.w a,$0395                     ; 1922
     cmp a,#$15                        ; 1925
-    bne Spc_1936_l194B                ; 1927
-    bra Spc_1936_l193F                ; 1929
-
-Spc_192B:
+    bne .l194B                        ; 1927
+    bra .l193F                        ; 1929
+.l192B:
     clr1 $2A.0                        ; 192B
     mov.w a,$0395                     ; 192D
     cmp a,#$17                        ; 1930
-    bne Spc_1936_l194B                ; 1932
-    bra Spc_1936_l193F                ; 1934
-
-Spc_1936:
+    bne .l194B                        ; 1932
+    bra .l193F                        ; 1934
+.l1936:
     clr1 $2A.7                        ; 1936
     mov.w a,$0395                     ; 1938
     cmp a,#$21                        ; 193B
@@ -2713,30 +2805,36 @@ Spc_1936:
 .l194B:
     ret                               ; 194B
 
-Spc_194C:
+; @routine 19:D5D6 SpcSfxStop
+; WHAT IT DOES: Requests the stop of channel X (reason 1) when it is active.
+; HOW: $20 = 1, then SpcSfxStopIf's request.
+; Entry: X = channel (0-7). Exit: A changed.
+; @spc 194C
+%spc($194C, $19D5D6)
+SpcSfxStop:
     mov $20,#$01                      ; 194C
-    bra Spc_1936_l1941                ; 194F
+    bra SpcSfxStopIf_l1941            ; 194F
 
-Spc_1951:
+; @routine 19:D5DB SpcEchoModeA
+; WHAT IT DOES: Port 1 handler: $28 bit 0 set, bit 1 cleared (the echo transition's first mode).
+; HOW: SET1/CLR1.
+; Entry: none. Exit: none changed but $28.
+; @spc 1951
+%spc($1951, $19D5DB)
+SpcEchoModeA:
     clr1 $28.1                        ; 1951
     set1 $28.0                        ; 1953
     ret                               ; 1955
-
-Spc_1956:
     clr1 $28.0                        ; 1956
     clr1 $28.1                        ; 1958
     ret                               ; 195A
-
-Spc_195B:
     clr1 $28.0                        ; 195B
     set1 $28.1                        ; 195D
 .l195F:
     ret                               ; 195F
-
-Spc_1960:
-    bbc !spc_flags.0,Spc_195B_l195F   ; 1960
+    bbc !spc_flags.0,.l195F           ; 1960
     mov a,#$4C                        ; 1963
-    call Spc_1424                     ; 1965
+    call SpcSoundQueuePush            ; 1965
     clr1 !spc_flags.0                 ; 1968
     mov a,#$00                        ; 196A
     mov.w $045F,a                     ; 196C
@@ -2749,9 +2847,7 @@ Spc_1960:
     mov.w $04FC,a                     ; 1981
     call SpcMusicPause                ; 1984
     jmp $1798                         ; 1987
-
-Spc_198A:
-    bbc !spc_flags.0,Spc_195B_l195F   ; 198A
+    bbc !spc_flags.0,.l195F           ; 198A
     mov $2A,$2B                       ; 198D
     bbc !spc_flags.7,.l19A9           ; 1990
     clr1 !spc_flags.7                 ; 1993  ; not reached in the traces so far
@@ -2765,42 +2861,52 @@ Spc_198A:
     mov.b $63,a                       ; 19A7  ; not reached in the traces so far
 .l19A9:
     mov a,#$4B                        ; 19A9
-    call Spc_1424                     ; 19AB
+    call SpcSoundQueuePush            ; 19AB
     clr1 !spc_flags.0                 ; 19AE
     clr1 $2D.6                        ; 19B0
     mov x,#$07                        ; 19B2
-    call Spc_19CC                     ; 19B4
+    call SpcSfxChannelResume          ; 19B4
     dec x                             ; 19B7
-    call Spc_19CC                     ; 19B8
+    call SpcSfxChannelResume          ; 19B8
     dec x                             ; 19BB
-
-Spc_19BC:
-    call Spc_19CC                     ; 19BC
+    call SpcSfxChannelResume          ; 19BC
     dec x                             ; 19BF
-    call Spc_19CC                     ; 19C0
+    call SpcSfxChannelResume          ; 19C0
     mov x,#$01                        ; 19C3
-    call Spc_194C                     ; 19C5
+    call SpcSfxStop                   ; 19C5
     dec x                             ; 19C8
-    jmp Spc_194C                      ; 19C9
+    jmp SpcSfxStop                    ; 19C9
 
-Spc_19CC:
+; @routine 19:D656 SpcSfxChannelResume
+; WHAT IT DOES: Channel X after a pause: its sound number $03C8 back from $0460, and a sound saved at $0458 restarted (SpcSfxPointer, SpcSfxStart); without one the channel stops.
+; HOW: Two table copies and CALLs.
+; Entry: X = channel. Exit: X kept.
+; @spc 19CC
+%spc($19CC, $19D656)
+SpcSfxChannelResume:
     mov.w a,$0460+x                   ; 19CC
     mov.w $03C8+x,a                   ; 19CF
     mov.w a,$0458+x                   ; 19D2
     beq .l19E7                        ; 19D5
     push a                            ; 19D7
-    call Spc_19EA                     ; 19D8
+    call SpcSfxPointer                ; 19D8
     mov a,#$00                        ; 19DB
     mov.w $0458+x,a                   ; 19DD
     pop a                             ; 19E0
     push x                            ; 19E1
-    call Spc_219C                     ; 19E2
+    call SpcSfxStart                  ; 19E2
     pop x                             ; 19E5
     ret                               ; 19E6
 .l19E7:
-    jmp Spc_194C                      ; 19E7
+    jmp SpcSfxStop                    ; 19E7
 
-Spc_19EA:
+; @routine 19:D674 SpcSfxPointer
+; WHAT IT DOES: The data pointer of sound A from the table at $0702 into $24/$25.
+; HOW: (A - 1) * 2 as the index.
+; Entry: A = sound (1 and up). Exit: Y = index + 1.
+; @spc 19EA
+%spc($19EA, $19D674)
+SpcSfxPointer:
     dec a                             ; 19EA
     asl a                             ; 19EB
     mov y,a                           ; 19EC
@@ -2810,9 +2916,7 @@ Spc_19EA:
     mov.w a,$0702+y                   ; 19F3
     mov.b $25,a                       ; 19F6
     ret                               ; 19F8
-
-Spc_19F9:
-    bbs !spc_flags.0,Spc_1A54_l1A67   ; 19F9
+    bbs !spc_flags.0,SpcSfxChannelPause_l1A67; 19F9
     mov $2B,$2A                       ; 19FC
     mov $2A,#$00                      ; 19FF
     mov.w a,$0551                     ; 1A02
@@ -2836,27 +2940,31 @@ Spc_19F9:
 .l1A2B:
     set1 !spc_flags.0                 ; 1A2B
     mov a,#$4A                        ; 1A2D
-
-Spc_1A2F:
-    call Spc_1424                     ; 1A2F
+    call SpcSoundQueuePush            ; 1A2F
     mov x,#$07                        ; 1A32
-    call Spc_1A54                     ; 1A34
+    call SpcSfxChannelPause           ; 1A34
     dec x                             ; 1A37
-    call Spc_1A54                     ; 1A38
+    call SpcSfxChannelPause           ; 1A38
     dec x                             ; 1A3B
-    call Spc_1A54                     ; 1A3C
+    call SpcSfxChannelPause           ; 1A3C
     dec x                             ; 1A3F
-    call Spc_1A54                     ; 1A40
+    call SpcSfxChannelPause           ; 1A40
     mov x,#$07                        ; 1A43
-    call Spc_194C                     ; 1A45
+    call SpcSfxStop                   ; 1A45
     dec x                             ; 1A48
-    call Spc_194C                     ; 1A49
+    call SpcSfxStop                   ; 1A49
     dec x                             ; 1A4C
-    call Spc_194C                     ; 1A4D
+    call SpcSfxStop                   ; 1A4D
     dec x                             ; 1A50
-    jmp Spc_194C                      ; 1A51
+    jmp SpcSfxStop                    ; 1A51
 
-Spc_1A54:
+; @routine 19:D6DE SpcSfxChannelPause
+; WHAT IT DOES: Channel X at a pause: a pending queued sound or a running looped one ($0480) is saved at $0458 with its sound number, to restart after.
+; HOW: Compares on $04F8, $0480.
+; Entry: X = channel. Exit: A changed.
+; @spc 1A54
+%spc($1A54, $19D6DE)
+SpcSfxChannelPause:
     mov.w a,$04F8+x                   ; 1A54
     beq .l1A68                        ; 1A57
 .l1A59:
@@ -2880,17 +2988,29 @@ Spc_1A54:
     mov.w $0480+x,a                   ; 1A7F
     ret                               ; 1A82
 
-Spc_1A83:
+; @routine 19:D70D SpcSfxStopAll
+; WHAT IT DOES: Stops every sound effect channel with a fade, $2A cleared, and the music fade-out started (SpcFadeOutStart).
+; HOW: SpcSfxStopRequest for X = 7 down to 0.
+; Entry: none. Exit: X = $FF.
+; @spc 1A83
+%spc($1A83, $19D70D)
+SpcSfxStopAll:
     mov $2A,#$00                      ; 1A83
-    call Spc_1AAA                     ; 1A86
+    call SpcFadeOutStart              ; 1A86
     mov x,#$07                        ; 1A89
 .l1A8B:
-    call Spc_1A92                     ; 1A8B
+    call SpcSfxStopRequest            ; 1A8B
     dec x                             ; 1A8E
     bpl .l1A8B                        ; 1A8F
     ret                               ; 1A91
 
-Spc_1A92:
+; @routine 19:D71C SpcSfxStopRequest
+; WHAT IT DOES: Channel X's queued and looping state cleared ($04F8, $0480, $2A) and, if active, its fade-out started ($04C0, $04C8 = 1).
+; HOW: Stores.
+; Entry: X = channel. Exit: A = 0 or 1.
+; @spc 1A92
+%spc($1A92, $19D71C)
+SpcSfxStopRequest:
     mov a,#$00                        ; 1A92
     mov.w $04F8+x,a                   ; 1A94
     mov.w $0480+x,a                   ; 1A97
@@ -2903,14 +3023,26 @@ Spc_1A92:
 .l1AA9:
     ret                               ; 1AA9
 
-Spc_1AAA:
+; @routine 19:D734 SpcFadeOutStart
+; WHAT IT DOES: Unless stopped (bit 0 of $29), starts the music fade-out (bit 6 of $29).
+; HOW: SET1.
+; Entry: none. Exit: none.
+; @spc 1AAA
+%spc($1AAA, $19D734)
+SpcFadeOutStart:
     bbs !spc_flags.0,.l1AAF           ; 1AAA
     set1 !spc_flags.6                 ; 1AAD
 .l1AAF:
     ret                               ; 1AAF
 
-Spc_1AB0:
-    bbc !spc_flags.6,Spc_1AEF_l1AF6   ; 1AB0
+; @routine 19:D73A SpcMusicFade
+; WHAT IT DOES: The music fade: while bit 6 of $29 is set, the fade amount $2E/$2F grows by $2F0 a tick and the volume scale $0565 is the start level $0564 less it; at the bottom the fade ends and, by flags, the driver reloads (bit 7 of $2C: all keys off, SpcReload), returns to the IPL ROM (bit 0 of $2D) or pauses the music. Without a fade, the scale follows the master volume.
+; HOW: SUBW from $0564 in the high byte.
+; Entry: none. Exit: as the chosen path leaves it.
+; @spc 1AB0
+%spc($1AB0, $19D73A)
+SpcMusicFade:
+    bbc !spc_flags.6,SpcKeyOffAll_l1AF6; 1AB0
     mov a,#$F0                        ; 1AB3
     mov y,#$02                        ; 1AB5
     addw ya,$2E                       ; 1AB7
@@ -2935,13 +3067,19 @@ Spc_1AB0:
     mov.b $2F,a                       ; 1ADC
     clr1 !spc_flags.6                 ; 1ADE
     bbs !spc_track_flags.7,.l1AE9     ; 1AE0
-    bbs $2D.0,Spc_1B09_l1B15          ; 1AE3
+    bbs $2D.0,SpcKeyOffAll_l1B15      ; 1AE3
     jmp SpcMusicPause                 ; 1AE6  ; not reached in the traces so far
 .l1AE9:
-    call Spc_1AEF                     ; 1AE9
+    call SpcKeyOffAll                 ; 1AE9
     jmp SpcReload                     ; 1AEC
 
-Spc_1AEF:
+; @routine 19:D779 SpcKeyOffAll
+; WHAT IT DOES: Keys off all eight voices.
+; HOW: DSP KOF ($5C) = $FF through SpcDspWrite.
+; Entry: none. Exit: A = $FF, Y = $5C.
+; @spc 1AEF
+%spc($1AEF, $19D779)
+SpcKeyOffAll:
     mov a,#$FF                        ; 1AEF
     mov y,#$5C                        ; 1AF1
     jmp SpcDspWrite                   ; 1AF3
@@ -2950,65 +3088,63 @@ Spc_1AEF:
     mov.w $0564,a                     ; 1AF8
     mov.w !spc_volume_scale,a         ; 1AFB
     ret                               ; 1AFE
-
-Spc_1AFF:
-    call Spc_1A83                     ; 1AFF
+    call SpcSfxStopAll                ; 1AFF
     mov.b a,!spc_master_volume+1      ; 1B02
-    beq Spc_1AB0_l1AE9                ; 1B04
+    beq SpcMusicFade_l1AE9            ; 1B04
     set1 !spc_track_flags.7           ; 1B06
     ret                               ; 1B08
-
-Spc_1B09:
     set1 $2D.0                        ; 1B09
-    call Spc_1A83                     ; 1B0B
+    call SpcSfxStopAll                ; 1B0B
     mov.b a,!spc_master_volume+1      ; 1B0E
     beq .l1B15                        ; 1B10
     set1 $2D.0                        ; 1B12
     ret                               ; 1B14
 .l1B15:
-    call Spc_1AEF                     ; 1B15
+    call SpcKeyOffAll                 ; 1B15
     mov.w a,!spc_control              ; 1B18
     or a,#$80                         ; 1B1B
     mov.w !spc_control,a              ; 1B1D
     jmp $FFC0                         ; 1B20
-
-Spc_1B23:
     mov.b a,$20                       ; 1B23
     setc                              ; 1B25
     sbc a,#$2A                        ; 1B26
     mov.w $0562,a                     ; 1B28
     ret                               ; 1B2B
 
-Spc_1B2C:
+; @routine 19:D7B6 SpcCommandChannelCheck
+; WHAT IT DOES: A sound command $1D outside the list at $26D6 is checked against the list at $26E4: when an earlier-listed sound already plays on its channel, the command is dropped; the command kept is also stored at $1F.
+; HOW: List scans; SpcSfxLookup, SpcSfxChannel.
+; Entry: none. Exit: X = channel.
+; @spc 1B2C
+%spc($1B2C, $19D7B6)
+SpcCommandChannelCheck:
     mov.b a,$1D                       ; 1B2C
-    beq Spc_1B48_l1B76                ; 1B2E
+    beq .l1B76                        ; 1B2E
     mov y,#$00                        ; 1B30
 .l1B32:
     mov.w a,$26D6+y                   ; 1B32
     beq .l1B3E                        ; 1B35
     cmp.b a,$1D                       ; 1B37
-    beq Spc_1B48_l1B79                ; 1B39
+    beq .l1B79                        ; 1B39
     inc y                             ; 1B3B
     bra .l1B32                        ; 1B3C
 .l1B3E:
     mov y,#$00                        ; 1B3E
 .l1B40:
     mov.w a,$26E4+y                   ; 1B40
-    beq Spc_1B48_l1B79                ; 1B43
+    beq .l1B79                        ; 1B43
     push a                            ; 1B45
     mov.b a,$1D                       ; 1B46
-
-Spc_1B48:
     push y                            ; 1B48
-    call Spc_1C8A                     ; 1B49
-    call Spc_1C9E                     ; 1B4C
+    call SpcSfxLookup                 ; 1B49
+    call SpcSfxChannel                ; 1B4C
     pop y                             ; 1B4F
     pop a                             ; 1B50
     cmp.w a,$0390+x                   ; 1B51
     beq .l1B59                        ; 1B54
 .l1B56:
     inc y                             ; 1B56
-    bra Spc_1B2C_l1B40                ; 1B57
+    bra .l1B40                        ; 1B57
 .l1B59:
     mov x,#$00                        ; 1B59
 .l1B5B:
@@ -3033,7 +3169,13 @@ Spc_1B48:
 .l1B79:
     ret                               ; 1B79
 
-Spc_1B7A:
+; @routine 19:D804 SpcCommandBlock
+; WHAT IT DOES: A sound command in the list at $1B8C is dropped.
+; HOW: A zero-ended list scan.
+; Entry: none. Exit: X = index.
+; @spc 1B7A
+%spc($1B7A, $19D804)
+SpcCommandBlock:
     mov x,#$00                        ; 1B7A
 .l1B7C:
     mov.w a,$1B8C+x                   ; 1B7C
@@ -3048,7 +3190,13 @@ Spc_1B7A:
     ret                               ; 1B8B
     db $02, $25, $15, $17, $21, $00
 
-Spc_1B92:
+; @routine 19:D81C SpcSfxHolds
+; WHAT IT DOES: The channels' hold counters $0468 count up; a new command whose channel is held ($0470) is dropped, and a command in the list at $1C04 starts its channel's hold; a hold ends when its count reaches the list's time.
+; HOW: Pairs (sound, time) in the list at $1C04.
+; Entry: none. Exit: A, X, Y changed.
+; @spc 1B92
+%spc($1B92, $19D81C)
+SpcSfxHolds:
     mov x,#$00                        ; 1B92
 .l1B94:
     mov.w a,$0468+x                   ; 1B94
@@ -3057,15 +3205,11 @@ Spc_1B92:
     mov.w $0468+x,a                   ; 1B9A
 .l1B9D:
     inc x                             ; 1B9D
-
-Spc_1B9E:
     cmp x,#$08                        ; 1B9E
-    bne Spc_1B92_l1B94                ; 1BA0
+    bne .l1B94                        ; 1BA0
     mov.b a,$1D                       ; 1BA2
-    beq Spc_1BA9_l1BD3                ; 1BA4
-    call Spc_19EA                     ; 1BA6
-
-Spc_1BA9:
+    beq .l1BD3                        ; 1BA4
+    call SpcSfxPointer                ; 1BA6
     mov y,#$00                        ; 1BA9
     mov a,($24)+y                     ; 1BAB
     and a,#$07                        ; 1BAD
@@ -3123,7 +3267,7 @@ Spc_1BA9:
     db $1E, $09, $00
 .l1C07:
     mov.b a,$1D                       ; 1C07
-    call Spc_1424                     ; 1C09
+    call SpcSoundQueuePush            ; 1C09
     mov $1D,#$00                      ; 1C0C
     cmp $1D,#$00                      ; 1C0F
     beq .l1C1B                        ; 1C12
@@ -3165,33 +3309,45 @@ Spc_1BA9:
     cmp.b a,$1E                       ; 1C56
     bne .l1C5D                        ; 1C58
 .l1C5A:
-    jmp Spc_1CCD                      ; 1C5A
+    jmp SpcSfxChannelsFrame           ; 1C5A
 .l1C5D:
     mov.b $1E,a                       ; 1C5D  ; not reached in the traces so far
     mov.b a,$1D                       ; 1C5F  ; not reached in the traces so far
     beq .l1C5A                        ; 1C61  ; not reached in the traces so far
 .l1C63:
     mov.b $23,a                       ; 1C63
-    call Spc_1C8A                     ; 1C65
-    call Spc_1C9E                     ; 1C68
-    call Spc_1CA5                     ; 1C6B
-    call Spc_1C84                     ; 1C6E
-    call Spc_1CED                     ; 1C71
+    call SpcSfxLookup                 ; 1C65
+    call SpcSfxChannel                ; 1C68
+    call SpcSfxMode                   ; 1C6B
+    call SpcSfxActivate               ; 1C6E
+    call SpcSfxChannelSave            ; 1C71
     mov.b a,$23                       ; 1C74
     mov.w $0410+x,a                   ; 1C76
     push x                            ; 1C79
-    call Spc_1CCD                     ; 1C7A
+    call SpcSfxChannelsFrame          ; 1C7A
     pop x                             ; 1C7D
     mov a,#$00                        ; 1C7E
     mov.w $0410+x,a                   ; 1C80
     ret                               ; 1C83
 
-Spc_1C84:
+; @routine 19:D90E SpcSfxActivate
+; WHAT IT DOES: Marks channel X active ($0408 = 1).
+; HOW: Store.
+; Entry: X = channel. Exit: A = 1.
+; @spc 1C84
+%spc($1C84, $19D90E)
+SpcSfxActivate:
     mov a,#$01                        ; 1C84
     mov.w $0408+x,a                   ; 1C86
     ret                               ; 1C89
 
-Spc_1C8A:
+; @routine 19:D914 SpcSfxLookup
+; WHAT IT DOES: The data of sound A: its pointer from $0702 into $20/$21 and its first byte (the channel and mode) in X.
+; HOW: (A - 1) * 2 as the index; MOV A,($20)+Y.
+; Entry: A = sound. Exit: X = header byte, Y = 0.
+; @spc 1C8A
+%spc($1C8A, $19D914)
+SpcSfxLookup:
     dec a                             ; 1C8A
     asl a                             ; 1C8B
     mov y,a                           ; 1C8C
@@ -3205,14 +3361,26 @@ Spc_1C8A:
     mov x,a                           ; 1C9C
     ret                               ; 1C9D
 
-Spc_1C9E:
+; @routine 19:D928 SpcSfxChannel
+; WHAT IT DOES: Keeps the header byte X at $26 and leaves its channel (low four bits) in X.
+; HOW: AND #$0F.
+; Entry: X = header byte. Exit: X = channel.
+; @spc 1C9E
+%spc($1C9E, $19D928)
+SpcSfxChannel:
     mov.b $26,x                       ; 1C9E
     mov a,x                           ; 1CA0
     and a,#$0F                        ; 1CA1
     mov x,a                           ; 1CA3
     ret                               ; 1CA4
 
-Spc_1CA5:
+; @routine 19:D92F SpcSfxMode
+; WHAT IT DOES: The header's mode bits for channel X: bit 7 marks a looping sound ($0480 = 1, or 2 with bit 5, which also drops a queued one); otherwise a looping channel saves its sound to restart ($04F8).
+; HOW: BBC tests on $26.
+; Entry: X = channel, $26 = header. Exit: A changed.
+; @spc 1CA5
+%spc($1CA5, $19D92F)
+SpcSfxMode:
     bbc $26.7,.l1CBA                  ; 1CA5
     bbc $26.5,.l1CB4                  ; 1CA8
     mov a,#$00                        ; 1CAB
@@ -3227,22 +3395,27 @@ Spc_1CA5:
 .l1CBA:
     mov.w a,$0480+x                   ; 1CBA
     cmp a,#$01                        ; 1CBD
-    bne Spc_1CCC                      ; 1CBF
+    bne .l1CCC                        ; 1CBF
     mov.w a,$04F8+x                   ; 1CC1
-    bne Spc_1CCC                      ; 1CC4
+    bne .l1CCC                        ; 1CC4
     mov.w a,$0390+x                   ; 1CC6
     mov.w $04F8+x,a                   ; 1CC9
-
-Spc_1CCC:
+.l1CCC:
     ret                               ; 1CCC
 
-Spc_1CCD:
+; @routine 19:D957 SpcSfxChannelsFrame
+; WHAT IT DOES: Runs every active sound effect channel's tick (SpcSfxChannelLoad, SpcSfxChannelStep).
+; HOW: X from 0 to 7.
+; Entry: none. Exit: X = 8.
+; @spc 1CCD
+%spc($1CCD, $19D957)
+SpcSfxChannelsFrame:
     mov x,#$00                        ; 1CCD
 .l1CCF:
     mov.w a,$0408+x                   ; 1CCF
     beq .l1CDA                        ; 1CD2
-    call Spc_1CE2                     ; 1CD4
-    call Spc_1CF8                     ; 1CD7
+    call SpcSfxChannelLoad            ; 1CD4
+    call SpcSfxChannelStep            ; 1CD7
 .l1CDA:
     inc x                             ; 1CDA
     cmp x,#$08                        ; 1CDB
@@ -3251,25 +3424,41 @@ Spc_1CCD:
 .l1CE1:
     ret                               ; 1CE1
 
-Spc_1CE2:
+; @routine 19:D96C SpcSfxChannelLoad
+; WHAT IT DOES: Channel X's data pointer ($0488/$0490) into $20/$21.
+; HOW: Two copies.
+; Entry: X = channel. Exit: A = the pointer's high byte.
+; @spc 1CE2
+%spc($1CE2, $19D96C)
+SpcSfxChannelLoad:
     mov.w a,$0488+x                   ; 1CE2
-
-Spc_1CE5:
     mov.b $20,a                       ; 1CE5
     mov.w a,$0490+x                   ; 1CE7
     mov.b $21,a                       ; 1CEA
     ret                               ; 1CEC
 
-Spc_1CED:
+; @routine 19:D977 SpcSfxChannelSave
+; WHAT IT DOES: $20/$21 back as channel X's data pointer.
+; HOW: Two copies.
+; Entry: X = channel. Exit: A = the high byte.
+; @spc 1CED
+%spc($1CED, $19D977)
+SpcSfxChannelSave:
     mov.b a,$20                       ; 1CED
     mov.w $0488+x,a                   ; 1CEF
     mov.b a,$21                       ; 1CF2
     mov.w $0490+x,a                   ; 1CF4
     ret                               ; 1CF7
 
-Spc_1CF8:
+; @routine 19:D982 SpcSfxChannelStep
+; WHAT IT DOES: Channel X's state ($03F8: 0 start, 1 started, 2 and 3 playing, 4 stopping): a new sound ($0410) starts with its voice taken from the music and keyed off; playing, it is keyed on, read (SpcSfxRead), its special handler run (SpcSfxSpecial) and its DSP registers written; stop requests ($03E0) by reason, the end of a non-looping sound, or a fade's end release the voice (SpcSfxRelease) and clear the channel.
+; HOW: Compare chains on the state and the request; tail jumps into the shared code.
+; Entry: X = channel, $20/$21 its pointer. Exit: A, Y changed.
+; @spc 1CF8
+%spc($1CF8, $19D982)
+SpcSfxChannelStep:
     mov.w a,$03F8+x                   ; 1CF8
-    beq Spc_1D50                      ; 1CFB
+    beq .l1D50                        ; 1CFB
     cmp a,#$01                        ; 1CFD
     beq .l1D1C                        ; 1CFF
     cmp a,#$02                        ; 1D01
@@ -3277,18 +3466,18 @@ Spc_1CF8:
     cmp a,#$03                        ; 1D05
     beq .l1D36                        ; 1D07
     mov.w a,$0410+x                   ; 1D09
-    bne Spc_1D50_l1D53                ; 1D0C
+    bne .l1D53                        ; 1D0C
     mov a,#$00                        ; 1D0E
     mov.w $0390+x,a                   ; 1D10
     mov.w $03F8+x,a                   ; 1D13
     mov.w $0408+x,a                   ; 1D16
-    jmp Spc_1E31                      ; 1D19
+    jmp SpcSfxRelease                 ; 1D19
 .l1D1C:
     mov.w a,$0410+x                   ; 1D1C
-    bne Spc_1D50_l1D53                ; 1D1F
+    bne .l1D53                        ; 1D1F
     mov a,#$02                        ; 1D21
     mov.w $03F8+x,a                   ; 1D23
-    call Spc_1E89                     ; 1D26
+    call SpcKeyOnVoice                ; 1D26
     mov a,#$00                        ; 1D29
     mov.w $03E8+x,a                   ; 1D2B
 .l1D2E:
@@ -3298,18 +3487,17 @@ Spc_1CF8:
     mov.w $03E8+x,a                   ; 1D33
 .l1D36:
     mov.w a,$0410+x                   ; 1D36
-    bne Spc_1D50_l1D53                ; 1D39
+    bne .l1D53                        ; 1D39
     mov a,#$03                        ; 1D3B
     mov.w $03F8+x,a                   ; 1D3D
     mov.w a,$03E8+x                   ; 1D40
-    beq Spc_1D63_l1D6C                ; 1D43
+    beq SpcSfxTakeVoice_l1D6C         ; 1D43
     cmp a,#$01                        ; 1D45
     beq .l1D1C                        ; 1D47
     mov a,#$00                        ; 1D49
     mov.w $03F0+x,a                   ; 1D4B
     bra .l1D1C                        ; 1D4E
-
-Spc_1D50:
+.l1D50:
     mov.w a,$0410+x                   ; 1D50
 .l1D53:
     mov.w $0390+x,a                   ; 1D53
@@ -3319,14 +3507,20 @@ Spc_1D50:
     mov.w $03F0+x,a                   ; 1D5D
     mov.w $03E0+x,a                   ; 1D60
 
-Spc_1D63:
-    call Spc_1E0F                     ; 1D63
-    jmp Spc_1E93                      ; 1D66
+; @routine 19:D9ED SpcSfxTakeVoice
+; WHAT IT DOES: Takes voice X from the music (SpcSfxMarkVoice) and keys it off.
+; HOW: Two CALLs.
+; Entry: X = channel. Exit: as SpcKeyOffVoice.
+; @spc 1D63
+%spc($1D63, $19D9ED)
+SpcSfxTakeVoice:
+    call SpcSfxMarkVoice              ; 1D63
+    jmp SpcKeyOffVoice                ; 1D66
 .l1D69:
     jmp $1DE8                         ; 1D69
 .l1D6C:
     mov.w a,$03E0+x                   ; 1D6C
-    beq Spc_1CF8_l1D2E                ; 1D6F
+    beq SpcSfxChannelStep_l1D2E       ; 1D6F
     cmp a,#$01                        ; 1D71
     beq .l1D69                        ; 1D73
     cmp a,#$07                        ; 1D75
@@ -3344,7 +3538,7 @@ Spc_1D63:
 .l1D8D:
     mov a,#$00                        ; 1D8D  ; not reached in the traces so far
     mov.w $03E0+x,a                   ; 1D8F  ; not reached in the traces so far
-    bra Spc_1CF8_l1D2E                ; 1D92  ; not reached in the traces so far
+    bra SpcSfxChannelStep_l1D2E       ; 1D92  ; not reached in the traces so far
 .l1D94:
     mov.w a,$0390+x                   ; 1D94
     cmp a,#$02                        ; 1D97
@@ -3389,11 +3583,11 @@ Spc_1D63:
     mov.w $03E0+x,a                   ; 1DEA
     mov.w a,$04F8+x                   ; 1DED
     beq .l1DF5                        ; 1DF0
-    call Spc_1424                     ; 1DF2
+    call SpcSoundQueuePush            ; 1DF2
 .l1DF5:
     mov a,#$04                        ; 1DF5
     mov.w $03F8+x,a                   ; 1DF7
-    call Spc_1E93                     ; 1DFA
+    call SpcKeyOffVoice               ; 1DFA
     mov a,#$00                        ; 1DFD
     mov.w $0480+x,a                   ; 1DFF
     mov.w $04F8+x,a                   ; 1E02
@@ -3402,14 +3596,26 @@ Spc_1D63:
     mov.w $04F0+x,a                   ; 1E0B
     ret                               ; 1E0E
 
-Spc_1E0F:
-    call Spc_1E19                     ; 1E0F
+; @routine 19:DA99 SpcSfxMarkVoice
+; WHAT IT DOES: Marks voice X as a sound effect's ($1A).
+; HOW: SpcVoiceMask, OR.
+; Entry: X = voice. Exit: A = $1A.
+; @spc 1E0F
+%spc($1E0F, $19DA99)
+SpcSfxMarkVoice:
+    call SpcVoiceMask                 ; 1E0F
     mov.b a,!spc_sfx_voices           ; 1E12
     or.b a,$22                        ; 1E14
     mov.b !spc_sfx_voices,a           ; 1E16
     ret                               ; 1E18
 
-Spc_1E19:
+; @routine 19:DAA3 SpcVoiceMask
+; WHAT IT DOES: $22 = the bit of voice X (1 << X).
+; HOW: ROL of a carry X + 1 times.
+; Entry: X = voice. Exit: A = $22.
+; @spc 1E19
+%spc($1E19, $19DAA3)
+SpcVoiceMask:
     mov.b $22,x                       ; 1E19
     inc.b $22                         ; 1E1B
     mov a,#$00                        ; 1E1D
@@ -3421,15 +3627,27 @@ Spc_1E19:
     mov.b $22,a                       ; 1E25
     ret                               ; 1E27
 
-Spc_1E28:
+; @routine 19:DAB2 SpcVoiceMaskNot
+; WHAT IT DOES: $22 = every bit but voice X's.
+; HOW: ROL of $FF with a clear carry.
+; Entry: X = voice. Exit: A = $22.
+; @spc 1E28
+%spc($1E28, $19DAB2)
+SpcVoiceMaskNot:
     mov.b $22,x                       ; 1E28
     inc.b $22                         ; 1E2A
     mov a,#$FF                        ; 1E2C
     clrc                              ; 1E2E
-    bra Spc_1E19_l1E20                ; 1E2F
+    bra SpcVoiceMask_l1E20            ; 1E2F
 
-Spc_1E31:
-    call Spc_1E28                     ; 1E31
+; @routine 19:DABB SpcSfxRelease
+; WHAT IT DOES: Gives voice X back to the music: its sound effect bit cleared, the music instrument reloaded (SpcLoadInstrument), its echo bit from the music's echo voices $4F, and its volume rewritten (SpcVoiceVolumeWrite).
+; HOW: Masks through $22; X doubled for the music's arrays.
+; Entry: X = voice. Exit: X kept.
+; @spc 1E31
+%spc($1E31, $19DABB)
+SpcSfxRelease:
+    call SpcVoiceMaskNot              ; 1E31
     mov.b a,!spc_sfx_voices           ; 1E34
     and.b a,$22                       ; 1E36
     mov.b !spc_sfx_voices,a           ; 1E38
@@ -3449,22 +3667,22 @@ Spc_1E31:
     dec.b $20                         ; 1E4D
     bne .l1E4C                        ; 1E4F
     bcc .l1E5E                        ; 1E51
-    call Spc_1E19                     ; 1E53
+    call SpcVoiceMask                 ; 1E53
     mov.b a,!spc_echo_voices          ; 1E56
     or.b a,$22                        ; 1E58
     mov.b !spc_echo_voices,a          ; 1E5A
     bra .l1E67                        ; 1E5C
 .l1E5E:
-    call Spc_1E28                     ; 1E5E
+    call SpcVoiceMaskNot              ; 1E5E
     mov.b a,!spc_echo_voices          ; 1E61
     and.b a,$22                       ; 1E63
     mov.b !spc_echo_voices,a          ; 1E65
 .l1E67:
-    call Spc_1E28                     ; 1E67
+    call SpcVoiceMaskNot              ; 1E67
     mov.b a,!spc_sfx_voices           ; 1E6A
     and.b a,$22                       ; 1E6C
     mov.b !spc_sfx_voices,a           ; 1E6E
-    call Spc_1E19                     ; 1E70
+    call SpcVoiceMask                 ; 1E70
     mov.b a,!spc_voice_bit            ; 1E73
     or.b a,$22                        ; 1E75
     mov.b !spc_voice_bit,a            ; 1E77
@@ -3480,25 +3698,43 @@ Spc_1E31:
     pop x                             ; 1E87
     ret                               ; 1E88
 
-Spc_1E89:
-    call Spc_1E19                     ; 1E89
+; @routine 19:DB13 SpcKeyOnVoice
+; WHAT IT DOES: Marks voice X for key-on ($45).
+; HOW: SpcVoiceMask, OR.
+; Entry: X = voice. Exit: A = $45.
+; @spc 1E89
+%spc($1E89, $19DB13)
+SpcKeyOnVoice:
+    call SpcVoiceMask                 ; 1E89
     mov.b a,!spc_key_on               ; 1E8C
     or.b a,$22                        ; 1E8E
     mov.b !spc_key_on,a               ; 1E90
     ret                               ; 1E92
 
-Spc_1E93:
-    call Spc_1E19                     ; 1E93
+; @routine 19:DB1D SpcKeyOffVoice
+; WHAT IT DOES: Marks voice X for key-off ($46).
+; HOW: SpcVoiceMask, OR.
+; Entry: X = voice. Exit: A = $46.
+; @spc 1E93
+%spc($1E93, $19DB1D)
+SpcKeyOffVoice:
+    call SpcVoiceMask                 ; 1E93
     mov.b a,!spc_key_off              ; 1E96
     or.b a,$22                        ; 1E98
     mov.b !spc_key_off,a              ; 1E9A
     ret                               ; 1E9C
 .l1E9D:
-    call Spc_1EA6                     ; 1E9D
-    call Spc_23CF                     ; 1EA0
+    call SpcSfxRead                   ; 1E9D
+    call SpcSfxSpecial                ; 1EA0
     jmp $22D3                         ; 1EA3
 
-Spc_1EA6:
+; @routine 19:DB30 SpcSfxRead
+; WHAT IT DOES: Channel X's sound data for this tick: its age $03F0 counts (a set lifetime $0448 stops it); on the first tick its pitch, volume, slide and envelope state is reset (ADSR $8F/$E0, echo off); while a note's length $0418 runs, the slides step (SpcSfxPitchSlide, volume slides); then bytes are read from ($20)+Y: note numbers set the pitch (table $CAA8, by octave), $00-$7F lengths, and commands $E0 and up run their handler from the table at $1F59 (volume, pan, pitch and volume slides, echo on/off, ADSR, sample, lifetime, jumps, end).
+; HOW: JMP ($1F59+X) with X pushed; handlers return into the read loop.
+; Entry: X = channel. Exit: as the last handler leaves it.
+; @spc 1EA6
+%spc($1EA6, $19DB30)
+SpcSfxRead:
     mov.w a,$0390+x                   ; 1EA6
     beq .l1EC9                        ; 1EA9
     mov.w a,$0448+x                   ; 1EAB
@@ -3507,7 +3743,7 @@ Spc_1EA6:
     setc                              ; 1EB3
     sbc.w a,$0448+x                   ; 1EB4
     bmi .l1EBC                        ; 1EB7
-    call Spc_194C                     ; 1EB9
+    call SpcSfxStop                   ; 1EB9
 .l1EBC:
     mov.w a,$03F0+x                   ; 1EBC
     cmp a,#$FF                        ; 1EBF
@@ -3521,12 +3757,12 @@ Spc_1EA6:
     mov.w $03F0+x,a                   ; 1ECB  ; not reached in the traces so far
     ret                               ; 1ECE  ; not reached in the traces so far
 .l1ECF:
-    call Spc_1CE2                     ; 1ECF
+    call SpcSfxChannelLoad            ; 1ECF
     mov.w a,$03F0+x                   ; 1ED2
     beq .l1EDD                        ; 1ED5
     cmp a,#$01                        ; 1ED7
     beq .l1EDE                        ; 1ED9
-    bra Spc_1F1B_l1F30                ; 1EDB
+    bra .l1F30                        ; 1EDB
 .l1EDD:
     ret                               ; 1EDD  ; not reached in the traces so far
 .l1EDE:
@@ -3551,12 +3787,10 @@ Spc_1EA6:
     mov.w $03C0+x,a                   ; 1F13
     mov.w $04A0+x,a                   ; 1F16
     mov a,#$8F                        ; 1F19
-
-Spc_1F1B:
     mov.w $03D0+x,a                   ; 1F1B
     mov a,#$E0                        ; 1F1E
     mov.w $03D8+x,a                   ; 1F20
-    call Spc_1E28                     ; 1F23
+    call SpcVoiceMaskNot              ; 1F23
     mov.b a,!spc_echo_voices          ; 1F26
     and.b a,$22                       ; 1F28
     mov.b !spc_echo_voices,a          ; 1F2A
@@ -3569,7 +3803,7 @@ Spc_1F1B:
     beq .l1F43                        ; 1F37
     cmp a,#$FF                        ; 1F39
     beq .l1F43                        ; 1F3B
-    call Spc_224A                     ; 1F3D
+    call SpcSfxPitchSlide             ; 1F3D
     jmp $2286                         ; 1F40
 .l1F43:
     mov.w a,$0400+x                   ; 1F43
@@ -3604,7 +3838,7 @@ Spc_1F1B:
     beq .l1FAA                        ; 1FA3
     bra .l1FAF                        ; 1FA5
 .l1FA7:
-    call Spc_1E93                     ; 1FA7
+    call SpcKeyOffVoice               ; 1FA7
 .l1FAA:
     mov a,#$01                        ; 1FAA
     mov.w $03E8+x,a                   ; 1FAC
@@ -3623,7 +3857,7 @@ Spc_1F1B:
     mov.w $0420+x,a                   ; 1FC2
     mov a,y                           ; 1FC5
     mov.w $0400+x,a                   ; 1FC6
-    jmp Spc_1CED                      ; 1FC9
+    jmp SpcSfxChannelSave             ; 1FC9
 .l1FCC:
     push y                            ; 1FCC
     push x                            ; 1FCD
@@ -3644,7 +3878,7 @@ Spc_1F1B:
     setc                              ; 1FE5
     sbc a,#$07                        ; 1FE6
     mov.b $24,a                       ; 1FE8
-    beq Spc_1FFE                      ; 1FEA
+    beq .l1FFE                        ; 1FEA
 .l1FEC:
     mov y,#$00                        ; 1FEC
     mov.b a,$23                       ; 1FEE
@@ -3656,8 +3890,7 @@ Spc_1F1B:
     mov.b $22,a                       ; 1FF8
     inc.b $24                         ; 1FFA
     bne .l1FEC                        ; 1FFC
-
-Spc_1FFE:
+.l1FFE:
     pop x                             ; 1FFE
     mov.b a,$22                       ; 1FFF
     mov.w $03B8+x,a                   ; 2001
@@ -3666,28 +3899,24 @@ Spc_1FFE:
     mov.w $03C0+x,a                   ; 2009
     mov.w $04A0+x,a                   ; 200C
     mov.w a,$0440+x                   ; 200F
-
-Spc_2012:
-    beq Spc_2048_l204F                ; 2012
+    beq .l204F                        ; 2012
     push x                            ; 2014
     mov.b $24,a                       ; 2015
     mov.b a,$23                       ; 2017
     setc                              ; 2019
     sbc a,#$10                        ; 201A
-    bmi Spc_2027_l2030                ; 201C
+    bmi .l2030                        ; 201C
     mov.b a,$22                       ; 201E
     mov.b y,$23                       ; 2020
     mov x,#$43                        ; 2022
     div ya,x                          ; 2024
     mov y,#$04                        ; 2025
-
-Spc_2027:
     mul ya                            ; 2027
     mov x,#$FC                        ; 2028
     div ya,x                          ; 202A
     mov.b y,$24                       ; 202B
     mul ya                            ; 202D
-    bra Spc_203C_l2045                ; 202E
+    bra .l2045                        ; 202E
 .l2030:
     mov.b a,$22                       ; 2030
     mov.b y,$23                       ; 2032
@@ -3696,8 +3925,6 @@ Spc_2027:
     mov x,a                           ; 2037
     mov a,#$FF                        ; 2038
     mov y,#$00                        ; 203A
-
-Spc_203C:
     div ya,x                          ; 203C
     mov x,a                           ; 203D
     mov y,#$00                        ; 203E
@@ -3707,8 +3934,6 @@ Spc_203C:
 .l2045:
     addw ya,$22                       ; 2045
     pop x                             ; 2047
-
-Spc_2048:
     mov.w $03B8+x,a                   ; 2048
     mov a,y                           ; 204B
     mov.w $03C0+x,a                   ; 204C
@@ -3716,29 +3941,27 @@ Spc_2048:
     pop y                             ; 204F
 .l2050:
     jmp $1F47                         ; 2050
-
-Spc_2053:
     mov a,#$01                        ; 2053
-
-Spc_2055:
-    bra Spc_2057_l2059                ; 2055
-
-Spc_2057:
+    bra .l2059                        ; 2055
     mov a,#$02                        ; 2057
 .l2059:
     pop x                             ; 2059
     mov.w $0478+x,a                   ; 205A
 .l205D:
-    bra Spc_2048_l2050                ; 205D
-
-Spc_205F:
+    bra .l2050                        ; 205D
     pop x                             ; 205F
     inc y                             ; 2060
     mov a,($20)+y                     ; 2061
     mov.w $03C8+x,a                   ; 2063
-    bra Spc_2057_l205D                ; 2066
+    bra .l205D                        ; 2066
 
-Spc_2068:
+; @routine 19:DCF2 SpcSfxEngineScale
+; WHAT IT DOES: For a channel in engine mode ($04F0 = 4), scales the volume A by the engine speed from port 3 ($03 * 3, / 2, + $80); otherwise A is kept.
+; HOW: SpcDiv16, SpcMul16; clamped to $7F.
+; Entry: A = volume, X = channel. Exit: A = volume; X, Y kept.
+; @spc 2068
+%spc($2068, $19DCF2)
+SpcSfxEngineScale:
     push x                            ; 2068
     push y                            ; 2069
     mov.b $22,a                       ; 206A
@@ -3752,7 +3975,7 @@ Spc_2068:
     mov y,#$03                        ; 2078
     mul ya                            ; 207A
     mov x,#$02                        ; 207B
-    call Spc_CA89                     ; 207D
+    call SpcDiv16                     ; 207D
     mov.b $24,a                       ; 2080
     mov.b $25,y                       ; 2082
     mov a,#$80                        ; 2084
@@ -3762,7 +3985,7 @@ Spc_2068:
     pop x                             ; 208B
     mov y,a                           ; 208C
     mov.b a,$22                       ; 208D
-    call Spc_CA75                     ; 208F
+    call SpcMul16                     ; 208F
     mov a,y                           ; 2092
     bpl .l2097                        ; 2093
     mov a,#$7F                        ; 2095  ; not reached in the traces so far
@@ -3773,11 +3996,7 @@ Spc_2068:
 .l209A:
     mov.b a,$22                       ; 209A
     bra .l2097                        ; 209C
-
-Spc_209E:
     set1 !spc_track_flags.6           ; 209E
-
-Spc_20A0:
     pop x                             ; 20A0
     inc y                             ; 20A1
     mov.w a,$04F0+x                   ; 20A2
@@ -3787,14 +4006,14 @@ Spc_20A0:
     beq .l20CA                        ; 20AB
 .l20AD:
     mov a,($20)+y                     ; 20AD
-    call Spc_2068                     ; 20AF
+    call SpcSfxEngineScale            ; 20AF
     mov.w $0398+x,a                   ; 20B2
     mov.w $04A8+x,a                   ; 20B5
     bbs !spc_track_flags.6,.l20BC     ; 20B8
     inc y                             ; 20BB
 .l20BC:
     mov a,($20)+y                     ; 20BC
-    call Spc_2068                     ; 20BE
+    call SpcSfxEngineScale            ; 20BE
     mov.w $03A0+x,a                   ; 20C1
     mov.w $04B0+x,a                   ; 20C4
     jmp $20DE                         ; 20C7
@@ -3815,8 +4034,6 @@ Spc_20A0:
     clr1 !spc_track_flags.6           ; 20E6
 .l20E8:
     jmp $1F47                         ; 20E8
-
-Spc_20EB:
     pop x                             ; 20EB
     inc y                             ; 20EC
     mov a,($20)+y                     ; 20ED
@@ -3824,9 +4041,7 @@ Spc_20EB:
     mov.b $22,a                       ; 20F1
     mov.w a,$03D0+x                   ; 20F3
     and a,#$F0                        ; 20F6
-    bra Spc_20FA_l210B                ; 20F8
-
-Spc_20FA:
+    bra .l210B                        ; 20F8
     pop x                             ; 20FA
     inc y                             ; 20FB
     mov a,($20)+y                     ; 20FC
@@ -3841,13 +4056,9 @@ Spc_20FA:
 .l210B:
     or.b a,$22                        ; 210B
     or a,#$80                         ; 210D
-
-Spc_210F:
     mov.w $03D0+x,a                   ; 210F
 .l2112:
-    bra Spc_20A0_l20E8                ; 2112
-
-Spc_2114:
+    bra .l20E8                        ; 2112
     pop x                             ; 2114
     inc y                             ; 2115
     mov a,($20)+y                     ; 2116
@@ -3860,9 +4071,7 @@ Spc_2114:
     mov.b $22,a                       ; 211F
     mov.w a,$03D8+x                   ; 2121
     and a,#$1F                        ; 2124
-    bra Spc_2128_l2135                ; 2126
-
-Spc_2128:
+    bra .l2135                        ; 2126
     pop x                             ; 2128
     inc y                             ; 2129
     mov a,($20)+y                     ; 212A
@@ -3874,9 +4083,7 @@ Spc_2128:
     or.b a,$22                        ; 2135
     mov.w $03D8+x,a                   ; 2137
 .l213A:
-    bra Spc_210F_l2112                ; 213A
-
-Spc_213C:
+    bra .l2112                        ; 213A
     pop x                             ; 213C
     inc y                             ; 213D
     mov a,($20)+y                     ; 213E
@@ -3887,27 +4094,21 @@ Spc_213C:
     mov a,#$01                        ; 2149
     mov.w $0438+x,a                   ; 214B
 .l214E:
-    bra Spc_2128_l213A                ; 214E
-
-Spc_2150:
+    bra .l213A                        ; 214E
     pop x                             ; 2150
-    bbs $28.0,Spc_215F_l2169          ; 2151
-    call Spc_1E19                     ; 2154
+    bbs $28.0,.l2169                  ; 2151
+    call SpcVoiceMask                 ; 2154
     mov.b a,!spc_echo_voices          ; 2157
     or.b a,$22                        ; 2159
     mov.b !spc_echo_voices,a          ; 215B
-    bra Spc_215F_l2169                ; 215D
-
-Spc_215F:
+    bra .l2169                        ; 215D
     pop x                             ; 215F
-    call Spc_1E28                     ; 2160
+    call SpcVoiceMaskNot              ; 2160
     mov.b a,!spc_echo_voices          ; 2163
     and.b a,$22                       ; 2165
     mov.b !spc_echo_voices,a          ; 2167
 .l2169:
-    bra Spc_213C_l214E                ; 2169
-
-Spc_216B:
+    bra .l214E                        ; 2169
     inc y                             ; 216B
     mov a,($20)+y                     ; 216C
     mov.b $24,a                       ; 216E
@@ -3936,13 +4137,19 @@ Spc_216B:
     mov a,x                           ; 2192
     lsr a                             ; 2193
     inc a                             ; 2194
-    call Spc_219C                     ; 2195
+    call SpcSfxStart                  ; 2195
 .l2198:
     pop y                             ; 2198
     pop x                             ; 2199
-    bra Spc_215F_l2169                ; 219A
+    bra .l2169                        ; 219A
 
-Spc_219C:
+; @routine 19:DE26 SpcSfxStart
+; WHAT IT DOES: Starts sound A (its data at $24/$25) on its channel unless that channel is in mode 2 or 3: mode bits, data pointer, active, then the start state (SpcSfxChannelStep's code).
+; HOW: SpcSfxChannel, SpcSfxMode, SpcSfxActivate.
+; Entry: A = sound, $24/$25 = data. Exit: as SpcSfxChannelStep.
+; @spc 219C
+%spc($219C, $19DE26)
+SpcSfxStart:
     mov.b $23,a                       ; 219C
     push a                            ; 219E
     mov y,#$00                        ; 219F
@@ -3953,28 +4160,24 @@ Spc_219C:
     beq .l21C6                        ; 21A9
     cmp a,#$03                        ; 21AB
     beq .l21C6                        ; 21AD
-    call Spc_1C9E                     ; 21AF
-    call Spc_1CA5                     ; 21B2
+    call SpcSfxChannel                ; 21AF
+    call SpcSfxMode                   ; 21B2
     mov.b a,$24                       ; 21B5
     mov.w $0488+x,a                   ; 21B7
     mov.b a,$25                       ; 21BA
     mov.w $0490+x,a                   ; 21BC
-    call Spc_1C84                     ; 21BF
+    call SpcSfxActivate               ; 21BF
     pop a                             ; 21C2
     jmp $1D53                         ; 21C3
 .l21C6:
     pop a                             ; 21C6  ; not reached in the traces so far
     ret                               ; 21C7  ; not reached in the traces so far
-
-Spc_21C8:
     pop x                             ; 21C8
     mov.w a,$0420+x                   ; 21C9
     bne .l21D1                        ; 21CC
-    call Spc_194C                     ; 21CE
+    call SpcSfxStop                   ; 21CE
 .l21D1:
     ret                               ; 21D1
-
-Spc_21D2:
     pop x                             ; 21D2
     inc y                             ; 21D3
     mov a,($20)+y                     ; 21D4
@@ -3992,30 +4195,22 @@ Spc_21D2:
     mov.w $0520+x,a                   ; 21ED
 .l21F0:
     jmp $1F47                         ; 21F0
-
-Spc_21F3:
     pop x                             ; 21F3
     inc y                             ; 21F4
     mov a,($20)+y                     ; 21F5
     mov.w $0440+x,a                   ; 21F7
 .l21FA:
-    bra Spc_21D2_l21F0                ; 21FA
-
-Spc_21FC:
+    bra .l21F0                        ; 21FA
     pop x                             ; 21FC
     mov a,#$00                        ; 21FD
     mov.w $0438+x,a                   ; 21FF
 .l2202:
-    bra Spc_21F3_l21FA                ; 2202
-
-Spc_2204:
+    bra .l21FA                        ; 2202
     pop x                             ; 2204
     mov a,#$00                        ; 2205
     mov.w $0520+x,a                   ; 2207
 .l220A:
-    bra Spc_21FC_l2202                ; 220A
-
-Spc_220C:
+    bra .l2202                        ; 220A
     pop x                             ; 220C
     inc y                             ; 220D
     mov a,($20)+y                     ; 220E
@@ -4027,46 +4222,42 @@ Spc_220C:
     mov.b $20,a                       ; 2217
     mov y,#$00                        ; 2219
     jmp $1F48                         ; 221B
-
-Spc_221E:
     pop x                             ; 221E
     inc y                             ; 221F
     mov a,($20)+y                     ; 2220
     mov.w $0448+x,a                   ; 2222
 .l2225:
-    bra Spc_2204_l220A                ; 2225
-
-Spc_2227:
+    bra .l220A                        ; 2225
     pop x                             ; 2227
-    call Spc_1E93                     ; 2228
+    call SpcKeyOffVoice               ; 2228
     mov a,#$02                        ; 222B
     mov.w $0478+x,a                   ; 222D
 .l2230:
-    bra Spc_221E_l2225                ; 2230
-
-Spc_2232:
+    bra .l2225                        ; 2230
     pop x                             ; 2232
     inc y                             ; 2233
     mov a,($20)+y                     ; 2234
     mov.w $04F0+x,a                   ; 2236
 .l2239:
-    bra Spc_2227_l2230                ; 2239
-
-Spc_223B:
+    bra .l2230                        ; 2239
     pop x                             ; 223B
     inc y                             ; 223C
     mov a,($20)+y                     ; 223D
     and a,#$FE                        ; 223F
     push y                            ; 2241
     push x                            ; 2242
-
-Spc_2243:
-    call Spc_EDF0                     ; 2243
+    call SpcNoiseSampleInit           ; 2243
     pop x                             ; 2246
     pop y                             ; 2247
-    bra Spc_2232_l2239                ; 2248
+    bra .l2239                        ; 2248
 
-Spc_224A:
+; @routine 19:DED4 SpcSfxPitchSlide
+; WHAT IT DOES: Channel X's pitch slide ($0438 on): the delta $0428/$0430 added to the pitch $0498/$04A0, clamped to 0-$3FFF, and copied to the DSP pitch $03B8/$03C0.
+; HOW: ADDW; sign and range tests.
+; Entry: X = channel. Exit: A, Y changed.
+; @spc 224A
+%spc($224A, $19DED4)
+SpcSfxPitchSlide:
     mov.w a,$0438+x                   ; 224A
     beq .l227A                        ; 224D
     mov.w a,$0428+x                   ; 224F
@@ -4106,7 +4297,7 @@ Spc_224A:
     mov.b $20,a                       ; 228E
     mov.w a,$0508+x                   ; 2290
     mov.b $21,a                       ; 2293
-    call Spc_22B0                     ; 2295
+    call SpcSfxVolumeSlide            ; 2295
     mov.w a,$0510+x                   ; 2298
     mov.b $20,a                       ; 229B
     mov.w a,$0518+x                   ; 229D
@@ -4115,7 +4306,7 @@ Spc_224A:
     clrc                              ; 22A3
     adc a,#$08                        ; 22A4
     mov x,a                           ; 22A6
-    call Spc_22B0                     ; 22A7
+    call SpcSfxVolumeSlide            ; 22A7
     mov a,x                           ; 22AA
     setc                              ; 22AB
     sbc a,#$08                        ; 22AC
@@ -4123,7 +4314,13 @@ Spc_224A:
 .l22AF:
     ret                               ; 22AF
 
-Spc_22B0:
+; @routine 19:DF3A SpcSfxVolumeSlide
+; WHAT IT DOES: One side of channel X's volume slide: the delta $20/$21 added to the volume $03A8/$04A8, clamped, and the volume byte to $0398.
+; HOW: ADDW; sign tests.
+; Entry: X = channel (plus 8 for the right side). Exit: A = the volume.
+; @spc 22B0
+%spc($22B0, $19DF3A)
+SpcSfxVolumeSlide:
     mov.w a,$04A8+x                   ; 22B0
     mov y,a                           ; 22B3
     mov.w a,$03A8+x                   ; 22B4
@@ -4154,30 +4351,28 @@ Spc_22B0:
     beq .l22E8                        ; 22DC
     mov.w a,$04C0+x                   ; 22DE
     beq .l22E8                        ; 22E1
-    call Spc_2336                     ; 22E3
+    call SpcSfxFadeVolume             ; 22E3
     bra .l22EB                        ; 22E6
 .l22E8:
     mov.w a,$0398+x                   ; 22E8
 .l22EB:
-    call Spc_23B2                     ; 22EB
+    call SpcSfxVolumeAdjust           ; 22EB
     pop y                             ; 22EE
     call SpcDspWrite                  ; 22EF
-
-Spc_22F2:
     inc y                             ; 22F2
     push y                            ; 22F3
     mov.w a,$0408+x                   ; 22F4
     beq .l2309                        ; 22F7
     mov.w a,$04C8+x                   ; 22F9
     beq .l2309                        ; 22FC
-    call Spc_CA96                     ; 22FE
-    call Spc_2336                     ; 2301
-    call Spc_CA9F                     ; 2304
+    call SpcIndexRight                ; 22FE
+    call SpcSfxFadeVolume             ; 2301
+    call SpcIndexLeft                 ; 2304
     bra .l230C                        ; 2307
 .l2309:
     mov.w a,$03A0+x                   ; 2309
 .l230C:
-    call Spc_23B2                     ; 230C
+    call SpcSfxVolumeAdjust           ; 230C
     pop y                             ; 230F
     call SpcDspWrite                  ; 2310
     inc y                             ; 2313
@@ -4185,8 +4380,6 @@ Spc_22F2:
     call SpcDspWrite                  ; 2317
     inc y                             ; 231A
     mov.w a,$03C0+x                   ; 231B
-
-Spc_231E:
     call SpcDspWrite                  ; 231E
     inc y                             ; 2321
     mov.w a,$03C8+x                   ; 2322
@@ -4198,16 +4391,22 @@ Spc_231E:
     mov.w a,$03D8+x                   ; 2330
     jmp SpcDspWrite                   ; 2333
 
-Spc_2336:
+; @routine 19:DFC0 SpcSfxFadeVolume
+; WHAT IT DOES: The volume of channel X while it fades out (count A, $04C0): the start volume and per-step drop taken at count 1, the volume interpolated down over $3C steps; at the end the channel stops (or the driver reloads or leaves, by flags).
+; HOW: SpcMul16, SpcDiv16 by $3C; SUBW.
+; Entry: A = count, X = channel. Exit: A = volume.
+; @spc 2336
+%spc($2336, $19DFC0)
+SpcSfxFadeVolume:
     cmp a,#$01                        ; 2336
     beq .l2348                        ; 2338
     cmp a,#$3C                        ; 233A
-    beq Spc_235D_l2385                ; 233C
+    beq .l2385                        ; 233C
     cmp a,#$FF                        ; 233E
-    beq Spc_235D_l23AD                ; 2340
+    beq .l23AD                        ; 2340
     inc a                             ; 2342
     mov.w $04C0+x,a                   ; 2343
-    bra Spc_235D_l2361                ; 2346
+    bra .l2361                        ; 2346
 .l2348:
     inc a                             ; 2348
     mov.w $04C0+x,a                   ; 2349
@@ -4216,11 +4415,9 @@ Spc_2336:
     mov.w a,$03A8+x                   ; 2350
     push x                            ; 2353
     mov x,#$3C                        ; 2354
-    call Spc_CA89                     ; 2356
+    call SpcDiv16                     ; 2356
     pop x                             ; 2359
     mov.w $04D0+x,a                   ; 235A
-
-Spc_235D:
     mov a,y                           ; 235D
     mov.w $04E0+x,a                   ; 235E
 .l2361:
@@ -4233,7 +4430,7 @@ Spc_235D:
     push x                            ; 236E
     mov x,a                           ; 236F
     mov.b a,$22                       ; 2370
-    call Spc_CA75                     ; 2372
+    call SpcMul16                     ; 2372
     pop x                             ; 2375
     mov.b $22,a                       ; 2376
     mov.b $23,y                       ; 2378
@@ -4254,23 +4451,29 @@ Spc_235D:
 .l2393:
     mov.b $22,x                       ; 2393
     bbs $22.3,.l23A2                  ; 2395
-    call Spc_194C                     ; 2398
+    call SpcSfxStop                   ; 2398
 .l239B:
     mov a,#$FF                        ; 239B
     mov.w $04C0+x,a                   ; 239D
     inc a                             ; 23A0
     ret                               ; 23A1
 .l23A2:
-    call Spc_CA9F                     ; 23A2
-    call Spc_194C                     ; 23A5
-    call Spc_CA96                     ; 23A8
+    call SpcIndexLeft                 ; 23A2
+    call SpcSfxStop                   ; 23A5
+    call SpcIndexRight                ; 23A8
     bra .l239B                        ; 23AB
 .l23AD:
     inc a                             ; 23AD  ; not reached in the traces so far
     mov.w $04C0+x,a                   ; 23AE  ; not reached in the traces so far
     ret                               ; 23B1  ; not reached in the traces so far
 
-Spc_23B2:
+; @routine 19:E03C SpcSfxVolumeAdjust
+; WHAT IT DOES: For sound $25, adds $0530 * 4 to the volume A.
+; HOW: MUL, ADC.
+; Entry: A = volume, X = channel. Exit: A = volume; Y kept.
+; @spc 23B2
+%spc($23B2, $19E03C)
+SpcSfxVolumeAdjust:
     push y                            ; 23B2
     mov.b $22,a                       ; 23B3
     cmp a,#$00                        ; 23B5
@@ -4290,7 +4493,13 @@ Spc_23B2:
     mov.b a,$22                       ; 23CB
     bra .l23C9                        ; 23CD
 
-Spc_23CF:
+; @routine 19:E059 SpcSfxSpecial
+; WHAT IT DOES: When channel X plays a sound in the list at $23EB, runs its handler from the table at $23FB: the engine sounds' pitch and volume from the car's speed on port 3 (SpcEnginePitch and its variants), and rev timing.
+; HOW: JMP ($23FB+X) with X pushed.
+; Entry: X = channel. Exit: as the handler leaves it.
+; @spc 23CF
+%spc($23CF, $19E059)
+SpcSfxSpecial:
     mov.w a,$0390+x                   ; 23CF
     mov.b $20,a                       ; 23D2
     push x                            ; 23D4
@@ -4321,8 +4530,6 @@ Spc_23CF:
     db $14, $20, $0C, $0B, $0E, $07, $06, $0C
     db $0B, $0E, $07, $06, $1B, $1E, $1F, $12
     db $0F, $1B, $1E, $1F, $12, $0F
-
-Spc_2441:
     lsr a                             ; 2441
     mov x,a                           ; 2442
     mov.w a,$2419+x                   ; 2443
@@ -4334,7 +4541,7 @@ Spc_2441:
     mov.w a,$2437+x                   ; 2452
     mov.b $25,a                       ; 2455
     pop x                             ; 2457
-    call Spc_25A0                     ; 2458
+    call SpcEngineVolume              ; 2458
     push x                            ; 245B
     cmp $0B,$03                       ; 245C
     beq .l24A9                        ; 245F
@@ -4500,7 +4707,13 @@ Spc_2441:
     mov.w $03C0+x,a                   ; 259C
     ret                               ; 259F
 
-Spc_25A0:
+; @routine 19:E22A SpcEngineVolume
+; WHAT IT DOES: The engine sound's volume from port 3: (inverted speed) / $22 + $23, scaled by $0552 in echo mode A, plus 3 with bit 2 of $29, by $D0 unless bit 2 of $28 (SpcEngineDamp), by $056B, by $C0 with bit 4 of $2D; both sides' volume set.
+; HOW: DIV and MULs keeping high bytes.
+; Entry: X = channel, $22/$23 = curve. Exit: A = volume.
+; @spc 25A0
+%spc($25A0, $19E22A)
+SpcEngineVolume:
     mov.b a,$03                       ; 25A0
     eor a,#$FF                        ; 25A2
     mov y,#$00                        ; 25A4
@@ -4512,10 +4725,8 @@ Spc_25A0:
     mov.b a,$23                       ; 25AD
     clrc                              ; 25AF
     adc.b a,$20                       ; 25B0
-    bbc $28.0,Spc_25B8_l25BB          ; 25B2
+    bbc $28.0,.l25BB                  ; 25B2
     mov.w y,$0552                     ; 25B5
-
-Spc_25B8:
     dec y                             ; 25B8
     mul ya                            ; 25B9
     mov a,y                           ; 25BA
@@ -4523,7 +4734,7 @@ Spc_25B8:
     bbc !spc_flags.2,.l25C0           ; 25BB
     adc a,#$03                        ; 25BE
 .l25C0:
-    call Spc_25D8                     ; 25C0
+    call SpcEngineDamp                ; 25C0
     mov.w y,$056B                     ; 25C3
     mul ya                            ; 25C6
     mov a,y                           ; 25C7
@@ -4538,7 +4749,13 @@ Spc_25B8:
     mov.w $03A0+x,a                   ; 25D4
     ret                               ; 25D7
 
-Spc_25D8:
+; @routine 19:E262 SpcEngineDamp
+; WHAT IT DOES: Unless bit 2 of $28 is set, A = A * $D0 / 256.
+; HOW: MUL.
+; Entry: A. Exit: A; Y kept.
+; @spc 25D8
+%spc($25D8, $19E262)
+SpcEngineDamp:
     bbs $28.2,.l25E1                  ; 25D8
     push y                            ; 25DB
     mov y,#$D0                        ; 25DC
@@ -4547,24 +4764,28 @@ Spc_25D8:
     pop y                             ; 25E0
 .l25E1:
     ret                               ; 25E1
-
-Spc_25E2:
     pop x                             ; 25E2
     mov $22,#$28                      ; 25E3
     mov $23,#$03                      ; 25E6
     mov $24,#$02                      ; 25E9
-    call Spc_2634                     ; 25EC
+    call SpcEngineRevTimer            ; 25EC
     mov.w a,$03E8+x                   ; 25EF
     cmp a,#$02                        ; 25F2
     beq .l25FB                        ; 25F4
 .l25F6:
-    bbs $28.6,Spc_2600_l2614          ; 25F6
-    bra Spc_2600_l2609                ; 25F9
+    bbs $28.6,SpcEngineToggle_l2614   ; 25F6
+    bra SpcEngineToggle_l2609         ; 25F9
 .l25FB:
-    call Spc_2600                     ; 25FB
+    call SpcEngineToggle              ; 25FB
     bra .l25F6                        ; 25FE
 
-Spc_2600:
+; @routine 19:E28A SpcEngineToggle
+; WHAT IT DOES: Toggles bit 6 of $28.
+; HOW: BBS, SET1/CLR1.
+; Entry: none. Exit: none.
+; @spc 2600
+%spc($2600, $19E28A)
+SpcEngineToggle:
     bbs $28.6,.l2606                  ; 2600
     set1 $28.6                        ; 2603
     ret                               ; 2605
@@ -4583,21 +4804,23 @@ Spc_2600:
     mov a,#$01                        ; 2619
     mov.w $03C0+x,a                   ; 261B
     ret                               ; 261E
-
-Spc_261F:
     mov $22,#$1E                      ; 261F
     mov $23,#$03                      ; 2622
     mov $24,#$01                      ; 2625
-    bra Spc_262A_l2633                ; 2628
-
-Spc_262A:
+    bra .l2633                        ; 2628
     mov $22,#$14                      ; 262A
     mov $23,#$0A                      ; 262D
     mov $24,#$02                      ; 2630
 .l2633:
     pop x                             ; 2633
 
-Spc_2634:
+; @routine 19:E2BE SpcEngineRevTimer
+; WHAT IT DOES: The rev pulse: the counter $0545 counts up to (inverted speed) / $22 + $23 and then restarts with the channel's mode $03E8 = $24.
+; HOW: DIV, compare.
+; Entry: X = channel, $22-$24 = curve. Exit: A changed.
+; @spc 2634
+%spc($2634, $19E2BE)
+SpcEngineRevTimer:
     mov.b a,$03                       ; 2634
     eor a,#$FF                        ; 2636
     mov y,#$00                        ; 2638
@@ -4621,8 +4844,6 @@ Spc_2634:
     mov.w $0545,a                     ; 2658
 .l265B:
     ret                               ; 265B
-
-Spc_265C:
     pop x                             ; 265C
     mov.b a,$02                       ; 265D
     and a,#$07                        ; 265F
@@ -4655,11 +4876,11 @@ Spc_265C:
     asl a                             ; 2692
     mov y,a                           ; 2693
     mov.w a,$EE30+y                   ; 2694
-    call Spc_26C0                     ; 2697
+    call SpcSfxPanScale               ; 2697
     mov.w $0398+x,a                   ; 269A
     inc y                             ; 269D
     mov.w a,$EE30+y                   ; 269E
-    call Spc_26C0                     ; 26A1
+    call SpcSfxPanScale               ; 26A1
     mov.w $03A0+x,a                   ; 26A4
     ret                               ; 26A7
 .l26A8:
@@ -4667,15 +4888,21 @@ Spc_265C:
     asl a                             ; 26AA
     mov y,a                           ; 26AB
     mov.w a,$EE30+y                   ; 26AC
-    call Spc_26C0                     ; 26AF
+    call SpcSfxPanScale               ; 26AF
     mov.w $03A0+x,a                   ; 26B2
     inc y                             ; 26B5
     mov.w a,$EE30+y                   ; 26B6
-    call Spc_26C0                     ; 26B9
+    call SpcSfxPanScale               ; 26B9
     mov.w $0398+x,a                   ; 26BC
     ret                               ; 26BF
 
-Spc_26C0:
+; @routine 19:E34A SpcSfxPanScale
+; WHAT IT DOES: A pan table value A scaled by $0562 + 1 and divided by $15, less the low four bits of port 2.
+; HOW: MUL, DIV.
+; Entry: A = table value. Exit: A; X, Y kept.
+; @spc 26C0
+%spc($26C0, $19E34A)
+SpcSfxPanScale:
     push y                            ; 26C0
     push x                            ; 26C1
     mov.w y,$0562                     ; 26C2
@@ -5141,7 +5368,13 @@ Spc_26C0:
     db $AE, $AF, $18, $2B, $B0, $1E, $3C, $BC
     db $F9, $0E, $07, $B0, $00
 
-Spc_CA75:
+; @routine 19:F1C3 SpcMul16
+; WHAT IT DOES: A times the 16-bit value X:Y (X the high byte): YA = the result's middle 16 bits plus A * Y, as the sound code's fixed-point multiply.
+; HOW: Two MULs and ADDW through $26/$27.
+; Entry: A, X, Y. Exit: YA, X.
+; @spc CA75
+%spc($CA75, $19F1C3)
+SpcMul16:
     push a                            ; CA75
     mul ya                            ; CA76
     mov.b $26,a                       ; CA77
@@ -5159,7 +5392,13 @@ Spc_CA75:
     addw ya,$26                       ; CA86
     ret                               ; CA88
 
-Spc_CA89:
+; @routine 19:F1D7 SpcDiv16
+; WHAT IT DOES: The 16-bit value Y:A divided by X: YA = the quotient.
+; HOW: Two DIVs, the high quotient through $27.
+; Entry: Y:A, X. Exit: YA = quotient.
+; @spc CA89
+%spc($CA89, $19F1D7)
+SpcDiv16:
     push a                            ; CA89
     push y                            ; CA8A
     mov y,#$00                        ; CA8B
@@ -5171,7 +5410,13 @@ Spc_CA89:
     mov.b y,$27                       ; CA93
     ret                               ; CA95
 
-Spc_CA96:
+; @routine 19:F1E4 SpcIndexRight
+; WHAT IT DOES: X + 8 (a channel's right-side index).
+; HOW: Eight INC X.
+; Entry: X. Exit: X + 8.
+; @spc CA96
+%spc($CA96, $19F1E4)
+SpcIndexRight:
     inc x                             ; CA96
     inc x                             ; CA97
     inc x                             ; CA98
@@ -5182,7 +5427,13 @@ Spc_CA96:
     inc x                             ; CA9D
     ret                               ; CA9E
 
-Spc_CA9F:
+; @routine 19:F1ED SpcIndexLeft
+; WHAT IT DOES: X - 8.
+; HOW: Eight DEC X.
+; Entry: X. Exit: X - 8.
+; @spc CA9F
+%spc($CA9F, $19F1ED)
+SpcIndexLeft:
     dec x                             ; CA9F
     dec x                             ; CAA0
     dec x                             ; CAA1
@@ -5196,7 +5447,13 @@ Spc_CA9F:
     db $30, $2A, $B2, $2C, $5A, $2F, $2C, $32
     db $28, $35, $50, $38, $AA, $3B, $36, $3F
 
-Spc_CAC0:
+; @routine 19:F20E SpcNoiseSample
+; WHAT IT DOES: While a channel plays sound $23, rewrites part of the sample at $FF00 each tick with noise from the LFSR $18/$19: seven blocks of eight bytes, the block chosen by the counter $0563.
+; HOW: MOV1/EOR1 of two LFSR bits, ROL; bytes ORed with $11.
+; Entry: none. Exit: X, Y changed.
+; @spc CAC0
+%spc($CAC0, $19F20E)
+SpcNoiseSample:
     mov x,#$07                        ; CAC0
 .lCAC2:
     mov.w a,$03C8+x                   ; CAC2
@@ -5238,7 +5495,13 @@ Spc_CAC0:
 
 %spc($EDF0, $19F40D)
 
-Spc_EDF0:
+; @routine 19:F40D SpcNoiseSampleInit
+; WHAT IT DOES: Builds the sample at $FF00: every ninth byte (the BRR block headers) set to A for $1B blocks, the last A + 1 (the end flag); the sample directory's entry at $3F8C-$3F8F points start and loop at $FF00; the LFSR made nonzero.
+; HOW: Y stepping by 9.
+; Entry: A = header byte. Exit: A, Y changed.
+; @spc EDF0
+%spc($EDF0, $19F40D)
+SpcNoiseSampleInit:
     mov y,#$00                        ; EDF0
     mov x,#$1B                        ; EDF2
 .lEDF4:
