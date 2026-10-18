@@ -1,8 +1,14 @@
 diff --git a/bsnes/emulator/sfxbox.hpp b/bsnes/emulator/sfxbox.hpp
-index 33b1b45..b351ef0 100644
+index 33b1b45..77d5553 100644
 --- a/bsnes/emulator/sfxbox.hpp
 +++ b/bsnes/emulator/sfxbox.hpp
-@@ -26,6 +26,28 @@ extern int sfxbox_smp_fetching;
+@@ -23,9 +23,37 @@ void sfxbox_gsu_insn(uint32_t addr);
+ // SPC700: an instruction starts at pc; an opcode or operand byte is fetched
+ // (with its value); a data read.
+ extern int sfxbox_smp_fetching;
++// Set around the read(PC) an instruction makes of the byte after it (a
++// dummy cycle, no operand): not a data access.
++extern int sfxbox_smp_dummy;
  void sfxbox_smp_insn(uint16_t pc);
  void sfxbox_smp_fetch(uint16_t addr, uint8_t data);
  void sfxbox_smp_read(uint16_t addr);
@@ -24,13 +30,243 @@ index 33b1b45..b351ef0 100644
 +struct SfxboxSmpState { uint16_t pc; uint8_t a, x, y, s, p; };
 +void sfxbox_smp_get(struct SfxboxSmpState* out);
 +void sfxbox_smp_put(const struct SfxboxSmpState* in);
-+// Spend SPC700 clocks (and timer clocks alike) with nothing else happening.
++// Spend SPC700 clocks (and timer clocks alike) with nothing else happening;
++// clocks | SFXBOX_SMP_IDLE as an idle cycle (the DSP not caught up), as the
++// step callback reports them.
++enum : uint32_t { SFXBOX_SMP_IDLE = 0x80000000u };
 +void sfxbox_smp_time(uint32_t clocks);
 +// One SPC700 data access made now, without time (read when write == 0).
 +uint8_t sfxbox_smp_bus(int write, uint16_t addr, uint8_t data);
  void sfxbox_gsu_operand(uint32_t addr);
  void sfxbox_gsu_data(uint32_t addr);
  // Per-access events for the call oracle (kind: 0 S-CPU write, 2 DMA write).
+diff --git a/bsnes/processor/spc700/instructions.cpp b/bsnes/processor/spc700/instructions.cpp
+index d784489..0048e5c 100644
+--- a/bsnes/processor/spc700/instructions.cpp
++++ b/bsnes/processor/spc700/instructions.cpp
+@@ -138,7 +138,7 @@ auto SPC700::instructionBranchNotDirectIndexed(uint8& index) -> void {
+ }
+ 
+ auto SPC700::instructionBranchNotYDecrement() -> void {
+-  read(PC);
++  sfxbox_smp_dummy = 1; read(PC); sfxbox_smp_dummy = 0;
+   idle();
+   uint8 displacement = fetch();
+   if(--Y == 0) return;
+@@ -148,7 +148,7 @@ auto SPC700::instructionBranchNotYDecrement() -> void {
+ }
+ 
+ auto SPC700::instructionBreak() -> void {
+-  read(PC);
++  sfxbox_smp_dummy = 1; read(PC); sfxbox_smp_dummy = 0;
+   push(PC >> 8);
+   push(PC >> 0);
+   push(P);
+@@ -181,7 +181,7 @@ auto SPC700::instructionCallPage() -> void {
+ }
+ 
+ auto SPC700::instructionCallTable(uint4 vector) -> void {
+-  read(PC);
++  sfxbox_smp_dummy = 1; read(PC); sfxbox_smp_dummy = 0;
+   idle();
+   push(PC >> 8);
+   push(PC >> 0);
+@@ -193,13 +193,13 @@ auto SPC700::instructionCallTable(uint4 vector) -> void {
+ }
+ 
+ auto SPC700::instructionComplementCarry() -> void {
+-  read(PC);
++  sfxbox_smp_dummy = 1; read(PC); sfxbox_smp_dummy = 0;
+   idle();
+   CF = !CF;
+ }
+ 
+ auto SPC700::instructionDecimalAdjustAdd() -> void {
+-  read(PC);
++  sfxbox_smp_dummy = 1; read(PC); sfxbox_smp_dummy = 0;
+   idle();
+   if(CF || A > 0x99) {
+     A += 0x60;
+@@ -213,7 +213,7 @@ auto SPC700::instructionDecimalAdjustAdd() -> void {
+ }
+ 
+ auto SPC700::instructionDecimalAdjustSub() -> void {
+-  read(PC);
++  sfxbox_smp_dummy = 1; read(PC); sfxbox_smp_dummy = 0;
+   idle();
+   if(!CF || A > 0x99) {
+     A -= 0x60;
+@@ -346,7 +346,7 @@ auto SPC700::instructionDirectIndexedWrite(uint8& data, uint8& index) -> void {
+ }
+ 
+ auto SPC700::instructionDivide() -> void {
+-  read(PC);
++  sfxbox_smp_dummy = 1; read(PC); sfxbox_smp_dummy = 0;
+   idle();
+   idle();
+   idle();
+@@ -377,7 +377,7 @@ auto SPC700::instructionDivide() -> void {
+ }
+ 
+ auto SPC700::instructionExchangeNibble() -> void {
+-  read(PC);
++  sfxbox_smp_dummy = 1; read(PC); sfxbox_smp_dummy = 0;
+   idle();
+   idle();
+   idle();
+@@ -387,7 +387,7 @@ auto SPC700::instructionExchangeNibble() -> void {
+ }
+ 
+ auto SPC700::instructionFlagSet(bool& flag, bool value) -> void {
+-  read(PC);
++  sfxbox_smp_dummy = 1; read(PC); sfxbox_smp_dummy = 0;
+   if(&flag == &IF) idle();
+   flag = value;
+ }
+@@ -398,7 +398,7 @@ auto SPC700::instructionImmediateRead(fpb op, uint8& target) -> void {
+ }
+ 
+ auto SPC700::instructionImpliedModify(fps op, uint8& target) -> void {
+-  read(PC);
++  sfxbox_smp_dummy = 1; read(PC); sfxbox_smp_dummy = 0;
+   target = alu(target);
+ }
+ 
+@@ -439,19 +439,19 @@ auto SPC700::instructionIndirectIndexedWrite(uint8& data, uint8& index) -> void
+ }
+ 
+ auto SPC700::instructionIndirectXRead(fpb op) -> void {
+-  read(PC);
++  sfxbox_smp_dummy = 1; read(PC); sfxbox_smp_dummy = 0;
+   uint8 data = load(X);
+   A = alu(A, data);
+ }
+ 
+ auto SPC700::instructionIndirectXWrite(uint8& data) -> void {
+-  read(PC);
++  sfxbox_smp_dummy = 1; read(PC); sfxbox_smp_dummy = 0;
+   load(X);
+   store(X, data);
+ }
+ 
+ auto SPC700::instructionIndirectXIncrementRead(uint8& data) -> void {
+-  read(PC);
++  sfxbox_smp_dummy = 1; read(PC); sfxbox_smp_dummy = 0;
+   data = load(X++);
+   idle();  //quirk: consumes extra idle cycle compared to most read instructions
+   ZF = data == 0;
+@@ -459,13 +459,13 @@ auto SPC700::instructionIndirectXIncrementRead(uint8& data) -> void {
+ }
+ 
+ auto SPC700::instructionIndirectXIncrementWrite(uint8& data) -> void {
+-  read(PC);
++  sfxbox_smp_dummy = 1; read(PC); sfxbox_smp_dummy = 0;
+   idle();  //quirk: not a read cycle as with most write instructions
+   store(X++, data);
+ }
+ 
+ auto SPC700::instructionIndirectXCompareIndirectY(fpb op) -> void {
+-  read(PC);
++  sfxbox_smp_dummy = 1; read(PC); sfxbox_smp_dummy = 0;
+   uint8 rhs = load(Y);
+   uint8 lhs = load(X);
+   lhs = alu(lhs, rhs);
+@@ -473,7 +473,7 @@ auto SPC700::instructionIndirectXCompareIndirectY(fpb op) -> void {
+ }
+ 
+ auto SPC700::instructionIndirectXWriteIndirectY(fpb op) -> void {
+-  read(PC);
++  sfxbox_smp_dummy = 1; read(PC); sfxbox_smp_dummy = 0;
+   uint8 rhs = load(Y);
+   uint8 lhs = load(X);
+   lhs = alu(lhs, rhs);
+@@ -496,7 +496,7 @@ auto SPC700::instructionJumpIndirectX() -> void {
+ }
+ 
+ auto SPC700::instructionMultiply() -> void {
+-  read(PC);
++  sfxbox_smp_dummy = 1; read(PC); sfxbox_smp_dummy = 0;
+   idle();
+   idle();
+   idle();
+@@ -513,35 +513,35 @@ auto SPC700::instructionMultiply() -> void {
+ }
+ 
+ auto SPC700::instructionNoOperation() -> void {
+-  read(PC);
++  sfxbox_smp_dummy = 1; read(PC); sfxbox_smp_dummy = 0;
+ }
+ 
+ auto SPC700::instructionOverflowClear() -> void {
+-  read(PC);
++  sfxbox_smp_dummy = 1; read(PC); sfxbox_smp_dummy = 0;
+   HF = 0;
+   VF = 0;
+ }
+ 
+ auto SPC700::instructionPull(uint8& data) -> void {
+-  read(PC);
++  sfxbox_smp_dummy = 1; read(PC); sfxbox_smp_dummy = 0;
+   idle();
+   data = pull();
+ }
+ 
+ auto SPC700::instructionPullP() -> void {
+-  read(PC);
++  sfxbox_smp_dummy = 1; read(PC); sfxbox_smp_dummy = 0;
+   idle();
+   P = pull();
+ }
+ 
+ auto SPC700::instructionPush(uint8 data) -> void {
+-  read(PC);
++  sfxbox_smp_dummy = 1; read(PC); sfxbox_smp_dummy = 0;
+   push(data);
+   idle();
+ }
+ 
+ auto SPC700::instructionReturnInterrupt() -> void {
+-  read(PC);
++  sfxbox_smp_dummy = 1; read(PC); sfxbox_smp_dummy = 0;
+   idle();
+   P = pull();
+   uint16 address = pull();
+@@ -550,7 +550,7 @@ auto SPC700::instructionReturnInterrupt() -> void {
+ }
+ 
+ auto SPC700::instructionReturnSubroutine() -> void {
+-  read(PC);
++  sfxbox_smp_dummy = 1; read(PC); sfxbox_smp_dummy = 0;
+   idle();
+   uint16 address = pull();
+   address |= pull() << 8;
+@@ -560,7 +560,7 @@ auto SPC700::instructionReturnSubroutine() -> void {
+ auto SPC700::instructionStop() -> void {
+   r.stop = true;
+   while(r.stop && !synchronizing()) {
+-    read(PC);
++    sfxbox_smp_dummy = 1; read(PC); sfxbox_smp_dummy = 0;
+     idle();
+   }
+ }
+@@ -576,7 +576,7 @@ auto SPC700::instructionTestSetBitsAbsolute(bool set) -> void {
+ }
+ 
+ auto SPC700::instructionTransfer(uint8& from, uint8& to) -> void {
+-  read(PC);
++  sfxbox_smp_dummy = 1; read(PC); sfxbox_smp_dummy = 0;
+   to = from;
+   if(&to == &S) return;
+   ZF = to == 0;
+@@ -586,7 +586,7 @@ auto SPC700::instructionTransfer(uint8& from, uint8& to) -> void {
+ auto SPC700::instructionWait() -> void {
+   r.wait = true;
+   while(r.wait && !synchronizing()) {
+-    read(PC);
++    sfxbox_smp_dummy = 1; read(PC); sfxbox_smp_dummy = 0;
+     idle();
+   }
+ }
 diff --git a/bsnes/sfc/coprocessor/superfx/superfx.cpp b/bsnes/sfc/coprocessor/superfx/superfx.cpp
 index 90eaa36..9e622e9 100644
 --- a/bsnes/sfc/coprocessor/superfx/superfx.cpp
@@ -44,7 +280,7 @@ index 90eaa36..9e622e9 100644
    *size = 0;
    return nullptr;
 diff --git a/bsnes/sfc/smp/memory.cpp b/bsnes/sfc/smp/memory.cpp
-index e241786..ec8f3d0 100644
+index e241786..3f3f977 100644
 --- a/bsnes/sfc/smp/memory.cpp
 +++ b/bsnes/sfc/smp/memory.cpp
 @@ -20,19 +20,23 @@ auto SMP::read(uint16 address) -> uint8 {
@@ -52,7 +288,7 @@ index e241786..ec8f3d0 100644
      uint8 data = readRAM(address);
      if((address & 0xfff0) == 0x00f0) data = readIO(address);
 +    //the access is between the two half waits: reported there, so a replay places it there
-+    if(sfxbox_smp_cb.mem && !sfxbox_smp_fetching) sfxbox_smp_cb.mem(0, address, data);
++    if(sfxbox_smp_cb.mem && !sfxbox_smp_fetching && !sfxbox_smp_dummy) sfxbox_smp_cb.mem(0, address, data);
      wait(address, 1);
      return data;
    } else {
@@ -61,7 +297,7 @@ index e241786..ec8f3d0 100644
      if((address & 0xfff0) == 0x00f0) data = readIO(address);
 -    if(!sfxbox_smp_fetching) sfxbox_smp_read(address);
 +    //not an instruction fetch, nor the read(PC) an implied-operand instruction makes of the byte after it
-+    if(!sfxbox_smp_fetching && address != sfxbox_smp_fetch_end) { sfxbox_smp_read(address); if(sfxbox_smp_cb.mem) sfxbox_smp_cb.mem(0, address, data); }
++    if(!sfxbox_smp_fetching && !sfxbox_smp_dummy) { sfxbox_smp_read(address); if(sfxbox_smp_cb.mem) sfxbox_smp_cb.mem(0, address, data); }
      return data;
    }
  }
@@ -117,15 +353,19 @@ index b0f628e..7cfec96 100644
    if(auto fp = platform->open(ID::System, "ipl.rom", File::Read, File::Required)) {
      fp->read(iplrom, 64);
 diff --git a/bsnes/sfc/smp/smp.hpp b/bsnes/sfc/smp/smp.hpp
-index 4b13dc6..6f12578 100644
+index 4b13dc6..cfeb7b0 100644
 --- a/bsnes/sfc/smp/smp.hpp
 +++ b/bsnes/sfc/smp/smp.hpp
-@@ -1,6 +1,14 @@
+@@ -1,6 +1,18 @@
  //Sony CXP1100Q-1
  
  struct SMP : Processor::SPC700, Thread {
 +  //sfxbox harness: time and accesses with nothing else happening
-+  auto sfxboxTime(uint clocks) -> void { step(clocks); stepTimers(clocks); }
++  auto sfxboxTime(uint clocks) -> void {
++    uint n = clocks & 0x7fffffff;  //SFXBOX_SMP_IDLE (emulator/sfxbox.hpp) marks an idle cycle
++    if(clocks & 0x80000000) stepIdle(n); else step(n);
++    stepTimers(n);
++  }
 +  auto sfxboxBus(bool write, uint16 address, uint8 data) -> uint8 {
 +    if(write) { writeRAM(address, data); if((address & 0xfff0) == 0x00f0) writeIO(address, data); return data; }
 +    uint8 value = readRAM(address);
@@ -136,7 +376,7 @@ index 4b13dc6..6f12578 100644
  
    //io.cpp
 diff --git a/bsnes/sfc/smp/timing.cpp b/bsnes/sfc/smp/timing.cpp
-index 4f70d56..fd80f80 100644
+index 4f70d56..88ddb36 100644
 --- a/bsnes/sfc/smp/timing.cpp
 +++ b/bsnes/sfc/smp/timing.cpp
 @@ -33,6 +33,7 @@ auto SMP::waitIdle(maybe<uint16> addr, bool half) -> void {
@@ -151,18 +391,19 @@ index 4f70d56..fd80f80 100644
  }
  
  auto SMP::stepIdle(uint clocks) -> void {
-+  if(sfxbox_smp_cb.step) sfxbox_smp_cb.step(clocks);
++  if(sfxbox_smp_cb.step) sfxbox_smp_cb.step(clocks | SFXBOX_SMP_IDLE);
    clock += clocks * (uint64_t)cpu.frequency;
    dsp.clock -= clocks;
  }
 diff --git a/bsnes/target-libretro/sfxbox.cpp b/bsnes/target-libretro/sfxbox.cpp
-index c9726e4..c58f7fe 100644
+index c9726e4..3782792 100644
 --- a/bsnes/target-libretro/sfxbox.cpp
 +++ b/bsnes/target-libretro/sfxbox.cpp
-@@ -17,6 +17,10 @@ SfxboxGsuCallbacks sfxbox_gsu_cb = {};
+@@ -17,6 +17,11 @@ SfxboxGsuCallbacks sfxbox_gsu_cb = {};
  int sfxbox_gsu_hooked = 0;
  int (*sfxbox_gsu_exec)(uint32_t pc, uint32_t prev_end) = nullptr;
  int sfxbox_smp_fetching = 0;
++int sfxbox_smp_dummy = 0;
 +SfxboxSmpCallbacks sfxbox_smp_cb = {};
 +int sfxbox_smp_hooked = 0;
 +uint16_t sfxbox_smp_fetch_end = 0;
@@ -170,7 +411,7 @@ index c9726e4..c58f7fe 100644
  }
  
  // The harness installs its Super FX callbacks and its run-in-place hook here.
-@@ -157,7 +161,14 @@ extern "C" void sfxbox_smp_insn(uint16_t pc) {
+@@ -157,7 +162,14 @@ extern "C" void sfxbox_smp_insn(uint16_t pc) {
    sfxboxSmpFirst = 1;
  }
  
@@ -185,7 +426,7 @@ index c9726e4..c58f7fe 100644
    if(!sfxboxRom) return;
    int first = sfxboxSmpFirst;
    sfxboxSmpFirst = 0;
-@@ -281,6 +292,7 @@ extern "C" RETRO_API uint8_t* sfxbox_memory(const char* name, size_t* size) {
+@@ -281,6 +293,7 @@ extern "C" RETRO_API uint8_t* sfxbox_memory(const char* name, size_t* size) {
    if(!strcmp(name, "wram")) return sfxbox_core_memory(0, size);
    if(!strcmp(name, "gsuram")) return sfxbox_core_memory(1, size);
    if(!strcmp(name, "rom")) return sfxbox_core_memory(2, size);
