@@ -411,8 +411,9 @@ AnimTilesQueueNext:
 ; decremented); each sets the next stage. Stages with nothing to do
 ; upload the sprites (with $0D28 set and $0D54 clear) and the palette.
 ; HOW: P saved and restored. JMP (table,X); the stages share their ends.
-; The stage table's entries $1C ($A8E6, which pushes P again) and the
-; helper at $A7F3 are never used.
+; The race stages from the jump on are NmiFrameUploadRace; the table's
+; entry $1C ($A8E6, CgramUploadAll) and the helper at $A7F3
+; (VramRowsCopyUnused) are never used by the game.
 ; Entry: D = $0000, data bank $00. Exit: P restored; A, X, Y as the stage
 ; leaves them.
 %ramcode($7EA7BE, $0104E5)
@@ -422,6 +423,17 @@ NmiFrameUpload:
     lda.w !wram_0D22
     beq .lA7C9
     jmp.w NmiFrameUpload_split
+
+; @routine 7E:A7C9 NmiFrameUploadRace
+; WHAT IT DOES: NmiFrameUpload's race screen stage from its jump on: the
+; stage $0D7D by the table at $A7D1, then P pulled as NmiFrameUpload
+; pushed it. The table's entry $1C is CgramUploadAll, whose own RTS ends
+; the call with nothing pulled (from NmiFrameUpload, with P on the stack,
+; that would return to the wrong place: the game never sets stage $1C).
+; HOW: REP #$30, JMP (table,X); the stages end PLP, RTS.
+; Entry: D = $0000, data bank $00; NmiFrameUpload's P on the stack (not
+; for stage $1C). Exit: as NmiFrameUpload.
+%ramcode($7EA7C9, $0104F0)
 .lA7C9:
     rep.b #$30
     ldx.w !gsu_buffer_offset
@@ -430,15 +442,32 @@ NmiFrameUpload:
     dw NmiFrameUpload_s00, NmiFrameUpload_s02, NmiFrameUpload_s04, NmiFrameUpload_s06, NmiFrameUpload_s08, NmiFrameUpload_s0A, NmiFrameUpload_s0C, NmiFrameUpload_s0E
     dw NmiFrameUpload_s10, NmiFrameUpload_s12, NmiFrameUpload_s14, NmiFrameUpload_s16, NmiFrameUpload_s18, NmiFrameUpload_s1A, CgramUploadAll, NmiFrameUpload_s06
     dw NmiFrameUpload_split
-    ; nothing jumps here or calls this: a row copy to VMDATA, unused
+
+; @routine 7E:A7F3 VramRowsCopyUnused
+; WHAT IT DOES: Copies Y words from the data bank at X to VMDATAL, X
+; stepping 2 each. Nothing jumps to it or calls it.
+; HOW: LDA abs,X; STA long $2118; INX twice, DEY, BNE; RTS.
+; Entry: M 16-bit, X 16-bit; X = source, Y = count (not 0). Exit: Y = 0,
+; X past the last word; A = the last word; Z set.
+%ramcode($7EA7F3, $01051A)
 .lA7F3:
-    lda.w !bank0_base,x             ; not reached in the traces so far
-    sta.l !VMDATAL                  ; not reached in the traces so far
-    inx                             ; not reached in the traces so far
-    inx                             ; not reached in the traces so far
-    dey                             ; not reached in the traces so far
-    bne .lA7F3                      ; not reached in the traces so far
-    rts                             ; not reached in the traces so far
+    lda.w !bank0_base,x
+    sta.l !VMDATAL
+    inx
+    inx
+    dey
+    bne .lA7F3
+    rts
+
+; @routine 7E:A800 NmiFrameUploadSprites
+; WHAT IT DOES: NmiFrameUpload's shared end for the stages with nothing to
+; upload: with $0D28 set it is cleared and, with $0D54 clear, the sprite
+; table goes out (OamDma, $0375 bytes from $0220); then the palette
+; (CgramUploadAll); then P pulled as NmiFrameUpload pushed it.
+; HOW: Two short delay loops; SEP #$20/REP #$10; PLP, RTS.
+; Entry: D = $0000, data bank $00; NmiFrameUpload's P on the stack.
+; Exit: as NmiFrameUpload; X = 0.
+%ramcode($7EA800, $010527)
 NmiFrameUpload_sprites:
     sep.b #$20
     rep.b #$10

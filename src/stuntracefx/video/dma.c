@@ -789,17 +789,19 @@ static void split_stage(uint32_t b)
  * decremented); each sets the next stage. Stages with nothing to do
  * upload the sprites (with $0D28 set and $0D54 clear) and the palette.
  * HOW: P saved and restored. JMP (table,X); the stages share their ends.
- * The stage table's entries $1C ($A8E6, which pushes P again) and the
- * helper at $A7F3 are never used.
+ * The race stages from the jump on are NmiFrameUploadRace; the table's
+ * entry $1C ($A8E6, CgramUploadAll) and the helper at $A7F3
+ * (VramRowsCopyUnused) are never used by the game.
  * Entry: D = $0000, data bank $00. Exit: P restored; A, X, Y as the stage
  * leaves them.
  */
+static int race_stage(uint32_t b);
+
 void abi_NmiFrameUpload(void)
 {
     uint32_t b = (uint32_t)cpu.db << 16;
     uint8_t p0 = cpu.p;
     uint8_t v;
-    uint16_t sel;
 
     cpu.p |= P_M;
     v = rd8(b | 0x0D22);
@@ -810,6 +812,18 @@ void abi_NmiFrameUpload(void)
         op_plp(p0);
         return;
     }
+    race_stage(b);
+    op_plp(p0);
+}
+
+/* NmiFrameUpload's race screen stage: X = $0D7D, the stage by the table at
+   $7E:A7D1. Returns 0 for the entry $1C, CgramUploadAll, which the stage
+   code reaches by its own JSR elsewhere and here would take P's place on
+   the stack: its RTS ends the caller instead. */
+static int race_stage(uint32_t b)
+{
+    uint16_t sel;
+
     cpu.p &= (uint8_t)~(P_M | P_X);
     cpu.x = rd16(b | 0x0D7D);
     cpu.p = nz16(cpu.p, cpu.x);
@@ -931,8 +945,70 @@ void abi_NmiFrameUpload(void)
     case 0xAA43:
         split_stage(b);
         break;
+    case 0xA8E6:
+        abi_CgramUploadAll();
+        return 0;
     }
-    op_plp(p0);
+    return 1;
+}
+
+/*
+ * @routine 7E:A7C9 NmiFrameUploadRace
+ * WHAT IT DOES: NmiFrameUpload's race screen stage from its jump on: the
+ * stage $0D7D by the table at $A7D1, then P pulled as NmiFrameUpload
+ * pushed it. The table's entry $1C is CgramUploadAll, whose own RTS ends
+ * the call with nothing pulled (from NmiFrameUpload, with P on the stack,
+ * that would return to the wrong place: the game never sets stage $1C).
+ * HOW: REP #$30, JMP (table,X); the stages end PLP, RTS.
+ * Entry: D = $0000, data bank $00; NmiFrameUpload's P on the stack (not
+ * for stage $1C). Exit: as NmiFrameUpload.
+ */
+void abi_NmiFrameUploadRace(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    if (!race_stage(b))
+        return;
+    op_plp(rd8((uint16_t)(cpu.s + 1)));
+    cpu.s = (uint16_t)(cpu.s + 1);
+}
+
+/*
+ * @routine 7E:A7F3 VramRowsCopyUnused
+ * WHAT IT DOES: Copies Y words from the data bank at X to VMDATAL, X
+ * stepping 2 each. Nothing jumps to it or calls it.
+ * HOW: LDA abs,X; STA long $2118; INX twice, DEY, BNE; RTS.
+ * Entry: M 16-bit, X 16-bit; X = source, Y = count (not 0). Exit: Y = 0,
+ * X past the last word; A = the last word; Z set.
+ */
+void abi_VramRowsCopyUnused(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    do {
+        op_lda16(b | cpu.x);
+        wr16(0x002118, cpu.a);
+        cpu.x = (uint16_t)(cpu.x + 2);
+        cpu.y = (uint16_t)(cpu.y - 1);
+        cpu.p = nz16(cpu.p, cpu.y);
+    } while (cpu.y);
+}
+
+/*
+ * @routine 7E:A800 NmiFrameUploadSprites
+ * WHAT IT DOES: NmiFrameUpload's shared end for the stages with nothing to
+ * upload: with $0D28 set it is cleared and, with $0D54 clear, the sprite
+ * table goes out (OamDma, $0375 bytes from $0220); then the palette
+ * (CgramUploadAll); then P pulled as NmiFrameUpload pushed it.
+ * HOW: Two short delay loops; SEP #$20/REP #$10; PLP, RTS.
+ * Entry: D = $0000, data bank $00; NmiFrameUpload's P on the stack.
+ * Exit: as NmiFrameUpload; X = 0.
+ */
+void abi_NmiFrameUploadSprites(void)
+{
+    upload_sprites_palette((uint32_t)cpu.db << 16);
+    op_plp(rd8((uint16_t)(cpu.s + 1)));
+    cpu.s = (uint16_t)(cpu.s + 1);
 }
 
 /*

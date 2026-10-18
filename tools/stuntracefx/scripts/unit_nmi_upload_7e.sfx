@@ -1,0 +1,23 @@
+# unit_nmi_upload_7e: NmiFrameUpload's code the game never runs, as direct
+# calls from a Novice race's state: NmiFrameUploadRace 7E:A7C9 at stage
+# $1C (the table's CgramUploadAll entry, called without a pushed P so its
+# RTS returns here) and at stage 0 with the second buffer clear (with the
+# P NmiFrameUpload pushes); VramRowsCopyUnused 7E:A7F3 copying four words;
+# NmiFrameUploadSprites 7E:A800 with the sprite table due.
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D7D 1C,00
+call 7E:A7C9 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D7D 00,00
+set 7E0D7F 00,00
+call 7E:A7C9 php p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 7E:A7F3 x=0100 y=0004 p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D28 01
+set 7E0D54 00
+call 7E:A800 php p=00 db=00 d=0000
+wait 1
