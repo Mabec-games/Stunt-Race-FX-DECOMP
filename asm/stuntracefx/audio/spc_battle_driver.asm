@@ -24,15 +24,15 @@ SpcBSfxFrame:
 .l10C0:
     mov !spc_port_in,#$00             ; 10C0
 .l10C3:
-    mov.w a,$0559                     ; 10C3
-    mov.b $05,a                       ; 10C6
-    mov.b $01,a                       ; 10C8
-    mov.w a,$055A                     ; 10CA
-    mov.b $06,a                       ; 10CD
-    mov.b $02,a                       ; 10CF
-    mov.w a,$055B                     ; 10D1
-    mov.b $07,a                       ; 10D4
-    mov.b $03,a                       ; 10D6
+    mov.w a,!spc_port_forced          ; 10C3
+    mov.b !spc_port_out+1,a           ; 10C6
+    mov.b !spc_port_in+1,a            ; 10C8
+    mov.w a,!spc_port_forced+1        ; 10CA
+    mov.b !spc_port_out+2,a           ; 10CD
+    mov.b !spc_port_in+2,a            ; 10CF
+    mov.w a,!spc_port_forced+2        ; 10D1
+    mov.b !spc_port_out+3,a           ; 10D4
+    mov.b !spc_port_in+3,a            ; 10D6
     bbc !spc_flags.1,.l10DF           ; 10D8
     clr1 !spc_flags.0                 ; 10DB
     clr1 !spc_flags.1                 ; 10DD
@@ -54,7 +54,7 @@ SpcBSfxFrame:
     call SpcBNoiseSample              ; 1109
     call SpcBPort1Clamp               ; 110C
     call SpcBPort1Command             ; 110F
-    jmp $1A7F                         ; 1112
+    jmp SpcBCommandChannelCheck_l1A7F ; 1112
 
 ; @routine 1A:F0FA SpcBPortRemap
 ; WHAT IT DOES: Port 0 command $88 becomes $15.
@@ -76,15 +76,15 @@ SpcBPortRemap:
 ; @spc 111E
 %spc($111E, $1AF103)
 SpcBChannelGuards:
-    bbc $2D.6,SpcBPortRemap_l111D     ; 111E
-    mov.w a,$0395                     ; 1121
+    bbc !spc_game_flags.6,SpcBPortRemap_l111D; 111E
+    mov.w a,!spc_sfx_command+5        ; 1121
     cmp a,#$43                        ; 1124
     beq SpcBPortRemap_l111D           ; 1126
     mov x,#$05                        ; 1128
     jmp SpcBSfxStop                   ; 112A
 .l112D:
-    bbc $2D.5,.l1156                  ; 112D
-    mov.w a,$0397                     ; 1130
+    bbc !spc_game_flags.5,.l1156      ; 112D
+    mov.w a,!spc_sfx_command+7        ; 1130
     cmp a,#$77                        ; 1133
     beq .l1157                        ; 1135
     cmp a,#$78                        ; 1137
@@ -94,7 +94,7 @@ SpcBChannelGuards:
     cmp a,#$79                        ; 113F
     beq .l1157                        ; 1141
 .l1143:
-    mov.w a,$0396                     ; 1143
+    mov.w a,!spc_sfx_command+6        ; 1143
     cmp a,#$77                        ; 1146
     beq .l115E                        ; 1148
     cmp a,#$78                        ; 114A
@@ -120,8 +120,8 @@ SpcBChannelGuards:
 ; @spc 1163
 %spc($1163, $1AF148)
 SpcBStaggeredChecks:
-    inc.w $0581                       ; 1163
-    mov.w a,$0581                     ; 1166
+    inc.w !spc_stagger_step           ; 1163
+    mov.w a,!spc_stagger_step         ; 1166
     cmp a,#$06                        ; 1169
     beq SpcBChannelGuards_l112D       ; 116B
     cmp a,#$09                        ; 116D
@@ -139,53 +139,53 @@ SpcBStaggeredChecks:
     sbc a,#$19                        ; 1185
     bmi .l118E                        ; 1187
     mov a,#$00                        ; 1189
-    mov.w $0581,a                     ; 118B
+    mov.w !spc_stagger_step,a         ; 118B
 .l118E:
     cmp !spc_song,#$01                ; 118E
     beq .l1196                        ; 1191
-    mov $2A,#$00                      ; 1193
+    mov !spc_loop_flags,#$00          ; 1193
 .l1196:
     ret                               ; 1196
 .l1197:
-    bbs $2A.0,.l11A0                  ; 1197
-    mov $20,#$0C                      ; 119A
-    jmp $1833                         ; 119D
+    bbs !spc_loop_flags.0,.l11A0      ; 1197
+    mov !spc_sfx_tmp,#$0C             ; 119A
+    jmp SpcBPort1Command_l1833        ; 119D
 .l11A0:
     mov a,#$17                        ; 11A0
     jmp SpcBSoundQueuePush            ; 11A2
 .l11A5:
-    bbs $2A.1,.l11AE                  ; 11A5
-    mov $20,#$1C                      ; 11A8
-    jmp $1856                         ; 11AB
+    bbs !spc_loop_flags.1,.l11AE      ; 11A5
+    mov !spc_sfx_tmp,#$1C             ; 11A8
+    jmp SpcBPort1Command_l1856        ; 11AB
 .l11AE:
     mov a,#$97                        ; 11AE
     jmp SpcBSoundQueuePush            ; 11B0
 .l11B3:
-    bbs $2A.2,.l11BC                  ; 11B3
-    mov $20,#$0A                      ; 11B6
-    jmp $181D                         ; 11B9
+    bbs !spc_loop_flags.2,.l11BC      ; 11B3
+    mov !spc_sfx_tmp,#$0A             ; 11B6
+    jmp SpcBPort1Command_l181D        ; 11B9
 .l11BC:
-    bbs $2A.0,.l118E                  ; 11BC
-    bbs $2A.4,.l118E                  ; 11BF
+    bbs !spc_loop_flags.0,.l118E      ; 11BC
+    bbs !spc_loop_flags.4,.l118E      ; 11BF
     mov a,#$25                        ; 11C2
     jmp SpcBSoundQueuePush            ; 11C4
 .l11C7:
-    bbs $2A.2,.l11D0                  ; 11C7
-    mov $20,#$1A                      ; 11CA
-    jmp $1840                         ; 11CD
+    bbs !spc_loop_flags.2,.l11D0      ; 11C7
+    mov !spc_sfx_tmp,#$1A             ; 11CA
+    jmp SpcBPort1Command_l1840        ; 11CD
 .l11D0:
-    bbs $2A.1,.l118E                  ; 11D0
-    bbs $2A.5,.l118E                  ; 11D3
+    bbs !spc_loop_flags.1,.l118E      ; 11D0
+    bbs !spc_loop_flags.5,.l118E      ; 11D3
     mov a,#$25                        ; 11D6
     jmp SpcBSoundQueuePush            ; 11D8
 .l11DB:
-    bbs $2A.4,.l118E                  ; 11DB
-    mov $20,#$0B                      ; 11DE
-    jmp $1828                         ; 11E1
+    bbs !spc_loop_flags.4,.l118E      ; 11DB
+    mov !spc_sfx_tmp,#$0B             ; 11DE
+    jmp SpcBPort1Command_l1828        ; 11E1
 .l11E4:
-    bbs $2A.5,.l118E                  ; 11E4
-    mov $20,#$1B                      ; 11E7
-    jmp $184B                         ; 11EA
+    bbs !spc_loop_flags.5,.l118E      ; 11E4
+    mov !spc_sfx_tmp,#$1B             ; 11E7
+    jmp SpcBPort1Command_l184B        ; 11EA
 
 ; @routine 1A:F1D2 SpcBGameStateTick
 ; WHAT IT DOES: The battle's sound rules each tick: the counters $056A/$056B after song request 5; song request 3 $E6 ticks after request 2 ($0567); while $056A is under $80, port commands $11-$14 (the list at $1251) are dropped; command $32 clears $2A, sets bits 5 and 6 of $2D and stops channels 2, 1 and 0, commands $03 and $10 stop channels 5 and 4 and do the same to $2A and $2D; the timer $0579 sets bit 5 of $2D after $78 ticks; port 1 commands $09 and $0D are cleared while channel 5 plays sound $17 or $21; channel 4 stops when channel 7 plays $32 and channel 4 $38. The race driver's (SpcGameStateTick) also has the countdown, tempo and finish music rules.
@@ -194,10 +194,10 @@ SpcBStaggeredChecks:
 ; @spc 11ED
 %spc($11ED, $1AF1D2)
 SpcBGameStateTick:
-    mov.w a,$056A                     ; 11ED
+    mov.w a,!spc_song5_count          ; 11ED
     cmp a,#$FF                        ; 11F0
     beq .l11F7                        ; 11F2
-    inc.w $056A                       ; 11F4
+    inc.w !spc_song5_count            ; 11F4
 .l11F7:
     mov.b a,!spc_song_request         ; 11F7
     cmp a,#$05                        ; 11F9
@@ -205,53 +205,54 @@ SpcBGameStateTick:
     bra .l1207                        ; 11FD
 .l11FF:
     mov a,#$00                        ; 11FF
-    mov.w $056A,a                     ; 1201
-    mov.w $056B,a                     ; 1204
+    mov.w !spc_song5_count,a          ; 1201
+    mov.w !spc_song5_scale,a          ; 1204
 .l1207:
-    mov.w a,$056A                     ; 1207
+    mov.w a,!spc_song5_count          ; 1207
     bmi .l120E                        ; 120A
     bra .l1218                        ; 120C
 .l120E:
-    mov.w a,$056B                     ; 120E
+    mov.w a,!spc_song5_scale          ; 120E
     cmp a,#$FF                        ; 1211
     beq .l1218                        ; 1213
-    inc.w $056B                       ; 1215
+    inc.w !spc_song5_scale            ; 1215
 .l1218:
     cmp !spc_song_request,#$02        ; 1218
     bne .l1222                        ; 121B
     mov a,#$01                        ; 121D
-    mov.w $0567,a                     ; 121F
+    mov.w !spc_song3_delay,a          ; 121F
 .l1222:
-    mov.w a,$0567                     ; 1222
+    mov.w a,!spc_song3_delay          ; 1222
     beq .l1239                        ; 1225
-    inc.w $0567                       ; 1227
-    mov.w a,$0567                     ; 122A
+    inc.w !spc_song3_delay            ; 1227
+    mov.w a,!spc_song3_delay          ; 122A
     cmp a,#$E6                        ; 122D
     bne .l1239                        ; 122F
     mov a,#$00                        ; 1231
-    mov.w $0567,a                     ; 1233
+    mov.w !spc_song3_delay,a          ; 1233
     mov !spc_song_request,#$03        ; 1236
 .l1239:
-    mov.w a,$056A                     ; 1239
+    mov.w a,!spc_song5_count          ; 1239
     bmi .l1256                        ; 123C
     mov x,#$00                        ; 123E
 .l1240:
-    mov.w a,$1251+x                   ; 1240
+    mov.w a,.t1251+x                  ; 1240
     beq .l1256                        ; 1243
-    cmp.b a,$1D                       ; 1245
+    cmp.b a,!spc_command              ; 1245
     beq .l124C                        ; 1247
     inc x                             ; 1249
     bra .l1240                        ; 124A
 .l124C:
-    mov $1D,#$00                      ; 124C  ; not reached in the traces so far
+    mov !spc_command,#$00             ; 124C  ; not reached in the traces so far
     bra .l1256                        ; 124F  ; not reached in the traces so far
+.t1251:
     db $11, $12, $13, $14, $00
 .l1256:
-    cmp $1D,#$32                      ; 1256
+    cmp !spc_command,#$32             ; 1256
     bne .l126F                        ; 1259
-    mov $2A,#$00                      ; 125B
-    set1 $2D.5                        ; 125E
-    set1 $2D.6                        ; 1260
+    mov !spc_loop_flags,#$00          ; 125B
+    set1 !spc_game_flags.5            ; 125E
+    set1 !spc_game_flags.6            ; 1260
     mov x,#$02                        ; 1262
     call SpcBSfxStop                  ; 1264
     dec x                             ; 1267
@@ -259,9 +260,9 @@ SpcBGameStateTick:
     dec x                             ; 126B
     call SpcBSfxStop                  ; 126C
 .l126F:
-    cmp $1D,#$03                      ; 126F
+    cmp !spc_command,#$03             ; 126F
     beq .l127B                        ; 1272
-    cmp $1D,#$10                      ; 1274
+    cmp !spc_command,#$10             ; 1274
     beq .l127B                        ; 1277
     bra .l128B                        ; 1279
 .l127B:
@@ -269,40 +270,40 @@ SpcBGameStateTick:
     call SpcBSfxStop                  ; 127D  ; not reached in the traces so far
     dec x                             ; 1280  ; not reached in the traces so far
     call SpcBSfxStop                  ; 1281  ; not reached in the traces so far
-    mov $2A,#$00                      ; 1284  ; not reached in the traces so far
-    set1 $2D.6                        ; 1287  ; not reached in the traces so far
-    set1 $2D.5                        ; 1289  ; not reached in the traces so far
+    mov !spc_loop_flags,#$00          ; 1284  ; not reached in the traces so far
+    set1 !spc_game_flags.6            ; 1287  ; not reached in the traces so far
+    set1 !spc_game_flags.5            ; 1289  ; not reached in the traces so far
 .l128B:
-    mov.w a,$0579                     ; 128B
+    mov.w a,!spc_timer_4c             ; 128B
     beq .l12A2                        ; 128E
-    inc.w $0579                       ; 1290  ; not reached in the traces so far
-    mov.w a,$0579                     ; 1293  ; not reached in the traces so far
+    inc.w !spc_timer_4c               ; 1290  ; not reached in the traces so far
+    mov.w a,!spc_timer_4c             ; 1293  ; not reached in the traces so far
     setc                              ; 1296  ; not reached in the traces so far
     sbc a,#$78                        ; 1297  ; not reached in the traces so far
     bmi .l12A2                        ; 1299  ; not reached in the traces so far
-    set1 $2D.5                        ; 129B  ; not reached in the traces so far
+    set1 !spc_game_flags.5            ; 129B  ; not reached in the traces so far
     mov a,#$00                        ; 129D  ; not reached in the traces so far
-    mov.w $0579,a                     ; 129F  ; not reached in the traces so far
+    mov.w !spc_timer_4c,a             ; 129F  ; not reached in the traces so far
 .l12A2:
-    mov.w a,$0395                     ; 12A2
+    mov.w a,!spc_sfx_command+5        ; 12A2
     cmp a,#$17                        ; 12A5
     beq .l12AF                        ; 12A7
     cmp a,#$21                        ; 12A9
     beq .l12AF                        ; 12AB
     bra .l12BE                        ; 12AD
 .l12AF:
-    cmp $01,#$09                      ; 12AF
+    cmp !spc_port_in+1,#$09           ; 12AF
     beq .l12BB                        ; 12B2
-    cmp $01,#$0D                      ; 12B4
+    cmp !spc_port_in+1,#$0D           ; 12B4
     beq .l12BB                        ; 12B7
     bra .l12BE                        ; 12B9
 .l12BB:
-    mov $01,#$00                      ; 12BB
+    mov !spc_port_in+1,#$00           ; 12BB
 .l12BE:
-    mov.w a,$0397                     ; 12BE
+    mov.w a,!spc_sfx_command+7        ; 12BE
     cmp a,#$32                        ; 12C1
     bne .l12D1                        ; 12C3
-    mov.w a,$0394                     ; 12C5
+    mov.w a,!spc_sfx_command+4        ; 12C5
     cmp a,#$38                        ; 12C8
     bne .l12D1                        ; 12CA
     mov x,#$04                        ; 12CC
@@ -317,7 +318,7 @@ SpcBGameStateTick:
 ; @spc 12D2
 %spc($12D2, $1AF2B7)
 SpcBCommand4C:
-    cmp $1D,#$4C                      ; 12D2
+    cmp !spc_command,#$4C             ; 12D2
     bne .l12F9                        ; 12D5
     mov x,#$07                        ; 12D7  ; not reached in the traces so far
     call SpcBSfxStopRequest           ; 12D9  ; not reached in the traces so far
@@ -330,10 +331,10 @@ SpcBCommand4C:
     dec x                             ; 12E8  ; not reached in the traces so far
     call SpcBSfxStop                  ; 12E9  ; not reached in the traces so far
     mov a,#$01                        ; 12EC  ; not reached in the traces so far
-    mov.w $0579,a                     ; 12EE  ; not reached in the traces so far
-    mov $2A,#$00                      ; 12F1  ; not reached in the traces so far
+    mov.w !spc_timer_4c,a             ; 12EE  ; not reached in the traces so far
+    mov !spc_loop_flags,#$00          ; 12F1  ; not reached in the traces so far
     call SpcMusicPause                ; 12F4  ; not reached in the traces so far
-    set1 $2D.6                        ; 12F7  ; not reached in the traces so far
+    set1 !spc_game_flags.6            ; 12F7  ; not reached in the traces so far
 .l12F9:
     ret                               ; 12F9
 
@@ -348,13 +349,13 @@ SpcBSoundQueuePush:
     push a                            ; 12FB
     mov x,#$00                        ; 12FC
 .l12FE:
-    mov.w a,$0588+x                   ; 12FE
+    mov.w a,!spc_sound_queue+x        ; 12FE
     beq .l1306                        ; 1301
     inc x                             ; 1303
     bra .l12FE                        ; 1304
 .l1306:
     pop a                             ; 1306
-    mov.w $0588+x,a                   ; 1307
+    mov.w !spc_sound_queue+x,a        ; 1307
     pop x                             ; 130A
 .l130B:
     ret                               ; 130B
@@ -367,28 +368,28 @@ SpcBSoundQueuePush:
 %spc($130C, $1AF2F1)
 SpcBCommandTimers:
     bbs !spc_flags.0,SpcBSoundQueuePush_l130B; 130C
-    cmp $1D,#$3E                      ; 130F
+    cmp !spc_command,#$3E             ; 130F
     bne .l1325                        ; 1312
     mov a,#$01                        ; 1314
-    mov.w $0568,a                     ; 1316
+    mov.w !spc_count_3e,a             ; 1316
     bbc !spc_port_in.7,.l1325         ; 1319
-    mov.b $20,a                       ; 131C
-    set1 $20.7                        ; 131E
-    mov.b a,$20                       ; 1320
-    mov.w $0568,a                     ; 1322
+    mov.b !spc_sfx_tmp,a              ; 131C
+    set1 !spc_sfx_tmp.7               ; 131E
+    mov.b a,!spc_sfx_tmp              ; 1320
+    mov.w !spc_count_3e,a             ; 1322
 .l1325:
-    mov.w a,$0568                     ; 1325
+    mov.w a,!spc_count_3e             ; 1325
     beq .l132D                        ; 1328
-    inc.w $0568                       ; 132A
+    inc.w !spc_count_3e               ; 132A
 .l132D:
-    mov.w a,$0568                     ; 132D
+    mov.w a,!spc_count_3e             ; 132D
     and a,#$7F                        ; 1330
     cmp a,#$2A                        ; 1332
     bne .l136B                        ; 1334
-    mov.w a,$0568                     ; 1336
+    mov.w a,!spc_count_3e             ; 1336
     asl a                             ; 1339
     bcs .l1351                        ; 133A
-    mov.w a,$0397                     ; 133C
+    mov.w a,!spc_sfx_command+7        ; 133C
 .l133F:
     cmp a,#$77                        ; 133F
     beq .l135A                        ; 1341
@@ -400,7 +401,7 @@ SpcBCommandTimers:
     beq .l1356                        ; 134D  ; not reached in the traces so far
     bra .l1366                        ; 134F  ; not reached in the traces so far
 .l1351:
-    mov.w a,$0396                     ; 1351
+    mov.w a,!spc_sfx_command+6        ; 1351
     bra .l133F                        ; 1354
 .l1356:
     mov a,#$0F                        ; 1356
@@ -408,18 +409,18 @@ SpcBCommandTimers:
 .l135A:
     mov a,#$2F                        ; 135A
 .l135C:
-    asl.w $0568                       ; 135C
+    asl.w !spc_count_3e               ; 135C
     bcc .l1363                        ; 135F
     or a,#$80                         ; 1361
 .l1363:
     call SpcBSoundQueuePush           ; 1363
 .l1366:
     mov a,#$00                        ; 1366
-    mov.w $0568,a                     ; 1368
+    mov.w !spc_count_3e,a             ; 1368
 .l136B:
-    cmp $1D,#$20                      ; 136B
+    cmp !spc_command,#$20             ; 136B
     beq .l1377                        ; 136E
-    cmp $1D,#$16                      ; 1370
+    cmp !spc_command,#$16             ; 1370
     beq .l137B                        ; 1373
     bra .l1399                        ; 1375
 .l1377:
@@ -428,7 +429,7 @@ SpcBCommandTimers:
 .l137B:
     set1 !spc_track_flags.5           ; 137B  ; not reached in the traces so far
 .l137D:
-    mov.w a,$0397                     ; 137D  ; not reached in the traces so far
+    mov.w a,!spc_sfx_command+7        ; 137D  ; not reached in the traces so far
     cmp a,#$01                        ; 1380  ; not reached in the traces so far
     beq .l1391                        ; 1382  ; not reached in the traces so far
     cmp a,#$04                        ; 1384  ; not reached in the traces so far
@@ -436,23 +437,23 @@ SpcBCommandTimers:
     cmp a,#$07                        ; 1388  ; not reached in the traces so far
     beq .l1391                        ; 138A  ; not reached in the traces so far
 .l138C:
-    mov $1D,#$1B                      ; 138C  ; not reached in the traces so far
+    mov !spc_command,#$1B             ; 138C  ; not reached in the traces so far
     bra .l1394                        ; 138F  ; not reached in the traces so far
 .l1391:
-    mov $1D,#$27                      ; 1391  ; not reached in the traces so far
+    mov !spc_command,#$27             ; 1391  ; not reached in the traces so far
 .l1394:
     mov a,#$01                        ; 1394  ; not reached in the traces so far
-    mov.w $055D,a                     ; 1396  ; not reached in the traces so far
+    mov.w !spc_count_20_16,a          ; 1396  ; not reached in the traces so far
 .l1399:
-    mov.w a,$055D                     ; 1399
+    mov.w a,!spc_count_20_16          ; 1399
     beq .l13A1                        ; 139C
-    inc.w $055D                       ; 139E  ; not reached in the traces so far
+    inc.w !spc_count_20_16            ; 139E  ; not reached in the traces so far
 .l13A1:
-    mov.w a,$055D                     ; 13A1
+    mov.w a,!spc_count_20_16          ; 13A1
     cmp a,#$11                        ; 13A4
     bne .l13C5                        ; 13A6
     mov a,#$00                        ; 13A8  ; not reached in the traces so far
-    mov.w $055D,a                     ; 13AA  ; not reached in the traces so far
+    mov.w !spc_count_20_16,a          ; 13AA  ; not reached in the traces so far
     bbs !spc_track_flags.4,.l13B5     ; 13AD  ; not reached in the traces so far
     bbs !spc_track_flags.5,.l13BE     ; 13B0  ; not reached in the traces so far
     bra .l13C5                        ; 13B3  ; not reached in the traces so far
@@ -481,7 +482,7 @@ SpcBTempoBend:
 .l13CF:
     ret                               ; 13CF
 .l13D0:
-    mov.w a,$0555                     ; 13D0  ; not reached in the traces so far
+    mov.w a,!spc_bend_count           ; 13D0  ; not reached in the traces so far
     beq .l13F7                        ; 13D3
     cmp a,#$FE                        ; 13D5  ; not reached in the traces so far
     beq .l13CF                        ; 13D7  ; not reached in the traces so far
@@ -490,48 +491,48 @@ SpcBTempoBend:
     clr1 !spc_track_flags.2           ; 13DB  ; not reached in the traces so far
     clr1 !spc_track_flags.3           ; 13DD  ; not reached in the traces so far
     mov a,#$00                        ; 13DF  ; not reached in the traces so far
-    mov.w $0555,a                     ; 13E1  ; not reached in the traces so far
-    mov.w $0553,a                     ; 13E4  ; not reached in the traces so far
-    mov.w $0554,a                     ; 13E7  ; not reached in the traces so far
-    mov.w $0569,a                     ; 13EA  ; not reached in the traces so far
-    mov.w a,$0578                     ; 13ED  ; not reached in the traces so far
+    mov.w !spc_bend_count,a           ; 13E1  ; not reached in the traces so far
+    mov.w !spc_bend_acc,a             ; 13E4  ; not reached in the traces so far
+    mov.w !spc_bend_acc+1,a           ; 13E7  ; not reached in the traces so far
+    mov.w !spc_bend_tempo_step,a      ; 13EA  ; not reached in the traces so far
+    mov.w a,!spc_bend_tempo           ; 13ED  ; not reached in the traces so far
     mov.b !spc_transpose,a            ; 13F0  ; not reached in the traces so far
-    mov.w a,$0566                     ; 13F2  ; not reached in the traces so far
+    mov.w a,!spc_bend_transpose       ; 13F2  ; not reached in the traces so far
     bra .l1441                        ; 13F5  ; not reached in the traces so far
 .l13F7:
     mov a,#$04                        ; 13F7  ; not reached in the traces so far
-    mov.w $0554,a                     ; 13F9  ; not reached in the traces so far
+    mov.w !spc_bend_acc+1,a           ; 13F9  ; not reached in the traces so far
     mov.b a,!spc_tempo+1              ; 13FC  ; not reached in the traces so far
-    mov.w $0566,a                     ; 13FE  ; not reached in the traces so far
+    mov.w !spc_bend_transpose,a       ; 13FE  ; not reached in the traces so far
     mov.b a,!spc_transpose            ; 1401  ; not reached in the traces so far
-    mov.w $0578,a                     ; 1403  ; not reached in the traces so far
+    mov.w !spc_bend_tempo,a           ; 1403  ; not reached in the traces so far
     mov y,#$7F                        ; 1406  ; not reached in the traces so far
     mul ya                            ; 1408  ; not reached in the traces so far
     mov x,#$FE                        ; 1409  ; not reached in the traces so far
     div ya,x                          ; 140B  ; not reached in the traces so far
-    mov.w $0569,a                     ; 140C  ; not reached in the traces so far
+    mov.w !spc_bend_tempo_step,a      ; 140C  ; not reached in the traces so far
 .l140F:
-    inc.w $0555                       ; 140F  ; not reached in the traces so far
-    mov.w a,$0555                     ; 1412  ; not reached in the traces so far
+    inc.w !spc_bend_count             ; 140F  ; not reached in the traces so far
+    mov.w a,!spc_bend_count           ; 1412  ; not reached in the traces so far
     mov y,#$00                        ; 1415  ; not reached in the traces so far
     mov x,#$15                        ; 1417  ; not reached in the traces so far
     div ya,x                          ; 1419  ; not reached in the traces so far
-    mov.b $20,a                       ; 141A  ; not reached in the traces so far
+    mov.b !spc_sfx_tmp,a              ; 141A  ; not reached in the traces so far
     setc                              ; 141C  ; not reached in the traces so far
-    mov.w a,$0578                     ; 141D  ; not reached in the traces so far
-    sbc.b a,$20                       ; 1420  ; not reached in the traces so far
+    mov.w a,!spc_bend_tempo           ; 141D  ; not reached in the traces so far
+    sbc.b a,!spc_sfx_tmp              ; 1420  ; not reached in the traces so far
     mov.b !spc_transpose,a            ; 1422  ; not reached in the traces so far
-    mov.w a,$0569                     ; 1424  ; not reached in the traces so far
-    mov.b $20,a                       ; 1427  ; not reached in the traces so far
-    mov $21,#$00                      ; 1429  ; not reached in the traces so far
-    mov.w a,$0553                     ; 142C  ; not reached in the traces so far
-    mov.w y,$0554                     ; 142F  ; not reached in the traces so far
-    addw ya,$20                       ; 1432  ; not reached in the traces so far
-    mov.w $0553,a                     ; 1434  ; not reached in the traces so far
-    mov.w $0554,y                     ; 1437  ; not reached in the traces so far
-    mov.w a,$0566                     ; 143A  ; not reached in the traces so far
+    mov.w a,!spc_bend_tempo_step      ; 1424  ; not reached in the traces so far
+    mov.b !spc_sfx_tmp,a              ; 1427  ; not reached in the traces so far
+    mov !spc_sfx_tmp+1,#$00           ; 1429  ; not reached in the traces so far
+    mov.w a,!spc_bend_acc             ; 142C  ; not reached in the traces so far
+    mov.w y,!spc_bend_acc+1           ; 142F  ; not reached in the traces so far
+    addw ya,!spc_sfx_tmp              ; 1432  ; not reached in the traces so far
+    mov.w !spc_bend_acc,a             ; 1434  ; not reached in the traces so far
+    mov.w !spc_bend_acc+1,y           ; 1437  ; not reached in the traces so far
+    mov.w a,!spc_bend_transpose       ; 143A  ; not reached in the traces so far
     setc                              ; 143D  ; not reached in the traces so far
-    sbc.w a,$0554                     ; 143E  ; not reached in the traces so far
+    sbc.w a,!spc_bend_acc+1           ; 143E  ; not reached in the traces so far
 .l1441:
     mov.b !spc_tempo+1,a              ; 1441  ; not reached in the traces so far
     ret                               ; 1443  ; not reached in the traces so far
@@ -543,10 +544,10 @@ SpcBTempoBend:
 ; @spc 1444
 %spc($1444, $1AF429)
 SpcBTempoBendStart:
-    mov.b a,$1D                       ; 1444
+    mov.b a,!spc_command              ; 1444
     cmp a,#$2C                        ; 1446
     beq .l1458                        ; 1448
-    mov.w x,$0555                     ; 144A
+    mov.w x,!spc_bend_count           ; 144A
     beq .l1461                        ; 144D
     cmp a,#$30                        ; 144F  ; not reached in the traces so far
     beq .l1462                        ; 1451  ; not reached in the traces so far
@@ -574,11 +575,11 @@ SpcBTempoBendStart:
 SpcBPort1Clamp:
     cmp !spc_song,#$01                ; 1467
     beq .l1476                        ; 146A
-    mov.b a,$01                       ; 146C
+    mov.b a,!spc_port_in+1            ; 146C
     setc                              ; 146E
     sbc a,#$07                        ; 146F
     bmi .l1476                        ; 1471
-    mov $01,#$00                      ; 1473
+    mov !spc_port_in+1,#$00           ; 1473
 .l1476:
     ret                               ; 1476
 
@@ -594,16 +595,17 @@ SpcBCommandFilter:
     beq .l148E                        ; 147B
     mov x,#$00                        ; 147D
 .l147F:
-    mov.w a,$148F+x                   ; 147F
+    mov.w a,.t148F+x                  ; 147F
     beq .l148B                        ; 1482
-    cmp.b a,$1D                       ; 1484
+    cmp.b a,!spc_command              ; 1484
     beq .l148E                        ; 1486
     inc x                             ; 1488
     bra .l147F                        ; 1489
 .l148B:
-    mov $1D,#$00                      ; 148B
+    mov !spc_command,#$00             ; 148B
 .l148E:
     ret                               ; 148E
+.t148F:
     db $03, $10, $32, $2B, $34, $43, $44, $45
     db $77, $78, $79, $7A, $23, $3A, $3B, $3F
     db $06, $22, $41, $40, $1F, $2A, $00
@@ -617,16 +619,17 @@ SpcBCommandFilter:
 SpcBCommandBlock:
     mov x,#$00                        ; 14A6
 .l14A8:
-    mov.w a,$14B8+x                   ; 14A8
+    mov.w a,.t14B8+x                  ; 14A8
     beq .l14B7                        ; 14AB
-    cmp.b a,$1D                       ; 14AD
+    cmp.b a,!spc_command              ; 14AD
     beq .l14B4                        ; 14AF
     inc x                             ; 14B1
     bra .l14A8                        ; 14B2
 .l14B4:
-    mov $1D,#$00                      ; 14B4
+    mov !spc_command,#$00             ; 14B4
 .l14B7:
     ret                               ; 14B7
+.t14B8:
     db $02, $01, $04, $07, $0A, $0D, $25, $15
     db $17, $1E, $21, $18, $19, $1A, $09, $0C
     db $0B, $2E, $4E, $2D, $29, $4D, $33, $5A
@@ -639,16 +642,16 @@ SpcBCommandBlock:
 ; @spc 14D1
 %spc($14D1, $1AF4B6)
 SpcBPitchRampB:
-    bbc $28.2,.l14D7                  ; 14D1
+    bbc !spc_effect_flags.2,.l14D7    ; 14D1
     call SpcBPitchRampB1Up            ; 14D4
 .l14D7:
-    bbc $28.3,.l14DD                  ; 14D7
+    bbc !spc_effect_flags.3,.l14DD    ; 14D7
     call SpcBPitchRampB1Down          ; 14DA
 .l14DD:
-    bbc $28.4,.l14E3                  ; 14DD
+    bbc !spc_effect_flags.4,.l14E3    ; 14DD
     call SpcBPitchRampB2Up            ; 14E0
 .l14E3:
-    bbc $28.5,.l14E9                  ; 14E3
+    bbc !spc_effect_flags.5,.l14E9    ; 14E3
     call SpcBPitchRampB2Down          ; 14E6
 .l14E9:
     ret                               ; 14E9
@@ -660,19 +663,19 @@ SpcBPitchRampB:
 ; @spc 14EA
 %spc($14EA, $1AF4CF)
 SpcBPitchRampB1Up:
-    mov.w a,$0547                     ; 14EA
+    mov.w a,!spc_ramp_b_steps         ; 14EA
     cmp a,#$14                        ; 14ED
     beq .l150A                        ; 14EF
-    inc.w $0547                       ; 14F1
-    mov.w a,$054D                     ; 14F4
-    mov.b $20,a                       ; 14F7
-    mov.w a,$054F                     ; 14F9
-    mov.b $21,a                       ; 14FC
+    inc.w !spc_ramp_b_steps           ; 14F1
+    mov.w a,!spc_ramp_b_pitch         ; 14F4
+    mov.b !spc_sfx_tmp,a              ; 14F7
+    mov.w a,!spc_ramp_b_pitch_hi      ; 14F9
+    mov.b !spc_sfx_tmp+1,a            ; 14FC
     mov a,#$20                        ; 14FE
     mov y,#$00                        ; 1500
-    addw ya,$20                       ; 1502
-    mov.w $054D,a                     ; 1504
-    mov.w $054F,y                     ; 1507
+    addw ya,!spc_sfx_tmp              ; 1502
+    mov.w !spc_ramp_b_pitch,a         ; 1504
+    mov.w !spc_ramp_b_pitch_hi,y      ; 1507
 .l150A:
     ret                               ; 150A
 
@@ -683,19 +686,19 @@ SpcBPitchRampB1Up:
 ; @spc 150B
 %spc($150B, $1AF4F0)
 SpcBPitchRampB2Up:
-    mov.w a,$0546                     ; 150B
+    mov.w a,!spcb_ramp_b2_steps       ; 150B
     cmp a,#$14                        ; 150E
     beq .l152B                        ; 1510
-    inc.w $0546                       ; 1512
-    mov.w a,$054C                     ; 1515
-    mov.b $20,a                       ; 1518
-    mov.w a,$054E                     ; 151A
-    mov.b $21,a                       ; 151D
+    inc.w !spcb_ramp_b2_steps         ; 1512
+    mov.w a,!spcb_ramp_b2_pitch       ; 1515
+    mov.b !spc_sfx_tmp,a              ; 1518
+    mov.w a,!spcb_ramp_b2_pitch_hi    ; 151A
+    mov.b !spc_sfx_tmp+1,a            ; 151D
     mov a,#$20                        ; 151F
     mov y,#$00                        ; 1521
-    addw ya,$20                       ; 1523
-    mov.w $054C,a                     ; 1525
-    mov.w $054E,y                     ; 1528
+    addw ya,!spc_sfx_tmp              ; 1523
+    mov.w !spcb_ramp_b2_pitch,a       ; 1525
+    mov.w !spcb_ramp_b2_pitch_hi,y    ; 1528
 .l152B:
     ret                               ; 152B
 
@@ -706,24 +709,24 @@ SpcBPitchRampB2Up:
 ; @spc 152C
 %spc($152C, $1AF511)
 SpcBPitchRampB1Down:
-    mov.w a,$0547                     ; 152C
+    mov.w a,!spc_ramp_b_steps         ; 152C
     cmp a,#$00                        ; 152F
     beq .l154B                        ; 1531
-    dec.w $0547                       ; 1533
-    mov.w a,$054D                     ; 1536
-    mov.w y,$054F                     ; 1539
-    mov $20,#$20                      ; 153C
-    mov $21,#$00                      ; 153F
-    subw ya,$20                       ; 1542
-    mov.w $054D,a                     ; 1544
-    mov.w $054F,y                     ; 1547
+    dec.w !spc_ramp_b_steps           ; 1533
+    mov.w a,!spc_ramp_b_pitch         ; 1536
+    mov.w y,!spc_ramp_b_pitch_hi      ; 1539
+    mov !spc_sfx_tmp,#$20             ; 153C
+    mov !spc_sfx_tmp+1,#$00           ; 153F
+    subw ya,!spc_sfx_tmp              ; 1542
+    mov.w !spc_ramp_b_pitch,a         ; 1544
+    mov.w !spc_ramp_b_pitch_hi,y      ; 1547
     ret                               ; 154A
 .l154B:
-    clr1 $28.2                        ; 154B
-    clr1 $28.3                        ; 154D
+    clr1 !spc_effect_flags.2          ; 154B
+    clr1 !spc_effect_flags.3          ; 154D
     mov a,#$00                        ; 154F
-    mov.w $054D,a                     ; 1551
-    mov.w $054F,a                     ; 1554
+    mov.w !spc_ramp_b_pitch,a         ; 1551
+    mov.w !spc_ramp_b_pitch_hi,a      ; 1554
     ret                               ; 1557
 
 ; @routine 1A:F53D SpcBPitchRampB2Down
@@ -733,24 +736,24 @@ SpcBPitchRampB1Down:
 ; @spc 1558
 %spc($1558, $1AF53D)
 SpcBPitchRampB2Down:
-    mov.w a,$0546                     ; 1558
+    mov.w a,!spcb_ramp_b2_steps       ; 1558
     cmp a,#$00                        ; 155B
     beq .l1577                        ; 155D
-    dec.w $0546                       ; 155F
-    mov.w a,$054C                     ; 1562
-    mov.w y,$054E                     ; 1565
-    mov $20,#$20                      ; 1568
-    mov $21,#$00                      ; 156B
-    subw ya,$20                       ; 156E
-    mov.w $054C,a                     ; 1570
-    mov.w $054E,y                     ; 1573
+    dec.w !spcb_ramp_b2_steps         ; 155F
+    mov.w a,!spcb_ramp_b2_pitch       ; 1562
+    mov.w y,!spcb_ramp_b2_pitch_hi    ; 1565
+    mov !spc_sfx_tmp,#$20             ; 1568
+    mov !spc_sfx_tmp+1,#$00           ; 156B
+    subw ya,!spc_sfx_tmp              ; 156E
+    mov.w !spcb_ramp_b2_pitch,a       ; 1570
+    mov.w !spcb_ramp_b2_pitch_hi,y    ; 1573
     ret                               ; 1576
 .l1577:
-    clr1 $28.4                        ; 1577
-    clr1 $28.5                        ; 1579
+    clr1 !spc_effect_flags.4          ; 1577
+    clr1 !spc_effect_flags.5          ; 1579
     mov a,#$00                        ; 157B
-    mov.w $054C,a                     ; 157D
-    mov.w $054E,a                     ; 1580
+    mov.w !spcb_ramp_b2_pitch,a       ; 157D
+    mov.w !spcb_ramp_b2_pitch_hi,a    ; 1580
     ret                               ; 1583
 
 ; @routine 1A:F569 SpcBPitchRampA
@@ -781,19 +784,19 @@ SpcBPitchRampA:
 ; @spc 159D
 %spc($159D, $1AF582)
 SpcBPitchRampA1Up:
-    mov.w a,$0543                     ; 159D
+    mov.w a,!spc_ramp_a_steps         ; 159D
     cmp a,#$19                        ; 15A0
     beq .l15BD                        ; 15A2
-    inc.w $0543                       ; 15A4
-    mov.w a,$0549                     ; 15A7
-    mov.b $20,a                       ; 15AA
-    mov.w a,$054B                     ; 15AC
-    mov.b $21,a                       ; 15AF
+    inc.w !spc_ramp_a_steps           ; 15A4
+    mov.w a,!spc_ramp_a_pitch         ; 15A7
+    mov.b !spc_sfx_tmp,a              ; 15AA
+    mov.w a,!spc_ramp_a_pitch_hi      ; 15AC
+    mov.b !spc_sfx_tmp+1,a            ; 15AF
     mov a,#$3C                        ; 15B1
     mov y,#$00                        ; 15B3
-    addw ya,$20                       ; 15B5
-    mov.w $0549,a                     ; 15B7
-    mov.w $054B,y                     ; 15BA
+    addw ya,!spc_sfx_tmp              ; 15B5
+    mov.w !spc_ramp_a_pitch,a         ; 15B7
+    mov.w !spc_ramp_a_pitch_hi,y      ; 15BA
 .l15BD:
     ret                               ; 15BD
 
@@ -804,17 +807,17 @@ SpcBPitchRampA1Up:
 ; @spc 15BE
 %spc($15BE, $1AF5A3)
 SpcBPitchRampA1Down:
-    mov.w a,$0543                     ; 15BE
+    mov.w a,!spc_ramp_a_steps         ; 15BE
     cmp a,#$00                        ; 15C1
     beq SpcBPitchRampA1End            ; 15C3
-    dec.w $0543                       ; 15C5
-    mov.w a,$0549                     ; 15C8
-    mov.w y,$054B                     ; 15CB
-    mov $20,#$3C                      ; 15CE
-    mov $21,#$00                      ; 15D1
-    subw ya,$20                       ; 15D4
-    mov.w $0549,a                     ; 15D6
-    mov.w $054B,y                     ; 15D9
+    dec.w !spc_ramp_a_steps           ; 15C5
+    mov.w a,!spc_ramp_a_pitch         ; 15C8
+    mov.w y,!spc_ramp_a_pitch_hi      ; 15CB
+    mov !spc_sfx_tmp,#$3C             ; 15CE
+    mov !spc_sfx_tmp+1,#$00           ; 15D1
+    subw ya,!spc_sfx_tmp              ; 15D4
+    mov.w !spc_ramp_a_pitch,a         ; 15D6
+    mov.w !spc_ramp_a_pitch_hi,y      ; 15D9
     ret                               ; 15DC
 
 ; @routine 1A:F5C2 SpcBPitchRampA1End
@@ -827,8 +830,8 @@ SpcBPitchRampA1End:
     clr1 !spc_flags.2                 ; 15DD
     clr1 !spc_flags.3                 ; 15DF
     mov a,#$00                        ; 15E1
-    mov.w $0549,a                     ; 15E3
-    mov.w $054B,a                     ; 15E6
+    mov.w !spc_ramp_a_pitch,a         ; 15E3
+    mov.w !spc_ramp_a_pitch_hi,a      ; 15E6
     ret                               ; 15E9
 
 ; @routine 1A:F5CF SpcBPitchRampA2Up
@@ -838,19 +841,19 @@ SpcBPitchRampA1End:
 ; @spc 15EA
 %spc($15EA, $1AF5CF)
 SpcBPitchRampA2Up:
-    mov.w a,$0542                     ; 15EA
+    mov.w a,!spcb_ramp_a2_steps       ; 15EA
     cmp a,#$19                        ; 15ED
     beq .l160A                        ; 15EF
-    inc.w $0542                       ; 15F1
-    mov.w a,$0548                     ; 15F4
-    mov.b $20,a                       ; 15F7
-    mov.w a,$054A                     ; 15F9
-    mov.b $21,a                       ; 15FC
+    inc.w !spcb_ramp_a2_steps         ; 15F1
+    mov.w a,!spcb_ramp_a2_pitch       ; 15F4
+    mov.b !spc_sfx_tmp,a              ; 15F7
+    mov.w a,!spcb_ramp_a2_pitch_hi    ; 15F9
+    mov.b !spc_sfx_tmp+1,a            ; 15FC
     mov a,#$3C                        ; 15FE
     mov y,#$00                        ; 1600
-    addw ya,$20                       ; 1602
-    mov.w $0548,a                     ; 1604
-    mov.w $054A,y                     ; 1607
+    addw ya,!spc_sfx_tmp              ; 1602
+    mov.w !spcb_ramp_a2_pitch,a       ; 1604
+    mov.w !spcb_ramp_a2_pitch_hi,y    ; 1607
 .l160A:
     ret                               ; 160A
 
@@ -861,24 +864,24 @@ SpcBPitchRampA2Up:
 ; @spc 160B
 %spc($160B, $1AF5F0)
 SpcBPitchRampA2Down:
-    mov.w a,$0542                     ; 160B
+    mov.w a,!spcb_ramp_a2_steps       ; 160B
     cmp a,#$00                        ; 160E
     beq .l162A                        ; 1610
-    dec.w $0542                       ; 1612
-    mov.w a,$0548                     ; 1615
-    mov.w y,$054A                     ; 1618
-    mov $20,#$3C                      ; 161B
-    mov $21,#$00                      ; 161E
-    subw ya,$20                       ; 1621
-    mov.w $0548,a                     ; 1623
-    mov.w $054A,y                     ; 1626
+    dec.w !spcb_ramp_a2_steps         ; 1612
+    mov.w a,!spcb_ramp_a2_pitch       ; 1615
+    mov.w y,!spcb_ramp_a2_pitch_hi    ; 1618
+    mov !spc_sfx_tmp,#$3C             ; 161B
+    mov !spc_sfx_tmp+1,#$00           ; 161E
+    subw ya,!spc_sfx_tmp              ; 1621
+    mov.w !spcb_ramp_a2_pitch,a       ; 1623
+    mov.w !spcb_ramp_a2_pitch_hi,y    ; 1626
     ret                               ; 1629
 .l162A:
     clr1 !spc_flags.4                 ; 162A
     clr1 !spc_flags.5                 ; 162C
     mov a,#$00                        ; 162E
-    mov.w $0548,a                     ; 1630
-    mov.w $054A,a                     ; 1633
+    mov.w !spcb_ramp_a2_pitch,a       ; 1630
+    mov.w !spcb_ramp_a2_pitch_hi,a    ; 1633
     ret                               ; 1636
 
 ; @routine 1A:F61C SpcBPortCommand
@@ -888,7 +891,7 @@ SpcBPitchRampA2Down:
 ; @spc 1637
 %spc($1637, $1AF61C)
 SpcBPortCommand:
-    mov $1D,#$00                      ; 1637
+    mov !spc_command,#$00             ; 1637
     mov.b a,!spc_port_in              ; 163A
     and a,#$7F                        ; 163C
     beq .l1649                        ; 163E
@@ -896,10 +899,10 @@ SpcBPortCommand:
     sbc a,#$06                        ; 1641
     bmi .l164C                        ; 1643
     inc a                             ; 1645
-    mov.b $1D,a                       ; 1646
+    mov.b !spc_command,a              ; 1646
     ret                               ; 1648
 .l1649:
-    mov.b $1D,a                       ; 1649
+    mov.b !spc_command,a              ; 1649
     ret                               ; 164B
 .l164C:
     bbs !spc_flags.0,.l1670           ; 164C
@@ -909,11 +912,11 @@ SpcBPortCommand:
     bne .l1657                        ; 1655
 .l1657:
     mov a,#$00                        ; 1657
-    mov.b $2E,a                       ; 1659
-    mov.b $2F,a                       ; 165B
-    mov.w $0553,a                     ; 165D
-    mov.w $0554,a                     ; 1660
-    mov.w $0555,a                     ; 1663
+    mov.b !spc_fade_amount,a          ; 1659
+    mov.b !spc_fade_amount+1,a        ; 165B
+    mov.w !spc_bend_acc,a             ; 165D
+    mov.w !spc_bend_acc+1,a           ; 1660
+    mov.w !spc_bend_count,a           ; 1663
     clr1 !spc_flags.0                 ; 1666
     clr1 !spc_flags.1                 ; 1668
     clr1 !spc_flags.6                 ; 166A
@@ -929,27 +932,28 @@ SpcBPortCommand:
 ; @spc 1671
 %spc($1671, $1AF656)
 SpcBPort1Command:
-    mov.b a,$01                       ; 1671
-    cmp.b a,$09                       ; 1673
+    mov.b a,!spc_port_in+1            ; 1671
+    cmp.b a,!spc_port1_last           ; 1673
     bne .l167C                        ; 1675
-    mov $20,#$00                      ; 1677
+    mov !spc_sfx_tmp,#$00             ; 1677
     bra .l167F                        ; 167A
 .l167C:
-    mov $20,$01                       ; 167C
+    mov !spc_sfx_tmp,!spc_port_in+1   ; 167C
 .l167F:
-    mov $09,$01                       ; 167F
-    mov.b a,$20                       ; 1682
+    mov !spc_port1_last,!spc_port_in+1; 167F
+    mov.b a,!spc_sfx_tmp              ; 1682
     setc                              ; 1684
     sbc a,#$3E                        ; 1685
     bmi .l168C                        ; 1687
-    mov $20,#$00                      ; 1689  ; not reached in the traces so far
+    mov !spc_sfx_tmp,#$00             ; 1689  ; not reached in the traces so far
 .l168C:
-    mov.b a,$20                       ; 168C
+    mov.b a,!spc_sfx_tmp              ; 168C
     beq SpcBPortCommand_l1670         ; 168E
     dec a                             ; 1690
     asl a                             ; 1691
     mov x,a                           ; 1692
-    jmp ($1696+x)                     ; 1693
+    jmp (.t1696+x)                    ; 1693
+.t1696:
     db $AE, $17, $AE, $17, $AE, $17, $AE, $17
     db $0B, $1A, $15, $1A, $AE, $17, $AE, $17
     db $10, $17, $1D, $18, $28, $18, $33, $18
@@ -966,38 +970,38 @@ SpcBPort1Command:
     db $0B, $18, $14, $18, $14, $18, $14, $18
     db $14, $18, $AF, $17, $D3, $17, $C1, $17
     db $EF, $17
-    bbs $2D.6,.l171A                  ; 1710
-    set1 $2A.2                        ; 1713
+    bbs !spc_game_flags.6,.l171A      ; 1710
+    set1 !spc_loop_flags.2            ; 1713
     mov a,#$25                        ; 1715
     call SpcBSoundQueuePush           ; 1717
 .l171A:
     ret                               ; 171A
-    bbs $2D.6,.l1725                  ; 171B
-    set1 $2A.4                        ; 171E
+    bbs !spc_game_flags.6,.l1725      ; 171B
+    set1 !spc_loop_flags.4            ; 171E
     mov a,#$15                        ; 1720
     call SpcBSoundQueuePush           ; 1722
 .l1725:
     ret                               ; 1725
-    bbs $2D.6,.l1730                  ; 1726
-    set1 $2A.0                        ; 1729
+    bbs !spc_game_flags.6,.l1730      ; 1726
+    set1 !spc_loop_flags.0            ; 1729
     mov a,#$17                        ; 172B
     call SpcBSoundQueuePush           ; 172D
 .l1730:
     ret                               ; 1730
-    bbs $2D.6,.l173B                  ; 1731
-    set1 $2A.3                        ; 1734
+    bbs !spc_game_flags.6,.l173B      ; 1731
+    set1 !spc_loop_flags.3            ; 1734
     mov a,#$A5                        ; 1736
     call SpcBSoundQueuePush           ; 1738
 .l173B:
     ret                               ; 173B
-    bbs $2D.6,.l1746                  ; 173C
-    set1 $2A.5                        ; 173F
+    bbs !spc_game_flags.6,.l1746      ; 173C
+    set1 !spc_loop_flags.5            ; 173F
     mov a,#$95                        ; 1741
     call SpcBSoundQueuePush           ; 1743
 .l1746:
     ret                               ; 1746
-    bbs $2D.6,.l1751                  ; 1747
-    set1 $2A.1                        ; 174A
+    bbs !spc_game_flags.6,.l1751      ; 1747
+    set1 !spc_loop_flags.1            ; 174A
     mov a,#$97                        ; 174C
     call SpcBSoundQueuePush           ; 174E
 .l1751:
@@ -1007,133 +1011,133 @@ SpcBPort1Command:
     clr1 !spc_flags.3                 ; 1757
     mov a,#$00                        ; 1759
     mov y,#$02                        ; 175B
-    mov.w $0549,a                     ; 175D
-    mov.w $054B,y                     ; 1760
+    mov.w !spc_ramp_a_pitch,a         ; 175D
+    mov.w !spc_ramp_a_pitch_hi,y      ; 1760
     ret                               ; 1763
     bbc !spc_flags.2,.l17AE           ; 1764
     clr1 !spc_flags.2                 ; 1767
     set1 !spc_flags.3                 ; 1769
-    mov.w a,$0549                     ; 176B
-    mov.w y,$054B                     ; 176E
-    mov $20,#$00                      ; 1771
-    mov $21,#$02                      ; 1774
-    subw ya,$20                       ; 1777
-    mov.w $0549,a                     ; 1779
-    mov.w $054B,y                     ; 177C
+    mov.w a,!spc_ramp_a_pitch         ; 176B
+    mov.w y,!spc_ramp_a_pitch_hi      ; 176E
+    mov !spc_sfx_tmp,#$00             ; 1771
+    mov !spc_sfx_tmp+1,#$02           ; 1774
+    subw ya,!spc_sfx_tmp              ; 1777
+    mov.w !spc_ramp_a_pitch,a         ; 1779
+    mov.w !spc_ramp_a_pitch_hi,y      ; 177C
     ret                               ; 177F
     bbs !spc_flags.4,.l17AE           ; 1780
     set1 !spc_flags.4                 ; 1783
     clr1 !spc_flags.5                 ; 1785
     mov a,#$00                        ; 1787
     mov y,#$02                        ; 1789
-    mov.w $0548,a                     ; 178B
-    mov.w $054A,y                     ; 178E
+    mov.w !spcb_ramp_a2_pitch,a       ; 178B
+    mov.w !spcb_ramp_a2_pitch_hi,y    ; 178E
     ret                               ; 1791
     bbc !spc_flags.4,.l17AE           ; 1792
     clr1 !spc_flags.4                 ; 1795
     set1 !spc_flags.5                 ; 1797
-    mov.w a,$0548                     ; 1799
-    mov.w y,$054A                     ; 179C
-    mov $20,#$00                      ; 179F
-    mov $21,#$02                      ; 17A2
-    subw ya,$20                       ; 17A5
-    mov.w $0548,a                     ; 17A7
-    mov.w $054A,y                     ; 17AA
+    mov.w a,!spcb_ramp_a2_pitch       ; 1799
+    mov.w y,!spcb_ramp_a2_pitch_hi    ; 179C
+    mov !spc_sfx_tmp,#$00             ; 179F
+    mov !spc_sfx_tmp+1,#$02           ; 17A2
+    subw ya,!spc_sfx_tmp              ; 17A5
+    mov.w !spcb_ramp_a2_pitch,a       ; 17A7
+    mov.w !spcb_ramp_a2_pitch_hi,y    ; 17AA
     ret                               ; 17AD
 .l17AE:
     ret                               ; 17AE
-    bbs $28.2,.l17AE                  ; 17AF
-    set1 $28.2                        ; 17B2
-    clr1 $28.3                        ; 17B4
+    bbs !spc_effect_flags.2,.l17AE    ; 17AF
+    set1 !spc_effect_flags.2          ; 17B2
+    clr1 !spc_effect_flags.3          ; 17B4
     mov a,#$40                        ; 17B6
     mov y,#$00                        ; 17B8
-    mov.w $054D,a                     ; 17BA
-    mov.w $054F,y                     ; 17BD
+    mov.w !spc_ramp_b_pitch,a         ; 17BA
+    mov.w !spc_ramp_b_pitch_hi,y      ; 17BD
     ret                               ; 17C0
-    bbs $28.4,.l17AE                  ; 17C1
-    set1 $28.4                        ; 17C4
-    clr1 $28.5                        ; 17C6
+    bbs !spc_effect_flags.4,.l17AE    ; 17C1
+    set1 !spc_effect_flags.4          ; 17C4
+    clr1 !spc_effect_flags.5          ; 17C6
     mov a,#$40                        ; 17C8
     mov y,#$00                        ; 17CA
-    mov.w $054C,a                     ; 17CC
-    mov.w $054E,y                     ; 17CF
+    mov.w !spcb_ramp_b2_pitch,a       ; 17CC
+    mov.w !spcb_ramp_b2_pitch_hi,y    ; 17CF
     ret                               ; 17D2
-    bbc $28.2,.l17AE                  ; 17D3
-    clr1 $28.2                        ; 17D6
-    set1 $28.3                        ; 17D8
-    mov.w a,$054D                     ; 17DA
-    mov.w y,$054F                     ; 17DD
-    mov $20,#$40                      ; 17E0
-    mov $21,#$00                      ; 17E3
-    subw ya,$20                       ; 17E6
-    mov.w $054D,a                     ; 17E8
-    mov.w $054F,y                     ; 17EB
+    bbc !spc_effect_flags.2,.l17AE    ; 17D3
+    clr1 !spc_effect_flags.2          ; 17D6
+    set1 !spc_effect_flags.3          ; 17D8
+    mov.w a,!spc_ramp_b_pitch         ; 17DA
+    mov.w y,!spc_ramp_b_pitch_hi      ; 17DD
+    mov !spc_sfx_tmp,#$40             ; 17E0
+    mov !spc_sfx_tmp+1,#$00           ; 17E3
+    subw ya,!spc_sfx_tmp              ; 17E6
+    mov.w !spc_ramp_b_pitch,a         ; 17E8
+    mov.w !spc_ramp_b_pitch_hi,y      ; 17EB
     ret                               ; 17EE
-    bbc $28.4,.l17AE                  ; 17EF
-    clr1 $28.4                        ; 17F2
-    set1 $28.5                        ; 17F4
-    mov.w a,$054C                     ; 17F6
-    mov.w y,$054E                     ; 17F9
-    mov $20,#$40                      ; 17FC
-    mov $21,#$00                      ; 17FF
-    subw ya,$20                       ; 1802
-    mov.w $054C,a                     ; 1804
-    mov.w $054E,y                     ; 1807
+    bbc !spc_effect_flags.4,.l17AE    ; 17EF
+    clr1 !spc_effect_flags.4          ; 17F2
+    set1 !spc_effect_flags.5          ; 17F4
+    mov.w a,!spcb_ramp_b2_pitch       ; 17F6
+    mov.w y,!spcb_ramp_b2_pitch_hi    ; 17F9
+    mov !spc_sfx_tmp,#$40             ; 17FC
+    mov !spc_sfx_tmp+1,#$00           ; 17FF
+    subw ya,!spc_sfx_tmp              ; 1802
+    mov.w !spcb_ramp_b2_pitch,a       ; 1804
+    mov.w !spcb_ramp_b2_pitch_hi,y    ; 1807
     ret                               ; 180A
-    mov.b a,$20                       ; 180B
+    mov.b a,!spc_sfx_tmp              ; 180B
     setc                              ; 180D
     sbc a,#$32                        ; 180E
-    mov.w $0530,a                     ; 1810
+    mov.w !spc_sfx_volume_add,a       ; 1810
     ret                               ; 1813
-    mov.b a,$20                       ; 1814
+    mov.b a,!spc_sfx_tmp              ; 1814
     setc                              ; 1816
     sbc a,#$36                        ; 1817
-    mov.w $0531,a                     ; 1819
+    mov.w !spcb_sfx_volume_add_4,a    ; 1819
     ret                               ; 181C
 .l181D:
-    clr1 $2A.2                        ; 181D
-    mov.w a,$0395                     ; 181F
+    clr1 !spc_loop_flags.2            ; 181D
+    mov.w a,!spc_sfx_command+5        ; 181F
     cmp a,#$25                        ; 1822
     bne .l186B                        ; 1824
     bra .l183C                        ; 1826
 .l1828:
-    clr1 $2A.4                        ; 1828
-    mov.w a,$0395                     ; 182A
+    clr1 !spc_loop_flags.4            ; 1828
+    mov.w a,!spc_sfx_command+5        ; 182A
     cmp a,#$15                        ; 182D
     bne .l186B                        ; 182F
     bra .l183C                        ; 1831
 .l1833:
-    clr1 $2A.0                        ; 1833
-    mov.w a,$0395                     ; 1835
+    clr1 !spc_loop_flags.0            ; 1833
+    mov.w a,!spc_sfx_command+5        ; 1835
     cmp a,#$17                        ; 1838
     bne .l186B                        ; 183A
 .l183C:
     mov x,#$05                        ; 183C
     bra .l1861                        ; 183E
 .l1840:
-    clr1 $2A.3                        ; 1840
-    mov.w a,$0395                     ; 1842
+    clr1 !spc_loop_flags.3            ; 1840
+    mov.w a,!spc_sfx_command+5        ; 1842
     cmp a,#$25                        ; 1845
     bne .l186B                        ; 1847
     bra .l185F                        ; 1849
 .l184B:
-    clr1 $2A.5                        ; 184B
-    mov.w a,$0395                     ; 184D
+    clr1 !spc_loop_flags.5            ; 184B
+    mov.w a,!spc_sfx_command+5        ; 184D
     cmp a,#$15                        ; 1850
     bne .l186B                        ; 1852
     bra .l185F                        ; 1854
 .l1856:
-    clr1 $2A.1                        ; 1856
-    mov.w a,$0395                     ; 1858
+    clr1 !spc_loop_flags.1            ; 1856
+    mov.w a,!spc_sfx_command+5        ; 1858
     cmp a,#$17                        ; 185B
     bne .l186B                        ; 185D
 .l185F:
     mov x,#$05                        ; 185F
 .l1861:
-    mov.w a,$0408+x                   ; 1861
+    mov.w a,!spc_sfx_active+x         ; 1861
     beq .l186B                        ; 1864
-    mov.b a,$20                       ; 1866
-    mov.w $03E0+x,a                   ; 1868
+    mov.b a,!spc_sfx_tmp              ; 1866
+    mov.w !spc_sfx_stop_request+x,a   ; 1868
 .l186B:
     ret                               ; 186B
 
@@ -1144,34 +1148,34 @@ SpcBPort1Command:
 ; @spc 186C
 %spc($186C, $1AF851)
 SpcBSfxStop:
-    mov $20,#$01                      ; 186C
+    mov !spc_sfx_tmp,#$01             ; 186C
     bra SpcBPort1Command_l1861        ; 186F
     bbc !spc_flags.0,SpcBPort1Command_l186B; 1871  ; not reached in the traces so far
     mov a,#$4C                        ; 1874  ; not reached in the traces so far
     call SpcBSoundQueuePush           ; 1876  ; not reached in the traces so far
     clr1 !spc_flags.0                 ; 1879  ; not reached in the traces so far
     mov a,#$00                        ; 187B  ; not reached in the traces so far
-    mov.w $045F,a                     ; 187D  ; not reached in the traces so far
-    mov.w $045E,a                     ; 1880  ; not reached in the traces so far
-    mov.w $045D,a                     ; 1883  ; not reached in the traces so far
-    mov.w $045C,a                     ; 1886  ; not reached in the traces so far
-    mov.w $04FF,a                     ; 1889  ; not reached in the traces so far
-    mov.w $04FE,a                     ; 188C  ; not reached in the traces so far
-    mov.w $04FD,a                     ; 188F  ; not reached in the traces so far
-    mov.w $04FC,a                     ; 1892  ; not reached in the traces so far
+    mov.w !spc_sfx_paused+7,a         ; 187D  ; not reached in the traces so far
+    mov.w !spc_sfx_paused+6,a         ; 1880  ; not reached in the traces so far
+    mov.w !spc_sfx_paused+5,a         ; 1883  ; not reached in the traces so far
+    mov.w !spc_sfx_paused+4,a         ; 1886  ; not reached in the traces so far
+    mov.w !spc_sfx_loop_sound+7,a     ; 1889  ; not reached in the traces so far
+    mov.w !spc_sfx_loop_sound+6,a     ; 188C  ; not reached in the traces so far
+    mov.w !spc_sfx_loop_sound+5,a     ; 188F  ; not reached in the traces so far
+    mov.w !spc_sfx_loop_sound+4,a     ; 1892  ; not reached in the traces so far
     clr1 !spc_flags.2                 ; 1895  ; not reached in the traces so far
     clr1 !spc_flags.3                 ; 1897  ; not reached in the traces so far
     clr1 !spc_flags.4                 ; 1899  ; not reached in the traces so far
     clr1 !spc_flags.5                 ; 189B  ; not reached in the traces so far
     call SpcMusicPause                ; 189D  ; not reached in the traces so far
     call SpcBPitchRampA1End           ; 18A0  ; not reached in the traces so far
-    jmp $162A                         ; 18A3  ; not reached in the traces so far
+    jmp SpcBPitchRampA2Down_l162A     ; 18A3  ; not reached in the traces so far
     bbc !spc_flags.0,SpcBPort1Command_l186B; 18A6
-    mov $2A,$2B                       ; 18A9
+    mov !spc_loop_flags,!spc_loop_flags_saved; 18A9
     mov a,#$4B                        ; 18AC
     call SpcBSoundQueuePush           ; 18AE
     clr1 !spc_flags.0                 ; 18B1
-    clr1 $2D.6                        ; 18B3
+    clr1 !spc_game_flags.6            ; 18B3
     mov x,#$07                        ; 18B5
     call SpcBSfxChannelResume         ; 18B7
     mov x,#$06                        ; 18BA
@@ -1192,7 +1196,7 @@ SpcBSfxStop:
 ; @spc 18D3
 %spc($18D3, $1AF8B8)
 SpcBSfxChannelResume:
-    mov.w a,$0450+x                   ; 18D3
+    mov.w a,!spcb_sfx_paused_side+x   ; 18D3
     cmp a,#$01                        ; 18D6
     beq .l18DF                        ; 18D8
     cmp a,#$02                        ; 18DA
@@ -1205,15 +1209,15 @@ SpcBSfxChannelResume:
     set1 !spc_port_in.7               ; 18E3
 .l18E5:
     mov a,#$00                        ; 18E5
-    mov.w $0450+x,a                   ; 18E7
-    mov.w a,$0460+x                   ; 18EA
-    mov.w $03C8+x,a                   ; 18ED
-    mov.w a,$0458+x                   ; 18F0
+    mov.w !spcb_sfx_paused_side+x,a   ; 18E7
+    mov.w a,!spc_sfx_paused_number+x  ; 18EA
+    mov.w !spc_sfx_number+x,a         ; 18ED
+    mov.w a,!spc_sfx_paused+x         ; 18F0
     beq SpcBSfxPointer_l1914          ; 18F3
     push a                            ; 18F5
     call SpcBSfxPointer               ; 18F6
     mov a,#$00                        ; 18F9
-    mov.w $0458+x,a                   ; 18FB
+    mov.w !spc_sfx_paused+x,a         ; 18FB
     pop a                             ; 18FE
     push x                            ; 18FF
     call SpcBSfxStart                 ; 1900
@@ -1230,19 +1234,19 @@ SpcBSfxPointer:
     dec a                             ; 1905
     asl a                             ; 1906
     mov y,a                           ; 1907
-    mov.w a,$0702+y                   ; 1908
-    mov.b $24,a                       ; 190B
+    mov.w a,SpcReload_t0702+y         ; 1908
+    mov.b !spc_sfx_data,a             ; 190B
     inc y                             ; 190D
-    mov.w a,$0702+y                   ; 190E
-    mov.b $25,a                       ; 1911
+    mov.w a,SpcReload_t0702+y         ; 190E
+    mov.b !spc_sfx_data+1,a           ; 1911
     ret                               ; 1913
 .l1914:
     jmp SpcBSfxStop                   ; 1914  ; not reached in the traces so far
     bbs !spc_flags.0,SpcBSfxChannelPause_l1956; 1917
-    mov $2B,$2A                       ; 191A
-    mov $2A,#$00                      ; 191D
+    mov !spc_loop_flags_saved,!spc_loop_flags; 191A
+    mov !spc_loop_flags,#$00          ; 191D
     set1 !spc_flags.0                 ; 1920
-    set1 $2D.6                        ; 1922
+    set1 !spc_game_flags.6            ; 1922
     mov a,#$4A                        ; 1924
     call SpcBSoundQueuePush           ; 1926
     mov x,#$07                        ; 1929
@@ -1269,31 +1273,31 @@ SpcBSfxPointer:
 ; @spc 1951
 %spc($1951, $1AF936)
 SpcBSfxChannelPause:
-    mov.w a,$04F8+x                   ; 1951
+    mov.w a,!spc_sfx_loop_sound+x     ; 1951
     beq .l196E                        ; 1954
 .l1956:
-    mov.w a,$04F8+x                   ; 1956  ; not reached in the traces so far
-    mov.w $0458+x,a                   ; 1959  ; not reached in the traces so far
-    mov.w a,$0528+x                   ; 195C  ; not reached in the traces so far
-    mov.w $0450+x,a                   ; 195F  ; not reached in the traces so far
+    mov.w a,!spc_sfx_loop_sound+x     ; 1956  ; not reached in the traces so far
+    mov.w !spc_sfx_paused+x,a         ; 1959  ; not reached in the traces so far
+    mov.w a,!spcb_sfx_loop_side+x     ; 195C  ; not reached in the traces so far
+    mov.w !spcb_sfx_paused_side+x,a   ; 195F  ; not reached in the traces so far
     mov a,#$00                        ; 1962  ; not reached in the traces so far
-    mov.w $04F8+x,a                   ; 1964  ; not reached in the traces so far
-    mov.w $0480+x,a                   ; 1967  ; not reached in the traces so far
-    mov.w $0528+x,a                   ; 196A  ; not reached in the traces so far
+    mov.w !spc_sfx_loop_sound+x,a     ; 1964  ; not reached in the traces so far
+    mov.w !spc_sfx_loop+x,a           ; 1967  ; not reached in the traces so far
+    mov.w !spcb_sfx_loop_side+x,a     ; 196A  ; not reached in the traces so far
     ret                               ; 196D  ; not reached in the traces so far
 .l196E:
-    mov.w a,$0480+x                   ; 196E
+    mov.w a,!spc_sfx_loop+x           ; 196E
     beq .l198E                        ; 1971
     cmp a,#$02                        ; 1973
     beq .l1956                        ; 1975
-    mov.w a,$04B8+x                   ; 1977
-    mov.w $0450+x,a                   ; 197A
-    mov.w a,$03C8+x                   ; 197D
-    mov.w $0460+x,a                   ; 1980
-    mov.w a,$0390+x                   ; 1983
-    mov.w $0458+x,a                   ; 1986
+    mov.w a,!spcb_sfx_side+x          ; 1977
+    mov.w !spcb_sfx_paused_side+x,a   ; 197A
+    mov.w a,!spc_sfx_number+x         ; 197D
+    mov.w !spc_sfx_paused_number+x,a  ; 1980
+    mov.w a,!spc_sfx_command+x        ; 1983
+    mov.w !spc_sfx_paused+x,a         ; 1986
     mov a,#$00                        ; 1989
-    mov.w $0480+x,a                   ; 198B
+    mov.w !spc_sfx_loop+x,a           ; 198B
 .l198E:
     ret                               ; 198E
 
@@ -1304,7 +1308,7 @@ SpcBSfxChannelPause:
 ; @spc 198F
 %spc($198F, $1AF974)
 SpcBSfxStopAll:
-    mov $2A,#$00                      ; 198F
+    mov !spc_loop_flags,#$00          ; 198F
     call SpcBFadeOutStart             ; 1992
     mov x,#$07                        ; 1995
 .l1997:
@@ -1321,14 +1325,14 @@ SpcBSfxStopAll:
 %spc($199E, $1AF983)
 SpcBSfxStopRequest:
     mov a,#$00                        ; 199E
-    mov.w $04F8+x,a                   ; 19A0
-    mov.w $0480+x,a                   ; 19A3
-    mov.b $2A,a                       ; 19A6
-    mov.w a,$0408+x                   ; 19A8
+    mov.w !spc_sfx_loop_sound+x,a     ; 19A0
+    mov.w !spc_sfx_loop+x,a           ; 19A3
+    mov.b !spc_loop_flags,a           ; 19A6
+    mov.w a,!spc_sfx_active+x         ; 19A8
     beq .l19B5                        ; 19AB
     mov a,#$01                        ; 19AD
-    mov.w $04C0+x,a                   ; 19AF
-    mov.w $04C8+x,a                   ; 19B2
+    mov.w !spc_sfx_fade_count+x,a     ; 19AF
+    mov.w !spc_sfx_fading+x,a         ; 19B2
 .l19B5:
     ret                               ; 19B5
 
@@ -1354,12 +1358,12 @@ SpcBMusicFade:
     bbc !spc_flags.6,SpcBKeyOffAll_l1A02; 19BC
     mov a,#$F0                        ; 19BF
     mov y,#$02                        ; 19C1
-    addw ya,$2E                       ; 19C3
-    mov.b $2E,a                       ; 19C5
-    mov.b $2F,y                       ; 19C7
+    addw ya,!spc_fade_amount          ; 19C3
+    mov.b !spc_fade_amount,a          ; 19C5
+    mov.b !spc_fade_amount+1,y        ; 19C7
     mov a,#$00                        ; 19C9
-    mov.w y,$0564                     ; 19CB
-    subw ya,$2E                       ; 19CE
+    mov.w y,!spc_fade_start           ; 19CB
+    subw ya,!spc_fade_amount          ; 19CE
     mov.w !spc_volume_scale,y         ; 19D0
     cmp y,#$00                        ; 19D3
     beq .l19E4                        ; 19D5
@@ -1372,11 +1376,11 @@ SpcBMusicFade:
     ret                               ; 19E3
 .l19E4:
     mov a,#$00                        ; 19E4
-    mov.b $2E,a                       ; 19E6
-    mov.b $2F,a                       ; 19E8
+    mov.b !spc_fade_amount,a          ; 19E6
+    mov.b !spc_fade_amount+1,a        ; 19E8
     clr1 !spc_flags.6                 ; 19EA
     bbs !spc_track_flags.7,.l19F5     ; 19EC
-    bbs $2D.0,SpcBKeyOffAll_l1A21     ; 19EF  ; not reached in the traces so far
+    bbs !spc_game_flags.0,SpcBKeyOffAll_l1A21; 19EF  ; not reached in the traces so far
     jmp SpcMusicPause                 ; 19F2  ; not reached in the traces so far
 .l19F5:
     call SpcBKeyOffAll                ; 19F5
@@ -1394,7 +1398,7 @@ SpcBKeyOffAll:
     jmp SpcDspWrite                   ; 19FF
 .l1A02:
     mov.b a,!spc_master_volume+1      ; 1A02
-    mov.w $0564,a                     ; 1A04
+    mov.w !spc_fade_start,a           ; 1A04
     mov.w !spc_volume_scale,a         ; 1A07
     ret                               ; 1A0A
     call SpcBSfxStopAll               ; 1A0B
@@ -1402,18 +1406,18 @@ SpcBKeyOffAll:
     beq SpcBMusicFade_l19F5           ; 1A10
     set1 !spc_track_flags.7           ; 1A12
     ret                               ; 1A14
-    set1 $2D.0                        ; 1A15  ; not reached in the traces so far
+    set1 !spc_game_flags.0            ; 1A15  ; not reached in the traces so far
     call SpcBSfxStopAll               ; 1A17  ; not reached in the traces so far
     mov.b a,!spc_master_volume+1      ; 1A1A  ; not reached in the traces so far
     beq .l1A21                        ; 1A1C  ; not reached in the traces so far
-    set1 $2D.0                        ; 1A1E  ; not reached in the traces so far
+    set1 !spc_game_flags.0            ; 1A1E  ; not reached in the traces so far
     ret                               ; 1A20  ; not reached in the traces so far
 .l1A21:
     call SpcBKeyOffAll                ; 1A21  ; not reached in the traces so far
     mov.w a,!spc_control              ; 1A24  ; not reached in the traces so far
     or a,#$80                         ; 1A27  ; not reached in the traces so far
     mov.w !spc_control,a              ; 1A29  ; not reached in the traces so far
-    jmp $FFC0                         ; 1A2C  ; not reached in the traces so far
+    jmp !spc_iplrom                   ; 1A2C  ; not reached in the traces so far
 
 ; @routine 1A:FA14 SpcBCommandChannelCheck
 ; WHAT IT DOES: A sound command $1D outside the list at $25FF is checked against the list at $2608: when an earlier-listed sound already plays on its channel, the command is dropped; the command kept is also stored at $1F (as the race driver's SpcCommandChannelCheck, with the battle's lists). After it, the sound effect queue start that SpcBSfxFrame jumps to ($1A7F): $057B counts the ticks without a command; after three, the queue's head (SpcBSoundQueuePush) is taken, its bit 7 moved to bit 7 of $00, else a command differing from the last ($1E) is taken; the sound ($23) gets its channel, mode and side (SpcBSfxLookup, SpcBSfxChannel, SpcBSfxMode, SpcBSfxSide), is activated and its pointer saved, then the channels run (SpcBSfxChannelsFrame) with $0410 holding the new sound. The race driver queues every command first.
@@ -1422,29 +1426,29 @@ SpcBKeyOffAll:
 ; @spc 1A2F
 %spc($1A2F, $1AFA14)
 SpcBCommandChannelCheck:
-    mov.b a,$1D                       ; 1A2F
+    mov.b a,!spc_command              ; 1A2F
     beq .l1A79                        ; 1A31
     mov y,#$00                        ; 1A33
 .l1A35:
-    mov.w a,$25FF+y                   ; 1A35
+    mov.w a,SpcBNoiseSample_t25FF+y   ; 1A35
     beq .l1A41                        ; 1A38
-    cmp.b a,$1D                       ; 1A3A
+    cmp.b a,!spc_command              ; 1A3A
     beq .l1A7C                        ; 1A3C
     inc y                             ; 1A3E
     bra .l1A35                        ; 1A3F
 .l1A41:
     mov y,#$00                        ; 1A41
 .l1A43:
-    mov.w a,$2608+y                   ; 1A43
+    mov.w a,SpcBNoiseSample_t2608+y   ; 1A43
     beq .l1A7C                        ; 1A46
     push a                            ; 1A48
-    mov.b a,$1D                       ; 1A49
+    mov.b a,!spc_command              ; 1A49
     push y                            ; 1A4B
     call SpcBSfxLookup                ; 1A4C
     call SpcBSfxChannel               ; 1A4F
     pop y                             ; 1A52
     pop a                             ; 1A53
-    cmp.w a,$0390+x                   ; 1A54
+    cmp.w a,!spc_sfx_command+x        ; 1A54
     beq .l1A5C                        ; 1A57
 .l1A59:
     inc y                             ; 1A59
@@ -1452,55 +1456,55 @@ SpcBCommandChannelCheck:
 .l1A5C:
     mov x,#$00                        ; 1A5C
 .l1A5E:
-    mov.w a,$2608+x                   ; 1A5E
+    mov.w a,SpcBNoiseSample_t2608+x   ; 1A5E
     beq .l1A72                        ; 1A61
-    cmp.b a,$1D                       ; 1A63
+    cmp.b a,!spc_command              ; 1A63
     beq .l1A6A                        ; 1A65
     inc x                             ; 1A67
     bra .l1A5E                        ; 1A68
 .l1A6A:
-    mov.b $20,x                       ; 1A6A
+    mov.b !spc_sfx_tmp,x              ; 1A6A
     mov a,y                           ; 1A6C
     setc                              ; 1A6D
-    sbc.b a,$20                       ; 1A6E
+    sbc.b a,!spc_sfx_tmp              ; 1A6E
     bpl .l1A59                        ; 1A70
 .l1A72:
-    mov $1F,$1D                       ; 1A72
-    mov $1D,#$00                      ; 1A75
+    mov !spc_command_kept,!spc_command; 1A72
+    mov !spc_command,#$00             ; 1A75
     ret                               ; 1A78
 .l1A79:
-    mov $1F,#$00                      ; 1A79
+    mov !spc_command_kept,#$00        ; 1A79
 .l1A7C:
     ret                               ; 1A7C
     db $15, $1E
 .l1A7F:
-    cmp $1D,#$00                      ; 1A7F
+    cmp !spc_command,#$00             ; 1A7F
     beq .l1A8B                        ; 1A82
     mov a,#$00                        ; 1A84
-    mov.w $057B,a                     ; 1A86
+    mov.w !spc_hold_index,a           ; 1A86
     bra .l1A95                        ; 1A89
 .l1A8B:
-    mov.w a,$057B                     ; 1A8B
+    mov.w a,!spc_hold_index           ; 1A8B
     cmp a,#$FF                        ; 1A8E
     beq .l1A95                        ; 1A90
-    inc.w $057B                       ; 1A92
+    inc.w !spc_hold_index             ; 1A92
 .l1A95:
-    cmp $1D,#$00                      ; 1A95
+    cmp !spc_command,#$00             ; 1A95
     bne .l1ACA                        ; 1A98
-    mov.w a,$057B                     ; 1A9A
+    mov.w a,!spc_hold_index           ; 1A9A
     beq .l1ACA                        ; 1A9D
     cmp a,#$01                        ; 1A9F
     beq .l1ACA                        ; 1AA1
     cmp a,#$02                        ; 1AA3
     beq .l1ACA                        ; 1AA5
-    mov.w a,$0588                     ; 1AA7
+    mov.w a,!spc_sound_queue          ; 1AA7
     beq .l1ACA                        ; 1AAA
     push a                            ; 1AAC
     mov x,#$01                        ; 1AAD
 .l1AAF:
-    mov.w a,$0588+x                   ; 1AAF
+    mov.w a,!spc_sound_queue+x        ; 1AAF
     dec x                             ; 1AB2
-    mov.w $0588+x,a                   ; 1AB3
+    mov.w !spc_sound_queue+x,a        ; 1AB3
     inc x                             ; 1AB6
     inc x                             ; 1AB7
     cmp x,#$08                        ; 1AB8
@@ -1512,33 +1516,33 @@ SpcBCommandChannelCheck:
 .l1AC2:
     lsr a                             ; 1AC2
     mov x,#$00                        ; 1AC3
-    mov.w $057B,x                     ; 1AC5
+    mov.w !spc_hold_index,x           ; 1AC5
     bra .l1AD9                        ; 1AC8
 .l1ACA:
-    mov.b a,$1D                       ; 1ACA
-    cmp.b a,$1E                       ; 1ACC
+    mov.b a,!spc_command              ; 1ACA
+    cmp.b a,!spc_hold_last            ; 1ACC
     bne .l1AD3                        ; 1ACE
 .l1AD0:
     jmp SpcBSfxChannelsFrame          ; 1AD0
 .l1AD3:
-    mov.b $1E,a                       ; 1AD3
-    mov.b a,$1D                       ; 1AD5
+    mov.b !spc_hold_last,a            ; 1AD3
+    mov.b a,!spc_command              ; 1AD5
     beq .l1AD0                        ; 1AD7
 .l1AD9:
-    mov.b $23,a                       ; 1AD9
+    mov.b !spc_sfx_work+1,a           ; 1AD9
     call SpcBSfxLookup                ; 1ADB
     call SpcBSfxChannel               ; 1ADE
     call SpcBSfxMode                  ; 1AE1
     call SpcBSfxSide                  ; 1AE4
     call SpcBSfxActivate              ; 1AE7
     call SpcBSfxChannelSave           ; 1AEA
-    mov.b a,$23                       ; 1AED
-    mov.w $0410+x,a                   ; 1AEF
+    mov.b a,!spc_sfx_work+1           ; 1AED
+    mov.w !spc_sfx_new+x,a            ; 1AEF
     push x                            ; 1AF2
     call SpcBSfxChannelsFrame         ; 1AF3
     pop x                             ; 1AF6
     mov a,#$00                        ; 1AF7
-    mov.w $0410+x,a                   ; 1AF9
+    mov.w !spc_sfx_new+x,a            ; 1AF9
     ret                               ; 1AFC
 
 ; @routine 1A:FAE2 SpcBSfxActivate
@@ -1549,7 +1553,7 @@ SpcBCommandChannelCheck:
 %spc($1AFD, $1AFAE2)
 SpcBSfxActivate:
     mov a,#$01                        ; 1AFD
-    mov.w $0408+x,a                   ; 1AFF
+    mov.w !spc_sfx_active+x,a         ; 1AFF
     ret                               ; 1B02
 
 ; @routine 1A:FAE8 SpcBSfxLookup
@@ -1562,13 +1566,13 @@ SpcBSfxLookup:
     dec a                             ; 1B03
     asl a                             ; 1B04
     mov y,a                           ; 1B05
-    mov.w a,$0702+y                   ; 1B06
-    mov.b $20,a                       ; 1B09
+    mov.w a,SpcReload_t0702+y         ; 1B06
+    mov.b !spc_sfx_tmp,a              ; 1B09
     inc y                             ; 1B0B
-    mov.w a,$0702+y                   ; 1B0C
-    mov.b $21,a                       ; 1B0F
+    mov.w a,SpcReload_t0702+y         ; 1B0C
+    mov.b !spc_sfx_tmp+1,a            ; 1B0F
     mov y,#$00                        ; 1B11
-    mov a,($20)+y                     ; 1B13
+    mov a,(!spc_sfx_tmp)+y            ; 1B13
     mov x,a                           ; 1B15
     ret                               ; 1B16
 
@@ -1579,31 +1583,31 @@ SpcBSfxLookup:
 ; @spc 1B17
 %spc($1B17, $1AFAFC)
 SpcBSfxChannel:
-    mov.b $26,x                       ; 1B17
+    mov.b !spc_math_tmp,x             ; 1B17
     mov a,x                           ; 1B19
     and a,#$0F                        ; 1B1A
     mov x,a                           ; 1B1C
-    bbc $26.6,.l1B24                  ; 1B1D
+    bbc !spc_math_tmp.6,.l1B24        ; 1B1D
     bbc !spc_port_in.7,.l1B24         ; 1B20
     dec x                             ; 1B23
 .l1B24:
-    cmp $23,#$79                      ; 1B24
+    cmp !spc_sfx_work+1,#$79          ; 1B24
     beq .l1B39                        ; 1B27
-    cmp $23,#$78                      ; 1B29
+    cmp !spc_sfx_work+1,#$78          ; 1B29
     beq .l1B39                        ; 1B2C
-    cmp $23,#$77                      ; 1B2E
+    cmp !spc_sfx_work+1,#$77          ; 1B2E
     beq .l1B39                        ; 1B31
-    cmp $23,#$7A                      ; 1B33
+    cmp !spc_sfx_work+1,#$7A          ; 1B33
     beq .l1B39                        ; 1B36
     ret                               ; 1B38
 .l1B39:
     bbs !spc_port_in.7,.l1B42         ; 1B39
     mov a,#$1C                        ; 1B3C
-    mov.w $03C8+x,a                   ; 1B3E
+    mov.w !spc_sfx_number+x,a         ; 1B3E
     ret                               ; 1B41
 .l1B42:
     mov a,#$20                        ; 1B42
-    mov.w $03C8+x,a                   ; 1B44
+    mov.w !spc_sfx_number+x,a         ; 1B44
     ret                               ; 1B47
 
 ; @routine 1A:FB2D SpcBSfxMode
@@ -1613,25 +1617,25 @@ SpcBSfxChannel:
 ; @spc 1B48
 %spc($1B48, $1AFB2D)
 SpcBSfxMode:
-    bbc $26.7,.l1B58                  ; 1B48
-    bbc $26.5,.l1B52                  ; 1B4B
+    bbc !spc_math_tmp.7,.l1B58        ; 1B48
+    bbc !spc_math_tmp.5,.l1B52        ; 1B4B
     mov a,#$02                        ; 1B4E
     bra .l1B54                        ; 1B50
 .l1B52:
     mov a,#$01                        ; 1B52
 .l1B54:
-    mov.w $0480+x,a                   ; 1B54
+    mov.w !spc_sfx_loop+x,a           ; 1B54
     ret                               ; 1B57
 .l1B58:
-    mov.w a,$0480+x                   ; 1B58
+    mov.w a,!spc_sfx_loop+x           ; 1B58
     cmp a,#$01                        ; 1B5B
     bne .l1B70                        ; 1B5D
-    mov.w a,$04F8+x                   ; 1B5F
+    mov.w a,!spc_sfx_loop_sound+x     ; 1B5F
     bne .l1B70                        ; 1B62
-    mov.w a,$0390+x                   ; 1B64
-    mov.w $04F8+x,a                   ; 1B67
-    mov.w a,$04B8+x                   ; 1B6A
-    mov.w $0528+x,a                   ; 1B6D
+    mov.w a,!spc_sfx_command+x        ; 1B64
+    mov.w !spc_sfx_loop_sound+x,a     ; 1B67
+    mov.w a,!spcb_sfx_side+x          ; 1B6A
+    mov.w !spcb_sfx_loop_side+x,a     ; 1B6D
 .l1B70:
     ret                               ; 1B70
 
@@ -1648,7 +1652,7 @@ SpcBSfxSide:
 .l1B78:
     mov a,#$02                        ; 1B78
 .l1B7A:
-    mov.w $04B8+x,a                   ; 1B7A
+    mov.w !spcb_sfx_side+x,a          ; 1B7A
     ret                               ; 1B7D
 
 ; @routine 1A:FB63 SpcBSfxChannelsFrame
@@ -1660,7 +1664,7 @@ SpcBSfxSide:
 SpcBSfxChannelsFrame:
     mov x,#$00                        ; 1B7E
 .l1B80:
-    mov.w a,$0408+x                   ; 1B80
+    mov.w a,!spc_sfx_active+x         ; 1B80
     beq .l1B8B                        ; 1B83
     call SpcBSfxChannelLoad           ; 1B85
     call SpcBSfxChannelStep           ; 1B88
@@ -1679,10 +1683,10 @@ SpcBSfxChannelsFrame:
 ; @spc 1B93
 %spc($1B93, $1AFB78)
 SpcBSfxChannelLoad:
-    mov.w a,$0488+x                   ; 1B93
-    mov.b $20,a                       ; 1B96
-    mov.w a,$0490+x                   ; 1B98
-    mov.b $21,a                       ; 1B9B
+    mov.w a,!spc_sfx_ptr+x            ; 1B93
+    mov.b !spc_sfx_tmp,a              ; 1B96
+    mov.w a,!spc_sfx_ptr_hi+x         ; 1B98
+    mov.b !spc_sfx_tmp+1,a            ; 1B9B
     ret                               ; 1B9D
 
 ; @routine 1A:FB83 SpcBSfxChannelSave
@@ -1692,10 +1696,10 @@ SpcBSfxChannelLoad:
 ; @spc 1B9E
 %spc($1B9E, $1AFB83)
 SpcBSfxChannelSave:
-    mov.b a,$20                       ; 1B9E
-    mov.w $0488+x,a                   ; 1BA0
-    mov.b a,$21                       ; 1BA3
-    mov.w $0490+x,a                   ; 1BA5
+    mov.b a,!spc_sfx_tmp              ; 1B9E
+    mov.w !spc_sfx_ptr+x,a            ; 1BA0
+    mov.b a,!spc_sfx_tmp+1            ; 1BA3
+    mov.w !spc_sfx_ptr_hi+x,a         ; 1BA5
     ret                               ; 1BA8
 
 ; @routine 1A:FB8E SpcBSfxChannelStep
@@ -1705,7 +1709,7 @@ SpcBSfxChannelSave:
 ; @spc 1BA9
 %spc($1BA9, $1AFB8E)
 SpcBSfxChannelStep:
-    mov.w a,$03F8+x                   ; 1BA9
+    mov.w a,!spc_sfx_state+x          ; 1BA9
     beq .l1C01                        ; 1BAC
     cmp a,#$01                        ; 1BAE
     beq .l1BCD                        ; 1BB0
@@ -1713,53 +1717,53 @@ SpcBSfxChannelStep:
     beq .l1BE2                        ; 1BB4
     cmp a,#$03                        ; 1BB6
     beq .l1BE7                        ; 1BB8
-    mov.w a,$0410+x                   ; 1BBA
+    mov.w a,!spc_sfx_new+x            ; 1BBA
     bne .l1C04                        ; 1BBD
     mov a,#$00                        ; 1BBF
-    mov.w $0390+x,a                   ; 1BC1
-    mov.w $03F8+x,a                   ; 1BC4
-    mov.w $0408+x,a                   ; 1BC7
-    jmp $1CEE                         ; 1BCA
+    mov.w !spc_sfx_command+x,a        ; 1BC1
+    mov.w !spc_sfx_state+x,a          ; 1BC4
+    mov.w !spc_sfx_active+x,a         ; 1BC7
+    jmp SpcBVoiceMaskNot_l1CEE        ; 1BCA
 .l1BCD:
-    mov.w a,$0410+x                   ; 1BCD
+    mov.w a,!spc_sfx_new+x            ; 1BCD
     bne .l1C04                        ; 1BD0
     mov a,#$02                        ; 1BD2
-    mov.w $03F8+x,a                   ; 1BD4
+    mov.w !spc_sfx_state+x,a          ; 1BD4
     call SpcBKeyOnVoice               ; 1BD7
     mov a,#$00                        ; 1BDA
-    mov.w $03E8+x,a                   ; 1BDC
+    mov.w !spc_sfx_key_request+x,a    ; 1BDC
 .l1BDF:
-    jmp $1D5A                         ; 1BDF
+    jmp SpcBKeyOffVoice_l1D5A         ; 1BDF
 .l1BE2:
     mov a,#$00                        ; 1BE2
-    mov.w $03E8+x,a                   ; 1BE4
+    mov.w !spc_sfx_key_request+x,a    ; 1BE4
 .l1BE7:
-    mov.w a,$0410+x                   ; 1BE7
+    mov.w a,!spc_sfx_new+x            ; 1BE7
     bne .l1C04                        ; 1BEA
     mov a,#$03                        ; 1BEC
-    mov.w $03F8+x,a                   ; 1BEE
-    mov.w a,$03E8+x                   ; 1BF1
+    mov.w !spc_sfx_state+x,a          ; 1BEE
+    mov.w a,!spc_sfx_key_request+x    ; 1BF1
     beq .l1C1D                        ; 1BF4
     cmp a,#$01                        ; 1BF6
     beq .l1BCD                        ; 1BF8
     mov a,#$00                        ; 1BFA
-    mov.w $03F0+x,a                   ; 1BFC
+    mov.w !spc_sfx_age+x,a            ; 1BFC
     bra .l1BCD                        ; 1BFF
 .l1C01:
-    mov.w a,$0410+x                   ; 1C01
+    mov.w a,!spc_sfx_new+x            ; 1C01
 .l1C04:
-    mov.w $0390+x,a                   ; 1C04
+    mov.w !spc_sfx_command+x,a        ; 1C04
     mov a,#$01                        ; 1C07
-    mov.w $03F8+x,a                   ; 1C09
+    mov.w !spc_sfx_state+x,a          ; 1C09
     mov a,#$00                        ; 1C0C
-    mov.w $03F0+x,a                   ; 1C0E
-    mov.w $03E0+x,a                   ; 1C11
+    mov.w !spc_sfx_age+x,a            ; 1C0E
+    mov.w !spc_sfx_stop_request+x,a   ; 1C11
     call SpcBSfxMarkVoice             ; 1C14
     jmp SpcBKeyOffVoice               ; 1C17
 .l1C1A:
-    jmp $1C87                         ; 1C1A
+    jmp .l1C87                        ; 1C1A
 .l1C1D:
-    mov.w a,$03E0+x                   ; 1C1D
+    mov.w a,!spc_sfx_stop_request+x   ; 1C1D
     beq .l1BDF                        ; 1C20
     cmp a,#$01                        ; 1C22
     beq .l1C1A                        ; 1C24
@@ -1777,20 +1781,20 @@ SpcBSfxChannelStep:
     beq .l1C57                        ; 1C3C
 .l1C3E:
     mov a,#$00                        ; 1C3E  ; not reached in the traces so far
-    mov.w $03E0+x,a                   ; 1C40  ; not reached in the traces so far
+    mov.w !spc_sfx_stop_request+x,a   ; 1C40  ; not reached in the traces so far
     bra .l1BDF                        ; 1C43  ; not reached in the traces so far
 .l1C45:
-    mov.w a,$0390+x                   ; 1C45
+    mov.w a,!spc_sfx_command+x        ; 1C45
     cmp a,#$25                        ; 1C48
     beq .l1C6D                        ; 1C4A
     bra .l1C3E                        ; 1C4C  ; not reached in the traces so far
 .l1C4E:
-    mov.w a,$0390+x                   ; 1C4E
+    mov.w a,!spc_sfx_command+x        ; 1C4E
     cmp a,#$15                        ; 1C51
     beq .l1C6D                        ; 1C53
     bra .l1C3E                        ; 1C55  ; not reached in the traces so far
 .l1C57:
-    mov.w a,$0390+x                   ; 1C57
+    mov.w a,!spc_sfx_command+x        ; 1C57
     cmp a,#$17                        ; 1C5A
     beq .l1C6D                        ; 1C5C
     bra .l1C3E                        ; 1C5E  ; not reached in the traces so far
@@ -1798,23 +1802,23 @@ SpcBSfxChannelStep:
     db $08, $F0, $1C, $2F, $D1
 .l1C6D:
     mov a,#$00                        ; 1C6D
-    mov.w $03E0+x,a                   ; 1C6F
-    mov.w a,$04F8+x                   ; 1C72
+    mov.w !spc_sfx_stop_request+x,a   ; 1C6F
+    mov.w a,!spc_sfx_loop_sound+x     ; 1C72
     beq .l1C7F                        ; 1C75
     mov a,#$00                        ; 1C77
-    mov.w $04F8+x,a                   ; 1C79
-    jmp $1BDF                         ; 1C7C
+    mov.w !spc_sfx_loop_sound+x,a     ; 1C79
+    jmp .l1BDF                        ; 1C7C
 .l1C7F:
-    mov.w a,$0480+x                   ; 1C7F
+    mov.w a,!spc_sfx_loop+x           ; 1C7F
     bne .l1CAC                        ; 1C82
-    jmp $1BDF                         ; 1C84  ; not reached in the traces so far
+    jmp .l1BDF                        ; 1C84  ; not reached in the traces so far
 .l1C87:
     mov a,#$00                        ; 1C87
-    mov.w $03E0+x,a                   ; 1C89
-    mov.w a,$04F8+x                   ; 1C8C
+    mov.w !spc_sfx_stop_request+x,a   ; 1C89
+    mov.w a,!spc_sfx_loop_sound+x     ; 1C8C
     beq .l1CAC                        ; 1C8F
     push a                            ; 1C91  ; not reached in the traces so far
-    mov.w a,$0528+x                   ; 1C92  ; not reached in the traces so far
+    mov.w a,!spcb_sfx_loop_side+x     ; 1C92  ; not reached in the traces so far
     cmp a,#$01                        ; 1C95  ; not reached in the traces so far
     beq .l1CA0                        ; 1C97  ; not reached in the traces so far
     cmp a,#$02                        ; 1C99  ; not reached in the traces so far
@@ -1835,16 +1839,16 @@ SpcBSfxChannelStep:
     call SpcBSoundQueuePush           ; 1CA9  ; not reached in the traces so far
 .l1CAC:
     mov a,#$04                        ; 1CAC
-    mov.w $03F8+x,a                   ; 1CAE
+    mov.w !spc_sfx_state+x,a          ; 1CAE
     call SpcBKeyOffVoice              ; 1CB1
     mov a,#$00                        ; 1CB4
-    mov.w $0480+x,a                   ; 1CB6
-    mov.w $04F8+x,a                   ; 1CB9
-    mov.w $03F0+x,a                   ; 1CBC
-    mov.w $03C8+x,a                   ; 1CBF
-    mov.w $04B8+x,a                   ; 1CC2
-    mov.w $0528+x,a                   ; 1CC5
-    mov.w $04F0+x,a                   ; 1CC8
+    mov.w !spc_sfx_loop+x,a           ; 1CB6
+    mov.w !spc_sfx_loop_sound+x,a     ; 1CB9
+    mov.w !spc_sfx_age+x,a            ; 1CBC
+    mov.w !spc_sfx_number+x,a         ; 1CBF
+    mov.w !spcb_sfx_side+x,a          ; 1CC2
+    mov.w !spcb_sfx_loop_side+x,a     ; 1CC5
+    mov.w !spc_sfx_mode+x,a           ; 1CC8
     ret                               ; 1CCB
 
 ; @routine 1A:FCB1 SpcBSfxMarkVoice
@@ -1856,7 +1860,7 @@ SpcBSfxChannelStep:
 SpcBSfxMarkVoice:
     call SpcBVoiceMask                ; 1CCC
     mov.b a,!spc_sfx_voices           ; 1CCF
-    or.b a,$22                        ; 1CD1
+    or.b a,!spc_sfx_work              ; 1CD1
     mov.b !spc_sfx_voices,a           ; 1CD3
     ret                               ; 1CD5
 
@@ -1867,15 +1871,15 @@ SpcBSfxMarkVoice:
 ; @spc 1CD6
 %spc($1CD6, $1AFCBB)
 SpcBVoiceMask:
-    mov.b $22,x                       ; 1CD6
-    inc.b $22                         ; 1CD8
+    mov.b !spc_sfx_work,x             ; 1CD6
+    inc.b !spc_sfx_work               ; 1CD8
     mov a,#$00                        ; 1CDA
     setc                              ; 1CDC
 .l1CDD:
     rol a                             ; 1CDD
-    dec.b $22                         ; 1CDE
+    dec.b !spc_sfx_work               ; 1CDE
     bne .l1CDD                        ; 1CE0
-    mov.b $22,a                       ; 1CE2
+    mov.b !spc_sfx_work,a             ; 1CE2
     ret                               ; 1CE4
 
 ; @routine 1A:FCCA SpcBVoiceMaskNot
@@ -1885,15 +1889,15 @@ SpcBVoiceMask:
 ; @spc 1CE5
 %spc($1CE5, $1AFCCA)
 SpcBVoiceMaskNot:
-    mov.b $22,x                       ; 1CE5
-    inc.b $22                         ; 1CE7
+    mov.b !spc_sfx_work,x             ; 1CE5
+    inc.b !spc_sfx_work               ; 1CE7
     mov a,#$FF                        ; 1CE9
     clrc                              ; 1CEB
     bra SpcBVoiceMask_l1CDD           ; 1CEC
 .l1CEE:
     call SpcBVoiceMaskNot             ; 1CEE
     mov.b a,!spc_sfx_voices           ; 1CF1
-    and.b a,$22                       ; 1CF3
+    and.b a,!spc_sfx_work             ; 1CF3
     mov.b !spc_sfx_voices,a           ; 1CF5
     push x                            ; 1CF7
     clrc                              ; 1CF8
@@ -1903,35 +1907,35 @@ SpcBVoiceMaskNot:
     mov.w a,!spc_instrument+x         ; 1CFC
     call SpcLoadInstrument            ; 1CFF
     pop x                             ; 1D02
-    mov.b $20,x                       ; 1D03
-    inc.b $20                         ; 1D05
+    mov.b !spc_sfx_tmp,x              ; 1D03
+    inc.b !spc_sfx_tmp                ; 1D05
     mov.b a,!spc_echo_enable          ; 1D07
 .l1D09:
     lsr a                             ; 1D09
-    dec.b $20                         ; 1D0A
+    dec.b !spc_sfx_tmp                ; 1D0A
     bne .l1D09                        ; 1D0C
     bcc .l1D1B                        ; 1D0E
     call SpcBVoiceMask                ; 1D10
     mov.b a,!spc_echo_voices          ; 1D13
-    or.b a,$22                        ; 1D15
+    or.b a,!spc_sfx_work              ; 1D15
     mov.b !spc_echo_voices,a          ; 1D17
     bra .l1D24                        ; 1D19
 .l1D1B:
     call SpcBVoiceMaskNot             ; 1D1B
     mov.b a,!spc_echo_voices          ; 1D1E
-    and.b a,$22                       ; 1D20
+    and.b a,!spc_sfx_work             ; 1D20
     mov.b !spc_echo_voices,a          ; 1D22
 .l1D24:
     call SpcBVoiceMaskNot             ; 1D24
     mov.b a,!spc_sfx_voices           ; 1D27
-    and.b a,$22                       ; 1D29
+    and.b a,!spc_sfx_work             ; 1D29
     mov.b !spc_sfx_voices,a           ; 1D2B
     call SpcBVoiceMask                ; 1D2D
     mov.b a,!spc_voice_bit            ; 1D30
-    or.b a,$22                        ; 1D32
+    or.b a,!spc_sfx_work              ; 1D32
     mov.b !spc_voice_bit,a            ; 1D34
     mov.b a,!spc_volume_dirty         ; 1D36
-    or.b a,$20                        ; 1D38
+    or.b a,!spc_sfx_tmp               ; 1D38
     mov.b !spc_volume_dirty,a         ; 1D3A
     push x                            ; 1D3C
     clrc                              ; 1D3D
@@ -1951,7 +1955,7 @@ SpcBVoiceMaskNot:
 SpcBKeyOnVoice:
     call SpcBVoiceMask                ; 1D46
     mov.b a,!spc_key_on               ; 1D49
-    or.b a,$22                        ; 1D4B
+    or.b a,!spc_sfx_work              ; 1D4B
     mov.b !spc_key_on,a               ; 1D4D
     ret                               ; 1D4F
 
@@ -1964,13 +1968,13 @@ SpcBKeyOnVoice:
 SpcBKeyOffVoice:
     call SpcBVoiceMask                ; 1D50
     mov.b a,!spc_key_off              ; 1D53
-    or.b a,$22                        ; 1D55
+    or.b a,!spc_sfx_work              ; 1D55
     mov.b !spc_key_off,a              ; 1D57
     ret                               ; 1D59
 .l1D5A:
     call SpcBSfxRead                  ; 1D5A
     call SpcBSfxSpecial               ; 1D5D
-    jmp $21C8                         ; 1D60
+    jmp SpcBSfxStart_l21C8            ; 1D60
 
 ; @routine 1A:FD48 SpcBSfxRead
 ; WHAT IT DOES: Channel X's sound data for this tick, as the race driver's SpcSfxRead: its age $03F0 counts (a set lifetime $0448 stops it); on the first tick its pitch, volume, slide and envelope state is reset (ADSR $8F/$E0, echo off); while a note's length $0418 runs, the slides step (from $213F); then bytes are read from ($20)+Y: note numbers set the pitch (the table at $222B, by octave, with the channel's detune $0440), $00-$7F lengths, and commands $E0 and up run their handler from the 32-entry table at $1E16 (volume, pan, pitch and volume slides, echo on/off, ADSR, sample, lifetime, sound jumps, end).
@@ -1979,30 +1983,30 @@ SpcBKeyOffVoice:
 ; @spc 1D63
 %spc($1D63, $1AFD48)
 SpcBSfxRead:
-    mov.w a,$0390+x                   ; 1D63
+    mov.w a,!spc_sfx_command+x        ; 1D63
     beq .l1D86                        ; 1D66
-    mov.w a,$0448+x                   ; 1D68
+    mov.w a,!spc_sfx_lifetime+x       ; 1D68
     beq .l1D79                        ; 1D6B
-    mov.b $20,a                       ; 1D6D
-    mov.w a,$03F0+x                   ; 1D6F
-    cmp.b a,$20                       ; 1D72
+    mov.b !spc_sfx_tmp,a              ; 1D6D
+    mov.w a,!spc_sfx_age+x            ; 1D6F
+    cmp.b a,!spc_sfx_tmp              ; 1D72
     bne .l1D79                        ; 1D74
     call SpcBSfxStop                  ; 1D76
 .l1D79:
-    mov.w a,$03F0+x                   ; 1D79
+    mov.w a,!spc_sfx_age+x            ; 1D79
     cmp a,#$FF                        ; 1D7C
     beq .l1D84                        ; 1D7E
     inc a                             ; 1D80
-    mov.w $03F0+x,a                   ; 1D81
+    mov.w !spc_sfx_age+x,a            ; 1D81
 .l1D84:
     bra .l1D8C                        ; 1D84
 .l1D86:
     mov a,#$00                        ; 1D86  ; not reached in the traces so far
-    mov.w $03F0+x,a                   ; 1D88  ; not reached in the traces so far
+    mov.w !spc_sfx_age+x,a            ; 1D88  ; not reached in the traces so far
     ret                               ; 1D8B  ; not reached in the traces so far
 .l1D8C:
     call SpcBSfxChannelLoad           ; 1D8C
-    mov.w a,$03F0+x                   ; 1D8F
+    mov.w a,!spc_sfx_age+x            ; 1D8F
     beq .l1D9A                        ; 1D92
     cmp a,#$01                        ; 1D94
     beq .l1D9B                        ; 1D96
@@ -2011,51 +2015,51 @@ SpcBSfxRead:
     ret                               ; 1D9A  ; not reached in the traces so far
 .l1D9B:
     mov a,#$00                        ; 1D9B
-    mov.w $0400+x,a                   ; 1D9D
-    mov.w $0438+x,a                   ; 1DA0
-    mov.w $0520+x,a                   ; 1DA3
-    mov.w $0478+x,a                   ; 1DA6
-    mov.w $0448+x,a                   ; 1DA9
-    mov.w $0440+x,a                   ; 1DAC
-    mov.w $03A8+x,a                   ; 1DAF
-    mov.w $03B0+x,a                   ; 1DB2
-    mov.w $03B8+x,a                   ; 1DB5
-    mov.w $0498+x,a                   ; 1DB8
-    mov.w $03C0+x,a                   ; 1DBB
-    mov.w $04A0+x,a                   ; 1DBE
-    mov.w $04C0+x,a                   ; 1DC1
-    mov.w $04C8+x,a                   ; 1DC4
-    mov.w $04F0+x,a                   ; 1DC7
-    mov.w $0398+x,a                   ; 1DCA
-    mov.w $04A8+x,a                   ; 1DCD
-    mov.w $03A0+x,a                   ; 1DD0
-    mov.w $04B0+x,a                   ; 1DD3
+    mov.w !spc_sfx_read_pos+x,a       ; 1D9D
+    mov.w !spc_sfx_slide_on+x,a       ; 1DA0
+    mov.w !spc_sfx_sweep_on+x,a       ; 1DA3
+    mov.w !spc_sfx_key_state+x,a      ; 1DA6
+    mov.w !spc_sfx_lifetime+x,a       ; 1DA9
+    mov.w !spc_sfx_pitch_scale+x,a    ; 1DAC
+    mov.w !spc_sfx_vol_l_frac+x,a     ; 1DAF
+    mov.w !spc_sfx_vol_r_frac+x,a     ; 1DB2
+    mov.w !spc_sfx_dsp_pitch+x,a      ; 1DB5
+    mov.w !spc_sfx_pitch+x,a          ; 1DB8
+    mov.w !spc_sfx_dsp_pitch_hi+x,a   ; 1DBB
+    mov.w !spc_sfx_pitch_hi+x,a       ; 1DBE
+    mov.w !spc_sfx_fade_count+x,a     ; 1DC1
+    mov.w !spc_sfx_fading+x,a         ; 1DC4
+    mov.w !spc_sfx_mode+x,a           ; 1DC7
+    mov.w !spc_sfx_vol_l+x,a          ; 1DCA
+    mov.w !spc_sfx_vol_l_int+x,a      ; 1DCD
+    mov.w !spc_sfx_vol_r+x,a          ; 1DD0
+    mov.w !spc_sfx_vol_r_int+x,a      ; 1DD3
     mov a,#$8F                        ; 1DD6
-    mov.w $03D0+x,a                   ; 1DD8
+    mov.w !spc_sfx_adsr1+x,a          ; 1DD8
     mov a,#$E0                        ; 1DDB
-    mov.w $03D8+x,a                   ; 1DDD
+    mov.w !spc_sfx_adsr2+x,a          ; 1DDD
     call SpcBVoiceMaskNot             ; 1DE0
     mov.b a,!spc_echo_voices          ; 1DE3
-    and.b a,$22                       ; 1DE5
+    and.b a,!spc_sfx_work             ; 1DE5
     mov.b !spc_echo_voices,a          ; 1DE7
     mov y,#$01                        ; 1DE9
     bra .l1E05                        ; 1DEB
 .l1DED:
-    mov.w a,$0418+x                   ; 1DED
+    mov.w a,!spc_sfx_length+x         ; 1DED
     dec a                             ; 1DF0
-    mov.w $0418+x,a                   ; 1DF1
+    mov.w !spc_sfx_length+x,a         ; 1DF1
     beq .l1E00                        ; 1DF4
     cmp a,#$FF                        ; 1DF6
     beq .l1E00                        ; 1DF8
-    jmp $213F                         ; 1DFA
+    jmp SpcBSfxStart_l213F            ; 1DFA
     db $5F, $7B, $21
 .l1E00:
-    mov.w a,$0400+x                   ; 1E00
+    mov.w a,!spc_sfx_read_pos+x       ; 1E00
     mov y,a                           ; 1E03
 .l1E04:
     inc y                             ; 1E04
 .l1E05:
-    mov a,($20)+y                     ; 1E05
+    mov a,(!spc_sfx_tmp)+y            ; 1E05
     beq .l1E04                        ; 1E07
     bpl .l1E56                        ; 1E09
     setc                              ; 1E0B
@@ -2064,7 +2068,8 @@ SpcBSfxRead:
     asl a                             ; 1E10
     push x                            ; 1E11
     mov x,a                           ; 1E12
-    jmp ($1E16+x)                     ; 1E13
+    jmp (.t1E16+x)                    ; 1E13
+.t1E16:
     db $B6, $20, $0E, $1F, $12, $1F, $1B, $1F
     db $6A, $1F, $D4, $1F, $E3, $1F, $FE, $1F
     db $12, $20, $27, $20, $3C, $20, $48, $20
@@ -2075,7 +2080,7 @@ SpcBSfxRead:
     db $25, $21, $2F, $21, $68, $1F, $B6, $20
 .l1E56:
     push a                            ; 1E56
-    mov.w a,$0478+x                   ; 1E57
+    mov.w a,!spc_sfx_key_state+x      ; 1E57
     beq .l1E62                        ; 1E5A
     cmp a,#$01                        ; 1E5C
     beq .l1E65                        ; 1E5E
@@ -2084,12 +2089,12 @@ SpcBSfxRead:
     call SpcBKeyOffVoice              ; 1E62
 .l1E65:
     mov a,#$01                        ; 1E65
-    mov.w $03E8+x,a                   ; 1E67
+    mov.w !spc_sfx_key_request+x,a    ; 1E67
 .l1E6A:
     mov a,#$00                        ; 1E6A
-    mov.w $0478+x,a                   ; 1E6C
+    mov.w !spc_sfx_key_state+x,a      ; 1E6C
     pop a                             ; 1E6F
-    mov.w $0418+x,a                   ; 1E70
+    mov.w !spc_sfx_length+x,a         ; 1E70
     cmp a,#$7F                        ; 1E73
     bne .l1E7B                        ; 1E75
     mov a,#$01                        ; 1E77
@@ -2097,9 +2102,9 @@ SpcBSfxRead:
 .l1E7B:
     mov a,#$00                        ; 1E7B
 .l1E7D:
-    mov.w $0420+x,a                   ; 1E7D
+    mov.w !spc_sfx_held+x,a           ; 1E7D
     mov a,y                           ; 1E80
-    mov.w $0400+x,a                   ; 1E81
+    mov.w !spc_sfx_read_pos+x,a       ; 1E81
     jmp SpcBSfxChannelSave            ; 1E84
 .l1E87:
     push y                            ; 1E87
@@ -2113,56 +2118,56 @@ SpcBSfxRead:
     mov a,y                           ; 1E92
     asl a                             ; 1E93
     mov x,a                           ; 1E94
-    mov.w a,$222B+x                   ; 1E95
-    mov.b $22,a                       ; 1E98
-    mov.w a,$222C+x                   ; 1E9A
-    mov.b $23,a                       ; 1E9D
+    mov.w a,SpcBSfxStart_t222B+x      ; 1E95
+    mov.b !spc_sfx_work,a             ; 1E98
+    mov.w a,SpcBSfxStart_t222C+x      ; 1E9A
+    mov.b !spc_sfx_work+1,a           ; 1E9D
     pop a                             ; 1E9F
     setc                              ; 1EA0
     sbc a,#$07                        ; 1EA1
-    mov.b $24,a                       ; 1EA3
+    mov.b !spc_sfx_data,a             ; 1EA3
     beq .l1EB9                        ; 1EA5
 .l1EA7:
     mov y,#$00                        ; 1EA7
-    mov.b a,$23                       ; 1EA9
+    mov.b a,!spc_sfx_work+1           ; 1EA9
     mov x,#$02                        ; 1EAB
     div ya,x                          ; 1EAD
-    mov.b $23,a                       ; 1EAE
-    mov.b a,$22                       ; 1EB0
+    mov.b !spc_sfx_work+1,a           ; 1EAE
+    mov.b a,!spc_sfx_work             ; 1EB0
     div ya,x                          ; 1EB2
-    mov.b $22,a                       ; 1EB3
-    inc.b $24                         ; 1EB5
+    mov.b !spc_sfx_work,a             ; 1EB3
+    inc.b !spc_sfx_data               ; 1EB5
     bne .l1EA7                        ; 1EB7
 .l1EB9:
     pop x                             ; 1EB9
-    mov.b a,$22                       ; 1EBA
-    mov.w $03B8+x,a                   ; 1EBC
-    mov.w $0498+x,a                   ; 1EBF
-    mov.b a,$23                       ; 1EC2
-    mov.w $03C0+x,a                   ; 1EC4
-    mov.w $04A0+x,a                   ; 1EC7
-    mov.w a,$0440+x                   ; 1ECA
+    mov.b a,!spc_sfx_work             ; 1EBA
+    mov.w !spc_sfx_dsp_pitch+x,a      ; 1EBC
+    mov.w !spc_sfx_pitch+x,a          ; 1EBF
+    mov.b a,!spc_sfx_work+1           ; 1EC2
+    mov.w !spc_sfx_dsp_pitch_hi+x,a   ; 1EC4
+    mov.w !spc_sfx_pitch_hi+x,a       ; 1EC7
+    mov.w a,!spc_sfx_pitch_scale+x    ; 1ECA
     beq .l1F0A                        ; 1ECD
     push x                            ; 1ECF
-    mov.b $24,a                       ; 1ED0
-    mov.b a,$23                       ; 1ED2
+    mov.b !spc_sfx_data,a             ; 1ED0
+    mov.b a,!spc_sfx_work+1           ; 1ED2
     setc                              ; 1ED4
     sbc a,#$10                        ; 1ED5
     bmi .l1EEB                        ; 1ED7
-    mov.b a,$22                       ; 1ED9
-    mov.b y,$23                       ; 1EDB
+    mov.b a,!spc_sfx_work             ; 1ED9
+    mov.b y,!spc_sfx_work+1           ; 1EDB
     mov x,#$43                        ; 1EDD
     div ya,x                          ; 1EDF
     mov y,#$04                        ; 1EE0
     mul ya                            ; 1EE2
     mov x,#$FC                        ; 1EE3
     div ya,x                          ; 1EE5
-    mov.b y,$24                       ; 1EE6
+    mov.b y,!spc_sfx_data             ; 1EE6
     mul ya                            ; 1EE8
     bra .l1F00                        ; 1EE9
 .l1EEB:
-    mov.b a,$22                       ; 1EEB
-    mov.b y,$23                       ; 1EED
+    mov.b a,!spc_sfx_work             ; 1EEB
+    mov.b y,!spc_sfx_work+1           ; 1EED
     mov x,#$11                        ; 1EEF
     div ya,x                          ; 1EF1
     mov x,a                           ; 1EF2
@@ -2171,30 +2176,30 @@ SpcBSfxRead:
     div ya,x                          ; 1EF7
     mov x,a                           ; 1EF8
     mov y,#$00                        ; 1EF9
-    mov.b a,$24                       ; 1EFB
+    mov.b a,!spc_sfx_data             ; 1EFB
     div ya,x                          ; 1EFD
     mov y,#$00                        ; 1EFE
 .l1F00:
-    addw ya,$22                       ; 1F00
+    addw ya,!spc_sfx_work             ; 1F00
     pop x                             ; 1F02
-    mov.w $03B8+x,a                   ; 1F03
+    mov.w !spc_sfx_dsp_pitch+x,a      ; 1F03
     mov a,y                           ; 1F06
-    mov.w $03C0+x,a                   ; 1F07
+    mov.w !spc_sfx_dsp_pitch_hi+x,a   ; 1F07
 .l1F0A:
     pop y                             ; 1F0A
-    jmp $1E04                         ; 1F0B
+    jmp .l1E04                        ; 1F0B
     mov a,#$01                        ; 1F0E
     bra .l1F14                        ; 1F10
     mov a,#$02                        ; 1F12
 .l1F14:
     pop x                             ; 1F14
-    mov.w $0478+x,a                   ; 1F15
-    jmp $1E04                         ; 1F18
+    mov.w !spc_sfx_key_state+x,a      ; 1F15
+    jmp .l1E04                        ; 1F18
     pop x                             ; 1F1B
     inc y                             ; 1F1C
-    mov a,($20)+y                     ; 1F1D
-    mov.w $03C8+x,a                   ; 1F1F
-    jmp $1E04                         ; 1F22
+    mov a,(!spc_sfx_tmp)+y            ; 1F1D
+    mov.w !spc_sfx_number+x,a         ; 1F1F
+    jmp .l1E04                        ; 1F22
 
 ; @routine 1A:FF0A SpcBSfxEngineScale
 ; WHAT IT DOES: For a channel in engine mode ($04F0 = 4), scales the volume A by the engine speed from port 3, or port 2 for side 2 ($02 or $03 * 3, / 2, + $80); otherwise A is kept. After it, SpcBSfxRead's command handlers: the volume command (in engine mode both sides; otherwise side 1's sounds play on the left only and side 2's on the right), the ADSR fields, the pitch slide, echo on and off, and a jump to another sound (the one whose data pointer is the operand, from sound $5F on, started through SpcBSfxStart). The race driver's SpcSfxEngineScale reads port 3 only.
@@ -2205,17 +2210,17 @@ SpcBSfxRead:
 SpcBSfxEngineScale:
     push x                            ; 1F25
     push y                            ; 1F26
-    mov.b $22,a                       ; 1F27
-    mov.w a,$04F0+x                   ; 1F29
+    mov.b !spc_sfx_work,a             ; 1F27
+    mov.w a,!spc_sfx_mode+x           ; 1F29
     cmp a,#$04                        ; 1F2C
     bne .l1F64                        ; 1F2E
-    mov.w a,$04B8+x                   ; 1F30
+    mov.w a,!spcb_sfx_side+x          ; 1F30
     cmp a,#$02                        ; 1F33
     beq .l1F3B                        ; 1F35
-    mov.b a,$03                       ; 1F37
+    mov.b a,!spc_port_in+3            ; 1F37
     bra .l1F3D                        ; 1F39
 .l1F3B:
-    mov.b a,$02                       ; 1F3B  ; not reached in the traces so far
+    mov.b a,!spc_port_in+2            ; 1F3B  ; not reached in the traces so far
 .l1F3D:
     cmp a,#$00                        ; 1F3D
     bne .l1F42                        ; 1F3F
@@ -2225,15 +2230,15 @@ SpcBSfxEngineScale:
     mul ya                            ; 1F44
     mov x,#$02                        ; 1F45
     call SpcBDiv16                    ; 1F47
-    mov.b $24,a                       ; 1F4A
-    mov.b $25,y                       ; 1F4C
+    mov.b !spc_sfx_data,a             ; 1F4A
+    mov.b !spc_sfx_data+1,y           ; 1F4C
     mov a,#$80                        ; 1F4E
     mov y,#$00                        ; 1F50
-    addw ya,$24                       ; 1F52
+    addw ya,!spc_sfx_data             ; 1F52
     push y                            ; 1F54
     pop x                             ; 1F55
     mov y,a                           ; 1F56
-    mov.b a,$22                       ; 1F57
+    mov.b a,!spc_sfx_work             ; 1F57
     call SpcBMul16                    ; 1F59
     mov a,y                           ; 1F5C
     bpl .l1F61                        ; 1F5D
@@ -2243,148 +2248,148 @@ SpcBSfxEngineScale:
     pop x                             ; 1F62
     ret                               ; 1F63
 .l1F64:
-    mov.b a,$22                       ; 1F64
+    mov.b a,!spc_sfx_work             ; 1F64
     bra .l1F61                        ; 1F66
     set1 !spc_track_flags.6           ; 1F68
     pop x                             ; 1F6A
     inc y                             ; 1F6B
-    mov.w a,$04F0+x                   ; 1F6C
+    mov.w a,!spc_sfx_mode+x           ; 1F6C
     cmp a,#$01                        ; 1F6F
     bne .l1F90                        ; 1F71
-    mov a,($20)+y                     ; 1F73
+    mov a,(!spc_sfx_tmp)+y            ; 1F73
     call SpcBSfxEngineScale           ; 1F75
-    mov.w $0398+x,a                   ; 1F78
-    mov.w $04A8+x,a                   ; 1F7B
+    mov.w !spc_sfx_vol_l+x,a          ; 1F78
+    mov.w !spc_sfx_vol_l_int+x,a      ; 1F7B
     bbs !spc_track_flags.6,.l1F82     ; 1F7E
     inc y                             ; 1F81
 .l1F82:
-    mov a,($20)+y                     ; 1F82
+    mov a,(!spc_sfx_tmp)+y            ; 1F82
     call SpcBSfxEngineScale           ; 1F84
-    mov.w $03A0+x,a                   ; 1F87
-    mov.w $04B0+x,a                   ; 1F8A
-    jmp $1FC7                         ; 1F8D
+    mov.w !spc_sfx_vol_r+x,a          ; 1F87
+    mov.w !spc_sfx_vol_r_int+x,a      ; 1F8A
+    jmp .l1FC7                        ; 1F8D
 .l1F90:
-    mov.w a,$04B8+x                   ; 1F90
+    mov.w a,!spcb_sfx_side+x          ; 1F90
     cmp a,#$02                        ; 1F93
     beq .l1FB0                        ; 1F95
-    mov a,($20)+y                     ; 1F97
+    mov a,(!spc_sfx_tmp)+y            ; 1F97
     call SpcBSfxEngineScale           ; 1F99
-    mov.w $0398+x,a                   ; 1F9C
-    mov.w $04A8+x,a                   ; 1F9F
+    mov.w !spc_sfx_vol_l+x,a          ; 1F9C
+    mov.w !spc_sfx_vol_l_int+x,a      ; 1F9F
     bbs !spc_track_flags.6,.l1FA6     ; 1FA2
     inc y                             ; 1FA5  ; not reached in the traces so far
 .l1FA6:
     mov a,#$00                        ; 1FA6
-    mov.w $03A0+x,a                   ; 1FA8
-    mov.w $04B0+x,a                   ; 1FAB
+    mov.w !spc_sfx_vol_r+x,a          ; 1FA8
+    mov.w !spc_sfx_vol_r_int+x,a      ; 1FAB
     bra .l1FC7                        ; 1FAE
 .l1FB0:
     mov a,#$00                        ; 1FB0
-    mov.w $0398+x,a                   ; 1FB2
-    mov.w $04A8+x,a                   ; 1FB5
+    mov.w !spc_sfx_vol_l+x,a          ; 1FB2
+    mov.w !spc_sfx_vol_l_int+x,a      ; 1FB5
     bbs !spc_track_flags.6,.l1FBC     ; 1FB8
     inc y                             ; 1FBB  ; not reached in the traces so far
 .l1FBC:
-    mov a,($20)+y                     ; 1FBC
+    mov a,(!spc_sfx_tmp)+y            ; 1FBC
     call SpcBSfxEngineScale           ; 1FBE
-    mov.w $03A0+x,a                   ; 1FC1
-    mov.w $04B0+x,a                   ; 1FC4
+    mov.w !spc_sfx_vol_r+x,a          ; 1FC1
+    mov.w !spc_sfx_vol_r_int+x,a      ; 1FC4
 .l1FC7:
     mov a,#$00                        ; 1FC7
-    mov.w $03A8+x,a                   ; 1FC9
-    mov.w $03B0+x,a                   ; 1FCC
+    mov.w !spc_sfx_vol_l_frac+x,a     ; 1FC9
+    mov.w !spc_sfx_vol_r_frac+x,a     ; 1FCC
     clr1 !spc_track_flags.6           ; 1FCF
-    jmp $1E04                         ; 1FD1
+    jmp SpcBSfxRead_l1E04             ; 1FD1
     pop x                             ; 1FD4
     inc y                             ; 1FD5
-    mov a,($20)+y                     ; 1FD6
+    mov a,(!spc_sfx_tmp)+y            ; 1FD6
     and a,#$0F                        ; 1FD8
-    mov.b $22,a                       ; 1FDA
-    mov.w a,$03D0+x                   ; 1FDC
+    mov.b !spc_sfx_work,a             ; 1FDA
+    mov.w a,!spc_sfx_adsr1+x          ; 1FDC
     and a,#$F0                        ; 1FDF
     bra .l1FF4                        ; 1FE1
     pop x                             ; 1FE3
     inc y                             ; 1FE4
-    mov a,($20)+y                     ; 1FE5
+    mov a,(!spc_sfx_tmp)+y            ; 1FE5
     and a,#$07                        ; 1FE7
     asl a                             ; 1FE9
     asl a                             ; 1FEA
     asl a                             ; 1FEB
     asl a                             ; 1FEC
-    mov.b $22,a                       ; 1FED
-    mov.w a,$03D0+x                   ; 1FEF
+    mov.b !spc_sfx_work,a             ; 1FED
+    mov.w a,!spc_sfx_adsr1+x          ; 1FEF
     and a,#$8F                        ; 1FF2
 .l1FF4:
-    or.b a,$22                        ; 1FF4
+    or.b a,!spc_sfx_work              ; 1FF4
     or a,#$80                         ; 1FF6
-    mov.w $03D0+x,a                   ; 1FF8
-    jmp $1E04                         ; 1FFB
+    mov.w !spc_sfx_adsr1+x,a          ; 1FF8
+    jmp SpcBSfxRead_l1E04             ; 1FFB
     pop x                             ; 1FFE
     inc y                             ; 1FFF
-    mov a,($20)+y                     ; 2000
+    mov a,(!spc_sfx_tmp)+y            ; 2000
     and a,#$07                        ; 2002
     asl a                             ; 2004
     asl a                             ; 2005
     asl a                             ; 2006
     asl a                             ; 2007
     asl a                             ; 2008
-    mov.b $22,a                       ; 2009
-    mov.w a,$03D8+x                   ; 200B
+    mov.b !spc_sfx_work,a             ; 2009
+    mov.w a,!spc_sfx_adsr2+x          ; 200B
     and a,#$1F                        ; 200E
     bra .l201F                        ; 2010
     pop x                             ; 2012
     inc y                             ; 2013
-    mov a,($20)+y                     ; 2014
+    mov a,(!spc_sfx_tmp)+y            ; 2014
     and a,#$1F                        ; 2016
-    mov.b $22,a                       ; 2018
-    mov.w a,$03D8+x                   ; 201A
+    mov.b !spc_sfx_work,a             ; 2018
+    mov.w a,!spc_sfx_adsr2+x          ; 201A
     and a,#$E0                        ; 201D
 .l201F:
-    or.b a,$22                        ; 201F
-    mov.w $03D8+x,a                   ; 2021
-    jmp $1E04                         ; 2024
+    or.b a,!spc_sfx_work              ; 201F
+    mov.w !spc_sfx_adsr2+x,a          ; 2021
+    jmp SpcBSfxRead_l1E04             ; 2024
     pop x                             ; 2027
     inc y                             ; 2028
-    mov a,($20)+y                     ; 2029
-    mov.w $0428+x,a                   ; 202B
+    mov a,(!spc_sfx_tmp)+y            ; 2029
+    mov.w !spc_sfx_slide_delta+x,a    ; 202B
     inc y                             ; 202E
-    mov a,($20)+y                     ; 202F
-    mov.w $0430+x,a                   ; 2031
+    mov a,(!spc_sfx_tmp)+y            ; 202F
+    mov.w !spc_sfx_slide_delta_hi+x,a ; 2031
     mov a,#$01                        ; 2034
-    mov.w $0438+x,a                   ; 2036
-    jmp $1E04                         ; 2039
+    mov.w !spc_sfx_slide_on+x,a       ; 2036
+    jmp SpcBSfxRead_l1E04             ; 2039
     pop x                             ; 203C
     call SpcBVoiceMask                ; 203D
     mov.b a,!spc_echo_voices          ; 2040
-    or.b a,$22                        ; 2042
+    or.b a,!spc_sfx_work              ; 2042
     mov.b !spc_echo_voices,a          ; 2044
     bra .l2052                        ; 2046
     pop x                             ; 2048
     call SpcBVoiceMaskNot             ; 2049
     mov.b a,!spc_echo_voices          ; 204C
-    and.b a,$22                       ; 204E
+    and.b a,!spc_sfx_work             ; 204E
     mov.b !spc_echo_voices,a          ; 2050
 .l2052:
-    jmp $1E04                         ; 2052
+    jmp SpcBSfxRead_l1E04             ; 2052
     inc y                             ; 2055
-    mov a,($20)+y                     ; 2056
-    mov.b $24,a                       ; 2058
+    mov a,(!spc_sfx_tmp)+y            ; 2056
+    mov.b !spc_sfx_data,a             ; 2058
     inc y                             ; 205A
-    mov a,($20)+y                     ; 205B
-    mov.b $25,a                       ; 205D
+    mov a,(!spc_sfx_tmp)+y            ; 205B
+    mov.b !spc_sfx_data+1,a           ; 205D
     push y                            ; 205F
     mov x,#$BC                        ; 2060
 .l2062:
-    mov.w a,$0702+x                   ; 2062
-    cmp.b a,$24                       ; 2065
+    mov.w a,SpcReload_t0702+x         ; 2062
+    cmp.b a,!spc_sfx_data             ; 2065
     beq .l206D                        ; 2067
     inc x                             ; 2069
     inc x                             ; 206A
     bra .l2062                        ; 206B
 .l206D:
     inc x                             ; 206D
-    mov.w a,$0702+x                   ; 206E
-    cmp.b a,$25                       ; 2071
+    mov.w a,SpcReload_t0702+x         ; 206E
+    cmp.b a,!spc_sfx_data+1           ; 2071
     beq .l207C                        ; 2073
     inc x                             ; 2075
     cmp x,#$00                        ; 2076
@@ -2398,7 +2403,7 @@ SpcBSfxEngineScale:
 .l2082:
     pop y                             ; 2082
     pop x                             ; 2083
-    jmp $1E04                         ; 2084
+    jmp SpcBSfxRead_l1E04             ; 2084
 
 ; @routine 1B:806C SpcBSfxStart
 ; WHAT IT DOES: Starts sound A (its data at $24/$25) on its channel unless that channel is in mode 2 or 3: channel, mode bits and side, data pointer, active, then the start state (SpcBSfxChannelStep's code at $1C04). As the race driver's SpcSfxStart, with the side. After it, more of SpcBSfxRead's command handlers (the end, volume slide, detune, slide off, a jump in the data, lifetime, key-off, engine mode, noise), the slides (from $213F: the pitch slide, clamped to $3FFF), and from $21C8 the DSP writes of channel X's voice (volume left and right, by the fade and SpcBSfxVolumeAdjust, pitch, sample, ADSR), then the 12-entry pitch table at $222B. The bytes $217B-$21C7 are code no path reaches.
@@ -2407,12 +2412,12 @@ SpcBSfxEngineScale:
 ; @spc 2087
 %spc($2087, $1B806C)
 SpcBSfxStart:
-    mov.b $23,a                       ; 2087
+    mov.b !spc_sfx_work+1,a           ; 2087
     push a                            ; 2089
     mov y,#$00                        ; 208A
-    mov a,($24)+y                     ; 208C
+    mov a,(!spc_sfx_data)+y           ; 208C
     mov x,a                           ; 208E
-    mov.w a,$04F0+x                   ; 208F
+    mov.w a,!spc_sfx_mode+x           ; 208F
     cmp a,#$02                        ; 2092
     beq .l20B4                        ; 2094
     cmp a,#$03                        ; 2096
@@ -2420,110 +2425,110 @@ SpcBSfxStart:
     call SpcBSfxChannel               ; 209A
     call SpcBSfxMode                  ; 209D
     call SpcBSfxSide                  ; 20A0
-    mov.b a,$24                       ; 20A3
-    mov.w $0488+x,a                   ; 20A5
-    mov.b a,$25                       ; 20A8
-    mov.w $0490+x,a                   ; 20AA
+    mov.b a,!spc_sfx_data             ; 20A3
+    mov.w !spc_sfx_ptr+x,a            ; 20A5
+    mov.b a,!spc_sfx_data+1           ; 20A8
+    mov.w !spc_sfx_ptr_hi+x,a         ; 20AA
     call SpcBSfxActivate              ; 20AD
     pop a                             ; 20B0
-    jmp $1C04                         ; 20B1
+    jmp SpcBSfxChannelStep_l1C04      ; 20B1
 .l20B4:
     pop a                             ; 20B4  ; not reached in the traces so far
     ret                               ; 20B5  ; not reached in the traces so far
     pop x                             ; 20B6
-    mov.w a,$0420+x                   ; 20B7
+    mov.w a,!spc_sfx_held+x           ; 20B7
     bne .l20BF                        ; 20BA
     call SpcBSfxStop                  ; 20BC
 .l20BF:
     ret                               ; 20BF
     pop x                             ; 20C0
     inc y                             ; 20C1
-    mov a,($20)+y                     ; 20C2
-    mov.w $0500+x,a                   ; 20C4
+    mov a,(!spc_sfx_tmp)+y            ; 20C2
+    mov.w !spc_sfx_sweep+x,a          ; 20C4
     inc y                             ; 20C7
-    mov a,($20)+y                     ; 20C8
-    mov.w $0508+x,a                   ; 20CA
+    mov a,(!spc_sfx_tmp)+y            ; 20C8
+    mov.w !spc_sfx_sweep_b+x,a        ; 20CA
     inc y                             ; 20CD
-    mov a,($20)+y                     ; 20CE
-    mov.w $0510+x,a                   ; 20D0
+    mov a,(!spc_sfx_tmp)+y            ; 20CE
+    mov.w !spc_sfx_sweep_c+x,a        ; 20D0
     inc y                             ; 20D3
-    mov a,($20)+y                     ; 20D4
-    mov.w $0518+x,a                   ; 20D6
+    mov a,(!spc_sfx_tmp)+y            ; 20D4
+    mov.w !spc_sfx_sweep_d+x,a        ; 20D6
     mov a,#$01                        ; 20D9
-    mov.w $0520+x,a                   ; 20DB
-    jmp $1E04                         ; 20DE
+    mov.w !spc_sfx_sweep_on+x,a       ; 20DB
+    jmp SpcBSfxRead_l1E04             ; 20DE
     pop x                             ; 20E1
     inc y                             ; 20E2
-    mov a,($20)+y                     ; 20E3
-    mov.w $0440+x,a                   ; 20E5
-    jmp $1E04                         ; 20E8
+    mov a,(!spc_sfx_tmp)+y            ; 20E3
+    mov.w !spc_sfx_pitch_scale+x,a    ; 20E5
+    jmp SpcBSfxRead_l1E04             ; 20E8
     pop x                             ; 20EB
     mov a,#$00                        ; 20EC
-    mov.w $0438+x,a                   ; 20EE
-    jmp $1E04                         ; 20F1
+    mov.w !spc_sfx_slide_on+x,a       ; 20EE
+    jmp SpcBSfxRead_l1E04             ; 20F1
     pop x                             ; 20F4
     mov a,#$00                        ; 20F5
-    mov.w $0520+x,a                   ; 20F7
-    jmp $1E04                         ; 20FA
+    mov.w !spc_sfx_sweep_on+x,a       ; 20F7
+    jmp SpcBSfxRead_l1E04             ; 20FA
     pop x                             ; 20FD
     inc y                             ; 20FE
-    mov a,($20)+y                     ; 20FF
+    mov a,(!spc_sfx_tmp)+y            ; 20FF
     push a                            ; 2101
     inc y                             ; 2102
-    mov a,($20)+y                     ; 2103
-    mov.b $21,a                       ; 2105
+    mov a,(!spc_sfx_tmp)+y            ; 2103
+    mov.b !spc_sfx_tmp+1,a            ; 2105
     pop a                             ; 2107
-    mov.b $20,a                       ; 2108
+    mov.b !spc_sfx_tmp,a              ; 2108
     mov y,#$00                        ; 210A
-    jmp $1E05                         ; 210C
+    jmp SpcBSfxRead_l1E05             ; 210C
     pop x                             ; 210F
     inc y                             ; 2110
-    mov a,($20)+y                     ; 2111
-    mov.w $0448+x,a                   ; 2113
-    jmp $1E04                         ; 2116
+    mov a,(!spc_sfx_tmp)+y            ; 2111
+    mov.w !spc_sfx_lifetime+x,a       ; 2113
+    jmp SpcBSfxRead_l1E04             ; 2116
     pop x                             ; 2119
     call SpcBKeyOffVoice              ; 211A
     mov a,#$02                        ; 211D
-    mov.w $0478+x,a                   ; 211F
-    jmp $1E04                         ; 2122
+    mov.w !spc_sfx_key_state+x,a      ; 211F
+    jmp SpcBSfxRead_l1E04             ; 2122
     pop x                             ; 2125
     inc y                             ; 2126
-    mov a,($20)+y                     ; 2127
-    mov.w $04F0+x,a                   ; 2129
-    jmp $1E04                         ; 212C
+    mov a,(!spc_sfx_tmp)+y            ; 2127
+    mov.w !spc_sfx_mode+x,a           ; 2129
+    jmp SpcBSfxRead_l1E04             ; 212C
     pop x                             ; 212F  ; not reached in the traces so far
     inc y                             ; 2130  ; not reached in the traces so far
-    mov a,($20)+y                     ; 2131  ; not reached in the traces so far
+    mov a,(!spc_sfx_tmp)+y            ; 2131  ; not reached in the traces so far
     and a,#$FE                        ; 2133
     push y                            ; 2135  ; not reached in the traces so far
     push x                            ; 2136  ; not reached in the traces so far
     call SpcBNoiseSampleInit          ; 2137  ; not reached in the traces so far
     pop x                             ; 213A  ; not reached in the traces so far
     pop y                             ; 213B  ; not reached in the traces so far
-    jmp $1E04                         ; 213C  ; not reached in the traces so far
+    jmp SpcBSfxRead_l1E04             ; 213C  ; not reached in the traces so far
 .l213F:
-    mov.w a,$0438+x                   ; 213F
+    mov.w a,!spc_sfx_slide_on+x       ; 213F
     beq .l216F                        ; 2142
-    mov.w a,$0428+x                   ; 2144
-    mov.b $20,a                       ; 2147
-    mov.w a,$0430+x                   ; 2149
-    mov.b $21,a                       ; 214C
-    mov.w a,$04A0+x                   ; 214E
+    mov.w a,!spc_sfx_slide_delta+x    ; 2144
+    mov.b !spc_sfx_tmp,a              ; 2147
+    mov.w a,!spc_sfx_slide_delta_hi+x ; 2149
+    mov.b !spc_sfx_tmp+1,a            ; 214C
+    mov.w a,!spc_sfx_pitch_hi+x       ; 214E
     mov y,a                           ; 2151
-    mov.w a,$0498+x                   ; 2152
-    addw ya,$20                       ; 2155
-    mov.w $0498+x,a                   ; 2157
+    mov.w a,!spc_sfx_pitch+x          ; 2152
+    addw ya,!spc_sfx_tmp              ; 2155
+    mov.w !spc_sfx_pitch+x,a          ; 2157
     mov a,y                           ; 215A
-    mov.w $04A0+x,a                   ; 215B
+    mov.w !spc_sfx_pitch_hi+x,a       ; 215B
     bmi .l2170                        ; 215E
     setc                              ; 2160
     sbc a,#$40                        ; 2161
     bpl .l2175                        ; 2163
-    mov.w a,$0498+x                   ; 2165
+    mov.w a,!spc_sfx_pitch+x          ; 2165
 .l2168:
-    mov.w $03B8+x,a                   ; 2168
+    mov.w !spc_sfx_dsp_pitch+x,a      ; 2168
     mov a,y                           ; 216B
-    mov.w $03C0+x,a                   ; 216C
+    mov.w !spc_sfx_dsp_pitch_hi+x,a   ; 216C
 .l216F:
     ret                               ; 216F
 .l2170:
@@ -2552,52 +2557,55 @@ SpcBSfxStart:
     mul ya                            ; 21CB
     mov y,a                           ; 21CC
     push y                            ; 21CD
-    mov.w a,$0408+x                   ; 21CE
+    mov.w a,!spc_sfx_active+x         ; 21CE
     beq .l21DD                        ; 21D1
-    mov.w a,$04C0+x                   ; 21D3
+    mov.w a,!spc_sfx_fade_count+x     ; 21D3
     beq .l21DD                        ; 21D6
     call SpcBSfxFadeVolume            ; 21D8
     bra .l21E0                        ; 21DB
 .l21DD:
-    mov.w a,$0398+x                   ; 21DD
+    mov.w a,!spc_sfx_vol_l+x          ; 21DD
 .l21E0:
     call SpcBSfxVolumeAdjust          ; 21E0
     pop y                             ; 21E3
     call SpcDspWrite                  ; 21E4
     inc y                             ; 21E7
     push y                            ; 21E8
-    mov.w a,$0408+x                   ; 21E9
+    mov.w a,!spc_sfx_active+x         ; 21E9
     beq .l21FE                        ; 21EC
-    mov.w a,$04C8+x                   ; 21EE
+    mov.w a,!spc_sfx_fading+x         ; 21EE
     beq .l21FE                        ; 21F1
     call SpcBIndexRight               ; 21F3
     call SpcBSfxFadeVolume            ; 21F6
     call SpcBIndexLeft                ; 21F9
     bra .l2201                        ; 21FC
 .l21FE:
-    mov.w a,$03A0+x                   ; 21FE
+    mov.w a,!spc_sfx_vol_r+x          ; 21FE
 .l2201:
     call SpcBSfxVolumeAdjust          ; 2201
     pop y                             ; 2204
     call SpcDspWrite                  ; 2205
     inc y                             ; 2208
-    mov.w a,$03B8+x                   ; 2209
+    mov.w a,!spc_sfx_dsp_pitch+x      ; 2209
     call SpcDspWrite                  ; 220C
     inc y                             ; 220F
-    mov.w a,$03C0+x                   ; 2210
+    mov.w a,!spc_sfx_dsp_pitch_hi+x   ; 2210
     call SpcDspWrite                  ; 2213
     inc y                             ; 2216
-    mov.w a,$03C8+x                   ; 2217
+    mov.w a,!spc_sfx_number+x         ; 2217
     call SpcDspWrite                  ; 221A
     inc y                             ; 221D
-    mov.w a,$03D0+x                   ; 221E
+    mov.w a,!spc_sfx_adsr1+x          ; 221E
     call SpcDspWrite                  ; 2221
     inc y                             ; 2224
-    mov.w a,$03D8+x                   ; 2225
+    mov.w a,!spc_sfx_adsr2+x          ; 2225
     jmp SpcDspWrite                   ; 2228
-    db $7C, $21, $7A, $23, $96, $25, $D2, $27
-    db $30, $2A, $B2, $2C, $5A, $2F, $2C, $32
-    db $28, $35, $50, $38, $AA, $3B, $36, $3F
+.t222B:
+    db $7C
+.t222C:
+    db $21, $7A, $23, $96, $25, $D2, $27, $30
+    db $2A, $B2, $2C, $5A, $2F, $2C, $32, $28
+    db $35, $50, $38, $AA, $3B, $36, $3F
 
 ; @routine 1B:8228 SpcBSfxFadeVolume
 ; WHAT IT DOES: The volume of channel X while it fades out (count A, $04C0), as the race driver's SpcSfxFadeVolume: the start volume and per-step drop taken at count 1, the volume interpolated down over $3C steps; at the end the channel stops (both sides of a right-side index) or the driver reloads or leaves, by flags.
@@ -2613,56 +2621,56 @@ SpcBSfxFadeVolume:
     cmp a,#$FF                        ; 224B
     beq .l22BA                        ; 224D
     inc a                             ; 224F
-    mov.w $04C0+x,a                   ; 2250
+    mov.w !spc_sfx_fade_count+x,a     ; 2250
     bra .l226E                        ; 2253
 .l2255:
     inc a                             ; 2255
-    mov.w $04C0+x,a                   ; 2256
-    mov.w a,$0398+x                   ; 2259
+    mov.w !spc_sfx_fade_count+x,a     ; 2256
+    mov.w a,!spc_sfx_vol_l+x          ; 2259
     mov y,a                           ; 225C
-    mov.w a,$03A8+x                   ; 225D
+    mov.w a,!spc_sfx_vol_l_frac+x     ; 225D
     push x                            ; 2260
     mov x,#$3C                        ; 2261
     call SpcBDiv16                    ; 2263
     pop x                             ; 2266
-    mov.w $04D0+x,a                   ; 2267
+    mov.w !spc_sfx_fade_volume+x,a    ; 2267
     mov a,y                           ; 226A
-    mov.w $04E0+x,a                   ; 226B
+    mov.w !spc_sfx_fade_step+x,a      ; 226B
 .l226E:
-    mov.w a,$04C0+x                   ; 226E
+    mov.w a,!spc_sfx_fade_count+x     ; 226E
     dec a                             ; 2271
-    mov.b $22,a                       ; 2272
-    mov.w a,$04D0+x                   ; 2274
+    mov.b !spc_sfx_work,a             ; 2272
+    mov.w a,!spc_sfx_fade_volume+x    ; 2274
     mov y,a                           ; 2277
-    mov.w a,$04E0+x                   ; 2278
+    mov.w a,!spc_sfx_fade_step+x      ; 2278
     push x                            ; 227B
     mov x,a                           ; 227C
-    mov.b a,$22                       ; 227D
+    mov.b a,!spc_sfx_work             ; 227D
     call SpcBMul16                    ; 227F
     pop x                             ; 2282
-    mov.b $22,a                       ; 2283
-    mov.b $23,y                       ; 2285
-    mov.w a,$0398+x                   ; 2287
+    mov.b !spc_sfx_work,a             ; 2283
+    mov.b !spc_sfx_work+1,y           ; 2285
+    mov.w a,!spc_sfx_vol_l+x          ; 2287
     mov y,a                           ; 228A
-    mov.w a,$03A8+x                   ; 228B
-    subw ya,$22                       ; 228E
+    mov.w a,!spc_sfx_vol_l_frac+x     ; 228B
+    subw ya,!spc_sfx_work             ; 228E
     mov a,y                           ; 2290
     ret                               ; 2291
 .l2292:
     bbs !spc_track_flags.7,.l229A     ; 2292
-    bbs $2D.0,.l229D                  ; 2295  ; not reached in the traces so far
+    bbs !spc_game_flags.0,.l229D      ; 2295  ; not reached in the traces so far
     bra .l22A0                        ; 2298  ; not reached in the traces so far
 .l229A:
-    jmp $19F5                         ; 229A
+    jmp SpcBMusicFade_l19F5           ; 229A
 .l229D:
-    jmp $1A21                         ; 229D  ; not reached in the traces so far
+    jmp SpcBKeyOffAll_l1A21           ; 229D  ; not reached in the traces so far
 .l22A0:
-    mov.b $22,x                       ; 22A0  ; not reached in the traces so far
-    bbs $22.3,.l22AF                  ; 22A2  ; not reached in the traces so far
+    mov.b !spc_sfx_work,x             ; 22A0  ; not reached in the traces so far
+    bbs !spc_sfx_work.3,.l22AF        ; 22A2  ; not reached in the traces so far
     call SpcBSfxStop                  ; 22A5  ; not reached in the traces so far
 .l22A8:
     mov a,#$FF                        ; 22A8  ; not reached in the traces so far
-    mov.w $04C0+x,a                   ; 22AA  ; not reached in the traces so far
+    mov.w !spc_sfx_fade_count+x,a     ; 22AA  ; not reached in the traces so far
     inc a                             ; 22AD  ; not reached in the traces so far
     ret                               ; 22AE  ; not reached in the traces so far
 .l22AF:
@@ -2672,7 +2680,7 @@ SpcBSfxFadeVolume:
     bra .l22A8                        ; 22B8  ; not reached in the traces so far
 .l22BA:
     inc a                             ; 22BA  ; not reached in the traces so far
-    mov.w $04C0+x,a                   ; 22BB  ; not reached in the traces so far
+    mov.w !spc_sfx_fade_count+x,a     ; 22BB  ; not reached in the traces so far
     ret                               ; 22BE  ; not reached in the traces so far
 
 ; @routine 1B:82A4 SpcBIndexRight
@@ -2718,8 +2726,8 @@ SpcBIndexLeft:
 SpcBMul16:
     push a                            ; 22D1
     mul ya                            ; 22D2
-    mov.b $26,a                       ; 22D3
-    mov.b $27,y                       ; 22D5
+    mov.b !spc_math_tmp,a             ; 22D3
+    mov.b !spc_math_tmp+1,y           ; 22D5
     mov a,x                           ; 22D7
     mov y,a                           ; 22D8
     pop a                             ; 22D9
@@ -2730,7 +2738,7 @@ SpcBMul16:
     pop a                             ; 22DE
     mov y,a                           ; 22DF
     mov a,#$00                        ; 22E0
-    addw ya,$26                       ; 22E2
+    addw ya,!spc_math_tmp             ; 22E2
     ret                               ; 22E4
 
 ; @routine 1B:82CA SpcBDiv16
@@ -2745,10 +2753,10 @@ SpcBDiv16:
     mov y,#$00                        ; 22E7
     pop a                             ; 22E9
     div ya,x                          ; 22EA
-    mov.b $27,a                       ; 22EB
+    mov.b !spc_math_tmp+1,a           ; 22EB
     pop a                             ; 22ED
     div ya,x                          ; 22EE
-    mov.b y,$27                       ; 22EF
+    mov.b y,!spc_math_tmp+1           ; 22EF
     ret                               ; 22F1
 
 ; @routine 1B:82D7 SpcBSfxVolumeAdjust
@@ -2759,10 +2767,10 @@ SpcBDiv16:
 %spc($22F2, $1B82D7)
 SpcBSfxVolumeAdjust:
     push y                            ; 22F2
-    mov.b $22,a                       ; 22F3
+    mov.b !spc_sfx_work,a             ; 22F3
     cmp a,#$00                        ; 22F5
     beq .l2318                        ; 22F7
-    mov.w a,$0390+x                   ; 22F9
+    mov.w a,!spc_sfx_command+x        ; 22F9
     cmp a,#$25                        ; 22FC
     bne .l231A                        ; 22FE
     cmp x,#$05                        ; 2300
@@ -2771,20 +2779,20 @@ SpcBSfxVolumeAdjust:
     beq .l230F                        ; 2306  ; not reached in the traces so far
     bra .l2318                        ; 2308  ; not reached in the traces so far
 .l230A:
-    mov.w a,$0530                     ; 230A
+    mov.w a,!spc_sfx_volume_add       ; 230A
     bra .l2312                        ; 230D
 .l230F:
-    mov.w a,$0531                     ; 230F  ; not reached in the traces so far
+    mov.w a,!spcb_sfx_volume_add_4    ; 230F  ; not reached in the traces so far
 .l2312:
     mov y,#$04                        ; 2312
     mul ya                            ; 2314
     clrc                              ; 2315
-    adc.b a,$22                       ; 2316
+    adc.b a,!spc_sfx_work             ; 2316
 .l2318:
     pop y                             ; 2318
     ret                               ; 2319
 .l231A:
-    mov.b a,$22                       ; 231A
+    mov.b a,!spc_sfx_work             ; 231A
     bra .l2318                        ; 231C
 
 ; @routine 1B:8303 SpcBSfxSpecial
@@ -2794,14 +2802,14 @@ SpcBSfxVolumeAdjust:
 ; @spc 231E
 %spc($231E, $1B8303)
 SpcBSfxSpecial:
-    mov.w a,$0390+x                   ; 231E
-    mov.b $20,a                       ; 2321
+    mov.w a,!spc_sfx_command+x        ; 231E
+    mov.b !spc_sfx_tmp,a              ; 2321
     push x                            ; 2323
     mov x,#$00                        ; 2324
 .l2326:
-    mov.w a,$233A+x                   ; 2326
+    mov.w a,.t233A+x                  ; 2326
     beq .l2332                        ; 2329
-    cmp.b a,$20                       ; 232B
+    cmp.b a,!spc_sfx_tmp              ; 232B
     beq .l2334                        ; 232D
     inc x                             ; 232F
     bra .l2326                        ; 2330
@@ -2812,22 +2820,30 @@ SpcBSfxSpecial:
     mov a,x                           ; 2334
     asl a                             ; 2335
     mov x,a                           ; 2336
-    jmp ($2341+x)                     ; 2337
-    db $79, $78, $77, $7A, $17, $25, $00, $5D
-    db $23, $5D, $23, $5D, $23, $5D, $23, $45
-    db $25, $3A, $25, $0C, $13, $55, $7F, $23
-    db $1A, $17, $17, $0C, $0B, $0E, $07, $1B
-    db $1E, $1F, $12
+    jmp (.t2341+x)                    ; 2337
+.t233A:
+    db $79, $78, $77, $7A, $17, $25, $00
+.t2341:
+    db $5D, $23, $5D, $23, $5D, $23, $5D, $23
+    db $45, $25, $3A, $25
+.t234D:
+    db $0C, $13, $55, $7F
+.t2351:
+    db $23, $1A, $17, $17
+.t2355:
+    db $0C, $0B, $0E, $07
+.t2359:
+    db $1B, $1E, $1F, $12
     lsr a                             ; 235D
     mov x,a                           ; 235E
-    mov.w a,$234D+x                   ; 235F
-    mov.b $22,a                       ; 2362
-    mov.w a,$2351+x                   ; 2364
-    mov.b $23,a                       ; 2367
-    mov.w a,$2355+x                   ; 2369
-    mov.b $24,a                       ; 236C
-    mov.w a,$2359+x                   ; 236E
-    mov.b $25,a                       ; 2371
+    mov.w a,.t234D+x                  ; 235F
+    mov.b !spc_sfx_work,a             ; 2362
+    mov.w a,.t2351+x                  ; 2364
+    mov.b !spc_sfx_work+1,a           ; 2367
+    mov.w a,.t2355+x                  ; 2369
+    mov.b !spc_sfx_data,a             ; 236C
+    mov.w a,.t2359+x                  ; 236E
+    mov.b !spc_sfx_data+1,a           ; 2371
     pop x                             ; 2373
     cmp x,#$07                        ; 2374
     beq .l237D                        ; 2376
@@ -2844,23 +2860,23 @@ SpcBSfxSpecial:
     push x                            ; 2386
     mov a,y                           ; 2387
     mov x,a                           ; 2388
-    mov.w a,$0002+x                   ; 2389
-    cmp.w a,$000A+x                   ; 238C
+    mov.w a,!spc_port_in+2+x          ; 2389
+    cmp.w a,!spcb_port2_last+x        ; 238C
     beq .l23DF                        ; 238F
     mov a,#$00                        ; 2391
-    mov.w $0538+x,a                   ; 2393
-    mov.w a,$0002+x                   ; 2396
-    mov.w $053A+x,a                   ; 2399
+    mov.w !spcb_engine_step+x,a       ; 2393
+    mov.w a,!spc_port_in+2+x          ; 2396
+    mov.w !spcb_engine_speed+x,a      ; 2399
     setc                              ; 239C
-    sbc.w a,$000A+x                   ; 239D
+    sbc.w a,!spcb_port2_last+x        ; 239D
     bmi .l23D4                        ; 23A0
     push a                            ; 23A2
     mov a,#$01                        ; 23A3
-    mov.w $053C+x,a                   ; 23A5
+    mov.w !spcb_engine_direction+x,a  ; 23A5
 .l23A8:
     pop a                             ; 23A8
     mov y,a                           ; 23A9
-    mov.w a,$0532+x                   ; 23AA
+    mov.w a,!spcb_engine_rising+x     ; 23AA
     push x                            ; 23AD
     mov x,a                           ; 23AE
     bne .l23B3                        ; 23AF
@@ -2870,154 +2886,154 @@ SpcBSfxSpecial:
     div ya,x                          ; 23B5
     bvs .l23C3                        ; 23B6
     pop x                             ; 23B8
-    mov.w $0534+x,a                   ; 23B9
+    mov.w !spcb_engine_quotient+x,a   ; 23B9
     mov a,#$00                        ; 23BC
-    mov.w $0536+x,a                   ; 23BE
+    mov.w !spcb_engine_overflow+x,a   ; 23BE
     bra .l23CC                        ; 23C1
 .l23C3:
     pop x                             ; 23C3
-    mov.w $0534+x,a                   ; 23C4
+    mov.w !spcb_engine_quotient+x,a   ; 23C4
     mov a,#$01                        ; 23C7
-    mov.w $0536+x,a                   ; 23C9
+    mov.w !spcb_engine_overflow+x,a   ; 23C9
 .l23CC:
     mov a,#$00                        ; 23CC
-    mov.w $0532+x,a                   ; 23CE
-    jmp $248B                         ; 23D1
+    mov.w !spcb_engine_rising+x,a     ; 23CE
+    jmp .l248B                        ; 23D1
 .l23D4:
     eor a,#$FF                        ; 23D4
     inc a                             ; 23D6
     push a                            ; 23D7
     mov a,#$02                        ; 23D8
-    mov.w $053C+x,a                   ; 23DA
+    mov.w !spcb_engine_direction+x,a  ; 23DA
     bra .l23A8                        ; 23DD
 .l23DF:
-    mov.w a,$0002+x                   ; 23DF
+    mov.w a,!spc_port_in+2+x          ; 23DF
     bne .l23EE                        ; 23E2
     mov a,#$00                        ; 23E4
-    mov.w $0534+x,a                   ; 23E6
-    mov.w $0536+x,a                   ; 23E9
+    mov.w !spcb_engine_quotient+x,a   ; 23E6
+    mov.w !spcb_engine_overflow+x,a   ; 23E9
     bra .l2414                        ; 23EC
 .l23EE:
-    mov.w a,$0002+x                   ; 23EE
+    mov.w a,!spc_port_in+2+x          ; 23EE
     bpl .l2414                        ; 23F1
     setc                              ; 23F3
     sbc a,#$F0                        ; 23F4
     bmi .l2414                        ; 23F6
-    mov.w a,$056C+x                   ; 23F8
-    mov.b $22,a                       ; 23FB
-    mov.w a,$056E+x                   ; 23FD
-    mov.b $23,a                       ; 2400
-    incw $22                          ; 2402
-    incw $22                          ; 2404
-    incw $22                          ; 2406
-    mov.b a,$22                       ; 2408
-    mov.w $056C+x,a                   ; 240A
-    mov.b a,$23                       ; 240D
-    mov.w $056E+x,a                   ; 240F
+    mov.w a,!spcb_engine_table+x      ; 23F8
+    mov.b !spc_sfx_work,a             ; 23FB
+    mov.w a,!spcb_engine_table_hi+x   ; 23FD
+    mov.b !spc_sfx_work+1,a           ; 2400
+    incw !spc_sfx_work                ; 2402
+    incw !spc_sfx_work                ; 2404
+    incw !spc_sfx_work                ; 2406
+    mov.b a,!spc_sfx_work             ; 2408
+    mov.w !spcb_engine_table+x,a      ; 240A
+    mov.b a,!spc_sfx_work+1           ; 240D
+    mov.w !spcb_engine_table_hi+x,a   ; 240F
     bra .l241C                        ; 2412
 .l2414:
     mov a,#$00                        ; 2414
-    mov.w $056C+x,a                   ; 2416
-    mov.w $056E+x,a                   ; 2419
+    mov.w !spcb_engine_table+x,a      ; 2416
+    mov.w !spcb_engine_table_hi+x,a   ; 2419
 .l241C:
-    mov.w a,$0532+x                   ; 241C
+    mov.w a,!spcb_engine_rising+x     ; 241C
     setc                              ; 241F
     sbc a,#$0A                        ; 2420
     bmi .l2440                        ; 2422
-    mov $22,#$01                      ; 2424
-    mov $23,#$00                      ; 2427
-    mov.w a,$0536+x                   ; 242A
+    mov !spc_sfx_work,#$01            ; 2424
+    mov !spc_sfx_work+1,#$00          ; 2427
+    mov.w a,!spcb_engine_overflow+x   ; 242A
     mov y,a                           ; 242D
-    mov.w a,$0534+x                   ; 242E
-    subw ya,$22                       ; 2431
+    mov.w a,!spcb_engine_quotient+x   ; 242E
+    subw ya,!spc_sfx_work             ; 2431
     bpl .l2439                        ; 2433
     mov a,#$00                        ; 2435
     mov y,#$00                        ; 2437
 .l2439:
-    mov.w $0534+x,a                   ; 2439
+    mov.w !spcb_engine_quotient+x,a   ; 2439
     mov a,y                           ; 243C
-    mov.w $0536+x,a                   ; 243D
+    mov.w !spcb_engine_overflow+x,a   ; 243D
 .l2440:
-    mov.w a,$0532+x                   ; 2440
+    mov.w a,!spcb_engine_rising+x     ; 2440
     cmp a,#$FF                        ; 2443
     beq .l244E                        ; 2445
-    mov.w a,$0532+x                   ; 2447
+    mov.w a,!spcb_engine_rising+x     ; 2447
     inc a                             ; 244A
-    mov.w $0532+x,a                   ; 244B
+    mov.w !spcb_engine_rising+x,a     ; 244B
 .l244E:
-    mov.w a,$0532+x                   ; 244E
+    mov.w a,!spcb_engine_rising+x     ; 244E
     cmp a,#$01                        ; 2451
     beq .l2483                        ; 2453
-    mov.w a,$053A+x                   ; 2455
+    mov.w a,!spcb_engine_speed+x      ; 2455
     mov y,a                           ; 2458
-    mov.w a,$0538+x                   ; 2459
+    mov.w a,!spcb_engine_step+x       ; 2459
 .l245C:
     push a                            ; 245C
-    mov.w a,$0534+x                   ; 245D
-    mov.b $20,a                       ; 2460
-    mov.w a,$0536+x                   ; 2462
-    mov.b $21,a                       ; 2465
-    mov.w a,$053C+x                   ; 2467
+    mov.w a,!spcb_engine_quotient+x   ; 245D
+    mov.b !spc_sfx_tmp,a              ; 2460
+    mov.w a,!spcb_engine_overflow+x   ; 2462
+    mov.b !spc_sfx_tmp+1,a            ; 2465
+    mov.w a,!spcb_engine_direction+x  ; 2467
     cmp a,#$02                        ; 246A
     beq .l247C                        ; 246C
     pop a                             ; 246E
-    addw ya,$20                       ; 246F
+    addw ya,!spc_sfx_tmp              ; 246F
     bcs .l248B                        ; 2471
 .l2473:
-    mov.w $0538+x,a                   ; 2473
+    mov.w !spcb_engine_step+x,a       ; 2473
     mov a,y                           ; 2476
-    mov.w $053A+x,a                   ; 2477
+    mov.w !spcb_engine_speed+x,a      ; 2477
     bra .l248B                        ; 247A
 .l247C:
     pop a                             ; 247C
-    subw ya,$20                       ; 247D
+    subw ya,!spc_sfx_tmp              ; 247D
     bcc .l248B                        ; 247F
     bra .l2473                        ; 2481
 .l2483:
-    mov.w a,$0002+x                   ; 2483
+    mov.w a,!spc_port_in+2+x          ; 2483
     mov y,a                           ; 2486
     mov a,#$00                        ; 2487
     bra .l245C                        ; 2489
 .l248B:
-    mov $20,#$00                      ; 248B
-    mov $21,$24                       ; 248E
-    mov.b y,$25                       ; 2491
-    mov.w a,$053A+x                   ; 2493
+    mov !spc_sfx_tmp,#$00             ; 248B
+    mov !spc_sfx_tmp+1,!spc_sfx_data  ; 248E
+    mov.b y,!spc_sfx_data+1           ; 2491
+    mov.w a,!spcb_engine_speed+x      ; 2493
     mul ya                            ; 2496
-    mov $20,#$00                      ; 2497
-    addw ya,$20                       ; 249A
-    mov.b $20,a                       ; 249C
-    mov.b $21,y                       ; 249E
-    mov.w a,$054A+x                   ; 24A0
+    mov !spc_sfx_tmp,#$00             ; 2497
+    addw ya,!spc_sfx_tmp              ; 249A
+    mov.b !spc_sfx_tmp,a              ; 249C
+    mov.b !spc_sfx_tmp+1,y            ; 249E
+    mov.w a,!spcb_ramp_a2_pitch_hi+x  ; 24A0
     mov y,a                           ; 24A3
-    mov.w a,$0548+x                   ; 24A4
-    addw ya,$20                       ; 24A7
-    mov.b $20,a                       ; 24A9
-    mov.b $21,y                       ; 24AB
-    mov.w a,$054E+x                   ; 24AD
+    mov.w a,!spcb_ramp_a2_pitch+x     ; 24A4
+    addw ya,!spc_sfx_tmp              ; 24A7
+    mov.b !spc_sfx_tmp,a              ; 24A9
+    mov.b !spc_sfx_tmp+1,y            ; 24AB
+    mov.w a,!spcb_ramp_b2_pitch_hi+x  ; 24AD
     mov y,a                           ; 24B0
-    mov.w a,$054C+x                   ; 24B1
-    addw ya,$20                       ; 24B4
-    mov.b $20,a                       ; 24B6
-    mov.b $21,y                       ; 24B8
-    mov.w a,$056E+x                   ; 24BA
+    mov.w a,!spcb_ramp_b2_pitch+x     ; 24B1
+    addw ya,!spc_sfx_tmp              ; 24B4
+    mov.b !spc_sfx_tmp,a              ; 24B6
+    mov.b !spc_sfx_tmp+1,y            ; 24B8
+    mov.w a,!spcb_engine_table_hi+x   ; 24BA
     mov y,a                           ; 24BD
-    mov.w a,$056C+x                   ; 24BE
-    addw ya,$20                       ; 24C1
-    mov.b $20,a                       ; 24C3
-    mov.b $21,y                       ; 24C5
+    mov.w a,!spcb_engine_table+x      ; 24BE
+    addw ya,!spc_sfx_tmp              ; 24C1
+    mov.b !spc_sfx_tmp,a              ; 24C3
+    mov.b !spc_sfx_tmp+1,y            ; 24C5
     setc                              ; 24C7
-    sbc $21,#$3F                      ; 24C8
+    sbc !spc_sfx_tmp+1,#$3F           ; 24C8
     bmi .l24D0                        ; 24CB
-    mov $21,#$3F                      ; 24CD  ; not reached in the traces so far
+    mov !spc_sfx_tmp+1,#$3F           ; 24CD  ; not reached in the traces so far
 .l24D0:
-    mov.w a,$0002+x                   ; 24D0
-    mov.w $000A+x,a                   ; 24D3
+    mov.w a,!spc_port_in+2+x          ; 24D0
+    mov.w !spcb_port2_last+x,a        ; 24D3
     pop x                             ; 24D6
-    mov.b a,$20                       ; 24D7
-    mov.w $03B8+x,a                   ; 24D9
-    mov.b a,$21                       ; 24DC
-    mov.w $03C0+x,a                   ; 24DE
+    mov.b a,!spc_sfx_tmp              ; 24D7
+    mov.w !spc_sfx_dsp_pitch+x,a      ; 24D9
+    mov.b a,!spc_sfx_tmp+1            ; 24DC
+    mov.w !spc_sfx_dsp_pitch_hi+x,a   ; 24DE
     ret                               ; 24E1
 
 ; @routine 1B:84C7 SpcBEngineVolume
@@ -3027,19 +3043,19 @@ SpcBSfxSpecial:
 ; @spc 24E2
 %spc($24E2, $1B84C7)
 SpcBEngineVolume:
-    mov.w a,$0002+y                   ; 24E2
+    mov.w a,!spc_port_in+2+y          ; 24E2
     eor a,#$FF                        ; 24E5
     push y                            ; 24E7
     mov y,#$00                        ; 24E8
     push x                            ; 24EA
-    mov.b x,$22                       ; 24EB
+    mov.b x,!spc_sfx_work             ; 24EB
     div ya,x                          ; 24ED
-    mov.b $20,a                       ; 24EE
+    mov.b !spc_sfx_tmp,a              ; 24EE
     pop x                             ; 24F0
     pop y                             ; 24F1
-    mov.b a,$23                       ; 24F2
+    mov.b a,!spc_sfx_work+1           ; 24F2
     clrc                              ; 24F4
-    adc.b a,$20                       ; 24F5
+    adc.b a,!spc_sfx_tmp              ; 24F5
     cmp y,#$00                        ; 24F7
     beq .l2513                        ; 24F9
     bbc !spc_flags.2,.l2500           ; 24FB
@@ -3047,13 +3063,13 @@ SpcBEngineVolume:
 .l2500:
     call SpcBEngineDamp               ; 2500
     push y                            ; 2503
-    mov.w y,$056B                     ; 2504
+    mov.w y,!spc_song5_scale          ; 2504
     mul ya                            ; 2507
     mov a,y                           ; 2508
     pop y                             ; 2509
-    mov.w $0398+x,a                   ; 250A
+    mov.w !spc_sfx_vol_l+x,a          ; 250A
     mov a,#$00                        ; 250D
-    mov.w $03A0+x,a                   ; 250F
+    mov.w !spc_sfx_vol_r+x,a          ; 250F
     ret                               ; 2512
 .l2513:
     bbc !spc_flags.4,.l2518           ; 2513
@@ -3061,13 +3077,13 @@ SpcBEngineVolume:
 .l2518:
     call SpcBEngineDamp2              ; 2518
     push y                            ; 251B
-    mov.w y,$056B                     ; 251C
+    mov.w y,!spc_song5_scale          ; 251C
     mul ya                            ; 251F
     mov a,y                           ; 2520
     pop y                             ; 2521
-    mov.w $03A0+x,a                   ; 2522
+    mov.w !spc_sfx_vol_r+x,a          ; 2522
     mov a,#$00                        ; 2525
-    mov.w $0398+x,a                   ; 2527
+    mov.w !spc_sfx_vol_l+x,a          ; 2527
     ret                               ; 252A
 
 ; @routine 1B:8510 SpcBEngineDamp2
@@ -3077,7 +3093,7 @@ SpcBEngineVolume:
 ; @spc 252B
 %spc($252B, $1B8510)
 SpcBEngineDamp2:
-    bbs $28.4,SpcBEngineDamp_l2539    ; 252B
+    bbs !spc_effect_flags.4,SpcBEngineDamp_l2539; 252B
     bra SpcBEngineDamp_l2533          ; 252E
 
 ; @routine 1B:8515 SpcBEngineDamp
@@ -3087,7 +3103,7 @@ SpcBEngineDamp2:
 ; @spc 2530
 %spc($2530, $1B8515)
 SpcBEngineDamp:
-    bbs $28.2,.l2539                  ; 2530
+    bbs !spc_effect_flags.2,.l2539    ; 2530
 .l2533:
     push y                            ; 2533
     mov y,#$D0                        ; 2534
@@ -3096,13 +3112,13 @@ SpcBEngineDamp:
     pop y                             ; 2538
 .l2539:
     ret                               ; 2539
-    mov $22,#$1E                      ; 253A
-    mov $23,#$03                      ; 253D
-    mov $24,#$01                      ; 2540
+    mov !spc_sfx_work,#$1E            ; 253A
+    mov !spc_sfx_work+1,#$03          ; 253D
+    mov !spc_sfx_data,#$01            ; 2540
     bra .l254E                        ; 2543
-    mov $22,#$14                      ; 2545
-    mov $23,#$0A                      ; 2548
-    mov $24,#$02                      ; 254B
+    mov !spc_sfx_work,#$14            ; 2545
+    mov !spc_sfx_work+1,#$0A          ; 2548
+    mov !spc_sfx_data,#$02            ; 254B
 .l254E:
     pop x                             ; 254E
     cmp x,#$05                        ; 254F
@@ -3116,29 +3132,29 @@ SpcBEngineDamp:
 .l255C:
     mov y,#$00                        ; 255C  ; not reached in the traces so far
 .l255E:
-    mov.w a,$0002+y                   ; 255E
+    mov.w a,!spc_port_in+2+y          ; 255E
     eor a,#$FF                        ; 2561
     push y                            ; 2563
     mov y,#$00                        ; 2564
     push x                            ; 2566
-    mov.b x,$22                       ; 2567
+    mov.b x,!spc_sfx_work             ; 2567
     div ya,x                          ; 2569
     pop x                             ; 256A
     pop y                             ; 256B
     clrc                              ; 256C
-    adc.b a,$23                       ; 256D
+    adc.b a,!spc_sfx_work+1           ; 256D
     push a                            ; 256F
-    mov.w a,$0544+y                   ; 2570
+    mov.w a,!spcb_rev_counter+y       ; 2570
     inc a                             ; 2573
-    mov.w $0544+y,a                   ; 2574
+    mov.w !spcb_rev_counter+y,a       ; 2574
     pop a                             ; 2577
     setc                              ; 2578
-    sbc.w a,$0544+y                   ; 2579
+    sbc.w a,!spcb_rev_counter+y       ; 2579
     bpl .l2587                        ; 257C
-    mov.b a,$24                       ; 257E
-    mov.w $03E8+x,a                   ; 2580
+    mov.b a,!spc_sfx_data             ; 257E
+    mov.w !spc_sfx_key_request+x,a    ; 2580
     dec a                             ; 2583
-    mov.w $0544+y,a                   ; 2584
+    mov.w !spcb_rev_counter+y,a       ; 2584
 .l2587:
     ret                               ; 2587
 
@@ -3152,7 +3168,7 @@ SpcBNoiseSampleInit:
     mov y,#$00                        ; 2588  ; not reached in the traces so far
     mov x,#$1B                        ; 258A  ; not reached in the traces so far
 .l258C:
-    mov.w $FF00+y,a                   ; 258C  ; not reached in the traces so far
+    mov.w !spc_noise_sample+y,a       ; 258C  ; not reached in the traces so far
     inc y                             ; 258F  ; not reached in the traces so far
     inc y                             ; 2590  ; not reached in the traces so far
     inc y                             ; 2591  ; not reached in the traces so far
@@ -3165,13 +3181,13 @@ SpcBNoiseSampleInit:
     dec x                             ; 2598  ; not reached in the traces so far
     bne .l258C                        ; 2599  ; not reached in the traces so far
     inc a                             ; 259B  ; not reached in the traces so far
-    mov.w $FF00+y,a                   ; 259C  ; not reached in the traces so far
+    mov.w !spc_noise_sample+y,a       ; 259C  ; not reached in the traces so far
     mov y,#$FF                        ; 259F  ; not reached in the traces so far
     mov a,#$00                        ; 25A1  ; not reached in the traces so far
-    mov.w $3F8C,a                     ; 25A3  ; not reached in the traces so far
-    mov.w $3F8D,y                     ; 25A6  ; not reached in the traces so far
-    mov.w $3F8E,a                     ; 25A9  ; not reached in the traces so far
-    mov.w $3F8F,y                     ; 25AC  ; not reached in the traces so far
+    mov.w !spc_noise_dir,a            ; 25A3  ; not reached in the traces so far
+    mov.w !spc_noise_dir+1,y          ; 25A6  ; not reached in the traces so far
+    mov.w !spc_noise_dir+2,a          ; 25A9  ; not reached in the traces so far
+    mov.w !spc_noise_dir+3,y          ; 25AC  ; not reached in the traces so far
     mov.b a,!spc_random               ; 25AF  ; not reached in the traces so far
     or.b a,!spc_random+1              ; 25B1  ; not reached in the traces so far
     bne .l25B7                        ; 25B3  ; not reached in the traces so far
@@ -3188,7 +3204,7 @@ SpcBNoiseSampleInit:
 SpcBNoiseSample:
     mov x,#$00                        ; 25B8
 .l25BA:
-    mov.w a,$03C8+x                   ; 25BA
+    mov.w a,!spc_sfx_number+x         ; 25BA
     cmp a,#$23                        ; 25BD
     beq .l25C8                        ; 25BF
     inc x                             ; 25C1
@@ -3196,35 +3212,38 @@ SpcBNoiseSample:
     beq SpcBNoiseSampleInit_l25B7     ; 25C4
     bra .l25BA                        ; 25C6
 .l25C8:
-    dec.w $0563                       ; 25C8  ; not reached in the traces so far
-    mov.w a,$0563                     ; 25CB  ; not reached in the traces so far
+    dec.w !spc_noise_block            ; 25C8  ; not reached in the traces so far
+    mov.w a,!spc_noise_block          ; 25CB  ; not reached in the traces so far
     and a,#$03                        ; 25CE  ; not reached in the traces so far
     mov y,#$3F                        ; 25D0  ; not reached in the traces so far
     mul ya                            ; 25D2  ; not reached in the traces so far
     mov y,a                           ; 25D3  ; not reached in the traces so far
-    mov $20,#$07                      ; 25D4  ; not reached in the traces so far
+    mov !spc_sfx_tmp,#$07             ; 25D4  ; not reached in the traces so far
 .l25D7:
     inc y                             ; 25D7  ; not reached in the traces so far
     mov x,#$04                        ; 25D8  ; not reached in the traces so far
 .l25DA:
-    mov1 c,$0019.6                    ; 25DA  ; not reached in the traces so far
-    eor1 c,$0019.5                    ; 25DD  ; not reached in the traces so far
+    mov1 c,!spc_random+1.6            ; 25DA  ; not reached in the traces so far
+    eor1 c,!spc_random+1.5            ; 25DD  ; not reached in the traces so far
     rol.b !spc_random                 ; 25E0  ; not reached in the traces so far
     rol.b !spc_random+1               ; 25E2  ; not reached in the traces so far
     mov.b a,!spc_random+1             ; 25E4  ; not reached in the traces so far
     and a,#$D0                        ; 25E6  ; not reached in the traces so far
     or a,#$11                         ; 25E8  ; not reached in the traces so far
-    mov.w $FF00+y,a                   ; 25EA  ; not reached in the traces so far
+    mov.w !spc_noise_sample+y,a       ; 25EA  ; not reached in the traces so far
     inc y                             ; 25ED  ; not reached in the traces so far
     mov.b a,!spc_random               ; 25EE  ; not reached in the traces so far
     and a,#$FF                        ; 25F0  ; not reached in the traces so far
     or a,#$11                         ; 25F2  ; not reached in the traces so far
-    mov.w $FF00+y,a                   ; 25F4  ; not reached in the traces so far
+    mov.w !spc_noise_sample+y,a       ; 25F4  ; not reached in the traces so far
     inc y                             ; 25F7  ; not reached in the traces so far
     dec x                             ; 25F8  ; not reached in the traces so far
     bne .l25DA                        ; 25F9  ; not reached in the traces so far
-    dbnz $20,.l25D7                   ; 25FB  ; not reached in the traces so far
+    dbnz !spc_sfx_tmp,.l25D7          ; 25FB  ; not reached in the traces so far
     ret                               ; 25FE  ; not reached in the traces so far
+.t25FF:
     db $03, $10, $32, $30, $3C, $16, $20, $56
-    db $00, $30, $3C, $38, $16, $20, $56, $00
+    db $00
+.t2608:
+    db $30, $3C, $38, $16, $20, $56, $00
 %spc_end()

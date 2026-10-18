@@ -245,3 +245,27 @@ includeonce
 !spc_countdown_b = $EE40
 !spc_noise_sample = $FF00
 !spc_iplrom = $FFC0
+
+; battle driver RAM (block list $1A:F091), where it differs from the race
+; driver's: the two sides' pairs (+0 port 2 / side 2, +1 port 3 / side 1)
+; and the second pitch ramps
+!spcb_port2_last = $000A          ; port 2's last value (+1: port 3's)
+!spcb_sfx_paused_side = $0450     ; per channel: the side saved at a pause
+!spcb_sfx_side = $04B8            ; per channel: 1 or 2 (bit 7 of port 0)
+!spcb_sfx_loop_side = $0528       ; per channel: the side of the saved loop
+!spcb_sfx_volume_add_4 = $0531    ; channel 4's volume step (port 1 $36-$39)
+!spcb_engine_rising = $0532       ; engine slew: tick count
+!spcb_engine_quotient = $0534     ; engine slew: step
+!spcb_engine_overflow = $0536     ; engine slew: step high byte
+!spcb_engine_step = $0538         ; engine slew: accumulator
+!spcb_engine_speed = $053A        ; engine slew: speed reached
+!spcb_engine_direction = $053C    ; engine slew: 1 up, 2 down
+!spcb_ramp_a2_steps = $0542
+!spcb_rev_counter = $0544
+!spcb_ramp_b2_steps = $0546
+!spcb_ramp_a2_pitch = $0548
+!spcb_ramp_a2_pitch_hi = $054A
+!spcb_ramp_b2_pitch = $054C
+!spcb_ramp_b2_pitch_hi = $054E
+!spcb_engine_table = $056C        ; full-speed drift
+!spcb_engine_table_hi = $056E
