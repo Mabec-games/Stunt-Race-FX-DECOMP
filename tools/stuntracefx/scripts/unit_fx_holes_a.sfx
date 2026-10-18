@@ -1,0 +1,56 @@
+# unit_fx_holes_a: unit tests (fx) from the start of a Novice race for
+# the Super FX paths of banks 01 and 04 the other scripts leave unrun
+# (R11 = the STOP at $01:80E3 or $04:888C, R10 = the stack at $0244):
+# - FxObjectBounce 04:907A on the wheel $15F0 hit from below: the record
+#   its touch list holds ($21DE) collided as a box (+$16 bit 4), given a
+#   mass (+$2A = $0400), and the contact's speeds (+$04, +$06 of the
+#   entry at $1576) $F000 so it closes on the wheel: the push, and so
+#   $239C, is positive;
+# - FxObjectSprite 01:B0D9 with the object far ($002A = $0100), size
+#   $00CE 0, no point shift ($0032) and sprite size $00AA 0: the doubled
+#   size is 0 and is taken as 1;
+# - FxObjectSpriteAt 01:B17D with R1 = $40 at x $00BA = -$0F (its left
+#   edge at -$30) and a row count $00CE of only $10: the skip to the
+#   screen's edge runs out first and the sprite ends there; once plain
+#   (mask $00D4 = 0) and once mirrored ($8000);
+# - FxCarHandler 04:B1A1 on the car $1738 not driven by the course data
+#   (+$70 = 0), so FxCarFollowCourse (04:C3D5) finds its place: with
+#   +$2C bit 6 set (that search passed over), and with no course table
+#   ($1092 = 0: FxCourseNearest finds none).
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7021F4 D1,03
+set 702208 00,04
+set 70157A 00,F0,00,F0
+fx 04:907A stop=888C r8=15F0 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70002A 00,01
+set 7000CE 00,00
+set 700032 00,00
+set 7000AA 00,00
+fx 01:B0D9 stop=80E3 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7000BA F1,FF
+set 7000C8 00,01
+set 7000CE 10,00
+set 7000D4 00,00
+fx 01:B17D stop=80E3 r1=0040 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7000BA F1,FF
+set 7000C8 00,01
+set 7000CE 10,00
+set 7000D4 00,80
+fx 01:B17D stop=80E3 r1=0040 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7017A8 00,00
+set 701764 40,00
+fx 04:B1A1 stop=888C r8=1738 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7017A8 00,00
+set 701092 00,00
+fx 04:B1A1 stop=888C r8=1738 r10=0244
+wait 1
