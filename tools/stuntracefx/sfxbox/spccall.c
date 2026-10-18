@@ -362,7 +362,9 @@ void spc_check_rows(FILE *rep)
 #define SOPRING (1u << 22)
 enum { SOP_STEP = 1, SOP_READ = 2, SOP_WRITE = 3 };
 
-typedef struct { long frame; uint64_t opoff; uint32_t opn; int done; uint16_t ret; uint8_t sp_after; } SCall;
+/* cut: the call was open when the script loaded a state; its record ends
+   there, and it never returns. */
+typedef struct { long frame; uint64_t opoff; uint32_t opn; int done, cut; uint16_t ret; uint8_t sp_after; } SCall;
 typedef struct {
     uint64_t o_calls, h_calls, o_ops, h_ops;
     int o_done;
@@ -443,6 +445,7 @@ static void orig_insn(uint16_t pc, uint16_t prev_end, uint8_t opcode)
     c->frame = sframe; c->opoff = SLOAD(ssh->o_ops); c->opn = 0;
     c->ret = (uint16_t)(apu[0x100 | (uint8_t)(st.s + 1)] | apu[0x100 | (uint8_t)(st.s + 2)] << 8);
     c->sp_after = (uint8_t)(st.s + 2);
+    SSTORE(c->cut, 0);
     SSTORE(c->done, 0);
     SSTORE(ssh->o_calls, k + 1);
     ssh->fcalls[sframe % SNSLOT]++;
@@ -458,10 +461,11 @@ static uint8_t *scops; static uint32_t *scarg; static uint32_t scn, sci, sccap;
 static long hs_calls, hs_unmatched, hs_fcalls;
 static int spast_end, hprev_call, called_prev;
 
+static uint32_t slast_step = 1;   /* the last step replayed, in clocks */
 static void sreplay_to(uint32_t to)
 {
     for (uint32_t i = sci; i < to; i++)
-        if (scops[i] == SOP_STEP) core_time(scarg[i]);
+        if (scops[i] == SOP_STEP) { core_time(scarg[i]); slast_step = scarg[i]; }
     if (to > sci) sci = to;
 }
 
@@ -470,7 +474,7 @@ static void sreplay_to(uint32_t to)
    may come. sfetch copies what has come; with `wait`, it first waits for
    more, or for the record's end. 0 when no more will come. */
 static SCall *srec;
-static int sopen;
+static int sopen, scut;
 static int sfetch(int wait)
 {
     if (!sopen) return 0;
@@ -498,7 +502,7 @@ static int sfetch(int wait)
             scn = avail;
             SSTORE(ssh->h_ops, srec->opoff + scn);
         }
-        if (done) { sopen = 0; return scn > have; }
+        if (done) { sopen = 0; scut = SLOAD(srec->cut); return scn > have; }
         if (!wait || scn > have) return 1;
         if (odone) {
             /* The script ended on the original side inside this call: the
@@ -534,8 +538,12 @@ static uint8_t live_access(int write, uint16_t a, uint8_t v)
     uint8_t want = write ? SOP_WRITE : SOP_READ;
     for (uint32_t j = sci;; j++) {
         if (j == scn && !sfetch(1)) break;
-        if (scops[j] == want && scarg[j] == a) { sreplay_to(j); sci = j + 1; break; }
+        if (scops[j] == want && scarg[j] == a) { sreplay_to(j); sci = j + 1; return core_bus(write, a, v); }
     }
+    /* The original's record was cut by a state load: the C runs on to the
+       frame's end (the load replaces the machine), each access timed like
+       the record's last step, so a loop polling a timer can end. */
+    if (scut) { sreplay_to(scn); core_time(slast_step); }
     return core_bus(write, a, v);
 }
 
@@ -558,7 +566,7 @@ static int hybrid_exec(uint16_t pc, uint16_t prev_end)
     SWAIT(k < SLOAD(ssh->o_calls) || SLOAD(ssh->o_done));
     SCall rec = {0};
     scn = sci = 0;
-    sopen = 0;
+    sopen = 0; scut = 0;
     struct SmpState st;
     core_get(&st);
     if (k < SLOAD(ssh->o_calls)) {
@@ -633,6 +641,26 @@ int spc_after_frame(long f, char *buf, size_t n)
         return 1;
     }
     return 0;
+}
+
+/* A state loaded by the script. Original side: a call open now belongs to
+   the machine the load replaced and never returns; its record ends here,
+   marked cut. Hybrid side: C left inside a call never resumes. */
+void spc_lockstep_state_loaded(void)
+{
+    if (!ssh) return;
+    if (srole == 1) {
+        if (sm.active) {
+            SSTORE(ssh->calls[sm.call % SCALLRING].cut, 1);
+            SSTORE(ssh->calls[sm.call % SCALLRING].done, 1);
+            sm.active = 0;
+        }
+        sprev_call = 0;
+    } else if (srole == 2) {
+        live = 0;
+        sopen = 0; scut = 0;
+        hprev_call = called_prev = 0;
+    }
 }
 
 void spc_lockstep_done(void) { if (ssh) SSTORE(ssh->o_done, 1); }
