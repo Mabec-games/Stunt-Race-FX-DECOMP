@@ -343,6 +343,19 @@ class Census:
                         break
                 elif op == 0x00:                  # STOP
                     break
+                elif 0x98 <= op <= 0x9D or op == 0x1F:
+                    # JMP Rn (LJMP after ALT1), or TO R15 (the next
+                    # instruction writes R15: MOVE R15,Rn, LDW (Rn) into R15,
+                    # a return): no fall through after the delay slot.
+                    moved = op == 0x1F and 0x20 <= self.rom[o - 1] <= 0x2F   # WITH Rn; TO R15 = MOVE R15,Rn
+                    o += n
+                    if op == 0x1F and not moved:
+                        for k in range(disasm.gsu_len(self.rom[o])):
+                            self.gcode[o + k] = 1
+                        o += disasm.gsu_len(self.rom[o])
+                    for k in range(disasm.gsu_len(self.rom[o])):
+                        self.gcode[o + k] = 1     # the delay slot
+                    break
                 o += n
 
 
