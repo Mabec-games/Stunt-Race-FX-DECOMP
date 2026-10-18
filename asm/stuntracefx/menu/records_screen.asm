@@ -23,8 +23,8 @@ arch 65816
 ; (ColourMathA7Start).
 ; HOW: The groups' slots chain from the sizes at $04:EDCB (MetaspriteDraw
 ; from slot 0, origin $89, $89); 16-bit, 8-bit stores. The $0D4C test
-; after B or Start (02:EEDD) is dead: that path runs only with $0D4C
-; clear, and nothing on it writes $0D4C.
+; after B or Start always finds it clear (that path runs only with $0D4C
+; clear), so its car set-up (02:EEDD) runs only as SpeedRecordsLeaveCar.
 ; Entry: any widths; data bank $7E or a mirror. Exit: as the last call
 ; leaves it.
 %at($02EDD2)
@@ -133,7 +133,18 @@ SpeedRecordsScreen:
     sta.w !wram_0D3F+1
     lda.w !digit62_override
     beq .colours
-    lda.b #$04                      ; dead: $0D4C is clear on this path
+
+; @routine 02:EEDD SpeedRecordsLeaveCar
+; WHAT IT DOES: SpeedRecordsScreen's leaving with $0D4C set: the car $0D89
+; = 4, the selection handler $00:18DB = $8669, colour maths $A7
+; (ColourMathA7Start).
+; HOW: 8-bit and 16-bit stores. SpeedRecordsScreen reaches it only with
+; $0D4C clear (nothing on that path writes $0D4C), so no code runs these
+; bytes; a direct call is their only way in.
+; Entry: M 8-bit; data bank $7E or a mirror. Exit: as ColourMathA7Start
+; leaves it.
+%at($02EEDD)
+    lda.b #$04
     sta.w !wram_0D89
     rep.b #$20
     lda.w #$8669

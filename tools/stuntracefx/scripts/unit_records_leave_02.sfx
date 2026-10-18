@@ -1,0 +1,6 @@
+# unit_records_leave_02: SpeedRecordsLeaveCar 02:EEDD, SpeedRecordsScreen's
+# car set-up on leaving with $0D4C set (its own path reaches it only with
+# $0D4C clear), called directly from a Novice race's state.
+load build/stuntracefx/states/novice_coupe_race1.state
+call 02:EEDD p=30 db=7E d=0000
+wait 1

@@ -25,6 +25,7 @@ void abi_OamPaletteFromTableE26AByMode(void);
 void abi_OamPaletteFromTableE30F(void);
 void abi_OamPalettesE28D(void);
 void abi_ColourMathA7Start(void);
+void abi_SpeedRecordsLeaveCar(void);
 void abi_OamBufferHideLargeLong(void);
 void abi_OamHideEntries0To2(void);
 void abi_OamHideEntries3And9(void);
@@ -929,8 +930,8 @@ void abi_SpeedRecordsPage(void)
  * (ColourMathA7Start).
  * HOW: The groups' slots chain from the sizes at $04:EDCB (MetaspriteDraw
  * from slot 0, origin $89, $89); 16-bit, 8-bit stores. The $0D4C test
- * after B or Start (02:EEDD) is dead: that path runs only with $0D4C
- * clear, and nothing on it writes $0D4C.
+ * after B or Start always finds it clear (that path runs only with $0D4C
+ * clear), so its car set-up (02:EEDD) runs only as SpeedRecordsLeaveCar.
  * Entry: any widths; data bank $7E or a mirror. Exit: as the last call
  * leaves it.
  */
@@ -982,13 +983,33 @@ void abi_SpeedRecordsScreen(void)
     wr8(b | 0x0D40, 0x0A);
     op_lda8(b | 0x0D4C);
     if ((uint8_t)cpu.a) {
-        lda8(0x04);
-        wr8(b | 0x0D89, 0x04);
-        op_rep(P_M);
-        op_lda16_imm(0x8669);
-        wr16(0x0018DB, 0x8669);
-        op_sep(P_M);
+        abi_SpeedRecordsLeaveCar();
+        return;
     }
+    abi_ColourMathA7Start();
+}
+
+/*
+ * @routine 02:EEDD SpeedRecordsLeaveCar
+ * WHAT IT DOES: SpeedRecordsScreen's leaving with $0D4C set: the car $0D89
+ * = 4, the selection handler $00:18DB = $8669, colour maths $A7
+ * (ColourMathA7Start).
+ * HOW: 8-bit and 16-bit stores. SpeedRecordsScreen reaches it only with
+ * $0D4C clear (nothing on that path writes $0D4C), so no code runs these
+ * bytes; a direct call is their only way in.
+ * Entry: M 8-bit; data bank $7E or a mirror. Exit: as ColourMathA7Start
+ * leaves it.
+ */
+void abi_SpeedRecordsLeaveCar(void)
+{
+    uint32_t b = db();
+
+    lda8(0x04);
+    wr8(b | 0x0D89, 0x04);
+    op_rep(P_M);
+    op_lda16_imm(0x8669);
+    wr16(0x0018DB, 0x8669);
+    op_sep(P_M);
     abi_ColourMathA7Start();
 }
 
