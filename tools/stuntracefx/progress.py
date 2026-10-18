@@ -20,7 +20,10 @@ holds it; a byte no filed span holds takes the tier of the catalog routine
 whose traced extent holds it. A catalog routine can run over several tagged
 ones (an entry no script calls has no catalog row of its own), so crediting
 its whole extent with the tier at its start would count the others' bytes
-at the wrong tier. Do not edit the generated blocks by hand.
+at the wrong tier. The SPC700's routines are the rows of its own catalog
+(spccat.py, by ROM offset of the uploaded byte) and its code the uploaded
+bytes the traces saw it run (spcmap.py); they take their tiers the same
+way. Do not edit the generated blocks by hand.
 """
 import datetime, html, os, re, sys
 
@@ -30,6 +33,8 @@ import build    # noqa: E402
 import catalog  # noqa: E402
 import codemap  # noqa: E402
 import census   # noqa: E402
+import spccat   # noqa: E402
+import spcmap   # noqa: E402
 import t3       # noqa: E402
 
 README = os.path.join(ROOT, 'README.md')
@@ -66,13 +71,21 @@ def classify():
     # claimed.txt can be older than the tree).
     owned = set(build.claims(build.filed_sources(), os.path.getsize(build.BASEROM))) if build.filed_sources() else set()
     others = t3.asm_tag_offsets()
+    # The SPC700's routines: its catalog's rows, at the LoROM address of
+    # their first uploaded byte (the address their @routine tags give).
+    spc_blocks = [(o, o + n) for bl, _ in spcmap.lists().values() for _, n, o in bl]
+    for r in spccat.build():
+        o = int(r['offset'], 16)
+        a = (o // 0x8000) << 16 | 0x8000 | (o & 0x7FFF)
+        rows.append({'addr': '%06X' % a, 'offset': r['offset'], 'end': r['end'], 'cpu': 'spc', 'bytes': r['bytes']})
     have = {int(r['addr'], 16) for r in rows}
     for a in sorted(tags):
         if tags[a][1] and a not in have:
             # A tagged routine no script has called: no catalog row, but its
             # filed span holds code bytes.
             o = codemap.rom_offset(a)
-            rows.append({'addr': '%06X' % a, 'offset': '%06X' % o, 'end': '%06X' % o, 'cpu': None, 'bytes': 0})
+            cpu = 'spc' if any(lo <= o < hi for lo, hi in spc_blocks) else None
+            rows.append({'addr': '%06X' % a, 'offset': '%06X' % o, 'end': '%06X' % o, 'cpu': cpu, 'bytes': 0})
     for r in rows:
         a = int(r['addr'], 16)
         name, tier = assessed.get(r['addr'], ('', 'T1'))
@@ -105,12 +118,18 @@ def code_bytes(rows, c):
     routine whose filed span holds it, else to the catalog routine whose
     extent (its start to its last traced byte) holds it."""
     mp = c.mp
+    # 1 S-CPU, 2 Super FX, 3 SPC700: the uploaded ROM bytes the traces saw
+    # the SPC700 run (codemap folds them back); what no script has run there
+    # is not counted yet.
     gsu = bytearray(len(mp))
     for o in range(len(mp)):
         if mp[o] & 0x30 or (c.gcode[o] and not mp[o] & 0x03):
             gsu[o] = 2
         elif mp[o] & 0x03 or c.code[o]:
             gsu[o] = 1
+        elif mp[o] & codemap.SPC_CODE:
+            gsu[o] = 3
+    kind = {'cpu': 1, 'gsu': 2, 'spc': 3}
     owner = [None] * len(mp)
     for i, r in enumerate(rows):
         for o in range(int(r['offset'], 16), int(r['end'], 16)):
@@ -123,13 +142,9 @@ def code_bytes(rows, c):
     for r in rows:
         r['code'] = 0
     for o, i in enumerate(owner):
-        if i is not None and gsu[o] == (2 if rows[i]['cpu'] == 'gsu' else 1):
+        if i is not None and gsu[o] == kind[rows[i]['cpu']]:
             rows[i]['code'] += 1
-    # The SPC700's code: the uploaded ROM bytes the traces saw it run
-    # (codemap folds them back); no SPC700 routine is filed yet, so none
-    # counts toward the bars' numerators.
-    spc = sum(1 for o in range(len(mp)) if mp[o] & codemap.SPC_CODE and not gsu[o])
-    return {'cpu': gsu.count(1), 'gsu': gsu.count(2), 'spc': spc}
+    return {'cpu': gsu.count(1), 'gsu': gsu.count(2), 'spc': gsu.count(3)}
 
 
 def blocks(rows, mp, est, game):
@@ -137,7 +152,7 @@ def blocks(rows, mp, est, game):
     m1 = [r for r in rows if r['tier'] in ('T3', 'T4')]
     m2 = [r for r in rows if r['tier'] == 'T4']
     b1, b2 = sum(r['code'] for r in m1), sum(r['code'] for r in m2)
-    traced = sum(r['bytes'] for r in rows) + game['spc']
+    traced = sum(r['bytes'] for r in rows if r['cpu'] != 'spc') + game['spc']
     today = datetime.date.today().isoformat()
     lines = ['_Snapshot %s._' % today, '', '```',
              'M1  Behaviour exact (T3 + T4)',
@@ -150,7 +165,7 @@ def blocks(rows, mp, est, game):
              'Certified so far: %d routines behaviour exact, %d of them byte exact.' % (
                  fmt(total), fmt(traced), fmt(total - traced), len(m1), len(m2)),
              '', '| Processor | M1: behaviour exact | M2: byte exact |', '|---|---|---|']
-    for cpu in ('cpu', 'gsu'):
+    for cpu in ('cpu', 'gsu', 'spc'):
         rs = [r for r in rows if r['cpu'] == cpu]
         t = game[cpu]
         x1 = sum(r['code'] for r in rs if r['tier'] in ('T3', 'T4'))
@@ -158,9 +173,6 @@ def blocks(rows, mp, est, game):
         lines.append('| **%s** | `%s` %.1f%%: %s/%s B | `%s` %.1f%%: %s/%s B |' % (
             LANE[cpu], bar(pct(x1, t) / 100, CELL_W), pct(x1, t), fmt(x1), fmt(t),
             bar(pct(x2, t) / 100, CELL_W), pct(x2, t), fmt(x2), fmt(t)))
-    t = game['spc']
-    lines.append('| **%s** | `%s` %.1f%%: %s/%s B | `%s` %.1f%%: %s/%s B |' % (
-        LANE['spc'], bar(0, CELL_W), 0.0, fmt(0), fmt(t), bar(0, CELL_W), 0.0, fmt(0), fmt(t)))
     status = '\n'.join(lines)
 
     code = sum(1 for v in mp if v & 0x33)
@@ -239,15 +251,18 @@ def render_svg(rows, path, game):
     W, H = 1600, 900
     groups = {}
     for r in rows:
-        key = r['area'] or 'bank %02X %s' % (int(r['offset'], 16) // 0x8000, 'Super FX' if r['cpu'] == 'gsu' else 'S-CPU')
+        key = r['area'] or ('SPC700 (sound)' if r['cpu'] == 'spc' else
+                            'bank %02X %s' % (int(r['offset'], 16) // 0x8000, 'Super FX' if r['cpu'] == 'gsu' else 'S-CPU'))
         groups.setdefault(key, []).append(r)
     parts = ['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 %d %d" font-family="sans-serif">' % (W, H + 30),
              '<rect width="%d" height="%d" fill="#161b22"/>' % (W, H + 30)]
     # Code no script has run (the census found it) is one gray area, so the
     # map's areas are the bars' bytes.
-    unrun = game['cpu'] + game['gsu'] - sum(r['code'] for r in rows)
+    unrun = game['cpu'] + game['gsu'] - sum(r['code'] for r in rows if r['cpu'] != 'spc')
     groups['not run by any script yet'] = [{'name': 'code the census found', 'addr': '', 'code': unrun, 'tier': 'T1'}]
-    groups['SPC700 (sound), not filed yet'] = [{'name': 'SPC700 code the scripts ran', 'addr': '', 'code': game['spc'], 'tier': 'T1'}]
+    # SPC700 code the scripts ran ahead of a block's first routine
+    spc_rest = game['spc'] - sum(r['code'] for r in rows if r['cpu'] == 'spc')
+    groups['SPC700 (sound), in no routine'] = [{'name': 'SPC700 code in no routine', 'addr': '', 'code': spc_rest, 'tier': 'T1'}]
     gitems = sorted(((sum(r['code'] for r in rs), (k, rs)) for k, rs in groups.items()), key=lambda it: -it[0])
     for gx, gy, gw, gh, (gname, rs) in squarify(gitems, 0, 0, W, H):
         pad = 1.5
