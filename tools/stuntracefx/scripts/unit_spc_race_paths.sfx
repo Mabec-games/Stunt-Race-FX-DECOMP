@@ -134,7 +134,10 @@ wait 10
 load build/stuntracefx/states/novice_coupe_race1.state
 spcset 004C 80
 spcset 004D 00
-spccall 0D73 a=05
+# Delay 1, as the driver's start sets: the echo buffer at ESA = $40 - 8 * delay
+# must stay clear of the driver ($10B0-$26FB); at 5 it began at $1800 and the
+# DSP's echo writes overwrote the driver's code, which then ran as zeros.
+spccall 0D73 a=01
 wait 10
 load build/stuntracefx/states/novice_coupe_race1.state
 spcset 00C5 40
