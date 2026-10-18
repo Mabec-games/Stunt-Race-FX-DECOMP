@@ -946,7 +946,7 @@ static void ls_op(uint8_t op, uint32_t addr)
     WAIT_UNTIL(n - LOAD(sh->h_ops) < OPRING);
     sh->opaddr[n % OPRING] = addr;
     sh->ops[n % OPRING] = op;
-    sh->calls[m.call % CALLRING].opn++;
+    __atomic_add_fetch(&sh->calls[m.call % CALLRING].opn, 1, __ATOMIC_RELAXED);   /* read while it grows */
     STORE(sh->o_ops, n + 1);
 }
 
@@ -973,13 +973,23 @@ static int cur_open;
 static int cur_cut;
 static void hybrid_finish(long frames);
 static int past_end;
+/* The ops of a call's record published so far: those o_ops has published,
+   but no more than the call's own count, read after it (the original may
+   end the call and publish the next one's ops between a read of `done`
+   and one of o_ops; taken as this call's, they misplace its replay). */
+static uint32_t rec_avail(CallRec *r)
+{
+    uint64_t pub = LOAD(sh->o_ops);
+    uint32_t avail = (uint32_t)(pub - r->opoff), own = LOAD(r->opn);
+    return avail < own ? avail : own;
+}
+
 /* What has come of the record so far, without waiting (each frame, so the
    ring keeps moving while the hybrid runs original code in a long call). */
 static void fetch_avail(void)
 {
     if (!cur_open || !cur_rec) return;
-    uint64_t top = LOAD(cur_rec->done) ? cur_rec->opoff + cur_rec->opn : LOAD(sh->o_ops);
-    uint32_t avail = (uint32_t)(top - cur_rec->opoff);
+    uint32_t avail = rec_avail(cur_rec);
     if (avail <= cur_n) return;
     if (avail > cur_cap) {
         cur_cap = avail + (avail >> 1) + 1024;
@@ -1012,10 +1022,7 @@ static int fetch_more(uint32_t need)
     while (cur_n < need) {
         if (!cur_open) return 0;
         int done = LOAD(cur_rec->done);
-        /* Ops are published by o_ops; while the call is open every new op
-           is its own, and once it is done its count is final. */
-        uint64_t top = done ? cur_rec->opoff + cur_rec->opn : LOAD(sh->o_ops);
-        uint32_t avail = (uint32_t)(top - cur_rec->opoff);
+        uint32_t avail = rec_avail(cur_rec);
         if (avail > cur_n) {
             if (avail > cur_cap) {
                 cur_cap = avail + (avail >> 1) + 1024;
