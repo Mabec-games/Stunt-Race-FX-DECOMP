@@ -1,0 +1,41 @@
+# unit_fx_holes_b: unit tests (fx) from the start of a Novice race for
+# more Super FX paths of bank 04 the other scripts leave unrun (R11 = the
+# STOP at $04:888C, R10 = the stack at $0244):
+# - FxCarCollide 04:BD20 on the car $1738 (+$16 bit 4 clear, +$64 = $0C)
+#   touching the car $1918 (the touch entry $1576's record), with the
+#   car's shape (+$14) the one at $00:AF58: its model meets the other car
+#   (FxCollideModel finds faces) but keeps no contact slot in use, so
+#   FxContactsAnyTouch finds none;
+# - FxWheelUpdate 04:A893 from FxCarHandler on the same car steered hard:
+#   +$3A $6000 and $A000 (left $2000 and $E000 after the return to
+#   centre), the front wheels' grip across the car clamped each way; and
+#   +$3A $7000 and $9000 with its handling words read from $09:8009
+#   (+$6E), whose return-to-centre step ($266A) is 0, so the steer is
+#   kept and the front wheels head past a quarter turn from the car (a
+#   negative cosine).
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70174E 02,00
+set 701750 76,15
+set 701582 18,19
+set 70179C 0C,00
+set 70174C 58,AF
+fx 04:BD20 stop=888C r8=1738 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 701772 00,60
+fx 04:B1A1 stop=888C r8=1738 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 701772 00,A0
+fx 04:B1A1 stop=888C r8=1738 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7017A6 09,80
+set 701772 00,70
+fx 04:B1A1 stop=888C r8=1738 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7017A6 09,80
+set 701772 00,90
+fx 04:B1A1 stop=888C r8=1738 r10=0244
+wait 1
