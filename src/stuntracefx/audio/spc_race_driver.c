@@ -107,6 +107,93 @@ void abi_SpcIndexRight(void);
 void abi_SpcIndexLeft(void);
 void abi_SpcNoiseSample(void);
 void abi_SpcNoiseSampleInit(void);
+void abi_SpcReload(void);
+void abi_SpcSfxFrameHoldReset(void);
+void abi_SpcSfxStopMatchOld(void);
+void abi_SpcSfxReadNoAge(void);
+
+/*
+ * @routine 19:C301 SpcReload
+ * WHAT IT DOES: The driver's own upload loop, the IPL ROM's transfer protocol: $AA and $BB on ports 0 and 1, then, once port 0 reads $CC, block after block: the address from ports 2-3, each byte from port 1 stored there and acknowledged by writing its count back to port 0, a new block when port 0 jumps ahead; a block whose port 1 byte is 0 ends the transfer, CONTROL gets $31 (timer 0 on, the port latches cleared, the IPL ROM unmapped) and the driver restarts (SpcReset), whatever address came with it.
+ * HOW: Polling loops on the ports; the store through the pointer $14/$15, its high byte stepped at each page.
+ * Entry: jumped to at $1AEC (the race driver) or $19F8 (the battle driver), all keys off, for a reload. Exit: never returns (SpcReset).
+ * @spc 0675
+ */
+void abi_SpcReload(void)
+{
+    /* 0675 mov a,#$AA */
+    spc.a = spc_nz(0xAA);
+    /* 0677 mov.w $00F4,a */
+    spc_st(0x00F4, spc.a);
+    /* 067A mov a,#$BB */
+    spc.a = spc_nz(0xBB);
+    /* 067C mov.w $00F5,a */
+    spc_st(0x00F5, spc.a);
+L067F:
+    /* 067F mov.w a,$00F4 */
+    spc.a = spc_nz(spc_rd(0x00F4));
+    /* 0682 cmp a,#$CC */
+    spc_cmp(spc.a, 0xCC);
+    /* 0684 bne $067F */
+    if (!spc.z) goto L067F;
+    /* 0686 bra $06A8 */
+    goto L06A8;
+L0688:
+    /* 0688 mov.w y,$00F4 */
+    spc.y = spc_nz(spc_rd(0x00F4));
+    /* 068B bne $0688 */
+    if (!spc.z) goto L0688;
+L068D:
+    /* 068D cmp.w y,$00F4 */
+    spc_cmp(spc.y, spc_rd(0x00F4));
+    /* 0690 bne $06A1 */
+    if (!spc.z) goto L06A1;
+    /* 0692 mov.w a,$00F5 */
+    spc.a = spc_nz(spc_rd(0x00F5));
+    /* 0695 mov.w $00F4,y */
+    spc_st(0x00F4, spc.y);
+    /* 0698 mov ($14)+y,a */
+    { uint16_t p = spc_rd(spc_dp(0x14)); p |= spc_rd(spc_dp(0x15)) << 8;
+      spc_st((uint16_t)(p + spc.y), spc.a); }
+    /* 069A inc y */
+    spc.y = spc_inc(spc.y);
+    /* 069B bne $068D */
+    if (!spc.z) goto L068D;
+    /* 069D inc.b $15 */
+    spc_rmw(spc_dp(0x15), spc_inc);
+    /* 069F bra $068D */
+    goto L068D;
+L06A1:
+    /* 06A1 bpl $068D */
+    if (!spc.n) goto L068D;
+    /* 06A3 cmp.w y,$00F4 */
+    spc_cmp(spc.y, spc_rd(0x00F4));
+    /* 06A6 bpl $068D */
+    if (!spc.n) goto L068D;
+L06A8:
+    /* 06A8 mov.w a,$00F6 */
+    spc.a = spc_nz(spc_rd(0x00F6));
+    /* 06AB mov.w y,$00F7 */
+    spc.y = spc_nz(spc_rd(0x00F7));
+    /* 06AE movw $14,ya */
+    spc_rd(spc_dp(0x14));
+    spc_wr(spc_dp(0x14), spc.a);
+    spc_wr(spc_dp(0x15), spc.y);
+    /* 06B0 mov.w y,$00F4 */
+    spc.y = spc_nz(spc_rd(0x00F4));
+    /* 06B3 mov.w a,$00F5 */
+    spc.a = spc_nz(spc_rd(0x00F5));
+    /* 06B6 mov.w $00F4,y */
+    spc_st(0x00F4, spc.y);
+    /* 06B9 bne $0688 */
+    if (!spc.z) goto L0688;
+    /* 06BB mov x,#$31 */
+    spc.x = spc_nz(0x31);
+    /* 06BD mov.w $00F1,x */
+    spc_st(0x00F1, spc.x);
+    /* 06C0 jmp $0800 */
+    { abi_SpcReset(); return; }
+}
 
 /*
  * @routine 19:C48C SpcReset
@@ -6695,6 +6782,118 @@ L1BF1:
 }
 
 /*
+ * @routine 19:D89E SpcSfxFrameHoldReset
+ * WHAT IT DOES: SpcSfxFrame's branch for a command still set after the queue push: the hold index $057B cleared, then SpcSfxFrame from its queue test at $1C25. The command is cleared just before the test ($1C0C), so no code reaches these bytes; a direct call is their only way in.
+ * HOW: MOV, BRA; then as SpcSfxFrame.
+ * Entry: none. Exit: as SpcSfxFrame.
+ * @spc 1C14
+ */
+void abi_SpcSfxFrameHoldReset(void)
+{
+    /* 1C14 mov a,#$00 */
+    spc.a = spc_nz(0x00);
+    /* 1C16 mov.w $057B,a */
+    spc_st(0x057B, spc.a);
+    /* 1C19 bra $1C25 */
+    goto L1C25;
+L1C25:
+    /* 1C25 cmp $1D,#$00 */
+    spc_cmp(spc_rd(spc_dp(0x1D)), 0x00);
+    /* 1C28 bne $1C54 */
+    if (!spc.z) goto L1C54;
+    /* 1C2A mov.w a,$057B */
+    spc.a = spc_nz(spc_rd(0x057B));
+    /* 1C2D beq $1C54 */
+    if (spc.z) goto L1C54;
+    /* 1C2F cmp a,#$01 */
+    spc_cmp(spc.a, 0x01);
+    /* 1C31 beq $1C54 */
+    if (spc.z) goto L1C54;
+    /* 1C33 cmp a,#$02 */
+    spc_cmp(spc.a, 0x02);
+    /* 1C35 beq $1C54 */
+    if (spc.z) goto L1C54;
+    /* 1C37 mov.w a,$0588 */
+    spc.a = spc_nz(spc_rd(0x0588));
+    /* 1C3A beq $1C54 */
+    if (spc.z) goto L1C54;
+    /* 1C3C push a */
+    spc_push(spc.a);
+    /* 1C3D mov x,#$01 */
+    spc.x = spc_nz(0x01);
+L1C3F:
+    /* 1C3F mov.w a,$0588+x */
+    spc.a = spc_nz(spc_rd((uint16_t)(0x0588 + spc.x)));
+    /* 1C42 dec x */
+    spc.x = spc_dec(spc.x);
+    /* 1C43 mov.w $0588+x,a */
+    spc_st((uint16_t)(0x0588 + spc.x), spc.a);
+    /* 1C46 inc x */
+    spc.x = spc_inc(spc.x);
+    /* 1C47 inc x */
+    spc.x = spc_inc(spc.x);
+    /* 1C48 cmp x,#$08 */
+    spc_cmp(spc.x, 0x08);
+    /* 1C4A bne $1C3F */
+    if (!spc.z) goto L1C3F;
+    /* 1C4C pop a */
+    spc.a = spc_pull();
+    /* 1C4D mov x,#$00 */
+    spc.x = spc_nz(0x00);
+    /* 1C4F mov.w $057B,x */
+    spc_st(0x057B, spc.x);
+    /* 1C52 bra $1C63 */
+    goto L1C63;
+L1C54:
+    /* 1C54 mov.b a,$1D */
+    spc.a = spc_nz(spc_rd(spc_dp(0x1D)));
+    /* 1C56 cmp.b a,$1E */
+    spc_cmp(spc.a, spc_rd(spc_dp(0x1E)));
+    /* 1C58 bne $1C5D */
+    if (!spc.z) goto L1C5D;
+L1C5A:
+    /* 1C5A jmp $1CCD */
+    { abi_SpcSfxChannelsFrame(); return; }
+L1C5D:
+    /* 1C5D mov.b $1E,a */
+    spc_st(spc_dp(0x1E), spc.a);
+    /* 1C5F mov.b a,$1D */
+    spc.a = spc_nz(spc_rd(spc_dp(0x1D)));
+    /* 1C61 beq $1C5A */
+    if (spc.z) goto L1C5A;
+L1C63:
+    /* 1C63 mov.b $23,a */
+    spc_st(spc_dp(0x23), spc.a);
+    /* 1C65 call $1C8A */
+    spc_call(abi_SpcSfxLookup, 0x1C68);
+    /* 1C68 call $1C9E */
+    spc_call(abi_SpcSfxChannel, 0x1C6B);
+    /* 1C6B call $1CA5 */
+    spc_call(abi_SpcSfxMode, 0x1C6E);
+    /* 1C6E call $1C84 */
+    spc_call(abi_SpcSfxActivate, 0x1C71);
+    /* 1C71 call $1CED */
+    spc_call(abi_SpcSfxChannelSave, 0x1C74);
+    /* 1C74 mov.b a,$23 */
+    spc.a = spc_nz(spc_rd(spc_dp(0x23)));
+    /* 1C76 mov.w $0410+x,a */
+    spc_st((uint16_t)(0x0410 + spc.x), spc.a);
+    /* 1C79 push x */
+    spc_push(spc.x);
+    /* 1C7A call $1CCD */
+    spc_call(abi_SpcSfxChannelsFrame, 0x1C7D);
+    /* 1C7D pop x */
+    spc.x = spc_pull();
+    /* 1C7E mov a,#$00 */
+    spc.a = spc_nz(0x00);
+    /* 1C80 mov.w $0410+x,a */
+    spc_st((uint16_t)(0x0410 + spc.x), spc.a);
+    /* 1C83 ret */
+    spc_ret();
+    return;
+}
+
+/*
  * @routine 19:D90E SpcSfxActivate
  * WHAT IT DOES: Marks channel X active ($0408 = 1).
  * HOW: Store.
@@ -7270,6 +7469,172 @@ void abi_SpcSfxTakeVoice(void)
     spc_call(abi_SpcSfxMarkVoice, 0x1D66);
     /* 1D66 jmp $1E93 */
     { abi_SpcKeyOffVoice(); return; }
+}
+
+/*
+ * @routine 19:DA4B SpcSfxStopMatchOld
+ * WHAT IT DOES: A stop-request match for the commands $05 and $08 that no case of SpcSfxChannelStep's stop check dispatches to: channel X's command $0390 of 5 or 8 takes the stop ($1DE8), any other refuses it ($1D8D); then as SpcSfxChannelStep. It follows an unconditional BRA and nothing jumps to it; a direct call is its only way in.
+ * HOW: CMP, BEQ; then as SpcSfxChannelStep.
+ * Entry: X = channel. Exit: as SpcSfxChannelStep.
+ * @spc 1DC1
+ */
+void abi_SpcSfxStopMatchOld(void)
+{
+    /* 1DC1 mov.w a,$0390+x */
+    spc.a = spc_nz(spc_rd((uint16_t)(0x0390 + spc.x)));
+    /* 1DC4 cmp a,#$05 */
+    spc_cmp(spc.a, 0x05);
+    /* 1DC6 beq $1DE8 */
+    if (spc.z) goto L1DE8;
+    /* 1DC8 cmp a,#$08 */
+    spc_cmp(spc.a, 0x08);
+    /* 1DCA beq $1DE8 */
+    if (spc.z) goto L1DE8;
+    /* 1DCC bra $1D8D */
+    goto L1D8D;
+L1DE8:
+    /* 1DE8 mov a,#$00 */
+    spc.a = spc_nz(0x00);
+    /* 1DEA mov.w $03E0+x,a */
+    spc_st((uint16_t)(0x03E0 + spc.x), spc.a);
+    /* 1DED mov.w a,$04F8+x */
+    spc.a = spc_nz(spc_rd((uint16_t)(0x04F8 + spc.x)));
+    /* 1DF0 beq $1DF5 */
+    if (spc.z) goto L1DF5;
+    /* 1DF2 call $1424 */
+    spc_call(abi_SpcSoundQueuePush, 0x1DF5);
+L1DF5:
+    /* 1DF5 mov a,#$04 */
+    spc.a = spc_nz(0x04);
+    /* 1DF7 mov.w $03F8+x,a */
+    spc_st((uint16_t)(0x03F8 + spc.x), spc.a);
+    /* 1DFA call $1E93 */
+    spc_call(abi_SpcKeyOffVoice, 0x1DFD);
+    /* 1DFD mov a,#$00 */
+    spc.a = spc_nz(0x00);
+    /* 1DFF mov.w $0480+x,a */
+    spc_st((uint16_t)(0x0480 + spc.x), spc.a);
+    /* 1E02 mov.w $04F8+x,a */
+    spc_st((uint16_t)(0x04F8 + spc.x), spc.a);
+    /* 1E05 mov.w $03F0+x,a */
+    spc_st((uint16_t)(0x03F0 + spc.x), spc.a);
+    /* 1E08 mov.w $03C8+x,a */
+    spc_st((uint16_t)(0x03C8 + spc.x), spc.a);
+    /* 1E0B mov.w $04F0+x,a */
+    spc_st((uint16_t)(0x04F0 + spc.x), spc.a);
+    /* 1E0E ret */
+    spc_ret();
+    return;
+L1E9D:
+    /* 1E9D call $1EA6 */
+    spc_call(abi_SpcSfxRead, 0x1EA0);
+    /* 1EA0 call $23CF */
+    spc_call(abi_SpcSfxSpecial, 0x1EA3);
+    /* 1EA3 jmp $22D3 */
+    goto L22D3;
+L22D3:
+    /* 22D3 mov a,x */
+    spc.a = spc_nz(spc.x);
+    /* 22D4 mov y,#$10 */
+    spc.y = spc_nz(0x10);
+    /* 22D6 mul ya */
+    spc_mul();
+    /* 22D7 mov y,a */
+    spc.y = spc_nz(spc.a);
+    /* 22D8 push y */
+    spc_push(spc.y);
+    /* 22D9 mov.w a,$0408+x */
+    spc.a = spc_nz(spc_rd((uint16_t)(0x0408 + spc.x)));
+    /* 22DC beq $22E8 */
+    if (spc.z) goto L22E8;
+    /* 22DE mov.w a,$04C0+x */
+    spc.a = spc_nz(spc_rd((uint16_t)(0x04C0 + spc.x)));
+    /* 22E1 beq $22E8 */
+    if (spc.z) goto L22E8;
+    /* 22E3 call $2336 */
+    spc_call(abi_SpcSfxFadeVolume, 0x22E6);
+    /* 22E6 bra $22EB */
+    goto L22EB;
+L22E8:
+    /* 22E8 mov.w a,$0398+x */
+    spc.a = spc_nz(spc_rd((uint16_t)(0x0398 + spc.x)));
+L22EB:
+    /* 22EB call $23B2 */
+    spc_call(abi_SpcSfxVolumeAdjust, 0x22EE);
+    /* 22EE pop y */
+    spc.y = spc_pull();
+    /* 22EF call $09E8 */
+    spc_call(abi_SpcDspWrite, 0x22F2);
+    /* 22F2 inc y */
+    spc.y = spc_inc(spc.y);
+    /* 22F3 push y */
+    spc_push(spc.y);
+    /* 22F4 mov.w a,$0408+x */
+    spc.a = spc_nz(spc_rd((uint16_t)(0x0408 + spc.x)));
+    /* 22F7 beq $2309 */
+    if (spc.z) goto L2309;
+    /* 22F9 mov.w a,$04C8+x */
+    spc.a = spc_nz(spc_rd((uint16_t)(0x04C8 + spc.x)));
+    /* 22FC beq $2309 */
+    if (spc.z) goto L2309;
+    /* 22FE call $CA96 */
+    spc_call(abi_SpcIndexRight, 0x2301);
+    /* 2301 call $2336 */
+    spc_call(abi_SpcSfxFadeVolume, 0x2304);
+    /* 2304 call $CA9F */
+    spc_call(abi_SpcIndexLeft, 0x2307);
+    /* 2307 bra $230C */
+    goto L230C;
+L2309:
+    /* 2309 mov.w a,$03A0+x */
+    spc.a = spc_nz(spc_rd((uint16_t)(0x03A0 + spc.x)));
+L230C:
+    /* 230C call $23B2 */
+    spc_call(abi_SpcSfxVolumeAdjust, 0x230F);
+    /* 230F pop y */
+    spc.y = spc_pull();
+    /* 2310 call $09E8 */
+    spc_call(abi_SpcDspWrite, 0x2313);
+    /* 2313 inc y */
+    spc.y = spc_inc(spc.y);
+    /* 2314 mov.w a,$03B8+x */
+    spc.a = spc_nz(spc_rd((uint16_t)(0x03B8 + spc.x)));
+    /* 2317 call $09E8 */
+    spc_call(abi_SpcDspWrite, 0x231A);
+    /* 231A inc y */
+    spc.y = spc_inc(spc.y);
+    /* 231B mov.w a,$03C0+x */
+    spc.a = spc_nz(spc_rd((uint16_t)(0x03C0 + spc.x)));
+    /* 231E call $09E8 */
+    spc_call(abi_SpcDspWrite, 0x2321);
+    /* 2321 inc y */
+    spc.y = spc_inc(spc.y);
+    /* 2322 mov.w a,$03C8+x */
+    spc.a = spc_nz(spc_rd((uint16_t)(0x03C8 + spc.x)));
+    /* 2325 call $09E8 */
+    spc_call(abi_SpcDspWrite, 0x2328);
+    /* 2328 inc y */
+    spc.y = spc_inc(spc.y);
+    /* 2329 mov.w a,$03D0+x */
+    spc.a = spc_nz(spc_rd((uint16_t)(0x03D0 + spc.x)));
+    /* 232C call $09E8 */
+    spc_call(abi_SpcDspWrite, 0x232F);
+    /* 232F inc y */
+    spc.y = spc_inc(spc.y);
+    /* 2330 mov.w a,$03D8+x */
+    spc.a = spc_nz(spc_rd((uint16_t)(0x03D8 + spc.x)));
+    /* 2333 jmp $09E8 */
+    { abi_SpcDspWrite(); return; }
+L1D2E:
+    /* 1D2E jmp $1E9D */
+    goto L1E9D;
+L1D8D:
+    /* 1D8D mov a,#$00 */
+    spc.a = spc_nz(0x00);
+    /* 1D8F mov.w $03E0+x,a */
+    spc_st((uint16_t)(0x03E0 + spc.x), spc.a);
+    /* 1D92 bra $1D2E */
+    goto L1D2E;
 }
 
 /*
@@ -8472,6 +8837,20 @@ L2286:
     spc.x = spc_nz(spc.a);
 L22AF:
     /* 22AF ret */
+    spc_ret();
+    return;
+}
+
+/*
+ * @routine 19:DB67 SpcSfxReadNoAge
+ * WHAT IT DOES: SpcSfxRead's return for a channel whose age $03F0 is 0, which never happens there (SpcSfxRead runs only on channels that have started); a direct call is its only way in.
+ * HOW: RET.
+ * Entry: none. Exit: nothing changed.
+ * @spc 1EDD
+ */
+void abi_SpcSfxReadNoAge(void)
+{
+    /* 1EDD ret */
     spc_ret();
     return;
 }

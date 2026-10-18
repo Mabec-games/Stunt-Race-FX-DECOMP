@@ -1476,7 +1476,12 @@ SpcBCommandChannelCheck:
     mov !spc_command_kept,#$00        ; 1A79
 .l1A7C:
     ret                               ; 1A7C
-    db $15, $1E
+; @routine 1A:FA64 SpcBSfxQueueStart
+; WHAT IT DOES: The sound effect queue start that SpcBSfxFrame jumps to: $057B counts the ticks without a command (cleared by one); after three, the queue's head (SpcBSoundQueuePush) is taken, its bit 7 moved to bit 7 of $00, else a command differing from the last ($1E) is taken; the sound ($23) gets its channel, mode and side (SpcBSfxLookup, SpcBSfxChannel, SpcBSfxMode, SpcBSfxSide), is activated and its pointer saved, then the channels run (SpcBSfxChannelsFrame) with $0410 holding the new sound.
+; HOW: The queue is shifted down one byte; compares against $1E.
+; Entry: none. Exit: as SpcBSfxChannelsFrame leaves it.
+; @spc 1A7F
+%spc($1A7F, $1AFA64)
 .l1A7F:
     cmp !spc_command,#$00             ; 1A7F
     beq .l1A8B                        ; 1A82
@@ -1798,8 +1803,18 @@ SpcBSfxChannelStep:
     cmp a,#$17                        ; 1C5A
     beq .l1C6D                        ; 1C5C
     bra .l1C3E                        ; 1C5E  ; not reached in the traces so far
-    db $F5, $90, $03, $68, $05, $F0, $20, $68
-    db $08, $F0, $1C, $2F, $D1
+; @routine 1A:FC45 SpcBSfxStopMatchOld
+; WHAT IT DOES: The race driver's stop-request match for the commands $05 and $08 (SpcSfxStopMatchOld), left in the battle block after SpcBSfxChannelStep's last case: channel X's command $0390 of 5 or 8 takes the stop ($1C87), any other refuses it ($1C3E); then as SpcBSfxChannelStep. It follows an unconditional BRA and nothing jumps to it; a direct call is its only way in.
+; HOW: CMP, BEQ; then as SpcBSfxChannelStep.
+; Entry: X = channel. Exit: as SpcBSfxChannelStep.
+; @spc 1C60
+%spc($1C60, $1AFC45)
+    mov.w a,!spc_sfx_command+x        ; 1C60
+    cmp a,#$05                        ; 1C63
+    beq .l1C87                        ; 1C65
+    cmp a,#$08                        ; 1C67
+    beq .l1C87                        ; 1C69
+    bra .l1C3E                        ; 1C6B
 .l1C6D:
     mov a,#$00                        ; 1C6D
     mov.w !spc_sfx_stop_request+x,a   ; 1C6F
@@ -2011,8 +2026,14 @@ SpcBSfxRead:
     cmp a,#$01                        ; 1D94
     beq .l1D9B                        ; 1D96
     bra .l1DED                        ; 1D98
+; @routine 1A:FD7F SpcBSfxReadNoAge
+; WHAT IT DOES: SpcBSfxRead's return for a channel whose age is 0, which never happens there (as SpcSfxReadNoAge); a direct call is its only way in.
+; HOW: RET.
+; Entry: none. Exit: nothing changed.
+; @spc 1D9A
+%spc($1D9A, $1AFD7F)
 .l1D9A:
-    ret                               ; 1D9A  ; not reached in the traces so far
+    ret                               ; 1D9A
 .l1D9B:
     mov a,#$00                        ; 1D9B
     mov.w !spc_sfx_read_pos+x,a       ; 1D9D
@@ -2052,7 +2073,13 @@ SpcBSfxRead:
     cmp a,#$FF                        ; 1DF6
     beq .l1E00                        ; 1DF8
     jmp SpcBSfxStart_l213F            ; 1DFA
-    db $5F, $7B, $21
+; @routine 1A:FDE2 SpcBSfxReadVolumeSlides
+; WHAT IT DOES: The race driver's volume slide step (in its SpcSfxRead), left in the battle block after an unconditional JMP: with channel X's slide on ($0520), the left delta $0500/$0508 and the right delta $0510/$0518 each go through SpcBSfxVolumeSlide, the right side at X + 8. Nothing jumps to it; a direct call is its only way in.
+; HOW: JMP to the step at $217B; two CALLs with X stepped by 8 and back.
+; Entry: X = channel. Exit: A = X; X unchanged.
+; @spc 1DFD
+%spc($1DFD, $1AFDE2)
+    jmp SpcBSfxStart_l217B            ; 1DFD
 .l1E00:
     mov.w a,!spc_sfx_read_pos+x       ; 1E00
     mov y,a                           ; 1E03
@@ -2539,18 +2566,56 @@ SpcBSfxStart:
     mov a,#$FF                        ; 2175  ; not reached in the traces so far
     mov y,#$3F                        ; 2177  ; not reached in the traces so far
     bra .l2168                        ; 2179  ; not reached in the traces so far
-    db $F5, $20, $05, $F0, $24, $F5, $00, $05
-    db $C4, $20, $F5, $08, $05, $C4, $21, $3F
-    db $A5, $21, $F5, $10, $05, $C4, $20, $F5
-    db $18, $05, $C4, $21, $7D, $60, $88, $08
-    db $5D, $3F, $A5, $21, $7D, $80, $A8, $08
+.l217B:
+    mov.w a,!spc_sfx_sweep_on+x       ; 217B
+    beq .l21A4                        ; 217E
+    mov.w a,!spc_sfx_sweep+x          ; 2180
+    mov.b !spc_sfx_tmp,a              ; 2183
+    mov.w a,!spc_sfx_sweep_b+x        ; 2185
+    mov.b !spc_sfx_tmp+1,a            ; 2188
+    call .l21A5                       ; 218A
+    mov.w a,!spc_sfx_sweep_c+x        ; 218D
+    mov.b !spc_sfx_tmp,a              ; 2190
+    mov.w a,!spc_sfx_sweep_d+x        ; 2192
+    mov.b !spc_sfx_tmp+1,a            ; 2195
+    mov a,x                           ; 2197
+    clrc                              ; 2198
+    adc a,#$08                        ; 2199
+    mov x,a                           ; 219B
+    call .l21A5                       ; 219C
+    mov a,x                           ; 219F
+    setc                              ; 21A0
+    sbc a,#$08                        ; 21A1
     mov x,a                           ; 21A3
-    ret                               ; 21A4  ; not reached in the traces so far
-    db $F5, $A8, $04, $FD, $F5, $A8, $03, $7A
-    db $20, $D5, $A8, $03, $DD, $D5, $A8, $04
-    db $30, $02, $2F, $0B, $80, $A8, $C0, $30
-    db $04, $E8, $00, $2F, $02, $E8, $7F, $D5
-    db $98, $03, $6F
+.l21A4:
+    ret                               ; 21A4
+; @routine 1B:818A SpcBSfxVolumeSlide
+; WHAT IT DOES: One side of channel X's volume slide, as the race driver's SpcSfxVolumeSlide: the delta $20/$21 added to the volume $03A8/$04A8, clamped, and the volume byte to $0398. Only SpcBSfxReadVolumeSlides, which nothing reaches, calls it.
+; HOW: ADDW; sign tests.
+; Entry: X = channel (plus 8 for the right side). Exit: A = the volume.
+; @spc 21A5
+%spc($21A5, $1B818A)
+.l21A5:
+    mov.w a,!spc_sfx_vol_l_int+x      ; 21A5
+    mov y,a                           ; 21A8
+    mov.w a,!spc_sfx_vol_l_frac+x     ; 21A9
+    addw ya,!spc_sfx_tmp              ; 21AC
+    mov.w !spc_sfx_vol_l_frac+x,a     ; 21AE
+    mov a,y                           ; 21B1
+    mov.w !spc_sfx_vol_l_int+x,a      ; 21B2
+    bmi .l21B9                        ; 21B5
+    bra .l21C4                        ; 21B7
+.l21B9:
+    setc                              ; 21B9
+    sbc a,#$C0                        ; 21BA
+    bmi .l21C2                        ; 21BC
+    mov a,#$00                        ; 21BE
+    bra .l21C4                        ; 21C0
+.l21C2:
+    mov a,#$7F                        ; 21C2
+.l21C4:
+    mov.w !spc_sfx_vol_l+x,a          ; 21C4
+    ret                               ; 21C7
 .l21C8:
     mov a,x                           ; 21C8
     mov y,#$10                        ; 21C9

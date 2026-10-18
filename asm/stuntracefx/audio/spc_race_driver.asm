@@ -8,6 +8,12 @@ incsrc "../include/spc.inc"
 %spc($0670, $19C2FC)
     db $94, $04, $26, $08, $53
 
+; @routine 19:C301 SpcReload
+; WHAT IT DOES: The driver's own upload loop, the IPL ROM's transfer protocol: $AA and $BB on ports 0 and 1, then, once port 0 reads $CC, block after block: the address from ports 2-3, each byte from port 1 stored there and acknowledged by writing its count back to port 0, a new block when port 0 jumps ahead; a block whose port 1 byte is 0 ends the transfer, CONTROL gets $31 (timer 0 on, the port latches cleared, the IPL ROM unmapped) and the driver restarts (SpcReset), whatever address came with it.
+; HOW: Polling loops on the ports; the store through the pointer $14/$15, its high byte stepped at each page.
+; Entry: jumped to at $1AEC (the race driver) or $19F8 (the battle driver), all keys off, for a reload. Exit: never returns (SpcReset).
+; @spc 0675
+%spc($0675, $19C301)
 SpcReload:
     mov a,#$AA                        ; 0675
     mov.w !spc_cpuio0,a               ; 0677
@@ -58,11 +64,10 @@ SpcReload:
 .t06D0:
     db $08, $65, $09, $F4, $09, $8C, $0A, $2C
     db $0B, $D6, $0B, $8B, $0C, $4A, $0D, $14
-    db $0E, $EA, $0E, $CD, $0F, $BE, $10, $18
-    db $15, $59, $16, $AD, $17, $16, $19, $94
-    db $1A, $28, $1C, $D5, $1D, $9B, $1F, $2A
-    db $56, $65, $72, $20, $53, $31, $2E, $32
-    db $30, $2A
+    db $0E, $EA, $0E, $CD, $0F, $BE, $10
+; $06E7-$0701, which no code reads (eight more words past the pitch table's
+; thirteen, then the string "*Ver S1.20*"), are left to the raw intake.
+%spc($0702, $19C38E)
 .t0702:
     db $94, $C6, $77, $C6, $9C, $BE, $8A, $C6
     db $73, $BD, $51, $C1, $80, $C6, $A9, $BD
@@ -3295,9 +3300,15 @@ SpcSfxHolds:
     mov !spc_command,#$00             ; 1C0C
     cmp !spc_command,#$00             ; 1C0F
     beq .l1C1B                        ; 1C12
-    mov a,#$00                        ; 1C14  ; not reached in the traces so far
-    mov.w !spc_hold_index,a           ; 1C16  ; not reached in the traces so far
-    bra .l1C25                        ; 1C19  ; not reached in the traces so far
+; @routine 19:D89E SpcSfxFrameHoldReset
+; WHAT IT DOES: SpcSfxFrame's branch for a command still set after the queue push: the hold index $057B cleared, then SpcSfxFrame from its queue test at $1C25. The command is cleared just before the test ($1C0C), so no code reaches these bytes; a direct call is their only way in.
+; HOW: MOV, BRA; then as SpcSfxFrame.
+; Entry: none. Exit: as SpcSfxFrame.
+; @spc 1C14
+%spc($1C14, $19D89E)
+    mov a,#$00                        ; 1C14
+    mov.w !spc_hold_index,a           ; 1C16
+    bra .l1C25                        ; 1C19
 .l1C1B:
     mov.w a,!spc_hold_index           ; 1C1B
     cmp a,#$FF                        ; 1C1E
@@ -3588,8 +3599,18 @@ SpcSfxTakeVoice:
     cmp a,#$21                        ; 1DBB
     beq .l1DCE                        ; 1DBD
     bra .l1D8D                        ; 1DBF  ; not reached in the traces so far
-    db $F5, $90, $03, $68, $05, $F0, $20, $68
-    db $08, $F0, $1C, $2F, $BF
+; @routine 19:DA4B SpcSfxStopMatchOld
+; WHAT IT DOES: A stop-request match for the commands $05 and $08 that no case of SpcSfxChannelStep's stop check dispatches to: channel X's command $0390 of 5 or 8 takes the stop ($1DE8), any other refuses it ($1D8D); then as SpcSfxChannelStep. It follows an unconditional BRA and nothing jumps to it; a direct call is its only way in.
+; HOW: CMP, BEQ; then as SpcSfxChannelStep.
+; Entry: X = channel. Exit: as SpcSfxChannelStep.
+; @spc 1DC1
+%spc($1DC1, $19DA4B)
+    mov.w a,!spc_sfx_command+x        ; 1DC1
+    cmp a,#$05                        ; 1DC4
+    beq .l1DE8                        ; 1DC6
+    cmp a,#$08                        ; 1DC8
+    beq .l1DE8                        ; 1DCA
+    bra .l1D8D                        ; 1DCC
 .l1DCE:
     mov a,#$00                        ; 1DCE
     mov.w !spc_sfx_stop_request+x,a   ; 1DD0
@@ -3787,8 +3808,14 @@ SpcSfxRead:
     cmp a,#$01                        ; 1ED7
     beq .l1EDE                        ; 1ED9
     bra .l1F30                        ; 1EDB
+; @routine 19:DB67 SpcSfxReadNoAge
+; WHAT IT DOES: SpcSfxRead's return for a channel whose age $03F0 is 0, which never happens there (SpcSfxRead runs only on channels that have started); a direct call is its only way in.
+; HOW: RET.
+; Entry: none. Exit: nothing changed.
+; @spc 1EDD
+%spc($1EDD, $19DB67)
 .l1EDD:
-    ret                               ; 1EDD  ; not reached in the traces so far
+    ret                               ; 1EDD
 .l1EDE:
     mov a,#$00                        ; 1EDE
     mov.w !spc_sfx_read_pos+x,a       ; 1EE0

@@ -318,6 +318,108 @@ spcset 0018 00
 spcset 0019 00
 spccall 1D63 x=04
 wait 10
+# the sound data commands with no handler of their own ($EF, $F0, $F4-$F7,
+# $F9, $FA, $FF): each through its entry in the table at $1E16 to $20B6,
+# which stops the channel
+load build/stuntracefx/states/battle_04.state
+spcset 0394 05
+spcset 044C 00
+spcset 03F4 00
+spcset 04F4 00
+spcset 04BC 01
+spcset 048C 40
+spcset 0494 01
+spcset 0140 00,EF,10
+spccall 1D63 x=04
+wait 10
+load build/stuntracefx/states/battle_04.state
+spcset 0394 05
+spcset 044C 00
+spcset 03F4 00
+spcset 04F4 00
+spcset 04BC 01
+spcset 048C 40
+spcset 0494 01
+spcset 0140 00,F0,10
+spccall 1D63 x=04
+wait 10
+load build/stuntracefx/states/battle_04.state
+spcset 0394 05
+spcset 044C 00
+spcset 03F4 00
+spcset 04F4 00
+spcset 04BC 01
+spcset 048C 40
+spcset 0494 01
+spcset 0140 00,F4,10
+spccall 1D63 x=04
+wait 10
+load build/stuntracefx/states/battle_04.state
+spcset 0394 05
+spcset 044C 00
+spcset 03F4 00
+spcset 04F4 00
+spcset 04BC 01
+spcset 048C 40
+spcset 0494 01
+spcset 0140 00,F5,10
+spccall 1D63 x=04
+wait 10
+load build/stuntracefx/states/battle_04.state
+spcset 0394 05
+spcset 044C 00
+spcset 03F4 00
+spcset 04F4 00
+spcset 04BC 01
+spcset 048C 40
+spcset 0494 01
+spcset 0140 00,F6,10
+spccall 1D63 x=04
+wait 10
+load build/stuntracefx/states/battle_04.state
+spcset 0394 05
+spcset 044C 00
+spcset 03F4 00
+spcset 04F4 00
+spcset 04BC 01
+spcset 048C 40
+spcset 0494 01
+spcset 0140 00,F7,10
+spccall 1D63 x=04
+wait 10
+load build/stuntracefx/states/battle_04.state
+spcset 0394 05
+spcset 044C 00
+spcset 03F4 00
+spcset 04F4 00
+spcset 04BC 01
+spcset 048C 40
+spcset 0494 01
+spcset 0140 00,F9,10
+spccall 1D63 x=04
+wait 10
+load build/stuntracefx/states/battle_04.state
+spcset 0394 05
+spcset 044C 00
+spcset 03F4 00
+spcset 04F4 00
+spcset 04BC 01
+spcset 048C 40
+spcset 0494 01
+spcset 0140 00,FA,10
+spccall 1D63 x=04
+wait 10
+load build/stuntracefx/states/battle_04.state
+spcset 0394 05
+spcset 044C 00
+spcset 03F4 00
+spcset 04F4 00
+spcset 04BC 01
+spcset 048C 40
+spcset 0494 01
+spcset 0140 00,FF,10
+spccall 1D63 x=04
+wait 10
 # a pitch slide past $3FFF clamped
 load build/stuntracefx/states/battle_04.state
 spcset 0394 05
@@ -483,6 +585,58 @@ spcset 0397 7A
 spccall 231E x=07
 wait 10
 # the fade-out end with bit 0 of $2D: the IPL ROM
+# SpcBSfxQueueStart, entered as SpcBSfxFrame jumps to it
+load build/stuntracefx/states/battle_04.state
+spccall 1A7F
+wait 10
+# SpcBSfxStopMatchOld, SpcBSfxReadNoAge and SpcBSfxReadVolumeSlides: code
+# nothing reaches, entered directly; the slides through each clamp of
+# SpcBSfxVolumeSlide (left volume $10 stays, right $90 clamps to $7F, $F0 to 0)
+load build/stuntracefx/states/battle_04.state
+spcset 03FC 03
+spcset 03E4 07
+spcset 0394 05
+spccall 1C60 x=04
+wait 10
+load build/stuntracefx/states/battle_04.state
+spcset 03FC 03
+spcset 03E4 07
+spcset 0394 08
+spccall 1C60 x=04
+wait 10
+load build/stuntracefx/states/battle_04.state
+spcset 03FC 03
+spcset 03E4 07
+spcset 0394 02
+spccall 1C60 x=04
+wait 10
+load build/stuntracefx/states/battle_04.state
+spccall 1D9A
+wait 10
+load build/stuntracefx/states/battle_04.state
+spcset 0524 01
+spcset 0504 20
+spcset 050C 00
+spcset 0514 20
+spcset 051C 00
+spcset 04AC 10
+spcset 04B4 90
+spccall 1DFD x=04
+wait 10
+load build/stuntracefx/states/battle_04.state
+spcset 0524 01
+spcset 0504 20
+spcset 050C 00
+spcset 0514 20
+spcset 051C 00
+spcset 04AC F0
+spcset 04B4 10
+spccall 1DFD x=04
+wait 10
+load build/stuntracefx/states/battle_04.state
+spcset 0524 00
+spccall 1DFD x=04
+wait 10
 load build/stuntracefx/states/battle_04.state
 spcset 002D 01
 spccall 2243 a=3C x=04 noreturn

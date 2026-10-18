@@ -64,6 +64,36 @@ load build/stuntracefx/states/novice_coupe_race1.state
 spcset 0562 08
 spccall 26C0 a=40
 wait 10
+# SpcSfxFrameHoldReset, SpcSfxStopMatchOld and SpcSfxReadNoAge: code no
+# path reaches, entered directly
+load build/stuntracefx/states/novice_coupe_race1.state
+spccall 1C14
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 03FD 03
+spcset 03E5 07
+spcset 0395 05
+spccall 1DC1 x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 03FD 03
+spcset 03E5 07
+spcset 0395 08
+spccall 1DC1 x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 03FD 03
+spcset 03E5 07
+spcset 0395 02
+spccall 1DC1 x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spccall 1EDD
+wait 10
+# SpcReload, waiting for the S-CPU after $AA/$BB
+load build/stuntracefx/states/novice_coupe_race1.state
+spccall 0675 noreturn
+wait 10
 load build/stuntracefx/states/novice_coupe_race1.state
 spccall 0800 noreturn
 wait 10

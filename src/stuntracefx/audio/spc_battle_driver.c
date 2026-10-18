@@ -77,6 +77,11 @@ void abi_SpcDspWrite(void);
 void abi_SpcLoadInstrument(void);
 void abi_SpcMusicPause(void);
 void abi_SpcVoiceVolumeWrite(void);
+void abi_SpcBSfxQueueStart(void);
+void abi_SpcBSfxStopMatchOld(void);
+void abi_SpcBSfxReadNoAge(void);
+void abi_SpcBSfxReadVolumeSlides(void);
+void abi_SpcBSfxVolumeSlide(void);
 
 /*
  * @routine 1A:F095 SpcBSfxFrame
@@ -3075,6 +3080,142 @@ L1A7C:
 }
 
 /*
+ * @routine 1A:FA64 SpcBSfxQueueStart
+ * WHAT IT DOES: The sound effect queue start that SpcBSfxFrame jumps to: $057B counts the ticks without a command (cleared by one); after three, the queue's head (SpcBSoundQueuePush) is taken, its bit 7 moved to bit 7 of $00, else a command differing from the last ($1E) is taken; the sound ($23) gets its channel, mode and side (SpcBSfxLookup, SpcBSfxChannel, SpcBSfxMode, SpcBSfxSide), is activated and its pointer saved, then the channels run (SpcBSfxChannelsFrame) with $0410 holding the new sound.
+ * HOW: The queue is shifted down one byte; compares against $1E.
+ * Entry: none. Exit: as SpcBSfxChannelsFrame leaves it.
+ * @spc 1A7F
+ */
+void abi_SpcBSfxQueueStart(void)
+{
+    /* 1A7F cmp $1D,#$00 */
+    spc_cmp(spc_rd(spc_dp(0x1D)), 0x00);
+    /* 1A82 beq $1A8B */
+    if (spc.z) goto L1A8B;
+    /* 1A84 mov a,#$00 */
+    spc.a = spc_nz(0x00);
+    /* 1A86 mov.w $057B,a */
+    spc_st(0x057B, spc.a);
+    /* 1A89 bra $1A95 */
+    goto L1A95;
+L1A8B:
+    /* 1A8B mov.w a,$057B */
+    spc.a = spc_nz(spc_rd(0x057B));
+    /* 1A8E cmp a,#$FF */
+    spc_cmp(spc.a, 0xFF);
+    /* 1A90 beq $1A95 */
+    if (spc.z) goto L1A95;
+    /* 1A92 inc.w $057B */
+    spc_rmw(0x057B, spc_inc);
+L1A95:
+    /* 1A95 cmp $1D,#$00 */
+    spc_cmp(spc_rd(spc_dp(0x1D)), 0x00);
+    /* 1A98 bne $1ACA */
+    if (!spc.z) goto L1ACA;
+    /* 1A9A mov.w a,$057B */
+    spc.a = spc_nz(spc_rd(0x057B));
+    /* 1A9D beq $1ACA */
+    if (spc.z) goto L1ACA;
+    /* 1A9F cmp a,#$01 */
+    spc_cmp(spc.a, 0x01);
+    /* 1AA1 beq $1ACA */
+    if (spc.z) goto L1ACA;
+    /* 1AA3 cmp a,#$02 */
+    spc_cmp(spc.a, 0x02);
+    /* 1AA5 beq $1ACA */
+    if (spc.z) goto L1ACA;
+    /* 1AA7 mov.w a,$0588 */
+    spc.a = spc_nz(spc_rd(0x0588));
+    /* 1AAA beq $1ACA */
+    if (spc.z) goto L1ACA;
+    /* 1AAC push a */
+    spc_push(spc.a);
+    /* 1AAD mov x,#$01 */
+    spc.x = spc_nz(0x01);
+L1AAF:
+    /* 1AAF mov.w a,$0588+x */
+    spc.a = spc_nz(spc_rd((uint16_t)(0x0588 + spc.x)));
+    /* 1AB2 dec x */
+    spc.x = spc_dec(spc.x);
+    /* 1AB3 mov.w $0588+x,a */
+    spc_st((uint16_t)(0x0588 + spc.x), spc.a);
+    /* 1AB6 inc x */
+    spc.x = spc_inc(spc.x);
+    /* 1AB7 inc x */
+    spc.x = spc_inc(spc.x);
+    /* 1AB8 cmp x,#$08 */
+    spc_cmp(spc.x, 0x08);
+    /* 1ABA bne $1AAF */
+    if (!spc.z) goto L1AAF;
+    /* 1ABC pop a */
+    spc.a = spc_pull();
+    /* 1ABD asl a */
+    spc.a = spc_asl(spc.a);
+    /* 1ABE bcc $1AC2 */
+    if (!spc.c) goto L1AC2;
+    /* 1AC0 set1 $00.7 */
+    spc_bit_set(0x00, 7, 1);
+L1AC2:
+    /* 1AC2 lsr a */
+    spc.a = spc_lsr(spc.a);
+    /* 1AC3 mov x,#$00 */
+    spc.x = spc_nz(0x00);
+    /* 1AC5 mov.w $057B,x */
+    spc_st(0x057B, spc.x);
+    /* 1AC8 bra $1AD9 */
+    goto L1AD9;
+L1ACA:
+    /* 1ACA mov.b a,$1D */
+    spc.a = spc_nz(spc_rd(spc_dp(0x1D)));
+    /* 1ACC cmp.b a,$1E */
+    spc_cmp(spc.a, spc_rd(spc_dp(0x1E)));
+    /* 1ACE bne $1AD3 */
+    if (!spc.z) goto L1AD3;
+L1AD0:
+    /* 1AD0 jmp $1B7E */
+    { abi_SpcBSfxChannelsFrame(); return; }
+L1AD3:
+    /* 1AD3 mov.b $1E,a */
+    spc_st(spc_dp(0x1E), spc.a);
+    /* 1AD5 mov.b a,$1D */
+    spc.a = spc_nz(spc_rd(spc_dp(0x1D)));
+    /* 1AD7 beq $1AD0 */
+    if (spc.z) goto L1AD0;
+L1AD9:
+    /* 1AD9 mov.b $23,a */
+    spc_st(spc_dp(0x23), spc.a);
+    /* 1ADB call $1B03 */
+    spc_call(abi_SpcBSfxLookup, 0x1ADE);
+    /* 1ADE call $1B17 */
+    spc_call(abi_SpcBSfxChannel, 0x1AE1);
+    /* 1AE1 call $1B48 */
+    spc_call(abi_SpcBSfxMode, 0x1AE4);
+    /* 1AE4 call $1B71 */
+    spc_call(abi_SpcBSfxSide, 0x1AE7);
+    /* 1AE7 call $1AFD */
+    spc_call(abi_SpcBSfxActivate, 0x1AEA);
+    /* 1AEA call $1B9E */
+    spc_call(abi_SpcBSfxChannelSave, 0x1AED);
+    /* 1AED mov.b a,$23 */
+    spc.a = spc_nz(spc_rd(spc_dp(0x23)));
+    /* 1AEF mov.w $0410+x,a */
+    spc_st((uint16_t)(0x0410 + spc.x), spc.a);
+    /* 1AF2 push x */
+    spc_push(spc.x);
+    /* 1AF3 call $1B7E */
+    spc_call(abi_SpcBSfxChannelsFrame, 0x1AF6);
+    /* 1AF6 pop x */
+    spc.x = spc_pull();
+    /* 1AF7 mov a,#$00 */
+    spc.a = spc_nz(0x00);
+    /* 1AF9 mov.w $0410+x,a */
+    spc_st((uint16_t)(0x0410 + spc.x), spc.a);
+    /* 1AFC ret */
+    spc_ret();
+    return;
+}
+
+/*
  * @routine 1A:FAE2 SpcBSfxActivate
  * WHAT IT DOES: Marks channel X active ($0408 = 1). The race driver's SpcSfxActivate.
  * HOW: Store.
@@ -3825,6 +3966,211 @@ L2201:
     spc.a = spc_nz(spc_rd((uint16_t)(0x03D8 + spc.x)));
     /* 2228 jmp $09E8 */
     { abi_SpcDspWrite(); return; }
+}
+
+/*
+ * @routine 1A:FC45 SpcBSfxStopMatchOld
+ * WHAT IT DOES: The race driver's stop-request match for the commands $05 and $08 (SpcSfxStopMatchOld), left in the battle block after SpcBSfxChannelStep's last case: channel X's command $0390 of 5 or 8 takes the stop ($1C87), any other refuses it ($1C3E); then as SpcBSfxChannelStep. It follows an unconditional BRA and nothing jumps to it; a direct call is its only way in.
+ * HOW: CMP, BEQ; then as SpcBSfxChannelStep.
+ * Entry: X = channel. Exit: as SpcBSfxChannelStep.
+ * @spc 1C60
+ */
+void abi_SpcBSfxStopMatchOld(void)
+{
+    /* 1C60 mov.w a,$0390+x */
+    spc.a = spc_nz(spc_rd((uint16_t)(0x0390 + spc.x)));
+    /* 1C63 cmp a,#$05 */
+    spc_cmp(spc.a, 0x05);
+    /* 1C65 beq $1C87 */
+    if (spc.z) goto L1C87;
+    /* 1C67 cmp a,#$08 */
+    spc_cmp(spc.a, 0x08);
+    /* 1C69 beq $1C87 */
+    if (spc.z) goto L1C87;
+    /* 1C6B bra $1C3E */
+    goto L1C3E;
+L1C87:
+    /* 1C87 mov a,#$00 */
+    spc.a = spc_nz(0x00);
+    /* 1C89 mov.w $03E0+x,a */
+    spc_st((uint16_t)(0x03E0 + spc.x), spc.a);
+    /* 1C8C mov.w a,$04F8+x */
+    spc.a = spc_nz(spc_rd((uint16_t)(0x04F8 + spc.x)));
+    /* 1C8F beq $1CAC */
+    if (spc.z) goto L1CAC;
+    /* 1C91 push a */
+    spc_push(spc.a);
+    /* 1C92 mov.w a,$0528+x */
+    spc.a = spc_nz(spc_rd((uint16_t)(0x0528 + spc.x)));
+    /* 1C95 cmp a,#$01 */
+    spc_cmp(spc.a, 0x01);
+    /* 1C97 beq $1CA0 */
+    if (spc.z) goto L1CA0;
+    /* 1C99 cmp a,#$02 */
+    spc_cmp(spc.a, 0x02);
+    /* 1C9B beq $1CA5 */
+    if (spc.z) goto L1CA5;
+    /* 1C9D pop a */
+    spc.a = spc_pull();
+    /* 1C9E bra $1CAC */
+    goto L1CAC;
+L1CA0:
+    /* 1CA0 pop a */
+    spc.a = spc_pull();
+    /* 1CA1 asl a */
+    spc.a = spc_asl(spc.a);
+    /* 1CA2 setc */
+    spc.c = 1;
+    /* 1CA3 bra $1CA8 */
+    goto L1CA8;
+L1CA5:
+    /* 1CA5 pop a */
+    spc.a = spc_pull();
+    /* 1CA6 asl a */
+    spc.a = spc_asl(spc.a);
+    /* 1CA7 clrc */
+    spc.c = 0;
+L1CA8:
+    /* 1CA8 ror a */
+    spc.a = spc_ror(spc.a);
+    /* 1CA9 call $12FA */
+    spc_call(abi_SpcBSoundQueuePush, 0x1CAC);
+L1CAC:
+    /* 1CAC mov a,#$04 */
+    spc.a = spc_nz(0x04);
+    /* 1CAE mov.w $03F8+x,a */
+    spc_st((uint16_t)(0x03F8 + spc.x), spc.a);
+    /* 1CB1 call $1D50 */
+    spc_call(abi_SpcBKeyOffVoice, 0x1CB4);
+    /* 1CB4 mov a,#$00 */
+    spc.a = spc_nz(0x00);
+    /* 1CB6 mov.w $0480+x,a */
+    spc_st((uint16_t)(0x0480 + spc.x), spc.a);
+    /* 1CB9 mov.w $04F8+x,a */
+    spc_st((uint16_t)(0x04F8 + spc.x), spc.a);
+    /* 1CBC mov.w $03F0+x,a */
+    spc_st((uint16_t)(0x03F0 + spc.x), spc.a);
+    /* 1CBF mov.w $03C8+x,a */
+    spc_st((uint16_t)(0x03C8 + spc.x), spc.a);
+    /* 1CC2 mov.w $04B8+x,a */
+    spc_st((uint16_t)(0x04B8 + spc.x), spc.a);
+    /* 1CC5 mov.w $0528+x,a */
+    spc_st((uint16_t)(0x0528 + spc.x), spc.a);
+    /* 1CC8 mov.w $04F0+x,a */
+    spc_st((uint16_t)(0x04F0 + spc.x), spc.a);
+    /* 1CCB ret */
+    spc_ret();
+    return;
+L1D5A:
+    /* 1D5A call $1D63 */
+    spc_call(abi_SpcBSfxRead, 0x1D5D);
+    /* 1D5D call $231E */
+    spc_call(abi_SpcBSfxSpecial, 0x1D60);
+    /* 1D60 jmp $21C8 */
+    goto L21C8;
+L21C8:
+    /* 21C8 mov a,x */
+    spc.a = spc_nz(spc.x);
+    /* 21C9 mov y,#$10 */
+    spc.y = spc_nz(0x10);
+    /* 21CB mul ya */
+    spc_mul();
+    /* 21CC mov y,a */
+    spc.y = spc_nz(spc.a);
+    /* 21CD push y */
+    spc_push(spc.y);
+    /* 21CE mov.w a,$0408+x */
+    spc.a = spc_nz(spc_rd((uint16_t)(0x0408 + spc.x)));
+    /* 21D1 beq $21DD */
+    if (spc.z) goto L21DD;
+    /* 21D3 mov.w a,$04C0+x */
+    spc.a = spc_nz(spc_rd((uint16_t)(0x04C0 + spc.x)));
+    /* 21D6 beq $21DD */
+    if (spc.z) goto L21DD;
+    /* 21D8 call $2243 */
+    spc_call(abi_SpcBSfxFadeVolume, 0x21DB);
+    /* 21DB bra $21E0 */
+    goto L21E0;
+L21DD:
+    /* 21DD mov.w a,$0398+x */
+    spc.a = spc_nz(spc_rd((uint16_t)(0x0398 + spc.x)));
+L21E0:
+    /* 21E0 call $22F2 */
+    spc_call(abi_SpcBSfxVolumeAdjust, 0x21E3);
+    /* 21E3 pop y */
+    spc.y = spc_pull();
+    /* 21E4 call $09E8 */
+    spc_call(abi_SpcDspWrite, 0x21E7);
+    /* 21E7 inc y */
+    spc.y = spc_inc(spc.y);
+    /* 21E8 push y */
+    spc_push(spc.y);
+    /* 21E9 mov.w a,$0408+x */
+    spc.a = spc_nz(spc_rd((uint16_t)(0x0408 + spc.x)));
+    /* 21EC beq $21FE */
+    if (spc.z) goto L21FE;
+    /* 21EE mov.w a,$04C8+x */
+    spc.a = spc_nz(spc_rd((uint16_t)(0x04C8 + spc.x)));
+    /* 21F1 beq $21FE */
+    if (spc.z) goto L21FE;
+    /* 21F3 call $22BF */
+    spc_call(abi_SpcBIndexRight, 0x21F6);
+    /* 21F6 call $2243 */
+    spc_call(abi_SpcBSfxFadeVolume, 0x21F9);
+    /* 21F9 call $22C8 */
+    spc_call(abi_SpcBIndexLeft, 0x21FC);
+    /* 21FC bra $2201 */
+    goto L2201;
+L21FE:
+    /* 21FE mov.w a,$03A0+x */
+    spc.a = spc_nz(spc_rd((uint16_t)(0x03A0 + spc.x)));
+L2201:
+    /* 2201 call $22F2 */
+    spc_call(abi_SpcBSfxVolumeAdjust, 0x2204);
+    /* 2204 pop y */
+    spc.y = spc_pull();
+    /* 2205 call $09E8 */
+    spc_call(abi_SpcDspWrite, 0x2208);
+    /* 2208 inc y */
+    spc.y = spc_inc(spc.y);
+    /* 2209 mov.w a,$03B8+x */
+    spc.a = spc_nz(spc_rd((uint16_t)(0x03B8 + spc.x)));
+    /* 220C call $09E8 */
+    spc_call(abi_SpcDspWrite, 0x220F);
+    /* 220F inc y */
+    spc.y = spc_inc(spc.y);
+    /* 2210 mov.w a,$03C0+x */
+    spc.a = spc_nz(spc_rd((uint16_t)(0x03C0 + spc.x)));
+    /* 2213 call $09E8 */
+    spc_call(abi_SpcDspWrite, 0x2216);
+    /* 2216 inc y */
+    spc.y = spc_inc(spc.y);
+    /* 2217 mov.w a,$03C8+x */
+    spc.a = spc_nz(spc_rd((uint16_t)(0x03C8 + spc.x)));
+    /* 221A call $09E8 */
+    spc_call(abi_SpcDspWrite, 0x221D);
+    /* 221D inc y */
+    spc.y = spc_inc(spc.y);
+    /* 221E mov.w a,$03D0+x */
+    spc.a = spc_nz(spc_rd((uint16_t)(0x03D0 + spc.x)));
+    /* 2221 call $09E8 */
+    spc_call(abi_SpcDspWrite, 0x2224);
+    /* 2224 inc y */
+    spc.y = spc_inc(spc.y);
+    /* 2225 mov.w a,$03D8+x */
+    spc.a = spc_nz(spc_rd((uint16_t)(0x03D8 + spc.x)));
+    /* 2228 jmp $09E8 */
+    { abi_SpcDspWrite(); return; }
+L1BDF:
+    /* 1BDF jmp $1D5A */
+    goto L1D5A;
+L1C3E:
+    /* 1C3E mov a,#$00 */
+    spc.a = spc_nz(0x00);
+    /* 1C40 mov.w $03E0+x,a */
+    spc_st((uint16_t)(0x03E0 + spc.x), spc.a);
+    /* 1C43 bra $1BDF */
+    goto L1BDF;
 }
 
 /*
@@ -4940,6 +5286,78 @@ L2175:
 }
 
 /*
+ * @routine 1A:FD7F SpcBSfxReadNoAge
+ * WHAT IT DOES: SpcBSfxRead's return for a channel whose age is 0, which never happens there (as SpcSfxReadNoAge); a direct call is its only way in.
+ * HOW: RET.
+ * Entry: none. Exit: nothing changed.
+ * @spc 1D9A
+ */
+void abi_SpcBSfxReadNoAge(void)
+{
+    /* 1D9A ret */
+    spc_ret();
+    return;
+}
+
+/*
+ * @routine 1A:FDE2 SpcBSfxReadVolumeSlides
+ * WHAT IT DOES: The race driver's volume slide step (in its SpcSfxRead), left in the battle block after an unconditional JMP: with channel X's slide on ($0520), the left delta $0500/$0508 and the right delta $0510/$0518 each go through SpcBSfxVolumeSlide, the right side at X + 8. Nothing jumps to it; a direct call is its only way in.
+ * HOW: JMP to the step at $217B; two CALLs with X stepped by 8 and back.
+ * Entry: X = channel. Exit: A = X; X unchanged.
+ * @spc 1DFD
+ */
+void abi_SpcBSfxReadVolumeSlides(void)
+{
+    /* 1DFD jmp $217B */
+    goto L217B;
+L217B:
+    /* 217B mov.w a,$0520+x */
+    spc.a = spc_nz(spc_rd((uint16_t)(0x0520 + spc.x)));
+    /* 217E beq $21A4 */
+    if (spc.z) goto L21A4;
+    /* 2180 mov.w a,$0500+x */
+    spc.a = spc_nz(spc_rd((uint16_t)(0x0500 + spc.x)));
+    /* 2183 mov.b $20,a */
+    spc_st(spc_dp(0x20), spc.a);
+    /* 2185 mov.w a,$0508+x */
+    spc.a = spc_nz(spc_rd((uint16_t)(0x0508 + spc.x)));
+    /* 2188 mov.b $21,a */
+    spc_st(spc_dp(0x21), spc.a);
+    /* 218A call $21A5 */
+    spc_call(abi_SpcBSfxVolumeSlide, 0x218D);
+    /* 218D mov.w a,$0510+x */
+    spc.a = spc_nz(spc_rd((uint16_t)(0x0510 + spc.x)));
+    /* 2190 mov.b $20,a */
+    spc_st(spc_dp(0x20), spc.a);
+    /* 2192 mov.w a,$0518+x */
+    spc.a = spc_nz(spc_rd((uint16_t)(0x0518 + spc.x)));
+    /* 2195 mov.b $21,a */
+    spc_st(spc_dp(0x21), spc.a);
+    /* 2197 mov a,x */
+    spc.a = spc_nz(spc.x);
+    /* 2198 clrc */
+    spc.c = 0;
+    /* 2199 adc a,#$08 */
+    spc.a = spc_adc(spc.a, 0x08);
+    /* 219B mov x,a */
+    spc.x = spc_nz(spc.a);
+    /* 219C call $21A5 */
+    spc_call(abi_SpcBSfxVolumeSlide, 0x219F);
+    /* 219F mov a,x */
+    spc.a = spc_nz(spc.x);
+    /* 21A0 setc */
+    spc.c = 1;
+    /* 21A1 sbc a,#$08 */
+    spc.a = spc_sbc(spc.a, 0x08);
+    /* 21A3 mov x,a */
+    spc.x = spc_nz(spc.a);
+L21A4:
+    /* 21A4 ret */
+    spc_ret();
+    return;
+}
+
+/*
  * @routine 1A:FF0A SpcBSfxEngineScale
  * WHAT IT DOES: For a channel in engine mode ($04F0 = 4), scales the volume A by the engine speed from port 3, or port 2 for side 2 ($02 or $03 * 3, / 2, + $80); otherwise A is kept. After it, SpcBSfxRead's command handlers: the volume command (in engine mode both sides; otherwise side 1's sounds play on the left only and side 2's on the right), the ADSR fields, the pitch slide, echo on and off, and a jump to another sound (the one whose data pointer is the operand, from sound $5F on, started through SpcBSfxStart). The race driver's SpcSfxEngineScale reads port 3 only.
  * HOW: SpcBDiv16, SpcBMul16; clamped to $7F; the handlers return to $1E04.
@@ -5105,6 +5523,55 @@ L1C04:
     spc_call(abi_SpcBSfxMarkVoice, 0x1C17);
     /* 1C17 jmp $1D50 */
     { abi_SpcBKeyOffVoice(); return; }
+}
+
+/*
+ * @routine 1B:818A SpcBSfxVolumeSlide
+ * WHAT IT DOES: One side of channel X's volume slide, as the race driver's SpcSfxVolumeSlide: the delta $20/$21 added to the volume $03A8/$04A8, clamped, and the volume byte to $0398. Only SpcBSfxReadVolumeSlides, which nothing reaches, calls it.
+ * HOW: ADDW; sign tests.
+ * Entry: X = channel (plus 8 for the right side). Exit: A = the volume.
+ * @spc 21A5
+ */
+void abi_SpcBSfxVolumeSlide(void)
+{
+    /* 21A5 mov.w a,$04A8+x */
+    spc.a = spc_nz(spc_rd((uint16_t)(0x04A8 + spc.x)));
+    /* 21A8 mov y,a */
+    spc.y = spc_nz(spc.a);
+    /* 21A9 mov.w a,$03A8+x */
+    spc.a = spc_nz(spc_rd((uint16_t)(0x03A8 + spc.x)));
+    /* 21AC addw ya,$20 */
+    { uint16_t v = spc_rd(spc_dp(0x20)); v |= spc_rd(spc_dp(0x21)) << 8; spc_set_ya(spc_addw(spc_ya(), v)); }
+    /* 21AE mov.w $03A8+x,a */
+    spc_st((uint16_t)(0x03A8 + spc.x), spc.a);
+    /* 21B1 mov a,y */
+    spc.a = spc_nz(spc.y);
+    /* 21B2 mov.w $04A8+x,a */
+    spc_st((uint16_t)(0x04A8 + spc.x), spc.a);
+    /* 21B5 bmi $21B9 */
+    if (spc.n) goto L21B9;
+    /* 21B7 bra $21C4 */
+    goto L21C4;
+L21B9:
+    /* 21B9 setc */
+    spc.c = 1;
+    /* 21BA sbc a,#$C0 */
+    spc.a = spc_sbc(spc.a, 0xC0);
+    /* 21BC bmi $21C2 */
+    if (spc.n) goto L21C2;
+    /* 21BE mov a,#$00 */
+    spc.a = spc_nz(0x00);
+    /* 21C0 bra $21C4 */
+    goto L21C4;
+L21C2:
+    /* 21C2 mov a,#$7F */
+    spc.a = spc_nz(0x7F);
+L21C4:
+    /* 21C4 mov.w $0398+x,a */
+    spc_st((uint16_t)(0x0398 + spc.x), spc.a);
+    /* 21C7 ret */
+    spc_ret();
+    return;
 }
 
 /*
