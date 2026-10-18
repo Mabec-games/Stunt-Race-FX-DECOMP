@@ -1257,7 +1257,7 @@
 <rect x="1124.7" y="361.3" width="19.2" height="20.6" fill="#3fb950"><title>ResultsPlace3  0BE09E  61B  T4  [menu]</title></rect>
 <rect x="1124.7" y="382.6" width="19.2" height="20.6" fill="#3fb950"><title>MenuActorAnimate  0BE250  61B  T4  [menu]</title></rect>
 <rect x="1124.7" y="403.8" width="19.2" height="20.6" fill="#3fb950"><title>PictureCellAttributes  0BEDE7  61B  T4  [menu]</title></rect>
-<rect x="1124.7" y="425.1" width="19.2" height="20.3" fill="#d29922"><title>MenuPreviewBackOut  0BBE29  60B  T2  [menu]</title></rect>
+<rect x="1124.7" y="425.1" width="19.2" height="20.3" fill="#3fb950"><title>MenuPreviewBackOut  0BBE29  60B  T4  [menu]</title></rect>
 <rect x="1144.4" y="276.4" width="18.9" height="20.6" fill="#3fb950"><title>MenuSelectConfirm  0BD025  60B  T4  [menu]</title></rect>
 <rect x="1163.9" y="276.4" width="18.6" height="20.6" fill="#3fb950"><title>MenuRowBlinkSettings  0BC4A9  59B  T4  [menu]</title></rect>
 <rect x="1183.0" y="276.4" width="18.6" height="20.6" fill="#3fb950"><title>MenuLoadPictureCE78  0BD234  59B  T4  [menu]</title></rect>
@@ -2094,4 +2094,4 @@
 <rect x="1560.3" y="846.3" width="24.4" height="12.2" fill="#3fb950"><title>JoypadRead  7EB1AE  51B  T4  [input]</title></rect>
 <rect x="1585.3" y="846.3" width="12.6" height="12.2" fill="#3fb950"><title>FrameSoundAndJoypads  7EA7A3  27B  T4  [input]</title></rect>
 <rect x="1560.3" y="862.1" width="37.6" height="35.8" fill="#c8ccd2"><title>code the census found    225B  T1  [not run by any script yet]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 2045 &#183; T3 behaviour-exact 0 &#183; 185,242/199,601 bytes exact (92.8%) &#183; green=T4 blue=T3 amber=T2 gray=T1</text></svg>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 2046 &#183; T3 behaviour-exact 0 &#183; 185,302/199,601 bytes exact (92.8%) &#183; green=T4 blue=T3 amber=T2 gray=T1</text></svg>
