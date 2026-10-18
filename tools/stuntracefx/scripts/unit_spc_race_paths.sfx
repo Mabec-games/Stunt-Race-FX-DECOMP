@@ -1347,3 +1347,33 @@ spcset 0395 99
 spcset 03CD 99
 spccall 23CF x=05
 wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 043D 01
+spcset 042D 20
+spcset 0435 00
+spcset 049D F0
+spcset 04A5 3F
+spccall 224A x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0020 00,00
+spcset 03AD 00
+spcset 04AD A0
+spccall 22B0 x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spccall 2336 a=FF x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 0395 07
+spcset 03CD 07
+spcset 0533 00
+spcset 000B FE
+spcset 056F 40
+spccall 23CF x=05
+wait 10
+load build/stuntracefx/states/novice_coupe_race1.state
+spcset 002C 00
+spcset 002D 01
+spccall 2336 a=3C x=05 noreturn
+wait 10
