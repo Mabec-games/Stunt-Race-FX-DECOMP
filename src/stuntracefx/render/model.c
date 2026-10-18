@@ -1082,6 +1082,7 @@ l8B3F:
     /* FxModelProject */
 l8BAA:
     goto l8C89;
+l8BAE:
     R[12] = gsu_ldw(FX_POINTS_TOTAL);
     R[0] = 0x0014;
     gsu_romb(R[0]);
@@ -2181,6 +2182,7 @@ l91DA:
     R[1] = gsu_hib(R[1]);
     t = gsu.z;
     if (t) goto l91F5;
+l91E7:
     goto l9205;
 l91EB:
     R[0] = gsu_ldw(FX_FACE_KIND);
@@ -3375,6 +3377,7 @@ dispatch:
     case 0x8B1A: goto l8B1A;
     case 0x8B3F: goto l8B3F;
     case 0x8BAA: goto l8BAA;
+    case 0x8BAE: goto l8BAE;
     case 0x8BBF: goto l8BBF;
     case 0x8BCC: goto l8BCC;
     case 0x8BE0: goto l8BE0;
@@ -3463,6 +3466,7 @@ dispatch:
     case 0x91C1: goto l91C1;
     case 0x91CA: goto l91CA;
     case 0x91DA: goto l91DA;
+    case 0x91E7: goto l91E7;
     case 0x91EB: goto l91EB;
     case 0x91F5: goto l91F5;
     case 0x91FA: goto l91FA;
@@ -3781,6 +3785,27 @@ void abi_FxModelProject(void)
 }
 
 /*
+ * @routine 01:8BAE FxModelProjectEach
+ * WHAT IT DOES: A projection of the points written so far that command
+ * $0C does not use: each point ($0340 on, $0144 of them) moved by the
+ * object's place and projected by FxProjectVertex into the table at
+ * $04E4, the outcodes ORed into $014A; then on as FxModelProjectRest.
+ * The game never runs it: FxModelProject jumps over it (to 01:8C89)
+ * with its first instruction. A unit start runs it so the C is judged
+ * against the original.
+ * HOW: ROMB $14 for the loop, R14 kept in $001A; the ROM bank ($001C)
+ * and R14 put back after it, then IWT R15 to 01:8C79.
+ * Entry: R10 = stack; R11 = return address; R14 at the command's bytes;
+ * the ROM bank the model's.
+ * Exit: as the code leaves the registers, flags and RAM; R14 and the
+ * ROM buffer move as on the Super FX.
+ */
+void abi_FxModelProjectEach(void)
+{
+    model_run(0x8BAE, R[11]);
+}
+
+/*
  * @routine 01:8C79 FxModelProjectRest
  * WHAT IT DOES: The rest of command $0C's projection: each point's
  * screen position and outcode, then the next command.
@@ -4005,6 +4030,46 @@ void abi_FxModelMaterial(void)
 void abi_FxModelFaces(void)
 {
     model_run(0x90CD, R[11]);
+}
+
+/*
+ * @routine 01:91E7 FxModelFacesGatheredUV
+ * WHAT IT DOES: FxModelFaces' way to the textured clip (01:9205,
+ * FxPolygonClipScreenUV) for a face gathered by FxPolygonGather whose
+ * kind ($0042) has its high byte set, then the face queued and the next
+ * one. The game never runs it: a face with that high byte and points off
+ * the screen was drawn by FxPolygonDraw before it instead, and the
+ * gather does not change the kind, so the BEQ at 01:91E4 always
+ * branches. A unit start runs it so the C is judged against the
+ * original.
+ * HOW: IWT R15 to 01:9205 (NOP in the delay slot); then as FxModelFaces.
+ * Entry: R0 = the gathered point count; R10 = stack; R14 at the face
+ * list; the ROM bank the model's.
+ * Exit: as the code leaves the registers, flags and RAM; R14 and the
+ * ROM buffer move as on the Super FX.
+ */
+void abi_FxModelFacesGatheredUV(void)
+{
+    model_run(0x91E7, R[11]);
+}
+
+/*
+ * @routine 01:9202 FxModelFacesOnScreenUV
+ * WHAT IT DOES: FxModelFaces' textured clip (FxPolygonClipScreenUV) of a
+ * face whose kind ($0042) has its high byte set and whose points are
+ * all on the screen (outcodes 0), then the face queued and the next one.
+ * No play has reached it so far. A unit start runs it so the C is judged
+ * against the original.
+ * HOW: R0 = the point count ($0146); LINK to FxPolygonClipScreenUV; a
+ * kept polygon is queued at 01:920F.
+ * Entry: R10 = stack; R14 at the face list; the polygon's points in
+ * place; the ROM bank the model's.
+ * Exit: as the code leaves the registers, flags and RAM; R14 and the
+ * ROM buffer move as on the Super FX.
+ */
+void abi_FxModelFacesOnScreenUV(void)
+{
+    model_run(0x9202, R[11]);
 }
 
 /*

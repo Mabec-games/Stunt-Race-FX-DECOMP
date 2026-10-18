@@ -1319,6 +1319,7 @@ lB66E:
     R[1] = gsu_inc(R[1]);
 lB679:
     goto lB5BC;
+lB67D:
 lB67E:
     R[2] = gsu_inc(R[2]);
     R[6] = gsu_sub(R[6], R[8], 0);
@@ -1421,6 +1422,7 @@ dispatch:
     case 0xB65F: goto lB65F;
     case 0xB66E: goto lB66E;
     case 0xB679: goto lB679;
+    case 0xB67D: goto lB67D;
     case 0xB67E: goto lB67E;
     case 0xB689: goto lB689;
     case 0xB695: goto lB695;
@@ -1452,6 +1454,47 @@ dispatch:
 void abi_FxText3D(void)
 {
     unusedb4_run(0xB42F, R[11]);
+}
+
+/*
+ * @routine 01:B603 FxText3DLeftColumn
+ * WHAT IT DOES: FxText3D's wide drawing loop at a set font bit of a
+ * character that starts left of the screen: the columns the bit covers
+ * are counted (R1) without plotting while R1 is negative, and once R1
+ * reaches the screen the rest of the row is drawn by the loop at
+ * 01:B629. A unit start on the row's last bit (R12 = 1) with R1 just
+ * left of the screen and further left runs its two ends of row, which
+ * no play or unit start has reached so far, so the C is judged against
+ * the original.
+ * HOW: WITH R7; SUB R9 and BCS for each column, INC R1 in the delay
+ * slot; BMI to a LOOP back to the bit loop; else R13 = 01:B629 and LOOP;
+ * at the row's end a BRA to the next character (01:B5BC).
+ * Entry: as FxText3D has them in its wide loop: R1 = the column, R7 the
+ * step sum, R9 the step, R12 the bits left, R13 = 01:B5F5, R2 the row,
+ * R4 the font row, R5 the string, R6 and R8 the row sum and step;
+ * R10 = stack.
+ * Exit: as FxText3D's.
+ */
+void abi_FxText3DLeftColumn(void)
+{
+    unusedb4_run(0xB603, R[11]);
+}
+
+/*
+ * @routine 01:B67D FxText3DRowEndNop
+ * WHAT IT DOES: The NOP after the wide loop's jump back to its next
+ * character, which no path reaches (the jump before it always goes);
+ * it runs on into the row's end at 01:B67E (the next row, or the
+ * return after 16). A unit start runs it so the C is judged against
+ * the original.
+ * HOW: NOP; then as FxText3D from 01:B67E.
+ * Entry: as FxText3D has them at a row's end: R2 the row, R4 the font
+ * row, R6 and R8 the row sum and step; R10 = stack.
+ * Exit: as FxText3D's.
+ */
+void abi_FxText3DRowEndNop(void)
+{
+    unusedb4_run(0xB67D, R[11]);
 }
 
 /*

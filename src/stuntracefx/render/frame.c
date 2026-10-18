@@ -517,6 +517,7 @@ lB137:
     R[1] = gsu_inc(R[1]);
     t = !gsu.z;
     if (t) goto lB14C;
+lB147:
     R[10] = gsu_dec(R[10]);
     R[10] = gsu_dec(R[10]);
     nx = (uint16_t)(gsu_ldw(R[10]));
@@ -1991,6 +1992,7 @@ dispatch:
     case 0xB123: goto lB123;
     case 0xB128: goto lB128;
     case 0xB137: goto lB137;
+    case 0xB147: goto lB147;
     case 0xB14C: goto lB14C;
     case 0xB155: goto lB155;
     case 0xB160: goto lB160;
@@ -2166,6 +2168,22 @@ void abi_FxObjectsDraw(void)
 void abi_FxObjectSprite(void)
 {
     frame_run(0xB0D9, R[11]);
+}
+
+/*
+ * @routine 01:B147 FxObjectSpritePull
+ * WHAT IT DOES: FxObjectSprite's return when the size it pulled back at
+ * 01:B13F negates to 0. The game never runs it: that size was pushed at
+ * 01:B128 only when it is negative ($00CE), so its negation is never 0
+ * and the BNE at 01:B144 always branches. A unit start runs it so the C
+ * is judged against the original.
+ * HOW: DEC R10 twice, then R15 = the word there (NOP in the delay slot).
+ * Entry: R10 = stack, the return address the word below it. Exit: R10
+ * two lower; S, Z from R10.
+ */
+void abi_FxObjectSpritePull(void)
+{
+    frame_run(0xB147, R[11]);
 }
 
 /*

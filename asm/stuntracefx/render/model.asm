@@ -1314,6 +1314,22 @@ FxModelPointsMirrored:
 FxModelProject:
     iwt r15,#FxModelProjectRest_l8C89
     nop
+;
+; @routine 01:8BAE FxModelProjectEach
+; WHAT IT DOES: A projection of the points written so far that command
+; $0C does not use: each point ($0340 on, $0144 of them) moved by the
+; object's place and projected by FxProjectVertex into the table at
+; $04E4, the outcodes ORed into $014A; then on as FxModelProjectRest.
+; The game never runs it: FxModelProject jumps over it (to 01:8C89)
+; with its first instruction. A unit start runs it so the C is judged
+; against the original.
+; HOW: ROMB $14 for the loop, R14 kept in $001A; the ROM bank ($001C)
+; and R14 put back after it, then IWT R15 to 01:8C79.
+; Entry: R10 = stack; R11 = return address; R14 at the command's bytes;
+; the ROM bank the model's.
+; Exit: as the code leaves the registers, flags and RAM; R14 and the
+; ROM buffer move as on the Super FX.
+%at($018BAE)
     lms r12,(!fx_points_total-!gsu_ram)
     ibt r0,#$14
     romb
@@ -2525,6 +2541,22 @@ FxModelFaces:
     hib
     beq .l91F5
     nop
+;
+; @routine 01:91E7 FxModelFacesGatheredUV
+; WHAT IT DOES: FxModelFaces' way to the textured clip (01:9205,
+; FxPolygonClipScreenUV) for a face gathered by FxPolygonGather whose
+; kind ($0042) has its high byte set, then the face queued and the next
+; one. The game never runs it: a face with that high byte and points off
+; the screen was drawn by FxPolygonDraw before it instead, and the
+; gather does not change the kind, so the BEQ at 01:91E4 always
+; branches. A unit start runs it so the C is judged against the
+; original.
+; HOW: IWT R15 to 01:9205 (NOP in the delay slot); then as FxModelFaces.
+; Entry: R0 = the gathered point count; R10 = stack; R14 at the face
+; list; the ROM bank the model's.
+; Exit: as the code leaves the registers, flags and RAM; R14 and the
+; ROM buffer move as on the Super FX.
+%at($0191E7)
     iwt r15,#.l9205
     nop
 .l91EB:
@@ -2542,6 +2574,20 @@ FxModelFaces:
     nop
     bra .l920F
     nop
+;
+; @routine 01:9202 FxModelFacesOnScreenUV
+; WHAT IT DOES: FxModelFaces' textured clip (FxPolygonClipScreenUV) of a
+; face whose kind ($0042) has its high byte set and whose points are
+; all on the screen (outcodes 0), then the face queued and the next one.
+; No play has reached it so far. A unit start runs it so the C is judged
+; against the original.
+; HOW: R0 = the point count ($0146); LINK to FxPolygonClipScreenUV; a
+; kept polygon is queued at 01:920F.
+; Entry: R10 = stack; R14 at the face list; the polygon's points in
+; place; the ROM bank the model's.
+; Exit: as the code leaves the registers, flags and RAM; R14 and the
+; ROM buffer move as on the Super FX.
+%at($019202)
 .l9202:
     lms r0,(!fx_point_count-!gsu_ram)
 .l9205:

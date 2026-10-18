@@ -514,6 +514,17 @@ FxObjectSprite:
     inc r1
     bne .lB14C
     nop
+;
+; @routine 01:B147 FxObjectSpritePull
+; WHAT IT DOES: FxObjectSprite's return when the size it pulled back at
+; 01:B13F negates to 0. The game never runs it: that size was pushed at
+; 01:B128 only when it is negative ($00CE), so its negation is never 0
+; and the BNE at 01:B144 always branches. A unit start runs it so the C
+; is judged against the original.
+; HOW: DEC R10 twice, then R15 = the word there (NOP in the delay slot).
+; Entry: R10 = stack, the return address the word below it. Exit: R10
+; two lower; S, Z from R10.
+%at($01B147)
     dec r10
     dec r10
     to r15
