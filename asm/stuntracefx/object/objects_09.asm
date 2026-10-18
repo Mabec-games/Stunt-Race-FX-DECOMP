@@ -11238,8 +11238,8 @@ ObjectSlideGateUpStep:
 ; HOW: Six ObjectSpawn blocks; ObjectCopyPositionTo, ObjectCopy14To;
 ; RotateXY, RotateXZFrom08, RotateXZ through direct page. The offsets are
 ; constants (stored and read back through $1F58/$1F59), so the sign
-; branches not taken for them never run (09:B351, B364, B438, B44B, ...):
-; those bytes are dead.
+; stores not taken for them (09:B351, B364, B438, B44B, ...) are only
+; reached by direct calls, as ObjectShatterShard1XSign and the rest.
 ; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the last
 ; shard leaves it.
 %at($09B30B)
@@ -11272,6 +11272,17 @@ ObjectShatter:
     lda.b #$FF
     sta.b !dp_05
     bra .lB353
+
+; @routine 09:B351 ObjectShatterShard1XSign
+; WHAT IT DOES: Shard 1 of ObjectShatter from its x sign store on: direct
+; page $05 = 0 (as for a positive x offset), then the rest of that shard
+; (the y and third components' bytes, the turns, the placement, life and
+; handler) and the shards after it.
+; HOW: The x offset of shard 1 is a constant of the other sign, so no code
+; reaches these bytes; a direct call is their only way in.
+; Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+; DB = $7E. Exit: as ObjectShatter.
+%at($09B351)
 .lB351:
     stz.b !dp_05
 .lB353:
@@ -11283,6 +11294,17 @@ ObjectShatter:
     lda.b #$FF
     sta.b !dp_0b
     bra .lB366
+
+; @routine 09:B364 ObjectShatterShard1YSign
+; WHAT IT DOES: Shard 1 of ObjectShatter from its y sign store on: direct
+; page $0B = 0 (as for a positive y offset), then the rest of that shard
+; (the third component's byte, the turns, the placement, life and handler)
+; and the shards after it.
+; HOW: The y offset of shard 1 is a constant of the other sign, so no code
+; reaches these bytes; a direct call is their only way in.
+; Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+; DB = $7E. Exit: as ObjectShatter.
+%at($09B364)
 .lB364:
     stz.b !dp_0b
 .lB366:
@@ -11378,6 +11400,17 @@ ObjectShatter:
     lda.b #$FF
     sta.b !dp_05
     bra .lB43A
+
+; @routine 09:B438 ObjectShatterShard2XSign
+; WHAT IT DOES: Shard 2 of ObjectShatter from its x sign store on: direct
+; page $05 = 0 (as for a positive x offset), then the rest of that shard
+; (the y and third components' bytes, the turns, the placement, life and
+; handler) and the shards after it.
+; HOW: The x offset of shard 2 is a constant of the other sign, so no code
+; reaches these bytes; a direct call is their only way in.
+; Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+; DB = $7E. Exit: as ObjectShatter.
+%at($09B438)
 .lB438:
     stz.b !dp_05
 .lB43A:
@@ -11389,6 +11422,17 @@ ObjectShatter:
     lda.b #$FF
     sta.b !dp_0b
     bra .lB44D
+
+; @routine 09:B44B ObjectShatterShard2YSign
+; WHAT IT DOES: Shard 2 of ObjectShatter from its y sign store on: direct
+; page $0B = 0 (as for a positive y offset), then the rest of that shard
+; (the third component's byte, the turns, the placement, life and handler)
+; and the shards after it.
+; HOW: The y offset of shard 2 is a constant of the other sign, so no code
+; reaches these bytes; a direct call is their only way in.
+; Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+; DB = $7E. Exit: as ObjectShatter.
+%at($09B44B)
 .lB44B:
     stz.b !dp_0b
 .lB44D:
@@ -11481,6 +11525,17 @@ ObjectShatter:
     sta.b !dp_04
     bit.b #$80
     beq .lB51F
+
+; @routine 09:B519 ObjectShatterShard3XSign
+; WHAT IT DOES: Shard 3 of ObjectShatter from its x sign store on: direct
+; page $05 = $FF (as for a negative x offset), then the rest of that shard
+; (the y and third components' bytes, the turns, the placement, life and
+; handler) and the shards after it.
+; HOW: The x offset of shard 3 is a constant of the other sign, so no code
+; reaches these bytes; a direct call is their only way in.
+; Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+; DB = $7E. Exit: as ObjectShatter.
+%at($09B519)
     lda.b #$FF
     sta.b !dp_05
     bra .lB521
@@ -11495,6 +11550,17 @@ ObjectShatter:
     lda.b #$FF
     sta.b !dp_0b
     bra .lB534
+
+; @routine 09:B532 ObjectShatterShard3YSign
+; WHAT IT DOES: Shard 3 of ObjectShatter from its y sign store on: direct
+; page $0B = 0 (as for a positive y offset), then the rest of that shard
+; (the third component's byte, the turns, the placement, life and handler)
+; and the shards after it.
+; HOW: The y offset of shard 3 is a constant of the other sign, so no code
+; reaches these bytes; a direct call is their only way in.
+; Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+; DB = $7E. Exit: as ObjectShatter.
+%at($09B532)
 .lB532:
     stz.b !dp_0b
 .lB534:
@@ -11587,6 +11653,17 @@ ObjectShatter:
     sta.b !dp_04
     bit.b #$80
     beq .lB606
+
+; @routine 09:B600 ObjectShatterShard4XSign
+; WHAT IT DOES: Shard 4 of ObjectShatter from its x sign store on: direct
+; page $05 = $FF (as for a negative x offset), then the rest of that shard
+; (the y and third components' bytes, the turns, the placement, life and
+; handler) and the shards after it.
+; HOW: The x offset of shard 4 is a constant of the other sign, so no code
+; reaches these bytes; a direct call is their only way in.
+; Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+; DB = $7E. Exit: as ObjectShatter.
+%at($09B600)
     lda.b #$FF
     sta.b !dp_05
     bra .lB608
@@ -11601,6 +11678,17 @@ ObjectShatter:
     lda.b #$FF
     sta.b !dp_0b
     bra .lB61B
+
+; @routine 09:B619 ObjectShatterShard4YSign
+; WHAT IT DOES: Shard 4 of ObjectShatter from its y sign store on: direct
+; page $0B = 0 (as for a positive y offset), then the rest of that shard
+; (the third component's byte, the turns, the placement, life and handler)
+; and the shards after it.
+; HOW: The y offset of shard 4 is a constant of the other sign, so no code
+; reaches these bytes; a direct call is their only way in.
+; Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+; DB = $7E. Exit: as ObjectShatter.
+%at($09B619)
 .lB619:
     stz.b !dp_0b
 .lB61B:
@@ -11693,6 +11781,17 @@ ObjectShatter:
     sta.b !dp_04
     bit.b #$80
     beq .lB6ED
+
+; @routine 09:B6E7 ObjectShatterShard5XSign
+; WHAT IT DOES: Shard 5 of ObjectShatter from its x sign store on: direct
+; page $05 = $FF (as for a negative x offset), then the rest of that shard
+; (the y and third components' bytes, the turns, the placement, life and
+; handler) and the shards after it.
+; HOW: The x offset of shard 5 is a constant of the other sign, so no code
+; reaches these bytes; a direct call is their only way in.
+; Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+; DB = $7E. Exit: as ObjectShatter.
+%at($09B6E7)
     lda.b #$FF
     sta.b !dp_05
     bra .lB6EF
@@ -11707,6 +11806,17 @@ ObjectShatter:
     lda.b #$FF
     sta.b !dp_0b
     bra .lB702
+
+; @routine 09:B700 ObjectShatterShard5YSign
+; WHAT IT DOES: Shard 5 of ObjectShatter from its y sign store on: direct
+; page $0B = 0 (as for a positive y offset), then the rest of that shard
+; (the third component's byte, the turns, the placement, life and handler)
+; and the shards after it.
+; HOW: The y offset of shard 5 is a constant of the other sign, so no code
+; reaches these bytes; a direct call is their only way in.
+; Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+; DB = $7E. Exit: as ObjectShatter.
+%at($09B700)
 .lB700:
     stz.b !dp_0b
 .lB702:
@@ -11799,6 +11909,17 @@ ObjectShatter:
     sta.b !dp_04
     bit.b #$80
     beq .lB7D4
+
+; @routine 09:B7CE ObjectShatterShard6XSign
+; WHAT IT DOES: Shard 6 of ObjectShatter from its x sign store on: direct
+; page $05 = $FF (as for a negative x offset), then the rest of that shard
+; (the y and third components' bytes, the turns, the placement, life and
+; handler) and the shards after it.
+; HOW: The x offset of shard 6 is a constant of the other sign, so no code
+; reaches these bytes; a direct call is their only way in.
+; Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+; DB = $7E. Exit: as ObjectShatter.
+%at($09B7CE)
     lda.b #$FF
     sta.b !dp_05
     bra .lB7D6
@@ -11810,6 +11931,17 @@ ObjectShatter:
     sta.b !actor_0a
     bit.b #$80
     beq .lB7E7
+
+; @routine 09:B7E1 ObjectShatterShard6YSign
+; WHAT IT DOES: Shard 6 of ObjectShatter from its y sign store on: direct
+; page $0B = $FF (as for a negative y offset), then the rest of that shard
+; (the third component's byte, the turns, the placement, life and handler)
+; and the shards after it.
+; HOW: The y offset of shard 6 is a constant of the other sign, so no code
+; reaches these bytes; a direct call is their only way in.
+; Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+; DB = $7E. Exit: as ObjectShatter.
+%at($09B7E1)
     lda.b #$FF
     sta.b !dp_0b
     bra .lB7E9
@@ -12304,7 +12436,8 @@ ObjectPuffFollow:
 ; WHAT IT DOES: As ObjectShatter with the shard kinds $B134, $B150, $B16C,
 ; $B188, $B1A4 and $B1C0.
 ; HOW: As ObjectShatter; the untaken sign stores for the constant offsets
-; (09:B8BC, B8CF, B9A3, B9B6, ...) never run: those bytes are dead.
+; (09:B8BC, B8CF, B9A3, B9B6, ...) are only reached by direct calls, as
+; ObjectShatter2Shard1XSign and the rest.
 ; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the last
 ; shard leaves it.
 %at($09B876)
@@ -12337,6 +12470,17 @@ ObjectShatter2:
     lda.b #$FF
     sta.b !dp_05
     bra .lB8BE
+
+; @routine 09:B8BC ObjectShatter2Shard1XSign
+; WHAT IT DOES: Shard 1 of ObjectShatter2 from its x sign store on: direct
+; page $05 = 0 (as for a positive x offset), then the rest of that shard
+; (the y and third components' bytes, the turns, the placement, life and
+; handler) and the shards after it.
+; HOW: The x offset of shard 1 is a constant of the other sign, so no code
+; reaches these bytes; a direct call is their only way in.
+; Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+; DB = $7E. Exit: as ObjectShatter2.
+%at($09B8BC)
 .lB8BC:
     stz.b !dp_05
 .lB8BE:
@@ -12348,6 +12492,17 @@ ObjectShatter2:
     lda.b #$FF
     sta.b !dp_0b
     bra .lB8D1
+
+; @routine 09:B8CF ObjectShatter2Shard1YSign
+; WHAT IT DOES: Shard 1 of ObjectShatter2 from its y sign store on: direct
+; page $0B = 0 (as for a positive y offset), then the rest of that shard
+; (the third component's byte, the turns, the placement, life and handler)
+; and the shards after it.
+; HOW: The y offset of shard 1 is a constant of the other sign, so no code
+; reaches these bytes; a direct call is their only way in.
+; Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+; DB = $7E. Exit: as ObjectShatter2.
+%at($09B8CF)
 .lB8CF:
     stz.b !dp_0b
 .lB8D1:
@@ -12443,6 +12598,17 @@ ObjectShatter2:
     lda.b #$FF
     sta.b !dp_05
     bra .lB9A5
+
+; @routine 09:B9A3 ObjectShatter2Shard2XSign
+; WHAT IT DOES: Shard 2 of ObjectShatter2 from its x sign store on: direct
+; page $05 = 0 (as for a positive x offset), then the rest of that shard
+; (the y and third components' bytes, the turns, the placement, life and
+; handler) and the shards after it.
+; HOW: The x offset of shard 2 is a constant of the other sign, so no code
+; reaches these bytes; a direct call is their only way in.
+; Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+; DB = $7E. Exit: as ObjectShatter2.
+%at($09B9A3)
 .lB9A3:
     stz.b !dp_05
 .lB9A5:
@@ -12454,6 +12620,17 @@ ObjectShatter2:
     lda.b #$FF
     sta.b !dp_0b
     bra .lB9B8
+
+; @routine 09:B9B6 ObjectShatter2Shard2YSign
+; WHAT IT DOES: Shard 2 of ObjectShatter2 from its y sign store on: direct
+; page $0B = 0 (as for a positive y offset), then the rest of that shard
+; (the third component's byte, the turns, the placement, life and handler)
+; and the shards after it.
+; HOW: The y offset of shard 2 is a constant of the other sign, so no code
+; reaches these bytes; a direct call is their only way in.
+; Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+; DB = $7E. Exit: as ObjectShatter2.
+%at($09B9B6)
 .lB9B6:
     stz.b !dp_0b
 .lB9B8:
@@ -12546,6 +12723,17 @@ ObjectShatter2:
     sta.b !dp_04
     bit.b #$80
     beq .lBA8A
+
+; @routine 09:BA84 ObjectShatter2Shard3XSign
+; WHAT IT DOES: Shard 3 of ObjectShatter2 from its x sign store on: direct
+; page $05 = $FF (as for a negative x offset), then the rest of that shard
+; (the y and third components' bytes, the turns, the placement, life and
+; handler) and the shards after it.
+; HOW: The x offset of shard 3 is a constant of the other sign, so no code
+; reaches these bytes; a direct call is their only way in.
+; Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+; DB = $7E. Exit: as ObjectShatter2.
+%at($09BA84)
     lda.b #$FF
     sta.b !dp_05
     bra .lBA8C
@@ -12560,6 +12748,17 @@ ObjectShatter2:
     lda.b #$FF
     sta.b !dp_0b
     bra .lBA9F
+
+; @routine 09:BA9D ObjectShatter2Shard3YSign
+; WHAT IT DOES: Shard 3 of ObjectShatter2 from its y sign store on: direct
+; page $0B = 0 (as for a positive y offset), then the rest of that shard
+; (the third component's byte, the turns, the placement, life and handler)
+; and the shards after it.
+; HOW: The y offset of shard 3 is a constant of the other sign, so no code
+; reaches these bytes; a direct call is their only way in.
+; Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+; DB = $7E. Exit: as ObjectShatter2.
+%at($09BA9D)
 .lBA9D:
     stz.b !dp_0b
 .lBA9F:
@@ -12652,6 +12851,17 @@ ObjectShatter2:
     sta.b !dp_04
     bit.b #$80
     beq .lBB71
+
+; @routine 09:BB6B ObjectShatter2Shard4XSign
+; WHAT IT DOES: Shard 4 of ObjectShatter2 from its x sign store on: direct
+; page $05 = $FF (as for a negative x offset), then the rest of that shard
+; (the y and third components' bytes, the turns, the placement, life and
+; handler) and the shards after it.
+; HOW: The x offset of shard 4 is a constant of the other sign, so no code
+; reaches these bytes; a direct call is their only way in.
+; Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+; DB = $7E. Exit: as ObjectShatter2.
+%at($09BB6B)
     lda.b #$FF
     sta.b !dp_05
     bra .lBB73
@@ -12666,6 +12876,17 @@ ObjectShatter2:
     lda.b #$FF
     sta.b !dp_0b
     bra .lBB86
+
+; @routine 09:BB84 ObjectShatter2Shard4YSign
+; WHAT IT DOES: Shard 4 of ObjectShatter2 from its y sign store on: direct
+; page $0B = 0 (as for a positive y offset), then the rest of that shard
+; (the third component's byte, the turns, the placement, life and handler)
+; and the shards after it.
+; HOW: The y offset of shard 4 is a constant of the other sign, so no code
+; reaches these bytes; a direct call is their only way in.
+; Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+; DB = $7E. Exit: as ObjectShatter2.
+%at($09BB84)
 .lBB84:
     stz.b !dp_0b
 .lBB86:
@@ -12758,6 +12979,17 @@ ObjectShatter2:
     sta.b !dp_04
     bit.b #$80
     beq .lBC58
+
+; @routine 09:BC52 ObjectShatter2Shard5XSign
+; WHAT IT DOES: Shard 5 of ObjectShatter2 from its x sign store on: direct
+; page $05 = $FF (as for a negative x offset), then the rest of that shard
+; (the y and third components' bytes, the turns, the placement, life and
+; handler) and the shards after it.
+; HOW: The x offset of shard 5 is a constant of the other sign, so no code
+; reaches these bytes; a direct call is their only way in.
+; Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+; DB = $7E. Exit: as ObjectShatter2.
+%at($09BC52)
     lda.b #$FF
     sta.b !dp_05
     bra .lBC5A
@@ -12772,6 +13004,17 @@ ObjectShatter2:
     lda.b #$FF
     sta.b !dp_0b
     bra .lBC6D
+
+; @routine 09:BC6B ObjectShatter2Shard5YSign
+; WHAT IT DOES: Shard 5 of ObjectShatter2 from its y sign store on: direct
+; page $0B = 0 (as for a positive y offset), then the rest of that shard
+; (the third component's byte, the turns, the placement, life and handler)
+; and the shards after it.
+; HOW: The y offset of shard 5 is a constant of the other sign, so no code
+; reaches these bytes; a direct call is their only way in.
+; Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+; DB = $7E. Exit: as ObjectShatter2.
+%at($09BC6B)
 .lBC6B:
     stz.b !dp_0b
 .lBC6D:
@@ -12864,6 +13107,17 @@ ObjectShatter2:
     sta.b !dp_04
     bit.b #$80
     beq .lBD3F
+
+; @routine 09:BD39 ObjectShatter2Shard6XSign
+; WHAT IT DOES: Shard 6 of ObjectShatter2 from its x sign store on: direct
+; page $05 = $FF (as for a negative x offset), then the rest of that shard
+; (the y and third components' bytes, the turns, the placement, life and
+; handler) and the shards after it.
+; HOW: The x offset of shard 6 is a constant of the other sign, so no code
+; reaches these bytes; a direct call is their only way in.
+; Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+; DB = $7E. Exit: as ObjectShatter2.
+%at($09BD39)
     lda.b #$FF
     sta.b !dp_05
     bra .lBD41
@@ -12875,6 +13129,17 @@ ObjectShatter2:
     sta.b !actor_0a
     bit.b #$80
     beq .lBD52
+
+; @routine 09:BD4C ObjectShatter2Shard6YSign
+; WHAT IT DOES: Shard 6 of ObjectShatter2 from its y sign store on: direct
+; page $0B = $FF (as for a negative y offset), then the rest of that shard
+; (the third component's byte, the turns, the placement, life and handler)
+; and the shards after it.
+; HOW: The y offset of shard 6 is a constant of the other sign, so no code
+; reaches these bytes; a direct call is their only way in.
+; Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+; DB = $7E. Exit: as ObjectShatter2.
+%at($09BD4C)
     lda.b #$FF
     sta.b !dp_0b
     bra .lBD54

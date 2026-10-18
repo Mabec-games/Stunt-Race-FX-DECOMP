@@ -1,0 +1,52 @@
+# unit_shatter_arms_09: the sign stores of ObjectShatter 09:B30B and
+# ObjectShatter2 09:B876 that the shards' constant offsets never take, each
+# called directly on object 1 ($2001) with the free object $032D as the
+# shard, from a Novice race's state.
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:B351 x=0001 y=032D p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:B364 x=0001 y=032D p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:B438 x=0001 y=032D p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:B44B x=0001 y=032D p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:B519 x=0001 y=032D p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:B532 x=0001 y=032D p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:B600 x=0001 y=032D p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:B619 x=0001 y=032D p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:B6E7 x=0001 y=032D p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:B700 x=0001 y=032D p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:B7CE x=0001 y=032D p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:B7E1 x=0001 y=032D p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:B8BC x=0001 y=032D p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:B8CF x=0001 y=032D p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:B9A3 x=0001 y=032D p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:B9B6 x=0001 y=032D p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:BA84 x=0001 y=032D p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:BA9D x=0001 y=032D p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:BB6B x=0001 y=032D p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:BB84 x=0001 y=032D p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:BC52 x=0001 y=032D p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:BC6B x=0001 y=032D p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:BD39 x=0001 y=032D p=20 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 09:BD4C x=0001 y=032D p=20 db=7E d=0000

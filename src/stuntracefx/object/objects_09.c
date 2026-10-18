@@ -7340,10 +7340,10 @@ static void axis_from(uint32_t src, uint32_t lo, uint32_t lo2, uint32_t hi)
    $00) turned by X's angles +$16, +$14 and +$15 (RotateXY,
    RotateXZFrom08, RotateXZ; vx and vy through $1F58/$1F59), life +$0A =
    6, handler $09:BDE1; nothing without a free object. */
+static void shard_from_z(void);
+
 static void shard(uint16_t kind, uint8_t s48, uint8_t s49, uint8_t s4a, uint8_t vx, uint8_t vy)
 {
-    int i;
-
     if (!spawn(kind))
         return;
     st8i(F(0x2048, cpu.y), s48);
@@ -7355,6 +7355,16 @@ static void shard(uint16_t kind, uint8_t s48, uint8_t s49, uint8_t s4a, uint8_t 
     st8i(db() | 0x1F59, vy);
     axis_from(db() | 0x1F58, dp(0x02), dp(0x04), dp(0x05));
     axis_from(db() | 0x1F59, dp(0x08), dp(0x0A), dp(0x0B));
+    shard_from_z();
+}
+
+/* A shard from its third component on: direct page $00's byte and sign,
+   the three turns, times 4, the placement at X's position, life 6 and the
+   handler. */
+static void shard_from_z(void)
+{
+    int i;
+
     axis_from(dp(0x00), dp(0x94), db() | 0x05F2, db() | 0x05F3);
     ld8(F(0x2016, cpu.x));
     abi_RotateXY();
@@ -7393,6 +7403,59 @@ static void shard(uint16_t kind, uint8_t s48, uint8_t s49, uint8_t s4a, uint8_t 
     handler(cpu.y, 0xBDE1);
 }
 
+/* The six shards' spin bytes +$48-$4A and offsets (x, y), and each
+   shatter's kinds. */
+static const uint8_t shatter_args[6][5] = {
+    {0xEE, 0xF3, 0xF0, 0xF0, 0xBA},
+    {0xEE, 0x0D, 0xF0, 0xE5, 0xD8},
+    {0x00, 0x0C, 0xFC, 0x00, 0xEE},
+    {0x12, 0x0D, 0x10, 0x1B, 0xD8},
+    {0x12, 0xF3, 0x10, 0x10, 0xBA},
+    {0x00, 0x0C, 0x04, 0x00, 0x0F},
+};
+static const uint16_t shatter1_kinds[6] = {0xB08C, 0xB0A8, 0xB0C4, 0xB0E0, 0xB0FC, 0xB118};
+static const uint16_t shatter2_kinds[6] = {0xB134, 0xB150, 0xB16C, 0xB188, 0xB1A4, 0xB1C0};
+
+/* The shards from index from to the last. */
+static void shatter_rest(const uint16_t *kinds, int from)
+{
+    int k;
+
+    for (k = from; k < 6; k++)
+        shard(kinds[k], shatter_args[k][0], shatter_args[k][1], shatter_args[k][2],
+              shatter_args[k][3], shatter_args[k][4]);
+}
+
+/* A sign byte's other arm: LDA #$FF, STA hi for a negative offset, STZ hi
+   for a positive one. */
+static void sign_arm(uint32_t hi, int neg)
+{
+    if (neg) {
+        lda8(0xFF);
+        wr8(hi, 0xFF);
+    } else {
+        wr8(hi, 0x00);
+    }
+}
+
+/* Shard k entered at its x sign store (direct page $05): the y offset, the
+   rest of the shard, the shards after it. */
+static void shatter_from_x(const uint16_t *kinds, int k, int neg)
+{
+    sign_arm(dp(0x05), neg);
+    axis_from(db() | 0x1F59, dp(0x08), dp(0x0A), dp(0x0B));
+    shard_from_z();
+    shatter_rest(kinds, k + 1);
+}
+
+/* Shard k entered at its y sign store (direct page $0B). */
+static void shatter_from_y(const uint16_t *kinds, int k, int neg)
+{
+    sign_arm(dp(0x0B), neg);
+    shard_from_z();
+    shatter_rest(kinds, k + 1);
+}
+
 /*
  * @routine 09:B30B ObjectShatter
  * WHAT IT DOES: Shatters object X into six shards (kinds $B08C, $B0A8,
@@ -7404,20 +7467,208 @@ static void shard(uint16_t kind, uint8_t s48, uint8_t s49, uint8_t s4a, uint8_t 
  * HOW: Six ObjectSpawn blocks; ObjectCopyPositionTo, ObjectCopy14To;
  * RotateXY, RotateXZFrom08, RotateXZ through direct page. The offsets are
  * constants (stored and read back through $1F58/$1F59), so the sign
- * branches not taken for them never run (09:B351, B364, B438, B44B, ...):
- * those bytes are dead.
+ * stores not taken for them (09:B351, B364, B438, B44B, ...) are only
+ * reached by direct calls, as ObjectShatterShard1XSign and the rest.
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the last
  * shard leaves it.
  */
 void abi_ObjectShatter(void)
 {
-    shard(0xB08C, 0xEE, 0xF3, 0xF0, 0xF0, 0xBA);
-    shard(0xB0A8, 0xEE, 0x0D, 0xF0, 0xE5, 0xD8);
-    shard(0xB0C4, 0x00, 0x0C, 0xFC, 0x00, 0xEE);
-    shard(0xB0E0, 0x12, 0x0D, 0x10, 0x1B, 0xD8);
-    shard(0xB0FC, 0x12, 0xF3, 0x10, 0x10, 0xBA);
-    shard(0xB118, 0x00, 0x0C, 0x04, 0x00, 0x0F);
+    shatter_rest(shatter1_kinds, 0);
 }
+
+/*
+ * @routine 09:B351 ObjectShatterShard1XSign
+ * WHAT IT DOES: Shard 1 of ObjectShatter from its x sign store on: direct
+ * page $05 = 0 (as for a positive x offset), then the rest of that shard
+ * (the y and third components' bytes, the turns, the placement, life and
+ * handler) and the shards after it.
+ * HOW: The x offset of shard 1 is a constant of the other sign, so no code
+ * reaches these bytes; a direct call is their only way in.
+ * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+ * DB = $7E. Exit: as ObjectShatter.
+ */
+void abi_ObjectShatterShard1XSign(void)
+{
+    shatter_from_x(shatter1_kinds, 0, 0);
+}
+
+/*
+ * @routine 09:B364 ObjectShatterShard1YSign
+ * WHAT IT DOES: Shard 1 of ObjectShatter from its y sign store on: direct
+ * page $0B = 0 (as for a positive y offset), then the rest of that shard
+ * (the third component's byte, the turns, the placement, life and handler)
+ * and the shards after it.
+ * HOW: The y offset of shard 1 is a constant of the other sign, so no code
+ * reaches these bytes; a direct call is their only way in.
+ * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+ * DB = $7E. Exit: as ObjectShatter.
+ */
+void abi_ObjectShatterShard1YSign(void)
+{
+    shatter_from_y(shatter1_kinds, 0, 0);
+}
+
+/*
+ * @routine 09:B438 ObjectShatterShard2XSign
+ * WHAT IT DOES: Shard 2 of ObjectShatter from its x sign store on: direct
+ * page $05 = 0 (as for a positive x offset), then the rest of that shard
+ * (the y and third components' bytes, the turns, the placement, life and
+ * handler) and the shards after it.
+ * HOW: The x offset of shard 2 is a constant of the other sign, so no code
+ * reaches these bytes; a direct call is their only way in.
+ * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+ * DB = $7E. Exit: as ObjectShatter.
+ */
+void abi_ObjectShatterShard2XSign(void)
+{
+    shatter_from_x(shatter1_kinds, 1, 0);
+}
+
+/*
+ * @routine 09:B44B ObjectShatterShard2YSign
+ * WHAT IT DOES: Shard 2 of ObjectShatter from its y sign store on: direct
+ * page $0B = 0 (as for a positive y offset), then the rest of that shard
+ * (the third component's byte, the turns, the placement, life and handler)
+ * and the shards after it.
+ * HOW: The y offset of shard 2 is a constant of the other sign, so no code
+ * reaches these bytes; a direct call is their only way in.
+ * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+ * DB = $7E. Exit: as ObjectShatter.
+ */
+void abi_ObjectShatterShard2YSign(void)
+{
+    shatter_from_y(shatter1_kinds, 1, 0);
+}
+
+/*
+ * @routine 09:B519 ObjectShatterShard3XSign
+ * WHAT IT DOES: Shard 3 of ObjectShatter from its x sign store on: direct
+ * page $05 = $FF (as for a negative x offset), then the rest of that shard
+ * (the y and third components' bytes, the turns, the placement, life and
+ * handler) and the shards after it.
+ * HOW: The x offset of shard 3 is a constant of the other sign, so no code
+ * reaches these bytes; a direct call is their only way in.
+ * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+ * DB = $7E. Exit: as ObjectShatter.
+ */
+void abi_ObjectShatterShard3XSign(void)
+{
+    shatter_from_x(shatter1_kinds, 2, 1);
+}
+
+/*
+ * @routine 09:B532 ObjectShatterShard3YSign
+ * WHAT IT DOES: Shard 3 of ObjectShatter from its y sign store on: direct
+ * page $0B = 0 (as for a positive y offset), then the rest of that shard
+ * (the third component's byte, the turns, the placement, life and handler)
+ * and the shards after it.
+ * HOW: The y offset of shard 3 is a constant of the other sign, so no code
+ * reaches these bytes; a direct call is their only way in.
+ * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+ * DB = $7E. Exit: as ObjectShatter.
+ */
+void abi_ObjectShatterShard3YSign(void)
+{
+    shatter_from_y(shatter1_kinds, 2, 0);
+}
+
+/*
+ * @routine 09:B600 ObjectShatterShard4XSign
+ * WHAT IT DOES: Shard 4 of ObjectShatter from its x sign store on: direct
+ * page $05 = $FF (as for a negative x offset), then the rest of that shard
+ * (the y and third components' bytes, the turns, the placement, life and
+ * handler) and the shards after it.
+ * HOW: The x offset of shard 4 is a constant of the other sign, so no code
+ * reaches these bytes; a direct call is their only way in.
+ * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+ * DB = $7E. Exit: as ObjectShatter.
+ */
+void abi_ObjectShatterShard4XSign(void)
+{
+    shatter_from_x(shatter1_kinds, 3, 1);
+}
+
+/*
+ * @routine 09:B619 ObjectShatterShard4YSign
+ * WHAT IT DOES: Shard 4 of ObjectShatter from its y sign store on: direct
+ * page $0B = 0 (as for a positive y offset), then the rest of that shard
+ * (the third component's byte, the turns, the placement, life and handler)
+ * and the shards after it.
+ * HOW: The y offset of shard 4 is a constant of the other sign, so no code
+ * reaches these bytes; a direct call is their only way in.
+ * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+ * DB = $7E. Exit: as ObjectShatter.
+ */
+void abi_ObjectShatterShard4YSign(void)
+{
+    shatter_from_y(shatter1_kinds, 3, 0);
+}
+
+/*
+ * @routine 09:B6E7 ObjectShatterShard5XSign
+ * WHAT IT DOES: Shard 5 of ObjectShatter from its x sign store on: direct
+ * page $05 = $FF (as for a negative x offset), then the rest of that shard
+ * (the y and third components' bytes, the turns, the placement, life and
+ * handler) and the shards after it.
+ * HOW: The x offset of shard 5 is a constant of the other sign, so no code
+ * reaches these bytes; a direct call is their only way in.
+ * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+ * DB = $7E. Exit: as ObjectShatter.
+ */
+void abi_ObjectShatterShard5XSign(void)
+{
+    shatter_from_x(shatter1_kinds, 4, 1);
+}
+
+/*
+ * @routine 09:B700 ObjectShatterShard5YSign
+ * WHAT IT DOES: Shard 5 of ObjectShatter from its y sign store on: direct
+ * page $0B = 0 (as for a positive y offset), then the rest of that shard
+ * (the third component's byte, the turns, the placement, life and handler)
+ * and the shards after it.
+ * HOW: The y offset of shard 5 is a constant of the other sign, so no code
+ * reaches these bytes; a direct call is their only way in.
+ * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+ * DB = $7E. Exit: as ObjectShatter.
+ */
+void abi_ObjectShatterShard5YSign(void)
+{
+    shatter_from_y(shatter1_kinds, 4, 0);
+}
+
+/*
+ * @routine 09:B7CE ObjectShatterShard6XSign
+ * WHAT IT DOES: Shard 6 of ObjectShatter from its x sign store on: direct
+ * page $05 = $FF (as for a negative x offset), then the rest of that shard
+ * (the y and third components' bytes, the turns, the placement, life and
+ * handler) and the shards after it.
+ * HOW: The x offset of shard 6 is a constant of the other sign, so no code
+ * reaches these bytes; a direct call is their only way in.
+ * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+ * DB = $7E. Exit: as ObjectShatter.
+ */
+void abi_ObjectShatterShard6XSign(void)
+{
+    shatter_from_x(shatter1_kinds, 5, 1);
+}
+
+/*
+ * @routine 09:B7E1 ObjectShatterShard6YSign
+ * WHAT IT DOES: Shard 6 of ObjectShatter from its y sign store on: direct
+ * page $0B = $FF (as for a negative y offset), then the rest of that shard
+ * (the third component's byte, the turns, the placement, life and handler)
+ * and the shards after it.
+ * HOW: The y offset of shard 6 is a constant of the other sign, so no code
+ * reaches these bytes; a direct call is their only way in.
+ * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+ * DB = $7E. Exit: as ObjectShatter.
+ */
+void abi_ObjectShatterShard6YSign(void)
+{
+    shatter_from_y(shatter1_kinds, 5, 1);
+}
+
 
 /* The bounce: +$29 added to +$27, turning back at +-lim; field `pos`
    moved by +$27 (through $1F4C); the colour steps through 0-9; the scale
@@ -7712,18 +7963,206 @@ void abi_HudCountUp19EC(void);
  * WHAT IT DOES: As ObjectShatter with the shard kinds $B134, $B150, $B16C,
  * $B188, $B1A4 and $B1C0.
  * HOW: As ObjectShatter; the untaken sign stores for the constant offsets
- * (09:B8BC, B8CF, B9A3, B9B6, ...) never run: those bytes are dead.
+ * (09:B8BC, B8CF, B9A3, B9B6, ...) are only reached by direct calls, as
+ * ObjectShatter2Shard1XSign and the rest.
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the last
  * shard leaves it.
  */
 void abi_ObjectShatter2(void)
 {
-    shard(0xB134, 0xEE, 0xF3, 0xF0, 0xF0, 0xBA);
-    shard(0xB150, 0xEE, 0x0D, 0xF0, 0xE5, 0xD8);
-    shard(0xB16C, 0x00, 0x0C, 0xFC, 0x00, 0xEE);
-    shard(0xB188, 0x12, 0x0D, 0x10, 0x1B, 0xD8);
-    shard(0xB1A4, 0x12, 0xF3, 0x10, 0x10, 0xBA);
-    shard(0xB1C0, 0x00, 0x0C, 0x04, 0x00, 0x0F);
+    shatter_rest(shatter2_kinds, 0);
+}
+
+/*
+ * @routine 09:B8BC ObjectShatter2Shard1XSign
+ * WHAT IT DOES: Shard 1 of ObjectShatter2 from its x sign store on: direct
+ * page $05 = 0 (as for a positive x offset), then the rest of that shard
+ * (the y and third components' bytes, the turns, the placement, life and
+ * handler) and the shards after it.
+ * HOW: The x offset of shard 1 is a constant of the other sign, so no code
+ * reaches these bytes; a direct call is their only way in.
+ * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+ * DB = $7E. Exit: as ObjectShatter2.
+ */
+void abi_ObjectShatter2Shard1XSign(void)
+{
+    shatter_from_x(shatter2_kinds, 0, 0);
+}
+
+/*
+ * @routine 09:B8CF ObjectShatter2Shard1YSign
+ * WHAT IT DOES: Shard 1 of ObjectShatter2 from its y sign store on: direct
+ * page $0B = 0 (as for a positive y offset), then the rest of that shard
+ * (the third component's byte, the turns, the placement, life and handler)
+ * and the shards after it.
+ * HOW: The y offset of shard 1 is a constant of the other sign, so no code
+ * reaches these bytes; a direct call is their only way in.
+ * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+ * DB = $7E. Exit: as ObjectShatter2.
+ */
+void abi_ObjectShatter2Shard1YSign(void)
+{
+    shatter_from_y(shatter2_kinds, 0, 0);
+}
+
+/*
+ * @routine 09:B9A3 ObjectShatter2Shard2XSign
+ * WHAT IT DOES: Shard 2 of ObjectShatter2 from its x sign store on: direct
+ * page $05 = 0 (as for a positive x offset), then the rest of that shard
+ * (the y and third components' bytes, the turns, the placement, life and
+ * handler) and the shards after it.
+ * HOW: The x offset of shard 2 is a constant of the other sign, so no code
+ * reaches these bytes; a direct call is their only way in.
+ * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+ * DB = $7E. Exit: as ObjectShatter2.
+ */
+void abi_ObjectShatter2Shard2XSign(void)
+{
+    shatter_from_x(shatter2_kinds, 1, 0);
+}
+
+/*
+ * @routine 09:B9B6 ObjectShatter2Shard2YSign
+ * WHAT IT DOES: Shard 2 of ObjectShatter2 from its y sign store on: direct
+ * page $0B = 0 (as for a positive y offset), then the rest of that shard
+ * (the third component's byte, the turns, the placement, life and handler)
+ * and the shards after it.
+ * HOW: The y offset of shard 2 is a constant of the other sign, so no code
+ * reaches these bytes; a direct call is their only way in.
+ * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+ * DB = $7E. Exit: as ObjectShatter2.
+ */
+void abi_ObjectShatter2Shard2YSign(void)
+{
+    shatter_from_y(shatter2_kinds, 1, 0);
+}
+
+/*
+ * @routine 09:BA84 ObjectShatter2Shard3XSign
+ * WHAT IT DOES: Shard 3 of ObjectShatter2 from its x sign store on: direct
+ * page $05 = $FF (as for a negative x offset), then the rest of that shard
+ * (the y and third components' bytes, the turns, the placement, life and
+ * handler) and the shards after it.
+ * HOW: The x offset of shard 3 is a constant of the other sign, so no code
+ * reaches these bytes; a direct call is their only way in.
+ * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+ * DB = $7E. Exit: as ObjectShatter2.
+ */
+void abi_ObjectShatter2Shard3XSign(void)
+{
+    shatter_from_x(shatter2_kinds, 2, 1);
+}
+
+/*
+ * @routine 09:BA9D ObjectShatter2Shard3YSign
+ * WHAT IT DOES: Shard 3 of ObjectShatter2 from its y sign store on: direct
+ * page $0B = 0 (as for a positive y offset), then the rest of that shard
+ * (the third component's byte, the turns, the placement, life and handler)
+ * and the shards after it.
+ * HOW: The y offset of shard 3 is a constant of the other sign, so no code
+ * reaches these bytes; a direct call is their only way in.
+ * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+ * DB = $7E. Exit: as ObjectShatter2.
+ */
+void abi_ObjectShatter2Shard3YSign(void)
+{
+    shatter_from_y(shatter2_kinds, 2, 0);
+}
+
+/*
+ * @routine 09:BB6B ObjectShatter2Shard4XSign
+ * WHAT IT DOES: Shard 4 of ObjectShatter2 from its x sign store on: direct
+ * page $05 = $FF (as for a negative x offset), then the rest of that shard
+ * (the y and third components' bytes, the turns, the placement, life and
+ * handler) and the shards after it.
+ * HOW: The x offset of shard 4 is a constant of the other sign, so no code
+ * reaches these bytes; a direct call is their only way in.
+ * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+ * DB = $7E. Exit: as ObjectShatter2.
+ */
+void abi_ObjectShatter2Shard4XSign(void)
+{
+    shatter_from_x(shatter2_kinds, 3, 1);
+}
+
+/*
+ * @routine 09:BB84 ObjectShatter2Shard4YSign
+ * WHAT IT DOES: Shard 4 of ObjectShatter2 from its y sign store on: direct
+ * page $0B = 0 (as for a positive y offset), then the rest of that shard
+ * (the third component's byte, the turns, the placement, life and handler)
+ * and the shards after it.
+ * HOW: The y offset of shard 4 is a constant of the other sign, so no code
+ * reaches these bytes; a direct call is their only way in.
+ * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+ * DB = $7E. Exit: as ObjectShatter2.
+ */
+void abi_ObjectShatter2Shard4YSign(void)
+{
+    shatter_from_y(shatter2_kinds, 3, 0);
+}
+
+/*
+ * @routine 09:BC52 ObjectShatter2Shard5XSign
+ * WHAT IT DOES: Shard 5 of ObjectShatter2 from its x sign store on: direct
+ * page $05 = $FF (as for a negative x offset), then the rest of that shard
+ * (the y and third components' bytes, the turns, the placement, life and
+ * handler) and the shards after it.
+ * HOW: The x offset of shard 5 is a constant of the other sign, so no code
+ * reaches these bytes; a direct call is their only way in.
+ * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+ * DB = $7E. Exit: as ObjectShatter2.
+ */
+void abi_ObjectShatter2Shard5XSign(void)
+{
+    shatter_from_x(shatter2_kinds, 4, 1);
+}
+
+/*
+ * @routine 09:BC6B ObjectShatter2Shard5YSign
+ * WHAT IT DOES: Shard 5 of ObjectShatter2 from its y sign store on: direct
+ * page $0B = 0 (as for a positive y offset), then the rest of that shard
+ * (the third component's byte, the turns, the placement, life and handler)
+ * and the shards after it.
+ * HOW: The y offset of shard 5 is a constant of the other sign, so no code
+ * reaches these bytes; a direct call is their only way in.
+ * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+ * DB = $7E. Exit: as ObjectShatter2.
+ */
+void abi_ObjectShatter2Shard5YSign(void)
+{
+    shatter_from_y(shatter2_kinds, 4, 0);
+}
+
+/*
+ * @routine 09:BD39 ObjectShatter2Shard6XSign
+ * WHAT IT DOES: Shard 6 of ObjectShatter2 from its x sign store on: direct
+ * page $05 = $FF (as for a negative x offset), then the rest of that shard
+ * (the y and third components' bytes, the turns, the placement, life and
+ * handler) and the shards after it.
+ * HOW: The x offset of shard 6 is a constant of the other sign, so no code
+ * reaches these bytes; a direct call is their only way in.
+ * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+ * DB = $7E. Exit: as ObjectShatter2.
+ */
+void abi_ObjectShatter2Shard6XSign(void)
+{
+    shatter_from_x(shatter2_kinds, 5, 1);
+}
+
+/*
+ * @routine 09:BD4C ObjectShatter2Shard6YSign
+ * WHAT IT DOES: Shard 6 of ObjectShatter2 from its y sign store on: direct
+ * page $0B = $FF (as for a negative y offset), then the rest of that shard
+ * (the third component's byte, the turns, the placement, life and handler)
+ * and the shards after it.
+ * HOW: The y offset of shard 6 is a constant of the other sign, so no code
+ * reaches these bytes; a direct call is their only way in.
+ * Entry: M 8-bit, X 16-bit; X = object, Y = the shard object; D = $0000;
+ * DB = $7E. Exit: as ObjectShatter2.
+ */
+void abi_ObjectShatter2Shard6YSign(void)
+{
+    shatter_from_y(shatter2_kinds, 5, 1);
 }
 
 /*
