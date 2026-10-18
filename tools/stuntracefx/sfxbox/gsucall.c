@@ -320,6 +320,17 @@ static void model_from(const struct GsuState *st)
     pix[0] = st->pixel[0]; pix[1] = st->pixel[1];
 }
 
+/* A call that returned two levels up (04:C72F): at a jump, R10 two words
+   or more below where the call was entered, and the address jumped to the
+   word just pulled from there (it took its caller's frame and returned
+   through the return address saved under it). */
+static int two_up(uint32_t pc, uint16_t entry_r10, const struct GsuState *now)
+{
+    if ((int16_t)(entry_r10 - now->r[10]) < 4) return 0;
+    uint32_t a = 0x700000u + ((uint32_t)now->rambr << 16) + now->r[10];
+    return (pc & 0xFFFF) == (uint32_t)(ram[ram_off(a)] | ram[ram_off(a + 1)] << 8);
+}
+
 static uint16_t model_flags(uint16_t sfr)
 {
     sfr &= (uint16_t)~(SFR_Z | SFR_CY | SFR_S | SFR_OV);
@@ -462,7 +473,21 @@ static void finish(Watch *w)
 static void check_insn(uint32_t pc, uint32_t prev_end, uint8_t opcode)
 {
     int prog = program_start(opcode);
-    while (depth && pc == ws[depth - 1].ret) { finish(&ws[depth - 1]); depth--; }
+    /* A watched call ends at its return address, or where it lands when it
+       returned two levels up (two_up), as its C does; that can be the
+       return address of the watched call around it, which then ends there
+       too. */
+    while (depth) {
+        Watch *w = &ws[depth - 1];
+        if (pc != w->ret) {
+            if (pc == prev_end || w->ret == PROGRAM) break;
+            struct GsuState now;
+            core_get(&now);
+            if (!two_up(pc, w->entry.r[10], &now)) break;
+        }
+        finish(w);
+        depth--;
+    }
     if (depth && opcode == 0x00) {
         /* STOP: a watched program ends here; a watched call inside it
            ended with the program, before it returned, and is not judged. */
@@ -557,7 +582,7 @@ typedef struct {
     long frame;
     uint64_t opoff;
     uint32_t opn;
-    int done, stopped;
+    int done, stopped, up;   /* up: it returned two levels up, at end */
     uint8_t romcl, ramcl;
     uint16_t ramar, prefix;
     uint8_t sreg, dreg;
@@ -599,7 +624,7 @@ int gsu_lockstep_prepare(void)
 
 /* ---- original side: record each call ---- */
 
-static struct { int active; uint32_t ret; uint64_t call; uint16_t flags; } m;
+static struct { int active; uint32_t ret; uint64_t call; uint16_t flags, r10; } m;
 
 static void op(uint8_t kind, uint32_t arg)
 {
@@ -639,6 +664,12 @@ static void orig_insn(uint32_t pc, uint32_t prev_end, uint8_t opcode)
                 m.flags = fs.sfr & SFR_SHOWN;
                 op(OP_FLAGS, m.flags);
             }
+            /* Two levels up (as in check_insn): the call ends where it
+               lands. */
+            if (m.ret != PROGRAM && pc != prev_end && two_up(pc, m.r10, &fs)) {
+                rec->up = 1;
+                m.ret = pc;
+            }
         }
         if (pc == m.ret || (m.ret == PROGRAM && opcode == 0x00)) {
             rec->end = pc;
@@ -664,11 +695,12 @@ static void orig_insn(uint32_t pc, uint32_t prev_end, uint8_t opcode)
     uint64_t k = LOAD(sh->o_calls);
     WAIT_UNTIL(k - LOAD(sh->h_calls) < CALLRING);
     CallRec *rec = &sh->calls[k % CALLRING];
-    rec->frame = frame_now; rec->opoff = LOAD(sh->o_ops); rec->opn = 0; rec->stopped = 0;
+    rec->frame = frame_now; rec->opoff = LOAD(sh->o_ops); rec->opn = 0; rec->stopped = 0; rec->up = 0;
     STORE(rec->done, 0);
     STORE(sh->o_calls, k + 1);
     sh->fcalls[frame_now % NSLOT]++;
     m.active = 1; m.ret = prog ? PROGRAM : (pc & 0xFF0000) | st.r[11]; m.call = k; m.flags = st.sfr & SFR_SHOWN;
+    m.r10 = st.r[10];
 }
 
 static void orig_step(uint32_t clocks) { if (m.active) op(OP_STEP, clocks); }
@@ -791,9 +823,10 @@ static int hybrid_exec(uint32_t pc, uint32_t prev_end)
 
     struct GsuState out;
     core_get(&out);   /* cache base and lines as the replay left them */
-    /* A call stops at its return address, a program at its STOP: the
-       Super FX is about to run that instruction (R15 one past it). */
-    uint16_t ret = prog ? (uint16_t)rec.end : st.r[11];
+    /* A call stops at its return address, a program at its STOP, a call
+       that returned two levels up where it landed: the Super FX is about to
+       run that instruction (R15 one past it). */
+    uint16_t ret = (prog || rec.up) ? (uint16_t)rec.end : st.r[11];
     memcpy(out.r, gsu.r, sizeof out.r);
     out.r[15] = (uint16_t)(ret + 1);
     out.sfr = model_flags(out.sfr);

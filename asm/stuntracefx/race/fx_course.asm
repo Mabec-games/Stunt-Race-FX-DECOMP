@@ -852,18 +852,23 @@ FxCarPlaceOnSegment:
     nop
 
 ; @routine 04:C72F FxCarVelocityFromSegment
-; WHAT IT DOES: Takes the saved R11 back off the R10 stack and, unless car
-; R8's word +$58 (its entry) is 0, sets the car's velocity +$2E/+$30/+$32 to
-; a vector along its heading +$24 whose length is twice word 4 of the entry
-; (FxTableEntryWords, FxCourseEntryRead) times the factor for $26F4 from the
-; table at $04:C781 (FMULT).
-; HOW: Entered by LINK from 04:C451, but it never returns to that R11: it
-; pulls the R11 04:C3D5 saved and returns through the word under it, two
-; levels up, so its C has to be part of 04:C3D5's. FxAngleVector makes the
-; vector. The 0 entry exit is not reached in the traces so far.
-; Entry: R8 = the car's record; R10 = stack (saved R11 on top of the return
-; address). Exit: R11 = $C76D (or the saved R11 for a 0 entry); R1-R3 the
-; vector; S, Z from R10; the last RAM address R10.
+; WHAT IT DOES: Takes the saved R11 back off the R10 stack and, unless
+; car R8's word +$58 (its entry) is 0, sets the car's velocity
+; +$2E/+$30/+$32 to a vector along its heading +$24 whose length is
+; twice word 4 of the entry (FxTableEntryWords, FxCourseEntryRead)
+; times the factor for $26F4 from the table at $04:C781 (FMULT). It
+; aims a fallen car along the course.
+; HOW: Entered by LINK from 04:C451 (FxCarFollowCourse), but it never
+; returns to that R11: it pulls the R11 04:C3D5 saved and returns
+; through the word under it, two levels up, into its caller's caller.
+; Its C is the physics program's from here, to that return (the jump
+; with the R10 stack two words below its entry, where the checks end
+; such a call too). FxAngleVector makes the vector.
+; Entry: R8 = the car's record; R10 = stack (FxCarFollowCourse's saved
+; R11 on top of the return address).
+; Exit: R11 = $C76D (or the saved R11 for a 0 entry); R1-R3 the vector;
+; R10 two words below its entry; S, Z from R10; the last RAM address
+; R10.
 %at($04C72F)
 FxCarVelocityFromSegment:
     dec r10

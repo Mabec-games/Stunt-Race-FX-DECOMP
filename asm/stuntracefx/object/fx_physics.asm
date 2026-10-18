@@ -5683,9 +5683,8 @@ FxCarFollowCourse:
     ldw (r10)
     nop
 ;
-; FxCarAimAlongCourse (04:C72F), part of the program C, not tagged:
-; entered on its own it would end two levels up, past the R11 the
-; harness ends a call at.
+; FxCarAimAlongCourse (04:C72F), filed as FxCarVelocityFromSegment
+; (race/fx_course.asm, the same bytes), whose C is the physics program's.
 ; WHAT IT DOES: Aims a fallen car along the course: when it has a
 ; course entry (+$58) its direction there (FxTableEntryWords,
 ; FxCourseEntryRead, FxAngleVector) times the speed of the drive level

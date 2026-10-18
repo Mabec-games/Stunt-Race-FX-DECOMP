@@ -142,11 +142,15 @@ void abi_FxTrafficSides(void);
 void abi_FxTurn(void);
 
 /* The code from address at until it jumps to ret (the caller's return;
-   $FFFF for a program, which ends at its STOP). */
+   $FFFF for a program, which ends at its STOP), or, for a call, until it
+   jumps with the R10 stack two words or more below where it began: it
+   took its caller's frame and returned two levels up (04:C72F), and the
+   caller's code is not its to run. */
 static void physics_run(uint16_t at, uint16_t ret)
 {
     int t;
     uint16_t nx;
+    uint16_t base = R[10];
 
     (void)t;
     (void)nx;
@@ -4958,7 +4962,7 @@ lC77C:
     at = nx;
     goto dispatch;
 dispatch:
-    if (at == ret)
+    if (at == ret || (ret != 0xFFFF && (int16_t)(base - R[10]) >= 4))
         return;
     switch (at) {
     case 0x8FCA: goto l8FCA;
@@ -5833,18 +5837,26 @@ void abi_FxCarCollide(void)
  */
 
 /*
- * FxCarAimAlongCourse (04:C72F), part of the program C, not tagged:
- * entered on its own it would end two levels up, past the R11 the
- * harness ends a call at.
- * WHAT IT DOES: Aims a fallen car along the course: when it has a
- * course entry (+$58) its direction there (FxTableEntryWords,
- * FxCourseEntryRead, FxAngleVector) times the speed of the drive
- * level ($26F4, table at $04:C781) becomes its speed (+$2E, +$30,
- * +$32). It returns past FxCarFollowCourse (its R11 pulled from the
- * stack), to that one's caller.
- * HOW: DEC R10 twice and R11 pulled; ROMB 4 for the table; returns by
- * pulling R15 a level up.
- * Entry: called by FxCarFollowCourse with its R11 on the R10 stack;
- * R8 = the car.
- * Exit: R1-R3 the speed; R11 = FxCarFollowCourse's return address.
+ * @routine 04:C72F FxCarVelocityFromSegment
+ * WHAT IT DOES: Takes the saved R11 back off the R10 stack and, unless
+ * car R8's word +$58 (its entry) is 0, sets the car's velocity
+ * +$2E/+$30/+$32 to a vector along its heading +$24 whose length is
+ * twice word 4 of the entry (FxTableEntryWords, FxCourseEntryRead)
+ * times the factor for $26F4 from the table at $04:C781 (FMULT). It
+ * aims a fallen car along the course.
+ * HOW: Entered by LINK from 04:C451 (FxCarFollowCourse), but it never
+ * returns to that R11: it pulls the R11 04:C3D5 saved and returns
+ * through the word under it, two levels up, into its caller's caller.
+ * Its C is the physics program's from here, to that return (the jump
+ * with the R10 stack two words below its entry, where the checks end
+ * such a call too). FxAngleVector makes the vector.
+ * Entry: R8 = the car's record; R10 = stack (FxCarFollowCourse's saved
+ * R11 on top of the return address).
+ * Exit: R11 = $C76D (or the saved R11 for a 0 entry); R1-R3 the vector;
+ * R10 two words below its entry; S, Z from R10; the last RAM address
+ * R10.
  */
+void abi_FxCarVelocityFromSegment(void)
+{
+    physics_run(0xC72F, R[11]);
+}
