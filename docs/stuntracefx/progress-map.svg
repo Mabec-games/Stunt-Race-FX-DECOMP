@@ -1757,7 +1757,7 @@
 <rect x="1138.6" y="431.8" width="29.3" height="25.6" fill="#3fb950"><title>SpcSfxFadeVolume  19DFC0  124B  T4  [audio]</title></rect>
 <rect x="1168.5" y="431.8" width="29.3" height="25.6" fill="#3fb950"><title>SpcBSfxFadeVolume  1B8228  124B  T4  [audio]</title></rect>
 <rect x="1198.4" y="431.8" width="29.1" height="25.6" fill="#3fb950"><title>SpcEchoModeA  19D5DB  123B  T4  [audio]</title></rect>
-<rect x="1228.1" y="431.8" width="26.4" height="25.6" fill="#d29922"><title>SpcSfxFrameHoldReset  19D89E  112B  T2  [audio]</title></rect>
+<rect x="1228.1" y="431.8" width="26.4" height="25.6" fill="#3fb950"><title>SpcSfxFrameHoldReset  19D89E  112B  T4  [audio]</title></rect>
 <rect x="1255.2" y="431.8" width="26.2" height="25.6" fill="#3fb950"><title>SoundNearCarOnce  04D533  111B  T4  [audio]</title></rect>
 <rect x="1078.7" y="458.0" width="25.7" height="25.8" fill="#3fb950"><title>SpcSubroutineRestart  19C991  110B  T4  [audio]</title></rect>
 <rect x="1105.0" y="458.0" width="25.2" height="25.8" fill="#3fb950"><title>SpcBSfxStopMatchOld  1AFC45  108B  T4  [audio]</title></rect>
@@ -1782,7 +1782,7 @@
 <rect x="1103.0" y="599.9" width="23.1" height="20.2" fill="#3fb950"><title>SpcCommandChannelCheck  19D7B6  78B  T4  [audio]</title></rect>
 <rect x="1103.0" y="620.7" width="23.1" height="20.2" fill="#3fb950"><title>SpcBCommandChannelCheck  1AFA14  78B  T4  [audio]</title></rect>
 <rect x="1103.0" y="641.5" width="23.1" height="20.2" fill="#3fb950"><title>SpcReload  19C301  78B  T4  [audio]</title></rect>
-<rect x="1126.7" y="484.4" width="22.6" height="20.6" fill="#d29922"><title>SpcSfxStopMatchOld  19DA4B  78B  T2  [audio]</title></rect>
+<rect x="1126.7" y="484.4" width="22.6" height="20.6" fill="#3fb950"><title>SpcSfxStopMatchOld  19DA4B  78B  T4  [audio]</title></rect>
 <rect x="1149.9" y="484.4" width="22.3" height="20.6" fill="#3fb950"><title>SpcChannelGuards  19CDB9  77B  T4  [audio]</title></rect>
 <rect x="1172.9" y="484.4" width="22.0" height="20.6" fill="#3fb950"><title>SpcBSfxPointer  1AF8EA  76B  T4  [audio]</title></rect>
 <rect x="1195.5" y="484.4" width="21.2" height="20.6" fill="#3fb950"><title>SoundPort0QueuePush  04D656  73B  T4  [audio]</title></rect>
@@ -2338,4 +2338,4 @@
 <rect x="1589.9" y="873.7" width="8.0" height="13.4" fill="#3fb950"><title>JoypadPortCheck  7F10CD  21B  T4  [input]</title></rect>
 <rect x="1578.7" y="887.7" width="10.1" height="10.2" fill="#3fb950"><title>JoypadPortCheckBit  7F10E2  20B  T4  [input]</title></rect>
 <rect x="1589.4" y="887.7" width="8.5" height="10.2" fill="#3fb950"><title>JoypadPortCheckLatchOff  7F10F6  17B  T4  [input]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 2325 &#183; T3 behaviour-exact 0 &#183; 212,210/212,400 bytes exact (99.9%) &#183; green=T4 blue=T3 amber=T2 gray=T1</text></svg>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 2327 &#183; T3 behaviour-exact 0 &#183; 212,400/212,400 bytes exact (100.0%) &#183; green=T4 blue=T3 amber=T2 gray=T1</text></svg>
