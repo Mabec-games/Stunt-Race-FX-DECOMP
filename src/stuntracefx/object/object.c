@@ -2179,23 +2179,25 @@ static void sign_of_zero(uint32_t at)
  * to its position +$0C, +$0E, +$10.
  * HOW: The vector is kept in direct page $02/$08/$94 (sign bytes $05, $0B,
  * $05F3) and the rotations leave it in $04/$0A/$05F2. The sign bytes of
- * the zero components are set from A = 0, so their $FF stores never run;
- * the early return tests the flags from PLX (X = 0, never an object). None
- * of these is reached in the traces so far.
+ * the zero components are set from A = 0, so their $FF stores run only as
+ * the XSign and ZSign entries; the early return tests the flags from PLX
+ * (X = 0, never an object; reached by a unit call with X = 0).
  * Entry: M 8-bit, X 16-bit, D = $0000; X = object. Exit: M 8-bit; A = the
  * new +$0E; N, Z, C, V from its add.
  */
+static void move_forward_from(int arm);
+
 void abi_ObjectMoveForward(void)
 {
     uint32_t b = (uint32_t)cpu.db << 16;
-    uint16_t x0 = cpu.x, w;
+    uint16_t x0 = cpu.x;
     uint8_t v;
-    unsigned i;
-    static const uint8_t angle[3] = {0x16, 0x14, 0x15};
 
     cpu.p &= (uint8_t)~P_M;
-    cpu.x = rd16(b | (uint16_t)(0x2022 + cpu.x));
-    cpu.x = rd16((uint32_t)(0x70005E + cpu.x));
+    cpu.a = rd16(b | (uint16_t)(0x2022 + cpu.x));
+    cpu.x = cpu.a;
+    cpu.a = rd16((uint32_t)(0x70005E + cpu.x));
+    cpu.x = cpu.a;
     cpu.p |= P_M;
     v = rd8((uint32_t)(0x08B32B + cpu.x));
     cpu.x = x0;
@@ -2204,9 +2206,35 @@ void abi_ObjectMoveForward(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     if (!x0)
         return;
-    wr8(dp8(0x02), 0x00);
-    wr8(dp8(0x04), 0x00);
-    sign_of_zero(dp8(0x05));
+    move_forward_from(0);
+}
+
+/* ObjectMoveForward from its vector on. Arm 1 enters at the $FF store of
+   the first component's sign byte ($05), arm 3 at that of the third
+   ($05F3): the stores the zero components never take. */
+static void move_forward_from(int arm)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t w;
+    uint8_t v;
+    unsigned i;
+    static const uint8_t angle[3] = {0x16, 0x14, 0x15};
+
+    if (arm == 3) {
+        cpu.a = (uint16_t)(cpu.a | 0x00FF);
+        cpu.p = nz8(cpu.p, 0xFF);
+        wr8(b | 0x05F3, 0xFF);
+        goto turn;
+    }
+    if (arm == 1) {
+        cpu.a = (uint16_t)(cpu.a | 0x00FF);
+        cpu.p = nz8(cpu.p, 0xFF);
+        wr8(dp8(0x05), 0xFF);
+    } else {
+        wr8(dp8(0x02), 0x00);
+        wr8(dp8(0x04), 0x00);
+        sign_of_zero(dp8(0x05));
+    }
     v = rd8(dp8(0x08));
     wr8(dp8(0x08), v);
     wr8(dp8(0x0A), v);
@@ -2214,6 +2242,7 @@ void abi_ObjectMoveForward(void)
     wr8(dp8(0x94), 0x00);
     wr8(b | 0x05F2, 0x00);
     sign_of_zero(b | 0x05F3);
+turn:
     for (i = 0; i < 3; i++) {
         if (i) {
             wr8(dp8(0x02), rd8(dp8(0x04)));
@@ -2252,6 +2281,37 @@ void abi_ObjectMoveForward(void)
         }
     }
     cpu.p |= P_M;
+}
+
+/*
+ * @routine 08:B36F ObjectMoveForwardXSign
+ * WHAT IT DOES: ObjectMoveForward entered at the sign store of its first
+ * vector component that the zero never takes: direct page $05 = $FF, then
+ * the rest as ObjectMoveForward from the speed component on.
+ * HOW: LDA #$FF, STA $05, then the join; no code reaches these bytes, a
+ * direct call is their only way in.
+ * Entry: M 8-bit, X 16-bit, D = $0000; X = object; direct page $08 = the
+ * speed. Exit: as ObjectMoveForward.
+ */
+void abi_ObjectMoveForwardXSign(void)
+{
+    move_forward_from(1);
+}
+
+/*
+ * @routine 08:B394 ObjectMoveForwardZSign
+ * WHAT IT DOES: ObjectMoveForward entered at the sign store of its third
+ * vector component that the zero never takes: $05F3 = $FF, then the turns
+ * and the move as ObjectMoveForward.
+ * HOW: LDA #$FF, STA $05F3, then the join; no code reaches these bytes, a
+ * direct call is their only way in.
+ * Entry: M 8-bit, X 16-bit, D = $0000; X = object; the vector in direct
+ * page $02, $08, $94 and $05F2 with its sign bytes. Exit: as
+ * ObjectMoveForward.
+ */
+void abi_ObjectMoveForwardZSign(void)
+{
+    move_forward_from(3);
 }
 
 /* LDA a, then BIT #$80: the sign byte at `at` is $FF when bit 7 of a is

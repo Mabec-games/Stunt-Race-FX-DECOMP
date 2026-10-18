@@ -2130,9 +2130,9 @@ ObjectSpawnD460UnlessFlag_done:         ; reached by the long jump above
 ; to its position +$0C, +$0E, +$10.
 ; HOW: The vector is kept in direct page $02/$08/$94 (sign bytes $05, $0B,
 ; $05F3) and the rotations leave it in $04/$0A/$05F2. The sign bytes of
-; the zero components are set from A = 0, so their $FF stores never run;
-; the early return tests the flags from PLX (X = 0, never an object). None
-; of these is reached in the traces so far.
+; the zero components are set from A = 0, so their $FF stores run only as
+; the XSign and ZSign entries; the early return tests the flags from PLX
+; (X = 0, never an object; reached by a unit call with X = 0).
 ; Entry: M 8-bit, X 16-bit, D = $0000; X = object. Exit: M 8-bit; A = the
 ; new +$0E; N, Z, C, V from its add.
 %at($08B34B)
@@ -2155,6 +2155,16 @@ ObjectMoveForward:
     sta.b !dp_04
     bit.b #$80
     beq .x_positive
+
+; @routine 08:B36F ObjectMoveForwardXSign
+; WHAT IT DOES: ObjectMoveForward entered at the sign store of its first
+; vector component that the zero never takes: direct page $05 = $FF, then
+; the rest as ObjectMoveForward from the speed component on.
+; HOW: LDA #$FF, STA $05, then the join; no code reaches these bytes, a
+; direct call is their only way in.
+; Entry: M 8-bit, X 16-bit, D = $0000; X = object; direct page $08 = the
+; speed. Exit: as ObjectMoveForward.
+%at($08B36F)
     lda.b #$FF
     sta.b !dp_05
     bra .y
@@ -2177,6 +2187,17 @@ ObjectMoveForward:
     sta.w !rot_z
     bit.b #$80
     beq .z_positive
+
+; @routine 08:B394 ObjectMoveForwardZSign
+; WHAT IT DOES: ObjectMoveForward entered at the sign store of its third
+; vector component that the zero never takes: $05F3 = $FF, then the turns
+; and the move as ObjectMoveForward.
+; HOW: LDA #$FF, STA $05F3, then the join; no code reaches these bytes, a
+; direct call is their only way in.
+; Entry: M 8-bit, X 16-bit, D = $0000; X = object; the vector in direct
+; page $02, $08, $94 and $05F2 with its sign bytes. Exit: as
+; ObjectMoveForward.
+%at($08B394)
     lda.b #$FF
     sta.w !rot_z_high
     bra .turn

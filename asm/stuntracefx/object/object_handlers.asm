@@ -1693,6 +1693,8 @@ ObjectPieceFallStart:
 ; its first fall.
 ; HOW: The offset in direct page $02/$04, $08/$0A, $94/$05F2 with their
 ; sign bytes; the copies between the turns are 8-bit.
+; The sign stores the offsets never take run only as the XSign, YSign and
+; ZSign entries.
 ; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectPieceFall.
 %at($08D460)
 ObjectPieceSpray:
@@ -1732,7 +1734,17 @@ ObjectPieceSpray:
     sta.b !dp_04
     bit.b #$80
     beq .lD4BF
-    lda.b #$FF                      ; not reached in the traces so far
+
+; @routine 08:D4B9 ObjectPieceSprayXSign
+; WHAT IT DOES: ObjectPieceSpray entered at the sign store its first
+; offset component (the constant 0) never takes: direct page $05 = $FF,
+; then the rest of the first frame as ObjectPieceSpray.
+; HOW: LDA #$FF, STA $05, then the join; no code reaches these bytes, a
+; direct call is their only way in.
+; Entry: M 8-bit, X 16-bit; X = object, Y = its parent; D = $0000; DB =
+; $7E. Exit: as ObjectPieceSpray.
+%at($08D4B9)
+    lda.b #$FF
     sta.b !dp_05
     bra .lD4C1
 .lD4BF:
@@ -1743,7 +1755,17 @@ ObjectPieceSpray:
     sta.b !actor_0a
     bit.b #$80
     beq .lD4D1
-    lda.b #$FF                      ; not reached in the traces so far
+
+; @routine 08:D4CB ObjectPieceSprayYSign
+; WHAT IT DOES: ObjectPieceSpray entered at the sign store its second
+; offset component (the constant 0) never takes: direct page $0B = $FF,
+; then the rest of the first frame as ObjectPieceSpray.
+; HOW: LDA #$FF, STA $0B, then the join; no code reaches these bytes, a
+; direct call is their only way in.
+; Entry: M 8-bit, X 16-bit; X = object, Y = its parent; D = $0000; DB =
+; $7E. Exit: as ObjectPieceSpray.
+%at($08D4CB)
+    lda.b #$FF
     sta.b !dp_0b
     bra .lD4D3
 .lD4D1:
@@ -1757,8 +1779,18 @@ ObjectPieceSpray:
     lda.b #$FF
     sta.w !rot_z_high
     bra .lD4E9
+
+; @routine 08:D4E6 ObjectPieceSprayZSign
+; WHAT IT DOES: ObjectPieceSpray entered at the sign store its third
+; offset component (random -$28 to -$19, always negative) never takes:
+; $05F3 = 0, then the turns and the rest as ObjectPieceSpray.
+; HOW: STZ $05F3, then the join; no code reaches these bytes, a direct
+; call is their only way in.
+; Entry: M 8-bit, X 16-bit; X = object, Y = its parent; D = $0000; DB =
+; $7E. Exit: as ObjectPieceSpray.
+%at($08D4E6)
 .lD4E6:
-    stz.w !rot_z_high               ; not reached in the traces so far
+    stz.w !rot_z_high
 .lD4E9:
     lda.w !obj_14,y
     jsl.l RotateXZFrom08
@@ -3493,8 +3525,8 @@ ObjectOffsetOnParent2:
 ; count +$4B up to 4 through the looks at $08:E57F, $08:E5AD, $08:E5DB,
 ; $08:E609; $10 sets look $9AAF; anything else clears the count; then its
 ; frame on the parent (ObjectLampOnParent).
-; HOW: Compare chain; the paths for $0C and $1C are not reached in the
-; traces so far.
+; HOW: Compare chain. The game keeps the count at 0-4, so each table's
+; word 0 is read only for a count of $FF (a unit call stages it).
 ; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectLampOnParent.
 %at($08E51E)
 ObjectLampAnimate:
@@ -3510,11 +3542,11 @@ ObjectLampAnimate:
 .lE531:
     cmp.b #$0C
     bne .lE538
-    brl .lE5B7                      ; not reached in the traces so far
+    brl .lE5B7
 .lE538:
     cmp.b #$1C
     bne .lE53F
-    brl .lE5E5                      ; not reached in the traces so far
+    brl .lE5E5
 .lE53F:
     cmp.b #$10
     bne .lE546
@@ -3548,7 +3580,7 @@ ObjectLampAnimate:
     sta.w !obj_5d,x
     sep.b #$20
     jmp.w ObjectLampOnParent
-.looks_04:                          ; word 0 is never read (the count is 1-4)
+.looks_04:                          ; word 0 only for a count of $FF
     dw $9AAF, $9AB3, $9AB5, $9AB3, $9AAF
 .lE589:
     lda.w !obj_4b,x
@@ -3569,7 +3601,7 @@ ObjectLampAnimate:
     sta.w !obj_5d,x
     sep.b #$20
     jmp.w ObjectLampOnParent
-.looks_08:                          ; word 0 is never read (the count is 1-4)
+.looks_08:                          ; word 0 only for a count of $FF
     dw $9AAF, $9AB3, $9AB5, $9AB7, $9AB1
 .lE5B7:
     lda.w !obj_4b,x                 ; not reached in the traces so far
@@ -3590,7 +3622,7 @@ ObjectLampAnimate:
     sta.w !obj_5d,x
     sep.b #$20
     jmp.w ObjectLampOnParent
-.looks_0C:                          ; word 0 is never read (the count is 1-4)
+.looks_0C:                          ; word 0 only for a count of $FF
     dw $9AB1, $9AB7, $9AB5, $9AB3, $9AAF
 .lE5E5:
     lda.w !obj_4b,x                 ; not reached in the traces so far
@@ -3611,7 +3643,7 @@ ObjectLampAnimate:
     sta.w !obj_5d,x
     sep.b #$20
     jmp.w ObjectLampOnParent
-.looks_1C:                          ; word 0 is never read (the count is 1-4)
+.looks_1C:                          ; word 0 only for a count of $FF
     dw $9AB1, $9AB7, $9AB5, $9AB7, $9AB1
 
 ; @routine 08:E613 ObjectLampStart

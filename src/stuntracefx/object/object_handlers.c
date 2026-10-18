@@ -1518,12 +1518,17 @@ void abi_ObjectPieceFallStart(void)
  * its first fall.
  * HOW: The offset in direct page $02/$04, $08/$0A, $94/$05F2 with their
  * sign bytes; the copies between the turns are 8-bit.
+ * The sign stores the offsets never take run only as the XSign, YSign and
+ * ZSign entries.
  * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectPieceFall.
  */
+static void spray_from_y(void);
+static void spray_from_z(void);
+static void spray_turn(void);
+
 void abi_ObjectPieceSpray(void)
 {
     uint32_t b = db();
-    uint16_t w;
     uint8_t v;
 
     piece_handler(0x06);
@@ -1545,10 +1550,27 @@ void abi_ObjectPieceSpray(void)
     wr8(0x000002, 0x00);
     wr8(0x000004, 0x00);
     wr8(0x000005, 0x00);
+    spray_from_y();
+}
+
+/* ObjectPieceSpray from its second offset component on (0: direct page
+   $08, $0A, sign $0B). */
+static void spray_from_y(void)
+{
     lda8(0x00);
     wr8(0x000008, 0x00);
     wr8(0x00000A, 0x00);
     wr8(0x00000B, 0x00);
+    spray_from_z();
+}
+
+/* ObjectPieceSpray from its third offset component ($1F4C into direct
+   page $94 and $05F2 with its sign byte $05F3) on. */
+static void spray_from_z(void)
+{
+    uint32_t b = db();
+    uint8_t v;
+
     op_lda8(b | 0x1F4C);
     v = (uint8_t)cpu.a;
     wr8(0x000094, v);
@@ -1559,6 +1581,17 @@ void abi_ObjectPieceSpray(void)
     } else {
         wr8(b | 0x05F3, 0x00);
     }
+    spray_turn();
+}
+
+/* ObjectPieceSpray from its turns on: RotateXZFrom08 and RotateXZ by the
+   parent Y's angles, doubled onto X's position, the scaled record
+   velocity, Y - $14, ObjectAdvance5DIfFlag, the first fall. */
+static void spray_turn(void)
+{
+    uint32_t b = db();
+    uint16_t w;
+
     op_lda8(b | (uint16_t)(0x2014 + cpu.y));
     abi_RotateXZFrom08();
     op_lda8(0x000004);
@@ -1598,6 +1631,56 @@ void abi_ObjectPieceSpray(void)
     cpu.p |= P_M;
     abi_ObjectAdvance5DIfFlag();
     abi_ObjectPieceFall();
+}
+
+/*
+ * @routine 08:D4B9 ObjectPieceSprayXSign
+ * WHAT IT DOES: ObjectPieceSpray entered at the sign store its first
+ * offset component (the constant 0) never takes: direct page $05 = $FF,
+ * then the rest of the first frame as ObjectPieceSpray.
+ * HOW: LDA #$FF, STA $05, then the join; no code reaches these bytes, a
+ * direct call is their only way in.
+ * Entry: M 8-bit, X 16-bit; X = object, Y = its parent; D = $0000; DB =
+ * $7E. Exit: as ObjectPieceSpray.
+ */
+void abi_ObjectPieceSprayXSign(void)
+{
+    lda8(0xFF);
+    wr8(0x000005, 0xFF);
+    spray_from_y();
+}
+
+/*
+ * @routine 08:D4CB ObjectPieceSprayYSign
+ * WHAT IT DOES: ObjectPieceSpray entered at the sign store its second
+ * offset component (the constant 0) never takes: direct page $0B = $FF,
+ * then the rest of the first frame as ObjectPieceSpray.
+ * HOW: LDA #$FF, STA $0B, then the join; no code reaches these bytes, a
+ * direct call is their only way in.
+ * Entry: M 8-bit, X 16-bit; X = object, Y = its parent; D = $0000; DB =
+ * $7E. Exit: as ObjectPieceSpray.
+ */
+void abi_ObjectPieceSprayYSign(void)
+{
+    lda8(0xFF);
+    wr8(0x00000B, 0xFF);
+    spray_from_z();
+}
+
+/*
+ * @routine 08:D4E6 ObjectPieceSprayZSign
+ * WHAT IT DOES: ObjectPieceSpray entered at the sign store its third
+ * offset component (random -$28 to -$19, always negative) never takes:
+ * $05F3 = 0, then the turns and the rest as ObjectPieceSpray.
+ * HOW: STZ $05F3, then the join; no code reaches these bytes, a direct
+ * call is their only way in.
+ * Entry: M 8-bit, X 16-bit; X = object, Y = its parent; D = $0000; DB =
+ * $7E. Exit: as ObjectPieceSpray.
+ */
+void abi_ObjectPieceSprayZSign(void)
+{
+    wr8(db() | 0x05F3, 0x00);
+    spray_turn();
 }
 
 void abi_RotateXY(void);
@@ -2905,8 +2988,8 @@ static void lamp_look_step(uint16_t table)
  * count +$4B up to 4 through the looks at $08:E57F, $08:E5AD, $08:E5DB,
  * $08:E609; $10 sets look $9AAF; anything else clears the count; then its
  * frame on the parent (ObjectLampOnParent).
- * HOW: Compare chain; the paths for $0C and $1C are not reached in the
- * traces so far.
+ * HOW: Compare chain. The game keeps the count at 0-4, so each table's
+ * word 0 is read only for a count of $FF (a unit call stages it).
  * Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectLampOnParent.
  */
 void abi_ObjectLampAnimate(void)
