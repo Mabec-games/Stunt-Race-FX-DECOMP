@@ -1,0 +1,171 @@
+# unit_frame_objects_08: the picture-frame objects of bank $08 (08:CA2D-CB97),
+# called on object 1 (the player's car) of a Novice race with their fields
+# staged (object 1's field +$f is at $7E:20f+1): the five set-ups; the
+# cycling steps before and at their count, with the frame stepping past
+# and within the frame count, from a shown (bit 7) and an unshown frame,
+# and with no record; the swinging step paused, before its count, and at
+# it in each direction, stepping and turning.
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:CA2D long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2049 03
+call 08:CA45 long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:CA56 long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2049 04
+call 08:CAA2 long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E204B 02
+call 08:CAF6 long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E204B 00
+set 7E204A 05
+set 7E2049 04
+set 7E205B 81
+call 08:CA6F long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E204B 04
+set 7E204A 05
+set 7E2049 04
+set 7E205B 81
+call 08:CA6F long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E204B 04
+set 7E204A 05
+set 7E2049 04
+set 7E205B 81
+call 08:CA6F long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E204B 04
+set 7E204A 05
+set 7E2049 04
+set 7E205B 03
+call 08:CA6F long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E204B 04
+set 7E204A 05
+set 7E2049 04
+set 7E205B 80
+call 08:CA6F long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E204B 00
+set 7E204A 05
+set 7E2049 04
+set 7E205B 81
+set 7E2023 00,00
+call 08:CA6F long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E204B 00
+set 7E204A 05
+set 7E2049 04
+set 7E205B 81
+call 08:CAC3 long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E204B 04
+set 7E204A 05
+set 7E2049 04
+set 7E205B 81
+call 08:CAC3 long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E204B 04
+set 7E204A 05
+set 7E2049 04
+set 7E205B 82
+call 08:CAC3 long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E204B 04
+set 7E204A 05
+set 7E2049 04
+set 7E205B 05
+call 08:CAC3 long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E204B 04
+set 7E204A 05
+set 7E2049 04
+set 7E205B 80
+call 08:CAC3 long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E204B 00
+set 7E204A 05
+set 7E2049 04
+set 7E205B 81
+set 7E2023 00,00
+call 08:CAC3 long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E202F 03
+set 7E204C 00
+set 7E204A 05
+set 7E2026 00
+set 7E2031 01
+set 7E2049 04
+set 7E204B 02
+call 08:CB15 long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E202F 00
+set 7E204C 00
+set 7E204A 05
+set 7E2026 00
+set 7E2031 01
+set 7E2049 04
+set 7E204B 02
+call 08:CB15 long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E202F 00
+set 7E204C 04
+set 7E204A 05
+set 7E2026 00
+set 7E2031 01
+set 7E2049 04
+set 7E204B 02
+call 08:CB15 long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E202F 00
+set 7E204C 04
+set 7E204A 05
+set 7E2026 00
+set 7E2031 03
+set 7E2049 04
+set 7E204B 02
+call 08:CB15 long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E202F 00
+set 7E204C 04
+set 7E204A 05
+set 7E2026 01
+set 7E2031 02
+set 7E2049 04
+set 7E204B 02
+call 08:CB15 long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E202F 00
+set 7E204C 04
+set 7E204A 05
+set 7E2026 01
+set 7E2031 00
+set 7E2049 04
+set 7E204B 02
+call 08:CB15 long x=0001 p=20 db=7E d=0000
+wait 1

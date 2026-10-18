@@ -13387,6 +13387,89 @@ ObjectRiderStep:
     rtl
 
 
+; @routine 09:B0BE ObjectCountTrigger
+; WHAT IT DOES: Sets up the object that starts the counting markers:
+; restart $09:B0DC (ObjectCountTriggerRecord), frame $09:B103
+; (ObjectCountTriggerStep); its record and frame.
+; HOW: Word and byte stores, then falls into ObjectCountTriggerRecord.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+; leaves it.
+%at($09B0BE)
+ObjectCountTrigger:
+    rep.b #$20
+    lda.w #ObjectCountTriggerRecord
+    sta.w !obj_1d,x
+    sep.b #$20
+    lda.b #ObjectCountTriggerRecord>>16
+    sta.w !obj_1f,x
+    rep.b #$20
+    lda.w #ObjectCountTriggerStep
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #ObjectCountTriggerStep>>16
+    sta.w !obj_1c,x
+
+; @routine 09:B0DC ObjectCountTriggerRecord
+; WHAT IT DOES: The trigger's restart: its record from the first pool
+; (GsuRecordNew42D), marked (GsuRecordFlag10), at ($3C0, $3C0, $3C0),
+; then its frame.
+; HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition; falls into
+; ObjectCountTriggerStep. A failed record is not checked.
+; Entry: as ObjectCountTrigger. Exit: as ObjectCountTrigger.
+%at($09B0DC)
+ObjectCountTriggerRecord:
+    jsl.l GsuRecordNew42D
+    jsl.l GsuRecordFlag10
+    rep.b #$20
+    lda.w #$03C0
+    sta.b !dp_02
+    sep.b #$20
+    rep.b #$20
+    lda.w #$03C0
+    sta.b !dp_08
+    sep.b #$20
+    rep.b #$20
+    lda.w #$03C0
+    sta.b !dp_94
+    sep.b #$20
+    jsl.l GsuRecordPosition
+
+; @routine 09:B103 ObjectCountTriggerStep
+; WHAT IT DOES: The trigger's frame: synced from its record; the first
+; time a car touches it (a contact with bit 0 among the record's) it sets
+; its +$25 bit 0 and moves the count (HudCountMove19EE); at every such
+; contact $19E8 = 1, which starts ObjectCountMarkerStep's count.
+; HOW: ObjectSyncFromRecord and RecordNextContact, each tested AND #1;
+; the already-set case jumps (JML) past the count to the $19E8 store.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: untouched: as
+; ObjectSyncFromRecord or RecordNextContact leaves it; touched: A low byte
+; = 1, M 8-bit, N, Z from it.
+%at($09B103)
+ObjectCountTriggerStep:
+    jsl.l ObjectSyncFromRecord
+    and.b #$01
+    beq .lB132
+.lB10B:
+    jsl.l RecordNextContact
+    bcc .lB132
+    and.b #$01
+    beq .lB10B
+    lda.w !obj_25,x
+    and.b #$01
+    beq .lB120
+    jml.l .lB12B
+.lB120:
+    lda.w !obj_25,x
+    ora.b #$01
+    sta.w !obj_25,x
+    jsr.w HudCountMove19EE
+.lB12B:
+    sep.b #$20
+    lda.b #$01
+    sta.w !wram_19E8
+.lB132:
+    rtl
+
 ; @routine 09:B133 ObjectSwitchLampB
 ; WHAT IT DOES: Sets up a lamp switch B lights: +$1D = $09:B16E, handler
 ; $09:B19B (ObjectSwitchLampBStep), shape $ECD0, dark (+$5A = $80), +$48 =

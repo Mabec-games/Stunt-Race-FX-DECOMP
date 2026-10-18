@@ -1743,6 +1743,248 @@ ObjectPoseFromRecord:
     plx
     rtl
 
+; @routine 08:CA2D ObjectStopMarked
+; WHAT IT DOES: Sets bit 0 of object X's +$09 and clears its handler
+; (+$1A = 0, +$1C = 0). Nothing in the game refers to it.
+; HOW: An 8-bit OR, then 16-bit and 8-bit zero stores.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A = 0, Z set.
+%at($08CA2D)
+ObjectStopMarked:
+    lda.w !obj_09,x
+    ora.b #$01
+    sta.w !obj_09,x
+    rep.b #$20
+    lda.w #$0000
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$00
+    sta.w !obj_1c,x
+    rtl
+
+; @routine 08:CA45 ObjectFlagsRecordFrame
+; WHAT IT DOES: Shows frame +$48 (+$5A = it with bit 7, through $1F58),
+; then sets the object up as ObjectFlagsRecordSetup does. Placed by course
+; data in bank $0D.
+; HOW: Byte copies, then BRL to ObjectFlagsRecordSetup.
+; Entry: M 8-bit, X 16-bit, D = $0000; X = object. Exit: as
+; ObjectFlagsRecordSetup.
+%at($08CA45)
+ObjectFlagsRecordFrame:
+    lda.w !obj_48,x
+    sta.w !wram_1F58
+    lda.w !wram_1F58
+    ora.b #$80
+    sta.w !obj_5a,x
+    brl ObjectFlagsRecordSetup
+
+; @routine 08:CA56 ObjectFrameCycleSetup
+; WHAT IT DOES: Sets up an object whose picture cycles forwards through its
+; +$48 frames, one step every +$49 frames: handler $08:CA6F
+; (ObjectFrameCycleStep), frame 0 shown, then the flags record
+; (ObjectFlagsRecordSetup's end at $08:CD46). Nothing in the game refers
+; to it.
+; HOW: Stores, then BRL to $08:CD46.
+; Entry: M 8-bit, X 16-bit, D = $0000; X = object. Exit: as
+; ObjectFlagsRecord.
+%at($08CA56)
+ObjectFrameCycleSetup:
+    rep.b #$20
+    lda.w #ObjectFrameCycleStep
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #ObjectFrameCycleStep>>16
+    sta.w !obj_1c,x
+    lda.b #$00
+    ora.b #$80
+    sta.w !obj_5a,x
+    brl ObjectFlagsRecordSetup_lCD46
+
+; @routine 08:CA6F ObjectFrameCycleStep
+; WHAT IT DOES: The cycling object's frame: every +$49 frames (counted in
+; +$4A) its frame +$5A steps forwards round its +$48 frames; then the
+; shown frame goes to its record's +$12 and the record is marked
+; (ObjectRecordFlag4Step).
+; HOW: INC/CMP on the count; CLC, ADC #1, and unless negative CLC, ADC
+; +$48 (through $1F58); AND #$7F; SBC +$48 when not below it; the record
+; copy at $08:CB7E.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as GsuRecordFlag4.
+%at($08CA6F)
+ObjectFrameCycleStep:
+    inc.w !obj_4a,x
+    lda.w !obj_4a,x
+    cmp.w !obj_49,x
+    bne .lCA9F
+    stz.w !obj_4a,x
+    lda.w !obj_48,x
+    sta.w !wram_1F58
+    lda.w !obj_5a,x
+    clc
+    adc.b #$01
+    bmi .lCA8F
+    clc
+    adc.w !wram_1F58
+.lCA8F:
+    and.b #$7F
+    cmp.w !wram_1F58
+    bcc .lCA9A
+    sec
+    sbc.w !wram_1F58
+.lCA9A:
+    ora.b #$80
+    sta.w !obj_5a,x
+.lCA9F:
+    brl ObjectFrameSwingStep_lCB7E
+
+; @routine 08:CAA2 ObjectFrameCycleBackSetup
+; WHAT IT DOES: As ObjectFrameCycleSetup for a picture that cycles
+; backwards: handler $08:CAC3 (ObjectFrameCycleBackStep), the last frame
+; (+$48 - 1) shown, then the flags record. Nothing in the game refers to
+; it.
+; HOW: Stores (DEC A for the last frame), then BRL to $08:CD46.
+; Entry: M 8-bit, X 16-bit, D = $0000; X = object. Exit: as
+; ObjectFlagsRecord.
+%at($08CAA2)
+ObjectFrameCycleBackSetup:
+    rep.b #$20
+    lda.w #ObjectFrameCycleBackStep
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #ObjectFrameCycleBackStep>>16
+    sta.w !obj_1c,x
+    lda.w !obj_48,x
+    dec a
+    sta.w !wram_1F58
+    lda.w !wram_1F58
+    ora.b #$80
+    sta.w !obj_5a,x
+    brl ObjectFlagsRecordSetup_lCD46
+
+; @routine 08:CAC3 ObjectFrameCycleBackStep
+; WHAT IT DOES: As ObjectFrameCycleStep with the frame stepping backwards
+; (ADC #$FF).
+; HOW: As ObjectFrameCycleStep.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as GsuRecordFlag4.
+%at($08CAC3)
+ObjectFrameCycleBackStep:
+    inc.w !obj_4a,x
+    lda.w !obj_4a,x
+    cmp.w !obj_49,x
+    bne .lCAF3
+    stz.w !obj_4a,x
+    lda.w !obj_48,x
+    sta.w !wram_1F58
+    lda.w !obj_5a,x
+    clc
+    adc.b #$FF
+    bmi .lCAE3
+    clc
+    adc.w !wram_1F58
+.lCAE3:
+    and.b #$7F
+    cmp.w !wram_1F58
+    bcc .lCAEE
+    sec
+    sbc.w !wram_1F58
+.lCAEE:
+    ora.b #$80
+    sta.w !obj_5a,x
+.lCAF3:
+    brl ObjectFrameSwingStep_lCB7E
+
+; @routine 08:CAF6 ObjectFrameSwingSetup
+; WHAT IT DOES: Sets up an object whose picture swings between its first
+; and last frames: handler $08:CB15 (ObjectFrameSwingStep), frame 0 shown,
+; its pause (+$2E) from +$4A, then the flags record. Placed by course
+; data in banks $05 and $0D.
+; HOW: Stores, then BRL to $08:CD46.
+; Entry: M 8-bit, X 16-bit, D = $0000; X = object. Exit: as
+; ObjectFlagsRecord.
+%at($08CAF6)
+ObjectFrameSwingSetup:
+    rep.b #$20
+    lda.w #ObjectFrameSwingStep
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #ObjectFrameSwingStep>>16
+    sta.w !obj_1c,x
+    lda.b #$00
+    ora.b #$80
+    sta.w !obj_5a,x
+    lda.w !obj_4a,x
+    sta.w !obj_vel_x,x
+    brl ObjectFlagsRecordSetup_lCD46
+
+; @routine 08:CB15 ObjectFrameSwingStep
+; WHAT IT DOES: The swinging object's frame: while its pause +$2E is not 0
+; it counts down; otherwise frame +$30 is shown and every +$49 frames
+; (counted in +$4B) it steps one frame towards the last (+$48 - 1, kept
+; in $1F59) or, with +$25 bit 0 set, towards frame 0; at the end the
+; direction (+$25 bit 0) flips and the pause restarts from +$4A. Then the
+; shown frame goes to its record's +$12 and the record is marked.
+; HOW: Byte INC/DEC/CMP; the set direction's case is reached by a JML to
+; $08:CB5F; the record copy at $08:CB7E is shared with the cycling steps.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as GsuRecordFlag4.
+%at($08CB15)
+ObjectFrameSwingStep:
+    lda.w !obj_vel_x,x
+    beq .lCB1F
+    dec.w !obj_vel_x,x
+    bra .lCB6B
+.lCB1F:
+    lda.w !obj_vel_y,x
+    sta.w !wram_1F58
+    lda.w !wram_1F58
+    ora.b #$80
+    sta.w !obj_5a,x
+    lda.w !obj_48,x
+    sta.w !wram_1F58
+    dec a
+    sta.w !wram_1F59
+    inc.w !obj_4b,x
+    lda.w !obj_4b,x
+    cmp.w !obj_49,x
+    bne .lCB6B
+    stz.w !obj_4b,x
+    lda.w !obj_25,x
+    and.b #$01
+    beq .lCB50
+    jml.l .lCB5F
+.lCB50:
+    lda.w !obj_5a,x
+    and.b #$7F
+    cmp.w !wram_1F59
+    beq .lCB6E
+    inc.w !obj_vel_y,x
+    bra .lCB6B
+.lCB5F:
+    lda.w !obj_5a,x
+    and.b #$7F
+    cmp.b #$00
+    beq .lCB6E
+    dec.w !obj_vel_y,x
+.lCB6B:
+    brl .lCB7E
+.lCB6E:
+    lda.w !obj_25,x
+    eor.b #$01
+    sta.w !obj_25,x
+    lda.w !obj_4a,x
+    sta.w !obj_vel_x,x
+    bra .lCB6B
+.lCB7E:
+    txy
+    rep.b #$20
+    lda.w !obj_22,x
+    beq .lCB91
+    tax
+    lda.w !obj_5a,y
+    and.w #$007F
+    sta.l !gsu_rec_12,x
+.lCB91:
+    tyx
+    sep.b #$20
+    jml.l ObjectRecordFlag4Step
+
 ; @routine 08:CD08 GsuRecordSet2AHigh
 ; WHAT IT DOES: Sets the word at +$2A of object X's record to A's low byte
 ; as the high byte (and keeps that word in $1F36), when the object has a
@@ -1784,7 +2026,8 @@ ObjectFlagsRecordSetup20:
 ; +$27 = 0, handler $08:CD7E (ObjectRecordFlag4Step), +$1D = $08:CD55
 ; (ObjectFlagsRecord), then its record (ObjectFlagsRecord). Entered as an
 ; object's handler.
-; HOW: Stores (16-bit then 8-bit), then falls into ObjectFlagsRecord.
+; HOW: Stores (16-bit then 8-bit), then falls into ObjectFlagsRecord;
+; the +$1D stores at $08:CD46 are also where other set-ups branch to.
 ; Entry: M 8-bit, X 16-bit, D = $0000; X = object. Exit: as
 ; ObjectFlagsRecord.
 %at($08CD2D)
@@ -1799,6 +2042,7 @@ ObjectFlagsRecordSetup:
     sep.b #$20
     lda.b #ObjectRecordFlag4Step>>16
     sta.w !obj_1c,x
+.lCD46:
     rep.b #$20
     lda.w #ObjectFlagsRecord
     sta.w !obj_1d,x

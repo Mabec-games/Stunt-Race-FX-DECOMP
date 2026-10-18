@@ -3984,6 +3984,91 @@ void abi_ObjectCountMarkerStep(void)
     count_marker_frame();
 }
 
+void abi_HudCountMove19EE(void);
+
+/* 09:B0DC: the trigger's record (GsuRecordNew42D, GsuRecordFlag10) at
+   ($3C0, $3C0, $3C0). */
+static void count_trigger_record(void)
+{
+    abi_GsuRecordNew42D();
+    abi_GsuRecordFlag10();
+    record_at(0x03C0, 0x03C0, 0x03C0);
+}
+
+/* 09:B103: synced from its record; at a car's contact (the record's
+   contacts, RecordNextContact, with bit 0), +$25 bit 0 set and the count
+   moved (HudCountMove19EE) the first time, then $19E8 = 1. */
+static void count_trigger_frame(void)
+{
+    abi_ObjectSyncFromRecord();
+    lda8((uint8_t)(cpu.a & 0x01));
+    if (!(uint8_t)cpu.a)
+        return;
+    for (;;) {
+        abi_RecordNextContact();
+        if (!(cpu.p & P_C))
+            return;
+        lda8((uint8_t)(cpu.a & 0x01));
+        if ((uint8_t)cpu.a)
+            break;
+    }
+    lda8((uint8_t)(ld8(F(0x2025, cpu.x)) & 0x01));
+    if (!(uint8_t)cpu.a) {
+        or8(F(0x2025, cpu.x), 0x01);
+        abi_HudCountMove19EE();
+    }
+    cpu.p |= P_M;
+    st8i(db() | 0x19E8, 0x01);
+}
+
+/*
+ * @routine 09:B0BE ObjectCountTrigger
+ * WHAT IT DOES: Sets up the object that starts the counting markers:
+ * restart $09:B0DC (ObjectCountTriggerRecord), frame $09:B103
+ * (ObjectCountTriggerStep); its record and frame.
+ * HOW: Word and byte stores, then falls into ObjectCountTriggerRecord.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the frame
+ * leaves it.
+ */
+void abi_ObjectCountTrigger(void)
+{
+    handlers2(0xB0DC, 0xB103);
+    count_trigger_record();
+    count_trigger_frame();
+}
+
+/*
+ * @routine 09:B0DC ObjectCountTriggerRecord
+ * WHAT IT DOES: The trigger's restart: its record from the first pool
+ * (GsuRecordNew42D), marked (GsuRecordFlag10), at ($3C0, $3C0, $3C0),
+ * then its frame.
+ * HOW: GsuRecordNew42D, GsuRecordFlag10, GsuRecordPosition; falls into
+ * ObjectCountTriggerStep. A failed record is not checked.
+ * Entry: as ObjectCountTrigger. Exit: as ObjectCountTrigger.
+ */
+void abi_ObjectCountTriggerRecord(void)
+{
+    count_trigger_record();
+    count_trigger_frame();
+}
+
+/*
+ * @routine 09:B103 ObjectCountTriggerStep
+ * WHAT IT DOES: The trigger's frame: synced from its record; the first
+ * time a car touches it (a contact with bit 0 among the record's) it sets
+ * its +$25 bit 0 and moves the count (HudCountMove19EE); at every such
+ * contact $19E8 = 1, which starts ObjectCountMarkerStep's count.
+ * HOW: ObjectSyncFromRecord and RecordNextContact, each tested AND #1;
+ * the already-set case jumps (JML) past the count to the $19E8 store.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: untouched: as
+ * ObjectSyncFromRecord or RecordNextContact leaves it; touched: A low byte
+ * = 1, M 8-bit, N, Z from it.
+ */
+void abi_ObjectCountTriggerStep(void)
+{
+    count_trigger_frame();
+}
+
 /* ---- 09:C438-D13E: bobbing, breakable, swinging, orbiting objects ---- */
 
 void abi_RotateXY(void);
