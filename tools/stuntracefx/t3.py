@@ -595,8 +595,10 @@ def assess(addrs, image_ok=None):
             mp = merged_map()
         # Executed, or (a table inside the routine, such as a JMP (abs,X)
         # list) read as data: each entry counts once its case is taken.
-        covered = bool(span) and all(mp[o] & 0x77 for o in span)
-        gates.append(('C covered', covered, '%d of %d bytes executed or read' % (sum(1 for o in span if mp[o] & 0x77), len(span))
+        # SPC700 code: its own trace bits (spcmap: opcode, operand, data).
+        cov = 0x77 | 0x80 | 0x2000 | 0x4000
+        covered = bool(span) and all(mp[o] & cov for o in span)
+        gates.append(('C covered', covered, '%d of %d bytes executed or read' % (sum(1 for o in span if mp[o] & cov), len(span))
                       if span else 'no filed assembly gives the routine\'s extent'))
         lr = live.get(key)
         # A call an interrupt overlapped cannot be judged per call (the handler can
@@ -624,7 +626,13 @@ def assess(addrs, image_ok=None):
         vs = [r['verdict'] for r in image_rows]
         g7 = bool(image_rows) and all(v in ('IDENTICAL', 'UNCOVERED') for v in vs) and 'IDENTICAL' in vs \
             and all(contains(r['source'], cpath) for r in image_rows) and not dirty(cpath)
-        gates.append(('A7 image', g7, '%d scripts, %s' % (len(vs), image_rows[0]['source'] if image_rows else 'never run')))
+        why7 = '%d scripts, %s' % (len(vs), image_rows[0]['source'] if image_rows else 'never run')
+        # The lockstep run does not put SPC700 C in place of the original
+        # yet, so it judges none: an SPC700 routine (@spc in its header) has
+        # no A7 until it does.
+        if re.search(r'@spc\s+[0-9A-Fa-f]{4}\b', h):
+            g7, why7 = False, 'the lockstep run does not swap SPC700 C yet'
+        gates.append(('A7 image', g7, why7))
         t3 = all(g for _, g, _ in gates)
         t4 = False
         if apath:

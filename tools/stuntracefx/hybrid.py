@@ -28,6 +28,7 @@ def export_head():
     return os.path.join(dst, 'src', 'stuntracefx'), rev
 TAG = re.compile(r'@routine\s+([0-9A-Fa-f]{2}):([0-9A-Fa-f]{4})\s+(\w+)')
 ALIAS = re.compile(r'@alias\s+([0-9A-Fa-f]{2}):([0-9A-Fa-f]{4})')
+SPC = re.compile(r'@spc\s+([0-9A-Fa-f]{4})\b')
 
 
 def main(src=None, lib=None):
@@ -38,7 +39,7 @@ def main(src=None, lib=None):
     if os.path.exists(LIB):
         os.remove(LIB)
     files = sorted(glob.glob(os.path.join(SRC, '**', '*.c'), recursive=True))
-    rows, bad = [], []
+    rows, bad, spc = [], [], {}
     for f in files:
         text = open(f).read()
         for m in TAG.finditer(text):
@@ -47,6 +48,11 @@ def main(src=None, lib=None):
             if not re.search(r'\bvoid\s+abi_%s\s*\(\s*void\s*\)' % name, text):
                 bad.append('%s: @routine %s has no abi_%s' % (os.path.relpath(f, ROOT), name, name))
             rows.append((addr, name))
+            # @spc AAAA: SPC700 code (the tag is the ROM address of its first
+            # byte; it runs at APU RAM AAAA).
+            sp = SPC.search(text[m.end():text.find('*/', m.end())])
+            if sp:
+                spc[addr] = int(sp.group(1), 16)
             # @alias BB:AAAA in the header: the same code run from another
             # address (work RAM code the game also runs from its ROM copy):
             # the C is entered there too.
@@ -71,6 +77,14 @@ def main(src=None, lib=None):
         for n in sorted({n for a, n in rows}):
             t.write('void abi_%s(void);\n' % n)
         t.write('typedef struct { uint32_t addr; void (*abi)(void); const char *name; } Routine;\n')
+        # SPC700 routines too, with their APU address.
+        t.write('typedef struct { uint32_t addr; uint16_t apu; void (*abi)(void); const char *name; } SpcRoutine;\n')
+        sel = [x for x in rows if x[0] in spc]
+        t.write('const SpcRoutine sfx_spc_routine_table[] = {\n')
+        for a, n in sel:
+            t.write('    {0x%06X, 0x%04X, abi_%s, "%s"},\n' % (a, spc[a], n, n))
+        t.write('    {0, 0, 0, 0}\n};\nconst int sfx_spc_routine_count = %d;\n' % len(sel))
+        rows = [x for x in rows if x[0] not in spc]
         for var, sel in (('sfx_routine', [x for x in rows if x[0] not in gsu]), ('sfx_gsu_routine', [x for x in rows if x[0] in gsu])):
             t.write('const Routine %s_table[] = {\n' % var)
             for a, n in sel:
@@ -95,7 +109,7 @@ def main(src=None, lib=None):
     sys.stdout.write(p.stdout + p.stderr)
     if p.returncode or not os.path.exists(LIB):
         print('hybrid: build failed'); return 1
-    print('hybrid: %d routine(s) in %s' % (len({n for a, n in rows}), os.path.relpath(LIB, ROOT)))
+    print('hybrid: %d routine(s), %d of them SPC700, in %s' % (len({n for a, n in rows}) + len(spc), len(spc), os.path.relpath(LIB, ROOT)))
     return 0
 
 

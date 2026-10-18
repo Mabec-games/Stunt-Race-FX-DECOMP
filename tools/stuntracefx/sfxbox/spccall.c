@@ -1,0 +1,281 @@
+/* spccall.c: SPC700 routines in the per-call oracle (A5).
+
+   The library's SPC700 routines (hybrid.py: sfx_spc_routine_table, from C
+   tags with an `@spc` APU address) are keyed by the ROM address of their
+   first byte; the SPC700 runs them from APU RAM, where the race and battle
+   drivers put different code at the same addresses. An instruction about
+   to run at a routine's APU address is that routine when the APU RAM there
+   holds its ROM bytes (the first four) and the instruction before it was a
+   CALL, PCALL or TCALL that jumped here.
+
+   A call is watched from its entry to the instruction at the return address
+   the call pushed, with SP back where it was before the push. The C then
+   runs from the registers at the entry against the APU RAM as it was then
+   (every byte the original wrote while the call was open has its old value
+   kept), its hardware reads ($F0-$FF: the DSP data port, the CPU ports, the
+   timers) answered with the values the original read at the same address,
+   in order. It matches when A, X, Y, SP and PSW, every APU RAM byte either
+   side wrote, and the list of I/O writes (address and value, in order) are
+   the same. A call open when a state is loaded is not judged. */
+#include <dlfcn.h>
+#include <setjmp.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "spccall.h"
+#include "spc.h"
+
+struct SfxboxSmpCallbacks {
+    void (*insn)(uint16_t pc, uint16_t prev_end, uint8_t opcode);
+    void (*mem)(int write, uint16_t addr, uint8_t data);
+    void (*step)(uint32_t clocks);
+};
+struct SmpState { uint16_t pc; uint8_t a, x, y, s, p; };
+
+static void (*core_get)(struct SmpState *);
+static void (*core_set_cb)(const struct SfxboxSmpCallbacks *, int (*)(uint16_t, uint16_t));
+static uint8_t *apu, *rom;
+static size_t rom_n;
+
+typedef struct { uint32_t addr; uint16_t apu; void (*abi)(void); const char *name; } SpcRoutine;
+static SpcRoutine *rt;
+static int nrt;
+static uint8_t at_apu[0x10000];   /* 1 where some routine starts */
+
+static uint32_t rom_off(uint32_t a) { return ((a >> 16 & 0x7F) * 0x8000 + (a & 0x7FFF)) % (uint32_t)rom_n; }
+
+static int routine_here(uint16_t pc)
+{
+    if (!at_apu[pc]) return -1;
+    for (int i = 0; i < nrt; i++) {
+        if (rt[i].apu != pc) continue;
+        uint32_t o = rom_off(rt[i].addr);
+        if (!memcmp(apu + pc, rom + o, 4)) return i;
+    }
+    return -1;
+}
+
+int spc_load(void *core, void *lib, const char *only)
+{
+    const SpcRoutine *table = dlsym(lib, "sfx_spc_routine_table");
+    const int *count = dlsym(lib, "sfx_spc_routine_count");
+    if (!table || !count || !*count) return 0;
+    rt = calloc((size_t)*count, sizeof *rt);
+    for (int i = 0; i < *count; i++) {
+        if (only) {
+            char buf[16]; snprintf(buf, sizeof buf, "%06X", table[i].addr);
+            if (!strstr(only, buf)) continue;
+        }
+        rt[nrt++] = table[i];
+    }
+    if (!nrt) return 0;
+    *(void **)&core_get = dlsym(core, "sfxbox_smp_get");
+    *(void **)&core_set_cb = dlsym(core, "sfxbox_smp_set_callbacks");
+    uint8_t *(*mem)(const char *, size_t *) = dlsym(core, "sfxbox_memory");
+    size_t n;
+    apu = mem ? mem("apuram", &n) : NULL;
+    rom = mem ? mem("rom", &rom_n) : NULL;
+    if (!core_get || !core_set_cb || !apu || !rom) {
+        fprintf(stderr, "the library has SPC700 routines and the core has no SPC700 hooks "
+                "(tools/toolchains/patches/bsnes/0006-sfxbox-spc700-hooks.patch): rebuild it with ./setup.sh bsnes\n");
+        nrt = 0;
+        return -1;
+    }
+    for (int i = 0; i < nrt; i++) at_apu[rt[i].apu] = 1;
+    return nrt;
+}
+
+int spc_count(void) { return nrt; }
+
+/* ---- the C's machine ---- */
+
+SpcRegs spc;
+
+typedef struct { uint16_t addr; uint8_t v; } Io;
+typedef struct {
+    int idx;
+    uint16_t ret;
+    uint8_t sp_after;          /* SP once the return address is pulled */
+    struct SmpState entry;
+    uint32_t gen;
+    Io *ior, *iow; uint32_t nior, niow, capr, capw;   /* the original's I/O reads, writes */
+} Watch;
+
+#define DEPTH 8
+static Watch ws[DEPTH];
+static int depth;
+static uint8_t undo_v[DEPTH][0x10000]; static uint32_t undo_g[DEPTH][0x10000];
+static uint8_t orig_v[DEPTH][0x10000]; static uint32_t orig_g[DEPTH][0x10000];
+static uint8_t cw_v[0x10000]; static uint32_t cw_g[0x10000], cw_gen;
+static uint16_t *touched; static uint32_t ntouched, tcap;
+static Io *ciow; static uint32_t nciow, ciowcap;
+static Watch *cur; static int curdepth;
+static uint32_t ior_at;
+static int c_running, c_bad;
+static jmp_buf c_abort;
+static long c_accesses;
+static int prev_call;           /* the last instruction was a CALL, PCALL or TCALL */
+
+typedef struct { long calls, match, diff, inconclusive, skipped; int shown; } Stat;
+static Stat *stats;
+static FILE *report;
+
+static void push_io(Io **v, uint32_t *n, uint32_t *cap, uint16_t addr, uint8_t x)
+{
+    if (*n == *cap) { *cap = *cap ? *cap * 2 : 256; *v = realloc(*v, *cap * sizeof **v); if (!*v) abort(); }
+    (*v)[(*n)++] = (Io){addr, x};
+}
+
+static int is_io(uint16_t a) { return (a & 0xFFF0) == 0x00F0; }
+
+/* The byte at a as it was at the entry of the watch at depth d. */
+static uint8_t entry_byte(int d, uint16_t a)
+{
+    return undo_g[d][a] == ws[d].gen ? undo_v[d][a] : apu[a];
+}
+
+uint8_t spc_rd(uint16_t a)
+{
+    if (!c_running) return apu[a];
+    if (++c_accesses > (1L << 22)) { c_bad = 2; longjmp(c_abort, 1); }
+    if (is_io(a) && a != 0xF2 && a != 0xF8 && a != 0xF9) {
+        /* A hardware register: the original's next read of it. */
+        for (uint32_t k = ior_at; k < cur->nior; k++)
+            if (cur->ior[k].addr == a) { ior_at = k + 1; return cur->ior[k].v; }
+        c_bad = 3;
+        return 0;
+    }
+    if (cw_g[a] == cw_gen) return cw_v[a];
+    return entry_byte(curdepth, a);
+}
+
+void spc_wr(uint16_t a, uint8_t v)
+{
+    if (!c_running) return;
+    if (++c_accesses > (1L << 22)) { c_bad = 2; longjmp(c_abort, 1); }
+    if (is_io(a)) push_io(&ciow, &nciow, &ciowcap, a, v);
+    if (cw_g[a] != cw_gen) {
+        if (ntouched == tcap) { tcap = tcap ? tcap * 2 : 1024; touched = realloc(touched, tcap * sizeof *touched); if (!touched) abort(); }
+        touched[ntouched++] = a;
+    }
+    cw_g[a] = cw_gen; cw_v[a] = v;
+}
+
+static void finish(int d)
+{
+    Watch *w = &ws[d];
+    Stat *st = &stats[w->idx];
+    struct SmpState fin;
+    core_get(&fin);
+    st->calls++;
+
+    cur = w; curdepth = d; cw_gen++; ntouched = 0; nciow = 0; ior_at = 0; c_bad = 0; c_accesses = 0;
+    spc.a = w->entry.a; spc.x = w->entry.x; spc.y = w->entry.y; spc.sp = w->entry.s;
+    spc_set_psw(w->entry.p);
+    c_running = 1;
+    if (setjmp(c_abort) == 0) rt[w->idx].abi();
+    c_running = 0;
+
+    char why[512] = "";
+    int bad = 0;
+#define WHY(...) do { bad = 1; if (strlen(why) < 400) snprintf(why + strlen(why), sizeof why - strlen(why), __VA_ARGS__); } while (0)
+    if (spc.a != fin.a) WHY(" A=%02X/%02X", spc.a, fin.a);
+    if (spc.x != fin.x) WHY(" X=%02X/%02X", spc.x, fin.x);
+    if (spc.y != fin.y) WHY(" Y=%02X/%02X", spc.y, fin.y);
+    if (spc.sp != fin.s) WHY(" SP=%02X/%02X", spc.sp, fin.s);
+    if (spc_psw() != fin.p) WHY(" PSW=%02X/%02X", spc_psw(), fin.p);
+    /* Every byte either side wrote: the original's from its writes (orig),
+       the C's from its own. */
+    for (uint32_t i = 0; i < ntouched; i++) {
+        uint16_t a = touched[i];
+        uint8_t ov = orig_g[d][a] == w->gen ? orig_v[d][a] : entry_byte(d, a);
+        if (cw_v[a] != ov) WHY(" [%04X]=%02X/%02X", a, cw_v[a], ov);
+    }
+    for (uint32_t a = 0; a < 0x10000; a++)
+        if (orig_g[d][a] == w->gen && cw_g[a] != cw_gen && orig_v[d][a] != entry_byte(d, (uint16_t)a))
+            WHY(" [%04X]=%02X/%02X", a, entry_byte(d, (uint16_t)a), orig_v[d][a]);
+    uint32_t n = nciow < w->niow ? nciow : w->niow;
+    for (uint32_t k = 0; k < n; k++)
+        if (ciow[k].addr != w->iow[k].addr || ciow[k].v != w->iow[k].v) {
+            WHY(" io#%u %02X=%02X/%02X=%02X", k, ciow[k].addr, ciow[k].v, w->iow[k].addr, w->iow[k].v);
+            break;
+        }
+    if (nciow != w->niow) WHY(" io writes %u/%u", nciow, w->niow);
+    if (c_bad == 2) WHY(" runaway");
+    if (c_bad == 3) WHY(" hardware read the original did not make");
+    if (!bad) { st->match++; return; }
+    st->diff++;
+    if (st->shown < 8) {
+        st->shown++;
+        fprintf(report, "DIFF %06X %s call %ld: entry A=%02X X=%02X Y=%02X SP=%02X PSW=%02X; C/orig:%s\n",
+                rt[w->idx].addr, rt[w->idx].name, st->calls, w->entry.a, w->entry.x, w->entry.y, w->entry.s,
+                w->entry.p, why);
+    }
+}
+
+static void on_insn(uint16_t pc, uint16_t prev_end, uint8_t opcode)
+{
+    if (depth) {
+        struct SmpState now;
+        core_get(&now);
+        while (depth && pc == ws[depth - 1].ret && now.s == ws[depth - 1].sp_after) { finish(depth - 1); depth--; }
+    }
+    int called = prev_call && pc != prev_end;
+    prev_call = opcode == 0x3F || opcode == 0x4F || (opcode & 0x0F) == 0x01;
+    if (!called) return;
+    int idx = routine_here(pc);
+    if (idx < 0) return;
+    if (depth == DEPTH) { stats[idx].skipped++; return; }
+    Watch *w = &ws[depth];
+    core_get(&w->entry);
+    /* The call pushed the return address: high byte at SP+2, low at SP+1. */
+    uint8_t s = w->entry.s;
+    w->ret = (uint16_t)(apu[0x100 | (uint8_t)(s + 1)] | apu[0x100 | (uint8_t)(s + 2)] << 8);
+    w->sp_after = (uint8_t)(s + 2);
+    w->idx = idx;
+    w->gen++;
+    w->nior = w->niow = 0;
+    depth++;
+}
+
+static void on_mem(int write, uint16_t a, uint8_t v)
+{
+    if (!depth) return;
+    for (int d = 0; d < depth; d++) {
+        Watch *w = &ws[d];
+        if (write) {
+            if (undo_g[d][a] != w->gen) { undo_g[d][a] = w->gen; undo_v[d][a] = apu[a]; }
+            orig_g[d][a] = w->gen; orig_v[d][a] = v;
+            if (is_io(a)) push_io(&w->iow, &w->niow, &w->capw, a, v);
+        } else if (is_io(a)) {
+            push_io(&w->ior, &w->nior, &w->capr, a, v);
+        }
+    }
+}
+
+void spc_state_loaded(void)
+{
+    if (stats) while (depth) stats[ws[--depth].idx].skipped++;
+    prev_call = 0;
+}
+
+void spc_check_begin(FILE *rep)
+{
+    if (!nrt) return;
+    report = rep;
+    stats = calloc((size_t)nrt, sizeof *stats);
+    static struct SfxboxSmpCallbacks cb = {on_insn, on_mem, NULL};
+    core_set_cb(&cb, NULL);
+}
+
+void spc_check_rows(FILE *rep)
+{
+    for (int i = 0; i < nrt; i++) {
+        Stat *s = &stats[i];
+        const char *v = s->diff ? "DIVERGENT" : s->calls == 0 ? "UNCOVERED" : s->inconclusive ? "UNVERIFIED" : "IDENTICAL";
+        fprintf(rep, "%06X,%s,%ld,%ld,%ld,%ld,%ld,%s\n", rt[i].addr, rt[i].name, s->calls, s->match, s->diff,
+                s->inconclusive, s->skipped, v);
+        printf("%06X %-28s calls %ld match %ld diff %ld inconclusive %ld  %s\n", rt[i].addr, rt[i].name, s->calls,
+               s->match, s->diff, s->inconclusive, v);
+    }
+}

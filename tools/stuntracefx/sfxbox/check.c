@@ -25,6 +25,7 @@
 #include "machine.h"
 #include "check.h"
 #include "gsucall.h"
+#include "spccall.h"
 
 /* ---- the machine model the C links against ---- */
 
@@ -552,6 +553,7 @@ static int load_routines(void *core, const char *lib, const char *only)
     has_c = calloc(1 << 21, 1);
     for (int i = 0; i < all_count; i++) has_c[all_routines[i].addr >> 3] |= (uint8_t)(1 << (all_routines[i].addr & 7));
     if (gsu_load(core, h, only) < 0) return -1;
+    if (spc_load(core, h, only) < 0) return -1;
     *(void **)&core_bus_read = dlsym(core, "sfxbox_core_bus_read");
     *(void **)&core_bus_write = dlsym(core, "sfxbox_core_bus_write");
     return core_bus_read && core_bus_write ? 0 : -1;
@@ -571,6 +573,7 @@ int check_begin(void *core, const char *lib, const char *only, const char *repor
     static struct SfxboxCallbacks cb = {on_insn, on_write, on_read, on_interrupt};
     set_cb(&cb);
     gsu_check_begin(report);
+    spc_check_begin(report);
     return 0;
 }
 
@@ -597,6 +600,7 @@ void check_end(void)
                s->calls, s->match, s->diff, s->inconclusive, v);
     }
     gsu_check_rows(report);
+    spc_check_rows(report);
     fclose(report);
 }
 

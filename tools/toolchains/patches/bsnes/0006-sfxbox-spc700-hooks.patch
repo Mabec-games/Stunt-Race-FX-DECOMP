@@ -1,0 +1,193 @@
+diff --git a/bsnes/emulator/sfxbox.hpp b/bsnes/emulator/sfxbox.hpp
+index 33b1b45..b351ef0 100644
+--- a/bsnes/emulator/sfxbox.hpp
++++ b/bsnes/emulator/sfxbox.hpp
+@@ -26,6 +26,28 @@ extern int sfxbox_smp_fetching;
+ void sfxbox_smp_insn(uint16_t pc);
+ void sfxbox_smp_fetch(uint16_t addr, uint8_t data);
+ void sfxbox_smp_read(uint16_t addr);
++// ---- SPC700 checks ----
++// Events from the SPC700 for the harness: each instruction about to run
++// (its address, the address after the last byte the previous one fetched,
++// its opcode), each data access with its value (APU RAM or I/O; not
++// instruction fetches), each clock step.
++struct SfxboxSmpCallbacks {
++  void (*insn)(uint16_t pc, uint16_t prev_end, uint8_t opcode);
++  void (*mem)(int write, uint16_t addr, uint8_t data);
++  void (*step)(uint32_t clocks);
++};
++extern SfxboxSmpCallbacks sfxbox_smp_cb;
++extern int sfxbox_smp_hooked;
++extern uint16_t sfxbox_smp_fetch_end;
++// Run in place of the instruction at pc (1), or let it run (0).
++extern int (*sfxbox_smp_exec)(uint16_t pc, uint16_t prev_end);
++struct SfxboxSmpState { uint16_t pc; uint8_t a, x, y, s, p; };
++void sfxbox_smp_get(struct SfxboxSmpState* out);
++void sfxbox_smp_put(const struct SfxboxSmpState* in);
++// Spend SPC700 clocks (and timer clocks alike) with nothing else happening.
++void sfxbox_smp_time(uint32_t clocks);
++// One SPC700 data access made now, without time (read when write == 0).
++uint8_t sfxbox_smp_bus(int write, uint16_t addr, uint8_t data);
+ void sfxbox_gsu_operand(uint32_t addr);
+ void sfxbox_gsu_data(uint32_t addr);
+ // Per-access events for the call oracle (kind: 0 S-CPU write, 2 DMA write).
+diff --git a/bsnes/sfc/coprocessor/superfx/superfx.cpp b/bsnes/sfc/coprocessor/superfx/superfx.cpp
+index 90eaa36..9e622e9 100644
+--- a/bsnes/sfc/coprocessor/superfx/superfx.cpp
++++ b/bsnes/sfc/coprocessor/superfx/superfx.cpp
+@@ -24,6 +24,7 @@ extern "C" uint8_t* sfxbox_core_memory(int which, size_t* size) {
+   case 0: *size = sizeof cpu.wram; return cpu.wram;
+   case 1: *size = superfx.ram.size(); return superfx.ram.data();
+   case 2: *size = superfx.rom.size(); return superfx.rom.data();
++  case 3: *size = sizeof dsp.apuram; return dsp.apuram;
+   }
+   *size = 0;
+   return nullptr;
+diff --git a/bsnes/sfc/smp/memory.cpp b/bsnes/sfc/smp/memory.cpp
+index e241786..fa43bbb 100644
+--- a/bsnes/sfc/smp/memory.cpp
++++ b/bsnes/sfc/smp/memory.cpp
+@@ -21,18 +21,21 @@ auto SMP::read(uint16 address) -> uint8 {
+     uint8 data = readRAM(address);
+     if((address & 0xfff0) == 0x00f0) data = readIO(address);
+     wait(address, 1);
++    if(sfxbox_smp_cb.mem && !sfxbox_smp_fetching) sfxbox_smp_cb.mem(0, address, data);  //I/O: never the PC dummy
+     return data;
+   } else {
+     wait(address, 0);
+     uint8 data = readRAM(address);
+     if((address & 0xfff0) == 0x00f0) data = readIO(address);
+-    if(!sfxbox_smp_fetching) sfxbox_smp_read(address);
++    //not an instruction fetch, nor the read(PC) an implied-operand instruction makes of the byte after it
++    if(!sfxbox_smp_fetching && address != sfxbox_smp_fetch_end) { sfxbox_smp_read(address); if(sfxbox_smp_cb.mem) sfxbox_smp_cb.mem(0, address, data); }
+     return data;
+   }
+ }
+ 
+ auto SMP::write(uint16 address, uint8 data) -> void {
+   wait(address);
++  if(sfxbox_smp_cb.mem) sfxbox_smp_cb.mem(1, address, data);
+   writeRAM(address, data);  //even IO writes affect underlying RAM
+   if((address & 0xfff0) == 0x00f0) writeIO(address, data);
+ }
+diff --git a/bsnes/sfc/smp/smp.cpp b/bsnes/sfc/smp/smp.cpp
+index b0f628e..7cfec96 100644
+--- a/bsnes/sfc/smp/smp.cpp
++++ b/bsnes/sfc/smp/smp.cpp
+@@ -28,9 +28,39 @@ auto SMP::main() -> void {
+   if(r.wait) return instructionWait();
+   if(r.stop) return instructionStop();
+   sfxbox_smp_insn(r.pc.w);
++  if(sfxbox_smp_hooked) {
++    uint16 pc = r.pc.w;
++    if(sfxbox_smp_cb.insn) sfxbox_smp_cb.insn(pc, sfxbox_smp_fetch_end, readRAM(pc));
++    if(sfxbox_smp_exec && sfxbox_smp_exec(pc, sfxbox_smp_fetch_end)) return;
++  }
+   instruction();
+ }
+ 
++}
++
++//SPC700 state and actions for the sfxbox harness (see emulator/sfxbox.hpp).
++extern "C" void sfxbox_smp_get(struct SfxboxSmpState* o) {
++  using namespace SuperFamicom;
++  o->pc = smp.r.pc.w; o->a = smp.r.ya.byte.l; o->y = smp.r.ya.byte.h; o->x = smp.r.x; o->s = smp.r.s; o->p = (uint8)smp.r.p;
++}
++
++extern "C" void sfxbox_smp_put(const struct SfxboxSmpState* i) {
++  using namespace SuperFamicom;
++  smp.r.pc.w = i->pc; smp.r.ya.byte.l = i->a; smp.r.ya.byte.h = i->y; smp.r.x = i->x; smp.r.s = i->s; smp.r.p = i->p;
++}
++
++extern "C" void sfxbox_smp_time(uint32_t clocks) {
++  using namespace SuperFamicom;
++  smp.sfxboxTime(clocks);
++}
++
++extern "C" uint8_t sfxbox_smp_bus(int write, uint16_t addr, uint8_t data) {
++  using namespace SuperFamicom;
++  return smp.sfxboxBus(write, addr, data);
++}
++
++namespace SuperFamicom {
++
+ auto SMP::load() -> bool {
+   if(auto fp = platform->open(ID::System, "ipl.rom", File::Read, File::Required)) {
+     fp->read(iplrom, 64);
+diff --git a/bsnes/sfc/smp/smp.hpp b/bsnes/sfc/smp/smp.hpp
+index 4b13dc6..6f12578 100644
+--- a/bsnes/sfc/smp/smp.hpp
++++ b/bsnes/sfc/smp/smp.hpp
+@@ -1,6 +1,14 @@
+ //Sony CXP1100Q-1
+ 
+ struct SMP : Processor::SPC700, Thread {
++  //sfxbox harness: time and accesses with nothing else happening
++  auto sfxboxTime(uint clocks) -> void { step(clocks); stepTimers(clocks); }
++  auto sfxboxBus(bool write, uint16 address, uint8 data) -> uint8 {
++    if(write) { writeRAM(address, data); if((address & 0xfff0) == 0x00f0) writeIO(address, data); return data; }
++    uint8 value = readRAM(address);
++    if((address & 0xfff0) == 0x00f0) value = readIO(address);
++    return value;
++  }
+   inline auto synchronizing() const -> bool override { return scheduler.synchronizing(); }
+ 
+   //io.cpp
+diff --git a/bsnes/sfc/smp/timing.cpp b/bsnes/sfc/smp/timing.cpp
+index 4f70d56..fd80f80 100644
+--- a/bsnes/sfc/smp/timing.cpp
++++ b/bsnes/sfc/smp/timing.cpp
+@@ -33,6 +33,7 @@ auto SMP::waitIdle(maybe<uint16> addr, bool half) -> void {
+ }
+ 
+ auto SMP::step(uint clocks) -> void {
++  if(sfxbox_smp_cb.step) sfxbox_smp_cb.step(clocks);
+   clock += clocks * (uint64_t)cpu.frequency;
+   dsp.clock -= clocks;
+   synchronizeDSP();
+@@ -41,6 +42,7 @@ auto SMP::step(uint clocks) -> void {
+ }
+ 
+ auto SMP::stepIdle(uint clocks) -> void {
++  if(sfxbox_smp_cb.step) sfxbox_smp_cb.step(clocks);
+   clock += clocks * (uint64_t)cpu.frequency;
+   dsp.clock -= clocks;
+ }
+diff --git a/bsnes/target-libretro/sfxbox.cpp b/bsnes/target-libretro/sfxbox.cpp
+index c9726e4..c58f7fe 100644
+--- a/bsnes/target-libretro/sfxbox.cpp
++++ b/bsnes/target-libretro/sfxbox.cpp
+@@ -17,6 +17,10 @@ SfxboxGsuCallbacks sfxbox_gsu_cb = {};
+ int sfxbox_gsu_hooked = 0;
+ int (*sfxbox_gsu_exec)(uint32_t pc, uint32_t prev_end) = nullptr;
+ int sfxbox_smp_fetching = 0;
++SfxboxSmpCallbacks sfxbox_smp_cb = {};
++int sfxbox_smp_hooked = 0;
++uint16_t sfxbox_smp_fetch_end = 0;
++int (*sfxbox_smp_exec)(uint16_t pc, uint16_t prev_end) = nullptr;
+ }
+ 
+ // The harness installs its Super FX callbacks and its run-in-place hook here.
+@@ -157,7 +161,14 @@ extern "C" void sfxbox_smp_insn(uint16_t pc) {
+   sfxboxSmpFirst = 1;
+ }
+ 
++extern "C" RETRO_API void sfxbox_smp_set_callbacks(const SfxboxSmpCallbacks* cb, int (*exec)(uint16_t, uint16_t)) {
++  sfxbox_smp_cb = cb ? *cb : SfxboxSmpCallbacks{};
++  sfxbox_smp_exec = exec;
++  sfxbox_smp_hooked = sfxbox_smp_cb.insn || exec;
++}
++
+ extern "C" void sfxbox_smp_fetch(uint16_t addr, uint8_t data) {
++  sfxbox_smp_fetch_end = (uint16_t)(addr + 1);
+   if(!sfxboxRom) return;
+   int first = sfxboxSmpFirst;
+   sfxboxSmpFirst = 0;
+@@ -281,6 +292,7 @@ extern "C" RETRO_API uint8_t* sfxbox_memory(const char* name, size_t* size) {
+   if(!strcmp(name, "wram")) return sfxbox_core_memory(0, size);
+   if(!strcmp(name, "gsuram")) return sfxbox_core_memory(1, size);
+   if(!strcmp(name, "rom")) return sfxbox_core_memory(2, size);
++  if(!strcmp(name, "apuram")) return sfxbox_core_memory(3, size);
+   *size = 0;
+   return nullptr;
+ }

@@ -67,6 +67,7 @@
 #include "libretro.h"
 #include "check.h"
 #include "gsucall.h"
+#include "spccall.h"
 
 static void die(const char *fmt, ...) {
     va_list ap; va_start(ap, fmt); vfprintf(stderr, fmt, ap); va_end(ap);
@@ -98,6 +99,7 @@ static void state_loaded(void)
 {
     trace_break();
     if (sfxbox_gsu_running_p) gsu_state_loaded(sfxbox_gsu_running_p());
+    spc_state_loaded();
 }
 
 static const char *outdir;
