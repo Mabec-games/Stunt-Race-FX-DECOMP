@@ -2,9 +2,15 @@
 # of the attract play, the idle count $1913 set one short of $400 so the
 # next demo starts at once: the count's wrap to 0 (DemoRunFirst) with
 # $1915 at 2 and the second demo, each with START pressed in it; and
-# DemoRunFourth (03:8653), the title's third demo, entered as a call. The
-# demos run longer than the frames given, so the calls are marked noreturn
-# and judged in lockstep.
+# DemoRunFourth (03:8653), the title's third demo, entered as a call; then
+# $1915 at 1, so the loop runs the third demo, with START pressed in it and
+# left to play out: a demo that ends by itself returns C clear and the loop
+# restarts the game (BootWarm), by 3,300 frames. The demos run longer than
+# the frames given, so the calls are marked noreturn and judged in
+# lockstep. Not here: the second demo left to play out (its BootWarm jump at
+# 0B:AF84), whose piece diverges at frame 4188 with the title's C (the
+# object handler dispatch's return address on the stack is wrong when a
+# handler returns), and not without it.
 load build/stuntracefx/states/attract_06.state
 wait 400
 set 7E1913 FF,03
@@ -18,3 +24,13 @@ call 0B:AF10 long p=00 db=00 d=0000 noreturn frames=3000 press=START@300
 load build/stuntracefx/states/attract_06.state
 wait 400
 call 03:8653 long p=30 db=00 d=0000 noreturn frames=600
+load build/stuntracefx/states/attract_06.state
+wait 400
+set 7E1913 FF,03
+set 7E1915 01,00
+call 0B:AF10 long p=00 db=00 d=0000 noreturn frames=3000 press=START@300
+load build/stuntracefx/states/attract_06.state
+wait 400
+set 7E1913 FF,03
+set 7E1915 01,00
+call 0B:AF10 long p=00 db=00 d=0000 noreturn frames=3300
