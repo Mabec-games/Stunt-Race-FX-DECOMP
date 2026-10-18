@@ -3085,6 +3085,7 @@ L1A7C:
  * HOW: The queue is shifted down one byte; compares against $1E.
  * Entry: none. Exit: as SpcBSfxChannelsFrame leaves it.
  * @spc 1A7F
+ * @spcuses 09E0-09EF,0BC1-0C17,0E97-0EE4,12FA-130C,1861-1871,19F5-1A02,1A21-1A2F,1A7F-1C60,1C6D-1DFD,1E00-217B,21C8-222B,2243-233A,2341-234D,235D-25B8
  */
 void abi_SpcBSfxQueueStart(void)
 {
@@ -3974,6 +3975,7 @@ L2201:
  * HOW: CMP, BEQ; then as SpcBSfxChannelStep.
  * Entry: X = channel. Exit: as SpcBSfxChannelStep.
  * @spc 1C60
+ * @spcuses 09E8-09EF,12FA-130C,1861-1871,19F5-1A02,1A21-1A2F,1AFD-1B03,1B17-1B7E,1B93-1BA9,1BDF-1BE2,1C04-1C1A,1C3E-1C45,1C60-1C6D,1C87-1CEE,1D50-1DFD,1E00-217B,21C8-222B,2243-233A,2341-234D,235D-25B8
  */
 void abi_SpcBSfxStopMatchOld(void)
 {
@@ -5291,6 +5293,7 @@ L2175:
  * HOW: RET.
  * Entry: none. Exit: nothing changed.
  * @spc 1D9A
+ * @spcuses 1D9A-1D9B
  */
 void abi_SpcBSfxReadNoAge(void)
 {
@@ -5305,6 +5308,7 @@ void abi_SpcBSfxReadNoAge(void)
  * HOW: JMP to the step at $217B; two CALLs with X stepped by 8 and back.
  * Entry: X = channel. Exit: A = X; X unchanged.
  * @spc 1DFD
+ * @spcuses 1DFD-1E00,217B-21C8
  */
 void abi_SpcBSfxReadVolumeSlides(void)
 {
@@ -5531,6 +5535,7 @@ L1C04:
  * HOW: ADDW; sign tests.
  * Entry: X = channel (plus 8 for the right side). Exit: A = the volume.
  * @spc 21A5
+ * @spcuses 21A5-21C8
  */
 void abi_SpcBSfxVolumeSlide(void)
 {

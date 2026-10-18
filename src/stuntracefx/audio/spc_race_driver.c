@@ -118,6 +118,7 @@ void abi_SpcSfxReadNoAge(void);
  * HOW: Polling loops on the ports; the store through the pointer $14/$15, its high byte stepped at each page.
  * Entry: jumped to at $1AEC (the race driver) or $19F8 (the battle driver), all keys off, for a reload. Exit: never returns (SpcReset).
  * @spc 0675
+ * @spcuses 0675-06C3,0800-09EF,09F6-107A,10B0-16D8,16F1-1B8C,1B92-1C04,1C07-1DC1,1DCE-23EB,23FB-241B,2441-26D6,3FCA-4000,CA75-CAA8,CAC0-CB04,EDF0-EE20
  */
 void abi_SpcReload(void)
 {
@@ -6787,6 +6788,7 @@ L1BF1:
  * HOW: MOV, BRA; then as SpcSfxFrame.
  * Entry: none. Exit: as SpcSfxFrame.
  * @spc 1C14
+ * @spcuses 09E0-09EF,0A3B-0A3C,0A58-0A6D,0BB4-0DBC,0DCC-0DF4,0DFF-0E1B,0E97-0EE4,129D-13FA,1424-1436,1908-1915,1941-1951,1A92-1AAA,1AE9-1AF6,1B15-1B23,1C14-1C1B,1C25-1DC1,1DCE-23EB,23FB-241B,2441-26D6,3FCA-4000,CA75-CAA8,EDF0-EE20
  */
 void abi_SpcSfxFrameHoldReset(void)
 {
@@ -7477,6 +7479,7 @@ void abi_SpcSfxTakeVoice(void)
  * HOW: CMP, BEQ; then as SpcSfxChannelStep.
  * Entry: X = channel. Exit: as SpcSfxChannelStep.
  * @spc 1DC1
+ * @spcuses 09E0-09EF,0A3B-0A3C,0A58-0A6D,0BB4-0DBC,0DCC-0DF4,0DFF-0E1B,0E97-0EE4,129D-13FA,1424-1436,1908-1915,1941-1951,1A92-1AAA,1AE9-1AF6,1B15-1B23,1C84-1C8A,1C9E-1CCD,1CE2-1CF8,1D2E-1D31,1D53-1D69,1D8D-1D94,1DC1-1DCE,1DE8-1E89,1E93-23EB,23FB-241B,2441-26D6,3FCA-4000,CA75-CAA8,EDF0-EE20
  */
 void abi_SpcSfxStopMatchOld(void)
 {
@@ -8847,6 +8850,7 @@ L22AF:
  * HOW: RET.
  * Entry: none. Exit: nothing changed.
  * @spc 1EDD
+ * @spcuses 1EDD-1EDE
  */
 void abi_SpcSfxReadNoAge(void)
 {

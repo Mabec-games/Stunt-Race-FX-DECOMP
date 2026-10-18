@@ -304,19 +304,19 @@ SpcNoteOn:
     mov.w a,!spc_env_steps+x          ; 0935
     mov.b !spc_slide_steps+x,a        ; 0938
     beq .l095A                        ; 093A
-    mov.w a,!spc_env_delay+x          ; 093C  ; not reached in the traces so far
-    mov.b !spc_slide_delay+x,a        ; 093F  ; not reached in the traces so far
-    mov.w a,!spc_env_dir+x            ; 0941  ; not reached in the traces so far
-    bne .l0950                        ; 0944  ; not reached in the traces so far
-    mov.w a,!spc_pitch+1+x            ; 0946  ; not reached in the traces so far
-    setc                              ; 0949  ; not reached in the traces so far
-    sbc.w a,!spc_env_semitones+x      ; 094A  ; not reached in the traces so far
-    mov.w !spc_pitch+1+x,a            ; 094D  ; not reached in the traces so far
+    mov.w a,!spc_env_delay+x          ; 093C
+    mov.b !spc_slide_delay+x,a        ; 093F
+    mov.w a,!spc_env_dir+x            ; 0941
+    bne .l0950                        ; 0944
+    mov.w a,!spc_pitch+1+x            ; 0946
+    setc                              ; 0949
+    sbc.w a,!spc_env_semitones+x      ; 094A
+    mov.w !spc_pitch+1+x,a            ; 094D
 .l0950:
-    mov.w a,!spc_env_semitones+x      ; 0950  ; not reached in the traces so far
-    clrc                              ; 0953  ; not reached in the traces so far
-    adc.w a,!spc_pitch+1+x            ; 0954  ; not reached in the traces so far
-    call SpcSlideToNote               ; 0957  ; not reached in the traces so far
+    mov.w a,!spc_env_semitones+x      ; 0950
+    clrc                              ; 0953
+    adc.w a,!spc_pitch+1+x            ; 0954
+    call SpcSlideToNote               ; 0957
 .l095A:
     call SpcLoadPitch                 ; 095A
 .l095D:
@@ -426,9 +426,9 @@ SpcDspWrite:
     ret                               ; 09EE
 
 SpcDspRead:
-    mov.w !spc_dspaddr,y              ; 09EF  ; not reached in the traces so far
-    mov.w a,!spc_dspdata              ; 09F2  ; not reached in the traces so far
-    ret                               ; 09F5  ; not reached in the traces so far
+    mov.w !spc_dspaddr,y              ; 09EF
+    mov.w a,!spc_dspdata              ; 09F2
+    ret                               ; 09F5
 
 ; @routine 19:C682 SpcReadPatternWord
 ; WHAT IT DOES: Reads the next word of the song's pattern list at $40 and steps past it. The code that follows is reached by branches from SpcMusicFrame: the song start (the request $1B kept as $1C and cleared, the pattern list from the song table $07F4, a two-tick delay $0C, then every voice no sound effect holds keyed off), and the tracks' reset (instrument, volume $FF, pan $0A, vibrato and tremolo off, transposes and fades cleared, master volume $C0, tempo $20).
@@ -646,36 +646,36 @@ SpcMusicFrame:
     bne .l0ADC                        ; 0B53
     mov.b a,!spc_tempo_fade           ; 0B55
     beq .l0B64                        ; 0B57
-    movw ya,!spc_tempo_delta          ; 0B59  ; not reached in the traces so far
-    addw ya,!spc_tempo                ; 0B5B  ; not reached in the traces so far
-    dbnz !spc_tempo_fade,.l0B62       ; 0B5D  ; not reached in the traces so far
-    movw ya,!spc_tempo_fade           ; 0B60  ; not reached in the traces so far
+    movw ya,!spc_tempo_delta          ; 0B59
+    addw ya,!spc_tempo                ; 0B5B
+    dbnz !spc_tempo_fade,.l0B62       ; 0B5D
+    movw ya,!spc_tempo_fade           ; 0B60
 .l0B62:
-    movw !spc_tempo,ya                ; 0B62  ; not reached in the traces so far
+    movw !spc_tempo,ya                ; 0B62
 .l0B64:
     mov.b a,!spc_echo_fade            ; 0B64
     beq .l0B7D                        ; 0B66
-    movw ya,!spc_echo_delta_l         ; 0B68  ; not reached in the traces so far
-    addw ya,!spc_echo_volume_l        ; 0B6A  ; not reached in the traces so far
-    movw !spc_echo_volume_l,ya        ; 0B6C  ; not reached in the traces so far
-    movw ya,!spc_echo_delta_r         ; 0B6E  ; not reached in the traces so far
-    addw ya,!spc_echo_volume_r        ; 0B70  ; not reached in the traces so far
-    dbnz !spc_echo_fade,.l0B7B        ; 0B72  ; not reached in the traces so far
-    movw ya,!spc_echo_fade            ; 0B75  ; not reached in the traces so far
-    movw !spc_echo_volume_l,ya        ; 0B77  ; not reached in the traces so far
-    mov.b y,!spc_echo_target_r        ; 0B79  ; not reached in the traces so far
+    movw ya,!spc_echo_delta_l         ; 0B68
+    addw ya,!spc_echo_volume_l        ; 0B6A
+    movw !spc_echo_volume_l,ya        ; 0B6C
+    movw ya,!spc_echo_delta_r         ; 0B6E
+    addw ya,!spc_echo_volume_r        ; 0B70
+    dbnz !spc_echo_fade,.l0B7B        ; 0B72
+    movw ya,!spc_echo_fade            ; 0B75
+    movw !spc_echo_volume_l,ya        ; 0B77
+    mov.b y,!spc_echo_target_r        ; 0B79
 .l0B7B:
-    movw !spc_echo_volume_r,ya        ; 0B7B  ; not reached in the traces so far
+    movw !spc_echo_volume_r,ya        ; 0B7B
 .l0B7D:
     mov.b a,!spc_master_fade          ; 0B7D
     beq .l0B8F                        ; 0B7F
-    movw ya,!spc_master_delta         ; 0B81  ; not reached in the traces so far
-    addw ya,!spc_master_volume        ; 0B83  ; not reached in the traces so far
-    dbnz !spc_master_fade,.l0B8A      ; 0B85  ; not reached in the traces so far
-    movw ya,!spc_master_fade          ; 0B88  ; not reached in the traces so far
+    movw ya,!spc_master_delta         ; 0B81
+    addw ya,!spc_master_volume        ; 0B83
+    dbnz !spc_master_fade,.l0B8A      ; 0B85
+    movw ya,!spc_master_fade          ; 0B88
 .l0B8A:
-    movw !spc_master_volume,ya        ; 0B8A  ; not reached in the traces so far
-    mov !spc_volume_dirty,#$FF        ; 0B8C  ; not reached in the traces so far
+    movw !spc_master_volume,ya        ; 0B8A
+    mov !spc_volume_dirty,#$FF        ; 0B8C
 .l0B8F:
     mov x,#$00                        ; 0B8F
     mov !spc_voice_bit,#$01           ; 0B91
@@ -773,12 +773,12 @@ SpcLoadInstrument:
     mov y,#$00                        ; 0BE3
     mov a,(!spc_ptr)+y                ; 0BE5
     bpl .l0BF7                        ; 0BE7
-    and a,#$1F                        ; 0BE9  ; not reached in the traces so far
-    and !spc_flg,#$20                 ; 0BEB  ; not reached in the traces so far
-    tset !spc_flg,a                   ; 0BEE  ; not reached in the traces so far
-    or !spc_noise_voices,!spc_voice_bit; 0BF1  ; not reached in the traces so far
-    mov a,y                           ; 0BF4  ; not reached in the traces so far
-    bra .l0BFE                        ; 0BF5  ; not reached in the traces so far
+    and a,#$1F                        ; 0BE9
+    and !spc_flg,#$20                 ; 0BEB
+    tset !spc_flg,a                   ; 0BEE
+    or !spc_noise_voices,!spc_voice_bit; 0BF1
+    mov a,y                           ; 0BF4
+    bra .l0BFE                        ; 0BF5
 .l0BF7:
     mov.b a,!spc_voice_bit            ; 0BF7
     tclr !spc_noise_voices,a          ; 0BF9
@@ -842,15 +842,15 @@ SpcVcmdVibratoOff:
     ret                               ; 0C54
 
 SpcVcmdVibratoFade:
-    mov.w !spc_vibrato_fade_len+x,a   ; 0C55  ; not reached in the traces so far
-    push a                            ; 0C58  ; not reached in the traces so far
-    mov y,#$00                        ; 0C59  ; not reached in the traces so far
-    mov.b a,!spc_vibrato_depth+x      ; 0C5B  ; not reached in the traces so far
-    pop x                             ; 0C5D  ; not reached in the traces so far
-    div ya,x                          ; 0C5E  ; not reached in the traces so far
-    mov.b x,!spc_voice_x              ; 0C5F  ; not reached in the traces so far
-    mov.w !spc_vibrato_fade_delta+x,a ; 0C61  ; not reached in the traces so far
-    ret                               ; 0C64  ; not reached in the traces so far
+    mov.w !spc_vibrato_fade_len+x,a   ; 0C55
+    push a                            ; 0C58
+    mov y,#$00                        ; 0C59
+    mov.b a,!spc_vibrato_depth+x      ; 0C5B
+    pop x                             ; 0C5D
+    div ya,x                          ; 0C5E
+    mov.b x,!spc_voice_x              ; 0C5F
+    mov.w !spc_vibrato_fade_delta+x,a ; 0C61
+    ret                               ; 0C64
 
 SpcVcmdMasterVolume:
     mov a,#$00                        ; 0C65
@@ -858,15 +858,15 @@ SpcVcmdMasterVolume:
     ret                               ; 0C69
 
 SpcVcmdMasterFade:
-    mov.b !spc_master_fade,a          ; 0C6A  ; not reached in the traces so far
-    call SpcTrackRead                 ; 0C6C  ; not reached in the traces so far
-    mov.b !spc_master_target,a        ; 0C6F  ; not reached in the traces so far
-    setc                              ; 0C71  ; not reached in the traces so far
-    sbc.b a,!spc_master_volume+1      ; 0C72  ; not reached in the traces so far
-    mov.b x,!spc_master_fade          ; 0C74  ; not reached in the traces so far
-    call SpcFadeDelta                 ; 0C76  ; not reached in the traces so far
-    movw !spc_master_delta,ya         ; 0C79  ; not reached in the traces so far
-    ret                               ; 0C7B  ; not reached in the traces so far
+    mov.b !spc_master_fade,a          ; 0C6A
+    call SpcTrackRead                 ; 0C6C
+    mov.b !spc_master_target,a        ; 0C6F
+    setc                              ; 0C71
+    sbc.b a,!spc_master_volume+1      ; 0C72
+    mov.b x,!spc_master_fade          ; 0C74
+    call SpcFadeDelta                 ; 0C76
+    movw !spc_master_delta,ya         ; 0C79
+    ret                               ; 0C7B
 
 SpcVcmdTempo:
     mov a,#$00                        ; 0C7C
@@ -874,53 +874,53 @@ SpcVcmdTempo:
     ret                               ; 0C80
 
 SpcVcmdTempoFade:
-    mov.b !spc_tempo_fade,a           ; 0C81  ; not reached in the traces so far
-    call SpcTrackRead                 ; 0C83  ; not reached in the traces so far
-    mov.b !spc_tempo_target,a         ; 0C86  ; not reached in the traces so far
-    setc                              ; 0C88  ; not reached in the traces so far
-    sbc.b a,!spc_tempo+1              ; 0C89  ; not reached in the traces so far
-    mov.b x,!spc_tempo_fade           ; 0C8B  ; not reached in the traces so far
-    call SpcFadeDelta                 ; 0C8D  ; not reached in the traces so far
-    movw !spc_tempo_delta,ya          ; 0C90  ; not reached in the traces so far
-    ret                               ; 0C92  ; not reached in the traces so far
+    mov.b !spc_tempo_fade,a           ; 0C81
+    call SpcTrackRead                 ; 0C83
+    mov.b !spc_tempo_target,a         ; 0C86
+    setc                              ; 0C88
+    sbc.b a,!spc_tempo+1              ; 0C89
+    mov.b x,!spc_tempo_fade           ; 0C8B
+    call SpcFadeDelta                 ; 0C8D
+    movw !spc_tempo_delta,ya          ; 0C90
+    ret                               ; 0C92
 
 SpcVcmdTranspose:
-    mov.b !spc_transpose,a            ; 0C93  ; not reached in the traces so far
-    ret                               ; 0C95  ; not reached in the traces so far
+    mov.b !spc_transpose,a            ; 0C93
+    ret                               ; 0C95
 
 SpcVcmdVoiceTranspose:
-    mov.w !spc_voice_transpose+x,a    ; 0C96  ; not reached in the traces so far
-    ret                               ; 0C99  ; not reached in the traces so far
+    mov.w !spc_voice_transpose+x,a    ; 0C96
+    ret                               ; 0C99
 
 SpcVcmdTremoloOn:
-    mov.w !spc_tremolo_delay+x,a      ; 0C9A  ; not reached in the traces so far
-    call SpcTrackRead                 ; 0C9D  ; not reached in the traces so far
-    mov.w !spc_tremolo_rate+x,a       ; 0CA0  ; not reached in the traces so far
-    call SpcTrackRead                 ; 0CA3  ; not reached in the traces so far
+    mov.w !spc_tremolo_delay+x,a      ; 0C9A
+    call SpcTrackRead                 ; 0C9D
+    mov.w !spc_tremolo_rate+x,a       ; 0CA0
+    call SpcTrackRead                 ; 0CA3
 
 SpcVcmdTremoloOff:
-    mov.b !spc_tremolo_depth+x,a      ; 0CA6  ; not reached in the traces so far
-    ret                               ; 0CA8  ; not reached in the traces so far
+    mov.b !spc_tremolo_depth+x,a      ; 0CA6
+    ret                               ; 0CA8
 
 SpcVcmdEnvelopeFrom:
-    mov a,#$01                        ; 0CA9  ; not reached in the traces so far
-    bra SpcVcmdEnvelopeTo_l0CAF       ; 0CAB  ; not reached in the traces so far
+    mov a,#$01                        ; 0CA9
+    bra SpcVcmdEnvelopeTo_l0CAF       ; 0CAB
 
 SpcVcmdEnvelopeTo:
-    mov a,#$00                        ; 0CAD  ; not reached in the traces so far
+    mov a,#$00                        ; 0CAD
 .l0CAF:
-    mov.w !spc_env_dir+x,a            ; 0CAF  ; not reached in the traces so far
-    mov a,y                           ; 0CB2  ; not reached in the traces so far
-    mov.w !spc_env_delay+x,a          ; 0CB3  ; not reached in the traces so far
-    call SpcTrackRead                 ; 0CB6  ; not reached in the traces so far
-    mov.w !spc_env_steps+x,a          ; 0CB9  ; not reached in the traces so far
-    call SpcTrackRead                 ; 0CBC  ; not reached in the traces so far
-    mov.w !spc_env_semitones+x,a      ; 0CBF  ; not reached in the traces so far
-    ret                               ; 0CC2  ; not reached in the traces so far
+    mov.w !spc_env_dir+x,a            ; 0CAF
+    mov a,y                           ; 0CB2
+    mov.w !spc_env_delay+x,a          ; 0CB3
+    call SpcTrackRead                 ; 0CB6
+    mov.w !spc_env_steps+x,a          ; 0CB9
+    call SpcTrackRead                 ; 0CBC
+    mov.w !spc_env_semitones+x,a      ; 0CBF
+    ret                               ; 0CC2
 
 SpcVcmdEnvelopeOff:
-    mov.w !spc_env_steps+x,a          ; 0CC3  ; not reached in the traces so far
-    ret                               ; 0CC6  ; not reached in the traces so far
+    mov.w !spc_env_steps+x,a          ; 0CC3
+    ret                               ; 0CC6
 
 SpcVcmdVolume:
     mov.w !spc_volume+1+x,a           ; 0CC7
@@ -985,28 +985,28 @@ SpcVcmdEchoVolume:
     ret                               ; 0D28
 
 SpcVcmdEchoFade:
-    mov.b !spc_echo_fade,a            ; 0D29  ; not reached in the traces so far
-    call SpcTrackRead                 ; 0D2B  ; not reached in the traces so far
-    mov.b !spc_echo_fade_ticks,a      ; 0D2E  ; not reached in the traces so far
-    setc                              ; 0D30  ; not reached in the traces so far
-    sbc.b a,!spc_echo_left            ; 0D31  ; not reached in the traces so far
-    mov.b x,!spc_echo_fade            ; 0D33  ; not reached in the traces so far
-    call SpcFadeDelta                 ; 0D35  ; not reached in the traces so far
-    movw !spc_echo_delta_l,ya         ; 0D38  ; not reached in the traces so far
-    call SpcTrackRead                 ; 0D3A  ; not reached in the traces so far
-    mov.b !spc_echo_target_r,a        ; 0D3D  ; not reached in the traces so far
-    setc                              ; 0D3F  ; not reached in the traces so far
-    sbc.b a,!spc_echo_right           ; 0D40  ; not reached in the traces so far
-    mov.b x,!spc_echo_fade            ; 0D42  ; not reached in the traces so far
-    call SpcFadeDelta                 ; 0D44  ; not reached in the traces so far
-    movw !spc_echo_delta_r,ya         ; 0D47  ; not reached in the traces so far
-    ret                               ; 0D49  ; not reached in the traces so far
+    mov.b !spc_echo_fade,a            ; 0D29
+    call SpcTrackRead                 ; 0D2B
+    mov.b !spc_echo_fade_ticks,a      ; 0D2E
+    setc                              ; 0D30
+    sbc.b a,!spc_echo_left            ; 0D31
+    mov.b x,!spc_echo_fade            ; 0D33
+    call SpcFadeDelta                 ; 0D35
+    movw !spc_echo_delta_l,ya         ; 0D38
+    call SpcTrackRead                 ; 0D3A
+    mov.b !spc_echo_target_r,a        ; 0D3D
+    setc                              ; 0D3F
+    sbc.b a,!spc_echo_right           ; 0D40
+    mov.b x,!spc_echo_fade            ; 0D42
+    call SpcFadeDelta                 ; 0D44
+    movw !spc_echo_delta_r,ya         ; 0D47
+    ret                               ; 0D49
 
 SpcVcmdEchoOff:
-    movw !spc_echo_volume_l,ya        ; 0D4A  ; not reached in the traces so far
-    movw !spc_echo_volume_r,ya        ; 0D4C  ; not reached in the traces so far
-    set1 !spc_flg.5                   ; 0D4E  ; not reached in the traces so far
-    ret                               ; 0D50  ; not reached in the traces so far
+    movw !spc_echo_volume_l,ya        ; 0D4A
+    movw !spc_echo_volume_r,ya        ; 0D4C
+    set1 !spc_flg.5                   ; 0D4E
+    ret                               ; 0D50
 
 SpcVcmdEchoSetup:
     call SpcSetEchoDelay              ; 0D51
@@ -1045,8 +1045,8 @@ SpcSetEchoDelay:
     and a,#$0F                        ; 0D81
     eor a,#$FF                        ; 0D83
     bbc !spc_echo_delay_wait.7,.l0D8B ; 0D85
-    clrc                              ; 0D88  ; not reached in the traces so far
-    adc.b a,!spc_echo_delay_wait      ; 0D89  ; not reached in the traces so far
+    clrc                              ; 0D88
+    adc.b a,!spc_echo_delay_wait      ; 0D89
 .l0D8B:
     mov.b !spc_echo_delay_wait,a      ; 0D8B
     mov y,#$04                        ; 0D8D
@@ -1203,10 +1203,10 @@ SpcVoiceEffects:
     or !spc_volume_dirty,!spc_voice_bit; 0E4D
     mov.w a,!spc_tremolo_phase+x      ; 0E50
     bpl .l0E5C                        ; 0E53
-    inc y                             ; 0E55  ; not reached in the traces so far
-    bne .l0E5C                        ; 0E56  ; not reached in the traces so far
-    mov a,#$80                        ; 0E58  ; not reached in the traces so far
-    bra .l0E60                        ; 0E5A  ; not reached in the traces so far
+    inc y                             ; 0E55
+    bne .l0E5C                        ; 0E56
+    mov a,#$80                        ; 0E58
+    bra .l0E60                        ; 0E5A
 .l0E5C:
     clrc                              ; 0E5C
     adc.w a,!spc_tremolo_rate+x       ; 0E5D
@@ -1215,7 +1215,7 @@ SpcVoiceEffects:
     call SpcTremoloFactor             ; 0E63
     bra .l0E6F                        ; 0E66
 .l0E68:
-    inc.b !spc_tremolo_wait+x         ; 0E68  ; not reached in the traces so far
+    inc.b !spc_tremolo_wait+x         ; 0E68
 .l0E6A:
     mov a,#$FF                        ; 0E6A
     call SpcVolumeCalc                ; 0E6C
@@ -1286,8 +1286,8 @@ SpcVoiceVolumeLR:
 .l0ECB:
     mov a,y                           ; 0ECB
     bcc .l0ED1                        ; 0ECC
-    eor a,#$FF                        ; 0ECE  ; not reached in the traces so far
-    inc a                             ; 0ED0  ; not reached in the traces so far
+    eor a,#$FF                        ; 0ECE
+    inc a                             ; 0ED0
 .l0ED1:
     mov.b y,!spc_tmp_sign             ; 0ED1
     call SpcDspWriteVoice             ; 0ED3
@@ -1409,15 +1409,15 @@ SpcVoiceTick:
     mov.w a,!spc_vibrato_target+x     ; 0F94
     bra .l0FA6                        ; 0F97
 .l0F99:
-    setp                              ; 0F99  ; not reached in the traces so far
-    inc.b !spc_port_in+x              ; 0F9A  ; not reached in the traces so far
-    clrp                              ; 0F9C  ; not reached in the traces so far
-    mov y,a                           ; 0F9D  ; not reached in the traces so far
-    beq .l0FA2                        ; 0F9E  ; not reached in the traces so far
-    mov.b a,!spc_vibrato_depth+x      ; 0FA0  ; not reached in the traces so far
+    setp                              ; 0F99
+    inc.b !spc_port_in+x              ; 0F9A
+    clrp                              ; 0F9C
+    mov y,a                           ; 0F9D
+    beq .l0FA2                        ; 0F9E
+    mov.b a,!spc_vibrato_depth+x      ; 0FA0
 .l0FA2:
-    clrc                              ; 0FA2  ; not reached in the traces so far
-    adc.w a,!spc_vibrato_fade_delta+x ; 0FA3  ; not reached in the traces so far
+    clrc                              ; 0FA2
+    adc.w a,!spc_vibrato_fade_delta+x ; 0FA3
 .l0FA6:
     mov.b !spc_vibrato_depth+x,a      ; 0FA6
     mov.w a,!spc_vibrato_phase+x      ; 0FA8
@@ -1435,9 +1435,9 @@ SpcVoiceTick:
     mov.b a,!spc_vibrato_depth+x      ; 0FBB
     cmp a,#$F1                        ; 0FBD
     bcc .l0FC6                        ; 0FBF
-    and a,#$0F                        ; 0FC1  ; not reached in the traces so far
-    mul ya                            ; 0FC3  ; not reached in the traces so far
-    bra .l0FCA                        ; 0FC4  ; not reached in the traces so far
+    and a,#$0F                        ; 0FC1
+    mul ya                            ; 0FC3
+    bra .l0FCA                        ; 0FC4
 .l0FC6:
     mul ya                            ; 0FC6
     mov a,y                           ; 0FC7
@@ -1560,7 +1560,7 @@ SpcTremoloBetweenTicks:
 SpcTremoloFactor:
     asl a                             ; 105C
     bcc .l1061                        ; 105D
-    eor a,#$FF                        ; 105F  ; not reached in the traces so far
+    eor a,#$FF                        ; 105F
 .l1061:
     mov.b y,!spc_tremolo_depth+x      ; 1061
     mul ya                            ; 1063
@@ -1707,12 +1707,12 @@ SpcChannelGuards:
 .l116F:
     ret                               ; 116F
 .l1170:
-    mov x,#$07                        ; 1170  ; not reached in the traces so far
-    call SpcSfxStop                   ; 1172  ; not reached in the traces so far
-    bra .l1158                        ; 1175  ; not reached in the traces so far
+    mov x,#$07                        ; 1170
+    call SpcSfxStop                   ; 1172
+    bra .l1158                        ; 1175
 .l1177:
-    mov x,#$06                        ; 1177  ; not reached in the traces so far
-    jmp SpcSfxStop                    ; 1179  ; not reached in the traces so far
+    mov x,#$06                        ; 1177
+    jmp SpcSfxStop                    ; 1179
 
 ; @routine 19:CE06 SpcStaggeredChecks
 ; WHAT IT DOES: Steps the counter $0581 through 0-$16 each tick and at 3, 9, $0C, $0F, $12 and $15 does one check: restarting a looping sound (channels by bits of $2A and $2D, stop through SpcSfxStopIf with $20 = the step) or queueing sound $17, $25 or $21; outside song 1, $2A is cleared.
@@ -1830,8 +1830,8 @@ SpcGameStateTick:
 .l1243:
     cmp !spc_command,#$35             ; 1243
     bne .l124D                        ; 1246
-    mov a,#$FF                        ; 1248  ; not reached in the traces so far
-    mov.w !spc_song5_scale,a          ; 124A  ; not reached in the traces so far
+    mov a,#$FF                        ; 1248
+    mov.w !spc_song5_scale,a          ; 124A
 .l124D:
     cmp !spc_song_request,#$02        ; 124D
     bne .l1257                        ; 1250
@@ -1963,17 +1963,17 @@ SpcGameStateTick:
 .l1357:
     cmp !spc_command,#$39             ; 1357
     bne .l1376                        ; 135A
-    mov !spc_loop_flags,#$00          ; 135C  ; not reached in the traces so far
-    set1 !spc_game_flags.3            ; 135F  ; not reached in the traces so far
-    set1 !spc_game_flags.6            ; 1361  ; not reached in the traces so far
-    mov a,#$01                        ; 1363  ; not reached in the traces so far
-    mov.w !spc_timer_4c,a             ; 1365  ; not reached in the traces so far
-    mov x,#$07                        ; 1368  ; not reached in the traces so far
-    call SpcSfxStopRequest            ; 136A  ; not reached in the traces so far
-    dec x                             ; 136D  ; not reached in the traces so far
-    call SpcSfxStopRequest            ; 136E  ; not reached in the traces so far
-    mov x,#$08                        ; 1371  ; not reached in the traces so far
-    call SpcSfxStopIf                 ; 1373  ; not reached in the traces so far
+    mov !spc_loop_flags,#$00          ; 135C
+    set1 !spc_game_flags.3            ; 135F
+    set1 !spc_game_flags.6            ; 1361
+    mov a,#$01                        ; 1363
+    mov.w !spc_timer_4c,a             ; 1365
+    mov x,#$07                        ; 1368
+    call SpcSfxStopRequest            ; 136A
+    dec x                             ; 136D
+    call SpcSfxStopRequest            ; 136E
+    mov x,#$08                        ; 1371
+    call SpcSfxStopIf                 ; 1373
 .l1376:
     cmp !spc_command,#$32             ; 1376
     bne .l139C                        ; 1379
@@ -2036,8 +2036,8 @@ SpcGameStateTick:
     mov.w a,!spc_sfx_command+4        ; 13ED
     cmp a,#$38                        ; 13F0
     bne .l13F9                        ; 13F2
-    mov x,#$04                        ; 13F4  ; not reached in the traces so far
-    call SpcSfxStop                   ; 13F6  ; not reached in the traces so far
+    mov x,#$04                        ; 13F4
+    call SpcSfxStop                   ; 13F6
 .l13F9:
     ret                               ; 13F9
 
@@ -2170,7 +2170,7 @@ SpcCommandTimers:
     mov.w !spc_count_20_16,a          ; 14B4
     bbs !spc_track_flags.4,.l14BF     ; 14B7
     bbs !spc_track_flags.5,.l14C8     ; 14BA
-    bra .l14CF                        ; 14BD  ; not reached in the traces so far
+    bra .l14CF                        ; 14BD
 .l14BF:
     clr1 !spc_track_flags.4           ; 14BF
     mov a,#$20                        ; 14C1
@@ -2190,8 +2190,8 @@ SpcCommandTimers:
     mov.w a,!spc_count_37             ; 14DC
     cmp a,#$0A                        ; 14DF
     bne .l14E8                        ; 14E1
-    mov a,#$43                        ; 14E3  ; not reached in the traces so far
-    call SpcSoundQueuePush            ; 14E5  ; not reached in the traces so far
+    mov a,#$43                        ; 14E3
+    call SpcSoundQueuePush            ; 14E5
 .l14E8:
     mov a,#$00                        ; 14E8
     mov.w !spc_count_37,a             ; 14EA
@@ -2203,23 +2203,23 @@ SpcCommandTimers:
     beq .l14FA                        ; 14F6
     bra .l1522                        ; 14F8
 .l14FA:
-    mov a,#$01                        ; 14FA  ; not reached in the traces so far
-    mov.w !spc_random_delay,a         ; 14FC  ; not reached in the traces so far
-    mov.b a,!spc_random               ; 14FF  ; not reached in the traces so far
-    and a,#$3F                        ; 1501  ; not reached in the traces so far
-    adc a,#$1E                        ; 1503  ; not reached in the traces so far
-    mov.w !spc_random_target,a        ; 1505  ; not reached in the traces so far
-    bra .l1522                        ; 1508  ; not reached in the traces so far
+    mov a,#$01                        ; 14FA
+    mov.w !spc_random_delay,a         ; 14FC
+    mov.b a,!spc_random               ; 14FF
+    and a,#$3F                        ; 1501
+    adc a,#$1E                        ; 1503
+    mov.w !spc_random_target,a        ; 1505
+    bra .l1522                        ; 1508
 .l150A:
-    inc.w !spc_random_delay           ; 150A  ; not reached in the traces so far
-    cmp.w a,!spc_random_target        ; 150D  ; not reached in the traces so far
-    bne .l1522                        ; 1510  ; not reached in the traces so far
-    mov a,#$29                        ; 1512  ; not reached in the traces so far
-    call SpcSoundQueuePush            ; 1514  ; not reached in the traces so far
-    mov !spc_command,#$29             ; 1517  ; not reached in the traces so far
-    mov a,#$00                        ; 151A  ; not reached in the traces so far
-    mov.w !spc_random_delay,a         ; 151C  ; not reached in the traces so far
-    mov.w !spc_random_target,a        ; 151F  ; not reached in the traces so far
+    inc.w !spc_random_delay           ; 150A
+    cmp.w a,!spc_random_target        ; 150D
+    bne .l1522                        ; 1510
+    mov a,#$29                        ; 1512
+    call SpcSoundQueuePush            ; 1514
+    mov !spc_command,#$29             ; 1517
+    mov a,#$00                        ; 151A
+    mov.w !spc_random_delay,a         ; 151C
+    mov.w !spc_random_target,a        ; 151F
 .l1522:
     ret                               ; 1522
 
@@ -2242,17 +2242,17 @@ SpcTempoBend:
     beq .l152C                        ; 1534
     bra .l156C                        ; 1536
 .l1538:
-    clr1 !spc_track_flags.2           ; 1538  ; not reached in the traces so far
-    clr1 !spc_track_flags.3           ; 153A  ; not reached in the traces so far
-    mov a,#$00                        ; 153C  ; not reached in the traces so far
-    mov.w !spc_bend_count,a           ; 153E  ; not reached in the traces so far
-    mov.w !spc_bend_acc,a             ; 1541  ; not reached in the traces so far
-    mov.w !spc_bend_acc+1,a           ; 1544  ; not reached in the traces so far
-    mov.w !spc_bend_tempo_step,a      ; 1547  ; not reached in the traces so far
-    mov.w a,!spc_bend_tempo           ; 154A  ; not reached in the traces so far
-    mov.b !spc_transpose,a            ; 154D  ; not reached in the traces so far
-    mov.w a,!spc_bend_transpose       ; 154F  ; not reached in the traces so far
-    bra .l159E                        ; 1552  ; not reached in the traces so far
+    clr1 !spc_track_flags.2           ; 1538
+    clr1 !spc_track_flags.3           ; 153A
+    mov a,#$00                        ; 153C
+    mov.w !spc_bend_count,a           ; 153E
+    mov.w !spc_bend_acc,a             ; 1541
+    mov.w !spc_bend_acc+1,a           ; 1544
+    mov.w !spc_bend_tempo_step,a      ; 1547
+    mov.w a,!spc_bend_tempo           ; 154A
+    mov.b !spc_transpose,a            ; 154D
+    mov.w a,!spc_bend_transpose       ; 154F
+    bra .l159E                        ; 1552
 .l1554:
     mov a,#$04                        ; 1554
     mov.w !spc_bend_acc+1,a           ; 1556
@@ -2316,9 +2316,9 @@ SpcTempoBendStart:
 .l15BE:
     ret                               ; 15BE
 .l15BF:
-    clr1 !spc_track_flags.2           ; 15BF  ; not reached in the traces so far
-    set1 !spc_track_flags.3           ; 15C1  ; not reached in the traces so far
-    ret                               ; 15C3  ; not reached in the traces so far
+    clr1 !spc_track_flags.2           ; 15BF
+    set1 !spc_track_flags.3           ; 15C1
+    ret                               ; 15C3
 
 ; @routine 19:D24E SpcEchoTransition
 ; WHAT IT DOES: The echo transition by the state $0551 (0 idle; bit 0 or 1 of $28 starts it): the echo voices, feedback and volumes saved ($0570-$0573), then the step count $0550 runs up or down (SpcEchoTransitionStep) with every voice echoing ($4A bits 6, 7) and the feedback and echo volume interpolated from the saved values toward $64 by the count; state 3 restores the saved settings.
@@ -2419,16 +2419,16 @@ SpcEchoTransitionStep:
     mov.w a,!spc_echo_step            ; 1662
     cmp a,#$3C                        ; 1665
     beq .l1655                        ; 1667
-    mov a,#$01                        ; 1669  ; not reached in the traces so far
-    mov.w !spc_echo_state,a           ; 166B  ; not reached in the traces so far
-    ret                               ; 166E  ; not reached in the traces so far
+    mov a,#$01                        ; 1669
+    mov.w !spc_echo_state,a           ; 166B
+    ret                               ; 166E
 .l166F:
     mov.w a,!spc_echo_step            ; 166F
     cmp a,#$1E                        ; 1672
     beq .l1655                        ; 1674
-    mov a,#$03                        ; 1676  ; not reached in the traces so far
-    mov.w !spc_echo_state,a           ; 1678  ; not reached in the traces so far
-    ret                               ; 167B  ; not reached in the traces so far
+    mov a,#$03                        ; 1676
+    mov.w !spc_echo_state,a           ; 1678
+    ret                               ; 167B
 .l167C:
     mov.w a,!spc_echo_step            ; 167C
     mov y,#$B0                        ; 167F
@@ -2694,7 +2694,7 @@ SpcPort1Command:
     setc                              ; 17F2
     sbc a,#$3E                        ; 17F3
     bmi .l17FA                        ; 17F5
-    mov !spc_sfx_tmp,#$00             ; 17F7  ; not reached in the traces so far
+    mov !spc_sfx_tmp,#$00             ; 17F7
 .l17FA:
     mov.b a,!spc_sfx_tmp              ; 17FA
     beq SpcPortCommand_l17DE          ; 17FC
@@ -2875,15 +2875,15 @@ SpcEchoModeA:
     bbc !spc_flags.0,.l195F           ; 198A
     mov !spc_loop_flags,!spc_loop_flags_saved; 198D
     bbc !spc_flags.7,.l19A9           ; 1990
-    clr1 !spc_flags.7                 ; 1993  ; not reached in the traces so far
-    mov.w a,!spc_echo_mode_saved      ; 1995  ; not reached in the traces so far
-    mov.b !spc_echo_voices,a          ; 1998  ; not reached in the traces so far
-    mov.w a,!spc_echo_mode_saved+1    ; 199A  ; not reached in the traces so far
-    mov.b !spc_echo_feedback,a        ; 199D  ; not reached in the traces so far
-    mov.w a,!spc_echo_mode_saved+2    ; 199F  ; not reached in the traces so far
-    mov.b !spc_echo_left,a            ; 19A2  ; not reached in the traces so far
-    mov.w a,!spc_echo_mode_saved+3    ; 19A4  ; not reached in the traces so far
-    mov.b !spc_echo_right,a           ; 19A7  ; not reached in the traces so far
+    clr1 !spc_flags.7                 ; 1993
+    mov.w a,!spc_echo_mode_saved      ; 1995
+    mov.b !spc_echo_voices,a          ; 1998
+    mov.w a,!spc_echo_mode_saved+1    ; 199A
+    mov.b !spc_echo_feedback,a        ; 199D
+    mov.w a,!spc_echo_mode_saved+2    ; 199F
+    mov.b !spc_echo_left,a            ; 19A2
+    mov.w a,!spc_echo_mode_saved+3    ; 19A4
+    mov.b !spc_echo_right,a           ; 19A7
 .l19A9:
     mov a,#$4B                        ; 19A9
     call SpcSoundQueuePush            ; 19AB
@@ -2946,22 +2946,22 @@ SpcSfxPointer:
     mov !spc_loop_flags,#$00          ; 19FF
     mov.w a,!spc_echo_state           ; 1A02
     beq .l1A2B                        ; 1A05
-    set1 !spc_flags.7                 ; 1A07  ; not reached in the traces so far
-    set1 !spc_game_flags.6            ; 1A09  ; not reached in the traces so far
-    mov.b a,!spc_echo_voices          ; 1A0B  ; not reached in the traces so far
-    mov.w !spc_echo_mode_saved,a      ; 1A0D  ; not reached in the traces so far
-    mov.b a,!spc_echo_feedback        ; 1A10  ; not reached in the traces so far
-    mov.w !spc_echo_mode_saved+1,a    ; 1A12  ; not reached in the traces so far
-    mov.b a,!spc_echo_left            ; 1A15  ; not reached in the traces so far
-    mov.w !spc_echo_mode_saved+2,a    ; 1A17  ; not reached in the traces so far
-    mov.b a,!spc_echo_right           ; 1A1A  ; not reached in the traces so far
-    mov.w !spc_echo_mode_saved+3,a    ; 1A1C  ; not reached in the traces so far
-    mov a,#$50                        ; 1A1F  ; not reached in the traces so far
-    mov.b !spc_echo_feedback,a        ; 1A21  ; not reached in the traces so far
-    mov a,#$11                        ; 1A23  ; not reached in the traces so far
-    mov.b !spc_echo_left,a            ; 1A25  ; not reached in the traces so far
-    mov a,#$11                        ; 1A27  ; not reached in the traces so far
-    mov.b !spc_echo_right,a           ; 1A29  ; not reached in the traces so far
+    set1 !spc_flags.7                 ; 1A07
+    set1 !spc_game_flags.6            ; 1A09
+    mov.b a,!spc_echo_voices          ; 1A0B
+    mov.w !spc_echo_mode_saved,a      ; 1A0D
+    mov.b a,!spc_echo_feedback        ; 1A10
+    mov.w !spc_echo_mode_saved+1,a    ; 1A12
+    mov.b a,!spc_echo_left            ; 1A15
+    mov.w !spc_echo_mode_saved+2,a    ; 1A17
+    mov.b a,!spc_echo_right           ; 1A1A
+    mov.w !spc_echo_mode_saved+3,a    ; 1A1C
+    mov a,#$50                        ; 1A1F
+    mov.b !spc_echo_feedback,a        ; 1A21
+    mov a,#$11                        ; 1A23
+    mov.b !spc_echo_left,a            ; 1A25
+    mov a,#$11                        ; 1A27
+    mov.b !spc_echo_right,a           ; 1A29
 .l1A2B:
     set1 !spc_flags.0                 ; 1A2B
     mov a,#$4A                        ; 1A2D
@@ -2993,11 +2993,11 @@ SpcSfxChannelPause:
     mov.w a,!spc_sfx_loop_sound+x     ; 1A54
     beq .l1A68                        ; 1A57
 .l1A59:
-    mov.w a,!spc_sfx_loop_sound+x     ; 1A59  ; not reached in the traces so far
-    mov.w !spc_sfx_paused+x,a         ; 1A5C  ; not reached in the traces so far
-    mov a,#$00                        ; 1A5F  ; not reached in the traces so far
-    mov.w !spc_sfx_loop_sound+x,a     ; 1A61  ; not reached in the traces so far
-    mov.w !spc_sfx_loop+x,a           ; 1A64  ; not reached in the traces so far
+    mov.w a,!spc_sfx_loop_sound+x     ; 1A59
+    mov.w !spc_sfx_paused+x,a         ; 1A5C
+    mov a,#$00                        ; 1A5F
+    mov.w !spc_sfx_loop_sound+x,a     ; 1A61
+    mov.w !spc_sfx_loop+x,a           ; 1A64
 .l1A67:
     ret                               ; 1A67
 .l1A68:
@@ -3093,7 +3093,7 @@ SpcMusicFade:
     clr1 !spc_flags.6                 ; 1ADE
     bbs !spc_track_flags.7,.l1AE9     ; 1AE0
     bbs !spc_game_flags.0,SpcKeyOffAll_l1B15; 1AE3
-    jmp SpcMusicPause                 ; 1AE6  ; not reached in the traces so far
+    jmp SpcMusicPause                 ; 1AE6
 .l1AE9:
     call SpcKeyOffAll                 ; 1AE9
     jmp SpcReload                     ; 1AEC
@@ -3210,7 +3210,7 @@ SpcCommandBlock:
     inc x                             ; 1B85
     bra .l1B7C                        ; 1B86
 .l1B88:
-    mov !spc_command,#$00             ; 1B88  ; not reached in the traces so far
+    mov !spc_command,#$00             ; 1B88
 .l1B8B:
     ret                               ; 1B8B
 .t1B8C:
@@ -3278,9 +3278,9 @@ SpcSfxHolds:
     beq .l1BDA                        ; 1BE7
     cmp.b a,!spc_math_tmp             ; 1BE9
     beq .l1BF1                        ; 1BEB
-    inc x                             ; 1BED  ; not reached in the traces so far
-    inc x                             ; 1BEE  ; not reached in the traces so far
-    bra .l1BE4                        ; 1BEF  ; not reached in the traces so far
+    inc x                             ; 1BED
+    inc x                             ; 1BEE
+    bra .l1BE4                        ; 1BEF
 .l1BF1:
     inc x                             ; 1BF1
     mov.w a,.t1C04+x                  ; 1BF2
@@ -3346,9 +3346,9 @@ SpcSfxHolds:
 .l1C5A:
     jmp SpcSfxChannelsFrame           ; 1C5A
 .l1C5D:
-    mov.b !spc_hold_last,a            ; 1C5D  ; not reached in the traces so far
-    mov.b a,!spc_command              ; 1C5F  ; not reached in the traces so far
-    beq .l1C5A                        ; 1C61  ; not reached in the traces so far
+    mov.b !spc_hold_last,a            ; 1C5D
+    mov.b a,!spc_command              ; 1C5F
+    beq .l1C5A                        ; 1C61
 .l1C63:
     mov.b !spc_sfx_work+1,a           ; 1C63
     call SpcSfxLookup                 ; 1C65
@@ -3571,34 +3571,34 @@ SpcSfxTakeVoice:
     cmp a,#$0E                        ; 1D89
     beq .l1DB8                        ; 1D8B
 .l1D8D:
-    mov a,#$00                        ; 1D8D  ; not reached in the traces so far
-    mov.w !spc_sfx_stop_request+x,a   ; 1D8F  ; not reached in the traces so far
-    bra SpcSfxChannelStep_l1D2E       ; 1D92  ; not reached in the traces so far
+    mov a,#$00                        ; 1D8D
+    mov.w !spc_sfx_stop_request+x,a   ; 1D8F
+    bra SpcSfxChannelStep_l1D2E       ; 1D92
 .l1D94:
     mov.w a,!spc_sfx_command+x        ; 1D94
     cmp a,#$02                        ; 1D97
     beq .l1DCE                        ; 1D99
-    bra .l1D8D                        ; 1D9B  ; not reached in the traces so far
+    bra .l1D8D                        ; 1D9B
 .l1D9D:
     mov.w a,!spc_sfx_command+x        ; 1D9D
     cmp a,#$25                        ; 1DA0
     beq .l1DCE                        ; 1DA2
-    bra .l1D8D                        ; 1DA4  ; not reached in the traces so far
+    bra .l1D8D                        ; 1DA4
 .l1DA6:
     mov.w a,!spc_sfx_command+x        ; 1DA6
     cmp a,#$15                        ; 1DA9
     beq .l1DCE                        ; 1DAB
-    bra .l1D8D                        ; 1DAD  ; not reached in the traces so far
+    bra .l1D8D                        ; 1DAD
 .l1DAF:
     mov.w a,!spc_sfx_command+x        ; 1DAF
     cmp a,#$17                        ; 1DB2
     beq .l1DCE                        ; 1DB4
-    bra .l1D8D                        ; 1DB6  ; not reached in the traces so far
+    bra .l1D8D                        ; 1DB6
 .l1DB8:
     mov.w a,!spc_sfx_command+x        ; 1DB8
     cmp a,#$21                        ; 1DBB
     beq .l1DCE                        ; 1DBD
-    bra .l1D8D                        ; 1DBF  ; not reached in the traces so far
+    bra .l1D8D                        ; 1DBF
 ; @routine 19:DA4B SpcSfxStopMatchOld
 ; WHAT IT DOES: A stop-request match for the commands $05 and $08 that no case of SpcSfxChannelStep's stop check dispatches to: channel X's command $0390 of 5 or 8 takes the stop ($1DE8), any other refuses it ($1D8D); then as SpcSfxChannelStep. It follows an unconditional BRA and nothing jumps to it; a direct call is its only way in.
 ; HOW: CMP, BEQ; then as SpcSfxChannelStep.
@@ -3622,7 +3622,7 @@ SpcSfxTakeVoice:
 .l1DE0:
     mov.w a,!spc_sfx_loop+x           ; 1DE0
     bne .l1DF5                        ; 1DE3
-    jmp SpcSfxChannelStep_l1D2E       ; 1DE5  ; not reached in the traces so far
+    jmp SpcSfxChannelStep_l1D2E       ; 1DE5
 .l1DE8:
     mov a,#$00                        ; 1DE8
     mov.w !spc_sfx_stop_request+x,a   ; 1DEA
@@ -4022,7 +4022,7 @@ SpcSfxEngineScale:
     bne .l209A                        ; 2071
     mov.b a,!spc_port_in+3            ; 2073
     bne .l2078                        ; 2075
-    inc a                             ; 2077  ; not reached in the traces so far
+    inc a                             ; 2077
 .l2078:
     mov y,#$03                        ; 2078
     mul ya                            ; 207A
@@ -4040,7 +4040,7 @@ SpcSfxEngineScale:
     call SpcMul16                     ; 208F
     mov a,y                           ; 2092
     bpl .l2097                        ; 2093
-    mov a,#$7F                        ; 2095  ; not reached in the traces so far
+    mov a,#$7F                        ; 2095
 .l2097:
     pop y                             ; 2097
     pop x                             ; 2098
@@ -4074,7 +4074,7 @@ SpcSfxEngineScale:
     mov.w !spc_sfx_vol_l+x,a          ; 20CC
     mov.w !spc_sfx_vol_l_int+x,a      ; 20CF
     bbs !spc_track_flags.6,.l20D6     ; 20D2
-    inc y                             ; 20D5  ; not reached in the traces so far
+    inc y                             ; 20D5
 .l20D6:
     mov a,(!spc_sfx_tmp)+y            ; 20D6
     mov.w !spc_sfx_vol_r+x,a          ; 20D8
@@ -4222,8 +4222,8 @@ SpcSfxStart:
     pop a                             ; 21C2
     jmp SpcSfxChannelStep_l1D53       ; 21C3
 .l21C6:
-    pop a                             ; 21C6  ; not reached in the traces so far
-    ret                               ; 21C7  ; not reached in the traces so far
+    pop a                             ; 21C6
+    ret                               ; 21C7
     pop x                             ; 21C8
     mov.w a,!spc_sfx_held+x           ; 21C9
     bne .l21D1                        ; 21CC
@@ -4339,9 +4339,9 @@ SpcSfxPitchSlide:
     mov y,a                           ; 227D
     bra .l2273                        ; 227E
 .l2280:
-    mov a,#$FF                        ; 2280  ; not reached in the traces so far
-    mov y,#$3F                        ; 2282  ; not reached in the traces so far
-    bra .l2273                        ; 2284  ; not reached in the traces so far
+    mov a,#$FF                        ; 2280
+    mov y,#$3F                        ; 2282
+    bra .l2273                        ; 2284
 .l2286:
     mov.w a,!spc_sfx_sweep_on+x       ; 2286
     beq .l22AF                        ; 2289
@@ -4389,7 +4389,7 @@ SpcSfxVolumeSlide:
     mov a,#$00                        ; 22C9
     bra .l22CF                        ; 22CB
 .l22CD:
-    mov a,#$7F                        ; 22CD  ; not reached in the traces so far
+    mov a,#$7F                        ; 22CD
 .l22CF:
     mov.w !spc_sfx_vol_l+x,a          ; 22CF
     ret                               ; 22D2
@@ -4499,7 +4499,7 @@ SpcSfxFadeVolume:
 .l238D:
     jmp SpcMusicFade_l1AE9            ; 238D
 .l2390:
-    jmp SpcKeyOffAll_l1B15            ; 2390  ; not reached in the traces so far
+    jmp SpcKeyOffAll_l1B15            ; 2390
 .l2393:
     mov.b !spc_sfx_work,x             ; 2393
     bbs !spc_sfx_work.3,.l23A2        ; 2395
@@ -4515,9 +4515,9 @@ SpcSfxFadeVolume:
     call SpcIndexRight                ; 23A8
     bra .l239B                        ; 23AB
 .l23AD:
-    inc a                             ; 23AD  ; not reached in the traces so far
-    mov.w !spc_sfx_fade_count+x,a     ; 23AE  ; not reached in the traces so far
-    ret                               ; 23B1  ; not reached in the traces so far
+    inc a                             ; 23AD
+    mov.w !spc_sfx_fade_count+x,a     ; 23AE
+    ret                               ; 23B1
 
 ; @routine 19:E03C SpcSfxVolumeAdjust
 ; WHAT IT DOES: For sound $25, adds $0530 * 4 to the volume A.
@@ -4621,7 +4621,7 @@ SpcSfxSpecial:
     mov y,a                           ; 2477
     mov.w x,!spc_engine_rising        ; 2478
     bne .l247F                        ; 247B
-    mov x,#$01                        ; 247D  ; not reached in the traces so far
+    mov x,#$01                        ; 247D
 .l247F:
     mov a,#$00                        ; 247F
     div ya,x                          ; 2481
@@ -4758,7 +4758,7 @@ SpcSfxSpecial:
     setc                              ; 2588
     sbc !spc_sfx_tmp+1,#$3F           ; 2589
     bmi .l2591                        ; 258C
-    mov !spc_sfx_tmp+1,#$3F           ; 258E  ; not reached in the traces so far
+    mov !spc_sfx_tmp+1,#$3F           ; 258E
 .l2591:
     mov !spc_port3_last,!spc_port_in+3; 2591
     pop x                             ; 2594
@@ -5594,7 +5594,7 @@ SpcNoiseSampleInit:
     mov.b a,!spc_random               ; EE17
     or.b a,!spc_random+1              ; EE19
     bne .lEE1F                        ; EE1B
-    inc.b !spc_random                 ; EE1D  ; not reached in the traces so far
+    inc.b !spc_random                 ; EE1D
 .lEE1F:
     ret                               ; EE1F
 .tEE20:
