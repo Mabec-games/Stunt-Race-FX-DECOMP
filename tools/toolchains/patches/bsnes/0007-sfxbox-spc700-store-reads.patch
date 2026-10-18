@@ -1,0 +1,123 @@
+diff --git a/bsnes/emulator/sfxbox.hpp b/bsnes/emulator/sfxbox.hpp
+index 77d5553..ebf1ef7 100644
+--- a/bsnes/emulator/sfxbox.hpp
++++ b/bsnes/emulator/sfxbox.hpp
+@@ -26,6 +26,8 @@ extern int sfxbox_smp_fetching;
+ // Set around the read(PC) an instruction makes of the byte after it (a
+ // dummy cycle, no operand): not a data access.
+ extern int sfxbox_smp_dummy;
++//set while a store reads its target before writing it: an access, not a read of data
++extern int sfxbox_smp_store;
+ void sfxbox_smp_insn(uint16_t pc);
+ void sfxbox_smp_fetch(uint16_t addr, uint8_t data);
+ void sfxbox_smp_read(uint16_t addr);
+diff --git a/bsnes/processor/spc700/instructions.cpp b/bsnes/processor/spc700/instructions.cpp
+index 0048e5c..6d1dac2 100644
+--- a/bsnes/processor/spc700/instructions.cpp
++++ b/bsnes/processor/spc700/instructions.cpp
+@@ -64,7 +64,7 @@ auto SPC700::instructionAbsoluteModify(fps op) -> void {
+ auto SPC700::instructionAbsoluteWrite(uint8& data) -> void {
+   uint16 address = fetch();
+   address |= fetch() << 8;
+-  read(address);
++  sfxbox_smp_store = 1; read(address); sfxbox_smp_store = 0;
+   write(address, data);
+ }
+ 
+@@ -80,7 +80,7 @@ auto SPC700::instructionAbsoluteIndexedWrite(uint8& index) -> void {
+   uint16 address = fetch();
+   address |= fetch() << 8;
+   idle();
+-  read(address + index);
++  sfxbox_smp_store = 1; read(address + index); sfxbox_smp_store = 0;
+   write(address + index, A);
+ }
+ 
+@@ -240,7 +240,7 @@ auto SPC700::instructionDirectModify(fps op) -> void {
+ 
+ auto SPC700::instructionDirectWrite(uint8& data) -> void {
+   uint8 address = fetch();
+-  load(address);
++  sfxbox_smp_store = 1; load(address); sfxbox_smp_store = 0;
+   store(address, data);
+ }
+ 
+@@ -288,7 +288,7 @@ auto SPC700::instructionDirectImmediateModify(fpb op) -> void {
+ auto SPC700::instructionDirectImmediateWrite() -> void {
+   uint8 immediate = fetch();
+   uint8 address = fetch();
+-  load(address);
++  sfxbox_smp_store = 1; load(address); sfxbox_smp_store = 0;
+   store(address, immediate);
+ }
+ 
+@@ -319,7 +319,7 @@ auto SPC700::instructionDirectModifyWord(int adjust) -> void {
+ 
+ auto SPC700::instructionDirectWriteWord() -> void {
+   uint8 address = fetch();
+-  load(address + 0);
++  sfxbox_smp_store = 1; load(address + 0); sfxbox_smp_store = 0;
+   store(address + 0, A);
+   store(address + 1, Y);
+ }
+@@ -341,7 +341,7 @@ auto SPC700::instructionDirectIndexedModify(fps op, uint8& index) -> void {
+ auto SPC700::instructionDirectIndexedWrite(uint8& data, uint8& index) -> void {
+   uint8 address = fetch();
+   idle();
+-  load(address + index);
++  sfxbox_smp_store = 1; load(address + index); sfxbox_smp_store = 0;
+   store(address + index, data);
+ }
+ 
+@@ -416,7 +416,7 @@ auto SPC700::instructionIndexedIndirectWrite(uint8& data, uint8& index) -> void
+   idle();
+   uint16 address = load(indirect + index + 0);
+   address |= load(indirect + index + 1) << 8;
+-  read(address);
++  sfxbox_smp_store = 1; read(address); sfxbox_smp_store = 0;
+   write(address, data);
+ }
+ 
+@@ -434,7 +434,7 @@ auto SPC700::instructionIndirectIndexedWrite(uint8& data, uint8& index) -> void
+   uint16 address = load(indirect + 0);
+   address |= load(indirect + 1) << 8;
+   idle();
+-  read(address + index);
++  sfxbox_smp_store = 1; read(address + index); sfxbox_smp_store = 0;
+   write(address + index, data);
+ }
+ 
+@@ -446,7 +446,7 @@ auto SPC700::instructionIndirectXRead(fpb op) -> void {
+ 
+ auto SPC700::instructionIndirectXWrite(uint8& data) -> void {
+   sfxbox_smp_dummy = 1; read(PC); sfxbox_smp_dummy = 0;
+-  load(X);
++  sfxbox_smp_store = 1; load(X); sfxbox_smp_store = 0;
+   store(X, data);
+ }
+ 
+diff --git a/bsnes/sfc/smp/memory.cpp b/bsnes/sfc/smp/memory.cpp
+index 3f3f977..f36baf1 100644
+--- a/bsnes/sfc/smp/memory.cpp
++++ b/bsnes/sfc/smp/memory.cpp
+@@ -29,7 +29,7 @@ auto SMP::read(uint16 address) -> uint8 {
+     uint8 data = readRAM(address);
+     if((address & 0xfff0) == 0x00f0) data = readIO(address);
+     //not an instruction fetch, nor the read(PC) an implied-operand instruction makes of the byte after it
+-    if(!sfxbox_smp_fetching && !sfxbox_smp_dummy) { sfxbox_smp_read(address); if(sfxbox_smp_cb.mem) sfxbox_smp_cb.mem(0, address, data); }
++    if(!sfxbox_smp_fetching && !sfxbox_smp_dummy) { if(!sfxbox_smp_store) sfxbox_smp_read(address); if(sfxbox_smp_cb.mem) sfxbox_smp_cb.mem(0, address, data); }
+     return data;
+   }
+ }
+diff --git a/bsnes/target-libretro/sfxbox.cpp b/bsnes/target-libretro/sfxbox.cpp
+index 3782792..84dc522 100644
+--- a/bsnes/target-libretro/sfxbox.cpp
++++ b/bsnes/target-libretro/sfxbox.cpp
+@@ -18,6 +18,7 @@ int sfxbox_gsu_hooked = 0;
+ int (*sfxbox_gsu_exec)(uint32_t pc, uint32_t prev_end) = nullptr;
+ int sfxbox_smp_fetching = 0;
+ int sfxbox_smp_dummy = 0;
++int sfxbox_smp_store = 0;
+ SfxboxSmpCallbacks sfxbox_smp_cb = {};
+ int sfxbox_smp_hooked = 0;
+ uint16_t sfxbox_smp_fetch_end = 0;
