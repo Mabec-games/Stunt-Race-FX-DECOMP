@@ -367,7 +367,8 @@ TileRowBuildLong:
 ; backwards. Nothing is built when the row is the one recorded at
 ; !tile_row_source; otherwise that records it and !tile_row_built is set
 ; to 1 (it is cleared first in every case). The LDA #0 after the second
-; test of !tile_row_on can never run (the test repeats one just passed).
+; test of !tile_row_on never runs (the test repeats one just passed); it
+; runs only as TileRowBuildZero.
 ; HOW: 16-bit registers (left so); work RAM through the data bank; the
 ; rows through direct page indexed by X (D = $0000, bank 0).
 ; Entry: D = $0000. Exit: M, X 16-bit. Not built (!tile_row_on = 0): A =
@@ -384,6 +385,16 @@ TileRowBuild:
 .on:
     and.w #$00FF
     bne .level
+
+; @routine 02:D96E TileRowBuildZero
+; WHAT IT DOES: TileRowBuild's LDA #0 after its second $08ED test, which
+; never runs (the test repeats one just passed): the row for level 0 read
+; forwards, as TileRowBuild from its row pick.
+; HOW: LDA #0, BRA to the pick; then as TileRowBuild. No code reaches
+; these bytes; a direct call is their only way in.
+; Entry: M, X 16-bit; D = $0000. Exit: as TileRowBuild when it reaches its
+; row pick.
+%at($02D96E)
     lda.w #$0000
     bra .forwards
 .level:

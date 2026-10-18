@@ -298,7 +298,8 @@ void abi_HardwareRegsInit02Long(void)
  * first and its row is read backwards. Nothing is built when the row is
  * the one recorded at $08E8; otherwise $08E8 records it and $08EA is set
  * to 1 ($08EA is cleared first in every case). The LDA #0 after the
- * second test of $08ED can never run (the test repeats one just passed).
+ * second test of $08ED never runs (the test repeats one just passed); it
+ * runs only as TileRowBuildZero.
  * HOW: 16-bit registers (left so); work RAM through the data bank; the
  * rows through direct page indexed by X (D = $0000, bank 0).
  * Entry: D = $0000. Exit: M, X 16-bit. Not built ($08ED = 0): A = 0; Z
@@ -306,9 +307,11 @@ void abi_HardwareRegsInit02Long(void)
  * C set, N clear. Built: A = 1; X = the row address + $40 (forwards) or -
  * 2 (backwards), Y = $40; N, Z clear, C set, V from the last add.
  */
+static uint16_t tile_row_pick(uint8_t bank, uint16_t a, int back, uint16_t *x, uint16_t *y, uint8_t *p);
+
 uint16_t TileRowBuild(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
 {
-    uint16_t a, t, i, w;
+    uint16_t a;
     int back;
 
     *p &= (uint8_t)~(P_M | P_X);
@@ -322,6 +325,15 @@ uint16_t TileRowBuild(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     back = (a & 0x8000) != 0;
     if (back)
         a = (uint16_t)-a;
+    return tile_row_pick(bank, a, back, x, y, p);
+}
+
+/* TileRowBuild from its row pick on: the level word a (made positive),
+   read backwards with `back`. */
+static uint16_t tile_row_pick(uint8_t bank, uint16_t a, int back, uint16_t *x, uint16_t *y, uint8_t *p)
+{
+    uint16_t t, i, w;
+
     *x = (uint16_t)((a >> 8 & 0x0007) << 1);
     t = rd16(0x008BAEu + *x);
     if (t == rd16(dbw(bank, 0x08E8))) {
@@ -349,6 +361,21 @@ uint16_t TileRowBuild(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
 void abi_TileRowBuild(void)
 {
     cpu.a = TileRowBuild(cpu.db, &cpu.x, &cpu.y, &cpu.p);
+}
+
+/*
+ * @routine 02:D96E TileRowBuildZero
+ * WHAT IT DOES: TileRowBuild's LDA #0 after its second $08ED test, which
+ * never runs (the test repeats one just passed): the row for level 0 read
+ * forwards, as TileRowBuild from its row pick.
+ * HOW: LDA #0, BRA to the pick; then as TileRowBuild. No code reaches
+ * these bytes; a direct call is their only way in.
+ * Entry: M, X 16-bit; D = $0000. Exit: as TileRowBuild when it reaches its
+ * row pick.
+ */
+void abi_TileRowBuildZero(void)
+{
+    cpu.a = tile_row_pick(cpu.db, 0x0000, 0, &cpu.x, &cpu.y, &cpu.p);
 }
 
 /*

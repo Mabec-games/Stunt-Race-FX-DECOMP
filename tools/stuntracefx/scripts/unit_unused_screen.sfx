@@ -8,6 +8,8 @@
 # backwards; each again with its row already recorded at $08E8, and level
 # $0700, whose table entry repeats $8D02), the row upload (long and by JSR)
 # and the two Super FX clears (with $01C4 set and clear).
+# Last, TileRowBuildZero 02:D96E (the LDA #0 nothing reaches) by a direct
+# call.
 load build/stuntracefx/states/novice_coupe_race1.state
 call 02:D4A3 long p=00 db=00 d=0000
 wait 1
@@ -95,4 +97,9 @@ wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
 set 7001C4 01
 call 02:DA24 long p=00 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E08ED 01
+set 7E08E8 00,00
+call 02:D96E p=00 db=00 d=0000
 wait 1
