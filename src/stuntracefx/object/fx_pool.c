@@ -439,6 +439,49 @@ void abi_FxRecordNew424(void)
 }
 
 /*
+ * @routine 04:8C3B FxRecordNew426B
+ * WHAT IT DOES: A program: as FxRecordNew426 with flags $20. The S-CPU
+ * side is GsuRecordNew424B (object/gsu_record.c).
+ * HOW: As FxRecordNew426.
+ * Entry: the S-CPU starts it. Exit: (at its STOP) as FxRecordNew426; R2 =
+ * $0426; R11 = $8C49.
+ */
+FxRegs FxRecordNew426B(FxRegs g)
+{
+    return record_new_first(g, 0x8C49, 0x0040, 0x0020, 0x0426);
+}
+
+void abi_FxRecordNew426B(void)
+{
+    ABI_REGS(FxRecordNew426B(g));
+}
+
+/*
+ * @routine 04:8C6C FxRecordNewCamera
+ * WHAT IT DOES: A program: a new $34-byte record from the first pool with
+ * flags +$16 = $20 and mode +$1A = $042E, its mass left as the pool had
+ * it; its address (or 0) to $238E. The S-CPU side is GsuRecordNewCamera
+ * (object/gsu_record.c), the record of a replay camera's follower.
+ * HOW: FxPoolTake with R10 = $0240, then two STWs through R2 and R0.
+ * Entry: the S-CPU starts it. Exit: (at its STOP) R1 = the record; R0 = R1
+ * + $1A; R2 = $042E; R11 = $8C7A; OV, S, CY, Z from the last ADD; the last
+ * RAM address R1 + $1A. No record: R1 = 0; Z set from R1.
+ */
+FxRegs FxRecordNewCamera(FxRegs g)
+{
+    if (record_new(&g, 0x0034, FX_POOL_FIRST, 0x8C7A)) {
+        record_set(&g, REC_FLAGS16, 0x0020);
+        record_set(&g, REC_MODE, 0x042E);
+    }
+    return g;
+}
+
+void abi_FxRecordNewCamera(void)
+{
+    ABI_REGS(FxRecordNewCamera(g));
+}
+
+/*
  * @routine 04:8C95 FxRecordNew42D
  * WHAT IT DOES: A program: as FxRecordNew426 with mass 0, flags $20 and
  * mode $042D. The S-CPU side is GsuRecordNew42D (object/gsu_record.c).

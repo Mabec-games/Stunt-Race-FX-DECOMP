@@ -1,0 +1,22 @@
+# unit_record_new_04: unit tests (fx) from the start of a Novice race for
+# the Super FX record programs FxRecordNew426B (04:8C3B) and
+# FxRecordNewCamera (04:8C6C) (R11 = the STOP at $04:888C): each kept and
+# started again, so the NOP after its STOP runs at the next start; and
+# each with the first pool empty ($1098 = 0: FxPoolTake finds no record,
+# the no-record exit).
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 04:8C3B stop=888C keep
+fx 04:8C3B stop=888C
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 04:8C6C stop=888C keep
+fx 04:8C6C stop=888C
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 701098 00,00,00,00
+fx 04:8C3B stop=888C
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 701098 00,00,00,00
+fx 04:8C6C stop=888C
+wait 1
