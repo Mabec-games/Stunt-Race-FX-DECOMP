@@ -4,12 +4,15 @@
     spccat.py       write build/stuntracefx/spc_routines.csv and summarize
 
 A routine starts where the SPC700 was started ($0800, the start address of
-every block list), at the target of a CALL, PCALL or TCALL it ran, or where
-a JMP (!a+X) (a dispatch through a table) went: an entry of a block when
-the same block holds the call too (its ROM byte at the call's APU address
-is that opcode, a CALL's operand that target), so a call the battle
-driver makes is not an entry of the race driver at the same address. Its
-row gives the APU
+every block list) and at the target of a CALL, PCALL or TCALL: one it ran,
+an entry of a block when the same block holds the call too (its ROM byte at
+the call's APU address is that opcode, a CALL's operand that target), so a
+call the battle driver makes is not an entry of the race driver at the same
+address; or a CALL in code no trace ran, found by following the code from
+the traced instructions through the untraced bytes they branch, call or
+fall to (to a RET, RETI, JMP or STOP). The handlers a JMP (!a+X) reaches
+through a table run in the dispatching routine's frame and are part of it,
+not routines of their own. Its row gives the APU
 address, the uploaded block (spcmap.lists) and ROM offset of that byte, and
 its extent: up to the last traced SPC700 code byte before the next entry
 in the same block. Rows are by ROM offset, so the race and battle drivers'
@@ -25,7 +28,37 @@ ROOT = codemap.ROOT
 B = os.path.join(ROOT, 'build', 'stuntracefx')
 OUT = os.path.join(B, 'spc_routines.csv')
 
-CALLS = {0x3F: 'call', 0x4F: 'pcall', 0x1F: 'table'} | {k << 4 | 1: 'tcall' for k in range(16)}
+CALLS = {0x3F: 'call', 0x4F: 'pcall'} | {k << 4 | 1: 'tcall' for k in range(16)}
+ENDS = {0x6F, 0x7F, 0x5F, 0x1F, 0xFF, 0xEF, 0x0F}   # RET, RETI, JMP, JMP (!a+X), STOP, SLEEP, BRK
+
+
+def static_calls(rom, mp, block, apu_of):
+    """CALL targets (APU address) in a block's code no trace ran, reached by
+    decoding from its traced instructions."""
+    import spc700
+    dst, n, o = block
+    seen, todo, out = set(), [x for x in range(o, o + n) if mp[x] & spcmap.SPC_OP], set()
+    while todo:
+        x = todo.pop()
+        while o <= x < o + n and x not in seen:
+            seen.add(x)
+            op = rom[x]
+            ln = spc700.length(op)
+            if x + ln > o + n:
+                break
+            v = spc700.operands(op, rom[x + 1:x + ln], apu_of[x])
+            if op == 0x3F:
+                out.add(v['a'])
+                t = o + ((v['a'] - dst) & 0xFFFF)
+                if t < o + n:
+                    todo.append(t)
+            if 'r' in v:
+                t = x + ((v['r'] - apu_of[x] + 0x8000) & 0xFFFF) - 0x8000
+                todo.append(t)
+            if op in ENDS:
+                break
+            x += ln
+    return out
 
 
 def build():
@@ -60,6 +93,12 @@ def build():
             if op == 0x3F and (rom[of + 1] | rom[of + 2] << 8) != to:
                 continue
             entries.setdefault(ot, CALLS[op])
+    for name, (bl, _) in ls.items():
+        for b in bl:
+            dst, n, o = b
+            for a in static_calls(rom, mp, b, apu):
+                if dst <= a < dst + n:
+                    entries.setdefault(o + a - dst, 'call (static)')
     rows = []
     for name, (bl, _) in sorted(ls.items()):
         for dst, n, o in bl:
