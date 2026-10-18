@@ -1588,7 +1588,7 @@ TitleScreenRun:
 ; cleared and frame updates 0-3 asked for each frame; the menu's exit
 ; ($11EB) leaves with A = 0.
 ; HOW: The idle object through direct page + X; a branch back for the next
-; frame.
+; frame. BootWarm resets the stack, so it runs as original code.
 ; Entry: M 16-bit, X 16-bit; D = $0000. Exit: A = 0 or $FFFF; M 16-bit, X
 ; 16-bit; or BootWarm, which never returns.
 %at($0BAF10)
