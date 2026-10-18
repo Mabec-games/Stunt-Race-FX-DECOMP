@@ -821,7 +821,16 @@ ObjectChildLoose:
     ldy.w !obj_06,x
     jsl.l ObjectVelocityFromRecordOf
     bpl .lBBA5
-    brl ObjectChildBack             ; not reached in the traces so far
+
+; @routine 08:BBA2 ObjectChildLooseBack
+; WHAT IT DOES: ObjectChildLoose's way out when the parent's record
+; velocity leaves N set: the child back on its parent as ObjectChildBack
+; ($08:BD06). ObjectVelocityFromRecordOf leaves N from the object index,
+; which is never negative, so only a direct call reaches it.
+; HOW: BRL to ObjectChildBack's code.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectChildBack.
+%at($08BBA2)
+    brl ObjectChildBack
 .lBBA5:
     rep.b #$20
     phx

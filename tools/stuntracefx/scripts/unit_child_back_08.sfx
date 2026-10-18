@@ -1,0 +1,13 @@
+# unit_child_back_08: ObjectChildLooseBack 08:BBA2, ObjectChildLoose's way
+# back to the parent that a non-negative object index never takes, called
+# directly on object 1 ($2001) from a Novice race's state; then
+# ObjectChildLoose itself, which the game only enters by its handler
+# dispatch (which A5 skips), on object 1 as its own parent.
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2028 01,00
+call 08:BBA2 long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E2007 01,00
+call 08:BB7C long x=0001 p=20 db=7E d=0000
+wait 1
