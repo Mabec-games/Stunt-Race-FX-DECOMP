@@ -1,0 +1,16 @@
+# unit_spc_battle: SPC700 unit calls (spccall) of the battle sound driver's
+# routines that no play reaches, from battle_04's state (the first battle
+# state with the battle driver resident at $10B0; battle_00-02 still hold
+# the race driver), each started at the driver's timer wait: the end of
+# the first pitch ramp (SpcBPitchRampA1End) with the ramp running (bits 2
+# and 3 of $29, offset $0210 at $0549/$054B), and the noise sample's build
+# (SpcBNoiseSampleInit) with BRR header byte $B0.
+load build/stuntracefx/states/battle_04.state
+spcset 0029 0C
+spcset 0549 10
+spcset 054B 02
+spccall 15DD
+wait 10
+load build/stuntracefx/states/battle_04.state
+spccall 2588 a=B0
+wait 10
