@@ -386,10 +386,13 @@ static uint8_t (*core_bus)(int, uint16_t, uint8_t);
 #define SWAIT(cond) do { long spins_ = 0; while (!(cond)) { \
         if (*sstuck || (srole == 2 && getppid() == 1)) _exit(6); \
         if (++spins_ > 600000) { \
-            fprintf(stderr, "lockstep: %s side stuck in frame %ld waiting for SPC700 %s; calls o/h %llu/%llu\n", \
+            fprintf(stderr, "lockstep: %s side stuck in frame %ld waiting for SPC700 %s; calls o/h %llu/%llu, ops o/h %llu/%llu%s\n", \
                     srole == 1 ? "original" : "hybrid", sframe, #cond, (unsigned long long)SLOAD(ssh->o_calls), \
-                    (unsigned long long)SLOAD(ssh->h_calls)); \
+                    (unsigned long long)SLOAD(ssh->h_calls), (unsigned long long)SLOAD(ssh->o_ops), \
+                    (unsigned long long)SLOAD(ssh->h_ops), swait_more()); \
             *sstuck = 1; _exit(6); } usleep(50); } } while (0)
+
+static const char *swait_more(void);
 
 int spc_lockstep_prepare(void *core)
 {
@@ -413,7 +416,7 @@ static void sop(uint8_t kind, uint32_t arg)
     SWAIT(n - SLOAD(ssh->h_ops) < SOPRING);
     ssh->ops[n % SOPRING] = kind;
     ssh->arg[n % SOPRING] = arg;
-    ssh->calls[sm.call % SCALLRING].opn++;
+    __atomic_add_fetch(&ssh->calls[sm.call % SCALLRING].opn, 1, __ATOMIC_RELAXED);   /* read while it grows */
     SSTORE(ssh->o_ops, n + 1);
 }
 
@@ -475,8 +478,12 @@ static int sfetch(int wait)
     for (;;) {
         int odone = SLOAD(ssh->o_done);   /* before the ops: none come after it */
         int done = SLOAD(srec->done);
-        uint64_t top = done ? srec->opoff + srec->opn : SLOAD(ssh->o_ops);
-        uint32_t avail = (uint32_t)(top - srec->opoff);
+        /* The ops published so far (o_ops), but only this call's (opn,
+           read after: the original may have ended the call and gone on to
+           the next one's since `done` was read). */
+        uint64_t pub = SLOAD(ssh->o_ops);
+        uint32_t avail = (uint32_t)(pub - srec->opoff), own = SLOAD(srec->opn);
+        if (avail > own) avail = own;
         if (avail > scn) {
             if (avail > sccap) {
                 sccap = avail + (avail >> 1) + 1024;
@@ -502,6 +509,17 @@ static int sfetch(int wait)
         }
         SWAIT(SLOAD(ssh->o_ops) > srec->opoff + scn || SLOAD(srec->done) || SLOAD(ssh->o_done));
     }
+}
+
+/* For a stuck report: the call the hybrid is following. */
+static const char *swait_more(void)
+{
+    static char b[160];
+    b[0] = 0;
+    if (srole == 2 && srec)
+        snprintf(b, sizeof b, "; record off %llu len %u done %d, taken %u, at %u, open %d",
+                 (unsigned long long)srec->opoff, srec->opn, SLOAD(srec->done), scn, sci, sopen);
+    return b;
 }
 
 /* The whole record, before the original's steps after the C's last access
