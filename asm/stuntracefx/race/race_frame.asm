@@ -775,7 +775,9 @@ RaceLoop:
     jsr.w CourseScreenStep
     bra .lE2E7
 RaceLoop_players:
-    db $00,$00,$02,$00,$00
+    ; by HUD mode 0-3; a fifth byte ($00 at $02:E33C) follows for a mode 4
+    ; that no code sets, so nothing reads it (raw intake, not code)
+    db $00,$00,$02,$00
 
 ; @routine 02:E33D LoopLeaveWhenEnded
 ; WHAT IT DOES: Ends the frame loop at $02:E289 once its fade-out has run
