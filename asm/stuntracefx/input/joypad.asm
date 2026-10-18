@@ -86,8 +86,10 @@ JoypadAccumulate:
 ; @routine 7F:10CD JoypadPortCheck
 ; WHAT IT DOES: Checks joypad port A (0 or 1) for a device on its second
 ; data line: with the latch set, eight reads of that line all 1 and then,
-; with the latch clear, eight reads not all 1 set $18FB to 1. The second
-; half is not reached in the traces so far.
+; with the latch clear, eight reads not all 1 set $18FB to 1 (a Super
+; Multitap answers so). With a plain joypad the line reads 0, so the
+; set-bit arms and the second half run only as the inner entries
+; JoypadPortCheckBit, JoypadPortCheckLatchOff and JoypadPortCheckBit2.
 ; HOW: The serial bits are shifted into !joy_serial_bits (ROL); the latch is
 ; JOYSER0 bit 0 and is left clear. P is saved and restored.
 ; Entry: any widths; A low byte = the port. Exit: A low byte = 0 (A = 0
@@ -105,6 +107,16 @@ JoypadPortCheck:
     lda.w !JOYSER0,x
     and.b #$02
     beq .l10E8
+
+; @routine 7F:10E2 JoypadPortCheckBit
+; WHAT IT DOES: JoypadPortCheck's first loop at a read of 1 on the second
+; data line: that bit shifted into $1182, the loop's remaining reads, and
+; the rest of the check.
+; HOW: SEC, ROL $1182, then the loop (DEY, BPL); as JoypadPortCheck.
+; Entry: M, X 8-bit; X = the port, Y = the loop count (0-7), $1182 the
+; bits so far; JoypadPortCheck's P on the stack. Exit: as
+; JoypadPortCheck.
+%ramcode($7F10E2, $0588E2)
     sec
     rol.w !joy_serial_bits
     bra .l10EC
@@ -117,6 +129,15 @@ JoypadPortCheck:
     lda.w !joy_serial_bits
     cmp.b #$FF
     bne .l1124
+
+; @routine 7F:10F6 JoypadPortCheckLatchOff
+; WHAT IT DOES: JoypadPortCheck's second half, after eight reads of 1 with
+; the latch set: the latch cleared, eight more reads of the second data
+; line into $1182, and $18FB = 1 unless they are all 1.
+; HOW: STA JOYSER0, STZ $1182, the serial loop; a 16-bit store.
+; Entry: M, X 8-bit; X = the port; JoypadPortCheck's P on the stack.
+; Exit: as JoypadPortCheck.
+%ramcode($7F10F6, $0588F6)
     lda.b #$00
     sta.w !JOYSER0
     stz.w !joy_serial_bits
@@ -125,6 +146,16 @@ JoypadPortCheck:
     lda.w !JOYSER0,x
     and.b #$02
     beq .l110D
+
+; @routine 7F:1107 JoypadPortCheckBit2
+; WHAT IT DOES: JoypadPortCheck's second loop at a read of 1 on the second
+; data line: that bit shifted into $1182, the remaining reads, and the
+; end of the check.
+; HOW: SEC, ROL $1182, then the loop; as JoypadPortCheck.
+; Entry: M, X 8-bit; X = the port, Y = the loop count (0-7), $1182 the
+; bits so far; JoypadPortCheck's P on the stack. Exit: as
+; JoypadPortCheck.
+%ramcode($7F1107, $058907)
     sec
     rol.w !joy_serial_bits
     bra .l1111

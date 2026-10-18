@@ -1,0 +1,25 @@
+# unit_joypad_port_7f: JoypadPortCheck 7F:10CD's paths for a device that
+# answers on the second data line (sfxbox has plain joypads only), as
+# direct calls to its inner entries with the P its PHP pushes, from a
+# Novice race's state: the first loop's set bit (JoypadPortCheckBit
+# 7F:10E2) at count 3 with the bits so far all 1, and at count 0 with
+# them mixed; the second half (JoypadPortCheckLatchOff 7F:10F6) on each
+# port; the second loop's set bit (JoypadPortCheckBit2 7F:1107) at count 2.
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1182 1F
+call 7F:10E2 php x=0001 y=0003 p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1182 5A
+call 7F:10E2 php x=0000 y=0000 p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 7F:10F6 php x=0000 p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 7F:10F6 php x=0001 p=30 db=00 d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1182 1F
+call 7F:1107 php x=0001 y=0002 p=30 db=00 d=0000
+wait 1

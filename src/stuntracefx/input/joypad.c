@@ -2,6 +2,7 @@
  * joypad.c: reading the two joypads from the auto-read registers.
  */
 #include "machine.h"
+#include "cpu_ops.h"
 #include "hw.h"
 #include "wram.h"
 
@@ -80,29 +81,90 @@ void abi_JoypadAccumulate(void)
     cpu.a = JoypadAccumulate();
 }
 
-/* Eight serial reads of data line 2 (bit 1) of joypad port `port` into
-   $1182, first bit highest; returns the byte. */
+/* ROL $1182 with the carry `bit`. */
+static void serial_shift(uint32_t b, uint8_t bit)
+{
+    uint8_t v = rd8(b | 0x1182);
+
+    wr8(b | 0x1182, (uint8_t)(v << 1 | bit));
+}
+
+/* The serial loop from count y (7 down to 0): each pass one read of data
+   line 2 (bit 1) of joypad port `port` shifted into $1182; returns the
+   byte. */
+static uint8_t serial_rest(uint32_t b, uint8_t port, int y)
+{
+    for (; y >= 0; y--)
+        serial_shift(b, (rd8(b | (uint16_t)(0x4016 + port)) & 0x02) ? 1 : 0);
+    return rd8(b | 0x1182);
+}
+
+/* Eight serial reads into a cleared $1182, first bit highest. */
 static uint8_t serial_byte(uint32_t b, uint8_t port)
 {
-    unsigned i;
+    wr8(b | 0x1182, 0x00);
+    return serial_rest(b, port, 7);
+}
+
+/* JoypadPortCheck from `stage`: 0 the start (latch set, first eight
+   reads); 1 the first loop's set-bit arm at count y; 2 the second half
+   (latch clear, eight more reads); 3 the second loop's set-bit arm at
+   count y. Returns 1 when $18FB was set. */
+static int port_check(uint32_t b, uint8_t port, int stage, int y)
+{
+    int found = 0;
     uint8_t v;
 
-    wr8(b | 0x1182, 0x00);
-    for (i = 0; i < 8; i++) {
-        uint8_t bit = (rd8(b | (uint16_t)(0x4016 + port)) & 0x02) ? 1 : 0;
-
-        v = rd8(b | 0x1182);
-        wr8(b | 0x1182, (uint8_t)(v << 1 | bit));
+    if (stage <= 1) {
+        if (stage == 0) {
+            wr8(b | 0x4016, 0x01);
+            v = serial_byte(b, port);
+        } else {
+            serial_shift(b, 1);
+            v = serial_rest(b, port, y - 1);
+        }
+        if (v != 0xFF)
+            goto done;
+        stage = 2;
     }
-    return rd8(b | 0x1182);
+    if (stage == 2) {
+        wr8(b | 0x4016, 0x00);
+        v = serial_byte(b, port);
+    } else {
+        serial_shift(b, 1);
+        v = serial_rest(b, port, y - 1);
+    }
+    if (v != 0xFF) {
+        wr16(0x0018FB, 0x0001);
+        found = 1;
+    }
+done:
+    wr8(b | 0x4016, 0x00);
+    return found;
+}
+
+/* An inner entry's end: A, X, Y as JoypadPortCheck leaves them, then P
+   pulled as its PHP pushed it. */
+static void port_check_entry(int stage)
+{
+    uint8_t port = (uint8_t)cpu.x;
+
+    cpu.a = port_check((uint32_t)cpu.db << 16, port, stage, (uint8_t)cpu.y) ? 0x0000
+        : (uint16_t)(cpu.a & 0xFF00);
+    cpu.x = port;
+    cpu.y = 0x00FF;
+    op_plp(rd8((uint16_t)(cpu.s + 1)));
+    cpu.s = (uint16_t)(cpu.s + 1);
 }
 
 /*
  * @routine 7F:10CD JoypadPortCheck
  * WHAT IT DOES: Checks joypad port A (0 or 1) for a device on its second
  * data line: with the latch set, eight reads of that line all 1 and then,
- * with the latch clear, eight reads not all 1 set $18FB to 1. The second
- * half is not reached in the traces so far.
+ * with the latch clear, eight reads not all 1 set $18FB to 1 (a Super
+ * Multitap answers so). With a plain joypad the line reads 0, so the
+ * set-bit arms and the second half run only as the inner entries
+ * JoypadPortCheckBit, JoypadPortCheckLatchOff and JoypadPortCheckBit2.
  * HOW: The serial bits are shifted into $1182 (ROL); the latch is
  * JOYSER0 bit 0 and is left clear. P is saved and restored.
  * Entry: any widths; A low byte = the port. Exit: A low byte = 0 (A = 0
@@ -110,19 +172,7 @@ static uint8_t serial_byte(uint32_t b, uint8_t port)
  */
 int JoypadPortCheck(uint8_t bank, uint8_t port)
 {
-    uint32_t b = (uint32_t)bank << 16;
-    int found = 0;
-
-    wr8(b | 0x4016, 0x01);
-    if (serial_byte(b, port) == 0xFF) {
-        wr8(b | 0x4016, 0x00);
-        if (serial_byte(b, port) != 0xFF) {
-            wr16(0x0018FB, 0x0001);
-            found = 1;
-        }
-    }
-    wr8(b | 0x4016, 0x00);
-    return found;
+    return port_check((uint32_t)bank << 16, port, 0, 0);
 }
 
 void abi_JoypadPortCheck(void)
@@ -132,6 +182,50 @@ void abi_JoypadPortCheck(void)
     cpu.a = JoypadPortCheck(cpu.db, port) ? 0x0000 : (uint16_t)(cpu.a & 0xFF00);
     cpu.x = port;
     cpu.y = 0x00FF;
+}
+
+/*
+ * @routine 7F:10E2 JoypadPortCheckBit
+ * WHAT IT DOES: JoypadPortCheck's first loop at a read of 1 on the second
+ * data line: that bit shifted into $1182, the loop's remaining reads, and
+ * the rest of the check.
+ * HOW: SEC, ROL $1182, then the loop (DEY, BPL); as JoypadPortCheck.
+ * Entry: M, X 8-bit; X = the port, Y = the loop count (0-7), $1182 the
+ * bits so far; JoypadPortCheck's P on the stack. Exit: as
+ * JoypadPortCheck.
+ */
+void abi_JoypadPortCheckBit(void)
+{
+    port_check_entry(1);
+}
+
+/*
+ * @routine 7F:10F6 JoypadPortCheckLatchOff
+ * WHAT IT DOES: JoypadPortCheck's second half, after eight reads of 1 with
+ * the latch set: the latch cleared, eight more reads of the second data
+ * line into $1182, and $18FB = 1 unless they are all 1.
+ * HOW: STA JOYSER0, STZ $1182, the serial loop; a 16-bit store.
+ * Entry: M, X 8-bit; X = the port; JoypadPortCheck's P on the stack.
+ * Exit: as JoypadPortCheck.
+ */
+void abi_JoypadPortCheckLatchOff(void)
+{
+    port_check_entry(2);
+}
+
+/*
+ * @routine 7F:1107 JoypadPortCheckBit2
+ * WHAT IT DOES: JoypadPortCheck's second loop at a read of 1 on the second
+ * data line: that bit shifted into $1182, the remaining reads, and the
+ * end of the check.
+ * HOW: SEC, ROL $1182, then the loop; as JoypadPortCheck.
+ * Entry: M, X 8-bit; X = the port, Y = the loop count (0-7), $1182 the
+ * bits so far; JoypadPortCheck's P on the stack. Exit: as
+ * JoypadPortCheck.
+ */
+void abi_JoypadPortCheckBit2(void)
+{
+    port_check_entry(3);
 }
 
 void abi_SoundPortsSend(void);
