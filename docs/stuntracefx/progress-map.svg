@@ -1839,7 +1839,7 @@
 <rect x="1263.9" y="842.6" width="11.7" height="13.6" fill="#3fb950"><title>DebugLastCarPanel  08F18E  27B  T4  [system]</title></rect>
 <rect x="1276.2" y="842.6" width="11.7" height="13.6" fill="#3fb950"><title>DebugFxTestWordPanel  08F8F6  27B  T4  [system]</title></rect>
 <rect x="1288.4" y="842.6" width="11.2" height="13.6" fill="#3fb950"><title>DebugSignedByte  03D584  26B  T4  [system]</title></rect>
-<rect x="1300.3" y="842.6" width="10.8" height="13.6" fill="#d29922"><title>DemoRunThirdRest  03866A  25B  T2  [system]</title></rect>
+<rect x="1300.3" y="842.6" width="10.8" height="13.6" fill="#3fb950"><title>DemoRunThirdRest  03866A  25B  T4  [system]</title></rect>
 <rect x="1263.9" y="856.8" width="9.8" height="13.7" fill="#3fb950"><title>ReadTable9022  03AEEE  23B  T4  [system]</title></rect>
 <rect x="1263.9" y="871.1" width="9.8" height="13.1" fill="#3fb950"><title>WordListAAppend  7F10A1  22B  T4  [system]</title></rect>
 <rect x="1263.9" y="884.8" width="9.8" height="13.1" fill="#3fb950"><title>WordListBAppend  7F10B7  22B  T4  [system]</title></rect>
@@ -2094,4 +2094,4 @@
 <rect x="1560.3" y="846.3" width="24.4" height="12.2" fill="#3fb950"><title>JoypadRead  7EB1AE  51B  T4  [input]</title></rect>
 <rect x="1585.3" y="846.3" width="12.6" height="12.2" fill="#3fb950"><title>FrameSoundAndJoypads  7EA7A3  27B  T4  [input]</title></rect>
 <rect x="1560.3" y="862.1" width="37.6" height="35.8" fill="#c8ccd2"><title>code the census found    225B  T1  [not run by any script yet]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 2049 &#183; T3 behaviour-exact 0 &#183; 186,035/199,603 bytes exact (93.2%) &#183; green=T4 blue=T3 amber=T2 gray=T1</text></svg>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 2050 &#183; T3 behaviour-exact 0 &#183; 186,060/199,603 bytes exact (93.2%) &#183; green=T4 blue=T3 amber=T2 gray=T1</text></svg>
