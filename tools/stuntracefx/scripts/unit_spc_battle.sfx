@@ -1,10 +1,18 @@
 # unit_spc_battle: SPC700 unit calls (spccall) of the battle sound driver's
-# routines that no play reaches, from battle_04's state (the first battle
-# state with the battle driver resident at $10B0; battle_00-02 still hold
-# the race driver), each started at the driver's timer wait: the end of
-# the first pitch ramp (SpcBPitchRampA1End) with the ramp running (bits 2
-# and 3 of $29, offset $0210 at $0549/$054B), and the noise sample's build
-# (SpcBNoiseSampleInit) with BRR header byte $B0.
+# routines and paths that no play reaches, from battle_04's state (the first
+# battle state with the battle driver resident at $10B0; battle_00-02 still
+# hold the race driver) or battle_10's (song 1 playing): the end of the first
+# pitch ramp and the noise sample's build; then, each from a state with the
+# RAM a path needs, the port commands, timers, tempo bend, pauses and fades
+# no play gives, the channels' stop requests by reason, the engine scale and
+# sound-special edge cases, sound data at $0140 (page 1 is unused there) for
+# the voice commands no sound uses ($E4 volume by side, $FD noise) and a
+# clamped pitch slide, and each port 1 command that does nothing (so every
+# entry of its table is read). Last, the fade-out end that returns to the
+# IPL ROM, which never returns. Not reachable, so not here: $1A7D-$1A7E and
+# $1C60-$1C6C (bytes nothing reads or jumps to), $1D9A (SpcBSfxRead's age is
+# never 0 after its increment, which stops at $FF), $1DFD-$1DFF and
+# $217B-$21A4 (code only that JMP reaches, after a JMP no branch reaches).
 load build/stuntracefx/states/battle_04.state
 spcset 0029 0C
 spcset 0549 10
@@ -13,4 +21,469 @@ spccall 15DD
 wait 10
 load build/stuntracefx/states/battle_04.state
 spccall 2588 a=B0
+wait 10
+# port 0 command $88 remapped
+load build/stuntracefx/states/battle_04.state
+spcset 0000 88
+spccall 1115
+wait 10
+# staggered step 6: channels 7 and 6 stopped for sound $77
+load build/stuntracefx/states/battle_04.state
+spcset 0581 05
+spcset 002D 20
+spcset 0397 77
+spcset 0396 77
+spccall 1163
+wait 10
+# commands $11-$14 dropped while $056A is under $80
+load build/stuntracefx/states/battle_04.state
+spcset 056A 10
+spcset 001D 11
+spccall 11ED
+wait 10
+# command $03 (channels 5 and 4) and the timer $0579 at $78
+load build/stuntracefx/states/battle_04.state
+spcset 001D 03
+spcset 0579 77
+spccall 11ED
+wait 10
+# command $4C
+load build/stuntracefx/states/battle_04.state
+spcset 001D 4C
+spccall 12D2
+wait 10
+# the count $0568 at $2A with channel 7 playing $79
+load build/stuntracefx/states/battle_04.state
+spcset 001D 00
+spcset 0568 29
+spcset 0397 79
+spccall 130C
+wait 10
+# the count $0568 at $2A with channel 7 playing another sound
+load build/stuntracefx/states/battle_04.state
+spcset 001D 00
+spcset 0568 29
+spcset 0397 00
+spccall 130C
+wait 10
+# command $20 on track 1
+load build/stuntracefx/states/battle_04.state
+spcset 001D 20
+spcset 0397 01
+spccall 130C
+wait 10
+# command $16 on track 4
+load build/stuntracefx/states/battle_04.state
+spcset 001D 16
+spcset 0397 04
+spccall 130C
+wait 10
+# command $16 on track 7
+load build/stuntracefx/states/battle_04.state
+spcset 001D 16
+spcset 0397 07
+spccall 130C
+wait 10
+# command $16 on track 5
+load build/stuntracefx/states/battle_04.state
+spcset 001D 16
+spcset 0397 05
+spccall 130C
+wait 10
+# the count $055D at $11 with bit 4 of $2C
+load build/stuntracefx/states/battle_04.state
+spcset 001D 00
+spcset 055D 10
+spcset 002C 10
+spccall 130C
+wait 10
+# the count $055D at $11 with bit 5 of $2C
+load build/stuntracefx/states/battle_04.state
+spcset 001D 00
+spcset 055D 10
+spcset 002C 20
+spccall 130C
+wait 10
+# the count $055D at $11 with neither
+load build/stuntracefx/states/battle_04.state
+spcset 001D 00
+spcset 055D 10
+spccall 130C
+wait 10
+# the tempo bend starting (step count 0)
+load build/stuntracefx/states/battle_04.state
+spcset 002C 04
+spcset 0555 00
+spccall 13C6
+wait 10
+# the tempo bend held (step count $FE)
+load build/stuntracefx/states/battle_04.state
+spcset 002C 04
+spcset 0555 FE
+spccall 13C6
+wait 10
+# the tempo bend running (step count 5)
+load build/stuntracefx/states/battle_04.state
+spcset 002C 04
+spcset 0555 05
+spccall 13C6
+wait 10
+# the tempo bend ending (bit 3 of $2C)
+load build/stuntracefx/states/battle_04.state
+spcset 002C 08
+spcset 0555 05
+spccall 13C6
+wait 10
+# command $2C in song 1 (battle_10 plays song 1) starts the bend
+load build/stuntracefx/states/battle_10.state
+spcset 001D 2C
+spccall 1444
+wait 10
+# command $30 during a bend ends it
+load build/stuntracefx/states/battle_04.state
+spcset 001D 30
+spcset 0555 05
+spccall 1444
+wait 10
+# port 1 command $3E is out of range
+load build/stuntracefx/states/battle_04.state
+spcset 0009 00
+spcset 0001 3E
+spccall 1671
+wait 10
+# port 1 command $22 while stopped
+load build/stuntracefx/states/battle_04.state
+spcset 0009 00
+spcset 0001 22
+spcset 0029 01
+spccall 1671
+wait 10
+# channel 4 resumed with no saved sound
+load build/stuntracefx/states/battle_04.state
+spcset 0454 01
+spcset 045C 00
+spccall 18D3 x=04
+wait 10
+# channel 4 paused with a queued sound
+load build/stuntracefx/states/battle_04.state
+spcset 04FC 05
+spccall 1951 x=04
+wait 10
+# the music fade ending into a pause
+load build/stuntracefx/states/battle_04.state
+spcset 0029 40
+spcset 0564 03
+spccall 19BC
+wait 10
+# port 1 command 6 with the music playing
+load build/stuntracefx/states/battle_04.state
+spcset 0009 00
+spcset 0001 06
+spcset 0059 40
+spccall 1671
+wait 10
+# a non-zero volume on channel 4 playing $25
+load build/stuntracefx/states/battle_04.state
+spcset 0394 25
+spccall 22F2 a=10 x=04
+wait 10
+# a non-zero volume on channel 3 playing $25
+load build/stuntracefx/states/battle_04.state
+spcset 0393 25
+spccall 22F2 a=10 x=03
+wait 10
+# engine volume for channel 6 (port 2)
+load build/stuntracefx/states/battle_04.state
+spccall 24E2 x=06 y=00
+wait 10
+# rev timing for channel 4 (port 2)
+load build/stuntracefx/states/battle_04.state
+spcset 0394 17
+spccall 231E x=04
+wait 10
+# rev timing asked for channel 3 (no port)
+load build/stuntracefx/states/battle_04.state
+spcset 0393 17
+spccall 231E x=03
+wait 10
+# sound $77 on channel 5 (no engine side)
+load build/stuntracefx/states/battle_04.state
+spcset 0395 77
+spccall 231E x=05
+wait 10
+# channel 7 engine: a speed change with the slew count 0, the pitch clamped
+load build/stuntracefx/states/battle_04.state
+spcset 0533 00
+spcset 0003 80
+spcset 000B 00
+spcset 0549 00
+spcset 054B 3F
+spccall 231E x=07
+wait 10
+# channel 7 stop request with an unknown reason
+load build/stuntracefx/states/battle_04.state
+spcset 03E7 05
+spccall 1B7E
+wait 10
+# channel 7 stop request $0A (not playing $25)
+load build/stuntracefx/states/battle_04.state
+spcset 03E7 0A
+spccall 1B7E
+wait 10
+# channel 7 stop request $0B (not playing $15)
+load build/stuntracefx/states/battle_04.state
+spcset 03E7 0B
+spccall 1B7E
+wait 10
+# channel 7 stop request $0C (not playing $17)
+load build/stuntracefx/states/battle_04.state
+spcset 03E7 0C
+spccall 1B7E
+wait 10
+# channel 7 stop request $0A playing $25, nothing saved
+load build/stuntracefx/states/battle_04.state
+spcset 03E7 0A
+spcset 0397 25
+spcset 0487 00
+spccall 1B7E
+wait 10
+# channel 7 stop request 1 with a saved loop on side 1
+load build/stuntracefx/states/battle_04.state
+spcset 03E7 01
+spcset 04FF 05
+spcset 052F 01
+spccall 1B7E
+wait 10
+# channel 7 stop request 1 with a saved loop on side 2
+load build/stuntracefx/states/battle_04.state
+spcset 03E7 01
+spcset 04FF 05
+spcset 052F 02
+spccall 1B7E
+wait 10
+# channel 7 stop request 1 with a saved loop of no side
+load build/stuntracefx/states/battle_04.state
+spcset 03E7 01
+spcset 04FF 05
+spcset 052F 00
+spccall 1B7E
+wait 10
+# engine scale, side 2, port 2 at 0
+load build/stuntracefx/states/battle_04.state
+spcset 04F6 04
+spcset 0002 00
+spccall 1F25 a=FF x=06
+wait 10
+# engine scale, side 2, port 2 at $FF
+load build/stuntracefx/states/battle_04.state
+spcset 04F6 04
+spcset 0002 FF
+spccall 1F25 a=FF x=06
+wait 10
+# volume command $E4 on side 1
+load build/stuntracefx/states/battle_04.state
+spcset 0394 05
+spcset 044C 00
+spcset 03F4 00
+spcset 04F4 00
+spcset 04BC 01
+spcset 048C 40
+spcset 0494 01
+spcset 0140 00,E4,40,30,10
+spccall 1D63 x=04
+wait 10
+# volume command $E4 on side 2
+load build/stuntracefx/states/battle_04.state
+spcset 0394 05
+spcset 044C 00
+spcset 03F4 00
+spcset 04F4 00
+spcset 04BC 02
+spcset 048C 40
+spcset 0494 01
+spcset 0140 00,E4,40,30,10
+spccall 1D63 x=04
+wait 10
+# noise command $FD
+load build/stuntracefx/states/battle_04.state
+spcset 0394 05
+spcset 044C 00
+spcset 03F4 00
+spcset 04F4 00
+spcset 04BC 01
+spcset 048C 40
+spcset 0494 01
+spcset 0140 00,FD,B0,10
+spcset 0018 00
+spcset 0019 00
+spccall 1D63 x=04
+wait 10
+# a pitch slide past $3FFF clamped
+load build/stuntracefx/states/battle_04.state
+spcset 0394 05
+spcset 044C 00
+spcset 03F4 05
+spcset 041C 05
+spcset 043C 01
+spcset 042C 00
+spcset 0434 10
+spcset 04A4 3F
+spcset 049C 00
+spcset 048C 40
+spcset 0494 01
+spccall 1D63 x=04
+wait 10
+# sound 1 started while its header byte's mode slot ($04F0 + $87) is 2
+load build/stuntracefx/states/battle_04.state
+spcset 0577 02
+spcset 0024 94
+spcset 0025 C6
+spccall 2087 a=01
+wait 10
+# the fade-out end on channel 4
+load build/stuntracefx/states/battle_04.state
+spccall 2243 a=3C x=04
+wait 10
+# the fade-out end on channel 4, right side
+load build/stuntracefx/states/battle_04.state
+spccall 2243 a=3C x=0C
+wait 10
+# the fade-out count at $FF
+load build/stuntracefx/states/battle_04.state
+spccall 2243 a=FF x=04
+wait 10
+# a channel 0 playing sound $23 (noise)
+load build/stuntracefx/states/battle_04.state
+spcset 03C8 23
+spccall 25B8
+wait 10
+# port 1 command $01 (a RET in the table)
+load build/stuntracefx/states/battle_04.state
+spcset 0009 00
+spcset 0001 01
+spccall 1671
+wait 10
+# port 1 command $02 (a RET in the table)
+load build/stuntracefx/states/battle_04.state
+spcset 0009 00
+spcset 0001 02
+spccall 1671
+wait 10
+# port 1 command $03 (a RET in the table)
+load build/stuntracefx/states/battle_04.state
+spcset 0009 00
+spcset 0001 03
+spccall 1671
+wait 10
+# port 1 command $07 (a RET in the table)
+load build/stuntracefx/states/battle_04.state
+spcset 0009 00
+spcset 0001 07
+spccall 1671
+wait 10
+# port 1 command $08 (a RET in the table)
+load build/stuntracefx/states/battle_04.state
+spcset 0009 00
+spcset 0001 08
+spccall 1671
+wait 10
+# port 1 command $0E (a RET in the table)
+load build/stuntracefx/states/battle_04.state
+spcset 0009 00
+spcset 0001 0E
+spccall 1671
+wait 10
+# port 1 command $0F (a RET in the table)
+load build/stuntracefx/states/battle_04.state
+spcset 0009 00
+spcset 0001 0F
+spccall 1671
+wait 10
+# port 1 command $10 (a RET in the table)
+load build/stuntracefx/states/battle_04.state
+spcset 0009 00
+spcset 0001 10
+spccall 1671
+wait 10
+# port 1 command $11 (a RET in the table)
+load build/stuntracefx/states/battle_04.state
+spcset 0009 00
+spcset 0001 11
+spccall 1671
+wait 10
+# port 1 command $13 (a RET in the table)
+load build/stuntracefx/states/battle_04.state
+spcset 0009 00
+spcset 0001 13
+spccall 1671
+wait 10
+# port 1 command $17 (a RET in the table)
+load build/stuntracefx/states/battle_04.state
+spcset 0009 00
+spcset 0001 17
+spccall 1671
+wait 10
+# port 1 command $1D (a RET in the table)
+load build/stuntracefx/states/battle_04.state
+spcset 0009 00
+spcset 0001 1D
+spccall 1671
+wait 10
+# port 1 command $1E (a RET in the table)
+load build/stuntracefx/states/battle_04.state
+spcset 0009 00
+spcset 0001 1E
+spccall 1671
+wait 10
+# port 1 command $1F (a RET in the table)
+load build/stuntracefx/states/battle_04.state
+spcset 0009 00
+spcset 0001 1F
+spccall 1671
+wait 10
+# port 1 command $20 (a RET in the table)
+load build/stuntracefx/states/battle_04.state
+spcset 0009 00
+spcset 0001 20
+spccall 1671
+wait 10
+# port 1 command $21 (a RET in the table)
+load build/stuntracefx/states/battle_04.state
+spcset 0009 00
+spcset 0001 21
+spccall 1671
+wait 10
+# port 1 command $2E (a RET in the table)
+load build/stuntracefx/states/battle_04.state
+spcset 0009 00
+spcset 0001 2E
+spccall 1671
+wait 10
+# port 1 command $2F (a RET in the table)
+load build/stuntracefx/states/battle_04.state
+spcset 0009 00
+spcset 0001 2F
+spccall 1671
+wait 10
+# port 1 command $30 (a RET in the table)
+load build/stuntracefx/states/battle_04.state
+spcset 0009 00
+spcset 0001 30
+spccall 1671
+wait 10
+# port 1 command $31 (a RET in the table)
+load build/stuntracefx/states/battle_04.state
+spcset 0009 00
+spcset 0001 31
+spccall 1671
+wait 10
+# channel 7 engine playing sound $7A (the curve tables' last entries)
+load build/stuntracefx/states/battle_04.state
+spcset 0397 7A
+spccall 231E x=07
+wait 10
+# the fade-out end with bit 0 of $2D: the IPL ROM
+load build/stuntracefx/states/battle_04.state
+spcset 002D 01
+spccall 2243 a=3C x=04 noreturn
 wait 10
