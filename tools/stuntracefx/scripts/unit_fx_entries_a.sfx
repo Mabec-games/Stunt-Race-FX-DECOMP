@@ -1,0 +1,65 @@
+# unit_fx_entries_a: unit tests (fx) from the start of a Novice race that
+# start the Super FX at the entries the game reaches only by a jump, a
+# branch or a record handler table, so A5 judges each one per call
+# (R11 = the STOP at $01:80E3 or $04:888C). An entry that returns by
+# pulling R15 finds that STOP on the R10 stack, set as the word below R10:
+# - FxEffectsAddKinds 01:B856 (kind 3) on the first slot $273E with one
+#   particle left (R9 = 1: straight to the return) and with two (R9 = 2:
+#   the slot loop runs on through $274C), registers as FxEffectsAdd
+#   leaves them;
+# - FxObjectSpriteRows 01:B2ED with the sizes of 01:B08A's first sprite
+#   ($0100 and $0040 with the scale $0020, so both the divide and the
+#   $FFFF step), stack at $0242 as FxObjectSprite leaves it;
+# - FxWeatherDropNext 01:BF4D on the drop at $2AEC as the last drop
+#   (R12 = 1) and with three left (R12 = 3, R13 = the drop loop $BD52);
+# - FxWeatherReset 01:BC35 for rain and snow;
+# - FxObjectMarkTouched 04:90E8 and FxObjectFall 04:910A on the wheel
+#   $15F0 (its touch list at $1576) and on the car $1738 (no touch list).
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700244 E3,80
+fx 01:B856 stop=80E3 r0=0003 r1=0010 r2=1234 r3=273E r5=0020 r6=0010 r7=274A r8=0003 r9=0001 r10=0246 r12=0014 r13=B6F4
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700244 E3,80
+fx 01:B856 stop=80E3 r0=0003 r1=0010 r2=1234 r3=273E r5=0020 r6=0010 r7=274A r8=0003 r9=0002 r10=0246 r12=0014 r13=B6F4
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7000AA 00,00,03,00
+set 7001D2 40,00,30,00
+set 7000CE 00,01
+set 700240 E3,80
+fx 01:B2ED stop=80E3 r0=00E0 r1=0100 r2=0020 r3=0030 r5=FFFF r6=0020 r7=2A80 r8=24A0 r9=00F4 r10=0242
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7000AA 00,00,03,00
+set 7001D2 40,00,30,00
+set 7000CE 40,00
+set 700240 E3,80
+fx 01:B2ED stop=80E3 r0=0020 r1=0020 r2=0020 r3=0030 r5=FFFF r6=0020 r7=2A80 r8=24A0 r9=00F4 r10=0242
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700244 E3,80
+fx 01:BF4D stop=80E3 r0=00CD r1=0111 r2=001B r3=002A r4=002A r5=FFD3 r6=2FE7 r7=9101 r8=2AEC r9=00A9 r10=0246 r12=0001 r13=BD52
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700244 E3,80
+fx 01:BF4D stop=80E3 r0=00CD r1=0111 r2=001B r3=002A r4=002A r5=FFD3 r6=2FE7 r7=9101 r8=2AEC r9=00A9 r10=0246 r12=0003 r13=BD52
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:BC35 stop=80E3 r0=0001 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:BC35 stop=80E3 r0=0002 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 04:90E8 stop=888C r8=15F0
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 04:90E8 stop=888C r8=1738
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 04:910A stop=888C r8=15F0 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 04:910A stop=888C r8=1738 r10=0244
+wait 1
