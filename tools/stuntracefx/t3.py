@@ -42,8 +42,10 @@ IMAGE = os.path.join(ROOT, 'config', 'stuntracefx', 'whole_image.csv')
 # s alone, but the gate runs ten at a time and other work shares the
 # machine: at 120 s two of them timed out under load (load average 40)
 # while passing alone. A side really stuck waiting on the other gives up
-# by itself after about 30 s (WAIT_UNTIL in check.c).
-STUCK = 300
+# by itself after about 30 s (WAIT_UNTIL in check.c). The longest lockstep
+# piece, DemoRunThirdRest's two demos (about 6,050 frames), takes 337 s
+# alone, so the limit is 420 s.
+STUCK = 420
 
 
 def run(cmd):

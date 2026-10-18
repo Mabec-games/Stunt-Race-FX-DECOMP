@@ -1,0 +1,8 @@
+# unit_demo_third_rest_03: DemoRunThirdRest (03:866A), the rest of the
+# demo cycle DemoRunThird starts, which play never reaches: from the start
+# of a Novice race, the demos $1FA and $287 in turn, with B pressed once
+# the second waits for a button held (command $0B). About 6,050 frames in
+# one call, the gate's longest lockstep run (337 s alone).
+load build/stuntracefx/states/novice_coupe_race1.state
+call 03:866A long p=00 db=00 d=0000 frames=7000 press=B@6000 press=B@6100
+wait 1
