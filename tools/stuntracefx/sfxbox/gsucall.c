@@ -320,13 +320,18 @@ static void model_from(const struct GsuState *st)
     pix[0] = st->pixel[0]; pix[1] = st->pixel[1];
 }
 
-/* A call that returned two levels up (04:C72F): at a jump, R10 two words
-   or more below where the call was entered, and the address jumped to the
-   word just pulled from there (it took its caller's frame and returned
-   through the return address saved under it). */
-static int two_up(uint32_t pc, uint16_t entry_r10, const struct GsuState *now)
+/* A call that returned two levels up (04:C72F): it has just run a pull
+   return (TO R15; LDW (R10); NOP, ending at prev_end) with R10 two words
+   or more below where the call was entered, and the address it jumped to
+   is the word it pulled (it took its caller's frame and returned through
+   the return address saved under it). Code that uses R10 as an ordinary
+   register (the rasterizer) does not return that way. */
+static int two_up(uint32_t pc, uint32_t prev_end, uint16_t entry_r10, const struct GsuState *now)
 {
     if ((int16_t)(entry_r10 - now->r[10]) < 4) return 0;
+    uint32_t b = prev_end & 0xFF0000, o = prev_end & 0xFFFF;
+    if (rom[rom_off(b | ((o - 3) & 0xFFFF))] != 0x1F || rom[rom_off(b | ((o - 2) & 0xFFFF))] != 0x4A
+        || rom[rom_off(b | ((o - 1) & 0xFFFF))] != 0x01) return 0;
     uint32_t a = 0x700000u + ((uint32_t)now->rambr << 16) + now->r[10];
     return (pc & 0xFFFF) == (uint32_t)(ram[ram_off(a)] | ram[ram_off(a + 1)] << 8);
 }
@@ -483,7 +488,7 @@ static void check_insn(uint32_t pc, uint32_t prev_end, uint8_t opcode)
             if (pc == prev_end || w->ret == PROGRAM) break;
             struct GsuState now;
             core_get(&now);
-            if (!two_up(pc, w->entry.r[10], &now)) break;
+            if (!two_up(pc, prev_end, w->entry.r[10], &now)) break;
         }
         finish(w);
         depth--;
@@ -666,7 +671,7 @@ static void orig_insn(uint32_t pc, uint32_t prev_end, uint8_t opcode)
             }
             /* Two levels up (as in check_insn): the call ends where it
                lands. */
-            if (m.ret != PROGRAM && pc != prev_end && two_up(pc, m.r10, &fs)) {
+            if (m.ret != PROGRAM && pc != prev_end && two_up(pc, prev_end, m.r10, &fs)) {
                 rec->up = 1;
                 m.ret = pc;
             }
