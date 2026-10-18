@@ -597,8 +597,10 @@ def assess(addrs, image_ok=None):
             mp = merged_map()
         # Executed, or (a table inside the routine, such as a JMP (abs,X)
         # list) read as data: each entry counts once its case is taken.
-        # SPC700 code: its own trace bits (spcmap: opcode, operand, data).
-        cov = 0x77 | 0x80 | 0x2000 | 0x4000
+        # SPC700 code by its own trace bits only (spcmap: opcode, operand,
+        # data): the S-CPU reads every byte it uploads to the APU, so its
+        # bits say nothing of what the SPC700 ran.
+        cov = 0x80 | 0x2000 | 0x4000 if re.search(r'@spc\s', h) else 0x77
         covered = bool(span) and all(mp[o] & cov for o in span)
         gates.append(('C covered', covered, '%d of %d bytes executed or read' % (sum(1 for o in span if mp[o] & cov), len(span))
                       if span else 'no filed assembly gives the routine\'s extent'))
