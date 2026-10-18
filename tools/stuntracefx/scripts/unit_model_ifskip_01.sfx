@@ -1,0 +1,22 @@
+# unit_model_ifskip_01: unit tests (fx) that start the model command
+# FxModelIfSkip (01:8E19) on its own from a Novice Coupe race state whose
+# ROM bank register holds $0C, so its command bytes are read from
+# $0C:8000 (04 01 00 00 00: flag index 4, a word, a second length 0, the
+# end command). The R10 stack holds the STOP at $01:80E3 below $0246 in
+# place of the walker's return, and the walker's table of sub-list
+# returns ($0056) points at $0788. Its flag byte ($07CA) is $80 (bit 7:
+# the sub-list runs, here only the end command, and the zero second
+# length takes the return at 01:8E78), and 0 (the list passed over by
+# its length).
+load build/stuntracefx/states/speed_novice_coupe_08.state
+set 7007CA 80
+set 700056 88,07
+set 700244 E3,80
+fx 01:8E19 stop=80E3 r10=0246 r14=8000
+wait 1
+load build/stuntracefx/states/speed_novice_coupe_08.state
+set 7007CA 00
+set 700056 88,07
+set 700244 E3,80
+fx 01:8E19 stop=80E3 r10=0246 r14=8000
+wait 1
