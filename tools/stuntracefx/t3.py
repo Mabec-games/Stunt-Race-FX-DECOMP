@@ -128,6 +128,18 @@ def reached():
     sys.path.insert(0, os.path.join(ROOT, 'tools', 'stuntracefx'))
     import codemap
     rows = list(csv.DictReader(open(os.path.join(B, 'routines.csv'))))
+    # SPC700 routines are in no catalog row: each tagged one, at the ROM
+    # offset of its first uploaded byte, reached where the trace's SPC700
+    # opcode bit (folded back onto the ROM) is set there.
+    spc = []
+    for dp, dn, fn in os.walk(os.path.join(ROOT, 'src', 'stuntracefx')):
+        for f in fn:
+            if f.endswith('.c'):
+                text = open(os.path.join(dp, f)).read()
+                for m in TAG.finditer(text):
+                    if re.search(r'@spc\s', text[m.end():text.find('*/', m.end())]):
+                        a = int(m.group(1), 16) << 16 | int(m.group(2), 16)
+                        spc.append(('%06X' % a, codemap.rom_offset(a)))
     out = {}
     for s in glob.glob(os.path.join(SCRIPTS, '*.sfx')):
         name = os.path.splitext(os.path.basename(s))[0]
@@ -135,7 +147,8 @@ def reached():
         if not os.path.exists(os.path.join(d, 'rommap.bin')):
             continue
         mp = codemap.merged([d])
-        out[name] = frozenset(r['addr'] for r in rows if int(r['offset'], 16) < len(mp) and mp[int(r['offset'], 16)] & 0x33)
+        out[name] = frozenset([r['addr'] for r in rows if int(r['offset'], 16) < len(mp) and mp[int(r['offset'], 16)] & 0x33]
+                              + [a for a, o in spc if o < len(mp) and mp[o] & 0x80])
     return out
 
 
