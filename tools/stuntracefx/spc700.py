@@ -149,6 +149,24 @@ def decode(mem, addr, names=None):
     return text(op, operands(op, raw, addr), names), n
 
 
+def jump_table(word, base, lo, hi):
+    """The handlers of a JMP (!a+X) table at base: its words while each is in
+    the code lo..hi-1 and after the table, and the table has not reached the
+    lowest of them. The drivers' tables end so: the port command tables (61
+    entries, then the first handler), the voice command table (32, then a
+    word outside the code) and the sound-special tables, where the next
+    word is the byte table the index came from."""
+    out, k, low = [], 0, hi
+    while base + 2 * k + 1 < low:
+        t = word(base + 2 * k)
+        if not (lo <= t < hi and t > base):
+            break
+        out.append(t)
+        low = min(low, t)
+        k += 1
+    return out
+
+
 def check():
     """Every opcode with sample operands through asar, against the table."""
     import tempfile

@@ -8,9 +8,13 @@ every block list) and at the target of a CALL, PCALL or TCALL: one it ran,
 an entry of a block when the same block holds the call too (its ROM byte at
 the call's APU address is that opcode, a CALL's operand that target), so a
 call the battle driver makes is not an entry of the race driver at the same
-address; or a CALL in code no trace ran, found by following the code from
+address; a call to an address outside its own block (the race driver's
+main loop into the block at $10B0, a driver into the code under or above
+it) is an entry of the block there, of the one that trace ran where blocks
+of several lists hold it; or a CALL in code no trace ran, found by following the code from
 the traced instructions through the untraced bytes they branch, call or
-fall to (to a RET, RETI, JMP or STOP). The handlers a JMP (!a+X) reaches
+fall to (to a RET, RETI, JMP, BRA or STOP) and the handlers of their
+JMP (!a+X) tables (spc700.jump_table). The handlers a JMP (!a+X) reaches
 through a table run in the dispatching routine's frame and are part of it,
 not routines of their own. Its row gives the APU
 address, the uploaded block (spcmap.lists) and ROM offset of that byte, and
@@ -29,7 +33,7 @@ B = os.path.join(ROOT, 'build', 'stuntracefx')
 OUT = os.path.join(B, 'spc_routines.csv')
 
 CALLS = {0x3F: 'call', 0x4F: 'pcall'} | {k << 4 | 1: 'tcall' for k in range(16)}
-ENDS = {0x6F, 0x7F, 0x5F, 0x1F, 0xFF, 0xEF, 0x0F}   # RET, RETI, JMP, JMP (!a+X), STOP, SLEEP, BRK
+ENDS = {0x6F, 0x7F, 0x5F, 0x2F, 0x1F, 0xFF, 0xEF, 0x0F}   # RET, RETI, JMP, BRA, JMP (!a+X), STOP, SLEEP, BRK
 
 
 def static_calls(rom, mp, block, apu_of):
@@ -55,6 +59,9 @@ def static_calls(rom, mp, block, apu_of):
             if 'r' in v:
                 t = x + ((v['r'] - apu_of[x] + 0x8000) & 0xFFFF) - 0x8000
                 todo.append(t)
+            if op == 0x1F:
+                word = lambda a: rom[o + a - dst] | rom[o + a - dst + 1] << 8
+                todo += [o + t - dst for t in spc700.jump_table(word, v['a'], dst, dst + n)]
             if op in ENDS:
                 break
             x += ln
@@ -77,22 +84,42 @@ def build():
         for dst, n, o in bl:
             if st is not None and dst <= st < dst + n and mp[o + st - dst] & spcmap.SPC_OP:
                 entries[o + st - dst] = 'start'
-    edges = set()
-    for path in glob.glob(os.path.join(B, 'box', '*', 'spc_edges.csv')):
+    folds = {}
+    def ran(d, x):
+        # the SPC700 ran ROM byte x as an opcode in trace d
+        if d not in folds:
+            folds[d] = spcmap.fold(d, rom, blocks)[0]
+        return folds[d].get(x, 0) & spcmap.SPC_OP
+    for path in sorted(glob.glob(os.path.join(B, 'box', '*', 'spc_edges.csv'))):
+        d = os.path.dirname(path)
         for r in csv.DictReader(open(path)):
             op = int(r['opcode'], 16)
-            if op in CALLS:
-                edges.add((op, int(r['from'], 16), int(r['to'], 16)))
-    for op, frm, to in sorted(edges):
-        for dst, n, o in blocks:
-            if not (dst <= frm < dst + n and dst <= to < dst + n):
+            if op not in CALLS:
                 continue
-            of, ot = o + frm - dst, o + to - dst
-            if rom[of] != op or not mp[of] & spcmap.SPC_OP or not mp[ot] & spcmap.SPC_OP:
-                continue
-            if op == 0x3F and (rom[of + 1] | rom[of + 2] << 8) != to:
-                continue
-            entries.setdefault(ot, CALLS[op])
+            frm, to = int(r['from'], 16), int(r['to'], 16)
+            for bf in blocks:
+                if not bf[0] <= frm < bf[0] + bf[1]:
+                    continue
+                of = bf[2] + frm - bf[0]
+                if rom[of] != op or (op == 0x3F and (rom[of + 1] | rom[of + 2] << 8) != to):
+                    continue
+                if bf[0] <= to < bf[0] + bf[1]:
+                    # the target is in the call's own block
+                    ot = bf[2] + to - bf[0]
+                    ok = mp[of] & spcmap.SPC_OP and mp[ot] & spcmap.SPC_OP
+                    if ok:
+                        entries.setdefault(ot, CALLS[op])
+                    continue
+                # a call into another block (the race driver's main loop
+                # into the block at $10B0, a driver into the code under or
+                # above it); where blocks of several lists hold the target,
+                # the one this trace ran there
+                bts = [bt for bt in blocks if bt[0] <= to < bt[0] + bt[1]]
+                for bt in bts:
+                    ot = bt[2] + to - bt[0]
+                    ok = mp[of] & spcmap.SPC_OP and (ran(d, ot) if len(bts) > 1 else mp[ot] & spcmap.SPC_OP)
+                    if ok:
+                        entries.setdefault(ot, CALLS[op])
     for name, (bl, _) in ls.items():
         for b in bl:
             dst, n, o = b
