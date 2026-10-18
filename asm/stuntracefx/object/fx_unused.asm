@@ -136,6 +136,7 @@ FxObjectNewProgram:
     sub r0
     sm (!gsu_record_arg-!gsu_ram),r0
     stop
+    nop
 
 
 ; @routine 04:9820 FxHitAddRotated

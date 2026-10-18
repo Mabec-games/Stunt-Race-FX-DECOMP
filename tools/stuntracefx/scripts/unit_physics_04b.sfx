@@ -8,7 +8,9 @@
 #   first part, its speeds of the other sign;
 # - FxCarFollowCourse on $1738 with its +$2C bit 6 set, placed far off
 #   the course (no nearest entry), and marked fallen (+$1C bit 4) with
-#   no course entry (+$58 = 0: FxCarAimAlongCourse does nothing);
+#   no course entry (+$58 = 0: FxCarAimAlongCourse does nothing; it
+#   returns two levels up, through the word under the stack, staged
+#   at $0242 as the STOP);
 # - FxCarCollide on $1738 with its +$16 bit 4 clear and a touch list
 #   ($1576), and also with its +$64 bit 4 set.
 # - FxCollideModel of $1738 against the record $21DE turned by $2000
@@ -70,6 +72,7 @@ wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
 set 701754 10,00
 set 701790 00,00
+set 700242 8C,88
 fx 04:C3D5 stop=888C r8=1738 r10=0244
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
