@@ -1904,8 +1904,8 @@ uint16_t MenuDropAwayCheck(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     *p = cmp16(*p, a, 0xCE89);
     if (!(*p & P_Z))
         return a;
-    MenuDropAwayFinish(bank, p);
     *x = rd16(dbw(bank, CURRENT));
+    *x = menu_drop_away_finish(bank, p);
     *y = 0xFFFE;
     return 0x0040;
 }

@@ -1183,10 +1183,133 @@ void abi_ChampionScreenRun(void)
     abi_MenuRunFrames();
 }
 
-/* TitleScreenRun (0B:AEF2) and TitleScreenLoop (0B:AF10) are held back:
-   with their C, the course menu reached from a demo diverges in lockstep
-   (unit_title, frame 757) while the title's objects run as C; their
-   assembly is filed in menu/screen.asm. */
+void abi_MenuScreenOpen6(void);
+void abi_MenuWaitFrame(void);
+void abi_ApproachTargetFull(void);
+void abi_ApproachTargetZero(void);
+void abi_MenuRunFrames(void);
+void abi_MenuActorsRun(void);
+void abi_MenuOamBuild(void);
+void abi_MenuActorFind(void);
+void abi_DemoRunFirst(void);
+void abi_DemoRunSecond(void);
+void abi_DemoRunFourth(void);
+
+/*
+ * @routine 0B:AF10 TitleScreenLoop
+ * WHAT IT DOES: The title screen's frames: each runs the objects and builds
+ * the sprites; while object kind $12 is idle (handler $D606, +$0A at 0) the
+ * count $1913 goes up, and at $400 the screen fades out, $10DA = $FF and the
+ * next of three attract demos runs ($1915 counts 0, 1, 2: DemoRunFirst,
+ * DemoRunSecond, DemoRunFourth); a demo returning C set leaves with A =
+ * $FFFF, C clear restarts the session (BootWarm). Both players' presses are
+ * cleared and frame updates 0-3 asked for each frame; the menu's exit
+ * ($11EB) leaves with A = 0.
+ * HOW: The idle object through direct page + X; a branch back for the next
+ * frame. BootWarm resets the stack, so it runs as original code.
+ * Entry: M 16-bit, X 16-bit; D = $0000. Exit: A = 0 or $FFFF; M 16-bit, X
+ * 16-bit; or BootWarm, which never returns.
+ */
+void abi_TitleScreenLoop(void)
+{
+    uint32_t b;
+    uint16_t v;
+
+    for (;;) {
+        abi_MenuWaitFrame();
+        abi_MenuActorsRun();
+        abi_MenuOamBuild();
+        op_rep(P_M);
+        op_lda16_imm(0x0012);
+        abi_MenuActorFind();
+        op_lda16((uint16_t)(cpu.d + 0x08 + cpu.x));
+        op_cmp16(0xD606);
+        if (cpu.p & P_Z) {
+            op_lda16((uint16_t)(cpu.d + 0x0A + cpu.x));
+            if (!cpu.a) {
+                op_lda16(0x001913);
+                cpu.a++;
+                cpu.p = nz16(cpu.p, cpu.a);
+                wr16(0x001913, cpu.a);
+                op_cmp16(0x0400);
+                if (cpu.p & P_Z) {
+                    abi_ApproachTargetZero();
+                    abi_MenuRunFrames();
+                    op_sep(P_M);
+                    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xFF);
+                    cpu.p = nz8(cpu.p, 0xFF);
+                    wr8(0x0010DA, 0xFF);
+                    op_rep(P_M);
+                    op_lda16(0x001915);
+                    cpu.a++;
+                    cpu.p = nz16(cpu.p, cpu.a);
+                    op_and16(0x0003);
+                    op_cmp16(0x0003);
+                    if (cpu.p & P_Z)
+                        op_lda16_imm(0x0000);
+                    v = cpu.a;
+                    wr16(0x001915, v);
+                    op_cmp16(0x0000);
+                    if (cpu.p & P_Z)
+                        abi_DemoRunFirst();
+                    else {
+                        op_cmp16(0x0001);
+                        if (cpu.p & P_Z)
+                            abi_DemoRunSecond();
+                        else
+                            abi_DemoRunFourth();
+                    }
+                    if (cpu.p & P_C) {
+                        op_rep(P_M | P_X);
+                        op_lda16_imm(0xFFFF);
+                        return;
+                    }
+                    jump_original_code(0x038BAA);
+                    return;
+                }
+            }
+        }
+        b = (uint32_t)cpu.db << 16;
+        wr16(b | 0x118B, 0x0000);
+        wr16(b | 0x118D, 0x0000);
+        op_sep(P_M);
+        op_lda8(b | 0x11D7);
+        cpu.a = (uint16_t)(cpu.a | 0x0F);
+        cpu.p = nz8(cpu.p, (uint8_t)cpu.a);
+        wr8(b | 0x11D7, (uint8_t)cpu.a);
+        op_rep(P_M | P_X);
+        op_lda16(b | 0x11EB);
+        if (cpu.a) {
+            op_lda16_imm(0x0000);
+            return;
+        }
+    }
+}
+
+/*
+ * @routine 0B:AEF2 TitleScreenRun
+ * WHAT IT DOES: The title screen: opens it (MenuScreenOpen6), $10DA = 0,
+ * waits a frame and sets the fade target to full, then its loop
+ * (TitleScreenLoop) with the idle count $1913 at 0.
+ * HOW: 16-bit registers; $10DA and $1913 by long accesses.
+ * Entry: any widths; D = $0000. Exit: as TitleScreenLoop leaves it.
+ */
+void abi_TitleScreenRun(void)
+{
+    op_rep(P_M | P_X);
+    abi_MenuScreenOpen6();
+    op_sep(P_M);
+    cpu.a = (uint16_t)(cpu.a & 0xFF00);
+    cpu.p = nz8(cpu.p, 0x00);
+    wr8(0x0010DA, 0x00);
+    op_rep(P_M);
+    abi_MenuWaitFrame();
+    abi_ApproachTargetFull();
+    op_rep(P_M | P_X);
+    op_lda16_imm(0x0000);
+    wr16(0x001913, 0x0000);
+    abi_TitleScreenLoop();
+}
 
 /*
  * @routine 0B:F443 MenuScrollZeroBg12
