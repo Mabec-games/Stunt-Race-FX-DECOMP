@@ -876,10 +876,14 @@ static void ls_insn(uint32_t pc)
             ls_op(0xA0, r.s);
             /* Op B: the return address a JSR or JSL pushed to enter it
                (its byte count in the top byte), so that the hybrid can put
-               back the frames of calls its C made without pushing one. */
-            if (prev == 0x20 || prev == 0xFC)
+               back the frames of calls its C made without pushing one. A
+               routine entered by RTL or RTS (a dispatcher that pushes the
+               handler's return, then its address, and returns into it,
+               03:CAB8) finds its return in the same place: the bytes the
+               dispatcher pushed first. */
+            if (prev == 0x20 || prev == 0xFC || (computed && prev == 0x60))
                 ls_op(0xB0, 2u << 24 | wram[(r.s + 1) & 0xFFFF] | (uint32_t)wram[(r.s + 2) & 0xFFFF] << 8);
-            else if (prev == 0x22)
+            else if (prev == 0x22 || (computed && prev == 0x6B))
                 ls_op(0xB0, 3u << 24 | wram[(r.s + 1) & 0xFFFF] | (uint32_t)wram[(r.s + 2) & 0xFFFF] << 8
                             | (uint32_t)wram[(r.s + 3) & 0xFFFF] << 16);
             m.open_pc[m.depth] = pc;
