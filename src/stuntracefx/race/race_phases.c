@@ -212,6 +212,20 @@ static void start_draw(uint32_t b)
     abi_GsuTimeDigits();
 }
 
+/* RaceStartSteps' sub-state 4: waits on the timer (at once while $0D54 is
+   0), then the next sub-state with $0D54 = 8 and the timer 3. */
+static void start_hold(uint32_t b)
+{
+    op_lda8(b | 0x0D54);
+    if ((uint8_t)cpu.a && dec8_mem(b | 0x0E55))
+        return;
+    substate_next(b);
+    lda8_imm(0x08);
+    wr8(b | 0x0D54, 0x08);
+    lda8_imm(0x03);
+    wr8(b | 0x0E55, 0x03);
+}
+
 /*
  * @routine 07:E2E9 RaceStartSteps
  * WHAT IT DOES: Steps the start's sub-state $0D5A, the timer $0E55
@@ -254,14 +268,7 @@ void abi_RaceStartSteps(void)
         time_digits_full();
         return;
     case 4:
-        op_lda8(b | 0x0D54);
-        if ((uint8_t)cpu.a && dec8_mem(b | 0x0E55))
-            return;
-        substate_next(b);
-        lda8_imm(0x08);
-        wr8(b | 0x0D54, 0x08);
-        lda8_imm(0x03);
-        wr8(b | 0x0E55, 0x03);
+        start_hold(b);
         return;
     case 6:
         if (dec8_mem(b | 0x0E55))
@@ -2106,15 +2113,30 @@ void abi_TimeUpRace(void)
  * drawn (GsuBytes200_BFB5BB, GsuTimeDigits) at the digit size from the
  * table at $07:E33A by the timer.
  * HOW: The size byte read as a 16-bit word, ANDed to its low byte, into
- * $70:0210. The timer counts from 7, so the table's word at timer 9 is
- * never read: its byte $07:E343 is dead (read only at timers 8 and 9,
- * whose size 0 runs the digit program some 230 frames).
+ * $70:0210. The timer counts down from 7, so the word read at timer 7
+ * takes the table's ninth byte and its tenth ($07:E343) is never read:
+ * that byte is left to the raw intake as data, and the sub-state 4 code
+ * after it is RaceStartStepsHold.
  * Entry: M 8-bit, X 8-bit; D = $0000. Exit: M 16-bit, X = the timer; as
  * GsuTimeDigits leaves the rest.
  */
 void abi_RaceStartStepsDraw(void)
 {
     start_draw((uint32_t)cpu.db << 16);
+}
+
+/*
+ * @routine 07:E344 RaceStartStepsHold
+ * WHAT IT DOES: RaceStartSteps' sub-state 4, entered from its jump table:
+ * waits on the timer $0E55 (not at all while $0D54 is 0), then the next
+ * sub-state with $0D54 = 8 and the timer 3.
+ * HOW: LDA/BEQ, DEC/BNE, two INCs of $0D5A, byte stores.
+ * Entry: M 8-bit, X 8-bit; D = $0000. Exit: A low byte = 3, or $0D54 or
+ * the timer as last loaded; N, Z from it.
+ */
+void abi_RaceStartStepsHold(void)
+{
+    start_hold((uint32_t)cpu.db << 16);
 }
 
 /*

@@ -1,0 +1,24 @@
+# unit_race_start_hold_07: RaceStartStepsHold 07:E344, RaceStartSteps'
+# sub-state 4 entered from its jump table, called directly from a Novice
+# race's state: $0D54 clear (no wait), the timer running, the timer out;
+# then RaceStartSteps itself in sub-state 4.
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D5A 04
+set 7E0D54 00
+set 7E0E55 05
+call 07:E344 p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D5A 04
+set 7E0D54 04
+set 7E0E55 05
+call 07:E344 p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D5A 04
+set 7E0D54 04
+set 7E0E55 01
+call 07:E344 p=30 db=07 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0D5A 04
+set 7E0D54 04
+set 7E0E55 01
+call 07:E2E9 p=30 db=07 d=0000

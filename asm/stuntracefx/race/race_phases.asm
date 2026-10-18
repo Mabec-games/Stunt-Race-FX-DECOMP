@@ -163,9 +163,10 @@ RaceStartSteps:
 ; drawn (GsuBytes200_BFB5BB, GsuTimeDigits) at the digit size from
 ; .sizes by the timer.
 ; HOW: The size byte read as a 16-bit word, ANDed to its low byte, into
-; $70:0210. The timer counts from 7, so the table's word at timer 9 is
-; never read: its byte $07:E343 is dead (read only at timers 8 and 9,
-; whose size 0 runs the digit program some 230 frames).
+; $70:0210. The timer counts down from 7, so the word read at timer 7
+; takes the table's ninth byte and its tenth ($07:E343) is never read:
+; that byte is left to the raw intake as data, and the sub-state 4 code
+; after it is RaceStartStepsHold.
 ; Entry: M 8-bit, X 8-bit; D = $0000. Exit: M 16-bit, X = the timer; as
 ; GsuTimeDigits leaves the rest.
 %at($07E323)
@@ -178,7 +179,17 @@ RaceStartSteps:
     jsr.w GsuTimeDigits
     rts
 .sizes:
-    db $20, $1C, $18, $14, $10, $0C, $08, $04, $00, $00
+    ; a tenth byte ($00 at $07:E343) follows, which nothing reads
+    db $20, $1C, $18, $14, $10, $0C, $08, $04, $00
+
+; @routine 07:E344 RaceStartStepsHold
+; WHAT IT DOES: RaceStartSteps' sub-state 4, entered from its jump table:
+; waits on the timer $0E55 (not at all while $0D54 is 0), then the next
+; sub-state with $0D54 = 8 and the timer 3.
+; HOW: LDA/BEQ, DEC/BNE, two INCs of $0D5A, byte stores.
+; Entry: M 8-bit, X 8-bit; D = $0000. Exit: A low byte = 3, or $0D54 or
+; the timer as last loaded; N, Z from it.
+%at($07E344)
 .hold:
     lda.w !wram_0D54
     beq .holdNext
