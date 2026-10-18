@@ -1,0 +1,176 @@
+diff --git a/bsnes/emulator/sfxbox.hpp b/bsnes/emulator/sfxbox.hpp
+index 460b194..33b1b45 100644
+--- a/bsnes/emulator/sfxbox.hpp
++++ b/bsnes/emulator/sfxbox.hpp
+@@ -20,6 +20,12 @@ void sfxbox_cpu_rom(uint32_t offset);
+ void sfxbox_cpu_insn(uint32_t pc, int m, int x, int e, int db, int d);
+ extern int (*sfxbox_cpu_exec)(uint32_t pc);
+ void sfxbox_gsu_insn(uint32_t addr);
++// SPC700: an instruction starts at pc; an opcode or operand byte is fetched
++// (with its value); a data read.
++extern int sfxbox_smp_fetching;
++void sfxbox_smp_insn(uint16_t pc);
++void sfxbox_smp_fetch(uint16_t addr, uint8_t data);
++void sfxbox_smp_read(uint16_t addr);
+ void sfxbox_gsu_operand(uint32_t addr);
+ void sfxbox_gsu_data(uint32_t addr);
+ // Per-access events for the call oracle (kind: 0 S-CPU write, 2 DMA write).
+diff --git a/bsnes/processor/spc700/memory.cpp b/bsnes/processor/spc700/memory.cpp
+index 3c0f92a..e8c52eb 100644
+--- a/bsnes/processor/spc700/memory.cpp
++++ b/bsnes/processor/spc700/memory.cpp
+@@ -1,5 +1,10 @@
+ auto SPC700::fetch() -> uint8 {
+-  return read(PC++);
++  uint16 address = PC;
++  sfxbox_smp_fetching = 1;
++  uint8 data = read(PC++);
++  sfxbox_smp_fetching = 0;
++  sfxbox_smp_fetch(address, data);
++  return data;
+ }
+ 
+ auto SPC700::load(uint8 address) -> uint8 {
+diff --git a/bsnes/processor/spc700/spc700.cpp b/bsnes/processor/spc700/spc700.cpp
+index 69ec693..433b676 100644
+--- a/bsnes/processor/spc700/spc700.cpp
++++ b/bsnes/processor/spc700/spc700.cpp
+@@ -1,5 +1,6 @@
+ #include <processor/processor.hpp>
+ #include "spc700.hpp"
++#include <emulator/sfxbox.hpp>
+ 
+ namespace Processor {
+ 
+diff --git a/bsnes/sfc/smp/memory.cpp b/bsnes/sfc/smp/memory.cpp
+index 32af649..e241786 100644
+--- a/bsnes/sfc/smp/memory.cpp
++++ b/bsnes/sfc/smp/memory.cpp
+@@ -26,6 +26,7 @@ auto SMP::read(uint16 address) -> uint8 {
+     wait(address, 0);
+     uint8 data = readRAM(address);
+     if((address & 0xfff0) == 0x00f0) data = readIO(address);
++    if(!sfxbox_smp_fetching) sfxbox_smp_read(address);
+     return data;
+   }
+ }
+diff --git a/bsnes/sfc/smp/smp.cpp b/bsnes/sfc/smp/smp.cpp
+index 4002855..b0f628e 100644
+--- a/bsnes/sfc/smp/smp.cpp
++++ b/bsnes/sfc/smp/smp.cpp
+@@ -1,4 +1,5 @@
+ #include <sfc/sfc.hpp>
++#include <emulator/sfxbox.hpp>
+ 
+ namespace SuperFamicom {
+ 
+@@ -26,6 +27,7 @@ auto SMP::Enter() -> void {
+ auto SMP::main() -> void {
+   if(r.wait) return instructionWait();
+   if(r.stop) return instructionStop();
++  sfxbox_smp_insn(r.pc.w);
+   instruction();
+ }
+ 
+diff --git a/bsnes/target-libretro/sfxbox.cpp b/bsnes/target-libretro/sfxbox.cpp
+index 0118f94..9528569 100644
+--- a/bsnes/target-libretro/sfxbox.cpp
++++ b/bsnes/target-libretro/sfxbox.cpp
+@@ -16,6 +16,7 @@ int (*sfxbox_cpu_exec)(uint32_t pc) = nullptr;
+ SfxboxGsuCallbacks sfxbox_gsu_cb = {};
+ int sfxbox_gsu_hooked = 0;
+ int (*sfxbox_gsu_exec)(uint32_t pc, uint32_t prev_end) = nullptr;
++int sfxbox_smp_fetching = 0;
+ }
+ 
+ // The harness installs its Super FX callbacks and its run-in-place hook here.
+@@ -57,6 +58,19 @@ static bool sfxboxGsuSkip = false, sfxboxGsuWasRunning = false;
+ // key: cpu(1) | kind(9) | from(24) | to(24) -> count
+ static std::unordered_map<uint64_t, uint32_t> sfxboxEdges;
+ 
++// SPC700, by APU RAM address: 1 opcode fetched, 2 operand fetched, 4 read
++// as data, 8 fetched with two different values (the RAM was loaded again
++// between), and the value fetched first; folded back onto the uploaded ROM
++// blocks by tools/stuntracefx (their bytes match the values).
++static uint8_t sfxboxSpcExec[0x10000];
++static uint8_t sfxboxSpcByte[0x10000];
++static uint16_t sfxboxSmpPrev = 0, sfxboxSmpEnd = 0;
++static bool sfxboxSmpHavePrev = false;
++static uint8_t sfxboxSmpPrevOp = 0;
++static int sfxboxSmpFirst = 0;
++// key: opcode(8) | from(16) | to(16) -> count, APU addresses
++static std::unordered_map<uint64_t, uint32_t> sfxboxSpcEdges;
++
+ static inline void sfxboxEdge(int gsu, uint32_t from, uint32_t to, uint32_t kind) {
+   uint64_t key = (uint64_t)gsu << 63 | (uint64_t)(kind & 0x1ff) << 48 | (uint64_t)(from & 0xffffff) << 24 | (to & 0xffffff);
+   sfxboxEdges[key]++;
+@@ -130,6 +144,33 @@ extern "C" void sfxbox_gsu_data(uint32_t addr) {
+   if(o >= 0) sfxboxRom[o] |= SFXBOX_GSU_DATA;
+ }
+ 
++// ---- SPC700 ----
++
++extern "C" void sfxbox_smp_insn(uint16_t pc) {
++  if(!sfxboxRom) return;
++  if(sfxboxSmpHavePrev && pc != sfxboxSmpEnd)
++    sfxboxSpcEdges[(uint64_t)sfxboxSmpPrevOp << 32 | (uint64_t)sfxboxSmpPrev << 16 | pc]++;
++  sfxboxSmpPrev = pc;
++  sfxboxSmpHavePrev = true;
++  sfxboxSmpFirst = 1;
++}
++
++extern "C" void sfxbox_smp_fetch(uint16_t addr, uint8_t data) {
++  if(!sfxboxRom) return;
++  int first = sfxboxSmpFirst;
++  sfxboxSmpFirst = 0;
++  if(!(sfxboxSpcExec[addr] & 3)) sfxboxSpcByte[addr] = data;
++  else if(sfxboxSpcByte[addr] != data) sfxboxSpcExec[addr] |= 8;
++  sfxboxSpcExec[addr] |= first ? 1 : 2;
++  if(first) sfxboxSmpPrevOp = data;
++  sfxboxSmpEnd = (uint16_t)(addr + 1);
++}
++
++extern "C" void sfxbox_smp_read(uint16_t addr) {
++  if(!sfxboxRom) return;
++  sfxboxSpcExec[addr] |= 4;
++}
++
+ // ---- call-oracle events, forwarded to the harness ----
+ 
+ 
+@@ -172,6 +213,10 @@ extern "C" RETRO_API void sfxbox_trace_begin() {
+   memset(sfxboxGsuRamExec, 0, sizeof sfxboxGsuRamExec);
+   memset(sfxboxWramCode, 0, sizeof sfxboxWramCode);
+   sfxboxEdges.clear();
++  sfxboxSpcEdges.clear();
++  memset(sfxboxSpcExec, 0, sizeof sfxboxSpcExec);
++  memset(sfxboxSpcByte, 0, sizeof sfxboxSpcByte);
++  sfxboxSmpHavePrev = false;
+   sfxboxCpuPrev = sfxboxGsuPrev = sfxboxGsuEnd = ~0u;
+   sfxboxGsuSkip = true;  // the first report names no address (power-on)
+   sfxboxGsuWasRunning = false;
+@@ -181,6 +226,7 @@ extern "C" RETRO_API void sfxbox_trace_begin() {
+ // registers set): the next instruction was not reached from the last one.
+ extern "C" RETRO_API void sfxbox_trace_break() {
+   sfxboxCpuPrev = sfxboxGsuPrev = sfxboxGsuEnd = ~0u;
++  sfxboxSmpHavePrev = false;
+   sfxboxGsuSkip = true;
+   sfxboxGsuWasRunning = sfxbox_gsu_running();
+ }
+@@ -207,6 +253,16 @@ extern "C" RETRO_API int sfxbox_trace_write(const char* dir) {
+     fprintf(f, "%s,%03x,%06x,%06x,%u\n", k >> 63 ? "gsu" : "cpu", (unsigned)(k >> 48 & 0x1ff),
+             (unsigned)(k >> 24 & 0xffffff), (unsigned)(k & 0xffffff), n);
+   fclose(f);
++  snprintf(path, sizeof path, "%s/spc_exec.bin", dir);
++  f = fopen(path, "wb"); if(!f) return -1;
++  fwrite(sfxboxSpcExec, 1, sizeof sfxboxSpcExec, f);
++  fwrite(sfxboxSpcByte, 1, sizeof sfxboxSpcByte, f); fclose(f);
++  snprintf(path, sizeof path, "%s/spc_edges.csv", dir);
++  f = fopen(path, "w"); if(!f) return -1;
++  fprintf(f, "opcode,from,to,count\n");
++  for(auto& [k, n] : sfxboxSpcEdges)
++    fprintf(f, "%02x,%04x,%04x,%u\n", (unsigned)(k >> 32 & 0xff), (unsigned)(k >> 16 & 0xffff), (unsigned)(k & 0xffff), n);
++  fclose(f);
+   return 0;
+ }
+ 
