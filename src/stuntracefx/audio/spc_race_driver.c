@@ -114,9 +114,258 @@ void abi_SpcNoiseSampleInit(void);
  * HOW: Runs at SPC $0800 (the block lists' start address). Clears by MOV (X+),A and indexed loops; DSP writes through SpcDspWrite. The LFSR: EOR of the two bytes, two LSRs, NOTC, ROR of both. The echo settle count $4C steps on each sound effect tick until it reaches $4D.
  * Entry: from the uploader (SpcReload or the IPL ROM). Exit: never returns.
  * @spc 0800
+ * @spcuses 0800-09EF,09F6-107A,10B0-16D8,16F1-1B8C,1B92-1C04,1C07-1DC1,1DCE-23EB,23FB-241B,2441-26D6,3FCA-4000,CA75-CAA8,CAC0-CB04,EDF0-EE20
  */
 void abi_SpcReset(void)
 {
+    /* 0800 clrp */
+    spc.p = 0;
+    /* 0801 mov x,#$CF */
+    spc.x = spc_nz(0xCF);
+    /* 0803 mov sp,x */
+    spc.sp = spc.x;
+    /* 0804 mov a,#$00 */
+    spc.a = spc_nz(0x00);
+    /* 0806 mov x,a */
+    spc.x = spc_nz(spc.a);
+L0807:
+    /* 0807 mov (x+),a */
+    spc_wr(spc_dp(spc.x), spc.a);
+    spc.x++;
+    /* 0808 cmp x,#$E0 */
+    spc_cmp(spc.x, 0xE0);
+    /* 080A bne $0807 */
+    if (!spc.z) goto L0807;
+    /* 080C inc a */
+    spc.a = spc_inc(spc.a);
+    /* 080D call $0D73 */
+    spc_call(abi_SpcSetEchoDelay, 0x0810);
+    /* 0810 mov a,#$00 */
+    spc.a = spc_nz(0x00);
+    /* 0812 mov x,a */
+    spc.x = spc_nz(spc.a);
+L0813:
+    /* 0813 mov.w $0200+x,a */
+    spc_st((uint16_t)(0x0200 + spc.x), spc.a);
+    /* 0816 inc x */
+    spc.x = spc_inc(spc.x);
+    /* 0817 bne $0813 */
+    if (!spc.z) goto L0813;
+L0819:
+    /* 0819 mov.w $0300+x,a */
+    spc_st((uint16_t)(0x0300 + spc.x), spc.a);
+    /* 081C inc x */
+    spc.x = spc_inc(spc.x);
+    /* 081D bne $0819 */
+    if (!spc.z) goto L0819;
+L081F:
+    /* 081F mov.w $0400+x,a */
+    spc_st((uint16_t)(0x0400 + spc.x), spc.a);
+    /* 0822 inc x */
+    spc.x = spc_inc(spc.x);
+    /* 0823 bne $081F */
+    if (!spc.z) goto L081F;
+L0825:
+    /* 0825 mov.w $0500+x,a */
+    spc_st((uint16_t)(0x0500 + spc.x), spc.a);
+    /* 0828 inc x */
+    spc.x = spc_inc(spc.x);
+    /* 0829 cmp x,#$90 */
+    spc_cmp(spc.x, 0x90);
+    /* 082B bne $0825 */
+    if (!spc.z) goto L0825;
+    /* 082D mov x,a */
+    spc.x = spc_nz(spc.a);
+    /* 082E inc a */
+    spc.a = spc_inc(spc.a);
+L082F:
+    /* 082F mov.w $0361+x,a */
+    spc_st((uint16_t)(0x0361 + spc.x), spc.a);
+    /* 0832 inc x */
+    spc.x = spc_inc(spc.x);
+    /* 0833 inc x */
+    spc.x = spc_inc(spc.x);
+    /* 0834 cmp x,#$10 */
+    spc_cmp(spc.x, 0x10);
+    /* 0836 bne $082F */
+    if (!spc.z) goto L082F;
+    /* 0838 mov a,#$60 */
+    spc.a = spc_nz(0x60);
+    /* 083A mov y,#$0C */
+    spc.y = spc_nz(0x0C);
+    /* 083C call $09E8 */
+    spc_call(abi_SpcDspWrite, 0x083F);
+    /* 083F mov y,#$1C */
+    spc.y = spc_nz(0x1C);
+    /* 0841 call $09E8 */
+    spc_call(abi_SpcDspWrite, 0x0844);
+    /* 0844 mov a,#$3F */
+    spc.a = spc_nz(0x3F);
+    /* 0846 mov y,#$5D */
+    spc.y = spc_nz(0x5D);
+    /* 0848 call $09E8 */
+    spc_call(abi_SpcDspWrite, 0x084B);
+    /* 084B mov a,#$30 */
+    spc.a = spc_nz(0x30);
+    /* 084D mov.w $00F1,a */
+    spc_st(0x00F1, spc.a);
+    /* 0850 mov a,#$10 */
+    spc.a = spc_nz(0x10);
+    /* 0852 mov.w $00FA,a */
+    spc_st(0x00FA, spc.a);
+    /* 0855 mov.b $53,a */
+    spc_st(spc_dp(0x53), spc.a);
+    /* 0857 mov a,#$01 */
+    spc.a = spc_nz(0x01);
+    /* 0859 mov.w $00F1,a */
+    spc_st(0x00F1, spc.a);
+    /* 085C dec a */
+    spc.a = spc_dec(spc.a);
+    /* 085D mov.b $04,a */
+    spc_st(spc_dp(0x04), spc.a);
+    /* 085F mov.b $05,a */
+    spc_st(spc_dp(0x05), spc.a);
+    /* 0861 mov.b $06,a */
+    spc_st(spc_dp(0x06), spc.a);
+    /* 0863 mov.b $07,a */
+    spc_st(spc_dp(0x07), spc.a);
+    /* 0865 dec a */
+    spc.a = spc_dec(spc.a);
+    /* 0866 mov.b $46,a */
+    spc_st(spc_dp(0x46), spc.a);
+L0868:
+    /* 0868 mov y,#$0A */
+    spc.y = spc_nz(0x0A);
+L086A:
+    /* 086A cmp y,#$05 */
+    spc_cmp(spc.y, 0x05);
+    /* 086C beq $0875 */
+    if (spc.z) goto L0875;
+    /* 086E bcs $0878 */
+    if (spc.c) goto L0878;
+    /* 0870 cmp $4C,$4D */
+    { uint8_t r = spc_rd(spc_dp(0x4D)); spc_cmp(spc_rd(spc_dp(0x4C)), r); }
+    /* 0873 bne $0886 */
+    if (!spc.z) goto L0886;
+L0875:
+    /* 0875 bbs $4C.7,$0886 */
+    if ((spc_rd(spc_dp(0x4C)) >> 7 & 1)) goto L0886;
+L0878:
+    /* 0878 mov.w a,$3F9F+y */
+    spc.a = spc_nz(spc_rd((uint16_t)(0x3F9F + spc.y)));
+    /* 087B mov.w $00F2,a */
+    spc_st(0x00F2, spc.a);
+    /* 087E mov.w a,$06C2+y */
+    spc.a = spc_nz(spc_rd((uint16_t)(0x06C2 + spc.y)));
+    /* 0881 mov x,a */
+    spc.x = spc_nz(spc.a);
+    /* 0882 mov a,(x) */
+    spc.a = spc_nz(spc_rd(spc_dp(spc.x)));
+    /* 0883 mov.w $00F3,a */
+    spc_st(0x00F3, spc.a);
+L0886:
+    /* 0886 dbnz y,$086A */
+    if (--spc.y) goto L086A;
+    /* 0888 mov.b $45,y */
+    spc_st(spc_dp(0x45), spc.y);
+    /* 088A mov.b $46,y */
+    spc_st(spc_dp(0x46), spc.y);
+    /* 088C mov.b a,$18 */
+    spc.a = spc_nz(spc_rd(spc_dp(0x18)));
+    /* 088E eor.b a,$19 */
+    spc.a = spc_eor(spc.a, spc_rd(spc_dp(0x19)));
+    /* 0890 lsr a */
+    spc.a = spc_lsr(spc.a);
+    /* 0891 lsr a */
+    spc.a = spc_lsr(spc.a);
+    /* 0892 notc */
+    spc.c ^= 1;
+    /* 0893 ror.b $18 */
+    spc_rmw(spc_dp(0x18), spc_ror);
+    /* 0895 ror.b $19 */
+    spc_rmw(spc_dp(0x19), spc_ror);
+L0897:
+    /* 0897 mov.w y,$00FD */
+    spc.y = spc_nz(spc_rd(0x00FD));
+    /* 089A beq $0897 */
+    if (spc.z) goto L0897;
+    /* 089C push y */
+    spc_push(spc.y);
+    /* 089D mov a,#$20 */
+    spc.a = spc_nz(0x20);
+    /* 089F mul ya */
+    spc_mul();
+    /* 08A0 clrc */
+    spc.c = 0;
+    /* 08A1 adc.b a,$43 */
+    spc.a = spc_adc(spc.a, spc_rd(spc_dp(0x43)));
+    /* 08A3 mov.b $43,a */
+    spc_st(spc_dp(0x43), spc.a);
+    /* 08A5 bcc $08B1 */
+    if (!spc.c) goto L08B1;
+    /* 08A7 call $10B0 */
+    spc_call(abi_SpcSfxFrame, 0x08AA);
+    /* 08AA cmp $4C,$4D */
+    { uint8_t r = spc_rd(spc_dp(0x4D)); spc_cmp(spc_rd(spc_dp(0x4C)), r); }
+    /* 08AD beq $08B1 */
+    if (spc.z) goto L08B1;
+    /* 08AF inc.b $4C */
+    spc_rmw(spc_dp(0x4C), spc_inc);
+L08B1:
+    /* 08B1 mov.b a,$53 */
+    spc.a = spc_nz(spc_rd(spc_dp(0x53)));
+    /* 08B3 pop y */
+    spc.y = spc_pull();
+    /* 08B4 mul ya */
+    spc_mul();
+    /* 08B5 clrc */
+    spc.c = 0;
+    /* 08B6 adc.b a,$51 */
+    spc.a = spc_adc(spc.a, spc_rd(spc_dp(0x51)));
+    /* 08B8 mov.b $51,a */
+    spc_st(spc_dp(0x51), spc.a);
+    /* 08BA bcc $08C9 */
+    if (!spc.c) goto L08C9;
+    /* 08BC call $0A6F */
+    spc_call(abi_SpcMusicFrame, 0x08BF);
+    /* 08BF mov x,#$03 */
+    spc.x = spc_nz(0x03);
+L08C1:
+    /* 08C1 call $08E2 */
+    spc_call(abi_SpcPortExchange, 0x08C4);
+    /* 08C4 dec x */
+    spc.x = spc_dec(spc.x);
+    /* 08C5 bpl $08C1 */
+    if (!spc.n) goto L08C1;
+    /* 08C7 bra $0868 */
+    goto L0868;
+L08C9:
+    /* 08C9 mov.b a,$1C */
+    spc.a = spc_nz(spc_rd(spc_dp(0x1C)));
+    /* 08CB beq $0868 */
+    if (spc.z) goto L0868;
+    /* 08CD mov x,#$00 */
+    spc.x = spc_nz(0x00);
+    /* 08CF mov $47,#$01 */
+    spc_st(spc_dp(0x47), 0x01);
+L08D2:
+    /* 08D2 mov.b a,$31+x */
+    spc.a = spc_nz(spc_rd(spc_dp((uint8_t)(0x31 + spc.x))));
+    /* 08D4 beq $08D9 */
+    if (spc.z) goto L08D9;
+    /* 08D6 call $0FD6 */
+    spc_call(abi_SpcVoiceBetweenTicks, 0x08D9);
+L08D9:
+    /* 08D9 inc x */
+    spc.x = spc_inc(spc.x);
+    /* 08DA inc x */
+    spc.x = spc_inc(spc.x);
+    /* 08DB asl.b $47 */
+    spc_rmw(spc_dp(0x47), spc_asl);
+    /* 08DD bne $08D2 */
+    if (!spc.z) goto L08D2;
+    /* 08DF jmp $0868 */
+    goto L0868;
 }
 
 /*
@@ -125,6 +374,7 @@ void abi_SpcReset(void)
  * HOW: MOV to $F4+X, then a read-compare loop on $F4+X.
  * Entry: X = port (0-3). Exit: A = the byte read; flags from the last compare.
  * @spc 08E2
+ * @spcuses 08E2-08F3
  */
 void abi_SpcPortExchange(void)
 {
@@ -152,6 +402,7 @@ L08E7:
  * HOW: The pitch is a note number with a fraction ($0360/$0361); the DSP pitch comes from the 12-entry table at $06CD by octave (DIV by $18) and interpolation, times the instrument's multiplier $0220/$0221, written to VxPITCH through SpcDspWriteVoice. The code after $095D is also the pitch write the vibrato and slide paths jump back to.
  * Entry: X = voice * 2, $47 = the voice's bit, Y = note. Exit: A, Y as the last DSP write left them; X kept.
  * @spc 08F3
+ * @spcuses 08F2-09EF,0BBE-0C17,0DDC-0E1B
  */
 void abi_SpcNoteOn(void)
 {
@@ -425,6 +676,7 @@ L08F2:
  * HOW: A tested against $1A on the stack, then as SpcDspWrite.
  * Entry: Y = DSP register, A = value. Exit: A, Y kept.
  * @spc 09E0
+ * @spcuses 09E0-09EF
  */
 void abi_SpcDspWriteVoice(void)
 {
@@ -451,6 +703,7 @@ L09EE:
  * HOW: $F2 = Y, $F3 = A.
  * Entry: Y = DSP register, A = value. Exit: A, Y kept.
  * @spc 09E8
+ * @spcuses 09E8-09EF
  */
 void abi_SpcDspWrite(void)
 {
@@ -469,6 +722,7 @@ void abi_SpcDspWrite(void)
  * HOW: MOV A,($40)+Y twice with INCW; the word in YA.
  * Entry: none. Exit: YA = the word; Z, N from the high byte.
  * @spc 09F6
+ * @spcuses 09F6-0A04
  */
 void abi_SpcReadPatternWord(void)
 {
@@ -501,6 +755,7 @@ void abi_SpcReadPatternWord(void)
  * HOW: BBS, SET1, then the release code in SpcReadPatternWord's tail (TSET of the free voices into the key-off mask $46).
  * Entry: none. Exit: A = the free voices' mask.
  * @spc 0A60
+ * @spcuses 0A3B-0A3C,0A58-0A6D
  */
 void abi_SpcMusicPause(void)
 {
@@ -536,6 +791,7 @@ L0A58:
  * HOW: Track pointers at $30+X, timers $70/$71, subroutine counts $80; the gate and velocity come from the tables $0650 and $0658.
  * Entry: none. Exit: A, X, Y changed.
  * @spc 0A6F
+ * @spcuses 08F2-09EF,09F6-0FD6,1047-104F,105C-107A,3FCA-4000
  */
 void abi_SpcMusicFrame(void)
 {
@@ -977,6 +1233,7 @@ L0A6D:
  * HOW: The handler's address minus one is pushed, then the RET at the end of SpcTrackRead (or SpcTrackAdvance's tail) enters it; the handlers follow SpcSetPan's code (SpcVcmdPanFade and on).
  * Entry: A = command, X = voice * 2. Exit: as the handler leaves it.
  * @spc 0BA2
+ * @spcuses 09E8-09EF,0BA2-0BBE,0C25-0DBC,0DCC-0DF4,0DFF-0E1B,3FCA-4000
  */
 void abi_SpcVcmdDispatch(void)
 {
@@ -1448,6 +1705,7 @@ L0DCC:
  * HOW: MOV A,($30+X), then SpcTrackAdvance.
  * Entry: X = voice * 2. Exit: A = Y = the byte; N, Z from it.
  * @spc 0BB4
+ * @spcuses 0BB4-0BBE
  */
 void abi_SpcTrackRead(void)
 {
@@ -1463,6 +1721,7 @@ void abi_SpcTrackRead(void)
  * HOW: INC of the pointer's low byte, carrying into the high byte.
  * Entry: X = voice * 2. Exit: Y = A.
  * @spc 0BB6
+ * @spcuses 0BB6-0BBE
  */
 void abi_SpcTrackAdvance(void)
 {
@@ -1486,6 +1745,7 @@ L0BBC:
  * HOW: Falls into SpcLoadInstrument.
  * Entry: A = instrument, X = voice * 2. Exit: as SpcLoadInstrument.
  * @spc 0BBE
+ * @spcuses 0BBE-0C17
  */
 void abi_SpcSetInstrument(void)
 {
@@ -1500,6 +1760,7 @@ void abi_SpcSetInstrument(void)
  * HOW: The DSP registers VxSRCN-VxGAIN by an index loop; noise through $48 (FLG) and $49.
  * Entry: A = instrument, X = voice * 2, $47 = its bit. Exit: X kept.
  * @spc 0BC1
+ * @spcuses 0BC1-0C17
  */
 void abi_SpcLoadInstrument(void)
 {
@@ -1615,6 +1876,7 @@ L0C16:
  * HOW: Stores to $0351, $0331 and $0330.
  * Entry: A = pan, X = voice * 2. Exit: A = 0.
  * @spc 0C17
+ * @spcuses 0C17-0C25
  */
 void abi_SpcSetPan(void)
 {
@@ -1639,6 +1901,7 @@ void abi_SpcSetPan(void)
  * HOW: Two byte copies.
  * Entry: X = voice * 2. Exit: A = the start's high byte.
  * @spc 0D05
+ * @spcuses 0D05-0D10
  */
 void abi_SpcSubroutineRestart(void)
 {
@@ -1661,6 +1924,7 @@ void abi_SpcSubroutineRestart(void)
  * HOW: EDL ($7D) read back to compare; ESA ($6D) by ASLs, EOR and ADC.
  * Entry: A = delay (0-15). Exit: A, Y as the last DSP write left them.
  * @spc 0D73
+ * @spcuses 09E8-09EF,0D73-0DB9
  */
 void abi_SpcSetEchoDelay(void)
 {
@@ -1741,6 +2005,7 @@ L0DAC:
  * HOW: Peeks at ($30+X); the slide delta from SpcFadeDelta.
  * Entry: X = voice * 2. Exit: A, Y changed.
  * @spc 0DBC
+ * @spcuses 0BB4-0BBE,0DBC-0DF4,0DFF-0E1B
  */
 void abi_SpcSlideCheck(void)
 {
@@ -1786,6 +2051,7 @@ L0DF3:
  * HOW: SpcFadeDelta on target minus pitch; X from the steps through the stack.
  * Entry: A = target note, X = voice * 2. Exit: X = voice * 2; YA = delta.
  * @spc 0DDC
+ * @spcuses 0DDC-0DF4,0DFF-0E1B
  */
 void abi_SpcSlideToNote(void)
 {
@@ -1822,6 +2088,7 @@ void abi_SpcSlideToNote(void)
  * HOW: Two byte copies.
  * Entry: X = voice * 2. Exit: A = the pitch's low byte.
  * @spc 0DF4
+ * @spcuses 0DF4-0DFF
  */
 void abi_SpcLoadPitch(void)
 {
@@ -1844,6 +2111,7 @@ void abi_SpcLoadPitch(void)
  * HOW: The sign kept in $12 (NOTC, ROR), the magnitude divided in two DIVs (whole, then fraction), negated back through SpcNegateIfNeg; X reloaded from $44.
  * Entry: A = difference, C = no borrow, X = steps. Exit: YA = delta; X = $44.
  * @spc 0DFF
+ * @spcuses 0DFF-0E1B
  */
 void abi_SpcFadeDelta(void)
 {
@@ -1881,6 +2149,7 @@ L0E07:
  * HOW: 0 - YA through $0E and $14.
  * Entry: YA = value, $12 = sign. Exit: YA.
  * @spc 0E11
+ * @spcuses 0E11-0E1B
  */
 void abi_SpcNegateIfNeg(void)
 {
@@ -1906,6 +2175,7 @@ L0E1A:
  * HOW: 16-bit fades as low/high byte pairs; tremolo by its phase and depth.
  * Entry: X = voice * 2, $47 = its bit. Exit: as SpcVoiceVolumeWrite.
  * @spc 0E1B
+ * @spcuses 09E0-09EF,0E1B-0EE4,105C-107A
  */
 void abi_SpcVoiceEffects(void)
 {
@@ -2030,6 +2300,7 @@ L0E94:
  * HOW: The pan $0330/$0331 to $10/$11, then SpcVoiceVolumeLR.
  * Entry: X = voice * 2, $47 = its bit. Exit: as SpcVoiceVolumeLR.
  * @spc 0E97
+ * @spcuses 09E0-09EF,0E97-0EE4
  */
 void abi_SpcVoiceVolumeWrite(void)
 {
@@ -2062,6 +2333,7 @@ L0EE3:
  * HOW: Two passes over $12 (the register), MUL for the interpolation and the volume.
  * Entry: $10/$11 = pan, X = voice * 2. Exit: A, Y changed.
  * @spc 0EA6
+ * @spcuses 09E0-09EF,0EA6-0EE4
  */
 void abi_SpcVoiceVolumeLR(void)
 {
@@ -2147,6 +2419,7 @@ L0ED1:
  * HOW: The look-ahead skips command parameters by the table at $0FAF; the slide and vibrato through the pitch code at $095D.
  * Entry: X = voice * 2, $47 = its bit. Exit: A, Y changed.
  * @spc 0EE4
+ * @spcuses 095D-09EF,0DF4-0DFF,0E11-0E1B,0EE4-0FD6,1047-104F
  */
 void abi_SpcVoiceTick(void)
 {
@@ -2592,6 +2865,7 @@ L09A6:
  * HOW: SpcAddScaledDelta for each running fade; the vibrato through SpcVoiceTick's code at $0FB2.
  * Entry: X = voice * 2, $47 = its bit. Exit: A, Y changed.
  * @spc 0FD6
+ * @spcuses 095D-09EF,0DF4-0DFF,0E11-0E1B,0EA6-0EE4,0FB2-0FD0,0FD2-107A
  */
 void abi_SpcVoiceBetweenTicks(void)
 {
@@ -2896,6 +3170,7 @@ L0FD2:
  * HOW: Two MULs by $51, the sign kept in $12; then SpcAddDelta.
  * Entry: YA = delta, $10/$11 = value. Exit: $10/$11 updated.
  * @spc 1031
+ * @spcuses 0E11-0E1B,1031-104F
  */
 void abi_SpcAddScaledDelta(void)
 {
@@ -2932,6 +3207,7 @@ void abi_SpcAddScaledDelta(void)
  * HOW: SpcNegateIfNeg, ADDW.
  * Entry: YA, $12. Exit: YA = $10/$11 = the sum.
  * @spc 1047
+ * @spcuses 0E11-0E1B,1047-104F
  */
 void abi_SpcAddDelta(void)
 {
@@ -2954,6 +3230,7 @@ void abi_SpcAddDelta(void)
  * HOW: The rate $02D1 times $51 added to the phase $02D0; sets bit 7 of $13.
  * Entry: X = voice * 2. Exit: as SpcVolumeCalc.
  * @spc 104F
+ * @spcuses 104F-107A
  */
 void abi_SpcTremoloBetweenTicks(void)
 {
@@ -2980,6 +3257,7 @@ void abi_SpcTremoloBetweenTicks(void)
  * HOW: ASL with the carry folding the wave, MUL by the depth.
  * Entry: A = phase, X = voice * 2. Exit: as SpcVolumeCalc.
  * @spc 105C
+ * @spcuses 105C-107A
  */
 void abi_SpcTremoloFactor(void)
 {
@@ -3007,6 +3285,7 @@ L1061:
  * HOW: A chain of MULs keeping the high bytes.
  * Entry: A = tremolo factor, X = voice * 2. Exit: A = the volume.
  * @spc 1067
+ * @spcuses 1067-107A
  */
 void abi_SpcVolumeCalc(void)
 {
@@ -3041,6 +3320,7 @@ void abi_SpcVolumeCalc(void)
  * HOW: A chain of CALLs, then SpcPort1Command and a JMP to the queue start.
  * Entry: none (called from SpcReset's loop). Exit: as the sound effect channels leave it.
  * @spc 10B0
+ * @spcuses 09E0-09EF,0A3B-0A3C,0A58-0A6D,0BB4-0DBC,0DCC-0DF4,0DFF-0E1B,0E97-0EE4,10B0-16D8,16F1-1B8C,1B92-1C04,1C07-1DC1,1DCE-23EB,23FB-241B,2441-26D6,3FCA-4000,CA75-CAA8,CAC0-CB04,EDF0-EE20
  */
 void abi_SpcSfxFrame(void)
 {
@@ -3256,6 +3536,7 @@ L1C63:
  * HOW: CMP and MOV on $01.
  * Entry: none. Exit: flags from the last compare.
  * @spc 111B
+ * @spcuses 111B-112F
  */
 void abi_SpcPort1Remap(void)
 {
@@ -3286,6 +3567,7 @@ L112E:
  * HOW: Compare chains into SpcSfxStop.
  * Entry: none. Exit: as SpcSfxStop or a RET.
  * @spc 112F
+ * @spcuses 112E-113E,1941-1951
  */
 void abi_SpcChannelGuards(void)
 {
@@ -3313,6 +3595,7 @@ L112E:
  * HOW: A compare chain on the counter; the stop helpers are SpcSfxStopIf's entries.
  * Entry: none. Exit: as the chosen path leaves it.
  * @spc 117C
+ * @spcuses 113E-11F8,1424-1436,1908-1951
  */
 void abi_SpcStaggeredChecks(void)
 {
@@ -3554,6 +3837,7 @@ L1177:
  * HOW: Compare chains on $1D, $01, $0394-$0397; SpcSfxStop, SpcSfxStopRequest, SpcMusicPause, SpcSoundQueuePush.
  * Entry: none. Exit: A, X, Y changed.
  * @spc 11F8
+ * @spcuses 09E0-09EF,0A3B-0A3C,0A58-0A6D,0BC1-0C17,0E97-0EE4,11F8-13FA,1424-1436,1908-1915,1941-1951,1A92-1AAA,1D63-1D69,1E0F-1E89,1E93-1E9D
  */
 void abi_SpcGameStateTick(void)
 {
@@ -4037,6 +4321,7 @@ L13F9:
  * HOW: CALLs with X counting down.
  * Entry: none. Exit: as SpcMusicPause.
  * @spc 13FA
+ * @spcuses 0A3B-0A3C,0A58-0A6D,13FA-1424,1941-1951,1A92-1AAA
  */
 void abi_SpcCommand4C(void)
 {
@@ -4088,6 +4373,7 @@ L1423:
  * HOW: Scans for the first zero byte; X kept on the stack.
  * Entry: A = sound. Exit: A, X kept.
  * @spc 1424
+ * @spcuses 1424-1436
  */
 void abi_SpcSoundQueuePush(void)
 {
@@ -4124,6 +4410,7 @@ L1430:
  * HOW: Byte counters in RAM; SpcSoundQueuePush.
  * Entry: none. Exit: A, X, Y changed.
  * @spc 1436
+ * @spcuses 1424-1523
  */
 void abi_SpcCommandTimers(void)
 {
@@ -4364,6 +4651,7 @@ L1435:
  * HOW: Word accumulator $0553/$0554, DIV by $15.
  * Entry: none. Exit: A = the tempo high byte.
  * @spc 1523
+ * @spcuses 1523-15C4
  */
 void abi_SpcTempoBend(void)
 {
@@ -4491,6 +4779,7 @@ L159E:
  * HOW: SET1/CLR1 on $2C.
  * Entry: none. Exit: flags from the compares.
  * @spc 15A1
+ * @spcuses 15A1-15C4
  */
 void abi_SpcTempoBendStart(void)
 {
@@ -4544,6 +4833,7 @@ L15BF:
  * HOW: MUL and DIV by $3C for the interpolation.
  * Entry: none (unless bit 0 of $29). Exit: A, X, Y changed.
  * @spc 15C4
+ * @spcuses 15C4-16B1
  */
 void abi_SpcEchoTransition(void)
 {
@@ -4704,6 +4994,7 @@ L167C:
  * HOW: Compare chains.
  * Entry: none. Exit: flags from the last compare.
  * @spc 1624
+ * @spcuses 1624-167C
  */
 void abi_SpcEchoTransitionStep(void)
 {
@@ -4810,6 +5101,7 @@ L166F:
  * HOW: SBC and BMI.
  * Entry: none. Exit: flags.
  * @spc 16B1
+ * @spcuses 16B1-16C1
  */
 void abi_SpcPort1Clamp(void)
 {
@@ -4839,6 +5131,7 @@ L16C0:
  * HOW: A zero-ended list scan.
  * Entry: none. Exit: X = list index.
  * @spc 16C1
+ * @spcuses 16C1-16D8
  */
 void abi_SpcCommandFilter(void)
 {
@@ -4876,6 +5169,7 @@ L16D7:
  * HOW: BBC tests.
  * Entry: none. Exit: as the ramp leaves it.
  * @spc 16F1
+ * @spcuses 16F1-174B
  */
 void abi_SpcPitchRampB(void)
 {
@@ -4900,6 +5194,7 @@ L16FD:
  * HOW: ADDW through $20/$21.
  * Entry: none. Exit: YA = the offset.
  * @spc 16FE
+ * @spcuses 16FE-171F
  */
 void abi_SpcPitchRampBUp(void)
 {
@@ -4941,6 +5236,7 @@ L171E:
  * HOW: SUBW through $20/$21.
  * Entry: none. Exit: A = 0 at the end.
  * @spc 171F
+ * @spcuses 171F-174B
  */
 void abi_SpcPitchRampBDown(void)
 {
@@ -4991,6 +5287,7 @@ L173E:
  * HOW: BBC tests.
  * Entry: none. Exit: as the ramp leaves it.
  * @spc 174B
+ * @spcuses 174B-17A5
  */
 void abi_SpcPitchRampA(void)
 {
@@ -5015,6 +5312,7 @@ L1757:
  * HOW: ADDW through $20/$21.
  * Entry: none. Exit: YA = the offset.
  * @spc 1758
+ * @spcuses 1758-1779
  */
 void abi_SpcPitchRampAUp(void)
 {
@@ -5056,6 +5354,7 @@ L1778:
  * HOW: SUBW through $20/$21.
  * Entry: none. Exit: A = 0 at the end.
  * @spc 1779
+ * @spcuses 1779-17A5
  */
 void abi_SpcPitchRampADown(void)
 {
@@ -5106,6 +5405,7 @@ L1798:
  * HOW: SBC #6 and BMI.
  * Entry: none. Exit: A as stored.
  * @spc 17A5
+ * @spcuses 17A5-17DF
  */
 void abi_SpcPortCommand(void)
 {
@@ -5182,6 +5482,7 @@ L17DE:
  * HOW: JMP ($1804+X); the handlers end in RETs or tail jumps.
  * Entry: none. Exit: as the handler leaves it.
  * @spc 17DF
+ * @spcuses 09E8-09EF,0A3B-0A3C,0A58-0A6D,1424-1436,1798-17A5,17DE-1AB0,1AE9-1AF6,1AFF-1B2C,1C84-1C8A,1C9E-1CCD,1D53-1D69,1E0F-1E28,1E93-1E9D,219C-21C8
  */
 void abi_SpcPort1Command(void)
 {
@@ -5719,6 +6020,7 @@ L17DE:
  * HOW: The stop request at $03E0 + X when the channel is active ($0408 + X).
  * Entry: $20 = reason. Exit: A, X changed.
  * @spc 1908
+ * @spcuses 1908-1915,1941-194C
  */
 void abi_SpcSfxStopIf(void)
 {
@@ -5755,6 +6057,7 @@ L194B:
  * HOW: $20 = 1, then SpcSfxStopIf's request.
  * Entry: X = channel (0-7). Exit: A changed.
  * @spc 194C
+ * @spcuses 1941-1951
  */
 void abi_SpcSfxStop(void)
 {
@@ -5783,6 +6086,7 @@ L194B:
  * HOW: SET1/CLR1.
  * Entry: none. Exit: none changed but $28.
  * @spc 1951
+ * @spcuses 1951-1956
  */
 void abi_SpcEchoModeA(void)
 {
@@ -5801,6 +6105,7 @@ void abi_SpcEchoModeA(void)
  * HOW: Two table copies and CALLs.
  * Entry: X = channel. Exit: X kept.
  * @spc 19CC
+ * @spcuses 1941-1951,19CC-19F9,1C84-1C8A,1C9E-1CCD,1D53-1D69,1E0F-1E28,1E93-1E9D,219C-21C8
  */
 void abi_SpcSfxChannelResume(void)
 {
@@ -5842,6 +6147,7 @@ L19E7:
  * HOW: (A - 1) * 2 as the index.
  * Entry: A = sound (1 and up). Exit: Y = index + 1.
  * @spc 19EA
+ * @spcuses 19EA-19F9
  */
 void abi_SpcSfxPointer(void)
 {
@@ -5872,6 +6178,7 @@ void abi_SpcSfxPointer(void)
  * HOW: Compares on $04F8, $0480.
  * Entry: X = channel. Exit: A changed.
  * @spc 1A54
+ * @spcuses 1A54-1A83
  */
 void abi_SpcSfxChannelPause(void)
 {
@@ -5926,6 +6233,7 @@ L1A68:
  * HOW: SpcSfxStopRequest for X = 7 down to 0.
  * Entry: none. Exit: X = $FF.
  * @spc 1A83
+ * @spcuses 1A83-1AB0
  */
 void abi_SpcSfxStopAll(void)
 {
@@ -5953,6 +6261,7 @@ L1A8B:
  * HOW: Stores.
  * Entry: X = channel. Exit: A = 0 or 1.
  * @spc 1A92
+ * @spcuses 1A92-1AAA
  */
 void abi_SpcSfxStopRequest(void)
 {
@@ -5986,6 +6295,7 @@ L1AA9:
  * HOW: SET1.
  * Entry: none. Exit: none.
  * @spc 1AAA
+ * @spcuses 1AAA-1AB0
  */
 void abi_SpcFadeOutStart(void)
 {
@@ -6005,6 +6315,7 @@ L1AAF:
  * HOW: SUBW from $0564 in the high byte.
  * Entry: none. Exit: as the chosen path leaves it.
  * @spc 1AB0
+ * @spcuses 09E8-09EF,0A3B-0A3C,0A58-0A6D,1AB0-1AFF,1B15-1B23
  */
 void abi_SpcMusicFade(void)
 {
@@ -6096,6 +6407,7 @@ L1B15:
  * HOW: DSP KOF ($5C) = $FF through SpcDspWrite.
  * Entry: none. Exit: A = $FF, Y = $5C.
  * @spc 1AEF
+ * @spcuses 09E8-09EF,1AEF-1AF6
  */
 void abi_SpcKeyOffAll(void)
 {
@@ -6113,6 +6425,7 @@ void abi_SpcKeyOffAll(void)
  * HOW: List scans; SpcSfxLookup, SpcSfxChannel.
  * Entry: none. Exit: X = channel.
  * @spc 1B2C
+ * @spcuses 1B2C-1B7A,1C8A-1CA5
  */
 void abi_SpcCommandChannelCheck(void)
 {
@@ -6216,6 +6529,7 @@ L1B79:
  * HOW: A zero-ended list scan.
  * Entry: none. Exit: X = index.
  * @spc 1B7A
+ * @spcuses 1B7A-1B8C
  */
 void abi_SpcCommandBlock(void)
 {
@@ -6249,6 +6563,7 @@ L1B8B:
  * HOW: Pairs (sound, time) in the list at $1C04.
  * Entry: none. Exit: A, X, Y changed.
  * @spc 1B92
+ * @spcuses 19EA-19F9,1B92-1C04
  */
 void abi_SpcSfxHolds(void)
 {
@@ -6385,6 +6700,7 @@ L1BF1:
  * HOW: Store.
  * Entry: X = channel. Exit: A = 1.
  * @spc 1C84
+ * @spcuses 1C84-1C8A
  */
 void abi_SpcSfxActivate(void)
 {
@@ -6403,6 +6719,7 @@ void abi_SpcSfxActivate(void)
  * HOW: (A - 1) * 2 as the index; MOV A,($20)+Y.
  * Entry: A = sound. Exit: X = header byte, Y = 0.
  * @spc 1C8A
+ * @spcuses 1C8A-1C9E
  */
 void abi_SpcSfxLookup(void)
 {
@@ -6440,6 +6757,7 @@ void abi_SpcSfxLookup(void)
  * HOW: AND #$0F.
  * Entry: X = header byte. Exit: X = channel.
  * @spc 1C9E
+ * @spcuses 1C9E-1CA5
  */
 void abi_SpcSfxChannel(void)
 {
@@ -6462,6 +6780,7 @@ void abi_SpcSfxChannel(void)
  * HOW: BBC tests on $26.
  * Entry: X = channel, $26 = header. Exit: A changed.
  * @spc 1CA5
+ * @spcuses 1CA5-1CCD
  */
 void abi_SpcSfxMode(void)
 {
@@ -6513,6 +6832,7 @@ L1CCC:
  * HOW: X from 0 to 7.
  * Entry: none. Exit: X = 8.
  * @spc 1CCD
+ * @spcuses 09E0-09EF,0A3B-0A3C,0A58-0A6D,0BB4-0DBC,0DCC-0DF4,0DFF-0E1B,0E97-0EE4,129D-13FA,1424-1436,1908-1915,1941-1951,1A92-1AAA,1AE9-1AF6,1B15-1B23,1C84-1C8A,1C9E-1DC1,1DCE-23EB,23FB-241B,2441-26D6,3FCA-4000,CA75-CAA8,EDF0-EE20
  */
 void abi_SpcSfxChannelsFrame(void)
 {
@@ -6548,6 +6868,7 @@ L1CE1:
  * HOW: Two copies.
  * Entry: X = channel. Exit: A = the pointer's high byte.
  * @spc 1CE2
+ * @spcuses 1CE2-1CED
  */
 void abi_SpcSfxChannelLoad(void)
 {
@@ -6570,6 +6891,7 @@ void abi_SpcSfxChannelLoad(void)
  * HOW: Two copies.
  * Entry: X = channel. Exit: A = the high byte.
  * @spc 1CED
+ * @spcuses 1CED-1CF8
  */
 void abi_SpcSfxChannelSave(void)
 {
@@ -6592,6 +6914,7 @@ void abi_SpcSfxChannelSave(void)
  * HOW: Compare chains on the state and the request; tail jumps into the shared code.
  * Entry: X = channel, $20/$21 its pointer. Exit: A, Y changed.
  * @spc 1CF8
+ * @spcuses 09E0-09EF,0A3B-0A3C,0A58-0A6D,0BB4-0DBC,0DCC-0DF4,0DFF-0E1B,0E97-0EE4,129D-13FA,1424-1436,1908-1915,1941-1951,1A92-1AAA,1AE9-1AF6,1B15-1B23,1C84-1C8A,1C9E-1CCD,1CE2-1DC1,1DCE-23EB,23FB-241B,2441-26D6,3FCA-4000,CA75-CAA8,EDF0-EE20
  */
 void abi_SpcSfxChannelStep(void)
 {
@@ -6939,6 +7262,7 @@ L230C:
  * HOW: Two CALLs.
  * Entry: X = channel. Exit: as SpcKeyOffVoice.
  * @spc 1D63
+ * @spcuses 1D63-1D69,1E0F-1E28,1E93-1E9D
  */
 void abi_SpcSfxTakeVoice(void)
 {
@@ -6954,6 +7278,7 @@ void abi_SpcSfxTakeVoice(void)
  * HOW: SpcVoiceMask, OR.
  * Entry: X = voice. Exit: A = $1A.
  * @spc 1E0F
+ * @spcuses 1E0F-1E28
  */
 void abi_SpcSfxMarkVoice(void)
 {
@@ -6976,6 +7301,7 @@ void abi_SpcSfxMarkVoice(void)
  * HOW: ROL of a carry X + 1 times.
  * Entry: X = voice. Exit: A = $22.
  * @spc 1E19
+ * @spcuses 1E19-1E28
  */
 void abi_SpcVoiceMask(void)
 {
@@ -7007,6 +7333,7 @@ L1E20:
  * HOW: ROL of $FF with a clear carry.
  * Entry: X = voice. Exit: A = $22.
  * @spc 1E28
+ * @spcuses 1E20-1E31
  */
 void abi_SpcVoiceMaskNot(void)
 {
@@ -7040,6 +7367,7 @@ L1E20:
  * HOW: Masks through $22; X doubled for the music's arrays.
  * Entry: X = voice. Exit: X kept.
  * @spc 1E31
+ * @spcuses 09E0-09EF,0BC1-0C17,0E97-0EE4,1E19-1E89
  */
 void abi_SpcSfxRelease(void)
 {
@@ -7149,6 +7477,7 @@ L1E67:
  * HOW: SpcVoiceMask, OR.
  * Entry: X = voice. Exit: A = $45.
  * @spc 1E89
+ * @spcuses 1E19-1E28,1E89-1E93
  */
 void abi_SpcKeyOnVoice(void)
 {
@@ -7171,6 +7500,7 @@ void abi_SpcKeyOnVoice(void)
  * HOW: SpcVoiceMask, OR.
  * Entry: X = voice. Exit: A = $46.
  * @spc 1E93
+ * @spcuses 1E19-1E28,1E93-1E9D
  */
 void abi_SpcKeyOffVoice(void)
 {
@@ -7193,6 +7523,7 @@ void abi_SpcKeyOffVoice(void)
  * HOW: JMP ($1F59+X) with X pushed; handlers return into the read loop.
  * Entry: X = channel. Exit: as the last handler leaves it.
  * @spc 1EA6
+ * @spcuses 1941-1951,1C84-1C8A,1C9E-1CCD,1CE2-1CF8,1D53-1D69,1E0F-1E31,1E93-1E9D,1EA6-22D3,CA75-CA96,EDF0-EE20
  */
 void abi_SpcSfxRead(void)
 {
@@ -8151,6 +8482,7 @@ L22AF:
  * HOW: SpcDiv16, SpcMul16; clamped to $7F.
  * Entry: A = volume, X = channel. Exit: A = volume; X, Y kept.
  * @spc 2068
+ * @spcuses 2068-209E,CA75-CA96
  */
 void abi_SpcSfxEngineScale(void)
 {
@@ -8228,6 +8560,7 @@ L209A:
  * HOW: SpcSfxChannel, SpcSfxMode, SpcSfxActivate.
  * Entry: A = sound, $24/$25 = data. Exit: as SpcSfxChannelStep.
  * @spc 219C
+ * @spcuses 1C84-1C8A,1C9E-1CCD,1D53-1D69,1E0F-1E28,1E93-1E9D,219C-21C8
  */
 void abi_SpcSfxStart(void)
 {
@@ -8298,6 +8631,7 @@ L1D53:
  * HOW: ADDW; sign and range tests.
  * Entry: X = channel. Exit: A, Y changed.
  * @spc 224A
+ * @spcuses 224A-2286
  */
 void abi_SpcSfxPitchSlide(void)
 {
@@ -8370,6 +8704,7 @@ L2280:
  * HOW: ADDW; sign tests.
  * Entry: X = channel (plus 8 for the right side). Exit: A = the volume.
  * @spc 22B0
+ * @spcuses 22B0-22D3
  */
 void abi_SpcSfxVolumeSlide(void)
 {
@@ -8419,6 +8754,7 @@ L22CF:
  * HOW: SpcMul16, SpcDiv16 by $3C; SUBW.
  * Entry: A = count, X = channel. Exit: A = volume.
  * @spc 2336
+ * @spcuses 09E8-09EF,1941-1951,1AE9-1AF6,1B15-1B23,2336-23B2,CA75-CAA8
  */
 void abi_SpcSfxFadeVolume(void)
 {
@@ -8576,6 +8912,7 @@ L1B15:
  * HOW: MUL, ADC.
  * Entry: A = volume, X = channel. Exit: A = volume; Y kept.
  * @spc 23B2
+ * @spcuses 23B2-23CF
  */
 void abi_SpcSfxVolumeAdjust(void)
 {
@@ -8622,6 +8959,7 @@ L23CB:
  * HOW: JMP ($23FB+X) with X pushed.
  * Entry: X = channel. Exit: as the handler leaves it.
  * @spc 23CF
+ * @spcuses 09E0-09EF,0A3B-0A3C,0A58-0A6D,0BB4-0DBC,0DCC-0DF4,0DFF-0E1B,0E97-0EE4,129D-13FA,1424-1436,1908-1915,1941-1951,1A92-1AAA,1D63-1D69,1E0F-1E89,1E93-1E9D,23CF-23EB,23FB-241B,2441-26D6,3FCA-4000
  */
 void abi_SpcSfxSpecial(void)
 {
@@ -10093,6 +10431,7 @@ L13F9:
  * HOW: DIV and MULs keeping high bytes.
  * Entry: X = channel, $22/$23 = curve. Exit: A = volume.
  * @spc 25A0
+ * @spcuses 25A0-25E2
  */
 void abi_SpcEngineVolume(void)
 {
@@ -10170,6 +10509,7 @@ L25D1:
  * HOW: MUL.
  * Entry: A. Exit: A; Y kept.
  * @spc 25D8
+ * @spcuses 25D8-25E2
  */
 void abi_SpcEngineDamp(void)
 {
@@ -10197,6 +10537,7 @@ L25E1:
  * HOW: BBS, SET1/CLR1.
  * Entry: none. Exit: none.
  * @spc 2600
+ * @spcuses 2600-2609
  */
 void abi_SpcEngineToggle(void)
 {
@@ -10221,6 +10562,7 @@ L2606:
  * HOW: DIV, compare.
  * Entry: X = channel, $22-$24 = curve. Exit: A changed.
  * @spc 2634
+ * @spcuses 2634-265C
  */
 void abi_SpcEngineRevTimer(void)
 {
@@ -10278,6 +10620,7 @@ L265B:
  * HOW: MUL, DIV.
  * Entry: A = table value. Exit: A; X, Y kept.
  * @spc 26C0
+ * @spcuses 26C0-26D6
  */
 void abi_SpcSfxPanScale(void)
 {
@@ -10318,6 +10661,7 @@ void abi_SpcSfxPanScale(void)
  * HOW: Two MULs and ADDW through $26/$27.
  * Entry: A, X, Y. Exit: YA, X.
  * @spc CA75
+ * @spcuses CA75-CA89
  */
 void abi_SpcMul16(void)
 {
@@ -10362,6 +10706,7 @@ void abi_SpcMul16(void)
  * HOW: Two DIVs, the high quotient through $27.
  * Entry: Y:A, X. Exit: YA = quotient.
  * @spc CA89
+ * @spcuses CA89-CA96
  */
 void abi_SpcDiv16(void)
 {
@@ -10394,6 +10739,7 @@ void abi_SpcDiv16(void)
  * HOW: Eight INC X.
  * Entry: X. Exit: X + 8.
  * @spc CA96
+ * @spcuses CA96-CA9F
  */
 void abi_SpcIndexRight(void)
 {
@@ -10424,6 +10770,7 @@ void abi_SpcIndexRight(void)
  * HOW: Eight DEC X.
  * Entry: X. Exit: X - 8.
  * @spc CA9F
+ * @spcuses CA9F-CAA8
  */
 void abi_SpcIndexLeft(void)
 {
@@ -10454,6 +10801,7 @@ void abi_SpcIndexLeft(void)
  * HOW: MOV1/EOR1 of two LFSR bits, ROL; bytes ORed with $11.
  * Entry: none. Exit: X, Y changed.
  * @spc CAC0
+ * @spcuses CAC0-CB04
  */
 void abi_SpcNoiseSample(void)
 {
@@ -10539,6 +10887,7 @@ LCADF:
  * HOW: Y stepping by 9.
  * Entry: A = header byte. Exit: A, Y changed.
  * @spc EDF0
+ * @spcuses EDF0-EE20
  */
 void abi_SpcNoiseSampleInit(void)
 {
