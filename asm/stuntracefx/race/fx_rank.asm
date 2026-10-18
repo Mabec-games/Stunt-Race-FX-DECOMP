@@ -86,8 +86,7 @@ FxRankCars:
 ; 0, 0) and its car in R4; each unranked car's keys go to R5-R7 and are
 ; compared in turn with CMP and the sign (BMI). A car on lap 0 has a
 ; correction (its lap count lowered when +$86 - +$86 + 5 is negative,
-; which it never is): decoded from the ROM bytes and not reached in the
-; traces so far.
+; which it never is: FxRankNextLapZero, 04:CEA5).
 ; Entry: R9 = the rank; R11 = return address. Exit: R0 = the car + $88; R4
 ; = the car; R1-R3 = its keys; R5-R7 = the last unranked car's keys; R8 =
 ; 0; OV, S, CY, Z from the ADD of R0; the last RAM address the car + $88.
@@ -134,6 +133,18 @@ FxRankNext:
     add #5
     bpl .compare
     nop
+;
+; @routine 04:CEA5 FxRankNextLapZero
+; WHAT IT DOES: FxRankNext's lap 0 correction, entered on its own: the
+; lap count R5 lowered by one, then FxRankNext's compare of this car's
+; keys and the rest of its walk. The game never runs it: the test before
+; it subtracts a car's +$86 from itself, so +5 is never negative and the
+; BPL at 04:CEA2 always branches past it. A unit start runs it so the C
+; is judged against the original.
+; HOW: DEC R5; then as FxRankNext from its compare (04:CEA6).
+; Entry: R1-R3 = the best keys so far, R4 = their car; R5-R7 = car R8's
+; keys; R9 = the rank; R11 = return address. Exit: as FxRankNext's.
+%at($04CEA5)
     dec r5
 .compare:
     with r5

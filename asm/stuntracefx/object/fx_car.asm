@@ -293,9 +293,9 @@ endmacro
 ; matrix at $00E4 goes to +$36/+$38/+$3A; its position +$1E/+$20/+$22
 ; becomes the car's ($2354/$2356/$2358) plus that, and its velocity
 ; +$2E/+$30/+$32 eight times the change. A part with bit 10 of +$46 set
-; gets velocity 0 instead (decoded from the ROM bytes, with four bytes
-; after the walk's jump and one after this path's that nothing reaches,
-; and not reached in the traces so far).
+; gets velocity 0 instead. The bytes after each jump back to the walk
+; are filed on their own (FxCarMovePartsAfterWalk, 04:A5E4, and
+; FxCarMovePartsAfterStill, 04:A601): no path reaches them.
 ; HOW: R12 keeps R8 while R8 and R11 walk the offset and its turned copy;
 ; the turn is three rows of FMULT, ROL; the change times 8 is LMULT by R6
 ; = 8 (R4 takes the low word). The return address is kept on the R10
@@ -366,6 +366,17 @@ FxCarMoveParts:
     ldw (r0)
     iwt r15,#.part
     nop
+;
+; @routine 04:A5E4 FxCarMovePartsAfterWalk
+; WHAT IT DOES: The bytes after FxCarMoveParts' jump back to its walk (a
+; NOP, then a BRA to its return): no path reaches them, since the jump
+; before them always goes. A unit start runs them so the C is judged
+; against the original.
+; HOW: NOP; BRA to 04:A602 (the return, NOP in the delay slot); the
+; return pulls R15 from the R10 stack.
+; Entry: R10 = stack, the return address the word below it. Exit: R10
+; two lower; S, Z from R10.
+%at($04A5E4)
     nop
     bra .done
     nop
@@ -388,6 +399,16 @@ FxCarMoveParts:
     ldw (r0)
     iwt r15,#.part
     nop
+;
+; @routine 04:A601 FxCarMovePartsAfterStill
+; WHAT IT DOES: The NOP after the still part's jump back to the walk in
+; FxCarMoveParts, which no path reaches (the jump before it always
+; goes); it runs on into the return. A unit start runs it so the C is
+; judged against the original.
+; HOW: NOP; then the return at 04:A602 pulls R15 from the R10 stack.
+; Entry: R10 = stack, the return address the word below it. Exit: R10
+; two lower; S, Z from R10.
+%at($04A601)
     nop
 .done:
     dec r10

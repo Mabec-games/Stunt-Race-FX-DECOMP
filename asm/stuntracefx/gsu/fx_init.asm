@@ -9,8 +9,8 @@ arch superfx
 
 ; @routine 04:8800 FxInit
 ; WHAT IT DOES: A program: tests Super FX RAM (writes $1234 to $235C and
-; reads it back; a mismatch would set $26F0 to $0F, decoded from the ROM
-; bytes and not reached in the traces so far), clears $0B2C words from
+; reads it back; a mismatch would set $26F0 to $0F: FxInitRamBad,
+; 04:8822, which the game never runs), clears $0B2C words from
 ; $1098, makes each record pool one free block ($0CD8 bytes at $1098,
 ; $05BE at $1D70), and sets $2636 = $0100, $2380 = $2382 = $2642 = -1,
 ; $2472 = 3 and $2732, $26F0, $2B92, $2B94, $2684, $2686, $1090, $2470,
@@ -40,6 +40,17 @@ FxInit:
     cmp r2
     beq .ram_ok
     nop
+;
+; @routine 04:8822 FxInitRamBad
+; WHAT IT DOES: FxInit's RAM test failure: $26F0 = $0F, then the rest of
+; FxInit (the pools and the starting words). The game never runs it: the
+; word FxInit writes reads back the same on every machine it runs on, so
+; the BEQ at 04:881F always branches past it. A unit program start runs
+; it so the C is judged against the original.
+; HOW: IBT R0,#$0F; SM ($26F0); then as FxInit from 04:8828.
+; Entry: started here as a program (R10 as the start leaves it). Exit:
+; as FxInit's, with R2, R3 and R10 as at the start.
+%at($048822)
     ibt r0,#$0F
     sm (!fx_ram_bad),r0
 .ram_ok:

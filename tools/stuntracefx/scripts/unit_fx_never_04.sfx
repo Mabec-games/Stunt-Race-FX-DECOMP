@@ -1,0 +1,109 @@
+# unit_fx_never_04: unit tests (fx) for bank 04 Super FX code no play
+# reaches, from the start of a Novice race.
+# Starts at the entries filed for code the game never runs, so A5 judges
+# their C per call (R11 = the STOP at $04:888C; an entry that returns by
+# pulling R15 finds that STOP as the word below R10):
+# - FxInitRamBad 04:8822, FxInit's RAM test failure;
+# - FxRankNextLapZero 04:CEA5, the lap 0 correction, on the car $1738
+#   with lap count 0 as the only car compared so far;
+# - FxCarMovePartsAfterWalk 04:A5E4 and FxCarMovePartsAfterStill
+#   04:A601, the bytes after FxCarMoveParts' jumps back to its walk;
+# - FxScaleFromTable14Pull 04:9417, the pull return after the JMP R11;
+# - FxContactResolveNegate 04:AF90 on the first slot of the front wheel
+#   $15F0 with a negative depth $FFD3, registers as FxContactResolve has
+#   them at 04:AF8B;
+# - FxWheelUpdateNoSlot 04:AA02 on the wheel $15F0 with contact flags $20
+#   (no slot bits), registers as FxWheelUpdate has them back from
+#   FxContactsResolve;
+# - FxCarHandlerClamp 04:B6C1 on the car $1738 with the sums $2336 and
+#   $233C at $0C00 and $233E at $8000 (each past its limit), and the
+#   other way round;
+# - FxCarHandlerFlip 04:B799 on the car $1738 with its angle +$26 $B000
+#   (+$76 = 0), $5000 (+$76 set) and $1000 (below $4000).
+# Then FxCarHandler 04:B1A1 itself on the car $1738 with fields set for
+# the paths no play has reached: no ramp (+$64 bit 3 clear) on the
+# surface kinds 1 and 2 (+$8A); the thrust bit in +$42 with the speed
+# +$6A negative ($8001), on the ground and not counting down (+$44,
+# +$46, +$54 = 0), so the speed is clamped to 0; and a car driven to a
+# course entry (+$70 bit 7, +$58 = 1) whose +$8A bit 8 is clear.
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 04:8822 stop=888C r10=0240
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 04:CEA5 stop=888C r1=FFFF r2=0000 r3=0000 r4=1738 r5=0000 r6=0000 r7=0000 r8=1738 r9=0001
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700244 8C,88
+fx 04:A5E4 stop=888C r10=0246
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700244 8C,88
+fx 04:A601 stop=888C r10=0246
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700244 8C,88
+fx 04:9417 stop=888C r10=0246
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70024C 8C,88
+fx 04:AF90 stop=888C r0=7D00 r1=0001 r2=0000 r3=23B2 r4=FFD3 r5=7D00 r6=0400 r7=FFD3 r8=1738 r9=15F0 r10=024E r12=0013 r13=0001
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700248 8C,88
+fx 04:AA02 stop=888C r0=0020 r1=0020 r2=0201 r3=246C r8=1738 r9=15F0 r10=024A r12=0013 r13=0014
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700244 8C,88
+set 702336 00,0C
+set 70233C 00,0C
+set 70233E 00,80
+fx 04:B6C1 stop=888C r6=7FFE r8=1738 r9=000A r10=0246 r13=C0FD
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700244 8C,88
+set 702336 00,80
+set 70233C 00,80
+set 70233E 00,0C
+fx 04:B6C1 stop=888C r6=7FFE r8=1738 r9=000A r10=0246 r13=C0FD
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700244 8C,88
+set 70175E 00,B0
+set 7017AE 00,00
+fx 04:B799 stop=888C r6=7FFE r8=1738 r9=000A r10=0246 r13=C0FD
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700244 8C,88
+set 70175E 00,50
+set 7017AE 00,01
+fx 04:B799 stop=888C r6=7FFE r8=1738 r9=000A r10=0246 r13=C0FD
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700244 8C,88
+set 70175E 00,10
+fx 04:B799 stop=888C r6=7FFE r8=1738 r9=000A r10=0246 r13=C0FD
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70179C 00,00
+set 7017C2 01,00
+fx 04:B1A1 stop=888C r8=1738 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70179C 00,00
+set 7017C2 02,00
+fx 04:B1A1 stop=888C r8=1738 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 70177A 00,04
+set 70177C 00,00
+set 70177E 00,00
+set 70178C 00,00
+set 7017A2 01,80
+fx 04:B1A1 stop=888C r8=1738 r10=0244
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7017A8 80,00
+set 701790 01,00
+set 7017C2 00,00
+fx 04:B1A1 stop=888C r8=1738 r10=0244
+wait 1

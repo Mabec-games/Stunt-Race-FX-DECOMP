@@ -2320,6 +2320,21 @@ FxWheelUpdate:
     and r1
     bne .lAA06
     nop
+;
+; @routine 04:AA02 FxWheelUpdateNoSlot
+; WHAT IT DOES: FxWheelUpdate's way on when the contact flags from
+; FxContactsResolve (R1) are set but their slot bits (bits 0-4) are
+; clear: straight to the surface kind from the car's +$8A (04:AA98)
+; and the rest of the update. No play or unit start found so far makes
+; those flags (every slot word that is applied carries its slot
+; number), so a unit start runs it so the C is judged against the
+; original.
+; HOW: IWT R15 to 04:AA98 (NOP in the delay slot); then as
+; FxWheelUpdate from there.
+; Entry: R1 = the contact flags; R8 = the car, R9 = the wheel; R10 =
+; stack, the return address the word below it.
+; Exit: as FxWheelUpdate's.
+%at($04AA02)
     iwt r15,#.lAA98
     nop
 .lAA06:
@@ -3211,9 +3226,7 @@ FxContactsResolve:
 ; the face's normal works the force pushing the wheel out ($239E
 ; across, $23A0 up). The code after it to 04:B9AB holds the car
 ; handler (FxCarHandler, 04:B1A1) and its helpers. The bytes
-; 04:AF90-AF92 never run: the depth's sign was tested just before (a
-; negative one branches to 04:B191), so the BPL at 04:AF8E always
-; branches.
+; 04:AF90-AF92 never run in the game (FxContactResolveNegate).
 ; HOW: Pushes R11 for slots it resolves; R3 steps through the slot;
 ; returns by pulling R15 (or JMP R11 for an empty or skipped slot,
 ; 04:B185-B19A).
@@ -3265,6 +3278,20 @@ FxContactResolve:
     moves r4,r7
     bpl .lAF93
     nop
+;
+; @routine 04:AF90 FxContactResolveNegate
+; WHAT IT DOES: FxContactResolve with the slot's depth (R7, copied to
+; R4) negative at its absolute value: R4 = -R4, then the rest of
+; FxContactResolve from its depth compare. The game never runs it: a
+; negative depth branches to 04:B191 before, so the BPL at 04:AF8D
+; always branches past it. A unit start runs it so the C is judged
+; against the original.
+; HOW: WITH R4; NOT; INC R4; then as FxContactResolve from 04:AF93.
+; Entry: R3 = the slot past its depth word; R4 = R7 = the depth; R5 =
+; the shallowest depth so far, made positive; R8 = the car; R10 =
+; stack, the return address the word below it.
+; Exit: as FxContactResolve's.
+%at($04AF90)
     with r4
     not
     inc r4
@@ -4488,6 +4515,21 @@ FxCarHandler:
     ldw (r0)
     bic r1
     sbk
+;
+; @routine 04:B6C1 FxCarHandlerClamp
+; WHAT IT DOES: FxCarHandler's clamp of its three sums ($2336, $233E,
+; $233C) to -$0BB8..$0BB8, entered on its own, then the rest of the
+; handler (its spin and flip steps, FxCarFollowCourse, the lap and
+; course distance). The game reaches it only by the handler's branches;
+; a unit start with each sum past its limit runs the clamps no play has
+; reached so far, so the C is judged against the original.
+; HOW: R1 = $F448 and R2 = $0BB8; each sum's sign picks which limit it
+; is compared with (CMP, BMI or BPL) and SBK puts the limit back; then
+; as FxCarHandler after them (04:B718).
+; Entry: R8 = the car; R10 = stack, the return address the word below
+; it.
+; Exit: as FxCarHandler's.
+%at($04B6C1)
 .lB6C1:
     iwt r1,#$F448
     iwt r2,#$0BB8
@@ -4630,6 +4672,20 @@ FxCarHandler:
     stw (r0)
     bra .lB7CA
     nop
+;
+; @routine 04:B799 FxCarHandlerFlip
+; WHAT IT DOES: FxCarHandler's flip step: when the car's angle +$26 is
+; $4000 or more either way, +$40 is ORed with 0, +$76 is set to $28
+; when it is 0, and the spin $233A is negated; then the rest of the
+; handler. The game never runs it: the test before it ANDs +$40 with 0
+; (IWT R0, #0), so the BNE at 04:B769 never branches here. A unit start
+; runs it so the C is judged against the original.
+; HOW: LDW, MOVES, BPL with NOT, INC for the absolute angle; CMP with
+; $4000; then as FxCarHandler from 04:B7D4.
+; Entry: R8 = the car; R10 = stack, the return address the word below
+; it.
+; Exit: as FxCarHandler's.
+%at($04B799)
 .lB799:
     ibt r0,#$26
     add r8

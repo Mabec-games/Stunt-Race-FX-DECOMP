@@ -26,14 +26,15 @@
  * 0, 0) and its car in R4; each unranked car's keys go to R5-R7 and are
  * compared in turn with CMP and the sign (BMI). A car on lap 0 has a
  * correction (its lap count lowered when +$86 - +$86 + 5 is negative,
- * which it never is): decoded from the ROM bytes and not reached in the
- * traces so far.
+ * which it never is: FxRankNextLapZero, 04:CEA5).
  * Entry: R9 = the rank; R11 = return address. Exit: R0 = the car + $88; R4
  * = the car; R1-R3 = its keys; R5-R7 = the last unranked car's keys; R8 =
  * 0; OV, S, CY, Z from the ADD of R0; the last RAM address the car + $88.
  */
-FxRegs FxRankNext(FxRegs g)
+static FxRegs rank_walk(FxRegs g, int at_dec)
 {
+    if (at_dec)
+        goto dec;
     g.r[0] = gsu_sub(g.r[0], g.r[0], 0);
     g.r[2] = g.r[0];
     g.r[3] = g.r[0];
@@ -59,8 +60,10 @@ FxRegs FxRankNext(FxRegs g)
                 g.r[0] = gsu_ldw(gsu_add(REC_COUNTED, g.r[8], 0));
                 g.r[0] = gsu_sub(g.r[0], g.r[6], 0);
                 g.r[0] = gsu_add(g.r[0], 5, 0);
-                if (gsu.s)
+                if (gsu.s) {
+dec:
                     g.r[5] = gsu_dec(g.r[5]);
+                }
             }
             gsu_sub(g.r[5], g.r[1], 0);
             if (gsu.s)
@@ -92,12 +95,38 @@ FxRegs FxRankNext(FxRegs g)
     return g;
 }
 
+FxRegs FxRankNext(FxRegs g)
+{
+    return rank_walk(g, 0);
+}
+
 void abi_FxRankNext(void)
 {
     FxRegs g;
 
     memcpy(g.r, gsu.r, sizeof g.r);
     g = FxRankNext(g);
+    memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
+}
+
+/*
+ * @routine 04:CEA5 FxRankNextLapZero
+ * WHAT IT DOES: FxRankNext's lap 0 correction, entered on its own: the
+ * lap count R5 lowered by one, then FxRankNext's compare of this car's
+ * keys and the rest of its walk. The game never runs it: the test before
+ * it subtracts a car's +$86 from itself, so +5 is never negative and the
+ * BPL at 04:CEA2 always branches past it. A unit start runs it so the C
+ * is judged against the original.
+ * HOW: DEC R5; then as FxRankNext from its compare (04:CEA6).
+ * Entry: R1-R3 = the best keys so far, R4 = their car; R5-R7 = car R8's
+ * keys; R9 = the rank; R11 = return address. Exit: as FxRankNext's.
+ */
+void abi_FxRankNextLapZero(void)
+{
+    FxRegs g;
+
+    memcpy(g.r, gsu.r, sizeof g.r);
+    g = rank_walk(g, 1);
     memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
 }
 

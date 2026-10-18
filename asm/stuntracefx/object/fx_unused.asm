@@ -368,8 +368,9 @@ FxRecordAimFromLink:
 ; @routine 04:93FA FxScaleFromTable14
 ; WHAT IT DOES: R0 = 2 * FMULT($0100, the word at $14:896C + $0200):
 ; an entry of the bank $14 table at $896C halved, ROM bank $14 left set.
-; Its last five bytes (a pull return after the JMP R11's delay slot) are
-; never reached. Nothing in the game calls it.
+; Its last five bytes, a pull return after the JMP R11's delay slot that
+; nothing reaches, are filed on their own (FxScaleFromTable14Pull,
+; 04:9417). Nothing in the game calls it.
 ; HOW: ROMB $14, R14 = the table + ($0200 BIC 1), GETB, GETBH, FMULT, ADD
 ; R0.
 ; Entry: R11 = return address. Exit: R0 as above; R1 = $0100; R6 = the
@@ -395,6 +396,15 @@ FxScaleFromTable14:
     add r0
     move r15,r11
     nop
+;
+; @routine 04:9417 FxScaleFromTable14Pull
+; WHAT IT DOES: The pull return after FxScaleFromTable14's JMP R11 and
+; its delay slot, which no path reaches. A unit start runs it so the C
+; is judged against the original.
+; HOW: DEC R10 twice, then R15 = the word there (NOP in the delay slot).
+; Entry: R10 = stack, the return address the word below it. Exit: R10
+; two lower; S, Z from R10.
+%at($049417)
     dec r10
     dec r10
     to r15
