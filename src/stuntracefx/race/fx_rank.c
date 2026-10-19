@@ -54,7 +54,8 @@ static FxRegs rank_walk(FxRegs g, int at_dec, int copy)
         g.r[8] = g.r[0];
         gsu_moves(g.r[8]);
         if (gsu.z)
-            { gsu_codes(rank_walk_fetch[copy] + 6, 3);
+            { 
+            gsu_codes(rank_walk_fetch[copy] + 6, 3);
             break; } else { gsu_codes(rank_walk_fetch[copy] + 4, 2); }
         gsu_codes(rank_walk_fetch[copy] + 9, 1);
         g.r[0] = gsu_ldw(gsu_add(REC_RANK, g.r[8], 0));
@@ -81,17 +82,22 @@ dec:
             } else { gsu_codes(rank_walk_fetch[copy] + 16, 2); }
             gsu_sub(g.r[5], g.r[1], 0);
             if (gsu.s)
-                { gsu_codes(rank_walk_fetch[copy] + 24, 2); goto next; } else { gsu_codes(rank_walk_fetch[copy] + 23, 1); }
+                { gsu_codes(rank_walk_fetch[copy] + 24, 2);
+                goto next; } else { gsu_codes(rank_walk_fetch[copy] + 23, 1); }
             if (!gsu.z)
-                { gsu_codes(rank_walk_fetch[copy] + 27, 2); goto take; } else { gsu_codes(rank_walk_fetch[copy] + 26, 1); }
+                { gsu_codes(rank_walk_fetch[copy] + 27, 2);
+                goto take; } else { gsu_codes(rank_walk_fetch[copy] + 26, 1); }
             gsu_sub(g.r[6], g.r[2], 0);
             if (gsu.s)
-                { gsu_codes(rank_walk_fetch[copy] + 30, 2); goto next; } else { gsu_codes(rank_walk_fetch[copy] + 29, 1); }
+                { gsu_codes(rank_walk_fetch[copy] + 30, 2);
+                goto next; } else { gsu_codes(rank_walk_fetch[copy] + 29, 1); }
             if (!gsu.z)
-                { gsu_codes(rank_walk_fetch[copy] + 33, 2); goto take; } else { gsu_codes(rank_walk_fetch[copy] + 32, 1); }
+                { gsu_codes(rank_walk_fetch[copy] + 33, 2);
+                goto take; } else { gsu_codes(rank_walk_fetch[copy] + 32, 1); }
             gsu_sub(g.r[7], g.r[3], 0);
             if (!gsu.s)
-                { gsu_codes(rank_walk_fetch[copy] + 36, 2); goto next; } else { gsu_codes(rank_walk_fetch[copy] + 35, 1); }
+                { gsu_codes(rank_walk_fetch[copy] + 36, 2);
+                goto next; } else { gsu_codes(rank_walk_fetch[copy] + 35, 1); }
 gsu_codes(rank_walk_fetch[copy] + 38, 1);
 take:
             g.r[4] = g.r[8];
@@ -101,6 +107,7 @@ take:
             gsu_codes(rank_walk_fetch[copy] + 12, 1);
         } else { gsu_codes(rank_walk_fetch[copy] + 10, 2); }
 next:
+        ;
         gsu_codes(rank_walk_fetch[copy] + 39, 1);
         g.r[0] = gsu_ldw(gsu_add(REC_NEXT_CAR, g.r[8], 0));
         gsu_codes(rank_walk_fetch[copy] + 1, 2);
@@ -113,7 +120,8 @@ next:
 
 FxRegs FxRankNext(FxRegs g, int copy)
 {
-    { FxRegs ret_ = rank_walk(g, 0, GSU_COPY(0)); gsu_code(0x04ced4, 2); return ret_; }
+    { FxRegs ret_ = rank_walk(g, 0, GSU_COPY(0)); gsu_code(0x04ced4, 2);
+    return ret_; }
 }
 
 void abi_FxRankNext(void)
@@ -165,6 +173,7 @@ FxRegs FxRankCars(FxRegs g, int copy)
     gsu_push(&g.r[10], g.r[11]);
     g.r[5] = 0;
     
+    
     gsu_code(0x04ce20, 2); gsu_cache(0xce22); gsu_code(0x04ce22, 7);
     g.r[0] = gsu_ldw(FX_CARS);
     gsu_moves(g.r[0]);
@@ -174,29 +183,34 @@ FxRegs FxRankCars(FxRegs g, int copy)
             g.r[8] = g.r[0];
             gsu_moves(g.r[8]);
             if (gsu.z)
-                { gsu_code(0x04ce2e, 4); gsu_code(0x04ce3f, 1);
+                { 
+                gsu_code(0x04ce2e, 4); gsu_code(0x04ce3f, 1);
                 break; } else { gsu_code(0x04ce2e, 4); }
             g.r[0] = gsu_add(REC_RANK, g.r[8], 0);
             gsu_code(0x04ce32, 7);
             gsu_stw(g.r[0], g.r[5]);
             gsu_code(0x04ce39, 4);
             g.r[0] = gsu_ldw(gsu_add(REC_NEXT_CAR, g.r[8], 0));
+            
             gsu_code(0x04ce3d, 2); gsu_code(0x04ce2d, 1);
         }
         gsu_code(0x04ce40, 4);
         g.r[0] = gsu_ldw(FX_CARS);
         g.r[9] = 1;
         
+        
         gsu_code(0x04ce44, 2); gsu_cache(0xce46); gsu_code(0x04ce46, 1);
         for (;;) {
             g.r[8] = g.r[0];
             gsu_moves(g.r[8]);
             if (gsu.z)
-                { gsu_code(0x04ce47, 4); gsu_code(0x04ce60, 1);
+                { 
+                gsu_code(0x04ce47, 4); gsu_code(0x04ce60, 1);
                 break; } else { gsu_code(0x04ce47, 4); }
             gsu_code(0x04ce4b, 3);
             gsu_push(&g.r[10], g.r[8]);
             g.r[11] = 0xCE54;
+            
             
             gsu_code(0x04ce4e, 6); gsu_code(0x04ce65, 1);
             g = FxRankNext(g, GSU_COPY(0));
@@ -206,6 +220,7 @@ FxRegs FxRankCars(FxRegs g, int copy)
             g.r[9] = gsu_inc(g.r[9]);
             gsu_code(0x04ce59, 5);
             g.r[0] = gsu_ldw(gsu_add(REC_NEXT_CAR, g.r[8], 0));
+            
             gsu_code(0x04ce5e, 2); gsu_code(0x04ce46, 1);
         }
     } else { gsu_code(0x04ce29, 4); gsu_code(0x04ce60, 1); }

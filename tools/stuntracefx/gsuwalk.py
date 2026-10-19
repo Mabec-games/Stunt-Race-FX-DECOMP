@@ -29,7 +29,7 @@ between two paths that reach it), the walk stops and says where: the C is
 then made to follow the original by hand. The code statements written
 use lower-case hex (cycwrite.py --strip --code keeps them).
 """
-import json, os, re, subprocess, sys
+import copy, json, os, re, subprocess, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DECOMP = os.path.join(ROOT, 'src', 'stuntracefx')
@@ -54,7 +54,7 @@ DEBUG2 = os.environ.get('GSUWALK_DEBUG') == '2'
 # ---- where the original is ----
 
 class St:
-    __slots__ = ('bank', 'pc', 'np', 'seg', 'out', 'val', 'rest', 'done', 'r13', 'lk', 'pend')
+    __slots__ = ('bank', 'pc', 'np', 'seg', 'out', 'val', 'rest', 'done', 'regs', 'lk', 'pend', 'called')
 
     def __init__(self, bank, pc):
         self.bank, self.pc, self.np, self.seg = bank, pc, pc + 1, pc
@@ -62,22 +62,33 @@ class St:
         self.val = None          # the value of the expression just walked, when the C makes it a constant
         self.rest = []           # an instruction's accesses not yet matched (LM R14: the load, then R14)
         self.done = False        # returned (R15 written, its delay slot fetched) or stopped
-        self.r13 = None          # R13 as the code set it (LOOP's target)
+        self.regs = {}           # registers the code set to a known value (R13: LOOP's target)
         self.lk = None           # the pc right after a LINK just passed (a call's jump is there)
         self.pend = None         # a branch whose delay slot ran: (its pc, 'taken' or 'fall', the site)
+        self.called = None       # a call whose delay slot's access ran, the C's call to come: its return address
+
+    @property
+    def r13(self):
+        return self.regs.get(13)
 
     def copy(self):
         s = St.__new__(St)
         s.bank, s.pc, s.np, s.seg = self.bank, self.pc, self.np, self.seg
-        s.out, s.val, s.rest, s.done, s.r13 = list(self.out), self.val, list(self.rest), self.done, self.r13
-        s.lk, s.pend = self.lk, self.pend
+        s.out, s.val, s.rest, s.done, s.regs = list(self.out), self.val, list(self.rest), self.done, dict(self.regs)
+        s.lk, s.pend, s.called = self.lk, self.pend, self.called
         return s
 
     def key(self):
-        return (self.pc, self.np, tuple(self.out), tuple(self.rest), self.done, self.pend)
+        return (self.pc, self.np, tuple(self.out), tuple(self.rest), self.done, self.pend, self.called)
 
     def unit(self):
-        return Unit(self.bank, self.pc)
+        """The instruction at pc; a JMP Rn to a register the code set takes
+        it as its target."""
+        u = Unit(self.bank, self.pc)
+        if u.jump == 'r15' and u.target is None and 0x98 <= u.op <= 0x9D and u.alt == 0 and (u.op & 15) in self.regs:
+            u = copy.copy(u)
+            u.target = self.regs[u.op & 15]
+        return u
 
     def where(self):
         return '%02X:%04X' % (self.bank, self.pc)
@@ -111,23 +122,35 @@ class St:
 
     def past(self, u):
         """On past instruction u (not a jump)."""
-        if u.writes == 13:
-            if u.op >> 4 == 0xF and u.alt == 0:
-                self.r13 = u.target
-            elif 0x10 <= u.op <= 0x1F and u.sreg == 15:
-                self.r13 = u.end + 1
+        w = u.writes
+        if w is not None:
+            v = None
+            if u.op >> 4 == 0xF and u.alt == 0:                 # IWT
+                v = u.target
+            elif 0x10 <= u.op <= 0x1F:                          # MOVE
+                v = u.end + 1 if u.sreg == 15 else self.regs.get(u.sreg)
+            if v is None:
+                self.regs.pop(w, None)
             else:
-                self.r13 = None
+                self.regs[w] = v
         self.pc = u.end + 1
         if 0x91 <= u.op <= 0x94 and u.alt == 0:
             self.lk = self.pc
 
     def jump_to(self, t):
-        """The target fetched: on at t."""
+        """The target fetched: on at t. A delay slot with an operand (the
+        last byte fetched, an IWT, say; a prefix is an instruction alone) takes the rest of its operand from
+        the target's bytes, and the code goes on after them."""
+        d, k = self.np - 1, 0
+        s = self.seg
+        while s < d:
+            s = Unit(self.bank, s).end + 1
+        if s == d and not is_prefix(rom(self.bank, d)):
+            k = Unit(self.bank, d).end - d
         self._code(t, 1)
         if rom(self.bank, t) == 0x02:
             self.out.append(('cache', t + 1))
-        self.pc, self.np, self.seg = t, t + 1, t
+        self.pc, self.np, self.seg = t + k, t + 1, t + k
 
     def take(self):
         s, self.out = self.out, []
@@ -169,12 +192,13 @@ def follow(st, why):
 
 
 def returns(st):
-    """The next thing the state does is its return jump (no access before it)."""
+    """The next thing the state does is its return jump or STOP (no access
+    before it)."""
     s = st.copy()
     if s.done:
         return False
     u = follow(s, 'returns')
-    return u.jump == 'r15' and u.target is None and not u.ev
+    return u.stop or (u.jump == 'r15' and u.target is None and not u.ev)
 
 
 def path(st):
@@ -639,6 +663,10 @@ class Ctx:
 
     def call(self, n, states, stmt):
         name = callee(n)
+        if name in ('gsu_code', 'gsu_cache', 'gsu_codes'):
+            return states                           # code stated before: not the C's own work
+        if name in CODE_WRAP:
+            return self.expr(kids(n)[-1], states, stmt)
         if isinstance(self.env.get(name), tuple) and self.env[name][0] == 'fn':   # a function passed in
             name = self.env[name][1]
         elif name is None and kids(n):
@@ -660,6 +688,12 @@ class Ctx:
         out = []
         for s in sts:
             s = s.copy()
+            if s.called is not None:
+                # the call's jump gone through already (an access in its delay slot)
+                if not self.is_call(fn, s.pc, self.constants(n, fn)):
+                    self.fail(n, 'the call at %s is not %s' % (s.where(), fn.name))
+                out += self.gsu_call(n, s, fn, stmt)
+                continue
             ahead_ = s.copy()                         # looked ahead on a copy: a helper starts where s is
             u = follow(ahead_, self.fn.name)
             if u.jump == 'r15' and u.target is not None and not u.ev and linked(ahead_) and \
@@ -885,13 +919,16 @@ class Ctx:
         """A call in the original: LINK, the jump and its delay slot, the
         callee from its target, then back at the LINK's address."""
         s = s.copy()
-        u = follow(s, self.fn.name)
-        if not (u.jump == 'r15' and u.target is not None and not u.ev and linked(s)):
-            self.fail(n, 'a call: the original has %r at %s' % (u, s.where()))
-        link = s.pc - 1
-        ret = link + 1 + (rom(s.bank, link) & 15)
-        s.fetch(u.end + 1)
-        s.jump_to(u.target)
+        if s.called is not None:
+            ret, s.called = s.called, None       # its jump and delay slot gone through with the access there
+        else:
+            u = follow(s, self.fn.name)
+            if not (u.jump == 'r15' and u.target is not None and not u.ev and linked(s)):
+                self.fail(n, 'a call: the original has %r at %s' % (u, s.where()))
+            link = s.pc - 1
+            ret = link + 1 + (rom(s.bank, link) & 15)
+            s.fetch(u.end + 1)
+            s.jump_to(u.target)
         self.site(('call', off(n)[0]), s, n, stmt)
         if fn is None:
             s.done = True
@@ -928,6 +965,8 @@ class Ctx:
             return [s]
         if s.done:
             self.fail(n, 'an access after the return jump')
+        if s.called is not None:
+            self.fail(n, 'an access between a call\'s delay slot and the C\'s call')
         u = follow(s, self.fn.name)
         if u.jump and not u.ev:
             d = Unit(s.bank, u.end + 1)
@@ -939,6 +978,17 @@ class Ctx:
                 s.fetch(d.addr)
                 s.jump_to(u.target)
                 s.rest = list(d.ev[1:])
+                if kind in TIME:
+                    self.site(('ev', off(n)[0]), s, n, stmt)
+                return [s]
+            if d.ev and d.ev[0] == kind and d.end == d.addr and u.jump == 'r15' and u.target is not None and linked(s):
+                # a call with an access in its delay slot (the C makes it
+                # before the call): the target fetched before the access runs
+                link = s.pc - 1
+                s.fetch(d.addr)
+                s.jump_to(u.target)
+                s.rest = list(d.ev[1:])
+                s.called = link + 1 + (rom(s.bank, link) & 15)
                 if kind in TIME:
                     self.site(('ev', off(n)[0]), s, n, stmt)
                 return [s]
@@ -1159,7 +1209,7 @@ class Ctx:
                 key, s, node = a[:3]
                 r = s.copy()
                 u = follow(r, self.fn.name)
-                r.fetch(u.end + 1)
+                r.fetch(u.addr if u.stop else u.end + 1)
                 r.done = True
                 self.arm_site(a, key, r, node)
                 r.val = None
@@ -1176,6 +1226,7 @@ class Ctx:
             out.append(r)
         if len({s.key() for s in out}) > 1:
             self.fail(n, 'the paths meet at %04X differently: %s' % (meet, ' / '.join(str(s.key()) for s in out)))
+        out[0].regs = {r: v for r, v in out[0].regs.items() if all(s.regs.get(r) == v for s in out[1:])}
         vals = {s.val for s in out}
         out[0].val = vals.pop() if len(vals) == 1 else None
         return out[:1]
@@ -1201,6 +1252,16 @@ class Ctx:
         else:
             init, cond, inc, body = None, ch[1], None, ch[0]
         init, cond, inc = init or None, cond or None, inc or None
+        if k == 'DoStmt' and cond is not None and self.const(cond) == 0:
+            # do { ... } while (0): the body once
+            r = self.stmt(body, states)
+            res = dict(none(), next=r['next'] + [s for s, _ in r['break']])
+            res['return'], res['goto'] = r['return'], r['goto']
+            if r['continue']:
+                self.fail(n, 'continue in do ... while (0)')
+            if len(res['next']) > 1:
+                res['next'] = self.join([(('exit', off(n)[0]), s, n) for s in res['next']], n)
+            return res
         sts = self.stmt(init, states)['next'] if init else states
         cnt = counted(init, cond, inc, self.const) if k == 'ForStmt' else None
         if cnt:
@@ -1507,12 +1568,50 @@ def resolve(fns, name, path_):
     return fns.get(name + '@' + tree_rel(path_)) or fns.get(name)
 
 
+def kinds():
+    """routine (bank, addr) -> how the original enters it: 'started' by the
+    S-CPU, a 'call' from Super FX code, a 'table' entry."""
+    out = {}
+    with open(os.path.join(ROOT, 'build', 'stuntracefx', 'routines.csv')) as f:
+        for line in f.read().split('\n')[1:]:
+            c = line.split(',')
+            if len(c) > 2 and c[1] == 'gsu':
+                out[(int(c[0][:2], 16), int(c[0][2:], 16))] = c[2]
+    return out
+
+
 def entries(fns, routines):
+    """The routines walked from their own entry: all but a routine only ever
+    called by Super FX code whose C nothing runs (its callers' walks cover
+    it where it runs)."""
     out = []
+    kind = kinds()
+    used = None
     for name, (bank, addr) in sorted(routines.items(), key=lambda kv: kv[1]):
         fn = fns.get('abi_' + name) or fns.get(name) or next((f for f in fns.values() if f.cname == name), None)
-        if fn is None or opaque(fn) or not super_fx(fn):
+        if fn is None or opaque(fn):
             continue
+        if not (super_fx(fn) or any(super_fx(fns[c]) for c in calls_in(fn, fns))):
+            continue
+        if kind.get((bank, addr)) == 'call':
+            if used is None:
+                # every name a function body uses (an indented line, the
+                # comments taken out: a call or a function pointer), the
+                # interpreted programs' too
+                used = {}
+                for text in {f.text for f in fns.values()}:
+                    text = re.sub(r'/\*.*?\*/|//[^\n]*', '', text, flags=re.S)
+                    cur = None
+                    for line in text.split('\n'):
+                        m = re.match(r'\w[\w \t\*]*?\b(\w+)\s*\(', line)
+                        if m:
+                            cur = m.group(1)
+                        elif line[:1] in (' ', '\t'):
+                            for c in re.findall(r'\b(\w+)\b', line):
+                                used.setdefault(c, set()).add(cur)
+            own = {'abi_' + name, name, fn.name}
+            if not any(used.get(x, set()) - own for x in own):
+                continue
         out.append((fn, bank, addr))
     return out
 
@@ -1605,7 +1704,7 @@ def rewritable(fns, routines):
 def unused_tables(text):
     while True:
         changed = False
-        for m in re.finditer(r'/\* cyccopy: [^\n]*\*/\nstatic const (?:GsuCode|uint8_t) (\w+)\[[^;]*;\n\n', text):
+        for m in re.finditer(r'/\* cyccopy: [^\n]*\*/\nstatic const (?:GsuCode|uint8_t|uint16_t) (\w+)\[[^;]*;\n\n', text):
             if len(re.findall(r'\b%s\b' % m.group(1), text)) == 1:
                 text = text[:m.start()] + text[m.end():]
                 changed = True
@@ -1634,8 +1733,19 @@ def write(out_dir, only=None):
         names = {fns[n].cname for n in keep if fns[n].path == p}
         text = re.sub(r'/\* gsuwalk: the code of each copy of (\w+), read from the ROM \*/\nstatic const GsuCode \w+\[[^;]*;\n\n',
                       lambda m: '' if m.group(1) in names else m.group(0), text)
-        text = re.sub(r"/\* gsuwalk: the copy of \w+ each copy of (\w+) calls(?:, by pass)? \*/\nstatic const uint8_t \w+\[[^;]*;\n\n",
-                      lambda m: '' if m.group(1) in names else m.group(0), text)
+        gone = set()
+
+        def drop(m):
+            if m.group(1) not in names:
+                return m.group(0)
+            gone.add(m.group(2))
+            return ''
+        text = re.sub(r"/\* gsuwalk: the copy of \w+ each copy of (\w+) calls(?:, by pass)? \*/\nstatic const uint(?:8|16)_t (\w+)\[[^;]*;\n\n",
+                      drop, text)
+        # and the copies passed from them: numbered again below
+        for m in reversed(list(re.finditer(r'GSU_COPY\((\w+)\[', text))):
+            if m.group(1) in gone:
+                text = text[:m.start()] + 'GSU_COPY(0)' + text[cycwrite_close(text, m.start() + len('GSU_COPY(')) + 1:]
         open(q, 'w').write(text)
     fns2, routines2 = load(sources(tmp))
     w2, fails2 = walk_all(fns2, routines2, only)
@@ -1731,6 +1841,11 @@ def indent_at(text, o):
 
 def is_code_call(n):
     return n.get('kind') == 'CallExpr' and callee(n) in CODE_FN
+
+
+def copy_type(top):
+    """The type of a table of copy numbers up to top."""
+    return 'uint8_t' if top < 256 else 'uint16_t'
 
 
 def strip_code(text, fn_nodes):
@@ -1874,15 +1989,32 @@ class Emit:
             for c in counts:
                 nb *= c
             if any(v and v[0] == 'dual' for v in d.values()):
-                if nc != 1 or loops:
-                    raise Fail('%s: a delay slot\'s code in a function with copies' % fn.name)
+                if loops:
+                    raise Fail('%s: a delay slot\'s code in a loop walked by passes' % fn.name)
                 cond = self.w.duals.get((fn.name, key))
                 if cond is None:
                     raise Fail('%s: a delay slot\'s branch the C never decides' % fn.name)
-                _, pre, tk, fl = d[(0, ())]
                 b, e = span(cond[0])
                 ctext = fn.text[b:e]
-                plan.append((key, ('dual', list(pre), fn.keys[0][0], ctext, cond[1], tk, fl)))
+                if nc == 1:
+                    _, pre, tk, fl = d[(0, ())]
+                    plan.append((key, ('dual', list(pre), fn.keys[0][0], ctext, cond[1], tk, fl)))
+                    continue
+                # each copy's bytes before the slot, then the byte after it
+                # when the C's condition holds and when it does not
+                if not all(v and v[0] == 'dual' for v in d.values()):
+                    raise Fail('%s: a delay slot in some copies only' % fn.name)
+                kp = max(len(v[1]) for v in d.values())
+                rows = [[(0, 0)] * (kp + 2) for _ in range(nc)]
+                for (ci, _), (_, pre, tk, fl) in d.items():
+                    bank = fn.keys[ci][0]
+                    ent = [(c[1], 0) if c[0] == 'cache' else ((bank << 16) | c[0], c[1]) for c in pre]
+                    yes, no = (tk, fl) if cond[1] == 'taken' else (fl, tk)
+                    rows[ci][:len(ent)] = ent
+                    rows[ci][kp:] = [((bank << 16) | yes, 1), ((bank << 16) | no, 1)]
+                plan.append((key, ('dualtab', slot, kp, ctext)))
+                table.append(rows)
+                slot += kp + 2
                 continue
             if nc == 1 and not loops:
                 plan.append((key, ('lit', d[(0, ())], fn.keys[0][0])))
@@ -1957,6 +2089,16 @@ class Emit:
                 return (self.literal(pre, bank, 'stmt') + ' ' if pre else '') + last + ';   /* the branch\'s delay slot */'
             if form == 'expr':
                 return (self.literal(pre, bank, 'expr') + ', ' if pre else '') + last
+            raise Fail('a delay slot\'s code after a value')
+        if how[0] == 'dualtab':
+            _, s, kp, ctext = how
+            at = '%s + %d' % (row, s) if s else row
+            parts = (['gsu_codes(%s, %d)' % (at, kp)] if kp else []) + \
+                ['gsu_codes(%s + %d + !(%s), 1)' % (row, s + kp, ctext)]
+            if form == 'stmt':
+                return '; '.join(parts) + ';   /* the branch\'s delay slot */'
+            if form == 'expr':
+                return ', '.join(parts)
             raise Fail('a delay slot\'s code after a value')
         _, s, k, idx = how
         at = '%s + %d' % (row, s) if s else row
@@ -2053,7 +2195,13 @@ class Emit:
         elif kind == 'exit':
             # after the loop: only the loop's own ending gets there
             loop = node
-            if any(k[0] == 'brk' for k in fn.sites if self.inside(loop, k[1])):
+            def own(k):
+                # the break's loop: the innermost one around it
+                x = par.get(id(fn.nodes.get(k[:2])))
+                while x is not None and x.get('kind') not in ('ForStmt', 'WhileStmt', 'DoStmt', 'SwitchStmt'):
+                    x = par.get(id(x))
+                return x is loop
+            if any(k[0] == 'brk' and own(k) for k in fn.sites if self.inside(loop, k[1])):
                 raise Fail('%s: code at a loop\'s end that breaks too' % fn.name)
             e = stmt_end(text, loop)
             self.edit(fn, e, e, '\n' + indent_at(text, span(loop)[0]) + self.code(how, row, 'stmt'))
@@ -2137,8 +2285,9 @@ class Emit:
                 made[tname] = made.get(tname, 0) + 1
                 if made[tname] > 1:
                     tname += '_%d' % made[tname]
-                decl = '/* gsuwalk: the copy of %s each copy of %s calls, by pass */\nstatic const uint8_t %s[%d][%d] = {%s};\n\n' % (
-                    cal.cname, fn.cname, tname, nc, nb, ', '.join('{%s}' % ', '.join(str(x) for x in r) for r in tab))
+                decl = '/* gsuwalk: the copy of %s each copy of %s calls, by pass */\nstatic const %s %s[%d][%d] = {%s};\n\n' % (
+                    cal.cname, fn.cname, copy_type(max(max(r) for r in tab)), tname, nc, nb,
+                    ', '.join('{%s}' % ', '.join(str(x) for x in r) for r in tab))
                 self.edit(fn, span(fn.node)[0], span(fn.node)[0], decl)
                 expr = '%s[%s][%s]' % (tname, 'copy' if nc > 1 else '0', idx)
             else:
@@ -2150,8 +2299,8 @@ class Emit:
                 if made[tname] > 1:
                     tname += '_%d' % made[tname]
                 tab = [vals.get((ci, ()), 0) for ci in range(nc)]
-                decl = '/* gsuwalk: the copy of %s each copy of %s calls */\nstatic const uint8_t %s[%d] = {%s};\n\n' % (
-                    cal.cname, fn.cname, tname, nc, ', '.join(str(v) for v in tab))
+                decl = '/* gsuwalk: the copy of %s each copy of %s calls */\nstatic const %s %s[%d] = {%s};\n\n' % (
+                    cal.cname, fn.cname, copy_type(max(tab)), tname, nc, ', '.join(str(v) for v in tab))
                 self.edit(fn, span(fn.node)[0], span(fn.node)[0], decl)
                 expr = '%s[copy]' % tname
             if arg is None:

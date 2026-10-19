@@ -53,7 +53,8 @@ FxRegs FxInit(FxRegs g)
     g.r[0] = gsu_ldw(g.r[1]);
     gsu_sub(g.r[0], g.r[2], 0);
     if (!gsu.z)
-        { gsu_code(0x04881e, 5);
+        { 
+        gsu_code(0x04881e, 5);
         return ram_bad(g); } else { gsu_code(0x04881e, 4); gsu_code(0x048828, 1); }
     return pools(g, GSU_COPY(0));
 }

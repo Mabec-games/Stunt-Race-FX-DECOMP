@@ -164,6 +164,7 @@ void abi_FxPolygonProject(void)
     gsu_code(0x01c413, 2);
     gsu_push(&gsu.r[10], gsu.r[11]);
     
+    
     gsu_code(0x01c415, 2); gsu_cache(0xc417); gsu_code(0x01c417, 4);
     gsu.r[3] = gsu_ldw(0x0026);
     gsu_code(0x01c41b, 3);
@@ -189,6 +190,7 @@ void abi_FxPolygonProject(void)
         gsu.r[2] = next_in(GSU_COPY(6));
         gsu.r[6] = next_in(GSU_COPY(7));
         gsu.r[11] = 0xC445;
+        
         gsu_code(0x01c43f, 6); gsu_code(0x018bff, 1);
         abi_FxProjectVertex();
         gsu_code(0x01c445, 2);
@@ -201,13 +203,15 @@ void abi_FxPolygonProject(void)
             c = gsu.cy;
             gsu.r[0] = gsu_lsr(gsu.r[0]);
             if (c)
-                { gsu_code(0x01c447, 13);
+                { 
+                gsu_code(0x01c447, 13);
                 gsu.r[2] = gsu_ldw(FX_EDGES + 4); } else { gsu_code(0x01c447, 9); gsu_code(0x01c453, 1); }
             
             c = gsu.cy;
             gsu.r[0] = gsu_lsr(gsu.r[0]);
             if (c)
-                { gsu_code(0x01c454, 6);
+                { 
+                gsu_code(0x01c454, 6);
                 gsu.r[2] = gsu_ldw(FX_EDGES + 6); } else { gsu_code(0x01c454, 2); gsu_code(0x01c459, 1); }
             c = gsu.cy;
             gsu.r[0] = gsu_lsr(gsu.r[0]);
@@ -219,7 +223,8 @@ void abi_FxPolygonProject(void)
             } else { gsu_code(0x01c45a, 2); gsu_code(0x01c461, 1); }
             
             if (gsu.cy)
-                { gsu_code(0x01c462, 6);
+                { 
+                gsu_code(0x01c462, 6);
                 gsu.r[1] = gsu_ldw(FX_EDGES + 2); } else { gsu_code(0x01c462, 2); gsu_code(0x01c467, 1); }
         } else { gsu_code(0x01c447, 6); gsu_code(0x01c467, 1); }
         gsu_code(0x01c468, 3);
@@ -237,6 +242,7 @@ void abi_FxPolygonProject(void)
         gsu.r[0] = gsu_or(gsu.r[0], gsu.r[6]);
         gsu.r[12] = gsu_dec(gsu.r[12]);
         c = !gsu.z;
+        /* the branch's delay slot */
         gsu_code(0x01c48a, 4); gsu_code((c) ? 0x01c434 : 0x01c48e, 1);   /* the branch's delay slot */
         gsu_sbk(gsu.r[0]);                  /* BNE's delay slot */
     } while (c);
@@ -315,8 +321,10 @@ void abi_FxPolygonNearClip(void)
         } while (gsu_code_loop(0x01c23a, 1, gsu_code_loop(0x01c24e, 4, gsu_count_down(&gsu.r[12]))));
         gsu_code(0x01c24e, 4);
         
+        
         gsu_code(0x01c252, 3); gsu_code(0x01c299, 1);
     } else {
+        
         
         gsu_code(0x01c232, 3); gsu_code(0x01c255, 4);
         gsu.r[2] = gsu_ldw(FX_LIST_OUT);
@@ -348,6 +356,7 @@ void abi_FxPolygonNearClip(void)
     gsu.r[6] = gsu_sub(gsu.r[0], gsu.r[4], 0);
     if (!gsu.s) {
         
+        
         gsu_code(0x01c2a0, 11); gsu_code(0x01c331, 4);
         gsu.r[0] = gsu_ldw(FX_COUNT);
         gsu_code(0x01c335, 4);
@@ -360,6 +369,7 @@ void abi_FxPolygonNearClip(void)
     gsu_code(0x01c2ac, 6);
     gsu_push(&gsu.r[10], gsu.r[0]);
     gsu.r[11] = 0xC2B8;
+    
     gsu_code(0x01c2b2, 6); gsu_code(0x01ce34, 1);
     abi_FxPolygonClipNear();
     gsu_code(0x01c2b8, 1);
@@ -368,6 +378,7 @@ void abi_FxPolygonNearClip(void)
     gsu.r[1] = gsu_pull(&gsu.r[10]);
     gsu_moves(gsu.r[0]);
     if (gsu.z) {
+        
         gsu_code(0x01c2c9, 4); gsu_code(0x01c334, 5);
         gsu_pull(&gsu.r[10]);
         return;
@@ -384,6 +395,7 @@ void abi_FxPolygonNearClip(void)
     gsu_code(0x01c2db, 3);
     gsu_push(&gsu.r[10], gsu.r[2]);
     gsu.r[11] = 0xC2E4;
+    
     gsu_code(0x01c2de, 6); gsu_code(0x01c412, 1);
     (abi_FxPolygonProject());
     gsu_code(0x01c2e4, 5);
@@ -414,6 +426,7 @@ void abi_FxPolygonNearClip(void)
     gsu.r[0] = gsu_pull(&gsu.r[10]);
     gsu.r[0] = gsu_inc(gsu_not(gsu.r[0]));
     gsu.r[11] = 0xC320;
+    
     gsu_code(0x01c31a, 6); gsu_code(0x01ce34, 1);
     abi_FxPolygonClipNear();
     gsu_moves(gsu.r[0]);
@@ -449,10 +462,12 @@ static int clip_edge(void (*clip)(void), uint16_t ret, int reload, int copy)
     lists_swap(GSU_COPY(lists_swap_in_clip_edge[copy]));
     gsu_moves(gsu.r[0]);
     if (gsu.z)
-        { gsu_codes(clip_edge_fetch[copy] + 5, 1);
+        { 
+        gsu_codes(clip_edge_fetch[copy] + 5, 1);
         return 0; } else { gsu_codes(clip_edge_fetch[copy] + 3, 2); }
     if (reload)
-        { gsu_codes(clip_edge_fetch[copy] + 6, 1); gsu.r[5] = gsu_ldw(FX_CODES); }
+        { gsu_codes(clip_edge_fetch[copy] + 6, 1);
+        gsu.r[5] = gsu_ldw(FX_CODES); }
     return 1;
 }
 
@@ -488,6 +503,7 @@ void abi_FxPolygonDraw(void)
     gsu_code(0x01c347, 2);
     gsu_r14(gsu_sub(gsu.r[14], gsu.r[9], 0));
     gsu.r[11] = 0xC34D;
+    
     gsu_code(0x01c349, 4); gsu_code(0x01c1be, 1); gsu_cache(0xc1bf);
     abi_FxPointsGather();
     gsu.r[0] = FX_LIST_B;
@@ -509,34 +525,41 @@ void abi_FxPolygonDraw(void)
     if (!gsu.z) {                             /* BEQ past it, then its own test */
         gsu_code(0x01c369, 7);
         if (!clip_edge(abi_FxPolygonClipTop, 0xC374, 1, GSU_COPY(0)))
-            { gsu_code(0x01c385, 4); gsu_code(0x01c409, 1); goto none; }
+            { gsu_code(0x01c385, 4); gsu_code(0x01c409, 1);
+            goto none; }
     } else { gsu_code(0x01c369, 6); gsu_code(0x01c38c, 1); }
     gsu.r[1] = gsu_and(gsu.r[5], 1);
     if (!gsu.z) {                             /* BEQ past it, then its own test */
         gsu_code(0x01c38d, 7);
         if (!clip_edge(abi_FxPolygonClipBottom, 0xC398, 1, GSU_COPY(1)))
-            { gsu_code(0x01c3a9, 4); gsu_code(0x01c409, 1); goto none; }
+            { gsu_code(0x01c3a9, 4); gsu_code(0x01c409, 1);
+            goto none; }
     } else { gsu_code(0x01c38d, 6); gsu_code(0x01c3b0, 1); }
     gsu.r[1] = gsu_and(gsu.r[5], 8);
     if (!gsu.z) {                             /* BEQ past it, then its own test */
         gsu_code(0x01c3b1, 7);
         if (!clip_edge(abi_FxPolygonClipRight, 0xC3BC, 1, GSU_COPY(2)))
-            { gsu_code(0x01c3cd, 4); gsu_code(0x01c409, 1); goto none; }
+            { gsu_code(0x01c3cd, 4); gsu_code(0x01c409, 1);
+            goto none; }
     } else { gsu_code(0x01c3b1, 6); gsu_code(0x01c3d4, 1); }
     gsu.r[1] = gsu_and(gsu.r[5], 4);
     if (!gsu.z) {                             /* BEQ past it, then its own test */
         gsu_code(0x01c3d5, 7);
         if (!clip_edge(abi_FxPolygonClipLeft, 0xC3E0, 0, GSU_COPY(3)))
-            { gsu_code(0x01c3f1, 4); gsu_code(0x01c409, 1); goto none; }
+            { gsu_code(0x01c3f1, 4); gsu_code(0x01c409, 1);
+            goto none; }
     } else { gsu_code(0x01c3d5, 6); gsu_code(0x01c3f5, 1); }
     gsu.r[11] = 0xC3FA;
+    
     gsu_code(0x01c3f6, 4); gsu_code(0x01c21e, 1);
     abi_FxPolygonNearClip();
     gsu_moves(gsu.r[0]);
     if (gsu.z)
-        { gsu_code(0x01c3fa, 5); gsu_code(0x01c409, 1);
+        { 
+        gsu_code(0x01c3fa, 5); gsu_code(0x01c409, 1);
         goto none; } else { gsu_code(0x01c3fa, 5); }
     gsu.r[11] = 0xC404;
+    
     gsu_code(0x01c3ff, 5); gsu_code(0x01c412, 1);
     abi_FxPolygonProject();
     gsu_code(0x01c404, 5);

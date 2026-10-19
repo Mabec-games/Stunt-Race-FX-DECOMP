@@ -71,7 +71,8 @@ void FxEffectsAge(int copy)
         if (gsu.z) {
             gsu.r[3] = gsu_add(gsu.r[3], FX_EFFECT_SIZE, 0);
             if (!gsu_count_down(&gsu.r[12]))
-                { gsu_code(0x01c098, 5); gsu_code(0x01c0d8, 6); break; } else { gsu_code(0x01c098, 5); gsu_code(0x01c0d8, 5); gsu_code(0x01c095, 1); }
+                { gsu_code(0x01c098, 5); gsu_code(0x01c0d8, 6);
+                break; } else { gsu_code(0x01c098, 5); gsu_code(0x01c0d8, 5); gsu_code(0x01c095, 1); }
             continue;
         } else { gsu_code(0x01c098, 5); }
         gsu.r[0] = gsu_dec(gsu.r[0]);
@@ -93,17 +94,21 @@ void FxEffectsAge(int copy)
         gsu.r[0] = gsu.r[1];
         gsu_sub(gsu.r[0], gsu.r[8], 0);         /* off the screen: on to outside */
         if (gsu.s)
-            { gsu_code(0x01c0b2, 8); gsu_code(0x01c0cb, 1); goto outside; } else { gsu_code(0x01c0b2, 8); }
+            { gsu_code(0x01c0b2, 8); gsu_code(0x01c0cb, 1);
+            goto outside; } else { gsu_code(0x01c0b2, 8); }
         gsu_sub(gsu.r[0], gsu.r[7], 0);
         if (!gsu.s)
-            { gsu_code(0x01c0ba, 5); gsu_code(0x01c0cb, 1); goto outside; } else { gsu_code(0x01c0ba, 5); }
+            { gsu_code(0x01c0ba, 5); gsu_code(0x01c0cb, 1);
+            goto outside; } else { gsu_code(0x01c0ba, 5); }
         gsu.r[0] = gsu.r[2];
         gsu_sub(gsu.r[0], gsu.r[4], 0);
         if (gsu.s)
-            { gsu_code(0x01c0bf, 7); gsu_code(0x01c0cb, 1); goto outside; } else { gsu_code(0x01c0bf, 7); }
+            { gsu_code(0x01c0bf, 7); gsu_code(0x01c0cb, 1);
+            goto outside; } else { gsu_code(0x01c0bf, 7); }
         gsu_sub(gsu.r[0], gsu.r[5], 0);
         if (gsu.s)
-            { gsu_code(0x01c0c6, 5); gsu_code(0x01c0d3, 1); goto next; } else { gsu_code(0x01c0c6, 5); }
+            { gsu_code(0x01c0c6, 5); gsu_code(0x01c0d3, 1);
+            goto next; } else { gsu_code(0x01c0c6, 5); }
 gsu_code(0x01c0cb, 1);
 outside:
         gsu.r[3] = gsu_sub(gsu.r[3], FX_EFFECT_SIZE, 0);
@@ -114,7 +119,8 @@ outside:
 gsu_code(0x01c0d1, 3);
 next:
         if (!gsu_count_down(&gsu.r[12]))
-            { gsu_code(0x01c0d4, 4); gsu_code(0x01c0dd, 1); break; } else { gsu_code(0x01c0d4, 1); gsu_code(0x01c095, 1); }
+            { gsu_code(0x01c0d4, 4); gsu_code(0x01c0dd, 1);
+            break; } else { gsu_code(0x01c0d4, 1); gsu_code(0x01c095, 1); }
     }
     gsu_code(0x01c0de, 2);
 }
@@ -181,7 +187,8 @@ void abi_FxEffectsSpawn(void)
         if (!gsu.z) {
             gsu.r[1] = gsu_add(gsu.r[1], FX_EFFECT_SIZE, 0);
             if (!gsu_count_down(&gsu.r[12]))
-                { gsu_code(0x01c13d, 3); gsu_code(0x01c16a, 6); break; } else { gsu_code(0x01c13d, 3); gsu_code(0x01c16a, 5); gsu_code(0x01c13a, 1); }
+                { gsu_code(0x01c13d, 3); gsu_code(0x01c16a, 6);
+                break; } else { gsu_code(0x01c13d, 3); gsu_code(0x01c16a, 5); gsu_code(0x01c13a, 1); }
             continue;
         } else { gsu_code(0x01c13d, 3); }
         gsu.r[0] = 8;
@@ -204,7 +211,8 @@ void abi_FxEffectsSpawn(void)
         gsu_stw(gsu.r[1], gsu.r[3]);
         gsu.r[1] = gsu_inc(gsu_inc(gsu.r[1]));
         if (!gsu_count_down(&gsu.r[12]))
-            { gsu_code(0x01c164, 6); gsu_code(0x01c16f, 1); break; } else { gsu_code(0x01c164, 3); gsu_code(0x01c13a, 1); }
+            { gsu_code(0x01c164, 6); gsu_code(0x01c16f, 1);
+            break; } else { gsu_code(0x01c164, 3); gsu_code(0x01c13a, 1); }
     }
     gsu_code(0x01c170, 3);
     gsu_stw(FX_RANDOM, gsu.r[4]);
@@ -277,6 +285,7 @@ void abi_FxHazeSample(void)
     gsu_r14(gsu.r[1]);
     gsu.r[7] = 0x0010;
     gsu.r[11] = FX_HAZE_PIXELS;
+    
     gsu_code(0x01bfea, 6); gsu_cache(0xbff0); gsu_code(0x01bff0, 1);
     do {
         gsu.r[1] = gsu.r[14];
@@ -300,6 +309,7 @@ void abi_FxHazeSample(void)
             gsu.r[0] = (uint16_t)(int16_t)(int8_t)gsu_getb();      /* GETB, SEX */
             gsu_sz(gsu.r[0]);
             skip = gsu.z;
+            /* the branch's delay slot */
             gsu_code(0x01c00a, 3); gsu_code((skip) ? 0x01c01e : 0x01c00d, 1);   /* the branch's delay slot */
             gsu_r14(gsu_inc(gsu.r[14]));    /* BEQ's delay slot */
             if (!skip) {
@@ -366,10 +376,12 @@ void abi_FxHazePlot(void)
     gsu.r[12] = gsu.r[0];
     gsu_moves(gsu.r[0]);
     if (gsu.z)
-        { gsu_code(0x01c03e, 6); gsu_code(0x01c05d, 3); return; } else { gsu_code(0x01c03e, 6); }
+        { gsu_code(0x01c03e, 6); gsu_code(0x01c05d, 3);
+        return; } else { gsu_code(0x01c03e, 6); }
     gsu.r[0] = 0x0001;
     gsu.por = (uint8_t)gsu.r[0];
     gsu.r[13] = 0xC04B;
+    
     gsu_code(0x01c044, 5); gsu_cache(0xc049); gsu_code(0x01c049, 3);
     do {
         int more;
@@ -387,6 +399,7 @@ void abi_FxHazePlot(void)
         gsu.r[2] = gsu_ldb(gsu.r[3]);
         gsu.r[3] = gsu_inc(gsu.r[3]);
         more = gsu_count_down(&gsu.r[12]);
+        /* the branch's delay slot */
         gsu_code(0x01c05b, 2); gsu_code((more) ? 0x01c04b : 0x01c05d, 1);   /* the branch's delay slot */
         gsu_plot((uint8_t)gsu.r[1], (uint8_t)gsu.r[2]);     /* LOOP's delay slot */
         gsu.r[1] = (uint16_t)(gsu.r[1] + 1);
@@ -436,9 +449,11 @@ void abi_FxEffectsDraw(void)
             gsu.r[2] = gsu_ldw(gsu.r[3]);
             gsu.r[3] = gsu_inc(gsu_inc(gsu.r[3]));
             gsu.r[11] = 0xC1A5;
+            
             gsu_code(0x01c19f, 6); gsu_code(0x01bfb7, 1);
             abi_FxHazeSample();
             gsu.r[11] = 0xC1AA;
+            
             gsu_code(0x01c1a5, 5); gsu_code(0x01c039, 1);
             abi_FxHazePlot();
             gsu_code(0x01c1aa, 1);
@@ -499,14 +514,17 @@ void abi_FxEffectsRun(void)
         gsu_moves(gsu.r[0]);
         if (!gsu.z) {
             gsu.r[11] = 0xBFA8;
+            
             gsu_code(0x01bf9f, 9); gsu_code(0x01c130, 1);
             abi_FxEffectsSpawn();
             gsu_code(0x01bfa8, 1);
         } else { gsu_code(0x01bf9f, 4); gsu_code(0x01bfa8, 1); }
         gsu.r[11] = 0xBFAD;
+        
         gsu_code(0x01bfa9, 4); gsu_code(0x01c060, 1);
         abi_FxEffectsAge();
         gsu.r[11] = 0xBFB2;
+        
         gsu_code(0x01bfad, 5); gsu_code(0x01c175, 1);
         abi_FxEffectsDraw();
         gsu_code(0x01bfb2, 1);

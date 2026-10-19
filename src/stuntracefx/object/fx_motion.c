@@ -96,19 +96,24 @@ FxMoveRegs FxRecordMove(uint16_t rec, uint16_t kind, int copy)
     /* halved or not decides first, each way with its own copies */
     if (!gsu.z) {
         for (i = 0; i < 3; i++)
-            { gsu_codes(FxRecordMove_fetch[0] + i, 1); move_word(&g, 4, GSU_COPY(move_word_in_FxRecordMove[0][i])); }
+            { gsu_codes(FxRecordMove_fetch[0] + i, 1);
+            move_word(&g, 4, GSU_COPY(move_word_in_FxRecordMove[0][i])); }
         g.r0 = gsu_sub(kind, 6, 0);
         if (gsu.z)
             { for (i = 0; i < 3; i++)
-                { gsu_codes(FxRecordMove_fetch[0] + 3 + i, 1); move_word(&g, 1, GSU_COPY(move_word_in_FxRecordMove_2[0][i])); gsu_code(0x04962e, 2); } } else { gsu_code(0x049607, 7); gsu_code(0x04962f, 1); }
+                { gsu_codes(FxRecordMove_fetch[0] + 3 + i, 1);
+                move_word(&g, 1, GSU_COPY(move_word_in_FxRecordMove_2[0][i])); } gsu_code(0x04962e, 2); } else { gsu_code(0x049607, 7); gsu_code(0x04962f, 1); }
+        
         gsu_code(0x049630, 2); gsu_code(0x049680, 1);
     } else {
         for (i = 0; i < 3; i++)
-            { gsu_codes(FxRecordMove_fetch[0] + 6 + 2 * i, 2); move_word(&g, 3, GSU_COPY(move_word_in_FxRecordMove_3[0][i])); }
+            { gsu_codes(FxRecordMove_fetch[0] + 6 + 2 * i, 2);
+            move_word(&g, 3, GSU_COPY(move_word_in_FxRecordMove_3[0][i])); }
         g.r0 = gsu_sub(kind, 6, 0);
         if (gsu.z)
             { for (i = 0; i < 3; i++)
-                { gsu_codes(FxRecordMove_fetch[0] + 12 + i, 1); move_word(&g, 0, GSU_COPY(move_word_in_FxRecordMove_4[0][i])); gsu_code(0x04967f, 2); } } else { gsu_code(0x04965e, 7); gsu_code(0x049680, 1); }
+                { gsu_codes(FxRecordMove_fetch[0] + 12 + i, 1);
+                move_word(&g, 0, GSU_COPY(move_word_in_FxRecordMove_4[0][i])); } gsu_code(0x04967f, 2); } else { gsu_code(0x04965e, 7); gsu_code(0x049680, 1); }
     }
     gsu_code(0x049681, 2);
     return g;

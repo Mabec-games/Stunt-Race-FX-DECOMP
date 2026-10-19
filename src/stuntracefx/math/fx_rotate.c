@@ -387,7 +387,7 @@ FxAnglesOut FxMatrixFromAngles(uint16_t m, int copy)
     gsu_code(0x04c277, 4);
     o.s1s2 = mul15(o.s1, o.s2, GSU_COPY(2));
     gsu_code(0x04c27b, 6);
-    (gsu_code(0x04c281, 6), gsu_r14(mul15(o.c1, o.s2, GSU_COPY(3))));
+    ((gsu_code(0x04c281, 6), gsu_r14(mul15(o.c1, o.s2, GSU_COPY(3)))));
     o.c1s2 = gsu.r[14];
     /* each element stored as it is made (STW (R9), INC R9 twice) */
     w[0] = gsu_add(mul15(o.s1s2, o.s0, GSU_COPY(4)), o.c1c2, 0);
@@ -488,6 +488,7 @@ FxRegs FxAngleOf(FxRegs g, int copy)
         { g.r[0] = gsu_inc(gsu_not(g.r[0])); gsu_code(0x04c309, 7); } else { gsu_code(0x04c309, 4); gsu_code(0x04c30f, 1); }
     if (gsu.z) {
         g.r[0] = 0x4000;
+        
         gsu_code(0x04c310, 9); gsu_code(0x04c35d, 1);
         goto signs;
     } else { gsu_code(0x04c310, 2); gsu_code(0x04c319, 1); }
@@ -495,6 +496,7 @@ FxRegs FxAngleOf(FxRegs g, int copy)
     gsu_sub(g.r[0], g.r[6], 0);
     if (gsu.z) {
         g.r[0] = 0x2000;
+        
         gsu_code(0x04c31a, 13); gsu_code(0x04c35d, 1);
         goto signs;
     } else { gsu_code(0x04c31a, 6); gsu_code(0x04c327, 1); }
@@ -510,6 +512,7 @@ FxRegs FxAngleOf(FxRegs g, int copy)
     g.r[4] = gsu_ror(g.r[4]);
     g.r[0] = gsu_lsr(g.r[0]);
     g.r[4] = gsu_ror(g.r[4]);
+    
     gsu_code(0x04c332, 12); gsu_code(0x04c144, 1);
     q = FxDivide(g.r[0], g.r[4], g.r[6], GSU_COPY(0));
     g.r[4] = q.quot;

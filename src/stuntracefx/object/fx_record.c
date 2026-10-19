@@ -87,7 +87,7 @@ void FxListClearBit0(uint16_t owner, int *any, int copy)
         gsu_code(0x04a448, 8);
         do {
             gsu_code(0x04a450, 4);
-            (gsu_code(0x04a454, 3), gsu_sbk(gsu_bic(gsu_ldw(gsu_add(REC_FLAGS10, rec, 0)), 1)));
+            ((gsu_code(0x04a454, 3), gsu_sbk(gsu_bic(gsu_ldw(gsu_add(REC_FLAGS10, rec, 0)), 1))));
             gsu_code(0x04a457, 4);
             rec = gsu_ldw(gsu_add(REC_NEXT, rec, 0));
             gsu_moves(rec);
@@ -180,6 +180,7 @@ FxRegs FxBearingTo(FxRegs g, int copy)
     g.r[3] = gsu_sub(g.r[3], g.r[0], 0);
     g.r[2] = g.r[3];
     g.r[11] = 0xCBFF;
+    
     gsu_code(0x04cbf7, 8); gsu_code(0x04c2f8, 1);
     g = FxAngleOf(g, GSU_COPY(0));
     g.r[0] = gsu_inc(gsu_not(g.r[0]));
@@ -232,9 +233,11 @@ FxRegs FxRecordAlignment(FxRegs g, int copy)
     gsu_stw(g.r[10], g.r[8]);
     g.r[10] = gsu_inc(gsu_inc(g.r[10]));
     for (i = 0; i < 3; i++)
-        { gsu_codes(FxRecordAlignment_fetch[0] + i, 1);
+        { 
+        gsu_codes(FxRecordAlignment_fetch[0] + i, 1);
         g.r[1 + i] = gsu_ldw(gsu_add((uint16_t)(REC_VEL + 2 * i), rec, 0)); }
     g.r[11] = 0xBCD9;
+    
     gsu_code(0x04bcd5, 4); gsu_code(0x04c087, 1);
     g = FxNormalize(g, GSU_COPY(0));
     for (i = 0; i < 3; i++) {
@@ -291,15 +294,26 @@ typedef struct {
 
 /* The banks to 0 and the record and amount the S-CPU left; the field's
    address in the record is loaded last, so SBK stores there. */
+/* gsuwalk: the code of each copy of amount_start, read from the ROM */
+static const GsuCode amount_start_fetch[2][5] = {
+    {{0x04bf52, 3}, {0x04bf55, 2}, {0x04bf57, 4}, {0x04bf5b, 4}, {0x04bf5f, 6}},
+    {{0x04bf76, 3}, {0x04bf79, 2}, {0x04bf7b, 4}, {0x04bf7f, 4}, {0x04bf83, 7}},
+};
+
 static FxAmountRegs amount_start(uint16_t field, uint16_t scale_half, int copy)
 {
     FxAmountRegs g;
 
     g.r0 = gsu_sub(0, 0, 0);               /* SUB R0, for ROMB and RAMB */
+    gsu_codes(amount_start_fetch[copy], 1);
     gsu_romb(0);
+    gsu_codes(amount_start_fetch[copy] + 1, 1);
     gsu_ramb(0);
+    gsu_codes(amount_start_fetch[copy] + 2, 1);
     g.r8 = gsu_ldw(FX_ARG_RECORD);
+    gsu_codes(amount_start_fetch[copy] + 3, 1);
     g.r6 = gsu_ldw(FX_ARG_AMOUNT);
+    gsu_codes(amount_start_fetch[copy] + 4, 1);
     g.r1 = gsu_ldw(gsu_add(field, g.r8, 0));
     g.r2 = scale_half;
     g.r0 = gsu_fmult(gsu_add(g.r2, g.r2, 0), g.r6);
@@ -334,7 +348,8 @@ FxAmountRegs FxRecordRaise6A(void)
     g.r0 = gsu_add(g.r0, g.r1, 0);
     gsu_sub(g.r0, g.r2, 0);
     if (!gsu.s)
-        { g.r0 = g.r2; }
+        { g.r0 = g.r2; gsu_code(0x04bf65, 14); } else { gsu_code(0x04bf65, 11); gsu_code(0x04bf72, 1); }
+    gsu_code(0x04bf73, 1);
     gsu_sbk(g.r0);
     return g;
 }
@@ -363,7 +378,8 @@ FxAmountRegs FxRecordLower82(void)
 
     g.r0 = gsu_sub(g.r1, g.r0, 0);
     if (gsu.s)
-        g.r0 = gsu_sub(g.r0, g.r0, 0);
+        { g.r0 = gsu_sub(g.r0, g.r0, 0); gsu_code(0x04bf8a, 12); } else { gsu_code(0x04bf8a, 10); gsu_code(0x04bf95, 1); }
+    gsu_code(0x04bf96, 1);
     gsu_sbk(g.r0);
     return g;
 }
@@ -404,6 +420,7 @@ void abi_FxTimersProgram(void)
     gsu.r[12] = 0x0014;
     gsu.r[5] = 0x0020;
     gsu.r[13] = 0xBBDF;
+    
     gsu_code(0x01bbd2, 11); gsu_cache(0xbbdd); gsu_code(0x01bbdd, 3);
     for (;;) {                                  /* each way its own LOOP */
         gsu_code(0x01bbe0, 2);
@@ -444,11 +461,13 @@ void abi_FxTimersProgram(void)
                 gsu.r[0] = gsu.r[6];
                 gsu.r[0] = gsu_bic(gsu.r[0], 0x0001);
                 gsu.r[7] = gsu_add(0x0001, gsu.r[9], 0);
+                
                 gsu_code(0x01bc0f, 6); gsu_code(0x01bc24, 12);
                 gsu_stb(gsu.r[7], (uint8_t)gsu.r[0]);
                 gsu.r[9] = gsu_add(gsu.r[9], gsu.r[8], 0);
                 if (!gsu_count_down(&gsu.r[12]))
-                    { gsu_code(0x01bc30, 4); break; } else { gsu_code(0x01bc30, 3); gsu_code(0x01bbdf, 1); }
+                    { gsu_code(0x01bc30, 4);
+                    break; } else { gsu_code(0x01bc30, 3); gsu_code(0x01bbdf, 1); }
                 continue;
             } else { gsu_code(0x01bc0f, 6); }
             gsu_code(0x01bc15, 3);
@@ -459,7 +478,8 @@ void abi_FxTimersProgram(void)
         gsu_stw(gsu.r[7], gsu.r[0]);
         gsu.r[9] = gsu_add(gsu.r[9], gsu.r[8], 0);
         if (!gsu_count_down(&gsu.r[12]))
-            { gsu_code(0x01bc1e, 6); gsu_code(0x01bc33, 1); break; } else { gsu_code(0x01bc1e, 3); gsu_code(0x01bbdf, 1); }
+            { gsu_code(0x01bc1e, 6); gsu_code(0x01bc33, 1);
+            break; } else { gsu_code(0x01bc1e, 3); gsu_code(0x01bbdf, 1); }
     }
 }
 
@@ -562,6 +582,7 @@ static void fx_line(void)
         do {
             int cs = gsu.cy;
 
+            /* the branch's delay slot */
             gsu_code(0x01bb9b, 2); gsu_code((cs) ? 0x01bba0 : 0x01bb9d, 1);   /* the branch's delay slot */
             gsu_plot_r1();
             if (!cs) {
@@ -577,6 +598,7 @@ static void fx_line(void)
         gsu_code(0x01bba1, 4);
         gsu_code(0x01bba5, 4);
         gsu.r[12] = gsu_ldw(0x0040);            /* each way its own LMS and jump back */
+        
         gsu_code(0x01bba9, 3); gsu_code(0x01bb0d, 1);
     } else {
         gsu.r[12] = gsu_inc(gsu.r[9]);
@@ -584,10 +606,12 @@ static void fx_line(void)
         gsu.r[0] = gsu_lsr(gsu.r[0]);
         gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[3], 0);
         gsu.r[13] = 0xBBB5;
+        
         gsu_code(0x01bb8f, 4); gsu_code(0x01bbac, 10);
         do {
             int cs = gsu.cy;
 
+            /* the branch's delay slot */
             gsu_code(0x01bbb6, 2); gsu_code((cs) ? 0x01bbbb : 0x01bbb8, 1);   /* the branch's delay slot */
             gsu_plot_r1();
             if (!cs) {
@@ -603,6 +627,7 @@ static void fx_line(void)
         gsu_code(0x01bbbc, 4);
         gsu_code(0x01bbc0, 4);
         gsu.r[12] = gsu_ldw(0x0040);
+        
         gsu_code(0x01bbc4, 3); gsu_code(0x01bb0d, 1);
     }
 }
@@ -656,14 +681,18 @@ static void fx_particle(int copy)
     } else { gsu_code(0x01ba89, 5); gsu_code(0x01ba9c, 1); }
     gsu_moves(gsu.r[6]);
     if (gsu.s)
-        { gsu_code(0x01ba9d, 4); gsu_code(0x01bb0d, 1); return; } else { gsu_code(0x01ba9d, 4); }
+        { gsu_code(0x01ba9d, 4); gsu_code(0x01bb0d, 1);
+        return; } else { gsu_code(0x01ba9d, 4); }
     gsu_code(0x01baa1, 1);
     if (!fx_scale_for(GSU_COPY(0)))
-        { gsu_code(0x01baac, 13); gsu_code(0x01bb0d, 1); return; }
+        { gsu_code(0x01baac, 13); gsu_code(0x01bb0d, 1);
+        return; }
     if (!fx_project(1, 0x0034, 0x003A, 4, GSU_COPY(0)))
-        { gsu_code(0x01bad2, 8); gsu_code(0x01bb0d, 1); return; }
+        { gsu_code(0x01bad2, 8); gsu_code(0x01bb0d, 1);
+        return; }
     if (!fx_project(2, 0x0036, 0x003E, 5, GSU_COPY(1)))
-        { gsu_code(0x01bae6, 8); gsu_code(0x01bb0d, 1); return; }
+        { gsu_code(0x01bae6, 8); gsu_code(0x01bb0d, 1);
+        return; }
     gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[0], 0);
     gsu.por = (uint8_t)gsu.r[0];
     gsu.r[0] = gsu_add(0x0002, gsu.r[11], 0);
@@ -700,11 +729,14 @@ static void fx_particle(int copy)
     }
     gsu.r[6] = gsu.r[13];
     if (!fx_scale_for(GSU_COPY(1)))
-        { gsu_code(0x01bb30, 13); gsu_code(0x01bb0d, 1); return; }
+        { gsu_code(0x01bb30, 13); gsu_code(0x01bb0d, 1);
+        return; }
     if (!fx_project(3, 0x0034, 0x003A, 4, GSU_COPY(2)))
-        { gsu_code(0x01bb56, 8); gsu_code(0x01bb0d, 1); return; }
+        { gsu_code(0x01bb56, 8); gsu_code(0x01bb0d, 1);
+        return; }
     if (!fx_project(9, 0x0036, 0x003E, 5, GSU_COPY(3)))
-        { gsu_code(0x01bb6a, 8); gsu_code(0x01bb0d, 1); return; }
+        { gsu_code(0x01bb6a, 8); gsu_code(0x01bb0d, 1);
+        return; }
     fx_line();
 }
 
@@ -736,6 +768,7 @@ void abi_FxParticlesDraw(void)
     gsu_romb(0x14);
     gsu.r[11] = 0x274A;
     gsu.r[12] = 0x0014;
+    
     gsu_code(0x01ba1e, 6); gsu_cache(0xba24); gsu_code(0x01ba24, 1);
     for (;;) {
         gsu_code(0x01ba25, 1);
@@ -743,15 +776,18 @@ void abi_FxParticlesDraw(void)
         gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[7], 0);
         if (gsu.z) {
             gsu.r[11] = gsu_sub(gsu.r[11], 0x000C, 0);
+            
             gsu_code(0x01ba26, 3); gsu_code(0x01ba35, 1);
             fx_particle(GSU_COPY(0));
             gsu.r[11] = gsu_add(gsu.r[11], 0x000C, 0);
+            
             gsu_code(0x01bb0e, 6); gsu_code(0x01ba29, 1);
         } else { gsu_code(0x01ba26, 4); }
         gsu.r[11] = gsu_add(gsu.r[11], 0x000E, 0);
         gsu.r[12] = gsu_dec(gsu.r[12]);
         if (gsu.z)
-            { gsu_code(0x01ba2a, 6);
+            { 
+            gsu_code(0x01ba2a, 6);
             break; } else { gsu_code(0x01ba2a, 6); gsu_code(0x01ba24, 1); }
     }
     gsu_code(0x01ba30, 5);
