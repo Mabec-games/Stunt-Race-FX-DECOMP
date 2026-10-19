@@ -372,6 +372,7 @@ void MenuScreen0Run(void)
     wr8(b | (uint16_t)MDMAEN, 0x00);
     cpu.a = 0x0080;
     cpu.p = (uint8_t)((cpu.p & ~(P_Z | P_C)) | P_N | P_M);
+    cyc(44);
 }
 
 void abi_MenuScreen0Run(void)

@@ -785,7 +785,7 @@ void abi_ResultsPanelFA39(void)
     op_lda8(b | 0x0EEF);
     if ((uint8_t)cpu.a)
         { cyc(62); abi_ResultsTotalTiles(); }
-    cyc(66);
+    cyc(46);
     op_lda8(b | 0x0F81);
     cmp8_imm(0xFF);
     if ((uint8_t)cpu.a != 0xFF)
@@ -861,6 +861,7 @@ static void menu_rows(uint16_t x, uint16_t y, void (*a)(void), void (*c)(void))
     palette_cycle(x, y);
     a();
     (cyc(42), c());
+    cyc(42);
 }
 
 static void rows_retry(void)

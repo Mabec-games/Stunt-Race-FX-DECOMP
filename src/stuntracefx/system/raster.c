@@ -157,6 +157,7 @@ void abi_WindowTable7F(void)
     put7f(0x7F341F, a);
     put7f(0x7F3422, a);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
+    cyc(22);
 }
 
 /*
@@ -426,7 +427,7 @@ void abi_RasterStage(void)
         cyc(100);
         abi_WindowTable7F();
         op_sep(P_M);
-        cyc(64);
+        cyc(22);
         copy8(INIDISP, b | 0x0D61);
         break;
     }
@@ -672,6 +673,7 @@ void abi_RasterIrq(void)
         op_lda16(0x003030);
         cpu.a = a0;
         cpu.p = nz16(cpu.p, a0);
+        cyc(80);
         return;
     } else { cyc(246); }
     cpu.p |= P_I;

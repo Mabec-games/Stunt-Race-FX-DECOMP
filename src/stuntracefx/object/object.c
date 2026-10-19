@@ -255,6 +255,7 @@ uint16_t ObjectLinkFlag4000Step(void)
 void abi_ObjectLinkFlag4000Step(void)
 {
     cpu.a = ObjectLinkFlag4000Step();
+    cyc(108);
 }
 
 /*
@@ -1858,7 +1859,7 @@ static int run_handler(uint8_t bank, uint16_t obj, uint16_t word_at, uint16_t ba
     h = rd16(b | (uint16_t)(word_at + obj));
     cpu.a = h;
     if (!h)
-        { cyc(16); return 0; }
+        { cyc(130); return 0; }
     cyc(40);
     wr16(b | 0x0354, h);
     if (need_no_record && (cpu.a = rd16(cyc_then(30, b | (uint16_t)(0x2022 + obj)))) != 0)
@@ -1874,6 +1875,7 @@ static int run_handler(uint8_t bank, uint16_t obj, uint16_t word_at, uint16_t ba
     cpu.p = (uint8_t)(nz16(p, cpu.a) | P_M);
     cyc(110);
     call_routine((uint32_t)hb << 16 | h, 1);
+    cyc(114);
     return 1;
 }
 
@@ -2016,7 +2018,7 @@ void ObjectsRunHandlers(void)
                 (cyc(62), abi_ObjectRunHandlerA());
             }
             b = (uint32_t)cpu.db << 16;
-            cyc(138);
+            cyc(24);
             v = rd8(b | 0x035C);
             cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
             if (v) {
@@ -2159,7 +2161,7 @@ void abi_ObjectSpawnFromScript(void)
     cpu.x = o;
     cpu.p &= (uint8_t)~P_M;
     abi_ObjectRebucket();
-    cyc(292);
+    cyc(170);
     bank = rd8(OBJ_FIELD(o, 0x1C));
     cyc(134);
     w = (uint16_t)(rd16(OBJ_FIELD(o, 0x1A)) - 0x8000);

@@ -131,7 +131,7 @@ uint16_t GaugeTableIndex(uint8_t bank, uint16_t value)
             off = gauge_offsets[i];
             break;
         } }
-    cyc(92);
+    cyc(i == 4 ? 70 : 92);                  /* the last case has no BRA */
     return (uint16_t)(off + rd16(0x0011DF));
 }
 
@@ -374,7 +374,7 @@ uint16_t SpeedGauge2Update(uint8_t bank, uint16_t a)
             cyc(54);
             wr8(0x000E47, (uint8_t)a);
             return a;
-        }
+        } else { cyc(32); }
     }
     cyc(70);
     wr16(b | GAUGE_2, 0xFFFF);

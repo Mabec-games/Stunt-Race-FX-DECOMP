@@ -456,6 +456,7 @@ void abi_TimeDigitBytes(void)
         cyc(40);
         cpu.p = (uint8_t)(nz16(cpu.p, (uint16_t)(v - 0x0020)) | P_C);
         abi_GsuBytes200_BFB5BB();
+        cyc(110);
         return;
     } else { cyc(86); }
     cpu.p = (uint8_t)((nz16(cpu.p, (uint16_t)(v - 0x0010)) & ~P_C) | (v >= 0x0010 ? P_C : (cyc(6), 0)));
@@ -1127,6 +1128,7 @@ void TimeBonusTransfer(void)
 void abi_TimeBonusTransfer(void)
 {
     TimeBonusTransfer();
+    cyc(42);
 }
 
 /*

@@ -234,6 +234,7 @@ void abi_ObjectLampLow(void)
 void abi_ObjectScale40(void)
 {
     st8i(F(0x2015, cpu.x), cyc_then(20, 0x40));
+    cyc(38);
 }
 
 /* 09:8CD6: the gate's frame: synced from its record; +$25 bit 0 = the
@@ -2764,6 +2765,7 @@ static void car_flag_frame(int on, uint8_t snd)
     if (!synced() || !next_contact()) {
         cyc(28);
         and8(F(0x2025, cpu.x), 0xFE);
+        cyc(38);
         return;
     }
     if (bit25(0x01))
@@ -2876,7 +2878,7 @@ void abi_ObjectCarFlagOnGateStep(void)
 static void slide1_frame(void)
 {
     if (!synced() || !next_contact())
-        { cyc(28); return; }
+        { cyc(66); return; }
     if (!lap_is(0x01))
         { cyc(28); return; } else { cyc(22); }
     if (bit25(0x01))
@@ -2986,7 +2988,7 @@ static void lap_flash_frame(void)
     uint8_t lap;
 
     if (!hit())
-        { cyc(42); return; } else { cyc(74); }
+        { cyc(80); return; } else { cyc(74); }
     cpu.p |= P_M;
     lap = ld8(db() | 0x0DEA);
     cyc(38);
@@ -3665,7 +3667,7 @@ static void time_gate_frame(void)
     cyc(22);
     cmp8(r);
     if (v == r)
-        return; else { cyc(32); }
+        { cyc(38); return; } else { cyc(32); }
     cpu.p |= P_M;
     v = ld8(db() | 0x0DEA);
     wr8(db() | 0x1F58, cyc_then(24, v));
@@ -3684,6 +3686,7 @@ static void time_gate_frame(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     wr8(db() | 0x0E71, cyc_then(40, v));
     cpu.p &= (uint8_t)~P_D;
+    cyc(52);
 }
 
 /* A time gate's set-up in a one-player race: restart r, frame $09:AD07
@@ -3886,7 +3889,7 @@ static void ball_up_frame(void)
     lda8(0x40);
     abi_GsuRecordRaise6A();
     cpu.p |= P_M;
-    cyc(170);
+    cyc(240);
     sound0(0x25);
     spark_follow(0xB7A8);
     cyc(32);
@@ -4020,6 +4023,7 @@ void abi_ObjectLapBallDownRecord(void)
 {
     lap_ball_record(0xB7C4);
     ball_down_frame();
+    cyc(32);
 }
 
 /*
@@ -4044,7 +4048,7 @@ void abi_ObjectLapBallDownStep(void)
 static void count_gate_frame(void)
 {
     if (!hit())
-        { cyc(42); return; } else { cyc(36); }
+        { cyc(80); return; } else { cyc(36); }
     if (bit25(0x01))
         { cyc(44); return; } else { cyc(18); }
     or8(F(0x2025, cpu.x), 0x01);
@@ -4225,6 +4229,7 @@ void abi_ObjectCountTrigger(void)
     handlers2(0xB0DC, 0xB103);
     count_trigger_record();
     count_trigger_frame();
+    cyc(38);
 }
 
 /*
@@ -4617,6 +4622,7 @@ void abi_ObjectColour4(void)
 void abi_ObjectColour5(void)
 {
     st8i_hi(F(0x2018, cpu.x), cyc_then(30, 0x05));
+    cyc(38);
 }
 
 /*
@@ -4993,6 +4999,7 @@ void abi_ObjectFloaterSpawner(void)
     st8i(F(0x200A, cpu.y), cyc_then(28, 0x28));
     cyc(22);
     handler(cpu.y, 0xC95C);
+    cyc(38);
 }
 
 /*
@@ -5082,8 +5089,9 @@ static void asl5(uint32_t at)
 
     cyc(12);
     op_lda16(at);
-    for (i = 0; i < 5; i++)
+    for (i = 0; cyc_loop(14, i < 5); i++)
         op_asl16();
+    cyc(16);
     wr16(at, cpu.a);
 }
 
@@ -5671,10 +5679,12 @@ plain:
     st16i(F(0x2004, cpu.x), 0xA040);
     cyc(22);
     and8(F(0x2025, cpu.x), 0xFE);
+cyc(24);
 step:
     add8(F(0x2016, cpu.x), 0xAA);
     cyc(62);
     abi_ObjectRebucket();
+    cyc(132);
 }
 
 /*
@@ -5768,6 +5778,7 @@ void abi_ObjectFanCentreStep(void)
 {
     add8(F(0x2016, cpu.x), 0xF8);
     (cyc(62), abi_ObjectRebucket());
+    cyc(132);
 }
 
 /*
@@ -5858,6 +5869,7 @@ void abi_ObjectWheelCentreStep(void)
 {
     add8(F(0x2016, cpu.x), 0x08);
     (cyc(62), abi_ObjectRebucket());
+    cyc(132);
 }
 
 /* One piece of the breakable's burst: kind $ABF4 at X's position, handler
@@ -6001,6 +6013,7 @@ void abi_RailStop(void)
 {
     cyc(22);
     handler(cpu.x, 0xD40C);
+    cyc(38);
 }
 
 /*
@@ -6079,6 +6092,7 @@ static void rail_drop_frame(void)
     wr8(F(0x205A, cpu.x), cyc_then(112, v));
     add16(F(0x2010, cpu.x), cyc_then(22, 0x0040));
     (cyc(22), abi_ObjectSyncToRecord());
+    cyc(118);
 }
 
 /*
@@ -6158,11 +6172,12 @@ static void finale_frame(void)
     if (!hit())
         { cyc(80); return; } else { cyc(36); }
     if (!lap_is(0x02))
-        { cyc(28); return; } else { cyc(68); }
+        { cyc(28); return; } else { cyc(30); }
     abi_RailsSpawn();
     cyc(42);
     sound0(0x33);
     abi_ObjectRelease();
+    cyc(66);
 }
 
 /*
@@ -6900,6 +6915,7 @@ void abi_GateSlideStep(void)
         { cyc(10); op_sub16(0x0280); }
     wr16(F(0x200C, cpu.x), cyc_then(168, cpu.a));
     cpu.p |= P_M;
+    cyc(44);
 }
 
 /* 09:E441: synced to its record; a car's hit on lap 1 runs GateSlideStep,
@@ -6927,11 +6943,12 @@ static void slide_lap_frame(void)
     if (lap == 0x01) {
         cyc(32);
         abi_GateSlideStep();
+        cyc(104);
         return;
     }
     cmp8(0x02);
     if (lap == 0x02)
-        ease8(F(0x2015, cpu.x), 0x80, abi_ApproachHalfMin2Byte); else { cyc(36); }
+        ease8(F(0x2015, cpu.x), 0x80, abi_ApproachHalfMin2Byte); else { cyc(74); }
 }
 
 /*
@@ -8480,6 +8497,7 @@ static void lap_light(uint8_t ds)
     if (ds)
         add8(F(0x2015, cpu.x), ds);
     handlers2(0xC30A, 0xC312);
+    cyc(38);
 }
 
 /*

@@ -443,7 +443,7 @@ void abi_ObjectBlinkerStart(void)
         set_child();
         (cyc(66), swap_xy());
         abi_ObjectRebucket();
-        (cyc(122), swap_xy());
+        (cyc(0), swap_xy());
     }
     cyc(48);
     set_handler(cpu.x, 0xEE63);
@@ -567,6 +567,7 @@ void abi_ObjectPaceCarStep(void)
     lda8(0x00);
     cyc(38);
     wr8(b | (uint16_t)(0x201C + cpu.x), 0x00);
+    cyc(38);
 }
 
 /*
@@ -579,7 +580,7 @@ void abi_ObjectPaceCarStep(void)
 void abi_ObjectPaceCarStart(void)
 {
     abi_ObjectCarSpawn();
-    cyc(138);
+    cyc(6);
     set_handler(cpu.x, 0xEF19);
     abi_ObjectPaceCarStep();
 }
@@ -624,8 +625,9 @@ void abi_ObjectSignalStep(void)
             abi_ObjectReleaseY();
             abi_ObjectRelease();
             lda8(0x02);
-            cyc(76);
+            cyc(38);
             wr8(b | 0x1F71, 0x02);
+            cyc(38);
             return;
         }
         cyc(48);
@@ -733,7 +735,7 @@ void abi_ObjectPaceCarSetup(void)
     wr8(b | (uint16_t)(0x205A + cpu.y), 0x80);
     (cyc(16), swap_xy());
     abi_ObjectRebucket();
-    (cyc(192), swap_xy());
+    (cyc(70), swap_xy());
     set_child();
     cyc(50);
     set_handler(cpu.x, 0xF0B1);
@@ -1002,10 +1004,10 @@ void abi_ObjectChildrenSpawn(void)
     cyc(98);
     op_lda16(0x70003E + cpu.x);
     for (;;) {
-        cyc(38);
+        cyc(14);
         op_tax16();
         if (!cpu.x)
-            { cyc(118); break; }
+            { cyc(118); break; } else { cyc(24); }
         rec = cpu.x;
         op_lda16(0x700046 + rec);
         if (!(cpu.a & 0x0200)) {
@@ -1076,6 +1078,7 @@ void abi_ObjectChildrenSpawn(void)
         cpu.p &= (uint8_t)~P_M;
         cyc(76);
         op_lda16(0x700034 + cpu.x);
+        cyc(24);
     }
     cpu.x = obj;
     cpu.p = (uint8_t)(nz16(cpu.p, obj) | P_M);
@@ -1305,7 +1308,7 @@ void abi_ObjectChildFlying(void)
     abi_ObjectSyncFromRecord();
     lda8((uint8_t)(cpu.a & 0x01));
     if (!(uint8_t)cpu.a) {
-        cyc(150);
+        cyc(112);
         cpu.y = rd16(b | (uint16_t)(0x2006 + cpu.x));
         cpu.p = nz16(cpu.p, cpu.y);
         cyc(30);
@@ -3675,7 +3678,7 @@ static void lamp_look_step(uint16_t table)
     op_lda8(b | (uint16_t)(0x204B + cpu.x));
     n = (uint8_t)cpu.a;
     if (n == 0x04)
-        { cyc(62); return; }
+        { cyc(38); return; }
     n++;
     lda8(n);
     cyc(52);

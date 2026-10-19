@@ -1343,7 +1343,7 @@ static uint16_t flashing_metasprite_draw(uint8_t bank, uint16_t set, uint16_t *x
         cyc(6);
         wr8(0x0000F1, n);
         if (n)
-            cyc(122);                           /* BNE, SEP, LDA long, CLC, ADC abs */
+            cyc(122); else { cyc(110); }                           /* BNE, SEP, LDA long, CLC, ADC abs */
     } while (n);
     return (uint16_t)(i | a);
 }
@@ -1905,8 +1905,8 @@ static void oam_direct(uint32_t b, uint8_t addr, uint16_t x, uint16_t n, int hid
     wr8(b | 0x2103, 0x00);
     cpu.x = x;
     for (cpu.y = n; cpu.y; cpu.y--) {
-        cyc(hide && cpu.y != n ? 50 : 40);  /* hiding, round again: INX, DEY, BNE */
-        v = hide ? 0xF0 : rd8(cyc_then(40, b | (uint16_t)(0x0375 + cpu.x)));
+        cyc(hide && cpu.y != n ? 50 : (cyc(26), 40));  /* hiding, round again: INX, DEY, BNE */
+        v = hide ? 0xF0 : rd8(cyc_then(14, b | (uint16_t)(0x0375 + cpu.x)));
         cyc(24);
         wr8(b | 0x2104, v);
         cpu.x = (uint16_t)(cpu.x + 1);

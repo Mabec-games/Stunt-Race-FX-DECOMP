@@ -327,6 +327,7 @@ void MenuActorIdleC47B(void)
 
 void abi_MenuActorIdleC47B(void)
 {
+    cyc(42);
 }
 
 /*
@@ -1410,7 +1411,7 @@ uint16_t MenuChoiceObjectFrames(uint8_t bank, uint16_t a, uint16_t *x, uint16_t 
     cyc(14);
     wr16((uint16_t)(*x + 0x1E), t);
     if (!(t & 0x8000)) {
-        cyc(88);
+        cyc(130);
         *p = nz16(*p, t);
         return a;
     }
@@ -1421,7 +1422,7 @@ uint16_t MenuChoiceObjectFrames(uint8_t bank, uint16_t a, uint16_t *x, uint16_t 
     a = rd16((uint16_t)(*x + 0x22));
     *p = nz16(*p, a);
     if (!a)
-        { cyc(88); return a; }
+        { cyc(130); return a; }
     cyc(44);
     a = rd16((uint16_t)(*x + 0x10));
     if (a & 0x8000) {
@@ -1727,7 +1728,7 @@ uint16_t MenuFixedColourUp(uint8_t bank, uint16_t x, uint8_t *p)
     if (*p & P_C)
         { cyc(18); v = 0x001F; }
     *p = nz16(*p, x);
-    return fixed_colour_set(bank, v);
+    return cyc_then(120, fixed_colour_set(bank, v));
 }
 
 void abi_MenuFixedColourUp(void)
@@ -1754,7 +1755,7 @@ uint16_t MenuFadeUpHandler(uint8_t bank, uint16_t x, uint16_t *y, uint8_t *p)
     uint16_t a;
 
     MenuFixedColourUp(bank, x, p);
-    cyc(240);
+    cyc(120);
     a = rd16(0x0018C1);
     *p = cmp16(*p, a, 0x00A8);
     if (!(*p & P_Z))

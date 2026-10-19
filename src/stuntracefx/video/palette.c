@@ -254,6 +254,7 @@ uint16_t PaletteLoad16(uint8_t bank, uint16_t src)
         n = rd16(0x0000F1);
         cyc(14);
         wr16(0x0000F1, (uint16_t)(n - 1));
+        cyc(22);
     }
     return c;
 }
@@ -351,6 +352,7 @@ uint16_t PaletteCopy16To7F39D7(uint8_t bank, uint16_t src)
         n = rd16(0x0000F1);
         cyc(14);
         wr16(0x0000F1, (uint16_t)(n - 1));
+        cyc(22);
     }
     cyc(82);
     return w;
@@ -1296,7 +1298,7 @@ void abi_CoursePaletteCycle(void)
         cyc(32);
         wr8(0x7F39F5, v);
     } else { cyc(114); }
-    cyc(40);
+    cyc(82);
     op_sep(P_M);
     cpu.db = db0;
     op_plp(p0);
@@ -1462,7 +1464,7 @@ gradient:
             wr16(hc_dp(0xF5), cyc_then(16, cpu.a));
             (cyc(46), abi_ColourBlendBy());
         }
-        cyc(74);
+        cyc(54);
         op_lda16(0x000D7F);
         op_asl16();
         op_tax16();
@@ -1625,7 +1627,7 @@ rows_rest:
         op_lda16(HC_AMT(0));
         wr16(hc_dp(0xF5), cyc_then(16, cpu.a));
         (cyc(46), abi_ColourBlendBy());
-        cyc(88);
+        cyc(94);
 b_store:
         wr16(0x7FEC57 + cpu.y, cpu.a);
         hc_step(&cpu.x, 0);

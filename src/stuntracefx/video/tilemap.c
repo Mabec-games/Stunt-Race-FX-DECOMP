@@ -176,7 +176,7 @@ static uint8_t frame_rows(uint8_t bank, uint16_t base, uint8_t p)
         if ((mode == 1 || (cyc(40), mode == 3)) && !(rd16(cyc_then(94, b | 0x10CD)) & 0x00FF))
             t = 0x2010; else { cyc(28); }
         s = (unsigned)t + base;
-        cyc(152);
+        cyc(134);
         wr16(VMDATAL, (uint16_t)s);
     }
     return (uint8_t)((p & ~(P_C | P_V)) | (s > 0xFFFF ? P_C : 0)
@@ -637,6 +637,7 @@ static uint16_t column_row_7fbbd7(uint16_t *x, uint8_t *p, uint32_t in)
 
 uint16_t TilemapLevelColumns(void)
 {
+    cyc(46);
     /* after the row count's read ($0F05 + i, work RAM, a word): PHY, AND # (54),
        then the dispatch: BEQ to the $7F:BBD7 copies (22), or on through
        CMP/BCC/BEQ/CMP/BEQ to LDY # and the JSR (46): 132 (1 row), 148

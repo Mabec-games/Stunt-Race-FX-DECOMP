@@ -838,7 +838,7 @@ void abi_ResultsBlankLetters(void)
     cpu.a = (uint16_t)(cpu.a + 2);
     cpu.p = nz16(cpu.p, cpu.a);
     wr16(abs_db(0x11E5), cyc_then(52, cpu.a));
-    for (i = 0; i < 3; i++) {
+    for (i = 0; cyc_loop(42, i < 3); i++) {
         op_lda16_imm(0x001A);
         abi_ResultsLetterTiles();
     }

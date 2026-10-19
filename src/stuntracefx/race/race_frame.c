@@ -565,6 +565,7 @@ void abi_RaceModeSetup(void)
             cyc(22);
             pick_sound(b);
             op_plp(p0);
+            cyc(30);
             return;
         }
         cyc(70);
@@ -604,6 +605,7 @@ void abi_RaceModeSetup(void)
         cyc(42);
         wr8(b | 0x0DF8, 0x02);
         op_plp(p0);
+        cyc(30);
         return;
     }
     if (mode == 0x02) {
@@ -624,6 +626,7 @@ void abi_RaceModeSetup(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xFF);
     wr8(b | 0x0DF8, 0xFF);
     op_plp(p0);
+    cyc(30);
 }
 
 /* The view's direct page parameters $2A-$35 and $CE-$D1, in the order the
@@ -940,7 +943,7 @@ void abi_RaceLoad(void)
         cyc(28);
         race_load_scroll(b, 0x0000);
         op_sep(P_M);
-        cyc(46);
+        cyc(44);
         wr8(b | 0x0D48, 0x00);
         break;
     case 0xF2A7:
@@ -954,12 +957,12 @@ void abi_RaceLoad(void)
             cyc(6);
             race_load_scroll(b, 0x0050);
             op_sep(P_M);
-            cyc(46);
+            cyc(44);
             wr8(b | 0x0D48, 0x00);
         }
         break;
     }
-    cyc(46);
+    cyc(68);
     abi_RaceScreenSetup();
     op_sep(P_M);
     cpu.db = db0;

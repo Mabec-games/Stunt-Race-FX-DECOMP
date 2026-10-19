@@ -88,7 +88,7 @@ static int pressed(uint16_t mask)
 static void sound16(uint16_t v)
 {
     op_lda16_imm(v);
-    (cyc(46), abi_SoundPort0QueuePush());
+    (cyc(30), abi_SoundPort0QueuePush());
 }
 
 /* LDA #v (8-bit), JSL SoundPort0QueuePush. */
@@ -1059,6 +1059,7 @@ void abi_SpeedRecordsScreen(void)
         return;
     } else { cyc(22); }
     abi_ColourMathA7Start();
+    cyc(44);
 }
 
 /*

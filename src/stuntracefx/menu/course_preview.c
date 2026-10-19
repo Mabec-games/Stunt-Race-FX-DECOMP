@@ -25,7 +25,7 @@ void abi_SoundPort0QueuePush(void);
    and $18FD = 1. Returns $1905. */
 static uint16_t preview_frame(unsigned n)
 {
-    while (n--)
+    while (cyc_loop(64, n--))
         abi_MenuFixedColourDown();
     cyc(72);
     cpu.a = 0x0000;
@@ -900,6 +900,7 @@ chosen:
     cyc(40);
     wr8(b | 0x2100, 0x80);
     op_plp(p0);
+    cyc(30);
 }
 
 /*

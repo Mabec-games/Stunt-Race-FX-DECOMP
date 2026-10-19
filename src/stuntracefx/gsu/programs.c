@@ -2771,7 +2771,7 @@ static void glyph_grid3(uint16_t first, void (*mid)(void), void (*row2)(void))
         }
         for (c = 0; c < 3; c++) {
             if (r == 0 && c == 2 && (cyc(22), mid))
-                { cyc(134); mid(); }
+                { cyc(134); mid(); } else { cyc(22); }
             cyc(72);
             glyph_prog(0xF280, (uint16_t)((first + r) << 8 | (0x1A + 2 * c)));
         }
@@ -2843,7 +2843,7 @@ static int glyph_wait(uint32_t b, uint16_t reload)
         op_lda16_imm(reload);
         cyc(26);
         wr16(b | 0x115A, reload);
-    }
+    } else { cyc(16); }
     cyc(24);
     v = (uint16_t)(rd16(b | 0x10D8) + 1);
     cyc(14);
@@ -3237,6 +3237,7 @@ void abi_GlyphSlideThree(void)
             { cyc(114); abi_GsuBytes200_BFBAB9(); }
         else
             { cyc(92); abi_GsuBytes200_BFB3BE(); }
+        cyc(124);
         x = cpu.x;
         p = cpu.p;
         glyph_prog_run(0xF3D2);

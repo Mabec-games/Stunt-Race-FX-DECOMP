@@ -316,6 +316,7 @@ void WramFillZero(uint8_t bank, uint16_t addr, uint16_t count)
     wr16(0x004300, 0x8008);
     cyc(40);
     wr8(0x00420B, 0x01);
+    cyc(42);
 }
 
 void abi_WramFillZero(void)
@@ -674,7 +675,7 @@ void abi_DemoRun(void)
         abi_PlayerStatsAndPaletteAnimate();
         op_rep(P_M | P_X);
         b = (uint32_t)cpu.db << 16;
-        cyc(96);
+        cyc(24);
         cpu.x = rd16(b | 0x1A57);
         cpu.p = nz16(cpu.p, cpu.x);
         for (;;) {
@@ -817,7 +818,7 @@ void abi_DemoRun(void)
             abi_RaceFrameRun();
             op_rep(P_M | P_X);
             b = (uint32_t)cpu.db << 16;
-            cyc(82);
+            cyc(24);
             v = (uint16_t)(rd16(b | 0x1A59) + 1);
             cyc(14);
             wr16(b | 0x1A59, v);

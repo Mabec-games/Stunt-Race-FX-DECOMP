@@ -43,6 +43,7 @@ void VramDmaFromBank7F(uint16_t size, uint16_t src, uint16_t vram)
     wr8(VMAIN, 0x80);
     cyc(40);
     wr8(MDMAEN, 0x01);
+    cyc(42);
 }
 
 void abi_VramDmaFromBank7F(void)

@@ -279,6 +279,7 @@ reset:
         x = rd16(0x0000F3);
         cyc(46);
         wr8(b | (uint16_t)(0xFC33 + x), 0xE8);
+cyc(6);
 next:
         cyc(32);
         blk = rd8(0x0000F3);
@@ -1381,7 +1382,7 @@ void abi_RecordTimeCompare(void)
         v = rd8(b | (uint16_t)(0x0F64 + cpu.x));
         cyc(30);
         m = rd8(b | (uint16_t)(0x0F69 + cpu.x));
-        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - m)) & ~P_C) | (v >= m ? P_C : (cyc(4), 0)));
+        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - m)) & ~P_C) | (v >= m ? (cyc(68), P_C) : (cyc(4), 0)));
         if (v < m) {
             compare_result(b, 0xFF);
             return;

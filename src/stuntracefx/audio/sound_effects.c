@@ -497,6 +497,7 @@ void abi_SoundHoldByFlags(void)
  */
 void PlayerSound35(void)
 {
+    cyc(116);
     SoundPort0QueuePush(0x35);
 }
 

@@ -430,7 +430,7 @@ uint16_t MenuPictureInsetGrid(uint8_t bank)
     cyc(106);
     wr16(b | 0x11DF, 0x000A);
     do {
-        for (i = 0; i < 4; i++, x = (uint16_t)(x + 2))
+        for (i = 0; cyc_loop(18, i < 4); i++, x = (uint16_t)(x + 2))
             raise_tile(x);
         cyc(82);
         a = (uint16_t)(rd16(b | 0x11E1) | 0x2000);
@@ -451,7 +451,7 @@ uint16_t MenuPictureInsetGrid(uint8_t bank)
         cyc(14);
         wr16(b | 0x11DF, rows);
     } while (!(rows & 0x8000));
-    for (i = 0; i < 0xA0; i++, x = (uint16_t)(x + 2))
+    for (i = 0; cyc_loop(18, i < 0xA0); i++, x = (uint16_t)(x + 2))
         a = w = raise_tile(x);
     cyc(198);
     return a;
@@ -1428,6 +1428,7 @@ void abi_ChampionScreenOpen(void)
     cyc(120);
     wr16(0x001927, cpu.a);
     cpu.a = 0x1234;
+    cyc(48);
     wr16(0x001189, 0x1234);
     cyc(24);
     wr16(0x00118F, 0x0000);

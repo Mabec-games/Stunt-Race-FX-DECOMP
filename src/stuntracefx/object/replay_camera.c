@@ -74,7 +74,7 @@ static void copy16(uint32_t dst, uint32_t src)
     cpu.p &= (uint8_t)~P_M;
     cyc(46);
     op_lda16(src);
-    cyc(16);
+    cyc(30);
     wr16(dst, cpu.a);
     cpu.p |= P_M;
 }

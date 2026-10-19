@@ -61,6 +61,7 @@ static int hold_repeats(uint32_t held_bit_set, uint32_t count, uint8_t *p, uint1
         return 1;
     cyc(86);
     wr16(count, v);
+    cyc(46);
     return 0;
 }
 
@@ -142,6 +143,7 @@ uint16_t MenuInitialsStep(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
         }
         cyc(92);
         wr16(LETTERS + *x, v);
+        cyc(64);
         return v;
     }
 
@@ -165,6 +167,7 @@ uint16_t MenuInitialsStep(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     }
     cyc(92);
     wr16(LETTERS + *x, v);
+    cyc(42);
     return v;
 }
 

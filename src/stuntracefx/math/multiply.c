@@ -56,4 +56,5 @@ void abi_PpuMultiply(void)
 {
     cpu.a = PpuMultiply((uint8_t)cpu.a);
     cpu.p = (uint8_t)(nz16(cpu.p, cpu.a) & ~P_M);
+    cyc(42);
 }

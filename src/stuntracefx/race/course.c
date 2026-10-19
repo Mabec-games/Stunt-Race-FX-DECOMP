@@ -118,7 +118,7 @@ static void cursor_two(uint32_t b, uint16_t m1, uint8_t to1, uint16_t m2, uint8_
     if (cursor_pressed(b, m1))
         { cyc(36); cursor_to(b, to1); }
     else if (cursor_pressed(b, m2))
-        cursor_to(b, to2);
+        { cyc(36); cursor_to(b, to2); }
     cyc(10);
 }
 
@@ -171,6 +171,7 @@ void abi_CourseCursorAt2(void)
 void abi_CourseCursorAt3(void)
 {
     cursor_two((uint32_t)cpu.db << 16, 0x0200, 0x02, 0x0400, 0x01);
+    cyc(6);
 }
 
 /*
@@ -210,6 +211,7 @@ void abi_CourseCursorAt3Open(void)
     if (cursor_pressed(b, 0x0800) && cursor_up_open(b))
         { cyc(10); return; } else { cyc(6); }
     cursor_two(b, 0x0200, 0x02, 0x0400, 0x01);
+    cyc(6);
 }
 
 /*
@@ -407,11 +409,13 @@ static uint16_t asl3(uint16_t a)
    $0D48 * 8 + $80 to target y. */
 static void course_choose(uint16_t list, uint16_t y)
 {
+    cyc(126);
     uint32_t b = (uint32_t)cpu.db << 16;
     uint16_t a;
 
     op_rep(P_M | P_X);
     cpu.x = rd16(b | 0x0D48);
+    cyc(96);
     a = (uint16_t)(rd16(0x030000 + list + cpu.x) & 0x00FF);
     cpu.a = a;
     cpu.p = nz16(cpu.p, a);
@@ -483,13 +487,14 @@ static void course_zoom_box(uint16_t a)
  */
 void abi_CourseZoomFromSelection4(void)
 {
+    cyc(256);
     uint8_t v;
     uint16_t a;
 
     op_sep(P_M);
     abi_CourseFromSelectionLong();
     v = (uint8_t)cpu.a;
-    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x0C)) & ~P_C) | (v >= 0x0C ? P_C : 0));
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x0C)) & ~P_C) | (v >= 0x0C ? P_C : (cyc(246), 0)));
     if (v < 0x0C) {
         op_rep(P_M | P_X);
         a = (uint16_t)(cpu.a & 0x00FF);
@@ -743,14 +748,14 @@ void abi_SpeedCourseSelectStep(void)
             cyc(16);
             sel_row(b, 0x02);
             return;
-        } else { cyc(60); }
+        } else { cyc(66); }
         op_sep(P_M);
         if (sel_open(0x01) && (cyc(2), sel_pressed(b, 0x0400))) {
             sel_sound();
             cyc(8);
             wr8(b | 0x0D4A, 0x00);
             return;
-        } else { cyc(62); }
+        } else { cyc(68); }
         sel_choose(b);
         return;
     }
@@ -780,7 +785,7 @@ void abi_SpeedCourseSelectStep(void)
                 wr8(b | 0x0D4A, 0x00);
                 return;
             } else { cyc(62); }
-        }
+        } else { cyc(68); }
         if (sel_pressed(b, 0x0800)) {
             op_sep(P_M);
             if (sel_open(0x04)) {
@@ -788,7 +793,7 @@ void abi_SpeedCourseSelectStep(void)
                 sel_row(b, 0x02);
                 return;
             } else { cyc(62); }
-        }
+        } else { cyc(68); }
         sel_choose(b);
         return;
     }

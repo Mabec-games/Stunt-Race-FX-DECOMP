@@ -1333,7 +1333,7 @@ static void hud_end(int both, int inner, uint8_t p0, uint8_t db0)
     uint32_t b = (uint32_t)cpu.db << 16;
 
     op_rep(P_M);
-    cyc(46);
+    cyc(4);
     wr16(b | 0x0D1A, 0x0000);
     if (both)
         { cyc(24); wr16(b | 0x0D1C, 0x0000); }
@@ -1486,7 +1486,7 @@ static void hud_mode_one(uint8_t p0, uint8_t db0)
         abi_TimeBonusTally();
         (cyc(116), abi_TimeLeftDigits());
         (cyc(104), abi_TimeBonusTransfer());
-    }
+    } else { cyc(22); }
     cyc(20);
     hud_end(1, 0, p0, db0);
 }
