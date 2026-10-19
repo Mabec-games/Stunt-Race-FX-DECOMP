@@ -2649,6 +2649,7 @@ static void move_forward_from(int arm)
     wr8(dp8(0x08), cyc_then(16, v));
     wr8(dp8(0x0A), cyc_then(16, v));
     wr8(dp8(0x0B), cyc_then(54, (v & 0x80) ? (cyc(10), 0xFF) : 0x00));
+    cyc((v & 0x80) ? 54 : 32);          /* BRA (negative), LDA #0, STA */
     wr8(dp8(0x94), 0x00);
     cyc(24);
     wr8(b | 0x05F2, 0x00);
@@ -2691,6 +2692,7 @@ turn:
         for (i = 0; i < 3; i++) {
             cyc(30);
             w = rd16(b | (uint16_t)(to[i] + cpu.x));
+            cyc(from[i] < 0x100 ? 30 : 38);  /* CLC, ADC direct page or absolute */
             cpu.p &= (uint8_t)~P_C;
             cpu.a = op_adc16(w, rd16(from[i]), &cpu.p);
             cyc(30);
@@ -2821,6 +2823,7 @@ static void parent_place_from(uint32_t b, int attached, int stage)
     for (i = 0; i < 3; i++) {
         cyc(30);
         w = rd16(b | (uint16_t)(to[i] + cpu.y));
+        cyc(from[i] < 0x100 ? 30 : 38);  /* CLC, ADC direct page or absolute */
         cpu.p &= (uint8_t)~P_C;
         cpu.a = op_adc16(w, rd16(from[i]), &cpu.p);
         cyc(30);
