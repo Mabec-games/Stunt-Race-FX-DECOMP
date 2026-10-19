@@ -972,9 +972,22 @@ static void tex_polygon(int copy)
 
 void abi_FxDivideSigned(void);
 
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode mult_imm_code[8][1] = {
+    {{0x01A385, 5}},
+    {{0x01A561, 5}},
+    {{0x01A2A0, 5}},
+    {{0x01A470, 5}},
+    {{0x019F17, 5}},
+    {{0x019FE3, 5}},
+    {{0x01A0B6, 5}},
+    {{0x01A18E, 5}},
+};
+
 /* MULT #n: the signed product of the low byte and n. */
-static uint16_t mult_imm(uint16_t v, int n)
+static uint16_t mult_imm(uint16_t v, int n, int copy)
 {
+    gsu_codes(mult_imm_code[copy], 1);
     uint16_t r = (uint16_t)((int8_t)v * n);
 
     gsu_sz(r);
@@ -998,6 +1011,26 @@ typedef struct {
     uint16_t ret_out_in, ret_in_out;
 } ClipEdge;
 
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode clip_put_code[16][2] = {
+    {{0x01A3F9, 4}, {0, 0}},
+    {{0x01A422, 4}, {0x01A426, 1}},
+    {{0x01A60A, 4}, {0x01A60E, 1}},
+    {{0x01A337, 4}, {0x01A33B, 1}},
+    {{0x01A30E, 4}, {0, 0}},
+    {{0x01A4E4, 4}, {0, 0}},
+    {{0x01A513, 4}, {0x01A517, 1}},
+    {{0x01A5DB, 4}, {0, 0}},
+    {{0x019F85, 4}, {0, 0}},
+    {{0x01A081, 4}, {0x01A085, 1}},
+    {{0x01A159, 4}, {0x01A15D, 1}},
+    {{0x01A239, 4}, {0x01A23D, 1}},
+    {{0x019FAE, 4}, {0x019FB2, 1}},
+    {{0x01A12A, 4}, {0, 0}},
+    {{0x01A058, 4}, {0, 0}},
+    {{0x01A209, 4}, {0, 0}},
+};
+
 /* The vertex in R1/R2 written at R9 (FROM R1; STW (R9); INC R9 twice;
    the same for R2). */
 static void clip_put(int copy)
@@ -1005,10 +1038,32 @@ static void clip_put(int copy)
     gsu_stw(R[9], R[1]);
     R[9] = gsu_inc(R[9]);
     R[9] = gsu_inc(R[9]);
+    gsu_codes(clip_put_code[copy], 1);
     gsu_stw(R[9], R[2]);
     R[9] = gsu_inc(R[9]);
     R[9] = gsu_inc(R[9]);
+    gsu_codes(clip_put_code[copy] + 1, 1);
 }
+
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode clip_cross_code[16][4] = {
+    {{0x01A416, 2}, {0, 0}, {0x01A418, 3}, {0x01A41B, 4}},
+    {{0x01A3D6, 2}, {0, 0}, {0x01A3D8, 3}, {0x01A3DB, 4}},
+    {{0x01A32B, 2}, {0, 0}, {0x01A32D, 3}, {0x01A330, 4}},
+    {{0x01A2ED, 2}, {0, 0}, {0x01A2EF, 3}, {0x01A2F2, 4}},
+    {{0x01A507, 1}, {0x01A508, 4}, {0, 0}, {0x01A50C, 4}},
+    {{0x01A4C3, 1}, {0x01A4C4, 4}, {0, 0}, {0x01A4C8, 4}},
+    {{0x01A5B8, 1}, {0x01A5B9, 4}, {0, 0}, {0x01A5BD, 4}},
+    {{0x01A5FE, 1}, {0x01A5FF, 4}, {0, 0}, {0x01A603, 4}},
+    {{0x019F64, 2}, {0, 0}, {0x019F66, 3}, {0x019F69, 4}},
+    {{0x019FA2, 2}, {0, 0}, {0x019FA4, 3}, {0x019FA7, 4}},
+    {{0x01A14D, 1}, {0x01A14E, 4}, {0, 0}, {0x01A152, 4}},
+    {{0x01A109, 1}, {0x01A10A, 4}, {0, 0}, {0x01A10E, 4}},
+    {{0x01A075, 2}, {0, 0}, {0x01A077, 3}, {0x01A07A, 4}},
+    {{0x01A034, 2}, {0, 0}, {0x01A036, 3}, {0x01A039, 4}},
+    {{0x01A22C, 2}, {0x01A22E, 4}, {0, 0}, {0x01A232, 4}},
+    {{0x01A1E5, 2}, {0x01A1E7, 4}, {0, 0}, {0x01A1EB, 4}},
+};
 
 /* Where the edge from (R1, R2) to (R3, R6) crosses: R3, R6 = the
    difference, the other axis's offset = (edge - start) * its difference /
@@ -1038,19 +1093,23 @@ static void clip_cross(const ClipEdge *e, uint16_t ret, int copy)
     R[6] = gsu_ldw(e->edge);
     if (e->dec_edge)
         R[6] = gsu_dec(R[6]);
+    gsu_codes(clip_cross_code[copy], 1);
     if (e->y) {
         gsu_stw(R[9], R[0]);
         R[9] = gsu_inc(R[9]);
         R[9] = gsu_inc(R[9]);
+        gsu_codes(clip_cross_code[copy] + 1, 1);
         gsu_stw(R[9], R[6]);
     } else {
         gsu_stw(R[9], R[6]);
         R[9] = gsu_inc(R[9]);
         R[9] = gsu_inc(R[9]);
+        gsu_codes(clip_cross_code[copy] + 2, 1);
         gsu_stw(R[9], R[0]);
     }
     R[9] = gsu_inc(R[9]);
     R[9] = gsu_inc(R[9]);
+    gsu_codes(clip_cross_code[copy] + 3, 1);
 }
 
 /* Is the vertex in R(at) inside the edge? LMS R0, edge; FROM R(at); SUB
@@ -1066,13 +1125,59 @@ static int clip_inside(const ClipEdge *e, int at, int copy)
     return ge();
 }
 
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode clip_count_code[14][3] = {
+    {{0x01A3F5, 2}, {0, 0}, {0, 0}},
+    {{0, 0}, {0x01A3E3, 2}, {0x01A3E5, 2}},
+    {{0x01A30A, 2}, {0, 0}, {0, 0}},
+    {{0, 0}, {0x01A2FA, 2}, {0x01A2FC, 2}},
+    {{0x01A4E0, 2}, {0, 0}, {0, 0}},
+    {{0, 0}, {0x01A4D0, 2}, {0x01A4D2, 2}},
+    {{0, 0}, {0x01A5C5, 2}, {0x01A5C7, 2}},
+    {{0x01A5D7, 2}, {0, 0}, {0, 0}},
+    {{0x019F81, 2}, {0, 0}, {0, 0}},
+    {{0x01A126, 2}, {0, 0}, {0, 0}},
+    {{0, 0}, {0x01A116, 2}, {0x01A118, 2}},
+    {{0x01A054, 2}, {0, 0}, {0, 0}},
+    {{0x01A205, 2}, {0, 0}, {0, 0}},
+    {{0, 0}, {0x01A1F3, 2}, {0x01A1F5, 2}},
+};
+
 /* $0098 changed by one (LMS R0; INC or DEC R0; SBK). */
 static void clip_count(int up, int copy)
 {
     R[0] = gsu_ldw(FX_COUNT_OUT);
-    R[0] = up ? gsu_inc(R[0]) : gsu_dec(R[0]);
+    R[0] = up ? (gsu_codes(clip_count_code[copy], 1), gsu_inc(R[0])) : (gsu_codes(clip_count_code[copy] + 1, 1), gsu_dec(R[0]));
     gsu_sbk(R[0]);
+    gsu_codes(clip_count_code[copy] + 2, 1);
 }
+
+/* cyccopy: the copy each of the caller's copies calls */
+static const uint8_t mult_imm_from_clip_against[8] = {0, 1, 2, 3, 4, 5, 6, 7};
+
+/* cyccopy: the copy each of the caller's copies calls */
+static const uint8_t clip_put_from_clip_against[8] = {1, 2, 3, 6, 12, 9, 10, 11};
+
+/* cyccopy: the copy each of the caller's copies calls */
+static const uint8_t clip_inside_from_clip_against[8] = {1, 1, 2, 2, 2, 1, 2, 1};
+
+/* cyccopy: the copy each of the caller's copies calls */
+static const uint8_t clip_cross_from_clip_against[8] = {1, 6, 3, 5, 8, 13, 11, 15};
+
+/* cyccopy: the copy each of the caller's copies calls */
+static const uint8_t clip_count_from_clip_against[8] = {1, 6, 3, 5, 8, 11, 10, 13};
+
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode clip_against_code[8][21] = {
+    {{0x01A37B, 4}, {0x01A37F, 6}, {0x01A38A, 4}, {0x01A38E, 2}, {0x01A390, 4}, {0x01A394, 4}, {0x01A398, 4}, {0, 0}, {0x01A39C, 6}, {0x01A3AC, 6}, {0x01A3DF, 4}, {0x01A3B2, 20}, {0x01A3EB, 6}, {0x01A41F, 3}, {0x01A3EB, 10}, {0x01A3F7, 2}, {0x01A3FD, 9}, {0x01A427, 4}, {0x01A42B, 2}, {0x01A38D, 1}, {0x01A42D, 6}},
+    {{0x01A557, 4}, {0x01A55B, 6}, {0x01A566, 4}, {0x01A56A, 2}, {0x01A56C, 4}, {0x01A570, 4}, {0x01A574, 4}, {0x01A578, 6}, {0, 0}, {0x01A588, 6}, {0x01A5C1, 4}, {0x01A58E, 26}, {0x01A5CD, 6}, {0x01A607, 3}, {0x01A5CD, 10}, {0x01A5D9, 2}, {0x01A5DF, 15}, {0x01A60F, 4}, {0x01A613, 2}, {0x01A569, 1}, {0x01A615, 6}},
+    {{0x01A296, 4}, {0x01A29A, 6}, {0x01A2A5, 4}, {0x01A2A9, 2}, {0x01A2AB, 4}, {0x01A2AF, 4}, {0x01A2B3, 4}, {0, 0}, {0x01A2B7, 6}, {0x01A2C5, 4}, {0x01A2F6, 4}, {0x01A2C9, 20}, {0x01A302, 4}, {0x01A334, 3}, {0x01A302, 8}, {0x01A30C, 2}, {0x01A312, 9}, {0x01A33C, 4}, {0x01A340, 2}, {0x01A2A8, 1}, {0x01A342, 6}},
+    {{0x01A466, 4}, {0x01A46A, 6}, {0x01A475, 4}, {0x01A479, 2}, {0x01A47B, 4}, {0x01A47F, 4}, {0x01A483, 4}, {0x01A487, 6}, {0, 0}, {0x01A495, 4}, {0x01A4CC, 4}, {0x01A499, 26}, {0x01A4D8, 4}, {0x01A510, 3}, {0x01A4D8, 8}, {0x01A4E2, 2}, {0x01A4E8, 15}, {0x01A518, 4}, {0x01A51C, 2}, {0x01A478, 1}, {0x01A51E, 6}},
+    {{0x019F0D, 4}, {0x019F11, 6}, {0x019F1C, 4}, {0x019F20, 2}, {0x019F22, 4}, {0x019F26, 4}, {0x019F2A, 4}, {0, 0}, {0x019F2E, 6}, {0x019F3C, 24}, {0, 0}, {0, 0}, {0x019F79, 4}, {0x019FAB, 3}, {0x019F79, 8}, {0x019F83, 2}, {0x019F89, 9}, {0x019FB3, 4}, {0x019FB7, 2}, {0x019F1F, 1}, {0x019FB9, 6}},
+    {{0x019FD9, 4}, {0x019FDD, 6}, {0x019FE8, 4}, {0x019FEC, 2}, {0x019FEE, 4}, {0x019FF2, 4}, {0x019FF6, 4}, {0, 0}, {0x019FFA, 6}, {0x01A00A, 26}, {0, 0}, {0, 0}, {0x01A04A, 6}, {0x01A07E, 3}, {0x01A04A, 10}, {0x01A056, 2}, {0x01A05C, 9}, {0x01A086, 4}, {0x01A08A, 2}, {0x019FEB, 1}, {0x01A08C, 6}},
+    {{0x01A0AC, 4}, {0x01A0B0, 6}, {0x01A0BB, 4}, {0x01A0BF, 2}, {0x01A0C1, 4}, {0x01A0C5, 4}, {0x01A0C9, 4}, {0x01A0CD, 6}, {0, 0}, {0x01A0DB, 4}, {0x01A112, 4}, {0x01A0DF, 26}, {0x01A11E, 4}, {0x01A156, 3}, {0x01A11E, 8}, {0x01A128, 2}, {0x01A12E, 15}, {0x01A15E, 4}, {0x01A162, 2}, {0x01A0BE, 1}, {0x01A164, 6}},
+    {{0x01A184, 4}, {0x01A188, 6}, {0x01A193, 4}, {0x01A197, 2}, {0x01A199, 4}, {0x01A19D, 4}, {0x01A1A1, 4}, {0x01A1A5, 6}, {0, 0}, {0x01A1B5, 6}, {0x01A1EF, 4}, {0x01A1BB, 26}, {0x01A1FB, 6}, {0x01A236, 3}, {0x01A1FB, 10}, {0x01A207, 2}, {0x01A20D, 15}, {0x01A23E, 4}, {0x01A242, 2}, {0x01A196, 1}, {0x01A244, 6}},
+};
 
 /* The polygon at R8 ($0040 vertices) clipped against one edge into R9,
    $0098 kept as the count written: the first vertex is copied after the
@@ -1085,32 +1190,36 @@ static void clip_against(const ClipEdge *e, int copy)
     R[1] = gsu_ldw(R[8]);
     R[8] = gsu_inc(R[8]);
     R[8] = gsu_inc(R[8]);
-    R[2] = gsu_ldw(R[8]);
+    R[2] = gsu_ldw(gsu_codes_then(clip_against_code[copy], 1, R[8]));
     R[8] = gsu_sub(R[8], 2, 0);
-    R[0] = gsu_ldw(FX_COUNT);
-    R[0] = mult_imm(R[0], 4);
+    R[0] = gsu_ldw(gsu_codes_then(clip_against_code[copy] + 1, 1, FX_COUNT));
+    R[0] = mult_imm(R[0], 4, GSU_COPY(mult_imm_from_clip_against[copy]));
     R[0] = gsu_add(R[0], R[8], 0);
     gsu_stw(R[0], R[1]);
     R[0] = gsu_inc(R[0]);
     R[0] = gsu_inc(R[0]);
+    gsu_codes(clip_against_code[copy] + 2, 1);
     gsu_stw(R[0], R[2]);
     do {
+        gsu_codes(clip_against_code[copy] + 3, 1);
         R[1] = gsu_ldw(R[8]);
         R[8] = gsu_inc(R[8]);
         R[8] = gsu_inc(R[8]);
-        R[2] = gsu_ldw(R[8]);
+        R[2] = gsu_ldw(gsu_codes_then(clip_against_code[copy] + 4, 1, R[8]));
         R[8] = gsu_inc(R[8]);
         R[8] = gsu_inc(R[8]);
-        R[3] = gsu_ldw(R[8]);
+        R[3] = gsu_ldw(gsu_codes_then(clip_against_code[copy] + 5, 1, R[8]));
         R[8] = gsu_inc(R[8]);
         R[8] = gsu_inc(R[8]);
-        R[6] = gsu_ldw(R[8]);
+        R[6] = gsu_ldw(gsu_codes_then(clip_against_code[copy] + 6, 1, R[8]));
         R[8] = gsu_sub(R[8], 2, 0);
-        a = clip_inside(e, e->y ? 2 : 1, GSU_COPY(0));
-        b = clip_inside(e, e->y ? 6 : 3, GSU_COPY(0));
-        if (!a && !b) {
-            clip_count(0, GSU_COPY(0));
+        a = clip_inside(e, e->y ? (gsu_codes(clip_against_code[copy] + 7, 1), 2) : (gsu_codes(clip_against_code[copy] + 8, 1), 1), GSU_COPY(0));
+        b = clip_inside(e, e->y ? 6 : 3, GSU_COPY(clip_inside_from_clip_against[copy]));
+        if (!a && (gsu_codes(clip_against_code[copy] + 9, 1), !b)) {
+            gsu_codes(clip_against_code[copy] + 10, 1);
+            clip_count(0, GSU_COPY(clip_count_from_clip_against[copy]));
         } else if (!a) {
+            gsu_codes(clip_against_code[copy] + 11, 1);
             /* coming in: the ends swapped, the crossing written */
             R[0] = R[1];
             R[1] = R[3];
@@ -1118,18 +1227,23 @@ static void clip_against(const ClipEdge *e, int copy)
             R[0] = R[2];
             R[2] = R[6];
             R[6] = R[0];
-            clip_cross(e, e->ret_out_in, GSU_COPY(0));
+            clip_cross(e, e->ret_out_in, GSU_COPY(clip_cross_from_clip_against[copy]));
         } else if (b) {
-            clip_put(GSU_COPY(0));
+            gsu_codes(clip_against_code[copy] + 12, 2);
+            clip_put(GSU_COPY(clip_put_from_clip_against[copy]));
         } else {
-            clip_count(1, GSU_COPY(0));
-            clip_put(GSU_COPY(0));
-            clip_cross(e, e->ret_in_out, GSU_COPY(0));
+            gsu_codes(clip_against_code[copy] + 14, 1);
+            clip_count(1, GSU_COPY(clip_count_from_clip_against[copy]));
+            gsu_codes(clip_against_code[copy] + 15, 1);
+            clip_put(GSU_COPY(clip_put_from_clip_against[copy]));
+            gsu_codes(clip_against_code[copy] + 16, 1);
+            clip_cross(e, e->ret_in_out, GSU_COPY(clip_cross_from_clip_against[copy]));
         }
-        R[0] = gsu_ldw(FX_COUNT);
+        R[0] = gsu_ldw(gsu_codes_then(clip_against_code[copy] + 17, 1, FX_COUNT));
         R[0] = gsu_dec(R[0]);
+        gsu_codes(clip_against_code[copy] + 18, 1);
         gsu_sbk(R[0]);
-    } while (!gsu.z);
+    } while (gsu_codes_loop(clip_against_code[copy] + 19, 2, !gsu.z));
 }
 
 static const ClipEdge line_edges[4] = {
@@ -1153,33 +1267,58 @@ static void clip_none(void)
     gsu_pull(&R[10]);
 }
 
+/* cyccopy: the copy each of the caller's copies calls */
+static const uint8_t clip_against_from_clip_line_edge[4] = {4, 5, 6, 7};
+
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode clip_line_edge_code[4][7] = {
+    {{0, 0}, {0x019F05, 3}, {0x019F08, 5}, {0x019FB9, 2}, {0x019FBF, 4}, {0, 0}, {0, 0}},
+    {{0x019FD1, 6}, {0, 0}, {0x019FD7, 2}, {0x01A08C, 2}, {0x01A092, 4}, {0, 0}, {0, 0}},
+    {{0, 0}, {0x01A0A4, 3}, {0x01A0A7, 5}, {0x01A164, 2}, {0x01A16A, 4}, {0x01A16E, 8}, {0x01A65C, 6}},
+    {{0x01A17C, 6}, {0, 0}, {0x01A182, 2}, {0x01A244, 2}, {0x01A24A, 4}, {0, 0}, {0, 0}},
+};
+
 /* 9F01: a line (R0 = its count, below 3) clipped against all four edges,
    from $005A to $0688 and back twice; fewer than 2 points left is
    nothing. Ends with R0 = 2, R15 pulled. */
+/* One edge of clip_line (the original has each edge in its own code):
+   0 when nothing is left (R15 pulled). */
+static int clip_line_edge(int k, int copy)
+{
+    gsu_stw(FX_COUNT, R[0]);
+    if (k & 1) {
+        gsu_codes(clip_line_edge_code[copy], 1);
+        R[8] = FX_CLIP_LIST;
+        R[9] = gsu_ldw(FX_POLY_OUT);
+    } else {
+        gsu_codes(clip_line_edge_code[copy] + 1, 1);
+        R[8] = gsu_ldw(FX_POLY_OUT);
+        R[9] = FX_CLIP_LIST;
+    }
+    gsu_codes(clip_line_edge_code[copy] + 2, 1);
+    clip_against(&line_edges[k], GSU_COPY(clip_against_from_clip_line_edge[copy]));
+    R[0] = gsu_ldw(gsu_codes_then(clip_line_edge_code[copy] + 3, 2, FX_COUNT_OUT));
+    R[0] = gsu_sub(R[0], 2, 0);
+    if (gsu.s) {
+        gsu_codes(clip_line_edge_code[copy] + 5, 2);
+        clip_none();
+        return 0;
+    }
+    R[0] = gsu_add(R[0], 2, 0);
+    return 1;
+}
+
 static void clip_line(void)
 {
     gsu_code(0x019F01, 4); gsu_code(0x01A271, 12);
-    int k;
-
-    for (k = 0; k < 4; k++) {
-        gsu_stw(FX_COUNT, R[0]);
-        if (k & 1) {
-            R[8] = FX_CLIP_LIST;
-            R[9] = gsu_ldw(FX_POLY_OUT);
-        } else {
-            R[8] = gsu_ldw(FX_POLY_OUT);
-            R[9] = FX_CLIP_LIST;
-        }
-        clip_against(&line_edges[k], GSU_COPY(1));
-        R[0] = gsu_ldw(FX_COUNT_OUT);
-        R[0] = gsu_sub(R[0], 2, 0);
-        if (gsu.s) {
-            gsu_code(0x01A16E, 8); gsu_code(0x01A65C, 6);
-            clip_none();
-            return;
-        } else { gsu_code(0x01A24E, 4); gsu_code(0x01A256, 9); }
-        R[0] = gsu_add(R[0], 2, 0);
-    }
+    if (!clip_line_edge(0, GSU_COPY(0)))
+        return; else { gsu_code(0x019FC3, 4); gsu_code(0x019FCB, 6); }
+    if (!clip_line_edge(1, GSU_COPY(1)))
+        return; else { gsu_code(0x01A096, 4); gsu_code(0x01A09E, 6); }
+    if (!clip_line_edge(2, GSU_COPY(2)))
+        return; else { gsu_code(0x01A16E, 4); gsu_code(0x01A176, 6); }
+    if (!clip_line_edge(3, GSU_COPY(3)))
+        return; else { gsu_code(0x01A24E, 4); gsu_code(0x01A256, 9); }
     R[0] = 0x0002;
     gsu_pull(&R[10]);
 }
@@ -1465,6 +1604,17 @@ void abi_FxPolygonGather(void)
     gather_return(gsu.z);
 }
 
+/* cyccopy: the copy each of the caller's copies calls */
+static const uint8_t clip_against_from_clip_polygon_edge[4] = {2, 0, 3, 1};
+
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode clip_polygon_edge_code[4][19] = {
+    {{0x01A271, 8}, {0x01A27D, 4}, {0x01A281, 9}, {0, 0}, {0x01A281, 5}, {0x01A28A, 4}, {0x01A28E, 3}, {0x01A291, 3}, {0x01A294, 2}, {0x01A342, 2}, {0x01A348, 4}, {0x01A34C, 3}, {0x01A34F, 3}, {0x01A352, 3}, {0x01A355, 3}, {0, 0}, {0, 0}, {0x01A358, 4}, {0x01A360, 2}},
+    {{0x01A362, 4}, {0, 0}, {0x01A366, 9}, {0, 0}, {0x01A366, 5}, {0x01A36F, 4}, {0x01A373, 3}, {0x01A376, 3}, {0x01A379, 2}, {0x01A42D, 2}, {0x01A433, 4}, {0x01A437, 3}, {0x01A43A, 3}, {0x01A43D, 3}, {0x01A440, 3}, {0, 0}, {0, 0}, {0x01A443, 4}, {0x01A44B, 2}},
+    {{0x01A44D, 4}, {0, 0}, {0x01A451, 9}, {0, 0}, {0x01A451, 5}, {0x01A45A, 4}, {0x01A45E, 3}, {0x01A461, 3}, {0x01A464, 2}, {0x01A51E, 2}, {0x01A524, 4}, {0x01A528, 3}, {0x01A52B, 3}, {0x01A52E, 3}, {0x01A531, 3}, {0x01A534, 8}, {0x01A65C, 6}, {0x01A534, 4}, {0x01A53C, 2}},
+    {{0x01A53E, 4}, {0, 0}, {0x01A542, 9}, {0x01A635, 4}, {0x01A542, 5}, {0x01A54B, 4}, {0x01A54F, 3}, {0x01A552, 3}, {0x01A555, 2}, {0x01A615, 2}, {0x01A61B, 4}, {0x01A61F, 3}, {0x01A622, 3}, {0x01A625, 3}, {0x01A628, 3}, {0x01A62B, 8}, {0x01A65C, 6}, {0x01A62B, 4}, {0x01A633, 6}},
+};
+
 /*
  * @routine 01:A25F FxPolygonClipScreen
  * WHAT IT DOES: Clips the projected polygon at the word at $005A (R0
@@ -1490,11 +1640,43 @@ void abi_FxPolygonGather(void)
  * R13 the copy's LOOP when it ran; S and Z from R10, the last RAM address
  * R10. The rest as the last step leaves them.
  */
+/* One edge of FxPolygonClipScreen (the original has each edge in its own
+   code), skipped when no vertex is outside it: 0 when nothing is left (R15
+   pulled). */
+static int clip_polygon_edge(int k, int copy)
+{
+    gsu_codes(clip_polygon_edge_code[copy], 2);
+    static const uint16_t bits[4] = {4, 8, 1, 2};
+
+    R[1] = gsu_ldw(FX_CODES);
+    R[1] = gsu_and(R[1], bits[k]);
+    if (gsu.z)
+        { gsu_codes(clip_polygon_edge_code[copy] + 2, 2); return 1; } else { gsu_codes(clip_polygon_edge_code[copy] + 4, 2); }
+    R[8] = gsu_ldw(FX_CLIP_IN);
+    R[9] = gsu_ldw(gsu_codes_then(clip_polygon_edge_code[copy] + 6, 1, FX_CLIP_OUT));
+    gsu_codes(clip_polygon_edge_code[copy] + 7, 1);
+    gsu_stw(FX_COUNT, R[0]);
+    gsu_codes(clip_polygon_edge_code[copy] + 8, 1);
+    clip_against(&polygon_edges[k], GSU_COPY(clip_against_from_clip_polygon_edge[copy]));
+    R[1] = gsu_ldw(gsu_codes_then(clip_polygon_edge_code[copy] + 9, 2, FX_CLIP_IN));
+    R[2] = gsu_ldw(gsu_codes_then(clip_polygon_edge_code[copy] + 11, 1, FX_CLIP_OUT));
+    gsu_codes(clip_polygon_edge_code[copy] + 12, 1);
+    gsu_stw(FX_CLIP_IN, R[2]);
+    gsu_codes(clip_polygon_edge_code[copy] + 13, 1);
+    gsu_stw(FX_CLIP_OUT, R[1]);
+    R[0] = gsu_ldw(gsu_codes_then(clip_polygon_edge_code[copy] + 14, 1, FX_COUNT_OUT));
+    R[0] = gsu_sub(R[0], 3, 0);
+    if (gsu.s) {
+        gsu_codes(clip_polygon_edge_code[copy] + 15, 2);
+        clip_none();
+        return 0;
+    } else { gsu_codes(clip_polygon_edge_code[copy] + 17, 2); }
+    R[0] = gsu_add(R[0], 3, 0);
+    return 1;
+}
+
 void abi_FxPolygonClipScreen(void)
 {
-    static const uint16_t bits[4] = {4, 8, 1, 2};
-    int k;
-
     R[8] = gsu_ldw(FX_POLY_OUT);
     R[9] = FX_CLIP_LIST;
     gsu_code(0x01A263, 6);
@@ -1510,30 +1692,11 @@ void abi_FxPolygonClipScreen(void)
     if (gsu.s) {
         clip_line();
         return;
-    } else { gsu_code(0x01A271, 8); gsu_code(0x01A27D, 4); }
-    for (k = 0; k < 4; k++) {
-        R[1] = gsu_ldw(FX_CODES);
-        R[1] = gsu_and(R[1], bits[k]);
-        if (gsu.z)
-            { gsu_code(0x01A542, 9); continue; }
-        R[8] = gsu_ldw(FX_CLIP_IN);
-        R[9] = gsu_ldw(FX_CLIP_OUT);
-        gsu_stw(FX_COUNT, R[0]);
-        clip_against(&polygon_edges[k], GSU_COPY(0));
-        R[1] = gsu_ldw(FX_CLIP_IN);
-        R[2] = gsu_ldw(FX_CLIP_OUT);
-        gsu_stw(FX_CLIP_IN, R[2]);
-        gsu_stw(FX_CLIP_OUT, R[1]);
-        R[0] = gsu_ldw(FX_COUNT_OUT);
-        R[0] = gsu_sub(R[0], 3, 0);
-        if (gsu.s) {
-            clip_none();
-            return;
-        } else { gsu_code(0x01A62B, 4); gsu_code(0x01A633, 2); }
-        R[0] = gsu_add(R[0], 3, 0);
     }
+    if (!clip_polygon_edge(0, GSU_COPY(0)) || !clip_polygon_edge(1, GSU_COPY(1)) || !clip_polygon_edge(2, GSU_COPY(2)) || !clip_polygon_edge(3, GSU_COPY(3)))
+        return;
     /* A635 */
-    R[1] = gsu_ldw(gsu_code_then(0x01A635, 4, FX_POLY_OUT));
+    R[1] = gsu_ldw(FX_POLY_OUT);
     R[8] = gsu_ldw(gsu_code_then(0x01A639, 3, FX_CLIP_IN));
     R[1] = gsu_sub(R[1], R[8], 0);
     if (!gsu.z) {

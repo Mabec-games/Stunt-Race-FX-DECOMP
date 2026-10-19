@@ -14,66 +14,92 @@
 #include "gsu.h"
 #include "gsu_ops.h"
 
-/* cyccopy: the copy each of the caller's copies calls */
-static const uint8_t FxDivide32By16Halving_from_FxDivideHalving[7] = {0, 1, 2, 3, 4, 5, 6};
-
 uint16_t FxDivideHalving(uint16_t hi, uint16_t lo, uint16_t *divisor, uint16_t *remainder, int copy);
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode divide_passes_code[7][7] = {
-    {{0x0181D2, 4}, {0, 0}, {0x0181D6, 4}, {0, 0}, {0, 0}, {0, 0}, {0x0181DC, 5}},
-    {{0x0196D6, 4}, {0x0196D6, 4}, {0x0196DA, 4}, {0, 0}, {0, 0}, {0, 0}, {0x0196E0, 5}},
-    {{0, 0}, {0, 0}, {0x0196DA, 4}, {0, 0}, {0, 0}, {0, 0}, {0x0196E0, 5}},
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-    {{0x0181A3, 4}, {0, 0}, {0x0181A7, 4}, {0, 0}, {0, 0}, {0, 0}, {0x0181AE, 5}},
-    {{0x0196D6, 4}, {0, 0}, {0x0196DA, 4}, {0, 0}, {0, 0}, {0, 0}, {0x0196E0, 5}},
-    {{0x0196D6, 4}, {0x0196D6, 4}, {0x0196C0, 10}, {0x0196CF, 7}, {0x0196DA, 4}, {0x0196E5, 2}, {0x0196E0, 5}},
+static const GsuCode divide_passes_code[21][15] = {
+    {{0x0181D2, 4}, {0, 0}, {0, 0}, {0, 0}, {0x0181D6, 4}, {0, 0}, {0, 0}, {0, 0}, {0x0181DA, 2}, {0x0181DC, 5}, {0, 0}, {0x0181E1, 2}, {0, 0}, {0, 0}, {0, 0}},
+    {{0x0196D6, 4}, {0x0196D6, 4}, {0, 0}, {0, 0}, {0x0196DA, 4}, {0, 0}, {0, 0}, {0, 0}, {0x0196DE, 2}, {0x0196E0, 5}, {0, 0}, {0x0196E5, 2}, {0, 0}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x0196DA, 4}, {0, 0}, {0, 0}, {0, 0}, {0x0196DE, 2}, {0x0196E0, 5}, {0, 0}, {0x0196E5, 2}, {0, 0}, {0, 0}, {0, 0}},
+    {{0x0181A3, 4}, {0, 0}, {0, 0}, {0, 0}, {0x0181A7, 4}, {0, 0}, {0, 0}, {0, 0}, {0x0181AB, 3}, {0x0181AE, 5}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0x0196D6, 4}, {0, 0}, {0, 0}, {0, 0}, {0x0196DA, 4}, {0, 0}, {0, 0}, {0, 0}, {0x0196DE, 2}, {0x0196E0, 5}, {0, 0}, {0x0196E5, 2}, {0, 0}, {0, 0}, {0, 0}},
+    {{0x0196D6, 4}, {0x0196D6, 4}, {0x0196D6, 4}, {0x0196E0, 5}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x0196DA, 4}, {0x0196E0, 5}, {0, 0}},
+    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x0196C0, 10}, {0x0196CF, 7}, {0x0196DA, 4}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x0196E0, 5}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0x0196D6, 4}, {0, 0}, {0, 0}, {0, 0}, {0x0196DA, 4}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x0196E0, 5}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0x0196D6, 4}, {0x0196D6, 4}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x0196E0, 5}, {0x0196E0, 5}, {0, 0}, {0x0196DA, 4}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0x0196D6, 4}, {0x0196D6, 4}, {0, 0}, {0, 0}, {0x0196DA, 4}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x0196E0, 5}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x0196DA, 4}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x0196E0, 5}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0x0196D6, 4}, {0x0196D6, 4}, {0, 0}, {0, 0}, {0x0196C0, 10}, {0x0196CF, 7}, {0x0196DA, 4}, {0x0196E5, 2}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x0196E0, 5}},
+    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x0196DA, 4}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x0196E0, 5}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x0196DA, 4}, {0, 0}, {0, 0}, {0, 0}, {0x0196DE, 2}, {0x0196E0, 5}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0x0196D6, 4}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x0196E0, 5}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x0196DA, 4}, {0x0196E0, 5}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0x0196D6, 4}, {0x0196D6, 4}, {0, 0}, {0, 0}, {0x0196DA, 4}, {0x0196DA, 4}, {0, 0}, {0, 0}, {0, 0}, {0x0196E0, 5}, {0x0196E0, 5}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0x0196D6, 4}, {0x0196D6, 4}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x0196DA, 4}, {0x0196E0, 5}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x0196E0, 5}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
 };
 
-/* The 16 passes, from the dividend as it stands after the first shift.
-   Returns the quotient; *rem_out = the high word after the last pass. */
+/* The 16 passes, from the dividend as it stands after the first shift,
+   with the flags their instructions leave: OV from the last pass's SUB,
+   or from the ADD R4 after its restoring ADD; CY from its last ROL of the
+   high word. Each way through a pass ends in its own LOOP, with the ROL
+   of the high word in its delay slot, as in the original. Returns the
+   quotient; *rem_out = the high word after the last pass. */
 static uint16_t divide_passes(uint16_t rem, uint16_t quot, uint16_t divisor, uint16_t *rem_out, int copy)
 {
-    int n;
+    int n = 0;
 
-    for (n = 0; gsu_codes_loop(divide_passes_code[copy], 2, n < 16); n++) {
+    for (;;) {
+        gsu_codes(divide_passes_code[copy], 4);
         uint16_t out = quot >> 15;
+        uint16_t diff = gsu_sub(rem, divisor, 0);
+        int again;
 
-        if (rem >= divisor) {
-            gsu_codes(divide_passes_code[copy] + 2, 4);
-            rem = (uint16_t)(rem - divisor);
-            quot = (uint16_t)(quot << 1 | 1);
+        if (gsu.cy) {
+            gsu_codes(divide_passes_code[copy] + 4, 4);
+            rem = diff;
+            quot = (uint16_t)(quot << 1 | 1);           /* WITH R4; ROL */
+            again = ++n < 16;                           /* LOOP */
+            gsu.cy = (uint8_t)(rem >> 15);              /* ROL */
+            rem = (uint16_t)(rem << 1 | out);
+            if (!again)
+                { gsu_codes(divide_passes_code[copy] + 8, 1); break; }
         } else {
-            gsu_codes(divide_passes_code[copy] + 6, 1);
-            quot = (uint16_t)(quot << 1);
+            gsu_codes(divide_passes_code[copy] + 9, 2);
+            quot = gsu_add(quot, quot, 0);              /* ADD R6; WITH R4; ADD R4 */
+            again = ++n < 16;                           /* LOOP */
+            gsu.cy = (uint8_t)(rem >> 15);              /* ROL */
+            rem = (uint16_t)(rem << 1 | out);
+            if (!again)
+                { gsu_codes(divide_passes_code[copy] + 11, 1); break; } else { gsu_codes(divide_passes_code[copy] + 12, 2); }
         }
-        rem = (uint16_t)(rem << 1 | out);
+        gsu_codes(divide_passes_code[copy] + 14, 1);
     }
     *rem_out = rem;
     return quot;
 }
 
-/* The flags the passes leave: OV from the last pass's SUB, or from the
-   ADD R4 after its restoring ADD; CY from its last ROL of the high word.
-   The passes are repeated for them with the instructions' flag rules. */
-static void divide_flags(uint16_t rem, uint16_t quot, uint16_t divisor)
-{
-    int n;
-
-    for (n = 0; n < 16; n++) {
-        uint16_t out = quot >> 15;
-        uint16_t diff = gsu_sub(rem, divisor, 0);
-
-        if (gsu.cy) {
-            rem = diff;
-            quot = (uint16_t)(quot << 1 | 1);
-        } else {
-            quot = gsu_add(quot, quot, 0);
-        }
-        gsu.cy = (uint8_t)(rem >> 15);
-        rem = (uint16_t)(rem << 1 | out);
-    }
-}
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode FxDivideSigned_code[16][11] = {
+    {{0x018186, 2}, {0x8187, 0}, {0x018188, 9}, {0x018192, 5}, {0x01819B, 8}, {0x0181B3, 5}, {0x0181BA, 2}, {0x01A406, 16}, {0x018197, 4}, {0x0181B8, 2}, {0, 0}},
+    {{0x018186, 2}, {0x8187, 0}, {0x018188, 9}, {0x018192, 5}, {0x01819B, 8}, {0x0181B3, 5}, {0x0181BA, 2}, {0x01A3C6, 16}, {0x018197, 4}, {0x0181B8, 2}, {0, 0}},
+    {{0x018186, 2}, {0x8187, 0}, {0x018188, 15}, {0x01819B, 8}, {0x0181B3, 5}, {0x0181BA, 2}, {0x01A31B, 16}, {0, 0}, {0x018197, 4}, {0, 0}, {0x0181B8, 2}},
+    {{0x018186, 2}, {0x8187, 0}, {0x018188, 15}, {0x01819B, 8}, {0x0181B3, 5}, {0x0181BA, 2}, {0x01A2DD, 16}, {0, 0}, {0x018197, 4}, {0, 0}, {0x0181B8, 2}},
+    {{0x018186, 2}, {0x8187, 0}, {0x018188, 15}, {0x01819B, 8}, {0x0181B3, 5}, {0x0181BA, 2}, {0x01A4F7, 16}, {0, 0}, {0x018197, 4}, {0, 0}, {0x0181B8, 2}},
+    {{0x018186, 2}, {0x8187, 0}, {0x018188, 15}, {0x01819B, 8}, {0x0181B3, 5}, {0x0181BA, 2}, {0x01A4B3, 16}, {0, 0}, {0x018197, 4}, {0, 0}, {0x0181B8, 2}},
+    {{0x018186, 2}, {0x8187, 0}, {0x018188, 9}, {0x018192, 5}, {0x01819B, 8}, {0x0181B3, 5}, {0x0181BA, 2}, {0x01A5A8, 16}, {0x018197, 4}, {0x0181B8, 2}, {0, 0}},
+    {{0x018186, 2}, {0x8187, 0}, {0x018188, 9}, {0x018192, 5}, {0x01819B, 8}, {0x0181B3, 5}, {0x0181BA, 2}, {0x01A5EE, 16}, {0x018197, 4}, {0x0181B8, 2}, {0, 0}},
+    {{0x018186, 2}, {0x8187, 0}, {0x018188, 15}, {0x01819B, 8}, {0x0181B3, 5}, {0x0181BA, 2}, {0x019F54, 16}, {0, 0}, {0x018197, 4}, {0, 0}, {0x0181B8, 2}},
+    {{0x018186, 2}, {0x8187, 0}, {0x018188, 15}, {0x01819B, 8}, {0x0181B3, 5}, {0x0181BA, 2}, {0x019F92, 16}, {0, 0}, {0x018197, 4}, {0, 0}, {0x0181B8, 2}},
+    {{0x018186, 2}, {0x8187, 0}, {0x018188, 15}, {0x01819B, 8}, {0x0181B3, 5}, {0x0181BA, 2}, {0x01A13D, 16}, {0, 0}, {0x018197, 4}, {0, 0}, {0x0181B8, 2}},
+    {{0x018186, 2}, {0x8187, 0}, {0x018188, 15}, {0x01819B, 8}, {0x0181B3, 5}, {0x0181BA, 2}, {0x01A0F9, 16}, {0, 0}, {0x018197, 4}, {0, 0}, {0x0181B8, 2}},
+    {{0x018186, 2}, {0x8187, 0}, {0x018188, 9}, {0x018192, 5}, {0x01819B, 8}, {0x0181B3, 5}, {0x0181BA, 2}, {0x01A065, 16}, {0x018197, 4}, {0x0181B8, 2}, {0, 0}},
+    {{0x018186, 2}, {0x8187, 0}, {0x018188, 9}, {0x018192, 5}, {0x01819B, 8}, {0x0181B3, 5}, {0x0181BA, 2}, {0x01A024, 16}, {0x018197, 4}, {0x0181B8, 2}, {0, 0}},
+    {{0x018186, 2}, {0x8187, 0}, {0x018188, 9}, {0x018192, 5}, {0x01819B, 8}, {0x0181B3, 5}, {0x0181BA, 2}, {0x01A21C, 16}, {0, 0}, {0, 0}, {0, 0}},
+    {{0x018186, 2}, {0x8187, 0}, {0x018188, 9}, {0x018192, 5}, {0x01819B, 8}, {0x0181B3, 5}, {0x0181BA, 2}, {0x01A1D5, 16}, {0, 0}, {0, 0}, {0, 0}},
+};
 
 /*
  * @routine 01:8186 FxDivideSigned
@@ -90,23 +116,23 @@ static void divide_flags(uint16_t rem, uint16_t quot, uint16_t divisor)
  * the sign word; R12 = 0; R13 = $81A3 (the loop); OV, S, Z from MOVES R7
  * (S and Z from the quotient when it was negated); CY from the loop.
  */
-uint16_t FxDivideSigned(uint16_t hi, uint16_t lo, uint16_t divisor, uint16_t *remainder)
+uint16_t FxDivideSigned(uint16_t hi, uint16_t lo, uint16_t divisor, uint16_t *remainder, int copy)
 {
-    gsu_code(0x018186, 2); gsu_cache(0x8187); gsu_code(0x018188, 9); gsu_code(0x018192, 5); gsu_code(0x01819B, 8); gsu_code(0x0181B3, 5); gsu_code(0x0181BA, 2);
+    gsu_codes(FxDivideSigned_code[copy], 8);
     uint16_t sign = hi ^ divisor;
     uint16_t quot;
 
     if (divisor & 0x8000)
-        { gsu_code(0x018191, 1); divisor = (uint16_t)-divisor; }
+        divisor = (uint16_t)-divisor;
     if (hi & 0x8000) {
-        gsu_code(0x018197, 4);
+        gsu_codes(FxDivideSigned_code[copy] + 8, 2);
         uint32_t v = (uint32_t)-((uint32_t)hi << 16 | lo);
         hi = (uint16_t)(v >> 16);
         lo = (uint16_t)v;
-    }
-    quot = divide_passes((uint16_t)(hi << 1 | lo >> 15), (uint16_t)(lo << 1), divisor, remainder, GSU_COPY(4));
+    } else { gsu_codes(FxDivideSigned_code[copy] + 10, 1); }
+    quot = divide_passes((uint16_t)(hi << 1 | lo >> 15), (uint16_t)(lo << 1), divisor, remainder, GSU_COPY(3));
     if (sign & 0x8000)
-        { gsu_code(0x0181B8, 2); quot = (uint16_t)-quot; }
+        quot = (uint16_t)-quot;
     return quot;
 }
 
@@ -114,7 +140,7 @@ void abi_FxDivideSigned(void)
 {
     uint16_t hi = gsu.r[5], lo = gsu.r[4], d = gsu.r[6];
     uint16_t sign = hi ^ d;
-    uint16_t rem, quot = FxDivideSigned(hi, lo, d, &rem);
+    uint16_t rem, quot = FxDivideSigned(hi, lo, d, &rem, GSU_COPY(0));
 
     if (d & 0x8000)
         d = (uint16_t)-d;
@@ -123,7 +149,6 @@ void abi_FxDivideSigned(void)
         hi = (uint16_t)(v >> 16);
         lo = (uint16_t)v;
     }
-    divide_flags((uint16_t)(hi << 1 | lo >> 15), (uint16_t)(lo << 1), d);
     gsu_moves(sign);
     if (sign & 0x8000)
         gsu_sz(quot);
@@ -135,9 +160,6 @@ void abi_FxDivideSigned(void)
     gsu.r[12] = 0;
     gsu.r[13] = 0x81A3;
 }
-
-/* cyccopy: the copy each of the caller's copies calls */
-static const uint8_t divide_passes_from_FxDivide32By16[6] = {0, 1, 2, 3, 5, 6};
 
 /*
  * @routine 01:81CB FxDivide32By16
@@ -152,76 +174,84 @@ static const uint8_t divide_passes_from_FxDivide32By16[6] = {0, 1, 2, 3, 5, 6};
  */
 uint16_t FxDivide32By16(uint16_t hi, uint16_t lo, uint16_t divisor, uint16_t *remainder, int copy)
 {
-    uint16_t rem, quot = divide_passes((uint16_t)(hi << 1 | lo >> 15), (uint16_t)(lo << 1), divisor, &rem, GSU_COPY(divide_passes_from_FxDivide32By16[copy]));
+    uint16_t rem, quot = divide_passes((uint16_t)(hi << 1 | lo >> 15), (uint16_t)(lo << 1), divisor, &rem, GSU_COPY(0));
 
     *remainder = rem >> 1;
     return quot;
 }
 
-void abi_FxDivide32By16(void)
-{
-    uint16_t hi = gsu.r[0], lo = gsu.r[4];
-    uint16_t rem, quot = FxDivide32By16(hi, lo, gsu.r[6], &rem, GSU_COPY(0));
-    uint16_t shifted;
+/* cyccopy: the copy each of the caller's copies calls */
+static const uint8_t divide_passes_from_divide_exit[20] = {1, 2, 4, 5, 6, 7, 8, 9, 10, 0, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20};
 
-    divide_flags((uint16_t)(hi << 1 | lo >> 15), (uint16_t)(lo << 1), gsu.r[6]);
-    divide_passes((uint16_t)(hi << 1 | lo >> 15), (uint16_t)(lo << 1), gsu.r[6], &shifted, GSU_COPY(0));
-    gsu.cy = shifted & 1;
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode divide_exit_code[20][3] = {
+    {{0, 0}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0, 0}},
+    {{0x0181BC, 10}, {0x0181CB, 7}, {0x01B2FC, 7}},
+    {{0, 0}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0, 0}},
+};
+
+/* The passes and the LSR in the return's delay slot, leaving the
+   registers and flags as the original: R4 = the quotient, R0 = the
+   remainder; R12 = 0, R13 = the loop's address; OV from the last pass;
+   CY, S and Z from the LSR. */
+static uint16_t divide_exit(uint16_t hi, uint16_t lo, uint16_t d, uint16_t loop, int copy)
+{
+    gsu_codes(divide_exit_code[copy], 3);
+    uint16_t rem, quot = divide_passes((uint16_t)(hi << 1 | lo >> 15), (uint16_t)(lo << 1), d, &rem, GSU_COPY(divide_passes_from_divide_exit[copy]));
+
+    gsu.cy = rem & 1;
+    rem >>= 1;
     gsu_sz(rem);
     gsu.r[0] = rem;
     gsu.r[4] = quot;
     gsu.r[12] = 0;
-    gsu.r[13] = 0x81D2;
+    gsu.r[13] = loop;
+    return quot;
 }
 
-/* cyccopy: the copy each of the caller's copies calls */
-static const uint8_t FxDivideHalving_from_halving_exit[3] = {2, 2, 5};
+void abi_FxDivide32By16(void)
+{
+    divide_exit(gsu.r[0], gsu.r[4], gsu.r[6], 0x81D2, GSU_COPY(0));
+}
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode halving_exit_code[3][6] = {
-    {{0, 0}, {0, 0}, {0, 0}, {0x0196CA, 5}, {0x0196E5, 2}, {0x0196E5, 2}},
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-    {{0x0181BC, 10}, {0x0181CB, 7}, {0x01B2FC, 7}, {0, 0}, {0, 0}, {0, 0}},
+static const GsuCode halving_divide_code[3][2] = {
+    {{0, 0}, {0, 0}},
+    {{0x0196CA, 5}, {0, 0}},
+    {{0x0196CA, 5}, {0x0196E5, 2}},
 };
 
-/* The registers and flags a halving divide leaves (FxDivideHalving and
-   FxDivide32By16Halving: the same code, the loop at a different address). */
-static void halving_exit(uint16_t hi, uint16_t lo, uint16_t d, uint16_t loop, int copy)
+/* A halving divide (FxDivide32By16Halving, and FxDivideHalving's copy of
+   it with the loop at another address), leaving the registers and flags
+   as the original: as divide_exit, with R6 = the divisor as used. */
+static uint16_t halving_divide(uint16_t hi, uint16_t lo, uint16_t d, uint16_t loop, int copy)
 {
-    gsu_codes(halving_exit_code[copy], 3);
-    uint16_t used = d;
-    uint16_t rem, quot = FxDivideHalving(hi, lo, &used, &rem, GSU_COPY(FxDivideHalving_from_halving_exit[copy]));
-    uint16_t shifted;
-
     if ((hi | d) & 0x8000) {
-        gsu_codes(halving_exit_code[copy] + 3, 3);
+        gsu_codes(halving_divide_code[copy], 2);
+        d >>= 1;
         lo = (uint16_t)(lo >> 1 | (hi & 1) << 15);
         hi >>= 1;
     }
-    divide_flags((uint16_t)(hi << 1 | lo >> 15), (uint16_t)(lo << 1), used);
-    divide_passes((uint16_t)(hi << 1 | lo >> 15), (uint16_t)(lo << 1), used, &shifted, GSU_COPY(3));
-    gsu.cy = shifted & 1;
-    gsu_sz(rem);
-    gsu.r[0] = rem;
-    gsu.r[4] = quot;
-    gsu.r[6] = used;
-    gsu.r[12] = 0;
-    gsu.r[13] = loop;
+    gsu.r[6] = d;
+    return divide_exit(hi, lo, d, loop, GSU_COPY(0));
 }
-
-/* cyccopy: the copy each of the caller's copies calls */
-static const uint8_t FxDivide32By16_from_FxDivide32By16Halving[7] = {1, 2, 3, 4, 4, 0, 5};
-
-/* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode FxDivide32By16Halving_code[7][3] = {
-    {{0, 0}, {0, 0}, {0, 0}},
-    {{0, 0}, {0, 0}, {0, 0}},
-    {{0, 0}, {0, 0}, {0, 0}},
-    {{0x0196CA, 5}, {0x0196E5, 2}, {0x0196E5, 2}},
-    {{0, 0}, {0, 0}, {0, 0}},
-    {{0, 0}, {0, 0}, {0, 0}},
-    {{0, 0}, {0, 0}, {0, 0}},
-};
 
 /*
  * @routine 01:81BC FxDivide32By16Halving
@@ -238,17 +268,16 @@ static const GsuCode FxDivide32By16Halving_code[7][3] = {
 uint16_t FxDivide32By16Halving(uint16_t hi, uint16_t lo, uint16_t *divisor, uint16_t *remainder, int copy)
 {
     if ((hi | *divisor) & 0x8000) {
-        gsu_codes(FxDivide32By16Halving_code[copy], 3);
         *divisor >>= 1;
         lo = (uint16_t)(lo >> 1 | (hi & 1) << 15);
         hi >>= 1;
     }
-    return FxDivide32By16(hi, lo, *divisor, remainder, GSU_COPY(FxDivide32By16_from_FxDivide32By16Halving[copy]));
+    return FxDivide32By16(hi, lo, *divisor, remainder, GSU_COPY(0));
 }
 
 void abi_FxDivide32By16Halving(void)
 {
-    halving_exit(gsu.r[0], gsu.r[4], gsu.r[6], 0x81D2, GSU_COPY(2));
+    halving_divide(gsu.r[0], gsu.r[4], gsu.r[6], 0x81D2, GSU_COPY(0));
 }
 
 /*
@@ -263,25 +292,34 @@ void abi_FxDivide32By16Halving(void)
  */
 uint16_t FxDivideHalving(uint16_t hi, uint16_t lo, uint16_t *divisor, uint16_t *remainder, int copy)
 {
-    return FxDivide32By16Halving(hi, lo, divisor, remainder, GSU_COPY(FxDivide32By16Halving_from_FxDivideHalving[copy]));
+    return FxDivide32By16Halving(hi, lo, divisor, remainder, GSU_COPY(0));
 }
 
 void abi_FxDivideHalving(void)
 {
-    halving_exit(gsu.r[0], gsu.r[4], gsu.r[6], 0x96D6, GSU_COPY(0));
+    halving_divide(gsu.r[0], gsu.r[4], gsu.r[6], 0x96D6, GSU_COPY(0));
 }
 
-/* The last division FxRatioClamp makes, for its exit registers. */
-typedef struct { uint16_t hi, lo, divisor, ret; } FxLastDivide;
-
 /* cyccopy: the copy each of the caller's copies calls */
-static const uint8_t FxDivideHalving_from_FxRatioClamp[3] = {4, 3, 6};
+static const uint8_t halving_divide_from_FxRatioClamp[15] = {1, 1, 0, 0, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode FxRatioClamp_code[3][15] = {
-    {{0x01965B, 16}, {0, 0}, {0, 0}, {0x01966B, 14}, {0x0196C0, 10}, {0x0196C0, 10}, {0x0196CF, 7}, {0x0196CF, 7}, {0x019679, 22}, {0x01968F, 17}, {0, 0}, {0, 0}, {0x0196DE, 2}, {0x0196A0, 42}, {0x0196CF, 7}},
-    {{0x01965B, 16}, {0x0196C0, 10}, {0x0196CF, 7}, {0x01966B, 14}, {0x0196C0, 10}, {0x0196CF, 7}, {0, 0}, {0, 0}, {0x019679, 22}, {0x01968F, 17}, {0x0196C0, 10}, {0x0196CF, 7}, {0, 0}, {0x0196A0, 32}, {0, 0}},
-    {{0x01965B, 52}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+static const GsuCode FxRatioClamp_code[15][24] = {
+    {{0x01965B, 16}, {0x0196C0, 10}, {0x0196CF, 7}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x01966B, 14}, {0x0196C0, 10}, {0x0196CF, 7}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x019679, 22}, {0, 0}, {0x01968F, 17}, {0x0196C0, 10}, {0x0196CF, 7}, {0, 0}, {0, 0}, {0x0196A0, 32}, {0, 0}, {0, 0}},
+    {{0x01965B, 16}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x01966B, 14}, {0x0196C0, 10}, {0x0196C0, 10}, {0x0196CF, 7}, {0x0196CF, 7}, {0, 0}, {0, 0}, {0x019679, 22}, {0, 0}, {0x01968F, 17}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x0196A0, 42}, {0x0196CF, 7}, {0, 0}},
+    {{0x01965B, 52}, {0x0196C0, 10}, {0x0196C0, 10}, {0x0196CF, 7}, {0x0196CF, 7}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0x01965B, 16}, {0x0196C0, 10}, {0x0196CF, 7}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x01966B, 36}, {0x0196C0, 10}, {0x0196CF, 7}, {0x0196DE, 2}, {0x0196DE, 2}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x0196A0, 32}, {0, 0}, {0, 0}, {0, 0}},
+    {{0x01965B, 16}, {0x0196C0, 10}, {0x0196CF, 7}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x01966B, 14}, {0x0196C0, 10}, {0x0196CF, 7}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x019679, 22}, {0, 0}, {0x01968F, 17}, {0x0196C0, 10}, {0x0196CF, 7}, {0, 0}, {0, 0}, {0x0196A0, 32}, {0, 0}, {0, 0}},
+    {{0x01965B, 16}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x01966B, 14}, {0x0196C0, 10}, {0x0196C0, 10}, {0x0196CF, 7}, {0x0196CF, 7}, {0, 0}, {0, 0}, {0x019679, 22}, {0, 0}, {0x01968F, 17}, {0x0196E5, 2}, {0, 0}, {0, 0}, {0, 0}, {0x0196A0, 42}, {0x0196CF, 7}, {0, 0}},
+    {{0x01965B, 16}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x01966B, 14}, {0x0196C0, 10}, {0x0196C0, 10}, {0x0196CF, 7}, {0x0196CF, 7}, {0, 0}, {0, 0}, {0x019679, 22}, {0, 0}, {0x01968F, 17}, {0x0196CA, 5}, {0x0196E5, 2}, {0, 0}, {0, 0}, {0x0196A0, 42}, {0x0196CF, 7}, {0x0196DE, 2}},
+    {{0x01965B, 30}, {0x0196C0, 10}, {0x0196C0, 10}, {0x0196CF, 7}, {0x0196CF, 7}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x019679, 22}, {0, 0}, {0x01968F, 59}, {0x0196CF, 7}, {0x0196DE, 2}, {0x0196E5, 2}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0x01965B, 30}, {0x0196C0, 10}, {0x0196C0, 10}, {0x0196CF, 7}, {0x0196CF, 7}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x019679, 22}, {0, 0}, {0x01968F, 59}, {0x0196CF, 7}, {0x0196DE, 2}, {0x0196DE, 2}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0x01965B, 30}, {0x01968F, 49}, {0x0196CA, 5}, {0x0196DE, 2}, {0x0196E5, 2}, {0x0196E5, 2}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0x01965B, 16}, {0x0196A0, 42}, {0x0196CF, 7}, {0x0196E5, 2}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0x01965B, 52}, {0x0196C0, 10}, {0x0196C0, 10}, {0x0196CF, 7}, {0x0196CF, 7}, {0x0196DE, 2}, {0x0196E5, 2}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0x01965B, 16}, {0x0196C0, 10}, {0x0196CF, 7}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x01966B, 14}, {0x0196C0, 10}, {0x0196CF, 7}, {0x0196E5, 2}, {0, 0}, {0, 0}, {0, 0}, {0x019679, 22}, {0x0196DE, 2}, {0x01968F, 17}, {0x0196C0, 22}, {0x0196E5, 2}, {0, 0}, {0, 0}, {0x0196A0, 32}, {0, 0}, {0, 0}},
+    {{0x01965B, 16}, {0x0196A0, 42}, {0x0196CF, 7}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x01966B, 14}, {0x01968F, 17}, {0x0196C0, 22}, {0x0196C0, 10}, {0x0196CF, 7}, {0x0196E5, 2}, {0x0196E5, 2}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0x01965B, 52}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
 };
 
 /*
@@ -302,45 +340,45 @@ static const GsuCode FxRatioClamp_code[3][15] = {
  * last FxDivideHalving leaves them; S and Z from R10; the last RAM address
  * R10.
  */
-void FxRatioClamp(uint16_t *x, uint16_t *y, uint16_t d, FxLastDivide *last, int copy)
+void FxRatioClamp(uint16_t *x, uint16_t *y, uint16_t d, uint16_t *ret, int copy)
 {
-    gsu_codes(FxRatioClamp_code[copy], 3);
-    uint16_t rem, used;
+    gsu_codes(FxRatioClamp_code[copy], 7);
     uint16_t a = (uint16_t)((int16_t)*x >> 1), b = (uint16_t)((int16_t)*y >> 1);
 
+    /* each division leaves R0, R4, R6, R12, R13 and the flags; R11 is
+       the return address of the last call (LINK) */
     if ((a >> 8) < d) {
-        gsu_codes(FxRatioClamp_code[copy] + 3, 5);
-        used = d;
-        last->hi = a >> 8; last->lo = (uint16_t)(a << 8); last->divisor = d; last->ret = 0x9672;
-        a = FxDivideHalving(a >> 8, (uint16_t)(a << 8), &used, &rem, GSU_COPY(FxDivideHalving_from_FxRatioClamp[copy]));
-        used = d;
-        last->hi = b >> 8; last->lo = (uint16_t)(b << 8); last->ret = a <= 0x3FFF ? (gsu_codes(FxRatioClamp_code[copy] + 8, 1), 0x9688) : (gsu_codes(FxRatioClamp_code[copy] + 9, 3), 0x969E);
-        b = FxDivideHalving(b >> 8, (uint16_t)(b << 8), &used, &rem, GSU_COPY(1));
+        gsu_codes(FxRatioClamp_code[copy] + 7, 7);
+        *ret = 0x9672;
+        a = halving_divide(a >> 8, (uint16_t)(a << 8), d, 0x96D6, GSU_COPY(0));
         if (a <= 0x3FFF) {
+            gsu_codes(FxRatioClamp_code[copy] + 14, 2);
+            *ret = 0x9688;
+            b = halving_divide(b >> 8, (uint16_t)(b << 8), d, 0x96D6, GSU_COPY(0));
             *x = a;
             *y = b;
             return;
-        }
-    } else { gsu_codes(FxRatioClamp_code[copy] + 12, 1); }
-    gsu_codes(FxRatioClamp_code[copy] + 13, 2);
+        } else { gsu_codes(FxRatioClamp_code[copy] + 16, 4); }
+        *ret = 0x969E;
+        b = halving_divide(b >> 8, (uint16_t)(b << 8), d, 0x96D6, GSU_COPY(0));
+    } else { gsu_codes(FxRatioClamp_code[copy] + 20, 1); }
+    gsu_codes(FxRatioClamp_code[copy] + 21, 3);
     {
         uint32_t v = ((uint32_t)b << 14) - b;
 
-        used = a;
-        last->hi = (uint16_t)(v >> 16); last->lo = (uint16_t)v; last->divisor = a; last->ret = 0x96B6;
-        *y = FxDivideHalving((uint16_t)(v >> 16), (uint16_t)v, &used, &rem, GSU_COPY(FxDivideHalving_from_FxRatioClamp[copy]));
+        *ret = 0x96B6;
+        *y = halving_divide((uint16_t)(v >> 16), (uint16_t)v, a, 0x96D6, GSU_COPY(halving_divide_from_FxRatioClamp[copy]));
         *x = 0x3FFF;
     }
 }
 
 void abi_FxRatioClamp(void)
 {
-    FxLastDivide last;
+    uint16_t ret;
 
     gsu_push(&gsu.r[10], gsu.r[11]);
-    FxRatioClamp(&gsu.r[1], &gsu.r[2], gsu.r[3], &last, GSU_COPY(0));
-    halving_exit(last.hi, last.lo, last.divisor, 0x96D6, GSU_COPY(0));
-    gsu.r[11] = last.ret;
+    FxRatioClamp(&gsu.r[1], &gsu.r[2], gsu.r[3], &ret, GSU_COPY(0));
+    gsu.r[11] = ret;
     gsu_pull(&gsu.r[10]);       /* the return address, into R15 */
 }
 

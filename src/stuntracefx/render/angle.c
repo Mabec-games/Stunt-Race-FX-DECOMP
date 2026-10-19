@@ -108,7 +108,7 @@ void abi_FxAtan2(void)
         gsu.r[12] = 0;
         gsu.r[13] = 0x81D2;
         /* The table's word, before the sign steps. */
-        pre = (uint16_t)((x ^ y) & 0x8000 ? -(x & 0x8000 ? (uint16_t)(angle - 0x8000) : (gsu_code(0x0181E1, 2), angle))
+        pre = (uint16_t)((x ^ y) & 0x8000 ? -(x & 0x8000 ? (uint16_t)(angle - 0x8000) : angle)
                                            : (x & 0x8000 ? (uint16_t)(angle - 0x8000) : angle));
         if (!x_larger)
             gsu_add((uint16_t)-(uint16_t)(0x4000 - pre), 0x4000, 0);
