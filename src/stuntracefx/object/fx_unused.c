@@ -3,7 +3,8 @@
  * starts: a checksum program over the object pools' RAM, an object-free
  * program, an object-new program, a matrix program and eight small
  * routines (a turned push, a clamp, a record's aim, two scalings, a
- * record step, a spare exit).
+ * record step, a spare exit); and three programs making records from
+ * the second pool (04:8BAD-8C09).
  *
  * The C was drafted instruction for instruction from the ROM bytes and is
  * kept so: every register, flag and RAM access as the code makes them,
@@ -594,4 +595,119 @@ void abi_FxReturnOneRestore(void)
 void abi_FxMatrixFromAnglesProgram04(void)
 {
     fx_unused2_run(0xC19D, 0xFFFF);
+}
+
+/* Bank 04 programs nothing starts (04:8BAD-8C09), new records from the
+   second pool: the code from address at until its STOP. */
+static void fx_unused8b_run(uint16_t at, uint16_t ret)
+{
+    int t;
+    uint16_t nx;
+
+    (void)t;
+    (void)nx;
+    goto dispatch;
+l8BAD:
+    R[10] = 0x0240;
+    R[4] = 0x002A;
+    R[3] = 0x1098;
+    R[11] = 0x8BBB;
+    abi_FxPoolTake();
+l8BBB:
+    gsu_stw(0x238E, R[1]);
+    R[1] = R[1];
+    gsu_moves(R[1]);
+    t = gsu.z;
+    if (t) goto l8BE0;
+    gsu_stw(0x239A, R[1]);
+    R[2] = 0x0016;
+    R[2] = gsu_add(R[2], R[1], 0);
+    R[2] = gsu_ldw(R[2]);
+    R[0] = 0x0020;
+    R[2] = gsu_or(R[0], R[2]);
+    R[0] = 0x0016;
+    R[0] = gsu_add(R[0], R[1], 0);
+    gsu_stw(R[0], R[2]);
+    R[2] = 0xFFFF;
+    R[0] = 0x001A;
+    R[0] = gsu_add(R[0], R[1], 0);
+    gsu_stw(R[0], R[2]);
+l8BE0:
+    return;   /* the STOP: the program ends here */
+l8BE2:
+    R[10] = 0x0240;
+    R[0] = gsu_sub(R[0], R[0], 0);
+    gsu_stw(0x238E, R[0]);
+    return;   /* the STOP: the program ends here */
+l8BEC:
+    R[4] = 0x002A;
+    R[3] = 0x1098;
+    R[11] = 0x8BF7;
+    abi_FxPoolTake();
+l8BF7:
+    gsu_stw(0x238E, R[1]);
+    R[1] = R[1];
+    gsu_moves(R[1]);
+    t = gsu.z;
+    if (t) goto l8C08;
+    R[2] = 0x0001;
+    R[0] = 0x0016;
+    R[0] = gsu_add(R[0], R[1], 0);
+    gsu_stw(R[0], R[2]);
+l8C08:
+    return;   /* the STOP: the program ends here */
+dispatch:
+    if (at == ret)
+        return;
+    switch (at) {
+    case 0x8BAD: goto l8BAD;
+    case 0x8BE2: goto l8BE2;
+    case 0x8BEC: goto l8BEC;
+    case 0x8BBB: goto l8BBB;
+    case 0x8BE0: goto l8BE0;
+    case 0x8BF7: goto l8BF7;
+    case 0x8C08: goto l8C08;
+    }
+    return;   /* not an address the code jumps to */
+}
+
+/*
+ * @routine 04:8BAD FxRecordNewMarkedProgram
+ * WHAT IT DOES: A program nothing starts: a new $2A-byte record from the
+ * second pool (FxPoolTake, pool $1098), its address (or 0) to $238E; when
+ * there is one, also to $239A, with bit 5 set in its flags (+$16) and its
+ * mode (+$1A) $FFFF.
+ * HOW: R10 = $0240; LINK, IWT R15; then STOP.
+ * Entry: the S-CPU starts it. Exit: (at its STOP) as FxPoolTake leaves
+ * them; R1 = the record or 0.
+ */
+void abi_FxRecordNewMarkedProgram(void)
+{
+    fx_unused8b_run(0x8BAD, 0xFFFF);
+}
+
+/*
+ * @routine 04:8BE2 FxRecordNoneProgram
+ * WHAT IT DOES: A program nothing starts: $238E = 0.
+ * HOW: R10 = $0240; SUB R0, SM; then STOP.
+ * Entry: the S-CPU starts it. Exit: (at its STOP) R0 = 0; R10 = $0240.
+ */
+void abi_FxRecordNoneProgram(void)
+{
+    fx_unused8b_run(0x8BE2, 0xFFFF);
+}
+
+/*
+ * @routine 04:8BEC FxRecordNewFlag1Program
+ * WHAT IT DOES: A program nothing starts: a new $2A-byte record from the
+ * second pool (FxPoolTake, pool $1098), its address (or 0) to $238E; when
+ * there is one, its flags (+$16) = 1. It sets no stack: R10 is as the
+ * S-CPU left it.
+ * HOW: LINK, IWT R15; then STOP.
+ * Entry: the S-CPU starts it; R10 = stack. Exit: (at its STOP) as
+ * FxPoolTake leaves them; R1 = the record or 0.
+ */
+void abi_FxRecordNewFlag1Program(void)
+{
+    fx_unused8b_run(0x8BEC, 0xFFFF);
 }

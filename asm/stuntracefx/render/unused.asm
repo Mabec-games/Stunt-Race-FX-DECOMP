@@ -4,7 +4,9 @@
 ; screen-clearing programs, two sprite programs, a byte rotation matrix, a
 ; pixel test, two model-drawing programs, a 3D text drawer, a row-copy
 ; program, a point-list projector, a byte-angle turn, a RAM-clear program,
-; a NOP run and a spare return.
+; a NOP run and a spare return; and a 16-bit square root, a vector
+; normalizer with its test programs, a table byte and a swapped ratio
+; clamp (01:8068-8185, 01:946D, 01:9652).
 ; C: src/stuntracefx/render/unused.c.
 
 incsrc "../include/macros.inc"
@@ -1563,3 +1565,244 @@ FxPopReturnC4A5:
     ldw (r10)
     nop
 
+
+arch superfx
+
+; @routine 01:8068 FxSqrt16
+; WHAT IT DOES: The integer square root of R3: R6 = the root, R4 = the
+; remainder. Nothing calls it; a direct start is its only way in.
+; HOW: 8 passes, each shifting the next two bits of R3 into R4 and
+; doubling R6; when R4 is above twice R6 (R0), R4 loses R0 plus 1 and R6
+; gains 1 (CMP, BCS, SBC). As in FxSqrt32, the pass loop starts at the
+; ADD R3 after the first WITH R3 ($8072), the LOOP's delay slot being the
+; WITH R3 of the next pass.
+; Entry: R3 = value; R11 = return address. Exit: R6 = root, R4 =
+; remainder; R3 = 0; R0 = twice the root before its last bit; R12 = 0;
+; R13 = $8072.
+%at($018068)
+FxSqrt16:
+    ibt r6,#$00
+    ibt r4,#$00
+    ibt r12,#$08
+    iwt r13,#$8072
+    with r3
+    add r3
+    with r4
+    rol
+    with r3
+    add r3
+    with r4
+    rol
+    with r6
+    add r6
+    from r6
+    add r6
+    cmp r4
+    bcs .l8085
+    with r4
+    sbc r0
+    inc r6
+.l8085:
+    loop
+    with r3
+    jmp r11
+    nop
+
+; @routine 01:8089 FxSqrt32Test
+; WHAT IT DOES: A program nothing starts: FxSqrt32 of $7FFF:FFFF, then
+; STOP.
+; HOW: IWT R5, IWT R4, LINK, IWT R15.
+; Entry: the S-CPU starts it. Exit: (at its STOP) as FxSqrt32.
+%at($018089)
+FxSqrt32Test:
+    iwt r5,#$FFFF
+    iwt r4,#$7FFF
+    link #4
+    iwt r15,#FxSqrt32
+    nop
+    stop
+    nop
+
+; @routine 01:80E5 FxVectorNormalizeTest
+; WHAT IT DOES: A program nothing starts: the vector ($100, $100, $7D00)
+; normalized (FxVectorNormalize), then STOP.
+; HOW: IWT R1-R3, LINK, IWT R15.
+; Entry: the S-CPU starts it; R10 = stack. Exit: (at its STOP) as
+; FxVectorNormalize.
+%at($0180E5)
+FxVectorNormalizeTest:
+    iwt r1,#$0100
+    iwt r2,#$0100
+    iwt r3,#$7D00
+    link #4
+    iwt r15,#FxVectorNormalize
+    nop
+    stop
+    nop
+
+; @routine 01:80F5 FxVectorNormalizeDelta
+; WHAT IT DOES: The vector from (R1, R2, R3) to (R4, R5, R6), normalized:
+; (R1, R2, R3) = (R4 - R1, R5 - R2, R6 - R3), then FxVectorNormalize.
+; Nothing calls it.
+; HOW: Three FROM/TO SUBs, then on into FxVectorNormalize.
+; Entry: R1-R6 as above; R10 = stack; R11 = return address. Exit: as
+; FxVectorNormalize.
+%at($0180F5)
+FxVectorNormalizeDelta:
+    from r4
+    to r1
+    sub r1
+    from r5
+    to r2
+    sub r2
+    from r6
+    to r3
+    sub r3
+
+; @routine 01:80FE FxVectorNormalize
+; WHAT IT DOES: Scales the vector (R1, R2, R3) to length $7FFF: its squared
+; length (R0:R5, from three LMULTs) square-rooted by FxSqrt32, $7FFF << n
+; divided by that root (FxDivide32By16Halving, n the root's bit count),
+; each component multiplied by the quotient and shifted back right n
+; times. The zero vector stays zero. Nothing calls it except its test and
+; FxVectorNormalizeDelta.
+; HOW: Pushes R11 on the R10 stack; the 32-bit shifts as ASR/ROR pairs in
+; a LOOP; returns by pulling R15.
+; Entry: R1, R2, R3 = vector; R10 = stack; R11 = return address. Exit:
+; R1, R2, R3 = the scaled vector; R9 = n; the rest as the code leaves
+; them.
+%at($0180FE)
+FxVectorNormalize:
+    from r11
+    stw (r10)
+    inc r10
+    inc r10
+    move r6,r1
+    from r1
+    lmult
+    move r5,r4
+    move r6,r2
+    from r2
+    to r6
+    lmult
+    with r5
+    add r4
+    adc r6
+    move r6,r3
+    from r3
+    to r6
+    lmult
+    with r5
+    add r4
+    adc r6
+    moves r0,r0
+    bne .l8132
+    nop
+    moves r5,r5
+    bne .l8132
+    nop
+    ibt r1,#$00
+    ibt r2,#$00
+    ibt r3,#$00
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+.l8132:
+    move r4,r0
+    link #4
+    iwt r15,#FxSqrt32
+    nop
+    move r0,r6
+    ibt r9,#$00
+.l813D:
+    lsr
+    beq .l8144
+    nop
+    bra .l813D
+    inc r9
+.l8144:
+    sub r0
+    iwt r4,#$7FFF
+    moves r12,r9
+    beq .l8153
+    nop
+    move r13,r15
+    with r4
+    add r4
+    loop
+    rol
+.l8153:
+    move r6,r6
+    link #4
+    iwt r15,#FxDivide32By16Halving
+    nop
+    move r6,r4
+    from r1
+    to r7
+    lmult
+    move r1,r4
+    from r2
+    to r8
+    lmult
+    move r2,r4
+    from r3
+    lmult
+    move r3,r4
+    moves r12,r9
+    beq .l8181
+    nop
+    move r13,r15
+    with r7
+    asr
+    with r1
+    ror
+    with r8
+    asr
+    with r2
+    ror
+    asr
+    with r3
+    ror
+    loop
+    nop
+.l8181:
+    dec r10
+    dec r10
+    to r15
+    ldw (r10)
+    nop
+
+; @routine 01:946D FxTable7C6Byte
+; WHAT IT DOES: The byte of the RAM table at $07C6 that the ROM byte before
+; R14 indexes, as the high byte of R0; R14 then 7 past that byte. Nothing
+; calls it.
+; HOW: DEC R14, GETB, ADD #7 to R14; LDB through R0; SWAP in the JMP R11's
+; delay slot.
+; Entry: R14 = ROM pointer; R11 = return address. Exit: R0 = the byte <<
+; 8; R1 = $07C6; R14 as above.
+%at($01946D)
+FxTable7C6Byte:
+    dec r14
+    getb
+    with r14
+    add #7
+    iwt r1,#$07C6
+    add r1
+    ldb (r0)
+    jmp r11
+    swap
+
+; @routine 01:9652 FxRatioClampSwapped
+; WHAT IT DOES: FxRatioClamp with R1 and R2 swapped first. Nothing calls
+; it.
+; HOW: Three MOVEs through R0, then on into FxRatioClamp.
+; Entry: as FxRatioClamp, the pair swapped. Exit: as FxRatioClamp.
+%at($019652)
+FxRatioClampSwapped:
+    move r0,r1
+    move r1,r2
+    move r2,r0
+
+arch 65816

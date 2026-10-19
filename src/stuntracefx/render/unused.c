@@ -7,7 +7,9 @@
  * texture and a scaled object sprite), a byte rotation matrix, a pixel
  * test, two model-drawing programs, a text drawer at a 3D point, a
  * row-copy program, a point-list projector, a byte-angle turn, a
- * RAM-clear program, a NOP run and a spare return.
+ * RAM-clear program, a NOP run and a spare return; and a 16-bit square
+ * root, a vector normalizer with its test programs, a table byte and a
+ * swapped ratio clamp (01:8068-8185, 01:946D, 01:9652).
  *
  * The C was drafted instruction for instruction from the ROM bytes and is
  * kept so: every register, flag and RAM access as the code makes them,
@@ -36,6 +38,8 @@
 #define FX_SPRITE_Y          0x01D4u
 
 void abi_FxObjectSpriteAt(void);
+void abi_FxRatioClamp(void);
+void abi_FxSqrt32(void);
 
 /* The code from address at until it jumps to ret (the caller's return;
    $FFFF for a program, which ends at its STOP). */
@@ -1731,4 +1735,296 @@ void abi_FxClearRam200Program(void)
 void abi_FxPopReturnC4A5(void)
 {
     unused_misc_run(0xC4A5, R[11]);
+}
+
+/* Bank 01 code nothing reaches around FxSqrt32 and the projection code
+   (01:8068-8095, 01:80E5-8185, 01:946D-9479, 01:9652-9657): the code from
+   address at until it jumps to ret. */
+static void unused80_run(uint16_t at, uint16_t ret)
+{
+    int t;
+    uint16_t nx;
+
+    (void)t;
+    (void)nx;
+    goto dispatch;
+l8068:
+    R[6] = 0x0000;
+    R[4] = 0x0000;
+    R[12] = 0x0008;
+    R[13] = 0x8072;
+l8072:
+    /* reached with the WITH R3 of 01:8071 or of the LOOP's delay slot */
+    R[3] = gsu_add(R[3], R[3], 0);
+    R[4] = gsu_rol(R[4]);
+    R[3] = gsu_add(R[3], R[3], 0);
+    R[4] = gsu_rol(R[4]);
+    R[6] = gsu_add(R[6], R[6], 0);
+    R[0] = gsu_add(R[6], R[6], 0);
+    gsu_sub(R[0], R[4], 0);   /* CMP */
+    t = gsu.cy;
+    if (t) goto l8085;
+    R[4] = gsu_sub(R[4], R[0], !gsu.cy);
+    R[6] = gsu_inc(R[6]);
+l8085:
+    t = gsu_count_down(&R[12]);
+    if (t) goto l8072;
+    nx = (uint16_t)(R[11]);
+    at = nx;
+    goto dispatch;
+l8089:
+    R[5] = 0xFFFF;
+    R[4] = 0x7FFF;
+    R[11] = 0x8094;
+    abi_FxSqrt32();
+l8094:
+    return;   /* the STOP: the program ends here */
+l80E5:
+    R[1] = 0x0100;
+    R[2] = 0x0100;
+    R[3] = 0x7D00;
+    R[11] = 0x80F3;
+    goto l80FE;
+l80F3:
+    return;   /* the STOP: the program ends here */
+l80F5:
+    R[1] = gsu_sub(R[4], R[1], 0);
+    R[2] = gsu_sub(R[5], R[2], 0);
+    R[3] = gsu_sub(R[6], R[3], 0);
+l80FE:
+    gsu_stw(R[10], R[11]);
+    R[10] = gsu_inc(R[10]);
+    R[10] = gsu_inc(R[10]);
+    R[6] = R[1];
+    { uint32_t p = gsu_lmult(R[1], R[6]); R[4] = (uint16_t)p; R[0] = (uint16_t)(p >> 16); }
+    R[5] = R[4];
+    R[6] = R[2];
+    { uint32_t p = gsu_lmult(R[2], R[6]); R[4] = (uint16_t)p; R[6] = (uint16_t)(p >> 16); }
+    R[5] = gsu_add(R[5], R[4], 0);
+    R[0] = gsu_add(R[0], R[6], gsu.cy);
+    R[6] = R[3];
+    { uint32_t p = gsu_lmult(R[3], R[6]); R[4] = (uint16_t)p; R[6] = (uint16_t)(p >> 16); }
+    R[5] = gsu_add(R[5], R[4], 0);
+    R[0] = gsu_add(R[0], R[6], gsu.cy);
+    R[0] = R[0];
+    gsu_moves(R[0]);
+    t = !gsu.z;
+    if (t) goto l8132;
+    R[5] = R[5];
+    gsu_moves(R[5]);
+    t = !gsu.z;
+    if (t) goto l8132;
+    R[1] = 0x0000;
+    R[2] = 0x0000;
+    R[3] = 0x0000;
+    R[10] = gsu_dec(R[10]);
+    R[10] = gsu_dec(R[10]);
+    nx = (uint16_t)(gsu_ldw(R[10]));
+    at = nx;
+    goto dispatch;
+l8132:
+    R[4] = R[0];
+    R[11] = 0x8139;
+    abi_FxSqrt32();
+l8139:
+    R[0] = R[6];
+    R[9] = 0x0000;
+l813D:
+    R[0] = gsu_lsr(R[0]);
+    t = gsu.z;
+    if (t) goto l8144;
+    t = 1;
+    R[9] = gsu_inc(R[9]);
+    if (t) goto l813D;
+l8144:
+    R[0] = gsu_sub(R[0], R[0], 0);
+    R[4] = 0x7FFF;
+    R[12] = R[9];
+    gsu_moves(R[9]);
+    t = gsu.z;
+    if (t) goto l8153;
+    R[13] = 0x814F;
+l814F:
+    R[4] = gsu_add(R[4], R[4], 0);
+    t = gsu_count_down(&R[12]);
+    R[0] = gsu_rol(R[0]);
+    if (t) goto l814F;
+l8153:
+    R[6] = R[6];
+    R[11] = 0x815A;
+    abi_FxDivide32By16Halving();
+l815A:
+    R[6] = R[4];
+    { uint32_t p = gsu_lmult(R[1], R[6]); R[4] = (uint16_t)p; R[7] = (uint16_t)(p >> 16); }
+    R[1] = R[4];
+    { uint32_t p = gsu_lmult(R[2], R[6]); R[4] = (uint16_t)p; R[8] = (uint16_t)(p >> 16); }
+    R[2] = R[4];
+    { uint32_t p = gsu_lmult(R[3], R[6]); R[4] = (uint16_t)p; R[0] = (uint16_t)(p >> 16); }
+    R[3] = R[4];
+    R[12] = R[9];
+    gsu_moves(R[9]);
+    t = gsu.z;
+    if (t) goto l8181;
+    R[13] = 0x8174;
+l8174:
+    R[7] = gsu_asr(R[7]);
+    R[1] = gsu_ror(R[1]);
+    R[8] = gsu_asr(R[8]);
+    R[2] = gsu_ror(R[2]);
+    R[0] = gsu_asr(R[0]);
+    R[3] = gsu_ror(R[3]);
+    t = gsu_count_down(&R[12]);
+    if (t) goto l8174;
+l8181:
+    R[10] = gsu_dec(R[10]);
+    R[10] = gsu_dec(R[10]);
+    nx = (uint16_t)(gsu_ldw(R[10]));
+    at = nx;
+    goto dispatch;
+l946D:
+    gsu_r14(gsu_dec(R[14]));
+    R[0] = gsu_getb();
+    gsu_r14(gsu_add(R[14], 7, 0));
+    R[1] = 0x07C6;
+    R[0] = gsu_add(R[0], R[1], 0);
+    R[0] = gsu_ldb(R[0]);
+    nx = (uint16_t)(R[11]);
+    R[0] = gsu_swap(R[0]);
+    at = nx;
+    goto dispatch;
+l9652:
+    R[0] = R[1];
+    R[1] = R[2];
+    R[2] = R[0];
+    abi_FxRatioClamp();   /* runs on into it */
+    return;
+dispatch:
+    if (at == ret)
+        return;
+    switch (at) {
+    case 0x8068: goto l8068;
+    case 0x8072: goto l8072;
+    case 0x8085: goto l8085;
+    case 0x8089: goto l8089;
+    case 0x8094: goto l8094;
+    case 0x80E5: goto l80E5;
+    case 0x80F3: goto l80F3;
+    case 0x80F5: goto l80F5;
+    case 0x80FE: goto l80FE;
+    case 0x8132: goto l8132;
+    case 0x8139: goto l8139;
+    case 0x813D: goto l813D;
+    case 0x8144: goto l8144;
+    case 0x814F: goto l814F;
+    case 0x8153: goto l8153;
+    case 0x815A: goto l815A;
+    case 0x8174: goto l8174;
+    case 0x8181: goto l8181;
+    case 0x946D: goto l946D;
+    case 0x9652: goto l9652;
+    }
+    return;   /* not an address the code jumps to */
+}
+
+/*
+ * @routine 01:8068 FxSqrt16
+ * WHAT IT DOES: The integer square root of R3: R6 = the root, R4 = the
+ * remainder. Nothing calls it; a direct start is its only way in.
+ * HOW: 8 passes, each shifting the next two bits of R3 into R4 and
+ * doubling R6; when R4 is above twice R6 (R0), R4 loses R0 plus 1 and R6
+ * gains 1 (CMP, BCS, SBC). As in FxSqrt32, the pass loop starts at the
+ * ADD R3 after the first WITH R3 ($8072), the LOOP's delay slot being the
+ * WITH R3 of the next pass.
+ * Entry: R3 = value; R11 = return address. Exit: R6 = root, R4 =
+ * remainder; R3 = 0; R0 = twice the root before its last bit; R12 = 0;
+ * R13 = $8072.
+ */
+void abi_FxSqrt16(void)
+{
+    unused80_run(0x8068, R[11]);
+}
+
+/*
+ * @routine 01:8089 FxSqrt32Test
+ * WHAT IT DOES: A program nothing starts: FxSqrt32 of $7FFF:FFFF, then
+ * STOP.
+ * HOW: IWT R5, IWT R4, LINK, IWT R15.
+ * Entry: the S-CPU starts it. Exit: (at its STOP) as FxSqrt32.
+ */
+void abi_FxSqrt32Test(void)
+{
+    unused80_run(0x8089, 0xFFFF);
+}
+
+/*
+ * @routine 01:80E5 FxVectorNormalizeTest
+ * WHAT IT DOES: A program nothing starts: the vector ($100, $100, $7D00)
+ * normalized (FxVectorNormalize), then STOP.
+ * HOW: IWT R1-R3, LINK, IWT R15.
+ * Entry: the S-CPU starts it; R10 = stack. Exit: (at its STOP) as
+ * FxVectorNormalize.
+ */
+void abi_FxVectorNormalizeTest(void)
+{
+    unused80_run(0x80E5, 0xFFFF);
+}
+
+/*
+ * @routine 01:80F5 FxVectorNormalizeDelta
+ * WHAT IT DOES: The vector from (R1, R2, R3) to (R4, R5, R6), normalized:
+ * (R1, R2, R3) = (R4 - R1, R5 - R2, R6 - R3), then FxVectorNormalize.
+ * Nothing calls it.
+ * HOW: Three FROM/TO SUBs, then on into FxVectorNormalize.
+ * Entry: R1-R6 as above; R10 = stack; R11 = return address. Exit: as
+ * FxVectorNormalize.
+ */
+void abi_FxVectorNormalizeDelta(void)
+{
+    unused80_run(0x80F5, R[11]);
+}
+
+/*
+ * @routine 01:80FE FxVectorNormalize
+ * WHAT IT DOES: Scales the vector (R1, R2, R3) to length $7FFF: its squared
+ * length (R0:R5, from three LMULTs) square-rooted by FxSqrt32, $7FFF << n
+ * divided by that root (FxDivide32By16Halving, n the root's bit count),
+ * each component multiplied by the quotient and shifted back right n
+ * times. The zero vector stays zero. Nothing calls it except its test and
+ * FxVectorNormalizeDelta.
+ * HOW: Pushes R11 on the R10 stack; the 32-bit shifts as ASR/ROR pairs in
+ * a LOOP; returns by pulling R15.
+ * Entry: R1, R2, R3 = vector; R10 = stack; R11 = return address. Exit:
+ * R1, R2, R3 = the scaled vector; R9 = n; the rest as the code leaves
+ * them.
+ */
+void abi_FxVectorNormalize(void)
+{
+    unused80_run(0x80FE, R[11]);
+}
+
+/*
+ * @routine 01:946D FxTable7C6Byte
+ * WHAT IT DOES: The byte of the RAM table at $07C6 that the ROM byte before
+ * R14 indexes, as the high byte of R0; R14 then 7 past that byte. Nothing
+ * calls it.
+ * HOW: DEC R14, GETB, ADD #7 to R14; LDB through R0; SWAP in the JMP R11's
+ * delay slot.
+ * Entry: R14 = ROM pointer; R11 = return address. Exit: R0 = the byte <<
+ * 8; R1 = $07C6; R14 as above.
+ */
+void abi_FxTable7C6Byte(void)
+{
+    unused80_run(0x946D, R[11]);
+}
+
+/*
+ * @routine 01:9652 FxRatioClampSwapped
+ * WHAT IT DOES: FxRatioClamp with R1 and R2 swapped first. Nothing calls
+ * it.
+ * HOW: Three MOVEs through R0, then on into FxRatioClamp.
+ * Entry: as FxRatioClamp, the pair swapped. Exit: as FxRatioClamp.
+ */
+void abi_FxRatioClampSwapped(void)
+{
+    unused80_run(0x9652, R[11]);
 }

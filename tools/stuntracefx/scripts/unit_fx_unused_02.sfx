@@ -1,0 +1,71 @@
+# unit_fx_unused_02: unit tests (fx) from the start of a Novice race for
+# Super FX code nothing calls or starts (R11 = the STOP at $01:80E3 or
+# $04:888C; an entry that returns by pulling R15 finds that STOP as the
+# word below R10; a program kept and followed by another start, so the NOP
+# after its STOP runs):
+# - 01:8068 (the root of R3) for $4000 and $0002;
+# - the programs 01:8089 (FxSqrt32 of $7FFF:FFFF) and 01:80E5 (the vector
+#   ($100, $100, $7D00) normalized);
+# - 01:80F5 on ($300, $200, $100) less ($100, $100, $100), and 01:80FE on
+#   the zero vector;
+# - 01:946D with R14 = $8001; 01:9652 on ($100, $80) with R3 = $40;
+# - the programs 04:8BAD and 04:8BEC with a free record and with the pool
+#   at $1098 empty, and 04:8BE2.
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:8068 stop=80E3 r3=4000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:8068 stop=80E3 r3=0002
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:8089 stop=80E3 r10=0246 keep
+wait 1
+fx 01:8068 stop=80E3 r3=4000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:80E5 stop=80E3 r10=0246 keep
+wait 1
+fx 01:8068 stop=80E3 r3=4000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700244 E3,80
+fx 01:80F5 stop=80E3 r10=0246 r1=0100 r2=0100 r3=0100 r4=0300 r5=0200 r6=0100
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700244 E3,80
+fx 01:80FE stop=80E3 r10=0246 r1=0000 r2=0000 r3=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 01:946D stop=80E3 r14=8001
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700244 E3,80
+fx 01:9652 stop=80E3 r10=0246 r1=0100 r2=0080 r3=0040
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 04:8BAD stop=888C keep
+wait 1
+fx 04:8923 stop=888C
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 701098 00,00,00,00
+fx 04:8BAD stop=888C keep
+wait 1
+fx 04:8923 stop=888C
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 04:8BE2 stop=888C keep
+wait 1
+fx 04:8923 stop=888C
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+fx 04:8BEC stop=888C r10=0240 keep
+wait 1
+fx 04:8923 stop=888C
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 701098 00,00,00,00
+fx 04:8BEC stop=888C r10=0240 keep
+wait 1
+fx 04:8923 stop=888C
+wait 1

@@ -3,6 +3,7 @@
 ; program, an object-new program, a matrix program and eight small
 ; routines (a turned push, a clamp, a record's aim, two scalings, a
 ; record step, a spare exit).
+; Also three programs making records from the second pool (04:8BAD-8C09).
 ; C: src/stuntracefx/object/fx_unused.c.
 
 incsrc "../include/macros.inc"
@@ -505,3 +506,89 @@ FxMatrixFromAnglesProgram04:
     stop
     nop
 
+
+arch superfx
+
+; @routine 04:8BAD FxRecordNewMarkedProgram
+; WHAT IT DOES: A program nothing starts: a new $2A-byte record from the
+; second pool (FxPoolTake, pool $1098), its address (or 0) to $238E; when
+; there is one, also to $239A, with bit 5 set in its flags (+$16) and its
+; mode (+$1A) $FFFF.
+; HOW: R10 = $0240; LINK, IWT R15; then STOP.
+; Entry: the S-CPU starts it. Exit: (at its STOP) as FxPoolTake leaves
+; them; R1 = the record or 0.
+%at($048BAD)
+FxRecordNewMarkedProgram:
+    iwt r10,#$0240
+    iwt r4,#$002A
+    iwt r3,#$1098
+    link #4
+    iwt r15,#FxPoolTake
+    nop
+    sm (!gsu_record_arg),r1
+    moves r1,r1
+    beq .l8BE0
+    nop
+    sm ($239A),r1
+    ibt r2,#$16
+    with r2
+    add r1
+    to r2
+    ldw (r2)
+    iwt r0,#$0020
+    to r2
+    or r2
+    ibt r0,#$16
+    add r1
+    from r2
+    stw (r0)
+    iwt r2,#$FFFF
+    ibt r0,#$1A
+    add r1
+    from r2
+    stw (r0)
+.l8BE0:
+    stop
+    nop
+
+; @routine 04:8BE2 FxRecordNoneProgram
+; WHAT IT DOES: A program nothing starts: $238E = 0.
+; HOW: R10 = $0240; SUB R0, SM; then STOP.
+; Entry: the S-CPU starts it. Exit: (at its STOP) R0 = 0; R10 = $0240.
+%at($048BE2)
+FxRecordNoneProgram:
+    iwt r10,#$0240
+    sub r0
+    sm (!gsu_record_arg),r0
+    stop
+    nop
+
+; @routine 04:8BEC FxRecordNewFlag1Program
+; WHAT IT DOES: A program nothing starts: a new $2A-byte record from the
+; second pool (FxPoolTake, pool $1098), its address (or 0) to $238E; when
+; there is one, its flags (+$16) = 1. It sets no stack: R10 is as the
+; S-CPU left it.
+; HOW: LINK, IWT R15; then STOP.
+; Entry: the S-CPU starts it; R10 = stack. Exit: (at its STOP) as
+; FxPoolTake leaves them; R1 = the record or 0.
+%at($048BEC)
+FxRecordNewFlag1Program:
+    iwt r4,#$002A
+    iwt r3,#$1098
+    link #4
+    iwt r15,#FxPoolTake
+    nop
+    sm (!gsu_record_arg),r1
+    moves r1,r1
+    beq .l8C08
+    nop
+    iwt r2,#$0001
+    ibt r0,#$16
+    add r1
+    from r2
+    stw (r0)
+.l8C08:
+    stop
+    nop
+
+arch 65816
