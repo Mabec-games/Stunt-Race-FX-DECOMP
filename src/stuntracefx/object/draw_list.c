@@ -120,13 +120,29 @@ static int drawn(uint16_t o)
  * Entry: D = $0000. Exit: A = 0; X = the trigger position; Y = the last
  * object looked at (0 after a bucket's end); P and the data bank unchanged.
  */
-void ObjectDrawListBuild(void)
+/* The objects of a bucket from o (o itself first unless `next`), each
+   drawn writing its record from r; then $3E = the next record and Y = 0. */
+static void draw_bucket(uint16_t o, uint16_t r, int next)
 {
-    uint16_t pos, a, o, r;
+    do {
+        if (!next) {
+            wr16(0x7E034C, o);
+            if (drawn(o))
+                r = draw_record(o, r);
+        }
+        next = 0;
+        o = rd16(OBJ(o, 0x3C));
+    } while (o);
+    cpu.y = 0;
+    wr16(DRAW_NEXT, r);
+}
 
-    wr16(DRAW_COUNT, 0x0000);
-    wr16(TRIGGER_POS, 0x0000);
-    wr16(DRAW_NEXT, DRAW_LIST);
+/* The triggers from $1F2B on, each bucket's objects drawn; A = 0 and X =
+   the trigger position at the end. */
+static void draw_triggers(void)
+{
+    uint16_t pos, a;
+
     for (;;) {
         pos = rd16(TRIGGER_POS);
         a = rd16(TRIGGER_LIST + pos);
@@ -141,17 +157,16 @@ void ObjectDrawListBuild(void)
         a = rd16(0x7F0000 + (a & 0x07FE));
         if (!a)
             continue;
-        o = a;
-        r = rd16(DRAW_NEXT);
-        do {
-            wr16(0x7E034C, o);
-            if (drawn(o))
-                r = draw_record(o, r);
-            o = rd16(OBJ(o, 0x3C));
-        } while (o);
-        cpu.y = 0;
-        wr16(DRAW_NEXT, r);
+        draw_bucket(a, rd16(DRAW_NEXT), 0);
     }
+}
+
+void ObjectDrawListBuild(void)
+{
+    wr16(DRAW_COUNT, 0x0000);
+    wr16(TRIGGER_POS, 0x0000);
+    wr16(DRAW_NEXT, DRAW_LIST);
+    draw_triggers();
 }
 
 void abi_ObjectDrawListBuild(void)
@@ -160,4 +175,35 @@ void abi_ObjectDrawListBuild(void)
 
     ObjectDrawListBuild();
     cpu.p = p;
+}
+
+/*
+ * @routine 7E:F0D3 ObjectDrawListClear08
+ * WHAT IT DOES: An arm after ObjectDrawListBuild's RTS that nothing
+ * reaches: clears bit 1 of object Y's +$08, then goes on with
+ * ObjectDrawListBuild's walk from the object after it in its bucket (+$3C)
+ * and the rest of the trigger list ($1F2B), X the next draw record. A
+ * direct call is its only way in.
+ * HOW: SEP #$20 for the AND #$FD, REP #$20, BRA into the bucket loop
+ * (7E:F0C0); ends with ObjectDrawListBuild's PLB, PLP, RTS.
+ * Entry: M 16-bit, X 16-bit, D = $0000, data bank $7E; Y = object; X = the
+ * next draw record; the caller's P and data bank pushed above the return
+ * (PHP, PHB). Exit: as ObjectDrawListBuild, P and the data bank those
+ * pushed.
+ */
+void abi_ObjectDrawListClear08(void)
+{
+    uint8_t db, p;
+
+    wr8(OBJ(cpu.y, 0x08), (uint8_t)(rd8(OBJ(cpu.y, 0x08)) & 0xFD));
+    draw_bucket(cpu.y, cpu.x, 1);
+    draw_triggers();
+    db = rd8((uint16_t)(cpu.s + 1));
+    p = rd8((uint16_t)(cpu.s + 2));
+    cpu.db = db;
+    cpu.p = p;
+    if (p & P_X) {
+        cpu.x &= 0x00FF;
+        cpu.y &= 0x00FF;
+    }
 }

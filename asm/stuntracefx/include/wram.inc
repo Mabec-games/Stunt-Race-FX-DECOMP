@@ -170,6 +170,10 @@ includeonce
 !slide_direction = $19FC
 !slide_out = $7F3468
 !slide_done = $7F3470
+; SlideOutWobble (nothing reaches it): $1A05 counts its calls, $1A04 the
+; step it adds to $7F:3468.
+!slide_wobble_count = $1A05
+!slide_wobble_step = $1A04
 
 ; Three values stepped toward their limits (video/window_anim.asm).
 !wram_3435 = $3435

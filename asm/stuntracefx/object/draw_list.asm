@@ -207,3 +207,24 @@ ObjectDrawListBuild:
     plb
     plp
     rts
+
+; @routine 7E:F0D3 ObjectDrawListClear08
+; WHAT IT DOES: An arm after ObjectDrawListBuild's RTS that nothing
+; reaches: clears bit 1 of object Y's +$08, then goes on with
+; ObjectDrawListBuild's walk from the object after it in its bucket (+$3C)
+; and the rest of the trigger list ($1F2B), X the next draw record. A
+; direct call is its only way in.
+; HOW: SEP #$20 for the AND #$FD, REP #$20, BRA into the bucket loop
+; (7E:F0C0); ends with ObjectDrawListBuild's PLB, PLP, RTS.
+; Entry: M 16-bit, X 16-bit, D = $0000, data bank $7E; Y = object; X = the
+; next draw record; the caller's P and data bank pushed above the return
+; (PHP, PHB). Exit: as ObjectDrawListBuild, P and the data bank those
+; pushed.
+%ramcode($7EF0D3, $014DFA)
+ObjectDrawListClear08:
+    sep.b #$20
+    lda.w !obj_08,y
+    and.b #$FD
+    sta.w !obj_08,y
+    rep.b #$20
+    bra ObjectDrawListBuild_next_object

@@ -21,6 +21,30 @@ DataBankTest:
     plb
     rtl
 
+; @routine 7E:D2BA DelayLoop13
+; WHAT IT DOES: Waits a short while: $13 turns of a NOP loop. Nothing
+; calls it (no JSL, pointer or table reaches it), so a direct call is its
+; only way in.
+; HOW: PHP, PHB; the data bank set to its own (PHK, PLB); SEP #$30, Y
+; counts $13 down; PLB, PLP.
+; Entry: any widths. Exit: P, A and the data bank unchanged; Y = 0; X's
+; high byte 0 (8-bit index on the way).
+%ramcode($7ED2BA, $012FE1)
+DelayLoop13:
+    php
+    phb
+    phk
+    plb
+    sep.b #$30
+    ldy.b #$13
+.loop:
+    nop
+    dey
+    bne .loop
+    plb
+    plp
+    rtl
+
 ; @routine 7E:F217 KeepRegisters
 ; WHAT IT DOES: Nothing: it saves P, changes the widths and restores P.
 ; HOW: PHP, SEP #$20, REP #$30, PLP.

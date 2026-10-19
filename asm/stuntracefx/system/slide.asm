@@ -65,3 +65,47 @@ SlideStep:
     plb
     plp
     rtl
+
+; @routine 7E:E190 SlideOutWobble
+; WHAT IT DOES: Once the sliding value's high byte ($19F7) is $0F, every
+; second call moves the published byte $7F:3468 by $1A04 and turns $1A04
+; round when that byte reaches $0F or $0B: a wobble between the two.
+; Nothing reaches it (no JSL, jump or table; it follows DataBankTest's
+; RTL), so a direct call is its only way in.
+; HOW: SEP #$20; $1A05 counts calls to 2 and is cleared; CLC, ADC; EOR #$FF
+; and INC to negate. Ends PLB, RTL: the data bank its caller pushed is
+; pulled.
+; Entry: the caller's data bank pushed above the return (PHB); data bank
+; with $19F7, $1A04, $1A05. Exit: A low byte = the last value read or
+; made; M 8-bit; data bank pulled, N, Z from it; C, V from the last compare
+; or add.
+%ramcode($7EE190, $013EB7)
+SlideOutWobble:
+    sep.b #$20
+    lda.w !slide_value+1
+    cmp.b #$0F
+    bne .done
+    lda.w !slide_wobble_count
+    clc
+    adc.b #$01
+    sta.w !slide_wobble_count
+    cmp.b #$02
+    bne .done
+    stz.w !slide_wobble_count
+    lda.l !slide_out
+    clc
+    adc.w !slide_wobble_step
+    sta.l !slide_out
+    cmp.b #$0F
+    beq .turn
+    cmp.b #$0B
+    beq .turn
+    jmp.w .done
+.turn:
+    lda.w !slide_wobble_step
+    eor.b #$FF
+    inc a
+    sta.w !slide_wobble_step
+.done:
+    plb
+    rtl

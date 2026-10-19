@@ -22,6 +22,22 @@ void abi_DataBankTest(void)
 }
 
 /*
+ * @routine 7E:D2BA DelayLoop13
+ * WHAT IT DOES: Waits a short while: $13 turns of a NOP loop. Nothing
+ * calls it (no JSL, pointer or table reaches it), so a direct call is its
+ * only way in.
+ * HOW: PHP, PHB; the data bank set to its own (PHK, PLB); SEP #$30, Y
+ * counts $13 down; PLB, PLP.
+ * Entry: any widths. Exit: P, A and the data bank unchanged; Y = 0; X's
+ * high byte 0 (8-bit index on the way).
+ */
+void abi_DelayLoop13(void)
+{
+    cpu.x &= 0x00FF;
+    cpu.y = 0;
+}
+
+/*
  * @routine 7E:F217 KeepRegisters
  * @alias 02:CF3E
  * WHAT IT DOES: Nothing: it saves P, changes the widths and restores P.

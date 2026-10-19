@@ -3,6 +3,7 @@
  * of $0DA5 is set; its high byte is copied to $7F:3468.
  */
 #include "machine.h"
+#include "cpu_ops.h"
 
 /*
  * @routine 7E:E0E8 SlideStep
@@ -52,4 +53,52 @@ void SlideStep(void)
 void abi_SlideStep(void)
 {
     cpu.a = slide_step(cpu.a);
+}
+
+/*
+ * @routine 7E:E190 SlideOutWobble
+ * WHAT IT DOES: Once the sliding value's high byte ($19F7) is $0F, every
+ * second call moves the published byte $7F:3468 by $1A04 and turns $1A04
+ * round when that byte reaches $0F or $0B: a wobble between the two.
+ * Nothing reaches it (no JSL, jump or table; it follows DataBankTest's
+ * RTL), so a direct call is its only way in.
+ * HOW: SEP #$20; $1A05 counts calls to 2 and is cleared; CLC, ADC; EOR #$FF
+ * and INC to negate. Ends PLB, RTL: the data bank its caller pushed is
+ * pulled.
+ * Entry: the caller's data bank pushed above the return (PHB); data bank
+ * with $19F7, $1A04, $1A05. Exit: A low byte = the last value read or
+ * made; M 8-bit; data bank pulled, N, Z from it; C, V from the last compare
+ * or add.
+ */
+void abi_SlideOutWobble(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t a, m;
+
+    cpu.p |= P_M;
+    a = rd8(b | 0x19F7);
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(a - 0x0F)) & ~P_C) | (a >= 0x0F ? P_C : 0));
+    if (a == 0x0F) {
+        cpu.p &= (uint8_t)~P_C;
+        a = op_adc8(rd8(b | 0x1A05), 0x01, &cpu.p);
+        wr8(b | 0x1A05, a);
+        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(a - 0x02)) & ~P_C) | (a >= 0x02 ? P_C : 0));
+        if (a == 0x02) {
+            wr8(b | 0x1A05, 0x00);
+            a = rd8(0x7F3468);
+            cpu.p &= (uint8_t)~P_C;
+            a = op_adc8(a, rd8(b | 0x1A04), &cpu.p);
+            wr8(0x7F3468, a);
+            m = a == 0x0F ? 0x0F : 0x0B;
+            cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(a - m)) & ~P_C) | (a >= m ? P_C : 0));
+            if (a == 0x0F || a == 0x0B) {
+                a = (uint8_t)((rd8(b | 0x1A04) ^ 0xFF) + 1);
+                cpu.p = nz8(cpu.p, a);
+                wr8(b | 0x1A04, a);
+            }
+        }
+    }
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
+    cpu.db = rd8((uint16_t)(cpu.s + 1));
+    cpu.p = nz8(cpu.p, cpu.db);
 }

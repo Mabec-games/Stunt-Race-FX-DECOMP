@@ -1,0 +1,46 @@
+# unit_dead_7e: unit tests (call) for the work RAM code nothing reaches,
+# each called directly (its only way in) from a Novice race:
+# - DelayLoop13 (7E:D2BA) with 16-bit X and Y;
+# - SlideOutWobble (7E:E190), the data bank pushed above the return (phb):
+#   with $19F7 not $0F; at $0F on the first of two calls ($1A05 = 0);
+#   on the second with $7F:3468 + $1A04 reaching $0F and $0B (turned
+#   round) and $0D (not);
+# - ObjectDrawListClear08 (7E:F0D3), P and the data bank pushed above the
+#   return (frame=), with an empty trigger list from $1F2B: object 1
+#   alone in its bucket, then followed by object $63.
+load build/stuntracefx/states/novice_coupe_race1.state
+call 7E:D2BA long x=1234 y=5678 p=00 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E19F7 0E
+call 7E:E190 long phb p=00 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E19F7 0F
+set 7E1A04 01,00
+call 7E:E190 long phb p=00 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E19F7 0F
+set 7E1A04 01,01
+set 7F3468 0E
+call 7E:E190 long phb p=00 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E19F7 0F
+set 7E1A04 01,01
+set 7F3468 0A
+call 7E:E190 long phb p=00 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E19F7 0F
+set 7E1A04 01,01
+set 7F3468 0C
+call 7E:E190 long phb p=00 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1F2B 00,00
+set 7E1AF5 00,00
+set 7E203D 00,00
+call 7E:F0D3 frame=307E x=F77F y=0001 p=00 db=7E d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1F2B 00,00
+set 7E1AF5 00,00
+set 7E203D 63,00
+set 7E209F 00,00
+call 7E:F0D3 frame=307E x=F77F y=0001 p=00 db=7E d=0000
+wait 2
