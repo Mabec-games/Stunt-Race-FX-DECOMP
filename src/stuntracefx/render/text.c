@@ -134,6 +134,7 @@ void abi_FxTextDraw(void)
     gsu_moves(gsu.r[8]);
     if (gsu.z)
         { 
+        
         gsu_code(0x01d331, 8); gsu_code(0x01d4dd, 1);
         goto end; } else { gsu_code(0x01d331, 4); gsu_code(0x01d339, 1); }
     gsu.r[4] = gsu.r[7];
@@ -156,6 +157,7 @@ void abi_FxTextDraw(void)
             break; } else { gsu_code(0x01d346, 4); gsu_code(0x01d34e, 1); }
         if (gsu.s) {
             
+            
             gsu_code(0x01d34f, 2); gsu_code(0x01d355, 2);
             gsu_r14(gsu_inc(gsu.r[14]));
             cmp_code(0xFF, GSU_COPY(0));
@@ -171,6 +173,7 @@ void abi_FxTextDraw(void)
                 gsu.r[4] = gsu.r[7];
                 gsu.r[8] = gsu.r[14];
                 
+                
                 gsu_code(0x01d364, 6); gsu_code(0x01d33b, 1);
                 continue;
             } else { gsu_code(0x01d357, 6); gsu_code(0x01d36a, 1); }
@@ -183,6 +186,7 @@ void abi_FxTextDraw(void)
                 gsu.r[0] = gsu_add(gsu.r[0], gsu.r[0], 0);
                 gsu.r[9] = FX_TEXT_PALETTES;
                 gsu.r[9] = gsu_add(gsu.r[0], gsu.r[9], 0);  /* BRA's delay slot */
+                
                 
                 gsu_code(0x01d373, 9); gsu_code(0x01d33b, 1);
                 continue;
@@ -197,10 +201,12 @@ void abi_FxTextDraw(void)
                     gsu.r[6] = 0x0020;
                     gsu.r[5] = 0;
                     
+                    
                     gsu_code(0x01d385, 5); gsu_code(0x01d393, 9); gsu_code(0x01d33b, 1);
                 } else {
                     gsu.r[6] = 0x0010;
                     gsu.r[5] = 1;
+                    
                     
                     gsu_code(0x01d385, 14); gsu_code(0x01d33b, 1);
                 }
@@ -215,6 +221,7 @@ void abi_FxTextDraw(void)
                     { gsu.r[0] = 0x0008; gsu_code(0x01d39d, 18); } else { gsu_code(0x01d39d, 14); gsu_code(0x01d3ae, 1); }
                 gsu.r[4] = gsu_add(gsu.r[4], gsu.r[0], 0);
                 
+                
                 gsu_code(0x01d3af, 5); gsu_code(0x01d33b, 1);
                 continue;
             } else { gsu_code(0x01d39d, 6); gsu_code(0x01d3b4, 1); }
@@ -224,6 +231,7 @@ void abi_FxTextDraw(void)
                 gsu.r[0] = gsu_div2(gsu.r[6]);
                 gsu.r[2] = gsu_add(gsu.r[2], gsu.r[0], 0);
                 
+                
                 gsu_code(0x01d3b5, 18); gsu_code(0x01d33b, 1);
                 continue;
             } else { gsu_code(0x01d3b5, 6); gsu_code(0x01d3c7, 1); }
@@ -231,6 +239,7 @@ void abi_FxTextDraw(void)
             if (gsu.z) {
                 gsu_code(0x01d3c8, 7);
                 picture(0x3700, abi_FxDrawBitmap120x32, 0xD3DF, GSU_COPY(0));
+                
                 
                 gsu_code(0x01d3df, 4); gsu_code(0x01d33b, 1);
                 continue;
@@ -240,6 +249,7 @@ void abi_FxTextDraw(void)
                 gsu_code(0x01d3e4, 7);
                 picture(0x3B00, abi_FxDrawBitmap120x16, 0xD3FB, GSU_COPY(1));
                 
+                
                 gsu_code(0x01d3fb, 4); gsu_code(0x01d33b, 1);
                 continue;
             } else { gsu_code(0x01d3e4, 6); gsu_code(0x01d3ff, 1); }
@@ -247,6 +257,7 @@ void abi_FxTextDraw(void)
             if (gsu.z) {
                 gsu_code(0x01d400, 7);
                 picture(0x1810, abi_FxDrawBitmap64x16, 0xD417, GSU_COPY(2));
+                
                 
                 gsu_code(0x01d417, 4); gsu_code(0x01d33b, 1);
                 continue;
@@ -256,6 +267,7 @@ void abi_FxTextDraw(void)
                 gsu_code(0x01d41c, 7);
                 picture(0x3700, abi_FxDrawBitmap120x24, 0xD433, GSU_COPY(3));
                 
+                
                 gsu_code(0x01d433, 4); gsu_code(0x01d33b, 1);
                 continue;
             } else { gsu_code(0x01d41c, 6); gsu_code(0x01d437, 1); }
@@ -264,6 +276,7 @@ void abi_FxTextDraw(void)
                 gsu_code(0x01d438, 7);
                 picture(0x3A00, abi_FxDrawBitmap120x24, 0xD44F, GSU_COPY(4));
                 
+                
                 gsu_code(0x01d44f, 4); gsu_code(0x01d33b, 1);
                 continue;
             } else { gsu_code(0x01d438, 6); gsu_code(0x01d453, 1); }
@@ -271,6 +284,7 @@ void abi_FxTextDraw(void)
             if (gsu.z) {
                 gsu_code(0x01d454, 7);
                 picture(0x3D1C, abi_FxDrawBitmap16x24, 0xD46B, GSU_COPY(5));
+                
                 
                 gsu_code(0x01d46b, 4); gsu_code(0x01d33b, 1);
                 continue;
@@ -281,6 +295,7 @@ void abi_FxTextDraw(void)
             gsu.r[4] = gsu.r[7];
             gsu.r[2] = gsu_add(gsu.r[2], gsu.r[6], 0);
             
+            
             gsu_code(0x01d470, 14); gsu_code(0x01d33b, 1);
             continue;
         } else { gsu_code(0x01d470, 6); gsu_code(0x01d47e, 1); }
@@ -289,15 +304,18 @@ void abi_FxTextDraw(void)
         if (!gsu.s) {
             gsu.r[3] = 0x0001;
             
+            
             gsu_code(0x01d47f, 5); gsu_code(0x01d488, 6);
             gsu_romb(gsu.r[3]);
             gsu.r[0] = gsu_add(gsu.r[0], gsu.r[0], 0);
             gsu_moves(gsu.r[5]);
             if (gsu.z)
-                { { gsu_code(0x01d48e, 6);
+                { { 
+                gsu_code(0x01d48e, 6);
                 glyph(FX_GLYPHS_BIG, abi_FxDrawBitmap16x32, 0xD4AC, GSU_COPY(0)); } gsu_code(0x01d4ac, 5); gsu_code(0x01d4cc, 1); }
             else
-                { { gsu_code(0x01d48e, 5); gsu_code(0x01d4b1, 1);
+                { { 
+                gsu_code(0x01d48e, 5); gsu_code(0x01d4b1, 1);
                 glyph(FX_GLYPHS_SMALL, abi_FxDrawBitmap8x16, 0xD4CA, GSU_COPY(1)); } gsu_code(0x01d4ca, 3); }
         } else { gsu_code(0x01d47f, 9); gsu_code(0x01d4cc, 1); }
         
@@ -307,8 +325,10 @@ void abi_FxTextDraw(void)
             { gsu.r[0] = 0x0014; gsu_code(0x01d4cd, 11); } else { gsu_code(0x01d4cd, 7); gsu_code(0x01d4d7, 1); }
         gsu.r[4] = gsu_add(gsu.r[4], gsu.r[0], 0);
         
+        
         gsu_code(0x01d4d8, 5); gsu_code(0x01d33b, 1);
     }
+
 
 gsu_code(0x01d34a, 4); gsu_code(0x01d4dd, 1);
 end:
@@ -332,6 +352,7 @@ void abi_FxTextProgram(void)
     
     gsu.r[10] = 0x0240;
     gsu.r[11] = 0xD30F;
+    
     
     gsu_code(0x01d308, 7); gsu_code(0x01d311, 1);
     abi_FxTextDraw();
@@ -363,6 +384,7 @@ void abi_FxTextNotice(void)
     gsu.r[0] = gsu_and(gsu.r[0], gsu.r[1]);
     if (gsu.z)
         { 
+        
         gsu_code(0x01d138, 10); gsu_code(0x01d1c6, 1);
         goto done; } else { gsu_code(0x01d138, 6); gsu_code(0x01d142, 1); }
     gsu_code(0x01d143, 4);
@@ -370,6 +392,7 @@ void abi_FxTextNotice(void)
     gsu_moves(gsu.r[0]);
     if (gsu.z)
         { 
+        
         gsu_code(0x01d147, 8); gsu_code(0x01d1c6, 1);
         goto done; } else { gsu_code(0x01d147, 4); gsu_code(0x01d14f, 1); }
     gsu_code(0x01d150, 4);
@@ -377,6 +400,7 @@ void abi_FxTextNotice(void)
     gsu_sub(gsu.r[0], gsu.r[1], 0);     /* CMP */
     if (gsu.z)
         { 
+        
         gsu_code(0x01d154, 8); gsu_code(0x01d1c6, 1);
         goto done; } else { gsu_code(0x01d154, 4); gsu_code(0x01d15c, 1); }
     gsu_code(0x01d15d, 4);
@@ -384,6 +408,7 @@ void abi_FxTextNotice(void)
     gsu_sub(gsu.r[0], gsu.r[1], 0);
     if (gsu.z)
         { 
+        
         gsu_code(0x01d161, 8); gsu_code(0x01d1c6, 1);
         goto done; } else { gsu_code(0x01d161, 4); gsu_code(0x01d169, 1); }
     gsu.r[2] = gsu.r[0];
@@ -392,6 +417,7 @@ void abi_FxTextNotice(void)
     gsu_moves(gsu.r[0]);
     if (gsu.s)
         { 
+        
         gsu_code(0x01d170, 8); gsu_code(0x01d1c6, 1);
         goto done; } else { gsu_code(0x01d170, 4); gsu_code(0x01d178, 1); }
     gsu_code(0x01d179, 4);
@@ -439,6 +465,7 @@ void abi_FxTextNotice(void)
     gsu_code(0x01d1b9, 4);
     gsu_stw(FX_TEXT_AT, gsu.r[0]);
     gsu.r[11] = 0xD1C1;
+    
     
     gsu_code(0x01d1bd, 4); gsu_code(0x01d311, 1);
     (abi_FxTextDraw());

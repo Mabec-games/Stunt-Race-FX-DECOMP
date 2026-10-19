@@ -100,7 +100,7 @@ void FxPointsGather(uint16_t count, FxPointsLeft *left)
 void abi_FxPointsGather(void)
 {
     uint16_t count = gsu.r[9];
-    uint32_t n = count ? (gsu_code(0x01c1bf, 1), (count)) : (gsu_code(0x01c1bf, 1), (0x10000u));
+    uint32_t n = count ? (gsu_code(0x01c1bf, 1), ((count))) : (gsu_code(0x01c1bf, 1), ((0x10000u)));
     FxPointsLeft left;
 
     FxPointsGather(count, &left);

@@ -1948,7 +1948,7 @@ class Emit:
             for name, args in items:              # the first stated innermost: it runs first
                 x = '%s_loop(%s, %s)' % (name, args, x)
             return x
-        for name, args in reversed(items):
+        for name, args in items:                  # the first stated innermost: it runs first
             x = '%s_then(%s, %s)' % (name, args, x)
         return x
 
@@ -2144,6 +2144,15 @@ class Emit:
         kind, o = key[0], key[1]
         text = fn.text
         node = fn.nodes.get(key[:2])
+        if kind == 'ev' and node.get('kind') == 'CallExpr' and self.timed_arg(fn, node) is not None:
+            # an access whose arguments run code of their own: its code
+            # stated once they have (around the last of them)
+            a = self.timed_arg(fn, node)
+            b, e = span(a)
+            pre, post = self.code(how, row, 'then', '\0').split('\0')
+            self.edit(fn, b, b, pre)
+            self.edit(fn, e, e, post)
+            return
         if kind in ('ev', 'call', 'icall'):
             stmt = self.stmt_of(fn, par, node)
             first = any(v == key for (f, so, _), v in self.w.first.items() if f == fn.name and so == span(stmt)[0])
@@ -2214,6 +2223,23 @@ class Emit:
             self.edit(fn, e, e, ')')
         else:
             raise Fail('%s: a site %s' % (fn.name, kind))
+
+    def timed_arg(self, fn, call):
+        """The last argument of a call that runs timed code itself (an
+        access, or a function the walk gave code)."""
+        last = None
+        for a in kids(call)[1:]:
+            stack = [a]
+            while stack:
+                x = stack.pop()
+                if x.get('kind') == 'CallExpr':
+                    name = callee(x)
+                    f = resolve(self.fns, name, fn.path) if name else None
+                    if name in C_EV or (f is not None and (f.keys or f.sites)):
+                        last = a
+                        break
+                stack += kids(x)
+        return last
 
     def inside(self, n, o):
         b, e = span(n)

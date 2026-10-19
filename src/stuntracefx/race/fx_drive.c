@@ -93,6 +93,7 @@ FxRegs FxDriveDecide(FxRegs g, int copy)
     gsu_push(sp, g.r[4]);
     g.r[11] = 0xC7F5;
     
+    
     gsu_code(0x04c7ef, 6); gsu_code(0x04cbe8, 1);
     g = FxBearingTo(g, GSU_COPY(0));
     g.r[1] = g.r[0];
@@ -119,13 +120,14 @@ FxRegs FxDriveDecide(FxRegs g, int copy)
     gsu_sub(g.r[0], g.r[3], 0);
     if (!gsu.s) {
         
+        
         gsu_code(0x04c821, 6); gsu_code(0x04c840, 1);
         bits_or(&g, 0x0040, GSU_COPY(0));
         gsu_code(0x04c841, 5);
     } else {
         g.r[2] = 0x0227;
         gsu_sub(g.r[4], g.r[2], 0);
-        bits_or(&g, gsu.s ? (gsu_code(0x04c821, 15), gsu_code(0x04c838, 8), gsu_code(0x04c845, 1), (gsu_code(0x04c845, 1), (0x0010))) : (gsu_code(0x04c821, 23), gsu_code(0x04c845, 1), ((0x0400))), GSU_COPY(1));
+        bits_or(&g, gsu.s ? (gsu_code(0x04c821, 15), gsu_code(0x04c838, 8), gsu_code(0x04c845, 1), (gsu_code(0x04c845, 1), ((0x0010)))) : (gsu_code(0x04c821, 23), gsu_code(0x04c845, 1), (((0x0400)))), GSU_COPY(1));
     }
     gsu_code(0x04c846, 6);
     g.r[2] = gsu_ldw(gsu_add(CAR_STEER_BIAS, g.r[8], 0));
@@ -145,7 +147,8 @@ FxRegs FxDriveDecide(FxRegs g, int copy)
             g.r[1] = 0x4000;
             g.r[0] = gsu_and(g.r[0], g.r[1]);
             if (!gsu.z)
-                { { gsu_code(0x04c870, 7);
+                { { 
+                gsu_code(0x04c870, 7);
                 bits_or(&g, 0x0008, GSU_COPY(3)); } gsu_code(0x04c877, 7); gsu_code(0x04c8ab, 1); } else { gsu_code(0x04c870, 6); gsu_code(0x04c8ab, 1); }
         } else { gsu_code(0x04c84c, 13); gsu_code(0x04c8ab, 1); }
     } else {
@@ -156,6 +159,7 @@ FxRegs FxDriveDecide(FxRegs g, int copy)
             gsu_sub(g.r[0], g.r[1], 0);
             if (!gsu.s)
                 { 
+                
                 gsu_code(0x04c84c, 5); gsu_code(0x04c87e, 17);
                 bits_and(&g, 0xFFEF, GSU_COPY(1)); gsu_code(0x04c88f, 5); } else { gsu_code(0x04c84c, 5); gsu_code(0x04c87e, 16); gsu_code(0x04c893, 1); }
             bits_or(&g, 0x0001, GSU_COPY(4));
@@ -163,7 +167,8 @@ FxRegs FxDriveDecide(FxRegs g, int copy)
             g.r[1] = 0x4000;
             g.r[0] = gsu_and(g.r[0], g.r[1]);
             if (!gsu.z)
-                { { gsu_code(0x04c89d, 7);
+                { { 
+                gsu_code(0x04c89d, 7);
                 bits_or(&g, 0x0004, GSU_COPY(5)); } gsu_code(0x04c8a4, 8); } else { gsu_code(0x04c89d, 6); gsu_code(0x04c8ab, 1); }
         } else { gsu_code(0x04c84c, 5); gsu_code(0x04c87e, 8); gsu_code(0x04c8ab, 1); }
     }
@@ -194,7 +199,8 @@ FxRegs FxDriveDecide(FxRegs g, int copy)
         g.r[1] = 0x0014;
         gsu_sub(g.r[0], g.r[1], 0);
         if (gsu.s)
-            { gsu_code(0x04c8d0, 12); gsu_code(0x04c8fc, 1);
+            { 
+            gsu_code(0x04c8d0, 12); gsu_code(0x04c8fc, 1);
             goto not_counting; } else { gsu_code(0x04c8d0, 12); }
         g.r[0] = 0xFFD8;                         /* -40: start the turn */
         gsu_code(0x04c8dc, 4);
@@ -211,6 +217,7 @@ FxRegs FxDriveDecide(FxRegs g, int copy)
         g.r[0] = 0x0003;
         g.r[9] = gsu_xor(g.r[0], g.r[9]);
         
+        
         gsu_code(0x04c8ea, 18); gsu_code(0x04c91b, 1);
     } else { gsu_code(0x04c8e2, 7); gsu_code(0x04c91b, 1); }
     goto counted;
@@ -224,10 +231,12 @@ not_counting:
         gsu_code(0x04c90d, 2);
         gsu_sbk(g.r[0]);
         
+        
         gsu_code(0x04c90f, 2); gsu_code(0x04c91b, 1);
     } else {
         int zero;
 
+        
         
         gsu_code(0x04c901, 7); gsu_code(0x04c911, 1);
         g.r[0] = car_field(&g, CAR_STUCK, GSU_COPY(12));
@@ -274,7 +283,7 @@ static uint16_t magnitude(uint16_t v)
 {
     
     gsu_moves(v);
-    return gsu.s ? (gsu_code(0x04ba22, 7), (gsu_inc(gsu_not(v)))) : (gsu_code(0x04ba22, 4), gsu_code(0x04ba28, 1), (v));
+    return gsu.s ? (gsu_code(0x04ba22, 7), ((gsu_inc(gsu_not(v))))) : (gsu_code(0x04ba22, 4), gsu_code(0x04ba28, 1), ((v)));
 }
 
 /*
@@ -325,6 +334,7 @@ FxRegs FxSteerFromInput(FxRegs g, int copy)
         gsu_moves(g.r[7]);
         if (!gsu.z)
             { 
+            
             gsu_code(0x04ba3c, 20); gsu_code(0x04bb14, 3);
             return g; } else { gsu_code(0x04ba3c, 16); gsu_code(0x04ba50, 1); }
         gsu_code(0x04ba51, 4);
@@ -332,20 +342,25 @@ FxRegs FxSteerFromInput(FxRegs g, int copy)
         gsu_moves(g.r[3]);
         if (gsu.z)
             { 
+            
             gsu_code(0x04ba55, 8); gsu_code(0x04bb14, 3);
             return g; } else { gsu_code(0x04ba55, 4); gsu_code(0x04ba5d, 1); }
         if (gsu.s) {
             g.r[3] = gsu_add(g.r[3], g.r[1], 0);
             if (gsu.s)
-                { gsu_code(0x04ba5e, 11); gsu_code(0x04bb14, 3);
+                { 
+                gsu_code(0x04ba5e, 11); gsu_code(0x04bb14, 3);
                 return g; } else { gsu_code(0x04ba5e, 7); gsu_code(0x04ba69, 1); }
+            
             
             gsu_code(0x04ba6a, 5); gsu_code(0x04bb14, 1);
         } else {
             g.r[3] = gsu_sub(g.r[3], g.r[1], 0);
             if (!gsu.s)
-                { gsu_code(0x04ba5e, 2); gsu_code(0x04ba6f, 9); gsu_code(0x04bb14, 3);
+                { 
+                gsu_code(0x04ba5e, 2); gsu_code(0x04ba6f, 9); gsu_code(0x04bb14, 3);
                 return g; } else { gsu_code(0x04ba5e, 2); gsu_code(0x04ba6f, 5); gsu_code(0x04ba78, 1); }
+            
             
             gsu_code(0x04ba79, 5); gsu_code(0x04bb14, 1);
         }
@@ -371,9 +386,11 @@ FxRegs FxSteerFromInput(FxRegs g, int copy)
                 g.r[0] = 0x0080;
                 g.r[3] = gsu_add(g.r[3], g.r[0], 0);
                 
+                
                 gsu_code(0x04ba9f, 11); gsu_code(0x04bacf, 1);
             } else {
                 g.r[3] = gsu_add(g.r[3], g.r[5], 0);
+                
                 
                 gsu_code(0x04ba9f, 4); gsu_code(0x04baaa, 4); gsu_code(0x04bacf, 1);
             }
@@ -391,9 +408,11 @@ FxRegs FxSteerFromInput(FxRegs g, int copy)
                     g.r[0] = 0x0080;
                     g.r[3] = gsu_sub(g.r[3], g.r[0], 0);
                     
+                    
                     gsu_code(0x04bac2, 11); gsu_code(0x04bacf, 1);
                 } else {
                     g.r[3] = gsu_add(g.r[3], g.r[4], 0);
+                    
                     
                     gsu_code(0x04bac2, 4); gsu_code(0x04bacd, 3);
                 }

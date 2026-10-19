@@ -274,21 +274,25 @@ void FxProjectScaled(int copy)
     for (;;) {
         gsu.r[0] = gsu_sub(0x4400, gsu.r[3], 0);
         if (!gsu.s)
-            { gsu_code(0x01b2a9, 6); gsu_code(0x01b2b9, 1); break; } else { gsu_code(0x01b2a9, 6); }
+            { gsu_code(0x01b2a9, 6); gsu_code(0x01b2b9, 1);
+            break; } else { gsu_code(0x01b2a9, 6); }
         gsu.r[1] = gsu_asr(gsu.r[1]);
         gsu.r[2] = gsu_asr(gsu.r[2]);
         gsu.r[5] = gsu_asr(gsu.r[5]);
         gsu.r[3] = gsu_asr(gsu.r[3]);       /* BRA's delay slot */
+        
         gsu_code(0x01b2af, 10); gsu_code(0x01b2a8, 1);
     }
     for (;;) {
         gsu.r[0] = gsu_sub(0x0100, gsu.r[3], 0);
         if (gsu.s)
-            { gsu_code(0x01b2ba, 6); gsu_code(0x01b2ca, 1); break; } else { gsu_code(0x01b2ba, 6); }
+            { gsu_code(0x01b2ba, 6); gsu_code(0x01b2ca, 1);
+            break; } else { gsu_code(0x01b2ba, 6); }
         gsu.r[5] = gsu_add(gsu.r[5], gsu.r[5], 0);
         gsu.r[1] = gsu_add(gsu.r[1], gsu.r[1], 0);
         gsu.r[2] = gsu_add(gsu.r[2], gsu.r[2], 0);
         gsu.r[3] = gsu_add(gsu.r[3], gsu.r[3], 0);  /* BRA's delay slot */
+        
         gsu_code(0x01b2c0, 10); gsu_code(0x01b2b9, 1);
     }
     gsu.r[3] = gsu_bic(gsu.r[3], 0x0001);
@@ -357,16 +361,19 @@ void abi_FxProjectVertex(void)
     for (;;) {
         gsu.r[0] = gsu_sub(0x4400, gsu.r[6], 0);
         if (!gsu.s)
-            { gsu_code(0x018c00, 6); gsu_code(0x018c0e, 1);
+            { 
+            gsu_code(0x018c00, 6); gsu_code(0x018c0e, 1);
             break; } else { gsu_code(0x018c00, 6); }
         gsu.r[1] = gsu_asr(gsu.r[1]);
         gsu.r[2] = gsu_asr(gsu.r[2]);
         gsu.r[6] = gsu_asr(gsu.r[6]);       /* BRA's delay slot */
         
+        
         gsu_code(0x018c06, 8); gsu_code(0x018bff, 1);
     }
     gsu.r[0] = gsu_sub(0x0100, gsu.r[6], 0);
     if (!gsu.s) {
+        
         
         gsu_code(0x018c0f, 6); gsu_code(0x018c5c, 3);
         gsu_r14(gsu.r[12]);
@@ -374,6 +381,7 @@ void abi_FxProjectVertex(void)
         gsu_code(0x018c5f, 4);
         gsu_push(&gsu.r[10], gsu.r[11]);
         gsu.r[11] = 0x8C69;
+        
         
         gsu_code(0x018c63, 6); gsu_code(0x01947a, 1);
         abi_FxProjectPoint();
@@ -418,6 +426,7 @@ void abi_FxProjectVertex(void)
         gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[5], 0);
         if (gsu.s)
             { 
+            
             gsu_code(0x018c3e, 3); gsu_code(0x018c46, 1);
             goto y_axis; } else { gsu_code(0x018c3e, 3); }
         gsu.r[6] = gsu_inc(gsu.r[6]);
@@ -436,6 +445,7 @@ y_axis:
         gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[5], 0);
         if (gsu.s)
             { 
+            
             gsu_code(0x018c4f, 3); gsu_code(0x018c54, 1);
             goto code; } else { gsu_code(0x018c4f, 3); }
         gsu.r[6] = gsu_inc(gsu.r[6]);

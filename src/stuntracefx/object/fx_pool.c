@@ -97,8 +97,10 @@ FxPoolWalk FxPoolsMerge(FxPoolWalk w)
     pool_merge(FX_POOL_FIRST, &w, GSU_COPY(0));
     
     
+    
     gsu_code(0x04889e, 6); gsu_code(0x0488d5, 1);
     pool_merge(FX_POOL_SECOND, &w, GSU_COPY(1));
+    
     
     
     gsu_code(0x0488db, 6); gsu_code(0x048912, 3);
@@ -135,6 +137,7 @@ void abi_FxPoolsMergeProgram(void)
     gsu.r[11] = 0x8896;
     
     
+    
     gsu_code(0x04888f, 7); gsu_code(0x048898, 1);
     abi_FxPoolsMerge();
     gsu_code(0x048896, 1);
@@ -166,7 +169,8 @@ FxSweepRegs FxListSweep(uint16_t owner, uint16_t stack, FxSweepRegs g, int copy)
     g.r8 = gsu_ldw(gsu_add(REC_LIST, owner, 0));
     gsu_moves(g.r8);
     if (gsu.z)
-        { gsu_code(0x04a469, 4); gsu_code(0x04a489, 3);
+        { 
+        gsu_code(0x04a469, 4); gsu_code(0x04a489, 3);
         return g; } else { gsu_code(0x04a469, 4); }
     g.r12 = 1;
     g.r2 = 0;
@@ -184,6 +188,7 @@ FxSweepRegs FxListSweep(uint16_t owner, uint16_t stack, FxSweepRegs g, int copy)
             g.r0 = gsu_ldw(gsu_add(REC_NEXT, g.r8, 0));
         } else {
             
+            
             gsu_code(0x04a477, 4); gsu_code(0x04a48c, 7);
             g.r7 = gsu_ldw(gsu_add(REC_NEXT, g.r8, 0));
             gsu_moves(g.r2);
@@ -193,6 +198,7 @@ FxSweepRegs FxListSweep(uint16_t owner, uint16_t stack, FxSweepRegs g, int copy)
                 gsu_stw(gsu_add(REC_LIST, owner, 0), g.r7); gsu_code(0x04a49d, 2); gsu_code(0x04a4a4, 1); }
             else
                 { 
+                
                 gsu_code(0x04a493, 4); gsu_code(0x04a49f, 6);
                 gsu_stw(gsu_add(REC_NEXT, g.r2, 0), g.r7); }
             gsu_code(0x04a4a5, 2);
@@ -216,8 +222,10 @@ FxSweepRegs FxListSweep(uint16_t owner, uint16_t stack, FxSweepRegs g, int copy)
                 gsu_code(0x04a4be, 8);
                 gsu_stw(g.r9, g.r0);
                 
+                
                 gsu_code(0x04a4c6, 2); gsu_code(0x04a4cc, 1);
             } else {
+                
                 
                 gsu_code(0x04a4be, 4); gsu_code(0x04a4c8, 2);
                 g.r0 = gsu_ldw(g.r7);
@@ -230,6 +238,7 @@ FxSweepRegs FxListSweep(uint16_t owner, uint16_t stack, FxSweepRegs g, int copy)
             gsu_code(0x04a4cd, 4);
             g.r7 = gsu_ldw(stack);
             g.r0 = g.r7;
+            
             
             gsu_code(0x04a4d1, 4); gsu_code(0x04a484, 1);
         }
@@ -246,6 +255,7 @@ FxRegs FxListSweepRegs(FxRegs g)
 {
     FxSweepRegs s = {g.r[0], g.r[2], g.r[7], g.r[8], g.r[9], g.r[12]};
 
+    
     
     gsu_code(0x04a2f6, 6); gsu_code(0x04a462, 1);
     s = FxListSweep(g.r[6], g.r[10], s, GSU_COPY(0));
@@ -312,6 +322,7 @@ FxRegs FxPoolTake(FxRegs g, int copy)
     gsu_push(sp, g.r[3]);
     g.r[1] = g.r[4];
     
+    
     gsu_code(0x048941, 2); gsu_cache(0x8943); gsu_code(0x048943, 5);
     gsu_push(sp, g.r[3]);
     gsu_code(0x048948, 2);
@@ -323,10 +334,12 @@ FxRegs FxPoolTake(FxRegs g, int copy)
         g.r[0] = gsu_sub(gsu_ldw(g.r[3]), g.r[1], 0);
         if (gsu.z) {
             
+            
             gsu_code(0x04894f, 3); gsu_code(0x04896e, 4);
             g.r[0] = gsu_pull(sp);
             g.r[1] = gsu_inc(gsu_not(g.r[1]));
             g.r[0] = gsu_sub(g.r[0], g.r[0], 0);
+            
             
             gsu_code(0x048972, 6); gsu_code(0x048989, 1);
             goto mark;
@@ -354,6 +367,7 @@ FxRegs FxPoolTake(FxRegs g, int copy)
                 g.r[1] = gsu_inc(gsu_not(g.r[1]));
                 g.r[0] = 0xFFFC;
                 
+                
                 gsu_code(0x048961, 3); gsu_code(0x048978, 15);
             } else { gsu_code(0x048961, 3); gsu_code(0x048978, 5); gsu_code(0x048986, 1); }
             g.r[0] = gsu_add(g.r[0], 4, 0);
@@ -369,6 +383,7 @@ FxRegs FxPoolTake(FxRegs g, int copy)
             break; } else { gsu_code(0x048964, 5); gsu_code(0x04895b, 1); }
     }
     g.r[1] = 0;
+    
     
     gsu_code(0x048969, 5); gsu_code(0x048992, 1);
     goto done;
@@ -389,6 +404,7 @@ done:
     gsu_moves(g.r[1]);
     if (gsu.z)
         { 
+        
         gsu_code(0x04899b, 4); gsu_code(0x0489f7, 3);
         return g; } else { gsu_code(0x04899b, 4); }
     g.r[0] = FX_POOL_FIRST;
@@ -672,7 +688,8 @@ void abi_FxRecordNew42D(void)
 FxRegs FxRecordNew422(FxRegs g)
 {
     if (!record_new(&g, 0x002A, FX_POOL_SECOND, 0x8B72, GSU_COPY(1)))
-        { gsu_code(0x048b77, 4); gsu_code(0x048bab, 1); return g; } else { gsu_code(0x048b77, 4); }
+        { gsu_code(0x048b77, 4); gsu_code(0x048bab, 1);
+        return g; } else { gsu_code(0x048b77, 4); }
     gsu_code(0x048b7b, 5);
     g.r[0] = gsu_inc(gsu_ldw(FX_COUNT_422));
     gsu_code(0x048b80, 2);
@@ -737,9 +754,11 @@ void abi_FxObjectFree(void)
         gsu.r[6] = gsu.r[1];
         gsu.r[11] = 0x8A20;
         
+        
         gsu_code(0x048a18, 8); gsu_code(0x04a441, 1);
         abi_FxListClearBit0();
         gsu.r[11] = 0x8A25;
+        
         
         gsu_code(0x048a20, 5); gsu_code(0x04a462, 1);
         abi_FxListSweep();
@@ -754,6 +773,7 @@ void abi_FxObjectFree(void)
     if (!gsu.z) {
         
         gsu.r[11] = 0x8A39;
+        
         
         gsu_code(0x048a2e, 11); gsu_code(0x048aa2, 1);
         abi_FxObjectFreeChildren();
@@ -771,9 +791,11 @@ void abi_FxObjectFree(void)
         gsu_code(0x048a46, 10);
         gsu_stw(gsu.r[0], gsu.r[3]);
         
+        
         gsu_code(0x048a50, 2); gsu_code(0x048a56, 1);
     } else
-        { gsu_code(0x048a46, 4); gsu_code(0x048a52, 5);
+        { 
+        gsu_code(0x048a46, 4); gsu_code(0x048a52, 5);
         gsu_stw(0x2332, gsu.r[3]); }
     
     gsu_moves(gsu.r[3]);
@@ -809,8 +831,10 @@ void abi_FxObjectFree(void)
         gsu_code(0x048a8f, 8);
         gsu_stw(gsu.r[2], gsu.r[0]);
         
+        
         gsu_code(0x048a97, 2); gsu_code(0x048a9d, 1);
     } else {
+        
         
         
         gsu_code(0x048a8f, 4); gsu_code(0x048a99, 2);
@@ -848,6 +872,7 @@ void abi_FxObjectFreeChildren(void)
         gsu_moves(gsu.r[4]);
         if (gsu.z)
             { 
+            
             gsu_code(0x048ab1, 4); gsu_code(0x048ac7, 1);
             break; } else { gsu_code(0x048ab1, 4); }
         gsu.r[1] = gsu.r[4];
@@ -856,9 +881,11 @@ void abi_FxObjectFreeChildren(void)
         gsu.r[4] = gsu_ldw(gsu.r[4]);
         gsu.r[11] = 0x8AC2;
         
+        
         gsu_code(0x048abe, 4); gsu_code(0x048a08, 1);
         (abi_FxObjectFree());
         gsu.r[1] = gsu.r[4];
+        
         
         
         gsu_code(0x048ac2, 5); gsu_code(0x048ab0, 1);

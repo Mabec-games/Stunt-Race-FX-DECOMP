@@ -60,7 +60,7 @@ static const GsuCode absolute_fetch[2][3] = {
 static uint16_t absolute(uint16_t v, int copy)
 {
     gsu_moves(v);
-    return gsu.s ? (gsu_codes(absolute_fetch[copy], 1), (gsu_inc(gsu_not(v)))) : (gsu_codes(absolute_fetch[copy] + 1, 2), v);
+    return gsu.s ? (gsu_codes(absolute_fetch[copy], 1), ((gsu_inc(gsu_not(v))))) : (gsu_codes(absolute_fetch[copy] + 1, 2), (v));
 }
 
 /* Links slot R9 (depth key R1) into the list: walks it from the head with
@@ -76,6 +76,7 @@ static void link_slot(void)
         gsu_code(0x01afdf, 9);
         gsu_stw(FX_LIST_HEAD, gsu.r[9]);
         gsu.r[7] = gsu.r[2];
+        
         gsu_code(0x01afe8, 4); gsu_code(0x01b013, 1);
         return;
     } else { gsu_code(0x01afdf, 4); gsu_code(0x01afec, 1); }
@@ -93,10 +94,12 @@ static void link_slot(void)
         if (!above) {
             gsu_moves(gsu.r[2]);
             if (gsu.z)
-                { gsu_code(0x01aff0, 16);
+                { 
+                gsu_code(0x01aff0, 16);
                 gsu_stw(FX_LIST_HEAD, gsu.r[9]); gsu_code(0x01b000, 2); gsu_code(0x01b013, 1); }
             else
-                { gsu_code(0x01aff0, 11); gsu_code(0x01b002, 3);
+                { 
+                gsu_code(0x01aff0, 11); gsu_code(0x01b002, 3);
                 gsu_stw(gsu.r[2], gsu.r[9]); gsu_code(0x01b005, 2); gsu_code(0x01b013, 1); }
             return;
         } else { gsu_code(0x01aff0, 6); gsu_code(0x01b007, 1); }
@@ -106,8 +109,10 @@ static void link_slot(void)
         gsu_moves(gsu.r[7]);
         if (gsu.z) {
             
+            
             gsu_code(0x01b00c, 7); gsu_code(0x01b002, 3);
             gsu_stw(gsu.r[2], gsu.r[9]);
+            
             gsu_code(0x01b005, 2); gsu_code(0x01b013, 1);
             return;
         } else { gsu_code(0x01b00c, 4); gsu_code(0x01afec, 1); }
@@ -143,31 +148,32 @@ void FxSortObjectsProgram(void)
     gsu_code(0x01af00, 6);
     gsu.r[12] = gsu_lob(gsu_ldw(FX_SLOT_COUNT));
     if (gsu.z)
-        { gsu_code(0x01af06, 5);
+        { 
+        gsu_code(0x01af06, 5);
         return; } else { gsu_code(0x01af06, 4); gsu_code(0x01af0c, 1); gsu_cache(0xaf0d); }
     gsu.r[13] = 0xAF0F;
     gsu_code(0x01af0d, 3);
     do {
-        gsu.r[0] = gsu_and((gsu_code(0x01af10, 6), gsu_ldb(field(0x07, GSU_COPY(0)))), 0x0080);
+        gsu.r[0] = gsu_and((gsu_ldb(gsu_code_then(0x01af10, 6, field(0x07, GSU_COPY(0))))), 0x0080);
         gsu.r[1] = 0x0080;
         if (gsu.z) {
             /* Into view space. */
             gsu_code(0x01af16, 7);
-            gsu.r[1] = (gsu_code(0x01af1d, 6), gsu_ldw(field(0x12, GSU_COPY(1))));
-            gsu.r[2] = (gsu_code(0x01af23, 6), gsu_ldw(field(0x10, GSU_COPY(2))));
-            gsu.r[3] = (gsu_code(0x01af29, 6), gsu_ldw(field(0x14, GSU_COPY(3))));
+            gsu.r[1] = (gsu_ldw(gsu_code_then(0x01af1d, 6, field(0x12, GSU_COPY(1)))));
+            gsu.r[2] = (gsu_ldw(gsu_code_then(0x01af23, 6, field(0x10, GSU_COPY(2)))));
+            gsu.r[3] = (gsu_ldw(gsu_code_then(0x01af29, 6, field(0x14, GSU_COPY(3)))));
             rotate_column(0, GSU_COPY(0));
             gsu_code(0x01af41, 2);
-            (gsu_code(0x01af43, 7), gsu_stw(field(0x12, GSU_COPY(4)), gsu.r[0]));
+            (gsu_stw(gsu_code_then(0x01af43, 7, field(0x12, GSU_COPY(4))), gsu.r[0]));
             rotate_column(1, GSU_COPY(1));
             gsu_code(0x01af5c, 2);
-            (gsu_code(0x01af5e, 7), gsu_stw(field(0x10, GSU_COPY(5)), gsu.r[0]));
+            (gsu_stw(gsu_code_then(0x01af5e, 7, field(0x10, GSU_COPY(5))), gsu.r[0]));
             rotate_column(2, GSU_COPY(2));
             gsu_code(0x01af77, 2);
-            (gsu_code(0x01af79, 7), gsu_stw(field(0x14, GSU_COPY(6)), gsu.r[0]));
+            (gsu_stw(gsu_code_then(0x01af79, 7, field(0x14, GSU_COPY(6))), gsu.r[0]));
         } else { gsu_code(0x01af16, 6); gsu_code(0x01af7f, 1); }
         /* Cull by the shape's radius. */
-        gsu.r[0] = (gsu_code(0x01af80, 5), gsu_ldw(field(0x08, GSU_COPY(7))));
+        gsu.r[0] = (gsu_ldw(gsu_code_then(0x01af80, 5, field(0x08, GSU_COPY(7)))));
         gsu_code(0x01af85, 2);
         gsu_r14(0x10);
         gsu_code(0x01af87, 2);
@@ -178,18 +184,20 @@ void FxSortObjectsProgram(void)
         gsu_r14(gsu_inc(gsu.r[14]));
         gsu_code(0x01af8c, 3);
         gsu.r[1] = gsu_getbh(gsu.r[1]);
-        gsu.r[3] = (gsu_code(0x01af8f, 6), gsu_ldw(field(0x14, GSU_COPY(8))));
+        gsu.r[3] = (gsu_ldw(gsu_code_then(0x01af8f, 6, field(0x14, GSU_COPY(8)))));
         gsu.r[0] = gsu_add(gsu.r[3], gsu.r[1], 0);
         if (gsu.s)
-            { gsu_code(0x01af95, 8); gsu_code(0x01b01f, 1); goto next; } else { gsu_code(0x01af95, 4); gsu_code(0x01af9d, 1); }                  /* culled: each test jumps on alone */
+            { gsu_code(0x01af95, 8); gsu_code(0x01b01f, 1);
+            goto next; } else { gsu_code(0x01af95, 4); gsu_code(0x01af9d, 1); }                  /* culled: each test jumps on alone */
         gsu.r[3] = absolute(gsu.r[3], GSU_COPY(0));
-        gsu.r[0] = absolute((gsu_code(0x01afa6, 5), gsu_ldw(field(0x12, GSU_COPY(9)))), GSU_COPY(1));
+        gsu.r[0] = absolute((gsu_ldw(gsu_code_then(0x01afa6, 5, field(0x12, GSU_COPY(9))))), GSU_COPY(1));
         gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[1], 0);
         gsu_sub(gsu.r[0], gsu.r[3], 0);
         if (!gsu.s)
-            { gsu_code(0x01afb2, 9); gsu_code(0x01b01f, 1); goto next; } else { gsu_code(0x01afb2, 5); gsu_code(0x01afbb, 1); }
+            { gsu_code(0x01afb2, 9); gsu_code(0x01b01f, 1);
+            goto next; } else { gsu_code(0x01afb2, 5); gsu_code(0x01afbb, 1); }
         /* The depth key, and the slot into the list. */
-        gsu.r[0] = (gsu_code(0x01afbc, 5), gsu_ldw(field(0x08, GSU_COPY(10))));
+        gsu.r[0] = (gsu_ldw(gsu_code_then(0x01afbc, 5, field(0x08, GSU_COPY(10)))));
         gsu.r[1] = 5;
         gsu_code(0x01afc1, 5);
         gsu_r14(gsu_add(gsu.r[0], gsu.r[1], 0));
@@ -197,15 +205,15 @@ void FxSortObjectsProgram(void)
         gsu.r[0] = (gsu_getb());
         gsu_code(0x01afc7, 1);
         gsu_r14(gsu_inc(gsu.r[14]));
-        gsu.r[1] = (gsu_code(0x01afc8, 6), gsu_ldw(field(0x14, GSU_COPY(11))));
+        gsu.r[1] = (gsu_ldw(gsu_code_then(0x01afc8, 6, field(0x14, GSU_COPY(11)))));
         gsu_code(0x01afce, 2);
         gsu.r[0] = gsu_getbh(gsu.r[0]);
         gsu.r[1] = gsu_add(gsu.r[0], gsu.r[1], 0);
-        gsu.r[0] = (gsu_code(0x01afd0, 7), gsu_ldw(field(0x02, GSU_COPY(12))));
+        gsu.r[0] = (gsu_ldw(gsu_code_then(0x01afd0, 7, field(0x02, GSU_COPY(12)))));
         gsu.r[1] = gsu_add(gsu.r[0], gsu.r[1], 0);
         link_slot();
-        (gsu_code(0x01b014, 6), gsu_stw(field(0x02, GSU_COPY(13)), gsu.r[1]));
-        (gsu_code(0x01b01a, 6), gsu_stw(field(0x00, GSU_COPY(14)), gsu.r[7]));
+        (gsu_stw(gsu_code_then(0x01b014, 6, field(0x02, GSU_COPY(13))), gsu.r[1]));
+        (gsu_stw(gsu_code_then(0x01b01a, 6, field(0x00, GSU_COPY(14))), gsu.r[7]));
 next:
         gsu.r[0] = FX_SLOT_SIZE;
         gsu.r[9] = gsu_add(gsu.r[0], gsu.r[9], 0);

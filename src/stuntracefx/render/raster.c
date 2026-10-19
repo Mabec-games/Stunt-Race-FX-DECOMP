@@ -133,11 +133,13 @@ static void edge_step(int x, uint16_t step, int rows, int copy)
     if (rows >= 0)
         R[rows] = gsu_dec(R[rows]);
     if (plus)
-        { gsu_codes(edge_step_fetch[copy] + 1, 2);
+        { 
+        gsu_codes(edge_step_fetch[copy] + 1, 2);
         return; } else { gsu_codes(edge_step_fetch[copy], 1); }
     R[0] = gsu_add(0x0800, R[x], 0);
     if (gsu.s)
-        { gsu_codes(edge_step_fetch[copy] + 4, 2);
+        { 
+        gsu_codes(edge_step_fetch[copy] + 4, 2);
         return; } else { gsu_codes(edge_step_fetch[copy] + 3, 1); }
     R[x] = 0;
     gsu_codes(edge_step_fetch[copy] + 6, 1);
@@ -183,6 +185,7 @@ static void flat_copy(int copy)
             R[2] = R[0];
             R[6] = R[4];
             
+            
             gsu_code(0x01a98e, 4); gsu_code(0x01a996, 1);
         } else { gsu_code(0x01a98e, 9); }
         R[0] = gsu_sub(R[0], R[8], 0);
@@ -210,6 +213,7 @@ static void flat_thin(int copy)
     R[8] = 0;
     R[13] = 0xAA7F;
     
+    
     gsu_code(0x01a9a7, 3); gsu_code(0x01aa74, 12);
     do {
         gsu_code(0x01aa80, 2);
@@ -231,15 +235,18 @@ static void flat_thin(int copy)
     gsu_code(0x01aa8f, 2);
     R[12] = gsu_sub(R[8], R[1], 0);
     if (gsu.s)                                  /* BMI, then BEQ: each its own way back */
-        { gsu_code(0x01aa91, 6); gsu_code(0x01aa9e, 1);
+        { 
+        gsu_code(0x01aa91, 6); gsu_code(0x01aa9e, 1);
         return; } else { gsu_code(0x01aa91, 6); }
     if (gsu.z)
-        { gsu_code(0x01aa97, 3); gsu_code(0x01aa9e, 1);
+        { 
+        gsu_code(0x01aa97, 3); gsu_code(0x01aa9e, 1);
         return; } else { gsu_code(0x01aa97, 3); }
     R[13] = 0xAA9C;
     gsu_code(0x01aa9a, 3);
     do {
         go = gsu_count_down(&R[12]);
+        /* the branch's delay slot */
         /* the branch's delay slot */
         gsu_code(0x01aa9d, 1); gsu_code((go) ? 0x01aa9c : 0x01aa9e, 1);   /* the branch's delay slot */
         gsu_plot_r1();
@@ -351,6 +358,7 @@ static void flat_polygon(int copy)
     R[0] = 0;
     gsu_cmode(R[0]);
     
+    
     gsu_code(0x01a95c, 1); gsu_cache(0xa95d); gsu_code(0x01a95d, 18);
     R[0] = gsu_ldb(R[1]);
     R[1] = gsu_inc(R[1]);
@@ -370,6 +378,7 @@ static void flat_polygon(int copy)
         gsu_code(0x01a99f, 8);
         flat_thin(GSU_COPY(0));
         
+        
         gsu_code(0x01aa9f, 3); gsu_code(0x01a950, 1);
         return;
     } else { gsu_code(0x01a99f, 7); gsu_code(0x01a9aa, 1); }
@@ -385,7 +394,8 @@ static void flat_polygon(int copy)
     R[13] = 0xAA49;
     R[3] = gsu_sub(R[3], R[3], 0);              /* BRA's delay slot */
     if (!flat_left_edge(0, GSU_COPY(0)))
-        { gsu_code(0x01a9d8, 9); gsu_code(0x01aa70, 4); gsu_code(0x01a950, 1);
+        { 
+        gsu_code(0x01a9d8, 9); gsu_code(0x01aa70, 4); gsu_code(0x01a950, 1);
         return; } else { gsu_code(0x01a9f9, 2); }
     gsu_code(0x01a9fb, 9);
     for (;;) {
@@ -396,7 +406,8 @@ static void flat_polygon(int copy)
             R[9] = gsu_hib(R[0]);
             gsu_code(0x01aa04, 5);
             if (!flat_right_edge(GSU_COPY(0)))
-                { gsu_code(0x01aa17, 9); gsu_code(0x01aa70, 4); gsu_code(0x01a950, 1);
+                { 
+                gsu_code(0x01aa17, 9); gsu_code(0x01aa70, 4); gsu_code(0x01a950, 1);
                 return; } else { gsu_code(0x01aa35, 2); }
             gsu_code(0x01aa37, 9);
         } else { gsu_code(0x01aa04, 4); gsu_code(0x01aa3f, 1); }
@@ -414,6 +425,7 @@ static void flat_polygon(int copy)
                     /* the PLOT in LOOP's delay slot runs after the fetch
                        from where LOOP goes */
                     /* the branch's delay slot */
+                    /* the branch's delay slot */
                     gsu_code(0x01aa4a, 1); gsu_code((go) ? 0x01aa49 : 0x01aa4b, 1);   /* the branch's delay slot */
                     gsu_plot_r1();
                 } while (go);
@@ -428,7 +440,8 @@ static void flat_polygon(int copy)
         /* A9C1 */
         gsu_moves(R[11]);
         if (!gsu.z)
-            { gsu_code(0x01aa6c, 4); gsu_code(0x01a9c1, 5); gsu_code(0x01aa03, 1);
+            { 
+            gsu_code(0x01aa6c, 4); gsu_code(0x01a9c1, 5); gsu_code(0x01aa03, 1);
             continue; } else { gsu_code(0x01aa6c, 4); gsu_code(0x01a9c1, 5); }
         R[0] = gsu_add(0x007F, R[7], 0);
         R[7] = gsu_hib(R[0]);
@@ -436,6 +449,7 @@ static void flat_polygon(int copy)
         R[6] = gsu_ldw(FX_LEFT_AT);
         if (!flat_left_edge(1, GSU_COPY(1)))
             { 
+            
             gsu_code(0x01a9d8, 9); gsu_code(0x01aa70, 4); gsu_code(0x01a950, 1);
             return; } else { gsu_code(0x01a9f9, 2); }
         gsu_code(0x01a9fb, 9);
@@ -453,6 +467,7 @@ static void line(int copy)
     R[0] = 0;
     gsu_cmode(R[0]);
     R[7] = R[1];
+    
     
     gsu_code(0x01a912, 3); gsu_code(0x01aaa2, 12);
     R[0] = gsu_ldb(R[7]);
@@ -503,6 +518,7 @@ static void line(int copy)
         do {
             carry = gsu.cy;
             /* the branch's delay slot */
+            /* the branch's delay slot */
             gsu_code(0x01aaeb, 2); gsu_code((carry) ? 0x01aaf0 : 0x01aaed, 1);   /* the branch's delay slot */
             gsu_plot_r1();                      /* BCS's delay slot */
             if (!carry) {
@@ -516,6 +532,7 @@ static void line(int copy)
             R[0] = gsu_sub(R[0], R[4], 0);      /* LOOP's delay slot */
         } while (gsu_code_loop(0x01aaea, 1, gsu_code_loop(0x01aaf1, 4, go)));
         gsu_code(0x01aaf1, 4);
+        
         
         gsu_code(0x01aaf5, 4); gsu_code(0x01a950, 1);
         return;
@@ -531,6 +548,7 @@ static void line(int copy)
     do {
         carry = gsu.cy;
         /* the branch's delay slot */
+        /* the branch's delay slot */
         gsu_code(0x01ab03, 2); gsu_code((carry) ? 0x01ab08 : 0x01ab05, 1);   /* the branch's delay slot */
         gsu_plot_r1();
         if (!carry) {
@@ -544,6 +562,7 @@ static void line(int copy)
         R[0] = gsu_sub(R[0], R[3], 0);
     } while (gsu_code_loop(0x01ab02, 1, gsu_code_loop(0x01ab09, 4, go)));
     gsu_code(0x01ab09, 4);
+    
     
     gsu_code(0x01ab0d, 4); gsu_code(0x01a950, 1);
 }
@@ -619,7 +638,7 @@ static int tex_left_edge(int copy)
     gsu_code(0x01a84a, 3);
     R[1] = gsu_ldw(FX_LEFT_U_PREV);
     R[0] = gsu_sub(R[0], R[1], 0);
-    ((gsu_code(0x01a84d, 8), gsu_stw(FX_LEFT_DU, (uv_step()))));
+    ((gsu_stw(FX_LEFT_DU, gsu_code_then(0x01a84d, 8, (uv_step())))));
     gsu_code(0x01a855, 3);
     R[0] = gsu_ldw(FX_LEFT_U_PREV);
     R[0] = gsu_swap(R[0]);
@@ -630,7 +649,7 @@ static int tex_left_edge(int copy)
     gsu_code(0x01a85f, 3);
     R[1] = gsu_ldw(FX_LEFT_V_PREV);
     R[0] = gsu_sub(R[0], R[1], 0);
-    ((gsu_code(0x01a862, 8), gsu_stw(FX_LEFT_DV, (uv_step()))));
+    ((gsu_stw(FX_LEFT_DV, gsu_code_then(0x01a862, 8, (uv_step())))));
     gsu_code(0x01a86a, 3);
     R[0] = gsu_ldw(FX_LEFT_V_PREV);
     R[0] = gsu_swap(R[0]);
@@ -708,7 +727,7 @@ static int tex_right_edge(int copy)
     gsu_code(0x01a8df, 3);
     R[1] = gsu_ldw(FX_RIGHT_U_PREV);
     R[0] = gsu_sub(R[0], R[1], 0);
-    ((gsu_code(0x01a8e2, 8), gsu_stw(FX_RIGHT_DU, (uv_step()))));
+    ((gsu_stw(FX_RIGHT_DU, gsu_code_then(0x01a8e2, 8, (uv_step())))));
     gsu_code(0x01a8ea, 3);
     R[0] = gsu_ldw(FX_RIGHT_U_PREV);
     R[0] = gsu_swap(R[0]);
@@ -719,7 +738,7 @@ static int tex_right_edge(int copy)
     gsu_code(0x01a8f4, 3);
     R[1] = gsu_ldw(FX_RIGHT_V_PREV);
     R[0] = gsu_sub(R[0], R[1], 0);
-    ((gsu_code(0x01a8f7, 8), gsu_stw(FX_RIGHT_DV, (uv_step()))));
+    ((gsu_stw(FX_RIGHT_DV, gsu_code_then(0x01a8f7, 8, (uv_step())))));
     gsu_code(0x01a8ff, 3);
     R[0] = gsu_ldw(FX_RIGHT_V_PREV);
     R[0] = gsu_swap(R[0]);
@@ -784,9 +803,11 @@ static void tex_rows(int copy)
         gsu_code(0x01a71f, 8);
         gsu_stw(FX_RIGHT_ROWS, R[0]);
         
+        
         gsu_code(0x01a727, 2); gsu_code(0x01a736, 1);
     } else {
         R[0] = gsu_sub(R[3], R[11], 0);
+        
         
         gsu_code(0x01a717, 4); gsu_code(0x01a729, 6);
         gsu_stw(FX_RIGHT_ROWS, R[0]);
@@ -839,6 +860,7 @@ static void tex_rows(int copy)
             gsu_color((gsu_getb()));              /* GETC */
             go = gsu_count_down(&R[12]);
             /* the branch's delay slot */
+            /* the branch's delay slot */
             gsu_code(0x01a79e, 1); gsu_code((go) ? 0x01a794 : 0x01a79f, 1);   /* the branch's delay slot */
             (gsu_plot_r1());
         } while (go);
@@ -858,6 +880,7 @@ static void tex_rows(int copy)
         R[0] = gsu_hib(R[2]);
     } while (gsu_code_loop(0x01a736, 1, gsu_code_loop(0x01a7c5, 14, !gsu.z)));
     gsu_code(0x01a7c5, 10); gsu_code(0x01a7d3, 1);
+    
     
     gsu_code(0x01a7d4, 3);
     R[11] = gsu_ldw(FX_LEFT_ROWS);
@@ -879,6 +902,7 @@ static void tex_polygon(int copy)
     R[0] = gsu_add(R[0], R[0], 0);
     R[0] = gsu_add(R[0], R[0], 0);
     R[3] = R[0];
+    
     
     gsu_code(0x01a91a, 4); gsu_code(0x01a662, 11);
     R[0] = gsu_ldb(R[1]);
@@ -972,6 +996,7 @@ static void tex_polygon(int copy)
     R[0] = gsu_sub(R[2], R[8], 0);
     if (gsu.z)
         { 
+        
         gsu_code(0x01a6d1, 9); gsu_code(0x01a909, 1);
         return; } else { gsu_code(0x01a6d1, 5); gsu_code(0x01a6da, 1); }
     R[4] = R[6];
@@ -1011,6 +1036,7 @@ static void tex_polygon(int copy)
     R[11] = 0;
     R[3] = 0;
     
+    
     gsu_code(0x01a708, 4); gsu_cache(0xa70c); gsu_code(0x01a70c, 4); gsu_code(0x01a7d9, 1);
     for (;;) {
         /* A7D9 */
@@ -1018,9 +1044,11 @@ static void tex_polygon(int copy)
         R[0] = R[11];
         if (gsu.z) {                            /* BEQ past it, then its own test */
             
+            
             gsu_code(0x01a7da, 4); gsu_code(0x01a7e2, 1);
             if (!tex_left_edge(GSU_COPY(0)))
-                { gsu_code(0x01a820, 7); gsu_code(0x01a909, 1);
+                { 
+                gsu_code(0x01a820, 7); gsu_code(0x01a909, 1);
                 return; }
         } else { gsu_code(0x01a7da, 8); gsu_code(0x01a870, 1); }
         /* A870 */
@@ -1028,10 +1056,13 @@ static void tex_polygon(int copy)
         R[0] = R[3];
         if (gsu.z) {                            /* BEQ past it, then its own test */
             
+            
             gsu_code(0x01a871, 4); gsu_code(0x01a879, 1);
             if (!tex_right_edge(GSU_COPY(0)))
-                { gsu_code(0x01a8b5, 7); gsu_code(0x01a909, 1);
+                { 
+                gsu_code(0x01a8b5, 7); gsu_code(0x01a909, 1);
                 return; }
+            
             
             gsu_code(0x01a906, 3); gsu_code(0x01a710, 1);
         } else { gsu_code(0x01a871, 8); gsu_code(0x01a710, 1); }
@@ -1158,7 +1189,7 @@ static void clip_cross(const ClipEdge *e, uint16_t ret, int copy)
     R[11] = ret;
     gsu_codes(clip_cross_fetch[copy] + 1, 3);
     abi_FxDivideSigned();
-    R[0] = gsu_add(R[4], R[e->y ? (gsu_codes(clip_cross_fetch[copy] + 4, 1), (1)) : (gsu_codes(clip_cross_fetch[copy] + 5, 1), (2))], 0);
+    R[0] = gsu_add(R[4], R[e->y ? (gsu_codes(clip_cross_fetch[copy] + 4, 1), ((1))) : (gsu_codes(clip_cross_fetch[copy] + 5, 1), ((2)))], 0);
     gsu_codes(clip_cross_fetch[copy] + 6, 1);
     R[6] = gsu_ldw(e->edge);
     if (e->dec_edge)
@@ -1338,7 +1369,7 @@ static void clip_against(const ClipEdge *e, int copy)
         /* the first end, then the second in each way, as the original tests them */
         if (!clip_inside(e, e->y ? (2) : (1), GSU_COPY(clip_inside_in_clip_against[copy]))) {
             gsu_codes(clip_against_fetch[copy] + 17, 1);
-            if (!clip_inside(e, e->y ? (gsu_codes(clip_against_fetch[copy] + 18, 1), ((6))) : (gsu_codes(clip_against_fetch[copy] + 19, 1), ((3))), GSU_COPY(clip_inside_in_clip_against_2[copy]))) {
+            if (!clip_inside(e, e->y ? (gsu_codes(clip_against_fetch[copy] + 18, 1), (((6)))) : (gsu_codes(clip_against_fetch[copy] + 19, 1), (((3)))), GSU_COPY(clip_inside_in_clip_against_2[copy]))) {
                 gsu_codes(clip_against_fetch[copy] + 20, 2);
                 clip_count(0, GSU_COPY(clip_count_in_clip_against[copy]));
                 gsu_codes(clip_against_fetch[copy] + 15, 2);
@@ -1354,7 +1385,7 @@ static void clip_against(const ClipEdge *e, int copy)
                 clip_cross(e, e->ret_out_in, GSU_COPY(clip_cross_in_clip_against[copy]));
                 gsu_codes(clip_against_fetch[copy] + 13, 2);
             }
-        } else if (clip_inside(e, e->y ? (gsu_codes(clip_against_fetch[copy] + 26, 2), ((6))) : (gsu_codes(clip_against_fetch[copy] + 28, 2), ((3))), GSU_COPY(clip_inside_in_clip_against_3[copy]))) {
+        } else if (clip_inside(e, e->y ? (gsu_codes(clip_against_fetch[copy] + 26, 2), (((6)))) : (gsu_codes(clip_against_fetch[copy] + 28, 2), (((3)))), GSU_COPY(clip_inside_in_clip_against_3[copy]))) {
             gsu_codes(clip_against_fetch[copy] + 30, 2);
             clip_put(GSU_COPY(clip_put_in_clip_against[copy]));
             gsu_codes(clip_against_fetch[copy] + 25, 1);
@@ -1674,6 +1705,7 @@ void abi_FxPolygonGather(void)
         near_load(4, 5, 6, 1, GSU_COPY(1));
         R[11] = 0x9937;
         
+        
         gsu_code(0x019933, 4); gsu_code(0x01981a, 1); gsu_cache(0x981b);
         (abi_FxSegmentCrossZ());
         gsu_code(0x019937, 1);
@@ -1683,8 +1715,10 @@ void abi_FxPolygonGather(void)
         gsu_code(0x01994e, 7);
         gsu_stw(FX_COUNT, R[0]);
         
+        
         gsu_code(0x019955, 3); gsu_code(0x0199ea, 1);
     } else {
+        
         
         gsu_code(0x019914, 8); gsu_code(0x019958, 1);
         do {
@@ -1692,7 +1726,8 @@ void abi_FxPolygonGather(void)
             near_load(1, 2, 3, 0, GSU_COPY(2));
             R[0] = gsu_dec(R[9]);
             if (gsu.z)
-                { gsu_code(0x019963, 11);
+                { 
+                gsu_code(0x019963, 11);
                 R[7] = gsu_ldw(FX_POLY_OUT); } else { gsu_code(0x019963, 7); gsu_code(0x01996d, 1); }
             near_load(4, 5, 6, 1, GSU_COPY(3));
             R[7] = gsu_sub(R[7], 4, 0);
@@ -1702,6 +1737,7 @@ void abi_FxPolygonGather(void)
                 gsu_moves(R[3]);
                 if (!gsu.s) {
                     
+                    
                     gsu_code(0x019978, 7); gsu_code(0x019983, 5); gsu_code(0x01998c, 1);
                     near_put(1, 2, 3, GSU_COPY(2));
                     near_count(GSU_COPY(0));
@@ -1710,6 +1746,7 @@ void abi_FxPolygonGather(void)
                         
                         R[11] = 0x99AB;
                         
+                        
                         gsu_code(0x01999e, 4); gsu_code(0x0199a6, 5); gsu_code(0x01981a, 1); gsu_cache(0x981b);
                         abi_FxSegmentCrossZ();
                         
@@ -1717,11 +1754,13 @@ void abi_FxPolygonGather(void)
                         near_put(4, 5, 6, GSU_COPY(3));
                         near_count(GSU_COPY(1));
                         
+                        
                         gsu_code(0x0199bd, 3); gsu_code(0x0199d6, 1);
                     } else { gsu_code(0x01999e, 8); gsu_code(0x0199d6, 1); }
                 } else {
                     
                     R[11] = 0x99C5;
+                    
                     
                     gsu_code(0x019978, 7); gsu_code(0x019983, 9); gsu_code(0x0199c0, 5); gsu_code(0x01981a, 1); gsu_cache(0x981b);
                     abi_FxSegmentCrossZ();
@@ -1735,6 +1774,7 @@ void abi_FxPolygonGather(void)
             R[9] = gsu_dec(R[9]);
         } while (gsu_code_loop(0x019958, 1, gsu_code_loop(0x0199d7, 7, !gsu.z)));
         gsu_code(0x0199d7, 3); gsu_code(0x0199de, 1);
+        
         
         gsu_code(0x0199df, 3);
         R[0] = gsu_ldw(FX_COUNT);
@@ -1770,6 +1810,7 @@ void abi_FxPolygonGather(void)
         near_load(1, 2, 6, 0, GSU_COPY(4));
         R[11] = 0x9A18;
         
+        
         gsu_code(0x019a12, 6); gsu_code(0x018bff, 1);
         (abi_FxProjectVertex());
         gsu_code(0x019a18, 3);
@@ -1785,6 +1826,7 @@ void abi_FxPolygonGather(void)
         R[0] = gsu_or(R[0], R[6]);
         R[12] = gsu_dec(R[12]);
         go = !gsu.z;
+        /* the branch's delay slot */
         /* the branch's delay slot */
         gsu_code(0x019a24, 4); gsu_code((go) ? 0x019a07 : 0x019a28, 1);   /* the branch's delay slot */
         gsu_sbk(R[0]);                          /* BNE's delay slot */
@@ -2028,6 +2070,7 @@ void abi_FxDrawList(void)
             if (!end) {
                 gsu_code(0x01a916, 4);
                 tex_polygon(GSU_COPY(0));
+                
                 
                 gsu_code(0x01a90a, 3); gsu_code(0x01a950, 1);
                 continue;
