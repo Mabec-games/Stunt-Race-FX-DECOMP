@@ -529,7 +529,7 @@ FxRecordNewMarkedProgram:
     moves r1,r1
     beq .l8BE0
     nop
-    sm ($239A),r1
+    sm (!fx_list_422+2),r1
     ibt r2,#$16
     with r2
     add r1
