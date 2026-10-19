@@ -3118,6 +3118,7 @@ void abi_PlayerCarEvents(void)
     uint16_t obj = cpu.x, rec, w, x;
     uint8_t v;
     int found;
+    uint32_t to_c4a2 = 104;
 
     cyc(24);
     wr16(b | 0x1F18, obj);
@@ -3354,11 +3355,13 @@ void abi_PlayerCarEvents(void)
                     { cyc(78); abi_ObjectBurstSpawn(); }
                 cpu.p &= (uint8_t)~P_M;
                 cpu.x = x;
+            } else {
+                to_c4a2 = 70;           /* bit 5 clear: straight on */
             }
         }
     }
     /* $08:C4A2 */
-    cyc(104);
+    cyc(to_c4a2);
     cpu.y = rd16(b | 0x1F18);
     cyc(30);
     op_lda16(b | (uint16_t)(0x2024 + cpu.y));

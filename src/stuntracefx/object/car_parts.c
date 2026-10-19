@@ -211,21 +211,31 @@ static void sound0(uint8_t v)
 }
 
 /* LDA src, STA lo, STA lo2, BIT #$80: the sign byte `hi` = $FF for a
-   negative value, else 0. */
-static void axis_from(uint32_t src, uint32_t lo, uint32_t lo2, uint32_t hi)
+   negative value, else 0. Time from the assembly: LDA abs (24 with `in`,
+   the time before it), STA 16 to direct page or 24 absolute, BIT # 16 and
+   BEQ 16 then LDA #$FF and STA, or BEQ taken 22 and STZ. Returns whether
+   it was negative: then a BRA (22) comes before the next load. */
+static int axis_from(uint32_t src, uint32_t lo, uint32_t lo2, uint32_t hi, uint32_t in)
 {
-    cyc(8);
-    uint8_t r = ld8(src);
+    uint8_t r;
+    uint32_t w2 = (lo2 & 0xFFFF) > 0xFF ? 8 : 0, wh = (hi & 0xFFFF) > 0xFF ? 8 : 0;
 
+    cyc(in);
+    r = ld8(src);
     cyc(16);
     wr8(lo, r);
+    cyc(16 + w2);
     wr8(lo2, r);
     if (r & 0x80) {
+        cyc(32);
         lda8(0xFF);
+        cyc(16 + wh);
         wr8(hi, 0xFF);
-    } else {
-        wr8(hi, 0x00);
+        return 1;
     }
+    cyc(54 + wh);
+    wr8(hi, 0x00);
+    return 0;
 }
 
 /* LDA lo, STA hi (8-bit): the turned vector back as the next input. */
@@ -251,6 +261,7 @@ static void turned_again(void)
 void abi_PartOffset(void)
 {
     uint8_t v;
+    int neg;
 
     v = ld8(cyc_then(14, F(0x2048, cpu.x)));
     wr8(db() | 0x1F58, cyc_then(24, v));
@@ -258,10 +269,10 @@ void abi_PartOffset(void)
     wr8(db() | 0x1F59, cyc_then(24, v));
     v = ld8(cyc_then(14, F(0x204A, cpu.x)));
     wr8(db() | 0x1F5A, cyc_then(24, v));
-    axis_from(db() | 0x1F58, dp(0x02), dp(0x04), dp(0x05));
-    axis_from(db() | 0x1F59, dp(0x08), dp(0x0A), dp(0x0B));
-    axis_from(db() | 0x1F5A, dp(0x94), db() | 0x05F2, db() | 0x05F3);
-    ld8(F(0x2016, cpu.y));
+    neg = axis_from(db() | 0x1F58, dp(0x02), dp(0x04), dp(0x05), 8);
+    neg = axis_from(db() | 0x1F59, dp(0x08), dp(0x0A), dp(0x0B), neg ? 30 : 8);
+    neg = axis_from(db() | 0x1F5A, dp(0x94), db() | 0x05F2, db() | 0x05F3, neg ? 30 : 8);
+    ld8(cyc_then(neg ? 36 : 14, F(0x2016, cpu.y)));   /* BRA, LDA abs,Y */
     abi_RotateXY();
     turned_again();
     ld8(cyc_then(14, F(0x2014, cpu.y)));
