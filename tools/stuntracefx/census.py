@@ -25,7 +25,12 @@ these lead to more routines:
               last, as blocks each ending in RTS, RTL or a jump to known code
               or into the gap, using only opcodes the traced code uses:
               routines nothing refers to and that need not follow code or call
-              it (dead code); counted as orphans
+              it (dead code); counted as orphans. A Super FX gap after
+              Super FX code counts the same way when it decodes to its last
+              byte with opcodes the traced Super FX code uses and ends in
+              STOP, a jump or a return and its delay slot, or runs into
+              traced Super FX code, every STOP followed by its NOP as the
+              game's own code has it (a table does not)
 
 Code the traces ran is decoded with the widths they saw, and its targets are
 certain. Code decoded statically counts only block by block: a block that
@@ -397,6 +402,36 @@ def dead_code(c, start, end, used):
     return True
 
 
+def gsu_dead(c, used):
+    """Untouched gaps right after Super FX code that decode as Super FX code
+    to their last byte (see the module comment): their starts."""
+    rom, mp = c.rom, c.mp
+    n = len(rom)
+    out = []
+    o = 0
+    while o < n - 4:
+        if mp[o] & 0x77 or c.code[o] or c.gcode[o]:
+            o += 1
+            continue
+        s = o
+        while o < n and (o & 0x7FFF or o == s) and not (mp[o] & 0x77 or c.code[o] or c.gcode[o]):
+            o += 1
+        if o - s < 4 or not (mp[s - 1] & 0x30 or c.gcode[s - 1]) or len(set(rom[s:o])) < 3:
+            continue
+        q, last, prev = s, None, None
+        while q < o and rom[q] in used and not (rom[q] == 0x00 and rom[q + 1] != 0x01):
+            prev, last = last, q
+            q += disasm.gsu_len(rom[q])
+        if q != o or prev is None:
+            continue
+        op = rom[prev]
+        ends = (op == 0x00 or 0x98 <= op <= 0x9D or op == 0x05 or (op == 0xFF and not 0x91 <= rom[prev - 1] <= 0x94)
+                or (0x40 <= op <= 0x4B and rom[prev - 1] == 0x1F))
+        if ends or (o < n and mp[o] & 0x10):
+            out.append(codemap.run_addr(s))
+    return out
+
+
 def orphans(c, known):
     """Untouched, unreached gaps in code banks that look like routines no
     reference reaches: the gap follows an end (RTS RTL RTI JMP JML BRA BRL)
@@ -511,6 +546,14 @@ def census(recall=False):
         for a in orph:
             c.add(a, 'orphan', 'static', c.clean(a, M8 | X8) or (M8 | X8), work)
         settle(work)
+        c.gsu_walk()
+    gused = {c.rom[o] for o in range(len(c.rom)) if c.mp[o] & 0x10}
+    for _ in range(30):
+        new = [a for a in gsu_dead(c, gused) if a not in c.gentries]
+        if not new:
+            break
+        for a in new:
+            c.gentries[a] = 'dead'
         c.gsu_walk()
     c.rounds = rounds
     return c, cpu_cat, gsu_cat, tags
