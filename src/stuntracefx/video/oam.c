@@ -2697,13 +2697,14 @@ void abi_OverlaySpritesState0(void)
 }
 
 /* Waits for the vertical blank: $0D52, set by each, read until it is set,
-   then cleared. */
-static void oam_wait_tick(uint32_t b)
+   then cleared. `again`: the clocks the caller's copy of the loop adds each
+   time round (07:BBFB's runs its SEP #$20 each pass: 22; 07:C685's none). */
+static void oam_wait_tick(uint32_t b, uint32_t again)
 {
     op_sep(P_M);
     do
         { cyc(46); op_lda8(b | 0x0D52); }
-    while (!(uint8_t)cpu.a);
+    while (cyc_loop(again, !(uint8_t)cpu.a));
     cyc(40);
     wr8(b | 0x0D52, 0x00);
 }
@@ -2725,7 +2726,7 @@ void abi_OverlayFramesUntilFaded(void)
     cyc(24);
     do {
         op_sep(P_M | P_X);
-        oam_wait_tick(b);
+        oam_wait_tick(b, 0);
         cyc(46);
         call_routine(0x07C6AA, 0);
         (cyc(62), abi_OverlaySpritesStep());
@@ -2823,7 +2824,7 @@ void abi_PauseOnStart(void)
     cyc(40);
     wr8(b | 0x0D23, 0x0A);
     do {
-        oam_wait_tick(b);
+        oam_wait_tick(b, 22);
         cyc(46);
         call_routine(0x07BC1C, 0);
         (cyc(88), abi_PictureTurnStep());
