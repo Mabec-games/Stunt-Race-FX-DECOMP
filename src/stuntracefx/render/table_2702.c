@@ -33,22 +33,30 @@ static const uint8_t table_2702[48] = {
  * last byte; the RAM bank 0; the last RAM address $2731; CY set and OV
  * clear (SUB R0); S and Z from R1.
  */
+/* gsuwalk: the code of each copy of FxTable2702Program, read from the ROM */
+static const GsuCode FxTable2702Program_fetch[1][48] = {
+    {{0x01d1ef, 7}, {0x01d1f6, 6}, {0x01d1fc, 6}, {0x01d202, 6}, {0x01d208, 5}, {0x01d20d, 6}, {0x01d213, 6}, {0x01d219, 6}, {0x01d21f, 5}, {0x01d224, 6}, {0x01d22a, 6}, {0x01d230, 6}, {0x01d236, 5}, {0x01d23b, 6}, {0x01d241, 6}, {0x01d247, 6}, {0x01d24d, 5}, {0x01d252, 6}, {0x01d258, 6}, {0x01d25e, 6}, {0x01d264, 5}, {0x01d269, 6}, {0x01d26f, 6}, {0x01d275, 6}, {0x01d27b, 5}, {0x01d280, 6}, {0x01d286, 6}, {0x01d28c, 6}, {0x01d292, 5}, {0x01d297, 6}, {0x01d29d, 6}, {0x01d2a3, 6}, {0x01d2a9, 5}, {0x01d2ae, 6}, {0x01d2b4, 6}, {0x01d2ba, 6}, {0x01d2c0, 5}, {0x01d2c5, 6}, {0x01d2cb, 6}, {0x01d2d1, 6}, {0x01d2d7, 5}, {0x01d2dc, 6}, {0x01d2e2, 6}, {0x01d2e8, 6}, {0x01d2ee, 5}, {0x01d2f3, 6}, {0x01d2f9, 6}, {0x01d2ff, 6}},
+};
+
 void FxTable2702Program(void)
 {
-    gsu_code(0x01D1EC, 10);
     int i;
 
+    gsu_code(0x01d1ed, 2);
     gsu_ramb(0);
     for (i = 0; i < 48; i++)
-        { gsu_stb((uint16_t)(FX_TABLE_2702 + i), table_2702[i]); gsu_code(0x01D305, 1); }
+        { gsu_codes(FxTable2702Program_fetch[0] + i, 1);
+        gsu_stb((uint16_t)(FX_TABLE_2702 + i), table_2702[i]); }
 }
 
 void abi_FxTable2702Program(void)
 {
+    gsu_code(0x01d1ec, 1);
     FxTable2702Program();
     gsu.r[0] = table_2702[47];
     gsu.r[1] = (uint16_t)(FX_TABLE_2702 + 48);
     gsu.cy = 1;
     gsu.ov = 0;
     gsu_sz(gsu.r[1]);
+    gsu_code(0x01d305, 1);
 }

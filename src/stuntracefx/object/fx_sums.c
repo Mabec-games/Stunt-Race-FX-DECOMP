@@ -34,19 +34,27 @@ static uint16_t fx_mul15(uint16_t a, uint16_t b)
  * Entry: R11 = return address. Exit: R0 = 0; Z, CY set, S, OV clear; the
  * last RAM address $234A.
  */
+/* gsuwalk: the code of each copy of FxSumsClear, read from the ROM */
+static const GsuCode FxSumsClear_fetch[1][6] = {
+    {{0x0496a9, 4}, {0x0496ad, 4}, {0x0496b1, 4}, {0x0496b5, 4}, {0x0496b9, 4}, {0x0496bd, 4}},
+};
+
 void FxSumsClear(int copy)
 {
     uint16_t zero = gsu_sub(gsu.r[0], gsu.r[0], 0);
     int i;
 
     for (i = 0; i < 6; i++)
-        { gsu_stw((uint16_t)(FX_WORLD_SUM + 2 * i), zero); }
+        { gsu_codes(FxSumsClear_fetch[0] + i, 1);
+        gsu_stw((uint16_t)(FX_WORLD_SUM + 2 * i), zero); }
 }
 
 void abi_FxSumsClear(void)
 {
+    gsu_code(0x0496a8, 1);
     FxSumsClear(GSU_COPY(0));
     gsu.r[0] = 0;
+    gsu_code(0x0496c1, 2);
 }
 
 /*
@@ -70,65 +78,54 @@ typedef struct {
     uint16_t y;         /* the new world y */
 } FxRotateLeft;
 
-/* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode rotate_axis_code[4][4] = {
-    {{0x0497CB, 7}, {0x0497D2, 8}, {0x0497DA, 8}, {0x0497E2, 2}},
-    {{0x0497E7, 7}, {0x0497EE, 8}, {0x0497F6, 8}, {0x0497FE, 2}},
-    {{0x049803, 7}, {0x04980A, 8}, {0x049812, 10}, {0x04981C, 2}},
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}},
-};
-
 /* One world axis of FxSumsRotateLocal (the original has each in its own
    code): the local sum's terms by the matrix's column (LMS R6; FROM Rn;
    FMULT; ROL; added up as FxMatrixApply's), then the world sum's (LM R4;
    ADD R4) stored back (SBK). */
+/* gsuwalk: the code of each copy of rotate_axis, read from the ROM */
+static const GsuCode rotate_axis_fetch[3][5] = {
+    {{0x0497c8, 3}, {0x0497cb, 7}, {0x0497d2, 8}, {0x0497da, 8}, {0x0497e2, 2}},
+    {{0x0497e4, 3}, {0x0497e7, 7}, {0x0497ee, 8}, {0x0497f6, 8}, {0x0497fe, 2}},
+    {{0x049800, 3}, {0x049803, 7}, {0x04980a, 8}, {0x049812, 10}, {0x04981c, 2}},
+};
+
 static uint16_t rotate_axis(FxRotateLeft *o, uint16_t ly, int k, int copy)
 {
     static const uint8_t axis[3] = {0, 4, 2};   /* world x, z, y */
     uint16_t row = (uint16_t)(FX_MATRIX + axis[k]), sum;
 
+    gsu_codes(rotate_axis_fetch[copy], 1);
     o->m = gsu_ldw(row);
-    gsu_codes(rotate_axis_code[copy], 1);
     o->part = fx_mul15(o->lx, o->m);
+    gsu_codes(rotate_axis_fetch[copy] + 1, 1);
     o->m = gsu_ldw((uint16_t)(row + 6));
-    gsu_codes(rotate_axis_code[copy] + 1, 1);
     o->part = gsu_add(o->part, fx_mul15(ly, o->m), 0);
+    gsu_codes(rotate_axis_fetch[copy] + 2, 1);
     o->m = gsu_ldw((uint16_t)(row + 12));
-    gsu_codes(rotate_axis_code[copy] + 2, 1);
     sum = gsu_add(fx_mul15(o->lz, o->m), o->part, 0);
     o->rot = sum;
+    gsu_codes(rotate_axis_fetch[copy] + 3, 1);
     o->old = gsu_ldw((uint16_t)(FX_WORLD_SUM + axis[k]));
     sum = gsu_add(sum, o->old, 0);
-    gsu_codes(rotate_axis_code[copy] + 3, 1);
+    gsu_codes(rotate_axis_fetch[copy] + 4, 1);
     gsu_sbk(sum);
     return sum;
 }
-
-/* cyccopy: the copy each of the caller's copies calls */
-static const uint8_t rotate_axis_from_FxSumsRotateLocal[2] = {2, 3};
-
-/* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode FxSumsRotateLocal_code[2][5] = {
-    {{0x0497C0, 4}, {0x0497C4, 4}, {0x0497C8, 3}, {0x0497E4, 3}, {0x049800, 3}},
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-};
 
 FxRotateLeft FxSumsRotateLocal(int copy)
 {
     FxRotateLeft o;
     uint16_t ly;
 
+    gsu_code(0x0497bc, 4);
     o.lx = gsu_ldw(FX_LOCAL_SUM);
-    gsu_codes(FxSumsRotateLocal_code[copy], 1);
+    gsu_code(0x0497c0, 4);
     ly = gsu_ldw(FX_LOCAL_SUM + 2);
-    gsu_codes(FxSumsRotateLocal_code[copy] + 1, 1);
+    gsu_code(0x0497c4, 4);
     o.lz = gsu_ldw(FX_LOCAL_SUM + 4);
-    gsu_codes(FxSumsRotateLocal_code[copy] + 2, 1);
-    rotate_axis(&o, ly, 0, GSU_COPY(rotate_axis_from_FxSumsRotateLocal[copy]));
-    gsu_codes(FxSumsRotateLocal_code[copy] + 3, 1);
-    rotate_axis(&o, ly, 1, GSU_COPY(rotate_axis_from_FxSumsRotateLocal[copy]));
-    gsu_codes(FxSumsRotateLocal_code[copy] + 4, 1);
-    o.y = rotate_axis(&o, ly, 2, GSU_COPY(rotate_axis_from_FxSumsRotateLocal[copy]));
+    rotate_axis(&o, ly, 0, GSU_COPY(0));
+    rotate_axis(&o, ly, 1, GSU_COPY(1));
+    o.y = rotate_axis(&o, ly, 2, GSU_COPY(2));
     return o;
 }
 
@@ -143,6 +140,7 @@ void abi_FxSumsRotateLocal(void)
     gsu.r[4] = o.old;
     gsu.r[5] = o.part;
     gsu.r[6] = o.m;
+    gsu_code(0x04981e, 2);
 }
 
 /*
@@ -304,21 +302,6 @@ static FxRegs push_into(FxRegs g, uint16_t sum, int copy)
 /* cyccopy: the copy each of the caller's copies calls */
 static const uint8_t push_into_from_FxSumsPushWorld[11] = {0, 3, 4, 5, 6, 7, 8, 10, 11, 13, 16};
 
-/* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode FxSumsPushWorld_code[11][20] = {
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-    {{0x01CF43, 51}, {0xCF76, 0}, {0x01CF76, 2}, {0x01CF85, 11}, {0x01CF85, 4}, {0x01CFCE, 52}, {0x01CFCE, 6}, {0x01CFFA, 8}, {0x01D008, 12}, {0x01D025, 1}, {0x01D027, 21}, {0x01D027, 21}, {0x01D045, 53}, {0x01D063, 23}, {0x01D0C5, 22}, {0x01D0C5, 22}, {0x01D0F3, 18}, {0x01D103, 2}, {0x01D11E, 2}, {0x01D11E, 2}},
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-};
-
 /*
  * @routine 04:96C3 FxSumsPushWorld
  * WHAT IT DOES: Adds the push (R4, R5, R6), each held to -5000..5000, to
@@ -341,20 +324,11 @@ void abi_FxSumsPushWorld(void)
     memcpy(g.r, gsu.r, sizeof g.r);
     g = FxSumsPushWorld(g, GSU_COPY(0));
     memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
+    gsu_code(0x04973d, 2);
 }
 
 /* cyccopy: the copy each of the caller's copies calls */
 static const uint8_t push_into_from_FxSumsPushLocal[6] = {1, 2, 9, 12, 14, 15};
-
-/* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode FxSumsPushLocal_code[6][24] = {
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-    {{0x01CF43, 51}, {0xCF76, 0}, {0x01CF76, 35}, {0x01CF78, 13}, {0x01CF9E, 3}, {0x01CFB7, 93}, {0x01CFC1, 4}, {0x01CFCE, 6}, {0x01CFDC, 30}, {0x01D002, 6}, {0x01D025, 1}, {0x01D027, 21}, {0x01D04E, 29}, {0x01D04E, 29}, {0x01D086, 11}, {0x01D097, 46}, {0x01D09A, 35}, {0x01D0C2, 3}, {0x01D0C7, 6}, {0x01D0D9, 2}, {0x01D0F3, 4}, {0x01D0FF, 4}, {0x01D0FF, 4}, {0x01D105, 27}},
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-};
 
 /*
  * @routine 04:973F FxSumsPushLocal
@@ -375,6 +349,7 @@ void abi_FxSumsPushLocal(void)
     memcpy(g.r, gsu.r, sizeof g.r);
     g = FxSumsPushLocal(g, GSU_COPY(0));
     memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
+    gsu_code(0x0497b9, 2);
 }
 
 #define FX_PUSH_FLAGS 0x2480u    /* the pushes' flag bytes so far */
@@ -936,13 +911,15 @@ void abi_FxPushAtQuarter(void)
  */
 void abi_FxPushAt4Twist(void)
 {
-    gsu_code(0x049A4B, 2);
+    gsu_code(0x049a4b, 2);
     gsu_push(&gsu.r[10], gsu.r[11]);
     gsu.r[11] = 0x9A53;
+    gsu_code(0x049a4d, 6); gsu_code(0x049a9b, 1);
     abi_FxPushAt4();
+    gsu_code(0x049a53, 1);
     spin_add(FX_TURN_CROSS, FX_SPIN + 2, 4, 0, GSU_COPY(4));
+    gsu_code(0x049a61, 4);
     gsu_pull(&gsu.r[10]);       /* the return address, into R15 */
-    gsu_code(0x04888C, 1);
 }
 
 /*
@@ -970,15 +947,16 @@ void abi_FxPushAt4Kept(void)
  */
 void abi_FxPushAtTurned(void)
 {
-    gsu_stw(FX_PUSH_POINT, fx_row(FX_MATRIX, 6, GSU_COPY(4)));
-    gsu_stw(FX_PUSH_POINT + 2, fx_row(FX_MATRIX + 2, 6, GSU_COPY(5)));
-    gsu_stw(FX_PUSH_POINT + 4, fx_row(FX_MATRIX + 4, 6, GSU_COPY(6)));
+    (gsu_code(0x04993a, 8), gsu_stw(FX_PUSH_POINT, fx_row(FX_MATRIX, 6, GSU_COPY(4))));
+    (gsu_code(0x049954, 8), gsu_stw(FX_PUSH_POINT + 2, fx_row(FX_MATRIX + 2, 6, GSU_COPY(5))));
+    (gsu_code(0x04996e, 8), gsu_stw(FX_PUSH_POINT + 4, fx_row(FX_MATRIX + 4, 6, GSU_COPY(6))));
     gsu_code(0x049976, 4);
     gsu.r[1] = gsu_ldw(FX_PUSH_POINT);
-    gsu_code(0x04997A, 4);
+    gsu_code(0x04997a, 4);
     gsu.r[2] = gsu_ldw(FX_PUSH_POINT + 2);
-    gsu_code(0x04997E, 4);
+    gsu_code(0x04997e, 4);
     gsu.r[3] = gsu_ldw(FX_PUSH_POINT + 4);
+    gsu_code(0x049982, 3); gsu_code(0x049a9b, 1);
     abi_FxPushAt4();
 }
 
@@ -993,14 +971,19 @@ void abi_FxPushAtTurned(void)
  * R0 = the high byte part of z, R4 its low byte part; flags from the
  * last OR; the last RAM address $2344.
  */
+/* gsuwalk: the code of each copy of abi_FxSumScale, read from the ROM */
+static const GsuCode abi_FxSumScale_fetch[1][6] = {
+    {{0x049a66, 4}, {0x049a6a, 4}, {0x049a6e, 4}, {0x049a87, 10}, {0x049a91, 4}, {0x049a95, 4}},
+};
+
 void abi_FxSumScale(void)
 {
-    gsu_code(0x049A66, 4);
     int i;
     uint32_t m;
 
     for (i = 0; i < 3; i++)
-        { gsu.r[1 + i] = gsu_ldw((uint16_t)(FX_WORLD_SUM + 2 * i)); gsu_code(0x049A72, 31); }
+        { gsu_codes(abi_FxSumScale_fetch[0] + i, 1);
+        gsu.r[1 + i] = gsu_ldw((uint16_t)(FX_WORLD_SUM + 2 * i)); }
     for (i = 0; i < 3; i++) {
         m = gsu_lmult(gsu.r[1 + i], gsu.r[6]);
         gsu.r[4] = (uint16_t)m;
@@ -1008,8 +991,11 @@ void abi_FxSumScale(void)
         gsu.r[4] = gsu_hib(gsu.r[4]);
         gsu.r[1 + i] = gsu_or(gsu.r[0], gsu.r[4]);
     }
+    gsu_code(0x049a72, 21);
     for (i = 0; i < 3; i++)
-        { gsu_stw((uint16_t)(FX_WORLD_SUM + 2 * i), gsu.r[1 + i]); gsu_code(0x04888C, 1); gsu_code(0x049A99, 2); }
+        { gsu_codes(abi_FxSumScale_fetch[0] + 3 + i, 1);
+        gsu_stw((uint16_t)(FX_WORLD_SUM + 2 * i), gsu.r[1 + i]); }
+    gsu_code(0x049a99, 2);
 }
 
 /* cyccopy: the copy each of the caller's copies calls */

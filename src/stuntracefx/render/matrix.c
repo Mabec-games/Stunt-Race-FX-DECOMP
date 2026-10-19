@@ -23,9 +23,10 @@
  */
 void FxMatrixTranspose(uint16_t m, uint16_t *old5, uint16_t *old7, uint16_t *old6)
 {
-    gsu_code(0x01844F, 1); gsu_code(0x018749, 8); gsu_code(0x01972B, 5);
+    
     uint16_t e1, e2, e3, e5, e6, e7;
 
+    gsu_code(0x01972e, 2);
     e1 = gsu_ldw((uint16_t)(m + 2));
     gsu_code(0x019730, 4);
     e2 = gsu_ldw((uint16_t)(m + 4));
@@ -33,17 +34,17 @@ void FxMatrixTranspose(uint16_t m, uint16_t *old5, uint16_t *old7, uint16_t *old
     e3 = gsu_ldw((uint16_t)(m + 6));
     gsu_code(0x019738, 2);
     gsu_stw((uint16_t)(m + 6), e1);
-    gsu_code(0x01973A, 5);
+    gsu_code(0x01973a, 5);
     gsu_stw((uint16_t)(m + 2), e3);
-    gsu_code(0x01973F, 5);
+    gsu_code(0x01973f, 5);
     e5 = gsu_ldw((uint16_t)(m + 10));
     gsu_code(0x019744, 4);
     e6 = gsu_ldw((uint16_t)(m + 12));
     gsu_code(0x019748, 2);
     gsu_stw((uint16_t)(m + 12), e2);
-    gsu_code(0x01974A, 4);
+    gsu_code(0x01974a, 4);
     e7 = gsu_ldw((uint16_t)(m + 14));
-    gsu_code(0x01974E, 2);
+    gsu_code(0x01974e, 2);
     gsu_stw((uint16_t)(m + 14), e5);
     gsu_code(0x019750, 5);
     gsu_stw((uint16_t)(m + 10), e7);
@@ -52,23 +53,18 @@ void FxMatrixTranspose(uint16_t m, uint16_t *old5, uint16_t *old7, uint16_t *old
     *old5 = e5;
     *old7 = e7;
     *old6 = e6;
-    gsu_code(0x018751, 4); gsu_code(0x01975A, 1);
+    
 }
 
 void abi_FxMatrixTranspose(void)
 {
     uint16_t m = gsu.r[9];
 
+    gsu_code(0x01972c, 2);
     FxMatrixTranspose(m, &gsu.r[1], &gsu.r[2], &gsu.r[3]);
     gsu.r[9] = gsu_sub((uint16_t)(m + 10), 6, 0);
+    gsu_code(0x01975a, 1);
 }
-
-/* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode apply_column_code[3][3] = {
-    {{0x019790, 7}, {0x019797, 8}, {0x01979F, 5}},
-    {{0x0197A9, 7}, {0x0197B0, 8}, {0x0197B8, 5}},
-    {{0x0197C2, 7}, {0x0197C9, 8}, {0x0197D1, 5}},
-};
 
 /*
  * @routine 01:978B FxMatrixApply
@@ -87,35 +83,50 @@ static const GsuCode apply_column_code[3][3] = {
    LMS R6, FROM R1, FMULT, TO R5, ROL; the same for R2, then WITH R5,
    ADD R0; for R3, then ADD R5; STW (R9); INC R9 twice. Returns R0; *part
    = R5, *e = R6. */
+/* gsuwalk: the code of each copy of apply_column, read from the ROM */
+static const GsuCode apply_column_fetch[3][4] = {
+    {{0x01978d, 3}, {0x019790, 7}, {0x019797, 8}, {0x01979f, 5}},
+    {{0x0197a6, 3}, {0x0197a9, 7}, {0x0197b0, 8}, {0x0197b8, 5}},
+    {{0x0197bf, 3}, {0x0197c2, 7}, {0x0197c9, 8}, {0x0197d1, 5}},
+};
+
 static uint16_t apply_column(const uint16_t v[3], uint16_t col, uint16_t *out, uint16_t *part, uint16_t *e, int copy)
 {
     uint16_t t;
 
+    gsu_codes(apply_column_fetch[copy], 1);
     *e = gsu_ldw((uint16_t)(FX_MATRIX + col * 2));
     *part = gsu_rol(gsu_fmult(v[0], *e));
-    gsu_codes(apply_column_code[copy], 1);
+    gsu_codes(apply_column_fetch[copy] + 1, 1);
     *e = gsu_ldw((uint16_t)(FX_MATRIX + 6 + col * 2));
     t = gsu_rol(gsu_fmult(v[1], *e));
     *part = gsu_add(*part, t, 0);
-    gsu_codes(apply_column_code[copy] + 1, 1);
+    gsu_codes(apply_column_fetch[copy] + 2, 1);
     *e = gsu_ldw((uint16_t)(FX_MATRIX + 12 + col * 2));
     t = gsu_rol(gsu_fmult(v[2], *e));
     t = gsu_add(t, *part, 0);
-    gsu_codes(apply_column_code[copy] + 2, 1);
+    gsu_codes(apply_column_fetch[copy] + 3, 1);
     gsu_stw(*out, t);
     *out = gsu_inc(gsu_inc(*out));
     return t;
 }
 
+/* gsuwalk: the code of each copy of FxMatrixApply, read from the ROM */
+static const GsuCode FxMatrixApply_fetch[2][4] = {
+    {{0x01978c, 1}, {0x0197a4, 2}, {0x0197d6, 3}, {0x0197bd, 2}},
+    {{0, 0}, {0x0197a4, 2}, {0, 0}, {0x0197bd, 2}},
+};
+
 uint16_t FxMatrixApply(uint16_t x, uint16_t y, uint16_t z, uint16_t out, uint16_t *partial, uint16_t *m22, int copy)
 {
     const uint16_t v[3] = {x, y, z};
 
+    gsu_codes(FxMatrixApply_fetch[copy], 1);
     apply_column(v, 0, &out, partial, m22, GSU_COPY(0));
-    gsu_code(0x0197A4, 5);
+    gsu_codes(FxMatrixApply_fetch[copy] + 1, 1);
     apply_column(v, 1, &out, partial, m22, GSU_COPY(1));
-    gsu_code(0x0197BD, 5);
-    return apply_column(v, 2, &out, partial, m22, GSU_COPY(2));
+    gsu_codes(FxMatrixApply_fetch[copy] + 3, 1);
+    return gsu_codes_then(FxMatrixApply_fetch[copy] + 2, 1, apply_column(v, 2, &out, partial, m22, GSU_COPY(2)));
 }
 
 /* The registers and flags FxMatrixApply leaves, from its last result,
@@ -133,17 +144,13 @@ static void apply_exit(uint16_t out, uint16_t sum, uint16_t part, uint16_t e, in
 void abi_FxMatrixApply(void)
 {
     uint16_t out = gsu.r[9], part, e;
-    uint16_t sum = FxMatrixApply(gsu.r[1], gsu.r[2], gsu.r[3], out, &part, &e, GSU_COPY(0));
+    gsu_code(0x01978c, 1);
+    uint16_t sum = FxMatrixApply(gsu.r[1], gsu.r[2], gsu.r[3], out, &part, &e, GSU_COPY(1));
 
-    apply_exit(out, sum, part, e, GSU_COPY(0));
+    gsu_code(0x0197d6, 2);
+    apply_exit(out, sum, part, e, GSU_COPY(1));
+    gsu_code(0x0197d8, 1);
 }
-
-/* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode apply_vector_code[3][6] = {
-    {{0x019761, 3}, {0x019764, 3}, {0x019767, 4}, {0x01978B, 1}, {0x978C, 0}, {0x01978C, 4}},
-    {{0x01976F, 3}, {0x019772, 3}, {0x019775, 4}, {0x01978B, 1}, {0x978C, 0}, {0x01978C, 4}},
-    {{0x01977D, 3}, {0x019780, 3}, {0x019783, 4}, {0x01978B, 1}, {0x978C, 0}, {0x01978C, 4}},
-};
 
 /*
  * @routine 01:975B FxMatrixApplyVectors
@@ -157,17 +164,25 @@ static const GsuCode apply_vector_code[3][6] = {
  */
 /* One vector of FxMatrixApplyVectors (each its own code in the
    original): LMS R1, R2, R3; FxMatrixApply. */
+/* gsuwalk: the code of each copy of apply_vector, read from the ROM */
+static const GsuCode apply_vector_fetch[3][6] = {
+    {{0x01975e, 3}, {0x019761, 3}, {0x019764, 3}, {0x019767, 4}, {0x01978b, 1}, {0x978c, 0}},
+    {{0x01976c, 3}, {0x01976f, 3}, {0x019772, 3}, {0x019775, 4}, {0x01978b, 1}, {0x978c, 0}},
+    {{0x01977a, 3}, {0x01977d, 3}, {0x019780, 3}, {0x019783, 4}, {0x01978b, 1}, {0x978c, 0}},
+};
+
 static void apply_vector(uint16_t i, uint16_t out, uint16_t *x, uint16_t *y, uint16_t *z,
                          uint16_t *sum, uint16_t *partial, uint16_t *m22, int copy)
 {
     uint16_t v = (uint16_t)(FX_VECTORS + i * 6);
 
+    gsu_codes(apply_vector_fetch[copy], 1);
     *x = gsu_ldw(v);
-    gsu_codes(apply_vector_code[copy], 1);
+    gsu_codes(apply_vector_fetch[copy] + 1, 1);
     *y = gsu_ldw((uint16_t)(v + 2));
-    gsu_codes(apply_vector_code[copy] + 1, 1);
+    gsu_codes(apply_vector_fetch[copy] + 2, 1);
     *z = gsu_ldw((uint16_t)(v + 4));
-    gsu_codes(apply_vector_code[copy] + 2, 4);
+    gsu_codes(apply_vector_fetch[copy] + 3, 3);
     *sum = FxMatrixApply(*x, *y, *z, (uint16_t)(out + i * 6), partial, m22, GSU_COPY(0));
 }
 
@@ -175,9 +190,11 @@ void FxMatrixApplyVectors(uint16_t out, uint16_t *x, uint16_t *y, uint16_t *z,
                           uint16_t *sum, uint16_t *partial, uint16_t *m22, int copy)
 {
     apply_vector(0, out, x, y, z, sum, partial, m22, GSU_COPY(0));
-    gsu_code(0x01976B, 4); gsu_code(0x0197D6, 3);
+    
+    gsu_code(0x01976b, 1);
     apply_vector(1, out, x, y, z, sum, partial, m22, GSU_COPY(1));
-    gsu_code(0x019779, 4); gsu_code(0x0197D6, 3);
+    
+    gsu_code(0x019779, 1);
     apply_vector(2, out, x, y, z, sum, partial, m22, GSU_COPY(2));
 }
 
@@ -185,9 +202,12 @@ void abi_FxMatrixApplyVectors(void)
 {
     uint16_t out = gsu.r[9], sum, part, e;
 
+    gsu_code(0x01975c, 2);
     FxMatrixApplyVectors(out, &gsu.r[1], &gsu.r[2], &gsu.r[3], &sum, &part, &e, GSU_COPY(0));
+    gsu_code(0x019787, 3);
     apply_exit((uint16_t)(out + 12), sum, part, e, GSU_COPY(0));
     gsu.r[8] = gsu.r[11];
+    gsu_code(0x01978a, 1);
 }
 
 #define FX_ROTATE_IN_X 0x0068u
@@ -258,28 +278,36 @@ void abi_FxMatrixRotateProgram(void)
  * Entry: started by the S-CPU. Exit: as FxMatrixRotateProgram, R6 = the
  * element at $00F4.
  */
+/* gsuwalk: the code of each copy of abi_FxMatrixRotateBackProgram, read from the ROM */
+static const GsuCode abi_FxMatrixRotateBackProgram_fetch[1][12] = {
+    {{0x018282, 3}, {0x01829b, 3}, {0x0182b4, 3}, {0x018285, 7}, {0x01829e, 7}, {0x0182b7, 7}, {0x01828c, 8}, {0x0182a5, 8}, {0x0182be, 8}, {0x018294, 7}, {0x0182ad, 7}, {0x0182c6, 7}},
+};
+
 void abi_FxMatrixRotateBackProgram(void)
 {
-    gsu_code(0x018278, 4);
     int out;
 
+    gsu_code(0x018278, 4);
     gsu.r[1] = gsu_ldw(FX_ROTATE_IN_X);
-    gsu_code(0x01827C, 3);
+    gsu_code(0x01827c, 3);
     gsu.r[2] = gsu_ldw(FX_ROTATE_IN_Y);
-    gsu_code(0x01827F, 3);
+    gsu_code(0x01827f, 3);
     gsu.r[3] = gsu_ldw(FX_ROTATE_IN_Z);
-    gsu_code(0x018282, 3);
     for (out = 0; out < 3; out++) {
         uint16_t m = (uint16_t)(FX_MATRIX + out * 2);
 
+        gsu_codes(abi_FxMatrixRotateBackProgram_fetch[0] + out, 1);
         gsu.r[6] = gsu_ldw(m);
         gsu.r[5] = gsu_rol(gsu_fmult(gsu.r[1], gsu.r[6]));
+        gsu_codes(abi_FxMatrixRotateBackProgram_fetch[0] + 3 + out, 1);
         gsu.r[6] = gsu_ldw((uint16_t)(m + 6));
         gsu.r[0] = gsu_rol(gsu_fmult(gsu.r[2], gsu.r[6]));
         gsu.r[5] = gsu_add(gsu.r[5], gsu.r[0], 0);
+        gsu_codes(abi_FxMatrixRotateBackProgram_fetch[0] + 6 + out, 1);
         gsu.r[6] = gsu_ldw((uint16_t)(m + 12));
         gsu.r[0] = gsu_rol(gsu_fmult(gsu.r[3], gsu.r[6]));
         gsu.r[0] = gsu_add(gsu.r[0], gsu.r[5], 0);
+        gsu_codes(abi_FxMatrixRotateBackProgram_fetch[0] + 9 + out, 1);
         gsu_stw((uint16_t)(FX_ROTATE_OUT + out * 2), gsu.r[0]);
     }
 }

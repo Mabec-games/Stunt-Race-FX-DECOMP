@@ -29,12 +29,6 @@
 #define REC_6A 0x6Au
 #define REC_82 0x82u
 
-/* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode FxPushSet_code[2][5] = {
-    {{0, 0}, {0x049690, 4}, {0x049694, 6}, {0x04969A, 4}, {0x04969E, 7}},
-    {{0x049689, 2}, {0x049690, 4}, {0x049694, 6}, {0x04969A, 4}, {0x04969E, 7}},
-};
-
 /*
  * @routine 04:9683 FxPushSet
  * WHAT IT DOES: Sets the push to amount R2, on when R2 is not negative, with
@@ -51,23 +45,26 @@ uint16_t FxPushSet(uint16_t amount, int copy)
 
     gsu_moves(amount);
     if (!gsu.s)
-        { gsu_codes(FxPushSet_code[copy], 1); on = 1; }
+        { on = 1; gsu_code(0x049687, 5); } else { gsu_code(0x049687, 2); gsu_code(0x04968b, 1); }
+    gsu_code(0x04968c, 4);
     gsu_stw(FX_PUSH, on);
-    gsu_codes(FxPushSet_code[copy] + 1, 1);
+    gsu_code(0x049690, 4);
     gsu_stw(FX_PUSH + 2, amount);
-    gsu_codes(FxPushSet_code[copy] + 2, 1);
+    gsu_code(0x049694, 6);
     gsu_stw(FX_PUSH + 4, 0);
-    gsu_codes(FxPushSet_code[copy] + 3, 1);
+    gsu_code(0x04969a, 4);
     gsu_stw(FX_PUSH + 8, 0);
-    gsu_codes(FxPushSet_code[copy] + 4, 1);
+    gsu_code(0x04969e, 7);
     gsu_stw(FX_PUSH + 6, 0x8100);
     return on;
 }
 
 void abi_FxPushSet(void)
 {
+    gsu_code(0x049684, 3);
     gsu.r[0] = FxPushSet(gsu.r[2], GSU_COPY(0));
     gsu.r[2] = 0x8100;
+    gsu_code(0x0496a5, 2);
 }
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
@@ -117,12 +114,6 @@ void abi_FxListClearBit0(void)
     }
 }
 
-/* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode FxRecordHoldY_code[2][9] = {
-    {{0x04BC80, 13}, {0x04BC8D, 5}, {0x04BC80, 6}, {0x04BC91, 1}, {0x04BC92, 6}, {0x04BC98, 4}, {0x04BC9C, 7}, {0x04BC9C, 4}, {0x04BCA2, 1}},
-    {{0x04BC80, 13}, {0x04BC8D, 5}, {0x04BC80, 6}, {0x04BC91, 1}, {0x04BC92, 6}, {0x04BC98, 4}, {0x04BC9C, 7}, {0, 0}, {0, 0}},
-};
-
 /*
  * @routine 04:BC7B FxRecordHoldY
  * WHAT IT DOES: Keeps record R8's +$60 as its height +$20 while bit 8 of
@@ -138,23 +129,24 @@ uint16_t FxRecordHoldY(uint16_t rec, uint16_t *y_out, int copy)
 {
     uint16_t y, held;
 
+    gsu_code(0x04bc7f, 1);
     gsu_and(gsu_ldw(gsu_add(REC_FLAGS40, rec, 0)), 0x0100);
     if (gsu.z) {
-        gsu_codes(FxRecordHoldY_code[copy], 1);
+        gsu_code(0x04bc80, 13);
         y = gsu_ldw(gsu_add(REC_Y, rec, 0));
-        gsu_codes(FxRecordHoldY_code[copy] + 1, 1);
+        gsu_code(0x04bc8d, 5);
         gsu_stw(gsu_add(REC_Y_HELD, rec, 0), y);
-    } else { gsu_codes(FxRecordHoldY_code[copy] + 2, 2); }
-    gsu_codes(FxRecordHoldY_code[copy] + 4, 1);
+    } else { gsu_code(0x04bc80, 6); gsu_code(0x04bc91, 1); }
+    gsu_code(0x04bc92, 6);
     y = gsu_ldw(gsu_add(REC_Y, rec, 0));
-    gsu_codes(FxRecordHoldY_code[copy] + 5, 1);
+    gsu_code(0x04bc98, 4);
     held = gsu_ldw(gsu_add(REC_Y_HELD, rec, 0));
     gsu_sub(held, y, 0);
     if (gsu.s) {
-        gsu_codes(FxRecordHoldY_code[copy] + 6, 1);
         held = gsu_sub(held, held, 0);
+        gsu_code(0x04bc9c, 7);
         gsu_sbk(held);
-    } else { gsu_codes(FxRecordHoldY_code[copy] + 7, 2); }
+    } else { gsu_code(0x04bc9c, 4); gsu_code(0x04bca2, 1); }
     *y_out = y;
     return held;
 }
@@ -163,8 +155,10 @@ void abi_FxRecordHoldY(void)
 {
     uint16_t y;
 
+    gsu_code(0x04bc7c, 3);
     gsu.r[0] = FxRecordHoldY(gsu.r[8], &y, GSU_COPY(0));
     gsu.r[1] = y;
+    gsu_code(0x04bca3, 2);
 }
 
 /* cyccopy: the copy each of the caller's copies calls */

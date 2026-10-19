@@ -33,18 +33,18 @@ static uint16_t trig(uint16_t table, uint16_t i, uint16_t *r14, int copy)
 /* cyccopy: the copy each of the caller's copies calls */
 static const uint8_t trig_from_trig_r14[2] = {1, 2};
 
-/* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode trig_r14_code[2][1] = {
-    {{0x04CDA8, 2}},
-    {{0x04CDBB, 2}},
-};
-
 /* As trig, with R14 first loaded with the table address (IWT R14, then
    ADD R14): two writes of R14. */
+/* gsuwalk: the code of each copy of trig_r14, read from the ROM */
+static const GsuCode trig_r14_fetch[2][1] = {
+    {{0x04cda5, 3}},
+    {{0x04cdb8, 3}},
+};
+
 static uint16_t trig_r14(uint16_t table, uint16_t i, uint16_t *r14, int copy)
 {
+    gsu_codes(trig_r14_fetch[copy], 1);
     gsu_r14(table);
-    gsu_codes(trig_r14_code[copy], 1);
     return trig(table, i, r14, GSU_COPY(trig_from_trig_r14[copy]));
 }
 
@@ -53,12 +53,6 @@ typedef struct {
     uint16_t angle;     /* the high byte of R0 */
     uint16_t r14;
 } FxAngleOut;
-
-/* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode FxAngleVector_code[2][5] = {
-    {{0x04C769, 4}, {0x04CD98, 16}, {0x04CDAB, 16}, {0x04C76D, 6}, {0x04CDBE, 12}},
-    {{0x04C769, 4}, {0x04CD98, 16}, {0x04CDAB, 16}, {0x04C76D, 6}, {0x04CDBE, 12}},
-};
 
 /*
  * @routine 04:CD98 FxAngleVector
@@ -74,21 +68,22 @@ static const GsuCode FxAngleVector_code[2][5] = {
  */
 FxAngleOut FxAngleVector(uint16_t r0, uint16_t length, int copy)
 {
-    gsu_codes(FxAngleVector_code[copy], 2);
     FxAngleOut o;
     uint16_t v;
     int i;
 
     o.angle = gsu_hib(r0);
+    gsu_code(0x04cd9e, 2);
     gsu_romb(0);
+    gsu_code(0x04cda0, 5);
     v = gsu_fmult(trig_r14(ROT_SIN, gsu_lob(o.angle), &o.r14, GSU_COPY(0)), length);
     v = gsu_inc(gsu_not(v));
-    gsu_codes(FxAngleVector_code[copy] + 2, 1);
+    gsu_code(0x04cdab, 13);
     for (i = 0; i < 4; i++)
         v = gsu_add(v, v, 0);
     o.x = v;
     v = gsu_fmult(trig_r14(ROT_COS, gsu_lob(o.angle), &o.r14, GSU_COPY(1)), length);
-    gsu_codes(FxAngleVector_code[copy] + 3, 2);
+    gsu_code(0x04cdbe, 10);
     for (i = 0; i < 4; i++)
         v = gsu_add(v, v, 0);
     o.z = v;
@@ -97,6 +92,7 @@ FxAngleOut FxAngleVector(uint16_t r0, uint16_t length, int copy)
 
 void abi_FxAngleVector(void)
 {
+    gsu_code(0x04cd99, 5);
     FxAngleOut o = FxAngleVector(gsu.r[0], gsu.r[4], GSU_COPY(0));
 
     gsu.r[0] = o.z;
@@ -105,6 +101,7 @@ void abi_FxAngleVector(void)
     gsu.r[3] = o.z;
     gsu.r[6] = gsu.r[4];
     gsu.r[14] = o.r14;
+    gsu_code(0x04cdc8, 2);
 }
 
 typedef struct {
@@ -213,12 +210,6 @@ void abi_FxTurn(void)
     gsu.r[14] = o.r14;
 }
 
-/* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode FxMatrixTranspose04_code[2][15] = {
-    {{0x04B9D7, 8}, {0x04C2C7, 6}, {0x04C2CD, 4}, {0x04C2D1, 4}, {0x04C2D5, 2}, {0x04C2D7, 5}, {0x04C2DC, 5}, {0x04C2E1, 4}, {0x04C2E5, 2}, {0x04C2E7, 4}, {0x04C2EB, 2}, {0x04C2ED, 5}, {0x04C2F2, 5}, {0x04B9DF, 5}, {0x04C2F7, 1}},
-    {{0x04B269, 8}, {0x04C2C7, 6}, {0x04C2CD, 4}, {0x04C2D1, 4}, {0x04C2D5, 2}, {0x04C2D7, 5}, {0x04C2DC, 5}, {0x04C2E1, 4}, {0x04C2E5, 2}, {0x04C2E7, 4}, {0x04C2EB, 2}, {0x04C2ED, 5}, {0x04C2F2, 5}, {0x04B271, 5}, {0x04C2F7, 1}},
-};
-
 /*
  * @routine 04:C2C8 FxMatrixTranspose04
  * WHAT IT DOES: Transposes the 3x3 matrix of words at R9 in place.
@@ -232,48 +223,49 @@ static const GsuCode FxMatrixTranspose04_code[2][15] = {
  */
 void FxMatrixTranspose04(uint16_t m, uint16_t *left, int copy)
 {
-    gsu_codes(FxMatrixTranspose04_code[copy], 2);
     uint16_t w1, w2, w3, w5, w6, w7;
 
+    gsu_code(0x04c2cb, 2);
     w1 = gsu_ldw((uint16_t)(m + 2));
-    gsu_codes(FxMatrixTranspose04_code[copy] + 2, 1);
+    gsu_code(0x04c2cd, 4);
     w2 = gsu_ldw((uint16_t)(m + 4));
-    gsu_codes(FxMatrixTranspose04_code[copy] + 3, 1);
+    gsu_code(0x04c2d1, 4);
     w3 = gsu_ldw((uint16_t)(m + 6));
-    gsu_codes(FxMatrixTranspose04_code[copy] + 4, 1);
+    gsu_code(0x04c2d5, 2);
     gsu_stw((uint16_t)(m + 6), w1);
-    gsu_codes(FxMatrixTranspose04_code[copy] + 5, 1);
+    gsu_code(0x04c2d7, 5);
     gsu_stw((uint16_t)(m + 2), w3);
-    gsu_codes(FxMatrixTranspose04_code[copy] + 6, 1);
+    gsu_code(0x04c2dc, 5);
     w5 = gsu_ldw((uint16_t)(m + 10));
-    gsu_codes(FxMatrixTranspose04_code[copy] + 7, 1);
+    gsu_code(0x04c2e1, 4);
     w6 = gsu_ldw((uint16_t)(m + 12));
-    gsu_codes(FxMatrixTranspose04_code[copy] + 8, 1);
+    gsu_code(0x04c2e5, 2);
     gsu_stw((uint16_t)(m + 12), w2);
-    gsu_codes(FxMatrixTranspose04_code[copy] + 9, 1);
+    gsu_code(0x04c2e7, 4);
     w7 = gsu_ldw((uint16_t)(m + 14));
-    gsu_codes(FxMatrixTranspose04_code[copy] + 10, 1);
+    gsu_code(0x04c2eb, 2);
     gsu_stw((uint16_t)(m + 14), w5);
-    gsu_codes(FxMatrixTranspose04_code[copy] + 11, 1);
+    gsu_code(0x04c2ed, 5);
     gsu_stw((uint16_t)(m + 10), w7);
     gsu_sub((uint16_t)(m + 10), 6, 0);
-    gsu_codes(FxMatrixTranspose04_code[copy] + 12, 1);
+    gsu_code(0x04c2f2, 5);
     gsu_stw((uint16_t)(m + 4), w6);
     left[0] = w5;
     left[1] = w7;
     left[2] = w6;
-    gsu_codes(FxMatrixTranspose04_code[copy] + 13, 2);
 }
 
 void abi_FxMatrixTranspose04(void)
 {
     uint16_t m = gsu.r[9], left[3];
 
+    gsu_code(0x04c2c9, 2);
     FxMatrixTranspose04(m, left, GSU_COPY(0));
     gsu.r[1] = left[0];
     gsu.r[2] = left[1];
     gsu.r[3] = left[2];
     gsu.r[9] = (uint16_t)(m + 4);
+    gsu_code(0x04c2f7, 1);
 }
 
 #define FX_SINE16 0x983Eu      /* sine words by angle / 256, 257 entries */

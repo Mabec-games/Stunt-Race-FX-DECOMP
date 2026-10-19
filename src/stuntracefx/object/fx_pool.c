@@ -103,11 +103,13 @@ void abi_FxPoolsMerge(void)
 {
     FxPoolWalk w = {gsu.r[0], gsu.r[1], gsu.r[2], gsu.r[3]};
 
+    gsu_code(0x048899, 3);
     w = FxPoolsMerge(w);
     gsu.r[0] = w.r0;
     gsu.r[1] = w.r1;
     gsu.r[2] = w.r2;
     gsu.r[3] = w.r3;
+    gsu_code(0x0488db, 6); gsu_code(0x048912, 3);
 }
 
 /*
@@ -126,7 +128,9 @@ void abi_FxPoolsMergeProgram(void)
 {
     gsu.r[10] = FX_STACK;
     gsu.r[11] = 0x8896;
+    gsu_code(0x04888f, 7); gsu_code(0x048898, 1);
     abi_FxPoolsMerge();
+    gsu_code(0x048896, 1);
 }
 
 typedef struct {

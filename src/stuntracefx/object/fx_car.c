@@ -367,9 +367,9 @@ void abi_FxCarMoveParts(void)
  */
 void abi_FxCarMovePartsAfterWalk(void)
 {
-    gsu_code(0x04A5E5, 3); gsu_code(0x04A602, 5);
+    
+    gsu_code(0x04a5e5, 3); gsu_code(0x04a602, 5);
     gsu_pull(&gsu.r[10]);
-    gsu_code(0x04888C, 1);
 }
 
 /*
@@ -384,9 +384,8 @@ void abi_FxCarMovePartsAfterWalk(void)
  */
 void abi_FxCarMovePartsAfterStill(void)
 {
-    gsu_code(0x04A602, 5);
+    gsu_code(0x04a602, 5);
     gsu_pull(&gsu.r[10]);
-    gsu_code(0x04888C, 1);
 }
 
 /* cyccopy: the code of each of the original's copies, by where it runs */

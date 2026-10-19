@@ -41,11 +41,16 @@ import cycwrite  # noqa: E402
 _rom = None
 
 
+class Mismatch(Exception):
+    pass
+
+
 def rom(bank, addr):
     global _rom
     if _rom is None:
         _rom = open(ROM, 'rb').read()
-    assert addr >= 0x8000, hex(addr)
+    if addr < 0x8000:
+        raise Mismatch('code at %02X:%04X, outside the ROM' % (bank, addr))
     return _rom[(bank & 0x3F) * 0x8000 + (addr & 0x7FFF)]
 
 
@@ -203,6 +208,7 @@ class Unit:
             self.target = None             # computed
         self.end = a + n - 1
         self.ev = ev
+        self.writes, self.sreg = writes, sreg
 
     def __repr__(self):
         return '<%04X-%04X %02X%s%s>' % (self.addr, self.end, self.op, ''.join(self.ev), self.jump or '')
@@ -235,10 +241,6 @@ def c_events(stmt):
                 out.append(C_EV[name])
         i += 1
     return out
-
-
-class Mismatch(Exception):
-    pass
 
 
 def timed(u):

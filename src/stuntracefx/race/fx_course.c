@@ -447,8 +447,10 @@ void abi_FxCoursePrevEntry(void)
     FxRegs g;
 
     memcpy(g.r, gsu.r, sizeof g.r);
+    gsu_code(0x04cd06, 2);
     g = FxCoursePrevEntry(g, GSU_COPY(1));
     memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
+    gsu_code(0x04cd52, 4);
 }
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
