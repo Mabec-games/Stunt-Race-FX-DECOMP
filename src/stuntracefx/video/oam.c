@@ -1902,7 +1902,7 @@ static void oam_direct(uint32_t b, uint8_t addr, uint16_t x, uint16_t n, int hid
     wr8(b | 0x2103, 0x00);
     cpu.x = x;
     for (cpu.y = n; cpu.y; cpu.y--) {
-        cyc(40);
+        cyc(hide && cpu.y != n ? 50 : 40);  /* hiding, round again: INX, DEY, BNE */
         v = hide ? 0xF0 : rd8(cyc_then(40, b | (uint16_t)(0x0375 + cpu.x)));
         cyc(24);
         wr8(b | 0x2104, v);
@@ -2535,6 +2535,7 @@ static void overlay_draw(void)
     const uint32_t b = 0x040000;
     uint8_t v, bob, step;
     uint16_t a, pic;
+    uint32_t in, off;
 
     op_sep(P_M);
     cyc(68);
@@ -2562,9 +2563,10 @@ static void overlay_draw(void)
     cyc(24);
     cpu.x = rd8(b | 0x10A8) ? (cyc(16), 0x0024) : 0x0000;
     cpu.y = 0x0090;
+    in = 180;
     do {
         op_rep(P_M);
-        cyc(180);
+        cyc(in);
         a = (uint16_t)(rd16(0x04E1B6 + (uint32_t)cpu.x) & 0x00FF);
         a = (uint16_t)(a + rd16(b | 0x10A4));
         cpu.a = a;
@@ -2572,7 +2574,9 @@ static void overlay_draw(void)
         if ((a & 0x8000) || (cyc(34), a >= 0x00F0)) {
             cyc(90);
             wr8(b | (uint16_t)(0x0376 + cpu.y), 0xF0);
+            off = 22;                   /* BRA to .lE19C */
         } else {
+            off = 0;
             cyc(80);
             wr8(b | (uint16_t)(0x0375 + cpu.y), (uint8_t)a);
             cyc(78);
@@ -2592,8 +2596,13 @@ static void overlay_draw(void)
         }
         cpu.x = (uint16_t)(cpu.x + 3);
         cpu.y = (uint16_t)(cpu.y + 4);
+        /* INX x3, INY x4, CPY # (122), BCC; round again 22 and REP, LDA
+           long, AND #, CLC, ADC abs (132, the table word's 16 counted by
+           its read) */
+        in = off + 122 + 22 + 132 - 16;
     } while (cpu.y < 0x00C0);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xAA);
+    cyc(off + 122 + 16 + 40);           /* BCC not taken, LDA #, STA abs */
     wr8(b | 0x057E, 0xAA);
     cyc(24);
     wr8(b | 0x057F, 0xAA);

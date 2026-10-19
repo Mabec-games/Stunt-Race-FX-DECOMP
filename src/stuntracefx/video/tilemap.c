@@ -577,7 +577,7 @@ uint8_t TilemapRowsTo5C00(uint8_t bank)
         cyc(84);
         off = rd16(0x0000F9);
         for (i = 0; i < 26; i++)
-            { cyc(96); wr16(b | 0x2118, cyc_then(24, rd16(0x7F93D7 + (uint16_t)(off + 2 * i)))); }
+            { cyc(i ? 96 : 56); wr16(b | 0x2118, cyc_then(24, rd16(0x7F93D7 + (uint16_t)(off + 2 * i)))); }
         cyc(74);
         off = rd16(0x0000F9);
         off = (uint16_t)(off + 0x0040);
