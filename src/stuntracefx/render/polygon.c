@@ -31,111 +31,109 @@ void abi_FxPolygonClipRight(void);
 void abi_FxPolygonClipLeft(void);
 void abi_FxPolygonClipNear(void);
 
-/* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode lists_swap_code[7][5] = {
-    {{0, 0}, {0x01C3E4, 3}, {0x01C3E7, 3}, {0x01C3EA, 3}, {0x01C3ED, 4}},
-    {{0, 0}, {0x01C39C, 3}, {0x01C39F, 3}, {0x01C3A2, 3}, {0x01C3A5, 4}},
-    {{0, 0}, {0x01C3C0, 3}, {0x01C3C3, 3}, {0x01C3C6, 3}, {0x01C3C9, 4}},
-    {{0x01C28D, 4}, {0x01C291, 3}, {0x01C294, 3}, {0x01C297, 3}, {0, 0}},
-    {{0, 0}, {0x01C2BC, 3}, {0x01C2BF, 3}, {0x01C2C2, 3}, {0x01C2C5, 4}},
-    {{0, 0}, {0x01C378, 3}, {0x01C37B, 3}, {0x01C37E, 3}, {0x01C381, 4}},
-    {{0, 0}, {0x01C329, 3}, {0x01C32C, 3}, {0x01C32F, 3}, {0x01C332, 3}},
+/* LMS R1, ($60); LMS R2, ($62); SMS ($60), R2; SMS ($62), R1. */
+/* gsuwalk: the code of each copy of lists_swap, read from the ROM */
+static const GsuCode lists_swap_fetch[7][4] = {
+    {{0x01c28e, 3}, {0x01c291, 3}, {0x01c294, 3}, {0x01c297, 3}},
+    {{0x01c2b9, 3}, {0x01c2bc, 3}, {0x01c2bf, 3}, {0x01c2c2, 3}},
+    {{0x01c326, 3}, {0x01c329, 3}, {0x01c32c, 3}, {0x01c32f, 3}},
+    {{0x01c375, 3}, {0x01c378, 3}, {0x01c37b, 3}, {0x01c37e, 3}},
+    {{0x01c399, 3}, {0x01c39c, 3}, {0x01c39f, 3}, {0x01c3a2, 3}},
+    {{0x01c3bd, 3}, {0x01c3c0, 3}, {0x01c3c3, 3}, {0x01c3c6, 3}},
+    {{0x01c3e1, 3}, {0x01c3e4, 3}, {0x01c3e7, 3}, {0x01c3ea, 3}},
 };
 
-/* LMS R1, ($60); LMS R2, ($62); SMS ($60), R2; SMS ($62), R1. */
 static void lists_swap(int copy)
 {
-    gsu_codes(lists_swap_code[copy], 1);
+    gsu_codes(lists_swap_fetch[copy], 1);
     gsu.r[1] = gsu_ldw(FX_LIST_IN);
-    gsu_codes(lists_swap_code[copy] + 1, 1);
+    gsu_codes(lists_swap_fetch[copy] + 1, 1);
     gsu.r[2] = gsu_ldw(FX_LIST_OUT);
-    gsu_codes(lists_swap_code[copy] + 2, 1);
+    gsu_codes(lists_swap_fetch[copy] + 2, 1);
     gsu_stw(FX_LIST_IN, gsu.r[2]);
-    gsu_codes(lists_swap_code[copy] + 3, 1);
+    gsu_codes(lists_swap_fetch[copy] + 3, 1);
     gsu_stw(FX_LIST_OUT, gsu.r[1]);
-    gsu_codes(lists_swap_code[copy] + 4, 1);
 }
 
-/* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode next_in_code[11][4] = {
-    {{0x01C435, 2}, {0x01C437, 4}, {0, 0}, {0, 0}},
-    {{0, 0}, {0x01C43B, 4}, {0, 0}, {0, 0}},
-    {{0, 0}, {0x018C0E, 7}, {0x01C43F, 6}, {0, 0}},
-    {{0, 0}, {0x01C475, 6}, {0, 0}, {0, 0}},
-    {{0, 0}, {0x01C47F, 6}, {0, 0}, {0, 0}},
-    {{0x01C25A, 2}, {0x01C25C, 3}, {0, 0}, {0, 0}},
-    {{0, 0}, {0x01C262, 3}, {0, 0}, {0, 0}},
-    {{0, 0}, {0x01C269, 4}, {0, 0}, {0, 0}},
-    {{0, 0}, {0x01C281, 3}, {0, 0}, {0, 0}},
-    {{0, 0}, {0x01C287, 3}, {0, 0}, {0, 0}},
-    {{0, 0}, {0x018BFF, 7}, {0x018C0E, 7}, {0x01C43F, 6}},
+/* A word from R7 (LDW, INC, INC). */
+/* gsuwalk: the code of each copy of next_in, read from the ROM */
+static const GsuCode next_in_fetch[10][1] = {
+    {{0x01c25b, 1}},
+    {{0x01c25f, 3}},
+    {{0x01c265, 4}},
+    {{0x01c280, 1}},
+    {{0x01c284, 3}},
+    {{0x01c435, 2}},
+    {{0x01c437, 4}},
+    {{0x01c43b, 4}},
+    {{0x01c471, 4}},
+    {{0x01c47b, 4}},
 };
 
-/* A word from R7 (LDW, INC, INC). */
 static uint16_t next_in(int copy)
 {
-    gsu_codes(next_in_code[copy], 1);
+    gsu_codes(next_in_fetch[copy], 1);
     uint16_t v = gsu_ldw(gsu.r[7]);
 
     gsu.r[7] = gsu_inc(gsu_inc(gsu.r[7]));
-    gsu_codes(next_in_code[copy] + 1, 3);
     return v;
 }
 
-/* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode next_out_code[5][2] = {
-    {{0x01C25F, 3}, {0, 0}},
-    {{0x01C265, 4}, {0, 0}},
-    {{0x01C26D, 6}, {0x01C27F, 2}},
-    {{0x01C284, 3}, {0, 0}},
-    {{0x01C28A, 3}, {0, 0}},
+/* A word to R2 (STW, INC, INC). */
+/* gsuwalk: the code of each copy of next_out, read from the ROM */
+static const GsuCode next_out_fetch[5][1] = {
+    {{0x01c25c, 3}},
+    {{0x01c262, 3}},
+    {{0x01c269, 4}},
+    {{0x01c281, 3}},
+    {{0x01c287, 3}},
 };
 
-/* A word to R2 (STW, INC, INC). */
 static void next_out(uint16_t v, int copy)
 {
+    gsu_codes(next_out_fetch[copy], 1);
     gsu_stw(gsu.r[2], v);
     gsu.r[2] = gsu_inc(gsu_inc(gsu.r[2]));
-    gsu_codes(next_out_code[copy], 2);
 }
-
-/* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode next_r8_code[5][2] = {
-    {{0x01C46B, 2}, {0x01C46D, 4}},
-    {{0, 0}, {0x01C471, 4}},
-    {{0, 0}, {0x01C47B, 4}},
-    {{0, 0}, {0x01C485, 5}},
-    {{0, 0}, {0x01C300, 5}},
-};
 
 /* A word to R8 (STW, INC, INC). */
-static void next_r8(uint16_t v, int copy)
-{
-    gsu_codes(next_r8_code[copy], 1);
-    gsu_stw(gsu.r[8], v);
-    gsu.r[8] = gsu_inc(gsu_inc(gsu.r[8]));
-    gsu_codes(next_r8_code[copy] + 1, 1);
-}
-
-/* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode z_range_code[2][5] = {
-    {{0x01C23D, 4}, {0x01C24D, 5}, {0x01C241, 5}, {0x01C246, 5}, {0x01C24B, 2}},
-    {{0, 0}, {0, 0}, {0x01C273, 5}, {0x01C278, 5}, {0x01C27D, 2}},
+/* gsuwalk: the code of each copy of next_r8, read from the ROM */
+static const GsuCode next_r8_fetch[8][1] = {
+    {{0x01c46b, 2}},
+    {{0x01c46d, 4}},
+    {{0x01c475, 6}},
+    {{0x01c47f, 6}},
+    {{0x01c2eb, 3}},
+    {{0x01c2f1, 3}},
+    {{0x01c2f7, 3}},
+    {{0x01c2fd, 3}},
 };
 
+static void next_r8(uint16_t v, int copy)
+{
+    gsu_codes(next_r8_fetch[copy], 1);
+    gsu_stw(gsu.r[8], v);
+    gsu.r[8] = gsu_inc(gsu_inc(gsu.r[8]));
+}
+
 /* R4 the largest z so far, R5 the smallest (SUB, BPL / BMI on S alone). */
+/* gsuwalk: the code of each copy of z_range, read from the ROM */
+static const GsuCode z_range_fetch[2][7] = {
+    {{0x01c23d, 4}, {0x01c246, 1}, {0x01c23d, 9}, {0x01c24d, 1}, {0x01c247, 4}, {0x01c24d, 1}, {0x01c247, 7}},
+    {{0x01c26d, 6}, {0x01c278, 1}, {0x01c26d, 11}, {0x01c27f, 1}, {0x01c279, 4}, {0x01c27f, 1}, {0x01c279, 7}},
+};
+
 static void z_range(int copy)
 {
-    gsu_codes(z_range_code[copy], 2);
     gsu.r[0] = gsu_sub(gsu.r[4], gsu.r[6], 0);
     if (gsu.s) {
-        gsu_codes(z_range_code[copy] + 2, 1);
         gsu.r[4] = gsu.r[6];
+        gsu_codes(z_range_fetch[copy] + 2, 2);
         return;
-    } else { gsu_codes(z_range_code[copy] + 3, 1); }
+    } else { gsu_codes(z_range_fetch[copy], 2); }
     gsu.r[0] = gsu_sub(gsu.r[5], gsu.r[6], 0);
     if (!gsu.s)
-        { gsu_codes(z_range_code[copy] + 4, 1); gsu.r[5] = gsu.r[6]; }
+        { gsu.r[5] = gsu.r[6]; gsu_codes(z_range_fetch[copy] + 6, 1); } else { gsu_codes(z_range_fetch[copy] + 4, 2); }
 }
 
 /*
@@ -163,89 +161,99 @@ void abi_FxPolygonProject(void)
 {
     int c;
 
+    gsu_code(0x01c413, 2);
     gsu_push(&gsu.r[10], gsu.r[11]);
-    gsu_code(0x01C415, 2); gsu_cache(0xC417); gsu_code(0x01C417, 4);
+    
+    gsu_code(0x01c415, 2); gsu_cache(0xc417); gsu_code(0x01c417, 4);
     gsu.r[3] = gsu_ldw(0x0026);
-    gsu_code(0x01C41B, 3);
+    gsu_code(0x01c41b, 3);
     gsu.r[13] = gsu_ldw(0x0028);
-    gsu_code(0x01C41E, 3);
+    gsu_code(0x01c41e, 3);
     gsu.r[9] = gsu_ldw(0x002A);
     gsu.r[0] = 0x0014;
-    gsu_code(0x01C421, 8);
+    gsu_code(0x01c421, 4);
     gsu_romb(0x14);
     gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[0], 0);
+    gsu_code(0x01c425, 4);
     gsu_stw(FX_CODES, gsu.r[0]);
-    gsu_code(0x01C429, 3);
+    gsu_code(0x01c429, 3);
     gsu_stw(0x001A, gsu.r[14]);
-    gsu_code(0x01C42C, 3);
+    gsu_code(0x01c42c, 3);
     gsu.r[12] = gsu_ldw(FX_COUNT);
-    gsu_code(0x01C42F, 3);
+    gsu_code(0x01c42f, 3);
     gsu.r[7] = gsu_ldw(FX_LIST_IN);
-    gsu_code(0x01C432, 3);
+    gsu_code(0x01c432, 3);
     gsu.r[8] = gsu_ldw(FX_OUT);
     do {
-        gsu.r[1] = next_in(GSU_COPY(0));
-        gsu.r[2] = next_in(GSU_COPY(1));
-        gsu.r[6] = next_in(GSU_COPY(2));
+        gsu.r[1] = next_in(GSU_COPY(5));
+        gsu.r[2] = next_in(GSU_COPY(6));
+        gsu.r[6] = next_in(GSU_COPY(7));
         gsu.r[11] = 0xC445;
+        gsu_code(0x01c43f, 6); gsu_code(0x018bff, 1);
         abi_FxProjectVertex();
-        gsu_code(0x01C445, 2);
+        gsu_code(0x01c445, 2);
         gsu_push(&gsu.r[10], gsu.r[0]);
         gsu.r[0] = gsu_and(gsu.r[0], 15);
         c = !gsu.z;
         gsu.r[0] = gsu_lsr(gsu.r[0]);       /* BEQ's delay slot */
         if (c) {
-            gsu_code(0x01C447, 9); gsu_code(0x01C453, 1);
+            
             c = gsu.cy;
             gsu.r[0] = gsu_lsr(gsu.r[0]);
             if (c)
-                { gsu_code(0x01C450, 3); gsu.r[2] = gsu_ldw(FX_EDGES + 4); }
-            gsu_code(0x01C454, 2); gsu_code(0x01C459, 1);
+                { gsu_code(0x01c447, 13);
+                gsu.r[2] = gsu_ldw(FX_EDGES + 4); } else { gsu_code(0x01c447, 9); gsu_code(0x01c453, 1); }
+            
             c = gsu.cy;
             gsu.r[0] = gsu_lsr(gsu.r[0]);
             if (c)
-                { gsu_code(0x01C456, 3); gsu.r[2] = gsu_ldw(FX_EDGES + 6); }
-            gsu_code(0x01C45A, 2);
+                { gsu_code(0x01c454, 6);
+                gsu.r[2] = gsu_ldw(FX_EDGES + 6); } else { gsu_code(0x01c454, 2); gsu_code(0x01c459, 1); }
             c = gsu.cy;
             gsu.r[0] = gsu_lsr(gsu.r[0]);
             if (c) {
-                gsu_code(0x01C45C, 4);
+                gsu_code(0x01c45a, 6);
                 gsu.r[1] = gsu_ldw(FX_EDGES);   /* LMS, then IBT R1, #0 */
                 gsu.r[1] = 0;
-            }
-            gsu_code(0x01C461, 3); gsu_code(0x01C467, 1);
+                gsu_code(0x01c460, 2);
+            } else { gsu_code(0x01c45a, 2); gsu_code(0x01c461, 1); }
+            
             if (gsu.cy)
-                { gsu_code(0x01C464, 3); gsu.r[1] = gsu_ldw(FX_EDGES + 2); }
-        } else { gsu_code(0x01C447, 6); gsu_code(0x01C467, 1); }
-        gsu_code(0x01C468, 3);
+                { gsu_code(0x01c462, 6);
+                gsu.r[1] = gsu_ldw(FX_EDGES + 2); } else { gsu_code(0x01c462, 2); gsu_code(0x01c467, 1); }
+        } else { gsu_code(0x01c447, 6); gsu_code(0x01c467, 1); }
+        gsu_code(0x01c468, 3);
         gsu.r[0] = gsu_pull(&gsu.r[10]);
         next_r8(gsu.r[1], GSU_COPY(0));
         next_r8(gsu.r[2], GSU_COPY(1));
-        gsu.r[6] = next_in(GSU_COPY(3));
+        gsu.r[6] = next_in(GSU_COPY(8));
         gsu.r[6] = gsu_add(gsu.r[6], gsu.r[6], 0);
         next_r8(gsu.r[6], GSU_COPY(2));
-        gsu.r[6] = next_in(GSU_COPY(4));
+        gsu.r[6] = next_in(GSU_COPY(9));
         gsu.r[6] = gsu_add(gsu.r[6], gsu.r[6], 0);
         next_r8(gsu.r[6], GSU_COPY(3));
+        gsu_code(0x01c485, 5);
         gsu.r[6] = gsu_ldw(FX_CODES);
         gsu.r[0] = gsu_or(gsu.r[0], gsu.r[6]);
         gsu.r[12] = gsu_dec(gsu.r[12]);
         c = !gsu.z;
+        gsu_code(0x01c48a, 4); gsu_code((c) ? 0x01c434 : 0x01c48e, 1);   /* the branch's delay slot */
         gsu_sbk(gsu.r[0]);                  /* BNE's delay slot */
     } while (c);
-    gsu_code(0x01C48F, 3);
+    gsu_code(0x01c48f, 3);
     gsu.r[0] = gsu_ldw(0x001C);
-    gsu_code(0x01C492, 5);
+    gsu_code(0x01c492, 2);
     gsu_romb(gsu.r[0]);
+    gsu_code(0x01c494, 3);
     gsu_r14(gsu_ldw(0x001A));
     gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[0], 0);
-    gsu_code(0x01C497, 4);
+    gsu_code(0x01c497, 4);
     gsu_stw(FX_CODES, gsu.r[0]);
-    gsu_code(0x01C49B, 3);
+    gsu_code(0x01c49b, 3);
     gsu.r[0] = gsu_ldw(FX_COUNT);
-    gsu_code(0x01C49E, 3);
+    gsu_code(0x01c49e, 3);
     gsu_stw(FX_POINTS_N, gsu.r[0]);
-    gsu_code(0x01C4A1, 4);
+    gsu_code(0x01c4a1, 4);
     gsu_pull(&gsu.r[10]);       /* the return address, into R15 */
 }
 
@@ -274,150 +282,177 @@ void abi_FxPolygonProject(void)
  * lists as swapped last; R8 past the output; S and Z from R10; the last
  * RAM address R10.
  */
+/* gsuwalk: the code of each copy of abi_FxPolygonNearClip, read from the ROM */
+static const GsuCode abi_FxPolygonNearClip_fetch[1][4] = {
+    {{0x01c2e9, 2}, {0x01c2ee, 3}, {0x01c2f4, 3}, {0x01c2fa, 3}},
+};
+
+/* gsuwalk: the copy of next_r8 each copy of abi_FxPolygonNearClip calls, by pass */
+static const uint8_t next_r8_in_abi_FxPolygonNearClip[1][4] = {{4, 5, 6, 7}};
+
 void abi_FxPolygonNearClip(void)
 {
-    gsu_code(0x01C21E, 3); gsu_code(0x01C3F5, 5);
+    
+    gsu_code(0x01c21f, 2);
     gsu_push(&gsu.r[10], gsu.r[11]);
     gsu.r[5] = 0x3E80;
     gsu.r[4] = 0xC180;
-    gsu_code(0x01C221, 11);
+    gsu_code(0x01c221, 11);
     gsu.r[12] = gsu_ldw(FX_COUNT);
     gsu.r[0] = FX_LIST_B;
-    gsu_code(0x01C22C, 6);
+    gsu_code(0x01c22c, 6);
     gsu.r[7] = gsu_ldw(FX_LIST_IN);
     gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[7], 0);
     if (!gsu.z) {
-        gsu_code(0x01C232, 8);
         gsu.r[7] = gsu_add(gsu.r[7], 4, 0);
         gsu.r[13] = 0xC23A;
+        gsu_code(0x01c232, 9);
         do {
-            gsu_code(0x01C23A, 3);
+            gsu_code(0x01c23b, 2);
             gsu.r[6] = gsu_ldw(gsu.r[7]);
             z_range(GSU_COPY(0));
             gsu.r[7] = gsu_add(gsu.r[7], 10, 0);
-        } while (gsu_count_down(&gsu.r[12]));
-        gsu_code(0x01C252, 3); gsu_code(0x01C299, 1);
+        } while (gsu_code_loop(0x01c23a, 1, gsu_code_loop(0x01c24e, 4, gsu_count_down(&gsu.r[12]))));
+        gsu_code(0x01c24e, 4);
+        
+        gsu_code(0x01c252, 3); gsu_code(0x01c299, 1);
     } else {
-        gsu_code(0x01C232, 3); gsu_code(0x01C255, 4);
+        
+        gsu_code(0x01c232, 3); gsu_code(0x01c255, 4);
         gsu.r[2] = gsu_ldw(FX_LIST_OUT);
         gsu.r[13] = 0xC25A;
-        gsu_code(0x01C259, 1);
+        gsu_code(0x01c259, 2);
         do {
-            gsu.r[0] = next_in(GSU_COPY(5));
+            gsu.r[0] = next_in(GSU_COPY(0));
             next_out(gsu.r[0], GSU_COPY(0));
-            gsu.r[0] = next_in(GSU_COPY(6));
+            gsu.r[0] = next_in(GSU_COPY(1));
             next_out(gsu.r[0], GSU_COPY(1));
-            gsu.r[6] = next_in(GSU_COPY(7));
+            gsu.r[6] = next_in(GSU_COPY(2));
             next_out(gsu.r[6], GSU_COPY(2));
             z_range(GSU_COPY(1));
-            gsu.r[0] = next_in(GSU_COPY(8));
+            gsu.r[0] = next_in(GSU_COPY(3));
             next_out(gsu.r[0], GSU_COPY(3));
-            gsu.r[0] = next_in(GSU_COPY(9));
+            gsu.r[0] = next_in(GSU_COPY(4));
             next_out(gsu.r[0], GSU_COPY(4));
-        } while (gsu_count_down(&gsu.r[12]));
-        lists_swap(GSU_COPY(3));
+        } while (gsu_code_loop(0x01c25a, 1, gsu_code_loop(0x01c28a, 3, gsu_count_down(&gsu.r[12]))));
+        gsu_code(0x01c28a, 3);
+        gsu_code(0x01c28d, 1);
+        lists_swap(GSU_COPY(0));
     }
-    gsu_code(0x01C29A, 3);
+    gsu_code(0x01c29a, 3);
     gsu.r[0] = gsu_ldw(FX_COUNT);
-    gsu_code(0x01C29D, 3);
+    gsu_code(0x01c29d, 3);
     gsu_stw(FX_COUNT_SAVE, gsu.r[0]);
     gsu.r[0] = gsu_add(gsu.r[5], gsu.r[5], 0);
     gsu.r[0] = gsu_add(gsu.r[0], gsu.r[5], 0);
     gsu.r[6] = gsu_sub(gsu.r[0], gsu.r[4], 0);
     if (!gsu.s) {
-        gsu_code(0x01C2A0, 11); gsu_code(0x01C331, 4);
+        
+        gsu_code(0x01c2a0, 11); gsu_code(0x01c331, 4);
         gsu.r[0] = gsu_ldw(FX_COUNT);
-        gsu_code(0x01C335, 4);
+        gsu_code(0x01c335, 4);
         gsu_pull(&gsu.r[10]);
         return;
-    } else { gsu_code(0x01C2A0, 7); gsu_code(0x01C2AB, 7); }
+    } else { gsu_code(0x01c2a0, 7); gsu_code(0x01c2ab, 1); }
     gsu.r[0] = gsu_add(gsu.r[4], gsu.r[0], 0);
     gsu.r[0] = gsu_lsr(gsu.r[0]);
     gsu.r[0] = gsu_lsr(gsu.r[0]);
+    gsu_code(0x01c2ac, 6);
     gsu_push(&gsu.r[10], gsu.r[0]);
     gsu.r[11] = 0xC2B8;
+    gsu_code(0x01c2b2, 6); gsu_code(0x01ce34, 1);
     abi_FxPolygonClipNear();
-    lists_swap(GSU_COPY(4));
+    gsu_code(0x01c2b8, 1);
+    lists_swap(GSU_COPY(1));
+    gsu_code(0x01c2c5, 4);
     gsu.r[1] = gsu_pull(&gsu.r[10]);
     gsu_moves(gsu.r[0]);
     if (gsu.z) {
+        gsu_code(0x01c2c9, 4); gsu_code(0x01c334, 5);
         gsu_pull(&gsu.r[10]);
         return;
-    } else { gsu_code(0x01C2C9, 7); }
+    } else { gsu_code(0x01c2c9, 4); }
+    gsu_code(0x01c2cd, 3);
     gsu_push(&gsu.r[10], gsu.r[1]);
-    gsu_code(0x01C2D0, 5);
+    gsu_code(0x01c2d0, 5);
     gsu.r[2] = gsu_ldw(FX_OUT);
     gsu.r[2] = gsu_sub(gsu.r[2], 8, 0);
     gsu.r[0] = gsu_not(gsu.r[0]);
-    gsu_code(0x01C2D5, 6);
+    gsu_code(0x01c2d5, 6);
     gsu_stb(gsu.r[2], (uint8_t)gsu.r[0]);
     gsu.r[0] = gsu_not(gsu.r[0]);
-    gsu_code(0x01C2DB, 3);
+    gsu_code(0x01c2db, 3);
     gsu_push(&gsu.r[10], gsu.r[2]);
     gsu.r[11] = 0xC2E4;
-    (gsu_code(0x01C2DE, 6), gsu_code(0x01C412, 3), abi_FxPolygonProject());
-    gsu_code(0x01C2E4, 5);
+    gsu_code(0x01c2de, 6); gsu_code(0x01c412, 1);
+    (abi_FxPolygonProject());
+    gsu_code(0x01c2e4, 5);
     gsu.r[1] = gsu_pull(&gsu.r[10]);
     {
-        gsu_code(0x01C2E9, 2);
         int i;
 
         for (i = 0; i < 4; i++) {
+            gsu_codes(abi_FxPolygonNearClip_fetch[0] + i, 1);
             gsu.r[0] = gsu_ldw(gsu.r[1]);
             gsu.r[1] = gsu_inc(gsu_inc(gsu.r[1]));
-            next_r8(gsu.r[0], GSU_COPY(4));
+            next_r8(gsu.r[0], GSU_COPY(next_r8_in_abi_FxPolygonNearClip[0][i]));
         }
     }
+    gsu_code(0x01c300, 5);
     gsu_stw(FX_OUT, gsu.r[8]);
     gsu.r[0] = FX_LIST_B;
-    gsu_code(0x01C305, 6);
+    gsu_code(0x01c305, 6);
     gsu_stw(FX_LIST_OUT, gsu.r[0]);
     gsu.r[0] = FX_LIST_A;
-    gsu_code(0x01C30B, 6);
+    gsu_code(0x01c30b, 6);
     gsu_stw(FX_LIST_IN, gsu.r[0]);
-    gsu_code(0x01C311, 3);
+    gsu_code(0x01c311, 3);
     gsu.r[0] = gsu_ldw(FX_COUNT_SAVE);
-    gsu_code(0x01C314, 3);
+    gsu_code(0x01c314, 3);
     gsu_stw(FX_COUNT, gsu.r[0]);
-    gsu_code(0x01C317, 3);
+    gsu_code(0x01c317, 3);
     gsu.r[0] = gsu_pull(&gsu.r[10]);
     gsu.r[0] = gsu_inc(gsu_not(gsu.r[0]));
     gsu.r[11] = 0xC320;
+    gsu_code(0x01c31a, 6); gsu_code(0x01ce34, 1);
     abi_FxPolygonClipNear();
     gsu_moves(gsu.r[0]);
     if (!gsu.z) {
-        lists_swap(GSU_COPY(6));
+        gsu_code(0x01c320, 6);
+        lists_swap(GSU_COPY(2));
+        gsu_code(0x01c332, 3);
         gsu.r[0] = gsu_ldw(FX_COUNT);
-    }
-    gsu_code(0x01C335, 4);
+    } else { gsu_code(0x01c320, 5); gsu_code(0x01c334, 1); }
+    gsu_code(0x01c335, 4);
     gsu_pull(&gsu.r[10]);       /* the return address, into R15 */
 }
 
-/* cyccopy: the copy each of the caller's copies calls */
-static const uint8_t lists_swap_from_clip_edge[4] = {0, 1, 2, 5};
-
-/* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode clip_edge_code[4][5] = {
-    {{0x01C3DB, 5}, {0x01CA42, 3}, {0x01C3E0, 4}, {0x01C3F1, 4}, {0, 0}},
-    {{0x01C393, 5}, {0x01CB63, 3}, {0x01C398, 4}, {0x01C3A9, 4}, {0x01C3AD, 4}},
-    {{0x01C3B7, 5}, {0x01C933, 3}, {0x01C3BC, 4}, {0x01C3CD, 4}, {0x01C3D1, 4}},
-    {{0x01C36F, 5}, {0x01C668, 3}, {0x01C374, 4}, {0x01C385, 4}, {0x01C389, 4}},
-};
-
 /* One edge clip of FxPolygonDraw: the clip, the lists swapped; 0 when
    nothing is left (R0 = 0), else 1 with R5 = $014A again (when reload). */
+/* gsuwalk: the code of each copy of clip_edge, read from the ROM */
+static const GsuCode clip_edge_fetch[4][7] = {
+    {{0x01c370, 4}, {0x01c668, 1}, {0x01c374, 1}, {0x01c381, 4}, {0x01c389, 1}, {0x01c381, 4}, {0x01c38a, 3}},
+    {{0x01c394, 4}, {0x01cb63, 1}, {0x01c398, 1}, {0x01c3a5, 4}, {0x01c3ad, 1}, {0x01c3a5, 4}, {0x01c3ae, 3}},
+    {{0x01c3b8, 4}, {0x01c933, 1}, {0x01c3bc, 1}, {0x01c3c9, 4}, {0x01c3d1, 1}, {0x01c3c9, 4}, {0x01c3d2, 3}},
+    {{0x01c3dc, 4}, {0x01ca42, 1}, {0x01c3e0, 1}, {0x01c3ed, 4}, {0x01c3f5, 1}, {0x01c3ed, 4}, {0, 0}},
+};
+
+/* gsuwalk: the copy of lists_swap each copy of clip_edge calls */
+static const uint8_t lists_swap_in_clip_edge[4] = {3, 4, 5, 6};
+
 static int clip_edge(void (*clip)(void), uint16_t ret, int reload, int copy)
 {
-    gsu_codes(clip_edge_code[copy], 2);
     gsu.r[11] = ret;
+    gsu_codes(clip_edge_fetch[copy], 2);
     clip();
-    gsu_codes(clip_edge_code[copy] + 2, 1);
-    lists_swap(GSU_COPY(lists_swap_from_clip_edge[copy]));
+    gsu_codes(clip_edge_fetch[copy] + 2, 1);
+    lists_swap(GSU_COPY(lists_swap_in_clip_edge[copy]));
     gsu_moves(gsu.r[0]);
     if (gsu.z)
-        { gsu_codes(clip_edge_code[copy] + 3, 1); return 0; } else { gsu_codes(clip_edge_code[copy] + 4, 1); }
+        { gsu_codes(clip_edge_fetch[copy] + 5, 1);
+        return 0; } else { gsu_codes(clip_edge_fetch[copy] + 3, 2); }
     if (reload)
-        gsu.r[5] = gsu_ldw(FX_CODES);
+        { gsu_codes(clip_edge_fetch[copy] + 6, 1); gsu.r[5] = gsu_ldw(FX_CODES); }
     return 1;
 }
 
@@ -442,57 +477,76 @@ static int clip_edge(void (*clip)(void), uint16_t ret, int reload, int copy)
  */
 void abi_FxPolygonDraw(void)
 {
+    gsu_code(0x01c33a, 2);
     gsu_push(&gsu.r[10], gsu.r[11]);
-    gsu_code(0x01C33C, 5);
+    gsu_code(0x01c33c, 5);
     gsu_stw(FX_CODES, gsu.r[5]);
-    gsu_code(0x01C341, 3);
+    gsu_code(0x01c341, 3);
     gsu.r[9] = gsu_ldw(FX_POINTS_N);
-    gsu_code(0x01C344, 3);
+    gsu_code(0x01c344, 3);
     gsu_stw(FX_COUNT, gsu.r[9]);
+    gsu_code(0x01c347, 2);
     gsu_r14(gsu_sub(gsu.r[14], gsu.r[9], 0));
     gsu.r[11] = 0xC34D;
+    gsu_code(0x01c349, 4); gsu_code(0x01c1be, 1); gsu_cache(0xc1bf);
     abi_FxPointsGather();
     gsu.r[0] = FX_LIST_B;
+    gsu_code(0x01c34d, 7);
     gsu_stw(FX_LIST_IN, gsu.r[0]);
     gsu.r[0] = FX_LIST_A;
-    gsu_code(0x01C354, 6);
+    gsu_code(0x01c354, 6);
     gsu_stw(FX_LIST_OUT, gsu.r[0]);
-    gsu_code(0x01C35A, 3);
+    gsu_code(0x01c35a, 3);
     gsu.r[5] = gsu_ldw(FX_CODES);
     gsu.r[1] = 0x0010;
     gsu.r[1] = gsu_and(gsu.r[1], gsu.r[5]);
     if (!gsu.z) {
-        gsu_code(0x01C35D, 12);
         gsu.r[5] = 0x000F;
+        gsu_code(0x01c35d, 12);
         gsu_stw(FX_CODES, gsu.r[5]);
-    } else { gsu_code(0x01C35D, 6); gsu_code(0x01C368, 1); }
-    gsu_code(0x01C369, 6);
+    } else { gsu_code(0x01c35d, 6); gsu_code(0x01c368, 1); }
     gsu.r[1] = gsu_and(gsu.r[5], 2);
-    if (!gsu.z && !clip_edge(abi_FxPolygonClipTop, 0xC374, 1, GSU_COPY(3)))
-        goto none; else { gsu_code(0x01C38D, 6); }
+    if (!gsu.z) {                             /* BEQ past it, then its own test */
+        gsu_code(0x01c369, 7);
+        if (!clip_edge(abi_FxPolygonClipTop, 0xC374, 1, GSU_COPY(0)))
+            { gsu_code(0x01c385, 4); gsu_code(0x01c409, 1); goto none; }
+    } else { gsu_code(0x01c369, 6); gsu_code(0x01c38c, 1); }
     gsu.r[1] = gsu_and(gsu.r[5], 1);
-    if (!gsu.z && !clip_edge(abi_FxPolygonClipBottom, 0xC398, 1, GSU_COPY(1)))
-        goto none; else { gsu_code(0x01C3B1, 6); }
+    if (!gsu.z) {                             /* BEQ past it, then its own test */
+        gsu_code(0x01c38d, 7);
+        if (!clip_edge(abi_FxPolygonClipBottom, 0xC398, 1, GSU_COPY(1)))
+            { gsu_code(0x01c3a9, 4); gsu_code(0x01c409, 1); goto none; }
+    } else { gsu_code(0x01c38d, 6); gsu_code(0x01c3b0, 1); }
     gsu.r[1] = gsu_and(gsu.r[5], 8);
-    if (!gsu.z && !clip_edge(abi_FxPolygonClipRight, 0xC3BC, 1, GSU_COPY(2)))
-        goto none; else { gsu_code(0x01C3D5, 6); }
+    if (!gsu.z) {                             /* BEQ past it, then its own test */
+        gsu_code(0x01c3b1, 7);
+        if (!clip_edge(abi_FxPolygonClipRight, 0xC3BC, 1, GSU_COPY(2)))
+            { gsu_code(0x01c3cd, 4); gsu_code(0x01c409, 1); goto none; }
+    } else { gsu_code(0x01c3b1, 6); gsu_code(0x01c3d4, 1); }
     gsu.r[1] = gsu_and(gsu.r[5], 4);
-    if (!gsu.z && !clip_edge(abi_FxPolygonClipLeft, 0xC3E0, 0, GSU_COPY(0)))
-        goto none;
+    if (!gsu.z) {                             /* BEQ past it, then its own test */
+        gsu_code(0x01c3d5, 7);
+        if (!clip_edge(abi_FxPolygonClipLeft, 0xC3E0, 0, GSU_COPY(3)))
+            { gsu_code(0x01c3f1, 4); gsu_code(0x01c409, 1); goto none; }
+    } else { gsu_code(0x01c3d5, 6); gsu_code(0x01c3f5, 1); }
     gsu.r[11] = 0xC3FA;
+    gsu_code(0x01c3f6, 4); gsu_code(0x01c21e, 1);
     abi_FxPolygonNearClip();
     gsu_moves(gsu.r[0]);
     if (gsu.z)
-        { gsu_code(0x01C3FA, 5); goto none; } else { gsu_code(0x01C3FA, 10); gsu_code(0x01C412, 3); }
+        { gsu_code(0x01c3fa, 5); gsu_code(0x01c409, 1);
+        goto none; } else { gsu_code(0x01c3fa, 5); }
     gsu.r[11] = 0xC404;
+    gsu_code(0x01c3ff, 5); gsu_code(0x01c412, 1);
     abi_FxPolygonProject();
-    gsu_code(0x01C404, 5);
+    gsu_code(0x01c404, 5);
     gsu_pull(&gsu.r[10]);
     return;
 none:
-    gsu_code(0x01C409, 5);
+    ;
     gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[0], 0);
+    gsu_code(0x01c40a, 4);
     gsu_stw(FX_COUNT, gsu.r[0]);
-    gsu_code(0x01C40E, 4);
+    gsu_code(0x01c40e, 4);
     gsu_pull(&gsu.r[10]);
 }

@@ -18,25 +18,39 @@ typedef struct {
 
 /* One word: the rate at *rate, halved `halvings` times with DIV2, added to
    the word at *word; both pointers step on. */
+/* gsuwalk: the code of each copy of move_word, read from the ROM */
+static const GsuCode move_word_fetch[12][4] = {
+    {{0x0495d6, 1}, {0x0495d7, 10}, {0x0495e1, 2}, {0x0495e3, 2}},
+    {{0x0495e5, 3}, {0x0495e8, 10}, {0x0495f2, 2}, {0x0495f4, 2}},
+    {{0x0495f6, 3}, {0x0495f9, 10}, {0x049603, 2}, {0x049605, 2}},
+    {{0x04960f, 1}, {0x049610, 4}, {0x049614, 2}, {0x049616, 2}},
+    {{0x049618, 3}, {0x04961b, 4}, {0x04961f, 2}, {0x049621, 2}},
+    {{0x049623, 3}, {0x049626, 4}, {0x04962a, 2}, {0x04962c, 2}},
+    {{0x049633, 1}, {0x049634, 8}, {0x04963c, 2}, {0x04963e, 2}},
+    {{0x049640, 3}, {0x049643, 8}, {0x04964b, 2}, {0x04964d, 2}},
+    {{0x04964f, 3}, {0x049652, 8}, {0x04965a, 2}, {0x04965c, 2}},
+    {{0x049666, 1}, {0, 0}, {0x049667, 4}, {0x04966b, 2}},
+    {{0x04966d, 3}, {0, 0}, {0x049670, 4}, {0x049674, 2}},
+    {{0x049676, 3}, {0, 0}, {0x049679, 4}, {0x04967d, 2}},
+};
+
 static void move_word(FxMoveRegs *g, int halvings, int copy)
 {
     int i;
 
+    gsu_codes(move_word_fetch[copy], 1);
     g->r0 = gsu_ldw(g->r5);
     g->r5 = gsu_inc(gsu_inc(g->r5));
+    gsu_codes(move_word_fetch[copy] + 1, 1);
     for (i = 0; i < halvings; i++)
         g->r0 = gsu_div2(g->r0);
+    gsu_codes(move_word_fetch[copy] + 2, 1);
     g->r3 = gsu_ldw(g->r2);
     g->r0 = gsu_add(g->r0, g->r3, 0);
+    gsu_codes(move_word_fetch[copy] + 3, 1);
     gsu_stw(g->r2, g->r0);
     g->r2 = gsu_inc(gsu_inc(g->r2));
 }
-
-/* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode FxRecordMove_code[2][6] = {
-    {{0x0495CF, 6}, {0, 0}, {0x0495D5, 2}, {0x049632, 2}, {0x049607, 9}, {0x04965E, 9}},
-    {{0x0495CF, 6}, {0x049632, 2}, {0x0495D5, 2}, {0, 0}, {0x049607, 9}, {0x04965E, 9}},
-};
 
 /*
  * @routine 04:95BE FxRecordMove
@@ -52,23 +66,51 @@ static const GsuCode FxRecordMove_code[2][6] = {
  * add; otherwise R0 = kind - 6 and the flags from that SUB. The last RAM
  * address the last word.
  */
+/* gsuwalk: the code of each copy of FxRecordMove, read from the ROM */
+static const GsuCode FxRecordMove_fetch[1][15] = {
+    {{0x0495cf, 7}, {0, 0}, {0, 0}, {0x049607, 8}, {0, 0}, {0, 0}, {0x0495cf, 6}, {0x049632, 1}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04965e, 8}, {0, 0}, {0, 0}},
+};
+
+/* gsuwalk: the copy of move_word each copy of FxRecordMove calls, by pass */
+static const uint8_t move_word_in_FxRecordMove[1][3] = {{0, 1, 2}};
+
+/* gsuwalk: the copy of move_word each copy of FxRecordMove calls, by pass */
+static const uint8_t move_word_in_FxRecordMove_2[1][3] = {{3, 4, 5}};
+
+/* gsuwalk: the copy of move_word each copy of FxRecordMove calls, by pass */
+static const uint8_t move_word_in_FxRecordMove_3[1][3] = {{6, 7, 8}};
+
+/* gsuwalk: the copy of move_word each copy of FxRecordMove calls, by pass */
+static const uint8_t move_word_in_FxRecordMove_4[1][3] = {{9, 10, 11}};
+
 FxMoveRegs FxRecordMove(uint16_t rec, uint16_t kind, int copy)
 {
     FxMoveRegs g;
-    int halve, i;
+    int i;
 
     g.r5 = gsu_add(REC_VEL, rec, 0);
     g.r2 = gsu_add(REC_POS, rec, 0);
+    gsu_code(0x0495bf, 16);
     g.r3 = gsu_ldw(gsu_add(REC_FLAGS1C, rec, 0));
     g.r0 = gsu_and(0x0008, g.r3);
-    halve = !gsu.z;
-    gsu_codes(FxRecordMove_code[copy], 2);
-    for (i = 0; i < 3; i++)
-        { move_word(&g, halve ? (gsu_codes(FxRecordMove_code[copy] + 2, 1), 4) : (gsu_codes(FxRecordMove_code[copy] + 3, 1), 3), GSU_COPY(0)); }
-    g.r0 = gsu_sub(kind, 6, 0);
-    if (gsu.z)
+    /* halved or not decides first, each way with its own copies */
+    if (!gsu.z) {
         for (i = 0; i < 3; i++)
-            { move_word(&g, halve ? (gsu_codes(FxRecordMove_code[copy] + 4, 1), 1) : (gsu_codes(FxRecordMove_code[copy] + 5, 1), 0), GSU_COPY(1)); }
+            { gsu_codes(FxRecordMove_fetch[0] + i, 1); move_word(&g, 4, GSU_COPY(move_word_in_FxRecordMove[0][i])); }
+        g.r0 = gsu_sub(kind, 6, 0);
+        if (gsu.z)
+            { for (i = 0; i < 3; i++)
+                { gsu_codes(FxRecordMove_fetch[0] + 3 + i, 1); move_word(&g, 1, GSU_COPY(move_word_in_FxRecordMove_2[0][i])); gsu_code(0x04962e, 2); } } else { gsu_code(0x049607, 7); gsu_code(0x04962f, 1); }
+        gsu_code(0x049630, 2); gsu_code(0x049680, 1);
+    } else {
+        for (i = 0; i < 3; i++)
+            { gsu_codes(FxRecordMove_fetch[0] + 6 + 2 * i, 2); move_word(&g, 3, GSU_COPY(move_word_in_FxRecordMove_3[0][i])); }
+        g.r0 = gsu_sub(kind, 6, 0);
+        if (gsu.z)
+            { for (i = 0; i < 3; i++)
+                { gsu_codes(FxRecordMove_fetch[0] + 12 + i, 1); move_word(&g, 0, GSU_COPY(move_word_in_FxRecordMove_4[0][i])); gsu_code(0x04967f, 2); } } else { gsu_code(0x04965e, 7); gsu_code(0x049680, 1); }
+    }
+    gsu_code(0x049681, 2);
     return g;
 }
 

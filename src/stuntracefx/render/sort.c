@@ -19,67 +19,32 @@
 #define FX_LIST_HEAD 0x023Cu
 #define FX_MATRIX 0x00E4u
 
-/* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode field_code[12][1] = {
-    {{0x01AF0F, 7}},
-    {{0x01AF16, 13}},
-    {{0x01AF23, 6}},
-    {{0x01AF29, 6}},
-    {{0, 0}},
-    {{0x01AF80, 5}},
-    {{0x01AF8F, 6}},
-    {{0x01AFBB, 6}},
-    {{0x01AFC8, 6}},
-    {{0x01AFD0, 7}},
-    {{0x01B013, 7}},
-    {{0x01B01A, 6}},
-};
-
 /* R8 = the slot's field at offset (IBT R8, WITH R8, ADD R9). */
 static uint16_t field(uint8_t offset, int copy)
 {
-    gsu_codes(field_code[copy], 1);
     gsu.r[8] = gsu_add(offset, gsu.r[9], 0);
     return gsu.r[8];
 }
-
-/* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode rotate_column_code[3][4] = {
-    {{0x01AF2F, 3}, {0x01AF32, 7}, {0x01AF39, 8}, {0x01AF41, 9}},
-    {{0x01AF4A, 3}, {0x01AF4D, 7}, {0x01AF54, 8}, {0x01AF5C, 9}},
-    {{0x01AF65, 3}, {0x01AF68, 7}, {0x01AF6F, 8}, {0x01AF77, 9}},
-};
 
 /* One element of the rotated position: R1, R2, R3 times a column of the
    matrix (FMULT, ROL, summed in R5 then R0). */
 static uint16_t rotate_column(int col, int copy)
 {
-    gsu_codes(rotate_column_code[copy], 1);
     gsu.r[6] = gsu_ldw((uint16_t)(FX_MATRIX + col * 2));
     gsu.r[5] = gsu_rol(gsu_fmult(gsu.r[1], gsu.r[6]));
-    gsu_codes(rotate_column_code[copy] + 1, 1);
     gsu.r[6] = gsu_ldw((uint16_t)(FX_MATRIX + 6 + col * 2));
     gsu.r[0] = gsu_rol(gsu_fmult(gsu.r[2], gsu.r[6]));
     gsu.r[5] = gsu_add(gsu.r[5], gsu.r[0], 0);
-    gsu_codes(rotate_column_code[copy] + 2, 1);
     gsu.r[6] = gsu_ldw((uint16_t)(FX_MATRIX + 12 + col * 2));
     gsu.r[0] = gsu_rol(gsu_fmult(gsu.r[3], gsu.r[6]));
-    gsu_codes(rotate_column_code[copy] + 3, 1);
     return gsu.r[0] = gsu_add(gsu.r[0], gsu.r[5], 0);
 }
-
-/* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode absolute_code[2][4] = {
-    {{0x01AF95, 4}, {0x01AF9D, 5}, {0x01AFA5, 6}, {0x01AFA2, 3}},
-    {{0x01AFAB, 4}, {0x01AFB1, 6}, {0, 0}, {0x01AFAF, 2}},
-};
 
 /* |v| as MOVES, then NOT and INC when negative. */
 static uint16_t absolute(uint16_t v, int copy)
 {
-    gsu_codes(absolute_code[copy], 3);
     gsu_moves(v);
-    return gsu.s ? (gsu_codes(absolute_code[copy] + 3, 1), gsu_inc(gsu_not(v))) : v;
+    return gsu.s ? (gsu_inc(gsu_not(v))) : v;
 }
 
 /* Links slot R9 (depth key R1) into the list: walks it from the head with
@@ -87,19 +52,15 @@ static uint16_t absolute(uint16_t v, int copy)
    not above R1. Leaves R7 = the slot after R9. */
 static void link_slot(void)
 {
-    gsu_code(0x01AFD7, 8);
     gsu.r[2] = 0;
     gsu.r[7] = gsu_ldw(FX_LIST_HEAD);
     gsu_moves(gsu.r[7]);
     if (gsu.z) {
-        gsu_code(0x01AFDF, 9);
         gsu_stw(FX_LIST_HEAD, gsu.r[9]);
         gsu.r[7] = gsu.r[2];
-        gsu_code(0x01AFE8, 4);
         return;
-    } else { gsu_code(0x01AFDF, 4); }
+    }
     for (;;) {
-        gsu_code(0x01AFEC, 4);
         int above;
 
         gsu.r[7] = gsu_inc(gsu_inc(gsu.r[7]));
@@ -110,23 +71,21 @@ static void link_slot(void)
         above = !gsu.s;                     /* key - 1 - R1 >= 0 */
         gsu.r[7] = gsu_dec(gsu.r[7]);       /* BPL's delay slot */
         if (!above) {
-            gsu_code(0x01AFF0, 11);
             gsu_moves(gsu.r[2]);
             if (gsu.z)
-                { gsu_code(0x01AFFB, 5); gsu_stw(FX_LIST_HEAD, gsu.r[9]); }
+                { gsu_stw(FX_LIST_HEAD, gsu.r[9]); }
             else
-                { gsu_code(0x01B002, 3); gsu_stw(gsu.r[2], gsu.r[9]); }
+                { gsu_stw(gsu.r[2], gsu.r[9]); }
             return;
-        } else { gsu_code(0x01AFF0, 6); gsu_code(0x01B007, 5); }
+        }
         gsu.r[2] = gsu.r[7];
         gsu.r[7] = gsu_ldw(gsu.r[7]);
         gsu_moves(gsu.r[7]);
         if (gsu.z) {
-            gsu_code(0x01B002, 3); gsu_code(0x01B00C, 7);
+            
             gsu_stw(gsu.r[2], gsu.r[9]);
-            gsu_code(0x01B005, 2);
             return;
-        } else { gsu_code(0x01B00C, 4); }
+        }
     }
 }
 
@@ -150,15 +109,13 @@ static void link_slot(void)
  */
 void FxSortObjectsProgram(void)
 {
-    gsu_code(0x01AEF9, 7);
     gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[0], 0);
     gsu_romb(0);
     gsu_stw(FX_LIST_HEAD, gsu.r[0]);
     gsu.r[9] = FX_SLOTS;
-    gsu_code(0x01AF00, 6);
     gsu.r[12] = gsu_lob(gsu_ldw(FX_SLOT_COUNT));
     if (gsu.z)
-        { gsu_code(0x01AF06, 5); return; } else { gsu_code(0x01AF06, 4); gsu_code(0x01AF0C, 1); gsu_cache(0xAF0D); gsu_code(0x01AF0D, 2); }
+        { return; }
     gsu.r[13] = 0xAF0F;
     do {
         int culled = 0;
@@ -176,22 +133,17 @@ void FxSortObjectsProgram(void)
             gsu_stw(field(0x10, GSU_COPY(4)), gsu.r[0]);
             rotate_column(2, GSU_COPY(2));
             gsu_stw(field(0x14, GSU_COPY(4)), gsu.r[0]);
-        } else { gsu_code(0x01AF16, 6); gsu_code(0x01AF7F, 1); }
+        }
         /* Cull by the shape's radius. */
         gsu.r[0] = gsu_ldw(field(0x08, GSU_COPY(5)));
-        gsu_code(0x01AF85, 2);
         gsu_r14(0x10);
-        gsu_code(0x01AF87, 2);
         gsu_r14(gsu_add(gsu.r[14], gsu.r[0], 0));
-        gsu.r[1] = (gsu_code(0x01AF89, 2), gsu_getb());
-        gsu_code(0x01AF8B, 1);
+        gsu.r[1] = (gsu_getb());
         gsu_r14(gsu_inc(gsu.r[14]));
-        gsu_code(0x01AF8C, 3);
         gsu.r[1] = gsu_getbh(gsu.r[1]);
         gsu.r[3] = gsu_ldw(field(0x14, GSU_COPY(6)));
         gsu.r[0] = gsu_add(gsu.r[3], gsu.r[1], 0);
         if (gsu.s) {
-            gsu_code(0x01AF95, 8);
             culled = 1;
         } else {
             gsu.r[3] = absolute(gsu.r[3], GSU_COPY(0));
@@ -204,13 +156,10 @@ void FxSortObjectsProgram(void)
             /* The depth key, and the slot into the list. */
             gsu.r[0] = gsu_ldw(field(0x08, GSU_COPY(7)));
             gsu.r[1] = 5;
-            gsu_code(0x01AFC1, 5);
             gsu_r14(gsu_add(gsu.r[0], gsu.r[1], 0));
-            gsu.r[0] = (gsu_code(0x01AFC6, 1), gsu_getb());
-            gsu_code(0x01AFC7, 1);
+            gsu.r[0] = (gsu_getb());
             gsu_r14(gsu_inc(gsu.r[14]));
             gsu.r[1] = gsu_ldw(field(0x14, GSU_COPY(8)));
-            gsu_code(0x01AFCE, 2);
             gsu.r[0] = gsu_getbh(gsu.r[0]);
             gsu.r[1] = gsu_add(gsu.r[0], gsu.r[1], 0);
             gsu.r[0] = gsu_ldw(field(0x02, GSU_COPY(9)));
@@ -218,11 +167,10 @@ void FxSortObjectsProgram(void)
             link_slot();
             gsu_stw(field(0x02, GSU_COPY(10)), gsu.r[1]);
             gsu_stw(field(0x00, GSU_COPY(11)), gsu.r[7]);
-        } else { gsu_code(0x01B01F, 1); }
+        }
         gsu.r[0] = FX_SLOT_SIZE;
         gsu.r[9] = gsu_add(gsu.r[0], gsu.r[9], 0);
-    } while (gsu_code_loop(0x01B020, 5, gsu_count_down(&gsu.r[12])));
-    gsu_code(0x01B020, 6);
+    } while (gsu_count_down(&gsu.r[12]));
 }
 
 void abi_FxSortObjectsProgram(void)

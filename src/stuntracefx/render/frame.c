@@ -2865,9 +2865,7 @@ void abi_FxObjectSpritePull(void)
  */
 void abi_FxObjectSpriteAt(void)
 {
-    gsu_code(0x01B17E, 2);
     frame_run(0xB17D, R[11]);
-    gsu_code(0x0180E3, 1);
 }
 
 /*

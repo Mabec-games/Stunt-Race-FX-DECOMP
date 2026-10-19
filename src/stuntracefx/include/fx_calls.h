@@ -35,21 +35,6 @@ FxRegs FxBearingTo(FxRegs g, int copy);
 FxRegs FxCourseNearest(FxRegs g, int copy);
 FxRegs FxCourseNextEntry(FxRegs g, int copy);
 
-/* A routine whose C takes and leaves the registers in `gsu` (its abi_),
-   called on a register file. */
-static inline FxRegs fx_via_abi(FxRegs g, void (*abi)(void))
-{
-    extern RegsGSU gsu;
-    int i;
-
-    for (i = 0; i < 16; i++)
-        gsu.r[i] = g.r[i];
-    abi();
-    for (i = 0; i < 16; i++)
-        g.r[i] = gsu.r[i];
-    return g;
-}
-
 void abi_FxMatrixFromAngles(void);
 void abi_FxMatrixTranspose04(void);
 

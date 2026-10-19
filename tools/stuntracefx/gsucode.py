@@ -369,6 +369,8 @@ def gen(c_text, fn, bank):
     while k < len(lines):
         line = lines[k]
         s = line.strip()
+        if not s.startswith('/*'):
+            s = re.sub(r'\s*/\*.*\*/$', '', s)     # a comment after the statement
         k += 1
         if in_dispatch:
             if s.startswith('switch (at)'):
@@ -392,9 +394,11 @@ def gen(c_text, fn, bank):
         if mm:
             x = int(mm.group(1), 16)
             if falls:
-                w.skip_to(lambda u: u.addr == x or u.addr > x, 'into l%04X' % x)
+                u = w.skip_to(lambda u: u.addr == x or u.end >= x, 'into l%04X' % x)
                 if w.pc != x:
-                    raise Mismatch('into l%04X: the original is at %04X' % (x, w.pc))
+                    # a label after a prefix: the way in from above runs it with the prefix
+                    if not all(is_prefix(rom(bank, a)) for a in range(u.addr, x)) or Unit(bank, x).ev != u.ev:
+                        raise Mismatch('into l%04X: the original is at %04X' % (x, w.pc))
                 w.fetch(x)
                 emit()
             w.enter(x)
@@ -507,11 +511,40 @@ def gen(c_text, fn, bank):
             out.append(line)
             falls = False
             continue
-        mm = CALL.match(s)
+        mm = CALL.match(re.sub(r'\s*/\*.*\*/$', '', s))
         if mm:
             r11 = re.match(r'\s*R\[11\] = 0x([0-9A-F]{4});$', out[-1])
             if not r11:
-                raise Mismatch('%s: no return address before it' % s)
+                # a jump into the routine (BRA, IWT R15): its return is ours
+                if ahead(k) != 'return;':
+                    raise Mismatch('%s: no return address before it, and no return after' % s)
+                at = routine_at(mm.group(1)[4:])
+                u = w.skip_to(lambda u: u.jump or u.addr == at, s)
+                if u.addr == at and not u.jump:
+                    # it runs on into the routine: its first byte fetched on the way
+                    w.fetch(at)
+                    emit()
+                    out.append(line)
+                    while lines[k].strip() != 'return;':
+                        out.append(lines[k])
+                        k += 1
+                    out.append(lines[k])
+                    k += 1
+                    falls = False
+                    continue
+                if u.jump not in ('bra', 'r15') or u.target is None or (0x91 <= rom(bank, u.addr - 1) <= 0x94):
+                    raise Mismatch('%s: %r' % (s, u))
+                w.fetch(u.end + 1)
+                w.target(u.target)
+                emit()
+                out.append(line)
+                while lines[k].strip() != 'return;':
+                    out.append(lines[k])
+                    k += 1
+                out.append(lines[k])
+                k += 1
+                falls = False
+                continue
             ret = int(r11.group(1), 16)
             link = []
             def stop(u):
@@ -644,6 +677,61 @@ def delay_access(w, j, kind, lines, k, out, code):
     return d
 
 
+_routines = None
+
+
+def routine_at(name):
+    """A routine's address (its @routine tag in the decomp), or None."""
+    global _routines
+    if _routines is None:
+        _routines = {}
+        src = os.path.join(ROOT, 'src', 'stuntracefx')
+        for dp, _, fs in os.walk(src):
+            for f in fs:
+                if f.endswith('.c'):
+                    for m in re.finditer(r'@routine ([0-9A-F]{2}):([0-9A-F]{4}) (\w+)', open(os.path.join(dp, f)).read()):
+                        _routines[m.group(3)] = int(m.group(2), 16)
+    return _routines.get(name)
+
+
+CODE_LINE = re.compile(r'^\s*(?:gsu_(?:code|cache)\((?:0x[0-9a-f]+(?:, \d+)?|t \? [^;]*)\);\s*)+(?:/\*.*\*/)?$')
+
+
+def unwrite(body):
+    """A program's body as this tool found it: the code it stated taken out
+    and what it moved put back."""
+    lines = body.split('\n')
+    out = []
+    i = 0
+    while i < len(lines):
+        l = lines[i]
+        s = l.strip()
+        m = re.match(r'(\s*)if \(t\) \{ (?:gsu_(?:code|cache)\(0x[0-9a-f]+(?:, \d+)?\); )+goto (l[0-9A-F]{4}); \}$', l)
+        if m:
+            out.append('%sif (t) goto %s;' % (m.group(1), m.group(2)))
+        elif re.match(r'gsu_code\(0x[0-9a-f]{2}0000 \| at, 1\);\s*/\* where it jumps, fetched before the delay slot runs \*/$', s):
+            # at = ...; this; the delay slot; goto fetched;  ->  the delay slot; at = ...; goto dispatch;
+            at_line = out.pop()
+            delay = lines[i + 1]
+            g = lines[i + 2]
+            out += [delay, at_line, g.replace('goto fetched;', 'goto dispatch;')]
+            i += 3
+            continue
+        elif s.startswith('goto enter;'):
+            out.append(l[:len(l) - len(l.lstrip())] + 'goto dispatch;')
+        elif s in ('fetched:', 'enter:') or s.startswith('gsu_code(0x') and '| at, 1);' in s:
+            pass
+        elif re.match(r'if \(at == 0x[0-9A-F]{4}( \|\| at == 0x[0-9A-F]{4})*\)$', s) and 'gsu_cache((uint16_t)(at + 1));' in lines[i + 1]:
+            i += 2
+            continue
+        elif CODE_LINE.match(l):
+            pass
+        else:
+            out.append(l)
+        i += 1
+    return '\n'.join(out)
+
+
 def bank_of(text, fn):
     """The bank fn's code is in: of a routine it runs (its @routine tag)."""
     for m in re.finditer(r'\b%s\(0x([0-9A-F]{4}),' % fn, text):
@@ -665,7 +753,7 @@ def main(argv):
         if not m:
             raise SystemExit('gsucode: %s: no %s' % (f, fn))
         _, b0, b1 = parse_body(text, m.end() - 1)
-        text = text[:b0] + cycwrite.strip(text[b0:b1], True) + text[b1:]
+        text = text[:b0] + cycwrite.strip(unwrite(text[b0:b1]), True) + text[b1:]
         bank = bank_of(text, fn)
         try:
             new = gen(text, fn, bank)

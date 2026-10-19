@@ -5127,9 +5127,7 @@ void abi_FxModelCommands(void)
  */
 void abi_FxModelReturn(void)
 {
-    gsu_code(0x01884B, 4);
     model_run(0x884A, R[11]);
-    gsu_code(0x0180E3, 1);
 }
 
 /*
@@ -5408,9 +5406,7 @@ void abi_FxModelReturn40(void)
  */
 void abi_FxModelIfSkip(void)
 {
-    gsu_code(0x018E1A, 1);
     model_run(0x8E19, R[11]);
-    gsu_code(0x0180E3, 1);
 }
 
 /*
@@ -5626,6 +5622,6 @@ void abi_FxPolygonClipScreenUV(void)
  */
 void abi_FxReturnR11(void)
 {
-    gsu_code(0x0180E3, 1); gsu_code(0x01AB12, 1);
+    
     model_run(0xAB11, R[11]);
 }

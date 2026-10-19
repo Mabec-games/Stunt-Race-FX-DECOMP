@@ -33,57 +33,73 @@
 /* What FxPointsGather leaves in registers besides R14. */
 typedef struct { uint16_t first_word, offset[3], last_z, last_point; } FxPointsLeft;
 
+/* gsuwalk: the code of each copy of FxPointsGather, read from the ROM */
+static const GsuCode FxPointsGather_fetch[1][9] = {
+    {{0x01c1ed, 4}, {0x01c1f1, 3}, {0x01c1f4, 3}, {0x01c200, 8}, {0x01c20c, 3}, {0x01c213, 3}, {0x01c208, 4}, {0x01c20f, 4}, {0x01c216, 2}},
+};
+
 void FxPointsGather(uint16_t count, FxPointsLeft *left)
 {
-    gsu_code(0x01C1BE, 1); gsu_cache(0xC1BF); gsu_code(0x01C1BF, 4); gsu_code(0x01C347, 6);
+    
     uint32_t n = count ? count : 0x10000u;
-    uint16_t src = (uint16_t)(gsu_ldw(FX_PAIRS) - 4 + (count & 0xFF) * 8);
-    uint16_t dst = (uint16_t)(FX_RECORDS + (count & 0xFF) * 10);
+    gsu_code(0x01c1c0, 3);
+    uint16_t src = (uint16_t)(gsu_ldw(FX_PAIRS) - 4);
+    uint16_t dst;
+
+    src = (uint16_t)(src + gsu_umult(count, 8));            /* FROM R9; UMULT #8 */
+    dst = (uint16_t)(FX_RECORDS + gsu_umult(count, 10));    /* FROM R9; UMULT #10 */
     uint32_t i;
     int k;
 
     /* UMULT takes the count's low byte only: the starting entry and record
        are those of count & $FF. */
-    gsu_code(0x01C1C3, 19);
-    for (i = 0; gsu_code_loop(0x01C1D6, 3, i < n); i++) {
+    i = 0;
+    gsu_code(0x01c1c3, 20);
+    do {                                       /* LOOP at the bottom */
+        gsu_code(0x01c1d7, 2);
         uint16_t a = gsu_div2(gsu_ldw(src));
-        gsu_code(0x01C1D9, 3);
+        gsu_code(0x01c1d9, 3);
         uint16_t b = gsu_div2(gsu_ldw((uint16_t)(src + 2)));
 
-        gsu_code(0x01C1DC, 7);
+        gsu_code(0x01c1dc, 7);
         gsu_stw(dst, a);
-        gsu_code(0x01C1E3, 3);
+        gsu_code(0x01c1e3, 3);
         gsu_stw((uint16_t)(dst + 2), b);
         left->first_word = a;
         src = (uint16_t)(src - 8);
         dst = (uint16_t)(dst - 10);
-        gsu_code(0x01C1E6, 7);
-    }
-    gsu_code(0x01C1ED, 4);
+    } while (gsu_code_loop(0x01c1d6, 1, gsu_code_loop(0x01c1e6, 7, ++i < n)));
+    gsu_code(0x01c1e6, 7);
     for (k = 0; k < 3; k++)
-        { left->offset[k] = gsu_ldw((uint16_t)(FX_OFFSET + k * 2)); gsu_code(0x01C1F7, 6); }
+        { gsu_codes(FxPointsGather_fetch[0] + k, 1);
+        left->offset[k] = gsu_ldw((uint16_t)(FX_OFFSET + k * 2)); }
     dst = FX_RECORDS + 4;
-    for (i = 0; gsu_code_loop(0x01C1FD, 2, i < n); i++) {
-        uint16_t p = (uint16_t)(FX_POINTS + gsu_getb() * 6);
+    i = 0;
+    gsu_code(0x01c1f7, 7);
+    do {                                       /* LOOP at the bottom */
+        gsu_code(0x01c1fe, 1);
+        uint16_t p = gsu_getb();
 
-        gsu_code(0x01C1FF, 1);
+        gsu_code(0x01c1ff, 1);
         gsu_r14((uint16_t)(gsu.r[14] + 1));
-        gsu_code(0x01C200, 8);
+        p = (uint16_t)(FX_POINTS + gsu_umult(p, 6));     /* UMULT #6 */
         for (k = 0; k < 3; k++) {
+            gsu_codes(FxPointsGather_fetch[0] + 3 + k, 1);
             left->last_z = (uint16_t)(gsu_ldw((uint16_t)(p + k * 2)) + left->offset[k]);
+            gsu_codes(FxPointsGather_fetch[0] + 6 + k, 1);
             gsu_stw((uint16_t)(dst + k * 2), left->last_z);
-            gsu_code(0x01C218, 4);
         }
         left->last_point = p;
         dst = (uint16_t)(dst + 10);
-    }
-    gsu_code(0x01C21C, 2); gsu_code(0x01C34D, 7);
+    } while (gsu_code_loop(0x01c1fd, 1, gsu_code_loop(0x01c218, 4, ++i < n)));
+    gsu_code(0x01c218, 4);
+    
 }
 
 void abi_FxPointsGather(void)
 {
     uint16_t count = gsu.r[9];
-    uint32_t n = count ? count : 0x10000u;
+    uint32_t n = count ? (gsu_code(0x01c1bf, 1), count) : (gsu_code(0x01c1bf, 1), 0x10000u);
     FxPointsLeft left;
 
     FxPointsGather(count, &left);
@@ -98,4 +114,5 @@ void abi_FxPointsGather(void)
     gsu.r[13] = 0xC1FD;
     gsu.z = 1;
     gsu.s = 0;
+    gsu_code(0x01c21c, 2);
 }

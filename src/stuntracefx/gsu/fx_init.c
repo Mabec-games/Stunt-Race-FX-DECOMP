@@ -34,7 +34,7 @@ FxRegs FxInit(FxRegs g)
 {
     g.r[10] = FX_STACK;
     g.r[0] = gsu_sub(g.r[0], g.r[0], 0);
-    gsu_code(0x048805, 2);
+    gsu_code(0x048801, 6);
     gsu_ramb(0);
     g.r[0] = gsu_sub(g.r[0], g.r[0], 0);
     gsu_code(0x048807, 5);
@@ -53,8 +53,8 @@ FxRegs FxInit(FxRegs g)
     g.r[0] = gsu_ldw(g.r[1]);
     gsu_sub(g.r[0], g.r[2], 0);
     if (!gsu.z)
-        { gsu_code(0x04881e, 7); return ram_bad(g); } else { gsu_code(0x04881e, 4); gsu_code(0x048828, 1); }
-    gsu_code(0x048829, 9);
+        { gsu_code(0x04881e, 5);
+        return ram_bad(g); } else { gsu_code(0x04881e, 4); gsu_code(0x048828, 1); }
     return pools(g, GSU_COPY(0));
 }
 
@@ -74,6 +74,7 @@ static FxRegs pools(FxRegs g, int copy)
     g.r[0] = gsu_sub(g.r[0], g.r[0], 0);
     g.r[12] = FX_CLEAR_WORDS;
     g.r[13] = 0x8831;
+    gsu_code(0x048829, 9);
     do {
         int again;
 
@@ -83,7 +84,8 @@ static FxRegs pools(FxRegs g, int copy)
         again = gsu_count_down(&g.r[12]);
         g.r[1] = gsu_inc(g.r[1]);
         if (!again)
-            { gsu_code(0x048833, 2);
+            { 
+            gsu_code(0x048833, 2);
             break; } else { gsu_code(0x048833, 2); gsu_code(0x048831, 1); }
     } while (1);
     g.r[0] = 0x0100;
@@ -115,7 +117,8 @@ static FxRegs pools(FxRegs g, int copy)
     gsu_stw(g.r[1], g.r[0]);
     g.r[0] = gsu_sub(g.r[0], g.r[0], 0);
     for (i = 0; i < 7; i++)
-        { gsu_codes(pools_fetch[0] + i, 1);
+        { 
+        gsu_codes(pools_fetch[0] + i, 1);
         gsu_stw(zeros[i], g.r[0]); }
     g.r[0] = 3;
     gsu_code(0x048880, 6);
@@ -140,9 +143,8 @@ static FxRegs pools(FxRegs g, int copy)
 static FxRegs ram_bad(FxRegs g)
 {
     g.r[0] = 0x000F;
-    gsu_code(0x048825, 4);
+    gsu_code(0x048823, 6);
     gsu_stw(FX_RAM_BAD, g.r[0]);
-    gsu_code(0x048829, 9);
     return pools(g, GSU_COPY(0));
 }
 
@@ -151,7 +153,6 @@ void abi_FxInitRamBad(void)
     FxRegs g;
 
     memcpy(g.r, gsu.r, sizeof g.r);
-    gsu_code(0x048823, 2);
     g = ram_bad(g);
     memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
 }
@@ -161,7 +162,6 @@ void abi_FxInit(void)
     FxRegs g;
 
     memcpy(g.r, gsu.r, sizeof g.r);
-    gsu_code(0x048801, 4);
     g = FxInit(g);
     memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
 }

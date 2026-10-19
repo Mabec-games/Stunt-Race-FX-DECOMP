@@ -11,18 +11,16 @@
 
 uint16_t FxDivide32By16(uint16_t hi, uint16_t lo, uint16_t divisor, uint16_t *remainder, int copy);
 
-/* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode magnitude_code[4][8] = {
-    {{0x0181ED, 4}, {0x0181F7, 3}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-    {{0x0181FE, 6}, {0x018207, 5}, {0x01820E, 3}, {0x01825C, 7}, {0x018265, 5}, {0x01826E, 5}, {0x018204, 3}, {0, 0}},
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x01820C, 2}, {0x01826A, 4}},
+/* gsuwalk: the code of each copy of magnitude, read from the ROM */
+static const GsuCode magnitude_fetch[3][3] = {
+    {{0, 0}, {0, 0}, {0, 0}},
+    {{0x0181fe, 10}, {0x0181fe, 6}, {0x018207, 1}},
+    {{0x018208, 7}, {0x018208, 4}, {0x01820e, 1}},
 };
 
 static uint16_t magnitude(uint16_t v, int copy)
 {
-    gsu_codes(magnitude_code[copy], 6);
-    return v & 0x8000 ? (gsu_codes(magnitude_code[copy] + 6, 2), (uint16_t)-v) : v;
+    return v & 0x8000 ? (gsu_codes(magnitude_fetch[copy], 1), ((uint16_t)-v)) : (gsu_codes(magnitude_fetch[copy] + 1, 2), v);
 }
 
 /*
@@ -50,60 +48,68 @@ static uint16_t magnitude(uint16_t v, int copy)
  */
 uint16_t FxAtan2(uint16_t y, uint16_t x)
 {
-    uint16_t ay = magnitude(y, GSU_COPY(2)), ax = magnitude(x, GSU_COPY(3));
+    uint16_t ay = magnitude(y, GSU_COPY(1)), ax = magnitude(x, GSU_COPY(2));
     uint16_t angle;
 
     if (ax == 0) {
-        gsu_code(0x018211, 7);
         angle = 0x4000;
+        gsu_code(0x01820f, 9); gsu_code(0x01825c, 1);
     } else if (ax == ay) {
-        gsu_code(0x018218, 14);
         angle = 0x2000;
+        gsu_code(0x01820f, 2); gsu_code(0x018218, 14); gsu_code(0x01825c, 1);
     } else {
         uint16_t small = ax, large = ay, rem, ratio, at;
         int x_larger = !((int16_t)ax < (int16_t)ay);
 
         if (x_larger) {
-            gsu_code(0x018229, 7);
             small = ay;
             large = ax;
-        } else { gsu_code(0x018256, 6); }
+            gsu_code(0x01820f, 2); gsu_code(0x018218, 7); gsu_code(0x018226, 11);
+        } else { gsu_code(0x01820f, 2); gsu_code(0x018218, 7); gsu_code(0x018226, 3); gsu_code(0x018230, 1); }
+        gsu_code(0x018231, 12); gsu_code(0x0181cb, 1);
         ratio = FxDivide32By16(small >> 2, (uint16_t)(small << 14), large, &rem, GSU_COPY(0));
         at = (uint16_t)(FX_ATAN_TABLE + ((ratio >> 5) & 0xFFFE));
+        gsu_code(0x01823d, 4);
         gsu_romb(0);
+        gsu_code(0x018241, 13);
         gsu_r14(at);
+        gsu_code(0x01824e, 1);
         angle = gsu_getb();
+        gsu_code(0x01824f, 1);
         gsu_r14((uint16_t)(at + 1));
+        gsu_code(0x018250, 2);
         angle = (uint16_t)(angle | gsu_getb() << 8);
         if (!x_larger)
-            angle = (uint16_t)(0x4000 - angle);
+            { angle = (uint16_t)(0x4000 - angle); gsu_code(0x018252, 4); gsu_code(0x01825c, 1); } else { gsu_code(0x018252, 11); }
     }
     if ((x ^ y) & 0x8000)
-        { gsu_code(0x018263, 2); angle = (uint16_t)-angle; }
+        { angle = (uint16_t)-angle; gsu_code(0x01825d, 9); } else { gsu_code(0x01825d, 6); gsu_code(0x018265, 1); }
     if (x & 0x8000)
-        angle = (uint16_t)(angle + 0x8000);
+        { angle = (uint16_t)(angle + 0x8000); gsu_code(0x018266, 9); } else { gsu_code(0x018266, 4); gsu_code(0x01826e, 1); }
     return angle;
 }
 
 void abi_FxAtan2(void)
 {
     uint16_t y = gsu.r[1], x = gsu.r[2];
-    uint16_t ay = magnitude(y, GSU_COPY(0)), ax = magnitude(x, GSU_COPY(1));
+    uint16_t ay = magnitude(y, GSU_COPY(0)), ax = magnitude(x, GSU_COPY(0));
     uint16_t angle;
 
+    gsu_code(0x0181f8, 2);
     gsu_push(&gsu.r[10], gsu.r[11]);
-    gsu_code(0x0181FA, 4);
+    gsu_code(0x0181fa, 4);
     gsu_push(&gsu.r[10], gsu.r[14]);
     angle = FxAtan2(y, x);
     gsu.r[6] = ay;
     if (ax == ay && ax != 0) {
         gsu.r[5] = 0;
         gsu.cy = 1;
+        gsu_code(0x01826f, 2);
     } else if (ax != 0) {
         int x_larger = !((int16_t)ax < (int16_t)ay);
         uint16_t pre;
 
-        gsu.r[5] = x_larger ? 0xFFFF : 0;
+        gsu.r[5] = x_larger ? (gsu_code(0x01826f, 2), 0xFFFF) : (gsu_code(0x01826f, 2), 0);
         if (x_larger)
             gsu.r[6] = ax;
         gsu.r[11] = 0x823D;
@@ -116,7 +122,7 @@ void abi_FxAtan2(void)
             gsu_add((uint16_t)-(uint16_t)(0x4000 - pre), 0x4000, 0);
         else
             gsu.cy = 0;  /* the ADD of the table's address */
-    }
+    } else { gsu_code(0x01826f, 2); }
     gsu.r[4] = (uint16_t)(x ^ y);
     gsu_moves(x);
     if (x & 0x8000) {
@@ -124,10 +130,10 @@ void abi_FxAtan2(void)
         gsu_add((uint16_t)(angle - 0x8000), 0x8000, 0);
     }
     gsu.r[0] = angle;
+    gsu_code(0x018271, 2);
     gsu_r14(gsu_pull(&gsu.r[10]));
     gsu_code(0x018273, 4);
     gsu_pull(&gsu.r[10]);       /* the return address, into R15 */
-    gsu_code(0x0181F1, 4);
 }
 
 #define FX_STACK 0x0240u    /* where each program starts the R10 stack */
@@ -147,16 +153,13 @@ void abi_FxAtan2(void)
  */
 void FxAngleProgram(void)
 {
-    gsu_code(0x0181E4, 6);
     gsu.r[10] = FX_STACK;
     gsu.r[1] = gsu_ldw(FX_ANGLE_IN_Y);
-    gsu_code(0x0181EA, 3);
     gsu.r[2] = gsu_ldw(FX_ANGLE_IN_X);
     /* LINK #4, then into FxAtan2 with its stack traffic and exit registers. */
     gsu.r[11] = 0x81F1;
     abi_FxAtan2();
     gsu_stw(FX_ANGLE_OUT, gsu.r[0]);
-    gsu_code(0x0181F5, 1);
 }
 
 void abi_FxAngleProgram(void)

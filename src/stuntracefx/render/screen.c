@@ -21,16 +21,20 @@
  */
 uint16_t FxScreenClear(void)
 {
+    gsu_code(0x01aeba, 5);
     uint16_t at = gsu_ldw(FX_SCREEN_START);
     uint16_t n;
 
-    gsu_code(0x01AEBF, 3); gsu_cache(0xAEC2); gsu_code(0x01AEC2, 2);
-    for (n = 0; n < FX_SCREEN_WORDS; n++) {
-        gsu_code(0x01AEC4, 2);
+    
+    n = 0;
+    gsu_code(0x01aebf, 3); gsu_cache(0xaec2); gsu_code(0x01aec2, 3);
+    do {                                       /* LOOP at the bottom */
+        gsu_code(0x01aec5, 1);
         gsu_stw(at, 0x0000);
         at = (uint16_t)(at + 2);
-        gsu_code(0x01AEC6, 2);
-    }
+    } while (gsu_code_loop(0x01aec4, 1, gsu_code_loop(0x01aec6, 2, ++n < FX_SCREEN_WORDS)));
+    gsu_code(0x01aec6, 2);
+    gsu_code(0x01aec8, 2);
     return at;
 }
 

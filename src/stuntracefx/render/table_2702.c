@@ -42,21 +42,21 @@ void FxTable2702Program(void)
 {
     int i;
 
-    gsu_code(0x01d1ed, 2);
+    gsu_code(0x01d1ec, 3);
     gsu_ramb(0);
     for (i = 0; i < 48; i++)
-        { gsu_codes(FxTable2702Program_fetch[0] + i, 1);
+        { 
+        gsu_codes(FxTable2702Program_fetch[0] + i, 1);
         gsu_stb((uint16_t)(FX_TABLE_2702 + i), table_2702[i]); }
+    gsu_code(0x01d305, 1);
 }
 
 void abi_FxTable2702Program(void)
 {
-    gsu_code(0x01d1ec, 1);
     FxTable2702Program();
     gsu.r[0] = table_2702[47];
     gsu.r[1] = (uint16_t)(FX_TABLE_2702 + 48);
     gsu.cy = 1;
     gsu.ov = 0;
     gsu_sz(gsu.r[1]);
-    gsu_code(0x01d305, 1);
 }
