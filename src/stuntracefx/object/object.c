@@ -866,7 +866,7 @@ uint16_t ObjectNearFocus(uint8_t bank, uint16_t obj, uint8_t *p)
     unsigned s;
     uint8_t k;
 
-    cyc(138);
+    cyc(172);
     dx = magnitude(sub16v(rd16(b | 0x1A6C), rd16(cyc_then(44, field(bank, obj, 0x0C))), p));
     cyc(46);
     wr16(b | 0x1F2B, dx);
@@ -1237,9 +1237,11 @@ static void groups_chain(uint16_t *y)
 static uint16_t groups_list(uint16_t *y)
 {
     uint16_t pos, code, head, keep;
+    uint32_t c = 24;                    /* in; round again 46 */
 
     for (;;) {
-        cyc(46);
+        cyc(c);
+        c = 46;
         pos = rd16(0x7E1F2B);
         cyc(30);
         code = rd16(0x7E1AF5 + pos);

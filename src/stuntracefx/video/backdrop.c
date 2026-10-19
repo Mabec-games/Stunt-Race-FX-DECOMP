@@ -64,6 +64,7 @@ uint16_t BackdropScrollFromView(uint8_t bank, uint16_t *x)
 
     cyc(54);
     *x = (uint8_t)(rd8(0x000D7F) << 1);
+    cyc(82);
     a = (uint16_t)(rd16(0x0006CF) >> 2);
     wr16(dbw(bank, (uint16_t)(0x0D92 + *x)), cyc_then(58, a));
     cyc(62);

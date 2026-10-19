@@ -424,6 +424,7 @@ static void return_frame(void)
             op_lda16(cyc_then(74, F(f[i], cpu.x)));
             cyc(16);
             wr16(0x00003E, cpu.a);
+            cyc((t[i] & 0xFFFF) < 0x100 ? 16 : 24);   /* LDA direct page or absolute */
             op_lda16(t[i]);
             abi_ApproachQuarterMin4();
             wr16(F(f[i], cpu.x), cyc_then(30, cpu.a));
@@ -675,7 +676,7 @@ static void player_drive(void)
 {
     abi_GsuRecordLand();
     (cyc(162), abi_PlayerCarEvents());
-    abi_ObjectPoseFromRecord();
+    (cyc(62), abi_ObjectPoseFromRecord());
     (cyc(126), abi_GsuRecordStep6A());
     (cyc(46), abi_ObjectMoveForward());
     (cyc(62), abi_ObjectRebucket());

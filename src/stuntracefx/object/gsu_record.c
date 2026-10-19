@@ -184,6 +184,7 @@ uint16_t GsuRecordWord58(uint8_t bank, uint16_t obj, uint16_t *y, int *clear)
     rec = record_of(bank, *y);
     cyc(46);
     *clear = !(rd16(0x700042 + rec) & 0x0410);
+    cyc(*clear ? 78 : 72);              /* AND #, BEQ (taken 22, or 16), LDA long */
     return rd16(0x700058 + rec);
 }
 
@@ -1959,7 +1960,7 @@ uint16_t ObjectPoseFromRecord(uint8_t bank, uint16_t obj, uint8_t *p)
     uint16_t rec, z;
     uint8_t s, v;
 
-    cyc(114);
+    cyc(52);
     wr8(b | (uint16_t)(0x2025 + obj), cyc_then(46, rd8(b | (uint16_t)(0x2025 + obj)) & 0xDF));
     cyc(30);
     wr8(b | (uint16_t)(0x2025 + obj), cyc_then(46, rd8(b | (uint16_t)(0x2025 + obj)) & 0xBF));

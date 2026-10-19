@@ -536,6 +536,7 @@ static void abi_engine_sounds(uint16_t phase, uint16_t pressed, uint16_t held)
             cpu.p &= (uint8_t)~P_M;
             cyc(130);
             cpu.a = rd16(b | held);
+            cyc(138);
             abi_SoundHoldByFlags();
             cpu.p = p;
             return;

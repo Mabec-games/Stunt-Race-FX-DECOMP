@@ -1285,6 +1285,7 @@ void abi_RaceFrameRunTwoPlayers(void)
     cyc(88);
     wr8((uint32_t)cpu.db << 16 | 0x0357, 0x00);
     frame_time(db, p0);
+    cyc(58);                            /* its return */
 }
 
 void abi_GsuEE88Ramp(void);

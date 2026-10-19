@@ -1889,7 +1889,7 @@ uint8_t GsuFA5ASixLeft(uint8_t bank, uint8_t *p)
 
     (cyc(86), fa5a_unit_scale());
     for (i = 0; i < 6; i++) {
-        cyc(24);
+        cyc(i ? 140 : 24);              /* after the last piece's GsuRun: its return, then on */
         uint16_t y = rd16(b | 0x0D6F);
 
         wr16(0x70020C, cyc_then(32, dy[i] ? (cyc(22), add16(y, dy[i], p)) : y));

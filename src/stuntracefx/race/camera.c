@@ -187,6 +187,7 @@ void abi_CameraFollowStep(void)
             cyc(42);
             a = (uint16_t)(a + rd16(CAM(r, 0x16)));
         } else {
+            cyc(82);
             a = (uint16_t)(~angle_hi(b, y, 0x2015) + 1);
             cyc(118);
             a = (uint16_t)(a - rd16(CAM(r, 0x16)));
