@@ -360,7 +360,7 @@ void abi_FxRecordLower82(void)
  */
 void abi_FxTimersProgram(void)
 {
-    gsu_code(0x01BBC8, 22); gsu_cache(0xBBDD); gsu_code(0x01BBDE, 1);
+    gsu_code(0x01BBC8, 21); gsu_cache(0xBBDD); gsu_code(0x01BBDD, 2);
     int bit0;
 
     gsu.r[10] = 0x0240;
@@ -659,9 +659,9 @@ void abi_FxParticlesDraw(void)
     gsu.rombr = 0x14;
     gsu.r[11] = 0x274A;
     gsu.r[12] = 0x0014;
-    gsu_code(0x01BA16, 14);
+    gsu_code(0x01BA16, 14); gsu_cache(0xBA24);
     for (;;) {
-        gsu_code(0x01BA24, 1); gsu_cache(0xBA24); gsu_code(0x01BA25, 1);
+        gsu_code(0x01BA24, 2);
         gsu.r[0] = gsu_ldw(gsu.r[11]);
         gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[7], 0);
         if (gsu.z) {

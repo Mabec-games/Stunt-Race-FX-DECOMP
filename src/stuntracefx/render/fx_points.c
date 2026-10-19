@@ -17,22 +17,22 @@
 #define FX_VARIANT 0x0044u
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode script_byte_code[6][4] = {
-    {{0x04A166, 1}, {0xA166, 0}, {0x04A167, 9}, {0, 0}},
-    {{0x04A1B4, 5}, {0, 0}, {0, 0}, {0, 0}},
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}},
-    {{0x04A199, 5}, {0, 0}, {0, 0}, {0, 0}},
-    {{0, 0}, {0, 0}, {0, 0}, {0x04A1A2, 2}},
-    {{0, 0}, {0, 0}, {0, 0}, {0x04A1A8, 2}},
+static const GsuCode script_byte_code[6][2] = {
+    {{0x04A166, 10}, {0, 0}},
+    {{0x04A1B4, 5}, {0, 0}},
+    {{0, 0}, {0, 0}},
+    {{0x04A199, 5}, {0, 0}},
+    {{0, 0}, {0x04A1A2, 2}},
+    {{0, 0}, {0x04A1A8, 2}},
 };
 
 /* A signed script byte (GETBS, INC R14). */
 static uint16_t script_byte(FxRegs *g, int copy)
 {
-    gsu_codes(script_byte_code[copy], 3);
+    gsu_codes(script_byte_code[copy], 1);
     uint16_t b = gsu_getbs();
 
-    gsu_codes(script_byte_code[copy] + 3, 1);
+    gsu_codes(script_byte_code[copy] + 1, 1);
     gsu_r14(gsu_inc(g->r[14]));
     g->r[14] = gsu.r[14];
     return b;
@@ -98,7 +98,7 @@ FxRegs FxModelPoints(FxRegs g)
     gsu_push(sp, g.r[1]);
     gsu_code(0x04A15B, 4);
     gsu_push(sp, g.r[2]);
-    gsu_code(0x04A15F, 7);
+    gsu_code(0x04A15F, 7); gsu_cache(0xA166);
     gsu_r14(g.r[9]);
     g.r[14] = gsu.r[14];
     g.r[9] = FX_POINTS;

@@ -155,7 +155,7 @@ void abi_FxLapSegment(void)
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
 static const GsuCode table_word_code[8][9] = {
-    {{0x04CC13, 2}, {0x04CC19, 2}, {0x04CC1B, 1}, {0x04CC1C, 2}, {0x04CC1E, 1}, {0x04CC1F, 4}, {0x04CC27, 11}, {0xCC31, 0}, {0x04CC32, 2}},
+    {{0x04CC13, 2}, {0x04CC19, 2}, {0x04CC1B, 1}, {0x04CC1C, 2}, {0x04CC1E, 1}, {0x04CC1F, 4}, {0x04CC27, 10}, {0xCC31, 0}, {0x04CC31, 3}},
     {{0x04CC34, 2}, {0, 0}, {0x04CC36, 1}, {0x04CC37, 2}, {0x04CC39, 1}, {0x04CC3A, 6}, {0x04CC42, 4}, {0, 0}, {0, 0}},
     {{0, 0}, {0, 0}, {0x04CC46, 1}, {0x04CC47, 2}, {0x04CC49, 1}, {0x04CC4A, 3}, {0x04CC4F, 9}, {0, 0}, {0, 0}},
     {{0, 0}, {0, 0}, {0x04CC58, 1}, {0x04CC59, 2}, {0x04CC5B, 1}, {0x04CC5C, 3}, {0x04CC7D, 2}, {0, 0}, {0, 0}},

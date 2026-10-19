@@ -226,10 +226,10 @@ FxRegs FxCarMoveParts(FxRegs g)
     int i;
 
     gsu_push(&g.r[10], g.r[11]);
-    gsu_code(0x04A4F0, 6);
+    gsu_code(0x04A4F0, 6); gsu_cache(0xA4F6);
     g.r[0] = gsu_ldw(gsu_add(CAR_PARTS, g.r[8], 0));
     for (;;) {
-        gsu_code(0x04A4F6, 1); gsu_cache(0xA4F6); gsu_code(0x04A4F7, 4);
+        gsu_code(0x04A4F6, 5);
         g.r[9] = g.r[0];
         gsu_moves(g.r[9]);
         if (gsu.z)

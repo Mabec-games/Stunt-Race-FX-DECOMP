@@ -386,9 +386,9 @@ FxRegs FxNearestCar(FxRegs g)
     g.r[0] = gsu_ldw(FX_CARS);
     gsu_moves(g.r[0]);
     if (gsu.z)
-        return near_none(g); else { gsu_code(0x04CF44, 4); gsu_code(0x04CF4C, 1); gsu_code(0x04CF52, 10); }
+        return near_none(g); else { gsu_code(0x04CF44, 4); gsu_code(0x04CF4C, 1); gsu_cache(0xCF4D); gsu_code(0x04CF52, 10); }
     for (;; g.r[0] = gsu_ldw(gsu_code_then(0x04CF8A, 4, gsu_add(REC_NEXT_CAR, g.r[8], 0)))) {
-        gsu_code(0x04CF4D, 1); gsu_cache(0xCF4D); gsu_code(0x04CF4E, 4);
+        gsu_code(0x04CF4D, 5);
         g.r[8] = g.r[0];
         gsu_moves(g.r[8]);
         if (gsu.z)

@@ -162,7 +162,7 @@ void abi_FxPolygonProject(void)
     int c;
 
     gsu_push(&gsu.r[10], gsu.r[11]);
-    gsu_code(0x01C415, 3); gsu_cache(0xC417); gsu_code(0x01C418, 3);
+    gsu_code(0x01C415, 2); gsu_cache(0xC417); gsu_code(0x01C417, 4);
     gsu.r[3] = gsu_ldw(0x0026);
     gsu_code(0x01C41B, 3);
     gsu.r[13] = gsu_ldw(0x0028);

@@ -495,7 +495,7 @@ lB0D9:
     R[1] = R[0];
     gsu_moves(R[0]);
     t = gsu.s;
-    if (t) goto lB128; else { gsu_code(0x01B0EB, 6); gsu_cache(0xB0F0); gsu_code(0x01B0F1, 3); }
+    if (t) goto lB128; else { gsu_code(0x01B0EB, 5); gsu_cache(0xB0F0); gsu_code(0x01B0F0, 4); }
     /* CACHE */
     R[12] = gsu_ldw(FX_POINT_SHIFT);
     R[12] = R[12];
@@ -591,7 +591,7 @@ lB160:
     R[0] = gsu_swap(R[0]);
     gsu_cmode(R[0]);
     t = 1;
-    if (t) { gsu_code(0x01B177, 6); gsu_code(0x01B182, 1); gsu_cache(0xB182); gsu_code(0x01B183, 7); goto lB182; }
+    if (t) { gsu_code(0x01B177, 6); gsu_code(0x01B182, 8); goto lB182; }
     /* FxObjectSpriteAt */
 lB17D:
     gsu_stw(R[10], R[11]);
@@ -641,7 +641,7 @@ lB1AB:
     R[6] = gsu_ldw(gsu_code_then(0x01B1C0, 3, FX_MODEL_C8));
     R[0] = gsu_sub(R[1], R[6], 0);
     t = !gsu.cy;
-    if (t) { gsu_code(0x01B1C3, 4); gsu_code(0x01B1CB, 15); goto lB1CB; } else { gsu_code(0x01B1C3, 8); gsu_code(0x01B2ED, 9); gsu_code(0x01B303, 4); gsu_cache(0xB306); gsu_code(0x01B307, 3); }
+    if (t) { gsu_code(0x01B1C3, 4); gsu_code(0x01B1CB, 15); goto lB1CB; } else { gsu_code(0x01B1C3, 8); gsu_code(0x01B2ED, 9); gsu_code(0x01B303, 3); gsu_cache(0xB306); gsu_code(0x01B306, 4); }
     goto lB2ED;
 lB1CB:
     R[4] = R[6];
@@ -652,7 +652,7 @@ lB1CB:
     gsu_code(0x01B1DA, 1);
     gsu_r14(gsu_add(R[0], R[1], 0));
     R[6] = (gsu_code(0x01B1DB, 3), gsu_getb());
-    gsu_code(0x01B1DE, 6); gsu_cache(0xB1E3); gsu_code(0x01B1E4, 3);
+    gsu_code(0x01B1DE, 5); gsu_cache(0xB1E3); gsu_code(0x01B1E3, 4);
     gsu_r14(gsu_inc(R[14]));
     R[6] = gsu_getbh(R[6]);
     R[0] = gsu_swap(R[4]);
@@ -1059,7 +1059,7 @@ lB6D5:
     R[12] = 0x0014;
     /* CACHE */
     R[13] = 0xB6F4;
-gsu_code(0x01B6EF, 4); gsu_cache(0xB6F2); gsu_code(0x01B6F3, 1);
+gsu_code(0x01B6EF, 3); gsu_cache(0xB6F2); gsu_code(0x01B6F2, 2);
 lB6F4:
     R[0] = gsu_ldb(gsu_code_then(0x01B6F4, 3, R[3]));
     R[0] = gsu_lob(R[0]);

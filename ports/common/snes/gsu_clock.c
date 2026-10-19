@@ -68,13 +68,20 @@ void gsuclk_code(GsuClock *c, uint32_t addr, unsigned n)
             gsuclk_step(c, GSUCLK_INSN, bus_clocks(c));
             bus(c, 1);
         }
+        /* a CACHE fetched just before runs now, the byte after it in the
+           pipeline */
+        if (c->cache_pending) {
+            c->cache_pending = 0;
+            if (c->cbr != c->cbr_next)
+                gsuclk_flush_code(c, c->cbr_next);
+        }
     }
 }
 
 void gsuclk_cache(GsuClock *c, uint16_t r15)
 {
-    if (c->cbr != (r15 & 0xFFF0))
-        gsuclk_flush_code(c, (uint16_t)(r15 & 0xFFF0));
+    c->cbr_next = (uint16_t)(r15 & 0xFFF0);
+    c->cache_pending = 1;
 }
 
 void gsuclk_flush_code(GsuClock *c, uint16_t cbr)

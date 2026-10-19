@@ -158,7 +158,7 @@ void FxSortObjectsProgram(void)
     gsu_code(0x01AF00, 6);
     gsu.r[12] = gsu_lob(gsu_ldw(FX_SLOT_COUNT));
     if (gsu.z)
-        return; else { gsu_code(0x01AF06, 4); gsu_code(0x01AF0C, 2); gsu_cache(0xAF0D); gsu_code(0x01AF0E, 1); }
+        return; else { gsu_code(0x01AF06, 4); gsu_code(0x01AF0C, 1); gsu_cache(0xAF0D); gsu_code(0x01AF0D, 2); }
     gsu.r[13] = 0xAF0F;
     do {
         int culled = 0;

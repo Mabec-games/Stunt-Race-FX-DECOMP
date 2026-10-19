@@ -320,8 +320,8 @@ static const uint8_t flat_copy_from_flat_polygon[2] = {0, 1};
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
 static const GsuCode flat_polygon_code[2][20] = {
-    {{0x01A956, 8}, {0xA95D, 0}, {0x01A95E, 17}, {0x01A96F, 7}, {0x01AA9F, 3}, {0x01A9AA, 11}, {0x01A9B5, 12}, {0x01A9F2, 17}, {0x01AA03, 5}, {0x01AA3F, 10}, {0x01AA4B, 1}, {0x01AA4C, 4}, {0x01AA59, 5}, {0x01AA67, 5}, {0x01A9C1, 5}, {0x01AA6C, 4}, {0x01A9C6, 9}, {0x01A9D8, 9}, {0x01AA70, 4}, {0x01A9F2, 17}},
-    {{0x01A956, 8}, {0xA95D, 0}, {0x01A95E, 17}, {0x01A96F, 7}, {0x01AA9F, 3}, {0x01A9AA, 11}, {0x01A9B5, 12}, {0x01A9F2, 17}, {0x01AA03, 5}, {0x01AA3F, 10}, {0x01AA4B, 1}, {0x01AA4C, 4}, {0x01AA59, 5}, {0x01AA67, 5}, {0x01A9C1, 5}, {0x01AA6C, 4}, {0x01A9C6, 9}, {0x01A9D8, 9}, {0x01AA70, 4}, {0x01A9F2, 17}},
+    {{0x01A956, 7}, {0xA95D, 0}, {0x01A95D, 18}, {0x01A96F, 7}, {0x01AA9F, 3}, {0x01A9AA, 11}, {0x01A9B5, 12}, {0x01A9F2, 17}, {0x01AA03, 5}, {0x01AA3F, 10}, {0x01AA4B, 1}, {0x01AA4C, 4}, {0x01AA59, 5}, {0x01AA67, 5}, {0x01A9C1, 5}, {0x01AA6C, 4}, {0x01A9C6, 9}, {0x01A9D8, 9}, {0x01AA70, 4}, {0x01A9F2, 17}},
+    {{0x01A956, 7}, {0xA95D, 0}, {0x01A95D, 18}, {0x01A96F, 7}, {0x01AA9F, 3}, {0x01A9AA, 11}, {0x01A9B5, 12}, {0x01A9F2, 17}, {0x01AA03, 5}, {0x01AA3F, 10}, {0x01AA4B, 1}, {0x01AA4C, 4}, {0x01AA59, 5}, {0x01AA67, 5}, {0x01A9C1, 5}, {0x01AA6C, 4}, {0x01A9C6, 9}, {0x01A9D8, 9}, {0x01AA70, 4}, {0x01A9F2, 17}},
 };
 
 /* A95C: a flat polygon (R0 = its type less 2, R1 at its colour byte):
@@ -804,8 +804,8 @@ static const uint8_t tex_rows_from_tex_polygon[2] = {0, 1};
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
 static const GsuCode tex_polygon_code[2][38] = {
-    {{0x01A662, 11}, {0x01A91A, 4}, {0x01A66D, 4}, {0x01A671, 4}, {0x01A675, 7}, {0x01A67C, 5}, {0x01A681, 1}, {0x01A682, 5}, {0x01A687, 5}, {0x01A68C, 11}, {0x01A697, 3}, {0x01A69A, 2}, {0x01A69C, 6}, {0x01A6A2, 2}, {0x01A6BC, 3}, {0x01A6BF, 4}, {0x01A6C3, 5}, {0x01A6C8, 3}, {0x01A6CB, 4}, {0x01A6CF, 2}, {0x01A6CF, 11}, {0x01A909, 4}, {0x01A6CF, 7}, {0x01A6DA, 10}, {0x01A6E4, 10}, {0x01A6EE, 4}, {0x01A6F2, 3}, {0x01A6F5, 4}, {0x01A6F9, 4}, {0x01A6FD, 3}, {0x01A700, 5}, {0x01A705, 3}, {0x01A708, 5}, {0xA70C, 0}, {0x01A70D, 3}, {0x01A7D9, 1}, {0x01A7DA, 4}, {0x01A871, 4}},
-    {{0x01A662, 11}, {0x01A91A, 4}, {0x01A66D, 4}, {0x01A671, 4}, {0x01A675, 7}, {0x01A67C, 5}, {0x01A681, 1}, {0x01A682, 5}, {0x01A687, 5}, {0x01A68C, 11}, {0x01A697, 3}, {0x01A69A, 2}, {0x01A69C, 6}, {0x01A6A2, 2}, {0x01A6BC, 3}, {0x01A6BF, 4}, {0x01A6C3, 5}, {0x01A6C8, 3}, {0x01A6CB, 4}, {0x01A6CF, 2}, {0x01A6CF, 11}, {0x01A909, 4}, {0x01A6CF, 7}, {0x01A6DA, 10}, {0x01A6E4, 10}, {0x01A6EE, 4}, {0x01A6F2, 3}, {0x01A6F5, 4}, {0x01A6F9, 4}, {0x01A6FD, 3}, {0x01A700, 5}, {0x01A705, 3}, {0x01A708, 5}, {0xA70C, 0}, {0x01A70D, 3}, {0x01A7D9, 1}, {0x01A7DA, 4}, {0x01A871, 4}},
+    {{0x01A662, 11}, {0x01A91A, 4}, {0x01A66D, 4}, {0x01A671, 4}, {0x01A675, 7}, {0x01A67C, 5}, {0x01A681, 1}, {0x01A682, 5}, {0x01A687, 5}, {0x01A68C, 11}, {0x01A697, 3}, {0x01A69A, 2}, {0x01A69C, 6}, {0x01A6A2, 2}, {0x01A6BC, 3}, {0x01A6BF, 4}, {0x01A6C3, 5}, {0x01A6C8, 3}, {0x01A6CB, 4}, {0x01A6CF, 2}, {0x01A6CF, 11}, {0x01A909, 4}, {0x01A6CF, 7}, {0x01A6DA, 10}, {0x01A6E4, 10}, {0x01A6EE, 4}, {0x01A6F2, 3}, {0x01A6F5, 4}, {0x01A6F9, 4}, {0x01A6FD, 3}, {0x01A700, 5}, {0x01A705, 3}, {0x01A708, 4}, {0xA70C, 0}, {0x01A70C, 4}, {0x01A7D9, 1}, {0x01A7DA, 4}, {0x01A871, 4}},
+    {{0x01A662, 11}, {0x01A91A, 4}, {0x01A66D, 4}, {0x01A671, 4}, {0x01A675, 7}, {0x01A67C, 5}, {0x01A681, 1}, {0x01A682, 5}, {0x01A687, 5}, {0x01A68C, 11}, {0x01A697, 3}, {0x01A69A, 2}, {0x01A69C, 6}, {0x01A6A2, 2}, {0x01A6BC, 3}, {0x01A6BF, 4}, {0x01A6C3, 5}, {0x01A6C8, 3}, {0x01A6CB, 4}, {0x01A6CF, 2}, {0x01A6CF, 11}, {0x01A909, 4}, {0x01A6CF, 7}, {0x01A6DA, 10}, {0x01A6E4, 10}, {0x01A6EE, 4}, {0x01A6F2, 3}, {0x01A6F5, 4}, {0x01A6F9, 4}, {0x01A6FD, 3}, {0x01A700, 5}, {0x01A705, 3}, {0x01A708, 4}, {0xA70C, 0}, {0x01A70C, 4}, {0x01A7D9, 1}, {0x01A7DA, 4}, {0x01A871, 4}},
 };
 
 /* A662: a textured polygon (R0 = NOT its type, R1 at its bank byte). The
@@ -1351,7 +1351,7 @@ static const GsuCode near_load_code[5][10] = {
     {{0x01996E, 2}, {0x019970, 4}, {0x019974, 4}, {0, 0}, {0, 0}, {0, 0}, {0x019978, 7}, {0, 0}, {0, 0}, {0, 0}},
     {{0x019A08, 2}, {0x019A0A, 4}, {0x019A0E, 4}, {0x018BFF, 7}, {0x018C0E, 7}, {0x019A12, 6}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
     {{0x019914, 11}, {0x01991F, 4}, {0x019923, 4}, {0x019927, 4}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-    {{0, 0}, {0x01992B, 4}, {0x01992F, 4}, {0, 0}, {0, 0}, {0, 0}, {0x01981A, 2}, {0x981B, 0}, {0x01981C, 4}, {0x019933, 4}},
+    {{0, 0}, {0x01992B, 4}, {0x01992F, 4}, {0, 0}, {0, 0}, {0, 0}, {0x01981A, 1}, {0x981B, 0}, {0x01981B, 5}, {0x019933, 4}},
 };
 
 /* Three words from R7 to registers (TO Rn; LDW (R7); INC R7 twice), the
@@ -1534,7 +1534,7 @@ void abi_FxPolygonGather(void)
                     near_count(GSU_COPY(1));
                     gsu_moves(R[6]);
                     if (gsu.s) {
-                        gsu_code(0x01981A, 2); gsu_cache(0x981B); gsu_code(0x01981C, 9); gsu_code(0x019831, 4); gsu_code(0x0199A6, 5);
+                        gsu_code(0x01981A, 1); gsu_cache(0x981B); gsu_code(0x01981B, 10); gsu_code(0x019831, 4); gsu_code(0x0199A6, 5);
                         R[11] = 0x99AB;
                         abi_FxSegmentCrossZ();
                         near_put(4, 5, 6, GSU_COPY(2));
@@ -1542,7 +1542,7 @@ void abi_FxPolygonGather(void)
                     } else { gsu_code(0x0199A2, 4); }
                     gsu_code(0x0199D6, 1);
                 } else {
-                    gsu_code(0x01981A, 2); gsu_cache(0x981B); gsu_code(0x01981C, 4); gsu_code(0x019828, 5); gsu_code(0x01988D, 4); gsu_code(0x019988, 4); gsu_code(0x0199C0, 5);
+                    gsu_code(0x01981A, 1); gsu_cache(0x981B); gsu_code(0x01981B, 5); gsu_code(0x019828, 5); gsu_code(0x01988D, 4); gsu_code(0x019988, 4); gsu_code(0x0199C0, 5);
                     R[11] = 0x99C5;
                     abi_FxSegmentCrossZ();
                     near_put(1, 2, 3, GSU_COPY(0));

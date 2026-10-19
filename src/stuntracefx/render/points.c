@@ -35,7 +35,7 @@ typedef struct { uint16_t first_word, offset[3], last_z, last_point; } FxPointsL
 
 void FxPointsGather(uint16_t count, FxPointsLeft *left)
 {
-    gsu_code(0x01C1BE, 2); gsu_cache(0xC1BF); gsu_code(0x01C1C0, 3); gsu_code(0x01C347, 6);
+    gsu_code(0x01C1BE, 1); gsu_cache(0xC1BF); gsu_code(0x01C1BF, 4); gsu_code(0x01C347, 6);
     uint32_t n = count ? count : 0x10000u;
     uint16_t src = (uint16_t)(gsu_ldw(FX_PAIRS) - 4 + (count & 0xFF) * 8);
     uint16_t dst = (uint16_t)(FX_RECORDS + (count & 0xFF) * 10);

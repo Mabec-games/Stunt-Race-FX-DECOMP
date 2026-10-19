@@ -38,6 +38,8 @@ struct GsuClock {
     uint64_t by[GSUCLK_KINDS];    /* of them, by what they were for */
     uint32_t valid;               /* the code cache's lines that hold their code */
     uint16_t cbr;                 /* the cache's base */
+    uint16_t cbr_next;            /* a CACHE's new base, from the next fetch on */
+    uint8_t cache_pending;
     uint8_t clsr, ms0;            /* CLSR (21 MHz); CFGR's MS0 (the fast multiplier) */
     uint8_t romcl, ramcl;         /* clocks until the ROM buffer's fill, the RAM buffer's store, are made */
     /* the pixel caches: the row of 8 pixels each holds, which of them are
@@ -59,7 +61,7 @@ typedef struct { uint8_t ht, md, scbr; } GsuScreen;
 
 void gsuclk_step(GsuClock *c, int kind, unsigned clocks);
 void gsuclk_code(GsuClock *c, uint32_t addr, unsigned n);   /* code bytes fetched: bank:addr on */
-void gsuclk_cache(GsuClock *c, uint16_t r15);              /* CACHE, R15 as it runs */
+void gsuclk_cache(GsuClock *c, uint16_t r15);              /* CACHE fetched (R15 one past it): it runs after the next fetch */
 void gsuclk_flush_code(GsuClock *c, uint16_t cbr);         /* the code cache emptied (PBR, GO cleared) */
 void gsuclk_mult(GsuClock *c);                             /* MULT, UMULT */
 void gsuclk_fmult(GsuClock *c);                            /* FMULT, LMULT */

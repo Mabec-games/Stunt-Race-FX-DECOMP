@@ -55,6 +55,7 @@ static uint64_t clk_base;              /* gsu_now - clk.now */
 static Coro *gsu_co, *main_co;
 
 static void gsu_main(void *arg);
+static inline uint8_t bus_byte(uint32_t addr);
 static void bus_wait(GsuClock *c, int ram);
 static uint8_t pix_read(GsuClock *c, uint32_t addr);
 static void pix_write(GsuClock *c, uint32_t addr, uint8_t v);
@@ -143,6 +144,8 @@ static void gsu_main(void *arg)
         if (!snes_gsu_run_hook)
             snes_fatal("Super FX started with no runtime");
         gsuclk_code(&clk, (uint32_t)pbr << 16 | gsu.r[15], 1);
+        if (bus_byte((uint32_t)pbr << 16 | gsu.r[15]) == 0x02)
+            gsuclk_cache(&clk, (uint16_t)(gsu.r[15] + 1));   /* a CACHE first: it runs after the next fetch */
         clk_sync();
         snes_gsu_run_hook(pbr, gsu.r[15]);
         /* the STOP: GO clear, the interrupt unless masked */

@@ -1084,14 +1084,14 @@ l9E4A:
     gsu_code(0x049E52, 1);
     gsu_r14(gsu_inc(R[14]));
     R[0] = gsu_umult(R[0], 3);
-    gsu_code(0x049E53, 4);
+    gsu_code(0x049E53, 4); gsu_cache(0x9E57);
     gsu_r14(gsu_add(R[14], R[0], 0));
     /* CACHE */
-    R[0] = (gsu_code(0x049E57, 1), gsu_cache(0x9E57), gsu_code(0x049E58, 2), gsu_getbs());
+    R[0] = (gsu_code(0x049E57, 3), gsu_getbs());
     R[13] = 0x003C;
     gsu_sub(R[0], R[13], 0);   /* CMP */
     t = !gsu.z;
-    gsu_code(0x049E5A, 6); gsu_code(0x049E92, 1); gsu_cache(0x9E92);
+    gsu_code(0x049E5A, 6); gsu_code(0x049E92, 1);
     gsu_r14(gsu_inc(R[14]));
     if (t) goto l9E92;
     R[1] = 0x0028;
@@ -1138,7 +1138,7 @@ l9E92:
     R[13] = R[13];
     gsu_moves(R[13]);
     t = gsu.s;
-    gsu_code(0x049E92, 1); gsu_cache(0x9E92); gsu_code(0x049E96, 4);
+    gsu_code(0x049E92, 1); gsu_code(0x049E96, 4);
     gsu_r14(gsu_inc(R[14]));
     if (t) goto l9E85; else { gsu_code(0x049E9B, 4); }
     R[0] = gsu_sub(R[0], R[0], 0);
@@ -1460,7 +1460,7 @@ lA0C4:
 lA0CC:
     gsu_sub(R[7], R[12], 0);   /* CMP */
     t = !gsu.s;
-    if (t) { gsu_code(0x04A0D6, 2); goto lA0D6; } else { gsu_code(0x049E92, 1); gsu_cache(0x9E92); gsu_code(0x04A0D2, 4); }
+    if (t) { gsu_code(0x04A0D6, 2); goto lA0D6; } else { gsu_code(0x049E92, 1); gsu_code(0x04A0D2, 4); }
     goto l9E92;
 lA0D6:
     gsu_stw(R[11], R[0]);
@@ -2956,13 +2956,13 @@ lAEFF:
     R[3] = 0x23AE;
     R[13] = 0x0000;
     /* CACHE */
-gsu_code(0x04AF15, 5);
+gsu_code(0x04AF15, 5); gsu_cache(0xAF1A);
 lAF1A:
     R[13] = gsu_inc(R[13]);
     R[0] = 0x0014;
     gsu_sub(R[0], R[13], 0);   /* CMP */
     t = !gsu.z;
-    if (t) { gsu_code(0x04AF1A, 1); gsu_cache(0xAF1A); gsu_code(0x04AF1B, 7); gsu_code(0x04AF26, 2); goto lAF26; } else { gsu_code(0x04AF1A, 1); gsu_cache(0xAF1A); gsu_code(0x04AF1B, 11); gsu_code(0x04AF3C, 5); }
+    if (t) { gsu_code(0x04AF1A, 8); gsu_code(0x04AF26, 2); goto lAF26; } else { gsu_code(0x04AF1A, 12); gsu_code(0x04AF3C, 5); }
     goto lAF3C;
 lAF26:
     R[0] = gsu_ldw(R[3]);
@@ -4409,7 +4409,7 @@ lB7D4:
     R[0] = R[0];
     gsu_moves(R[0]);
     t = !gsu.s;
-    if (t) { gsu_code(0x04B7D9, 4); gsu_code(0x04B7DF, 8); gsu_code(0x04B80F, 2); gsu_cache(0xB810); gsu_code(0x04B811, 11); goto lB7DF; }
+    if (t) { gsu_code(0x04B7D9, 4); gsu_code(0x04B7DF, 8); gsu_code(0x04B80F, 1); gsu_cache(0xB810); gsu_code(0x04B810, 12); goto lB7DF; }
     R[0] = gsu_not(R[0]);
     R[0] = gsu_inc(R[0]);
 lB7DF:

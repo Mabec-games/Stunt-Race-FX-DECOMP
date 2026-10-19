@@ -51,9 +51,9 @@ uint8_t gsu_rpix(uint8_t x, uint8_t y);
 /* The Super FX's time, as the original spends it. Nearly all of it is
    fetching its code: the C says where it stands for which of the
    original's code bytes, gsu_code(bank:addr, n) for the n bytes fetched
-   from addr on, and where the original's CACHE instructions run (R15 as
-   each does: the code cache's base moves there and empties when it
-   changes). The rest comes with what the C does: its loads and stores
+   from addr on, and where the original fetches a CACHE instruction (R15
+   one past it: as it runs, after the next byte's fetch, the code cache's
+   base moves there and the cache empties when it changes). The rest comes with what the C does: its loads and stores
    (the RAM buffer), its R14 writes and ROM-buffer reads, MULT and FMULT,
    PLOT and RPIX (the pixel caches). The runtime prices each as the GSU-1
    does (a byte from the code cache, a cache line's fill, a byte outside

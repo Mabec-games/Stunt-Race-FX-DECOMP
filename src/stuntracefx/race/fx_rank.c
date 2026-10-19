@@ -154,7 +154,7 @@ FxRegs FxRankCars(FxRegs g)
 {
     gsu_push(&g.r[10], g.r[11]);
     g.r[5] = 0;
-    gsu_code(0x04CE20, 3); gsu_cache(0xCE22); gsu_code(0x04CE23, 6);
+    gsu_code(0x04CE20, 2); gsu_cache(0xCE22); gsu_code(0x04CE22, 7);
     g.r[0] = gsu_ldw(FX_CARS);
     gsu_moves(g.r[0]);
     if (!gsu.z) {
@@ -172,9 +172,9 @@ FxRegs FxRankCars(FxRegs g)
         }
         g.r[0] = gsu_ldw(FX_CARS);
         g.r[9] = 1;
-        gsu_code(0x04CE44, 2); gsu_code(0x04CE4B, 3);
+        gsu_code(0x04CE44, 2); gsu_cache(0xCE46); gsu_code(0x04CE4B, 3);
         for (;;) {
-            gsu_code(0x04CE46, 1); gsu_cache(0xCE46); gsu_code(0x04CE47, 4);
+            gsu_code(0x04CE46, 5);
             g.r[8] = g.r[0];
             gsu_moves(g.r[8]);
             if (gsu.z)

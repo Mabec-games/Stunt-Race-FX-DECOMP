@@ -33,7 +33,7 @@ import cycwrite
 
 CTX = 131072
 END = 1 << 29
-FLUSH_AFTER = set()
+CACHE_AT = set()
 
 
 def load(code_pkl, ctx_txt, fnmap_bin, fnnames_txt):
@@ -62,8 +62,8 @@ def items(c):
                 out[-1] = ('code', out[-1][1], out[-1][2] + 1)
             else:
                 out.append(('code', a, 1))
-            if a in FLUSH_AFTER:
-                out.append(('cache', a & 0xFFFF, 0))
+            if a in CACHE_AT:
+                out.append(('cache', (a + 1) & 0xFFFF, 0))
         return out
     out, left = [], collections.Counter({a: n for a, n in c.items() if a < 0xE00000})
     while left:
@@ -80,9 +80,11 @@ def items(c):
                 del left[a]
         s = run[0]
         for a in run:
-            if a in FLUSH_AFTER:
+            # a CACHE: stated as its own byte is fetched (the clock runs it
+            # after the next fetch, as the pipeline does)
+            if a in CACHE_AT:
                 out.append(('code', s, a - s + 1))
-                out.append(('cache', a & 0xFFFF, 0))
+                out.append(('cache', (a + 1) & 0xFFFF, 0))
                 s = a + 1
         if s <= run[-1]:
             out.append(('code', s, run[-1] - s + 1))
@@ -94,9 +96,9 @@ def text_item(x):
 
 
 def main(argv):
-    global FLUSH_AFTER
+    global CACHE_AT
     code, reached, fnmap, names, ctxs = load(*argv[1:5])
-    FLUSH_AFTER = {int(l, 16) + 1 for l in open(argv[5]) if l.strip()}
+    CACHE_AT = {int(l, 16) for l in open(argv[5]) if l.strip()}       # the CACHE instructions' addresses
     out_csv = argv[6]
     probes = {int(r['id']): r for r in csv.DictReader(open(os.path.join(os.path.dirname(argv[2]), 'probe', 'probes.csv')))}
     fn_index = {n: i for i, n in enumerate(names)}

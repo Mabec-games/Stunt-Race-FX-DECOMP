@@ -969,6 +969,10 @@ static int hybrid_exec(uint32_t pc, uint32_t prev_end)
     gclk.clsr = st.clsr & 1; gclk.ms0 = (uint8_t)(st.cfgr >> 5 & 1);
     gclk.romcl = entry_romcl; gclk.ramcl = entry_ramcl;
     gclk.bus = NULL;
+    /* a CACHE already fetched (the routine's first instruction, in the
+       pipeline): it runs after the C's first fetch */
+    gclk.cache_pending = 0;
+    if (st.pipeline == 0x02) gsuclk_cache(&gclk, (uint16_t)(pc + 1));
     /* the call's time from its start; the store left buffered is the
        entry's, not the C's (unjudged); none past the record's end */
     gpn = 0; gover = 0; gfrom = 0; mfn = 0;
