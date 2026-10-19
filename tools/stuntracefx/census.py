@@ -29,7 +29,7 @@ these lead to more routines:
               Super FX code counts the same way when it decodes to its last
               byte with opcodes the traced Super FX code uses and ends in
               STOP, a jump or a return and its delay slot, or runs into
-              traced Super FX code, every STOP followed by its NOP as the
+              Super FX code, every STOP followed by its NOP as the
               game's own code has it (a table does not)
 
 Code the traces ran is decoded with the widths they saw, and its targets are
@@ -427,8 +427,9 @@ def gsu_dead(c, used):
         op = rom[prev]
         ends = (op == 0x00 or 0x98 <= op <= 0x9D or op == 0x05 or (op == 0xFF and not 0x91 <= rom[prev - 1] <= 0x94)
                 or (0x40 <= op <= 0x4B and rom[prev - 1] == 0x1F))
-        if ends or (o < n and mp[o] & 0x10):
-            out.append(codemap.run_addr(s))
+        if ends or (o < n and (mp[o] & 0x10 or c.gcode[o])):
+            # the walk stops at a STOP before its NOP: the code starts after it
+            out.append(codemap.run_addr(s + (rom[s] == 0x01 and rom[s - 1] == 0x00)))
     return out
 
 
