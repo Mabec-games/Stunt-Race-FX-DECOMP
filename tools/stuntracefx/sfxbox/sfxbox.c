@@ -38,7 +38,9 @@
  *                        start leaves the stack: a JSL to a trampoline
  *                        that pushes P = PP and DB = DD above the return
  *                        address (PEA) and jumps (JML) to ADDR, for code
- *                        that ends by pulling them (PLB, PLP, RTL); php
+ *                        that ends by pulling them (PLB, PLP, RTL); frame
+ *                        without long is the same with a JSR and a JMP,
+ *                        for code that ends PLB, PLP, RTS; php
  *                        (without long) is the same for code that ends
  *                        PLP, RTS: a JSR to a trampoline that pushes P
  *                        (PHP, so P = p=) and jumps (JMP) to ADDR; rti
@@ -329,6 +331,7 @@ static int checklib_on;  /* --check: the checker is told when a call starts */
 static int call_keep;    /* keep: the machine is not put back after the call */
 static long call_frame = -1;  /* frame=: the P and DB pushed above the return */
 static long call_rti = -1;    /* rti=: entered as an interrupt, this P pushed */
+static int call_frame_long;   /* frame= with long (JSL), else with a JSR */
 static int call_php;           /* php: (JSR) the entry P pushed above the return */
 static int call_vblank;        /* vblank: may start in the vertical blank (NMI off) */
 static int call_noreturn;     /* noreturn: told to lockstep when the call starts */
@@ -364,9 +367,13 @@ static int call_exec(uint32_t pc)
         /* Entered by a JML from the trampoline: the checker is told where
            the call starts (S after the return and the frame) and ends. */
         if (call_noreturn && lockstep) lockstep_unit_noreturn(call_target);
-        if (call_frame >= 0) {
+        if (call_frame >= 0 && call_frame_long) {
             if (checklib_on) check_unit_entry(call_target, call_loop, call_from.s, (uint16_t)(call_from.s - 5));
             if (lockstep) lockstep_unit_entry(call_target, call_loop, call_from.s, (uint16_t)(call_from.s - 5));
+        }
+        if (call_frame >= 0 && !call_frame_long) {
+            if (checklib_on) check_unit_entry(call_target, call_stub + 3, call_from.s, (uint16_t)(call_from.s - 4));
+            if (lockstep) lockstep_unit_entry(call_target, call_stub + 3, call_from.s, (uint16_t)(call_from.s - 4));
         }
         if (call_rti >= 0) {
             if (checklib_on) check_unit_entry(call_target, call_loop, call_from.s, (uint16_t)(call_from.s - 4));
@@ -439,10 +446,10 @@ static void call(const char *line, int lineno) {
     else if (bank == 0x7E || bank < 0x40 || (bank >= 0x80 && bank < 0xC0)) { at = 0x1FE0; sb = bank; }
     else die("%s:%d: call: a JSR can't reach bank %02X from work RAM; use long", script_path, lineno, bank);
     uint8_t stub[16]; int m = 0;
-    if (call_frame >= 0 && !lng) die("%s:%d: call: frame= needs long", script_path, lineno);
     if (call_php && lng) die("%s:%d: call: php is for a JSR call (frame= for long)", script_path, lineno);
     call_target = addr;
     call_noreturn = noreturn;
+    call_frame_long = lng;
     if (call_rti >= 0) {
         /* The frame an interrupt pushes, the PB and PC of the loop below,
            then P: PEA #(bank << 8 | loop >> 8), PEA #(loop << 8 | P), JML
@@ -451,10 +458,15 @@ static void call(const char *line, int lineno) {
         stub[m++] = 0xF4; stub[m++] = (uint8_t)(l >> 8); stub[m++] = (uint8_t)sb;
         stub[m++] = 0xF4; stub[m++] = (uint8_t)call_rti; stub[m++] = (uint8_t)l;
         stub[m++] = 0x5C; stub[m++] = (uint8_t)addr; stub[m++] = (uint8_t)(addr >> 8); stub[m++] = (uint8_t)bank;
-    } else if (call_frame >= 0) {
+    } else if (call_frame >= 0 && lng) {
         /* JSL to the trampoline at +6; there PEA #frame, JML ADDR. */
         uint16_t t = (uint16_t)(at + 6);
         stub[m++] = 0x22; stub[m++] = (uint8_t)t; stub[m++] = (uint8_t)(t >> 8); stub[m++] = (uint8_t)sb;
+    } else if (call_frame >= 0) {
+        /* JSR to the trampoline at +6; there PEA #frame, JMP ADDR (the stub
+           runs in the routine's bank). The RTS lands on the NOP at +3. */
+        uint16_t t = (uint16_t)(at + 6);
+        stub[m++] = 0x20; stub[m++] = (uint8_t)t; stub[m++] = (uint8_t)(t >> 8); stub[m++] = 0xEA;
     } else if (call_php) {
         /* JSR to the trampoline at +6; there PHP, JMP ADDR (the stub runs
            in the routine's bank). The RTS lands on the NOP at +3. */
@@ -467,7 +479,8 @@ static void call(const char *line, int lineno) {
     call_loop = call_stub + (uint32_t)(m - 2);
     if (call_frame >= 0) {
         stub[m++] = 0xF4; stub[m++] = (uint8_t)call_frame; stub[m++] = (uint8_t)(call_frame >> 8);
-        stub[m++] = 0x5C; stub[m++] = (uint8_t)addr; stub[m++] = (uint8_t)(addr >> 8); stub[m++] = (uint8_t)bank;
+        if (lng) { stub[m++] = 0x5C; stub[m++] = (uint8_t)addr; stub[m++] = (uint8_t)(addr >> 8); stub[m++] = (uint8_t)bank; }
+        else { stub[m++] = 0x4C; stub[m++] = (uint8_t)addr; stub[m++] = (uint8_t)(addr >> 8); }
     }
     if (call_php) {
         stub[m++] = 0x08;

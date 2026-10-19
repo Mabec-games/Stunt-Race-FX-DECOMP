@@ -1078,11 +1078,25 @@ void abi_ObjectAttachLinked(void)
  * bytes only when P restores 8-bit index registers); P and the data bank
  * unchanged.
  */
-uint16_t ObjectGroupsActivate(uint16_t *y)
+/* ObjectGroupsActivate's chain walk from object *y: each object's state
+   +$36 set to 3 unless negative (or, for code $23, +$24 bit 4 set), up to
+   the end of the chain (+$3C). */
+static void groups_chain(uint16_t *y)
 {
-    uint16_t pos = 0, code, head, keep;
+    do {
+        if (!(rd8(0x7E1F2D) == 0x23 && (rd8(0x7E2024 + *y) & 0x10))
+            && !(rd8(0x7E2036 + *y) & 0x80))
+            wr8(0x7E2036 + *y, 0x03);
+        *y = rd16(0x7E203C + *y);
+    } while (*y);
+}
 
-    wr16(0x7E1F2B, 0x0000);
+/* ObjectGroupsActivate's list walk from the position in $1F2B (7E:F0EE):
+   returns the position of the ending entry. */
+static uint16_t groups_list(uint16_t *y)
+{
+    uint16_t pos, code, head, keep;
+
     for (;;) {
         pos = rd16(0x7E1F2B);
         code = rd16(0x7E1AF5 + pos);
@@ -1096,14 +1110,15 @@ uint16_t ObjectGroupsActivate(uint16_t *y)
             continue;
         *y = head;
         keep = rd16(0x00003E);
-        do {
-            if (!(rd8(0x7E1F2D) == 0x23 && (rd8(0x7E2024 + *y) & 0x10))
-                && !(rd8(0x7E2036 + *y) & 0x80))
-                wr8(0x7E2036 + *y, 0x03);
-            *y = rd16(0x7E203C + *y);
-        } while (*y);
+        groups_chain(y);
         wr16(0x00003E, keep);
     }
+}
+
+uint16_t ObjectGroupsActivate(uint16_t *y)
+{
+    wr16(0x7E1F2B, 0x0000);
+    return groups_list(y);
 }
 
 void abi_ObjectGroupsActivate(void)
@@ -1114,6 +1129,35 @@ void abi_ObjectGroupsActivate(void)
         cpu.x &= 0x00FF;
         cpu.y &= 0x00FF;
     }
+}
+
+/*
+ * @routine 7E:F141 ObjectGroupsActivateClear08
+ * WHAT IT DOES: An arm after ObjectGroupsActivate's RTS that nothing
+ * reaches: clears bit 1 of object Y's +$08, then goes on with
+ * ObjectGroupsActivate's chain walk from the next object (+$3C) and its
+ * list walk from $1F2B, $3E taking X. A direct call is its only way in.
+ * HOW: SEP #$20 for the AND #$FD, REP #$20, BRA into the chain loop
+ * (7E:F131); ends with ObjectGroupsActivate's PLB, PLP, RTS.
+ * Entry: X 16-bit, D = $0000, data bank $7E; Y = object; the caller's P
+ * and data bank pushed above the return (PHP, PHB). Exit: as
+ * ObjectGroupsActivate, P and the data bank those pushed.
+ */
+void abi_ObjectGroupsActivateClear08(void)
+{
+    uint8_t v = (uint8_t)(rd8(0x7E2008 + cpu.y) & 0xFD), db, p;
+
+    wr8(0x7E2008 + cpu.y, v);
+    cpu.y = rd16(0x7E203C + cpu.y);
+    if (cpu.y)
+        groups_chain(&cpu.y);
+    wr16(0x00003E, cpu.x);
+    cpu.x = groups_list(&cpu.y);
+    cpu.a = 0;
+    db = rd8((uint16_t)(cpu.s + 1));
+    p = rd8((uint16_t)(cpu.s + 2));
+    cpu.db = db;
+    op_plp(p);
 }
 
 typedef struct {

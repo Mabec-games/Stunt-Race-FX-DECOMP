@@ -1150,6 +1150,25 @@ ObjectGroupsActivate:
     plp
     rts
 
+; @routine 7E:F141 ObjectGroupsActivateClear08
+; WHAT IT DOES: An arm after ObjectGroupsActivate's RTS that nothing
+; reaches: clears bit 1 of object Y's +$08, then goes on with
+; ObjectGroupsActivate's chain walk from the next object (+$3C) and its
+; list walk from $1F2B, $3E taking X. A direct call is its only way in.
+; HOW: SEP #$20 for the AND #$FD, REP #$20, BRA into the chain loop
+; (7E:F131); ends with ObjectGroupsActivate's PLB, PLP, RTS.
+; Entry: X 16-bit, D = $0000, data bank $7E; Y = object; the caller's P
+; and data bank pushed above the return (PHP, PHB). Exit: as
+; ObjectGroupsActivate, P and the data bank those pushed.
+%ramcode($7EF141, $014E68)
+ObjectGroupsActivateClear08:
+    sep.b #$20
+    lda.w !obj_08,y
+    and.b #$FD
+    sta.w !obj_08,y
+    rep.b #$20
+    bra ObjectGroupsActivate_lF131
+
 ; @routine 7E:C58D BucketTriggersFromArea
 ; WHAT IT DOES: Builds the trigger list at $1AF5 (read by
 ; ObjectGroupsActivate) from a rectangle of map cells: for each cell inside
