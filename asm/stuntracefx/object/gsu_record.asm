@@ -2307,3 +2307,126 @@ GsuRecordPositionFromObject:
     tyx
     sep.b #$20
     rtl
+
+; @routine 08:B467 GsuRecordListFlag80
+; WHAT IT DOES: Sets bit 7 of the flags (+$16) of every record in object
+; X's record list (its record's +$3E, linked through +$34). Nothing in
+; the game calls it; a direct call is its only way in.
+; HOW: 16-bit walk with X; the object kept on the stack (PHX, PLX). Called
+; by JSR.
+; Entry: M 8-bit, X 16-bit; X = object (with a record). Exit: X unchanged,
+; N and Z from it; A = 0; M 8-bit.
+%at($08B467)
+GsuRecordListFlag80:
+    phx
+    rep.b #$20
+    lda.w !obj_22,x
+    tax
+    lda.l !gsu_in_3e,x
+.lB472:
+    tax
+    beq .lB486
+    lda.l !gsu_rec_flags,x
+    ora.w #$0080
+    sta.l !gsu_rec_flags,x
+    lda.l !gsu_in_34,x
+    bra .lB472
+.lB486:
+    plx
+    sep.b #$20
+    rts
+
+; @routine 08:C096 ReturnLongC096
+; WHAT IT DOES: A lone RTL nothing reaches, between two routines; a direct
+; call is its only way in.
+; HOW: RTL.
+; Entry: any. Exit: nothing changed.
+%at($08C096)
+ReturnLongC096:
+    rtl
+
+; @routine 08:C097 ObjectRecordChildrenMark
+; WHAT IT DOES: Keeps A in $1F1A and object X in $1F18; then, when bit 3
+; of the object's +$24 is set, sets bit 5 of +$24 of each of its parents
+; (+$06 up to 0). Otherwise $1F58 and $1F59 take its record's +$27 and
+; +$29 bytes, and for each parent of the object (+$06 up to 0), with X
+; stepping through the record's list (+$3E, then each entry's +$34): when
+; the record's flags (+$16) have $0400, the parent's +$24 gets bit 5 and
+; the list entry's flags $0480; otherwise ObjectChildFollow runs on the
+; list entry. Nothing in the game calls it; a direct call is its only way
+; in.
+; HOW: The object kept on the stack (PHY, PLX; PHX, PLX on the bit 3
+; path); 16-bit walks, the +$24 stores 8-bit; JSR to ObjectChildFollow.
+; Entry: M 8-bit, X 16-bit; X = object (with a record unless bit 3 is
+; set). Exit: M 8-bit; X = the object, N and Z from it; Y = 0 (the end of
+; the parents); A as the last step left it.
+%at($08C097)
+ObjectRecordChildrenMark:
+    sep.b #$20
+    sta.w !draw_side+19
+    stx.w !draw_side+17
+    lda.w !obj_24,x
+    and.b #$08
+    beq .lC0AA
+    jml.l .lC10F
+.lC0AA:
+    txy
+    rep.b #$20
+    lda.w !obj_22,x
+    tax
+    sep.b #$20
+    lda.l !gsu_rec_27,x
+    sta.w !wram_1F58
+    lda.l !gsu_rec_29,x
+    sta.w !wram_1F59
+    phy
+    rep.b #$20
+    lda.l !gsu_rec_flags,x
+    and.w #$0400
+    bne .lC0E6
+    lda.l !gsu_in_3e,x
+    tax
+.lC0D2:
+    lda.w !obj_06,y
+    tay
+    beq .lC0E2
+    jsr.w ObjectChildFollow
+    lda.l !gsu_in_34,x
+    tax
+    bra .lC0D2
+.lC0E2:
+    sep.b #$20
+    plx
+    rtl
+.lC0E6:
+    lda.l !gsu_in_3e,x
+    tax
+.lC0EB:
+    lda.w !obj_06,y
+    tay
+    beq .lC0E2
+    sep.b #$20
+    lda.w !obj_24,y
+    ora.b #$20
+    sta.w !obj_24,y
+    rep.b #$20
+    lda.l !gsu_rec_flags,x
+    ora.w #$0480
+    sta.l !gsu_rec_flags,x
+    lda.l !gsu_in_34,x
+    tax
+    bra .lC0EB
+.lC10F:
+    sep.b #$20
+    phx
+.lC112:
+    ldy.w !obj_06,x
+    beq .lC122
+    tyx
+    lda.w !obj_24,x
+    ora.b #$20
+    sta.w !obj_24,x
+    bra .lC112
+.lC122:
+    plx
+    rtl

@@ -7,6 +7,7 @@
 #include "machine.h"
 #include "cpu_ops.h"
 
+
 /* The object's record address, read through the data bank. */
 static uint16_t record_of(uint8_t bank, uint16_t obj)
 {
@@ -1960,4 +1961,148 @@ void abi_GsuRecordNew424Zero(void)
 void abi_GsuRecordNew424B(void)
 {
     abi_record_new(0x8C3B, 0x9185);
+}
+
+/*
+ * @routine 08:B467 GsuRecordListFlag80
+ * WHAT IT DOES: Sets bit 7 of the flags (+$16) of every record in object
+ * X's record list (its record's +$3E, linked through +$34). Nothing in
+ * the game calls it; a direct call is its only way in.
+ * HOW: 16-bit walk with X; the object kept on the stack (PHX, PLX). Called
+ * by JSR.
+ * Entry: M 8-bit, X 16-bit; X = object (with a record). Exit: X unchanged,
+ * N and Z from it; A = 0; M 8-bit.
+ */
+void abi_GsuRecordListFlag80(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t x0 = cpu.x, v;
+
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(b | (uint16_t)(0x2022 + cpu.x));
+    op_tax16();
+    op_lda16(0x70003E + cpu.x);
+    for (;;) {
+        op_tax16();
+        if (!cpu.x)
+            break;
+        v = (uint16_t)(rd16(0x700016 + cpu.x) | 0x0080);
+        cpu.a = v;
+        cpu.p = nz16(cpu.p, v);
+        wr16(0x700016 + cpu.x, v);
+        op_lda16(0x700034 + cpu.x);
+    }
+    cpu.x = x0;
+    cpu.p = (uint8_t)(nz16(cpu.p, cpu.x) | P_M);
+}
+
+/*
+ * @routine 08:C096 ReturnLongC096
+ * WHAT IT DOES: A lone RTL nothing reaches, between two routines; a direct
+ * call is its only way in.
+ * HOW: RTL.
+ * Entry: any. Exit: nothing changed.
+ */
+void abi_ReturnLongC096(void)
+{
+}
+
+/* LDA addr, ORA #$20, STA addr (8-bit). */
+static void or20(uint32_t addr)
+{
+    uint8_t v;
+
+    op_lda8(addr);
+    v = (uint8_t)(cpu.a | 0x20);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+    wr8(addr, v);
+}
+
+/*
+ * @routine 08:C097 ObjectRecordChildrenMark
+ * WHAT IT DOES: Keeps A in $1F1A and object X in $1F18; then, when bit 3
+ * of the object's +$24 is set, sets bit 5 of +$24 of each of its parents
+ * (+$06 up to 0). Otherwise $1F58 and $1F59 take its record's +$27 and
+ * +$29 bytes, and for each parent of the object (+$06 up to 0), with X
+ * stepping through the record's list (+$3E, then each entry's +$34): when
+ * the record's flags (+$16) have $0400, the parent's +$24 gets bit 5 and
+ * the list entry's flags $0480; otherwise ObjectChildFollow runs on the
+ * list entry. Nothing in the game calls it; a direct call is its only way
+ * in.
+ * HOW: The object kept on the stack (PHY, PLX; PHX, PLX on the bit 3
+ * path); 16-bit walks, the +$24 stores 8-bit; JSR to ObjectChildFollow
+ * with M still 16-bit (it is written for 8-bit, so it runs its code as
+ * other instructions).
+ * Entry: M 8-bit, X 16-bit; X = object (with a record unless bit 3 is
+ * set). Exit: M 8-bit; X = the object, N and Z from it; Y = 0 (the end of
+ * the parents); A as the last step left it.
+ */
+void abi_ObjectRecordChildrenMark(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t x0 = cpu.x, v;
+    uint8_t f;
+
+    op_sep(P_M);
+    wr8(b | 0x1F1A, (uint8_t)cpu.a);
+    wr16(b | 0x1F18, cpu.x);
+    op_lda8(b | (uint16_t)(0x2024 + cpu.x));
+    f = (uint8_t)(cpu.a & 0x08);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | f);
+    cpu.p = nz8(cpu.p, f);
+    if (f) {
+        for (;;) {
+            cpu.y = rd16(b | (uint16_t)(0x2006 + cpu.x));
+            cpu.p = nz16(cpu.p, cpu.y);
+            if (!cpu.y)
+                break;
+            cpu.x = cpu.y;
+            cpu.p = nz16(cpu.p, cpu.x);
+            or20(b | (uint16_t)(0x2024 + cpu.x));
+        }
+        cpu.x = x0;
+        cpu.p = nz16(cpu.p, cpu.x);
+        return;
+    }
+    cpu.y = cpu.x;
+    cpu.p = nz16(cpu.p, cpu.y);
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(b | (uint16_t)(0x2022 + cpu.x));
+    op_tax16();
+    cpu.p |= P_M;
+    op_lda8(0x700027 + cpu.x);
+    wr8(b | 0x1F58, (uint8_t)cpu.a);
+    op_lda8(0x700029 + cpu.x);
+    wr8(b | 0x1F59, (uint8_t)cpu.a);
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(0x700016 + cpu.x);
+    op_and16(0x0400);
+    f = cpu.a != 0;
+    op_lda16(0x70003E + cpu.x);
+    op_tax16();
+    for (;;) {
+        op_lda16(b | (uint16_t)(0x2006 + cpu.y));
+        op_tay16();
+        if (!cpu.y)
+            break;
+        if (f) {
+            cpu.p |= P_M;
+            or20(b | (uint16_t)(0x2024 + cpu.y));
+            cpu.p &= (uint8_t)~P_M;
+            v = (uint16_t)(rd16(0x700016 + cpu.x) | 0x0480);
+            cpu.a = v;
+            cpu.p = nz16(cpu.p, v);
+            wr16(0x700016 + cpu.x, v);
+        } else {
+            /* ObjectChildFollow entered with M 16-bit, which its C (written
+               for its 8-bit entry) does not model: its original code. */
+            call_original_routine(0x08BD22, 0);
+        }
+        op_lda16(0x700034 + cpu.x);
+        op_tax16();
+    }
+    cpu.p |= P_M;
+    cpu.x = x0;
+    cpu.p = nz16(cpu.p, cpu.x);
 }

@@ -508,6 +508,18 @@ void abi_ObjectSet5DByKind(void)
 }
 
 /*
+ * @routine 08:B48A ObjectSet5DByKindLong
+ * WHAT IT DOES: ObjectSet5DByKind for a JSL caller; nothing in the game
+ * calls it, so a direct call is its only way in.
+ * HOW: JSR, RTL.
+ * Entry: as ObjectSet5DByKind. Exit: as ObjectSet5DByKind.
+ */
+void abi_ObjectSet5DByKindLong(void)
+{
+    abi_ObjectSet5DByKind();
+}
+
+/*
  * @routine 08:B8F9 ObjectPlaceFromTable
  * WHAT IT DOES: Sets up the object in entry A (from 1) of the list at
  * $7E:FFAE: its +$27 from $1F2D, its +$49 and +$4A from the bytes at $1F2B
@@ -3462,4 +3474,229 @@ void abi_ObjectTimedSetup(void)
     cpu.p = nz8(cpu.p, 0x14);
     wr8(b | (uint16_t)(0x204B + cpu.x), 0x14);
     abi_ObjectTimedStep();
+}
+
+/* REP #$20, LDA #h, STA +$1A, SEP #$20, LDA #$08, STA +$1C: object o's
+   handler, through the data bank. */
+static void set_handler(uint16_t o, uint16_t h)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16_imm(h);
+    wr16(b | (uint16_t)(0x201A + o), h);
+    cpu.p |= P_M;
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x08);
+    cpu.p = nz8(cpu.p, 0x08);
+    wr8(b | (uint16_t)(0x201C + o), 0x08);
+}
+
+/* LDY +off,X: one of object X's children. */
+static void child(uint16_t off)
+{
+    cpu.y = rd16(((uint32_t)cpu.db << 16) | (uint16_t)(off + cpu.x));
+    cpu.p = nz16(cpu.p, cpu.y);
+}
+
+/* ObjectReleaseWhenPassed's release (08:B6C7): the handler $08:F927 for
+   the objects in +$2E, +$30, +$32 (twice), +$34 and for X itself. */
+static void release(void)
+{
+    child(0x202E);
+    set_handler(cpu.y, 0xF927);
+    child(0x2030);
+    set_handler(cpu.y, 0xF927);
+    child(0x2032);
+    set_handler(cpu.y, 0xF927);
+    set_handler(cpu.y, 0xF927);
+    child(0x2034);
+    set_handler(cpu.y, 0xF927);
+    set_handler(cpu.x, 0xF927);
+}
+
+/* ObjectReleaseWhenPassed from 08:B6BC: the distance in A against $05DC;
+   at or past it, the release. */
+static void passed_tail(void)
+{
+    op_cmp16(0x05DC);
+    cpu.p |= P_M;
+    if (!(cpu.p & P_N))
+        release();
+}
+
+/*
+ * @routine 08:B680 ObjectReleaseWhenPassed
+ * WHAT IT DOES: Gives object X and the objects in its +$2E, +$30, +$32
+ * and +$34 the handler $08:F927 when the player ($0346) is $1F40 or more
+ * from it along +$10, or $05DC or more past it; otherwise nothing.
+ * Nothing in the game calls it; a direct call is its only way in.
+ * HOW: |player - object| (EOR #$FFFF, INC) compared signed; the second
+ * test only when the object is behind the player (CMP, BMI), so its
+ * distance needs no negation (that EOR is ObjectReleaseWhenPassedBehind).
+ * The +$32 object gets the handler twice.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; X unchanged; Y =
+ * the player, or the +$34 object after a release; A and the flags as the
+ * last step left them.
+ */
+void abi_ObjectReleaseWhenPassed(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    cpu.y = rd16(b | 0x0346);
+    cpu.p = nz16(cpu.p, cpu.y);
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(b | (uint16_t)(0x2010 + cpu.y));
+    op_sub16(rd16(b | (uint16_t)(0x2010 + cpu.x)));
+    if (cpu.p & P_N) {
+        cpu.a = (uint16_t)((cpu.a ^ 0xFFFF) + 1);
+        cpu.p = nz16(cpu.p, cpu.a);
+    }
+    op_cmp16(0x1F40);
+    cpu.p |= P_M;
+    if (!(cpu.p & P_N)) {
+        release();
+        return;
+    }
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(b | (uint16_t)(0x2010 + cpu.x));
+    op_cmp16(rd16(b | (uint16_t)(0x2010 + cpu.y)));
+    cpu.p |= P_M;
+    if (!(cpu.p & P_N))
+        return;
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(b | (uint16_t)(0x2010 + cpu.y));
+    op_sub16(rd16(b | (uint16_t)(0x2010 + cpu.x)));
+    if (cpu.p & P_N) {
+        cpu.a = (uint16_t)((cpu.a ^ 0xFFFF) + 1);
+        cpu.p = nz16(cpu.p, cpu.a);
+    }
+    passed_tail();
+}
+
+/*
+ * @routine 08:B6B8 ObjectReleaseWhenPassedBehind
+ * WHAT IT DOES: ObjectReleaseWhenPassed's negation of the second distance,
+ * which no case reaches (the object is behind the player there, so the
+ * distance is positive): A negated, then as ObjectReleaseWhenPassed from
+ * its $05DC test. A direct call is its only way in.
+ * HOW: EOR #$FFFF, INC; then the test and the release.
+ * Entry: M 16-bit, X 16-bit; A = the distance; X = object. Exit: as
+ * ObjectReleaseWhenPassed.
+ */
+void abi_ObjectReleaseWhenPassedBehind(void)
+{
+    cpu.a = (uint16_t)((cpu.a ^ 0xFFFF) + 1);
+    cpu.p = nz16(cpu.p, cpu.a);
+    passed_tail();
+}
+
+/*
+ * @routine 08:B782 ObjectListRemove
+ * WHAT IT DOES: Takes object X out of the list at $7E:FFBD (words ending
+ * with 0; its length in bytes at $7E:FFFD): its slot gets the list's last
+ * word, which is cleared, and the length goes down by 2 (from 2 when it
+ * was 0). An object not in the list changes nothing. Nothing in the game
+ * calls it; a direct call is its only way in.
+ * HOW: The object in $1F2B; a 16-bit search with X; X and Y kept on the
+ * stack.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; X and Y unchanged,
+ * N and Z from X; A as the search or the new length left it.
+ */
+void abi_ObjectListRemove(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t x0 = cpu.x, y0 = cpu.y, slot;
+
+    cpu.p &= (uint8_t)~P_M;
+    wr16(b | 0x1F2B, cpu.x);
+    cpu.x = 0;
+    cpu.p = nz16(cpu.p, 0);
+    for (;;) {
+        op_lda16(0x7EFFBD + cpu.x);
+        if (!cpu.a)
+            goto done;
+        op_cmp16(rd16(b | 0x1F2B));
+        if (cpu.p & P_Z)
+            break;
+        cpu.x = (uint16_t)(cpu.x + 2);
+        cpu.p = nz16(cpu.p, cpu.x);
+    }
+    slot = cpu.x;
+    op_lda16(0x7EFFFD);
+    op_tax16();
+    op_lda16(0x7EFFBB + cpu.x);
+    cpu.x = slot;
+    cpu.p = nz16(cpu.p, cpu.x);
+    wr16(0x7EFFBD + cpu.x, cpu.a);
+    op_lda16(0x7EFFFD);
+    if (!cpu.a) {
+        cpu.a = 2;
+        cpu.p = nz16(cpu.p, cpu.a);
+    }
+    op_tax16();
+    op_lda16_imm(0x0000);
+    wr16(0x7EFFBB + cpu.x, 0x0000);
+    cpu.x = (uint16_t)(cpu.x - 2);
+    cpu.p = nz16(cpu.p, cpu.x);
+    op_txa16();
+    wr16(0x7EFFFD, cpu.a);
+done:
+    cpu.p |= P_M;
+    cpu.y = y0;
+    cpu.x = x0;
+    cpu.p = nz16(cpu.p, cpu.x);
+}
+
+/*
+ * @routine 08:B7C6 ObjectListClear
+ * WHAT IT DOES: Empties the list at $7E:FFBD: its length $7E:FFFD and its
+ * first word 0. Nothing in the game calls it; a direct call is its only
+ * way in.
+ * HOW: 16-bit stores of 0.
+ * Entry: M 8-bit. Exit: M 8-bit; A = 0, Z set.
+ */
+void abi_ObjectListClear(void)
+{
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16_imm(0x0000);
+    wr16(0x7EFFFD, 0x0000);
+    wr16(0x7EFFBD, 0x0000);
+    cpu.p |= P_M;
+}
+
+/*
+ * @routine 08:B846 PlayerLinkSet27
+ * WHAT IT DOES: For A = 1 or 2, makes object X the +$27 of that player's
+ * object ($0346 or $034A); any other A changes nothing. Nothing in the
+ * game calls it; a direct call is its only way in.
+ * HOW: SEP #$20, REP #$10; CMP #1, CMP #2; the store long, at $7E:2027.
+ * Entry: X = object; A = the player. Exit: M 8-bit, X 16-bit; Y = player
+ * 1's object, or player 2's for A = 2; for 1 or 2, X = that object and A
+ * = the object stored; the flags as the last step left them.
+ */
+void abi_PlayerLinkSet27(void)
+{
+    uint32_t b;
+    uint8_t a;
+
+    op_sep(P_M);
+    op_rep(P_X);
+    b = (uint32_t)cpu.db << 16;
+    cpu.y = rd16(b | 0x0346);
+    cpu.p = nz16(cpu.p, cpu.y);
+    a = (uint8_t)cpu.a;
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(a - 0x01)) & ~P_C) | (a >= 0x01 ? P_C : 0));
+    if (a != 0x01) {
+        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(a - 0x02)) & ~P_C) | (a >= 0x02 ? P_C : 0));
+        if (a != 0x02)
+            return;
+        cpu.y = rd16(b | 0x034A);
+        cpu.p = nz16(cpu.p, cpu.y);
+    }
+    cpu.p &= (uint8_t)~P_M;
+    op_txa16();
+    cpu.x = cpu.y;
+    cpu.p = nz16(cpu.p, cpu.x);
+    wr16(0x7E2027 + cpu.x, cpu.a);
+    cpu.p |= P_M;
 }

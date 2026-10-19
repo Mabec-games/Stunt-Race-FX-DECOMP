@@ -1,0 +1,128 @@
+# unit_dead_08_b467: unit tests of bank $08 code nothing calls or jumps to
+# (08:B467-B862, 08:C096-C123, 08:D09E-D149), from the start of a Novice
+# race (objects 1, $63, $C5 and $127 have records; object 1 is the
+# player, $0346):
+# - 08:B467 (a JSR routine) on object 1 (its record's list of four) and
+#   08:B48A;
+# - 08:B680 on object $189 given children $63, $C5, $127, $1EB in
+#   +$2E-+$34: the player $4000 away, $100 ahead, $100 behind and
+#   $1000 behind along +$10;
+# - 08:B6B8, the second distance's negation no case reaches (the object
+#   is behind the player there), entered directly with A = -$100 and
+#   -$1000;
+# - 08:B782 removing $C5 from the list at $7E:FFBD, removing one not in
+#   it, with the count $7E:FFFD at 0 and an empty list, and with the count
+#   at 0 and $63 still listed; 08:B7C6;
+# - 08:B846 with A = 1, 2 and 3 (player 2 as $63);
+# - 08:C096; 08:C097 on object 1: record flags without $0400 (its list
+#   +$3E staged as object $63 alone: the code follows each entry's object
+#   with ObjectChildFollow, so a record address there does not end) and
+#   with $0400;
+#   and on object $63 (+$24 bit 3: its parents marked);
+# - 08:D09E, 08:D0AC, 08:D0BA, 08:D0C8 and their handler 08:D0DE;
+#   08:D0E8 and its handler 08:D0F7 on object $63 with +$29 equal to
+#   the player's record's +$58 and not.
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:B467 x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:B48A long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E21B7 63,00,C5,00,27,01,EB,01
+set 7E2011 00,10
+set 7E2199 00,50
+call 08:B680 long x=0189 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E21B7 63,00,C5,00,27,01,EB,01
+set 7E2011 00,10
+set 7E2199 00,11
+call 08:B680 long x=0189 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E21B7 63,00,C5,00,27,01,EB,01
+set 7E2011 00,10
+set 7E2199 00,0F
+call 08:B680 long x=0189 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E21B7 63,00,C5,00,27,01,EB,01
+set 7E2011 00,10
+set 7E2199 00,00
+call 08:B680 long x=0189 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:B782 long x=00C5 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:B782 long x=01EB p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7EFFFD 00,00
+set 7EFFBD 00,00
+call 08:B782 long x=00C5 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7EFFFD 00,00
+call 08:B782 long x=0063 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E21B7 63,00,C5,00,27,01,EB,01
+call 08:B6B8 long a=FF00 x=0189 p=00 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E21B7 63,00,C5,00,27,01,EB,01
+call 08:B6B8 long a=F000 x=0189 p=00 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:B7C6 long p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:B846 long a=0001 x=0189 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E034A 63,00
+call 08:B846 long a=0002 x=0189 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:B846 long a=0003 x=0189 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:C096 long p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 701D16 63,00
+set 700097 00,00
+call 08:C097 long a=0005 x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 701CEE 12,04
+call 08:C097 long a=0005 x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:C097 long a=0005 x=0063 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:D09E long x=0189 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:D0AC long x=0189 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:D0BA long x=0189 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:D0C8 long x=0189 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:D0DE long x=0189 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:D0E8 long x=0063 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 701D30 34,12
+set 7E208C 34,12
+call 08:D0F7 long x=0063 p=20 db=7E d=0000
+wait 1

@@ -898,3 +898,141 @@ ObjectContactsCameraPoint:
     bra .l84E7
 .l8524:
     rtl
+
+; @routine 08:D09E ObjectSpin8Kind0
+; WHAT IT DOES: Sets up a spinning object of kind 0: +$18 = $80, the turn
+; +$15 = $30, the handler $08:D0DE (ObjectSpin8Step) and its first tick.
+; Nothing in the game calls it; a direct call is its only way in.
+; HOW: LDA #0, ORA #$80; a BRA to the shared handler set-up at 08:D0CF.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectSpin8Step.
+%at($08D09E)
+ObjectSpin8Kind0:
+    lda.b #$00
+    ora.b #$80
+    sta.w !obj_18,x
+    lda.b #$30
+    sta.w !obj_15,x
+    bra ObjectSpin8Kind3_lD0CF
+
+; @routine 08:D0AC ObjectSpin8Kind1
+; WHAT IT DOES: ObjectSpin8Kind0 for kind 1: +$18 = $81, the turn $20.
+; HOW: As ObjectSpin8Kind0.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectSpin8Step.
+%at($08D0AC)
+ObjectSpin8Kind1:
+    lda.b #$01
+    ora.b #$80
+    sta.w !obj_18,x
+    lda.b #$20
+    sta.w !obj_15,x
+    bra ObjectSpin8Kind3_lD0CF
+
+; @routine 08:D0BA ObjectSpin8Kind2
+; WHAT IT DOES: ObjectSpin8Kind0 for kind 2: +$18 = $82, the turn $10.
+; HOW: As ObjectSpin8Kind0.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectSpin8Step.
+%at($08D0BA)
+ObjectSpin8Kind2:
+    lda.b #$02
+    ora.b #$80
+    sta.w !obj_18,x
+    lda.b #$10
+    sta.w !obj_15,x
+    bra ObjectSpin8Kind3_lD0CF
+
+; @routine 08:D0C8 ObjectSpin8Kind3
+; WHAT IT DOES: ObjectSpin8Kind0 for kind 3: +$18 = $83, the turn left as it
+; is; it holds the shared handler set-up the other three branch to.
+; HOW: Runs on into the handler set-up and ObjectSpin8Step.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: as ObjectSpin8Step.
+%at($08D0C8)
+ObjectSpin8Kind3:
+    lda.b #$03
+    ora.b #$80
+    sta.w !obj_18,x
+.lD0CF:
+    rep.b #$20
+    lda.w #$D0DE
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+
+; @routine 08:D0DE ObjectSpin8Step
+; WHAT IT DOES: A tick of a spinning object: its turn +$15 grows by 8.
+; HOW: CLC, ADC #8 (8-bit).
+; Entry: M 8-bit, X 16-bit; X = object. Exit: A low byte = the new turn,
+; the flags from the ADC.
+%at($08D0DE)
+ObjectSpin8Step:
+    lda.w !obj_15,x
+    clc
+    adc.b #$08
+    sta.w !obj_15,x
+    rtl
+
+; @routine 08:D0E8 ObjectRecordMatch
+; WHAT IT DOES: Sets up the record-match object: its handler becomes
+; $08:D0F7 (ObjectRecordMatchStep), whose first tick runs. Nothing in the
+; game calls it; a direct call is its only way in.
+; HOW: Runs on into ObjectRecordMatchStep.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as
+; ObjectRecordMatchStep.
+%at($08D0E8)
+ObjectRecordMatch:
+    rep.b #$20
+    lda.w #$D0F7
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+
+; @routine 08:D0F7 ObjectRecordMatchStep
+; WHAT IT DOES: A tick of the record-match object: it takes its position
+; back from its record (ObjectSyncFromRecord) with bit 1 of +$24 cleared;
+; when the player's ($0346) record's +$58 equals its +$29, bit 1 is set
+; again, $1F41 = minus its +$0E divided by 32 and $1F43 = its +$29.
+; HOW: The object in Y while X is the player and then its record; the
+; division as five arithmetic shifts (CMP #$8000, ROR).
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit; X = the
+; object, N and Z from it; Y = the object; carry from the last shift or
+; the compare.
+%at($08D0F7)
+ObjectRecordMatchStep:
+    jsl.l ObjectSyncFromRecord
+    lda.w !obj_24,x
+    and.b #$FD
+    sta.w !obj_24,x
+    txy
+    ldx.w !wram_0346
+    rep.b #$20
+    lda.w !obj_22,x
+    tax
+    lda.l !gsu_rec_58,x
+    cmp.w !obj_29,y
+    sep.b #$20
+    bne .lD148
+    lda.w !obj_24,y
+    ora.b #$02
+    sta.w !obj_24,y
+    rep.b #$20
+    lda.w !obj_pos_y,y
+    eor.w #$FFFF
+    inc a
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    cmp.w #$8000
+    ror a
+    sta.w !wram_1F3C+5
+    lda.w !obj_29,y
+    sta.w !wram_1F3C+7
+    sep.b #$20
+.lD148:
+    tyx
+    rtl

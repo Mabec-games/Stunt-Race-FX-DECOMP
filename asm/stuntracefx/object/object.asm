@@ -3248,3 +3248,207 @@ ObjectTimedStep:
 .lEC98:
     dec.w !obj_4b,x
     rtl
+
+; @routine 08:B48A ObjectSet5DByKindLong
+; WHAT IT DOES: ObjectSet5DByKind for a JSL caller; nothing in the game
+; calls it, so a direct call is its only way in.
+; HOW: JSR, RTL.
+; Entry: as ObjectSet5DByKind. Exit: as ObjectSet5DByKind.
+%at($08B48A)
+ObjectSet5DByKindLong:
+    jsr.w ObjectSet5DByKind
+    rtl
+
+; @routine 08:B680 ObjectReleaseWhenPassed
+; WHAT IT DOES: Gives object X and the objects in its +$2E, +$30, +$32
+; and +$34 the handler $08:F927 when the player ($0346) is $1F40 or more
+; from it along +$10, or $05DC or more past it; otherwise nothing.
+; Nothing in the game calls it; a direct call is its only way in.
+; HOW: |player - object| (EOR #$FFFF, INC) compared signed; the second
+; test only when the object is behind the player (CMP, BMI), so its
+; distance needs no negation (that EOR is ObjectReleaseWhenPassedBehind).
+; The +$32 object gets the handler twice.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; X unchanged; Y =
+; the player, or the +$34 object after a release; A and the flags as the
+; last step left them.
+%at($08B680)
+ObjectReleaseWhenPassed:
+    ldy.w !wram_0346
+    rep.b #$20
+    lda.w !obj_pos_z,y
+    sec
+    sbc.w !obj_pos_z,x
+    bpl .lB692
+    eor.w #$FFFF
+    inc a
+.lB692:
+    cmp.w #$1F40
+    sep.b #$20
+    bmi .lB69D
+    jml.l ObjectReleaseWhenPassedBehind_lB6C7
+.lB69D:
+    rep.b #$20
+    lda.w !obj_pos_z,x
+    cmp.w !obj_pos_z,y
+    sep.b #$20
+    bmi .lB6AD
+    jml.l ObjectReleaseWhenPassedBehind_lB72D
+.lB6AD:
+    rep.b #$20
+    lda.w !obj_pos_z,y
+    sec
+    sbc.w !obj_pos_z,x
+    bpl ObjectReleaseWhenPassedBehind_lB6BC
+
+; @routine 08:B6B8 ObjectReleaseWhenPassedBehind
+; WHAT IT DOES: ObjectReleaseWhenPassed's negation of the second distance,
+; which no case reaches (the object is behind the player there, so the
+; distance is positive): A negated, then as ObjectReleaseWhenPassed from
+; its $05DC test. A direct call is its only way in.
+; HOW: EOR #$FFFF, INC; then the test and the release.
+; Entry: M 16-bit, X 16-bit; A = the distance; X = object. Exit: as
+; ObjectReleaseWhenPassed.
+%at($08B6B8)
+ObjectReleaseWhenPassedBehind:
+    eor.w #$FFFF
+    inc a
+.lB6BC:
+    cmp.w #$05DC
+    sep.b #$20
+    bpl .lB6C7
+    jml.l .lB72D
+.lB6C7:
+    ldy.w !obj_vel_x,x
+    rep.b #$20
+    lda.w #$F927
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    ldy.w !obj_vel_y,x
+    rep.b #$20
+    lda.w #$F927
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    ldy.w !obj_vel_z,x
+    rep.b #$20
+    lda.w #$F927
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    rep.b #$20
+    lda.w #$F927
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    ldy.w !obj_vel_z+2,x
+    rep.b #$20
+    lda.w #$F927
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    rep.b #$20
+    lda.w #$F927
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+.lB72D:
+    rtl
+
+; @routine 08:B782 ObjectListRemove
+; WHAT IT DOES: Takes object X out of the list at $7E:FFBD (words ending
+; with 0; its length in bytes at $7E:FFFD): its slot gets the list's last
+; word, which is cleared, and the length goes down by 2 (from 2 when it
+; was 0). An object not in the list changes nothing. Nothing in the game
+; calls it; a direct call is its only way in.
+; HOW: The object in $1F2B; a 16-bit search with X; X and Y kept on the
+; stack.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; X and Y unchanged,
+; N and Z from X; A as the search or the new length left it.
+%at($08B782)
+ObjectListRemove:
+    phx
+    phy
+    rep.b #$20
+    stx.w !wram_1F2B
+    ldx.w #$0000
+.lB78C:
+    lda.l !object_list,x
+    beq .lB7C1
+    cmp.w !wram_1F2B
+    beq .lB79B
+    inx
+    inx
+    bra .lB78C
+.lB79B:
+    phx
+    lda.l !object_list_len
+    tax
+    lda.l !object_list_b_len+3,x
+    plx
+    sta.l !object_list,x
+    lda.l !object_list_len
+    bne .lB7B2
+    inc a
+    inc a
+.lB7B2:
+    tax
+    lda.w #$0000
+    sta.l !object_list_b_len+3,x
+    dex
+    dex
+    txa
+    sta.l !object_list_len
+.lB7C1:
+    sep.b #$20
+    ply
+    plx
+    rtl
+
+; @routine 08:B7C6 ObjectListClear
+; WHAT IT DOES: Empties the list at $7E:FFBD: its length $7E:FFFD and its
+; first word 0. Nothing in the game calls it; a direct call is its only
+; way in.
+; HOW: 16-bit stores of 0.
+; Entry: M 8-bit. Exit: M 8-bit; A = 0, Z set.
+%at($08B7C6)
+ObjectListClear:
+    rep.b #$20
+    lda.w #$0000
+    sta.l !object_list_len
+    sta.l !object_list
+    sep.b #$20
+    rtl
+
+; @routine 08:B846 PlayerLinkSet27
+; WHAT IT DOES: For A = 1 or 2, makes object X the +$27 of that player's
+; object ($0346 or $034A); any other A changes nothing. Nothing in the
+; game calls it; a direct call is its only way in.
+; HOW: SEP #$20, REP #$10; CMP #1, CMP #2; the store long, at $7E:2027.
+; Entry: X = object; A = the player. Exit: M 8-bit, X 16-bit; Y = player
+; 1's object, or player 2's for A = 2; for 1 or 2, X = that object and A
+; = the object stored; the flags as the last step left them.
+%at($08B846)
+PlayerLinkSet27:
+    sep.b #$20
+    rep.b #$10
+    ldy.w !wram_0346
+    cmp.b #$01
+    beq .lB858
+    cmp.b #$02
+    bne .lB862
+    ldy.w !wram_034A
+.lB858:
+    rep.b #$20
+    txa
+    tyx
+    sta.l !obj_handler_27,x
+    sep.b #$20
+.lB862:
+    rtl
