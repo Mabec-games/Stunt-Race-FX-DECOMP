@@ -19,8 +19,9 @@ between two of the C's bus accesses is a sum of what the probes passed
 stand for: cycsolve.py finds those amounts from the lockstep run.
 
 OUTDIR/probes.csv lists each probe: id, file, line, column, the kind of
-place. The tree under src/ is not touched. The positions come from clang's
-syntax tree (-ast-dump=json); code inside macros is left as it is.
+place, its offset in the file. The tree under src/ is not touched. The
+positions come from clang's syntax tree (-ast-dump=json); code inside
+macros is left as it is.
 """
 import csv, glob, json, os, subprocess, sys
 
@@ -360,7 +361,7 @@ def instrument(path, out, next_id, rows, pure, calls=None):
         if '@' in s:
             line = text.count('\n', 0, off) + 1
             col = off - text.rfind('\n', 0, off)
-            rows.append((next_id, rel, line, col, kind))
+            rows.append((next_id, rel, line, col, kind, off))
             s = s.replace('@', str(next_id))
             next_id += 1
         pieces.append(s)
@@ -430,7 +431,7 @@ def main(argv):
                 'void sfx_probe(unsigned id);\n#define CYC_PROBE(n) sfx_probe(n)\n#endif\n')
     with open(os.path.join(outdir, 'probes.csv'), 'w', newline='') as f:
         wr = csv.writer(f)
-        wr.writerow(['id', 'file', 'line', 'col', 'kind'])
+        wr.writerow(['id', 'file', 'line', 'col', 'kind', 'offset'])
         wr.writerows(rows)
     print('cycprobe: %d probes in %d files under %s' % (len(rows), len(files), os.path.relpath(outdir, ROOT)))
     return 0

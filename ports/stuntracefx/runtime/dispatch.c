@@ -106,6 +106,11 @@ void cpu_idle(uint32_t clocks)
     snes_cpu_wait(clocks);
 }
 
+void cyc(uint32_t clocks)
+{
+    snes_cpu_clocks(clocks);
+}
+
 void cpu_restart(uint32_t at, void (*entry)(void))
 {
     (void)at;

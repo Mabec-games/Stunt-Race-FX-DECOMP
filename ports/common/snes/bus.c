@@ -598,6 +598,7 @@ void snes_cpu_wait(uint32_t clocks)
     }
     last_was_read = 0;
 }
+void snes_cpu_clocks(uint32_t clocks) { snes_tick(clocks); }
 void snes_cpu_interrupts(void) { check_interrupts(); }
 
 /* ---- power ---------------------------------------------------------------------- */

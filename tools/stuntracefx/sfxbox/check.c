@@ -1140,6 +1140,7 @@ static void (*core_run_until)(const struct SfxboxRegs *, uint32_t, uint16_t);
 static void (*core_run_out)(const struct SfxboxRegs *, uint16_t);
 static long asm_unplaced;
 static FILE *cyclog;      /* SFXBOX_CYCLOG (see cyc_put) */
+static long tm_on, tm_off, tm_unjudged;   /* the timing check (cyc_put) */
 static int cyclog_ops;    /* SFXBOX_CYCLOG_OPS: the original's operations too */
 /* C that called or jumped (call_routine, jump_routine) to an address where
    no routine with C starts: the hybrid ran original code there. The decomp
@@ -1153,6 +1154,8 @@ static void hybrid_finish(long frames)
     int gbad = gsu_lockstep_summary(g, sizeof g);
     gbad |= spc_lockstep_summary(sg, sizeof sg);
     strncat(g, sg, sizeof g - strlen(g) - 1);
+    fprintf(lsrep, "timing: %ld of the S-CPU C's accesses and returns at the original's clocks, %ld not, %ld with an interrupt "
+            "or a frame left between (not judged)\n", tm_on, tm_off, tm_unjudged);
     fprintf(lsrep, "frames %ld compared %ld, differing %ld; calls swapped %ld, entered other ways %ld, unmatched %ld, "
             "hardware accesses off the timeline %ld, interrupts not pending where taken %ld, original-code calls not placed %ld, "
             "C calls to code with no C %ld%s: %s\n",
@@ -1455,10 +1458,18 @@ void cpu_loop_forever(uint32_t at)
 }
 
 /* Time with no access: the hybrid's clock is the original's record, which
-   holds it already. */
+   holds it already; the clocks the C states are checked against it at its
+   next access (cyc_put). */
+static int on_cpu_thread(void);
+static uint32_t cyc_said;
 void cpu_idle(uint32_t clocks)
 {
-    (void)clocks;
+    if (machine_live && on_cpu_thread()) cyc_said += clocks;
+}
+
+void cyc(uint32_t clocks)
+{
+    if (machine_live && on_cpu_thread()) cyc_said += clocks;
 }
 
 void cpu_restart(uint32_t at, void (*entry)(void))
@@ -1538,19 +1549,25 @@ static long cyc_last;
 extern void *(*sfxbox_co_active)(void);
 static void *cyc_thread;
 
+static int on_cpu_thread(void) { return !sfxbox_co_active || sfxbox_co_active() == cyc_thread; }
+
 void sfx_probe(unsigned id)
 {
-    if (!cyclog || !machine_live || sfxbox_co_active() != cyc_thread) return;
+    if (!cyclog || !machine_live || !on_cpu_thread()) return;
     if (cyc_n < (uint32_t)(sizeof cyc_probe / sizeof cyc_probe[0])) cyc_probe[cyc_n++] = id;
     else cyc_over = 1;
 }
 
 static uintptr_t cyc_base;   /* the library's load address: sites are logged from it */
 
+/* The clocks the S-CPU's C states (cyc, cpu_idle) since its last access
+   placed on the original's, and how many of its accesses (and returns)
+   come at the original's clocks: the timing check. */
+static uint32_t cyc_said;
+
 static void cyc_put(uint8_t type, uint32_t to)
 {
-    uint32_t gap = 0, hdr[3];
-    if (!cyclog) return;
+    uint32_t gap = 0, hdr[4];
     int irq = 0;
     for (long q = cyc_last + 1; q < (long)to; q++) {
         uint8_t k = cur_ops[q] >> 4;
@@ -1562,9 +1579,13 @@ static void cyc_put(uint8_t type, uint32_t to)
        time is the interrupt's, so the interval says nothing of the code. */
     if (irq) gap = 0xFFFFFFFEu;
     if (cyc_over) gap = 0xFFFFFFFFu;
+    if (gap >= 0xFFFFFFFEu) tm_unjudged++;
+    else if (gap == cyc_said) tm_on++;
+    else tm_off++;
+    if (!cyclog) goto done;
     fputc(type, cyclog);
-    hdr[0] = gap; hdr[1] = type == 'A' ? (uint32_t)(cyc_site - cyc_base) : 0; hdr[2] = cyc_n;
-    fwrite(hdr, 4, 3, cyclog);
+    hdr[0] = gap; hdr[1] = type == 'A' ? (uint32_t)(cyc_site - cyc_base) : 0; hdr[2] = cyc_said; hdr[3] = cyc_n;
+    fwrite(hdr, 4, 4, cyclog);
     fwrite(cyc_probe, 4, cyc_n, cyclog);
     if (cyclog_ops) {
         /* the original's operations between the two accesses, each as its
@@ -1576,7 +1597,8 @@ static void cyc_put(uint8_t type, uint32_t to)
             fwrite(&cur_addr[q], 4, 1, cyclog);
         }
     }
-    cyc_n = 0; cyc_over = 0;
+done:
+    cyc_n = 0; cyc_over = 0; cyc_said = 0;
     cyc_last = (long)to;
 }
 
@@ -1720,13 +1742,11 @@ static int ls_exec(uint32_t pc)
         uint32_t at = pc;
         fputc('S', cyclog);
         fwrite(&at, 4, 1, cyclog);
-        cyc_n = 0; cyc_over = 0; cyc_last = -1;
-    }
-    machine_live = 1;
-    if (cyclog) {
         if (!sfxbox_co_active) { fprintf(stderr, "sfxbox: SFXBOX_CYCLOG needs the core's co_active\n"); exit(2); }
-        cyc_thread = sfxbox_co_active();
     }
+    cyc_n = 0; cyc_over = 0; cyc_last = -1; cyc_said = 0;
+    machine_live = 1;
+    if (sfxbox_co_active) cyc_thread = sfxbox_co_active();
     if (setjmp(ls_escape) == 0) {
         ls_escape_set = 1;
         routines[idx].abi();
@@ -1734,10 +1754,8 @@ static int ls_exec(uint32_t pc)
     ls_escape_set = 0;
     machine_live = 0;
     while (fetch_more(cur_n + 1)) {}
-    if (cyclog) {
-        if (cpu.unwound) cyc_over = 1;
-        cyc_put('E', cur_n);
-    }
+    if (cpu.unwound) cyc_over = 1;
+    cyc_put('E', cur_n);
     replay_to(cur_n);
     struct SfxboxRegs out = {cpu.a, cpu.x, cpu.y, cpu.unwound ? cpu.s : exit_s, cpu.d, cpu.db, cpu.p, cpu.e, cpu.unwound ? cpu.pc : ret};
     core_set_regs(&out);

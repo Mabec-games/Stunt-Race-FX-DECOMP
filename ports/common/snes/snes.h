@@ -130,6 +130,9 @@ void snes_cpu_idle(unsigned cycles);
 void snes_cpu_interrupts(void);
 /* clocks with no access (a delay loop), interrupts taken along the way */
 void snes_cpu_wait(uint32_t clocks);
+/* Time the S-CPU spends between two of its accesses (instruction fetches,
+   internal cycles), `clocks` master clocks: the decomp's cyc(). */
+void snes_cpu_clocks(uint32_t clocks);
 
 /* The machine's state at a frame boundary, for comparisons with the
    original: work RAM (128 KB) and the Super FX RAM. */

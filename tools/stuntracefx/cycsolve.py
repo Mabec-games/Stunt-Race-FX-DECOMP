@@ -6,9 +6,10 @@
 
 A log (sfxbox SFXBOX_CYCLOG, a library built by cycprobe.py) says, for every
 bus access of the C placed on the original's record, which probes the C
-passed since the access before it and how many CPU clocks the original spent
-between the two. Each is an equation: the sum of the probes' costs, each as
-often as it was passed, equals the clocks. `reduce` keeps each distinct one
+passed since the access before it, how many CPU clocks the original spent
+between the two and how many the C states there (cyc, cpu_idle). Each is an
+equation: the sum of the probes' costs, each as often as it was passed,
+equals the clocks the C does not state yet. `reduce` keeps each distinct one
 once (with how often it was seen), and any set of probe counts seen with
 two different clock counts: there the C does not tell apart paths of the
 original that take different times. `solve` finds the probes' costs as an
@@ -46,10 +47,10 @@ def read_log(path):
             pc = struct.unpack_from('<I', data, i)[0]
             i += 4
             continue
-        if i + 12 > n:
+        if i + 16 > n:
             return
-        gap, site, cnt = struct.unpack_from('<III', data, i)
-        i += 12
+        gap, site, said, cnt = struct.unpack_from('<IIII', data, i)
+        i += 16
         if i + 4 * cnt > n:
             return
         ids = list(struct.unpack_from('<%dI' % cnt, data, i)) if cnt else []
@@ -60,6 +61,7 @@ def read_log(path):
             i += 4 + 5 * struct.unpack_from('<I', data, i)[0]
         if gap >= 0xFFFFFFFE:       # interrupted, or left through the caller's frame
             continue
+        gap -= said                 # what the C does not state yet
         if t != ord('A'):
             ids.append(END | (pc & 0xFFFFFF))
         elif not ids:

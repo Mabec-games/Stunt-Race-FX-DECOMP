@@ -109,5 +109,10 @@ void cpu_restart(uint32_t at, void (*entry)(void));
    MHz). The rest of the machine runs meanwhile, so the time matters: the
    sound CPU acting on a command before the next one arrives. */
 void cpu_idle(uint32_t clocks);
+/* The time the original spends here between two bus accesses, besides
+   their own: its instruction fetches and internal cycles, `clocks` master
+   clocks. The C states it where its code stands for the original's, so
+   each access comes at the original's time. */
+void cyc(uint32_t clocks);
 
 #endif
