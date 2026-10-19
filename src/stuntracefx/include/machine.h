@@ -81,11 +81,6 @@ static inline uint8_t nz8(uint8_t p, uint8_t v)
    computes (handler tables, addresses pushed for an RTL). A routine with C
    runs its abi_ wrapper; one without runs as original code. */
 void call_routine(uint32_t addr, int long_call);
-/* As call_routine, but always the original code at addr, even where a
-   routine with C starts there: for a call the original makes with
-   registers that routine's C does not model (another width than its
-   entry's). */
-void call_original_routine(uint32_t addr, int long_call);
 /* The original JMPs to addr (a jump table's handler, a tail jump): run it
    in the calling routine's own frame, to wherever it leaves that frame (its
    return, or through its caller's). The calling routine's last action. */

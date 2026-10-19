@@ -1429,19 +1429,6 @@ void call_routine(uint32_t addr, int long_call)
     run_original(addr, long_call);
 }    /* the original's run ended inside this call */
 
-/* As call_routine, but the original code at addr runs even where a routine
-   with C starts there: for a call the original makes with registers that
-   routine's C does not model (another width than its entry's). */
-void call_original_routine(uint32_t addr, int long_call)
-{
-    if (!machine_live) {
-        if (cur) cur->needs_asm = 1;
-        if (c_running) longjmp(abort_c, 1);
-        return;
-    }
-    run_original(addr, long_call);
-}
-
 /* SFXBOX_LS_SKIPS=frame: from that frame, report every work RAM access
    placed past an interrupt, or the entry of a routine with no C, in the
    original's record:

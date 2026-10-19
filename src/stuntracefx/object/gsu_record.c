@@ -7,6 +7,8 @@
 #include "machine.h"
 #include "cpu_ops.h"
 
+void abi_ObjectChildFollow(void);
+
 
 /* The object's record address, read through the data bank. */
 static uint16_t record_of(uint8_t bank, uint16_t obj)
@@ -2019,6 +2021,17 @@ static void or20(uint32_t addr)
     wr8(addr, v);
 }
 
+/* LDA addr at the width M has: ObjectChildFollow returns with M 8-bit, so
+   after its first call ObjectRecordChildrenMark's 16-bit walk goes on with
+   8-bit loads (A's high byte kept) and 16-bit transfers. */
+static void lda_m(uint32_t addr)
+{
+    if (cpu.p & P_M)
+        op_lda8(addr);
+    else
+        op_lda16(addr);
+}
+
 /*
  * @routine 08:C097 ObjectRecordChildrenMark
  * WHAT IT DOES: Keeps A in $1F1A and object X in $1F18; then, when bit 3
@@ -2031,9 +2044,9 @@ static void or20(uint32_t addr)
  * list entry. Nothing in the game calls it; a direct call is its only way
  * in.
  * HOW: The object kept on the stack (PHY, PLX; PHX, PLX on the bit 3
- * path); 16-bit walks, the +$24 stores 8-bit; JSR to ObjectChildFollow
- * with M still 16-bit (it is written for 8-bit, so it runs its code as
- * other instructions).
+ * path); 16-bit walks, the +$24 stores 8-bit; JSR to ObjectChildFollow,
+ * which returns with M 8-bit, so the rest of that walk loads 8-bit into a
+ * 16-bit X and Y (A's high byte kept).
  * Entry: M 8-bit, X 16-bit; X = object (with a record unless bit 3 is
  * set). Exit: M 8-bit; X = the object, N and Z from it; Y = 0 (the end of
  * the parents); A as the last step left it.
@@ -2082,7 +2095,7 @@ void abi_ObjectRecordChildrenMark(void)
     op_lda16(0x70003E + cpu.x);
     op_tax16();
     for (;;) {
-        op_lda16(b | (uint16_t)(0x2006 + cpu.y));
+        lda_m(b | (uint16_t)(0x2006 + cpu.y));
         op_tay16();
         if (!cpu.y)
             break;
@@ -2095,11 +2108,9 @@ void abi_ObjectRecordChildrenMark(void)
             cpu.p = nz16(cpu.p, v);
             wr16(0x700016 + cpu.x, v);
         } else {
-            /* ObjectChildFollow entered with M 16-bit, which its C (written
-               for its 8-bit entry) does not model: its original code. */
-            call_original_routine(0x08BD22, 0);
+            abi_ObjectChildFollow();
         }
-        op_lda16(0x700034 + cpu.x);
+        lda_m(0x700034 + cpu.x);
         op_tax16();
     }
     cpu.p |= P_M;
