@@ -692,7 +692,7 @@ void abi_RasterIrq(void)
     cpu.p = nz8(cpu.p, db0);
     cpu.a = a0;
     cpu.p = nz16(cpu.p, a0);
-    cyc(100);
+    cyc(180);
 }
 
 /* The time stamp both marks take: the frame counter $0306 as the high

@@ -184,6 +184,7 @@ void abi_SoftResetLong(void)
     cpu.db = db;
     cpu.p = nz8(cpu.p, db);
     op_plp(p0);
+    cyc(24);
 }
 
 /*

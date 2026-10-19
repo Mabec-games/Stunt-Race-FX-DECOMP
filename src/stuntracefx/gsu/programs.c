@@ -303,6 +303,7 @@ void abi_GsuEE88Ramp(void)
     cpu.x = 0x0088;
     cpu.y &= 0x00FF;
     cpu.p = (uint8_t)((nz8(cpu.p, cpu.db) & ~P_M) | P_X);
+    cyc(160);                           /* after GsuRun: its return */
 }
 
 

@@ -17,23 +17,39 @@
  * Entry: M 8-bit, DB a bank where these are work RAM; X = band offset.
  * Exit: A low byte = the vertical high byte; N, Z from it.
  */
-uint8_t Bg2ScrollFromTable(uint16_t band)
+/* LDA abs,X: 24, and 6 more with a 16-bit index or when an 8-bit one
+   crosses a page. */
+static uint32_t abs_x(uint16_t base, uint16_t x, int wide)
+{
+    return 24 + (wide || (base & 0xFF) + (x & 0xFF) > 0xFF ? 6 : 0);
+}
+
+static uint8_t bg2_scroll(uint16_t band, int wide)
 {
     uint8_t v;
 
-    cyc(24);
+    cyc(abs_x(BG2_SCROLL_X, band, wide));
     wr8(BG2HOFS, cyc_then(24, rd8(BG2_SCROLL_X + band)));
+    cyc(abs_x(BG2_SCROLL_X + 1, band, wide));
     wr8(BG2HOFS, cyc_then(24, rd8(BG2_SCROLL_X + 1 + band)));
+    cyc(abs_x(BG2_SCROLL_Y, band, wide));
     wr8(BG2VOFS, cyc_then(24, rd8(BG2_SCROLL_Y + band)));
+    cyc(abs_x(BG2_SCROLL_Y + 1, band, wide));
     v = rd8(BG2_SCROLL_Y + 1 + band);
     cyc(24);
     wr8(BG2VOFS, v);
     return v;
 }
 
+uint8_t Bg2ScrollFromTable(uint16_t band)
+{
+    return bg2_scroll(band, 0);
+}
+
 void abi_Bg2ScrollFromTable(void)
 {
-    uint8_t v = Bg2ScrollFromTable((cpu.p & P_X) ? (uint8_t)cpu.x : (cyc(6), cpu.x));
+    int wide = !(cpu.p & P_X);
+    uint8_t v = bg2_scroll(wide ? cpu.x : (uint8_t)cpu.x, wide);
 
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.p = nz8(cpu.p, v);
@@ -66,4 +82,5 @@ void abi_ScrollHdmaSet(void)
 {
     ScrollHdmaSet();
     cpu.a = 0x0130;
+    cyc(72);                            /* its return */
 }

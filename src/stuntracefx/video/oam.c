@@ -722,7 +722,9 @@ void OamBufferHideLargeLong(void)
 
 void abi_OamBufferHideLargeLong(void)
 {
+    cyc(50);                            /* the JSR from the long entry */
     abi_OamBufferHideLarge();
+    cyc(42);                            /* its RTS back, then RTL */
 }
 
 /*
