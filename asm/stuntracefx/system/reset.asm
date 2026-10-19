@@ -179,3 +179,15 @@ ResetVector:
     xce
     cld
     jml.l BootColdStart
+
+; @routine 00:FE90 InterruptReturn
+; WHAT IT DOES: The handler of every interrupt the game does not use: the
+; COP, BRK and ABORT vectors (native and emulation) and the emulation
+; NMI and IRQ vectors all point here, and it returns at once. BRK runs
+; here in the game (ObjectSlideGateUpStep's width-hazard paths).
+; HOW: RTI.
+; Entry: native mode, the interrupt's frame on the stack (P, then PC and
+; PB). Exit: P, PC and PB as the interrupt pushed them; S 4 higher.
+%at($00FE90)
+InterruptReturn:
+    rti

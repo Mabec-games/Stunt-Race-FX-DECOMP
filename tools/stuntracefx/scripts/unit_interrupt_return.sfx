@@ -1,0 +1,10 @@
+# unit_interrupt_return: a unit test of InterruptReturn 00:FE90, the RTI
+# the unused interrupt vectors point to, entered as an interrupt (rti=):
+# from the start of a Novice race, with P = $30 (8-bit A and index) and
+# with P = $03 (16-bit, carry and zero set) on the interrupt's frame.
+load build/stuntracefx/states/novice_coupe_race1.state
+call 00:FE90 rti=30
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 00:FE90 rti=03 x=1234 y=5678
+wait 1
