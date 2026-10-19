@@ -575,7 +575,15 @@ void gsu_check_rows(FILE *rep)
 #define CALLRING (1 << 20)
 #define OPRING (1u << 24)
 
-enum { OP_STEP = 1, OP_READ = 2, OP_WRITE = 3, OP_FILL = 4, OP_FLUSH = 5, OP_FLAGS = 6 };
+enum { OP_STEP = 1, OP_READ = 2, OP_WRITE = 3, OP_FILL = 4, OP_FLUSH = 5, OP_FLAGS = 6, OP_ISSUE = 7 };
+
+/* A step's clocks, and (core patch 0007, in the top byte) what it is for:
+   STEP_INSN an instruction, the others the waits and transfers the
+   hardware makes around them (the ROM and RAM buffers, the bus while the
+   S-CPU has it, a code-cache fill, a pixel-cache flush, RPIX). */
+enum { STEP_INSN = 0, STEP_ROMBUF = 1, STEP_RAMBUF = 2, STEP_BUS = 3, STEP_FILL = 4, STEP_FLUSH = 5, STEP_RPIX = 6 };
+#define STEP_CLOCKS(a) ((a) & 0xFFFFFFu)
+#define STEP_KIND(a) ((a) >> 24)
 
 /* The status bits an instruction sets, which the S-CPU can read at $3030
    while the call runs: Z, CY, S, OV, R, ALT1, ALT2 and B. The C keeps its
@@ -710,7 +718,9 @@ static void orig_insn(uint32_t pc, uint32_t prev_end, uint8_t opcode)
 
 static void orig_step(uint32_t clocks) { if (m.active) op(OP_STEP, clocks); }
 static void orig_ram(int write, uint32_t addr, uint8_t data) { (void)data; if (m.active) op(write ? OP_WRITE : OP_READ, addr); }
-static void orig_cache(int kind, uint32_t v) { if (m.active) op(kind == 1 ? OP_FILL : OP_FLUSH, v); }
+/* kind 1 a code-cache line filled, 2 the cache flushed, 3 a store into the
+   RAM buffer (core patch 0007: the RAM is written when it drains) */
+static void orig_cache(int kind, uint32_t v) { if (m.active) op(kind == 1 ? OP_FILL : kind == 2 ? OP_FLUSH : OP_ISSUE, v); }
 
 /* ---- hybrid side: run the C in place ---- */
 
@@ -729,7 +739,7 @@ static void replay_to(uint32_t to)
 {
     for (uint32_t i = ci; i < to; i++) {
         switch (cops[i]) {
-        case OP_STEP: core_time(carg[i]); break;
+        case OP_STEP: core_time(STEP_CLOCKS(carg[i])); break;
         case OP_FILL: core_fill(carg[i]); break;
         case OP_FLUSH: core_flush(carg[i]); break;
         case OP_FLAGS: {
@@ -776,11 +786,14 @@ void gsu_cyc(uint32_t clocks)
 }
 
 /* The interval ending at the record's op `to` (an access placed, or the
-   call's end at cn): its clocks are the steps since the access before. */
+   call's end at cn): its clocks are the instructions' steps since the
+   access before (the waits and transfers around them are the hardware's,
+   not the code's). */
 static void gcyc_put(uint8_t type, uint32_t to)
 {
     uint32_t gap = 0, hdr[4];
-    for (uint32_t q = gfrom; q < to; q++) if (cops[q] == OP_STEP) gap += carg[q];
+    for (uint32_t q = gfrom; q < to; q++)
+        if (cops[q] == OP_STEP && STEP_KIND(carg[q]) == STEP_INSN) gap += STEP_CLOCKS(carg[q]);
     if (!gquiet) {
         if (gover) gap = 0xFFFFFFFFu;
         else if (gap == gsaid) gtm_on++;
@@ -817,7 +830,13 @@ static uint8_t live_ram(int write, uint32_t a, uint8_t v)
     uint32_t off = ram_off(a), from = ci;
     for (uint32_t j = ci; j < cn; j++)
         if (cops[j] == want && ram_off(carg[j]) == off) {
-            gcyc_put('A', j);
+            /* a store's time is when the instruction made it, not when the
+               RAM buffer drained (the instructions after it run meanwhile) */
+            uint32_t at = j;
+            if (write)
+                for (uint32_t q = j; q-- > gfrom;)
+                    if (cops[q] == OP_ISSUE && ram_off(carg[q]) == off) { at = q; break; }
+            gcyc_put('A', at);
             replay_to(j);
             ci = j + 1;
             break;
