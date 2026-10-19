@@ -36,7 +36,7 @@ SRC = os.path.abspath(os.environ.get('CYC_SRC', DECOMP))
 def rel_name(path):
     """A file of the tree probed by its name in the decomp."""
     return os.path.relpath(os.path.join(DECOMP, os.path.relpath(path, SRC)), ROOT)
-TIMING = ('cyc', 'cyc_then')      # machine.h's stated time: no access, no probes
+TIMING = ('cyc', 'cyc_then', 'cyc_loop')   # machine.h's stated time: no access, no probes
 CONTROL = {'IfStmt', 'WhileStmt', 'ForStmt', 'DoStmt', 'SwitchStmt', 'LabelStmt', 'CaseStmt', 'DefaultStmt'}
 
 
@@ -124,6 +124,8 @@ class Walker:
         self.anchor = None     # the statement being walked: [start, needs braces, end, accesses so far]
         self.unsafe = 0        # inside a condition that is not always worked out where its statement starts
         self.depth = 0         # bodies wrapped so far (nesting)
+        self.loops = []        # the loops the walk is in, innermost last
+        self.ret_type = None   # the function's return type
 
     def _file_of(self, loc):
         if not loc:
@@ -206,7 +208,7 @@ class Walker:
         self._meta(form='wrap', at=span[0], end=end, depth=self.depth)
         self.ins.append((end, 0, close, close_kind))
         if close_kind:
-            self._meta(form='skip', at=end, wrapped=(span[0], end), depth=self.depth)
+            self._meta(form='skip' if close_kind == 'skip' else 'back_close', at=end, wrapped=(span[0], end), depth=self.depth)
 
     def expr_probe(self, node, kind):
         span = self.mine(node)
@@ -229,13 +231,44 @@ class Walker:
                        callee=callee(call.get('inner', [{}])[0]))
             return len(self.ins) - 1
 
-    def body(self, node, kind):
+    def body(self, node, kind, back=False):
         if node is None:
             return
         if node.get('kind') == 'CompoundStmt':
             self.compound(node, kind)
+            span = self.mine(node)
+            if back and span:
+                # the end of a pass (a while's or for's way back to its test)
+                self.ins.append((span[1] - 1, 1, 'CYC_PROBE(@); ', 'back'))
+                self._meta(form='stmt', at=span[1] - 1)
+        elif back:
+            self.wrap(node, kind, ' CYC_PROBE(@); }', 'back')
         else:
             self.wrap(node, kind)
+
+    def again(self, cond):
+        """The probe of a loop going round once more: after its test, when
+        the test holds."""
+        span = self.mine(cond) if cond and cond.get('kind') else None
+        if span:
+            self.ins.append((span[0], 1, 'CYC_PROBE_IF(@, ', 'again'))
+            self._meta(form='again', at=span[0], end=span[1], typ=cond.get('type', {}).get('qualType', ''))
+            self.ins.append((span[1], 0, ')', None))
+
+    def stmt_probe(self, node, kind):
+        """A probe just before a statement (a return, a continue): in braces
+        when the statement is a body of its own."""
+        span = self.mine(node)
+        if not span:
+            return
+        a = self.anchor
+        if a and a[1] and a[0] == span[0]:
+            self.ins.append((span[0], 1, '{ CYC_PROBE(@); ', kind))
+            self._meta(form='wrap', at=span[0], end=a[2], depth=self.depth)
+            self.ins.append((a[2], 0, ' }', None))
+        else:
+            self.ins.append((span[0], 1, 'CYC_PROBE(@); ', kind))
+            self._meta(form='stmt', at=span[0])
 
     def compound(self, node, kind):
         span = self.mine(node)
@@ -277,12 +310,21 @@ class Walker:
                     self.visit_loc(c)
             if body is not None:
                 self.fn = node.get('name')
+                t = node.get('type', {}).get('qualType', '')
+                self.ret_type = t[:t.index('(')].strip() if '(' in t else t
                 if self.calls is not None:
                     self.calls.setdefault(self.fn, set())
                 self._file_of(body.get('range', {}).get('begin'))
                 self.compound(body, 'function')
                 for c in body.get('inner', []):
                     self.walk_kid(c)
+                kids = body.get('inner', [])
+                span = self.mine(body)
+                if span and not (kids and kids[-1].get('kind') == 'ReturnStmt'):
+                    # the function's end: the time from its last access to
+                    # its return
+                    self.ins.append((span[1] - 1, 1, 'CYC_PROBE(@); ', 'exit'))
+                    self._meta(form='stmt', at=span[1] - 1)
             return
         for c in inner:
             self.visit_loc(c)
@@ -321,21 +363,61 @@ class Walker:
             return
         if k in ('WhileStmt', 'ForStmt'):
             body = inner[-1] if inner else None
+            cond = inner[-2] if k == 'WhileStmt' and len(inner) >= 2 else (inner[2] if k == 'ForStmt' and len(inner) == 5 else None)
+            self.again(cond)
             for i, c in enumerate(inner[:-1]):
                 # a for's first part runs once, before the loop
                 if k == 'ForStmt' and i == 0:
                     self.walk_stmt(c)
                 else:
                     self.walk_unsafe(c)
-            self.body(body, 'loop')
+            self.loops.append(k)
+            self.body(body, 'loop', back=True)
             self.walk_children(body)
+            self.loops.pop()
             return
         if k == 'DoStmt':
             body = inner[0] if inner else None
+            self.loops.append(k)
             self.body(body, 'loop')
             self.walk_children(body)
+            self.loops.pop()
+            if len(inner) > 1:
+                self.again(inner[1])
             for c in inner[1:]:
                 self.walk_unsafe(c)
+            return
+        if k == 'ContinueStmt':
+            if self.loops and self.loops[-1] != 'DoStmt':
+                self.stmt_probe(node, 'back')
+            return
+        if k == 'ReturnStmt':
+            if not self.mine(node):
+                for c in inner:
+                    self.walk_stmt(c)
+                return
+            if not inner:
+                self.stmt_probe(node, 'exit')
+                return
+            expr = inner[0]
+            span = self.mine_arg(expr)
+            if not span:
+                self.stmt_probe(node, 'exit')
+                self.walk_stmt(expr)
+                return
+            # after the value is worked out (its accesses too)
+            if self.ret_type == 'void':
+                self.ins.append((span[0], 1, '(', None))
+                self.ins.append((span[1], 0, ', CYC_PROBE(@))', 'exit'))
+            else:
+                self.ins.append((span[0], 1, '({ __auto_type cyc_r_ = (', None))
+                self.ins.append((span[1], 0, '); CYC_PROBE(@); cyc_r_; })', 'exit'))
+            at = len(self.ins) - 1
+            self._meta(form='ret', at=span[0], end=span[1], typ=self.ret_type, anchor=self.anchor,
+                       ret_at=self.mine(node)[0] if self.mine(node) else None)
+            before = self.anchor[3] if self.anchor else 0
+            self.walk_stmt(expr)
+            self.meta[at]['noacc'] = (self.anchor[3] if self.anchor else 0) == before
             return
         if k in ('CaseStmt', 'DefaultStmt', 'LabelStmt'):
             sub = inner[-1] if inner else None
@@ -544,7 +626,8 @@ def main(argv):
         nid = instrument(f, out, nid, rows, pure)
     with open(os.path.join(inc, 'cycprobe.h'), 'w') as o:
         o.write('/* cycprobe.h: the probes (cycprobe.py). */\n#ifndef CYCPROBE_H\n#define CYCPROBE_H\n'
-                'void sfx_probe(unsigned id);\n#define CYC_PROBE(n) sfx_probe(n)\n#endif\n')
+                'void sfx_probe(unsigned id);\n#define CYC_PROBE(n) sfx_probe(n)\n'
+                '#define CYC_PROBE_IF(n, c) ((c) ? (sfx_probe(n), 1) : 0)\n#endif\n')
     with open(os.path.join(outdir, 'probes.csv'), 'w', newline='') as f:
         wr = csv.writer(f)
         wr.writerow(['id', 'file', 'line', 'col', 'kind', 'offset', 'callee'])

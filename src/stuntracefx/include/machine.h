@@ -122,5 +122,13 @@ static inline uint32_t cyc_then(uint32_t clocks, uint32_t v)
     cyc(clocks);
     return v;
 }
+/* `again`, a loop's test, with the time the original takes to go round
+   once more stated when it does. */
+static inline int cyc_loop(uint32_t clocks, int again)
+{
+    if (again)
+        cyc(clocks);
+    return again;
+}
 
 #endif

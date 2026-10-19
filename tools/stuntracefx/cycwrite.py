@@ -14,6 +14,10 @@ Each probe with a cost becomes the time its place stands for:
     an arm with no block of its own:                         { cyc(N); it }
     the path that skips an arm:                              else { cyc(N); }
     a branch inside an expression (&&, ||, ?:):              (cyc(N), it)
+    a loop going round once more:                            its test as cyc_loop(N, test)
+    a while's or for's pass ending:                          cyc(N); before its closing brace
+    a function's end, a return:                              cyc(N); before it (after the value
+                                                             when that reaches the bus: cyc_then)
     a bus access (rd8, wr8, a call into code that reaches the bus):
         the first in its statement, its statement always run from its
         start:                                               cyc(N); before the statement
@@ -38,7 +42,7 @@ def plan(path, text, got, cost, skip):
     edits at one offset, and what was left out and why."""
     rel = cycprobe.rel_name(path)
     stmt = collections.Counter()           # offset -> clocks before the statement there
-    wraps = {}                             # (start, end) -> clocks, a body given braces
+    wraps = {}                             # (start, end) -> [clocks at its start, at its end], a body given braces
     skips = []                             # (offset, wrapped start, clocks)
     exprs = []                             # (start, end, opener text)
     left = collections.Counter()
@@ -53,7 +57,25 @@ def plan(path, text, got, cost, skip):
         if form == 'stmt':
             stmt[m['at']] += n
         elif form == 'wrap':
-            wraps[(m['at'], m['end'])] = wraps.get((m['at'], m['end']), 0) + n
+            wraps.setdefault((m['at'], m['end']), [0, 0])[0] += n
+        elif form == 'back_close':
+            wraps.setdefault(m['wrapped'], [0, 0])[1] += n
+        elif form == 'again':
+            if cycprobe.number_type(m['typ']) or m['typ'] in ('int', '_Bool'):
+                exprs.append((m['at'], m['end'], 'cyc_loop(%d, ' % n))
+            else:
+                left['a loop test that is not a number'] += 1
+        elif form == 'ret':
+            a = m['anchor']
+            if m.get('noacc') and a and m.get('ret_at') == a[0]:
+                if a[1]:
+                    wraps.setdefault((a[0], a[2]), [0, 0])[0] += n
+                else:
+                    stmt[a[0]] += n
+            elif m['typ'] != 'void' and cycprobe.number_type(m['typ']):
+                exprs.append((m['at'], m['end'], 'cyc_then(%d, ' % n))
+            else:
+                left['a return whose value reaches the bus, not a number'] += 1
         elif form == 'skip':
             skips.append((m['at'], m['wrapped'][0], n))
         elif form == 'expr':
@@ -62,7 +84,7 @@ def plan(path, text, got, cost, skip):
             a = m['anchor']
             if a and not m['unsafe'] and m.get('first'):
                 if a[1]:
-                    wraps[(a[0], a[2])] = wraps.get((a[0], a[2]), 0) + n
+                    wraps.setdefault((a[0], a[2]), [0, 0])[0] += n
                 else:
                     stmt[a[0]] += n
             elif not cycprobe.number_type(m['typ']):
@@ -88,9 +110,9 @@ def plan(path, text, got, cost, skip):
             edits.append((at, (1, -2, 0), 'cyc(%d); ' % n))
     # braces: at one offset, closings before openings; an inner body's
     # closing before the outer's, an outer opening before the inner's
-    for (b, e), n in wraps.items():
-        edits.append((b, (1, -3, -e), '{ cyc(%d); ' % n))
-        edits.append((e, (0, -b, 0), ' }'))
+    for (b, e), (n, back) in wraps.items():
+        edits.append((b, (1, -3, -e), '{ cyc(%d); ' % n if n else '{ '))
+        edits.append((e, (0, -b, 0), ' cyc(%d); }' % back if back else ' }'))
     for at, b, n in skips:
         edits.append((at, (0, -b, 1), ' else { cyc(%d); }' % n))
     for b, e, opener in exprs:
@@ -138,12 +160,14 @@ def _close(text, i, op, cl):
 
 def strip(text):
     """The text without what this tool writes: every cyc(N) with N a
-    number, in each of its forms (a time written by hand, cyc(t->x), stays)."""
+    number, in each of its forms (a time written by hand, cyc(t->x), stays;
+    braces it added for a time at a body's end only stay too)."""
     import re
     out = re.sub(r' else \{ cyc\(\d+\); \}', '', text)
     # forms around code: { cyc(N); X }, (cyc(N), X), cyc_then(N, X)
+    out = re.sub(r' cyc\(\d+\); \}', ' }', out)
     for pat, op, cl, tail in ((r'\{ cyc\(\d+\); ', '{', '}', ' }'), (r'\(cyc\(\d+\), ', '(', ')', ')'),
-                              (r'cyc_then\(\d+, ', '(', ')', ')')):
+                              (r'cyc_then\(\d+, ', '(', ')', ')'), (r'cyc_loop\(\d+, ', '(', ')', ')')):
         while True:
             m = re.search(pat, out)
             if not m:
