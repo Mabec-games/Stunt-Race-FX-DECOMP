@@ -171,10 +171,11 @@ static int machine_live;
 static uint8_t (*core_bus_read)(uint32_t);
 static void (*core_bus_write)(uint32_t, uint8_t);
 static uint8_t live_access(int write, uint32_t addr, uint8_t value);
+static uintptr_t cyc_site;   /* the C's call site of the access being placed (SFXBOX_CYCLOG) */
 
 uint8_t rd8(uint32_t addr)
 {
-    if (machine_live) return live_access(0, addr & 0xFFFFFF, 0);
+    if (machine_live) { cyc_site = (uintptr_t)__builtin_return_address(0); return live_access(0, addr & 0xFFFFFF, 0); }
     count_access();
     uint32_t n = norm(addr);
     uint8_t v;
@@ -194,7 +195,7 @@ uint8_t rd8(uint32_t addr)
 
 void wr8(uint32_t addr, uint8_t value)
 {
-    if (machine_live) { live_access(1, addr & 0xFFFFFF, value); return; }
+    if (machine_live) { cyc_site = (uintptr_t)__builtin_return_address(0); live_access(1, addr & 0xFFFFFF, value); return; }
     count_access();
     uint32_t n = norm(addr);
     if (n >> 24 == R_IO) {
@@ -1138,6 +1139,8 @@ static long snap_offset(uint32_t a);
 static void (*core_run_until)(const struct SfxboxRegs *, uint32_t, uint16_t);
 static void (*core_run_out)(const struct SfxboxRegs *, uint16_t);
 static long asm_unplaced;
+static FILE *cyclog;      /* SFXBOX_CYCLOG (see cyc_put) */
+static int cyclog_ops;    /* SFXBOX_CYCLOG_OPS: the original's operations too */
 /* C that called or jumped (call_routine, jump_routine) to an address where
    no routine with C starts: the hybrid ran original code there. The decomp
    is all C, so any is a failure. */
@@ -1156,6 +1159,7 @@ static void hybrid_finish(long frames)
             frames, frames_compared, diff_frames, calls_swapped, calls_fallback, mismatched_calls, timed_unmatched, irq_missed, asm_unplaced,
             c_no_c, g, diff_frames || mismatched_calls || timed_unmatched || irq_missed || asm_unplaced || c_no_c || gbad ? "DIVERGENT" : calls_swapped || gsu_count() || spc_count() ? "IDENTICAL" : "UNCOVERED");
     fclose(lsrep);
+    if (cyclog) fclose(cyclog);
     _exit(0);
 }
 
@@ -1514,6 +1518,68 @@ static long place_from = -1, place_to = -1;
 static long pair_lo = -1;  /* the last work RAM write placed, and where */
 static uint32_t pair_j;
 
+/* SFXBOX_CYCLOG=FILE (hybrid side, with a library built by cycprobe.py):
+   for every one of the C's bus accesses placed on the original's record,
+   the probes the C passed since the access before it and the CPU clocks
+   the original spent between the two (its reads, fetches, writes and
+   internal cycles; not refresh, DMA or an interrupt handler), so
+   cycsolve.py can find what each stretch of the C costs. Records: 'S'
+   pc (a call starts), 'A' gap n ids (an access), 'E' gap n ids (the call's
+   end), all u32. */
+static uint32_t cyc_probe[1 << 16];
+static uint32_t cyc_n;
+static int cyc_over;
+static long cyc_last;
+
+/* Each processor runs on a cooperative thread of the core's own, switched
+   as the machine advances, so the S-CPU's C and the Super FX's and SPC700's
+   interleave: a probe counts for the S-CPU's log only on the S-CPU's thread
+   (cyc_thread, taken as its C is entered). */
+extern void *(*sfxbox_co_active)(void);
+static void *cyc_thread;
+
+void sfx_probe(unsigned id)
+{
+    if (!cyclog || !machine_live || sfxbox_co_active() != cyc_thread) return;
+    if (cyc_n < (uint32_t)(sizeof cyc_probe / sizeof cyc_probe[0])) cyc_probe[cyc_n++] = id;
+    else cyc_over = 1;
+}
+
+static uintptr_t cyc_base;   /* the library's load address: sites are logged from it */
+
+static void cyc_put(uint8_t type, uint32_t to)
+{
+    uint32_t gap = 0, hdr[3];
+    if (!cyclog) return;
+    int irq = 0;
+    for (long q = cyc_last + 1; q < (long)to; q++) {
+        uint8_t k = cur_ops[q] >> 4;
+        if (k >= 1 && k <= 3) gap += (uint32_t)(cur_ops[q] & 15) * 2;
+        if (k >= 5 && k <= 8) irq = 1;
+    }
+    /* An interrupt taken between the two accesses moves the original's
+       cycles (an internal cycle becomes the refetch of the opcode): that
+       time is the interrupt's, so the interval says nothing of the code. */
+    if (irq) gap = 0xFFFFFFFEu;
+    if (cyc_over) gap = 0xFFFFFFFFu;
+    fputc(type, cyclog);
+    hdr[0] = gap; hdr[1] = type == 'A' ? (uint32_t)(cyc_site - cyc_base) : 0; hdr[2] = cyc_n;
+    fwrite(hdr, 4, 3, cyclog);
+    fwrite(cyc_probe, 4, cyc_n, cyclog);
+    if (cyclog_ops) {
+        /* the original's operations between the two accesses, each as its
+           record byte and address (SFXBOX_CYCLOG_OPS) */
+        uint32_t m = to > (uint32_t)(cyc_last + 1) ? to - (uint32_t)(cyc_last + 1) : 0;
+        fwrite(&m, 4, 1, cyclog);
+        for (long q = cyc_last + 1; q < (long)to; q++) {
+            fputc(cur_ops[q], cyclog);
+            fwrite(&cur_addr[q], 4, 1, cyclog);
+        }
+    }
+    cyc_n = 0; cyc_over = 0;
+    cyc_last = (long)to;
+}
+
 static uint8_t live_access(int write, uint32_t addr, uint8_t value)
 {
     uint8_t want = (uint8_t)(write ? 2 : 1);
@@ -1562,6 +1628,7 @@ static uint8_t live_access(int write, uint32_t addr, uint8_t value)
                 if (k == 9 && is_catalog_entry(cur_addr[j] & 0xFFFFFF) && !(has_c[cur_addr[j] >> 3] >> (cur_addr[j] & 7) & 1)) break;
                 if (k == want && snap_offset(cur_addr[j]) == o) {
                     if (skips_from >= 0 && cur_frame >= skips_from) log_skip(write, addr, j);
+                    cyc_put('A', j);
                     replay_to(j + 1);
                     if (write) { pair_lo = o; pair_j = j; }
                     break;
@@ -1585,6 +1652,7 @@ static uint8_t live_access(int write, uint32_t addr, uint8_t value)
     for (uint32_t j = cur_i; j < cur_n || fetch_more(j + 1); j++)
         if (cur_ops[j] >> 4 == want && same_place(cur_addr[j]) == same_place(addr)) {
             replay_to(j);
+            cyc_put('A', j);
             cur_i = j + 1;
             if (place_from >= 0 && cur_frame >= place_from && cur_frame <= place_to) {
                 uint32_t c0 = core_clock();
@@ -1648,7 +1716,17 @@ static int ls_exec(uint32_t pc)
     cpu.unwound = 0;
     ls_exit_s = exit_s;
     ls_ret = ret;
+    if (cyclog) {
+        uint32_t at = pc;
+        fputc('S', cyclog);
+        fwrite(&at, 4, 1, cyclog);
+        cyc_n = 0; cyc_over = 0; cyc_last = -1;
+    }
     machine_live = 1;
+    if (cyclog) {
+        if (!sfxbox_co_active) { fprintf(stderr, "sfxbox: SFXBOX_CYCLOG needs the core's co_active\n"); exit(2); }
+        cyc_thread = sfxbox_co_active();
+    }
     if (setjmp(ls_escape) == 0) {
         ls_escape_set = 1;
         routines[idx].abi();
@@ -1656,6 +1734,10 @@ static int ls_exec(uint32_t pc)
     ls_escape_set = 0;
     machine_live = 0;
     while (fetch_more(cur_n + 1)) {}
+    if (cyclog) {
+        if (cpu.unwound) cyc_over = 1;
+        cyc_put('E', cur_n);
+    }
     replay_to(cur_n);
     struct SfxboxRegs out = {cpu.a, cpu.x, cpu.y, cpu.unwound ? cpu.s : exit_s, cpu.d, cpu.db, cpu.p, cpu.e, cpu.unwound ? cpu.pc : ret};
     core_set_regs(&out);
@@ -1700,6 +1782,13 @@ int lockstep_begin(void *core, const char *lib, const char *only, const char *re
         role = 2;
         lsrep = fopen(report_path, "w");
         if (!lsrep) _exit(2);
+        if (getenv("SFXBOX_CYCLOG")) {
+            Dl_info di;
+            cyclog = fopen(getenv("SFXBOX_CYCLOG"), "wb");
+            cyclog_ops = getenv("SFXBOX_CYCLOG_OPS") != NULL;
+            if (cyclog && cyclog_ops) fputc('O', cyclog);   /* the records carry the operations */
+            if (dladdr((void *)routines[0].abi, &di)) cyc_base = (uintptr_t)di.dli_fbase;
+        }
         *core_exec = ls_exec;
         if (tr) {
             static struct SfxboxCallbacks hcb = {trace_insn, trace_write, trace_read, NULL, NULL};

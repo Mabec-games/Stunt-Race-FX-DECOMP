@@ -102,6 +102,9 @@ SYM(sfxbox_trace_begin) SYM(sfxbox_trace_write) SYM(sfxbox_memory) SYM(sfxbox_tr
    real (the NOP after a STOP runs when the next program starts). */
 static void trace_break(void) { if (sfxbox_trace_break_p) sfxbox_trace_break_p(); }
 static int (*sfxbox_gsu_running_p)(void);
+/* The core's running cooperative thread (each processor has one): the
+   cycle log keeps the S-CPU's probes apart by it (check.c). */
+void *(*sfxbox_co_active)(void);
 /* After a state is loaded: the trace and the Super FX checks start again
    from it. (The Super FX's GO bit is read from the core directly: a bus
    read here, outside the emulation thread, would switch threads.) */
@@ -737,6 +740,7 @@ int main(int argc, char **argv) {
     LOAD(retro_run) LOAD(retro_serialize_size) LOAD(retro_serialize) LOAD(retro_unserialize)
     LOAD(sfxbox_trace_begin) LOAD(sfxbox_trace_write) LOAD(sfxbox_memory) LOAD(sfxbox_trace_break)
     *(void **)&sfxbox_gsu_running_p = dlsym(core, "sfxbox_gsu_running");
+    *(void **)&sfxbox_co_active = dlsym(core, "co_active");
     LOAD(sfxbox_core_regs) LOAD(sfxbox_core_set_regs) LOAD(sfxbox_core_bus_read)
     if (!(cpu_exec_hook = dlsym(core, "sfxbox_cpu_exec"))) die("missing symbol sfxbox_cpu_exec");
 
