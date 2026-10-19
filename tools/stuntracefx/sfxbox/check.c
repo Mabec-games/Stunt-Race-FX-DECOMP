@@ -827,8 +827,14 @@ static void ls_insn(uint32_t pc)
            hybrid's original code does: leave_frame.) */
         if (m.noreturn && (prev == 0x9A || prev == 0x1B))
             m.stack_reset = 1;
+        /* A noreturn unit call whose own return lands elsewhere (its code
+           overwrote the return address on the stack: WindowEdgesFillOnes'
+           fill runs into the stack) ends at that return too: S is back at
+           its exit level, and what runs next is original code on both
+           sides, the C having left the same way (cpu.unwound). */
         if ((pc == m.ret_pc && r.s == m.exit_s)
-            || (!m.stack_reset && r.s > m.exit_s && (prev == 0x60 || prev == 0x6B))) {
+            || (!m.stack_reset && r.s > m.exit_s && (prev == 0x60 || prev == 0x6B))
+            || (m.noreturn && !m.stack_reset && r.s == m.exit_s && (prev == 0x60 || prev == 0x6B))) {
             if (calls_from >= 0 && cur_frame >= calls_from)
                 fprintf(stderr, "ODONE frame %ld call %llu at %06X S=%04X\n", cur_frame, (unsigned long long)m.call, pc, r.s);
             STORE(sh->calls[m.call % CALLRING].done, 1);
