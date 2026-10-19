@@ -98,17 +98,22 @@ FxRegs FxTrafficSides(FxRegs g)
     int i;
 
     gsu_push(&g.r[10], g.r[11]);
+    gsu_code(0x04C936, 8);
     g.r[9] = field(REC_SIDES, g.r[8]);
+    gsu_code(0x04C93E, 4);
     for (i = 0; i < 4; i++) {
         g.r[0] = field(from[i], g.r[8]);
         gsu_stw(me[i], g.r[0]);
+        gsu_code(0x04C95E, 4);
     }
     g.r[0] = gsu_ldw(FX_CARS);
+    gsu_code(0x04C96A, 9); gsu_code(0x04CA8C, 5);
     for (;; g.r[0] = field(REC_NEXT_CAR, g.r[7])) {
+        gsu_code(0x04C962, 4);
         g.r[7] = g.r[0];
         gsu_moves(g.r[7]);
         if (gsu.z)
-            break;
+            { gsu_code(0x04C961, 1); gsu_code(0x04C966, 4); gsu_code(0x04CA91, 8); break; }
         gsu_sub(g.r[0], g.r[8], 0);
         if (gsu.z)
             continue;                                /* itself */
@@ -315,10 +320,13 @@ void abi_FxSpreadCars(void)
 /* The early exit: no car near; $2642 = -1, $2648 = 0. */
 static FxRegs near_none(FxRegs g)
 {
+    gsu_code(0x04CF95, 4); gsu_code(0x04D030, 7);
     g.r[0] = 0xFFFF;
     gsu_stw(FX_NEAR_LEVEL, g.r[0]);
     g.r[0] = gsu_sub(g.r[0], g.r[0], 0);
+    gsu_code(0x04D037, 5);
     gsu_stw(FX_NEAR_CAR, g.r[0]);
+    gsu_code(0x04D03C, 4);
     gsu_pull(&g.r[10]);
     return g;
 }
@@ -349,90 +357,110 @@ FxRegs FxNearestCar(FxRegs g)
     int i;
 
     gsu_push(&g.r[10], g.r[11]);
+    gsu_code(0x04CF0B, 6);
     g.r[3] = gsu_ldw(FX_PLAYER);
     gsu_moves(g.r[3]);
     if (gsu.z)
-        return near_none(g);
+        return near_none(g); else { gsu_code(0x04CF11, 4); gsu_code(0x04CF19, 7); }
     g.r[1] = gsu_ldw(gsu_add(REC_X, g.r[3], 0));
+    gsu_code(0x04CF20, 6);
     g.r[2] = gsu_ldw(gsu_add(REC_Z, g.r[3], 0));
+    gsu_code(0x04CF26, 6);
     g.r[8] = gsu_ldw(gsu_add(REC_64, g.r[3], 0));
     g.r[0] = gsu_and(0x0008, g.r[8]);
     if (!gsu.z) {
+        gsu_code(0x04CF2C, 12);
         g.r[3] = 0;
         g.r[1] = gsu_ldw(FX_VIEW_X);
+        gsu_code(0x04CF38, 3);
         g.r[2] = gsu_ldw(FX_VIEW_Z);
     }
+    gsu_code(0x04CF3B, 9);
     g.r[5] = 0x1000;
     g.r[6] = 0;
     g.r[0] = gsu_ldw(FX_CARS);
     gsu_moves(g.r[0]);
     if (gsu.z)
-        return near_none(g);
-    for (;; g.r[0] = gsu_ldw(gsu_add(REC_NEXT_CAR, g.r[8], 0))) {
+        return near_none(g); else { gsu_code(0x04CF44, 4); gsu_code(0x04CF4C, 1); gsu_code(0x04CF52, 10); }
+    for (;; g.r[0] = gsu_ldw(gsu_code_then(0x04CF8A, 4, gsu_add(REC_NEXT_CAR, g.r[8], 0)))) {
+        gsu_code(0x04CF4D, 1); gsu_cache(0xCF4D); gsu_code(0x04CF4E, 4);
         g.r[8] = g.r[0];
         gsu_moves(g.r[8]);
         if (gsu.z)
-            break;
+            { gsu_code(0x04CF8E, 7); break; }
         gsu_sub(g.r[0], g.r[3], 0);
         if (gsu.z)
             continue;
         g.r[0] = gsu_sub(gsu_ldw(gsu_add(REC_X, g.r[8], 0)), g.r[1], 0);
         if (gsu.s)
-            g.r[0] = gsu_inc(gsu_not(g.r[0]));
+            { gsu_code(0x04CF5F, 2); g.r[0] = gsu_inc(gsu_not(g.r[0])); }
+        gsu_code(0x04CF5C, 3); gsu_code(0x04CF61, 7);
         g.r[4] = g.r[0];
         g.r[0] = gsu_sub(gsu_ldw(gsu_add(REC_Z, g.r[8], 0)), g.r[2], 0);
         if (gsu.s)
-            g.r[0] = gsu_inc(gsu_not(g.r[0]));
+            { gsu_code(0x04CF6B, 2); g.r[0] = gsu_inc(gsu_not(g.r[0])); }
+        gsu_code(0x04CF68, 3); gsu_code(0x04CF6D, 11);
         g.r[4] = gsu_add(g.r[4], g.r[0], 0);
         if (gsu.ov)
             continue;
         gsu_sub(g.r[4], g.r[5], 0);
         if (gsu.s) {
+            gsu_code(0x04CF78, 8);
             g.r[6] = gsu_ldw(gsu_add(REC_NEAR, g.r[8], 0));
             g.r[5] = g.r[4];
             g.r[7] = g.r[8];
         }
+        gsu_code(0x04CF83, 7);
         g.r[0] = gsu_add(REC_NEAR, g.r[8], 0);
         gsu_stw(g.r[0], g.r[4]);
     }
     g.r[0] = g.r[6];
     gsu_moves(g.r[0]);
     if (gsu.z)
-        return near_none(g);
+        return near_none(g); else { gsu_code(0x04CF99, 13); gsu_code(0x04CFA8, 5); }
     g.r[0] = gsu_sub(g.r[6], g.r[5], 0);
     g.r[6] = gsu_div2(g.r[0]);
     g.r[0] = 0x0080;
     g.r[6] = gsu_add(g.r[6], g.r[0], 0);
     if (gsu.s)
-        g.r[6] = 0;
+        { gsu_code(0x04CFA6, 2); g.r[6] = 0; }
     g.r[0] = gsu_ldw(FX_NEAR_LEVEL);
     gsu_moves(g.r[0]);
     if (gsu.s) {
+        gsu_code(0x04CFAD, 11);
         g.r[0] = g.r[6];
         gsu_stw(FX_NEAR_LEVEL, g.r[0]);
-    }
+    } else { gsu_code(0x04CFAD, 4); gsu_code(0x04CFB7, 1); }
+    gsu_code(0x04CFB8, 9);
     g.r[0] = gsu_sub(g.r[0], g.r[6], 0);
     g.r[0] = gsu_div2(gsu_div2(g.r[0]));
     g.r[8] = gsu_ldw(FX_NEAR_LEVEL);
     g.r[0] = gsu_sub(g.r[8], g.r[0], 0);
+    gsu_code(0x04CFC1, 3);
     gsu_sbk(g.r[0]);
     g.r[6] = 0x0080;
     g.r[0] = gsu_fmult(g.r[5], g.r[6]);
     g.r[8] = 0x0007;
     gsu_sub(g.r[0], g.r[8], 0);
     if (!gsu.s)
-        g.r[0] = g.r[8];
+        { gsu_code(0x04CFD0, 2); g.r[0] = g.r[8]; }
+    gsu_code(0x04CFC4, 12); gsu_code(0x04CFD2, 5);
     gsu_stw(FX_NEAR_BAND, g.r[0]);
     g.r[8] = 0x00FF;
+    gsu_code(0x04CFD7, 7);
     g.r[0] = gsu_ldw(FX_NEAR_LEVEL);
     gsu_sub(g.r[0], g.r[8], 0);
     if (!gsu.s)
-        gsu_sbk(g.r[8]);
+        { gsu_code(0x04CFDE, 7); gsu_sbk(g.r[8]); } else { gsu_code(0x04CFDE, 4); gsu_code(0x04CFE4, 1); }
+    gsu_code(0x04CFE5, 4);
     gsu_stw(FX_NEAR_CAR, g.r[7]);
+    gsu_code(0x04CFE9, 4);
     g.r[0] = gsu_ldw(gsu_add(REC_X, g.r[7], 0));
     g.r[1] = gsu_sub(g.r[0], g.r[1], 0);
+    gsu_code(0x04CFED, 6);
     g.r[0] = gsu_ldw(gsu_add(REC_Z, g.r[7], 0));
     g.r[3] = gsu_sub(g.r[0], g.r[2], 0);
+    gsu_code(0x04CFF3, 5);
     g.r[0] = gsu_ldw(FX_VIEW_YAW);
     g.r[2] = gsu_hib(g.r[0]);
     g.r[0] = 0;
@@ -441,8 +469,10 @@ FxRegs FxNearestCar(FxRegs g)
     g = FxTurnRegs(g);
     gsu_stw(FX_NEAR_Z, g.r[3]);
     g.r[1] = gsu_inc(gsu_not(g.r[1]));
+    gsu_code(0x04D007, 7);
     gsu_stw(FX_NEAR_X, g.r[1]);
     g.r[0] = g.r[3];
+    gsu_code(0x04D00E, 15); gsu_code(0x04D01E, 7); gsu_code(0x04D027, 5);
     for (i = 0; i < 5; i++)
         g.r[0] = gsu_div2(g.r[0]);
     g.r[0] = gsu_add(g.r[0], 7, 0);
@@ -453,6 +483,7 @@ FxRegs FxNearestCar(FxRegs g)
     if (!gsu.s)
         g.r[0] = g.r[3];
     gsu_stw(FX_NEAR_SIDE, g.r[0]);
+    gsu_code(0x04D02C, 4);
     gsu_pull(&g.r[10]);
     return g;
 }

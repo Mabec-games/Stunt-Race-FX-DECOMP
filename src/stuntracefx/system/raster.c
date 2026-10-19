@@ -56,8 +56,8 @@ void WaitScanline(uint8_t bank)
         cyc(44);
         rd8(OPVCT);
     } while (cyc_loop(22, lo != rd8(cyc_then(44, b | 0x06E3))));
-cyc(204);
-    }
+    cyc(204);
+}
 
 void abi_WaitScanline(void)
 {
@@ -80,8 +80,8 @@ static void put7f(uint32_t addr, uint8_t v)
 {
     cyc(12);
     wr8(addr, v);
-cyc(20);
-    }
+    cyc(20);
+}
 
 void abi_WindowTable7F(void)
 {
@@ -643,8 +643,8 @@ void abi_RasterStage(void)
         /* $A32F and $A75C: an RTL alone. */
         break;
     }
-cyc(44);
-    }
+    cyc(44);
+}
 
 /*
  * @routine 7E:A2D9 RasterIrq
@@ -692,8 +692,8 @@ void abi_RasterIrq(void)
     cpu.p = nz8(cpu.p, db0);
     cpu.a = a0;
     cpu.p = nz16(cpu.p, a0);
-cyc(100);
-    }
+    cyc(100);
+}
 
 /* The time stamp both marks take: the frame counter $0306 as the high
    byte and the PPU's line (latched by SLHV, read from OPVCT low then high,

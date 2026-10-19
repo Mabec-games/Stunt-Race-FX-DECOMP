@@ -104,8 +104,8 @@ void abi_PlayerTwoFrameWork(void)
  */
 void abi_PhaseNothing(void)
 {
-cyc(16);
-    }
+    cyc(16);
+}
 
 /* 07:E299: both phases 2, $0D5A cleared; then with M 16-bit $0D67, $0D69,
    $19EE, $19F0 and $0E74 cleared and sound 5 on port 0. */
@@ -189,8 +189,8 @@ static void race_ready(uint8_t t)
     wr8(b | 0x10CB, 0x00);
     cyc(24);
     wr8(b | 0x10CC, 0x00);
-cyc(16);
-    }
+    cyc(16);
+}
 
 /*
  * @routine 07:E2BD RaceReadyShort
@@ -855,8 +855,8 @@ static void lap_banner(void (*draw)(void))
  */
 void abi_LapBannerNone(void)
 {
-cyc(42);
-    }
+    cyc(42);
+}
 
 /*
  * @routine 07:E9C1 LapBannerGrow
@@ -1244,8 +1244,8 @@ panel:
     abi_TimePackBcd();
     (cyc(88), abi_SpecialRecordInsert());
     (cyc(266), abi_RecordsLoadCourseLong());
-cyc(160);
-    }
+    cyc(160);
+}
 
 /* 07:E6B5: a lap crossed: with the override $0D4C the lap's time
    (lap_override); else $0DEA + Y counted: 1 and 2 add the lap's time
@@ -2019,8 +2019,8 @@ void abi_PhaseGlyphsFourA(void)
  */
 void abi_PhaseNothingEBDC(void)
 {
-cyc(42);
-    }
+    cyc(42);
+}
 
 void abi_RaceEndLeave(void);
 
@@ -2306,8 +2306,8 @@ void abi_TimeUpBattle(void)
  */
 void abi_PhaseNothingECF3(void)
 {
-cyc(16);
-    }
+    cyc(16);
+}
 
 /* 07:ED10 / 07:ED80: $0E5A = t, $0E59 one less, sound $51, then after(). */
 static void time_up_tick(uint32_t b, uint8_t t, void (*after)(void))
@@ -2489,8 +2489,8 @@ void abi_RaceStartStepsHold(void)
  */
 void abi_RaceStartTimerStepsRts(void)
 {
-cyc(42);
-    }
+    cyc(42);
+}
 
 /*
  * @routine 07:E556 ResultsPanelStepsRts
@@ -2501,8 +2501,8 @@ cyc(42);
  */
 void abi_ResultsPanelStepsRts(void)
 {
-cyc(42);
-    }
+    cyc(42);
+}
 
 /*
  * @routine 07:E998 RaceEndWaitRow6BRts
@@ -2513,8 +2513,8 @@ cyc(42);
  */
 void abi_RaceEndWaitRow6BRts(void)
 {
-cyc(42);
-    }
+    cyc(42);
+}
 
 /*
  * @routine 07:E9BB RaceEndWaitBigSpritesRts
@@ -2525,8 +2525,8 @@ cyc(42);
  */
 void abi_RaceEndWaitBigSpritesRts(void)
 {
-cyc(42);
-    }
+    cyc(42);
+}
 
 /*
  * @routine 07:EB0F RaceEndWindowStepsRts
@@ -2537,5 +2537,5 @@ cyc(42);
  */
 void abi_RaceEndWindowStepsRts(void)
 {
-cyc(42);
-    }
+    cyc(42);
+}

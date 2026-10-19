@@ -7,22 +7,24 @@
  * the runtime at PBR:R15, snes_gsu_run_hook) runs on the Super FX's own
  * coroutine and returns where the program STOPs; then GO clears and, unless
  * CFGR masks it, the Super FX's IRQ rises. Time: the Super FX keeps its own
- * clock, which moves on by each access the C makes on its bus and by a
- * share of the instructions between them (gsu_access_cycles and friends);
- * the S-CPU brings it up to its own time (gsu_sync) before it touches the
- * Super FX's registers or RAM and once a line, and the Super FX hands back
- * when it gets there. So what the S-CPU sees of a running program (its
- * status, its RAM, its interrupt) appears at the time the program reaches
- * it, as on the cartridge.
+ * clock, which moves on as the GSU-1's does (gsu_clock.c): by the original's
+ * code fetches the C states (gsu_code: the code cache, its fills, ROM), its
+ * loads and stores (the RAM buffer), R14 writes and ROM-buffer reads,
+ * MULT and FMULT, the pixel caches' flushes, and the waits for the bus while
+ * the S-CPU has it (SCMR's RON and RAN clear). The S-CPU brings it up to its
+ * own time (gsu_sync) before it touches the Super FX's registers or RAM and
+ * once a line, and the Super FX hands back when it gets there. So what the
+ * S-CPU sees of a running program (its status, its RAM, its interrupt)
+ * appears at the time the program reaches it, as on the cartridge.
  *
- * PLOT writes the pixel straight into the RAM's bitplanes (the hardware's
- * two pixel caches only delay those writes: a program's picture is the
- * same once it is done) and RPIX reads it back.
+ * PLOT and RPIX go through the two pixel caches as on the hardware: a row
+ * of 8 pixels reaches the RAM's bitplanes when it is flushed.
  */
 #include <string.h>
 
 #include "snes_internal.h"
 #include "coro.h"
+#include "gsu_clock.h"
 
 /* the decomp's register file (gsu.h's RegsGSU), laid out as it declares */
 typedef struct {
@@ -41,25 +43,21 @@ uint8_t *gsu_ram_mem;
 
 void (*snes_gsu_run_hook)(uint8_t bank, uint16_t addr);
 
-/* Super FX cycles each kind of access stands for: the access with its
-   wait states and the instructions around it that make none (one cycle
-   each from the cache). Measured against the original: with 19 for a
-   byte of RAM or ROM (and the S-CPU's overhead at 26) the attract race
-   runs at the original's pace, 360 race frames in 1,750 video frames. */
-unsigned gsu_access_cycles = 19;    /* a RAM or ROM byte */
-unsigned gsu_plot_cycles = 3;       /* PLOT */
-unsigned gsu_rpix_cycles = 10;      /* RPIX */
-
 static uint8_t ram_store[0x20000];
 static uint8_t cache[0x200];
 static uint8_t pbr, cfgr, clsr, bramr, cbr_hi, cbr_lo;
 static uint8_t reg_latch;
 static uint8_t sfr_irq, sfr_alt, sfr_b;
 static int go, pending;
-static uint64_t gsu_time, gsu_target;
+static uint64_t gsu_now, gsu_target;   /* master clocks */
+static GsuClock clk;
+static uint64_t clk_base;              /* gsu_now - clk.now */
 static Coro *gsu_co, *main_co;
 
 static void gsu_main(void *arg);
+static void bus_wait(GsuClock *c, int ram);
+static uint8_t pix_read(GsuClock *c, uint32_t addr);
+static void pix_write(GsuClock *c, uint32_t addr, uint8_t v);
 uint8_t gsu_rd8(uint32_t addr);
 void gsu_wr8(uint32_t addr, uint8_t value);
 void gsu_plot(uint8_t x, uint8_t y);
@@ -75,7 +73,12 @@ void gsu_reset(void)
     reg_latch = 0;
     sfr_irq = sfr_alt = sfr_b = 0;
     go = pending = 0;
-    gsu_time = gsu_target = 0;
+    gsu_now = gsu_target = 0;
+    memset(&clk, 0, sizeof clk);
+    clk.bus = bus_wait;
+    clk.pix_read = pix_read;
+    clk.pix_write = pix_write;
+    clk_base = 0;
     if (!gsu_co) {
         main_co = coro_self();
         gsu_co = coro_new(gsu_main, NULL, 8u << 20);
@@ -86,22 +89,47 @@ uint8_t *snes_sfx_ram(void) { return ram_store; }
 int gsu_running(void) { return go; }
 
 /* ---- time ---- */
-static void gsu_advance(unsigned cycles)
+
+/* The Super FX's clock as the model has moved it; past the S-CPU's time,
+   back to the S-CPU until it catches up. */
+static void clk_sync(void)
 {
-    gsu_time += (uint64_t)cycles * ((clsr & 1) ? 1u : 2u);
-    if (gsu_time >= gsu_target)
+    if (!go)
+        return;
+    gsu_now = clk_base + clk.now;
+    if (gsu_now >= gsu_target)
         coro_switch(gsu_co, main_co);
 }
 
 void gsu_sync(void)
 {
     if (!go) {
-        gsu_time = snes_clock;
+        gsu_now = snes_clock;
         return;
     }
     gsu_target = snes_clock;
-    if (gsu_time < gsu_target)
+    if (gsu_now < gsu_target)
         coro_switch(main_co, gsu_co);
+}
+
+/* A bus access while the S-CPU has that bus (SCMR's RAN bit 3 for the RAM,
+   RON bit 4 for the ROM clear): 6 clocks at a time until it gives it back. */
+static void bus_wait(GsuClock *c, int ram)
+{
+    while (go && !(gsu.scmr & (ram ? 0x08 : 0x10))) {
+        gsuclk_step(c, GSUCLK_BUS, 6);
+        clk_sync();
+    }
+}
+
+static void program_starts(void)
+{
+    go = 1;
+    pending = 1;
+    gsu_now = snes_clock;
+    /* the NOP the last STOP left in the pipeline runs first: it fetches
+       the program's first byte */
+    clk_base = gsu_now - clk.now;
 }
 
 static void gsu_main(void *arg)
@@ -114,6 +142,8 @@ static void gsu_main(void *arg)
         gsu.pre_b = gsu.pre_alt1 = gsu.pre_alt2 = gsu.pre_sreg = gsu.pre_dreg = 0;
         if (!snes_gsu_run_hook)
             snes_fatal("Super FX started with no runtime");
+        gsuclk_code(&clk, (uint32_t)pbr << 16 | gsu.r[15], 1);
+        clk_sync();
         snes_gsu_run_hook(pbr, gsu.r[15]);
         /* the STOP: GO clear, the interrupt unless masked */
         go = 0;
@@ -136,7 +166,7 @@ static uint16_t sfr(void)
 uint8_t gsu_reg_read(uint16_t addr)
 {
     if (addr >= 0x3100 && addr < 0x3300)
-        return cache[addr - 0x3100];
+        return cache[(addr - 0x3100 + clk.cbr) & 511];
     if (addr < 0x3020) {
         uint16_t r = gsu.r[(addr >> 1) & 15];
         return (uint8_t)((addr & 1) ? r >> 8 : r);
@@ -162,7 +192,11 @@ uint8_t gsu_reg_read(uint16_t addr)
 void gsu_reg_write(uint16_t addr, uint8_t v)
 {
     if (addr >= 0x3100 && addr < 0x3300) {
-        cache[addr - 0x3100] = v;
+        /* the code cache, CBR on; a line's last byte makes it valid */
+        unsigned a = (addr - 0x3100 + clk.cbr) & 511;
+        cache[a] = v;
+        if ((a & 15) == 15)
+            clk.valid |= 1u << (a >> 4);
         return;
     }
     if (addr < 0x3020) {
@@ -174,12 +208,8 @@ void gsu_reg_write(uint16_t addr, uint8_t v)
         gsu.r[n] = (uint16_t)(v << 8 | reg_latch);
         if (n == 14)
             gsu.romdr = gsu_rd8((uint32_t)gsu.rombr << 16 | gsu.r[14]);
-        if (n == 15) {
-            /* R15 written: the program starts */
-            go = 1;
-            pending = 1;
-            gsu_time = snes_clock;
-        }
+        if (n == 15)
+            program_starts();   /* R15 written: the program starts */
         return;
     }
     switch (addr) {
@@ -190,11 +220,8 @@ void gsu_reg_write(uint16_t addr, uint8_t v)
         gsu.ov = (v >> 4) & 1;
         if (!(v & 0x20) && go)
             snes_fatal("the S-CPU stopped a running Super FX program (not supported)");
-        if ((v & 0x20) && !go) {
-            go = 1;
-            pending = 1;
-            gsu_time = snes_clock;
-        }
+        if ((v & 0x20) && !go)
+            program_starts();
         return;
     case 0x3031:
         sfr_alt = v & 3;
@@ -202,10 +229,13 @@ void gsu_reg_write(uint16_t addr, uint8_t v)
         sfr_irq = (v >> 7) & 1;
         return;
     case 0x3033: bramr = v; return;
-    case 0x3034: pbr = v; return;
-    case 0x3037: cfgr = v; return;
+    case 0x3034:
+        pbr = v;
+        gsuclk_flush_code(&clk, clk.cbr);   /* the code cache emptied */
+        return;
+    case 0x3037: cfgr = v; clk.ms0 = (uint8_t)(v >> 5 & 1); return;
     case 0x3038: gsu.scbr = v; return;
-    case 0x3039: clsr = v; return;
+    case 0x3039: clsr = v; clk.clsr = (uint8_t)(v & 1); return;
     case 0x303A: gsu.scmr = v; return;
     }
 }
@@ -225,83 +255,106 @@ static inline uint8_t bus_byte(uint32_t addr)
     return 0;
 }
 
+static int is_ram(uint32_t addr) { uint8_t bank = (uint8_t)(addr >> 16); return bank == 0x70 || bank == 0x71; }
+static uint8_t *ram_byte(uint32_t addr)
+{
+    return &ram_store[((uint32_t)((addr >> 16) & 1) << 16 | (uint16_t)addr) & (snes_cart->sfx_ram_size - 1)];
+}
+
+/* A load or store through the RAM buffer (a read of ROM is the ROM
+   buffer's, timed by gsu_buffer). */
 uint8_t gsu_rd8(uint32_t addr)
 {
-    uint8_t v = bus_byte(addr & 0xFFFFFF);
-    if (go)
-        gsu_advance(gsu_access_cycles);
-    return v;
+    addr &= 0xFFFFFF;
+    if (is_ram(addr) && go) {
+        gsuclk_ram_read(&clk);
+        clk_sync();
+    }
+    return bus_byte(addr);
 }
 
 void gsu_wr8(uint32_t addr, uint8_t value)
 {
-    uint8_t bank = (uint8_t)(addr >> 16);
-    if (bank == 0x70 || bank == 0x71)
-        ram_store[((uint32_t)(bank & 1) << 16 | (uint16_t)addr) & (snes_cart->sfx_ram_size - 1)] = value;
-    if (go)
-        gsu_advance(gsu_access_cycles);
+    addr &= 0xFFFFFF;
+    if (!is_ram(addr))
+        return;
+    if (go) {
+        gsuclk_ram_write(&clk);
+        clk_sync();
+    }
+    *ram_byte(addr) = value;
 }
 
-/* the screen: SCMR's colour depth (bits 0-1: 2, 4, 4 or 8 bits) and height
-   (bits 2 and 5: 128, 160, 192 lines or the sprite layout, which POR bit
-   4 also picks), its base at SCBR x 1 KB; a pixel's byte address and bit */
-static uint32_t pixel_at(uint8_t x, uint8_t y, unsigned *bpp, uint8_t *mask)
+/* the pixel caches' own accesses: straight to the RAM */
+static uint8_t pix_read(GsuClock *c, uint32_t addr) { (void)c; return *ram_byte(addr); }
+static void pix_write(GsuClock *c, uint32_t addr, uint8_t v) { (void)c; *ram_byte(addr) = v; }
+
+/* ---- the time the C states (gsu.h) ---- */
+void gsu_code(uint32_t addr, uint32_t n) { gsuclk_code(&clk, addr, n); clk_sync(); }
+void gsu_cache(uint16_t r15) { gsuclk_cache(&clk, r15); }
+void gsu_cyc(uint32_t clocks) { gsuclk_step(&clk, GSUCLK_INSN, clocks); clk_sync(); }
+
+void gsu_time(int what)
 {
-    unsigned md = gsu.scmr & 3, ht = ((gsu.scmr >> 2) & 1) | ((gsu.scmr >> 4) & 2);
-    unsigned cn;
-    *bpp = md == 0 ? 2 : md == 3 ? 8 : 4;
-    if (gsu.por & 0x10)
-        ht = 3;
-    switch (ht) {
-    case 0: cn = ((x & 0xF8u) << 1) + ((y & 0xF8u) >> 3); break;
-    case 1: cn = ((x & 0xF8u) << 1) + ((x & 0xF8u) >> 1) + ((y & 0xF8u) >> 3); break;
-    case 2: cn = ((x & 0xF8u) << 1) + (x & 0xF8u) + ((y & 0xF8u) >> 3); break;
-    default: cn = ((y & 0x80u) << 2) + ((x & 0x80u) << 1) + ((y & 0x78u) << 1) + ((x & 0x78u) >> 3); break;
-    }
-    *mask = (uint8_t)(0x80 >> (x & 7));
-    return (uint32_t)gsu.scbr * 1024u + cn * (*bpp * 8u) + (y & 7u) * 2u;
+    if (what == 0)
+        gsuclk_mult(&clk);         /* GSU_T_MULT */
+    else
+        gsuclk_fmult(&clk);        /* GSU_T_FMULT */
+    clk_sync();
+}
+
+void gsu_buffer(int what)
+{
+    if (what == 0)
+        gsuclk_r14(&clk);          /* GSU_B_R14 */
+    else if (what == 1)
+        gsuclk_rombuf(&clk);       /* GSU_B_ROMBUF */
+    else
+        gsuclk_rambuf(&clk);       /* GSU_B_RAMBUF */
+    clk_sync();
+}
+
+/* the screen as PLOT and RPIX lay it out: SCMR's colour depth (bits 0-1)
+   and height (bits 2 and 5; POR's OBJ, bit 4, the sprite layout), its base
+   SCBR x 1 KB */
+static GsuScreen screen(void)
+{
+    GsuScreen s;
+    s.ht = (uint8_t)((gsu.por & 0x10) ? 3 : ((gsu.scmr >> 2) & 1) | ((gsu.scmr >> 4) & 2));
+    s.md = (uint8_t)(gsu.scmr & 3);
+    s.scbr = gsu.scbr;
+    return s;
 }
 
 void gsu_plot(uint8_t x, uint8_t y)
 {
-    unsigned bpp, p;
-    uint8_t mask, c = gsu.colr;
-    uint32_t a = pixel_at(x, y, &bpp, &mask);
-    if (go)
-        gsu_advance(gsu_plot_cycles);
-    if ((gsu.por & 0x02) && bpp != 8) {
-        if ((x ^ y) & 1)
-            c >>= 4;
-        c &= 0x0F;
-    }
+    GsuScreen s = screen();
+    uint8_t c = gsu.colr;
     if (!(gsu.por & 0x01)) {
-        if (bpp == 8 && !(gsu.por & 0x08)) {
-            if (!c)
+        if (s.md == 3) {
+            if (gsu.por & 0x08) {
+                if (!(c & 0x0F))
+                    return;
+            } else if (!c) {
                 return;
+            }
         } else if (!(c & 0x0F)) {
             return;
         }
     }
-    for (p = 0; p < bpp; p++) {
-        uint32_t b = (a + (p >> 1) * 16u + (p & 1)) & (snes_cart->sfx_ram_size - 1);
-        if ((c >> p) & 1)
-            ram_store[b] |= mask;
-        else
-            ram_store[b] &= (uint8_t)~mask;
+    if ((gsu.por & 0x02) && s.md != 3) {
+        if ((x ^ y) & 1)
+            c >>= 4;
+        c &= 0x0F;
     }
+    gsuclk_plot(&clk, &s, x, y, c);
+    clk_sync();
 }
 
 uint8_t gsu_rpix(uint8_t x, uint8_t y)
 {
-    unsigned bpp, p;
-    uint8_t mask, c = 0;
-    uint32_t a = pixel_at(x, y, &bpp, &mask);
-    if (go)
-        gsu_advance(gsu_rpix_cycles);
-    for (p = 0; p < bpp; p++) {
-        uint32_t b = (a + (p >> 1) * 16u + (p & 1)) & (snes_cart->sfx_ram_size - 1);
-        if (ram_store[b] & mask)
-            c |= (uint8_t)(1u << p);
-    }
-    return c;
+    GsuScreen s = screen();
+    uint8_t v = gsuclk_rpix(&clk, &s, x, y);
+    clk_sync();
+    return v;
 }

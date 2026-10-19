@@ -119,8 +119,8 @@ static void cursor_two(uint32_t b, uint16_t m1, uint8_t to1, uint16_t m2, uint8_
         { cyc(36); cursor_to(b, to1); }
     else if (cursor_pressed(b, m2))
         cursor_to(b, to2);
-cyc(10);
-    }
+    cyc(10);
+}
 
 /*
  * @routine 02:ECB8 CourseCursorAt0
@@ -354,8 +354,8 @@ void abi_CourseWindowZoomSetup(void)
     cyc(56);
     wr16(0x7F3408, 0x0000);
     (cyc(162), abi_WindowTable7FLong());
-cyc(216);
-    }
+    cyc(216);
+}
 
 /* 03:FB64, the zoom's start from X and Y (the offsets for
    CourseWindowZoomSetup): with the data bank $03, the window set up,
@@ -500,8 +500,8 @@ void abi_CourseZoomFromSelection4(void)
         course_zoom_box(0x0000);
     else
         course_zoom_box(0x0008);
-cyc(94);
-    }
+    cyc(94);
+}
 
 /*
  * @routine 03:FAA8 CourseZoomFromSelection
@@ -527,8 +527,8 @@ void abi_CourseZoomFromSelection(void)
         course_zoom_box(0x0008);
     else
         course_zoom_box(0x0000);
-cyc(94);
-    }
+    cyc(94);
+}
 
 void abi_TilemapLevelColumns(void);
 void abi_OamBufferHideLargeLong(void);
@@ -558,8 +558,8 @@ void abi_LevelColumnsSet4(void)
         else
             wr16(b | (uint16_t)(0x0F05 + i + cpu.x), cpu.a);
     }
-cyc(42);
-    }
+    cyc(42);
+}
 
 /* LDA.L $70:FC0B, BIT #bit: whether that course group is open; N, V from
    the save byte, Z from the test. */
@@ -663,8 +663,8 @@ static void sel_choose(uint32_t b)
     } else {
         sel_cursor(b, v ? (cyc(6), 0x60) : 0xB0);
     }
-cyc(42);
-    }
+    cyc(42);
+}
 
 /*
  * @routine 02:E7F5 SpeedCourseSelectStep
@@ -1827,8 +1827,8 @@ void abi_CourseScreenStartStunt(void)
  */
 void abi_CourseScreenNothing(void)
 {
-cyc(42);
-    }
+    cyc(42);
+}
 
 /*
  * @routine 02:E580 CourseScreenZoomOut
@@ -1955,8 +1955,8 @@ void abi_CourseRecordsDispatch(void)
     case 0xE781: abi_CourseRecordsClosing(); cyc(16); break;
     case 0xE76B: abi_CourseRecordsReopen(); cyc(16); break;
     }
-cyc(26);
-    }
+    cyc(26);
+}
 
 /* JMP (table,X) with X = $0D40 (8-bit): the state's step; any other word
    (a state past the table's end) through jump_routine. */
@@ -2100,8 +2100,8 @@ void abi_CourseScreenStep(void)
                         wr8(0x70FC0B, 0x07);
                         (cyc(62), abi_SaveChecksum());
                     }
-                cyc(16);
-                    }
+                    cyc(16);
+                }
             }
         }
     } else { cyc(16); }
@@ -2177,8 +2177,8 @@ void abi_CourseScreenFadeLeave(void)
 {
     if (fade_step())
         fade_done((uint32_t)cpu.db << 16, 0x08, 0x00);
-cyc(128);
-    }
+    cyc(128);
+}
 
 /*
  * @routine 02:ED98 CourseScreenFadeBack

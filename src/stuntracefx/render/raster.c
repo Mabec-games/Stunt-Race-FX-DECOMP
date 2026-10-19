@@ -107,7 +107,7 @@ static void edge_step(int x, uint16_t step, int rows)
         return;
     R[0] = gsu_add(0x0800, R[x], 0);
     if (gsu.s)
-        return;
+        return; else { gsu_code(0x01AA5E, 7); }
     R[x] = 0;
 }
 
@@ -127,22 +127,27 @@ static uint16_t uv_step(void)
    R12 = n (R13 = its start). */
 static void flat_copy(void)
 {
+    gsu_code(0x01A976, 11);
     int plus;
 
     R[13] = 0xA981;
     do {
+        gsu_code(0x01A981, 3);
         R[0] = gsu_ldb(R[5]);
+        gsu_code(0x01A984, 2);
         gsu_stb(R[4], (uint8_t)R[0]);
         R[4] = gsu_inc(R[4]);
         R[4] = gsu_inc(R[4]);
         R[5] = gsu_inc(R[5]);
         R[5] = gsu_inc(R[5]);
-        R[0] = gsu_ldb(R[5]);
+        R[0] = gsu_ldb(gsu_code_then(0x01A986, 6, R[5]));
+        gsu_code(0x01A98C, 2);
         gsu_stb(R[4], (uint8_t)R[0]);
         gsu_sub(R[0], R[2], 0);                 /* CMP R2 */
         plus = !gsu.s;
         R[5] = gsu_inc(R[5]);                   /* BPL's delay slot */
         if (!plus) {
+            gsu_code(0x01A992, 4);
             R[2] = R[0];
             R[6] = R[4];
         }
@@ -154,7 +159,8 @@ static void flat_copy(void)
         R[4] = gsu_inc(R[4]);
         plus = gsu_count_down(&R[12]);
         R[4] = gsu_inc(R[4]);                   /* LOOP's delay slot */
-    } while (plus);
+    } while (gsu_code_loop(0x01A98E, 4, gsu_code_loop(0x01A996, 4, gsu_code_loop(0x01A99C, 3, plus))));
+    gsu_code(0x01A98E, 4); gsu_code(0x01A996, 4); gsu_code(0x01A99C, 10);
 }
 
 /* AA74: a polygon less than two rows high, drawn as one row at the top
@@ -162,6 +168,7 @@ static void flat_copy(void)
    at the vertices again after the copy. Back to the list after. */
 static void flat_thin(void)
 {
+    gsu_code(0x01A9A6, 4); gsu_code(0x01AA74, 14);
     int go;
 
     R[0] = gsu_lsr(R[3]);
@@ -186,10 +193,11 @@ static void flat_thin(void)
         R[4] = gsu_inc(R[4]);
     } while (go);
     R[12] = gsu_sub(R[8], R[1], 0);
-    if (gsu.s || gsu.z)
-        return;
+    if (gsu.s || (gsu_code(0x01AA82, 4), gsu_code(0x01AA88, 4), gsu_code(0x01AA8E, 12), gsu.z))
+        { gsu_code(0x01AA8C, 2); gsu_code(0x01AA9E, 1); return; } else { gsu_code(0x01AA9A, 3); gsu_code(0x01AA9C, 1); gsu_code(0x01AA9C, 1); gsu_code(0x01AA9C, 1); gsu_code(0x01AA9C, 1); gsu_code(0x01AA9C, 1); gsu_code(0x01AA9C, 1); gsu_code(0x01AA9C, 1); gsu_code(0x01AA9C, 1); }
     R[13] = 0xAA9C;
     do {
+        gsu_code(0x01AA9D, 1);
         go = gsu_count_down(&R[12]);
         gsu_plot_r1();
     } while (go);
@@ -202,31 +210,33 @@ static void flat_thin(void)
 static int flat_left_edge(int from_a9ce)
 {
     for (;;) {
+        gsu_code(0x01A9D0, 4);
         if (from_a9ce)
             R[8] = R[7];
         from_a9ce = 1;
         R[7] = gsu_ldb(R[6]);
         R[6] = gsu_inc(R[6]);
         R[6] = gsu_inc(R[6]);
-        R[0] = gsu_ldb(R[6]);
+        R[0] = gsu_ldb(gsu_code_then(0x01A9D4, 4, R[6]));
         R[6] = gsu_inc(R[6]);
         R[11] = gsu_sub(R[0], R[2], 0);
         if (gsu.s)
-            return 0;
+            { gsu_code(0x01A9D8, 9); gsu_code(0x01AA70, 4); return 0; } else { gsu_code(0x01A9D8, 5); gsu_code(0x01A9E1, 3); }
         {
             int zero = gsu.z;
 
             R[6] = gsu_inc(R[6]);               /* BEQ's delay slot */
             if (!zero)
-                break;
+                { gsu_code(0x01A9E4, 7); break; } else { gsu_code(0x01A9CE, 2); }
         }
     }
     reciprocal_at(R[11]);
+    gsu_code(0x01A9EB, 3);
     gsu_stw(FX_LEFT_AT, R[6]);
     R[0] = gsu_sub(R[7], R[8], 0);
-    reciprocal_read();
+    (gsu_code(0x01A9EE, 4), reciprocal_read());
     R[7] = gsu_swap(R[8]);
-    R[6] = gsu_getbh(R[6]);
+    R[6] = gsu_getbh(gsu_code_then(0x01A9F2, 17, R[6]));
     R[8] = slope();
     return 1;
 }
@@ -235,30 +245,32 @@ static int flat_left_edge(int from_a9ce)
    R9 = the next x, its y less R2 in R3. 0 when the polygon has ended. */
 static int flat_right_edge(void)
 {
+    gsu_code(0x01AA08, 5);
     for (;;) {
+        gsu_code(0x01AA0D, 5);
         R[10] = R[9];
         R[0] = gsu_ldb(R[5]);
         R[5] = gsu_dec(R[5]);
         R[5] = gsu_dec(R[5]);
-        R[9] = gsu_ldb(R[5]);
+        R[9] = gsu_ldb(gsu_code_then(0x01AA12, 5, R[5]));
         R[5] = gsu_dec(R[5]);
         R[3] = gsu_sub(R[0], R[2], 0);
         if (gsu.s)
-            return 0;
+            return 0; else { gsu_code(0x01AA17, 5); gsu_code(0x01AA20, 3); }
         {
             int zero = gsu.z;
 
             R[5] = gsu_dec(R[5]);               /* BEQ's delay slot */
             if (!zero)
-                break;
+                { gsu_code(0x01AA23, 7); break; }
         }
     }
     reciprocal_at(R[3]);
     R[0] = gsu_sub(R[9], R[10], 0);
-    reciprocal_read();
+    (gsu_code(0x01AA2A, 4), reciprocal_read());
     R[9] = gsu_swap(R[10]);
-    R[6] = gsu_getbh(R[6]);
-    R[10] = slope();
+    R[6] = gsu_getbh(gsu_code_then(0x01AA2F, 6, R[6]));
+    R[10] = (gsu_code(0x01AA35, 10), slope());
     return 1;
 }
 
@@ -267,6 +279,7 @@ static int flat_right_edge(void)
    edge's x to the right's, both rounded (+ $7F) when an edge starts. */
 static void flat_polygon(void)
 {
+    gsu_code(0x01A956, 8); gsu_cache(0xA95D); gsu_code(0x01A95E, 17);
     int go;
 
     R[0] = gsu_inc(R[0]);
@@ -283,6 +296,7 @@ static void flat_polygon(void)
     R[1] = gsu_inc(R[1]);
     gsu_color((uint8_t)R[0]);
     R[0] = gsu_add(R[1], R[3], 0);
+    gsu_code(0x01A96F, 7);
     gsu_stw(FX_LIST_END, R[0]);
     R[5] = R[1];
     R[4] = gsu_sub(R[1], R[3], 0);
@@ -294,8 +308,9 @@ static void flat_polygon(void)
     R[0] = gsu_dec(R[0]);
     if (gsu.s) {
         flat_thin();
+        gsu_code(0x01AA9F, 3);
         return;
-    }
+    } else { gsu_code(0x01A9AA, 11); }
     R[6] = gsu_dec(R[6]);
     R[6] = gsu_dec(R[6]);
     R[5] = gsu_add(R[6], R[3], 0);
@@ -306,9 +321,11 @@ static void flat_polygon(void)
     R[9] = gsu_swap(R[8]);
     R[13] = 0xAA49;
     R[3] = gsu_sub(R[3], R[3], 0);              /* BRA's delay slot */
+    gsu_code(0x01A9B5, 12);
     if (!flat_left_edge(0))
         return;
     for (;;) {
+        gsu_code(0x01AA03, 5);
         /* AA03 */
         gsu_moves(R[3]);
         if (gsu.z) {
@@ -319,17 +336,24 @@ static void flat_polygon(void)
         }
         /* AA3F: the rows while both edges last */
         do {
+            gsu_code(0x01AA3F, 10);
             R[1] = gsu_hib(R[7]);
             R[0] = gsu_hib(R[9]);
             R[12] = gsu_sub(R[0], R[1], 0);
             go = !gsu.s;
             R[12] = gsu_inc(R[12]);             /* BMI's delay slot */
             if (go) {
+                gsu_code(0x01aa49, 1);
                 do {
+                    gsu_code(0x01aa4a, 1);
                     go = gsu_count_down(&R[12]);
+                    /* the PLOT in LOOP's delay slot runs after the fetch
+                       from where LOOP goes */
+                    gsu_code(go ? 0x01aa49 : 0x01aa4b, 1);
                     gsu_plot_r1();
                 } while (go);
-            }
+            } else { gsu_code(0x01AA4B, 1); }
+            gsu_code(0x01AA4C, 4); gsu_code(0x01AA59, 5); gsu_code(0x01AA67, 5);
             edge_step(7, R[8], 11);
             edge_step(9, R[10], 3);
             R[0] = gsu_and(R[11], R[3]);
@@ -337,12 +361,14 @@ static void flat_polygon(void)
             R[2] = gsu_inc(R[2]);               /* BNE's delay slot */
         } while (go);
         /* A9C1 */
+        gsu_code(0x01A9C1, 5); gsu_code(0x01AA6C, 4);
         gsu_moves(R[11]);
         if (!gsu.z)
-            continue;
+            continue; else { gsu_code(0x01A9C6, 9); }
         R[0] = gsu_add(0x007F, R[7], 0);
         R[7] = gsu_hib(R[0]);
         R[6] = gsu_ldw(FX_LEFT_AT);
+        gsu_code(0x01A9CF, 1);
         if (!flat_left_edge(1))
             return;
     }
@@ -352,6 +378,7 @@ static void flat_polygon(void)
    R0 is the error term, the carry from its SUB picks the step across. */
 static void line(void)
 {
+    gsu_code(0x01A911, 4); gsu_code(0x01AAA2, 12);
     int carry, go;
 
     R[0] = 0x0070;
@@ -362,22 +389,24 @@ static void line(void)
     R[0] = gsu_ldb(R[7]);
     R[7] = gsu_inc(R[7]);
     gsu_color((uint8_t)R[0]);
-    R[1] = gsu_ldb(R[7]);
+    R[1] = gsu_ldb(gsu_code_then(0x01AAAE, 5, R[7]));
     R[7] = gsu_inc(R[7]);
     R[7] = gsu_inc(R[7]);
-    R[2] = gsu_ldb(R[7]);
+    R[2] = gsu_ldb(gsu_code_then(0x01AAB3, 5, R[7]));
     R[7] = gsu_inc(R[7]);
     R[7] = gsu_inc(R[7]);
-    R[3] = gsu_ldb(R[7]);
+    R[3] = gsu_ldb(gsu_code_then(0x01AAB8, 5, R[7]));
     R[7] = gsu_inc(R[7]);
     R[7] = gsu_inc(R[7]);
-    R[4] = gsu_ldb(R[7]);
+    R[4] = gsu_ldb(gsu_code_then(0x01AABD, 5, R[7]));
     R[7] = gsu_inc(R[7]);
     R[7] = gsu_inc(R[7]);
+    gsu_code(0x01AAC2, 5);
     gsu_stw(FX_LIST_END, R[7]);
     R[5] = 0x0001;
     R[3] = gsu_sub(R[3], R[1], 0);
     if (gsu.s) {
+        gsu_code(0x01AACD, 5);
         R[5] = 0xFFFF;
         R[3] = gsu_not(R[3]);
         R[3] = gsu_inc(R[3]);
@@ -385,31 +414,36 @@ static void line(void)
     R[6] = 0x0001;
     R[4] = gsu_sub(R[4], R[2], 0);
     if (gsu.s) {
+        gsu_code(0x01AAC7, 6); gsu_code(0x01AAD2, 17);
         R[6] = 0xFFFF;
         R[4] = gsu_not(R[4]);
         R[4] = gsu_inc(R[4]);
-    }
+    } else { gsu_code(0x01AAC7, 6); gsu_code(0x01AAD2, 7); gsu_code(0x01AADE, 5); }
     R[0] = gsu_sub(R[3], R[4], 0);
     if (!gsu.s) {
+        gsu_code(0x01AAE3, 7);
         R[12] = R[3];
         R[12] = gsu_inc(R[12]);
         R[0] = gsu_lsr(R[0]);
         R[0] = gsu_sub(R[0], R[4], 0);
         R[13] = 0xAAEA;
         do {
+            gsu_code(0x01AAEA, 3); gsu_code(0x01AAF0, 1);
             carry = gsu.cy;
             gsu_plot_r1();                      /* BCS's delay slot */
             if (!carry) {
+                gsu_code(0x01AAEE, 2); gsu_code(0x01AAF1, 4);
                 R[0] = gsu_add(R[0], R[3], 0);
                 R[2] = gsu_add(R[2], R[6], 0);
-            }
+            } else { gsu_code(0x01AAF1, 4); }
             R[1] = gsu_dec(R[1]);
             R[1] = gsu_add(R[1], R[5], 0);
             go = gsu_count_down(&R[12]);
             R[0] = gsu_sub(R[0], R[4], 0);      /* LOOP's delay slot */
         } while (go);
+        gsu_code(0x01AAF5, 4);
         return;
-    }
+    } else { gsu_code(0x01AAF9, 9); }
     R[12] = R[4];
     R[12] = gsu_inc(R[12]);
     R[0] = gsu_not(R[0]);
@@ -418,17 +452,20 @@ static void line(void)
     R[0] = gsu_sub(R[0], R[3], 0);
     R[13] = 0xAB02;
     do {
+        gsu_code(0x01AB02, 3); gsu_code(0x01AB08, 1);
         carry = gsu.cy;
         gsu_plot_r1();
         if (!carry) {
+            gsu_code(0x01AB06, 2); gsu_code(0x01AB09, 4);
             R[0] = gsu_add(R[0], R[4], 0);
             R[1] = gsu_add(R[1], R[5], 0);
-        }
+        } else { gsu_code(0x01AB09, 4); }
         R[1] = gsu_dec(R[1]);
         R[2] = gsu_add(R[2], R[6], 0);
         go = gsu_count_down(&R[12]);
         R[0] = gsu_sub(R[0], R[3], 0);
     } while (go);
+    gsu_code(0x01AB0D, 4);
 }
 
 /* A7D9 / A7E2: the next left edge of a textured polygon from the walk at
@@ -436,42 +473,51 @@ static void line(void)
    steps per row. 0 when the polygon has ended. */
 static int tex_left_edge(void)
 {
+    gsu_code(0x01A7E2, 9);
     R[0] = gsu_add(0x007F, R[9], 0);
     R[9] = gsu_hib(R[0]);
     R[0] = gsu_ldw(FX_LEFT_U);
     R[0] = gsu_hib(R[0]);
+    gsu_code(0x01A7EB, 2);
     gsu_sbk(R[0]);
-    R[0] = gsu_ldw(FX_LEFT_V);
+    R[0] = gsu_ldw(gsu_code_then(0x01A7ED, 3, FX_LEFT_V));
     R[0] = gsu_hib(R[0]);
+    gsu_code(0x01A7F0, 2);
     gsu_sbk(R[0]);
-    R[6] = gsu_ldw(FX_LEFT_AT);
+    R[6] = gsu_ldw(gsu_code_then(0x01A7F2, 3, FX_LEFT_AT));
     for (;;) {
+        gsu_code(0x01A7F5, 5);
         R[12] = R[9];
         R[0] = gsu_ldw(FX_LEFT_U);
+        gsu_code(0x01A7FA, 3);
         gsu_stw(FX_LEFT_U_PREV, R[0]);
-        R[0] = gsu_ldw(FX_LEFT_V);
+        R[0] = gsu_ldw(gsu_code_then(0x01A7FD, 3, FX_LEFT_V));
+        gsu_code(0x01A800, 3);
         gsu_stw(FX_LEFT_V_PREV, R[0]);
-        R[9] = gsu_ldb(R[6]);
+        R[9] = gsu_ldb(gsu_code_then(0x01A803, 3, R[6]));
         R[6] = gsu_inc(R[6]);
         R[6] = gsu_inc(R[6]);
-        R[4] = gsu_ldb(R[6]);
+        R[4] = gsu_ldb(gsu_code_then(0x01A806, 5, R[6]));
         R[6] = gsu_inc(R[6]);
         R[6] = gsu_inc(R[6]);
-        R[0] = gsu_ldb(R[6]);
+        R[0] = gsu_ldb(gsu_code_then(0x01A80B, 4, R[6]));
+        gsu_code(0x01A80F, 3);
         gsu_stw(FX_LEFT_U, R[0]);
         R[6] = gsu_inc(R[6]);
         R[6] = gsu_inc(R[6]);
-        R[0] = gsu_ldb(R[6]);
+        R[0] = gsu_ldb(gsu_code_then(0x01A812, 4, R[6]));
+        gsu_code(0x01A816, 3);
         gsu_stw(FX_LEFT_V, R[0]);
         R[6] = gsu_inc(R[6]);
         R[6] = gsu_inc(R[6]);
         R[11] = gsu_sub(R[4], R[2], 0);
         if (!gsu.z)
-            break;
+            { gsu_code(0x01A819, 10); break; } else { gsu_code(0x01A7F4, 1); gsu_code(0x01A819, 7); }
     }
     if (gsu.s)
-        return 0;
+        { gsu_code(0x01A823, 4); return 0; } else { gsu_code(0x01A827, 4); }
     gsu_stw(FX_LEFT_AT, R[6]);
+    gsu_code(0x01A82B, 31);
     reciprocal_at(R[11]);
     reciprocal_read();
     R[6] = gsu_getbh(R[6]);
@@ -479,18 +525,20 @@ static int tex_left_edge(void)
     R[9] = gsu_swap(R[12]);
     R[7] = slope();
     R[0] = gsu_ldw(FX_LEFT_U);
-    R[1] = gsu_ldw(FX_LEFT_U_PREV);
+    R[1] = gsu_ldw(gsu_code_then(0x01A84A, 3, FX_LEFT_U_PREV));
     R[0] = gsu_sub(R[0], R[1], 0);
-    gsu_stw(FX_LEFT_DU, uv_step());
-    R[0] = gsu_ldw(FX_LEFT_U_PREV);
+    gsu_stw(FX_LEFT_DU, (gsu_code(0x01A84D, 8), uv_step()));
+    R[0] = gsu_ldw(gsu_code_then(0x01A855, 3, FX_LEFT_U_PREV));
     R[0] = gsu_swap(R[0]);
+    gsu_code(0x01A858, 4);
     gsu_stw(FX_LEFT_U, R[0]);
-    R[0] = gsu_ldw(FX_LEFT_V);
-    R[1] = gsu_ldw(FX_LEFT_V_PREV);
+    R[0] = gsu_ldw(gsu_code_then(0x01A85C, 3, FX_LEFT_V));
+    R[1] = gsu_ldw(gsu_code_then(0x01A85F, 3, FX_LEFT_V_PREV));
     R[0] = gsu_sub(R[0], R[1], 0);
-    gsu_stw(FX_LEFT_DV, uv_step());
-    R[0] = gsu_ldw(FX_LEFT_V_PREV);
+    gsu_stw(FX_LEFT_DV, (gsu_code(0x01A862, 8), uv_step()));
+    R[0] = gsu_ldw(gsu_code_then(0x01A86A, 3, FX_LEFT_V_PREV));
     R[0] = gsu_swap(R[0]);
+    gsu_code(0x01A86D, 4);
     gsu_stw(FX_LEFT_V, R[0]);
     return 1;
 }
@@ -498,42 +546,51 @@ static int tex_left_edge(void)
 /* A879: the next right edge, walking back from $0062. */
 static int tex_right_edge(void)
 {
+    gsu_code(0x01A879, 9);
     R[0] = gsu_add(0x007F, R[10], 0);
     R[10] = gsu_hib(R[0]);
     R[0] = gsu_ldw(FX_RIGHT_U);
     R[0] = gsu_hib(R[0]);
+    gsu_code(0x01A882, 2);
     gsu_sbk(R[0]);
-    R[0] = gsu_ldw(FX_RIGHT_V);
+    R[0] = gsu_ldw(gsu_code_then(0x01A884, 3, FX_RIGHT_V));
     R[0] = gsu_hib(R[0]);
+    gsu_code(0x01A887, 2);
     gsu_sbk(R[0]);
-    R[6] = gsu_ldw(FX_RIGHT_AT);
+    R[6] = gsu_ldw(gsu_code_then(0x01A889, 3, FX_RIGHT_AT));
     for (;;) {
+        gsu_code(0x01A88C, 5);
         R[12] = R[10];
         R[0] = gsu_ldw(FX_RIGHT_U);
+        gsu_code(0x01A891, 3);
         gsu_stw(FX_RIGHT_U_PREV, R[0]);
-        R[0] = gsu_ldw(FX_RIGHT_V);
+        R[0] = gsu_ldw(gsu_code_then(0x01A894, 3, FX_RIGHT_V));
+        gsu_code(0x01A897, 3);
         gsu_stw(FX_RIGHT_V_PREV, R[0]);
         R[6] = gsu_dec(R[6]);
         R[6] = gsu_dec(R[6]);
-        R[0] = gsu_ldb(R[6]);
+        R[0] = gsu_ldb(gsu_code_then(0x01A89A, 4, R[6]));
+        gsu_code(0x01A89E, 3);
         gsu_stw(FX_RIGHT_V, R[0]);
         R[6] = gsu_dec(R[6]);
         R[6] = gsu_dec(R[6]);
-        R[0] = gsu_ldb(R[6]);
+        R[0] = gsu_ldb(gsu_code_then(0x01A8A1, 4, R[6]));
+        gsu_code(0x01A8A5, 3);
         gsu_stw(FX_RIGHT_U, R[0]);
         R[6] = gsu_dec(R[6]);
         R[6] = gsu_dec(R[6]);
-        R[0] = gsu_ldb(R[6]);
+        R[0] = gsu_ldb(gsu_code_then(0x01A8A8, 4, R[6]));
         R[6] = gsu_dec(R[6]);
         R[6] = gsu_dec(R[6]);
-        R[10] = gsu_ldb(R[6]);
+        R[10] = gsu_ldb(gsu_code_then(0x01A8AC, 5, R[6]));
         R[3] = gsu_sub(R[0], R[2], 0);
         if (!gsu.z)
-            break;
+            { gsu_code(0x01A8B1, 7); gsu_code(0x01A8BC, 4); break; } else { gsu_code(0x01A88B, 1); gsu_code(0x01A8B1, 4); }
     }
     if (gsu.s)
         return 0;
     gsu_stw(FX_RIGHT_AT, R[6]);
+    gsu_code(0x01A8C0, 31);
     reciprocal_at(R[3]);
     reciprocal_read();
     R[6] = gsu_getbh(R[6]);
@@ -541,19 +598,22 @@ static int tex_right_edge(void)
     R[10] = gsu_swap(R[12]);
     R[8] = slope();
     R[0] = gsu_ldw(FX_RIGHT_U);
-    R[1] = gsu_ldw(FX_RIGHT_U_PREV);
+    R[1] = gsu_ldw(gsu_code_then(0x01A8DF, 3, FX_RIGHT_U_PREV));
     R[0] = gsu_sub(R[0], R[1], 0);
-    gsu_stw(FX_RIGHT_DU, uv_step());
-    R[0] = gsu_ldw(FX_RIGHT_U_PREV);
+    gsu_stw(FX_RIGHT_DU, (gsu_code(0x01A8E2, 8), uv_step()));
+    R[0] = gsu_ldw(gsu_code_then(0x01A8EA, 3, FX_RIGHT_U_PREV));
     R[0] = gsu_swap(R[0]);
+    gsu_code(0x01A8ED, 4);
     gsu_stw(FX_RIGHT_U, R[0]);
-    R[0] = gsu_ldw(FX_RIGHT_V);
-    R[1] = gsu_ldw(FX_RIGHT_V_PREV);
+    R[0] = gsu_ldw(gsu_code_then(0x01A8F1, 3, FX_RIGHT_V));
+    R[1] = gsu_ldw(gsu_code_then(0x01A8F4, 3, FX_RIGHT_V_PREV));
     R[0] = gsu_sub(R[0], R[1], 0);
-    gsu_stw(FX_RIGHT_DV, uv_step());
-    R[0] = gsu_ldw(FX_RIGHT_V_PREV);
+    gsu_stw(FX_RIGHT_DV, (gsu_code(0x01A8F7, 8), uv_step()));
+    R[0] = gsu_ldw(gsu_code_then(0x01A8FF, 3, FX_RIGHT_V_PREV));
     R[0] = gsu_swap(R[0]);
+    gsu_code(0x01A902, 4);
     gsu_stw(FX_RIGHT_V, R[0]);
+    gsu_code(0x01A906, 3);
     return 1;
 }
 
@@ -585,26 +645,33 @@ static uint16_t tex_across(uint16_t step_r, uint16_t right, uint16_t left, int l
    each kept at $0064/$0066. */
 static void tex_rows(void)
 {
+    gsu_code(0x01A710, 4);
     int go;
 
     gsu_stw(FX_LEFT_SLOPE, R[7]);
+    gsu_code(0x01A714, 3);
     gsu_stw(FX_RIGHT_SLOPE, R[8]);
     R[0] = gsu_sub(R[11], R[3], 0);
     if (!gsu.s) {
+        gsu_code(0x01A717, 8);
         gsu_stw(FX_LEFT_ROWS, R[0]);
         R[0] = gsu_swap(R[3]);
         R[2] = gsu_or(R[0], R[2]);
         R[0] = gsu_sub(R[0], R[0], 0);
+        gsu_code(0x01A71F, 8);
         gsu_stw(FX_RIGHT_ROWS, R[0]);
     } else {
+        gsu_code(0x01A717, 4); gsu_code(0x01A729, 6);
         R[0] = gsu_sub(R[3], R[11], 0);
         gsu_stw(FX_RIGHT_ROWS, R[0]);
         R[0] = gsu_swap(R[11]);
         R[2] = gsu_or(R[0], R[2]);
         R[0] = gsu_sub(R[0], R[0], 0);
+        gsu_code(0x01A72F, 8);
         gsu_stw(FX_LEFT_ROWS, R[0]);
     }
     do {
+        gsu_code(0x01A736, 10); gsu_code(0x01A742, 7); gsu_code(0x01A7CF, 4);
         /* A736 */
         R[1] = gsu_hib(R[9]);
         R[0] = gsu_hib(R[10]);
@@ -614,34 +681,39 @@ static void tex_rows(void)
         if (!go)
             R[12] = 0x0001;
         reciprocal_at(R[12]);
-        reciprocal_read();
-        R[6] = gsu_getbh(R[6]);
-        R[5] = tex_across(FX_RIGHT_DU, FX_RIGHT_U, FX_LEFT_U, 8, FX_LEFT_DU);
-        R[6] = tex_across(FX_RIGHT_DV, FX_RIGHT_V, FX_LEFT_V, 7, FX_LEFT_DV);
-        R[4] = gsu_ldw(FX_TEX_U_OFF);
+        (gsu_code(0x01A749, 2), reciprocal_read());
+        R[6] = gsu_getbh(gsu_code_then(0x01A74C, 3, R[6]));
+        R[5] = tex_across(FX_RIGHT_DU, FX_RIGHT_U, FX_LEFT_U, 8, gsu_code_then(0x01A74F, 3, FX_LEFT_DU));
+        R[6] = tex_across(FX_RIGHT_DV, FX_RIGHT_V, FX_LEFT_V, 7, gsu_code_then(0x01A766, 3, FX_LEFT_DV));
+        R[4] = gsu_ldw(gsu_code_then(0x01A77D, 3, FX_TEX_U_OFF));
         R[8] = gsu_add(R[8], R[4], 0);
-        R[4] = gsu_ldw(FX_TEX_V_OFF);
+        R[4] = gsu_ldw(gsu_code_then(0x01A780, 5, FX_TEX_V_OFF));
         R[7] = gsu_add(R[7], R[4], 0);
-        R[0] = gsu_ldw(FX_TEX_BANK);
+        R[0] = gsu_ldw(gsu_code_then(0x01A785, 5, FX_TEX_BANK));
         R[0] = gsu_lob(R[0]);
+        gsu_code(0x01A78A, 6);
         gsu_romb(R[0]);
         R[4] = gsu_ldw(FX_TEX_BASE);
-        R[3] = gsu_ldw(FX_TEX_MASK);
+        R[3] = gsu_ldw(gsu_code_then(0x01A790, 3, FX_TEX_MASK));
         R[13] = 0xA794;
+        gsu_code(0x01A793, 2);
         do {
+            gsu_code(0x01A795, 4);
             R[0] = gsu_merge();
             R[0] = gsu_and(R[0], R[3]);
             gsu_r14(gsu_add(R[0], R[4], 0));
             R[7] = gsu_add(R[7], R[6], 0);
             R[8] = gsu_add(R[8], R[5], 0);
-            gsu_color(gsu_getb());              /* GETC */
+            gsu_color((gsu_code(0x01A799, 5), gsu_getb()));              /* GETC */
             go = gsu_count_down(&R[12]);
-            gsu_plot_r1();
+            (gsu_code(0x01A79E, 1), gsu_plot_r1());
         } while (go);
         R[0] = gsu_sub(R[0], R[0], 0);
+        gsu_code(0x01A7A0, 6);
         gsu_romb(R[0]);
         R[7] = gsu_ldw(FX_LEFT_SLOPE);
-        R[8] = gsu_ldw(FX_RIGHT_SLOPE);
+        R[8] = gsu_ldw(gsu_code_then(0x01A7A6, 3, FX_RIGHT_SLOPE));
+        gsu_code(0x01A7A9, 4); gsu_code(0x01A7B6, 5); gsu_code(0x01A7C4, 11);
         edge_step(9, R[7], -1);
         edge_step(10, R[8], -1);
         R[2] = gsu_inc(R[2]);
@@ -650,8 +722,8 @@ static void tex_rows(void)
         R[2] = gsu_swap(R[0]);
         R[0] = gsu_hib(R[2]);
     } while (!gsu.z);
-    R[11] = gsu_ldw(FX_LEFT_ROWS);
-    R[3] = gsu_ldw(FX_RIGHT_ROWS);
+    R[11] = gsu_ldw(gsu_code_then(0x01A7D3, 4, FX_LEFT_ROWS));
+    R[3] = gsu_ldw(gsu_code_then(0x01A7D7, 3, FX_RIGHT_ROWS));
 }
 
 /* A662: a textured polygon (R0 = NOT its type, R1 at its bank byte). The
@@ -660,6 +732,7 @@ static void tex_rows(void)
    Then the edges from the top vertex down. */
 static void tex_polygon(void)
 {
+    gsu_code(0x01A662, 11); gsu_code(0x01A91A, 4);
     int go;
 
     R[0] = gsu_lob(R[0]);
@@ -670,38 +743,46 @@ static void tex_polygon(void)
     R[3] = R[0];
     R[0] = gsu_ldb(R[1]);
     R[1] = gsu_inc(R[1]);
+    gsu_code(0x01A66D, 4);
     gsu_stw(FX_TEX_BANK, R[0]);
     R[0] = gsu_sub(R[0], R[0], 0);
     gsu_cmode(R[0]);
-    R[0] = gsu_ldw(R[1]);
+    R[0] = gsu_ldw(gsu_code_then(0x01A671, 4, R[1]));
     R[1] = gsu_inc(R[1]);
     R[1] = gsu_inc(R[1]);
     gsu_color((uint8_t)R[0]);
     R[0] = gsu_swap(R[0]);
     gsu_cmode(R[0]);
-    R[0] = gsu_ldw(R[1]);
+    R[0] = gsu_ldw(gsu_code_then(0x01A675, 7, R[1]));
     R[1] = gsu_inc(R[1]);
     R[1] = gsu_inc(R[1]);
+    gsu_code(0x01A67C, 5);
     gsu_stw(FX_TEX_BASE, R[0]);
-    R[0] = gsu_ldw(R[1]);
+    R[0] = gsu_ldw(gsu_code_then(0x01A681, 1, R[1]));
     R[1] = gsu_inc(R[1]);
     R[1] = gsu_inc(R[1]);
+    gsu_code(0x01A682, 5);
     gsu_stw(FX_TEX_MASK, R[0]);
     R[0] = gsu_add(R[1], R[3], 0);
+    gsu_code(0x01A687, 5);
     gsu_stw(FX_LIST_END, R[0]);
     R[5] = R[1];
     R[4] = gsu_sub(R[1], R[3], 0);
     R[2] = 0x03FF;
     R[8] = 0;
     R[13] = 0xA697;
+    gsu_code(0x01A68C, 11);
     do {
+        gsu_code(0x01A697, 3);
         R[0] = gsu_ldb(R[5]);
+        gsu_code(0x01A69A, 2);
         gsu_stb(R[4], (uint8_t)R[0]);
         R[4] = gsu_inc(R[4]);
         R[4] = gsu_inc(R[4]);
         R[5] = gsu_inc(R[5]);
         R[5] = gsu_inc(R[5]);
-        R[0] = gsu_ldb(R[5]);
+        R[0] = gsu_ldb(gsu_code_then(0x01A69C, 6, R[5]));
+        gsu_code(0x01A6A2, 2);
         gsu_stb(R[4], (uint8_t)R[0]);
         gsu_sub(R[0], R[2], 0);                 /* CMP R2 */
         if (gsu.s) {
@@ -719,26 +800,30 @@ static void tex_polygon(void)
         R[5] = gsu_inc(R[5]);
         R[0] = gsu_ldb(R[5]);
         R[5] = gsu_dec(R[5]);
+        gsu_code(0x01A6BC, 3);
         gsu_stb(R[5], (uint8_t)R[0]);
         R[5] = gsu_inc(R[5]);
         R[5] = gsu_inc(R[5]);
+        gsu_code(0x01A6BF, 4);
         gsu_stb(R[4], (uint8_t)R[0]);
         R[4] = gsu_inc(R[4]);
         R[4] = gsu_inc(R[4]);
         R[5] = gsu_inc(R[5]);
-        R[0] = gsu_ldb(R[5]);
+        R[0] = gsu_ldb(gsu_code_then(0x01A6C3, 5, R[5]));
         R[5] = gsu_dec(R[5]);
+        gsu_code(0x01A6C8, 3);
         gsu_stb(R[5], (uint8_t)R[0]);
         R[5] = gsu_inc(R[5]);
         R[5] = gsu_inc(R[5]);
+        gsu_code(0x01A6CB, 4);
         gsu_stb(R[4], (uint8_t)R[0]);
         R[4] = gsu_inc(R[4]);
         go = gsu_count_down(&R[12]);
         R[4] = gsu_inc(R[4]);
-    } while (go);
+    } while (gsu_code_loop(0x01A6CF, 2, go));
     R[0] = gsu_sub(R[2], R[8], 0);
     if (gsu.z)
-        return;
+        { gsu_code(0x01A6CF, 11); return; } else { gsu_code(0x01A6CF, 7); gsu_code(0x01A6DA, 10); }
     R[4] = R[6];
     R[4] = gsu_dec(R[4]);
     R[4] = gsu_dec(R[4]);
@@ -750,28 +835,36 @@ static void tex_polygon(void)
     R[10] = R[9];
     R[4] = gsu_inc(R[4]);
     R[4] = gsu_inc(R[4]);
-    R[0] = gsu_ldb(R[4]);
+    R[0] = gsu_ldb(gsu_code_then(0x01A6E4, 10, R[4]));
     R[0] = gsu_swap(R[0]);
+    gsu_code(0x01A6EE, 4);
     gsu_stw(FX_LEFT_U, R[0]);
+    gsu_code(0x01A6F2, 3);
     gsu_stw(FX_RIGHT_U, R[0]);
     R[4] = gsu_inc(R[4]);
     R[4] = gsu_inc(R[4]);
-    R[0] = gsu_ldb(R[4]);
+    R[0] = gsu_ldb(gsu_code_then(0x01A6F5, 4, R[4]));
     R[0] = gsu_swap(R[0]);
+    gsu_code(0x01A6F9, 4);
     gsu_stw(FX_LEFT_V, R[0]);
+    gsu_code(0x01A6FD, 3);
     gsu_stw(FX_RIGHT_V, R[0]);
     R[4] = gsu_inc(R[4]);
     R[4] = gsu_inc(R[4]);
+    gsu_code(0x01A700, 5);
     gsu_stw(FX_LEFT_AT, R[4]);
+    gsu_code(0x01A705, 3);
     gsu_stw(FX_RIGHT_AT, R[5]);
     R[11] = 0;
     R[3] = 0;
+    gsu_code(0x01A708, 5); gsu_cache(0xA70C); gsu_code(0x01A70D, 3); gsu_code(0x01A7D9, 1);
     for (;;) {
+        gsu_code(0x01A7DA, 4);
         /* A7D9 */
         gsu_moves(R[11]);
         R[0] = R[11];
         if (gsu.z && !tex_left_edge())
-            return;
+            return; else { gsu_code(0x01A871, 4); }
         /* A870 */
         gsu_moves(R[3]);
         R[0] = R[3];
@@ -849,7 +942,7 @@ static void clip_cross(const ClipEdge *e, uint16_t ret)
         R[6] = R[0];
     }
     R[0] = gsu_ldw(e->edge);
-    R[0] = gsu_sub(R[0], R[e->y ? 2 : 1], 0);
+    R[0] = gsu_sub(R[0], R[e->y ? (gsu_code(0x0181AE, 5), gsu_code(0x0181AE, 5), gsu_code(0x0181AE, 5), gsu_code(0x0181AE, 5), gsu_code(0x01A4B3, 16), 2) : (gsu_code(0x0181A7, 4), gsu_code(0x0181A7, 4), gsu_code(0x0181A7, 4), gsu_code(0x0181A7, 4), 1)], 0);
     {
         uint32_t p = gsu_lmult(R[0], R[6]);
 
@@ -974,6 +1067,7 @@ static const ClipEdge polygon_edges[4] = {
 /* A65C: nothing is left: R0 = 0, R15 pulled. */
 static void clip_none(void)
 {
+    gsu_code(0x01A16E, 8); gsu_code(0x01A65C, 6);
     R[0] = gsu_sub(R[0], R[0], 0);
     gsu_pull(&R[10]);
 }
@@ -983,6 +1077,7 @@ static void clip_none(void)
    nothing. Ends with R0 = 2, R15 pulled. */
 static void clip_line(void)
 {
+    gsu_code(0x019F01, 4); gsu_code(0x01A271, 12);
     int k;
 
     for (k = 0; k < 4; k++) {
@@ -1000,7 +1095,7 @@ static void clip_line(void)
         if (gsu.s) {
             clip_none();
             return;
-        }
+        } else { gsu_code(0x01A24E, 4); gsu_code(0x01A256, 9); }
         R[0] = gsu_add(R[0], 2, 0);
     }
     R[0] = 0x0002;
@@ -1022,6 +1117,7 @@ void abi_FxProjectVertex(void);
 /* UMULT #n: the unsigned product of the low byte and n. */
 static uint16_t umult_imm(uint16_t v, int n)
 {
+    gsu_code(0x0198F0, 8);
     uint16_t r = (uint16_t)((v & 0xFF) * n);
 
     gsu_sz(r);
@@ -1070,8 +1166,9 @@ static void near_count(void)
 /* 9A4C, and 9A43: R0 = 0, or the count, and R15 pulled. */
 static void gather_return(int count)
 {
+    gsu_code(0x019A37, 8);
     if (count)
-        R[0] = gsu_ldw(FX_COUNT);
+        R[0] = gsu_ldw(gsu_code_then(0x019A43, 5, FX_COUNT));
     else
         R[0] = gsu_sub(R[0], R[0], 0);
     gsu_pull(&R[10]);
@@ -1111,14 +1208,17 @@ void abi_FxPolygonGather(void)
 
     gsu_push(&R[10], R[11]);
     R[9] = R[0];
-    R[5] = gsu_ldw(FX_OFFSET_X);
-    R[6] = gsu_ldw(FX_OFFSET_Y);
-    R[7] = gsu_ldw(FX_OFFSET_Z);
-    R[2] = gsu_ldw(FX_POLY_OUT);
+    R[5] = gsu_ldw(gsu_code_then(0x0198DA, 7, FX_OFFSET_X));
+    R[6] = gsu_ldw(gsu_code_then(0x0198E1, 3, FX_OFFSET_Y));
+    R[7] = gsu_ldw(gsu_code_then(0x0198E4, 3, FX_OFFSET_Z));
+    R[2] = gsu_ldw(gsu_code_then(0x0198E7, 3, FX_POLY_OUT));
     R[12] = R[9];
     R[13] = 0x98ED;
+    gsu_code(0x0198EA, 3);
     do {
+        gsu_code(0x0198ED, 2);
         R[0] = gsu_getb();
+        gsu_code(0x0198EF, 1);
         gsu_r14(gsu_inc(R[14]));
         R[0] = umult_imm(R[0], 6);
         R[1] = gsu_add(FX_POINTS, R[0], 0);
@@ -1126,109 +1226,135 @@ void abi_FxPolygonGather(void)
         R[1] = gsu_inc(R[1]);
         R[1] = gsu_inc(R[1]);
         R[0] = gsu_add(R[0], R[5], 0);
+        gsu_code(0x0198F8, 4);
         gsu_stw(R[2], R[0]);
         R[2] = gsu_inc(R[2]);
         R[2] = gsu_inc(R[2]);
-        R[0] = gsu_ldw(R[1]);
+        R[0] = gsu_ldw(gsu_code_then(0x0198FC, 3, R[1]));
         R[1] = gsu_inc(R[1]);
         R[1] = gsu_inc(R[1]);
         R[0] = gsu_add(R[0], R[6], 0);
+        gsu_code(0x0198FF, 4);
         gsu_stw(R[2], R[0]);
         R[2] = gsu_inc(R[2]);
         R[2] = gsu_inc(R[2]);
-        R[0] = gsu_ldw(R[1]);
+        R[0] = gsu_ldw(gsu_code_then(0x019903, 3, R[1]));
         R[0] = gsu_add(R[0], R[7], 0);
+        gsu_code(0x019906, 2);
         gsu_stw(R[2], R[0]);
         R[2] = gsu_inc(R[2]);
         go = gsu_count_down(&R[12]);
         R[2] = gsu_inc(R[2]);
-    } while (go);
+    } while (gsu_code_loop(0x019908, 2, go));
     R[0] = gsu_sub(R[0], R[0], 0);
+    gsu_code(0x019908, 9);
     gsu_stw(FX_COUNT, R[0]);
-    R[7] = gsu_ldw(FX_POLY_OUT);
+    R[7] = gsu_ldw(gsu_code_then(0x019911, 3, FX_POLY_OUT));
     R[8] = FX_CLIP_LIST;
     R[0] = gsu_sub(R[9], 2, 0);
     if (gsu.z) {
+        gsu_code(0x019914, 11);
         near_load(1, 2, 3, 0);
+        gsu_code(0x019927, 4);
         near_load(4, 5, 6, 1);
         R[11] = 0x9937;
-        abi_FxSegmentCrossZ();
+        (gsu_code(0x019933, 4), abi_FxSegmentCrossZ());
+        gsu_code(0x019937, 3);
         near_put(1, 2, 3);
+        gsu_code(0x019942, 4);
         near_put(4, 5, 6);
         R[0] = 0x0002;
+        gsu_code(0x01994E, 7);
         gsu_stw(FX_COUNT, R[0]);
     } else {
+        gsu_code(0x019914, 8);
         do {
+            gsu_code(0x019958, 3);
             /* 9958 */
             near_load(1, 2, 3, 0);
             R[0] = gsu_dec(R[9]);
             if (gsu.z)
-                R[7] = gsu_ldw(FX_POLY_OUT);
+                R[7] = gsu_ldw(gsu_code_then(0x019963, 11, FX_POLY_OUT));
+            gsu_code(0x01996E, 2);
             near_load(4, 5, 6, 1);
             R[7] = gsu_sub(R[7], 4, 0);
             R[0] = gsu_and(R[6], R[3]);
             if (!gsu.s) {
+                gsu_code(0x019978, 7); gsu_code(0x019983, 5);
                 gsu_moves(R[3]);
                 if (!gsu.s) {
+                    gsu_code(0x01998C, 3);
                     near_put(1, 2, 3);
-                    near_count();
+                    (gsu_code(0x019997, 5), near_count());
                     gsu_moves(R[6]);
                     if (gsu.s) {
+                        gsu_code(0x01999E, 4); gsu_code(0x0199A6, 5);
                         R[11] = 0x99AB;
                         abi_FxSegmentCrossZ();
+                        gsu_code(0x0199AB, 3);
                         near_put(4, 5, 6);
-                        near_count();
-                    }
+                        (gsu_code(0x0199B6, 5), near_count());
+                    } else { gsu_code(0x01999E, 8); }
+                    gsu_code(0x0199D6, 1);
                 } else {
+                    gsu_code(0x019988, 4); gsu_code(0x0199C0, 5);
                     R[11] = 0x99C5;
                     abi_FxSegmentCrossZ();
+                    gsu_code(0x0199C5, 3);
                     near_put(1, 2, 3);
-                    near_count();
+                    (gsu_code(0x0199D0, 5), near_count());
                 }
-            }
+                gsu_code(0x0199D7, 3);
+            } else { gsu_code(0x019978, 11); gsu_code(0x0199D6, 4); }
             /* 99D6 */
             R[9] = gsu_dec(R[9]);
-        } while (!gsu.z);
-        R[0] = gsu_ldw(FX_COUNT);
+        } while (gsu_code_loop(0x0199DA, 4, !gsu.z));
+        R[0] = gsu_ldw(gsu_code_then(0x0199DE, 4, FX_COUNT));
         R[0] = gsu_sub(R[0], 3, 0);
         if (gsu.s) {
             gather_return(0);
             return;
-        }
+        } else { gsu_code(0x0199E2, 4); }
     }
     /* 99EA */
-    R[3] = gsu_ldw(FX_OFFSET_X);
-    R[13] = gsu_ldw(FX_OFFSET_Y);
-    R[9] = gsu_ldw(FX_OFFSET_Z);
+    R[3] = gsu_ldw(gsu_code_then(0x0199EA, 4, FX_OFFSET_X));
+    R[13] = gsu_ldw(gsu_code_then(0x0199EE, 3, FX_OFFSET_Y));
+    R[9] = gsu_ldw(gsu_code_then(0x0199F1, 3, FX_OFFSET_Z));
     R[0] = 0x0014;
+    gsu_code(0x0199F4, 8);
     gsu_romb(R[0]);
     R[0] = gsu_sub(R[0], R[0], 0);
     gsu_stw(FX_CODES, R[0]);
+    gsu_code(0x0199FC, 3);
     gsu_stw(FX_ROM_R14, R[14]);
-    R[12] = gsu_ldw(FX_COUNT);
+    R[12] = gsu_ldw(gsu_code_then(0x0199FF, 3, FX_COUNT));
     R[7] = FX_CLIP_LIST;
-    R[8] = gsu_ldw(FX_POLY_OUT);
+    R[8] = gsu_ldw(gsu_code_then(0x019A02, 6, FX_POLY_OUT));
     do {
+        gsu_code(0x019A08, 2);
         near_load(1, 2, 6, 0);
         R[11] = 0x9A18;
-        abi_FxProjectVertex();
+        (gsu_code(0x019A12, 6), abi_FxProjectVertex());
+        gsu_code(0x019A18, 3);
         gsu_stw(R[8], R[1]);
         R[8] = gsu_inc(R[8]);
         R[8] = gsu_inc(R[8]);
+        gsu_code(0x019A1B, 4);
         gsu_stw(R[8], R[2]);
         R[8] = gsu_inc(R[8]);
         R[8] = gsu_inc(R[8]);
-        R[6] = gsu_ldw(FX_CODES);
+        R[6] = gsu_ldw(gsu_code_then(0x019A1F, 5, FX_CODES));
         R[0] = gsu_or(R[0], R[6]);
         R[12] = gsu_dec(R[12]);
         go = !gsu.z;
         gsu_sbk(R[0]);                          /* BNE's delay slot */
     } while (go);
-    R[0] = gsu_ldw(FX_ROM_BANK);
+    R[0] = gsu_ldw(gsu_code_then(0x019A29, 3, FX_ROM_BANK));
+    gsu_code(0x019A2C, 5);
     gsu_romb(R[0]);
     gsu_r14(gsu_ldw(FX_ROM_R14));
-    R[3] = gsu_ldw(FX_POLY_OUT);
-    R[0] = gsu_ldw(FX_CODES);
+    R[3] = gsu_ldw(gsu_code_then(0x019A31, 3, FX_POLY_OUT));
+    R[0] = gsu_ldw(gsu_code_then(0x019A34, 3, FX_CODES));
     R[1] = 0x0F00;
     R[0] = gsu_and(R[0], R[1]);
     gsu_sub(R[0], R[1], 0);                     /* CMP R1 */
@@ -1267,21 +1393,25 @@ void abi_FxPolygonClipScreen(void)
 
     R[8] = gsu_ldw(FX_POLY_OUT);
     R[9] = FX_CLIP_LIST;
+    gsu_code(0x01A263, 6);
     gsu_stw(FX_CLIP_IN, R[8]);
+    gsu_code(0x01A269, 3);
     gsu_stw(FX_CLIP_OUT, R[9]);
+    gsu_code(0x01A26C, 3);
     gsu_stw(FX_COUNT_OUT, R[0]);
+    gsu_code(0x01A26F, 2);
     gsu_push(&R[10], R[11]);
     R[1] = 0x0003;
     gsu_sub(R[0], R[1], 0);                     /* CMP R1 */
     if (gsu.s) {
         clip_line();
         return;
-    }
+    } else { gsu_code(0x01A271, 8); gsu_code(0x01A27D, 4); }
     for (k = 0; k < 4; k++) {
         R[1] = gsu_ldw(FX_CODES);
         R[1] = gsu_and(R[1], bits[k]);
         if (gsu.z)
-            continue;
+            { gsu_code(0x01A542, 9); continue; }
         R[8] = gsu_ldw(FX_CLIP_IN);
         R[9] = gsu_ldw(FX_CLIP_OUT);
         gsu_stw(FX_COUNT, R[0]);
@@ -1295,36 +1425,42 @@ void abi_FxPolygonClipScreen(void)
         if (gsu.s) {
             clip_none();
             return;
-        }
+        } else { gsu_code(0x01A62B, 4); gsu_code(0x01A633, 2); }
         R[0] = gsu_add(R[0], 3, 0);
     }
     /* A635 */
-    R[1] = gsu_ldw(FX_POLY_OUT);
-    R[8] = gsu_ldw(FX_CLIP_IN);
+    R[1] = gsu_ldw(gsu_code_then(0x01A635, 4, FX_POLY_OUT));
+    R[8] = gsu_ldw(gsu_code_then(0x01A639, 3, FX_CLIP_IN));
     R[1] = gsu_sub(R[1], R[8], 0);
     if (!gsu.z) {
+        gsu_code(0x01A63C, 8);
         int go;
 
         R[9] = gsu_ldw(FX_CLIP_OUT);
         R[12] = R[0];
         R[13] = 0xA647;
+        gsu_code(0x01A644, 3);
         do {
+            gsu_code(0x01A647, 2);
             R[0] = gsu_ldw(R[8]);
+            gsu_code(0x01A649, 1);
             gsu_stw(R[9], R[0]);
             R[9] = gsu_inc(R[9]);
             R[9] = gsu_inc(R[9]);
             R[8] = gsu_inc(R[8]);
             R[8] = gsu_inc(R[8]);
-            R[0] = gsu_ldw(R[8]);
+            R[0] = gsu_ldw(gsu_code_then(0x01A64A, 5, R[8]));
+            gsu_code(0x01A64F, 1);
             gsu_stw(R[9], R[0]);
             R[9] = gsu_inc(R[9]);
             R[9] = gsu_inc(R[9]);
             R[8] = gsu_inc(R[8]);
             go = gsu_count_down(&R[12]);
             R[8] = gsu_inc(R[8]);
-        } while (go);
-        R[0] = gsu_ldw(FX_COUNT_OUT);
-    }
+        } while (gsu_code_loop(0x01A650, 4, go));
+        R[0] = gsu_ldw(gsu_code_then(0x01A650, 8, FX_COUNT_OUT));
+    } else { gsu_code(0x01A63C, 4); gsu_code(0x01A657, 1); }
+    gsu_code(0x01A658, 4);
     gsu_pull(&R[10]);
 }
 
@@ -1353,25 +1489,31 @@ void abi_FxPolygonClipScreen(void)
  */
 void abi_FxDrawList(void)
 {
+    gsu_code(0x01A931, 4);
     int minus;
 
     R[1] = gsu_ldw(FX_LIST_END);
     R[0] = DRAW_LIST;
     R[0] = gsu_sub(R[0], R[1], 0);
     if (gsu.z)
-        return;
+        { gsu_code(0x01A935, 8); return; } else { gsu_code(0x01A935, 6); gsu_code(0x01A93D, 3); }
     gsu_push(&R[10], R[11]);
+    gsu_code(0x01A940, 5);
     gsu_stw(FX_LIST_STACK, R[10]);
     R[0] = gsu_sub(R[0], R[0], 0);
+    gsu_code(0x01A945, 2);
     gsu_stw(R[1], R[0]);
     R[1] = DRAW_LIST;
+    gsu_code(0x01A947, 6);
     gsu_stw(FX_LIST_END, R[1]);
     R[0] = 0;
+    gsu_code(0x01A94D, 3);
     gsu_romb(R[0]);
     for (;;) {
+        gsu_code(0x01A950, 4);
         /* A950 */
         R[1] = gsu_ldw(FX_LIST_END);
-        R[0] = gsu_ldb(R[1]);
+        R[0] = gsu_ldb(gsu_code_then(0x01A954, 2, R[1]));
         R[0] = gsu_sex(R[0]);
         R[1] = gsu_inc(R[1]);
         R[0] = gsu_sub(R[0], 3, 0);
@@ -1380,12 +1522,12 @@ void abi_FxDrawList(void)
         if (!minus) {
             flat_polygon();
             continue;
-        }
+        } else { gsu_code(0x01A90E, 3); gsu_code(0x01A956, 6); }
         /* A90E */
         if (gsu.z) {
             line();
             continue;
-        }
+        } else { gsu_code(0x01A915, 5); }
         R[0] = gsu_inc(R[0]);
         R[0] = gsu_inc(R[0]);
         {
@@ -1394,15 +1536,18 @@ void abi_FxDrawList(void)
             R[0] = gsu_not(R[0]);               /* BEQ's delay slot */
             if (!end) {
                 tex_polygon();
+                gsu_code(0x01A909, 4);
                 continue;
-            }
+            } else { gsu_code(0x01A91E, 7); }
         }
         /* A91E */
         R[1] = DRAW_LIST;
         gsu_stw(FX_LIST_END, R[1]);
-        R[0] = gsu_ldw(FX_ROM_BANK);
+        R[0] = gsu_ldw(gsu_code_then(0x01A925, 3, FX_ROM_BANK));
+        gsu_code(0x01A928, 5);
         gsu_romb(R[0]);
         R[10] = gsu_ldw(FX_LIST_STACK);
+        gsu_code(0x01A92D, 4);
         gsu_pull(&R[10]);
         return;
     }

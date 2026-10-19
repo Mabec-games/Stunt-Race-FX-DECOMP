@@ -44,8 +44,8 @@ static void put_block(uint16_t which, uint16_t input)
         cyc(124);
         GsuRun(0x01, 0xCF42);
     }
-cyc(204);
-    }
+    cyc(204);
+}
 
 /*
  * @routine 03:F05E SoundDataLoad

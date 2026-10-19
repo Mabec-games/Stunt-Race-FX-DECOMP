@@ -222,8 +222,8 @@ void DebugPanelNone(void)
 
 void abi_DebugPanelNone(void)
 {
-cyc(44);
-    }
+    cyc(44);
+}
 
 /* Fields +$88, +$7A, +$86 and +$84 of the car record at X, printed in
    decimal in four columns of one row. */
@@ -266,8 +266,8 @@ void DebugCarsPanel(void)
         cpu.x = x;
         car_row(x, row);
     }
-cyc(44);
-    }
+    cyc(44);
+}
 
 void abi_DebugCarsPanel(void)
 {

@@ -378,7 +378,9 @@ void abi_FxEffectsDraw(void)
  */
 void abi_FxEffectsRun(void)
 {
+    gsu_code(0x01AB6F, 4); gsu_code(0x01BF6D, 3);
     gsu_push(&gsu.r[10], gsu.r[11]);
+    gsu_code(0x01BF70, 6);
     gsu.r[1] = gsu_ldw(FX_EFFECT_FLAGS);
     gsu.r[0] = 0x4000;
     gsu.r[0] = gsu_and(gsu.r[0], gsu.r[1]);
@@ -409,6 +411,7 @@ void abi_FxEffectsRun(void)
         abi_FxEffectsAge();
         gsu.r[11] = 0xBFB2;
         abi_FxEffectsDraw();
-    }
+    } else { gsu_code(0x01BF76, 6); gsu_code(0x01BFB2, 5); }
     gsu_pull(&gsu.r[10]);       /* the return address, into R15 */
+    gsu_code(0x01AB73, 6);
 }

@@ -241,8 +241,8 @@ void DebugPrintHexWord(void)
         cpu.a = a;
         cpu.p = nz16(cpu.p, a);
     }
-cyc(72);
-    }
+    cyc(72);
+}
 
 void abi_DebugPrintHexWord(void)
 {

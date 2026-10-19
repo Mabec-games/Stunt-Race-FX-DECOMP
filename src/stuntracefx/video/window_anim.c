@@ -155,8 +155,8 @@ void abi_WindowStep3433By2(void)
 void abi_WindowStep3433By3(void)
 {
     window_step_down(0x3433, 3);
-cyc(22);
-    }
+    cyc(22);
+}
 
 /*
  * @routine 03:FDF7 WindowStep3437By3

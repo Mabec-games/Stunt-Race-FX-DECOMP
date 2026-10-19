@@ -380,8 +380,8 @@ static void blend_words(void)
         cyc(32);
         wr16((uint32_t)(0x7F3432 + i * 2), cpu.a);
     }
-cyc(44);
-    }
+    cyc(44);
+}
 
 /*
  * @routine 03:FD32 BlendStepUp

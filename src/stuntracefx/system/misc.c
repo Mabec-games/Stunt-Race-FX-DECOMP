@@ -53,8 +53,8 @@ void KeepRegisters(void)
 
 void abi_KeepRegisters(void)
 {
-cyc(138);
-    }
+    cyc(138);
+}
 
 /*
  * @routine 03:F329 ReturnOnly
@@ -68,8 +68,8 @@ void ReturnOnly(void)
 
 void abi_ReturnOnly(void)
 {
-cyc(42);
-    }
+    cyc(42);
+}
 
 /*
  * @routine 03:AEEE ReadTable9022
@@ -238,8 +238,8 @@ void Set7EFFA6Sequence(void)
     cyc(44);
     for (i = 0; i < 4; i++)
         { cyc(56); wr16(0x7EFFA6 + 2 * i, (uint16_t)(i + 1)); }
-cyc(72);
-    }
+    cyc(72);
+}
 
 void abi_Set7EFFA6Sequence(void)
 {

@@ -334,8 +334,8 @@ void abi_BobWindow1(void)
 {
     if (bob_window(1, 0x19AF))
         { cyc(46); abi_WindowHdmaFFD9(); }
-cyc(84);
-    }
+    cyc(84);
+}
 
 /*
  * @routine 7E:DE88 WindowSweepStep
@@ -454,8 +454,8 @@ void abi_WindowSweep(void)
         { cyc(68); abi_WindowHdmaFFD5(); }
     else
         abi_WindowHdmaFFD1();
-cyc(84);
-    }
+    cyc(84);
+}
 
 /*
  * @routine 7E:D311 WindowSweepIfOn
@@ -492,8 +492,8 @@ void abi_WindowSweepIfOn(void)
                 (cyc(46), abi_WindowSweep());
             } else { cyc(14); }
         } else { cyc(14); }
-    cyc(2);
-        }
+        cyc(2);
+    }
     cyc(80);
     cpu.db = db0;
     op_plp(p0);
@@ -622,8 +622,8 @@ void abi_OscillatorWindow(void)
         { cyc(68); abi_WindowHdmaFFD5(); }
     else
         abi_WindowHdmaFFD1();
-cyc(84);
-    }
+    cyc(84);
+}
 
 void abi_ObjectLinkEventTrigger(void);
 void abi_ObjectLinkEventTrigger2(void);
@@ -784,8 +784,8 @@ void abi_WindowSlideOrOscillate(void)
                 (cyc(46), abi_OscillatorWindow());
             } else { cyc(14); }
         }
-    cyc(2);
-        }
+        cyc(2);
+    }
 out:
     cyc(142);
     cpu.db = db0;

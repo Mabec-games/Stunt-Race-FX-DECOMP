@@ -110,8 +110,8 @@ static ApuUploadEnd apu_upload(uint8_t bank, uint16_t addr)
         cyc(68);
         wr8(APUIO0, kick);
         while (rd8(cyc_then(24, APUIO0)) != kick) {
-        cyc(22);
-            }
+            cyc(22);
+        }
         cyc(38);
         if (!more)
             { cyc(38); break; }
@@ -120,8 +120,8 @@ static ApuUploadEnd apu_upload(uint8_t bank, uint16_t addr)
             cyc(78);
             uint8_t data = ApuUploadNextByte(&offset);
             while (rd8(cyc_then(44, APUIO0)) != index) {
-            cyc(2);
-                }
+                cyc(2);
+            }
             index++;
             cyc(76);
             wr16(APUIO0, (uint16_t)(data << 8 | index));

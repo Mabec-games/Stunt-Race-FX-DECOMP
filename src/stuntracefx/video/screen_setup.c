@@ -185,8 +185,8 @@ void RaceScreenSetup(uint8_t bank)
         cyc(24);
         io8(bank, scroll[i], 0x00);
     }
-cyc(42);
-    }
+    cyc(42);
+}
 
 void abi_RaceScreenSetup(void)
 {
@@ -336,8 +336,8 @@ static void video_tilemap_rows(uint16_t y0)
         cpu.a = a;
         op_cmp16(0x0800);
     } while (!(cpu.p & P_C));
-cyc(108);
-    }
+    cyc(108);
+}
 
 /* MVN within bank $7F or from $70 to $7F: n bytes from src to dst, a
    byte at a time (read, then write), with M and X 16-bit and P restored
@@ -753,5 +753,5 @@ void abi_RaceHudLoad(void)
         { cyc(46); RaceHudSetupTwoPlayers(pushed[0], pushed[1]); }
     else
         { cyc(46); RaceHudSetup(pushed[0], pushed[1]); }
-cyc(204);
-    }
+    cyc(204);
+}

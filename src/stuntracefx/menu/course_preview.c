@@ -64,8 +64,8 @@ static void hdma_on(uint8_t channels)
     cpu.x = x;
     cpu.p = nz16(cpu.p, x);  /* PLX, X 16-bit */
     cpu.p &= (uint8_t)~P_M;
-cyc(166);
-    }
+    cyc(166);
+}
 
 /* Animation `anim` on the kind 4 object unless it has it already. */
 static void kind4_animation(uint16_t anim)

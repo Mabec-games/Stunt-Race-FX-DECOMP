@@ -94,8 +94,8 @@ void MenuWaitFrame(uint8_t bank)
     wr16(a, cyc_then(48, (uint16_t)(rd16(a) | 0x0001)));
     while (rd16(cyc_then(24, a)))
         { cyc(22); ; }
-cyc(86);
-    }
+    cyc(86);
+}
 
 void abi_MenuWaitFrame(void)
 {

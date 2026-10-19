@@ -110,12 +110,14 @@ typedef struct {
  */
 FxTurnOut FxTurn(uint16_t x, uint16_t angle, uint16_t z, uint16_t stack, uint16_t ret)
 {
+    gsu_code(0x04C15C, 3); gsu_code(0x04CFF8, 10);
     FxTurnOut o;
     uint32_t p;
     uint16_t lo, hi;
 
     gsu_stw(stack, ret);
     stack = gsu_inc(gsu_inc(stack));
+    gsu_code(0x04C15F, 62);
     o.cos = trig(ROT_COS, angle, &o.r14);
     o.sin = trig(ROT_SIN, angle, &o.r14);
 
@@ -137,6 +139,7 @@ FxTurnOut FxTurn(uint16_t x, uint16_t angle, uint16_t z, uint16_t stack, uint16_
 
     stack = gsu_dec(gsu_dec(stack));
     gsu_ldw(stack);
+    gsu_code(0x04D002, 5);
     return o;
 }
 
@@ -191,24 +194,37 @@ void abi_FxTurn(void)
  */
 void FxMatrixTranspose04(uint16_t m, uint16_t *left)
 {
+    gsu_code(0x04B269, 8); gsu_code(0x04C2C7, 6);
     uint16_t w1, w2, w3, w5, w6, w7;
 
     w1 = gsu_ldw((uint16_t)(m + 2));
+    gsu_code(0x04C2CD, 4);
     w2 = gsu_ldw((uint16_t)(m + 4));
+    gsu_code(0x04C2D1, 4);
     w3 = gsu_ldw((uint16_t)(m + 6));
+    gsu_code(0x04C2D5, 2);
     gsu_stw((uint16_t)(m + 6), w1);
+    gsu_code(0x04C2D7, 5);
     gsu_stw((uint16_t)(m + 2), w3);
+    gsu_code(0x04C2DC, 5);
     w5 = gsu_ldw((uint16_t)(m + 10));
+    gsu_code(0x04C2E1, 4);
     w6 = gsu_ldw((uint16_t)(m + 12));
+    gsu_code(0x04C2E5, 2);
     gsu_stw((uint16_t)(m + 12), w2);
+    gsu_code(0x04C2E7, 4);
     w7 = gsu_ldw((uint16_t)(m + 14));
+    gsu_code(0x04C2EB, 2);
     gsu_stw((uint16_t)(m + 14), w5);
+    gsu_code(0x04C2ED, 5);
     gsu_stw((uint16_t)(m + 10), w7);
     gsu_sub((uint16_t)(m + 10), 6, 0);
+    gsu_code(0x04C2F2, 5);
     gsu_stw((uint16_t)(m + 4), w6);
     left[0] = w5;
     left[1] = w7;
     left[2] = w6;
+    gsu_code(0x04B271, 5); gsu_code(0x04C2F7, 1);
 }
 
 void abi_FxMatrixTranspose04(void)
@@ -287,6 +303,7 @@ typedef struct {
  */
 FxAnglesOut FxMatrixFromAngles(uint16_t m)
 {
+    gsu_code(0x04B262, 7); gsu_code(0x04C1A7, 9);
     FxAnglesOut o;
     uint16_t w[9];
     int i;
@@ -295,24 +312,28 @@ FxAnglesOut FxMatrixFromAngles(uint16_t m)
     gsu.rambr = 0;
     gsu.rombr = 0;
     sine_cosine(gsu_ldw(FX_ANGLES), &o.s0, &o.c0);
+    gsu_code(0x04C1E5, 13);
     sine_cosine(gsu_ldw(FX_ANGLES + 2), &o.s1, &o.c1);
+    gsu_code(0x04C227, 13);
     sine_cosine(gsu_ldw(FX_ANGLES + 4), &o.s2, &o.c2);
+    gsu_code(0x04C269, 30);
     o.s1c2 = mul15(o.s1, o.c2);
     o.c1c2 = mul15(o.c1, o.c2);
     o.s1s2 = mul15(o.s1, o.s2);
     gsu_r14(mul15(o.c1, o.s2));
     o.c1s2 = gsu.r[14];
+    gsu_code(0x04C287, 7);
     for (i = 0; i < 9; i++) {
         switch (i) {
         case 0: w[i] = gsu_add(mul15(o.s1s2, o.s0), o.c1c2, 0); break;
-        case 1: w[i] = gsu_sub(mul15(o.s1c2, o.s0), o.c1s2, 0); break;
-        case 2: w[i] = mul15(o.s1, o.c0); break;
-        case 3: w[i] = mul15(o.s2, o.c0); break;
-        case 4: w[i] = mul15(o.c2, o.c0); break;
-        case 5: w[i] = gsu_inc(gsu_not(o.s0)); break;
-        case 6: w[i] = gsu_sub(mul15(o.c1s2, o.s0), o.s1c2, 0); break;
-        case 7: w[i] = gsu_add(mul15(o.c1c2, o.s0), o.s1s2, 0); break;
-        default: w[i] = mul15(o.c1, o.c0); break;
+        case 1: gsu_code(0x04C28E, 7); w[i] = gsu_sub(mul15(o.s1c2, o.s0), o.c1s2, 0); break;
+        case 2: gsu_code(0x04C295, 8); w[i] = mul15(o.s1, o.c0); break;
+        case 3: gsu_code(0x04C29D, 6); w[i] = mul15(o.s2, o.c0); break;
+        case 4: gsu_code(0x04C2A3, 6); w[i] = mul15(o.c2, o.c0); break;
+        case 5: gsu_code(0x04C2A9, 6); w[i] = gsu_inc(gsu_not(o.s0)); break;
+        case 6: gsu_code(0x04C2AF, 9); w[i] = gsu_sub(mul15(o.c1s2, o.s0), o.s1c2, 0); break;
+        case 7: gsu_code(0x04C2B8, 7); w[i] = gsu_add(mul15(o.c1c2, o.s0), o.s1s2, 0); break;
+        default: gsu_code(0x04C2BF, 8); w[i] = mul15(o.c1, o.c0); break;
         }
         gsu_stw((uint16_t)(m + 2 * i), w[i]);
         if (i < 8)
@@ -362,21 +383,24 @@ void abi_FxMatrixFromAngles(void)
  */
 FxRegs FxAngleOf(FxRegs g)
 {
+    gsu_code(0x04C2F8, 3); gsu_code(0x04CBF7, 8);
     FxQuotient q;
     int r2_zero = 0, equal = 0;
 
     gsu_stw(g.r[10], g.r[11]);
     g.r[10] = gsu_inc(gsu_inc(g.r[10]));
+    gsu_code(0x04C2FB, 4);
     gsu_stw(g.r[10], g.r[14]);
     g.r[10] = gsu_inc(gsu_inc(g.r[10]));
     g.r[6] = g.r[1];
     gsu_moves(g.r[6]);
     if (gsu.s)
-        g.r[6] = gsu_inc(gsu_not(g.r[6]));
+        { gsu_code(0x04C305, 3); g.r[6] = gsu_inc(gsu_not(g.r[6])); }
+    gsu_code(0x04C2FF, 6); gsu_code(0x04C308, 5); gsu_code(0x04C30F, 3); gsu_code(0x04C319, 7); gsu_code(0x04C327, 3); gsu_code(0x04C331, 38); gsu_code(0x04C35D, 7); gsu_code(0x04C366, 5); gsu_code(0x04C36F, 5);
     g.r[0] = g.r[2];
     gsu_moves(g.r[0]);
     if (gsu.s)
-        g.r[0] = gsu_inc(gsu_not(g.r[0]));
+        { gsu_code(0x04C30D, 2); gsu_code(0x04C36B, 4); g.r[0] = gsu_inc(gsu_not(g.r[0])); }
     if (gsu.z) {
         g.r[0] = 0x4000;
         r2_zero = 1;
@@ -386,12 +410,12 @@ FxRegs FxAngleOf(FxRegs g)
         if (gsu.z) {
             g.r[0] = 0x2000;
             equal = 1;
-        } else if (gsu.s == gsu.ov) {      /* |R2| > |R1|: the other way up */
+        } else if (gsu.s == gsu.ov) {      gsu_code(0x04C32A, 7); /* |R2| > |R1|: the other way up */
             g.r[4] = g.r[6];
             g.r[6] = g.r[0];
             g.r[0] = g.r[4];
             g.r[5] = gsu_dec(g.r[5]);
-        }
+        } else { gsu_code(0x04C357, 6); }
     }
     if (!r2_zero && !equal) {
         g.r[4] = 0;
@@ -424,7 +448,7 @@ FxRegs FxAngleOf(FxRegs g)
     }
     g.r[4] = gsu_xor(g.r[1], g.r[2]);
     if (gsu.s)
-        g.r[0] = gsu_inc(gsu_not(g.r[0]));
+        { gsu_code(0x04C364, 2); g.r[0] = gsu_inc(gsu_not(g.r[0])); }
     gsu_moves(g.r[2]);
     if (gsu.s) {
         g.r[4] = 0x8000;
@@ -434,7 +458,9 @@ FxRegs FxAngleOf(FxRegs g)
     gsu_r14(gsu_ldw(g.r[10]));
     g.r[14] = gsu.r[14];
     g.r[10] = gsu_dec(gsu_dec(g.r[10]));
+    gsu_code(0x04C374, 4);
     gsu_ldw(g.r[10]);
+    gsu_code(0x04CBFF, 7);
     return g;
 }
 

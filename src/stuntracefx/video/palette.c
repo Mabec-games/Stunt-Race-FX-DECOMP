@@ -296,8 +296,8 @@ void abi_RasterColoursUnless0D22(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     if (ran)
         cpu.x = 0;
-cyc(70);
-    }
+    cyc(70);
+}
 
 /*
  * @routine 04:E1FE PaletteDarkenFour
@@ -867,8 +867,8 @@ static FlashEnd player_colours_flash(uint8_t bank, uint8_t v, uint16_t y, uint8_
         wr8(b | (uint16_t)(0x0E1F + y), c);
         if (c < n)
             { cyc(6); src = 0x0E27; }
-    cyc(18);
-        }
+        cyc(18);
+    }
     p = (uint8_t)((p & ~P_C) | ((y & 0x8000) ? P_C : 0));
     e.y = (uint16_t)(y << 1);
     cyc(116);
@@ -924,8 +924,8 @@ void abi_PlayerColoursFlash(void)
  */
 void abi_PlayerColoursFlashRts(void)
 {
-cyc(42);
-    }
+    cyc(42);
+}
 
 /*
  * @routine 7E:B53F StatusColourPick
@@ -1147,8 +1147,8 @@ static uint16_t fade_part(uint32_t b, uint16_t m, uint16_t step)
             cyc(18);
             op_sub16(step);
         }
-    cyc(22);
-        }
+        cyc(22);
+    }
     return cpu.a;
 }
 
@@ -1207,8 +1207,8 @@ void abi_PaletteFadeStep(void)
         cpu.a = (uint16_t)(n - 1);
         cpu.p = nz16(cpu.p, cpu.a);
     } while (cpu.a);
-cyc(172);
-    }
+    cyc(172);
+}
 
 /* LDA $0D30, INC, back to 0 at $16, STA $0D30, ASL, TAX (M 8-bit): the
    cycle's next step and its table offset (with X 16-bit, TAX also takes
@@ -1825,8 +1825,8 @@ hud:
                 wr16(HC_BUFFER + cpu.x, cpu.a);
                 hc_step(&cpu.x, 0x0020);
             } while (!(cpu.p & P_C));
-        cyc(18);
-            }
+            cyc(18);
+        }
     } else { cyc(42); }
 keep:
     cyc(46);

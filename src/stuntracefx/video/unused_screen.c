@@ -40,8 +40,8 @@ void ScrollRegsClear(uint8_t bank)
         wr8(dbw(bank, r), cyc_then(24, 0x00));
         wr8(dbw(bank, r), cyc_then(24, 0x00));
     }
-cyc(72);
-    }
+    cyc(72);
+}
 
 void abi_ScrollRegsClear(void)
 {
@@ -189,8 +189,8 @@ void ColoursClear(uint8_t bank)
     cyc(56);
     for (x = 0xDF; x >= 0; x--)
         wr8(dbw(bank, (uint16_t)(COLOURS + x)), cyc_then(66, 0x00));
-cyc(110);
-    }
+    cyc(110);
+}
 
 void abi_ColoursClear(void)
 {
@@ -283,8 +283,8 @@ void HardwareRegsInit02(void)
 
     for (i = 0; i < sizeof writes / sizeof writes[0]; i++)
         { cyc(150); wr8(writes[i].reg, writes[i].v); }
-cyc(70);
-    }
+    cyc(70);
+}
 
 void abi_HardwareRegsInit02(void)
 {

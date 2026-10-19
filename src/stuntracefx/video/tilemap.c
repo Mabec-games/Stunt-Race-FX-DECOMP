@@ -364,8 +364,8 @@ void TilemapPaletteFill(uint16_t *x, uint16_t *y, uint16_t *a)
         *a = (uint16_t)((*a & 0xFF00) | v);
         *x += 2;
     } while (cyc_loop(18, --*y));
-cyc(100);
-    }
+    cyc(100);
+}
 
 void abi_TilemapPaletteFill(void)
 {
@@ -1307,8 +1307,8 @@ void abi_ChampionshipScreenStep(void)
         jump_routine(0x070000 | t);
         break;
     }
-cyc(42);
-    }
+    cyc(42);
+}
 
 void abi_OverlaySpritesStep(void);
 
@@ -1351,5 +1351,5 @@ void abi_ChampionshipScreenLoop(void)
         cyc(46);
         op_lda8(b | 0x0D61);
     } while (!(cpu.a & 0x80));
-cyc(58);
-    }
+    cyc(58);
+}

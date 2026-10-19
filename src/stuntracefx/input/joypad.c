@@ -292,5 +292,5 @@ void abi_FrameSoundAndJoypads(void)
         cyc(24);
         wr16(b | (uint16_t)(0x118B + i * 2), cpu.a);
     }
-cyc(42);
-    }
+    cyc(42);
+}

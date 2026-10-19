@@ -769,5 +769,5 @@ void abi_MenuEraseDone(void)
  */
 void abi_MenuActorNoStepD8A8(void)
 {
-cyc(42);
-    }
+    cyc(42);
+}

@@ -253,8 +253,8 @@ void abi_RaceClockStep(void)
             cyc(24);
             wr16(b | 0x0E70, 0x0000);
         }
-    cyc(22);
-        }
+        cyc(22);
+    }
     cyc(42);
     op_plp(p0);
 }

@@ -41,6 +41,7 @@ static uint16_t magnitude(uint16_t v)
  */
 uint16_t FxAtan2(uint16_t y, uint16_t x)
 {
+    gsu_code(0x0181CB, 15); gsu_code(0x0181D2, 8); gsu_code(0x0181D2, 4); gsu_code(0x0181D2, 4); gsu_code(0x0181D2, 4); gsu_code(0x0181D2, 4); gsu_code(0x0181D2, 4); gsu_code(0x0181D2, 4); gsu_code(0x0181D2, 4); gsu_code(0x0181D2, 4); gsu_code(0x0181D2, 4); gsu_code(0x0181D2, 4); gsu_code(0x0181D2, 4); gsu_code(0x0181D2, 4); gsu_code(0x0181D2, 4); gsu_code(0x0181D2, 4); gsu_code(0x0181DC, 5); gsu_code(0x0181DC, 5); gsu_code(0x0181FE, 6); gsu_code(0x018207, 5); gsu_code(0x01820E, 3); gsu_code(0x018218, 7); gsu_code(0x018226, 3); gsu_code(0x018230, 38); gsu_code(0x01825C, 7); gsu_code(0x018265, 5); gsu_code(0x01826E, 5);
     uint16_t ay = magnitude(y), ax = magnitude(x);
     uint16_t angle;
 
@@ -53,9 +54,10 @@ uint16_t FxAtan2(uint16_t y, uint16_t x)
         int x_larger = !((int16_t)ax < (int16_t)ay);
 
         if (x_larger) {
+            gsu_code(0x0181D6, 4); gsu_code(0x0181D6, 4); gsu_code(0x0181D6, 4); gsu_code(0x0181D6, 4); gsu_code(0x0181D6, 4); gsu_code(0x018229, 7);
             small = ay;
             large = ax;
-        }
+        } else { gsu_code(0x0181DC, 5); gsu_code(0x0181DC, 5); gsu_code(0x0181DC, 5); gsu_code(0x0181DC, 5); gsu_code(0x0181DC, 5); gsu_code(0x018256, 6); }
         ratio = FxDivide32By16(small >> 2, (uint16_t)(small << 14), large, &rem);
         at = (uint16_t)(FX_ATAN_TABLE + ((ratio >> 5) & 0xFFFE));
         gsu.rombr = 0;
@@ -67,19 +69,21 @@ uint16_t FxAtan2(uint16_t y, uint16_t x)
             angle = (uint16_t)(0x4000 - angle);
     }
     if ((x ^ y) & 0x8000)
-        angle = (uint16_t)-angle;
+        { gsu_code(0x0181D6, 4); gsu_code(0x0181D6, 4); gsu_code(0x018263, 2); angle = (uint16_t)-angle; } else { gsu_code(0x0181DC, 5); }
     if (x & 0x8000)
-        angle = (uint16_t)(angle + 0x8000);
+        { gsu_code(0x0181DC, 5); gsu_code(0x0181DC, 5); gsu_code(0x0181DC, 5); gsu_code(0x0181DC, 5); gsu_code(0x0181DC, 5); gsu_code(0x01820C, 2); gsu_code(0x01826A, 4); angle = (uint16_t)(angle + 0x8000); } else { gsu_code(0x0181D6, 4); gsu_code(0x0181D6, 4); gsu_code(0x0181D6, 4); gsu_code(0x0181D6, 4); }
     return angle;
 }
 
 void abi_FxAtan2(void)
 {
+    gsu_code(0x0181ED, 4); gsu_code(0x0181F7, 3);
     uint16_t y = gsu.r[1], x = gsu.r[2];
     uint16_t ay = magnitude(y), ax = magnitude(x);
     uint16_t angle;
 
     gsu_push(&gsu.r[10], gsu.r[11]);
+    gsu_code(0x0181FA, 4);
     gsu_push(&gsu.r[10], gsu.r[14]);
     angle = FxAtan2(y, x);
     gsu.r[6] = ay;
@@ -97,8 +101,8 @@ void abi_FxAtan2(void)
         gsu.r[12] = 0;
         gsu.r[13] = 0x81D2;
         /* The table's word, before the sign steps. */
-        pre = (uint16_t)((x ^ y) & 0x8000 ? -(x & 0x8000 ? (uint16_t)(angle - 0x8000) : angle)
-                                           : (x & 0x8000 ? (uint16_t)(angle - 0x8000) : angle));
+        pre = (uint16_t)((x ^ y) & 0x8000 ? -(x & 0x8000 ? (uint16_t)(angle - 0x8000) : (gsu_code(0x0181D6, 4), gsu_code(0x0181E1, 2), gsu_code(0x018204, 3), angle))
+                                           : (x & 0x8000 ? (gsu_code(0x018204, 3), (uint16_t)(angle - 0x8000)) : (gsu_code(0x0181DC, 5), gsu_code(0x0181DC, 5), angle)));
         if (!x_larger)
             gsu_add((uint16_t)-(uint16_t)(0x4000 - pre), 0x4000, 0);
         else
@@ -112,7 +116,9 @@ void abi_FxAtan2(void)
     }
     gsu.r[0] = angle;
     gsu_r14(gsu_pull(&gsu.r[10]));
+    gsu_code(0x018273, 4);
     gsu_pull(&gsu.r[10]);       /* the return address, into R15 */
+    gsu_code(0x0181F1, 4);
 }
 
 #define FX_STACK 0x0240u    /* where each program starts the R10 stack */
@@ -132,13 +138,16 @@ void abi_FxAtan2(void)
  */
 void FxAngleProgram(void)
 {
+    gsu_code(0x0181E4, 6);
     gsu.r[10] = FX_STACK;
     gsu.r[1] = gsu_ldw(FX_ANGLE_IN_Y);
+    gsu_code(0x0181EA, 3);
     gsu.r[2] = gsu_ldw(FX_ANGLE_IN_X);
     /* LINK #4, then into FxAtan2 with its stack traffic and exit registers. */
     gsu.r[11] = 0x81F1;
     abi_FxAtan2();
     gsu_stw(FX_ANGLE_OUT, gsu.r[0]);
+    gsu_code(0x0181F5, 1);
 }
 
 void abi_FxAngleProgram(void)

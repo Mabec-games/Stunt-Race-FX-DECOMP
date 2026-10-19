@@ -302,8 +302,8 @@ void abi_HudFrameWhileGsuRuns(void)
         run_cmp8(v, 0x03);
         if (v != 0x03)
             abi_HudDigitSprites62();
-    cyc(12);
-        }
+        cyc(12);
+    }
     if (v != 0x03)
         abi_HudDrawDigits19EC();
     abi_BackdropRowsUpdate();

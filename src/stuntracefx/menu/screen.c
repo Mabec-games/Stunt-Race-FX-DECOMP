@@ -28,8 +28,8 @@ void MenuScrollReset(void)
         cyc(24);
         wr8(reg[i], 0x00);
     }
-cyc(70);
-    }
+    cyc(70);
+}
 
 void abi_MenuScrollReset(void)
 {
@@ -187,8 +187,8 @@ void MenuHdmaSetup(uint8_t bank)
         cyc(40);
         wr8(b | (uint16_t)(ch[i].base + 4), 0x7F);
     }
-cyc(26);
-    }
+    cyc(26);
+}
 
 void abi_MenuHdmaSetup(void)
 {
@@ -1686,5 +1686,5 @@ void abi_MenuScrollZeroBg12(void)
     cpu.a &= 0xFF00;
     for (i = 0; i < 8; i++)
         { cyc(44); FrameByteWritePush(cpu.db, reg[i], 0x00); }
-cyc(214);
-    }
+    cyc(214);
+}

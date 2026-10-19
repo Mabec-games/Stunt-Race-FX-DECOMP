@@ -291,38 +291,46 @@ void abi_FxRecordsApart(void)
  */
 FxRegs FxContactNote(FxRegs g)
 {
+    gsu_code(0x04A345, 5);
     uint16_t *sp = &g.r[10];
 
     g.r[0] = gsu_ldw(gsu_add(REC_FLAGS16, g.r[6], 0));
     g.r[9] = 0x0080;
     g.r[0] = gsu_and(g.r[0], g.r[9]);
     if (!gsu.z)
-        return g;
+        { gsu_code(0x04A34A, 10); gsu_code(0x04A43B, 3); return g; } else { gsu_code(0x04A34A, 6); gsu_code(0x04A354, 7); }
     g.r[7] = gsu_ldw(gsu_add(REC_CONTACTS, g.r[6], 0));
     gsu_moves(g.r[7]);
-    while (!gsu.z) {
+    gsu_code(0x04A35B, 4);
+    while (gsu_code_loop(0x04A35F, 5, !gsu.z)) {
         g.r[0] = gsu_ldw(gsu_add(CON_OTHER, g.r[7], 0));
         gsu_sub(g.r[0], g.r[8], 0);
         if (gsu.z)
-            goto found;
+            { gsu_code(0x04A364, 8); gsu_code(0x04A3F9, 1); goto found; } else { gsu_code(0x04A364, 4); gsu_code(0x04A36C, 5); }
         g.r[0] = gsu_ldw(gsu_add(CON_NEXT, g.r[7], 0));
         g.r[7] = g.r[0];
         gsu_moves(g.r[7]);
+        gsu_code(0x04A371, 4);
     }
+    gsu_code(0x04A375, 3);
     gsu_push(sp, g.r[8]);
     g.r[9] = FX_POOL_FIRST;
     g.r[7] = CONTACT_BYTES;
+    gsu_code(0x04A378, 6); gsu_cache(0xA37D); gsu_code(0x04A37E, 4);
     gsu_push(sp, g.r[9]);
-    for (;;) {                                        /* an exact fit */
+    gsu_code(0x04A382, 1);
+    for (;;) {                                        gsu_code(0x04A383, 3); /* an exact fit */
         g.r[8] = gsu_ldw(g.r[9]);
         g.r[9] = gsu_inc(gsu_inc(g.r[9]));
+        gsu_code(0x04A386, 3);
         g.r[0] = gsu_sub(gsu_ldw(g.r[9]), g.r[7], 0);
         if (gsu.z) {
+            gsu_code(0x04A389, 3); gsu_code(0x04A3A8, 4);
             g.r[0] = gsu_pull(sp);
             g.r[7] = gsu_inc(gsu_not(g.r[7]));
             g.r[0] = gsu_sub(g.r[0], g.r[0], 0);
             goto mark;
-        }
+        } else { gsu_code(0x04A389, 8); }
         g.r[9] = g.r[8];
         gsu_moves(g.r[9]);
         if (gsu.z)
@@ -353,28 +361,37 @@ FxRegs FxContactNote(FxRegs g)
         }
     }
 mark:
+    gsu_code(0x04A3AC, 6); gsu_code(0x04A3C3, 6);
     g.r[8] = gsu_add(g.r[9], g.r[0], 0);
     gsu_stw(g.r[8], g.r[7]);
     g.r[8] = gsu_dec(gsu_dec(g.r[8]));
     g.r[7] = g.r[8];
 taken:
+    gsu_code(0x04A3C9, 8);
     g.r[8] = gsu_pull(sp);
+    gsu_code(0x04A3D1, 4); gsu_code(0x04A3D9, 10);
     gsu_moves(g.r[7]);
     if (gsu.z)
         return g;
     g.r[9] = CONTACT_BYTES;
     g.r[0] = gsu_add(CON_OTHER, g.r[7], 0);
     gsu_stw(g.r[0], g.r[8]);
+    gsu_code(0x04A3E3, 6);
     g.r[9] = gsu_ldw(gsu_add(REC_CONTACTS, g.r[6], 0));
     g.r[0] = gsu_add(CON_NEXT, g.r[7], 0);
+    gsu_code(0x04A3E9, 5);
     gsu_stw(g.r[0], g.r[9]);
     g.r[0] = gsu_add(REC_CONTACTS, g.r[6], 0);
+    gsu_code(0x04A3EE, 5);
     gsu_stw(g.r[0], g.r[7]);
     g.r[9] = 0;
     g.r[0] = gsu_add(CON_FLAGS, g.r[7], 0);
+    gsu_code(0x04A3F3, 7);
     gsu_stw(g.r[0], g.r[9]);
 found:
+    gsu_code(0x04A3FA, 6);
     g.r[9] = gsu_ldw(gsu_add(CON_FLAGS, g.r[7], 0));
+    gsu_code(0x04A400, 13);
     g.r[0] = gsu_and(0x0004, g.r[9]);
     if (gsu.z) {
         static const uint8_t from[4] = {REC_VEL_X, REC_VEL_Z, REC_X, REC_Z};
@@ -384,12 +401,15 @@ found:
             g.r[9] = gsu_ldw(gsu_add(from[i], g.r[8], 0));
             g.r[0] = gsu_add((uint16_t)(HIT_VEL_X + 2 * i), g.r[7], 0);
             gsu_stw(g.r[0], g.r[9]);
+            gsu_code(0x04A433, 4);
         }
     }
     g.r[0] = gsu_ldw(gsu_add(CON_FLAGS, g.r[7], 0));
     g.r[9] = 0x0001;
     g.r[0] = gsu_or(g.r[0], g.r[9]);
+    gsu_code(0x04A437, 5);
     gsu_sbk(g.r[0]);
+    gsu_code(0x04A43C, 2);
     return g;
 }
 
@@ -444,29 +464,34 @@ static int masks_clear(FxRegs *g, uint16_t ra, uint16_t rb)
  */
 FxRegs FxRecordTouches(FxRegs g)
 {
+    gsu_code(0x04A1FA, 5); gsu_code(0x04A20B, 3);
     int i;
 
     gsu_push(&g.r[10], g.r[11]);
+    gsu_code(0x04A20E, 8);
     for (i = 0; i < 3; i++)
-        g.r[3 + i] = gsu_ldw(gsu_add((uint16_t)(REC_X + 2 * i), g.r[1], 0));
+        { g.r[3 + i] = gsu_ldw(gsu_add((uint16_t)(REC_X + 2 * i), g.r[1], 0)); gsu_code(0x04A222, 4); }
     for (i = 0; i < 3; i++) {
         g.r[0] = gsu_ldw(gsu_add((uint16_t)(REC_SIZE + 2 * i), g.r[1], 0));
         gsu_stw((uint16_t)(FX_SIZES + 2 * i), g.r[0]);
+        gsu_code(0x04A23A, 1);
     }
     g.r[2] = g.r[1];
     for (;;) {
+        gsu_code(0x04A23B, 5);
         g.r[0] = gsu_ldw(gsu_add(REC_ALL_NEXT, g.r[2], 0));
         g.r[2] = g.r[0];
         gsu_moves(g.r[2]);
         if (gsu.z)
-            break;
+            { gsu_code(0x04A240, 8); gsu_code(0x04A2EC, 5); break; } else { gsu_code(0x04A240, 4); gsu_code(0x04A248, 7); }
         if (!axis_overlaps(&g, REC_SIZE_Z, FX_SIZES + 4, REC_Z, g.r[5]))
-            continue;
+            { gsu_code(0x04A259, 3); gsu_code(0x04A25E, 4); continue; } else { gsu_code(0x04A259, 3); gsu_code(0x04A25E, 11); }
         if (!axis_overlaps(&g, REC_SIZE, FX_SIZES, REC_X, g.r[3]))
-            continue;
+            { gsu_code(0x04A273, 3); gsu_code(0x04A278, 4); continue; } else { gsu_code(0x04A273, 3); gsu_code(0x04A278, 11); }
         if (!axis_overlaps(&g, REC_SIZE_Y, FX_SIZES + 2, REC_Y, g.r[4]))
-            continue;
+            { gsu_code(0x04A28D, 13); continue; } else { gsu_code(0x04A28D, 3); gsu_code(0x04A292, 4); gsu_code(0x04A29A, 5); }
         g.r[0] = gsu_ldw(gsu_add(REC_FLAGS16, g.r[1], 0));
+        gsu_code(0x04A29F, 6);
         g.r[6] = gsu_ldw(gsu_add(REC_FLAGS16, g.r[2], 0));
         g.r[0] = gsu_and(g.r[0], g.r[6]);
         g.r[6] = 0x0002;
@@ -479,28 +504,34 @@ FxRegs FxRecordTouches(FxRegs g)
             gsu_moves(g.r[0]);
             if (!gsu.z)
                 continue;
-        }
+        } else { gsu_code(0x04A2A5, 7); gsu_code(0x04A2BA, 5); }
         if (masks_clear(&g, g.r[1], g.r[2])) {
+            gsu_code(0x04A2C5, 12);
             g.r[6] = g.r[1];
             g.r[8] = g.r[2];
             g.r[11] = 0xA2D1;
             g = FxContactNote(g);
-        }
+        } else { gsu_code(0x04A2C5, 3); }
+        gsu_code(0x04A2D1, 5);
         if (masks_clear(&g, g.r[2], g.r[1])) {
+            gsu_code(0x04A2DC, 12);
             g.r[6] = g.r[2];
             g.r[8] = g.r[1];
             g.r[11] = 0xA2E8;
             g = FxContactNote(g);
-        }
+        } else { gsu_code(0x04A2DC, 3); }
+        gsu_code(0x04A2E8, 4);
     }
     g.r[0] = gsu_ldw(gsu_add(REC_CONTACTS, g.r[1], 0));
     gsu_moves(g.r[0]);
     if (!gsu.z) {
+        gsu_code(0x04A2F1, 11); gsu_code(0x04A462, 7);
         g.r[6] = g.r[1];
         g.r[11] = 0xA2FC;
         g = FxListSweepRegs(g);
-    }
+    } else { gsu_code(0x04A2F1, 4); gsu_code(0x04A2FC, 5); }
     gsu_pull(&g.r[10]);
+    gsu_code(0x04A1FF, 5);
     return g;
 }
 
@@ -525,18 +556,23 @@ void abi_FxRecordTouches(void)
  */
 FxRegs FxAllTouches(FxRegs g)
 {
+    gsu_code(0x048FFB, 9); gsu_code(0x04A1EC, 3);
     gsu_push(&g.r[10], g.r[11]);
+    gsu_code(0x04A1EF, 6);
     g.r[0] = gsu_ldw(FX_RECORDS);
     for (;;) {
+        gsu_code(0x04A1F5, 1); gsu_cache(0xA1F5); gsu_code(0x04A1F6, 4);
         g.r[1] = g.r[0];
         gsu_moves(g.r[1]);
         if (gsu.z)
-            break;
+            { gsu_code(0x04A206, 5); break; }
         g.r[11] = 0xA1FF;
         g = FxRecordTouches(g);
         g.r[0] = gsu_ldw(gsu_add(REC_ALL_NEXT, g.r[1], 0));
+        gsu_code(0x04A204, 2);
     }
     gsu_pull(&g.r[10]);
+    gsu_code(0x049004, 5);
     return g;
 }
 

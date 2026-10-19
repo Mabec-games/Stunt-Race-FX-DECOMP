@@ -2,7 +2,8 @@
 """cycwrite.py: the solved costs written into the decomp's C, as cyc().
 
     cycwrite.py COSTS.csv [--skip FUNCS.txt] [--dry]
-    cycwrite.py --strip DIR
+    cycwrite.py --code CODE.csv [--skip FUNCS.txt] [--dry]
+    cycwrite.py --strip DIR [--code] [--only FUNCS.txt]
 
 COSTS.csv is cycsolve.py's (id, ..., cost), numbered as cycprobe.py numbers
 the probes of the tree probed: the decomp, or with CYC_SRC a copy of it
@@ -37,63 +38,116 @@ import cycprobe
 ROOT = cycprobe.ROOT
 
 
-def plan(path, text, got, cost, skip):
+class Clocks:
+    """A probe's value as clocks: cyc(N) and its forms."""
+    zero = 0
+
+    @staticmethod
+    def stmt(n): return 'cyc(%d); ' % n
+    @staticmethod
+    def expr(n): return '(cyc(%d), ' % n, ')'
+    @staticmethod
+    def loop(n): return 'cyc_loop(%d, ' % n, ')'
+    @staticmethod
+    def then(n): return 'cyc_then(%d, ' % n, ')'
+
+
+class Code:
+    """A probe's value as the original's code it stands for: a list of
+    ('code', addr, n) runs fetched and ('cache', r15) CACHE instructions run,
+    as gsu_code() and gsu_cache() (gsu.h)."""
+    zero = []
+
+    @staticmethod
+    def one(x):
+        return 'gsu_code(0x%06X, %d)' % (x[1], x[2]) if x[0] == 'code' else 'gsu_cache(0x%04X)' % x[1]
+
+    @classmethod
+    def stmt(cls, v): return ''.join(cls.one(x) + '; ' for x in v)
+    @classmethod
+    def expr(cls, v): return '(' + ''.join(cls.one(x) + ', ' for x in v), ')'
+    @staticmethod
+    def loop(v):
+        if any(x[0] != 'code' for x in v):
+            return None
+        return ''.join('gsu_code_loop(0x%06X, %d, ' % (x[1], x[2]) for x in v), ')' * len(v)
+    @staticmethod
+    def then(v):
+        if any(x[0] != 'code' for x in v):
+            return None
+        return ''.join('gsu_code_then(0x%06X, %d, ' % (x[1], x[2]) for x in v), ')' * len(v)
+
+
+def plan(path, text, got, cost, skip, form=Clocks):
     """The edits for one file: (offset, rank, text) with rank ordering the
     edits at one offset, and what was left out and why."""
     rel = cycprobe.rel_name(path)
-    stmt = collections.Counter()           # offset -> clocks before the statement there
-    wraps = {}                             # (start, end) -> [clocks at its start, at its end], a body given braces
-    skips = []                             # (offset, wrapped start, clocks)
-    exprs = []                             # (start, end, opener text)
+    stmt = collections.defaultdict(lambda: type(form.zero)())     # offset -> the time before the statement there
+    wraps = {}                             # (start, end) -> [time at its start, at its end], a body given braces
+    skips = []                             # (offset, wrapped start, time)
+    exprs = []                             # (start, end, opener text, closer text)
     left = collections.Counter()
+
+    def opener(make, n, why):
+        oc = make(n)
+        if oc is None:
+            left[why] += 1
+        return oc
     for pid, kind, m in got:
-        n = cost.get(pid, 0)
+        n = cost.get(pid, form.zero)
         if not n:
             continue
         if (rel, m['fn']) in skip:
             left['in a function fixed by hand first'] += 1
             continue
-        form = m['form']
-        if form == 'stmt':
+        where = m['form']
+        z = lambda: [type(form.zero)(), type(form.zero)()]
+        if where == 'stmt':
             stmt[m['at']] += n
-        elif form == 'wrap':
-            wraps.setdefault((m['at'], m['end']), [0, 0])[0] += n
-        elif form == 'back_close':
-            wraps.setdefault(m['wrapped'], [0, 0])[1] += n
-        elif form == 'again':
+        elif where == 'wrap':
+            wraps.setdefault((m['at'], m['end']), z())[0] += n
+        elif where == 'back_close':
+            wraps.setdefault(m['wrapped'], z())[1] += n
+        elif where == 'again':
             if cycprobe.number_type(m['typ']) or m['typ'] in ('int', '_Bool'):
-                exprs.append((m['at'], m['end'], 'cyc_loop(%d, ' % n))
+                oc = opener(form.loop, n, 'a loop test with a CACHE')
+                if oc:
+                    exprs.append((m['at'], m['end']) + oc)
             else:
                 left['a loop test that is not a number'] += 1
-        elif form == 'ret':
+        elif where == 'ret':
             a = m['anchor']
             if m.get('noacc') and a and m.get('ret_at') == a[0]:
                 if a[1]:
-                    wraps.setdefault((a[0], a[2]), [0, 0])[0] += n
+                    wraps.setdefault((a[0], a[2]), z())[0] += n
                 else:
                     stmt[a[0]] += n
             elif m['typ'] != 'void' and cycprobe.number_type(m['typ']):
-                exprs.append((m['at'], m['end'], 'cyc_then(%d, ' % n))
+                oc = opener(form.then, n, 'a return value with a CACHE')
+                if oc:
+                    exprs.append((m['at'], m['end']) + oc)
             else:
                 left['a return whose value reaches the bus, not a number'] += 1
-        elif form == 'skip':
+        elif where == 'skip':
             skips.append((m['at'], m['wrapped'][0], n))
-        elif form == 'expr':
-            exprs.append((m['at'], m['end'], '(cyc(%d), ' % n))
-        elif form == 'arg':
+        elif where == 'expr':
+            exprs.append((m['at'], m['end']) + form.expr(n))
+        elif where == 'arg':
             a = m['anchor']
             if a and not m['unsafe'] and m.get('first'):
                 if a[1]:
-                    wraps.setdefault((a[0], a[2]), [0, 0])[0] += n
+                    wraps.setdefault((a[0], a[2]), z())[0] += n
                 else:
                     stmt[a[0]] += n
             elif not cycprobe.number_type(m['typ']):
                 left['an access inside an expression, its last argument not a number'] += 1
             else:
-                exprs.append((m['at'], m['end'], 'cyc_then(%d, ' % n))
+                oc = opener(form.then, n, 'an access argument with a CACHE')
+                if oc:
+                    exprs.append((m['at'], m['end']) + oc)
     edits = []
     # a statement's time: on a line of its own where the statement starts one
-    merged = collections.Counter()
+    merged = collections.defaultdict(lambda: type(form.zero)())
     for at, n in stmt.items():
         j = at
         while j < len(text) and text[j] in ' \t\n':
@@ -103,21 +157,22 @@ def plan(path, text, got, cost, skip):
         ls = text.rfind('\n', 0, at) + 1
         indent = text[ls:at]
         if indent.strip() == '':
-            if text[at:at + 1] == '}':
-                indent += '    '
-            edits.append((at, (1, -2, 0), 'cyc(%d);\n%s' % (n, indent)))
+            # before a closing brace on its own line: inside the block, at
+            # the indent of its statements
+            inner = '    ' if text[at:at + 1] == '}' else ''
+            edits.append((at, (1, -2, 0), inner + form.stmt(n).rstrip(' ') + '\n' + indent))
         else:
-            edits.append((at, (1, -2, 0), 'cyc(%d); ' % n))
+            edits.append((at, (1, -2, 0), form.stmt(n)))
     # braces: at one offset, closings before openings; an inner body's
     # closing before the outer's, an outer opening before the inner's
     for (b, e), (n, back) in wraps.items():
-        edits.append((b, (1, -3, -e), '{ cyc(%d); ' % n if n else '{ '))
-        edits.append((e, (0, -b, 0), ' cyc(%d); }' % back if back else ' }'))
+        edits.append((b, (1, -3, -e), '{ ' + form.stmt(n) if n else '{ '))
+        edits.append((e, (0, -b, 0), ' ' + form.stmt(back) + '}' if back else ' }'))
     for at, b, n in skips:
-        edits.append((at, (0, -b, 1), ' else { cyc(%d); }' % n))
-    for b, e, opener in exprs:
-        edits.append((b, (1, -1, -e), opener))
-        edits.append((e, (0, -b, 0), ')'))
+        edits.append((at, (0, -b, 1), ' else { ' + form.stmt(n) + '}'))
+    for b, e, op, cl in exprs:
+        edits.append((b, (1, -1, -e), op))
+        edits.append((e, (0, -b, 0), cl))
     return edits, left
 
 
@@ -158,16 +213,45 @@ def _close(text, i, op, cl):
     raise ValueError('unbalanced')
 
 
-def strip(text):
-    """The text without what this tool writes: every cyc(N) with N a
-    number, in each of its forms (a time written by hand, cyc(t->x), stays;
-    braces it added for a time at a body's end only stay too)."""
+# a time this tool writes: clocks, or the original's code (it writes
+# numbers, the addresses in upper-case hex: a time written by hand, cyc(t->x),
+# gsu_code(go ? a : b, 1), gsu_code(0x01aa49, 1), is not one)
+CODE_ITEM = r'(?:gsu_code\(0x[0-9A-F]{6}, \d+\)|gsu_cache\(0x[0-9A-F]{4}\))'
+ITEM = r'(?:cyc\(\d+\)|%s)' % CODE_ITEM[3:-1]
+
+
+def _statements(s):
+    """How many statements end at the top level of s (the body this tool
+    puts braces around is one)."""
+    depth, n = 0, 0
+    for ch in s:
+        if ch in '({[':
+            depth += 1
+        elif ch in ')}]':
+            depth -= 1
+            if depth == 0 and ch == '}':
+                n += 1
+        elif ch == ';' and depth == 0:
+            n += 1
+    return n
+
+
+def strip(text, code_only=False):
+    """The text without what this tool writes, in each of its forms (a time
+    written by hand stays; braces it added for a time at a body's end only
+    stay too). code_only: the original's code only (gsu_code, gsu_cache),
+    the clocks kept."""
     import re
-    out = re.sub(r' else \{ cyc\(\d+\); \}', '', text)
-    # forms around code: { cyc(N); X }, (cyc(N), X), cyc_then(N, X)
-    out = re.sub(r' cyc\(\d+\); \}', ' }', out)
-    for pat, op, cl, tail in ((r'\{ cyc\(\d+\); ', '{', '}', ' }'), (r'\(cyc\(\d+\), ', '(', ')', ')'),
-                              (r'cyc_then\(\d+, ', '(', ')', ')'), (r'cyc_loop\(\d+, ', '(', ')', ')')):
+    ITEM = CODE_ITEM if code_only else globals()['ITEM']
+    out = re.sub(r' else \{ (?:%s; )+\}' % ITEM, '', text)
+    out = re.sub(r' (?:%s; )+\}' % ITEM, ' }', out)
+    # forms around code: { T; X }, (T, X), cyc_then(N, X), cyc_loop(N, X)
+    forms = ((r'\{ (?:%s; )+' % ITEM, '{', '}', ' }'), (r'\((?:%s, )+' % ITEM, '(', ')', ')'),
+             (r'gsu_code_then\(0x[0-9A-F]{6}, \d+, ', '(', ')', ')'),
+             (r'gsu_code_loop\(0x[0-9A-F]{6}, \d+, ', '(', ')', ')'))
+    if not code_only:
+        forms += ((r'cyc_then\(\d+, ', '(', ')', ')'), (r'cyc_loop\(\d+, ', '(', ')', ')'))
+    for pat, op, cl, tail in forms:
         while True:
             m = re.search(pat, out)
             if not m:
@@ -175,9 +259,15 @@ def strip(text):
             q = _close(out, m.end(), op, cl)
             if not out[:q + 1].endswith(tail):
                 raise ValueError('cycwrite: %r at %d does not close as written' % (m.group(0), m.start()))
+            if op == '{' and _statements(out[m.end():q + 1 - len(tail)]) > 1:
+                # the block's own braces, a time at its start: the time only
+                out = out[:m.start() + 2] + out[m.end():]
+                continue
             out = out[:m.start()] + out[m.end():q + 1 - len(tail)] + out[q + 1:]
-    out = re.sub(r'cyc\(\d+\);\n[ \t]*', '', out)
-    out = re.sub(r'cyc\(\d+\); ', '', out)
+    # statements: before a block's closing brace, on a line of their own, in a line
+    out = re.sub(r'(?m)^( *)    (?:%s; )*%s;\n\1\}' % (ITEM, ITEM), r'\1}', out)
+    out = re.sub(r'(?:%s; )*%s;\n[ \t]*' % (ITEM, ITEM), '', out)
+    out = re.sub(r'(?:%s; )+' % ITEM, '', out)
     return out
 
 
@@ -234,6 +324,7 @@ def main(argv):
         import glob
         out = os.path.abspath(args[1])
         only = None
+        code_only = '--code' in args
         if '--only' in args:
             only = {tuple(l.split()) for l in open(args[args.index('--only') + 1]) if l.strip()}
         src = cycprobe.SRC
@@ -242,11 +333,11 @@ def main(argv):
             os.makedirs(os.path.dirname(o), exist_ok=True)
             text = open(f).read()
             if only is None:
-                text = strip(text)
+                text = strip(text, code_only)
             else:
                 spans = function_spans(f, text, {fn for r, fn in only if r == cycprobe.rel_name(f)})
                 for b, e in sorted(spans, reverse=True):
-                    text = text[:b] + strip(text[b:e]) + text[e:]
+                    text = text[:b] + strip(text[b:e], code_only) + text[e:]
             with open(o, 'w') as w:
                 w.write(text)
         print('cycwrite: the decomp without %s written times in %s' % ('its' if only is None else 'those functions\'', out))
@@ -262,16 +353,32 @@ def main(argv):
                 f, fn = line.split()
                 skip.add((f, fn))
         del args[i:i + 2]
+    form = Clocks
+    if '--code' in args:
+        # CODE.csv (id, code): each probe's code as "code:ADDR:N" and
+        # "cache:R15" items, space-separated, in the order fetched
+        i = args.index('--code')
+        form, cost = Code, {}
+        for r in csv.DictReader(open(args[i + 1])):
+            items = []
+            for x in r['code'].split():
+                p = x.split(':')
+                items.append(('code', int(p[1], 16), int(p[2])) if p[0] == 'code' else ('cache', int(p[1], 16)))
+            if items:
+                cost[int(r['id'])] = items
+        del args[i:i + 2]
+        args.append(None)
     if len(args) != 1:
         print(__doc__)
         return 2
-    cost = {}
-    for r in csv.DictReader(open(args[0])):
-        if r['cost'] not in ('', '0'):
-            cost[int(r['id'])] = int(r['cost'])
+    if form is Clocks:
+        cost = {}
+        for r in csv.DictReader(open(args[0])):
+            if r['cost'] not in ('', '0'):
+                cost[int(r['id'])] = int(r['cost'])
     files, written, left = 0, 0, collections.Counter()
     for path, text, got in cycprobe.all_probes():
-        edits, why = plan(path, text, got, cost, skip)
+        edits, why = plan(path, text, got, cost, skip, form)
         left.update(why)
         # into the decomp, from the tree probed (the decomp itself, or its
         # copy without written times: CYC_SRC); a file with no times is
@@ -284,7 +391,7 @@ def main(argv):
         if not edits:
             continue
         files += 1
-        written += sum(1 for e in edits if e[2].startswith(('cyc', '{ cyc', ' else', '(cyc')))
+        written += sum(1 for e in edits if e[2].startswith(('cyc', '{ cyc', ' else', '(cyc', 'gsu_', '{ gsu_', '(gsu_')))
     print('cycwrite: %d costs in %d files%s' % (written, files, ' (dry run)' if dry else ''))
     for why, n in left.most_common():
         print('  %6d left: %s' % (n, why))

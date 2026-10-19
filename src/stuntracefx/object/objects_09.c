@@ -144,8 +144,8 @@ static void handler_none(uint16_t o)
 {
     st16i(F(0x201A, o), cyc_then(22, 0x0000));
     st8i(F(0x201C, o), cyc_then(28, 0x00));
-cyc(38);
-    }
+    cyc(38);
+}
 
 /* A new object of `kind` ($1F2B, ObjectSpawn): 1 when one was made (C
    set), Y = it. */
@@ -254,8 +254,8 @@ static void gate_frame(void)
     }
     cyc(98);
     and8(F(0x2025, cpu.x), 0xFE);
-cyc(38);
-    }
+    cyc(38);
+}
 
 /* 09:8CAF: the gate's record: a new one ($42D: GsuRecordNew42D) with flag
    bit 4, at (+$F00, +$F00, +$F00) (GsuRecordPosition); then its frame. */
@@ -496,14 +496,14 @@ void abi_ObjectScoreCounterStep(void)
             cmp8(0x02);
             if (v == 0x02)
                 { cyc(136); counter_slide(); }
-        cyc(20);
-            }
-    cyc(42);
+            cyc(20);
         }
+        cyc(42);
+    }
     cyc(84);
     abi_ObjectRebucket();
-cyc(132);
-    }
+    cyc(132);
+}
 
 /* 09:8DF8: synced from its record; released when +$0A has run down. */
 static void piece_frame(void)
@@ -511,8 +511,8 @@ static void piece_frame(void)
     (cyc(62), abi_ObjectSyncFromRecord());
     if (dec8(cyc_then(102, F(0x200A, cpu.x))) == 0)
         { cyc(22); abi_ObjectRelease(); } else { cyc(20); }
-cyc(72);
-    }
+    cyc(72);
+}
 
 /*
  * @routine 09:8DDF ObjectFlyingPiece
@@ -1389,8 +1389,8 @@ static void ball_rise(void)
     ball_drop(0xFFB0, 0xFF10, 0xC0);
     if (dec8(cyc_then(22, F(0x200A, cpu.x))) == 0)
         { cyc(22); abi_ObjectRelease(); } else { cyc(20); }
-cyc(132);
-    }
+    cyc(132);
+}
 
 /*
  * @routine 09:95FC ObjectSkyBallRise
@@ -2026,8 +2026,8 @@ static void wave_gate_frame(int which)
         wave_ball_b();
     else
         wave_ball_c();
-cyc(86);
-    }
+    cyc(86);
+}
 
 /* 09:9BF5: the wave gate's record ($42D) with flag bit 4 at ($F00, $F00,
    $F00); then the first gate's frame. */
@@ -2139,8 +2139,8 @@ static void wave_home(void)
     add16_via(F(0x200E, cpu.x), F(0x2029, cpu.x));
     if (dec8(cyc_then(44, F(0x200A, cpu.x))) == 0)
         { cyc(22); abi_ObjectRelease(); } else { cyc(20); }
-cyc(42);
-    }
+    cyc(42);
+}
 
 /*
  * @routine 09:9EA6 ObjectWaveBallHome
@@ -2609,8 +2609,8 @@ void abi_ObjectChimeGate(void)
     handlers2(0xA2B1, 0xA2D8);
     gate42d(0x0F00);
     chime_frame();
-cyc(38);
-    }
+    cyc(38);
+}
 
 /*
  * @routine 09:A2B1 ObjectChimeGateRecord
@@ -2624,8 +2624,8 @@ void abi_ObjectChimeGateRecord(void)
 {
     gate42d(0x0F00);
     chime_frame();
-cyc(38);
-    }
+    cyc(38);
+}
 
 /*
  * @routine 09:A2D8 ObjectChimeGateStep
@@ -2640,8 +2640,8 @@ cyc(38);
 void abi_ObjectChimeGateStep(void)
 {
     chime_frame();
-cyc(38);
-    }
+    cyc(38);
+}
 
 /* 09:A371 / A408: a flash gate's frame: a car's hit, the first time (+$25
    bit 0), flashes the screen ($19C5 = flash step) and starts a fade
@@ -2663,8 +2663,8 @@ static void flash_frame(uint16_t flash, uint16_t step, uint16_t end)
     } else { cyc(64); }
     cpu.p |= P_M;
     and8(F(0x2025, cpu.x), 0xFE);
-cyc(38);
-    }
+    cyc(38);
+}
 
 /*
  * @routine 09:A32C ObjectBrightGate
@@ -3168,8 +3168,8 @@ static void slide_chime_frame(void)
         sound1(0x0E);
     } else { cyc(44); }
     and8(F(0x2025, cpu.x), 0xFD);
-cyc(38);
-    }
+    cyc(38);
+}
 
 /*
  * @routine 09:A788 ObjectSlideChimeGate
@@ -3709,8 +3709,8 @@ static void time_gate(uint16_t r)
 void abi_ObjectTimeGate(void)
 {
     time_gate(0xAC83);
-cyc(38);
-    }
+    cyc(38);
+}
 
 /*
  * @routine 09:AC83 ObjectTimeGateRecord
@@ -3723,8 +3723,8 @@ cyc(38);
 void abi_ObjectTimeGateRecord(void)
 {
     gate42d(0x0780);
-cyc(38);
-    }
+    cyc(38);
+}
 
 /*
  * @routine 09:ACAB ObjectTimeGateSmall
@@ -3779,8 +3779,8 @@ void abi_ObjectPopMarkerStep(void)
 {
     add8(F(0x2014, cpu.x), 0xF8);
     (cyc(62), abi_ObjectRebucket());
-cyc(132);
-    }
+    cyc(132);
+}
 
 /* +$0A against the lap $0DEA (through $1F58): 1 when equal. */
 static int lap_matches_0a(void)
@@ -3854,8 +3854,8 @@ static void lap_ball_record(uint16_t kind)
         { cyc(16); st16i(F(0x2004, cpu.x), 0xA040); }
     else
         { cyc(22); st16i(F(0x2004, cpu.x), kind); }
-cyc(22);
-    }
+    cyc(22);
+}
 
 /* 09:ADB6: the up ball's frame: it grows (+$15, +$14 by $10); on a car's
    contact with flags 1 or 2 (AND #$0B) on a lap it has not lit yet (+$0A)
@@ -3889,8 +3889,8 @@ static void ball_up_frame(void)
     cyc(170);
     sound0(0x25);
     spark_follow(0xB7A8);
-cyc(32);
-    }
+    cyc(32);
+}
 
 /*
  * @routine 09:AD5E ObjectLapBallUp
@@ -3965,8 +3965,8 @@ void abi_ObjectSparkFollow(void)
     add8(F(0x2015, cpu.x), cyc_then(22, 0x10));
     add8(F(0x2014, cpu.x), 0x10);
     (cyc(62), abi_ObjectRebucket());
-cyc(132);
-    }
+    cyc(132);
+}
 
 /* 09:AF17: the down ball's frame: as the up ball's (contact flags bit 0),
    lowering the car's record +$82 by $40 (GsuRecordLower82) with sound $1B
@@ -4004,8 +4004,8 @@ void abi_ObjectLapBallDown(void)
     st8i(F(0x200A, cpu.x), cyc_then(6, 0x04));
     lap_ball_record(0xB7C4);
     ball_down_frame();
-cyc(32);
-    }
+    cyc(32);
+}
 
 /*
  * @routine 09:AEE2 ObjectLapBallDownRecord
@@ -4036,8 +4036,8 @@ void abi_ObjectLapBallDownRecord(void)
 void abi_ObjectLapBallDownStep(void)
 {
     ball_down_frame();
-cyc(32);
-    }
+    cyc(32);
+}
 
 /* 09:AFFC: a car's hit, the first time (+$25 bit 0), moves the count
    $19EE to $19F0 (HudCountMove19EE's copy) and sets $19ED = 8. */
@@ -4117,8 +4117,8 @@ static void count_marker_frame(void)
         abi_ObjectStep48To8();
     cyc(84);
     abi_ObjectSyncFromRecord();
-cyc(118);
-    }
+    cyc(118);
+}
 
 /*
  * @routine 09:B02A ObjectCountMarker
@@ -4257,8 +4257,8 @@ void abi_ObjectCountTriggerRecord(void)
 void abi_ObjectCountTriggerStep(void)
 {
     count_trigger_frame();
-cyc(38);
-    }
+    cyc(38);
+}
 
 /* ---- 09:C438-D13E: bobbing, breakable, swinging, orbiting objects ---- */
 
@@ -4344,8 +4344,8 @@ void abi_ObjectCountUpTo2(void)
     wr8(db() | 0x1F58, cyc_then(24, v));
     v = ld8((cyc(16), db()) | 0x1F58);
     st8i_hi(F(0x205A, cpu.x), v);
-cyc(42);
-    }
+    cyc(42);
+}
 
 /* 09:C478: the bob: the speed +$29 added to the offset +$27, turning back
    at $10 and -$10; the height +$0E moved by the offset (through $1F4C) and
@@ -4578,8 +4578,8 @@ void abi_ObjectColour1(void)
 void abi_ObjectColour2(void)
 {
     st8i_hi(F(0x2018, cpu.x), cyc_then(30, 0x02));
-cyc(38);
-    }
+    cyc(38);
+}
 
 /*
  * @routine 09:C5D1 ObjectColour3
@@ -4591,8 +4591,8 @@ cyc(38);
 void abi_ObjectColour3(void)
 {
     st8i_hi(F(0x2018, cpu.x), cyc_then(30, 0x03));
-cyc(38);
-    }
+    cyc(38);
+}
 
 /*
  * @routine 09:C5DA ObjectColour4
@@ -4604,8 +4604,8 @@ cyc(38);
 void abi_ObjectColour4(void)
 {
     st8i_hi(F(0x2018, cpu.x), cyc_then(30, 0x04));
-cyc(38);
-    }
+    cyc(38);
+}
 
 /*
  * @routine 09:C5E3 ObjectColour5
@@ -4629,8 +4629,8 @@ void abi_ObjectColour5(void)
 void abi_ObjectColour6(void)
 {
     st8i_hi(F(0x2018, cpu.x), cyc_then(30, 0x06));
-cyc(38);
-    }
+    cyc(38);
+}
 
 /*
  * @routine 09:C5F5 ObjectColour7
@@ -4642,8 +4642,8 @@ cyc(38);
 void abi_ObjectColour7(void)
 {
     st8i_hi(F(0x2018, cpu.x), cyc_then(30, 0x07));
-cyc(38);
-    }
+    cyc(38);
+}
 
 /*
  * @routine 09:C5FE ObjectScaleE0
@@ -4654,8 +4654,8 @@ cyc(38);
 void abi_ObjectScaleE0(void)
 {
     st8i(F(0x2015, cpu.x), cyc_then(20, 0xE0));
-cyc(38);
-    }
+    cyc(38);
+}
 
 /*
  * @routine 09:C605 ObjectScaleA0
@@ -4666,8 +4666,8 @@ cyc(38);
 void abi_ObjectScaleA0(void)
 {
     st8i(F(0x2015, cpu.x), cyc_then(20, 0xA0));
-cyc(38);
-    }
+    cyc(38);
+}
 
 /*
  * @routine 09:C60C ObjectScale20
@@ -4678,8 +4678,8 @@ cyc(38);
 void abi_ObjectScale20(void)
 {
     st8i(F(0x2015, cpu.x), cyc_then(20, 0x20));
-cyc(38);
-    }
+    cyc(38);
+}
 
 /* 09:C62D: the swing's frame: by +$25 bit 0 it moves $28 left with its
    scale +$15 eased toward $40, or $28 right toward $C0
@@ -4707,8 +4707,8 @@ static void swing_frame(void)
     }
     cyc(86);
     abi_ObjectRebucket();
-cyc(132);
-    }
+    cyc(132);
+}
 
 /*
  * @routine 09:C613 ObjectSwing
@@ -4807,8 +4807,8 @@ static void life_down(void)
 {
     if (!dec8(F(0x200A, cpu.x)))
         { cyc(22); abi_ObjectRelease(); } else { cyc(20); }
-cyc(50);
-    }
+    cyc(50);
+}
 
 /*
  * @routine 09:C7D2 LapCrowdMove0
@@ -5004,8 +5004,8 @@ void abi_ObjectFloaterSpawner(void)
 void abi_ObjectFloaterSpawnerStep(void)
 {
     st8i(F(0x2015, cpu.x), cyc_then(6, 0x40));
-cyc(38);
-    }
+    cyc(38);
+}
 
 /*
  * @routine 09:C95C ObjectFloaterStep
@@ -5032,8 +5032,8 @@ void abi_ObjectFloaterStep(void)
     } else { cyc(70); }
     eor8(F(0x2025, cpu.x), 0x01);
     st8i(F(0x200A, cpu.x), cyc_then(6, 0x28));
-cyc(38);
-    }
+    cyc(38);
+}
 
 /* LDA #r, STA lo, STA lo2, BIT #$80: the sign byte `hi` = $FF for a
    negative r, else 0 (r is a constant, so one of the two stores never
@@ -5063,8 +5063,8 @@ static void sign_arm(uint32_t hi, int neg)
         cyc(12);
         wr8(hi, 0x00);
     }
-cyc(22);
-    }
+    cyc(22);
+}
 
 /* LDA lo, STA hi (8-bit): the turned vector back as the next input. */
 static void orbit_again(void)
@@ -5301,8 +5301,8 @@ static void spinner_frame(int arm)
     lda8(v);
     wr8(F(0x205A, cpu.x), cyc_then(112, v));
     (cyc(62), abi_ObjectRebucket());
-cyc(132);
-    }
+    cyc(132);
+}
 
 /*
  * @routine 09:CAB1 ObjectSpinner
@@ -5398,8 +5398,8 @@ void abi_ObjectSpinnerCentreStep(void)
     add8(F(0x2015, cpu.x), 0xF8);
     add8(F(0x2014, cpu.x), 0x0C);
     (cyc(62), abi_ObjectRebucket());
-cyc(132);
-    }
+    cyc(132);
+}
 
 /* 09:CC20: a car's hit, the first time (+$25 bit 0), rings sound $2E; no
    hit clears the bit. */
@@ -5429,8 +5429,8 @@ void abi_ObjectBellGate(void)
     handlers2(0xCBF9, 0xCC20);
     gate42d(0x0F00);
     bell_frame();
-cyc(38);
-    }
+    cyc(38);
+}
 
 /*
  * @routine 09:CBF9 ObjectBellGateRecord
@@ -5456,8 +5456,8 @@ void abi_ObjectBellGateRecord(void)
 void abi_ObjectBellGateStep(void)
 {
     bell_frame();
-cyc(38);
-    }
+    cyc(38);
+}
 
 /* A lap sign: kind $ABD8 at X's position moved (dx, dy, dz), life +$0A =
    $14, handler h; nothing without a free object. */
@@ -6059,8 +6059,8 @@ void abi_RailRiseStep(void)
     colour_cycle6();
     if (rail_slide(0x0140))
         abi_ObjectRelease(); else { cyc(52); }
-cyc(66);
-    }
+    cyc(66);
+}
 
 static void rail_drop_frame(void)
 {
@@ -6801,8 +6801,8 @@ static void bump_post_frame(void)
     or8(F(0x2025, cpu.x), 0x01);
     sound0(0x59);
     st8i(F(0x2048, cpu.x), cyc_then(6, 0x06));
-cyc(38);
-    }
+    cyc(38);
+}
 
 /* 09:E383: the bump post's record ($424) with flag bit 4 and +$2A high 1. */
 static void bump_post_record(void)
@@ -7019,8 +7019,8 @@ static void meter_frame(void)
         show48();
     } else { cyc(84); }
     abi_ObjectRebucket();
-cyc(132);
-    }
+    cyc(132);
+}
 
 /*
  * @routine 09:E4D6 ObjectSlideMeter
@@ -7432,8 +7432,8 @@ static void slide_bits_frame(uint8_t and_m, uint8_t or_m, uint8_t snd)
         { cyc(82); return; } else { cyc(18); }
     or8(F(0x2025, cpu.x), 0x01);
     sound1(snd);
-cyc(38);
-    }
+    cyc(38);
+}
 
 /* LDA addr, AND #a, ORA #o, STA addr (8-bit). */
 static void andor8(uint32_t addr, uint8_t a, uint8_t o)
@@ -7927,8 +7927,8 @@ void abi_ObjectSlideGateUp(void)
     handlers2(0xEC03, 0xEC2A);
     gate42d(0x0780);
     slide_gate_frame();
-cyc(38);
-    }
+    cyc(38);
+}
 
 /*
  * @routine 09:EC03 ObjectSlideGateUpRecord
@@ -7941,8 +7941,8 @@ void abi_ObjectSlideGateUpRecord(void)
 {
     gate42d(0x0780);
     slide_gate_frame();
-cyc(38);
-    }
+    cyc(38);
+}
 
 /*
  * @routine 09:EC2A ObjectSlideGateUpStep
@@ -7960,8 +7960,8 @@ cyc(38);
 void abi_ObjectSlideGateUpStep(void)
 {
     slide_gate_frame();
-cyc(38);
-    }
+    cyc(38);
+}
 
 /* ---- 09:B30B, 09:C11F-C437: the shatter, bouncing markers, lap lights ---- */
 
@@ -8003,8 +8003,8 @@ static void axis_from(uint32_t src, uint32_t lo, uint32_t lo2, uint32_t hi)
     } else {
         wr8(hi, 0x00);
     }
-cyc(22);
-    }
+    cyc(22);
+}
 
 /* One shard: a new object of `kind` with spin bytes +$48-$4A, at X's
    position and size (+$14-$16), placed at 4 times the vector (vx, vy, dp
@@ -8097,8 +8097,8 @@ static void shatter_rest(const uint16_t *kinds, int from)
     for (k = from; k < 6; k++)
         shard(kinds[k], shatter_args[k][0], shatter_args[k][1], shatter_args[k][2],
               shatter_args[k][3], shatter_args[k][4]);
-cyc(42);
-    }
+    cyc(42);
+}
 
 /* Shard k entered at its x sign store (direct page $05): the y offset, the
    rest of the shard, the shards after it. */
@@ -8567,8 +8567,8 @@ void abi_ObjectLapLightRecord(void)
     abi_GsuRecordNew42D();
     abi_GsuRecordFlag10();
     lap_light_frame();
-cyc(38);
-    }
+    cyc(38);
+}
 
 /*
  * @routine 09:C312 ObjectLapLightStep
@@ -8584,8 +8584,8 @@ cyc(38);
 void abi_ObjectLapLightStep(void)
 {
     lap_light_frame();
-cyc(38);
-    }
+    cyc(38);
+}
 
 /*
  * @routine 09:C3ED ObjectPuffFollow
@@ -8887,8 +8887,8 @@ void abi_ObjectShardStep(void)
     add8(F(0x2015, cpu.x), cyc_then(22, 0x12));
     (cyc(22), life_down());
     (cyc(40), abi_ObjectRebucket());
-cyc(132);
-    }
+    cyc(132);
+}
 
 /*
  * @routine 09:BE92 ObjectRisingSpark
@@ -8911,8 +8911,8 @@ void abi_ObjectRisingSpark(void)
     add16_via(F(0x200E, cpu.x), F(0x2027, cpu.x));
     add8(F(0x2015, cpu.x), cyc_then(22, 0x12));
     (cyc(62), abi_ObjectRebucket());
-cyc(132);
-    }
+    cyc(132);
+}
 
 /* 09:BF34 / BFF6: the marker bounces and syncs to its record; a car's
    contact (flags bit 0) counts $19EC up (HudCountUp19EC), shatters it, puts
@@ -8972,8 +8972,8 @@ static void bonus_marker2_frame(void (*shatter)(void), uint16_t kind, uint8_t bo
     wr8(db() | 0x19EF, cyc_then(40, v));
     cpu.p &= (uint8_t)~P_D;
     (cyc(14), abi_ObjectRelease());
-cyc(66);
-    }
+    cyc(66);
+}
 
 /* The bonus marker's start: colour 0 with bit 7, offset +$27 = 0, speed
    +$29 = 2. */

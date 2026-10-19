@@ -40,8 +40,8 @@ uint16_t MenuGaugeFromButtonB(void)
             cyc(108);
             wr16(MENU_GAUGE, g);
         }
-    cyc(22);
-        }
+        cyc(22);
+    }
     cyc(32);
     g = rd16(MENU_GAUGE);
     cyc(16);
@@ -312,8 +312,8 @@ uint16_t SpeedGauge2Update(uint8_t bank, uint16_t a)
                 cyc(100);
                 wr16(b | GAUGE_2, g);
             }
-        cyc(22);
-            }
+            cyc(22);
+        }
         cyc(24);
         g = rd16(b | GAUGE_2);
         cyc(54);
@@ -343,8 +343,8 @@ uint16_t SpeedGauge2Update(uint8_t bank, uint16_t a)
         t = (uint16_t)((v & 0x8000) | v >> 1);
         if (t & 0x8000)
             { cyc(54); t = (uint16_t)(~t + 1); }
-    cyc(60);
-        }
+        cyc(60);
+    }
     if (t >= 0x00FF)
         { cyc(18); t = 0x00FF; }
     cyc(62);

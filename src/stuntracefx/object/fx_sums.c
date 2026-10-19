@@ -78,8 +78,11 @@ FxRotateLeft FxSumsRotateLocal(void)
     int k;
 
     o.lx = gsu_ldw(FX_LOCAL_SUM);
+    gsu_code(0x0497C0, 4);
     ly = gsu_ldw(FX_LOCAL_SUM + 2);
+    gsu_code(0x0497C4, 4);
     o.lz = gsu_ldw(FX_LOCAL_SUM + 4);
+    gsu_code(0x0497C8, 3);
     for (k = 0; k < 3; k++) {
         uint16_t row = (uint16_t)(FX_MATRIX + axis[k]);
 
@@ -203,6 +206,7 @@ static FxRegs push_into(FxRegs g, uint16_t sum)
     gsu_push(&g.r[10], g.r[2]);
     g.r[1] = PUSH_MIN;
     g.r[2] = PUSH_MAX;
+    gsu_code(0x0496CA, 12); gsu_code(0x0496E1, 6); gsu_code(0x0496E9, 5); gsu_code(0x0496F9, 6); gsu_code(0x049701, 5); gsu_code(0x049711, 6); gsu_code(0x049719, 5);
     for (i = 4; i <= 6; i++)
         g.r[i] = clamp(&g, g.r[i]);
     g.r[2] = gsu_pull(&g.r[10]);
@@ -226,6 +230,7 @@ static FxRegs push_into(FxRegs g, uint16_t sum)
  */
 FxRegs FxSumsPushWorld(FxRegs g)
 {
+    gsu_code(0x0496C3, 3);
     return push_into(g, FX_WORLD_SUM);
 }
 
@@ -247,6 +252,7 @@ void abi_FxSumsPushWorld(void)
  */
 FxRegs FxSumsPushLocal(FxRegs g)
 {
+    gsu_code(0x04973F, 3);
     return push_into(g, FX_LOCAL_SUM);
 }
 
@@ -513,6 +519,7 @@ static void spin_add(uint16_t from, uint16_t sum, int reg, int times4)
    four times each added to the spin sums; R8, R9 pulled and return. */
 static void push_at_tail(void)
 {
+    gsu_code(0x049AC3, 28);
     int i;
 
     for (i = 0; i < 4; i++) {
@@ -522,24 +529,43 @@ static void push_at_tail(void)
     }
     gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[0], 0);
     gsu_stw(FX_PUSH_ROT_GAP, gsu.r[0]);
+    gsu_code(0x049ADF, 4);
     gsu_stw(FX_PUSH_POINT, gsu.r[1]);
+    gsu_code(0x049AE3, 4);
     gsu_stw(FX_PUSH_POINT + 2, gsu.r[2]);
+    gsu_code(0x049AE7, 4);
     gsu_stw(FX_PUSH_POINT + 4, gsu.r[3]);
+    gsu_code(0x049AEB, 3);
     gsu.r[1] = gsu_ldw(FX_PUSH_ROT);
+    gsu_code(0x049AEE, 3);
     gsu.r[2] = gsu_ldw(FX_PUSH_ROT + 8);
+    gsu_code(0x049AF1, 3);
     gsu.r[3] = gsu_ldw(FX_PUSH_ROT + 16);
-    gsu_stw(FX_PUSH_ROT, fx_row(FX_MATRIX, 2));
-    gsu_stw(FX_PUSH_ROT + 8, fx_row(FX_MATRIX + 6, 2));
-    gsu_stw(FX_PUSH_ROT + 16, fx_row(FX_MATRIX + 12, 2));
+    gsu_code(0x049AF4, 3);
+    gsu_stw(FX_PUSH_ROT, gsu_code_then(0x049B06, 7, fx_row(FX_MATRIX, 2)));
+    gsu_code(0x049B0D, 3);
+    gsu_stw(FX_PUSH_ROT + 8, gsu_code_then(0x049B1F, 7, fx_row(FX_MATRIX + 6, 2)));
+    gsu_code(0x049B26, 3);
+    gsu_stw(FX_PUSH_ROT + 16, gsu_code_then(0x049B38, 7, fx_row(FX_MATRIX + 12, 2)));
+    gsu_code(0x049B3F, 4);
     gsu.r[1] = gsu_ldw(FX_PUSH_POINT);
+    gsu_code(0x049B43, 4);
     gsu.r[2] = gsu_ldw(FX_PUSH_POINT + 2);
+    gsu_code(0x049B47, 4);
     gsu.r[3] = gsu_ldw(FX_PUSH_POINT + 4);
-    gsu_stw(FX_TURN_CROSS, fx_cross(gsu.r[3], FX_PUSH_ROT + 8, gsu.r[2], FX_PUSH_ROT + 16));
-    gsu_stw(0x002C, fx_cross(gsu.r[1], FX_PUSH_ROT + 16, gsu.r[3], FX_PUSH_ROT));
-    gsu_stw(0x002E, fx_cross(gsu.r[2], FX_PUSH_ROT, gsu.r[1], FX_PUSH_ROT + 8));
+    gsu_code(0x049B4B, 3);
+    gsu_stw(FX_TURN_CROSS, gsu_code_then(0x049B56, 14, fx_cross(gsu.r[3], FX_PUSH_ROT + 8, gsu.r[2], FX_PUSH_ROT + 16)));
+    gsu_code(0x049B64, 3);
+    gsu_stw(0x002C, gsu_code_then(0x049B6F, 14, fx_cross(gsu.r[1], FX_PUSH_ROT + 16, gsu.r[3], FX_PUSH_ROT)));
+    gsu_code(0x049B7D, 3);
+    gsu_stw(0x002E, gsu_code_then(0x049B88, 14, fx_cross(gsu.r[2], FX_PUSH_ROT, gsu.r[1], FX_PUSH_ROT + 8)));
+    gsu_code(0x049B96, 4);
     spin_add(FX_TURN_CROSS, FX_SPIN + 2, 4, 1);
+    gsu_code(0x049BA2, 4);
     spin_add(0x002E, FX_SPIN + 4, 5, 1);
+    gsu_code(0x049BAE, 4);
     spin_add(0x002C, FX_SPIN, 6, 1);
+    gsu_code(0x049BBA, 4);
     pull3(0);
 }
 
@@ -547,6 +573,7 @@ static void push_at_tail(void)
    1 (one ADD), 0, -1 (DIV2) or -2 (two DIV2s), to $0132/$013A/$0142. */
 static void push_from_sum(int shift)
 {
+    gsu_code(0x049AA6, 6);
     int i, k;
 
     for (i = 0; i < 3; i++) {
@@ -722,6 +749,7 @@ void abi_FxSumScale(void)
    the return pulled. */
 static void hit_add(int skip_abs)
 {
+    gsu_code(0x049888, 7); gsu_code(0x049899, 18); gsu_code(0x0498CC, 5); gsu_code(0x0498D4, 5); gsu_code(0x0498DC, 5); gsu_code(0x0498E4, 5);
     int i;
 
     if (!skip_abs)
@@ -737,6 +765,7 @@ static void hit_add(int skip_abs)
         gsu.r[0] = gsu_ldw((uint16_t)(FX_HIT + 2 * i));
         gsu.r[0] = gsu_add(gsu.r[0], gsu.r[1 + i], 0);
         gsu_stw((uint16_t)(FX_HIT + 2 * i), gsu.r[0]);
+        gsu_code(0x04991B, 4);
     }
     pull3(0);
 }

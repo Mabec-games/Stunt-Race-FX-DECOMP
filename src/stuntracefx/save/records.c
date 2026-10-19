@@ -287,8 +287,8 @@ next:
         cyc(16);
         blk = rd8(0x0000F3);
     } while (cyc_loop(38, blk < 0x10));
-cyc(52);
-    }
+    cyc(52);
+}
 
 void abi_SaveBlocksCheck(void)
 {
@@ -487,8 +487,8 @@ static void save_blocks_validate(uint8_t bank, uint8_t *p, int from_bad)
                 cyc(16);
                 wr8(0x0000F1, s);
             }
-        cyc(32);
-            }
+            cyc(32);
+        }
         cyc(70);
         x = rd16(0x0000F3);
         cyc(30);
@@ -1424,8 +1424,8 @@ static void record_compare_by_mode(uint16_t x)
             cpu.p = nz16(cpu.p, x);
             abi_RecordTimeCompare();
         }
-    cyc(34);
-        }
+        cyc(34);
+    }
     cyc(96);
     cpu.p = p0;
 }
@@ -2086,8 +2086,8 @@ void abi_SaveRecordSumsTimeUp(void)
         cyc(72);
         wr8(0x70FC46 + (uint32_t)i, v);
     }
-cyc(100);
-    }
+    cyc(100);
+}
 
 /* SEP #$20, LDA #v, STA.L $000FA3: player 1's lead byte. */
 static void time_up_lead(uint8_t v)
@@ -2678,8 +2678,8 @@ void abi_RecordsCharTileAll(void)
         jump_routine(0x070000 | rd16(0x07D807 + cpu.x));
         break;
     }
-cyc(44);
-    }
+    cyc(44);
+}
 
 /* The tile's low byte to $7F:93D7 + Y (SEP #$20, TYX, STA.L, REP #$20). */
 static void records_char_store(void)

@@ -58,16 +58,14 @@ one word, nor between a read and its write back), running the vector's
 code in bank 0: the stubs the game copies to $0101 (NOPs, a JSL to the
 raster handler's C, RTI) with the frame the interrupt pushes.
 
-**The timing is measured, not yet exact.** The C makes every access the
-original makes but does not say how many cycles pass between them, so the
-S-CPU's overhead (26 clocks an instruction) and the Super FX's cost (19
-cycles an access, `gsu_access_cycles`) are set from the original: with
-them the attract race runs at its pace, 360 race frames in 1,750 video
-frames. The game moves its cars once per race frame and a race frame is
-ready when the Super FX has drawn it, so this pace is the game's speed.
-A scene heavy in arithmetic and light in accesses runs a little fast and
-the reverse a little slow. `PORT_CPU_OVERHEAD` and `PORT_GSU_CYCLES`
-override the two values; `PORT_DEBUG=1` prints each frame's state.
+**The timing is being made exact.** The Super FX's is the GSU-1's own
+(`gsu_clock.c`): the C says which of the original's code bytes it stands
+for (`gsu_code`) and the clock prices each fetch as the hardware does (the
+code cache, its line fills, ROM), with the RAM and ROM buffers, MULT and
+FMULT, the pixel caches and the waits for the bus while the S-CPU has it.
+The S-CPU still adds an overhead of 26 clocks to each access it makes
+(`snes_cpu_overhead`, `PORT_CPU_OVERHEAD`) until its C's stated times are
+switched on. `PORT_DEBUG=1` prints each frame's state.
 
 The Super FX and the SPC700 run their C on coroutines of their own, each
 with its own clock, moved on by their accesses. The S-CPU brings them up to

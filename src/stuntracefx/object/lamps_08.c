@@ -107,8 +107,8 @@ static void handler_none(uint16_t o)
 {
     st16i(F(0x201A, o), cyc_then(6, 0x0000));
     st8i(F(0x201C, o), cyc_then(22, 0x00));
-cyc(44);
-    }
+    cyc(44);
+}
 
 /* A new object of `kind` ($1F2B, ObjectSpawn): 1 when one was made (C
    set), Y = it. */
@@ -172,8 +172,8 @@ void abi_ObjectBreakOffBurst15(void)
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | n);
         cpu.p = nz8(cpu.p, n);
     } while (n);
-cyc(34);
-    }
+    cyc(34);
+}
 
 /*
  * @routine 08:D654 ObjectLampPair08
@@ -712,8 +712,8 @@ static void spin_step(void)
     v = op_adc8((uint8_t)cpu.a, 0x08, &cpu.p);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     wr8(F(0x2015, cpu.x), cyc_then(60, v));
-cyc(44);
-    }
+    cyc(44);
+}
 
 /* A spinning set-up of kind k: +$18 = k | $80 and (unless k is 3) the
    turn +$15 = turn; then the handler $08:D0DE and its first tick. */

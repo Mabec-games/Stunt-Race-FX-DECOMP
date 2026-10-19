@@ -273,8 +273,8 @@ static void window_hdma_at(uint8_t line, uint8_t *p)
     wr16(WINDOW_HDMA + 1, 0xFFDD);
     cyc(32);
     wr16(WINDOW_HDMA + 10, 0xFFDD);
-cyc(26);
-    }
+    cyc(26);
+}
 
 void WindowHdmaAt(uint8_t line)
 {
@@ -902,8 +902,8 @@ void abi_WindowLayoutStep(void)
         abi_WindowHdmaFromTable();
     else
         { cyc(76); abi_WindowHdmaLayout(); }
-cyc(42);
-    }
+    cyc(42);
+}
 
 void abi_Records7FFromF170(void);
 void abi_Records7FFromF634(void);
@@ -985,8 +985,8 @@ void WindowsInit(void)
             cyc(62);
             wr8(0x7FFB03 + x, (uint8_t)(v + 0x50));
         }
-    cyc(32);
-        }
+        cyc(32);
+    }
     cyc(92);
     wr16(b | 0x19B6, 0xFFFE);
     cyc(48);
@@ -1655,8 +1655,8 @@ void abi_ColdataLevelStep(void)
         cmp8(v, rd8(0x0019C4));
         if (cpu.p & P_C)
             { cyc(32); wr8(0x7FFF8E + x, cyc_then(32, rd8(0x0019C4))); } else { cyc(22); }
-    cyc(36);
-        }
+        cyc(36);
+    }
     cpu.x = x;
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xFF);
     cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z | P_C);

@@ -239,8 +239,8 @@ void abi_GsuRecordFlag4(void)
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xFF);
         cpu.p = (uint8_t)((cpu.p & ~P_Z) | P_N | P_M);
     }
-cyc(126);
-    }
+    cyc(126);
+}
 
 /*
  * @routine 08:D83D GsuRecordVelocity
@@ -286,8 +286,8 @@ void abi_GsuRecordVelocity(void)
     } else {
         cpu.p = (uint8_t)((p & ~P_Z) | P_N | P_M);
     }
-cyc(96);
-    }
+    cyc(96);
+}
 
 /*
  * @routine 08:B863 GsuRecordWords88
@@ -2211,8 +2211,8 @@ void abi_ObjectSpinStep(void)
     } else { cyc(8); }
     cyc(98);
     abi_ObjectSyncFromRecord();
-cyc(124);
-    }
+    cyc(124);
+}
 
 /*
  * @routine 08:CDD0 ObjectSpinRecord
@@ -2328,8 +2328,8 @@ void abi_GsuRecordListFlag80(void)
  */
 void abi_ReturnLongC096(void)
 {
-cyc(44);
-    }
+    cyc(44);
+}
 
 /* LDA addr, ORA #$20, STA addr (8-bit). */
 static void or20(uint32_t addr)

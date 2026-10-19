@@ -99,8 +99,8 @@ void abi_HudDrawTime(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | end.a);
     if (end.x_set)
         cpu.x = (cpu.p & P_X) ? (uint8_t)end.x : end.x;
-cyc(70);
-    }
+    cyc(70);
+}
 
 /*
  * @routine 7E:E7D6 HudDrawDigits19EC
@@ -170,8 +170,8 @@ uint8_t HudDrawNumber3(uint8_t n, uint16_t offset, uint8_t *p)
         count = rd8(0x0000F1);
         cyc(6);
         wr8(0x0000F1, (uint8_t)(count + 1));
-    cyc(22);
-        }
+        cyc(22);
+    }
     cyc(76);
     count = rd8(0x0000F1);
     digit(OAM_BUFFER + 2 + offset, count);

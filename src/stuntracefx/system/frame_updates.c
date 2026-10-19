@@ -68,8 +68,8 @@ void abi_OamDmaIfPending(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | oam_dma_if_pending(&pending));
     if (pending)
         cpu.x = 0;
-cyc(70);
-    }
+    cyc(70);
+}
 
 /*
  * @routine 7F:0F03 CgramDmaIfPending
@@ -123,8 +123,8 @@ void abi_CgramDmaIfPending(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | cgram_dma_if_pending(&pending));
     if (pending)
         cpu.y = 0x0200;
-cyc(70);
-    }
+    cyc(70);
+}
 
 /*
  * @routine 7F:0F3A ByteWritesIfPending
@@ -194,8 +194,8 @@ void abi_ByteWritesIfPending(void)
         cpu.x = end.x;
         cpu.y = end.y;
     }
-cyc(70);
-    }
+    cyc(70);
+}
 
 /*
  * @routine 7F:1007 VramDmaQueueAdd
@@ -383,8 +383,8 @@ void abi_VramDmaQueueFlush(void)
     cpu.a = (uint16_t)(((end.ran ? end.a : cpu.a) & 0xFF00) | end.flags);
     if (end.looped)
         cpu.x = end.x;
-cyc(70);
-    }
+    cyc(70);
+}
 
 void SystemHalt(void);
 

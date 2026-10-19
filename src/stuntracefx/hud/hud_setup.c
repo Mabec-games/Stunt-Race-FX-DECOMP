@@ -708,8 +708,8 @@ static void race_hud_setup_two(void)
         wr16(0x000477 + cpu.x, v);
         cpu.x = (uint16_t)(cpu.x + 4);
         cpu.y = (uint16_t)(cpu.y + 4);
-    cyc(46);
-        }
+        cyc(46);
+    }
     op_lda16_imm(0x0000);
     cyc(116);
     wr16(b | 0x0425, 0x0000);
@@ -744,8 +744,8 @@ static void race_hud_setup_two(void)
         wr16(b | (uint16_t)(0x0377 + cpu.x), rd16(b | (uint16_t)(0xE811 + cpu.y)));
         cpu.x = (uint16_t)(cpu.x + 4);
         cpu.y = (uint16_t)(cpu.y + 4);
-    cyc(110);
-        }
+        cyc(110);
+    }
     cpu.x = 0x01DC;
     for (cpu.y = 0x0000; cpu.y < 0x0024; ) {
         cyc(204);
@@ -756,8 +756,8 @@ static void race_hud_setup_two(void)
         wr16(b | (uint16_t)(0x0377 + cpu.x), v);
         cpu.x = (uint16_t)(cpu.x + 4);
         cpu.y = (uint16_t)(cpu.y + 4);
-    cyc(68);
-        }
+        cyc(68);
+    }
     cyc(80);
     op_sep(P_M);
     cpu.x = 0x000B;

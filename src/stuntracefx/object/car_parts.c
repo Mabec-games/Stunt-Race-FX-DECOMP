@@ -342,8 +342,8 @@ static void detach_frame(void)
     } while (v);
     cyc(56);
     abi_ObjectRebucket();
-cyc(132);
-    }
+    cyc(132);
+}
 
 /*
  * @routine 08:AC04 PartDetach
@@ -426,8 +426,8 @@ static void return_frame(void)
             (cyc(4), abi_ApproachQuarterMin4Byte());
             wr8(F(0x2014 + i, cpu.x), cyc_then(30, (uint8_t)cpu.a));
         }
-    cyc(22);
-        }
+        cyc(22);
+    }
     abi_ObjectApplyVelocity();
     v = ld8(cyc_then(36, F(0x204B, cpu.x)));
     cmp8(0x01);
@@ -464,8 +464,8 @@ static void return_frame(void)
 void abi_PartReturnStep(void)
 {
     return_frame();
-cyc(38);
-    }
+    cyc(38);
+}
 
 /*
  * @routine 08:ADE2 PartReturn
@@ -482,8 +482,8 @@ void abi_PartReturn(void)
     st8i(F(0x204B, cpu.x), cyc_then(6, 0x0A));
     sound0(cyc_then(6, bits25(cpu.x, 0x02) ? (cyc(26), 0x4C) : 0x4B));
     return_frame();
-cyc(38);
-    }
+    cyc(38);
+}
 
 /* 08:AD70: the flying part's frame (see PartFlyStep). */
 static void fly_frame(void)
@@ -535,8 +535,8 @@ static void fly_frame(void)
         wr8(F(0x2027, cpu.x), cyc_then(66, v));
     } else { cyc(22); }
     abi_ObjectSpawnChanceD460();
-cyc(130);
-    }
+    cyc(130);
+}
 
 /*
  * @routine 08:AD70 PartFlyStep
@@ -814,8 +814,8 @@ static void player2_frame(void)
     wr16(db() | 0x1AF2, cyc_then(24, cpu.a));
     cpu.p |= P_M;
     (cyc(22), player_drive());
-cyc(38);
-    }
+    cyc(38);
+}
 
 /*
  * @routine 08:AFD7 PlayerCar2

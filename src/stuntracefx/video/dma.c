@@ -439,8 +439,8 @@ void abi_VramUploadGsuBuffer(void)
         cpu.a &= 0xFF00;
         cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
     }
-cyc(136);
-    }
+    cyc(136);
+}
 
 /*
  * @routine 03:ECA8 DmaFromDescriptor
@@ -704,8 +704,8 @@ static void upload_sprites_palette(uint32_t b)
             cpu.p = nz16(cpu.p, cpu.y);
             abi_OamDma();
         }
-    cyc(20);
-        }
+        cyc(20);
+    }
     cyc(90);
     cpu.p &= (uint8_t)~(P_M | P_X);
     abi_CgramUploadAll();
@@ -1161,8 +1161,8 @@ void abi_VramRowsCopyUnused(void)
         cpu.y = (uint16_t)(cpu.y - 1);
         cpu.p = nz16(cpu.p, cpu.y);
     } while (cpu.y);
-cyc(100);
-    }
+    cyc(100);
+}
 
 /*
  * @routine 7E:A800 NmiFrameUploadSprites
@@ -1205,8 +1205,8 @@ void VramClearWords(uint8_t bank, uint16_t at, uint16_t n)
         wr16(b | 0x2118, 0x0000);
         n = (uint16_t)(n - 1);
     } while (n);
-cyc(72);
-    }
+    cyc(72);
+}
 
 void abi_VramClearWords(void)
 {

@@ -402,8 +402,8 @@ static void sound_push_decimal(uint8_t command)
         wr8(SOUND_PORT0_QUEUE + slot, command);
         wr8(SOUND_PORT0_COUNT, (uint8_t)(rd8(SOUND_PORT0_COUNT) + 1));
     }
-cyc(162);
-    }
+    cyc(162);
+}
 
 /*
  * @routine 07:90EE TimeDigitBytes
@@ -598,8 +598,8 @@ static void count_bonus(uint32_t b)
         cyc(10);
         wr16(b | TIME_BCD, cpu.a);
     }
-cyc(6);
-    }
+    cyc(6);
+}
 
 /* State 14: moves 3 (1 below 9) from the time to $0E74, in decimal, up to
    $99, with sound $44 when the time reaches 0 or $0E74 reaches $99. */
@@ -1270,8 +1270,8 @@ void TimeLeftDigits(void)
     abi_GsuBytes200_BFB7B6();
     cyc(72);
     gsu_run(0xFAF2);
-cyc(100);
-    }
+    cyc(100);
+}
 
 void abi_TimeLeftDigits(void)
 {

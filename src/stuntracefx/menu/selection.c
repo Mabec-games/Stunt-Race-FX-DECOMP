@@ -101,8 +101,8 @@ void abi_MenuWaitFor0357(void)
         cpu.a &= 0xFF00;
         cpu.p = (uint8_t)((cpu.p & ~(P_N | P_M)) | P_Z);
     }
-cyc(22);
-    }
+    cyc(22);
+}
 
 /*
  * @routine 0B:D4A5 MenuSetExit

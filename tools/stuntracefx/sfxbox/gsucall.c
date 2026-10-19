@@ -59,6 +59,7 @@
 #include <unistd.h>
 #include "gsu.h"
 #include "gsucall.h"
+#include "gsu_clock.h"
 
 RegsGSU gsu;
 
@@ -93,6 +94,7 @@ static void (*core_fill)(uint32_t);
 static void (*core_flush)(uint32_t);
 static uint8_t (*core_fetch)(uint16_t);
 static void (*core_set_cb)(const struct GsuCallbacks *, int (*)(uint32_t, uint32_t));
+static uint32_t (*core_cache_valid)(void);
 
 static uint8_t *ram, *rom;
 static uint32_t ram_n, rom_n;
@@ -133,6 +135,7 @@ int gsu_load(void *core, void *lib, const char *only)
     *(void **)&core_flush = dlsym(core, "sfxbox_gsu_flush");
     *(void **)&core_fetch = dlsym(core, "sfxbox_gsu_fetch");
     *(void **)&core_set_cb = dlsym(core, "sfxbox_gsu_set_callbacks");
+    *(void **)&core_cache_valid = dlsym(core, "sfxbox_gsu_cache_valid");
     uint8_t *(*mem)(const char *, size_t *) = dlsym(core, "sfxbox_memory");
     if (!core_get || !core_put || !core_time || !core_bus || !core_fill || !core_flush || !core_fetch || !core_set_cb || !mem) {
         fprintf(stderr, "the library has Super FX routines and the core has no Super FX hooks "
@@ -199,12 +202,17 @@ static void count_access(void)
     if (mode == 1 && c_running && ++c_accesses > (1L << 22)) { c_bad = 2; longjmp(c_abort, 1); }
 }
 
+/* the Super FX's time and pixel caches (below) */
+static GsuClock gclk;
+static int in_pixels;   /* a pixel cache's own access: not through the RAM buffer */
+
 uint8_t gsu_rd8(uint32_t a)
 {
     a &= 0xFFFFFF;
     count_access();
     if (is_rom(a)) return rom[rom_off(a)];
     if (!is_ram(a)) { if (mode == 1) { c_bad = 1; if (c_running) longjmp(c_abort, 1); } return 0; }
+    if (!in_pixels) gsuclk_ram_read(&gclk);
     if (mode == 1) return sandbox_read(ram_off(a));
     if (mode == 2) return live_ram(0, a, 0);
     return ram[ram_off(a)];
@@ -215,48 +223,26 @@ void gsu_wr8(uint32_t a, uint8_t v)
     a &= 0xFFFFFF;
     count_access();
     if (!is_ram(a)) { if (mode == 1) c_bad = 1; return; }
+    if (!in_pixels) gsuclk_ram_write(&gclk);
     if (mode == 1) sandbox_write(ram_off(a), v);
     else if (mode == 2) live_ram(1, a, v);
     else ram[ram_off(a)] = v;
 }
 
-/* ---- the pixel caches, as the core keeps them (sfc/coprocessor/superfx/core.cpp) ---- */
+/* ---- the pixel caches and the Super FX's time: the port's model
+   (ports/common/snes/gsu_clock.c), which here also times the C against the
+   original ---- */
 
-static struct PixelCache pix[2];
+static uint8_t pix_read(GsuClock *c, uint32_t a) { (void)c; in_pixels = 1; uint8_t v = gsu_rd8(a); in_pixels = 0; return v; }
+static void pix_write(GsuClock *c, uint32_t a, uint8_t v) { (void)c; in_pixels = 1; gsu_wr8(a, v); in_pixels = 0; }
 
 static unsigned scmr_ht(void) { return (gsu.scmr & 0x20 ? 2u : 0u) | (gsu.scmr & 0x04 ? 1u : 0u); }
 static unsigned scmr_md(void) { return gsu.scmr & 3u; }
 
-static uint32_t char_addr(uint8_t x, uint8_t y)
+static GsuScreen screen(void)
 {
-    unsigned cn = 0;
-    switch (gsu.por & 0x10 ? 3 : scmr_ht()) {
-    case 0: cn = ((x & 0xF8u) << 1) + ((y & 0xF8u) >> 3); break;
-    case 1: cn = ((x & 0xF8u) << 1) + ((x & 0xF8u) >> 1) + ((y & 0xF8u) >> 3); break;
-    case 2: cn = ((x & 0xF8u) << 1) + ((x & 0xF8u) << 0) + ((y & 0xF8u) >> 3); break;
-    case 3: cn = ((y & 0x80u) << 2) + ((x & 0x80u) << 1) + ((y & 0x78u) << 1) + ((x & 0x78u) >> 3); break;
-    }
-    unsigned md = scmr_md(), bpp = 2u << (md - (md >> 1));
-    return 0x700000u + cn * (bpp << 3) + ((uint32_t)gsu.scbr << 10) + (uint32_t)(y & 7) * 2;
-}
-
-static void flush_pixels(struct PixelCache *c)
-{
-    if (c->bitpend == 0) return;
-    uint8_t x = (uint8_t)(c->offset << 3), y = (uint8_t)(c->offset >> 5);
-    uint32_t addr = char_addr(x, y);
-    unsigned md = scmr_md(), bpp = 2u << (md - (md >> 1));
-    for (unsigned n = 0; n < bpp; n++) {
-        uint32_t byte = ((n >> 1) << 4) + (n & 1);
-        uint8_t data = 0;
-        for (unsigned k = 0; k < 8; k++) data |= (uint8_t)(((c->data[k] >> n) & 1) << k);
-        if (c->bitpend != 0xFF) {
-            data &= c->bitpend;
-            data |= (uint8_t)(gsu_rd8(addr + byte) & ~c->bitpend);
-        }
-        gsu_wr8(addr + byte, data);
-    }
-    c->bitpend = 0;
+    GsuScreen s = { (uint8_t)(gsu.por & 0x10 ? 3 : scmr_ht()), (uint8_t)scmr_md(), gsu.scbr };
+    return s;
 }
 
 void gsu_plot(uint8_t x, uint8_t y)
@@ -272,36 +258,50 @@ void gsu_plot(uint8_t x, uint8_t y)
         if ((x ^ y) & 1) color >>= 4;
         color &= 0x0F;
     }
-    uint16_t offset = (uint16_t)((y << 5) + (x >> 3));
-    if (offset != pix[0].offset) {
-        flush_pixels(&pix[1]);
-        pix[1] = pix[0];
-        pix[0].bitpend = 0;
-        pix[0].offset = offset;
-    }
-    x = (uint8_t)((x & 7) ^ 7);
-    pix[0].data[x] = color;
-    pix[0].bitpend |= (uint8_t)(1 << x);
-    if (pix[0].bitpend == 0xFF) {
-        flush_pixels(&pix[1]);
-        pix[1] = pix[0];
-        pix[0].bitpend = 0;
-    }
+    GsuScreen s = screen();
+    gsuclk_plot(&gclk, &s, x, y, color);
 }
 
 uint8_t gsu_rpix(uint8_t x, uint8_t y)
 {
-    flush_pixels(&pix[1]);
-    flush_pixels(&pix[0]);
-    uint32_t addr = char_addr(x, y);
-    unsigned md = scmr_md(), bpp = 2u << (md - (md >> 1));
-    uint8_t data = 0;
-    x = (uint8_t)((x & 7) ^ 7);
-    for (unsigned n = 0; n < bpp; n++) {
-        uint32_t byte = ((n >> 1) << 4) + (n & 1);
-        data |= (uint8_t)(((gsu_rd8(addr + byte) >> x) & 1) << n);
+    GsuScreen s = screen();
+    return gsuclk_rpix(&gclk, &s, x, y);
+}
+
+/* the code the C stated in the interval being timed (the ops log's) */
+static uint32_t mfetch[1 << 16], mfn;
+static int mfetch_on;
+
+void gsu_code(uint32_t addr, uint32_t n)
+{
+    if (mfetch_on)
+        for (uint32_t i = 0; i < n && mfn < (uint32_t)(sizeof mfetch / sizeof mfetch[0]); i++)
+            mfetch[mfn++] = (addr & 0xFF0000) | ((addr + i) & 0xFFFF);
+    gsuclk_code(&gclk, addr, n);
+}
+
+void gsu_cache(uint16_t r15)
+{
+    if (mfetch_on && mfn < (uint32_t)(sizeof mfetch / sizeof mfetch[0])) mfetch[mfn++] = 0x80000000u | r15;
+    gsuclk_cache(&gclk, r15);
+}
+void gsu_cyc(uint32_t clocks) { gsuclk_step(&gclk, GSUCLK_INSN, clocks); }
+
+void gsu_time(int what)
+{
+    if (what == GSU_T_MULT) gsuclk_mult(&gclk);
+    else if (what == GSU_T_FMULT) gsuclk_fmult(&gclk);
+}
+
+static void buffer_placed(int getb);   /* below */
+
+void gsu_buffer(int what)
+{
+    switch (what) {
+    case GSU_B_R14: buffer_placed(0); gsuclk_r14(&gclk); break;
+    case GSU_B_ROMBUF: buffer_placed(1); gsuclk_rombuf(&gclk); break;
+    case GSU_B_RAMBUF: gsuclk_rambuf(&gclk); break;
     }
-    return data;
 }
 
 /* ---- moving state between the core and the C ---- */
@@ -317,7 +317,13 @@ static void model_from(const struct GsuState *st)
     /* The ROM buffer; a fill still pending lands before anything reads it,
        with the R14 and ROMBR of now (ROMB completes a pending fill first). */
     gsu.romdr = st->romcl ? rom[rom_off((uint32_t)st->rombr << 16 | st->r[14])] : st->romdr;
-    pix[0] = st->pixel[0]; pix[1] = st->pixel[1];
+    for (int i = 0; i < 2; i++) {
+        gclk.pix[i].offset = st->pixel[i].offset;
+        gclk.pix[i].bitpend = st->pixel[i].bitpend;
+        memcpy(gclk.pix[i].data, st->pixel[i].data, 8);
+    }
+    gclk.pix_read = pix_read;
+    gclk.pix_write = pix_write;
 }
 
 /* A call that returned two levels up (04:C72F): it has just run a pull
@@ -443,7 +449,8 @@ static void finish(Watch *w)
     if (gsu.ramaddr != fin.ramaddr) WHY(" ramaddr=%04X/%04X", gsu.ramaddr, fin.ramaddr);
     if (!fin.romcl && gsu.romdr != fin.romdr) WHY(" romdr=%02X/%02X", gsu.romdr, fin.romdr);
     for (int i = 0; i < 2; i++) {
-        struct PixelCache *a = &pix[i], *b = &fin.pixel[i];
+        struct GsuPixels *a = &gclk.pix[i];
+        struct PixelCache *b = &fin.pixel[i];
         int same = a->offset == b->offset && a->bitpend == b->bitpend;
         for (int k = 0; k < 8 && same; k++) if (a->bitpend >> k & 1) same = a->data[k] == b->data[k];
         if (!same) WHY(" pixelcache%d", i);
@@ -575,7 +582,8 @@ void gsu_check_rows(FILE *rep)
 #define CALLRING (1 << 20)
 #define OPRING (1u << 24)
 
-enum { OP_STEP = 1, OP_READ = 2, OP_WRITE = 3, OP_FILL = 4, OP_FLUSH = 5, OP_FLAGS = 6, OP_ISSUE = 7 };
+enum { OP_STEP = 1, OP_READ = 2, OP_WRITE = 3, OP_FILL = 4, OP_FLUSH = 5, OP_FLAGS = 6, OP_ISSUE = 7, OP_FETCH = 8,
+       OP_R14 = 9, OP_GETB = 10 };
 
 /* A step's clocks, and (core patch 0007, in the top byte) what it is for:
    STEP_INSN an instruction, the others the waits and transfers the
@@ -719,8 +727,18 @@ static void orig_insn(uint32_t pc, uint32_t prev_end, uint8_t opcode)
 static void orig_step(uint32_t clocks) { if (m.active) op(OP_STEP, clocks); }
 static void orig_ram(int write, uint32_t addr, uint8_t data) { (void)data; if (m.active) op(write ? OP_WRITE : OP_READ, addr); }
 /* kind 1 a code-cache line filled, 2 the cache flushed, 3 a store into the
-   RAM buffer (core patch 0007: the RAM is written when it drains) */
-static void orig_cache(int kind, uint32_t v) { if (m.active) op(kind == 1 ? OP_FILL : kind == 2 ? OP_FLUSH : OP_ISSUE, v); }
+   RAM buffer (core patch 0007: the RAM is written when it drains); patch
+   0008: 4 a code byte about to be fetched (recorded only for the ops log,
+   SFXBOX_GSUCYCLOG_OPS), 5 R14 written (the ROM buffer's fill starts), 6 a
+   read of the ROM buffer (GETB, GETC) */
+static int fetch_ops;
+static void orig_cache(int kind, uint32_t v)
+{
+    static const uint8_t kinds[] = {0, OP_FILL, OP_FLUSH, OP_ISSUE, OP_FETCH, OP_R14, OP_GETB};
+    if (!m.active || kind < 1 || kind > 6) return;
+    if (kind == 4 && !fetch_ops) return;
+    op(kinds[kind], v);
+}
 
 /* ---- hybrid side: run the C in place ---- */
 
@@ -764,9 +782,10 @@ static void replay_to(uint32_t to)
    timing line. A probe or a stated time counts only on the Super FX's own
    thread (the S-CPU's and SPC700's C run on theirs, interleaved). */
 static FILE *gcyclog;
-static uint32_t gprobe[1 << 16], gpn, gsaid, gfrom;
+static uint32_t gprobe[1 << 16], gpn, gfrom;
 static int gover, gquiet, gcyclog_ops;
-static long gtm_on, gtm_off;
+static long gtm_on, gtm_off, gtm_kind[GSUCLK_KINDS];
+static uint64_t gmark[GSUCLK_KINDS];     /* the model's clocks at the interval's start */
 static void *gthread;
 extern void *(*sfxbox_co_active)(void);
 
@@ -780,47 +799,67 @@ int gsu_probe(unsigned id)
     return 1;
 }
 
-void gsu_cyc(uint32_t clocks)
-{
-    if (on_gsu_thread()) gsaid += clocks;
-}
-
 /* The interval ending at the record's op `to` (an access placed, or the
-   call's end at cn): its clocks are the instructions' steps since the
-   access before (the waits and transfers around them are the hardware's,
-   not the code's). */
+   call's end at cn): the original's steps since the access before against
+   the clocks the model priced for the C's code and accesses there. The
+   waits for the bus while the S-CPU has it are the original's (the C runs
+   all at once at the call's start: the S-CPU's side of those times is not
+   there yet), so they are left out of both. */
 static void gcyc_put(uint8_t type, uint32_t to)
 {
-    uint32_t gap = 0, hdr[4];
+    uint32_t gap = 0, said = 0, hdr[4];
+    uint64_t o[GSUCLK_KINDS] = {0};
     for (uint32_t q = gfrom; q < to; q++)
-        if (cops[q] == OP_STEP && STEP_KIND(carg[q]) == STEP_INSN) gap += STEP_CLOCKS(carg[q]);
+        if (cops[q] == OP_STEP && STEP_KIND(carg[q]) < GSUCLK_KINDS) o[STEP_KIND(carg[q])] += STEP_CLOCKS(carg[q]);
+    uint32_t mkind[GSUCLK_KINDS];
+    for (int k = 0; k < GSUCLK_KINDS; k++) {
+        uint64_t mk = gclk.by[k] - gmark[k];
+        mkind[k] = (uint32_t)mk;
+        if (k == GSUCLK_BUS) continue;
+        gap += (uint32_t)o[k];
+        said += (uint32_t)mk;
+        if (!gquiet && !gover && mk != o[k]) gtm_kind[k]++;
+    }
+    memcpy(gmark, gclk.by, sizeof gmark);
     if (!gquiet) {
         if (gover) gap = 0xFFFFFFFFu;
-        else if (gap == gsaid) gtm_on++;
+        else if (gap == said) gtm_on++;
         else gtm_off++;
         if (gcyclog) {
             fputc(type, gcyclog);
-            hdr[0] = gap; hdr[1] = 0; hdr[2] = gsaid; hdr[3] = gpn;
+            hdr[0] = gap; hdr[1] = 0; hdr[2] = said; hdr[3] = gpn;
             fwrite(hdr, 4, 4, gcyclog);
             fwrite(gprobe, 4, gpn, gcyclog);
             if (gcyclog_ops) {
                 /* the original's operations in the interval: kind, then
-                   its argument (SFXBOX_GSUCYCLOG_OPS) */
-                uint32_t m = to > gfrom ? to - gfrom : 0;
+                   its argument (SFXBOX_GSUCYCLOG_OPS); its code fetches
+                   among them (OP_FETCH) */
+                uint32_t m = (to > gfrom ? to - gfrom : 0) + GSUCLK_KINDS + mfn;
                 fwrite(&m, 4, 1, gcyclog);
                 for (uint32_t q = gfrom; q < to; q++) { fputc(cops[q], gcyclog); fwrite(&carg[q], 4, 1, gcyclog); }
+                /* then the model's clocks of each kind, as ops 100 + kind */
+                for (int k = 0; k < GSUCLK_KINDS; k++) { fputc(100 + k, gcyclog); fwrite(&mkind[k], 4, 1, gcyclog); }
+                /* and the code the C stated, as op 110 (a byte fetched) and
+                   111 (a CACHE, R15) */
+                for (uint32_t q = 0; q < mfn; q++) {
+                    fputc(mfetch[q] >> 31 ? 111 : 110, gcyclog);
+                    uint32_t a = mfetch[q] & 0x7FFFFFFFu;
+                    fwrite(&a, 4, 1, gcyclog);
+                }
             }
         }
     }
-    gpn = 0; gover = 0; gsaid = 0;
+    gpn = 0; gover = 0; mfn = 0;
     gfrom = to + 1;
 }
 
 void gsu_timing_line(FILE *rep)
 {
     if (!nrt) return;
-    fprintf(rep, "super fx timing: %ld of the Super FX C's accesses and returns at the original's clocks, %ld not\n",
-            gtm_on, gtm_off);
+    fprintf(rep, "super fx timing: %ld of the Super FX C's accesses and returns at the original's clocks, %ld not "
+            "(bus waits as the original's); off in: instructions %ld, rom buffer %ld, ram buffer %ld, cache fills %ld, "
+            "pixel flushes %ld, rpix %ld\n", gtm_on, gtm_off, gtm_kind[GSUCLK_INSN], gtm_kind[GSUCLK_ROMBUF],
+            gtm_kind[GSUCLK_RAMBUF], gtm_kind[GSUCLK_FILL], gtm_kind[GSUCLK_FLUSH], gtm_kind[GSUCLK_RPIX]);
     if (gcyclog) { fclose(gcyclog); gcyclog = NULL; }
 }
 
@@ -844,6 +883,20 @@ static uint8_t live_ram(int write, uint32_t a, uint8_t v)
     if (place_from >= 0 && frame_now >= place_from && frame_now <= place_to)
         fprintf(lsrep, "GPLACE %ld %s %s %06X %u -> %u\n", frame_now, cur_name, write ? "w" : "r", a, from, ci);
     return core_bus(write, a, v);
+}
+
+/* The C's R14 write or ROM-buffer read (gsu_buffer), placed on the
+   original's next one before its next RAM access: the time up to there
+   is an interval of its own (the buffer's wait depends on the code run
+   between them). */
+static void buffer_placed(int getb)
+{
+    uint8_t kind = getb ? OP_GETB : OP_R14;
+    if (mode != 2 || !on_gsu_thread()) return;
+    for (uint32_t q = gfrom; q < cn; q++) {
+        if (cops[q] == OP_READ || cops[q] == OP_WRITE || cops[q] == OP_ISSUE) return;
+        if (cops[q] == kind) { gcyc_put('A', q); return; }
+    }
 }
 
 static int prog_now;
@@ -899,6 +952,7 @@ static int hybrid_exec(uint32_t pc, uint32_t prev_end)
     /* No buffered access is left pending in the core while the C runs: the
        ROM buffer is filled now (the C reads ROM itself), a store still in
        the RAM buffer is made at the original's matching write. */
+    uint8_t entry_romcl = st.romcl, entry_ramcl = st.ramcl;
     int pend = st.ramcl != 0;
     uint32_t pend_addr = 0x700000u + ((uint32_t)st.rambr << 16) + st.ramar;
     uint8_t pend_val = st.ramdr;
@@ -906,9 +960,17 @@ static int hybrid_exec(uint32_t pc, uint32_t prev_end)
     st.ramcl = 0;
     core_put(&st);
     model_from(&st);
+    /* the model's state as the original's at the entry: the code cache,
+       the buffers still counting (the store left buffered drains as the
+       C's first code runs) */
+    gclk.cbr = st.cbr; gclk.valid = core_cache_valid ? core_cache_valid() : 0;
+    gclk.clsr = st.clsr & 1; gclk.ms0 = (uint8_t)(st.cfgr >> 5 & 1);
+    gclk.romcl = entry_romcl; gclk.ramcl = entry_ramcl;
+    gclk.bus = NULL;
     /* the call's time from its start; the store left buffered is the
        entry's, not the C's (unjudged); none past the record's end */
-    gpn = 0; gover = 0; gsaid = 0; gfrom = 0;
+    gpn = 0; gover = 0; gfrom = 0; mfn = 0;
+    memcpy(gmark, gclk.by, sizeof gmark);
     gthread = sfxbox_co_active ? sfxbox_co_active() : NULL;
     gquiet = past_end;
     if (gcyclog && !past_end) { uint32_t at = pc & 0xFFFFFF; fputc('S', gcyclog); fwrite(&at, 4, 1, gcyclog); }
@@ -931,7 +993,11 @@ static int hybrid_exec(uint32_t pc, uint32_t prev_end)
     out.sfr = (uint16_t)((out.sfr & ~SFR_PREFIX) | rec.prefix);
     out.sreg = rec.sreg; out.dreg = rec.dreg;
     out.colr = gsu.colr; out.por = gsu.por; out.rombr = gsu.rombr; out.rambr = gsu.rambr; out.ramaddr = gsu.ramaddr;
-    out.pixel[0] = pix[0]; out.pixel[1] = pix[1];
+    for (int i = 0; i < 2; i++) {
+        out.pixel[i].offset = gclk.pix[i].offset;
+        out.pixel[i].bitpend = gclk.pix[i].bitpend;
+        memcpy(out.pixel[i].data, gclk.pix[i].data, 8);
+    }
     out.romcl = rec.romcl;
     out.romdr = gsu.romdr;   /* a fill still pending (romcl) refills it from R14 */
     out.sfr = (uint16_t)((out.sfr & ~SFR_R) | (rec.romcl ? SFR_R : 0));
@@ -954,8 +1020,10 @@ void gsu_lockstep_role(int r, FILE *rep, volatile int *stk)
         gcyclog = fopen(getenv("SFXBOX_GSUCYCLOG"), "wb");
         if (!gcyclog) { perror("SFXBOX_GSUCYCLOG"); exit(2); }
         gcyclog_ops = getenv("SFXBOX_GSUCYCLOG_OPS") != NULL;
+        mfetch_on = gcyclog_ops;
         if (gcyclog_ops) fputc('O', gcyclog);
     }
+    fetch_ops = getenv("SFXBOX_GSUCYCLOG_OPS") != NULL;
     if (getenv("SFXBOX_LS_GPLACE")) sscanf(getenv("SFXBOX_LS_GPLACE"), "%ld,%ld", &place_from, &place_to);
     if (role == 1) {
         static struct GsuCallbacks cb = {orig_insn, orig_step, orig_ram, orig_cache};

@@ -60,6 +60,7 @@ FxRegs FxDriveDecide(FxRegs g)
     uint16_t *sp = &g.r[10];
 
     gsu_push(sp, g.r[11]);
+    gsu_code(0x04C7D8, 6);
     g.r[0] = car_field(&g, CAR_70);
     g.r[5] = 0x0020;
     g.r[0] = gsu_and(g.r[0], g.r[5]);
@@ -67,77 +68,91 @@ FxRegs FxDriveDecide(FxRegs g)
         g.r[4] = gsu_div2(g.r[4]);
         g.r[0] = gsu_div2(g.r[4]);
         g.r[4] = gsu_add(g.r[4], g.r[0], 0);
-    }
+    } else { gsu_code(0x04C7DE, 6); gsu_code(0x04C7EC, 3); }
     gsu_push(sp, g.r[4]);
     g.r[11] = 0xC7F5;
     g = FxBearingTo(g);
     g.r[1] = g.r[0];
     g.r[0] = car_field(&g, CAR_PITCH);
     g.r[1] = gsu_sub(g.r[1], g.r[0], 0);
+    gsu_code(0x04C7FC, 6);
     g.r[0] = car_field(&g, CAR_FLAGS40);
     g.r[2] = 0x0100;
     g.r[0] = gsu_and(g.r[0], g.r[2]);
     if (!gsu.z) {
+        gsu_code(0x04C802, 11);
         g.r[0] = car_field(&g, CAR_YAW);
         g.r[2] = g.r[0];
         g.r[0] = gsu_div2(gsu_div2(g.r[0]));
         g.r[2] = gsu_sub(g.r[2], g.r[0], 0);
+        gsu_code(0x04C80D, 10);
         gsu_sbk(g.r[2]);
-    }
+    } else { gsu_code(0x04C802, 6); gsu_code(0x04C816, 1); }
+    gsu_code(0x04C817, 4);
     g.r[4] = gsu_pull(sp);
     g.r[9] = 0;
+    gsu_code(0x04C81B, 6);
     g.r[0] = car_field(&g, CAR_SPEED);
     g.r[3] = g.r[4];
     gsu_sub(g.r[0], g.r[3], 0);
     if (!gsu.s) {
+        gsu_code(0x04C840, 5);
         bits_or(&g, 0x0040);
     } else {
+        gsu_code(0x04C827, 9);
         g.r[2] = 0x0227;
         gsu_sub(g.r[4], g.r[2], 0);
-        bits_or(&g, gsu.s ? 0x0010 : 0x0400);
+        bits_or(&g, gsu.s ? (gsu_code(0x04C838, 8), 0x0010) : (gsu_code(0x04C830, 8), 0x0400));
     }
+    gsu_code(0x04C821, 6); gsu_code(0x04C845, 7);
     g.r[2] = gsu_ldw(gsu_add(CAR_STEER_BIAS, g.r[8], 0));
     g.r[0] = gsu_sub(g.r[1], g.r[2], 0);
     if (gsu.s) {
+        gsu_code(0x04C84C, 13);
         g.r[1] = 0xFC72;
         gsu_sub(g.r[0], g.r[1], 0);
         if (gsu.s) {
+            gsu_code(0x04C859, 8); gsu_code(0x04C866, 10);
             g.r[1] = 0xF05C;
             gsu_sub(g.r[0], g.r[1], 0);
             if (gsu.s)
-                bits_and(&g, 0xFFEF);
+                { gsu_code(0x04C861, 5); bits_and(&g, 0xFFEF); }
             bits_or(&g, 0x0002);
             g.r[0] = car_field(&g, CAR_FLAGS40);
             g.r[1] = 0x4000;
             g.r[0] = gsu_and(g.r[0], g.r[1]);
             if (!gsu.z)
-                bits_or(&g, 0x0008);
+                bits_or(&g, 0x0008); else { gsu_code(0x04C870, 6); }
         }
     } else {
+        gsu_code(0x04C84C, 5); gsu_code(0x04C87E, 8);
         g.r[1] = 0x038E;
         gsu_sub(g.r[0], g.r[1], 0);
         if (!gsu.s) {
+            gsu_code(0x04C886, 8); gsu_code(0x04C893, 10);
             g.r[1] = 0x0FA4;
             gsu_sub(g.r[0], g.r[1], 0);
             if (!gsu.s)
-                bits_and(&g, 0xFFEF);
+                { gsu_code(0x04C88E, 5); bits_and(&g, 0xFFEF); }
             bits_or(&g, 0x0001);
             g.r[0] = car_field(&g, CAR_FLAGS40);
             g.r[1] = 0x4000;
             g.r[0] = gsu_and(g.r[0], g.r[1]);
             if (!gsu.z)
-                bits_or(&g, 0x0004);
+                bits_or(&g, 0x0004); else { gsu_code(0x04C89D, 6); }
         }
     }
+    gsu_code(0x04C8AB, 5);
     g.r[0] = car_field(&g, CAR_SPEED);
     g.r[3] = 0x00C8;
     gsu_sub(g.r[0], g.r[3], 0);
     if (gsu.s)
-        bits_or(&g, 0x0010);
+        bits_or(&g, 0x0010); else { gsu_code(0x04C8B0, 7); gsu_code(0x04C8BC, 5); }
     g.r[0] = car_field(&g, CAR_SPREAD);
     g.r[1] = g.r[0];
     gsu_moves(g.r[1]);
     {
+        gsu_code(0x04C8C1, 4); gsu_code(0x04C8CB, 5);
         int zero = gsu.z;
 
         g.r[0] = gsu_dec(g.r[0]);                /* in the branch's delay slot */
@@ -149,6 +164,7 @@ FxRegs FxDriveDecide(FxRegs g)
     g.r[0] = car_field(&g, CAR_STUCK);
     gsu_moves(g.r[0]);
     {
+        gsu_code(0x04C8D0, 12); gsu_code(0x04C8FC, 5);
         int counting = 1;
 
         if (!gsu.s) {
@@ -178,6 +194,7 @@ FxRegs FxDriveDecide(FxRegs g)
                 g.r[0] = gsu_inc(car_field(&g, CAR_STUCK));
                 gsu_sbk(g.r[0]);
             } else {
+                gsu_code(0x04C901, 7); gsu_code(0x04C911, 5);
                 int zero;
 
                 g.r[0] = car_field(&g, CAR_STUCK);
@@ -185,16 +202,18 @@ FxRegs FxDriveDecide(FxRegs g)
                 zero = gsu.z;
                 g.r[0] = gsu_dec(g.r[0]);        /* in the branch's delay slot */
                 if (!zero)
-                    gsu_sbk(g.r[0]);
+                    gsu_sbk(g.r[0]); else { gsu_code(0x04C916, 4); gsu_code(0x04C91B, 5); }
             }
         }
     }
     g.r[0] = car_field(&g, CAR_44);
     gsu_moves(g.r[0]);
     if (!gsu.z)
-        bits_and(&g, 0xFBEF);
+        { gsu_code(0x04C924, 5); bits_and(&g, 0xFBEF); }
+    gsu_code(0x04C920, 4); gsu_code(0x04C929, 6);
     g.r[0] = gsu_add(CAR_SIDES, g.r[8], 0);
     gsu_stw(g.r[0], g.r[9]);
+    gsu_code(0x04C92F, 4);
     gsu_pull(sp);
     return g;
 }
@@ -244,6 +263,7 @@ FxRegs FxSteerFromInput(FxRegs g)
 {
     g.r[5] = gsu_ldw(FX_STEER_RATE);
     g.r[7] = 0;
+    gsu_code(0x04BA0A, 8);
     g.r[1] = gsu_ldw(gsu_add(CAR_FLAGS40, g.r[8], 0));
     g.r[0] = gsu_and(0x0400, g.r[1]);
     if (!gsu.z) {
@@ -256,36 +276,39 @@ FxRegs FxSteerFromInput(FxRegs g)
         g.r[6] = gsu_swap(g.r[0]);
         g.r[5] = gsu_add(g.r[5], g.r[5], 0);
         g.r[5] = gsu_fmult(g.r[5], g.r[6]);
-    }
+    } else { gsu_code(0x04BA12, 6); gsu_code(0x04BA35, 7); }
     g.r[3] = gsu_ldw(gsu_add(CAR_STEER_BIAS, g.r[8], 0));
     g.r[4] = gsu_inc(gsu_not(g.r[5]));
     g.r[0] = gsu_and(0x000F, g.r[2]);
-    if (gsu.z) {                                     /* no bits: back toward 0 */
+    if (gsu.z) {                                     gsu_code(0x04BA3C, 16); gsu_code(0x04BA50, 5); /* no bits: back toward 0 */
         gsu_moves(g.r[7]);
         if (!gsu.z)
             return g;
         g.r[1] = gsu_ldw(FX_STEER_BACK);
         gsu_moves(g.r[3]);
         if (gsu.z)
-            return g;
+            { gsu_code(0x04BA55, 8); return g; } else { gsu_code(0x04BA55, 4); gsu_code(0x04BA5D, 3); }
         if (gsu.s) {
+            gsu_code(0x04BA60, 5); gsu_code(0x04BA69, 6);
             g.r[3] = gsu_add(g.r[3], g.r[1], 0);
             if (gsu.s)
                 return g;
         } else {
+            gsu_code(0x04BA6F, 5); gsu_code(0x04BA78, 6);
             g.r[3] = gsu_sub(g.r[3], g.r[1], 0);
             if (!gsu.s)
                 return g;
         }
         g.r[3] = 0;
         return g;
-    }
+    } else { gsu_code(0x04BA3C, 11); gsu_code(0x04BA7E, 14); }
     g.r[6] = 0;
     g.r[0] = gsu_and(0x0003, g.r[2]);
     if (!gsu.z) {
         g.r[6] = gsu_ldw(FX_STEER_MAX);
         g.r[0] = gsu_and(0x0001, g.r[2]);
         if (!gsu.z) {
+            gsu_code(0x04BA92, 5); gsu_code(0x04BA9E, 5); gsu_code(0x04BB01, 6);
             gsu_moves(g.r[3]);
             if (gsu.s) {
                 gsu_moves(g.r[7]);
@@ -294,20 +317,24 @@ FxRegs FxSteerFromInput(FxRegs g)
             }
             gsu_moves(g.r[3]);
             if (!gsu.z) {
+                gsu_code(0x04BAA3, 7);
                 g.r[0] = 0x0080;
                 g.r[3] = gsu_add(g.r[3], g.r[0], 0);
             } else {
+                gsu_code(0x04BAAA, 4);
                 g.r[3] = gsu_add(g.r[3], g.r[5], 0);
             }
         } else {
+            gsu_code(0x04BAAE, 12); gsu_code(0x04BAC1, 5); gsu_code(0x04BB0C, 6);
             g.r[0] = gsu_and(0x0002, g.r[2]);
             if (!gsu.z) {
                 gsu_moves(g.r[3]);
                 if (!gsu.s) {
+                    gsu_code(0x04BABA, 7); gsu_code(0x04BACD, 2);
                     gsu_moves(g.r[7]);
                     if (gsu.z)
                         g.r[3] = 0;
-                }
+                } else { gsu_code(0x04BAC6, 7); }
                 gsu_moves(g.r[3]);
                 if (!gsu.z) {
                     g.r[0] = 0x0080;
@@ -317,6 +344,7 @@ FxRegs FxSteerFromInput(FxRegs g)
                 }
             }
         }
+        gsu_code(0x04BA8C, 6); gsu_code(0x04BACF, 7); gsu_code(0x04BAF7, 10);
     }
     g.r[0] = gsu_and(0x000C, g.r[2]);
     if (!gsu.z) {
@@ -336,11 +364,11 @@ FxRegs FxSteerFromInput(FxRegs g)
     if (!gsu.s) {
         gsu_sub(g.r[3], g.r[6], 0);
         if (!gsu.s)
-            g.r[3] = g.r[6];
+            { gsu_code(0x04BB07, 5); g.r[3] = g.r[6]; }
     } else {
         gsu_sub(g.r[3], g.r[4], 0);
         if (gsu.s)
-            g.r[3] = g.r[4];
+            { gsu_code(0x04BB12, 2); g.r[3] = g.r[4]; }
     }
     return g;
 }

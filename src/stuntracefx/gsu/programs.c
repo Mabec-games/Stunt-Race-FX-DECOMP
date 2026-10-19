@@ -793,8 +793,8 @@ void abi_GsuFA1BFromTables(void)
         cpu.x = x;
         cpu.p = (uint8_t)((p & ~P_N) | P_Z);
     }
-cyc(4);
-    }
+    cyc(4);
+}
 
 /*
  * @routine 02:E01C Gsu81E3
@@ -1221,8 +1221,8 @@ uint8_t GsuFA5ASix(uint8_t bank, uint8_t *p)
             cyc(146);
             mode = GsuRun(0x07, 0xFA5A);
         }
-    cyc(132);
-        }
+        cyc(132);
+    }
     cyc(18);
     return mode;
 }
@@ -1439,8 +1439,8 @@ void abi_GsuPiecesListFAF2(void)
  */
 void abi_GsuPiecesReturn(void)
 {
-cyc(42);
-    }
+    cyc(42);
+}
 
 /*
  * @routine 07:81ED GsuPiecesListF6DF
@@ -1617,8 +1617,8 @@ void abi_GsuPieceScaleFromView(void)
  */
 void abi_GsuReciprocalReturn(void)
 {
-cyc(42);
-    }
+    cyc(42);
+}
 
 /*
  * @routine 07:82D7 GsuPiecesFromBytes
@@ -1973,8 +1973,8 @@ void abi_GsuFA35FromTables(void)
         cpu.x = x;
         cpu.p = (uint8_t)((p & ~P_N) | P_Z);
     }
-cyc(4);
-    }
+    cyc(4);
+}
 
 void abi_GsuBytes200_0F060E(void);
 void abi_GsuRun(void);
@@ -2217,8 +2217,8 @@ void abi_BigSpritesRow5(void)
     big_sprites_at(0x0020, 0x0028);
     for (i = 0; i < 5; i++)
         { cyc(116); sprite24x40(src[i]); }
-cyc(158);
-    }
+    cyc(158);
+}
 
 void abi_GsuBytes200_BFB3BE(void);
 void abi_GsuF329Sequence(void);
@@ -2290,8 +2290,8 @@ void abi_GlyphAtY60(void)
     wr16(0x70020C, 0x0060);
     abi_GsuBytes200_BFB5BB();
     (cyc(42), run_f329());
-cyc(90);
-    }
+    cyc(90);
+}
 
 /* One step of the row at y 96: LDA #x, STA.L $70:020A, LDA #glyph, JSR
    GlyphAtY60. */
@@ -2313,8 +2313,8 @@ static void glyph_row(int from)
 
     for (i = from; i < 6; i++)
         glyph_step(xs[i], gs[i]);
-cyc(178);
-    }
+    cyc(178);
+}
 
 /*
  * @routine 04:DD61 GlyphRowY60From0
@@ -2547,8 +2547,8 @@ static void time_glyph(uint32_t b, uint16_t glyph, uint8_t x, int last)
     wr8(b | (uint16_t)(0x1135 + cpu.y), 0x68);
     if (!last)
         cpu.y = (uint16_t)(cpu.y + 2); else { cyc(30); }
-cyc(12);
-    }
+    cyc(12);
+}
 
 /* A digit glyph: $9400 + digit * 2, the digit read from direct page. */
 static uint16_t digit_glyph(uint16_t addr, int high)
@@ -2736,8 +2736,8 @@ void abi_GlyphWordAt1C28(void)
         op_rep(P_M);
         glyph_prog(0xF15B, g2[i]);
     }
-cyc(136);
-    }
+    cyc(136);
+}
 
 /* Three rows of three 8 x 8 glyphs (program $07:F280), each row 8 lower
    and back 24; the glyphs are row byte * $100 + $1A, $1C, $1E. `mid` (when
@@ -2760,10 +2760,10 @@ static void glyph_grid3(uint16_t first, void (*mid)(void), void (*row2)(void))
             cyc(72);
             glyph_prog(0xF280, (uint16_t)((first + r) << 8 | (0x1A + 2 * c)));
         }
-    cyc(94);
-        }
-cyc(84);
+        cyc(94);
     }
+    cyc(84);
+}
 
 /*
  * @routine 07:A158 GlyphGrid1A
@@ -3030,8 +3030,8 @@ void abi_GlyphTimesSequence(void)
         break;
     }
     }
-cyc(48);
-    }
+    cyc(48);
+}
 
 void abi_GsuBytes200_BFB7B6(void);
 void abi_GlyphTimesSequence(void);
@@ -3346,8 +3346,8 @@ static void times_seq(uint16_t seq)
     cpu.y = seq;
     cpu.p = nz16(cpu.p, seq);
     abi_GsuF329Sequence();
-cyc(42);
-    }
+    cyc(42);
+}
 
 /* 07:8A5D on: the first row ($0F64 at y 88), then the second's renderer
    bytes by the lead (negative B2B3, positive 11BD, 0 10B9) and the second
@@ -3621,8 +3621,8 @@ void abi_HudLeadWordDraw(void)
     wr16(0x70020A, cpu.a);
     for (i = 0; i < 6; i++)
         word_glyph(rest[i]);
-cyc(114);
-    }
+    cyc(114);
+}
 
 /* LDA digit, AND #$00FF, JSR GsuParam216A, then Super FX program
    $07:F6DF. */
@@ -3786,8 +3786,8 @@ static void glyph_slide_draw(uint32_t b)
             { cyc(94); draw_pos_add(0x70020A, 0x0008, 0); }
         glyph_prog(0xFAB0, two[i]);
     }
-cyc(136);
-    }
+    cyc(136);
+}
 
 /* CMP #m (16-bit): N, Z, C as the compare sets them. */
 static void slide_cmp16(uint16_t a, uint16_t m)
@@ -4076,8 +4076,8 @@ void abi_BigSpritesRow6B(void)
     big_sprites_at(0x0018, 0x0028);
     for (i = 0; i < 6; i++)
         sprite24x40(src[i]);
-cyc(200);
-    }
+    cyc(200);
+}
 
 /*
  * @routine 02:DA14 GsuClearScreenIfSet

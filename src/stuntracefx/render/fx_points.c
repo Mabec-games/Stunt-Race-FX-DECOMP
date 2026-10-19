@@ -63,59 +63,77 @@ FxRegs FxModelPoints(FxRegs g)
     uint16_t w;
 
     gsu_push(sp, g.r[3]);
+    gsu_code(0x04A157, 4);
     gsu_push(sp, g.r[1]);
+    gsu_code(0x04A15B, 4);
     gsu_push(sp, g.r[2]);
+    gsu_code(0x04A15F, 7);
     gsu_r14(g.r[9]);
     g.r[14] = gsu.r[14];
     g.r[9] = FX_POINTS;
     for (;;) {
+        gsu_code(0x04A166, 1); gsu_cache(0xA166); gsu_code(0x04A167, 9);
         g.r[0] = script_byte(&g);
         g.r[3] = 0x04;
         gsu_sub(g.r[0], g.r[3], 0);
         if (gsu.z) {
+            gsu_code(0x04A194, 5);
             count(&g, 0xA199);
             do {
+                gsu_code(0x04A199, 5);
                 put(&g, script_byte(&g));
-                put(&g, script_byte(&g));
+                gsu_code(0x04A19E, 4);
+                put(&g, gsu_code_then(0x04A1A2, 2, script_byte(&g)));
+                gsu_code(0x04A1A4, 4);
                 g.r[0] = script_byte(&g);
+                gsu_code(0x04A1A8, 2);
                 gsu_stw(g.r[9], g.r[0]);
                 g.r[9] = gsu_inc(g.r[9]);
                 {
+                    gsu_code(0x04A1AA, 2);
                     int again = gsu_count_down(&g.r[12]);
 
                     g.r[9] = gsu_inc(g.r[9]);
                     if (!again)
-                        break;
+                        { gsu_code(0x04A1AC, 3); break; }
                 }
             } while (1);
             continue;
-        }
+        } else { gsu_code(0x04A170, 7); }
         g.r[3] = 0x38;
         gsu_sub(g.r[0], g.r[3], 0);
         if (gsu.z) {
+            gsu_code(0x04A1AF, 5);
             count(&g, 0xA1B4);
             do {
+                gsu_code(0x04A1B4, 5);
                 g.r[0] = script_byte(&g);
                 put(&g, g.r[0]);
+                gsu_code(0x04A1B9, 8);
                 g.r[1] = script_byte(&g);
                 put(&g, g.r[1]);
+                gsu_code(0x04A1C1, 8);
                 g.r[2] = script_byte(&g);
                 put(&g, g.r[2]);
                 g.r[0] = gsu_inc(gsu_not(g.r[0]));
+                gsu_code(0x04A1C9, 5);
                 put(&g, g.r[0]);
+                gsu_code(0x04A1CE, 4);
                 put(&g, g.r[1]);
+                gsu_code(0x04A1D2, 4);
                 gsu_stw(g.r[9], g.r[2]);
                 g.r[9] = gsu_inc(g.r[9]);
                 {
+                    gsu_code(0x04A1D6, 2);
                     int again = gsu_count_down(&g.r[12]);
 
                     g.r[9] = gsu_inc(g.r[9]);
                     if (!again)
-                        break;
+                        { gsu_code(0x04A1D8, 3); break; }
                 }
             } while (1);
             continue;
-        }
+        } else { gsu_code(0x04A177, 19); }
         g.r[3] = 0x1C;
         gsu_sub(g.r[0], g.r[3], 0);
         if (gsu.z) {
@@ -138,8 +156,11 @@ FxRegs FxModelPoints(FxRegs g)
         g.r[14] = gsu.r[14];
     }
     g.r[2] = gsu_pull(sp);
+    gsu_code(0x04A18A, 4);
     g.r[1] = gsu_pull(sp);
+    gsu_code(0x04A18E, 4);
     g.r[3] = gsu_pull(sp);
+    gsu_code(0x04A192, 2);
     return g;
 }
 

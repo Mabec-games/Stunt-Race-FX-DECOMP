@@ -928,8 +928,8 @@ static void car_change(uint32_t b, int right)
                 cpu.p = (uint8_t)((cpu.p & ~P_Z) | (((uint8_t)cpu.a & 0x04) ? (cyc(32), 0) : (cyc(16), P_Z)));
                 lda8_imm((uint8_t)cpu.a & 0x04 ? 0x03 : 0x02);
             }
-        cyc(2);
-            }
+            cyc(2);
+        }
     }
     cyc(60);
     wr8(b | 0x0D89, (uint8_t)cpu.a);
@@ -1895,8 +1895,8 @@ void abi_ResultsBonusCount(void)
             else
                 { cyc(18); bonus_move(b, 0x57, 0x00); }
         }
-    cyc(22);
-        }
+        cyc(22);
+    }
     cyc(24);
     op_lda8(b | 0x0EEE);
     cmp8_imm(0x60);

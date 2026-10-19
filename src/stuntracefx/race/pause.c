@@ -630,8 +630,8 @@ static void rows(void (*r87)(void), void (*r107)(void), void (*r187)(void))
     (cyc(44), r87());
     (cyc(64), r107());
     (cyc(64), r187());
-cyc(42);
-    }
+    cyc(42);
+}
 
 /* Down (bit 10) or up (bit 11) on pad: sound $45 and the cursor $0D50 =
    to; returns 1 when taken. */
@@ -812,8 +812,8 @@ void abi_PauseReplayStages(void)
  */
 void abi_PauseStageLeaveRts(void)
 {
-cyc(42);
-    }
+    cyc(42);
+}
 
 /*
  * @routine 07:C021 PauseQuitMenuCursor0

@@ -95,21 +95,26 @@ FxLapLeft FxLapSegment(uint16_t rec, FxLapLeft o)
     uint16_t count;
 
     o.r0 = o.r3 = gsu_ldw(gsu_add(REC_SEGMENT, rec, 0));
+    gsu_code(0x04CDCF, 7);
     o.r1 = gsu_ldw(gsu_add(REC_COUNTED, rec, 0));
     gsu_sub(o.r3, o.r1, 0);
     if (gsu.z)
-        return o;
+        { gsu_code(0x04CDD6, 6); return o; } else { gsu_code(0x04CDD6, 11); }
     o.r0 = gsu_ldw(FX_TABLE_BANK);
     gsu.rombr = (uint8_t)(o.r0 & 0x7F);
+    gsu_code(0x04CDE1, 6);
     o.r0 = gsu_ldw(FX_TABLE_ADDR);
+    gsu_code(0x04CDE7, 2);
     gsu_r14(o.r0);
     o.r14 = gsu.r[14];
     gsu_moves(o.r14);
     if (gsu.z)
-        return o;
+        return o; else { gsu_code(0x04CDE9, 5); }
     count = gsu_getb();
+    gsu_code(0x04CDEE, 1);
     gsu_r14(gsu_inc(o.r14));
     o.r14 = gsu.r[14];
+    gsu_code(0x04CDEF, 3);
     o.r4 = count = gsu_getbh(count);
     o.r0 = gsu_sub(o.r3, o.r1, 0);
     if (gsu.s) {
@@ -117,6 +122,7 @@ FxLapLeft FxLapSegment(uint16_t rec, FxLapLeft o)
         if (!gsu.z)
             return o;
     } else {
+        gsu_code(0x04CDF2, 4); gsu_code(0x04CDFF, 14);
         o.r2 = 5;
         gsu_sub(o.r0, o.r2, 0);
         if (!gsu.s)
@@ -127,7 +133,7 @@ FxLapLeft FxLapSegment(uint16_t rec, FxLapLeft o)
     o.r2 = 1;
     gsu_sub(o.r3, o.r2, 0);
     if (!gsu.z)
-        return o;
+        { gsu_code(0x04CE0D, 7); return o; }
     o.r0 = gsu_ldw(gsu_add(REC_LAPS, rec, 0));
     o.r0 = gsu_inc(o.r0);
     gsu_sbk(o.r0);
@@ -192,35 +198,40 @@ FxRegs FxCourseNearest(FxRegs g)
 
     g.r[0] = gsu_ldw(FX_TABLE_BANK);
     gsu.rombr = (uint8_t)(g.r[0] & 0x7F);
+    gsu_code(0x04CC0B, 6);
     g.r[0] = gsu_ldw(FX_TABLE_ADDR);
+    gsu_code(0x04CC11, 2);
     gsu_r14(g.r[0]);
     *r14 = gsu.r[14];
     gsu_moves(*r14);
     if (gsu.z) {
         g.r[0] = gsu_sub(g.r[0], g.r[0], 0);
         return g;
-    }
+    } else { gsu_code(0x04CC13, 2); gsu_code(0x04CC19, 2); }
     g.r[0] = table_word(r14);
     g.r[12] = g.r[0];
     gsu_moves(g.r[12]);
     if (gsu.z) {
         g.r[0] = gsu_sub(g.r[0], g.r[0], 0);
         return g;
-    }
+    } else { gsu_code(0x04CC1F, 4); gsu_code(0x04CC27, 11); gsu_cache(0xCC31); gsu_code(0x04CC32, 2); }
     g.r[5] = 0;
     g.r[6] = 0x7FFF;
     g.r[4] = 0;
     g.r[7] = 0;
     g.r[13] = 0xCC33;
     do {
+        gsu_code(0x04CC34, 2);
         g.r[4] = gsu_inc(g.r[4]);
         g.r[0] = gsu_sub(table_word(r14), g.r[1], 0);
         if (gsu.ov) {
             gsu_r14(gsu_add(*r14, 4, 0)); /* past y and z */
             *r14 = gsu.r[14];
         } else {
+            gsu_code(0x04CC3A, 6); gsu_code(0x04CC42, 4);
             g.r[9] = magnitude(g.r[0]);
             g.r[0] = gsu_sub(table_word(r14), g.r[2], 0);
+            gsu_code(0x04CC4A, 3); gsu_code(0x04CC4F, 9);
             g.r[0] = magnitude(g.r[0]);
             g.r[0] = gsu_add(g.r[0], g.r[0], 0);
             g.r[0] = gsu_add(g.r[0], g.r[0], 0);
@@ -233,16 +244,20 @@ FxRegs FxCourseNearest(FxRegs g)
             } else {
                 g.r[0] = gsu_sub(table_word(r14), g.r[3], 0);
                 if (!gsu.ov) {
+                    gsu_code(0x04CC5F, 3); gsu_code(0x04CC64, 4);
                     g.r[0] = gsu_add(magnitude(g.r[0]), g.r[9], 0);
                     if (!gsu.ov) {
+                        gsu_code(0x04CC68, 5);
                         gsu_sub(g.r[0], g.r[6], 0);
                         if (!gsu.cy) {
+                            gsu_code(0x04CC6D, 9);
                             g.r[6] = g.r[0];
                             g.r[5] = *r14;
                             g.r[7] = g.r[4];
                         }
                     }
                 }
+                gsu_code(0x04CC5C, 3); gsu_code(0x04CC7D, 2);
             }
         }
         gsu_r14(gsu_inc(*r14));
@@ -253,15 +268,18 @@ FxRegs FxCourseNearest(FxRegs g)
             gsu_r14(gsu_inc(*r14)); /* the fourth word */
             *r14 = gsu.r[14];
             if (!again)
-                break;
+                { gsu_code(0x04CC81, 8); break; }
         }
     } while (1);
     g.r[0] = g.r[7];
     g.r[5] = gsu_sub(g.r[5], 6, 0);
     gsu_r14(g.r[5]);
     *r14 = gsu.r[14];
+    gsu_code(0x04CC89, 2);
     g.r[1] = table_word(r14);
+    gsu_code(0x04CC90, 2);
     g.r[2] = table_word(r14);
+    gsu_code(0x04CC97, 2);
     g.r[3] = table_word(r14);
     return g;
 }
@@ -278,11 +296,12 @@ void abi_FxCourseNearest(void)
 /* The four words of the entry at R14 into R1-R4, R5 = the entry; R0 = R6. */
 static void entry_words(FxRegs *g)
 {
+    gsu_code(0x04CCE3, 4);
     int i;
 
     g->r[5] = g->r[14];
     for (i = 0; i < 4; i++)
-        g->r[1 + i] = table_word(&g->r[14]);
+        { g->r[1 + i] = table_word(&g->r[14]); gsu_code(0x04CD01, 4); }
     g->r[0] = g->r[6];
 }
 
@@ -359,20 +378,24 @@ void abi_FxCoursePrevEntry(void)
  */
 FxRegs FxCourseNextEntry(FxRegs g)
 {
+    gsu_code(0x04CCA4, 7);
     g.r[6] = g.r[0];
     g.r[0] = gsu_ldw(FX_TABLE_BANK);
     gsu.rombr = (uint8_t)(g.r[0] & 0x7F);
+    gsu_code(0x04CCAB, 8);
     g.r[1] = gsu_ldw(gsu_add(REC_DIR, g.r[8], 0));
     g.r[0] = gsu_and(0x0002, g.r[1]);
     g.r[0] = g.r[6];
     if (!gsu.z)
-        return FxCoursePrevEntry(g);
+        return FxCoursePrevEntry(g); else { gsu_code(0x04CCB3, 8); gsu_code(0x04CCBF, 8); }
     g.r[6] = gsu_inc(g.r[0]);
     gsu_r14(gsu_ldw(FX_TABLE_ADDR));
     g.r[14] = gsu.r[14];
-    g.r[1] = gsu_getb();
+    g.r[1] = (gsu_code(0x04CCC7, 2), gsu_getb());
+    gsu_code(0x04CCC9, 1);
     gsu_r14(gsu_inc(g.r[14]));
     g.r[14] = gsu.r[14];
+    gsu_code(0x04CCCA, 3);
     g.r[1] = gsu_getbh(g.r[1]);
     gsu_sub(g.r[0], g.r[1], 0);
     if (gsu.z) {
@@ -382,6 +405,7 @@ FxRegs FxCourseNextEntry(FxRegs g)
         g.r[14] = gsu.r[14];
         g.r[6] = 1;
     } else {
+        gsu_code(0x04CCCD, 4); gsu_code(0x04CCDE, 5);
         gsu_r14(gsu_add(g.r[5], 8, 0));
         g.r[14] = gsu.r[14];
     }
@@ -497,14 +521,15 @@ void abi_FxCourseNextDistance(void)
 {
     gsu_push(&gsu.r[10], gsu.r[11]);
     gsu.r[11] = 0xCEDF;
-    abi_FxTableEntryWords();
+    (gsu_code(0x04CD83, 13), gsu_code(0x04CED9, 6), abi_FxTableEntryWords());
     gsu.r[11] = 0xCEE4;
-    abi_FxCourseNextEntry();
+    (gsu_code(0x04CD90, 8), gsu_code(0x04CEDF, 5), abi_FxCourseNextEntry());
     gsu.r[0] = gsu_add(0x001E, gsu.r[8], 0);
-    gsu.r[0] = quarter_apart(gsu_ldw(gsu.r[0]), gsu.r[1]);
+    gsu_code(0x04CEE4, 5);
+    gsu.r[0] = quarter_apart(gsu_ldw(gsu.r[0]), gsu_code_then(0x04CEE9, 3, gsu_code_then(0x04CEEE, 11, gsu.r[1])));
     gsu.r[4] = gsu.r[0];
     gsu.r[0] = gsu_add(0x0022, gsu.r[8], 0);
-    gsu.r[0] = quarter_apart(gsu_ldw(gsu.r[0]), gsu.r[3]);
+    gsu.r[0] = quarter_apart(gsu_ldw(gsu.r[0]), gsu_code_then(0x04CEF9, 3, gsu_code_then(0x04CEFE, 10, gsu.r[3])));
     gsu.r[0] = gsu_add(gsu.r[0], gsu.r[4], 0);
     gsu_pull(&gsu.r[10]);
 }

@@ -122,8 +122,8 @@ static void md_first(uint16_t id)
     cpu.p = nz16(cpu.p, id);
     wr16(db() | 0x0D71, cyc_then(72, 0x0000));
     abi_MetaspriteDraw();
-cyc(22);
-    }
+    cyc(22);
+}
 
 /* LDA.L group (CLC, ADC prev when there is one), TAY, STA slot, LDX #id,
    MetaspriteDraw: the next group from the sprite slot past the last. */
@@ -399,8 +399,8 @@ static void all_menu(void)
     case 0xF55E: abi_RecordsMenuAllMiddle(); break;
     default: jump_routine(0x020000 | h); break;
     }
-cyc(84);
-    }
+    cyc(84);
+}
 
 /* The Speed Trax records menu's highlights. */
 static void speed_top_show(void)
@@ -482,8 +482,8 @@ void abi_RecordsMenuSpeed(void)
     case 0xF662: abi_RecordsMenuSpeedBottom(); break;
     default: jump_routine(0x020000 | h); break;
     }
-cyc(42);
-    }
+    cyc(42);
+}
 
 /* The Speed Trax menu with $0D4C set: Y or the second choice's B or Start
    clear $0D4C, play sound $2F, go to state $0E with $0D48 counted up, hide
@@ -674,8 +674,8 @@ void abi_RecordsMenuTwo(void)
     case 0xF7BB: abi_RecordsMenuTwoBottom(); break;
     default: jump_routine(0x020000 | h); break;
     }
-cyc(84);
-    }
+    cyc(84);
+}
 
 /*
  * @routine 02:F81A RecordsMenuThreeTop
@@ -776,8 +776,8 @@ void abi_RecordsMenuThree(void)
     case 0xF85B: abi_RecordsMenuThreeMiddle(); break;
     default: jump_routine(0x020000 | h); break;
     }
-cyc(84);
-    }
+    cyc(84);
+}
 
 /* PHP, REP #$30, Y = ($0D73 & $FF) * 4, SEP #$20: the page mark's sprite
    buffer offset. Returns the P pushed. */
@@ -1181,8 +1181,8 @@ static void special_row(uint16_t slot, uint16_t k, int stunt, AbiFn place)
     abi_OamHideEntries0To2();
     if (stunt)
         abi_OamHideEntries3And9();
-cyc(18);
-    }
+    cyc(18);
+}
 
 /*
  * @routine 02:F148 StuntRecordsScreen

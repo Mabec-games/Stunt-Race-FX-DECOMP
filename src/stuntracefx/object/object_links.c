@@ -309,5 +309,5 @@ void abi_ObjectSpawnA040(void)
         cpu.p = (uint8_t)((nz16(cpu.p, cpu.a) & ~P_M) | P_C);
     else
         cpu.p = (uint8_t)(nz16(cpu.p, 0) & ~P_C);
-cyc(58);
-    }
+    cyc(58);
+}

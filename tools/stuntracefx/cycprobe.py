@@ -36,7 +36,7 @@ SRC = os.path.abspath(os.environ.get('CYC_SRC', DECOMP))
 def rel_name(path):
     """A file of the tree probed by its name in the decomp."""
     return os.path.relpath(os.path.join(DECOMP, os.path.relpath(path, SRC)), ROOT)
-TIMING = ('cyc', 'cyc_then', 'cyc_loop', 'gsu_cyc', 'gsu_cyc_then', 'gsu_cyc_loop')   # machine.h's stated time: no access, no probes
+TIMING = ('cyc', 'cyc_then', 'cyc_loop', 'gsu_cyc', 'gsu_cyc_then', 'gsu_cyc_loop', 'gsu_code', 'gsu_code_then', 'gsu_code_loop', 'gsu_cache', 'gsu_time')   # machine.h's stated time: no access, no probes
 CONTROL = {'IfStmt', 'WhileStmt', 'ForStmt', 'DoStmt', 'SwitchStmt', 'LabelStmt', 'CaseStmt', 'DefaultStmt'}
 
 

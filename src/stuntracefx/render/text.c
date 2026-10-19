@@ -84,8 +84,11 @@ static void glyph(uint16_t table, void (*blit)(void), uint16_t ret)
  */
 void abi_FxTextDraw(void)
 {
+    gsu_code(0x01D308, 7); gsu_code(0x01D311, 3);
     gsu_push(&gsu.r[10], gsu.r[11]);
+    gsu_code(0x01D314, 6);
     gsu.r[7] = gsu_ldw(FX_TEXT_X);
+    gsu_code(0x01D31A, 4);
     gsu.r[2] = gsu_ldw(FX_TEXT_Y);
     gsu.r[5] = 0;
     gsu.r[6] = 0x0020;
@@ -94,22 +97,24 @@ void abi_FxTextDraw(void)
     gsu.r[0] = 0;
     gsu.por = (uint8_t)gsu.r[0];
     gsu.r[9] = FX_TEXT_PALETTES;
+    gsu_code(0x01D31E, 19);
     gsu.r[0] = gsu_ldw(FX_TEXT_AT);
     gsu.r[8] = gsu.r[0];
     gsu_moves(gsu.r[8]);
     if (gsu.z)
-        goto end;
+        goto end; else { gsu_code(0x01D331, 4); gsu_code(0x01D339, 7); }
     gsu.r[4] = gsu.r[7];
     for (;;) {
         gsu.r[0] = gsu_lob(gsu_ldw(FX_TEXT_BANK));
         gsu.rombr = (uint8_t)gsu.r[0];
+        gsu_code(0x01D340, 5);
         gsu_r14(gsu.r[8]);
-        gsu.r[0] = gsu_getb();
+        gsu.r[0] = (gsu_code(0x01D345, 1), gsu_getb());
         gsu.r[8] = gsu_inc(gsu.r[8]);
         gsu.r[0] = (uint16_t)(int16_t)(int8_t)gsu.r[0];      /* SEX */
         gsu_sz(gsu.r[0]);
         if (gsu.z)
-            break;
+            { gsu_code(0x01D346, 8); gsu_code(0x01D4DD, 3); break; }
         if (gsu.s) {
             gsu_r14(gsu_inc(gsu.r[14]));
             cmp_code(0xFF);
@@ -219,8 +224,10 @@ void abi_FxTextDraw(void)
     }
 end:
     gsu.r[0] = gsu_rpix((uint8_t)gsu.r[1], (uint8_t)gsu.r[2]);
+    gsu_code(0x01D4E0, 4);
     gsu_sz(gsu.r[0]);
     gsu_pull(&gsu.r[10]);       /* the return address, into R15 */
+    gsu_code(0x01D30F, 1);
 }
 
 /*
@@ -255,19 +262,20 @@ void abi_FxTextProgram(void)
 void abi_FxTextNotice(void)
 {
     gsu_push(&gsu.r[10], gsu.r[11]);
+    gsu_code(0x01D132, 6);
     gsu.r[0] = gsu_ldw(0x273C);
     gsu.r[1] = 0x0001;
     gsu.r[0] = gsu_and(gsu.r[0], gsu.r[1]);
     if (gsu.z)
-        goto done;
+        { gsu_code(0x01D138, 10); goto done; } else { gsu_code(0x01D138, 6); gsu_code(0x01D142, 5); }
     gsu.r[0] = gsu_ldw(0x2648);
     gsu_moves(gsu.r[0]);
     if (gsu.z)
-        goto done;
+        goto done; else { gsu_code(0x01D147, 4); gsu_code(0x01D14F, 5); }
     gsu.r[1] = gsu_ldw(0x2476);
     gsu_sub(gsu.r[0], gsu.r[1], 0);     /* CMP */
     if (gsu.z)
-        goto done;
+        { gsu_code(0x01D154, 8); goto done; }
     gsu.r[1] = gsu_ldw(0x2478);
     gsu_sub(gsu.r[0], gsu.r[1], 0);
     if (gsu.z)
@@ -310,5 +318,6 @@ void abi_FxTextNotice(void)
     gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[0], 0);
     gsu_stw(FX_TEXT_AT, gsu.r[0]);
 done:
+    gsu_code(0x01D1C6, 5);
     gsu_pull(&gsu.r[10]);       /* the return address, into R15 */
 }

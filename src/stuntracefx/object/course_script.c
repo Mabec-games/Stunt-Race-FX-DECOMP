@@ -255,6 +255,6 @@ void abi_CourseScriptRun(void)
             x = op;
             break;
         }
-    cyc(34);
-        }
+        cyc(34);
+    }
 }

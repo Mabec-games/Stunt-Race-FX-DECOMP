@@ -24,6 +24,7 @@ static void move_word(FxMoveRegs *g, int halvings)
 
     g->r0 = gsu_ldw(g->r5);
     g->r5 = gsu_inc(gsu_inc(g->r5));
+    gsu_code(0x0495E8, 12);
     for (i = 0; i < halvings; i++)
         g->r0 = gsu_div2(g->r0);
     g->r3 = gsu_ldw(g->r2);
@@ -48,6 +49,7 @@ static void move_word(FxMoveRegs *g, int halvings)
  */
 FxMoveRegs FxRecordMove(uint16_t rec, uint16_t kind)
 {
+    gsu_code(0x0495BE, 17); gsu_code(0x04B20C, 6); gsu_code(0x04B216, 8); gsu_code(0x04B23B, 7);
     FxMoveRegs g;
     int halve, i;
 
@@ -56,12 +58,13 @@ FxMoveRegs FxRecordMove(uint16_t rec, uint16_t kind)
     g.r3 = gsu_ldw(gsu_add(REC_FLAGS1C, rec, 0));
     g.r0 = gsu_and(0x0008, g.r3);
     halve = !gsu.z;
+    gsu_code(0x0495CF, 8);
     for (i = 0; i < 3; i++)
-        move_word(&g, halve ? 4 : 3);
+        { move_word(&g, halve ? 4 : 3); gsu_code(0x049607, 9); }
     g.r0 = gsu_sub(kind, 6, 0);
     if (gsu.z)
         for (i = 0; i < 3; i++)
-            move_word(&g, halve ? 1 : 0);
+            { move_word(&g, halve ? 1 : 0); gsu_code(0x04962E, 4); gsu_code(0x049680, 3); gsu_code(0x04B242, 3); }
     return g;
 }
 

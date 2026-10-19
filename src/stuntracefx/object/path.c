@@ -110,8 +110,8 @@ int ObjectPathCommand(uint8_t bank, uint16_t obj, uint16_t *a, uint16_t *y, uint
                 v = rd16(b | (uint16_t)(0x1F4E + 2 * i));
                 wr16(b | (uint16_t)(0x1F4E + 2 * i), cyc_then(84, halve(v)));
             }
-        cyc(52);
-            }
+            cyc(52);
+        }
         cyc(6);
         for (i = 0; i < 3; i++) {
             cyc(24);

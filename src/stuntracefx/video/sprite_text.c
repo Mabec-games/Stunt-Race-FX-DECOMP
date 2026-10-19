@@ -129,8 +129,8 @@ static void sprite_text_line_at(uint8_t bank, uint8_t x, uint8_t y, uint16_t *xp
     cyc(254);
     for (i = 0; i < 8; i += 2)
         { cyc(24); wr16(b | (uint16_t)(0x058E + i), 0x0000); }
-cyc(18);
-    }
+    cyc(18);
+}
 
 /* For the abi_ wrappers: A = 0, M 16-bit, Z set, N clear; C and V from the
    subtract that made the Y position (C set, V set for every entry here). */

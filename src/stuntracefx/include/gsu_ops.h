@@ -170,6 +170,7 @@ static inline void gsu_cmode(uint16_t a)
 /* ROMB: the ROM bank, seven bits of the source. */
 static inline void gsu_romb(uint16_t a)
 {
+    gsu_buffer(GSU_B_ROMBUF);
     gsu.rombr = (uint8_t)(a & 0x7F);
 }
 
@@ -186,6 +187,7 @@ static inline uint16_t gsu_mult(uint16_t a, uint16_t b)
 {
     uint16_t v = (uint16_t)((int8_t)a * (int8_t)b);
 
+    gsu_time(GSU_T_MULT);
     gsu_sz(v);
     return v;
 }
@@ -194,6 +196,7 @@ static inline uint16_t gsu_umult(uint16_t a, uint16_t b)
 {
     uint16_t v = (uint16_t)((uint8_t)a * (uint8_t)b);
 
+    gsu_time(GSU_T_MULT);
     gsu_sz(v);
     return v;
 }

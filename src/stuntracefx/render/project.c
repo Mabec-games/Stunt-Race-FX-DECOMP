@@ -66,17 +66,20 @@ one:
  */
 void FxProjectPoint(void)
 {
+    gsu_code(0x018C63, 6); gsu_code(0x01947A, 3);
     int behind, xneg, yneg, swap;
 
     gsu_push(&gsu.r[10], gsu.r[11]);
     gsu_moves(gsu.r[3]);
     behind = gsu.s;
     if (behind) {
+        gsu_code(0x019483, 4); gsu_code(0x01954A, 10);
         gsu.r[3] = negate(gsu.r[3]);
         gsu.r[5] = 4;
     } else {
+        gsu_code(0x019487, 4); gsu_code(0x01948C, 7);
         if (gsu.z)
-            gsu.r[3] = gsu_inc(gsu.r[3]);
+            { gsu_code(0x01948B, 1); gsu.r[3] = gsu_inc(gsu.r[3]); }
         gsu.r[5] = 0;
     }
     gsu_moves(gsu.r[1]);
@@ -109,14 +112,19 @@ void FxProjectPoint(void)
 
     gsu.r[0] = gsu_ldw(FX_CENTRE);
     gsu.r[1] = gsu_add(gsu.r[1], gsu.r[0], 0);
+    gsu_code(0x01960C, 5);
     gsu.r[0] = gsu_ldw((uint16_t)(FX_CENTRE + 2));
     gsu.r[2] = gsu_add(gsu.r[2], gsu.r[0], 0);
+    gsu_code(0x019611, 5);
     outcode_axis(gsu.r[1], FX_EDGES, (uint16_t)(FX_EDGES + 2), 0x04);
     gsu.r[5] = (uint16_t)((int8_t)gsu.r[5] * 4);      /* MULT #4 */
     gsu_sz(gsu.r[5]);
+    gsu_code(0x01962B, 7);
     outcode_axis(gsu.r[2], (uint16_t)(FX_EDGES + 4), (uint16_t)(FX_EDGES + 6), 0x10);
     gsu.r[0] = gsu_or(gsu_swap(gsu_xor(0x1F, gsu.r[5])), gsu.r[5]);
+    gsu_code(0x019647, 11);
     gsu_pull(&gsu.r[10]);       /* the return address, into R15 */
+    gsu_code(0x018C69, 6);
 }
 
 void abi_FxProjectPoint(void)
@@ -167,13 +175,17 @@ void FxProjectScaled(void)
     gsu.r[3] = gsu_bic(gsu.r[3], 0x0001);
     gsu.r[0] = FX_SCALE_TABLE;
     gsu_r14(gsu_add(gsu.r[0], gsu.r[3], 0));
-    gsu.r[6] = gsu_getb();
+    gsu.r[6] = (gsu_code(0x01B2D3, 2), gsu_getb());
+    gsu_code(0x01B2D5, 1);
     gsu_r14(gsu_inc(gsu.r[14]));
+    gsu_code(0x01B2D6, 3);
     gsu.r[6] = gsu_getbh(gsu.r[6]);
     gsu.r[0] = gsu_fmult(gsu.r[1], gsu.r[6]);
+    gsu_code(0x01B2D9, 5);
     gsu.r[1] = gsu_ldw(FX_CENTRE);
     gsu.r[1] = gsu_add(gsu.r[1], gsu.r[0], 0);
     gsu.r[0] = gsu_fmult(gsu.r[2], gsu.r[6]);
+    gsu_code(0x01B2DE, 7);
     gsu.r[2] = gsu_ldw(FX_CENTRE + 2);
     gsu.r[2] = gsu_add(gsu.r[2], gsu.r[0], 0);
     gsu.r[0] = gsu_fmult(gsu.r[5], gsu.r[6]);
@@ -188,6 +200,7 @@ void abi_FxProjectScaled(void)
 /* MULT #4: the low byte, signed, times 4; S and Z from the product. */
 static uint16_t mult4(uint16_t v)
 {
+    gsu_code(0x018C42, 4);
     uint16_t r = (uint16_t)((int8_t)v * 4);
 
     gsu_sz(r);
@@ -222,39 +235,50 @@ static uint16_t mult4(uint16_t v)
  */
 void abi_FxProjectVertex(void)
 {
+    gsu_code(0x018C0E, 7);
     for (;;) {
+        gsu_code(0x018BFF, 7);
         gsu.r[0] = gsu_sub(0x4400, gsu.r[6], 0);
         if (!gsu.s)
-            break;
+            break; else { gsu_code(0x018C06, 8); }
         gsu.r[1] = gsu_asr(gsu.r[1]);
         gsu.r[2] = gsu_asr(gsu.r[2]);
         gsu.r[6] = gsu_asr(gsu.r[6]);       /* BRA's delay slot */
     }
     gsu.r[0] = gsu_sub(0x0100, gsu.r[6], 0);
     if (!gsu.s) {
+        gsu_code(0x018C5C, 3);
         gsu_r14(gsu.r[12]);
         gsu.r[3] = gsu.r[6];
+        gsu_code(0x018C5F, 4);
         gsu_push(&gsu.r[10], gsu.r[11]);
         gsu.r[11] = 0x8C69;
         abi_FxProjectPoint();
         gsu.r[12] = gsu.r[14];
         gsu.r[3] = gsu_ldw(0x0026);
+        gsu_code(0x018C6F, 3);
         gsu.r[13] = gsu_ldw(0x0028);
+        gsu_code(0x018C72, 3);
         gsu.r[9] = gsu_ldw(0x002A);
+        gsu_code(0x018C75, 4);
         gsu_pull(&gsu.r[10]);       /* the return address, into R15 */
         return;
-    }
+    } else { gsu_code(0x018C15, 9); }
     gsu.r[6] = gsu_bic(gsu.r[6], 0x0001);
     gsu.r[0] = FX_SCALE_TABLE;
     gsu_r14(gsu_add(gsu.r[0], gsu.r[6], 0));
-    gsu.r[6] = gsu_getb();
+    gsu.r[6] = (gsu_code(0x018C1E, 2), gsu_getb());
+    gsu_code(0x018C20, 1);
     gsu_r14(gsu_inc(gsu.r[14]));
+    gsu_code(0x018C21, 3);
     gsu.r[6] = gsu_getbh(gsu.r[6]);
     gsu.r[0] = gsu_fmult(gsu.r[1], gsu.r[6]);
+    gsu_code(0x018C24, 5);
     gsu.r[1] = gsu_ldw(FX_CENTRE);
     gsu.r[0] = gsu_add(gsu.r[0], gsu.r[1], 0);
     gsu.r[1] = gsu.r[0];
     gsu.r[0] = gsu_fmult(gsu.r[2], gsu.r[6]);
+    gsu_code(0x018C29, 8);
     gsu.r[2] = gsu_ldw(FX_CENTRE + 2);
     gsu.r[0] = gsu_add(gsu.r[0], gsu.r[2], 0);
     gsu.r[2] = gsu.r[0];
@@ -263,25 +287,30 @@ void abi_FxProjectVertex(void)
     gsu.r[0] = gsu.r[1];
     gsu_moves(gsu.r[0]);
     if (!gsu.s) {
+        gsu_code(0x018C31, 13);
         gsu.r[5] = gsu_ldw(FX_EDGES + 2);
         gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[5], 0);
         if (gsu.s)
-            goto y_axis;
+            { gsu_code(0x018C3E, 3); goto y_axis; } else { gsu_code(0x018C3E, 4); }
         gsu.r[6] = gsu_inc(gsu.r[6]);
-    }
+    } else { gsu_code(0x018C31, 9); }
     gsu.r[6] = gsu_inc(gsu.r[6]);
     gsu.r[6] = mult4(gsu.r[6]);
 y_axis:
+    gsu_code(0x018C46, 5);
     gsu.r[0] = gsu.r[2];
     gsu_moves(gsu.r[0]);
     if (!gsu.s) {
+        gsu_code(0x018C4B, 4);
         gsu.r[5] = gsu_ldw(FX_EDGES + 6);
         gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[5], 0);
         if (gsu.s)
-            goto code;
+            { gsu_code(0x018C4F, 3); goto code; } else { gsu_code(0x018C4F, 4); }
         gsu.r[6] = gsu_inc(gsu.r[6]);
     }
+    gsu_code(0x018C53, 1);
     gsu.r[6] = gsu_inc(gsu.r[6]);
 code:
+    gsu_code(0x018C54, 8);
     gsu.r[0] = gsu_or(gsu_swap(gsu_xor(0x1F, gsu.r[6])), gsu.r[6]);
 }

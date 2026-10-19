@@ -535,8 +535,8 @@ void abi_TimeBelowRecord(void)
         if (a != m)
             { cyc(36); return; }
     }
-cyc(4);
-    }
+    cyc(4);
+}
 
 /*
  * @routine 07:AC77 BcdToBinary

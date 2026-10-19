@@ -904,8 +904,8 @@ void abi_ObjectNearFocus(void)
     cpu.a = ObjectNearFocus(cpu.db, cpu.x, &p);
     cpu.y = 0x1A64;
     cpu.p = (uint8_t)(p | P_M);
-cyc(128);
-    }
+    cyc(128);
+}
 
 uint16_t ScaleObjectXZ(uint16_t obj, uint8_t *p);
 
@@ -1159,8 +1159,8 @@ static uint16_t object_attach_linked(uint8_t bank, uint16_t obj, uint16_t other,
                     add = 6;
             }
         }
-    cyc(14);
-        }
+        cyc(14);
+    }
     if (add) {
         s = (unsigned)t + add;
         *p = (uint8_t)((*p & ~(P_C | P_V)) | (s > 0xFFFF ? P_C : 0)
@@ -1257,8 +1257,8 @@ static uint16_t groups_list(uint16_t *y)
         groups_chain(y);
         cyc(46);
         wr16(0x00003E, keep);
-    cyc(2);
-        }
+        cyc(2);
+    }
 }
 
 uint16_t ObjectGroupsActivate(uint16_t *y)
@@ -1380,8 +1380,8 @@ static AreaEnd bucket_triggers_from_area(uint8_t bank, uint16_t rec, uint8_t p)
                         wr16(b | (uint16_t)(0x1AF7 + x), v);
                         x = (uint16_t)(x + 4);
                     } else { cyc(4); }
-                cyc(20);
-                    }
+                    cyc(20);
+                }
             }
             y = (uint16_t)(y + 1);
             cyc(76);
@@ -1683,8 +1683,8 @@ void abi_ObjectSpawn(void)
         { cyc(44); cpu.p = (uint8_t)(nz16(cpu.p, cpu.a) | P_C | P_M); }
     else
         cpu.p = (uint8_t)((nz16(cpu.p, cpu.x) & ~P_C) | P_M);
-cyc(58);
-    }
+    cyc(58);
+}
 
 /*
  * @routine 03:B8A5 ObjectFree
@@ -1917,8 +1917,8 @@ void abi_ObjectRunHandlerB(void)
     run_handler(cpu.db, x, 0x201D, 0x201F, 1);
     cpu.x = x;
     cpu.p = p;
-cyc(44);
-    }
+    cyc(44);
+}
 
 void abi_ObjectRelease(void);
 
@@ -2031,8 +2031,8 @@ void ObjectsRunHandlers(void)
         cyc(52);
         y = rd16(b | (uint16_t)(0x2000 + x));
         x = y;
-    cyc(36);
-        }
+        cyc(36);
+    }
     cyc(88);
     cpu.x = 0;
     cpu.y = 0;
@@ -2299,8 +2299,8 @@ void abi_ObjectReleaseLong(void)
 {
     cpu.p |= P_M;
     (cyc(22), abi_ObjectRelease());
-cyc(66);
-    }
+    cyc(66);
+}
 
 void abi_ObjectRebucket(void);
 void abi_ObjectCopyPositionFrom(void);
@@ -2343,8 +2343,8 @@ static void spawn_sparkle(uint32_t b)
     swap_xy();
     abi_ObjectRebucket();
     swap_xy();
-cyc(98);
-    }
+    cyc(98);
+}
 
 /*
  * @routine 08:E9F4 ObjectSpawnSparklePair
@@ -2432,8 +2432,8 @@ void abi_ObjectSparkleStep(void)
     wr8(b | (uint16_t)(0x2048 + cpu.x), v);
     cpu.p = nz8(cpu.p, v);
     (cyc(62), abi_ObjectRebucket());
-cyc(132);
-    }
+    cyc(132);
+}
 
 /*
  * @routine 08:EA6B ObjectSparkleStart
@@ -2687,8 +2687,8 @@ turn:
             cyc(30);
             wr16(b | (uint16_t)(to[i] + cpu.x), cpu.a);
         }
-    cyc(64);
-        }
+        cyc(64);
+    }
     cpu.p |= P_M;
 }
 
@@ -2829,8 +2829,8 @@ static void parent_place_from(uint32_t b, int attached, int stage)
     } else { cyc(22); }
     cyc(62);
     abi_ObjectRebucket();
-cyc(132);
-    }
+    cyc(132);
+}
 
 static void parent_place(uint32_t b, int attached)
 {
@@ -3304,8 +3304,8 @@ void abi_ObjectLinkEventTrigger2(void)
                 cpu.p = nz8(cpu.p, 0xFE);
             }
         }
-    cyc(8);
-        }
+        cyc(8);
+    }
     cyc(34);
     op_sep(P_M | P_X);
 }
@@ -3582,8 +3582,8 @@ void abi_ObjectSpawnPuff(void)
     cpu.x = x;
     cpu.p = nz16(cpu.p, x);
     (void)v;
-cyc(78);
-    }
+    cyc(78);
+}
 
 void abi_ObjectPoseFromRecord(void);
 void abi_GsuRun(void);
@@ -3658,8 +3658,8 @@ void abi_ObjectCarFrame(void)
     (cyc(68), abi_ObjectNearFocus());
     abi_ObjectPoseFromRecord();
     (cyc(142), abi_ObjectRebucket());
-cyc(132);
-    }
+    cyc(132);
+}
 
 void abi_CrashWhite(void);
 

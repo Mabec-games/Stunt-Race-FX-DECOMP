@@ -646,8 +646,8 @@ void abi_PlayerOnePhaseRace(void)
             cpu.y--;
             cpu.p = nz16(cpu.p, cpu.y);
         } while (cyc_loop(16, cpu.y));
-    cyc(34);
-        }
+        cyc(34);
+    }
     cyc(24);
     p1_digit_glyph(b, 0, 0x1016);
     p1_digit_glyph(b, 4, 0x1014);
@@ -683,8 +683,8 @@ void abi_PlayerOnePhaseRace(void)
     op_lda16_imm(0x980E);
     cyc(10);
     wr16(b | 0x1040, 0x980E);
-cyc(22);
-    }
+    cyc(22);
+}
 
 /*
  * @routine 07:DFD2 PlayerOnePhaseTally
@@ -827,8 +827,8 @@ void abi_PlayerOnePhaseEnd(void)
  */
 void abi_PlayerOnePhaseReturn(void)
 {
-cyc(42);
-    }
+    cyc(42);
+}
 
 /*
  * @routine 07:DE46 PlayerOnePhaseStep
@@ -890,8 +890,8 @@ void abi_PlayerOnePhaseStep(void)
         cyc(16);
         break;
     }
-cyc(26);
-    }
+    cyc(26);
+}
 
 void abi_PauseOnStart(void);
 void abi_SoundPort0QueuePushRaw(void);
@@ -929,8 +929,8 @@ static void stunt_count_down(uint32_t b)
     cpu.p = nz8(cpu.p, v);
     if (!v)
         { cyc(40); wr8(b | 0x0E41, 0x00); } else { cyc(22); }
-cyc(16);
-    }
+    cyc(16);
+}
 
 /*
  * @routine 07:E17D StuntCourseMark
@@ -1561,8 +1561,8 @@ void abi_TimeUpPhaseStart(void)
         wr16(b | 0x0DD6, v);
         cpu.p = nz16(cpu.p, v);
     }
-cyc(42);
-    }
+    cyc(42);
+}
 
 /*
  * @routine 07:DBB8 TimeUpPhaseSlideIn
@@ -1717,8 +1717,8 @@ void abi_TimeUpPhaseEnd(void)
     op_lda8(b | 0x0FA3);
     if ((uint8_t)cpu.a & 0x80)
         { cyc(124); abi_HudLeadWordDraw(); }
-cyc(64);
-    }
+    cyc(64);
+}
 
 /*
  * @routine 07:DB71 TimeUpPhaseStep

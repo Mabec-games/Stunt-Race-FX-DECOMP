@@ -112,10 +112,14 @@ uint16_t FxRecordHoldY(uint16_t rec, uint16_t *y_out)
 
     gsu_and(gsu_ldw(gsu_add(REC_FLAGS40, rec, 0)), 0x0100);
     if (gsu.z) {
+        gsu_code(0x04BC80, 13);
         y = gsu_ldw(gsu_add(REC_Y, rec, 0));
+        gsu_code(0x04BC8D, 5);
         gsu_stw(gsu_add(REC_Y_HELD, rec, 0), y);
-    }
+    } else { gsu_code(0x04BC80, 6); gsu_code(0x04BC91, 1); }
+    gsu_code(0x04BC92, 6);
     y = gsu_ldw(gsu_add(REC_Y, rec, 0));
+    gsu_code(0x04BC98, 4);
     held = gsu_ldw(gsu_add(REC_Y_HELD, rec, 0));
     gsu_sub(held, y, 0);
     if (gsu.s) {
@@ -147,10 +151,13 @@ void abi_FxRecordHoldY(void)
  */
 FxRegs FxBearingTo(FxRegs g)
 {
+    gsu_code(0x04C7EF, 6); gsu_code(0x04CBE8, 3);
     gsu_stw(g.r[10], g.r[11]);
     g.r[10] = gsu_inc(gsu_inc(g.r[10]));
+    gsu_code(0x04CBEB, 6);
     g.r[0] = gsu_ldw(gsu_add(REC_X, g.r[8], 0));
     g.r[1] = gsu_sub(g.r[1], g.r[0], 0);
+    gsu_code(0x04CBF1, 6);
     g.r[0] = gsu_ldw(gsu_add(REC_Z, g.r[8], 0));
     g.r[3] = gsu_sub(g.r[3], g.r[0], 0);
     g.r[2] = g.r[3];
@@ -159,6 +166,7 @@ FxRegs FxBearingTo(FxRegs g)
     g.r[0] = gsu_inc(gsu_not(g.r[0]));
     g.r[10] = gsu_dec(gsu_dec(g.r[10]));
     gsu_ldw(g.r[10]);
+    gsu_code(0x04C7F5, 7);
     return g;
 }
 
@@ -195,8 +203,10 @@ FxRegs FxRecordAlignment(FxRegs g)
 
     gsu_stw(g.r[10], g.r[11]);
     g.r[10] = gsu_inc(gsu_inc(g.r[10]));
+    gsu_code(0x04BCBD, 4);
     gsu_stw(g.r[10], g.r[8]);
     g.r[10] = gsu_inc(gsu_inc(g.r[10]));
+    gsu_code(0x04BCC1, 8);
     for (i = 0; i < 3; i++)
         g.r[1 + i] = gsu_ldw(gsu_add((uint16_t)(REC_VEL + 2 * i), rec, 0));
     g.r[11] = 0xBCD9;
@@ -206,6 +216,7 @@ FxRegs FxRecordAlignment(FxRegs g)
         p = gsu_lmult(g.r[1 + i], g.r[6]);
         g.r[4] = (uint16_t)p;
         if (i == 0) {
+            gsu_code(0x04BCDD, 8);
             g.r[0] = (uint16_t)(p >> 16);
             g.r[7] = g.r[4];
         } else {
@@ -214,14 +225,16 @@ FxRegs FxRecordAlignment(FxRegs g)
             g.r[0] = gsu_add(g.r[0], g.r[5], gsu.cy);
         }
     }
+    gsu_code(0x04BCF0, 17);
     g.r[7] = gsu_add(g.r[7], g.r[7], 0);
     g.r[1] = g.r[0] = gsu_rol(g.r[0]);
     g.r[10] = gsu_dec(gsu_dec(g.r[10]));
     g.r[8] = gsu_ldw(g.r[10]);
+    gsu_code(0x04BD01, 4);
     g.r[0] = gsu_ldw(gsu_add(REC_SPEED, g.r[8], 0));
     gsu_moves(g.r[0]);
     if (gsu.s)
-        g.r[0] = gsu_inc(gsu_not(g.r[0]));
+        g.r[0] = gsu_inc(gsu_not(g.r[0])); else { gsu_code(0x04BD05, 4); gsu_code(0x04BD0B, 8); gsu_code(0x04BD16, 6); }
     g.r[2] = 10;
     gsu_sub(g.r[0], g.r[2], 0);
     if (gsu.s)
@@ -229,6 +242,7 @@ FxRegs FxRecordAlignment(FxRegs g)
     g.r[0] = gsu_add(REC_ALIGN, g.r[8], 0);
     gsu_stw(g.r[0], g.r[1]);
     g.r[10] = gsu_dec(gsu_dec(g.r[10]));
+    gsu_code(0x04BD1C, 4);
     gsu_ldw(g.r[10]);
     return g;
 }
@@ -347,6 +361,7 @@ void abi_FxRecordLower82(void)
  */
 void abi_FxTimersProgram(void)
 {
+    gsu_code(0x01BBC8, 22); gsu_cache(0xBBDD); gsu_code(0x01BBDE, 1);
     int bit0;
 
     gsu.r[10] = 0x0240;
@@ -360,12 +375,15 @@ void abi_FxTimersProgram(void)
     gsu.r[5] = 0x0020;
     gsu.r[13] = 0xBBDF;
     do {
+        gsu_code(0x01BBDF, 3);
         gsu.r[0] = gsu_lob(gsu_ldb(gsu.r[9]));
         if (!gsu.z) {
+            gsu_code(0x01BBE2, 7);
             gsu.r[0] = gsu_dec(gsu.r[0]);
             gsu_stb(gsu.r[9], (uint8_t)gsu.r[0]);
             gsu.r[7] = gsu.r[0];
             gsu.r[0] = gsu_add(0x0001, gsu.r[9], 0);
+            gsu_code(0x01BBE9, 7);
             gsu.r[0] = gsu_ldb(gsu.r[0]);
             gsu.r[6] = 0x0010;
             gsu.r[0] = gsu_and(gsu.r[0], gsu.r[6]);
@@ -379,7 +397,7 @@ void abi_FxTimersProgram(void)
                     gsu.r[7] = gsu_add(0x0002, gsu.r[9], 0);
                     gsu_stb(gsu.r[7], (uint8_t)gsu.r[0]);
                 }
-            }
+            } else { gsu_code(0x01BBF0, 5); gsu_code(0x01BC09, 6); }
             gsu.r[0] = gsu_add(0x0001, gsu.r[9], 0);
             gsu.r[0] = gsu_ldb(gsu.r[0]);
             gsu.r[6] = gsu.r[0];
@@ -387,6 +405,7 @@ void abi_FxTimersProgram(void)
             bit0 = !gsu.z;
             gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[0], 0);
             if (bit0) {
+                gsu_code(0x01BC0F, 6); gsu_code(0x01BC24, 12);
                 gsu.r[0] = gsu.r[6];
                 gsu.r[0] = gsu_bic(gsu.r[0], 0x0001);
                 gsu.r[7] = gsu_add(0x0001, gsu.r[9], 0);
@@ -396,12 +415,13 @@ void abi_FxTimersProgram(void)
                 continue;
             }
             gsu_stb(gsu.r[9], (uint8_t)gsu.r[0]);
-        }
+        } else { gsu_code(0x01BBE2, 3); gsu_code(0x01BC17, 7); }
         gsu.r[7] = gsu_add(0x000C, gsu.r[9], 0);
         gsu_stw(gsu.r[7], gsu.r[0]);
         gsu.r[9] = gsu_add(gsu.r[9], gsu.r[8], 0);
         gsu.r[12] = gsu_dec(gsu.r[12]);
     } while (gsu.r[12] != 0);
+    gsu_code(0x01BC33, 1);
 }
 
 /* PLOT: the pixel at (R1, R2), R1 moving on by one. */
@@ -414,6 +434,7 @@ static void fx_plot(void)
 /* COLOR, with the plot options' nibble modes. */
 static void fx_color(uint16_t v)
 {
+    gsu_code(0x01BAF8, 10);
     uint8_t c = (uint8_t)v;
 
     if (gsu.por & 0x04)
@@ -427,12 +448,13 @@ static void fx_color(uint16_t v)
    $100. Then R14 = $896C + (z AND NOT 1) and R6 = the scale there. */
 static int fx_scale_for(void)
 {
+    gsu_code(0x01BAA1, 7); gsu_code(0x01BAAB, 7);
     gsu.r[0] = gsu_sub(0x4400, gsu.r[6], 0);
     if (gsu.s)
         gsu.r[6] = 0x43FF;
     gsu.r[0] = gsu_sub(0x0100, gsu.r[6], 0);
-    if (!gsu.s && !gsu.z)
-        return 0;
+    if (!gsu.s && (gsu_code(0x01BAB2, 7), !gsu.z))
+        return 0; else { gsu_code(0x01BAB9, 20); }
     gsu.r[6] = gsu_bic(gsu.r[6], 0x0001);
     gsu.r[0] = 0x896C;
     gsu_r14(gsu_add(gsu.r[0], gsu.r[6], 0));
@@ -520,6 +542,7 @@ static void fx_line(void)
 /* Particle R11 (its record): moved by its deltas, projected and drawn. */
 static void fx_particle(void)
 {
+    gsu_code(0x01BA26, 3); gsu_code(0x01BA35, 9);
     static const struct { uint8_t delta, word, at; } axis[3] = {{3, 6, 0x26}, {4, 8, 0x28}, {5, 0x0A, 0x2A}};
     static const int keep[3] = {3, 9, 13}, to[3] = {1, 2, 6}, rw[3] = {1, 2, 6};
     int i, big;
@@ -537,11 +560,13 @@ static void fx_particle(void)
         gsu_sbk(gsu.r[0]);
         gsu.r[4] = gsu_ldw(axis[i].at);
         gsu.r[to[i]] = gsu_add(gsu.r[0], gsu.r[4], 0);
+        gsu_code(0x01BA76, 9);
     }
     gsu.r[5] = gsu_add(0x0001, gsu.r[11], 0);
     gsu.r[5] = gsu_ldb(gsu.r[5]);
     gsu.r[0] = gsu_or(gsu.r[5], 0x0001);
     gsu.r[4] = gsu_add(0x0001, gsu.r[11], 0);
+    gsu_code(0x01BA7F, 10);
     gsu_stb(gsu.r[4], (uint8_t)gsu.r[0]);
     gsu.r[0] = gsu_and(gsu.r[5], 0x0002);
     if (!gsu.z) {
@@ -550,12 +575,12 @@ static void fx_particle(void)
         gsu.r[0] = gsu_add(gsu.r[0], 0x0001, 0);
         gsu.r[4] = gsu_add(0x0004, gsu.r[11], 0);
         gsu_stb(gsu.r[4], (uint8_t)gsu.r[0]);
-    }
+    } else { gsu_code(0x01BA89, 5); gsu_code(0x01BA9C, 5); }
     gsu_moves(gsu.r[6]);
     if (gsu.s || !fx_scale_for())
-        return;
-    if (!fx_project(1, 0x0034, 0x003A, 4) || !fx_project(2, 0x0036, 0x003E, 5))
-        return;
+        { gsu_code(0x01BB0D, 7); return; }
+    if (!fx_project(1, 0x0034, 0x003A, 4) || (gsu_code(0x01BAD2, 4), gsu_code(0x01BADA, 7), !fx_project(2, 0x0036, 0x003E, 5)))
+        return; else { gsu_code(0x01BAE6, 4); gsu_code(0x01BAEE, 10); }
     gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[0], 0);
     gsu.por = (uint8_t)gsu.r[0];
     gsu.r[0] = gsu_add(0x0002, gsu.r[11], 0);
@@ -568,13 +593,15 @@ static void fx_particle(void)
     gsu.r[0] = gsu_and(gsu.r[0], 0x0004);
     big = !gsu.z;
     if (!big) {
+        gsu_code(0x01BB02, 6);
         fx_plot();
-        fx_plot();
+        (gsu_code(0x01BB08, 1), fx_plot());
         gsu.r[2] = gsu_inc(gsu.r[2]);
         gsu.r[1] = gsu_dec(gsu.r[1]);
         gsu.r[1] = gsu_dec(gsu.r[1]);
-        fx_plot();
-        fx_plot();
+        (gsu_code(0x01BB09, 4), fx_plot());
+        (gsu_code(0x01BB0D, 1), fx_plot());
+        gsu_code(0x01BB0E, 6);
         return;
     }
     for (i = 0; i < 3; i++) {
@@ -610,24 +637,29 @@ static void fx_particle(void)
  */
 void abi_FxParticlesDraw(void)
 {
+    gsu_code(0x01AC29, 4); gsu_code(0x01BA13, 3);
     gsu_push(&gsu.r[10], gsu.r[11]);
     gsu.r[7] = gsu.r[2];
     gsu.r[0] = 0x0014;
     gsu.rombr = 0x14;
     gsu.r[11] = 0x274A;
     gsu.r[12] = 0x0014;
+    gsu_code(0x01BA16, 14);
     for (;;) {
+        gsu_code(0x01BA24, 1); gsu_cache(0xBA24); gsu_code(0x01BA25, 1);
         gsu.r[0] = gsu_ldw(gsu.r[11]);
         gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[7], 0);
         if (gsu.z) {
             gsu.r[11] = gsu_sub(gsu.r[11], 0x000C, 0);
             fx_particle();
             gsu.r[11] = gsu_add(gsu.r[11], 0x000C, 0);
-        }
+        } else { gsu_code(0x01BA26, 3); }
+        gsu_code(0x01BA29, 7);
         gsu.r[11] = gsu_add(gsu.r[11], 0x000E, 0);
         gsu.r[12] = gsu_dec(gsu.r[12]);
         if (gsu.z)
-            break;
+            { gsu_code(0x01BA30, 5); break; }
     }
     gsu_pull(&gsu.r[10]);
+    gsu_code(0x01AC2D, 4);
 }

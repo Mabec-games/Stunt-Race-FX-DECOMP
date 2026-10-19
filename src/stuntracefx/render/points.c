@@ -35,6 +35,7 @@ typedef struct { uint16_t first_word, offset[3], last_z, last_point; } FxPointsL
 
 void FxPointsGather(uint16_t count, FxPointsLeft *left)
 {
+    gsu_code(0x01C1BE, 2); gsu_cache(0xC1BF); gsu_code(0x01C1C0, 3); gsu_code(0x01C347, 6);
     uint32_t n = count ? count : 0x10000u;
     uint16_t src = (uint16_t)(gsu_ldw(FX_PAIRS) - 4 + (count & 0xFF) * 8);
     uint16_t dst = (uint16_t)(FX_RECORDS + (count & 0xFF) * 10);
@@ -43,30 +44,40 @@ void FxPointsGather(uint16_t count, FxPointsLeft *left)
 
     /* UMULT takes the count's low byte only: the starting entry and record
        are those of count & $FF. */
-    for (i = 0; i < n; i++) {
+    gsu_code(0x01C1C3, 19);
+    for (i = 0; gsu_code_loop(0x01C1D6, 3, i < n); i++) {
         uint16_t a = gsu_div2(gsu_ldw(src));
+        gsu_code(0x01C1D9, 3);
         uint16_t b = gsu_div2(gsu_ldw((uint16_t)(src + 2)));
 
+        gsu_code(0x01C1DC, 7);
         gsu_stw(dst, a);
+        gsu_code(0x01C1E3, 3);
         gsu_stw((uint16_t)(dst + 2), b);
         left->first_word = a;
         src = (uint16_t)(src - 8);
         dst = (uint16_t)(dst - 10);
+        gsu_code(0x01C1E6, 7);
     }
+    gsu_code(0x01C1ED, 4);
     for (k = 0; k < 3; k++)
-        left->offset[k] = gsu_ldw((uint16_t)(FX_OFFSET + k * 2));
+        { left->offset[k] = gsu_ldw((uint16_t)(FX_OFFSET + k * 2)); gsu_code(0x01C1F7, 6); }
     dst = FX_RECORDS + 4;
-    for (i = 0; i < n; i++) {
+    for (i = 0; gsu_code_loop(0x01C1FD, 2, i < n); i++) {
         uint16_t p = (uint16_t)(FX_POINTS + gsu_getb() * 6);
 
+        gsu_code(0x01C1FF, 1);
         gsu_r14((uint16_t)(gsu.r[14] + 1));
+        gsu_code(0x01C200, 8);
         for (k = 0; k < 3; k++) {
             left->last_z = (uint16_t)(gsu_ldw((uint16_t)(p + k * 2)) + left->offset[k]);
             gsu_stw((uint16_t)(dst + k * 2), left->last_z);
+            gsu_code(0x01C218, 4);
         }
         left->last_point = p;
         dst = (uint16_t)(dst + 10);
     }
+    gsu_code(0x01C21C, 2); gsu_code(0x01C34D, 7);
 }
 
 void abi_FxPointsGather(void)

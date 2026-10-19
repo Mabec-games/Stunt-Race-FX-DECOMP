@@ -76,19 +76,21 @@ static void divide_flags(uint16_t rem, uint16_t quot, uint16_t divisor)
  */
 uint16_t FxDivideSigned(uint16_t hi, uint16_t lo, uint16_t divisor, uint16_t *remainder)
 {
+    gsu_code(0x018186, 2); gsu_cache(0x8187); gsu_code(0x018188, 9); gsu_code(0x018192, 5); gsu_code(0x01819B, 29); gsu_code(0x0181A3, 8); gsu_code(0x0181A3, 8); gsu_code(0x0181A3, 4); gsu_code(0x0181A3, 4); gsu_code(0x0181A3, 4); gsu_code(0x0181A3, 4); gsu_code(0x0181A3, 4); gsu_code(0x0181A3, 4); gsu_code(0x0181A3, 4); gsu_code(0x0181A3, 4); gsu_code(0x0181A3, 4); gsu_code(0x0181A3, 4); gsu_code(0x0181A3, 4); gsu_code(0x0181A3, 4); gsu_code(0x0181A3, 4); gsu_code(0x0181AE, 5); gsu_code(0x0181AE, 5); gsu_code(0x0181AE, 5); gsu_code(0x0181BA, 2);
     uint16_t sign = hi ^ divisor;
     uint16_t quot;
 
     if (divisor & 0x8000)
-        divisor = (uint16_t)-divisor;
+        { gsu_code(0x018191, 1); gsu_code(0x0181A7, 4); gsu_code(0x0181A7, 4); divisor = (uint16_t)-divisor; } else { gsu_code(0x0181AE, 5); gsu_code(0x0181AE, 5); gsu_code(0x0181AE, 5); gsu_code(0x01A406, 16); }
     if (hi & 0x8000) {
+        gsu_code(0x018197, 4); gsu_code(0x0181A7, 4);
         uint32_t v = (uint32_t)-((uint32_t)hi << 16 | lo);
         hi = (uint16_t)(v >> 16);
         lo = (uint16_t)v;
     }
     quot = divide_passes((uint16_t)(hi << 1 | lo >> 15), (uint16_t)(lo << 1), divisor, remainder);
     if (sign & 0x8000)
-        quot = (uint16_t)-quot;
+        { gsu_code(0x0181B8, 2); quot = (uint16_t)-quot; } else { gsu_code(0x0181AE, 5); gsu_code(0x0181AE, 5); }
     return quot;
 }
 
@@ -162,6 +164,7 @@ static void halving_exit(uint16_t hi, uint16_t lo, uint16_t d, uint16_t loop)
     uint16_t shifted;
 
     if ((hi | d) & 0x8000) {
+        gsu_code(0x0196CA, 5); gsu_code(0x0196E0, 5);
         lo = (uint16_t)(lo >> 1 | (hi & 1) << 15);
         hi >>= 1;
     }
@@ -191,6 +194,7 @@ static void halving_exit(uint16_t hi, uint16_t lo, uint16_t d, uint16_t loop)
 uint16_t FxDivide32By16Halving(uint16_t hi, uint16_t lo, uint16_t *divisor, uint16_t *remainder)
 {
     if ((hi | *divisor) & 0x8000) {
+        gsu_code(0x0196E0, 7);
         *divisor >>= 1;
         lo = (uint16_t)(lo >> 1 | (hi & 1) << 15);
         hi >>= 1;
@@ -200,6 +204,7 @@ uint16_t FxDivide32By16Halving(uint16_t hi, uint16_t lo, uint16_t *divisor, uint
 
 void abi_FxDivide32By16Halving(void)
 {
+    gsu_code(0x0181BC, 10); gsu_code(0x0181CB, 15); gsu_code(0x0181D2, 8); gsu_code(0x0181D2, 8); gsu_code(0x0181D2, 8); gsu_code(0x0181D2, 8); gsu_code(0x0181D2, 8); gsu_code(0x0181D2, 4); gsu_code(0x0181D2, 4); gsu_code(0x0181D2, 4); gsu_code(0x0181D2, 4); gsu_code(0x0181D2, 4); gsu_code(0x0181D2, 4); gsu_code(0x0181D2, 4); gsu_code(0x0181D2, 4); gsu_code(0x0181D2, 4); gsu_code(0x0181D2, 4); gsu_code(0x0181DC, 5); gsu_code(0x0181DC, 5); gsu_code(0x0181DC, 5); gsu_code(0x0181DC, 5); gsu_code(0x0181DC, 5); gsu_code(0x0181DC, 5); gsu_code(0x0181DC, 5); gsu_code(0x0181DC, 5); gsu_code(0x01B2FC, 7);
     halving_exit(gsu.r[0], gsu.r[4], gsu.r[6], 0x81D2);
 }
 
@@ -246,15 +251,17 @@ typedef struct { uint16_t hi, lo, divisor, ret; } FxLastDivide;
  */
 void FxRatioClamp(uint16_t *x, uint16_t *y, uint16_t d, FxLastDivide *last)
 {
+    gsu_code(0x01965B, 16); gsu_code(0x0196DA, 4); gsu_code(0x0196DA, 4); gsu_code(0x0196DA, 4); gsu_code(0x0196DA, 4);
     uint16_t rem, used;
     uint16_t a = (uint16_t)((int16_t)*x >> 1), b = (uint16_t)((int16_t)*y >> 1);
 
     if ((a >> 8) < d) {
+        gsu_code(0x01966B, 14); gsu_code(0x0196C0, 10); gsu_code(0x0196C0, 10); gsu_code(0x0196CF, 15); gsu_code(0x0196CF, 15); gsu_code(0x0196D6, 8); gsu_code(0x0196D6, 8); gsu_code(0x0196D6, 8); gsu_code(0x0196D6, 8); gsu_code(0x0196D6, 8); gsu_code(0x0196D6, 8); gsu_code(0x0196D6, 4); gsu_code(0x0196D6, 4); gsu_code(0x0196D6, 4); gsu_code(0x0196D6, 4); gsu_code(0x0196D6, 4); gsu_code(0x0196D6, 4); gsu_code(0x0196D6, 4); gsu_code(0x0196D6, 4); gsu_code(0x0196D6, 4); gsu_code(0x0196D6, 4); gsu_code(0x0196D6, 4); gsu_code(0x0196D6, 4); gsu_code(0x0196D6, 4); gsu_code(0x0196D6, 4); gsu_code(0x0196D6, 4); gsu_code(0x0196D6, 4); gsu_code(0x0196D6, 4); gsu_code(0x0196D6, 4); gsu_code(0x0196D6, 4); gsu_code(0x0196D6, 4); gsu_code(0x0196D6, 4); gsu_code(0x0196D6, 4); gsu_code(0x0196D6, 4); gsu_code(0x0196D6, 4); gsu_code(0x0196E0, 5); gsu_code(0x0196E0, 5); gsu_code(0x0196E0, 5); gsu_code(0x0196E0, 5); gsu_code(0x0196E0, 5); gsu_code(0x0196E0, 5); gsu_code(0x0196E0, 5); gsu_code(0x0196E0, 5); gsu_code(0x0196E0, 5); gsu_code(0x0196E0, 5); gsu_code(0x0196E0, 5); gsu_code(0x0196E0, 5); gsu_code(0x0196E0, 5); gsu_code(0x0196E0, 5); gsu_code(0x0196E0, 5); gsu_code(0x0196E0, 5); gsu_code(0x0196E0, 5); gsu_code(0x0196E0, 5); gsu_code(0x0196E0, 5); gsu_code(0x0196E0, 5);
         used = d;
         last->hi = a >> 8; last->lo = (uint16_t)(a << 8); last->divisor = d; last->ret = 0x9672;
         a = FxDivideHalving(a >> 8, (uint16_t)(a << 8), &used, &rem);
         used = d;
-        last->hi = b >> 8; last->lo = (uint16_t)(b << 8); last->ret = a <= 0x3FFF ? 0x9688 : 0x969E;
+        last->hi = b >> 8; last->lo = (uint16_t)(b << 8); last->ret = a <= 0x3FFF ? (gsu_code(0x019679, 22), 0x9688) : (gsu_code(0x01968F, 17), gsu_code(0x0196E0, 5), gsu_code(0x0196E0, 5), gsu_code(0x0196E0, 5), 0x969E);
         b = FxDivideHalving(b >> 8, (uint16_t)(b << 8), &used, &rem);
         if (a <= 0x3FFF) {
             *x = a;
@@ -262,6 +269,7 @@ void FxRatioClamp(uint16_t *x, uint16_t *y, uint16_t d, FxLastDivide *last)
             return;
         }
     }
+    gsu_code(0x0196A0, 42); gsu_code(0x0196CF, 15); gsu_code(0x0196D6, 8); gsu_code(0x0196D6, 8); gsu_code(0x0196D6, 8); gsu_code(0x0196D6, 8); gsu_code(0x0196D6, 8); gsu_code(0x0196D6, 8); gsu_code(0x0196D6, 4); gsu_code(0x0196D6, 4); gsu_code(0x0196D6, 4); gsu_code(0x0196D6, 4); gsu_code(0x0196D6, 4); gsu_code(0x0196D6, 4); gsu_code(0x0196D6, 4); gsu_code(0x0196D6, 4); gsu_code(0x0196D6, 4); gsu_code(0x0196E0, 5); gsu_code(0x0196E0, 5); gsu_code(0x0196E0, 5); gsu_code(0x0196E0, 5); gsu_code(0x0196E0, 5);
     {
         uint32_t v = ((uint32_t)b << 14) - b;
 
@@ -274,6 +282,7 @@ void FxRatioClamp(uint16_t *x, uint16_t *y, uint16_t d, FxLastDivide *last)
 
 void abi_FxRatioClamp(void)
 {
+    gsu_code(0x01947D, 6); gsu_code(0x019658, 3);
     FxLastDivide last;
 
     gsu_push(&gsu.r[10], gsu.r[11]);
@@ -363,11 +372,14 @@ void abi_FxSqrt32(void)
  */
 uint32_t FxLengthProgram(uint16_t *root)
 {
+    gsu_code(0x0180BD, 7);
     int16_t x = (int16_t)gsu_ldw(FX_LENGTH_IN);
+    gsu_code(0x0180C4, 11);
     int16_t z = (int16_t)gsu_ldw(FX_LENGTH_IN2);
     uint32_t sum = (uint32_t)((int32_t)x * x) + (uint32_t)((int32_t)z * z);
     uint16_t rem;
 
+    gsu_code(0x018096, 38); gsu_code(0x0180A0, 26); gsu_code(0x0180A0, 26); gsu_code(0x0180A0, 26); gsu_code(0x0180A0, 26); gsu_code(0x0180A0, 26); gsu_code(0x0180A0, 21); gsu_code(0x0180A0, 21); gsu_code(0x0180A0, 21); gsu_code(0x0180A0, 21); gsu_code(0x0180A0, 21); gsu_code(0x0180A0, 21); gsu_code(0x0180A0, 21); gsu_code(0x0180A0, 21); gsu_code(0x0180A0, 21); gsu_code(0x0180A0, 21); gsu_code(0x0180B8, 2); gsu_code(0x0180B8, 2); gsu_code(0x0180B8, 2); gsu_code(0x0180B8, 2); gsu_code(0x0180B8, 2); gsu_code(0x0180B8, 2); gsu_code(0x0180B8, 2); gsu_code(0x0180B8, 2); gsu_code(0x0180B8, 2); gsu_code(0x0180B8, 2); gsu_code(0x0180CF, 21);
     *root = FxSqrt32((uint16_t)(sum >> 16), (uint16_t)sum, &rem);
     gsu_stw(FX_LENGTH_OUT, *root);
     return sum;

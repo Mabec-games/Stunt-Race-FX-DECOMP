@@ -1,0 +1,46 @@
+--- a/bsnes/sfc/coprocessor/superfx/memory.cpp
++++ b/bsnes/sfc/coprocessor/superfx/memory.cpp
+@@ -56,6 +56,9 @@
+ }
+ 
+ auto SuperFX::readOpcode(uint16 addr) -> uint8 {
++  // the code byte about to be fetched (the harness learns which of the
++  // original's bytes each stretch of its C stands for)
++  if(sfxbox_gsu_cb.cache) sfxbox_gsu_cb.cache(4, regs.pbr << 16 | addr);
+   uint16 offset = addr - regs.cbr;
+   if(offset < 512) {
+     if(cache.valid[offset >> 4] == false) {
+--- a/bsnes/sfc/coprocessor/superfx/superfx.cpp
++++ b/bsnes/sfc/coprocessor/superfx/superfx.cpp
+@@ -94,6 +94,14 @@
+   return superfx.read(superfx.regs.pbr << 16 | addr);
+ }
+ 
++// the code cache's valid lines, bit n for line n (the harness's timing model)
++extern "C" uint32_t sfxbox_gsu_cache_valid() {
++  using namespace SuperFamicom;
++  uint32_t v = 0;
++  for(uint n : range(32)) if(superfx.cache.valid[n]) v |= 1u << n;
++  return v;
++}
++
+ namespace SuperFamicom {
+ 
+ auto SuperFX::synchronizeCPU() -> void {
+--- a/bsnes/sfc/coprocessor/superfx/timing.cpp
++++ b/bsnes/sfc/coprocessor/superfx/timing.cpp
+@@ -28,11 +28,14 @@
+ }
+ 
+ auto SuperFX::readROMBuffer() -> uint8 {
++  // GETB, GETC: the harness times the code between R14's write and here
++  if(sfxbox_gsu_cb.cache) sfxbox_gsu_cb.cache(6, 0);
+   syncROMBuffer();
+   return regs.romdr;
+ }
+ 
+ auto SuperFX::updateROMBuffer() -> void {
++  if(sfxbox_gsu_cb.cache) sfxbox_gsu_cb.cache(5, (regs.rombr << 16) + regs.r[14]);
+   regs.sfr.r = 1;
+   regs.romcl = regs.clsr ? 5 : 6;
+ }

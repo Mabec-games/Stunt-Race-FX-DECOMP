@@ -414,8 +414,8 @@ static void slot_colour(uint8_t bank, uint16_t r, uint8_t bit, uint8_t c1, uint8
         cyc(22);
         wr8((uint16_t)(r + 3), c23);
     }
-cyc(108);
-    }
+    cyc(108);
+}
 
 /*
  * @routine 02:E117 SpriteSlot6Yellow

@@ -135,8 +135,8 @@ void abi_MenuActorFree(void)
     cpu.a = MenuActorFree(cpu.db, cpu.x, cpu.y);
     cpu.x = 0xFFFF;
     cpu.p = (uint8_t)((cpu.p & ~P_Z) | P_N);
-cyc(42);
-    }
+    cyc(42);
+}
 
 /* Compare as CMP does: C when a >= b; N, Z from a - b. */
 static uint8_t cmp16(uint8_t p, uint16_t a, uint16_t b)
@@ -248,8 +248,8 @@ uint16_t MenuActorsSet10(uint8_t bank, uint16_t kind, uint16_t value, uint8_t *p
             cyc(22);
             wr16((uint16_t)(rec + 0x10), a);
         } else { cyc(22); }
-    cyc(6);
-        }
+        cyc(6);
+    }
     cyc(116);
     return a;
 }
@@ -1818,8 +1818,8 @@ void abi_MenuFadeOutHandler(void)
 
     cpu.a = MenuFadeOutHandler(cpu.db, &cpu.x, &cpu.y, &p);
     cpu.p = p;
-cyc(42);
-    }
+    cyc(42);
+}
 
 /* A choice object's first frame: its own sprite group (MenuActorCopyGroup)
    and the handler `next`. */
@@ -2087,8 +2087,8 @@ static void queue_regs(uint8_t bank, const struct reg_write *w, unsigned n)
     cyc(22);
     for (i = 0; i < n; i++)
         FrameByteWritePush(bank, (uint16_t)w[i].reg, w[i].v);
-cyc(190);
-    }
+    cyc(190);
+}
 
 /*
  * @routine 0B:CF27 MenuDropAway
@@ -2456,8 +2456,8 @@ uint16_t MenuActorSpawnList(uint8_t bank, uint16_t list, uint16_t *a, uint16_t *
         wr16(dbw(bank, 0x11FD), cyc_then(14, (uint16_t)(x + 1)));
         x = rd16(cyc_then(24, dbw(bank, 0x11FD)));
         wr16(dbw(bank, 0x11FD), cyc_then(14, (uint16_t)(x + 1)));
-    cyc(22);
-        }
+        cyc(22);
+    }
     *a = e;
     return x;
 }

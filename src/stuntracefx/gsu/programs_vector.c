@@ -312,8 +312,8 @@ void ScaledOffset(uint8_t bank, uint8_t *ra, uint8_t *rx, uint8_t *p)
             rol_dp(0x8D, p);
             x--;
         }
-    cyc(22);
-        }
+        cyc(22);
+    }
     cyc(32);
     wr8(0x00008C, a);
     cyc(16);

@@ -23,8 +23,8 @@ void OamHideRange(uint16_t offset, uint16_t count)
         wr8(OAM_BUFFER + 1 + offset, 0xF0);
         offset += 4;
     } while (--count);
-cyc(112);
-    }
+    cyc(112);
+}
 
 void abi_OamHideRange(void)
 {
@@ -208,8 +208,8 @@ void OamBufferClear(void)
     cyc(70);
     for (x = 0x1E; x >= 0; x -= 2)
         { cyc(82); wr16(0x000575 + (unsigned)x, 0x0000); }
-cyc(116);
-    }
+    cyc(116);
+}
 
 void abi_OamBufferClear(void)
 {
@@ -236,8 +236,8 @@ void OamBufferHideLarge(void)
     cyc(76);
     for (x = 0; x < 0x20; x++)
         { cyc(90); wr8(0x000575 + x, 0xAA); }
-cyc(126);
-    }
+    cyc(126);
+}
 
 void abi_OamBufferHideLarge(void)
 {
@@ -911,8 +911,8 @@ void OamHide36And96(uint8_t bank)
     cyc(32);
     for (i = 0; i < 4; i++)
         { cyc(24); wr8(b | (uint16_t)(0x058D + i), 0x00); }
-cyc(70);
-    }
+    cyc(70);
+}
 
 void abi_OamHide36And96(void)
 {
@@ -948,8 +948,8 @@ void OamHide75Up(uint8_t bank)
         cyc(6);
         OamHideRange(0x012C, 0x0035);
     }
-cyc(86);
-    }
+    cyc(86);
+}
 
 void abi_OamHide75Up(void)
 {
@@ -992,8 +992,8 @@ void OamLargeColumns(uint8_t bank)
     cyc(50);
     for (i = 0; i < 6; i++)
         { cyc(40); wr8(b | high[i], 0xAA); }
-cyc(70);
-    }
+    cyc(70);
+}
 
 void abi_OamLargeColumns(void)
 {
@@ -1042,8 +1042,8 @@ void OamPlaceRows75And112(uint8_t bank)
     wr8(b | (uint16_t)(OAM_BUFFER + 1 + 4 * 115), 0x80);
     for (i = 0; i < 6; i++)
         { cyc(40); wr8(b | high[i], 0x00); }
-cyc(70);
-    }
+    cyc(70);
+}
 
 void abi_OamPlaceRows75And112(void)
 {
@@ -1367,8 +1367,8 @@ void abi_FlashingMetaspriteDraw0(void)
         cpu.x &= 0x00FF;
         cpu.y &= 0x00FF;
     }
-cyc(18);
-    }
+    cyc(18);
+}
 
 /*
  * @routine 02:F932 FlashingMetaspriteDrawByMode
@@ -1859,8 +1859,8 @@ void abi_SpritePiecesTwoCars(void)
     wr8(b | 0x0582, 0x58);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x58);
     cpu.p = nz8(cpu.p, 0x58);
-cyc(112);
-    }
+    cyc(112);
+}
 
 /* OAM address addr (word), then n bytes: from the buffer at $0375 + x, or
    $F0 each when hide. Leaves X past them, Y = 0. */
@@ -2150,8 +2150,8 @@ static void stage_loop(uint32_t b, void (*dispatch)(void))
         cyc(46);
         op_lda8(b | 0x0D2D);
     } while (cyc_loop(22, (uint8_t)cpu.a));
-cyc(44);
-    }
+    cyc(44);
+}
 
 /* PLP, RTS through the stack as it is: P, then the return address in the
    program bank $07; the caller's frame is left (cpu.unwound). */

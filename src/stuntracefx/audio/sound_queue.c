@@ -38,8 +38,8 @@ static void queue_push(uint32_t queue, uint32_t head, uint32_t count, uint8_t va
         cyc(24);
         wr8(count, cyc_then(6, (uint8_t)(rd8(count) + 1)));
     } else { cyc(54); }
-cyc(200);
-    }
+    cyc(200);
+}
 
 /*
  * @routine 04:D649 SoundPort0QueuePushRaw

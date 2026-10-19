@@ -80,8 +80,8 @@ void ObjectStubReturn(void)
 
 void abi_ObjectStubReturn(void)
 {
-cyc(44);
-    }
+    cyc(44);
+}
 
 /* The +$39 setters: the byte written (8-bit), then ObjectContinue1A. */
 static void set_39(uint8_t v)
