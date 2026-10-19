@@ -210,6 +210,27 @@ GsuBytes200_0F060E:
     plp
     rtl
 
+; @routine 04:D955 GsuBytes200_0F010B
+; WHAT IT DOES: As GsuBytes200_BFB7B6, with 0, $0F, $01, $0B. Nothing
+; calls it (no JSL, pointer or table reaches it), so a direct call is its
+; only way in.
+; HOW: As GsuBytes200_BFB7B6.
+; Entry: any widths. Exit: A low byte = $0B; P unchanged.
+%at($04D955)
+GsuBytes200_0F010B:
+    php
+    sep.b #$20
+    lda.b #$00
+    sta.l !gsu_bytes_200
+    lda.b #$0F
+    sta.l !gsu_bytes_200+1
+    lda.b #$01
+    sta.l !gsu_bytes_200+2
+    lda.b #$0B
+    sta.l !gsu_bytes_200+3
+    plp
+    rtl
+
 ; @routine 04:D7F9 GsuBytes200_BFBCBD
 ; WHAT IT DOES: As GsuBytes200_BFB7B6, with 0, $BF, $BC, $BD.
 ; HOW: As GsuBytes200_BFB7B6.

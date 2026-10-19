@@ -567,6 +567,26 @@ includeonce
 !actor_1e = $1E
 !actor_06 = $06
 
+; Menu object fields and words that only the code nothing calls uses
+; (menu/actors.asm, menu/frame.asm): +$00 and +$04 the low words of the
+; 32-bit pairs +$00/+$02 and +$04/+$06; $1189 the menu's random word (set
+; to $1234 when a screen opens); $118F the press being worked on.
+!actor_00 = $00
+!actor_04 = $04
+!menu_random = $1189
+!menu_press = $118F
+
+; Words only the bank 07 piece code nothing calls uses (gsu/programs.asm):
+; $0E82 and $0E84 the halves of the Super FX words $70:003A and $70:003E,
+; $0E86 and $0E8E view factors; $F1 and $F3 GsuReciprocal's divisor and
+; dividend.
+!wram_0E82 = $0E82
+!wram_0E84 = $0E84
+!wram_0E86 = $0E86
+!wram_0E8E = $0E8E
+!recip_divisor = $F1
+!recip_dividend = $F3
+
 ; $11ED: the selection screen's slide position, copied by MenuSelectArrive.
 !menu_slide_pos = $11ED
 

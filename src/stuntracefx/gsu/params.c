@@ -200,6 +200,24 @@ void abi_GsuBytes200_0F060E(void)
 }
 
 /*
+ * @routine 04:D955 GsuBytes200_0F010B
+ * WHAT IT DOES: As GsuBytes200_BFB7B6, with 0, $0F, $01, $0B. Nothing
+ * calls it (no JSL, pointer or table reaches it), so a direct call is its
+ * only way in.
+ * HOW: As GsuBytes200_BFB7B6.
+ * Entry: any widths. Exit: A low byte = $0B; P unchanged.
+ */
+void GsuBytes200_0F010B(void)
+{
+    gsu_200(0x0F, 0x01, 0x0B);
+}
+
+void abi_GsuBytes200_0F010B(void)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0x0F, 0x01, 0x0B));
+}
+
+/*
  * @routine 04:D7DC GsuBytes200_BFB5BB
  * WHAT IT DOES: As GsuBytes200_BFB7B6, with 0, $BF, $B5, $BB.
  * HOW: As GsuBytes200_BFB7B6.

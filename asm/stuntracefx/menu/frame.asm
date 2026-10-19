@@ -10,6 +10,66 @@ incsrc "../include/rom.inc"
 
 arch 65816
 
+; @routine 0B:E2D7 MenuFramesTarget7
+; WHAT IT DOES: Sets the frame update target $11DB (MenuRunFrames runs
+; frames until $11DA reaches it) to 7. Nothing calls it, so a direct call
+; is its only way in.
+; HOW: An 8-bit store through the data bank between PHP and PLP.
+; Entry: any widths. Exit: A low byte = 7; P unchanged.
+%at($0BE2D7)
+MenuFramesTarget7:
+    php
+    sep.b #$20
+    lda.b #$07
+    sta.w !wram_11DB
+    plp
+    rts
+
+; @routine 0B:E3A3 MenuRandomStep
+; WHAT IT DOES: Steps the menu's random word $1189 (set to $1234 when a
+; screen opens): the word with its bytes swapped and halved, plus the word
+; twice, XORed with the blink counter $11DD. Nothing calls it, so a direct
+; call is its only way in.
+; HOW: The two bytes read in 8-bit with an XBA between; then 16-bit LSR,
+; CLC and two ADCs (the second keeps the first's carry), EOR; through the
+; data bank, between PHP and PLP.
+; Entry: any widths. Exit: A = the new word; P unchanged.
+%at($0BE3A3)
+MenuRandomStep:
+    php
+    sep.b #$20
+    lda.w !menu_random
+    xba
+    lda.w !menu_random+1
+    rep.b #$20
+    lsr a
+    clc
+    adc.w !menu_random
+    adc.w !menu_random
+    eor.w !menu_blink_counter
+    sta.w !menu_random
+    plp
+    rts
+
+; @routine 0B:E3BF MenuDimOnL
+; WHAT IT DOES: When the press being worked on ($118F) has the L button
+; (bit 5), sets the screen brightness to 4 (INIDISP). Nothing calls it, so
+; a direct call is its only way in.
+; HOW: AND #$0020; the brightness written in 8-bit with a long store.
+; Entry: M 16-bit. Exit: no L: A = 0; Z set, N clear. L: A = 4; N, Z
+; clear; M 16-bit.
+%at($0BE3BF)
+MenuDimOnL:
+    lda.w !menu_press
+    and.w #$0020
+    beq .done
+    sep.b #$20
+    lda.b #$04
+    sta.l !INIDISP
+    rep.b #$20
+.done:
+    rts
+
 ; @routine 0B:E390 MenuWaitFrame
 ; WHAT IT DOES: Marks the frame finished and waits for the vertical blank
 ; code to take it.

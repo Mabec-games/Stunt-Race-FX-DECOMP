@@ -351,6 +351,39 @@ static uint8_t mirror80(uint8_t v, uint8_t *p)
 }
 
 /*
+ * @routine 09:F04D WindowEdgesFillOnes
+ * WHAT IT DOES: Fills $0800 words from the window edge table $7F:F883 with
+ * 1; nothing calls it (no JSR, pointer or table reaches it), so a direct
+ * call is its only way in. The run is $1000 bytes long and the long indexed
+ * store carries into bank $80 past $7F:FFFF, whose $0000-$1FFF is low work
+ * RAM: $7E:0000-$7E:0882 are set to $0001 words too, the stack with them,
+ * so the RTS returns through what the fill left there.
+ * HOW: REP #$30; X steps by 2 from 0, Y counts $0800 down.
+ * Entry: any widths. Exit: A = 1, X = $1000, Y = 0; M and X 16-bit; Z and
+ * C set, N clear (CPY #0); the RTS pulls its return address from the
+ * filled stack.
+ */
+void abi_WindowEdgesFillOnes(void)
+{
+    uint16_t x = 0, y = 0x0800;
+
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    do {
+        wr16((0x7FF883u + x) & 0xFFFFFF, 0x0001);
+        x = (uint16_t)(x + 2);
+        y--;
+    } while (y);
+    cpu.a = 0x0001;
+    cpu.x = x;
+    cpu.y = 0;
+    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C)) | P_Z | P_C);
+    /* The RTS, through the return address the fill left on the stack. */
+    cpu.pc = (cpu.pc & 0xFF0000) | (uint16_t)(rd16((uint16_t)(cpu.s + 1)) + 1);
+    cpu.s = (uint16_t)(cpu.s + 2);
+    cpu.unwound = 1;
+}
+
+/*
  * @routine 09:F065 WindowEdgesFromPair
  * WHAT IT DOES: Writes a pair of window edges and their mirror images about
  * $80 into the window HDMA table at offset $28 + the byte at $19B4: the

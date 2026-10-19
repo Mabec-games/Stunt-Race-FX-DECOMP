@@ -177,6 +177,74 @@ void abi_MenuHdmaSetup(void)
 }
 
 /*
+ * @routine 0B:F664 MenuVramClear
+ * WHAT IT DOES: Clears all of VRAM: the word address set to 0, then $8000
+ * zero words written. Nothing calls it, so a direct call is its only way
+ * in.
+ * HOW: REP #$30; X counts down by 2 from 0 to 0; 16-bit stores to VMADDL
+ * and VMDATAL through the data bank.
+ * Entry: any widths; data bank with the PPU registers. Exit: X = Y = 0; A
+ * unchanged; M and X 16-bit; Z set, N clear.
+ */
+void abi_MenuVramClear(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t x = 0;
+
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    wr16(b | 0x2116, 0x0000);
+    do {
+        wr16(b | 0x2118, 0x0000);
+        x = (uint16_t)(x - 2);
+    } while (x);
+    cpu.x = 0;
+    cpu.y = 0;
+    cpu.p = nz16(cpu.p, 0);
+}
+
+/*
+ * @routine 0B:F677 MenuWindowSetup
+ * WHAT IT DOES: Sets the windows: W12SEL = $22, W34SEL = 0, WOBJSEL = $30,
+ * window 1 from $20 to $88, window masking on BG1 on both screens (TMW =
+ * TSW = 1) and BG1 on the sub screen (TS = 1). Nothing calls it, so a
+ * direct call is its only way in.
+ * HOW: 8-bit stores through the data bank between PHP and PLP.
+ * Entry: any widths; data bank with the PPU registers. Exit: A low byte =
+ * 1; P unchanged.
+ */
+void abi_MenuWindowSetup(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+
+    wr8(b | 0x2123, 0x22);
+    wr8(b | 0x2124, 0x00);
+    wr8(b | 0x2125, 0x30);
+    wr8(b | 0x2126, 0x20);
+    wr8(b | 0x2127, 0x88);
+    wr8(b | 0x212E, 0x01);
+    wr8(b | 0x212F, 0x01);
+    wr8(b | 0x212D, 0x01);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
+}
+
+/*
+ * @routine 0B:F6A0 MenuColourMathSetup
+ * WHAT IT DOES: Sets colour maths to add the sub screen on BG1 and the
+ * backdrop at half (CGADSUB = $41, CGWSEL = 2) and empties the sub screen
+ * (TS = 0). Nothing calls it, so a direct call is its only way in.
+ * HOW: Long stores to CGADSUB and CGWSEL, then a store to TS through the
+ * data bank; between PHP and PLP.
+ * Entry: any widths. Exit: A low byte = 0; P unchanged.
+ */
+void abi_MenuColourMathSetup(void)
+{
+    wr8(CGADSUB, 0x41);
+    wr8(CGWSEL, 0x02);
+    wr8((uint32_t)cpu.db << 16 | 0x212D, 0x00);
+    cpu.a = (uint16_t)(cpu.a & 0xFF00);
+}
+
+/*
  * @routine 0B:F5E6 MenuHdmaSetupB
  * WHAT IT DOES: Points HDMA channel 7 at BG2HOFS (indirect, table $7F:133A,
  * data bank 0), 6 at CGWSEL ($7F:1341), 5 at TMW ($7F:1348) and 4 at WH0

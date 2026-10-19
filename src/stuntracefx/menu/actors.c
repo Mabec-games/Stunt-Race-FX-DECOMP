@@ -12,6 +12,7 @@
  */
 #include "machine.h"
 #include "hw.h"
+#include "cpu_ops.h"
 #include "wram.h"
 
 #define ACTOR_FIRST 0x1265u
@@ -550,6 +551,83 @@ void abi_MenuActorSetTiles(void)
 
     cpu.a = MenuActorSetTiles(cpu.db, cpu.x, cpu.a, cpu.y, &p);
     cpu.p = p;
+}
+
+/* The 32-bit field at rec + to plus the one at rec + from (CLC, two ADCs):
+   the new high word, with N, Z, C, V from its add. */
+static uint16_t add32(uint16_t rec, uint8_t to, uint8_t from, uint8_t *p)
+{
+    uint16_t a = rd16((uint16_t)(rec + to));
+
+    *p &= (uint8_t)~P_C;
+    a = op_adc16(a, rd16((uint16_t)(rec + from)), p);
+    wr16((uint16_t)(rec + to), a);
+    a = rd16((uint16_t)(rec + to + 2));
+    a = op_adc16(a, rd16((uint16_t)(rec + from + 2)), p);
+    wr16((uint16_t)(rec + to + 2), a);
+    return a;
+}
+
+/*
+ * @routine 0B:E221 MenuActorAddX
+ * WHAT IT DOES: Adds object X's 32-bit +$1C (low word) and +$1E (high
+ * word) to its 32-bit +$00 and +$02. Nothing calls it (no JSR, pointer or
+ * table reaches it), so a direct call is its only way in.
+ * HOW: CLC, then two 16-bit ADCs, the carry passed from the low word to the
+ * high.
+ * Entry: M 16-bit, D = $0000; X = record. Exit: A = the new +$02; N, Z, C,
+ * V from the high word's add.
+ */
+void abi_MenuActorAddX(void)
+{
+    cpu.a = add32(cpu.x, 0x00, 0x1C, &cpu.p);
+}
+
+/*
+ * @routine 0B:E22F MenuActorAddY
+ * WHAT IT DOES: As MenuActorAddX for the next pair: object X's 32-bit +$20
+ * and +$22 added to its +$04 and +$06. Nothing calls it, so a direct call
+ * is its only way in.
+ * HOW: As MenuActorAddX.
+ * Entry: M 16-bit, D = $0000; X = record. Exit: A = the new +$06; N, Z, C,
+ * V from the high word's add.
+ */
+void abi_MenuActorAddY(void)
+{
+    cpu.a = add32(cpu.x, 0x04, 0x20, &cpu.p);
+}
+
+/*
+ * @routine 0B:E2A7 MenuActorsKind2Lower
+ * WHAT IT DOES: Moves every live object of kind 2 (+$1A) 12 down: +$06 +=
+ * $0C, for the list at $1239 from its end. Nothing calls it, so a direct
+ * call is its only way in.
+ * HOW: Y walks the list from $11F7 - 2 to 0 by 2 (through the data bank);
+ * CMP #2, then CLC and ADC #$000C.
+ * Entry: M 16-bit, X 16-bit, D = $0000. Exit: Y = the first negative
+ * offset ($FFFE when the list ends at 0); X = the first entry's record and
+ * A its last value read or added (both unchanged for an empty list); N set,
+ * Z clear (DEY); C from the last CMP or ADC, V from the last ADC.
+ */
+void abi_MenuActorsKind2Lower(void)
+{
+    uint16_t y = (uint16_t)(rd16(dbw(cpu.db, 0x11F7)) - 2);
+
+    cpu.p = nz16(cpu.p, y);
+    while (!(cpu.p & P_N)) {
+        cpu.x = rd16(((uint32_t)cpu.db << 16) + 0x1239u + y);
+        cpu.a = rd16((uint16_t)(cpu.x + 0x1A));
+        cpu.p = cmp16(cpu.p, cpu.a, 0x0002);
+        if (cpu.p & P_Z) {
+            cpu.a = rd16((uint16_t)(cpu.x + 0x06));
+            cpu.p &= (uint8_t)~P_C;
+            cpu.a = op_adc16(cpu.a, 0x000C, &cpu.p);
+            wr16((uint16_t)(cpu.x + 0x06), cpu.a);
+        }
+        y = (uint16_t)(y - 2);
+        cpu.p = nz16(cpu.p, y);
+    }
+    cpu.y = y;
 }
 
 /*

@@ -1,0 +1,48 @@
+# unit_dead_0b: unit tests (call) for S-CPU code nothing calls, jumps to or
+# points at in banks 04, 09 and 0B, each called directly (its only way in):
+# - GsuBytes200_0F010B (04:D955), from a Novice race;
+# - WindowEdgesFillOnes (09:F04D), whose fill runs on into low work RAM
+#   and the stack, so it returns through what it left there (noreturn);
+#   on menu screen 0 (NMI off) with I set, since an interrupt during the
+#   fill would go through the RAM vectors it has overwritten;
+# - from menu screen 0: MenuActorAddX (0B:E221) and MenuActorAddY
+#   (0B:E22F) on record $1265; MenuActorsKind2Lower (0B:E2A7) on the
+#   screen's list, on one record made kind 2, and on an empty list;
+#   MenuFramesTarget7 (0B:E2D7); MenuRandomStep (0B:E3A3); MenuDimOnL
+#   (0B:E3BF) with and without L in $118F; MenuVramClear (0B:F664),
+#   MenuWindowSetup (0B:F677) and MenuColourMathSetup (0B:F6A0).
+load build/stuntracefx/states/novice_coupe_race1.state
+call 04:D955 long p=30 db=7E d=0000
+load build/stuntracefx/states/menu_screen0.state
+call 09:F04D p=34 db=7E d=0000 noreturn frames=10 vblank
+load build/stuntracefx/states/menu_screen0.state
+call 0B:E221 x=1265 p=00 db=00 d=0000 vblank
+load build/stuntracefx/states/menu_screen0.state
+call 0B:E22F x=1265 p=00 db=00 d=0000 vblank
+load build/stuntracefx/states/menu_screen0.state
+call 0B:E2A7 p=00 db=00 d=0000 vblank
+load build/stuntracefx/states/menu_screen0.state
+set 7E11F7 02,00
+set 7E1239 65,12
+set 7E127F 02,00
+call 0B:E2A7 p=00 db=00 d=0000 vblank
+load build/stuntracefx/states/menu_screen0.state
+set 7E11F7 00,00
+call 0B:E2A7 p=00 db=00 d=0000 vblank
+load build/stuntracefx/states/menu_screen0.state
+call 0B:E2D7 p=30 db=00 d=0000 vblank
+load build/stuntracefx/states/menu_screen0.state
+call 0B:E3A3 p=30 db=00 d=0000 vblank
+load build/stuntracefx/states/menu_screen0.state
+set 7E118F 20,00
+call 0B:E3BF p=00 db=00 d=0000 vblank
+load build/stuntracefx/states/menu_screen0.state
+set 7E118F 00,00
+call 0B:E3BF p=00 db=00 d=0000 vblank
+load build/stuntracefx/states/menu_screen0.state
+call 0B:F664 p=30 db=00 d=0000 vblank
+load build/stuntracefx/states/menu_screen0.state
+call 0B:F677 p=30 db=00 d=0000 vblank
+load build/stuntracefx/states/menu_screen0.state
+call 0B:F6A0 p=30 db=00 d=0000 vblank
+wait 2

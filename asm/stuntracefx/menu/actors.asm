@@ -411,6 +411,75 @@ MenuSinePosition7F:
     ldx.w !actor_current
     rts
 
+; @routine 0B:E221 MenuActorAddX
+; WHAT IT DOES: Adds object X's 32-bit +$1C (low word) and +$1E (high
+; word) to its 32-bit +$00 and +$02. Nothing calls it (no JSR, pointer or
+; table reaches it), so a direct call is its only way in.
+; HOW: CLC, then two 16-bit ADCs, the carry passed from the low word to the
+; high.
+; Entry: M 16-bit, D = $0000; X = record. Exit: A = the new +$02; N, Z, C,
+; V from the high word's add.
+%at($0BE221)
+MenuActorAddX:
+    lda.b !actor_00,x
+    clc
+    adc.b !actor_1c,x
+    sta.b !actor_00,x
+    lda.b !actor_02,x
+    adc.b !actor_1e,x
+    sta.b !actor_02,x
+    rts
+
+; @routine 0B:E22F MenuActorAddY
+; WHAT IT DOES: As MenuActorAddX for the next pair: object X's 32-bit +$20
+; and +$22 added to its +$04 and +$06. Nothing calls it, so a direct call
+; is its only way in.
+; HOW: As MenuActorAddX.
+; Entry: M 16-bit, D = $0000; X = record. Exit: A = the new +$06; N, Z, C,
+; V from the high word's add.
+%at($0BE22F)
+MenuActorAddY:
+    lda.b !actor_04,x
+    clc
+    adc.b !actor_20,x
+    sta.b !actor_04,x
+    lda.b !actor_06,x
+    adc.b !actor_22,x
+    sta.b !actor_06,x
+    rts
+
+; @routine 0B:E2A7 MenuActorsKind2Lower
+; WHAT IT DOES: Moves every live object of kind 2 (+$1A) 12 down: +$06 +=
+; $0C, for the list at $1239 from its end. Nothing calls it, so a direct
+; call is its only way in.
+; HOW: Y walks the list from $11F7 - 2 to 0 by 2 (through the data bank);
+; CMP #2, then CLC and ADC #$000C.
+; Entry: M 16-bit, X 16-bit, D = $0000. Exit: Y = the first negative
+; offset ($FFFE when the list ends at 0); X = the first entry's record and
+; A its last value read or added (both unchanged for an empty list); N set,
+; Z clear (DEY); C from the last CMP or ADC, V from the last ADC.
+%at($0BE2A7)
+MenuActorsKind2Lower:
+    ldy.w !actor_list_len
+    dey
+    dey
+    bmi .done
+.loop:
+    ldx.w !actor_list,y
+    lda.b !actor_kind,x
+    cmp.w #$0002
+    bne .next
+    lda.b !actor_06,x
+    clc
+    adc.w #$000C
+    sta.b !actor_06,x
+.next:
+    dey
+    dey
+    bpl .loop
+.done:
+    rts
+
 ; @routine 0B:E23D MenuActorAnimateFrame
 ; WHAT IT DOES: Steps object X's sprite animation once a frame, or four
 ; times when the fast animation flag $18FD is set.

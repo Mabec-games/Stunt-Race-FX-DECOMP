@@ -177,6 +177,76 @@ MenuHdmaSetup:
     plp
     rts
 
+; @routine 0B:F664 MenuVramClear
+; WHAT IT DOES: Clears all of VRAM: the word address set to 0, then $8000
+; zero words written. Nothing calls it, so a direct call is its only way
+; in.
+; HOW: REP #$30; X counts down by 2 from 0 to 0; 16-bit stores to VMADDL
+; and VMDATAL through the data bank.
+; Entry: any widths; data bank with the PPU registers. Exit: X = Y = 0; A
+; unchanged; M and X 16-bit; Z set, N clear.
+%at($0BF664)
+MenuVramClear:
+    rep.b #$30
+    ldx.w #$0000
+    ldy.w #$0000
+    sty.w !VMADDL
+.loop:
+    sty.w !VMDATAL
+    dex
+    dex
+    bne .loop
+    rts
+
+; @routine 0B:F677 MenuWindowSetup
+; WHAT IT DOES: Sets the windows: W12SEL = $22, W34SEL = 0, WOBJSEL = $30,
+; window 1 from $20 to $88, window masking on BG1 on both screens (TMW =
+; TSW = 1) and BG1 on the sub screen (TS = 1). Nothing calls it, so a
+; direct call is its only way in.
+; HOW: 8-bit stores through the data bank between PHP and PLP.
+; Entry: any widths; data bank with the PPU registers. Exit: A low byte =
+; 1; P unchanged.
+%at($0BF677)
+MenuWindowSetup:
+    php
+    sep.b #$20
+    lda.b #$22
+    sta.w !W12SEL
+    lda.b #$00
+    sta.w !W34SEL
+    lda.b #$30
+    sta.w !WOBJSEL
+    lda.b #$20
+    sta.w !WH0
+    lda.b #$88
+    sta.w !WH1
+    lda.b #$01
+    sta.w !TMW
+    sta.w !TSW
+    sta.w !TS
+    plp
+    rts
+
+; @routine 0B:F6A0 MenuColourMathSetup
+; WHAT IT DOES: Sets colour maths to add the sub screen on BG1 and the
+; backdrop at half (CGADSUB = $41, CGWSEL = 2) and empties the sub screen
+; (TS = 0). Nothing calls it, so a direct call is its only way in.
+; HOW: Long stores to CGADSUB and CGWSEL, then a store to TS through the
+; data bank; between PHP and PLP.
+; Entry: any widths. Exit: A low byte = 0; P unchanged.
+%at($0BF6A0)
+MenuColourMathSetup:
+    php
+    sep.b #$20
+    lda.b #$41
+    sta.l !CGADSUB
+    lda.b #$02
+    sta.l !CGWSEL
+    lda.b #$00
+    sta.w !TS
+    plp
+    rts
+
 ; @routine 0B:F5E6 MenuHdmaSetupB
 ; WHAT IT DOES: Points HDMA channel 7 at BG2HOFS (indirect, table $7F:133A,
 ; data bank 0), 6 at CGWSEL ($7F:1341), 5 at TMW ($7F:1348) and 4 at WH0
