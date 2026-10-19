@@ -1267,7 +1267,7 @@ void abi_MetaspriteDraw(void)
 static uint8_t cycled_attr(uint8_t attr, uint8_t phase)
 {
     static const uint8_t pal[2][3] = {{0x04, 0x08, 0x06}, {0x06, 0x04, 0x08}};
-    unsigned k = (attr & 0x08) ? 0 : (attr & 0x02) ? (cyc(22), 1) : 2;
+    unsigned k = (attr & 0x08) ? 0 : (attr & 0x02) ? 1 : 2;
 
     return (uint8_t)((attr & 0xF1) | pal[phase == 1][k]);
 }
@@ -1300,23 +1300,47 @@ static uint16_t flashing_metasprite_draw(uint8_t bank, uint16_t set, uint16_t *x
     i = (uint16_t)(rd16(b | 0x0D35) << 2);
     cyc(106);
     wr16(0x0000F1, rd16(0x1CE5AE + i));
-    n = rd8(0x0000F1);
-    cyc(136);
     *x = rd16(0x1CE5AC + i);
     *y = 0;
     i = (uint16_t)(*x & 0xFF00);
+    /* Time from the assembly (the pieces' ROM bytes 8 each, not placed):
+       in, LDA long and TAX (62); round again, BNE (22); then SEP, LDA
+       long, CLC, ADC abs (100) */
+    cyc(162);
     do {
-        wr8(b | (uint16_t)(0x0375 + *y), cyc_then(110, (uint8_t)(rd8(0x1CE62C + *x) + rd8(b | 0x0D37))));
-        wr8(b | (uint16_t)(0x0376 + *y), (uint8_t)(rd8(0x1CE62D + *x) + rd8(b | 0x0D38)));
+        uint8_t v = rd8(0x1CE62C + *x);
+
+        v = (uint8_t)(v + rd8(b | 0x0D37));
+        cyc(30);                                /* STA abs,Y */
+        wr8(b | (uint16_t)(0x0375 + *y), v);
+        cyc(78);                                /* LDA long, CLC, ADC abs */
+        v = rd8(0x1CE62D + *x);
+        v = (uint8_t)(v + rd8(b | 0x0D38));
+        cyc(30);
+        wr8(b | (uint16_t)(0x0376 + *y), v);
+        cyc(70);                                /* LDA long, STA abs,Y */
         wr8(b | (uint16_t)(0x0377 + *y), rd8(0x1CE62E + *x));
+        cyc(24);                                /* LDA abs */
         phase = rd8(b | 0x0D39);
         a = rd8(0x1CE62F + *x);
+        /* CMP #, BCC (taken for phase 0, then LDA long, STA abs,Y: 108);
+           else BEQ, LDA long, BIT #$08 and its ladder (bit 3: 76, bit 1:
+           108, neither: 102) and STA abs,Y: 140 + it for phase 1, 134 + it
+           for phase 2 */
+        if (!phase)
+            cyc(108);
+        else
+            cyc((phase == 1 ? 140 : 134) + ((a & 0x08) ? 76 : (a & 0x02) ? 108 : 102));
         wr8(b | (uint16_t)(0x0378 + *y), phase ? cycled_attr(a, phase) : a);
         a = rd8(0x1CE630 + *x);
         *x = (uint16_t)(*x + 5);
         *y = (uint16_t)(*y + 4);
-        n = (uint8_t)(n - 1);
+        cyc(198);                               /* LDA long, BIT #, INX x5, INY x4, DEC's fetch */
+        n = (uint8_t)(rd8(0x0000F1) - 1);
+        cyc(6);
         wr8(0x0000F1, n);
+        if (n)
+            cyc(122);                           /* BNE, SEP, LDA long, CLC, ADC abs */
     } while (n);
     return (uint16_t)(i | a);
 }

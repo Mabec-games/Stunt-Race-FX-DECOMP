@@ -279,6 +279,16 @@ void abi_VramPictureRows1B0(void)
 }
 
 /* Step X by $40 as TXA / CLC / ADC #$40 / TAX does; A = the new X. */
+/* As step_40, its time stated by the caller. */
+static uint16_t step_40_quiet(uint16_t *x, uint8_t *p)
+{
+    uint16_t s = (uint16_t)(*x + 0x40);
+
+    *p = (uint8_t)((nz16(*p, s) & ~(P_C | P_V)) | ((unsigned)*x + 0x40 > 0xFFFF ? P_C : 0) | ((~*x & s & 0x8000) ? P_V : 0));
+    *x = s;
+    return s;
+}
+
 static uint16_t step_40(uint16_t *x, uint8_t *p)
 {
     uint16_t s = (uint16_t)(*x + 0x40);
@@ -600,25 +610,65 @@ void abi_TilemapRowsTo5C00(void)
  * byte, Y = $0C (with the 8-bit index registers P restores); P and the data
  * bank unchanged.
  */
+/* The row copies as TilemapLevelColumns runs them, `in` the time before the
+   first load. Each copy: LDA (abs,Y from ROM 46, or long 32) and STA long
+   (32). After the fourth: the TYA/CLC/ADC/TAY/TXA/CLC/ADC/TAX (132) or
+   TXA/CLC/ADC/TAX (66) tail and the RTS (42), stated by the caller. */
+static void column_row_fb4e(uint16_t *x, uint16_t *y, uint8_t *p, uint32_t in)
+{
+    unsigned i;
+
+    cyc(in);
+    for (i = 0; i < 4; i++)
+        { cyc(78); wr16(0x7F93D7 + 2 * i + *x, rd16(0x020000 | (uint16_t)(0xFB4E + 2 * i + *y))); }
+    *y = (uint16_t)(*y + 8);
+    step_40_quiet(x, p);
+}
+
+static uint16_t column_row_7fbbd7(uint16_t *x, uint8_t *p, uint32_t in)
+{
+    unsigned i;
+
+    cyc(in);
+    for (i = 0; i < 4; i++)
+        { cyc(32); wr16(0x7F93D7 + 2 * i + *x, cyc_then(32, rd16(0x7FBBD7 + 2 * i + *x))); }
+    return step_40_quiet(x, p);
+}
+
 uint16_t TilemapLevelColumns(void)
 {
+    /* after the row count's read ($0F05 + i, work RAM, a word): PHY, AND # (54),
+       then the dispatch: BEQ to the $7F:BBD7 copies (22), or on through
+       CMP/BCC/BEQ/CMP/BEQ to LDY # and the JSR (46): 132 (1 row), 148
+       (2), 188 (3), 182 (4) */
+    static const uint32_t branch[5] = {22 + 46, 132, 148, 188, 182};
     uint16_t x = 0, y, a = 0;
     uint8_t p = 0, n;
     unsigned i, k;
+    uint32_t in = 140;                  /* PHP, PHB, PHK, PLB, REP, LDY # */
 
-    cyc(6);
     for (i = 0; i < 12; i++) {
-        cyc(312);
         x = rd16(0x02FB6E + 2 * i);
+        cyc(in + 132);                  /* TYA, ASL, TAX, LDA abs,X (ROM), TAX, LDA abs,Y */
         n = rd8(0x020F05 + i);
         if (n > 4)
             n = 4;
         y = (uint16_t)((4 - n) * 8);
-        for (k = 0; k < n; k++)
-            a = TilemapRowFromFB4E(0x02, &x, &y, &p);
-        for (k = n; k < 4; k++)
-            a = TilemapRowFrom7FBBD7(&x, &p);
+        in = 62 + branch[n];            /* the word's second byte (8), PHY, AND # */
+        for (k = 0; k < n; k++) {
+            column_row_fb4e(&x, &y, &p, in);
+            /* tail, RTS; then the next JSR, or BRA and JSR to the others */
+            in = 132 + 42 + (k + 1 < n ? 46 : n < 4 ? 22 + 46 : 22);
+        }
+        for (k = n; k < 4; k++) {
+            a = column_row_7fbbd7(&x, &p, in);
+            in = 66 + 42 + (k + 1 < 4 ? 46 : 0);
+        }
+        if (n == 4)
+            a = x;
+        in += 96;                       /* PLY, INY, CPY #, BCC */
     }
+    cyc(in - 22 + 16);                  /* the last BCC not taken */
     return a;
 }
 

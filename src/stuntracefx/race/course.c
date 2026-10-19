@@ -697,7 +697,7 @@ void abi_SpeedCourseSelectStep(void)
         abi_LevelColumnsSet4();
     }
     abi_TilemapLevelColumns();
-    cyc(296);
+    cyc(122);                           /* its end is TilemapLevelColumns' now */
     op_lda8(b | 0x0D61);
     v = (uint8_t)cpu.a;
     cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x0F)) & ~P_C) | (v >= 0x0F ? P_C : (cyc(32), 0)));
@@ -1938,7 +1938,7 @@ void abi_CourseRecordsDispatch(void)
 
     abi_TilemapLevelColumns();
     op_sep(P_M);
-    cyc(318);
+    cyc(144);                           /* its end is TilemapLevelColumns' now */
     op_lda8(b | 0x0D61);
     v = (uint8_t)cpu.a;
     cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x0F)) & ~P_C) | (v >= 0x0F ? P_C : (cyc(74), 0)));
