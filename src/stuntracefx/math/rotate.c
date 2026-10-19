@@ -10,31 +10,46 @@
  * Signed 8 x 8 multiply through the unsigned multiplier: the magnitudes are
  * multiplied (the first doubled) and the high byte of the product taken,
  * then negated when the signs differ. The second factor is read from work
- * RAM at `b` after WRMPYA is written, as the assembly loads it. Each path
- * waits the multiplier's eight cycles before reading RDMPYH.
+ * RAM at `at` after WRMPYA is written, as the assembly loads it. The time
+ * is the assembly's, path by path (master clocks: a ROM byte 8, an
+ * internal cycle 6): BMI 16 not taken, 22 taken; EOR #, LDA # 16; INC A,
+ * ASL A, NOP, SEC 14; STA, LDA, SBC absolute 24 before the access; JMP 24.
+ * Between WRMPYB and RDMPYH: four NOPs and LDA (80) when the signs agree;
+ * when they differ, NOP NOP (or NOP and a JMP when the first is negative)
+ * and LDA #0, SEC, SBC (82, or 92). A sign that agrees jumps on (24) after
+ * the read.
  */
 static uint8_t smul(uint8_t a, uint32_t at)
 {
-    uint8_t neg = 0, b, h;
+    uint8_t b, h;
+    int na = (a & 0x80) != 0, nb;
 
-    if (a & 0x80) {
-        cyc(36);
+    if (na) {
+        cyc(90);                                /* BMI, EOR, INC, ASL, STA */
         a = (uint8_t)-a;
-        neg ^= 1;
+    } else {
+        cyc(54);                                /* BMI, ASL, STA */
     }
-    cyc(54);
     wr8(WRMPYA, (uint8_t)(a << 1));
     cyc(24);
     b = rd8(at);
-    if (b & 0x80) {
-        cyc(36);
+    nb = (b & 0x80) != 0;
+    if (nb) {
+        cyc(76);                                /* BMI, EOR, INC, STA */
         b = (uint8_t)-b;
-        neg ^= 1;
+    } else {
+        cyc(40);                                /* BMI, STA */
     }
-    cyc(40);
     wr8(WRMPYB, b);
+    if (na == nb) {
+        cyc(80);
+        h = rd8(RDMPYH);
+        cyc(24);                                /* JMP */
+        return h;
+    }
+    cyc(na ? 92 : 82);
     h = rd8(RDMPYH);
-    return neg ? (uint8_t)-h : (cyc(24), h);
+    return (uint8_t)-h;
 }
 
 /*
@@ -44,36 +59,51 @@ static uint8_t smul(uint8_t a, uint32_t at)
  * x sin to the word at out2, each sign-extended. Every factor is read
  * from work RAM right before its multiply, as the assembly does. Returns
  * A: the high byte of the second result, or its low byte when that is 0.
+ * The time is the assembly's (see smul): TAX, TXA, CLC 14; BIT # 16; BEQ
+ * 16 or 22; BRA 22; direct page 16 before the access, absolute 24 (out2
+ * is absolute, $05F2, in RotateXZ and RotateXZFrom08: 8 more each time).
  */
 static uint8_t rotate8(uint32_t xa, uint32_t va, uint32_t out, uint32_t out2)
 {
     uint8_t t, r, hi;
+    uint32_t w2 = out2 > 0xFF ? 8 : 0;
 
     cyc(16);
     t = rd8(xa);
     r = smul(t, 0x000625);
-    cyc(30);
+    cyc(30);                                    /* TAX, STX */
     wr8(out, r);
     cyc(16);
     t = rd8(va);
     r = smul(t, 0x000624);
-    cyc(58);
+    cyc(58);                                    /* TAX, TXA, CLC, ADC */
     t = rd8(out);
     r = (uint8_t)(r + t);
     cyc(16);
     wr8(out, r);
-    cyc(54);
-    wr8(out + 1, (r & 0x80) ? (cyc(10), 0xFF) : 0x00);
+    if (r & 0x80) {
+        cyc(64);                                /* BIT, BEQ, LDA #$FF, STA */
+        wr8(out + 1, 0xFF);
+        cyc(38);                                /* BRA, LDA */
+    } else {
+        cyc(54);                                /* BIT, BEQ, STZ */
+        wr8(out + 1, 0x00);
+        cyc(16);                                /* LDA */
+    }
     t = rd8(xa);
     r = smul(t, 0x000624);
+    cyc(74 + w2);                               /* TAX, TXA, EOR, INC, STA */
     wr8(out2, (uint8_t)-r);
     cyc(16);
     t = rd8(va);
     r = smul(t, 0x000625);
+    cyc(58 + w2);                               /* TAX, TXA, CLC, ADC */
     t = rd8(out2);
     r = (uint8_t)(r + t);
+    cyc(16 + w2);
     wr8(out2, r);
     hi = (r & 0x80) ? 0xFF : 0x00;
+    cyc(hi ? 64 + w2 : 54 + w2);                /* BIT, BEQ, then LDA #$FF and STA, or STZ */
     wr8(out2 + 1, hi);
     cyc(172);
     return hi ? (cyc(22), hi) : r;
