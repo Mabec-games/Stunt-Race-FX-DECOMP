@@ -2590,6 +2590,7 @@ static void oam_high_step(void)
 uint16_t MenuOamBuild(uint16_t *x, uint16_t *y)
 {
     uint16_t i, rec, n, sx, sy, w;
+    uint32_t t;
     int c;
 
     cyc(178);
@@ -2601,7 +2602,9 @@ uint16_t MenuOamBuild(uint16_t *x, uint16_t *y)
     cyc(24);
     wr16(0x0011E1, 0x0000);
     cyc(24);
-    for (i = (uint16_t)(rd16(0x0011F7) - 2); !(i & 0x8000); i = (uint16_t)(rd16(cyc_then(46, 0x0011FB)) - 2)) {
+    /* into the body: BPL 74, or BMI and BRL 98, to the STY */
+    for (i = (uint16_t)(rd16(0x0011F7) - 2), t = 74; cyc_loop(t, !(i & 0x8000));
+         i = (uint16_t)(rd16(cyc_then(46, 0x0011FB)) - 2), t = 98) {
         wr16(0x0011FB, i);
         cyc(30);
         rec = *x = rd16(0x001239 + i);
@@ -2800,14 +2803,15 @@ void MenuActorsRun(void)
 {
     uint8_t p = cpu.p, db = cpu.db;
     uint16_t y;
+    uint32_t t;
 
     cpu.a &= 0xFF00;
     cpu.db = 0x00;
     cpu.p = (uint8_t)((cpu.p & ~(P_M | P_X | P_N)) | P_Z);
     cyc(200);
     y = (uint16_t)(rd16(LIVE_LEN) - 2);
-    while (!(y & 0x8000)) {
-        cyc(68);
+    /* into the body: 68 the first time, 74 going round */
+    for (t = 68; cyc_loop(t, !(y & 0x8000)); t = 74) {
         wr16(0x0011FB, y);
         cyc(30);
         cpu.x = rd16(LIVE_LIST + y);

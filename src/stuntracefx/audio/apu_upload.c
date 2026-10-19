@@ -26,14 +26,28 @@
  * C set when the stream moved to the next bank; V from the same 16-bit add;
  * N and Z from the 16-bit A; M 8-bit; X, I, D unchanged.
  */
+/* The stream is in ROM or in RAM (work RAM, Super FX RAM): a ROM byte's
+   read, 8 clocks, is time the C states itself. */
+static int in_rom(uint32_t at)
+{
+    uint8_t bank = (uint8_t)(at >> 16);
+
+    if (!(bank & 0x40))
+        return (at & 0xFFFF) >= 0x8000;
+    return bank != 0x70 && bank != 0x71 && bank != 0x7E && bank != 0x7F;
+}
+
 /* The byte, then the pointer's low word read again for the add (in *low). */
 static uint8_t apu_upload_next_byte(uint16_t *offset, uint16_t *low)
 {
     cyc(16);
     uint32_t base = rd24(APU_STREAM_PTR);
-    uint8_t value = rd8((base + *offset) & 0xFFFFFF);
+    uint32_t at = (base + *offset) & 0xFFFFFF;
+    uint8_t value = rd8(at);
     uint16_t bank;
 
+    if (in_rom(at))
+        cyc(8);
     *offset += 1;
     cyc(110);
     *low = rd16(APU_STREAM_PTR);
@@ -234,6 +248,9 @@ void abi_ApuUploadBank19(void)
     cyc(154);
     ApuUploadEnd end = apu_upload(0x19, 0xC27C);
 
+    /* its own copy of the settle delay: REP, LDA #$4000, DEC A and BNE */
+    cyc(118);
+    delay_turns(0x4000);
     cpu.a = 0;
     cpu.x = 0;
     cpu.y = end.offset;

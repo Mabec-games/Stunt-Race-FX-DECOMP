@@ -178,7 +178,7 @@ def main(src=None, lib=None):
                     | ({0xFFC0} if any('spc_boot_rom()' in open(f).read() for f in files) else set()))
         t.write('const uint16_t sfx_spc_jump_entries[] = {%s0};\nconst int sfx_spc_jump_entry_count = %d;\n'
                 % (''.join('0x%04X, ' % a for a in sj), len(sj)))
-    cmd = ['cc', '-O2', '-Wall', '-Wextra', '-std=c99', '-shared', '-fPIC', '-undefined', 'dynamic_lookup',
+    cmd = ['cc', '-O2', '-g', '-Wall', '-Wextra', '-std=c99', '-shared', '-fPIC', '-undefined', 'dynamic_lookup',
            '-I', os.path.join(SRC, 'include'), '-o', LIB, table] + files
     p = subprocess.run(cmd, capture_output=True, text=True)
     sys.stdout.write(p.stdout + p.stderr)

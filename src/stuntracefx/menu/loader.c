@@ -268,8 +268,12 @@ static void clear_gsu_picture(void)
 {
     uint16_t x;
 
-    for (x = 0; x != 0x3400; x = (uint16_t)(x + 2))
-        { cyc(80); wr16(0x703000 + x, 0x0000); }
+    x = 0;
+    cyc(80);
+    do {
+        wr16(0x703000 + x, 0x0000);
+        x = (uint16_t)(x + 2);
+    } while (cyc_loop(106, x != 0x3400));
     cyc(68);
     queue_from_gsu_ram(0x1000, 0x3000, 0x0000);
 }
