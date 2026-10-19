@@ -72,7 +72,10 @@ uint16_t MenuCourseScreenSetup(uint8_t bank)
     wr8(dbw(bank, 0x0D7D), cyc_then(40, 0x0C));
     for (i = 0; i < sizeof course_params / sizeof course_params[0]; i++)
         wr8(dbw(bank, course_params[i].addr), cyc_then(40, course_params[i].v));
-    return GradientSetup(bank);
+    uint16_t a = GradientSetup(bank);
+
+    cyc(94);
+    return a;
 }
 
 void abi_MenuCourseScreenSetup(void)

@@ -690,7 +690,7 @@ static void race_hud_setup_two(void)
     cyc(18);
     wr16(0x7001C4, 0x0002);
     abi_MenuCourseScreenSetup();
-    abi_PaletteCourseLoad();
+    (cyc(46), abi_PaletteCourseLoad());
     op_rep(P_M | P_X);
     b = (uint32_t)cpu.db << 16;
     cpu.x = 0x00BC;

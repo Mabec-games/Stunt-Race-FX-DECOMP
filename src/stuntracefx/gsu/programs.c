@@ -2404,32 +2404,44 @@ void abi_GlyphListDraw(void)
 
     cpu.x = 0x0000;
     cpu.p = nz16(cpu.p, 0);
+    cyc(48);
     op_lda16(b | 0x10E4);
     op_asl16();
+    cyc(30);
     wr16(0x0000F1, cpu.a);
+    cyc(24);
     op_lda16(b | 0x10E6);
     op_asl16();
+    cyc(30);
     wr16(0x0000F3, cpu.a);
     do {
         op_rep(P_M);
+        cyc(30);
         op_lda16(b | (uint16_t)(0x110E + cpu.x));
         if (cpu.a) {
+            cyc(46);
             op_lda16(b | (uint16_t)(0x10E8 + cpu.x));
+            cyc(32);
             wr16(0x700216, cpu.a);
+            cyc(30);
             op_lda16(b | (uint16_t)(0x1134 + cpu.x));
             op_and16(0x00FF);
+            cyc(54);
             wr16(0x70020A, cpu.a);
+            cyc(30);
             op_lda16(b | (uint16_t)(0x1135 + cpu.x));
             op_and16(0x00FF);
+            cyc(54);
             wr16(0x70020C, cpu.a);
             {
+                cyc(16);
                 uint16_t lim = rd16(0x0000F1);
 
                 cpu.p = (uint8_t)((nz16(cpu.p, (uint16_t)(cpu.x - lim)) & ~P_C) | (cpu.x >= lim ? P_C : 0));
                 if (cpu.x >= lim)
-                    abi_GsuBytes200_BFB3BE();
+                    { cyc(6); abi_GsuBytes200_BFB3BE(); }
                 else
-                    abi_GsuBytes200_BFBCBD();
+                    { cyc(16); abi_GsuBytes200_BFBCBD(); }
             }
             x = cpu.x;
             p = cpu.p;
@@ -2437,14 +2449,16 @@ void abi_GlyphListDraw(void)
             op_plp(p);
             cpu.x = x;
             cpu.p = nz16(cpu.p, x);
-        }
+            /* GsuRun's PLP and RTL, the second REP, PLX, INX, INX, CPX */
+            cyc(160);
+        } else { cyc(66); }
         cpu.x = (uint16_t)(cpu.x + 2);
         {
             uint16_t lim = rd16(0x0000F3);
 
             cpu.p = (uint8_t)((nz16(cpu.p, (uint16_t)(cpu.x - lim)) & ~P_C) | (cpu.x >= lim ? P_C : 0));
         }
-    } while (!(cpu.p & P_C));
+    } while (cyc_loop(22, !(cpu.p & P_C)));
 }
 
 /*
@@ -2886,7 +2900,6 @@ static void glyph_flag_step(uint32_t b, uint16_t flag, uint16_t reload)
 {
     uint16_t v;
 
-    cyc(14);
     op_lda16(b | 0x115C);
     op_tax16();
     op_lda16_imm(flag);
@@ -2912,6 +2925,7 @@ static void glyph_flag_step(uint32_t b, uint16_t flag, uint16_t reload)
         cyc(10);
         wr16(b | 0x115A, reload);
     } else { cyc(18); }
+    cyc(46);
     abi_GlyphListDraw();
 }
 
@@ -2972,12 +2986,15 @@ void abi_GlyphTimesSequence(void)
     case 4: case 8: case 12: {
         uint16_t v = (uint16_t)(rd16(b | 0x115A) - 1);
 
+        cyc(14);
         wr16(b | 0x115A, v);
         cpu.p = nz16(cpu.p, v);
         if (!v) {
+            cyc(40);
             wr16(b | 0x115C, 0x0000);
             glyph_next(b);
-        }
+        } else { cyc(22); }
+        cyc(46);
         abi_GlyphListDraw();
         break;
     }
@@ -2985,7 +3002,9 @@ void abi_GlyphTimesSequence(void)
         glyph_flag_step(b, 0x0000, 0x0004);
         break;
     case 14:
-        op_lda16_imm(0x0004);
+        cyc(24);
+        cpu.a = 0x0004;
+        cpu.p = nz16(cpu.p, 0x0004);
         wr16(b | 0x115A, 0x0004);
         glyph_next(b);
         break;

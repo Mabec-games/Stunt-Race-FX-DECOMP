@@ -394,7 +394,7 @@ uint16_t PaletteCourseLoad(uint8_t bank, uint16_t *xo, uint16_t *yo, uint8_t *p)
     uint8_t blk;
     unsigned k;
 
-    s = (uint16_t)((uint16_t)(c << 1) + rd16(b | 0x0E3D));
+    s = (uint16_t)((uint16_t)(c << 1) + rd16(cyc_then(52, b | 0x0E3D)));
     *p = (uint8_t)((*p & ~P_V) | ((~((uint16_t)(c << 1) ^ c) & ((uint16_t)(c << 1) ^ s) & 0x8000) ? P_V : 0));
     i = (uint16_t)(s & 0x00FF);
     cyc(208);
@@ -427,12 +427,14 @@ uint16_t PaletteCourseLoad(uint8_t bank, uint16_t *xo, uint16_t *yo, uint8_t *p)
     x = 0x01FE;
     for (;;) {
         uint16_t n = (uint16_t)((x >> 1) & 0x000F), bits;
+        int shifted;
 
         y = (uint16_t)((x >> 4) & 0x001E);
         cyc(226);
         wr16(0x0000F1, n);
         cyc(70);
         bits = rd16(b | (uint16_t)(0xEF1F + y));
+        shifted = n != 0;
         while (n) {
             bits >>= 1;
             cyc(52);
@@ -440,6 +442,9 @@ uint16_t PaletteCourseLoad(uint8_t bank, uint16_t *xo, uint16_t *yo, uint8_t *p)
             cyc(14);
             wr16(0x0000F1, n);
         }
+        /* to the LDA long: BIT and BNE (6 more taken), and with no shift
+           loop the table's ROM read and BRA before them */
+        cyc((shifted ? 88 : 110) + (bits & 1 ? 6 : 0));
         w = rd16(0x7F37D7 + x);
         cyc(32);
         d = rd16(0x7F39D7 + x);

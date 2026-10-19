@@ -294,16 +294,23 @@ uint16_t GradientSetup(uint8_t bank)
     cyc(40);
     wr8(b | 0x4337, 0x7F);
     cyc(90);
-    c = rd16(b | 0x0E3D);
-    i = (uint16_t)(((uint16_t)(c << 1) + c) & 0x00FF);
-    cyc(6);
+    c = rd8(b | 0x0E3D);
+    i = (uint16_t)(((uint16_t)(c << 1) + rd8(cyc_then(52, b | 0x0E3D))) & 0x00FF);
+    /* the rest reads only ROM: 8 a byte read, and the code between */
+    cyc(114);
     blk = rd8(0x03F6F3 + i);
+    cyc(8 + 104);
     src = rd16(0x03F6F1 + i);
-    for (k = 0; k < 0x20; k++)
+    cyc(16 + 90);
+    for (k = 0; k < 0x20; k++) {
         rd8((uint32_t)blk << 16 | (uint16_t)(src + k));
+        cyc(8 + (k < 0x1F ? 104 : 152));
+    }
     a = (uint16_t)(src & 0xFF00);
-    for (k = 0; k < 0x20; k++)
+    for (k = 0; k < 0x20; k++) {
         a = (uint16_t)((a & 0xFF00) | rd8(0x1FA800 + k));
+        cyc(8 + (k < 0x1F ? 92 : 124));
+    }
     return a;
 }
 
