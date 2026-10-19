@@ -4077,6 +4077,7 @@ static void ring_spawn(void)
     unsigned i;
     uint8_t v, p;
 
+    cyc(68);
     op_lda8(b | 0x0DD6);
     cmp8n((uint8_t)cpu.a, 0x08);
     if ((uint8_t)cpu.a != 0x08)

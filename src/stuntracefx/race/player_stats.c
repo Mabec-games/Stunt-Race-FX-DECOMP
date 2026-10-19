@@ -191,6 +191,7 @@ void PlayerStatsAndPaletteAnimate(void)
     cyc(240);
     wr8(((uint32_t)cpu.db << 16) | 0x0E5F, 0xFF);
     cpu.p = p;
+    cyc(72);                            /* its return */
 }
 
 void abi_PlayerStatsAndPaletteAnimate(void)

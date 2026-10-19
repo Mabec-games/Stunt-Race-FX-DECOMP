@@ -1177,18 +1177,20 @@ void abi_RaceFrameRun(void)
         cpu.p = nz16(cpu.p, cpu.x);
         abi_GsuRun();
         op_rep(P_M | P_X);
+        cyc(162);
     } else {
         cyc(106);
         op_sep(P_M);
         call_routine(0x07DAA7, 1);
+        cyc(104);
     }
-    cyc(104);
     abi_GsuScreenToggle();
     op_sep(P_M);
     b = (uint32_t)cpu.db << 16;
     cyc(88);
     wr8(b | 0x0357, 0x00);
     frame_time(db, p0);
+    cyc(58);                            /* its return */
 }
 
 void abi_GsuScreenFlipMenu(void);

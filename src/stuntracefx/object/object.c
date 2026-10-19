@@ -2026,15 +2026,18 @@ void ObjectsRunHandlers(void)
                 cyc(36);
                 continue;
             }
-        } else if (v) {
-            cyc(92);
-            wr8(b | (uint16_t)(0x2022 + x), 0x00);
-            cyc(30);
-            wr8(b | (uint16_t)(0x2023 + x), 0x00);
-            cyc(30);
-            wr8(b | (uint16_t)(0x2036 + x), 0x00);
+            cyc(46);                    /* $035C 0: on to the next */
+        } else {
+            if (v) {
+                cyc(92);
+                wr8(b | (uint16_t)(0x2022 + x), 0x00);
+                cyc(30);
+                wr8(b | (uint16_t)(0x2023 + x), 0x00);
+                cyc(30);
+                wr8(b | (uint16_t)(0x2036 + x), 0x00);
+            }
+            cyc(52);
         }
-        cyc(52);
         y = rd16(b | (uint16_t)(0x2000 + x));
         x = y;
         cyc(36);

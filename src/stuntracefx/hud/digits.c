@@ -179,17 +179,17 @@ uint8_t HudDrawNumber3(uint8_t n, uint16_t offset, uint8_t *p)
     digit(OAM_BUFFER + 2 + offset, count);
     cyc(44);
     wr8(0x0000F1, 0x00);
-    c = 64;                             /* the first ten; 108 for each after */
+    c = 64;                             /* the first ten; 86 for each after */
     while (n >= 10) {
         *p = (uint8_t)((*p & ~P_V) | (((n ^ 10) & (n ^ (uint8_t)(n - 10)) & 0x80) ? P_V : 0));
         n = (uint8_t)(n - 10);
         cyc(c);
-        c = 108;
+        c = 86;
         count = rd8(0x0000F1);
         cyc(6);
         wr8(0x0000F1, (uint8_t)(count + 1));
     }
-    cyc(76);
+    cyc(c == 86 ? 98 : 76);             /* out after a ten, or with none */
     count = rd8(0x0000F1);
     digit(OAM_BUFFER + 0x0A + offset, count);
     cyc(28);

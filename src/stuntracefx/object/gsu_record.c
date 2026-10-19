@@ -1959,7 +1959,7 @@ uint16_t ObjectPoseFromRecord(uint8_t bank, uint16_t obj, uint8_t *p)
     uint16_t rec, z;
     uint8_t s, v;
 
-    cyc(52);
+    cyc(114);
     wr8(b | (uint16_t)(0x2025 + obj), cyc_then(46, rd8(b | (uint16_t)(0x2025 + obj)) & 0xDF));
     cyc(30);
     wr8(b | (uint16_t)(0x2025 + obj), cyc_then(46, rd8(b | (uint16_t)(0x2025 + obj)) & 0xBF));
@@ -1974,6 +1974,7 @@ uint16_t ObjectPoseFromRecord(uint8_t bank, uint16_t obj, uint8_t *p)
         { cyc(46); wr16(0x700016 + rec, cyc_then(56, (uint16_t)(rd16(0x700016 + rec) | 0x0400))); }
     else
         { cyc(46); wr16(0x700016 + rec, cyc_then(56, (uint16_t)(rd16(0x700016 + rec) & 0xFBFF))); }
+    cyc(108);
     rec = record_of(bank, obj);
     cyc(46);
     wr16(0x700090 + rec, cyc_then(32, rd16(0x700040 + rec)));
