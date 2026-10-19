@@ -2415,7 +2415,7 @@ void abi_ObjectAttachFollow(void)
     cpu.p = nz16(cpu.p, obj);
     (cyc(58), abi_ObjectApplyVelocity());
     (cyc(84), abi_ObjectRebucket());
-    cyc(246);
+    cyc(124);
     lda8((uint8_t)(rd8(b | (uint16_t)(0x2024 + cpu.x)) & 0xDF));
     cyc(16);
     wr8(b | (uint16_t)(0x2024 + cpu.x), (uint8_t)cpu.a);
@@ -3373,10 +3373,13 @@ void abi_PlayerCarEvents(void)
         (cyc(140), abi_ObjectSpawnD460UnlessFlag());
         cpu.p &= (uint8_t)~P_M;
         cpu.x = x;
+        cyc(198);
     } else {
         cyc(78);
         op_lda16(0x700042 + cpu.x);
-        if (cpu.a & 0x0400) {
+        if (!(cpu.a & 0x0400)) {
+            cyc(100);                   /* bit $0400 clear: on to $70:0082 */
+        } else {
             cyc(62);
             cpu.p |= P_M;
             abi_RandomStepLong();
@@ -3390,10 +3393,10 @@ void abi_PlayerCarEvents(void)
             } else { cyc(1); }
             cyc(8);
             cpu.p &= (uint8_t)~P_M;
+            cyc(198);
         }
     }
     cpu.p &= (uint8_t)~P_M;
-    cyc(198);
     op_lda16(0x700082 + cpu.x);
     if (!below16(cpu.a, 0x0199)) {
         uint16_t at;
@@ -3540,7 +3543,7 @@ static void lamp_place(void)
     cpu.x = cpu.y;
     cpu.p = nz16(cpu.p, cpu.x);
     (cyc(76), abi_ObjectRebucket());
-    cyc(246);
+    cyc(124);
     lda8((uint8_t)(rd8(b | (uint16_t)(0x2024 + cpu.x)) & 0xDF));
     cyc(16);
     wr8(b | (uint16_t)(0x2024 + cpu.x), (uint8_t)cpu.a);

@@ -140,6 +140,7 @@ void abi_CameraFollowStep(void)
         cyc(22);
         wr16(CAM(r, 0x2A), 0x0000);
     }
+    cyc(22);
     wr16(0x000002, cyc_then(16, rd16(CAM(r, 0x1A))));
     cyc(22);
     wr16(0x000008, cyc_then(16, rd16(CAM(r, 0x1C))));
@@ -240,6 +241,7 @@ void abi_CameraFollowStep(void)
         cyc(24);
         wr16(b | 0x0662, 0x0000);
     }
+    cyc(78);
     a = rd16(b | 0x065E);
     cyc(36);
     a = (uint16_t)(a + rd16(CAM(r, 0x35)));

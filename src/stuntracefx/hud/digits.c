@@ -16,6 +16,7 @@ static void digit(uint32_t tile_byte, uint8_t d)
 {
     cyc(44);
     wr8(tile_byte, (uint8_t)(d << 1));
+    cyc(44);
     wr8(tile_byte + 4, (uint8_t)((d << 1) + 1));
 }
 
@@ -161,6 +162,7 @@ void abi_HudDrawDigits19EC(void)
 uint8_t HudDrawNumber3(uint8_t n, uint16_t offset, uint8_t *p)
 {
     uint8_t count;
+    uint32_t c;
 
     wr8(0x0000F1, 0x00);
     while (n >= 100) {
@@ -177,10 +179,12 @@ uint8_t HudDrawNumber3(uint8_t n, uint16_t offset, uint8_t *p)
     digit(OAM_BUFFER + 2 + offset, count);
     cyc(44);
     wr8(0x0000F1, 0x00);
+    c = 64;                             /* the first ten; 108 for each after */
     while (n >= 10) {
         *p = (uint8_t)((*p & ~P_V) | (((n ^ 10) & (n ^ (uint8_t)(n - 10)) & 0x80) ? P_V : 0));
         n = (uint8_t)(n - 10);
-        cyc(86);
+        cyc(c);
+        c = 108;
         count = rd8(0x0000F1);
         cyc(6);
         wr8(0x0000F1, (uint8_t)(count + 1));
@@ -206,8 +210,12 @@ void abi_HudDrawNumber3(void)
    the routines below then switch to 8-bit index registers. */
 static uint8_t draw_value(uint8_t bank, uint16_t value, uint16_t offset, uint8_t *p)
 {
+    uint8_t v;
+
     cyc(46);
-    return HudDrawNumber3(rd8((uint32_t)bank << 16 | value), offset, p);
+    v = rd8((uint32_t)bank << 16 | value);
+    cyc(130);
+    return HudDrawNumber3(v, offset, p);
 }
 
 static void abi_draw_value(uint16_t value, uint16_t offset)
