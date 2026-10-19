@@ -414,6 +414,31 @@ void abi_GsuRecordFromObject(void)
     cpu.p = (uint8_t)(nz16(cpu.p, cpu.x) | P_M);
 }
 
+/*
+ * @routine 08:D8C2 GsuRecordPositionFromObject
+ * WHAT IT DOES: GsuRecordFromObject's position copy alone: object X's
+ * position (+$0C, +$0E, +$10) to its Super FX record's +$1E, +$20, +$22.
+ * Nothing in the game calls it; a direct call is its only way in.
+ * HOW: 16-bit copies, when the object has a record.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: A = the last value (0 with no
+ * record); X = Y = the object; M 8-bit; N, Z from X.
+ */
+void abi_GsuRecordPositionFromObject(void)
+{
+    static const uint16_t from[3] = {0x200C, 0x200E, 0x2010};
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t rec = record_of(cpu.db, cpu.x), v = 0;
+    unsigned i;
+
+    for (i = 0; rec && i < 3; i++) {
+        v = rd16(b | (uint16_t)(from[i] + cpu.x));
+        wr16(0x70001E + 2 * i + rec, v);
+    }
+    cpu.a = v;
+    cpu.y = cpu.x;
+    cpu.p = (uint8_t)(nz16(cpu.p, cpu.x) | P_M);
+}
+
 uint16_t ScaleThreeQuarters(uint16_t v);
 
 /* ScaleThreeQuarters with the flags of its final add. */

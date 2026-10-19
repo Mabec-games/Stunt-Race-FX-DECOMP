@@ -17,6 +17,11 @@ void abi_ObjectSyncFromRecord(void);
 void abi_GsuRecordNew424(void);
 void abi_GsuRecordFlag10(void);
 void abi_GsuRecordSet2AHigh(void);
+void abi_RandomStepLong(void);
+void abi_ApproachSixteenthMin16Byte(void);
+void abi_ApproachEighthMin8(void);
+void abi_ObjectCopyPositionFrom(void);
+void abi_ObjectApplyVelocity(void);
 
 static uint32_t db(void)
 {
@@ -296,4 +301,187 @@ void abi_ObjectFaller(void)
 void abi_ObjectFallerB(void)
 {
     faller();
+}
+
+/* The eight pieces of ObjectSpray8: kind, +$2E, the rise +$29 the
+   vertical speed eases to, and the starting turn +$15. */
+static const struct { uint16_t kind, vx, rise; uint8_t turn; } spray8[8] = {
+    {0xA660, 0xFE3E, 0xFC7C, 0x00},
+    {0xA67C, 0xFF6A, 0xFC7C, 0xFC},
+    {0xA698, 0x0096, 0xFC7C, 0xF8},
+    {0xA6B4, 0x01C2, 0xFC7C, 0xF4},
+    {0xA6D0, 0xFE3E, 0xFE70, 0xF0},
+    {0xA6EC, 0xFF6A, 0xFE70, 0xEC},
+    {0xA6B4, 0x0096, 0xFE70, 0xE8},
+    {0xA708, 0x01C2, 0xFE70, 0xE4},
+};
+
+/*
+ * @routine 08:D8E4 ObjectSpray8
+ * WHAT IT DOES: Sprays eight pieces from object Y: each a new object of
+ * its kind (the table above) with the handler $08:DB7A
+ * (ObjectSprayPieceStart), Y as its parent (+$27), the speeds +$2E (four
+ * sideways values, twice), +$30 = $03E8 and +$32 = $1770, the rise +$29
+ * ($FC7C for the first four, $FE70 for the rest) and the turn +$15 from 0
+ * down by 4. A spawn that fails skips only that piece. Nothing in the
+ * game calls it; a direct call is its only way in.
+ * HOW: Eight copies of one block, each jumping to the next when
+ * ObjectSpawn fails; X and Y saved on the stack (PHX, PHY) and X = Y for
+ * the parent; A's low byte kept on the stack (PHA, PLA) across the
+ * parent's store (TXA, 16-bit).
+ * Entry: M 8-bit, X 16-bit; Y = the parent; D = $0000. Exit: X and Y
+ * unchanged, N and Z from X; M 8-bit; A as the last piece left it.
+ */
+void abi_ObjectSpray8(void)
+{
+    uint16_t x0 = cpu.x, y0 = cpu.y;
+    unsigned i;
+    uint8_t lo;
+
+    cpu.x = cpu.y;
+    cpu.p = nz16(cpu.p, cpu.x);
+    for (i = 0; i < 8; i++) {
+        if (!spawn(spray8[i].kind))
+            continue;
+        handler(cpu.y, 0xDB7A);
+        cpu.p &= (uint8_t)~P_M;
+        op_lda16_imm(spray8[i].vx);
+        wr16(F(0x202E, cpu.y), spray8[i].vx);
+        op_lda16_imm(0x03E8);
+        wr16(F(0x2030, cpu.y), 0x03E8);
+        op_lda16_imm(0x1770);
+        wr16(F(0x2032, cpu.y), 0x1770);
+        cpu.p |= P_M;
+        st16i(F(0x2029, cpu.y), spray8[i].rise);
+        lo = (uint8_t)cpu.a;
+        cpu.p &= (uint8_t)~P_M;
+        op_txa16();
+        wr16(F(0x2027, cpu.y), cpu.x);
+        cpu.p |= P_M;
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | lo);
+        cpu.p = nz8(cpu.p, lo);
+        st8i(F(0x2015, cpu.y), spray8[i].turn);
+    }
+    cpu.y = y0;
+    cpu.x = x0;
+    cpu.p = nz16(cpu.p, cpu.x);
+}
+
+/* ObjectSprayPieceStep's work on object X. */
+static void spray_piece_step(void)
+{
+    uint8_t v;
+
+    op_lda8(F(0x2014, cpu.x));
+    wr8(0x00003E, (uint8_t)cpu.a);
+    lda8(0x00);
+    abi_ApproachSixteenthMin16Byte();
+    wr8(F(0x2014, cpu.x), (uint8_t)cpu.a);
+    op_lda8(F(0x2015, cpu.x));
+    cpu.p &= (uint8_t)~P_C;
+    v = op_adc8((uint8_t)cpu.a, 0x08, &cpu.p);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    wr8(F(0x2015, cpu.x), v);
+    cpu.y = rd16(F(0x2027, cpu.x));
+    cpu.p = nz16(cpu.p, cpu.y);
+    abi_ObjectCopyPositionFrom();
+    abi_ObjectApplyVelocity();
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(F(0x2030, cpu.x));
+    wr16(0x00003E, cpu.a);
+    op_lda16(F(0x2029, cpu.x));
+    abi_ApproachEighthMin8();
+    wr16(F(0x2030, cpu.x), cpu.a);
+    cpu.p |= P_M;
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(F(0x2032, cpu.x));
+    wr16(0x00003E, cpu.a);
+    op_lda16_imm(0x05DC);
+    abi_ApproachEighthMin8();
+    wr16(F(0x2032, cpu.x), cpu.a);
+    cpu.p |= P_M;
+}
+
+/*
+ * @routine 08:DB7A ObjectSprayPieceStart
+ * WHAT IT DOES: The first tick of a piece of ObjectSpray8: its handler
+ * becomes ObjectSprayPieceStep ($08:DB90) and +$14 a random byte
+ * (RandomStepLong); then the step itself.
+ * HOW: Runs on into ObjectSprayPieceStep.
+ * Entry: M 8-bit, X 16-bit; X = the piece; D = $0000. Exit: as
+ * ObjectSprayPieceStep.
+ */
+void abi_ObjectSprayPieceStart(void)
+{
+    handler(cpu.x, 0xDB90);
+    abi_RandomStepLong();
+    wr8(F(0x2014, cpu.x), (uint8_t)cpu.a);
+    spray_piece_step();
+}
+
+/*
+ * @routine 08:DB90 ObjectSprayPieceStep
+ * WHAT IT DOES: A tick of a piece of ObjectSpray8: +$14 eases a sixteenth
+ * of the way to 0 (at least 1), the turn +$15 grows by 8, the piece takes
+ * its parent's (+$27) position (ObjectCopyPositionFrom) and moves by its
+ * speeds (ObjectApplyVelocity); its speed +$30 eases an eighth of the way
+ * (at least 8) to its rise +$29, and +$32 to $05DC.
+ * HOW: ApproachSixteenthMin16Byte and ApproachEighthMin8 with the start
+ * in direct page $3E.
+ * Entry: M 8-bit, X 16-bit; X = the piece; D = $0000. Exit: M 8-bit; A =
+ * +$32; Y = the parent.
+ */
+void abi_ObjectSprayPieceStep(void)
+{
+    spray_piece_step();
+}
+
+/*
+ * @routine 08:DBD9 ObjectPlayerPassCount
+ * WHAT IT DOES: Counts the player ($0346) past object X once: unless the
+ * object's +$25 bit 0 is set already, when the player is less than $1F4
+ * from it along +$10 the player's +$4C goes up by one and the object's
+ * +$25 bit 0 is set. Nothing in the game calls it; a direct call is its
+ * only way in.
+ * HOW: The distance as |player - object| (EOR #$FFFF, INC), compared
+ * signed (BPL); a CMP #1 and both its branches to the same place.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; Y = the player
+ * unless the bit was set; A and the flags as the last step left them.
+ */
+void abi_ObjectPlayerPassCount(void)
+{
+    uint8_t v;
+    uint16_t d;
+
+    op_lda8(F(0x2025, cpu.x));
+    v = (uint8_t)(cpu.a & 0x01);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+    if (v)
+        return;
+    cpu.y = rd16(db() | 0x0346);
+    cpu.p = nz16(cpu.p, cpu.y);
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16(F(0x2010, cpu.y));
+    op_sub16(rd16(F(0x2010, cpu.x)));
+    if (cpu.a & 0x8000) {
+        d = (uint16_t)(cpu.a ^ 0xFFFF);
+        cpu.a = (uint16_t)(d + 1);
+        cpu.p = nz16(cpu.p, cpu.a);
+    }
+    op_cmp16(0x01F4);
+    cpu.p |= P_M;
+    if (!(cpu.p & P_N))
+        return;
+    op_lda8(F(0x204C, cpu.y));
+    v = (uint8_t)(cpu.a + 1);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+    wr8(F(0x204C, cpu.y), v);
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x01)) & ~P_C) | (v >= 0x01 ? P_C : 0));
+    op_lda8(F(0x2025, cpu.x));
+    v = (uint8_t)(cpu.a | 0x01);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+    wr8(F(0x2025, cpu.x), v);
 }

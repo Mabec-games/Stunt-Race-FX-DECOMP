@@ -2282,3 +2282,28 @@ GsuRecordNew424B:
     sta.w !wram_1F4C
     sep.b #$20
     bra GsuRecordNew_tail
+
+; @routine 08:D8C2 GsuRecordPositionFromObject
+; WHAT IT DOES: GsuRecordFromObject's position copy alone: object X's
+; position (+$0C, +$0E, +$10) to its Super FX record's +$1E, +$20, +$22.
+; Nothing in the game calls it; a direct call is its only way in.
+; HOW: 16-bit copies, when the object has a record.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: A = the last value (0 with no
+; record); X = Y = the object; M 8-bit; N, Z from X.
+%at($08D8C2)
+GsuRecordPositionFromObject:
+    rep.b #$20
+    txy
+    lda.w !obj_22,x
+    beq .lD8E0
+    tax
+    lda.w !obj_pos_x,y
+    sta.l !gsu_rec_1e,x
+    lda.w !obj_pos_y,y
+    sta.l !gsu_rec_20,x
+    lda.w !obj_pos_z,y
+    sta.l !gsu_rec_22,x
+.lD8E0:
+    tyx
+    sep.b #$20
+    rtl

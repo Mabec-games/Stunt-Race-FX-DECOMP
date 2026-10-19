@@ -320,3 +320,406 @@ ObjectFallerStep:
     lda.b #$00
     sta.w !obj_1c,x
     rtl
+
+; @routine 08:D8E4 ObjectSpray8
+; WHAT IT DOES: Sprays eight pieces from object Y: each a new object of
+; its kind (the table above) with the handler $08:DB7A
+; (ObjectSprayPieceStart), Y as its parent (+$27), the speeds +$2E (four
+; sideways values, twice), +$30 = $03E8 and +$32 = $1770, the rise +$29
+; ($FC7C for the first four, $FE70 for the rest) and the turn +$15 from 0
+; down by 4. A spawn that fails skips only that piece. Nothing in the
+; game calls it; a direct call is its only way in.
+; HOW: Eight copies of one block, each jumping to the next when
+; ObjectSpawn fails; X and Y saved on the stack (PHX, PHY) and X = Y for
+; the parent; A's low byte kept on the stack (PHA, PLA) across the
+; parent's store (TXA, 16-bit).
+; Entry: M 8-bit, X 16-bit; Y = the parent; D = $0000. Exit: X and Y
+; unchanged, N and Z from X; M 8-bit; A as the last piece left it.
+%at($08D8E4)
+ObjectSpray8:
+    phx
+    phy
+    tyx
+    rep.b #$20
+    lda.w #$A660
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lD8FB
+    jml.l .lD939
+.lD8FB:
+    rep.b #$20
+    lda.w #$DB7A
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    rep.b #$20
+    lda.w #$FE3E
+    sta.w !obj_vel_x,y
+    lda.w #$03E8
+    sta.w !obj_vel_y,y
+    lda.w #$1770
+    sta.w !obj_vel_z,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$FC7C
+    sta.w !obj_29,y
+    sep.b #$20
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_27,y
+    sep.b #$20
+    pla
+    lda.b #$00
+    sta.w !obj_15,y
+.lD939:
+    rep.b #$20
+    lda.w #$A67C
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lD94D
+    jml.l .lD98B
+.lD94D:
+    rep.b #$20
+    lda.w #$DB7A
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    rep.b #$20
+    lda.w #$FF6A
+    sta.w !obj_vel_x,y
+    lda.w #$03E8
+    sta.w !obj_vel_y,y
+    lda.w #$1770
+    sta.w !obj_vel_z,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$FC7C
+    sta.w !obj_29,y
+    sep.b #$20
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_27,y
+    sep.b #$20
+    pla
+    lda.b #$FC
+    sta.w !obj_15,y
+.lD98B:
+    rep.b #$20
+    lda.w #$A698
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lD99F
+    jml.l .lD9DD
+.lD99F:
+    rep.b #$20
+    lda.w #$DB7A
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    rep.b #$20
+    lda.w #$0096
+    sta.w !obj_vel_x,y
+    lda.w #$03E8
+    sta.w !obj_vel_y,y
+    lda.w #$1770
+    sta.w !obj_vel_z,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$FC7C
+    sta.w !obj_29,y
+    sep.b #$20
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_27,y
+    sep.b #$20
+    pla
+    lda.b #$F8
+    sta.w !obj_15,y
+.lD9DD:
+    rep.b #$20
+    lda.w #$A6B4
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lD9F1
+    jml.l .lDA2F
+.lD9F1:
+    rep.b #$20
+    lda.w #$DB7A
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    rep.b #$20
+    lda.w #$01C2
+    sta.w !obj_vel_x,y
+    lda.w #$03E8
+    sta.w !obj_vel_y,y
+    lda.w #$1770
+    sta.w !obj_vel_z,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$FC7C
+    sta.w !obj_29,y
+    sep.b #$20
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_27,y
+    sep.b #$20
+    pla
+    lda.b #$F4
+    sta.w !obj_15,y
+.lDA2F:
+    rep.b #$20
+    lda.w #$A6D0
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lDA43
+    jml.l .lDA81
+.lDA43:
+    rep.b #$20
+    lda.w #$DB7A
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    rep.b #$20
+    lda.w #$FE3E
+    sta.w !obj_vel_x,y
+    lda.w #$03E8
+    sta.w !obj_vel_y,y
+    lda.w #$1770
+    sta.w !obj_vel_z,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$FE70
+    sta.w !obj_29,y
+    sep.b #$20
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_27,y
+    sep.b #$20
+    pla
+    lda.b #$F0
+    sta.w !obj_15,y
+.lDA81:
+    rep.b #$20
+    lda.w #$A6EC
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lDA95
+    jml.l .lDAD3
+.lDA95:
+    rep.b #$20
+    lda.w #$DB7A
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    rep.b #$20
+    lda.w #$FF6A
+    sta.w !obj_vel_x,y
+    lda.w #$03E8
+    sta.w !obj_vel_y,y
+    lda.w #$1770
+    sta.w !obj_vel_z,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$FE70
+    sta.w !obj_29,y
+    sep.b #$20
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_27,y
+    sep.b #$20
+    pla
+    lda.b #$EC
+    sta.w !obj_15,y
+.lDAD3:
+    rep.b #$20
+    lda.w #$A6B4
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lDAE7
+    jml.l .lDB25
+.lDAE7:
+    rep.b #$20
+    lda.w #$DB7A
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    rep.b #$20
+    lda.w #$0096
+    sta.w !obj_vel_x,y
+    lda.w #$03E8
+    sta.w !obj_vel_y,y
+    lda.w #$1770
+    sta.w !obj_vel_z,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$FE70
+    sta.w !obj_29,y
+    sep.b #$20
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_27,y
+    sep.b #$20
+    pla
+    lda.b #$E8
+    sta.w !obj_15,y
+.lDB25:
+    rep.b #$20
+    lda.w #$A708
+    sta.w !wram_1F2B
+    sep.b #$20
+    jsl.l ObjectSpawn
+    bcs .lDB39
+    jml.l .lDB77
+.lDB39:
+    rep.b #$20
+    lda.w #$DB7A
+    sta.w !obj_1a_w,y
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,y
+    rep.b #$20
+    lda.w #$01C2
+    sta.w !obj_vel_x,y
+    lda.w #$03E8
+    sta.w !obj_vel_y,y
+    lda.w #$1770
+    sta.w !obj_vel_z,y
+    sep.b #$20
+    rep.b #$20
+    lda.w #$FE70
+    sta.w !obj_29,y
+    sep.b #$20
+    pha
+    rep.b #$20
+    txa
+    sta.w !obj_27,y
+    sep.b #$20
+    pla
+    lda.b #$E4
+    sta.w !obj_15,y
+.lDB77:
+    ply
+    plx
+    rts
+
+; @routine 08:DB7A ObjectSprayPieceStart
+; WHAT IT DOES: The first tick of a piece of ObjectSpray8: its handler
+; becomes ObjectSprayPieceStep ($08:DB90) and +$14 a random byte
+; (RandomStepLong); then the step itself.
+; HOW: Runs on into ObjectSprayPieceStep.
+; Entry: M 8-bit, X 16-bit; X = the piece; D = $0000. Exit: as
+; ObjectSprayPieceStep.
+%at($08DB7A)
+ObjectSprayPieceStart:
+    rep.b #$20
+    lda.w #$DB90
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+    jsl.l RandomStepLong
+    sta.w !obj_14,x
+
+; @routine 08:DB90 ObjectSprayPieceStep
+; WHAT IT DOES: A tick of a piece of ObjectSpray8: +$14 eases a sixteenth
+; of the way to 0 (at least 1), the turn +$15 grows by 8, the piece takes
+; its parent's (+$27) position (ObjectCopyPositionFrom) and moves by its
+; speeds (ObjectApplyVelocity); its speed +$30 eases an eighth of the way
+; (at least 8) to its rise +$29, and +$32 to $05DC.
+; HOW: ApproachSixteenthMin16Byte and ApproachEighthMin8 with the start
+; in direct page $3E.
+; Entry: M 8-bit, X 16-bit; X = the piece; D = $0000. Exit: M 8-bit; A =
+; +$32; Y = the parent.
+%at($08DB90)
+ObjectSprayPieceStep:
+    lda.w !obj_14,x
+    sta.b !scale_scratch
+    lda.b #$00
+    jsl.l ApproachSixteenthMin16Byte
+    sta.w !obj_14,x
+    lda.w !obj_15,x
+    clc
+    adc.b #$08
+    sta.w !obj_15,x
+    ldy.w !obj_27,x
+    jsl.l ObjectCopyPositionFrom
+    jsl.l ObjectApplyVelocity
+    rep.b #$20
+    lda.w !obj_vel_y,x
+    sta.b !scale_scratch
+    lda.w !obj_29,x
+    jsl.l ApproachEighthMin8
+    sta.w !obj_vel_y,x
+    sep.b #$20
+    rep.b #$20
+    lda.w !obj_vel_z,x
+    sta.b !scale_scratch
+    lda.w #$05DC
+    jsl.l ApproachEighthMin8
+    sta.w !obj_vel_z,x
+    sep.b #$20
+    rtl
+
+; @routine 08:DBD9 ObjectPlayerPassCount
+; WHAT IT DOES: Counts the player ($0346) past object X once: unless the
+; object's +$25 bit 0 is set already, when the player is less than $1F4
+; from it along +$10 the player's +$4C goes up by one and the object's
+; +$25 bit 0 is set. Nothing in the game calls it; a direct call is its
+; only way in.
+; HOW: The distance as |player - object| (EOR #$FFFF, INC), compared
+; signed (BPL); a CMP #1 and both its branches to the same place.
+; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; Y = the player
+; unless the bit was set; A and the flags as the last step left them.
+%at($08DBD9)
+ObjectPlayerPassCount:
+    lda.w !obj_25,x
+    and.b #$01
+    beq .lDBE4
+    jml.l .lDC12
+.lDBE4:
+    ldy.w !wram_0346
+    rep.b #$20
+    lda.w !obj_pos_z,y
+    sec
+    sbc.w !obj_pos_z,x
+    bpl .lDBF6
+    eor.w #$FFFF
+    inc a
+.lDBF6:
+    cmp.w #$01F4
+    sep.b #$20
+    bpl .lDC12
+    lda.w !obj_4b+1,y
+    inc a
+    sta.w !obj_4b+1,y
+    cmp.b #$01
+    beq .lDC0A
+    bra .lDC0A
+.lDC0A:
+    lda.w !obj_25,x
+    ora.b #$01
+    sta.w !obj_25,x
+.lDC12:
+    rtl
