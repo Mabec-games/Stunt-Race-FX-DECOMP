@@ -1093,6 +1093,9 @@ uint16_t SpriteBar4WithMarker(uint8_t bank, uint8_t value, uint16_t pos, uint16_
 {
     uint16_t v = value < 0x3F ? value : 0x3F;
 
+    /* PHP, SEP, REP (66), CMP # (16), BCC taken (22) or not and LDA #$3F
+       (32), STA (16) */
+    cyc(value < 0x3F ? 120 : 130);
     wr8(0x000004, (uint8_t)v);
     cyc(38);
     wr16(0x000002, pos);
@@ -1128,6 +1131,7 @@ uint16_t SpriteBar6WithMarker(uint8_t bank, uint8_t value, uint16_t pos, uint16_
 {
     uint16_t v;
 
+    cyc(82);                            /* PHP, SEP, REP, STA */
     wr8(0x000004, value);
     cyc(38);
     wr16(0x000002, pos);

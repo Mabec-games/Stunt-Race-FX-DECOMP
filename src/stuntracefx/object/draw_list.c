@@ -96,7 +96,8 @@ static uint16_t draw_record(uint16_t o, uint16_t r)
         cyc(46);
         v = rd8(OBJ(o, 0x19));
         if (!(v & 0x80))
-            { cyc(40); v = rd8(0x7E05E9); } else { cyc(22); }
+            { cyc(40); v = rd8(0x7E05E9); }
+        cyc(22);
     } else {
         cyc(52);
         v = rd8(OBJ(o, 0x18));

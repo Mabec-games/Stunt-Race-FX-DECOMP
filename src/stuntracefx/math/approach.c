@@ -9,22 +9,24 @@
 
 #define APPROACH_VALUE 0x00003Eu
 
+/* The time is the assembly's, every routine the same shape (master
+   clocks: a ROM byte 8, an internal cycle 6). I is an immediate
+   instruction's (CMP #, LDA #, ADC #): 24 with a 16-bit A, 16 with 8. */
+
 /* One halving as CMP #$8000 (or #$80) / ROR A / BPL / ADC #0 does it: an
-   arithmetic shift whose negative results round toward zero. */
-static uint16_t halve(uint16_t v, uint16_t sign)
+   arithmetic shift whose negative results round toward zero. CMP, ROR,
+   then BPL taken (I + 36), or not and the ADC (2I + 30). */
+static uint16_t halve(uint16_t v, uint16_t sign, uint32_t imm)
 {
     uint16_t r = (uint16_t)((v >> 1) | (v & sign));
 
-    if (r & sign)
-        { cyc(10); r = (uint16_t)(r + (v & 1)); }
-    cyc(60);
+    if (r & sign) {
+        cyc(2 * imm + 30);
+        r = (uint16_t)(r + (v & 1));
+    } else {
+        cyc(imm + 36);
+    }
     return r;
-}
-
-/* The value at $3E: a word or a byte, as the routine's width reads it. */
-static uint16_t value(int wide)
-{
-    return wide ? rd16(cyc_then(48, APPROACH_VALUE)) : rd8(APPROACH_VALUE);
 }
 
 /* The step as each routine makes it, reading and writing $3E as often and
@@ -33,39 +35,50 @@ static uint16_t value(int wide)
    it moved, V from the add of the step. */
 static uint16_t approach(uint16_t target, int wide, uint16_t min, int shifts, int *moved, uint8_t *p)
 {
-    uint16_t mask = wide ? 0xFFFF : (cyc(16), 0x00FF), sign = wide ? 0x8000 : 0x0080;
+    uint16_t mask = wide ? 0xFFFF : 0x00FF, sign = wide ? 0x8000 : 0x0080;
+    uint32_t imm = wide ? 24 : 16;
     uint16_t cur, d, s;
     int i;
 
     target &= mask;
-    cur = value(wide);
+    cyc(wide ? 48 : 16);                        /* to the CMP's read */
+    cur = wide ? rd16(APPROACH_VALUE) : rd8(APPROACH_VALUE);
     *moved = target != cur;
     if (!*moved) {
-        cyc(16);
-        cur = value(wide);
+        cyc(64);                                /* BNE, JML, the tail's LDA */
+        cur = wide ? rd16(APPROACH_VALUE) : rd8(APPROACH_VALUE);
         *p = (uint8_t)(wide ? nz16(*p, cur) : nz8(*p, (uint8_t)cur)) | P_C;
         return cur;
-    } else { cyc(4); }
-    cur = value(wide);
+    }
+    cyc(52);                                    /* BNE taken, SEC, SBC */
+    cur = wide ? rd16(APPROACH_VALUE) : rd8(APPROACH_VALUE);
     d = (uint16_t)(target - cur) & mask;
     if (!(d & sign)) {
-        if (d < min)
-            { cyc(40); d = min; }
+        if (d < min) {
+            cyc(3 * imm + 54);                  /* CMP, BMI, CMP, BPL, LDA #, BRA */
+            d = min;
+        } else {
+            cyc(2 * imm + 38);                  /* CMP, BMI, CMP, BPL taken */
+        }
     } else if (!((uint16_t)(d + min) & sign)) {
-        cyc(40);
+        cyc(3 * imm + 38);                      /* CMP, BMI taken, CMP, BMI, LDA # */
         d = (uint16_t)(-min) & mask;
-    } else { cyc(30); }
-    cyc(68);
+    } else {
+        cyc(2 * imm + 44);                      /* CMP, BMI taken, CMP, BMI taken */
+    }
     for (i = 0; i < shifts; i++)
-        d = halve(d, sign) & mask;
-    cur = value(wide);
+        d = halve(d, sign, imm) & mask;
+    cyc(30);                                    /* CLC, ADC */
+    cur = wide ? rd16(APPROACH_VALUE) : rd8(APPROACH_VALUE);
     s = (uint16_t)(d + cur) & mask;
     *p = (uint8_t)((*p & ~(P_C | P_V)) | ((~(d ^ cur) & (d ^ s) & sign) ? P_V : 0));
+    cyc(16);                                    /* STA */
     if (wide)
-        { cyc(16); wr16(APPROACH_VALUE, s); }
+        wr16(APPROACH_VALUE, s);
     else
-        { cyc(16); wr8(APPROACH_VALUE, (uint8_t)s); }
-    s = value(wide);
+        wr8(APPROACH_VALUE, (uint8_t)s);
+    cyc(46);                                    /* BRL, the tail's LDA */
+    s = wide ? rd16(APPROACH_VALUE) : rd8(APPROACH_VALUE);
     *p = wide ? nz16(*p, s) : nz8(*p, (uint8_t)s);
     return s;
 }

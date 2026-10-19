@@ -974,6 +974,7 @@ uint16_t ObjectRecordFlag70Step(uint8_t bank, uint16_t obj, uint16_t a, uint8_t 
     rec = rd16(cyc_then(104, field(bank, obj, 0x22)));
     if (!rec)
         { cyc(84); CrashWhite(bank); }
+    cyc(148);
     w = rd16(0x700070 + rec);
     w = flag ? (uint16_t)(w | 0x0004) : (uint16_t)(w & 0xFFFB);
     cyc(56);

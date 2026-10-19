@@ -1112,9 +1112,11 @@ static void child_flags(void)
         lda8(v);
         cyc(16);
         wr8(b | (uint16_t)(0x2024 + cpu.x), v);
+    } else {
+        cyc(40);                        /* neither bit: the branches over both */
     }
     lda8(0x03);
-    cyc(56);
+    cyc(16);
     wr8(b | (uint16_t)(0x2036 + cpu.x), 0x03);
     cyc(38);
 }
@@ -1511,7 +1513,7 @@ void abi_ObjectPieceFall(void)
     uint8_t v;
 
     abi_ObjectRebucket();
-    cyc(246);
+    cyc(124);
     op_lda8(b | (uint16_t)(0x2048 + cpu.x));
     cyc(24);
     wr8(b | 0x1F58, (uint8_t)cpu.a);
@@ -4287,7 +4289,7 @@ void abi_ObjectRingSpin(void)
     wr8(b | (uint16_t)(0x2015 + cpu.x), v);
     (cyc(62), abi_ObjectRebucket());
     lda8(0x03);
-    cyc(232);
+    cyc(110);
     wr8(b | (uint16_t)(0x2036 + cpu.x), 0x03);
     cyc(38);
 }
@@ -4321,7 +4323,7 @@ void abi_ObjectRingPartStep(void)
     wr8(b | (uint16_t)(0x2015 + cpu.x), (uint8_t)cpu.a);
     (cyc(62), abi_ObjectRebucket());
     lda8(0x03);
-    cyc(232);
+    cyc(110);
     wr8(b | (uint16_t)(0x2036 + cpu.x), 0x03);
     cyc(30);
     op_lda8(b | (uint16_t)(0x2048 + cpu.x));
