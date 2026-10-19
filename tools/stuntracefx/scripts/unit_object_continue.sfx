@@ -1,7 +1,9 @@
 # unit_object_continue: unit tests (call) from the start of a Novice race
 # for the bank 03 object commands that go on at an address in the object
 # (03:D25F-D2D9), on object 1 ($2189): its own handler at +$1A (08:9BD9),
-# none (bank and address 0), and the lone RTL at $08:A033 (DataBank7EEnd).
+# none (bank and address 0), bank 0 with an address (the stop screen
+# CrashWhite, 00:8014, which never returns), and the lone RTL at $08:A033
+# (DataBank7EEnd).
 load build/stuntracefx/states/novice_coupe_race1.state
 call 03:D29E long x=0189 y=0311 p=20 db=7E d=0000
 wait 1
@@ -11,9 +13,9 @@ set 7E21A5 00
 call 03:D29E long x=0189 y=0311 p=20 db=7E d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-set 7E21A3 33,A0
-set 7E21A5 08
-call 03:D29E long x=0189 y=0311 p=20 db=7E d=0000
+set 7E21A3 14,80
+set 7E21A5 00
+call 03:D29E long x=0189 y=0311 p=20 db=7E d=0000 noreturn frames=30
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
 set 7E21A6 D9,9B
@@ -26,9 +28,9 @@ set 7E21A8 00
 call 03:D2BC long x=0189 y=0311 p=20 db=7E d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-set 7E21A6 33,A0
-set 7E21A8 08
-call 03:D2BC long x=0189 y=0311 p=20 db=7E d=0000
+set 7E21A6 14,80
+set 7E21A8 00
+call 03:D2BC long x=0189 y=0311 p=20 db=7E d=0000 noreturn frames=30
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
 call 03:D29D long x=0189 y=0311 p=20 db=7E d=0000

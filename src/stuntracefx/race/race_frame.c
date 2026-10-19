@@ -1287,7 +1287,7 @@ uint16_t ViewSetupTail(uint8_t bank);
  * WHAT IT DOES: Starts the attract race's view: $70:01D0 = $1234, $70:01C4 =
  * 1, $70:108C = the players ($0D62), direct page $A0 = $80, $05EF = $FF and
  * $00 = 0, the view's parameters for the players (ViewParamsByPlayers), then
- * on in ViewSetupTail (03:AE73), which returns to this routine's caller.
+ * on in ViewSetup's tail (03:AE73), which returns to this routine's caller.
  * HOW: Run from its ROM copy at $02:CFC6 (the JSR reaches $02:D410, the
  * copy of ViewParamsByPlayers); P pushed first, a long jump to finish.
  * Entry: any widths; D = $0000. Exit: as 03:AE73 leaves it.

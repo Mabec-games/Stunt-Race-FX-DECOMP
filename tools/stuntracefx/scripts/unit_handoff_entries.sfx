@@ -1,7 +1,7 @@
 # unit_handoff_entries: unit calls of the entries whose C the routines that
 # jump to them now call: BootWarm from its race (03:8BCD, RaceRestart's
 # way back in) and from its attract race (03:8BF8, RaceEndToAttract's),
-# which never return; ViewSetup (03:AE70), which nothing in the game calls;
+# which never return; DataBank7EEnd (08:A033, the lone RTL); ViewSetup (03:AE70), which nothing in the game calls;
 # and the pause loops from inside (07:BB16, 07:BB7C), as PauseResults and
 # PauseResultsP2 enter them (stage $0A, $0D2D = $0A), run until a stage
 # ends them.
@@ -19,3 +19,5 @@ load build/stuntracefx/states/novice_coupe_race1.state
 set 7E0D2F 0A
 set 7E0D2D 0A
 call 07:BB7C php p=30 db=07 d=0000 noreturn frames=30
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:A033 long p=30 db=7E d=0000

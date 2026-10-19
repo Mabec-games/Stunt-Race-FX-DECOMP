@@ -406,14 +406,7 @@ ViewReset:
 ViewSetup:
     php                             ; not reached in the traces so far
     sep.b #$30                      ; not reached in the traces so far
-
-; @routine 03:AE73 ViewSetupTail
-; WHAT IT DOES: ViewSetup from inside, its P already pushed: the long jumps
-; at the ends of ViewDefaults and AttractViewStart come here.
-; HOW: As ViewSetup after its SEP; the PLP pulls the caller's P.
-; Entry: M 8-bit, X 8-bit; D = $0000; P pushed. Exit: P pulled.
-%at($03AE73)
-ViewSetupTail:
+ViewSetupTail:                      ; the long jumps of ViewDefaults and AttractViewStart
     lda.w !wram_1A6C
     sta.b !random_e6
     lda.b #$A7

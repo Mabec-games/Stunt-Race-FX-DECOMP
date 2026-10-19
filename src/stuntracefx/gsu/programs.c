@@ -442,25 +442,9 @@ void abi_ViewSetup(void)
     op_plp(p0);
 }
 
-/*
- * @routine 03:AE73 ViewSetupTail
- * WHAT IT DOES: ViewSetup from inside, its P already on the stack (the
- * long jumps of ViewDefaults and AttractViewStart, which pushed theirs):
- * the random number state seeded, the view state cleared, ViewReset,
- * ReadTable9022 and GsuParamsFromDp; then the PLP of the pushed P.
- * HOW: As ViewSetup after its SEP; the PLP pulls from the stack.
- * Entry: M 8-bit, X 8-bit; D = $0000; P pushed above the return address.
- * Exit: A = GsuParamsFromDp's A; X = $80; Y = 0; P pulled; S 1 higher.
- */
-void abi_ViewSetupTail(void)
-{
-    cpu.a = view_setup_tail(cpu.db);
-    cpu.x = 0x0080;
-    cpu.y = 0x0000;
-    op_plp(rd8((uint16_t)(cpu.s + 1)));
-    cpu.s = (uint16_t)(cpu.s + 1);
-}
-
+/* ViewSetup from inside (03:AE73), its P already pushed: the long jumps at
+   the ends of ViewDefaults and AttractViewStart come here; the callers'
+   C does the PLP of their own P. */
 uint16_t ViewSetupTail(uint8_t bank)
 {
     return view_setup_tail(bank);
