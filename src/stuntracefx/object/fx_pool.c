@@ -230,9 +230,9 @@ void abi_FxListSweep(void)
 #define REC_FLAGS1C 0x1Cu
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode FxPoolTake_code[2][33] = {
-    {{0x04893D, 4}, {0x048941, 3}, {0x8943, 0}, {0x048944, 4}, {0x048948, 1}, {0x048949, 3}, {0x04894C, 3}, {0x04894F, 3}, {0x04896E, 4}, {0x04894F, 8}, {0x048957, 5}, {0x04895C, 2}, {0x04895E, 3}, {0x048961, 3}, {0x048978, 5}, {0x048986, 4}, {0x04898A, 5}, {0, 0}, {0x04898F, 8}, {0x048997, 4}, {0x04899B, 27}, {0x0489BC, 2}, {0x0489B6, 6}, {0x0489BE, 13}, {0x0489CB, 3}, {0x0489CE, 2}, {0x0489CE, 8}, {0x0489D6, 4}, {0x0489DA, 5}, {0x0489DF, 4}, {0x0489E3, 10}, {0x0489ED, 6}, {0x0489F3, 5}},
-    {{0x04893D, 4}, {0x048941, 3}, {0x8943, 0}, {0x048944, 4}, {0x048948, 1}, {0x048949, 3}, {0x04894C, 3}, {0x04894F, 3}, {0x04896E, 4}, {0x04894F, 8}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x048972, 6}, {0x048989, 6}, {0x04898F, 8}, {0x048997, 4}, {0x04899B, 27}, {0x0489B6, 21}, {0, 0}, {0, 0}, {0x0489CB, 3}, {0x0489CE, 2}, {0x0489CE, 8}, {0x0489D6, 4}, {0x0489DA, 5}, {0x0489DF, 4}, {0x0489E3, 10}, {0x0489ED, 6}, {0x0489F3, 5}},
+static const GsuCode FxPoolTake_code[2][37] = {
+    {{0x04893A, 3}, {0x048B65, 13}, {0x04893D, 4}, {0x048941, 3}, {0x8943, 0}, {0x048944, 4}, {0x048948, 1}, {0x048949, 3}, {0x04894C, 3}, {0x04894F, 3}, {0x04896E, 4}, {0x04894F, 8}, {0x048957, 5}, {0x04895C, 2}, {0x04895E, 3}, {0x048961, 3}, {0x048978, 5}, {0x048986, 4}, {0x04898A, 5}, {0, 0}, {0x04898F, 8}, {0x048997, 4}, {0x04899B, 27}, {0x0489BC, 2}, {0x0489B6, 6}, {0x0489BE, 13}, {0x0489CB, 3}, {0x0489CE, 2}, {0x0489CE, 8}, {0x0489D6, 4}, {0x0489DA, 5}, {0x0489DF, 4}, {0x0489E3, 10}, {0x0489ED, 6}, {0x0489F3, 5}, {0x0489F8, 2}, {0x048B72, 5}},
+    {{0x04893A, 3}, {0x048C96, 13}, {0x04893D, 4}, {0x048941, 3}, {0x8943, 0}, {0x048944, 4}, {0x048948, 1}, {0x048949, 3}, {0x04894C, 3}, {0x04894F, 3}, {0x04896E, 4}, {0x04894F, 8}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x048972, 6}, {0x048989, 6}, {0x04898F, 8}, {0x048997, 4}, {0x04899B, 27}, {0x0489B6, 21}, {0, 0}, {0, 0}, {0x0489CB, 3}, {0x0489CE, 2}, {0x0489CE, 8}, {0x0489D6, 4}, {0x0489DA, 5}, {0x0489DF, 4}, {0x0489E3, 10}, {0x0489ED, 6}, {0x0489F3, 5}, {0x0489F8, 2}, {0x048CA3, 5}},
 };
 
 /*
@@ -261,41 +261,42 @@ static const GsuCode FxPoolTake_code[2][33] = {
  */
 FxRegs FxPoolTake(FxRegs g, int copy)
 {
+    gsu_codes(FxPoolTake_code[copy], 2);
     uint16_t *sp = &g.r[10];
 
     gsu_push(sp, g.r[4]);
-    gsu_codes(FxPoolTake_code[copy], 1);
+    gsu_codes(FxPoolTake_code[copy] + 2, 1);
     gsu_push(sp, g.r[3]);
     g.r[1] = g.r[4];
-    gsu_codes(FxPoolTake_code[copy] + 1, 3);
+    gsu_codes(FxPoolTake_code[copy] + 3, 3);
     gsu_push(sp, g.r[3]);
-    gsu_codes(FxPoolTake_code[copy] + 4, 1);
-    for (;;) {                                        gsu_codes(FxPoolTake_code[copy] + 5, 1); /* an exact fit */
+    gsu_codes(FxPoolTake_code[copy] + 6, 1);
+    for (;;) {                                        gsu_codes(FxPoolTake_code[copy] + 7, 1); /* an exact fit */
         g.r[2] = gsu_ldw(g.r[3]);
         g.r[3] = gsu_inc(gsu_inc(g.r[3]));
-        gsu_codes(FxPoolTake_code[copy] + 6, 1);
+        gsu_codes(FxPoolTake_code[copy] + 8, 1);
         g.r[0] = gsu_sub(gsu_ldw(g.r[3]), g.r[1], 0);
         if (gsu.z) {
-            gsu_codes(FxPoolTake_code[copy] + 7, 2);
+            gsu_codes(FxPoolTake_code[copy] + 9, 2);
             g.r[0] = gsu_pull(sp);
             g.r[1] = gsu_inc(gsu_not(g.r[1]));
             g.r[0] = gsu_sub(g.r[0], g.r[0], 0);
             goto mark;
-        } else { gsu_codes(FxPoolTake_code[copy] + 9, 1); }
+        } else { gsu_codes(FxPoolTake_code[copy] + 11, 1); }
         g.r[3] = g.r[2];
         gsu_moves(g.r[3]);
         if (gsu.z)
-            { gsu_codes(FxPoolTake_code[copy] + 10, 1); break; }
+            { gsu_codes(FxPoolTake_code[copy] + 12, 1); break; }
     }
     g.r[3] = gsu_pull(sp);
-    gsu_codes(FxPoolTake_code[copy] + 11, 1);
+    gsu_codes(FxPoolTake_code[copy] + 13, 1);
     for (;;) {                                        /* a bigger block */
         g.r[2] = gsu_ldw(g.r[3]);
         g.r[3] = gsu_inc(gsu_inc(g.r[3]));
-        gsu_codes(FxPoolTake_code[copy] + 12, 1);
+        gsu_codes(FxPoolTake_code[copy] + 14, 1);
         g.r[0] = gsu_sub(gsu_ldw(g.r[3]), g.r[1], 0);
         if (!gsu.s) {
-            gsu_codes(FxPoolTake_code[copy] + 13, 3);
+            gsu_codes(FxPoolTake_code[copy] + 15, 3);
             g.r[0] = gsu_sub(g.r[0], 4, 0);
             if (gsu.s) {                              /* too little to split */
                 g.r[0] = gsu_add(g.r[0], 4, 0);
@@ -315,19 +316,19 @@ FxRegs FxPoolTake(FxRegs g, int copy)
     g.r[1] = 0;
     goto done;
 mark:
-    gsu_codes(FxPoolTake_code[copy] + 16, 2);
+    gsu_codes(FxPoolTake_code[copy] + 18, 2);
     g.r[2] = gsu_add(g.r[3], g.r[0], 0);
     gsu_stw(g.r[2], g.r[1]);
     g.r[2] = gsu_dec(gsu_dec(g.r[2]));
     g.r[1] = g.r[2];
+gsu_codes(FxPoolTake_code[copy] + 20, 1);
 done:
-    gsu_codes(FxPoolTake_code[copy] + 18, 1);
     g.r[3] = gsu_pull(sp);
-    gsu_codes(FxPoolTake_code[copy] + 19, 1);
+    gsu_codes(FxPoolTake_code[copy] + 21, 1);
     g.r[4] = gsu_pull(sp);
     gsu_moves(g.r[1]);
     if (gsu.z)
-        return g; else { gsu_codes(FxPoolTake_code[copy] + 20, 1); }
+        return g; else { gsu_codes(FxPoolTake_code[copy] + 22, 1); }
     g.r[0] = FX_POOL_FIRST;
     gsu_sub(g.r[0], g.r[3], 0);
     g.r[0] = FX_POOL_SECOND;
@@ -337,40 +338,41 @@ done:
     g.r[2] = gsu_inc(gsu_inc(g.r[2]));
     gsu_moves(g.r[0]);
     if (gsu.s)
-        { gsu_codes(FxPoolTake_code[copy] + 21, 1); g.r[0] = gsu_inc(gsu_not(g.r[0])); }
-    gsu_codes(FxPoolTake_code[copy] + 22, 2);
+        { gsu_codes(FxPoolTake_code[copy] + 23, 1); g.r[0] = gsu_inc(gsu_not(g.r[0])); }
+    gsu_codes(FxPoolTake_code[copy] + 24, 2);
     g.r[0] = gsu_sub(g.r[0], 4, 0);
     if (!gsu.z && !gsu.s) {
         g.r[12] = g.r[0];
         g.r[0] = gsu_sub(g.r[0], g.r[0], 0);
         g.r[13] = 0x89CB;
         do {
-            gsu_codes(FxPoolTake_code[copy] + 24, 1);
+            gsu_codes(FxPoolTake_code[copy] + 26, 1);
             gsu_stb(g.r[2], (uint8_t)g.r[0]);
             g.r[2] = gsu_inc(g.r[2]);
-        } while (gsu_codes_loop(FxPoolTake_code[copy] + 25, 1, gsu_count_down(&g.r[12])));
-        gsu_codes(FxPoolTake_code[copy] + 26, 1);
+        } while (gsu_codes_loop(FxPoolTake_code[copy] + 27, 1, gsu_count_down(&g.r[12])));
+        gsu_codes(FxPoolTake_code[copy] + 28, 1);
     }
     g.r[0] = gsu_add(REC_POOL, g.r[1], 0);
     gsu_stw(g.r[0], g.r[3]);
-    gsu_codes(FxPoolTake_code[copy] + 27, 1);
+    gsu_codes(FxPoolTake_code[copy] + 29, 1);
     g.r[2] = gsu_ldw(FX_RECORDS);
     g.r[0] = gsu_add(REC_ALL_NEXT, g.r[1], 0);
-    gsu_codes(FxPoolTake_code[copy] + 28, 1);
+    gsu_codes(FxPoolTake_code[copy] + 30, 1);
     gsu_stw(g.r[0], g.r[2]);
-    gsu_codes(FxPoolTake_code[copy] + 29, 1);
+    gsu_codes(FxPoolTake_code[copy] + 31, 1);
     gsu_stw(FX_RECORDS, g.r[1]);
     gsu_moves(g.r[2]);
     if (!gsu.z) {
-        gsu_codes(FxPoolTake_code[copy] + 30, 1);
+        gsu_codes(FxPoolTake_code[copy] + 32, 1);
         g.r[0] = gsu_add(REC_ALL_PREV, g.r[2], 0);
         gsu_stw(g.r[0], g.r[1]);
     }
-    gsu_codes(FxPoolTake_code[copy] + 31, 1);
+    gsu_codes(FxPoolTake_code[copy] + 33, 1);
     g.r[2] = gsu_ldw(gsu_add(REC_FLAGS1C, g.r[1], 0));
     g.r[0] = gsu_or(0x0004, g.r[2]);
-    gsu_codes(FxPoolTake_code[copy] + 32, 1);
+    gsu_codes(FxPoolTake_code[copy] + 34, 1);
     gsu_sbk(g.r[0]);
+    gsu_codes(FxPoolTake_code[copy] + 35, 2);
     return g;
 }
 
@@ -392,9 +394,9 @@ void abi_FxPoolTake(void)
 #define REC_MASS 0x2Au
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode record_new_code[2][5] = {
-    {{0x04893A, 3}, {0x048B65, 13}, {0x0489F8, 2}, {0x048B72, 5}, {0x048B77, 9}},
-    {{0x04893A, 3}, {0x048C96, 13}, {0x0489F8, 2}, {0x048CA3, 5}, {0x048CA8, 13}},
+static const GsuCode record_new_code[2][1] = {
+    {{0x048B77, 9}},
+    {{0x048CA8, 13}},
 };
 
 /* The start of each program below: R10 = the stack, a record of `bytes`
@@ -402,16 +404,14 @@ static const GsuCode record_new_code[2][5] = {
    $238E for the S-CPU. Returns whether there is one. */
 static int record_new(FxRegs *g, uint16_t bytes, uint16_t pool, uint16_t ret, int copy)
 {
-    gsu_codes(record_new_code[copy], 2);
     g->r[10] = FX_STACK;
     g->r[4] = bytes;
     g->r[3] = pool;
     g->r[11] = ret;
     *g = FxPoolTake(*g, GSU_COPY(0));
-    gsu_codes(record_new_code[copy] + 2, 2);
     gsu_stw(FX_NEW_RECORD, g->r[1]);
     gsu_moves(g->r[1]);
-    gsu_codes(record_new_code[copy] + 4, 1);
+    gsu_codes(record_new_code[copy], 1);
     return !gsu.z;
 }
 

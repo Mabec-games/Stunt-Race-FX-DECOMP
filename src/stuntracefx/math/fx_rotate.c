@@ -441,7 +441,6 @@ FxRegs FxAngleOf(FxRegs g)
     gsu_moves(g.r[6]);
     if (gsu.s)
         { gsu_code(0x04C305, 3); g.r[6] = gsu_inc(gsu_not(g.r[6])); }
-    gsu_code(0x04C144, 7); gsu_code(0x04C2FF, 6); gsu_code(0x04C308, 5); gsu_code(0x04C30F, 3); gsu_code(0x04C319, 7); gsu_code(0x04C327, 3); gsu_code(0x04C331, 38); gsu_code(0x04C35D, 7); gsu_code(0x04C366, 5); gsu_code(0x04C36F, 5);
     g.r[0] = g.r[2];
     gsu_moves(g.r[0]);
     if (gsu.s)

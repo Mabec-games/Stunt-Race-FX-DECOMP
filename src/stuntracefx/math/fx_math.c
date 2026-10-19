@@ -9,9 +9,9 @@
 #include "fx_calls.h"
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode FxDivide_code[2][3] = {
-    {{0x04C14B, 4}, {0x04C14F, 4}, {0x04C155, 5}},
-    {{0, 0}, {0x04C14F, 4}, {0x04C155, 5}},
+static const GsuCode FxDivide_code[2][15] = {
+    {{0x04C144, 7}, {0x04C2FF, 6}, {0x04C308, 5}, {0x04C30F, 3}, {0x04C319, 7}, {0x04C327, 3}, {0x04C331, 38}, {0x04C35D, 7}, {0x04C366, 5}, {0x04C36F, 5}, {0x04C14B, 4}, {0, 0}, {0, 0}, {0x04C14F, 4}, {0x04C155, 5}},
+    {{0x04C08A, 33}, {0x04C0BB, 11}, {0x04C0CD, 11}, {0x04C0DC, 33}, {0x04C10A, 15}, {0x04C133, 12}, {0x04C144, 7}, {0, 0}, {0, 0}, {0, 0}, {0x04C119, 21}, {0x04C131, 2}, {0x04C14B, 4}, {0x04C14F, 4}, {0x04C155, 5}},
 };
 
 /*
@@ -29,6 +29,7 @@ static const GsuCode FxDivide_code[2][3] = {
  */
 FxQuotient FxDivide(uint16_t hi, uint16_t lo, uint16_t divisor, int copy)
 {
+    gsu_codes(FxDivide_code[copy], 10);
     FxQuotient o;
     uint16_t count = 16;
     int again;
@@ -36,13 +37,13 @@ FxQuotient FxDivide(uint16_t hi, uint16_t lo, uint16_t divisor, int copy)
     lo = gsu_add(lo, lo, 0);
     hi = gsu_rol(hi);
     do {
-        gsu_codes(FxDivide_code[copy], 1);
+        gsu_codes(FxDivide_code[copy] + 10, 3);
         hi = gsu_sub(hi, divisor, 0);
         if (gsu.cy) {
-            gsu_codes(FxDivide_code[copy] + 1, 1);
+            gsu_codes(FxDivide_code[copy] + 13, 1);
             lo = gsu_rol(lo);                /* quotient bit 1 */
         } else {
-            gsu_codes(FxDivide_code[copy] + 2, 1);
+            gsu_codes(FxDivide_code[copy] + 14, 1);
             hi = gsu_add(hi, divisor, 0);    /* restore; quotient bit 0 */
             lo = gsu_add(lo, lo, 0);
         }
@@ -79,7 +80,6 @@ void abi_FxDivide(void)
  */
 FxQuotient FxDivideHalvedIfLarge(uint16_t hi, uint16_t lo, uint16_t *divisor)
 {
-    gsu_code(0x04C08A, 33); gsu_code(0x04C0BB, 11); gsu_code(0x04C0CD, 11); gsu_code(0x04C0DC, 33); gsu_code(0x04C10A, 15); gsu_code(0x04C133, 12); gsu_code(0x04C144, 7);
     gsu_moves(hi);
     if (!gsu.s) {
         gsu_moves(*divisor);
@@ -121,7 +121,6 @@ FxRoot FxSquareRoot(uint16_t hi, uint16_t lo)
     int i;
 
     do {
-        gsu_code(0x04C119, 21); gsu_code(0x04C131, 2); gsu_code(0x04C14B, 4);
         for (i = 0; i < 2; i++) {
             lo = gsu_add(lo, lo, 0);
             hi = gsu_rol(hi);

@@ -178,7 +178,6 @@ FxRegs FxModelPoints(FxRegs g)
     g.r[1] = gsu_pull(sp);
     gsu_code(0x04A18E, 4);
     g.r[3] = gsu_pull(sp);
-    gsu_code(0x04A192, 2);
     return g;
 }
 

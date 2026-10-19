@@ -33,7 +33,7 @@ FxRegs FxContactNote(FxRegs g, int copy);
 FxRegs FxRecordsApart(FxRegs g);
 FxRegs FxBearingTo(FxRegs g);
 FxRegs FxCourseNearest(FxRegs g);
-FxRegs FxCourseNextEntry(FxRegs g);
+FxRegs FxCourseNextEntry(FxRegs g, int copy);
 
 /* A routine whose C takes and leaves the registers in `gsu` (its abi_),
    called on a register file. */

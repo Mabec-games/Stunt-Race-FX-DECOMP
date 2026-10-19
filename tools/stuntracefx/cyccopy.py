@@ -51,9 +51,21 @@ def load(code_pkl, ctx_txt, fnmap_bin, fnnames_txt):
 
 
 def items(c):
-    """A probe's code as (kind, addr, n) items in address order, split
-    where a CACHE runs (after the byte after it is fetched)."""
-    out, left = [], collections.Counter(c)
+    """A probe's code as (kind, addr, n) items, split where a CACHE runs
+    (after the byte after it is fetched): a sequence in its order, a set of
+    addresses in address order."""
+    if isinstance(c, (list, tuple)):
+        out = []
+        for a in c:
+            if out and out[-1][0] == 'code' and (out[-1][1] & 0xFF0000) == (a & 0xFF0000) and \
+                    ((out[-1][1] + out[-1][2]) & 0xFFFF) == (a & 0xFFFF):
+                out[-1] = ('code', out[-1][1], out[-1][2] + 1)
+            else:
+                out.append(('code', a, 1))
+            if a in FLUSH_AFTER:
+                out.append(('cache', a & 0xFFFF, 0))
+        return out
+    out, left = [], collections.Counter({a: n for a, n in c.items() if a < 0xE00000})
     while left:
         ks = sorted(left)
         run = [ks[0]]

@@ -583,7 +583,7 @@ void gsu_check_rows(FILE *rep)
 #define OPRING (1u << 24)
 
 enum { OP_STEP = 1, OP_READ = 2, OP_WRITE = 3, OP_FILL = 4, OP_FLUSH = 5, OP_FLAGS = 6, OP_ISSUE = 7, OP_FETCH = 8,
-       OP_R14 = 9, OP_GETB = 10 };
+       OP_R14 = 9, OP_GETB = 10, OP_CACHEI = 11 };
 
 /* A step's clocks, and (core patch 0007, in the top byte) what it is for:
    STEP_INSN an instruction, the others the waits and transfers the
@@ -673,10 +673,13 @@ int gsu_lockstep_ring_room(void)
     return LOAD(sh->h_calls) >= (m.active ? m.call : LOAD(sh->o_calls));
 }
 
+static int fetch_ops;
 static void orig_insn(uint32_t pc, uint32_t prev_end, uint8_t opcode)
 {
     int prog = program_start(opcode);
     if (m.active) {
+        /* a CACHE run (the ops log: where the C has to state it) */
+        if (fetch_ops && opcode == 0x02) op(OP_CACHEI, pc);
         CallRec *rec = &sh->calls[m.call % CALLRING];
         {
             struct GsuState fs;
@@ -731,7 +734,6 @@ static void orig_ram(int write, uint32_t addr, uint8_t data) { (void)data; if (m
    0008: 4 a code byte about to be fetched (recorded only for the ops log,
    SFXBOX_GSUCYCLOG_OPS), 5 R14 written (the ROM buffer's fill starts), 6 a
    read of the ROM buffer (GETB, GETC) */
-static int fetch_ops;
 static void orig_cache(int kind, uint32_t v)
 {
     static const uint8_t kinds[] = {0, OP_FILL, OP_FLUSH, OP_ISSUE, OP_FETCH, OP_R14, OP_GETB};

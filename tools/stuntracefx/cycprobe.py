@@ -9,7 +9,7 @@ with CYC_PROBE(n) inserted wherever straight-line code starts: a function's
 body, each arm of an if (and an else for one that has none), each loop body, each case and default, each label
 (a goto's target), the statement after any control statement (where the
 paths join again; the closing brace when nothing follows it), the entry to each loop (its head is also reached from
-its own end), and the right side of && and || and both sides of ?:
+its own end), the way into a label from the statement above it, and the right side of && and || and both sides of ?:
 (the branches a condition makes without a block), and just before each
 bus access (rd8, wr8: after its arguments, so the code between the access
 and the probe before it is the access's own). The headers' inline
@@ -286,6 +286,11 @@ class Walker:
                 # a loop's head is reached from above and from its own end:
                 # its entry gets a probe of its own
                 self.probe_before(k, 'entry')
+            elif prev is not None and k.get('kind') == 'LabelStmt' and \
+                    prev.get('kind') not in ('GotoStmt', 'ReturnStmt', 'BreakStmt', 'ContinueStmt'):
+                # a label is reached by falling into it and by its gotos;
+                # the way in from above gets a probe of its own
+                self.probe_before(k, 'fall')
             prev = k
         if span and prev is not None and prev.get('kind') in CONTROL:
             # a block that ends in a control statement: its paths join

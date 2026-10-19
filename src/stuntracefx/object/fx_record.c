@@ -207,7 +207,7 @@ FxRegs FxRecordAlignment(FxRegs g)
     g.r[10] = gsu_inc(gsu_inc(g.r[10]));
     gsu_code(0x04BCC1, 8);
     for (i = 0; i < 3; i++)
-        g.r[1 + i] = gsu_ldw(gsu_add((uint16_t)(REC_VEL + 2 * i), rec, 0));
+        { g.r[1 + i] = gsu_ldw(gsu_add((uint16_t)(REC_VEL + 2 * i), rec, 0)); }
     g.r[11] = 0xBCD9;
     g = FxNormalize(g);
     for (i = 0; i < 3; i++) {

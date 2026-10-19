@@ -40,7 +40,7 @@ void FxSumsClear(void)
     int i;
 
     for (i = 0; i < 6; i++)
-        gsu_stw((uint16_t)(FX_WORLD_SUM + 2 * i), zero);
+        { gsu_stw((uint16_t)(FX_WORLD_SUM + 2 * i), zero); }
 }
 
 void abi_FxSumsClear(void)
@@ -208,42 +208,46 @@ static uint16_t clamp(FxRegs *g, uint16_t v, int copy)
 static const uint8_t clamp_from_push_into[4] = {0, 0, 1, 2};
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode push_into_code[4][13] = {
-    {{0x0496C3, 3}, {0x04B156, 9}, {0, 0}, {0, 0}, {0x0496C6, 4}, {0x0496CA, 18}, {0x0496E9, 5}, {0x049701, 5}, {0x049719, 5}, {0x04971E, 4}, {0x049722, 4}, {0x04973D, 2}, {0x04B15F, 5}},
-    {{0x0496C3, 3}, {0x04ABD8, 13}, {0, 0}, {0, 0}, {0x0496C6, 4}, {0x0496CA, 12}, {0x0496E9, 5}, {0x049701, 5}, {0x049719, 5}, {0x04971E, 4}, {0x049722, 4}, {0x04973D, 2}, {0, 0}},
-    {{0x04973F, 3}, {0x04AD81, 10}, {0, 0}, {0, 0}, {0x049742, 4}, {0x049746, 12}, {0x049765, 11}, {0x04977D, 11}, {0x049795, 5}, {0x04979A, 4}, {0x04979E, 4}, {0x0497B9, 2}, {0x04AD8B, 7}},
-    {{0x04973F, 3}, {0x04AD9B, 13}, {0x04ADB3, 6}, {0x04ADBB, 9}, {0x049742, 4}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04979A, 4}, {0x04979E, 4}, {0x0497B9, 2}, {0, 0}},
+static const GsuCode push_into_code[4][7] = {
+    {{0x0496C6, 4}, {0x0496CA, 18}, {0x0496E9, 5}, {0x049701, 5}, {0x049719, 5}, {0x04971E, 4}, {0x049722, 4}},
+    {{0x0496C6, 4}, {0x0496CA, 12}, {0x0496E9, 5}, {0x049701, 5}, {0x049719, 5}, {0x04971E, 4}, {0x049722, 4}},
+    {{0x049742, 4}, {0x049746, 12}, {0x049765, 11}, {0x04977D, 11}, {0x049795, 5}, {0x04979A, 4}, {0x04979E, 4}},
+    {{0x049742, 4}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04979A, 4}, {0x04979E, 4}},
 };
 
 /* Both push routines: (R4, R5, R6) clamped, then added to the sum at
    `sum`; R1 and R2 kept on the R10 stack. */
 static FxRegs push_into(FxRegs g, uint16_t sum, int copy)
 {
-    gsu_codes(push_into_code[copy], 4);
     int i;
 
     gsu_push(&g.r[10], g.r[1]);
-    gsu_codes(push_into_code[copy] + 4, 1);
+    gsu_codes(push_into_code[copy], 1);
     gsu_push(&g.r[10], g.r[2]);
     g.r[1] = PUSH_MIN;
     g.r[2] = PUSH_MAX;
-    gsu_codes(push_into_code[copy] + 5, 4);
+    gsu_codes(push_into_code[copy] + 1, 4);
     for (i = 4; i <= 6; i++)
         g.r[i] = clamp(&g, g.r[i], GSU_COPY(clamp_from_push_into[copy]));
     g.r[2] = gsu_pull(&g.r[10]);
-    gsu_codes(push_into_code[copy] + 9, 1);
+    gsu_codes(push_into_code[copy] + 5, 1);
     g.r[1] = gsu_pull(&g.r[10]);
-    gsu_codes(push_into_code[copy] + 10, 1);
+    gsu_codes(push_into_code[copy] + 6, 1);
     for (i = 0; i < 3; i++) {
         g.r[0] = gsu_add(gsu_ldw((uint16_t)(sum + 2 * i)), g.r[4 + i], 0);
         gsu_stw((uint16_t)(sum + 2 * i), g.r[0]);
-        gsu_codes(push_into_code[copy] + 11, 2);
     }
     return g;
 }
 
 /* cyccopy: the copy each of the caller's copies calls */
 static const uint8_t push_into_from_FxSumsPushWorld[2] = {0, 1};
+
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode FxSumsPushWorld_code[2][4] = {
+    {{0x0496C3, 3}, {0x04B156, 9}, {0x04973D, 2}, {0x04B15F, 5}},
+    {{0x0496C3, 3}, {0x04ABD8, 13}, {0x04973D, 2}, {0, 0}},
+};
 
 /*
  * @routine 04:96C3 FxSumsPushWorld
@@ -257,6 +261,7 @@ static const uint8_t push_into_from_FxSumsPushWorld[2] = {0, 1};
  */
 FxRegs FxSumsPushWorld(FxRegs g, int copy)
 {
+    gsu_codes(FxSumsPushWorld_code[copy], 2);
     return push_into(g, FX_WORLD_SUM, GSU_COPY(push_into_from_FxSumsPushWorld[copy]));
 }
 
@@ -272,6 +277,12 @@ void abi_FxSumsPushWorld(void)
 /* cyccopy: the copy each of the caller's copies calls */
 static const uint8_t push_into_from_FxSumsPushLocal[2] = {2, 3};
 
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode FxSumsPushLocal_code[2][6] = {
+    {{0x04973F, 3}, {0x04AD81, 10}, {0, 0}, {0, 0}, {0x0497B9, 2}, {0x04AD8B, 7}},
+    {{0x04973F, 3}, {0x04AD9B, 13}, {0x04ADB3, 6}, {0x04ADBB, 9}, {0x0497B9, 2}, {0, 0}},
+};
+
 /*
  * @routine 04:973F FxSumsPushLocal
  * WHAT IT DOES: As FxSumsPushWorld, into the own-axes sum.
@@ -281,6 +292,7 @@ static const uint8_t push_into_from_FxSumsPushLocal[2] = {2, 3};
  */
 FxRegs FxSumsPushLocal(FxRegs g, int copy)
 {
+    gsu_codes(FxSumsPushLocal_code[copy], 4);
     return push_into(g, FX_LOCAL_SUM, GSU_COPY(push_into_from_FxSumsPushLocal[copy]));
 }
 

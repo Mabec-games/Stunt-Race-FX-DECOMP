@@ -384,6 +384,12 @@ void abi_FxCoursePrevEntry(void)
     memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
 }
 
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode FxCourseNextEntry_code[2][11] = {
+    {{0x04C4A0, 6}, {0x04CCA4, 7}, {0, 0}, {0x04CCAB, 8}, {0x04CCB3, 8}, {0x04CCBF, 8}, {0x04CCC7, 2}, {0x04CCC9, 1}, {0x04CCCA, 3}, {0x04CCCD, 4}, {0x04CCDE, 5}},
+    {{0x04CCA4, 7}, {0x04CD90, 8}, {0x04CEDF, 5}, {0x04CCAB, 8}, {0x04CCB3, 8}, {0x04CCBF, 8}, {0x04CCC7, 2}, {0x04CCC9, 1}, {0x04CCCA, 3}, {0x04CCCD, 4}, {0x04CCDE, 5}},
+};
+
 /*
  * @routine 04:CCA4 FxCourseNextEntry
  * WHAT IT DOES: Steps car R8 on one segment: from number R0 at entry R5 to
@@ -399,25 +405,26 @@ void abi_FxCoursePrevEntry(void)
  * R14 = R5 + 8; ROMBR = the table bank; S, Z from R14; OV, CY from the
  * address ADD (or the CMP with the count); the last RAM address $1092.
  */
-FxRegs FxCourseNextEntry(FxRegs g)
+FxRegs FxCourseNextEntry(FxRegs g, int copy)
 {
+    gsu_codes(FxCourseNextEntry_code[copy], 3);
     g.r[6] = g.r[0];
     g.r[0] = gsu_ldw(FX_TABLE_BANK);
     gsu.rombr = (uint8_t)(g.r[0] & 0x7F);
-    gsu_code(0x04CCAB, 8);
+    gsu_codes(FxCourseNextEntry_code[copy] + 3, 1);
     g.r[1] = gsu_ldw(gsu_add(REC_DIR, g.r[8], 0));
     g.r[0] = gsu_and(0x0002, g.r[1]);
     g.r[0] = g.r[6];
     if (!gsu.z)
-        return FxCoursePrevEntry(g); else { gsu_code(0x04CCB3, 8); gsu_code(0x04CCBF, 8); }
+        return FxCoursePrevEntry(g); else { gsu_codes(FxCourseNextEntry_code[copy] + 4, 2); }
     g.r[6] = gsu_inc(g.r[0]);
     gsu_r14(gsu_ldw(FX_TABLE_ADDR));
     g.r[14] = gsu.r[14];
-    g.r[1] = (gsu_code(0x04CCC7, 2), gsu_getb());
-    gsu_code(0x04CCC9, 1);
+    g.r[1] = (gsu_codes(FxCourseNextEntry_code[copy] + 6, 1), gsu_getb());
+    gsu_codes(FxCourseNextEntry_code[copy] + 7, 1);
     gsu_r14(gsu_inc(g.r[14]));
     g.r[14] = gsu.r[14];
-    gsu_code(0x04CCCA, 3);
+    gsu_codes(FxCourseNextEntry_code[copy] + 8, 1);
     g.r[1] = gsu_getbh(g.r[1]);
     gsu_sub(g.r[0], g.r[1], 0);
     if (gsu.z) {
@@ -427,7 +434,7 @@ FxRegs FxCourseNextEntry(FxRegs g)
         g.r[14] = gsu.r[14];
         g.r[6] = 1;
     } else {
-        gsu_code(0x04CCCD, 4); gsu_code(0x04CCDE, 5);
+        gsu_codes(FxCourseNextEntry_code[copy] + 9, 2);
         gsu_r14(gsu_add(g.r[5], 8, 0));
         g.r[14] = gsu.r[14];
     }
@@ -440,7 +447,7 @@ void abi_FxCourseNextEntry(void)
     FxRegs g;
 
     memcpy(g.r, gsu.r, sizeof g.r);
-    g = FxCourseNextEntry(g);
+    g = FxCourseNextEntry(g, GSU_COPY(0));
     memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
 }
 
@@ -498,7 +505,7 @@ FxRegs FxRecordHeadingAhead(FxRegs g)
     g.r[11] = 0xC393;
     g = FxCourseNearest(g);
     g.r[11] = 0xC398;
-    g = FxCourseNextEntry(g);
+    g = FxCourseNextEntry(g, GSU_COPY(0));
     g.r[11] = 0xC39D;
     g = FxBearingTo(g);
     gsu_pull(&g.r[10]);
@@ -552,7 +559,7 @@ void abi_FxCourseNextDistance(void)
     gsu.r[11] = 0xCEDF;
     (gsu_code(0x04CD83, 13), gsu_code(0x04CED9, 6), abi_FxTableEntryWords());
     gsu.r[11] = 0xCEE4;
-    (gsu_code(0x04CCA4, 7), gsu_code(0x04CD90, 8), gsu_code(0x04CEDF, 5), abi_FxCourseNextEntry());
+    abi_FxCourseNextEntry();
     gsu.r[0] = gsu_add(0x001E, gsu.r[8], 0);
     gsu.r[0] = quarter_apart(gsu_ldw(gsu.r[0]), gsu.r[1], GSU_COPY(0));
     gsu.r[4] = gsu.r[0];

@@ -102,10 +102,10 @@ lAB13:
     if (t) goto lAB22; else { gsu_code(0x01AB1A, 8); gsu_code(0x01AEB9, 6); }
     R[11] = 0xAB22;
     abi_FxScreenClear();
+gsu_code(0x01AB22, 8); gsu_code(0x01AEC8, 2);
 lAB22:
     R[10] = 0x0240;
     R[0] = gsu_sub(R[0], R[0], 0);
-    gsu_code(0x01AB22, 8); gsu_code(0x01AEC8, 2);
     gsu_stw(FX_MODEL_1B4, R[0]);
     R[11] = 0xAB2E;
     goto lAB81;
@@ -154,8 +154,9 @@ lAB73:
     gsu_stw(FX_EFFECT_MAX, R[0]);
     R[11] = 0xAB7D;
     (gsu_code(0x01AB79, 4), gsu_code(0x01D12F, 3), abi_FxTextNotice());
+gsu_code(0x01AB7D, 3);
 lAB7D:
-    R[0] = gsu_rpix_r(R[1], gsu_code_then(0x01AB7D, 3, R[2]));
+    R[0] = gsu_rpix_r(R[1], R[2]);
     return;   /* the STOP: the program ends here */
     /* FxObjectsDraw */
 lAB81:
@@ -171,6 +172,7 @@ lAB8C:
     gsu_stw(R[10], R[11]);
     R[10] = gsu_inc(R[10]);
     R[10] = gsu_inc(R[10]);
+gsu_code(0x01AB8F, 1);
 lAB90:
     R[0] = gsu_sub(R[0], R[0], 0);
     gsu_code(0x01AB90, 10);
@@ -521,8 +523,8 @@ lB10B:
     R[2] = gsu_ldw(gsu_code_then(0x01B111, 3, FX_OBJECT_Y));
     R[11] = 0xB118;
     (gsu_code(0x01B114, 4), gsu_code(0x01B2A4, 11), gsu_code(0x01B2B9, 7), gsu_code(0x01B2CA, 9), abi_FxProjectScaled());
+gsu_code(0x01B118, 4); gsu_code(0x01B2E5, 8);
 lB118:
-    gsu_code(0x01B118, 4); gsu_code(0x01B2E5, 8);
     gsu_stw(FX_MODEL_BA, R[1]);
     gsu_code(0x01B11C, 3);
     gsu_stw(FX_MODEL_BC, R[2]);
@@ -718,6 +720,7 @@ lB22D:
     gsu_r14(gsu_add(R[0], R[5], 0));
     R[1] = R[3];
     R[12] = R[6];
+gsu_code(0x01B23B, 4);
 lB23E:
     R[8] = gsu_add(R[8], R[9], 0);
     R[0] = gsu_merge();
@@ -785,6 +788,7 @@ lB280:
     gsu_r14(gsu_add(R[0], R[5], 0));
     R[1] = R[3];
     R[12] = R[6];
+gsu_code(0x01B28E, 4);
 lB291:
     R[8] = gsu_sub(R[8], R[9], 0);
     R[0] = gsu_merge();
@@ -912,8 +916,9 @@ lB384:
 lB38A:
     R[8] = R[0];
     R[0] = gsu_ldw(FX_SCREEN_RIGHT);
+gsu_code(0x01B398, 1);
 lB38F:
-    gsu_code(0x01B390, 9);
+    gsu_code(0x01B390, 8);
     gsu_sub(R[0], R[1], 0);   /* CMP */
     t = gsu.s;
     if (t) goto lB398;
@@ -1054,6 +1059,7 @@ lB6D5:
     R[12] = 0x0014;
     /* CACHE */
     R[13] = 0xB6F4;
+gsu_code(0x01B6EF, 4); gsu_cache(0xB6F2); gsu_code(0x01B6F3, 1);
 lB6F4:
     R[0] = gsu_ldb(gsu_code_then(0x01B6F4, 3, R[3]));
     R[0] = gsu_lob(R[0]);

@@ -23,6 +23,7 @@
  */
 void FxMatrixTranspose(uint16_t m, uint16_t *old5, uint16_t *old7, uint16_t *old6)
 {
+    gsu_code(0x01844F, 1); gsu_code(0x018749, 8); gsu_code(0x01972B, 5);
     uint16_t e1, e2, e3, e5, e6, e7;
 
     e1 = gsu_ldw((uint16_t)(m + 2));
@@ -51,6 +52,7 @@ void FxMatrixTranspose(uint16_t m, uint16_t *old5, uint16_t *old7, uint16_t *old
     *old5 = e5;
     *old7 = e7;
     *old6 = e6;
+    gsu_code(0x018751, 4); gsu_code(0x01975A, 1);
 }
 
 void abi_FxMatrixTranspose(void)
@@ -89,6 +91,7 @@ uint16_t FxMatrixApply(uint16_t x, uint16_t y, uint16_t z, uint16_t out, uint16_
             sum = (uint16_t)(sum + (uint16_t)((int32_t)(int16_t)v[row] * (int16_t)e >> 15));
         }
         gsu_stw((uint16_t)(out + col * 2), sum);
+        gsu_code(0x019787, 4); gsu_code(0x0197D6, 3);
     }
     *partial = part;
     *m22 = e;
@@ -99,7 +102,6 @@ uint16_t FxMatrixApply(uint16_t x, uint16_t y, uint16_t z, uint16_t out, uint16_
    that result's first two terms and the last element. */
 static void apply_exit(uint16_t out, uint16_t sum, uint16_t part, uint16_t e)
 {
-    gsu_code(0x019787, 4); gsu_code(0x0197D6, 3);
     gsu_add((uint16_t)(sum - part), part, 0);
     gsu.r[0] = sum;
     gsu.r[5] = part;
@@ -129,6 +131,7 @@ void abi_FxMatrixApply(void)
 void FxMatrixApplyVectors(uint16_t out, uint16_t *x, uint16_t *y, uint16_t *z,
                           uint16_t *sum, uint16_t *partial, uint16_t *m22)
 {
+    gsu_code(0x018755, 6); gsu_code(0x018770, 8); gsu_code(0x01975B, 6);
     int i;
 
     for (i = 0; i < 3; i++) {
@@ -243,57 +246,53 @@ void abi_FxMatrixRotateBackProgram(void)
 #define FX_ANGLES 0x0020u            /* three angles: $0020, $0022, $0024 */
 #define FX_SINE_TABLE 0x983Eu        /* ROM bank $00: 257 words, 1.15 */
 
-/* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode mul15_code[3][2] = {
-    {{0, 0}, {0, 0}},
-    {{0x01840F, 7}, {0, 0}},
-    {{0x01832D, 1}, {0x01844F, 1}},
-};
-
 /* (a * b) >> 15, signed: FMULT then ROL. */
 static uint16_t mul15(uint16_t a, uint16_t b, int copy)
 {
-    gsu_codes(mul15_code[copy], 2);
     return (uint16_t)((int32_t)(int16_t)a * (int16_t)b >> 15);
 }
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode fx_sine_code[6][9] = {
-    {{0x018338, 8}, {0x018340, 2}, {0x018342, 1}, {0x018343, 3}, {0x018346, 1}, {0x018347, 1}, {0x018348, 1}, {0x018349, 2}, {0x01834B, 13}},
-    {{0x018358, 10}, {0x018362, 2}, {0x018364, 1}, {0x018365, 3}, {0x018368, 1}, {0x018369, 1}, {0x01836A, 1}, {0x01836B, 2}, {0x01836D, 13}},
-    {{0x01837A, 8}, {0x018382, 2}, {0x018384, 1}, {0x018385, 3}, {0x018388, 1}, {0x018389, 1}, {0x01838A, 1}, {0x01838B, 2}, {0x01838D, 13}},
-    {{0x01839A, 10}, {0x0183A4, 2}, {0x0183A6, 1}, {0x0183A7, 3}, {0x0183AA, 1}, {0x0183AB, 1}, {0x0183AC, 1}, {0x0183AD, 2}, {0x0183AF, 13}},
-    {{0x0183BC, 8}, {0x0183C4, 2}, {0x0183C6, 1}, {0x0183C7, 3}, {0x0183CA, 1}, {0x0183CB, 1}, {0x0183CC, 1}, {0x0183CD, 2}, {0x0183CF, 13}},
-    {{0x0183DC, 10}, {0x0183E6, 2}, {0x0183E8, 1}, {0x0183E9, 3}, {0x0183EC, 1}, {0x0183ED, 1}, {0x0183EE, 1}, {0x0183EF, 2}, {0x0183F1, 30}},
+static const GsuCode fx_sine_code[6][7] = {
+    {{0x018340, 2}, {0x018342, 1}, {0x018343, 3}, {0x018346, 1}, {0x018347, 1}, {0x018348, 1}, {0x018349, 2}},
+    {{0x018362, 2}, {0x018364, 1}, {0x018365, 3}, {0x018368, 1}, {0x018369, 1}, {0x01836A, 1}, {0x01836B, 2}},
+    {{0x018382, 2}, {0x018384, 1}, {0x018385, 3}, {0x018388, 1}, {0x018389, 1}, {0x01838A, 1}, {0x01838B, 2}},
+    {{0x0183A4, 2}, {0x0183A6, 1}, {0x0183A7, 3}, {0x0183AA, 1}, {0x0183AB, 1}, {0x0183AC, 1}, {0x0183AD, 2}},
+    {{0x0183C4, 2}, {0x0183C6, 1}, {0x0183C7, 3}, {0x0183CA, 1}, {0x0183CB, 1}, {0x0183CC, 1}, {0x0183CD, 2}},
+    {{0x0183E6, 2}, {0x0183E8, 1}, {0x0183E9, 3}, {0x0183EC, 1}, {0x0183ED, 1}, {0x0183EE, 1}, {0x0183EF, 2}},
 };
 
 /* The sine of an angle (a full turn $10000) from the table, between its
    entries by the angle's low byte: GETB/GETBH through the ROM buffer. */
 static uint16_t fx_sine(uint16_t angle, int copy)
 {
-    gsu_codes(fx_sine_code[copy], 1);
     uint16_t at = (uint16_t)(FX_SINE_TABLE + (angle >> 8) * 2);
     uint16_t a, b;
 
     gsu_r14(at);
-    a = (gsu_codes(fx_sine_code[copy] + 1, 1), gsu_getb());
+    a = (gsu_codes(fx_sine_code[copy], 1), gsu_getb());
+    gsu_codes(fx_sine_code[copy] + 1, 1);
+    gsu_r14(++at);
     gsu_codes(fx_sine_code[copy] + 2, 1);
-    gsu_r14(++at);
-    gsu_codes(fx_sine_code[copy] + 3, 1);
     a = gsu_getbh(a);
-    gsu_codes(fx_sine_code[copy] + 4, 1);
+    gsu_codes(fx_sine_code[copy] + 3, 1);
     gsu_r14(++at);
-    b = (gsu_codes(fx_sine_code[copy] + 5, 1), gsu_getb());
+    b = (gsu_codes(fx_sine_code[copy] + 4, 1), gsu_getb());
+    gsu_codes(fx_sine_code[copy] + 5, 1);
+    gsu_r14(++at);
     gsu_codes(fx_sine_code[copy] + 6, 1);
-    gsu_r14(++at);
-    gsu_codes(fx_sine_code[copy] + 7, 1);
     b = gsu_getbh(b);
-    gsu_codes(fx_sine_code[copy] + 8, 1);
     return (uint16_t)(a + mul15((uint16_t)((angle & 0xFF) << 7), (uint16_t)(b - a), GSU_COPY(0)));
 }
 
 /* What FxMatrixFromAngles01 leaves in registers. */
 typedef struct { uint16_t sz, cz, sx, cx, sy, cy, sx_cy, cx_cy, sx_sy, cx_sy; } FxAnglesLeft;
+
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode FxMatrixFromAngles01_code[2][17] = {
+    {{0x018326, 7}, {0x01832F, 9}, {0x018338, 8}, {0x01834B, 13}, {0x018358, 10}, {0x01836D, 13}, {0x01837A, 8}, {0x01838D, 13}, {0x01839A, 10}, {0x0183AF, 13}, {0x0183BC, 8}, {0x0183CF, 13}, {0x0183DC, 10}, {0x0183F1, 30}, {0x01840F, 7}, {0x01832D, 1}, {0x01844F, 1}},
+    {{0, 0}, {0, 0}, {0x018338, 8}, {0x01834B, 13}, {0x018358, 10}, {0x01836D, 13}, {0x01837A, 8}, {0x01838D, 13}, {0x01839A, 10}, {0x0183AF, 13}, {0x0183BC, 8}, {0x0183CF, 13}, {0x0183DC, 10}, {0x0183F1, 30}, {0x01840F, 7}, {0, 0}, {0, 0}},
+};
 
 /*
  * @routine 01:832F FxMatrixFromAngles01
@@ -313,8 +312,9 @@ typedef struct { uint16_t sz, cz, sx, cx, sy, cy, sx_cy, cx_cy, sx_sy, cx_sy; } 
  * S, Z from its ROL; OV from the ADD R13 of the element before.
  * R14 and the ROM buffer move as on the Super FX.
  */
-void FxMatrixFromAngles01(uint16_t out, FxAnglesLeft *k)
+void FxMatrixFromAngles01(uint16_t out, FxAnglesLeft *k, int copy)
 {
+    gsu_codes(FxMatrixFromAngles01_code[copy], 2);
     uint16_t m[9];
     uint16_t a;
     int i;
@@ -322,22 +322,35 @@ void FxMatrixFromAngles01(uint16_t out, FxAnglesLeft *k)
     gsu.rambr = 0;
     gsu.rombr = 0;
     a = gsu_ldw(FX_ANGLES);
+    gsu_codes(FxMatrixFromAngles01_code[copy] + 2, 1);
     k->sz = fx_sine(a, GSU_COPY(0));
+    gsu_codes(FxMatrixFromAngles01_code[copy] + 3, 1);
     gsu_r14(0x4000);
+    gsu_codes(FxMatrixFromAngles01_code[copy] + 4, 1);
     k->cz = fx_sine((uint16_t)(a + 0x4000), GSU_COPY(1));
+    gsu_codes(FxMatrixFromAngles01_code[copy] + 5, 1);
     a = gsu_ldw((uint16_t)(FX_ANGLES + 2));
+    gsu_codes(FxMatrixFromAngles01_code[copy] + 6, 1);
     k->sx = fx_sine(a, GSU_COPY(2));
+    gsu_codes(FxMatrixFromAngles01_code[copy] + 7, 1);
     gsu_r14(0x4000);
+    gsu_codes(FxMatrixFromAngles01_code[copy] + 8, 1);
     k->cx = fx_sine((uint16_t)(a + 0x4000), GSU_COPY(3));
+    gsu_codes(FxMatrixFromAngles01_code[copy] + 9, 1);
     a = gsu_ldw((uint16_t)(FX_ANGLES + 4));
+    gsu_codes(FxMatrixFromAngles01_code[copy] + 10, 1);
     k->sy = fx_sine(a, GSU_COPY(4));
+    gsu_codes(FxMatrixFromAngles01_code[copy] + 11, 1);
     gsu_r14(0x4000);
+    gsu_codes(FxMatrixFromAngles01_code[copy] + 12, 1);
     k->cy = fx_sine((uint16_t)(a + 0x4000), GSU_COPY(5));
+    gsu_codes(FxMatrixFromAngles01_code[copy] + 13, 1);
     k->sx_cy = mul15(k->sx, k->cy, GSU_COPY(0));
     k->cx_cy = mul15(k->cx, k->cy, GSU_COPY(0));
     k->sx_sy = mul15(k->sx, k->sy, GSU_COPY(0));
     k->cx_sy = mul15(k->cx, k->sy, GSU_COPY(0));
     gsu_r14(k->cx_sy);
+    gsu_codes(FxMatrixFromAngles01_code[copy] + 14, 1);
     m[0] = (uint16_t)(mul15(k->sx_sy, k->sz, GSU_COPY(1)) + k->cx_cy);
     m[1] = (uint16_t)(mul15(k->sx_cy, k->sz, GSU_COPY(0)) - k->cx_sy);
     m[2] = mul15(k->sx, k->cz, GSU_COPY(0));
@@ -348,7 +361,7 @@ void FxMatrixFromAngles01(uint16_t out, FxAnglesLeft *k)
     m[7] = (uint16_t)(mul15(k->cx_cy, k->sz, GSU_COPY(0)) + k->sx_sy);
     m[8] = mul15(k->cx, k->cz, GSU_COPY(0));
     for (i = 0; i < 9; i++)
-        { gsu_stw((uint16_t)(out + i * 2), m[i]); }
+        { gsu_stw((uint16_t)(out + i * 2), m[i]); gsu_codes(FxMatrixFromAngles01_code[copy] + 15, 2); }
 }
 
 void abi_FxMatrixFromAngles01(void)
@@ -357,7 +370,7 @@ void abi_FxMatrixFromAngles01(void)
     FxAnglesLeft k;
     uint32_t p;
 
-    FxMatrixFromAngles01(out, &k);
+    FxMatrixFromAngles01(out, &k, GSU_COPY(0));
     gsu_add(mul15(k.cx_cy, k.sz, GSU_COPY(0)), k.sx_sy, 0);      /* OV of the ADD R13 */
     p = (uint32_t)((int32_t)(int16_t)k.cx * (int16_t)k.cz);
     gsu.cy = (uint8_t)(p >> 31);                    /* ROL takes FMULT's bit 15 */
@@ -386,7 +399,6 @@ void abi_FxMatrixFromAngles01(void)
  */
 void abi_FxMatrixFromAnglesProgram(void)
 {
-    gsu_code(0x018326, 7); gsu_code(0x01832F, 9);
     gsu.r[9] = 0x00E4;
     gsu.r[11] = 0x832D;
     abi_FxMatrixFromAngles01();

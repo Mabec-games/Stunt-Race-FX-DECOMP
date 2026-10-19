@@ -261,6 +261,7 @@ def strip(text, code_only=False):
     ITEM = CODE_ITEM if code_only else globals()['ITEM']
     # cyccopy.py's tables of each copy's code (made again with the code)
     text = re.sub(r"/\* cyccopy: [^\n]*\*/\nstatic const (?:GsuCode|uint8_t) [^;]*;\n\n", '', text)
+    text = re.sub(r'GSU_COPY\(\w+\[copy\]\)', 'GSU_COPY(0)', text)      # their arrays go with them
     out = re.sub(r' else \{ (?:%s; )+\}' % ITEM, '', text)
     out = re.sub(r' (?:%s; )+\}' % ITEM, ' }', out)
     # forms around code: { T; X }, (T, X), cyc_then(N, X), cyc_loop(N, X)

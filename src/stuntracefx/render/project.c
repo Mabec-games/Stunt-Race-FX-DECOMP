@@ -18,30 +18,20 @@ static const uint16_t clamp_ret[16] = {
     0x9563, 0x9578, 0x9595, 0x95A7, 0x95C6, 0x95D8, 0x95F2, 0x9601,
 };
 
-/* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode negate_code[5][6] = {
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-    {{0x019578, 16}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-    {{0x019483, 4}, {0x01954A, 10}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-    {{0x0194E7, 8}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-    {{0x01947D, 10}, {0x01954A, 10}, {0x0195B4, 8}, {0x0195E5, 8}, {0x0195F6, 11}, {0x019658, 3}},
-};
-
 /* NOT then INC. */
 static uint16_t negate(uint16_t v, int copy)
 {
-    gsu_codes(negate_code[copy], 6);
     return gsu_inc(gsu_not(v));
 }
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode outcode_axis_code[6][9] = {
-    {{0x019611, 5}, {0x019616, 3}, {0x019616, 7}, {0x01961D, 3}, {0, 0}, {0x01961D, 4}, {0x019621, 7}, {0, 0}, {0x019628, 3}},
-    {{0x01962B, 7}, {0x019632, 3}, {0x019632, 7}, {0x019639, 3}, {0x019647, 11}, {0x019639, 4}, {0x01963D, 7}, {0x019647, 11}, {0x019644, 3}},
-    {{0x019611, 5}, {0x019616, 3}, {0x019616, 7}, {0x01961D, 3}, {0, 0}, {0x01961D, 4}, {0x019621, 7}, {0, 0}, {0, 0}},
-    {{0x01962B, 7}, {0x019632, 3}, {0x019632, 7}, {0x019639, 3}, {0x019647, 11}, {0x019639, 4}, {0x01963D, 7}, {0x019647, 11}, {0, 0}},
-    {{0x019611, 5}, {0, 0}, {0x019616, 7}, {0x01961D, 3}, {0x01962B, 7}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-    {{0, 0}, {0, 0}, {0x019632, 7}, {0, 0}, {0, 0}, {0x019639, 25}, {0, 0}, {0, 0}, {0, 0}},
+static const GsuCode outcode_axis_code[6][6] = {
+    {{0x019616, 3}, {0x019616, 7}, {0x01961D, 3}, {0x01961D, 4}, {0x019621, 7}, {0x019628, 3}},
+    {{0x019632, 3}, {0x019632, 7}, {0x019639, 3}, {0x019639, 4}, {0x01963D, 7}, {0x019644, 3}},
+    {{0x019616, 3}, {0x019616, 7}, {0x01961D, 3}, {0x01961D, 4}, {0x019621, 7}, {0, 0}},
+    {{0x019632, 3}, {0x019632, 7}, {0x019639, 3}, {0x019639, 4}, {0x01963D, 7}, {0, 0}},
+    {{0, 0}, {0x019616, 7}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0, 0}, {0x019632, 7}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
 };
 
 /* One axis of the outcode: from R5, one more for a point past the low
@@ -49,33 +39,29 @@ static const GsuCode outcode_axis_code[6][9] = {
    two bits swapped (XOR #3) when the point is behind (the bit in mask). */
 static void outcode_axis(uint16_t v, uint16_t low_edge, uint16_t high_edge, uint16_t mask, int copy)
 {
-    gsu_codes(outcode_axis_code[copy], 1);
     gsu.r[0] = gsu_sub(gsu_ldw(low_edge), v, 0);
     if (gsu.s == gsu.ov)
-        { gsu_codes(outcode_axis_code[copy] + 1, 1); goto one; } else { gsu_codes(outcode_axis_code[copy] + 2, 1); }
+        { gsu_codes(outcode_axis_code[copy], 1); goto one; } else { gsu_codes(outcode_axis_code[copy] + 1, 1); }
     gsu.r[0] = gsu_sub(gsu_ldw(high_edge), v, 0);
     if (gsu.s == gsu.ov)
-        { gsu_codes(outcode_axis_code[copy] + 3, 2); return; } else { gsu_codes(outcode_axis_code[copy] + 5, 1); }
+        { gsu_codes(outcode_axis_code[copy] + 2, 1); return; } else { gsu_codes(outcode_axis_code[copy] + 3, 1); }
     gsu.r[5] = gsu_inc(gsu.r[5]);
 one:
-    gsu_codes(outcode_axis_code[copy] + 6, 2);
+    gsu_codes(outcode_axis_code[copy] + 4, 1);
     gsu.r[5] = gsu_inc(gsu.r[5]);
     gsu.r[0] = gsu_and((uint16_t)mask, gsu.r[5]);
     if (!gsu.z)
-        { gsu_codes(outcode_axis_code[copy] + 8, 1); gsu.r[5] = gsu_xor(gsu.r[5], 3); }
+        { gsu_codes(outcode_axis_code[copy] + 5, 1); gsu.r[5] = gsu_xor(gsu.r[5], 3); }
 }
 
 /* cyccopy: the copy each of the caller's copies calls */
 static const uint8_t outcode_axis_from_FxProjectPoint[3] = {1, 3, 5};
 
-/* cyccopy: the copy each of the caller's copies calls */
-static const uint8_t negate_from_FxProjectPoint[3] = {2, 0, 4};
-
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode FxProjectPoint_code[3][9] = {
-    {{0x018C63, 6}, {0x01947A, 3}, {0x019487, 4}, {0x01948C, 7}, {0, 0}, {0, 0}, {0x0194B1, 10}, {0x01960C, 5}, {0x018C69, 6}},
-    {{0x018C63, 6}, {0x01947A, 3}, {0, 0}, {0, 0}, {0x01948B, 1}, {0x019493, 5}, {0, 0}, {0x01960C, 5}, {0x018C69, 6}},
-    {{0x018C63, 6}, {0x01947A, 3}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x01960C, 5}, {0x018C69, 6}},
+static const GsuCode FxProjectPoint_code[3][31] = {
+    {{0x018C63, 6}, {0x01947A, 3}, {0x019483, 4}, {0x01954A, 10}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x019487, 4}, {0x01948C, 7}, {0, 0}, {0, 0}, {0, 0}, {0x01947D, 6}, {0x019658, 3}, {0, 0}, {0, 0}, {0x019607, 2}, {0x9608, 0}, {0x019609, 3}, {0, 0}, {0, 0}, {0, 0}, {0x019578, 16}, {0x0194B1, 10}, {0x01960C, 5}, {0x019611, 5}, {0x01962B, 7}, {0, 0}, {0x019647, 11}, {0x018C69, 6}},
+    {{0x018C63, 6}, {0x01947A, 3}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x01947D, 6}, {0x019487, 4}, {0x01948C, 7}, {0x019658, 3}, {0x01948B, 1}, {0, 0}, {0, 0}, {0x0194E7, 8}, {0x019493, 5}, {0, 0}, {0, 0}, {0, 0}, {0x019607, 2}, {0x9608, 0}, {0x019609, 3}, {0, 0}, {0, 0}, {0x01960C, 5}, {0x019611, 5}, {0x01962B, 7}, {0, 0}, {0x019647, 11}, {0x018C69, 6}},
+    {{0x018C63, 6}, {0x01947A, 3}, {0x01947D, 10}, {0x01954A, 10}, {0x0195B4, 8}, {0x0195E5, 8}, {0x0195F6, 11}, {0x019658, 3}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x019601, 8}, {0x9608, 0}, {0x019609, 3}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x01960C, 5}, {0x019611, 5}, {0x01961D, 3}, {0x01962B, 7}, {0x019639, 25}, {0x018C69, 6}},
 };
 
 /*
@@ -108,18 +94,20 @@ void FxProjectPoint(int copy)
     gsu_moves(gsu.r[3]);
     behind = gsu.s;
     if (behind) {
-        gsu.r[3] = negate(gsu.r[3], GSU_COPY(negate_from_FxProjectPoint[copy]));
+        gsu_codes(FxProjectPoint_code[copy] + 2, 6);
+        gsu.r[3] = negate(gsu.r[3], GSU_COPY(0));
         gsu.r[5] = 4;
     } else {
-        gsu_codes(FxProjectPoint_code[copy] + 2, 2);
+        gsu_codes(FxProjectPoint_code[copy] + 8, 4);
         if (gsu.z)
-            { gsu_codes(FxProjectPoint_code[copy] + 4, 1); gsu.r[3] = gsu_inc(gsu.r[3]); }
+            { gsu_codes(FxProjectPoint_code[copy] + 12, 1); gsu.r[3] = gsu_inc(gsu.r[3]); }
         gsu.r[5] = 0;
     }
+    gsu_codes(FxProjectPoint_code[copy] + 13, 2);
     gsu_moves(gsu.r[1]);
     xneg = gsu.s;
     if (xneg)
-        gsu.r[1] = negate(gsu.r[1], GSU_COPY(negate_from_FxProjectPoint[copy])); else { gsu_codes(FxProjectPoint_code[copy] + 5, 1); }
+        { gsu_codes(FxProjectPoint_code[copy] + 15, 1); gsu.r[1] = negate(gsu.r[1], GSU_COPY(0)); } else { gsu_codes(FxProjectPoint_code[copy] + 16, 1); }
     gsu_moves(gsu.r[2]);
     yneg = gsu.s;
     if (yneg)
@@ -134,28 +122,33 @@ void FxProjectPoint(int copy)
     gsu.r[11] = clamp_ret[behind << 3 | xneg << 2 | yneg << 1 | swap];
     abi_FxRatioClamp();
     if (swap) {
+        gsu_codes(FxProjectPoint_code[copy] + 17, 3);
         gsu.r[0] = gsu.r[1];
         gsu.r[1] = gsu.r[2];
         gsu.r[2] = gsu.r[0];
     }
     /* The signs back, each reversed behind the view. */
+    gsu_codes(FxProjectPoint_code[copy] + 20, 3);
     if (yneg != behind)
-        gsu.r[2] = negate(gsu.r[2], GSU_COPY(0)); else { gsu_codes(FxProjectPoint_code[copy] + 6, 1); }
+        { gsu_codes(FxProjectPoint_code[copy] + 23, 1); gsu.r[2] = negate(gsu.r[2], GSU_COPY(0)); } else { gsu_codes(FxProjectPoint_code[copy] + 24, 1); }
     if (xneg != behind)
-        gsu.r[1] = negate(gsu.r[1], GSU_COPY(negate_from_FxProjectPoint[copy]));
+        gsu.r[1] = negate(gsu.r[1], GSU_COPY(0));
 
     gsu.r[0] = gsu_ldw(FX_CENTRE);
     gsu.r[1] = gsu_add(gsu.r[1], gsu.r[0], 0);
-    gsu_codes(FxProjectPoint_code[copy] + 7, 1);
+    gsu_codes(FxProjectPoint_code[copy] + 25, 1);
     gsu.r[0] = gsu_ldw((uint16_t)(FX_CENTRE + 2));
     gsu.r[2] = gsu_add(gsu.r[2], gsu.r[0], 0);
+    gsu_codes(FxProjectPoint_code[copy] + 26, 1);
     outcode_axis(gsu.r[1], FX_EDGES, (uint16_t)(FX_EDGES + 2), 0x04, GSU_COPY(outcode_axis_from_FxProjectPoint[copy]));
     gsu.r[5] = (uint16_t)((int8_t)gsu.r[5] * 4);      /* MULT #4 */
     gsu_sz(gsu.r[5]);
+    gsu_codes(FxProjectPoint_code[copy] + 27, 2);
     outcode_axis(gsu.r[2], (uint16_t)(FX_EDGES + 4), (uint16_t)(FX_EDGES + 6), 0x10, GSU_COPY(outcode_axis_from_FxProjectPoint[copy]));
     gsu.r[0] = gsu_or(gsu_swap(gsu_xor(0x1F, gsu.r[5])), gsu.r[5]);
+    gsu_codes(FxProjectPoint_code[copy] + 29, 1);
     gsu_pull(&gsu.r[10]);       /* the return address, into R15 */
-    gsu_codes(FxProjectPoint_code[copy] + 8, 1);
+    gsu_codes(FxProjectPoint_code[copy] + 30, 1);
 }
 
 void abi_FxProjectPoint(void)

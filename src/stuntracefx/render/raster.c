@@ -62,7 +62,7 @@
 /* R14 at the reciprocal of n (IWT R0, #$94A0; ADD Rn; TO R14; ADD Rn),
    then the word read into R6 (TO R6; GETB; INC R14; WITH R6; GETBH). The
    difference of x (or R0 as set between) is not part of it. */
-static void reciprocal_at(uint16_t n)
+static void reciprocal_at(uint16_t n, int copy)
 {
     R[0] = RECIPROCALS;
     R[0] = gsu_add(R[0], n, 0);
@@ -266,7 +266,7 @@ static int flat_left_edge(int from_a9ce, int copy)
                 { gsu_codes(flat_left_edge_code[copy] + 4, 1); break; } else { gsu_codes(flat_left_edge_code[copy] + 5, 1); }
         }
     }
-    reciprocal_at(R[11]);
+    reciprocal_at(R[11], GSU_COPY(0));
     gsu_codes(flat_left_edge_code[copy] + 6, 1);
     gsu_stw(FX_LEFT_AT, R[6]);
     R[0] = gsu_sub(R[7], R[8], 0);
@@ -302,7 +302,7 @@ static int flat_right_edge(void)
                 { gsu_code(0x01AA23, 7); break; }
         }
     }
-    reciprocal_at(R[3]);
+    reciprocal_at(R[3], GSU_COPY(1));
     R[0] = gsu_sub(R[9], R[10], 0);
     gsu_code(0x01AA2A, 4);
     reciprocal_read(GSU_COPY(1));
@@ -526,7 +526,7 @@ static void line(int copy)
 /* A7D9 / A7E2: the next left edge of a textured polygon from the walk at
    $0060, with u and v ($0070, $007C) kept as bytes before it and their
    steps per row. 0 when the polygon has ended. */
-static int tex_left_edge(void)
+static int tex_left_edge(int copy)
 {
     gsu_code(0x01A7E2, 9);
     R[0] = gsu_add(0x007F, R[9], 0);
@@ -573,7 +573,7 @@ static int tex_left_edge(void)
         { gsu_code(0x01A823, 4); gsu_code(0x01A909, 4); return 0; } else { gsu_code(0x01A827, 4); }
     gsu_stw(FX_LEFT_AT, R[6]);
     gsu_code(0x01A82B, 31);
-    reciprocal_at(R[11]);
+    reciprocal_at(R[11], GSU_COPY(2));
     reciprocal_read(GSU_COPY(0));
     R[6] = gsu_getbh(R[6]);
     R[0] = gsu_sub(R[9], R[12], 0);
@@ -599,7 +599,7 @@ static int tex_left_edge(void)
 }
 
 /* A879: the next right edge, walking back from $0062. */
-static int tex_right_edge(void)
+static int tex_right_edge(int copy)
 {
     gsu_code(0x01A879, 9);
     R[0] = gsu_add(0x007F, R[10], 0);
@@ -646,7 +646,7 @@ static int tex_right_edge(void)
         return 0;
     gsu_stw(FX_RIGHT_AT, R[6]);
     gsu_code(0x01A8C0, 31);
-    reciprocal_at(R[3]);
+    reciprocal_at(R[3], GSU_COPY(2));
     reciprocal_read(GSU_COPY(0));
     R[6] = gsu_getbh(R[6]);
     R[0] = gsu_sub(R[10], R[12], 0);
@@ -752,7 +752,7 @@ static void tex_rows(int copy)
         R[12] = gsu_inc(R[12]);                 /* BCS's delay slot */
         if (!go)
             R[12] = 0x0001;
-        reciprocal_at(R[12]);
+        reciprocal_at(R[12], GSU_COPY(3));
         gsu_codes(tex_rows_code[copy] + 10, 1);
         reciprocal_read(GSU_COPY(2));
         R[6] = gsu_getbh(gsu_codes_then(tex_rows_code[copy] + 11, 1, R[6]));
@@ -945,12 +945,12 @@ static void tex_polygon(int copy)
         /* A7D9 */
         gsu_moves(R[11]);
         R[0] = R[11];
-        if (gsu.z && !tex_left_edge())
+        if (gsu.z && !tex_left_edge(GSU_COPY(0)))
             return; else { gsu_codes(tex_polygon_code[copy] + 37, 1); }
         /* A870 */
         gsu_moves(R[3]);
         R[0] = R[3];
-        if (gsu.z && !tex_right_edge())
+        if (gsu.z && !tex_right_edge(GSU_COPY(0)))
             return;
         tex_rows(GSU_COPY(tex_rows_from_tex_polygon[copy]));
     }
@@ -1000,7 +1000,7 @@ typedef struct {
 
 /* The vertex in R1/R2 written at R9 (FROM R1; STW (R9); INC R9 twice;
    the same for R2). */
-static void clip_put(void)
+static void clip_put(int copy)
 {
     gsu_stw(R[9], R[1]);
     R[9] = gsu_inc(R[9]);
@@ -1014,7 +1014,7 @@ static void clip_put(void)
    difference, the other axis's offset = (edge - start) * its difference /
    this one's (LMULT, FxDivideSigned), written at R9 with the edge's
    value. */
-static void clip_cross(const ClipEdge *e, uint16_t ret)
+static void clip_cross(const ClipEdge *e, uint16_t ret, int copy)
 {
     R[3] = gsu_sub(R[3], R[1], 0);
     R[6] = gsu_sub(R[6], R[2], 0);
@@ -1026,7 +1026,6 @@ static void clip_cross(const ClipEdge *e, uint16_t ret)
     R[0] = gsu_ldw(e->edge);
     R[0] = gsu_sub(R[0], R[e->y ? 2 : 1], 0);
     {
-        gsu_code(0x018186, 2); gsu_cache(0x8187); gsu_code(0x018188, 9); gsu_code(0x018192, 5); gsu_code(0x01819B, 8); gsu_code(0x0181B3, 5); gsu_code(0x0181BA, 2);
         uint32_t p = gsu_lmult(R[0], R[6]);
 
         R[5] = (uint16_t)(p >> 16);
@@ -1056,7 +1055,7 @@ static void clip_cross(const ClipEdge *e, uint16_t ret)
 
 /* Is the vertex in R(at) inside the edge? LMS R0, edge; FROM R(at); SUB
    R0 (and SUB #1 when strict); BGE, or BLT when strict. */
-static int clip_inside(const ClipEdge *e, int at)
+static int clip_inside(const ClipEdge *e, int at, int copy)
 {
     R[0] = gsu_ldw(e->edge);
     R[0] = gsu_sub(R[at], R[0], 0);
@@ -1068,7 +1067,7 @@ static int clip_inside(const ClipEdge *e, int at)
 }
 
 /* $0098 changed by one (LMS R0; INC or DEC R0; SBK). */
-static void clip_count(int up)
+static void clip_count(int up, int copy)
 {
     R[0] = gsu_ldw(FX_COUNT_OUT);
     R[0] = up ? gsu_inc(R[0]) : gsu_dec(R[0]);
@@ -1107,10 +1106,10 @@ static void clip_against(const ClipEdge *e, int copy)
         R[8] = gsu_inc(R[8]);
         R[6] = gsu_ldw(R[8]);
         R[8] = gsu_sub(R[8], 2, 0);
-        a = clip_inside(e, e->y ? 2 : 1);
-        b = clip_inside(e, e->y ? 6 : 3);
+        a = clip_inside(e, e->y ? 2 : 1, GSU_COPY(0));
+        b = clip_inside(e, e->y ? 6 : 3, GSU_COPY(0));
         if (!a && !b) {
-            clip_count(0);
+            clip_count(0, GSU_COPY(0));
         } else if (!a) {
             /* coming in: the ends swapped, the crossing written */
             R[0] = R[1];
@@ -1119,13 +1118,13 @@ static void clip_against(const ClipEdge *e, int copy)
             R[0] = R[2];
             R[2] = R[6];
             R[6] = R[0];
-            clip_cross(e, e->ret_out_in);
+            clip_cross(e, e->ret_out_in, GSU_COPY(0));
         } else if (b) {
-            clip_put();
+            clip_put(GSU_COPY(0));
         } else {
-            clip_count(1);
-            clip_put();
-            clip_cross(e, e->ret_in_out);
+            clip_count(1, GSU_COPY(0));
+            clip_put(GSU_COPY(0));
+            clip_cross(e, e->ret_in_out, GSU_COPY(0));
         }
         R[0] = gsu_ldw(FX_COUNT);
         R[0] = gsu_dec(R[0]);
