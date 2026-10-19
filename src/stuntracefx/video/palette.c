@@ -649,6 +649,7 @@ static KeptEnd palette_kept_colours_step(uint8_t bank, uint16_t a, uint16_t x, u
             go = t >= 0xB4 ? TWO : t >= 0x78 ? ONE : t >= 0x3C ? ODD : SKIP;
         }
     } else {
+        cyc(68);
         t = rd8(b | (uint16_t)(0x0E01 + y));
         if (!t) {
             a = 0x7E63;
@@ -1554,6 +1555,7 @@ a_blend:
             cyc(46);
             abi_ColourBlend();
 a_store:
+            cyc(52);
             wr16(0x7FEC57 + cpu.y, cpu.a);
             hc_step(&cpu.x, 0);
             cyc(52);

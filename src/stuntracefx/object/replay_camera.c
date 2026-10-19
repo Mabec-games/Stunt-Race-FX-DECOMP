@@ -74,6 +74,7 @@ static void copy16(uint32_t dst, uint32_t src)
     cpu.p &= (uint8_t)~P_M;
     cyc(46);
     op_lda16(src);
+    cyc(16);
     wr16(dst, cpu.a);
     cpu.p |= P_M;
 }
@@ -122,7 +123,8 @@ static void tail(void)
 {
     (cyc(24), abi_CameraFollowLink());
     st8i(F(0x2036, cpu.x), cyc_then(108, 0x03));
-}
+cyc(38);
+    }
 
 /* 08:8EC1: back to the director's table: the camera's +$04 and +$34
    cleared, +$25 bits 0 and 1 cleared, frame $08:8EF5

@@ -342,7 +342,8 @@ static void detach_frame(void)
     } while (v);
     cyc(56);
     abi_ObjectRebucket();
-}
+cyc(132);
+    }
 
 /*
  * @routine 08:AC04 PartDetach
@@ -463,7 +464,8 @@ static void return_frame(void)
 void abi_PartReturnStep(void)
 {
     return_frame();
-}
+cyc(38);
+    }
 
 /*
  * @routine 08:ADE2 PartReturn
@@ -480,7 +482,8 @@ void abi_PartReturn(void)
     st8i(F(0x204B, cpu.x), cyc_then(6, 0x0A));
     sound0(cyc_then(6, bits25(cpu.x, 0x02) ? (cyc(26), 0x4C) : 0x4B));
     return_frame();
-}
+cyc(38);
+    }
 
 /* 08:AD70: the flying part's frame (see PartFlyStep). */
 static void fly_frame(void)
@@ -532,7 +535,8 @@ static void fly_frame(void)
         wr8(F(0x2027, cpu.x), cyc_then(66, v));
     } else { cyc(22); }
     abi_ObjectSpawnChanceD460();
-}
+cyc(130);
+    }
 
 /*
  * @routine 08:AD70 PartFlyStep
@@ -687,7 +691,7 @@ static void player1_frame(void)
     op_and16(0x0002);
     cpu.p |= P_M;
     if (cpu.a)
-        { cyc(60); or8(F(0x2024, cpu.y), 0x02); } else { cyc(66); }
+        { cyc(60); or8(F(0x2024, cpu.y), 0x02); } else { cyc(104); }
     cyc(36);
     cpu.x = sx;
     cpu.p = nz16(cpu.p, sx);
@@ -810,7 +814,8 @@ static void player2_frame(void)
     wr16(db() | 0x1AF2, cyc_then(24, cpu.a));
     cpu.p |= P_M;
     (cyc(22), player_drive());
-}
+cyc(38);
+    }
 
 /*
  * @routine 08:AFD7 PlayerCar2
@@ -1000,6 +1005,7 @@ static int crash_set_a33d(void)
     shed(0xA3F8, 0x00, 0xEF, 0xF6, 0x19, 1, 0);
     cyc(26);
     shed(0xA414, 0x00, 0x0F, 0x02, 0x1E, 0, 0);
+    cyc(2);
     return 0;
 }
 
@@ -1018,6 +1024,7 @@ static int crash_set_a5e4(void)
     shed(0xA36C, 0x00, 0xF6, 0xF6, 0x19, 1, 0);
     cyc(26);
     shed(0xA388, 0x00, 0xF7, 0xDA, 0x1E, 0, 0);
+    cyc(24);
     return 0;
 }
 
@@ -1072,7 +1079,7 @@ void abi_CarCrashParts(void)
             { cyc(24); break; }
     }
     if (i == 8 || set[i & 3]())
-        goto fail;
+        goto fail; else { cyc(30); }
     lda8((uint8_t)(ld8(db() | 0x1F58) & 0x01));
     sound0((uint8_t)cpu.a ? 0x5B : (cyc(6), 0x43));
     cpu.p &= (uint8_t)~P_C;
@@ -1131,7 +1138,8 @@ static void rival_frame(void)
         } else {
             rec_word(0x70001C, 1, 0xFFDF);
         }
-    } else { cyc(66); }
+    cyc(58);
+        } else { cyc(66); }
     abi_RandomStepLong();
     cmp8(0xF2);
     if ((uint8_t)cpu.a >= 0xF2)

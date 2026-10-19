@@ -181,6 +181,34 @@ def strip(text):
     return out
 
 
+def merge(text):
+    """Times written next to times already there, as one: cyc(a); cyc(b);
+    as cyc(a+b);, and (cyc(a), (cyc(b), X)), cyc_then(a, cyc_then(b, X)) as
+    one of each."""
+    import re
+    stmt = re.compile(r'cyc\((\d+)\);(\s*)cyc\((\d+)\);')
+    while True:
+        m = stmt.search(text)
+        if not m:
+            break
+        text = text[:m.start()] + 'cyc(%d);' % (int(m.group(1)) + int(m.group(3))) + text[m.end():]
+    for form in (r'\(cyc\((\d+)\), \(cyc\((\d+)\), ', r'cyc_then\((\d+), cyc_then\((\d+), '):
+        pat = re.compile(form)
+        while True:
+            m = pat.search(text)
+            if not m:
+                break
+            inner = m.start() + m.group(0).rindex('(cyc' if form.startswith(r'\(') else 'cyc_then')
+            open_at = text.index('(', inner) + 1
+            q = _close(text, open_at, '(', ')')
+            outer = _close(text, text.index('(', m.start()) + 1, '(', ')')
+            if outer != q + 1:
+                raise ValueError('cycwrite: %r at %d does not close as written' % (m.group(0), m.start()))
+            head = ('(cyc(%d), ' if form.startswith(r'\(') else 'cyc_then(%d, ') % (int(m.group(1)) + int(m.group(2)))
+            text = text[:m.start()] + head + text[m.end():q] + text[q + 1:]
+    return text
+
+
 def function_spans(path, text, names):
     """The bodies of the functions named, as (start, end) offsets."""
     if not names:
@@ -249,7 +277,7 @@ def main(argv):
         # copy without written times: CYC_SRC); a file with no times is
         # written too, so a time written before goes
         dest = os.path.join(cycprobe.DECOMP, os.path.relpath(path, cycprobe.SRC))
-        new = apply(text, edits)
+        new = merge(apply(text, edits))
         if not dry and new != open(dest).read():
             with open(dest, 'w') as f:
                 f.write(new)

@@ -190,7 +190,8 @@ static void finish_tail(uint32_t b)
     wr8(b | 0x0E5F, 0x00);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x02);
     (cyc(24), abi_SoundPort0QueuePushRaw());
-}
+cyc(42);
+    }
 
 static void finish_phases(uint8_t p1, uint8_t p2)
 {
@@ -572,6 +573,7 @@ void abi_RaceModeSetup(void)
         wr8(b | 0x0D4A, (v & 0x01) ? 0x00 : (cyc(16), 0x01));
     } else
         { cyc(62); wr8(b | 0x0D4A, 0x00); }
+    cyc(24);
     wr8(b | 0x10CD, 0x00);
     cpu.p &= (uint8_t)~P_M;
     cyc(46);
@@ -833,7 +835,8 @@ static void race_load_scroll(uint32_t b, uint16_t scroll)
     wr16(b | 0x0E31, 0x0000);
     cyc(24);
     wr16(b | 0x0E33, 0x0000);
-}
+cyc(24);
+    }
 
 /* SEP #$20, LDA $0D63: Z when it is clear. */
 static uint8_t race_load_0d63(uint32_t b)

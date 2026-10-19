@@ -128,6 +128,7 @@ uint8_t SpriteSlot1Countdown(uint8_t bank, uint16_t *x)
     if (!a) {
         a = (uint8_t)(rd8(cyc_then(82, dbw(bank, SLOT_MASK))) & 0xFD);
         wr8(dbw(bank, SLOT_MASK), cyc_then(40, a));
+        cyc(68);
         return a;
     }
     wr8(dbw(bank, SLOT_MASK), cyc_then(40, (uint8_t)(rd8(cyc_then(98, dbw(bank, SLOT_MASK))) | 0x02)));

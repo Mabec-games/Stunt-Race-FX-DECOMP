@@ -135,7 +135,8 @@ void abi_MenuActorFree(void)
     cpu.a = MenuActorFree(cpu.db, cpu.x, cpu.y);
     cpu.x = 0xFFFF;
     cpu.p = (uint8_t)((cpu.p & ~P_Z) | P_N);
-}
+cyc(42);
+    }
 
 /* Compare as CMP does: C when a >= b; N, Z from a - b. */
 static uint8_t cmp16(uint8_t p, uint16_t a, uint16_t b)
@@ -1156,7 +1157,7 @@ uint16_t MenuActorUploadFrames(uint8_t bank, uint16_t rec, uint16_t frame, uint1
         cyc(62);
         wr16(b | 0x11E5, s);
         n = (uint16_t)(n - 1);
-    } while (!(n & 0x8000));
+    } while (cyc_loop(46, !(n & 0x8000)));
     cyc(60);
     *xo = rd16(b | CURRENT);
     *p = nz16(*p, *xo);
@@ -1321,6 +1322,7 @@ uint16_t MenuSlideInHandler(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
         { cyc(46); return a; } else { cyc(40); }
     a = MenuChoiceUpDownY(bank, y);
     *p = nz16(*p, a);
+    cyc(42);
     return a;
 }
 
@@ -1358,6 +1360,7 @@ uint16_t MenuFadeInHandler(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
         *x = rd16(cyc_then(24, dbw(bank, CURRENT)));
         *y = 0xFFFF;
         *p = nz16(*p, *x);
+        cyc(42);
         return a;
     } else { cyc(60); }
     MenuActorsSet10(bank, 0x0002, 0xFFFF, p);
@@ -1448,6 +1451,7 @@ uint16_t MenuChoiceObjectFrames(uint8_t bank, uint16_t a, uint16_t *x, uint16_t 
     wr16((uint16_t)(*x + 0x22), 0x0000);
     cyc(22);
     wr16((uint16_t)(*x + 0x0A), 0x0000);
+    cyc(42);
     return a;
 }
 
@@ -1632,7 +1636,7 @@ uint16_t MenuActorCopyGroup(uint8_t bank, uint16_t *xo, uint8_t *p)
         wr16(b | 0x11E3, cyc_then(14, (uint16_t)(rd16(b | 0x11E3) + 2)));
         cyc(86);
         wr16(b | 0x11DF, cyc_then(14, (uint16_t)(rd16(b | 0x11DF) - 2)));
-    } while (rd16(cyc_then(24, b | 0x11DF)));
+    } while (cyc_loop(44, rd16(cyc_then(24, b | 0x11DF))));
     cyc(62);
     *xo = rd16(b | CURRENT);
     *p = nz16(*p, *xo);
@@ -1686,7 +1690,7 @@ uint16_t MenuFixedColourDown(uint8_t bank, uint16_t x, uint8_t *p)
     if (v & 0x8000)
         { cyc(18); v = 0x0000; }
     *p = nz16(*p, x);
-    return fixed_colour_set(bank, v);
+    return cyc_then(144, fixed_colour_set(bank, v));
 }
 
 void abi_MenuFixedColourDown(void)
@@ -1814,7 +1818,8 @@ void abi_MenuFadeOutHandler(void)
 
     cpu.a = MenuFadeOutHandler(cpu.db, &cpu.x, &cpu.y, &p);
     cpu.p = p;
-}
+cyc(42);
+    }
 
 /* A choice object's first frame: its own sprite group (MenuActorCopyGroup)
    and the handler `next`. */
@@ -2184,6 +2189,7 @@ static uint16_t menu_drop_away_finish(uint8_t bank, uint8_t *p)
     cyc(46);
     wr16((uint16_t)(x + 0x0A), 0x0040);
     *p = (uint8_t)(nz16(*p, 0x0040) & ~(P_M | P_X));
+    cyc(42);
     return x;
 }
 
@@ -2324,6 +2330,7 @@ uint16_t MenuSelectArrive(uint8_t bank, uint16_t *x, uint8_t *p)
     cyc(100);
     wr8(0x7F1354, (uint8_t)d);
     *x = rec;
+    cyc(22);
     return d;
 }
 
@@ -2449,7 +2456,8 @@ uint16_t MenuActorSpawnList(uint8_t bank, uint16_t list, uint16_t *a, uint16_t *
         wr16(dbw(bank, 0x11FD), cyc_then(14, (uint16_t)(x + 1)));
         x = rd16(cyc_then(24, dbw(bank, 0x11FD)));
         wr16(dbw(bank, 0x11FD), cyc_then(14, (uint16_t)(x + 1)));
-    }
+    cyc(22);
+        }
     *a = e;
     return x;
 }
@@ -2593,57 +2601,44 @@ uint16_t MenuOamBuild(uint16_t *x, uint16_t *y)
     cyc(24);
     wr16(0x0011E1, 0x0000);
     cyc(24);
-    for (i = (uint16_t)(rd16(0x0011F7) - 2); !(i & 0x8000); i = (uint16_t)(rd16(cyc_then(48, 0x0011FB)) - 2)) {
+    for (i = (uint16_t)(rd16(0x0011F7) - 2); !(i & 0x8000); i = (uint16_t)(rd16(cyc_then(46, 0x0011FB)) - 2)) {
         wr16(0x0011FB, i);
         cyc(30);
         rec = *x = rd16(0x001239 + i);
         cyc(22);
         if (rd16((uint16_t)(rec + 0x10)) == 0xFFFF)
-            { cyc(36); continue; }
+            { cyc(38); continue; }
         cyc(58);
         n = rd16((uint16_t)(rec + 0x12));
         if (n == 0x0000) {
             /* one sprite from the record */
-            cyc(46);
             wr16(0x0011F1, 0x0000);
-            cyc(22);
-            wr16(0x0011F3, cyc_then(24, rd16((uint16_t)(rec + 0x0C))));
-            cyc(24);
+            wr16(0x0011F3, rd16((uint16_t)(rec + 0x0C)));
             *y = rd16(0x001205);
             if (*y == 0x0200)
-                { cyc(46); continue; }
-            cyc(68);
-            sx = (uint16_t)(rd16((uint16_t)(rec + 0x02)) - rd16(cyc_then(38, 0x0011ED)));
+                continue;
+            sx = (uint16_t)(rd16((uint16_t)(rec + 0x02)) - rd16(0x0011ED));
             if (sx & 0x8000) {
                 if (sx < 0xFFF0)
-                    { cyc(62); continue; }
-                cyc(86);
-                wr16(0x0011F1, cyc_then(14, (uint16_t)(rd16(0x0011F1) + 1)));
+                    continue;
+                wr16(0x0011F1, (uint16_t)(rd16(0x0011F1) + 1));
             } else if (sx >= 0x0100) {
-                cyc(68);
                 continue;
-            } else { cyc(46); }
-            cyc(52);
+            }
             wr16(OAM_BUFFER + *y, sx);
-            cyc(22);
-            sy = (uint16_t)(rd16((uint16_t)(rec + 0x06)) - rd16(cyc_then(38, 0x0011EF)));
+            sy = (uint16_t)(rd16((uint16_t)(rec + 0x06)) - rd16(0x0011EF));
             if (sy & 0x8000) {
-                cyc(56);
                 if (sy < 0xFFF0)
                     continue;
                 c = 1;
             } else {
-                cyc(62);
                 if (sy >= 0x00E0)
-                    { cyc(6); continue; }
+                    continue;
                 c = 0;
             }
-            cyc(36);
             wr16(OAM_BUFFER + 1 + *y, sy);
-            cyc(22);
-            wr16(OAM_BUFFER + 2 + *y, cyc_then(30, (uint16_t)(rd16((uint16_t)(rec + 0x0E)) | rd16(cyc_then(22, (uint16_t)(rec + 0x10))))));
+            wr16(OAM_BUFFER + 2 + *y, (uint16_t)(rd16((uint16_t)(rec + 0x0E)) | rd16((uint16_t)(rec + 0x10))));
             *y = (uint16_t)(*y + 4);
-            cyc(80);
             wr16(0x001205, *y);
             ror_mem(0x0011F1, &c);
             ror_mem(0x0011E1, &c);
@@ -2653,7 +2648,7 @@ uint16_t MenuOamBuild(uint16_t *x, uint16_t *y)
             continue;
         }
         if (n == 0xFFFF)
-            { cyc(62); continue; }
+            { cyc(64); continue; }
         /* a sprite group */
         cyc(110);
         wr16(0x0011E3, n);
@@ -2672,24 +2667,23 @@ uint16_t MenuOamBuild(uint16_t *x, uint16_t *y)
             cyc(24);
             *y = rd16(0x001205);
             if (*y == 0x0200)
-                { cyc(46); break; }
+                break;
             cyc(78);
             sx = (uint16_t)(rd16(0x7F1356 + *x) + rd16(cyc_then(38, 0x0011FD)));
             if (sx & 0x8000) {
                 if (sx < 0xFFF0)
-                    { cyc(62); goto next; }
-                cyc(80);
-                wr16(0x0011F1, cyc_then(14, (uint16_t)(rd16(0x0011F1) + 1)));
+                    goto next;
+                wr16(0x0011F1, (uint16_t)(rd16(0x0011F1) + 1));
             } else if (sx >= 0x0100) {
                 cyc(68);
                 goto next;
-            } else { cyc(40); }
-            cyc(52);
+            }
+            cyc(92);
             wr16(OAM_BUFFER + *y, sx);
             cyc(32);
             sy = (uint16_t)(rd16(0x7F1358 + *x) + rd16(cyc_then(38, 0x0011FF)));
             if (sy & 0x8000 ? sy < 0xFFF0 : sy >= 0x00E0)
-                { cyc(68); goto next; }
+                goto next;
             cyc(92);
             wr16(OAM_BUFFER + 1 + *y, sy);
             *y = (uint16_t)(*y + 2);
@@ -2734,6 +2728,7 @@ uint16_t MenuOamBuild(uint16_t *x, uint16_t *y)
                 break; else { cyc(18); }
         }
     }
+    cyc(74);
     *y = rd16(0x0011DF);
     if (*y != 0x0007) {
         cyc(64);

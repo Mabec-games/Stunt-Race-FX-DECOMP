@@ -934,6 +934,7 @@ static void car_change(uint32_t b, int right)
     cyc(60);
     wr8(b | 0x0D89, (uint8_t)cpu.a);
     op_sep(P_M | P_X);
+    cyc(46);
     op_lda8(b | 0x0D89);
     cpu.x = (uint16_t)(cpu.a & 0x00FF);
     cpu.p = nz8(cpu.p, (uint8_t)cpu.x);
@@ -1134,7 +1135,7 @@ void abi_ResultsChampionScreen(void)
 
     op_rep(P_M | P_X);
     for (x = 0x01FE; x >= 0; x -= 2) {
-        cyc(104);
+        cyc(130);
         op_lda16((uint32_t)(0x1F8600 + x));
         wr16((uint32_t)(0x7EFD65 + x), cpu.a);
     }
@@ -1691,6 +1692,7 @@ void abi_ResultsTotalTiles(void)
 
     cyc(24);
     minutes_tile(rd8(b | 0x0EEF), 0x7F95F7);
+    cyc(46);
     wr8(0x7F95F9, cyc_then(76, low_digit_tile(rd8(b | 0x0EEF))));
     lda8_imm(0xE6);
     cyc(48);

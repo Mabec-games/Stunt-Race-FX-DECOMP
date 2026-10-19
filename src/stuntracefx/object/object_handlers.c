@@ -139,7 +139,8 @@ static void sync_36(void)
     (cyc(62), abi_ObjectSyncFromRecord());
     lda8(0x03);
     wr8(db() | (uint16_t)(0x2036 + cpu.x), cyc_then(96, 0x03));
-}
+cyc(38);
+    }
 
 /* LDA +$48,X: whether the count has run out (0); otherwise it is counted
    down (DEC +$48,X). */
@@ -250,7 +251,7 @@ void abi_ObjectBurstPieceStep(void)
     }
     cyc(110);
     if (count_down())
-        { cyc(18); abi_ObjectReleaseLong(); }
+        { cyc(18); abi_ObjectReleaseLong(); } else { cyc(38); }
 }
 
 /*
@@ -1115,7 +1116,8 @@ static void child_flags(void)
     lda8(0x03);
     cyc(56);
     wr8(b | (uint16_t)(0x2036 + cpu.x), 0x03);
-}
+cyc(38);
+    }
 
 /*
  * @routine 08:BB2E ObjectChildStep
@@ -1544,7 +1546,8 @@ void abi_ObjectPieceFall(void)
     lda8(0x03);
     cyc(38);
     wr8(b | (uint16_t)(0x2036 + cpu.x), 0x03);
-}
+cyc(38);
+    }
 
 /* Handler $08:D549 (ObjectPieceFall), count +$48 = 0, end +$49. */
 static void piece_handler(uint8_t end)
@@ -2058,7 +2061,8 @@ static void attach_hide(void)
     lda8(0x03);
     cyc(16);
     wr8(b | (uint16_t)(0x2036 + cpu.x), 0x03);
-}
+cyc(38);
+    }
 
 /* $08:E14A: +$24 bit 6, +$36 = 3. */
 static void attach_bit6(void)
@@ -2072,7 +2076,8 @@ static void attach_bit6(void)
     lda8(0x03);
     cyc(16);
     wr8(b | (uint16_t)(0x2036 + cpu.x), 0x03);
-}
+cyc(38);
+    }
 
 /* LDY +$06,X; whether the parent is gone or loose (its +$24 bit 3 or +$25
    bit 2): then the object hides ($08:E13C). */
@@ -2289,7 +2294,7 @@ void abi_ObjectAttachSpawn(void)
                 op_lda16(b | 0x1F4C);
                 cyc(30);
                 wr16(b | (uint16_t)(0x2006 + cpu.y), cpu.a);
-                cyc(32);
+                cyc(48);
                 t = rd16(0x098090 + i);
                 cyc(92);
                 wr16(b | (uint16_t)(0x2004 + cpu.y), rd16(0x098000 + t));
@@ -2424,7 +2429,7 @@ void abi_ObjectAttachFollow(void)
     cyc(30);
     lda8((uint8_t)(rd8(b | (uint16_t)(0x2024 + cpu.y)) & 0x40));
     if ((uint8_t)cpu.a)
-        attach_bit6(); else { cyc(8); }
+        attach_bit6(); else { cyc(46); }
 }
 
 /*
@@ -2498,7 +2503,8 @@ void abi_ObjectAttachTurned(void)
     lda8(0x03);
     cyc(110);
     wr8(b | (uint16_t)(0x2036 + cpu.x), 0x03);
-}
+cyc(38);
+    }
 
 /* PHA, REP #$20, TXA, STA +$06,Y, SEP #$20, PLA: object X as the new
    object's parent. */
@@ -2572,7 +2578,8 @@ void abi_ObjectSparkStep(void)
     lda8(0x03);
     cyc(110);
     wr8(b | (uint16_t)(0x2036 + cpu.x), 0x03);
-}
+cyc(38);
+    }
 
 /*
  * @routine 08:E048 ObjectSparkStart
@@ -2933,6 +2940,7 @@ state2:
     lda8(0x03);
     cyc(132);
     wr8(b | (uint16_t)(0x2036 + cpu.x), 0x03);
+    cyc(38);
     return;
 hide:
     attach_hide();
@@ -3004,7 +3012,8 @@ void abi_ObjectExhaustStart(void)
     cyc(66);
     cpu.p |= P_M;
     abi_ObjectRelease();
-}
+cyc(66);
+    }
 
 void abi_SoundAtRateForLevel(void);
 void abi_PlayerSound12(void);
@@ -3046,7 +3055,7 @@ static void latch(uint16_t bit, int on, AbiFn snd)
     op_lda16(cyc_then(62, b | latch_addr()));
     cpu.p = (uint8_t)((cpu.p & ~P_Z) | ((cpu.a & bit) ? 0 : P_Z));
     if (((cpu.a & bit) ? 1 : 0) == on)
-        return;
+        { cyc(22); return; }
     w = cpu.a;
     snd();
     w = on ? (uint16_t)(w | bit) : (uint16_t)(w & ~bit);
@@ -3146,7 +3155,7 @@ void abi_PlayerCarEvents(void)
                 } else { cyc(46); }
                 cyc(32);
                 op_lda16(0x700034 + cpu.x);
-            } while (cpu.a);
+            } while (cyc_loop(22, cpu.a));
             (void)found;
             cpu.x = rec;
             cyc(76);
@@ -3194,6 +3203,7 @@ void abi_PlayerCarEvents(void)
     latch(0x0002, found, found ? abi_PlayerSound0D : (cyc(6), abi_PlayerSound0B));
     /* $08:C304: the held sound by the record's +$57. */
     cpu.p |= P_M;
+    cyc(54);
     op_lda8(0x700057 + cpu.x);
     v = (uint8_t)cpu.a;
     cyc(24);
@@ -3360,7 +3370,7 @@ void abi_PlayerCarEvents(void)
         cyc(116);
         cpu.x = rd16(b | 0x1F18);
         (cyc(62), abi_ObjectSpawnTrail());
-        (cyc(112), abi_ObjectSpawnD460UnlessFlag());
+        (cyc(140), abi_ObjectSpawnD460UnlessFlag());
         cpu.p &= (uint8_t)~P_M;
         cpu.x = x;
     } else {
@@ -3410,6 +3420,7 @@ void abi_PlayerCarEvents(void)
             wr8(b | at, v);
         }
         x = cpu.x;
+        cyc(92);
         cpu.x = rd16(b | 0x1F18);
         cyc(30);
         lda8((uint8_t)(rd8(b | (uint16_t)(0x2025 + cpu.x)) & 0x04));
@@ -3512,7 +3523,8 @@ void abi_ObjectOffsetOnParent2(void)
     cyc(16);
     wr8(b | (uint16_t)(0x2024 + cpu.x), (uint8_t)cpu.a);
     (cyc(62), abi_ObjectRebucket());
-}
+cyc(132);
+    }
 
 /* $08:E682: on its parent (ObjectPlaceOnParent with X = the parent, Y =
    the lamp), rebucketed, +$24 bits 5 and 6 cleared, bit 6 again when the
@@ -3548,7 +3560,8 @@ static void lamp_place(void)
     lda8(0x03);
     cyc(24);
     wr8(b | (uint16_t)(0x2036 + cpu.x), 0x03);
-}
+cyc(38);
+    }
 
 void abi_ObjectLampDrop(void);
 void abi_ObjectLampDropB(void);
@@ -3651,7 +3664,8 @@ static void lamp_look_step(uint16_t table)
     cpu.x = x;
     wr16(b | (uint16_t)(0x205D + cpu.x), cpu.a);
     cpu.p |= P_M;
-}
+cyc(22);
+    }
 
 /*
  * @routine 08:E51E ObjectLampAnimate
@@ -3687,6 +3701,7 @@ void abi_ObjectLampAnimate(void)
         cyc(192);
         wr8(b | (uint16_t)(0x204B + cpu.x), 0x00);
     }
+    cyc(24);
     abi_ObjectLampOnParent();
 }
 
@@ -4145,7 +4160,8 @@ done:
     lda8(0x03);
     cyc(16);
     wr8(b | (uint16_t)(0x2036 + cpu.x), 0x03);
-}
+cyc(38);
+    }
 
 /* A ring's start: heading +$15 and velocity, then $08:9C4F. */
 static void ring_start(uint8_t h, uint16_t vx, uint16_t vy, uint16_t vz)
@@ -4269,7 +4285,8 @@ void abi_ObjectRingSpin(void)
     lda8(0x03);
     cyc(232);
     wr8(b | (uint16_t)(0x2036 + cpu.x), 0x03);
-}
+cyc(38);
+    }
 
 /*
  * @routine 08:9E05 ObjectRingPartStep
@@ -4314,7 +4331,8 @@ void abi_ObjectRingPartStep(void)
     cyc(6);
     wr8(b | (uint16_t)(0x2048 + cpu.x), v);
     cpu.p = nz8(cpu.p, v);
-}
+cyc(38);
+    }
 
 /*
  * @routine 08:9DF1 ObjectRingPartStart
@@ -4722,7 +4740,8 @@ static void director_tail(void)
     abi_CameraFollowLink();
     lda8(0x03);
     wr8(db() | (uint16_t)(0x2036 + cpu.x), cyc_then(118, 0x03));
-}
+cyc(38);
+    }
 
 /* LDY +$4F,X; REP #$20; LDA #v; STA $0000,Y; SEP #$20: the camera
    point's mode. */

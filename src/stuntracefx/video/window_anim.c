@@ -86,6 +86,7 @@ void abi_WindowStep3435(void)
  */
 uint8_t WindowStep3439(uint8_t bank, uint8_t *x, uint8_t *p)
 {
+    cyc(112);
     uint8_t v = rd8((uint32_t)bank << 16 | 0x3439), r = (uint8_t)(v + 1);
 
     *p = (uint8_t)((*p & ~P_V) | ((~(v ^ 1) & (v ^ r) & 0x80) ? P_V : 0));
@@ -154,7 +155,8 @@ void abi_WindowStep3433By2(void)
 void abi_WindowStep3433By3(void)
 {
     window_step_down(0x3433, 3);
-}
+cyc(22);
+    }
 
 /*
  * @routine 03:FDF7 WindowStep3437By3

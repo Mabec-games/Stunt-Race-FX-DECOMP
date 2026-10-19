@@ -314,7 +314,7 @@ void DebugPrintDecimalWord(void)
         cyc(180);
         wr16(NUM_DIGIT, 0x0000);
         x = (uint16_t)(x + 2);
-    } while (x != 0x000A);
+    } while (cyc_loop(50, x != 0x000A));
     cyc(22);
     if (!drawn) {
         cyc(94);

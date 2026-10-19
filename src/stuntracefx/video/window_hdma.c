@@ -273,7 +273,8 @@ static void window_hdma_at(uint8_t line, uint8_t *p)
     wr16(WINDOW_HDMA + 1, 0xFFDD);
     cyc(32);
     wr16(WINDOW_HDMA + 10, 0xFFDD);
-}
+cyc(26);
+    }
 
 void WindowHdmaAt(uint8_t line)
 {
@@ -970,7 +971,7 @@ void WindowsInit(void)
     wr16(b | 0x19B6, 0x0000);
     do {
         abi_WindowEdgesFromList();
-    } while (rd16(cyc_then(88, b | 0x19B6)) != 0x000E);
+    } while (cyc_loop(46, rd16(cyc_then(88, b | 0x19B6)) != 0x000E));
     cyc(34);
     for (x = 0; (w = rd16(cyc_then(172, 0x09FB74 + x))) != 0xFFFF; x = (uint16_t)(x + 2))
         wr16(0x7FFF8B + x, w);
@@ -1265,6 +1266,7 @@ void abi_WindowBandsAnimate(void)
         wr8(b | 0x19D8, 0x05);
     }
     op_sep(P_M | P_X);
+    cyc(32);
     v = rd8(0x0019D5);
     cpu.x = (uint8_t)(v << 1);
     cyc(52);
@@ -1393,6 +1395,7 @@ void abi_WindowSplitAnimate(void)
             cyc(48);
             wr16(b | 0x19E2, 0x0000);
         }
+        cyc(102);
         wr16(0x000DA4, 0x0000);
         op_sep(P_M | P_X);
         cyc(48);

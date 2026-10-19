@@ -52,6 +52,7 @@ static uint16_t step_p1(uint8_t bank, uint32_t table, uint16_t instead, uint16_t
     cyc(32);
     s = rd16(SAVE_PROGRESS) & 0x00FF;
     if (!s || (!(s & 0x0004) && rd16(cyc_then(136, MENU_MODE)) != 0x0003)) {
+        cyc(102);
         c = rd16(CHOICE_P1);
         if (c == 0x0003)
             { cyc(96); wr16(CHOICE_P1, instead); } else { cyc(46); }
@@ -338,12 +339,14 @@ uint16_t MenuChoicesFromSave(uint16_t menu, uint16_t *x)
         v = choice_from_save(0x70FC0C, 0, x);
         cyc(132);
         wr16(CHOICE_P1, v);
+        cyc(22);
         return v;
     case 1:
         cyc(176);
         v = choice_from_save(0x70FC0C, 4, x);
         cyc(188);
         wr16(CHOICE_P1, v);
+        cyc(22);
         return v;
     case 2:
         cyc(216);
@@ -400,6 +403,7 @@ uint16_t MenuSettingsRowMarker(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *
         { cyc(62); start_anim(*x, 0x005A, p); }
     else if (row == 2)
         { cyc(108); start_anim(*x, 0x006E, p); }
+    cyc(54);
     row = rd16(SETTING_ROW);
     a = (uint16_t)(row << 5);
     {
@@ -566,7 +570,7 @@ static uint16_t settings_leave(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *
     wr16(0x0018D3, 0x0000);
     cyc(32);
     c = rd16(CHOICE_P1);
-    return show_choice(bank, c, x, y, p);
+    return cyc_then(42, show_choice(bank, c, x, y, p));
 }
 
 /*
@@ -755,6 +759,7 @@ uint16_t MenuModeSelect(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     *x = MenuActorSpawn(bank, 0x0270, &a, y, p);
     cyc(74);
     MenuChoicesFromSave(rd16(MENU_MODE), x);
+    cyc(126);
     wr16(0x0018D3, 0x0000);
     cyc(32);
     c = rd16(CHOICE_P1);

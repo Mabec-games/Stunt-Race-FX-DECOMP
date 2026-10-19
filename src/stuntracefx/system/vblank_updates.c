@@ -74,16 +74,16 @@ uint16_t GsuPictureUploadStep(uint8_t bank, int *copied)
     *copied = 1;
     switch (stage) {
     case 0x0:
-        return upload_rows(bank, 0x0002, 3, 0x2C00, 0x0000);
+        return cyc_then(70, upload_rows(bank, 0x0002, 3, 0x2C00, 0x0000));
     case 0x2:
-        return upload_rows(bank, 0x0004, 3, 0x3C00, 0x0580);
+        return cyc_then(70, upload_rows(bank, 0x0004, 3, 0x3C00, 0x0580));
     case 0x4:
         a = upload_rows(bank, 0x0006, 4, 0x4C00, 0x0B00);
         return (uint16_t)((a & 0xFF00) | upload_done(bank, 0x60));
     case 0x8:
-        return upload_rows(bank, 0x000A, 3, 0x5000, 0x1760);
+        return cyc_then(70, upload_rows(bank, 0x000A, 3, 0x5000, 0x1760));
     case 0xA:
-        return upload_rows(bank, 0x000C, 3, 0x4000, 0x11E0);
+        return cyc_then(70, upload_rows(bank, 0x000C, 3, 0x4000, 0x11E0));
     case 0xC:
         a = upload_rows(bank, 0x0006, 4, 0x2C00, 0x0B00);
         return (uint16_t)((a & 0xFF00) | upload_done(bank, 0x64));
@@ -101,7 +101,7 @@ void abi_GsuPictureUploadStep(void)
     if (!copied) {
         cpu.x = 0x0006;
         return;
-    }
+    } else { cyc(70); }
     cpu.a = a;
     cpu.x = 0x00FF;
     cpu.y = 0x0001;
@@ -273,7 +273,7 @@ static uint8_t vblank_end(uint8_t bank)
     wr8(dbw(bank, 0x11D7), cyc_then(40, (uint8_t)(rd8(cyc_then(116, dbw(bank, 0x11D7))) & 0xDF)));
     do
         v = (uint8_t)(rd8(cyc_then(24, dbw(bank, HVBJOY))) & 0x01);
-    while (v);
+    while (cyc_loop(38, v));
     cyc(104);
     return v;
 }

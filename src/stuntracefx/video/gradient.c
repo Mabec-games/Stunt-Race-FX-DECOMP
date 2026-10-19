@@ -33,7 +33,7 @@ static uint16_t expand_runs(uint8_t bank, uint16_t x, uint16_t *y)
             n = (uint16_t)(rd16(0x0000F1) - 1);
             cyc(14);
             wr16(0x0000F1, n);
-        } while (n);
+        } while (cyc_loop(22, n));
         cyc(32);
         wr16(0x0000F3, out);
         x = (uint16_t)(x + 1);
@@ -219,6 +219,7 @@ uint16_t GradientPointersToBank7F(void)
     v = rd16(0x000D98);
     cyc(32);
     wr16(0x7F3493, v);
+    cyc(42);
     return v;
 }
 

@@ -16,7 +16,7 @@ static uint16_t halve(uint16_t v, uint16_t sign)
     uint16_t r = (uint16_t)((v >> 1) | (v & sign));
 
     if (r & sign)
-        { cyc(6); r = (uint16_t)(r + (v & 1)); }
+        { cyc(10); r = (uint16_t)(r + (v & 1)); }
     cyc(60);
     return r;
 }

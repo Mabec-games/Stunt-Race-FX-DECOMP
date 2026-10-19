@@ -645,7 +645,7 @@ void abi_PlayerOnePhaseRace(void)
             cpu.x = (uint16_t)(cpu.x + 2);
             cpu.y--;
             cpu.p = nz16(cpu.p, cpu.y);
-        } while (cpu.y);
+        } while (cyc_loop(16, cpu.y));
     cyc(34);
         }
     cyc(24);
@@ -683,7 +683,8 @@ void abi_PlayerOnePhaseRace(void)
     op_lda16_imm(0x980E);
     cyc(10);
     wr16(b | 0x1040, 0x980E);
-}
+cyc(22);
+    }
 
 /*
  * @routine 07:DFD2 PlayerOnePhaseTally

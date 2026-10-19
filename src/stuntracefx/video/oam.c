@@ -129,7 +129,7 @@ static uint16_t sprite_strip(uint16_t index, uint16_t offset, uint32_t table, ui
         n = (uint16_t)(n - 1);
         cyc(14);
         wr16(0x000008, n);
-    } while (!(n & 0x8000));
+    } while (cyc_loop(22, !(n & 0x8000)));
     cyc(68);
     wr16(0x000002, pos0);
     return pos0;
@@ -232,7 +232,7 @@ void OamBufferHideLarge(void)
     unsigned x;
 
     for (x = 0; x < 0x200; x += 4)
-        wr8(0x000376 + x, 0xF0);
+        { cyc(132); wr8(0x000376 + x, 0xF0); }
     cyc(76);
     for (x = 0; x < 0x20; x++)
         { cyc(90); wr8(0x000575 + x, 0xAA); }
@@ -501,6 +501,7 @@ static uint8_t oam_block(uint8_t bank, uint16_t x, uint8_t x0, uint8_t dx, uint8
     wr8(b | (uint16_t)(0x0444 + x), attr_a);
     cyc(46);
     wr8(b | (uint16_t)(0x0448 + x), attr_b);
+    cyc(42);
     return attr_b;
 }
 
@@ -1059,6 +1060,7 @@ static uint16_t bar_marker(uint8_t bank, uint16_t v, uint16_t y, uint16_t span,
                            uint16_t tile_far, uint16_t tile_near)
 {
     uint32_t b = (uint32_t)bank << 16;
+    cyc(212);
     uint16_t tile, pos = rd16(0x000002);
 
     if (v >= span) {
@@ -1517,7 +1519,7 @@ uint8_t SpritePieces3(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p, uint16
         n = (uint8_t)(rd8(0x0000F1) - 1);
         cyc(6);
         wr8(0x0000F1, n);
-    } while (n);
+    } while (cyc_loop(22, n));
     cyc(122);
     *p = (uint8_t)(nz8(*p, 0) | P_M);
     return attr;
@@ -1857,7 +1859,8 @@ void abi_SpritePiecesTwoCars(void)
     wr8(b | 0x0582, 0x58);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x58);
     cpu.p = nz8(cpu.p, 0x58);
-}
+cyc(112);
+    }
 
 /* OAM address addr (word), then n bytes: from the buffer at $0375 + x, or
    $F0 each when hide. Leaves X past them, Y = 0. */
@@ -1953,7 +1956,7 @@ void abi_OamDirectStage(void)
         stage_next_if(b, 0x0E16, 0xAC);
         /* fall through */
     case 0x00:
-        cyc(6);
+        cyc(52);
         cpu.p &= (uint8_t)~P_X;
         oam_direct(b, 0xE8, 0x01D0, 0x0030, 0);
         break;
@@ -2134,7 +2137,7 @@ static void stage_loop(uint32_t b, void (*dispatch)(void))
             op_sep(P_M);
             cyc(46);
             op_lda8(b | 0x0D52);
-        } while (!(uint8_t)cpu.a);
+        } while (cyc_loop(22, !(uint8_t)cpu.a));
         cyc(40);
         wr8(b | 0x0D52, 0x00);
         (cyc(46), dispatch());
@@ -2146,7 +2149,7 @@ static void stage_loop(uint32_t b, void (*dispatch)(void))
         op_sep(P_M);
         cyc(46);
         op_lda8(b | 0x0D2D);
-    } while ((uint8_t)cpu.a);
+    } while (cyc_loop(22, (uint8_t)cpu.a));
 cyc(44);
     }
 
@@ -2397,6 +2400,7 @@ void abi_OamHideForHudMode(void)
         cpu.p = nz16(cpu.p, cpu.y);
         abi_OamFillEvery4();
     } else if (v != 0x02) {
+        cyc(70);
         oam_hide(0x012C, 0x000D);
         cpu.x = 0x0180;
         cpu.y = 0x0020;
@@ -2831,7 +2835,7 @@ void abi_PauseOnStart(void)
         op_sep(P_M);
         cyc(46);
         op_lda8(b | 0x0D2D);
-    } while ((uint8_t)cpu.a);
+    } while (cyc_loop(22, (uint8_t)cpu.a));
     cyc(22);
     op_plp(p0);
 }

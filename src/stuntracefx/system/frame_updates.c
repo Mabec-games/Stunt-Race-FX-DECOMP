@@ -166,7 +166,7 @@ static ByteWritesEnd byte_writes_if_pending(uint8_t bank, uint16_t x0, uint16_t 
                 cyc(52);
                 wr8((uint32_t)bank << 16 | end.y, (uint8_t)end.a);
                 x = (uint16_t)(x - 4);
-            } while (!(x & 0x8000));
+            } while (cyc_loop(32, !(x & 0x8000)));
             cyc(34);
             end.x = x;
         }

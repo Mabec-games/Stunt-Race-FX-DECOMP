@@ -90,7 +90,7 @@ static uint16_t time_digits(uint8_t bank, uint8_t *mode)
         wr16(GSU_X, 0x00AC);
         cyc(24);
         v = rd16(b | TIME_BCD);
-    }
+    } else { cyc(46); }
     cyc(56);
     digit(bank, (uint16_t)((v >> 4) & 0x000F));
     cyc(162);
@@ -446,6 +446,7 @@ void abi_TimeDigitBytes(void)
         cyc(16);
         cpu.p = nz16(cpu.p, v);
         abi_GsuBytes200_BFBAB9();
+        cyc(88);
         return;
     }
     cyc(46);
@@ -502,6 +503,7 @@ static void draw_mirrored(void)
 static void draw_bonus_then_time(uint32_t b)
 {
     (cyc(46), abi_TimeDigitBytes());
+    cyc(50);
     cpu.x = rd16(b | 0x0D6B);
     cyc(80);
     cpu.a = rd16(SIZE_GROW + cpu.x);
@@ -509,6 +511,7 @@ static void draw_bonus_then_time(uint32_t b)
     abi_GsuDigitPair0E74();
     (cyc(70), abi_TimeDigitBytes());
     cpu.a = 0x0020;
+    cyc(82);
     wr16(GSU_SIZE, cpu.a);
     (cyc(46), abi_TimeDigitBytes());
     abi_GsuTimeDigits();
@@ -1198,6 +1201,7 @@ void TimeLeftDigits(void)
         and16(0x000F);
         param_digit();
         gsu_run(0xF6DF);
+        cyc(100);
         return;
     }
     cmp16(0x0010);
@@ -1214,6 +1218,7 @@ void TimeLeftDigits(void)
         else
             abi_GsuBytes200_BFBCBD();
         lda16_imm(0x00AC);
+        cyc(128);
         wr16(GSU_X, cpu.a);
         lda16_imm(0x0008);
         cyc(56);
@@ -1224,6 +1229,7 @@ void TimeLeftDigits(void)
         and16(0x000F);
         param_digit();
         gsu_run(0xF6DF);
+        cyc(100);
         return;
     }
     cyc(104);
@@ -1264,7 +1270,8 @@ void TimeLeftDigits(void)
     abi_GsuBytes200_BFB7B6();
     cyc(72);
     gsu_run(0xFAF2);
-}
+cyc(100);
+    }
 
 void abi_TimeLeftDigits(void)
 {

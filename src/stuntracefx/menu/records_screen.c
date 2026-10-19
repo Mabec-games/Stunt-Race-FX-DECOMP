@@ -122,7 +122,8 @@ static void md_first(uint16_t id)
     cpu.p = nz16(cpu.p, id);
     wr16(db() | 0x0D71, cyc_then(72, 0x0000));
     abi_MetaspriteDraw();
-}
+cyc(22);
+    }
 
 /* LDA.L group (CLC, ADC prev when there is one), TAY, STA slot, LDX #id,
    MetaspriteDraw: the next group from the sprite slot past the last. */

@@ -29,7 +29,7 @@ static void gsu_wait(void)
             cyc(6);
             wr8(GSU_WAIT_COUNT + 1, n);
         } else { cyc(22); }
-    } while (rd8(cyc_then(24, GSU_SFR)) & 0x20);
+    } while (cyc_loop(16, rd8(cyc_then(24, GSU_SFR)) & 0x20));
 }
 
 /*
@@ -115,7 +115,7 @@ static uint8_t gsu_ab13_with_params(uint8_t bank, uint16_t *last)
         wr8(b | 0x1F21, n);
         if (!n)
             { cyc(40); wr8(b | 0x1F22, cyc_then(6, (uint8_t)(rd8(b | 0x1F22) + 1))); } else { cyc(22); }
-    } while (rd8(cyc_then(24, b | 0x3030)) & 0x20);
+    } while (cyc_loop(16, rd8(cyc_then(24, b | 0x3030)) & 0x20));
     cyc(56);
     mode = rd8(b | 0x0374);
     cyc(24);

@@ -146,7 +146,8 @@ void abi_ResultsRise(void)
     set_field(0x0A, 0x0000);
     push_reg_byte(0xE8, 0x420C);
     op_rep(P_M);
-}
+cyc(144);
+    }
 
 /* The window opening shared by ResultsOpenTop and ResultsOpenBottom: +$0A
    up by 8; below $100 its low byte goes to the window line at `line`;
@@ -436,7 +437,7 @@ static void end_screen(void)
     cpu.y = rd16(cyc_then(24, abs_db(0x11FB)));
     cpu.p = nz16(cpu.p, cpu.y);
     (cyc(46), abi_MenuActorFree());
-    (cyc(42), sound_46());
+    sound_46();
 }
 
 /*
@@ -573,7 +574,8 @@ static void place_object(uint16_t kind, uint16_t anim0, uint16_t pos, uint16_t h
     }
     set_field(0x02, pos);
     set_field(0x08, handler);
-}
+cyc(22);
+    }
 
 void abi_ResultsLower(void)
 {
@@ -614,6 +616,7 @@ void abi_ResultsLower(void)
     }
     cyc(32);
     place_object(0x0018, 0x0262, 0x0088, 0xDA1F);
+    cyc(32);
     place_object(0x0019, 0x0250, 0x0058, 0xD5EC);
 }
 

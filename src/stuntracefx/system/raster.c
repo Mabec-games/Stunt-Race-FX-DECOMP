@@ -55,7 +55,7 @@ void WaitScanline(uint8_t bank)
         lo = rd8(OPVCT);
         cyc(44);
         rd8(OPVCT);
-    } while (lo != rd8(cyc_then(44, b | 0x06E3)));
+    } while (cyc_loop(22, lo != rd8(cyc_then(44, b | 0x06E3))));
 cyc(204);
     }
 
@@ -78,8 +78,10 @@ void abi_WaitScanline(void)
  */
 static void put7f(uint32_t addr, uint8_t v)
 {
+    cyc(12);
     wr8(addr, v);
-}
+cyc(20);
+    }
 
 void abi_WindowTable7F(void)
 {
@@ -87,46 +89,65 @@ void abi_WindowTable7F(void)
 
     op_sep(P_M);
     a = rd8(0x7F3438);
+    cyc(46);
     b2 = rd8(0x7F3434);
     cpu.p |= P_C;
     a = op_sbc8(a, b2, &cpu.p);
+    cyc(4);
     put7f(0x7F3402, a);
     cpu.p = (uint8_t)((cpu.p & ~P_C) | (a & 1));
     a = (uint8_t)(a >> 1);
     cpu.p &= (uint8_t)~P_C;
+    cyc(40);
     a = op_adc8(a, rd8(0x7F3434), &cpu.p);
+    cyc(20);
     put7f(0x7F3406, a);
+    cyc(12);
     a = rd8(0x7F3435);
     a = (uint8_t)(a >> 1);
+    cyc(34);
     put7f(0x7F3410, a);
     a++;
+    cyc(14);
     put7f(0x7F3413, a);
+    cyc(12);
     a = rd8(0x7F3433);
+    cyc(20);
     put7f(0x7F3420, a);
     put7f(0x7F3423, a);
     a++;
+    cyc(14);
     put7f(0x7F341D, a);
     put7f(0x7F3426, a);
     a++;
+    cyc(14);
     put7f(0x7F341A, a);
     put7f(0x7F3429, a);
     a++;
+    cyc(14);
     put7f(0x7F3417, a);
     put7f(0x7F342C, a);
+    cyc(12);
     a = rd8(0x7F3437);
+    cyc(20);
     put7f(0x7F3421, a);
     put7f(0x7F3424, a);
     a--;
+    cyc(14);
     put7f(0x7F341E, a);
     put7f(0x7F3427, a);
     a--;
+    cyc(14);
     put7f(0x7F341B, a);
     put7f(0x7F342A, a);
     a--;
+    cyc(14);
     put7f(0x7F3418, a);
     put7f(0x7F342D, a);
+    cyc(12);
     a = rd8(0x7F3439);
     cpu.p |= P_C;
+    cyc(46);
     a = op_sbc8(a, rd8(0x7F3435), &cpu.p);
     a = op_sbc8(a, 0x06, &cpu.p);
     cpu.p = (uint8_t)((cpu.p & ~P_C) | (a & 1));
@@ -239,7 +260,7 @@ static void hblank_inline(void)
 
     do
         { cyc(24); v = rd8(HVBJOY); }
-    while (!(v & 0x40));
+    while (cyc_loop(38, !(v & 0x40)));
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.p = (uint8_t)(nz8(cpu.p, v) & ~P_Z);
 }
@@ -671,7 +692,8 @@ void abi_RasterIrq(void)
     cpu.p = nz8(cpu.p, db0);
     cpu.a = a0;
     cpu.p = nz16(cpu.p, a0);
-}
+cyc(100);
+    }
 
 /* The time stamp both marks take: the frame counter $0306 as the high
    byte and the PPU's line (latched by SLHV, read from OPVCT low then high,

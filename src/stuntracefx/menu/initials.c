@@ -50,6 +50,7 @@ static int hold_repeats(uint32_t held_bit_set, uint32_t count, uint8_t *p, uint1
         *p = nz16(*p, *a);
         cyc(102);
         wr16(count, *a);
+        cyc(24);
         return 0;
     }
     cyc(72);
@@ -204,7 +205,7 @@ uint16_t MenuInitialsPresses(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
             cyc(76);
             MenuInitialsStep(bank, x, y, p);
             i = (uint16_t)(i - 2);
-        } while (!(i & 0x8000));
+        } while (cyc_loop(42, !(i & 0x8000)));
         cyc(136);
         wr16(0x001191, 0x0000);
     }
@@ -532,6 +533,7 @@ void abi_MenuSettingsFrame(void)
                     cpu.x = x;
                 }
                 op_rep(P_M);
+                cyc(144);
                 return;
             } else { cyc(36); }
             sound_port0(0x46);

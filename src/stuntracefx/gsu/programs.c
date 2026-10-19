@@ -2290,7 +2290,8 @@ void abi_GlyphAtY60(void)
     wr16(0x70020C, 0x0060);
     abi_GsuBytes200_BFB5BB();
     (cyc(42), run_f329());
-}
+cyc(90);
+    }
 
 /* One step of the row at y 96: LDA #x, STA.L $70:020A, LDA #glyph, JSR
    GlyphAtY60. */
@@ -2402,40 +2403,28 @@ void abi_GlyphListDraw(void)
 
     cpu.x = 0x0000;
     cpu.p = nz16(cpu.p, 0);
-    cyc(94);
     op_lda16(b | 0x10E4);
     op_asl16();
-    cyc(30);
     wr16(0x0000F1, cpu.a);
-    cyc(24);
     op_lda16(b | 0x10E6);
     op_asl16();
-    cyc(30);
     wr16(0x0000F3, cpu.a);
     do {
         op_rep(P_M);
-        cyc(30);
         op_lda16(b | (uint16_t)(0x110E + cpu.x));
         if (cpu.a) {
-            cyc(46);
             op_lda16(b | (uint16_t)(0x10E8 + cpu.x));
-            cyc(32);
             wr16(0x700216, cpu.a);
-            cyc(30);
             op_lda16(b | (uint16_t)(0x1134 + cpu.x));
             op_and16(0x00FF);
-            cyc(54);
             wr16(0x70020A, cpu.a);
-            cyc(30);
             op_lda16(b | (uint16_t)(0x1135 + cpu.x));
             op_and16(0x00FF);
-            cyc(54);
             wr16(0x70020C, cpu.a);
             {
-                cyc(16);
                 uint16_t lim = rd16(0x0000F1);
 
-                cpu.p = (uint8_t)((nz16(cpu.p, (uint16_t)(cpu.x - lim)) & ~P_C) | (cpu.x >= lim ? (cyc(6), P_C) : (cyc(16), 0)));
+                cpu.p = (uint8_t)((nz16(cpu.p, (uint16_t)(cpu.x - lim)) & ~P_C) | (cpu.x >= lim ? P_C : 0));
                 if (cpu.x >= lim)
                     abi_GsuBytes200_BFB3BE();
                 else
@@ -2450,10 +2439,9 @@ void abi_GlyphListDraw(void)
         }
         cpu.x = (uint16_t)(cpu.x + 2);
         {
-            cyc(160);
             uint16_t lim = rd16(0x0000F3);
 
-            cpu.p = (uint8_t)((nz16(cpu.p, (uint16_t)(cpu.x - lim)) & ~P_C) | (cpu.x >= lim ? (cyc(58), P_C) : (cyc(22), 0)));
+            cpu.p = (uint8_t)((nz16(cpu.p, (uint16_t)(cpu.x - lim)) & ~P_C) | (cpu.x >= lim ? P_C : 0));
         }
     } while (!(cpu.p & P_C));
 }
@@ -2829,7 +2817,6 @@ void abi_SoundPort1QueuePush(void);
    moves on; 1 when it ran out. */
 static int glyph_wait(uint32_t b, uint16_t reload)
 {
-    cyc(14);
     uint16_t v = (uint16_t)(rd16(b | 0x115A) - 1);
 
     cyc(14);
@@ -2841,7 +2828,7 @@ static int glyph_wait(uint32_t b, uint16_t reload)
         op_lda16_imm(reload);
         cyc(26);
         wr16(b | 0x115A, reload);
-    } else { cyc(16); }
+    }
     cyc(24);
     v = (uint16_t)(rd16(b | 0x10D8) + 1);
     cyc(14);
@@ -2959,11 +2946,12 @@ void abi_GlyphTimesSequence(void)
     op_asl16();
     op_tax16();
     step = (uint16_t)(cpu.x >> 1);
-    cyc(76);
+    cyc(90);
     rd16(0x040000 | (uint16_t)(0xDB94 + cpu.x));
     switch (step) {
     case 0:
         glyph_wait(b, 0x001E);
+        cyc(90);
         break;
     case 1:
         glyph_wait(b, 0);
@@ -2981,17 +2969,14 @@ void abi_GlyphTimesSequence(void)
         glyph_flag_step(b, 0x00FF, 0x000A);
         break;
     case 4: case 8: case 12: {
-        cyc(14);
         uint16_t v = (uint16_t)(rd16(b | 0x115A) - 1);
 
-        cyc(14);
         wr16(b | 0x115A, v);
         cpu.p = nz16(cpu.p, v);
         if (!v) {
-            cyc(40);
             wr16(b | 0x115C, 0x0000);
             glyph_next(b);
-        } else { cyc(22); }
+        }
         abi_GlyphListDraw();
         break;
     }
@@ -3026,7 +3011,6 @@ void abi_GlyphTimesSequence(void)
         abi_GlyphRowY60From0();
         break;
     default: {
-        cyc(14);
         uint16_t v = (uint16_t)(rd16(b | 0x115A) - 1);
 
         cyc(14);
@@ -3046,7 +3030,7 @@ void abi_GlyphTimesSequence(void)
         break;
     }
     }
-cyc(138);
+cyc(48);
     }
 
 void abi_GsuBytes200_BFB7B6(void);
@@ -3362,7 +3346,8 @@ static void times_seq(uint16_t seq)
     cpu.y = seq;
     cpu.p = nz16(cpu.p, seq);
     abi_GsuF329Sequence();
-}
+cyc(42);
+    }
 
 /* 07:8A5D on: the first row ($0F64 at y 88), then the second's renderer
    bytes by the lead (negative B2B3, positive 11BD, 0 10B9) and the second
@@ -3751,7 +3736,7 @@ void abi_HudBlankDraw(void)
         blank_mark_at(0x0028);
     if (n <= 1)
         { cyc(50); blank_mark_at(0x0016); }
-    cyc(40);
+    cyc(50);
     blank_mark_at(0x0004);
     op_plp(p0);
 }

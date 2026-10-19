@@ -191,6 +191,7 @@ static void boot_clear(void (*fill)(void))
     p = cpu.p;
     op_rep(P_M | P_X);
     op_lda16_imm(0x0000);
+    cyc(104);
     wr16(0x700000, 0x0000);
     op_lda16_imm(0x27FF);
     boot_ldx(0x0000);

@@ -280,6 +280,7 @@ uint16_t WordCopyStep(uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y, uint8_
     cyc(116);
     wr16(b | 0x0CF6, n);
     *p = nz16(*p, n);
+    cyc(46);
     return a;
 }
 

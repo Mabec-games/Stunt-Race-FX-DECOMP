@@ -536,7 +536,7 @@ static uint16_t gsu_records_upload(uint16_t *x, uint16_t *y, uint8_t *p)
         n = (uint16_t)(rd16(0x001F2B) - 1);
         cyc(46);
         wr16(0x001F2B, n);
-    } while (n);
+    } while (cyc_loop(22, n));
     cyc(88);
     *x = s;
     *y = d;

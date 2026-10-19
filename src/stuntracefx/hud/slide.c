@@ -104,7 +104,7 @@ static void hud_sprites_y(uint32_t b)
     v = v0;
     for (i = 0; i < 4; i++) {
         if (i) {
-            cyc(14);
+            cyc(36);
             cpu.p &= (uint8_t)~P_C;
             v = adc8i(v, 0x10);
         }
@@ -268,8 +268,7 @@ static void hud_panel_slide(uint8_t f9, uint16_t x, int panel_a)
                 wr8(b | 0x0D54, 0x00);
             abi_HudSlideOut();
         }
-    cyc(42);
-        }
+    }
     hud_sprites_y(b);
     op_plp(p0);
 }

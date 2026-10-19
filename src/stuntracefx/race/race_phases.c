@@ -189,7 +189,8 @@ static void race_ready(uint8_t t)
     wr8(b | 0x10CB, 0x00);
     cyc(24);
     wr8(b | 0x10CC, 0x00);
-}
+cyc(16);
+    }
 
 /*
  * @routine 07:E2BD RaceReadyShort
@@ -613,6 +614,7 @@ void abi_ResultsPanelSteps(void)
         lda8_imm(0x0F);
         cyc(16);
         wr8(b | 0x0E3F, 0x0F);
+        cyc(16);
         return;
     case 0x0C:
         if (!panel_delay_out())
@@ -628,6 +630,7 @@ void abi_ResultsPanelSteps(void)
         cyc(74);
         wr8(b | 0x0D54, 0x0A);
         panel_next(b);
+        cyc(16);
         return;
     case 0x10:
         cyc(70);
@@ -639,6 +642,7 @@ void abi_ResultsPanelSteps(void)
         wr8(b | 0x0D67, 0x02);
         lda8_imm(0x06);
         phases_both(b);
+        cyc(16);
         return;
     default:
         jump_routine(0x070000 | rd16(0x070000 | (uint16_t)(0xE40A + cpu.x)));
@@ -1147,6 +1151,7 @@ static void lap_finish(uint32_t b)
     cyc(10);
     wr16(b | 0x1014, w);
     op_lda16_imm(0x0021);
+    cyc(10);
     wr16(b | 0x1040, 0x0021);
     op_lda16_imm(0x001D);
     cyc(10);
@@ -1196,7 +1201,7 @@ hold:
 panel:
     op_sep(P_M);
     lda8_imm(0x08);
-    cyc(66);
+    cyc(96);
     wr8(PY(b, 0x0E41), 0x08);
     op_sep(P_M | P_X);
     cpu.x = 0x0006;
@@ -1239,7 +1244,8 @@ panel:
     abi_TimePackBcd();
     (cyc(88), abi_SpecialRecordInsert());
     (cyc(266), abi_RecordsLoadCourseLong());
-}
+cyc(160);
+    }
 
 /* 07:E6B5: a lap crossed: with the override $0D4C the lap's time
    (lap_override); else $0DEA + Y counted: 1 and 2 add the lap's time
@@ -1677,6 +1683,7 @@ static int window_closed_overlay(uint32_t b)
     cmp8_imm(0x05);
     if ((uint8_t)cpu.a != 0x05)
         { cyc(6); return 0; }
+    cyc(24);
     wr8(b | 0x0D59, 0x00);
     abi_OverlayFramesUntilFaded();
     op_sep(P_M);

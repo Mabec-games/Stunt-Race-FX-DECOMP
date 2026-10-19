@@ -176,7 +176,7 @@ static uint8_t frame_rows(uint8_t bank, uint16_t base, uint8_t p)
         if ((mode == 1 || (cyc(40), mode == 3)) && !(rd16(cyc_then(94, b | 0x10CD)) & 0x00FF))
             t = 0x2010; else { cyc(28); }
         s = (unsigned)t + base;
-        cyc(134);
+        cyc(152);
         wr16(VMDATAL, (uint16_t)s);
     }
     return (uint8_t)((p & ~(P_C | P_V)) | (s > 0xFFFF ? P_C : 0)
@@ -363,7 +363,7 @@ void TilemapPaletteFill(uint16_t *x, uint16_t *y, uint16_t *a)
         wr8(0x7F93D7 + *x, v);
         *a = (uint16_t)((*a & 0xFF00) | v);
         *x += 2;
-    } while (--*y);
+    } while (cyc_loop(18, --*y));
 cyc(100);
     }
 
@@ -460,7 +460,7 @@ void abi_ScreenFrameAndPictures(void)
 
     cpu.p = (uint8_t)((cpu.p & ~P_M) | P_X);
     cpu.a = 0x7800;
-    cyc(190);
+    cyc(298);
     wr16(VMADDL, cpu.a);
     cpu.x = 0x80;
     cyc(40);
@@ -575,7 +575,7 @@ uint8_t TilemapRowsTo5C00(uint8_t bank)
         wr16(0x0000F9, off);
     } while (off != 0x0440);
     cyc(174);
-    return Bg2ScrollFromTable(0);
+    return cyc_then(84, Bg2ScrollFromTable(0));
 }
 
 void abi_TilemapRowsTo5C00(void)

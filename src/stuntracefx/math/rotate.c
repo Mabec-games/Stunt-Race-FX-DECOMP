@@ -75,7 +75,8 @@ static uint8_t rotate8(uint32_t xa, uint32_t va, uint32_t out, uint32_t out2)
     wr8(out2, r);
     hi = (r & 0x80) ? 0xFF : 0x00;
     wr8(out2 + 1, hi);
-    return hi ? (cyc(194), hi) : (cyc(172), r);
+    cyc(172);
+    return hi ? (cyc(22), hi) : r;
 }
 
 /*

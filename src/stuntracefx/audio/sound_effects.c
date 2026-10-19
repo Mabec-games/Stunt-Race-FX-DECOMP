@@ -164,6 +164,7 @@ static uint8_t sound_0e1a_stop(void)
     wr8(WRAM_0E1A, 0);
     cyc(78);
     SoundPort1QueuePush(0x08);
+    cyc(50);
     return 0x08;
 }
 
@@ -746,7 +747,8 @@ void abi_SoundNearCarOnce(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     abi_SoundPort0QueuePush();
     cpu.p = p0;
-}
+cyc(50);
+    }
 
 void abi_Sound0E1AStop(void);
 

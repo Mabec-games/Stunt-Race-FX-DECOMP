@@ -148,7 +148,8 @@ void DebugPrint(uint8_t bank)
         c = (uint8_t)(c - 0x20);
         DebugDrawChar(0x00, c, &a, &x, &yy);
         y = (uint16_t)(y + 1);
-    }
+    cyc(10);
+        }
 }
 
 void abi_DebugPrint(void)

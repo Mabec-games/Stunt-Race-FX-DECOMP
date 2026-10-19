@@ -878,7 +878,7 @@ uint16_t ObjectNearFocus(uint8_t bank, uint16_t obj, uint8_t *p)
     if ((uint16_t)(sum - 0x1194) & 0x8000) {
         wr8(field(bank, obj, 0x24), cyc_then(46, rd8(cyc_then(168, field(bank, obj, 0x24))) & 0xF7));
         wr8(field(bank, obj, 0x5F), cyc_then(46, 0x00));
-        return ObjectSet5DByKind(bank, obj, rd8(cyc_then(30, field(bank, obj, 0x49))), p);
+        return cyc_then(64, ObjectSet5DByKind(bank, obj, rd8(cyc_then(30, field(bank, obj, 0x49))), p));
     }
     k = (uint8_t)(rd8(cyc_then(174, field(bank, obj, 0x18))) & 0x03);
     wr8(field(bank, obj, 0x18), cyc_then(46, k));
@@ -904,7 +904,8 @@ void abi_ObjectNearFocus(void)
     cpu.a = ObjectNearFocus(cpu.db, cpu.x, &p);
     cpu.y = 0x1A64;
     cpu.p = (uint8_t)(p | P_M);
-}
+cyc(128);
+    }
 
 uint16_t ScaleObjectXZ(uint16_t obj, uint8_t *p);
 
@@ -931,6 +932,7 @@ uint16_t ObjectRebucket(uint16_t obj)
     cyc(234);
     wr16(0x7E2040 + obj, key);
     ObjectBucketInsert(obj);
+    cyc(122);
     return obj;
 }
 
@@ -1255,7 +1257,8 @@ static uint16_t groups_list(uint16_t *y)
         groups_chain(y);
         cyc(46);
         wr16(0x00003E, keep);
-    }
+    cyc(2);
+        }
 }
 
 uint16_t ObjectGroupsActivate(uint16_t *y)
@@ -1410,7 +1413,7 @@ static AreaEnd bucket_triggers_from_area(uint8_t bank, uint16_t rec, uint8_t p)
         n = (uint16_t)(n - 1);
         cyc(14);
         wr16(b | 0x05F2, n);
-    } while (n);
+    } while (cyc_loop(22, n));
     cyc(46);
     wr16(b | (uint16_t)(0x1AF5 + x), 0x0000);
     cyc(30);
@@ -1775,6 +1778,7 @@ uint16_t ObjectRelease(uint8_t bank, uint16_t obj, uint16_t a, uint8_t *p)
         cyc(6);
         wr8(b | 0x035C, n);
         *p = nz8(*p, n);
+        cyc(38);
         return a;
     } else { cyc(130); }
     a = ObjectFreeLong(bank, obj);
@@ -1814,7 +1818,7 @@ void ObjectCallHandler(uint16_t obj)
     cpu.p = (uint8_t)(nz16(cpu.p, a) | P_M);
     cyc(110);
     call_routine((uint32_t)bank << 16 | addr, 1);
-    cyc(260);
+    cyc(130);
     wr8((uint32_t)cpu.db << 16 | 0x1F58, keep);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | keep);
 }
@@ -1845,11 +1849,12 @@ static int run_handler(uint8_t bank, uint16_t obj, uint16_t word_at, uint16_t ba
     h = rd16(b | (uint16_t)(word_at + obj));
     cpu.a = h;
     if (!h)
-        return 0;
+        { cyc(16); return 0; }
     cyc(40);
     wr16(b | 0x0354, h);
     if (need_no_record && (cpu.a = rd16(cyc_then(30, b | (uint16_t)(0x2022 + obj)))) != 0)
         return 0;
+    cyc(24);
     wr16(b | 0x034C, obj);
     cyc(182);
     hb = rd8(b | 0x0356);
@@ -1912,7 +1917,8 @@ void abi_ObjectRunHandlerB(void)
     run_handler(cpu.db, x, 0x201D, 0x201F, 1);
     cpu.x = x;
     cpu.p = p;
-}
+cyc(44);
+    }
 
 void abi_ObjectRelease(void);
 
@@ -1975,7 +1981,7 @@ void ObjectsRunHandlers(void)
     cyc(134);
     x = rd16(b | 0x0329);
     while (x) {
-        cyc(60);
+        cyc(24);
         wr8(b | 0x035C, 0x00);
         cyc(30);
         v = rd8(b | (uint16_t)(0x2036 + x));
@@ -2001,7 +2007,7 @@ void ObjectsRunHandlers(void)
                 (cyc(62), abi_ObjectRunHandlerA());
             }
             b = (uint32_t)cpu.db << 16;
-            cyc(176);
+            cyc(138);
             v = rd8(b | 0x035C);
             cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
             if (v) {
@@ -2011,6 +2017,7 @@ void ObjectsRunHandlers(void)
                 cpu.y = y;
                 (cyc(62), abi_ObjectFreeLong());
                 x = y;
+                cyc(36);
                 continue;
             }
         } else if (v) {
@@ -2024,8 +2031,9 @@ void ObjectsRunHandlers(void)
         cyc(52);
         y = rd16(b | (uint16_t)(0x2000 + x));
         x = y;
-    }
-    cyc(124);
+    cyc(36);
+        }
+    cyc(88);
     cpu.x = 0;
     cpu.y = 0;
     cpu.db = db;
@@ -2091,13 +2099,13 @@ void abi_ObjectSpawnFromScript(void)
     wr16(OBJ_FIELD(o, 0x0C), cyc_then(48, rd16(b | (uint16_t)(0x8001 + y))));
     cyc(46);
     wr16(OBJ_FIELD(o, 0x0E), cyc_then(32, rd16(b | (uint16_t)(0x8003 + y))));
-    cyc(30);
+    cyc(46);
     wr16(OBJ_FIELD(o, 0x10), cyc_then(32, rd16(b | (uint16_t)(0x8005 + y))));
     cyc(46);
     wr16(OBJ_FIELD(o, 0x1A), cyc_then(32, rd16(b | (uint16_t)(0x800B + y))));
-    cyc(30);
+    cyc(46);
     wr16(OBJ_FIELD(o, 0x1B), cyc_then(32, rd16(b | (uint16_t)(0x800C + y))));
-    cyc(30);
+    cyc(46);
     w = rd16(b | (uint16_t)(0x8014 + y));
     cyc(32);
     wr16(OBJ_FIELD(o, 0x06), w);
@@ -2186,6 +2194,7 @@ uint8_t ObjectStep48To8(uint8_t bank, uint16_t obj, uint8_t *p)
     cyc(46);
     wr8(b | (uint16_t)(0x205A + obj), v);
     *p = nz8(*p, v);
+    cyc(20);
     return v;
 }
 
@@ -2290,7 +2299,8 @@ void abi_ObjectReleaseLong(void)
 {
     cpu.p |= P_M;
     (cyc(22), abi_ObjectRelease());
-}
+cyc(66);
+    }
 
 void abi_ObjectRebucket(void);
 void abi_ObjectCopyPositionFrom(void);
@@ -2318,7 +2328,7 @@ static void spawn_sparkle(uint32_t b)
     cpu.p = (uint8_t)(nz16(cpu.p, 0xA158) | P_M);
     abi_ObjectSpawn();
     if (!(cpu.p & P_C))
-        { cyc(92); return; }
+        return;
     cpu.a = 0xEA6B;
     cyc(76);
     wr16(b | (uint16_t)(0x201A + cpu.y), 0xEA6B);
@@ -2332,8 +2342,9 @@ static void spawn_sparkle(uint32_t b)
     (cyc(50), abi_ObjectCopyPositionTo());
     swap_xy();
     abi_ObjectRebucket();
-    (cyc(220), swap_xy());
-}
+    swap_xy();
+cyc(98);
+    }
 
 /*
  * @routine 08:E9F4 ObjectSpawnSparklePair
@@ -2421,7 +2432,8 @@ void abi_ObjectSparkleStep(void)
     wr8(b | (uint16_t)(0x2048 + cpu.x), v);
     cpu.p = nz8(cpu.p, v);
     (cyc(62), abi_ObjectRebucket());
-}
+cyc(132);
+    }
 
 /*
  * @routine 08:EA6B ObjectSparkleStart
@@ -2612,20 +2624,19 @@ static void move_forward_from(int arm)
     if (arm == 3) {
         cpu.a = (uint16_t)(cpu.a | 0x00FF);
         cpu.p = nz8(cpu.p, 0xFF);
-        cyc(40);
         wr8(b | 0x05F3, 0xFF);
         goto turn;
     }
     if (arm == 1) {
         cpu.a = (uint16_t)(cpu.a | 0x00FF);
         cpu.p = nz8(cpu.p, 0xFF);
-        wr8(dp8(0x05), cyc_then(32, 0xFF));
+        wr8(dp8(0x05), 0xFF);
     } else {
         wr8(dp8(0x02), cyc_then(54, 0x00));
         wr8(dp8(0x04), cyc_then(16, 0x00));
         sign_of_zero(dp8(0x05));
     }
-    v = rd8(cyc_then(38, dp8(0x08)));
+    v = rd8(cyc_then(16, dp8(0x08)));
     wr8(dp8(0x08), cyc_then(16, v));
     wr8(dp8(0x0A), cyc_then(16, v));
     wr8(dp8(0x0B), cyc_then(54, (v & 0x80) ? (cyc(10), 0xFF) : 0x00));
@@ -2755,15 +2766,17 @@ static void parent_place_from(uint32_t b, int attached, int stage)
     } else if (stage == 1) {
         wr8(dp8(0x05), cyc_then(32, 0xFF));
     }
+    cyc(16);
     if (stage <= 1) {
-        v = attached ? rd8(b | 0x1F59) : 0xF6;
+        v = attached ? rd8(cyc_then(8, b | 0x1F59)) : 0xF6;
         wr8(dp8(0x08), cyc_then(16, v));
         wr8(dp8(0x0A), cyc_then(16, v));
         sign_byte(dp8(0x0B), v);
     } else {
         wr8(dp8(0x0B), cyc_then(16, 0x00));
     }
-    v = rd8(b | (attached ? 0x1F5A : 0x1F58));
+    cyc(24);
+    v = rd8(b | (attached ? 0x1F5A : (cyc(22), 0x1F58)));
     wr8(dp8(0x94), cyc_then(16, v));
     cyc(24);
     wr8(b | 0x05F2, v);
@@ -2816,7 +2829,8 @@ static void parent_place_from(uint32_t b, int attached, int stage)
     } else { cyc(22); }
     cyc(62);
     abi_ObjectRebucket();
-}
+cyc(132);
+    }
 
 static void parent_place(uint32_t b, int attached)
 {
@@ -3568,7 +3582,8 @@ void abi_ObjectSpawnPuff(void)
     cpu.x = x;
     cpu.p = nz16(cpu.p, x);
     (void)v;
-}
+cyc(78);
+    }
 
 void abi_ObjectPoseFromRecord(void);
 void abi_GsuRun(void);
@@ -3634,6 +3649,7 @@ void abi_ObjectCarFrame(void)
             cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
             cpu.p = nz8(cpu.p, v);
             wr8(car_field(0x2024), cyc_then(46, v));
+            cyc(38);
             return;
         } else { cyc(32); }
     }
@@ -3642,7 +3658,8 @@ void abi_ObjectCarFrame(void)
     (cyc(68), abi_ObjectNearFocus());
     abi_ObjectPoseFromRecord();
     (cyc(142), abi_ObjectRebucket());
-}
+cyc(132);
+    }
 
 void abi_CrashWhite(void);
 

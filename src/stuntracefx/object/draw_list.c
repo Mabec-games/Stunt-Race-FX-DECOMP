@@ -178,11 +178,12 @@ static void draw_bucket(uint16_t o, uint16_t r, int next)
         next = 0;
         cyc(52);
         o = rd16(OBJ(o, 0x3C));
-    } while (o);
+    } while (cyc_loop(60, o));
     cpu.y = 0;
     cyc(52);
     wr16(DRAW_NEXT, r);
-}
+cyc(2);
+    }
 
 /* The triggers from $1F2B on, each bucket's objects drawn; A = 0 and X =
    the trigger position at the end. */

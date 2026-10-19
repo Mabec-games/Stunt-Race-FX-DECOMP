@@ -26,7 +26,7 @@ static void wait_start(uint32_t b, int held)
         cyc(46);
         j = rd8(b | 0x4219);
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | j);
-    } while (((j & 0x10) != 0) != held);
+    } while (cyc_loop(6, ((j & 0x10) != 0) != held));
 }
 
 /*

@@ -113,9 +113,11 @@ static uint8_t pitched(uint8_t ia, uint8_t ib, uint8_t *p)
 
     cyc(90);
     wr8(H_SIN_A, rd8(SIN_TABLE + ia));
+    cyc(48);
     wr8(H_COS_A, rd8(COS_TABLE + ia));
     cyc(54);
     wr8(H_SIN_B, rd8(SIN_TABLE + ib));
+    cyc(48);
     wr8(H_COS_B, rd8(COS_TABLE + ib));
     wr8(H_X, cyc_then(14, smul_at(H_SPEED, H_SIN_A, p)));
     v = smul_at(H_X, H_COS_B, p);
@@ -413,9 +415,7 @@ static void double_vector(void)
     uint16_t v;
 
     for (i = 0; i < 3; i++) {
-        cyc(16);
         v = rd16(at[i]);
-        cyc(14);
         wr16(at[i], (uint16_t)(v << 1));
     }
 }

@@ -310,7 +310,7 @@ void abi_CourseSoundLoad(void)
     uint16_t x, a;
 
     op_sep(P_M);
-    cyc(68);
+    cyc(202);
     op_lda8(b | 0x10DA);
     if ((uint8_t)cpu.a) {
         cyc(16);

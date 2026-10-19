@@ -38,14 +38,15 @@ void abi_BinaryToBcd(void)
 
     cyc(16);
     wr16(0x0000F1, 0x0000);
-    for (i = 0; i < 3; i++) {
+    for (i = 0; cyc_loop(20, i < 3); i++) {
         for (;;) {
+            cyc(2);
             op_cmp16(unit[i]);
             if (!(cpu.p & P_C))
-                { cyc(32); break; }
+                break;
             cpu.a = op_sbc16(cpu.a, unit[i], &cpu.p);
             a = cpu.a;                  /* PHA, the count, PLA */
-            cyc(120);
+            cyc(118);
             op_lda16(0x0000F1);
             op_add16(digit[i]);
             cyc(54);
@@ -53,7 +54,7 @@ void abi_BinaryToBcd(void)
             op_lda16_imm(a);
         }
     }
-    cyc(60);
+    cyc(90);
     op_add16(rd16(0x0000F1));
 }
 
@@ -137,10 +138,13 @@ static void time_add(uint32_t b, uint16_t x, uint32_t to[3])
     if (v == 0xFF)
         return;
     cpu.p &= (uint8_t)~P_C;
+    cyc(70);
     v = op_adc8(v, rd8(to[0]), &cpu.p);
     cyc(30);
     wr8(to[0], v);
+    cyc(24);
     v = rd8(b | (uint16_t)(0x0F77 + x));
+    cyc(24);
     v = op_adc8(v, rd8(to[1]), &cpu.p);
     if (cpu.p & P_C) {
         cpu.p |= P_C;
@@ -164,8 +168,9 @@ static void time_add(uint32_t b, uint16_t x, uint32_t to[3])
         wr8(to[2], op_adc8(v, 0x01, &cpu.p));
     }
     cpu.p &= (uint8_t)~P_C;
-    cyc(44);
+    cyc(76);
     v = rd8(b | (uint16_t)(0x0F78 + x));
+    cyc(24);
     v = op_adc8(v, rd8(to[2]), &cpu.p);
     cyc(30);
     wr8(to[2], v);
@@ -314,7 +319,7 @@ static void record_slot_copy(uint8_t a)
         wr8(0x70FC70 + (uint32_t)cpu.x, v);
         cpu.x = (uint8_t)(cpu.x + 1);
         cpu.y = (uint8_t)(cpu.y - 1);
-    } while (cpu.y);
+    } while (cyc_loop(4, cpu.y));
     cyc(86);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.p = nz8(cpu.p, 0);
@@ -365,8 +370,7 @@ static uint8_t course_times_24(void)
     cyc(52);
     a = op_adc8(a, rd8(b | 0x0D4A), &cpu.p);
     cyc(2);
-    for (i = 0; i < 3; i++) {
-        cyc(12);
+    for (i = 0; cyc_loop(12, i < 3); i++) {
         cpu.p = (uint8_t)((cpu.p & ~P_C) | (a >> 7));
         a = (uint8_t)(a << 1);
     }
@@ -555,17 +559,16 @@ void abi_BcdToBinary(void)
 
     cyc(16);
     wr16(0x0000F1, 0x0000);
-    cyc(108);
     for (i = 0; i < 3; i++) {
         if (v < thr[i])
-            continue;
+            { cyc(36); continue; }
         n = (uint16_t)(v >> sh[i]);
-        cyc(180);
+        cyc(206);
         t = rd16(0x0000F1);
         do
-            { cyc(74); t = (uint16_t)(t + mul[i]); }
-        while (--n);
-        cyc(10);
+            t = (uint16_t)(t + mul[i]);
+        while (cyc_loop(74, --n));
+        cyc(84);
         wr16(0x0000F1, t);
         v &= (uint16_t)(thr[i] - 1);
     }
@@ -729,6 +732,7 @@ void abi_RecordTimeInsert(void)
     cyc(82);
     wr8(b | 0x0FAC, place);
     op_rep(P_M | P_X);
+    cyc(78);
     wr16(0x0000F7, page);
     cyc(24);
     a = asl16(rd16(b | 0x0D4A));

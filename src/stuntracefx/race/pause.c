@@ -398,6 +398,7 @@ static void choice_move(uint32_t b, uint16_t pad, int wide, void (*left)(void), 
     }
     abi_SoundPort0QueuePush();
     op_sep(P_M);
+    cyc(38);
     wr8(b | 0x0D3D, 0x00);
     (cyc(46), right());
 }
@@ -483,6 +484,7 @@ static void continue_wait(uint8_t owner)
     cyc(38);
     wr8(b | 0x0D2E, owner);
     lda8_imm(0x00);
+    cyc(16);
     wr8(b | 0x19DF, 0x00);
     (cyc(62), abi_WindowSlideUpSound());
     cyc(16);
@@ -628,7 +630,8 @@ static void rows(void (*r87)(void), void (*r107)(void), void (*r187)(void))
     (cyc(44), r87());
     (cyc(64), r107());
     (cyc(64), r187());
-}
+cyc(42);
+    }
 
 /* Down (bit 10) or up (bit 11) on pad: sound $45 and the cursor $0D50 =
    to; returns 1 when taken. */
@@ -669,7 +672,7 @@ static void quit_menu_take(uint32_t b, uint16_t which, uint8_t d, void (*park)(v
             wr8(b | 0x0D23, d);
             park();
         }
-        cyc(60);
+        cyc(108);
         lda8_imm(0x46);
         abi_SoundPort0QueuePush();
         lda8_imm(0x06);

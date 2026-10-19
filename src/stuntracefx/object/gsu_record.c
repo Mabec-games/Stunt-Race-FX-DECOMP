@@ -213,6 +213,7 @@ uint16_t GsuRecordFlag4(uint8_t bank, uint16_t obj, int *has)
     if (!*has) {
         cyc(62);
         wr8(b | (uint16_t)(0x2036 + obj), 0xFF);
+        cyc(8);
         return 0x00FF;
     } else { cyc(28); }
     rec = record_of(bank, obj);
@@ -229,6 +230,7 @@ void abi_GsuRecordFlag4(void)
     uint16_t a = GsuRecordFlag4(cpu.db, cpu.x, &has);
 
     if (has) {
+        cyc(8);
         cpu.a = a;
         cpu.y = cpu.x;
         cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z | P_M);
@@ -237,7 +239,7 @@ void abi_GsuRecordFlag4(void)
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xFF);
         cpu.p = (uint8_t)((cpu.p & ~P_Z) | P_N | P_M);
     }
-cyc(96);
+cyc(126);
     }
 
 /*
@@ -973,6 +975,7 @@ uint16_t ObjectTurnFromRecord(uint8_t bank, uint16_t rec, uint16_t obj, uint8_t 
     cyc(46);
     wr8(b | (uint16_t)(0x2019 + obj), a);
     *p = nz8(*p, a);
+    cyc(18);
     return (uint16_t)((w & 0xFF00) | a);
 }
 
@@ -1006,6 +1009,7 @@ static uint16_t sync_none(uint8_t bank, uint8_t *p)
     cyc(92);
     wr16((uint32_t)bank << 16 | 0x1F3C, 0x0000);
     *p = (uint8_t)(nz8(*p, 0) | P_C);
+    cyc(38);
     return 0x0000;
 }
 
@@ -1018,6 +1022,7 @@ static uint16_t sync_start(uint8_t bank, uint16_t obj)
     ObjectRebucket(obj);
     cyc(156);
     GsuRecordFlag4(bank, obj, &has);
+    cyc(116);
     return record_of(bank, obj);
 }
 
@@ -1050,6 +1055,7 @@ uint16_t ObjectSyncFromRecord(uint8_t bank, uint16_t obj, uint16_t *y, uint8_t *
     ObjectRebucket(obj);
     cyc(156);
     GsuRecordFlag4(bank, obj, &has);
+    cyc(126);
     wr8(b | (uint16_t)(0x2024 + obj), cyc_then(46, rd8(b | (uint16_t)(0x2024 + obj)) & 0xFD));
     cyc(20);
     rec = record_of(bank, obj);
@@ -1699,6 +1705,7 @@ void abi_CarControlsToRecord(void)
             op_lda16(cyc_then(62, b | ctl_player_word(b)));
             ctl_bit(0x0010);
             if (!(cpu.a & 0x0010)) {
+                cyc(88);
                 v = cpu.a;
                 op_lda16_imm(0x005E);
                 abi_SoundPort0QueuePush();
@@ -1706,12 +1713,13 @@ void abi_CarControlsToRecord(void)
                 ctl_player_store(b, v);
             } else { cyc(30); }
         }
-    } else {
+    cyc(22);
+        } else {
         cyc(4);
         op_lda16(cyc_then(62, b | ctl_player_word(b)));
         ctl_bit(0x0010);
         if (cpu.a & 0x0010)
-            ctl_player_store(b, (uint16_t)(cpu.a & 0xFFEF));
+            { cyc(24); ctl_player_store(b, (uint16_t)(cpu.a & 0xFFEF)); }
     }
     if (ctl_held(b, SEQ_INPUT, 0x0040) && !ctl_held(b, SEQ_PREV, 0x0040)) {
         cyc(32);
@@ -1881,6 +1889,7 @@ uint16_t RecordButtonSequence(uint8_t bank, uint16_t rec, uint8_t *p)
         cyc(14);
         wr16(b | SEQ_STAGE, s);
         *p = nz16(*p, s);
+        cyc(22);
         return in;
     }
     *p = cmp16(*p, s, 0x0003);
@@ -2202,7 +2211,8 @@ void abi_ObjectSpinStep(void)
     } else { cyc(8); }
     cyc(98);
     abi_ObjectSyncFromRecord();
-}
+cyc(124);
+    }
 
 /*
  * @routine 08:CDD0 ObjectSpinRecord

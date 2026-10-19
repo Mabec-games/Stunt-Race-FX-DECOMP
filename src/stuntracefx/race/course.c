@@ -25,14 +25,14 @@ uint8_t CourseFromSelection(uint8_t bank, uint8_t *p)
         a = rd8(cyc_then(40, dbw(bank, 0x0D4A)));
         b = 0x14;
     } else {
-        a = rd8(dbw(bank, 0x0D4A));
+        a = rd8(cyc_then(46, dbw(bank, 0x0D4A)));
         a = (uint8_t)(a << 2);
-        b = rd8(dbw(bank, 0x0D48));
+        b = rd8(cyc_then(66, dbw(bank, 0x0D48)));
     }
     s = (unsigned)a + b;
     *p = (uint8_t)((nz8(*p, (uint8_t)s) & ~(P_C | P_V)) | (s > 0xFF ? P_C : 0)
                    | ((~(a ^ b) & (a ^ s) & 0x80) ? P_V : 0));
-    wr8(dbw(bank, 0x0E3D), (uint8_t)s);
+    wr8(dbw(bank, 0x0E3D), cyc_then(24, (uint8_t)s));
     return (uint8_t)s;
 }
 
@@ -334,21 +334,28 @@ void abi_CourseWindowZoomSetup(void)
     uint32_t b = (uint32_t)cpu.db << 16;
     unsigned i;
 
+    cyc(262);
     for (i = 0; i < 4; i++) {
+        cyc(78);
         cpu.a = rd16(b + 0xFB8E + cpu.y + 2 * i);
         wr16(0x7F343A + 2 * i, cpu.a);
     }
     for (i = 0; i < 4; i++) {
+        cyc(78);
         cpu.a = rd16(b + 0xFC11 + cpu.x + 2 * i);
         wr16(0x7F3432 + 2 * i, cpu.a);
+        cyc(32);
         wr16(0x7F3442 + 2 * i, cpu.a);
     }
+    cyc(56);
     wr16(0x7F340A, 0x000F);
     cpu.a = 0x0000;
     cpu.p = nz16(cpu.p, 0x0000);
+    cyc(56);
     wr16(0x7F3408, 0x0000);
-    abi_WindowTable7FLong();
-}
+    (cyc(162), abi_WindowTable7FLong());
+cyc(216);
+    }
 
 /* 03:FB64, the zoom's start from X and Y (the offsets for
    CourseWindowZoomSetup): with the data bank $03, the window set up,
@@ -365,7 +372,7 @@ static void course_zoom(uint16_t x, uint16_t y)
     op_rep(P_M | P_X);
     abi_CourseWindowZoomSetup();
     abi_ColourMathA3();
-    abi_OamBufferHideLargeLong();
+    (cyc(154), abi_OamBufferHideLargeLong());
     op_sep(P_M);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x04);
     cyc(104);
@@ -637,6 +644,7 @@ static void sel_choose(uint32_t b)
 
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | page);
     cpu.p = nz8(cpu.p, page);
+    cyc(40);
     if (sel_pressed16(b, 0x9000)) {
         if (page)
             abi_CourseZoomFromSelection4();
@@ -760,7 +768,7 @@ void abi_SpeedCourseSelectStep(void)
     abi_FlashingMetaspriteDrawByMode();
     op_lda8(b | 0x0D4A);
     v = (uint8_t)cpu.a;
-    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x01)) & ~P_C) | (v >= 0x01 ? P_C : (cyc(62), 0)));
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x01)) & ~P_C) | (v >= 0x01 ? (cyc(62), P_C) : (cyc(62), 0)));
     if (v == 0x01) {
         if (sel_pressed(b, 0x0400)) {
             op_sep(P_M);
@@ -788,7 +796,7 @@ void abi_SpeedCourseSelectStep(void)
         sel_sound();
         sel_row(b, 0x01);
         return;
-    }
+    } else { cyc(68); }
     sel_choose(b);
 }
 

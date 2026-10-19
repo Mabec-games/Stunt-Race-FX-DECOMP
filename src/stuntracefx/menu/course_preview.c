@@ -64,7 +64,8 @@ static void hdma_on(uint8_t channels)
     cpu.x = x;
     cpu.p = nz16(cpu.p, x);  /* PLX, X 16-bit */
     cpu.p &= (uint8_t)~P_M;
-}
+cyc(166);
+    }
 
 /* Animation `anim` on the kind 4 object unless it has it already. */
 static void kind4_animation(uint16_t anim)
@@ -599,7 +600,7 @@ void abi_MenuScreenOpenPreviewFade(void)
         cyc(60);
         wr8(0x001909, v);
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    } while (!(v & 0x80));
+    } while (cyc_loop(22, !(v & 0x80)));
     cyc(62);
     abi_MenuWaitFrame();
     cyc(44);

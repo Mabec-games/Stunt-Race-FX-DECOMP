@@ -46,6 +46,7 @@ uint16_t MenuGaugeFromButtonB(void)
     g = rd16(MENU_GAUGE);
     cyc(16);
     wr16(0x000002, g);
+    cyc(22);
     return g;
 }
 
@@ -82,11 +83,13 @@ uint16_t MenuGaugeSlideToTarget(void)
             g = rd16(MENU_GAUGE);
             cyc(16);
             wr16(0x000002, g);
+            cyc(48);
             return g;
         }
     }
     cyc(70);
     wr16(MENU_GAUGE, 0xFF00);
+    cyc(70);
     return 0xFF00;
 }
 
@@ -235,7 +238,8 @@ uint16_t SpeedGaugeUpdate(uint8_t bank, uint16_t a, uint16_t *x)
         } else {
             a = MenuGaugeFromButtonB();
         }
-    } else {
+    cyc(48);
+        } else {
         cyc(68);
         a = GaugeFromSpeed(bank, x);
         cyc(124);
