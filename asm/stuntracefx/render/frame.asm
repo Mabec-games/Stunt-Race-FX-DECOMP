@@ -1261,11 +1261,13 @@ FxEffectsAdd:
 ; @routine 01:B7E6 FxEffectsAddUnused
 ; WHAT IT DOES: Code no jump or branch reaches: after kind 6's set-up
 ; (which ends by jumping to 01:B763) a second copy of a kind's set-up,
-; its speeds halved differently (not reached in the traces so far, and
-; never: nothing in bank 01 jumps or branches here).
-; HOW: As kind 6 at 01:B774, ending at 01:B855.
-; Entry: none (unreachable).
-; Exit: none.
+; its speeds halved differently; nothing in bank 01 jumps or branches
+; here, so a direct call is its only way in.
+; HOW: As kind 6 at 01:B774, ending at 01:B855 with the jump to the
+; next slot (01:B763).
+; Entry: as FxEffectsAdd at a kind's set-up: R3 = the slot, R9 = the
+; particles left, R2 = the seed, R6, R12, R10 = stack. Exit: as
+; FxEffectsAdd.
 %at($01B7E6)
 FxEffectsAddUnused:
     from r9
@@ -2239,22 +2241,50 @@ FxWeatherDraw:
     nop
 ;
 ; @routine 01:BF2F FxWeatherUnused
-; WHAT IT DOES: Code no jump or branch reaches: branches back into
-; FxWeatherDraw's drop loop and the setting of a drop's word to 0 or
-; $01FF (not reached in the traces so far, and never: nothing in bank
-; 01 jumps or branches here).
-; HOW: BRA to 01:BF2A and two IWT R2 stores, ending at 01:BF4C.
-; Entry: none (unreachable).
-; Exit: none.
+; WHAT IT DOES: Code no jump or branch reaches: a branch back into
+; FxWeatherDraw's drop loop (01:BF2A); nothing in bank 01 jumps or
+; branches here, so a direct call is its only way in. The code after
+; it is three more such entries: FxWeatherUnusedLoop,
+; FxWeatherUnusedClear and FxWeatherUnusedFull.
+; HOW: BRA with a NOP in its delay slot; then as FxWeatherDraw.
+; Entry: as FxWeatherDraw's drop loop: R12 = the drops left, R13 = the
+; loop, R10 = stack. Exit: as FxWeatherDraw.
 %at($01BF2F)
 FxWeatherUnused:
     bra FxWeatherDraw_lBF2A
     nop
+;
+; @routine 01:BF32 FxWeatherUnusedLoop
+; WHAT IT DOES: The second of FxWeatherUnused's branches back into
+; FxWeatherDraw's drop loop (01:BF2A), which nothing reaches; a direct
+; call is its only way in.
+; HOW: BRA with a NOP in its delay slot; then as FxWeatherDraw.
+; Entry: as FxWeatherDraw's drop loop: R12 = the drops left, R13 = the
+; loop, R10 = stack. Exit: as FxWeatherDraw.
+%at($01BF32)
     bra FxWeatherDraw_lBF2A
     nop
+;
+; @routine 01:BF35 FxWeatherUnusedClear
+; WHAT IT DOES: Sets the word four bytes before R8 (a drop's) to 0 and
+; goes on with the drop loop (01:BF2A); nothing reaches it (it follows
+; an unconditional BRA), so a direct call is its only way in.
+; HOW: IWT R2,#0; BRA to the store at 01:BF3E (R8 - 10 + 6), R8 kept.
+; Entry: R8 = the drop; the drop loop's R12, R13, R10. Exit: R1 = R8;
+; R2 = 0; then as FxWeatherDraw.
+%at($01BF35)
     iwt r2,#$0000
     bra .lBF3E
     nop
+;
+; @routine 01:BF3B FxWeatherUnusedFull
+; WHAT IT DOES: As FxWeatherUnusedClear with $01FF: the word four bytes
+; before R8 set to $01FF, then the drop loop (01:BF2A); nothing reaches
+; it, so a direct call is its only way in.
+; HOW: IWT R2,#$01FF; the store at 01:BF3E.
+; Entry: R8 = the drop; the drop loop's R12, R13, R10. Exit: R1 = R8;
+; R2 = $01FF; then as FxWeatherDraw.
+%at($01BF3B)
     iwt r2,#$01FF
 .lBF3E:
     move r1,r8

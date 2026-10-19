@@ -1,0 +1,35 @@
+# unit_fx_unused_01: unit tests (fx) for the bank 01 Super FX code nothing
+# jumps or branches to, from the start of a Novice race (R11 = the STOP at
+# $01:80E3; an entry that returns by pulling R15 finds that STOP as the
+# word below R10):
+# - FxEffectsAddUnused 01:B7E6 with the registers FxEffectsAddKinds' calls
+#   use (unit_fx_entries_a), one particle left (R9 = 1: straight to the
+#   return), with bit 0 of R12 clear and set (its two speeds);
+# - FxWeatherUnused 01:BF2F, FxWeatherUnusedLoop 01:BF32,
+#   FxWeatherUnusedClear 01:BF35 and FxWeatherUnusedFull 01:BF3B with the
+#   registers FxWeatherDropNext's calls use, on the drop at $2AEC as the
+#   last drop (R12 = 1), so the drop loop ends and returns.
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700244 E3,80
+fx 01:B7E6 stop=80E3 r0=0003 r1=0010 r2=1234 r3=273E r5=0020 r6=0010 r7=274A r8=0003 r9=0001 r10=0246 r12=0014 r13=B6F4
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700244 E3,80
+fx 01:B7E6 stop=80E3 r0=0003 r1=0010 r2=1234 r3=273E r5=0020 r6=0010 r7=274A r8=0003 r9=0001 r10=0246 r12=0015 r13=B6F4
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700244 E3,80
+fx 01:BF2F stop=80E3 r0=00CD r1=0111 r2=001B r3=002A r4=002A r5=FFD3 r6=2FE7 r7=9101 r8=2AEC r9=00A9 r10=0246 r12=0001 r13=BD52
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700244 E3,80
+fx 01:BF32 stop=80E3 r0=00CD r1=0111 r2=001B r3=002A r4=002A r5=FFD3 r6=2FE7 r7=9101 r8=2AEC r9=00A9 r10=0246 r12=0001 r13=BD52
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700244 E3,80
+fx 01:BF35 stop=80E3 r0=00CD r1=0111 r2=001B r3=002A r4=002A r5=FFD3 r6=2FE7 r7=9101 r8=2AEC r9=00A9 r10=0246 r12=0001 r13=BD52
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 700244 E3,80
+fx 01:BF3B stop=80E3 r0=00CD r1=0111 r2=001B r3=002A r4=002A r5=FFD3 r6=2FE7 r7=9101 r8=2AEC r9=00A9 r10=0246 r12=0001 r13=BD52
+wait 1
