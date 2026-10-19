@@ -132,6 +132,7 @@ void abi_CameraFollowStep(void)
         wr16(CAM(r, 0x28), cyc_then(60, (uint16_t)(~rd16(0x000008) + 1)));
         cyc(16);
         wr16(CAM(r, 0x2A), cyc_then(60, (uint16_t)(~rd16(0x000094) + 1)));
+        cyc(44);                        /* BRA to .lead_done, LDA dp,X */
     } else {
         cyc(92);
         wr16(CAM(r, 0x26), 0x0000);
@@ -139,8 +140,8 @@ void abi_CameraFollowStep(void)
         wr16(CAM(r, 0x28), 0x0000);
         cyc(22);
         wr16(CAM(r, 0x2A), 0x0000);
+        cyc(22);                        /* LDA dp,X */
     }
-    cyc(22);
     wr16(0x000002, cyc_then(16, rd16(CAM(r, 0x1A))));
     cyc(22);
     wr16(0x000008, cyc_then(16, rd16(CAM(r, 0x1C))));
@@ -155,6 +156,7 @@ void abi_CameraFollowStep(void)
         wr16(b | 0x0660, 0x0000);
         cyc(24);
         wr16(b | 0x0662, 0x0000);
+        cyc(78);                        /* JMP .to_super_fx, PHX, LDA */
     } else if (!(f & 0x1C00)) {
         cyc(110);
         y = rd16(b | CAM_TARGET);
@@ -171,6 +173,7 @@ void abi_CameraFollowStep(void)
         wr16(b | 0x065E, a);
         cyc(24);
         wr16(b | 0x0662, 0x0000);
+        cyc(78);                        /* JMP .to_super_fx, PHX, LDA */
     } else {
         cyc(116);
         y = rd16(b | CAM_TARGET);
@@ -245,8 +248,8 @@ void abi_CameraFollowStep(void)
         wr16(b | 0x065E, a);
         cyc(24);
         wr16(b | 0x0662, 0x0000);
+        cyc(54);                        /* falls into .to_super_fx: PHX, LDA */
     }
-    cyc(78);
     a = rd16(b | 0x065E);
     cyc(36);
     a = (uint16_t)(a + rd16(CAM(r, 0x35)));

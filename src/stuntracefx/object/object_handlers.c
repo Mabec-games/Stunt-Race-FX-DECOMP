@@ -2153,6 +2153,7 @@ static void offset_on_parent_ex(int sh, int with14)
         cyc(54);
         wr8(0x000005, 0x00);
     }
+    cyc((v & 0x80) ? 46 : 24);          /* BRA (negative), LDA abs */
     op_lda8(b | 0x1F59);
     v = (uint8_t)cpu.a;
     cyc(16);
@@ -2167,6 +2168,7 @@ static void offset_on_parent_ex(int sh, int with14)
         cyc(54);
         wr8(0x00000B, 0x00);
     }
+    cyc((v & 0x80) ? 46 : 24);          /* BRA (negative), LDA abs */
     op_lda8(b | 0x1F5A);
     v = (uint8_t)cpu.a;
     cyc(16);
@@ -2181,6 +2183,7 @@ static void offset_on_parent_ex(int sh, int with14)
         cyc(62);
         wr8(b | 0x05F3, 0x00);
     }
+    cyc((v & 0x80) ? 52 : 30);          /* BRA (negative), LDA abs,Y */
     op_lda8(b | (uint16_t)(0x2016 + cpu.y));
     abi_RotateXY();
     cyc(16);
@@ -3048,23 +3051,29 @@ static uint16_t latch_addr(void)
 
 /* A latch bit and its sound: when `on` and the bit is clear, the sound
    (`snd`) and the bit set; when off and the bit is set, the sound and the
-   bit cleared. 16-bit, the latch word re-chosen before the store. */
-static void latch(uint16_t bit, int on, AbiFn snd)
+   bit cleared. 16-bit, the latch word re-chosen before the store. Returns
+   the time from its last access to the code after it (each copy's tail in
+   the assembly): unchanged, BIT # and the branch taken, then on the BRA
+   (68 on, 46 off); changed, the BRAs after the store (on: 44 for player
+   2's word, 22 for player 1's; off: 22 or 0). */
+static uint32_t latch(uint16_t bit, int on, AbiFn snd)
 {
     uint32_t b = db();
-    uint16_t w;
+    uint16_t w, at;
 
     op_lda16(cyc_then(62, b | latch_addr()));
     cpu.p = (uint8_t)((cpu.p & ~P_Z) | ((cpu.a & bit) ? 0 : P_Z));
     if (((cpu.a & bit) ? 1 : 0) == on)
-        { cyc(22); return; }
+        return on ? 68 : 46;
     w = cpu.a;
     snd();
     w = on ? (uint16_t)(w | bit) : (uint16_t)(w & ~bit);
     cpu.p &= (uint8_t)~P_M;
-    wr16(b | (cyc(122), latch_addr()), cyc_then(98, w));
+    at = (cyc(122), latch_addr());
+    wr16(b | at, cyc_then(98, w));
     cpu.a = w;
     cpu.p = nz16(cpu.p, w);
+    return (at == 0x1A60 ? 22 : 0) + (on ? 22 : 0);
 }
 
 /* CMP #k (8-bit) on v: N, Z, C set; whether v - k is negative. */
@@ -3118,7 +3127,7 @@ void abi_PlayerCarEvents(void)
     uint16_t obj = cpu.x, rec, w, x;
     uint8_t v;
     int found;
-    uint32_t to_c4a2 = 104;
+    uint32_t to_c4a2 = 104, tail = 78;
 
     cyc(24);
     wr16(b | 0x1F18, obj);
@@ -3181,18 +3190,20 @@ void abi_PlayerCarEvents(void)
             cyc(102);
             op_lda16(0x700092 + cpu.x);
             if (cpu.a & 0x0020)
-                latch(0x0004, 1, abi_PlayerSound12);
+                tail = latch(0x0004, 1, abi_PlayerSound12);
             else
-                { cyc(6); latch(0x0004, 0, abi_PlayerSound0C); }
+                { cyc(6); tail = latch(0x0004, 0, abi_PlayerSound0C); }
+            tail += 32;                         /* LDA long at $C213 */
         }
     } else { cyc(24); }
     cpu.p &= (uint8_t)~P_M;
-    cyc(78);
+    cyc(tail);
     op_lda16(0x700042 + cpu.x);
     if (cpu.a & 0x0400)
-        latch(0x0001, 1, abi_PlayerSound23);
+        tail = latch(0x0001, 1, abi_PlayerSound23);
     else
-        { cyc(6); latch(0x0001, 0, abi_PlayerSound24); }
+        { cyc(6); tail = latch(0x0001, 0, abi_PlayerSound24); }
+    cyc(tail + 32);                             /* LDA long at $C280 */
     op_lda16(0x700042 + cpu.x);
     cyc(78);
     op_lda16(0x700042 + cpu.x);
@@ -3203,10 +3214,10 @@ void abi_PlayerCarEvents(void)
         if ((cpu.a & 0x0800) && (cyc(40), !(cpu.a & 0x0100)))
             found = 1;
     }
-    latch(0x0002, found, found ? abi_PlayerSound0D : (cyc(6), abi_PlayerSound0B));
+    tail = latch(0x0002, found, found ? abi_PlayerSound0D : (cyc(6), abi_PlayerSound0B));
     /* $08:C304: the held sound by the record's +$57. */
     cpu.p |= P_M;
-    cyc(54);
+    cyc(tail + 54);                             /* SEP, LDA long */
     op_lda8(0x700057 + cpu.x);
     v = (uint8_t)cpu.a;
     cyc(24);
