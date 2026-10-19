@@ -11,11 +11,12 @@ between the two. Each is an equation: the sum of the probes' costs, each as
 often as it was passed, equals the clocks. `reduce` keeps each distinct one
 once (with how often it was seen), and any set of probe counts seen with
 two different clock counts: there the C does not tell apart paths of the
-original that take different times. `solve` finds the probes' costs by
-exact elimination over the rationals (a cost no equation separates from
-another is left 0, its partner taking the sum), checked against every
-equation. It writes each probe's cost (blank when no equation pins it)
-and reports the equations that no integer costs meet.
+original that take different times. `solve` finds the probes' costs as an
+integer program: whole clocks, none negative, every equation met that any
+costs can meet, the cost on the access site where the equations leave a
+choice. It writes each probe's cost (blank when no equation has it) and
+reports the equations no costs meet. (`eliminate`, exact elimination over
+the rationals, is kept for looking into a set of rows.)
 """
 import collections, csv, struct, sys
 
@@ -144,29 +145,58 @@ def eliminate(rows):
     return cost, contra
 
 
+def program(rows, kind):
+    """The costs as an integer program (scipy's HiGHS): every cost a whole
+    number of clocks, none below 0, each equation met or its miss counted
+    (slack, weighted far above any cost), and where the equations leave a
+    choice the cost goes to the access site, not the block probes around
+    it. Returns ({unknown: cost}, [rows missed])."""
+    import numpy as np
+    import scipy.sparse as sp
+    from scipy.optimize import Bounds, LinearConstraint, milp
+    unknowns = sorted({p for r, _ in rows for p in r})
+    ix = {p: i for i, p in enumerate(unknowns)}
+    nv, ne = len(unknowns), len(rows)
+    I, J, V = [], [], []
+    for e, (r, _) in enumerate(rows):
+        for p, n in r.items():
+            I.append(e); J.append(ix[p]); V.append(n)
+    A = sp.csr_matrix((V, (I, J)), shape=(ne, nv))
+    full = sp.hstack([A, sp.identity(ne), -sp.identity(ne)]).tocsr()
+    b = np.array([g for _, g in rows], dtype=float)
+    w = np.array([0.0 if p & (END | SITE) or kind(p) == 'access' else 1.0 for p in unknowns])
+    res = milp(np.concatenate([w, np.full(2 * ne, 1000.0)]), constraints=LinearConstraint(full, b, b),
+               integrality=np.concatenate([np.ones(nv), np.zeros(2 * ne)]), bounds=Bounds(0, np.inf))
+    if res.status != 0:
+        raise SystemExit('cycsolve: the program has no solution: %s' % res.message)
+    x = np.round(res.x[:nv]).astype(int)
+    miss = res.x[nv:nv + ne] + res.x[nv + ne:]
+    return {p: int(x[i]) for i, p in enumerate(unknowns)}, [rows[e] for e in range(ne) if miss[e] > 1e-6]
+
+
 def solve(probes_csv, eq_paths, out):
     eqs = load_eqs(eq_paths)
     multi = {k: g for k, g in eqs.items() if len(g) > 1}
     rows = [(dict(k), next(iter(g))) for k, g in eqs.items() if len(g) == 1]
-    rows.sort(key=lambda rg: (len(rg[0]), sorted(rg[0])))
-    cost, contra = eliminate(rows)
-    frac = {p: v for p, v in cost.items() if v.denominator != 1}
-    neg = {p: v for p, v in cost.items() if v < 0}
     info = {}
     with open(probes_csv) as f:
         for row in csv.DictReader(f):
             info[int(row['id'])] = row
+    cost, missed = program(rows, lambda p: info[p]['kind'])
     with open(out, 'w', newline='') as f:
         w = csv.writer(f)
         w.writerow(['id', 'file', 'line', 'col', 'kind', 'cost'])
         for pid in sorted(info):
             r = info[pid]
             v = cost.get(pid)
-            w.writerow([pid, r['file'], r['line'], r['col'], r['kind'], '' if v is None else str(v)])
-    print('solve: %d probes pinned of %d; %d equations, %d contradict the rest, %d sets of counts with two clock counts; '
-          '%d costs fractional, %d negative' % (len(cost), len(info), len(rows), len(contra), len(multi), len(frac), len(neg)))
+            w.writerow([pid, r['file'], r['line'], r['col'], r['kind'], '' if v is None else v])
+    print('solve: %d probes seen of %d; %d equations, %d no costs meet, %d sets of counts with two clock counts; '
+          '%d costs not 0, %d of them off an access' % (
+              sum(1 for p in cost if p in info), len(info), len(rows), len(missed), len(multi),
+              sum(1 for p, v in cost.items() if v and p in info),
+              sum(1 for p, v in cost.items() if v and p in info and info[p]['kind'] != 'access')))
     where = collections.Counter()
-    for r, g0, g in contra:
+    for r, _ in missed:
         for p in r:
             where[info.get(p, {}).get('file', '?')] += 1
     for k in multi:
@@ -174,7 +204,7 @@ def solve(probes_csv, eq_paths, out):
             where[info.get(p, {}).get('file', '?') + ' (two clock counts)'] += 1
     for f, n in where.most_common(15):
         print('  %6d  %s' % (n, f))
-    return cost, contra, multi
+    return cost, missed, multi
 
 
 def main(argv):
