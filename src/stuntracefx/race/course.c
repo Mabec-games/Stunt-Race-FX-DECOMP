@@ -372,7 +372,7 @@ static void course_zoom(uint16_t x, uint16_t y)
     op_rep(P_M | P_X);
     abi_CourseWindowZoomSetup();
     abi_ColourMathA3();
-    (cyc(154), abi_OamBufferHideLargeLong());
+    (cyc(104), abi_OamBufferHideLargeLong());
     op_sep(P_M);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x04);
     cyc(104);
@@ -622,7 +622,7 @@ static void sel_scroll(uint32_t b, uint8_t v)
     cpu.p = nz8(cpu.p, 0xF0);
     cyc(40);
     wr8(b | 0x0E92, 0xF0);
-    (cyc(244), abi_OamBufferHideLargeLong());
+    (cyc(62), abi_OamBufferHideLargeLong());
 }
 
 /* LDA #y, STA $0D38, JSR MenuCursorFourWay. */

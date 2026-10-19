@@ -231,12 +231,13 @@ void OamBufferHideLarge(void)
 {
     unsigned x;
 
+    cyc(4);
     for (x = 0; x < 0x200; x += 4)
         { cyc(132); wr8(0x000376 + x, 0xF0); }
     cyc(76);
     for (x = 0; x < 0x20; x++)
         { cyc(90); wr8(0x000575 + x, 0xAA); }
-    cyc(126);
+    cyc(124);
 }
 
 void abi_OamBufferHideLarge(void)
@@ -722,9 +723,9 @@ void OamBufferHideLargeLong(void)
 
 void abi_OamBufferHideLargeLong(void)
 {
-    cyc(50);                            /* the JSR from the long entry */
+    cyc(46);                            /* the JSR from the long entry */
     abi_OamBufferHideLarge();
-    cyc(42);                            /* its RTS back, then RTL */
+    cyc(44);                            /* the RTL */
 }
 
 /*

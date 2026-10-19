@@ -174,7 +174,7 @@ void abi_RecordsMenuBack(void)
     cyc(10);
     sound16(0x002F);
     (cyc(54), abi_CourseScreenState8());
-    (cyc(286), abi_OamBufferHideLargeLong());
+    (cyc(104), abi_OamBufferHideLargeLong());
     op_sep(P_M);
     lda8(0xF0);
     cyc(112);
@@ -199,7 +199,7 @@ void abi_RecordsMenuGo(void)
     lda8(0x0A);
     wr8(db() | 0x0D40, cyc_then(24, 0x0A));
     abi_ColourMathA7Start();
-    (cyc(288), abi_OamBufferHideLargeLong());
+    (cyc(106), abi_OamBufferHideLargeLong());
 }
 
 /* SEP #$20, cursor $0D50 = `choice`, REP #$30, the attribute fills from
@@ -508,7 +508,7 @@ static void speed_alt_leave(void)
     cyc(6);
     wr8(b | 0x0D48, v);
     cpu.p = nz8(cpu.p, v);
-    (cyc(244), abi_OamBufferHideLargeLong());
+    (cyc(62), abi_OamBufferHideLargeLong());
     lda8(0xF0);
     cyc(90);
     wr8(0x000E92, 0xF0);

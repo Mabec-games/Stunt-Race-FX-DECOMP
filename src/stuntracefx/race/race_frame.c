@@ -1416,7 +1416,7 @@ void abi_RaceLoop(void)
         (cyc(62), abi_GsuEE88Ramp());
         op_sep(P_M);
         b = (uint32_t)cpu.db << 16;
-        cyc(206);
+        cyc(46);
         op_lda8(b | 0x0E3B);
         v = (uint8_t)(cpu.a & 0x07);
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
@@ -1445,10 +1445,10 @@ void abi_RaceLoop(void)
         wr8(b | 0x0D7F, 0x01);
         (cyc(62), abi_SoftResetLong());
         (cyc(86), abi_ScrollHdmaSet());
-        (cyc(316), abi_OamBufferHideLargeLong());
+        (cyc(62), abi_OamBufferHideLargeLong());
         /* JSR LoopLeaveWhenEnded: its return address (02:E332) on the
            stack, which it drops on the way out of the loop. */
-        cyc(72);
+        cyc(30);
         loop_push8(0xE3);
         loop_push8(0x32);
         abi_LoopLeaveWhenEnded();
