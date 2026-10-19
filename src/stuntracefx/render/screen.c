@@ -25,10 +25,7 @@ uint16_t FxScreenClear(void)
     uint16_t at = gsu_ldw(FX_SCREEN_START);
     uint16_t n;
 
-    
     n = 0;
-    
-    
     gsu_code(0x01aebf, 3); gsu_cache(0xaec2); gsu_code(0x01aec2, 3);
     do {                                       /* LOOP at the bottom */
         gsu_code(0x01aec5, 1);

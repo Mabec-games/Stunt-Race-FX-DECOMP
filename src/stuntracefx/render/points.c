@@ -40,7 +40,6 @@ static const GsuCode FxPointsGather_fetch[1][9] = {
 
 void FxPointsGather(uint16_t count, FxPointsLeft *left)
 {
-    
     uint32_t n = count ? count : 0x10000u;
     gsu_code(0x01c1c0, 3);
     uint16_t src = (uint16_t)(gsu_ldw(FX_PAIRS) - 4);
@@ -71,9 +70,7 @@ void FxPointsGather(uint16_t count, FxPointsLeft *left)
     } while (gsu_code_loop(0x01c1d6, 1, gsu_code_loop(0x01c1e6, 7, ++i < n)));
     gsu_code(0x01c1e6, 7);
     for (k = 0; k < 3; k++)
-        { 
-        gsu_codes(FxPointsGather_fetch[0] + k, 1);
-        left->offset[k] = gsu_ldw((uint16_t)(FX_OFFSET + k * 2)); }
+        { gsu_codes(FxPointsGather_fetch[0] + k, 1); left->offset[k] = gsu_ldw((uint16_t)(FX_OFFSET + k * 2)); }
     dst = FX_RECORDS + 4;
     i = 0;
     gsu_code(0x01c1f7, 7);
@@ -94,7 +91,6 @@ void FxPointsGather(uint16_t count, FxPointsLeft *left)
         dst = (uint16_t)(dst + 10);
     } while (gsu_code_loop(0x01c1fd, 1, gsu_code_loop(0x01c218, 4, ++i < n)));
     gsu_code(0x01c218, 4);
-    
 }
 
 void abi_FxPointsGather(void)

@@ -105,16 +105,12 @@ FxRegs FxModelPoints(FxRegs g, int copy)
     gsu_r14(g.r[9]);
     g.r[14] = gsu.r[14];
     g.r[9] = FX_POINTS;
-    
-    
     gsu_code(0x04a163, 3); gsu_cache(0xa166); gsu_code(0x04a166, 1);
     for (;;) {
         g.r[0] = script_byte(&g, GSU_COPY(0));
         g.r[3] = 0x04;
         gsu_sub(g.r[0], g.r[3], 0);
         if (gsu.z) {
-            
-            
             gsu_code(0x04a16a, 6); gsu_code(0x04a194, 1);
             count(&g, 0xA199, GSU_COPY(0));
             gsu_code(0x04a198, 2);
@@ -130,21 +126,15 @@ FxRegs FxModelPoints(FxRegs g, int copy)
 
                     g.r[9] = gsu_inc(g.r[9]);
                     if (!again)
-                        { 
-                        gsu_code(0x04a1aa, 2);
-                        break; } else { gsu_code(0x04a1aa, 2); gsu_code(0x04a199, 1); }
+                        { gsu_code(0x04a1aa, 2); break; } else { gsu_code(0x04a1aa, 2); gsu_code(0x04a199, 1); }
                 }
             } while (1);
-            
-            
             gsu_code(0x04a1ac, 3); gsu_code(0x04a166, 1);
             continue;
         } else { gsu_code(0x04a16a, 6); }
         g.r[3] = 0x38;
         gsu_sub(g.r[0], g.r[3], 0);
         if (gsu.z) {
-            
-            
             gsu_code(0x04a170, 7); gsu_code(0x04a1af, 1);
             count(&g, 0xA1B4, GSU_COPY(1));
             gsu_code(0x04a1b3, 2);
@@ -166,21 +156,15 @@ FxRegs FxModelPoints(FxRegs g, int copy)
 
                     g.r[9] = gsu_inc(g.r[9]);
                     if (!again)
-                        { 
-                        gsu_code(0x04a1d6, 2);
-                        break; } else { gsu_code(0x04a1d6, 2); gsu_code(0x04a1b4, 1); }
+                        { gsu_code(0x04a1d6, 2); break; } else { gsu_code(0x04a1d6, 2); gsu_code(0x04a1b4, 1); }
                 }
             } while (1);
-            
-            
             gsu_code(0x04a1d8, 3); gsu_code(0x04a166, 1);
             continue;
         } else { gsu_code(0x04a170, 7); }
         g.r[3] = 0x1C;
         gsu_sub(g.r[0], g.r[3], 0);
         if (gsu.z) {
-            
-            
             gsu_code(0x04a177, 7); gsu_code(0x04a1db, 2);
             gsu_r14(gsu_inc(g.r[14]));
             gsu_code(0x04a1dd, 3);
@@ -193,9 +177,7 @@ FxRegs FxModelPoints(FxRegs g, int copy)
             g.r[3] = 0x20;
             gsu_sub(g.r[0], g.r[3], 0);
             if (!gsu.z)
-                { 
-                gsu_code(0x04a177, 14);
-                break; } else { gsu_code(0x04a177, 14); gsu_code(0x04a1e2, 1); }
+                { gsu_code(0x04a177, 14); break; } else { gsu_code(0x04a177, 14); gsu_code(0x04a1e2, 1); }
         }
         gsu_code(0x04a1e3, 1);
         w = gsu_getb();
@@ -207,8 +189,6 @@ FxRegs FxModelPoints(FxRegs g, int copy)
         gsu_code(0x04a1e7, 2);
         gsu_r14(gsu_add(g.r[14], g.r[0], 0));
         g.r[14] = gsu.r[14];
-        
-        
         gsu_code(0x04a1e9, 3); gsu_code(0x04a166, 1);
     }
     gsu_code(0x04a185, 5);

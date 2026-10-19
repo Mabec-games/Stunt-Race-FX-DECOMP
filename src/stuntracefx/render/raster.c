@@ -133,14 +133,10 @@ static void edge_step(int x, uint16_t step, int rows, int copy)
     if (rows >= 0)
         R[rows] = gsu_dec(R[rows]);
     if (plus)
-        { 
-        gsu_codes(edge_step_fetch[copy] + 1, 2);
-        return; } else { gsu_codes(edge_step_fetch[copy], 1); }
+        { gsu_codes(edge_step_fetch[copy] + 1, 2); return; } else { gsu_codes(edge_step_fetch[copy], 1); }
     R[0] = gsu_add(0x0800, R[x], 0);
     if (gsu.s)
-        { 
-        gsu_codes(edge_step_fetch[copy] + 4, 2);
-        return; } else { gsu_codes(edge_step_fetch[copy] + 3, 1); }
+        { gsu_codes(edge_step_fetch[copy] + 4, 2); return; } else { gsu_codes(edge_step_fetch[copy] + 3, 1); }
     R[x] = 0;
     gsu_codes(edge_step_fetch[copy] + 6, 1);
 }
@@ -184,10 +180,8 @@ static void flat_copy(int copy)
         if (!plus) {
             R[2] = R[0];
             R[6] = R[4];
-            
-            
-            gsu_code(0x01a98e, 4); gsu_code(0x01a996, 1);
-        } else { gsu_code(0x01a98e, 9); }
+            gsu_code(0x01a98e, 9);
+        } else { gsu_code(0x01a98e, 4); gsu_code(0x01a996, 1); }
         R[0] = gsu_sub(R[0], R[8], 0);
         plus = !gsu.s;
         R[5] = gsu_inc(R[5]);                   /* BMI's delay slot */
@@ -212,8 +206,6 @@ static void flat_thin(int copy)
     R[1] = 0x03FF;
     R[8] = 0;
     R[13] = 0xAA7F;
-    
-    
     gsu_code(0x01a9a7, 3); gsu_code(0x01aa74, 12);
     do {
         gsu_code(0x01aa80, 2);
@@ -222,7 +214,7 @@ static void flat_thin(int copy)
         go = !gsu.s;
         R[4] = gsu_inc(R[4]);
         if (!go)
-            { R[1] = R[0]; gsu_code(0x01aa82, 4); gsu_code(0x01aa88, 1); } else { gsu_code(0x01aa82, 7); }
+            { R[1] = R[0]; gsu_code(0x01aa82, 7); } else { gsu_code(0x01aa82, 4); gsu_code(0x01aa88, 1); }
         R[0] = gsu_sub(R[0], R[8], 0);
         go = !gsu.s;
         R[4] = gsu_inc(R[4]);
@@ -235,13 +227,9 @@ static void flat_thin(int copy)
     gsu_code(0x01aa8f, 2);
     R[12] = gsu_sub(R[8], R[1], 0);
     if (gsu.s)                                  /* BMI, then BEQ: each its own way back */
-        { 
-        gsu_code(0x01aa91, 6); gsu_code(0x01aa9e, 1);
-        return; } else { gsu_code(0x01aa91, 6); }
+        { gsu_code(0x01aa91, 6); gsu_code(0x01aa9e, 1); return; } else { gsu_code(0x01aa91, 6); }
     if (gsu.z)
-        { 
-        gsu_code(0x01aa97, 3); gsu_code(0x01aa9e, 1);
-        return; } else { gsu_code(0x01aa97, 3); }
+        { gsu_code(0x01aa97, 3); gsu_code(0x01aa9e, 1); return; } else { gsu_code(0x01aa97, 3); }
     R[13] = 0xAA9C;
     gsu_code(0x01aa9a, 3);
     do {
@@ -285,9 +273,7 @@ static int flat_left_edge(int from_a9ce, int copy)
 
             R[6] = gsu_inc(R[6]);               /* BEQ's delay slot */
             if (!zero)
-                { 
-                gsu_codes(flat_left_edge_fetch[copy] + 11, 1);
-                break; } else { gsu_codes(flat_left_edge_fetch[copy] + 9, 2); }
+                { gsu_codes(flat_left_edge_fetch[copy] + 11, 1); break; } else { gsu_codes(flat_left_edge_fetch[copy] + 9, 2); }
         }
         gsu_codes(flat_left_edge_fetch[copy], 1);
     }
@@ -325,9 +311,7 @@ static int flat_right_edge(int copy)
 
             R[5] = gsu_dec(R[5]);               /* BEQ's delay slot */
             if (!zero)
-                { 
-                gsu_code(0x01aa21, 2);
-                break; } else { gsu_code(0x01aa21, 2); gsu_code(0x01aa0d, 1); }
+                { gsu_code(0x01aa21, 2); break; } else { gsu_code(0x01aa21, 2); gsu_code(0x01aa0d, 1); }
         }
     }
     reciprocal_at(R[3], GSU_COPY(1));
@@ -357,8 +341,6 @@ static void flat_polygon(int copy)
     gsu_color((uint8_t)R[0]);
     R[0] = 0;
     gsu_cmode(R[0]);
-    
-    
     gsu_code(0x01a95c, 1); gsu_cache(0xa95d); gsu_code(0x01a95d, 18);
     R[0] = gsu_ldb(R[1]);
     R[1] = gsu_inc(R[1]);
@@ -377,8 +359,6 @@ static void flat_polygon(int copy)
     if (gsu.s) {
         gsu_code(0x01a99f, 8);
         flat_thin(GSU_COPY(0));
-        
-        
         gsu_code(0x01aa9f, 3); gsu_code(0x01a950, 1);
         return;
     } else { gsu_code(0x01a99f, 7); gsu_code(0x01a9aa, 1); }
@@ -394,9 +374,7 @@ static void flat_polygon(int copy)
     R[13] = 0xAA49;
     R[3] = gsu_sub(R[3], R[3], 0);              /* BRA's delay slot */
     if (!flat_left_edge(0, GSU_COPY(0)))
-        { 
-        gsu_code(0x01a9d8, 9); gsu_code(0x01aa70, 4); gsu_code(0x01a950, 1);
-        return; } else { gsu_code(0x01a9f9, 2); }
+        { gsu_code(0x01a9d8, 9); gsu_code(0x01aa70, 4); gsu_code(0x01a950, 1); return; } else { gsu_code(0x01a9f9, 2); }
     gsu_code(0x01a9fb, 9);
     for (;;) {
         /* AA03 */
@@ -406,9 +384,7 @@ static void flat_polygon(int copy)
             R[9] = gsu_hib(R[0]);
             gsu_code(0x01aa04, 5);
             if (!flat_right_edge(GSU_COPY(0)))
-                { 
-                gsu_code(0x01aa17, 9); gsu_code(0x01aa70, 4); gsu_code(0x01a950, 1);
-                return; } else { gsu_code(0x01aa35, 2); }
+                { gsu_code(0x01aa17, 9); gsu_code(0x01aa70, 4); gsu_code(0x01a950, 1); return; } else { gsu_code(0x01aa35, 2); }
             gsu_code(0x01aa37, 9);
         } else { gsu_code(0x01aa04, 4); gsu_code(0x01aa3f, 1); }
         /* AA3F: the rows while both edges last */
@@ -440,18 +416,13 @@ static void flat_polygon(int copy)
         /* A9C1 */
         gsu_moves(R[11]);
         if (!gsu.z)
-            { 
-            gsu_code(0x01aa6c, 4); gsu_code(0x01a9c1, 5); gsu_code(0x01aa03, 1);
-            continue; } else { gsu_code(0x01aa6c, 4); gsu_code(0x01a9c1, 5); }
+            { gsu_code(0x01aa6c, 4); gsu_code(0x01a9c1, 5); gsu_code(0x01aa03, 1); continue; } else { gsu_code(0x01aa6c, 4); gsu_code(0x01a9c1, 5); }
         R[0] = gsu_add(0x007F, R[7], 0);
         R[7] = gsu_hib(R[0]);
         gsu_code(0x01a9c6, 9);
         R[6] = gsu_ldw(FX_LEFT_AT);
         if (!flat_left_edge(1, GSU_COPY(1)))
-            { 
-            
-            gsu_code(0x01a9d8, 9); gsu_code(0x01aa70, 4); gsu_code(0x01a950, 1);
-            return; } else { gsu_code(0x01a9f9, 2); }
+            { gsu_code(0x01a9d8, 9); gsu_code(0x01aa70, 4); gsu_code(0x01a950, 1); return; } else { gsu_code(0x01a9f9, 2); }
         gsu_code(0x01a9fb, 9);
     }
 }
@@ -467,8 +438,6 @@ static void line(int copy)
     R[0] = 0;
     gsu_cmode(R[0]);
     R[7] = R[1];
-    
-    
     gsu_code(0x01a912, 3); gsu_code(0x01aaa2, 12);
     R[0] = gsu_ldb(R[7]);
     R[7] = gsu_inc(R[7]);
@@ -532,8 +501,6 @@ static void line(int copy)
             R[0] = gsu_sub(R[0], R[4], 0);      /* LOOP's delay slot */
         } while (gsu_code_loop(0x01aaea, 1, gsu_code_loop(0x01aaf1, 4, go)));
         gsu_code(0x01aaf1, 4);
-        
-        
         gsu_code(0x01aaf5, 4); gsu_code(0x01a950, 1);
         return;
     } else { gsu_code(0x01aadf, 4); gsu_code(0x01aaf9, 1); }
@@ -562,8 +529,6 @@ static void line(int copy)
         R[0] = gsu_sub(R[0], R[3], 0);
     } while (gsu_code_loop(0x01ab02, 1, gsu_code_loop(0x01ab09, 4, go)));
     gsu_code(0x01ab09, 4);
-    
-    
     gsu_code(0x01ab0d, 4); gsu_code(0x01a950, 1);
 }
 
@@ -618,9 +583,7 @@ static int tex_left_edge(int copy)
         R[6] = gsu_inc(R[6]);
         R[11] = gsu_sub(R[4], R[2], 0);
         if (!gsu.z)
-            { 
-            gsu_code(0x01a819, 7);
-            break; } else { gsu_code(0x01a819, 7); gsu_code(0x01a7f4, 1); }
+            { gsu_code(0x01a819, 7); break; } else { gsu_code(0x01a819, 7); gsu_code(0x01a7f4, 1); }
     }
     if (gsu.s)
         { return 0; } else { gsu_code(0x01a820, 3); gsu_code(0x01a827, 1); }
@@ -707,9 +670,7 @@ static int tex_right_edge(int copy)
         R[10] = gsu_ldb(R[6]);
         R[3] = gsu_sub(R[0], R[2], 0);
         if (!gsu.z)
-            { 
-            gsu_code(0x01a8b1, 4);
-            break; } else { gsu_code(0x01a8b1, 4); gsu_code(0x01a88b, 1); }
+            { gsu_code(0x01a8b1, 4); break; } else { gsu_code(0x01a8b1, 4); gsu_code(0x01a88b, 1); }
     }
     if (gsu.s)
         { return 0; } else { gsu_code(0x01a8b5, 3); gsu_code(0x01a8bc, 1); }
@@ -802,13 +763,9 @@ static void tex_rows(int copy)
         R[0] = gsu_sub(R[0], R[0], 0);
         gsu_code(0x01a71f, 8);
         gsu_stw(FX_RIGHT_ROWS, R[0]);
-        
-        
         gsu_code(0x01a727, 2); gsu_code(0x01a736, 1);
     } else {
         R[0] = gsu_sub(R[3], R[11], 0);
-        
-        
         gsu_code(0x01a717, 4); gsu_code(0x01a729, 6);
         gsu_stw(FX_RIGHT_ROWS, R[0]);
         R[0] = gsu_swap(R[11]);
@@ -825,7 +782,7 @@ static void tex_rows(int copy)
         go = gsu.cy;
         R[12] = gsu_inc(R[12]);                 /* BCS's delay slot */
         if (!go)
-            { R[12] = 0x0001; gsu_code(0x01a737, 9); gsu_code(0x01a742, 1); } else { gsu_code(0x01a737, 12); }
+            { R[12] = 0x0001; gsu_code(0x01a737, 12); } else { gsu_code(0x01a737, 9); gsu_code(0x01a742, 1); }
         reciprocal_at(R[12], GSU_COPY(4));
         reciprocal_read(GSU_COPY(4));
         gsu_code(0x01a74c, 3);
@@ -880,8 +837,6 @@ static void tex_rows(int copy)
         R[0] = gsu_hib(R[2]);
     } while (gsu_code_loop(0x01a736, 1, gsu_code_loop(0x01a7c5, 14, !gsu.z)));
     gsu_code(0x01a7c5, 10); gsu_code(0x01a7d3, 1);
-    
-    
     gsu_code(0x01a7d4, 3);
     R[11] = gsu_ldw(FX_LEFT_ROWS);
     gsu_code(0x01a7d7, 3);
@@ -902,8 +857,6 @@ static void tex_polygon(int copy)
     R[0] = gsu_add(R[0], R[0], 0);
     R[0] = gsu_add(R[0], R[0], 0);
     R[3] = R[0];
-    
-    
     gsu_code(0x01a91a, 4); gsu_code(0x01a662, 11);
     R[0] = gsu_ldb(R[1]);
     R[1] = gsu_inc(R[1]);
@@ -995,10 +948,7 @@ static void tex_polygon(int copy)
     gsu_code(0x01a6cf, 2);
     R[0] = gsu_sub(R[2], R[8], 0);
     if (gsu.z)
-        { 
-        
-        gsu_code(0x01a6d1, 9); gsu_code(0x01a909, 1);
-        return; } else { gsu_code(0x01a6d1, 5); gsu_code(0x01a6da, 1); }
+        { gsu_code(0x01a6d1, 9); gsu_code(0x01a909, 1); return; } else { gsu_code(0x01a6d1, 5); gsu_code(0x01a6da, 1); }
     R[4] = R[6];
     R[4] = gsu_dec(R[4]);
     R[4] = gsu_dec(R[4]);
@@ -1035,35 +985,23 @@ static void tex_polygon(int copy)
     gsu_stw(FX_RIGHT_AT, R[5]);
     R[11] = 0;
     R[3] = 0;
-    
-    
     gsu_code(0x01a708, 4); gsu_cache(0xa70c); gsu_code(0x01a70c, 4); gsu_code(0x01a7d9, 1);
     for (;;) {
         /* A7D9 */
         gsu_moves(R[11]);
         R[0] = R[11];
         if (gsu.z) {                            /* BEQ past it, then its own test */
-            
-            
             gsu_code(0x01a7da, 4); gsu_code(0x01a7e2, 1);
             if (!tex_left_edge(GSU_COPY(0)))
-                { 
-                gsu_code(0x01a820, 7); gsu_code(0x01a909, 1);
-                return; }
+                { gsu_code(0x01a820, 7); gsu_code(0x01a909, 1); return; }
         } else { gsu_code(0x01a7da, 8); gsu_code(0x01a870, 1); }
         /* A870 */
         gsu_moves(R[3]);
         R[0] = R[3];
         if (gsu.z) {                            /* BEQ past it, then its own test */
-            
-            
             gsu_code(0x01a871, 4); gsu_code(0x01a879, 1);
             if (!tex_right_edge(GSU_COPY(0)))
-                { 
-                gsu_code(0x01a8b5, 7); gsu_code(0x01a909, 1);
-                return; }
-            
-            
+                { gsu_code(0x01a8b5, 7); gsu_code(0x01a909, 1); return; }
             gsu_code(0x01a906, 3); gsu_code(0x01a710, 1);
         } else { gsu_code(0x01a871, 8); gsu_code(0x01a710, 1); }
         tex_rows(GSU_COPY(0));
@@ -1704,8 +1642,6 @@ void abi_FxPolygonGather(void)
         near_load(1, 2, 3, 0, GSU_COPY(0));
         near_load(4, 5, 6, 1, GSU_COPY(1));
         R[11] = 0x9937;
-        
-        
         gsu_code(0x019933, 4); gsu_code(0x01981a, 1); gsu_cache(0x981b);
         (abi_FxSegmentCrossZ());
         gsu_code(0x019937, 1);
@@ -1714,57 +1650,38 @@ void abi_FxPolygonGather(void)
         R[0] = 0x0002;
         gsu_code(0x01994e, 7);
         gsu_stw(FX_COUNT, R[0]);
-        
-        
         gsu_code(0x019955, 3); gsu_code(0x0199ea, 1);
     } else {
-        
-        
         gsu_code(0x019914, 8); gsu_code(0x019958, 1);
         do {
             /* 9958 */
             near_load(1, 2, 3, 0, GSU_COPY(2));
             R[0] = gsu_dec(R[9]);
             if (gsu.z)
-                { 
-                gsu_code(0x019963, 11);
-                R[7] = gsu_ldw(FX_POLY_OUT); } else { gsu_code(0x019963, 7); gsu_code(0x01996d, 1); }
+                { gsu_code(0x019963, 11); R[7] = gsu_ldw(FX_POLY_OUT); } else { gsu_code(0x019963, 7); gsu_code(0x01996d, 1); }
             near_load(4, 5, 6, 1, GSU_COPY(3));
             R[7] = gsu_sub(R[7], 4, 0);
             R[0] = gsu_and(R[6], R[3]);
             if (!gsu.s) {
-                
                 gsu_moves(R[3]);
                 if (!gsu.s) {
-                    
-                    
                     gsu_code(0x019978, 7); gsu_code(0x019983, 5); gsu_code(0x01998c, 1);
                     near_put(1, 2, 3, GSU_COPY(2));
                     near_count(GSU_COPY(0));
                     gsu_moves(R[6]);
                     if (gsu.s) {
-                        
                         R[11] = 0x99AB;
-                        
-                        
                         gsu_code(0x01999e, 4); gsu_code(0x0199a6, 5); gsu_code(0x01981a, 1); gsu_cache(0x981b);
                         abi_FxSegmentCrossZ();
-                        
                         gsu_code(0x0199ab, 1);
                         near_put(4, 5, 6, GSU_COPY(3));
                         near_count(GSU_COPY(1));
-                        
-                        
                         gsu_code(0x0199bd, 3); gsu_code(0x0199d6, 1);
                     } else { gsu_code(0x01999e, 8); gsu_code(0x0199d6, 1); }
                 } else {
-                    
                     R[11] = 0x99C5;
-                    
-                    
                     gsu_code(0x019978, 7); gsu_code(0x019983, 9); gsu_code(0x0199c0, 5); gsu_code(0x01981a, 1); gsu_cache(0x981b);
                     abi_FxSegmentCrossZ();
-                    
                     gsu_code(0x0199c5, 1);
                     near_put(1, 2, 3, GSU_COPY(4));
                     near_count(GSU_COPY(2));
@@ -1774,13 +1691,10 @@ void abi_FxPolygonGather(void)
             R[9] = gsu_dec(R[9]);
         } while (gsu_code_loop(0x019958, 1, gsu_code_loop(0x0199d7, 7, !gsu.z)));
         gsu_code(0x0199d7, 3); gsu_code(0x0199de, 1);
-        
-        
         gsu_code(0x0199df, 3);
         R[0] = gsu_ldw(FX_COUNT);
         R[0] = gsu_sub(R[0], 3, 0);
         if (gsu.s) {
-            
             gsu_code(0x0199e2, 5);
             gather_return(0, GSU_COPY(0));
             return;
@@ -1809,8 +1723,6 @@ void abi_FxPolygonGather(void)
     do {
         near_load(1, 2, 6, 0, GSU_COPY(4));
         R[11] = 0x9A18;
-        
-        
         gsu_code(0x019a12, 6); gsu_code(0x018bff, 1);
         (abi_FxProjectVertex());
         gsu_code(0x019a18, 3);
@@ -1897,9 +1809,7 @@ static int clip_polygon_edge(int k, int copy)
     R[1] = gsu_ldw(FX_CODES);
     R[1] = gsu_and(R[1], bits[k]);
     if (gsu.z)
-        { 
-        gsu_codes(clip_polygon_edge_fetch[copy] + 3, 2);
-        return 1; } else { gsu_codes(clip_polygon_edge_fetch[copy] + 1, 2); }
+        { gsu_codes(clip_polygon_edge_fetch[copy] + 3, 2); return 1; } else { gsu_codes(clip_polygon_edge_fetch[copy] + 1, 2); }
     gsu_codes(clip_polygon_edge_fetch[copy] + 5, 1);
     R[8] = gsu_ldw(FX_CLIP_IN);
     gsu_codes(clip_polygon_edge_fetch[copy] + 6, 1);
@@ -2023,9 +1933,7 @@ void abi_FxDrawList(void)
     R[0] = DRAW_LIST;
     R[0] = gsu_sub(R[0], R[1], 0);
     if (gsu.z)
-        { 
-        gsu_code(0x01a935, 8);
-        return; } else { gsu_code(0x01a935, 6); gsu_code(0x01a93d, 1); }
+        { gsu_code(0x01a935, 8); return; } else { gsu_code(0x01a935, 6); gsu_code(0x01a93d, 1); }
     gsu_code(0x01a93e, 2);
     gsu_push(&R[10], R[11]);
     gsu_code(0x01a940, 5);
@@ -2070,8 +1978,6 @@ void abi_FxDrawList(void)
             if (!end) {
                 gsu_code(0x01a916, 4);
                 tex_polygon(GSU_COPY(0));
-                
-                
                 gsu_code(0x01a90a, 3); gsu_code(0x01a950, 1);
                 continue;
             } else { gsu_code(0x01a916, 4); gsu_code(0x01a91e, 1); }

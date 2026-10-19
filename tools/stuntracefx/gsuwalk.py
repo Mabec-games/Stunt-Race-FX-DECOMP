@@ -32,7 +32,7 @@ use lower-case hex (cycwrite.py --strip --code keeps them).
 import copy, json, os, re, subprocess, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-DECOMP = os.path.join(ROOT, 'src', 'stuntracefx')
+DECOMP = os.environ.get('GSUWALK_DECOMP') or os.path.join(ROOT, 'src', 'stuntracefx')
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gsucode import Unit, rom, Mismatch, TIME, C_EV, is_prefix  # noqa: E402
 
@@ -1132,7 +1132,11 @@ class Ctx:
         c0 = bare(cond)
         if c0.get('kind') == 'DeclRefExpr':
             # a variable the C set from a flag: the flag it holds
-            txt = self.flag_of(c0.get('referencedDecl', {}).get('id')) or txt
+            txt = self.flag_of(c0.get('referencedDecl', {}).get('id'), b) or txt
+        elif c0.get('kind') == 'UnaryOperator' and c0.get('opcode') == '!' and bare(kids(c0)[0]).get('kind') == 'DeclRefExpr':
+            f = self.flag_of(bare(kids(c0)[0]).get('referencedDecl', {}).get('id'), b)
+            if f:
+                txt = f[1:] if f.startswith('!') else '!' + f
         first = None
         if u.op in FLAG_BRANCH:
             flag, v = FLAG_BRANCH[u.op]
@@ -1152,10 +1156,11 @@ class Ctx:
         self.w.order.append((key, opts))
         return opts[0]
 
-    def flag_of(self, vid):
-        """The flag expression ('gsu.s', '!gsu.z', ...) a variable is set from
-        and only from, else None."""
-        found = set()
+    def flag_of(self, vid, at=None):
+        """The flag expression ('gsu.s', '!gsu.z', ...) a variable holds at
+        offset at: set from it last before there (or, without at, set from
+        it and only it), else None."""
+        found = []
         stack = [self.fn.body]
         while stack:
             x = stack.pop()
@@ -1163,15 +1168,39 @@ class Ctx:
                 lhs = bare(kids(x)[0])
                 if lhs.get('kind') == 'DeclRefExpr' and lhs.get('referencedDecl', {}).get('id') == vid:
                     b, e = span(kids(x)[1])
-                    found.add(self.fn.text[b:e].replace(' ', ''))
+                    found.append((b, self.fn.text[b:e].replace(' ', '')))
             elif x.get('kind') == 'VarDecl' and x.get('id') == vid and kids(x):
                 b, e = span(kids(x)[0])
-                found.add(self.fn.text[b:e].replace(' ', ''))
+                found.append((b, self.fn.text[b:e].replace(' ', '')))
             stack += kids(x)
-        if len(found) == 1:
-            f = found.pop()
-            if re.match(r'^!?gsu\.(z|s|cy|ov)$', f):
-                return f
+        if at is not None:
+            # the last set before at in the innermost loop around it; none
+            # there, the last before the loop when the loop never sets it
+            # after at (the way back would bring that)
+            loops = []
+            stack = [self.fn.body]
+            while stack:
+                x = stack.pop()
+                if x.get('kind') in ('ForStmt', 'WhileStmt', 'DoStmt'):
+                    lb, le = span(x)
+                    if lb <= at < le:
+                        loops.append((lb, le))
+                stack += kids(x)
+            f = None
+            for lb, le in sorted(loops, reverse=True):     # innermost first
+                inside = sorted(d for d in found if lb <= d[0] < at)
+                if inside:
+                    f = inside[-1][1]
+                    break
+                if any(at < d[0] < le for d in found):
+                    return None
+            else:
+                before = sorted(d for d in found if d[0] < at)
+                f = before[-1][1] if before else None
+        else:
+            f = found[0][1] if len({x[1] for x in found}) == 1 else None
+        if f and re.match(r'^!?gsu\.(z|s|cy|ov)$', f):
+            return f
         return None
 
     def if_(self, n, states):
@@ -1848,12 +1877,40 @@ def copy_type(top):
     return 'uint8_t' if top < 256 else 'uint16_t'
 
 
+def all_code(n):
+    """A code statement, or a comma list of them."""
+    while n.get('kind') == 'ParenExpr' and kids(n):
+        n = kids(n)[0]
+    if n.get('kind') == 'BinaryOperator' and n.get('opcode') == ',':
+        return all(all_code(c) for c in kids(n))
+    return is_code_call(n)
+
+
 def strip_code(text, fn_nodes):
     """The text without the code statements in the functions given (their
-    syntax trees): every gsu_code, gsu_cache, gsu_codes and their _then and
-    _loop forms, and else arms left with nothing in them."""
+    syntax trees): the exact undoing of what Emit adds. Every gsu_code,
+    gsu_cache, gsu_codes and their _then and _loop forms; the parentheses
+    and comma around code stated in an expression; the braces put around a
+    single statement for its code; a return's value kept while its code is
+    stated; else arms left with nothing in them."""
     edits = []
     TEXT['cur'] = text
+    LOOPS = ('IfStmt', 'ForStmt', 'WhileStmt', 'DoStmt')
+
+    def call_inside(x):
+        while x.get('kind') in ('ParenExpr', 'ImplicitCastExpr') and kids(x):
+            x = kids(x)[0]
+        return x.get('kind') == 'CallExpr'
+
+    def unparen(x, outer):
+        """Parentheses left around a call by code stated before (not the C's)."""
+        while x.get('kind') == 'ParenExpr' and kids(x) and call_inside(kids(x)[0]):
+            b, e = span(x)
+            ib, ie = span(kids(x)[0])
+            edits.append((b, ib, ''))
+            edits.append((ie, e, ''))
+            x = kids(x)[0]
+        return x
 
     def visit(n, par):
         k = n.get('kind')
@@ -1866,19 +1923,51 @@ def strip_code(text, fn_nodes):
                 visit(kids(n)[1], n)
                 return
         if k == 'CompoundStmt':
-            for c in kids(n):
+            ch = kids(n)
+            real = [c for c in ch if not is_code_call(bare(c))]
+            b, e = span(n)
+            # { ty ret_ = value; code return ret_; }: return value;
+            if len(real) == 2 and real[0].get('kind') == 'DeclStmt' and real[1].get('kind') == 'ReturnStmt':
+                d = kids(real[0])[0] if kids(real[0]) else {}
+                if d.get('name') == 'ret_' and kids(d) and all(is_code_call(bare(c)) for c in ch[1:-1]):
+                    v = kids(d)[0]
+                    vb, ve = span(v)
+                    edits.append((b, vb, 'return '))
+                    edits.append((ve, e, ';'))
+                    visit(v, d)
+                    return
+            # { code statement code }: the statement alone, braces put there for its code
+            if par is not None and par.get('kind') in LOOPS and len(real) == 1 and ch:
+                i = ch.index(real[0])
+                lead, trail = ch[:i], ch[i + 1:]
+                opened = text[b + 1:span(ch[0])[0]]
+                re_ = stmt_end(text, real[0])
+                last = stmt_end(text, trail[-1]) if trail else re_
+                gap = text[re_:span(trail[0])[0]] if trail else ''
+                if opened.strip() == '' and gap.strip() == '' and text[last:e - 1].strip() == '' and \
+                        '\n' not in text[last:e - 1] and \
+                        ((lead and is_code_call(bare(ch[0]))) or real[0].get('kind') == 'CompoundStmt'):
+                    # closed on the statement's line, as Emit closes them (the C's own close on a line of their own)
+                    edits.append((b, span(real[0])[0], ''))
+                    edits.append((re_, e, ''))
+                    visit(real[0], par)
+                    return
+            for c in ch:
                 if is_code_call(bare(c)):
-                    b = span(c)[0]
-                    e = stmt_end(text, c)
+                    cb = span(c)[0]
+                    ce = stmt_end(text, c)
+                    m0 = re.match(r"[ \t]*/\* the branch's delay slot \*/", text[ce:])   # Emit's note on it
+                    if m0:
+                        ce += m0.end()
                     # the statement and the space after it on its line, or its whole line
-                    ls = text.rfind('\n', 0, b) + 1
-                    rest = text[e:]
+                    ls = text.rfind('\n', 0, cb) + 1
+                    rest = text[ce:]
                     m = re.match(r'[ \t]*\n', rest)
-                    if text[ls:b].strip() == '' and m:
-                        edits.append((ls, e + m.end(), ''))
+                    if text[ls:cb].strip() == '' and m:
+                        edits.append((ls, ce + m.end(), ''))
                     else:
                         m2 = re.match(r'[ \t]*', rest)
-                        edits.append((b, e + m2.end(), ''))
+                        edits.append((cb, ce + m2.end(), '\x01'))     # its line goes if nothing else is left on it
                 else:
                     visit(c, n)
             return
@@ -1892,13 +1981,32 @@ def strip_code(text, fn_nodes):
             lb, le = span(last)
             edits.append((b, lb, ''))
             edits.append((le, e, ''))
-            visit(last, n)
+            visit(unparen(last, n), n)
             return
-        if k == 'BinaryOperator' and n.get('opcode') == ',' and is_code_call(bare(kids(n)[0])):
+        if k == 'ParenExpr':
+            x = n
+            while x.get('kind') == 'ParenExpr' and kids(x):
+                x = kids(x)[0]
+            if x.get('kind') == 'BinaryOperator' and x.get('opcode') == ',' and all_code(kids(x)[0]):
+                # (code, expr): expr
+                rhs = kids(x)[1]
+                b, e = span(n)
+                rb, re_ = span(rhs)
+                edits.append((b, rb, ''))
+                edits.append((re_, e, ''))
+                visit(unparen(rhs, n), n)
+                return
+        if k == 'BinaryOperator' and n.get('opcode') == ',' and all_code(kids(n)[0]):
             b = span(n)[0]
             rb = span(kids(n)[1])[0]
             edits.append((b, rb, ''))
             visit(kids(n)[1], n)
+            return
+        if k == 'BinaryOperator' and n.get('opcode') == ',' and all_code(kids(n)[1]):
+            # expr, code (after a for's step): expr
+            le = span(kids(n)[0])[1]
+            edits.append((le, span(n)[1], ''))
+            visit(kids(n)[0], n)
             return
         for c in kids(n):
             visit(c, n)
@@ -1914,7 +2022,9 @@ def strip_code(text, fn_nodes):
         out.append(r)
         pos = e
     out.append(text[pos:])
-    return ''.join(out)
+    # lines left with only spaces (code taken from them, or left so before)
+    out = re.sub(r'(?m)^[ \t\x01]*\x01[ \t\x01]*\n', '', ''.join(out))
+    return re.sub(r'(?m)^[ \t]+\n', '', out.replace('\x01', ''))
 
 
 class Emit:

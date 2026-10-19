@@ -38,9 +38,7 @@ int FxUnpackRefill(uint16_t *hi, uint16_t *lo, int copy)
         gsu_codes(FxUnpackRefill_fetch[copy] + i, 1);
         b[i] = gsu_getb();
         if (i < 3)
-            { 
-            gsu_codes(FxUnpackRefill_fetch[copy] + 4 + i, 1);
-            gsu_r14((uint16_t)(gsu.r[14] - 1)); }
+            { gsu_codes(FxUnpackRefill_fetch[copy] + 4 + i, 1); gsu_r14((uint16_t)(gsu.r[14] - 1)); }
     }
     w3 = (uint16_t)(b[0] | b[1] << 8);
     w2 = (uint16_t)(b[2] | b[3] << 8);
@@ -85,22 +83,19 @@ static void unpack_bits_loop(int copy)
         if (gsu.z) {
             uint8_t marker = gsu.cy;
 
-            
             gsu_code(0x01d0f9, 6); gsu_code(0x01d105, 2);
             gsu_r14(gsu_dec(gsu.r[14]));
             gsu.cy = (uint8_t)FxUnpackRefill(&gsu.r[2], &gsu.r[3], GSU_COPY(0));
             gsu.r[0] = (uint16_t)(marker << 15);        /* IBT R0,#1 then ROR */
             gsu.r[4] = gsu_rol(gsu.r[4]);
             if (!gsu_count_down(&gsu.r[12]))
-                { gsu_code(0x01d114, 12);
-                return; } else { gsu_code(0x01d114, 10); gsu_code(0x01d0f7, 1); }
+                { gsu_code(0x01d114, 12); return; } else { gsu_code(0x01d114, 10); gsu_code(0x01d0f7, 1); }
             gsu_code(0x01d0f8, 1);
             continue;
         } else { gsu_code(0x01d0f9, 6); }
         gsu.r[4] = gsu_rol(gsu.r[4]);
         if (!gsu_count_down(&gsu.r[12]))
-            { gsu_code(0x01d0ff, 6);
-            return; } else { gsu_code(0x01d0ff, 4); gsu_code(0x01d0f7, 1); }
+            { gsu_code(0x01d0ff, 6); return; } else { gsu_code(0x01d0ff, 4); gsu_code(0x01d0f7, 1); }
         gsu_code(0x01d0f8, 1);
     }
 }
@@ -234,7 +229,6 @@ static void unpack_literals(void)
             if (gsu.z) {
                 /* The refill, and the rest of the byte after it: the
                    original's own copy of the bit's tail and the store. */
-                
                 gsu_code(0x01cfc6, 8); gsu_code(0x01cfdf, 1);
                 gsu.r[3] = unpack_rom_word(GSU_COPY(3));
                 gsu.r[2] = unpack_rom_word(GSU_COPY(4));
@@ -244,31 +238,26 @@ static void unpack_literals(void)
                 gsu.r[6] = gsu_rol(gsu.r[6]);
                 gsu.r[5] = gsu_rol(gsu.r[5]);
                 if (gsu_count_down(&gsu.r[12]))
-                    { gsu_code(0x01cfee, 12); gsu_code(0x01cfc5, 1);
-                    continue; } else { gsu_code(0x01cfee, 12); }
+                    { gsu_code(0x01cfee, 12); gsu_code(0x01cfc5, 1); continue; } else { gsu_code(0x01cfee, 12); }
                 gsu.r[1] = gsu_dec(gsu.r[1]);
                 gsu_code(0x01cffa, 5);
                 gsu_stb(gsu.r[1], (uint8_t)gsu.r[6]);
                 gsu.r[4] = gsu_dec(gsu.r[4]);
                 if (!gsu.z)
-                    { gsu_code(0x01cfff, 3); gsu_code(0x01cfc1, 1);
-                    goto next_byte; } else { gsu_code(0x01cfff, 3); }
+                    { gsu_code(0x01cfff, 3); gsu_code(0x01cfc1, 1); goto next_byte; } else { gsu_code(0x01cfff, 3); }
                 gsu_code(0x01d002, 1);
                 return;
             } else { gsu_code(0x01cfc6, 8); }
             gsu.r[6] = gsu_rol(gsu.r[6]);
             gsu.r[5] = gsu_rol(gsu.r[5]);
             if (gsu_count_down(&gsu.r[12]))
-                { gsu_code(0x01cfce, 6); gsu_code(0x01cfc5, 1);
-                continue; } else { gsu_code(0x01cfce, 6); }
+                { gsu_code(0x01cfce, 6); gsu_code(0x01cfc5, 1); continue; } else { gsu_code(0x01cfce, 6); }
             gsu.r[1] = gsu_dec(gsu.r[1]);
             gsu_code(0x01cfd4, 5);
             gsu_stb(gsu.r[1], (uint8_t)gsu.r[6]);
             gsu.r[4] = gsu_dec(gsu.r[4]);
             if (!gsu.z)
-                { gsu_code(0x01cfd9, 3); gsu_code(0x01cfc1, 1);
-                goto next_byte; } else { gsu_code(0x01cfd9, 3); }
-            
+                { gsu_code(0x01cfd9, 3); gsu_code(0x01cfc1, 1); goto next_byte; } else { gsu_code(0x01cfd9, 3); }
             gsu_code(0x01cfdc, 3); gsu_code(0x01d002, 1);
             return;
         }
@@ -287,9 +276,7 @@ static void unpack_copy_code(void)
     gsu.r[12] = 8;
     gsu_moves(gsu.r[4]);
     if (gsu.z)
-        { 
-        gsu_code(0x01d02e, 14); gsu_code(0x01d0c7, 1);
-        return; } else { gsu_code(0x01d02e, 10); gsu_code(0x01d03c, 1); }                                     /* length 2, offset 8 bits */
+        { gsu_code(0x01d02e, 14); gsu_code(0x01d0c7, 1); return; } else { gsu_code(0x01d02e, 10); gsu_code(0x01d03c, 1); }                                     /* length 2, offset 8 bits */
     gsu.r[6] = 4;
     gsu.r[0] = 2;
     gsu_sub(gsu.r[0], gsu.r[4], 0);
@@ -300,7 +287,6 @@ static void unpack_copy_code(void)
         if (gsu.z) {
             /* Length 3: offset of 8 bits after a 1, else 14. */
             gsu.r[12] = 8;
-            
             gsu_code(0x01d03d, 17); gsu_code(0x01d086, 1);
             if (!unpack_bit(0xD096, GSU_COPY(1)))
                 { gsu.r[12] = 0x0E; gsu_code(0x01d098, 2); gsu_code(0x01d0c7, 1); } else { gsu_code(0x01d098, 7); gsu_code(0x01d0c7, 1); }
@@ -311,24 +297,19 @@ static void unpack_copy_code(void)
         gsu.r[0] = 3;
         gsu_sub(gsu.r[0], gsu.r[4], 0);
         if (gsu.z) {
-            
             gsu_code(0x01d056, 6); gsu_code(0x01d07a, 1);
             gsu.r[4] = unpack_bits(8, 0xD081, GSU_COPY(6));      /* length of 8 bits */
-            
             gsu_code(0x01d082, 4); gsu_code(0x01d09f, 1);
         } else {
             gsu.r[0] = 2;
             gsu_sub(gsu.r[0], gsu.r[4], 0);
             if (gsu.z) {
-                
                 gsu_code(0x01d056, 13); gsu_code(0x01d06b, 1);
                 gsu.r[4] = unpack_bits(2, 0xD072, GSU_COPY(7));
                 gsu.r[4] = gsu_add(gsu.r[4], 7, 0); /* 7 to 10 */
-                
                 gsu_code(0x01d073, 7); gsu_code(0x01d09f, 1);
             } else {
                 gsu.r[4] = gsu_add(gsu.r[4], 5, 0); /* 5 or 6 */
-                
                 gsu_code(0x01d056, 21); gsu_code(0x01d09f, 1);
             }
         }
@@ -338,13 +319,11 @@ static void unpack_copy_code(void)
        after 1 0. */
     gsu.r[12] = 0x10;
     if (!unpack_bit(0xD0AF, GSU_COPY(2)))
-        { gsu_code(0x01d0b0, 2); gsu_code(0x01d0c7, 1);
-        return; } else { gsu_code(0x01d0b0, 2); }
+        { gsu_code(0x01d0b0, 2); gsu_code(0x01d0c7, 1); return; } else { gsu_code(0x01d0b0, 2); }
     gsu.r[12] = 8;
     gsu_code(0x01d0b2, 1);
     if (unpack_bit(0xD0C2, GSU_COPY(3)))
-        { gsu_code(0x01d0c3, 5);
-        return; } else { gsu_code(0x01d0c3, 2); gsu_code(0x01d0c7, 1); }
+        { gsu_code(0x01d0c3, 5); return; } else { gsu_code(0x01d0c3, 2); gsu_code(0x01d0c7, 1); }
     gsu.r[12] = 0x0C;
 }
 
@@ -401,8 +380,6 @@ void FxUnpackProgram(void)
     gsu.r[5] = 0;
     gsu.r[7] = FX_UNPACK_BITS_LOOP;
     gsu.r[8] = FX_UNPACK_TOP;
-    
-    
     gsu_code(0x01cf6d, 9); gsu_cache(0xcf76); gsu_code(0x01cf76, 3);
     for (;;) {
         gsu.r[4] = unpack_bits(3, 0xCF7F, GSU_COPY(0));
@@ -411,17 +388,14 @@ void FxUnpackProgram(void)
             gsu.r[0] = 7;
             gsu_sub(gsu.r[0], gsu.r[4], 0);
             if (gsu.z) {
-                
                 gsu_code(0x01cf80, 5); gsu_code(0x01cf89, 8);
                 if (unpack_bit(0xCF9E, GSU_COPY(0))) {
                     gsu_code(0x01cf9f, 3);
                     gsu.r[4] = unpack_bits(0x0A, 0xCFA8, GSU_COPY(1));
                     gsu_moves(gsu.r[4]);
                     if (gsu.z)
-                        { { gsu_code(0x01cfa9, 5);
-                        gsu.r[4] = unpack_bits(0x12, 0xCFB4, GSU_COPY(2)); } gsu_code(0x01cfb5, 2); gsu_code(0x01cfc1, 1); } else { gsu_code(0x01cfa9, 4); gsu_code(0x01cfc1, 1); }
+                        { { gsu_code(0x01cfa9, 5); gsu.r[4] = unpack_bits(0x12, 0xCFB4, GSU_COPY(2)); gsu_code(0x01cfb5, 2); gsu_code(0x01cfc1, 1); } } else { gsu_code(0x01cfa9, 4); gsu_code(0x01cfc1, 1); }
                 } else {
-                    
                     gsu_code(0x01cf9f, 2); gsu_code(0x01cfb7, 1);
                     gsu.r[4] = unpack_bits(4, 0xCFBE, GSU_COPY(3));
                     gsu.r[4] = gsu_add(gsu.r[4], 7, 0);
@@ -433,9 +407,7 @@ void FxUnpackProgram(void)
         gsu_sub(gsu.r[9], gsu.r[1], 0);
         gsu.r[12] = 2;
         if (gsu.z)
-            { 
-            gsu_code(0x01d003, 5);
-            break; } else { gsu_code(0x01d003, 5); gsu_code(0x01d027, 1); gsu_cache(0xd028); gsu_code(0x01d028, 1); }
+            { gsu_code(0x01d003, 5); break; } else { gsu_code(0x01d003, 5); gsu_code(0x01d027, 1); gsu_cache(0xd028); gsu_code(0x01d028, 1); }
         unpack_copy_code();
         gsu.r[4] = unpack_bits(gsu.r[12], 0xD0CC, GSU_COPY(8));
         gsu.r[6] = gsu_dec(gsu.r[6]);
@@ -451,7 +423,6 @@ void FxUnpackProgram(void)
             gsu.r[6] = gsu_dec(gsu.r[6]);
         } while (gsu_code_loop(0x01d0cd, 1, gsu_code_loop(0x01d0d6, 3, !gsu.s)));
         gsu_code(0x01d0d6, 3);
-        
         gsu_code(0x01d0d9, 2); gsu_code(0x01cf78, 1);
     }
     gsu_code(0x01d008, 5);
@@ -460,9 +431,7 @@ void FxUnpackProgram(void)
     gsu.r[3] = gsu_ldw(FX_UNPACK_ADD);
     gsu_moves(gsu.r[3]);
     if (gsu.z)
-        { 
-        gsu_code(0x01d010, 4); gsu_code(0x01d025, 1);
-        return; } else { gsu_code(0x01d010, 4); }
+        { gsu_code(0x01d010, 4); gsu_code(0x01d025, 1); return; } else { gsu_code(0x01d010, 4); }
     gsu_code(0x01d014, 4);
     gsu.r[1] = gsu_ldw(FX_UNPACK_DEST);
     gsu_code(0x01d018, 3);
@@ -482,9 +451,7 @@ void FxUnpackProgram(void)
         again = gsu_count_down(&gsu.r[12]);
         gsu.r[1] = gsu_inc(gsu.r[1]);              /* LOOP's delay slot */
         if (!again)
-            { 
-            gsu_code(0x01d023, 2);
-            break; } else { gsu_code(0x01d023, 2); gsu_code(0x01d01f, 1); }
+            { gsu_code(0x01d023, 2); break; } else { gsu_code(0x01d023, 2); gsu_code(0x01d01f, 1); }
     } while (1);
     gsu_code(0x01d025, 1);
 }

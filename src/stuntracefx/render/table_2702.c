@@ -45,9 +45,7 @@ void FxTable2702Program(void)
     gsu_code(0x01d1ec, 3);
     gsu_ramb(0);
     for (i = 0; i < 48; i++)
-        { 
-        gsu_codes(FxTable2702Program_fetch[0] + i, 1);
-        gsu_stb((uint16_t)(FX_TABLE_2702 + i), table_2702[i]); }
+        { gsu_codes(FxTable2702Program_fetch[0] + i, 1); gsu_stb((uint16_t)(FX_TABLE_2702 + i), table_2702[i]); }
     gsu_code(0x01d305, 1);
 }
 

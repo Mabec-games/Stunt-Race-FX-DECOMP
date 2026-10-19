@@ -903,7 +903,6 @@ static void tiles_2bpp_to_4bpp(int copy)
  */
 void FxTiles2bppTo4bppHigh(void)
 {
-    
     R[2] = 0xC000;
     R[3] = 0xD000;
     tiles_2bpp_to_4bpp(GSU_COPY(0));
@@ -924,7 +923,6 @@ void abi_FxTiles2bppTo4bppHigh(void)
  */
 void FxTiles2bppTo4bppLow(void)
 {
-    
     R[2] = 0x3000;
     R[3] = 0x4000;
     tiles_2bpp_to_4bpp(GSU_COPY(1));
@@ -1262,9 +1260,7 @@ void FxGlyph16RowsFromBottom(void)
     gsu_code(0x07f134, 4);
     gsu_sbk(R[0]);
     if (!glyph_bitmap(GSU_COPY(0)))
-        { 
-        gsu_code(0x07f13e, 3);
-        return; } else { gsu_code(0x07f13e, 2); gsu_code(0x07f142, 1); }
+        { gsu_code(0x07f13e, 3); return; } else { gsu_code(0x07f13e, 2); gsu_code(0x07f142, 1); }
     R[11] = HUD_COLOURS;
     gsu_code(0x07f143, 7);
     R[2] = gsu_ldw(HUD_Y);
@@ -1318,9 +1314,7 @@ void FxGlyph16RowsFromTop(void)
     gsu_code(0x07f17f, 4);
     gsu_sbk(R[0]);
     if (!glyph_bitmap(GSU_COPY(1)))
-        { 
-        gsu_code(0x07f189, 3);
-        return; } else { gsu_code(0x07f189, 2); gsu_code(0x07f18d, 1); }
+        { gsu_code(0x07f189, 3); return; } else { gsu_code(0x07f189, 2); gsu_code(0x07f18d, 1); }
     R[12] = R[3];
     glyph_rows(0xF191, 4, 1, GSU_COPY(1));
     gsu_code(0x07f27e, 1);
@@ -1352,9 +1346,7 @@ void FxGlyph8x16(void)
     R[2] = gsu_ldw(HUD_Y);
     glyph_x(8, GSU_COPY(1));
     if (!glyph_bitmap(GSU_COPY(3)))
-        { 
-        gsu_code(0x07f34c, 3);
-        return; } else { gsu_code(0x07f34c, 2); gsu_code(0x07f350, 1); }                     /* not reached in the traces so far */
+        { gsu_code(0x07f34c, 3); return; } else { gsu_code(0x07f34c, 2); gsu_code(0x07f350, 1); }                     /* not reached in the traces so far */
     R[12] = 0x10;
     glyph_rows(0xF355, 2, 1, GSU_COPY(3));
     gsu_code(0x07f3d0, 1);
@@ -1385,7 +1377,6 @@ void FxGlyph24x16(void)
     gsu_code(0x07f449, 9);
     R[2] = gsu_ldw(HUD_Y);
     glyph_x(0x10, GSU_COPY(3));
-    
     gsu_code(0x07f45d, 4); gsu_cache(0xf461);
     gsu_r14(gsu_ldw(HUD_BITMAP));
     R[12] = 0x10;
@@ -1420,9 +1411,7 @@ void FxGlyph16x32(void)
     R[2] = gsu_ldw(HUD_Y);
     glyph_x(0x10, GSU_COPY(5));
     if (!glyph_bitmap(GSU_COPY(4)))
-        { 
-        gsu_code(0x07f701, 3);
-        return; } else { gsu_code(0x07f701, 2); gsu_code(0x07f705, 1); gsu_cache(0xf706); }                     /* not reached in the traces so far */
+        { gsu_code(0x07f701, 3); return; } else { gsu_code(0x07f701, 2); gsu_code(0x07f705, 1); gsu_cache(0xf706); }                     /* not reached in the traces so far */
     R[12] = 0x20;
     glyph_rows(0xF70B, 4, 0, GSU_COPY(6));
     R[0] = rpix(GSU_COPY(27));
@@ -1460,9 +1449,7 @@ static void scaled_sprite(int copy)
     gsu_codes(scaled_sprite_fetch[copy] + 3, 1);
     gsu_r14(R[14]);                         /* MOVES R14 writes R14: the ROM buffer refills */
     if (gsu.z)
-        { 
-        gsu_codes(scaled_sprite_fetch[copy] + 5, 2);
-        return; } else { gsu_codes(scaled_sprite_fetch[copy] + 4, 1); }
+        { gsu_codes(scaled_sprite_fetch[copy] + 5, 2); return; } else { gsu_codes(scaled_sprite_fetch[copy] + 4, 1); }
     gsu_codes(scaled_sprite_fetch[copy] + 7, 1);
     R[3] = gsu_ldw(SCREEN_WIDTH);
     gsu_moves(R[8]);
@@ -1470,15 +1457,13 @@ static void scaled_sprite(int copy)
         /* Off the left edge: the part right of x = 0. */
         R[5] = gsu_add(R[8], R[5], 0);
         if (gsu.s)
-            { gsu_codes(scaled_sprite_fetch[copy] + 13, 3);
-            return; } else { gsu_codes(scaled_sprite_fetch[copy] + 11, 2); }
+            { gsu_codes(scaled_sprite_fetch[copy] + 13, 3); return; } else { gsu_codes(scaled_sprite_fetch[copy] + 11, 2); }
         R[1] = gsu_sub(R[1], R[1], 0);
         gsu_codes(scaled_sprite_fetch[copy] + 10, 1);
     } else {
         R[0] = gsu_sub(R[8], R[3], 0);
         if (gsu.cy)
-            { gsu_codes(scaled_sprite_fetch[copy] + 17, 2);
-            return; } else { gsu_codes(scaled_sprite_fetch[copy] + 16, 1); }
+            { gsu_codes(scaled_sprite_fetch[copy] + 17, 2); return; } else { gsu_codes(scaled_sprite_fetch[copy] + 16, 1); }
         R[0] = gsu_add(R[8], R[5], 0);
         R[0] = gsu_sub(R[0], R[3], 0);
         if (gsu.cy)
@@ -1502,8 +1487,7 @@ static void scaled_sprite(int copy)
     } else {
         R[0] = gsu_sub(R[9], R[4], 0);
         if (gsu.cy)
-            { gsu_codes(scaled_sprite_fetch[copy] + 32, 2);
-            return; } else { gsu_codes(scaled_sprite_fetch[copy] + 31, 1); }
+            { gsu_codes(scaled_sprite_fetch[copy] + 32, 2); return; } else { gsu_codes(scaled_sprite_fetch[copy] + 31, 1); }
         R[0] = gsu_add(R[9], R[7], 0);
         R[0] = gsu_sub(R[0], R[4], 0);
         if (gsu.cy)
@@ -1551,8 +1535,7 @@ static void scaled_sprite(int copy)
                 zero = gsu.z;
                 R[6] = gsu_dec(R[6]);
                 if (zero)
-                    { gsu_codes(scaled_sprite_fetch[copy] + 59, 2);
-                    break; } else { gsu_codes(scaled_sprite_fetch[copy] + 58, 1); }
+                    { gsu_codes(scaled_sprite_fetch[copy] + 59, 2); break; } else { gsu_codes(scaled_sprite_fetch[copy] + 58, 1); }
                 R[0] = gsu_asr(R[0]);
                 R[0] = gsu_asr(R[0]);
                 gsu_codes(scaled_sprite_fetch[copy] + 55, 2);
@@ -1777,9 +1760,7 @@ void FxGlyph8x8(void)
     R[2] = gsu_ldw(HUD_Y);
     glyph_x(8, GSU_COPY(0));
     if (!glyph_bitmap(GSU_COPY(2)))
-        { 
-        gsu_code(0x07f2a3, 3);
-        return; } else { gsu_code(0x07f2a3, 2); gsu_code(0x07f2a7, 1); }
+        { gsu_code(0x07f2a3, 3); return; } else { gsu_code(0x07f2a3, 2); gsu_code(0x07f2a7, 1); }
     R[12] = 8;
     glyph_rows(0xF2AC, 2, 1, GSU_COPY(2));
     gsu_code(0x07f327, 1);
@@ -1816,7 +1797,6 @@ void FxGlyph24x32Bank04(void)
     gsu_code(0x07f3da, 9);
     R[2] = gsu_ldw(HUD_Y);
     glyph_x(0x10, GSU_COPY(2));
-    
     gsu_code(0x07f3ee, 4); gsu_cache(0xf3f2);
     gsu_r14(gsu_ldw(HUD_BITMAP));
     R[12] = 0x20;
@@ -1862,7 +1842,6 @@ void FxGlyph16x16(void)
     gsu_code(0x07f5d1, 9);
     R[2] = gsu_ldw(HUD_Y);
     glyph_x(0x10, GSU_COPY(4));
-    
     gsu_code(0x07f5e5, 4); gsu_cache(0xf5e9);
     gsu_r14(gsu_ldw(HUD_BITMAP));
     R[12] = 0x10;
@@ -1969,9 +1948,7 @@ void FxGlyph16x32Double(void)
     R[2] = gsu_ldw(HUD_Y);
     glyph_x(0x20, GSU_COPY(6));
     if (!glyph_bitmap(GSU_COPY(5)))
-        { 
-        gsu_code(0x07f817, 3);
-        return; } else { gsu_code(0x07f817, 2); gsu_code(0x07f81b, 1); }
+        { gsu_code(0x07f817, 3); return; } else { gsu_code(0x07f817, 2); gsu_code(0x07f81b, 1); }
     R[12] = 0x20;
     R[13] = 0xF820;
     gsu_code(0x07f81c, 5);
@@ -2059,7 +2036,6 @@ void FxSprite16x32(void)
         R[0] = gsu_sub(R[0], R[8], 0);
         if (!gsu.cy) {
             R[0] = 0x0100;
-            
             gsu_code(0x07fad2, 13); gsu_code(0x07faf0, 3);
             FxScaledSpriteAdvance(GSU_COPY(0));
             return;
@@ -2067,7 +2043,6 @@ void FxSprite16x32(void)
     } else { gsu_code(0x07fad2, 6); gsu_code(0x07fade, 1); }
     R[0] = 0x10;
     R[0] = gsu_add(R[0], R[8], 0);
-    
     gsu_code(0x07fadf, 5);
     gsu_sbk(R[0]);
     R[5] = 0x10;

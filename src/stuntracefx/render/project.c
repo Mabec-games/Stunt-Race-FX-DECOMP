@@ -38,15 +38,11 @@ static void outcode_axis(uint16_t v, uint16_t low_edge, uint16_t high_edge, uint
     gsu_codes(outcode_axis_fetch[copy], 1);
     gsu.r[0] = gsu_sub(gsu_ldw(low_edge), v, 0);
     if (gsu.s == gsu.ov)
-        { 
-        gsu_codes(outcode_axis_fetch[copy] + 2, 2);
-        goto one; } else { gsu_codes(outcode_axis_fetch[copy] + 1, 1); }
+        { gsu_codes(outcode_axis_fetch[copy] + 2, 2); goto one; } else { gsu_codes(outcode_axis_fetch[copy] + 1, 1); }
     gsu_codes(outcode_axis_fetch[copy] + 4, 1);
     gsu.r[0] = gsu_sub(gsu_ldw(high_edge), v, 0);
     if (gsu.s == gsu.ov)
-        { 
-        gsu_codes(outcode_axis_fetch[copy] + 6, 2);
-        return; } else { gsu_codes(outcode_axis_fetch[copy] + 5, 1); }
+        { gsu_codes(outcode_axis_fetch[copy] + 6, 2); return; } else { gsu_codes(outcode_axis_fetch[copy] + 5, 1); }
     gsu.r[5] = gsu_inc(gsu.r[5]);
 gsu_codes(outcode_axis_fetch[copy] + 8, 1);
 one:
@@ -141,23 +137,15 @@ static void project_y(int behind, int xneg, int copy)
         gsu.r[2] = negate(gsu.r[2], GSU_COPY(negate_in_project_y[copy]));
         gsu.r[0] = gsu_sub(gsu.r[1], gsu.r[2], 0);
         if (!gsu.cy)
-            { 
-            gsu_codes(project_y_fetch[copy] + 8, 2);
-            project_case(behind, xneg, 1, 1, GSU_COPY(project_case_in_project_y[copy])); gsu_codes(project_y_fetch[copy] + 5, 3); }
+            { { gsu_codes(project_y_fetch[copy] + 8, 2); project_case(behind, xneg, 1, 1, GSU_COPY(project_case_in_project_y[copy])); gsu_codes(project_y_fetch[copy] + 5, 3); } }
         else
-            { 
-            gsu_codes(project_y_fetch[copy] + 10, 1);
-            project_case(behind, xneg, 1, 0, GSU_COPY(project_case_in_project_y_2[copy])); gsu_codes(project_y_fetch[copy] + 2, 3); }
+            { { gsu_codes(project_y_fetch[copy] + 10, 1); project_case(behind, xneg, 1, 0, GSU_COPY(project_case_in_project_y_2[copy])); gsu_codes(project_y_fetch[copy] + 2, 3); } }
     } else {
         gsu.r[0] = gsu_sub(gsu.r[1], gsu.r[2], 0);
         if (!gsu.cy)
-            { 
-            gsu_codes(project_y_fetch[copy] + 17, 2);
-            project_case(behind, xneg, 0, 1, GSU_COPY(project_case_in_project_y_3[copy])); gsu_codes(project_y_fetch[copy] + 14, 3); }
+            { { gsu_codes(project_y_fetch[copy] + 17, 2); project_case(behind, xneg, 0, 1, GSU_COPY(project_case_in_project_y_3[copy])); gsu_codes(project_y_fetch[copy] + 14, 3); } }
         else
-            { 
-            gsu_codes(project_y_fetch[copy] + 19, 1);
-            project_case(behind, xneg, 0, 0, GSU_COPY(project_case_in_project_y_4[copy])); gsu_codes(project_y_fetch[copy] + 11, 3); }
+            { { gsu_codes(project_y_fetch[copy] + 19, 1); project_case(behind, xneg, 0, 0, GSU_COPY(project_case_in_project_y_4[copy])); gsu_codes(project_y_fetch[copy] + 11, 3); } }
     }
 }
 
@@ -274,25 +262,21 @@ void FxProjectScaled(int copy)
     for (;;) {
         gsu.r[0] = gsu_sub(0x4400, gsu.r[3], 0);
         if (!gsu.s)
-            { gsu_code(0x01b2a9, 6); gsu_code(0x01b2b9, 1);
-            break; } else { gsu_code(0x01b2a9, 6); }
+            { gsu_code(0x01b2a9, 6); gsu_code(0x01b2b9, 1); break; } else { gsu_code(0x01b2a9, 6); }
         gsu.r[1] = gsu_asr(gsu.r[1]);
         gsu.r[2] = gsu_asr(gsu.r[2]);
         gsu.r[5] = gsu_asr(gsu.r[5]);
         gsu.r[3] = gsu_asr(gsu.r[3]);       /* BRA's delay slot */
-        
         gsu_code(0x01b2af, 10); gsu_code(0x01b2a8, 1);
     }
     for (;;) {
         gsu.r[0] = gsu_sub(0x0100, gsu.r[3], 0);
         if (gsu.s)
-            { gsu_code(0x01b2ba, 6); gsu_code(0x01b2ca, 1);
-            break; } else { gsu_code(0x01b2ba, 6); }
+            { gsu_code(0x01b2ba, 6); gsu_code(0x01b2ca, 1); break; } else { gsu_code(0x01b2ba, 6); }
         gsu.r[5] = gsu_add(gsu.r[5], gsu.r[5], 0);
         gsu.r[1] = gsu_add(gsu.r[1], gsu.r[1], 0);
         gsu.r[2] = gsu_add(gsu.r[2], gsu.r[2], 0);
         gsu.r[3] = gsu_add(gsu.r[3], gsu.r[3], 0);  /* BRA's delay slot */
-        
         gsu_code(0x01b2c0, 10); gsu_code(0x01b2b9, 1);
     }
     gsu.r[3] = gsu_bic(gsu.r[3], 0x0001);
@@ -361,28 +345,20 @@ void abi_FxProjectVertex(void)
     for (;;) {
         gsu.r[0] = gsu_sub(0x4400, gsu.r[6], 0);
         if (!gsu.s)
-            { 
-            gsu_code(0x018c00, 6); gsu_code(0x018c0e, 1);
-            break; } else { gsu_code(0x018c00, 6); }
+            { gsu_code(0x018c00, 6); gsu_code(0x018c0e, 1); break; } else { gsu_code(0x018c00, 6); }
         gsu.r[1] = gsu_asr(gsu.r[1]);
         gsu.r[2] = gsu_asr(gsu.r[2]);
         gsu.r[6] = gsu_asr(gsu.r[6]);       /* BRA's delay slot */
-        
-        
         gsu_code(0x018c06, 8); gsu_code(0x018bff, 1);
     }
     gsu.r[0] = gsu_sub(0x0100, gsu.r[6], 0);
     if (!gsu.s) {
-        
-        
         gsu_code(0x018c0f, 6); gsu_code(0x018c5c, 3);
         gsu_r14(gsu.r[12]);
         gsu.r[3] = gsu.r[6];
         gsu_code(0x018c5f, 4);
         gsu_push(&gsu.r[10], gsu.r[11]);
         gsu.r[11] = 0x8C69;
-        
-        
         gsu_code(0x018c63, 6); gsu_code(0x01947a, 1);
         abi_FxProjectPoint();
         gsu.r[12] = gsu.r[14];
@@ -425,10 +401,7 @@ void abi_FxProjectVertex(void)
         gsu.r[5] = gsu_ldw(FX_EDGES + 2);
         gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[5], 0);
         if (gsu.s)
-            { 
-            
-            gsu_code(0x018c3e, 3); gsu_code(0x018c46, 1);
-            goto y_axis; } else { gsu_code(0x018c3e, 3); }
+            { gsu_code(0x018c3e, 3); gsu_code(0x018c46, 1); goto y_axis; } else { gsu_code(0x018c3e, 3); }
         gsu.r[6] = gsu_inc(gsu.r[6]);
         gsu_code(0x018c41, 2);
     } else { gsu_code(0x018c31, 9); gsu_code(0x018c42, 1); }
@@ -444,10 +417,7 @@ y_axis:
         gsu.r[5] = gsu_ldw(FX_EDGES + 6);
         gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[5], 0);
         if (gsu.s)
-            { 
-            
-            gsu_code(0x018c4f, 3); gsu_code(0x018c54, 1);
-            goto code; } else { gsu_code(0x018c4f, 3); }
+            { gsu_code(0x018c4f, 3); gsu_code(0x018c54, 1); goto code; } else { gsu_code(0x018c4f, 3); }
         gsu.r[6] = gsu_inc(gsu.r[6]);
         gsu_code(0x018c52, 2);
     } else { gsu_code(0x018c47, 4); gsu_code(0x018c53, 1); }

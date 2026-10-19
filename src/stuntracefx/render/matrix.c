@@ -23,7 +23,6 @@
  */
 void FxMatrixTranspose(uint16_t m, uint16_t *old5, uint16_t *old7, uint16_t *old6)
 {
-    
     uint16_t e1, e2, e3, e5, e6, e7;
 
     gsu_code(0x01972c, 4);
@@ -53,7 +52,6 @@ void FxMatrixTranspose(uint16_t m, uint16_t *old5, uint16_t *old7, uint16_t *old
     *old5 = e5;
     *old7 = e7;
     *old6 = e6;
-    
     gsu_code(0x01975a, 1);
 }
 
@@ -116,9 +114,7 @@ uint16_t FxMatrixApply(uint16_t x, uint16_t y, uint16_t z, uint16_t out, uint16_
 
     apply_column(v, 0, &out, partial, m22, GSU_COPY(0));
     apply_column(v, 1, &out, partial, m22, GSU_COPY(1));
-    { uint16_t ret_ = apply_column(v, 2, &out, partial, m22, GSU_COPY(2)); 
-    gsu_code(0x0197d6, 3);
-    return ret_; }
+    { uint16_t ret_ = apply_column(v, 2, &out, partial, m22, GSU_COPY(2)); gsu_code(0x0197d6, 3); return ret_; }
 }
 
 /* The registers and flags FxMatrixApply leaves, from its last result,
@@ -179,10 +175,8 @@ void FxMatrixApplyVectors(uint16_t out, uint16_t *x, uint16_t *y, uint16_t *z,
                           uint16_t *sum, uint16_t *partial, uint16_t *m22, int copy)
 {
     apply_vector(0, out, x, y, z, sum, partial, m22, GSU_COPY(0));
-    
     gsu_code(0x01976b, 1);
     apply_vector(1, out, x, y, z, sum, partial, m22, GSU_COPY(1));
-    
     gsu_code(0x019779, 1);
     apply_vector(2, out, x, y, z, sum, partial, m22, GSU_COPY(2));
     gsu_code(0x019787, 4);
@@ -488,8 +482,6 @@ void abi_FxMatrixFromAnglesProgram(void)
 {
     gsu.r[9] = 0x00E4;
     gsu.r[11] = 0x832D;
-    
-    
     gsu_code(0x018326, 7); gsu_code(0x01832f, 1);
     abi_FxMatrixFromAngles01();
     gsu_code(0x01832d, 1);
@@ -522,7 +514,6 @@ void abi_FxSegmentCrossZ(void)
 
     gsu_moves(gsu.r[3]);
     if (!gsu.s) {
-        
         gsu_moves(gsu.r[6]);
         if (!gsu.s) {
             gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[0], 0);
@@ -545,8 +536,6 @@ void abi_FxSegmentCrossZ(void)
             gsu.r[0] = gsu_div2(gsu_add(gsu.r[3], gsu.r[6], 0));
             if (gsu.z) {
                 gsu.r[6] = gsu.r[0];
-                
-                
                 gsu_code(0x019851, 2); gsu_code(0x019874, 1);
                 fx_half_sum(4, 1, 4, GSU_COPY(0));
                 fx_half_sum(5, 2, 5, GSU_COPY(0));
@@ -562,21 +551,15 @@ void abi_FxSegmentCrossZ(void)
             } else { gsu_code(0x019851, 2); }
             if (gsu.s) {
                 gsu.r[3] = gsu.r[0];
-                
-                
                 gsu_code(0x019853, 3); gsu_code(0x019865, 1);
                 fx_half_sum(1, 1, 4, GSU_COPY(1));
                 fx_half_sum(2, 2, 5, GSU_COPY(1));
-                
-                
                 gsu_code(0x019866, 14); gsu_code(0x01984c, 1);
             } else {
                 gsu.r[6] = gsu.r[0];
                 gsu_code(0x019853, 4);
                 fx_half_sum(4, 1, 4, GSU_COPY(2));
                 fx_half_sum(5, 2, 5, GSU_COPY(2));
-                
-                
                 gsu_code(0x019857, 14); gsu_code(0x01984c, 1);
             }
             gsu_code(0x01984d, 4);
@@ -598,8 +581,6 @@ void abi_FxSegmentCrossZ(void)
         gsu.r[0] = gsu_div2(gsu_add(gsu.r[3], gsu.r[6], 0));
         if (gsu.z) {
             gsu.r[3] = gsu.r[0];
-            
-            
             gsu_code(0x019897, 6); gsu_code(0x0198be, 1);
             fx_half_sum(1, 1, 4, GSU_COPY(3));
             fx_half_sum(2, 2, 5, GSU_COPY(3));
@@ -615,21 +596,15 @@ void abi_FxSegmentCrossZ(void)
         } else { gsu_code(0x019897, 6); }
         if (gsu.s) {
             gsu.r[3] = gsu.r[0];
-            
-            
             gsu_code(0x01989d, 3); gsu_code(0x0198af, 1);
             fx_half_sum(1, 1, 4, GSU_COPY(4));
             fx_half_sum(2, 2, 5, GSU_COPY(4));
-            
-            
             gsu_code(0x0198b0, 14); gsu_code(0x019896, 1);
         } else {
             gsu.r[6] = gsu.r[0];
             gsu_code(0x01989d, 4);
             fx_half_sum(4, 1, 4, GSU_COPY(5));
             fx_half_sum(5, 2, 5, GSU_COPY(5));
-            
-            
             gsu_code(0x0198a1, 14); gsu_code(0x019896, 1);
         }
     }
@@ -739,16 +714,12 @@ static void fx_clip_search(int ax, int more, int keep_first, int copy)
         gsu.r[0] = fx_scaled(gsu.r[14], more, GSU_COPY(fx_scaled_in_fx_clip_search[copy]));
         gsu.r[0] = gsu_sub(gsu.r[11], gsu.r[0], 0);
         if (gsu.z)
-            { 
-            gsu_codes(fx_clip_search_fetch[copy] + 2, 2);
-            break; } else { gsu_codes(fx_clip_search_fetch[copy] + 1, 1); }
+            { gsu_codes(fx_clip_search_fetch[copy] + 2, 2); break; } else { gsu_codes(fx_clip_search_fetch[copy] + 1, 1); }
         neg = gsu.s;
         gsu.r[10] = gsu_dec(gsu.r[10]);         /* BMI's delay slot */
         if (!neg) {
             if (gsu.z)
-                { 
-                gsu_codes(fx_clip_search_fetch[copy] + 9, 2);
-                break; } else { gsu_codes(fx_clip_search_fetch[copy] + 8, 1); }
+                { gsu_codes(fx_clip_search_fetch[copy] + 9, 2); break; } else { gsu_codes(fx_clip_search_fetch[copy] + 8, 1); }
             gsu.r[7] = gsu.r[11];
             gsu_codes(fx_clip_search_fetch[copy] + 11, 1);
             fx_half_sum(o + 3, o, o + 3, GSU_COPY(fx_half_sum_in_fx_clip_search[copy]));
@@ -758,9 +729,7 @@ static void fx_clip_search(int ax, int more, int keep_first, int copy)
             gsu_codes(fx_clip_search_fetch[copy] + 6, 2);
         } else {
             if (gsu.z)
-                { 
-                gsu_codes(fx_clip_search_fetch[copy] + 14, 3);
-                break; } else { gsu_codes(fx_clip_search_fetch[copy] + 12, 2); }
+                { gsu_codes(fx_clip_search_fetch[copy] + 14, 3); break; } else { gsu_codes(fx_clip_search_fetch[copy] + 12, 2); }
             gsu.r[3] = gsu.r[11];
             gsu_codes(fx_clip_search_fetch[copy] + 17, 1);
             fx_half_sum(o, o, o + 3, GSU_COPY(fx_half_sum_in_fx_clip_search_4[copy]));
@@ -1095,9 +1064,7 @@ static const GsuCode set_reg_fetch[5][1] = {
 static void set_reg(int r, uint16_t v, int copy)
 {
     if (r == 14)
-        { 
-        gsu_codes(set_reg_fetch[copy], 1);
-        gsu_r14(v); }
+        { gsu_codes(set_reg_fetch[copy], 1); gsu_r14(v); }
     else
         gsu.r[r] = v;
 }
@@ -1133,9 +1100,7 @@ static void fx_plane_clip(const FxPlaneDriver *d, uint16_t ret, int fixed, int c
     gsu_codes(fx_plane_clip_fetch[copy], 4);
     d->clip();
     if (d->neg)
-        { 
-        gsu_codes(fx_plane_clip_fetch[copy] + 5, 1);
-        fx_negate(fixed); } else { gsu_codes(fx_plane_clip_fetch[copy] + 4, 1); }
+        { gsu_codes(fx_plane_clip_fetch[copy] + 5, 1); fx_negate(fixed); } else { gsu_codes(fx_plane_clip_fetch[copy] + 4, 1); }
 }
 
 /* Clips the polygon at $60 (count $40, five words a vertex) against the
@@ -1213,9 +1178,7 @@ static void fx_plane_driver(const FxPlaneDriver *d, int copy)
     gsu.r[ro] = gsu_ldw(0x0062);
     gsu.r[0] = gsu_sub(gsu.r[rc], 0x0002, 0);
     if (gsu.z)
-        { 
-        gsu_codes(fx_plane_driver_fetch[copy] + 11, 2);
-        goto fail; } else { gsu_codes(fx_plane_driver_fetch[copy] + 9, 2); }
+        { gsu_codes(fx_plane_driver_fetch[copy] + 11, 2); goto fail; } else { gsu_codes(fx_plane_driver_fetch[copy] + 9, 2); }
     gsu_codes(fx_plane_driver_fetch[copy] + 17, 1);
     do {
         for (i = 0; i < 3; i++) {
@@ -1235,9 +1198,7 @@ static void fx_plane_driver(const FxPlaneDriver *d, int copy)
         gsu_stw(0x008E, gsu.r[0]);
         gsu.r[0] = gsu_dec(gsu.r[rc]);
         if (gsu.z)
-            { 
-            gsu_codes(fx_plane_driver_fetch[copy] + 27, 1);
-            gsu.r[ri] = gsu_ldw(0x0060); } else { gsu_codes(fx_plane_driver_fetch[copy] + 25, 2); }
+            { gsu_codes(fx_plane_driver_fetch[copy] + 27, 1); gsu.r[ri] = gsu_ldw(0x0060); } else { gsu_codes(fx_plane_driver_fetch[copy] + 25, 2); }
         for (i = 0; i < 3; i++) {
             gsu_codes(fx_plane_driver_fetch[copy] + 28 + i, 1);
             gsu.r[reg2[i]] = gsu_ldw(gsu.r[ri]);
@@ -1428,16 +1389,12 @@ static void fx_near_search(int keep_first, int copy)
         gsu.r[11] = gsu_div2(gsu.r[0]);
         fx_near_test(gsu.r[11], GSU_COPY(fx_near_test_in_fx_near_search[copy]));
         if (gsu.z)
-            { 
-            gsu_codes(fx_near_search_fetch[copy] + 1, 2);
-            break; } else { gsu_codes(fx_near_search_fetch[copy], 1); }
+            { gsu_codes(fx_near_search_fetch[copy] + 1, 2); break; } else { gsu_codes(fx_near_search_fetch[copy], 1); }
         neg = gsu.s;
         gsu.r[10] = gsu_dec(gsu.r[10]);         /* BMI's delay slot */
         if (!neg) {
             if (gsu.z)
-                { 
-                gsu_codes(fx_near_search_fetch[copy] + 8, 2);
-                break; } else { gsu_codes(fx_near_search_fetch[copy] + 7, 1); }
+                { gsu_codes(fx_near_search_fetch[copy] + 8, 2); break; } else { gsu_codes(fx_near_search_fetch[copy] + 7, 1); }
             gsu.r[7] = gsu.r[11];
             gsu_codes(fx_near_search_fetch[copy] + 10, 1);
             fx_half_sum(4, 1, 4, GSU_COPY(fx_half_sum_in_fx_near_search[copy]));
@@ -1447,9 +1404,7 @@ static void fx_near_search(int keep_first, int copy)
             gsu_codes(fx_near_search_fetch[copy] + 5, 2);
         } else {
             if (gsu.z)
-                { 
-                gsu_codes(fx_near_search_fetch[copy] + 13, 3);
-                break; } else { gsu_codes(fx_near_search_fetch[copy] + 11, 2); }
+                { gsu_codes(fx_near_search_fetch[copy] + 13, 3); break; } else { gsu_codes(fx_near_search_fetch[copy] + 11, 2); }
             gsu.r[3] = gsu.r[11];
             gsu_codes(fx_near_search_fetch[copy] + 16, 1);
             fx_half_sum(1, 1, 4, GSU_COPY(fx_half_sum_in_fx_near_search_5[copy]));
@@ -1569,14 +1524,10 @@ void abi_FxClipNear(void)
     fx_near_test(gsu.r[7], GSU_COPY(5));
     if (gsu.s) {
         gsu.r[0] = 0xFFFF;
-        
-        
         gsu_code(0x01ccae, 2); gsu_code(0x01ccb4, 8);
         gsu_pull(&gsu.r[10]);
         return;
     } else { gsu_code(0x01ccae, 2); }
-    
-    
     gsu_code(0x01ccb0, 4); gsu_code(0x01cd81, 4);
     gsu_stw(0x009A, gsu.r[4]);
     gsu_code(0x01cd85, 3);

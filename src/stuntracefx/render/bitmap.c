@@ -679,9 +679,7 @@ static void fx_blit(uint16_t rows, int bytes, uint16_t skip, uint16_t loop, int 
  */
 void FxDrawBitmap16x24(void)
 {
-    
     fx_blit(24, 4, 0x1C, 0xF3EA, GSU_COPY(4));
-    
     gsu_code(0x01f4cf, 3);
 }
 
