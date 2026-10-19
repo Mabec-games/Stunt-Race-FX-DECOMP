@@ -22,8 +22,22 @@
 
 /* FMULT then ROL: bits 15-30 of the signed product, a 1.15 fixed point
    multiply. */
-static uint16_t fx_mul15(uint16_t a, uint16_t b)
+/* gsuwalk: the code of each copy of fx_mul15, read from the ROM */
+static const GsuCode fx_mul15_fetch[9][1] = {
+    {{0x0497cb, 2}},
+    {{0x0497d2, 2}},
+    {{0x0497da, 2}},
+    {{0x0497e7, 2}},
+    {{0x0497ee, 2}},
+    {{0x0497f6, 2}},
+    {{0x049803, 2}},
+    {{0x04980a, 2}},
+    {{0x049812, 2}},
+};
+
+static uint16_t fx_mul15(uint16_t a, uint16_t b, int copy)
 {
+    gsu_codes(fx_mul15_fetch[copy], 1);
     return gsu_rol(gsu_fmult(a, b));
 }
 
@@ -82,10 +96,19 @@ typedef struct {
    ADD R4) stored back (SBK). */
 /* gsuwalk: the code of each copy of rotate_axis, read from the ROM */
 static const GsuCode rotate_axis_fetch[3][5] = {
-    {{0x0497c8, 3}, {0x0497cb, 7}, {0x0497d2, 8}, {0x0497da, 8}, {0x0497e2, 2}},
-    {{0x0497e4, 3}, {0x0497e7, 7}, {0x0497ee, 8}, {0x0497f6, 8}, {0x0497fe, 2}},
-    {{0x049800, 3}, {0x049803, 7}, {0x04980a, 8}, {0x049812, 10}, {0x04981c, 2}},
+    {{0x0497c8, 3}, {0x0497cd, 5}, {0x0497d4, 6}, {0x0497dc, 6}, {0x0497e2, 2}},
+    {{0x0497e4, 3}, {0x0497e9, 5}, {0x0497f0, 6}, {0x0497f8, 6}, {0x0497fe, 2}},
+    {{0x049800, 3}, {0x049805, 5}, {0x04980c, 6}, {0x049814, 8}, {0x04981c, 2}},
 };
+
+/* gsuwalk: the copy of fx_mul15 each copy of rotate_axis calls */
+static const uint8_t fx_mul15_in_rotate_axis[3] = {0, 3, 6};
+
+/* gsuwalk: the copy of fx_mul15 each copy of rotate_axis calls */
+static const uint8_t fx_mul15_in_rotate_axis_2[3] = {1, 4, 7};
+
+/* gsuwalk: the copy of fx_mul15 each copy of rotate_axis calls */
+static const uint8_t fx_mul15_in_rotate_axis_3[3] = {2, 5, 8};
 
 static uint16_t rotate_axis(FxRotateLeft *o, uint16_t ly, int k, int copy)
 {
@@ -94,13 +117,13 @@ static uint16_t rotate_axis(FxRotateLeft *o, uint16_t ly, int k, int copy)
 
     gsu_codes(rotate_axis_fetch[copy], 1);
     o->m = gsu_ldw(row);
-    o->part = fx_mul15(o->lx, o->m);
+    o->part = fx_mul15(o->lx, o->m, GSU_COPY(fx_mul15_in_rotate_axis[copy]));
     gsu_codes(rotate_axis_fetch[copy] + 1, 1);
     o->m = gsu_ldw((uint16_t)(row + 6));
-    o->part = gsu_add(o->part, fx_mul15(ly, o->m), 0);
+    o->part = gsu_add(o->part, fx_mul15(ly, o->m, GSU_COPY(fx_mul15_in_rotate_axis_2[copy])), 0);
     gsu_codes(rotate_axis_fetch[copy] + 2, 1);
     o->m = gsu_ldw((uint16_t)(row + 12));
-    sum = gsu_add(fx_mul15(o->lz, o->m), o->part, 0);
+    sum = gsu_add(fx_mul15(o->lz, o->m, GSU_COPY(fx_mul15_in_rotate_axis_3[copy])), o->part, 0);
     o->rot = sum;
     gsu_codes(rotate_axis_fetch[copy] + 3, 1);
     o->old = gsu_ldw((uint16_t)(FX_WORLD_SUM + axis[k]));
@@ -457,16 +480,19 @@ FxRegs FxPushApply(FxRegs g, int copy)
     g.r[1] = g.r[7];
     gsu_code(0x04953e, 6);
     g.r[6] = gsu_ldw(FX_PUSH_DIR);
+    gsu_code(0x049544, 2);
     g.r[4] = g.r[0] = gsu_fmult(g.r[1], g.r[6]);
     g.r[5] = g.r[7];
-    gsu_code(0x049544, 10);
+    gsu_code(0x049546, 8);
     g.r[6] = gsu_ldw(FX_PUSH_DIR + 2);
+    gsu_code(0x04954e, 2);
     g.r[5] = g.r[0] = gsu_fmult(g.r[5], g.r[6]);
-    gsu_code(0x04954e, 8);
+    gsu_code(0x049550, 6);
     g.r[6] = gsu_ldw(FX_PUSH_DIR + 4);
+    gsu_code(0x049556, 2);
     g.r[6] = g.r[0] = gsu_fmult(g.r[7], g.r[6]);
     g.r[11] = 0x955E;
-    gsu_code(0x049556, 8); gsu_code(0x0496c3, 1);
+    gsu_code(0x049558, 6); gsu_code(0x0496c3, 1);
     g = FxSumsPushWorld(g, GSU_COPY(0));
     g.r[0] = 1;
     gsu_code(0x04955e, 7);
@@ -585,26 +611,29 @@ static void pull3(int r11, int copy)
    with the words at m, m + step, m + 2 * step, summed (R5 the running
    sum, R0 the result). */
 /* gsuwalk: the code of each copy of fx_row, read from the ROM */
-static const GsuCode fx_row_fetch[6][3] = {
-    {{0x049928, 3}, {0x04992b, 7}, {0x049932, 8}},
-    {{0x049942, 3}, {0x049945, 7}, {0x04994c, 8}},
-    {{0x04995c, 3}, {0x04995f, 7}, {0x049966, 8}},
-    {{0x049af4, 3}, {0x049af7, 7}, {0x049afe, 8}},
-    {{0x049b0d, 3}, {0x049b10, 7}, {0x049b17, 8}},
-    {{0x049b26, 3}, {0x049b29, 7}, {0x049b30, 8}},
+static const GsuCode fx_row_fetch[6][6] = {
+    {{0x049928, 3}, {0x04992b, 2}, {0x04992d, 5}, {0x049932, 2}, {0x049934, 6}, {0x04993a, 2}},
+    {{0x049942, 3}, {0x049945, 2}, {0x049947, 5}, {0x04994c, 2}, {0x04994e, 6}, {0x049954, 2}},
+    {{0x04995c, 3}, {0x04995f, 2}, {0x049961, 5}, {0x049966, 2}, {0x049968, 6}, {0x04996e, 2}},
+    {{0x049af4, 3}, {0x049af7, 2}, {0x049af9, 5}, {0x049afe, 2}, {0x049b00, 6}, {0x049b06, 2}},
+    {{0x049b0d, 3}, {0x049b10, 2}, {0x049b12, 5}, {0x049b17, 2}, {0x049b19, 6}, {0x049b1f, 2}},
+    {{0x049b26, 3}, {0x049b29, 2}, {0x049b2b, 5}, {0x049b30, 2}, {0x049b32, 6}, {0x049b38, 2}},
 };
 
 static uint16_t fx_row(uint16_t m, uint16_t step, int copy)
 {
     gsu_codes(fx_row_fetch[copy], 1);
     gsu.r[6] = gsu_ldw(m);
-    gsu.r[5] = gsu_rol(gsu_fmult(gsu.r[1], gsu.r[6]));
     gsu_codes(fx_row_fetch[copy] + 1, 1);
+    gsu.r[5] = gsu_rol(gsu_fmult(gsu.r[1], gsu.r[6]));
+    gsu_codes(fx_row_fetch[copy] + 2, 1);
     gsu.r[6] = gsu_ldw((uint16_t)(m + step));
+    gsu_codes(fx_row_fetch[copy] + 3, 1);
     gsu.r[0] = gsu_rol(gsu_fmult(gsu.r[2], gsu.r[6]));
     gsu.r[5] = gsu_add(gsu.r[5], gsu.r[0], 0);
-    gsu_codes(fx_row_fetch[copy] + 2, 1);
+    gsu_codes(fx_row_fetch[copy] + 4, 1);
     gsu.r[6] = gsu_ldw((uint16_t)(m + 2 * step));
+    gsu_codes(fx_row_fetch[copy] + 5, 1);
     gsu.r[0] = gsu_rol(gsu_fmult(gsu.r[3], gsu.r[6]));
     gsu.r[0] = gsu_add(gsu.r[0], gsu.r[5], 0);
     return gsu.r[0];
@@ -613,10 +642,10 @@ static uint16_t fx_row(uint16_t m, uint16_t step, int copy)
 /* One component of the cross product: a * R6(at p) - b * R6(at q) as 32
    bits (LMULT, SUB, SBC), doubled, its high word (ADD, ROL). */
 /* gsuwalk: the code of each copy of fx_cross, read from the ROM */
-static const GsuCode fx_cross_fetch[3][2] = {
-    {{0x049b4b, 3}, {0x049b4e, 8}},
-    {{0x049b64, 3}, {0x049b67, 8}},
-    {{0x049b7d, 3}, {0x049b80, 8}},
+static const GsuCode fx_cross_fetch[3][4] = {
+    {{0x049b4b, 3}, {0x049b4e, 3}, {0x049b51, 5}, {0x049b56, 4}},
+    {{0x049b64, 3}, {0x049b67, 3}, {0x049b6a, 5}, {0x049b6f, 4}},
+    {{0x049b7d, 3}, {0x049b80, 3}, {0x049b83, 5}, {0x049b88, 4}},
 };
 
 static uint16_t fx_cross(uint16_t a, uint16_t p, uint16_t b, uint16_t q, int copy)
@@ -625,12 +654,14 @@ static uint16_t fx_cross(uint16_t a, uint16_t p, uint16_t b, uint16_t q, int cop
 
     gsu_codes(fx_cross_fetch[copy], 1);
     gsu.r[6] = gsu_ldw(p);
+    gsu_codes(fx_cross_fetch[copy] + 1, 1);
     m = gsu_lmult(a, gsu.r[6]);
     gsu.r[0] = (uint16_t)(m >> 16);
     gsu.r[4] = (uint16_t)m;
     gsu.r[7] = gsu.r[4];
-    gsu_codes(fx_cross_fetch[copy] + 1, 1);
+    gsu_codes(fx_cross_fetch[copy] + 2, 1);
     gsu.r[6] = gsu_ldw(q);
+    gsu_codes(fx_cross_fetch[copy] + 3, 1);
     m = gsu_lmult(b, gsu.r[6]);
     gsu.r[5] = (uint16_t)(m >> 16);
     gsu.r[4] = (uint16_t)m;
@@ -671,11 +702,11 @@ static void spin_add(uint16_t from, uint16_t sum, int reg, int times4, int copy)
    four times each added to the spin sums; R8, R9 pulled and return. */
 /* gsuwalk: the code of each copy of push_at_tail, read from the ROM */
 static const GsuCode push_at_tail_fetch[5][18] = {
-    {{0x049ac3, 25}, {0, 0}, {0x049adc, 3}, {0x049adf, 4}, {0x049ae3, 4}, {0x049ae7, 4}, {0x049aeb, 3}, {0x049aee, 3}, {0x049af1, 3}, {0x049b06, 7}, {0x049b1f, 7}, {0x049b38, 7}, {0x049b3f, 4}, {0x049b43, 4}, {0x049b47, 4}, {0x049b56, 14}, {0x049b6f, 14}, {0x049b88, 14}},
-    {{0x0499c6, 3}, {0x049ac2, 26}, {0x049adc, 3}, {0x049adf, 4}, {0x049ae3, 4}, {0x049ae7, 4}, {0x049aeb, 3}, {0x049aee, 3}, {0x049af1, 3}, {0x049b06, 7}, {0x049b1f, 7}, {0x049b38, 7}, {0x049b3f, 4}, {0x049b43, 4}, {0x049b47, 4}, {0x049b56, 14}, {0x049b6f, 14}, {0x049b88, 14}},
-    {{0x0499eb, 3}, {0x049ac2, 26}, {0x049adc, 3}, {0x049adf, 4}, {0x049ae3, 4}, {0x049ae7, 4}, {0x049aeb, 3}, {0x049aee, 3}, {0x049af1, 3}, {0x049b06, 7}, {0x049b1f, 7}, {0x049b38, 7}, {0x049b3f, 4}, {0x049b43, 4}, {0x049b47, 4}, {0x049b56, 14}, {0x049b6f, 14}, {0x049b88, 14}},
-    {{0x049a16, 3}, {0x049ac2, 26}, {0x049adc, 3}, {0x049adf, 4}, {0x049ae3, 4}, {0x049ae7, 4}, {0x049aeb, 3}, {0x049aee, 3}, {0x049af1, 3}, {0x049b06, 7}, {0x049b1f, 7}, {0x049b38, 7}, {0x049b3f, 4}, {0x049b43, 4}, {0x049b47, 4}, {0x049b56, 14}, {0x049b6f, 14}, {0x049b88, 14}},
-    {{0x049a47, 3}, {0x049ac2, 26}, {0x049adc, 3}, {0x049adf, 4}, {0x049ae3, 4}, {0x049ae7, 4}, {0x049aeb, 3}, {0x049aee, 3}, {0x049af1, 3}, {0x049b06, 7}, {0x049b1f, 7}, {0x049b38, 7}, {0x049b3f, 4}, {0x049b43, 4}, {0x049b47, 4}, {0x049b56, 14}, {0x049b6f, 14}, {0x049b88, 14}},
+    {{0x049ac3, 25}, {0, 0}, {0x049adc, 3}, {0x049adf, 4}, {0x049ae3, 4}, {0x049ae7, 4}, {0x049aeb, 3}, {0x049aee, 3}, {0x049af1, 3}, {0x049b08, 5}, {0x049b21, 5}, {0x049b3a, 5}, {0x049b3f, 4}, {0x049b43, 4}, {0x049b47, 4}, {0x049b5a, 10}, {0x049b73, 10}, {0x049b8c, 10}},
+    {{0x0499c6, 3}, {0x049ac2, 26}, {0x049adc, 3}, {0x049adf, 4}, {0x049ae3, 4}, {0x049ae7, 4}, {0x049aeb, 3}, {0x049aee, 3}, {0x049af1, 3}, {0x049b08, 5}, {0x049b21, 5}, {0x049b3a, 5}, {0x049b3f, 4}, {0x049b43, 4}, {0x049b47, 4}, {0x049b5a, 10}, {0x049b73, 10}, {0x049b8c, 10}},
+    {{0x0499eb, 3}, {0x049ac2, 26}, {0x049adc, 3}, {0x049adf, 4}, {0x049ae3, 4}, {0x049ae7, 4}, {0x049aeb, 3}, {0x049aee, 3}, {0x049af1, 3}, {0x049b08, 5}, {0x049b21, 5}, {0x049b3a, 5}, {0x049b3f, 4}, {0x049b43, 4}, {0x049b47, 4}, {0x049b5a, 10}, {0x049b73, 10}, {0x049b8c, 10}},
+    {{0x049a16, 3}, {0x049ac2, 26}, {0x049adc, 3}, {0x049adf, 4}, {0x049ae3, 4}, {0x049ae7, 4}, {0x049aeb, 3}, {0x049aee, 3}, {0x049af1, 3}, {0x049b08, 5}, {0x049b21, 5}, {0x049b3a, 5}, {0x049b3f, 4}, {0x049b43, 4}, {0x049b47, 4}, {0x049b5a, 10}, {0x049b73, 10}, {0x049b8c, 10}},
+    {{0x049a47, 3}, {0x049ac2, 26}, {0x049adc, 3}, {0x049adf, 4}, {0x049ae3, 4}, {0x049ae7, 4}, {0x049aeb, 3}, {0x049aee, 3}, {0x049af1, 3}, {0x049b08, 5}, {0x049b21, 5}, {0x049b3a, 5}, {0x049b3f, 4}, {0x049b43, 4}, {0x049b47, 4}, {0x049b5a, 10}, {0x049b73, 10}, {0x049b8c, 10}},
 };
 
 static void push_at_tail(int copy)
@@ -874,9 +905,9 @@ void abi_FxPushAt4Kept(void)
  */
 void abi_FxPushAtTurned(void)
 {
-    (((gsu_stw(FX_PUSH_POINT, gsu_code_then(0x04993a, 8, fx_row(FX_MATRIX, 6, GSU_COPY(0)))))));
-    (((gsu_stw(FX_PUSH_POINT + 2, gsu_code_then(0x049954, 8, fx_row(FX_MATRIX + 2, 6, GSU_COPY(1)))))));
-    (((gsu_stw(FX_PUSH_POINT + 4, gsu_code_then(0x04996e, 8, fx_row(FX_MATRIX + 4, 6, GSU_COPY(2)))))));
+    (((gsu_stw(FX_PUSH_POINT, gsu_code_then(0x04993c, 6, fx_row(FX_MATRIX, 6, GSU_COPY(0)))))));
+    (((gsu_stw(FX_PUSH_POINT + 2, gsu_code_then(0x049956, 6, fx_row(FX_MATRIX + 2, 6, GSU_COPY(1)))))));
+    (((gsu_stw(FX_PUSH_POINT + 4, gsu_code_then(0x049970, 6, fx_row(FX_MATRIX + 4, 6, GSU_COPY(2)))))));
     gsu_code(0x049976, 4);
     gsu.r[1] = gsu_ldw(FX_PUSH_POINT);
     gsu_code(0x04997a, 4);
@@ -899,8 +930,8 @@ void abi_FxPushAtTurned(void)
  * last OR; the last RAM address $2344.
  */
 /* gsuwalk: the code of each copy of abi_FxSumScale, read from the ROM */
-static const GsuCode abi_FxSumScale_fetch[1][6] = {
-    {{0x049a66, 4}, {0x049a6a, 4}, {0x049a6e, 4}, {0x049a87, 10}, {0x049a91, 4}, {0x049a95, 4}},
+static const GsuCode abi_FxSumScale_fetch[1][9] = {
+    {{0x049a66, 4}, {0x049a6a, 4}, {0x049a6e, 4}, {0x049a72, 3}, {0x049a75, 9}, {0x049a7e, 9}, {0x049a87, 10}, {0x049a91, 4}, {0x049a95, 4}},
 };
 
 void abi_FxSumScale(void)
@@ -911,15 +942,15 @@ void abi_FxSumScale(void)
     for (i = 0; i < 3; i++)
         { gsu_codes(abi_FxSumScale_fetch[0] + i, 1); gsu.r[1 + i] = gsu_ldw((uint16_t)(FX_WORLD_SUM + 2 * i)); }
     for (i = 0; i < 3; i++) {
+        gsu_codes(abi_FxSumScale_fetch[0] + 3 + i, 1);
         m = gsu_lmult(gsu.r[1 + i], gsu.r[6]);
         gsu.r[4] = (uint16_t)m;
         gsu.r[0] = gsu_swap(gsu_lob((uint16_t)(m >> 16)));
         gsu.r[4] = gsu_hib(gsu.r[4]);
         gsu.r[1 + i] = gsu_or(gsu.r[0], gsu.r[4]);
     }
-    gsu_code(0x049a72, 21);
     for (i = 0; i < 3; i++)
-        { gsu_codes(abi_FxSumScale_fetch[0] + 3 + i, 1); gsu_stw((uint16_t)(FX_WORLD_SUM + 2 * i), gsu.r[1 + i]); }
+        { gsu_codes(abi_FxSumScale_fetch[0] + 6 + i, 1); gsu_stw((uint16_t)(FX_WORLD_SUM + 2 * i), gsu.r[1 + i]); }
     gsu_code(0x049a99, 2);
 }
 
@@ -927,11 +958,11 @@ void abi_FxSumScale(void)
    the world sum's word (DIV2, FMULT) added to the hit point; R8, R9 and
    the return pulled. */
 /* gsuwalk: the code of each copy of hit_add, read from the ROM */
-static const GsuCode hit_add_fetch[4][27] = {
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x049890, 9}, {0x0498e4, 5}, {0x0498f7, 4}, {0, 0}, {0x049909, 4}, {0, 0}, {0x0498e9, 9}, {0x0498fb, 9}, {0x04990d, 9}, {0x0498f2, 5}, {0x049904, 5}, {0x049916, 5}},
-    {{0x0498a7, 4}, {0x0498cc, 5}, {0x0498d4, 1}, {0x0498d5, 4}, {0x0498dc, 1}, {0, 0}, {0x0498dd, 4}, {0x0498e4, 1}, {0, 0}, {0x0498a7, 4}, {0x0498cc, 9}, {0x0498d5, 8}, {0, 0}, {0x0498dd, 8}, {0, 0}, {0x0498e5, 4}, {0, 0}, {0x0498f7, 4}, {0, 0}, {0x049909, 4}, {0, 0}, {0x0498e9, 9}, {0x0498fb, 9}, {0x04990d, 9}, {0x0498f2, 5}, {0x049904, 5}, {0x049916, 5}},
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x0498be, 9}, {0x0498e4, 5}, {0x0498f7, 4}, {0, 0}, {0x049909, 4}, {0, 0}, {0x0498e9, 9}, {0x0498fb, 9}, {0x04990d, 9}, {0x0498f2, 5}, {0x049904, 5}, {0x049916, 5}},
-    {{0x0498cd, 4}, {0x0498d4, 1}, {0, 0}, {0x0498d5, 4}, {0x0498dc, 1}, {0, 0}, {0x0498dd, 4}, {0x0498e4, 1}, {0, 0}, {0x0498cd, 8}, {0, 0}, {0x0498d5, 8}, {0, 0}, {0x0498dd, 8}, {0, 0}, {0x0498e5, 4}, {0, 0}, {0x0498f7, 4}, {0, 0}, {0x049909, 4}, {0, 0}, {0x0498e9, 9}, {0x0498fb, 9}, {0x04990d, 9}, {0x0498f2, 5}, {0x049904, 5}, {0x049916, 5}},
+static const GsuCode hit_add_fetch[4][30] = {
+    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x049890, 9}, {0x0498e4, 5}, {0x0498f7, 4}, {0, 0}, {0x049909, 4}, {0, 0}, {0x0498e9, 5}, {0x0498fb, 5}, {0x04990d, 5}, {0x0498ee, 4}, {0x049900, 4}, {0x049912, 4}, {0x0498f2, 5}, {0x049904, 5}, {0x049916, 5}},
+    {{0x0498a7, 4}, {0x0498cc, 5}, {0x0498d4, 1}, {0x0498d5, 4}, {0x0498dc, 1}, {0, 0}, {0x0498dd, 4}, {0x0498e4, 1}, {0, 0}, {0x0498a7, 4}, {0x0498cc, 9}, {0x0498d5, 8}, {0, 0}, {0x0498dd, 8}, {0, 0}, {0x0498e5, 4}, {0, 0}, {0x0498f7, 4}, {0, 0}, {0x049909, 4}, {0, 0}, {0x0498e9, 5}, {0x0498fb, 5}, {0x04990d, 5}, {0x0498ee, 4}, {0x049900, 4}, {0x049912, 4}, {0x0498f2, 5}, {0x049904, 5}, {0x049916, 5}},
+    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x0498be, 9}, {0x0498e4, 5}, {0x0498f7, 4}, {0, 0}, {0x049909, 4}, {0, 0}, {0x0498e9, 5}, {0x0498fb, 5}, {0x04990d, 5}, {0x0498ee, 4}, {0x049900, 4}, {0x049912, 4}, {0x0498f2, 5}, {0x049904, 5}, {0x049916, 5}},
+    {{0x0498cd, 4}, {0x0498d4, 1}, {0, 0}, {0x0498d5, 4}, {0x0498dc, 1}, {0, 0}, {0x0498dd, 4}, {0x0498e4, 1}, {0, 0}, {0x0498cd, 8}, {0, 0}, {0x0498d5, 8}, {0, 0}, {0x0498dd, 8}, {0, 0}, {0x0498e5, 4}, {0, 0}, {0x0498f7, 4}, {0, 0}, {0x049909, 4}, {0, 0}, {0x0498e9, 5}, {0x0498fb, 5}, {0x04990d, 5}, {0x0498ee, 4}, {0x049900, 4}, {0x049912, 4}, {0x0498f2, 5}, {0x049904, 5}, {0x049916, 5}},
 };
 
 static void hit_add(int skip_abs, int copy)
@@ -948,11 +979,12 @@ static void hit_add(int skip_abs, int copy)
         gsu_codes(hit_add_fetch[copy] + 15 + 2 * i, 2);
         gsu.r[6] = gsu_ldw((uint16_t)(FX_WORLD_SUM + 2 * i));
         gsu.r[6] = gsu_div2(gsu.r[6]);
-        gsu.r[1 + i] = gsu_fmult(gsu.r[1 + i], gsu.r[6]);
         gsu_codes(hit_add_fetch[copy] + 21 + i, 1);
+        gsu.r[1 + i] = gsu_fmult(gsu.r[1 + i], gsu.r[6]);
+        gsu_codes(hit_add_fetch[copy] + 24 + i, 1);
         gsu.r[0] = gsu_ldw((uint16_t)(FX_HIT + 2 * i));
         gsu.r[0] = gsu_add(gsu.r[0], gsu.r[1 + i], 0);
-        gsu_codes(hit_add_fetch[copy] + 24 + i, 1);
+        gsu_codes(hit_add_fetch[copy] + 27 + i, 1);
         gsu_stw((uint16_t)(FX_HIT + 2 * i), gsu.r[0]);
     }
     pull3(0, GSU_COPY(0));
@@ -972,6 +1004,11 @@ static void hit_add(int skip_abs, int copy)
  * world z; R4 the last low product; R8, R9 restored; S, Z from R10; the
  * last RAM address R10.
  */
+/* gsuwalk: the code of each copy of abi_FxHitAddScaled, read from the ROM */
+static const GsuCode abi_FxHitAddScaled_fetch[1][3] = {
+    {{0x04989a, 3}, {0x04989d, 5}, {0x0498a2, 5}},
+};
+
 void abi_FxHitAddScaled(void)
 {
     uint32_t m;
@@ -988,12 +1025,12 @@ void abi_FxHitAddScaled(void)
         return;
     } else { gsu_code(0x049888, 7); gsu_code(0x049899, 1); }
     for (i = 1; i <= 3; i++) {
+        gsu_codes(abi_FxHitAddScaled_fetch[0] + (i - 1), 1);
         m = gsu_lmult(gsu.r[i], gsu.r[6]);
         gsu.r[0] = (uint16_t)(m >> 16);
         gsu.r[4] = (uint16_t)m;
         gsu.r[i] = gsu.r[4];
     }
-    gsu_code(0x04989a, 13);
     hit_add(0, GSU_COPY(1));
 }
 

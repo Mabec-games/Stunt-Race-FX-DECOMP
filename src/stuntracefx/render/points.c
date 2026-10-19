@@ -35,7 +35,7 @@ typedef struct { uint16_t first_word, offset[3], last_z, last_point; } FxPointsL
 
 /* gsuwalk: the code of each copy of FxPointsGather, read from the ROM */
 static const GsuCode FxPointsGather_fetch[1][9] = {
-    {{0x01c1ed, 4}, {0x01c1f1, 3}, {0x01c1f4, 3}, {0x01c200, 8}, {0x01c20c, 3}, {0x01c213, 3}, {0x01c208, 4}, {0x01c20f, 4}, {0x01c216, 2}},
+    {{0x01c1ed, 4}, {0x01c1f1, 3}, {0x01c1f4, 3}, {0x01c202, 6}, {0x01c20c, 3}, {0x01c213, 3}, {0x01c208, 4}, {0x01c20f, 4}, {0x01c216, 2}},
 };
 
 void FxPointsGather(uint16_t count, FxPointsLeft *left)
@@ -45,7 +45,9 @@ void FxPointsGather(uint16_t count, FxPointsLeft *left)
     uint16_t src = (uint16_t)(gsu_ldw(FX_PAIRS) - 4);
     uint16_t dst;
 
+    gsu_code(0x01c1c3, 9);
     src = (uint16_t)(src + gsu_umult(count, 8));            /* FROM R9; UMULT #8 */
+    gsu_code(0x01c1cc, 5);
     dst = (uint16_t)(FX_RECORDS + gsu_umult(count, 10));    /* FROM R9; UMULT #10 */
     uint32_t i;
     int k;
@@ -53,7 +55,7 @@ void FxPointsGather(uint16_t count, FxPointsLeft *left)
     /* UMULT takes the count's low byte only: the starting entry and record
        are those of count & $FF. */
     i = 0;
-    gsu_code(0x01c1c3, 20);
+    gsu_code(0x01c1d1, 6);
     do {                                       /* LOOP at the bottom */
         gsu_code(0x01c1d7, 2);
         uint16_t a = gsu_div2(gsu_ldw(src));
@@ -80,6 +82,7 @@ void FxPointsGather(uint16_t count, FxPointsLeft *left)
 
         gsu_code(0x01c1ff, 1);
         gsu_r14((uint16_t)(gsu.r[14] + 1));
+        gsu_code(0x01c200, 2);
         p = (uint16_t)(FX_POINTS + gsu_umult(p, 6));     /* UMULT #6 */
         for (k = 0; k < 3; k++) {
             gsu_codes(FxPointsGather_fetch[0] + 3 + k, 1);

@@ -92,21 +92,24 @@ static uint16_t magnitude(uint16_t v, int copy)
 /* The dot product of (a, b, c) with the words at $0068, $002C, $002E, each
    FMULT then ROL; R5 = the first two summed, R6 = the last word read. */
 /* gsuwalk: the code of each copy of dot, read from the ROM */
-static const GsuCode dot_fetch[2][3] = {
-    {{0x04c9e6, 7}, {0x04c9ed, 7}, {0x04c9f4, 8}},
-    {{0x04ca1e, 3}, {0x04ca21, 7}, {0x04ca28, 8}},
+static const GsuCode dot_fetch[2][6] = {
+    {{0x04c9e6, 7}, {0x04c9ed, 2}, {0x04c9ef, 5}, {0x04c9f4, 2}, {0x04c9f6, 6}, {0x04c9fc, 2}},
+    {{0x04ca1e, 3}, {0x04ca21, 2}, {0x04ca23, 5}, {0x04ca28, 2}, {0x04ca2a, 6}, {0x04ca30, 2}},
 };
 
 static uint16_t dot(FxRegs *g, uint16_t a, uint16_t b, uint16_t c, int copy)
 {
     gsu_codes(dot_fetch[copy], 1);
     g->r[6] = gsu_ldw(FX_D_X);
-    g->r[5] = gsu_rol(gsu_fmult(a, g->r[6]));
     gsu_codes(dot_fetch[copy] + 1, 1);
-    g->r[6] = gsu_ldw(FX_D_Y);
-    g->r[5] = gsu_add(g->r[5], gsu_rol(gsu_fmult(b, g->r[6])), 0);
+    g->r[5] = gsu_rol(gsu_fmult(a, g->r[6]));
     gsu_codes(dot_fetch[copy] + 2, 1);
+    g->r[6] = gsu_ldw(FX_D_Y);
+    gsu_codes(dot_fetch[copy] + 3, 1);
+    g->r[5] = gsu_add(g->r[5], gsu_rol(gsu_fmult(b, g->r[6])), 0);
+    gsu_codes(dot_fetch[copy] + 4, 1);
     g->r[6] = gsu_ldw(FX_D_Z);
+    gsu_codes(dot_fetch[copy] + 5, 1);
     return gsu_add(gsu_rol(gsu_fmult(c, g->r[6])), g->r[5], 0);
 }
 
@@ -201,7 +204,7 @@ FxRegs FxTrafficSides(FxRegs g, int copy)
         g.r[0] = dot(&g, g.r[1], g.r[2], g.r[3], GSU_COPY(0));
         g.r[1] = 0x0014;
         g.r[0] = gsu_add(g.r[0], g.r[1], 0);
-        gsu_code(0x04c9fc, 12);
+        gsu_code(0x04c9fe, 10);
         gsu_stw(FX_CLOSE, g.r[0]);
         gsu_code(0x04ca08, 4);
         g.r[1] = gsu_ldw(FX_DIST);
@@ -215,7 +218,7 @@ FxRegs FxTrafficSides(FxRegs g, int copy)
         gsu_code(0x04ca1b, 3);
         g.r[3] = gsu_ldw(FX_MATRIX + 4);
         g.r[0] = dot(&g, g.r[1], g.r[2], g.r[3], GSU_COPY(1));
-        gsu_code(0x04ca30, 8);
+        gsu_code(0x04ca32, 6);
         gsu_stw(FX_DIST, g.r[0]);
         g.r[1] = g.r[0];
         g.r[0] = magnitude(g.r[0], GSU_COPY(3));
@@ -368,14 +371,16 @@ FxRegs FxSpreadCars(FxRegs g)
         g.r[9] = gsu_pull(sp);
         gsu_code(0x04c02b, 4);
         g.r[6] = gsu_pull(sp);
+        gsu_code(0x04c02f, 2);
         g.r[0] = gsu_fmult(g.r[1], g.r[6]);
-        gsu_code(0x04c02f, 8);
+        gsu_code(0x04c031, 6);
         g.r[4] = gsu_ldw(gsu_add(REC_VX, g.r[9], 0));
         g.r[0] = gsu_add(g.r[0], g.r[4], 0);
         gsu_code(0x04c037, 2);
         gsu_sbk(g.r[0]);
+        gsu_code(0x04c039, 2);
         g.r[0] = gsu_fmult(g.r[3], g.r[6]);
-        gsu_code(0x04c039, 8);
+        gsu_code(0x04c03b, 6);
         g.r[4] = gsu_ldw(gsu_add(REC_VZ, g.r[9], 0));
         g.r[0] = gsu_add(g.r[0], g.r[4], 0);
         gsu_code(0x04c041, 2);
@@ -389,8 +394,9 @@ FxRegs FxSpreadCars(FxRegs g)
             { g.r[0] = 0x3E80; gsu_code(0x04c047, 13); } else { gsu_code(0x04c047, 9); gsu_code(0x04c053, 1); }
         g.r[6] = gsu_add(g.r[6], g.r[6], 0);
         g.r[6] = gsu_add(g.r[6], g.r[6], 0);
+        gsu_code(0x04c054, 5);
         g.r[0] = gsu_add(gsu_fmult(g.r[0], g.r[6]), g.r[1], 0);
-        gsu_code(0x04c054, 7);
+        gsu_code(0x04c059, 2);
         gsu_sbk(g.r[0]);
         g.r[4] = 0x001E;
         g.r[0] = gsu_add(REC_SPREAD, g.r[9], 0);
@@ -556,11 +562,12 @@ FxRegs FxNearestCar(FxRegs g, int copy)
     gsu_code(0x04cfc1, 3);
     gsu_sbk(g.r[0]);
     g.r[6] = 0x0080;
+    gsu_code(0x04cfc4, 5);
     g.r[0] = gsu_fmult(g.r[5], g.r[6]);
     g.r[8] = 0x0007;
     gsu_sub(g.r[0], g.r[8], 0);
     if (!gsu.s)
-        { g.r[0] = g.r[8]; gsu_code(0x04cfc4, 15); } else { gsu_code(0x04cfc4, 12); gsu_code(0x04cfd2, 1); }
+        { g.r[0] = g.r[8]; gsu_code(0x04cfc9, 10); } else { gsu_code(0x04cfc9, 7); gsu_code(0x04cfd2, 1); }
     gsu_code(0x04cfd3, 4);
     gsu_stw(FX_NEAR_BAND, g.r[0]);
     g.r[8] = 0x00FF;

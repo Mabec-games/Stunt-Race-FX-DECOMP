@@ -133,8 +133,9 @@ FxRegs FxCollidePush(FxRegs g, int copy)
     g.r[0] = gsu_add(g.r[0], g.r[0], 0);
     gsu_code(0x049366, 6);
     g.r[6] = gsu_ldw(FX_NORMAL_X);
+    gsu_code(0x04936c, 1);
     g.r[8] = gsu_fmult(g.r[0], g.r[6]);
-    gsu_code(0x04936c, 7);
+    gsu_code(0x04936d, 6);
     g.r[0] = gsu_ldw(gsu_add(HIT_VEL_Z, g.r[5], 0));
     gsu_code(0x049373, 6);
     g.r[1] = gsu_ldw(gsu_add(REC_VEL_Z, g.r[9], 0));
@@ -142,6 +143,7 @@ FxRegs FxCollidePush(FxRegs g, int copy)
     g.r[0] = gsu_add(g.r[0], g.r[0], 0);
     gsu_code(0x049379, 6);
     g.r[6] = gsu_ldw(FX_NORMAL_Z);
+    gsu_code(0x04937f, 1);
     g.r[0] = gsu_fmult(g.r[0], g.r[6]);
     g.r[8] = gsu_add(g.r[8], g.r[0], 0);
     gsu_moves(g.r[8]);
@@ -149,8 +151,8 @@ FxRegs FxCollidePush(FxRegs g, int copy)
         g.r[0] = 0x04B0;
         gsu_sub(g.r[0], g.r[8], 0);
         if (!gsu.s)
-            { g.r[8] = g.r[0]; gsu_code(0x04937f, 18); } else { gsu_code(0x04937f, 15); gsu_code(0x049390, 1); }
-    } else { gsu_code(0x04937f, 7); gsu_code(0x049390, 1); }
+            { g.r[8] = g.r[0]; gsu_code(0x049380, 17); } else { gsu_code(0x049380, 14); gsu_code(0x049390, 1); }
+    } else { gsu_code(0x049380, 6); gsu_code(0x049390, 1); }
     gsu_code(0x049391, 4);
     gsu_stw(FX_CLOSING, g.r[8]);
 
@@ -182,8 +184,9 @@ FxRegs FxCollidePush(FxRegs g, int copy)
     g.r[7] = gsu_pull(sp);
     speed = g.r[8];
     g.r[0] = gsu_add(speed, speed, 0);
+    gsu_code(0x0493c3, 4);
     g.r[8] = g.r[0] = gsu_fmult(g.r[0], g.r[6]);
-    gsu_code(0x0493c3, 10);
+    gsu_code(0x0493c7, 6);
     g.r[1] = gsu_ldw(FX_NORMAL_X);
     g.r[2] = 0;
     gsu_code(0x0493cd, 6);
@@ -283,13 +286,15 @@ FxRegs FxRecordsApart(FxRegs g, int copy)
     g.r[0] = gsu_ldw(FX_NORMAL_X);
     g.r[0] = gsu_add(g.r[0], g.r[0], 0);
     g.r[6] = g.r[1];
+    gsu_code(0x04caed, 4);
     g.r[5] = g.r[0] = gsu_fmult(g.r[0], g.r[6]);
-    gsu_code(0x04caed, 10);
+    gsu_code(0x04caf1, 6);
     g.r[0] = gsu_ldw(FX_NORMAL_Z);
     g.r[0] = gsu_add(g.r[0], g.r[0], 0);
     g.r[6] = g.r[3];
+    gsu_code(0x04caf7, 4);
     g.r[0] = gsu_add(gsu_fmult(g.r[0], g.r[6]), g.r[5], 0);
-    gsu_code(0x04caf7, 9);
+    gsu_code(0x04cafb, 5);
     gsu_stw(FX_NORMAL_X, g.r[0]);                   /* the distance */
 
     gsu_code(0x04cb00, 4);
@@ -298,16 +303,18 @@ FxRegs FxRecordsApart(FxRegs g, int copy)
     g.r[4] = gsu_ldw(gsu_add(REC_VEL_X, g.r[8], 0));
     g.r[0] = gsu_div2(gsu_sub(g.r[0], g.r[4], 0));
     g.r[6] = g.r[1];
+    gsu_code(0x04cb0a, 6);
     g.r[5] = g.r[0] = gsu_fmult(g.r[0], g.r[6]);
-    gsu_code(0x04cb0a, 12);
+    gsu_code(0x04cb10, 6);
     g.r[0] = gsu_ldw(gsu_add(REC_VEL_Z, g.r[7], 0));
     gsu_code(0x04cb16, 6);
     g.r[4] = gsu_ldw(gsu_add(REC_VEL_Z, g.r[8], 0));
     g.r[0] = gsu_div2(gsu_sub(g.r[0], g.r[4], 0));
     g.r[6] = g.r[3];
+    gsu_code(0x04cb1c, 6);
     g.r[0] = gsu_add(gsu_fmult(g.r[0], g.r[6]), g.r[5], 0);
     g.r[0] = gsu_inc(gsu_not(g.r[0]));
-    gsu_code(0x04cb1c, 13);
+    gsu_code(0x04cb22, 7);
     gsu_stw(FX_REACH, g.r[0]);                      /* the closing speed */
 
     gsu_code(0x04cb29, 4);

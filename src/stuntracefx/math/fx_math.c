@@ -185,12 +185,15 @@ FxRegs FxNormalize(FxRegs g, int copy)
     gsu_code(0x04c088, 2);
     gsu_stw(g.r[10], g.r[11]);
     g.r[10] = gsu_inc(gsu_inc(g.r[10]));
+    gsu_code(0x04c08a, 7);
     p = gsu_lmult(g.r[1], g.r[1]);
     hi = (uint16_t)(p >> 16);
     g.r[5] = (uint16_t)p;
+    gsu_code(0x04c091, 8);
     p = gsu_lmult(g.r[2], g.r[2]);
     g.r[5] = gsu_add(g.r[5], (uint16_t)p, 0);
     hi = gsu_add(hi, (uint16_t)(p >> 16), gsu.cy);
+    gsu_code(0x04c099, 10);
     p = gsu_lmult(g.r[3], g.r[3]);
     g.r[4] = (uint16_t)p;
     g.r[6] = (uint16_t)(p >> 16);
@@ -202,11 +205,11 @@ FxRegs FxNormalize(FxRegs g, int copy)
         if (gsu.z) {
             g.r[1] = g.r[2] = g.r[3] = 0;
             g.r[10] = gsu_dec(gsu_dec(g.r[10]));
-            gsu_code(0x04c08a, 49);
+            gsu_code(0x04c0a3, 24);
             gsu_ldw(g.r[10]);
             return g;
-        } else { gsu_code(0x04c08a, 38); gsu_code(0x04c0bb, 1); }
-    } else { gsu_code(0x04c08a, 33); gsu_code(0x04c0bb, 1); }
+        } else { gsu_code(0x04c0a3, 13); gsu_code(0x04c0bb, 1); }
+    } else { gsu_code(0x04c0a3, 8); gsu_code(0x04c0bb, 1); }
     gsu_code(0x04c0bc, 6); gsu_code(0x04c10f, 1);
     root = FxSquareRoot(hi, g.r[5], GSU_COPY(0));
     g.r[4] = g.r[5] = 0;
@@ -241,12 +244,15 @@ FxRegs FxNormalize(FxRegs g, int copy)
     q = FxDivideHalvedIfLarge(g.r[0], g.r[4], &divisor, GSU_COPY(0));
     g.r[13] = 0xC14B;
     g.r[6] = q.quot;
+    gsu_code(0x04c0e3, 7);
     p = gsu_lmult(g.r[1], q.quot);
     g.r[7] = (uint16_t)(p >> 16);
     g.r[1] = (uint16_t)p;
+    gsu_code(0x04c0ea, 6);
     p = gsu_lmult(g.r[2], q.quot);
     g.r[8] = (uint16_t)(p >> 16);
     g.r[2] = (uint16_t)p;
+    gsu_code(0x04c0f0, 5);
     p = gsu_lmult(g.r[3], q.quot);
     g.r[0] = (uint16_t)(p >> 16);
     g.r[3] = g.r[4] = (uint16_t)p;
@@ -254,7 +260,7 @@ FxRegs FxNormalize(FxRegs g, int copy)
     gsu_moves(count);
     if (!gsu.z) {
         g.r[13] = 0xC0FD;
-        gsu_code(0x04c0e3, 27);
+        gsu_code(0x04c0f5, 9);
         do {
             g.r[7] = gsu_asr(g.r[7]);
             g.r[1] = gsu_ror(g.r[1]);
@@ -265,7 +271,7 @@ FxRegs FxNormalize(FxRegs g, int copy)
         } while (gsu_code_loop(0x04c0fd, 1, gsu_code_loop(0x04c0fe, 12, gsu_count_down(&count))));
         gsu_code(0x04c0fe, 12);
         gsu_code(0x04c10a, 1);
-    } else { gsu_code(0x04c0e3, 24); gsu_code(0x04c10a, 1); }
+    } else { gsu_code(0x04c0f5, 6); gsu_code(0x04c10a, 1); }
     g.r[11] = 0xC0E3;
     g.r[12] = 0;
     g.r[10] = gsu_dec(gsu_dec(g.r[10]));

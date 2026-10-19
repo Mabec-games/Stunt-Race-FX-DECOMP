@@ -259,10 +259,11 @@ FxRegs FxCarFromScript(FxRegs g)
     gsu_r14(gsu_inc(g.r[14]));
     g.r[14] = gsu.r[14];
     g.r[6] = 5;
+    gsu_code(0x048f85, 4);
     p = gsu_lmult(g.r[0], g.r[6]);
     g.r[0] = (uint16_t)(p >> 16);
     g.r[4] = (uint16_t)p;
-    gsu_code(0x048f85, 6);
+    gsu_code(0x048f89, 2);
     gsu_r14(gsu_add(g.r[14], g.r[4], 0));
     g.r[14] = gsu.r[14];
     g.r[2] = g.r[14];
@@ -310,8 +311,8 @@ void abi_FxCarFromScript(void)
  * from the last part; S, Z from R10; the last RAM address R10.
  */
 /* gsuwalk: the code of each copy of FxCarMoveParts, read from the ROM */
-static const GsuCode FxCarMoveParts_fetch[1][36] = {
-    {{0x04a507, 10}, {0x04a5e8, 8}, {0x04a5f0, 5}, {0, 0}, {0x04a5f5, 5}, {0, 0}, {0x04a512, 14}, {0x04a520, 4}, {0x04a524, 4}, {0x04a528, 5}, {0x04a541, 5}, {0x04a55a, 5}, {0x04a52d, 7}, {0x04a546, 7}, {0x04a55f, 7}, {0x04a534, 8}, {0x04a54d, 8}, {0x04a566, 8}, {0x04a53c, 5}, {0x04a555, 5}, {0x04a56e, 5}, {0x04a573, 13}, {0x04a59b, 6}, {0x04a5bc, 6}, {0x04a580, 4}, {0x04a5a1, 4}, {0x04a5c2, 4}, {0x04a584, 6}, {0x04a5a5, 6}, {0x04a5c6, 6}, {0x04a58a, 7}, {0x04a5ab, 7}, {0x04a5cc, 7}, {0x04a591, 10}, {0x04a5b2, 10}, {0x04a5d3, 10}},
+static const GsuCode FxCarMoveParts_fetch[1][48] = {
+    {{0x04a507, 10}, {0x04a5e8, 8}, {0x04a5f0, 5}, {0, 0}, {0x04a5f5, 5}, {0, 0}, {0x04a512, 14}, {0x04a520, 4}, {0x04a524, 4}, {0x04a528, 5}, {0x04a541, 5}, {0x04a55a, 5}, {0x04a52d, 2}, {0x04a546, 2}, {0x04a55f, 2}, {0x04a52f, 5}, {0x04a548, 5}, {0x04a561, 5}, {0x04a534, 2}, {0x04a54d, 2}, {0x04a566, 2}, {0x04a536, 6}, {0x04a54f, 6}, {0x04a568, 6}, {0x04a53c, 2}, {0x04a555, 2}, {0x04a56e, 2}, {0x04a53e, 3}, {0x04a557, 3}, {0x04a570, 3}, {0x04a573, 13}, {0x04a59b, 6}, {0x04a5bc, 6}, {0x04a580, 4}, {0x04a5a1, 4}, {0x04a5c2, 4}, {0x04a584, 6}, {0x04a5a5, 6}, {0x04a5c6, 6}, {0x04a58a, 7}, {0x04a5ab, 7}, {0x04a5cc, 7}, {0x04a591, 5}, {0x04a5b2, 5}, {0x04a5d3, 5}, {0x04a596, 5}, {0x04a5b7, 5}, {0x04a5d8, 5}},
 };
 
 FxRegs FxCarMoveParts(FxRegs g, int copy)
@@ -357,36 +358,40 @@ FxRegs FxCarMoveParts(FxRegs g, int copy)
 
             gsu_codes(FxCarMoveParts_fetch[0] + 9 + i, 1);
             g.r[6] = gsu_ldw(row);
-            g.r[5] = gsu_rol(gsu_fmult(g.r[1], g.r[6]));
             gsu_codes(FxCarMoveParts_fetch[0] + 12 + i, 1);
-            g.r[6] = gsu_ldw((uint16_t)(row + 6));
-            g.r[5] = gsu_add(g.r[5], gsu_rol(gsu_fmult(g.r[2], g.r[6])), 0);
+            g.r[5] = gsu_rol(gsu_fmult(g.r[1], g.r[6]));
             gsu_codes(FxCarMoveParts_fetch[0] + 15 + i, 1);
-            g.r[6] = gsu_ldw((uint16_t)(row + 12));
-            g.r[0] = gsu_add(gsu_rol(gsu_fmult(g.r[3], g.r[6])), g.r[5], 0);
+            g.r[6] = gsu_ldw((uint16_t)(row + 6));
             gsu_codes(FxCarMoveParts_fetch[0] + 18 + i, 1);
+            g.r[5] = gsu_add(g.r[5], gsu_rol(gsu_fmult(g.r[2], g.r[6])), 0);
+            gsu_codes(FxCarMoveParts_fetch[0] + 21 + i, 1);
+            g.r[6] = gsu_ldw((uint16_t)(row + 12));
+            gsu_codes(FxCarMoveParts_fetch[0] + 24 + i, 1);
+            g.r[0] = gsu_add(gsu_rol(gsu_fmult(g.r[3], g.r[6])), g.r[5], 0);
+            gsu_codes(FxCarMoveParts_fetch[0] + 27 + i, 1);
             gsu_stw(g.r[11], g.r[0]);
             g.r[11] = gsu_inc(gsu_inc(g.r[11]));
         }
         g.r[8] = g.r[12];
         g.r[6] = 8;
         for (i = 0; i < 3; i++) {
-            gsu_codes(FxCarMoveParts_fetch[0] + 21 + i, 1);
+            gsu_codes(FxCarMoveParts_fetch[0] + 30 + i, 1);
             g.r[1] = gsu_ldw(gsu_add((uint16_t)(PART_WORLD + 2 * i), g.r[9], 0));
-            gsu_codes(FxCarMoveParts_fetch[0] + 24 + i, 1);
+            gsu_codes(FxCarMoveParts_fetch[0] + 33 + i, 1);
             g.r[0] = gsu_ldw((uint16_t)(FX_CAR_POS + 2 * i));
-            gsu_codes(FxCarMoveParts_fetch[0] + 27 + i, 1);
+            gsu_codes(FxCarMoveParts_fetch[0] + 36 + i, 1);
             g.r[2] = gsu_ldw(gsu_add((uint16_t)(REC_POS + 2 * i), g.r[9], 0));
             g.r[1] = gsu_add(g.r[1], g.r[0], 0);
             g.r[0] = gsu_add((uint16_t)(REC_POS + 2 * i), g.r[9], 0);
-            gsu_codes(FxCarMoveParts_fetch[0] + 30 + i, 1);
+            gsu_codes(FxCarMoveParts_fetch[0] + 39 + i, 1);
             gsu_stw(g.r[0], g.r[1]);
             g.r[1] = gsu_sub(g.r[1], g.r[2], 0);
+            gsu_codes(FxCarMoveParts_fetch[0] + 42 + i, 1);
             p = gsu_lmult(g.r[1], g.r[6]);
             g.r[1] = (uint16_t)(p >> 16);
             g.r[4] = (uint16_t)p;
             g.r[0] = gsu_add((uint16_t)(REC_VEL + 2 * i), g.r[9], 0);
-            gsu_codes(FxCarMoveParts_fetch[0] + 33 + i, 1);
+            gsu_codes(FxCarMoveParts_fetch[0] + 45 + i, 1);
             gsu_stw(g.r[0], g.r[4]);
         }
         gsu_code(0x04a5dd, 4);
@@ -822,8 +827,9 @@ FxRegs FxCarHit(FxRegs g, int copy)
     }
     gsu_code(0x04bba2, 12);
     g.r[6] = gsu_ldw(FX_HIT_SCALE);
+    gsu_code(0x04bbae, 2);
     g.r[1] = gsu_fmult(g.r[1], g.r[6]);
-    gsu_code(0x04bbae, 6);
+    gsu_code(0x04bbb0, 4);
     g.r[0] = gsu_ldw(gsu_add(REC_CONTACTS_OF_CAR, g.r[8], 0));
     gsu_moves(g.r[0]);
     if (!gsu.z)

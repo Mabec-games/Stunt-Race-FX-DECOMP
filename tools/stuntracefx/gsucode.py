@@ -218,7 +218,7 @@ C_EV = {'gsu_ldw': 'L', 'gsu_ldb': 'L', 'gsu_pull': 'L', 'gsu_stw': 'S', 'gsu_st
         'gsu_push': 'S', 'gsu_getb': 'G', 'gsu_getbh': 'G', 'gsu_getbs': 'G', 'gsu_getbl': 'G', 'gsu_getc': 'G',
         'gsu_r14': 'R', 'gsu_romb': 'B', 'gsu_ramb': 'A', 'gsu_plot_r1': 'P', 'gsu_plot': 'P',
         'gsu_rpix_r': 'X', 'gsu_rpix': 'X', 'gsu_mult': 'M', 'gsu_umult': 'M', 'gsu_fmult': 'F', 'gsu_lmult': 'F'}
-TIME = 'LSGRBAPX'          # the C's places in time; M and F only keep the two in step
+TIME = 'LSGRBAPXMF'        # the C's places in time: each access, R14 write, bank set, pixel and multiply
 
 
 def c_events(stmt):

@@ -411,12 +411,14 @@ uint32_t FxLengthProgram(uint16_t *root, uint16_t *rem)
 {
     gsu_code(0x0180bd, 7);
     int16_t x = (int16_t)gsu_ldw(FX_LENGTH_IN);
+    gsu_code(0x0180c4, 5);
     uint32_t xx = gsu_lmult((uint16_t)x, (uint16_t)x);      /* LMULT: R8:R4 */
-    gsu_code(0x0180c4, 11);
+    gsu_code(0x0180c9, 6);
     int16_t z = (int16_t)gsu_ldw(FX_LENGTH_IN2);
+    gsu_code(0x0180cf, 4);
     uint32_t sum = xx + gsu_lmult((uint16_t)z, (uint16_t)z);  /* LMULT, ADD, ADC */
 
-    gsu_code(0x0180cf, 16); gsu_code(0x018096, 1);
+    gsu_code(0x0180d3, 12); gsu_code(0x018096, 1);
     *root = FxSqrt32((uint16_t)(sum >> 16), (uint16_t)sum, rem, GSU_COPY(0));
     gsu_code(0x0180df, 5);
     gsu_stw(FX_LENGTH_OUT, *root);

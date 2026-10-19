@@ -30,8 +30,8 @@ uint16_t FxTableEntryWords(uint16_t entry, int copy)
 void abi_FxTableEntryWords(void)
 {
     uint16_t entry = gsu.r[0];
-    uint16_t offset = (uint16_t)gsu_lmult((uint16_t)(entry - 1), 8);
     gsu_code(0x04cd84, 8);
+    uint16_t offset = (uint16_t)gsu_lmult((uint16_t)(entry - 1), 8);
     uint16_t addr = FxTableEntryWords(entry, GSU_COPY(0));
 
     gsu_add((uint16_t)(addr - offset), offset, 0);

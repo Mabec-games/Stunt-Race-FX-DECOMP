@@ -223,8 +223,8 @@ void FxProjectPoint(int copy)
     gsu.r[0] = gsu_ldw((uint16_t)(FX_CENTRE + 2));
     gsu.r[2] = gsu_add(gsu.r[2], gsu.r[0], 0);
     outcode_axis(gsu.r[1], FX_EDGES, (uint16_t)(FX_EDGES + 2), 0x04, GSU_COPY(0));
-    gsu.r[5] = gsu_mult(gsu.r[5], 4);                 /* MULT #4 */
     gsu_code(0x01962c, 3);
+    gsu.r[5] = gsu_mult(gsu.r[5], 4);                 /* MULT #4 */
     outcode_axis(gsu.r[2], (uint16_t)(FX_EDGES + 4), (uint16_t)(FX_EDGES + 6), 0x10, GSU_COPY(1));
     gsu.r[0] = gsu_or(gsu_swap(gsu_xor(0x1F, gsu.r[5])), gsu.r[5]);
     gsu_code(0x019648, 10);
@@ -289,17 +289,20 @@ void FxProjectScaled(int copy)
     gsu_r14(gsu_inc(gsu.r[14]));
     gsu_code(0x01b2d6, 3);
     gsu.r[6] = gsu_getbh(gsu.r[6]);
+    gsu_code(0x01b2d9, 2);
     gsu.r[0] = gsu_fmult(gsu.r[1], gsu.r[6]);
-    gsu_code(0x01b2d9, 5);
+    gsu_code(0x01b2db, 3);
     gsu.r[1] = gsu_ldw(FX_CENTRE);
     gsu.r[1] = gsu_add(gsu.r[1], gsu.r[0], 0);
+    gsu_code(0x01b2de, 4);
     gsu.r[0] = gsu_fmult(gsu.r[2], gsu.r[6]);
-    gsu_code(0x01b2de, 7);
+    gsu_code(0x01b2e2, 3);
     gsu.r[2] = gsu_ldw(FX_CENTRE + 2);
     gsu.r[2] = gsu_add(gsu.r[2], gsu.r[0], 0);
+    gsu_code(0x01b2e5, 4);
     gsu.r[0] = gsu_fmult(gsu.r[5], gsu.r[6]);
     gsu.r[5] = gsu.r[0];
-    gsu_code(0x01b2e5, 8);
+    gsu_code(0x01b2e9, 4);
 }
 
 void abi_FxProjectScaled(void)
@@ -311,6 +314,7 @@ void abi_FxProjectScaled(void)
 static uint16_t mult4(uint16_t v, int copy)
 {
     (void)copy;
+    gsu_code(0x018c43, 4);
     return gsu_mult(v, 4);                   /* MULT #4 */
 }
 
@@ -382,13 +386,15 @@ void abi_FxProjectVertex(void)
     gsu_r14(gsu_inc(gsu.r[14]));
     gsu_code(0x018c21, 3);
     gsu.r[6] = gsu_getbh(gsu.r[6]);
+    gsu_code(0x018c24, 2);
     gsu.r[0] = gsu_fmult(gsu.r[1], gsu.r[6]);
-    gsu_code(0x018c24, 5);
+    gsu_code(0x018c26, 3);
     gsu.r[1] = gsu_ldw(FX_CENTRE);
     gsu.r[0] = gsu_add(gsu.r[0], gsu.r[1], 0);
     gsu.r[1] = gsu.r[0];
+    gsu_code(0x018c29, 5);
     gsu.r[0] = gsu_fmult(gsu.r[2], gsu.r[6]);
-    gsu_code(0x018c29, 8);
+    gsu_code(0x018c2e, 3);
     gsu.r[2] = gsu_ldw(FX_CENTRE + 2);
     gsu.r[0] = gsu_add(gsu.r[0], gsu.r[2], 0);
     gsu.r[2] = gsu.r[0];
@@ -407,7 +413,6 @@ void abi_FxProjectVertex(void)
     } else { gsu_code(0x018c31, 9); gsu_code(0x018c42, 1); }
     gsu.r[6] = gsu_inc(gsu.r[6]);
     gsu.r[6] = mult4(gsu.r[6], GSU_COPY(0));
-gsu_code(0x018c43, 4);
 y_axis:
     ;
     gsu.r[0] = gsu.r[2];

@@ -29,23 +29,26 @@ static uint16_t field(uint8_t offset, int copy)
 /* One element of the rotated position: R1, R2, R3 times a column of the
    matrix (FMULT, ROL, summed in R5 then R0). */
 /* gsuwalk: the code of each copy of rotate_column, read from the ROM */
-static const GsuCode rotate_column_fetch[3][3] = {
-    {{0x01af2f, 3}, {0x01af32, 7}, {0x01af39, 8}},
-    {{0x01af4a, 3}, {0x01af4d, 7}, {0x01af54, 8}},
-    {{0x01af65, 3}, {0x01af68, 7}, {0x01af6f, 8}},
+static const GsuCode rotate_column_fetch[3][6] = {
+    {{0x01af2f, 3}, {0x01af32, 2}, {0x01af34, 5}, {0x01af39, 2}, {0x01af3b, 6}, {0x01af41, 2}},
+    {{0x01af4a, 3}, {0x01af4d, 2}, {0x01af4f, 5}, {0x01af54, 2}, {0x01af56, 6}, {0x01af5c, 2}},
+    {{0x01af65, 3}, {0x01af68, 2}, {0x01af6a, 5}, {0x01af6f, 2}, {0x01af71, 6}, {0x01af77, 2}},
 };
 
 static uint16_t rotate_column(int col, int copy)
 {
     gsu_codes(rotate_column_fetch[copy], 1);
     gsu.r[6] = gsu_ldw((uint16_t)(FX_MATRIX + col * 2));
-    gsu.r[5] = gsu_rol(gsu_fmult(gsu.r[1], gsu.r[6]));
     gsu_codes(rotate_column_fetch[copy] + 1, 1);
+    gsu.r[5] = gsu_rol(gsu_fmult(gsu.r[1], gsu.r[6]));
+    gsu_codes(rotate_column_fetch[copy] + 2, 1);
     gsu.r[6] = gsu_ldw((uint16_t)(FX_MATRIX + 6 + col * 2));
+    gsu_codes(rotate_column_fetch[copy] + 3, 1);
     gsu.r[0] = gsu_rol(gsu_fmult(gsu.r[2], gsu.r[6]));
     gsu.r[5] = gsu_add(gsu.r[5], gsu.r[0], 0);
-    gsu_codes(rotate_column_fetch[copy] + 2, 1);
+    gsu_codes(rotate_column_fetch[copy] + 4, 1);
     gsu.r[6] = gsu_ldw((uint16_t)(FX_MATRIX + 12 + col * 2));
+    gsu_codes(rotate_column_fetch[copy] + 5, 1);
     gsu.r[0] = gsu_rol(gsu_fmult(gsu.r[3], gsu.r[6]));
     return gsu.r[0] = gsu_add(gsu.r[0], gsu.r[5], 0);
 }
@@ -153,13 +156,10 @@ void FxSortObjectsProgram(void)
             gsu.r[2] = (gsu_ldw(gsu_code_then(0x01af23, 6, field(0x10, GSU_COPY(2)))));
             gsu.r[3] = (gsu_ldw(gsu_code_then(0x01af29, 6, field(0x14, GSU_COPY(3)))));
             rotate_column(0, GSU_COPY(0));
-            gsu_code(0x01af41, 2);
             (gsu_stw(gsu_code_then(0x01af43, 7, field(0x12, GSU_COPY(4))), gsu.r[0]));
             rotate_column(1, GSU_COPY(1));
-            gsu_code(0x01af5c, 2);
             (gsu_stw(gsu_code_then(0x01af5e, 7, field(0x10, GSU_COPY(5))), gsu.r[0]));
             rotate_column(2, GSU_COPY(2));
-            gsu_code(0x01af77, 2);
             (gsu_stw(gsu_code_then(0x01af79, 7, field(0x14, GSU_COPY(6))), gsu.r[0]));
         } else { gsu_code(0x01af16, 6); gsu_code(0x01af7f, 1); }
         /* Cull by the shape's radius. */

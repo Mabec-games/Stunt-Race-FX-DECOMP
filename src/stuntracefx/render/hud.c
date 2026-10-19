@@ -1432,11 +1432,11 @@ void abi_FxGlyph16x32(void)
    across) of the bitmap, 4 pixels a byte; RPIX after each row and at the
    end. A sprite off the screen, or with bitmap 0, draws nothing. */
 /* gsuwalk: the code of each copy of scaled_sprite, read from the ROM */
-static const GsuCode scaled_sprite_fetch[4][61] = {
-    {{0x07fa81, 7}, {0x07faad, 3}, {0x07fb25, 5}, {0x07fb2a, 2}, {0x07fb2c, 2}, {0x07fb2c, 2}, {0x07fb23, 1}, {0x07fb2e, 4}, {0x07fb44, 4}, {0x07fb50, 1}, {0x07fb4e, 3}, {0x07fb32, 4}, {0x07fb48, 6}, {0x07fb32, 4}, {0x07fb48, 6}, {0x07fb23, 1}, {0x07fb32, 9}, {0x07fb32, 9}, {0x07fb23, 1}, {0x07fb3b, 5}, {0x07fb43, 1}, {0x07fb3b, 9}, {0x07fb51, 4}, {0x07fb65, 4}, {0x07fb6e, 1}, {0x07fb6d, 2}, {0x07fb55, 4}, {0x07fb68, 5}, {0x07fb55, 4}, {0x07fb68, 5}, {0x07fbba, 1}, {0x07fb55, 8}, {0x07fb55, 8}, {0x07fb23, 1}, {0x07fb5d, 5}, {0x07fb64, 1}, {0x07fb5d, 8}, {0x07fb6f, 6}, {0x07fb75, 4}, {0xfb79, 0}, {0x07fbb5, 5}, {0x07fb78, 1}, {0xfb79, 0}, {0x07fbb5, 5}, {0x07fbb2, 1}, {0x07fb7d, 1}, {0x07fbb2, 1}, {0x07fb79, 5}, {0x07fb7e, 4}, {0x07fb82, 4}, {0x07fb91, 1}, {0x07fb82, 9}, {0x07fb90, 2}, {0x07fb92, 12}, {0x07fb9e, 1}, {0x07fba6, 4}, {0x07fba1, 1}, {0x07fb9f, 3}, {0x07fba2, 4}, {0x07fba2, 4}, {0x07fbaa, 1}},
-    {{0x07faab, 5}, {0x07fb25, 5}, {0, 0}, {0x07fb2a, 2}, {0x07fb2c, 2}, {0x07fb2c, 2}, {0x07fb23, 1}, {0x07fb2e, 4}, {0x07fb44, 4}, {0x07fb50, 1}, {0x07fb4e, 3}, {0x07fb32, 4}, {0x07fb48, 6}, {0x07fb32, 4}, {0x07fb48, 6}, {0x07fb23, 1}, {0x07fb32, 9}, {0x07fb32, 9}, {0x07fb23, 1}, {0x07fb3b, 5}, {0x07fb43, 1}, {0x07fb3b, 9}, {0x07fb51, 4}, {0x07fb65, 4}, {0x07fb6e, 1}, {0x07fb6d, 2}, {0x07fb55, 4}, {0x07fb68, 5}, {0x07fb55, 4}, {0x07fb68, 5}, {0x07fbba, 1}, {0x07fb55, 8}, {0x07fb55, 8}, {0x07fb23, 1}, {0x07fb5d, 5}, {0x07fb64, 1}, {0x07fb5d, 8}, {0x07fb6f, 6}, {0x07fb75, 4}, {0xfb79, 0}, {0x07fbb5, 5}, {0x07fb78, 1}, {0xfb79, 0}, {0x07fbb5, 5}, {0x07fbb2, 1}, {0x07fb7d, 1}, {0x07fbb2, 1}, {0x07fb79, 5}, {0x07fb7e, 4}, {0x07fb82, 4}, {0x07fb91, 1}, {0x07fb82, 9}, {0x07fb90, 2}, {0x07fb92, 12}, {0x07fb9e, 1}, {0x07fba6, 4}, {0x07fba1, 1}, {0x07fb9f, 3}, {0x07fba2, 4}, {0x07fba2, 4}, {0x07fbaa, 1}},
-    {{0x07fb26, 4}, {0, 0}, {0, 0}, {0x07fb2a, 2}, {0x07fb2c, 2}, {0x07fb2c, 2}, {0x07fb23, 1}, {0x07fb2e, 4}, {0x07fb44, 4}, {0x07fb50, 1}, {0x07fb4e, 3}, {0x07fb32, 4}, {0x07fb48, 6}, {0x07fb32, 4}, {0x07fb48, 6}, {0x07fb23, 1}, {0x07fb32, 9}, {0x07fb32, 9}, {0x07fb23, 1}, {0x07fb3b, 5}, {0x07fb43, 1}, {0x07fb3b, 9}, {0x07fb51, 4}, {0x07fb65, 4}, {0x07fb6e, 1}, {0x07fb6d, 2}, {0x07fb55, 4}, {0x07fb68, 5}, {0x07fb55, 4}, {0x07fb68, 5}, {0x07fbba, 1}, {0x07fb55, 8}, {0x07fb55, 8}, {0x07fb23, 1}, {0x07fb5d, 5}, {0x07fb64, 1}, {0x07fb5d, 8}, {0x07fb6f, 6}, {0x07fb75, 4}, {0xfb79, 0}, {0x07fbb5, 5}, {0x07fb78, 1}, {0xfb79, 0}, {0x07fbb5, 5}, {0x07fbb2, 1}, {0x07fb7d, 1}, {0x07fbb2, 1}, {0x07fb79, 5}, {0x07fb7e, 4}, {0x07fb82, 4}, {0x07fb91, 1}, {0x07fb82, 9}, {0x07fb90, 2}, {0x07fb92, 12}, {0x07fb9e, 1}, {0x07fba6, 4}, {0x07fba1, 1}, {0x07fb9f, 3}, {0x07fba2, 4}, {0x07fba2, 4}, {0x07fbaa, 1}},
-    {{0x07faeb, 5}, {0x07fb25, 5}, {0, 0}, {0x07fb2a, 2}, {0x07fb2c, 2}, {0x07fb2c, 2}, {0x07fb23, 1}, {0x07fb2e, 4}, {0x07fb44, 4}, {0x07fb50, 1}, {0x07fb4e, 3}, {0x07fb32, 4}, {0x07fb48, 6}, {0x07fb32, 4}, {0x07fb48, 6}, {0x07fb23, 1}, {0x07fb32, 9}, {0x07fb32, 9}, {0x07fb23, 1}, {0x07fb3b, 5}, {0x07fb43, 1}, {0x07fb3b, 9}, {0x07fb51, 4}, {0x07fb65, 4}, {0x07fb6e, 1}, {0x07fb6d, 2}, {0x07fb55, 4}, {0x07fb68, 5}, {0x07fb55, 4}, {0x07fb68, 5}, {0x07fbba, 1}, {0x07fb55, 8}, {0x07fb55, 8}, {0x07fb23, 1}, {0x07fb5d, 5}, {0x07fb64, 1}, {0x07fb5d, 8}, {0x07fb6f, 6}, {0x07fb75, 4}, {0xfb79, 0}, {0x07fbb5, 5}, {0x07fb78, 1}, {0xfb79, 0}, {0x07fbb5, 5}, {0x07fbb2, 1}, {0x07fb7d, 1}, {0x07fbb2, 1}, {0x07fb79, 5}, {0x07fb7e, 4}, {0x07fb82, 4}, {0x07fb91, 1}, {0x07fb82, 9}, {0x07fb90, 2}, {0x07fb92, 12}, {0x07fb9e, 1}, {0x07fba6, 4}, {0x07fba1, 1}, {0x07fb9f, 3}, {0x07fba2, 4}, {0x07fba2, 4}, {0x07fbaa, 1}},
+static const GsuCode scaled_sprite_fetch[4][62] = {
+    {{0x07fa81, 7}, {0x07faad, 3}, {0x07fb25, 5}, {0x07fb2a, 2}, {0x07fb2c, 2}, {0x07fb2c, 2}, {0x07fb23, 1}, {0x07fb2e, 4}, {0x07fb44, 4}, {0x07fb50, 1}, {0x07fb4e, 3}, {0x07fb32, 4}, {0x07fb48, 6}, {0x07fb32, 4}, {0x07fb48, 6}, {0x07fb23, 1}, {0x07fb32, 9}, {0x07fb32, 9}, {0x07fb23, 1}, {0x07fb3b, 5}, {0x07fb43, 1}, {0x07fb3b, 9}, {0x07fb51, 4}, {0x07fb65, 4}, {0x07fb6e, 1}, {0x07fb6d, 2}, {0x07fb55, 4}, {0x07fb68, 5}, {0x07fb55, 4}, {0x07fb68, 5}, {0x07fbba, 1}, {0x07fb55, 8}, {0x07fb55, 8}, {0x07fb23, 1}, {0x07fb5d, 5}, {0x07fb64, 1}, {0x07fb5d, 8}, {0x07fb6f, 6}, {0x07fb75, 4}, {0xfb79, 0}, {0x07fbb5, 5}, {0x07fb78, 1}, {0xfb79, 0}, {0x07fbb5, 5}, {0x07fbb2, 1}, {0x07fb7d, 1}, {0x07fbb2, 1}, {0x07fb79, 5}, {0x07fb7e, 4}, {0x07fb82, 4}, {0x07fb91, 1}, {0x07fb82, 9}, {0x07fb90, 2}, {0x07fb92, 6}, {0x07fb98, 6}, {0x07fb9e, 1}, {0x07fba6, 4}, {0x07fba1, 1}, {0x07fb9f, 3}, {0x07fba2, 4}, {0x07fba2, 4}, {0x07fbaa, 1}},
+    {{0x07faab, 5}, {0x07fb25, 5}, {0, 0}, {0x07fb2a, 2}, {0x07fb2c, 2}, {0x07fb2c, 2}, {0x07fb23, 1}, {0x07fb2e, 4}, {0x07fb44, 4}, {0x07fb50, 1}, {0x07fb4e, 3}, {0x07fb32, 4}, {0x07fb48, 6}, {0x07fb32, 4}, {0x07fb48, 6}, {0x07fb23, 1}, {0x07fb32, 9}, {0x07fb32, 9}, {0x07fb23, 1}, {0x07fb3b, 5}, {0x07fb43, 1}, {0x07fb3b, 9}, {0x07fb51, 4}, {0x07fb65, 4}, {0x07fb6e, 1}, {0x07fb6d, 2}, {0x07fb55, 4}, {0x07fb68, 5}, {0x07fb55, 4}, {0x07fb68, 5}, {0x07fbba, 1}, {0x07fb55, 8}, {0x07fb55, 8}, {0x07fb23, 1}, {0x07fb5d, 5}, {0x07fb64, 1}, {0x07fb5d, 8}, {0x07fb6f, 6}, {0x07fb75, 4}, {0xfb79, 0}, {0x07fbb5, 5}, {0x07fb78, 1}, {0xfb79, 0}, {0x07fbb5, 5}, {0x07fbb2, 1}, {0x07fb7d, 1}, {0x07fbb2, 1}, {0x07fb79, 5}, {0x07fb7e, 4}, {0x07fb82, 4}, {0x07fb91, 1}, {0x07fb82, 9}, {0x07fb90, 2}, {0x07fb92, 6}, {0x07fb98, 6}, {0x07fb9e, 1}, {0x07fba6, 4}, {0x07fba1, 1}, {0x07fb9f, 3}, {0x07fba2, 4}, {0x07fba2, 4}, {0x07fbaa, 1}},
+    {{0x07fb26, 4}, {0, 0}, {0, 0}, {0x07fb2a, 2}, {0x07fb2c, 2}, {0x07fb2c, 2}, {0x07fb23, 1}, {0x07fb2e, 4}, {0x07fb44, 4}, {0x07fb50, 1}, {0x07fb4e, 3}, {0x07fb32, 4}, {0x07fb48, 6}, {0x07fb32, 4}, {0x07fb48, 6}, {0x07fb23, 1}, {0x07fb32, 9}, {0x07fb32, 9}, {0x07fb23, 1}, {0x07fb3b, 5}, {0x07fb43, 1}, {0x07fb3b, 9}, {0x07fb51, 4}, {0x07fb65, 4}, {0x07fb6e, 1}, {0x07fb6d, 2}, {0x07fb55, 4}, {0x07fb68, 5}, {0x07fb55, 4}, {0x07fb68, 5}, {0x07fbba, 1}, {0x07fb55, 8}, {0x07fb55, 8}, {0x07fb23, 1}, {0x07fb5d, 5}, {0x07fb64, 1}, {0x07fb5d, 8}, {0x07fb6f, 6}, {0x07fb75, 4}, {0xfb79, 0}, {0x07fbb5, 5}, {0x07fb78, 1}, {0xfb79, 0}, {0x07fbb5, 5}, {0x07fbb2, 1}, {0x07fb7d, 1}, {0x07fbb2, 1}, {0x07fb79, 5}, {0x07fb7e, 4}, {0x07fb82, 4}, {0x07fb91, 1}, {0x07fb82, 9}, {0x07fb90, 2}, {0x07fb92, 6}, {0x07fb98, 6}, {0x07fb9e, 1}, {0x07fba6, 4}, {0x07fba1, 1}, {0x07fb9f, 3}, {0x07fba2, 4}, {0x07fba2, 4}, {0x07fbaa, 1}},
+    {{0x07faeb, 5}, {0x07fb25, 5}, {0, 0}, {0x07fb2a, 2}, {0x07fb2c, 2}, {0x07fb2c, 2}, {0x07fb23, 1}, {0x07fb2e, 4}, {0x07fb44, 4}, {0x07fb50, 1}, {0x07fb4e, 3}, {0x07fb32, 4}, {0x07fb48, 6}, {0x07fb32, 4}, {0x07fb48, 6}, {0x07fb23, 1}, {0x07fb32, 9}, {0x07fb32, 9}, {0x07fb23, 1}, {0x07fb3b, 5}, {0x07fb43, 1}, {0x07fb3b, 9}, {0x07fb51, 4}, {0x07fb65, 4}, {0x07fb6e, 1}, {0x07fb6d, 2}, {0x07fb55, 4}, {0x07fb68, 5}, {0x07fb55, 4}, {0x07fb68, 5}, {0x07fbba, 1}, {0x07fb55, 8}, {0x07fb55, 8}, {0x07fb23, 1}, {0x07fb5d, 5}, {0x07fb64, 1}, {0x07fb5d, 8}, {0x07fb6f, 6}, {0x07fb75, 4}, {0xfb79, 0}, {0x07fbb5, 5}, {0x07fb78, 1}, {0xfb79, 0}, {0x07fbb5, 5}, {0x07fbb2, 1}, {0x07fb7d, 1}, {0x07fbb2, 1}, {0x07fb79, 5}, {0x07fb7e, 4}, {0x07fb82, 4}, {0x07fb91, 1}, {0x07fb82, 9}, {0x07fb90, 2}, {0x07fb92, 6}, {0x07fb98, 6}, {0x07fb9e, 1}, {0x07fba6, 4}, {0x07fba1, 1}, {0x07fb9f, 3}, {0x07fba2, 4}, {0x07fba2, 4}, {0x07fbaa, 1}},
 };
 
 static void scaled_sprite(int copy)
@@ -1511,8 +1511,8 @@ static void scaled_sprite(int copy)
             if (!gsu.z) {
                 R[0] = gsu_swap(R[0]);
                 R[6] = R[4];
-                R[0] = gsu_fmult(R[0], R[6]);
                 gsu_codes(scaled_sprite_fetch[copy] + 51, 1);
+                R[0] = gsu_fmult(R[0], R[6]);
                 R[0] = times_pow2(R[0], 5, GSU_COPY(3));
                 gsu_codes(scaled_sprite_fetch[copy] + 52, 1);
                 gsu_r14(gsu_add(R[0], R[14], 0));
@@ -1520,25 +1520,26 @@ static void scaled_sprite(int copy)
             R[0] = gsu_sub(R[1], R[8], 0);
             R[0] = gsu_swap(R[0]);
             R[6] = R[3];
+            gsu_codes(scaled_sprite_fetch[copy] + 53, 1);
             R[0] = gsu_fmult(R[0], R[6]);
             R[6] = R[0];
             R[0] = gsu_asr(R[0]);
             R[0] = gsu_asr(R[0]);
-            gsu_codes(scaled_sprite_fetch[copy] + 53, 1);
-            gsu_r14(gsu_add(R[0], R[14], 0));
             gsu_codes(scaled_sprite_fetch[copy] + 54, 1);
+            gsu_r14(gsu_add(R[0], R[14], 0));
+            gsu_codes(scaled_sprite_fetch[copy] + 55, 1);
             R[0] = (gsu_getb());
             R[6] = gsu_and(R[6], 3);
-            gsu_codes(scaled_sprite_fetch[copy] + 57, 1);
+            gsu_codes(scaled_sprite_fetch[copy] + 58, 1);
             for (;;) {
                 gsu_moves(R[6]);
                 zero = gsu.z;
                 R[6] = gsu_dec(R[6]);
                 if (zero)
-                    { gsu_codes(scaled_sprite_fetch[copy] + 59, 2); break; } else { gsu_codes(scaled_sprite_fetch[copy] + 58, 1); }
+                    { gsu_codes(scaled_sprite_fetch[copy] + 60, 2); break; } else { gsu_codes(scaled_sprite_fetch[copy] + 59, 1); }
                 R[0] = gsu_asr(R[0]);
                 R[0] = gsu_asr(R[0]);
-                gsu_codes(scaled_sprite_fetch[copy] + 55, 2);
+                gsu_codes(scaled_sprite_fetch[copy] + 56, 2);
             }
             pixel(GSU_COPY(112));
             more = loop(GSU_COPY(16));
@@ -1601,8 +1602,8 @@ void FxScaledSprite13(void)
     gsu_code(0x07fa24, 4);
     R[8] = gsu_ldw(HUD_X);
     R[0] = gsu_div2(R[3]);
-    R[0] = gsu_mult(R[0], 13);
     gsu_code(0x07fa28, 5);
+    R[0] = gsu_mult(R[0], 13);
     R[0] = times_pow2(R[0], 4, GSU_COPY(1));
     R[5] = gsu_hib(R[0]);
     scaled_height_16();
@@ -1992,8 +1993,8 @@ void FxScaledSprite12(void)
     gsu_code(0x07fa3e, 4);
     R[8] = gsu_ldw(HUD_X);
     R[0] = gsu_div2(R[3]);
-    R[0] = gsu_mult(R[0], 12);
     gsu_code(0x07fa42, 5);
+    R[0] = gsu_mult(R[0], 12);
     R[0] = times_pow2(R[0], 4, GSU_COPY(4));
     R[5] = gsu_hib(R[0]);
     scaled_height_16();

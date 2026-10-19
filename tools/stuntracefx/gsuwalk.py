@@ -1144,6 +1144,11 @@ class Ctx:
                 first = 'taken' if v else 'fall'
             elif txt == '!gsu.%s' % flag:
                 first = 'fall' if v else 'taken'
+        if u.op in (0x06, 0x07):
+            # BGE, BLT: on S XOR OV
+            lt = {'gsu.s!=gsu.ov': True, '(gsu.s!=gsu.ov)': True, 'gsu.s==gsu.ov': False, '(gsu.s==gsu.ov)': False}.get(txt)
+            if lt is not None:
+                first = 'taken' if lt == (u.op == 0x07) else 'fall'
         if u.op == 0x3C and txt.startswith('gsu_count_down('):
             first = 'taken'
         if first:

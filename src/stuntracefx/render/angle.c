@@ -51,40 +51,47 @@ uint16_t FxAtan2(uint16_t y, uint16_t x)
     uint16_t ay = magnitude(y, GSU_COPY(1)), ax = magnitude(x, GSU_COPY(2));
     uint16_t angle;
 
-    if (ax == 0) {
+    gsu_sz(ax);                                 /* Z as the sign steps leave it */
+    if (gsu.z) {
         angle = 0x4000;
         gsu_code(0x01820f, 9); gsu_code(0x01825c, 1);
-    } else if (ax == ay) {
-        angle = 0x2000;
-        gsu_code(0x01820f, 2); gsu_code(0x018218, 14); gsu_code(0x01825c, 1);
     } else {
-        uint16_t small = ax, large = ay, rem, ratio, at;
-        int x_larger = !((int16_t)ax < (int16_t)ay);
+        gsu_sub(ax, ay, 0);                     /* CMP R6 */
+        if (gsu.z) {
+            angle = 0x2000;
+            gsu_code(0x01820f, 2); gsu_code(0x018218, 14); gsu_code(0x01825c, 1);
+        } else {
+            uint16_t small = ax, large = ay, rem, ratio, at, r5 = 0;
 
-        if (x_larger) {
-            small = ay;
-            large = ax;
-            gsu_code(0x01820f, 2); gsu_code(0x018218, 7); gsu_code(0x018226, 11);
-        } else { gsu_code(0x01820f, 2); gsu_code(0x018218, 7); gsu_code(0x018226, 3); gsu_code(0x018230, 1); }
-        gsu_code(0x018231, 12); gsu_code(0x0181cb, 1);
-        ratio = FxDivide32By16(small >> 2, (uint16_t)(small << 14), large, &rem, GSU_COPY(0));
-        at = (uint16_t)(FX_ATAN_TABLE + ((ratio >> 5) & 0xFFFE));
-        gsu_code(0x01823d, 4);
-        gsu_romb(0);
-        gsu_code(0x018241, 13);
-        gsu_r14(at);
-        gsu_code(0x01824e, 1);
-        angle = gsu_getb();
-        gsu_code(0x01824f, 1);
-        gsu_r14((uint16_t)(at + 1));
-        gsu_code(0x018250, 2);
-        angle = (uint16_t)(angle | gsu_getb() << 8);
-        if (!x_larger)
-            { angle = (uint16_t)(0x4000 - angle); gsu_code(0x018252, 4); gsu_code(0x01825c, 1); } else { gsu_code(0x018252, 11); }
+            if (gsu.s == gsu.ov) {              /* BLT not taken: |R2| the larger */
+                small = ay;
+                large = ax;
+                r5 = 0xFFFF;                    /* DEC R5 */
+                gsu_code(0x01820f, 2); gsu_code(0x018218, 7); gsu_code(0x018226, 11);
+            } else { gsu_code(0x01820f, 2); gsu_code(0x018218, 7); gsu_code(0x018226, 3); gsu_code(0x018230, 1); }
+            gsu_code(0x018231, 12); gsu_code(0x0181cb, 1);
+            ratio = FxDivide32By16(small >> 2, (uint16_t)(small << 14), large, &rem, GSU_COPY(0));
+            at = (uint16_t)(FX_ATAN_TABLE + ((ratio >> 5) & 0xFFFE));
+            gsu_code(0x01823d, 4);
+            gsu_romb(0);
+            gsu_code(0x018241, 13);
+            gsu_r14(at);
+            gsu_code(0x01824e, 1);
+            angle = gsu_getb();
+            gsu_code(0x01824f, 1);
+            gsu_r14((uint16_t)(at + 1));
+            gsu_code(0x018250, 2);
+            angle = (uint16_t)(angle | gsu_getb() << 8);
+            gsu_moves(r5);
+            if (!gsu.s)
+                { angle = (uint16_t)(0x4000 - angle); gsu_code(0x018252, 11); } else { gsu_code(0x018252, 4); gsu_code(0x01825c, 1); }
+        }
     }
-    if ((x ^ y) & 0x8000)
+    gsu_xor(y, x);                              /* R4 = R1 XOR R2 */
+    if (gsu.s)
         { angle = (uint16_t)-angle; gsu_code(0x01825d, 9); } else { gsu_code(0x01825d, 6); gsu_code(0x018265, 1); }
-    if (x & 0x8000)
+    gsu_moves(x);
+    if (gsu.s)
         { angle = (uint16_t)(angle + 0x8000); gsu_code(0x018266, 9); } else { gsu_code(0x018266, 4); gsu_code(0x01826e, 1); }
     return angle;
 }

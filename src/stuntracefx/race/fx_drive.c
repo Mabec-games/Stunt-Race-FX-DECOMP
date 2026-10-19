@@ -295,8 +295,8 @@ FxRegs FxSteerFromInput(FxRegs g, int copy)
             { g.r[0] = g.r[6]; gsu_code(0x04ba29, 7); } else { gsu_code(0x04ba29, 4); gsu_code(0x04ba2f, 1); }
         g.r[6] = gsu_swap(g.r[0]);
         g.r[5] = gsu_add(g.r[5], g.r[5], 0);
-        g.r[5] = gsu_fmult(g.r[5], g.r[6]);
         gsu_code(0x04ba30, 6);
+        g.r[5] = gsu_fmult(g.r[5], g.r[6]);
     } else { gsu_code(0x04ba12, 6); gsu_code(0x04ba35, 1); }
     gsu_code(0x04ba36, 6);
     g.r[3] = gsu_ldw(gsu_add(CAR_STEER_BIAS, g.r[8], 0));

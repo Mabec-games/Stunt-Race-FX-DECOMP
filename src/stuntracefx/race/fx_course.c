@@ -409,9 +409,10 @@ FxRegs FxCoursePrevEntry(FxRegs g, int copy)
         g.r[1] = g.r[0];                       /* the count */
         g.r[0] = gsu_dec(g.r[0]);
         g.r[6] = 8;
+        gsu_code(0x04cd1a, 8);
         p = gsu_lmult(g.r[0], g.r[6]);
         g.r[4] = (uint16_t)p;
-        gsu_code(0x04cd1a, 12);
+        gsu_code(0x04cd22, 4);
         g.r[0] = gsu_ldw(FX_TABLE_ADDR);
         g.r[0] = gsu_add(g.r[0], 2, 0);
         gsu_code(0x04cd26, 5);
@@ -815,8 +816,8 @@ void abi_FxCarPlaceOnSegment(void)
  * pair; S, Z from R10; the last RAM address R10.
  */
 /* gsuwalk: the code of each copy of abi_FxCarCatchUp, read from the ROM */
-static const GsuCode abi_FxCarCatchUp_fetch[1][12] = {
-    {{0x04c610, 4}, {0x04c61d, 4}, {0x04c62a, 4}, {0x04c614, 6}, {0x04c621, 6}, {0x04c62e, 6}, {0x04c61a, 3}, {0x04c627, 3}, {0x04c634, 3}, {0x04c63f, 6}, {0x04c645, 5}, {0x04c64a, 5}},
+static const GsuCode abi_FxCarCatchUp_fetch[1][15] = {
+    {{0x04c610, 4}, {0x04c61d, 4}, {0x04c62a, 4}, {0x04c614, 6}, {0x04c621, 6}, {0x04c62e, 6}, {0x04c61a, 1}, {0x04c627, 1}, {0x04c634, 1}, {0x04c61b, 2}, {0x04c628, 2}, {0x04c635, 2}, {0x04c63f, 6}, {0x04c645, 5}, {0x04c64a, 5}},
 };
 
 void abi_FxCarCatchUp(void)
@@ -924,9 +925,10 @@ placed:
         gsu.r[1 + i] = gsu_add(gsu.r[1 + i], gsu.r[8], 0);
         gsu_codes(abi_FxCarCatchUp_fetch[0] + 3 + i, 1);
         gsu.r[1 + i] = gsu_ldw(gsu.r[1 + i]);
+        gsu_codes(abi_FxCarCatchUp_fetch[0] + 6 + i, 1);
         gsu.r[0] = gsu_fmult(gsu.r[0], gsu.r[6]);
         gsu.r[0] = gsu_add(gsu.r[0], gsu.r[1 + i], 0);
-        gsu_codes(abi_FxCarCatchUp_fetch[0] + 6 + i, 1);
+        gsu_codes(abi_FxCarCatchUp_fetch[0] + 9 + i, 1);
         gsu_sbk(gsu.r[0]);
     }
     gsu.r[0] = gsu_add(0x003E, gsu.r[8], 0);
@@ -939,7 +941,7 @@ placed:
             { gsu_code(0x04c63b, 4); gsu_code(0x04c655, 1); break; } else { gsu_code(0x04c63b, 4); }
         for (i = 0; i < 3; i++) {
             gsu.r[0] = gsu_add(pos[i], gsu.r[6], 0);
-            gsu_codes(abi_FxCarCatchUp_fetch[0] + 9 + i, 1);
+            gsu_codes(abi_FxCarCatchUp_fetch[0] + 12 + i, 1);
             gsu_stw(gsu.r[0], gsu.r[1 + i]);
         }
         gsu.r[0] = gsu_add(0x0034, gsu.r[6], 0);

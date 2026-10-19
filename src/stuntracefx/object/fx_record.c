@@ -215,8 +215,8 @@ void abi_FxBearingTo(void)
  * for +$6C; the last RAM address R10.
  */
 /* gsuwalk: the code of each copy of FxRecordAlignment, read from the ROM */
-static const GsuCode FxRecordAlignment_fetch[1][12] = {
-    {{0x04bcc1, 8}, {0x04bcc9, 6}, {0x04bccf, 6}, {0x04bcd9, 4}, {0x04bce0, 5}, {0x04bce9, 7}, {0, 0}, {0x04bce5, 4}, {0x04bcf0, 4}, {0x04bcdd, 3}, {0, 0}, {0, 0}},
+static const GsuCode FxRecordAlignment_fetch[1][9] = {
+    {{0x04bcc1, 8}, {0x04bcc9, 6}, {0x04bccf, 6}, {0x04bcd9, 4}, {0x04bce0, 5}, {0x04bce9, 7}, {0x04bcdd, 3}, {0x04bce5, 4}, {0x04bcf0, 4}},
 };
 
 FxRegs FxRecordAlignment(FxRegs g, int copy)
@@ -239,17 +239,16 @@ FxRegs FxRecordAlignment(FxRegs g, int copy)
     for (i = 0; i < 3; i++) {
         gsu_codes(FxRecordAlignment_fetch[0] + 3 + i, 1);
         g.r[6] = gsu_ldw((uint16_t)(FX_MATRIX_Z + 2 * i));
+        gsu_codes(FxRecordAlignment_fetch[0] + 6 + i, 1);
         p = gsu_lmult(g.r[1 + i], g.r[6]);
         g.r[4] = (uint16_t)p;
         if (i == 0) {
             g.r[0] = (uint16_t)(p >> 16);
             g.r[7] = g.r[4];
-            gsu_codes(FxRecordAlignment_fetch[0] + 9 + i, 1);
         } else {
             g.r[5] = (uint16_t)(p >> 16);
             g.r[7] = gsu_add(g.r[7], g.r[4], 0);
             g.r[0] = gsu_add(g.r[0], g.r[5], gsu.cy);
-            gsu_codes(FxRecordAlignment_fetch[0] + 6 + i, 1);
         }
     }
     g.r[7] = gsu_add(g.r[7], g.r[7], 0);
@@ -291,9 +290,9 @@ typedef struct {
 /* The banks to 0 and the record and amount the S-CPU left; the field's
    address in the record is loaded last, so SBK stores there. */
 /* gsuwalk: the code of each copy of amount_start, read from the ROM */
-static const GsuCode amount_start_fetch[2][5] = {
-    {{0x04bf52, 3}, {0x04bf55, 2}, {0x04bf57, 4}, {0x04bf5b, 4}, {0x04bf5f, 6}},
-    {{0x04bf76, 3}, {0x04bf79, 2}, {0x04bf7b, 4}, {0x04bf7f, 4}, {0x04bf83, 7}},
+static const GsuCode amount_start_fetch[2][6] = {
+    {{0x04bf52, 3}, {0x04bf55, 2}, {0x04bf57, 4}, {0x04bf5b, 4}, {0x04bf5f, 6}, {0x04bf65, 6}},
+    {{0x04bf76, 3}, {0x04bf79, 2}, {0x04bf7b, 4}, {0x04bf7f, 4}, {0x04bf83, 7}, {0x04bf8a, 6}},
 };
 
 static FxAmountRegs amount_start(uint16_t field, uint16_t scale_half, int copy)
@@ -312,6 +311,7 @@ static FxAmountRegs amount_start(uint16_t field, uint16_t scale_half, int copy)
     gsu_codes(amount_start_fetch[copy] + 4, 1);
     g.r1 = gsu_ldw(gsu_add(field, g.r8, 0));
     g.r2 = scale_half;
+    gsu_codes(amount_start_fetch[copy] + 5, 1);
     g.r0 = gsu_fmult(gsu_add(g.r2, g.r2, 0), g.r6);
     return g;
 }
@@ -344,7 +344,7 @@ FxAmountRegs FxRecordRaise6A(void)
     g.r0 = gsu_add(g.r0, g.r1, 0);
     gsu_sub(g.r0, g.r2, 0);
     if (!gsu.s)
-        { g.r0 = g.r2; gsu_code(0x04bf65, 14); } else { gsu_code(0x04bf65, 11); gsu_code(0x04bf72, 1); }
+        { g.r0 = g.r2; gsu_code(0x04bf6b, 8); } else { gsu_code(0x04bf6b, 5); gsu_code(0x04bf72, 1); }
     gsu_code(0x04bf73, 1);
     gsu_sbk(g.r0);
     return g;
@@ -374,7 +374,7 @@ FxAmountRegs FxRecordLower82(void)
 
     g.r0 = gsu_sub(g.r1, g.r0, 0);
     if (gsu.s)
-        { g.r0 = gsu_sub(g.r0, g.r0, 0); gsu_code(0x04bf8a, 12); } else { gsu_code(0x04bf8a, 10); gsu_code(0x04bf95, 1); }
+        { g.r0 = gsu_sub(g.r0, g.r0, 0); gsu_code(0x04bf90, 6); } else { gsu_code(0x04bf90, 4); gsu_code(0x04bf95, 1); }
     gsu_code(0x04bf96, 1);
     gsu_sbk(g.r0);
     return g;
@@ -522,24 +522,25 @@ static int fx_scale_for(int copy)
    R5), then checks it against the bound at `bound` (into R[rb]; SUB, carry
    clear = inside). */
 /* gsuwalk: the code of each copy of fx_project, read from the ROM */
-static const GsuCode fx_project_fetch[4][4] = {
-    {{0x01bac8, 5}, {0x01bacd, 5}, {0x01bad2, 4}, {0x01bada, 1}},
-    {{0x01badb, 6}, {0x01bae1, 5}, {0x01bae6, 4}, {0x01baee, 1}},
-    {{0x01bb4c, 5}, {0x01bb51, 5}, {0x01bb56, 4}, {0x01bb5e, 1}},
-    {{0x01bb5f, 6}, {0x01bb65, 5}, {0x01bb6a, 4}, {0x01bb72, 1}},
+static const GsuCode fx_project_fetch[4][5] = {
+    {{0x01bac8, 2}, {0x01baca, 3}, {0x01bacd, 5}, {0x01bad2, 4}, {0x01bada, 1}},
+    {{0x01badb, 3}, {0x01bade, 3}, {0x01bae1, 5}, {0x01bae6, 4}, {0x01baee, 1}},
+    {{0x01bb4c, 2}, {0x01bb4e, 3}, {0x01bb51, 5}, {0x01bb56, 4}, {0x01bb5e, 1}},
+    {{0x01bb5f, 3}, {0x01bb62, 3}, {0x01bb65, 5}, {0x01bb6a, 4}, {0x01bb72, 1}},
 };
 
 static int fx_project(int c, uint16_t centre, uint16_t bound, int rb, int copy)
 {
-    gsu.r[0] = gsu_fmult(gsu.r[c], gsu.r[6]);
     gsu_codes(fx_project_fetch[copy], 1);
+    gsu.r[0] = gsu_fmult(gsu.r[c], gsu.r[6]);
+    gsu_codes(fx_project_fetch[copy] + 1, 1);
     gsu.r[5] = gsu_ldw(centre);
     gsu.r[c] = gsu_add(gsu.r[0], gsu.r[5], 0);
-    gsu_codes(fx_project_fetch[copy] + 1, 1);
+    gsu_codes(fx_project_fetch[copy] + 2, 1);
     gsu.r[rb] = gsu_ldw(bound);
     gsu.r[0] = gsu_sub(gsu.r[c], gsu.r[rb], 0);
     if (gsu.cy)
-        { return 0; } else { gsu_codes(fx_project_fetch[copy] + 2, 2); }
+        { return 0; } else { gsu_codes(fx_project_fetch[copy] + 3, 2); }
     gsu.r[0] = gsu_add(gsu.r[0], gsu.r[rb], 0);
     return 1;
 }

@@ -99,8 +99,17 @@ static void reciprocal_read(int copy)
 /* An edge's x slope from the difference in R0 and the reciprocal in R6:
    LMULT; WITH R4; ADD R4; ROL; LOB; SWAP; WITH R4; HIB; TO dst; OR R4
    (the product's middle word, rounded by the low word's top bit). */
-static uint16_t slope(void)
+/* gsuwalk: the code of each copy of slope, read from the ROM */
+static const GsuCode slope_fetch[4][1] = {
+    {{0x01a9f9, 2}},
+    {{0x01aa35, 2}},
+    {{0x01a837, 7}},
+    {{0x01a8cc, 7}},
+};
+
+static uint16_t slope(int copy)
 {
+    gsu_codes(slope_fetch[copy], 1);
     uint32_t p = gsu_lmult(R[0], R[6]);
 
     R[0] = (uint16_t)(p >> 16);
@@ -142,10 +151,19 @@ static void edge_step(int x, uint16_t step, int rows, int copy)
 }
 
 /* A difference of u or v in R0 to a step: LOB; SWAP; FMULT; ROL. */
-static uint16_t uv_step(void)
+/* gsuwalk: the code of each copy of uv_step, read from the ROM */
+static const GsuCode uv_step_fetch[4][1] = {
+    {{0x01a84d, 4}},
+    {{0x01a862, 4}},
+    {{0x01a8e2, 4}},
+    {{0x01a8f7, 4}},
+};
+
+static uint16_t uv_step(int copy)
 {
     R[0] = gsu_lob(R[0]);
     R[0] = gsu_swap(R[0]);
+    gsu_codes(uv_step_fetch[copy], 1);
     R[0] = gsu_fmult(R[0], R[6]);
     return gsu_rol(R[0]);
 }
@@ -285,7 +303,7 @@ static int flat_left_edge(int from_a9ce, int copy)
     R[7] = gsu_swap(R[8]);
     gsu_codes(flat_left_edge_fetch[copy] + 13, 1);
     R[6] = gsu_getbh(R[6]);
-    R[8] = slope();
+    R[8] = slope(GSU_COPY(0));
     return 1;
 }
 
@@ -320,7 +338,7 @@ static int flat_right_edge(int copy)
     R[9] = gsu_swap(R[10]);
     gsu_code(0x01aa2f, 6);
     R[6] = gsu_getbh(R[6]);
-    R[10] = (slope());
+    R[10] = (slope(GSU_COPY(1)));
     return 1;
 }
 
@@ -374,7 +392,7 @@ static void flat_polygon(int copy)
     R[13] = 0xAA49;
     R[3] = gsu_sub(R[3], R[3], 0);              /* BRA's delay slot */
     if (!flat_left_edge(0, GSU_COPY(0)))
-        { gsu_code(0x01a9d8, 9); gsu_code(0x01aa70, 4); gsu_code(0x01a950, 1); return; } else { gsu_code(0x01a9f9, 2); }
+        { gsu_code(0x01a9d8, 9); gsu_code(0x01aa70, 4); gsu_code(0x01a950, 1); return; }
     gsu_code(0x01a9fb, 9);
     for (;;) {
         /* AA03 */
@@ -384,7 +402,7 @@ static void flat_polygon(int copy)
             R[9] = gsu_hib(R[0]);
             gsu_code(0x01aa04, 5);
             if (!flat_right_edge(GSU_COPY(0)))
-                { gsu_code(0x01aa17, 9); gsu_code(0x01aa70, 4); gsu_code(0x01a950, 1); return; } else { gsu_code(0x01aa35, 2); }
+                { gsu_code(0x01aa17, 9); gsu_code(0x01aa70, 4); gsu_code(0x01a950, 1); return; }
             gsu_code(0x01aa37, 9);
         } else { gsu_code(0x01aa04, 4); gsu_code(0x01aa3f, 1); }
         /* AA3F: the rows while both edges last */
@@ -422,7 +440,7 @@ static void flat_polygon(int copy)
         gsu_code(0x01a9c6, 9);
         R[6] = gsu_ldw(FX_LEFT_AT);
         if (!flat_left_edge(1, GSU_COPY(1)))
-            { gsu_code(0x01a9d8, 9); gsu_code(0x01aa70, 4); gsu_code(0x01a950, 1); return; } else { gsu_code(0x01a9f9, 2); }
+            { gsu_code(0x01a9d8, 9); gsu_code(0x01aa70, 4); gsu_code(0x01a950, 1); return; }
         gsu_code(0x01a9fb, 9);
     }
 }
@@ -595,13 +613,13 @@ static int tex_left_edge(int copy)
     R[6] = gsu_getbh(R[6]);
     R[0] = gsu_sub(R[9], R[12], 0);
     R[9] = gsu_swap(R[12]);
-    R[7] = slope();
-    gsu_code(0x01a837, 19);
+    R[7] = slope(GSU_COPY(2));
+    gsu_code(0x01a83e, 12);
     R[0] = gsu_ldw(FX_LEFT_U);
     gsu_code(0x01a84a, 3);
     R[1] = gsu_ldw(FX_LEFT_U_PREV);
     R[0] = gsu_sub(R[0], R[1], 0);
-    ((gsu_stw(FX_LEFT_DU, gsu_code_then(0x01a84d, 8, (uv_step())))));
+    ((gsu_stw(FX_LEFT_DU, gsu_code_then(0x01a851, 4, (uv_step(GSU_COPY(0)))))));
     gsu_code(0x01a855, 3);
     R[0] = gsu_ldw(FX_LEFT_U_PREV);
     R[0] = gsu_swap(R[0]);
@@ -612,7 +630,7 @@ static int tex_left_edge(int copy)
     gsu_code(0x01a85f, 3);
     R[1] = gsu_ldw(FX_LEFT_V_PREV);
     R[0] = gsu_sub(R[0], R[1], 0);
-    ((gsu_stw(FX_LEFT_DV, gsu_code_then(0x01a862, 8, (uv_step())))));
+    ((gsu_stw(FX_LEFT_DV, gsu_code_then(0x01a866, 4, (uv_step(GSU_COPY(1)))))));
     gsu_code(0x01a86a, 3);
     R[0] = gsu_ldw(FX_LEFT_V_PREV);
     R[0] = gsu_swap(R[0]);
@@ -682,13 +700,13 @@ static int tex_right_edge(int copy)
     R[6] = gsu_getbh(R[6]);
     R[0] = gsu_sub(R[10], R[12], 0);
     R[10] = gsu_swap(R[12]);
-    R[8] = slope();
-    gsu_code(0x01a8cc, 19);
+    R[8] = slope(GSU_COPY(3));
+    gsu_code(0x01a8d3, 12);
     R[0] = gsu_ldw(FX_RIGHT_U);
     gsu_code(0x01a8df, 3);
     R[1] = gsu_ldw(FX_RIGHT_U_PREV);
     R[0] = gsu_sub(R[0], R[1], 0);
-    ((gsu_stw(FX_RIGHT_DU, gsu_code_then(0x01a8e2, 8, (uv_step())))));
+    ((gsu_stw(FX_RIGHT_DU, gsu_code_then(0x01a8e6, 4, (uv_step(GSU_COPY(2)))))));
     gsu_code(0x01a8ea, 3);
     R[0] = gsu_ldw(FX_RIGHT_U_PREV);
     R[0] = gsu_swap(R[0]);
@@ -699,7 +717,7 @@ static int tex_right_edge(int copy)
     gsu_code(0x01a8f4, 3);
     R[1] = gsu_ldw(FX_RIGHT_V_PREV);
     R[0] = gsu_sub(R[0], R[1], 0);
-    ((gsu_stw(FX_RIGHT_DV, gsu_code_then(0x01a8f7, 8, (uv_step())))));
+    ((gsu_stw(FX_RIGHT_DV, gsu_code_then(0x01a8fb, 4, (uv_step(GSU_COPY(3)))))));
     gsu_code(0x01a8ff, 3);
     R[0] = gsu_ldw(FX_RIGHT_V_PREV);
     R[0] = gsu_swap(R[0]);
@@ -712,9 +730,9 @@ static int tex_right_edge(int copy)
    R4, right; ADD R4; SBK), the step across the row from right less left
    (FMULT by R6 = 1/width, ROL) to dst, then LEFT += its step. */
 /* gsuwalk: the code of each copy of tex_across, read from the ROM */
-static const GsuCode tex_across_fetch[2][6] = {
-    {{0x01a74f, 3}, {0x01a752, 3}, {0x01a755, 2}, {0x01a757, 3}, {0x01a75a, 8}, {0x01a762, 4}},
-    {{0x01a766, 3}, {0x01a769, 3}, {0x01a76c, 2}, {0x01a76e, 3}, {0x01a771, 8}, {0x01a779, 4}},
+static const GsuCode tex_across_fetch[2][7] = {
+    {{0x01a74f, 3}, {0x01a752, 3}, {0x01a755, 2}, {0x01a757, 3}, {0x01a75a, 3}, {0x01a75d, 5}, {0x01a762, 4}},
+    {{0x01a766, 3}, {0x01a769, 3}, {0x01a76c, 2}, {0x01a76e, 3}, {0x01a771, 3}, {0x01a774, 5}, {0x01a779, 4}},
 };
 
 static uint16_t tex_across(uint16_t step_r, uint16_t right, uint16_t left, int lr, uint16_t step_l, int copy)
@@ -731,12 +749,13 @@ static uint16_t tex_across(uint16_t step_r, uint16_t right, uint16_t left, int l
     gsu_codes(tex_across_fetch[copy] + 3, 1);
     R[lr] = gsu_ldw(left);
     R[0] = gsu_sub(R[4], R[lr], 0);
+    gsu_codes(tex_across_fetch[copy] + 4, 1);
     R[0] = gsu_fmult(R[0], R[6]);
     d = gsu_rol(R[0]);
-    gsu_codes(tex_across_fetch[copy] + 4, 1);
+    gsu_codes(tex_across_fetch[copy] + 5, 1);
     R[0] = gsu_ldw(step_l);
     R[0] = gsu_add(R[0], R[lr], 0);
-    gsu_codes(tex_across_fetch[copy] + 5, 1);
+    gsu_codes(tex_across_fetch[copy] + 6, 1);
     gsu_stw(left, R[0]);
     return d;
 }
@@ -1025,8 +1044,21 @@ static void tex_polygon(int copy)
 void abi_FxDivideSigned(void);
 
 /* MULT #n: the signed product of the low byte and n. */
+/* gsuwalk: the code of each copy of mult_imm, read from the ROM */
+static const GsuCode mult_imm_fetch[8][1] = {
+    {{0x019f17, 2}},
+    {{0x019fe3, 2}},
+    {{0x01a0b6, 2}},
+    {{0x01a18e, 2}},
+    {{0x01a2a0, 2}},
+    {{0x01a385, 2}},
+    {{0x01a470, 2}},
+    {{0x01a561, 2}},
+};
+
 static uint16_t mult_imm(uint16_t v, int n, int copy)
 {
+    gsu_codes(mult_imm_fetch[copy], 1);
     return gsu_mult(v, (uint16_t)n);       /* MULT #n */
 }
 
@@ -1086,23 +1118,23 @@ static void clip_put(int copy)
    this one's (LMULT, FxDivideSigned), written at R9 with the edge's
    value. */
 /* gsuwalk: the code of each copy of clip_cross, read from the ROM */
-static const GsuCode clip_cross_fetch[16][11] = {
-    {{0x019f41, 19}, {0x019f54, 10}, {0x018186, 1}, {0x8187, 0}, {0, 0}, {0x019f5e, 1}, {0x019f5f, 5}, {0, 0}, {0, 0}, {0x019f64, 2}, {0x019f66, 3}},
-    {{0x019f89, 9}, {0x019f92, 10}, {0x018186, 1}, {0x8187, 0}, {0, 0}, {0x019f9c, 1}, {0x019f9d, 5}, {0, 0}, {0, 0}, {0x019fa2, 2}, {0x019fa4, 3}},
-    {{0x01a011, 19}, {0x01a024, 10}, {0x018186, 1}, {0x8187, 0}, {0, 0}, {0x01a02e, 1}, {0x01a02f, 5}, {0, 0}, {0, 0}, {0x01a034, 2}, {0x01a036, 3}},
-    {{0x01a05c, 9}, {0x01a065, 10}, {0x018186, 1}, {0x8187, 0}, {0, 0}, {0x01a06f, 1}, {0x01a070, 5}, {0, 0}, {0, 0}, {0x01a075, 2}, {0x01a077, 3}},
-    {{0x01a0e0, 25}, {0x01a0f9, 10}, {0x018186, 1}, {0x8187, 0}, {0x01a103, 1}, {0, 0}, {0x01a104, 5}, {0x01a109, 1}, {0x01a10a, 4}, {0, 0}, {0, 0}},
-    {{0x01a12e, 15}, {0x01a13d, 10}, {0x018186, 1}, {0x8187, 0}, {0x01a147, 1}, {0, 0}, {0x01a148, 5}, {0x01a14d, 1}, {0x01a14e, 4}, {0, 0}, {0, 0}},
-    {{0x01a1bc, 25}, {0x01a1d5, 10}, {0x018186, 1}, {0x8187, 0}, {0x01a1df, 1}, {0, 0}, {0x01a1e0, 5}, {0x01a1e5, 2}, {0x01a1e7, 4}, {0, 0}, {0, 0}},
-    {{0x01a20d, 15}, {0x01a21c, 10}, {0x018186, 1}, {0x8187, 0}, {0x01a226, 1}, {0, 0}, {0x01a227, 5}, {0x01a22c, 2}, {0x01a22e, 4}, {0, 0}, {0, 0}},
-    {{0x01a2ca, 19}, {0x01a2dd, 10}, {0x018186, 1}, {0x8187, 0}, {0, 0}, {0x01a2e7, 1}, {0x01a2e8, 5}, {0, 0}, {0, 0}, {0x01a2ed, 2}, {0x01a2ef, 3}},
-    {{0x01a312, 9}, {0x01a31b, 10}, {0x018186, 1}, {0x8187, 0}, {0, 0}, {0x01a325, 1}, {0x01a326, 5}, {0, 0}, {0, 0}, {0x01a32b, 2}, {0x01a32d, 3}},
-    {{0x01a3b3, 19}, {0x01a3c6, 10}, {0x018186, 1}, {0x8187, 0}, {0, 0}, {0x01a3d0, 1}, {0x01a3d1, 5}, {0, 0}, {0, 0}, {0x01a3d6, 2}, {0x01a3d8, 3}},
-    {{0x01a3fd, 9}, {0x01a406, 10}, {0x018186, 1}, {0x8187, 0}, {0, 0}, {0x01a410, 1}, {0x01a411, 5}, {0, 0}, {0, 0}, {0x01a416, 2}, {0x01a418, 3}},
-    {{0x01a49a, 25}, {0x01a4b3, 10}, {0x018186, 1}, {0x8187, 0}, {0x01a4bd, 1}, {0, 0}, {0x01a4be, 5}, {0x01a4c3, 1}, {0x01a4c4, 4}, {0, 0}, {0, 0}},
-    {{0x01a4e8, 15}, {0x01a4f7, 10}, {0x018186, 1}, {0x8187, 0}, {0x01a501, 1}, {0, 0}, {0x01a502, 5}, {0x01a507, 1}, {0x01a508, 4}, {0, 0}, {0, 0}},
-    {{0x01a58f, 25}, {0x01a5a8, 10}, {0x018186, 1}, {0x8187, 0}, {0x01a5b2, 1}, {0, 0}, {0x01a5b3, 5}, {0x01a5b8, 1}, {0x01a5b9, 4}, {0, 0}, {0, 0}},
-    {{0x01a5df, 15}, {0x01a5ee, 10}, {0x018186, 1}, {0x8187, 0}, {0x01a5f8, 1}, {0, 0}, {0x01a5f9, 5}, {0x01a5fe, 1}, {0x01a5ff, 4}, {0, 0}, {0, 0}},
+static const GsuCode clip_cross_fetch[16][12] = {
+    {{0x019f41, 19}, {0x019f54, 4}, {0x019f58, 6}, {0x018186, 1}, {0x8187, 0}, {0, 0}, {0x019f5e, 1}, {0x019f5f, 5}, {0, 0}, {0, 0}, {0x019f64, 2}, {0x019f66, 3}},
+    {{0x019f89, 9}, {0x019f92, 4}, {0x019f96, 6}, {0x018186, 1}, {0x8187, 0}, {0, 0}, {0x019f9c, 1}, {0x019f9d, 5}, {0, 0}, {0, 0}, {0x019fa2, 2}, {0x019fa4, 3}},
+    {{0x01a011, 19}, {0x01a024, 4}, {0x01a028, 6}, {0x018186, 1}, {0x8187, 0}, {0, 0}, {0x01a02e, 1}, {0x01a02f, 5}, {0, 0}, {0, 0}, {0x01a034, 2}, {0x01a036, 3}},
+    {{0x01a05c, 9}, {0x01a065, 4}, {0x01a069, 6}, {0x018186, 1}, {0x8187, 0}, {0, 0}, {0x01a06f, 1}, {0x01a070, 5}, {0, 0}, {0, 0}, {0x01a075, 2}, {0x01a077, 3}},
+    {{0x01a0e0, 25}, {0x01a0f9, 4}, {0x01a0fd, 6}, {0x018186, 1}, {0x8187, 0}, {0x01a103, 1}, {0, 0}, {0x01a104, 5}, {0x01a109, 1}, {0x01a10a, 4}, {0, 0}, {0, 0}},
+    {{0x01a12e, 15}, {0x01a13d, 4}, {0x01a141, 6}, {0x018186, 1}, {0x8187, 0}, {0x01a147, 1}, {0, 0}, {0x01a148, 5}, {0x01a14d, 1}, {0x01a14e, 4}, {0, 0}, {0, 0}},
+    {{0x01a1bc, 25}, {0x01a1d5, 4}, {0x01a1d9, 6}, {0x018186, 1}, {0x8187, 0}, {0x01a1df, 1}, {0, 0}, {0x01a1e0, 5}, {0x01a1e5, 2}, {0x01a1e7, 4}, {0, 0}, {0, 0}},
+    {{0x01a20d, 15}, {0x01a21c, 4}, {0x01a220, 6}, {0x018186, 1}, {0x8187, 0}, {0x01a226, 1}, {0, 0}, {0x01a227, 5}, {0x01a22c, 2}, {0x01a22e, 4}, {0, 0}, {0, 0}},
+    {{0x01a2ca, 19}, {0x01a2dd, 4}, {0x01a2e1, 6}, {0x018186, 1}, {0x8187, 0}, {0, 0}, {0x01a2e7, 1}, {0x01a2e8, 5}, {0, 0}, {0, 0}, {0x01a2ed, 2}, {0x01a2ef, 3}},
+    {{0x01a312, 9}, {0x01a31b, 4}, {0x01a31f, 6}, {0x018186, 1}, {0x8187, 0}, {0, 0}, {0x01a325, 1}, {0x01a326, 5}, {0, 0}, {0, 0}, {0x01a32b, 2}, {0x01a32d, 3}},
+    {{0x01a3b3, 19}, {0x01a3c6, 4}, {0x01a3ca, 6}, {0x018186, 1}, {0x8187, 0}, {0, 0}, {0x01a3d0, 1}, {0x01a3d1, 5}, {0, 0}, {0, 0}, {0x01a3d6, 2}, {0x01a3d8, 3}},
+    {{0x01a3fd, 9}, {0x01a406, 4}, {0x01a40a, 6}, {0x018186, 1}, {0x8187, 0}, {0, 0}, {0x01a410, 1}, {0x01a411, 5}, {0, 0}, {0, 0}, {0x01a416, 2}, {0x01a418, 3}},
+    {{0x01a49a, 25}, {0x01a4b3, 4}, {0x01a4b7, 6}, {0x018186, 1}, {0x8187, 0}, {0x01a4bd, 1}, {0, 0}, {0x01a4be, 5}, {0x01a4c3, 1}, {0x01a4c4, 4}, {0, 0}, {0, 0}},
+    {{0x01a4e8, 15}, {0x01a4f7, 4}, {0x01a4fb, 6}, {0x018186, 1}, {0x8187, 0}, {0x01a501, 1}, {0, 0}, {0x01a502, 5}, {0x01a507, 1}, {0x01a508, 4}, {0, 0}, {0, 0}},
+    {{0x01a58f, 25}, {0x01a5a8, 4}, {0x01a5ac, 6}, {0x018186, 1}, {0x8187, 0}, {0x01a5b2, 1}, {0, 0}, {0x01a5b3, 5}, {0x01a5b8, 1}, {0x01a5b9, 4}, {0, 0}, {0, 0}},
+    {{0x01a5df, 15}, {0x01a5ee, 4}, {0x01a5f2, 6}, {0x018186, 1}, {0x8187, 0}, {0x01a5f8, 1}, {0, 0}, {0x01a5f9, 5}, {0x01a5fe, 1}, {0x01a5ff, 4}, {0, 0}, {0, 0}},
 };
 
 static void clip_cross(const ClipEdge *e, uint16_t ret, int copy)
@@ -1118,6 +1150,7 @@ static void clip_cross(const ClipEdge *e, uint16_t ret, int copy)
     R[0] = gsu_ldw(e->edge);
     R[0] = gsu_sub(R[0], R[e->y ? (2) : (1)], 0);
     {
+        gsu_codes(clip_cross_fetch[copy] + 1, 1);
         uint32_t p = gsu_lmult(R[0], R[6]);
 
         R[5] = (uint16_t)(p >> 16);
@@ -1125,26 +1158,26 @@ static void clip_cross(const ClipEdge *e, uint16_t ret, int copy)
     }
     R[6] = R[3];
     R[11] = ret;
-    gsu_codes(clip_cross_fetch[copy] + 1, 3);
+    gsu_codes(clip_cross_fetch[copy] + 2, 3);
     abi_FxDivideSigned();
-    R[0] = gsu_add(R[4], R[e->y ? (gsu_codes(clip_cross_fetch[copy] + 4, 1), ((1))) : (gsu_codes(clip_cross_fetch[copy] + 5, 1), ((2)))], 0);
-    gsu_codes(clip_cross_fetch[copy] + 6, 1);
+    R[0] = gsu_add(R[4], R[e->y ? (gsu_codes(clip_cross_fetch[copy] + 5, 1), ((1))) : (gsu_codes(clip_cross_fetch[copy] + 6, 1), ((2)))], 0);
+    gsu_codes(clip_cross_fetch[copy] + 7, 1);
     R[6] = gsu_ldw(e->edge);
     if (e->dec_edge)
         R[6] = gsu_dec(R[6]);
     if (e->y) {
-        gsu_codes(clip_cross_fetch[copy] + 7, 1);
+        gsu_codes(clip_cross_fetch[copy] + 8, 1);
         gsu_stw(R[9], R[0]);
         R[9] = gsu_inc(R[9]);
         R[9] = gsu_inc(R[9]);
-        gsu_codes(clip_cross_fetch[copy] + 8, 1);
-        gsu_stw(R[9], R[6]);
-    } else {
         gsu_codes(clip_cross_fetch[copy] + 9, 1);
         gsu_stw(R[9], R[6]);
-        R[9] = gsu_inc(R[9]);
-        R[9] = gsu_inc(R[9]);
+    } else {
         gsu_codes(clip_cross_fetch[copy] + 10, 1);
+        gsu_stw(R[9], R[6]);
+        R[9] = gsu_inc(R[9]);
+        R[9] = gsu_inc(R[9]);
+        gsu_codes(clip_cross_fetch[copy] + 11, 1);
         gsu_stw(R[9], R[0]);
     }
     R[9] = gsu_inc(R[9]);
@@ -1229,14 +1262,14 @@ static void clip_count(int up, int copy)
    when inside and its crossing when it crosses. */
 /* gsuwalk: the code of each copy of clip_against, read from the ROM */
 static const GsuCode clip_against_fetch[8][35] = {
-    {{0x019f08, 5}, {0x019f0d, 4}, {0x019f11, 6}, {0x019f17, 5}, {0x019f1c, 4}, {0x019fb9, 6}, {0x019f1f, 1}, {0x019fb9, 2}, {0x019fbf, 1}, {0x019f20, 2}, {0x019f22, 4}, {0x019f26, 4}, {0x019f2a, 4}, {0x019f69, 4}, {0x019fb3, 1}, {0x019f73, 2}, {0x019fb3, 1}, {0x019f38, 1}, {0, 0}, {0x019f34, 4}, {0x019f3c, 4}, {0x019f6d, 1}, {0x019f3c, 5}, {0x019fa7, 4}, {0x019fb3, 1}, {0x019fb2, 2}, {0, 0}, {0, 0}, {0x019f34, 4}, {0x019f75, 1}, {0x019f79, 4}, {0x019fab, 1}, {0x019f79, 5}, {0x019fb4, 3}, {0x019fb7, 2}},
-    {{0x019fd7, 2}, {0x019fd9, 4}, {0x019fdd, 6}, {0x019fe3, 5}, {0x019fe8, 4}, {0x01a08c, 6}, {0x019feb, 1}, {0x01a08c, 2}, {0x01a092, 1}, {0x019fec, 2}, {0x019fee, 4}, {0x019ff2, 4}, {0x019ff6, 4}, {0x01a039, 4}, {0x01a086, 1}, {0x01a043, 3}, {0x01a086, 1}, {0x01a006, 1}, {0, 0}, {0x01a000, 6}, {0x01a00a, 6}, {0x01a03d, 1}, {0x01a00a, 7}, {0x01a07a, 4}, {0x01a086, 1}, {0x01a085, 2}, {0, 0}, {0, 0}, {0x01a000, 6}, {0x01a046, 1}, {0x01a04a, 6}, {0x01a07e, 1}, {0x01a04a, 7}, {0x01a087, 3}, {0x01a08a, 2}},
-    {{0x01a0a7, 5}, {0x01a0ac, 4}, {0x01a0b0, 6}, {0x01a0b6, 5}, {0x01a0bb, 4}, {0x01a164, 6}, {0x01a0be, 1}, {0x01a164, 2}, {0x01a16a, 1}, {0x01a0bf, 2}, {0x01a0c1, 4}, {0x01a0c5, 4}, {0x01a0c9, 4}, {0x01a10e, 4}, {0x01a15e, 1}, {0x01a118, 2}, {0x01a15e, 1}, {0x01a0d7, 1}, {0x01a0d3, 4}, {0, 0}, {0x01a0db, 4}, {0x01a112, 1}, {0x01a0db, 5}, {0x01a152, 4}, {0x01a15e, 1}, {0x01a15d, 2}, {0x01a0d3, 4}, {0x01a11a, 1}, {0, 0}, {0, 0}, {0x01a11e, 4}, {0x01a156, 1}, {0x01a11e, 5}, {0x01a15f, 3}, {0x01a162, 2}},
-    {{0x01a182, 2}, {0x01a184, 4}, {0x01a188, 6}, {0x01a18e, 5}, {0x01a193, 4}, {0x01a244, 6}, {0x01a196, 1}, {0x01a244, 2}, {0x01a24a, 1}, {0x01a197, 2}, {0x01a199, 4}, {0x01a19d, 4}, {0x01a1a1, 4}, {0x01a1eb, 4}, {0x01a23e, 1}, {0x01a1f5, 2}, {0x01a23e, 1}, {0x01a1b1, 1}, {0x01a1ab, 6}, {0, 0}, {0x01a1b5, 6}, {0x01a1ef, 1}, {0x01a1b5, 7}, {0x01a232, 4}, {0x01a23e, 1}, {0x01a23d, 2}, {0x01a1ab, 6}, {0x01a1f7, 1}, {0, 0}, {0, 0}, {0x01a1fb, 6}, {0x01a236, 1}, {0x01a1fb, 7}, {0x01a23f, 3}, {0x01a242, 2}},
-    {{0x01a294, 2}, {0x01a296, 4}, {0x01a29a, 6}, {0x01a2a0, 5}, {0x01a2a5, 4}, {0x01a342, 6}, {0x01a2a8, 1}, {0x01a342, 2}, {0x01a348, 1}, {0x01a2a9, 2}, {0x01a2ab, 4}, {0x01a2af, 4}, {0x01a2b3, 4}, {0x01a2f2, 4}, {0x01a33c, 1}, {0x01a2fc, 2}, {0x01a33c, 1}, {0x01a2c1, 1}, {0, 0}, {0x01a2bd, 4}, {0x01a2c5, 4}, {0x01a2f6, 1}, {0x01a2c5, 5}, {0x01a330, 4}, {0x01a33c, 1}, {0x01a33b, 2}, {0, 0}, {0, 0}, {0x01a2bd, 4}, {0x01a2fe, 1}, {0x01a302, 4}, {0x01a334, 1}, {0x01a302, 5}, {0x01a33d, 3}, {0x01a340, 2}},
-    {{0x01a379, 2}, {0x01a37b, 4}, {0x01a37f, 6}, {0x01a385, 5}, {0x01a38a, 4}, {0x01a42d, 6}, {0x01a38d, 1}, {0x01a42d, 2}, {0x01a433, 1}, {0x01a38e, 2}, {0x01a390, 4}, {0x01a394, 4}, {0x01a398, 4}, {0x01a3db, 4}, {0x01a427, 1}, {0x01a3e5, 2}, {0x01a427, 1}, {0x01a3a8, 1}, {0, 0}, {0x01a3a2, 6}, {0x01a3ac, 6}, {0x01a3df, 1}, {0x01a3ac, 7}, {0x01a41b, 4}, {0x01a427, 1}, {0x01a426, 2}, {0, 0}, {0, 0}, {0x01a3a2, 6}, {0x01a3e7, 1}, {0x01a3eb, 6}, {0x01a41f, 1}, {0x01a3eb, 7}, {0x01a428, 3}, {0x01a42b, 2}},
-    {{0x01a464, 2}, {0x01a466, 4}, {0x01a46a, 6}, {0x01a470, 5}, {0x01a475, 4}, {0x01a51e, 6}, {0x01a478, 1}, {0x01a51e, 2}, {0x01a524, 1}, {0x01a479, 2}, {0x01a47b, 4}, {0x01a47f, 4}, {0x01a483, 4}, {0x01a4c8, 4}, {0x01a518, 1}, {0x01a4d2, 2}, {0x01a518, 1}, {0x01a491, 1}, {0x01a48d, 4}, {0, 0}, {0x01a495, 4}, {0x01a4cc, 1}, {0x01a495, 5}, {0x01a50c, 4}, {0x01a518, 1}, {0x01a517, 2}, {0x01a48d, 4}, {0x01a4d4, 1}, {0, 0}, {0, 0}, {0x01a4d8, 4}, {0x01a510, 1}, {0x01a4d8, 5}, {0x01a519, 3}, {0x01a51c, 2}},
-    {{0x01a555, 2}, {0x01a557, 4}, {0x01a55b, 6}, {0x01a561, 5}, {0x01a566, 4}, {0x01a615, 6}, {0x01a569, 1}, {0x01a615, 2}, {0x01a61b, 1}, {0x01a56a, 2}, {0x01a56c, 4}, {0x01a570, 4}, {0x01a574, 4}, {0x01a5bd, 4}, {0x01a60f, 1}, {0x01a5c7, 2}, {0x01a60f, 1}, {0x01a584, 1}, {0x01a57e, 6}, {0, 0}, {0x01a588, 6}, {0x01a5c1, 1}, {0x01a588, 7}, {0x01a603, 4}, {0x01a60f, 1}, {0x01a60e, 2}, {0x01a57e, 6}, {0x01a5c9, 1}, {0, 0}, {0, 0}, {0x01a5cd, 6}, {0x01a607, 1}, {0x01a5cd, 7}, {0x01a610, 3}, {0x01a613, 2}},
+    {{0x019f08, 5}, {0x019f0d, 4}, {0x019f11, 6}, {0x019f19, 3}, {0x019f1c, 4}, {0x019fb9, 6}, {0x019f1f, 1}, {0x019fb9, 2}, {0x019fbf, 1}, {0x019f20, 2}, {0x019f22, 4}, {0x019f26, 4}, {0x019f2a, 4}, {0x019f69, 4}, {0x019fb3, 1}, {0x019f73, 2}, {0x019fb3, 1}, {0x019f38, 1}, {0, 0}, {0x019f34, 4}, {0x019f3c, 4}, {0x019f6d, 1}, {0x019f3c, 5}, {0x019fa7, 4}, {0x019fb3, 1}, {0x019fb2, 2}, {0, 0}, {0, 0}, {0x019f34, 4}, {0x019f75, 1}, {0x019f79, 4}, {0x019fab, 1}, {0x019f79, 5}, {0x019fb4, 3}, {0x019fb7, 2}},
+    {{0x019fd7, 2}, {0x019fd9, 4}, {0x019fdd, 6}, {0x019fe5, 3}, {0x019fe8, 4}, {0x01a08c, 6}, {0x019feb, 1}, {0x01a08c, 2}, {0x01a092, 1}, {0x019fec, 2}, {0x019fee, 4}, {0x019ff2, 4}, {0x019ff6, 4}, {0x01a039, 4}, {0x01a086, 1}, {0x01a043, 3}, {0x01a086, 1}, {0x01a006, 1}, {0, 0}, {0x01a000, 6}, {0x01a00a, 6}, {0x01a03d, 1}, {0x01a00a, 7}, {0x01a07a, 4}, {0x01a086, 1}, {0x01a085, 2}, {0, 0}, {0, 0}, {0x01a000, 6}, {0x01a046, 1}, {0x01a04a, 6}, {0x01a07e, 1}, {0x01a04a, 7}, {0x01a087, 3}, {0x01a08a, 2}},
+    {{0x01a0a7, 5}, {0x01a0ac, 4}, {0x01a0b0, 6}, {0x01a0b8, 3}, {0x01a0bb, 4}, {0x01a164, 6}, {0x01a0be, 1}, {0x01a164, 2}, {0x01a16a, 1}, {0x01a0bf, 2}, {0x01a0c1, 4}, {0x01a0c5, 4}, {0x01a0c9, 4}, {0x01a10e, 4}, {0x01a15e, 1}, {0x01a118, 2}, {0x01a15e, 1}, {0x01a0d7, 1}, {0x01a0d3, 4}, {0, 0}, {0x01a0db, 4}, {0x01a112, 1}, {0x01a0db, 5}, {0x01a152, 4}, {0x01a15e, 1}, {0x01a15d, 2}, {0x01a0d3, 4}, {0x01a11a, 1}, {0, 0}, {0, 0}, {0x01a11e, 4}, {0x01a156, 1}, {0x01a11e, 5}, {0x01a15f, 3}, {0x01a162, 2}},
+    {{0x01a182, 2}, {0x01a184, 4}, {0x01a188, 6}, {0x01a190, 3}, {0x01a193, 4}, {0x01a244, 6}, {0x01a196, 1}, {0x01a244, 2}, {0x01a24a, 1}, {0x01a197, 2}, {0x01a199, 4}, {0x01a19d, 4}, {0x01a1a1, 4}, {0x01a1eb, 4}, {0x01a23e, 1}, {0x01a1f5, 2}, {0x01a23e, 1}, {0x01a1b1, 1}, {0x01a1ab, 6}, {0, 0}, {0x01a1b5, 6}, {0x01a1ef, 1}, {0x01a1b5, 7}, {0x01a232, 4}, {0x01a23e, 1}, {0x01a23d, 2}, {0x01a1ab, 6}, {0x01a1f7, 1}, {0, 0}, {0, 0}, {0x01a1fb, 6}, {0x01a236, 1}, {0x01a1fb, 7}, {0x01a23f, 3}, {0x01a242, 2}},
+    {{0x01a294, 2}, {0x01a296, 4}, {0x01a29a, 6}, {0x01a2a2, 3}, {0x01a2a5, 4}, {0x01a342, 6}, {0x01a2a8, 1}, {0x01a342, 2}, {0x01a348, 1}, {0x01a2a9, 2}, {0x01a2ab, 4}, {0x01a2af, 4}, {0x01a2b3, 4}, {0x01a2f2, 4}, {0x01a33c, 1}, {0x01a2fc, 2}, {0x01a33c, 1}, {0x01a2c1, 1}, {0, 0}, {0x01a2bd, 4}, {0x01a2c5, 4}, {0x01a2f6, 1}, {0x01a2c5, 5}, {0x01a330, 4}, {0x01a33c, 1}, {0x01a33b, 2}, {0, 0}, {0, 0}, {0x01a2bd, 4}, {0x01a2fe, 1}, {0x01a302, 4}, {0x01a334, 1}, {0x01a302, 5}, {0x01a33d, 3}, {0x01a340, 2}},
+    {{0x01a379, 2}, {0x01a37b, 4}, {0x01a37f, 6}, {0x01a387, 3}, {0x01a38a, 4}, {0x01a42d, 6}, {0x01a38d, 1}, {0x01a42d, 2}, {0x01a433, 1}, {0x01a38e, 2}, {0x01a390, 4}, {0x01a394, 4}, {0x01a398, 4}, {0x01a3db, 4}, {0x01a427, 1}, {0x01a3e5, 2}, {0x01a427, 1}, {0x01a3a8, 1}, {0, 0}, {0x01a3a2, 6}, {0x01a3ac, 6}, {0x01a3df, 1}, {0x01a3ac, 7}, {0x01a41b, 4}, {0x01a427, 1}, {0x01a426, 2}, {0, 0}, {0, 0}, {0x01a3a2, 6}, {0x01a3e7, 1}, {0x01a3eb, 6}, {0x01a41f, 1}, {0x01a3eb, 7}, {0x01a428, 3}, {0x01a42b, 2}},
+    {{0x01a464, 2}, {0x01a466, 4}, {0x01a46a, 6}, {0x01a472, 3}, {0x01a475, 4}, {0x01a51e, 6}, {0x01a478, 1}, {0x01a51e, 2}, {0x01a524, 1}, {0x01a479, 2}, {0x01a47b, 4}, {0x01a47f, 4}, {0x01a483, 4}, {0x01a4c8, 4}, {0x01a518, 1}, {0x01a4d2, 2}, {0x01a518, 1}, {0x01a491, 1}, {0x01a48d, 4}, {0, 0}, {0x01a495, 4}, {0x01a4cc, 1}, {0x01a495, 5}, {0x01a50c, 4}, {0x01a518, 1}, {0x01a517, 2}, {0x01a48d, 4}, {0x01a4d4, 1}, {0, 0}, {0, 0}, {0x01a4d8, 4}, {0x01a510, 1}, {0x01a4d8, 5}, {0x01a519, 3}, {0x01a51c, 2}},
+    {{0x01a555, 2}, {0x01a557, 4}, {0x01a55b, 6}, {0x01a563, 3}, {0x01a566, 4}, {0x01a615, 6}, {0x01a569, 1}, {0x01a615, 2}, {0x01a61b, 1}, {0x01a56a, 2}, {0x01a56c, 4}, {0x01a570, 4}, {0x01a574, 4}, {0x01a5bd, 4}, {0x01a60f, 1}, {0x01a5c7, 2}, {0x01a60f, 1}, {0x01a584, 1}, {0x01a57e, 6}, {0, 0}, {0x01a588, 6}, {0x01a5c1, 1}, {0x01a588, 7}, {0x01a603, 4}, {0x01a60f, 1}, {0x01a60e, 2}, {0x01a57e, 6}, {0x01a5c9, 1}, {0, 0}, {0, 0}, {0x01a5cd, 6}, {0x01a607, 1}, {0x01a5cd, 7}, {0x01a610, 3}, {0x01a613, 2}},
 };
 
 /* gsuwalk: the copy of mult_imm each copy of clip_against calls */
@@ -1452,6 +1485,7 @@ void abi_FxProjectVertex(void);
 /* UMULT #n: the unsigned product of the low byte and n. */
 static uint16_t umult_imm(uint16_t v, int n)
 {
+    gsu_code(0x0198f0, 2);
     return gsu_umult(v, (uint16_t)n);      /* UMULT #n */
 }
 
@@ -1602,7 +1636,7 @@ void abi_FxPolygonGather(void)
         gsu_r14(gsu_inc(R[14]));
         R[0] = umult_imm(R[0], 6);
         R[1] = gsu_add(FX_POINTS, R[0], 0);
-        gsu_code(0x0198f0, 8);
+        gsu_code(0x0198f2, 6);
         R[0] = gsu_ldw(R[1]);
         R[1] = gsu_inc(R[1]);
         R[1] = gsu_inc(R[1]);

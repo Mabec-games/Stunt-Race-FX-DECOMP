@@ -81,10 +81,10 @@ void abi_FxMatrixTranspose(void)
    ADD R0; for R3, then ADD R5; STW (R9); INC R9 twice. Returns R0; *part
    = R5, *e = R6. */
 /* gsuwalk: the code of each copy of apply_column, read from the ROM */
-static const GsuCode apply_column_fetch[3][4] = {
-    {{0x01978c, 4}, {0x019790, 7}, {0x019797, 8}, {0x01979f, 5}},
-    {{0x0197a4, 5}, {0x0197a9, 7}, {0x0197b0, 8}, {0x0197b8, 5}},
-    {{0x0197bd, 5}, {0x0197c2, 7}, {0x0197c9, 8}, {0x0197d1, 5}},
+static const GsuCode apply_column_fetch[3][7] = {
+    {{0x01978c, 4}, {0x019790, 2}, {0x019792, 5}, {0x019797, 2}, {0x019799, 6}, {0x01979f, 2}, {0x0197a1, 3}},
+    {{0x0197a4, 5}, {0x0197a9, 2}, {0x0197ab, 5}, {0x0197b0, 2}, {0x0197b2, 6}, {0x0197b8, 2}, {0x0197ba, 3}},
+    {{0x0197bd, 5}, {0x0197c2, 2}, {0x0197c4, 5}, {0x0197c9, 2}, {0x0197cb, 6}, {0x0197d1, 2}, {0x0197d3, 3}},
 };
 
 static uint16_t apply_column(const uint16_t v[3], uint16_t col, uint16_t *out, uint16_t *part, uint16_t *e, int copy)
@@ -93,16 +93,19 @@ static uint16_t apply_column(const uint16_t v[3], uint16_t col, uint16_t *out, u
 
     gsu_codes(apply_column_fetch[copy], 1);
     *e = gsu_ldw((uint16_t)(FX_MATRIX + col * 2));
-    *part = gsu_rol(gsu_fmult(v[0], *e));
     gsu_codes(apply_column_fetch[copy] + 1, 1);
+    *part = gsu_rol(gsu_fmult(v[0], *e));
+    gsu_codes(apply_column_fetch[copy] + 2, 1);
     *e = gsu_ldw((uint16_t)(FX_MATRIX + 6 + col * 2));
+    gsu_codes(apply_column_fetch[copy] + 3, 1);
     t = gsu_rol(gsu_fmult(v[1], *e));
     *part = gsu_add(*part, t, 0);
-    gsu_codes(apply_column_fetch[copy] + 2, 1);
+    gsu_codes(apply_column_fetch[copy] + 4, 1);
     *e = gsu_ldw((uint16_t)(FX_MATRIX + 12 + col * 2));
+    gsu_codes(apply_column_fetch[copy] + 5, 1);
     t = gsu_rol(gsu_fmult(v[2], *e));
     t = gsu_add(t, *part, 0);
-    gsu_codes(apply_column_fetch[copy] + 3, 1);
+    gsu_codes(apply_column_fetch[copy] + 6, 1);
     gsu_stw(*out, t);
     *out = gsu_inc(gsu_inc(*out));
     return t;
@@ -211,8 +214,8 @@ void abi_FxMatrixApplyVectors(void)
  * Returns the last result; *partial and *m22 = R5 and R6 as left.
  */
 /* gsuwalk: the code of each copy of FxMatrixRotateProgram, read from the ROM */
-static const GsuCode FxMatrixRotateProgram_fetch[1][39] = {
-    {{0x0182d9, 3}, {0x0182de, 5}, {0x0182e5, 6}, {0x0182f2, 3}, {0x0182f7, 5}, {0x0182fe, 6}, {0x01830b, 3}, {0x018310, 5}, {0x018317, 6}, {0x0182dc, 2}, {0, 0}, {0, 0}, {0x0182f5, 2}, {0, 0}, {0, 0}, {0x01830e, 2}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x0182eb, 2}, {0, 0}, {0, 0}, {0x018304, 2}, {0, 0}, {0, 0}, {0x01831d, 2}, {0, 0}, {0x0182e3, 2}, {0, 0}, {0, 0}, {0x0182fc, 2}, {0, 0}, {0, 0}, {0x018315, 2}, {0, 0}, {0x0182ed, 5}, {0x018306, 5}, {0x01831f, 5}},
+static const GsuCode FxMatrixRotateProgram_fetch[1][21] = {
+    {{0x0182d9, 3}, {0x0182de, 5}, {0x0182e5, 6}, {0x0182f2, 3}, {0x0182f7, 5}, {0x0182fe, 6}, {0x01830b, 3}, {0x018310, 5}, {0x018317, 6}, {0x0182dc, 2}, {0x0182e3, 2}, {0x0182eb, 2}, {0x0182f5, 2}, {0x0182fc, 2}, {0x018304, 2}, {0x01830e, 2}, {0x018315, 2}, {0x01831d, 2}, {0x0182ed, 5}, {0x018306, 5}, {0x01831f, 5}},
 };
 
 uint16_t FxMatrixRotateProgram(uint16_t v[3], uint16_t *partial, uint16_t *m22)
@@ -232,18 +235,18 @@ uint16_t FxMatrixRotateProgram(uint16_t v[3], uint16_t *partial, uint16_t *m22)
 
             gsu_codes(FxMatrixRotateProgram_fetch[0] + (row) * 3 + col, 1);
             *m22 = gsu_ldw((uint16_t)(FX_MATRIX + row * 6 + col * 2));
+            gsu_codes(FxMatrixRotateProgram_fetch[0] + 9 + (row) * 3 + col, 1);
             p = gsu_rol(gsu_fmult(v[col], *m22));     /* FROM Rn; FMULT; ROL */
             if (col == 0)
-                { sum = p; gsu_codes(FxMatrixRotateProgram_fetch[0] + 9 + (row) * 3 + col, 1); }                              /* TO R5 */
+                { sum = p; }                              /* TO R5 */
             else if (col == 1)
-                { sum = gsu_add(sum, p, 0); gsu_codes(FxMatrixRotateProgram_fetch[0] + 27 + (row) * 3 + col, 1); }             /* WITH R5; ADD R0 */
+                { sum = gsu_add(sum, p, 0); }             /* WITH R5; ADD R0 */
             else {
                 *partial = sum;
                 sum = gsu_add(p, sum, 0);             /* ADD R5 */
-                gsu_codes(FxMatrixRotateProgram_fetch[0] + 18 + (row) * 3 + col, 1);
             }
         }
-        gsu_codes(FxMatrixRotateProgram_fetch[0] + 36 + row, 1);
+        gsu_codes(FxMatrixRotateProgram_fetch[0] + 18 + row, 1);
         gsu_stw((uint16_t)(FX_ROTATE_OUT + row * 2), sum);
     }
     return sum;
@@ -274,8 +277,8 @@ void abi_FxMatrixRotateProgram(void)
  * element at $00F4.
  */
 /* gsuwalk: the code of each copy of abi_FxMatrixRotateBackProgram, read from the ROM */
-static const GsuCode abi_FxMatrixRotateBackProgram_fetch[1][12] = {
-    {{0x018282, 3}, {0x01829b, 3}, {0x0182b4, 3}, {0x018285, 7}, {0x01829e, 7}, {0x0182b7, 7}, {0x01828c, 8}, {0x0182a5, 8}, {0x0182be, 8}, {0x018294, 7}, {0x0182ad, 7}, {0x0182c6, 7}},
+static const GsuCode abi_FxMatrixRotateBackProgram_fetch[1][21] = {
+    {{0x018282, 3}, {0x01829b, 3}, {0x0182b4, 3}, {0x018285, 2}, {0x01829e, 2}, {0x0182b7, 2}, {0x018287, 5}, {0x0182a0, 5}, {0x0182b9, 5}, {0x01828c, 2}, {0x0182a5, 2}, {0x0182be, 2}, {0x01828e, 6}, {0x0182a7, 6}, {0x0182c0, 6}, {0x018294, 2}, {0x0182ad, 2}, {0x0182c6, 2}, {0x018296, 5}, {0x0182af, 5}, {0x0182c8, 5}},
 };
 
 void abi_FxMatrixRotateBackProgram(void)
@@ -293,16 +296,19 @@ void abi_FxMatrixRotateBackProgram(void)
 
         gsu_codes(abi_FxMatrixRotateBackProgram_fetch[0] + out, 1);
         gsu.r[6] = gsu_ldw(m);
-        gsu.r[5] = gsu_rol(gsu_fmult(gsu.r[1], gsu.r[6]));
         gsu_codes(abi_FxMatrixRotateBackProgram_fetch[0] + 3 + out, 1);
+        gsu.r[5] = gsu_rol(gsu_fmult(gsu.r[1], gsu.r[6]));
+        gsu_codes(abi_FxMatrixRotateBackProgram_fetch[0] + 6 + out, 1);
         gsu.r[6] = gsu_ldw((uint16_t)(m + 6));
+        gsu_codes(abi_FxMatrixRotateBackProgram_fetch[0] + 9 + out, 1);
         gsu.r[0] = gsu_rol(gsu_fmult(gsu.r[2], gsu.r[6]));
         gsu.r[5] = gsu_add(gsu.r[5], gsu.r[0], 0);
-        gsu_codes(abi_FxMatrixRotateBackProgram_fetch[0] + 6 + out, 1);
+        gsu_codes(abi_FxMatrixRotateBackProgram_fetch[0] + 12 + out, 1);
         gsu.r[6] = gsu_ldw((uint16_t)(m + 12));
+        gsu_codes(abi_FxMatrixRotateBackProgram_fetch[0] + 15 + out, 1);
         gsu.r[0] = gsu_rol(gsu_fmult(gsu.r[3], gsu.r[6]));
         gsu.r[0] = gsu_add(gsu.r[0], gsu.r[5], 0);
-        gsu_codes(abi_FxMatrixRotateBackProgram_fetch[0] + 9 + out, 1);
+        gsu_codes(abi_FxMatrixRotateBackProgram_fetch[0] + 18 + out, 1);
         gsu_stw((uint16_t)(FX_ROTATE_OUT + out * 2), gsu.r[0]);
     }
 }
@@ -311,9 +317,32 @@ void abi_FxMatrixRotateBackProgram(void)
 #define FX_SINE_TABLE 0x983Eu        /* ROM bank $00: 257 words, 1.15 */
 
 /* (a * b) >> 15, signed: FMULT then ROL. */
+/* gsuwalk: the code of each copy of mul15, read from the ROM */
+static const GsuCode mul15_fetch[18][1] = {
+    {{0x01834b, 7}},
+    {{0x01836d, 7}},
+    {{0x01838d, 7}},
+    {{0x0183af, 7}},
+    {{0x0183cf, 7}},
+    {{0x0183f1, 7}},
+    {{0x0183f8, 7}},
+    {{0x0183ff, 4}},
+    {{0x018403, 6}},
+    {{0x018409, 4}},
+    {{0x01840f, 4}},
+    {{0x018416, 4}},
+    {{0x01841d, 6}},
+    {{0x018425, 4}},
+    {{0x01842b, 4}},
+    {{0x018437, 6}},
+    {{0x018440, 4}},
+    {{0x018447, 6}},
+};
+
 static uint16_t mul15(uint16_t a, uint16_t b, int copy)
 {
     (void)copy;
+    gsu_codes(mul15_fetch[copy], 1);
     return gsu_rol(gsu_fmult(a, b));     /* FMULT, ROL: their time and flags */
 }
 
@@ -389,58 +418,54 @@ void FxMatrixFromAngles01(uint16_t out, FxAnglesLeft *k, int copy)
     gsu_code(0x018335, 3);
     a = gsu_ldw(FX_ANGLES);
     k->sz = fx_sine(a, GSU_COPY(0));
-    gsu_code(0x01834b, 13);
+    gsu_code(0x018352, 6);
     gsu_r14(0x4000);
     k->cz = fx_sine((uint16_t)(a + 0x4000), GSU_COPY(1));
-    gsu_code(0x01836d, 13);
+    gsu_code(0x018374, 6);
     a = gsu_ldw((uint16_t)(FX_ANGLES + 2));
     k->sx = fx_sine(a, GSU_COPY(2));
-    gsu_code(0x01838d, 13);
+    gsu_code(0x018394, 6);
     gsu_r14(0x4000);
     k->cx = fx_sine((uint16_t)(a + 0x4000), GSU_COPY(3));
-    gsu_code(0x0183af, 13);
+    gsu_code(0x0183b6, 6);
     a = gsu_ldw((uint16_t)(FX_ANGLES + 4));
     k->sy = fx_sine(a, GSU_COPY(4));
-    gsu_code(0x0183cf, 13);
+    gsu_code(0x0183d6, 6);
     gsu_r14(0x4000);
     k->cy = fx_sine((uint16_t)(a + 0x4000), GSU_COPY(5));
-    gsu_code(0x0183f1, 7);
     k->sx_cy = mul15(k->sx, k->cy, GSU_COPY(6));
-    gsu_code(0x0183f8, 7);
     k->cx_cy = mul15(k->cx, k->cy, GSU_COPY(7));
-    gsu_code(0x0183ff, 4);
     k->sx_sy = mul15(k->sx, k->sy, GSU_COPY(8));
-    gsu_code(0x018403, 6);
     k->cx_sy = mul15(k->cx, k->sy, GSU_COPY(9));
-    gsu_code(0x018409, 6);
+    gsu_code(0x01840d, 2);
     gsu_r14(k->cx_sy);
     /* each element stored as it is made (STW (R9), INC R9 twice) */
     m[0] = (uint16_t)(mul15(k->sx_sy, k->sz, GSU_COPY(10)) + k->cx_cy);
-    gsu_code(0x01840f, 7);
+    gsu_code(0x018413, 3);
     gsu_stw(out, m[0]);
     m[1] = (uint16_t)(mul15(k->sx_cy, k->sz, GSU_COPY(11)) - k->cx_sy);
-    gsu_code(0x018416, 7);
+    gsu_code(0x01841a, 3);
     gsu_stw((uint16_t)(out + 2), m[1]);
     m[2] = mul15(k->sx, k->cz, GSU_COPY(12));
-    gsu_code(0x01841d, 8);
+    gsu_code(0x018423, 2);
     gsu_stw((uint16_t)(out + 4), m[2]);
     m[3] = mul15(k->sy, k->cz, GSU_COPY(13));
-    gsu_code(0x018425, 6);
+    gsu_code(0x018429, 2);
     gsu_stw((uint16_t)(out + 6), m[3]);
     m[4] = mul15(k->cy, k->cz, GSU_COPY(14));
-    gsu_code(0x01842b, 6);
+    gsu_code(0x01842f, 2);
     gsu_stw((uint16_t)(out + 8), m[4]);
     m[5] = (uint16_t)-k->sz;
     gsu_code(0x018431, 6);
     gsu_stw((uint16_t)(out + 10), m[5]);
     m[6] = (uint16_t)(mul15(k->cx_sy, k->sz, GSU_COPY(15)) - k->sx_cy);
-    gsu_code(0x018437, 9);
+    gsu_code(0x01843d, 3);
     gsu_stw((uint16_t)(out + 12), m[6]);
     m[7] = (uint16_t)(mul15(k->cx_cy, k->sz, GSU_COPY(16)) + k->sx_sy);
-    gsu_code(0x018440, 7);
+    gsu_code(0x018444, 3);
     gsu_stw((uint16_t)(out + 14), m[7]);
     m[8] = mul15(k->cx, k->cz, GSU_COPY(17));
-    gsu_code(0x018447, 8);
+    gsu_code(0x01844d, 2);
     gsu_stw((uint16_t)(out + 16), m[8]);
     gsu_code(0x01844f, 1);
 }
@@ -613,37 +638,38 @@ void abi_FxSegmentCrossZ(void)
 /* R0 = a * R6 (FMULT) doubled with the carry (ADC R0), then doubled
    again `more` times (ADD R0). */
 /* gsuwalk: the code of each copy of fx_scaled, read from the ROM */
-static const GsuCode fx_scaled_fetch[22][1] = {
-    {{0x01c6c3, 11}},
-    {{0x01c700, 8}},
-    {{0x01c4b2, 10}},
-    {{0x01c4bf, 8}},
-    {{0x01c530, 13}},
-    {{0x01c4d4, 8}},
-    {{0x01c5e4, 13}},
-    {{0x01c6d1, 8}},
-    {{0x01cbbe, 11}},
-    {{0x01cbfb, 8}},
-    {{0x01cbcc, 8}},
-    {{0x01c98e, 10}},
-    {{0x01c9c9, 7}},
-    {{0x01c782, 9}},
-    {{0x01c78e, 7}},
-    {{0x01c7fd, 12}},
-    {{0x01c7a2, 7}},
-    {{0x01c8b0, 12}},
-    {{0x01c99b, 7}},
-    {{0x01ca9d, 10}},
-    {{0x01cad8, 7}},
-    {{0x01caaa, 7}},
+static const GsuCode fx_scaled_fetch[22][2] = {
+    {{0x01c6c3, 5}, {0x01c6c8, 6}},
+    {{0x01c700, 2}, {0x01c702, 6}},
+    {{0x01c4b2, 4}, {0x01c4b6, 6}},
+    {{0x01c4bf, 2}, {0x01c4c1, 6}},
+    {{0x01c530, 7}, {0x01c537, 6}},
+    {{0x01c4d4, 2}, {0x01c4d6, 6}},
+    {{0x01c5e4, 7}, {0x01c5eb, 6}},
+    {{0x01c6d1, 2}, {0x01c6d3, 6}},
+    {{0x01cbbe, 5}, {0x01cbc3, 6}},
+    {{0x01cbfb, 2}, {0x01cbfd, 6}},
+    {{0x01cbcc, 2}, {0x01cbce, 6}},
+    {{0x01c98e, 5}, {0x01c993, 5}},
+    {{0x01c9c9, 2}, {0x01c9cb, 5}},
+    {{0x01c782, 4}, {0x01c786, 5}},
+    {{0x01c78e, 2}, {0x01c790, 5}},
+    {{0x01c7fd, 7}, {0x01c804, 5}},
+    {{0x01c7a2, 2}, {0x01c7a4, 5}},
+    {{0x01c8b0, 7}, {0x01c8b7, 5}},
+    {{0x01c99b, 2}, {0x01c99d, 5}},
+    {{0x01ca9d, 5}, {0x01caa2, 5}},
+    {{0x01cad8, 2}, {0x01cada, 5}},
+    {{0x01caaa, 2}, {0x01caac, 5}},
 };
 
 static uint16_t fx_scaled(uint16_t a, int more, int copy)
 {
+    gsu_codes(fx_scaled_fetch[copy], 1);
     uint16_t v = gsu_fmult(a, gsu.r[6]);
 
     v = gsu_add(v, v, gsu.cy);
-    gsu_codes(fx_scaled_fetch[copy], 1);
+    gsu_codes(fx_scaled_fetch[copy] + 1, 1);
     while (more--)
         v = gsu_add(v, v, 0);
     return v;
