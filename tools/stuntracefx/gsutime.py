@@ -214,11 +214,11 @@ def solve(args):
     import multiprocessing as mp
     info = {int(r['id']): r for r in csv.DictReader(open(os.path.join(G, 'probe', 'probes.csv')))}
     copyable = pickle.load(open(os.path.join(G, 'copyable.pkl'), 'rb'))
+    lines = [l.rstrip('\n').split('\t') for l in open(os.path.join(G, 'agg.txt'))]
     by = collections.defaultdict(collections.Counter)
     tot = over = 0
     reached = set()
-    for line in open(os.path.join(G, 'agg.txt')):
-        c, pc, t, ids, plus, minus = line.rstrip('\n').split('\t')
+    for c, pc, t, ids, plus, minus in lines:
         c = int(c)
         tot += c
         p = collections.Counter(int(x) for x in ids.split(',')) if ids else collections.Counter()
@@ -289,8 +289,10 @@ def write(args):
     srcc = os.path.join(G, 'srcC')
     run(['rm', '-rf', srcc])
     run(['cp', '-R', os.path.join(G, 'src'), srcc])
-    for h in glob.glob(os.path.join(ROOT, 'src', 'stuntracefx', 'include', '*.h')):
-        run(['cp', h, os.path.join(srcc, 'include')])
+    # the Super FX's own headers as they are now (the gather's tree has the
+    # rest, its prototypes as its sources have them)
+    for h in ('gsu.h', 'gsu_ops.h'):
+        run(['cp', os.path.join(ROOT, 'src', 'stuntracefx', 'include', h), os.path.join(srcc, 'include')])
     env = dict(os.environ, CYC_SRC=srcc)
     print(run([sys.executable, os.path.join(TOOLS, 'cyccopy.py'), os.path.join(G, 'code.csv.pkl'),
                os.path.join(G, 'ctx.txt'), os.path.join(G, 'fnmap.bin'), os.path.join(G, 'fnnames.txt'),
