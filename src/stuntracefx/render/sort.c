@@ -152,7 +152,7 @@ void FxSortObjectsProgram(void)
 {
     gsu_code(0x01AEF9, 7);
     gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[0], 0);
-    gsu.rombr = 0;
+    gsu_romb(0);
     gsu_stw(FX_LIST_HEAD, gsu.r[0]);
     gsu.r[9] = FX_SLOTS;
     gsu_code(0x01AF00, 6);

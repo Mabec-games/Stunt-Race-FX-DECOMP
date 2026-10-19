@@ -25,9 +25,9 @@ typedef struct {
 } FxPoolWalk;
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode pool_merge_code[2][17] = {
-    {{0x04888F, 7}, {0x048898, 3}, {0x04889B, 3}, {0x04889E, 6}, {0x0488D5, 3}, {0, 0}, {0x04889E, 8}, {0x0488A6, 14}, {0x0488B4, 5}, {0x0488B9, 11}, {0x0488C4, 3}, {0x0488C7, 1}, {0x0488B9, 4}, {0x0488CE, 7}, {0x0488C9, 5}, {0x0488A6, 4}, {0x0488C9, 5}},
-    {{0, 0}, {0, 0}, {0x0488D8, 3}, {0x048896, 1}, {0x0488DB, 6}, {0x048912, 3}, {0x0488DB, 8}, {0x0488E3, 14}, {0x0488F1, 5}, {0x0488F6, 11}, {0x048901, 3}, {0x048904, 1}, {0x0488F6, 4}, {0x04890B, 7}, {0x048906, 5}, {0x0488E3, 4}, {0x048906, 5}},
+static const GsuCode pool_merge_code[2][12] = {
+    {{0x04889B, 3}, {0x04889E, 8}, {0x0488A6, 14}, {0x0488B4, 5}, {0x0488B9, 11}, {0x0488C4, 3}, {0x0488C7, 1}, {0x0488B9, 4}, {0x0488CE, 7}, {0x0488C9, 5}, {0x0488A6, 4}, {0x0488C9, 5}},
+    {{0x0488D8, 3}, {0x0488DB, 8}, {0x0488E3, 14}, {0x0488F1, 5}, {0x0488F6, 11}, {0x048901, 3}, {0x048904, 1}, {0x0488F6, 4}, {0x04890B, 7}, {0x048906, 5}, {0x0488E3, 4}, {0x048906, 5}},
 };
 
 /* One pool: each free block whose end is the next block in the chain, and
@@ -35,44 +35,43 @@ static const GsuCode pool_merge_code[2][17] = {
    walk then goes on from the block taken in. */
 static void pool_merge(uint16_t head, FxPoolWalk *w, int copy)
 {
-    gsu_codes(pool_merge_code[copy], 2);
     w->r1 = head;
     for (;;) {
-        gsu_codes(pool_merge_code[copy] + 2, 1);
+        gsu_codes(pool_merge_code[copy], 1);
         w->r2 = gsu_ldw(w->r1);                      /* the next block */
         w->r1 = gsu_inc(gsu_inc(w->r1));             /* this block + 2 */
         gsu_moves(w->r2);
         if (gsu.z)
-            { gsu_codes(pool_merge_code[copy] + 3, 3); return; } else { gsu_codes(pool_merge_code[copy] + 6, 1); }
+            return; else { gsu_codes(pool_merge_code[copy] + 1, 1); }
         w->r0 = gsu_ldw(w->r1);                      /* this block's size */
         gsu_moves(w->r0);
         if (!gsu.s) {
-            gsu_codes(pool_merge_code[copy] + 7, 1);
+            gsu_codes(pool_merge_code[copy] + 2, 1);
             w->r0 = gsu_sub(w->r0, 2, 0);
             w->r3 = gsu_add(w->r0, w->r1, 0);        /* this block's end */
             gsu_sub(w->r3, w->r2, 0);
             if (gsu.z) {
-                gsu_codes(pool_merge_code[copy] + 8, 1);
+                gsu_codes(pool_merge_code[copy] + 3, 1);
                 w->r2 = gsu_inc(gsu_inc(w->r2));
                 w->r3 = gsu_ldw(w->r2);              /* the next block's size */
                 gsu_moves(w->r3);
                 if (!gsu.s) {
-                    gsu_codes(pool_merge_code[copy] + 9, 1);
+                    gsu_codes(pool_merge_code[copy] + 4, 1);
                     w->r0 = gsu_add(gsu_add(w->r0, w->r3, 0), 2, 0);
                     w->r2 = gsu_dec(gsu_dec(w->r2));
                     gsu_stw(w->r1, w->r0);
                     w->r1 = gsu_dec(gsu_dec(w->r1));
-                    gsu_codes(pool_merge_code[copy] + 10, 1);
+                    gsu_codes(pool_merge_code[copy] + 5, 1);
                     w->r0 = gsu_ldw(w->r2);          /* its link */
-                    gsu_codes(pool_merge_code[copy] + 11, 1);
+                    gsu_codes(pool_merge_code[copy] + 6, 1);
                     gsu_stw(w->r1, w->r0);
                     w->r1 = gsu_inc(gsu_inc(w->r1));
                 } else {
-                    gsu_codes(pool_merge_code[copy] + 12, 2);
+                    gsu_codes(pool_merge_code[copy] + 7, 2);
                     w->r2 = gsu_dec(gsu_dec(w->r2));
                 }
-            } else { gsu_codes(pool_merge_code[copy] + 14, 1); }
-        } else { gsu_codes(pool_merge_code[copy] + 15, 2); }
+            } else { gsu_codes(pool_merge_code[copy] + 9, 1); }
+        } else { gsu_codes(pool_merge_code[copy] + 10, 2); }
         w->r1 = w->r2;
     }
 }
@@ -92,8 +91,11 @@ static void pool_merge(uint16_t head, FxPoolWalk *w, int copy)
  */
 FxPoolWalk FxPoolsMerge(FxPoolWalk w)
 {
+    gsu_code(0x04888F, 7); gsu_code(0x048898, 3);
     pool_merge(FX_POOL_FIRST, &w, GSU_COPY(0));
+    gsu_code(0x04889E, 6); gsu_code(0x0488D5, 3);
     pool_merge(FX_POOL_SECOND, &w, GSU_COPY(1));
+    gsu_code(0x048896, 1); gsu_code(0x0488DB, 6); gsu_code(0x048912, 3);
     return w;
 }
 
@@ -132,13 +134,12 @@ typedef struct {
 } FxSweepRegs;
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode FxListSweep_code[6][29] = {
-    {{0, 0}, {0, 0}, {0x04A469, 14}, {0, 0}, {0x04A477, 8}, {0x04A47F, 6}, {0x04A477, 4}, {0x04A48C, 7}, {0x04A493, 10}, {0x04A493, 4}, {0x04A49F, 6}, {0, 0}, {0, 0}, {0x04A4A7, 5}, {0x04A4B0, 3}, {0, 0}, {0, 0}, {0x04A4AC, 4}, {0x04A4B3, 11}, {0x04A4BE, 8}, {0x04A4BE, 4}, {0x04A4C8, 2}, {0x04A4CA, 1}, {0x04A4CB, 2}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-    {{0x048A20, 5}, {0x04A45B, 14}, {0x04A469, 14}, {0, 0}, {0, 0}, {0, 0}, {0x04A477, 4}, {0x04A48C, 7}, {0x04A493, 10}, {0, 0}, {0, 0}, {0x04A49D, 2}, {0x04A4A4, 3}, {0x04A4A7, 5}, {0x04A4B0, 3}, {0, 0}, {0, 0}, {0x04A4AC, 4}, {0x04A4B3, 11}, {0x04A4BE, 8}, {0x04A4BE, 4}, {0x04A4C8, 2}, {0x04A4CA, 1}, {0x04A4CB, 2}, {0, 0}, {0, 0}, {0x048A25, 5}, {0x04A484, 8}, {0x04A4D1, 4}},
-    {{0, 0}, {0, 0}, {0x04A469, 14}, {0, 0}, {0, 0}, {0, 0}, {0x04A477, 4}, {0x04A48C, 7}, {0x04A493, 10}, {0, 0}, {0, 0}, {0x04A49D, 2}, {0x04A4A4, 3}, {0x04A4A7, 5}, {0x04A4AC, 18}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04A4BE, 8}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04A4C6, 2}, {0x04A4CC, 5}, {0, 0}, {0, 0}, {0, 0}},
-    {{0, 0}, {0, 0}, {0x04A469, 9}, {0x04A472, 5}, {0, 0}, {0, 0}, {0x04A477, 4}, {0x04A48C, 7}, {0x04A493, 10}, {0, 0}, {0, 0}, {0x04A49D, 2}, {0x04A4A4, 3}, {0x04A4A7, 5}, {0x04A4B0, 3}, {0, 0}, {0, 0}, {0x04A4AC, 4}, {0x04A4B3, 11}, {0x04A4BE, 8}, {0x04A4BE, 4}, {0x04A4C8, 2}, {0x04A4CA, 1}, {0x04A4CB, 2}, {0, 0}, {0, 0}, {0x04A484, 5}, {0x04A4D1, 4}, {0, 0}},
-    {{0, 0}, {0, 0}, {0x04A469, 14}, {0, 0}, {0, 0}, {0, 0}, {0x04A477, 4}, {0x04A48C, 7}, {0x04A493, 10}, {0, 0}, {0, 0}, {0x04A49D, 2}, {0x04A4A4, 3}, {0x04A4A7, 5}, {0x04A4B0, 3}, {0, 0}, {0, 0}, {0x04A4AC, 4}, {0x04A4B3, 11}, {0x04A4BE, 8}, {0x04A4BE, 4}, {0x04A4C8, 2}, {0x04A4CA, 1}, {0x04A4CB, 2}, {0, 0}, {0, 0}, {0x048A25, 5}, {0x04A484, 8}, {0x04A4D1, 4}},
-    {{0, 0}, {0, 0}, {0x04A469, 14}, {0, 0}, {0, 0}, {0, 0}, {0x04A477, 4}, {0x04A48C, 7}, {0x04A493, 10}, {0, 0}, {0, 0}, {0x04A49D, 2}, {0x04A4A4, 3}, {0x04A4A7, 5}, {0, 0}, {0x04A4AC, 4}, {0x04A4B3, 11}, {0, 0}, {0, 0}, {0, 0}, {0x04A4BE, 4}, {0x04A4C8, 2}, {0x04A4CA, 1}, {0x04A4CB, 2}, {0x04A4CD, 4}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+static const GsuCode FxListSweep_code[5][29] = {
+    {{0x04A469, 14}, {0, 0}, {0x04A477, 8}, {0x04A47F, 6}, {0x04A477, 4}, {0x04A48C, 7}, {0x04A493, 10}, {0x04A493, 4}, {0x04A49F, 6}, {0, 0}, {0, 0}, {0x04A4A7, 5}, {0x04A4B0, 3}, {0, 0}, {0, 0}, {0x04A4AC, 4}, {0x04A4B3, 11}, {0x04A4BE, 8}, {0x04A4BE, 4}, {0x04A4C8, 2}, {0x04A4CA, 1}, {0x04A4CB, 2}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0x04A469, 9}, {0x04A472, 5}, {0x04A477, 8}, {0x04A47F, 6}, {0x04A477, 4}, {0x04A48C, 7}, {0x04A493, 10}, {0x04A493, 4}, {0x04A49F, 6}, {0x04A49D, 2}, {0x04A4A4, 3}, {0x04A4A7, 5}, {0x04A4B0, 3}, {0, 0}, {0, 0}, {0x04A4AC, 4}, {0x04A4B3, 11}, {0x04A4BE, 8}, {0x04A4BE, 4}, {0x04A4C8, 2}, {0x04A4CA, 1}, {0x04A4CB, 2}, {0, 0}, {0, 0}, {0x04A484, 5}, {0x04A4D1, 4}, {0, 0}, {0x048A25, 5}, {0x04A489, 3}},
+    {{0x04A469, 14}, {0, 0}, {0x04A477, 8}, {0x04A47F, 6}, {0x04A477, 4}, {0x04A48C, 7}, {0x04A493, 10}, {0x04A493, 4}, {0x04A49F, 6}, {0x04A49D, 2}, {0x04A4A4, 3}, {0x04A4A7, 5}, {0x04A4AC, 18}, {0x04A4AC, 4}, {0x04A4B3, 11}, {0, 0}, {0, 0}, {0x04A4BE, 8}, {0x04A4BE, 4}, {0x04A4C8, 2}, {0x04A4CA, 1}, {0x04A4CB, 2}, {0x04A4C6, 2}, {0x04A4CC, 5}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0x04A469, 14}, {0, 0}, {0x04A477, 8}, {0x04A47F, 6}, {0x04A477, 4}, {0x04A48C, 7}, {0x04A493, 10}, {0x04A493, 4}, {0x04A49F, 6}, {0x04A49D, 2}, {0x04A4A4, 3}, {0x04A4A7, 5}, {0x04A4B0, 3}, {0x04A4AC, 4}, {0x04A4B3, 11}, {0, 0}, {0, 0}, {0x04A4BE, 8}, {0x04A4BE, 4}, {0x04A4C8, 2}, {0x04A4CA, 1}, {0x04A4CB, 2}, {0x04A4CD, 4}, {0, 0}, {0x048A25, 5}, {0x04A484, 8}, {0x04A4D1, 4}, {0, 0}, {0, 0}},
+    {{0x04A469, 14}, {0, 0}, {0x04A477, 8}, {0x04A47F, 6}, {0x04A477, 4}, {0x04A48C, 7}, {0x04A493, 10}, {0x04A493, 4}, {0x04A49F, 6}, {0x04A49D, 2}, {0x04A4A4, 3}, {0x04A4A7, 5}, {0x04A4B0, 3}, {0x04A4AC, 4}, {0x04A4B3, 11}, {0, 0}, {0, 0}, {0x04A4BE, 8}, {0x04A4BE, 4}, {0x04A4C8, 2}, {0x04A4CA, 1}, {0x04A4CB, 2}, {0x04A4CD, 4}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
 };
 
 /*
@@ -159,69 +160,69 @@ static const GsuCode FxListSweep_code[6][29] = {
  */
 FxSweepRegs FxListSweep(uint16_t owner, uint16_t stack, FxSweepRegs g, int copy)
 {
-    gsu_codes(FxListSweep_code[copy], 2);
     g.r8 = gsu_ldw(gsu_add(REC_LIST, owner, 0));
     gsu_moves(g.r8);
     if (gsu.z)
-        return g; else { gsu_codes(FxListSweep_code[copy] + 2, 1); }
+        return g; else { gsu_codes(FxListSweep_code[copy], 1); }
     g.r12 = 1;
     g.r2 = 0;
     do {
-        gsu_codes(FxListSweep_code[copy] + 3, 1);
+        gsu_codes(FxListSweep_code[copy] + 1, 1);
         g.r0 = gsu_ldw(gsu_add(REC_FLAGS10, g.r8, 0));
         g.r9 = gsu_and(g.r0, g.r12);
         if (!gsu.z) {
-            gsu_codes(FxListSweep_code[copy] + 4, 1);
+            gsu_codes(FxListSweep_code[copy] + 2, 1);
             g.r0 = gsu_bic(g.r0, g.r12);             /* kept: clear the mark */
             gsu_sbk(g.r0);
             g.r2 = g.r8;
-            gsu_codes(FxListSweep_code[copy] + 5, 1);
+            gsu_codes(FxListSweep_code[copy] + 3, 1);
             g.r0 = gsu_ldw(gsu_add(REC_NEXT, g.r8, 0));
         } else {
-            gsu_codes(FxListSweep_code[copy] + 6, 2);
+            gsu_codes(FxListSweep_code[copy] + 4, 2);
             g.r7 = gsu_ldw(gsu_add(REC_NEXT, g.r8, 0));
             gsu_moves(g.r2);
             if (gsu.z)
-                { gsu_codes(FxListSweep_code[copy] + 8, 1); gsu_stw(gsu_add(REC_LIST, owner, 0), g.r7); }
+                { gsu_codes(FxListSweep_code[copy] + 6, 1); gsu_stw(gsu_add(REC_LIST, owner, 0), g.r7); }
             else
-                { gsu_codes(FxListSweep_code[copy] + 9, 2); gsu_stw(gsu_add(REC_NEXT, g.r2, 0), g.r7); }
-            gsu_codes(FxListSweep_code[copy] + 11, 2);
+                { gsu_codes(FxListSweep_code[copy] + 7, 2); gsu_stw(gsu_add(REC_NEXT, g.r2, 0), g.r7); }
+            gsu_codes(FxListSweep_code[copy] + 9, 2);
             gsu_stw(stack, g.r7);
             stack = gsu_inc(gsu_inc(stack));
             g.r8 = gsu_inc(gsu_inc(g.r8));
-            gsu_codes(FxListSweep_code[copy] + 13, 1);
+            gsu_codes(FxListSweep_code[copy] + 11, 1);
             g.r0 = gsu_ldw(g.r8);
             g.r7 = g.r0;
             gsu_moves(g.r7);
             if (gsu.s)
-                { gsu_codes(FxListSweep_code[copy] + 14, 1); g.r7 = gsu_inc(gsu_not(g.r7)); } else { gsu_codes(FxListSweep_code[copy] + 15, 2); }
-            gsu_codes(FxListSweep_code[copy] + 17, 2);
+                { gsu_codes(FxListSweep_code[copy] + 12, 1); g.r7 = gsu_inc(gsu_not(g.r7)); } else { gsu_codes(FxListSweep_code[copy] + 13, 2); }
+            gsu_codes(FxListSweep_code[copy] + 15, 2);
             g.r8 = gsu_dec(gsu_dec(g.r8));
             g.r7 = FX_POOL_FIRST;
             g.r9 = gsu_inc(gsu_inc(g.r8));
             g.r0 = gsu_ldw(g.r9);
             gsu_moves(g.r0);
             if (gsu.s) {
-                gsu_codes(FxListSweep_code[copy] + 19, 1);
+                gsu_codes(FxListSweep_code[copy] + 17, 1);
                 g.r0 = gsu_inc(gsu_not(g.r0));
                 gsu_stw(g.r9, g.r0);
             } else {
-                gsu_codes(FxListSweep_code[copy] + 20, 2);
+                gsu_codes(FxListSweep_code[copy] + 18, 2);
                 g.r0 = gsu_ldw(g.r7);
-                gsu_codes(FxListSweep_code[copy] + 22, 1);
+                gsu_codes(FxListSweep_code[copy] + 20, 1);
                 gsu_stw(g.r8, g.r0);
-                gsu_codes(FxListSweep_code[copy] + 23, 1);
+                gsu_codes(FxListSweep_code[copy] + 21, 1);
                 gsu_stw(g.r7, g.r8);
             }
-            gsu_codes(FxListSweep_code[copy] + 24, 2);
+            gsu_codes(FxListSweep_code[copy] + 22, 2);
             stack = gsu_dec(gsu_dec(stack));
             g.r7 = gsu_ldw(stack);
             g.r0 = g.r7;
         }
-        gsu_codes(FxListSweep_code[copy] + 26, 3);
+        gsu_codes(FxListSweep_code[copy] + 24, 3);
         g.r8 = g.r0;
         gsu_moves(g.r8);
     } while (!gsu.z);
+    gsu_codes(FxListSweep_code[copy] + 27, 2);
     return g;
 }
 
@@ -260,15 +261,16 @@ void abi_FxListSweep(void)
 #define REC_FLAGS1C 0x1Cu
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode FxPoolTake_code[8][48] = {
-    {{0x04893A, 3}, {0x048D4E, 11}, {0x04893D, 4}, {0x048941, 2}, {0x8943, 0}, {0x048943, 5}, {0x048948, 1}, {0x048949, 3}, {0x04894C, 3}, {0, 0}, {0, 0}, {0x04894F, 8}, {0x048957, 5}, {0x04895C, 2}, {0, 0}, {0x04895E, 3}, {0x048961, 3}, {0x048978, 5}, {0x048986, 4}, {0x048961, 13}, {0, 0}, {0, 0}, {0, 0}, {0x04898A, 5}, {0x04898F, 3}, {0x048992, 5}, {0x048997, 4}, {0x04899B, 4}, {0x0489F7, 3}, {0x04899B, 27}, {0, 0}, {0x0489B6, 6}, {0x0489BE, 13}, {0, 0}, {0, 0}, {0x0489CB, 3}, {0x0489CE, 2}, {0x0489CE, 8}, {0x0489D6, 4}, {0x0489DA, 5}, {0x0489DF, 4}, {0x0489E3, 10}, {0x0489E3, 4}, {0x0489EC, 1}, {0x0489ED, 6}, {0x0489F3, 5}, {0x0489F8, 2}, {0, 0}},
-    {{0x04893A, 3}, {0x048E8B, 12}, {0x04893D, 4}, {0x048941, 2}, {0x8943, 0}, {0x048943, 5}, {0x048948, 4}, {0, 0}, {0x04894C, 3}, {0, 0}, {0, 0}, {0x04894F, 13}, {0, 0}, {0x04895C, 2}, {0, 0}, {0x04895E, 3}, {0x048961, 3}, {0x048978, 5}, {0x048986, 4}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04898A, 5}, {0x04898F, 8}, {0, 0}, {0x048997, 4}, {0, 0}, {0, 0}, {0x04899B, 27}, {0, 0}, {0x0489B6, 6}, {0x0489BE, 13}, {0, 0}, {0, 0}, {0x0489CB, 3}, {0x0489CE, 2}, {0x0489CE, 8}, {0x0489D6, 4}, {0x0489DA, 5}, {0x0489DF, 4}, {0x0489E3, 10}, {0, 0}, {0, 0}, {0x0489ED, 6}, {0x0489F3, 5}, {0x0489F8, 2}, {0x048E97, 7}},
-    {{0, 0}, {0, 0}, {0x04893D, 4}, {0x048941, 2}, {0x8943, 0}, {0x048943, 5}, {0x048948, 1}, {0x048949, 3}, {0x04894C, 3}, {0x04894F, 3}, {0x04896E, 4}, {0x04894F, 8}, {0x048957, 5}, {0x04895C, 2}, {0, 0}, {0x04895E, 3}, {0x048961, 3}, {0x048978, 5}, {0x048986, 4}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04898A, 5}, {0x04898F, 8}, {0, 0}, {0x048997, 4}, {0, 0}, {0, 0}, {0x04899B, 27}, {0x0489BC, 2}, {0, 0}, {0, 0}, {0x0489B6, 6}, {0x0489BE, 13}, {0x0489CB, 3}, {0x0489CE, 2}, {0x0489CE, 8}, {0x0489D6, 4}, {0x0489DA, 5}, {0x0489DF, 4}, {0x0489E3, 10}, {0, 0}, {0, 0}, {0x0489ED, 6}, {0x0489F3, 5}, {0, 0}, {0, 0}},
-    {{0, 0}, {0, 0}, {0x04893D, 4}, {0x048941, 2}, {0x8943, 0}, {0x048943, 5}, {0x048948, 1}, {0x048949, 3}, {0x04894C, 3}, {0x04894F, 3}, {0x04896E, 4}, {0x04894F, 8}, {0x048957, 5}, {0, 0}, {0x04895C, 2}, {0x04895E, 3}, {0x048961, 3}, {0x048978, 5}, {0x048986, 4}, {0x048961, 8}, {0, 0}, {0x048969, 5}, {0x04895B, 1}, {0x04898A, 5}, {0x04898F, 3}, {0x048992, 5}, {0x048997, 4}, {0, 0}, {0, 0}, {0x04899B, 27}, {0x0489BC, 2}, {0, 0}, {0, 0}, {0x0489B6, 6}, {0x0489BE, 13}, {0x0489CB, 3}, {0x0489CE, 2}, {0x0489CE, 8}, {0x0489D6, 4}, {0x0489DA, 5}, {0x0489DF, 4}, {0x0489E3, 10}, {0, 0}, {0, 0}, {0x0489ED, 6}, {0x0489F3, 5}, {0, 0}, {0, 0}},
-    {{0, 0}, {0, 0}, {0x04893D, 4}, {0x048941, 2}, {0x8943, 0}, {0x048943, 5}, {0x048948, 4}, {0, 0}, {0x04894C, 3}, {0, 0}, {0, 0}, {0x04894F, 13}, {0, 0}, {0x04895C, 2}, {0, 0}, {0x04895E, 3}, {0x048961, 3}, {0x048978, 5}, {0x048986, 4}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04898A, 5}, {0x04898F, 8}, {0, 0}, {0x048997, 4}, {0, 0}, {0, 0}, {0x04899B, 27}, {0, 0}, {0x0489B6, 6}, {0x0489BE, 13}, {0, 0}, {0, 0}, {0x0489CB, 3}, {0x0489CE, 2}, {0x0489CE, 8}, {0x0489D6, 4}, {0x0489DA, 5}, {0x0489DF, 4}, {0x0489E3, 10}, {0, 0}, {0, 0}, {0x0489ED, 6}, {0x0489F3, 5}, {0, 0}, {0, 0}},
-    {{0x04893B, 2}, {0, 0}, {0x04893D, 4}, {0x048941, 2}, {0x8943, 0}, {0x048943, 5}, {0x048948, 1}, {0x048949, 3}, {0x04894C, 3}, {0, 0}, {0, 0}, {0x04894F, 8}, {0x048957, 5}, {0, 0}, {0x04895C, 2}, {0x04895E, 3}, {0x048961, 3}, {0x048978, 18}, {0, 0}, {0x04895B, 1}, {0x048961, 8}, {0, 0}, {0, 0}, {0x04898A, 5}, {0x04898F, 8}, {0, 0}, {0x048997, 4}, {0, 0}, {0, 0}, {0x04899B, 27}, {0x0489B6, 21}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x0489CB, 3}, {0x0489CE, 2}, {0x0489CE, 8}, {0x0489D6, 4}, {0x0489DA, 5}, {0x0489DF, 4}, {0x0489E3, 10}, {0, 0}, {0, 0}, {0x0489ED, 6}, {0x0489F3, 5}, {0x04888C, 1}, {0x0489F8, 2}},
-    {{0, 0}, {0, 0}, {0x04893D, 4}, {0x048941, 2}, {0x8943, 0}, {0x048943, 5}, {0x048948, 4}, {0, 0}, {0x04894C, 3}, {0, 0}, {0, 0}, {0x04894F, 13}, {0, 0}, {0x04895C, 2}, {0, 0}, {0x04895E, 3}, {0, 0}, {0, 0}, {0, 0}, {0x048961, 13}, {0x048992, 5}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x048997, 4}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-    {{0, 0}, {0, 0}, {0x04893D, 4}, {0x048941, 2}, {0x8943, 0}, {0x048943, 5}, {0x048948, 1}, {0x048949, 3}, {0x04894C, 3}, {0, 0}, {0, 0}, {0x04894F, 8}, {0x048957, 5}, {0x04895C, 2}, {0, 0}, {0x04895E, 3}, {0x048961, 3}, {0x048978, 5}, {0x048986, 4}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04898A, 5}, {0x04898F, 8}, {0, 0}, {0x048997, 4}, {0, 0}, {0, 0}, {0x04899B, 27}, {0, 0}, {0x0489B6, 6}, {0x0489BE, 13}, {0, 0}, {0, 0}, {0x0489CB, 3}, {0x0489CE, 2}, {0x0489CE, 8}, {0x0489D6, 4}, {0x0489DA, 5}, {0x0489DF, 4}, {0x0489E3, 10}, {0, 0}, {0, 0}, {0x0489ED, 6}, {0x0489F3, 5}, {0, 0}, {0, 0}},
+static const GsuCode FxPoolTake_code[9][49] = {
+    {{0x04893A, 3}, {0x048D4E, 11}, {0x04893D, 4}, {0x048941, 2}, {0x8943, 0}, {0x048943, 5}, {0x048948, 1}, {0x048949, 3}, {0x04894C, 3}, {0x04894F, 3}, {0x04896E, 4}, {0x04894F, 8}, {0x048957, 5}, {0x04895C, 2}, {0, 0}, {0x04895E, 3}, {0x048961, 3}, {0x048978, 5}, {0x048986, 4}, {0x048961, 13}, {0, 0}, {0, 0}, {0x04895B, 1}, {0x04898A, 5}, {0, 0}, {0x04898F, 3}, {0x048992, 5}, {0x048997, 4}, {0x04899B, 4}, {0x0489F7, 3}, {0x04899B, 27}, {0x0489BC, 2}, {0x0489B6, 6}, {0x0489BE, 13}, {0, 0}, {0, 0}, {0x0489CB, 3}, {0x0489CE, 2}, {0x0489CE, 8}, {0x0489D6, 4}, {0x0489DA, 5}, {0x0489DF, 4}, {0x0489E3, 10}, {0x0489E3, 4}, {0x0489EC, 1}, {0x0489ED, 6}, {0x0489F3, 5}, {0x0489F8, 2}, {0, 0}},
+    {{0, 0}, {0, 0}, {0x04893D, 4}, {0x048941, 2}, {0x8943, 0}, {0x048943, 5}, {0x048948, 1}, {0x048949, 3}, {0x04894C, 3}, {0x04894F, 3}, {0x04896E, 4}, {0x04894F, 8}, {0x048957, 5}, {0x04895C, 2}, {0, 0}, {0x04895E, 3}, {0x048961, 3}, {0x048978, 5}, {0x048986, 4}, {0x048961, 13}, {0, 0}, {0, 0}, {0x04895B, 1}, {0x04898A, 5}, {0, 0}, {0x04898F, 8}, {0, 0}, {0x048997, 4}, {0x04899B, 4}, {0x0489F7, 1}, {0x04899B, 27}, {0x0489BC, 2}, {0x0489B6, 6}, {0x0489BE, 13}, {0, 0}, {0, 0}, {0x0489CB, 3}, {0x0489CE, 2}, {0x0489CE, 8}, {0x0489D6, 4}, {0x0489DA, 5}, {0x0489DF, 4}, {0x0489E3, 10}, {0x0489E3, 4}, {0x0489EC, 1}, {0x0489ED, 6}, {0x0489F3, 5}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0x04893D, 4}, {0x048941, 2}, {0x8943, 0}, {0x048943, 5}, {0x048948, 1}, {0x048949, 3}, {0x04894C, 3}, {0x04894F, 3}, {0x04896E, 4}, {0x04894F, 8}, {0x048957, 5}, {0x04895C, 2}, {0, 0}, {0x04895E, 3}, {0x048961, 3}, {0x048978, 5}, {0x048986, 4}, {0x048961, 13}, {0, 0}, {0, 0}, {0x04895B, 1}, {0x04898A, 5}, {0, 0}, {0x04898F, 8}, {0, 0}, {0x048997, 4}, {0x04899B, 4}, {0x0489F7, 1}, {0x04899B, 27}, {0x0489BC, 2}, {0, 0}, {0, 0}, {0x0489B6, 6}, {0x0489BE, 13}, {0x0489CB, 3}, {0x0489CE, 2}, {0x0489CE, 8}, {0x0489D6, 4}, {0x0489DA, 5}, {0x0489DF, 4}, {0x0489E3, 10}, {0x0489E3, 4}, {0x0489EC, 1}, {0x0489ED, 6}, {0x0489F3, 5}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0x04893D, 4}, {0x048941, 2}, {0x8943, 0}, {0x048943, 5}, {0x048948, 1}, {0x048949, 3}, {0x04894C, 3}, {0x04894F, 3}, {0x04896E, 4}, {0x04894F, 8}, {0x048957, 5}, {0, 0}, {0x04895C, 2}, {0x04895E, 3}, {0x048961, 3}, {0x048978, 5}, {0x048986, 4}, {0x048961, 8}, {0, 0}, {0x048969, 5}, {0x04895B, 1}, {0x04898A, 5}, {0, 0}, {0x04898F, 3}, {0x048992, 5}, {0x048997, 4}, {0x04899B, 4}, {0x0489F7, 1}, {0x04899B, 27}, {0x0489BC, 2}, {0, 0}, {0, 0}, {0x0489B6, 6}, {0x0489BE, 13}, {0x0489CB, 3}, {0x0489CE, 2}, {0x0489CE, 8}, {0x0489D6, 4}, {0x0489DA, 5}, {0x0489DF, 4}, {0x0489E3, 10}, {0x0489E3, 4}, {0x0489EC, 1}, {0x0489ED, 6}, {0x0489F3, 5}, {0, 0}, {0, 0}},
+    {{0x04893B, 2}, {0, 0}, {0x04893D, 4}, {0x048941, 2}, {0x8943, 0}, {0x048943, 5}, {0x048948, 1}, {0x048949, 3}, {0x04894C, 3}, {0x04894F, 3}, {0x04896E, 4}, {0x04894F, 8}, {0x048957, 5}, {0, 0}, {0x04895C, 2}, {0x04895E, 3}, {0x048961, 3}, {0x048978, 18}, {0, 0}, {0x04895B, 1}, {0x048961, 8}, {0, 0}, {0, 0}, {0x04898A, 5}, {0, 0}, {0x04898F, 8}, {0, 0}, {0x048997, 4}, {0x04899B, 4}, {0x0489F7, 1}, {0x04899B, 27}, {0x0489B6, 21}, {0x0489B6, 6}, {0x0489BE, 13}, {0, 0}, {0, 0}, {0x0489CB, 3}, {0x0489CE, 2}, {0x0489CE, 8}, {0x0489D6, 4}, {0x0489DA, 5}, {0x0489DF, 4}, {0x0489E3, 10}, {0x0489E3, 4}, {0x0489EC, 1}, {0x0489ED, 6}, {0x0489F3, 5}, {0x04888C, 1}, {0x0489F8, 2}},
+    {{0, 0}, {0, 0}, {0x04893D, 4}, {0x048941, 2}, {0x8943, 0}, {0x048943, 5}, {0x048948, 4}, {0, 0}, {0x04894C, 3}, {0x04894F, 3}, {0x04896E, 4}, {0x04894F, 13}, {0, 0}, {0x04895C, 2}, {0, 0}, {0x04895E, 3}, {0x048961, 3}, {0x048978, 5}, {0x048986, 4}, {0x048961, 13}, {0x048992, 5}, {0, 0}, {0x04895B, 1}, {0x04898A, 5}, {0, 0}, {0x04898F, 3}, {0, 0}, {0x048997, 4}, {0, 0}, {0, 0}, {0x04899B, 27}, {0x0489BC, 2}, {0x0489B6, 6}, {0x0489BE, 13}, {0, 0}, {0, 0}, {0x0489CB, 3}, {0x0489CE, 2}, {0x0489CE, 8}, {0x0489D6, 4}, {0x0489DA, 5}, {0x0489DF, 4}, {0x0489E3, 10}, {0x0489E3, 4}, {0x0489EC, 1}, {0x0489ED, 6}, {0x0489F3, 5}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0x04893D, 4}, {0x048941, 2}, {0x8943, 0}, {0x048943, 5}, {0x048948, 1}, {0x048949, 3}, {0x04894C, 3}, {0x04894F, 3}, {0x04896E, 4}, {0x04894F, 8}, {0x048957, 5}, {0x04895C, 2}, {0, 0}, {0x04895E, 3}, {0x048961, 3}, {0x048978, 5}, {0x048986, 4}, {0x048961, 13}, {0, 0}, {0, 0}, {0x04895B, 1}, {0x04898A, 5}, {0, 0}, {0x04898F, 3}, {0x048992, 5}, {0x048997, 4}, {0, 0}, {0, 0}, {0x04899B, 27}, {0x0489BC, 2}, {0x0489B6, 6}, {0x0489BE, 13}, {0, 0}, {0, 0}, {0x0489CB, 3}, {0x0489CE, 2}, {0x0489CE, 8}, {0x0489D6, 4}, {0x0489DA, 5}, {0x0489DF, 4}, {0x0489E3, 10}, {0x0489E3, 4}, {0x0489EC, 1}, {0x0489ED, 6}, {0x0489F3, 5}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0x04893D, 4}, {0x048941, 2}, {0x8943, 0}, {0x048943, 5}, {0x048948, 1}, {0x048949, 3}, {0x04894C, 3}, {0x04894F, 3}, {0x04896E, 4}, {0x04894F, 8}, {0x048957, 5}, {0x04895C, 2}, {0, 0}, {0x04895E, 3}, {0x048961, 3}, {0x048978, 5}, {0x048986, 4}, {0x048961, 13}, {0, 0}, {0, 0}, {0x04895B, 1}, {0x04898A, 5}, {0, 0}, {0x04898F, 3}, {0x048992, 5}, {0x048997, 4}, {0x04899B, 4}, {0x0489F7, 1}, {0x04899B, 27}, {0x0489BC, 2}, {0x0489B6, 6}, {0x0489BE, 13}, {0, 0}, {0, 0}, {0x0489CB, 3}, {0x0489CE, 2}, {0x0489CE, 8}, {0x0489D6, 4}, {0x0489DA, 5}, {0x0489DF, 4}, {0x0489E3, 10}, {0x0489E3, 4}, {0x0489EC, 1}, {0x0489ED, 6}, {0x0489F3, 5}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0x04893D, 4}, {0x048941, 2}, {0x8943, 0}, {0x048943, 5}, {0x048948, 1}, {0x048949, 3}, {0x04894C, 3}, {0x04894F, 3}, {0x04896E, 4}, {0x04894F, 8}, {0x048957, 5}, {0x04895C, 2}, {0, 0}, {0x04895E, 3}, {0x048961, 3}, {0x048978, 5}, {0x048986, 4}, {0x048961, 13}, {0, 0}, {0, 0}, {0x04895B, 1}, {0x048972, 6}, {0x048989, 6}, {0x04898F, 3}, {0x048992, 5}, {0x048997, 4}, {0x04899B, 4}, {0x0489F7, 1}, {0x04899B, 27}, {0x0489B6, 21}, {0x0489B6, 6}, {0x0489BE, 13}, {0, 0}, {0, 0}, {0x0489CB, 3}, {0x0489CE, 2}, {0x0489CE, 8}, {0x0489D6, 4}, {0x0489DA, 5}, {0x0489DF, 4}, {0x0489E3, 10}, {0x0489E3, 4}, {0x0489EC, 1}, {0x0489ED, 6}, {0x0489F3, 5}, {0, 0}, {0, 0}},
 };
 
 /*
@@ -352,20 +354,20 @@ FxRegs FxPoolTake(FxRegs g, int copy)
     g.r[1] = 0;
     goto done;
 mark:
-    gsu_codes(FxPoolTake_code[copy] + 23, 1);
+    gsu_codes(FxPoolTake_code[copy] + 23, 2);
     g.r[2] = gsu_add(g.r[3], g.r[0], 0);
     gsu_stw(g.r[2], g.r[1]);
     g.r[2] = gsu_dec(gsu_dec(g.r[2]));
     g.r[1] = g.r[2];
-gsu_codes(FxPoolTake_code[copy] + 24, 1);
+gsu_codes(FxPoolTake_code[copy] + 25, 1);
 done:
-    gsu_codes(FxPoolTake_code[copy] + 25, 1);
-    g.r[3] = gsu_pull(sp);
     gsu_codes(FxPoolTake_code[copy] + 26, 1);
+    g.r[3] = gsu_pull(sp);
+    gsu_codes(FxPoolTake_code[copy] + 27, 1);
     g.r[4] = gsu_pull(sp);
     gsu_moves(g.r[1]);
     if (gsu.z)
-        { gsu_codes(FxPoolTake_code[copy] + 27, 2); return g; } else { gsu_codes(FxPoolTake_code[copy] + 29, 1); }
+        { gsu_codes(FxPoolTake_code[copy] + 28, 2); return g; } else { gsu_codes(FxPoolTake_code[copy] + 30, 1); }
     g.r[0] = FX_POOL_FIRST;
     gsu_sub(g.r[0], g.r[3], 0);
     g.r[0] = FX_POOL_SECOND;
@@ -375,41 +377,41 @@ done:
     g.r[2] = gsu_inc(gsu_inc(g.r[2]));
     gsu_moves(g.r[0]);
     if (gsu.s)
-        { gsu_codes(FxPoolTake_code[copy] + 30, 1); g.r[0] = gsu_inc(gsu_not(g.r[0])); } else { gsu_codes(FxPoolTake_code[copy] + 31, 2); }
-    gsu_codes(FxPoolTake_code[copy] + 33, 2);
+        { gsu_codes(FxPoolTake_code[copy] + 31, 1); g.r[0] = gsu_inc(gsu_not(g.r[0])); } else { gsu_codes(FxPoolTake_code[copy] + 32, 2); }
+    gsu_codes(FxPoolTake_code[copy] + 34, 2);
     g.r[0] = gsu_sub(g.r[0], 4, 0);
     if (!gsu.z && !gsu.s) {
         g.r[12] = g.r[0];
         g.r[0] = gsu_sub(g.r[0], g.r[0], 0);
         g.r[13] = 0x89CB;
         do {
-            gsu_codes(FxPoolTake_code[copy] + 35, 1);
+            gsu_codes(FxPoolTake_code[copy] + 36, 1);
             gsu_stb(g.r[2], (uint8_t)g.r[0]);
             g.r[2] = gsu_inc(g.r[2]);
-        } while (gsu_codes_loop(FxPoolTake_code[copy] + 36, 1, gsu_count_down(&g.r[12])));
-        gsu_codes(FxPoolTake_code[copy] + 37, 1);
+        } while (gsu_codes_loop(FxPoolTake_code[copy] + 37, 1, gsu_count_down(&g.r[12])));
+        gsu_codes(FxPoolTake_code[copy] + 38, 1);
     }
     g.r[0] = gsu_add(REC_POOL, g.r[1], 0);
     gsu_stw(g.r[0], g.r[3]);
-    gsu_codes(FxPoolTake_code[copy] + 38, 1);
+    gsu_codes(FxPoolTake_code[copy] + 39, 1);
     g.r[2] = gsu_ldw(FX_RECORDS);
     g.r[0] = gsu_add(REC_ALL_NEXT, g.r[1], 0);
-    gsu_codes(FxPoolTake_code[copy] + 39, 1);
-    gsu_stw(g.r[0], g.r[2]);
     gsu_codes(FxPoolTake_code[copy] + 40, 1);
+    gsu_stw(g.r[0], g.r[2]);
+    gsu_codes(FxPoolTake_code[copy] + 41, 1);
     gsu_stw(FX_RECORDS, g.r[1]);
     gsu_moves(g.r[2]);
     if (!gsu.z) {
-        gsu_codes(FxPoolTake_code[copy] + 41, 1);
+        gsu_codes(FxPoolTake_code[copy] + 42, 1);
         g.r[0] = gsu_add(REC_ALL_PREV, g.r[2], 0);
         gsu_stw(g.r[0], g.r[1]);
-    } else { gsu_codes(FxPoolTake_code[copy] + 42, 2); }
-    gsu_codes(FxPoolTake_code[copy] + 44, 1);
+    } else { gsu_codes(FxPoolTake_code[copy] + 43, 2); }
+    gsu_codes(FxPoolTake_code[copy] + 45, 1);
     g.r[2] = gsu_ldw(gsu_add(REC_FLAGS1C, g.r[1], 0));
     g.r[0] = gsu_or(0x0004, g.r[2]);
-    gsu_codes(FxPoolTake_code[copy] + 45, 1);
+    gsu_codes(FxPoolTake_code[copy] + 46, 1);
     gsu_sbk(g.r[0]);
-    gsu_codes(FxPoolTake_code[copy] + 46, 2);
+    gsu_codes(FxPoolTake_code[copy] + 47, 2);
     return g;
 }
 
@@ -418,7 +420,7 @@ void abi_FxPoolTake(void)
     FxRegs g;
 
     memcpy(g.r, gsu.r, sizeof g.r);
-    g = FxPoolTake(g, GSU_COPY(5));
+    g = FxPoolTake(g, GSU_COPY(4));
     memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
 }
 
@@ -431,14 +433,16 @@ void abi_FxPoolTake(void)
 #define REC_MASS 0x2Au
 
 /* cyccopy: the copy each of the caller's copies calls */
-static const uint8_t FxPoolTake_from_record_new[4] = {2, 2, 2, 4};
+static const uint8_t FxPoolTake_from_record_new[6] = {2, 2, 2, 3, 8, 8};
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode record_new_code[4][2] = {
-    {{0x0489F8, 2}, {0x048B72, 5}},
-    {{0x0489F8, 2}, {0x048CA3, 5}},
-    {{0x0489F8, 2}, {0x048C18, 5}},
-    {{0x0489F8, 2}, {0x048CA3, 5}},
+static const GsuCode record_new_code[6][5] = {
+    {{0x04893A, 3}, {0x048B65, 13}, {0x0489F8, 2}, {0x048B72, 5}, {0x048B77, 9}},
+    {{0, 0}, {0, 0}, {0x0489F8, 2}, {0x048CA3, 5}, {0, 0}},
+    {{0, 0}, {0, 0}, {0x0489F8, 2}, {0x048C18, 5}, {0, 0}},
+    {{0, 0}, {0, 0}, {0x0489F8, 2}, {0x048B41, 5}, {0x048B46, 4}},
+    {{0, 0}, {0, 0}, {0x0489F8, 2}, {0x048C49, 5}, {0x048C4E, 4}},
+    {{0x04893A, 3}, {0x048C6D, 13}, {0x0489F8, 2}, {0x048C7A, 5}, {0x048C7F, 4}},
 };
 
 /* The start of each program below: R10 = the stack, a record of `bytes`
@@ -446,29 +450,45 @@ static const GsuCode record_new_code[4][2] = {
    $238E for the S-CPU. Returns whether there is one. */
 static int record_new(FxRegs *g, uint16_t bytes, uint16_t pool, uint16_t ret, int copy)
 {
+    gsu_codes(record_new_code[copy], 2);
     g->r[10] = FX_STACK;
     g->r[4] = bytes;
     g->r[3] = pool;
     g->r[11] = ret;
     *g = FxPoolTake(*g, GSU_COPY(FxPoolTake_from_record_new[copy]));
-    gsu_codes(record_new_code[copy], 2);
+    gsu_codes(record_new_code[copy] + 2, 2);
     gsu_stw(FX_NEW_RECORD, g->r[1]);
     gsu_moves(g->r[1]);
+    gsu_codes(record_new_code[copy] + 4, 1);
     return !gsu.z;
 }
+
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode record_set_code[3][2] = {
+    {{0x048BA4, 8}, {0, 0}},
+    {{0, 0}, {0, 0}},
+    {{0x048C83, 9}, {0x048C8C, 8}},
+};
 
 /* Field `field` of the new record R1 = `value`, through R2 and R0. */
 static void record_set(FxRegs *g, uint16_t field, uint16_t value, int copy)
 {
+    gsu_codes(record_set_code[copy], 1);
     g->r[2] = value;
     g->r[0] = gsu_add(field, g->r[1], 0);
     gsu_stw(g->r[0], g->r[2]);
+    gsu_codes(record_set_code[copy] + 1, 1);
 }
 
+/* cyccopy: the copy each of the caller's copies calls */
+static const uint8_t record_new_from_record_new_first[4] = {1, 2, 3, 4};
+
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode record_new_first_code[2][5] = {
-    {{0, 0}, {0, 0}, {0x048CA8, 13}, {0x048CB5, 8}, {0x048CBD, 8}},
-    {{0x04893A, 3}, {0x048C0B, 13}, {0x048C1D, 13}, {0x048C2A, 8}, {0x048C32, 8}},
+static const GsuCode record_new_first_code[4][6] = {
+    {{0x04893A, 3}, {0x048C96, 13}, {0x048CA8, 13}, {0x048CB5, 8}, {0x048CBD, 8}, {0x048B62, 1}},
+    {{0x04893A, 3}, {0x048C0B, 13}, {0x048C1D, 13}, {0x048C2A, 8}, {0x048C32, 8}, {0x048B62, 1}},
+    {{0x04893A, 3}, {0x048B34, 13}, {0x048B4A, 9}, {0x048B53, 8}, {0x048B5B, 8}, {0x048B62, 1}},
+    {{0x04893A, 3}, {0x048C3C, 13}, {0x048C52, 9}, {0x048C5B, 8}, {0x048C63, 8}, {0x048C6A, 1}},
 };
 
 /* The first pool's programs: a $34-byte record with its mass (+$2A), flags
@@ -476,14 +496,14 @@ static const GsuCode record_new_first_code[2][5] = {
 static FxRegs record_new_first(FxRegs g, uint16_t ret, uint16_t mass, uint16_t flags, uint16_t mode, int copy)
 {
     gsu_codes(record_new_first_code[copy], 2);
-    if (record_new(&g, 0x0034, FX_POOL_FIRST, ret, GSU_COPY(1))) {
+    if (record_new(&g, 0x0034, FX_POOL_FIRST, ret, GSU_COPY(record_new_from_record_new_first[copy]))) {
         gsu_codes(record_new_first_code[copy] + 2, 1);
         record_set(&g, REC_MASS, mass, GSU_COPY(1));
         gsu_codes(record_new_first_code[copy] + 3, 1);
-        record_set(&g, REC_FLAGS16, flags, GSU_COPY(2));
+        record_set(&g, REC_FLAGS16, flags, GSU_COPY(1));
         gsu_codes(record_new_first_code[copy] + 4, 1);
-        record_set(&g, REC_MODE, mode, GSU_COPY(3));
-    }
+        record_set(&g, REC_MODE, mode, GSU_COPY(1));
+    } else { gsu_codes(record_new_first_code[copy] + 5, 1); }
     return g;
 }
 
@@ -507,8 +527,7 @@ static FxRegs record_new_first(FxRegs g, uint16_t ret, uint16_t mass, uint16_t f
  */
 FxRegs FxRecordNew426(FxRegs g)
 {
-    gsu_code(0x04893A, 3); gsu_code(0x048B34, 13);
-    return record_new_first(g, 0x8B41, 0x0040, 0x0008, 0x0426, GSU_COPY(0));
+    return record_new_first(g, 0x8B41, 0x0040, 0x0008, 0x0426, GSU_COPY(2));
 }
 
 void abi_FxRecordNew426(void)
@@ -544,8 +563,7 @@ void abi_FxRecordNew424(void)
  */
 FxRegs FxRecordNew426B(FxRegs g)
 {
-    gsu_code(0x04893A, 3); gsu_code(0x048C3C, 13);
-    return record_new_first(g, 0x8C49, 0x0040, 0x0020, 0x0426, GSU_COPY(0));
+    return record_new_first(g, 0x8C49, 0x0040, 0x0020, 0x0426, GSU_COPY(3));
 }
 
 void abi_FxRecordNew426B(void)
@@ -566,13 +584,10 @@ void abi_FxRecordNew426B(void)
  */
 FxRegs FxRecordNewCamera(FxRegs g)
 {
-    gsu_code(0x04893A, 3); gsu_code(0x048C6D, 13);
-    if (record_new(&g, 0x0034, FX_POOL_FIRST, 0x8C7A, GSU_COPY(0))) {
-        gsu_code(0x048C7F, 13);
-        record_set(&g, REC_FLAGS16, 0x0020, GSU_COPY(0));
-        gsu_code(0x048C8C, 8);
-        record_set(&g, REC_MODE, 0x042E, GSU_COPY(0));
-    } else { gsu_code(0x048C7F, 4); gsu_code(0x048C93, 1); }
+    if (record_new(&g, 0x0034, FX_POOL_FIRST, 0x8C7A, GSU_COPY(5))) {
+        record_set(&g, REC_FLAGS16, 0x0020, GSU_COPY(2));
+        record_set(&g, REC_MODE, 0x042E, GSU_COPY(1));
+    } else { gsu_code(0x048C93, 1); }
     return g;
 }
 
@@ -591,7 +606,6 @@ void abi_FxRecordNewCamera(void)
  */
 FxRegs FxRecordNew42D(FxRegs g)
 {
-    gsu_code(0x04893A, 3); gsu_code(0x048C96, 13);
     return record_new_first(g, 0x8CA3, 0x0000, 0x0020, 0x042D, GSU_COPY(0));
 }
 
@@ -615,9 +629,8 @@ void abi_FxRecordNew42D(void)
  */
 FxRegs FxRecordNew422(FxRegs g)
 {
-    gsu_code(0x04893A, 3); gsu_code(0x048B65, 13);
     if (!record_new(&g, 0x002A, FX_POOL_SECOND, 0x8B72, GSU_COPY(0)))
-        return g; else { gsu_code(0x048B77, 9); }
+        return g;
     g.r[0] = gsu_inc(gsu_ldw(FX_COUNT_422));
     gsu_code(0x048B80, 2);
     gsu_sbk(g.r[0]);
@@ -638,7 +651,6 @@ FxRegs FxRecordNew422(FxRegs g)
     g.r[0] = gsu_add(REC_FLAGS16, g.r[1], 0);
     gsu_code(0x048B9A, 10);
     gsu_stw(g.r[0], g.r[2]);
-    gsu_code(0x048BA4, 8);
     record_set(&g, REC_MODE, 0x0422, GSU_COPY(0));
     return g;
 }
@@ -681,10 +693,9 @@ void abi_FxObjectFree(void)
         gsu_push(&gsu.r[10], gsu.r[8]);
         gsu.r[6] = gsu.r[1];
         gsu.r[11] = 0x8A20;
-        (gsu_code(0x048A18, 8), gsu_code(0x04A441, 7), abi_FxListClearBit0());
+        abi_FxListClearBit0();
         gsu.r[11] = 0x8A25;
         abi_FxListSweep();
-        gsu_code(0x048A25, 5); gsu_code(0x04A489, 3);
         gsu.r[8] = gsu_pull(&gsu.r[10]);
     } else { gsu_code(0x048A11, 4); gsu_code(0x048A29, 1); }
     gsu_code(0x048A2A, 4);
@@ -696,7 +707,7 @@ void abi_FxObjectFree(void)
         gsu_code(0x048A2E, 11); gsu_code(0x048AA2, 3);
         gsu.r[11] = 0x8A39;
         abi_FxObjectFreeChildren();
-    } else { gsu_code(0x048A2E, 6); gsu_code(0x048A39, 7); }
+    } else { gsu_code(0x048A2E, 6); }
     gsu_code(0x048A39, 7);
     gsu.r[2] = gsu_add(0x0006, gsu.r[1], 0);
     gsu.r[2] = gsu_ldw(gsu.r[2]);
@@ -709,7 +720,8 @@ void abi_FxObjectFree(void)
         gsu.r[0] = gsu_add(0x0004, gsu.r[2], 0);
         gsu_stw(gsu.r[0], gsu.r[3]);
     } else
-        { gsu_code(0x048A46, 4); gsu_code(0x048A52, 5); gsu_stw(0x2332, gsu.r[3]); }
+        gsu_stw(0x2332, gsu.r[3]);
+    gsu_code(0x048A50, 2); gsu_code(0x048A56, 11);
     gsu_moves(gsu.r[3]);
     if (!gsu.z) {
         gsu.r[0] = gsu_add(0x0006, gsu.r[3], 0);
@@ -724,8 +736,7 @@ void abi_FxObjectFree(void)
     gsu.r[2] = gsu.r[0];
     gsu_moves(gsu.r[2]);
     if (gsu.s)
-        { gsu_code(0x048A6E, 3); gsu.r[2] = gsu_inc(gsu_not(gsu.r[2])); }
-    gsu_code(0x048A6A, 4); gsu_code(0x048A71, 25);
+        gsu.r[2] = gsu_inc(gsu_not(gsu.r[2])); else { gsu_code(0x048A6A, 4); gsu_code(0x048A71, 25); }
     gsu.r[0] = 0x1098;
     gsu_sub(gsu.r[0], gsu.r[3], 0);
     gsu.r[0] = 0x1D70;
@@ -738,7 +749,6 @@ void abi_FxObjectFree(void)
     gsu.r[0] = gsu_ldw(gsu.r[2]);
     gsu_moves(gsu.r[0]);
     if (gsu.s) {
-        gsu_code(0x048A8F, 8);
         gsu.r[0] = gsu_inc(gsu_not(gsu.r[0]));
         gsu_stw(gsu.r[2], gsu.r[0]);
     } else {
@@ -749,6 +759,7 @@ void abi_FxObjectFree(void)
         gsu_code(0x048A9C, 2);
         gsu_stw(gsu.r[3], gsu.r[1]);
     }
+    gsu_code(0x048A9E, 4);
     gsu_pull(&gsu.r[10]);
 }
 
@@ -766,11 +777,13 @@ void abi_FxObjectFree(void)
 void abi_FxObjectFreeChildren(void)
 {
     gsu_push(&gsu.r[10], gsu.r[11]);
+    gsu_code(0x048AA5, 4);
     gsu_push(&gsu.r[10], gsu.r[1]);
     gsu.r[4] = gsu_add(0x003E, gsu.r[1], 0);
+    gsu_code(0x048AA9, 8);
     gsu.r[4] = gsu_ldw(gsu.r[4]);
     for (;;) {
-        gsu_code(0x048AB0, 5); gsu_code(0x048AC2, 5);
+        gsu_code(0x048AB1, 4);
         gsu_moves(gsu.r[4]);
         if (gsu.z)
             { gsu_code(0x048AC7, 5); break; } else { gsu_code(0x048AB5, 9); }
@@ -780,6 +793,7 @@ void abi_FxObjectFreeChildren(void)
         gsu.r[11] = 0x8AC2;
         (gsu_code(0x048A08, 1), gsu_code(0x048ABE, 4), abi_FxObjectFree());
         gsu.r[1] = gsu.r[4];
+        gsu_code(0x048AB0, 1); gsu_code(0x048AC2, 5);
     }
     gsu.r[1] = gsu_pull(&gsu.r[10]);
     gsu_code(0x048ACC, 4);

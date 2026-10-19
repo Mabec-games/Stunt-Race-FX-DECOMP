@@ -41,10 +41,27 @@ void abi_FxObjectSpriteAt(void);
 void abi_FxRatioClamp(void);
 void abi_FxSqrt32(void);
 
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode unused_run_code[12][150] = {
+    {{0x01AD69, 2}, {0, 0}, {0, 0}, {0x01AD7D, 4}, {0x01AE8B, 2}, {0x01AD81, 8}, {0x01AD8B, 15}, {0x01AE3A, 17}, {0x01AD81, 25}, {0x01AE3A, 17}, {0x01AD9A, 5}, {0x01AE5D, 2}, {0x01ADB3, 4}, {0x01AE8B, 2}, {0x01ADB7, 8}, {0x01ADC1, 14}, {0x01ADB7, 24}, {0x01ADCF, 5}, {0x01AE5D, 2}, {0x01ADD7, 5}, {0x01ADDC, 7}, {0x01ADE3, 5}, {0x01ADED, 1}, {0x01ADE3, 11}, {0x01ADEE, 3}, {0x01ADF1, 4}, {0x01ADF1, 7}, {0x01ADFA, 24}, {0x01AE5F, 1}, {0xAE60, 0}, {0x01AE60, 17}, {0x01ADF8, 2}, {0x01AE12, 12}, {0x01AE8B, 2}, {0x01AE1E, 5}, {0x01AE3A, 17}, {0x01AE26, 2}, {0x01AE3A, 17}, {0x01AE55, 1}, {0x01AE31, 5}, {0x01AE36, 4}, {0, 0}, {0, 0}, {0x01AE4B, 6}, {0xAE51, 0}, {0, 0}, {0, 0}, {0x01AE51, 5}, {0x01AE55, 1}, {0x01AE56, 1}, {0x01AE57, 6}, {0x01AE55, 1}, {0x01AE55, 1}, {0x01AE55, 1}, {0x01AE55, 1}, {0x01AE55, 1}, {0x01AE55, 1}, {0, 0}, {0x01AD6B, 18}, {0x01AE5F, 1}, {0xAE60, 0}, {0x01AE60, 17}, {0x01AE70, 2}, {0x01AE72, 7}, {0, 0}, {0, 0}, {0x01AE79, 4}, {0x01AE78, 1}, {0x01AE7D, 5}, {0x01AE83, 7}, {0x01AE89, 2}, {0, 0}, {0, 0}, {0x01AE93, 3}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE96, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x0180E3, 1}, {0x01AE97, 2}, {0x01AEA3, 2}, {0x01AEA5, 2}, {0x01AEA5, 3}, {0x01AEB3, 2}, {0x01AEB5, 2}, {0x01AEB5, 3}, {0x01AECE, 3}, {0x01AECE, 11}, {0xAED9, 0}, {0x01AED9, 2}, {0x01AEDB, 2}, {0x01AEDD, 2}, {0x01AEDD, 2}, {0x01AEDF, 1}, {0x01AEE5, 3}, {0x01AEE5, 11}, {0xAEF0, 0}, {0x01AEF0, 2}, {0x01AEF2, 2}, {0x01AEF4, 2}, {0x01AEF4, 2}, {0x01AEF6, 1}, {0x01B034, 8}, {0x01B041, 2}, {0x01B03C, 5}, {0x01B043, 13}, {0x01B050, 1}, {0x01B051, 1}, {0x01B052, 2}, {0x01B054, 1}, {0x01B055, 2}, {0x01B057, 5}, {0x01B05C, 5}, {0x01B061, 5}, {0x01B066, 15}, {0xB075, 0}, {0x01B075, 5}, {0x01B07A, 1}, {0x01B07B, 1}, {0x01B07C, 1}, {0x01B07D, 4}, {0x01B081, 5}, {0x01B081, 8}, {0x01B098, 3}, {0x01B09B, 3}, {0x01B09E, 3}, {0x01B0A1, 5}, {0x01B0A6, 8}, {0x01B0B3, 2}, {0x01B0AE, 5}, {0x01B0B5, 13}, {0x01B0C2, 1}, {0x01B0C3, 1}, {0x01B0C4, 2}, {0x01B0C6, 1}, {0x01B0C7, 3}, {0x01B0CA, 4}, {0x01B0CE, 3}, {0x01B0D1, 4}, {0x01B17D, 3}, {0x01B0D5, 3}, {0x0180E3, 1}},
+    {{0x01ADA0, 2}, {0, 0}, {0, 0}, {0x01AD7D, 4}, {0x01AE8B, 2}, {0x01AD81, 8}, {0x01AD8B, 15}, {0x01AE3A, 17}, {0x01AD81, 25}, {0x01AE3A, 17}, {0x01AD9A, 5}, {0x01AE5D, 2}, {0x01ADB3, 4}, {0x01AE8B, 2}, {0x01ADB7, 8}, {0x01ADC1, 14}, {0x01ADB7, 24}, {0x01ADCF, 5}, {0x01AE5D, 2}, {0x01ADD7, 5}, {0x01ADDC, 7}, {0x01ADE3, 5}, {0x01ADED, 1}, {0x01ADE3, 11}, {0x01ADEE, 3}, {0x01ADF1, 4}, {0x01ADF1, 7}, {0x01ADFA, 24}, {0x01AE5F, 1}, {0xAE60, 0}, {0x01AE60, 17}, {0x01ADF8, 2}, {0x01AE12, 12}, {0x01AE8B, 2}, {0x01AE1E, 5}, {0x01AE3A, 17}, {0x01AE26, 2}, {0x01AE3A, 17}, {0x01AE55, 1}, {0x01AE31, 5}, {0x01AE36, 4}, {0x01AE3A, 17}, {0, 0}, {0x01AE3A, 23}, {0xAE51, 0}, {0, 0}, {0, 0}, {0x01AE51, 5}, {0x01AE55, 1}, {0x01AE56, 1}, {0x01AE57, 6}, {0x01AE55, 1}, {0x01AE55, 1}, {0x01AE55, 1}, {0x01AE55, 1}, {0x01AE55, 1}, {0x01AE55, 1}, {0, 0}, {0x01ADA2, 17}, {0x01AE5F, 1}, {0xAE60, 0}, {0x01AE60, 17}, {0x01AE70, 2}, {0x01AE72, 7}, {0, 0}, {0, 0}, {0x01AE79, 4}, {0x01AE78, 1}, {0x01AE7D, 5}, {0x01AE83, 7}, {0x01AE89, 2}, {0, 0}, {0, 0}, {0x01AE93, 3}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE96, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x0180E3, 1}, {0x01AE97, 2}, {0x01AEA3, 2}, {0x01AEA5, 2}, {0x01AEA5, 3}, {0x01AEB3, 2}, {0x01AEB5, 2}, {0x01AEB5, 3}, {0x01AECE, 3}, {0x01AECE, 11}, {0xAED9, 0}, {0x01AED9, 2}, {0x01AEDB, 2}, {0x01AEDD, 2}, {0x01AEDD, 2}, {0x01AEDF, 1}, {0x01AEE5, 3}, {0x01AEE5, 11}, {0xAEF0, 0}, {0x01AEF0, 2}, {0x01AEF2, 2}, {0x01AEF4, 2}, {0x01AEF4, 2}, {0x01AEF6, 1}, {0x01B034, 8}, {0x01B041, 2}, {0x01B03C, 5}, {0x01B043, 13}, {0x01B050, 1}, {0x01B051, 1}, {0x01B052, 2}, {0x01B054, 1}, {0x01B055, 2}, {0x01B057, 5}, {0x01B05C, 5}, {0x01B061, 5}, {0x01B066, 15}, {0xB075, 0}, {0x01B075, 5}, {0x01B07A, 1}, {0x01B07B, 1}, {0x01B07C, 1}, {0x01B07D, 4}, {0x01B081, 5}, {0x01B081, 8}, {0x01B098, 3}, {0x01B09B, 3}, {0x01B09E, 3}, {0x01B0A1, 5}, {0x01B0A6, 8}, {0x01B0B3, 2}, {0x01B0AE, 5}, {0x01B0B5, 13}, {0x01B0C2, 1}, {0x01B0C3, 1}, {0x01B0C4, 2}, {0x01B0C6, 1}, {0x01B0C7, 3}, {0x01B0CA, 4}, {0x01B0CE, 3}, {0x01B0D1, 4}, {0x01B17D, 3}, {0x01B0D5, 3}, {0x0180E3, 1}},
+    {{0x01ADD5, 2}, {0, 0}, {0, 0}, {0x01AD7D, 4}, {0x01AE8B, 2}, {0x01AD81, 8}, {0x01AD8B, 15}, {0x01AE3A, 17}, {0x01AD81, 25}, {0x01AE3A, 17}, {0x01AD9A, 5}, {0x01AE5D, 2}, {0x01ADB3, 4}, {0x01AE8B, 2}, {0x01ADB7, 8}, {0x01ADC1, 14}, {0x01ADB7, 24}, {0x01ADCF, 5}, {0x01AE5D, 2}, {0x01ADD7, 5}, {0x01ADDC, 7}, {0x01ADE3, 5}, {0x01ADED, 1}, {0x01ADE3, 11}, {0x01ADEE, 3}, {0x01ADF1, 4}, {0x01ADF1, 7}, {0x01ADFA, 24}, {0x01AE5F, 1}, {0xAE60, 0}, {0x01AE60, 17}, {0x01ADF8, 2}, {0x01AE12, 12}, {0x01AE8B, 2}, {0x01AE1E, 5}, {0x01AE3A, 17}, {0x01AE26, 2}, {0x01AE3A, 17}, {0x01AE55, 1}, {0x01AE31, 5}, {0x01AE36, 4}, {0x01AE23, 3}, {0x01AE28, 9}, {0x01AE23, 3}, {0x01AE28, 9}, {0x01AE4B, 6}, {0xAE51, 0}, {0x01AE51, 4}, {0, 0}, {0x01AE55, 2}, {0x01AE58, 5}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x01AE5D, 2}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x01AE70, 2}, {0x01AE72, 7}, {0x01AE78, 1}, {0x01AE7D, 5}, {0x01AE79, 4}, {0, 0}, {0, 0}, {0x01AE83, 7}, {0x01AE89, 2}, {0, 0}, {0, 0}, {0x01AE93, 3}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE96, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x0180E3, 1}, {0x01AE97, 2}, {0x01AEA3, 2}, {0x01AEA5, 2}, {0x01AEA5, 3}, {0x01AEB3, 2}, {0x01AEB5, 2}, {0x01AEB5, 3}, {0x01AECE, 3}, {0x01AECE, 11}, {0xAED9, 0}, {0x01AED9, 2}, {0x01AEDB, 2}, {0x01AEDD, 2}, {0x01AEDD, 2}, {0x01AEDF, 1}, {0x01AEE5, 3}, {0x01AEE5, 11}, {0xAEF0, 0}, {0x01AEF0, 2}, {0x01AEF2, 2}, {0x01AEF4, 2}, {0x01AEF4, 2}, {0x01AEF6, 1}, {0x01B034, 8}, {0x01B041, 2}, {0x01B03C, 5}, {0x01B043, 13}, {0x01B050, 1}, {0x01B051, 1}, {0x01B052, 2}, {0x01B054, 1}, {0x01B055, 2}, {0x01B057, 5}, {0x01B05C, 5}, {0x01B061, 5}, {0x01B066, 15}, {0xB075, 0}, {0x01B075, 5}, {0x01B07A, 1}, {0x01B07B, 1}, {0x01B07C, 1}, {0x01B07D, 4}, {0x01B081, 5}, {0x01B081, 8}, {0x01B098, 3}, {0x01B09B, 3}, {0x01B09E, 3}, {0x01B0A1, 5}, {0x01B0A6, 8}, {0x01B0B3, 2}, {0x01B0AE, 5}, {0x01B0B5, 13}, {0x01B0C2, 1}, {0x01B0C3, 1}, {0x01B0C4, 2}, {0x01B0C6, 1}, {0x01B0C7, 3}, {0x01B0CA, 4}, {0x01B0CE, 3}, {0x01B0D1, 4}, {0x01B17D, 3}, {0x01B0D5, 3}, {0x0180E3, 1}},
+    {{0x0180E3, 1}, {0x01AE3B, 21}, {0x01AE5D, 2}, {0x01AD7D, 4}, {0x01AE8B, 2}, {0x01AD81, 8}, {0x01AD8B, 15}, {0x01AE3A, 17}, {0x01AD81, 25}, {0x01AE3A, 17}, {0x01AD9A, 5}, {0x01AE5D, 2}, {0x01ADB3, 4}, {0x01AE8B, 2}, {0x01ADB7, 8}, {0x01ADC1, 14}, {0x01ADB7, 24}, {0x01ADCF, 5}, {0x01AE5D, 2}, {0x01ADD7, 5}, {0x01ADDC, 7}, {0x01ADE3, 5}, {0x01ADED, 1}, {0x01ADE3, 11}, {0x01ADEE, 3}, {0x01ADF1, 4}, {0x01ADF1, 7}, {0x01ADFA, 24}, {0x01AE5F, 1}, {0xAE60, 0}, {0x01AE60, 17}, {0x01ADF8, 2}, {0x01AE12, 12}, {0x01AE8B, 2}, {0x01AE1E, 5}, {0x01AE3A, 17}, {0x01AE26, 2}, {0x01AE3A, 17}, {0x01AE55, 1}, {0x01AE31, 5}, {0x01AE36, 4}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x01AE51, 5}, {0x01AE55, 1}, {0x01AE56, 1}, {0x01AE57, 6}, {0x01AE55, 1}, {0x01AE55, 1}, {0x01AE55, 1}, {0x01AE55, 1}, {0x01AE55, 1}, {0x01AE55, 1}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x01AE70, 2}, {0x01AE72, 7}, {0, 0}, {0, 0}, {0x01AE79, 4}, {0x01AE78, 1}, {0x01AE7D, 5}, {0x01AE83, 7}, {0x01AE89, 2}, {0, 0}, {0, 0}, {0x01AE93, 3}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE96, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x0180E3, 1}, {0x01AE97, 2}, {0x01AEA3, 2}, {0x01AEA5, 2}, {0x01AEA5, 3}, {0x01AEB3, 2}, {0x01AEB5, 2}, {0x01AEB5, 3}, {0x01AECE, 3}, {0x01AECE, 11}, {0xAED9, 0}, {0x01AED9, 2}, {0x01AEDB, 2}, {0x01AEDD, 2}, {0x01AEDD, 2}, {0x01AEDF, 1}, {0x01AEE5, 3}, {0x01AEE5, 11}, {0xAEF0, 0}, {0x01AEF0, 2}, {0x01AEF2, 2}, {0x01AEF4, 2}, {0x01AEF4, 2}, {0x01AEF6, 1}, {0x01B034, 8}, {0x01B041, 2}, {0x01B03C, 5}, {0x01B043, 13}, {0x01B050, 1}, {0x01B051, 1}, {0x01B052, 2}, {0x01B054, 1}, {0x01B055, 2}, {0x01B057, 5}, {0x01B05C, 5}, {0x01B061, 5}, {0x01B066, 15}, {0xB075, 0}, {0x01B075, 5}, {0x01B07A, 1}, {0x01B07B, 1}, {0x01B07C, 1}, {0x01B07D, 4}, {0x01B081, 5}, {0x01B081, 8}, {0x01B098, 3}, {0x01B09B, 3}, {0x01B09E, 3}, {0x01B0A1, 5}, {0x01B0A6, 8}, {0x01B0B3, 2}, {0x01B0AE, 5}, {0x01B0B5, 13}, {0x01B0C2, 1}, {0x01B0C3, 1}, {0x01B0C4, 2}, {0x01B0C6, 1}, {0x01B0C7, 3}, {0x01B0CA, 4}, {0x01B0CE, 3}, {0x01B0D1, 4}, {0x01B17D, 3}, {0x01B0D5, 3}, {0, 0}},
+    {{0x01AE60, 17}, {0, 0}, {0, 0}, {0x01AD7D, 4}, {0x01AE8B, 2}, {0x01AD81, 8}, {0x01AD8B, 15}, {0x01AE3A, 17}, {0x01AD81, 25}, {0x01AE3A, 17}, {0x01AD9A, 5}, {0x01AE5D, 2}, {0x01ADB3, 4}, {0x01AE8B, 2}, {0x01ADB7, 8}, {0x01ADC1, 14}, {0x01ADB7, 24}, {0x01ADCF, 5}, {0x01AE5D, 2}, {0x01ADD7, 5}, {0x01ADDC, 7}, {0x01ADE3, 5}, {0x01ADED, 1}, {0x01ADE3, 11}, {0x01ADEE, 3}, {0x01ADF1, 4}, {0x01ADF1, 7}, {0x01ADFA, 24}, {0x01AE5F, 1}, {0xAE60, 0}, {0x01AE60, 17}, {0x01ADF8, 2}, {0x01AE12, 12}, {0x01AE8B, 2}, {0x01AE1E, 5}, {0x01AE3A, 17}, {0x01AE26, 2}, {0x01AE3A, 17}, {0x01AE55, 1}, {0x01AE31, 5}, {0x01AE36, 4}, {0, 0}, {0, 0}, {0x01AE4B, 6}, {0xAE51, 0}, {0, 0}, {0, 0}, {0x01AE51, 5}, {0x01AE55, 1}, {0x01AE56, 1}, {0x01AE57, 6}, {0x01AE55, 1}, {0x01AE55, 1}, {0x01AE55, 1}, {0x01AE55, 1}, {0x01AE55, 1}, {0x01AE55, 1}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x01AE70, 2}, {0x01AE72, 7}, {0, 0}, {0, 0}, {0x01AE79, 4}, {0x01AE78, 1}, {0x01AE7D, 5}, {0x01AE83, 7}, {0x01AE89, 2}, {0x0180E3, 1}, {0x01AE8B, 2}, {0x01AE93, 3}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE96, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x0180E3, 1}, {0x01AE97, 2}, {0x01AEA3, 2}, {0x01AEA5, 2}, {0x01AEA5, 3}, {0x01AEB3, 2}, {0x01AEB5, 2}, {0x01AEB5, 3}, {0x01AECE, 3}, {0x01AECE, 11}, {0xAED9, 0}, {0x01AED9, 2}, {0x01AEDB, 2}, {0x01AEDD, 2}, {0x01AEDD, 2}, {0x01AEDF, 1}, {0x01AEE5, 3}, {0x01AEE5, 11}, {0xAEF0, 0}, {0x01AEF0, 2}, {0x01AEF2, 2}, {0x01AEF4, 2}, {0x01AEF4, 2}, {0x01AEF6, 1}, {0x01B034, 8}, {0x01B041, 2}, {0x01B03C, 5}, {0x01B043, 13}, {0x01B050, 1}, {0x01B051, 1}, {0x01B052, 2}, {0x01B054, 1}, {0x01B055, 2}, {0x01B057, 5}, {0x01B05C, 5}, {0x01B061, 5}, {0x01B066, 15}, {0xB075, 0}, {0x01B075, 5}, {0x01B07A, 1}, {0x01B07B, 1}, {0x01B07C, 1}, {0x01B07D, 4}, {0x01B081, 5}, {0x01B081, 8}, {0x01B098, 3}, {0x01B09B, 3}, {0x01B09E, 3}, {0x01B0A1, 5}, {0x01B0A6, 8}, {0x01B0B3, 2}, {0x01B0AE, 5}, {0x01B0B5, 13}, {0x01B0C2, 1}, {0x01B0C3, 1}, {0x01B0C4, 2}, {0x01B0C6, 1}, {0x01B0C7, 3}, {0x01B0CA, 4}, {0x01B0CE, 3}, {0x01B0D1, 4}, {0x01B17D, 3}, {0x01B0D5, 3}, {0, 0}},
+    {{0x01AE8E, 5}, {0, 0}, {0, 0}, {0x01AD7D, 4}, {0x01AE8B, 2}, {0x01AD81, 8}, {0x01AD8B, 15}, {0x01AE3A, 17}, {0x01AD81, 25}, {0x01AE3A, 17}, {0x01AD9A, 5}, {0x01AE5D, 2}, {0x01ADB3, 4}, {0x01AE8B, 2}, {0x01ADB7, 8}, {0x01ADC1, 14}, {0x01ADB7, 24}, {0x01ADCF, 5}, {0x01AE5D, 2}, {0x01ADD7, 5}, {0x01ADDC, 7}, {0x01ADE3, 5}, {0x01ADED, 1}, {0x01ADE3, 11}, {0x01ADEE, 3}, {0x01ADF1, 4}, {0x01ADF1, 7}, {0x01ADFA, 24}, {0x01AE5F, 1}, {0xAE60, 0}, {0x01AE60, 17}, {0x01ADF8, 2}, {0x01AE12, 12}, {0x01AE8B, 2}, {0x01AE1E, 5}, {0x01AE3A, 17}, {0x01AE26, 2}, {0x01AE3A, 17}, {0x01AE55, 1}, {0x01AE31, 5}, {0x01AE36, 4}, {0, 0}, {0, 0}, {0x01AE4B, 6}, {0xAE51, 0}, {0, 0}, {0, 0}, {0x01AE51, 5}, {0x01AE55, 1}, {0x01AE56, 1}, {0x01AE57, 6}, {0x01AE55, 1}, {0x01AE55, 1}, {0x01AE55, 1}, {0x01AE55, 1}, {0x01AE55, 1}, {0x01AE55, 1}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x01AE70, 2}, {0x01AE72, 7}, {0, 0}, {0, 0}, {0x01AE79, 4}, {0x01AE78, 1}, {0x01AE7D, 5}, {0x01AE83, 7}, {0x01AE89, 2}, {0, 0}, {0, 0}, {0x01AE93, 3}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE96, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x0180E3, 1}, {0x01AE97, 2}, {0x01AEA3, 2}, {0x01AEA5, 2}, {0x01AEA5, 3}, {0x01AEB3, 2}, {0x01AEB5, 2}, {0x01AEB5, 3}, {0x01AECE, 3}, {0x01AECE, 11}, {0xAED9, 0}, {0x01AED9, 2}, {0x01AEDB, 2}, {0x01AEDD, 2}, {0x01AEDD, 2}, {0x01AEDF, 1}, {0x01AEE5, 3}, {0x01AEE5, 11}, {0xAEF0, 0}, {0x01AEF0, 2}, {0x01AEF2, 2}, {0x01AEF4, 2}, {0x01AEF4, 2}, {0x01AEF6, 1}, {0x01B034, 8}, {0x01B041, 2}, {0x01B03C, 5}, {0x01B043, 13}, {0x01B050, 1}, {0x01B051, 1}, {0x01B052, 2}, {0x01B054, 1}, {0x01B055, 2}, {0x01B057, 5}, {0x01B05C, 5}, {0x01B061, 5}, {0x01B066, 15}, {0xB075, 0}, {0x01B075, 5}, {0x01B07A, 1}, {0x01B07B, 1}, {0x01B07C, 1}, {0x01B07D, 4}, {0x01B081, 5}, {0x01B081, 8}, {0x01B098, 3}, {0x01B09B, 3}, {0x01B09E, 3}, {0x01B0A1, 5}, {0x01B0A6, 8}, {0x01B0B3, 2}, {0x01B0AE, 5}, {0x01B0B5, 13}, {0x01B0C2, 1}, {0x01B0C3, 1}, {0x01B0C4, 2}, {0x01B0C6, 1}, {0x01B0C7, 3}, {0x01B0CA, 4}, {0x01B0CE, 3}, {0x01B0D1, 4}, {0x01B17D, 3}, {0x01B0D5, 3}, {0, 0}},
+    {{0x01AE9A, 7}, {0xAEA1, 0}, {0x01AEA1, 2}, {0x01AD7D, 4}, {0x01AE8B, 2}, {0x01AD81, 8}, {0x01AD8B, 15}, {0x01AE3A, 17}, {0x01AD81, 25}, {0x01AE3A, 17}, {0x01AD9A, 5}, {0x01AE5D, 2}, {0x01ADB3, 4}, {0x01AE8B, 2}, {0x01ADB7, 8}, {0x01ADC1, 14}, {0x01ADB7, 24}, {0x01ADCF, 5}, {0x01AE5D, 2}, {0x01ADD7, 5}, {0x01ADDC, 7}, {0x01ADE3, 5}, {0x01ADED, 1}, {0x01ADE3, 11}, {0x01ADEE, 3}, {0x01ADF1, 4}, {0x01ADF1, 7}, {0x01ADFA, 24}, {0x01AE5F, 1}, {0xAE60, 0}, {0x01AE60, 17}, {0x01ADF8, 2}, {0x01AE12, 12}, {0x01AE8B, 2}, {0x01AE1E, 5}, {0x01AE3A, 17}, {0x01AE26, 2}, {0x01AE3A, 17}, {0x01AE55, 1}, {0x01AE31, 5}, {0x01AE36, 4}, {0, 0}, {0, 0}, {0x01AE4B, 6}, {0xAE51, 0}, {0, 0}, {0, 0}, {0x01AE51, 5}, {0x01AE55, 1}, {0x01AE56, 1}, {0x01AE57, 6}, {0x01AE55, 1}, {0x01AE55, 1}, {0x01AE55, 1}, {0x01AE55, 1}, {0x01AE55, 1}, {0x01AE55, 1}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x01AE70, 2}, {0x01AE72, 7}, {0, 0}, {0, 0}, {0x01AE79, 4}, {0x01AE78, 1}, {0x01AE7D, 5}, {0x01AE83, 7}, {0x01AE89, 2}, {0, 0}, {0, 0}, {0x01AE93, 3}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE96, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x0180E3, 1}, {0x01AE97, 2}, {0x01AEA3, 2}, {0x01AEA5, 2}, {0x01AEA5, 3}, {0x01AEB3, 2}, {0x01AEB5, 2}, {0x01AEB5, 3}, {0x01AECE, 3}, {0x01AECE, 11}, {0xAED9, 0}, {0x01AED9, 2}, {0x01AEDB, 2}, {0x01AEDD, 2}, {0x01AEDD, 2}, {0x01AEDF, 1}, {0x01AEE5, 3}, {0x01AEE5, 11}, {0xAEF0, 0}, {0x01AEF0, 2}, {0x01AEF2, 2}, {0x01AEF4, 2}, {0x01AEF4, 2}, {0x01AEF6, 1}, {0x01B034, 8}, {0x01B041, 2}, {0x01B03C, 5}, {0x01B043, 13}, {0x01B050, 1}, {0x01B051, 1}, {0x01B052, 2}, {0x01B054, 1}, {0x01B055, 2}, {0x01B057, 5}, {0x01B05C, 5}, {0x01B061, 5}, {0x01B066, 15}, {0xB075, 0}, {0x01B075, 5}, {0x01B07A, 1}, {0x01B07B, 1}, {0x01B07C, 1}, {0x01B07D, 4}, {0x01B081, 5}, {0x01B081, 8}, {0x01B098, 3}, {0x01B09B, 3}, {0x01B09E, 3}, {0x01B0A1, 5}, {0x01B0A6, 8}, {0x01B0B3, 2}, {0x01B0AE, 5}, {0x01B0B5, 13}, {0x01B0C2, 1}, {0x01B0C3, 1}, {0x01B0C4, 2}, {0x01B0C6, 1}, {0x01B0C7, 3}, {0x01B0CA, 4}, {0x01B0CE, 3}, {0x01B0D1, 4}, {0x01B17D, 3}, {0x01B0D5, 3}, {0x0180E3, 1}},
+    {{0x01AEAA, 7}, {0xAEB1, 0}, {0x01AEB1, 2}, {0x01AD7D, 4}, {0x01AE8B, 2}, {0x01AD81, 8}, {0x01AD8B, 15}, {0x01AE3A, 17}, {0x01AD81, 25}, {0x01AE3A, 17}, {0x01AD9A, 5}, {0x01AE5D, 2}, {0x01ADB3, 4}, {0x01AE8B, 2}, {0x01ADB7, 8}, {0x01ADC1, 14}, {0x01ADB7, 24}, {0x01ADCF, 5}, {0x01AE5D, 2}, {0x01ADD7, 5}, {0x01ADDC, 7}, {0x01ADE3, 5}, {0x01ADED, 1}, {0x01ADE3, 11}, {0x01ADEE, 3}, {0x01ADF1, 4}, {0x01ADF1, 7}, {0x01ADFA, 24}, {0x01AE5F, 1}, {0xAE60, 0}, {0x01AE60, 17}, {0x01ADF8, 2}, {0x01AE12, 12}, {0x01AE8B, 2}, {0x01AE1E, 5}, {0x01AE3A, 17}, {0x01AE26, 2}, {0x01AE3A, 17}, {0x01AE55, 1}, {0x01AE31, 5}, {0x01AE36, 4}, {0, 0}, {0, 0}, {0x01AE4B, 6}, {0xAE51, 0}, {0, 0}, {0, 0}, {0x01AE51, 5}, {0x01AE55, 1}, {0x01AE56, 1}, {0x01AE57, 6}, {0x01AE55, 1}, {0x01AE55, 1}, {0x01AE55, 1}, {0x01AE55, 1}, {0x01AE55, 1}, {0x01AE55, 1}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x01AE70, 2}, {0x01AE72, 7}, {0, 0}, {0, 0}, {0x01AE79, 4}, {0x01AE78, 1}, {0x01AE7D, 5}, {0x01AE83, 7}, {0x01AE89, 2}, {0, 0}, {0, 0}, {0x01AE93, 3}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE96, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x0180E3, 1}, {0x01AE97, 2}, {0x01AEA3, 2}, {0x01AEA5, 2}, {0x01AEA5, 3}, {0x01AEB3, 2}, {0x01AEB5, 2}, {0x01AEB5, 3}, {0x01AECE, 3}, {0x01AECE, 11}, {0xAED9, 0}, {0x01AED9, 2}, {0x01AEDB, 2}, {0x01AEDD, 2}, {0x01AEDD, 2}, {0x01AEDF, 1}, {0x01AEE5, 3}, {0x01AEE5, 11}, {0xAEF0, 0}, {0x01AEF0, 2}, {0x01AEF2, 2}, {0x01AEF4, 2}, {0x01AEF4, 2}, {0x01AEF6, 1}, {0x01B034, 8}, {0x01B041, 2}, {0x01B03C, 5}, {0x01B043, 13}, {0x01B050, 1}, {0x01B051, 1}, {0x01B052, 2}, {0x01B054, 1}, {0x01B055, 2}, {0x01B057, 5}, {0x01B05C, 5}, {0x01B061, 5}, {0x01B066, 15}, {0xB075, 0}, {0x01B075, 5}, {0x01B07A, 1}, {0x01B07B, 1}, {0x01B07C, 1}, {0x01B07D, 4}, {0x01B081, 5}, {0x01B081, 8}, {0x01B098, 3}, {0x01B09B, 3}, {0x01B09E, 3}, {0x01B0A1, 5}, {0x01B0A6, 8}, {0x01B0B3, 2}, {0x01B0AE, 5}, {0x01B0B5, 13}, {0x01B0C2, 1}, {0x01B0C3, 1}, {0x01B0C4, 2}, {0x01B0C6, 1}, {0x01B0C7, 3}, {0x01B0CA, 4}, {0x01B0CE, 3}, {0x01B0D1, 4}, {0x01B17D, 3}, {0x01B0D5, 3}, {0x0180E3, 1}},
+    {{0x01AECB, 3}, {0, 0}, {0, 0}, {0x01AD7D, 4}, {0x01AE8B, 2}, {0x01AD81, 8}, {0x01AD8B, 15}, {0x01AE3A, 17}, {0x01AD81, 25}, {0x01AE3A, 17}, {0x01AD9A, 5}, {0x01AE5D, 2}, {0x01ADB3, 4}, {0x01AE8B, 2}, {0x01ADB7, 8}, {0x01ADC1, 14}, {0x01ADB7, 24}, {0x01ADCF, 5}, {0x01AE5D, 2}, {0x01ADD7, 5}, {0x01ADDC, 7}, {0x01ADE3, 5}, {0x01ADED, 1}, {0x01ADE3, 11}, {0x01ADEE, 3}, {0x01ADF1, 4}, {0x01ADF1, 7}, {0x01ADFA, 24}, {0x01AE5F, 1}, {0xAE60, 0}, {0x01AE60, 17}, {0x01ADF8, 2}, {0x01AE12, 12}, {0x01AE8B, 2}, {0x01AE1E, 5}, {0x01AE3A, 17}, {0x01AE26, 2}, {0x01AE3A, 17}, {0x01AE55, 1}, {0x01AE31, 5}, {0x01AE36, 4}, {0, 0}, {0, 0}, {0x01AE4B, 6}, {0xAE51, 0}, {0, 0}, {0, 0}, {0x01AE51, 5}, {0x01AE55, 1}, {0x01AE56, 1}, {0x01AE57, 6}, {0x01AE55, 1}, {0x01AE55, 1}, {0x01AE55, 1}, {0x01AE55, 1}, {0x01AE55, 1}, {0x01AE55, 1}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x01AE70, 2}, {0x01AE72, 7}, {0, 0}, {0, 0}, {0x01AE79, 4}, {0x01AE78, 1}, {0x01AE7D, 5}, {0x01AE83, 7}, {0x01AE89, 2}, {0, 0}, {0, 0}, {0x01AE93, 3}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE96, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x0180E3, 1}, {0x01AE97, 2}, {0x01AEA3, 2}, {0x01AEA5, 2}, {0x01AEA5, 3}, {0x01AEB3, 2}, {0x01AEB5, 2}, {0x01AEB5, 3}, {0x01AECE, 3}, {0x01AECE, 11}, {0xAED9, 0}, {0x01AED9, 2}, {0x01AEDB, 2}, {0x01AEDD, 2}, {0x01AEDD, 2}, {0x01AEDF, 1}, {0x01AEE5, 3}, {0x01AEE5, 11}, {0xAEF0, 0}, {0x01AEF0, 2}, {0x01AEF2, 2}, {0x01AEF4, 2}, {0x01AEF4, 2}, {0x01AEF6, 1}, {0x01B034, 8}, {0x01B041, 2}, {0x01B03C, 5}, {0x01B043, 13}, {0x01B050, 1}, {0x01B051, 1}, {0x01B052, 2}, {0x01B054, 1}, {0x01B055, 2}, {0x01B057, 5}, {0x01B05C, 5}, {0x01B061, 5}, {0x01B066, 15}, {0xB075, 0}, {0x01B075, 5}, {0x01B07A, 1}, {0x01B07B, 1}, {0x01B07C, 1}, {0x01B07D, 4}, {0x01B081, 5}, {0x01B081, 8}, {0x01B098, 3}, {0x01B09B, 3}, {0x01B09E, 3}, {0x01B0A1, 5}, {0x01B0A6, 8}, {0x01B0B3, 2}, {0x01B0AE, 5}, {0x01B0B5, 13}, {0x01B0C2, 1}, {0x01B0C3, 1}, {0x01B0C4, 2}, {0x01B0C6, 1}, {0x01B0C7, 3}, {0x01B0CA, 4}, {0x01B0CE, 3}, {0x01B0D1, 4}, {0x01B17D, 3}, {0x01B0D5, 3}, {0x0180E3, 1}},
+    {{0x01AEE2, 3}, {0, 0}, {0, 0}, {0x01AD7D, 4}, {0x01AE8B, 2}, {0x01AD81, 8}, {0x01AD8B, 15}, {0x01AE3A, 17}, {0x01AD81, 25}, {0x01AE3A, 17}, {0x01AD9A, 5}, {0x01AE5D, 2}, {0x01ADB3, 4}, {0x01AE8B, 2}, {0x01ADB7, 8}, {0x01ADC1, 14}, {0x01ADB7, 24}, {0x01ADCF, 5}, {0x01AE5D, 2}, {0x01ADD7, 5}, {0x01ADDC, 7}, {0x01ADE3, 5}, {0x01ADED, 1}, {0x01ADE3, 11}, {0x01ADEE, 3}, {0x01ADF1, 4}, {0x01ADF1, 7}, {0x01ADFA, 24}, {0x01AE5F, 1}, {0xAE60, 0}, {0x01AE60, 17}, {0x01ADF8, 2}, {0x01AE12, 12}, {0x01AE8B, 2}, {0x01AE1E, 5}, {0x01AE3A, 17}, {0x01AE26, 2}, {0x01AE3A, 17}, {0x01AE55, 1}, {0x01AE31, 5}, {0x01AE36, 4}, {0, 0}, {0, 0}, {0x01AE4B, 6}, {0xAE51, 0}, {0, 0}, {0, 0}, {0x01AE51, 5}, {0x01AE55, 1}, {0x01AE56, 1}, {0x01AE57, 6}, {0x01AE55, 1}, {0x01AE55, 1}, {0x01AE55, 1}, {0x01AE55, 1}, {0x01AE55, 1}, {0x01AE55, 1}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x01AE70, 2}, {0x01AE72, 7}, {0, 0}, {0, 0}, {0x01AE79, 4}, {0x01AE78, 1}, {0x01AE7D, 5}, {0x01AE83, 7}, {0x01AE89, 2}, {0, 0}, {0, 0}, {0x01AE93, 3}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE96, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x0180E3, 1}, {0x01AE97, 2}, {0x01AEA3, 2}, {0x01AEA5, 2}, {0x01AEA5, 3}, {0x01AEB3, 2}, {0x01AEB5, 2}, {0x01AEB5, 3}, {0x01AECE, 3}, {0x01AECE, 11}, {0xAED9, 0}, {0x01AED9, 2}, {0x01AEDB, 2}, {0x01AEDD, 2}, {0x01AEDD, 2}, {0x01AEDF, 1}, {0x01AEE5, 3}, {0x01AEE5, 11}, {0xAEF0, 0}, {0x01AEF0, 2}, {0x01AEF2, 2}, {0x01AEF4, 2}, {0x01AEF4, 2}, {0x01AEF6, 1}, {0x01B034, 8}, {0x01B041, 2}, {0x01B03C, 5}, {0x01B043, 13}, {0x01B050, 1}, {0x01B051, 1}, {0x01B052, 2}, {0x01B054, 1}, {0x01B055, 2}, {0x01B057, 5}, {0x01B05C, 5}, {0x01B061, 5}, {0x01B066, 15}, {0xB075, 0}, {0x01B075, 5}, {0x01B07A, 1}, {0x01B07B, 1}, {0x01B07C, 1}, {0x01B07D, 4}, {0x01B081, 5}, {0x01B081, 8}, {0x01B098, 3}, {0x01B09B, 3}, {0x01B09E, 3}, {0x01B0A1, 5}, {0x01B0A6, 8}, {0x01B0B3, 2}, {0x01B0AE, 5}, {0x01B0B5, 13}, {0x01B0C2, 1}, {0x01B0C3, 1}, {0x01B0C4, 2}, {0x01B0C6, 1}, {0x01B0C7, 3}, {0x01B0CA, 4}, {0x01B0CE, 3}, {0x01B0D1, 4}, {0x01B17D, 3}, {0x01B0D5, 3}, {0x0180E3, 1}},
+    {{0x01B028, 12}, {0, 0}, {0, 0}, {0x01AD7D, 4}, {0x01AE8B, 2}, {0x01AD81, 8}, {0x01AD8B, 15}, {0x01AE3A, 17}, {0x01AD81, 25}, {0x01AE3A, 17}, {0x01AD9A, 5}, {0x01AE5D, 2}, {0x01ADB3, 4}, {0x01AE8B, 2}, {0x01ADB7, 8}, {0x01ADC1, 14}, {0x01ADB7, 24}, {0x01ADCF, 5}, {0x01AE5D, 2}, {0x01ADD7, 5}, {0x01ADDC, 7}, {0x01ADE3, 5}, {0x01ADED, 1}, {0x01ADE3, 11}, {0x01ADEE, 3}, {0x01ADF1, 4}, {0x01ADF1, 7}, {0x01ADFA, 24}, {0x01AE5F, 1}, {0xAE60, 0}, {0x01AE60, 17}, {0x01ADF8, 2}, {0x01AE12, 12}, {0x01AE8B, 2}, {0x01AE1E, 5}, {0x01AE3A, 17}, {0x01AE26, 2}, {0x01AE3A, 17}, {0x01AE55, 1}, {0x01AE31, 5}, {0x01AE36, 4}, {0, 0}, {0, 0}, {0x01AE4B, 6}, {0xAE51, 0}, {0, 0}, {0, 0}, {0x01AE51, 5}, {0x01AE55, 1}, {0x01AE56, 1}, {0x01AE57, 6}, {0x01AE55, 1}, {0x01AE55, 1}, {0x01AE55, 1}, {0x01AE55, 1}, {0x01AE55, 1}, {0x01AE55, 1}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x01AE70, 2}, {0x01AE72, 7}, {0, 0}, {0, 0}, {0x01AE79, 4}, {0x01AE78, 1}, {0x01AE7D, 5}, {0x01AE83, 7}, {0x01AE89, 2}, {0, 0}, {0, 0}, {0x01AE93, 3}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE96, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x0180E3, 1}, {0x01AE97, 2}, {0x01AEA3, 2}, {0x01AEA5, 2}, {0x01AEA5, 3}, {0x01AEB3, 2}, {0x01AEB5, 2}, {0x01AEB5, 3}, {0x01AECE, 3}, {0x01AECE, 11}, {0xAED9, 0}, {0x01AED9, 2}, {0x01AEDB, 2}, {0x01AEDD, 2}, {0x01AEDD, 2}, {0x01AEDF, 1}, {0x01AEE5, 3}, {0x01AEE5, 11}, {0xAEF0, 0}, {0x01AEF0, 2}, {0x01AEF2, 2}, {0x01AEF4, 2}, {0x01AEF4, 2}, {0x01AEF6, 1}, {0x01B034, 8}, {0x01B041, 2}, {0x01B03C, 5}, {0x01B043, 13}, {0x01B050, 1}, {0x01B051, 1}, {0x01B052, 2}, {0x01B054, 1}, {0x01B055, 2}, {0x01B057, 5}, {0x01B05C, 5}, {0x01B061, 5}, {0x01B066, 15}, {0xB075, 0}, {0x01B075, 5}, {0x01B07A, 1}, {0x01B07B, 1}, {0x01B07C, 1}, {0x01B07D, 4}, {0x01B081, 5}, {0x01B081, 8}, {0x01B098, 3}, {0x01B09B, 3}, {0x01B09E, 3}, {0x01B0A1, 5}, {0x01B0A6, 8}, {0x01B0B3, 2}, {0x01B0AE, 5}, {0x01B0B5, 13}, {0x01B0C2, 1}, {0x01B0C3, 1}, {0x01B0C4, 2}, {0x01B0C6, 1}, {0x01B0C7, 3}, {0x01B0CA, 4}, {0x01B0CE, 3}, {0x01B0D1, 4}, {0x01B17D, 3}, {0x01B0D5, 3}, {0x0180E3, 1}},
+    {{0x01B08B, 13}, {0, 0}, {0, 0}, {0x01AD7D, 4}, {0x01AE8B, 2}, {0x01AD81, 8}, {0x01AD8B, 15}, {0x01AE3A, 17}, {0x01AD81, 25}, {0x01AE3A, 17}, {0x01AD9A, 5}, {0x01AE5D, 2}, {0x01ADB3, 4}, {0x01AE8B, 2}, {0x01ADB7, 8}, {0x01ADC1, 14}, {0x01ADB7, 24}, {0x01ADCF, 5}, {0x01AE5D, 2}, {0x01ADD7, 5}, {0x01ADDC, 7}, {0x01ADE3, 5}, {0x01ADED, 1}, {0x01ADE3, 11}, {0x01ADEE, 3}, {0x01ADF1, 4}, {0x01ADF1, 7}, {0x01ADFA, 24}, {0x01AE5F, 1}, {0xAE60, 0}, {0x01AE60, 17}, {0x01ADF8, 2}, {0x01AE12, 12}, {0x01AE8B, 2}, {0x01AE1E, 5}, {0x01AE3A, 17}, {0x01AE26, 2}, {0x01AE3A, 17}, {0x01AE55, 1}, {0x01AE31, 5}, {0x01AE36, 4}, {0, 0}, {0, 0}, {0x01AE4B, 6}, {0xAE51, 0}, {0, 0}, {0, 0}, {0x01AE51, 5}, {0x01AE55, 1}, {0x01AE56, 1}, {0x01AE57, 6}, {0x01AE55, 1}, {0x01AE55, 1}, {0x01AE55, 1}, {0x01AE55, 1}, {0x01AE55, 1}, {0x01AE55, 1}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x01AE70, 2}, {0x01AE72, 7}, {0, 0}, {0, 0}, {0x01AE79, 4}, {0x01AE78, 1}, {0x01AE7D, 5}, {0x01AE83, 7}, {0x01AE89, 2}, {0, 0}, {0, 0}, {0x01AE93, 3}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x01AE96, 1}, {0x01AE95, 1}, {0x01AE95, 1}, {0x0180E3, 1}, {0x01AE97, 2}, {0x01AEA3, 2}, {0x01AEA5, 2}, {0x01AEA5, 3}, {0x01AEB3, 2}, {0x01AEB5, 2}, {0x01AEB5, 3}, {0x01AECE, 3}, {0x01AECE, 11}, {0xAED9, 0}, {0x01AED9, 2}, {0x01AEDB, 2}, {0x01AEDD, 2}, {0x01AEDD, 2}, {0x01AEDF, 1}, {0x01AEE5, 3}, {0x01AEE5, 11}, {0xAEF0, 0}, {0x01AEF0, 2}, {0x01AEF2, 2}, {0x01AEF4, 2}, {0x01AEF4, 2}, {0x01AEF6, 1}, {0x01B034, 8}, {0x01B041, 2}, {0x01B03C, 5}, {0x01B043, 13}, {0x01B050, 1}, {0x01B051, 1}, {0x01B052, 2}, {0x01B054, 1}, {0x01B055, 2}, {0x01B057, 5}, {0x01B05C, 5}, {0x01B061, 5}, {0x01B066, 15}, {0xB075, 0}, {0x01B075, 5}, {0x01B07A, 1}, {0x01B07B, 1}, {0x01B07C, 1}, {0x01B07D, 4}, {0x01B081, 5}, {0x01B081, 8}, {0x01B098, 3}, {0x01B09B, 3}, {0x01B09E, 3}, {0x01B0A1, 5}, {0x01B0A6, 8}, {0x01B0B3, 2}, {0x01B0AE, 5}, {0x01B0B5, 13}, {0x01B0C2, 1}, {0x01B0C3, 1}, {0x01B0C4, 2}, {0x01B0C6, 1}, {0x01B0C7, 3}, {0x01B0CA, 4}, {0x01B0CE, 3}, {0x01B0D1, 4}, {0x01B17D, 3}, {0x01B0D5, 3}, {0x0180E3, 1}},
+};
+
 /* The code from address at until it jumps to ret (the caller's return;
    $FFFF for a program, which ends at its STOP). */
-static void unused_run(uint16_t at, uint16_t ret)
+static void unused_run(uint16_t at, uint16_t ret, int copy)
 {
+    gsu_codes(unused_run_code[copy], 3);
     int t;
     uint16_t nx;
 
@@ -64,12 +81,12 @@ lAD68:
     R[11] = 0xAD7D;
     goto lAE5F;
 lAD7D:
-    R[3] = gsu_ldw(FX_GAUGE_RIGHT);
+    R[3] = gsu_ldw(gsu_codes_then(unused_run_code[copy] + 3, 2, FX_GAUGE_RIGHT));
     R[3] = gsu_lob(R[3]);
     R[0] = 0x0024;
     gsu_sub(R[0], R[3], 0);   /* CMP */
     t = gsu.s == gsu.ov;
-    if (t) goto lAD8B;
+    if (t) { gsu_codes(unused_run_code[copy] + 5, 3); goto lAD8B; } else { gsu_codes(unused_run_code[copy] + 8, 2); }
     R[3] = R[0];
 lAD8B:
     R[1] = 0x00B2;
@@ -81,6 +98,7 @@ lAD8B:
 lAD9A:
     R[10] = gsu_dec(R[10]);
     R[10] = gsu_dec(R[10]);
+    gsu_codes(unused_run_code[copy] + 10, 2);
     nx = (uint16_t)(gsu_ldw(R[10]));
     at = nx;
     goto dispatch;
@@ -97,12 +115,12 @@ lAD9F:
     R[11] = 0xADB3;
     goto lAE5F;
 lADB3:
-    R[3] = gsu_ldw(FX_GAUGE_LEFT);
+    R[3] = gsu_ldw(gsu_codes_then(unused_run_code[copy] + 12, 2, FX_GAUGE_LEFT));
     R[3] = gsu_lob(R[3]);
     R[0] = 0x0024;
     gsu_sub(R[0], R[3], 0);   /* CMP */
     t = gsu.s == gsu.ov;
-    if (t) goto lADC1;
+    if (t) { gsu_codes(unused_run_code[copy] + 14, 2); goto lADC1; } else { gsu_codes(unused_run_code[copy] + 16, 1); }
     R[3] = R[0];
 lADC1:
     R[1] = 0x000A;
@@ -114,6 +132,7 @@ lADC1:
 lADCF:
     R[10] = gsu_dec(R[10]);
     R[10] = gsu_dec(R[10]);
+    gsu_codes(unused_run_code[copy] + 17, 2);
     nx = (uint16_t)(gsu_ldw(R[10]));
     at = nx;
     goto dispatch;
@@ -122,23 +141,23 @@ lADD4:
     gsu_stw(R[10], R[11]);
     R[10] = gsu_inc(R[10]);
     R[10] = gsu_inc(R[10]);
-    R[0] = gsu_ldw(FX_GAUGE_TOP);
+    R[0] = gsu_ldw(gsu_codes_then(unused_run_code[copy] + 19, 1, FX_GAUGE_TOP));
     R[0] = gsu_add(R[0], 10, 0);
     R[1] = gsu_lob(R[0]);
-    R[0] = gsu_ldw(FX_GAUGE_TOP_INNER);
+    R[0] = gsu_ldw(gsu_codes_then(unused_run_code[copy] + 20, 1, FX_GAUGE_TOP_INNER));
     R[0] = gsu_lob(R[0]);
     gsu_sub(R[0], R[1], 0);   /* CMP */
     t = !gsu.cy;
-    if (t) goto lADED;
+    if (t) { gsu_codes(unused_run_code[copy] + 21, 2); goto lADED; } else { gsu_codes(unused_run_code[copy] + 23, 1); }
     R[0] = 0x0000;
     gsu_stw(FX_GAUGE_TOP_INNER, R[0]);
 lADED:
-    R[0] = gsu_ldw(FX_GAUGE_TOP);
+    R[0] = gsu_ldw(gsu_codes_then(unused_run_code[copy] + 24, 1, FX_GAUGE_TOP));
     R[3] = gsu_lob(R[0]);
     t = gsu.z;
-    if (t) goto lAE31;
+    if (t) { gsu_codes(unused_run_code[copy] + 25, 1); goto lAE31; } else { gsu_codes(unused_run_code[copy] + 26, 5); }
     t = !gsu.s;
-    if (t) goto lADFA;
+    if (t) goto lADFA; else { gsu_codes(unused_run_code[copy] + 31, 1); }
     R[3] = gsu_lsr(R[3]);
 lADFA:
     R[3] = gsu_inc(R[3]);
@@ -161,12 +180,12 @@ lAE12:
     R[1] = gsu_inc(R[1]);
     R[2] = gsu_inc(R[2]);
     R[2] = gsu_inc(R[2]);
-    R[0] = gsu_ldw(FX_GAUGE_TOP_INNER);
+    R[0] = gsu_ldw(gsu_codes_then(unused_run_code[copy] + 32, 2, FX_GAUGE_TOP_INNER));
     R[3] = gsu_lob(R[0]);
-    R[0] = gsu_ldw(FX_GAUGE_TOP);
+    R[0] = gsu_ldw(gsu_codes_then(unused_run_code[copy] + 34, 1, FX_GAUGE_TOP));
     R[0] = gsu_lob(R[0]);
     t = !gsu.s;
-    if (t) goto lAE28;
+    if (t) { gsu_codes(unused_run_code[copy] + 35, 1); goto lAE28; } else { gsu_codes(unused_run_code[copy] + 36, 3); }
     R[3] = gsu_lsr(R[3]);
 lAE28:
     R[4] = 0x0002;
@@ -175,9 +194,11 @@ lAE28:
     goto lAE3A;
 lAE31:
     R[0] = gsu_sub(R[0], R[0], 0);
+    gsu_codes(unused_run_code[copy] + 39, 1);
     gsu_stw(FX_GAUGE_TOP_INNER, R[0]);
     R[10] = gsu_dec(R[10]);
     R[10] = gsu_dec(R[10]);
+    gsu_codes(unused_run_code[copy] + 40, 1);
     nx = (uint16_t)(gsu_ldw(R[10]));
     at = nx;
     goto dispatch;
@@ -193,7 +214,7 @@ lAE3A:
     R[3] = R[3];
     gsu_moves(R[3]);
     t = gsu.z;
-    if (t) goto lAE5D;
+    if (t) { gsu_codes(unused_run_code[copy] + 41, 2); goto lAE5D; } else { gsu_codes(unused_run_code[copy] + 43, 4); }
     R[4] = R[4];
     gsu_moves(R[4]);
     t = gsu.z;
@@ -201,18 +222,21 @@ lAE3A:
     /* CACHE */
 lAE51:
     R[12] = R[3];
+    gsu_codes(unused_run_code[copy] + 47, 2);
     gsu_moves(R[3]);
     R[13] = 0xAE55;
 lAE55:
+    gsu_codes(unused_run_code[copy] + 49, 1);
     t = gsu_count_down(&R[12]);
     gsu_plot_r1();
-    if (t) goto lAE55;
+    if (t) goto lAE55; else { gsu_codes(unused_run_code[copy] + 50, 1); }
     R[1] = gsu_sub(R[1], R[3], 0);
     R[4] = gsu_dec(R[4]);
     t = !gsu.z;
     R[2] = gsu_inc(R[2]);
-    if (t) goto lAE51;
+    if (t) { gsu_codes(unused_run_code[copy] + 51, 6); goto lAE51; }
 lAE5D:
+    gsu_codes(unused_run_code[copy] + 57, 1);
     nx = (uint16_t)(R[11]);
     at = nx;
     goto dispatch;
@@ -228,10 +252,12 @@ lAE5F:
     gsu_cmode(R[0]);
     R[12] = R[3];
     R[13] = 0xAE70;
+gsu_codes(unused_run_code[copy] + 58, 4);
 lAE70:
+    gsu_codes(unused_run_code[copy] + 62, 1);
     t = gsu_count_down(&R[12]);
     gsu_plot_r1();
-    if (t) goto lAE70;
+    if (t) goto lAE70; else { gsu_codes(unused_run_code[copy] + 63, 3); }
     R[12] = R[4];
     R[12] = gsu_dec(R[12]);
     R[12] = gsu_dec(R[12]);
@@ -239,21 +265,22 @@ lAE70:
 lAE78:
     R[2] = gsu_inc(R[2]);
     R[1] = gsu_sub(R[1], R[3], 0);
-    gsu_plot_r1();
+    (gsu_codes(unused_run_code[copy] + 66, 1), gsu_plot_r1());
     R[1] = gsu_add(R[1], R[3], 0);
     R[1] = gsu_dec(R[1]);
     R[1] = gsu_dec(R[1]);
     t = gsu_count_down(&R[12]);
-    gsu_plot_r1();
-    if (t) goto lAE78;
+    (gsu_codes(unused_run_code[copy] + 67, 2), gsu_plot_r1());
+    if (t) goto lAE78; else { gsu_codes(unused_run_code[copy] + 69, 1); }
     R[1] = gsu_sub(R[1], R[3], 0);
     R[2] = gsu_inc(R[2]);
     R[12] = R[3];
     R[13] = 0xAE89;
 lAE89:
+    gsu_codes(unused_run_code[copy] + 70, 1);
     t = gsu_count_down(&R[12]);
     gsu_plot_r1();
-    if (t) goto lAE89;
+    if (t) goto lAE89; else { gsu_codes(unused_run_code[copy] + 71, 2); }
     nx = (uint16_t)(R[11]);
     at = nx;
     goto dispatch;
@@ -264,13 +291,15 @@ lAE8D:
     gsu_moves(R[3]);
     t = gsu.z;
     gsu_color((uint8_t)R[0]);
-    if (t) goto lAE97;
+    if (t) goto lAE97; else { gsu_codes(unused_run_code[copy] + 73, 10); }
     R[13] = 0xAE95;
 lAE95:
+    gsu_codes(unused_run_code[copy] + 83, 1);
     t = gsu_count_down(&R[12]);
     gsu_plot_r1();
-    if (t) goto lAE95;
+    if (t) goto lAE95; else { gsu_codes(unused_run_code[copy] + 84, 2); }
 lAE97:
+    gsu_codes(unused_run_code[copy] + 86, 2);
     nx = (uint16_t)(R[11]);
     at = nx;
     goto dispatch;
@@ -282,11 +311,12 @@ lAE99:
     /* CACHE */
     R[13] = 0xAEA3;
 lAEA3:
+    gsu_codes(unused_run_code[copy] + 88, 1);
     gsu_stw(R[1], R[0]);
     R[1] = gsu_inc(R[1]);
     t = gsu_count_down(&R[12]);
     R[1] = gsu_inc(R[1]);
-    if (t) goto lAEA3;
+    if (t) { gsu_codes(unused_run_code[copy] + 89, 1); goto lAEA3; } else { gsu_codes(unused_run_code[copy] + 90, 1); }
     return;   /* the STOP: the program ends here */
     /* FxClearScreenShort */
 lAEA9:
@@ -296,49 +326,54 @@ lAEA9:
     /* CACHE */
     R[13] = 0xAEB3;
 lAEB3:
+    gsu_codes(unused_run_code[copy] + 91, 1);
     gsu_stw(R[1], R[0]);
     R[1] = gsu_inc(R[1]);
     t = gsu_count_down(&R[12]);
     R[1] = gsu_inc(R[1]);
-    if (t) goto lAEB3;
+    if (t) { gsu_codes(unused_run_code[copy] + 92, 1); goto lAEB3; } else { gsu_codes(unused_run_code[copy] + 93, 1); }
     return;   /* the STOP: the program ends here */
     /* FxClearScreenIfSet */
 lAECA:
     R[0] = gsu_ldw(GSU_WORD_1C4);
     R[0] = gsu_lob(R[0]);
     t = gsu.z;
-    if (t) goto lAEDF;
+    if (t) { gsu_codes(unused_run_code[copy] + 94, 1); goto lAEDF; } else { gsu_codes(unused_run_code[copy] + 95, 3); }
     R[0] = gsu_sub(R[0], R[0], 0);
     R[1] = 0x2C00;
     R[12] = 0x1A00;
     /* CACHE */
     R[13] = 0xAEDB;
 lAEDB:
+    gsu_codes(unused_run_code[copy] + 98, 1);
     gsu_stw(R[1], R[0]);
     R[1] = gsu_inc(R[1]);
     t = gsu_count_down(&R[12]);
     R[1] = gsu_inc(R[1]);
-    if (t) goto lAEDB;
+    if (t) { gsu_codes(unused_run_code[copy] + 99, 1); goto lAEDB; } else { gsu_codes(unused_run_code[copy] + 100, 1); }
 lAEDF:
+    gsu_codes(unused_run_code[copy] + 101, 1);
     return;   /* the STOP: the program ends here */
     /* FxClear6000IfSet */
 lAEE1:
     R[0] = gsu_ldw(GSU_WORD_1C4);
     R[0] = gsu_lob(R[0]);
     t = gsu.z;
-    if (t) goto lAEF6;
+    if (t) { gsu_codes(unused_run_code[copy] + 102, 1); goto lAEF6; } else { gsu_codes(unused_run_code[copy] + 103, 3); }
     R[0] = gsu_sub(R[0], R[0], 0);
     R[1] = 0x6000;
     R[12] = 0x1A00;
     /* CACHE */
     R[13] = 0xAEF2;
 lAEF2:
+    gsu_codes(unused_run_code[copy] + 106, 1);
     gsu_stw(R[1], R[0]);
     R[1] = gsu_inc(R[1]);
     t = gsu_count_down(&R[12]);
     R[1] = gsu_inc(R[1]);
-    if (t) goto lAEF2;
+    if (t) { gsu_codes(unused_run_code[copy] + 107, 1); goto lAEF2; } else { gsu_codes(unused_run_code[copy] + 108, 1); }
 lAEF6:
+    gsu_codes(unused_run_code[copy] + 109, 1);
     return;   /* the STOP: the program ends here */
     /* FxSprite32Program */
 lB027:
@@ -351,29 +386,33 @@ lB027:
     R[0] = gsu_mult(R[0], R[1]);
     gsu_color((uint8_t)R[0]);
     R[2] = 0x0020;
-    R[1] = gsu_ldw(FX_SPRITE_SIZE);
+    R[1] = gsu_ldw(gsu_codes_then(unused_run_code[copy] + 110, 1, FX_SPRITE_SIZE));
     R[0] = gsu_lob(R[1]);
     R[0] = gsu_and(R[0], R[2]);
     t = gsu.z;
-    if (t) goto lB043;
+    if (t) goto lB043; else { gsu_codes(unused_run_code[copy] + 111, 1); }
     R[0] = 0x0004;
 lB043:
     R[0] = gsu_or(R[0], 8);
+    gsu_codes(unused_run_code[copy] + 112, 2);
     gsu_cmode(R[0]);
     R[0] = gsu_umult(R[1], 3);
     R[1] = 0x9D59;
     gsu_r14(gsu_add(R[0], R[1], 0));
-    R[0] = gsu_getb();
+    R[0] = (gsu_codes(unused_run_code[copy] + 114, 1), gsu_getb());
+    gsu_codes(unused_run_code[copy] + 115, 1);
     gsu_r14(gsu_inc(R[14]));
-    R[0] = gsu_getbh(R[0]);
+    R[0] = gsu_getbh(gsu_codes_then(unused_run_code[copy] + 116, 1, R[0]));
+    gsu_codes(unused_run_code[copy] + 117, 1);
     gsu_r14(gsu_inc(R[14]));
-    R[1] = gsu_getb();
+    R[1] = (gsu_codes(unused_run_code[copy] + 118, 1), gsu_getb());
+    gsu_codes(unused_run_code[copy] + 119, 1);
     gsu_romb(R[1]);
     gsu_r14(R[0]);
     R[0] = 0xFFF0;
-    R[1] = gsu_ldw(FX_SPRITE_X);
+    R[1] = gsu_ldw(gsu_codes_then(unused_run_code[copy] + 120, 1, FX_SPRITE_X));
     R[1] = gsu_add(R[0], R[1], 0);
-    R[2] = gsu_ldw(FX_SPRITE_Y);
+    R[2] = gsu_ldw(gsu_codes_then(unused_run_code[copy] + 121, 1, FX_SPRITE_Y));
     R[2] = gsu_add(R[0], R[2], 0);
     R[9] = R[1];
     R[11] = 0x0020;
@@ -381,21 +420,25 @@ lB043:
     R[7] = 0xB079;
     R[8] = 0x0020;
     /* CACHE */
+gsu_codes(unused_run_code[copy] + 122, 2);
 lB075:
     R[12] = R[8];
     R[13] = 0xB079;
+gsu_codes(unused_run_code[copy] + 124, 1);
 lB079:
+    gsu_codes(unused_run_code[copy] + 125, 1);
     gsu_color(gsu_getb());   /* GETC */
+    gsu_codes(unused_run_code[copy] + 126, 1);
     gsu_r14(gsu_inc(R[14]));
     t = gsu_count_down(&R[12]);
-    gsu_plot_r1();
-    if (t) goto lB079;
+    (gsu_codes(unused_run_code[copy] + 127, 1), gsu_plot_r1());
+    if (t) goto lB079; else { gsu_codes(unused_run_code[copy] + 128, 1); }
     gsu_r14(gsu_add(R[14], R[10], 0));
     R[1] = R[9];
     R[11] = gsu_dec(R[11]);
     t = !gsu.z;
     R[2] = gsu_inc(R[2]);
-    if (t) goto lB075;
+    if (t) { gsu_codes(unused_run_code[copy] + 129, 1); goto lB075; } else { gsu_codes(unused_run_code[copy] + 130, 1); }
     R[0] = gsu_rpix_r(R[1], R[2]);
     return;   /* the STOP: the program ends here */
     /* FxObjectSpriteProgram */
@@ -406,42 +449,49 @@ lB08A:
     R[0] = gsu_sub(R[0], R[0], 0);
     gsu_cmode(R[0]);
     R[0] = gsu_ldw(FX_SPRITE_X);
+    gsu_codes(unused_run_code[copy] + 131, 1);
     gsu_stw(FX_MODEL_BA, R[0]);
-    R[0] = gsu_ldw(FX_SPRITE_Y);
+    R[0] = gsu_ldw(gsu_codes_then(unused_run_code[copy] + 132, 1, FX_SPRITE_Y));
+    gsu_codes(unused_run_code[copy] + 133, 1);
     gsu_stw(FX_MODEL_BC, R[0]);
     R[1] = 0x0010;
-    R[0] = gsu_ldw(FX_SPRITE_COLOUR);
+    R[0] = gsu_ldw(gsu_codes_then(unused_run_code[copy] + 134, 1, FX_SPRITE_COLOUR));
     R[0] = gsu_mult(R[0], R[1]);
     gsu_color((uint8_t)R[0]);
     R[2] = 0x0020;
-    R[1] = gsu_ldw(FX_SPRITE_SIZE);
+    R[1] = gsu_ldw(gsu_codes_then(unused_run_code[copy] + 135, 1, FX_SPRITE_SIZE));
     R[0] = gsu_lob(R[1]);
     R[0] = gsu_and(R[0], R[2]);
     t = gsu.z;
-    if (t) goto lB0B5;
+    if (t) goto lB0B5; else { gsu_codes(unused_run_code[copy] + 136, 1); }
     R[0] = 0x0004;
 lB0B5:
     R[0] = gsu_or(R[0], 8);
+    gsu_codes(unused_run_code[copy] + 137, 2);
     gsu_cmode(R[0]);
     R[0] = gsu_umult(R[1], 3);
     R[1] = 0x9D59;
     gsu_r14(gsu_add(R[0], R[1], 0));
-    R[0] = gsu_getb();
+    R[0] = (gsu_codes(unused_run_code[copy] + 139, 1), gsu_getb());
+    gsu_codes(unused_run_code[copy] + 140, 1);
     gsu_r14(gsu_inc(R[14]));
-    R[0] = gsu_getbh(R[0]);
+    R[0] = gsu_getbh(gsu_codes_then(unused_run_code[copy] + 141, 1, R[0]));
+    gsu_codes(unused_run_code[copy] + 142, 1);
     gsu_r14(gsu_inc(R[14]));
+    gsu_codes(unused_run_code[copy] + 143, 1);
     gsu_stw(FX_TEX_BASE, R[0]);
-    R[0] = gsu_getb();
+    R[0] = (gsu_codes(unused_run_code[copy] + 144, 1), gsu_getb());
     gsu_stw(FX_TEX_BANK, R[0]);
-    R[1] = gsu_ldw(FX_MODEL_CE);
+    R[1] = gsu_ldw(gsu_codes_then(unused_run_code[copy] + 145, 1, FX_MODEL_CE));
     R[11] = 0xB0D5;
-    abi_FxObjectSpriteAt();
+    (gsu_codes(unused_run_code[copy] + 146, 2), abi_FxObjectSpriteAt());
+gsu_codes(unused_run_code[copy] + 148, 1);
 lB0D5:
     R[0] = gsu_rpix_r(R[1], R[2]);
     return;   /* the STOP: the program ends here */
 dispatch:
     if (at == ret)
-        return;
+        { gsu_codes(unused_run_code[copy] + 149, 1); return; }
     switch (at) {
     case 0xAD68: goto lAD68;
     case 0xAD7D: goto lAD7D;
@@ -502,9 +552,7 @@ dispatch:
  */
 void abi_FxGaugeRight(void)
 {
-    gsu_code(0x01AD69, 2);
-    unused_run(0xAD68, R[11]);
-    gsu_code(0x0180E3, 1);
+    unused_run(0xAD68, R[11], GSU_COPY(0));
 }
 
 /*
@@ -518,9 +566,7 @@ void abi_FxGaugeRight(void)
  */
 void abi_FxGaugeLeft(void)
 {
-    gsu_code(0x01ADA0, 2);
-    unused_run(0xAD9F, R[11]);
-    gsu_code(0x0180E3, 1);
+    unused_run(0xAD9F, R[11], GSU_COPY(1));
 }
 
 /*
@@ -539,9 +585,7 @@ void abi_FxGaugeLeft(void)
  */
 void abi_FxGaugeTop(void)
 {
-    gsu_code(0x01ADD5, 2);
-    unused_run(0xADD4, R[11]);
-    gsu_code(0x0180E3, 1);
+    unused_run(0xADD4, R[11], GSU_COPY(2));
 }
 
 /*
@@ -558,8 +602,7 @@ void abi_FxGaugeTop(void)
  */
 void abi_FxRectFill(void)
 {
-    gsu_code(0x0180E3, 1); gsu_code(0x01AE3B, 21); gsu_code(0x01AE5D, 2);
-    unused_run(0xAE3A, R[11]);
+    unused_run(0xAE3A, R[11], GSU_COPY(3));
 }
 
 /*
@@ -574,9 +617,7 @@ void abi_FxRectFill(void)
  */
 void abi_FxRectFrame(void)
 {
-    gsu_code(0x01AE60, 17);
-    unused_run(0xAE5F, R[11]);
-    gsu_code(0x0180E3, 1); gsu_code(0x01AE8B, 2);
+    unused_run(0xAE5F, R[11], GSU_COPY(4));
 }
 
 /*
@@ -591,9 +632,7 @@ void abi_FxRectFrame(void)
  */
 void abi_FxPixelRun(void)
 {
-    gsu_code(0x01AE8E, 5);
-    unused_run(0xAE8D, R[11]);
-    gsu_code(0x0180E3, 1); gsu_code(0x01AE97, 2);
+    unused_run(0xAE8D, R[11], GSU_COPY(5));
 }
 
 /*
@@ -606,9 +645,7 @@ void abi_FxPixelRun(void)
  */
 void abi_FxClearScreenLong(void)
 {
-    gsu_code(0x01AE9A, 7); gsu_cache(0xAEA1); gsu_code(0x01AEA1, 2);
-    unused_run(0xAE99, 0xFFFF);
-    gsu_code(0x01AEA7, 1);
+    unused_run(0xAE99, 0xFFFF, GSU_COPY(6));
 }
 
 /*
@@ -621,9 +658,7 @@ void abi_FxClearScreenLong(void)
  */
 void abi_FxClearScreenShort(void)
 {
-    gsu_code(0x01AEAA, 7); gsu_cache(0xAEB1); gsu_code(0x01AEB1, 2);
-    unused_run(0xAEA9, 0xFFFF);
-    gsu_code(0x01AEB7, 1);
+    unused_run(0xAEA9, 0xFFFF, GSU_COPY(7));
 }
 
 /*
@@ -636,9 +671,7 @@ void abi_FxClearScreenShort(void)
  */
 void abi_FxClearScreenIfSet(void)
 {
-    gsu_code(0x01AECB, 3);
-    unused_run(0xAECA, 0xFFFF);
-    gsu_code(0x01AEDF, 1);
+    unused_run(0xAECA, 0xFFFF, GSU_COPY(8));
 }
 
 /*
@@ -651,9 +684,7 @@ void abi_FxClearScreenIfSet(void)
  */
 void abi_FxClear6000IfSet(void)
 {
-    gsu_code(0x01AEE2, 3);
-    unused_run(0xAEE1, 0xFFFF);
-    gsu_code(0x01AEF6, 1);
+    unused_run(0xAEE1, 0xFFFF, GSU_COPY(9));
 }
 
 /*
@@ -671,8 +702,7 @@ void abi_FxClear6000IfSet(void)
  */
 void abi_FxSprite32Program(void)
 {
-    gsu_code(0x01B028, 12);
-    unused_run(0xB027, 0xFFFF);
+    unused_run(0xB027, 0xFFFF, GSU_COPY(10));
 }
 
 /*
@@ -689,18 +719,26 @@ void abi_FxSprite32Program(void)
  */
 void abi_FxObjectSpriteProgram(void)
 {
-    gsu_code(0x01B08B, 13);
-    unused_run(0xB08A, 0xFFFF);
+    unused_run(0xB08A, 0xFFFF, GSU_COPY(11));
 }
 
 void abi_FxModelDrawFlagged(void);
 void abi_FxModelDrawFlags8000(void);
 void abi_FxModelDrawWithFlags(void);
 
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode unused84_run_code[4][53] = {
+    {{0x018451, 6}, {0x018457, 2}, {0x018459, 3}, {0x01845C, 2}, {0x01845E, 3}, {0x018461, 2}, {0x018463, 6}, {0x018469, 2}, {0x01846B, 3}, {0x01846E, 2}, {0x018470, 3}, {0x018473, 2}, {0x018475, 24}, {0x01848D, 9}, {0x018496, 7}, {0x01849D, 7}, {0x0184A4, 7}, {0x0184AB, 6}, {0x0184B1, 9}, {0x0184BA, 9}, {0x0184C3, 7}, {0x0184D6, 2}, {0x0184D8, 1}, {0x0184E6, 1}, {0x0184E7, 8}, {0x0184EF, 4}, {0x018576, 10}, {0x0184F3, 4}, {0x0184F7, 4}, {0x0184FB, 3}, {0x0184FE, 4}, {0x018502, 3}, {0x018505, 4}, {0x018509, 3}, {0x01850C, 3}, {0x01850F, 4}, {0x018584, 3}, {0x018513, 1}, {0x018522, 2}, {0x018524, 3}, {0x018527, 1}, {0x018528, 1}, {0x018529, 2}, {0x01852B, 3}, {0x01852E, 9}, {0x018537, 12}, {0x018543, 9}, {0x01854C, 12}, {0x018558, 7}, {0x01858F, 4}, {0x01855F, 1}, {0x0180E3, 1}, {0x0184CA, 1}},
+    {{0x0184CC, 11}, {0x018457, 2}, {0x018459, 3}, {0x01845C, 2}, {0x01845E, 3}, {0x018461, 2}, {0x018463, 6}, {0x018469, 2}, {0x01846B, 3}, {0x01846E, 2}, {0x018470, 3}, {0x018473, 2}, {0x018475, 24}, {0x01848D, 9}, {0x018496, 7}, {0x01849D, 7}, {0x0184A4, 7}, {0x0184AB, 6}, {0x0184B1, 9}, {0x0184BA, 9}, {0x0184C3, 7}, {0x0184D6, 2}, {0x0184D8, 1}, {0x0184E6, 1}, {0x0184E7, 8}, {0x0184EF, 4}, {0x018576, 10}, {0x0184F3, 4}, {0x0184F7, 4}, {0x0184FB, 3}, {0x0184FE, 4}, {0x018502, 3}, {0x018505, 4}, {0x018509, 3}, {0x01850C, 3}, {0x01850F, 4}, {0x018584, 3}, {0x018513, 1}, {0x018522, 2}, {0x018524, 3}, {0x018527, 1}, {0x018528, 1}, {0x018529, 2}, {0x01852B, 3}, {0x01852E, 9}, {0x018537, 12}, {0x018543, 9}, {0x01854C, 12}, {0x018558, 7}, {0x01858F, 4}, {0x01855F, 1}, {0x0180E3, 1}, {0x0184CA, 1}},
+    {{0x0184DB, 11}, {0x018457, 2}, {0x018459, 3}, {0x01845C, 2}, {0x01845E, 3}, {0x018461, 2}, {0x018463, 6}, {0x018469, 2}, {0x01846B, 3}, {0x01846E, 2}, {0x018470, 3}, {0x018473, 2}, {0x018475, 24}, {0x01848D, 9}, {0x018496, 7}, {0x01849D, 7}, {0x0184A4, 7}, {0x0184AB, 6}, {0x0184B1, 9}, {0x0184BA, 9}, {0x0184C3, 7}, {0x0184D6, 2}, {0x0184D8, 1}, {0x0184E6, 1}, {0x0184E7, 8}, {0x0184EF, 4}, {0x018576, 10}, {0x0184F3, 4}, {0x0184F7, 4}, {0x0184FB, 3}, {0x0184FE, 4}, {0x018502, 3}, {0x018505, 4}, {0x018509, 3}, {0x01850C, 3}, {0x01850F, 4}, {0x018584, 3}, {0x018513, 1}, {0x018522, 2}, {0x018524, 3}, {0x018527, 1}, {0x018528, 1}, {0x018529, 2}, {0x01852B, 3}, {0x01852E, 9}, {0x018537, 12}, {0x018543, 9}, {0x01854C, 12}, {0x018558, 7}, {0x01858F, 4}, {0x01855F, 1}, {0x0180E3, 1}, {0x0184CA, 1}},
+    {{0x018516, 12}, {0x018457, 2}, {0x018459, 3}, {0x01845C, 2}, {0x01845E, 3}, {0x018461, 2}, {0x018463, 6}, {0x018469, 2}, {0x01846B, 3}, {0x01846E, 2}, {0x018470, 3}, {0x018473, 2}, {0x018475, 24}, {0x01848D, 9}, {0x018496, 7}, {0x01849D, 7}, {0x0184A4, 7}, {0x0184AB, 6}, {0x0184B1, 9}, {0x0184BA, 9}, {0x0184C3, 7}, {0x0184D6, 2}, {0x0184D8, 1}, {0x0184E6, 1}, {0x0184E7, 8}, {0x0184EF, 4}, {0x018576, 10}, {0x0184F3, 4}, {0x0184F7, 4}, {0x0184FB, 3}, {0x0184FE, 4}, {0x018502, 3}, {0x018505, 4}, {0x018509, 3}, {0x01850C, 3}, {0x01850F, 4}, {0x018584, 3}, {0x018513, 1}, {0x018522, 2}, {0x018524, 3}, {0x018527, 1}, {0x018528, 1}, {0x018529, 2}, {0x01852B, 3}, {0x01852E, 9}, {0x018537, 12}, {0x018543, 9}, {0x01854C, 12}, {0x018558, 7}, {0x01858F, 4}, {0x01855F, 1}, {0x0180E3, 1}, {0x0184CA, 1}},
+};
+
 /* The code of 01:8450-8560 from address at until it jumps to ret (as
    unused_run). */
-static void unused84_run(uint16_t at, uint16_t ret)
+static void unused84_run(uint16_t at, uint16_t ret, int copy)
 {
+    gsu_codes(unused84_run_code[copy], 1);
     int t;
     uint16_t nx;
 
@@ -710,18 +748,23 @@ static void unused84_run(uint16_t at, uint16_t ret)
 l8450:
     R[1] = 0x973E;
     gsu_r14(gsu_add(R[1], R[1], 0));
-    R[4] = gsu_getb();
+    R[4] = (gsu_codes(unused84_run_code[copy] + 1, 1), gsu_getb());
+    gsu_codes(unused84_run_code[copy] + 2, 1);
     gsu_r14(gsu_add(R[1], R[2], 0));
-    R[6] = gsu_getb();
+    R[6] = (gsu_codes(unused84_run_code[copy] + 3, 1), gsu_getb());
+    gsu_codes(unused84_run_code[copy] + 4, 1);
     gsu_r14(gsu_add(R[1], R[3], 0));
-    R[8] = gsu_getb();
+    R[8] = (gsu_codes(unused84_run_code[copy] + 5, 1), gsu_getb());
     R[1] = 0x96FE;
+    gsu_codes(unused84_run_code[copy] + 6, 1);
     gsu_r14(gsu_add(R[1], R[1], 0));
-    R[5] = gsu_getb();
+    R[5] = (gsu_codes(unused84_run_code[copy] + 7, 1), gsu_getb());
+    gsu_codes(unused84_run_code[copy] + 8, 1);
     gsu_r14(gsu_add(R[1], R[2], 0));
-    R[7] = gsu_getb();
+    R[7] = (gsu_codes(unused84_run_code[copy] + 9, 1), gsu_getb());
+    gsu_codes(unused84_run_code[copy] + 10, 1);
     gsu_r14(gsu_add(R[1], R[3], 0));
-    R[3] = gsu_getb();
+    R[3] = (gsu_codes(unused84_run_code[copy] + 11, 1), gsu_getb());
     R[0] = gsu_mult(R[8], R[7]);
     R[1] = gsu_add(R[0], R[0], 0);
     R[0] = gsu_mult(R[8], R[6]);
@@ -735,6 +778,7 @@ l8450:
     R[0] = gsu_add(R[0], R[0], 0);
     R[0] = gsu_add(R[0], R[2], 0);
     R[0] = gsu_hib(R[0]);
+    gsu_codes(unused84_run_code[copy] + 12, 1);
     gsu_stb(R[9], (uint8_t)R[0]);
     R[9] = gsu_inc(R[9]);
     R[0] = gsu_hib(R[1]);
@@ -742,25 +786,30 @@ l8450:
     R[0] = gsu_add(R[0], R[0], 0);
     R[0] = gsu_sub(R[0], R[13], 0);
     R[0] = gsu_hib(R[0]);
+    gsu_codes(unused84_run_code[copy] + 13, 1);
     gsu_stb(R[9], (uint8_t)R[0]);
     R[9] = gsu_inc(R[9]);
     R[0] = gsu_mult(R[7], R[4]);
     R[0] = gsu_add(R[0], R[0], 0);
     R[0] = gsu_hib(R[0]);
+    gsu_codes(unused84_run_code[copy] + 14, 1);
     gsu_stb(R[9], (uint8_t)R[0]);
     R[9] = gsu_inc(R[9]);
     R[0] = gsu_mult(R[4], R[3]);
     R[0] = gsu_add(R[0], R[0], 0);
     R[0] = gsu_hib(R[0]);
+    gsu_codes(unused84_run_code[copy] + 15, 1);
     gsu_stb(R[9], (uint8_t)R[0]);
     R[9] = gsu_inc(R[9]);
     R[0] = gsu_mult(R[4], R[8]);
     R[0] = gsu_add(R[0], R[0], 0);
     R[0] = gsu_hib(R[0]);
+    gsu_codes(unused84_run_code[copy] + 16, 1);
     gsu_stb(R[9], (uint8_t)R[0]);
     R[9] = gsu_inc(R[9]);
     R[0] = gsu_not(R[5]);
     R[0] = gsu_inc(R[0]);
+    gsu_codes(unused84_run_code[copy] + 17, 1);
     gsu_stb(R[9], (uint8_t)R[0]);
     R[9] = gsu_inc(R[9]);
     R[0] = gsu_hib(R[13]);
@@ -768,6 +817,7 @@ l8450:
     R[0] = gsu_add(R[0], R[0], 0);
     R[0] = gsu_sub(R[0], R[1], 0);
     R[0] = gsu_hib(R[0]);
+    gsu_codes(unused84_run_code[copy] + 18, 1);
     gsu_stb(R[9], (uint8_t)R[0]);
     R[9] = gsu_inc(R[9]);
     R[0] = gsu_hib(R[2]);
@@ -775,11 +825,13 @@ l8450:
     R[0] = gsu_add(R[0], R[0], 0);
     R[0] = gsu_add(R[0], R[12], 0);
     R[0] = gsu_hib(R[0]);
+    gsu_codes(unused84_run_code[copy] + 19, 1);
     gsu_stb(R[9], (uint8_t)R[0]);
     R[9] = gsu_inc(R[9]);
     R[0] = gsu_mult(R[6], R[4]);
     R[0] = gsu_add(R[0], R[0], 0);
     R[0] = gsu_hib(R[0]);
+    gsu_codes(unused84_run_code[copy] + 20, 1);
     gsu_stb(R[9], (uint8_t)R[0]);
     nx = (uint16_t)(R[11]);
     at = nx;
@@ -792,75 +844,92 @@ l84CB:
     R[12] = 0x0020;
     R[13] = 0x84D6;
 l84D6:
+    gsu_codes(unused84_run_code[copy] + 21, 1);
     t = gsu_count_down(&R[12]);
     gsu_plot_r1();
-    if (t) goto l84D6;
+    if (t) goto l84D6; else { gsu_codes(unused84_run_code[copy] + 22, 1); }
     return;   /* the STOP: the program ends here */
 l84DA:
     R[0] = gsu_sub(R[0], R[0], 0);
-    gsu.rambr = (uint8_t)(R[0] & 1);
+    gsu_ramb(R[0]);
     gsu_romb(R[0]);
     R[10] = 0x0240;
     R[0] = gsu_ldw(0x0028);
+    gsu_codes(unused84_run_code[copy] + 23, 1);
     gsu_stw(R[10], R[0]);
     R[10] = gsu_inc(R[10]);
     R[10] = gsu_inc(R[10]);
     R[1] = 0x0080;
     R[0] = gsu_add(R[0], R[1], 0);
     R[0] = gsu_sub(R[0], R[0], 0);
+    gsu_codes(unused84_run_code[copy] + 24, 1);
     gsu_sbk(R[0]);
     R[11] = 0x84F3;
-    abi_FxModelDrawFlagged();
+    (gsu_codes(unused84_run_code[copy] + 25, 2), abi_FxModelDrawFlagged());
+gsu_codes(unused84_run_code[copy] + 27, 1);
 l84F3:
     R[0] = gsu_ldw(0x0020);
     R[0] = gsu_swap(R[0]);
     R[0] = gsu_not(R[0]);
     R[0] = gsu_inc(R[0]);
+    gsu_codes(unused84_run_code[copy] + 28, 1);
     gsu_sbk(R[0]);
-    R[0] = gsu_ldw(0x0022);
+    R[0] = gsu_ldw(gsu_codes_then(unused84_run_code[copy] + 29, 1, 0x0022));
     R[0] = gsu_swap(R[0]);
     R[0] = gsu_not(R[0]);
     R[0] = gsu_inc(R[0]);
+    gsu_codes(unused84_run_code[copy] + 30, 1);
     gsu_sbk(R[0]);
-    R[0] = gsu_ldw(0x0024);
+    R[0] = gsu_ldw(gsu_codes_then(unused84_run_code[copy] + 31, 1, 0x0024));
     R[0] = gsu_swap(R[0]);
     R[0] = gsu_not(R[0]);
     R[0] = gsu_inc(R[0]);
+    gsu_codes(unused84_run_code[copy] + 32, 1);
     gsu_sbk(R[0]);
     R[10] = gsu_dec(R[10]);
     R[10] = gsu_dec(R[10]);
-    R[0] = gsu_ldw(R[10]);
+    R[0] = gsu_ldw(gsu_codes_then(unused84_run_code[copy] + 33, 1, R[10]));
+    gsu_codes(unused84_run_code[copy] + 34, 1);
     gsu_stw(0x0028, R[0]);
     R[11] = 0x8513;
-    abi_FxModelDrawFlags8000();
+    (gsu_codes(unused84_run_code[copy] + 35, 2), abi_FxModelDrawFlags8000());
+gsu_codes(unused84_run_code[copy] + 37, 1);
 l8513:
     return;   /* the STOP: the program ends here */
 l8515:
     R[0] = gsu_sub(R[0], R[0], 0);
-    gsu.rambr = (uint8_t)(R[0] & 1);
+    gsu_ramb(R[0]);
     gsu_romb(R[0]);
     R[10] = 0x0240;
     R[4] = gsu_ldw(0x001A);
+    gsu_codes(unused84_run_code[copy] + 38, 1);
     gsu_r14(0x0012);
+    gsu_codes(unused84_run_code[copy] + 39, 1);
     gsu_r14(gsu_add(R[4], R[14], 0));
-    R[0] = gsu_getb();
+    R[0] = (gsu_codes(unused84_run_code[copy] + 40, 1), gsu_getb());
+    gsu_codes(unused84_run_code[copy] + 41, 1);
     gsu_r14(gsu_inc(R[14]));
-    R[0] = gsu_getbh(R[0]);
+    R[0] = gsu_getbh(gsu_codes_then(unused84_run_code[copy] + 42, 1, R[0]));
+    gsu_codes(unused84_run_code[copy] + 43, 1);
     gsu_stw(0x004A, R[0]);
+    gsu_codes(unused84_run_code[copy] + 44, 1);
     gsu_r14(0x0007);
     gsu_r14(gsu_add(R[4], R[14], 0));
     R[0] = gsu_getb();
     gsu_stw(0x0032, R[0]);
+    gsu_codes(unused84_run_code[copy] + 45, 1);
     gsu_r14(0x0000);
     gsu_r14(gsu_add(R[4], R[14], 0));
     R[0] = gsu_getb();
     gsu_r14(gsu_inc(R[14]));
     R[0] = gsu_getbh(R[0]);
     gsu_stw(0x0016, R[0]);
+    gsu_codes(unused84_run_code[copy] + 46, 1);
     gsu_r14(0x0002);
     gsu_r14(gsu_add(R[4], R[14], 0));
     R[0] = gsu_getb();
     gsu_stw(0x001C, R[0]);
+    gsu_codes(unused84_run_code[copy] + 47, 1);
     gsu_r14(0x0003);
     gsu_r14(gsu_add(R[4], R[14], 0));
     R[0] = gsu_getb();
@@ -869,12 +938,13 @@ l8515:
     gsu_stw(0x0018, R[0]);
     R[0] = 0x8000;
     R[11] = 0x855F;
-    abi_FxModelDrawWithFlags();
+    (gsu_codes(unused84_run_code[copy] + 48, 2), abi_FxModelDrawWithFlags());
+gsu_codes(unused84_run_code[copy] + 50, 1);
 l855F:
     return;   /* the STOP: the program ends here */
 dispatch:
     if (at == ret)
-        return;
+        { gsu_codes(unused84_run_code[copy] + 51, 2); return; }
     switch (at) {
     case 0x8450: goto l8450;
     case 0x84CB: goto l84CB;
@@ -907,9 +977,7 @@ dispatch:
  */
 void abi_FxMatrixFromAnglesBytes(void)
 {
-    gsu_code(0x018451, 6);
-    unused84_run(0x8450, R[11]);
-    gsu_code(0x0180E3, 1); gsu_code(0x0184CA, 1);
+    unused84_run(0x8450, R[11], GSU_COPY(0));
 }
 
 /*
@@ -922,9 +990,7 @@ void abi_FxMatrixFromAnglesBytes(void)
  */
 void abi_FxPlotTestProgram(void)
 {
-    gsu_code(0x0184CC, 11);
-    unused84_run(0x84CB, 0xFFFF);
-    gsu_code(0x0184D8, 1);
+    unused84_run(0x84CB, 0xFFFF, GSU_COPY(1));
 }
 
 /*
@@ -942,9 +1008,7 @@ void abi_FxPlotTestProgram(void)
  */
 void abi_FxModelMirrorProgram(void)
 {
-    gsu_code(0x0184DB, 11);
-    unused84_run(0x84DA, 0xFFFF);
-    gsu_code(0x018513, 1);
+    unused84_run(0x84DA, 0xFFFF, GSU_COPY(2));
 }
 
 /*
@@ -961,19 +1025,18 @@ void abi_FxModelMirrorProgram(void)
  */
 void abi_FxModelRecordProgram(void)
 {
-    gsu_code(0x018516, 12);
-    unused84_run(0x8515, 0xFFFF);
-    gsu_code(0x01855F, 1);
+    unused84_run(0x8515, 0xFFFF, GSU_COPY(3));
 }
 
 void abi_FxProjectPoint(void);
 void abi_FxDivide32By16Halving(void);
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode unusedb4_run_code[3][167] = {
-    {{0x01B430, 2}, {0, 0}, {0, 0}, {0x01B432, 14}, {0x01B440, 3}, {0x01B443, 3}, {0x01947A, 3}, {0x01B446, 4}, {0x01B44F, 5}, {0x01B446, 9}, {0x01B454, 4}, {0x01B458, 3}, {0x01B45B, 3}, {0x01B45E, 2}, {0xB460, 0}, {0x01B460, 4}, {0x01B464, 1}, {0x01B465, 2}, {0x01B467, 1}, {0x01B468, 3}, {0x01B468, 9}, {0x01B471, 7}, {0x01B478, 9}, {0x01947A, 3}, {0x01B481, 4}, {0x01B485, 16}, {0x01B495, 11}, {0x01B4A0, 3}, {0x01B4A3, 11}, {0x01B4AE, 3}, {0x01B4B1, 7}, {0x01B4B8, 8}, {0x01B4C0, 4}, {0x0181BC, 10}, {0x0181CB, 7}, {0x0181E1, 2}, {0x01B4C4, 4}, {0x01B4CC, 19}, {0xB4DF, 0}, {0x01B4C4, 8}, {0x01B57D, 9}, {0x01B593, 5}, {0xB598, 0}, {0x01B598, 4}, {0x01B4DF, 4}, {0x01B4E3, 3}, {0x01B4E6, 5}, {0x01B4EF, 8}, {0x01B4EB, 4}, {0x01B4FB, 4}, {0x01B4F7, 4}, {0x01B4FF, 5}, {0x01B504, 3}, {0x01B507, 5}, {0x01B50C, 4}, {0x01B521, 3}, {0x01B524, 4}, {0x01B530, 4}, {0x01B524, 8}, {0x01B503, 1}, {0x01B52C, 4}, {0x01B534, 7}, {0x01B534, 9}, {0x01B53D, 1}, {0x01B53E, 2}, {0x01B540, 4}, {0x01B544, 4}, {0x01B54D, 3}, {0x01B548, 2}, {0x01B543, 1}, {0x01B503, 1}, {0x01B54A, 3}, {0x01B543, 1}, {0x01B555, 2}, {0x01B550, 2}, {0x01B543, 1}, {0x01B503, 1}, {0x01B552, 3}, {0x01B503, 1}, {0x01B557, 3}, {0x01B55A, 5}, {0x01B56A, 9}, {0x01B55F, 8}, {0x01B567, 3}, {0x01B577, 1}, {0x01B573, 4}, {0x01B578, 5}, {0x0181BC, 10}, {0x0181CB, 7}, {0x01B58C, 7}, {0x01B586, 6}, {0x01B59C, 3}, {0x01B59F, 5}, {0x01B5A8, 8}, {0x01B5A4, 4}, {0x01B5B4, 4}, {0x01B5B0, 4}, {0x01B5B8, 5}, {0x01B5BD, 3}, {0x01B5C0, 5}, {0x01B5C5, 4}, {0, 0}, {0, 0}, {0, 0}, {0x01B5DE, 3}, {0x01B5C9, 4}, {0x01B5E1, 8}, {0x01B66E, 4}, {0x01B619, 1}, {0x01B5EF, 1}, {0x01B5F0, 2}, {0x01B5F2, 3}, {0x01B5F5, 4}, {0x01B608, 3}, {0x01B5FE, 2}, {0x01B5F9, 5}, {0x01B5BC, 1}, {0x01B600, 3}, {0x01B603, 5}, {0x01B613, 2}, {0x01B60B, 5}, {0x01B637, 1}, {0x01B637, 1}, {0x01B61A, 3}, {0x01B61D, 6}, {0x01B642, 3}, {0x01B61D, 9}, {0x01B626, 3}, {0x01B629, 4}, {0x01B637, 1}, {0x01B632, 2}, {0x01B62D, 5}, {0x01B5BC, 1}, {0x01B634, 3}, {0x01B638, 4}, {0x01B63C, 1}, {0x01B63D, 1}, {0x01B5BC, 1}, {0x01B63E, 4}, {0x01B645, 6}, {0x01B64B, 4}, {0x01B65F, 1}, {0x01B654, 6}, {0x01B64F, 5}, {0x01B65A, 2}, {0x01B65C, 3}, {0x01B660, 5}, {0x01B65F, 1}, {0x01B669, 1}, {0x01B669, 1}, {0x01B665, 4}, {0x01B669, 1}, {0x01B66A, 1}, {0x01B65F, 1}, {0x01B65F, 1}, {0x01B65F, 1}, {0x01B66B, 3}, {0x01B678, 1}, {0x01B5BC, 1}, {0x01B672, 6}, {0x01B679, 4}, {0x01B67E, 7}, {0x01B689, 8}, {0x01B67E, 11}, {0x01B695, 5}, {0x01B691, 4}, {0x0180E3, 1}},
-    {{0x01B5BC, 4}, {0x01B604, 7}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x01B5C0, 5}, {0x01B5C5, 8}, {0x01B67E, 7}, {0x01B689, 8}, {0x01B695, 5}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x01B613, 5}, {0x01B60B, 8}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x0180E3, 1}},
-    {{0x01B67E, 7}, {0x01B689, 8}, {0x01B695, 5}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x0180E3, 1}},
+static const GsuCode unusedb4_run_code[4][183] = {
+    {{0x01B430, 2}, {0, 0}, {0, 0}, {0x01B432, 14}, {0x01B440, 3}, {0x01B443, 3}, {0x01947A, 3}, {0x01B446, 4}, {0x01B44F, 5}, {0x01B446, 9}, {0x01B454, 4}, {0x01B458, 3}, {0x01B45B, 3}, {0x01B45E, 2}, {0xB460, 0}, {0x01B460, 4}, {0x01B464, 1}, {0x01B465, 2}, {0x01B467, 1}, {0x01B468, 3}, {0x01B468, 9}, {0x01B471, 7}, {0x01B478, 9}, {0x01947A, 3}, {0x01B481, 4}, {0x01B485, 16}, {0x01B495, 11}, {0x01B4A0, 3}, {0x01B4A3, 11}, {0x01B4AE, 3}, {0x01B4B1, 7}, {0x01B4B8, 8}, {0x01B4C0, 4}, {0x0181BC, 10}, {0x0181CB, 7}, {0x0181E1, 2}, {0x01B4C4, 4}, {0x01B4CC, 19}, {0xB4DF, 0}, {0x01B4C4, 8}, {0x01B57D, 9}, {0x01B593, 5}, {0xB598, 0}, {0x01B598, 4}, {0x01B4DF, 4}, {0x01B4E3, 3}, {0x01B4E6, 5}, {0x01B4EF, 8}, {0x01B4EB, 4}, {0x01B4FB, 4}, {0x01B4F7, 4}, {0x01B4FF, 5}, {0x01B504, 3}, {0x01B507, 4}, {0x01B50B, 1}, {0x01B50C, 4}, {0x01B50C, 21}, {0x01B521, 3}, {0x01B524, 4}, {0x01B530, 4}, {0x01B524, 8}, {0x01B503, 1}, {0x01B52C, 4}, {0x01B534, 7}, {0x01B534, 9}, {0x01B53D, 1}, {0x01B53E, 2}, {0x01B540, 4}, {0x01B544, 4}, {0x01B54D, 3}, {0x01B548, 2}, {0x01B543, 1}, {0x01B503, 1}, {0x01B54A, 3}, {0x01B543, 1}, {0x01B555, 2}, {0x01B550, 2}, {0x01B543, 1}, {0x01B503, 1}, {0x01B552, 3}, {0x01B503, 1}, {0x01B557, 3}, {0x01B55A, 5}, {0x01B56A, 9}, {0x01B55F, 8}, {0x01B567, 3}, {0x01B577, 1}, {0x01B573, 4}, {0x01B578, 5}, {0x0181BC, 10}, {0x0181CB, 7}, {0x01B58C, 7}, {0x01B586, 6}, {0x01B59C, 3}, {0x01B59F, 5}, {0x01B5A8, 8}, {0x01B5A4, 4}, {0x01B5B4, 4}, {0x01B5B0, 4}, {0x01B5B8, 5}, {0x01B5BD, 3}, {0x01B5C0, 4}, {0x01B5C4, 1}, {0x01B5C5, 4}, {0x01B5CD, 17}, {0x01B5C5, 8}, {0, 0}, {0, 0}, {0, 0}, {0x01B5DE, 3}, {0x01B5E1, 8}, {0x01B66E, 4}, {0x01B619, 1}, {0x01B5EF, 1}, {0x01B5F0, 2}, {0x01B5F2, 3}, {0x01B5F5, 4}, {0x01B608, 3}, {0x01B5FE, 2}, {0x01B5F9, 5}, {0x01B5BC, 1}, {0x01B600, 3}, {0x01B603, 5}, {0x01B613, 2}, {0x01B60B, 5}, {0x01B637, 1}, {0x01B637, 1}, {0x01B61A, 3}, {0x01B61D, 6}, {0x01B642, 3}, {0x01B61D, 9}, {0x01B626, 3}, {0x01B629, 4}, {0x01B637, 1}, {0x01B632, 2}, {0x01B62D, 5}, {0x01B5BC, 1}, {0x01B634, 3}, {0x01B638, 4}, {0x01B63C, 1}, {0x01B63D, 1}, {0x01B5BC, 1}, {0x01B63E, 4}, {0x01B645, 6}, {0x01B64B, 4}, {0x01B65F, 1}, {0x01B654, 6}, {0x01B64F, 5}, {0x01B65A, 2}, {0x01B65C, 3}, {0x01B660, 5}, {0x01B65F, 1}, {0x01B669, 1}, {0x01B669, 1}, {0x01B665, 4}, {0x01B669, 1}, {0x01B66A, 1}, {0x01B65F, 1}, {0x01B65F, 1}, {0x01B65F, 1}, {0x01B66B, 3}, {0x01B678, 1}, {0x01B5BC, 1}, {0x01B672, 6}, {0x01B679, 4}, {0x01B67E, 7}, {0x01B689, 8}, {0x01B67E, 11}, {0x01B695, 5}, {0x01B691, 4}, {0x01B6A4, 11}, {0x01B6AF, 14}, {0x01B6BD, 1}, {0x01B6BE, 6}, {0x01B6C4, 2}, {0x01B6C6, 1}, {0x01B6C7, 2}, {0x01B6C9, 1}, {0x01B6CA, 1}, {0x01B6CB, 2}, {0x01B6CB, 8}, {0x01B6D3, 1}, {0x0180E3, 1}},
+    {{0x01B5BC, 4}, {0x01B604, 7}, {0, 0}, {0x01B432, 14}, {0x01B440, 3}, {0x01B443, 3}, {0x01947A, 3}, {0x01B446, 4}, {0x01B44F, 5}, {0x01B446, 9}, {0x01B454, 4}, {0x01B458, 3}, {0x01B45B, 3}, {0x01B45E, 2}, {0xB460, 0}, {0x01B460, 4}, {0x01B464, 1}, {0x01B465, 2}, {0x01B467, 1}, {0x01B468, 3}, {0x01B468, 9}, {0x01B471, 7}, {0x01B478, 9}, {0x01947A, 3}, {0x01B481, 4}, {0x01B485, 16}, {0x01B495, 11}, {0x01B4A0, 3}, {0x01B4A3, 11}, {0x01B4AE, 3}, {0x01B4B1, 7}, {0x01B4B8, 8}, {0x01B4C0, 4}, {0x0181BC, 10}, {0x0181CB, 7}, {0x0181E1, 2}, {0x01B4C4, 4}, {0x01B4CC, 19}, {0xB4DF, 0}, {0x01B4C4, 8}, {0x01B57D, 9}, {0x01B593, 5}, {0xB598, 0}, {0x01B598, 4}, {0x01B4DF, 4}, {0x01B4E3, 3}, {0x01B4E6, 5}, {0x01B4EF, 8}, {0x01B4EB, 4}, {0x01B4FB, 4}, {0x01B4F7, 4}, {0x01B4FF, 5}, {0x01B504, 3}, {0x01B507, 4}, {0x01B50B, 1}, {0x01B50C, 4}, {0x01B50C, 21}, {0x01B521, 3}, {0x01B524, 4}, {0x01B530, 4}, {0x01B524, 8}, {0x01B503, 1}, {0x01B52C, 4}, {0x01B534, 7}, {0x01B534, 9}, {0x01B53D, 1}, {0x01B53E, 2}, {0x01B540, 4}, {0x01B544, 4}, {0x01B54D, 3}, {0x01B548, 2}, {0x01B543, 1}, {0x01B503, 1}, {0x01B54A, 3}, {0x01B543, 1}, {0x01B555, 2}, {0x01B550, 2}, {0x01B543, 1}, {0x01B503, 1}, {0x01B552, 3}, {0x01B503, 1}, {0x01B557, 3}, {0x01B55A, 5}, {0x01B56A, 9}, {0x01B55F, 8}, {0x01B567, 3}, {0x01B577, 1}, {0x01B573, 4}, {0x01B578, 5}, {0x0181BC, 10}, {0x0181CB, 7}, {0x01B58C, 7}, {0x01B586, 6}, {0x01B59C, 3}, {0x01B59F, 5}, {0x01B5A8, 8}, {0x01B5A4, 4}, {0x01B5B4, 4}, {0x01B5B0, 4}, {0x01B5B8, 5}, {0, 0}, {0x01B5C0, 4}, {0x01B5C4, 1}, {0x01B5C5, 4}, {0x01B5CD, 17}, {0x01B5C5, 8}, {0x01B67E, 7}, {0x01B689, 8}, {0x01B695, 5}, {0x01B5DE, 3}, {0x01B5E1, 8}, {0x01B66E, 4}, {0x01B619, 1}, {0x01B5EF, 1}, {0x01B5F0, 2}, {0x01B5F2, 3}, {0x01B5F5, 4}, {0x01B608, 3}, {0x01B5FE, 2}, {0x01B5F9, 5}, {0x01B5BC, 1}, {0x01B600, 3}, {0, 0}, {0x01B613, 5}, {0x01B60B, 8}, {0, 0}, {0, 0}, {0x01B61A, 3}, {0x01B61D, 6}, {0x01B642, 3}, {0x01B61D, 9}, {0x01B626, 3}, {0x01B629, 4}, {0x01B637, 1}, {0x01B632, 2}, {0x01B62D, 5}, {0x01B5BC, 1}, {0x01B634, 3}, {0x01B638, 4}, {0x01B63C, 1}, {0x01B63D, 1}, {0x01B5BC, 1}, {0x01B63E, 4}, {0x01B645, 6}, {0x01B64B, 4}, {0x01B65F, 1}, {0x01B654, 6}, {0x01B64F, 5}, {0x01B65A, 2}, {0x01B65C, 3}, {0x01B660, 5}, {0x01B65F, 1}, {0x01B669, 1}, {0x01B669, 1}, {0x01B665, 4}, {0x01B669, 1}, {0x01B66A, 1}, {0x01B65F, 1}, {0x01B65F, 1}, {0x01B65F, 1}, {0x01B66B, 3}, {0x01B678, 1}, {0x01B5BC, 1}, {0x01B672, 6}, {0x01B679, 4}, {0, 0}, {0, 0}, {0x01B67E, 11}, {0, 0}, {0x01B691, 4}, {0x01B6A4, 11}, {0x01B6AF, 14}, {0x01B6BD, 1}, {0x01B6BE, 6}, {0x01B6C4, 2}, {0x01B6C6, 1}, {0x01B6C7, 2}, {0x01B6C9, 1}, {0x01B6CA, 1}, {0x01B6CB, 2}, {0x01B6CB, 8}, {0x01B6D3, 1}, {0x0180E3, 1}},
+    {{0x01B67E, 7}, {0x01B689, 8}, {0x01B695, 5}, {0x01B432, 14}, {0x01B440, 3}, {0x01B443, 3}, {0x01947A, 3}, {0x01B446, 4}, {0x01B44F, 5}, {0x01B446, 9}, {0x01B454, 4}, {0x01B458, 3}, {0x01B45B, 3}, {0x01B45E, 2}, {0xB460, 0}, {0x01B460, 4}, {0x01B464, 1}, {0x01B465, 2}, {0x01B467, 1}, {0x01B468, 3}, {0x01B468, 9}, {0x01B471, 7}, {0x01B478, 9}, {0x01947A, 3}, {0x01B481, 4}, {0x01B485, 16}, {0x01B495, 11}, {0x01B4A0, 3}, {0x01B4A3, 11}, {0x01B4AE, 3}, {0x01B4B1, 7}, {0x01B4B8, 8}, {0x01B4C0, 4}, {0x0181BC, 10}, {0x0181CB, 7}, {0x0181E1, 2}, {0x01B4C4, 4}, {0x01B4CC, 19}, {0xB4DF, 0}, {0x01B4C4, 8}, {0x01B57D, 9}, {0x01B593, 5}, {0xB598, 0}, {0x01B598, 4}, {0x01B4DF, 4}, {0x01B4E3, 3}, {0x01B4E6, 5}, {0x01B4EF, 8}, {0x01B4EB, 4}, {0x01B4FB, 4}, {0x01B4F7, 4}, {0x01B4FF, 5}, {0x01B504, 3}, {0x01B507, 4}, {0x01B50B, 1}, {0x01B50C, 4}, {0x01B50C, 21}, {0x01B521, 3}, {0x01B524, 4}, {0x01B530, 4}, {0x01B524, 8}, {0x01B503, 1}, {0x01B52C, 4}, {0x01B534, 7}, {0x01B534, 9}, {0x01B53D, 1}, {0x01B53E, 2}, {0x01B540, 4}, {0x01B544, 4}, {0x01B54D, 3}, {0x01B548, 2}, {0x01B543, 1}, {0x01B503, 1}, {0x01B54A, 3}, {0x01B543, 1}, {0x01B555, 2}, {0x01B550, 2}, {0x01B543, 1}, {0x01B503, 1}, {0x01B552, 3}, {0x01B503, 1}, {0x01B557, 3}, {0x01B55A, 5}, {0x01B56A, 9}, {0x01B55F, 8}, {0x01B567, 3}, {0x01B577, 1}, {0x01B573, 4}, {0x01B578, 5}, {0x0181BC, 10}, {0x0181CB, 7}, {0x01B58C, 7}, {0x01B586, 6}, {0x01B59C, 3}, {0x01B59F, 5}, {0x01B5A8, 8}, {0x01B5A4, 4}, {0x01B5B4, 4}, {0x01B5B0, 4}, {0x01B5B8, 5}, {0x01B5BD, 3}, {0x01B5C0, 4}, {0x01B5C4, 1}, {0x01B5C5, 4}, {0x01B5CD, 17}, {0x01B5C5, 8}, {0, 0}, {0, 0}, {0, 0}, {0x01B5DE, 3}, {0x01B5E1, 8}, {0x01B66E, 4}, {0x01B619, 1}, {0x01B5EF, 1}, {0x01B5F0, 2}, {0x01B5F2, 3}, {0x01B5F5, 4}, {0x01B608, 3}, {0x01B5FE, 2}, {0x01B5F9, 5}, {0x01B5BC, 1}, {0x01B600, 3}, {0x01B603, 5}, {0x01B613, 2}, {0x01B60B, 5}, {0x01B637, 1}, {0x01B637, 1}, {0x01B61A, 3}, {0x01B61D, 6}, {0x01B642, 3}, {0x01B61D, 9}, {0x01B626, 3}, {0x01B629, 4}, {0x01B637, 1}, {0x01B632, 2}, {0x01B62D, 5}, {0x01B5BC, 1}, {0x01B634, 3}, {0x01B638, 4}, {0x01B63C, 1}, {0x01B63D, 1}, {0x01B5BC, 1}, {0x01B63E, 4}, {0x01B645, 6}, {0x01B64B, 4}, {0x01B65F, 1}, {0x01B654, 6}, {0x01B64F, 5}, {0x01B65A, 2}, {0x01B65C, 3}, {0x01B660, 5}, {0x01B65F, 1}, {0x01B669, 1}, {0x01B669, 1}, {0x01B665, 4}, {0x01B669, 1}, {0x01B66A, 1}, {0x01B65F, 1}, {0x01B65F, 1}, {0x01B65F, 1}, {0x01B66B, 3}, {0x01B678, 1}, {0x01B5BC, 1}, {0x01B672, 6}, {0x01B679, 4}, {0, 0}, {0, 0}, {0x01B67E, 11}, {0, 0}, {0x01B691, 4}, {0x01B6A4, 11}, {0x01B6AF, 14}, {0x01B6BD, 1}, {0x01B6BE, 6}, {0x01B6C4, 2}, {0x01B6C6, 1}, {0x01B6C7, 2}, {0x01B6C9, 1}, {0x01B6CA, 1}, {0x01B6CB, 2}, {0x01B6CB, 8}, {0x01B6D3, 1}, {0x0180E3, 1}},
+    {{0x01B69B, 5}, {0xB6A0, 0}, {0x01B6A0, 4}, {0x01B432, 14}, {0x01B440, 3}, {0x01B443, 3}, {0x01947A, 3}, {0x01B446, 4}, {0x01B44F, 5}, {0x01B446, 9}, {0x01B454, 4}, {0x01B458, 3}, {0x01B45B, 3}, {0x01B45E, 2}, {0xB460, 0}, {0x01B460, 4}, {0x01B464, 1}, {0x01B465, 2}, {0x01B467, 1}, {0x01B468, 3}, {0x01B468, 9}, {0x01B471, 7}, {0x01B478, 9}, {0x01947A, 3}, {0x01B481, 4}, {0x01B485, 16}, {0x01B495, 11}, {0x01B4A0, 3}, {0x01B4A3, 11}, {0x01B4AE, 3}, {0x01B4B1, 7}, {0x01B4B8, 8}, {0x01B4C0, 4}, {0x0181BC, 10}, {0x0181CB, 7}, {0x0181E1, 2}, {0x01B4C4, 4}, {0x01B4CC, 19}, {0xB4DF, 0}, {0x01B4C4, 8}, {0x01B57D, 9}, {0x01B593, 5}, {0xB598, 0}, {0x01B598, 4}, {0x01B4DF, 4}, {0x01B4E3, 3}, {0x01B4E6, 5}, {0x01B4EF, 8}, {0x01B4EB, 4}, {0x01B4FB, 4}, {0x01B4F7, 4}, {0x01B4FF, 5}, {0x01B504, 3}, {0x01B507, 4}, {0x01B50B, 1}, {0x01B50C, 4}, {0x01B50C, 21}, {0x01B521, 3}, {0x01B524, 4}, {0x01B530, 4}, {0x01B524, 8}, {0x01B503, 1}, {0x01B52C, 4}, {0x01B534, 7}, {0x01B534, 9}, {0x01B53D, 1}, {0x01B53E, 2}, {0x01B540, 4}, {0x01B544, 4}, {0x01B54D, 3}, {0x01B548, 2}, {0x01B543, 1}, {0x01B503, 1}, {0x01B54A, 3}, {0x01B543, 1}, {0x01B555, 2}, {0x01B550, 2}, {0x01B543, 1}, {0x01B503, 1}, {0x01B552, 3}, {0x01B503, 1}, {0x01B557, 3}, {0x01B55A, 5}, {0x01B56A, 9}, {0x01B55F, 8}, {0x01B567, 3}, {0x01B577, 1}, {0x01B573, 4}, {0x01B578, 5}, {0x0181BC, 10}, {0x0181CB, 7}, {0x01B58C, 7}, {0x01B586, 6}, {0x01B59C, 3}, {0x01B59F, 5}, {0x01B5A8, 8}, {0x01B5A4, 4}, {0x01B5B4, 4}, {0x01B5B0, 4}, {0x01B5B8, 5}, {0x01B5BD, 3}, {0x01B5C0, 4}, {0x01B5C4, 1}, {0x01B5C5, 4}, {0x01B5CD, 17}, {0x01B5C5, 8}, {0, 0}, {0, 0}, {0, 0}, {0x01B5DE, 3}, {0x01B5E1, 8}, {0x01B66E, 4}, {0x01B619, 1}, {0x01B5EF, 1}, {0x01B5F0, 2}, {0x01B5F2, 3}, {0x01B5F5, 4}, {0x01B608, 3}, {0x01B5FE, 2}, {0x01B5F9, 5}, {0x01B5BC, 1}, {0x01B600, 3}, {0x01B603, 5}, {0x01B613, 2}, {0x01B60B, 5}, {0x01B637, 1}, {0x01B637, 1}, {0x01B61A, 3}, {0x01B61D, 6}, {0x01B642, 3}, {0x01B61D, 9}, {0x01B626, 3}, {0x01B629, 4}, {0x01B637, 1}, {0x01B632, 2}, {0x01B62D, 5}, {0x01B5BC, 1}, {0x01B634, 3}, {0x01B638, 4}, {0x01B63C, 1}, {0x01B63D, 1}, {0x01B5BC, 1}, {0x01B63E, 4}, {0x01B645, 6}, {0x01B64B, 4}, {0x01B65F, 1}, {0x01B654, 6}, {0x01B64F, 5}, {0x01B65A, 2}, {0x01B65C, 3}, {0x01B660, 5}, {0x01B65F, 1}, {0x01B669, 1}, {0x01B669, 1}, {0x01B665, 4}, {0x01B669, 1}, {0x01B66A, 1}, {0x01B65F, 1}, {0x01B65F, 1}, {0x01B65F, 1}, {0x01B66B, 3}, {0x01B678, 1}, {0x01B5BC, 1}, {0x01B672, 6}, {0x01B679, 4}, {0, 0}, {0, 0}, {0x01B67E, 11}, {0, 0}, {0x01B691, 4}, {0x01B6A4, 11}, {0x01B6AF, 14}, {0x01B6BD, 1}, {0x01B6BE, 6}, {0x01B6C4, 2}, {0x01B6C6, 1}, {0x01B6C7, 2}, {0x01B6C9, 1}, {0x01B6CA, 1}, {0x01B6CB, 2}, {0x01B6CB, 8}, {0x01B6D3, 1}, {0x0180E3, 1}},
 };
 
 /* The code of 01:B42F-B6D4 from address at until it jumps to ret (as
@@ -993,10 +1056,11 @@ lB42F:
     R[10] = gsu_inc(R[10]);
     gsu_color((uint8_t)R[0]);
     R[0] = gsu_sub(R[0], R[0], 0);
-    gsu.rambr = (uint8_t)(R[0] & 1);
+    gsu_codes(unusedb4_run_code[copy] + 3, 1);
+    gsu_ramb(R[0]);
     gsu_cmode(R[0]);
     R[0] = 0x0080;
-    R[1] = gsu_ldw(gsu_codes_then(unusedb4_run_code[copy] + 3, 1, 0x0026));
+    R[1] = gsu_ldw(0x0026);
     R[2] = gsu_ldw(gsu_codes_then(unusedb4_run_code[copy] + 4, 1, 0x0028));
     R[3] = gsu_ldw(gsu_codes_then(unusedb4_run_code[copy] + 5, 1, 0x002A));
     gsu_sub(R[0], R[3], 0);   /* CMP */
@@ -1117,13 +1181,12 @@ lB503:
     R[0] = gsu_ldw(gsu_codes_then(unusedb4_run_code[copy] + 52, 1, 0x001C));
     gsu_codes(unusedb4_run_code[copy] + 53, 1);
     gsu_romb(R[0]);
-    gsu_codes(unusedb4_run_code[copy] + 54, 1);
     gsu_r14(R[5]);
-    R[0] = gsu_getb();
+    R[0] = (gsu_codes(unusedb4_run_code[copy] + 54, 1), gsu_getb());
     R[5] = gsu_inc(R[5]);
     R[0] = gsu_add(R[0], R[0], 0);
     t = gsu.z;
-    if (t) goto lB55A; else { gsu_codes(unusedb4_run_code[copy] + 55, 1); }
+    if (t) { gsu_codes(unusedb4_run_code[copy] + 55, 1); goto lB55A; } else { gsu_codes(unusedb4_run_code[copy] + 56, 1); }
     R[3] = 0x0014;
     gsu_romb(R[3]);
     R[3] = 0x0010;
@@ -1132,62 +1195,62 @@ lB503:
     R[0] = gsu_add(R[0], R[4], 0);
     R[0] = gsu_add(R[0], R[4], 0);
     gsu_r14(gsu_add(R[0], R[3], 0));
-    R[0] = gsu_ldw(0x00B2);
+    R[0] = gsu_ldw(gsu_codes_then(unusedb4_run_code[copy] + 57, 1, 0x00B2));
     gsu_sub(R[0], R[1], 0);   /* CMP */
     t = gsu.s;
-    if (t) { gsu_codes(unusedb4_run_code[copy] + 56, 2); goto lB530; } else { gsu_codes(unusedb4_run_code[copy] + 58, 1); }
+    if (t) { gsu_codes(unusedb4_run_code[copy] + 58, 2); goto lB530; } else { gsu_codes(unusedb4_run_code[copy] + 60, 1); }
     R[0] = gsu_ldw(0x00C8);
     R[1] = gsu_add(R[0], R[1], 0);
     t = 1;
-    if (t) { gsu_codes(unusedb4_run_code[copy] + 59, 2); goto lB503; }
+    if (t) { gsu_codes(unusedb4_run_code[copy] + 61, 2); goto lB503; }
 lB530:
     R[3] = gsu_ldw(0x00B4);
     R[3] = gsu_dec(R[3]);
     R[3] = gsu_dec(R[3]);
     gsu_sub(R[3], R[1], 0);   /* CMP */
     t = gsu.s;
-    if (t) { gsu_codes(unusedb4_run_code[copy] + 61, 1); goto lB55A; } else { gsu_codes(unusedb4_run_code[copy] + 62, 1); }
+    if (t) { gsu_codes(unusedb4_run_code[copy] + 63, 1); goto lB55A; } else { gsu_codes(unusedb4_run_code[copy] + 64, 1); }
     R[0] = gsu_getb();
-    gsu_codes(unusedb4_run_code[copy] + 63, 1);
+    gsu_codes(unusedb4_run_code[copy] + 65, 1);
     gsu_r14(gsu_inc(R[14]));
-    R[0] = gsu_getbh(gsu_codes_then(unusedb4_run_code[copy] + 64, 1, R[0]));
+    R[0] = gsu_getbh(gsu_codes_then(unusedb4_run_code[copy] + 66, 1, R[0]));
     R[12] = 0x0010;
     R[13] = 0xB543;
-gsu_codes(unusedb4_run_code[copy] + 65, 1);
+gsu_codes(unusedb4_run_code[copy] + 67, 1);
 lB543:
     R[7] = gsu_sub(R[7], R[9], 0);
-    gsu_codes(unusedb4_run_code[copy] + 66, 1);
+    gsu_codes(unusedb4_run_code[copy] + 68, 1);
     t = !gsu.cy;
     R[0] = gsu_rol(R[0]);
-    if (t) { gsu_codes(unusedb4_run_code[copy] + 67, 1); goto lB54D; } else { gsu_codes(unusedb4_run_code[copy] + 68, 1); }
+    if (t) { gsu_codes(unusedb4_run_code[copy] + 69, 1); goto lB54D; } else { gsu_codes(unusedb4_run_code[copy] + 70, 1); }
     t = gsu_count_down(&R[12]);
-    if (t) { gsu_codes(unusedb4_run_code[copy] + 69, 1); goto lB543; } else { gsu_codes(unusedb4_run_code[copy] + 70, 2); }
+    if (t) { gsu_codes(unusedb4_run_code[copy] + 71, 1); goto lB543; } else { gsu_codes(unusedb4_run_code[copy] + 72, 2); }
     t = 1;
     if (t) goto lB503;
 lB54D:
     t = gsu.cy;
-    if (t) { gsu_codes(unusedb4_run_code[copy] + 72, 2); goto lB555; } else { gsu_codes(unusedb4_run_code[copy] + 74, 1); }
+    if (t) { gsu_codes(unusedb4_run_code[copy] + 74, 2); goto lB555; } else { gsu_codes(unusedb4_run_code[copy] + 76, 1); }
     t = gsu_count_down(&R[12]);
     R[1] = gsu_inc(R[1]);
-    if (t) { gsu_codes(unusedb4_run_code[copy] + 75, 1); goto lB543; } else { gsu_codes(unusedb4_run_code[copy] + 76, 2); }
+    if (t) { gsu_codes(unusedb4_run_code[copy] + 77, 1); goto lB543; } else { gsu_codes(unusedb4_run_code[copy] + 78, 2); }
     t = 1;
     if (t) goto lB503;
 lB555:
     t = gsu_count_down(&R[12]);
     gsu_plot_r1();
-    if (t) goto lB543; else { gsu_codes(unusedb4_run_code[copy] + 78, 2); }
+    if (t) goto lB543; else { gsu_codes(unusedb4_run_code[copy] + 80, 2); }
     t = 1;
     if (t) goto lB503;
 lB55A:
     R[6] = gsu_sub(R[6], R[8], 0);
-    gsu_codes(unusedb4_run_code[copy] + 80, 1);
+    gsu_codes(unusedb4_run_code[copy] + 82, 1);
     t = !gsu.cy;
-    if (t) { gsu_codes(unusedb4_run_code[copy] + 81, 1); goto lB56A; } else { gsu_codes(unusedb4_run_code[copy] + 82, 1); }
+    if (t) { gsu_codes(unusedb4_run_code[copy] + 83, 1); goto lB56A; } else { gsu_codes(unusedb4_run_code[copy] + 84, 1); }
     R[4] = gsu_inc(R[4]);
     R[3] = 0x0010;
     R[0] = gsu_sub(R[4], R[3], 0);
     t = !gsu.z;
-    if (t) goto lB55A; else { gsu_codes(unusedb4_run_code[copy] + 83, 1); }
+    if (t) goto lB55A; else { gsu_codes(unusedb4_run_code[copy] + 85, 1); }
     t = 1;
     if (t) goto lB578;
 lB56A:
@@ -1196,13 +1259,13 @@ lB56A:
     R[3] = 0x0010;
     R[0] = gsu_sub(R[4], R[3], 0);
     t = gsu.z;
-    if (t) { gsu_codes(unusedb4_run_code[copy] + 84, 1); goto lB577; } else { gsu_codes(unusedb4_run_code[copy] + 85, 1); }
+    if (t) { gsu_codes(unusedb4_run_code[copy] + 86, 1); goto lB577; } else { gsu_codes(unusedb4_run_code[copy] + 87, 1); }
     goto lB4E6;
 lB577:
 lB578:
     R[10] = gsu_dec(R[10]);
     R[10] = gsu_dec(R[10]);
-    gsu_codes(unusedb4_run_code[copy] + 86, 1);
+    gsu_codes(unusedb4_run_code[copy] + 88, 1);
     nx = (uint16_t)(gsu_ldw(R[10]));
     at = nx;
     goto dispatch;
@@ -1211,7 +1274,7 @@ lB57D:
     R[6] = R[2];
     gsu_sub(R[0], R[6], 0);   /* CMP */
     t = !gsu.z;
-    if (t) { gsu_codes(unusedb4_run_code[copy] + 87, 3); goto lB58C; } else { gsu_codes(unusedb4_run_code[copy] + 90, 1); }
+    if (t) { gsu_codes(unusedb4_run_code[copy] + 89, 3); goto lB58C; } else { gsu_codes(unusedb4_run_code[copy] + 92, 1); }
     R[4] = 0xFFFF;
     t = 1;
     if (t) goto lB593;
@@ -1226,35 +1289,34 @@ lB593:
     R[2] = gsu_ldw(0x0028);
     R[6] = 0x0000;
     R[4] = 0x0000;
-gsu_codes(unusedb4_run_code[copy] + 91, 1);
+gsu_codes(unusedb4_run_code[copy] + 93, 1);
 lB59F:
     R[2] = R[2];
-    gsu_codes(unusedb4_run_code[copy] + 92, 1);
+    gsu_codes(unusedb4_run_code[copy] + 94, 1);
     gsu_moves(R[2]);
     t = !gsu.s;
-    if (t) { gsu_codes(unusedb4_run_code[copy] + 93, 1); goto lB5A8; } else { gsu_codes(unusedb4_run_code[copy] + 94, 1); }
+    if (t) { gsu_codes(unusedb4_run_code[copy] + 95, 1); goto lB5A8; } else { gsu_codes(unusedb4_run_code[copy] + 96, 1); }
     goto lB67E;
 lB5A8:
     R[0] = 0x00BF;
     gsu_sub(R[0], R[2], 0);   /* CMP */
     t = !gsu.s;
-    if (t) { gsu_codes(unusedb4_run_code[copy] + 95, 1); goto lB5B4; } else { gsu_codes(unusedb4_run_code[copy] + 96, 1); }
+    if (t) { gsu_codes(unusedb4_run_code[copy] + 97, 1); goto lB5B4; } else { gsu_codes(unusedb4_run_code[copy] + 98, 1); }
     goto lB67E;
 lB5B4:
     R[1] = gsu_ldw(0x0026);
     R[7] = 0x0000;
-    R[5] = gsu_ldw(gsu_codes_then(unusedb4_run_code[copy] + 97, 1, 0x001A));
+    R[5] = gsu_ldw(gsu_codes_then(unusedb4_run_code[copy] + 99, 1, 0x001A));
 lB5BC:
-    R[0] = gsu_ldw(gsu_codes_then(unusedb4_run_code[copy] + 98, 1, 0x001C));
-    gsu_codes(unusedb4_run_code[copy] + 99, 1);
+    R[0] = gsu_ldw(gsu_codes_then(unusedb4_run_code[copy] + 100, 1, 0x001C));
+    gsu_codes(unusedb4_run_code[copy] + 101, 1);
     gsu_romb(R[0]);
-    gsu_codes(unusedb4_run_code[copy] + 100, 4);
     gsu_r14(R[5]);
-    R[0] = gsu_getb();
+    R[0] = (gsu_codes(unusedb4_run_code[copy] + 102, 1), gsu_getb());
     R[5] = gsu_inc(R[5]);
     R[0] = gsu_add(R[0], R[0], 0);
     t = !gsu.z;
-    if (t) { gsu_codes(unusedb4_run_code[copy] + 104, 1); goto lB5CD; } else { gsu_codes(unusedb4_run_code[copy] + 105, 1); }
+    if (t) { gsu_codes(unusedb4_run_code[copy] + 103, 2); goto lB5CD; } else { gsu_codes(unusedb4_run_code[copy] + 105, 4); }
     goto lB67E;
 lB5CD:
     R[3] = 0x0014;
@@ -1265,45 +1327,45 @@ lB5CD:
     R[0] = gsu_add(R[0], R[4], 0);
     R[0] = gsu_add(R[0], R[4], 0);
     gsu_r14(gsu_add(R[0], R[3], 0));
-    R[0] = gsu_ldw(0x00B2);
+    R[0] = gsu_ldw(gsu_codes_then(unusedb4_run_code[copy] + 109, 1, 0x00B2));
     gsu_sub(R[0], R[1], 0);   /* CMP */
     t = gsu.s;
-    if (t) goto lB5E9; else { gsu_codes(unusedb4_run_code[copy] + 106, 2); }
+    if (t) goto lB5E9; else { gsu_codes(unusedb4_run_code[copy] + 110, 2); }
     goto lB66E;
 lB5E9:
     R[1] = R[1];
     gsu_moves(R[1]);
     t = !gsu.s;
     R[0] = gsu_getb();
-    if (t) { gsu_codes(unusedb4_run_code[copy] + 108, 1); goto lB618; } else { gsu_codes(unusedb4_run_code[copy] + 109, 1); }
+    if (t) { gsu_codes(unusedb4_run_code[copy] + 112, 1); goto lB618; } else { gsu_codes(unusedb4_run_code[copy] + 113, 1); }
     gsu_r14(gsu_inc(R[14]));
-    R[0] = gsu_getbh(gsu_codes_then(unusedb4_run_code[copy] + 110, 1, R[0]));
+    R[0] = gsu_getbh(gsu_codes_then(unusedb4_run_code[copy] + 114, 1, R[0]));
     R[12] = 0x0010;
     R[13] = 0xB5F5;
-gsu_codes(unusedb4_run_code[copy] + 111, 1);
+gsu_codes(unusedb4_run_code[copy] + 115, 1);
 lB5F5:
     R[0] = gsu_rol(R[0]);
-    gsu_codes(unusedb4_run_code[copy] + 112, 1);
+    gsu_codes(unusedb4_run_code[copy] + 116, 1);
     t = gsu.cy;
-    if (t) { gsu_codes(unusedb4_run_code[copy] + 113, 1); goto lB603; } else { gsu_codes(unusedb4_run_code[copy] + 114, 1); }
+    if (t) { gsu_codes(unusedb4_run_code[copy] + 117, 1); goto lB603; } else { gsu_codes(unusedb4_run_code[copy] + 118, 1); }
 lB5F9:
     R[7] = gsu_sub(R[7], R[9], 0);
-    gsu_codes(unusedb4_run_code[copy] + 115, 1);
+    gsu_codes(unusedb4_run_code[copy] + 119, 1);
     t = gsu.cy;
     R[1] = gsu_inc(R[1]);
     if (t) goto lB5F9;
     t = gsu_count_down(&R[12]);
-    if (t) goto lB5F5; else { gsu_codes(unusedb4_run_code[copy] + 116, 2); }
+    if (t) goto lB5F5; else { gsu_codes(unusedb4_run_code[copy] + 120, 2); }
     t = 1;
     if (t) goto lB5BC;
 lB603:
     R[7] = gsu_sub(R[7], R[9], 0);
-    gsu_codes(unusedb4_run_code[copy] + 118, 1);
+    gsu_codes(unusedb4_run_code[copy] + 122, 1);
     t = gsu.cy;
     R[1] = gsu_inc(R[1]);
     if (t) goto lB603;
     t = gsu.s;
-    if (t) { gsu_codes(unusedb4_run_code[copy] + 119, 1); goto lB613; } else { gsu_codes(unusedb4_run_code[copy] + 120, 3); }
+    if (t) { gsu_codes(unusedb4_run_code[copy] + 123, 1); goto lB613; } else { gsu_codes(unusedb4_run_code[copy] + 124, 3); }
     R[13] = 0xB629;
     t = gsu_count_down(&R[12]);
     if (t) goto lB629;
@@ -1316,74 +1378,74 @@ lB613:
     if (t) goto lB5BC;
 lB618:
     gsu_r14(gsu_inc(R[14]));
-    R[3] = gsu_ldw(gsu_codes_then(unusedb4_run_code[copy] + 123, 1, 0x00B4));
+    R[3] = gsu_ldw(gsu_codes_then(unusedb4_run_code[copy] + 127, 1, 0x00B4));
     R[3] = gsu_dec(R[3]);
     gsu_sub(R[3], R[1], 0);   /* CMP */
     t = gsu.s;
-    if (t) { gsu_codes(unusedb4_run_code[copy] + 124, 2); goto lB642; } else { gsu_codes(unusedb4_run_code[copy] + 126, 1); }
+    if (t) { gsu_codes(unusedb4_run_code[copy] + 128, 2); goto lB642; } else { gsu_codes(unusedb4_run_code[copy] + 130, 1); }
     R[0] = gsu_getbh(R[0]);
     R[12] = 0x0010;
     R[13] = 0xB629;
-gsu_codes(unusedb4_run_code[copy] + 127, 1);
+gsu_codes(unusedb4_run_code[copy] + 131, 1);
 lB629:
     R[0] = gsu_rol(R[0]);
-    gsu_codes(unusedb4_run_code[copy] + 128, 1);
+    gsu_codes(unusedb4_run_code[copy] + 132, 1);
     t = gsu.cy;
-    if (t) { gsu_codes(unusedb4_run_code[copy] + 129, 1); goto lB637; } else { gsu_codes(unusedb4_run_code[copy] + 130, 1); }
+    if (t) { gsu_codes(unusedb4_run_code[copy] + 133, 1); goto lB637; } else { gsu_codes(unusedb4_run_code[copy] + 134, 1); }
 lB62D:
     R[7] = gsu_sub(R[7], R[9], 0);
-    gsu_codes(unusedb4_run_code[copy] + 131, 1);
+    gsu_codes(unusedb4_run_code[copy] + 135, 1);
     t = gsu.cy;
     R[1] = gsu_inc(R[1]);
     if (t) goto lB62D;
     t = gsu_count_down(&R[12]);
-    if (t) goto lB629; else { gsu_codes(unusedb4_run_code[copy] + 132, 2); }
+    if (t) goto lB629; else { gsu_codes(unusedb4_run_code[copy] + 136, 2); }
     t = 1;
     if (t) goto lB5BC;
 lB637:
     R[7] = gsu_sub(R[7], R[9], 0);
-    gsu_codes(unusedb4_run_code[copy] + 134, 1);
+    gsu_codes(unusedb4_run_code[copy] + 138, 1);
     t = gsu.cy;
     gsu_plot_r1();
-    if (t) { gsu_codes(unusedb4_run_code[copy] + 135, 1); goto lB637; } else { gsu_codes(unusedb4_run_code[copy] + 136, 1); }
+    if (t) { gsu_codes(unusedb4_run_code[copy] + 139, 1); goto lB637; } else { gsu_codes(unusedb4_run_code[copy] + 140, 1); }
     t = gsu_count_down(&R[12]);
-    if (t) goto lB629; else { gsu_codes(unusedb4_run_code[copy] + 137, 2); }
+    if (t) goto lB629; else { gsu_codes(unusedb4_run_code[copy] + 141, 2); }
     goto lB5BC;
 lB642:
     R[0] = gsu_getbh(R[0]);
     R[3] = 0x00DF;
     R[12] = 0x0010;
     R[13] = 0xB64B;
-gsu_codes(unusedb4_run_code[copy] + 139, 1);
+gsu_codes(unusedb4_run_code[copy] + 143, 1);
 lB64B:
     R[0] = gsu_rol(R[0]);
-    gsu_codes(unusedb4_run_code[copy] + 140, 1);
+    gsu_codes(unusedb4_run_code[copy] + 144, 1);
     t = gsu.cy;
-    if (t) { gsu_codes(unusedb4_run_code[copy] + 141, 1); goto lB65F; } else { gsu_codes(unusedb4_run_code[copy] + 142, 1); }
+    if (t) { gsu_codes(unusedb4_run_code[copy] + 145, 1); goto lB65F; } else { gsu_codes(unusedb4_run_code[copy] + 146, 1); }
 lB64F:
     R[7] = gsu_sub(R[7], R[9], 0);
-    gsu_codes(unusedb4_run_code[copy] + 143, 1);
+    gsu_codes(unusedb4_run_code[copy] + 147, 1);
     t = gsu.cy;
     R[1] = gsu_inc(R[1]);
     if (t) goto lB64F;
     gsu_sub(R[1], R[3], 0);   /* CMP */
     t = !gsu.s;
-    if (t) goto lB67E; else { gsu_codes(unusedb4_run_code[copy] + 144, 1); }
+    if (t) goto lB67E; else { gsu_codes(unusedb4_run_code[copy] + 148, 1); }
     t = gsu_count_down(&R[12]);
-    if (t) goto lB64B; else { gsu_codes(unusedb4_run_code[copy] + 145, 1); }
+    if (t) goto lB64B; else { gsu_codes(unusedb4_run_code[copy] + 149, 1); }
     t = 1;
     if (t) goto lB67E;
 lB65F:
-    gsu_codes(unusedb4_run_code[copy] + 146, 1);
+    gsu_codes(unusedb4_run_code[copy] + 150, 1);
     gsu_sub(R[1], R[3], 0);   /* CMP */
     t = !gsu.s;
-    if (t) { gsu_codes(unusedb4_run_code[copy] + 147, 3); goto lB67E; } else { gsu_codes(unusedb4_run_code[copy] + 150, 1); }
+    if (t) { gsu_codes(unusedb4_run_code[copy] + 151, 3); goto lB67E; } else { gsu_codes(unusedb4_run_code[copy] + 154, 1); }
     R[7] = gsu_sub(R[7], R[9], 0);
     t = gsu.cy;
     gsu_plot_r1();
-    if (t) { gsu_codes(unusedb4_run_code[copy] + 151, 1); goto lB65F; } else { gsu_codes(unusedb4_run_code[copy] + 152, 1); }
+    if (t) { gsu_codes(unusedb4_run_code[copy] + 155, 1); goto lB65F; } else { gsu_codes(unusedb4_run_code[copy] + 156, 1); }
     t = gsu_count_down(&R[12]);
-    if (t) goto lB64B; else { gsu_codes(unusedb4_run_code[copy] + 153, 4); }
+    if (t) goto lB64B; else { gsu_codes(unusedb4_run_code[copy] + 157, 4); }
     t = 1;
     if (t) goto lB67E;
 lB66E:
@@ -1391,24 +1453,24 @@ lB66E:
     R[1] = gsu_add(R[1], R[3], 0);
     R[7] = gsu_sub(R[7], R[9], 0);
     t = !gsu.cy;
-    if (t) goto lB679; else { gsu_codes(unusedb4_run_code[copy] + 157, 1); }
+    if (t) goto lB679; else { gsu_codes(unusedb4_run_code[copy] + 161, 1); }
     R[1] = gsu_inc(R[1]);
 lB679:
-    gsu_codes(unusedb4_run_code[copy] + 158, 3);
+    gsu_codes(unusedb4_run_code[copy] + 162, 3);
     goto lB5BC;
 lB67D:
 lB67E:
     R[2] = gsu_inc(R[2]);
     R[6] = gsu_sub(R[6], R[8], 0);
     t = !gsu.cy;
-    if (t) { gsu_codes(unusedb4_run_code[copy] + 161, 2); goto lB689; } else { gsu_codes(unusedb4_run_code[copy] + 163, 1); }
+    if (t) { gsu_codes(unusedb4_run_code[copy] + 165, 2); goto lB689; } else { gsu_codes(unusedb4_run_code[copy] + 167, 1); }
     goto lB59F;
 lB689:
     R[4] = gsu_inc(R[4]);
     R[3] = 0x0010;
     R[0] = gsu_sub(R[4], R[3], 0);
     t = gsu.z;
-    if (t) { gsu_codes(unusedb4_run_code[copy] + 164, 1); goto lB695; } else { gsu_codes(unusedb4_run_code[copy] + 165, 1); }
+    if (t) { gsu_codes(unusedb4_run_code[copy] + 168, 1); goto lB695; } else { gsu_codes(unusedb4_run_code[copy] + 169, 1); }
     goto lB59F;
 lB695:
     R[10] = gsu_dec(R[10]);
@@ -1418,7 +1480,7 @@ lB695:
     goto dispatch;
 lB69A:
     R[0] = gsu_sub(R[0], R[0], 0);
-    gsu.rambr = (uint8_t)(R[0] & 1);
+    gsu_ramb(R[0]);
     gsu_romb(R[0]);
     /* CACHE */
     R[4] = gsu_ldw(0x0026);
@@ -1426,36 +1488,42 @@ lB69A:
     R[0] = gsu_umult(R[0], R[4]);
     R[0] = gsu_add(R[0], R[0], 0);
     R[4] = gsu_add(R[0], R[0], 0);
-    R[0] = gsu_ldw(0x0028);
+    R[0] = gsu_ldw(gsu_codes_then(unusedb4_run_code[copy] + 170, 1, 0x0028));
     R[0] = gsu_umult(R[0], 4);
     R[0] = gsu_add(R[0], R[4], 0);
     R[4] = 0x2C00;
     R[4] = gsu_add(R[0], R[4], 0);
     R[5] = 0x0400;
+    gsu_codes(unusedb4_run_code[copy] + 171, 1);
     gsu_r14(gsu_ldw(0x0018));
     R[3] = 0x0004;
+gsu_codes(unusedb4_run_code[copy] + 172, 1);
 lB6BE:
     R[1] = R[4];
     R[12] = 0x0050;
     R[13] = 0xB6C4;
+gsu_codes(unusedb4_run_code[copy] + 173, 1);
 lB6C4:
-    R[0] = gsu_getb();
+    R[0] = (gsu_codes(unusedb4_run_code[copy] + 174, 1), gsu_getb());
+    gsu_codes(unusedb4_run_code[copy] + 175, 1);
     gsu_r14(gsu_inc(R[14]));
-    R[0] = gsu_getbh(R[0]);
+    R[0] = gsu_getbh(gsu_codes_then(unusedb4_run_code[copy] + 176, 1, R[0]));
+    gsu_codes(unusedb4_run_code[copy] + 177, 1);
     gsu_r14(gsu_inc(R[14]));
+    gsu_codes(unusedb4_run_code[copy] + 178, 1);
     gsu_stw(R[1], R[0]);
     R[1] = gsu_inc(R[1]);
     t = gsu_count_down(&R[12]);
     R[1] = gsu_inc(R[1]);
-    if (t) goto lB6C4;
+    if (t) { gsu_codes(unusedb4_run_code[copy] + 179, 1); goto lB6C4; } else { gsu_codes(unusedb4_run_code[copy] + 180, 1); }
     R[4] = gsu_add(R[4], R[5], 0);
     R[3] = gsu_dec(R[3]);
     t = !gsu.z;
-    if (t) goto lB6BE;
+    if (t) goto lB6BE; else { gsu_codes(unusedb4_run_code[copy] + 181, 1); }
     return;   /* the STOP: the program ends here */
 dispatch:
     if (at == ret)
-        { gsu_codes(unusedb4_run_code[copy] + 166, 1); return; }
+        { gsu_codes(unusedb4_run_code[copy] + 182, 1); return; }
     switch (at) {
     case 0xB42F: goto lB42F;
     case 0xB44F: goto lB44F;
@@ -1587,15 +1655,24 @@ void abi_FxText3DRowEndNop(void)
  */
 void abi_FxRowsCopyProgram(void)
 {
-    gsu_code(0x01B69B, 5); gsu_cache(0xB6A0); gsu_code(0x01B6A0, 4);
-    unusedb4_run(0xB69A, 0xFFFF, GSU_COPY(0));
-    gsu_code(0x01B6D3, 1);
+    unusedb4_run(0xB69A, 0xFFFF, GSU_COPY(3));
 }
+
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode unused_misc_run_code[6][26] = {
+    {{0x0180E3, 1}, {0x01C0E1, 70}, {0xC127, 0}, {0x01C127, 9}, {0x0196EA, 5}, {0x0196EF, 4}, {0x0196F3, 1}, {0x0196F4, 5}, {0x0196F9, 3}, {0x0196FC, 5}, {0x019701, 3}, {0x019704, 5}, {0x01947A, 3}, {0x019709, 6}, {0x01970F, 3}, {0x019712, 4}, {0x019716, 3}, {0x019719, 5}, {0x01971E, 2}, {0x019720, 3}, {0x019727, 4}, {0x0197DC, 62}, {0x01D128, 3}, {0x01D12B, 2}, {0x01D12B, 3}, {0, 0}},
+    {{0x0180E3, 1}, {0x01C127, 9}, {0, 0}, {0, 0}, {0x0196EA, 5}, {0x0196EF, 4}, {0x0196F3, 1}, {0x0196F4, 5}, {0x0196F9, 3}, {0x0196FC, 5}, {0x019701, 3}, {0x019704, 5}, {0x01947A, 3}, {0x019709, 6}, {0x01970F, 3}, {0x019712, 4}, {0x019716, 3}, {0x019719, 5}, {0x01971E, 2}, {0x019720, 3}, {0x019727, 4}, {0x0197DC, 62}, {0x01D128, 3}, {0x01D12B, 2}, {0x01D12B, 3}, {0, 0}},
+    {{0x0196E8, 2}, {0, 0}, {0, 0}, {0, 0}, {0x0196EA, 5}, {0x0196EF, 4}, {0x0196F3, 1}, {0x0196F4, 5}, {0x0196F9, 3}, {0x0196FC, 5}, {0x019701, 3}, {0x019704, 5}, {0x01947A, 3}, {0x019709, 6}, {0x01970F, 3}, {0x019712, 4}, {0x019716, 3}, {0x019719, 5}, {0x01971E, 2}, {0x019720, 3}, {0x019727, 4}, {0x0197DC, 62}, {0x01D128, 3}, {0x01D12B, 2}, {0x01D12B, 3}, {0x0180E3, 1}},
+    {{0x0197DA, 2}, {0, 0}, {0, 0}, {0, 0}, {0x0196EA, 5}, {0x0196EF, 4}, {0x0196F3, 1}, {0x0196F4, 5}, {0x0196F9, 3}, {0x0196FC, 5}, {0x019701, 3}, {0x019704, 5}, {0x01947A, 3}, {0x019709, 6}, {0x01970F, 3}, {0x019712, 4}, {0x019716, 3}, {0x019719, 5}, {0x01971E, 2}, {0x019720, 3}, {0x019727, 4}, {0x0197DC, 62}, {0x01D128, 3}, {0x01D12B, 2}, {0x01D12B, 3}, {0x0180E3, 1}},
+    {{0x01D121, 7}, {0, 0}, {0, 0}, {0, 0}, {0x0196EA, 5}, {0x0196EF, 4}, {0x0196F3, 1}, {0x0196F4, 5}, {0x0196F9, 3}, {0x0196FC, 5}, {0x019701, 3}, {0x019704, 5}, {0x01947A, 3}, {0x019709, 6}, {0x01970F, 3}, {0x019712, 4}, {0x019716, 3}, {0x019719, 5}, {0x01971E, 2}, {0x019720, 3}, {0x019727, 4}, {0x0197DC, 62}, {0x01D128, 3}, {0x01D12B, 2}, {0x01D12B, 3}, {0x0180E3, 1}},
+    {{0x01C4A6, 4}, {0, 0}, {0, 0}, {0, 0}, {0x0196EA, 5}, {0x0196EF, 4}, {0x0196F3, 1}, {0x0196F4, 5}, {0x0196F9, 3}, {0x0196FC, 5}, {0x019701, 3}, {0x019704, 5}, {0x01947A, 3}, {0x019709, 6}, {0x01970F, 3}, {0x019712, 4}, {0x019716, 3}, {0x019719, 5}, {0x01971E, 2}, {0x019720, 3}, {0x019727, 4}, {0x0197DC, 62}, {0x01D128, 3}, {0x01D12B, 2}, {0x01D12B, 3}, {0x0180E3, 1}},
+};
 
 /* The smaller uncalled pieces of bank 01 (01:96E7, 97D9, C0E0, C4A5,
    D120) from address at until they jump to ret (as unused_run). */
-static void unused_misc_run(uint16_t at, uint16_t ret)
+static void unused_misc_run(uint16_t at, uint16_t ret, int copy)
 {
+    gsu_codes(unused_misc_run_code[copy], 4);
     int t;
     uint16_t nx;
 
@@ -1612,45 +1689,51 @@ l96E7:
     gsu_stw(R[10], R[11]);
     R[10] = gsu_inc(R[10]);
     R[10] = gsu_inc(R[10]);
+    gsu_codes(unused_misc_run_code[copy] + 4, 1);
     gsu_stw(0x0040, R[0]);
     R[0] = gsu_sub(R[0], R[0], 0);
+    gsu_codes(unused_misc_run_code[copy] + 5, 1);
     gsu_stw(0x014A, R[0]);
 l96F2:
-    R[0] = gsu_ldw(R[7]);
+    R[0] = gsu_ldw(gsu_codes_then(unused_misc_run_code[copy] + 6, 1, R[7]));
     R[7] = gsu_inc(R[7]);
     R[7] = gsu_inc(R[7]);
-    R[9] = gsu_ldw(0x0026);
+    R[9] = gsu_ldw(gsu_codes_then(unused_misc_run_code[copy] + 7, 1, 0x0026));
     R[1] = gsu_add(R[0], R[9], 0);
-    R[0] = gsu_ldw(R[7]);
+    R[0] = gsu_ldw(gsu_codes_then(unused_misc_run_code[copy] + 8, 1, R[7]));
     R[7] = gsu_inc(R[7]);
     R[7] = gsu_inc(R[7]);
-    R[9] = gsu_ldw(0x0028);
+    R[9] = gsu_ldw(gsu_codes_then(unused_misc_run_code[copy] + 9, 1, 0x0028));
     R[2] = gsu_add(R[0], R[9], 0);
-    R[0] = gsu_ldw(R[7]);
+    R[0] = gsu_ldw(gsu_codes_then(unused_misc_run_code[copy] + 10, 1, R[7]));
     R[7] = gsu_inc(R[7]);
     R[7] = gsu_inc(R[7]);
-    R[9] = gsu_ldw(0x002A);
+    R[9] = gsu_ldw(gsu_codes_then(unused_misc_run_code[copy] + 11, 1, 0x002A));
     R[3] = gsu_add(R[0], R[9], 0);
     R[11] = 0x970F;
-    abi_FxProjectPoint();
+    (gsu_codes(unused_misc_run_code[copy] + 12, 2), abi_FxProjectPoint());
+gsu_codes(unused_misc_run_code[copy] + 14, 1);
 l970F:
     gsu_stw(R[8], R[1]);
     R[8] = gsu_inc(R[8]);
     R[8] = gsu_inc(R[8]);
+    gsu_codes(unused_misc_run_code[copy] + 15, 1);
     gsu_stw(R[8], R[2]);
     R[8] = gsu_inc(R[8]);
     R[8] = gsu_inc(R[8]);
+    gsu_codes(unused_misc_run_code[copy] + 16, 1);
     gsu_stw(R[8], R[0]);
     R[8] = gsu_inc(R[8]);
     R[8] = gsu_inc(R[8]);
-    R[3] = gsu_ldw(0x014A);
+    R[3] = gsu_ldw(gsu_codes_then(unused_misc_run_code[copy] + 17, 1, 0x014A));
     R[0] = gsu_or(R[0], R[3]);
+    gsu_codes(unused_misc_run_code[copy] + 18, 1);
     gsu_sbk(R[0]);
-    R[0] = gsu_ldw(0x0040);
+    R[0] = gsu_ldw(gsu_codes_then(unused_misc_run_code[copy] + 19, 1, 0x0040));
     R[0] = gsu_dec(R[0]);
     t = !gsu.z;
     gsu_sbk(R[0]);
-    if (t) goto l96F2;
+    if (t) goto l96F2; else { gsu_codes(unused_misc_run_code[copy] + 20, 1); }
     R[10] = gsu_dec(R[10]);
     R[10] = gsu_dec(R[10]);
     nx = (uint16_t)(gsu_ldw(R[10]));
@@ -1661,6 +1744,7 @@ l97D9:
     R[10] = gsu_inc(R[10]);
     R[10] = gsu_inc(R[10]);
     R[0] = 0x973E;
+    gsu_codes(unused_misc_run_code[copy] + 21, 1);
     gsu_r14(gsu_add(R[0], R[2], 0));
     R[0] = gsu_getb();
     R[5] = gsu_swap(R[0]);
@@ -1696,11 +1780,12 @@ lD120:
     R[13] = 0xD128;
 lD128:
     R[0] = gsu_sub(R[0], R[0], 0);
+    gsu_codes(unused_misc_run_code[copy] + 22, 1);
     gsu_stw(R[1], R[0]);
     R[1] = gsu_inc(R[1]);
     t = gsu_count_down(&R[12]);
     R[1] = gsu_inc(R[1]);
-    if (t) goto lD128;
+    if (t) { gsu_codes(unused_misc_run_code[copy] + 23, 1); goto lD128; } else { gsu_codes(unused_misc_run_code[copy] + 24, 1); }
     return;   /* the STOP: the program ends here */
 lC4A5:
     R[10] = gsu_dec(R[10]);
@@ -1710,7 +1795,7 @@ lC4A5:
     goto dispatch;
 dispatch:
     if (at == ret)
-        return;
+        { gsu_codes(unused_misc_run_code[copy] + 25, 1); return; }
     switch (at) {
     case 0x96E7: goto l96E7;
     case 0x96F2: goto l96F2;
@@ -1736,8 +1821,7 @@ dispatch:
  */
 void abi_FxNopReturn(void)
 {
-    gsu_code(0x0180E3, 1); gsu_code(0x01C0E1, 70); gsu_cache(0xC127); gsu_code(0x01C127, 9);
-    unused_misc_run(0xC0E0, R[11]);
+    unused_misc_run(0xC0E0, R[11], GSU_COPY(0));
 }
 
 /*
@@ -1748,8 +1832,7 @@ void abi_FxNopReturn(void)
  */
 void abi_FxNopReturnCache(void)
 {
-    gsu_code(0x0180E3, 1); gsu_code(0x01C127, 9);
-    unused_misc_run(0xC126, R[11]);
+    unused_misc_run(0xC126, R[11], GSU_COPY(1));
 }
 
 /*
@@ -1767,9 +1850,7 @@ void abi_FxNopReturnCache(void)
  */
 void abi_FxProjectPoints(void)
 {
-    gsu_code(0x0196E8, 2);
-    unused_misc_run(0x96E7, R[11]);
-    gsu_code(0x0180E3, 1);
+    unused_misc_run(0x96E7, R[11], GSU_COPY(2));
 }
 
 /*
@@ -1787,9 +1868,7 @@ void abi_FxProjectPoints(void)
  */
 void abi_FxRotateXZByte(void)
 {
-    gsu_code(0x0197DA, 2);
-    unused_misc_run(0x97D9, R[11]);
-    gsu_code(0x0180E3, 1);
+    unused_misc_run(0x97D9, R[11], GSU_COPY(3));
 }
 
 /*
@@ -1802,9 +1881,7 @@ void abi_FxRotateXZByte(void)
  */
 void abi_FxClearRam200Program(void)
 {
-    gsu_code(0x01D121, 7);
-    unused_misc_run(0xD120, 0xFFFF);
-    gsu_code(0x01D12D, 1);
+    unused_misc_run(0xD120, 0xFFFF, GSU_COPY(4));
 }
 
 /*
@@ -1817,16 +1894,26 @@ void abi_FxClearRam200Program(void)
  */
 void abi_FxPopReturnC4A5(void)
 {
-    gsu_code(0x01C4A6, 4);
-    unused_misc_run(0xC4A5, R[11]);
-    gsu_code(0x0180E3, 1);
+    unused_misc_run(0xC4A5, R[11], GSU_COPY(5));
 }
+
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode unused80_run_code[7][28] = {
+    {{0x018069, 9}, {0x018082, 3}, {0x018087, 2}, {0x0180E3, 1}, {0x018072, 16}, {0x018085, 2}, {0x0180F3, 1}, {0x018096, 10}, {0x0180BA, 2}, {0x018101, 33}, {0x018132, 11}, {0x018144, 11}, {0x018153, 33}, {0x018181, 5}, {0x0181BC, 10}, {0x0181CB, 7}, {0x0181DA, 2}, {0x01813D, 4}, {0x018141, 3}, {0x01814F, 4}, {0x018174, 13}, {0, 0}, {0x01946F, 1}, {0x019470, 3}, {0x019473, 6}, {0x0180E3, 1}, {0, 0}, {0, 0}},
+    {{0x01808A, 11}, {0x018096, 10}, {0x0180BA, 2}, {0, 0}, {0x018072, 16}, {0x018085, 2}, {0x0180F3, 1}, {0x018096, 10}, {0x0180BA, 2}, {0x018101, 33}, {0x018132, 11}, {0x018144, 11}, {0x018153, 33}, {0x018181, 5}, {0x0181BC, 10}, {0x0181CB, 7}, {0x0181DA, 2}, {0x01813D, 4}, {0x018141, 3}, {0x01814F, 4}, {0x018174, 13}, {0, 0}, {0x01946F, 1}, {0x019470, 3}, {0x019473, 6}, {0x0180E3, 1}, {0x0180E3, 1}, {0, 0}},
+    {{0x0180E6, 13}, {0x0180FE, 3}, {0, 0}, {0, 0}, {0x018072, 16}, {0x018085, 2}, {0x0180F3, 1}, {0x018096, 10}, {0x0180BA, 2}, {0x018101, 33}, {0x018132, 11}, {0x018144, 11}, {0x018153, 33}, {0x018181, 5}, {0x0181BC, 10}, {0x0181CB, 7}, {0x0181DA, 2}, {0x01813D, 4}, {0x018141, 3}, {0x01814F, 4}, {0x018174, 13}, {0, 0}, {0x01946F, 1}, {0x019470, 3}, {0x019473, 6}, {0x0180E3, 1}, {0x0180E3, 1}, {0, 0}},
+    {{0x0180F6, 11}, {0, 0}, {0, 0}, {0, 0}, {0x018072, 16}, {0x018085, 2}, {0x0180F3, 1}, {0x018096, 10}, {0x0180BA, 2}, {0x018101, 33}, {0x018132, 11}, {0x018144, 11}, {0x018153, 33}, {0x018181, 5}, {0x0181BC, 10}, {0x0181CB, 7}, {0x0181DA, 2}, {0x01813D, 4}, {0x018141, 3}, {0x01814F, 4}, {0x018174, 13}, {0x0181DC, 5}, {0x01946F, 1}, {0x019470, 3}, {0x019473, 6}, {0x0180E3, 1}, {0x0180E3, 1}, {0, 0}},
+    {{0x0180FF, 2}, {0, 0}, {0, 0}, {0, 0}, {0x018072, 16}, {0x018085, 2}, {0x0180F3, 1}, {0x018101, 49}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x01813D, 4}, {0x018141, 3}, {0x01814F, 4}, {0x018174, 13}, {0, 0}, {0x01946F, 1}, {0x019470, 3}, {0x019473, 6}, {0x0180E3, 1}, {0x0180E3, 1}, {0, 0}},
+    {{0x01946E, 1}, {0, 0}, {0, 0}, {0, 0}, {0x018072, 16}, {0x018085, 2}, {0x0180F3, 1}, {0x018096, 10}, {0x0180BA, 2}, {0x018101, 33}, {0x018132, 11}, {0x018144, 11}, {0x018153, 33}, {0x018181, 5}, {0x0181BC, 10}, {0x0181CB, 7}, {0x0181DA, 2}, {0x01813D, 4}, {0x018141, 3}, {0x01814F, 4}, {0x018174, 13}, {0, 0}, {0x01946F, 1}, {0x019470, 3}, {0x019473, 6}, {0x0180E3, 1}, {0x0180E3, 1}, {0x019479, 1}},
+    {{0x019653, 8}, {0, 0}, {0, 0}, {0, 0}, {0x018072, 16}, {0x018085, 2}, {0x0180F3, 1}, {0x018096, 10}, {0x0180BA, 2}, {0x018101, 33}, {0x018132, 11}, {0x018144, 11}, {0x018153, 33}, {0x018181, 5}, {0x0181BC, 10}, {0x0181CB, 7}, {0x0181DA, 2}, {0x01813D, 4}, {0x018141, 3}, {0x01814F, 4}, {0x018174, 13}, {0, 0}, {0x01946F, 1}, {0x019470, 3}, {0x019473, 6}, {0x0180E3, 1}, {0x0180E3, 1}, {0, 0}},
+};
 
 /* Bank 01 code nothing reaches around FxSqrt32 and the projection code
    (01:8068-8095, 01:80E5-8185, 01:946D-9479, 01:9652-9657): the code from
    address at until it jumps to ret. */
-static void unused80_run(uint16_t at, uint16_t ret)
+static void unused80_run(uint16_t at, uint16_t ret, int copy)
 {
+    gsu_codes(unused80_run_code[copy], 4);
     int t;
     uint16_t nx;
 
@@ -1852,6 +1939,7 @@ l8072:
     R[4] = gsu_sub(R[4], R[0], !gsu.cy);
     R[6] = gsu_inc(R[6]);
 l8085:
+    gsu_codes(unused80_run_code[copy] + 4, 2);
     t = gsu_count_down(&R[12]);
     if (t) goto l8072;
     nx = (uint16_t)(R[11]);
@@ -1871,6 +1959,7 @@ l80E5:
     R[11] = 0x80F3;
     goto l80FE;
 l80F3:
+    gsu_codes(unused80_run_code[copy] + 6, 1);
     return;   /* the STOP: the program ends here */
 l80F5:
     R[1] = gsu_sub(R[4], R[1], 0);
@@ -1881,7 +1970,7 @@ l80FE:
     R[10] = gsu_inc(R[10]);
     R[10] = gsu_inc(R[10]);
     R[6] = R[1];
-    { uint32_t p = gsu_lmult(R[1], R[6]); R[4] = (uint16_t)p; R[0] = (uint16_t)(p >> 16); }
+    { gsu_codes(unused80_run_code[copy] + 7, 10); uint32_t p = gsu_lmult(R[1], R[6]); R[4] = (uint16_t)p; R[0] = (uint16_t)(p >> 16); }
     R[5] = R[4];
     R[6] = R[2];
     { uint32_t p = gsu_lmult(R[2], R[6]); R[4] = (uint16_t)p; R[6] = (uint16_t)(p >> 16); }
@@ -1916,8 +2005,9 @@ l8139:
     R[9] = 0x0000;
 l813D:
     R[0] = gsu_lsr(R[0]);
+    gsu_codes(unused80_run_code[copy] + 17, 1);
     t = gsu.z;
-    if (t) goto l8144;
+    if (t) goto l8144; else { gsu_codes(unused80_run_code[copy] + 18, 4); }
     t = 1;
     R[9] = gsu_inc(R[9]);
     if (t) goto l813D;
@@ -1968,11 +2058,12 @@ l8181:
     goto dispatch;
 l946D:
     gsu_r14(gsu_dec(R[14]));
-    R[0] = gsu_getb();
+    R[0] = (gsu_codes(unused80_run_code[copy] + 22, 1), gsu_getb());
+    gsu_codes(unused80_run_code[copy] + 23, 1);
     gsu_r14(gsu_add(R[14], 7, 0));
     R[1] = 0x07C6;
     R[0] = gsu_add(R[0], R[1], 0);
-    R[0] = gsu_ldb(R[0]);
+    R[0] = gsu_ldb(gsu_codes_then(unused80_run_code[copy] + 24, 1, R[0]));
     nx = (uint16_t)(R[11]);
     R[0] = gsu_swap(R[0]);
     at = nx;
@@ -1982,10 +2073,11 @@ l9652:
     R[1] = R[2];
     R[2] = R[0];
     abi_FxRatioClamp();   /* runs on into it */
+    gsu_codes(unused80_run_code[copy] + 25, 1);
     return;
 dispatch:
     if (at == ret)
-        return;
+        { gsu_codes(unused80_run_code[copy] + 26, 2); return; }
     switch (at) {
     case 0x8068: goto l8068;
     case 0x8072: goto l8072;
@@ -2026,8 +2118,7 @@ dispatch:
  */
 void abi_FxSqrt16(void)
 {
-    gsu_code(0x018069, 32); gsu_code(0x018072, 16); gsu_code(0x018072, 16); gsu_code(0x018072, 16); gsu_code(0x018072, 16); gsu_code(0x018072, 16); gsu_code(0x018072, 16); gsu_code(0x018072, 16); gsu_code(0x018085, 2); gsu_code(0x018085, 2); gsu_code(0x018085, 2); gsu_code(0x018085, 2); gsu_code(0x018085, 2); gsu_code(0x018085, 2); gsu_code(0x018085, 2); gsu_code(0x0180E3, 1);
-    unused80_run(0x8068, R[11]);
+    unused80_run(0x8068, R[11], GSU_COPY(0));
 }
 
 /*
@@ -2039,8 +2130,7 @@ void abi_FxSqrt16(void)
  */
 void abi_FxSqrt32Test(void)
 {
-    gsu_code(0x01808A, 11); gsu_code(0x018096, 38); gsu_code(0x0180A0, 26); gsu_code(0x0180A0, 26); gsu_code(0x0180A0, 26); gsu_code(0x0180A0, 26); gsu_code(0x0180A0, 26); gsu_code(0x0180A0, 21); gsu_code(0x0180A0, 21); gsu_code(0x0180A0, 21); gsu_code(0x0180A0, 21); gsu_code(0x0180A0, 21); gsu_code(0x0180A0, 21); gsu_code(0x0180A0, 21); gsu_code(0x0180A0, 21); gsu_code(0x0180A0, 21); gsu_code(0x0180A0, 21); gsu_code(0x0180B8, 2); gsu_code(0x0180B8, 2); gsu_code(0x0180B8, 2); gsu_code(0x0180B8, 2); gsu_code(0x0180B8, 2); gsu_code(0x0180B8, 2); gsu_code(0x0180B8, 2); gsu_code(0x0180B8, 2); gsu_code(0x0180B8, 2); gsu_code(0x0180B8, 2);
-    unused80_run(0x8089, 0xFFFF);
+    unused80_run(0x8089, 0xFFFF, GSU_COPY(1));
 }
 
 /*
@@ -2053,9 +2143,7 @@ void abi_FxSqrt32Test(void)
  */
 void abi_FxVectorNormalizeTest(void)
 {
-    gsu_code(0x0180E6, 13); gsu_code(0x0180FE, 3);
-    unused80_run(0x80E5, 0xFFFF);
-    gsu_code(0x0180F3, 1);
+    unused80_run(0x80E5, 0xFFFF, GSU_COPY(2));
 }
 
 /*
@@ -2069,9 +2157,7 @@ void abi_FxVectorNormalizeTest(void)
  */
 void abi_FxVectorNormalizeDelta(void)
 {
-    gsu_code(0x0180F6, 11);
-    unused80_run(0x80F5, R[11]);
-    gsu_code(0x0180E3, 1);
+    unused80_run(0x80F5, R[11], GSU_COPY(3));
 }
 
 /*
@@ -2090,9 +2176,7 @@ void abi_FxVectorNormalizeDelta(void)
  */
 void abi_FxVectorNormalize(void)
 {
-    gsu_code(0x0180FF, 2);
-    unused80_run(0x80FE, R[11]);
-    gsu_code(0x0180E3, 1);
+    unused80_run(0x80FE, R[11], GSU_COPY(4));
 }
 
 /*
@@ -2107,9 +2191,7 @@ void abi_FxVectorNormalize(void)
  */
 void abi_FxTable7C6Byte(void)
 {
-    gsu_code(0x01946E, 1);
-    unused80_run(0x946D, R[11]);
-    gsu_code(0x0180E3, 1); gsu_code(0x019479, 1);
+    unused80_run(0x946D, R[11], GSU_COPY(5));
 }
 
 /*
@@ -2121,7 +2203,5 @@ void abi_FxTable7C6Byte(void)
  */
 void abi_FxRatioClampSwapped(void)
 {
-    gsu_code(0x019653, 8);
-    unused80_run(0x9652, R[11]);
-    gsu_code(0x0180E3, 1);
+    unused80_run(0x9652, R[11], GSU_COPY(6));
 }

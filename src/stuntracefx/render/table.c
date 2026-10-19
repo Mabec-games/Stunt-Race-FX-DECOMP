@@ -10,8 +10,8 @@
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
 static const GsuCode FxTableEntryWords_code[4][6] = {
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
     {{0x04CD83, 13}, {0x04CED9, 6}, {0, 0}, {0x04CCA4, 7}, {0x04CD90, 8}, {0x04CEDF, 5}},
+    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
     {{0x04C5ED, 4}, {0x04C5F5, 5}, {0x04CD83, 13}, {0x04C5FA, 5}, {0x04CCA4, 7}, {0x04CD90, 8}},
     {{0x04C663, 4}, {0x04C66B, 5}, {0x04CD83, 13}, {0x04C670, 5}, {0x04CD56, 2}, {0x04CD90, 8}},
 };

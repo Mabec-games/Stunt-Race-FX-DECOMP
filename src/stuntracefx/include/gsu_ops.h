@@ -170,8 +170,15 @@ static inline void gsu_cmode(uint16_t a)
 /* ROMB: the ROM bank, seven bits of the source. */
 static inline void gsu_romb(uint16_t a)
 {
-    gsu_buffer(GSU_B_ROMBUF);
+    gsu_buffer(GSU_B_ROMB);
     gsu.rombr = (uint8_t)(a & 0x7F);
+}
+
+/* RAMB: the RAM bank, the source's low bit. */
+static inline void gsu_ramb(uint16_t a)
+{
+    gsu_buffer(GSU_B_RAMBUF);
+    gsu.rambr = (uint8_t)(a & 1);
 }
 
 /* PLOT: a pixel at (R1, R2), then R1 steps right. */

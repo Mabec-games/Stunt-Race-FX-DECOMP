@@ -9,16 +9,17 @@
 #include "fx_calls.h"
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode FxDivide_code[9][9] = {
-    {{0x04C144, 7}, {0x04C319, 7}, {0x04C327, 3}, {0x04C331, 38}, {0, 0}, {0x04C14B, 4}, {0x04C14F, 4}, {0, 0}, {0x04C155, 5}},
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C14F, 4}, {0, 0}, {0x04C155, 5}},
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C155, 5}},
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C14B, 4}, {0x04C14F, 4}, {0, 0}, {0x04C155, 5}},
-    {{0x04C15A, 2}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C14F, 4}, {0, 0}, {0x04C155, 5}},
-    {{0x0493AB, 16}, {0x04C135, 10}, {0x04C144, 7}, {0x04C14F, 4}, {0x04C15A, 2}, {0x04C14B, 4}, {0, 0}, {0, 0}, {0x04C155, 5}},
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C14B, 4}, {0x04C14F, 4}, {0x04C155, 5}, {0, 0}},
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C14B, 8}, {0, 0}, {0, 0}, {0, 0}},
+static const GsuCode FxDivide_code[10][5] = {
+    {{0x04C14B, 4}, {0, 0}, {0x04C14F, 4}, {0, 0}, {0x04C155, 5}},
+    {{0, 0}, {0, 0}, {0x04C14F, 4}, {0, 0}, {0x04C155, 5}},
+    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C155, 5}},
+    {{0x04C14B, 4}, {0, 0}, {0, 0}, {0, 0}, {0x04C155, 5}},
+    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0x04C14B, 4}, {0, 0}, {0x04C14F, 4}, {0x04C155, 5}, {0, 0}},
+    {{0, 0}, {0, 0}, {0x04C14F, 4}, {0x04C155, 5}, {0, 0}},
+    {{0x04C14B, 8}, {0, 0}, {0, 0}, {0, 0}, {0x04C155, 5}},
+    {{0x04C14B, 4}, {0x04C155, 5}, {0x04C14F, 4}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0x04C14F, 4}, {0, 0}, {0, 0}},
 };
 
 /*
@@ -36,7 +37,6 @@ static const GsuCode FxDivide_code[9][9] = {
  */
 FxQuotient FxDivide(uint16_t hi, uint16_t lo, uint16_t divisor, int copy)
 {
-    gsu_codes(FxDivide_code[copy], 5);
     FxQuotient o;
     uint16_t count = 16;
     int again;
@@ -44,13 +44,13 @@ FxQuotient FxDivide(uint16_t hi, uint16_t lo, uint16_t divisor, int copy)
     lo = gsu_add(lo, lo, 0);
     hi = gsu_rol(hi);
     do {
-        gsu_codes(FxDivide_code[copy] + 5, 1);
+        gsu_codes(FxDivide_code[copy], 2);
         hi = gsu_sub(hi, divisor, 0);
         if (gsu.cy) {
-            gsu_codes(FxDivide_code[copy] + 6, 2);
+            gsu_codes(FxDivide_code[copy] + 2, 2);
             lo = gsu_rol(lo);                /* quotient bit 1 */
         } else {
-            gsu_codes(FxDivide_code[copy] + 8, 1);
+            gsu_codes(FxDivide_code[copy] + 4, 1);
             hi = gsu_add(hi, divisor, 0);    /* restore; quotient bit 0 */
             lo = gsu_add(lo, lo, 0);
         }
@@ -76,19 +76,19 @@ void abi_FxDivide(void)
 }
 
 /* cyccopy: the copy each of the caller's copies calls */
-static const uint8_t FxDivide_from_FxDivideHalvedIfLarge[9] = {1, 2, 2, 0, 1, 0, 0, 7, 0};
+static const uint8_t FxDivide_from_FxDivideHalvedIfLarge[9] = {1, 2, 1, 3, 4, 5, 6, 0, 9};
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode FxDivideHalvedIfLarge_code[9][9] = {
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-    {{0x04C08A, 38}, {0x04C0BB, 11}, {0x04C0CD, 11}, {0x04C0DC, 33}, {0x04C10A, 15}, {0x04C133, 12}, {0x04C144, 7}, {0x04C153, 2}, {0, 0}},
-    {{0x04C08A, 38}, {0x04C0BB, 11}, {0x04C0CD, 11}, {0x04C0DC, 33}, {0x04C10A, 15}, {0x04C133, 12}, {0x04C144, 7}, {0x04C15A, 2}, {0, 0}},
-    {{0x04C08A, 33}, {0x04C0BB, 11}, {0x04C0CD, 11}, {0x04C0DC, 33}, {0x04C10A, 15}, {0x04C133, 12}, {0x04C144, 7}, {0x04C153, 7}, {0x04C155, 5}},
-    {{0x04C08A, 33}, {0x04C0BB, 11}, {0x04C0CD, 11}, {0x04C0DC, 33}, {0x04C10A, 15}, {0x04C133, 12}, {0x04C144, 7}, {0, 0}, {0, 0}},
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-    {{0x04C0BB, 11}, {0x04C0CD, 11}, {0x04C0DC, 33}, {0x04C10A, 15}, {0x04C133, 12}, {0x04C144, 7}, {0, 0}, {0, 0}, {0, 0}},
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-    {{0x04888C, 1}, {0x04C136, 4}, {0x04C13F, 12}, {0x04C153, 2}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+static const GsuCode FxDivideHalvedIfLarge_code[9][20] = {
+    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C13F, 5}, {0x04C14F, 11}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}},
+    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C13F, 5}, {0x04C14F, 11}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}},
+    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C13F, 5}, {0x04C14F, 11}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}},
+    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C13F, 5}, {0x04C14F, 11}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}},
+    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C13F, 5}, {0x04C14F, 11}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}},
+    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C13F, 5}, {0x04C14F, 11}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}},
+    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C13F, 5}, {0x04C14F, 11}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}},
+    {{0x04888C, 1}, {0x04C136, 4}, {0x04C13F, 12}, {0x04C153, 2}, {0x04C13F, 5}, {0x04C14F, 11}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}},
+    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C13F, 5}, {0x04C14F, 11}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C14F, 4}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}},
 };
 
 /*
@@ -103,36 +103,33 @@ static const GsuCode FxDivideHalvedIfLarge_code[9][9] = {
  */
 FxQuotient FxDivideHalvedIfLarge(uint16_t hi, uint16_t lo, uint16_t *divisor, int copy)
 {
-    gsu_codes(FxDivideHalvedIfLarge_code[copy], 9);
+    gsu_codes(FxDivideHalvedIfLarge_code[copy], 4);
     gsu_moves(hi);
     if (!gsu.s) {
         gsu_moves(*divisor);
         if (!gsu.s)
-            return FxDivide(hi, lo, *divisor, GSU_COPY(FxDivide_from_FxDivideHalvedIfLarge[copy])); else { gsu_code(0x04C13F, 5); gsu_code(0x04C14F, 11); gsu_code(0x04C14F, 4); gsu_code(0x04C14F, 4); gsu_code(0x04C14F, 4); gsu_code(0x04C14F, 4); gsu_code(0x04C14F, 4); gsu_code(0x04C14F, 4); gsu_code(0x04C14F, 4); gsu_code(0x04C155, 5); gsu_code(0x04C155, 5); gsu_code(0x04C155, 5); gsu_code(0x04C155, 5); gsu_code(0x04C155, 5); gsu_code(0x04C155, 5); gsu_code(0x04C155, 5); }
+            return FxDivide(hi, lo, *divisor, GSU_COPY(FxDivide_from_FxDivideHalvedIfLarge[copy])); else { gsu_codes(FxDivideHalvedIfLarge_code[copy] + 4, 16); }
     }
     *divisor = gsu_lsr(*divisor);
     hi = gsu_lsr(hi);
     lo = gsu_ror(lo);
-    return FxDivide(hi, lo, *divisor, GSU_COPY(8));
+    return FxDivide(hi, lo, *divisor, GSU_COPY(7));
 }
 
 void abi_FxDivideHalvedIfLarge(void)
 {
     uint16_t divisor = gsu.r[6];
 
-    abi_divide_exit(FxDivideHalvedIfLarge(gsu.r[0], gsu.r[4], &divisor, GSU_COPY(8)));
+    abi_divide_exit(FxDivideHalvedIfLarge(gsu.r[0], gsu.r[4], &divisor, GSU_COPY(7)));
     gsu.r[6] = divisor;
 }
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode FxSquareRoot_code[7][13] = {
-    {{0x04C0BB, 11}, {0x04C0CD, 11}, {0x04C0DC, 33}, {0x04C10A, 15}, {0x04C133, 12}, {0x04C144, 7}, {0, 0}, {0, 0}, {0x04C119, 21}, {0x04C131, 2}, {0x04C14B, 4}, {0x04C12E, 3}, {0, 0}},
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C119, 21}, {0x04C131, 2}, {0x04C14B, 4}, {0x04C12E, 3}, {0, 0}},
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C119, 21}, {0x04C131, 2}, {0x04C14B, 4}, {0x04C12E, 3}, {0x04C155, 5}},
-    {{0x04C08A, 33}, {0x04C0BB, 11}, {0x04C0CD, 11}, {0x04C0DC, 33}, {0x04C10A, 15}, {0x04C133, 12}, {0x04C144, 7}, {0x04C153, 2}, {0x04C119, 21}, {0x04C131, 2}, {0x04C14B, 4}, {0x04C12E, 3}, {0, 0}},
-    {{0x04C08A, 33}, {0x04C0BB, 11}, {0x04C0CD, 11}, {0x04C0DC, 33}, {0x04C10A, 15}, {0x04C133, 12}, {0x04C144, 7}, {0, 0}, {0x04C119, 21}, {0x04C131, 2}, {0x04C14B, 4}, {0x04C12E, 3}, {0, 0}},
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-    {{0x04C08A, 38}, {0x04C0BB, 11}, {0x04C0CD, 11}, {0x04C0DC, 33}, {0x04C10A, 15}, {0x04C133, 12}, {0x04C144, 7}, {0, 0}, {0x04C119, 21}, {0x04C131, 2}, {0x04C14B, 4}, {0x04C12E, 3}, {0, 0}},
+static const GsuCode FxSquareRoot_code[4][6] = {
+    {{0x04C119, 21}, {0x04C131, 2}, {0x04C14B, 4}, {0x04C12E, 3}, {0, 0}, {0, 0}},
+    {{0x04C119, 21}, {0x04C131, 2}, {0x04C14B, 4}, {0, 0}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0x04C119, 21}, {0x04C131, 2}, {0x04C14B, 4}, {0x04C12E, 3}, {0x04C14F, 4}, {0x04C155, 5}},
 };
 
 /*
@@ -151,13 +148,12 @@ static const GsuCode FxSquareRoot_code[7][13] = {
  */
 FxRoot FxSquareRoot(uint16_t hi, uint16_t lo, int copy)
 {
-    gsu_codes(FxSquareRoot_code[copy], 8);
     FxRoot o = {0, 0, 0, 0};
     uint16_t count = 16;
     int i;
 
     do {
-        gsu_codes(FxSquareRoot_code[copy] + 8, 3);
+        gsu_codes(FxSquareRoot_code[copy], 3);
         for (i = 0; i < 2; i++) {
             lo = gsu_add(lo, lo, 0);
             hi = gsu_rol(hi);
@@ -167,10 +163,10 @@ FxRoot FxSquareRoot(uint16_t hi, uint16_t lo, int copy)
         o.trial = gsu_add(o.root, o.root, 0);
         o.diff = gsu_sub(o.trial, o.rem, 0);
         if (!gsu.cy) {
-            gsu_codes(FxSquareRoot_code[copy] + 11, 2);
+            gsu_codes(FxSquareRoot_code[copy] + 3, 2);
             o.rem = gsu_sub(o.rem, o.trial, 1);   /* SBC: minus trial + 1 */
             o.root = gsu_inc(o.root);
-        }
+        } else { gsu_codes(FxSquareRoot_code[copy] + 5, 1); }
     } while (gsu_count_down(&count));
     return o;
 }
@@ -190,21 +186,24 @@ void abi_FxSquareRoot(void)
 }
 
 /* cyccopy: the copy each of the caller's copies calls */
-static const uint8_t FxDivideHalvedIfLarge_from_FxNormalize[11] = {0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0};
+static const uint8_t FxSquareRoot_from_FxNormalize[11] = {0, 1, 0, 0, 0, 2, 0, 0, 3, 1, 1};
+
+/* cyccopy: the copy each of the caller's copies calls */
+static const uint8_t FxDivideHalvedIfLarge_from_FxNormalize[11] = {0, 1, 1, 2, 0, 4, 0, 6, 4, 4, 8};
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode FxNormalize_code[11][11] = {
-    {{0x04C087, 3}, {0, 0}, {0x04C08A, 38}, {0x04C0B0, 11}, {0x04C08A, 33}, {0x04C0C6, 4}, {0x04C0CA, 3}, {0x04C0D8, 4}, {0x04C0FD, 13}, {0, 0}, {0, 0}},
-    {{0x049F83, 4}, {0x04C087, 3}, {0, 0}, {0, 0}, {0, 0}, {0x04C0C6, 4}, {0x04C0CA, 3}, {0x04C0D8, 4}, {0x04C0FD, 13}, {0x04C14F, 4}, {0x049F87, 4}},
-    {{0x049F9A, 4}, {0x04C087, 3}, {0, 0}, {0, 0}, {0, 0}, {0x04C0C6, 4}, {0x04C0CA, 3}, {0x04C0D8, 4}, {0x04C0FD, 13}, {0x04C14F, 4}, {0x049F9E, 4}},
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C0C6, 4}, {0x04C0CA, 3}, {0x04C0D8, 4}, {0x04C0FD, 13}, {0x04C14F, 4}, {0, 0}},
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C0C6, 4}, {0x04C0CA, 3}, {0x04C0D8, 4}, {0x04C0FD, 13}, {0, 0}, {0, 0}},
-    {{0x04C087, 3}, {0x04CADA, 6}, {0x04C0AB, 5}, {0, 0}, {0, 0}, {0x04C0C6, 4}, {0x04C0CA, 3}, {0x04C0D8, 4}, {0x04C0FD, 13}, {0, 0}, {0x04CAE0, 5}},
-    {{0x049340, 6}, {0x04C087, 3}, {0x04C0AB, 5}, {0, 0}, {0, 0}, {0x04C0C6, 4}, {0x04C0CA, 3}, {0x04C0D8, 4}, {0x04C0FD, 13}, {0, 0}, {0x049346, 4}},
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-    {{0x04BCD5, 4}, {0x04C087, 3}, {0x04C08A, 38}, {0x04C0B0, 11}, {0x04C08A, 33}, {0x04C0C6, 4}, {0x04C0CA, 3}, {0x04C0D8, 4}, {0x04C0FD, 13}, {0, 0}, {0, 0}},
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C0C6, 4}, {0x04C0CA, 3}, {0x04C0D8, 4}, {0x04C0FD, 13}, {0, 0}, {0, 0}},
-    {{0, 0}, {0, 0}, {0x04C0AB, 5}, {0, 0}, {0, 0}, {0x04C0C6, 4}, {0x04C0CA, 3}, {0x04C0D8, 4}, {0x04C0FD, 13}, {0, 0}, {0, 0}},
+static const GsuCode FxNormalize_code[11][38] = {
+    {{0, 0}, {0, 0}, {0x04C08A, 38}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C0B0, 11}, {0x04C08A, 33}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C0BB, 11}, {0x04C0CD, 11}, {0x04C0DC, 33}, {0x04C10A, 15}, {0x04C133, 12}, {0x04C144, 7}, {0, 0}, {0x04C0C6, 4}, {0x04C0CA, 3}, {0x04C0D8, 4}, {0x04C0FD, 13}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0x04C08A, 38}, {0x04C0BB, 11}, {0x04C0CD, 11}, {0x04C0DC, 33}, {0x04C10A, 15}, {0x04C133, 12}, {0x04C144, 7}, {0x04C153, 2}, {0x04C0B0, 11}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C0C6, 4}, {0x04C0CA, 3}, {0x04C0D8, 4}, {0x04C0FD, 13}, {0x04C14F, 4}, {0x04C12E, 3}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0x04C08A, 38}, {0x04C0BB, 11}, {0x04C0CD, 11}, {0x04C0DC, 33}, {0x04C10A, 15}, {0x04C133, 12}, {0x04C144, 7}, {0x04C15A, 2}, {0x04C0B0, 11}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C0C6, 4}, {0x04C0CA, 3}, {0x04C0D8, 4}, {0x04C0FD, 13}, {0x04C14F, 4}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0x04C0AB, 5}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C0B0, 11}, {0x04C08A, 33}, {0x04C0BB, 11}, {0x04C0CD, 11}, {0x04C0DC, 33}, {0x04C10A, 15}, {0x04C133, 12}, {0x04C144, 7}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C0C6, 4}, {0x04C0CA, 3}, {0x04C0D8, 4}, {0x04C0FD, 13}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0x04C0AB, 5}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C0B0, 11}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C08A, 33}, {0x04C0BB, 11}, {0x04C0CD, 11}, {0x04C0DC, 33}, {0x04C10A, 15}, {0x04C133, 12}, {0x04C144, 7}, {0x04C0C6, 4}, {0x04C0CA, 3}, {0x04C0D8, 4}, {0x04C0FD, 13}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0x04C0AB, 5}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C0B0, 11}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0x04C08A, 38}, {0x04C0BB, 11}, {0x04C0CD, 11}, {0x04C0DC, 33}, {0x04C10A, 15}, {0x04C133, 12}, {0x04C144, 7}, {0, 0}, {0x04C0B0, 11}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C0C6, 4}, {0x04C0CA, 3}, {0x04C0D8, 4}, {0x04C0FD, 13}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0x04C0AB, 5}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C0B0, 11}, {0x04C08A, 33}, {0x04C0BB, 11}, {0x04C0CD, 11}, {0x04C0DC, 33}, {0x04C10A, 15}, {0x04C133, 12}, {0x04C144, 7}, {0x04C153, 2}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C0C6, 4}, {0x04C0CA, 3}, {0x04C0D8, 4}, {0x04C0FD, 13}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0x04C0AB, 5}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C0B0, 11}, {0x04C08A, 33}, {0x04C0BB, 11}, {0x04C0CD, 11}, {0x04C0DC, 33}, {0x04C10A, 15}, {0x04C133, 12}, {0x04C144, 7}, {0x04C15A, 2}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C0C6, 4}, {0x04C0CA, 3}, {0x04C0D8, 4}, {0x04C0FD, 13}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0x04C0AB, 5}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C0B0, 11}, {0x04C08A, 33}, {0x04C0BB, 11}, {0x04C0CD, 11}, {0x04C0DC, 33}, {0x04C10A, 15}, {0x04C133, 12}, {0x04C144, 7}, {0x04C153, 2}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C0C6, 4}, {0x04C0CA, 3}, {0x04C0D8, 4}, {0x04C0FD, 13}, {0, 0}, {0x04C12E, 3}, {0x04C14F, 4}, {0x04C155, 5}, {0x0498CC, 5}, {0x0498D4, 5}, {0x0498DC, 5}, {0x0498E4, 5}},
+    {{0x0498C7, 5}, {0x04C087, 3}, {0x04C0AB, 5}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C0B0, 11}, {0x04C08A, 33}, {0x04C0BB, 11}, {0x04C0CD, 11}, {0x04C0DC, 33}, {0x04C10A, 15}, {0x04C133, 12}, {0x04C144, 7}, {0x04C15A, 2}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C0C6, 4}, {0x04C0CA, 3}, {0x04C0D8, 4}, {0x04C0FD, 13}, {0x04C155, 5}, {0x04C12E, 3}, {0, 0}, {0, 0}, {0x0498CC, 5}, {0x0498D4, 13}, {0x0498E4, 5}, {0, 0}},
 };
 
 /*
@@ -248,27 +247,28 @@ FxRegs FxNormalize(FxRegs g, int copy)
     g.r[0] = hi = gsu_add(hi, g.r[6], gsu.cy);
     gsu_moves(hi);
     if (gsu.z) {
-        gsu_codes(FxNormalize_code[copy] + 2, 1);
+        gsu_codes(FxNormalize_code[copy] + 2, 8);
         gsu_moves(g.r[5]);
         if (gsu.z) {
-            gsu_codes(FxNormalize_code[copy] + 3, 1);
+            gsu_codes(FxNormalize_code[copy] + 10, 1);
             g.r[1] = g.r[2] = g.r[3] = 0;
             g.r[10] = gsu_dec(gsu_dec(g.r[10]));
             gsu_ldw(g.r[10]);
             return g;
         }
-    } else { gsu_codes(FxNormalize_code[copy] + 4, 1); }
-    root = FxSquareRoot(hi, g.r[5], GSU_COPY(0));
+    } else { gsu_codes(FxNormalize_code[copy] + 11, 8); }
+    gsu_codes(FxNormalize_code[copy] + 19, 7);
+    root = FxSquareRoot(hi, g.r[5], GSU_COPY(FxSquareRoot_from_FxNormalize[copy]));
     g.r[4] = g.r[5] = 0;
     g.r[7] = root.trial;
     g.r[8] = root.rem;
     g.r[0] = root.root;
     g.r[9] = 0;
     for (;;) {
-        gsu_codes(FxNormalize_code[copy] + 5, 1);
+        gsu_codes(FxNormalize_code[copy] + 26, 1);
         g.r[0] = gsu_lsr(g.r[0]);
         if (gsu.z)
-            break; else { gsu_codes(FxNormalize_code[copy] + 6, 4); }
+            break; else { gsu_codes(FxNormalize_code[copy] + 27, 4); }
         g.r[9] = gsu_inc(g.r[9]);
     }
     g.r[0] = gsu_sub(g.r[0], g.r[0], 0);
@@ -280,7 +280,7 @@ FxRegs FxNormalize(FxRegs g, int copy)
             g.r[4] = gsu_add(g.r[4], g.r[4], 0);
             again = gsu_count_down(&count);
             g.r[0] = gsu_rol(g.r[0]);
-        } while (again);
+        } while (gsu_codes_loop(FxNormalize_code[copy] + 31, 3, again));
     }
     divisor = root.root;
     q = FxDivideHalvedIfLarge(g.r[0], g.r[4], &divisor, GSU_COPY(FxDivideHalvedIfLarge_from_FxNormalize[copy]));
@@ -312,7 +312,7 @@ FxRegs FxNormalize(FxRegs g, int copy)
     g.r[12] = 0;
     g.r[10] = gsu_dec(gsu_dec(g.r[10]));
     gsu_ldw(g.r[10]);
-    gsu_codes(FxNormalize_code[copy] + 10, 1);
+    gsu_codes(FxNormalize_code[copy] + 34, 4);
     return g;
 }
 

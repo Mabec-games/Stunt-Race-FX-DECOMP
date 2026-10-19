@@ -33,11 +33,10 @@
 #define REC_VEL 0x2Eu
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode script_word_code[4][1] = {
+static const GsuCode script_word_code[3][1] = {
     {{0, 0}},
     {{0x048DD1, 17}},
     {{0x048E3F, 15}},
-    {{0x048F4B, 16}},
 };
 
 /* A word of the script (GETB, INC R14, GETBH, INC R14). */
@@ -54,31 +53,20 @@ static uint16_t script_word(uint16_t *r14, int copy)
     return w;
 }
 
-/* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode field_set_code[8][2] = {
-    {{0, 0}, {0, 0}},
-    {{0x048F04, 5}, {0x048F09, 5}},
-    {{0x048F0E, 8}, {0x048F16, 5}},
-    {{0, 0}, {0x048F1B, 5}},
-    {{0, 0}, {0x048F20, 6}},
-    {{0x048F26, 10}, {0x048F30, 4}},
-    {{0x048F34, 5}, {0x048F39, 6}},
-    {{0x048F3F, 5}, {0x048F44, 4}},
-};
-
 /* Field `field` of record `rec` = R3, through R0. */
 static void field_set(FxRegs *g, uint16_t field, uint16_t rec, int copy)
 {
-    gsu_codes(field_set_code[copy], 1);
     g->r[0] = gsu_add(field, rec, 0);
     gsu_stw(g->r[0], g->r[3]);
-    gsu_codes(field_set_code[copy] + 1, 1);
 }
+
+/* cyccopy: the copy each of the caller's copies calls */
+static const uint8_t FxPoolTake_from_FxCarAddPart[2] = {1, 5};
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
 static const GsuCode FxCarAddPart_code[2][27] = {
-    {{0x048E85, 2}, {0x048E87, 4}, {0x04893A, 3}, {0x048E8B, 12}, {0x04899B, 4}, {0x0489F7, 3}, {0x048E97, 7}, {0x048E9E, 8}, {0x048F43, 5}, {0x04888C, 1}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-    {{0, 0}, {0x048E87, 4}, {0x04893A, 3}, {0x048E8B, 12}, {0x0489F8, 2}, {0x048E97, 7}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x048E9E, 4}, {0x048EA6, 3}, {0x048EB3, 15}, {0x048EAE, 5}, {0x048EFE, 6}, {0x048F04, 5}, {0x048F09, 5}, {0x048F0E, 8}, {0x048F16, 5}, {0x048F1B, 5}, {0x048F20, 6}, {0x048F26, 10}, {0x048F30, 4}, {0x048F34, 5}, {0x048F39, 6}, {0x048F3F, 5}, {0x048F44, 4}},
+    {{0, 0}, {0x048E87, 4}, {0x04893A, 3}, {0x048E8B, 12}, {0x0489F8, 2}, {0x048E97, 7}, {0, 0}, {0x048E9E, 8}, {0x048F43, 5}, {0x04888C, 1}, {0x048E9E, 4}, {0x048EA6, 3}, {0x048EB3, 15}, {0x048EAE, 5}, {0x048EFE, 6}, {0x048F04, 5}, {0x048F09, 5}, {0x048F0E, 8}, {0x048F16, 5}, {0x048F1B, 5}, {0x048F20, 6}, {0x048F26, 10}, {0x048F30, 4}, {0x048F34, 5}, {0x048F39, 6}, {0x048F3F, 5}, {0x048F44, 4}},
+    {{0x048E85, 2}, {0x048E87, 4}, {0x04893A, 3}, {0x048E8B, 12}, {0x04899B, 4}, {0x0489F7, 3}, {0x048E97, 7}, {0x048E9E, 8}, {0x048F43, 5}, {0x04888C, 1}, {0x048E9E, 4}, {0x048EA6, 3}, {0x048EB3, 15}, {0x048EAE, 5}, {0x048EFE, 6}, {0x048F04, 5}, {0x048F09, 5}, {0x048F0E, 8}, {0x048F16, 5}, {0x048F1B, 5}, {0x048F20, 6}, {0x048F26, 10}, {0x048F30, 4}, {0x048F34, 5}, {0x048F39, 6}, {0x048F3F, 5}, {0x048F44, 4}},
 };
 
 /*
@@ -111,7 +99,7 @@ FxRegs FxCarAddPart(FxRegs g, int copy)
     g.r[3] = FX_POOL_FIRST;
     g.r[11] = 0x8E97;
     gsu_codes(FxCarAddPart_code[copy] + 2, 2);
-    g = FxPoolTake(g, GSU_COPY(1));
+    g = FxPoolTake(g, GSU_COPY(FxPoolTake_from_FxCarAddPart[copy]));
     g.r[2] = g.r[1];
     gsu_codes(FxCarAddPart_code[copy] + 4, 3);
     g.r[1] = gsu_pull(sp);
@@ -166,7 +154,7 @@ void abi_FxCarAddPart(void)
     FxRegs g;
 
     memcpy(g.r, gsu.r, sizeof g.r);
-    g = FxCarAddPart(g, GSU_COPY(0));
+    g = FxCarAddPart(g, GSU_COPY(1));
     memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
 }
 
@@ -196,10 +184,10 @@ FxRegs FxCarFromScript(FxRegs g)
 
     gsu_push(sp, g.r[11]);
     g.r[0] = gsu_sub(g.r[0], g.r[0], 0);
-    g.r[0] = gsu_getb();
+    g.r[0] = (gsu_code(0x048F4B, 16), gsu_getb());
     gsu_r14(gsu_inc(g.r[14]));
     g.r[14] = gsu.r[14];
-    g.r[2] = script_word(&g.r[14], GSU_COPY(3));
+    g.r[2] = script_word(&g.r[14], GSU_COPY(0));
     gsu_stw(FX_PART_MODE, g.r[2]);
     g.r[12] = g.r[0];
     gsu_moves(g.r[12]);
@@ -213,7 +201,7 @@ FxRegs FxCarFromScript(FxRegs g)
             gsu_push(sp, g.r[12]);
             g.r[11] = 0x8F6E;
             gsu_code(0x048E84, 3); gsu_code(0x048F68, 6);
-            g = FxCarAddPart(g, GSU_COPY(1));
+            g = FxCarAddPart(g, GSU_COPY(0));
             gsu_code(0x048F6E, 5);
             g.r[12] = gsu_pull(sp);
             gsu_code(0x048F73, 4);
@@ -259,10 +247,9 @@ void abi_FxCarFromScript(void)
 }
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode FxCarMoveParts_code[3][18] = {
-    {{0, 0}, {0x04A4F0, 6}, {0xA4F6, 0}, {0x04A4F6, 5}, {0x04A4FB, 4}, {0x04A602, 5}, {0x04A4FF, 8}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04A507, 6}, {0x04A511, 15}, {0x04A528, 5}, {0x04A573, 13}, {0x04A5DD, 4}, {0x04A5E1, 3}, {0, 0}},
-    {{0x04A4EE, 2}, {0x04A4F0, 6}, {0xA4F6, 0}, {0x04A4F6, 5}, {0x04A4FB, 4}, {0x04A602, 5}, {0x04A4FF, 8}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04A507, 6}, {0x04A511, 15}, {0x04A528, 5}, {0x04A573, 13}, {0x04A5DD, 4}, {0x04A5E1, 3}, {0x04B616, 1}},
-    {{0x04A4EE, 2}, {0x04A4F0, 6}, {0xA4F6, 0}, {0x04A4F6, 5}, {0x04A4FB, 4}, {0x04A602, 5}, {0x04A4FF, 8}, {0x04A507, 10}, {0x04A5E8, 8}, {0x04A5FA, 4}, {0x04A5FE, 3}, {0x04A507, 6}, {0x04A511, 15}, {0x04A528, 5}, {0x04A573, 13}, {0x04A5DD, 4}, {0x04A5E1, 3}, {0, 0}},
+static const GsuCode FxCarMoveParts_code[2][17] = {
+    {{0, 0}, {0x04A4F0, 6}, {0xA4F6, 0}, {0x04A4F6, 5}, {0x04A4FB, 4}, {0x04A602, 5}, {0x04A4FF, 8}, {0x04A507, 10}, {0x04A5E8, 8}, {0x04A5FA, 4}, {0x04A5FE, 3}, {0x04A507, 6}, {0x04A511, 15}, {0x04A528, 5}, {0x04A573, 13}, {0x04A5DD, 4}, {0x04A5E1, 3}},
+    {{0x04A4EE, 2}, {0x04A4F0, 6}, {0xA4F6, 0}, {0x04A4F6, 5}, {0x04A4FB, 4}, {0x04A602, 5}, {0x04A4FF, 8}, {0x04A507, 10}, {0x04A5E8, 8}, {0x04A5FA, 4}, {0x04A5FE, 3}, {0x04A507, 6}, {0x04A511, 15}, {0x04A528, 5}, {0x04A573, 13}, {0x04A5DD, 4}, {0x04A5E1, 3}},
 };
 
 /*
@@ -293,7 +280,6 @@ FxRegs FxCarMoveParts(FxRegs g, int copy)
     gsu_push(&g.r[10], g.r[11]);
     gsu_codes(FxCarMoveParts_code[copy] + 1, 2);
     g.r[0] = gsu_ldw(gsu_add(CAR_PARTS, g.r[8], 0));
-    gsu_codes(FxCarMoveParts_code[copy] + 3, 0);
     for (;;) {
         gsu_codes(FxCarMoveParts_code[copy] + 3, 1);
         g.r[9] = g.r[0];
@@ -356,7 +342,6 @@ FxRegs FxCarMoveParts(FxRegs g, int copy)
         gsu_codes(FxCarMoveParts_code[copy] + 16, 1);
     }
     gsu_pull(&g.r[10]);
-    gsu_codes(FxCarMoveParts_code[copy] + 17, 1);
     return g;
 }
 
@@ -405,10 +390,9 @@ void abi_FxCarMovePartsAfterStill(void)
 }
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode FxCarPose_code[3][16] = {
-    {{0x04B9AD, 2}, {0, 0}, {0x04B9AF, 4}, {0x04B9B3, 6}, {0x04B9D0, 7}, {0x04C1A7, 9}, {0x04B9D7, 8}, {0x04C2C7, 6}, {0x04B9DF, 5}, {0x04C2F7, 1}, {0x04B9E4, 4}, {0x04A4ED, 3}, {0x04B9FC, 4}, {0x04BA00, 5}, {0, 0}, {0, 0}},
-    {{0, 0}, {0, 0}, {0x04B9AF, 4}, {0x04B9B3, 6}, {0x04B9D0, 7}, {0x04C1A7, 9}, {0x04B9D7, 8}, {0x04C2C7, 6}, {0x04B9DF, 5}, {0x04C2F7, 1}, {0x04B9E4, 4}, {0x04A4ED, 3}, {0x04B9FC, 4}, {0x04BA00, 5}, {0, 0}, {0, 0}},
-    {{0x04B9AC, 3}, {0x04C44D, 4}, {0x04B9AF, 4}, {0x04B9B3, 6}, {0x04B9D0, 7}, {0x04C1A7, 9}, {0x04B9D7, 8}, {0x04C2C7, 6}, {0x04B9DF, 5}, {0x04C2F7, 1}, {0x04B9E4, 4}, {0x04A4ED, 3}, {0x04B9FC, 4}, {0x04BA00, 5}, {0x04C451, 5}, {0x04C72F, 5}},
+static const GsuCode FxCarPose_code[2][10] = {
+    {{0x048E7C, 6}, {0x04B9AC, 3}, {0x04B9AF, 4}, {0x04B9B3, 6}, {0x04B9D0, 7}, {0x04C1A7, 9}, {0x04B9E4, 4}, {0x04A4ED, 3}, {0x04B9FC, 4}, {0x04BA00, 5}},
+    {{0, 0}, {0, 0}, {0x04B9AF, 4}, {0x04B9B3, 6}, {0x04B9D0, 7}, {0x04C1A7, 9}, {0x04B9E4, 4}, {0x04A4ED, 3}, {0x04B9FC, 4}, {0x04BA00, 5}},
 };
 
 /*
@@ -444,20 +428,18 @@ FxRegs FxCarPose(FxRegs g, int copy)
     g = fx_via_abi(g, abi_FxMatrixFromAngles);
     g.r[9] = FX_MATRIX;
     g.r[11] = 0xB9DF;
-    g = (gsu_codes(FxCarPose_code[copy] + 6, 2), fx_via_abi(g, abi_FxMatrixTranspose04));
-    gsu_codes(FxCarPose_code[copy] + 8, 2);
+    g = fx_via_abi(g, abi_FxMatrixTranspose04);
     g.r[8] = gsu_pull(&g.r[10]);
-    gsu_codes(FxCarPose_code[copy] + 10, 1);
+    gsu_codes(FxCarPose_code[copy] + 6, 1);
     for (i = 0; i < 3; i++) {
         g.r[0] = gsu_ldw(gsu_add((uint16_t)(REC_POS + 2 * i), g.r[8], 0));
         gsu_stw((uint16_t)(FX_CAR_POS + 2 * i), g.r[0]);
-        gsu_codes(FxCarPose_code[copy] + 11, 2);
+        gsu_codes(FxCarPose_code[copy] + 7, 2);
     }
     g.r[11] = 0xBA00;
     g = FxCarMoveParts(g, GSU_COPY(0));
-    gsu_codes(FxCarPose_code[copy] + 13, 1);
+    gsu_codes(FxCarPose_code[copy] + 9, 1);
     gsu_pull(&g.r[10]);
-    gsu_codes(FxCarPose_code[copy] + 14, 2);
     return g;
 }
 
@@ -538,7 +520,7 @@ FxRegs FxCarNew(FxRegs g)
 
     g.r[10] = 0x0240;
     g.r[0] = FX_SCRIPT_BANK;
-    gsu.rombr = FX_SCRIPT_BANK;
+    gsu_romb(FX_SCRIPT_BANK);
     gsu_r14(gsu_ldw(FX_NEW_RECORD));
     g.r[14] = gsu.r[14];
     gsu_code(0x048CD3, 7);
@@ -610,7 +592,6 @@ FxRegs FxCarNew(FxRegs g)
     gsu_stw(FX_CAR_LAST, g.r[1]);
     g.r[8] = g.r[1];
     g.r[11] = 0x8E82;
-    gsu_code(0x048E7C, 6); gsu_code(0x04B9AC, 1);
     g = FxCarPose(g, GSU_COPY(0));
     return g;
 }
@@ -657,12 +638,13 @@ static uint16_t magnitude(uint16_t v, int copy)
 }
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode car_or_code[5][4] = {
-    {{0, 0}, {0x04BC09, 5}, {0, 0}, {0, 0}},
+static const GsuCode car_or_code[6][4] = {
+    {{0, 0}, {0x04BC09, 5}, {0, 0}, {0x04BC0E, 8}},
     {{0, 0}, {0x04BC1B, 6}, {0x04BC35, 1}, {0, 0}},
     {{0, 0}, {0x04BC26, 6}, {0x04BC35, 1}, {0, 0}},
-    {{0x04BBFC, 13}, {0x04BC09, 5}, {0, 0}, {0x04BC0E, 8}},
-    {{0x04BC2C, 5}, {0x04BC31, 5}, {0, 0}, {0, 0}},
+    {{0, 0}, {0x04BC31, 5}, {0, 0}, {0, 0}},
+    {{0x04BBFC, 13}, {0x04BC09, 5}, {0, 0}, {0x04BC0E, 13}},
+    {{0, 0}, {0x04BC1B, 6}, {0x04BC35, 1}, {0x04BC36, 4}},
 };
 
 /* Bits `bits` set in field `f` of car R8 (LDW, OR, SBK), through R2. */
@@ -678,12 +660,9 @@ static void car_or(FxRegs *g, uint16_t f, uint16_t bits, int copy)
 }
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode FxCarHit_code[5][74] = {
-    {{0, 0}, {0x04BB1E, 10}, {0x04BC6E, 3}, {0, 0}, {0x04BB1E, 6}, {0x04BB28, 7}, {0x04BB2F, 6}, {0x04BB39, 8}, {0x04BB2F, 10}, {0x04BC71, 8}, {0, 0}, {0, 0}, {0x04BC79, 2}, {0x04BB41, 6}, {0x04BB4B, 5}, {0x04BB50, 11}, {0x04BB5B, 6}, {0x04BB63, 7}, {0x04BB6A, 19}, {0, 0}, {0, 0}, {0, 0}, {0x04BB7D, 4}, {0x04BB83, 5}, {0, 0}, {0, 0}, {0x04BB9B, 4}, {0x04BBA1, 13}, {0x04BBAE, 6}, {0x04BBB4, 12}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04BBC0, 4}, {0x04BBC8, 1}, {0x04BBC4, 4}, {0x04BBC9, 4}, {0x04BBCD, 2}, {0x04BBCF, 10}, {0x04BC6E, 3}, {0x04BBCF, 6}, {0x04BBD9, 16}, {0x04BC6E, 3}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-    {{0, 0}, {0x04BB1E, 10}, {0x04BC6E, 3}, {0, 0}, {0x04BB1E, 6}, {0x04BB28, 7}, {0x04BB2F, 6}, {0x04BB39, 8}, {0x04BB2F, 10}, {0x04BC71, 8}, {0, 0}, {0, 0}, {0x04BC79, 2}, {0x04BB41, 6}, {0x04BB4B, 5}, {0x04BB50, 11}, {0x04BB5B, 6}, {0x04BB63, 7}, {0x04BB6A, 19}, {0, 0}, {0, 0}, {0x04BB81, 2}, {0, 0}, {0, 0}, {0x04BB7D, 4}, {0x04BB83, 5}, {0x04BB9B, 4}, {0x04BBA1, 13}, {0x04BBAE, 6}, {0x04BBB8, 3}, {0, 0}, {0, 0}, {0x04BBB4, 4}, {0x04BBBB, 5}, {0x04BBC0, 4}, {0x04BBC8, 1}, {0x04BBC4, 4}, {0x04BBC9, 4}, {0x04BBCD, 2}, {0x04BBCF, 10}, {0x04BC6E, 3}, {0x04BBCF, 6}, {0x04BBD9, 12}, {0, 0}, {0x04BBE5, 4}, {0x04BC6E, 3}, {0, 0}, {0x04BBE9, 9}, {0x04BBF4, 6}, {0x04BBFA, 2}, {0, 0}, {0, 0}, {0x04BBFC, 13}, {0, 0}, {0, 0}, {0x04BC0E, 13}, {0x04BC36, 4}, {0, 0}, {0x04BC3A, 11}, {0x04BC45, 7}, {0x04BC4C, 6}, {0x04BF98, 3}, {0x04BC52, 5}, {0, 0}, {0, 0}, {0x04BC57, 5}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04BC5C, 7}, {0x04BC6E, 3}, {0, 0}, {0, 0}},
-    {{0x04BB18, 6}, {0x04B662, 1}, {0x04BB1E, 10}, {0x04BC6E, 3}, {0x04BB1E, 6}, {0x04BB28, 7}, {0x04BB2F, 6}, {0x04BB39, 8}, {0, 0}, {0, 0}, {0x04BB41, 6}, {0x04BB4B, 5}, {0, 0}, {0, 0}, {0, 0}, {0x04BB50, 11}, {0x04BB5B, 6}, {0x04BB63, 7}, {0x04BB72, 4}, {0x04BB6A, 8}, {0x04BB76, 7}, {0x04BB81, 2}, {0, 0}, {0, 0}, {0x04BB7D, 4}, {0x04BB83, 5}, {0x04BB9B, 4}, {0x04BBA1, 13}, {0x04BBAE, 6}, {0x04BBB8, 3}, {0, 0}, {0, 0}, {0x04BBB4, 4}, {0x04BBBB, 5}, {0x04BBC0, 4}, {0x04BBC8, 5}, {0, 0}, {0, 0}, {0x04BBCD, 2}, {0, 0}, {0, 0}, {0x04BBCF, 6}, {0x04BBD9, 12}, {0, 0}, {0x04B662, 1}, {0x04BBE5, 4}, {0x04BC6E, 3}, {0x04BBE9, 17}, {0, 0}, {0x04BBFA, 2}, {0, 0}, {0, 0}, {0x04BBFC, 13}, {0, 0}, {0, 0}, {0x04BC0E, 13}, {0x04BC36, 4}, {0, 0}, {0x04BC3A, 11}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04BC45, 4}, {0x04BC56, 6}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04888C, 1}, {0x04BC5C, 7}, {0x04BC6E, 3}, {0, 0}},
-    {{0, 0}, {0x04BB1E, 10}, {0x04BC6E, 3}, {0, 0}, {0x04BB1E, 6}, {0x04BB28, 7}, {0x04BB2F, 6}, {0x04BB39, 8}, {0x04BB2F, 10}, {0x04BC71, 8}, {0, 0}, {0, 0}, {0x04BC79, 2}, {0x04BB41, 6}, {0x04BB4B, 5}, {0x04BB50, 11}, {0x04BB5B, 6}, {0x04BB63, 7}, {0x04BB72, 4}, {0x04BB6A, 8}, {0x04BB76, 7}, {0x04BB81, 2}, {0, 0}, {0, 0}, {0x04BB7D, 4}, {0x04BB83, 5}, {0x04BB9B, 4}, {0x04BBA1, 13}, {0x04BBAE, 6}, {0x04BBB8, 3}, {0, 0}, {0, 0}, {0x04BBB4, 4}, {0x04BBBB, 5}, {0x04BBC0, 4}, {0x04BBC8, 1}, {0x04BBC4, 4}, {0x04BBC9, 4}, {0x04BBCD, 2}, {0x04BBCF, 10}, {0x04BC6E, 3}, {0x04BBCF, 6}, {0x04BBD9, 12}, {0, 0}, {0x04BBE5, 4}, {0x04BC6E, 3}, {0, 0}, {0x04BBE9, 9}, {0x04BBF4, 6}, {0x04BBFA, 2}, {0x04BBFC, 8}, {0x04BC21, 5}, {0x04BBFC, 13}, {0x04BC0E, 8}, {0x04BC2C, 5}, {0, 0}, {0, 0}, {0x04BC36, 4}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04BC3A, 6}, {0x04BC56, 6}, {0x04BC5C, 14}, {0x04BC6A, 5}, {0x04BC5C, 7}, {0x04BC6E, 1}, {0, 0}, {0x04BC6F, 2}},
-    {{0, 0}, {0x04BB1E, 10}, {0x04BC6E, 3}, {0, 0}, {0x04BB1E, 6}, {0x04BB28, 7}, {0x04BB2F, 6}, {0x04BB39, 8}, {0, 0}, {0, 0}, {0x04BB41, 6}, {0x04BB4B, 5}, {0, 0}, {0, 0}, {0, 0}, {0x04BB50, 11}, {0x04BB5B, 15}, {0, 0}, {0x04BB6A, 19}, {0, 0}, {0, 0}, {0, 0}, {0x04BB7D, 4}, {0x04BB83, 5}, {0, 0}, {0, 0}, {0x04BB9B, 4}, {0x04BBA1, 13}, {0x04BBAE, 6}, {0, 0}, {0x04BBB4, 4}, {0x04BBBB, 5}, {0, 0}, {0, 0}, {0x04BBC0, 4}, {0x04BBC8, 1}, {0x04BBC4, 4}, {0x04BBC9, 4}, {0x04BBCD, 2}, {0x04BBCF, 10}, {0x04BC6E, 3}, {0x04BBCF, 6}, {0x04BBD9, 16}, {0x04BC6E, 3}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+static const GsuCode FxCarHit_code[2][63] = {
+    {{0x04B65D, 5}, {0x04BB17, 7}, {0x04BB1E, 10}, {0x04BC6E, 3}, {0x04BB1E, 6}, {0x04BB28, 7}, {0x04BB2F, 6}, {0x04BB39, 8}, {0x04BB2F, 10}, {0, 0}, {0x04BC71, 8}, {0x04BC79, 2}, {0x04BB41, 6}, {0x04BB4B, 5}, {0x04BB50, 11}, {0x04BB5B, 6}, {0x04BB63, 7}, {0x04BB72, 4}, {0x04BB6A, 8}, {0x04BB76, 7}, {0x04BB81, 2}, {0x04BB7D, 4}, {0x04BB83, 5}, {0x04BB9B, 4}, {0x04BBA1, 13}, {0x04BBAE, 6}, {0x04BBB8, 3}, {0x04BBB4, 4}, {0x04BBBB, 5}, {0x04BBC0, 4}, {0x04BBC8, 1}, {0x04BBC4, 4}, {0x04BBC9, 4}, {0x04BBCD, 2}, {0x04BBCF, 10}, {0x04BC6E, 3}, {0x04BBCF, 6}, {0x04BBD9, 12}, {0, 0}, {0x04BBE5, 4}, {0x04BC6E, 3}, {0x04BBE9, 9}, {0x04BBF4, 6}, {0x04BBFA, 2}, {0x04BBFC, 8}, {0x04BC21, 5}, {0x04BBFC, 13}, {0x04BC2C, 5}, {0x04BC16, 5}, {0x04BC36, 4}, {0x04BC3A, 11}, {0x04BC45, 7}, {0x04BC4C, 6}, {0x04BF98, 3}, {0x04BC52, 5}, {0x04BC3A, 6}, {0x04BC56, 1}, {0x04BC57, 5}, {0x04BC5C, 14}, {0x04BC6A, 5}, {0x04BC5C, 7}, {0x04BC6E, 1}, {0x04BC6F, 2}},
+    {{0x04B65D, 5}, {0x04BB17, 7}, {0x04BB1E, 10}, {0x04BC6E, 3}, {0x04BB1E, 6}, {0x04BB28, 7}, {0x04BB2F, 6}, {0x04BB39, 8}, {0x04BB2F, 10}, {0x04BC71, 8}, {0, 0}, {0x04BC79, 2}, {0x04BB41, 6}, {0x04BB4B, 5}, {0x04BB50, 11}, {0x04BB5B, 6}, {0x04BB63, 7}, {0x04BB6A, 19}, {0, 0}, {0, 0}, {0x04BB81, 2}, {0x04BB7D, 4}, {0x04BB83, 5}, {0x04BB9B, 4}, {0x04BBA1, 13}, {0x04BBAE, 6}, {0x04BBB8, 3}, {0x04BBB4, 4}, {0x04BBBB, 5}, {0x04BBC0, 4}, {0x04BBC8, 1}, {0x04BBC4, 4}, {0x04BBC9, 4}, {0x04BBCD, 2}, {0x04BBCF, 10}, {0x04BC6E, 3}, {0x04BBCF, 6}, {0x04BBD9, 16}, {0x04BC6E, 3}, {0, 0}, {0, 0}, {0x04BBE9, 9}, {0x04BBF4, 6}, {0x04BBFA, 2}, {0x04BBFC, 8}, {0x04BC21, 5}, {0x04BBFC, 13}, {0x04BC2C, 5}, {0x04BC16, 5}, {0x04BC36, 4}, {0x04BC3A, 11}, {0x04BC45, 7}, {0x04BC4C, 6}, {0x04BF98, 3}, {0x04BC52, 5}, {0x04BC3A, 6}, {0x04BC56, 1}, {0x04BC57, 5}, {0x04BC5C, 14}, {0x04BC6A, 5}, {0x04BC5C, 7}, {0x04BC6E, 1}, {0x04BC6F, 2}},
 };
 
 /*
@@ -709,13 +688,13 @@ static const GsuCode FxCarHit_code[5][74] = {
  */
 FxRegs FxCarHit(FxRegs g, int copy)
 {
-    gsu_codes(FxCarHit_code[copy], 1);
+    gsu_codes(FxCarHit_code[copy], 2);
     int i;
 
     g.r[1] = gsu_ldw(gsu_add(CAR_64, g.r[8], 0));
     g.r[0] = gsu_and(0x0008, g.r[1]);
     if (!gsu.z)
-        { gsu_codes(FxCarHit_code[copy] + 1, 3); return g; } else { gsu_codes(FxCarHit_code[copy] + 4, 2); }
+        { gsu_codes(FxCarHit_code[copy] + 2, 2); return g; } else { gsu_codes(FxCarHit_code[copy] + 4, 2); }
     g.r[1] = gsu_ldw(gsu_add(CAR_FLAGS40, g.r[8], 0));
     g.r[0] = gsu_and(0x2201, g.r[1]);
     if (gsu.z) {
@@ -723,128 +702,126 @@ FxRegs FxCarHit(FxRegs g, int copy)
         g.r[1] = gsu_ldw(gsu_add(CAR_8A, g.r[8], 0));
         g.r[0] = gsu_and(0x0200, g.r[1]);
     } else { gsu_codes(FxCarHit_code[copy] + 8, 2); }
-    gsu_codes(FxCarHit_code[copy] + 10, 2);
+    gsu_code(0x04BB41, 6); gsu_code(0x04BB4B, 5);
     if (!gsu.z) {
-        gsu_code(0x04BC71, 8);
+        gsu_codes(FxCarHit_code[copy] + 10, 1);
         g.r[1] = 0;
         g.r[0] = gsu_add(CAR_IMPACT, g.r[8], 0);
         gsu_stw(g.r[0], g.r[1]);
-        gsu_codes(FxCarHit_code[copy] + 12, 1);
+        gsu_codes(FxCarHit_code[copy] + 11, 1);
         return g;
-    } else { gsu_codes(FxCarHit_code[copy] + 13, 2); }
+    } else { gsu_codes(FxCarHit_code[copy] + 12, 2); }
     g.r[0] = gsu_div2(gsu_div2(gsu_ldw(FX_HIT_X + 2)));
     g.r[1] = g.r[0];
     g.r[0] = gsu_add(CAR_IMPACT, g.r[8], 0);
-    gsu_codes(FxCarHit_code[copy] + 15, 1);
+    gsu_codes(FxCarHit_code[copy] + 14, 1);
     gsu_stw(g.r[0], g.r[1]);
-    gsu_codes(FxCarHit_code[copy] + 16, 2);
+    gsu_codes(FxCarHit_code[copy] + 15, 2);
     g.r[0] = magnitude(g.r[1], GSU_COPY(0));
     g.r[1] = gsu_ldw(gsu_add(CAR_44, g.r[8], 0));
     g.r[2] = 0x0002;
     gsu_sub(g.r[1], g.r[2], 0);
     if (gsu.s)
-        { gsu_codes(FxCarHit_code[copy] + 18, 1); g.r[0] = gsu_div2(gsu_div2(g.r[0])); }
-    gsu_codes(FxCarHit_code[copy] + 19, 2);
+        { gsu_codes(FxCarHit_code[copy] + 17, 1); g.r[0] = gsu_div2(gsu_div2(g.r[0])); }
+    gsu_codes(FxCarHit_code[copy] + 18, 2);
     g.r[1] = g.r[0];
     g.r[0] = gsu_ldw(gsu_add(CAR_VY, g.r[8], 0));
     gsu_moves(g.r[0]);
     if (gsu.s)
-        { gsu_codes(FxCarHit_code[copy] + 21, 1); g.r[1] = 0; } else { gsu_codes(FxCarHit_code[copy] + 22, 2); }
-    gsu_codes(FxCarHit_code[copy] + 24, 2);
+        { gsu_codes(FxCarHit_code[copy] + 20, 1); g.r[1] = 0; }
+    gsu_codes(FxCarHit_code[copy] + 21, 2);
     for (i = 0; i < 2; i++) {
         g.r[0] = magnitude(gsu_ldw(i ? FX_HIT_X + 4 : FX_HIT_X), GSU_COPY(0));
         g.r[0] = gsu_div2(gsu_div2(gsu_div2(g.r[0])));
         g.r[1] = gsu_add(g.r[1], g.r[0], 0);
     }
-    gsu_codes(FxCarHit_code[copy] + 26, 2);
+    gsu_codes(FxCarHit_code[copy] + 23, 2);
     g.r[6] = gsu_ldw(FX_HIT_SCALE);
     g.r[1] = gsu_fmult(g.r[1], g.r[6]);
-    gsu_codes(FxCarHit_code[copy] + 28, 1);
+    gsu_codes(FxCarHit_code[copy] + 25, 1);
     g.r[0] = gsu_ldw(gsu_add(REC_CONTACTS_OF_CAR, g.r[8], 0));
     gsu_moves(g.r[0]);
     if (!gsu.z)
-        { gsu_codes(FxCarHit_code[copy] + 29, 1); g.r[1] = gsu_div2(g.r[1]); } else { gsu_codes(FxCarHit_code[copy] + 30, 2); }
-    gsu_codes(FxCarHit_code[copy] + 32, 2);
+        { gsu_codes(FxCarHit_code[copy] + 26, 1); g.r[1] = gsu_div2(g.r[1]); }
+    gsu_codes(FxCarHit_code[copy] + 27, 2);
     g.r[2] = gsu_ldw(FX_HIT_ON);
     gsu_moves(g.r[2]);
     {
-        gsu_codes(FxCarHit_code[copy] + 34, 2);
+        gsu_codes(FxCarHit_code[copy] + 29, 2);
         int on = !gsu.z;
 
         g.r[0] = gsu_sub(g.r[0], g.r[0], 0);      /* in the branch's delay slot */
         if (!on)
-            { gsu_codes(FxCarHit_code[copy] + 36, 1); gsu_stw(FX_HIT_SUM, g.r[0]); }
-        gsu_codes(FxCarHit_code[copy] + 37, 1);
+            { gsu_codes(FxCarHit_code[copy] + 31, 1); gsu_stw(FX_HIT_SUM, g.r[0]); }
+        gsu_codes(FxCarHit_code[copy] + 32, 1);
     }
     g.r[0] = gsu_add(gsu_ldw(FX_HIT_SUM), g.r[1], 0);
-    gsu_codes(FxCarHit_code[copy] + 38, 1);
+    gsu_codes(FxCarHit_code[copy] + 33, 1);
     gsu_sbk(g.r[0]);
     g.r[1] = g.r[0];
     gsu_moves(g.r[2]);
     if (gsu.z)
-        { gsu_codes(FxCarHit_code[copy] + 39, 2); return g; } else { gsu_codes(FxCarHit_code[copy] + 41, 3); }
+        { gsu_codes(FxCarHit_code[copy] + 34, 2); return g; } else { gsu_codes(FxCarHit_code[copy] + 36, 3); }
     g.r[1] = gsu_div2(g.r[1]);
     g.r[2] = 0x0010;
     gsu_sub(g.r[1], g.r[2], 0);
     if (gsu.s)
-        { gsu_codes(FxCarHit_code[copy] + 44, 3); return g; } else { gsu_codes(FxCarHit_code[copy] + 47, 2); }
+        { gsu_codes(FxCarHit_code[copy] + 39, 2); return g; } else { gsu_codes(FxCarHit_code[copy] + 41, 2); }
     g.r[2] = 0x0060;
     gsu_sub(g.r[1], g.r[2], 0);
     if (!gsu.s)
         g.r[1] = g.r[2];
     g.r[0] = gsu_add(gsu_ldw(gsu_add(CAR_DAMAGE, g.r[8], 0)), g.r[1], 0);
-    gsu_codes(FxCarHit_code[copy] + 49, 1);
+    gsu_codes(FxCarHit_code[copy] + 43, 1);
     gsu_sbk(g.r[0]);
     g.r[2] = 0x0018;
     gsu_sub(g.r[1], g.r[2], 0);
     if (gsu.s) {
-        gsu_codes(FxCarHit_code[copy] + 50, 2);
+        gsu_codes(FxCarHit_code[copy] + 44, 2);
         car_or(&g, CAR_FLAGS40, 0x0080, GSU_COPY(2));
     } else {
-        gsu_codes(FxCarHit_code[copy] + 52, 1);
+        gsu_codes(FxCarHit_code[copy] + 46, 1);
         car_or(&g, CAR_70, 0x0080, GSU_COPY(0));
         g.r[2] = 0x0038;
         gsu_sub(g.r[1], g.r[2], 0);
         if (gsu.s)
-            { gsu_codes(FxCarHit_code[copy] + 53, 2); car_or(&g, CAR_FLAGS40, 0x0040, GSU_COPY(4)); }
+            { gsu_codes(FxCarHit_code[copy] + 47, 1); car_or(&g, CAR_FLAGS40, 0x0040, GSU_COPY(3)); }
         else
-            { gsu_codes(FxCarHit_code[copy] + 55, 1); car_or(&g, CAR_FLAGS40, 0x0020, GSU_COPY(1)); }
-        gsu_codes(FxCarHit_code[copy] + 56, 1);
+            { gsu_codes(FxCarHit_code[copy] + 48, 1); car_or(&g, CAR_FLAGS40, 0x0020, GSU_COPY(1)); }
     }
-    gsu_codes(FxCarHit_code[copy] + 57, 1);
+    gsu_codes(FxCarHit_code[copy] + 49, 1);
     g.r[0] = gsu_ldw(gsu_add(CAR_FLAGS40, g.r[8], 0));
     g.r[2] = 0x0020;
     g.r[0] = gsu_and(g.r[0], g.r[2]);
     if (!gsu.z) {
-        gsu_codes(FxCarHit_code[copy] + 58, 1);
+        gsu_codes(FxCarHit_code[copy] + 50, 1);
         g.r[0] = gsu_ldw(FX_PLAYER);
         gsu_sub(g.r[0], g.r[8], 0);
         if (gsu.z) {
-            gsu_codes(FxCarHit_code[copy] + 59, 1);
+            gsu_codes(FxCarHit_code[copy] + 51, 1);
             uint16_t ret = g.r[11];
 
             gsu_push(&g.r[10], ret);
             g.r[11] = 0xBC52;
-            gsu_codes(FxCarHit_code[copy] + 60, 2);
+            gsu_codes(FxCarHit_code[copy] + 52, 2);
             g = FxSpreadCars(g);
-            gsu_codes(FxCarHit_code[copy] + 62, 1);
+            gsu_codes(FxCarHit_code[copy] + 54, 1);
             g.r[11] = gsu_pull(&g.r[10]);
-        } else { gsu_codes(FxCarHit_code[copy] + 63, 2); }
-        gsu_codes(FxCarHit_code[copy] + 65, 1);
-    } else { gsu_codes(FxCarHit_code[copy] + 66, 2); }
-    gsu_code(0x04BC57, 5);
+        } else { gsu_code(0x04BC45, 4); gsu_code(0x04BC56, 6); }
+    } else { gsu_codes(FxCarHit_code[copy] + 55, 2); }
+    gsu_codes(FxCarHit_code[copy] + 57, 1);
     g.r[0] = gsu_ldw(gsu_add(CAR_DAMAGE, g.r[8], 0));
     g.r[2] = 0x0200;
     gsu_sub(g.r[0], g.r[2], 0);
     if (!gsu.s) {
-        gsu_codes(FxCarHit_code[copy] + 68, 1);
+        gsu_codes(FxCarHit_code[copy] + 58, 1);
         g.r[2] = gsu_ldw(gsu_add(CAR_FLAGS40, g.r[8], 0));
         g.r[0] = 0x0001;
         g.r[0] = gsu_or(g.r[0], g.r[2]);
-        gsu_codes(FxCarHit_code[copy] + 69, 1);
+        gsu_codes(FxCarHit_code[copy] + 59, 1);
         gsu_sbk(g.r[0]);
-    } else { gsu_codes(FxCarHit_code[copy] + 70, 3); }
-    gsu_codes(FxCarHit_code[copy] + 73, 1);
+    } else { gsu_codes(FxCarHit_code[copy] + 60, 2); }
+    gsu_codes(FxCarHit_code[copy] + 62, 1);
     return g;
 }
 
@@ -855,4 +832,5 @@ void abi_FxCarHit(void)
     memcpy(g.r, gsu.r, sizeof g.r);
     g = FxCarHit(g, GSU_COPY(0));
     memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
+    gsu_code(0x04BC6E, 3);
 }

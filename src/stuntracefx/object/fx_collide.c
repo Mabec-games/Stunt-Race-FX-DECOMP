@@ -53,11 +53,16 @@
 #define FX_SIZES 0x236Cu       /* R1's sizes: x, y, z */
 #define FX_RECORDS 0x2332u
 
+/* cyccopy: the copy each of the caller's copies calls */
+static const uint8_t FxNormalize_from_FxCollidePush[2] = {4, 6};
+
+/* cyccopy: the copy each of the caller's copies calls */
+static const uint8_t FxDivideHalvedIfLarge_from_FxCollidePush[2] = {3, 5};
+
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode FxCollidePush_code[3][87] = {
-    {{0x04924B, 6}, {0x04926A, 5}, {0x049301, 3}, {0x049304, 4}, {0x049308, 4}, {0x04930C, 10}, {0x049316, 4}, {0x04931A, 6}, {0x049320, 6}, {0x049326, 6}, {0x04932C, 4}, {0x049330, 6}, {0x049336, 2}, {0x049338, 4}, {0x04933C, 4}, {0x049340, 6}, {0x04C087, 3}, {0x049346, 4}, {0x04934A, 3}, {0x04934D, 3}, {0x049350, 4}, {0x049354, 4}, {0x049358, 4}, {0x04935C, 4}, {0x049360, 6}, {0x049366, 6}, {0x04936C, 7}, {0x049373, 6}, {0x049379, 6}, {0x04937F, 15}, {0x049390, 5}, {0, 0}, {0, 0}, {0x049395, 2}, {0x049397, 4}, {0x04939B, 4}, {0x04939F, 6}, {0x0493A5, 6}, {0x0493AB, 16}, {0x04C135, 10}, {0x04C144, 7}, {0x04C15A, 2}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x0493BB, 4}, {0x0493BF, 4}, {0x0493C3, 10}, {0x0493CD, 6}, {0x0493D3, 11}, {0, 0}, {0, 0}, {0x0493DE, 4}, {0x0493E2, 4}, {0x0493E6, 4}, {0x0493EA, 4}, {0x0493EE, 4}, {0x0493F2, 4}, {0x0493F6, 4}, {0x04926F, 8}, {0x04944C, 2}},
-    {{0, 0}, {0, 0}, {0, 0}, {0x049304, 4}, {0x049308, 4}, {0x04930C, 10}, {0x049316, 4}, {0x04931A, 6}, {0x049320, 6}, {0x049326, 6}, {0x04932C, 4}, {0x049330, 6}, {0x049336, 2}, {0x049338, 4}, {0x04933C, 4}, {0x049340, 6}, {0x04C087, 3}, {0x049346, 4}, {0x04934A, 3}, {0x04934D, 3}, {0x049350, 4}, {0x049354, 4}, {0x049358, 4}, {0x04935C, 4}, {0x049360, 6}, {0x049366, 6}, {0x04936C, 7}, {0x049373, 6}, {0x049379, 6}, {0, 0}, {0, 0}, {0x04937F, 7}, {0x049390, 5}, {0x049395, 2}, {0x049397, 4}, {0x04939B, 4}, {0x04939F, 6}, {0x0493A5, 6}, {0x0493AB, 16}, {0x04C135, 10}, {0x04C144, 7}, {0x04C153, 2}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x0493BB, 4}, {0x0493BF, 4}, {0x0493C3, 10}, {0x0493CD, 6}, {0, 0}, {0x0493D3, 4}, {0x0493D9, 5}, {0x0493DE, 4}, {0x0493E2, 4}, {0x0493E6, 4}, {0x0493EA, 4}, {0x0493EE, 4}, {0x0493F2, 4}, {0x0493F6, 4}, {0, 0}, {0, 0}},
-    {{0x04924B, 6}, {0x04926A, 5}, {0x049301, 3}, {0x049304, 4}, {0x049308, 4}, {0x04930C, 10}, {0x049316, 4}, {0x04931A, 6}, {0x049320, 6}, {0x049326, 6}, {0x04932C, 4}, {0x049330, 6}, {0x049336, 2}, {0x049338, 4}, {0x04933C, 4}, {0x049340, 6}, {0x04C087, 3}, {0x049346, 4}, {0x04934A, 3}, {0x04934D, 3}, {0x049350, 4}, {0x049354, 4}, {0x049358, 4}, {0x04935C, 4}, {0x049360, 6}, {0x049366, 6}, {0x04936C, 7}, {0x049373, 6}, {0x049379, 6}, {0x04937F, 15}, {0x049390, 5}, {0, 0}, {0, 0}, {0x049395, 2}, {0x049397, 4}, {0x04939B, 4}, {0x04939F, 6}, {0x0493A5, 6}, {0x0493AB, 16}, {0x04C135, 10}, {0x04C144, 15}, {0x04C14B, 4}, {0x04C14B, 4}, {0x04C14B, 4}, {0x04C14B, 4}, {0x04C14B, 4}, {0x04C14B, 4}, {0x04C14B, 4}, {0x04C14B, 4}, {0x04C14B, 4}, {0x04C14B, 4}, {0x04C14B, 4}, {0x04C14B, 4}, {0x04C14B, 4}, {0x04C14B, 4}, {0x04C14B, 4}, {0x04C155, 7}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x0493BB, 4}, {0x0493BF, 4}, {0x0493C3, 10}, {0x0493CD, 6}, {0x0493D3, 11}, {0, 0}, {0, 0}, {0x0493DE, 4}, {0x0493E2, 4}, {0x0493E6, 4}, {0x0493EA, 4}, {0x0493EE, 4}, {0x0493F2, 4}, {0x0493F6, 4}, {0x04926F, 8}, {0x04944C, 2}},
+static const GsuCode FxCollidePush_code[2][55] = {
+    {{0x049304, 4}, {0x049308, 4}, {0x04930C, 10}, {0x049316, 4}, {0x04931A, 6}, {0x049320, 6}, {0x049326, 6}, {0x04932C, 4}, {0x049330, 6}, {0x049336, 2}, {0x049338, 4}, {0x04933C, 4}, {0x049340, 6}, {0x04C087, 3}, {0x049346, 4}, {0x04934A, 3}, {0x04934D, 3}, {0x049350, 4}, {0x049354, 4}, {0x049358, 4}, {0x04935C, 4}, {0x049360, 6}, {0x049366, 6}, {0x04936C, 7}, {0x049373, 6}, {0x049379, 6}, {0x049386, 8}, {0, 0}, {0x04938E, 2}, {0x04937F, 7}, {0x049390, 5}, {0x049395, 2}, {0x049397, 4}, {0x04939B, 4}, {0x04939F, 6}, {0x0493A5, 6}, {0x0493AB, 16}, {0x04C135, 10}, {0x04C144, 7}, {0x04C14F, 4}, {0x04C15A, 2}, {0x0493BB, 4}, {0x0493BF, 4}, {0x0493C3, 10}, {0x0493CD, 6}, {0x0493D7, 2}, {0x0493D3, 4}, {0x0493D9, 5}, {0x0493DE, 4}, {0x0493E2, 4}, {0x0493E6, 4}, {0x0493EA, 4}, {0x0493EE, 4}, {0x0493F2, 4}, {0x0493F6, 4}},
+    {{0x049304, 4}, {0x049308, 4}, {0x04930C, 10}, {0x049316, 4}, {0x04931A, 6}, {0x049320, 6}, {0x049326, 6}, {0x04932C, 4}, {0x049330, 6}, {0x049336, 2}, {0x049338, 4}, {0x04933C, 4}, {0x049340, 6}, {0x04C087, 3}, {0x049346, 4}, {0x04934A, 3}, {0x04934D, 3}, {0x049350, 4}, {0x049354, 4}, {0x049358, 4}, {0x04935C, 4}, {0x049360, 6}, {0x049366, 6}, {0x04936C, 7}, {0x049373, 6}, {0x049379, 6}, {0x04937F, 15}, {0x049390, 5}, {0x04938E, 2}, {0, 0}, {0, 0}, {0x049395, 2}, {0x049397, 4}, {0x04939B, 4}, {0x04939F, 6}, {0x0493A5, 6}, {0x0493AB, 16}, {0x04C135, 10}, {0x04C144, 7}, {0x04C15A, 2}, {0, 0}, {0x0493BB, 4}, {0x0493BF, 4}, {0x0493C3, 10}, {0x0493CD, 6}, {0x0493D3, 11}, {0, 0}, {0, 0}, {0x0493DE, 4}, {0x0493E2, 4}, {0x0493E6, 4}, {0x0493EA, 4}, {0x0493EE, 4}, {0x0493F2, 4}, {0x0493F6, 4}},
 };
 
 /*
@@ -82,141 +87,139 @@ static const GsuCode FxCollidePush_code[3][87] = {
  */
 FxRegs FxCollidePush(FxRegs g, int copy)
 {
-    gsu_codes(FxCollidePush_code[copy], 3);
     uint16_t *sp = &g.r[10], speed;
     int negative;
     FxQuotient q;
 
     gsu_push(sp, g.r[11]);
-    gsu_codes(FxCollidePush_code[copy] + 3, 1);
+    gsu_codes(FxCollidePush_code[copy], 1);
     gsu_push(sp, g.r[1]);
-    gsu_codes(FxCollidePush_code[copy] + 4, 1);
+    gsu_codes(FxCollidePush_code[copy] + 1, 1);
     gsu_push(sp, g.r[8]);
     g.r[5] = g.r[1];
-    gsu_codes(FxCollidePush_code[copy] + 5, 1);
+    gsu_codes(FxCollidePush_code[copy] + 2, 1);
     g.r[1] = gsu_ldw(gsu_add(REC_X, g.r[9], 0));
-    gsu_codes(FxCollidePush_code[copy] + 6, 1);
+    gsu_codes(FxCollidePush_code[copy] + 3, 1);
     g.r[0] = gsu_ldw(gsu_add(HIT_X, g.r[5], 0));
     g.r[1] = gsu_sub(g.r[1], g.r[0], 0);
-    gsu_codes(FxCollidePush_code[copy] + 7, 1);
+    gsu_codes(FxCollidePush_code[copy] + 4, 1);
     gsu_stw(FX_ANGLES, g.r[1]);
     g.r[2] = 0;
-    gsu_codes(FxCollidePush_code[copy] + 8, 1);
+    gsu_codes(FxCollidePush_code[copy] + 5, 1);
     gsu_stw(FX_ANGLES + 2, g.r[2]);
-    gsu_codes(FxCollidePush_code[copy] + 9, 1);
+    gsu_codes(FxCollidePush_code[copy] + 6, 1);
     g.r[3] = gsu_ldw(gsu_add(REC_Z, g.r[9], 0));
-    gsu_codes(FxCollidePush_code[copy] + 10, 1);
+    gsu_codes(FxCollidePush_code[copy] + 7, 1);
     g.r[0] = gsu_ldw(gsu_add(HIT_Z, g.r[5], 0));
     g.r[3] = gsu_sub(g.r[3], g.r[0], 0);
-    gsu_codes(FxCollidePush_code[copy] + 11, 1);
+    gsu_codes(FxCollidePush_code[copy] + 8, 1);
     gsu_stw(FX_ANGLES + 4, g.r[3]);
-    gsu_codes(FxCollidePush_code[copy] + 12, 1);
+    gsu_codes(FxCollidePush_code[copy] + 9, 1);
     gsu_push(sp, g.r[7]);
-    gsu_codes(FxCollidePush_code[copy] + 13, 1);
+    gsu_codes(FxCollidePush_code[copy] + 10, 1);
     gsu_push(sp, g.r[9]);
-    gsu_codes(FxCollidePush_code[copy] + 14, 1);
+    gsu_codes(FxCollidePush_code[copy] + 11, 1);
     gsu_push(sp, g.r[5]);
     g.r[11] = 0x9346;
-    gsu_codes(FxCollidePush_code[copy] + 15, 2);
-    g = FxNormalize(g, GSU_COPY(6));
-    gsu_codes(FxCollidePush_code[copy] + 17, 1);
+    gsu_codes(FxCollidePush_code[copy] + 12, 2);
+    g = FxNormalize(g, GSU_COPY(FxNormalize_from_FxCollidePush[copy]));
+    gsu_codes(FxCollidePush_code[copy] + 14, 1);
     gsu_stw(FX_NORMAL_X, g.r[1]);
-    gsu_codes(FxCollidePush_code[copy] + 18, 1);
+    gsu_codes(FxCollidePush_code[copy] + 15, 1);
     gsu_stw(FX_NORMAL_Y, g.r[2]);
-    gsu_codes(FxCollidePush_code[copy] + 19, 1);
+    gsu_codes(FxCollidePush_code[copy] + 16, 1);
     gsu_stw(FX_NORMAL_Z, g.r[3]);
-    gsu_codes(FxCollidePush_code[copy] + 20, 1);
+    gsu_codes(FxCollidePush_code[copy] + 17, 1);
     g.r[5] = gsu_pull(sp);
-    gsu_codes(FxCollidePush_code[copy] + 21, 1);
+    gsu_codes(FxCollidePush_code[copy] + 18, 1);
     g.r[9] = gsu_pull(sp);
-    gsu_codes(FxCollidePush_code[copy] + 22, 1);
+    gsu_codes(FxCollidePush_code[copy] + 19, 1);
     g.r[7] = gsu_pull(sp);
 
-    gsu_codes(FxCollidePush_code[copy] + 23, 1);
+    gsu_codes(FxCollidePush_code[copy] + 20, 1);
     g.r[0] = gsu_ldw(gsu_add(HIT_VEL_X, g.r[5], 0));
-    gsu_codes(FxCollidePush_code[copy] + 24, 1);
+    gsu_codes(FxCollidePush_code[copy] + 21, 1);
     g.r[1] = gsu_ldw(gsu_add(REC_VEL_X, g.r[9], 0));
     g.r[0] = gsu_sub(g.r[0], g.r[1], 0);
     g.r[0] = gsu_add(g.r[0], g.r[0], 0);
-    gsu_codes(FxCollidePush_code[copy] + 25, 1);
+    gsu_codes(FxCollidePush_code[copy] + 22, 1);
     g.r[6] = gsu_ldw(FX_NORMAL_X);
     g.r[8] = gsu_fmult(g.r[0], g.r[6]);
-    gsu_codes(FxCollidePush_code[copy] + 26, 1);
+    gsu_codes(FxCollidePush_code[copy] + 23, 1);
     g.r[0] = gsu_ldw(gsu_add(HIT_VEL_Z, g.r[5], 0));
-    gsu_codes(FxCollidePush_code[copy] + 27, 1);
+    gsu_codes(FxCollidePush_code[copy] + 24, 1);
     g.r[1] = gsu_ldw(gsu_add(REC_VEL_Z, g.r[9], 0));
     g.r[0] = gsu_sub(g.r[0], g.r[1], 0);
     g.r[0] = gsu_add(g.r[0], g.r[0], 0);
-    gsu_codes(FxCollidePush_code[copy] + 28, 1);
+    gsu_codes(FxCollidePush_code[copy] + 25, 1);
     g.r[6] = gsu_ldw(FX_NORMAL_Z);
     g.r[0] = gsu_fmult(g.r[0], g.r[6]);
     g.r[8] = gsu_add(g.r[8], g.r[0], 0);
     gsu_moves(g.r[8]);
     if (!gsu.s) {
-        gsu_codes(FxCollidePush_code[copy] + 29, 2);
+        gsu_codes(FxCollidePush_code[copy] + 26, 2);
         g.r[0] = 0x04B0;
         gsu_sub(g.r[0], g.r[8], 0);
         if (!gsu.s)
-            { gsu_code(0x04938E, 2); g.r[8] = g.r[0]; }
-    } else { gsu_codes(FxCollidePush_code[copy] + 31, 2); }
-    gsu_code(0x04937F, 7); gsu_code(0x049390, 5);
+            { gsu_codes(FxCollidePush_code[copy] + 28, 1); g.r[8] = g.r[0]; }
+    }
+    gsu_codes(FxCollidePush_code[copy] + 29, 2);
     gsu_stw(FX_CLOSING, g.r[8]);
 
-    gsu_codes(FxCollidePush_code[copy] + 33, 1);
+    gsu_codes(FxCollidePush_code[copy] + 31, 1);
     gsu_push(sp, g.r[7]);
-    gsu_codes(FxCollidePush_code[copy] + 34, 1);
+    gsu_codes(FxCollidePush_code[copy] + 32, 1);
     gsu_push(sp, g.r[9]);
-    gsu_codes(FxCollidePush_code[copy] + 35, 1);
+    gsu_codes(FxCollidePush_code[copy] + 33, 1);
     gsu_push(sp, g.r[8]);
-    gsu_codes(FxCollidePush_code[copy] + 36, 1);
+    gsu_codes(FxCollidePush_code[copy] + 34, 1);
     g.r[0] = gsu_ldw(gsu_add(REC_MASS, g.r[7], 0));
-    gsu_codes(FxCollidePush_code[copy] + 37, 1);
+    gsu_codes(FxCollidePush_code[copy] + 35, 1);
     g.r[6] = gsu_ldw(gsu_add(REC_MASS, g.r[9], 0));
     g.r[6] = gsu_add(g.r[6], g.r[0], 0);
     g.r[4] = 0;
     g.r[11] = 0x93B3;
-    gsu_codes(FxCollidePush_code[copy] + 38, 33);
-    q = FxDivideHalvedIfLarge(g.r[0], g.r[4], &g.r[6], GSU_COPY(5));
+    gsu_codes(FxCollidePush_code[copy] + 36, 5);
+    q = FxDivideHalvedIfLarge(g.r[0], g.r[4], &g.r[6], GSU_COPY(FxDivideHalvedIfLarge_from_FxCollidePush[copy]));
     g.r[0] = q.rem;
     g.r[4] = q.quot;
     g.r[12] = 0;
     g.r[13] = 0xC14B;
     g.r[6] = gsu_lsr(g.r[4]);
     g.r[8] = gsu_pull(sp);
-    gsu_codes(FxCollidePush_code[copy] + 71, 1);
+    gsu_codes(FxCollidePush_code[copy] + 41, 1);
     g.r[9] = gsu_pull(sp);
-    gsu_codes(FxCollidePush_code[copy] + 72, 1);
+    gsu_codes(FxCollidePush_code[copy] + 42, 1);
     g.r[7] = gsu_pull(sp);
     speed = g.r[8];
     g.r[0] = gsu_add(speed, speed, 0);
     g.r[8] = g.r[0] = gsu_fmult(g.r[0], g.r[6]);
-    gsu_codes(FxCollidePush_code[copy] + 73, 1);
+    gsu_codes(FxCollidePush_code[copy] + 43, 1);
     g.r[1] = gsu_ldw(FX_NORMAL_X);
     g.r[2] = 0;
-    gsu_codes(FxCollidePush_code[copy] + 74, 1);
+    gsu_codes(FxCollidePush_code[copy] + 44, 1);
     g.r[3] = gsu_ldw(FX_NORMAL_Z);
     gsu_moves(g.r[8]);
     negative = gsu.s;
     g.r[0] = gsu_sub(g.r[0], g.r[0], 0);   /* in the branch's delay slot */
     if (!negative)
-        { gsu_codes(FxCollidePush_code[copy] + 75, 1); g.r[0] = 1; } else { gsu_codes(FxCollidePush_code[copy] + 76, 2); }
-    gsu_code(0x0493D3, 4); gsu_code(0x0493D9, 5);
+        { gsu_codes(FxCollidePush_code[copy] + 45, 1); g.r[0] = 1; }
+    gsu_codes(FxCollidePush_code[copy] + 46, 2);
     gsu_stw(FX_PUSH, g.r[0]);
-    gsu_codes(FxCollidePush_code[copy] + 78, 1);
+    gsu_codes(FxCollidePush_code[copy] + 48, 1);
     gsu_stw(FX_PUSH + 2, g.r[8]);
-    gsu_codes(FxCollidePush_code[copy] + 79, 1);
+    gsu_codes(FxCollidePush_code[copy] + 49, 1);
     gsu_stw(FX_PUSH + 4, g.r[1]);
-    gsu_codes(FxCollidePush_code[copy] + 80, 1);
+    gsu_codes(FxCollidePush_code[copy] + 50, 1);
     gsu_stw(FX_PUSH + 6, g.r[2]);
-    gsu_codes(FxCollidePush_code[copy] + 81, 1);
+    gsu_codes(FxCollidePush_code[copy] + 51, 1);
     gsu_stw(FX_PUSH + 8, g.r[3]);
-    gsu_codes(FxCollidePush_code[copy] + 82, 1);
+    gsu_codes(FxCollidePush_code[copy] + 52, 1);
     g.r[8] = gsu_pull(sp);
-    gsu_codes(FxCollidePush_code[copy] + 83, 1);
+    gsu_codes(FxCollidePush_code[copy] + 53, 1);
     g.r[1] = gsu_pull(sp);
-    gsu_codes(FxCollidePush_code[copy] + 84, 1);
+    gsu_codes(FxCollidePush_code[copy] + 54, 1);
     gsu_pull(sp);
-    gsu_codes(FxCollidePush_code[copy] + 85, 2);
     return g;
 }
 
@@ -228,6 +231,15 @@ void abi_FxCollidePush(void)
     g = FxCollidePush(g, GSU_COPY(0));
     memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
 }
+
+/* cyccopy: the copy each of the caller's copies calls */
+static const uint8_t FxNormalize_from_FxRecordsApart[2] = {4, 7};
+
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode FxRecordsApart_code[2][34] = {
+    {{0, 0}, {0x04CA9C, 4}, {0x04CAB0, 8}, {0x04CAB8, 4}, {0x04CABC, 6}, {0x04CAC2, 6}, {0x04CAC8, 4}, {0x04CACC, 6}, {0x04CAD2, 4}, {0x04CAD6, 4}, {0x04C087, 3}, {0x04CADA, 6}, {0x04CAE0, 5}, {0x04CAE5, 4}, {0x04CAE9, 4}, {0x04CAED, 10}, {0x04CAF7, 9}, {0x04CB00, 4}, {0x04CB04, 6}, {0x04CB0A, 12}, {0x04CB16, 6}, {0x04CB1C, 13}, {0x04CB29, 4}, {0x04CB2D, 6}, {0x04CB33, 13}, {0x04CB33, 7}, {0x04CB3B, 5}, {0x04CB40, 5}, {0x04CB63, 7}, {0, 0}, {0x04CB49, 6}, {0x04CB45, 4}, {0, 0}, {0x04A2B5, 5}},
+    {{0x04CA9A, 2}, {0x04CA9C, 4}, {0x04CAB0, 8}, {0x04CAB8, 4}, {0x04CABC, 6}, {0x04CAC2, 6}, {0x04CAC8, 4}, {0x04CACC, 6}, {0x04CAD2, 4}, {0x04CAD6, 4}, {0x04C087, 3}, {0x04CADA, 6}, {0x04CAE0, 5}, {0x04CAE5, 4}, {0x04CAE9, 4}, {0x04CAED, 10}, {0x04CAF7, 9}, {0x04CB00, 4}, {0x04CB04, 6}, {0x04CB0A, 12}, {0x04CB16, 6}, {0x04CB1C, 13}, {0x04CB29, 4}, {0x04CB2D, 6}, {0x04CB33, 13}, {0x04CB33, 7}, {0x04CB3B, 5}, {0x04CB40, 5}, {0x04CB45, 4}, {0x04CB63, 7}, {0x04CB49, 6}, {0, 0}, {0x04CB7A, 4}, {0x04888C, 1}},
+};
 
 /*
  * @routine 04:CA99 FxRecordsApart
@@ -246,97 +258,96 @@ void abi_FxCollidePush(void)
  * FxNormalize leaves them; S, Z from R10; OV, CY from the CMP (R0 = 1) or
  * SUB R0 (R0 = 0); the last RAM address R10.
  */
-FxRegs FxRecordsApart(FxRegs g)
+FxRegs FxRecordsApart(FxRegs g, int copy)
 {
-    gsu_code(0x04A2A5, 16); gsu_code(0x04CA99, 3);
+    gsu_codes(FxRecordsApart_code[copy], 1);
     uint16_t *sp = &g.r[10];
     int i;
 
     gsu_push(sp, g.r[11]);
-    gsu_code(0x04CA9C, 4);
+    gsu_codes(FxRecordsApart_code[copy] + 1, 1);
     for (i = 1; i <= 5; i++)
-        { gsu_push(sp, g.r[i]); gsu_code(0x04CAB0, 8); }
+        { gsu_push(sp, g.r[i]); gsu_codes(FxRecordsApart_code[copy] + 2, 1); }
     g.r[1] = gsu_ldw(gsu_add(REC_X, g.r[7], 0));
-    gsu_code(0x04CAB8, 4);
+    gsu_codes(FxRecordsApart_code[copy] + 3, 1);
     g.r[0] = gsu_ldw(gsu_add(REC_X, g.r[8], 0));
     g.r[1] = gsu_sub(g.r[1], g.r[0], 0);
-    gsu_code(0x04CABC, 6);
+    gsu_codes(FxRecordsApart_code[copy] + 4, 1);
     gsu_stw(FX_NORMAL_X, g.r[1]);
-    gsu_code(0x04CAC2, 6);
+    gsu_codes(FxRecordsApart_code[copy] + 5, 1);
     g.r[3] = gsu_ldw(gsu_add(REC_Z, g.r[7], 0));
-    gsu_code(0x04CAC8, 4);
+    gsu_codes(FxRecordsApart_code[copy] + 6, 1);
     g.r[0] = gsu_ldw(gsu_add(REC_Z, g.r[8], 0));
     g.r[3] = gsu_sub(g.r[3], g.r[0], 0);
-    gsu_code(0x04CACC, 6);
+    gsu_codes(FxRecordsApart_code[copy] + 7, 1);
     gsu_stw(FX_NORMAL_Z, g.r[3]);
     g.r[2] = 0;
-    gsu_code(0x04CAD2, 4);
+    gsu_codes(FxRecordsApart_code[copy] + 8, 1);
     gsu_push(sp, g.r[8]);
-    gsu_code(0x04CAD6, 4);
+    gsu_codes(FxRecordsApart_code[copy] + 9, 1);
     gsu_push(sp, g.r[7]);
     g.r[11] = 0xCAE0;
-    gsu_code(0x04C087, 3); gsu_code(0x04CADA, 6);
-    g = FxNormalize(g, GSU_COPY(4));
-    gsu_code(0x04CAE0, 5);
+    gsu_codes(FxRecordsApart_code[copy] + 10, 2);
+    g = FxNormalize(g, GSU_COPY(FxNormalize_from_FxRecordsApart[copy]));
+    gsu_codes(FxRecordsApart_code[copy] + 12, 1);
     g.r[7] = gsu_pull(sp);
-    gsu_code(0x04CAE5, 4);
+    gsu_codes(FxRecordsApart_code[copy] + 13, 1);
     g.r[8] = gsu_pull(sp);
 
-    gsu_code(0x04CAE9, 4);
+    gsu_codes(FxRecordsApart_code[copy] + 14, 1);
     g.r[0] = gsu_ldw(FX_NORMAL_X);
     g.r[0] = gsu_add(g.r[0], g.r[0], 0);
     g.r[6] = g.r[1];
     g.r[5] = g.r[0] = gsu_fmult(g.r[0], g.r[6]);
-    gsu_code(0x04CAED, 10);
+    gsu_codes(FxRecordsApart_code[copy] + 15, 1);
     g.r[0] = gsu_ldw(FX_NORMAL_Z);
     g.r[0] = gsu_add(g.r[0], g.r[0], 0);
     g.r[6] = g.r[3];
     g.r[0] = gsu_add(gsu_fmult(g.r[0], g.r[6]), g.r[5], 0);
-    gsu_code(0x04CAF7, 9);
+    gsu_codes(FxRecordsApart_code[copy] + 16, 1);
     gsu_stw(FX_NORMAL_X, g.r[0]);                   /* the distance */
 
-    gsu_code(0x04CB00, 4);
+    gsu_codes(FxRecordsApart_code[copy] + 17, 1);
     g.r[0] = gsu_ldw(gsu_add(REC_VEL_X, g.r[7], 0));
-    gsu_code(0x04CB04, 6);
+    gsu_codes(FxRecordsApart_code[copy] + 18, 1);
     g.r[4] = gsu_ldw(gsu_add(REC_VEL_X, g.r[8], 0));
     g.r[0] = gsu_div2(gsu_sub(g.r[0], g.r[4], 0));
     g.r[6] = g.r[1];
     g.r[5] = g.r[0] = gsu_fmult(g.r[0], g.r[6]);
-    gsu_code(0x04CB0A, 12);
+    gsu_codes(FxRecordsApart_code[copy] + 19, 1);
     g.r[0] = gsu_ldw(gsu_add(REC_VEL_Z, g.r[7], 0));
-    gsu_code(0x04CB16, 6);
+    gsu_codes(FxRecordsApart_code[copy] + 20, 1);
     g.r[4] = gsu_ldw(gsu_add(REC_VEL_Z, g.r[8], 0));
     g.r[0] = gsu_div2(gsu_sub(g.r[0], g.r[4], 0));
     g.r[6] = g.r[3];
     g.r[0] = gsu_add(gsu_fmult(g.r[0], g.r[6]), g.r[5], 0);
     g.r[0] = gsu_inc(gsu_not(g.r[0]));
-    gsu_code(0x04CB1C, 13);
+    gsu_codes(FxRecordsApart_code[copy] + 21, 1);
     gsu_stw(FX_REACH, g.r[0]);                      /* the closing speed */
 
-    gsu_code(0x04CB29, 4);
+    gsu_codes(FxRecordsApart_code[copy] + 22, 1);
     g.r[0] = gsu_ldw(gsu_add(REC_SIZE, g.r[7], 0));
-    gsu_code(0x04CB2D, 6);
+    gsu_codes(FxRecordsApart_code[copy] + 23, 1);
     g.r[1] = gsu_ldw(gsu_add(REC_SIZE, g.r[8], 0));
     g.r[0] = gsu_add(g.r[0], g.r[1], 0);
     g.r[1] = FX_TOUCH_SLACK;
     g.r[0] = gsu_sub(g.r[0], g.r[1], 0);
     if (gsu.s)
-        { gsu_code(0x04CB3A, 1); g.r[0] = gsu_sub(g.r[0], g.r[0], 0); } else { gsu_code(0x04CB33, 7); gsu_code(0x04CB3B, 5); }
-    gsu_code(0x04CB33, 7); gsu_code(0x04CB3B, 5);
+        { gsu_codes(FxRecordsApart_code[copy] + 24, 1); g.r[0] = gsu_sub(g.r[0], g.r[0], 0); } else { gsu_codes(FxRecordsApart_code[copy] + 25, 2); }
     g.r[1] = gsu_ldw(FX_REACH);
     g.r[0] = gsu_add(g.r[0], g.r[1], 0);
-    gsu_code(0x04CB40, 5);
+    gsu_codes(FxRecordsApart_code[copy] + 27, 1);
     g.r[1] = gsu_ldw(FX_NORMAL_X);
     gsu_sub(g.r[0], g.r[1], 0);
     if (gsu.s)
-        { gsu_code(0x04CB45, 4); gsu_code(0x04CB63, 7); g.r[0] = 1; }
+        { gsu_codes(FxRecordsApart_code[copy] + 28, 2); g.r[0] = 1; }
     else
-        { gsu_code(0x04CB49, 6); g.r[0] = gsu_sub(g.r[0], g.r[0], 0); }
-    gsu_code(0x04CB45, 4);
+        { gsu_codes(FxRecordsApart_code[copy] + 30, 1); g.r[0] = gsu_sub(g.r[0], g.r[0], 0); }
+    gsu_codes(FxRecordsApart_code[copy] + 31, 1);
     for (i = 5; i >= 1; i--)
-        { g.r[i] = gsu_pull(sp); gsu_code(0x04CB7A, 4); }
+        { g.r[i] = gsu_pull(sp); gsu_codes(FxRecordsApart_code[copy] + 32, 1); }
     gsu_pull(sp);
-    gsu_code(0x04A2B5, 5); gsu_code(0x04A2E8, 4);
+    gsu_codes(FxRecordsApart_code[copy] + 33, 1);
     return g;
 }
 
@@ -345,18 +356,15 @@ void abi_FxRecordsApart(void)
     FxRegs g;
 
     memcpy(g.r, gsu.r, sizeof g.r);
-    g = FxRecordsApart(g);
+    g = FxRecordsApart(g, GSU_COPY(1));
     memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
-    gsu_code(0x04888C, 1);
 }
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode FxContactNote_code[5][54] = {
-    {{0x04A2C8, 9}, {0x04A345, 5}, {0x04A34A, 10}, {0x04A43B, 3}, {0x04A34A, 6}, {0x04A354, 7}, {0x04A35B, 4}, {0, 0}, {0x04A35F, 5}, {0x04A364, 8}, {0x04A3F9, 1}, {0x04A364, 4}, {0x04A36C, 5}, {0x04A371, 4}, {0x04A375, 3}, {0x04A378, 5}, {0xA37D, 0}, {0x04A37D, 5}, {0x04A382, 1}, {0x04A383, 3}, {0x04A386, 3}, {0x04A389, 3}, {0x04A3A8, 4}, {0x04A389, 8}, {0x04A391, 5}, {0, 0}, {0x04A396, 2}, {0x04A398, 3}, {0x04A39B, 3}, {0x04A3B2, 5}, {0x04A3C0, 4}, {0x04A395, 1}, {0x04A39B, 8}, {0, 0}, {0, 0}, {0x04A3C4, 5}, {0x04A3C9, 8}, {0, 0}, {0x04A3D1, 4}, {0x04A3D9, 10}, {0, 0}, {0, 0}, {0, 0}, {0x04A3E3, 6}, {0x04A3E9, 5}, {0x04A3EE, 5}, {0x04A3F3, 7}, {0, 0}, {0x04A3FA, 6}, {0x04A400, 13}, {0x04A433, 4}, {0x04A437, 5}, {0x04A43C, 2}, {0, 0}},
-    {{0x04A2DF, 9}, {0x04A345, 5}, {0x04A34A, 10}, {0x04A43B, 3}, {0x04A34A, 6}, {0x04A354, 7}, {0x04A35B, 4}, {0, 0}, {0x04A35F, 5}, {0x04A364, 8}, {0x04A3F9, 1}, {0x04A364, 4}, {0x04A36C, 5}, {0x04A371, 4}, {0x04A375, 3}, {0x04A378, 5}, {0xA37D, 0}, {0x04A37D, 5}, {0x04A382, 1}, {0x04A383, 3}, {0x04A386, 3}, {0x04A389, 3}, {0x04A3A8, 4}, {0x04A389, 8}, {0x04A391, 5}, {0, 0}, {0x04A396, 2}, {0x04A398, 3}, {0x04A39B, 3}, {0x04A3B2, 5}, {0x04A3C0, 4}, {0x04A395, 1}, {0x04A39B, 8}, {0, 0}, {0, 0}, {0x04A3C4, 5}, {0x04A3C9, 8}, {0, 0}, {0x04A3D1, 4}, {0x04A3D9, 10}, {0, 0}, {0, 0}, {0, 0}, {0x04A3E3, 6}, {0x04A3E9, 5}, {0x04A3EE, 5}, {0x04A3F3, 7}, {0, 0}, {0x04A3FA, 6}, {0x04A400, 13}, {0x04A433, 4}, {0x04A437, 5}, {0x04A43C, 2}, {0, 0}},
-    {{0, 0}, {0, 0}, {0x04A34A, 10}, {0x04A43B, 3}, {0x04A34A, 6}, {0x04A354, 7}, {0x04A35B, 4}, {0, 0}, {0x04A35F, 5}, {0x04A364, 8}, {0x04A3F9, 1}, {0x04A364, 4}, {0x04A36C, 5}, {0x04A371, 4}, {0x04A375, 3}, {0x04A378, 5}, {0xA37D, 0}, {0x04A37D, 5}, {0x04A382, 1}, {0x04A383, 3}, {0x04A386, 3}, {0x04A389, 3}, {0x04A3A8, 4}, {0x04A389, 8}, {0x04A391, 5}, {0x04A396, 2}, {0, 0}, {0x04A398, 3}, {0x04A39B, 3}, {0x04A3B2, 5}, {0x04A3C0, 4}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04A3C4, 5}, {0x04A3C9, 8}, {0, 0}, {0x04A3D1, 4}, {0x04A3D9, 10}, {0, 0}, {0, 0}, {0, 0}, {0x04A3E3, 6}, {0x04A3E9, 5}, {0x04A3EE, 5}, {0x04A3F3, 7}, {0, 0}, {0x04A3FA, 6}, {0x04A400, 13}, {0x04A433, 4}, {0x04A437, 5}, {0x04A43C, 2}, {0, 0}},
-    {{0, 0}, {0, 0}, {0x04A34A, 10}, {0x04A43B, 3}, {0x04A34A, 6}, {0x04A354, 7}, {0x04A35B, 4}, {0, 0}, {0x04A35F, 5}, {0x04A364, 8}, {0x04A3F9, 1}, {0x04A364, 4}, {0x04A36C, 5}, {0x04A371, 4}, {0x04A375, 3}, {0x04A378, 5}, {0xA37D, 0}, {0x04A37D, 5}, {0x04A382, 1}, {0x04A383, 3}, {0x04A386, 3}, {0x04A389, 3}, {0x04A3A8, 4}, {0x04A389, 8}, {0x04A391, 5}, {0, 0}, {0x04A396, 2}, {0x04A398, 3}, {0x04A39B, 3}, {0x04A3B2, 5}, {0x04A3C0, 4}, {0x04A39B, 8}, {0, 0}, {0x04A3A3, 5}, {0x04A395, 1}, {0x04A3C4, 5}, {0x04A3C9, 3}, {0x04A3CC, 5}, {0x04A3D1, 4}, {0, 0}, {0x04A3D5, 4}, {0x04A43E, 3}, {0x04A3D9, 10}, {0x04A3E3, 6}, {0x04A3E9, 5}, {0x04A3EE, 5}, {0x04A3F3, 7}, {0, 0}, {0x04A3FA, 6}, {0x04A400, 13}, {0x04A433, 4}, {0x04A437, 5}, {0x04A43C, 2}, {0, 0}},
-    {{0x04A346, 4}, {0, 0}, {0, 0}, {0, 0}, {0x04A34A, 6}, {0x04A354, 7}, {0x04A35B, 4}, {0x04A375, 3}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04A378, 5}, {0xA37D, 0}, {0x04A37D, 5}, {0x04A382, 1}, {0x04A383, 3}, {0x04A386, 3}, {0, 0}, {0, 0}, {0x04A389, 8}, {0x04A391, 5}, {0, 0}, {0x04A396, 2}, {0x04A398, 3}, {0x04A39B, 3}, {0x04A3B2, 18}, {0, 0}, {0x04A395, 1}, {0x04A39B, 8}, {0, 0}, {0, 0}, {0x04A3C4, 5}, {0x04A3C9, 8}, {0, 0}, {0x04A3D1, 4}, {0x04A3D9, 10}, {0, 0}, {0, 0}, {0, 0}, {0x04A3E3, 6}, {0x04A3E9, 5}, {0x04A3EE, 5}, {0x04A3F3, 7}, {0x04A3FA, 6}, {0, 0}, {0x04A400, 13}, {0x04A433, 4}, {0x04A437, 5}, {0x04888C, 1}, {0x04A43C, 2}},
+static const GsuCode FxContactNote_code[3][52] = {
+    {{0, 0}, {0x04A34A, 10}, {0x04A43B, 3}, {0x04A34A, 6}, {0x04A354, 7}, {0x04A35B, 4}, {0, 0}, {0x04A35F, 5}, {0x04A364, 8}, {0x04A3F9, 1}, {0x04A364, 4}, {0x04A36C, 5}, {0x04A371, 4}, {0x04A375, 3}, {0x04A378, 5}, {0xA37D, 0}, {0x04A37D, 5}, {0x04A382, 1}, {0x04A383, 3}, {0x04A386, 3}, {0x04A389, 3}, {0x04A3A8, 4}, {0x04A389, 8}, {0x04A391, 5}, {0x04A396, 2}, {0x04A398, 3}, {0x04A39B, 3}, {0x04A3B2, 5}, {0x04A3C0, 4}, {0x04A395, 1}, {0x04A39B, 8}, {0x04A3A3, 5}, {0, 0}, {0x04A3C4, 5}, {0x04A3C9, 8}, {0, 0}, {0x04A3D1, 4}, {0x04A3D9, 10}, {0x04A3D5, 4}, {0x04A43E, 3}, {0, 0}, {0x04A3E3, 6}, {0x04A3E9, 5}, {0x04A3EE, 5}, {0x04A3F3, 7}, {0, 0}, {0x04A3FA, 6}, {0x04A400, 13}, {0x04A433, 4}, {0x04A437, 5}, {0x04A43C, 2}, {0, 0}},
+    {{0, 0}, {0x04A34A, 10}, {0x04A43B, 3}, {0x04A34A, 6}, {0x04A354, 7}, {0x04A35B, 4}, {0, 0}, {0x04A35F, 5}, {0x04A364, 8}, {0x04A3F9, 1}, {0x04A364, 4}, {0x04A36C, 5}, {0x04A371, 4}, {0x04A375, 3}, {0x04A378, 5}, {0xA37D, 0}, {0x04A37D, 5}, {0x04A382, 1}, {0x04A383, 3}, {0x04A386, 3}, {0x04A389, 3}, {0x04A3A8, 4}, {0x04A389, 8}, {0x04A391, 5}, {0x04A396, 2}, {0x04A398, 3}, {0x04A39B, 3}, {0x04A3B2, 5}, {0x04A3C0, 4}, {0x04A39B, 8}, {0, 0}, {0x04A3A3, 5}, {0x04A395, 1}, {0x04A3C4, 5}, {0x04A3C9, 3}, {0x04A3CC, 5}, {0x04A3D1, 4}, {0, 0}, {0x04A3D5, 4}, {0x04A43E, 3}, {0x04A3D9, 10}, {0x04A3E3, 6}, {0x04A3E9, 5}, {0x04A3EE, 5}, {0x04A3F3, 7}, {0, 0}, {0x04A3FA, 6}, {0x04A400, 13}, {0x04A433, 4}, {0x04A437, 5}, {0x04A43C, 2}, {0, 0}},
+    {{0x04A346, 4}, {0x04A34A, 10}, {0x04A43B, 3}, {0x04A34A, 6}, {0x04A354, 7}, {0x04A35B, 4}, {0x04A375, 3}, {0x04A35F, 5}, {0x04A364, 8}, {0x04A3F9, 1}, {0x04A364, 4}, {0x04A36C, 5}, {0x04A371, 4}, {0, 0}, {0x04A378, 5}, {0xA37D, 0}, {0x04A37D, 5}, {0x04A382, 1}, {0x04A383, 3}, {0x04A386, 3}, {0x04A389, 3}, {0x04A3A8, 4}, {0x04A389, 8}, {0x04A391, 5}, {0x04A396, 2}, {0x04A398, 3}, {0x04A39B, 3}, {0x04A3B2, 18}, {0, 0}, {0x04A395, 1}, {0x04A39B, 8}, {0x04A3A3, 5}, {0, 0}, {0x04A3C4, 5}, {0x04A3C9, 8}, {0, 0}, {0x04A3D1, 4}, {0x04A3D9, 10}, {0x04A3D5, 4}, {0x04A43E, 3}, {0, 0}, {0x04A3E3, 6}, {0x04A3E9, 5}, {0x04A3EE, 5}, {0x04A3F3, 7}, {0x04A3FA, 6}, {0, 0}, {0x04A400, 13}, {0x04A433, 4}, {0x04A437, 5}, {0x04888C, 1}, {0x04A43C, 2}},
 };
 
 /*
@@ -381,60 +389,59 @@ static const GsuCode FxContactNote_code[5][54] = {
  */
 FxRegs FxContactNote(FxRegs g, int copy)
 {
-    gsu_codes(FxContactNote_code[copy], 2);
+    gsu_codes(FxContactNote_code[copy], 1);
     uint16_t *sp = &g.r[10];
 
     g.r[0] = gsu_ldw(gsu_add(REC_FLAGS16, g.r[6], 0));
     g.r[9] = 0x0080;
     g.r[0] = gsu_and(g.r[0], g.r[9]);
     if (!gsu.z)
-        { gsu_codes(FxContactNote_code[copy] + 2, 2); return g; } else { gsu_codes(FxContactNote_code[copy] + 4, 2); }
+        { gsu_codes(FxContactNote_code[copy] + 1, 2); return g; } else { gsu_codes(FxContactNote_code[copy] + 3, 2); }
     g.r[7] = gsu_ldw(gsu_add(REC_CONTACTS, g.r[6], 0));
     gsu_moves(g.r[7]);
-    gsu_codes(FxContactNote_code[copy] + 6, 2);
-    while (gsu_codes_loop(FxContactNote_code[copy] + 8, 1, !gsu.z)) {
+    gsu_codes(FxContactNote_code[copy] + 5, 2);
+    while (gsu_codes_loop(FxContactNote_code[copy] + 7, 1, !gsu.z)) {
         g.r[0] = gsu_ldw(gsu_add(CON_OTHER, g.r[7], 0));
         gsu_sub(g.r[0], g.r[8], 0);
         if (gsu.z)
-            { gsu_codes(FxContactNote_code[copy] + 9, 2); goto found; } else { gsu_codes(FxContactNote_code[copy] + 11, 2); }
+            { gsu_codes(FxContactNote_code[copy] + 8, 2); goto found; } else { gsu_codes(FxContactNote_code[copy] + 10, 2); }
         g.r[0] = gsu_ldw(gsu_add(CON_NEXT, g.r[7], 0));
         g.r[7] = g.r[0];
         gsu_moves(g.r[7]);
-        gsu_codes(FxContactNote_code[copy] + 13, 1);
+        gsu_codes(FxContactNote_code[copy] + 12, 1);
     }
-    gsu_codes(FxContactNote_code[copy] + 14, 1);
+    gsu_codes(FxContactNote_code[copy] + 13, 1);
     gsu_push(sp, g.r[8]);
     g.r[9] = FX_POOL_FIRST;
     g.r[7] = CONTACT_BYTES;
-    gsu_codes(FxContactNote_code[copy] + 15, 3);
+    gsu_codes(FxContactNote_code[copy] + 14, 3);
     gsu_push(sp, g.r[9]);
-    gsu_codes(FxContactNote_code[copy] + 18, 1);
-    for (;;) {                                        gsu_codes(FxContactNote_code[copy] + 19, 1); /* an exact fit */
+    gsu_codes(FxContactNote_code[copy] + 17, 1);
+    for (;;) {                                        gsu_codes(FxContactNote_code[copy] + 18, 1); /* an exact fit */
         g.r[8] = gsu_ldw(g.r[9]);
         g.r[9] = gsu_inc(gsu_inc(g.r[9]));
-        gsu_codes(FxContactNote_code[copy] + 20, 1);
+        gsu_codes(FxContactNote_code[copy] + 19, 1);
         g.r[0] = gsu_sub(gsu_ldw(g.r[9]), g.r[7], 0);
         if (gsu.z) {
-            gsu_codes(FxContactNote_code[copy] + 21, 2);
+            gsu_codes(FxContactNote_code[copy] + 20, 2);
             g.r[0] = gsu_pull(sp);
             g.r[7] = gsu_inc(gsu_not(g.r[7]));
             g.r[0] = gsu_sub(g.r[0], g.r[0], 0);
             goto mark;
-        } else { gsu_codes(FxContactNote_code[copy] + 23, 1); }
+        } else { gsu_codes(FxContactNote_code[copy] + 22, 1); }
         g.r[9] = g.r[8];
         gsu_moves(g.r[9]);
         if (gsu.z)
-            { gsu_codes(FxContactNote_code[copy] + 24, 1); break; }
+            { gsu_codes(FxContactNote_code[copy] + 23, 1); break; }
     }
     g.r[9] = gsu_pull(sp);
-    gsu_codes(FxContactNote_code[copy] + 25, 1);
-    for (;;) {                                        gsu_codes(FxContactNote_code[copy] + 26, 1); /* a bigger block */
+    for (;;) {                                        gsu_codes(FxContactNote_code[copy] + 24, 1); /* a bigger block */
         g.r[8] = gsu_ldw(g.r[9]);
         g.r[9] = gsu_inc(gsu_inc(g.r[9]));
-        gsu_codes(FxContactNote_code[copy] + 27, 1);
+        gsu_codes(FxContactNote_code[copy] + 25, 1);
         g.r[0] = gsu_sub(gsu_ldw(g.r[9]), g.r[7], 0);
         if (!gsu.s) {
-            gsu_codes(FxContactNote_code[copy] + 28, 3);
+            gsu_codes(FxContactNote_code[copy] + 26, 3);
             g.r[0] = gsu_sub(g.r[0], 4, 0);
             if (gsu.s) {                              /* too little to split */
                 g.r[0] = gsu_add(g.r[0], 4, 0);
@@ -445,49 +452,49 @@ FxRegs FxContactNote(FxRegs g, int copy)
             g.r[0] = gsu_add(g.r[0], 4, 0);
             gsu_stw(g.r[9], g.r[0]);
             goto mark;
-        } else { gsu_codes(FxContactNote_code[copy] + 31, 2); }
+        } else { gsu_codes(FxContactNote_code[copy] + 29, 2); }
         g.r[9] = g.r[8];
         gsu_moves(g.r[9]);
         if (gsu.z) {
-            gsu_codes(FxContactNote_code[copy] + 33, 1);
+            gsu_codes(FxContactNote_code[copy] + 31, 1);
             g.r[7] = 0;                               /* no room */
             goto taken;
-        } else { gsu_codes(FxContactNote_code[copy] + 34, 1); }
+        } else { gsu_codes(FxContactNote_code[copy] + 32, 1); }
     }
 mark:
-    gsu_codes(FxContactNote_code[copy] + 35, 1);
+    gsu_codes(FxContactNote_code[copy] + 33, 1);
     g.r[8] = gsu_add(g.r[9], g.r[0], 0);
     gsu_stw(g.r[8], g.r[7]);
     g.r[8] = gsu_dec(gsu_dec(g.r[8]));
     g.r[7] = g.r[8];
-gsu_codes(FxContactNote_code[copy] + 36, 1);
+gsu_codes(FxContactNote_code[copy] + 34, 1);
 taken:
-    gsu_codes(FxContactNote_code[copy] + 37, 1);
+    gsu_codes(FxContactNote_code[copy] + 35, 1);
     g.r[8] = gsu_pull(sp);
-    gsu_codes(FxContactNote_code[copy] + 38, 2);
+    gsu_codes(FxContactNote_code[copy] + 36, 2);
     gsu_moves(g.r[7]);
     if (gsu.z)
-        { gsu_codes(FxContactNote_code[copy] + 40, 2); return g; } else { gsu_codes(FxContactNote_code[copy] + 42, 1); }
+        { gsu_codes(FxContactNote_code[copy] + 38, 2); return g; } else { gsu_codes(FxContactNote_code[copy] + 40, 1); }
     g.r[9] = CONTACT_BYTES;
     g.r[0] = gsu_add(CON_OTHER, g.r[7], 0);
     gsu_stw(g.r[0], g.r[8]);
-    gsu_codes(FxContactNote_code[copy] + 43, 1);
+    gsu_codes(FxContactNote_code[copy] + 41, 1);
     g.r[9] = gsu_ldw(gsu_add(REC_CONTACTS, g.r[6], 0));
     g.r[0] = gsu_add(CON_NEXT, g.r[7], 0);
-    gsu_codes(FxContactNote_code[copy] + 44, 1);
+    gsu_codes(FxContactNote_code[copy] + 42, 1);
     gsu_stw(g.r[0], g.r[9]);
     g.r[0] = gsu_add(REC_CONTACTS, g.r[6], 0);
-    gsu_codes(FxContactNote_code[copy] + 45, 1);
+    gsu_codes(FxContactNote_code[copy] + 43, 1);
     gsu_stw(g.r[0], g.r[7]);
     g.r[9] = 0;
     g.r[0] = gsu_add(CON_FLAGS, g.r[7], 0);
-    gsu_codes(FxContactNote_code[copy] + 46, 1);
+    gsu_codes(FxContactNote_code[copy] + 44, 1);
     gsu_stw(g.r[0], g.r[9]);
-gsu_codes(FxContactNote_code[copy] + 47, 1);
+gsu_codes(FxContactNote_code[copy] + 45, 1);
 found:
-    gsu_codes(FxContactNote_code[copy] + 48, 1);
+    gsu_codes(FxContactNote_code[copy] + 46, 1);
     g.r[9] = gsu_ldw(gsu_add(CON_FLAGS, g.r[7], 0));
-    gsu_codes(FxContactNote_code[copy] + 49, 1);
+    gsu_codes(FxContactNote_code[copy] + 47, 1);
     g.r[0] = gsu_and(0x0004, g.r[9]);
     if (gsu.z) {
         static const uint8_t from[4] = {REC_VEL_X, REC_VEL_Z, REC_X, REC_Z};
@@ -497,15 +504,15 @@ found:
             g.r[9] = gsu_ldw(gsu_add(from[i], g.r[8], 0));
             g.r[0] = gsu_add((uint16_t)(HIT_VEL_X + 2 * i), g.r[7], 0);
             gsu_stw(g.r[0], g.r[9]);
-            gsu_codes(FxContactNote_code[copy] + 50, 1);
+            gsu_codes(FxContactNote_code[copy] + 48, 1);
         }
     }
     g.r[0] = gsu_ldw(gsu_add(CON_FLAGS, g.r[7], 0));
     g.r[9] = 0x0001;
     g.r[0] = gsu_or(g.r[0], g.r[9]);
-    gsu_codes(FxContactNote_code[copy] + 51, 1);
+    gsu_codes(FxContactNote_code[copy] + 49, 1);
     gsu_sbk(g.r[0]);
-    gsu_codes(FxContactNote_code[copy] + 52, 2);
+    gsu_codes(FxContactNote_code[copy] + 50, 2);
     return g;
 }
 
@@ -514,56 +521,49 @@ void abi_FxContactNote(void)
     FxRegs g;
 
     memcpy(g.r, gsu.r, sizeof g.r);
-    g = FxContactNote(g, GSU_COPY(4));
+    g = FxContactNote(g, GSU_COPY(2));
     memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
 }
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode axis_overlaps_code[6][7] = {
-    {{0x04A240, 4}, {0x04A248, 7}, {0x04A24F, 4}, {0x04A253, 6}, {0x04A25C, 2}, {0x04A259, 3}, {0x04A25E, 4}},
-    {{0x04A262, 7}, {0, 0}, {0x04A269, 4}, {0x04A26D, 6}, {0x04A276, 2}, {0x04A273, 3}, {0x04A278, 4}},
-    {{0x04A27C, 7}, {0, 0}, {0x04A283, 4}, {0x04A287, 6}, {0x04A290, 2}, {0x04A28D, 3}, {0x04A292, 4}},
-    {{0, 0}, {0, 0}, {0x04A24F, 4}, {0x04A253, 6}, {0x04A25C, 2}, {0x04A259, 3}, {0x04A25E, 4}},
-    {{0, 0}, {0, 0}, {0x04A269, 4}, {0x04A26D, 6}, {0x04A276, 2}, {0x04A273, 3}, {0x04A278, 4}},
-    {{0, 0}, {0, 0}, {0x04A283, 4}, {0x04A287, 6}, {0x04A290, 2}, {0x04A28D, 3}, {0x04A292, 4}},
+static const GsuCode axis_overlaps_code[3][5] = {
+    {{0x04A24F, 4}, {0x04A253, 6}, {0x04A25C, 2}, {0x04A259, 3}, {0x04A25E, 4}},
+    {{0x04A269, 4}, {0x04A26D, 6}, {0x04A276, 2}, {0x04A273, 3}, {0x04A278, 4}},
+    {{0x04A283, 4}, {0x04A287, 6}, {0x04A290, 2}, {0x04A28D, 3}, {0x04A292, 4}},
 };
 
 /* Whether |a - b| - (R2's size + R1's size) is negative for one axis: R6 =
    the summed size, R0 the difference. */
 static int axis_overlaps(FxRegs *g, uint16_t size, uint16_t mine, uint16_t pos, uint16_t b, int copy)
 {
-    gsu_codes(axis_overlaps_code[copy], 2);
     g->r[6] = gsu_ldw(gsu_add(size, g->r[2], 0));
-    gsu_codes(axis_overlaps_code[copy] + 2, 1);
+    gsu_codes(axis_overlaps_code[copy], 1);
     g->r[0] = gsu_ldw(mine);
     g->r[6] = gsu_add(g->r[6], g->r[0], 0);
-    gsu_codes(axis_overlaps_code[copy] + 3, 1);
+    gsu_codes(axis_overlaps_code[copy] + 1, 1);
     g->r[0] = gsu_sub(gsu_ldw(gsu_add(pos, g->r[2], 0)), b, 0);
     if (gsu.s)
-        { gsu_codes(axis_overlaps_code[copy] + 4, 1); g->r[0] = gsu_inc(gsu_not(g->r[0])); }
-    gsu_codes(axis_overlaps_code[copy] + 5, 2);
+        { gsu_codes(axis_overlaps_code[copy] + 2, 1); g->r[0] = gsu_inc(gsu_not(g->r[0])); }
+    gsu_codes(axis_overlaps_code[copy] + 3, 2);
     g->r[0] = gsu_sub(g->r[0], g->r[6], 0);
     return gsu.s;
 }
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode masks_clear_code[4][3] = {
-    {{0x04A2BA, 5}, {0x04A2BF, 6}, {0x04A2C5, 3}},
-    {{0x04A2D1, 5}, {0x04A2D6, 6}, {0x04A2DC, 3}},
-    {{0, 0}, {0x04A2BF, 6}, {0x04A2C5, 3}},
-    {{0, 0}, {0x04A2D6, 6}, {0x04A2DC, 3}},
+static const GsuCode masks_clear_code[2][2] = {
+    {{0x04A2BF, 6}, {0x04A2C5, 3}},
+    {{0x04A2D6, 6}, {0x04A2DC, 3}},
 };
 
 /* Whether field `a` of record `ra` and the flags (+$16) of record `rb`
    share no bit: R6 = those flags, R0 the AND. */
 static int masks_clear(FxRegs *g, uint16_t ra, uint16_t rb, int copy)
 {
-    gsu_codes(masks_clear_code[copy], 1);
     g->r[0] = gsu_ldw(gsu_add(REC_MASK, ra, 0));
-    gsu_codes(masks_clear_code[copy] + 1, 1);
+    gsu_codes(masks_clear_code[copy], 1);
     g->r[6] = gsu_ldw(gsu_add(REC_FLAGS16, rb, 0));
     g->r[0] = gsu_and(g->r[0], g->r[6]);
-    gsu_codes(masks_clear_code[copy] + 2, 1);
+    gsu_codes(masks_clear_code[copy] + 1, 1);
     return gsu.z;
 }
 
@@ -585,7 +585,6 @@ static int masks_clear(FxRegs *g, uint16_t ra, uint16_t rb, int copy)
  */
 FxRegs FxRecordTouches(FxRegs g)
 {
-    gsu_code(0x04A1FA, 5); gsu_code(0x04A20B, 3);
     int i;
 
     gsu_push(&g.r[10], g.r[11]);
@@ -618,15 +617,16 @@ FxRegs FxRecordTouches(FxRegs g)
         g.r[6] = 0x0002;
         g.r[0] = gsu_and(g.r[0], g.r[6]);
         if (!gsu.z) {
-            gsu_code(0x04A2A5, 16); gsu_code(0x04CA99, 1);
+            gsu_code(0x04A2A5, 16); gsu_code(0x04CA99, 3);
             g.r[7] = g.r[1];
             g.r[8] = g.r[2];
             g.r[11] = 0xA2B5;
-            g = FxRecordsApart(g);
+            g = FxRecordsApart(g, GSU_COPY(0));
             gsu_moves(g.r[0]);
             if (!gsu.z)
-                { gsu_code(0x04A2B5, 5); gsu_code(0x04A2E8, 4); continue; } else { gsu_code(0x04A2B5, 5); }
-        } else { gsu_code(0x04A2A5, 7); gsu_code(0x04A2BA, 5); }
+                { gsu_code(0x04A2E8, 4); continue; }
+        } else { gsu_code(0x04A2A5, 7); }
+        gsu_code(0x04A2BA, 5);
         if (masks_clear(&g, g.r[1], g.r[2], GSU_COPY(0))) {
             gsu_code(0x04A2C8, 9); gsu_code(0x04A345, 5);
             g.r[6] = g.r[1];
@@ -653,7 +653,6 @@ FxRegs FxRecordTouches(FxRegs g)
         g = FxListSweepRegs(g);
     } else { gsu_code(0x04A2F1, 4); gsu_code(0x04A2FC, 5); }
     gsu_pull(&g.r[10]);
-    gsu_code(0x04A1FF, 5);
     return g;
 }
 
@@ -687,9 +686,10 @@ FxRegs FxAllTouches(FxRegs g)
         g.r[1] = g.r[0];
         gsu_moves(g.r[1]);
         if (gsu.z)
-            { gsu_code(0x04A206, 5); break; }
+            { gsu_code(0x04A206, 5); break; } else { gsu_code(0x04A1FA, 5); gsu_code(0x04A20B, 3); }
         g.r[11] = 0xA1FF;
         g = FxRecordTouches(g);
+        gsu_code(0x04A1FF, 5);
         g.r[0] = gsu_ldw(gsu_add(REC_ALL_NEXT, g.r[1], 0));
         gsu_code(0x04A204, 2);
     }

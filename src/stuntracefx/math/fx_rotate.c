@@ -16,24 +16,22 @@
 #define ROT_SIN 0x96FEu
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode trig_code[4][2] = {
-    {{0x04C15F, 62}, {0, 0}},
-    {{0, 0}, {0, 0}},
-    {{0, 0}, {0x04CDAA, 1}},
-    {{0, 0}, {0x04CDBD, 1}},
+static const GsuCode trig_code[3][1] = {
+    {{0, 0}},
+    {{0x04CDAA, 1}},
+    {{0x04CDBD, 1}},
 };
 
 /* The table byte at `table` + i, SWAPped into the high byte. */
 static uint16_t trig(uint16_t table, uint16_t i, uint16_t *r14, int copy)
 {
-    gsu_codes(trig_code[copy], 1);
     gsu_r14(gsu_add(i, table, 0));
     *r14 = gsu.r[14];
-    return gsu_swap((gsu_codes(trig_code[copy] + 1, 1), gsu_getb()));
+    return gsu_swap((gsu_codes(trig_code[copy], 1), gsu_getb()));
 }
 
 /* cyccopy: the copy each of the caller's copies calls */
-static const uint8_t trig_from_trig_r14[2] = {2, 3};
+static const uint8_t trig_from_trig_r14[2] = {1, 2};
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
 static const GsuCode trig_r14_code[2][1] = {
@@ -56,6 +54,12 @@ typedef struct {
     uint16_t r14;
 } FxAngleOut;
 
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode FxAngleVector_code[2][5] = {
+    {{0x04C769, 4}, {0x04CD98, 16}, {0x04CDAB, 16}, {0x04C76D, 6}, {0x04CDBE, 12}},
+    {{0x04C769, 4}, {0x04CD98, 16}, {0x04CDAB, 16}, {0x04C76D, 6}, {0x04CDBE, 12}},
+};
+
 /*
  * @routine 04:CD98 FxAngleVector
  * WHAT IT DOES: The vector of length R4 at the angle in R0's high byte:
@@ -68,23 +72,23 @@ typedef struct {
  * R3 as above, R0 = R3; R2 = 0; R6 = length; R14 = $973E + angle; ROMBR =
  * 0; OV, S, CY, Z from the last ADD.
  */
-FxAngleOut FxAngleVector(uint16_t r0, uint16_t length)
+FxAngleOut FxAngleVector(uint16_t r0, uint16_t length, int copy)
 {
-    gsu_code(0x04C769, 4); gsu_code(0x04CD98, 16);
+    gsu_codes(FxAngleVector_code[copy], 2);
     FxAngleOut o;
     uint16_t v;
     int i;
 
     o.angle = gsu_hib(r0);
-    gsu.rombr = 0;
+    gsu_romb(0);
     v = gsu_fmult(trig_r14(ROT_SIN, gsu_lob(o.angle), &o.r14, GSU_COPY(0)), length);
     v = gsu_inc(gsu_not(v));
-    gsu_code(0x04CDAB, 16);
+    gsu_codes(FxAngleVector_code[copy] + 2, 1);
     for (i = 0; i < 4; i++)
         v = gsu_add(v, v, 0);
     o.x = v;
     v = gsu_fmult(trig_r14(ROT_COS, gsu_lob(o.angle), &o.r14, GSU_COPY(1)), length);
-    gsu_code(0x04C76D, 6); gsu_code(0x04CDBE, 12);
+    gsu_codes(FxAngleVector_code[copy] + 3, 2);
     for (i = 0; i < 4; i++)
         v = gsu_add(v, v, 0);
     o.z = v;
@@ -93,7 +97,7 @@ FxAngleOut FxAngleVector(uint16_t r0, uint16_t length)
 
 void abi_FxAngleVector(void)
 {
-    FxAngleOut o = FxAngleVector(gsu.r[0], gsu.r[4]);
+    FxAngleOut o = FxAngleVector(gsu.r[0], gsu.r[4], GSU_COPY(0));
 
     gsu.r[0] = o.z;
     gsu.r[1] = o.x;
@@ -112,13 +116,6 @@ typedef struct {
     uint16_t hi_sum;    /* the second sum's high word */
     uint16_t r14;
 } FxTurnOut;
-
-/* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode FxTurn_code[3][4] = {
-    {{0x04C15C, 3}, {0x04CFF8, 10}, {0x04C15F, 62}, {0x04D002, 5}},
-    {{0, 0}, {0, 0}, {0x04C15F, 62}, {0, 0}},
-    {{0x0494F7, 18}, {0x04C15C, 3}, {0x04C15F, 62}, {0x049509, 13}},
-};
 
 /*
  * @routine 04:C15C FxTurn
@@ -139,16 +136,15 @@ static const GsuCode FxTurn_code[3][4] = {
  */
 FxTurnOut FxTurn(uint16_t x, uint16_t angle, uint16_t z, uint16_t stack, uint16_t ret, int copy)
 {
-    gsu_codes(FxTurn_code[copy], 2);
     FxTurnOut o;
     uint32_t p;
     uint16_t lo, hi;
 
     gsu_stw(stack, ret);
     stack = gsu_inc(gsu_inc(stack));
-    gsu_codes(FxTurn_code[copy] + 2, 1);
+    gsu_code(0x04C15F, 62);
     o.cos = trig(ROT_COS, angle, &o.r14, GSU_COPY(0));
-    o.sin = trig(ROT_SIN, angle, &o.r14, GSU_COPY(1));
+    o.sin = trig(ROT_SIN, angle, &o.r14, GSU_COPY(0));
 
     p = gsu_lmult(o.sin, x);
     hi = (uint16_t)(p >> 16);
@@ -168,13 +164,19 @@ FxTurnOut FxTurn(uint16_t x, uint16_t angle, uint16_t z, uint16_t stack, uint16_
 
     stack = gsu_dec(gsu_dec(stack));
     gsu_ldw(stack);
-    gsu_codes(FxTurn_code[copy] + 3, 1);
     return o;
 }
 
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode FxTurnRegs_code[2][3] = {
+    {{0, 0}, {0, 0}, {0, 0}},
+    {{0x04C15C, 3}, {0x04CFF8, 10}, {0x04D002, 5}},
+};
+
 /* FxTurn on the whole register file, for other routines' C. */
-FxRegs FxTurnRegs(FxRegs g)
+FxRegs FxTurnRegs(FxRegs g, int copy)
 {
+    gsu_codes(FxTurnRegs_code[copy], 2);
     uint16_t x = g.r[1];
     FxTurnOut o = FxTurn(x, g.r[2], g.r[3], g.r[10], g.r[11], GSU_COPY(0));
 
@@ -189,6 +191,7 @@ FxRegs FxTurnRegs(FxRegs g)
     g.r[8] = o.hi_term;
     g.r[9] = o.sin;
     g.r[14] = o.r14;
+    gsu_codes(FxTurnRegs_code[copy] + 2, 1);
     return g;
 }
 
@@ -211,9 +214,9 @@ void abi_FxTurn(void)
 }
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode FxMatrixTranspose04_code[2][12] = {
-    {{0, 0}, {0x04C2CD, 4}, {0x04C2D1, 4}, {0x04C2D5, 2}, {0x04C2D7, 5}, {0x04C2DC, 5}, {0x04C2E1, 4}, {0x04C2E5, 2}, {0x04C2E7, 4}, {0x04C2EB, 2}, {0x04C2ED, 5}, {0x04C2F2, 5}},
-    {{0x04C2C9, 4}, {0x04C2CD, 4}, {0x04C2D1, 4}, {0x04C2D5, 2}, {0x04C2D7, 5}, {0x04C2DC, 5}, {0x04C2E1, 4}, {0x04C2E5, 2}, {0x04C2E7, 4}, {0x04C2EB, 2}, {0x04C2ED, 5}, {0x04C2F2, 5}},
+static const GsuCode FxMatrixTranspose04_code[2][15] = {
+    {{0x04B9D7, 8}, {0x04C2C7, 6}, {0x04C2CD, 4}, {0x04C2D1, 4}, {0x04C2D5, 2}, {0x04C2D7, 5}, {0x04C2DC, 5}, {0x04C2E1, 4}, {0x04C2E5, 2}, {0x04C2E7, 4}, {0x04C2EB, 2}, {0x04C2ED, 5}, {0x04C2F2, 5}, {0x04B9DF, 5}, {0x04C2F7, 1}},
+    {{0x04B269, 8}, {0x04C2C7, 6}, {0x04C2CD, 4}, {0x04C2D1, 4}, {0x04C2D5, 2}, {0x04C2D7, 5}, {0x04C2DC, 5}, {0x04C2E1, 4}, {0x04C2E5, 2}, {0x04C2E7, 4}, {0x04C2EB, 2}, {0x04C2ED, 5}, {0x04C2F2, 5}, {0x04B271, 5}, {0x04C2F7, 1}},
 };
 
 /*
@@ -229,36 +232,37 @@ static const GsuCode FxMatrixTranspose04_code[2][12] = {
  */
 void FxMatrixTranspose04(uint16_t m, uint16_t *left, int copy)
 {
-    gsu_codes(FxMatrixTranspose04_code[copy], 1);
+    gsu_codes(FxMatrixTranspose04_code[copy], 2);
     uint16_t w1, w2, w3, w5, w6, w7;
 
     w1 = gsu_ldw((uint16_t)(m + 2));
-    gsu_codes(FxMatrixTranspose04_code[copy] + 1, 1);
-    w2 = gsu_ldw((uint16_t)(m + 4));
     gsu_codes(FxMatrixTranspose04_code[copy] + 2, 1);
-    w3 = gsu_ldw((uint16_t)(m + 6));
+    w2 = gsu_ldw((uint16_t)(m + 4));
     gsu_codes(FxMatrixTranspose04_code[copy] + 3, 1);
-    gsu_stw((uint16_t)(m + 6), w1);
+    w3 = gsu_ldw((uint16_t)(m + 6));
     gsu_codes(FxMatrixTranspose04_code[copy] + 4, 1);
-    gsu_stw((uint16_t)(m + 2), w3);
+    gsu_stw((uint16_t)(m + 6), w1);
     gsu_codes(FxMatrixTranspose04_code[copy] + 5, 1);
-    w5 = gsu_ldw((uint16_t)(m + 10));
+    gsu_stw((uint16_t)(m + 2), w3);
     gsu_codes(FxMatrixTranspose04_code[copy] + 6, 1);
-    w6 = gsu_ldw((uint16_t)(m + 12));
+    w5 = gsu_ldw((uint16_t)(m + 10));
     gsu_codes(FxMatrixTranspose04_code[copy] + 7, 1);
-    gsu_stw((uint16_t)(m + 12), w2);
+    w6 = gsu_ldw((uint16_t)(m + 12));
     gsu_codes(FxMatrixTranspose04_code[copy] + 8, 1);
-    w7 = gsu_ldw((uint16_t)(m + 14));
+    gsu_stw((uint16_t)(m + 12), w2);
     gsu_codes(FxMatrixTranspose04_code[copy] + 9, 1);
-    gsu_stw((uint16_t)(m + 14), w5);
+    w7 = gsu_ldw((uint16_t)(m + 14));
     gsu_codes(FxMatrixTranspose04_code[copy] + 10, 1);
+    gsu_stw((uint16_t)(m + 14), w5);
+    gsu_codes(FxMatrixTranspose04_code[copy] + 11, 1);
     gsu_stw((uint16_t)(m + 10), w7);
     gsu_sub((uint16_t)(m + 10), 6, 0);
-    gsu_codes(FxMatrixTranspose04_code[copy] + 11, 1);
+    gsu_codes(FxMatrixTranspose04_code[copy] + 12, 1);
     gsu_stw((uint16_t)(m + 4), w6);
     left[0] = w5;
     left[1] = w7;
     left[2] = w6;
+    gsu_codes(FxMatrixTranspose04_code[copy] + 13, 2);
 }
 
 void abi_FxMatrixTranspose04(void)
@@ -315,47 +319,28 @@ static uint16_t sine16(uint16_t angle, int copy)
 }
 
 /* cyccopy: the copy each of the caller's copies calls */
-static const uint8_t sine16_from_sine_cosine[6] = {1, 3, 5, 1, 3, 5};
+static const uint8_t sine16_from_sine_cosine[3] = {1, 3, 5};
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode sine_cosine_code[6][4] = {
-    {{0, 0}, {0x04C1C3, 13}, {0x04C1D0, 10}, {0, 0}},
-    {{0, 0}, {0x04C205, 13}, {0x04C212, 10}, {0, 0}},
-    {{0, 0}, {0x04C247, 13}, {0x04C254, 10}, {0, 0}},
-    {{0x04C1B0, 8}, {0x04C1C3, 13}, {0x04C1D0, 10}, {0x04C1E5, 13}},
-    {{0x04C1F2, 8}, {0x04C205, 13}, {0x04C212, 10}, {0x04C227, 13}},
-    {{0x04C234, 8}, {0x04C247, 13}, {0x04C254, 10}, {0x04C269, 30}},
+static const GsuCode sine_cosine_code[3][2] = {
+    {{0x04C1C3, 13}, {0x04C1D0, 10}},
+    {{0x04C205, 13}, {0x04C212, 10}},
+    {{0x04C247, 13}, {0x04C254, 10}},
 };
 
 /* The sine, then the cosine (the sine a quarter turn on). */
 static void sine_cosine(uint16_t angle, uint16_t *s, uint16_t *c, int copy)
 {
-    gsu_codes(sine_cosine_code[copy], 1);
     *s = sine16(angle, GSU_COPY(sine16_from_sine_cosine[copy]));
-    gsu_codes(sine_cosine_code[copy] + 1, 1);
+    gsu_codes(sine_cosine_code[copy], 1);
     gsu_r14(0x4000);                       /* IWT R14 */
-    gsu_codes(sine_cosine_code[copy] + 2, 1);
+    gsu_codes(sine_cosine_code[copy] + 1, 1);
     *c = sine16(gsu_add(angle, gsu.r[14], 0), GSU_COPY(sine16_from_sine_cosine[copy]));
-    gsu_codes(sine_cosine_code[copy] + 3, 1);
 }
-
-/* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode mul15_code[9][1] = {
-    {{0, 0}},
-    {{0x04C287, 7}},
-    {{0x04C28E, 7}},
-    {{0x04C295, 8}},
-    {{0x04C29D, 6}},
-    {{0x04C2A3, 6}},
-    {{0x04C2AF, 9}},
-    {{0x04C2B8, 7}},
-    {{0x04C2BF, 8}},
-};
 
 /* FMULT then ROL: a 1.15 fixed point product. */
 static uint16_t mul15(uint16_t a, uint16_t b, int copy)
 {
-    gsu_codes(mul15_code[copy], 1);
     return gsu_rol(gsu_fmult(a, b));
 }
 
@@ -364,12 +349,6 @@ typedef struct {
     uint16_t s1c2, c1c2, s1s2, c1s2;
     uint16_t last;
 } FxAnglesOut;
-
-/* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode FxMatrixFromAngles_code[2][15] = {
-    {{0x04C1B0, 8}, {0x04C1E5, 13}, {0x04C1F2, 8}, {0x04C227, 13}, {0x04C234, 8}, {0x04C269, 30}, {0x04C287, 7}, {0x04C28E, 7}, {0x04C295, 8}, {0x04C29D, 6}, {0x04C2A3, 6}, {0x04C2A9, 6}, {0x04C2AF, 9}, {0x04C2B8, 7}, {0x04C2BF, 8}},
-    {{0x04C1B0, 8}, {0x04C1E5, 13}, {0x04C1F2, 8}, {0x04C227, 13}, {0x04C234, 8}, {0x04C269, 30}, {0x04C287, 7}, {0x04C28E, 7}, {0x04C295, 8}, {0x04C29D, 6}, {0x04C2A3, 6}, {0x04C2A9, 6}, {0x04C2AF, 9}, {0x04C2B8, 7}, {0x04C2BF, 8}},
-};
 
 /*
  * @routine 04:C1A7 FxMatrixFromAngles
@@ -394,31 +373,31 @@ FxAnglesOut FxMatrixFromAngles(uint16_t m, int copy)
     int i;
 
     gsu_sub(0, 0, 0);                      /* SUB R0 for the banks */
-    gsu.rambr = 0;
-    gsu.rombr = 0;
-    sine_cosine(gsu_ldw(FX_ANGLES), &o.s0, &o.c0, gsu_codes_then(FxMatrixFromAngles_code[copy], 1, GSU_COPY(0)));
-    gsu_codes(FxMatrixFromAngles_code[copy] + 1, 1);
-    sine_cosine(gsu_ldw(FX_ANGLES + 2), &o.s1, &o.c1, gsu_codes_then(FxMatrixFromAngles_code[copy] + 2, 1, GSU_COPY(1)));
-    gsu_codes(FxMatrixFromAngles_code[copy] + 3, 1);
-    sine_cosine(gsu_ldw(FX_ANGLES + 4), &o.s2, &o.c2, gsu_codes_then(FxMatrixFromAngles_code[copy] + 4, 1, GSU_COPY(2)));
-    gsu_codes(FxMatrixFromAngles_code[copy] + 5, 1);
+    gsu_ramb(0);
+    gsu_romb(0);
+    sine_cosine(gsu_ldw(FX_ANGLES), &o.s0, &o.c0, gsu_code_then(0x04C1B0, 8, GSU_COPY(0)));
+    gsu_code(0x04C1E5, 13);
+    sine_cosine(gsu_ldw(FX_ANGLES + 2), &o.s1, &o.c1, gsu_code_then(0x04C1F2, 8, GSU_COPY(1)));
+    gsu_code(0x04C227, 13);
+    sine_cosine(gsu_ldw(FX_ANGLES + 4), &o.s2, &o.c2, gsu_code_then(0x04C234, 8, GSU_COPY(2)));
+    gsu_code(0x04C269, 30);
     o.s1c2 = mul15(o.s1, o.c2, GSU_COPY(0));
     o.c1c2 = mul15(o.c1, o.c2, GSU_COPY(0));
     o.s1s2 = mul15(o.s1, o.s2, GSU_COPY(0));
     gsu_r14(mul15(o.c1, o.s2, GSU_COPY(0)));
     o.c1s2 = gsu.r[14];
-    gsu_codes(FxMatrixFromAngles_code[copy] + 6, 1);
+    gsu_code(0x04C287, 7);
     for (i = 0; i < 9; i++) {
         switch (i) {
         case 0: w[i] = gsu_add(mul15(o.s1s2, o.s0, GSU_COPY(0)), o.c1c2, 0); break;
-        case 1: gsu_codes(FxMatrixFromAngles_code[copy] + 7, 1); w[i] = gsu_sub(mul15(o.s1c2, o.s0, GSU_COPY(0)), o.c1s2, 0); break;
-        case 2: gsu_codes(FxMatrixFromAngles_code[copy] + 8, 1); w[i] = mul15(o.s1, o.c0, GSU_COPY(0)); break;
-        case 3: gsu_codes(FxMatrixFromAngles_code[copy] + 9, 1); w[i] = mul15(o.s2, o.c0, GSU_COPY(0)); break;
-        case 4: gsu_codes(FxMatrixFromAngles_code[copy] + 10, 1); w[i] = mul15(o.c2, o.c0, GSU_COPY(0)); break;
-        case 5: gsu_codes(FxMatrixFromAngles_code[copy] + 11, 1); w[i] = gsu_inc(gsu_not(o.s0)); break;
-        case 6: gsu_codes(FxMatrixFromAngles_code[copy] + 12, 1); w[i] = gsu_sub(mul15(o.c1s2, o.s0, GSU_COPY(0)), o.s1c2, 0); break;
-        case 7: gsu_codes(FxMatrixFromAngles_code[copy] + 13, 1); w[i] = gsu_add(mul15(o.c1c2, o.s0, GSU_COPY(0)), o.s1s2, 0); break;
-        default: gsu_codes(FxMatrixFromAngles_code[copy] + 14, 1); w[i] = mul15(o.c1, o.c0, GSU_COPY(0)); break;
+        case 1: gsu_code(0x04C28E, 7); w[i] = gsu_sub(mul15(o.s1c2, o.s0, GSU_COPY(0)), o.c1s2, 0); break;
+        case 2: gsu_code(0x04C295, 8); w[i] = mul15(o.s1, o.c0, GSU_COPY(0)); break;
+        case 3: gsu_code(0x04C29D, 6); w[i] = mul15(o.s2, o.c0, GSU_COPY(0)); break;
+        case 4: gsu_code(0x04C2A3, 6); w[i] = mul15(o.c2, o.c0, GSU_COPY(0)); break;
+        case 5: gsu_code(0x04C2A9, 6); w[i] = gsu_inc(gsu_not(o.s0)); break;
+        case 6: gsu_code(0x04C2AF, 9); w[i] = gsu_sub(mul15(o.c1s2, o.s0, GSU_COPY(0)), o.s1c2, 0); break;
+        case 7: gsu_code(0x04C2B8, 7); w[i] = gsu_add(mul15(o.c1c2, o.s0, GSU_COPY(0)), o.s1s2, 0); break;
+        default: gsu_code(0x04C2BF, 8); w[i] = mul15(o.c1, o.c0, GSU_COPY(0)); break;
         }
         gsu_stw((uint16_t)(m + 2 * i), w[i]);
         if (i < 8)
@@ -449,14 +428,17 @@ void abi_FxMatrixFromAngles(void)
 
 #define FX_ATAN 0x9E40u        /* angle words by tangent / 64, 257 entries */
 
+/* cyccopy: the copy each of the caller's copies calls */
+static const uint8_t FxDivide_from_FxAngleOf[6] = {0, 0, 0, 0, 8, 0};
+
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode FxAngleOf_code[6][64] = {
-    {{0x04C2F8, 3}, {0x04CBF7, 8}, {0x04C2FB, 4}, {0, 0}, {0x04C144, 15}, {0x04C14B, 8}, {0x04C14B, 8}, {0x04C14B, 8}, {0x04C14B, 8}, {0x04C14B, 8}, {0x04C14B, 8}, {0x04C14B, 8}, {0x04C14B, 8}, {0x04C14B, 4}, {0x04C14B, 4}, {0x04C14B, 4}, {0x04C14B, 4}, {0x04C14B, 4}, {0x04C14B, 4}, {0x04C14B, 4}, {0x04C155, 7}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C155, 5}, {0x04C2FF, 6}, {0x04C308, 5}, {0x04C30F, 3}, {0x04C319, 7}, {0x04C327, 48}, {0x04C35D, 7}, {0x04C366, 5}, {0x04C36F, 5}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C374, 4}, {0x04CBFF, 7}},
-    {{0x04C2F8, 3}, {0x04CBF7, 8}, {0x04C2FB, 4}, {0x04C305, 3}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C144, 7}, {0x04C2FF, 6}, {0x04C308, 5}, {0x04C30F, 3}, {0x04C319, 7}, {0x04C327, 3}, {0x04C331, 38}, {0x04C35D, 7}, {0x04C366, 5}, {0x04C36F, 5}, {0x04C30D, 2}, {0x04C36B, 4}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C32A, 7}, {0, 0}, {0x04C357, 6}, {0, 0}, {0, 0}, {0, 0}, {0x04C364, 2}, {0x04C374, 4}, {0x04CBFF, 7}},
-    {{0x04C2F8, 3}, {0x04CBF7, 8}, {0x04C2FB, 4}, {0x04C305, 3}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C144, 7}, {0x04C2FF, 6}, {0x04C308, 5}, {0x04C30F, 3}, {0x04C319, 7}, {0x04C327, 3}, {0x04C331, 38}, {0x04C35D, 7}, {0x04C366, 5}, {0x04C36F, 5}, {0x04C153, 2}, {0x04C30D, 2}, {0x04C36B, 4}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C15A, 2}, {0x04C32A, 7}, {0x04C357, 6}, {0, 0}, {0, 0}, {0, 0}, {0x04C364, 2}, {0x04C374, 4}, {0x04CBFF, 7}},
-    {{0x04C2F8, 3}, {0x04CBF7, 8}, {0x04C2FB, 4}, {0x04C305, 3}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C144, 7}, {0x04C2FF, 6}, {0x04C308, 5}, {0x04C30F, 3}, {0x04C319, 7}, {0x04C327, 3}, {0x04C331, 38}, {0x04C35D, 7}, {0x04C366, 5}, {0x04C36F, 5}, {0x04C30D, 2}, {0x04C36B, 4}, {0, 0}, {0x04C153, 2}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C32A, 7}, {0, 0}, {0x04C357, 6}, {0, 0}, {0, 0}, {0, 0}, {0x04C364, 2}, {0x04C374, 4}, {0x04CBFF, 7}},
-    {{0x04C2F8, 3}, {0x04CBF7, 8}, {0x04C2FB, 4}, {0x04C305, 3}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C2FF, 6}, {0x04C308, 5}, {0x04C30F, 3}, {0x04C35D, 7}, {0x04C366, 5}, {0x04C36F, 5}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C30D, 2}, {0x04C36B, 4}, {0, 0}, {0, 0}, {0x04C312, 7}, {0x04C144, 7}, {0x04C319, 7}, {0x04C327, 3}, {0x04C331, 38}, {0, 0}, {0x04C32A, 7}, {0, 0}, {0x04C357, 6}, {0, 0}, {0, 0}, {0, 0}, {0x04C364, 2}, {0x04C374, 4}, {0x04CBFF, 7}},
-    {{0x04C2F8, 3}, {0x04CBF7, 8}, {0x04C2FB, 4}, {0x04C305, 3}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C2FF, 6}, {0x04C308, 5}, {0x04C30F, 3}, {0x04C319, 7}, {0x04C35D, 7}, {0x04C366, 5}, {0x04C36F, 5}, {0, 0}, {0, 0}, {0, 0}, {0x04C30D, 2}, {0x04C36B, 4}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C320, 7}, {0x04C32A, 7}, {0, 0}, {0x04C357, 6}, {0x04C144, 7}, {0x04C327, 3}, {0x04C331, 38}, {0x04C364, 2}, {0x04C374, 4}, {0x04CBFF, 7}},
+static const GsuCode FxAngleOf_code[6][34] = {
+    {{0x04C2FB, 4}, {0x04C305, 3}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C2FF, 6}, {0x04C308, 5}, {0x04C30F, 3}, {0x04C35D, 7}, {0x04C366, 5}, {0x04C36F, 5}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C30D, 2}, {0x04C36B, 4}, {0x04C312, 7}, {0x04C144, 7}, {0x04C319, 7}, {0x04C327, 3}, {0x04C331, 38}, {0x04C320, 7}, {0x04C32A, 7}, {0x04C357, 6}, {0, 0}, {0, 0}, {0, 0}, {0x04C364, 2}, {0x04C374, 4}},
+    {{0x04C2FB, 4}, {0x04C305, 3}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C2FF, 6}, {0x04C308, 5}, {0x04C30F, 3}, {0x04C319, 7}, {0x04C35D, 7}, {0x04C366, 5}, {0x04C36F, 5}, {0, 0}, {0, 0}, {0, 0}, {0x04C30D, 2}, {0x04C36B, 4}, {0x04C312, 7}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C320, 7}, {0x04C32A, 7}, {0x04C357, 6}, {0x04C144, 7}, {0x04C327, 3}, {0x04C331, 38}, {0x04C364, 2}, {0x04C374, 4}},
+    {{0x04C2FB, 4}, {0x04C305, 3}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C144, 7}, {0x04C2FF, 6}, {0x04C308, 5}, {0x04C30F, 3}, {0x04C319, 7}, {0x04C327, 3}, {0x04C331, 38}, {0x04C35D, 7}, {0x04C366, 5}, {0x04C36F, 5}, {0x04C30D, 2}, {0x04C36B, 4}, {0x04C312, 7}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C320, 7}, {0x04C32A, 7}, {0x04C357, 6}, {0, 0}, {0, 0}, {0, 0}, {0x04C364, 2}, {0x04C374, 4}},
+    {{0x04C2FB, 4}, {0x04C144, 7}, {0x04C153, 2}, {0x04C2FF, 14}, {0x04C30F, 3}, {0x04C319, 7}, {0x04C327, 48}, {0x04C35D, 14}, {0x04C36F, 5}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C30D, 2}, {0x04C36B, 4}, {0x04C312, 7}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C320, 7}, {0, 0}, {0x04C357, 6}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C374, 4}},
+    {{0x04C2FB, 4}, {0x04C305, 3}, {0x04C364, 2}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C2FF, 6}, {0x04C308, 5}, {0x04C30F, 3}, {0x04C35D, 7}, {0x04C366, 5}, {0x04C36F, 5}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C30D, 2}, {0x04C36B, 4}, {0x04C312, 7}, {0x04C144, 7}, {0x04C15A, 2}, {0x04C319, 7}, {0x04C327, 48}, {0x04C320, 7}, {0, 0}, {0x04C357, 6}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C374, 4}},
+    {{0x04C2FB, 4}, {0x04C305, 3}, {0x04C364, 2}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C144, 7}, {0x04C15A, 2}, {0x04C2FF, 6}, {0x04C308, 5}, {0x04C30F, 3}, {0x04C319, 7}, {0x04C327, 48}, {0x04C35D, 7}, {0x04C366, 5}, {0x04C36F, 5}, {0x04C30D, 2}, {0x04C36B, 4}, {0x04C312, 7}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C320, 7}, {0, 0}, {0x04C357, 6}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04C374, 4}},
 };
 
 /*
@@ -478,57 +460,56 @@ static const GsuCode FxAngleOf_code[6][64] = {
  */
 FxRegs FxAngleOf(FxRegs g, int copy)
 {
-    gsu_codes(FxAngleOf_code[copy], 2);
     FxQuotient q;
     int r2_zero = 0, equal = 0;
 
     gsu_stw(g.r[10], g.r[11]);
     g.r[10] = gsu_inc(gsu_inc(g.r[10]));
-    gsu_codes(FxAngleOf_code[copy] + 2, 1);
+    gsu_codes(FxAngleOf_code[copy], 1);
     gsu_stw(g.r[10], g.r[14]);
     g.r[10] = gsu_inc(gsu_inc(g.r[10]));
     g.r[6] = g.r[1];
     gsu_moves(g.r[6]);
     if (gsu.s)
-        { gsu_codes(FxAngleOf_code[copy] + 3, 1); g.r[6] = gsu_inc(gsu_not(g.r[6])); } else { gsu_codes(FxAngleOf_code[copy] + 4, 31); }
-    gsu_codes(FxAngleOf_code[copy] + 35, 10);
+        { gsu_codes(FxAngleOf_code[copy] + 1, 8); g.r[6] = gsu_inc(gsu_not(g.r[6])); }
+    gsu_codes(FxAngleOf_code[copy] + 9, 10);
     g.r[0] = g.r[2];
     gsu_moves(g.r[0]);
     if (gsu.s)
-        { gsu_codes(FxAngleOf_code[copy] + 45, 3); g.r[0] = gsu_inc(gsu_not(g.r[0])); } else { gsu_codes(FxAngleOf_code[copy] + 48, 1); }
+        { gsu_codes(FxAngleOf_code[copy] + 19, 2); g.r[0] = gsu_inc(gsu_not(g.r[0])); }
     if (gsu.z) {
-        gsu_codes(FxAngleOf_code[copy] + 49, 1);
+        gsu_codes(FxAngleOf_code[copy] + 21, 1);
         g.r[0] = 0x4000;
         r2_zero = 1;
     } else {
-        gsu_codes(FxAngleOf_code[copy] + 50, 4);
+        gsu_codes(FxAngleOf_code[copy] + 22, 4);
         g.r[5] = 0;
         gsu_sub(g.r[0], g.r[6], 0);
         if (gsu.z) {
-            gsu_codes(FxAngleOf_code[copy] + 54, 1);
+            gsu_codes(FxAngleOf_code[copy] + 26, 1);
             g.r[0] = 0x2000;
             equal = 1;
-        } else if (gsu.s == gsu.ov) {      gsu_codes(FxAngleOf_code[copy] + 55, 2); /* |R2| > |R1|: the other way up */
+        } else if (gsu.s == gsu.ov) {      gsu_codes(FxAngleOf_code[copy] + 27, 1); /* |R2| > |R1|: the other way up */
             g.r[4] = g.r[6];
             g.r[6] = g.r[0];
             g.r[0] = g.r[4];
             g.r[5] = gsu_dec(g.r[5]);
-        } else { gsu_codes(FxAngleOf_code[copy] + 57, 1); }
+        } else { gsu_codes(FxAngleOf_code[copy] + 28, 1); }
     }
     if (!r2_zero && !equal) {
-        gsu_codes(FxAngleOf_code[copy] + 58, 3);
+        gsu_codes(FxAngleOf_code[copy] + 29, 3);
         g.r[4] = 0;
         g.r[0] = gsu_lsr(g.r[0]);
         g.r[4] = gsu_ror(g.r[4]);
         g.r[0] = gsu_lsr(g.r[0]);
         g.r[4] = gsu_ror(g.r[4]);
-        q = FxDivide(g.r[0], g.r[4], g.r[6], GSU_COPY(0));
+        q = FxDivide(g.r[0], g.r[4], g.r[6], GSU_COPY(FxDivide_from_FxAngleOf[copy]));
         g.r[4] = q.quot;
         g.r[11] = 0xC33E;
         g.r[12] = 0;
         g.r[13] = 0xC14B;
         g.r[0] = gsu_sub(q.rem, q.rem, 0);
-        gsu.rombr = 0;
+        gsu_romb(0);
         g.r[0] = gsu_lsr(gsu_lsr(gsu_lsr(gsu_lsr(gsu_lsr(g.r[4])))));
         g.r[0] = gsu_bic(g.r[0], 1);
         g.r[4] = FX_ATAN;
@@ -547,7 +528,7 @@ FxRegs FxAngleOf(FxRegs g, int copy)
     }
     g.r[4] = gsu_xor(g.r[1], g.r[2]);
     if (gsu.s)
-        { gsu_codes(FxAngleOf_code[copy] + 61, 1); g.r[0] = gsu_inc(gsu_not(g.r[0])); }
+        { gsu_codes(FxAngleOf_code[copy] + 32, 1); g.r[0] = gsu_inc(gsu_not(g.r[0])); }
     gsu_moves(g.r[2]);
     if (gsu.s) {
         g.r[4] = 0x8000;
@@ -557,9 +538,8 @@ FxRegs FxAngleOf(FxRegs g, int copy)
     gsu_r14(gsu_ldw(g.r[10]));
     g.r[14] = gsu.r[14];
     g.r[10] = gsu_dec(gsu_dec(g.r[10]));
-    gsu_codes(FxAngleOf_code[copy] + 62, 1);
+    gsu_codes(FxAngleOf_code[copy] + 33, 1);
     gsu_ldw(g.r[10]);
-    gsu_codes(FxAngleOf_code[copy] + 63, 1);
     return g;
 }
 

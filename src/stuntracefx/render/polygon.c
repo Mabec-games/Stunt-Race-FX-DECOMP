@@ -32,17 +32,14 @@ void abi_FxPolygonClipLeft(void);
 void abi_FxPolygonClipNear(void);
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode lists_swap_code[10][6] = {
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-    {{0, 0}, {0x01C3E4, 3}, {0x01C3E7, 3}, {0x01C3EA, 3}, {0x01C3ED, 4}, {0, 0}},
-    {{0, 0}, {0x01C39C, 3}, {0x01C39F, 3}, {0x01C3A2, 3}, {0, 0}, {0, 0}},
-    {{0, 0}, {0x01C3C0, 3}, {0x01C3C3, 3}, {0x01C3C6, 3}, {0, 0}, {0, 0}},
-    {{0x01C28D, 4}, {0x01C291, 3}, {0x01C294, 3}, {0x01C297, 3}, {0, 0}, {0, 0}},
-    {{0, 0}, {0x01C2BC, 3}, {0x01C2BF, 3}, {0x01C2C2, 3}, {0x01C2C5, 4}, {0, 0}},
-    {{0, 0}, {0x01C378, 3}, {0x01C37B, 3}, {0x01C37E, 3}, {0x01C381, 4}, {0, 0}},
-    {{0, 0}, {0x01C329, 3}, {0x01C32C, 3}, {0x01C32F, 3}, {0x01C332, 3}, {0, 0}},
-    {{0, 0}, {0x01C3C0, 3}, {0x01C3C3, 3}, {0x01C3C6, 3}, {0x01C3C9, 4}, {0x01C3D1, 4}},
-    {{0, 0}, {0x01C3E4, 3}, {0x01C3E7, 3}, {0x01C3EA, 3}, {0, 0}, {0, 0}},
+static const GsuCode lists_swap_code[7][5] = {
+    {{0, 0}, {0x01C3E4, 3}, {0x01C3E7, 3}, {0x01C3EA, 3}, {0x01C3ED, 4}},
+    {{0, 0}, {0x01C39C, 3}, {0x01C39F, 3}, {0x01C3A2, 3}, {0x01C3A5, 4}},
+    {{0, 0}, {0x01C3C0, 3}, {0x01C3C3, 3}, {0x01C3C6, 3}, {0x01C3C9, 4}},
+    {{0x01C28D, 4}, {0x01C291, 3}, {0x01C294, 3}, {0x01C297, 3}, {0, 0}},
+    {{0, 0}, {0x01C2BC, 3}, {0x01C2BF, 3}, {0x01C2C2, 3}, {0x01C2C5, 4}},
+    {{0, 0}, {0x01C378, 3}, {0x01C37B, 3}, {0x01C37E, 3}, {0x01C381, 4}},
+    {{0, 0}, {0x01C329, 3}, {0x01C32C, 3}, {0x01C32F, 3}, {0x01C332, 3}},
 };
 
 /* LMS R1, ($60); LMS R2, ($62); SMS ($60), R2; SMS ($62), R1. */
@@ -56,11 +53,11 @@ static void lists_swap(int copy)
     gsu_stw(FX_LIST_IN, gsu.r[2]);
     gsu_codes(lists_swap_code[copy] + 3, 1);
     gsu_stw(FX_LIST_OUT, gsu.r[1]);
-    gsu_codes(lists_swap_code[copy] + 4, 2);
+    gsu_codes(lists_swap_code[copy] + 4, 1);
 }
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode next_in_code[12][4] = {
+static const GsuCode next_in_code[11][4] = {
     {{0x01C435, 2}, {0x01C437, 4}, {0, 0}, {0, 0}},
     {{0, 0}, {0x01C43B, 4}, {0, 0}, {0, 0}},
     {{0, 0}, {0x018C0E, 7}, {0x01C43F, 6}, {0, 0}},
@@ -72,7 +69,6 @@ static const GsuCode next_in_code[12][4] = {
     {{0, 0}, {0x01C281, 3}, {0, 0}, {0, 0}},
     {{0, 0}, {0x01C287, 3}, {0, 0}, {0, 0}},
     {{0, 0}, {0x018BFF, 7}, {0x018C0E, 7}, {0x01C43F, 6}},
-    {{0, 0}, {0x018BFF, 7}, {0x018C0E, 16}, {0x01C43F, 6}},
 };
 
 /* A word from R7 (LDW, INC, INC). */
@@ -122,11 +118,9 @@ static void next_r8(uint16_t v, int copy)
 }
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode z_range_code[4][5] = {
+static const GsuCode z_range_code[2][5] = {
     {{0x01C23D, 4}, {0x01C24D, 5}, {0x01C241, 5}, {0x01C246, 5}, {0x01C24B, 2}},
     {{0, 0}, {0, 0}, {0x01C273, 5}, {0x01C278, 5}, {0x01C27D, 2}},
-    {{0, 0}, {0, 0}, {0x01C241, 5}, {0x01C246, 7}, {0, 0}},
-    {{0, 0}, {0, 0}, {0x01C241, 5}, {0x01C246, 5}, {0x01C24B, 2}},
 };
 
 /* R4 the largest z so far, R5 the smallest (SUB, BPL / BMI on S alone). */
@@ -177,9 +171,9 @@ void abi_FxPolygonProject(void)
     gsu_code(0x01C41E, 3);
     gsu.r[9] = gsu_ldw(0x002A);
     gsu.r[0] = 0x0014;
-    gsu.rombr = 0x14;
-    gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[0], 0);
     gsu_code(0x01C421, 8);
+    gsu_romb(0x14);
+    gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[0], 0);
     gsu_stw(FX_CODES, gsu.r[0]);
     gsu_code(0x01C429, 3);
     gsu_stw(0x001A, gsu.r[14]);
@@ -190,14 +184,11 @@ void abi_FxPolygonProject(void)
     gsu_code(0x01C432, 3);
     gsu.r[8] = gsu_ldw(FX_OUT);
     do {
-        gsu_code(0x01C435, 2);
         gsu.r[1] = next_in(GSU_COPY(0));
-        gsu_code(0x01C437, 4);
         gsu.r[2] = next_in(GSU_COPY(1));
-        gsu_code(0x01C43B, 4);
         gsu.r[6] = next_in(GSU_COPY(2));
         gsu.r[11] = 0xC445;
-        (gsu_code(0x018C0E, 7), gsu_code(0x01C43F, 6), abi_FxProjectVertex());
+        abi_FxProjectVertex();
         gsu_code(0x01C445, 2);
         gsu_push(&gsu.r[10], gsu.r[0]);
         gsu.r[0] = gsu_and(gsu.r[0], 15);
@@ -228,21 +219,14 @@ void abi_FxPolygonProject(void)
         } else { gsu_code(0x01C447, 6); gsu_code(0x01C467, 1); }
         gsu_code(0x01C468, 3);
         gsu.r[0] = gsu_pull(&gsu.r[10]);
-        gsu_code(0x01C46B, 2);
         next_r8(gsu.r[1], GSU_COPY(0));
-        gsu_code(0x01C46D, 4);
         next_r8(gsu.r[2], GSU_COPY(1));
-        gsu_code(0x01C471, 4);
         gsu.r[6] = next_in(GSU_COPY(3));
         gsu.r[6] = gsu_add(gsu.r[6], gsu.r[6], 0);
-        gsu_code(0x01C475, 6);
         next_r8(gsu.r[6], GSU_COPY(2));
-        gsu_code(0x01C47B, 4);
         gsu.r[6] = next_in(GSU_COPY(4));
         gsu.r[6] = gsu_add(gsu.r[6], gsu.r[6], 0);
-        gsu_code(0x01C47F, 6);
         next_r8(gsu.r[6], GSU_COPY(3));
-        gsu_code(0x01C485, 5);
         gsu.r[6] = gsu_ldw(FX_CODES);
         gsu.r[0] = gsu_or(gsu.r[0], gsu.r[6]);
         gsu.r[12] = gsu_dec(gsu.r[12]);
@@ -251,8 +235,8 @@ void abi_FxPolygonProject(void)
     } while (c);
     gsu_code(0x01C48F, 3);
     gsu.r[0] = gsu_ldw(0x001C);
-    gsu.rombr = (uint8_t)gsu.r[0];
     gsu_code(0x01C492, 5);
+    gsu_romb(gsu.r[0]);
     gsu_r14(gsu_ldw(0x001A));
     gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[0], 0);
     gsu_code(0x01C497, 4);
@@ -309,7 +293,6 @@ void abi_FxPolygonNearClip(void)
         do {
             gsu_code(0x01C23A, 3);
             gsu.r[6] = gsu_ldw(gsu.r[7]);
-            gsu_code(0x01C23D, 4); gsu_code(0x01C24D, 5);
             z_range(GSU_COPY(0));
             gsu.r[7] = gsu_add(gsu.r[7], 10, 0);
         } while (gsu_count_down(&gsu.r[12]));
@@ -320,30 +303,19 @@ void abi_FxPolygonNearClip(void)
         gsu.r[13] = 0xC25A;
         gsu_code(0x01C259, 1);
         do {
-            gsu_code(0x01C25A, 2);
             gsu.r[0] = next_in(GSU_COPY(5));
-            gsu_code(0x01C25C, 3);
             next_out(gsu.r[0], GSU_COPY(0));
-            gsu_code(0x01C25F, 3);
             gsu.r[0] = next_in(GSU_COPY(6));
-            gsu_code(0x01C262, 3);
             next_out(gsu.r[0], GSU_COPY(1));
-            gsu_code(0x01C265, 4);
             gsu.r[6] = next_in(GSU_COPY(7));
-            gsu_code(0x01C269, 4);
             next_out(gsu.r[6], GSU_COPY(2));
-            gsu_code(0x01C26D, 6); gsu_code(0x01C27F, 2);
             z_range(GSU_COPY(1));
             gsu.r[0] = next_in(GSU_COPY(8));
-            gsu_code(0x01C281, 3);
             next_out(gsu.r[0], GSU_COPY(3));
-            gsu_code(0x01C284, 3);
             gsu.r[0] = next_in(GSU_COPY(9));
-            gsu_code(0x01C287, 3);
             next_out(gsu.r[0], GSU_COPY(4));
-        } while (gsu_code_loop(0x01C28A, 3, gsu_count_down(&gsu.r[12])));
-        gsu_code(0x01C28A, 7);
-        lists_swap(GSU_COPY(4));
+        } while (gsu_count_down(&gsu.r[12]));
+        lists_swap(GSU_COPY(3));
     }
     gsu_code(0x01C29A, 3);
     gsu.r[0] = gsu_ldw(FX_COUNT);
@@ -357,7 +329,6 @@ void abi_FxPolygonNearClip(void)
         gsu.r[0] = gsu_ldw(FX_COUNT);
         gsu_code(0x01C335, 4);
         gsu_pull(&gsu.r[10]);
-        gsu_code(0x01C3FA, 5);
         return;
     } else { gsu_code(0x01C2A0, 7); gsu_code(0x01C2AB, 7); }
     gsu.r[0] = gsu_add(gsu.r[4], gsu.r[0], 0);
@@ -365,10 +336,8 @@ void abi_FxPolygonNearClip(void)
     gsu.r[0] = gsu_lsr(gsu.r[0]);
     gsu_push(&gsu.r[10], gsu.r[0]);
     gsu.r[11] = 0xC2B8;
-    (gsu_code(0x01C2B2, 6), gsu_code(0x01CE34, 3), abi_FxPolygonClipNear());
-    gsu_code(0x01C2B8, 4);
-    lists_swap(GSU_COPY(5));
-    gsu_code(0x01C2C5, 4);
+    abi_FxPolygonClipNear();
+    lists_swap(GSU_COPY(4));
     gsu.r[1] = gsu_pull(&gsu.r[10]);
     gsu_moves(gsu.r[0]);
     if (gsu.z) {
@@ -397,7 +366,6 @@ void abi_FxPolygonNearClip(void)
             gsu.r[0] = gsu_ldw(gsu.r[1]);
             gsu.r[1] = gsu_inc(gsu_inc(gsu.r[1]));
             next_r8(gsu.r[0], GSU_COPY(4));
-            gsu_code(0x01C300, 5);
         }
     }
     gsu_stw(FX_OUT, gsu.r[8]);
@@ -415,32 +383,25 @@ void abi_FxPolygonNearClip(void)
     gsu.r[0] = gsu_pull(&gsu.r[10]);
     gsu.r[0] = gsu_inc(gsu_not(gsu.r[0]));
     gsu.r[11] = 0xC320;
-    (gsu_code(0x01C31A, 6), gsu_code(0x01CE34, 3), abi_FxPolygonClipNear());
+    abi_FxPolygonClipNear();
     gsu_moves(gsu.r[0]);
     if (!gsu.z) {
-        gsu_code(0x01C320, 9);
-        lists_swap(GSU_COPY(7));
-        gsu_code(0x01C332, 3);
+        lists_swap(GSU_COPY(6));
         gsu.r[0] = gsu_ldw(FX_COUNT);
-    } else { gsu_code(0x01C320, 5); gsu_code(0x01C334, 1); }
+    }
     gsu_code(0x01C335, 4);
     gsu_pull(&gsu.r[10]);       /* the return address, into R15 */
-    gsu_code(0x01C3FA, 5);
 }
 
 /* cyccopy: the copy each of the caller's copies calls */
-static const uint8_t lists_swap_from_clip_edge[8] = {0, 1, 2, 3, 6, 0, 0, 0};
+static const uint8_t lists_swap_from_clip_edge[4] = {0, 1, 2, 5};
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode clip_edge_code[8][6] = {
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-    {{0x01C3DB, 5}, {0x01CA42, 3}, {0x01C3E0, 4}, {0x01C3F1, 4}, {0, 0}, {0, 0}},
-    {{0x01C393, 5}, {0x01CB63, 3}, {0x01C398, 4}, {0x01C3A5, 8}, {0x01C3A5, 4}, {0x01C3AD, 4}},
-    {{0, 0}, {0, 0}, {0x01C3BC, 4}, {0x01C3C9, 8}, {0x01C3C9, 4}, {0x01C3D1, 4}},
-    {{0, 0}, {0, 0}, {0x01C374, 4}, {0x01C385, 4}, {0x01C389, 4}, {0, 0}},
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-    {{0x01C3B7, 5}, {0x01C933, 3}, {0x01C3BC, 4}, {0, 0}, {0x01C3C9, 4}, {0x01C3D1, 4}},
-    {{0x01C3DB, 5}, {0x01CA42, 3}, {0x01C3E0, 4}, {0, 0}, {0x01C3ED, 4}, {0, 0}},
+static const GsuCode clip_edge_code[4][5] = {
+    {{0x01C3DB, 5}, {0x01CA42, 3}, {0x01C3E0, 4}, {0x01C3F1, 4}, {0, 0}},
+    {{0x01C393, 5}, {0x01CB63, 3}, {0x01C398, 4}, {0x01C3A9, 4}, {0x01C3AD, 4}},
+    {{0x01C3B7, 5}, {0x01C933, 3}, {0x01C3BC, 4}, {0x01C3CD, 4}, {0x01C3D1, 4}},
+    {{0x01C36F, 5}, {0x01C668, 3}, {0x01C374, 4}, {0x01C385, 4}, {0x01C389, 4}},
 };
 
 /* One edge clip of FxPolygonDraw: the clip, the lists swapped; 0 when
@@ -454,7 +415,7 @@ static int clip_edge(void (*clip)(void), uint16_t ret, int reload, int copy)
     lists_swap(GSU_COPY(lists_swap_from_clip_edge[copy]));
     gsu_moves(gsu.r[0]);
     if (gsu.z)
-        { gsu_codes(clip_edge_code[copy] + 3, 1); return 0; } else { gsu_codes(clip_edge_code[copy] + 4, 2); }
+        { gsu_codes(clip_edge_code[copy] + 3, 1); return 0; } else { gsu_codes(clip_edge_code[copy] + 4, 1); }
     if (reload)
         gsu.r[5] = gsu_ldw(FX_CODES);
     return 1;
@@ -507,17 +468,17 @@ void abi_FxPolygonDraw(void)
     } else { gsu_code(0x01C35D, 6); gsu_code(0x01C368, 1); }
     gsu_code(0x01C369, 6);
     gsu.r[1] = gsu_and(gsu.r[5], 2);
-    if (!gsu.z && (gsu_code(0x01C36F, 5), gsu_code(0x01C668, 3), !clip_edge(abi_FxPolygonClipTop, 0xC374, 1, GSU_COPY(4))))
-        { gsu_code(0x01C381, 8); goto none; } else { gsu_code(0x01C38D, 6); }
+    if (!gsu.z && !clip_edge(abi_FxPolygonClipTop, 0xC374, 1, GSU_COPY(3)))
+        goto none; else { gsu_code(0x01C38D, 6); }
     gsu.r[1] = gsu_and(gsu.r[5], 1);
-    if (!gsu.z && (gsu_code(0x01C393, 5), gsu_code(0x01CB63, 3), !clip_edge(abi_FxPolygonClipBottom, 0xC398, 1, GSU_COPY(2))))
-        { gsu_code(0x01C3A5, 8); goto none; } else { gsu_code(0x01C3B1, 6); }
+    if (!gsu.z && !clip_edge(abi_FxPolygonClipBottom, 0xC398, 1, GSU_COPY(1)))
+        goto none; else { gsu_code(0x01C3B1, 6); }
     gsu.r[1] = gsu_and(gsu.r[5], 8);
-    if (!gsu.z && (gsu_code(0x01C3B7, 5), gsu_code(0x01C933, 3), !clip_edge(abi_FxPolygonClipRight, 0xC3BC, 1, GSU_COPY(3))))
-        { gsu_code(0x01C3C9, 8); goto none; } else { gsu_code(0x01C3D5, 6); }
+    if (!gsu.z && !clip_edge(abi_FxPolygonClipRight, 0xC3BC, 1, GSU_COPY(2)))
+        goto none; else { gsu_code(0x01C3D5, 6); }
     gsu.r[1] = gsu_and(gsu.r[5], 4);
-    if (!gsu.z && (gsu_code(0x01C3DB, 5), gsu_code(0x01CA42, 3), !clip_edge(abi_FxPolygonClipLeft, 0xC3E0, 0, GSU_COPY(1))))
-        { gsu_code(0x01C3F1, 4); goto none; }
+    if (!gsu.z && !clip_edge(abi_FxPolygonClipLeft, 0xC3E0, 0, GSU_COPY(0)))
+        goto none;
     gsu.r[11] = 0xC3FA;
     abi_FxPolygonNearClip();
     gsu_moves(gsu.r[0]);

@@ -301,6 +301,7 @@ void gsu_buffer(int what)
     case GSU_B_R14: buffer_placed(0); gsuclk_r14(&gclk); break;
     case GSU_B_ROMBUF: buffer_placed(1); gsuclk_rombuf(&gclk); break;
     case GSU_B_RAMBUF: gsuclk_rambuf(&gclk); break;
+    case GSU_B_ROMB: gsuclk_rombuf(&gclk); break;   /* not a GETB: no place of its own in the record */
     }
 }
 

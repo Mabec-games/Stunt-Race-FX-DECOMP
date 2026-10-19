@@ -94,11 +94,11 @@ enum { GSU_T_MULT, GSU_T_FMULT };
 void gsu_time(int what);
 
 /* The buffers, for the helpers here and in gsu_ops.h: an R14 write (the
-   ROM buffer starts its fill), a read of the ROM buffer (GETB, GETC) or
-   ROMB (the fill finished first), RAMB (the RAM buffer's store made
-   first). Their time depends on the code run between them, so each is a
-   place in the C's time of its own, as an access is. */
-enum { GSU_B_R14, GSU_B_ROMBUF, GSU_B_RAMBUF };
+   ROM buffer starts its fill), a read of the ROM buffer (GETB, GETC),
+   RAMB (the RAM buffer's store made first), ROMB (the ROM buffer's fill
+   finished first). Their time depends on the code run between them, so
+   each is a place in the C's time of its own, as an access is. */
+enum { GSU_B_R14, GSU_B_ROMBUF, GSU_B_RAMBUF, GSU_B_ROMB };
 void gsu_buffer(int what);
 
 /* Game pak RAM address `a` in the current RAM bank. */

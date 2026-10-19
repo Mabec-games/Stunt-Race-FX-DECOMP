@@ -19,9 +19,10 @@
 #define REC_RANK 0x88u
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode rank_walk_code[2][24] = {
-    {{0x04CE4E, 6}, {0x04CE65, 12}, {0x04CE71, 1}, {0x04CE72, 5}, {0x04CECD, 7}, {0x04CE77, 6}, {0x04CE7D, 11}, {0x04CE88, 7}, {0x04CE8F, 7}, {0x04CE96, 10}, {0x04CEA0, 5}, {0x04CE96, 4}, {0x04CEA6, 6}, {0x04CEAC, 3}, {0x04CEBE, 8}, {0x04CEAC, 9}, {0, 0}, {0x04CEB5, 9}, {0, 0}, {0x04CE7D, 4}, {0x04CEC6, 5}, {0x04CECB, 2}, {0x04CE54, 5}, {0x04CED4, 2}},
-    {{0x04CE4E, 6}, {0x04CE65, 12}, {0x04CE71, 1}, {0x04CE72, 5}, {0x04CECD, 7}, {0x04CE77, 6}, {0x04CE7D, 11}, {0x04CE88, 7}, {0x04CE8F, 7}, {0x04CE96, 10}, {0x04CEA0, 5}, {0x04CE96, 4}, {0x04CEA6, 6}, {0x04CEAC, 3}, {0, 0}, {0x04CEAC, 9}, {0x04CEB5, 3}, {0x04CEB5, 9}, {0x04CEBE, 8}, {0x04CE7D, 4}, {0x04CEC6, 5}, {0x04CECB, 2}, {0x04CE54, 5}, {0x04CED4, 2}},
+static const GsuCode rank_walk_code[3][24] = {
+    {{0, 0}, {0x04CE71, 1}, {0x04CE72, 5}, {0, 0}, {0x04CECD, 7}, {0x04CE77, 6}, {0x04CE7D, 11}, {0x04CE88, 7}, {0x04CE8F, 7}, {0x04CE96, 10}, {0x04CEA0, 5}, {0x04CE96, 4}, {0x04CEA6, 6}, {0x04CEAC, 3}, {0, 0}, {0x04CEAC, 9}, {0x04CEB5, 3}, {0x04CEB5, 9}, {0x04CEBE, 8}, {0x04CE7D, 4}, {0x04CEC6, 5}, {0x04CECB, 2}, {0, 0}, {0, 0}},
+    {{0, 0}, {0x04CE71, 1}, {0x04CE72, 5}, {0, 0}, {0x04CECD, 7}, {0x04CE77, 6}, {0x04CE7D, 11}, {0x04CE88, 7}, {0x04CE8F, 7}, {0x04CE96, 10}, {0x04CEA0, 5}, {0x04CE96, 4}, {0x04CEA6, 6}, {0x04CEAC, 3}, {0x04CEBE, 8}, {0x04CEAC, 9}, {0x04CEB5, 3}, {0x04CEB5, 9}, {0, 0}, {0x04CE7D, 4}, {0x04CEC6, 5}, {0x04CECB, 2}, {0, 0}, {0, 0}},
+    {{0x04CEA6, 24}, {0x04CE71, 1}, {0x04CE72, 5}, {0x04CECB, 2}, {0x04CECD, 7}, {0x04CE77, 6}, {0x04CE7D, 11}, {0x04CE88, 7}, {0x04CE8F, 7}, {0x04CE96, 10}, {0x04CEA0, 5}, {0x04CE96, 4}, {0, 0}, {0x04CEAC, 3}, {0, 0}, {0, 0}, {0x04CEB5, 3}, {0, 0}, {0x04CEBE, 8}, {0x04CE7D, 4}, {0x04CEC6, 5}, {0, 0}, {0x04888C, 1}, {0x04CED4, 2}},
 };
 
 /*
@@ -39,9 +40,9 @@ static const GsuCode rank_walk_code[2][24] = {
  */
 static FxRegs rank_walk(FxRegs g, int at_dec, int copy)
 {
-    gsu_codes(rank_walk_code[copy], 2);
+    gsu_codes(rank_walk_code[copy], 1);
     if (at_dec)
-        goto dec; else { gsu_code(0x04CE4E, 6); gsu_code(0x04CE65, 12); }
+        goto dec;
     g.r[0] = gsu_sub(g.r[0], g.r[0], 0);
     g.r[2] = g.r[0];
     g.r[3] = g.r[0];
@@ -49,9 +50,9 @@ static FxRegs rank_walk(FxRegs g, int at_dec, int copy)
     g.r[0] = gsu_ldw(FX_CARS);
     g.r[4] = g.r[0];
     gsu_moves(g.r[4]);
-    gsu_codes(rank_walk_code[copy] + 2, 1);
+    gsu_codes(rank_walk_code[copy] + 1, 1);
     for (;;) {
-        gsu_codes(rank_walk_code[copy] + 3, 1);
+        gsu_codes(rank_walk_code[copy] + 2, 2);
         g.r[8] = g.r[0];
         gsu_moves(g.r[8]);
         if (gsu.z)
@@ -115,9 +116,19 @@ dec:
     return g;
 }
 
-FxRegs FxRankNext(FxRegs g)
+/* cyccopy: the copy each of the caller's copies calls */
+static const uint8_t rank_walk_from_FxRankNext[2] = {0, 1};
+
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode FxRankNext_code[2][4] = {
+    {{0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0x04CE4E, 6}, {0x04CE65, 12}, {0x04CE54, 5}, {0x04CED4, 2}},
+};
+
+FxRegs FxRankNext(FxRegs g, int copy)
 {
-    return rank_walk(g, 0, GSU_COPY(0));
+    gsu_codes(FxRankNext_code[copy], 2);
+    return rank_walk(g, 0, GSU_COPY(rank_walk_from_FxRankNext[copy]));
 }
 
 void abi_FxRankNext(void)
@@ -125,7 +136,7 @@ void abi_FxRankNext(void)
     FxRegs g;
 
     memcpy(g.r, gsu.r, sizeof g.r);
-    g = FxRankNext(g);
+    g = FxRankNext(g, GSU_COPY(0));
     memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
 }
 
@@ -146,16 +157,9 @@ void abi_FxRankNextLapZero(void)
     FxRegs g;
 
     memcpy(g.r, gsu.r, sizeof g.r);
-    g = rank_walk(g, 1, GSU_COPY(0));
+    g = rank_walk(g, 1, GSU_COPY(2));
     memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
-    gsu_code(0x04888C, 1);
 }
-
-/* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode FxRankCars_code[2][20] = {
-    {{0x04CE1E, 2}, {0x04CE20, 2}, {0xCE22, 0}, {0x04CE22, 7}, {0x04CE29, 4}, {0x04CE2D, 5}, {0x04CE3F, 5}, {0x04CE32, 7}, {0x04CE39, 4}, {0x04CE3D, 2}, {0x04CE44, 2}, {0xCE46, 0}, {0x04CE46, 5}, {0x04CE60, 5}, {0x04CE4B, 3}, {0x04CE59, 5}, {0x04CE5E, 2}, {0, 0}, {0, 0}, {0x04906E, 1}},
-    {{0, 0}, {0x04CE20, 2}, {0xCE22, 0}, {0x04CE22, 7}, {0x04CE29, 4}, {0x04CE2D, 5}, {0x04CE3F, 5}, {0x04CE32, 7}, {0x04CE39, 4}, {0x04CE3D, 2}, {0x04CE44, 2}, {0xCE46, 0}, {0x04CE46, 5}, {0, 0}, {0x04CE4B, 3}, {0x04CE59, 5}, {0x04CE5E, 2}, {0x04CE29, 4}, {0x04CE60, 5}, {0, 0}},
-};
 
 /*
  * @routine 04:CE1D FxRankCars
@@ -171,48 +175,50 @@ static const GsuCode FxRankCars_code[2][20] = {
  */
 FxRegs FxRankCars(FxRegs g, int copy)
 {
-    gsu_codes(FxRankCars_code[copy], 1);
+    gsu_code(0x04CE1E, 2);
     gsu_push(&g.r[10], g.r[11]);
     g.r[5] = 0;
-    gsu_codes(FxRankCars_code[copy] + 1, 3);
+    gsu_code(0x04CE20, 2); gsu_cache(0xCE22); gsu_code(0x04CE22, 7);
     g.r[0] = gsu_ldw(FX_CARS);
     gsu_moves(g.r[0]);
     if (!gsu.z) {
-        gsu_codes(FxRankCars_code[copy] + 4, 1);
+        gsu_code(0x04CE29, 4);
         for (;;) {
-            gsu_codes(FxRankCars_code[copy] + 5, 1);
+            gsu_code(0x04CE2D, 5);
             g.r[8] = g.r[0];
             gsu_moves(g.r[8]);
             if (gsu.z)
-                { gsu_codes(FxRankCars_code[copy] + 6, 1); break; } else { gsu_codes(FxRankCars_code[copy] + 7, 1); }
+                { gsu_code(0x04CE3F, 5); break; } else { gsu_code(0x04CE32, 7); }
             g.r[0] = gsu_add(REC_RANK, g.r[8], 0);
             gsu_stw(g.r[0], g.r[5]);
-            gsu_codes(FxRankCars_code[copy] + 8, 1);
+            gsu_code(0x04CE39, 4);
             g.r[0] = gsu_ldw(gsu_add(REC_NEXT_CAR, g.r[8], 0));
-            gsu_codes(FxRankCars_code[copy] + 9, 1);
+            gsu_code(0x04CE3D, 2);
         }
         g.r[0] = gsu_ldw(FX_CARS);
         g.r[9] = 1;
-        gsu_codes(FxRankCars_code[copy] + 10, 2);
+        gsu_code(0x04CE44, 2); gsu_cache(0xCE46);
         for (;;) {
-            gsu_codes(FxRankCars_code[copy] + 12, 1);
+            gsu_code(0x04CE46, 5);
             g.r[8] = g.r[0];
             gsu_moves(g.r[8]);
             if (gsu.z)
-                { gsu_codes(FxRankCars_code[copy] + 13, 1); break; } else { gsu_codes(FxRankCars_code[copy] + 14, 1); }
+                { gsu_code(0x04CE60, 5); break; } else { gsu_code(0x04CE4B, 3); }
             gsu_push(&g.r[10], g.r[8]);
             g.r[11] = 0xCE54;
-            g = FxRankNext(g);
+            gsu_code(0x04CE4E, 6); gsu_code(0x04CE65, 12);
+            g = FxRankNext(g, GSU_COPY(0));
+            gsu_code(0x04CE54, 5); gsu_code(0x04CED4, 2);
             g.r[8] = gsu_pull(&g.r[10]);
             g.r[9] = gsu_inc(g.r[9]);
-            gsu_codes(FxRankCars_code[copy] + 15, 1);
+            gsu_code(0x04CE59, 5);
             g.r[0] = gsu_ldw(gsu_add(REC_NEXT_CAR, g.r[8], 0));
-            gsu_codes(FxRankCars_code[copy] + 16, 1);
+            gsu_code(0x04CE5E, 2);
         }
-    } else { gsu_codes(FxRankCars_code[copy] + 17, 1); }
-    gsu_codes(FxRankCars_code[copy] + 18, 1);
+    } else { gsu_code(0x04CE29, 4); }
+    gsu_code(0x04CE60, 5);
     gsu_pull(&g.r[10]);
-    gsu_codes(FxRankCars_code[copy] + 19, 1);
+    gsu_code(0x04906E, 1);
     return g;
 }
 

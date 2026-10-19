@@ -3,6 +3,7 @@
  * four-byte entries at $70:2702: a zero, then three bytes.
  */
 #include "gsu.h"
+#include "gsu_ops.h"
 
 #define FX_TABLE_2702 0x2702u
 
@@ -37,7 +38,7 @@ void FxTable2702Program(void)
     gsu_code(0x01D1EC, 10);
     int i;
 
-    gsu.rambr = 0;
+    gsu_ramb(0);
     for (i = 0; i < 48; i++)
         { gsu_stb((uint16_t)(FX_TABLE_2702 + i), table_2702[i]); gsu_code(0x01D305, 1); }
 }

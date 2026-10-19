@@ -127,6 +127,15 @@ def gather(args):
     cyccopy.cycprobe.SRC = src
     copyable = {i for i, n in enumerate(names) if cyccopy.copyable(*n)}
     pickle.dump({p for p, f in enumerate(arr) if f in copyable}, open(os.path.join(G, 'copyable.pkl'), 'wb'))
+    # the functions called from more than one place in the C: their probes
+    # are qualified by call site, the same in every run
+    calls = collections.Counter()
+    for rel in cyccopy.all_files():
+        for b, e, callee, nargs, fn_ in cyccopy.file_calls(rel):
+            calls[(rel, callee) if cyccopy.is_static(rel, callee) else callee] += 1
+    shared = bytes(1 if calls[(f, n) if cyccopy.is_static(f, n) else n] > 1 else 0 for f, n in names)
+    open(os.path.join(G, 'shared.bin'), 'wb').write(shared)
+    say('functions called from more than one place: %d' % sum(shared))
     say('probed')
     done = []
     for s in scripts(args):
@@ -138,7 +147,8 @@ def gather(args):
         if os.path.exists(log):
             with open(os.path.join(out, 'agg.txt'), 'w') as fo:
                 subprocess.run([os.path.join(B, 'gsuagg'), log, os.path.join(G, 'fnmap.bin'),
-                                os.path.join(out, 'ctx.txt')], stdout=fo, stderr=subprocess.DEVNULL)
+                                os.path.join(out, 'ctx.txt'), os.path.join(G, 'shared.bin')],
+                               stdout=fo, stderr=subprocess.DEVNULL)
             os.remove(log)
             done.append(s)
         say('%s: %s, %.0f s' % (s, verdict, time.time() - t0))

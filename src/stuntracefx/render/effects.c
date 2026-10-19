@@ -13,12 +13,6 @@
 #define FX_CENTRE_X 0x0034u
 #define FX_TIED_RECORD 0x247Au  /* the address of the tied object's record */
 
-/* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode FxEffectsAge_code[2][17] = {
-    {{0x01BF9E, 5}, {0x01BFA8, 5}, {0x01C060, 4}, {0x01C064, 6}, {0x01C06A, 6}, {0x01C070, 6}, {0x01C076, 10}, {0x01C080, 4}, {0x01C088, 5}, {0x01C084, 4}, {0x01C08D, 8}, {0x01C095, 3}, {0x01C098, 5}, {0x01C0D8, 5}, {0x01BFAD, 5}, {0x01C0DD, 3}, {0x01C175, 3}},
-    {{0x01BF98, 11}, {0x01BFA8, 5}, {0x01C060, 4}, {0x01C064, 6}, {0x01C06A, 6}, {0x01C070, 6}, {0x01C076, 10}, {0x01C080, 4}, {0x01C084, 17}, {0, 0}, {0, 0}, {0x01C095, 3}, {0x01C098, 5}, {0x01C0D8, 5}, {0x01BFAD, 5}, {0x01C0DD, 3}, {0x01C175, 3}},
-};
-
 /*
  * @routine 01:C060 FxEffectsAge
  * WHAT IT DOES: Counts down the time of each effect in use and frees the
@@ -39,27 +33,27 @@ static const GsuCode FxEffectsAge_code[2][17] = {
  */
 void FxEffectsAge(int copy)
 {
-    gsu_codes(FxEffectsAge_code[copy], 3);
+    gsu_code(0x01BFA8, 5); gsu_code(0x01C060, 4);
     gsu.r[0] = gsu_ldw(FX_EDGES);
     gsu.r[8] = gsu_add(gsu.r[0], 8, 0);
-    gsu_codes(FxEffectsAge_code[copy] + 3, 1);
+    gsu_code(0x01C064, 6);
     gsu.r[0] = gsu_ldw(FX_EDGES + 2);
     gsu.r[7] = gsu_sub(gsu.r[0], 8, 0);
-    gsu_codes(FxEffectsAge_code[copy] + 4, 1);
+    gsu_code(0x01C06A, 6);
     gsu.r[0] = gsu_ldw(FX_EDGES + 4);
     gsu.r[4] = gsu_add(gsu.r[0], 8, 0);
-    gsu_codes(FxEffectsAge_code[copy] + 5, 1);
+    gsu_code(0x01C070, 6);
     gsu.r[0] = gsu_ldw(FX_EDGES + 6);
     gsu.r[5] = gsu_sub(gsu.r[0], 8, 0);
     gsu.r[6] = 0x0000;
-    gsu_codes(FxEffectsAge_code[copy] + 6, 1);
+    gsu_code(0x01C076, 10);
     gsu.r[1] = gsu_ldw(FX_TIED_RECORD);
     gsu.r[0] = gsu_add(0x004A, gsu.r[1], 0);
-    gsu_codes(FxEffectsAge_code[copy] + 7, 1);
+    gsu_code(0x01C080, 4);
     gsu.r[0] = gsu_ldw(gsu.r[0]);
     gsu_moves(gsu.r[0]);
     if (!gsu.s) {
-        gsu_codes(FxEffectsAge_code[copy] + 8, 1);
+        gsu_code(0x01C088, 5);
         gsu.r[0] = gsu_add(gsu.r[0], gsu.r[0], 0);
         gsu.r[0] = gsu_add(gsu.r[0], gsu.r[0], 0);
         gsu.r[0] = gsu_add(gsu.r[0], gsu.r[0], 0);
@@ -68,15 +62,15 @@ void FxEffectsAge(int copy)
     gsu.r[3] = FX_EFFECTS;
     gsu.r[12] = FX_EFFECT_COUNT;
     gsu.r[13] = 0xC095;
-    gsu_codes(FxEffectsAge_code[copy] + 9, 2);
+    gsu_code(0x01C084, 4); gsu_code(0x01C08D, 8);
     do {
-        gsu_codes(FxEffectsAge_code[copy] + 11, 1);
+        gsu_code(0x01C095, 3);
         int out;
 
         gsu.r[0] = gsu_lob(gsu_ldb(gsu.r[3]));
         gsu_moves(gsu.r[0]);
         if (gsu.z) {
-            gsu_codes(FxEffectsAge_code[copy] + 12, 2);
+            gsu_code(0x01C098, 5); gsu_code(0x01C0D8, 5);
             gsu.r[3] = gsu_add(gsu.r[3], FX_EFFECT_SIZE, 0);
             continue;
         } else { gsu_code(0x01C098, 9); }
@@ -124,7 +118,7 @@ void FxEffectsAge(int copy)
         }
         gsu_code(0x01C0D3, 2);
     } while (gsu_count_down(&gsu.r[12]));
-    gsu_codes(FxEffectsAge_code[copy] + 14, 3);
+    gsu_code(0x01BFAD, 5); gsu_code(0x01C0DD, 3); gsu_code(0x01C175, 3);
 }
 
 void abi_FxEffectsAge(void)
@@ -259,8 +253,8 @@ void abi_FxHazeSample(void)
     gsu.r[0] = gsu_add(gsu.r[0], gsu.r[0], 0);
     gsu.r[1] = gsu_add(gsu.r[0], gsu.r[0], 0);
     gsu.r[0] = 0x0008;
-    gsu.rombr = 0x08;
     gsu_code(0x01BFC7, 41); gsu_cache(0xBFF0);
+    gsu_romb(0x08);
     gsu_r14(FX_HAZE_SHAPES);
     gsu_r14(gsu_add(gsu.r[14], gsu.r[1], 0));
     gsu.r[1] = gsu_getb();
@@ -428,7 +422,7 @@ void abi_FxEffectsDraw(void)
             abi_FxHazeSample();
             gsu.r[11] = 0xC1AA;
             abi_FxHazePlot();
-        } else { gsu_code(0x01C18A, 5); gsu_code(0x01C1AA, 5); }
+        } else { gsu_code(0x01C18A, 5); }
         gsu_code(0x01C1AA, 5);
         gsu.r[3] = gsu_pull(&gsu.r[10]);
         gsu_code(0x01C1AF, 4);
@@ -481,6 +475,7 @@ void abi_FxEffectsRun(void)
                 { gsu_code(0x01BF9C, 2); gsu.r[2] = gsu.r[0]; }
             gsu_code(0x01BF98, 4);
         } else { gsu_code(0x01BF87, 4); }
+        gsu_code(0x01BF9E, 5);
         gsu.r[0] = gsu.r[2];
         gsu_moves(gsu.r[0]);
         if (!gsu.z) {

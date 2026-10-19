@@ -2,7 +2,7 @@
  * gsuagg.c: the Super FX's code log (sfxbox SFXBOX_GSUCYCLOG with
  * SFXBOX_GSUCYCLOG_OPS) as its distinct intervals, for gsutime.py.
  *
- *     gsuagg LOG FNMAP.bin CTX.txt > AGG
+ *     gsuagg LOG FNMAP.bin CTX.txt [SHARED.bin] > AGG
  *
  * Each line: count, the routine called, the record's type, the probes the
  * C passed (in order), the original's code fetches the C did not state
@@ -11,7 +11,9 @@
  * where they were called from: such a probe passed is written id + 131072
  * * ctx, ctx (from 1) a line of CTX.txt, the call-site probes of the
  * shared functions on the stack, the outermost first. FNMAP.bin: one int32
- * per probe id, its function's number, -1 for a header's.
+ * per probe id, its function's number, -1 for a header's. SHARED.bin: one
+ * byte per function, 1 for one called from more than one place in the C
+ * (the same in every run); without it, as the run calls them.
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -81,9 +83,16 @@ int main(int argc, char **argv)
     FILE *fm = fopen(argv[2], "rb"); fseek(fm, 0, SEEK_END); nprobe = (uint32_t)(ftell(fm) / 4); rewind(fm);
     fnof = malloc(4 * (size_t)nprobe); if (fread(fnof, 4, nprobe, fm) != nprobe) return 1; fclose(fm);
     ctxf = fopen(argv[3], "w");
+    int given = 0;
+    if (argc > 4) {
+        FILE *fs = fopen(argv[4], "rb");
+        int f = 0, ch;
+        while (fs && (ch = fgetc(fs)) != EOF && f < MAXF) { if (ch) nsites[f] = 2; f++; }
+        if (fs) { fclose(fs); given = 1; }
+    }
     size_t n = st.st_size;
     static char buf[1 << 22]; static uint32_t of[1 << 20], mf[1 << 20], pl[1 << 20], mi[1 << 20];
-    for (int pass = 0; pass < 2; pass++) {
+    for (int pass = given; pass < 2; pass++) {
         size_t i = 0; uint32_t pc = 0; sn = 0; last = 0;
         while (i < n) {
             uint8_t t = d[i++];

@@ -74,7 +74,7 @@ void abi_FxPushSet(void)
 static const GsuCode FxListClearBit0_code[3][10] = {
     {{0x048A18, 8}, {0x04A441, 7}, {0x04A448, 7}, {0x04A44F, 5}, {0x04A454, 3}, {0x04A457, 4}, {0x04A45B, 4}, {0, 0}, {0x048A20, 5}, {0x04A45F, 10}},
     {{0, 0}, {0, 0}, {0x04A448, 12}, {0, 0}, {0x04A454, 3}, {0x04A457, 4}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-    {{0, 0}, {0, 0}, {0x04A448, 12}, {0, 0}, {0x04A454, 3}, {0x04A457, 4}, {0x048A20, 5}, {0x04A45B, 14}, {0, 0}, {0, 0}},
+    {{0x048A18, 8}, {0x04A441, 7}, {0x04A448, 12}, {0, 0}, {0x04A454, 3}, {0x04A457, 4}, {0x048A20, 5}, {0x04A45B, 14}, {0, 0}, {0, 0}},
 };
 
 /*
@@ -118,11 +118,9 @@ void abi_FxListClearBit0(void)
 }
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode FxRecordHoldY_code[4][9] = {
-    {{0x04BC80, 13}, {0x04BC8D, 5}, {0, 0}, {0, 0}, {0x04BC92, 6}, {0x04BC98, 4}, {0, 0}, {0, 0}, {0, 0}},
-    {{0x04BC80, 13}, {0x04BC8D, 5}, {0x04BC80, 6}, {0x04BC91, 1}, {0x04BC92, 6}, {0x04BC98, 4}, {0, 0}, {0x04BC9C, 4}, {0x04BCA2, 1}},
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+static const GsuCode FxRecordHoldY_code[2][9] = {
     {{0x04BC80, 13}, {0x04BC8D, 5}, {0x04BC80, 6}, {0x04BC91, 1}, {0x04BC92, 6}, {0x04BC98, 4}, {0x04BC9C, 7}, {0x04BC9C, 4}, {0x04BCA2, 1}},
+    {{0x04BC80, 13}, {0x04BC8D, 5}, {0x04BC80, 6}, {0x04BC91, 1}, {0x04BC92, 6}, {0x04BC98, 4}, {0x04BC9C, 7}, {0, 0}, {0, 0}},
 };
 
 /*
@@ -169,10 +167,17 @@ void abi_FxRecordHoldY(void)
     gsu.r[1] = y;
 }
 
+/* cyccopy: the copy each of the caller's copies calls */
+static const uint8_t FxAngleOf_from_FxBearingTo[6] = {0, 1, 2, 3, 4, 5};
+
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode FxBearingTo_code[2][3] = {
-    {{0x04CBEB, 6}, {0x04CBF1, 6}, {0, 0}},
-    {{0x04CBEB, 6}, {0x04CBF1, 6}, {0x04C6DB, 8}},
+static const GsuCode FxBearingTo_code[6][8] = {
+    {{0, 0}, {0, 0}, {0x04CBEB, 6}, {0x04CBF1, 6}, {0x04C2F8, 3}, {0x04CBF7, 8}, {0x04CBFF, 7}, {0, 0}},
+    {{0, 0}, {0, 0}, {0x04CBEB, 6}, {0x04CBF1, 6}, {0x04C2F8, 3}, {0x04CBF7, 8}, {0x04CBFF, 7}, {0x04C6DB, 8}},
+    {{0, 0}, {0, 0}, {0x04CBEB, 6}, {0x04CBF1, 6}, {0x04C2F8, 3}, {0x04CBF7, 8}, {0x04CBFF, 7}, {0, 0}},
+    {{0, 0}, {0, 0}, {0x04CBEB, 6}, {0x04CBF1, 6}, {0x04C2F8, 3}, {0x04CBF7, 8}, {0x04CBFF, 7}, {0x04C6DB, 8}},
+    {{0x04C7EF, 6}, {0x04CBE8, 3}, {0x04CBEB, 6}, {0x04CBF1, 6}, {0x04C2F8, 3}, {0x04CBF7, 8}, {0x04CBFF, 7}, {0x04C7F5, 7}},
+    {{0, 0}, {0, 0}, {0x04CBEB, 6}, {0x04CBF1, 6}, {0x04C2F8, 3}, {0x04CBF7, 8}, {0x04CBFF, 7}, {0, 0}},
 };
 
 /*
@@ -188,41 +193,40 @@ static const GsuCode FxBearingTo_code[2][3] = {
  */
 FxRegs FxBearingTo(FxRegs g, int copy)
 {
+    gsu_codes(FxBearingTo_code[copy], 2);
     gsu_stw(g.r[10], g.r[11]);
     g.r[10] = gsu_inc(gsu_inc(g.r[10]));
-    gsu_codes(FxBearingTo_code[copy], 1);
+    gsu_codes(FxBearingTo_code[copy] + 2, 1);
     g.r[0] = gsu_ldw(gsu_add(REC_X, g.r[8], 0));
     g.r[1] = gsu_sub(g.r[1], g.r[0], 0);
-    gsu_codes(FxBearingTo_code[copy] + 1, 1);
+    gsu_codes(FxBearingTo_code[copy] + 3, 1);
     g.r[0] = gsu_ldw(gsu_add(REC_Z, g.r[8], 0));
     g.r[3] = gsu_sub(g.r[3], g.r[0], 0);
     g.r[2] = g.r[3];
     g.r[11] = 0xCBFF;
-    g = FxAngleOf(g, GSU_COPY(0));
+    gsu_codes(FxBearingTo_code[copy] + 4, 2);
+    g = FxAngleOf(g, GSU_COPY(FxAngleOf_from_FxBearingTo[copy]));
     g.r[0] = gsu_inc(gsu_not(g.r[0]));
     g.r[10] = gsu_dec(gsu_dec(g.r[10]));
+    gsu_codes(FxBearingTo_code[copy] + 6, 1);
     gsu_ldw(g.r[10]);
-    gsu_codes(FxBearingTo_code[copy] + 2, 1);
+    gsu_codes(FxBearingTo_code[copy] + 7, 1);
     return g;
 }
 
 void abi_FxBearingTo(void)
 {
-    gsu_code(0x04C6D6, 5); gsu_code(0x04CBE8, 3); gsu_code(0x04CD01, 4);
     FxRegs g;
 
     memcpy(g.r, gsu.r, sizeof g.r);
-    g = FxBearingTo(g, GSU_COPY(0));
+    g = FxBearingTo(g, GSU_COPY(1));
     memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
-    gsu_code(0x04C6DB, 8);
 }
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode FxRecordAlignment_code[4][17] = {
-    {{0x04BCBD, 4}, {0x04BCC1, 8}, {0x04BCD5, 4}, {0x04C087, 3}, {0x04BCD9, 4}, {0x04BCDD, 8}, {0x04BCF0, 17}, {0x04BD01, 4}, {0, 0}, {0x04BD05, 4}, {0x04BD0B, 8}, {0x04BD16, 6}, {0, 0}, {0, 0}, {0, 0}, {0x04BD13, 3}, {0x04BD1C, 4}},
-    {{0x04BCBD, 4}, {0x04BCC1, 8}, {0x04BCD5, 4}, {0x04C087, 3}, {0x04BCD9, 4}, {0x04BCDD, 8}, {0x04BCF0, 17}, {0x04BD01, 4}, {0, 0}, {0x04BD05, 4}, {0x04BD0B, 8}, {0x04BD16, 6}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04BD1C, 4}},
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-    {{0x04BCBD, 4}, {0x04BCC1, 8}, {0, 0}, {0, 0}, {0x04BCD9, 4}, {0x04BCDD, 8}, {0x04BCF0, 17}, {0x04BD01, 4}, {0x04BD09, 2}, {0, 0}, {0, 0}, {0, 0}, {0x04BD05, 4}, {0x04BD0B, 8}, {0x04BD16, 6}, {0x04BD13, 3}, {0x04BD1C, 4}},
+static const GsuCode FxRecordAlignment_code[2][14] = {
+    {{0x04BCBD, 4}, {0x04BCC1, 8}, {0x04BCD5, 4}, {0x04C087, 3}, {0x04BCD9, 4}, {0x04BCDD, 8}, {0x04BCF0, 17}, {0x04BD01, 4}, {0x04BD09, 2}, {0x04BD05, 4}, {0x04BD0B, 8}, {0x04BD16, 6}, {0x04BD13, 3}, {0x04BD1C, 4}},
+    {{0x04BCBD, 4}, {0x04BCC1, 8}, {0x04BCD5, 4}, {0x04C087, 3}, {0x04BCD9, 4}, {0x04BCDD, 8}, {0x04BCF0, 17}, {0x04BD01, 4}, {0x04BD09, 2}, {0x04BD05, 4}, {0x04BD0B, 8}, {0x04BD16, 6}, {0x04BD13, 3}, {0x04BD1C, 4}},
 };
 
 /*
@@ -281,16 +285,16 @@ FxRegs FxRecordAlignment(FxRegs g, int copy)
     g.r[0] = gsu_ldw(gsu_add(REC_SPEED, g.r[8], 0));
     gsu_moves(g.r[0]);
     if (gsu.s)
-        { gsu_codes(FxRecordAlignment_code[copy] + 8, 1); g.r[0] = gsu_inc(gsu_not(g.r[0])); } else { gsu_codes(FxRecordAlignment_code[copy] + 9, 3); }
-    gsu_codes(FxRecordAlignment_code[copy] + 12, 3);
+        { gsu_codes(FxRecordAlignment_code[copy] + 8, 1); g.r[0] = gsu_inc(gsu_not(g.r[0])); }
+    gsu_codes(FxRecordAlignment_code[copy] + 9, 3);
     g.r[2] = 10;
     gsu_sub(g.r[0], g.r[2], 0);
     if (gsu.s)
-        { gsu_codes(FxRecordAlignment_code[copy] + 15, 1); g.r[1] = 0x7FFF; }
+        { gsu_codes(FxRecordAlignment_code[copy] + 12, 1); g.r[1] = 0x7FFF; }
     g.r[0] = gsu_add(REC_ALIGN, g.r[8], 0);
     gsu_stw(g.r[0], g.r[1]);
     g.r[10] = gsu_dec(gsu_dec(g.r[10]));
-    gsu_codes(FxRecordAlignment_code[copy] + 16, 1);
+    gsu_codes(FxRecordAlignment_code[copy] + 13, 1);
     gsu_ldw(g.r[10]);
     return g;
 }
@@ -322,8 +326,8 @@ static FxAmountRegs amount_start(uint16_t field, uint16_t scale_half, int copy)
     FxAmountRegs g;
 
     g.r0 = gsu_sub(0, 0, 0);               /* SUB R0, for ROMB and RAMB */
-    gsu.rombr = 0;
-    gsu.rambr = 0;
+    gsu_romb(0);
+    gsu_ramb(0);
     g.r8 = gsu_ldw(FX_ARG_RECORD);
     gsu_codes(amount_start_code[copy] + 1, 1);
     g.r6 = gsu_ldw(FX_ARG_AMOUNT);
@@ -424,9 +428,9 @@ void abi_FxTimersProgram(void)
 
     gsu.r[10] = 0x0240;
     gsu.r[0] = 0x0014;
-    gsu.rombr = 0x14;
+    gsu_romb(0x14);
     gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[0], 0);
-    gsu.rambr = 0x00;
+    gsu_ramb(0x00);
     gsu.r[8] = 0x000E;
     gsu.r[9] = 0x273E;
     gsu.r[12] = 0x0014;
@@ -488,7 +492,8 @@ void abi_FxTimersProgram(void)
 }
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode fx_plot_code[6][3] = {
+static const GsuCode fx_plot_code[7][3] = {
+    {{0, 0}, {0, 0}, {0, 0}},
     {{0x01BB02, 6}, {0, 0}, {0x01BB08, 1}},
     {{0, 0}, {0, 0}, {0x01BB09, 4}},
     {{0, 0}, {0, 0}, {0x01BB0D, 1}},
@@ -520,41 +525,43 @@ static void fx_color(uint16_t v)
 }
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode fx_scale_for_code[3][10] = {
-    {{0x01BAA1, 7}, {0x01BAAB, 7}, {0, 0}, {0x01BAB2, 7}, {0, 0}, {0x01BAB9, 20}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-    {{0, 0}, {0, 0}, {0x01BAA8, 3}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-    {{0x01BB22, 10}, {0x01BB2F, 7}, {0x01BB2C, 3}, {0x01BB0D, 7}, {0x01BB36, 7}, {0x01BB3D, 9}, {0x01BB46, 2}, {0x01BB48, 1}, {0x01BB49, 3}, {0x01BB4C, 5}},
+static const GsuCode fx_scale_for_code[3][12] = {
+    {{0, 0}, {0, 0}, {0, 0}, {0x01BAA8, 3}, {0x01BAB2, 3}, {0, 0}, {0x01BAB5, 4}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0x01BA9D, 11}, {0x01BAAB, 7}, {0x01BAB9, 20}, {0x01BAA8, 3}, {0x01BAB2, 3}, {0, 0}, {0x01BAB5, 4}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0x01BB22, 10}, {0x01BB2F, 7}, {0, 0}, {0x01BB2C, 3}, {0x01BB0D, 7}, {0x01BB36, 7}, {0, 0}, {0x01BB3D, 9}, {0x01BB46, 2}, {0x01BB48, 1}, {0x01BB49, 3}, {0x01BB4C, 5}},
 };
 
 /* R6 = z for the scale: clamped to $43FF; returns 0 (skip) when below
    $100. Then R14 = $896C + (z AND NOT 1) and R6 = the scale there. */
 static int fx_scale_for(int copy)
 {
-    gsu_codes(fx_scale_for_code[copy], 2);
+    gsu_codes(fx_scale_for_code[copy], 3);
     gsu.r[0] = gsu_sub(0x4400, gsu.r[6], 0);
     if (gsu.s)
-        { gsu_codes(fx_scale_for_code[copy] + 2, 1); gsu.r[6] = 0x43FF; }
+        { gsu_codes(fx_scale_for_code[copy] + 3, 1); gsu.r[6] = 0x43FF; }
     gsu.r[0] = gsu_sub(0x0100, gsu.r[6], 0);
-    if (!gsu.s && (gsu_codes(fx_scale_for_code[copy] + 3, 2), !gsu.z))
-        { gsu_code(0x01BAB5, 4); return 0; } else { gsu_codes(fx_scale_for_code[copy] + 5, 1); }
+    if (!gsu.s && (gsu_codes(fx_scale_for_code[copy] + 4, 2), !gsu.z))
+        { gsu_codes(fx_scale_for_code[copy] + 6, 1); return 0; } else { gsu_codes(fx_scale_for_code[copy] + 7, 1); }
     gsu.r[6] = gsu_bic(gsu.r[6], 0x0001);
     gsu.r[0] = 0x896C;
     gsu_r14(gsu_add(gsu.r[0], gsu.r[6], 0));
-    gsu.r[6] = (gsu_codes(fx_scale_for_code[copy] + 6, 1), gsu_getb());
-    gsu_codes(fx_scale_for_code[copy] + 7, 1);
-    gsu_r14(gsu_inc(gsu.r[14]));
-    gsu_codes(fx_scale_for_code[copy] + 8, 1);
-    gsu.r[6] = gsu_getbh(gsu.r[6]);
+    gsu.r[6] = (gsu_codes(fx_scale_for_code[copy] + 8, 1), gsu_getb());
     gsu_codes(fx_scale_for_code[copy] + 9, 1);
+    gsu_r14(gsu_inc(gsu.r[14]));
+    gsu_codes(fx_scale_for_code[copy] + 10, 1);
+    gsu.r[6] = gsu_getbh(gsu.r[6]);
+    gsu_codes(fx_scale_for_code[copy] + 11, 1);
     return 1;
 }
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode fx_project_code[4][6] = {
-    {{0x01BAB9, 20}, {0x01BACD, 5}, {0x01BAD2, 8}, {0x01BB0D, 7}, {0x01BAD2, 4}, {0x01BADA, 7}},
-    {{0, 0}, {0x01BAE1, 5}, {0x01BAE6, 8}, {0x01BB0D, 7}, {0x01BAE6, 4}, {0x01BAEE, 10}},
-    {{0, 0}, {0x01BB51, 5}, {0x01BB56, 8}, {0, 0}, {0x01BB56, 4}, {0x01BB5E, 7}},
-    {{0, 0}, {0x01BB65, 5}, {0x01BB6A, 8}, {0, 0}, {0x01BB6A, 4}, {0x01BB72, 5}},
+static const GsuCode fx_project_code[6][5] = {
+    {{0x01BACD, 5}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0x01BAE1, 5}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0x01BACD, 5}, {0x01BAD2, 8}, {0x01BB0D, 7}, {0x01BAD2, 4}, {0x01BADA, 7}},
+    {{0x01BAE1, 5}, {0x01BAE6, 8}, {0x01BB0D, 7}, {0x01BAE6, 4}, {0x01BAEE, 10}},
+    {{0x01BB51, 5}, {0x01BB56, 8}, {0, 0}, {0x01BB56, 4}, {0x01BB5E, 7}},
+    {{0x01BB65, 5}, {0x01BB6A, 8}, {0, 0}, {0x01BB6A, 4}, {0x01BB72, 5}},
 };
 
 /* Projects R[c]: FMULT by the scale, plus the centre at `centre` (into
@@ -562,15 +569,14 @@ static const GsuCode fx_project_code[4][6] = {
    clear = inside). */
 static int fx_project(int c, uint16_t centre, uint16_t bound, int rb, int copy)
 {
-    gsu_codes(fx_project_code[copy], 1);
     gsu.r[0] = gsu_fmult(gsu.r[c], gsu.r[6]);
     gsu.r[5] = gsu_ldw(centre);
     gsu.r[c] = gsu_add(gsu.r[0], gsu.r[5], 0);
-    gsu_codes(fx_project_code[copy] + 1, 1);
+    gsu_codes(fx_project_code[copy], 1);
     gsu.r[rb] = gsu_ldw(bound);
     gsu.r[0] = gsu_sub(gsu.r[c], gsu.r[rb], 0);
     if (gsu.cy)
-        { gsu_codes(fx_project_code[copy] + 2, 2); return 0; } else { gsu_codes(fx_project_code[copy] + 4, 2); }
+        { gsu_codes(fx_project_code[copy] + 1, 2); return 0; } else { gsu_codes(fx_project_code[copy] + 3, 2); }
     gsu.r[0] = gsu_add(gsu.r[0], gsu.r[rb], 0);
     return 1;
 }
@@ -605,7 +611,7 @@ static void fx_line(void)
         do {
             int cs = gsu.cy;
 
-            fx_plot(GSU_COPY(4));
+            fx_plot(GSU_COPY(5));
             if (!cs) {
                 gsu_code(0x01BB9E, 2);
                 gsu.r[0] = gsu_add(gsu.r[0], gsu.r[3], 0);
@@ -627,7 +633,7 @@ static void fx_line(void)
         do {
             int cs = gsu.cy;
 
-            fx_plot(GSU_COPY(5));
+            fx_plot(GSU_COPY(6));
             if (!cs) {
                 gsu_code(0x01BBB9, 3);
                 gsu.r[0] = gsu_add(gsu.r[0], gsu.r[9], 0);
@@ -644,9 +650,9 @@ static void fx_line(void)
 }
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode fx_particle_code[2][19] = {
-    {{0x01BA26, 3}, {0x01BA35, 9}, {0x01BA76, 9}, {0x01BA7F, 10}, {0x01BA89, 11}, {0x01BA94, 9}, {0x01BA89, 5}, {0x01BA9C, 1}, {0x01BA9D, 4}, {0x01BB0D, 7}, {0x01BAD2, 4}, {0x01BADA, 7}, {0x01BAE6, 4}, {0x01BAEE, 10}, {0x01BB02, 6}, {0x01BB08, 1}, {0x01BB09, 4}, {0x01BB0D, 1}, {0x01BB0E, 6}},
-    {{0x01BA26, 3}, {0x01BA35, 9}, {0x01BA76, 9}, {0x01BA7F, 10}, {0, 0}, {0, 0}, {0x01BA89, 5}, {0x01BA9C, 5}, {0, 0}, {0x01BB0D, 7}, {0x01BAD2, 4}, {0x01BADA, 7}, {0x01BAE6, 4}, {0x01BAEE, 10}, {0x01BB02, 6}, {0x01BB08, 5}, {0, 0}, {0x01BB0D, 7}, {0, 0}},
+static const GsuCode fx_particle_code[2][24] = {
+    {{0x01BA26, 3}, {0x01BA35, 9}, {0x01BA76, 9}, {0x01BA7F, 10}, {0x01BA89, 11}, {0x01BA94, 9}, {0x01BA89, 5}, {0x01BA9C, 1}, {0x01BA9D, 4}, {0x01BAA1, 7}, {0x01BAAB, 7}, {0x01BB0D, 7}, {0x01BAB9, 20}, {0x01BAD2, 4}, {0x01BADA, 7}, {0x01BAE6, 8}, {0x01BB0D, 7}, {0x01BAE6, 4}, {0x01BAEE, 10}, {0x01BB02, 6}, {0x01BB08, 1}, {0x01BB09, 4}, {0x01BB0D, 1}, {0x01BB0E, 6}},
+    {{0x01BA26, 3}, {0x01BA35, 9}, {0x01BA76, 9}, {0x01BA7F, 10}, {0x01BA89, 11}, {0x01BA94, 9}, {0x01BA89, 5}, {0x01BA9C, 5}, {0, 0}, {0x01BAA1, 7}, {0x01BAAB, 7}, {0x01BB0D, 7}, {0x01BAB9, 20}, {0x01BAD2, 4}, {0x01BADA, 7}, {0x01BAE6, 8}, {0x01BB0D, 7}, {0x01BAE6, 4}, {0x01BAEE, 10}, {0x01BB02, 6}, {0x01BB08, 5}, {0, 0}, {0x01BB0D, 7}, {0, 0}},
 };
 
 /* Particle R11 (its record): moved by its deltas, projected and drawn. */
@@ -690,10 +696,10 @@ static void fx_particle(int copy)
     } else { gsu_codes(fx_particle_code[copy] + 6, 2); }
     gsu_codes(fx_particle_code[copy] + 8, 1);
     gsu_moves(gsu.r[6]);
-    if (gsu.s || (gsu_code(0x01BAA1, 7), gsu_code(0x01BAAB, 7), !fx_scale_for(GSU_COPY(1))))
-        { gsu_codes(fx_particle_code[copy] + 9, 1); return; }
-    if (!fx_project(1, 0x0034, 0x003A, 4, GSU_COPY(0)) || (gsu_codes(fx_particle_code[copy] + 10, 2), !fx_project(2, 0x0036, 0x003E, 5, GSU_COPY(1))))
-        return; else { gsu_codes(fx_particle_code[copy] + 12, 2); }
+    if (gsu.s || (gsu_codes(fx_particle_code[copy] + 9, 2), !fx_scale_for(GSU_COPY(0))))
+        { gsu_codes(fx_particle_code[copy] + 11, 1); return; } else { gsu_codes(fx_particle_code[copy] + 12, 1); }
+    if (!fx_project(1, 0x0034, 0x003A, 4, GSU_COPY(0)) || (gsu_codes(fx_particle_code[copy] + 13, 2), !fx_project(2, 0x0036, 0x003E, 5, GSU_COPY(1))))
+        { gsu_codes(fx_particle_code[copy] + 15, 2); return; } else { gsu_codes(fx_particle_code[copy] + 17, 2); }
     gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[0], 0);
     gsu.por = (uint8_t)gsu.r[0];
     gsu.r[0] = gsu_add(0x0002, gsu.r[11], 0);
@@ -706,18 +712,18 @@ static void fx_particle(int copy)
     gsu.r[0] = gsu_and(gsu.r[0], 0x0004);
     big = !gsu.z;
     if (!big) {
-        gsu_codes(fx_particle_code[copy] + 14, 1);
+        gsu_codes(fx_particle_code[copy] + 19, 1);
         fx_plot(GSU_COPY(0));
-        gsu_codes(fx_particle_code[copy] + 15, 1);
-        fx_plot(GSU_COPY(1));
+        gsu_codes(fx_particle_code[copy] + 20, 1);
+        fx_plot(GSU_COPY(0));
         gsu.r[2] = gsu_inc(gsu.r[2]);
         gsu.r[1] = gsu_dec(gsu.r[1]);
         gsu.r[1] = gsu_dec(gsu.r[1]);
-        gsu_codes(fx_particle_code[copy] + 16, 1);
-        fx_plot(GSU_COPY(2));
-        gsu_codes(fx_particle_code[copy] + 17, 1);
-        fx_plot(GSU_COPY(3));
-        gsu_codes(fx_particle_code[copy] + 18, 1);
+        gsu_codes(fx_particle_code[copy] + 21, 1);
+        fx_plot(GSU_COPY(0));
+        gsu_codes(fx_particle_code[copy] + 22, 1);
+        fx_plot(GSU_COPY(0));
+        gsu_codes(fx_particle_code[copy] + 23, 1);
         return;
     } else { gsu_code(0x01BB02, 4); gsu_code(0x01BB14, 4); }
     for (i = 0; i < 3; i++) {
@@ -729,7 +735,7 @@ static void fx_particle(int copy)
     gsu.r[6] = gsu.r[13];
     if (!fx_scale_for(GSU_COPY(2)))
         return;
-    if (!fx_project(3, 0x0034, 0x003A, 4, GSU_COPY(2)) || !fx_project(9, 0x0036, 0x003E, 5, GSU_COPY(3)))
+    if (!fx_project(3, 0x0034, 0x003A, 4, GSU_COPY(4)) || !fx_project(9, 0x0036, 0x003E, 5, GSU_COPY(5)))
         { gsu_code(0x01BB0D, 7); return; }
     fx_line();
 }
@@ -757,10 +763,10 @@ void abi_FxParticlesDraw(void)
     gsu_push(&gsu.r[10], gsu.r[11]);
     gsu.r[7] = gsu.r[2];
     gsu.r[0] = 0x0014;
-    gsu.rombr = 0x14;
+    gsu_code(0x01BA16, 14); gsu_cache(0xBA24);
+    gsu_romb(0x14);
     gsu.r[11] = 0x274A;
     gsu.r[12] = 0x0014;
-    gsu_code(0x01BA16, 14); gsu_cache(0xBA24);
     for (;;) {
         gsu_code(0x01BA24, 2);
         gsu.r[0] = gsu_ldw(gsu.r[11]);

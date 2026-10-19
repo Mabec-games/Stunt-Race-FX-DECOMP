@@ -7,16 +7,17 @@
 #include "gsu_ops.h"
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode fx_color_code[9][1] = {
+static const GsuCode fx_color_code[10][1] = {
     {{0, 0}},
     {{0x01F3D4, 12}},
+    {{0x01F4C2, 12}},
     {{0x01D5C2, 12}},
     {{0x01DCC6, 12}},
     {{0x01E34A, 12}},
     {{0x01E9CE, 12}},
     {{0x01F052, 12}},
     {{0x01F3D4, 2}},
-    {{0x01F4C2, 12}},
+    {{0x01D5C2, 2}},
 };
 
 /* COLOR: the plot colour from a byte, as the plot options shape it (high
@@ -33,21 +34,24 @@ static void fx_color(uint8_t v, int copy)
 }
 
 /* cyccopy: the copy each of the caller's copies calls */
-static const uint8_t fx_color_from_fx_blit[11] = {0, 1, 2, 0, 3, 4, 5, 6, 7, 8, 4};
+static const uint8_t fx_color_from_fx_blit[14] = {0, 1, 2, 3, 0, 4, 5, 6, 7, 8, 5, 9, 6, 7};
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode fx_blit_code[11][10] = {
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x01D5D8, 5}, {0, 0}, {0x01D644, 10}, {0x01D64E, 1}, {0, 0}, {0, 0}},
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x01F068, 5}, {0, 0}, {0, 0}, {0x01F3E0, 1}, {0, 0}, {0, 0}},
-    {{0x01D4E5, 5}, {0, 0}, {0, 0}, {0, 0}, {0x01D4EA, 5}, {0, 0}, {0, 0}, {0x01D5CE, 1}, {0x0180E3, 1}, {0x01D5CE, 4}},
-    {{0x01D5D3, 5}, {0, 0}, {0, 0}, {0, 0}, {0x01D5D8, 5}, {0, 0}, {0x01D642, 12}, {0x01D64E, 1}, {0x0180E3, 1}, {0x01D64E, 4}},
-    {{0x01D653, 5}, {0, 0}, {0, 0}, {0, 0}, {0x01D658, 5}, {0, 0}, {0, 0}, {0x01DCD2, 1}, {0x0180E3, 1}, {0x01DCD2, 4}},
-    {{0x01DCD7, 5}, {0, 0}, {0, 0}, {0, 0}, {0x01DCDC, 5}, {0, 0}, {0, 0}, {0x01E356, 1}, {0x0180E3, 1}, {0x01E356, 4}},
-    {{0x01E35B, 5}, {0, 0}, {0, 0}, {0, 0}, {0x01E360, 5}, {0, 0}, {0, 0}, {0x01E9DA, 1}, {0x0180E3, 1}, {0x01E9DA, 4}},
-    {{0x01E9DF, 5}, {0, 0}, {0, 0}, {0, 0}, {0x01E9E4, 5}, {0, 0}, {0, 0}, {0x01F05E, 1}, {0x0180E3, 1}, {0x01F05E, 4}},
-    {{0x01F063, 5}, {0, 0}, {0, 0}, {0, 0}, {0x01F068, 5}, {0x01F3D6, 10}, {0, 0}, {0x01F3E0, 1}, {0x0180E3, 1}, {0x01F3E0, 4}},
-    {{0x01D467, 4}, {0x01F3E4, 1}, {0xF3E5, 0}, {0x01F3E5, 5}, {0x01F3EA, 5}, {0, 0}, {0, 0}, {0x01F4CE, 1}, {0x01D46B, 4}, {0x01F4CE, 4}},
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x01DCDC, 5}, {0, 0}, {0, 0}, {0x01E356, 1}, {0, 0}, {0, 0}},
+static const GsuCode fx_blit_code[14][7] = {
+    {{0, 0}, {0x01D5D8, 5}, {0, 0}, {0x01D644, 10}, {0x01D64E, 1}, {0, 0}, {0, 0}},
+    {{0, 0}, {0x01F068, 5}, {0, 0}, {0, 0}, {0x01F3E0, 1}, {0, 0}, {0, 0}},
+    {{0, 0}, {0x01F3EA, 5}, {0, 0}, {0, 0}, {0x01F4CE, 1}, {0, 0}, {0, 0}},
+    {{0x01D4E5, 5}, {0x01D4EA, 5}, {0, 0}, {0, 0}, {0x01D5CE, 1}, {0x0180E3, 1}, {0x01D5CE, 4}},
+    {{0x01D5D3, 5}, {0x01D5D8, 5}, {0, 0}, {0x01D642, 12}, {0x01D64E, 1}, {0x0180E3, 1}, {0x01D64E, 4}},
+    {{0x01D653, 5}, {0x01D658, 5}, {0, 0}, {0, 0}, {0x01DCD2, 1}, {0x0180E3, 1}, {0x01DCD2, 4}},
+    {{0x01DCD7, 5}, {0x01DCDC, 5}, {0, 0}, {0, 0}, {0x01E356, 1}, {0x0180E3, 1}, {0x01E356, 4}},
+    {{0x01E35B, 5}, {0x01E360, 5}, {0, 0}, {0, 0}, {0x01E9DA, 1}, {0x0180E3, 1}, {0x01E9DA, 4}},
+    {{0x01E9DF, 5}, {0x01E9E4, 5}, {0, 0}, {0, 0}, {0x01F05E, 1}, {0x0180E3, 1}, {0x01F05E, 4}},
+    {{0x01F063, 5}, {0x01F068, 5}, {0x01F3D6, 10}, {0, 0}, {0x01F3E0, 1}, {0x0180E3, 1}, {0x01F3E0, 4}},
+    {{0, 0}, {0x01DCDC, 5}, {0, 0}, {0, 0}, {0x01E356, 1}, {0, 0}, {0, 0}},
+    {{0, 0}, {0x01D4EA, 5}, {0x01D5C4, 10}, {0, 0}, {0x01D5CE, 1}, {0, 0}, {0, 0}},
+    {{0, 0}, {0x01E360, 5}, {0, 0}, {0, 0}, {0x01E9DA, 1}, {0, 0}, {0, 0}},
+    {{0, 0}, {0x01E9E4, 5}, {0, 0}, {0, 0}, {0x01F05E, 1}, {0, 0}, {0, 0}},
 };
 
 /* The blit every bitmap routine here is: CACHE; a LOOP of ROWS rows (R13
@@ -59,13 +63,13 @@ static const GsuCode fx_blit_code[11][10] = {
    LOOP's delay slot, moves down a line. Returns with MOVE R15,R11. */
 static void fx_blit(uint16_t rows, int bytes, uint16_t skip, uint16_t loop, int copy)
 {
-    gsu_codes(fx_blit_code[copy], 4);
+    gsu_codes(fx_blit_code[copy], 1);
     int more;
 
     gsu.r[12] = rows;
     gsu.r[13] = loop;
     do {
-        gsu_codes(fx_blit_code[copy] + 4, 1);
+        gsu_codes(fx_blit_code[copy] + 1, 1);
         int b, p;
 
         gsu.r[1] = gsu.r[4];
@@ -79,16 +83,16 @@ static void fx_blit(uint16_t rows, int bytes, uint16_t skip, uint16_t loop, int 
                 gsu_plot((uint8_t)gsu.r[1], (uint8_t)gsu.r[2]);
                 gsu.r[1]++;
                 gsu.r[3] = gsu_ror(gsu_ror(gsu.r[3]));
-                gsu_codes(fx_blit_code[copy] + 5, 1);
+                gsu_codes(fx_blit_code[copy] + 2, 1);
             }
         }
-        gsu_codes(fx_blit_code[copy] + 6, 1);
+        gsu_codes(fx_blit_code[copy] + 3, 1);
         gsu.r[0] = skip;
         gsu_r14(gsu_add(gsu.r[14], gsu.r[0], 0));
         more = gsu_count_down(&gsu.r[12]);
         gsu.r[2] = gsu_inc(gsu.r[2]);       /* LOOP's delay slot */
-    } while (gsu_codes_loop(fx_blit_code[copy] + 7, 1, more));
-    gsu_codes(fx_blit_code[copy] + 8, 2);
+    } while (gsu_codes_loop(fx_blit_code[copy] + 4, 1, more));
+    gsu_codes(fx_blit_code[copy] + 5, 2);
 }
 
 /*
@@ -106,7 +110,9 @@ static void fx_blit(uint16_t rows, int bytes, uint16_t skip, uint16_t loop, int 
  */
 void FxDrawBitmap16x24(void)
 {
-    fx_blit(24, 4, 0x1C, 0xF3EA, GSU_COPY(0));
+    gsu_code(0x01D467, 4); gsu_code(0x01F3E4, 1); gsu_cache(0xF3E5); gsu_code(0x01F3E5, 5);
+    fx_blit(24, 4, 0x1C, 0xF3EA, GSU_COPY(2));
+    gsu_code(0x01D46B, 4); gsu_code(0x01F4CE, 4);
 }
 
 void abi_FxDrawBitmap16x24(void)
@@ -124,7 +130,7 @@ void abi_FxDrawBitmap16x24(void)
  */
 void abi_FxDrawBitmap16x32(void)
 {
-    fx_blit(32, 4, 0x1C, 0xD4EA, GSU_COPY(2));
+    fx_blit(32, 4, 0x1C, 0xD4EA, GSU_COPY(3));
 }
 
 /*
@@ -150,7 +156,7 @@ void abi_FxDrawBitmap8x16(void)
  */
 void abi_FxDrawBitmap120x48(void)
 {
-    fx_blit(48, 30, 0x02, 0xD658, GSU_COPY(4));
+    fx_blit(48, 30, 0x02, 0xD658, GSU_COPY(5));
 }
 
 /*
@@ -163,7 +169,7 @@ void abi_FxDrawBitmap120x48(void)
  */
 void abi_FxDrawBitmap120x24(void)
 {
-    fx_blit(24, 30, 0x02, 0xDCDC, GSU_COPY(5));
+    fx_blit(24, 30, 0x02, 0xDCDC, GSU_COPY(6));
 }
 
 /*
@@ -176,7 +182,7 @@ void abi_FxDrawBitmap120x24(void)
  */
 void abi_FxDrawBitmap120x32(void)
 {
-    fx_blit(32, 30, 0x02, 0xE360, GSU_COPY(6));
+    fx_blit(32, 30, 0x02, 0xE360, GSU_COPY(7));
 }
 
 /*
@@ -189,7 +195,7 @@ void abi_FxDrawBitmap120x32(void)
  */
 void abi_FxDrawBitmap120x16(void)
 {
-    fx_blit(16, 30, 0x02, 0xE9E4, GSU_COPY(7));
+    fx_blit(16, 30, 0x02, 0xE9E4, GSU_COPY(8));
 }
 
 /*

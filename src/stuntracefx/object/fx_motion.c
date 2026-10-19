@@ -16,24 +16,14 @@ typedef struct {
     uint16_t r0, r2, r3, r5;
 } FxMoveRegs;
 
-/* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode move_word_code[4][3] = {
-    {{0, 0}, {0, 0}, {0x049643, 10}},
-    {{0, 0}, {0, 0}, {0, 0}},
-    {{0x0495CF, 6}, {0, 0}, {0, 0}},
-    {{0x0495CF, 6}, {0x049632, 2}, {0, 0}},
-};
-
 /* One word: the rate at *rate, halved `halvings` times with DIV2, added to
    the word at *word; both pointers step on. */
 static void move_word(FxMoveRegs *g, int halvings, int copy)
 {
-    gsu_codes(move_word_code[copy], 2);
     int i;
 
     g->r0 = gsu_ldw(g->r5);
     g->r5 = gsu_inc(gsu_inc(g->r5));
-    gsu_codes(move_word_code[copy] + 2, 1);
     for (i = 0; i < halvings; i++)
         g->r0 = gsu_div2(g->r0);
     g->r3 = gsu_ldw(g->r2);
@@ -43,15 +33,9 @@ static void move_word(FxMoveRegs *g, int halvings, int copy)
 }
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode FxRecordMove_code[8][15] = {
-    {{0, 0}, {0, 0}, {0x0495CF, 6}, {0, 0}, {0x0495D5, 2}, {0x049632, 2}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x049607, 9}, {0x04965E, 9}, {0, 0}, {0, 0}, {0, 0}},
-    {{0x04912E, 6}, {0x0495BE, 17}, {0x0495CF, 6}, {0x049632, 2}, {0, 0}, {0, 0}, {0x049134, 5}, {0x0491FF, 3}, {0x04965E, 7}, {0x049680, 3}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-    {{0, 0}, {0, 0}, {0x0495CF, 6}, {0x049632, 2}, {0, 0}, {0, 0}, {0x04965E, 9}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04967F, 4}, {0x04B242, 3}, {0, 0}},
-    {{0, 0}, {0, 0}, {0x0495CF, 6}, {0, 0}, {0x0495D5, 2}, {0x049632, 2}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x049607, 9}, {0x04965E, 9}, {0, 0}, {0, 0}, {0, 0}},
-    {{0, 0}, {0, 0}, {0x0495CF, 8}, {0, 0}, {0, 0}, {0, 0}, {0x049607, 9}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04962E, 4}, {0x049680, 3}, {0x04B242, 3}},
-    {{0, 0}, {0, 0}, {0x0495CF, 6}, {0x049632, 2}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-    {{0, 0}, {0, 0}, {0x0495CF, 6}, {0x049632, 2}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+static const GsuCode FxRecordMove_code[2][6] = {
+    {{0x0495CF, 6}, {0, 0}, {0x0495D5, 2}, {0x049632, 2}, {0x049607, 9}, {0x04965E, 9}},
+    {{0x0495CF, 6}, {0x049632, 2}, {0x0495D5, 2}, {0, 0}, {0x049607, 9}, {0x04965E, 9}},
 };
 
 /*
@@ -70,7 +54,6 @@ static const GsuCode FxRecordMove_code[8][15] = {
  */
 FxMoveRegs FxRecordMove(uint16_t rec, uint16_t kind, int copy)
 {
-    gsu_codes(FxRecordMove_code[copy], 2);
     FxMoveRegs g;
     int halve, i;
 
@@ -79,13 +62,13 @@ FxMoveRegs FxRecordMove(uint16_t rec, uint16_t kind, int copy)
     g.r3 = gsu_ldw(gsu_add(REC_FLAGS1C, rec, 0));
     g.r0 = gsu_and(0x0008, g.r3);
     halve = !gsu.z;
-    gsu_codes(FxRecordMove_code[copy] + 2, 2);
+    gsu_codes(FxRecordMove_code[copy], 2);
     for (i = 0; i < 3; i++)
-        { move_word(&g, halve ? (gsu_codes(FxRecordMove_code[copy] + 4, 1), 4) : (gsu_codes(FxRecordMove_code[copy] + 5, 1), 3), GSU_COPY(0)); gsu_codes(FxRecordMove_code[copy] + 6, 4); }
+        { move_word(&g, halve ? (gsu_codes(FxRecordMove_code[copy] + 2, 1), 4) : (gsu_codes(FxRecordMove_code[copy] + 3, 1), 3), GSU_COPY(0)); }
     g.r0 = gsu_sub(kind, 6, 0);
     if (gsu.z)
         for (i = 0; i < 3; i++)
-            { move_word(&g, halve ? (gsu_codes(FxRecordMove_code[copy] + 10, 1), 1) : (gsu_codes(FxRecordMove_code[copy] + 11, 1), 0), GSU_COPY(1)); gsu_codes(FxRecordMove_code[copy] + 12, 3); }
+            { move_word(&g, halve ? (gsu_codes(FxRecordMove_code[copy] + 4, 1), 1) : (gsu_codes(FxRecordMove_code[copy] + 5, 1), 0), GSU_COPY(1)); }
     return g;
 }
 

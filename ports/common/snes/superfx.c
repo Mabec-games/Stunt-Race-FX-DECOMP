@@ -310,10 +310,10 @@ void gsu_buffer(int what)
 {
     if (what == 0)
         gsuclk_r14(&clk);          /* GSU_B_R14 */
-    else if (what == 1)
-        gsuclk_rombuf(&clk);       /* GSU_B_ROMBUF */
-    else
+    else if (what == 2)
         gsuclk_rambuf(&clk);       /* GSU_B_RAMBUF */
+    else
+        gsuclk_rombuf(&clk);       /* GSU_B_ROMBUF, GSU_B_ROMB */
     clk_sync();
 }
 

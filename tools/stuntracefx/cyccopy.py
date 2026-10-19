@@ -191,9 +191,22 @@ def main(argv):
         if not slots:
             continue
         rep = {}
+        members = collections.defaultdict(list)
         for ci in ran[f]:
             rep.setdefault(index[(f, ci)], ci)
-        per = {p: [items(cs.get(rep[c], {}).get(p, {})) for c in range(k)] for p in slots}
+            members[index[(f, ci)]].append(ci)
+        per = {}
+        for p in slots:
+            # a copy that never reached the place: the code the copies that
+            # did reach it have most often there
+            seen = collections.Counter()
+            for c in range(k):
+                for ci in members[c]:
+                    if (p + CTX * ci) in reached:
+                        seen[tuple(items(cs.get(ci, {}).get(p, {})))] += 1
+            common = list(seen.most_common(1)[0][0]) if seen else []
+            per[p] = [items(cs.get(rep[c], {}).get(p, {})) if any((p + CTX * ci) in reached for ci in members[c])
+                      else common for c in range(k)]
         width = {p: max(len(x) for x in per[p]) for p in slots}
         tname = '%s_code' % names[f][1]
         off = 0

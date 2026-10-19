@@ -60,7 +60,6 @@ uint16_t FxAtan2(uint16_t y, uint16_t x)
         gsu_code(0x018218, 14);
         angle = 0x2000;
     } else {
-        gsu_code(0x0181CB, 7); gsu_code(0x018218, 7); gsu_code(0x018226, 3); gsu_code(0x018230, 38);
         uint16_t small = ax, large = ay, rem, ratio, at;
         int x_larger = !((int16_t)ax < (int16_t)ay);
 
@@ -71,7 +70,7 @@ uint16_t FxAtan2(uint16_t y, uint16_t x)
         } else { gsu_code(0x018256, 6); }
         ratio = FxDivide32By16(small >> 2, (uint16_t)(small << 14), large, &rem, GSU_COPY(0));
         at = (uint16_t)(FX_ATAN_TABLE + ((ratio >> 5) & 0xFFFE));
-        gsu.rombr = 0;
+        gsu_romb(0);
         gsu_r14(at);
         angle = gsu_getb();
         gsu_r14((uint16_t)(at + 1));
