@@ -173,7 +173,7 @@ static const GsuCode unpack_bit_fetch[4][5] = {
     {{0x01d0b3, 10}, {0x01d0c2, 1}, {0x01d0c2, 1}, {0x01d0b3, 15}, {0x01d0db, 1}},
 };
 
-static uint8_t unpack_bit(uint16_t ret, int copy)
+static void unpack_bit(uint16_t ret, int copy)
 {
     gsu.r[2] = gsu_lsr(gsu.r[2]);
     gsu.r[3] = gsu_ror(gsu.r[3]);
@@ -185,7 +185,6 @@ static uint8_t unpack_bit(uint16_t ret, int copy)
         abi_FxUnpackRefill();
         gsu_codes(unpack_bit_fetch[copy] + 2, 1);
     } else { gsu_codes(unpack_bit_fetch[copy], 2); }
-    return gsu.cy;
 }
 
 /* A word from the ROM bytes at R14 - 1 (low) and R14 - 2 (high), R14
@@ -288,8 +287,9 @@ static void unpack_copy_code(void)
             /* Length 3: offset of 8 bits after a 1, else 14. */
             gsu.r[12] = 8;
             gsu_code(0x01d03d, 17); gsu_code(0x01d086, 1);
-            if (!unpack_bit(0xD096, GSU_COPY(1)))
-                { gsu.r[12] = 0x0E; gsu_code(0x01d098, 2); gsu_code(0x01d0c7, 1); } else { gsu_code(0x01d098, 7); gsu_code(0x01d0c7, 1); }
+            unpack_bit(0xD096, GSU_COPY(1));
+            if (!gsu.cy)
+                { gsu.r[12] = 0x0E; gsu_code(0x01d098, 7); gsu_code(0x01d0c7, 1); } else { gsu_code(0x01d098, 2); gsu_code(0x01d0c7, 1); }
             return;
         } else { gsu_code(0x01d03d, 17); }
         gsu_code(0x01d04e, 1);
@@ -318,13 +318,16 @@ static void unpack_copy_code(void)
     /* Length 4 or more: offset of 16 bits after a 0, 8 after 1 1, 12
        after 1 0. */
     gsu.r[12] = 0x10;
-    if (!unpack_bit(0xD0AF, GSU_COPY(2)))
+    unpack_bit(0xD0AF, GSU_COPY(2));
+    if (!gsu.cy)
         { gsu_code(0x01d0b0, 2); gsu_code(0x01d0c7, 1); return; } else { gsu_code(0x01d0b0, 2); }
     gsu.r[12] = 8;
     gsu_code(0x01d0b2, 1);
-    if (unpack_bit(0xD0C2, GSU_COPY(3)))
-        { gsu_code(0x01d0c3, 5); return; } else { gsu_code(0x01d0c3, 2); gsu_code(0x01d0c7, 1); }
+    unpack_bit(0xD0C2, GSU_COPY(3));
+    if (gsu.cy)
+        { gsu_code(0x01d0c3, 2); gsu_code(0x01d0c7, 1); return; } else { gsu_code(0x01d0c3, 2); }
     gsu.r[12] = 0x0C;
+    gsu_code(0x01d0c5, 3);
 }
 
 /*
@@ -389,7 +392,8 @@ void FxUnpackProgram(void)
             gsu_sub(gsu.r[0], gsu.r[4], 0);
             if (gsu.z) {
                 gsu_code(0x01cf80, 5); gsu_code(0x01cf89, 8);
-                if (unpack_bit(0xCF9E, GSU_COPY(0))) {
+                unpack_bit(0xCF9E, GSU_COPY(0));
+                if (gsu.cy) {
                     gsu_code(0x01cf9f, 3);
                     gsu.r[4] = unpack_bits(0x0A, 0xCFA8, GSU_COPY(1));
                     gsu_moves(gsu.r[4]);
