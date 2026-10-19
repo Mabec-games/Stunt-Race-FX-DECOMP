@@ -19,7 +19,8 @@ between two of the C's bus accesses is a sum of what the probes passed
 stand for: cycsolve.py finds those amounts from the lockstep run.
 
 OUTDIR/probes.csv lists each probe: id, file, line, column, the kind of
-place, its offset in the file. The tree under src/ is not touched. The
+place, its offset in the file, and for an access the function called
+(with * when its last argument is not a number). The tree under src/ is not touched. The
 positions come from clang's syntax tree (-ast-dump=json); code inside
 macros is left as it is.
 """
@@ -27,6 +28,7 @@ import csv, glob, json, os, subprocess, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SRC = os.path.join(ROOT, 'src', 'stuntracefx')
+TIMING = ('cyc', 'cyc_then')      # machine.h's stated time: no access, no probes
 CONTROL = {'IfStmt', 'WhileStmt', 'ForStmt', 'DoStmt', 'SwitchStmt', 'LabelStmt', 'CaseStmt', 'DefaultStmt'}
 
 
@@ -77,6 +79,11 @@ def last_param(node):
     return last
 
 
+def number_type(t):
+    """A parameter type a number passes through unchanged (cyc_then's)."""
+    return bool(t) and '*' not in t and not t.startswith(('struct', 'const struct')) and not t[:1].isupper()
+
+
 def annotate(node, state):
     """Every location dict in document order gets '_file': clang prints a
     file only where it changes from the last location printed."""
@@ -103,6 +110,12 @@ class Walker:
         self.fn = None
         self.cur_file = None
         self.ins = []          # (offset, order, text, kind)
+        # for cycwrite.py: where each probe stands, without changing what
+        # is inserted. meta[i] belongs to ins[i] (a probe's own piece).
+        self.meta = {}
+        self.anchor = None     # the statement being walked: [start, needs braces, end, accesses so far]
+        self.unsafe = 0        # inside a condition that is not always worked out where its statement starts
+        self.depth = 0         # bodies wrapped so far (nesting)
 
     def _file_of(self, loc):
         if not loc:
@@ -157,29 +170,41 @@ class Walker:
                 end = j
         return b['offset'], end
 
+    def _meta(self, **m):
+        m['fn'] = self.fn
+        self.meta[len(self.ins) - 1] = m
+
+    def _stmt_end(self, end):
+        # a statement's range ends at its last token; take the ';' too
+        while end < len(self.text) and self.text[end] in ' \t':
+            end += 1
+        if end < len(self.text) and self.text[end] == ';':
+            end += 1
+        return end
+
     def probe_before(self, node, kind):
         span = self.mine(node)
         if span:
             self.ins.append((span[0], 1, 'CYC_PROBE(@); ', kind))
+            self._meta(form='stmt', at=span[0])
 
     def wrap(self, node, kind, close=' }', close_kind=None):
         """A body that is a single statement: { probe; it }"""
         span = self.mine(node)
         if not span:
             return
-        end = span[1]
-        # a statement's range ends at its last token; take the ';' too
-        while end < len(self.text) and self.text[end] in ' \t':
-            end += 1
-        if end < len(self.text) and self.text[end] == ';':
-            end += 1
+        end = self._stmt_end(span[1])
         self.ins.append((span[0], 1, '{ CYC_PROBE(@); ', kind))
+        self._meta(form='wrap', at=span[0], end=end, depth=self.depth)
         self.ins.append((end, 0, close, close_kind))
+        if close_kind:
+            self._meta(form='skip', at=end, wrapped=(span[0], end), depth=self.depth)
 
     def expr_probe(self, node, kind):
         span = self.mine(node)
         if span:
             self.ins.append((span[0], 1, '(CYC_PROBE(@), ', kind))
+            self._meta(form='expr', at=span[0], end=span[1])
             self.ins.append((span[1], 0, ')', None))
 
     def after_arg(self, call, node, typ):
@@ -190,6 +215,11 @@ class Walker:
         if span:
             self.ins.append((span[0], 1, '({ %s cyc_v_ = (' % typ, None))
             self.ins.append((span[1], 0, '); CYC_PROBE(@); cyc_v_; })', 'access'))
+            # whether a statement before can stand for it is known once its
+            # arguments are walked (walk_stmt sets 'first')
+            self._meta(form='arg', at=span[0], end=span[1], typ=typ, anchor=self.anchor, unsafe=self.unsafe > 0,
+                       callee=callee(call.get('inner', [{}])[0]))
+            return len(self.ins) - 1
 
     def body(self, node, kind):
         if node is None:
@@ -205,6 +235,7 @@ class Walker:
         if span:
             # just inside the brace: covers an empty block too
             self.ins.append((span[0] + 1, 1, ' CYC_PROBE(@);', kind))
+            self._meta(form='stmt', at=span[0] + 1)
         prev = None
         for k in kids:
             self.visit_loc(k)
@@ -219,6 +250,7 @@ class Walker:
             # a block that ends in a control statement: its paths join
             # again at the closing brace
             self.ins.append((span[1] - 1, 1, 'CYC_PROBE(@); ', 'join'))
+            self._meta(form='stmt', at=span[1] - 1)
 
     def visit_loc(self, node):
         self._file_of(node.get('loc'))
@@ -229,6 +261,8 @@ class Walker:
         k = node.get('kind')
         inner = node.get('inner', [])
         if k == 'FunctionDecl':
+            if node.get('name') in TIMING:
+                return                         # stated time, no probes of its own
             body = next((c for c in inner if c.get('kind') == 'CompoundStmt'), None)
             for c in inner:
                 if c is not body:
@@ -240,7 +274,7 @@ class Walker:
                 self._file_of(body.get('range', {}).get('begin'))
                 self.compound(body, 'function')
                 for c in body.get('inner', []):
-                    self.walk_stmt(c)
+                    self.walk_kid(c)
             return
         for c in inner:
             self.visit_loc(c)
@@ -268,18 +302,23 @@ class Walker:
                 span = self.mine(then)
                 if els is None and span and self.mine(node):
                     self.ins.append((span[1], 0, ' else { CYC_PROBE(@); }', 'skip'))
+                    self._meta(form='skip', at=span[1], wrapped=span, depth=self.depth)
             self.walk_children(then)
             if els is not None:
                 if els.get('kind') == 'IfStmt':
-                    self.walk_stmt(els)
+                    self.walk_body(els)
                 else:
                     self.body(els, 'else')
                     self.walk_children(els)
             return
         if k in ('WhileStmt', 'ForStmt'):
             body = inner[-1] if inner else None
-            for c in inner[:-1]:
-                self.walk_stmt(c)
+            for i, c in enumerate(inner[:-1]):
+                # a for's first part runs once, before the loop
+                if k == 'ForStmt' and i == 0:
+                    self.walk_stmt(c)
+                else:
+                    self.walk_unsafe(c)
             self.body(body, 'loop')
             self.walk_children(body)
             return
@@ -288,19 +327,22 @@ class Walker:
             self.body(body, 'loop')
             self.walk_children(body)
             for c in inner[1:]:
-                self.walk_stmt(c)
+                self.walk_unsafe(c)
             return
         if k in ('CaseStmt', 'DefaultStmt', 'LabelStmt'):
             sub = inner[-1] if inner else None
             if sub is not None and sub.get('kind') not in ('CaseStmt', 'DefaultStmt'):
                 self.probe_before(sub, {'CaseStmt': 'case', 'DefaultStmt': 'case', 'LabelStmt': 'label'}[k])
             if sub is not None:
-                self.walk_stmt(sub)
+                if sub.get('kind') in ('CaseStmt', 'DefaultStmt'):
+                    self.walk_stmt(sub)
+                else:
+                    self.walk_kid(sub)
             return
         if k == 'CompoundStmt':
             self.compound(node, 'block')
             for c in inner:
-                self.walk_stmt(c)
+                self.walk_kid(c)
             return
         if k == 'CallExpr' and inner:
             name = callee(inner[0])
@@ -312,24 +354,32 @@ class Walker:
                 for c in inner[:-1] if args else inner:
                     self.walk_stmt(c)
                 if args and typ:
-                    self.after_arg(node, args[-1], typ)
+                    at = self.after_arg(node, args[-1], typ)
                     self.walk_stmt(args[-1])
+                    if at is not None:
+                        self.meta[at]['first'] = not self.anchor or self.anchor[3] == 0
+                    if self.anchor:
+                        self.anchor[3] += 1
                 else:
+                    if self.anchor:
+                        self.anchor[3] += 1
                     self.expr_probe(node, 'access')
+                    if self.ins and self.ins[-1][2] == ')' and len(self.ins) - 2 in self.meta:
+                        self.meta[len(self.ins) - 2]['callee'] = name
                     if args:
                         self.walk_stmt(args[-1])
                 return
         if k == 'BinaryOperator' and node.get('opcode') in ('&&', '||'):
             self.walk_stmt(inner[0])
             self.expr_probe(inner[1], node['opcode'])
-            self.walk_stmt(inner[1])
+            self.walk_unsafe(inner[1])
             return
         if k == 'ConditionalOperator':
             self.walk_stmt(inner[0])
             self.expr_probe(inner[1], '?')
-            self.walk_stmt(inner[1])
+            self.walk_unsafe(inner[1])
             self.expr_probe(inner[2], ':')
-            self.walk_stmt(inner[2])
+            self.walk_unsafe(inner[2])
             return
         for c in inner:
             self.walk_stmt(c)
@@ -339,12 +389,39 @@ class Walker:
             return
         if node.get('kind') == 'CompoundStmt':
             for c in node.get('inner', []):
-                self.walk_stmt(c)
+                self.walk_kid(c)
         else:
-            self.walk_stmt(node)
+            self.walk_body(node)
+
+    def walk_kid(self, node):
+        """A statement of a block: code before it runs once, as it does."""
+        span = self.mine(node)
+        old = self.anchor
+        self.anchor = [span[0], False, None, 0] if span else None
+        self.walk_stmt(node)
+        self.anchor = old
+
+    def walk_body(self, node):
+        """A body that is one statement: code before it needs braces."""
+        span = self.mine(node)
+        old = self.anchor
+        self.anchor = [span[0], True, self._stmt_end(span[1]), 0] if span else None
+        self.depth += 1
+        self.walk_stmt(node)
+        self.depth -= 1
+        self.anchor = old
+
+    def walk_unsafe(self, node):
+        """Code not always reached where its statement starts (a loop's
+        test, the right of && or ||, an arm of ?:)."""
+        self.unsafe += 1
+        self.walk_stmt(node)
+        self.unsafe -= 1
 
 
-def instrument(path, out, next_id, rows, pure, calls=None):
+def walk_file(path, pure, calls=None):
+    """A file's insertions, in the order they go in: (index in w.ins,
+    (offset, order, text, kind)); and the walker (w.meta by that index)."""
     text = open(path).read()
     w = Walker(path, text, pure, calls)
     tree = ast(path)
@@ -353,15 +430,23 @@ def instrument(path, out, next_id, rows, pure, calls=None):
         w.visit_loc(node)
     # every insertion kept (two closings can share an offset); openers at an
     # offset go after the closings there, in the order they were found
-    ins = [t for _, t in sorted(enumerate(w.ins), key=lambda it: (it[1][0], it[1][1], it[0] if it[1][1] else -it[0]))]
+    return text, w, sorted(enumerate(w.ins), key=lambda it: (it[1][0], it[1][1], it[0] if it[1][1] else -it[0]))
+
+
+def instrument(path, out, next_id, rows, pure, calls=None):
+    text, w, order = walk_file(path, pure, calls)
     pieces, at = [], 0
     rel = os.path.relpath(path, ROOT)
-    for off, _order, s, kind in ins:
+    for i, (off, _order, s, kind) in order:
         pieces.append(text[at:off])
         if '@' in s:
             line = text.count('\n', 0, off) + 1
             col = off - text.rfind('\n', 0, off)
-            rows.append((next_id, rel, line, col, kind, off))
+            m = w.meta.get(i, {})
+            who = m.get('callee') or ''
+            if who and m.get('form') == 'arg' and not number_type(m.get('typ', '')):
+                who += '*'
+            rows.append((next_id, rel, line, col, kind, off, who))
             s = s.replace('@', str(next_id))
             next_id += 1
         pieces.append(s)
@@ -371,6 +456,38 @@ def instrument(path, out, next_id, rows, pure, calls=None):
     with open(out, 'w') as f:
         f.write('#include "cycprobe.h"\n' + ''.join(pieces))
     return next_id
+
+
+def pure_functions(heads):
+    """The headers' inline functions that reach no bus access (nor any
+    function outside the headers): a call to one needs no probe."""
+    calls = {}
+    for h in heads:
+        Walker_scan(h, calls)
+    pure = set(TIMING)                     # time stated, no access
+    while True:
+        more = {f for f, cs in calls.items() if f not in pure and cs <= pure}
+        if not more:
+            break
+        pure |= more
+    return pure
+
+
+def all_probes():
+    """Every file's probes as main() numbers them (the headers, then every
+    .c): (path, text, [(id, kind, meta)])."""
+    heads = sorted(glob.glob(os.path.join(SRC, 'include', '*.h')))
+    files = sorted(glob.glob(os.path.join(SRC, '**', '*.c'), recursive=True))
+    pure = pure_functions(heads)
+    nid = 1
+    for path in heads + files:
+        text, w, order = walk_file(path, pure)
+        got = []
+        for i, (_off, _order, s, kind) in order:
+            if '@' in s:
+                got.append((nid, kind, w.meta.get(i)))
+                nid += 1
+        yield path, text, got
 
 
 def Walker_scan(path, calls):
@@ -409,18 +526,9 @@ def main(argv):
     rows, nid = [], 1
     inc = os.path.join(outdir, 'include')
     os.makedirs(inc, exist_ok=True)
-    # the headers' inline functions first: a call to one that reaches no
-    # bus access (nor any function outside the headers) needs no probe
-    calls = {}
+    # the headers' inline functions first
     heads = sorted(glob.glob(os.path.join(SRC, 'include', '*.h')))
-    for h in heads:
-        Walker_scan(h, calls)
-    pure = set()
-    while True:
-        more = {f for f, cs in calls.items() if f not in pure and cs <= pure}
-        if not more:
-            break
-        pure |= more
+    pure = pure_functions(heads)
     for h in heads:
         nid = instrument(h, os.path.join(inc, os.path.basename(h)), nid, rows, pure)
     for f in files:
@@ -431,7 +539,7 @@ def main(argv):
                 'void sfx_probe(unsigned id);\n#define CYC_PROBE(n) sfx_probe(n)\n#endif\n')
     with open(os.path.join(outdir, 'probes.csv'), 'w', newline='') as f:
         wr = csv.writer(f)
-        wr.writerow(['id', 'file', 'line', 'col', 'kind', 'offset'])
+        wr.writerow(['id', 'file', 'line', 'col', 'kind', 'offset', 'callee'])
         wr.writerows(rows)
     print('cycprobe: %d probes in %d files under %s' % (len(rows), len(files), os.path.relpath(outdir, ROOT)))
     return 0

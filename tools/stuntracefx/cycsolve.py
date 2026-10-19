@@ -147,12 +147,12 @@ def eliminate(rows):
     return cost, contra
 
 
-def program(rows, kind):
+def program(rows, weight):
     """The costs as an integer program (scipy's HiGHS): every cost a whole
     number of clocks, none below 0, each equation met or its miss counted
     (slack, weighted far above any cost), and where the equations leave a
-    choice the cost goes to the access site, not the block probes around
-    it. Returns ({unknown: cost}, [rows missed])."""
+    choice the cost goes where weight(unknown) is least. Returns
+    ({unknown: cost}, [rows missed])."""
     import numpy as np
     import scipy.sparse as sp
     from scipy.optimize import Bounds, LinearConstraint, milp
@@ -166,7 +166,7 @@ def program(rows, kind):
     A = sp.csr_matrix((V, (I, J)), shape=(ne, nv))
     full = sp.hstack([A, sp.identity(ne), -sp.identity(ne)]).tocsr()
     b = np.array([g for _, g in rows], dtype=float)
-    w = np.array([0.0 if p & (END | SITE) or kind(p) == 'access' else 1.0 for p in unknowns])
+    w = np.array([float(weight(p)) for p in unknowns])
     res = milp(np.concatenate([w, np.full(2 * ne, 1000.0)]), constraints=LinearConstraint(full, b, b),
                integrality=np.concatenate([np.ones(nv), np.zeros(2 * ne)]), bounds=Bounds(0, np.inf))
     if res.status != 0:
@@ -174,6 +174,44 @@ def program(rows, kind):
     x = np.round(res.x[:nv]).astype(int)
     miss = res.x[nv:nv + ne] + res.x[nv + ne:]
     return {p: int(x[i]) for i, p in enumerate(unknowns)}, [rows[e] for e in range(ne) if miss[e] > 1e-6]
+
+
+def header_functions():
+    """The inline functions of the decomp's headers (fixed code that every
+    caller shares)."""
+    import glob, os, re
+    inc = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'src', 'stuntracefx', 'include')
+    names = set()
+    for h in glob.glob(os.path.join(inc, '*.h')):
+        names |= set(re.findall(r'static inline [\w\s\*]+?\b(\w+)\s*\(', open(h).read()))
+    return names
+
+
+HEADERS = None
+
+
+def place_weight(p, info):
+    """Where a cost the equations leave free goes, least first: the C's
+    bus accesses and its calls to the headers' access helpers (the time
+    before an access is the caller's); then the blocks; the calls into
+    other routines; the routines' starts (shared by every caller); calls
+    whose last argument is no number (cycwrite.py can state no time there
+    inside an expression); last, code inside the headers' helpers, which
+    every caller shares."""
+    global HEADERS
+    if p & (END | SITE):
+        return 0
+    r = info[p]
+    if '/include/' in r['file']:
+        return 50
+    if r['kind'] == 'access':
+        who = r.get('callee') or ''
+        if HEADERS is None:
+            HEADERS = header_functions() | {'rd8', 'wr8'}
+        if who.endswith('*') or not who:
+            return 30
+        return 0 if who in HEADERS else 2
+    return 3 if r['kind'] == 'function' else 1
 
 
 def solve(probes_csv, eq_paths, out):
@@ -184,7 +222,7 @@ def solve(probes_csv, eq_paths, out):
     with open(probes_csv) as f:
         for row in csv.DictReader(f):
             info[int(row['id'])] = row
-    cost, missed = program(rows, lambda p: info[p]['kind'])
+    cost, missed = program(rows, lambda p: place_weight(p, info))
     with open(out, 'w', newline='') as f:
         w = csv.writer(f)
         w.writerow(['id', 'file', 'line', 'col', 'kind', 'cost'])
