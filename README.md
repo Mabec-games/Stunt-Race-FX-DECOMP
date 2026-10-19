@@ -1,10 +1,30 @@
 # Stunt Race FX: byte-exact decompilation
 
-**Started October 11, 2026.** The whole retail ROM rebuilds byte for byte
-from source, and the verification pipeline that certifies decompiled C
-against the original game is running. Hundreds of routines now have C and
-commented assembly in the tree, filed by area; the bars below count only
-those the gates have certified.
+**Complete: 100% of the game's code is decompiled, behaviour exact and byte
+exact.** Started October 11, 2026; completed October 18, 2026.
+
+| | Behaviour exact (M1) | Byte exact (M2) |
+|---|---|---|
+| **All code** | **100%** (215,370 of 215,370 B) | **100%** (215,370 of 215,370 B) |
+| S-CPU (65816) | 100% (150,944 B) | 100% |
+| Super FX (GSU-1) | 100% (51,491 B) | 100% |
+| SPC700 (sound) | 100% (12,935 B) | 100% |
+
+- **Every routine is decompiled.** All 2,411 routines the routine census
+  names, including code the game never runs, have C and commented, symbolic
+  assembly in the tree, filed by area. The census finds no routine left
+  unnamed and no orphaned code.
+- **Every routine is proven behaviour exact.** Each C routine was checked
+  against the running original at every call the scripts make (no call of
+  any routine differs), and all of them were swapped in at once and run in
+  lockstep with the original over 324 scripts, frame for frame (every script
+  identical). Routines that never return (they restart or stop the game)
+  are judged by that lockstep run.
+- **The whole ROM rebuilds byte for byte** from the companion assembly.
+
+The numbers are from the full gate on the final tree (`python3
+tools/stuntracefx/gate.py --full`, with every script retraced); the
+generated blocks under Current Status carry the same figures.
 
 **Maintainer:** Jeffrey Wilbur, Strut B, LLC\
 **Contact:** [retro@strutb.com](mailto:retro@strutb.com)
@@ -55,8 +75,9 @@ sources:
 
 ## Current Status
 
-Two milestones: M1, routines whose C is certified to behave exactly like the
-original (T3) plus those also byte-exact (T4); M2, byte-exact routines only.
+**Both milestones are met: M1 and M2 are at 100%.** M1 counts routines whose
+C is certified to behave exactly like the original (T3) plus those also
+byte-exact (T4); M2 counts byte-exact routines only.
 The blocks below are snapshots; regenerate the bars and the treemap in one step
 with `python3 tools/stuntracefx/progress.py`: do not hand-edit them.
 
