@@ -460,7 +460,7 @@ lAD31:
     R[0] = R[0];
     gsu_moves(R[0]);
     t = gsu.z;
-    if (t) goto lAD53; else { gsu_code(0x018561, 4); gsu_code(0x01AD4A, 9); }
+    if (t) goto lAD53;
     R[11] = 0xAD53;
     abi_FxModelDraw();
 lAD53:
@@ -571,9 +571,9 @@ lB155:
     gsu_stw(FX_MODEL_CE, R[1]);
     R[0] = gsu_ldw(gsu_code_then(0x01B159, 3, FX_SPRITE_MATERIAL));
     R[11] = 0xB160;
-    (gsu_code(0x019276, 10), gsu_code(0x01B15C, 4), abi_FxSpriteMaterial());
+    abi_FxSpriteMaterial();
 lB160:
-    R[0] = gsu_ldw(gsu_code_then(0x0193A6, 1, gsu_code_then(0x01B160, 4, FX_FACE_KIND)));
+    R[0] = gsu_ldw(FX_FACE_KIND);
     R[0] = R[0];
     gsu_moves(R[0]);
     t = gsu.z;

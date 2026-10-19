@@ -22,15 +22,48 @@
 #define CAR_SPREAD 0x7Cu
 #define CAR_STUCK 0x7Eu
 
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode bits_and_code[3][1] = {
+    {{0x04C924, 5}},
+    {{0x04C861, 5}},
+    {{0x04C88E, 5}},
+};
+
 /* R9 = R0 op R9 (TO R9 with the operation). */
-static void bits_and(FxRegs *g, uint16_t v) { g->r[0] = v; g->r[9] = gsu_and(g->r[0], g->r[9]); }
-static void bits_or(FxRegs *g, uint16_t v) { g->r[0] = v; g->r[9] = gsu_or(g->r[0], g->r[9]); }
+static void bits_and(FxRegs *g, uint16_t v, int copy) { gsu_codes(bits_and_code[copy], 1); g->r[0] = v; g->r[9] = gsu_and(g->r[0], g->r[9]); }
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode bits_or_code[4][2] = {
+    {{0x04C827, 9}, {0, 0}},
+    {{0x04C886, 8}, {0x04C893, 10}},
+    {{0x04C840, 5}, {0, 0}},
+    {{0x04C859, 8}, {0x04C866, 10}},
+};
+
+static void bits_or(FxRegs *g, uint16_t v, int copy) { gsu_codes(bits_or_code[copy], 2); g->r[0] = v; g->r[9] = gsu_or(g->r[0], g->r[9]); }
+
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode car_field_code[13][3] = {
+    {{0x04C7D8, 6}, {0x04C7DE, 6}, {0x04C7EC, 3}},
+    {{0x04C7F5, 7}, {0x04C7FC, 6}, {0, 0}},
+    {{0, 0}, {0x04C802, 6}, {0, 0}},
+    {{0x04C81B, 6}, {0x04C821, 6}, {0x04C845, 7}},
+    {{0, 0}, {0x04C89D, 6}, {0, 0}},
+    {{0x04C8AB, 5}, {0x04C8B0, 7}, {0x04C8BC, 5}},
+    {{0, 0}, {0x04C8C1, 4}, {0x04C8CB, 5}},
+    {{0, 0}, {0x04C8D0, 12}, {0x04C8FC, 5}},
+    {{0, 0}, {0x04C901, 7}, {0x04C911, 5}},
+    {{0, 0}, {0x04C916, 4}, {0x04C91B, 5}},
+    {{0, 0}, {0x04C920, 4}, {0x04C929, 6}},
+    {{0, 0}, {0x04C870, 6}, {0, 0}},
+    {{0x04C808, 5}, {0x04C80D, 10}, {0, 0}},
+};
 
 /* The field `f` of car R8 (R0 = f + R8, then LDW). */
-static uint16_t car_field(FxRegs *g, uint16_t f)
+static uint16_t car_field(FxRegs *g, uint16_t f, int copy)
 {
+    gsu_codes(car_field_code[copy], 1);
     g->r[0] = gsu_add(f, g->r[8], 0);
-    return gsu_ldw(g->r[0]);
+    return gsu_codes_then(car_field_code[copy] + 1, 2, gsu_ldw(g->r[0]));
 }
 
 /*
@@ -60,51 +93,43 @@ FxRegs FxDriveDecide(FxRegs g)
     uint16_t *sp = &g.r[10];
 
     gsu_push(sp, g.r[11]);
-    gsu_code(0x04C7D8, 6);
-    g.r[0] = car_field(&g, CAR_70);
+    g.r[0] = car_field(&g, CAR_70, GSU_COPY(0));
     g.r[5] = 0x0020;
     g.r[0] = gsu_and(g.r[0], g.r[5]);
     if (!gsu.z) {
         g.r[4] = gsu_div2(g.r[4]);
         g.r[0] = gsu_div2(g.r[4]);
         g.r[4] = gsu_add(g.r[4], g.r[0], 0);
-    } else { gsu_code(0x04C7DE, 6); gsu_code(0x04C7EC, 3); }
+    }
     gsu_push(sp, g.r[4]);
     g.r[11] = 0xC7F5;
     g = FxBearingTo(g);
     g.r[1] = g.r[0];
-    g.r[0] = car_field(&g, CAR_PITCH);
+    g.r[0] = car_field(&g, CAR_PITCH, GSU_COPY(1));
     g.r[1] = gsu_sub(g.r[1], g.r[0], 0);
-    gsu_code(0x04C7FC, 6);
-    g.r[0] = car_field(&g, CAR_FLAGS40);
+    g.r[0] = car_field(&g, CAR_FLAGS40, GSU_COPY(2));
     g.r[2] = 0x0100;
     g.r[0] = gsu_and(g.r[0], g.r[2]);
     if (!gsu.z) {
-        gsu_code(0x04C802, 11);
-        g.r[0] = car_field(&g, CAR_YAW);
+        g.r[0] = car_field(&g, CAR_YAW, GSU_COPY(12));
         g.r[2] = g.r[0];
         g.r[0] = gsu_div2(gsu_div2(g.r[0]));
         g.r[2] = gsu_sub(g.r[2], g.r[0], 0);
-        gsu_code(0x04C80D, 10);
         gsu_sbk(g.r[2]);
-    } else { gsu_code(0x04C802, 6); gsu_code(0x04C816, 1); }
+    } else { gsu_code(0x04C816, 1); }
     gsu_code(0x04C817, 4);
     g.r[4] = gsu_pull(sp);
     g.r[9] = 0;
-    gsu_code(0x04C81B, 6);
-    g.r[0] = car_field(&g, CAR_SPEED);
+    g.r[0] = car_field(&g, CAR_SPEED, GSU_COPY(3));
     g.r[3] = g.r[4];
     gsu_sub(g.r[0], g.r[3], 0);
     if (!gsu.s) {
-        gsu_code(0x04C840, 5);
-        bits_or(&g, 0x0040);
+        bits_or(&g, 0x0040, GSU_COPY(2));
     } else {
-        gsu_code(0x04C827, 9);
         g.r[2] = 0x0227;
         gsu_sub(g.r[4], g.r[2], 0);
-        bits_or(&g, gsu.s ? (gsu_code(0x04C838, 8), 0x0010) : (gsu_code(0x04C830, 8), 0x0400));
+        bits_or(&g, gsu.s ? (gsu_code(0x04C838, 8), 0x0010) : (gsu_code(0x04C830, 8), 0x0400), GSU_COPY(0));
     }
-    gsu_code(0x04C821, 6); gsu_code(0x04C845, 7);
     g.r[2] = gsu_ldw(gsu_add(CAR_STEER_BIAS, g.r[8], 0));
     g.r[0] = gsu_sub(g.r[1], g.r[2], 0);
     if (gsu.s) {
@@ -112,59 +137,54 @@ FxRegs FxDriveDecide(FxRegs g)
         g.r[1] = 0xFC72;
         gsu_sub(g.r[0], g.r[1], 0);
         if (gsu.s) {
-            gsu_code(0x04C859, 8); gsu_code(0x04C866, 10);
             g.r[1] = 0xF05C;
             gsu_sub(g.r[0], g.r[1], 0);
             if (gsu.s)
-                { gsu_code(0x04C861, 5); bits_and(&g, 0xFFEF); }
-            bits_or(&g, 0x0002);
-            g.r[0] = car_field(&g, CAR_FLAGS40);
+                bits_and(&g, 0xFFEF, GSU_COPY(1));
+            bits_or(&g, 0x0002, GSU_COPY(3));
+            g.r[0] = car_field(&g, CAR_FLAGS40, GSU_COPY(11));
             g.r[1] = 0x4000;
             g.r[0] = gsu_and(g.r[0], g.r[1]);
             if (!gsu.z)
-                bits_or(&g, 0x0008); else { gsu_code(0x04C870, 6); }
+                bits_or(&g, 0x0008, GSU_COPY(0));
         }
     } else {
         gsu_code(0x04C84C, 5); gsu_code(0x04C87E, 8);
         g.r[1] = 0x038E;
         gsu_sub(g.r[0], g.r[1], 0);
         if (!gsu.s) {
-            gsu_code(0x04C886, 8); gsu_code(0x04C893, 10);
             g.r[1] = 0x0FA4;
             gsu_sub(g.r[0], g.r[1], 0);
             if (!gsu.s)
-                { gsu_code(0x04C88E, 5); bits_and(&g, 0xFFEF); }
-            bits_or(&g, 0x0001);
-            g.r[0] = car_field(&g, CAR_FLAGS40);
+                bits_and(&g, 0xFFEF, GSU_COPY(2));
+            bits_or(&g, 0x0001, GSU_COPY(1));
+            g.r[0] = car_field(&g, CAR_FLAGS40, GSU_COPY(4));
             g.r[1] = 0x4000;
             g.r[0] = gsu_and(g.r[0], g.r[1]);
             if (!gsu.z)
-                bits_or(&g, 0x0004); else { gsu_code(0x04C89D, 6); }
+                bits_or(&g, 0x0004, GSU_COPY(0));
         }
     }
-    gsu_code(0x04C8AB, 5);
-    g.r[0] = car_field(&g, CAR_SPEED);
+    g.r[0] = car_field(&g, CAR_SPEED, GSU_COPY(5));
     g.r[3] = 0x00C8;
     gsu_sub(g.r[0], g.r[3], 0);
     if (gsu.s)
-        bits_or(&g, 0x0010); else { gsu_code(0x04C8B0, 7); gsu_code(0x04C8BC, 5); }
-    g.r[0] = car_field(&g, CAR_SPREAD);
+        bits_or(&g, 0x0010, GSU_COPY(0));
+    g.r[0] = car_field(&g, CAR_SPREAD, GSU_COPY(6));
     g.r[1] = g.r[0];
     gsu_moves(g.r[1]);
     {
-        gsu_code(0x04C8C1, 4); gsu_code(0x04C8CB, 5);
         int zero = gsu.z;
 
         g.r[0] = gsu_dec(g.r[0]);                /* in the branch's delay slot */
         if (!zero) {
             gsu_sbk(g.r[0]);
-            bits_and(&g, 0xFBEF);
+            bits_and(&g, 0xFBEF, GSU_COPY(0));
         }
     }
-    g.r[0] = car_field(&g, CAR_STUCK);
+    g.r[0] = car_field(&g, CAR_STUCK, GSU_COPY(7));
     gsu_moves(g.r[0]);
     {
-        gsu_code(0x04C8D0, 12); gsu_code(0x04C8FC, 5);
         int counting = 1;
 
         if (!gsu.s) {
@@ -181,36 +201,34 @@ FxRegs FxDriveDecide(FxRegs g)
             g.r[1] = 0xFFEC;
             gsu_sub(g.r[0], g.r[1], 0);
             if (gsu.s) {
-                bits_and(&g, 0xFBAF);
-                bits_or(&g, 0x0020);
+                bits_and(&g, 0xFBAF, GSU_COPY(0));
+                bits_or(&g, 0x0020, GSU_COPY(0));
                 g.r[0] = 0x0003;
                 g.r[9] = gsu_xor(g.r[0], g.r[9]);
             }
         } else {
-            g.r[0] = car_field(&g, CAR_SPEED);
+            g.r[0] = car_field(&g, CAR_SPEED, GSU_COPY(8));
             g.r[1] = 0x000A;
             gsu_sub(g.r[0], g.r[1], 0);
             if (gsu.s) {
-                g.r[0] = gsu_inc(car_field(&g, CAR_STUCK));
+                g.r[0] = gsu_inc(car_field(&g, CAR_STUCK, GSU_COPY(0)));
                 gsu_sbk(g.r[0]);
             } else {
-                gsu_code(0x04C901, 7); gsu_code(0x04C911, 5);
                 int zero;
 
-                g.r[0] = car_field(&g, CAR_STUCK);
+                g.r[0] = car_field(&g, CAR_STUCK, GSU_COPY(9));
                 gsu_moves(g.r[0]);
                 zero = gsu.z;
                 g.r[0] = gsu_dec(g.r[0]);        /* in the branch's delay slot */
                 if (!zero)
-                    gsu_sbk(g.r[0]); else { gsu_code(0x04C916, 4); gsu_code(0x04C91B, 5); }
+                    gsu_sbk(g.r[0]);
             }
         }
     }
-    g.r[0] = car_field(&g, CAR_44);
+    g.r[0] = car_field(&g, CAR_44, GSU_COPY(10));
     gsu_moves(g.r[0]);
     if (!gsu.z)
-        { gsu_code(0x04C924, 5); bits_and(&g, 0xFBEF); }
-    gsu_code(0x04C920, 4); gsu_code(0x04C929, 6);
+        bits_and(&g, 0xFBEF, GSU_COPY(0));
     g.r[0] = gsu_add(CAR_SIDES, g.r[8], 0);
     gsu_stw(g.r[0], g.r[9]);
     gsu_code(0x04C92F, 4);

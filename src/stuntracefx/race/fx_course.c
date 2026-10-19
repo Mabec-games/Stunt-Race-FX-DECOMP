@@ -153,23 +153,48 @@ void abi_FxLapSegment(void)
     gsu.r[14] = o.r14;
 }
 
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode table_word_code[8][9] = {
+    {{0x04CC13, 2}, {0x04CC19, 2}, {0x04CC1B, 1}, {0x04CC1C, 2}, {0x04CC1E, 1}, {0x04CC1F, 4}, {0x04CC27, 11}, {0xCC31, 0}, {0x04CC32, 2}},
+    {{0x04CC34, 2}, {0, 0}, {0x04CC36, 1}, {0x04CC37, 2}, {0x04CC39, 1}, {0x04CC3A, 6}, {0x04CC42, 4}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0x04CC46, 1}, {0x04CC47, 2}, {0x04CC49, 1}, {0x04CC4A, 3}, {0x04CC4F, 9}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0x04CC58, 1}, {0x04CC59, 2}, {0x04CC5B, 1}, {0x04CC5C, 3}, {0x04CC7D, 2}, {0, 0}, {0, 0}},
+    {{0x04CC89, 2}, {0, 0}, {0x04CC8B, 1}, {0x04CC8C, 3}, {0x04CC8F, 1}, {0x04CC90, 2}, {0, 0}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0x04CC92, 1}, {0x04CC93, 3}, {0x04CC96, 1}, {0x04CC97, 2}, {0, 0}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0x04CC99, 1}, {0x04CC9A, 3}, {0x04CC9D, 1}, {0x04C48F, 5}, {0x04C498, 8}, {0x04CC9E, 2}, {0, 0}},
+    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+};
+
 /* A word of the table through the ROM buffer (GETB, INC, GETBH, INC). */
-static uint16_t table_word(uint16_t *r14)
+static uint16_t table_word(uint16_t *r14, int copy)
 {
+    gsu_codes(table_word_code[copy], 2);
     uint16_t w = gsu_getb();
 
+    gsu_codes(table_word_code[copy] + 2, 1);
     gsu_r14(gsu_inc(*r14));
     *r14 = gsu.r[14];
+    gsu_codes(table_word_code[copy] + 3, 1);
     w = gsu_getbh(w);
+    gsu_codes(table_word_code[copy] + 4, 1);
     gsu_r14(gsu_inc(*r14));
     *r14 = gsu.r[14];
+    gsu_codes(table_word_code[copy] + 5, 4);
     return w;
 }
 
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode magnitude_code[3][3] = {
+    {{0, 0}, {0, 0}, {0x04CC40, 2}},
+    {{0, 0}, {0, 0}, {0x04CC4D, 2}},
+    {{0x04CC5F, 3}, {0x04CC64, 4}, {0x04CC62, 2}},
+};
+
 /* |v| by NOT and INC when the flags say negative. */
-static uint16_t magnitude(uint16_t v)
+static uint16_t magnitude(uint16_t v, int copy)
 {
-    return gsu.s ? gsu_inc(gsu_not(v)) : v;
+    gsu_codes(magnitude_code[copy], 2);
+    return gsu.s ? (gsu_codes(magnitude_code[copy] + 2, 1), gsu_inc(gsu_not(v))) : v;
 }
 
 /*
@@ -207,32 +232,29 @@ FxRegs FxCourseNearest(FxRegs g)
     if (gsu.z) {
         g.r[0] = gsu_sub(g.r[0], g.r[0], 0);
         return g;
-    } else { gsu_code(0x04CC13, 2); gsu_code(0x04CC19, 2); }
-    g.r[0] = table_word(r14);
+    }
+    g.r[0] = table_word(r14, GSU_COPY(0));
     g.r[12] = g.r[0];
     gsu_moves(g.r[12]);
     if (gsu.z) {
         g.r[0] = gsu_sub(g.r[0], g.r[0], 0);
         return g;
-    } else { gsu_code(0x04CC1F, 4); gsu_code(0x04CC27, 11); gsu_cache(0xCC31); gsu_code(0x04CC32, 2); }
+    }
     g.r[5] = 0;
     g.r[6] = 0x7FFF;
     g.r[4] = 0;
     g.r[7] = 0;
     g.r[13] = 0xCC33;
     do {
-        gsu_code(0x04CC34, 2);
         g.r[4] = gsu_inc(g.r[4]);
-        g.r[0] = gsu_sub(table_word(r14), g.r[1], 0);
+        g.r[0] = gsu_sub(table_word(r14, GSU_COPY(1)), g.r[1], 0);
         if (gsu.ov) {
             gsu_r14(gsu_add(*r14, 4, 0)); /* past y and z */
             *r14 = gsu.r[14];
         } else {
-            gsu_code(0x04CC3A, 6); gsu_code(0x04CC42, 4);
-            g.r[9] = magnitude(g.r[0]);
-            g.r[0] = gsu_sub(table_word(r14), g.r[2], 0);
-            gsu_code(0x04CC4A, 3); gsu_code(0x04CC4F, 9);
-            g.r[0] = magnitude(g.r[0]);
+            g.r[9] = magnitude(g.r[0], GSU_COPY(0));
+            g.r[0] = gsu_sub(table_word(r14, GSU_COPY(2)), g.r[2], 0);
+            g.r[0] = magnitude(g.r[0], GSU_COPY(1));
             g.r[0] = gsu_add(g.r[0], g.r[0], 0);
             g.r[0] = gsu_add(g.r[0], g.r[0], 0);
             g.r[9] = gsu_add(g.r[9], g.r[0], 0);
@@ -242,10 +264,9 @@ FxRegs FxCourseNearest(FxRegs g)
                 gsu_r14(gsu_inc(*r14));
                 *r14 = gsu.r[14];
             } else {
-                g.r[0] = gsu_sub(table_word(r14), g.r[3], 0);
+                g.r[0] = gsu_sub(table_word(r14, GSU_COPY(3)), g.r[3], 0);
                 if (!gsu.ov) {
-                    gsu_code(0x04CC5F, 3); gsu_code(0x04CC64, 4);
-                    g.r[0] = gsu_add(magnitude(g.r[0]), g.r[9], 0);
+                    g.r[0] = gsu_add(magnitude(g.r[0], GSU_COPY(2)), g.r[9], 0);
                     if (!gsu.ov) {
                         gsu_code(0x04CC68, 5);
                         gsu_sub(g.r[0], g.r[6], 0);
@@ -257,7 +278,6 @@ FxRegs FxCourseNearest(FxRegs g)
                         }
                     }
                 }
-                gsu_code(0x04CC5C, 3); gsu_code(0x04CC7D, 2);
             }
         }
         gsu_r14(gsu_inc(*r14));
@@ -275,12 +295,9 @@ FxRegs FxCourseNearest(FxRegs g)
     g.r[5] = gsu_sub(g.r[5], 6, 0);
     gsu_r14(g.r[5]);
     *r14 = gsu.r[14];
-    gsu_code(0x04CC89, 2);
-    g.r[1] = table_word(r14);
-    gsu_code(0x04CC90, 2);
-    g.r[2] = table_word(r14);
-    gsu_code(0x04CC97, 2);
-    g.r[3] = table_word(r14);
+    g.r[1] = table_word(r14, GSU_COPY(4));
+    g.r[2] = table_word(r14, GSU_COPY(5));
+    g.r[3] = table_word(r14, GSU_COPY(6));
     return g;
 }
 
@@ -293,15 +310,21 @@ void abi_FxCourseNearest(void)
     memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
 }
 
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode entry_words_code[2][4] = {
+    {{0x04CCE3, 4}, {0x04C4A6, 5}, {0x04C7D5, 3}, {0x04CD01, 4}},
+    {{0x04CCE3, 4}, {0x04CD01, 4}, {0x04CEE4, 5}, {0, 0}},
+};
+
 /* The four words of the entry at R14 into R1-R4, R5 = the entry; R0 = R6. */
-static void entry_words(FxRegs *g)
+static void entry_words(FxRegs *g, int copy)
 {
-    gsu_code(0x04CCE3, 4);
+    gsu_codes(entry_words_code[copy], 1);
     int i;
 
     g->r[5] = g->r[14];
     for (i = 0; i < 4; i++)
-        { g->r[1 + i] = table_word(&g->r[14]); gsu_code(0x04CD01, 4); }
+        { g->r[1 + i] = table_word(&g->r[14], GSU_COPY(7)); gsu_codes(entry_words_code[copy] + 1, 3); }
     g->r[0] = g->r[6];
 }
 
@@ -348,7 +371,7 @@ FxRegs FxCoursePrevEntry(FxRegs g)
         g.r[14] = gsu.r[14];
         g.r[6] = g.r[1];
     }
-    entry_words(&g);
+    entry_words(&g, GSU_COPY(0));
     return g;
 }
 
@@ -378,7 +401,6 @@ void abi_FxCoursePrevEntry(void)
  */
 FxRegs FxCourseNextEntry(FxRegs g)
 {
-    gsu_code(0x04CCA4, 7);
     g.r[6] = g.r[0];
     g.r[0] = gsu_ldw(FX_TABLE_BANK);
     gsu.rombr = (uint8_t)(g.r[0] & 0x7F);
@@ -409,7 +431,7 @@ FxRegs FxCourseNextEntry(FxRegs g)
         gsu_r14(gsu_add(g.r[5], 8, 0));
         g.r[14] = gsu.r[14];
     }
-    entry_words(&g);
+    entry_words(&g, GSU_COPY(0));
     return g;
 }
 
@@ -494,14 +516,21 @@ void abi_FxRecordHeadingAhead(void)
 
 void abi_FxTableEntryWords(void);
 
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode quarter_apart_code[2][3] = {
+    {{0x04CEE9, 3}, {0x04CEEE, 11}, {0x04CEEC, 2}},
+    {{0x04CEF9, 3}, {0x04CEFE, 10}, {0x04CEFC, 2}},
+};
+
 /* |R0 - b| / 4 with the Super FX's flags: SUB, then NOT and INC when
    negative, then two DIV2s. */
-static uint16_t quarter_apart(uint16_t a, uint16_t b)
+static uint16_t quarter_apart(uint16_t a, uint16_t b, int copy)
 {
+    gsu_codes(quarter_apart_code[copy], 2);
     uint16_t d = gsu_sub(a, b, 0);
 
     if (gsu.s)
-        d = gsu_inc(gsu_not(d));
+        { gsu_codes(quarter_apart_code[copy] + 2, 1); d = gsu_inc(gsu_not(d)); }
     return gsu_div2(gsu_div2(d));
 }
 
@@ -523,13 +552,12 @@ void abi_FxCourseNextDistance(void)
     gsu.r[11] = 0xCEDF;
     (gsu_code(0x04CD83, 13), gsu_code(0x04CED9, 6), abi_FxTableEntryWords());
     gsu.r[11] = 0xCEE4;
-    (gsu_code(0x04CD90, 8), gsu_code(0x04CEDF, 5), abi_FxCourseNextEntry());
+    (gsu_code(0x04CCA4, 7), gsu_code(0x04CD90, 8), gsu_code(0x04CEDF, 5), abi_FxCourseNextEntry());
     gsu.r[0] = gsu_add(0x001E, gsu.r[8], 0);
-    gsu_code(0x04CEE4, 5);
-    gsu.r[0] = quarter_apart(gsu_ldw(gsu.r[0]), gsu_code_then(0x04CEE9, 3, gsu_code_then(0x04CEEE, 11, gsu.r[1])));
+    gsu.r[0] = quarter_apart(gsu_ldw(gsu.r[0]), gsu.r[1], GSU_COPY(0));
     gsu.r[4] = gsu.r[0];
     gsu.r[0] = gsu_add(0x0022, gsu.r[8], 0);
-    gsu.r[0] = quarter_apart(gsu_ldw(gsu.r[0]), gsu_code_then(0x04CEF9, 3, gsu_code_then(0x04CEFE, 10, gsu.r[3])));
+    gsu.r[0] = quarter_apart(gsu_ldw(gsu.r[0]), gsu.r[3], GSU_COPY(1));
     gsu.r[0] = gsu_add(gsu.r[0], gsu.r[4], 0);
     gsu_pull(&gsu.r[10]);
 }

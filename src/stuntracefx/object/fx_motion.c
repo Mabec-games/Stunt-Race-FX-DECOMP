@@ -16,21 +16,29 @@ typedef struct {
     uint16_t r0, r2, r3, r5;
 } FxMoveRegs;
 
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode move_word_code[2][5] = {
+    {{0x0495CF, 8}, {0x0495E8, 12}, {0x049607, 9}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0x04962E, 4}, {0x049680, 3}, {0x04B242, 3}},
+};
+
 /* One word: the rate at *rate, halved `halvings` times with DIV2, added to
    the word at *word; both pointers step on. */
-static void move_word(FxMoveRegs *g, int halvings)
+static void move_word(FxMoveRegs *g, int halvings, int copy)
 {
+    gsu_codes(move_word_code[copy], 1);
     int i;
 
     g->r0 = gsu_ldw(g->r5);
     g->r5 = gsu_inc(gsu_inc(g->r5));
-    gsu_code(0x0495E8, 12);
+    gsu_codes(move_word_code[copy] + 1, 1);
     for (i = 0; i < halvings; i++)
         g->r0 = gsu_div2(g->r0);
     g->r3 = gsu_ldw(g->r2);
     g->r0 = gsu_add(g->r0, g->r3, 0);
     gsu_stw(g->r2, g->r0);
     g->r2 = gsu_inc(gsu_inc(g->r2));
+    gsu_codes(move_word_code[copy] + 2, 3);
 }
 
 /*
@@ -58,13 +66,12 @@ FxMoveRegs FxRecordMove(uint16_t rec, uint16_t kind)
     g.r3 = gsu_ldw(gsu_add(REC_FLAGS1C, rec, 0));
     g.r0 = gsu_and(0x0008, g.r3);
     halve = !gsu.z;
-    gsu_code(0x0495CF, 8);
     for (i = 0; i < 3; i++)
-        { move_word(&g, halve ? 4 : 3); gsu_code(0x049607, 9); }
+        { move_word(&g, halve ? 4 : 3, GSU_COPY(0)); }
     g.r0 = gsu_sub(kind, 6, 0);
     if (gsu.z)
         for (i = 0; i < 3; i++)
-            { move_word(&g, halve ? 1 : 0); gsu_code(0x04962E, 4); gsu_code(0x049680, 3); gsu_code(0x04B242, 3); }
+            { move_word(&g, halve ? 1 : 0, GSU_COPY(1)); }
     return g;
 }
 

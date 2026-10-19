@@ -49,10 +49,18 @@
 #define REC_64 0x64u
 #define REC_NEAR 0x8Cu
 
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode field_code[3][5] = {
+    {{0x04C936, 8}, {0, 0}, {0x04C93E, 4}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0x04C96A, 9}, {0x04CA8C, 5}, {0x04C961, 1}, {0x04C966, 4}, {0x04CA91, 8}},
+};
+
 /* The field `field` of record `rec` (R0 = field + rec, then LDW). */
-static uint16_t field(uint16_t f, uint16_t rec)
+static uint16_t field(uint16_t f, uint16_t rec, int copy)
 {
-    return gsu_ldw(gsu_add(f, rec, 0));
+    gsu_codes(field_code[copy], 2);
+    return gsu_codes_then(field_code[copy] + 2, 3, gsu_ldw(gsu_add(f, rec, 0)));
 }
 
 /* |v| into a register: MOVES, then NOT and INC when negative. */
@@ -98,39 +106,36 @@ FxRegs FxTrafficSides(FxRegs g)
     int i;
 
     gsu_push(&g.r[10], g.r[11]);
-    gsu_code(0x04C936, 8);
-    g.r[9] = field(REC_SIDES, g.r[8]);
-    gsu_code(0x04C93E, 4);
+    g.r[9] = field(REC_SIDES, g.r[8], GSU_COPY(0));
     for (i = 0; i < 4; i++) {
-        g.r[0] = field(from[i], g.r[8]);
+        g.r[0] = field(from[i], g.r[8], GSU_COPY(1));
         gsu_stw(me[i], g.r[0]);
         gsu_code(0x04C95E, 4);
     }
     g.r[0] = gsu_ldw(FX_CARS);
-    gsu_code(0x04C96A, 9); gsu_code(0x04CA8C, 5);
-    for (;; g.r[0] = field(REC_NEXT_CAR, g.r[7])) {
+    for (;; g.r[0] = field(REC_NEXT_CAR, g.r[7], GSU_COPY(2))) {
         gsu_code(0x04C962, 4);
         g.r[7] = g.r[0];
         gsu_moves(g.r[7]);
         if (gsu.z)
-            { gsu_code(0x04C961, 1); gsu_code(0x04C966, 4); gsu_code(0x04CA91, 8); break; }
+            break;
         gsu_sub(g.r[0], g.r[8], 0);
         if (gsu.z)
             continue;                                /* itself */
-        g.r[1] = field(REC_FLAGS16, g.r[7]);
+        g.r[1] = field(REC_FLAGS16, g.r[7], GSU_COPY(0));
         g.r[0] = gsu_and(0x0400, g.r[1]);
         if (!gsu.z)
             continue;
-        g.r[1] = field(REC_SPEED, g.r[7]);
-        g.r[0] = gsu_sub(field(REC_SPEED, g.r[8]), g.r[1], 0);
+        g.r[1] = field(REC_SPEED, g.r[7], GSU_COPY(0));
+        g.r[0] = gsu_sub(field(REC_SPEED, g.r[8], GSU_COPY(0)), g.r[1], 0);
         if (gsu.s)
             continue;                                /* faster */
-        g.r[0] = field(REC_X, g.r[7]);
+        g.r[0] = field(REC_X, g.r[7], GSU_COPY(0));
         g.r[1] = gsu_ldw(FX_ME_X);
         g.r[0] = gsu_sub(g.r[0], g.r[1], 0);
         gsu_stw(FX_D_X, g.r[0]);
         g.r[1] = magnitude(g.r[0]);
-        g.r[0] = field(REC_Z, g.r[7]);
+        g.r[0] = field(REC_Z, g.r[7], GSU_COPY(0));
         g.r[3] = gsu_ldw(FX_ME_Z);
         g.r[0] = gsu_sub(g.r[0], g.r[3], 0);
         gsu_stw(FX_D_Z, g.r[0]);
@@ -141,9 +146,9 @@ FxRegs FxTrafficSides(FxRegs g)
         for (i = 0; i < 5; i++)
             g.r[0] = gsu_div2(g.r[0]);
         gsu_stw(FX_DIST, g.r[0]);
-        g.r[0] = field(REC_VX, g.r[7]);
+        g.r[0] = field(REC_VX, g.r[7], GSU_COPY(0));
         g.r[1] = gsu_sub(gsu_ldw(FX_ME_VX), g.r[0], 0);
-        g.r[0] = field(REC_VZ, g.r[7]);
+        g.r[0] = field(REC_VZ, g.r[7], GSU_COPY(0));
         g.r[3] = gsu_sub(gsu_ldw(FX_ME_VZ), g.r[0], 0);
         g.r[2] = 0;
         g.r[0] = dot(&g, g.r[1], g.r[2], g.r[3]);
@@ -167,7 +172,7 @@ FxRegs FxTrafficSides(FxRegs g)
             g.r[2] = 0xFFFF;
             gsu_stw(FX_CLOSE, g.r[2]);
         }
-        g.r[6] = field(REC_SIDES, g.r[8]);
+        g.r[6] = field(REC_SIDES, g.r[8], GSU_COPY(0));
         g.r[0] = gsu_ldw(FX_CLOSE);
         gsu_moves(g.r[0]);
         if (!gsu.s) {

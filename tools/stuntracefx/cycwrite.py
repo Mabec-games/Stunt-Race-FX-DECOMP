@@ -59,23 +59,36 @@ class Code:
     zero = []
 
     @staticmethod
-    def one(x):
-        return 'gsu_code(0x%06X, %d)' % (x[1], x[2]) if x[0] == 'code' else 'gsu_cache(0x%04X)' % x[1]
+    def addr(a):
+        """An address: a number, or ('at', offset) from a helper's copy."""
+        if isinstance(a, tuple):
+            return COPY if not a[1] else ('%s + 0x%X' % (COPY, a[1]) if a[1] > 0 else '%s - 0x%X' % (COPY, -a[1]))
+        return '0x%06X' % a
+
+    @classmethod
+    def one(cls, x):
+        if x[0] == 'codes':
+            return 'gsu_codes(%s, %d)' % (cls.row(x), x[3])
+        return 'gsu_code(%s, %d)' % (cls.addr(x[1]), x[2]) if x[0] == 'code' else 'gsu_cache(0x%04X)' % x[1]
+
+    @staticmethod
+    def row(x):
+        """A copy function's stretch of its table (cyccopy.py)."""
+        return '%s[copy] + %d' % (x[1], x[2]) if x[2] else '%s[copy]' % x[1]
 
     @classmethod
     def stmt(cls, v): return ''.join(cls.one(x) + '; ' for x in v)
     @classmethod
     def expr(cls, v): return '(' + ''.join(cls.one(x) + ', ' for x in v), ')'
-    @staticmethod
-    def loop(v):
-        if any(x[0] != 'code' for x in v):
-            return None
-        return ''.join('gsu_code_loop(0x%06X, %d, ' % (x[1], x[2]) for x in v), ')' * len(v)
-    @staticmethod
-    def then(v):
-        if any(x[0] != 'code' for x in v):
-            return None
-        return ''.join('gsu_code_then(0x%06X, %d, ' % (x[1], x[2]) for x in v), ')' * len(v)
+    @classmethod
+    def nested(cls, v, how):
+        return ''.join('gsu_code_%s(%s, %d, ' % (how, cls.addr(x[1]), x[2]) if x[0] == 'code'
+                       else 'gsu_codes_%s(%s, %d, ' % (how, cls.row(x), x[3]) if x[0] == 'codes'
+                       else 'gsu_cache_%s(0x%04X, ' % (how, x[1]) for x in v), ')' * len(v)
+    @classmethod
+    def loop(cls, v): return cls.nested(v, 'loop')
+    @classmethod
+    def then(cls, v): return cls.nested(v, 'then')
 
 
 def plan(path, text, got, cost, skip, form=Clocks):
@@ -216,7 +229,10 @@ def _close(text, i, op, cl):
 # a time this tool writes: clocks, or the original's code (it writes
 # numbers, the addresses in upper-case hex: a time written by hand, cyc(t->x),
 # gsu_code(go ? a : b, 1), gsu_code(0x01aa49, 1), is not one)
-CODE_ITEM = r'(?:gsu_code\(0x[0-9A-F]{6}, \d+\)|gsu_cache\(0x[0-9A-F]{4}\))'
+COPY = 'copy_at'     # a helper's parameter: the address of the copy of the original's code it runs as
+CODE_ADDR = r'(?:0x[0-9A-F]{6}|%s|%s [+-] 0x[0-9A-F]+)' % (COPY, COPY)
+CODE_ROW = r'\w+_code\[copy\](?: \+ \d+)?'
+CODE_ITEM = r'(?:gsu_code\(%s, \d+\)|gsu_cache\(0x[0-9A-F]{4}\)|gsu_codes\(%s, \d+\))' % (CODE_ADDR, CODE_ROW)
 ITEM = r'(?:cyc\(\d+\)|%s)' % CODE_ITEM[3:-1]
 
 
@@ -243,12 +259,16 @@ def strip(text, code_only=False):
     the clocks kept."""
     import re
     ITEM = CODE_ITEM if code_only else globals()['ITEM']
+    # cyccopy.py's tables of each copy's code (made again with the code)
+    text = re.sub(r"/\* cyccopy: [^\n]*\*/\nstatic const (?:GsuCode|uint8_t) [^;]*;\n\n", '', text)
     out = re.sub(r' else \{ (?:%s; )+\}' % ITEM, '', text)
     out = re.sub(r' (?:%s; )+\}' % ITEM, ' }', out)
     # forms around code: { T; X }, (T, X), cyc_then(N, X), cyc_loop(N, X)
     forms = ((r'\{ (?:%s; )+' % ITEM, '{', '}', ' }'), (r'\((?:%s, )+' % ITEM, '(', ')', ')'),
-             (r'gsu_code_then\(0x[0-9A-F]{6}, \d+, ', '(', ')', ')'),
-             (r'gsu_code_loop\(0x[0-9A-F]{6}, \d+, ', '(', ')', ')'))
+             (r'gsu_code_then\(%s, \d+, ' % CODE_ADDR, '(', ')', ')'),
+             (r'gsu_code_loop\(%s, \d+, ' % CODE_ADDR, '(', ')', ')'),
+             (r'gsu_cache_then\(0x[0-9A-F]{4}, ', '(', ')', ')'), (r'gsu_cache_loop\(0x[0-9A-F]{4}, ', '(', ')', ')'),
+             (r'gsu_codes_then\(%s, \d+, ' % CODE_ROW, '(', ')', ')'), (r'gsu_codes_loop\(%s, \d+, ' % CODE_ROW, '(', ')', ')'))
     if not code_only:
         forms += ((r'cyc_then\(\d+, ', '(', ')', ')'), (r'cyc_loop\(\d+, ', '(', ')', ')'))
     for pat, op, cl, tail in forms:
@@ -363,7 +383,14 @@ def main(argv):
             items = []
             for x in r['code'].split():
                 p = x.split(':')
-                items.append(('code', int(p[1], 16), int(p[2])) if p[0] == 'code' else ('cache', int(p[1], 16)))
+                if p[0] == 'codes':
+                    items.append(('codes', p[1], int(p[2]), int(p[3])))
+                    continue
+                if p[0] == 'code' and p[1].startswith('at'):
+                    off = p[1][2:]
+                    items.append(('code', ('at', int(off.replace('+', ''), 16) if off else 0), int(p[2])))
+                else:
+                    items.append(('code', int(p[1], 16), int(p[2])) if p[0] == 'code' else ('cache', int(p[1], 16)))
             if items:
                 cost[int(r['id'])] = items
         del args[i:i + 2]

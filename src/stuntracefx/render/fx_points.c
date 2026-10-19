@@ -16,26 +16,57 @@
 #define FX_POINTS 0x2488u
 #define FX_VARIANT 0x0044u
 
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode script_byte_code[6][4] = {
+    {{0x04A166, 1}, {0xA166, 0}, {0x04A167, 9}, {0, 0}},
+    {{0x04A1B4, 5}, {0, 0}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0x04A199, 5}, {0, 0}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0, 0}, {0x04A1A2, 2}},
+    {{0, 0}, {0, 0}, {0, 0}, {0x04A1A8, 2}},
+};
+
 /* A signed script byte (GETBS, INC R14). */
-static uint16_t script_byte(FxRegs *g)
+static uint16_t script_byte(FxRegs *g, int copy)
 {
+    gsu_codes(script_byte_code[copy], 3);
     uint16_t b = gsu_getbs();
 
+    gsu_codes(script_byte_code[copy] + 3, 1);
     gsu_r14(gsu_inc(g->r[14]));
     g->r[14] = gsu.r[14];
     return b;
 }
 
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode put_code[7][1] = {
+    {{0x04A1B9, 8}},
+    {{0x04A1C1, 8}},
+    {{0x04A1C9, 5}},
+    {{0x04A1CE, 4}},
+    {{0x04A1D2, 4}},
+    {{0x04A19E, 4}},
+    {{0x04A1A4, 4}},
+};
+
 /* A word to R9's list, R9 stepped on (STW, INC, INC). */
-static void put(FxRegs *g, uint16_t v)
+static void put(FxRegs *g, uint16_t v, int copy)
 {
     gsu_stw(g->r[9], v);
     g->r[9] = gsu_inc(gsu_inc(g->r[9]));
+    gsu_codes(put_code[copy], 1);
 }
 
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode count_code[2][1] = {
+    {{0x04A1AF, 5}},
+    {{0x04A194, 5}},
+};
+
 /* The count byte for LOOP (GETB to R12) and R13 = the loop's start. */
-static void count(FxRegs *g, uint16_t start)
+static void count(FxRegs *g, uint16_t start, int copy)
 {
+    gsu_codes(count_code[copy], 1);
     g->r[12] = gsu_getb();
     gsu_r14(gsu_inc(g->r[14]));
     g->r[14] = gsu.r[14];
@@ -72,21 +103,15 @@ FxRegs FxModelPoints(FxRegs g)
     g.r[14] = gsu.r[14];
     g.r[9] = FX_POINTS;
     for (;;) {
-        gsu_code(0x04A166, 1); gsu_cache(0xA166); gsu_code(0x04A167, 9);
-        g.r[0] = script_byte(&g);
+        g.r[0] = script_byte(&g, GSU_COPY(0));
         g.r[3] = 0x04;
         gsu_sub(g.r[0], g.r[3], 0);
         if (gsu.z) {
-            gsu_code(0x04A194, 5);
-            count(&g, 0xA199);
+            count(&g, 0xA199, GSU_COPY(1));
             do {
-                gsu_code(0x04A199, 5);
-                put(&g, script_byte(&g));
-                gsu_code(0x04A19E, 4);
-                put(&g, gsu_code_then(0x04A1A2, 2, script_byte(&g)));
-                gsu_code(0x04A1A4, 4);
-                g.r[0] = script_byte(&g);
-                gsu_code(0x04A1A8, 2);
+                put(&g, script_byte(&g, GSU_COPY(3)), GSU_COPY(5));
+                put(&g, script_byte(&g, GSU_COPY(4)), GSU_COPY(6));
+                g.r[0] = script_byte(&g, GSU_COPY(5));
                 gsu_stw(g.r[9], g.r[0]);
                 g.r[9] = gsu_inc(g.r[9]);
                 {
@@ -103,24 +128,17 @@ FxRegs FxModelPoints(FxRegs g)
         g.r[3] = 0x38;
         gsu_sub(g.r[0], g.r[3], 0);
         if (gsu.z) {
-            gsu_code(0x04A1AF, 5);
-            count(&g, 0xA1B4);
+            count(&g, 0xA1B4, GSU_COPY(0));
             do {
-                gsu_code(0x04A1B4, 5);
-                g.r[0] = script_byte(&g);
-                put(&g, g.r[0]);
-                gsu_code(0x04A1B9, 8);
-                g.r[1] = script_byte(&g);
-                put(&g, g.r[1]);
-                gsu_code(0x04A1C1, 8);
-                g.r[2] = script_byte(&g);
-                put(&g, g.r[2]);
+                g.r[0] = script_byte(&g, GSU_COPY(1));
+                put(&g, g.r[0], GSU_COPY(0));
+                g.r[1] = script_byte(&g, GSU_COPY(2));
+                put(&g, g.r[1], GSU_COPY(1));
+                g.r[2] = script_byte(&g, GSU_COPY(2));
+                put(&g, g.r[2], GSU_COPY(2));
                 g.r[0] = gsu_inc(gsu_not(g.r[0]));
-                gsu_code(0x04A1C9, 5);
-                put(&g, g.r[0]);
-                gsu_code(0x04A1CE, 4);
-                put(&g, g.r[1]);
-                gsu_code(0x04A1D2, 4);
+                put(&g, g.r[0], GSU_COPY(3));
+                put(&g, g.r[1], GSU_COPY(4));
                 gsu_stw(g.r[9], g.r[2]);
                 g.r[9] = gsu_inc(g.r[9]);
                 {

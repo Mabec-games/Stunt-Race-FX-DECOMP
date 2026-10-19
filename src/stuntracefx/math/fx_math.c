@@ -8,6 +8,12 @@
 #include "gsu_ops.h"
 #include "fx_calls.h"
 
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode FxDivide_code[2][3] = {
+    {{0x04C14B, 4}, {0x04C14F, 4}, {0x04C155, 5}},
+    {{0, 0}, {0x04C14F, 4}, {0x04C155, 5}},
+};
+
 /*
  * @routine 04:C144 FxDivide
  * WHAT IT DOES: Divides the 32-bit R0:R4 by R6: the quotient to R4, the
@@ -21,9 +27,8 @@
  * Exit: R4 = quotient; R0 = remainder; R12 = 0; R13 = $C14B; S clear, Z
  * from R0, CY = the bit shifted out; OV from the last round's SUB or ADD.
  */
-FxQuotient FxDivide(uint16_t hi, uint16_t lo, uint16_t divisor)
+FxQuotient FxDivide(uint16_t hi, uint16_t lo, uint16_t divisor, int copy)
 {
-    gsu_code(0x04C144, 7);
     FxQuotient o;
     uint16_t count = 16;
     int again;
@@ -31,13 +36,13 @@ FxQuotient FxDivide(uint16_t hi, uint16_t lo, uint16_t divisor)
     lo = gsu_add(lo, lo, 0);
     hi = gsu_rol(hi);
     do {
-        gsu_code(0x04C14B, 4);
+        gsu_codes(FxDivide_code[copy], 1);
         hi = gsu_sub(hi, divisor, 0);
         if (gsu.cy) {
-            gsu_code(0x04C14F, 4);
+            gsu_codes(FxDivide_code[copy] + 1, 1);
             lo = gsu_rol(lo);                /* quotient bit 1 */
         } else {
-            gsu_code(0x04C155, 5);
+            gsu_codes(FxDivide_code[copy] + 2, 1);
             hi = gsu_add(hi, divisor, 0);    /* restore; quotient bit 0 */
             lo = gsu_add(lo, lo, 0);
         }
@@ -59,7 +64,7 @@ static void abi_divide_exit(FxQuotient o)
 
 void abi_FxDivide(void)
 {
-    abi_divide_exit(FxDivide(gsu.r[0], gsu.r[4], gsu.r[6]));
+    abi_divide_exit(FxDivide(gsu.r[0], gsu.r[4], gsu.r[6], GSU_COPY(0)));
 }
 
 /*
@@ -74,17 +79,17 @@ void abi_FxDivide(void)
  */
 FxQuotient FxDivideHalvedIfLarge(uint16_t hi, uint16_t lo, uint16_t *divisor)
 {
-    gsu_code(0x04C08A, 33); gsu_code(0x04C0BB, 11); gsu_code(0x04C0CD, 11); gsu_code(0x04C0DC, 33); gsu_code(0x04C10A, 15); gsu_code(0x04C133, 12);
+    gsu_code(0x04C08A, 33); gsu_code(0x04C0BB, 11); gsu_code(0x04C0CD, 11); gsu_code(0x04C0DC, 33); gsu_code(0x04C10A, 15); gsu_code(0x04C133, 12); gsu_code(0x04C144, 7);
     gsu_moves(hi);
     if (!gsu.s) {
         gsu_moves(*divisor);
         if (!gsu.s)
-            return FxDivide(hi, lo, *divisor);
+            return FxDivide(hi, lo, *divisor, GSU_COPY(1));
     }
     *divisor = gsu_lsr(*divisor);
     hi = gsu_lsr(hi);
     lo = gsu_ror(lo);
-    return FxDivide(hi, lo, *divisor);
+    return FxDivide(hi, lo, *divisor, GSU_COPY(0));
 }
 
 void abi_FxDivideHalvedIfLarge(void)
@@ -116,7 +121,7 @@ FxRoot FxSquareRoot(uint16_t hi, uint16_t lo)
     int i;
 
     do {
-        gsu_code(0x04C119, 21); gsu_code(0x04C131, 2);
+        gsu_code(0x04C119, 21); gsu_code(0x04C131, 2); gsu_code(0x04C14B, 4);
         for (i = 0; i < 2; i++) {
             lo = gsu_add(lo, lo, 0);
             hi = gsu_rol(hi);

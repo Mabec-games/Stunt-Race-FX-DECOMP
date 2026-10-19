@@ -64,6 +64,26 @@ void gsu_code(uint32_t addr, uint32_t n);
 static inline uint32_t gsu_code_then(uint32_t addr, uint32_t n, uint32_t v) { gsu_code(addr, n); return v; }
 static inline int gsu_code_loop(uint32_t addr, uint32_t n, int again) { if (again) gsu_code(addr, n); return again; }
 void gsu_cache(uint16_t r15);
+static inline uint32_t gsu_cache_then(uint16_t r15, uint32_t v) { gsu_cache(r15); return v; }
+static inline int gsu_cache_loop(uint16_t r15, int again) { if (again) gsu_cache(r15); return again; }
+/* A helper that stands for several copies of the original's code (one
+   beside each caller, or one for each case of a table) states the code of
+   the copy it runs as from a table of them: its caller passes the copy's
+   number. Each entry is a stretch of code, or with n 0 a CACHE (R15 =
+   addr); both 0, none (a copy with fewer stretches there). */
+typedef struct { uint32_t addr, n; } GsuCode;
+#define GSU_COPY(k) (k)     /* the copy a call runs its helper as */
+static inline void gsu_codes(const GsuCode *c, int k)
+{
+    for (int i = 0; i < k; i++) {
+        if (c[i].n)
+            gsu_code(c[i].addr, c[i].n);
+        else if (c[i].addr)
+            gsu_cache((uint16_t)c[i].addr);
+    }
+}
+static inline uint32_t gsu_codes_then(const GsuCode *c, int k, uint32_t v) { gsu_codes(c, k); return v; }
+static inline int gsu_codes_loop(const GsuCode *c, int k, int again) { if (again) gsu_codes(c, k); return again; }
 void gsu_cyc(uint32_t clocks);
 static inline uint32_t gsu_cyc_then(uint32_t clocks, uint32_t v) { gsu_cyc(clocks); return v; }
 static inline int gsu_cyc_loop(uint32_t clocks, int again) { if (again) gsu_cyc(clocks); return again; }

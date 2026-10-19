@@ -79,7 +79,7 @@ FxRegs FxCarAddPart(FxRegs g)
     g.r[4] = PART_BYTES;
     g.r[3] = FX_POOL_FIRST;
     g.r[11] = 0x8E97;
-    g = FxPoolTake(g);
+    g = FxPoolTake(g, GSU_COPY(0));
     g.r[2] = g.r[1];
     g.r[1] = gsu_pull(sp);
     gsu_moves(g.r[2]);
@@ -448,7 +448,7 @@ FxRegs FxCarNew(FxRegs g)
     g.r[4] = CAR_BYTES;
     g.r[3] = 0x1098;
     g.r[11] = 0x8D59;
-    g = FxPoolTake(g);
+    g = FxPoolTake(g, GSU_COPY(0));
     gsu_stw(FX_NEW_RECORD, g.r[1]);
     gsu_moves(g.r[1]);
     if (gsu.z)

@@ -23,7 +23,6 @@
  */
 void FxMatrixTranspose(uint16_t m, uint16_t *old5, uint16_t *old7, uint16_t *old6)
 {
-    gsu_code(0x018749, 8); gsu_code(0x01972B, 5);
     uint16_t e1, e2, e3, e5, e6, e7;
 
     e1 = gsu_ldw((uint16_t)(m + 2));
@@ -52,7 +51,6 @@ void FxMatrixTranspose(uint16_t m, uint16_t *old5, uint16_t *old7, uint16_t *old
     *old5 = e5;
     *old7 = e7;
     *old6 = e6;
-    gsu_code(0x018751, 4); gsu_code(0x01975A, 1);
 }
 
 void abi_FxMatrixTranspose(void)
@@ -91,7 +89,6 @@ uint16_t FxMatrixApply(uint16_t x, uint16_t y, uint16_t z, uint16_t out, uint16_
             sum = (uint16_t)(sum + (uint16_t)((int32_t)(int16_t)v[row] * (int16_t)e >> 15));
         }
         gsu_stw((uint16_t)(out + col * 2), sum);
-        gsu_code(0x019787, 4); gsu_code(0x0197D6, 3);
     }
     *partial = part;
     *m22 = e;
@@ -102,6 +99,7 @@ uint16_t FxMatrixApply(uint16_t x, uint16_t y, uint16_t z, uint16_t out, uint16_
    that result's first two terms and the last element. */
 static void apply_exit(uint16_t out, uint16_t sum, uint16_t part, uint16_t e)
 {
+    gsu_code(0x019787, 4); gsu_code(0x0197D6, 3);
     gsu_add((uint16_t)(sum - part), part, 0);
     gsu.r[0] = sum;
     gsu.r[5] = part;
@@ -131,7 +129,6 @@ void abi_FxMatrixApply(void)
 void FxMatrixApplyVectors(uint16_t out, uint16_t *x, uint16_t *y, uint16_t *z,
                           uint16_t *sum, uint16_t *partial, uint16_t *m22)
 {
-    gsu_code(0x018755, 6); gsu_code(0x018770, 8); gsu_code(0x01975B, 6);
     int i;
 
     for (i = 0; i < 3; i++) {
@@ -246,28 +243,53 @@ void abi_FxMatrixRotateBackProgram(void)
 #define FX_ANGLES 0x0020u            /* three angles: $0020, $0022, $0024 */
 #define FX_SINE_TABLE 0x983Eu        /* ROM bank $00: 257 words, 1.15 */
 
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode mul15_code[3][2] = {
+    {{0, 0}, {0, 0}},
+    {{0x01840F, 7}, {0, 0}},
+    {{0x01832D, 1}, {0x01844F, 1}},
+};
+
 /* (a * b) >> 15, signed: FMULT then ROL. */
-static uint16_t mul15(uint16_t a, uint16_t b)
+static uint16_t mul15(uint16_t a, uint16_t b, int copy)
 {
+    gsu_codes(mul15_code[copy], 2);
     return (uint16_t)((int32_t)(int16_t)a * (int16_t)b >> 15);
 }
 
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode fx_sine_code[6][9] = {
+    {{0x018338, 8}, {0x018340, 2}, {0x018342, 1}, {0x018343, 3}, {0x018346, 1}, {0x018347, 1}, {0x018348, 1}, {0x018349, 2}, {0x01834B, 13}},
+    {{0x018358, 10}, {0x018362, 2}, {0x018364, 1}, {0x018365, 3}, {0x018368, 1}, {0x018369, 1}, {0x01836A, 1}, {0x01836B, 2}, {0x01836D, 13}},
+    {{0x01837A, 8}, {0x018382, 2}, {0x018384, 1}, {0x018385, 3}, {0x018388, 1}, {0x018389, 1}, {0x01838A, 1}, {0x01838B, 2}, {0x01838D, 13}},
+    {{0x01839A, 10}, {0x0183A4, 2}, {0x0183A6, 1}, {0x0183A7, 3}, {0x0183AA, 1}, {0x0183AB, 1}, {0x0183AC, 1}, {0x0183AD, 2}, {0x0183AF, 13}},
+    {{0x0183BC, 8}, {0x0183C4, 2}, {0x0183C6, 1}, {0x0183C7, 3}, {0x0183CA, 1}, {0x0183CB, 1}, {0x0183CC, 1}, {0x0183CD, 2}, {0x0183CF, 13}},
+    {{0x0183DC, 10}, {0x0183E6, 2}, {0x0183E8, 1}, {0x0183E9, 3}, {0x0183EC, 1}, {0x0183ED, 1}, {0x0183EE, 1}, {0x0183EF, 2}, {0x0183F1, 30}},
+};
+
 /* The sine of an angle (a full turn $10000) from the table, between its
    entries by the angle's low byte: GETB/GETBH through the ROM buffer. */
-static uint16_t fx_sine(uint16_t angle)
+static uint16_t fx_sine(uint16_t angle, int copy)
 {
+    gsu_codes(fx_sine_code[copy], 1);
     uint16_t at = (uint16_t)(FX_SINE_TABLE + (angle >> 8) * 2);
     uint16_t a, b;
 
     gsu_r14(at);
-    a = gsu_getb();
+    a = (gsu_codes(fx_sine_code[copy] + 1, 1), gsu_getb());
+    gsu_codes(fx_sine_code[copy] + 2, 1);
     gsu_r14(++at);
+    gsu_codes(fx_sine_code[copy] + 3, 1);
     a = gsu_getbh(a);
+    gsu_codes(fx_sine_code[copy] + 4, 1);
     gsu_r14(++at);
-    b = gsu_getb();
+    b = (gsu_codes(fx_sine_code[copy] + 5, 1), gsu_getb());
+    gsu_codes(fx_sine_code[copy] + 6, 1);
     gsu_r14(++at);
+    gsu_codes(fx_sine_code[copy] + 7, 1);
     b = gsu_getbh(b);
-    return (uint16_t)(a + mul15((uint16_t)((angle & 0xFF) << 7), (uint16_t)(b - a)));
+    gsu_codes(fx_sine_code[copy] + 8, 1);
+    return (uint16_t)(a + mul15((uint16_t)((angle & 0xFF) << 7), (uint16_t)(b - a), GSU_COPY(0)));
 }
 
 /* What FxMatrixFromAngles01 leaves in registers. */
@@ -293,7 +315,6 @@ typedef struct { uint16_t sz, cz, sx, cx, sy, cy, sx_cy, cx_cy, sx_sy, cx_sy; } 
  */
 void FxMatrixFromAngles01(uint16_t out, FxAnglesLeft *k)
 {
-    gsu_code(0x01832F, 9);
     uint16_t m[9];
     uint16_t a;
     int i;
@@ -301,46 +322,33 @@ void FxMatrixFromAngles01(uint16_t out, FxAnglesLeft *k)
     gsu.rambr = 0;
     gsu.rombr = 0;
     a = gsu_ldw(FX_ANGLES);
-    gsu_code(0x018338, 8);
-    k->sz = fx_sine(a);
-    gsu_code(0x01834B, 13);
+    k->sz = fx_sine(a, GSU_COPY(0));
     gsu_r14(0x4000);
-    gsu_code(0x018358, 10);
-    k->cz = fx_sine((uint16_t)(a + 0x4000));
-    gsu_code(0x01836D, 13);
+    k->cz = fx_sine((uint16_t)(a + 0x4000), GSU_COPY(1));
     a = gsu_ldw((uint16_t)(FX_ANGLES + 2));
-    gsu_code(0x01837A, 8);
-    k->sx = fx_sine(a);
-    gsu_code(0x01838D, 13);
+    k->sx = fx_sine(a, GSU_COPY(2));
     gsu_r14(0x4000);
-    gsu_code(0x01839A, 10);
-    k->cx = fx_sine((uint16_t)(a + 0x4000));
-    gsu_code(0x0183AF, 13);
+    k->cx = fx_sine((uint16_t)(a + 0x4000), GSU_COPY(3));
     a = gsu_ldw((uint16_t)(FX_ANGLES + 4));
-    gsu_code(0x0183BC, 8);
-    k->sy = fx_sine(a);
-    gsu_code(0x0183CF, 13);
+    k->sy = fx_sine(a, GSU_COPY(4));
     gsu_r14(0x4000);
-    gsu_code(0x0183DC, 10);
-    k->cy = fx_sine((uint16_t)(a + 0x4000));
-    gsu_code(0x0183F1, 30);
-    k->sx_cy = mul15(k->sx, k->cy);
-    k->cx_cy = mul15(k->cx, k->cy);
-    k->sx_sy = mul15(k->sx, k->sy);
-    k->cx_sy = mul15(k->cx, k->sy);
+    k->cy = fx_sine((uint16_t)(a + 0x4000), GSU_COPY(5));
+    k->sx_cy = mul15(k->sx, k->cy, GSU_COPY(0));
+    k->cx_cy = mul15(k->cx, k->cy, GSU_COPY(0));
+    k->sx_sy = mul15(k->sx, k->sy, GSU_COPY(0));
+    k->cx_sy = mul15(k->cx, k->sy, GSU_COPY(0));
     gsu_r14(k->cx_sy);
-    gsu_code(0x01840F, 7);
-    m[0] = (uint16_t)(mul15(k->sx_sy, k->sz) + k->cx_cy);
-    m[1] = (uint16_t)(mul15(k->sx_cy, k->sz) - k->cx_sy);
-    m[2] = mul15(k->sx, k->cz);
-    m[3] = mul15(k->sy, k->cz);
-    m[4] = mul15(k->cy, k->cz);
+    m[0] = (uint16_t)(mul15(k->sx_sy, k->sz, GSU_COPY(1)) + k->cx_cy);
+    m[1] = (uint16_t)(mul15(k->sx_cy, k->sz, GSU_COPY(0)) - k->cx_sy);
+    m[2] = mul15(k->sx, k->cz, GSU_COPY(0));
+    m[3] = mul15(k->sy, k->cz, GSU_COPY(0));
+    m[4] = mul15(k->cy, k->cz, GSU_COPY(0));
     m[5] = (uint16_t)-k->sz;
-    m[6] = (uint16_t)(mul15(k->cx_sy, k->sz) - k->sx_cy);
-    m[7] = (uint16_t)(mul15(k->cx_cy, k->sz) + k->sx_sy);
-    m[8] = mul15(k->cx, k->cz);
+    m[6] = (uint16_t)(mul15(k->cx_sy, k->sz, GSU_COPY(0)) - k->sx_cy);
+    m[7] = (uint16_t)(mul15(k->cx_cy, k->sz, GSU_COPY(0)) + k->sx_sy);
+    m[8] = mul15(k->cx, k->cz, GSU_COPY(0));
     for (i = 0; i < 9; i++)
-        { gsu_stw((uint16_t)(out + i * 2), m[i]); gsu_code(0x01844F, 1); }
+        { gsu_stw((uint16_t)(out + i * 2), m[i]); }
 }
 
 void abi_FxMatrixFromAngles01(void)
@@ -350,7 +358,7 @@ void abi_FxMatrixFromAngles01(void)
     uint32_t p;
 
     FxMatrixFromAngles01(out, &k);
-    gsu_add(mul15(k.cx_cy, k.sz), k.sx_sy, 0);      /* OV of the ADD R13 */
+    gsu_add(mul15(k.cx_cy, k.sz, GSU_COPY(0)), k.sx_sy, 0);      /* OV of the ADD R13 */
     p = (uint32_t)((int32_t)(int16_t)k.cx * (int16_t)k.cz);
     gsu.cy = (uint8_t)(p >> 31);                    /* ROL takes FMULT's bit 15 */
     gsu.r[0] = (uint16_t)(p >> 15);
@@ -378,16 +386,30 @@ void abi_FxMatrixFromAngles01(void)
  */
 void abi_FxMatrixFromAnglesProgram(void)
 {
-    gsu_code(0x018326, 7);
+    gsu_code(0x018326, 7); gsu_code(0x01832F, 9);
     gsu.r[9] = 0x00E4;
     gsu.r[11] = 0x832D;
     abi_FxMatrixFromAngles01();
-    gsu_code(0x01832D, 1);
 }
 
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode fx_half_sum_code[10][3] = {
+    {{0x019896, 1}, {0x01989D, 18}, {0, 0}},
+    {{0, 0}, {0, 0}, {0, 0}},
+    {{0x019896, 1}, {0x01989D, 3}, {0x0198AF, 15}},
+    {{0x0198BE, 16}, {0, 0}, {0, 0}},
+    {{0x019853, 18}, {0, 0}, {0, 0}},
+    {{0x019853, 3}, {0x019865, 15}, {0, 0}},
+    {{0x01983B, 17}, {0x019874, 16}, {0, 0}},
+    {{0x01984C, 10}, {0x019865, 15}, {0, 0}},
+    {{0x01984C, 25}, {0, 0}, {0, 0}},
+    {{0x01983B, 24}, {0x019874, 16}, {0, 0}},
+};
+
 /* R0 = Ra + Rb (ADD), then Rd = R0 DIV2. */
-static void fx_half_sum(int d, int a, int b)
+static void fx_half_sum(int d, int a, int b, int copy)
 {
+    gsu_codes(fx_half_sum_code[copy], 3);
     gsu.r[0] = gsu_add(gsu.r[a], gsu.r[b], 0);
     gsu.r[d] = gsu_div2(gsu.r[0]);
 }
@@ -408,7 +430,6 @@ static void fx_half_sum(int d, int a, int b)
  */
 void abi_FxSegmentCrossZ(void)
 {
-    gsu_code(0x01981A, 2); gsu_cache(0x981B); gsu_code(0x01981C, 4);
     int i;
 
     gsu_moves(gsu.r[3]);
@@ -424,19 +445,17 @@ void abi_FxSegmentCrossZ(void)
         gsu_stw(0x009C, gsu.r[2]);
         gsu_code(0x019838, 3);
         gsu_stw(0x009E, gsu.r[3]);
-        gsu_code(0x01983B, 17); gsu_code(0x019874, 16);
         for (i = 1; i <= 3; i++) {
             gsu.r[0] = gsu.r[i];
             gsu.r[i] = gsu.r[i + 3];
             gsu.r[i + 3] = gsu.r[0];
         }
         for (;;) {
-            gsu_code(0x01984C, 7);
             gsu.r[0] = gsu_div2(gsu_add(gsu.r[3], gsu.r[6], 0));
             if (gsu.z) {
                 gsu.r[6] = gsu.r[0];
-                fx_half_sum(4, 1, 4);
-                fx_half_sum(5, 2, 5);
+                fx_half_sum(4, 1, 4, GSU_COPY(6));
+                fx_half_sum(5, 2, 5, GSU_COPY(1));
                 gsu.r[1] = gsu_ldw(0x009A);
                 gsu_code(0x019884, 3);
                 gsu.r[2] = gsu_ldw(0x009C);
@@ -445,17 +464,15 @@ void abi_FxSegmentCrossZ(void)
                 gsu.r[0] = 0x0001;
                 gsu_code(0x01988A, 3);
                 return;
-            } else { gsu_code(0x019853, 3); }
+            }
             if (gsu.s) {
-                gsu_code(0x019865, 15);
                 gsu.r[3] = gsu.r[0];
-                fx_half_sum(1, 1, 4);
-                fx_half_sum(2, 2, 5);
+                fx_half_sum(1, 1, 4, GSU_COPY(5));
+                fx_half_sum(2, 2, 5, GSU_COPY(1));
             } else {
-                gsu_code(0x019856, 15);
                 gsu.r[6] = gsu.r[0];
-                fx_half_sum(4, 1, 4);
-                fx_half_sum(5, 2, 5);
+                fx_half_sum(4, 1, 4, GSU_COPY(4));
+                fx_half_sum(5, 2, 5, GSU_COPY(1));
             }
         }
     } else { gsu_code(0x019828, 5); gsu_code(0x01988D, 4); }
@@ -469,14 +486,13 @@ void abi_FxSegmentCrossZ(void)
     gsu_stw(0x009C, gsu.r[5]);
     gsu_code(0x019894, 3);
     gsu_stw(0x009E, gsu.r[6]);
-    gsu_code(0x0198BE, 16);
     for (;;) {
         gsu_code(0x019897, 6);
         gsu.r[0] = gsu_div2(gsu_add(gsu.r[3], gsu.r[6], 0));
         if (gsu.z) {
             gsu.r[3] = gsu.r[0];
-            fx_half_sum(1, 1, 4);
-            fx_half_sum(2, 2, 5);
+            fx_half_sum(1, 1, 4, GSU_COPY(3));
+            fx_half_sum(2, 2, 5, GSU_COPY(1));
             gsu.r[4] = gsu_ldw(0x009A);
             gsu_code(0x0198CE, 3);
             gsu.r[5] = gsu_ldw(0x009C);
@@ -485,17 +501,15 @@ void abi_FxSegmentCrossZ(void)
             gsu.r[0] = 0x0001;
             gsu_code(0x0198D4, 3);
             return;
-        } else { gsu_code(0x019896, 1); gsu_code(0x01989D, 3); }
+        }
         if (gsu.s) {
-            gsu_code(0x0198AF, 15);
             gsu.r[3] = gsu.r[0];
-            fx_half_sum(1, 1, 4);
-            fx_half_sum(2, 2, 5);
+            fx_half_sum(1, 1, 4, GSU_COPY(2));
+            fx_half_sum(2, 2, 5, GSU_COPY(1));
         } else {
-            gsu_code(0x0198A0, 15);
             gsu.r[6] = gsu.r[0];
-            fx_half_sum(4, 1, 4);
-            fx_half_sum(5, 2, 5);
+            fx_half_sum(4, 1, 4, GSU_COPY(0));
+            fx_half_sum(5, 2, 5, GSU_COPY(1));
         }
     }
 }
@@ -512,16 +526,25 @@ static uint16_t fx_scaled(uint16_t a, int more)
     return v;
 }
 
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode fx_clip_search_code[4][6] = {
+    {{0x01C5DF, 20}, {0x01C5F3, 3}, {0x01C5F6, 3}, {0x01C5DE, 1}, {0x01C5F6, 25}, {0x01C60F, 25}},
+    {{0x01C52B, 20}, {0x01C53F, 3}, {0x01C542, 3}, {0x01C52A, 1}, {0x01C542, 25}, {0x01C55B, 25}},
+    {{0x01C8AB, 19}, {0x01C8BE, 3}, {0x01C8C1, 3}, {0x01C8AA, 1}, {0x01C8C1, 25}, {0x01C8DA, 25}},
+    {{0x01C7F8, 19}, {0x01C80B, 3}, {0x01C80E, 3}, {0x01C7F7, 1}, {0x01C80E, 25}, {0x01C827, 25}},
+};
+
 /* The halving search of the plane clips: the midpoint (R14 on the axis,
    R11 = z) tested against the plane; the end on the midpoint's side moves
    to it, with its attributes (R8/R12, R9/R13). At most 12 steps (R10,
    counted in the BMI's delay slot). Then the far end (the second when
    keep_first) ends at the midpoint. ax = 1 (x) or 2 (y). */
-static void fx_clip_search(int ax, int more, int keep_first)
+static void fx_clip_search(int ax, int more, int keep_first, int copy)
 {
     int o = 3 - ax, neg;
 
     for (;;) {
+        gsu_codes(fx_clip_search_code[copy], 1);
         gsu.r[0] = gsu_add(gsu.r[ax], gsu.r[ax + 3], 0);
         gsu.r[14] = gsu_div2(gsu.r[0]);
         gsu.r[0] = gsu_add(gsu.r[3], gsu.r[7], 0);
@@ -529,63 +552,108 @@ static void fx_clip_search(int ax, int more, int keep_first)
         gsu.r[0] = fx_scaled(gsu.r[14], more);
         gsu.r[0] = gsu_sub(gsu.r[11], gsu.r[0], 0);
         if (gsu.z)
-            break;
+            break; else { gsu_codes(fx_clip_search_code[copy] + 1, 1); }
         neg = gsu.s;
         gsu.r[10] = gsu_dec(gsu.r[10]);
         if (gsu.z)
-            break;
+            { gsu_codes(fx_clip_search_code[copy] + 2, 1); break; } else { gsu_codes(fx_clip_search_code[copy] + 3, 1); }
         if (!neg) {
+            gsu_codes(fx_clip_search_code[copy] + 4, 1);
             gsu.r[7] = gsu.r[11];
-            fx_half_sum(o + 3, o, o + 3);
+            fx_half_sum(o + 3, o, o + 3, GSU_COPY(1));
             gsu.r[ax + 3] = gsu.r[14];
-            fx_half_sum(12, 8, 12);
-            fx_half_sum(13, 9, 13);
+            fx_half_sum(12, 8, 12, GSU_COPY(1));
+            fx_half_sum(13, 9, 13, GSU_COPY(1));
         } else {
+            gsu_codes(fx_clip_search_code[copy] + 5, 1);
             gsu.r[3] = gsu.r[11];
-            fx_half_sum(o, o, o + 3);
+            fx_half_sum(o, o, o + 3, GSU_COPY(1));
             gsu.r[ax] = gsu.r[14];
-            fx_half_sum(8, 8, 12);
-            fx_half_sum(9, 9, 13);
+            fx_half_sum(8, 8, 12, GSU_COPY(1));
+            fx_half_sum(9, 9, 13, GSU_COPY(1));
         }
     }
     if (keep_first) {
         gsu.r[7] = gsu.r[11];
-        fx_half_sum(o + 3, o, o + 3);
+        fx_half_sum(o + 3, o, o + 3, GSU_COPY(1));
         gsu.r[ax + 3] = gsu.r[14];
-        fx_half_sum(12, 8, 12);
-        fx_half_sum(13, 9, 13);
+        fx_half_sum(12, 8, 12, GSU_COPY(1));
+        fx_half_sum(13, 9, 13, GSU_COPY(1));
     } else {
         gsu.r[3] = gsu.r[11];
-        fx_half_sum(o, o, o + 3);
+        fx_half_sum(o, o, o + 3, GSU_COPY(1));
         gsu.r[ax] = gsu.r[14];
-        fx_half_sum(8, 8, 12);
-        fx_half_sum(9, 9, 13);
+        fx_half_sum(8, 8, 12, GSU_COPY(1));
+        fx_half_sum(9, 9, 13, GSU_COPY(1));
     }
 }
 
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode fx_clip_enter_code[4][4] = {
+    {{0x01C5C0, 4}, {0x01C5C4, 4}, {0x01C5C8, 4}, {0x01C5CC, 5}},
+    {{0x01C4FA, 4}, {0x01C4FE, 4}, {0x01C502, 4}, {0x01C506, 5}},
+    {{0x01C88C, 4}, {0x01C890, 4}, {0x01C894, 4}, {0x01C898, 5}},
+    {{0x01C7C7, 4}, {0x01C7CB, 4}, {0x01C7CF, 4}, {0x01C7D3, 5}},
+};
+
 /* Saves R8, R9, R12, R13 on the R10 stack and R10 at $A0; R10 = 12. */
-static void fx_clip_enter(void)
+static void fx_clip_enter(int copy)
 {
     gsu_push(&gsu.r[10], gsu.r[8]);
+    gsu_codes(fx_clip_enter_code[copy], 1);
     gsu_push(&gsu.r[10], gsu.r[9]);
+    gsu_codes(fx_clip_enter_code[copy] + 1, 1);
     gsu_push(&gsu.r[10], gsu.r[12]);
+    gsu_codes(fx_clip_enter_code[copy] + 2, 1);
     gsu_push(&gsu.r[10], gsu.r[13]);
+    gsu_codes(fx_clip_enter_code[copy] + 3, 1);
     gsu_stw(0x00A0, gsu.r[10]);
     gsu.r[10] = 0x000C;
 }
 
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode fx_clip_leave_code[4][6] = {
+    {{0x01C64E, 4}, {0x01C652, 4}, {0x01C656, 4}, {0x01C65A, 4}, {0x01C65E, 4}, {0x01C662, 6}},
+    {{0x01C59A, 4}, {0x01C59E, 4}, {0x01C5A2, 4}, {0x01C5A6, 4}, {0x01C5AA, 4}, {0x01C5AE, 6}},
+    {{0x01C919, 4}, {0x01C91D, 4}, {0x01C921, 4}, {0x01C925, 4}, {0x01C929, 4}, {0x01C92D, 6}},
+    {{0x01C866, 4}, {0x01C86A, 4}, {0x01C86E, 4}, {0x01C872, 4}, {0x01C876, 4}, {0x01C87A, 6}},
+};
+
 /* R10 from $A0, then R13, R12, R9, R8, R14 pulled; R0 = 1; return. */
-static void fx_clip_leave(void)
+static void fx_clip_leave(int copy)
 {
     gsu.r[10] = gsu_ldw(0x00A0);
+    gsu_codes(fx_clip_leave_code[copy], 1);
     gsu.r[13] = gsu_pull(&gsu.r[10]);
+    gsu_codes(fx_clip_leave_code[copy] + 1, 1);
     gsu.r[12] = gsu_pull(&gsu.r[10]);
+    gsu_codes(fx_clip_leave_code[copy] + 2, 1);
     gsu.r[9] = gsu_pull(&gsu.r[10]);
+    gsu_codes(fx_clip_leave_code[copy] + 3, 1);
     gsu.r[8] = gsu_pull(&gsu.r[10]);
+    gsu_codes(fx_clip_leave_code[copy] + 4, 1);
     gsu.r[14] = gsu_pull(&gsu.r[10]);
     gsu.r[0] = 0x0001;
+    gsu_codes(fx_clip_leave_code[copy] + 5, 1);
     gsu_pull(&gsu.r[10]);
 }
+
+/* cyccopy: the copy each of the caller's copies calls */
+static const uint8_t fx_clip_search_from_fx_clip_plane[4] = {0, 1, 2, 3};
+
+/* cyccopy: the copy each of the caller's copies calls */
+static const uint8_t fx_clip_leave_from_fx_clip_plane[4] = {0, 1, 2, 3};
+
+/* cyccopy: the copy each of the caller's copies calls */
+static const uint8_t fx_clip_enter_from_fx_clip_plane[4] = {0, 1, 2, 3};
+
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode fx_clip_plane_code[4][30] = {
+    {{0x01C4AE, 4}, {0x01C4B2, 12}, {0x01C4D3, 15}, {0x01C5B4, 4}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x01C5B8, 3}, {0x01C5BB, 3}, {0x01C5BE, 2}, {0x01C5D1, 5}, {0x01C5D6, 3}, {0x01C5D9, 3}, {0x01C5DC, 3}, {0x01C628, 23}, {0x01C63F, 3}, {0x01C642, 3}, {0x01C645, 3}, {0x01C648, 3}, {0x01C64B, 3}},
+    {{0x01C4AE, 4}, {0x01C4B2, 23}, {0x01C4EE, 4}, {0, 0}, {0x01C4F2, 3}, {0x01C4F5, 3}, {0x01C4F8, 2}, {0x01C50B, 23}, {0x01C522, 3}, {0x01C525, 3}, {0x01C528, 3}, {0x01C574, 23}, {0x01C58B, 3}, {0x01C58E, 3}, {0x01C591, 3}, {0x01C594, 3}, {0x01C597, 3}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0x01C77E, 4}, {0x01C782, 11}, {0x01C7A1, 14}, {0x01C880, 4}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x01C884, 3}, {0x01C887, 3}, {0x01C88A, 2}, {0x01C89D, 5}, {0x01C8A2, 3}, {0x01C8A5, 3}, {0x01C8A8, 3}, {0x01C8F3, 23}, {0x01C90A, 3}, {0x01C90D, 3}, {0x01C910, 3}, {0x01C913, 3}, {0x01C916, 3}},
+    {{0x01C77E, 4}, {0x01C782, 21}, {0x01C7BB, 4}, {0, 0}, {0x01C7BF, 3}, {0x01C7C2, 3}, {0x01C7C5, 2}, {0x01C7D8, 23}, {0x01C7EF, 3}, {0x01C7F2, 3}, {0x01C7F5, 3}, {0x01C840, 23}, {0x01C857, 3}, {0x01C85A, 3}, {0x01C85D, 3}, {0x01C860, 3}, {0x01C863, 3}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+};
 
 /*
  * @routine 01:C4AA FxClipYPlane
@@ -603,12 +671,14 @@ static void fx_clip_leave(void)
  * address. Exit: as above; R8, R9, R12-R14 restored; S, Z from R10; the
  * last RAM address R10.
  */
-static void fx_clip_plane(int ax, int more)
+static void fx_clip_plane(int ax, int more, int copy)
 {
     int i;
 
     gsu_push(&gsu.r[10], gsu.r[11]);
+    gsu_codes(fx_clip_plane_code[copy], 1);
     gsu_push(&gsu.r[10], gsu.r[14]);
+    gsu_codes(fx_clip_plane_code[copy] + 1, 3);
     gsu.r[0] = fx_scaled(gsu.r[ax], more);
     gsu.r[0] = gsu_sub(gsu.r[3], gsu.r[0], 0);
     if (!gsu.s) {
@@ -621,10 +691,14 @@ static void fx_clip_plane(int ax, int more)
             return;
         }
         gsu_stw(0x009A, gsu.r[1]);
+        gsu_codes(fx_clip_plane_code[copy] + 4, 1);
         gsu_stw(0x009C, gsu.r[2]);
+        gsu_codes(fx_clip_plane_code[copy] + 5, 1);
         gsu_stw(0x009E, gsu.r[3]);
-        fx_clip_enter();
+        gsu_codes(fx_clip_plane_code[copy] + 6, 1);
+        fx_clip_enter(GSU_COPY(fx_clip_enter_from_fx_clip_plane[copy]));
         {
+            gsu_codes(fx_clip_plane_code[copy] + 7, 1);
             static const int a[3] = {1, 2, 3}, b[3] = {4, 5, 7};
 
             for (i = 0; i < 3; i++) {
@@ -634,16 +708,25 @@ static void fx_clip_plane(int ax, int more)
             }
         }
         gsu.r[8] = gsu_ldw(0x008C);
+        gsu_codes(fx_clip_plane_code[copy] + 8, 1);
         gsu.r[9] = gsu_ldw(0x0090);
+        gsu_codes(fx_clip_plane_code[copy] + 9, 1);
         gsu.r[12] = gsu_ldw(0x008A);
+        gsu_codes(fx_clip_plane_code[copy] + 10, 1);
         gsu.r[13] = gsu_ldw(0x008E);
-        fx_clip_search(ax, more, 1);
+        gsu_codes(fx_clip_plane_code[copy] + 11, 1);
+        fx_clip_search(ax, more, 1, GSU_COPY(fx_clip_search_from_fx_clip_plane[copy]));
         gsu.r[1] = gsu_ldw(0x009A);
+        gsu_codes(fx_clip_plane_code[copy] + 12, 1);
         gsu.r[2] = gsu_ldw(0x009C);
+        gsu_codes(fx_clip_plane_code[copy] + 13, 1);
         gsu.r[3] = gsu_ldw(0x009E);
+        gsu_codes(fx_clip_plane_code[copy] + 14, 1);
         gsu_stw(0x008C, gsu.r[12]);
+        gsu_codes(fx_clip_plane_code[copy] + 15, 1);
         gsu_stw(0x0090, gsu.r[13]);
-        fx_clip_leave();
+        gsu_codes(fx_clip_plane_code[copy] + 16, 1);
+        fx_clip_leave(GSU_COPY(fx_clip_leave_from_fx_clip_plane[copy]));
         return;
     }
     gsu.r[0] = fx_scaled(gsu.r[ax + 3], more);
@@ -655,26 +738,38 @@ static void fx_clip_plane(int ax, int more)
         return;
     }
     gsu_stw(0x009A, gsu.r[4]);
+    gsu_codes(fx_clip_plane_code[copy] + 17, 1);
     gsu_stw(0x009C, gsu.r[5]);
+    gsu_codes(fx_clip_plane_code[copy] + 18, 1);
     gsu_stw(0x009E, gsu.r[7]);
-    fx_clip_enter();
+    gsu_codes(fx_clip_plane_code[copy] + 19, 1);
+    fx_clip_enter(GSU_COPY(fx_clip_enter_from_fx_clip_plane[copy]));
+    gsu_codes(fx_clip_plane_code[copy] + 20, 1);
     gsu.r[8] = gsu_ldw(0x008A);
+    gsu_codes(fx_clip_plane_code[copy] + 21, 1);
     gsu.r[9] = gsu_ldw(0x008E);
+    gsu_codes(fx_clip_plane_code[copy] + 22, 1);
     gsu.r[12] = gsu_ldw(0x008C);
+    gsu_codes(fx_clip_plane_code[copy] + 23, 1);
     gsu.r[13] = gsu_ldw(0x0090);
-    fx_clip_search(ax, more, 0);
+    gsu_codes(fx_clip_plane_code[copy] + 24, 1);
+    fx_clip_search(ax, more, 0, GSU_COPY(fx_clip_search_from_fx_clip_plane[copy]));
     gsu.r[4] = gsu_ldw(0x009A);
+    gsu_codes(fx_clip_plane_code[copy] + 25, 1);
     gsu.r[5] = gsu_ldw(0x009C);
+    gsu_codes(fx_clip_plane_code[copy] + 26, 1);
     gsu.r[7] = gsu_ldw(0x009E);
+    gsu_codes(fx_clip_plane_code[copy] + 27, 1);
     gsu_stw(0x008A, gsu.r[8]);
+    gsu_codes(fx_clip_plane_code[copy] + 28, 1);
     gsu_stw(0x008E, gsu.r[9]);
-    fx_clip_leave();
+    gsu_codes(fx_clip_plane_code[copy] + 29, 1);
+    fx_clip_leave(GSU_COPY(fx_clip_leave_from_fx_clip_plane[copy]));
 }
 
 void abi_FxClipYPlane(void)
 {
-    gsu_code(0x01C4AA, 2); gsu_cache(0xC4AB); gsu_code(0x01C4AC, 2);
-    fx_clip_plane(2, 2);
+    fx_clip_plane(2, 2, GSU_COPY(0));
 }
 
 /*
@@ -686,8 +781,7 @@ void abi_FxClipYPlane(void)
  */
 void abi_FxClipXPlane(void)
 {
-    gsu_code(0x01C77A, 2); gsu_cache(0xC77B); gsu_code(0x01C77C, 2);
-    fx_clip_plane(1, 1);
+    fx_clip_plane(1, 1, GSU_COPY(2));
 }
 
 static void fx_near_test(uint16_t z);
@@ -704,7 +798,7 @@ typedef struct {
 static int fx_ro;
 
 /* R0 = z - (or +) the scaled coordinate: SUB or ADD after the scaling. */
-static void fx_plane_test(const FxPlaneDriver *d, int c, int z)
+static void fx_plane_test(const FxPlaneDriver *d, int c, int z, int copy)
 {
     if (!d->slope) {
         fx_near_test(gsu.r[z]);
@@ -714,9 +808,23 @@ static void fx_plane_test(const FxPlaneDriver *d, int c, int z)
     gsu.r[0] = d->neg ? gsu_add(gsu.r[z], gsu.r[0], 0) : gsu_sub(gsu.r[z], gsu.r[0], 0);
 }
 
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode fx_emit_code[10][7] = {
+    {{0x01CC4D, 5}, {0x01CC52, 1}, {0x01CC53, 5}, {0x01CC58, 1}, {0x01CC59, 5}, {0x01CC5E, 2}, {0, 0}},
+    {{0x01CBE8, 5}, {0x01CBED, 1}, {0x01CBEE, 5}, {0x01CBF3, 1}, {0x01CBF4, 5}, {0x01CBF9, 2}, {0, 0}},
+    {{0x01CC1E, 5}, {0x01CC23, 1}, {0x01CC24, 5}, {0x01CC29, 1}, {0x01CC2A, 5}, {0x01CC2F, 2}, {0x01CC31, 3}},
+    {{0x01CA08, 5}, {0x01CA0D, 1}, {0x01CA0E, 5}, {0x01CA13, 1}, {0x01CA14, 5}, {0x01CA19, 2}, {0, 0}},
+    {{0x01C9B6, 5}, {0x01C9BB, 1}, {0x01C9BC, 5}, {0x01C9C1, 1}, {0x01C9C2, 5}, {0x01C9C7, 2}, {0, 0}},
+    {{0x01C9E2, 5}, {0x01C9E7, 1}, {0x01C9E8, 5}, {0x01C9ED, 1}, {0x01C9EE, 5}, {0x01C9F3, 2}, {0x01C9F5, 3}},
+    {{0x01CB29, 5}, {0x01CB2E, 1}, {0x01CB2F, 5}, {0x01CB34, 1}, {0x01CB35, 5}, {0x01CB3A, 2}, {0, 0}},
+    {{0x01CAC5, 5}, {0x01CACA, 1}, {0x01CACB, 5}, {0x01CAD0, 1}, {0x01CAD1, 5}, {0x01CAD6, 2}, {0, 0}},
+    {{0x01CAFA, 5}, {0x01CAFF, 1}, {0x01CB00, 5}, {0x01CB05, 1}, {0x01CB06, 5}, {0x01CB0B, 2}, {0x01CB0D, 3}},
+    {{0x01CEB6, 5}, {0x01CEBB, 1}, {0x01CEBC, 5}, {0x01CEC1, 1}, {0x01CEC2, 5}, {0x01CEC7, 2}, {0, 0}},
+};
+
 /* A vertex (three registers and the two attribute words) appended at R9,
    the output count $40 counted up. */
-static void fx_emit(int r1, int r2, int r3, uint16_t at1, uint16_t at2)
+static void fx_emit(int r1, int r2, int r3, uint16_t at1, uint16_t at2, int copy)
 {
     const int r[3] = {r1, r2, r3};
     int i;
@@ -724,15 +832,22 @@ static void fx_emit(int r1, int r2, int r3, uint16_t at1, uint16_t at2)
     for (i = 0; i < 3; i++) {
         gsu_stw(gsu.r[fx_ro], gsu.r[r[i]]);
         gsu.r[fx_ro] = gsu_inc(gsu_inc(gsu.r[fx_ro]));
+        gsu_codes(fx_emit_code[copy], 1);
     }
     gsu.r[0] = gsu_ldw(at1);
+    gsu_codes(fx_emit_code[copy] + 1, 1);
     gsu_stw(gsu.r[fx_ro], gsu.r[0]);
     gsu.r[fx_ro] = gsu_inc(gsu_inc(gsu.r[fx_ro]));
+    gsu_codes(fx_emit_code[copy] + 2, 1);
     gsu.r[0] = gsu_ldw(at2);
+    gsu_codes(fx_emit_code[copy] + 3, 1);
     gsu_stw(gsu.r[fx_ro], gsu.r[0]);
     gsu.r[fx_ro] = gsu_inc(gsu_inc(gsu.r[fx_ro]));
+    gsu_codes(fx_emit_code[copy] + 4, 1);
     gsu.r[0] = gsu_inc(gsu_ldw(0x0040));
+    gsu_codes(fx_emit_code[copy] + 5, 1);
     gsu_sbk(gsu.r[0]);
+    gsu_codes(fx_emit_code[copy] + 6, 1);
 }
 
 static void fx_negate(int r)
@@ -742,7 +857,7 @@ static void fx_negate(int r)
 
 /* The clip call, the axis coordinates negated around it for the negative
    side (only the replaced end's afterwards). */
-static void fx_plane_clip(const FxPlaneDriver *d, uint16_t ret, int fixed)
+static void fx_plane_clip(const FxPlaneDriver *d, uint16_t ret, int fixed, int copy)
 {
     if (d->neg) {
         fx_negate(d->ax);
@@ -754,94 +869,142 @@ static void fx_plane_clip(const FxPlaneDriver *d, uint16_t ret, int fixed)
         fx_negate(fixed);
 }
 
+/* cyccopy: the copy each of the caller's copies calls */
+static const uint8_t fx_plane_test_from_fx_plane_driver[5] = {0, 0, 0, 1, 1};
+
+/* cyccopy: the copy each of the caller's copies calls */
+static const uint8_t fx_plane_clip_from_fx_plane_driver[5] = {0, 1, 0, 0, 0};
+
+/* cyccopy: the copy each of the caller's copies calls */
+static const uint8_t fx_emit_from_fx_plane_driver[5] = {2, 5, 8, 9, 0};
+
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode fx_plane_driver_code[5][58] = {
+    {{0, 0}, {0, 0}, {0x01CB66, 4}, {0x01CB6A, 5}, {0x01CB6F, 3}, {0, 0}, {0x01CB72, 4}, {0x01CB76, 3}, {0x01CB79, 3}, {0x01CB7C, 5}, {0x01CB85, 1}, {0x01CB86, 3}, {0x01CB91, 3}, {0x01CB94, 5}, {0x01CB99, 1}, {0x01CB9A, 5}, {0x01CB9F, 9}, {0x01CB9F, 5}, {0x01CBA7, 1}, {0x01CBA8, 2}, {0x01CBB2, 3}, {0x01CBB5, 5}, {0x01CBBA, 1}, {0x01CBBB, 3}, {0x01CBBE, 13}, {0, 0}, {0, 0}, {0x01CBDD, 3}, {0x01CBFB, 10}, {0, 0}, {0, 0}, {0x01C4AA, 2}, {0xC4AB, 0}, {0x01C4AC, 2}, {0x01CC05, 11}, {0x01CC10, 6}, {0x01CC5F, 1}, {0x01CBCB, 11}, {0x01C4AA, 2}, {0xC4AB, 0}, {0x01C4AC, 2}, {0x01CBDA, 3}, {0x01CC34, 11}, {0x01CC3F, 6}, {0x01CBD6, 4}, {0x01CC5F, 1}, {0x01CC60, 3}, {0x01CC63, 4}, {0x01CC67, 4}, {0x01CC6B, 5}, {0x01CC74, 5}, {0x01CC79, 4}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0x01C936, 4}, {0x01C93A, 5}, {0x01C93F, 3}, {0, 0}, {0x01C942, 4}, {0x01C946, 3}, {0x01C949, 3}, {0x01C94C, 5}, {0x01C955, 1}, {0x01C956, 3}, {0x01C961, 3}, {0x01C964, 5}, {0x01C969, 1}, {0x01C96A, 5}, {0x01C96F, 9}, {0x01C96F, 5}, {0x01C977, 1}, {0x01C978, 2}, {0x01C982, 3}, {0x01C985, 5}, {0x01C98A, 1}, {0x01C98B, 3}, {0x01C98E, 12}, {0, 0}, {0, 0}, {0x01C9AB, 3}, {0x01C9C9, 9}, {0, 0}, {0, 0}, {0x01C77A, 2}, {0xC77B, 0}, {0x01C77C, 2}, {0x01C9D2, 5}, {0x01C9D7, 3}, {0x01CA1A, 1}, {0x01C99A, 10}, {0x01C77A, 2}, {0xC77B, 0}, {0x01C77C, 2}, {0x01C9A8, 3}, {0x01C9F8, 5}, {0x01C9FD, 3}, {0x01C9A4, 4}, {0x01CA1A, 1}, {0x01CA1B, 3}, {0x01CA1E, 4}, {0x01CA22, 4}, {0x01CA26, 5}, {0x01CA2F, 5}, {0x01CA34, 4}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0x01CA45, 4}, {0x01CA49, 5}, {0x01CA4E, 3}, {0, 0}, {0x01CA51, 4}, {0x01CA55, 3}, {0x01CA58, 3}, {0x01CA5B, 5}, {0x01CA64, 1}, {0x01CA65, 3}, {0x01CA70, 3}, {0x01CA73, 5}, {0x01CA78, 1}, {0x01CA79, 5}, {0x01CA7E, 9}, {0x01CA7E, 5}, {0x01CA86, 1}, {0x01CA87, 2}, {0x01CA91, 3}, {0x01CA94, 5}, {0x01CA99, 1}, {0x01CA9A, 3}, {0x01CA9D, 12}, {0, 0}, {0, 0}, {0x01CABA, 3}, {0x01CAD8, 9}, {0, 0}, {0, 0}, {0x01C77A, 2}, {0xC77B, 0}, {0x01C77C, 2}, {0x01CAE1, 11}, {0x01CAEC, 6}, {0x01CB3B, 1}, {0x01CAA9, 10}, {0x01C77A, 2}, {0xC77B, 0}, {0x01C77C, 2}, {0x01CAB7, 3}, {0x01CB10, 11}, {0x01CB1B, 6}, {0x01CAB3, 4}, {0x01CB3B, 1}, {0x01CB3C, 3}, {0x01CB3F, 4}, {0x01CB43, 4}, {0x01CB47, 5}, {0x01CB50, 5}, {0x01CB55, 4}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0x01C2B2, 6}, {0x01CE34, 3}, {0x01CE37, 4}, {0, 0}, {0, 0}, {0x01CE3B, 7}, {0x01CE42, 4}, {0x01CE46, 3}, {0x01CE49, 3}, {0x01CE4C, 5}, {0x01CE55, 1}, {0x01CE56, 3}, {0x01CE61, 3}, {0x01CE64, 5}, {0x01CE69, 1}, {0x01CE6A, 5}, {0x01CE6F, 9}, {0x01CE6F, 5}, {0x01CE77, 1}, {0x01CE78, 2}, {0x01CE82, 3}, {0x01CE85, 5}, {0x01CE8A, 1}, {0x01CE8B, 3}, {0x01CE8E, 7}, {0x01CE97, 3}, {0x01CEAB, 3}, {0, 0}, {0x01CEC9, 4}, {0x01CECF, 3}, {0x01CF1A, 4}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x01CF1E, 4}, {0x01CF22, 4}, {0x01CF26, 5}, {0x01CF2F, 5}, {0x01CF34, 4}, {0x01C2B8, 4}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0x01C31A, 6}, {0x01CE34, 3}, {0x01CE37, 4}, {0, 0}, {0, 0}, {0x01CE3B, 7}, {0x01CE42, 4}, {0x01CE46, 3}, {0x01CE49, 3}, {0x01CE4C, 5}, {0x01CE55, 1}, {0x01CE56, 3}, {0x01CE61, 3}, {0x01CE64, 5}, {0x01CE69, 1}, {0x01CE6A, 5}, {0x01CE6F, 9}, {0x01CE6F, 5}, {0x01CE77, 1}, {0x01CE78, 2}, {0x01CE82, 3}, {0x01CE85, 5}, {0x01CE8A, 1}, {0x01CE8B, 3}, {0x01CE8E, 26}, {0x01CF1A, 4}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x01CF1E, 4}, {0x01CF22, 4}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x01CF26, 9}, {0x01CF38, 5}, {0x01CF3D, 5}, {0x01C320, 5}, {0x01C334, 5}},
+};
+
 /* Clips the polygon at $60 (count $40, five words a vertex) against the
    plane into the list at $62: Sutherland-Hodgman, each edge from vertex
    to next (the last to the first). R0 = the new count, or 0 when fewer
    than 3 are left or there were only 2. */
-static void fx_plane_driver(const FxPlaneDriver *d)
+static void fx_plane_driver(const FxPlaneDriver *d, int copy)
 {
+    gsu_codes(fx_plane_driver_code[copy], 2);
     int in1, i, rc, ri, ro;
     static const int reg1[3] = {1, 2, 3}, reg2[3] = {4, 5, 7};
 
     if (d->slope) {
         rc = 14; ri = 8; ro = 9;
     } else {
-        gsu_code(0x01CE34, 3);
         rc = 9; ri = 6; ro = 8;
     }
     fx_ro = ro;
     gsu_push(&gsu.r[10], gsu.r[11]);
+    gsu_codes(fx_plane_driver_code[copy] + 2, 1);
     gsu_push(&gsu.r[10], gsu.r[14]);
     if (d->slope) {
+        gsu_codes(fx_plane_driver_code[copy] + 3, 1);
         gsu.r[6] = gsu_ldw(d->slope);
+        gsu_codes(fx_plane_driver_code[copy] + 4, 1);
         gsu.r[14] = gsu_ldw(0x0040);
     } else {
-        gsu_code(0x01CE3B, 7);
+        gsu_codes(fx_plane_driver_code[copy] + 5, 1);
         gsu.r[14] = gsu.r[0];
         gsu.r[9] = gsu_ldw(0x0040);
     }
+    gsu_codes(fx_plane_driver_code[copy] + 6, 1);
     gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[0], 0);
     gsu_stw(0x0040, gsu.r[0]);
+    gsu_codes(fx_plane_driver_code[copy] + 7, 1);
     gsu.r[ri] = gsu_ldw(0x0060);
+    gsu_codes(fx_plane_driver_code[copy] + 8, 1);
     gsu.r[ro] = gsu_ldw(0x0062);
     gsu.r[0] = gsu_sub(gsu.r[rc], 0x0002, 0);
     if (gsu.z)
-        goto fail;
+        goto fail; else { gsu_codes(fx_plane_driver_code[copy] + 9, 2); }
     do {
+        gsu_codes(fx_plane_driver_code[copy] + 11, 1);
         for (i = 0; i < 3; i++) {
             gsu.r[reg1[i]] = gsu_ldw(gsu.r[ri]);
             gsu.r[ri] = gsu_inc(gsu_inc(gsu.r[ri]));
+            gsu_codes(fx_plane_driver_code[copy] + 12, 1);
         }
         gsu.r[0] = gsu_ldw(gsu.r[ri]);
         gsu.r[ri] = gsu_inc(gsu_inc(gsu.r[ri]));
+        gsu_codes(fx_plane_driver_code[copy] + 13, 1);
         gsu_stw(0x008A, gsu.r[0]);
+        gsu_codes(fx_plane_driver_code[copy] + 14, 1);
         gsu.r[0] = gsu_ldw(gsu.r[ri]);
         gsu.r[ri] = gsu_inc(gsu_inc(gsu.r[ri]));
+        gsu_codes(fx_plane_driver_code[copy] + 15, 1);
         gsu_stw(0x008E, gsu.r[0]);
         gsu.r[0] = gsu_dec(gsu.r[rc]);
         if (gsu.z)
-            gsu.r[ri] = gsu_ldw(0x0060);
+            { gsu_codes(fx_plane_driver_code[copy] + 16, 1); gsu.r[ri] = gsu_ldw(0x0060); } else { gsu_codes(fx_plane_driver_code[copy] + 17, 2); }
+        gsu_codes(fx_plane_driver_code[copy] + 19, 1);
         for (i = 0; i < 3; i++) {
             gsu.r[reg2[i]] = gsu_ldw(gsu.r[ri]);
             gsu.r[ri] = gsu_inc(gsu_inc(gsu.r[ri]));
+            gsu_codes(fx_plane_driver_code[copy] + 20, 1);
         }
         gsu.r[0] = gsu_ldw(gsu.r[ri]);
         gsu.r[ri] = gsu_inc(gsu_inc(gsu.r[ri]));
+        gsu_codes(fx_plane_driver_code[copy] + 21, 1);
         gsu_stw(0x008C, gsu.r[0]);
+        gsu_codes(fx_plane_driver_code[copy] + 22, 1);
         gsu.r[0] = gsu_ldw(gsu.r[ri]);
+        gsu_codes(fx_plane_driver_code[copy] + 23, 1);
         gsu_stw(0x0090, gsu.r[0]);
         gsu.r[ri] = gsu_sub(gsu.r[ri], 0x0008, 0);
-        fx_plane_test(d, d->ax, 3);
+        gsu_codes(fx_plane_driver_code[copy] + 24, 3);
+        fx_plane_test(d, d->ax, 3, GSU_COPY(fx_plane_test_from_fx_plane_driver[copy]));
         in1 = !gsu.s;
         if (in1) {
-            fx_emit(1, 2, 3, 0x008A, 0x008E);
-            fx_plane_test(d, d->ax + 3, 7);
+            gsu_codes(fx_plane_driver_code[copy] + 27, 1);
+            fx_emit(1, 2, 3, 0x008A, 0x008E, GSU_COPY(fx_emit_from_fx_plane_driver[copy]));
+            gsu_codes(fx_plane_driver_code[copy] + 28, 3);
+            fx_plane_test(d, d->ax + 3, 7, GSU_COPY(fx_plane_test_from_fx_plane_driver[copy]));
             if (gsu.s) {
-                fx_plane_clip(d, d->ret_out, d->ax + 3);
-                fx_emit(4, 5, 7, 0x008C, 0x0090);
+                gsu_codes(fx_plane_driver_code[copy] + 31, 4);
+                fx_plane_clip(d, d->ret_out, d->ax + 3, GSU_COPY(fx_plane_clip_from_fx_plane_driver[copy]));
+                gsu_codes(fx_plane_driver_code[copy] + 35, 1);
+                fx_emit(4, 5, 7, 0x008C, 0x0090, GSU_COPY(fx_emit_from_fx_plane_driver[copy]));
             }
+            gsu_codes(fx_plane_driver_code[copy] + 36, 1);
         } else {
-            fx_plane_test(d, d->ax + 3, 7);
+            gsu_codes(fx_plane_driver_code[copy] + 37, 1);
+            fx_plane_test(d, d->ax + 3, 7, GSU_COPY(fx_plane_test_from_fx_plane_driver[copy]));
             if (!gsu.s) {
-                fx_plane_clip(d, d->ret_in, d->ax);
-                fx_emit(1, 2, 3, 0x008A, 0x008E);
-            }
+                gsu_codes(fx_plane_driver_code[copy] + 38, 5);
+                fx_plane_clip(d, d->ret_in, d->ax, GSU_COPY(fx_plane_clip_from_fx_plane_driver[copy]));
+                gsu_codes(fx_plane_driver_code[copy] + 43, 1);
+                fx_emit(1, 2, 3, 0x008A, 0x008E, GSU_COPY(fx_emit_from_fx_plane_driver[copy]));
+            } else { gsu_codes(fx_plane_driver_code[copy] + 44, 2); }
         }
+        gsu_codes(fx_plane_driver_code[copy] + 46, 1);
         gsu.r[rc] = gsu_dec(gsu.r[rc]);
-    } while (!gsu.z);
+    } while (gsu_codes_loop(fx_plane_driver_code[copy] + 47, 1, !gsu.z));
+    gsu_codes(fx_plane_driver_code[copy] + 48, 1);
     gsu.r[0] = gsu_ldw(0x0040);
     gsu.r[1] = gsu_sub(gsu.r[0], 0x0003, 0);
     if (!gsu.s) {
+        gsu_codes(fx_plane_driver_code[copy] + 49, 2);
         gsu.r[14] = gsu_pull(&gsu.r[10]);
+        gsu_codes(fx_plane_driver_code[copy] + 51, 1);
         gsu_pull(&gsu.r[10]);
+        gsu_codes(fx_plane_driver_code[copy] + 52, 1);
         return;
-    } else { gsu_code(0x01CF26, 9); gsu_code(0x01CF38, 5); }
+    } else { gsu_codes(fx_plane_driver_code[copy] + 53, 2); }
 fail:
     gsu.r[14] = gsu_pull(&gsu.r[10]);
-    gsu_code(0x01CF3D, 5);
+    gsu_codes(fx_plane_driver_code[copy] + 55, 1);
     gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[0], 0);
     gsu_pull(&gsu.r[10]);
-    gsu_code(0x01C320, 5); gsu_code(0x01C334, 5);
+    gsu_codes(fx_plane_driver_code[copy] + 56, 2);
 }
 
 /*
@@ -860,7 +1023,7 @@ void abi_FxPolygonClipTop(void)
 {
     static const FxPlaneDriver d = {0x0094, 2, 2, 0, abi_FxClipYPlane, 0xC70F, 0xC735};
 
-    fx_plane_driver(&d);
+    fx_plane_driver(&d, GSU_COPY(0));
 }
 
 /*
@@ -872,11 +1035,9 @@ void abi_FxPolygonClipTop(void)
  */
 void abi_FxPolygonClipRight(void)
 {
-    gsu_code(0x01C3B7, 5); gsu_code(0x01C933, 3);
     static const FxPlaneDriver d = {0x0092, 1, 1, 0, abi_FxClipXPlane, 0xC9D7, 0xC9FD};
 
-    fx_plane_driver(&d);
-    gsu_code(0x01C3BC, 4);
+    fx_plane_driver(&d, GSU_COPY(1));
 }
 
 /*
@@ -888,11 +1049,9 @@ void abi_FxPolygonClipRight(void)
  */
 void abi_FxPolygonClipLeft(void)
 {
-    gsu_code(0x01C3D4, 1); gsu_code(0x01C3DB, 5); gsu_code(0x01CA42, 3);
     static const FxPlaneDriver d = {0x0092, 1, 1, 1, abi_FxClipXPlane, 0xCAEC, 0xCB1B};
 
-    fx_plane_driver(&d);
-    gsu_code(0x01C3E0, 4);
+    fx_plane_driver(&d, GSU_COPY(2));
 }
 
 /*
@@ -904,11 +1063,9 @@ void abi_FxPolygonClipLeft(void)
  */
 void abi_FxPolygonClipBottom(void)
 {
-    gsu_code(0x01C393, 5); gsu_code(0x01CB63, 3);
     static const FxPlaneDriver d = {0x0094, 2, 2, 1, abi_FxClipYPlane, 0xCC10, 0xCC3F};
 
-    fx_plane_driver(&d);
-    gsu_code(0x01C398, 4);
+    fx_plane_driver(&d, GSU_COPY(0));
 }
 
 /* MOVES R0, R14, then (in the BPL's delay slot) SUB z, and for a negative
@@ -943,30 +1100,30 @@ static void fx_near_search(int keep_first)
             break;
         if (!neg) {
             gsu.r[7] = gsu.r[11];
-            fx_half_sum(4, 1, 4);
-            fx_half_sum(5, 2, 5);
-            fx_half_sum(12, 8, 12);
-            fx_half_sum(13, 9, 13);
+            fx_half_sum(4, 1, 4, GSU_COPY(0));
+            fx_half_sum(5, 2, 5, GSU_COPY(0));
+            fx_half_sum(12, 8, 12, GSU_COPY(0));
+            fx_half_sum(13, 9, 13, GSU_COPY(0));
         } else {
             gsu.r[3] = gsu.r[11];
-            fx_half_sum(1, 1, 4);
-            fx_half_sum(2, 2, 5);
-            fx_half_sum(8, 8, 12);
-            fx_half_sum(9, 9, 13);
+            fx_half_sum(1, 1, 4, GSU_COPY(0));
+            fx_half_sum(2, 2, 5, GSU_COPY(0));
+            fx_half_sum(8, 8, 12, GSU_COPY(0));
+            fx_half_sum(9, 9, 13, GSU_COPY(0));
         }
     }
     if (keep_first) {
         gsu.r[7] = gsu.r[11];
-        fx_half_sum(4, 1, 4);
-        fx_half_sum(5, 2, 5);
-        fx_half_sum(12, 8, 12);
-        fx_half_sum(13, 9, 13);
+        fx_half_sum(4, 1, 4, GSU_COPY(0));
+        fx_half_sum(5, 2, 5, GSU_COPY(0));
+        fx_half_sum(12, 8, 12, GSU_COPY(0));
+        fx_half_sum(13, 9, 13, GSU_COPY(0));
     } else {
         gsu.r[3] = gsu.r[11];
-        fx_half_sum(1, 1, 4);
-        fx_half_sum(2, 2, 5);
-        fx_half_sum(8, 8, 12);
-        fx_half_sum(9, 9, 13);
+        fx_half_sum(1, 1, 4, GSU_COPY(0));
+        fx_half_sum(2, 2, 5, GSU_COPY(0));
+        fx_half_sum(8, 8, 12, GSU_COPY(0));
+        fx_half_sum(9, 9, 13, GSU_COPY(0));
     }
 }
 
@@ -1011,7 +1168,7 @@ void abi_FxClipNear(void)
         gsu_stw(0x009A, gsu.r[1]);
         gsu_stw(0x009C, gsu.r[2]);
         gsu_stw(0x009E, gsu.r[3]);
-        fx_clip_enter();
+        fx_clip_enter(GSU_COPY(0));
         {
             static const int a[3] = {1, 2, 3}, b[3] = {4, 5, 7};
 
@@ -1043,7 +1200,7 @@ void abi_FxClipNear(void)
     gsu_stw(0x009A, gsu.r[4]);
     gsu_stw(0x009C, gsu.r[5]);
     gsu_stw(0x009E, gsu.r[7]);
-    fx_clip_enter();
+    fx_clip_enter(GSU_COPY(0));
     gsu.r[8] = gsu_ldw(0x008A);
     gsu.r[9] = gsu_ldw(0x008E);
     gsu.r[12] = gsu_ldw(0x008C);
@@ -1070,5 +1227,5 @@ void abi_FxPolygonClipNear(void)
 {
     static const FxPlaneDriver d = {0x0000, 1, 0, 0, abi_FxClipNear, 0xCED7, 0xCEFD};
 
-    fx_plane_driver(&d);
+    fx_plane_driver(&d, GSU_COPY(3));
 }

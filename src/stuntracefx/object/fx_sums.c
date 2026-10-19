@@ -177,11 +177,18 @@ void abi_FxSumsApply(void)
 #define PUSH_MAX 0x1388u        /* 5000 */
 #define PUSH_MIN 0xEC78u        /* -5000 */
 
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode clamp_code[3][5] = {
+    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0x04975D, 6}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0x049746, 18}, {0x049765, 11}, {0x04977D, 5}, {0x04978D, 6}, {0x049795, 5}},
+};
+
 /* A component held to -5000..5000 (R1, R2 the limits): MOVES for the sign,
    then CMP with the limit on that side; the reached limit replaces it
    (the replacing is decoded from the ROM bytes and not reached in the
    traces so far). */
-static uint16_t clamp(FxRegs *g, uint16_t v)
+static uint16_t clamp(FxRegs *g, uint16_t v, int copy)
 {
     gsu_moves(v);
     if (!gsu.s) {
@@ -189,6 +196,7 @@ static uint16_t clamp(FxRegs *g, uint16_t v)
         if (!gsu.s)
             v = g->r[2];
     } else {
+        gsu_codes(clamp_code[copy], 5);
         gsu_sub(v, g->r[1], 0);
         if (gsu.s)
             v = g->r[1];
@@ -196,27 +204,46 @@ static uint16_t clamp(FxRegs *g, uint16_t v)
     return v;
 }
 
+/* cyccopy: the copy each of the caller's copies calls */
+static const uint8_t clamp_from_push_into[4] = {0, 0, 1, 2};
+
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode push_into_code[4][13] = {
+    {{0x0496C3, 3}, {0x04B156, 9}, {0, 0}, {0, 0}, {0x0496C6, 4}, {0x0496CA, 18}, {0x0496E9, 5}, {0x049701, 5}, {0x049719, 5}, {0x04971E, 4}, {0x049722, 4}, {0x04973D, 2}, {0x04B15F, 5}},
+    {{0x0496C3, 3}, {0x04ABD8, 13}, {0, 0}, {0, 0}, {0x0496C6, 4}, {0x0496CA, 12}, {0x0496E9, 5}, {0x049701, 5}, {0x049719, 5}, {0x04971E, 4}, {0x049722, 4}, {0x04973D, 2}, {0, 0}},
+    {{0x04973F, 3}, {0x04AD81, 10}, {0, 0}, {0, 0}, {0x049742, 4}, {0x049746, 12}, {0x049765, 11}, {0x04977D, 11}, {0x049795, 5}, {0x04979A, 4}, {0x04979E, 4}, {0x0497B9, 2}, {0x04AD8B, 7}},
+    {{0x04973F, 3}, {0x04AD9B, 13}, {0x04ADB3, 6}, {0x04ADBB, 9}, {0x049742, 4}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04979A, 4}, {0x04979E, 4}, {0x0497B9, 2}, {0, 0}},
+};
+
 /* Both push routines: (R4, R5, R6) clamped, then added to the sum at
    `sum`; R1 and R2 kept on the R10 stack. */
-static FxRegs push_into(FxRegs g, uint16_t sum)
+static FxRegs push_into(FxRegs g, uint16_t sum, int copy)
 {
+    gsu_codes(push_into_code[copy], 4);
     int i;
 
     gsu_push(&g.r[10], g.r[1]);
+    gsu_codes(push_into_code[copy] + 4, 1);
     gsu_push(&g.r[10], g.r[2]);
     g.r[1] = PUSH_MIN;
     g.r[2] = PUSH_MAX;
-    gsu_code(0x0496CA, 12); gsu_code(0x0496E1, 6); gsu_code(0x0496E9, 5); gsu_code(0x0496F9, 6); gsu_code(0x049701, 5); gsu_code(0x049711, 6); gsu_code(0x049719, 5);
+    gsu_codes(push_into_code[copy] + 5, 4);
     for (i = 4; i <= 6; i++)
-        g.r[i] = clamp(&g, g.r[i]);
+        g.r[i] = clamp(&g, g.r[i], GSU_COPY(clamp_from_push_into[copy]));
     g.r[2] = gsu_pull(&g.r[10]);
+    gsu_codes(push_into_code[copy] + 9, 1);
     g.r[1] = gsu_pull(&g.r[10]);
+    gsu_codes(push_into_code[copy] + 10, 1);
     for (i = 0; i < 3; i++) {
         g.r[0] = gsu_add(gsu_ldw((uint16_t)(sum + 2 * i)), g.r[4 + i], 0);
         gsu_stw((uint16_t)(sum + 2 * i), g.r[0]);
+        gsu_codes(push_into_code[copy] + 11, 2);
     }
     return g;
 }
+
+/* cyccopy: the copy each of the caller's copies calls */
+static const uint8_t push_into_from_FxSumsPushWorld[2] = {0, 1};
 
 /*
  * @routine 04:96C3 FxSumsPushWorld
@@ -228,10 +255,9 @@ static FxRegs push_into(FxRegs g, uint16_t sum)
  * R4-R6 clamped; R0 = the new world z; R1, R2 as on entry; OV, S, CY, Z
  * from the last ADD; the last RAM address $2344.
  */
-FxRegs FxSumsPushWorld(FxRegs g)
+FxRegs FxSumsPushWorld(FxRegs g, int copy)
 {
-    gsu_code(0x0496C3, 3);
-    return push_into(g, FX_WORLD_SUM);
+    return push_into(g, FX_WORLD_SUM, GSU_COPY(push_into_from_FxSumsPushWorld[copy]));
 }
 
 void abi_FxSumsPushWorld(void)
@@ -239,9 +265,12 @@ void abi_FxSumsPushWorld(void)
     FxRegs g;
 
     memcpy(g.r, gsu.r, sizeof g.r);
-    g = FxSumsPushWorld(g);
+    g = FxSumsPushWorld(g, GSU_COPY(0));
     memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
 }
+
+/* cyccopy: the copy each of the caller's copies calls */
+static const uint8_t push_into_from_FxSumsPushLocal[2] = {2, 3};
 
 /*
  * @routine 04:973F FxSumsPushLocal
@@ -250,10 +279,9 @@ void abi_FxSumsPushWorld(void)
  * Entry: as FxSumsPushWorld. Exit: as FxSumsPushWorld; R0 = the new
  * own-axes z; the last RAM address $234A.
  */
-FxRegs FxSumsPushLocal(FxRegs g)
+FxRegs FxSumsPushLocal(FxRegs g, int copy)
 {
-    gsu_code(0x04973F, 3);
-    return push_into(g, FX_LOCAL_SUM);
+    return push_into(g, FX_LOCAL_SUM, GSU_COPY(push_into_from_FxSumsPushLocal[copy]));
 }
 
 void abi_FxSumsPushLocal(void)
@@ -261,7 +289,7 @@ void abi_FxSumsPushLocal(void)
     FxRegs g;
 
     memcpy(g.r, gsu.r, sizeof g.r);
-    g = FxSumsPushLocal(g);
+    g = FxSumsPushLocal(g, GSU_COPY(0));
     memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
 }
 
@@ -387,7 +415,7 @@ FxRegs FxPushApply(FxRegs g)
     g.r[6] = gsu_ldw(FX_PUSH_DIR + 4);
     g.r[6] = g.r[0] = gsu_fmult(g.r[7], g.r[6]);
     g.r[11] = 0x955E;
-    g = FxSumsPushWorld(g);
+    g = FxSumsPushWorld(g, GSU_COPY(0));
     g.r[0] = 1;
     gsu_pull(sp);
     return g;
@@ -443,45 +471,83 @@ void abi_FxPushesApply(void)
 #define FX_TURN_CROSS 0x0068u   /* the point crossed with the push: x at $68, y at $2E, z at $2C */
 #define FX_SPIN 0x233Au         /* the spin sums: z at $233A, x at $233C, y at $233E */
 
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode push3_code[2][10] = {
+    {{0x04987D, 3}, {0x04ADF6, 4}, {0x049880, 4}, {0x049884, 4}, {0x049888, 7}, {0x049899, 18}, {0x0498CC, 5}, {0x0498D4, 5}, {0x0498DC, 5}, {0x0498E4, 5}},
+    {{0x049A9B, 3}, {0x04AE35, 4}, {0x049A9E, 4}, {0x049AA2, 4}, {0x049AA6, 6}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+};
+
 /* The three pushes of the registers the variants keep: R11, R9, R8 on the
    R10 stack, and back in the other order. */
-static void push3(void)
+static void push3(int copy)
 {
+    gsu_codes(push3_code[copy], 2);
     gsu_push(&gsu.r[10], gsu.r[11]);
+    gsu_codes(push3_code[copy] + 2, 1);
     gsu_push(&gsu.r[10], gsu.r[9]);
+    gsu_codes(push3_code[copy] + 3, 1);
     gsu_push(&gsu.r[10], gsu.r[8]);
+    gsu_codes(push3_code[copy] + 4, 6);
 }
 
-static void pull3(int r11)
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode pull3_code[2][4] = {
+    {{0x04991B, 4}, {0x04991F, 4}, {0x049923, 4}, {0x04ADFA, 5}},
+    {{0, 0}, {0x049BBE, 4}, {0x049BC2, 4}, {0x04AE39, 5}},
+};
+
+static void pull3(int r11, int copy)
 {
+    gsu_codes(pull3_code[copy], 1);
     gsu.r[8] = gsu_pull(&gsu.r[10]);
+    gsu_codes(pull3_code[copy] + 1, 1);
     gsu.r[9] = gsu_pull(&gsu.r[10]);
     if (r11)
         gsu.r[11] = gsu_pull(&gsu.r[10]);
     else
-        gsu_pull(&gsu.r[10]);   /* the return address, into R15 */
+        { gsu_codes(pull3_code[copy] + 2, 1); gsu_pull(&gsu.r[10]); }   /* the return address, into R15 */
+    gsu_codes(pull3_code[copy] + 3, 1);
 }
+
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode fx_row_code[3][4] = {
+    {{0x049AF4, 3}, {0x049AF7, 7}, {0x049AFE, 8}, {0x049B06, 7}},
+    {{0x049B0D, 3}, {0x049B10, 7}, {0x049B17, 8}, {0x049B1F, 7}},
+    {{0x049B26, 3}, {0x049B29, 7}, {0x049B30, 8}, {0x049B38, 7}},
+};
 
 /* One component through the matrix: FMULT and ROL of each of R1, R2, R3
    with the words at m, m + step, m + 2 * step, summed (R5 the running
    sum, R0 the result). */
-static uint16_t fx_row(uint16_t m, uint16_t step)
+static uint16_t fx_row(uint16_t m, uint16_t step, int copy)
 {
+    gsu_codes(fx_row_code[copy], 1);
     gsu.r[6] = gsu_ldw(m);
     gsu.r[5] = gsu_rol(gsu_fmult(gsu.r[1], gsu.r[6]));
+    gsu_codes(fx_row_code[copy] + 1, 1);
     gsu.r[6] = gsu_ldw((uint16_t)(m + step));
     gsu.r[0] = gsu_rol(gsu_fmult(gsu.r[2], gsu.r[6]));
     gsu.r[5] = gsu_add(gsu.r[5], gsu.r[0], 0);
+    gsu_codes(fx_row_code[copy] + 2, 1);
     gsu.r[6] = gsu_ldw((uint16_t)(m + 2 * step));
     gsu.r[0] = gsu_rol(gsu_fmult(gsu.r[3], gsu.r[6]));
     gsu.r[0] = gsu_add(gsu.r[0], gsu.r[5], 0);
+    gsu_codes(fx_row_code[copy] + 3, 1);
     return gsu.r[0];
 }
 
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode fx_cross_code[3][3] = {
+    {{0x049B4B, 3}, {0x049B4E, 8}, {0x049B56, 14}},
+    {{0x049B64, 3}, {0x049B67, 8}, {0x049B6F, 14}},
+    {{0x049B7D, 3}, {0x049B80, 8}, {0x049B88, 14}},
+};
+
 /* One component of the cross product: a * R6(at p) - b * R6(at q) as 32
    bits (LMULT, SUB, SBC), doubled, its high word (ADD, ROL). */
-static uint16_t fx_cross(uint16_t a, uint16_t p, uint16_t b, uint16_t q)
+static uint16_t fx_cross(uint16_t a, uint16_t p, uint16_t b, uint16_t q, int copy)
 {
+    gsu_codes(fx_cross_code[copy], 1);
     uint32_t m;
 
     gsu.r[6] = gsu_ldw(p);
@@ -489,6 +555,7 @@ static uint16_t fx_cross(uint16_t a, uint16_t p, uint16_t b, uint16_t q)
     gsu.r[0] = (uint16_t)(m >> 16);
     gsu.r[4] = (uint16_t)m;
     gsu.r[7] = gsu.r[4];
+    gsu_codes(fx_cross_code[copy] + 1, 1);
     gsu.r[6] = gsu_ldw(q);
     m = gsu_lmult(b, gsu.r[6]);
     gsu.r[5] = (uint16_t)(m >> 16);
@@ -497,20 +564,31 @@ static uint16_t fx_cross(uint16_t a, uint16_t p, uint16_t b, uint16_t q)
     gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[5], !gsu.cy);
     gsu.r[7] = gsu_add(gsu.r[7], gsu.r[7], 0);
     gsu.r[0] = gsu_rol(gsu.r[0]);
+    gsu_codes(fx_cross_code[copy] + 2, 1);
     return gsu.r[0];
 }
 
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode spin_add_code[3][4] = {
+    {{0x049B96, 4}, {0x049B9A, 4}, {0x049B9E, 4}, {0x049BA2, 4}},
+    {{0, 0}, {0x049BA6, 4}, {0x049BAA, 4}, {0x049BAE, 4}},
+    {{0, 0}, {0x049BB2, 4}, {0x049BB6, 4}, {0x049BBA, 4}},
+};
+
 /* LM, three ADDs or two, ADD of the sum's word, SBK. */
-static void spin_add(uint16_t from, uint16_t sum, int reg, int times4)
+static void spin_add(uint16_t from, uint16_t sum, int reg, int times4, int copy)
 {
+    gsu_codes(spin_add_code[copy], 1);
     gsu.r[0] = gsu_ldw(from);
+    gsu_codes(spin_add_code[copy] + 1, 1);
     gsu.r[reg] = gsu_ldw(sum);
     gsu.r[0] = gsu_add(gsu.r[0], gsu.r[0], 0);
     gsu.r[0] = gsu_add(gsu.r[0], gsu.r[0], 0);
     if (!times4)
-        gsu.r[0] = gsu_add(gsu.r[0], gsu.r[0], 0);
+        gsu.r[0] = gsu_add(gsu.r[0], gsu.r[0], 0); else { gsu_codes(spin_add_code[copy] + 2, 1); }
     gsu.r[0] = gsu_add(gsu.r[0], gsu.r[reg], 0);
     gsu_sbk(gsu.r[0]);
+    gsu_codes(spin_add_code[copy] + 3, 1);
 }
 
 /* 04:9AC2, the variants' shared part: the point (R1, R2, R3) times 16 to
@@ -541,39 +619,28 @@ static void push_at_tail(void)
     gsu.r[2] = gsu_ldw(FX_PUSH_ROT + 8);
     gsu_code(0x049AF1, 3);
     gsu.r[3] = gsu_ldw(FX_PUSH_ROT + 16);
-    gsu_code(0x049AF4, 3);
-    gsu_stw(FX_PUSH_ROT, gsu_code_then(0x049B06, 7, fx_row(FX_MATRIX, 2)));
-    gsu_code(0x049B0D, 3);
-    gsu_stw(FX_PUSH_ROT + 8, gsu_code_then(0x049B1F, 7, fx_row(FX_MATRIX + 6, 2)));
-    gsu_code(0x049B26, 3);
-    gsu_stw(FX_PUSH_ROT + 16, gsu_code_then(0x049B38, 7, fx_row(FX_MATRIX + 12, 2)));
+    gsu_stw(FX_PUSH_ROT, fx_row(FX_MATRIX, 2, GSU_COPY(0)));
+    gsu_stw(FX_PUSH_ROT + 8, fx_row(FX_MATRIX + 6, 2, GSU_COPY(1)));
+    gsu_stw(FX_PUSH_ROT + 16, fx_row(FX_MATRIX + 12, 2, GSU_COPY(2)));
     gsu_code(0x049B3F, 4);
     gsu.r[1] = gsu_ldw(FX_PUSH_POINT);
     gsu_code(0x049B43, 4);
     gsu.r[2] = gsu_ldw(FX_PUSH_POINT + 2);
     gsu_code(0x049B47, 4);
     gsu.r[3] = gsu_ldw(FX_PUSH_POINT + 4);
-    gsu_code(0x049B4B, 3);
-    gsu_stw(FX_TURN_CROSS, gsu_code_then(0x049B56, 14, fx_cross(gsu.r[3], FX_PUSH_ROT + 8, gsu.r[2], FX_PUSH_ROT + 16)));
-    gsu_code(0x049B64, 3);
-    gsu_stw(0x002C, gsu_code_then(0x049B6F, 14, fx_cross(gsu.r[1], FX_PUSH_ROT + 16, gsu.r[3], FX_PUSH_ROT)));
-    gsu_code(0x049B7D, 3);
-    gsu_stw(0x002E, gsu_code_then(0x049B88, 14, fx_cross(gsu.r[2], FX_PUSH_ROT, gsu.r[1], FX_PUSH_ROT + 8)));
-    gsu_code(0x049B96, 4);
-    spin_add(FX_TURN_CROSS, FX_SPIN + 2, 4, 1);
-    gsu_code(0x049BA2, 4);
-    spin_add(0x002E, FX_SPIN + 4, 5, 1);
-    gsu_code(0x049BAE, 4);
-    spin_add(0x002C, FX_SPIN, 6, 1);
-    gsu_code(0x049BBA, 4);
-    pull3(0);
+    gsu_stw(FX_TURN_CROSS, fx_cross(gsu.r[3], FX_PUSH_ROT + 8, gsu.r[2], FX_PUSH_ROT + 16, GSU_COPY(0)));
+    gsu_stw(0x002C, fx_cross(gsu.r[1], FX_PUSH_ROT + 16, gsu.r[3], FX_PUSH_ROT, GSU_COPY(1)));
+    gsu_stw(0x002E, fx_cross(gsu.r[2], FX_PUSH_ROT, gsu.r[1], FX_PUSH_ROT + 8, GSU_COPY(2)));
+    spin_add(FX_TURN_CROSS, FX_SPIN + 2, 4, 1, GSU_COPY(0));
+    spin_add(0x002E, FX_SPIN + 4, 5, 1, GSU_COPY(1));
+    spin_add(0x002C, FX_SPIN, 6, 1, GSU_COPY(2));
+    pull3(0, GSU_COPY(1));
 }
 
 /* The push from the world sum, each word scaled by `shift`: 2 (two ADDs),
    1 (one ADD), 0, -1 (DIV2) or -2 (two DIV2s), to $0132/$013A/$0142. */
 static void push_from_sum(int shift)
 {
-    gsu_code(0x049AA6, 6);
     int i, k;
 
     for (i = 0; i < 3; i++) {
@@ -605,7 +672,7 @@ static void push_from_sum(int shift)
  */
 void abi_FxPushAt4(void)
 {
-    push3();
+    push3(GSU_COPY(1));
     push_from_sum(2);
     push_at_tail();
 }
@@ -618,7 +685,7 @@ void abi_FxPushAt4(void)
  */
 void abi_FxPushAt2(void)
 {
-    push3();
+    push3(GSU_COPY(0));
     push_from_sum(1);
     push_at_tail();
 }
@@ -632,7 +699,7 @@ void abi_FxPushAt2(void)
  */
 void abi_FxPushAt1(void)
 {
-    push3();
+    push3(GSU_COPY(0));
     push_from_sum(0);
     push_at_tail();
 }
@@ -645,7 +712,7 @@ void abi_FxPushAt1(void)
  */
 void abi_FxPushAtHalf(void)
 {
-    push3();
+    push3(GSU_COPY(0));
     push_from_sum(-1);
     push_at_tail();
 }
@@ -658,7 +725,7 @@ void abi_FxPushAtHalf(void)
  */
 void abi_FxPushAtQuarter(void)
 {
-    push3();
+    push3(GSU_COPY(0));
     push_from_sum(-2);
     push_at_tail();
 }
@@ -677,7 +744,7 @@ void abi_FxPushAt4Twist(void)
     gsu_push(&gsu.r[10], gsu.r[11]);
     gsu.r[11] = 0x9A53;
     abi_FxPushAt4();
-    spin_add(FX_TURN_CROSS, FX_SPIN + 2, 4, 0);
+    spin_add(FX_TURN_CROSS, FX_SPIN + 2, 4, 0, GSU_COPY(0));
     gsu_pull(&gsu.r[10]);       /* the return address, into R15 */
 }
 
@@ -690,8 +757,8 @@ void abi_FxPushAt4Twist(void)
  */
 void abi_FxPushAt4Kept(void)
 {
-    push3();
-    pull3(1);
+    push3(GSU_COPY(0));
+    pull3(1, GSU_COPY(0));
     abi_FxPushAt4();
 }
 
@@ -706,9 +773,9 @@ void abi_FxPushAt4Kept(void)
  */
 void abi_FxPushAtTurned(void)
 {
-    gsu_stw(FX_PUSH_POINT, fx_row(FX_MATRIX, 6));
-    gsu_stw(FX_PUSH_POINT + 2, fx_row(FX_MATRIX + 2, 6));
-    gsu_stw(FX_PUSH_POINT + 4, fx_row(FX_MATRIX + 4, 6));
+    gsu_stw(FX_PUSH_POINT, fx_row(FX_MATRIX, 6, GSU_COPY(0)));
+    gsu_stw(FX_PUSH_POINT + 2, fx_row(FX_MATRIX + 2, 6, GSU_COPY(0)));
+    gsu_stw(FX_PUSH_POINT + 4, fx_row(FX_MATRIX + 4, 6, GSU_COPY(0)));
     gsu.r[1] = gsu_ldw(FX_PUSH_POINT);
     gsu.r[2] = gsu_ldw(FX_PUSH_POINT + 2);
     gsu.r[3] = gsu_ldw(FX_PUSH_POINT + 4);
@@ -749,7 +816,6 @@ void abi_FxSumScale(void)
    the return pulled. */
 static void hit_add(int skip_abs)
 {
-    gsu_code(0x049888, 7); gsu_code(0x049899, 18); gsu_code(0x0498CC, 5); gsu_code(0x0498D4, 5); gsu_code(0x0498DC, 5); gsu_code(0x0498E4, 5);
     int i;
 
     if (!skip_abs)
@@ -765,9 +831,8 @@ static void hit_add(int skip_abs)
         gsu.r[0] = gsu_ldw((uint16_t)(FX_HIT + 2 * i));
         gsu.r[0] = gsu_add(gsu.r[0], gsu.r[1 + i], 0);
         gsu_stw((uint16_t)(FX_HIT + 2 * i), gsu.r[0]);
-        gsu_code(0x04991B, 4);
     }
-    pull3(0);
+    pull3(0, GSU_COPY(0));
 }
 
 /*
@@ -789,7 +854,7 @@ void abi_FxHitAddScaled(void)
     uint32_t m;
     int i;
 
-    push3();
+    push3(GSU_COPY(0));
     gsu.r[0] = gsu_or(gsu_or(gsu.r[1], gsu.r[2]), gsu.r[3]);
     if (gsu.z) {
         gsu.r[1] = 0x7FFF;
@@ -819,7 +884,7 @@ void abi_FxHitAddUnit(void)
 {
     FxRegs g;
 
-    push3();
+    push3(GSU_COPY(0));
     gsu.r[0] = gsu_or(gsu_or(gsu.r[1], gsu.r[2]), gsu.r[3]);
     if (gsu.z) {
         gsu.r[1] = 0x7FFF;

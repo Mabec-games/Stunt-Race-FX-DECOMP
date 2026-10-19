@@ -269,6 +269,12 @@ void abi_FxRecordsApart(void)
     memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
 }
 
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode FxContactNote_code[2][35] = {
+    {{0x04A34A, 10}, {0x04A43B, 3}, {0x04A34A, 6}, {0x04A354, 7}, {0x04A35B, 9}, {0, 0}, {0x04A364, 8}, {0x04A3F9, 7}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x04A400, 13}, {0x04A433, 4}, {0x04A437, 5}, {0x04A43C, 2}},
+    {{0x04A34A, 10}, {0x04A43B, 3}, {0x04A34A, 6}, {0x04A354, 7}, {0x04A35B, 4}, {0x04A35F, 5}, {0x04A364, 8}, {0x04A3F9, 1}, {0x04A364, 4}, {0x04A36C, 5}, {0x04A371, 4}, {0x04A375, 3}, {0x04A378, 6}, {0xA37D, 0}, {0x04A37E, 4}, {0x04A382, 1}, {0x04A383, 3}, {0x04A386, 3}, {0x04A389, 3}, {0x04A3A8, 4}, {0x04A389, 8}, {0x04A3AC, 6}, {0x04A3C3, 6}, {0x04A3C9, 8}, {0x04A3D1, 4}, {0x04A3D9, 10}, {0x04A3E3, 6}, {0x04A3E9, 5}, {0x04A3EE, 5}, {0x04A3F3, 7}, {0x04A3FA, 6}, {0x04A400, 13}, {0x04A433, 4}, {0x04A437, 5}, {0x04A43C, 2}},
+};
+
 /*
  * @routine 04:A345 FxContactNote
  * WHAT IT DOES: Notes that record R6 touches record R8: finds R8's contact
@@ -289,48 +295,47 @@ void abi_FxRecordsApart(void)
  * the OR; the last RAM address the contact + $10. Bit 7 set: R0 = R6's
  * +$16 and $80; R9 = $80.
  */
-FxRegs FxContactNote(FxRegs g)
+FxRegs FxContactNote(FxRegs g, int copy)
 {
-    gsu_code(0x04A345, 5);
     uint16_t *sp = &g.r[10];
 
     g.r[0] = gsu_ldw(gsu_add(REC_FLAGS16, g.r[6], 0));
     g.r[9] = 0x0080;
     g.r[0] = gsu_and(g.r[0], g.r[9]);
     if (!gsu.z)
-        { gsu_code(0x04A34A, 10); gsu_code(0x04A43B, 3); return g; } else { gsu_code(0x04A34A, 6); gsu_code(0x04A354, 7); }
+        { gsu_codes(FxContactNote_code[copy], 2); return g; } else { gsu_codes(FxContactNote_code[copy] + 2, 2); }
     g.r[7] = gsu_ldw(gsu_add(REC_CONTACTS, g.r[6], 0));
     gsu_moves(g.r[7]);
-    gsu_code(0x04A35B, 4);
-    while (gsu_code_loop(0x04A35F, 5, !gsu.z)) {
+    gsu_codes(FxContactNote_code[copy] + 4, 1);
+    while (gsu_codes_loop(FxContactNote_code[copy] + 5, 1, !gsu.z)) {
         g.r[0] = gsu_ldw(gsu_add(CON_OTHER, g.r[7], 0));
         gsu_sub(g.r[0], g.r[8], 0);
         if (gsu.z)
-            { gsu_code(0x04A364, 8); gsu_code(0x04A3F9, 1); goto found; } else { gsu_code(0x04A364, 4); gsu_code(0x04A36C, 5); }
+            { gsu_codes(FxContactNote_code[copy] + 6, 2); goto found; } else { gsu_codes(FxContactNote_code[copy] + 8, 2); }
         g.r[0] = gsu_ldw(gsu_add(CON_NEXT, g.r[7], 0));
         g.r[7] = g.r[0];
         gsu_moves(g.r[7]);
-        gsu_code(0x04A371, 4);
+        gsu_codes(FxContactNote_code[copy] + 10, 1);
     }
-    gsu_code(0x04A375, 3);
+    gsu_codes(FxContactNote_code[copy] + 11, 1);
     gsu_push(sp, g.r[8]);
     g.r[9] = FX_POOL_FIRST;
     g.r[7] = CONTACT_BYTES;
-    gsu_code(0x04A378, 6); gsu_cache(0xA37D); gsu_code(0x04A37E, 4);
+    gsu_codes(FxContactNote_code[copy] + 12, 3);
     gsu_push(sp, g.r[9]);
-    gsu_code(0x04A382, 1);
-    for (;;) {                                        gsu_code(0x04A383, 3); /* an exact fit */
+    gsu_codes(FxContactNote_code[copy] + 15, 1);
+    for (;;) {                                        gsu_codes(FxContactNote_code[copy] + 16, 1); /* an exact fit */
         g.r[8] = gsu_ldw(g.r[9]);
         g.r[9] = gsu_inc(gsu_inc(g.r[9]));
-        gsu_code(0x04A386, 3);
+        gsu_codes(FxContactNote_code[copy] + 17, 1);
         g.r[0] = gsu_sub(gsu_ldw(g.r[9]), g.r[7], 0);
         if (gsu.z) {
-            gsu_code(0x04A389, 3); gsu_code(0x04A3A8, 4);
+            gsu_codes(FxContactNote_code[copy] + 18, 2);
             g.r[0] = gsu_pull(sp);
             g.r[7] = gsu_inc(gsu_not(g.r[7]));
             g.r[0] = gsu_sub(g.r[0], g.r[0], 0);
             goto mark;
-        } else { gsu_code(0x04A389, 8); }
+        } else { gsu_codes(FxContactNote_code[copy] + 20, 1); }
         g.r[9] = g.r[8];
         gsu_moves(g.r[9]);
         if (gsu.z)
@@ -361,37 +366,37 @@ FxRegs FxContactNote(FxRegs g)
         }
     }
 mark:
-    gsu_code(0x04A3AC, 6); gsu_code(0x04A3C3, 6);
+    gsu_codes(FxContactNote_code[copy] + 21, 2);
     g.r[8] = gsu_add(g.r[9], g.r[0], 0);
     gsu_stw(g.r[8], g.r[7]);
     g.r[8] = gsu_dec(gsu_dec(g.r[8]));
     g.r[7] = g.r[8];
 taken:
-    gsu_code(0x04A3C9, 8);
+    gsu_codes(FxContactNote_code[copy] + 23, 1);
     g.r[8] = gsu_pull(sp);
-    gsu_code(0x04A3D1, 4); gsu_code(0x04A3D9, 10);
+    gsu_codes(FxContactNote_code[copy] + 24, 2);
     gsu_moves(g.r[7]);
     if (gsu.z)
         return g;
     g.r[9] = CONTACT_BYTES;
     g.r[0] = gsu_add(CON_OTHER, g.r[7], 0);
     gsu_stw(g.r[0], g.r[8]);
-    gsu_code(0x04A3E3, 6);
+    gsu_codes(FxContactNote_code[copy] + 26, 1);
     g.r[9] = gsu_ldw(gsu_add(REC_CONTACTS, g.r[6], 0));
     g.r[0] = gsu_add(CON_NEXT, g.r[7], 0);
-    gsu_code(0x04A3E9, 5);
+    gsu_codes(FxContactNote_code[copy] + 27, 1);
     gsu_stw(g.r[0], g.r[9]);
     g.r[0] = gsu_add(REC_CONTACTS, g.r[6], 0);
-    gsu_code(0x04A3EE, 5);
+    gsu_codes(FxContactNote_code[copy] + 28, 1);
     gsu_stw(g.r[0], g.r[7]);
     g.r[9] = 0;
     g.r[0] = gsu_add(CON_FLAGS, g.r[7], 0);
-    gsu_code(0x04A3F3, 7);
+    gsu_codes(FxContactNote_code[copy] + 29, 1);
     gsu_stw(g.r[0], g.r[9]);
 found:
-    gsu_code(0x04A3FA, 6);
+    gsu_codes(FxContactNote_code[copy] + 30, 1);
     g.r[9] = gsu_ldw(gsu_add(CON_FLAGS, g.r[7], 0));
-    gsu_code(0x04A400, 13);
+    gsu_codes(FxContactNote_code[copy] + 31, 1);
     g.r[0] = gsu_and(0x0004, g.r[9]);
     if (gsu.z) {
         static const uint8_t from[4] = {REC_VEL_X, REC_VEL_Z, REC_X, REC_Z};
@@ -401,15 +406,15 @@ found:
             g.r[9] = gsu_ldw(gsu_add(from[i], g.r[8], 0));
             g.r[0] = gsu_add((uint16_t)(HIT_VEL_X + 2 * i), g.r[7], 0);
             gsu_stw(g.r[0], g.r[9]);
-            gsu_code(0x04A433, 4);
+            gsu_codes(FxContactNote_code[copy] + 32, 1);
         }
     }
     g.r[0] = gsu_ldw(gsu_add(CON_FLAGS, g.r[7], 0));
     g.r[9] = 0x0001;
     g.r[0] = gsu_or(g.r[0], g.r[9]);
-    gsu_code(0x04A437, 5);
+    gsu_codes(FxContactNote_code[copy] + 33, 1);
     gsu_sbk(g.r[0]);
-    gsu_code(0x04A43C, 2);
+    gsu_codes(FxContactNote_code[copy] + 34, 1);
     return g;
 }
 
@@ -418,31 +423,51 @@ void abi_FxContactNote(void)
     FxRegs g;
 
     memcpy(g.r, gsu.r, sizeof g.r);
-    g = FxContactNote(g);
+    g = FxContactNote(g, GSU_COPY(0));
     memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
 }
 
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode axis_overlaps_code[3][7] = {
+    {{0x04A240, 4}, {0x04A248, 7}, {0x04A24F, 4}, {0x04A253, 6}, {0x04A25C, 2}, {0x04A259, 3}, {0x04A25E, 4}},
+    {{0x04A262, 7}, {0, 0}, {0x04A269, 4}, {0x04A26D, 6}, {0x04A276, 2}, {0x04A273, 3}, {0x04A278, 4}},
+    {{0x04A27C, 7}, {0, 0}, {0x04A283, 4}, {0x04A287, 6}, {0x04A290, 2}, {0x04A28D, 3}, {0x04A292, 4}},
+};
+
 /* Whether |a - b| - (R2's size + R1's size) is negative for one axis: R6 =
    the summed size, R0 the difference. */
-static int axis_overlaps(FxRegs *g, uint16_t size, uint16_t mine, uint16_t pos, uint16_t b)
+static int axis_overlaps(FxRegs *g, uint16_t size, uint16_t mine, uint16_t pos, uint16_t b, int copy)
 {
+    gsu_codes(axis_overlaps_code[copy], 2);
     g->r[6] = gsu_ldw(gsu_add(size, g->r[2], 0));
+    gsu_codes(axis_overlaps_code[copy] + 2, 1);
     g->r[0] = gsu_ldw(mine);
     g->r[6] = gsu_add(g->r[6], g->r[0], 0);
+    gsu_codes(axis_overlaps_code[copy] + 3, 1);
     g->r[0] = gsu_sub(gsu_ldw(gsu_add(pos, g->r[2], 0)), b, 0);
     if (gsu.s)
-        g->r[0] = gsu_inc(gsu_not(g->r[0]));
+        { gsu_codes(axis_overlaps_code[copy] + 4, 1); g->r[0] = gsu_inc(gsu_not(g->r[0])); }
+    gsu_codes(axis_overlaps_code[copy] + 5, 2);
     g->r[0] = gsu_sub(g->r[0], g->r[6], 0);
     return gsu.s;
 }
 
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode masks_clear_code[2][4] = {
+    {{0x04A2A5, 7}, {0x04A2BA, 5}, {0x04A2BF, 6}, {0x04A2C5, 3}},
+    {{0x04A2D1, 5}, {0, 0}, {0x04A2D6, 6}, {0x04A2DC, 3}},
+};
+
 /* Whether field `a` of record `ra` and the flags (+$16) of record `rb`
    share no bit: R6 = those flags, R0 the AND. */
-static int masks_clear(FxRegs *g, uint16_t ra, uint16_t rb)
+static int masks_clear(FxRegs *g, uint16_t ra, uint16_t rb, int copy)
 {
+    gsu_codes(masks_clear_code[copy], 2);
     g->r[0] = gsu_ldw(gsu_add(REC_MASK, ra, 0));
+    gsu_codes(masks_clear_code[copy] + 2, 1);
     g->r[6] = gsu_ldw(gsu_add(REC_FLAGS16, rb, 0));
     g->r[0] = gsu_and(g->r[0], g->r[6]);
+    gsu_codes(masks_clear_code[copy] + 3, 1);
     return gsu.z;
 }
 
@@ -483,13 +508,13 @@ FxRegs FxRecordTouches(FxRegs g)
         g.r[2] = g.r[0];
         gsu_moves(g.r[2]);
         if (gsu.z)
-            { gsu_code(0x04A240, 8); gsu_code(0x04A2EC, 5); break; } else { gsu_code(0x04A240, 4); gsu_code(0x04A248, 7); }
-        if (!axis_overlaps(&g, REC_SIZE_Z, FX_SIZES + 4, REC_Z, g.r[5]))
-            { gsu_code(0x04A259, 3); gsu_code(0x04A25E, 4); continue; } else { gsu_code(0x04A259, 3); gsu_code(0x04A25E, 11); }
-        if (!axis_overlaps(&g, REC_SIZE, FX_SIZES, REC_X, g.r[3]))
-            { gsu_code(0x04A273, 3); gsu_code(0x04A278, 4); continue; } else { gsu_code(0x04A273, 3); gsu_code(0x04A278, 11); }
-        if (!axis_overlaps(&g, REC_SIZE_Y, FX_SIZES + 2, REC_Y, g.r[4]))
-            { gsu_code(0x04A28D, 13); continue; } else { gsu_code(0x04A28D, 3); gsu_code(0x04A292, 4); gsu_code(0x04A29A, 5); }
+            { gsu_code(0x04A240, 8); gsu_code(0x04A2EC, 5); break; }
+        if (!axis_overlaps(&g, REC_SIZE_Z, FX_SIZES + 4, REC_Z, g.r[5], GSU_COPY(0)))
+            continue;
+        if (!axis_overlaps(&g, REC_SIZE, FX_SIZES, REC_X, g.r[3], GSU_COPY(1)))
+            continue;
+        if (!axis_overlaps(&g, REC_SIZE_Y, FX_SIZES + 2, REC_Y, g.r[4], GSU_COPY(2)))
+            { gsu_code(0x04A296, 4); continue; } else { gsu_code(0x04A29A, 5); }
         g.r[0] = gsu_ldw(gsu_add(REC_FLAGS16, g.r[1], 0));
         gsu_code(0x04A29F, 6);
         g.r[6] = gsu_ldw(gsu_add(REC_FLAGS16, g.r[2], 0));
@@ -504,22 +529,21 @@ FxRegs FxRecordTouches(FxRegs g)
             gsu_moves(g.r[0]);
             if (!gsu.z)
                 continue;
-        } else { gsu_code(0x04A2A5, 7); gsu_code(0x04A2BA, 5); }
-        if (masks_clear(&g, g.r[1], g.r[2])) {
-            gsu_code(0x04A2C5, 12);
+        }
+        if (masks_clear(&g, g.r[1], g.r[2], GSU_COPY(0))) {
+            gsu_code(0x04A2C8, 9); gsu_code(0x04A345, 5);
             g.r[6] = g.r[1];
             g.r[8] = g.r[2];
             g.r[11] = 0xA2D1;
-            g = FxContactNote(g);
-        } else { gsu_code(0x04A2C5, 3); }
-        gsu_code(0x04A2D1, 5);
-        if (masks_clear(&g, g.r[2], g.r[1])) {
-            gsu_code(0x04A2DC, 12);
+            g = FxContactNote(g, GSU_COPY(0));
+        }
+        if (masks_clear(&g, g.r[2], g.r[1], GSU_COPY(1))) {
+            gsu_code(0x04A2DF, 9); gsu_code(0x04A345, 5);
             g.r[6] = g.r[2];
             g.r[8] = g.r[1];
             g.r[11] = 0xA2E8;
-            g = FxContactNote(g);
-        } else { gsu_code(0x04A2DC, 3); }
+            g = FxContactNote(g, GSU_COPY(1));
+        }
         gsu_code(0x04A2E8, 4);
     }
     g.r[0] = gsu_ldw(gsu_add(REC_CONTACTS, g.r[1], 0));
