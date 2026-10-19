@@ -193,14 +193,9 @@ void abi_ResetVector(void)
  */
 void abi_InterruptReturn(void)
 {
-    uint16_t lo;
-
+    /* P from the frame; the PC and PB above it are the return, taken as
+       for any routine's. */
     op_plp(rd8((uint16_t)(cpu.s + 1)));
-    cpu.s = (uint16_t)(cpu.s + 1);
-    lo = rd16((uint16_t)(cpu.s + 1));
-    cpu.pc = (uint32_t)rd8((uint16_t)(cpu.s + 3)) << 16 | lo;
-    cpu.s = (uint16_t)(cpu.s + 3);
-    cpu.unwound = 1;
 }
 
 void abi_ApuUpload(void);
