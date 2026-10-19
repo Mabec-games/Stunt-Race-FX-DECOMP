@@ -181,19 +181,47 @@ def strip(text):
     return out
 
 
+def function_spans(path, text, names):
+    """The bodies of the functions named, as (start, end) offsets."""
+    if not names:
+        return []
+    tree = cycprobe.ast(path)
+    cycprobe.annotate(tree, [None])
+    w = cycprobe.Walker(path, text, set())
+    spans = []
+    for node in tree.get('inner', []):
+        if node.get('kind') == 'FunctionDecl' and node.get('name') in names:
+            body = next((c for c in node.get('inner', []) if c.get('kind') == 'CompoundStmt'), None)
+            span = body and w.mine(body)
+            if span:
+                spans.append(span)
+    return spans
+
+
 def main(argv):
     args = argv[1:]
     if args[:1] == ['--strip']:
-        # a copy of the decomp without the written times, for probing
-        import glob, shutil
+        # a copy of the decomp without the written times (or, --only FUNCS.txt,
+        # without those of the functions named), for probing
+        import glob
         out = os.path.abspath(args[1])
+        only = None
+        if '--only' in args:
+            only = {tuple(l.split()) for l in open(args[args.index('--only') + 1]) if l.strip()}
         src = cycprobe.SRC
         for f in glob.glob(os.path.join(src, '**', '*.[ch]'), recursive=True):
             o = os.path.join(out, os.path.relpath(f, src))
             os.makedirs(os.path.dirname(o), exist_ok=True)
+            text = open(f).read()
+            if only is None:
+                text = strip(text)
+            else:
+                spans = function_spans(f, text, {fn for r, fn in only if r == cycprobe.rel_name(f)})
+                for b, e in sorted(spans, reverse=True):
+                    text = text[:b] + strip(text[b:e]) + text[e:]
             with open(o, 'w') as w:
-                w.write(strip(open(f).read()))
-        print('cycwrite: the decomp without its written times in %s' % out)
+                w.write(text)
+        print('cycwrite: the decomp without %s written times in %s' % ('its' if only is None else 'those functions\'', out))
         return 0
     dry = '--dry' in args
     if dry:

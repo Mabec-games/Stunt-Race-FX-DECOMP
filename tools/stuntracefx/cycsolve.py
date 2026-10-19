@@ -147,7 +147,7 @@ def eliminate(rows):
     return cost, contra
 
 
-def program(rows, weight):
+def program(rows, weight, fixed=()):
     """The costs as an integer program (scipy's HiGHS): every cost a whole
     number of clocks, none below 0, each equation met or its miss counted
     (slack, weighted far above any cost), and where the equations leave a
@@ -167,8 +167,10 @@ def program(rows, weight):
     full = sp.hstack([A, sp.identity(ne), -sp.identity(ne)]).tocsr()
     b = np.array([g for _, g in rows], dtype=float)
     w = np.array([float(weight(p)) for p in unknowns])
+    # an unknown in `fixed` (code whose time is stated already) adds nothing
+    hi = np.concatenate([np.array([0.0 if p in fixed else np.inf for p in unknowns]), np.full(2 * ne, np.inf)])
     res = milp(np.concatenate([w, np.full(2 * ne, 1000.0)]), constraints=LinearConstraint(full, b, b),
-               integrality=np.concatenate([np.ones(nv), np.zeros(2 * ne)]), bounds=Bounds(0, np.inf))
+               integrality=np.concatenate([np.ones(nv), np.zeros(2 * ne)]), bounds=Bounds(0, hi))
     if res.status != 0:
         raise SystemExit('cycsolve: the program has no solution: %s' % res.message)
     x = np.round(res.x[:nv]).astype(int)
