@@ -719,7 +719,7 @@ def unwrite(body):
             continue
         elif s.startswith('goto enter;'):
             out.append(l[:len(l) - len(l.lstrip())] + 'goto dispatch;')
-        elif s in ('fetched:', 'enter:') or s.startswith('gsu_code(0x') and '| at, 1);' in s:
+        elif s in ('fetched:', 'enter:') or s.startswith('gsu_code(0x') and s.endswith('| at, 1);   /* where it jumps: its first byte */'):
             pass
         elif re.match(r'if \(at == 0x[0-9A-F]{4}( \|\| at == 0x[0-9A-F]{4})*\)$', s) and 'gsu_cache((uint16_t)(at + 1));' in lines[i + 1]:
             i += 2

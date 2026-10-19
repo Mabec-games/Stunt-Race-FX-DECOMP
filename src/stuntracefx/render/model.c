@@ -131,15 +131,6 @@ static const uint16_t commands[26] = {
     0x8D5D, 0x8D75,
 };
 
-/* Where command byte cmd goes: the table's entry; 0 for a byte that is
-   not a command (the code would run into the middle of the table). */
-static uint16_t model_command(uint16_t cmd)
-{
-    if ((cmd & 3) || cmd >= 4 * 26)
-        return 0;
-    return commands[cmd >> 2];
-}
-
 /* The code from address at until it jumps to ret (the caller's return). */
 static void model_run(uint16_t at, uint16_t ret)
 {
@@ -733,7 +724,7 @@ l882C:
     R[10] = gsu_inc(R[10]);
     gsu_code(0x018846, 4);
     nx = (uint16_t)(gsu_getb());
-    at = model_command(nx);
+    at = nx;
     gsu_code(0x010000 | at, 1);   /* where it jumps, fetched before the delay slot runs */
     gsu_r14(gsu_inc(R[14]));
     goto fetched;
@@ -782,7 +773,7 @@ l8863:
     gsu_r14(gsu_add(R[14], R[0], 0));
     gsu_code(0x01886a, 2);
     nx = (uint16_t)(gsu_getb());
-    at = model_command(nx);
+    at = nx;
     gsu_code(0x010000 | at, 1);   /* where it jumps, fetched before the delay slot runs */
     gsu_r14(gsu_inc(R[14]));
     goto fetched;
@@ -907,7 +898,7 @@ l888D:
     R[10] = gsu_ldw(FX_MODEL_STACK);
     gsu_code(0x0188f1, 2);
     nx = (uint16_t)(gsu_getb());
-    at = model_command(nx);
+    at = nx;
     gsu_code(0x010000 | at, 1);   /* where it jumps, fetched before the delay slot runs */
     gsu_r14(gsu_inc(R[14]));
     goto fetched;
@@ -1036,7 +1027,7 @@ l8902:
     gsu_stw(FX_POINT_OUT, R[9]);
     gsu_code(0x018980, 2);
     nx = (uint16_t)(gsu_getb());
-    at = model_command(nx);
+    at = nx;
     gsu_code(0x010000 | at, 1);   /* where it jumps, fetched before the delay slot runs */
     gsu_r14(gsu_inc(R[14]));
     goto fetched;
@@ -1156,7 +1147,7 @@ l89A3:
     gsu_stw(FX_POINT_OUT, R[9]);
     gsu_code(0x018a01, 2);
     nx = (uint16_t)(gsu_getb());
-    at = model_command(nx);
+    at = nx;
     gsu_code(0x010000 | at, 1);   /* where it jumps, fetched before the delay slot runs */
     gsu_r14(gsu_inc(R[14]));
     goto fetched;
@@ -1289,7 +1280,7 @@ l8A22:
     gsu_stw(FX_POINT_OUT, R[9]);
     gsu_code(0x018a95, 2);
     nx = (uint16_t)(gsu_getb());
-    at = model_command(nx);
+    at = nx;
     gsu_code(0x010000 | at, 1);   /* where it jumps, fetched before the delay slot runs */
     gsu_r14(gsu_inc(R[14]));
     goto fetched;
@@ -1406,7 +1397,7 @@ l8AC9:
     gsu_stw(FX_POINT_OUT, R[11]);
     gsu_code(0x018b0c, 2);
     nx = (uint16_t)(gsu_getb());
-    at = model_command(nx);
+    at = nx;
     gsu_code(0x010000 | at, 1);   /* where it jumps, fetched before the delay slot runs */
     gsu_r14(gsu_inc(R[14]));
     goto fetched;
@@ -1546,7 +1537,7 @@ l8B3F:
     gsu_stw(FX_POINT_OUT, R[11]);
     gsu_code(0x018ba8, 2);
     nx = (uint16_t)(gsu_getb());
-    at = model_command(nx);
+    at = nx;
     gsu_code(0x010000 | at, 1);   /* where it jumps, fetched before the delay slot runs */
     gsu_r14(gsu_inc(R[14]));
     goto fetched;
@@ -1923,7 +1914,7 @@ l8D44:
     gsu_stw(FX_ROM_R14, R[14]);
     gsu_code(0x018d4b, 2);
     nx = (uint16_t)(gsu_getb());
-    at = model_command(nx);
+    at = nx;
     gsu_code(0x010000 | at, 1);   /* where it jumps, fetched before the delay slot runs */
     gsu_r14(gsu_inc(R[14]));
     goto fetched;
@@ -1940,7 +1931,7 @@ l8D4D:
     /* CACHE */
     gsu_code(0x018d58, 2); gsu_cache(0x8d5a); gsu_code(0x018d5a, 3);
     nx = (uint16_t)(gsu_getb());
-    at = model_command(nx);
+    at = nx;
     gsu_code(0x010000 | at, 1);   /* where it jumps, fetched before the delay slot runs */
     gsu_r14(gsu_inc(R[14]));
     goto fetched;
@@ -1971,7 +1962,7 @@ l8D5D:
     gsu_r14(gsu_add(R[0], R[14], 0));
     gsu_code(0x018d73, 2);
     nx = (uint16_t)(gsu_getb());
-    at = model_command(nx);
+    at = nx;
     gsu_code(0x010000 | at, 1);   /* where it jumps, fetched before the delay slot runs */
     gsu_r14(gsu_inc(R[14]));
     goto fetched;
@@ -2018,7 +2009,7 @@ l8D7A:
     R[10] = gsu_inc(R[10]);
     gsu_code(0x018d97, 4);
     nx = (uint16_t)(gsu_getb());
-    at = model_command(nx);
+    at = nx;
     gsu_code(0x010000 | at, 1);   /* where it jumps, fetched before the delay slot runs */
     gsu_r14(gsu_inc(R[14]));
     goto fetched;
@@ -2052,7 +2043,7 @@ l8D9A:
     R[10] = gsu_inc(R[10]);
     gsu_code(0x018db0, 4);
     nx = (uint16_t)(gsu_getb());
-    at = model_command(nx);
+    at = nx;
     gsu_code(0x010000 | at, 1);   /* where it jumps, fetched before the delay slot runs */
     gsu_r14(gsu_inc(R[14]));
     goto fetched;
@@ -2069,7 +2060,7 @@ l8DB3:
     gsu_r14(gsu_inc(R[14]));
     gsu_code(0x018dbb, 2);
     nx = (uint16_t)(gsu_getb());
-    at = model_command(nx);
+    at = nx;
     gsu_code(0x010000 | at, 1);   /* where it jumps, fetched before the delay slot runs */
     gsu_r14(gsu_inc(R[14]));
     goto fetched;
@@ -2097,7 +2088,7 @@ l8DBD:
     R[10] = gsu_inc(R[10]);
     gsu_code(0x018dce, 4);
     nx = (uint16_t)(gsu_getb());
-    at = model_command(nx);
+    at = nx;
     gsu_code(0x010000 | at, 1);   /* where it jumps, fetched before the delay slot runs */
     gsu_r14(gsu_inc(R[14]));
     goto fetched;
@@ -2131,7 +2122,7 @@ l8DD1:
     R[10] = gsu_inc(R[10]);
     gsu_code(0x018de7, 4);
     nx = (uint16_t)(gsu_getb());
-    at = model_command(nx);
+    at = nx;
     gsu_code(0x010000 | at, 1);   /* where it jumps, fetched before the delay slot runs */
     gsu_r14(gsu_inc(R[14]));
     goto fetched;
@@ -2152,7 +2143,7 @@ l8DEA:
     gsu_r14(gsu_inc(R[14]));
     gsu_code(0x018df4, 2);
     nx = (uint16_t)(gsu_getb());
-    at = model_command(nx);
+    at = nx;
     gsu_code(0x010000 | at, 1);   /* where it jumps, fetched before the delay slot runs */
     gsu_r14(gsu_inc(R[14]));
     goto fetched;
@@ -2169,7 +2160,7 @@ l8DF6:
     /* CACHE */
     gsu_code(0x018e01, 2); gsu_cache(0x8e03); gsu_code(0x018e03, 3);
     nx = (uint16_t)(gsu_getb());
-    at = model_command(nx);
+    at = nx;
     gsu_code(0x010000 | at, 1);   /* where it jumps, fetched before the delay slot runs */
     gsu_r14(gsu_inc(R[14]));
     goto fetched;
@@ -2237,7 +2228,7 @@ l8E19:
     R[10] = gsu_inc(R[10]);
     gsu_code(0x018e39, 4);
     nx = (uint16_t)(gsu_getb());
-    at = model_command(nx);
+    at = nx;
     gsu_code(0x010000 | at, 1);   /* where it jumps, fetched before the delay slot runs */
     gsu_r14(gsu_inc(R[14]));
     goto fetched;
@@ -2253,7 +2244,7 @@ l8E3D:
     gsu_r14(gsu_inc(R[14]));
     gsu_code(0x018e43, 2);
     nx = (uint16_t)(gsu_getb());
-    at = model_command(nx);
+    at = nx;
     gsu_code(0x010000 | at, 1);   /* where it jumps, fetched before the delay slot runs */
     gsu_r14(gsu_inc(R[14]));
     goto fetched;
@@ -2284,7 +2275,7 @@ l8E45:
     R[10] = gsu_inc(R[10]);
     gsu_code(0x018e5a, 4);
     nx = (uint16_t)(gsu_getb());
-    at = model_command(nx);
+    at = nx;
     gsu_code(0x010000 | at, 1);   /* where it jumps, fetched before the delay slot runs */
     gsu_r14(gsu_inc(R[14]));
     goto fetched;
@@ -2317,7 +2308,7 @@ l8E5D:
     gsu_r14(gsu_add(R[0], R[14], 0));
     gsu_code(0x018e76, 2);
     nx = (uint16_t)(gsu_getb());
-    at = model_command(nx);
+    at = nx;
     gsu_code(0x010000 | at, 1);   /* where it jumps, fetched before the delay slot runs */
     gsu_r14(gsu_inc(R[14]));
     goto fetched;
@@ -2359,7 +2350,7 @@ l8E88:
     R[10] = gsu_inc(R[10]);
     gsu_code(0x018e9c, 4);
     nx = (uint16_t)(gsu_getb());
-    at = model_command(nx);
+    at = nx;
     gsu_code(0x010000 | at, 1);   /* where it jumps, fetched before the delay slot runs */
     gsu_r14(gsu_inc(R[14]));
     goto fetched;
@@ -2455,7 +2446,7 @@ l8EDF:
     R[10] = gsu_inc(R[10]);
     gsu_code(0x018ef6, 4);
     nx = (uint16_t)(gsu_getb());
-    at = model_command(nx);
+    at = nx;
     gsu_code(0x010000 | at, 1);   /* where it jumps, fetched before the delay slot runs */
     gsu_r14(gsu_inc(R[14]));
     goto fetched;
@@ -2495,7 +2486,7 @@ l8F05:
     gsu_r14(gsu_inc(R[14]));
     gsu_code(0x018f16, 2);
     nx = (uint16_t)(gsu_getb());
-    at = model_command(nx);
+    at = nx;
     gsu_code(0x010000 | at, 1);   /* where it jumps, fetched before the delay slot runs */
     gsu_r14(gsu_inc(R[14]));
     goto fetched;
@@ -2578,7 +2569,7 @@ l8F6D:
     gsu_r14(gsu_ldw(FX_ROM_R14));
     gsu_code(0x018f76, 2);
     nx = (uint16_t)(gsu_getb());
-    at = model_command(nx);
+    at = nx;
     gsu_code(0x010000 | at, 1);   /* where it jumps, fetched before the delay slot runs */
     gsu_r14(gsu_inc(R[14]));
     goto fetched;
@@ -2589,7 +2580,7 @@ l8F78:
     gsu_r14(gsu_inc(R[14]));
     gsu_code(0x018f7b, 2);
     nx = (uint16_t)(gsu_getb());
-    at = model_command(nx);
+    at = nx;
     gsu_code(0x010000 | at, 1);   /* where it jumps, fetched before the delay slot runs */
     gsu_r14(gsu_inc(R[14]));
     goto fetched;
@@ -2887,7 +2878,7 @@ l90C0:
     if (t) { gsu_code(0x0190c8, 1); goto l90C8; }
     gsu_code(0x0190c5, 3);
     nx = (uint16_t)(gsu_getb());
-    at = model_command(nx);
+    at = nx;
     gsu_code(0x010000 | at, 1);   /* where it jumps, fetched before the delay slot runs */
     gsu_r14(gsu_inc(R[14]));
     goto fetched;
@@ -3666,7 +3657,7 @@ l93C1:
     if (t) { gsu_code(0x0193c1, 1); goto l93C1; }
     gsu_code(0x019418, 3);
     nx = (uint16_t)(gsu_getb());
-    at = model_command(nx);
+    at = nx;
     gsu_code(0x010000 | at, 1);   /* where it jumps, fetched before the delay slot runs */
     gsu_r14(gsu_inc(R[14]));
     goto fetched;
@@ -3742,7 +3733,7 @@ l9427:
     if (t) { gsu_code(0x019427, 1); goto l9427; }
     gsu_code(0x01946a, 3);
     nx = (uint16_t)(gsu_getb());
-    at = model_command(nx);
+    at = nx;
     gsu_code(0x010000 | at, 1);   /* where it jumps, fetched before the delay slot runs */
     gsu_r14(gsu_inc(R[14]));
     goto fetched;
@@ -4781,10 +4772,6 @@ lAB11:
 dispatch:
     if (at == ret)
         return;
-    /* An entry of the command table (01:8000): its IWT R15 goes to the
-       command's code. */
-    if (at >= 0x8000 && at < 0x8000 + 4 * 26 && !(at & 3))
-        at = commands[(at - 0x8000) >> 2];
     gsu_code(0x010000 | at, 1);   /* where it jumps: its first byte */
 fetched:
     if (at == 0x8651 || at == 0x90CD)
@@ -5022,6 +5009,15 @@ enter:
     case 0x9EF4: goto l9EF4;
     case 0x9EFB: goto l9EFB;
     case 0xAB11: goto lAB11;
+    }
+    /* An entry of the command table: 01:00cc, where TO R15; GETB goes
+       with command byte cc (the bank's mirror of 01:80cc), or 01:80cc.
+       Its IWT R15,#code and the NOP in its delay slot, then the code. */
+    if ((at & 0x7FFF) < 4 * 26 && !(at & 3)) {
+        gsu_code(0x010000 | (at + 1), 3);
+        at = commands[(at & 0x7FFF) >> 2];
+        gsu_code(0x010000 | at, 1);   /* the command's code: its first byte */
+        goto fetched;
     }
     return;   /* no command or return address of the code */
 
