@@ -148,7 +148,7 @@ class St:
         if s == d and not is_prefix(rom(self.bank, d)):
             k = Unit(self.bank, d).end - d
         self._code(t, 1)
-        if rom(self.bank, t) == 0x02:
+        if k == 0 and rom(self.bank, t) == 0x02:          # an operand is no CACHE
             self.out.append(('cache', t + 1))
         self.pc, self.np, self.seg = t + k, t + 1, t + k
 

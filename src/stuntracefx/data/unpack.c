@@ -407,7 +407,7 @@ void FxUnpackProgram(void)
         gsu_sub(gsu.r[9], gsu.r[1], 0);
         gsu.r[12] = 2;
         if (gsu.z)
-            { gsu_code(0x01d003, 5); break; } else { gsu_code(0x01d003, 5); gsu_code(0x01d027, 1); gsu_cache(0xd028); gsu_code(0x01d028, 1); }
+            { gsu_code(0x01d003, 5); break; } else { gsu_code(0x01d003, 5); gsu_code(0x01d027, 2); }
         unpack_copy_code();
         gsu.r[4] = unpack_bits(gsu.r[12], 0xD0CC, GSU_COPY(8));
         gsu.r[6] = gsu_dec(gsu.r[6]);
