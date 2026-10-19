@@ -158,7 +158,7 @@ void FxSortObjectsProgram(void)
     gsu_code(0x01AF00, 6);
     gsu.r[12] = gsu_lob(gsu_ldw(FX_SLOT_COUNT));
     if (gsu.z)
-        return; else { gsu_code(0x01AF06, 4); gsu_code(0x01AF0C, 1); gsu_cache(0xAF0D); gsu_code(0x01AF0D, 2); }
+        { gsu_code(0x01AF06, 5); return; } else { gsu_code(0x01AF06, 4); gsu_code(0x01AF0C, 1); gsu_cache(0xAF0D); gsu_code(0x01AF0D, 2); }
     gsu.r[13] = 0xAF0F;
     do {
         int culled = 0;
@@ -176,7 +176,7 @@ void FxSortObjectsProgram(void)
             gsu_stw(field(0x10, GSU_COPY(4)), gsu.r[0]);
             rotate_column(2, GSU_COPY(2));
             gsu_stw(field(0x14, GSU_COPY(4)), gsu.r[0]);
-        }
+        } else { gsu_code(0x01AF16, 6); gsu_code(0x01AF7F, 1); }
         /* Cull by the shape's radius. */
         gsu.r[0] = gsu_ldw(field(0x08, GSU_COPY(5)));
         gsu_code(0x01AF85, 2);

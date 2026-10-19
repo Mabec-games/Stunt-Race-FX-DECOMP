@@ -32,22 +32,27 @@ static FxRegs ram_bad(FxRegs g);
 
 FxRegs FxInit(FxRegs g)
 {
+    gsu_code(0x048801, 11);
     g.r[10] = FX_STACK;
     g.r[0] = gsu_sub(g.r[0], g.r[0], 0);
     gsu.rambr = 0;
     g.r[0] = gsu_sub(g.r[0], g.r[0], 0);
     gsu_stw(0x2732, g.r[0]);
     g.r[0] = gsu_sub(g.r[0], g.r[0], 0);
+    gsu_code(0x04880C, 5);
     gsu_stw(FX_RAM_BAD, g.r[0]);
     g.r[1] = FX_RAM_TEST;
     g.r[2] = g.r[0] = 0x1234;
+    gsu_code(0x048811, 9);
     gsu_stw(g.r[1], g.r[0]);
     g.r[0] = gsu_sub(g.r[0], g.r[0], 0);
+    gsu_code(0x04881A, 3);
     g.r[3] = gsu_ldw(g.r[1]);
+    gsu_code(0x04881D, 1);
     g.r[0] = gsu_ldw(g.r[1]);
     gsu_sub(g.r[0], g.r[2], 0);
     if (!gsu.z)
-        return ram_bad(g);
+        return ram_bad(g); else { gsu_code(0x04881E, 4); gsu_code(0x048828, 1); }
     return pools(g);
 }
 
@@ -55,6 +60,7 @@ FxRegs FxInit(FxRegs g)
    sets the starting words. */
 static FxRegs pools(FxRegs g)
 {
+    gsu_code(0x048829, 8);
     static const uint16_t zeros[7] = {0x2B94, 0x2B92, 0x2684, 0x2686, 0x1090, 0x2470, 0x273C};
     int i;
 
@@ -63,6 +69,7 @@ static FxRegs pools(FxRegs g)
     g.r[12] = FX_CLEAR_WORDS;
     g.r[13] = 0x8831;
     do {
+        gsu_code(0x048831, 2);
         int again;
 
         gsu_stw(g.r[1], g.r[0]);
@@ -70,33 +77,42 @@ static FxRegs pools(FxRegs g)
         again = gsu_count_down(&g.r[12]);
         g.r[1] = gsu_inc(g.r[1]);
         if (!again)
-            break;
+            { gsu_code(0x048833, 10); break; } else { gsu_code(0x048833, 2); }
     } while (1);
     g.r[0] = 0x0100;
     gsu_stw(0x2636, g.r[0]);
     g.r[0] = 0xFFFF;
+    gsu_code(0x04883D, 6);
     gsu_stw(0x2382, g.r[0]);
+    gsu_code(0x048843, 4);
     gsu_stw(0x2380, g.r[0]);
     g.r[0] = 0xFFFF;
+    gsu_code(0x048847, 6);
     gsu_stw(0x2642, g.r[0]);
     g.r[1] = FX_POOL_FIRST;
     g.r[0] = gsu_sub(g.r[0], g.r[0], 0);
+    gsu_code(0x04884D, 5);
     gsu_stw(g.r[1], g.r[0]);
     g.r[1] = gsu_inc(gsu_inc(g.r[1]));
     g.r[0] = 0x0CD8;
+    gsu_code(0x048852, 6);
     gsu_stw(g.r[1], g.r[0]);
     g.r[1] = FX_POOL_SECOND;
     g.r[0] = gsu_sub(g.r[0], g.r[0], 0);
+    gsu_code(0x048858, 5);
     gsu_stw(g.r[1], g.r[0]);
     g.r[1] = gsu_inc(gsu_inc(g.r[1]));
     g.r[0] = 0x05BE;
+    gsu_code(0x04885D, 6);
     gsu_stw(g.r[1], g.r[0]);
     g.r[0] = gsu_sub(g.r[0], g.r[0], 0);
+    gsu_code(0x048863, 5);
     for (i = 0; i < 7; i++)
-        gsu_stw(zeros[i], g.r[0]);
+        { gsu_stw(zeros[i], g.r[0]); gsu_code(0x048880, 6); }
     g.r[0] = 3;
     gsu_stw(0x2472, g.r[0]);
     g.r[0] = 0;
+    gsu_code(0x048886, 7);
     gsu_stw(FX_RAM_TEST, g.r[0]);
     return g;
 }
@@ -114,6 +130,7 @@ static FxRegs pools(FxRegs g)
  */
 static FxRegs ram_bad(FxRegs g)
 {
+    gsu_code(0x048823, 6);
     g.r[0] = 0x000F;
     gsu_stw(FX_RAM_BAD, g.r[0]);
     return pools(g);

@@ -51,29 +51,61 @@
 /* MULT #n: the signed product of the low byte and n. */
 static uint16_t mult_imm(uint16_t v, int8_t n)
 {
+    gsu_code(0x07FA4C, 5);
     uint16_t r = (uint16_t)((int8_t)v * n);
 
     gsu_sz(r);
     return r;
 }
 
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode times_pow2_code[7][6] = {
+    {{0x07FA67, 12}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0x07FA73, 6}, {0xFA79, 0}, {0x07FA79, 15}, {0x07FAAD, 3}, {0x07FB25, 5}, {0, 0}},
+    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0x07FA42, 10}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0x07FA51, 9}, {0x07FA78, 1}, {0xFA79, 0}, {0x07FA79, 15}, {0x07FAAD, 3}, {0x07FB25, 5}},
+    {{0x07FB0B, 10}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0x07FB19, 10}, {0x07FB25, 5}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+};
+
 /* v * 2^n by n ADDs of the value to itself. */
-static uint16_t times_pow2(uint16_t v, int n)
+static uint16_t times_pow2(uint16_t v, int n, int copy)
 {
+    gsu_codes(times_pow2_code[copy], 6);
     while (n--)
         v = gsu_add(v, v, 0);
     return v;
 }
 
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode loop_code[2][1] = {
+    {{0, 0}},
+    {{0x07F43A, 3}},
+};
+
 /* LOOP: counts R12 down; true while it has not reached 0. */
-static int loop(void)
+static int loop(int copy)
 {
+    gsu_codes(loop_code[copy], 1);
     return gsu_count_down(&R[12]);
 }
 
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode color_code[7][1] = {
+    {{0x07F0E3, 2}},
+    {{0x07F10F, 2}},
+    {{0, 0}},
+    {{0x07F403, 2}},
+    {{0x07F42F, 2}},
+    {{0x07FBB0, 2}},
+    {{0x07F7E6, 7}},
+};
+
 /* COLOR, with the plot options' nibble modes. */
-static void color(uint16_t v)
+static void color(uint16_t v, int copy)
 {
+    gsu_codes(color_code[copy], 1);
     uint8_t c = (uint8_t)v;
 
     if (gsu.por & 0x04)
@@ -89,21 +121,50 @@ static void plot(void)
     R[1]++;
 }
 
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode rpix_code[10][2] = {
+    {{0, 0}, {0, 0}},
+    {{0x07F43D, 3}, {0, 0}},
+    {{0, 0}, {0x07FBB5, 5}},
+    {{0, 0}, {0x07F6D3, 5}},
+    {{0x07F5C2, 6}, {0, 0}},
+    {{0x07F6DB, 3}, {0, 0}},
+    {{0x07FBB3, 2}, {0x07FBB5, 5}},
+    {{0x07FBBA, 3}, {0, 0}},
+    {{0, 0}, {0x07F915, 5}},
+    {{0, 0}, {0x07FA11, 5}},
+};
+
 /* RPIX: reads the pixel at (R1, R2), first writing out both pixel caches. */
-static uint16_t rpix(void)
+static uint16_t rpix(int copy)
 {
+    gsu_codes(rpix_code[copy], 1);
     uint16_t r = gsu_rpix((uint8_t)R[1], (uint8_t)R[2]);
 
     gsu_sz(r);
+    gsu_codes(rpix_code[copy] + 1, 1);
     return r;
 }
+
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode bitmap_setup_code[8][1] = {
+    {{0x07F0C0, 18}},
+    {{0, 0}},
+    {{0x07F32A, 17}},
+    {{0x07F15C, 17}},
+    {{0x07F5CA, 16}},
+    {{0x07FAB1, 16}},
+    {{0x07F281, 17}},
+    {{0x07F7F5, 17}},
+};
 
 /* ---- drawing from a bitmap ---- */
 
 /* The setup every bitmap program makes: ROM bank $15 for GETB, RAM bank 0,
    plot options 0 (colour 0 transparent, no dither, no nibble modes). */
-static void bitmap_setup(void)
+static void bitmap_setup(int copy)
 {
+    gsu_codes(bitmap_setup_code[copy], 1);
     R[0] = BITMAP_BANK;
     gsu.rombr = (uint8_t)(R[0] & 0x7F);
     R[0] = gsu_sub(R[0], R[0], 0);
@@ -111,82 +172,154 @@ static void bitmap_setup(void)
     gsu.por = (uint8_t)R[0];
 }
 
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode pixel_code[4][1] = {
+    {{0, 0}},
+    {{0x07FBB0, 2}},
+    {{0x07F7E6, 2}},
+    {{0, 0}},
+};
+
 /* One pixel: colour byte (R0 AND 3) of the table at R11, plotted. */
-static void pixel(void)
+static void pixel(int copy)
 {
     R[0] = gsu_and(R[0], 3);
     R[0] = gsu_add(R[0], R[11], 0);
     R[0] = gsu_ldb(R[0]);
-    color(R[0]);
+    gsu_codes(pixel_code[copy], 1);
+    color(R[0], GSU_COPY(2));
     plot();
 }
+
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode bitmap_byte_code[5][6] = {
+    {{0, 0}, {0x07F0DC, 7}, {0x07F0E5, 5}, {0x07F0EA, 11}, {0, 0}, {0x07F111, 3}},
+    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x07F736, 11}, {0, 0}},
+    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x07F7E6, 2}},
+    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0x07F3F9, 3}, {0x07F3FC, 7}, {0x07F405, 5}, {0x07F40A, 11}, {0, 0}, {0x07F431, 3}},
+};
 
 /* One bitmap byte at R14 as four pixels across, low bits first. R6 takes
    the byte and is rotated right two bits a pixel (through the carry, so
    its high byte collects the bits rotated out); R14 steps to the next
    byte after the first pixel. */
-static void bitmap_byte(void)
+static void bitmap_byte(int copy)
 {
+    gsu_codes(bitmap_byte_code[copy], 1);
     R[6] = gsu_getb();
     R[0] = R[6];
-    pixel();
+    gsu_codes(bitmap_byte_code[copy] + 1, 1);
+    pixel(GSU_COPY(0));
     R[6] = gsu_ror(R[6]);
     R[6] = gsu_ror(R[6]);
+    gsu_codes(bitmap_byte_code[copy] + 2, 1);
     gsu_r14(gsu_inc(R[14]));
-    for (int k = 0; k < 3; k++) {
+    gsu_codes(bitmap_byte_code[copy] + 3, 1);
+    for (int k = 0; gsu_codes_loop(bitmap_byte_code[copy] + 4, 1, k < 3); k++) {
         R[0] = R[6];
         R[6] = gsu_ror(R[6]);
         R[6] = gsu_ror(R[6]);
-        pixel();
+        pixel(GSU_COPY(0));
+        gsu_codes(bitmap_byte_code[copy] + 5, 1);
     }
 }
+
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode bitmap_row_end_code[7][2] = {
+    {{0x07F7E8, 5}, {0, 0}},
+    {{0x07F3C8, 5}, {0, 0}},
+    {{0x07F276, 5}, {0x07F27B, 3}},
+    {{0x07F6D3, 5}, {0x07F6D8, 3}},
+    {{0x07F31F, 5}, {0x07F324, 3}},
+    {{0, 0}, {0x07F6D8, 3}},
+    {{0, 0}, {0x07FA16, 3}},
+};
 
 /* The end of a bitmap row: R14 on by `skip` to the next row's first byte,
    R1 back to the left edge R8, and the row count R12 down; R2 moves to the
    next line whether or not rows remain. True while rows remain. */
-static int bitmap_row_end(uint16_t skip)
+static int bitmap_row_end(uint16_t skip, int copy)
 {
+    gsu_codes(bitmap_row_end_code[copy], 1);
     int more;
 
     R[0] = skip;
     gsu_r14(gsu_add(R[0], R[14], 0));
     R[1] = R[8];
-    more = loop();
+    gsu_codes(bitmap_row_end_code[copy] + 1, 1);
+    more = loop(GSU_COPY(0));
     R[2] = gsu_inc(R[2]);
     return more;
 }
 
+/* cyccopy: the copy each of the caller's copies calls */
+static const uint8_t bitmap_byte_from_glyph_rows[5] = {2, 3, 3, 0, 0};
+
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode glyph_rows_code[5][6] = {
+    {{0, 0}, {0, 0}, {0, 0}, {0x07F70B, 3}, {0x07F7ED, 3}, {0, 0}},
+    {{0, 0}, {0, 0}, {0, 0}, {0x07F355, 3}, {0x07F3CD, 3}, {0, 0}},
+    {{0x07F187, 4}, {0x07F18D, 4}, {0x07F191, 3}, {0, 0}, {0, 0}, {0x07F27E, 1}},
+    {{0, 0}, {0, 0}, {0, 0}, {0x07F5EE, 3}, {0, 0}, {0, 0}},
+    {{0x07F2A7, 5}, {0, 0}, {0x07F2AC, 3}, {0, 0}, {0, 0}, {0x07F327, 1}},
+};
+
 /* Glyph rows: R12 rows of `bytes` bytes (4 pixels each), R13 the row's
    start; with `rpix_each`, an RPIX after each byte writes the pixel caches
    out. Rows are 32 bytes apart. */
-static void glyph_rows(uint16_t row_start, unsigned bytes, int rpix_each)
+static void glyph_rows(uint16_t row_start, unsigned bytes, int rpix_each, int copy)
 {
+    gsu_codes(glyph_rows_code[copy], 2);
     R[13] = row_start;
     do {
+        gsu_codes(glyph_rows_code[copy] + 2, 1);
         for (unsigned b = 0; b < bytes; b++) {
-            bitmap_byte();
+            bitmap_byte(GSU_COPY(bitmap_byte_from_glyph_rows[copy]));
             if (rpix_each)
-                R[0] = rpix();
+                R[0] = rpix(GSU_COPY(0));
         }
-    } while (bitmap_row_end((uint16_t)(32 - bytes)));
+    } while (gsu_codes_loop(glyph_rows_code[copy] + 3, 2, bitmap_row_end((uint16_t)(32 - bytes), GSU_COPY(5))));
+    gsu_codes(glyph_rows_code[copy] + 5, 1);
 }
+
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode glyph_x_code[6][4] = {
+    {{0, 0}, {0x07F6F4, 7}, {0, 0}, {0, 0}},
+    {{0, 0}, {0x07F33F, 7}, {0, 0}, {0, 0}},
+    {{0x07F3E3, 4}, {0x07F3E7, 7}, {0x07F3EE, 4}, {0xF3F2, 0}},
+    {{0x07F5DA, 4}, {0x07F5DE, 7}, {0x07F5E5, 4}, {0xF5E9, 0}},
+    {{0x07F292, 4}, {0x07F296, 7}, {0x07F29D, 4}, {0, 0}},
+    {{0x07F806, 4}, {0x07F80A, 7}, {0x07F811, 4}, {0, 0}},
+};
 
 /* The glyph programs' x: from $020A, with the advance added back to $020A
    for the next glyph. R8 and R1 = x. */
-static void glyph_x(uint16_t advance)
+static void glyph_x(uint16_t advance, int copy)
 {
+    gsu_codes(glyph_x_code[copy], 1);
     R[8] = gsu_ldw(HUD_X);
     R[1] = R[8];
     R[0] = advance;
     R[0] = gsu_add(R[0], R[8], 0);
+    gsu_codes(glyph_x_code[copy] + 1, 1);
     gsu_sbk(R[0]);
+    gsu_codes(glyph_x_code[copy] + 2, 2);
 }
 
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode glyph_bitmap_code[3][1] = {
+    {{0, 0}},
+    {{0x07F2A1, 4}},
+    {{0x07F815, 4}},
+};
+
 /* The bitmap's address into R14; false when it is 0 (nothing to draw). */
-static int glyph_bitmap(void)
+static int glyph_bitmap(int copy)
 {
     gsu_r14(gsu_ldw(HUD_BITMAP));
     gsu_moves(R[14]);
+    gsu_codes(glyph_bitmap_code[copy], 1);
     return !gsu.z;
 }
 
@@ -195,6 +328,7 @@ static int glyph_bitmap(void)
    the 96 tiles down. */
 static void tiles_2bpp_to_4bpp(void)
 {
+    gsu_code(0x07EE5F, 1); gsu_cache(0xEE60); gsu_code(0x07EE60, 9);
     int more;
 
     R[0] = gsu_sub(R[0], R[0], 0);
@@ -202,27 +336,36 @@ static void tiles_2bpp_to_4bpp(void)
     R[1] = 0;
     R[4] = 0x60;
     do {
+        gsu_code(0x07EE69, 5);
         R[12] = 8;
         R[13] = 0xEE6E;
         do {
+            gsu_code(0x07EE6E, 3);
             R[0] = gsu_ldb(R[2]);
+            gsu_code(0x07EE71, 2);
             gsu_stb(R[3], (uint8_t)R[0]);
             R[2] = gsu_inc(R[2]);
             R[3] = gsu_inc(R[3]);
             R[0] = gsu_sub(R[0], R[0], 0);
+            gsu_code(0x07EE73, 5);
             gsu_stb(R[3], (uint8_t)R[0]);
-            more = loop();
+            gsu_code(0x07EE78, 1);
+            more = loop(GSU_COPY(0));
             R[3] = gsu_inc(R[3]);
         } while (more);
         R[12] = 0x10;
         R[13] = 0xEE7E;
+        gsu_code(0x07EE79, 5);
         do {
+            gsu_code(0x07EE7E, 3);
             gsu_stb(R[3], (uint8_t)R[0]);
-            more = loop();
+            gsu_code(0x07EE81, 1);
+            more = loop(GSU_COPY(0));
             R[3] = gsu_inc(R[3]);
         } while (more);
         R[4] = gsu_dec(R[4]);
-    } while (!gsu.z);
+    } while (gsu_code_loop(0x07EE82, 4, !gsu.z));
+    gsu_code(0x07EE82, 5);
 }
 
 /*
@@ -238,6 +381,7 @@ static void tiles_2bpp_to_4bpp(void)
  */
 void FxTiles2bppTo4bppHigh(void)
 {
+    gsu_code(0x07EE51, 8);
     R[2] = 0xC000;
     R[3] = 0xD000;
     tiles_2bpp_to_4bpp();
@@ -257,6 +401,7 @@ void abi_FxTiles2bppTo4bppHigh(void)
  */
 void FxTiles2bppTo4bppLow(void)
 {
+    gsu_code(0x07EE5A, 5);
     R[2] = 0x3000;
     R[3] = 0x4000;
     tiles_2bpp_to_4bpp();
@@ -271,6 +416,7 @@ void abi_FxTiles2bppTo4bppLow(void)
    the top left, the seed at $021C. */
 static void noise_body(void)
 {
+    gsu_code(0x07EEA0, 5);
     int more;
 
     R[8] = gsu_ldw(HUD_NOISE_SEED);
@@ -280,10 +426,13 @@ static void noise_body(void)
     R[6] = NOISE_RAMP;
     R[1] = 0;
     R[2] = 0;
+    gsu_code(0x07EEA5, 18); gsu_cache(0xEEB7);
     do {
+        gsu_code(0x07EEB7, 5);
         R[12] = R[9];
         R[13] = 0xEEBB;
         do {
+            gsu_code(0x07EEBC, 18); gsu_code(0x07EED0, 5); gsu_code(0x07EEDF, 6);
             R[0] = gsu_lob(R[8]);
             R[0] = gsu_swap(R[0]);
             R[0] = gsu_xor(R[0], R[8]);
@@ -296,9 +445,11 @@ static void noise_body(void)
             R[0] = gsu_lsr(R[0]);
             R[0] = gsu_xor(R[0], R[3]);
             if (gsu.cy) {
+                gsu_code(0x07EECE, 2);
                 R[0] = gsu_xor(R[0], R[5]);
                 R[8] = R[0];
             } else {
+                gsu_code(0x07EED5, 5);
                 gsu_sub(R[0], R[4], 0);
                 if (gsu.z)
                     R[0] = 0;
@@ -308,16 +459,18 @@ static void noise_body(void)
             R[0] = gsu_add(R[0], R[0], 0);
             R[0] = gsu_add(R[0], R[6], 0);
             R[0] = gsu_ldw(R[0]);
-            color(R[0]);
-            more = loop();
+            gsu_code(0x07EEE5, 2);
+            color(R[0], GSU_COPY(2));
+            more = loop(GSU_COPY(0));
             plot();
         } while (more);
         R[1] = gsu_sub(R[1], R[1], 0);
         R[10] = gsu_dec(R[10]);
         more = !gsu.z;
         R[2] = gsu_inc(R[2]);
-    } while (more);
-    R[0] = rpix();
+    } while (gsu_code_loop(0x07EEE7, 6, more));
+    R[0] = rpix(gsu_code_then(0x07EEE7, 9, GSU_COPY(0)));
+    gsu_code(0x07EEF0, 4);
     gsu_stw(HUD_NOISE_SEED, R[8]);
 }
 
@@ -340,6 +493,7 @@ static void noise_body(void)
  */
 void FxNoiseFill(void)
 {
+    gsu_code(0x07EE89, 11);
     R[0] = gsu_sub(R[0], R[0], 0);
     gsu.por = (uint8_t)R[0];
     R[9] = 0x10;
@@ -352,32 +506,44 @@ void abi_FxNoiseFill(void)
     FxNoiseFill();
 }
 
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode picture_rows_code[2][8] = {
+    {{0x07F0BC, 4}, {0x07F0D2, 3}, {0x07F0D5, 4}, {0xF0D9, 0}, {0x07F0D9, 3}, {0x07F114, 6}, {0x07F11A, 3}, {0x07F11D, 3}},
+    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+};
+
 /* The rising picture: the top `height` ($020C) rows of the picture at
    $15:3D00 + src, `bytes` bytes (4 pixels each) of each row, drawn so
    that the last row lands just above line `base`, at x = R8. R3 counts
    each row's bytes; R13 is the row's start. RPIX at the end writes the
    pixel caches out. */
-static void picture_rows(uint16_t src, uint16_t row_start, uint16_t bytes)
+static void picture_rows(uint16_t src, uint16_t row_start, uint16_t bytes, int copy)
 {
+    gsu_codes(picture_rows_code[copy], 1);
     int more;
 
     R[1] = R[8];
     gsu_r14((uint16_t)(PICTURE + src));
     R[12] = R[3];
     R[13] = row_start;
+    gsu_codes(picture_rows_code[copy] + 1, 1);
     do {
+        gsu_codes(picture_rows_code[copy] + 2, 2);
         R[3] = bytes;
         do {
-            bitmap_byte();
+            gsu_codes(picture_rows_code[copy] + 4, 1);
+            bitmap_byte(GSU_COPY(0));
             R[3] = gsu_dec(R[3]);
-        } while (!gsu.z);
+        } while (gsu_code_loop(0x07F111, 3, !gsu.z));
         R[0] = (uint16_t)(32 - bytes);
+        gsu_codes(picture_rows_code[copy] + 5, 1);
         gsu_r14(gsu_add(R[0], R[14], 0));
         R[1] = R[8];
-        more = loop();
+        gsu_codes(picture_rows_code[copy] + 6, 1);
+        more = loop(GSU_COPY(0));
         R[2] = gsu_inc(R[2]);
     } while (more);
-    R[0] = rpix();
+    R[0] = rpix(gsu_codes_then(picture_rows_code[copy] + 7, 1, GSU_COPY(0)));
 }
 
 /* A rising picture in two pieces: picture bytes 14-27 at x = left, then
@@ -386,21 +552,21 @@ static void picture_two_pieces(uint16_t left, uint16_t base, uint16_t start1,
                                uint16_t start2)
 {
     R[8] = left;
-    bitmap_setup();
+    bitmap_setup(GSU_COPY(1));
     R[11] = HUD_COLOURS;
     R[3] = gsu_ldw(HUD_Y);
     R[0] = base;
     R[2] = gsu_sub(R[0], R[3], 0);
-    picture_rows(0x0E, start1, 0x0E);
+    picture_rows(0x0E, start1, 0x0E, GSU_COPY(0));
 
-    bitmap_setup();
+    bitmap_setup(GSU_COPY(0));
     R[11] = HUD_COLOURS;
     R[8] = (uint16_t)(left + 0x38);
     R[3] = gsu_ldw(HUD_Y);
     R[1] = R[8];
     R[0] = base;
     R[2] = gsu_sub(R[0], R[3], 0);
-    picture_rows(0x00, start2, 0x0A);
+    picture_rows(0x00, start2, 0x0A, GSU_COPY(1));
 }
 
 /*
@@ -419,6 +585,7 @@ static void picture_two_pieces(uint16_t left, uint16_t base, uint16_t start1,
  */
 void FxPictureRiseSplit40(void)
 {
+    gsu_code(0x07EEF6, 19);
     picture_two_pieces(0x1C, 0x40, 0xEF16, 0xEF81);
 }
 
@@ -437,6 +604,7 @@ void abi_FxPictureRiseSplit40(void)
  */
 void FxPictureRiseSplit60(void)
 {
+    gsu_code(0x07EFCE, 19);
     picture_two_pieces(0x34, 0x60, 0xEFEE, 0xF059);
 }
 
@@ -453,9 +621,9 @@ static void picture_one_piece(uint16_t left, uint16_t base)
     R[3] = gsu_ldw(HUD_Y);
     R[0] = base;
     R[2] = gsu_sub(R[0], R[3], 0);
-    bitmap_setup();
+    bitmap_setup(GSU_COPY(0));
     R[11] = HUD_COLOURS;
-    picture_rows(0x00, 0xF0D5, 0x0E);
+    picture_rows(0x00, 0xF0D5, 0x0E, GSU_COPY(0));
 }
 
 /*
@@ -472,6 +640,7 @@ static void picture_one_piece(uint16_t left, uint16_t base)
  */
 void FxPictureRise40(void)
 {
+    gsu_code(0x07F0A6, 7);
     picture_one_piece(0x28, 0x40);
 }
 
@@ -489,6 +658,7 @@ void abi_FxPictureRise40(void)
  */
 void FxPictureRise60(void)
 {
+    gsu_code(0x07F0B5, 7);
     picture_one_piece(0x4C, 0x60);
 }
 
@@ -514,23 +684,28 @@ void abi_FxPictureRise60(void)
  */
 void FxGlyph16RowsFromBottom(void)
 {
-    bitmap_setup();
+    gsu_code(0x07F122, 14);
+    bitmap_setup(GSU_COPY(0));
     R[0] = gsu_ldw(HUD_ADVANCE);
-    R[8] = gsu_ldw(HUD_X);
+    R[8] = gsu_ldw(gsu_code_then(0x07F130, 4, HUD_X));
     R[1] = R[8];
     R[0] = gsu_add(R[0], R[8], 0);
+    gsu_code(0x07F134, 4);
     gsu_sbk(R[0]);
-    if (!glyph_bitmap())
-        return;
+    gsu_code(0x07F138, 4);
+    if (!glyph_bitmap(GSU_COPY(0)))
+        { gsu_code(0x07F13C, 5); return; } else { gsu_code(0x07F13C, 4); gsu_code(0x07F142, 8); }
     R[11] = HUD_COLOURS;
     R[2] = gsu_ldw(HUD_Y);
-    R[3] = gsu_ldw(HUD_ROWS);
+    R[3] = gsu_ldw(gsu_code_then(0x07F14A, 4, HUD_ROWS));
     R[0] = 0x20;
     R[0] = gsu_sub(R[0], R[3], 0);
-    R[0] = times_pow2(R[0], 5);
+    R[0] = times_pow2(R[0], 5, gsu_code_then(0x07F14E, 11, GSU_COPY(0)));
     gsu_r14(gsu_add(R[0], R[14], 0));
     R[12] = R[3];
-    glyph_rows(0xF191, 4, 1);
+    gsu_code(0x07F159, 2); gsu_code(0x07F18D, 4);
+    glyph_rows(0xF191, 4, 1, GSU_COPY(0));
+    gsu_code(0x07F27E, 1);
 }
 
 void abi_FxGlyph16RowsFromBottom(void)
@@ -553,22 +728,24 @@ void abi_FxGlyph16RowsFromBottom(void)
  */
 void FxGlyph16RowsFromTop(void)
 {
-    bitmap_setup();
+    bitmap_setup(GSU_COPY(3));
     R[11] = HUD_COLOURS;
     R[3] = gsu_ldw(HUD_ROWS);
-    R[2] = gsu_ldw(HUD_Y);
+    R[2] = gsu_ldw(gsu_code_then(0x07F16D, 4, HUD_Y));
     R[0] = 0x20;
     R[0] = gsu_add(R[0], R[2], 0);
     R[2] = gsu_sub(R[0], R[3], 0);
-    R[0] = gsu_ldw(HUD_ADVANCE);
-    R[8] = gsu_ldw(HUD_X);
+    R[0] = gsu_ldw(gsu_code_then(0x07F171, 10, HUD_ADVANCE));
+    R[8] = gsu_ldw(gsu_code_then(0x07F17B, 4, HUD_X));
     R[1] = R[8];
     R[0] = gsu_add(R[0], R[8], 0);
+    gsu_code(0x07F17F, 4);
     gsu_sbk(R[0]);
-    if (!glyph_bitmap())
-        return;
+    gsu_code(0x07F183, 4);
+    if (!glyph_bitmap(GSU_COPY(0)))
+        { gsu_code(0x07F187, 5); return; }
     R[12] = R[3];
-    glyph_rows(0xF191, 4, 1);
+    glyph_rows(0xF191, 4, 1, GSU_COPY(2));
 }
 
 void abi_FxGlyph16RowsFromTop(void)
@@ -591,14 +768,17 @@ void abi_FxGlyph16RowsFromTop(void)
  */
 void FxGlyph8x16(void)
 {
-    bitmap_setup();
+    bitmap_setup(GSU_COPY(2));
     R[11] = HUD_COLOURS;
     R[2] = gsu_ldw(HUD_Y);
-    glyph_x(8);
-    if (!glyph_bitmap())
-        return;                     /* not reached in the traces so far */
+    gsu_code(0x07F33B, 4);
+    glyph_x(8, GSU_COPY(1));
+    gsu_code(0x07F346, 4);
+    if (!glyph_bitmap(GSU_COPY(0)))
+        { gsu_code(0x07F34A, 5); return; } else { gsu_code(0x07F34A, 4); gsu_code(0x07F350, 8); }                     /* not reached in the traces so far */
     R[12] = 0x10;
-    glyph_rows(0xF355, 2, 1);
+    glyph_rows(0xF355, 2, 1, GSU_COPY(1));
+    gsu_code(0x07F3CD, 4);
 }
 
 void abi_FxGlyph8x16(void)
@@ -621,14 +801,18 @@ void abi_FxGlyph8x16(void)
  */
 void FxGlyph24x16(void)
 {
-    bitmap_setup();
+    gsu_code(0x07F442, 16);
+    bitmap_setup(GSU_COPY(0));
     R[11] = HUD_COLOURS;
     R[2] = gsu_ldw(HUD_Y);
-    glyph_x(0x10);
+    gsu_code(0x07F452, 4);
+    glyph_x(0x10, GSU_COPY(0));
+    gsu_code(0x07F45D, 4); gsu_cache(0xF461);
     gsu_r14(gsu_ldw(HUD_BITMAP));
     R[12] = 0x10;
-    glyph_rows(0xF466, 6, 1);
-    R[0] = rpix();
+    gsu_code(0x07F461, 8);
+    glyph_rows(0xF466, 6, 1, GSU_COPY(0));
+    R[0] = rpix(GSU_COPY(4));
 }
 
 void abi_FxGlyph24x16(void)
@@ -652,21 +836,36 @@ void abi_FxGlyph24x16(void)
  */
 void FxGlyph16x32(void)
 {
-    bitmap_setup();
+    gsu_code(0x07F6E0, 16);
+    bitmap_setup(GSU_COPY(1));
     R[11] = HUD_COLOURS;
     R[2] = gsu_ldw(HUD_Y);
-    glyph_x(0x10);
-    if (!glyph_bitmap())
-        return;                     /* not reached in the traces so far */
+    gsu_code(0x07F6F0, 4);
+    glyph_x(0x10, GSU_COPY(0));
+    gsu_code(0x07F6FB, 4);
+    if (!glyph_bitmap(GSU_COPY(0)))
+        { gsu_code(0x07F6FF, 5); return; } else { gsu_code(0x07F6FF, 4); gsu_code(0x07F705, 1); gsu_cache(0xF706); gsu_code(0x07F706, 8); }                     /* not reached in the traces so far */
     R[12] = 0x20;
-    glyph_rows(0xF70B, 4, 0);
-    R[0] = rpix();
+    glyph_rows(0xF70B, 4, 0, GSU_COPY(0));
+    R[0] = rpix(gsu_code_then(0x07F7ED, 6, GSU_COPY(0)));
 }
 
 void abi_FxGlyph16x32(void)
 {
     FxGlyph16x32();
 }
+
+/* cyccopy: the copy each of the caller's copies calls */
+static const uint8_t pixel_from_scaled_sprite[5] = {0, 0, 1, 3, 0};
+
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode scaled_sprite_code[5][36] = {
+    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x07FB2A, 8}, {0, 0}, {0x07FB32, 14}, {0x07FB43, 5}, {0x07FB50, 5}, {0, 0}, {0, 0}, {0, 0}, {0x07FB55, 13}, {0x07FB64, 5}, {0x07FB6E, 7}, {0, 0}, {0, 0}, {0, 0}, {0x07FB75, 4}, {0xFB79, 0}, {0x07FB79, 4}, {0x07FB7D, 5}, {0x07FB82, 16}, {0x07FB82, 4}, {0x07FB91, 1}, {0x07FB92, 12}, {0x07FB9E, 1}, {0x07FB9F, 2}, {0x07FBAA, 6}, {0x07FBA1, 5}, {0x07FBA6, 4}, {0x07FBB2, 1}, {0x07FBB3, 2}, {0x07FB78, 1}, {0xFB79, 0}, {0x07FBBA, 3}},
+    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x07FB2A, 8}, {0x07FB48, 6}, {0x07FB32, 14}, {0x07FB43, 5}, {0x07FB50, 5}, {0, 0}, {0, 0}, {0x07FB69, 5}, {0x07FB59, 9}, {0x07FB64, 4}, {0, 0}, {0x07FB55, 4}, {0x07FB68, 1}, {0x07FB6E, 7}, {0x07FB75, 4}, {0xFB79, 0}, {0x07FB79, 4}, {0x07FB7D, 5}, {0x07FB82, 16}, {0x07FB82, 4}, {0x07FB91, 1}, {0x07FB92, 12}, {0x07FB9E, 1}, {0x07FB9F, 2}, {0x07FBAA, 6}, {0x07FBA1, 5}, {0x07FBA6, 4}, {0x07FBB2, 1}, {0x07FBB3, 2}, {0x07FB78, 1}, {0xFB79, 0}, {0x07FBBA, 3}},
+    {{0x07FAEB, 5}, {0x07FB25, 5}, {0, 0}, {0, 0}, {0x07FB2A, 8}, {0x07FB48, 8}, {0x07FB36, 10}, {0x07FB43, 5}, {0, 0}, {0x07FB32, 4}, {0x07FB50, 5}, {0, 0}, {0x07FB55, 13}, {0x07FB64, 5}, {0x07FB6E, 7}, {0, 0}, {0, 0}, {0, 0}, {0x07FB75, 4}, {0xFB79, 0}, {0x07FB79, 4}, {0x07FB7D, 5}, {0x07FB82, 16}, {0x07FB82, 4}, {0x07FB91, 1}, {0x07FB92, 12}, {0x07FB9E, 1}, {0x07FB9F, 2}, {0x07FBAA, 6}, {0x07FBA1, 5}, {0x07FBA6, 4}, {0x07FBB2, 1}, {0x07FBB3, 2}, {0x07FB78, 1}, {0xFB79, 0}, {0x07FBBA, 3}},
+    {{0, 0}, {0, 0}, {0x07FB23, 1}, {0x07FB2A, 4}, {0x07FB2A, 8}, {0x07FB48, 8}, {0x07FB36, 10}, {0x07FB43, 5}, {0, 0}, {0x07FB32, 4}, {0x07FB50, 5}, {0, 0}, {0x07FB55, 13}, {0x07FB64, 5}, {0x07FB6E, 7}, {0, 0}, {0, 0}, {0, 0}, {0x07FB75, 4}, {0xFB79, 0}, {0x07FB79, 4}, {0x07FB7D, 5}, {0x07FB82, 16}, {0x07FB82, 4}, {0x07FB91, 1}, {0x07FB92, 12}, {0x07FB9E, 1}, {0x07FB9F, 7}, {0x07FBAA, 6}, {0, 0}, {0, 0}, {0x07FBB0, 3}, {0x07FBB3, 2}, {0x07FB78, 1}, {0xFB79, 0}, {0x07FBBA, 3}},
+    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x07FB2A, 8}, {0x07FB48, 6}, {0x07FB36, 5}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+};
 
 /* ---- scaled sprites ---- */
 
@@ -677,23 +876,26 @@ void abi_FxGlyph16x32(void)
    source is row ((y - top) * step down) and column ((x - left) * step
    across) of the bitmap, 4 pixels a byte; RPIX after each row and at the
    end. A sprite off the screen, or with bitmap 0, draws nothing. */
-static void scaled_sprite(void)
+static void scaled_sprite(int copy)
 {
+    gsu_codes(scaled_sprite_code[copy], 2);
     int more, zero;
 
     gsu_r14(gsu_ldw(HUD_BITMAP));
     gsu_moves(R[14]);
     if (gsu.z)
-        return;
+        { gsu_codes(scaled_sprite_code[copy] + 2, 2); return; } else { gsu_codes(scaled_sprite_code[copy] + 4, 1); }
     R[3] = gsu_ldw(SCREEN_WIDTH);
     gsu_moves(R[8]);
     if (gsu.s) {
+        gsu_codes(scaled_sprite_code[copy] + 5, 1);
         /* Off the left edge: the part right of x = 0. */
         R[5] = gsu_add(R[8], R[5], 0);
         if (gsu.s)
             return;
         R[1] = gsu_sub(R[1], R[1], 0);
     } else {
+        gsu_codes(scaled_sprite_code[copy] + 6, 3);
         R[0] = gsu_sub(R[8], R[3], 0);
         if (gsu.cy)
             return;
@@ -703,17 +905,19 @@ static void scaled_sprite(void)
             R[5] = gsu_sub(R[3], R[8], 0);  /* off the right edge */
         R[1] = R[8];
     }
-    R[4] = gsu_ldw(SCREEN_HEIGHT);
+    R[4] = gsu_ldw(gsu_codes_then(scaled_sprite_code[copy] + 9, 2, SCREEN_HEIGHT));
     gsu_moves(R[9]);
     if (gsu.s) {
+        gsu_codes(scaled_sprite_code[copy] + 11, 1);
         /* Off the top: the part below y = 0. */
         R[7] = gsu_add(R[9], R[7], 0);
         if (gsu.s) {
-            R[2] = rpix();          /* a WITH R2 in the delay slot */
+            R[2] = rpix(GSU_COPY(0));          /* a WITH R2 in the delay slot */
             return;
         }
         R[2] = gsu_sub(R[2], R[2], 0);
     } else {
+        gsu_codes(scaled_sprite_code[copy] + 12, 3);
         R[0] = gsu_sub(R[9], R[4], 0);
         if (gsu.cy)
             return;
@@ -724,21 +928,24 @@ static void scaled_sprite(void)
         R[2] = R[9];
     }
     R[10] = R[1];
-    R[3] = gsu_ldw(HUD_STEP_X);
-    R[4] = gsu_ldw(HUD_STEP_Y);
+    R[3] = gsu_ldw(gsu_codes_then(scaled_sprite_code[copy] + 15, 3, HUD_STEP_X));
+    R[4] = gsu_ldw(gsu_codes_then(scaled_sprite_code[copy] + 18, 2, HUD_STEP_Y));
     do {
+        gsu_codes(scaled_sprite_code[copy] + 20, 1);
         R[12] = R[5];
         R[13] = 0xFB7D;
         do {
+            gsu_codes(scaled_sprite_code[copy] + 21, 1);
             gsu_r14(gsu_ldw(HUD_BITMAP));
             R[0] = gsu_sub(R[2], R[9], 0);
             if (!gsu.z) {
+                gsu_codes(scaled_sprite_code[copy] + 22, 1);
                 R[0] = gsu_swap(R[0]);
                 R[6] = R[4];
                 R[0] = gsu_fmult(R[0], R[6]);
-                R[0] = times_pow2(R[0], 5);
+                R[0] = times_pow2(R[0], 5, GSU_COPY(2));
                 gsu_r14(gsu_add(R[0], R[14], 0));
-            }
+            } else { gsu_codes(scaled_sprite_code[copy] + 23, 2); }
             R[0] = gsu_sub(R[1], R[8], 0);
             R[0] = gsu_swap(R[0]);
             R[6] = R[3];
@@ -746,34 +953,45 @@ static void scaled_sprite(void)
             R[6] = R[0];
             R[0] = gsu_asr(R[0]);
             R[0] = gsu_asr(R[0]);
+            gsu_codes(scaled_sprite_code[copy] + 25, 1);
             gsu_r14(gsu_add(R[0], R[14], 0));
-            R[0] = gsu_getb();
+            R[0] = (gsu_codes(scaled_sprite_code[copy] + 26, 1), gsu_getb());
             R[6] = gsu_and(R[6], 3);
+            gsu_codes(scaled_sprite_code[copy] + 27, 2);
             for (;;) {
+                gsu_codes(scaled_sprite_code[copy] + 29, 1);
                 gsu_moves(R[6]);
                 zero = gsu.z;
                 R[6] = gsu_dec(R[6]);
                 if (zero)
-                    break;
+                    break; else { gsu_codes(scaled_sprite_code[copy] + 30, 1); }
                 R[0] = gsu_asr(R[0]);
                 R[0] = gsu_asr(R[0]);
             }
-            pixel();
-            more = loop();
+            pixel(GSU_COPY(pixel_from_scaled_sprite[copy]));
+            gsu_codes(scaled_sprite_code[copy] + 31, 1);
+            more = loop(GSU_COPY(0));
         } while (more);
-        R[0] = rpix();
+        R[0] = rpix(gsu_codes_then(scaled_sprite_code[copy] + 32, 1, GSU_COPY(2)));
         R[1] = gsu_sub(R[1], R[5], 0);
         R[7] = gsu_dec(R[7]);
         more = !gsu.z;
         R[2] = gsu_inc(R[2]);
-    } while (more);
-    R[0] = rpix();
+    } while (gsu_codes_loop(scaled_sprite_code[copy] + 33, 2, more));
+    R[0] = rpix(gsu_codes_then(scaled_sprite_code[copy] + 35, 1, GSU_COPY(0)));
 }
 
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode scaled_setup_code[2][1] = {
+    {{0, 0}},
+    {{0x07FAF3, 16}},
+};
+
 /* The scaled-sprite programs' setup after their size is worked out. */
-static void scaled_setup(void)
+static void scaled_setup(int copy)
 {
-    bitmap_setup();
+    gsu_codes(scaled_setup_code[copy], 1);
+    bitmap_setup(GSU_COPY(1));
     R[11] = HUD_COLOURS;
 }
 
@@ -783,10 +1001,10 @@ static void scaled_height_16(void)
 {
     R[9] = gsu_ldw(HUD_Y);
     R[0] = gsu_add(R[4], R[4], 0);
-    R[0] = times_pow2(R[0], 3);
+    R[0] = times_pow2(R[0], 3, GSU_COPY(4));
     R[7] = gsu_hib(R[0]);
-    scaled_setup();
-    scaled_sprite();
+    scaled_setup(GSU_COPY(0));
+    scaled_sprite(GSU_COPY(0));
 }
 
 /*
@@ -806,12 +1024,13 @@ static void scaled_height_16(void)
  */
 void FxScaledSprite13(void)
 {
+    gsu_code(0x07FA1C, 4);
     R[3] = gsu_ldw(HUD_ADVANCE);
-    R[4] = gsu_ldw(HUD_ROWS);
-    R[8] = gsu_ldw(HUD_X);
+    R[4] = gsu_ldw(gsu_code_then(0x07FA20, 4, HUD_ROWS));
+    R[8] = gsu_ldw(gsu_code_then(0x07FA24, 4, HUD_X));
     R[0] = gsu_div2(R[3]);
-    R[0] = mult_imm(R[0], 13);
-    R[0] = times_pow2(R[0], 4);
+    R[0] = mult_imm(R[0], gsu_code_then(0x07FA28, 13, 13));
+    R[0] = times_pow2(R[0], 4, GSU_COPY(0));
     R[5] = gsu_hib(R[0]);
     scaled_height_16();
 }
@@ -832,19 +1051,20 @@ void abi_FxScaledSprite13(void)
  */
 void FxScaledSpriteEighth(void)
 {
+    gsu_code(0x07FA5B, 4);
     R[3] = gsu_ldw(HUD_ADVANCE);
-    R[4] = gsu_ldw(HUD_ROWS);
-    R[8] = gsu_ldw(HUD_X);
+    R[4] = gsu_ldw(gsu_code_then(0x07FA5F, 4, HUD_ROWS));
+    R[8] = gsu_ldw(gsu_code_then(0x07FA63, 4, HUD_X));
     R[0] = gsu_add(R[3], R[3], 0);
-    R[0] = times_pow2(R[0], 2);
+    R[0] = times_pow2(R[0], 2, GSU_COPY(0));
     R[5] = gsu_hib(R[0]);
     R[0] = gsu_add(R[5], R[8], 0);
     R[9] = gsu_ldw(HUD_Y);
     R[0] = gsu_add(R[4], R[4], 0);
-    R[0] = times_pow2(R[0], 2);
+    R[0] = times_pow2(R[0], 2, GSU_COPY(1));
     R[7] = gsu_hib(R[0]);
-    scaled_setup();
-    scaled_sprite();
+    scaled_setup(GSU_COPY(0));
+    scaled_sprite(GSU_COPY(0));
 }
 
 void abi_FxScaledSpriteEighth(void)
@@ -862,23 +1082,32 @@ void abi_FxScaledSpriteEighth(void)
  */
 void FxSprite24x40(void)
 {
-    scaled_setup();
+    gsu_code(0x07FA89, 22);
+    scaled_setup(GSU_COPY(0));
     R[3] = 0x0100;
     R[4] = 0x0100;
     R[8] = gsu_ldw(HUD_X);
     R[0] = 0x18;
     R[0] = gsu_add(R[0], R[8], 0);
+    gsu_code(0x07FA9F, 5);
     gsu_sbk(R[0]);
     R[5] = 0x18;
-    R[9] = gsu_ldw(HUD_Y);
+    R[9] = gsu_ldw(gsu_code_then(0x07FAA4, 7, HUD_Y));
     R[7] = 0x28;
-    scaled_sprite();
+    gsu_code(0x07FAAB, 5); gsu_code(0x07FB25, 5);
+    scaled_sprite(GSU_COPY(0));
 }
 
 void abi_FxSprite24x40(void)
 {
     FxSprite24x40();
 }
+
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode FxScaledSpriteAdvance_code[2][6] = {
+    {{0x07FB03, 4}, {0x07FB07, 4}, {0x07FB0B, 10}, {0x07FB15, 4}, {0x07FB19, 10}, {0x07FB25, 5}},
+    {{0x07FB03, 4}, {0x07FB07, 4}, {0x07FB0B, 10}, {0x07FB15, 4}, {0x07FB19, 10}, {0x07FB25, 5}},
+};
 
 /*
  * @routine 07:FAF2 FxScaledSpriteAdvance
@@ -890,27 +1119,28 @@ void abi_FxSprite24x40(void)
  * FxScaledSprite13).
  * Entry: started by the S-CPU. Exit: as FxScaledSprite13.
  */
-void FxScaledSpriteAdvance(void)
+void FxScaledSpriteAdvance(int copy)
 {
-    scaled_setup();
+    gsu_code(0x07FAF3, 16);
+    scaled_setup(GSU_COPY(0));
     R[3] = gsu_ldw(HUD_ADVANCE);
-    R[4] = gsu_ldw(HUD_ROWS);
-    R[8] = gsu_ldw(HUD_X);
+    R[4] = gsu_ldw(gsu_codes_then(FxScaledSpriteAdvance_code[copy], 1, HUD_ROWS));
+    R[8] = gsu_ldw(gsu_codes_then(FxScaledSpriteAdvance_code[copy] + 1, 1, HUD_X));
     R[0] = gsu_add(R[3], R[3], 0);
-    R[0] = times_pow2(R[0], 3);
+    R[0] = times_pow2(R[0], 3, gsu_codes_then(FxScaledSpriteAdvance_code[copy] + 2, 1, GSU_COPY(2)));
     R[5] = gsu_hib(R[0]);
     R[0] = gsu_add(R[5], R[8], 0);
     gsu_sbk(R[0]);
-    R[9] = gsu_ldw(HUD_Y);
+    R[9] = gsu_ldw(gsu_codes_then(FxScaledSpriteAdvance_code[copy] + 3, 1, HUD_Y));
     R[0] = gsu_add(R[4], R[4], 0);
-    R[0] = times_pow2(R[0], 4);
+    R[0] = times_pow2(R[0], 4, gsu_codes_then(FxScaledSpriteAdvance_code[copy] + 4, 2, GSU_COPY(2)));
     R[7] = gsu_hib(R[0]);
-    scaled_sprite();
+    scaled_sprite(GSU_COPY(1));
 }
 
 void abi_FxScaledSpriteAdvance(void)
 {
-    FxScaledSpriteAdvance();
+    FxScaledSpriteAdvance(GSU_COPY(0));
 }
 
 /* ---- programs no script has started yet ---- */
@@ -926,10 +1156,11 @@ void abi_FxScaledSpriteAdvance(void)
  */
 void FxNoiseFillScreen(void)
 {
+    gsu_code(0x07EE95, 7);
     R[0] = gsu_sub(R[0], R[0], 0);
     gsu.por = (uint8_t)R[0];
     R[9] = gsu_ldw(SCREEN_WIDTH);
-    R[10] = gsu_ldw(SCREEN_HEIGHT);
+    R[10] = gsu_ldw(gsu_code_then(0x07EE9C, 4, SCREEN_HEIGHT));
     R[10] = gsu_inc(R[10]);
     noise_body();
 }
@@ -948,14 +1179,14 @@ void abi_FxNoiseFillScreen(void)
  */
 void FxGlyph8x8(void)
 {
-    bitmap_setup();
+    bitmap_setup(GSU_COPY(6));
     R[11] = HUD_COLOURS;
     R[2] = gsu_ldw(HUD_Y);
-    glyph_x(8);
-    if (!glyph_bitmap())
-        return;
+    glyph_x(8, GSU_COPY(4));
+    if (!glyph_bitmap(GSU_COPY(1)))
+        { gsu_code(0x07F2A5, 1); return; }
     R[12] = 8;
-    glyph_rows(0xF2AC, 2, 1);
+    glyph_rows(0xF2AC, 2, 1, GSU_COPY(4));
 }
 
 void abi_FxGlyph8x8(void)
@@ -976,6 +1207,7 @@ void abi_FxGlyph8x8(void)
  */
 void FxGlyph24x32Bank04(void)
 {
+    gsu_code(0x07F3D3, 16);
     int more;
 
     R[0] = 0x04;
@@ -985,23 +1217,26 @@ void FxGlyph24x32Bank04(void)
     gsu.por = (uint8_t)R[0];
     R[11] = HUD_COLOURS;
     R[2] = gsu_ldw(HUD_Y);
-    glyph_x(0x10);
+    glyph_x(0x10, GSU_COPY(2));
     gsu_r14(gsu_ldw(HUD_BITMAP));
     R[12] = 0x20;
     R[13] = 0xF3F7;
+    gsu_code(0x07F3F2, 5);
     do {
+        gsu_code(0x07F3F7, 2);
         R[3] = 6;
         do {
-            bitmap_byte();
+            bitmap_byte(GSU_COPY(4));
             R[3] = gsu_dec(R[3]);
         } while (!gsu.z);
         R[0] = 0x1A;
+        gsu_code(0x07F434, 6);
         gsu_r14(gsu_add(R[0], R[14], 0));
         R[1] = R[8];
-        more = loop();
+        more = loop(GSU_COPY(1));
         R[2] = gsu_inc(R[2]);
     } while (more);
-    R[0] = rpix();
+    R[0] = rpix(GSU_COPY(1));
 }
 
 void abi_FxGlyph24x32Bank04(void)
@@ -1020,14 +1255,15 @@ void abi_FxGlyph24x32Bank04(void)
  */
 void FxGlyph16x16(void)
 {
-    bitmap_setup();
+    bitmap_setup(GSU_COPY(4));
     R[11] = HUD_COLOURS;
     R[2] = gsu_ldw(HUD_Y);
-    glyph_x(0x10);
+    glyph_x(0x10, GSU_COPY(3));
     gsu_r14(gsu_ldw(HUD_BITMAP));
     R[12] = 0x10;
-    glyph_rows(0xF5EE, 4, 1);
-    R[0] = rpix();
+    gsu_code(0x07F5E9, 8);
+    glyph_rows(0xF5EE, 4, 1, GSU_COPY(3));
+    R[0] = rpix(GSU_COPY(5));
 }
 
 void abi_FxGlyph16x16(void)
@@ -1035,16 +1271,23 @@ void abi_FxGlyph16x16(void)
     FxGlyph16x16();
 }
 
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode bitmap_byte_double_code[2][1] = {
+    {{0x07F820, 3}},
+    {{0x07F91A, 5}},
+};
+
 /* One bitmap byte at double width: as bitmap_byte, each pixel plotted
    twice. */
-static void bitmap_byte_double(void)
+static void bitmap_byte_double(int copy)
 {
+    gsu_codes(bitmap_byte_double_code[copy], 1);
     R[6] = gsu_getb();
     R[0] = R[6];
     R[0] = gsu_and(R[0], 3);
     R[0] = gsu_add(R[0], R[11], 0);
     R[0] = gsu_ldb(R[0]);
-    color(R[0]);
+    color(R[0], GSU_COPY(0));
     plot();
     plot();
     R[6] = gsu_ror(R[6]);
@@ -1057,7 +1300,7 @@ static void bitmap_byte_double(void)
         R[0] = gsu_and(R[0], 3);
         R[0] = gsu_add(R[0], R[11], 0);
         R[0] = gsu_ldb(R[0]);
-        color(R[0]);
+        color(R[0], GSU_COPY(0));
         plot();
         plot();
     }
@@ -1077,28 +1320,29 @@ static void bitmap_byte_double(void)
  */
 void FxGlyph16x32Double(void)
 {
-    bitmap_setup();
+    bitmap_setup(GSU_COPY(7));
     R[11] = HUD_COLOURS;
     R[2] = gsu_ldw(HUD_Y);
-    glyph_x(0x20);
-    if (!glyph_bitmap())
-        return;
+    glyph_x(0x20, GSU_COPY(5));
+    if (!glyph_bitmap(GSU_COPY(2)))
+        { gsu_code(0x07F819, 1); return; } else { gsu_code(0x07F81B, 5); }
     R[12] = 0x20;
     R[13] = 0xF820;
     do {
         for (int b = 0; b < 4; b++) {
-            bitmap_byte_double();
-            R[0] = rpix();
+            bitmap_byte_double(GSU_COPY(0));
+            R[0] = rpix(GSU_COPY(8));
         }
         R[0] = 0xFFFC;
         gsu_r14(gsu_add(R[0], R[14], 0));
         R[1] = R[8];
         R[2] = gsu_inc(R[2]);
         for (int b = 0; b < 4; b++) {
-            bitmap_byte_double();
-            R[0] = rpix();
+            bitmap_byte_double(GSU_COPY(1));
+            R[0] = rpix(GSU_COPY(9));
         }
-    } while (bitmap_row_end(0x1C));
+    } while (bitmap_row_end(0x1C, GSU_COPY(6)));
+    gsu_code(0x07FA19, 1);
 }
 
 void abi_FxGlyph16x32Double(void)
@@ -1115,12 +1359,13 @@ void abi_FxGlyph16x32Double(void)
  */
 void FxScaledSprite12(void)
 {
+    gsu_code(0x07FA36, 4);
     R[3] = gsu_ldw(HUD_ADVANCE);
-    R[4] = gsu_ldw(HUD_ROWS);
-    R[8] = gsu_ldw(HUD_X);
+    R[4] = gsu_ldw(gsu_code_then(0x07FA3A, 4, HUD_ROWS));
+    R[8] = gsu_ldw(gsu_code_then(0x07FA3E, 4, HUD_X));
     R[0] = gsu_div2(R[3]);
     R[0] = mult_imm(R[0], 12);
-    R[0] = times_pow2(R[0], 4);
+    R[0] = times_pow2(R[0], 4, GSU_COPY(3));
     R[5] = gsu_hib(R[0]);
     scaled_height_16();
 }
@@ -1144,32 +1389,37 @@ void abi_FxScaledSprite12(void)
  */
 void FxSprite16x32(void)
 {
-    bitmap_setup();
+    bitmap_setup(GSU_COPY(5));
     R[0] = 0x0100;
     gsu_stw(HUD_STEP_X, R[0]);
+    gsu_code(0x07FAC1, 4);
     gsu_stw(HUD_STEP_Y, R[0]);
     R[11] = HUD_COLOURS;
     R[3] = 0x0100;
     R[4] = 0x0100;
-    R[8] = gsu_ldw(HUD_X);
+    R[8] = gsu_ldw(gsu_code_then(0x07FAC5, 13, HUD_X));
     R[0] = 0xFFF0;
     R[0] = gsu_sub(R[0], R[8], 0);
     if (gsu.cy) {
+        gsu_code(0x07FAD8, 6);
         R[0] = 0x00D0;
         R[0] = gsu_sub(R[0], R[8], 0);
         if (!gsu.cy) {
+            gsu_code(0x07FAD2, 6); gsu_code(0x07FADE, 1); gsu_code(0x07FAF0, 3);
             R[0] = 0x0100;
-            FxScaledSpriteAdvance();
+            FxScaledSpriteAdvance(GSU_COPY(1));
+            gsu_code(0x07FB23, 1); gsu_code(0x07FB32, 4);
             return;
         }
     }
     R[0] = 0x10;
     R[0] = gsu_add(R[0], R[8], 0);
+    gsu_code(0x07FAD2, 6); gsu_code(0x07FADE, 6);
     gsu_sbk(R[0]);
     R[5] = 0x10;
-    R[9] = gsu_ldw(HUD_Y);
+    R[9] = gsu_ldw(gsu_code_then(0x07FAE4, 7, HUD_Y));
     R[7] = 0x20;
-    scaled_sprite();
+    scaled_sprite(GSU_COPY(2));
 }
 
 void abi_FxSprite16x32(void)

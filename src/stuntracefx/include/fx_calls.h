@@ -21,18 +21,18 @@ typedef struct {
 } FxRegs;
 
 FxQuotient FxDivide(uint16_t hi, uint16_t lo, uint16_t divisor, int copy);
-FxQuotient FxDivideHalvedIfLarge(uint16_t hi, uint16_t lo, uint16_t *divisor);
-FxRoot FxSquareRoot(uint16_t hi, uint16_t lo);
-FxRegs FxNormalize(FxRegs g);
-FxRegs FxAngleOf(FxRegs g);
+FxQuotient FxDivideHalvedIfLarge(uint16_t hi, uint16_t lo, uint16_t *divisor, int copy);
+FxRoot FxSquareRoot(uint16_t hi, uint16_t lo, int copy);
+FxRegs FxNormalize(FxRegs g, int copy);
+FxRegs FxAngleOf(FxRegs g, int copy);
 FxRegs FxTurnRegs(FxRegs g);
 FxRegs FxSpreadCars(FxRegs g);
 FxRegs FxPoolTake(FxRegs g, int copy);
 FxRegs FxListSweepRegs(FxRegs g);
 FxRegs FxContactNote(FxRegs g, int copy);
 FxRegs FxRecordsApart(FxRegs g);
-FxRegs FxBearingTo(FxRegs g);
-FxRegs FxCourseNearest(FxRegs g);
+FxRegs FxBearingTo(FxRegs g, int copy);
+FxRegs FxCourseNearest(FxRegs g, int copy);
 FxRegs FxCourseNextEntry(FxRegs g, int copy);
 
 /* A routine whose C takes and leaves the registers in `gsu` (its abi_),

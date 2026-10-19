@@ -34,11 +34,12 @@ static const uint8_t table_2702[48] = {
  */
 void FxTable2702Program(void)
 {
+    gsu_code(0x01D1EC, 10);
     int i;
 
     gsu.rambr = 0;
     for (i = 0; i < 48; i++)
-        gsu_stb((uint16_t)(FX_TABLE_2702 + i), table_2702[i]);
+        { gsu_stb((uint16_t)(FX_TABLE_2702 + i), table_2702[i]); gsu_code(0x01D305, 1); }
 }
 
 void abi_FxTable2702Program(void)

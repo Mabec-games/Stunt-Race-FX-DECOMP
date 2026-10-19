@@ -8,6 +8,12 @@
 #include "gsu.h"
 #include "gsu_ops.h"
 
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode FxUnpackRefill_code[2][8] = {
+    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0x01D0F7, 12}, {0x01D0F7, 12}, {0x01D0F7, 12}, {0x01D0F8, 5}, {0x01D0FF, 4}, {0x01D0F7, 8}, {0x01D0F7, 1}, {0x01D0FD, 2}},
+};
+
 /*
  * @routine 01:D0DB FxUnpackRefill
  * WHAT IT DOES: Refills the bit buffer from the four ROM bytes at R14 and
@@ -22,16 +28,16 @@
  * the fourth byte; R0 = R2 | R3 (not 0), S and Z from it; OV kept.
  * Returns the first bit. R14 and the ROM buffer move as on the Super FX.
  */
-int FxUnpackRefill(uint16_t *hi, uint16_t *lo)
+int FxUnpackRefill(uint16_t *hi, uint16_t *lo, int copy)
 {
     uint8_t b[4];
     uint16_t w3, w2;
     int i;
 
-    for (i = 0; i < 4; i++) {
+    for (i = 0; gsu_codes_loop(FxUnpackRefill_code[copy], 5, i < 4); i++) {
         b[i] = gsu_getb();
         if (i < 3)
-            gsu_r14((uint16_t)(gsu.r[14] - 1));
+            { gsu_codes(FxUnpackRefill_code[copy] + 5, 3); gsu_r14((uint16_t)(gsu.r[14] - 1)); }
     }
     w3 = (uint16_t)(b[0] | b[1] << 8);
     w2 = (uint16_t)(b[2] | b[3] << 8);
@@ -43,7 +49,7 @@ int FxUnpackRefill(uint16_t *hi, uint16_t *lo)
 
 void abi_FxUnpackRefill(void)
 {
-    gsu.cy = (uint8_t)FxUnpackRefill(&gsu.r[2], &gsu.r[3]);
+    gsu.cy = (uint8_t)FxUnpackRefill(&gsu.r[2], &gsu.r[3], GSU_COPY(0));
     gsu.r[0] = (uint16_t)(gsu.r[2] | gsu.r[3]);
     gsu_sz(gsu.r[0]);
 }
@@ -62,21 +68,39 @@ static void first_sub_r4(void)
         gsu.r[d] = gsu_sub(gsu.r[s], gsu.r[4], gsu.pre_alt1 ? !gsu.cy : 0);
 }
 
+/* cyccopy: the copy each of the caller's copies calls */
+static const uint8_t FxUnpackRefill_from_unpack_bits_loop[8] = {0, 0, 0, 0, 0, 0, 0, 1};
+
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode unpack_bits_loop_code[8][9] = {
+    {{0x01CF78, 13}, {0x01D0F3, 4}, {0x01D103, 2}, {0x01D0F7, 8}, {0, 0}, {0x01D105, 25}, {0, 0}, {0, 0}, {0x01D0FF, 4}},
+    {{0x01D027, 17}, {0x01D0C7, 6}, {0, 0}, {0x01D0F3, 18}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0x01D04E, 14}, {0x01D0F3, 4}, {0x01D103, 2}, {0x01D0F7, 8}, {0, 0}, {0x01D105, 25}, {0, 0}, {0, 0}, {0x01D0FF, 4}},
+    {{0x01D07A, 12}, {0x01D0F3, 4}, {0x01D103, 2}, {0x01D0F7, 12}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0, 0}, {0x01D0F7, 8}, {0, 0}, {0x01D105, 25}, {0, 0}, {0, 0}, {0x01D0FF, 4}},
+    {{0x01D06B, 15}, {0x01D0F3, 4}, {0x01D103, 2}, {0x01D0F7, 12}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0x01CFB7, 10}, {0, 0}, {0, 0}, {0x01D0F7, 8}, {0, 0}, {0x01D105, 27}, {0, 0}, {0, 0}, {0x01D0FF, 4}},
+    {{0x01CFA1, 12}, {0, 0}, {0, 0}, {0x01D0F7, 1}, {0x01D0FD, 6}, {0x01CFAD, 10}, {0x01D0F3, 4}, {0x01D0FF, 31}, {0x01D0F8, 5}},
+};
+
 /* FxUnpackBits after its first instruction. */
-static void unpack_bits_loop(void)
+static void unpack_bits_loop(int copy)
 {
+    gsu_codes(unpack_bits_loop_code[copy], 3);
     gsu.r[13] = gsu.r[7];
     do {
+        gsu_codes(unpack_bits_loop_code[copy] + 3, 2);
         gsu.r[2] = gsu_lsr(gsu.r[2]);
         gsu.r[3] = gsu_ror(gsu.r[3]);
         gsu.r[0] = gsu_or(gsu.r[2], gsu.r[3]);
         if (gsu.z) {
+            gsu_codes(unpack_bits_loop_code[copy] + 5, 3);
             uint8_t marker = gsu.cy;
 
             gsu_r14(gsu_dec(gsu.r[14]));
-            gsu.cy = (uint8_t)FxUnpackRefill(&gsu.r[2], &gsu.r[3]);
+            gsu.cy = (uint8_t)FxUnpackRefill(&gsu.r[2], &gsu.r[3], GSU_COPY(FxUnpackRefill_from_unpack_bits_loop[copy]));
             gsu.r[0] = (uint16_t)(marker << 15);        /* IBT R0,#1 then ROR */
-        }
+        } else { gsu_codes(unpack_bits_loop_code[copy] + 8, 1); }
         gsu.r[4] = gsu_rol(gsu.r[4]);
     } while (gsu_count_down(&gsu.r[12]));
 }
@@ -102,7 +126,7 @@ static void unpack_bits_loop(void)
 void FxUnpackBits(void)
 {
     first_sub_r4();
-    unpack_bits_loop();
+    unpack_bits_loop(GSU_COPY(0));
 }
 
 void abi_FxUnpackBits(void)
@@ -125,18 +149,28 @@ static uint16_t unpack_bits(uint16_t count, uint16_t ret)
     gsu.r[12] = count;
     gsu.r[11] = ret;
     gsu.r[4] = gsu_sub(gsu.r[4], gsu.r[4], 0);
-    unpack_bits_loop();
+    unpack_bits_loop(GSU_COPY(0));
     return gsu.r[4];
 }
 
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode unpack_bit_code[4][6] = {
+    {{0x01D09F, 11}, {0x01D0AF, 3}, {0, 0}, {0, 0}, {0x01D0AA, 5}, {0x01D0DB, 24}},
+    {{0x01D0B2, 11}, {0x01D0C2, 3}, {0, 0}, {0, 0}, {0x01D0BD, 5}, {0x01D0DB, 24}},
+    {{0x01D086, 11}, {0x01D097, 3}, {0, 0}, {0, 0}, {0x01D091, 6}, {0x01D0DB, 24}},
+    {{0x01CF90, 9}, {0x01CF9E, 3}, {0x01D0F3, 4}, {0x01D103, 2}, {0x01CF99, 5}, {0x01D0DB, 24}},
+};
+
 /* One bit into CY: LSR R2, ROR R3, then R0 = R2 | R3; when that is 0, a
    LINK #4 into FxUnpackRefill with DEC R14 in the delay slot. */
-static uint8_t unpack_bit(uint16_t ret)
+static uint8_t unpack_bit(uint16_t ret, int copy)
 {
+    gsu_codes(unpack_bit_code[copy], 4);
     gsu.r[2] = gsu_lsr(gsu.r[2]);
     gsu.r[3] = gsu_ror(gsu.r[3]);
     gsu.r[0] = gsu_or(gsu.r[2], gsu.r[3]);
     if (gsu.z) {
+        gsu_codes(unpack_bit_code[copy] + 4, 2);
         gsu.r[11] = ret;
         gsu_r14(gsu_dec(gsu.r[14]));
         abi_FxUnpackRefill();
@@ -144,16 +178,28 @@ static uint8_t unpack_bit(uint16_t ret)
     return gsu.cy;
 }
 
+/* cyccopy: the code of each of the original's copies, by where it runs */
+static const GsuCode unpack_rom_word_code[5][5] = {
+    {{0x01CF4E, 1}, {0x01CF4F, 2}, {0x01CF51, 1}, {0x01CF52, 3}, {0x01CF55, 1}},
+    {{0x01CF57, 1}, {0x01CF58, 2}, {0x01CF5A, 1}, {0x01CF5B, 3}, {0x01CF5E, 1}},
+    {{0, 0}, {0x01CF5F, 2}, {0x01CF61, 1}, {0x01CF62, 3}, {0x01CF65, 3}},
+    {{0x01CFDF, 27}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+};
+
 /* A word from the ROM bytes at R14 - 1 (low) and R14 - 2 (high), R14
    stepping down to the second. */
-static uint16_t unpack_rom_word(void)
+static uint16_t unpack_rom_word(int copy)
 {
+    gsu_codes(unpack_rom_word_code[copy], 1);
     uint16_t v;
 
     gsu_r14(gsu_dec(gsu.r[14]));
-    v = gsu_getb();
+    v = (gsu_codes(unpack_rom_word_code[copy] + 1, 1), gsu_getb());
+    gsu_codes(unpack_rom_word_code[copy] + 2, 1);
     gsu_r14(gsu_dec(gsu.r[14]));
-    return gsu_getbh(v);
+    gsu_codes(unpack_rom_word_code[copy] + 3, 1);
+    return gsu_codes_then(unpack_rom_word_code[copy] + 4, 1, gsu_getbh(v));
 }
 
 /* A run of R4 bytes of 8 bits each (R4 = 0 runs $10000), each one
@@ -161,20 +207,22 @@ static uint16_t unpack_rom_word(void)
    here: on an empty buffer the four bytes below R14 refill it. */
 static void unpack_literals(void)
 {
+    gsu_code(0x01CF89, 7); gsu_code(0x01CFC1, 4); gsu_code(0x01CFD4, 5);
     do {
         gsu.r[12] = 8;
         gsu.r[13] = 0xCFC5;
         do {
+            gsu_code(0x01CFC5, 9);
             gsu.r[2] = gsu_lsr(gsu.r[2]);
             gsu.r[3] = gsu_ror(gsu.r[3]);
             gsu.r[0] = gsu_or(gsu.r[2], gsu.r[3]);
             if (gsu.z) {
-                gsu.r[3] = unpack_rom_word();
-                gsu.r[2] = unpack_rom_word();
+                gsu.r[3] = unpack_rom_word(GSU_COPY(3));
+                gsu.r[2] = unpack_rom_word(GSU_COPY(4));
                 gsu.r[0] = gsu_ror(1);              /* CY = 1, the marker */
                 gsu.r[2] = gsu_ror(gsu.r[2]);
                 gsu.r[3] = gsu_ror(gsu.r[3]);
-            }
+            } else { gsu_code(0x01CFCE, 6); }
             gsu.r[6] = gsu_rol(gsu.r[6]);
             gsu.r[5] = gsu_rol(gsu.r[5]);
         } while (gsu_count_down(&gsu.r[12]));
@@ -182,6 +230,7 @@ static void unpack_literals(void)
         gsu_stb(gsu.r[1], (uint8_t)gsu.r[6]);
         gsu.r[4] = gsu_dec(gsu.r[4]);
     } while (!gsu.z);
+    gsu_code(0x01CFD9, 6);
 }
 
 /* A copy's length into R6 and its offset's width into R12, from the
@@ -194,19 +243,20 @@ static void unpack_copy_code(void)
     gsu.r[12] = 8;
     gsu_moves(gsu.r[4]);
     if (gsu.z)
-        return;                                     /* length 2, offset 8 bits */
+        { gsu_code(0x01D038, 4); return; } else { gsu_code(0x01D03C, 9); }                                     /* length 2, offset 8 bits */
     gsu.r[6] = 4;
     gsu.r[0] = 2;
     gsu_sub(gsu.r[0], gsu.r[4], 0);
     if (!gsu.z) {
+        gsu_code(0x01D045, 9);
         gsu.r[6] = 3;
         gsu.r[0] = 1;
         gsu_sub(gsu.r[0], gsu.r[4], 0);
         if (gsu.z) {
             /* Length 3: offset of 8 bits after a 1, else 14. */
             gsu.r[12] = 8;
-            if (!unpack_bit(0xD096))
-                gsu.r[12] = 0x0E;
+            if (!unpack_bit(0xD096, GSU_COPY(2)))
+                { gsu_code(0x01D09A, 5); gsu.r[12] = 0x0E; }
             return;
         }
         gsu.r[4] = unpack_bits(2, 0xD055);
@@ -215,12 +265,14 @@ static void unpack_copy_code(void)
         if (gsu.z) {
             gsu.r[4] = unpack_bits(8, 0xD081);      /* length of 8 bits */
         } else {
+            gsu_code(0x01D05C, 7);
             gsu.r[0] = 2;
             gsu_sub(gsu.r[0], gsu.r[4], 0);
             if (gsu.z) {
                 gsu.r[4] = unpack_bits(2, 0xD072);
                 gsu.r[4] = gsu_add(gsu.r[4], 7, 0); /* 7 to 10 */
             } else {
+                gsu_code(0x01D063, 8);
                 gsu.r[4] = gsu_add(gsu.r[4], 5, 0); /* 5 or 6 */
             }
         }
@@ -229,11 +281,11 @@ static void unpack_copy_code(void)
     /* Length 4 or more: offset of 16 bits after a 0, 8 after 1 1, 12
        after 1 0. */
     gsu.r[12] = 0x10;
-    if (!unpack_bit(0xD0AF))
+    if (!unpack_bit(0xD0AF, GSU_COPY(0)))
         return;
     gsu.r[12] = 8;
-    if (unpack_bit(0xD0C2))
-        return;
+    if (unpack_bit(0xD0C2, GSU_COPY(1)))
+        return; else { gsu_code(0x01D0C5, 2); }
     gsu.r[12] = 0x0C;
 }
 
@@ -264,24 +316,29 @@ static void unpack_copy_code(void)
  */
 void FxUnpackProgram(void)
 {
+    gsu_code(0x01CF43, 3);
     gsu.r[0] = gsu_ldw(FX_UNPACK_BANK);
     gsu.rombr = (uint8_t)gsu.r[0];
     gsu.r[0] = gsu_sub(gsu.r[0], gsu.r[0], 0);
     gsu.rambr = (uint8_t)gsu.r[0];
+    gsu_code(0x01CF46, 8);
     gsu_r14(gsu_ldw(FX_UNPACK_SRC));
-    gsu.r[1] = unpack_rom_word();                   /* the size */
+    gsu.r[1] = unpack_rom_word(GSU_COPY(0));                   /* the size */
     gsu_r14(gsu_dec(gsu.r[14]));
+    gsu_code(0x01CF56, 1);
     gsu_r14(gsu_dec(gsu.r[14]));
-    gsu.r[3] = unpack_rom_word();
-    gsu.r[2] = unpack_rom_word();
+    gsu.r[3] = unpack_rom_word(GSU_COPY(1));
+    gsu.r[2] = unpack_rom_word(GSU_COPY(2));
     gsu.r[9] = gsu_ldw(FX_UNPACK_DEST);
     gsu.r[1] = gsu_add(gsu.r[1], gsu.r[9], 0);
+    gsu_code(0x01CF68, 5);
     gsu_stw(FX_UNPACK_END, gsu.r[1]);
     gsu.r[4] = 0;
     gsu.r[6] = 0;
     gsu.r[5] = 0;
     gsu.r[7] = FX_UNPACK_BITS_LOOP;
     gsu.r[8] = FX_UNPACK_TOP;
+    gsu_code(0x01CF6D, 9); gsu_cache(0xCF76); gsu_code(0x01CF76, 2);
     for (;;) {
         gsu.r[4] = unpack_bits(3, 0xCF7F);
         gsu.r[0] = gsu_and(0x00FF, gsu.r[4]);
@@ -289,7 +346,7 @@ void FxUnpackProgram(void)
             gsu.r[0] = 7;
             gsu_sub(gsu.r[0], gsu.r[4], 0);
             if (gsu.z) {
-                if (unpack_bit(0xCF9E)) {
+                if (unpack_bit(0xCF9E, GSU_COPY(3))) {
                     gsu.r[4] = unpack_bits(0x0A, 0xCFA8);
                     gsu_moves(gsu.r[4]);
                     if (gsu.z)
@@ -300,47 +357,57 @@ void FxUnpackProgram(void)
                 }
             }
             unpack_literals();
-        }
+        } else { gsu_code(0x01CF85, 4); }
+        gsu_code(0x01D002, 6);
         gsu_sub(gsu.r[9], gsu.r[1], 0);
         gsu.r[12] = 2;
         if (gsu.z)
-            break;
+            { gsu_code(0x01D008, 5); break; }
         unpack_copy_code();
         gsu.r[4] = unpack_bits(gsu.r[12], 0xD0CC);
         gsu.r[6] = gsu_dec(gsu.r[6]);
         do {
+            gsu_code(0x01D0CD, 6);
             gsu.r[0] = gsu_add(gsu.r[1], gsu.r[4], 0);
             gsu.r[0] = gsu_dec(gsu.r[0]);
             gsu.r[0] = gsu_ldb(gsu.r[0]);
             gsu.r[1] = gsu_dec(gsu.r[1]);
+            gsu_code(0x01D0D3, 3);
             gsu_stb(gsu.r[1], (uint8_t)gsu.r[0]);
             gsu.r[6] = gsu_dec(gsu.r[6]);
-        } while (!gsu.s);
+        } while (gsu_code_loop(0x01D0D6, 3, !gsu.s));
+        gsu_code(0x01D0D6, 5);
     }
     gsu_stw(FX_UNPACK_SRC, gsu.r[14]);
+    gsu_code(0x01D00D, 3);
     gsu.r[3] = gsu_ldw(FX_UNPACK_ADD);
     gsu_moves(gsu.r[3]);
     if (gsu.z)
-        return;
+        { gsu_code(0x01D010, 4); return; } else { gsu_code(0x01D010, 8); }
     gsu.r[1] = gsu_ldw(FX_UNPACK_DEST);
+    gsu_code(0x01D018, 3);
     gsu.r[2] = gsu_ldw(FX_UNPACK_END);
     gsu.r[12] = gsu_sub(gsu.r[2], gsu.r[1], 0);
     gsu.r[13] = 0xD01F;
+    gsu_code(0x01D01B, 4);
     do {
+        gsu_code(0x01D01F, 2);
         int again;
 
         gsu.r[0] = gsu_ldw(gsu.r[1]);
         gsu.r[0] = gsu_add(gsu.r[0], gsu.r[3], 0);
+        gsu_code(0x01D021, 2);
         gsu_stw(gsu.r[1], gsu.r[0]);
         gsu.r[1] = gsu_inc(gsu.r[1]);
         again = gsu_count_down(&gsu.r[12]);
         gsu.r[1] = gsu_inc(gsu.r[1]);              /* LOOP's delay slot */
         if (!again)
-            break;
+            { gsu_code(0x01D023, 2); break; } else { gsu_code(0x01D023, 2); }
     } while (1);
 }
 
 void abi_FxUnpackProgram(void)
 {
     FxUnpackProgram();
+    gsu_code(0x01D025, 1);
 }

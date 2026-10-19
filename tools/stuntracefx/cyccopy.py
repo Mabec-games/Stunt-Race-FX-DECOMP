@@ -216,7 +216,7 @@ def main(argv):
     for (site, g), ps in pairs.items():
         caller = next(iter(ps))[2]
         ks = {k for _, k, _ in ps}
-        if caller in copies and len(ks) > 1:
+        if caller in copies and len(ks) > 1 and all(cc is not None for cc, _, _ in ps):
             arr = '%s_from_%s' % (names[g][1], names[caller][1])
             vals = arrays[caller].setdefault(arr, [0] * copies[caller])
             for cc, k, _ in ps:

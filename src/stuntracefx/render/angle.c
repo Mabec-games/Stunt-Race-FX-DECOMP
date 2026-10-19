@@ -12,17 +12,17 @@
 uint16_t FxDivide32By16(uint16_t hi, uint16_t lo, uint16_t divisor, uint16_t *remainder, int copy);
 
 /* cyccopy: the code of each of the original's copies, by where it runs */
-static const GsuCode magnitude_code[4][12] = {
-    {{0x0181ED, 4}, {0x0181F7, 3}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
-    {{0x0181CB, 7}, {0x0181FE, 6}, {0x018207, 5}, {0x01820E, 3}, {0x018218, 7}, {0x018226, 3}, {0x018230, 38}, {0x01825C, 7}, {0x018265, 5}, {0x01826E, 5}, {0x018204, 3}, {0, 0}},
-    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x01820C, 2}, {0x01826A, 4}},
+static const GsuCode magnitude_code[4][8] = {
+    {{0x0181ED, 4}, {0x0181F7, 3}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+    {{0x0181FE, 6}, {0x018207, 5}, {0x01820E, 3}, {0x01825C, 7}, {0x018265, 5}, {0x01826E, 5}, {0x018204, 3}, {0, 0}},
+    {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0x01820C, 2}, {0x01826A, 4}},
 };
 
 static uint16_t magnitude(uint16_t v, int copy)
 {
-    gsu_codes(magnitude_code[copy], 10);
-    return v & 0x8000 ? (gsu_codes(magnitude_code[copy] + 10, 2), (uint16_t)-v) : v;
+    gsu_codes(magnitude_code[copy], 6);
+    return v & 0x8000 ? (gsu_codes(magnitude_code[copy] + 6, 2), (uint16_t)-v) : v;
 }
 
 /*
@@ -54,10 +54,13 @@ uint16_t FxAtan2(uint16_t y, uint16_t x)
     uint16_t angle;
 
     if (ax == 0) {
+        gsu_code(0x018211, 7);
         angle = 0x4000;
     } else if (ax == ay) {
+        gsu_code(0x018218, 14);
         angle = 0x2000;
     } else {
+        gsu_code(0x0181CB, 7); gsu_code(0x018218, 7); gsu_code(0x018226, 3); gsu_code(0x018230, 38);
         uint16_t small = ax, large = ay, rem, ratio, at;
         int x_larger = !((int16_t)ax < (int16_t)ay);
 

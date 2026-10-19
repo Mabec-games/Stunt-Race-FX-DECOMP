@@ -27,6 +27,7 @@ void abi_FxPoolChecksum(void);
    $FFFF for a program, which ends at its STOP). */
 static void fx_unused_run(uint16_t at, uint16_t ret)
 {
+    gsu_code(0x048924, 9); gsu_cache(0x892D); gsu_code(0x04892D, 2);
     int t;
     uint16_t nx;
 
@@ -48,12 +49,12 @@ l8923:
     /* CACHE */
     R[13] = 0x892F;
 l892F:
-    R[2] = gsu_ldw(R[1]);
+    R[2] = gsu_ldw(gsu_code_then(0x04892F, 3, R[1]));
     R[1] = gsu_inc(R[1]);
     R[1] = gsu_inc(R[1]);
     R[0] = gsu_xor(R[0], R[2]);
     t = gsu_count_down(&R[12]);
-    if (t) goto l892F;
+    if (t) { gsu_code(0x048932, 5); goto l892F; } else { gsu_code(0x048932, 5); }
     nx = (uint16_t)(R[11]);
     at = nx;
     goto dispatch;
@@ -155,6 +156,7 @@ void abi_FxPoolChecksum(void)
  */
 void abi_FxPoolChecksumProgram(void)
 {
+    gsu_code(0x048916, 7); gsu_code(0x048923, 10); gsu_cache(0x892D); gsu_code(0x04892D, 2);
     fx_unused_run(0x8915, 0xFFFF);
 }
 
@@ -168,7 +170,9 @@ void abi_FxPoolChecksumProgram(void)
  */
 void abi_FxObjectFreeProgram(void)
 {
+    gsu_code(0x0489FB, 7);
     fx_unused_run(0x89FA, 0xFFFF);
+    gsu_code(0x048A06, 1);
 }
 
 /*
@@ -185,6 +189,7 @@ void abi_FxObjectFreeProgram(void)
  */
 void abi_FxObjectNewProgram(void)
 {
+    gsu_code(0x04893A, 3); gsu_code(0x048AD1, 13);
     fx_unused_run(0x8AD0, 0xFFFF);
 }
 
@@ -195,6 +200,7 @@ void abi_FxMatrixFromAngles(void);
    C19D, C3A2, CB7E) from address at until they jump to ret. */
 static void fx_unused2_run(uint16_t at, uint16_t ret)
 {
+    gsu_code(0x049418, 4);
     int t;
     uint16_t nx;
 
@@ -434,7 +440,7 @@ lC1A5:
     return;   /* the STOP: the program ends here */
 dispatch:
     if (at == ret)
-        return;
+        { gsu_code(0x04888C, 1); return; }
     switch (at) {
     case 0x93FA: goto l93FA;
     case 0x9417: goto l9417;
@@ -472,7 +478,9 @@ dispatch:
  */
 void abi_FxHitAddRotated(void)
 {
+    gsu_code(0x049821, 3);
     fx_unused2_run(0x9820, R[11]);
+    gsu_code(0x04888C, 1);
 }
 
 /*
@@ -490,7 +498,9 @@ void abi_FxHitAddRotated(void)
  */
 void abi_FxObjectSlideClamp(void)
 {
+    gsu_code(0x04CB7F, 2);
     fx_unused2_run(0xCB7E, R[11]);
+    gsu_code(0x04888C, 1);
 }
 
 /*
@@ -506,7 +516,9 @@ void abi_FxObjectSlideClamp(void)
  */
 void abi_FxRecordAimFromLink(void)
 {
+    gsu_code(0x04A302, 2);
     fx_unused2_run(0xA301, R[11]);
+    gsu_code(0x04888C, 1);
 }
 
 /*
@@ -524,7 +536,9 @@ void abi_FxRecordAimFromLink(void)
  */
 void abi_FxScaleFromTable14(void)
 {
+    gsu_code(0x0493FB, 19);
     fx_unused2_run(0x93FA, R[11]);
+    gsu_code(0x04888C, 1); gsu_code(0x049412, 5);
 }
 
 /*
@@ -552,6 +566,7 @@ void abi_FxScaleFromTable14Pull(void)
  */
 void abi_FxAbove100Scaled(void)
 {
+    gsu_code(0x04888C, 1); gsu_code(0x04BCA6, 6);
     fx_unused2_run(0xBCA5, R[11]);
 }
 
@@ -566,7 +581,9 @@ void abi_FxAbove100Scaled(void)
  */
 void abi_FxRecordSegmentNext(void)
 {
+    gsu_code(0x04C3A3, 2);
     fx_unused2_run(0xC3A2, R[11]);
+    gsu_code(0x04888C, 1);
 }
 
 /*
@@ -580,7 +597,9 @@ void abi_FxRecordSegmentNext(void)
  */
 void abi_FxReturnOneRestore(void)
 {
+    gsu_code(0x049C2D, 6);
     fx_unused2_run(0x9C2C, R[11]);
+    gsu_code(0x04888C, 1); gsu_code(0x049C3B, 2);
 }
 
 /*
@@ -594,7 +613,9 @@ void abi_FxReturnOneRestore(void)
  */
 void abi_FxMatrixFromAnglesProgram04(void)
 {
+    gsu_code(0x04C19E, 7); gsu_code(0x04C1A7, 9);
     fx_unused2_run(0xC19D, 0xFFFF);
+    gsu_code(0x04C1A5, 1); gsu_code(0x04C2C7, 1);
 }
 
 /* Bank 04 programs nothing starts (04:8BAD-8C09), new records from the
@@ -683,6 +704,7 @@ dispatch:
  */
 void abi_FxRecordNewMarkedProgram(void)
 {
+    gsu_code(0x04893A, 3); gsu_code(0x048BAE, 13);
     fx_unused8b_run(0x8BAD, 0xFFFF);
 }
 
@@ -694,6 +716,7 @@ void abi_FxRecordNewMarkedProgram(void)
  */
 void abi_FxRecordNoneProgram(void)
 {
+    gsu_code(0x048BE3, 8);
     fx_unused8b_run(0x8BE2, 0xFFFF);
 }
 
@@ -709,5 +732,6 @@ void abi_FxRecordNoneProgram(void)
  */
 void abi_FxRecordNewFlag1Program(void)
 {
+    gsu_code(0x04893A, 3); gsu_code(0x048BED, 10);
     fx_unused8b_run(0x8BEC, 0xFFFF);
 }
