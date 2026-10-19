@@ -29,6 +29,30 @@ generated blocks under Current Status carry the same figures.
 **Maintainer:** Jeffrey Wilbur, Strut B, LLC\
 **Contact:** [retro@strutb.com](mailto:retro@strutb.com)
 
+## License, and no claim to the game
+
+**I claim no ownership whatsoever of the decompiled source code.** Stunt Race
+FX, its code and its assets belong to its rights holders. The C and assembly
+in this repository are a reconstruction of their work, recovered so that they
+rebuild the original bytes. It is not mine to own, license or give away, and
+nothing here says otherwise. No game data ships in this repository: every
+build starts from your own copy of the cartridge.
+
+This project exists for preservation and for love of this game, so that the
+Super FX racer Nintendo and Argonaut made in 1994 can still be read, studied,
+built and played long after the cartridges and hardware it shipped on are
+gone.
+
+The work that is my own (the tools, the test harness and the ports' platform
+code) is dedicated to the public domain under [CC0 1.0 Universal](LICENSE).
+Anyone may use it for any purpose, with no permission or credit needed.
+
+**Why CC0.** A preservation project should claim as little as possible. CC0
+asserts nothing over the reconstructed game, and it gives everything that is
+mine to the public domain, with a fallback licence for countries where
+copyright cannot be waived outright. That fallback is why CC0 was chosen over
+the Unlicense, which has the same intent but no fallback.
+
 ## The Decompilation Standard
 
 The purpose of a decompilation, as opposed to a recompilation, is
