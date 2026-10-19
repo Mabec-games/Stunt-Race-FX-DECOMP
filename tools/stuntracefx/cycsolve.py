@@ -196,11 +196,12 @@ def place_weight(p, info):
     before an access is the caller's); then the blocks; the calls into
     other routines; the routines' starts (shared by every caller); calls
     whose last argument is no number (cycwrite.py can state no time there
-    inside an expression); last, code inside the headers' helpers, which
-    every caller shares."""
+    inside an expression); a call's end (no probe stands for the time from
+    its last access to its return); last, code inside the headers'
+    helpers, which every caller shares."""
     global HEADERS
     if p & (END | SITE):
-        return 0
+        return 40          # no place in the C to state it: last but the headers
     r = info[p]
     if '/include/' in r['file']:
         return 50

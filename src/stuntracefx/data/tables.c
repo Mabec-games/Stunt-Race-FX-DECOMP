@@ -6,6 +6,7 @@
 
 static uint16_t word_lookup(uint32_t table, uint16_t i)
 {
+    cyc(268);
     return rd16(table + (uint16_t)(i << 1));
 }
 
@@ -25,7 +26,6 @@ void abi_HandlerTableA(void)
 {
     uint16_t x = (uint16_t)(cpu.a << 1);
 
-    cyc(268);
     cpu.a = HandlerTableA(cpu.a);
     cpu.x = (cpu.p & P_X) ? (uint8_t)x : x;
 }
@@ -38,7 +38,6 @@ void abi_HandlerTableA(void)
  */
 uint16_t HandlerTableB(uint16_t i)
 {
-    cyc(268);
     return word_lookup(0x03B704, i);
 }
 
@@ -63,13 +62,19 @@ uint8_t CourseIndex12(uint8_t a, uint8_t *p)
     uint8_t a3, c, c2, c12, f;
     unsigned s;
 
+    cyc(62);
     wr8(0x0000F1, a);
+    cyc(44);
     f = rd8(0x0000F1);
     a3 = (uint8_t)((uint8_t)(a << 1) + f);
+    cyc(16);
     wr8(0x0000F1, a3);
+    cyc(24);
     c = rd8(0x000E3D);
+    cyc(52);
     c2 = rd8(0x000E3D);
     c12 = (uint8_t)((uint8_t)((uint8_t)(c << 1) + c2) << 2);
+    cyc(58);
     a3 = rd8(0x0000F1);
     s = (unsigned)c12 + a3;
     *p = (uint8_t)((nz8(*p, (uint8_t)s) & ~(P_C | P_V)) | (s > 0xFF ? P_C : 0)
@@ -79,7 +84,6 @@ uint8_t CourseIndex12(uint8_t a, uint8_t *p)
 
 void abi_CourseIndex12(void)
 {
-    cyc(62);
     uint8_t p = cpu.p, i = CourseIndex12((uint8_t)cpu.a, &p);
 
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | i);
@@ -137,45 +141,66 @@ uint16_t SelectionTables18CB(uint8_t bank)
     uint32_t b = (uint32_t)bank << 16;
     uint16_t base, s1, i3, x, v = 0, w, u;
 
-    base = rd16(0x0BB00C + (uint16_t)(rd16(0x0018CB) << 1));
+    cyc(122);
+    base = rd16(cyc_then(100, 0x0BB00C + (uint16_t)(rd16(0x0018CB) << 1)));
     wr16(b | 0x11DF, base);
+    cyc(32);
     v = rd16(0x0018CD);
+    cyc(60);
     w = rd16(0x0018CD);
     s1 = (uint16_t)((uint16_t)(v << 1) + w);
+    cyc(24);
     wr16(b | 0x11E1, s1);
+    cyc(32);
     v = rd16(0x0018CF);
+    cyc(88);
     w = rd16(0x0018CF);
+    cyc(38);
     u = rd16(b | 0x11E1);
     s1 = (uint16_t)((uint16_t)(v << 3) + w + u);
+    cyc(24);
     wr16(b | 0x11E1, s1);
+    cyc(32);
     v = rd16(0x0018D1);
+    cyc(60);
     w = rd16(0x0018D1);
     i3 = (uint16_t)((uint16_t)(v << 1) + w);
+    cyc(24);
     wr16(b | 0x11E3, i3);
+    cyc(80);
     u = rd16(b | 0x11E3);
     x = (uint16_t)((uint16_t)(i3 << 3) + u);
+    cyc(38);
     u = rd16(b | 0x11E1);
     x = (uint16_t)(x + u);
+    cyc(38);
     u = rd16(b | 0x11DF);
     x = (uint16_t)(x + u);
+    cyc(118);
     wr16(0x0018E5, rd16(0x0BB014 + x) & 3);
+    cyc(104);
     wr16(0x0018E7, rd16(0x0BB015 + x) & 3);
+    cyc(104);
     wr16(0x0018E9, rd16(0x0BB016 + x) & 3);
-    wr16(0x0018E3, rd16(0x03B7B1 + rd16(0x0018CB)) & 3);
+    cyc(32);
+    wr16(0x0018E3, rd16(cyc_then(118, 0x03B7B1 + rd16(0x0018CB))) & 3);
     for (x = 0; x < 8; x += 2) {
+        cyc(136);
         uint16_t idx = (uint16_t)(rd16(0x0018CB + x) << 2);
 
+        cyc(74);
         u = rd16(0x0018E3 + x);
         idx = (uint16_t)(idx + u);
+        cyc(154);
         v = rd16(0x03B7B5 + idx) & 3;
         wr16(0x0018D3 + x, v);
     }
+    cyc(140);
     return v;
 }
 
 void abi_SelectionTables18CB(void)
 {
-    cyc(122);
     uint16_t v = SelectionTables18CB(cpu.db);
 
     cpu.a = v;
@@ -192,7 +217,7 @@ void abi_SelectionTables18CB(void);
  */
 void SelectionTables18CBLong(uint8_t bank)
 {
-    cyc(230);
+    cyc(108);
     SelectionTables18CB(bank);
 }
 

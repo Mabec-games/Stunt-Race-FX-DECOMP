@@ -68,7 +68,7 @@ void abi_OamDmaIfPending(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | oam_dma_if_pending(&pending));
     if (pending)
         cpu.x = 0;
-cyc(32);
+cyc(70);
     }
 
 /*
@@ -123,7 +123,8 @@ void abi_CgramDmaIfPending(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | cgram_dma_if_pending(&pending));
     if (pending)
         cpu.y = 0x0200;
-}
+cyc(70);
+    }
 
 /*
  * @routine 7F:0F3A ByteWritesIfPending
@@ -148,24 +149,33 @@ static ByteWritesEnd byte_writes_if_pending(uint8_t bank, uint16_t x0, uint16_t 
 {
     ByteWritesEnd end = {0, x0, y0, 0, 0};
 
+    cyc(90);
     if (!(rd8(FRAME_UPDATE_FLAGS) & 0x01))
-        return end;
+        { cyc(38); return end; }
     end.ran = 1;
     {
+        cyc(78);
         uint16_t x = (uint16_t)(rd16(BYTE_WRITES_SIZE) - 4);
         end.a = x;
         if (!(x & 0x8000)) {   /* X and Y are only touched when there is an entry */
             do {
+                cyc(100);
                 end.y = rd16(BYTE_WRITES + x);
+                cyc(46);
                 end.a = rd16(BYTE_WRITES + 2 + x);
+                cyc(52);
                 wr8((uint32_t)bank << 16 | end.y, (uint8_t)end.a);
                 x = (uint16_t)(x - 4);
             } while (!(x & 0x8000));
+            cyc(34);
             end.x = x;
         }
     }
+    cyc(84);
     wr16(BYTE_WRITES_SIZE, 0);
+    cyc(46);
     end.flags = rd8(FRAME_UPDATE_FLAGS) & 0xFE;
+    cyc(40);
     wr8(FRAME_UPDATE_FLAGS, end.flags);
     return end;
 }
@@ -184,7 +194,8 @@ void abi_ByteWritesIfPending(void)
         cpu.x = end.x;
         cpu.y = end.y;
     }
-}
+cyc(70);
+    }
 
 /*
  * @routine 7F:1007 VramDmaQueueAdd
@@ -221,12 +232,12 @@ uint16_t VramDmaQueueAddA(uint16_t a)
 {
     uint16_t size;
 
-    cyc(62);
     return vram_dma_queue_add(&size) ? size : a;
 }
 
 void VramDmaQueueAdd(void)
 {
+    cyc(62);
     uint16_t size;
 
     vram_dma_queue_add(&size);
@@ -237,13 +248,14 @@ void abi_VramDmaQueueAdd(void)
     uint16_t size;
 
     if (vram_dma_queue_add(&size))
-        cpu.a = size;
+        { cyc(108); cpu.a = size; }
 }
 
 /* Append A to a list of up to eight words; returns X, the new size (the
    old one when the list is full). */
 static uint16_t word_list_append(uint32_t size_addr, uint32_t list, uint16_t value)
 {
+    cyc(114);
     uint16_t x = rd16(size_addr);
 
     if (x == 0x0010)
@@ -318,29 +330,43 @@ static FlushEnd vram_dma_queue_flush(void)
     FlushEnd end = {0, 0, 0, 0, 0};
     uint16_t x;
 
+    cyc(90);
     if (!(rd8(FRAME_UPDATE_FLAGS) & 0x02))
-        return end;
+        { cyc(38); return end; }
     end.ran = 1;
+    cyc(72);
     wr8(VMAIN, 0x80);
+    cyc(40);
     wr8(DMAP0 + 1, 0x18);
+    cyc(46);
     x = (uint16_t)(rd16(0x0016AF) - 8);
     end.a = x;
     if (!(x & 0x8000)) {
         do {
-            wr16(A1T0L, rd16(0x0016B9 + x));
-            wr16(VMADDL, rd16(0x0016BC + x));
-            wr16(DAS0L, rd16(0x0016BE + x));
-            wr8(A1B0, rd8(0x0016BB + x));
+            cyc(164);
+            wr16(A1T0L, cyc_then(24, rd16(0x0016B9 + x)));
+            cyc(32);
+            wr16(VMADDL, cyc_then(24, rd16(0x0016BC + x)));
+            cyc(32);
+            wr16(DAS0L, cyc_then(24, rd16(0x0016BE + x)));
+            cyc(54);
+            wr8(A1B0, cyc_then(24, rd8(0x0016BB + x)));
+            cyc(40);
             wr8(DMAP0, 0x01);
+            cyc(24);
             wr8(MDMAEN, 0x01);
             x = (uint16_t)(x - 8);
         } while (!(x & 0x8000));
+        cyc(44);
         end.a = x;
         end.x = x;
         end.looped = 1;
     }
+    cyc(106);
     wr16(0x0016AF, 0);
+    cyc(46);
     end.flags = rd8(FRAME_UPDATE_FLAGS) & 0xFD;
+    cyc(40);
     wr8(FRAME_UPDATE_FLAGS, end.flags);
     return end;
 }
@@ -357,7 +383,8 @@ void abi_VramDmaQueueFlush(void)
     cpu.a = (uint16_t)(((end.ran ? end.a : cpu.a) & 0xFF00) | end.flags);
     if (end.looped)
         cpu.x = end.x;
-}
+cyc(70);
+    }
 
 void SystemHalt(void);
 
@@ -376,12 +403,16 @@ void SystemHalt(void);
 uint16_t FrameByteWritePush(uint8_t bank, uint16_t addr, uint8_t value)
 {
     uint32_t b = (uint32_t)bank << 16;
+    cyc(358);
     uint16_t x = rd16(b | (uint16_t)BYTE_WRITES_SIZE);
 
     if (x == 0x0080)
         SystemHalt();
+    cyc(108);
     wr16(BYTE_WRITES + 2 + x, value);
+    cyc(68);
     wr16(BYTE_WRITES + x, addr);
+    cyc(76);
     wr16(b | (uint16_t)BYTE_WRITES_SIZE, (uint16_t)(x + 4));
     return x;
 }
@@ -408,12 +439,10 @@ static uint8_t frame_input_and_count_end(uint8_t bank, uint16_t *hi, uint16_t *x
     wr16(0x0018BD, w);
     cyc(24);
     w = rd16(b | 0x0311);
-    cyc(114);
     word_list_append(0x001191, 0x001195, w);
     cyc(94);
     w = rd16(b | 0x0313);
     *hi = (uint16_t)(w & 0xFF00);
-    cyc(114);
     *x = word_list_append(0x001193, 0x0011B5, w);
     cyc(116);
     wr8(b | 0x0E3B, cyc_then(6, (uint8_t)(rd8(b | 0x0E3B) + 1)));
@@ -452,7 +481,7 @@ void abi_FrameInputAndCountEnd(void)
     uint8_t v = frame_input_and_count_end(cpu.db, &hi, &x);
 
     cpu.a = (uint16_t)(hi | v);
-    cpu.x = (cpu.p & P_X) ? (uint8_t)x : x;
+    cpu.x = (cpu.p & P_X) ? (cyc(44), (uint8_t)x) : x;
     cpu.p = (uint8_t)(nz8(cpu.p, v) | P_M);
 }
 
@@ -490,10 +519,9 @@ uint8_t FrameCountAndPortsEnd(uint8_t bank, uint16_t *high, int *checked)
     *high = (uint16_t)(v & 0xFF00);
     *checked = 0;
     if (v) {
-        cyc(198);
         int found = JoypadPortCheck(bank, 0);
 
-        cyc(232);
+        cyc(34);
         found |= JoypadPortCheck(bank, 1);
         if (found)
             *high = 0x0000; else { cyc(28); }
@@ -517,5 +545,6 @@ void abi_FrameCountAndPortsEnd(void)
         cpu.x = 0x0001;
         cpu.y = 0x00FF;
     }
+    cyc(44);
     cpu.p = (uint8_t)(nz8(cpu.p, lum) | P_M);
 }

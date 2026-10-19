@@ -68,7 +68,6 @@ void HudGaugesPanelA(uint8_t bank)
 void abi_HudGaugesPanelA(void)
 {
     abi_gauge(abi_SpriteBar4WithMarker, 0x0E0F, 0x0E11, 0x0DFA, 0x0140);
-    cyc(100);
     abi_gauge(abi_SpriteBar6WithMarker, 0x0E13, 0x0E15, 0x0E06, 0x016C);
 }
 
@@ -109,15 +108,16 @@ void abi_HudGaugesPanelB(void)
 
     if (!v)
         { cyc(48); v = rd8(0x000D62); }
+    cyc(46);
     if (!v) {
+        cyc(12);
         cpu.a &= 0xFF00;
         cpu.p = (uint8_t)((nz8(cpu.p, 0) | P_M) & ~P_X);
         return;
     }
-    cyc(46);
     split = rd8(b | 0x0D62) != 0;
     abi_gauge(abi_SpriteBar4WithMarker, 0x0E0E, 0x0E10, 0x0DF9, split ? (cyc(50), 0x0040) : 0x0100);
-    cyc(140);
+    cyc(40);
     split = rd8(b | 0x0D62) != 0;
     abi_gauge(abi_SpriteBar6WithMarker, 0x0E12, 0x0E14, 0x0E05, split ? (cyc(50), 0x006C) : 0x012C);
 }
@@ -132,11 +132,15 @@ static void gauge6_place(uint16_t at, uint8_t y, uint8_t x)
     unsigned i;
 
     op_sep(P_M | P_X);
+    cyc(62);
     wr8(b | at, y);
     for (i = 0; i < 4; i++) {
+        cyc(24);
         v = (uint8_t)(rd8(b | (uint16_t)(0x057B + i + x)) & keep[i]);
+        cyc(46);
         wr8(b | (uint16_t)(0x057B + i + x), v);
     }
+    cyc(70);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.x = x;
     cpu.p = p0;
@@ -153,7 +157,6 @@ static void gauge6_place(uint16_t at, uint8_t y, uint8_t x)
  */
 void abi_Gauge6BPlace(void)
 {
-    cyc(62);
     gauge6_place(0x0E14, 0x5A, 0x00);
 }
 

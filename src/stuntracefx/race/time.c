@@ -34,11 +34,13 @@ static uint16_t adc_bcd16(uint16_t a, uint16_t m, uint8_t *p)
 /* $0E70 += the BCD byte of `table` for the entry at $0D89 of this course. */
 static uint16_t add_course_value(uint32_t table, uint16_t *x, uint8_t *p)
 {
+    cyc(92);
     uint8_t i = CourseIndex12(rd8(0x000D89), p);
     uint16_t v;
 
     *x = i;
     v = adc_bcd16(rd8(table + i), rd16(0x000E70), p);
+    cyc(24);
     wr16(0x000E70, v);
     return v;
 }
@@ -115,6 +117,7 @@ void abi_RaceTimeInit(void)
     unsigned i;
 
     op_sep(P_M | P_X);
+    cyc(156);
     for (i = 0; i < 4; i++)
         { cyc(24); wr8(b | (uint16_t)(0x0E68 + i), 0x99); }
     cyc(24);
@@ -136,26 +139,26 @@ void abi_RaceTimeInit(void)
             v = rd8((uint32_t)(0x03D810 + cpu.x));
         }
     } else {
+        cyc(8);
         cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x02)) & ~P_C) | (v >= 0x02 ? P_C : 0));
         if (v >= 0x02)
             v = 0x00;
-        else { cyc(72); if (rd8(b | 0x0D4E) != 0)
+        else { cyc(64); if (rd8(b | 0x0D4E) != 0)
             v = 0x00;
         else {
             cyc(40);
             v = rd8(b | 0x0E3D);
             cpu.p |= P_C;
             v = op_sbc8(v, 0x0C, &cpu.p);
-            cyc(80);
             v = asl8(asl8(v));
             cpu.p &= (uint8_t)~P_C;
+            cyc(80);
             v = op_adc8(v, rd8(b | 0x0D89), &cpu.p);
             cpu.x = v;
-            cyc(6);
+            cyc(14);
             v = rd8((uint32_t)(0x03D8A3 + cpu.x));
         } }
-    cyc(8);
-        }
+    }
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.p = nz8(cpu.p, v);
     cyc(86);
@@ -187,7 +190,7 @@ void abi_RaceClockStep(void)
     v = rd8(0x000E5B);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     if (!v) {
-        cyc(2);
+        cyc(44);
         op_plp(p0);
         return;
     }
@@ -252,5 +255,6 @@ void abi_RaceClockStep(void)
         }
     cyc(22);
         }
+    cyc(42);
     op_plp(p0);
 }

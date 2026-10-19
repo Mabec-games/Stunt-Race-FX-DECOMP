@@ -16,11 +16,11 @@
  */
 uint16_t MenuRowPosition(uint16_t rec, uint8_t *p)
 {
-    cyc(146);
+    cyc(116);
     uint16_t a = (uint16_t)((uint16_t)(2 - rd16(0x0018ED)) << 4), b = rd16(cyc_then(92, (uint16_t)(rec + 0x12)));
     unsigned s = (unsigned)a + b;
 
-    *p = (uint8_t)((*p & ~(P_C | P_V)) | (s > 0xFFFF ? P_C : 0) | ((~(a ^ b) & (a ^ (uint16_t)s) & 0x8000) ? P_V : 0));
+    *p = (uint8_t)((*p & ~(P_C | P_V)) | (s > 0xFFFF ? P_C : (cyc(18), 0)) | ((~(a ^ b) & (a ^ (uint16_t)s) & 0x8000) ? P_V : 0));
     a = (uint16_t)(s + 2);
     *p = nz16(*p, a);
     return a;
@@ -45,13 +45,15 @@ void abi_MenuRowPosition(void)
  */
 uint16_t MenuChoiceRepeat(uint16_t *x, uint8_t *p)
 {
+    cyc(172);
     uint16_t a = rd16(0x0018CB), b;
 
+    cyc(220);
     wr16(0x0018D3, 0x0000);
     b = rd16(0x0018C9);
-    *p = (uint8_t)((nz16(*p, (uint16_t)(a - b)) & ~P_C) | (a >= b ? P_C : 0));
+    *p = (uint8_t)((nz16(*p, (uint16_t)(a - b)) & ~P_C) | (a >= b ? (cyc(74), P_C) : 0));
     if (a != b)
-        return a;
+        { cyc(22); return a; }
     b = rd16(0x0018C9);
     *x = (uint16_t)(b << 1);
     a = rd16(0x0BC758 + *x);
@@ -166,11 +168,16 @@ void MenuStateInit(void)
     unsigned i;
 
     for (i = 0; i < sizeof set / sizeof set[0]; i++)
-        wr16(set[i].addr, set[i].v);
-    wr16(0x0018EF, rd16(0x70FC08) & 0x00FF);
-    wr16(0x0018F1, rd16(0x70FC09) & 0x00FF);
-    wr16(0x0018F3, rd16(0x70FC0A) & 0x00FF);
+        { cyc(168); wr16(set[i].addr, set[i].v); }
+    cyc(32);
+    wr16(0x0018EF, cyc_then(56, rd16(0x70FC08) & 0x00FF));
+    cyc(32);
+    wr16(0x0018F1, cyc_then(56, rd16(0x70FC09) & 0x00FF));
+    cyc(32);
+    wr16(0x0018F3, cyc_then(56, rd16(0x70FC0A) & 0x00FF));
+    cyc(56);
     wr16(0x0018C5, 0xFFFF);
+    cyc(56);
     wr16(0x0018F9, 0x001F);
 }
 
@@ -201,16 +208,16 @@ uint16_t SelectionCommit(uint8_t bank, uint16_t *x)
     uint16_t v;
 
     cyc(76);
-    wr16(0x0018DB, HandlerTableA(cyc_then(268, rd16(0x0018CB))));
+    wr16(0x0018DB, HandlerTableA(rd16(0x0018CB)));
     cyc(32);
-    wr16(0x0018DD, HandlerTableA(cyc_then(268, rd16(0x0018C9))));
+    wr16(0x0018DD, HandlerTableA(rd16(0x0018C9)));
     cyc(32);
     wr16(b | 0x11DF, (uint16_t)(rd16(cyc_then(180, 0x03B540 + ((rd16(0x0018C9) & 3) << 1))) << 4));
     cyc(32);
     v = (uint16_t)(rd16(cyc_then(124, 0x03B540 + ((rd16(0x0018CB) & 3) << 1))) | rd16(b | 0x11DF));
     cyc(54);
     wr8(0x70FC0E, (uint8_t)v);
-    (cyc(142), SaveChecksum());
+    (cyc(84), SaveChecksum());
     cyc(128);
     wr16(0x0018D3, 0x0000);
     cyc(32);
@@ -235,7 +242,7 @@ void abi_SelectionCommit(void)
     uint16_t x;
 
     cpu.a = SelectionCommit(cpu.db, &x);
-    cpu.x = (cpu.p & P_X) ? (uint8_t)x : x;
+    cpu.x = (cpu.p & P_X) ? (cyc(96), (uint8_t)x) : (cyc(72), x);
 }
 
 uint16_t HandlerTableB(uint16_t i);
@@ -253,20 +260,26 @@ void abi_SaveChecksum(void);
 static uint16_t save_selection(uint8_t bank, uint16_t *x)
 {
     uint32_t b = (uint32_t)bank << 16;
+    cyc(30);
     uint16_t mode = rd16(0x0018C3), v;
 
     if (mode == 3) {
+        cyc(78);
         *x = (uint16_t)((rd16(0x0018CB) & 3) << 1);
+        cyc(154);
         v = rd16(0x03B540 + *x);
         wr8(0x70FC0D, (uint8_t)v);
         return v;
     }
-    wr16(b | 0x11DF, rd16(0x70FC0C) & (mode == 1 ? 0x0003 : 0x0030));
+    wr16(b | 0x11DF, cyc_then(48, rd16(0x70FC0C) & (mode == 1 ? 0x0003 : 0x0030)));
+    cyc(32);
     *x = (uint16_t)(rd16(0x0018CB) << 1);
+    cyc(100);
     v = rd16(0x03B540 + *x);
     if (mode == 1)
-        v = (uint16_t)(v << 4);
+        { cyc(56); v = (uint16_t)(v << 4); }
     v = (uint16_t)(v | rd16(b | 0x11DF));
+    cyc(54);
     wr8(0x70FC0C, (uint8_t)v);
     return v;
 }
@@ -307,7 +320,9 @@ void abi_SelectionSave(void)
     unsigned i;
 
     cpu.p &= (uint8_t)~(P_M | P_X);
+    cyc(44);
     for (i = 0; i < 5; i++) {
+        cyc(32);
         cpu.a = rd16(h[i].from);
         if (h[i].b)
             abi_HandlerTableB();
@@ -318,7 +333,7 @@ void abi_SelectionSave(void)
     abi_SelectionTables18CB();
     cpu.a = save_selection(cpu.db, &x);
     cpu.x = x;
-    abi_SaveChecksum();
+    (cyc(84), abi_SaveChecksum());
     cpu.p = p;
     if (p & P_X) {
         cpu.x &= 0x00FF;
@@ -343,6 +358,7 @@ static uint16_t menu_choice_up_down(uint8_t bank, uint16_t *y)
 {
     uint16_t pad, a;
 
+    cyc(78);
     a = rd16(0x0018C3);
     cyc(32);
     wr16(0x0018C5, a);
@@ -352,14 +368,14 @@ static uint16_t menu_choice_up_down(uint8_t bank, uint16_t *y)
     if (pad & 0x0800) {
         cyc(154);
         SoundPort0QueuePush(0x45);
-        cyc(68);
+        cyc(54);
         wr16(0x0018C3, cyc_then(70, (uint16_t)(rd16(0x0018C3) - 1) & 0x0003));
     } else { cyc(60); }
     cyc(60);
     if (pad & 0x0400) {
         cyc(94);
         SoundPort0QueuePush(0x45);
-        cyc(68);
+        cyc(54);
         wr16(0x0018C3, cyc_then(70, (uint16_t)(rd16(0x0018C3) + 1) & 0x0003));
     }
     cyc(32);
@@ -431,7 +447,7 @@ static int pad_bit(uint32_t b, uint16_t bit)
     a = rd16(b | 0x0D1A);
     cpu.a = a;
     cpu.p = nz16(cpu.p, a);
-    cpu.p = (uint8_t)((cpu.p & ~P_Z) | ((a & bit) ? 0 : (cyc(48), P_Z)));
+    cpu.p = (uint8_t)((cpu.p & ~P_Z) | ((a & bit) ? 0 : (cyc(52), P_Z)));
     cpu.p |= P_M;
     return (a & bit) != 0;
 }
@@ -439,6 +455,7 @@ static int pad_bit(uint32_t b, uint16_t bit)
 /* A byte of work RAM moved by d (INC or DEC), then sound $45 on port 0. */
 static void step_with_sound(uint32_t b, uint16_t at, int d)
 {
+    cyc(86);
     uint8_t v = (uint8_t)(rd8(b | at) + d);
 
     cyc(6);
@@ -479,14 +496,14 @@ void abi_MenuCursorFourWay(void)
             wr8(b | 0x0D4C, 0x00);
             cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x45);
             (cyc(62), abi_SoundPort0QueuePush());
-        } else { cyc(4); if (pad_bit(b, 0x0200)) {
+        } else if (pad_bit(b, 0x0200)) {
             cyc(108);
             wr8(b | 0x0D48, 0x01);
             cyc(24);
             wr8(b | 0x0D4C, 0x00);
             cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x45);
             (cyc(62), abi_SoundPort0QueuePush());
-        } else { cyc(16); } }
+        } else { cyc(26); }
     cyc(24);
         } else {
         op_sep(P_M | P_X);
@@ -498,33 +515,33 @@ void abi_MenuCursorFourWay(void)
         case 0:
             cyc(58);
             if (pad_bit(b, 0x0100))
-                { cyc(86); step_with_sound(b, 0x0D48, +1); }
+                step_with_sound(b, 0x0D48, +1); else { cyc(10); }
             cyc(22);
             break;
         case 2:
             cyc(58);
             if (pad_bit(b, 0x0200))
-                { cyc(86); step_with_sound(b, 0x0D48, -1); }
-            else { cyc(4); if (pad_bit(b, 0x0100))
-                { cyc(86); step_with_sound(b, 0x0D4C, -1); } }
+                step_with_sound(b, 0x0D48, -1);
+            else if (pad_bit(b, 0x0100))
+                step_with_sound(b, 0x0D4C, -1); else { cyc(10); }
             cyc(22);
             break;
         case 4:
             cyc(58);
             if (pad_bit(b, 0x0100))
-                { cyc(86); step_with_sound(b, 0x0D48, +1); }
-            else { cyc(4); if (pad_bit(b, 0x0200))
-                { cyc(86); step_with_sound(b, 0x0D4C, -1); } }
+                step_with_sound(b, 0x0D48, +1);
+            else if (pad_bit(b, 0x0200))
+                step_with_sound(b, 0x0D4C, -1); else { cyc(10); }
             cyc(22);
             break;
         default:
             cyc(58);
             if (pad_bit(b, 0x0200))
-                { cyc(86); step_with_sound(b, 0x0D48, -1); } else { cyc(22); }
+                step_with_sound(b, 0x0D48, -1); else { cyc(32); }
             break;
         }
     }
-    cyc(22);
+    cyc(8);
     v = rd8(b | 0x0D4C);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     if (v) {
@@ -551,6 +568,7 @@ static int fourth_car(uint32_t b)
 {
     uint8_t v;
 
+    cyc(30);
     cpu.x = rd8(b | 0x0D2B);
     cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(cpu.x - 0x03)) & ~P_C) | (cpu.x >= 0x03 ? P_C : 0));
     if (cpu.x == 0x03)
@@ -571,18 +589,17 @@ static void car_step(uint32_t b, uint16_t at, int right)
     uint8_t v;
     int four;
 
-    op_sep(right ? P_M | P_X : P_M);
+    op_sep(right ? (cyc(102), P_M | P_X) : (cyc(124), P_M));
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x45);
     cpu.p = nz8(cpu.p, 0x45);
     abi_SoundPort0QueuePush();
-    cyc(22);
+    cyc(8);
     v = rd8(b | at);
     if (right) {
         cyc(46);
         v = (uint8_t)(v + 1);
         cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x03)) & ~P_C) | (v >= 0x03 ? P_C : 0));
         if (v == 0x03) {
-            cyc(30);
             four = fourth_car(b);
             v = four ? 0x03 : 0x00;
         } else if (v > 0x03)
@@ -592,7 +609,7 @@ static void car_step(uint32_t b, uint16_t at, int right)
         v = (uint8_t)(v - 1);
         cpu.p = nz8(cpu.p, v);
         if (v & 0x80) {
-            cyc(70);
+            cyc(40);
             four = fourth_car(b);
             v = four ? (cyc(2), 0x03) : (cyc(2), 0x02);
         }
@@ -624,6 +641,7 @@ void abi_CarSelectTwoPlayers(void)
 
     for (i = 0; i < 2; i++) {
         op_rep(P_M);
+        cyc(46);
         op_lda16(b | pad[i]);
         if (cpu.a & 0x0100) {
             cpu.p &= (uint8_t)~P_Z;
@@ -632,18 +650,22 @@ void abi_CarSelectTwoPlayers(void)
         }
         cpu.p |= P_Z;
         op_rep(P_M);
+        cyc(70);
         op_lda16(b | pad[i]);
-        cpu.p = (cpu.a & 0x0200) ? (uint8_t)(cpu.p & ~P_Z) : (uint8_t)(cpu.p | P_Z);
+        cpu.p = (cpu.a & 0x0200) ? (uint8_t)(cpu.p & ~P_Z) : (cyc(24), (uint8_t)(cpu.p | P_Z));
         if (cpu.a & 0x0200)
             car_step(b, car[i], 0);
     }
     op_sep(P_M | P_X);
+    cyc(46);
     cpu.x = rd8(b | 0x0D8A);
+    cyc(72);
     op_lda8(0x07C1BF + cpu.x);
     wr8(0x0018C9, (uint8_t)cpu.a);
-    abi_SelectionCommit();
+    (cyc(62), abi_SelectionCommit());
     cpu.x = rd8(b | 0x0D89);
+    cyc(72);
     op_lda8(0x07C1BF + cpu.x);
     wr8(0x0018CB, (uint8_t)cpu.a);
-    abi_SelectionCommit();
+    (cyc(62), abi_SelectionCommit());
 }

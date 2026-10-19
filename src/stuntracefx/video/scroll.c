@@ -21,10 +21,12 @@ uint8_t Bg2ScrollFromTable(uint16_t band)
 {
     uint8_t v;
 
-    wr8(BG2HOFS, rd8(BG2_SCROLL_X + band));
-    wr8(BG2HOFS, rd8(BG2_SCROLL_X + 1 + band));
-    wr8(BG2VOFS, rd8(BG2_SCROLL_Y + band));
+    cyc(24);
+    wr8(BG2HOFS, cyc_then(24, rd8(BG2_SCROLL_X + band)));
+    wr8(BG2HOFS, cyc_then(24, rd8(BG2_SCROLL_X + 1 + band)));
+    wr8(BG2VOFS, cyc_then(24, rd8(BG2_SCROLL_Y + band)));
     v = rd8(BG2_SCROLL_Y + 1 + band);
+    cyc(24);
     wr8(BG2VOFS, v);
     return v;
 }

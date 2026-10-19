@@ -35,8 +35,9 @@ void abi_ColourMathA3(void)
  */
 void ColourMathA7Start(void)
 {
+    cyc(146);
     SoundPort1QueuePush(0x04);
-    cyc(38);
+    cyc(24);
     wr8(0x000D47, 0xA7);
     cyc(78);
     wr16(0x7F3408, 0x0000);
@@ -63,6 +64,7 @@ static uint8_t fixed_colour_from_step(uint8_t *step)
 {
     uint8_t v;
 
+    cyc(116);
     *step = rd8(0x7F3408);
     cyc(86);
     v = rd8(0x03FE7B + *step);
@@ -100,7 +102,7 @@ void ColourMathSub83Windowed(void)
 {
     cyc(146);
     wr8(0x002131, 0x83);
-    (cyc(116), WindowsColourWindowOnly());
+    WindowsColourWindowOnly();
 }
 
 void abi_ColourMathSub83Windowed(void)
@@ -136,6 +138,7 @@ void abi_ColourMathA3Long(void)
  */
 void ColourMathOff(uint8_t bank)
 {
+    cyc(170);
     wr8((uint32_t)bank << 16 | 0x0D47, 0x00);
 }
 

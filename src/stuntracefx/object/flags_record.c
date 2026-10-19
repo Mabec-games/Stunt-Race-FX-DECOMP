@@ -24,6 +24,7 @@ static void flags_record_tail(void);
 /* LDA #v with M 8-bit. */
 static void lda8(uint8_t v)
 {
+    cyc(30);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.p = nz8(cpu.p, v);
 }
@@ -42,12 +43,13 @@ static void cmp8(uint8_t m)
     uint8_t a = (uint8_t)cpu.a;
 
     cpu.p = nz8(cpu.p, (uint8_t)(a - m));
-    cpu.p = (uint8_t)(a >= m ? cpu.p | P_C : cpu.p & ~P_C);
+    cpu.p = (uint8_t)(a >= m ? (cyc(18), cpu.p | P_C) : (cyc(16), cpu.p & ~P_C));
 }
 
 /* INC or DEC addr, 8-bit: N, Z from the new byte. */
 static void step8(uint32_t addr, int d)
 {
+    cyc(30);
     uint8_t v = rd8(addr);
 
     v = (uint8_t)(v + d);
@@ -66,8 +68,8 @@ static void handler08(uint16_t h)
     cyc(76);
     wr16(F(0x201A, cpu.x), h);
     cpu.p |= P_M;
-    cyc(68);
     lda8(0x08);
+    cyc(38);
     wr8(F(0x201C, cpu.x), 0x08);
 }
 
@@ -77,13 +79,14 @@ static void frame_from(uint16_t f)
 {
     uint8_t v;
 
+    cyc(6);
     v = ld8(F(f, cpu.x));
     cyc(24);
     wr8(W(0x1F58), v);
     v = ld8(W(0x1F58));
     v |= 0x80;
-    cyc(46);
     lda8(v);
+    cyc(16);
     wr8(F(0x205A, cpu.x), v);
 }
 
@@ -92,6 +95,7 @@ static void frame_zero(void)
 {
     lda8(0x00);
     lda8(0x80);
+    cyc(2);
     wr8(F(0x205A, cpu.x), 0x80);
 }
 
@@ -119,10 +123,11 @@ static void frames_to_record(void)
         cyc(56);
         wr16(0x700012 + rec, v);
     } else { cyc(22); }
+    cyc(68);
     cpu.x = obj;
     cpu.p = nz16(cpu.p, obj);
     cpu.p |= P_M;
-    (cyc(68), abi_ObjectRecordFlag4Step());
+    abi_ObjectRecordFlag4Step();
 }
 
 /* Every +$49 frames (+$4A counts them) the frame +$5A steps by d (1 or
@@ -140,10 +145,11 @@ static void frame_cycle(uint8_t d)
     m = rd8(F(0x2049, cpu.x));
     cmp8(m);
     if (!(cpu.p & P_Z)) {
-        (cyc(22), frames_to_record());
+        cyc(6);
+        frames_to_record();
         return;
     }
-    cyc(46);
+    cyc(28);
     wr8(F(0x204A, cpu.x), 0x00);
     cyc(6);
     v = ld8(F(0x2048, cpu.x));
@@ -162,20 +168,18 @@ static void frame_cycle(uint8_t d)
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     } else { cyc(52); }
     v &= 0x7F;
-    cyc(40);
     lda8(v);
+    cyc(10);
     m = rd8(W(0x1F58));
-    cyc(38);
     cmp8(m);
     if (cpu.p & P_C) {
         cpu.p |= P_C;
-        cyc(16);
+        cyc(36);
         m = rd8(W(0x1F58));
         v = op_sbc8(v, m, &cpu.p);
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    }
+    } else { cyc(22); }
     v |= 0x80;
-    cyc(30);
     lda8(v);
     wr8(F(0x205A, cpu.x), v);
     frames_to_record();
@@ -195,8 +199,8 @@ void abi_ObjectStopMarked(void)
     cyc(6);
     v = ld8(F(0x2009, cpu.x));
     v |= 0x01;
-    cyc(46);
     lda8(v);
+    cyc(16);
     wr8(F(0x2009, cpu.x), v);
     cpu.p &= (uint8_t)~P_M;
     cpu.a = 0x0000;
@@ -204,8 +208,8 @@ void abi_ObjectStopMarked(void)
     cyc(76);
     wr16(F(0x201A, cpu.x), 0x0000);
     cpu.p |= P_M;
-    cyc(68);
     lda8(0x00);
+    cyc(38);
     wr8(F(0x201C, cpu.x), 0x00);
 }
 
@@ -220,7 +224,6 @@ void abi_ObjectStopMarked(void)
  */
 void abi_ObjectFlagsRecordFrame(void)
 {
-    cyc(6);
     frame_from(0x2048);
     (cyc(30), abi_ObjectFlagsRecordSetup());
 }
@@ -239,8 +242,8 @@ void abi_ObjectFlagsRecordFrame(void)
 void abi_ObjectFrameCycleSetup(void)
 {
     handler08(0xCA6F);
-    (cyc(62), frame_zero());
-    (cyc(106), flags_record_tail());
+    frame_zero();
+    (cyc(30), flags_record_tail());
 }
 
 /*
@@ -256,7 +259,6 @@ void abi_ObjectFrameCycleSetup(void)
  */
 void abi_ObjectFrameCycleStep(void)
 {
-    cyc(30);
     frame_cycle(0x01);
 }
 
@@ -278,15 +280,15 @@ void abi_ObjectFrameCycleBackSetup(void)
     cyc(6);
     v = ld8(F(0x2048, cpu.x));
     v--;
-    cyc(38);
     lda8(v);
+    cyc(8);
     wr8(W(0x1F58), v);
     v = ld8(W(0x1F58));
     v |= 0x80;
-    cyc(46);
     lda8(v);
+    cyc(16);
     wr8(F(0x205A, cpu.x), v);
-    (cyc(106), flags_record_tail());
+    (cyc(30), flags_record_tail());
 }
 
 /*
@@ -298,7 +300,6 @@ void abi_ObjectFrameCycleBackSetup(void)
  */
 void abi_ObjectFrameCycleBackStep(void)
 {
-    cyc(30);
     frame_cycle(0xFF);
 }
 
@@ -317,12 +318,12 @@ void abi_ObjectFrameSwingSetup(void)
     uint8_t v;
 
     handler08(0xCB15);
-    (cyc(62), frame_zero());
+    frame_zero();
     cyc(6);
     v = ld8(F(0x204A, cpu.x));
     cyc(30);
     wr8(F(0x202E, cpu.x), v);
-    (cyc(106), flags_record_tail());
+    (cyc(30), flags_record_tail());
 }
 
 /*
@@ -344,22 +345,20 @@ void abi_ObjectFrameSwingStep(void)
     cyc(6);
     v = ld8(F(0x202E, cpu.x));
     if (v) {
-        cyc(46);
+        cyc(16);
         step8(F(0x202E, cpu.x), -1);
         (cyc(22), frames_to_record());
         return;
-    }
-    cyc(28);
+    } else { cyc(22); }
     frame_from(0x2030);
     cyc(6);
     v = ld8(F(0x2048, cpu.x));
     cyc(24);
     wr8(W(0x1F58), v);
     v--;
-    cyc(38);
     lda8(v);
+    cyc(8);
     wr8(W(0x1F59), v);
-    cyc(30);
     step8(F(0x204B, cpu.x), 1);
     cyc(6);
     ld8(F(0x204B, cpu.x));
@@ -367,48 +366,46 @@ void abi_ObjectFrameSwingStep(void)
     m = rd8(F(0x2049, cpu.x));
     cmp8(m);
     if (!(cpu.p & P_Z)) {
-        (cyc(22), frames_to_record());
+        cyc(6);
+        frames_to_record();
         return;
     }
-    cyc(46);
+    cyc(28);
     wr8(F(0x204B, cpu.x), 0x00);
     cyc(6);
     v = ld8(F(0x2025, cpu.x));
     v &= 0x01;
     lda8(v);
     if (v) {
-        cyc(70);
+        cyc(40);
         v = ld8(F(0x205A, cpu.x));
         v &= 0x7F;
-        cyc(60);
         lda8(v);
         cmp8(0x00);
         if (!(cpu.p & P_Z)) {
-            cyc(18);
             step8(F(0x2030, cpu.x), -1);
             frames_to_record();
             return;
-        }
+        } else { cyc(2); }
     } else {
-        cyc(44);
+        cyc(14);
         v = ld8(F(0x205A, cpu.x));
         v &= 0x7F;
-        cyc(40);
         lda8(v);
+        cyc(10);
         m = rd8(W(0x1F59));
-        cyc(28);
         cmp8(m);
         if (!(cpu.p & P_Z)) {
-            cyc(18);
             step8(F(0x2030, cpu.x), 1);
             (cyc(22), frames_to_record());
             return;
         }
     }
+    cyc(10);
     v = ld8(F(0x2025, cpu.x));
     v ^= 0x01;
-    cyc(46);
     lda8(v);
+    cyc(16);
     wr8(F(0x2025, cpu.x), v);
     cyc(6);
     v = ld8(F(0x204A, cpu.x));
@@ -449,7 +446,7 @@ void abi_ObjectFlagsRecord(void)
 
     abi_GsuRecordNew422();
     if (cpu.p & P_N)
-        { cyc(32); return; }
+        { cyc(46); return; }
     cpu.p &= (uint8_t)~P_M;
     obj = cpu.x;
     cpu.y = obj;
@@ -484,10 +481,11 @@ static void flags_record_tail(void)
     cpu.p &= (uint8_t)~P_M;
     cpu.a = 0xCD55;
     cpu.p = nz16(cpu.p, 0xCD55);
+    cyc(76);
     wr16(F(0x201D, cpu.x), 0xCD55);
     cpu.p |= P_M;
-    cyc(68);
     lda8(0x08);
+    cyc(38);
     wr8(F(0x201F, cpu.x), 0x08);
     abi_ObjectFlagsRecord();
 }
@@ -513,7 +511,7 @@ void abi_ObjectFlagsRecordSetup(void)
     cpu.p |= P_M;
     cyc(22);
     handler08(0xCD7E);
-    (cyc(76), flags_record_tail());
+    flags_record_tail();
 }
 
 /*

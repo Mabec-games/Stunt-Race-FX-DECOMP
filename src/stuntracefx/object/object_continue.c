@@ -16,13 +16,15 @@ static void continue_at(uint16_t addr_at, uint16_t bank_at)
     uint8_t bank;
     uint16_t addr;
 
+    cyc(30);
     bank = rd8(b | (uint16_t)(bank_at + cpu.x));
     addr = rd16(b | (uint16_t)(addr_at + cpu.x));
-    if (!bank && !addr) {
+    if (!bank && (cyc(16), !addr)) {
+        cyc(56);
         cpu.a = 0x0000;
         cpu.p = nz8((uint8_t)(cpu.p | P_M), 0x00);
         return;
-    }
+    } else { cyc(110); }
     cpu.a = (uint16_t)(addr - 1);
     cpu.p = (uint8_t)(nz16(cpu.p, cpu.a) | P_M);
     jump_routine((uint32_t)bank << 16 | addr);
@@ -46,7 +48,6 @@ void ObjectContinue1A(void)
 
 void abi_ObjectContinue1A(void)
 {
-    cyc(30);
     continue_at(0x201A, 0x201C);
 }
 
@@ -64,7 +65,6 @@ void ObjectContinue1D(void)
 
 void abi_ObjectContinue1D(void)
 {
-    cyc(30);
     continue_at(0x201D, 0x201F);
 }
 
@@ -80,14 +80,16 @@ void ObjectStubReturn(void)
 
 void abi_ObjectStubReturn(void)
 {
-}
+cyc(44);
+    }
 
 /* The +$39 setters: the byte written (8-bit), then ObjectContinue1A. */
 static void set_39(uint8_t v)
 {
+    cyc(44);
     wr8((uint32_t)cpu.db << 16 | (uint16_t)(0x2039 + cpu.x), v);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cyc(92);
+    cyc(62);
     continue_at(0x201A, 0x201C);
 }
 
@@ -102,7 +104,6 @@ void ObjectStep39Continue(void)
     cyc(30);
     uint8_t v = rd8((uint32_t)cpu.db << 16 | (uint16_t)(0x2039 + cpu.x));
 
-    cyc(44);
     set_39((uint8_t)(v + 1));
 }
 
@@ -124,7 +125,7 @@ void ObjectSet39To0Continue(void)
 
 void abi_ObjectSet39To0Continue(void)
 {
-    cyc(46);
+    cyc(2);
     set_39(0x00);
 }
 
@@ -141,7 +142,7 @@ void ObjectSet39To1Continue(void)
 
 void abi_ObjectSet39To1Continue(void)
 {
-    cyc(46);
+    cyc(2);
     set_39(0x01);
 }
 
@@ -158,7 +159,7 @@ void ObjectSet39To2Continue(void)
 
 void abi_ObjectSet39To2Continue(void)
 {
-    cyc(46);
+    cyc(2);
     set_39(0x02);
 }
 
@@ -175,7 +176,7 @@ void ObjectSet39To3Continue(void)
 
 void abi_ObjectSet39To3Continue(void)
 {
-    cyc(46);
+    cyc(2);
     set_39(0x03);
 }
 
@@ -192,7 +193,7 @@ void ObjectSet39To4Continue(void)
 
 void abi_ObjectSet39To4Continue(void)
 {
-    cyc(46);
+    cyc(2);
     set_39(0x04);
 }
 
@@ -209,6 +210,6 @@ void ObjectSet39To5Continue(void)
 
 void abi_ObjectSet39To5Continue(void)
 {
-    cyc(46);
+    cyc(2);
     set_39(0x05);
 }

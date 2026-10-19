@@ -22,6 +22,7 @@ static void crash_body(uint8_t bank, uint16_t code)
 {
     uint16_t a, step;
 
+    cyc(70);
     wr16((uint32_t)bank << 16 | (uint16_t)CRASH_CODE, code);
     /* Through the caller's data bank: from bank $7E or $7F these four land
        in work RAM, and interrupts and HDMA stay on. */
@@ -97,7 +98,7 @@ static void crash_body(uint8_t bank, uint16_t code)
     cyc(40);
     wr8(HDMAEN, 0x02);
     for (;;) {
-        cyc(719986);
+        cyc(92);
         delay_turns(20000);
         a = rd16(CRASH_CODE);
         cyc(24);
@@ -138,7 +139,6 @@ void CrashWhite(uint8_t bank)
 {
     cyc(70);
     wr16((uint32_t)bank << 16 | CRASH_COLOUR, 0x7FFF);
-    cyc(70);
     crash_body(bank, 0x00AA);
 }
 
@@ -159,7 +159,6 @@ void CrashGreen(uint8_t bank)
 {
     cyc(70);
     wr16((uint32_t)bank << 16 | CRASH_COLOUR, 0x03E0);
-    cyc(70);
     crash_body(bank, 0x00E2);
 }
 

@@ -27,14 +27,22 @@ static void halt(void)
 {
     uint16_t y = 0;
 
+    cyc(70);
     wr8(INIDISP, 0x0F);
+    cyc(48);
     wr8(HDMAEN, 0x00);
+    cyc(32);
     wr8(NMITIMEN, 0x00);
+    cyc(32);
     wr8(TM, 0x00);
     for (;;) {
+        cyc(210);
         wr8(CGADD, 0x00);
+        cyc(32);
         wr8(CGADD, 0x00);
+        cyc(46);
         wr8(CGDATA, (uint8_t)y);
+        cyc(32);
         wr8(CGDATA, (uint8_t)y);
         y = (uint16_t)(y + 1);
     }
@@ -42,7 +50,7 @@ static void halt(void)
 
 void SystemHalt(void)
 {
-    (cyc(70), halt());
+    halt();
 }
 
 void abi_SystemHalt(void)
@@ -59,7 +67,7 @@ void abi_SystemHalt(void)
  */
 void SystemHaltSpawn(void)
 {
-    (cyc(70), halt());
+    halt();
 }
 
 void abi_SystemHaltSpawn(void)
@@ -106,6 +114,7 @@ void DebugByteHalt(void)
     cpu.db = 0x03;
     cpu.p = nz8(cpu.p, cpu.db);
     b = (uint32_t)cpu.db << 16;
+    cyc(94);
     for (;;) {
         cyc(70);
         wr8(INIDISP, 0x0F);
@@ -121,9 +130,9 @@ void DebugByteHalt(void)
         wr8(b | 0x0307, 0x00);
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x69);
         cpu.p = nz8(cpu.p, 0x69);
-        abi_DebugPrintHexByte();
+        (cyc(8), abi_DebugPrintHexByte());
         op_sep(P_M);
-        cyc(344);
+        cyc(46);
         wr8(b | 0x0357, 0x00);
         op_rep(P_M);
         cyc(24);
@@ -151,5 +160,5 @@ void DebugByteHalt(void)
 
 void abi_DebugByteHalt(void)
 {
-    (cyc(94), DebugByteHalt());
+    DebugByteHalt();
 }

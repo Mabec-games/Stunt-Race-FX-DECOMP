@@ -18,18 +18,23 @@ static uint8_t smul(uint8_t a, uint32_t at)
     uint8_t neg = 0, b, h;
 
     if (a & 0x80) {
+        cyc(36);
         a = (uint8_t)-a;
         neg ^= 1;
     }
+    cyc(54);
     wr8(WRMPYA, (uint8_t)(a << 1));
+    cyc(24);
     b = rd8(at);
     if (b & 0x80) {
+        cyc(36);
         b = (uint8_t)-b;
         neg ^= 1;
     }
+    cyc(40);
     wr8(WRMPYB, b);
     h = rd8(RDMPYH);
-    return neg ? (uint8_t)-h : h;
+    return neg ? (uint8_t)-h : (cyc(24), h);
 }
 
 /*
@@ -44,18 +49,25 @@ static uint8_t rotate8(uint32_t xa, uint32_t va, uint32_t out, uint32_t out2)
 {
     uint8_t t, r, hi;
 
+    cyc(16);
     t = rd8(xa);
     r = smul(t, 0x000625);
+    cyc(30);
     wr8(out, r);
+    cyc(16);
     t = rd8(va);
     r = smul(t, 0x000624);
+    cyc(58);
     t = rd8(out);
     r = (uint8_t)(r + t);
+    cyc(16);
     wr8(out, r);
-    wr8(out + 1, (r & 0x80) ? 0xFF : 0x00);
+    cyc(54);
+    wr8(out + 1, (r & 0x80) ? (cyc(10), 0xFF) : 0x00);
     t = rd8(xa);
     r = smul(t, 0x000624);
     wr8(out2, (uint8_t)-r);
+    cyc(16);
     t = rd8(va);
     r = smul(t, 0x000625);
     t = rd8(out2);
@@ -63,7 +75,7 @@ static uint8_t rotate8(uint32_t xa, uint32_t va, uint32_t out, uint32_t out2)
     wr8(out2, r);
     hi = (r & 0x80) ? 0xFF : 0x00;
     wr8(out2 + 1, hi);
-    return hi ? hi : r;
+    return hi ? (cyc(194), hi) : (cyc(172), r);
 }
 
 /*
@@ -82,6 +94,7 @@ uint8_t RotateXZ(uint8_t angle)
 {
     uint8_t i = (uint8_t)-angle, c, s;
 
+    cyc(292);
     c = rd8(0x00973E + i);
     wr8(0x000625, c);
     s = rd8(0x0096FE + i);
@@ -112,6 +125,7 @@ uint8_t RotateXZFrom08(uint8_t angle)
 {
     uint8_t c, s;
 
+    cyc(324);
     c = rd8(0x00973E + angle);
     wr8(0x000625, c);
     s = rd8(0x0096FE + angle);
@@ -140,6 +154,7 @@ uint8_t RotateXY(uint8_t angle)
 {
     uint8_t c, s;
 
+    cyc(324);
     c = rd8(0x00973E + angle);
     wr8(0x000625, c);
     s = rd8(0x0096FE + angle);
@@ -174,29 +189,41 @@ void abi_MulWordByte(void)
     uint8_t a, m, y;
     uint16_t w, n;
 
+    cyc(16);
     wr8(0x00006C, 0x00);
+    cyc(16);
     wr8(0x00006D, 0x00);
+    cyc(16);
     wr8(0x00006B, 0x00);
+    cyc(16);
     a = rd8(0x000069);
     cpu.p = nz8(cpu.p, a);
     if (a & 0x80)
         goto neg_s;
     cpu.p = (uint8_t)((cpu.p & ~P_C) | (a >> 7));
     a = (uint8_t)(a << 1);
+    cyc(54);
     wr8(b | 0x4202, a);
+    cyc(16);
     a = rd8(0x000068);
     cpu.p = nz8(cpu.p, a);
     if (a & 0x80)
         goto pos_s_neg_v;
+    cyc(32);
     a = rd8(0x000067);
+    cyc(24);
     wr8(b | 0x4203, a);
+    cyc(44);
     a = rd8(0x000068);
     goto add;
 pos_s_neg_v:
     cpu.p |= P_C;
+    cyc(68);
     m = rd8(0x000067);
     a = op_sbc8(0x00, m, &cpu.p);
+    cyc(8);
     wr8(b | 0x4203, a);
+    cyc(32);
     m = rd8(0x000068);
     a = op_sbc8(0x00, m, &cpu.p);
     goto sub;
@@ -204,48 +231,70 @@ neg_s:
     a = (uint8_t)(~a + 1);
     cpu.p = (uint8_t)((cpu.p & ~P_C) | (a >> 7));
     a = (uint8_t)(a << 1);
+    cyc(90);
     wr8(b | 0x4202, a);
+    cyc(16);
     a = rd8(0x000068);
     cpu.p = nz8(cpu.p, a);
     if (a & 0x80)
         goto neg_s_neg_v;
+    cyc(32);
     a = rd8(0x000067);
+    cyc(24);
     wr8(b | 0x4203, a);
+    cyc(58);
     a = rd8(0x000068);
     goto sub;
 neg_s_neg_v:
     cpu.p |= P_C;
+    cyc(68);
     m = rd8(0x000067);
     a = op_sbc8(0x00, m, &cpu.p);
+    cyc(8);
     wr8(b | 0x4203, a);
+    cyc(60);
     m = rd8(0x000068);
     a = op_sbc8(0x00, m, &cpu.p);
     goto add;
 sub:
+    cyc(24);
     y = rd8(b | 0x4217);
+    cyc(24);
     wr8(b | 0x4203, a);
+    cyc(16);
     wr8(0x00006A, y);
+    cyc(38);
     w = rd16(0x00006C);
+    cyc(38);
     n = rd16(b | 0x4216);
     cpu.p |= P_C;
     w = op_sbc16(w, n, &cpu.p);
+    cyc(24);
     n = rd16(0x00006A);
     cpu.p |= P_C;
     w = op_sbc16(w, n, &cpu.p);
     goto store;
 add:
+    cyc(48);
     y = rd8(b | 0x4217);
+    cyc(24);
     wr8(b | 0x4203, a);
+    cyc(16);
     wr8(0x00006A, y);
+    cyc(38);
     w = rd16(0x00006C);
+    cyc(24);
     n = rd16(b | 0x4216);
     cpu.p &= (uint8_t)~P_C;
     w = op_adc16(w, n, &cpu.p);
+    cyc(30);
     n = rd16(0x00006A);
     cpu.p &= (uint8_t)~P_C;
     w = op_adc16(w, n, &cpu.p);
 store:
+    cyc(34);
     wr16(0x00006A, w);
+    cyc(64);
     cpu.a = w;
     cpu.y = y;
     cpu.p |= P_M;
@@ -267,6 +316,7 @@ static uint16_t mul_at(uint16_t v, uint16_t f)
 {
     uint8_t t;
 
+    cyc(16);
     t = rd8(v);
     cyc(16);
     wr8(0x000067, t);
@@ -289,37 +339,56 @@ static void rotate_wide(uint8_t i, uint16_t xa, uint16_t out)
 {
     uint8_t t, v;
 
+    cyc(186);
     t = rd8(0x0096FE + i);
     wr8(0x0005F6, t);
     t = rd8(0x00973E + i);
     wr8(0x0005F7, t);
     mul_at(xa, 0x05F6);
+    cyc(60);
     t = rd8(0x00006A);
+    cyc(24);
     wr8(0x0005F2, t);
+    cyc(16);
     t = rd8(0x00006B);
+    cyc(24);
     wr8(0x0005F3, t);
     mul_at(0x0094, 0x05F7);
     cpu.p &= (uint8_t)~P_C;
+    cyc(60);
     t = rd8(0x00006A);
+    cyc(38);
     v = rd8(0x0005F2);
     t = op_adc8(t, v, &cpu.p);
+    cyc(24);
     wr8(0x0005F2, t);
+    cyc(16);
     t = rd8(0x00006B);
+    cyc(24);
     v = rd8(0x0005F3);
     t = op_adc8(t, v, &cpu.p);
+    cyc(24);
     wr8(0x0005F3, t);
     mul_at(0x0094, 0x05F6);
+    cyc(60);
     t = rd8(0x00006A);
+    cyc(16);
     wr8(out, t);
+    cyc(16);
     t = rd8(0x00006B);
+    cyc(16);
     wr8((uint16_t)(out + 1), t);
     mul_at(xa, 0x05F7);
     cpu.p |= P_C;
+    cyc(60);
     t = rd8(0x00006A);
+    cyc(30);
     v = rd8(out);
     t = op_sbc8(t, v, &cpu.p);
     wr8(out, t);
+    cyc(16);
     t = rd8(0x00006B);
+    cyc(16);
     v = rd8((uint16_t)(out + 1));
     t = op_sbc8(t, v, &cpu.p);
     wr8((uint16_t)(out + 1), t);
@@ -356,13 +425,12 @@ void abi_RotateXZWide(void)
     }
     op_sep(P_X);
     cpu.db = 0x00;
-    cyc(186);
     rotate_wide((uint8_t)cpu.a, 0x0002, 0x0004);
     cpu.db = db;
     op_plp(p);
     cpu.y = (p & P_X) ? rd8(cyc_then(30, 0x000040)) : rd16(cyc_then(30, 0x000040));
     cpu.x = (p & P_X) ? rd8(cyc_then(16, 0x00003E)) : rd16(cyc_then(16, 0x00003E));
-    cpu.p = (p & P_X) ? nz8(p, (uint8_t)cpu.x) : nz16(p, cpu.x);
+    cpu.p = (p & P_X) ? (cyc(44), nz8(p, (uint8_t)cpu.x)) : (cyc(44), nz16(p, cpu.x));
 }
 
 /*
@@ -389,13 +457,13 @@ void abi_RotateXZWideFrom08(void)
         cyc(16);
         wr16(0x000040, cpu.y);
     }
+    cyc(30);
     op_sep(P_X);
     cpu.db = 0x00;
-    cyc(216);
     rotate_wide((uint8_t)(~(uint8_t)cpu.a + 1), 0x0008, 0x000A);
     cpu.db = db;
     op_plp(p);
     cpu.y = (p & P_X) ? rd8(cyc_then(30, 0x000040)) : rd16(cyc_then(30, 0x000040));
     cpu.x = (p & P_X) ? rd8(cyc_then(16, 0x00003E)) : rd16(cyc_then(16, 0x00003E));
-    cpu.p = (p & P_X) ? nz8(p, (uint8_t)cpu.x) : nz16(p, cpu.x);
+    cpu.p = (p & P_X) ? (cyc(44), nz8(p, (uint8_t)cpu.x)) : (cyc(44), nz16(p, cpu.x));
 }

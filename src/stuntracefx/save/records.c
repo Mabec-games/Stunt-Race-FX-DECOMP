@@ -19,6 +19,7 @@ static uint8_t sum5(uint32_t base, uint8_t *x, uint8_t *p)
         a = (uint8_t)s;
         (*x)++;
     }
+    cyc(28);
     *p = (uint8_t)((*p & ~P_N) | P_Z);
     return a;
 }
@@ -79,12 +80,14 @@ void abi_SaveSumsRecordsB(void)
     unsigned i;
 
     op_sep(P_M | P_X);
+    cyc(62);
     wr8(0x0000F1, 0x00);
     for (i = 0; i < 3; i++) {
+        cyc(62);
         cpu.x = (uint16_t)(i * 5);
         cpu.p = nz8(cpu.p, (uint8_t)cpu.x);
-        (cyc(62), abi_SaveRecordSumB());
-        cyc(100);
+        abi_SaveRecordSumB();
+        cyc(72);
         wr8((uint32_t)(0x70FC43 + i), (uint8_t)cpu.a);
     }
     abi_SaveRecordSumB();
@@ -102,11 +105,11 @@ static uint8_t check_records(uint8_t bank, uint16_t base, uint16_t sums, unsigne
     unsigned y;
 
     for (y = 0; y < count; y++, x = (uint8_t)(x + 5)) {
+        cyc(212);
         uint8_t xs = x;
 
-        cyc(212);
         a = sum(&xs, p);
-        cyc(148);
+        cyc(120);
         if (a == rd8(b | (uint16_t)(sums + y))) {
             cyc(40);
             a = rd8(b | (uint16_t)(base + x));
@@ -127,6 +130,7 @@ static uint8_t check_records(uint8_t bank, uint16_t base, uint16_t sums, unsigne
         wr8(b | (uint16_t)(sums + y), 0xFE);
         a = 0xFE;
     }
+    cyc(136);
     return a;
 }
 
@@ -142,7 +146,6 @@ static uint8_t check_records(uint8_t bank, uint16_t base, uint16_t sums, unsigne
  */
 uint8_t SaveRecordsCheckA(uint8_t bank, uint8_t *p)
 {
-    cyc(136);
     return check_records(bank, 0xFC4A, 0xFC46, 4, SaveRecordSumA, p);
 }
 
@@ -167,7 +170,6 @@ void abi_SaveRecordsCheckA(void)
  */
 uint8_t SaveRecordsCheckB(uint8_t bank, uint8_t *p)
 {
-    cyc(52);
     return check_records(bank, 0xFC5E, 0xFC43, 3, SaveRecordSumB, p);
 }
 
@@ -193,10 +195,13 @@ static uint8_t add8(uint8_t a, uint8_t m, uint8_t *p)
 /* One byte of a check's running sum: the byte at `at` added to $F1. */
 static void sum_byte(uint32_t at, uint8_t *p)
 {
+    cyc(44);
     uint8_t v = rd8(at), s;
 
+    cyc(16);
     s = rd8(0x0000F1);
     s = add8(v, s, p);
+    cyc(16);
     wr8(0x0000F1, s);
 }
 
@@ -221,46 +226,69 @@ void SaveBlocksCheck(uint8_t bank, uint8_t *p)
     uint8_t v, s, blk;
     unsigned i;
 
+    cyc(108);
     wr16(0x0000F3, 0x000C);
     do {
+        cyc(38);
         w = rd16(0x0000F3);
         base = (uint16_t)(w << 1);
+        cyc(44);
         w = rd16(0x0000F3);
         base = (uint16_t)((uint16_t)(base + w) << 4);
+        cyc(86);
         wr16(0x0000F5, base);
+        cyc(16);
         wr16(0x0000F1, 0x0000);
         for (i = 0, x = base; i < 12; i++, x += 4) {
+            cyc(46);
             sum_byte(b | (uint16_t)(0xFCD0 + x), p);
+            cyc(30);
             v = rd8(b | (uint16_t)(0xFCD1 + x));
             if (v >= 0x41)
                 goto reset;
+            cyc(62);
             s = rd8(0x0000F1);
             s = add8(v, s, p);
+            cyc(16);
             wr8(0x0000F1, s);
             sum_byte(b | (uint16_t)(0xFCD2 + x), p);
             sum_byte(b | (uint16_t)(0xFCD3 + x), p);
         }
+        cyc(102);
         x = rd16(0x0000F3);
+        cyc(30);
         v = rd8(b | (uint16_t)(0xFC33 + x));
+        cyc(16);
         s = rd8(0x0000F1);
         if (v == s)
             goto next;
 reset:
+        cyc(54);
         x = rd16(0x0000F5);
         for (i = 0; i < 12; i++, x += 4) {
+            cyc(138);
             wr8(b | (uint16_t)(0xFCD0 + x), 0x00);
+            cyc(30);
             wr8(b | (uint16_t)(0xFCD1 + x), 0x00);
+            cyc(46);
             wr8(b | (uint16_t)(0xFCD2 + x), 0xFF);
+            cyc(30);
             wr8(b | (uint16_t)(0xFCD3 + x), 0xFF);
         }
+        cyc(102);
         x = rd16(0x0000F3);
+        cyc(46);
         wr8(b | (uint16_t)(0xFC33 + x), 0xE8);
 next:
+        cyc(32);
         blk = rd8(0x0000F3);
+        cyc(6);
         wr8(0x0000F3, (uint8_t)(blk + 1));
+        cyc(16);
         blk = rd8(0x0000F3);
     } while (blk < 0x10);
-}
+cyc(52);
+    }
 
 void abi_SaveBlocksCheck(void)
 {
@@ -297,47 +325,69 @@ uint8_t SaveTablesCheck(uint8_t bank, uint8_t *p)
     uint16_t x;
     int k, i;
 
+    cyc(238);
     wr8(0x0000F4, 0x00);
+    cyc(16);
     wr8(0x0000F6, 0x00);
     for (k = 2; k >= 0; k--) {
+        cyc(122);
         wr8(0x0000F3, first[k]);
+        cyc(56);
         wr8(0x0000F5, second[k]);
+        cyc(16);
         wr8(0x0000F1, 0x00);
+        cyc(40);
         x = rd16(0x0000F3);
         for (i = 0; i < 12; i++, x += 2) {
+            cyc(108);
             v = rd8(b | (uint16_t)(0xFC88 + x));
+            cyc(16);
             sum = rd8(0x0000F1);
             sum = add8(v, sum, p);
+            cyc(16);
             wr8(0x0000F1, sum);
+            cyc(30);
             v = rd8(b | (uint16_t)(0xFC89 + x));
             if (v < 0x1F) {
+                cyc(52);
                 *p &= (uint8_t)~P_C;
                 goto reset;
             }
+            cyc(62);
             sum = rd8(0x0000F1);
             sum = add8(v, sum, p);
+            cyc(16);
             wr8(0x0000F1, sum);
         }
+        cyc(74);
         x = rd16(0x0000F5);
         for (i = 0; i < 9; i++, x++) {
+            cyc(94);
             v = rd8(b | (uint16_t)(0xFC6D + x));
+            cyc(16);
             sum = rd8(0x0000F1);
             sum = add8(v, sum, p);
+            cyc(16);
             wr8(0x0000F1, sum);
         }
+        cyc(110);
         a = rd8(b | (uint16_t)(0xFC2D + k));
+        cyc(16);
         sum = rd8(0x0000F1);
         *p = (uint8_t)((*p & ~P_C) | (a >= sum ? P_C : 0));
         if (a == sum)
-            continue;
+            { cyc(38); continue; }
 reset:
+        cyc(84);
         x = rd16(0x0000F3);
         for (i = 0; i < 24; i++, x++)
-            wr8(b | (uint16_t)(0xFC88 + x), 0xFF);
+            { cyc(80); wr8(b | (uint16_t)(0xFC88 + x), 0xFF); }
+        cyc(60);
         x = rd16(0x0000F5);
         for (i = 0; i < 9; i++, x++)
-            wr8(b | (uint16_t)(0xFC6D + x), 0x00);
+            { cyc(70); wr8(b | (uint16_t)(0xFC6D + x), 0x00); }
         a = 0xE8;
+        cyc(128);
         wr8(0x70FC2D + k, a);
     }
     return a;
@@ -394,57 +444,85 @@ static void save_blocks_validate(uint8_t bank, uint8_t *p, int from_bad)
     int i, j;
 
     if (from_bad)
-        goto reset;
+        { cyc(28); goto reset; }
+    cyc(180);
     wr16(0x0000F3, 0x0000);
     for (;;) {
+        cyc(62);
         w = rd16(0x0000F3);
         x = (uint16_t)(w << 2);
+        cyc(96);
         v = rd8(0x70FFD0 + x);
+        cyc(16);
         wr8(0x0000F1, v);
         for (j = 1; j < 4; j++) {
+            cyc(32);
             v = rd8(0x70FFD0 + x + j);
+            cyc(30);
             s = rd8(0x0000F1);
             s = add8(v, s, p);
             if (j < 3)
-                wr8(0x0000F1, s);
+                { cyc(16); wr8(0x0000F1, s); }
         }
+        cyc(62);
         wr16(0x0000F1, s);
+        cyc(16);
         w = rd16(0x0000F3);
         x = (uint16_t)(w << 1);
+        cyc(44);
         w = rd16(0x0000F3);
         x = (uint16_t)((uint16_t)(x + w) << 4);
+        cyc(86);
         wr16(0x0000F5, x);
         for (i = 0; i < 12; i++, x += 4) {
+            cyc(60);
             for (j = 0; j < 4; j++) {
+                cyc(30);
                 v = rd8(b | (uint16_t)(0xFCD0 + x + j));
                 if (entry_byte_bad(v, j))
-                    goto reset;
+                    { cyc(82); goto reset; }
+                cyc(118);
                 s = rd8(0x0000F1);
                 s = add8(v, s, p);
+                cyc(16);
                 wr8(0x0000F1, s);
             }
-        }
+        cyc(32);
+            }
+        cyc(70);
         x = rd16(0x0000F3);
+        cyc(30);
         v = rd8(b | (uint16_t)(0xFC33 + x));
+        cyc(16);
         s = rd8(0x0000F1);
         if (v != s)
             goto reset;
+        cyc(32);
         blk = rd8(0x0000F3);
+        cyc(6);
         wr8(0x0000F3, (uint8_t)(blk + 1));
+        cyc(16);
         blk = rd8(0x0000F3);
         if (blk >= 0x0C)
-            return;
+            { cyc(80); return; } else { cyc(32); }
         continue;
 reset:
+        cyc(92);
         wr8(0x001FFE, 0x11);
+        cyc(66);
         x = rd16(0x0000F5);
+        cyc(12);
         for (i = 0; i < 48; i++, x++)
-            wr8(b | (uint16_t)(0xFCD0 + x), 0xFF);
+            { cyc(80); wr8(b | (uint16_t)(0xFCD0 + x), 0xFF); }
+        cyc(60);
         x = rd16(0x0000F3);
+        cyc(38);
         w = rd16(0x0000F3);
         y = (uint16_t)((w & 0x00FF) << 2);
+        cyc(104);
         for (j = 0; j < 4; j++)
-            wr8(b | (uint16_t)(0xFFD0 + y + j), 0xFF);
+            { cyc(30); wr8(b | (uint16_t)(0xFFD0 + y + j), 0xFF); }
+        cyc(46);
         wr8(b | (uint16_t)(0xFC33 + x), 0xCC);
     }
 }
@@ -480,7 +558,6 @@ void abi_SaveBlocksFourthBad(void)
     uint8_t p = cpu.p;
 
     cpu.s++;
-    cyc(28);
     save_blocks_validate(cpu.db, &p, 1);
     cpu.a = 0x020C;
     cpu.x = 0x000B;
@@ -629,7 +706,7 @@ void abi_RecordsUnpackCourse(void)
         cpu.x = x;
         cyc(32);
         cpu.a = rd16(0x70FC88 + (uint16_t)(x + 2 * i));
-        (cyc(78), abi_TimeUnpackBcd());
+        abi_TimeUnpackBcd();
         cpu.p |= P_M | P_X;
         cpu.x &= 0x00FF;
         cpu.y &= 0x00FF;
@@ -652,6 +729,7 @@ void abi_RecordsUnpackCourse(void)
         cyc(24);
         wr8(b | (uint16_t)(0x10CF + i), (uint8_t)a);
     }
+    cyc(110);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | (uint8_t)a);
     cpu.p = p;
 }
@@ -666,7 +744,7 @@ void abi_RecordsUnpackCourse(void)
 void abi_RecordsUnpackCourseTotals(void)
 {
     abi_RecordsUnpackCourse();
-    (cyc(152), abi_TimeTotalsSum());
+    abi_TimeTotalsSum();
 }
 
 /*
@@ -679,7 +757,7 @@ void abi_RecordsUnpackCourseTotals(void)
 void abi_RecordsUnpackCourseRunning(void)
 {
     (cyc(62), abi_RecordsUnpackCourse());
-    (cyc(110), abi_TimeRunningTotals());
+    abi_TimeRunningTotals();
 }
 
 /*
@@ -692,7 +770,7 @@ void abi_RecordsUnpackCourseRunning(void)
 void abi_RecordsUnpackCourseRunningB(void)
 {
     abi_RecordsUnpackCourse();
-    (cyc(110), abi_TimeRunningTotals());
+    abi_TimeRunningTotals();
 }
 
 /* The records screen's rows: direct page $F2 = the time's offset in the
@@ -723,8 +801,10 @@ void abi_RecordNameLetters(void)
 
     for (i = 0; i < 3; i++) {
         cpu.a = (uint16_t)(((v >> shift[i]) & 0x001F) + 0x000A);
+        cyc(190);
         wr8(b | (uint16_t)(0x039F + i * 4 + cpu.y), (uint8_t)cpu.a);
     }
+    cyc(64);
     cpu.p &= (uint8_t)~(P_N | P_Z | P_C | P_V | P_M);
 }
 
@@ -753,6 +833,7 @@ void abi_RecordTagCarSet(void)
         { cyc(86); v = 0x03; }
     else
         { cyc(80); v = 0x00; }
+    cyc(118);
     cpu.p = (uint8_t)((nz8(cpu.p, v) & ~P_C) | (t >= 0x0C ? P_C : 0));
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     op_rep(P_M);
@@ -766,10 +847,8 @@ static void record_time_unpack(void)
     uint16_t y = cpu.y;
 
     abi_TimeUnpackBcdLong();
-    cyc(146);
-    wr16(dp(0xF1), cpu.y);
-    cyc(16);
-    wr16(dp(0xF3), cpu.x);
+    wr16(dp(0xF1), cyc_then(146, cpu.y));
+    wr16(dp(0xF3), cyc_then(16, cpu.x));
     cpu.y = y;
     cpu.p = nz16(cpu.p, y);
     op_sep(P_M);
@@ -783,6 +862,7 @@ static void large_digit(uint32_t b, uint16_t at, uint8_t d)
     uint8_t p = (uint8_t)(cpu.p & ~P_C), v;
 
     v = op_adc8(d, 0x50, &p);
+    cyc(76);
     wr8(b | (uint16_t)(at + cpu.y), v);
     v = op_adc8(v, 0x10, &p);
     cyc(46);
@@ -809,23 +889,17 @@ void abi_RecordTimeDigitsLarge(void)
     uint8_t p = cpu.p, v;
 
     (cyc(22), record_time_unpack());
-    cyc(134);
+    cyc(58);
     large_digit(b, 0x0387, (uint8_t)(cpu.a & 0x0F));
-    cyc(16);
-    v = rd8(dp(0xF3));
-    cyc(116);
+    v = rd8(cyc_then(16, dp(0xF3)));
+    cyc(40);
     large_digit(b, 0x0397, (uint8_t)(v >> 4));
-    cyc(16);
-    v = rd8(dp(0xF3));
-    cyc(76);
+    v = rd8(cyc_then(16, dp(0xF3)));
     large_digit(b, 0x039F, (uint8_t)(v & 0x0F));
-    cyc(16);
-    v = rd8(dp(0xF1));
-    cyc(116);
+    v = rd8(cyc_then(16, dp(0xF1)));
+    cyc(40);
     large_digit(b, 0x03AF, (uint8_t)(v >> 4));
-    cyc(16);
-    v = rd8(dp(0xF1));
-    cyc(76);
+    v = rd8(cyc_then(16, dp(0xF1)));
     large_digit(b, 0x03B7, (uint8_t)(v & 0x0F));
     op_plp(p);
 }
@@ -840,10 +914,9 @@ static void set_a8(uint8_t v)
 /* LDA dp, LSR x 4: the high nibble, C = bit 3. */
 static uint8_t dp_high_nibble(uint8_t a)
 {
-    uint8_t v = rd8(dp(a));
+    uint8_t v = rd8(cyc_then(16, dp(a)));
 
     cpu.p = (uint8_t)((cpu.p & ~P_C) | ((v >> 3) & 1));
-    cyc(86);
     set_a8((uint8_t)(v >> 4));
     return (uint8_t)(v >> 4);
 }
@@ -867,22 +940,18 @@ void abi_RecordTimeDigitsSmall(void)
 
     record_time_unpack();
     v = (uint8_t)(cpu.a & 0x0F);
+    set_a8(v);
     cyc(104);
-    set_a8(v);
     wr8(b | (uint16_t)(0x0383 + cpu.y), v);
-    cyc(16);
-    wr8(b | (uint16_t)(0x038B + cpu.y), dp_high_nibble(0xF3));
-    cyc(16);
-    v = (uint8_t)(rd8(dp(0xF3)) & 0x0F);
-    cyc(46);
+    wr8(b | (uint16_t)(0x038B + cpu.y), cyc_then(86, dp_high_nibble(0xF3)));
+    v = (uint8_t)(rd8(cyc_then(16, dp(0xF3))) & 0x0F);
     set_a8(v);
+    cyc(46);
     wr8(b | (uint16_t)(0x038F + cpu.y), v);
-    cyc(16);
-    wr8(b | (uint16_t)(0x0397 + cpu.y), dp_high_nibble(0xF1));
-    cyc(16);
-    v = (uint8_t)(rd8(dp(0xF1)) & 0x0F);
-    cyc(46);
+    wr8(b | (uint16_t)(0x0397 + cpu.y), cyc_then(86, dp_high_nibble(0xF1)));
+    v = (uint8_t)(rd8(cyc_then(16, dp(0xF1))) & 0x0F);
     set_a8(v);
+    cyc(46);
     wr8(b | (uint16_t)(0x039B + cpu.y), v);
     op_rep(P_M);
 }
@@ -909,31 +978,36 @@ void abi_RecordScoreDigits(void)
     unsigned i;
     static const uint16_t perfect[7] = {0x3619, 0x360E, 0x361B, 0x360F, 0x360E, 0x360C, 0x361D};
 
-    wr16(dp(0xF1), s);
+    wr16(dp(0xF1), cyc_then(16, s));
     op_cmp16(0x4000);
     op_sep(P_M);
     v = (uint8_t)(s & 0x0F);
     set_a8(v);
+    cyc(132);
     wr8(b | (uint16_t)(0x03A3 + cpu.y), v);
     if (s >= 0x4000) {
         v = (uint8_t)s;
         cpu.p = (uint8_t)((cpu.p & ~P_C) | ((v >> 3) & 1));
         set_a8((uint8_t)(v >> 4));
+        cyc(114);
         wr8(b | (uint16_t)(0x039F + cpu.y), (uint8_t)(v >> 4));
         op_rep(P_M);
         for (i = 0; i < 7; i++)
-            wr16(b | (uint16_t)(0x0383 + i * 4 + cpu.y), perfect[i]);
+            { cyc(54); wr16(b | (uint16_t)(0x0383 + i * 4 + cpu.y), perfect[i]); }
         cpu.a = perfect[6];
         cpu.p = nz16(cpu.p, cpu.a);
         return;
     }
-    wr8(b | (uint16_t)(0x039F + cpu.y), dp_high_nibble(0xF1));
-    v = (uint8_t)(rd8(dp(0xF2)) & 0x0F);
+    wr8(b | (uint16_t)(0x039F + cpu.y), cyc_then(86, dp_high_nibble(0xF1)));
+    v = (uint8_t)(rd8(cyc_then(16, dp(0xF2))) & 0x0F);
     set_a8(v);
+    cyc(46);
     wr8(b | (uint16_t)(0x038B + cpu.y), v);
-    wr8(b | (uint16_t)(0x0387 + cpu.y), dp_high_nibble(0xF2));
+    wr8(b | (uint16_t)(0x0387 + cpu.y), cyc_then(86, dp_high_nibble(0xF2)));
     set_a8(0xF0);
+    cyc(46);
     wr8(b | (uint16_t)(0x0382 + cpu.y), 0xF0);
+    cyc(30);
     wr8(b | (uint16_t)(0x039A + cpu.y), 0xF0);
     op_rep(P_M);
 }
@@ -953,17 +1027,13 @@ void abi_RecordLetterTile(void)
     uint16_t v;
 
     op_add16(0x000A);
-    cyc(54);
-    wr16(dp(0xF1), cpu.a);
+    wr16(dp(0xF1), cyc_then(54, cpu.a));
     op_and16(0x0030);
     op_asl16();
-    cyc(38);
-    wr16(dp(0xF3), cpu.a);
-    cyc(16);
-    op_lda16(dp(0xF1));
+    wr16(dp(0xF3), cyc_then(52, cpu.a));
+    op_lda16(cyc_then(16, dp(0xF1)));
     op_and16(0x000F);
-    cyc(38);
-    v = rd16(dp(0xF3));
+    v = rd16(cyc_then(38, dp(0xF3)));
     cpu.a |= v;
     op_add16(0x0050);
 }
@@ -1029,8 +1099,10 @@ void abi_RecordNameLettersSmall(void)
 
     for (i = 0; i < 3; i++) {
         cpu.a = (uint16_t)(((v >> shift[i]) & 0x001F) + 0x000A);
+        cyc(144);
         wr8(b | (uint16_t)(0x03B3 + i * 4 + cpu.y), (uint8_t)cpu.a);
     }
+    cyc(64);
     cpu.p &= (uint8_t)~(P_N | P_Z | P_C | P_V | P_M);
 }
 
@@ -1059,11 +1131,9 @@ void abi_RecordRowDraw(void)
     static const uint16_t hi[3] = {0x039B, 0x038F, 0x0383}, lo[3] = {0x039F, 0x0393, 0x0387};
 
     cpu.p &= (uint8_t)~(P_M | P_X);
-    cyc(38);
-    w = rd16(dp(0xF7));
+    w = rd16(cyc_then(38, dp(0xF7)));
     cpu.p &= (uint8_t)~P_C;
-    cyc(30);
-    w = op_adc16(w, rd16(dp(0xF2)), &cpu.p);
+    w = op_adc16(w, rd16(cyc_then(30, dp(0xF2))), &cpu.p);
     cpu.x = (uint16_t)(w & 0x00FF);
     y = (uint16_t)(cpu.y << 2);
     cpu.p = (uint8_t)((nz16(cpu.p, y) & ~P_C) | ((cpu.y & 0x4000) ? P_C : 0));
@@ -1094,10 +1164,8 @@ void abi_RecordRowDraw(void)
         wr8(b | (uint16_t)(lo[i] + y), (uint8_t)(t & 0x0F));
     }
     cpu.p &= (uint8_t)~P_M;
-    cyc(38);
-    w = rd16(dp(0xF5));
-    cyc(44);
-    w = (uint16_t)((w << 1) + rd16(dp(0xF5)));
+    w = rd16(cyc_then(38, dp(0xF5)));
+    w = (uint16_t)((w << 1) + rd16(cyc_then(44, dp(0xF5))));
     cyc(48);
     wr16(b | 0x10C3, (uint16_t)(w & 0x000F));
     cyc(48);
@@ -1105,12 +1173,11 @@ void abi_RecordRowDraw(void)
     cyc(24);
     wr16(b | 0x10C5, 0x0000);
     cpu.a = 0x0057;
-    (cyc(116), abi_SpritePieces3());
+    (cyc(30), abi_SpritePieces3());
     cpu.y = (uint16_t)(y + 4);
     cpu.p &= (uint8_t)~P_M;
-    cyc(84);
-    cpu.a = rd16(dp(0xF3));
-    (cyc(190), abi_RecordNameLetters());
+    cpu.a = rd16(cyc_then(68, dp(0xF3)));
+    abi_RecordNameLetters();
 }
 
 /* Row n (0-2): its name entry ($10CF + n * 3) to $F3-$F5, its screen Y
@@ -1124,8 +1191,7 @@ static void record_row(unsigned n)
     for (i = 0; i < 3; i++) {
         cyc(24);
         v = rd8(b | (uint16_t)(0x10CF + n * 3 + i));
-        cyc(16);
-        wr8(dp((uint8_t)(0xF3 + i)), v);
+        wr8(dp((uint8_t)(0xF3 + i)), cyc_then(16, v));
     }
     cyc(40);
     wr8(b | 0x10BF, (uint8_t)(0x7C + n * 0x11));
@@ -1140,7 +1206,7 @@ static void record_row_time(uint8_t t)
 {
     cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | t);
-    wr8(dp(0xF2), t);
+    wr8(dp(0xF2), cyc_then(160, t));
 }
 
 /*
@@ -1188,6 +1254,7 @@ void abi_RecordRow3(void)
  */
 void abi_RecordRow1Time0(void)
 {
+    cyc(8);
     record_row_time(0x00);
     record_row(0);
 }
@@ -1200,7 +1267,7 @@ void abi_RecordRow1Time0(void)
  */
 void abi_RecordRow2Time4(void)
 {
-    cyc(84);
+    cyc(46);
     record_row_time(0x0C);
     record_row(1);
 }
@@ -1213,7 +1280,7 @@ void abi_RecordRow2Time4(void)
  */
 void abi_RecordRow3Time8(void)
 {
-    cyc(84);
+    cyc(46);
     record_row_time(0x18);
     record_row(2);
 }
@@ -1245,6 +1312,7 @@ void abi_RecordRowsFirstTimes(void)
 
     for (n = 0; n < 3; n++) {
         record_row_time((uint8_t)(n * 3));
+        cyc(46);
         record_row(n);
     }
 }
@@ -1258,15 +1326,16 @@ static void compare_result(uint32_t b, uint8_t r)
 
     cpu.p |= P_M;
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | r);
+    cyc(80);
     wr8(b | 0x0FA3, r);
     cyc(24);
     v = rd8(b | 0x0E57);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.p = nz8(cpu.p, v);
     if (v)
-        { cyc(8); return; }
+        { cyc(22); return; } else { cyc(94); }
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x35);
-    (cyc(94), abi_SoundPort0QueuePush());
+    abi_SoundPort0QueuePush();
 }
 
 /*
@@ -1294,7 +1363,7 @@ void abi_RecordTimeCompare(void)
     cpu.a = w;
     op_cmp16(0xFFFF);
     if (w == 0xFFFF) {
-        cyc(104);
+        cyc(24);
         compare_result(b, 0x01);
         return;
     }
@@ -1320,20 +1389,17 @@ void abi_RecordTimeCompare(void)
         v = rd8(b | (uint16_t)(0x0F64 + cpu.x));
         cyc(30);
         m = rd8(b | (uint16_t)(0x0F69 + cpu.x));
-        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - m)) & ~P_C) | (v >= m ? (cyc(68), P_C) : 0));
+        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - m)) & ~P_C) | (v >= m ? (cyc(20), P_C) : (cyc(4), 0)));
         if (v < m) {
-            cyc(84);
             compare_result(b, 0xFF);
             return;
         }
         if (v != m) {
-            cyc(32);
             compare_result(b, 0x01);
             return;
-        }
+        } else { cyc(48); }
     }
     cpu.p = (uint8_t)((nz16(cpu.p, 0) & ~P_C) | P_C);
-    cyc(80);
     compare_result(b, 0x00);
 }
 
@@ -1347,25 +1413,28 @@ static void record_compare_by_mode(uint16_t x)
     uint8_t p0 = cpu.p;
 
     cpu.p &= (uint8_t)~(P_M | P_X);
-    cyc(186);
+    cyc(68);
     cpu.a = rd16(b | 0x0D2B);
     cpu.p = nz16(cpu.p, cpu.a);
     if (cpu.a == 0x0000) {
+        cyc(116);
         cpu.a = 0x0035;
         cpu.p = nz16(cpu.p, cpu.a);
-        (cyc(116), abi_SoundPort0QueuePush());
+        abi_SoundPort0QueuePush();
     } else {
+        cyc(104);
         op_cmp16(0x0002);
         if (cpu.a == 0x0002)
-            (cyc(104), abi_PlayerSound35());
+            abi_PlayerSound35();
         else {
+            cyc(18);
             cpu.x = x;
             cpu.p = nz16(cpu.p, x);
-            (cyc(122), abi_RecordTimeCompare());
+            abi_RecordTimeCompare();
         }
     cyc(34);
         }
-    cyc(72);
+    cyc(96);
     cpu.p = p0;
 }
 
@@ -1406,6 +1475,7 @@ static void swap_words(uint32_t b, uint16_t at, uint16_t x, int first_read_done,
         cyc(66);
         wr16(b | (uint16_t)(at + x), first);
     } else {
+        cyc(30);
         v = rd16(b | (uint16_t)(at + x));
         cyc(60);
         wr16(b | (uint16_t)(at + x), cyc_then(30, rd16(b | (uint16_t)(at + 2 + x))));
@@ -1437,23 +1507,30 @@ static void records_load_sorted(uint32_t b, uint16_t x, int descending)
     int i;
 
     for (y = 0; y < 0x0018; y = (uint16_t)(y + 2)) {
-        wr16(b | (uint16_t)(0x0F2B + y), rd16((uint32_t)(0x70FCD0 + x)));
-        wr16(b | (uint16_t)(0x0F43 + y), rd16((uint32_t)(0x70FCD2 + x)));
+        cyc(126);
+        wr16(b | (uint16_t)(0x0F2B + y), cyc_then(30, rd16((uint32_t)(0x70FCD0 + x))));
+        cyc(32);
+        wr16(b | (uint16_t)(0x0F43 + y), cyc_then(30, rd16((uint32_t)(0x70FCD2 + x))));
+        cyc(76);
         wr16(b | (uint16_t)(0x0F13 + y), rd16(b | (uint16_t)(0xB4EB + y)));
         x = (uint16_t)(x + 4);
     }
+    cyc(40);
     for (i = 0x14; i >= 0; i -= 2) {
+        cyc(48);
         x = (uint16_t)i;
         for (;;) {
+            cyc(120);
             v = rd16(b | (uint16_t)(0x0F2D + x));
+            cyc(30);
             c = rd16(b | (uint16_t)(0x0F2B + x));
-            if (descending ? v <= c : v >= c)
+            if (descending ? (cyc(16), v <= c) : v >= c)
                 break;
             swap_words(b, 0x0F2B, x, 1, v);
             swap_words(b, 0x0F13, x, 0, 0);
             swap_words(b, 0x0F43, x, 0, 0);
             if (x >= 0x0014)
-                break;
+                { cyc(24); break; }
             x = (uint16_t)(x + 2);
         }
     }
@@ -1463,18 +1540,21 @@ static void records_load_sorted(uint32_t b, uint16_t x, int descending)
 static uint16_t records_player_place(uint32_t b)
 {
     static const uint16_t tag_at[3] = {0x0F13, 0x0F15, 0x0F17};
+    cyc(126);
     uint16_t a = rd16(b | 0x10C7), v = 0, t;
     int i;
 
     for (i = 0; i < 3; i++) {
+        cyc(24);
         t = rd16(b | tag_at[i]);
         cpu.p = (uint8_t)((cpu.p & ~P_C) | (a >= t ? P_C : 0));     /* CMP */
         if (a == t) {
             v = (uint16_t)(i + 1);
             break;
-        }
+        } else { cyc(16); }
     }
     cpu.p = nz16(cpu.p, v);
+    cyc(70);
     wr16(b | 0x10C9, v);
     return v;
 }
@@ -1502,11 +1582,10 @@ void abi_RecordsLoadSpecialCourse(void)
     cpu.a = a;
     op_cmp16(0x000C);
     if (a < 0x000C)
-        { cyc(42); return; }
+        { cyc(42); return; } else { cyc(42); }
     op_cmp16(0x0010);
     if (a >= 0x0010)
         return;
-    cyc(42);
     records_load_sorted(b, records_offset(a), 1);
     cpu.a = records_player_place(b);
     cpu.x = 0xFFFE;
@@ -1540,7 +1619,7 @@ static void unpack_to(uint32_t b, uint16_t a, uint16_t to)
     cpu.p &= (uint8_t)~(P_M | P_X);
     cpu.a = a;
     cpu.p = nz16(cpu.p, a);
-    (cyc(78), abi_TimeUnpackBcd());
+    abi_TimeUnpackBcd();
     op_sep(P_M | P_X);
     cyc(110);
     wr8(b | to, (uint8_t)cpu.y);
@@ -1600,12 +1679,13 @@ void abi_RecordsLoadForCourse(void)
 
     cpu.p |= P_M;
     cpu.db = 0x07;
+    cyc(202);
     v = rd8(0x070000 | 0x0E3D);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     if (v < 0x0C)
-        (cyc(84), abi_RecordsLoadCourse());
+        { cyc(84); abi_RecordsLoadCourse(); }
     else if (v < 0x10)
-        (cyc(110), abi_RecordsLoadSpecialCourse()); else { cyc(6); }
+        { cyc(110); abi_RecordsLoadSpecialCourse(); } else { cyc(6); }
     cpu.db = db0;
     op_plp(p0);
 }
@@ -1654,8 +1734,7 @@ static void special_add8(uint8_t off)
     uint8_t v;
 
     cpu.p &= (uint8_t)~P_C;
-    cyc(30);
-    v = op_adc8((uint8_t)cpu.a, rd8(special_dp(off)), &cpu.p);
+    v = op_adc8((uint8_t)cpu.a, rd8(cyc_then(30, special_dp(off))), &cpu.p);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
 }
 
@@ -1675,10 +1754,12 @@ void abi_SpecialRecordsChecksum(void)
     uint32_t b = (uint32_t)cpu.db << 16;
     int i;
 
+    cyc(24);
     op_lda16(b | 0x0E3D);
     op_and16(0x00FF);
     op_cmp16(0x000C);
     if (cpu.p & P_C) {
+        cyc(80);
         op_sep(P_M);
         cpu.a &= 0xFF00;
         cpu.p = nz8(cpu.p, 0x00);
@@ -1687,32 +1768,38 @@ void abi_SpecialRecordsChecksum(void)
         op_asl16();
         op_tax16();
         op_sep(P_M);
+        cyc(124);
         op_lda8(SPECIAL_LAPS + cpu.x);
         for (i = 1; i < 4; i++) {
-            wr8(special_dp(0xF1), (uint8_t)cpu.a);
+            wr8(special_dp(0xF1), cyc_then(16, (uint8_t)cpu.a));
+            cyc(32);
             op_lda8(SPECIAL_LAPS + i + cpu.x);
             special_add8(0xF1);
         }
     }
-    wr8(special_dp(0xF1), (uint8_t)cpu.a);
+    wr8(special_dp(0xF1), cyc_then(38, (uint8_t)cpu.a));
     cpu.y = 0x0030;
     cpu.p = nz16(cpu.p, cpu.y);
+    cyc(48);
     cpu.x = rd16(b | 0x0D14);
     cpu.p = nz16(cpu.p, cpu.x);
     cpu.p &= (uint8_t)~P_C;
     do {
+        cyc(46);
         op_lda8(SPECIAL_SAVES + cpu.x);
         special_add8(0xF1);
-        wr8(special_dp(0xF1), (uint8_t)cpu.a);
+        wr8(special_dp(0xF1), cyc_then(16, (uint8_t)cpu.a));
         cpu.x++;
         cpu.p = nz16(cpu.p, cpu.x);
         cpu.y--;
         cpu.p = nz16(cpu.p, cpu.y);
     } while (cpu.y);
     op_sep(P_X);
+    cyc(68);
     cpu.x = rd8(b | 0x0E3D);
     cpu.p = nz8(cpu.p, (uint8_t)cpu.x);
-    op_lda8(special_dp(0xF1));
+    op_lda8(cyc_then(16, special_dp(0xF1)));
+    cyc(32);
     wr8(0x70FC33 + cpu.x, (uint8_t)cpu.a);
     op_rep(P_M | P_X);
 }
@@ -1720,6 +1807,7 @@ void abi_SpecialRecordsChecksum(void)
 /* Entry +a's word to entry +b (the course's entries, from X). */
 static void special_move(uint16_t from, uint16_t to)
 {
+    cyc(32);
     op_lda16(SPECIAL_SAVES + from + cpu.x);
     cyc(32);
     wr16(SPECIAL_SAVES + to + cpu.x, cpu.a);
@@ -1764,77 +1852,92 @@ void abi_SpecialRecordInsert(void)
     uint32_t b = (uint32_t)cpu.db << 16;
     uint16_t t = cpu.a, r1, r2, n;
 
+    cyc(54);
     op_lda16(b | 0x0D2B);
     if (!cpu.a) {
+        cyc(40);
         op_lda16(b | 0x0D48);
         op_asl16();
         op_and16(0x00FF);
         op_tax16();
+        cyc(50);
         wr16(b + 0x0F6E + cpu.x, cpu.a);
-    }
+    } else { cyc(22); }
+    cyc(24);
     op_lda16(b | 0x0E3D);
     op_and16(0x00FF);
     op_cmp16(0x000C);
     if (cpu.p & P_C)
         goto none;
-    wr16(special_dp(0xF1), cpu.a);
+    wr16(special_dp(0xF1), cyc_then(80, cpu.a));
     op_asl16();
-    op_add16(rd16(special_dp(0xF1)));
-    op_asl16();
-    op_asl16();
+    op_add16(rd16(cyc_then(44, special_dp(0xF1))));
     op_asl16();
     op_asl16();
-    wr16(special_dp(0xF1), cpu.a);
+    op_asl16();
+    op_asl16();
+    wr16(special_dp(0xF1), cyc_then(72, cpu.a));
+    cyc(24);
     wr16(b | 0x0D14, cpu.a);
     op_tay16();
+    cyc(38);
     op_lda16(b | 0x0D89);
     op_and16(0x00FF);
     op_cmp16(0x0004);
     if (cpu.p & P_C)
-        goto none;
-    wr16(special_dp(0xF3), cpu.a);
+        { cyc(6); goto none; }
+    wr16(special_dp(0xF3), cyc_then(74, cpu.a));
     op_asl16();
-    op_add16(rd16(special_dp(0xF3)));
+    op_add16(rd16(cyc_then(44, special_dp(0xF3))));
     op_asl16();
     op_asl16();
-    op_add16(rd16(special_dp(0xF1)));
+    op_add16(rd16(cyc_then(58, special_dp(0xF1))));
     op_tax16();
     wr16(special_dp(0xF7), cpu.a);
     cpu.a = t;
     cpu.p = nz16(cpu.p, t);
+    cyc(68);
     op_cmp16(rd16(SPECIAL_SAVES + cpu.x));
     if (!(cpu.p & P_C)) {
+        cyc(94);
         abi_RecordTagCar0();
+        cyc(42);
         special_move(4, 8);
         special_move(6, 10);
         special_move(0, 4);
         special_move(2, 6);
+        cyc(24);
         op_lda16(b | 0x0F11);
+        cyc(32);
         wr16(SPECIAL_SAVES + 2 + cpu.x, cpu.a);
         cpu.a = t;
         cpu.p = nz16(cpu.p, t);
+        cyc(68);
         wr16(SPECIAL_SAVES + cpu.x, t);
-        wr16(special_dp(0xF1), cpu.x);
+        wr16(special_dp(0xF1), cyc_then(16, cpu.x));
         cpu.x = 0x000C;
         cpu.p = nz16(cpu.p, cpu.x);
-        wr16(special_dp(0xF5), cpu.x);
+        wr16(special_dp(0xF5), cyc_then(40, cpu.x));
         cpu.x = cpu.y;
         cpu.p = nz16(cpu.p, cpu.x);
         do {
-            special_cpx(rd16(special_dp(0xF1)));
+            special_cpx(rd16(cyc_then(30, special_dp(0xF1))));
             if (!(cpu.p & P_Z)) {
+                cyc(48);
                 op_cmp16(rd16(SPECIAL_SAVES + cpu.x));
                 if (cpu.p & P_C)
-                    goto checksum;
-            }
+                    { cyc(36); goto checksum; }
+            } else { cyc(4); }
             cpu.x = (uint16_t)(cpu.x + 4);
             cpu.p = nz16(cpu.p, cpu.x);
-            n = (uint16_t)(rd16(special_dp(0xF5)) - 1);
-            wr16(special_dp(0xF5), n);
+            n = (uint16_t)(rd16(cyc_then(90, special_dp(0xF5))) - 1);
+            wr16(special_dp(0xF5), cyc_then(14, n));
             cpu.p = nz16(cpu.p, n);
         } while (n);
         r1 = special_pack(b, 0x0EF0);
+        cyc(56);
         r2 = special_pack(b, 0x0EF3);
+        cyc(96);
         op_lda16(b | 0x0E3D);
         op_and16(0x00FF);
         op_asl16();
@@ -1842,39 +1945,53 @@ void abi_SpecialRecordInsert(void)
         op_tax16();
         cpu.a = r2;
         cpu.p = nz16(cpu.p, r2);
+        cyc(102);
         wr16(SPECIAL_LAPS + 2 + cpu.x, r2);
         cpu.a = r1;
         cpu.p = nz16(cpu.p, r1);
+        cyc(68);
         wr16(SPECIAL_LAPS + cpu.x, r1);
         goto checksum;
     }
+    cyc(68);
     op_cmp16(rd16(SPECIAL_SAVES + 4 + cpu.x));
     if (!(cpu.p & P_C)) {
+        cyc(88);
         abi_RecordTagCar4();
+        cyc(42);
         special_move(4, 8);
         special_move(6, 10);
         cpu.a = t;
         cpu.p = nz16(cpu.p, t);
+        cyc(68);
         wr16(SPECIAL_SAVES + 4 + cpu.x, t);
+        cyc(24);
         op_lda16(b | 0x0F11);
+        cyc(32);
         wr16(SPECIAL_SAVES + 6 + cpu.x, cpu.a);
         goto checksum;
     }
+    cyc(50);
     op_cmp16(rd16(SPECIAL_SAVES + 8 + cpu.x));
     if (cpu.p & P_C) {
         op_rep(P_M | P_X);
         op_lda16_imm(0xFFFF);
+        cyc(28);
         wr16(b | 0x10C7, 0xFFFF);
         return;
     }
+    cyc(44);
     wr16(SPECIAL_SAVES + 8 + cpu.x, t);
-    abi_RecordTagCar8();
+    (cyc(46), abi_RecordTagCar8());
+    cyc(66);
     op_lda16(b | 0x0F11);
+    cyc(32);
     wr16(SPECIAL_SAVES + 10 + cpu.x, cpu.a);
 checksum:
     abi_SpecialRecordsChecksum();
     return;
 none:
+    cyc(94);
     cpu.a = t;
     cpu.p = nz16(cpu.p, t);
 }
@@ -1894,7 +2011,7 @@ void abi_RecordCarTimes12(void)
     cyc(70);
     op_lda16(b | 0x0D89);
     op_asl16();
-    cyc(38);
+    cyc(52);
     op_add16(rd16(b | 0x0D89));
     op_asl16();
     op_asl16();
@@ -1909,6 +2026,7 @@ static void record_tag(uint16_t extra)
     abi_RecordCarTimes12();
     if (extra)
         op_add16(extra);
+    cyc(138);
     wr16((uint32_t)cpu.db << 16 | 0x10C7, cpu.a);
 }
 
@@ -1965,18 +2083,18 @@ void abi_SaveRecordSumsTimeUp(void)
     cyc(62);
     wr8(0x0000F1, 0x00);
     for (i = 0; i < 4; i++) {
+        cyc(62);
         x = at[i];
         p = cpu.p;
-        cyc(62);
         v = SaveRecordSumA(&x, &p);
         cpu.p = p;
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
         cpu.x = x;
         cpu.y = 0;
-        cyc(100);
+        cyc(72);
         wr8(0x70FC46 + (uint32_t)i, v);
     }
-cyc(86);
+cyc(100);
     }
 
 /* SEP #$20, LDA #v, STA.L $000FA3: player 1's lead byte. */
@@ -1985,6 +2103,7 @@ static void time_up_lead(uint8_t v)
     op_sep(P_M);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.p = nz8(cpu.p, v);
+    cyc(48);
     wr8(0x000FA3, v);
 }
 
@@ -2055,14 +2174,13 @@ void abi_TimeUpRecordUpdate(void)
     cpu.a = t;
     cyc(106);
     r = rd16(0x70FC4A + (uint32_t)x);
-    cpu.p = (uint8_t)((nz16(p, (uint16_t)(t - r)) & ~P_C) | (t >= r ? P_C : 0));
+    cpu.p = (uint8_t)((nz16(p, (uint16_t)(t - r)) & ~P_C) | (t >= r ? (cyc(44), P_C) : 0));
     if (t == r) {
-        cyc(92);
         time_up_lead(0x00);
         return;
     }
     if (t > r) {
-        cyc(108);
+        cyc(16);
         time_up_lead(0x01);
         return;
     }
@@ -2077,7 +2195,6 @@ void abi_TimeUpRecordUpdate(void)
     op_lda8(b | 0x0D89);
     cyc(32);
     wr8(0x70FC4E + (uint32_t)x, (uint8_t)cpu.a);
-    cyc(48);
     time_up_lead(0xFF);
     abi_SaveRecordSumsTimeUp();
 }
@@ -2105,16 +2222,20 @@ void abi_StuntRecordTime(void)
     uint8_t lo, sum;
 
     op_sep(P_M);
+    cyc(46);
     op_lda8(b | 0x19EC);
     op_xba();
     cpu.p |= P_D;
+    cyc(58);
     op_lda8(b | 0x0E70);
     cpu.p &= (uint8_t)~P_C;
+    cyc(38);
     lo = op_adc8((uint8_t)cpu.a, rd8(b | 0x19F0), &cpu.p);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | lo);
     cpu.p &= (uint8_t)~P_D;
     op_rep(P_M | P_X);
     t = cpu.a;
+    cyc(68);
     op_lda16(b | 0x0E3D);
     op_and16(0x00FF);
     op_cmp16(0x000C);
@@ -2125,96 +2246,118 @@ void abi_StuntRecordTime(void)
            at 07:AE29 pulls as its return address: on at $07:score + 1 */
         uint16_t ret;
 
+        cyc(84);
         wr8((uint16_t)cpu.s, (uint8_t)(t >> 8));
         wr8((uint16_t)(cpu.s - 1), (uint8_t)t);
         ret = rd16((uint16_t)(cpu.s - 1));
         if ((uint16_t)(ret + 1) == 0xAE29)
-            return;     /* this RTS again: it returns to the caller */
+            { cyc(6); return; }     /* this RTS again: it returns to the caller */
         jump_routine(0x070000 | (uint16_t)(ret + 1));
         return;
     }
-    wr16(special_dp(0xF1), cpu.a);
+    wr16(special_dp(0xF1), cyc_then(116, cpu.a));
     op_asl16();
-    op_add16(rd16(special_dp(0xF1)));
-    op_asl16();
-    op_asl16();
+    op_add16(rd16(cyc_then(44, special_dp(0xF1))));
     op_asl16();
     op_asl16();
-    wr16(special_dp(0xF1), cpu.a);
+    op_asl16();
+    op_asl16();
+    wr16(special_dp(0xF1), cyc_then(72, cpu.a));
+    cyc(24);
     wr16(b | 0x0D14, cpu.a);
     cpu.y = cpu.a;
+    cyc(38);
     op_lda16(b | 0x0D89);
     op_and16(0x00FF);
-    wr16(special_dp(0xF3), cpu.a);
+    wr16(special_dp(0xF3), cyc_then(38, cpu.a));
     op_asl16();
-    op_add16(rd16(special_dp(0xF3)));
+    op_add16(rd16(cyc_then(44, special_dp(0xF3))));
     op_asl16();
     op_asl16();
-    op_add16(rd16(special_dp(0xF1)));
+    op_add16(rd16(cyc_then(58, special_dp(0xF1))));
     op_tax16();
     wr16(special_dp(0xF7), cpu.a);
     cpu.a = t;
     cpu.p = nz16(cpu.p, t);
+    cyc(68);
     op_cmp16(rd16(SPECIAL_SAVES + cpu.x));
-    if ((cpu.p & P_C) && !(cpu.p & P_Z)) {
+    if ((cpu.p & P_C) && (cyc(104), !(cpu.p & P_Z))) {
         abi_RecordTagCar0();
+        cyc(42);
         special_move(4, 8);
         special_move(6, 10);
         special_move(0, 4);
         special_move(2, 6);
+        cyc(24);
         op_lda16(b | 0x0F11);
+        cyc(32);
         wr16(SPECIAL_SAVES + 2 + cpu.x, cpu.a);
         cpu.a = t;
         cpu.p = nz16(cpu.p, t);
+        cyc(68);
         wr16(SPECIAL_SAVES + cpu.x, t);
     } else {
+        cyc(50);
         op_cmp16(rd16(SPECIAL_SAVES + 4 + cpu.x));
-        if ((cpu.p & P_C) && !(cpu.p & P_Z)) {
+        if ((cpu.p & P_C) && (cyc(104), !(cpu.p & P_Z))) {
             abi_RecordTagCar4();
+            cyc(42);
             special_move(4, 8);
             special_move(6, 10);
             cpu.a = t;
             cpu.p = nz16(cpu.p, t);
+            cyc(68);
             wr16(SPECIAL_SAVES + 4 + cpu.x, t);
+            cyc(24);
             op_lda16(b | 0x0F11);
+            cyc(32);
             wr16(SPECIAL_SAVES + 6 + cpu.x, cpu.a);
         } else {
+            cyc(50);
             op_cmp16(rd16(SPECIAL_SAVES + 8 + cpu.x));
             if (!(cpu.p & P_C) || (cpu.p & P_Z)) {
+                cyc(18);
                 op_rep(P_M | P_X);
                 return;
             }
+            cyc(60);
             wr16(SPECIAL_SAVES + 8 + cpu.x, t);
-            abi_RecordTagCar8();
+            (cyc(46), abi_RecordTagCar8());
+            cyc(66);
             op_lda16(b | 0x0F11);
+            cyc(32);
             wr16(SPECIAL_SAVES + 10 + cpu.x, cpu.a);
         }
     }
     op_sep(P_M);
     cpu.a = (uint16_t)(cpu.a & 0xFF00);
     cpu.p = nz8(cpu.p, 0);
-    wr8(special_dp(0xF1), 0x00);
+    wr8(special_dp(0xF1), cyc_then(78, 0x00));
     cpu.y = 0x0030;
-    cpu.x = rd16(special_dp(0xF7));
+    cpu.x = rd16(cyc_then(40, special_dp(0xF7)));
+    cyc(24);
     cpu.x = rd16(b | 0x0D14);
     n = 0x0030;
     sum = 0;
     do {
+        cyc(82);
         uint8_t v = rd8(SPECIAL_SAVES + cpu.x);
 
         cpu.p &= (uint8_t)~P_C;
-        sum = op_adc8(v, rd8(special_dp(0xF1)), &cpu.p);
+        sum = op_adc8(v, rd8(cyc_then(30, special_dp(0xF1))), &cpu.p);
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | sum);
-        wr8(special_dp(0xF1), sum);
+        wr8(special_dp(0xF1), cyc_then(16, sum));
         cpu.x = (uint16_t)(cpu.x + 1);
         n = (uint16_t)(n - 1);
         cpu.y = n;
     } while (n);
     op_sep(P_X);
+    cyc(68);
     cpu.x = rd8(b | 0x0E3D);
-    k = rd8(special_dp(0xF1));
+    k = rd8(cyc_then(16, special_dp(0xF1)));
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | k);
     cpu.p = nz8(cpu.p, (uint8_t)k);
+    cyc(32);
     wr8(0x70FC33 + cpu.x, (uint8_t)k);
     op_rep(P_M | P_X);
 }
@@ -2233,22 +2376,30 @@ static void records_char_offset(uint32_t row_table, uint32_t char_table)
     uint32_t b = (uint32_t)cpu.db << 16;
     unsigned i;
 
+    cyc(232);
     op_lda16(b | 0x0FA8);
     op_asl16();
     op_tax16();
+    cyc(62);
     op_lda16(row_table + cpu.x);
     wr16(0x0000F3, cpu.a);
+    cyc(24);
     op_lda16(b | 0x0FAA);
     op_and16(0x00FF);
     for (i = 0; i < 6; i++)
         op_asl16();
+    cyc(136);
     op_add16(rd16(0x0000F3));
+    cyc(16);
     wr16(0x0000F3, cpu.a);
+    cyc(24);
     cpu.x = rd16(b | 0x0FA6);
     cpu.p = nz16(cpu.p, cpu.x);
+    cyc(100);
     op_lda16(char_table + cpu.x);
     op_and16(0x00FF);
     op_add16(rd16(0x0000F3));
+    cyc(16);
     wr16(0x0000F3, cpu.a);
     op_tay16();
 }
@@ -2293,26 +2444,27 @@ void abi_RecordsEntryLoad(void)
 {
     uint32_t b = (uint32_t)cpu.db << 16;
 
+    cyc(126);
     op_lda16(b | 0x0E3D);
     op_asl16();
-    cyc(38);
+    cyc(52);
     op_add16(rd16(b | 0x0E3D));
     op_and16(0x00FF);
     op_asl16();
     op_asl16();
     op_asl16();
     op_asl16();
-    cyc(38);
+    cyc(94);
     wr16(0x0000F1, cpu.a);
     cyc(24);
     op_lda16(b | 0x0FA8);
     op_and16(0x00FF);
     op_asl16();
-    cyc(60);
+    cyc(74);
     op_add16(rd16(b | 0x0FA8));
     op_asl16();
     op_asl16();
-    cyc(30);
+    cyc(58);
     op_add16(rd16(0x0000F1));
     cyc(16);
     wr16(0x0000F1, cpu.a);
@@ -2320,7 +2472,7 @@ void abi_RecordsEntryLoad(void)
     op_lda16(b | 0x0FAA);
     op_asl16();
     op_asl16();
-    cyc(30);
+    cyc(58);
     op_add16(rd16(0x0000F1));
     cyc(16);
     wr16(0x0000F1, cpu.a);
@@ -2340,6 +2492,7 @@ void abi_BinaryToBcd(void);
 /* LDA $0FA6; ASL; TAX: the handler index, C from the shift. */
 static uint16_t records_char_index(void)
 {
+    cyc(128);
     op_lda16(((uint32_t)cpu.db << 16) | 0x0FA6);
     op_asl16();
     op_tax16();
@@ -2351,6 +2504,7 @@ static uint16_t records_char_index(void)
 static void stunt_score_digit(int low, uint16_t blank)
 {
     op_sep(P_M);
+    cyc(82);
     op_lda8(0x0000F2);
     cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(cpu.a - 0x40)) & ~P_C) | ((uint8_t)cpu.a >= 0x40 ? (cyc(2), P_C) : (cyc(32), 0)));
     if ((uint8_t)cpu.a >= 0x40) {
@@ -2381,19 +2535,22 @@ static void records_letter(int which)
     unsigned i;
 
     if (which == 0) {
+        cyc(60);
         op_lda16(0x0000F3);
     } else if (which == 1) {
+        cyc(60);
         op_lda16(0x0000F3);
-        cyc(1);
+        cyc(2);
         for (i = 0; i < 3; i++)
-            { cyc(3); op_asl16(); }
+            { cyc(20); op_asl16(); }
         op_xba();
     } else {
+        cyc(60);
         op_lda16(0x0000F4);
         op_lsr16();
         op_lsr16();
     }
-    cyc(6);
+    cyc(16);
     op_and16(0x001F);
     op_add16(0x000A);
 }
@@ -2412,19 +2569,17 @@ static void records_letter(int which)
  */
 void abi_RecordsCharTileStunt(void)
 {
-    switch ((cyc(128), records_char_index())) {
+    switch (records_char_index()) {
     case 0:
-        cyc(68);
         stunt_score_digit(0, 0x006D);
         break;
     case 2:
-        cyc(68);
         stunt_score_digit(1, 0x006E);
         break;
     case 4:
-        cyc(46);
+        cyc(60);
         op_lda16(0x0000F1);
-        cyc(24);
+        cyc(56);
         op_lsr16();
         op_lsr16();
         op_lsr16();
@@ -2432,24 +2587,21 @@ void abi_RecordsCharTileStunt(void)
         op_and16(0x000F);
         break;
     case 6:
-        cyc(46);
+        cyc(60);
         op_lda16(0x0000F1);
         op_and16(0x000F);
         break;
     case 8:
-        cyc(46);
         records_letter(0);
-        cyc(54);
+        cyc(44);
         break;
     case 10:
-        cyc(46);
         records_letter(1);
         cyc(44);
         break;
     case 12:
-        cyc(46);
         records_letter(2);
-        cyc(44);
+        cyc(50);
         break;
     default:
         jump_routine(0x070000 | rd16(0x07D79D + cpu.x));
@@ -2462,15 +2614,18 @@ void abi_RecordsCharTileStunt(void)
    units. */
 static void records_time_digit(uint16_t mask, int seconds, int tens)
 {
+    cyc(60);
     op_lda16(0x0000F1);
     if (seconds) {
+        cyc(34);
         op_asl16();
         op_xba();
     }
+    cyc(84);
     op_and16(mask);
-    (cyc(84), abi_BinaryToBcd());
+    abi_BinaryToBcd();
     if (tens) {
-        cyc(2);
+        cyc(34);
         op_lsr16();
         op_lsr16();
         op_lsr16();
@@ -2495,50 +2650,44 @@ void abi_RecordsCharTileAll(void)
 {
     unsigned i;
 
-    switch ((cyc(148), records_char_index())) {
+    switch (records_char_index()) {
     case 0:
-        cyc(46);
+        cyc(60);
         op_lda16(0x0000F1);
         for (i = 0; i < 4; i++)
-            op_rol16();
+            { cyc(35); op_rol16(); }
         op_and16(0x0007);
-        (cyc(140), abi_BinaryToBcd());
+        abi_BinaryToBcd();
         op_and16(0x000F);
         break;
     case 2:
-        cyc(46);
         records_time_digit(0x003F, 1, 1);
         break;
     case 4:
-        cyc(46);
         records_time_digit(0x003F, 1, 0);
         break;
     case 6:
-        cyc(46);
         records_time_digit(0x007F, 0, 1);
         break;
     case 8:
-        cyc(46);
         records_time_digit(0x007F, 0, 0);
         break;
     case 10:
-        cyc(46);
         records_letter(0);
-        cyc(10);
         break;
     case 12:
-        cyc(46);
         records_letter(1);
         break;
     case 14:
-        cyc(46);
         records_letter(2);
+        cyc(6);
         break;
     default:
         jump_routine(0x070000 | rd16(0x07D807 + cpu.x));
         break;
     }
-}
+cyc(44);
+    }
 
 /* The tile's low byte to $7F:93D7 + Y (SEP #$20, TYX, STA.L, REP #$20). */
 static void records_char_store(void)
@@ -2566,7 +2715,7 @@ void abi_RecordsCharDrawStunt(void)
     abi_RecordsCharOffsetStunt();
     abi_RecordsEntryLoad();
     if (cpu.p & P_Z)
-        return;
+        { cyc(64); return; }
     abi_RecordsCharTileStunt();
     records_char_store();
 }
@@ -2586,7 +2735,7 @@ void abi_RecordsCharDrawAll(void)
     abi_RecordsEntryLoad();
     op_cmp16(0xFFFF);
     if (cpu.a == 0xFFFF)
-        return;
+        { cyc(84); return; } else { cyc(20); }
     abi_RecordsCharTileAll();
     records_char_store();
 }

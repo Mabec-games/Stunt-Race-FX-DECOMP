@@ -124,7 +124,8 @@ void abi_HardwareRegsInit(void)
     op_sep(P_M | P_X);
     b = (uint32_t)cpu.db << 16;
     for (i = 0; i < sizeof writes / sizeof writes[0]; i++)
-        wr8(b | writes[i].reg, writes[i].v);
+        { cyc(40); wr8(b | writes[i].reg, writes[i].v); }
+    cyc(44);
     cpu.a = (uint16_t)(cpu.a & 0xFF00);
     cpu.x = 0x00FF;
     cpu.y = 0x0030;
@@ -134,6 +135,7 @@ void abi_HardwareRegsInit(void)
 /* LDA # (8-bit). */
 static void boot_lda8(uint8_t v)
 {
+    cyc(40);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.p = nz8(cpu.p, v);
 }
@@ -141,6 +143,7 @@ static void boot_lda8(uint8_t v)
 /* LDX # / LDY # (16-bit). */
 static void boot_ldx(uint16_t v)
 {
+    cyc(22);
     cpu.x = v;
     cpu.p = nz16(cpu.p, v);
 }
@@ -162,7 +165,7 @@ static void boot_bank03(void)
 static void boot_stack(void)
 {
     op_rep(P_X);
-    cyc(98);
+    cyc(76);
     boot_ldx(0x02FF);
     cpu.s = 0x02FF;
 }
@@ -178,6 +181,7 @@ static void boot_clear(void (*fill)(void))
     unsigned i;
 
     for (i = 0; i < 3; i++) {
+        cyc(90);
         boot_lda8(f[i].bank);
         boot_ldx(f[i].x);
         boot_ldy(f[i].y);
@@ -192,7 +196,8 @@ static void boot_clear(void (*fill)(void))
     boot_ldx(0x0000);
     boot_ldy(0x0001);
     for (i = 0; i <= 0x27FF; i++)
-        wr8(0x700001u + i, rd8(0x700000u + i));
+        { cyc(36); wr8(0x700001u + i, rd8(0x700000u + i)); }
+    cyc(88);
     cpu.a = 0xFFFF;
     cpu.x = 0x2800;
     cpu.y = 0x2801;
@@ -206,8 +211,8 @@ static void boot_clear(void (*fill)(void))
 static void boot_blank(uint32_t b)
 {
     op_sep(P_M);
+    cyc(96);
     wr8(b | HDMAEN, 0x00);
-    cyc(40);
     boot_lda8(0x80);
     wr8(b | INIDISP, 0x80);
     cpu.p |= P_I;
@@ -217,15 +222,19 @@ static void boot_blank(uint32_t b)
 static void boot_dma(uint32_t b, uint16_t to, uint8_t wbank, uint8_t from_bank, uint16_t count)
 {
     boot_ldx(0x8000);
+    cyc(26);
     wr16(b | 0x4300, 0x8000);
     boot_ldy(to);
+    cyc(48);
     wr16(b | WMADDL, to);
     boot_lda8(wbank);
     wr8(b | WMADDH, wbank);
+    cyc(24);
     wr16(b | 0x4302, 0x8000);
     boot_lda8(from_bank);
     wr8(b | 0x4304, from_bank);
     boot_ldy(count);
+    cyc(48);
     wr16(b | 0x4305, count);
     boot_lda8(0x01);
     wr8(b | MDMAEN, 0x01);
@@ -266,17 +275,21 @@ static void boot_run(int from)
     cpu.d = 0x0000;
     op_sep(P_M);
     boot_lda8(0x1C);
+    cyc(130);
     wr8(b | 0x0D3F, 0x1C);
-    abi_HardwareRegsInit();
+    (cyc(62), abi_HardwareRegsInit());
     cpu.p &= (uint8_t)~P_I;
     op_sep(P_M);
     op_rep(P_X);
     boot_ldx(0x02FE);
+    cyc(2);
     do {
+        cyc(58);
         wr8((uint16_t)(cpu.d + cpu.x), 0x00);
         cpu.x--;
         cpu.p = nz16(cpu.p, cpu.x);
     } while (!(cpu.x & 0x8000));
+    cyc(60);
     op_rep(P_M);
     op_lda16_imm(0x0000);
     cpu.d = 0x0000;
@@ -297,12 +310,14 @@ static void boot_run(int from)
         cpu.p = nz16(cpu.p, cpu.x);
     } while (!(cpu.x & 0x8000));
 start:
+    cyc(22);
     op_sep(P_M);
     op_rep(P_X);
     boot_dma(b, 0xA2D9, 0x7E, 0x02, 0x54A6);
     boot_dma(b, 0x0800, 0x7F, 0x0B, 0x2C00);
     op_sep(P_M);
     boot_lda8(0x01);
+    cyc(22);
     wr8(b | 0x0374, 0x01);
     boot_lda8(0x01);
     wr8(b | 0x3039, 0x01);
@@ -310,22 +325,25 @@ start:
     wr8(b | 0x3037, 0x20);
     boot_lda8(0x0B);
     wr8(b | 0x3038, 0x0B);
-    abi_MenuScreen0Run();
+    (cyc(62), abi_MenuScreen0Run());
     op_rep(P_M | P_X);
     op_lda16_imm(0x0003);
+    cyc(62);
     wr16(0x001915, 0x0003);
     op_lda16_imm(0x0000);
+    cyc(18);
     wr16(0x001917, 0x0000);
 warm:
     boot_bank03();
     boot_stack();
     op_sep(P_M);
+    cyc(36);
     wr8(b | 0x0E4E, 0x00);
     boot_lda8(0x02);
     wr8(b | 0x117A, 0x02);
     boot_lda8(0x01);
     wr8(b | 0x117B, 0x01);
-    abi_CourseMenuRun();
+    (cyc(62), abi_CourseMenuRun());
     abi_RaceModeSetup();
     abi_Set7EFFA6Sequence();
 race:
@@ -336,8 +354,10 @@ race:
     wr8(b | 0x0E4E, 0x00);
     /* JSL RaceLoop: its return address (03:8BE8) on the stack, which
        RaceLoop leaves by (LoopLeaveWhenEnded). */
+    cyc(24);
     wr8((uint16_t)cpu.s, 0x03);
     cpu.s--;
+    cyc(14);
     wr8((uint16_t)cpu.s, 0x8B);
     cpu.s--;
     wr8((uint16_t)cpu.s, 0xE8);
@@ -354,7 +374,7 @@ attract:
     boot_bank03();
     b = 0x030000;
     boot_blank(b);
-    boot_stack();
+    (cyc(78), boot_stack());
     op_sep(P_M | P_X);
     call_routine(0x02CF3E, 1);
     abi_WindowsInit();
@@ -362,65 +382,83 @@ attract:
     op_rep(P_X);
     b = (uint32_t)cpu.db << 16;
     boot_lda8(0x01);
+    cyc(122);
     wr8(b | 0x3039, 0x01);
     boot_lda8(0x01);
+    cyc(8);
     wr8(0x7EFF65, 0x01);
     cpu.p |= P_I;
     op_sep(P_M);
     op_rep(P_X);
+    cyc(98);
     call_routine(0x02CF45, 1);
     abi_CourseDataPointer();
-    abi_CourseScriptRun();
-    abi_ObjectPlaceAll();
+    (cyc(62), abi_CourseScriptRun());
+    (cyc(62), abi_ObjectPlaceAll());
     b = (uint32_t)cpu.db << 16;
     boot_lda8(0x00);
+    cyc(8);
     wr8(0x70023A, 0x00);
+    cyc(24);
     wr8(b | 0x1A32, 0x00);
+    cyc(24);
     wr8(b | 0x05E9, 0x00);
     boot_lda8(0x01);
     wr8(b | 0x0713, 0x01);
     op_sep(P_M);
     op_rep(P_X);
+    cyc(62);
     boot_lda8(0x04);
     boot_ldx(0x8800);
     abi_GsuRun();
     op_sep(P_M);
     b = (uint32_t)cpu.db << 16;
     boot_lda8(0x01);
+    cyc(94);
     wr8(b | 0x0357, 0x01);
+    cyc(32);
     op_lda8(TIMEUP);
     cpu.p &= (uint8_t)~P_I;
     for (;;) {
+        cyc(76);
         abi_SpriteSlot1Countdown();
         op_sep(P_M);
         b = (uint32_t)cpu.db << 16;
+        cyc(114);
         op_lda8(b | 0x0D62);
         if ((uint8_t)cpu.a)
             abi_RaceFrameRunTwoPlayers();
         else
-            abi_RaceFrameRun();
+            { cyc(84); abi_RaceFrameRun(); }
         op_sep(P_M);
         b = (uint32_t)cpu.db << 16;
+        cyc(104);
         op_lda8(b | 0x05E9);
-        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(cpu.a - 0x1E)) & ~P_C) | ((uint8_t)cpu.a >= 0x1E ? P_C : 0));
+        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(cpu.a - 0x1E)) & ~P_C) | ((uint8_t)cpu.a >= 0x1E ? P_C : (cyc(24), 0)));
         if (cpu.p & P_C)
             wr8(b | 0x0713, 0x00);
     }
 soft:
     op_rep(P_M);
     op_lda16_imm(0xFFFF);
+    cyc(10);
     wr16(b | 0x10DC, 0xFFFF);
+    cyc(24);
     wr16(b | 0x10DE, 0x0000);
-    abi_DemoRunThird();
+    (cyc(62), abi_DemoRunThird());
 soft_rest:
     op_sep(P_M);
     b = (uint32_t)cpu.db << 16;
     boot_lda8(0x06);
+    cyc(22);
     wr8(b | APUIO1, 0x06);
     boot_lda8(0x80);
     wr8(b | INIDISP, 0x80);
+    cyc(24);
     wr8(b | NMITIMEN, 0x00);
+    cyc(24);
     wr8(b | MDMAEN, 0x00);
+    cyc(24);
     wr8(b | HDMAEN, 0x00);
     op_sep(P_M);
     op_rep(P_X);

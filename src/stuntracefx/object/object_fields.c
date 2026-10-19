@@ -24,7 +24,7 @@ uint16_t ObjectStubZero(void)
 
 void abi_ObjectStubZero(void)
 {
-    cpu.a = ObjectStubZero();
+    cpu.a = (cyc(112), ObjectStubZero());
     cpu.p = (uint8_t)(nz16(cpu.p, cpu.a) | P_M);
 }
 
@@ -109,35 +109,46 @@ uint8_t ObjectStepByte17(uint8_t bank, uint8_t step, uint16_t obj, uint8_t *p)
     uint32_t b = (uint32_t)bank << 16;
     uint8_t v, d, s;
 
+    cyc(16);
     wr8(FIELDS_SCRATCH, step);
+    cyc(30);
     v = rd8(b | (uint16_t)(0x2017 + obj));
     *p |= P_C;
+    cyc(38);
     d = op_sbc8(v, rd8(b | 0x1F2B), p);
     if (!d) {
+        cyc(6);
         *p |= P_C;
         return d;
     }
     if (d & 0x80)
-        d = (uint8_t)(~d + 1);
+        { cyc(24); d = (uint8_t)(~d + 1); }
+    cyc(38);
     s = rd8(FIELDS_SCRATCH);
     if ((uint8_t)(d - s) & 0x80) {
+        cyc(40);
         v = rd8(b | 0x1F2B);
         *p = nz8(*p, v);
     } else {
+        cyc(52);
         v = rd8(b | (uint16_t)(0x2017 + obj));
+        cyc(24);
         s = rd8(b | 0x1F2B);
         if (v != s) {
             if ((uint8_t)(v - s) & 0x80) {
                 *p &= (uint8_t)~P_C;
+                cyc(68);
                 v = op_adc8(v, rd8(FIELDS_SCRATCH), p);
             } else {
                 *p |= P_C;
+                cyc(62);
                 v = op_sbc8(v, rd8(FIELDS_SCRATCH), p);
             }
         } else {
             *p = nz8(*p, 0x00);
         }
     }
+    cyc(30);
     wr8(b | (uint16_t)(0x2017 + obj), v);
     *p &= (uint8_t)~P_C;
     return v;
@@ -163,6 +174,7 @@ void ObjectStubNothing(void)
 
 void abi_ObjectStubNothing(void)
 {
+    cyc(88);
     cpu.p |= P_M;
 }
 
@@ -181,7 +193,7 @@ void ObjectStubSwapTwice(void)
 void abi_ObjectStubSwapTwice(void)
 {
     cpu.p |= P_M;
-    cpu.p = (cpu.p & P_X) ? nz8(cpu.p, (uint8_t)cpu.y) : (cyc(32), nz16(cpu.p, cpu.y));
+    cpu.p = (cpu.p & P_X) ? (cyc(216), nz8(cpu.p, (uint8_t)cpu.y)) : (cyc(248), nz16(cpu.p, cpu.y));
 }
 
 /*

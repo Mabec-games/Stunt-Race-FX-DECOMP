@@ -21,12 +21,14 @@ static uint32_t absidx(uint8_t bank, uint16_t a, uint16_t i)
 /* Arithmetic shift right by one (CMP #$8000, ROR). */
 static uint16_t asr16(uint16_t v)
 {
+    cyc(38);
     return (uint16_t)((v & 0x8000) | v >> 1);
 }
 
 /* -(b * 256) for the angle byte b, read as a word and masked. */
 static uint16_t neg_angle(uint32_t addr)
 {
+    cyc(30);
     uint16_t b = rd16(addr) & 0x00FF;
 
     return (uint16_t)(0 - (uint16_t)(b << 8));
@@ -35,13 +37,11 @@ static uint16_t neg_angle(uint32_t addr)
 /* angle field = old + (v - old) / 2. */
 static void ease_half(uint8_t bank, uint16_t rec, uint16_t off, uint16_t v)
 {
-    uint16_t old = rd16(absidx(bank, off, rec)), a;
+    uint16_t old = rd16(cyc_then(126, absidx(bank, off, rec))), a;
 
-    cyc(82);
     a = asr16((uint16_t)(v - old));
-    old = rd16(absidx(bank, off, rec));
-    cyc(30);
-    wr16(absidx(bank, off, rec), (uint16_t)(a + old));
+    old = rd16(cyc_then(44, absidx(bank, off, rec)));
+    wr16(absidx(bank, off, rec), cyc_then(30, (uint16_t)(a + old)));
 }
 
 /*
@@ -67,38 +67,45 @@ void ObjectFaceTied(void)
     uint16_t rec = cpu.x, a, old;
 
     cpu.p &= (uint8_t)~(P_M | P_X);
+    cyc(66);
     if (rd16(rec) & 0x0001) {
         cpu.y = rec;
+        cyc(104);
         cpu.x = rd16((uint16_t)(rec + 0x02));
-        wr16(0x000004, rd16(absidx(bank, 0x0008, rec)));
-        wr16(0x00000A, rd16(absidx(bank, 0x000A, rec)));
-        wr16(absidx(bank, 0x05F2, 0), rd16(absidx(bank, 0x000C, rec)));
+        wr16(0x000004, cyc_then(16, rd16(cyc_then(44, absidx(bank, 0x0008, rec)))));
+        wr16(0x00000A, cyc_then(16, rd16(cyc_then(30, absidx(bank, 0x000A, rec)))));
+        wr16(absidx(bank, 0x05F2, 0), cyc_then(24, rd16(cyc_then(30, absidx(bank, 0x000C, rec)))));
         abi_ObjectGsu81E3();
-        wr16(absidx(bank, 0x0010, rec), (uint16_t)(cpu.a + 0x8000));
-        if (!(rd16(absidx(bank, 0x0000, rec)) & 0x0040)) {
+        wr16(absidx(bank, 0x0010, rec), cyc_then(108, (uint16_t)(cpu.a + 0x8000)));
+        if (!(rd16(cyc_then(30, absidx(bank, 0x0000, rec))) & 0x0040)) {
             abi_ObjectGsu80BCThen81E3();
             a = cpu.a;
         } else {
+            cyc(6);
             abi_ObjectGsu80BCThen81E3();
-            old = rd16(absidx(bank, 0x000E, rec));
+            old = rd16(cyc_then(22, absidx(bank, 0x000E, rec)));
             a = asr16(asr16((uint16_t)(cpu.a - old)));
-            a = (uint16_t)(a + rd16(absidx(bank, 0x000E, rec)));
+            a = (uint16_t)(a + rd16(cyc_then(44, absidx(bank, 0x000E, rec))));
         }
-        wr16(absidx(bank, 0x000E, rec), a);
+        wr16(absidx(bank, 0x000E, rec), cyc_then(30, a));
         a = asr16(asr16(neg_angle(absidx(bank, 0x2016, cpu.x))));
         ease_half(bank, rec, 0x0012, a);
         cpu.x = cpu.y;
-    } else if (rd16(rec) & 0x4000) {
+    } else { cyc(114); if (rd16(rec) & 0x4000) {
         cpu.y = rec;
+        cyc(76);
         cpu.x = rd16((uint16_t)(rec + 0x02));
+        cyc(14);
         ease_half(bank, rec, 0x000E, neg_angle(absidx(bank, 0x2014, cpu.x)));
         ease_half(bank, rec, 0x0010, neg_angle(absidx(bank, 0x2015, cpu.x)));
         ease_half(bank, rec, 0x0012, neg_angle(absidx(bank, 0x2016, cpu.x)));
         cpu.x = cpu.y;
-    }
+    } }
+    cyc(68);
     a = rd16(cpu.x) & 0x8000;
     if (!a)
-        wr16((uint16_t)(cpu.x + 0x12), 0x0000);
+        { cyc(62); wr16((uint16_t)(cpu.x + 0x12), 0x0000); } else { cyc(46); }
+    cyc(72);
     cpu.a = a;
     cpu.p = p0;
 }
@@ -121,16 +128,13 @@ static uint16_t area_origin(uint8_t bank, uint16_t out, uint8_t *p)
 {
     uint16_t v = ScaleDp02Dp94Long(p);
 
-    cyc(156);
-    wr16(dbw(bank, out), v);
+    wr16(dbw(bank, out), cyc_then(156, v));
     cyc(16);
     v = rd16(0x000002);
-    cyc(24);
-    wr16(dbw(bank, (uint16_t)(out + 2)), v);
+    wr16(dbw(bank, (uint16_t)(out + 2)), cyc_then(24, v));
     cyc(16);
     v = rd16(0x000094);
-    cyc(24);
-    wr16(dbw(bank, (uint16_t)(out + 4)), v);
+    wr16(dbw(bank, (uint16_t)(out + 4)), cyc_then(24, v));
     return v;
 }
 
@@ -159,12 +163,9 @@ uint16_t ViewFromRecord(uint8_t bank, uint16_t rec, uint8_t *p)
     wr16(0x0000C7, cyc_then(16, rd16((uint16_t)(rec + 0x0A))));
     cyc(22);
     wr16(0x0000C9, cyc_then(16, rd16((uint16_t)(rec + 0x0C))));
-    cyc(22);
-    wr16(dbw(bank, 0x0664), cyc_then(24, rd16((uint16_t)(rec + 0x0E))));
-    cyc(22);
-    wr16(dbw(bank, 0x0666), cyc_then(24, rd16((uint16_t)(rec + 0x10))));
-    cyc(22);
-    wr16(dbw(bank, 0x0668), cyc_then(24, rd16((uint16_t)(rec + 0x12))));
+    wr16(dbw(bank, 0x0664), cyc_then(24, rd16(cyc_then(22, (uint16_t)(rec + 0x0E)))));
+    wr16(dbw(bank, 0x0666), cyc_then(24, rd16(cyc_then(22, (uint16_t)(rec + 0x10)))));
+    wr16(dbw(bank, 0x0668), cyc_then(24, rd16(cyc_then(22, (uint16_t)(rec + 0x12)))));
     cyc(52);
     obj = rd16((uint16_t)(rec + 0x02));
     cyc(46);
@@ -173,22 +174,15 @@ uint16_t ViewFromRecord(uint8_t bank, uint16_t rec, uint8_t *p)
     wr16(0x000002, cyc_then(16, rd16(0x0000C5)));
     cyc(16);
     wr16(0x000094, cyc_then(16, rd16(0x0000C9)));
-    cyc(124);
     area_origin(bank, 0x1EF5, p);
     cyc(58);
     if (rd16(rec) & 0x2000) {
-        cyc(64);
-        v = rd16(dbw(bank, 0x1EF5));
-        cyc(24);
-        wr16(dbw(bank, 0x1EFB), v);
-        cyc(24);
-        v = rd16(dbw(bank, 0x1EF7));
-        cyc(24);
-        wr16(dbw(bank, 0x1EFD), v);
-        cyc(24);
-        v = rd16(dbw(bank, 0x1EF9));
-        cyc(24);
-        wr16(dbw(bank, 0x1EFF), v);
+        v = rd16(cyc_then(64, dbw(bank, 0x1EF5)));
+        wr16(dbw(bank, 0x1EFB), cyc_then(24, v));
+        v = rd16(cyc_then(24, dbw(bank, 0x1EF7)));
+        wr16(dbw(bank, 0x1EFD), cyc_then(24, v));
+        v = rd16(cyc_then(24, dbw(bank, 0x1EF9)));
+        wr16(dbw(bank, 0x1EFF), cyc_then(24, v));
         *p = nz16(*p, v);
         return v;
     }
@@ -198,7 +192,6 @@ uint16_t ViewFromRecord(uint8_t bank, uint16_t rec, uint8_t *p)
     wr16(0x000002, cyc_then(16, rd16(0x7E200C + obj)));
     cyc(32);
     wr16(0x000094, cyc_then(16, rd16(0x7E2010 + obj)));
-    cyc(124);
     v = area_origin(bank, 0x1EFB, p);
     *p = nz16(*p, rec);
     return v;

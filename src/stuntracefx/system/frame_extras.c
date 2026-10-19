@@ -19,9 +19,11 @@ static void wait_start(uint32_t b, int held)
     uint8_t j;
 
     do {
+        cyc(72);
         wr8(b | 0x06E3, 0x64);
         abi_WaitScanline();
         cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
+        cyc(46);
         j = rd8(b | 0x4219);
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | j);
     } while (((j & 0x10) != 0) != held);
@@ -76,6 +78,7 @@ void RaceFrameStepPause(void)
             cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
         } else { cyc(38); }
     } else { cyc(22); }
+    cyc(28);
     op_plp(p);
 }
 
@@ -98,7 +101,7 @@ void FrameQueuesFlush(void)
 
     cpu.p &= (uint8_t)~(P_M | P_X);
     (cyc(90), abi_VramDmaQueueFlush());
-    (cyc(116), abi_ByteWritesIfPending());
+    (cyc(46), abi_ByteWritesIfPending());
     op_plp(p);
 }
 

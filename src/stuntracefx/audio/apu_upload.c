@@ -29,26 +29,32 @@
 /* The byte, then the pointer's low word read again for the add (in *low). */
 static uint8_t apu_upload_next_byte(uint16_t *offset, uint16_t *low)
 {
+    cyc(16);
     uint32_t base = rd24(APU_STREAM_PTR);
     uint8_t value = rd8((base + *offset) & 0xFFFFFF);
     uint16_t bank;
 
     *offset += 1;
+    cyc(110);
     *low = rd16(APU_STREAM_PTR);
     if ((uint32_t)*low + *offset > 0xFFFF) {
+        cyc(56);
         wr16(APU_STREAM_PTR, 0);
         *offset = 0x8000;
+        cyc(40);
         bank = rd16(APU_STREAM_BANK);
+        cyc(14);
         wr16(APU_STREAM_BANK, (uint16_t)(bank + 1));
-    }
+    } else { cyc(22); }
+    cyc(100);
     return value;
 }
 
 uint8_t ApuUploadNextByte(uint16_t *offset)
 {
+    cyc(46);
     uint16_t low;
 
-    cyc(46);
     return apu_upload_next_byte(offset, &low);
 }
 
@@ -78,35 +84,50 @@ static ApuUploadEnd apu_upload(uint8_t bank, uint16_t addr)
     uint16_t offset = 0;
     uint8_t kick = 0xCC;
 
+    cyc(38);
     wr16(APU_STREAM_PTR, addr);
+    cyc(16);
     wr8(APU_STREAM_BANK, bank);
-    while (rd16(APUIO0) != 0xBBAA) {
+    cyc(26);
+    while (rd16(cyc_then(46, APUIO0)) != 0xBBAA) {
     }
+    cyc(6);
     for (;;) {
+        cyc(70);
         uint8_t lo = ApuUploadNextByte(&offset);
+        cyc(20);
         uint8_t hi = ApuUploadNextByte(&offset);
         uint16_t length = (uint16_t)(lo | hi << 8);
         uint8_t more = length != 0;
         uint8_t index = 0;
         unsigned carry = 1;
 
-        wr8(APUIO2, ApuUploadNextByte(&offset));
-        wr8(APUIO3, ApuUploadNextByte(&offset));
+        cyc(34);
+        wr8(APUIO2, cyc_then(24, ApuUploadNextByte(&offset)));
+        wr8(APUIO3, cyc_then(24, ApuUploadNextByte(&offset)));
+        cyc(78);
         wr8(APUIO1, more);
+        cyc(68);
         wr8(APUIO0, kick);
-        while (rd8(APUIO0) != kick) {
-        }
-        if (!more)
-            break;
-        wr16(APUIO0, (uint16_t)(ApuUploadNextByte(&offset) << 8 | index));
-        while (--length) {
-            uint8_t data = ApuUploadNextByte(&offset);
-            while (rd8(APUIO0) != index) {
+        while (rd8(cyc_then(24, APUIO0)) != kick) {
+        cyc(22);
             }
+        cyc(38);
+        if (!more)
+            { cyc(38); break; }
+        wr16(APUIO0, cyc_then(104, (uint16_t)(ApuUploadNextByte(&offset) << 8 | index)));
+        while (--length) {
+            cyc(78);
+            uint8_t data = ApuUploadNextByte(&offset);
+            while (rd8(cyc_then(44, APUIO0)) != index) {
+            cyc(2);
+                }
             index++;
+            cyc(76);
             wr16(APUIO0, (uint16_t)(data << 8 | index));
         }
-        while (rd8(APUIO0) != index) {
+        cyc(30);
+        while (rd8(cyc_then(46, APUIO0)) != index) {
         }
         /* The next block's kick is past the last index, and never zero. */
         kick = index;
@@ -183,13 +204,13 @@ void abi_ApuPort1Send05(void)
  */
 void ApuSettleDelay(void)
 {
-    cyc(589832);
+    cyc(74);
     delay_turns(0x4000);
 }
 
 void abi_ApuSettleDelay(void)
 {
-    (cyc(177), ApuSettleDelay());
+    (cyc(46), ApuSettleDelay());
     cpu.a = 0;
     cpu.p = (uint8_t)((cpu.p & ~(P_M | P_N)) | P_Z);
 }

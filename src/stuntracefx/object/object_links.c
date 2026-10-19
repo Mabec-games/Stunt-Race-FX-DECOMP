@@ -22,16 +22,19 @@ static void free_list(void)
     uint16_t x = cpu.x, obj, next;
 
     cpu.p &= (uint8_t)~P_X;
+    cyc(76);
     obj = rd16(b | 0x0325);
     while (obj) {
+        cyc(46);
         next = rd16(b | (uint16_t)(0x2000 + obj));
         cpu.p |= P_M;
         cpu.x = obj;
         cpu.y = next;
-        abi_ObjectFreeLong();
+        (cyc(114), abi_ObjectFreeLong());
         cpu.y = next;
         obj = next;
     }
+    cyc(102);
     cpu.x = x;
     cpu.p = nz16(cpu.p, x);
 }
@@ -58,33 +61,51 @@ void ObjectListTableFirst(void)
     uint8_t p = cpu.p;
     uint16_t x, a = cpu.a, at, v;
 
+    cyc(68);
     wr16(b | 0x0D04, 0x0000);
+    cyc(24);
     x = rd16(b | 0x0325);
     if (x) {
         cpu.y = 0x0000;
         if (a & 0x00FF) {
+            cyc(156);
             a = rd16(b | (uint16_t)(0x2008 + x));
             if (!(a & 0x0001)) {
+                cyc(100);
                 at = rd16(b | (uint16_t)(0x2004 + x));
+                cyc(96);
                 wr16(0x7E96AD, x);
+                cyc(30);
                 v = rd16(b | (uint16_t)(0x0008 + at));
+                cyc(32);
                 wr16(0x7E96AF, v);
+                cyc(30);
                 v = rd16(b | (uint16_t)(0x000A + at));
+                cyc(32);
                 wr16(0x7E96B1, v);
+                cyc(30);
                 v = rd16(b | (uint16_t)(0x000C + at));
+                cyc(32);
                 wr16(0x7E96B3, v);
+                cyc(30);
                 v = rd16(b | (uint16_t)(0x000E + at));
+                cyc(32);
                 wr16(0x7E96B5, v);
+                cyc(24);
                 v = rd16(b | 0x0D04);
+                cyc(14);
                 wr16(b | 0x0D04, (uint16_t)(v + 1));
                 cpu.y = 0x000A;
             }
-        }
+        } else { cyc(66); }
         do {
+            cyc(132);
             x = rd16(b | (uint16_t)(0x2000 + x));
         } while (x);
+        cyc(8);
         cpu.a = 0x0000;
     }
+    cyc(52);
     cpu.x = 0x0000;
     op_plp(p);
 }
@@ -111,7 +132,7 @@ void ObjectListFreeAll(void)
 
 void abi_ObjectListFreeAll(void)
 {
-    (cyc(76), free_list());
+    free_list();
 }
 
 /*
@@ -127,7 +148,7 @@ void ObjectListFreeAllCopy(void)
 
 void abi_ObjectListFreeAllCopy(void)
 {
-    (cyc(76), free_list());
+    free_list();
 }
 
 /*
@@ -189,18 +210,19 @@ static uint16_t find_tag(uint8_t bank, uint8_t tag, uint16_t from, uint8_t *a, u
     uint16_t at = from, next;
     uint8_t t, want;
 
+    cyc(24);
     wr8(b | 0x1A30, tag);
     for (;;) {
         cyc(60);
         next = rd16(b | (uint16_t)(0x2027 + at));
         if (!next)
-            return 0;
+            { cyc(102); return 0; }
         cyc(46);
         t = rd8(b | (uint16_t)(0x2048 + next));
         *a = t;
         cyc(24);
         want = rd8(b | 0x1A30);
-        *p = (uint8_t)((*p & ~P_C) | (t >= want ? P_C : (cyc(22), 0)));
+        *p = (uint8_t)((*p & ~P_C) | (t >= want ? (cyc(102), P_C) : (cyc(22), 0)));
         if (t == want)
             return next;
         at = next;
@@ -219,7 +241,6 @@ static uint16_t find_tag(uint8_t bank, uint8_t tag, uint16_t from, uint8_t *a, u
  */
 uint16_t ObjectChildFindTagX(uint8_t bank, uint8_t tag, uint16_t obj, uint8_t *a, uint8_t *p)
 {
-    cyc(24);
     return find_tag(bank, tag, obj, a, p);
 }
 
@@ -242,7 +263,6 @@ void abi_ObjectChildFindTagX(void)
  */
 uint16_t ObjectChildFindTagY(uint8_t bank, uint8_t tag, uint16_t obj, uint8_t *a, uint8_t *p)
 {
-    cyc(24);
     return find_tag(bank, tag, obj, a, p);
 }
 
@@ -272,9 +292,8 @@ int ObjectSpawnA040(uint16_t *a, uint16_t *x, uint16_t *y)
         cyc(68);
         *x = 0x0000;
         return 0;
-    }
+    } else { cyc(56); }
     *y = *x;
-    cyc(374);
     ObjectInit(*y);
     cyc(200);
     wr8(0x7E2036 + *x, 0x03);
@@ -290,4 +309,5 @@ void abi_ObjectSpawnA040(void)
         cpu.p = (uint8_t)((nz16(cpu.p, cpu.a) & ~P_M) | P_C);
     else
         cpu.p = (uint8_t)(nz16(cpu.p, 0) & ~P_C);
-}
+cyc(58);
+    }

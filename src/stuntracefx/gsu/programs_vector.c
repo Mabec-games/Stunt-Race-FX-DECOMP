@@ -24,17 +24,28 @@ uint16_t Gsu8277(void)
     uint16_t v;
     unsigned i;
 
+    cyc(182);
     v = rd16(0x000002);
+    cyc(32);
     wr16(0x700068, v);
+    cyc(16);
     v = rd16(0x000008);
+    cyc(32);
     wr16(0x70002C, v);
+    cyc(16);
     v = rd16(0x000094);
+    cyc(32);
     wr16(0x70002E, v);
+    cyc(124);
     GsuRun(0x01, 0x8277);
+    cyc(94);
     for (i = 0; i < 3; i++) {
+        cyc(32);
         v = rd16(0x700026 + 2 * i);
+        cyc(16);
         wr16(0x0000B7 + 2 * i, v);
     }
+    cyc(128);
     return v;
 }
 
@@ -46,7 +57,7 @@ void abi_Gsu8277(void)
     cpu.a = Gsu8277();
     cpu.x = x;
     cpu.y = y;
-    cpu.p = (p & P_X) ? nz8(p, (uint8_t)x) : nz16(p, x);
+    cpu.p = (p & P_X) ? nz8(p, (uint8_t)x) : (cyc(16), nz16(p, x));
 }
 
 /*
@@ -79,7 +90,7 @@ void VectorGsu81E3(void)
     cpu.p = (uint8_t)((cpu.p & ~(P_C | P_V)) | (u >= v ? P_C : 0) | (((u ^ v) & (u ^ cpu.a) & 0x8000) ? P_V : 0));
     cyc(16);
     wr16(0x000008, cpu.a);
-    (cyc(198), abi_Gsu81E3Long());
+    abi_Gsu81E3Long();
     cpu.y = y;
     cpu.x = x;
     cpu.p = nz16(cpu.p & ~P_M, x);
@@ -114,7 +125,7 @@ static uint8_t ror8(uint8_t v, uint8_t *p)
     uint8_t c = (uint8_t)(*p & P_C);
 
     *p = (uint8_t)((*p & ~P_C) | (v & 1));
-    v = (uint8_t)(v >> 1 | (c ? 0x80 : 0));
+    v = (uint8_t)(v >> 1 | (c ? (cyc(6), 0x80) : (cyc(6), 0)));
     *p = nz8(*p, v);
     return v;
 }
@@ -137,6 +148,7 @@ static void cmp8(uint8_t a, uint8_t m, uint8_t *p)
 /* Read-modify-write shifts of a direct page byte (D = $0000). */
 static void ror_dp(uint16_t a, uint8_t *p)
 {
+    cyc(60);
     uint8_t v = rd8(a);
 
     wr8(a, ror8(v, p));
@@ -144,9 +156,10 @@ static void ror_dp(uint16_t a, uint8_t *p)
 
 static void rol_dp(uint16_t a, uint8_t *p)
 {
+    cyc(62);
     uint8_t v = rd8(a);
 
-    wr8(a, rol8(v, p));
+    wr8(a, cyc_then(6, rol8(v, p)));
 }
 
 static void lsr_dp(uint16_t a, uint8_t *p)
@@ -154,8 +167,7 @@ static void lsr_dp(uint16_t a, uint8_t *p)
     cyc(38);
     uint8_t v = rd8(a);
 
-    cyc(6);
-    wr8(a, lsr8(v, p));
+    wr8(a, cyc_then(6, lsr8(v, p)));
 }
 
 /*
@@ -182,32 +194,41 @@ void ScaledOffset(uint8_t bank, uint8_t *ra, uint8_t *rx, uint8_t *p)
     uint8_t a, x = 0, v;
 
     *p = nz8(*p, x);
+    cyc(32);
     a = rd8(0x00008B);
     *p = nz8(*p, a);
     if (a) {
+        cyc(10);
         x++;
         a = lsr8(a, p);
         while (a) {
+            cyc(6);
             ror_dp(0x8A, p);
             x++;
             a = lsr8(a, p);
         }
         ror_dp(0x8A, p);
-    }
+    } else { cyc(22); }
+    cyc(16);
     wr8(0x000096, x);
     x = 0;
+    cyc(32);
     a = rd8(0x000089);
+    cyc(16);
     wr8(0x00008F, a);
     *p = nz8(*p, a);
     if (a & 0x80) {
         *p |= P_C;
+        cyc(62);
         v = rd8(0x000088);
         a = op_sbc8(0x00, v, p);
         wr8(0x000088, a);
+        cyc(32);
         v = rd8(0x000089);
         a = op_sbc8(0x00, v, p);
         wr8(0x000089, a);
-    }
+    } else { cyc(22); }
+    cyc(16);
     if (a) {
         x++;
         a = lsr8(a, p);
@@ -218,13 +239,18 @@ void ScaledOffset(uint8_t bank, uint8_t *ra, uint8_t *rx, uint8_t *p)
         }
         ror_dp(0x88, p);
     } else {
+        cyc(22);
         a = rd8(0x000088);
         *p = nz8(*p, a);
         if (!(a & 0x80)) {
             if (!a) {
+                cyc(48);
                 a = rd8(0x0000CE);
+                cyc(16);
                 wr8(0x00008C, a);
+                cyc(16);
                 a = rd8(0x0000CF);
+                cyc(16);
                 wr8(0x00008D, a);
                 *p = nz8(*p, a);
                 *ra = a;
@@ -235,29 +261,37 @@ void ScaledOffset(uint8_t bank, uint8_t *ra, uint8_t *rx, uint8_t *p)
                 x--;
                 a = asl8(a, p);
             } while (!(a & 0x80));
+            cyc(148);
             wr8(0x000088, a);
         }
     }
+    cyc(38);
     a = rd8(0x00008A);
+    cyc(16);
     v = rd8(0x000088);
     cmp8(a, v, p);
     if (*p & P_C) {
         do {
             x--;
             a = lsr8(a, p);
+            cyc(60);
             v = rd8(0x000088);
             cmp8(a, v, p);
         } while (*p & P_C);
+        cyc(32);
         wr8(0x00008A, a);
-    }
+    } else { cyc(22); }
     *p |= P_C;
+    cyc(44);
     v = rd8(0x000096);
     a = op_sbc8(x, v, p);
     wr8(0x00008E, a);
+    cyc(16);
     x = rd8(0x000088);
     a = rd8(b | (uint16_t)(0x8368 + x));
     x = rd8(0x00008A);
     *p |= P_C;
+    cyc(92);
     v = rd8(b | (uint16_t)(0x8368 + x));
     a = op_sbc8(a, v, p);
     x = a;
@@ -268,6 +302,7 @@ void ScaledOffset(uint8_t bank, uint8_t *ra, uint8_t *rx, uint8_t *p)
     if (x & 0x80) {
         do {
             lsr_dp(0x8D, p);
+            cyc(22);
             a = ror8(a, p);
             x++;
         } while (x);
@@ -277,29 +312,42 @@ void ScaledOffset(uint8_t bank, uint8_t *ra, uint8_t *rx, uint8_t *p)
             rol_dp(0x8D, p);
             x--;
         }
-    }
+    cyc(22);
+        }
+    cyc(32);
     wr8(0x00008C, a);
+    cyc(16);
     v = rd8(0x00008F);
     *p = (uint8_t)((*p & ~(P_N | P_V | P_Z)) | (v & 0xC0) | ((a & v) ? 0 : P_Z));
     if (v & 0x80) {
         *p |= P_C;
+        cyc(46);
         a = rd8(0x0000CE);
+        cyc(16);
         v = rd8(0x00008C);
         a = op_sbc8(a, v, p);
         wr8(0x00008C, a);
+        cyc(16);
         a = rd8(0x0000CF);
+        cyc(16);
         v = rd8(0x00008D);
         a = op_sbc8(a, v, p);
         wr8(0x00008D, a);
     } else {
         *p &= (uint8_t)~P_C;
+        cyc(52);
         a = rd8(0x00008C);
+        cyc(16);
         v = rd8(0x0000CE);
         a = op_adc8(a, v, p);
+        cyc(16);
         wr8(0x00008C, a);
+        cyc(16);
         a = rd8(0x00008D);
+        cyc(16);
         v = rd8(0x0000CF);
         a = op_adc8(a, v, p);
+        cyc(16);
         wr8(0x00008D, a);
     }
     *ra = a;
@@ -334,35 +382,56 @@ void abi_ScaledOffsetPair(void)
     for (i = 0; i < 2; i++) {
         static const uint16_t in[2] = {0x02, 0x08}, out[2] = {0x76, 0x78};
 
+        cyc(16);
         a = rd8(in[i]);
+        cyc(16);
         wr8(0x000088, a);
+        cyc(16);
         a = rd8((uint16_t)(in[i] + 1));
+        cyc(16);
         wr8(0x000089, a);
+        cyc(16);
         a = rd8(0x000094);
+        cyc(16);
         wr8(0x00008A, a);
+        cyc(16);
         a = rd8(0x000095);
+        cyc(16);
         wr8(0x00008B, a);
-        abi_ScaledOffset();
+        (cyc(62), abi_ScaledOffset());
         a = rd8(0x00008C);
+        cyc(16);
         wr8(out[i], a);
+        cyc(16);
         a = rd8(0x00008D);
+        cyc(16);
         wr8((uint16_t)(out[i] + 1), a);
     }
     cpu.p &= (uint8_t)~P_C;
+    cyc(30);
     a = rd8(0x0000D0);
+    cyc(16);
     v = rd8(0x000078);
     a = op_adc8(a, v, &cpu.p);
+    cyc(16);
     wr8(0x000078, a);
+    cyc(16);
     a = rd8(0x0000D1);
+    cyc(16);
     v = rd8(0x000079);
     a = op_adc8(a, v, &cpu.p);
+    cyc(16);
     wr8(0x000079, a);
     cpu.p |= P_C;
+    cyc(30);
     a = rd8(0x000078);
+    cyc(16);
     v = rd8(0x0000CE);
     a = op_sbc8(a, v, &cpu.p);
     wr8(0x000078, a);
+    cyc(16);
     a = rd8(0x000079);
+    cyc(16);
     v = rd8(0x0000CF);
     a = op_sbc8(a, v, &cpu.p);
     wr8(0x000079, a);
@@ -433,7 +502,7 @@ void abi_ViewFromAnglesGsu8277(void)
     op_sep(P_M);
     abi_Gsu8277();
     op_rep(P_M);
-    cyc(144);
+    cyc(16);
     w = rd16(0x0000B7);
     cyc(16);
     wr16(0x000002, w);
@@ -449,8 +518,8 @@ void abi_ViewFromAnglesGsu8277(void)
     for (i = 0; i < 9; i++) {
         cyc(24);
         w = rd16(b | (uint16_t)(0x064C + 2 * i));
-        cyc(290);
         w = asr7(w, &cpu.p);
+        cyc(290);
         wr16(b | (uint16_t)(0x066A + 2 * i), w);
     }
     cyc(60);
@@ -525,6 +594,7 @@ void abi_ViewToGsuParams(void)
         cyc(32);
         wr16(0x7000E4 + 2 * i, w);
     }
+    cyc(44);
     cpu.a = w;
     cpu.p = nz16(cpu.p, w);
     op_sep(P_M | P_X);

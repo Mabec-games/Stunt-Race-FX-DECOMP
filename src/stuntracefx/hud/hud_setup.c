@@ -113,12 +113,14 @@ static void hud_bytes(const HudByte *t, unsigned n, int x8)
     unsigned i;
 
     op_sep(P_M);
+    cyc(22);
     for (i = 0; i < n; i++) {
         lda8(t[i].v);
+        cyc(48);
         wr8(t[i].a, t[i].v);
     }
     if (x8)
-        op_sep(P_X);
+        { cyc(68); op_sep(P_X); }
     else
         op_rep(P_X);
 }
@@ -130,12 +132,12 @@ static void digit_tiles(uint32_t at, uint8_t d)
     uint8_t v = (uint8_t)(d << 1);
 
     cpu.p = (uint8_t)((cpu.p & ~P_C) | (d >> 7));
-    cyc(62);
     lda8(v);
+    cyc(62);
     wr8(at, v);
     v++;
-    cyc(46);
     lda8(v);
+    cyc(46);
     wr8(at + 4, v);
 }
 
@@ -164,6 +166,7 @@ static void time_tiles(uint8_t min, uint8_t sec, uint8_t hund)
  */
 void abi_RaceHudSpritesHide(void)
 {
+    cyc(22);
     hud_bytes(hide_sprites, 12, 1);
 }
 
@@ -176,6 +179,7 @@ void abi_RaceHudSpritesHide(void)
  */
 void abi_HudBestTimeSprites(void)
 {
+    cyc(62);
     hud_bytes(best_time_sprites, 30, 1);
 }
 
@@ -196,7 +200,7 @@ void abi_HudBestTimeDigits(void)
     (cyc(84), abi_TimeUnpackBcdLong());
     op_sep(P_M | P_X);
     time_tiles((uint8_t)cpu.a, (uint8_t)cpu.x, (uint8_t)cpu.y);
-    (cyc(84), abi_HudBestTimeSprites());
+    abi_HudBestTimeSprites();
     op_plp(p);
 }
 
@@ -213,14 +217,15 @@ void abi_RecordOffsetAllCourses(void)
     uint32_t b = (uint32_t)cpu.db << 16;
     uint8_t p;
 
+    cyc(86);
     op_lda16(b | 0x0E3D);
     op_sub16(0x0014);
-    cyc(32);
+    cyc(48);
     wr16((uint16_t)(cpu.d + 0xF1), cpu.a);
     op_asl16();
     op_asl16();
     p = (uint8_t)(cpu.p & ~P_C);
-    cyc(30);
+    cyc(58);
     cpu.a = op_adc16(cpu.a, rd16((uint16_t)(cpu.d + 0xF1)), &p);
     cpu.p = p;
     op_and16(0x00FF);
@@ -230,12 +235,14 @@ void abi_RecordOffsetAllCourses(void)
 /* The best time's ten sprites with no time: tile $3F (blank) at Y $BC. */
 static void no_time(void)
 {
+    cyc(64);
     hud_bytes(no_time_sprites, 40, 0);
 }
 
 /* The two flag sprites (tiles $14, $15 at Y $B8). */
 static void flags(void)
 {
+    cyc(22);
     hud_bytes(flag_sprites, 8, 0);
 }
 
@@ -255,34 +262,44 @@ static void slide_word(uint16_t v)
    to go on as mode 0. */
 static int mode_all(uint32_t b)
 {
+    cyc(24);
     op_lda8(b | 0x10CD);
     if ((uint8_t)cpu.a)
-        return 1;
+        { cyc(46); return 1; }
     lda8(0xEC);
+    cyc(62);
     wr8(b | 0x0E16, 0xEC);
     lda8(0xE8);
+    cyc(40);
     wr8(b | 0x0E18, 0xE8);
     op_rep(P_M | P_X);
     op_lda16_imm(0x7FFF);
+    cyc(18);
     wr16(0x7F3470, 0x7FFF);
+    cyc(24);
     op_lda16(b | 0x0D4C);
     op_and16(0x00FF);
     if (cpu.a) {
+        cyc(38);
         abi_RecordOffsetAllCourses();
+        cyc(82);
         op_lda16(0x70FC5E + cpu.x);
         op_cmp16(0xFFFF);
         if (cpu.a == 0xFFFF) {
             no_time();
         } else {
+            cyc(6);
             abi_HudBestTimeDigits();
         }
         flags();
         return 0;
     }
     op_rep(P_M);
+    cyc(68);
     op_lda16(b | 0x0F2B);
     op_cmp16(0xFFFF);
     if (cpu.a == 0xFFFF) {
+        cyc(18);
         no_time();
         flags();
         return 0;
@@ -291,18 +308,25 @@ static int mode_all(uint32_t b)
     {
         uint8_t m, s, h;
 
+        cyc(88);
         op_lda8(b | 0x0F63);
         m = (uint8_t)cpu.a;
         digit_tiles(0x000467, (uint8_t)(m & 0x0F));
+        cyc(24);
         op_lda8(b | 0x0F62);
         s = (uint8_t)cpu.a;
+        cyc(40);
         digit_tiles(0x00046F, (uint8_t)(s >> 4));
+        cyc(24);
         op_lda8(b | 0x0F62);
         s = (uint8_t)cpu.a;
         digit_tiles(0x0004D7, (uint8_t)(s & 0x0F));
+        cyc(24);
         op_lda8(b | 0x0F61);
         h = (uint8_t)cpu.a;
+        cyc(40);
         digit_tiles(0x0004DF, (uint8_t)(h >> 4));
+        cyc(24);
         op_lda8(b | 0x0F61);
         h = (uint8_t)cpu.a;
         digit_tiles(0x0004E7, (uint8_t)(h & 0x0F));
@@ -323,31 +347,42 @@ static void mode_stunt(uint32_t b)
     uint16_t x;
     uint8_t p;
 
+    cyc(24);
     op_lda8(b | 0x0D4E);
     if ((uint8_t)cpu.a) {
+        cyc(40);
         slide_word(0x7FFF);
         op_lda16_imm(0x00AC);
+        cyc(10);
         wr16(b | 0x0E16, 0x00AC);
         op_lda16_imm(0x008C);
+        cyc(10);
         wr16(b | 0x0E18, 0x008C);
+        cyc(22);
         hud_bytes(stunt_record_sprites, 12, 0);
         op_rep(P_M | P_X);
+        cyc(46);
         op_lda16(b | 0x0E3D);
         op_and16(0x00FF);
         op_sub16(0x0017);
+        cyc(70);
         wr16((uint16_t)(cpu.d + 0xF1), cpu.a);
         op_asl16();
         op_asl16();
         p = (uint8_t)(cpu.p & ~P_C);
+        cyc(58);
         cpu.a = op_adc16(cpu.a, rd16((uint16_t)(cpu.d + 0xF1)), &p);
         cpu.p = p;
         op_tax16();
         x = cpu.x;
+        cyc(16);
         op_lda16(0x70FC4A + x);
         op_cmp16(0xFFFF);
         if (cpu.a == 0xFFFF) {
+            cyc(24);
             no_time();
         } else {
+            cyc(12);
             abi_TimeUnpackBcdLong();
             op_sep(P_M | P_X);
             time_tiles((uint8_t)cpu.a, (uint8_t)cpu.x, (uint8_t)cpu.y);
@@ -357,8 +392,10 @@ static void mode_stunt(uint32_t b)
         return;
     }
     lda8(0xF0);
+    cyc(86);
     wr8(b | 0x0E18, 0xF0);
-    abi_RaceHudSpritesHide();
+    (cyc(24), abi_RaceHudSpritesHide());
+    cyc(18);
     hud_bytes(stunt_score_sprites, 42, 1);
     slide_word(0x2127);
 }
@@ -374,9 +411,11 @@ static void player_tiles(uint32_t b, uint16_t from, uint16_t at)
     cpu.p = (uint8_t)((cpu.p & ~P_C) | (v >> 7));
     v = (uint8_t)(v << 1);
     lda8(v);
+    cyc(38);
     wr8(b | at, v);
     v++;
     lda8(v);
+    cyc(38);
     wr8(b | (uint16_t)(at + 4), v);
 }
 
@@ -389,19 +428,25 @@ static void mode_speed_battle(uint32_t b, int speed)
 {
     if (speed) {
         lda8(0x8C);
+        cyc(40);
         wr8(b | 0x0E18, 0x8C);
         lda8(0xEC);
+        cyc(40);
         wr8(b | 0x0E16, 0xEC);
     }
+    cyc(24);
     op_lda8(b | 0x10CD);
     if ((uint8_t)cpu.a) {
         lda8(0x3F);
+        cyc(56);
         wr8(b | 0x046F, 0x3F);
+        cyc(24);
         wr8(b | 0x0467, 0x3F);
         hud_bytes(battle_alt_sprites, 6, 1);
         op_sep(P_M);
         abi_RaceHudSpritesHide();
     } else {
+        cyc(46);
         player_tiles(b, 0x0DF4, 0x046F);
         hud_bytes(battle_p1_sprites, 6, 1);
         player_tiles(b, 0x0DF8, 0x0467);
@@ -409,19 +454,22 @@ static void mode_speed_battle(uint32_t b, int speed)
         op_sep(P_M);
         op_lda8(b | 0x0D4C);
         if ((uint8_t)cpu.a) {
+            cyc(34);
             slide_word(0x3947);
             return;
-        }
+        } else { cyc(2); }
     }
+    cyc(38);
     slide_word(0x7FFF);
     op_sep(P_M);
+    cyc(46);
     op_lda8(b | 0x10CD);
 }
 
 /* The end of both set-ups: RaceVarsReset, SEP #$20. */
 static void hud_end(void)
 {
-    abi_RaceVarsReset();
+    (cyc(86), abi_RaceVarsReset());
     op_sep(P_M);
 }
 
@@ -437,8 +485,9 @@ static void race_hud_setup(void)
     abi_SoundFromTableD89();
     op_rep(P_M | P_X);
     op_lda16_imm(0xA325);
+    cyc(74);
     wr16(0x70004E, 0xA325);
-    abi_OamBufferClear();
+    (cyc(62), abi_OamBufferClear());
     op_sep(P_M);
     op_rep(P_X);
     cpu.x = 0x0000;
@@ -451,118 +500,165 @@ static void race_hud_setup(void)
     abi_OamFromList();
     op_sep(P_M | P_X);
     b = (uint32_t)cpu.db << 16;
+    cyc(46);
     op_lda8(b | 0x0D2B);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | (uint8_t)(cpu.a << 1));
     cpu.p = nz8(cpu.p, (uint8_t)cpu.a);
     cpu.x = (uint8_t)cpu.a;
+    cyc(74);
     h = rd16(0x030000 | (uint16_t)(0xE052 + cpu.x));
     switch (h) {
     case 0xE05A:
         if (mode_all(b))
-            mode_speed_battle(b, 1);
+            mode_speed_battle(b, 1); else { cyc(30); }
         break;
-    case 0xE263: mode_stunt(b); break;
-    case 0xE4DD: mode_speed_battle(b, 1); break;
+    case 0xE263: mode_stunt(b); cyc(8); break;
+    case 0xE4DD: mode_speed_battle(b, 1); cyc(6); break;
     case 0xE4E7: mode_speed_battle(b, 0); break;
     default: jump_routine(0x030000 | h); return;
     }
     /* $03:E5C4: the sprite tables out, scrolls, HUD positions, HDMA. */
+    cyc(100);
     op_sep(P_M);
     op_rep(P_X);
     abi_OamDmaAll();
     op_sep(P_M | P_X);
     b = (uint32_t)cpu.db << 16;
+    cyc(138);
     wr8(b | BG1HOFS, 0x00);
+    cyc(24);
     wr8(b | BG1HOFS, 0x00);
     lda8(0xEF);
+    cyc(40);
     wr8(b | BG1VOFS, 0xEF);
     cpu.x = 0xFF;
     cpu.p = nz8(cpu.p, 0xFF);
+    cyc(40);
     wr8(b | BG1VOFS, 0xFF);
+    cyc(24);
     wr8(b | BG2HOFS, 0x00);
+    cyc(24);
     wr8(b | BG2HOFS, 0x00);
     lda8(0x80);
+    cyc(40);
     wr8(b | BG2VOFS, 0x80);
+    cyc(24);
     wr8(b | BG2VOFS, 0x00);
     lda8(0x04);
+    cyc(40);
     wr8(b | 0x0D3F, 0x04);
     lda8(0xFF);
+    cyc(40);
     wr8(b | 0x0E46, 0xFF);
+    cyc(24);
     wr8(b | 0x0E45, 0xFF);
+    cyc(24);
     wr8(b | 0x0D7D, 0x00);
     lda8(0xC4);
+    cyc(40);
     wr8(b | 0x0E12, 0xC4);
     lda8(0x93);
+    cyc(40);
     wr8(b | 0x0E14, 0x93);
     lda8(0x2A);
+    cyc(40);
     wr8(b | 0x0E09, 0x2A);
     lda8(0x7A);
+    cyc(56);
     wr8(b | 0x0E0C, 0x7A);
     lda8(0x00);
+    cyc(40);
     wr8(b | 0x0E0B, 0x00);
     lda8(0xE0);
+    cyc(40);
     wr8(b | 0x0D57, 0xE0);
     lda8(0x20);
+    cyc(40);
     wr8(b | 0x0D58, 0x20);
     lda8(0x50);
+    cyc(40);
     wr8(b | 0x0E0E, 0x50);
     lda8(0xB8);
+    cyc(40);
     wr8(b | 0x0E10, 0xB8);
     lda8(0x00);
+    cyc(62);
     wr8(b | DMAP1, 0x00);
     lda8(0x2C);
+    cyc(40);
     wr8(b | BBAD1, 0x2C);
     lda8(0x7F);
+    cyc(40);
     wr8(b | A1B1, 0x7F);
     op_rep(P_M);
     op_lda16_imm(0x3480);
+    cyc(10);
     wr16(b | A1T1L, 0x3480);
     op_sep(P_M);
+    cyc(22);
     for (i = 0; i < 9; i++) {
         lda8((uint8_t)hdma_bytes[i]);
+        cyc(48);
         wr8(0x7F3480 + i, (uint8_t)hdma_bytes[i]);
     }
     lda8(0x00);
+    cyc(40);
     wr8(b | DMAP2, 0x00);
     lda8(0x21);
+    cyc(40);
     wr8(b | BBAD2, 0x21);
     lda8(0x7F);
+    cyc(40);
     wr8(b | A1B2, 0x7F);
     op_rep(P_M);
     op_lda16_imm(0x3497);
+    cyc(10);
     wr16(b | A1T2L, 0x3497);
     op_lda16_imm(0x0042);
+    cyc(10);
     wr16(b | DMAP3, 0x0042);
     op_lda16_imm(0x0022);
+    cyc(10);
     wr16(b | BBAD3, 0x0022);
     op_lda16_imm(0x007F);
+    cyc(10);
     wr16(b | A1B3, 0x007F);
     op_lda16_imm(0x3489);
+    cyc(32);
     wr16(b | A1T3L, 0x3489);
     op_rep(P_M | P_X);
     op_lda16_imm(0x0120);
+    cyc(18);
     wr16(0x7F3497, 0x0120);
     cpu.y = 0x0080;
     cpu.x = 0x0002;
     op_lda16_imm(0x0181);
     abi_GradientFillCgadd();
     op_lda16_imm(0x0000);
+    cyc(118);
     wr16(0x7F3497 + cpu.x, 0x0000);
     op_lda16_imm(0xEC57);
+    cyc(18);
     wr16(0x7F348A, 0xEC57);
     op_sep(P_M);
     lda8(0x20);
+    cyc(70);
     wr8(0x7F3489, 0x20);
     lda8(0xFF);
+    cyc(48);
     wr8(0x7F348C, 0xFF);
     lda8(0x00);
+    cyc(48);
     wr8(0x7F348F, 0x00);
     lda8(0x7F);
+    cyc(40);
     wr8(b | DASB3, 0x7F);
     lda8(0x03);
+    cyc(40);
     wr8(b | 0x0374, 0x03);
     op_rep(P_M);
     op_lda16_imm(0x0001);
+    cyc(18);
     wr16(0x7001C4, 0x0001);
     hud_end();
 }
@@ -583,12 +679,15 @@ static void race_hud_setup_two(void)
 
     op_rep(P_M | P_X);
     op_lda16_imm(0xA545);
+    cyc(18);
     wr16(0x70004E, 0xA545);
     op_sep(P_M);
     lda8(0x01);
+    cyc(62);
     wr8(b | 0x0374, 0x01);
     op_rep(P_M);
     op_lda16_imm(0x0002);
+    cyc(18);
     wr16(0x7001C4, 0x0002);
     abi_MenuCourseScreenSetup();
     abi_PaletteCourseLoad();
@@ -596,64 +695,89 @@ static void race_hud_setup_two(void)
     b = (uint32_t)cpu.db << 16;
     cpu.x = 0x00BC;
     for (cpu.y = 0x0000; cpu.y < 0x0020; ) {
+        cyc(228);
         v = (uint16_t)(rd16(b | (uint16_t)(0xE7EA + cpu.y)) - 0x0800);
         wr16(0x000375 + cpu.x, v);
         v = (uint16_t)(v + 0x6850);
+        cyc(70);
         wr16(0x000475 + cpu.x, v);
+        cyc(78);
         v = rd16(b | (uint16_t)(0xE7EC + cpu.y));
         wr16(0x000377 + cpu.x, v);
+        cyc(32);
         wr16(0x000477 + cpu.x, v);
         cpu.x = (uint16_t)(cpu.x + 4);
         cpu.y = (uint16_t)(cpu.y + 4);
     }
     op_lda16_imm(0x0000);
+    cyc(162);
     wr16(b | 0x0425, 0x0000);
+    cyc(24);
     wr16(b | 0x0429, 0x0000);
+    cyc(24);
     wr16(b | 0x042D, 0x0000);
+    cyc(24);
     wr16(b | 0x0525, 0x0000);
+    cyc(24);
     wr16(b | 0x0529, 0x0000);
+    cyc(24);
     wr16(b | 0x052D, 0x0000);
     op_lda16_imm(0x26A0);
+    cyc(10);
     wr16(b | 0x0427, 0x26A0);
+    cyc(24);
     wr16(b | 0x042B, 0x26A0);
+    cyc(24);
     wr16(b | 0x042F, 0x26A0);
+    cyc(24);
     wr16(b | 0x0527, 0x26A0);
+    cyc(24);
     wr16(b | 0x052B, 0x26A0);
+    cyc(24);
     wr16(b | 0x052F, 0x26A0);
     cpu.x = 0x00DC;
     for (cpu.y = 0x0000; cpu.y < 0x0024; ) {
+        cyc(162);
         wr16(b | (uint16_t)(0x0375 + cpu.x), (uint16_t)(rd16(b | (uint16_t)(0xE80F + cpu.y)) + 0x2C28));
+        cyc(76);
         wr16(b | (uint16_t)(0x0377 + cpu.x), rd16(b | (uint16_t)(0xE811 + cpu.y)));
         cpu.x = (uint16_t)(cpu.x + 4);
         cpu.y = (uint16_t)(cpu.y + 4);
     }
+    cyc(42);
     cpu.x = 0x01DC;
     for (cpu.y = 0x0000; cpu.y < 0x0024; ) {
+        cyc(272);
         wr16(b | (uint16_t)(0x0375 + cpu.x), (uint16_t)(rd16(b | (uint16_t)(0xE80F + cpu.y)) + 0x9476));
+        cyc(76);
         v = rd16(b | (uint16_t)(0xE811 + cpu.y));
         cpu.a = v;
         wr16(b | (uint16_t)(0x0377 + cpu.x), v);
         cpu.x = (uint16_t)(cpu.x + 4);
         cpu.y = (uint16_t)(cpu.y + 4);
     }
+    cyc(148);
     op_sep(P_M);
     cpu.x = 0x000B;
     for (cpu.y = 0x0000; cpu.y < 0x0005; ) {
+        cyc(142);
         uint8_t s = rd8(b | (uint16_t)(0xE80A + cpu.y));
 
         lda8(s);
         wr8(b | (uint16_t)(0x0575 + cpu.x), s);
+        cyc(30);
         wr8(b | (uint16_t)(0x0585 + cpu.x), s);
         cpu.x++;
         cpu.y++;
     }
+    cyc(178);
     cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z)) | P_Z | P_C);
     op_rep(P_M | P_X);
     cpu.y = 0xF845;
     cpu.x = 0xF804;
     cpu.p = nz16(cpu.p, 0xF804);
     abi_GsuCF42ToVram();
-    hud_end();
+    (cyc(20), hud_end());
 }
 
 /* PLB, PLP (the data bank and P RaceHudLoad pushed), RTL: for an entry
@@ -663,9 +787,11 @@ static void hud_leave_stack(void)
 {
     uint16_t lo;
 
+    cyc(42);
     cpu.db = rd8((uint16_t)(cpu.s + 1));
     cpu.s = (uint16_t)(cpu.s + 1);
     cpu.p = nz8(cpu.p, cpu.db);
+    cyc(20);
     op_plp(rd8((uint16_t)(cpu.s + 1)));
     cpu.s = (uint16_t)(cpu.s + 1);
     lo = (uint16_t)(rd16((uint16_t)(cpu.s + 1)) + 1);
@@ -697,7 +823,7 @@ static void hud_leave_stack(void)
  */
 void RaceHudSetup(uint8_t p, uint8_t db)
 {
-    (cyc(198), race_hud_setup());
+    race_hud_setup();
     cpu.db = db;
     cpu.p = nz8(cpu.p, db);
     op_plp(p);
@@ -705,8 +831,8 @@ void RaceHudSetup(uint8_t p, uint8_t db)
 
 void abi_RaceHudSetup(void)
 {
-    (cyc(152), race_hud_setup());
-    (cyc(86), hud_leave_stack());
+    race_hud_setup();
+    hud_leave_stack();
 }
 
 /*
@@ -722,7 +848,7 @@ void abi_RaceHudSetup(void)
  */
 void RaceHudSetupTwoPlayers(uint8_t p, uint8_t db)
 {
-    (cyc(64), race_hud_setup_two());
+    race_hud_setup_two();
     cpu.db = db;
     cpu.p = nz8(cpu.p, db);
     op_plp(p);
@@ -730,6 +856,6 @@ void RaceHudSetupTwoPlayers(uint8_t p, uint8_t db)
 
 void abi_RaceHudSetupTwoPlayers(void)
 {
-    (cyc(18), race_hud_setup_two());
-    (cyc(86), hud_leave_stack());
+    race_hud_setup_two();
+    hud_leave_stack();
 }

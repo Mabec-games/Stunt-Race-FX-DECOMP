@@ -48,6 +48,7 @@ void abi_WindowsColourAddBg12(void)
  */
 void WindowsColourWindowOnly(void)
 {
+    cyc(116);
     wr8(W12SEL, 0x00);
     cyc(32);
     wr8(W34SEL, 0x00);
@@ -113,7 +114,7 @@ static void windows_colour_add03(void)
 {
     cyc(146);
     wr8(CGADSUB, 0x03);
-    (cyc(116), WindowsColourWindowOnly());
+    WindowsColourWindowOnly();
 }
 
 /*
@@ -316,7 +317,7 @@ void abi_BobWindow0(void)
     v = rd8((uint32_t)cpu.db << 16 | 0x0D62);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     if (v)
-        (cyc(68), abi_WindowHdmaFFD5());
+        { cyc(68); abi_WindowHdmaFFD5(); }
     else
         abi_WindowHdmaFFD1();
 }
@@ -332,8 +333,9 @@ void abi_BobWindow0(void)
 void abi_BobWindow1(void)
 {
     if (bob_window(1, 0x19AF))
-        abi_WindowHdmaFFD9();
-}
+        { cyc(46); abi_WindowHdmaFFD9(); }
+cyc(84);
+    }
 
 /*
  * @routine 7E:DE88 WindowSweepStep
@@ -438,7 +440,7 @@ void abi_WindowSweep(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0xEE)) & ~P_C) | (v >= 0xEE ? P_C : 0));
     if (v == 0xEE)
-        { cyc(42); return; }
+        { cyc(56); return; }
     cyc(64);
     wr8(0x0019AC, v);
     cyc(32);
@@ -449,10 +451,10 @@ void abi_WindowSweep(void)
     v = rd8((uint32_t)cpu.db << 16 | 0x0D62);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     if (v)
-        (cyc(68), abi_WindowHdmaFFD5());
+        { cyc(68); abi_WindowHdmaFFD5(); }
     else
         abi_WindowHdmaFFD1();
-cyc(70);
+cyc(84);
     }
 
 /*
@@ -488,10 +490,11 @@ void abi_WindowSweepIfOn(void)
                 cyc(94);
                 wr8(b | 0x19A9, 0x04);
                 (cyc(46), abi_WindowSweep());
-            }
+            } else { cyc(14); }
+        } else { cyc(14); }
+    cyc(2);
         }
-    cyc(16);
-        }
+    cyc(80);
     cpu.db = db0;
     op_plp(p0);
 }
@@ -515,23 +518,32 @@ void abi_OscillatorStep(void)
     uint8_t v, a, c;
 
     op_sep(P_M | P_X);
+    cyc(32);
     v = (uint8_t)(rd8(0x001A11) & 0x80);
     if (v) {
+        cyc(80);
         wr8(0x001A0E + cpu.x, 0x80);
         a = 0x04;
     } else {
+        cyc(70);
         a = (uint8_t)(rd8(0x001A11) >> 5);
+        cyc(102);
         c = rd8(0x001A0E + cpu.x);
         cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(a - c)) & ~P_C) | (a >= c ? P_C : 0));
         if (a != c)
             wr8(0x001A0A + cpu.x, 0x00);
+        cyc(54);
         v = rd8(0x001A11);
         a = (uint8_t)(v >> 5);
         cpu.p = (uint8_t)((nz8(cpu.p, a) & ~P_C) | ((v & 0x10) ? P_C : 0));
+        cyc(102);
         wr8(0x001A0E + cpu.x, a);
         if (!a) {
+            cyc(64);
             wr8(0x001A0A + cpu.x, 0x00);
+            cyc(48);
             wr8(0x001A08 + cpu.x, 0x40);
+            cyc(48);
             wr8(0x001A0C + cpu.x, 0x01);
             cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
             cpu.p = nz8(cpu.p, 0x01);
@@ -539,14 +551,19 @@ void abi_OscillatorStep(void)
         }
     }
     a = (uint8_t)(a - 1);
+    cyc(104);
     v = rd8((uint32_t)(0x7ED30D + a));
+    cyc(24);
     wr8(b | 0x1A10, v);
     cpu.p &= (uint8_t)~P_C;
+    cyc(60);
     c = op_adc8(rd8(0x001A0A + cpu.x), 0x01, &cpu.p);
+    cyc(62);
     v = rd8(0x001A10);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | c);
     cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(c - v)) & ~P_C) | (c >= v ? P_C : 0));
     if (c != v) {
+        cyc(48);
         wr8(0x001A0A + cpu.x, c);
         return;
     }
@@ -602,10 +619,10 @@ void abi_OscillatorWindow(void)
     v = rd8(b | 0x0D62);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     if (v)
-        (cyc(68), abi_WindowHdmaFFD5());
+        { cyc(68); abi_WindowHdmaFFD5(); }
     else
         abi_WindowHdmaFFD1();
-cyc(70);
+cyc(84);
     }
 
 void abi_ObjectLinkEventTrigger(void);
@@ -617,6 +634,7 @@ static void bob_setup(uint32_t b)
     uint8_t v;
 
     cpu.p |= P_M;
+    cyc(86);
     v = (uint8_t)(rd8(0x000D45) & 0xDF);
     cyc(48);
     wr8(0x000D45, v);
@@ -644,40 +662,48 @@ void abi_BobWindowsRun(void)
 
     cpu.db = 0x7E;
     cpu.p |= P_M;
+    cyc(140);
     v = rd8(b | 0x19D8);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     if (v)
-        goto out;
+        { cyc(22); goto out; }
+    cyc(48);
     v = rd8(0x0019BC);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     if (v == 0xFF)
-        goto out;
+        { cyc(38); goto out; }
     abi_ObjectLinkEventTrigger();
     op_sep(P_M | P_X);
+    cyc(126);
     v = (uint8_t)(rd8(b | 0x0DA4) & 0x80);
     if (v) {
         bob_setup(b);
         abi_BobWindow0();
     }
     if (cpu.p & P_M) {
+        cyc(62);
         v = rd8(b | 0x0D62);
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
         if (!v)
-            goto out;
+            { cyc(22); goto out; }
     } else {                    /* WindowHdmaFFD1 left M 16-bit: a word */
+        cyc(108);
         cpu.a = rd16(b | 0x0D62);
         if (!cpu.a)
             goto out;
     }
+    cyc(62);
     op_sep(P_M | P_X);
     abi_ObjectLinkEventTrigger2();
     cpu.p |= P_M;
+    cyc(92);
     v = (uint8_t)(rd8(b | 0x0DA6) & 0x80);
     if (v) {
         bob_setup(b);
-        abi_BobWindow1();
-    }
+        (cyc(46), abi_BobWindow1());
+    } else { cyc(38); }
 out:
+    cyc(100);
     cpu.db = db0;
     cpu.p = p0;
 }
@@ -716,12 +742,15 @@ void abi_WindowSlideOrOscillate(void)
 
     cpu.db = 0x7E;
     op_sep(P_M);
+    cyc(368);
     op_lda8(0x7E19D8);
     if (!(uint8_t)cpu.a) {
+        cyc(48);
         op_lda8(0x0019BC);
         v = (uint8_t)cpu.a;
-        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0xFF)) & ~P_C) | (v >= 0xFF ? P_C : 0));
+        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0xFF)) & ~P_C) | (v >= 0xFF ? (cyc(14), P_C) : 0));
         if (v != 0xFF) {
+            cyc(78);
             op_lda8(0x7E0DA5);
             v = (uint8_t)(cpu.a & 0x06);
             cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
@@ -729,16 +758,19 @@ void abi_WindowSlideOrOscillate(void)
             if (v) {
                 cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x02);
                 cpu.p = nz8(cpu.p, 0x02);
+                cyc(72);
                 wr8(0x7E19A9, 0x02);
                 abi_WindowSlideStep();
+                cyc(108);
                 op_lda8(0x7E0DA5);
                 v = (uint8_t)(cpu.a & 0x06);
                 cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
                 cpu.p = nz8(cpu.p, v);
                 if (v)
-                    goto out;
+                    { cyc(10); goto out; }
             }
             op_sep(P_M);
+            cyc(84);
             op_lda8(0x7E0DA5);
             v = (uint8_t)(cpu.a & 0x08);
             cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
@@ -747,12 +779,15 @@ void abi_WindowSlideOrOscillate(void)
                 op_sep(P_M);
                 cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x02);
                 cpu.p = nz8(cpu.p, 0x02);
+                cyc(94);
                 wr8(0x7E19A9, 0x02);
-                abi_OscillatorWindow();
-            }
+                (cyc(46), abi_OscillatorWindow());
+            } else { cyc(14); }
         }
-    }
+    cyc(2);
+        }
 out:
+    cyc(142);
     cpu.db = db0;
     op_plp(p0);
 }

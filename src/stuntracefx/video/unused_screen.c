@@ -35,17 +35,16 @@ void ScrollRegsClear(uint8_t bank)
 {
     uint16_t r;
 
+    cyc(44);
     for (r = 0x210D; r <= 0x2114; r++) {
-        cyc(24);
-        wr8(dbw(bank, r), 0x00);
-        cyc(24);
-        wr8(dbw(bank, r), 0x00);
+        wr8(dbw(bank, r), cyc_then(24, 0x00));
+        wr8(dbw(bank, r), cyc_then(24, 0x00));
     }
-}
+cyc(72);
+    }
 
 void abi_ScrollRegsClear(void)
 {
-    cyc(44);
     ScrollRegsClear(cpu.db);
 }
 
@@ -65,14 +64,17 @@ uint8_t PaletteLoad70(uint8_t bank, uint8_t index, uint16_t *x)
     uint16_t o = (uint16_t)(index << 5), y;
     uint8_t v = 0;
 
-    wr8(dbw(bank, 0x2121), 0x70);
+    wr8(dbw(bank, 0x2121), cyc_then(206, 0x70));
     for (y = 0; y != 0x20; y = (uint16_t)(y + 2)) {
+        cyc(88);
         v = rd8(PALETTES + o);
         wr8(dbw(bank, 0x2122), v);
+        cyc(64);
         v = rd8(PALETTES + 1 + o);
         wr8(dbw(bank, 0x2122), v);
         o = (uint16_t)(o + 2);
     }
+    cyc(126);
     *x = o;
     return v;
 }
@@ -104,6 +106,7 @@ uint16_t PaletteToBuffers(uint8_t index, uint16_t *x)
 {
     uint16_t o = (uint16_t)(index << 5), y, w = 0;
 
+    cyc(212);
     for (y = 0; y != 0x20; y = (uint16_t)(y + 2)) {
         cyc(180);
         w = rd16(PALETTES + o);
@@ -121,7 +124,6 @@ void abi_PaletteToBuffers(void)
 {
     uint16_t x;
 
-    cyc(212);
     cpu.a = PaletteToBuffers((uint8_t)cpu.a, &x);
     cpu.x = x;
     cpu.y = 0x0020;
@@ -142,26 +144,33 @@ void ColoursRedDouble(void)
 {
     uint16_t y, w, r;
 
+    cyc(162);
     for (y = 0; y != 0x100; y = (uint16_t)(y + 2)) {
+        cyc(160);
         w = rd16(COLOURS + y);
+        cyc(40);
         wr16(0x00003E, (uint16_t)(w & 0x7FE0));
+        cyc(30);
         w = rd16(COLOURS + y);
         r = (uint16_t)(w & 0x001F);
         if (r <= 3)
             r |= 0x0003;
         r = (uint16_t)(r << 1);
         if (r >= 0x001F)
-            r = 0x001F;
+            { cyc(18); r = 0x001F; }
         r &= 0x001F;
+        cyc(186);
         r |= rd16(0x00003E);
+        cyc(30);
         wr16(COLOURS + y, r);
     }
+    cyc(142);
     wr16(0x000800, 0x0000);
 }
 
 void abi_ColoursRedDouble(void)
 {
-    (cyc(162), ColoursRedDouble());
+    ColoursRedDouble();
     cpu.a = 0x0000;
 }
 
@@ -177,13 +186,14 @@ void ColoursClear(uint8_t bank)
 {
     int x;
 
+    cyc(56);
     for (x = 0xDF; x >= 0; x--)
-        { cyc(66); wr8(dbw(bank, (uint16_t)(COLOURS + x)), 0x00); }
-}
+        wr8(dbw(bank, (uint16_t)(COLOURS + x)), cyc_then(66, 0x00));
+cyc(110);
+    }
 
 void abi_ColoursClear(void)
 {
-    cyc(56);
     ColoursClear(cpu.db);
     cpu.a = (uint16_t)(cpu.a & 0xFF00);
     cpu.p = nz16((uint8_t)(cpu.p | P_M), cpu.x);
@@ -223,19 +233,12 @@ void abi_Set7EBC2AValues(void)
  */
 void ScreenBlankAndWait(uint8_t bank)
 {
-    cyc(90);
-    wr8(dbw(bank, 0x420C), 0x00);
-    cyc(40);
-    wr8(dbw(bank, 0x2100), 0x80);
-    cyc(138);
+    wr8(dbw(bank, 0x420C), cyc_then(90, 0x00));
+    wr8(dbw(bank, 0x2100), cyc_then(40, 0x80));
     Set7EBC2BTrio(0x80);
-    cyc(112);
-    wr8(dbw(bank, 0x06E3), 0x96);
-    cyc(212);
+    wr8(dbw(bank, 0x06E3), cyc_then(112, 0x96));
     WaitScanline(bank);
-    cyc(266);
-    wr8(dbw(bank, 0x06E3), 0x8C);
-    cyc(212);
+    wr8(dbw(bank, 0x06E3), cyc_then(62, 0x8C));
     WaitScanline(bank);
 }
 
@@ -279,8 +282,9 @@ void HardwareRegsInit02(void)
     unsigned i;
 
     for (i = 0; i < sizeof writes / sizeof writes[0]; i++)
-        wr8(writes[i].reg, writes[i].v);
-}
+        { cyc(150); wr8(writes[i].reg, writes[i].v); }
+cyc(70);
+    }
 
 void abi_HardwareRegsInit02(void)
 {
@@ -333,17 +337,14 @@ uint16_t TileRowBuild(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     int back;
 
     *p &= (uint8_t)~(P_M | P_X);
-    cyc(46);
-    wr16(dbw(bank, 0x08EA), 0x0000);
-    cyc(24);
-    a = (uint16_t)(rd16(dbw(bank, 0x08ED)) & 0x00FF);
+    wr16(dbw(bank, 0x08EA), cyc_then(46, 0x0000));
+    a = (uint16_t)(rd16(cyc_then(24, dbw(bank, 0x08ED))) & 0x00FF);
     if (!a) {
         cyc(40);
         *p = nz16(*p, a);
         return a;
     }
-    cyc(116);
-    a = rd16(dbw(bank, 0x0342));
+    a = rd16(cyc_then(116, dbw(bank, 0x0342)));
     back = (a & 0x8000) != 0;
     if (back)
         { cyc(44); a = (uint16_t)-a; }
@@ -364,8 +365,7 @@ static uint16_t tile_row_pick(uint8_t bank, uint16_t a, int back, uint16_t *x, u
         *p = (uint8_t)((*p & ~P_N) | P_Z | P_C);
         return t;
     }
-    cyc(46);
-    wr16(dbw(bank, 0x08E8), t);
+    wr16(dbw(bank, 0x08E8), cyc_then(46, t));
     i = back ? (cyc(38), (uint16_t)(t + 0x3E)) : t;
     for (*y = 0; *y != 0x40; *y = (uint16_t)(*y + 2)) {
         unsigned s;
@@ -375,13 +375,11 @@ static uint16_t tile_row_pick(uint8_t bank, uint16_t a, int back, uint16_t *x, u
         a = rd16(dbw(bank, 0x08E6));
         s = (unsigned)w + a;
         *p = (uint8_t)((*p & ~P_V) | ((~(w ^ a) & (w ^ s) & 0x8000) ? P_V : 0));
-        cyc(30);
-        wr16(dbw(bank, (uint16_t)(ROW + *y)), (uint16_t)s);
+        wr16(dbw(bank, (uint16_t)(ROW + *y)), cyc_then(30, (uint16_t)s));
         i = back ? (cyc(64), (uint16_t)(i - 2)) : (cyc(64), (uint16_t)(i + 2));
     }
     *x = i;
-    cyc(80);
-    wr16(dbw(bank, 0x08EA), 0x0001);
+    wr16(dbw(bank, 0x08EA), cyc_then(80, 0x0001));
     *p = (uint8_t)((*p & ~(P_N | P_Z)) | P_C);
     return 0x0001;
 }
@@ -432,22 +430,14 @@ void abi_TileRowBuildLong(void)
  */
 void TileRowUpload(uint8_t bank)
 {
-    cyc(40);
-    wr8(dbw(bank, 0x2115), 0x80);
-    cyc(40);
-    wr8(dbw(bank, 0x4301), 0x18);
-    cyc(48);
-    wr16(dbw(bank, 0x4302), ROW);
-    cyc(24);
-    wr8(dbw(bank, 0x4304), 0x00);
-    cyc(48);
-    wr16(dbw(bank, 0x2116), 0x2FA0);
-    cyc(48);
-    wr16(dbw(bank, 0x4305), 0x0040);
-    cyc(40);
-    wr8(dbw(bank, 0x4300), 0x01);
-    cyc(40);
-    wr8(dbw(bank, 0x420B), 0x01);
+    wr8(dbw(bank, 0x2115), cyc_then(40, 0x80));
+    wr8(dbw(bank, 0x4301), cyc_then(40, 0x18));
+    wr16(dbw(bank, 0x4302), cyc_then(48, ROW));
+    wr8(dbw(bank, 0x4304), cyc_then(24, 0x00));
+    wr16(dbw(bank, 0x2116), cyc_then(48, 0x2FA0));
+    wr16(dbw(bank, 0x4305), cyc_then(48, 0x0040));
+    wr8(dbw(bank, 0x4300), cyc_then(40, 0x01));
+    wr8(dbw(bank, 0x420B), cyc_then(40, 0x01));
 }
 
 void abi_TileRowUpload(void)
@@ -508,35 +498,53 @@ uint16_t UnusedScreenTiles(void)
     uint16_t a = 0x1C00, y, x, r;
     unsigned i;
 
+    cyc(150);
     wr8(0x002115, 0x80);
+    cyc(70);
     wr16(0x002116, 0x2C40);
     for (y = 0; y != 0x10; y++) {
+        cyc(212);
         wr16(0x002118, 0x39A0);
+        cyc(24);
         wr16(0x002118, 0x39A0);
+        cyc(24);
         wr16(0x002118, 0x39A0);
         for (x = 0; x != 0x1A; x++) {
+            cyc(84);
             wr16(0x002118, a);
             a = (uint16_t)(a + 0x10);
         }
+        cyc(170);
         wr16(0x002118, 0x39A0);
+        cyc(24);
         wr16(0x002118, 0x39A0);
+        cyc(24);
         wr16(0x002118, 0x39A0);
         a = (uint16_t)(a - 0x019F);
     }
+    cyc(160);
     r = (uint16_t)(rd16(0x70023A) & 0x00FF);
     if (r) {
+        cyc(40);
         for (i = 0; i < 10; i++) {
+            cyc(48);
             wr16(0x002116, marks[i][0]);
+            cyc(48);
             wr16(0x002118, marks[i][1]);
         }
         r = 0x2A86;
-    }
+    } else { cyc(46); }
+    cyc(48);
     wr16(0x002116, 0x1A00);
+    cyc(12);
     for (y = 0x10; y; y--)
-        wr16(0x002118, 0xFFFF);
+        { cyc(60); wr16(0x002118, 0xFFFF); }
+    cyc(78);
     wr16(0x002116, 0x4A00);
+    cyc(12);
     for (y = 0x10; y; y--)
-        wr16(0x002118, 0xFFFF);
+        { cyc(60); wr16(0x002118, 0xFFFF); }
+    cyc(124);
     return r;
 }
 
@@ -562,7 +570,7 @@ void abi_UnusedScreenTilesLocked(void)
     uint8_t p = cpu.p;
 
     (cyc(98), abi_UnusedScreenTiles());
-    cyc(156);
+    cyc(32);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | rd8(TIMEUP));
     op_plp(p);
 }
@@ -601,112 +609,195 @@ void abi_UnusedScreenSetup(void)
 
     op_sep(P_M | P_X);
     cpu.p |= P_I;
+    cyc(38);
     wr8(b | 0x4200, 0x00);
+    cyc(16);
     wr8(0x000000, 0x00);
+    cyc(24);
     wr8(b | 0x084C, 0x00);
+    cyc(24);
     rd8(b | 0x4211);
     op_rep(P_M);
+    cyc(32);
     rd16(0x003030);
+    cyc(48);
     wr16(b | 0x0374, 0x0021);
-    abi_ScreenBlankAndWait();
+    (cyc(62), abi_ScreenBlankAndWait());
+    cyc(118);
     wr16(b | 0x2121, 0x0000);
+    cyc(24);
     wr16(b | 0x2116, 0x0000);
+    cyc(24);
     wr16(b | 0x2117, 0x0000);
+    cyc(48);
     wr16(b | 0x2100, 0x0080);
+    cyc(24);
     wr16(b | 0x2115, 0x0080);
     for (i = 0x7F; i; i--)
-        for (j = 0x100; j; j--) {
+        { cyc(20); for (j = 0x100; j; j--) {
+            cyc(60);
             wr16(b | 0x2118, 0x0000);
+            cyc(24);
             wr16(b | 0x2119, 0x0000);
-        }
+        } }
     op_rep(P_M | P_X);
+    cyc(108);
     wr16(b | 0x2116, 0x2C00);
+    cyc(12);
     for (i = 0x400; i; i--)
-        wr16(b | 0x2118, 0x01A1);
+        { cyc(60); wr16(b | 0x2118, 0x01A1); }
+    cyc(136);
     op_sep(P_M);
     abi_UnusedScreenTiles();
+    cyc(62);
     wr16(0x00004E, 0x0000);
+    cyc(40);
     wr16(0x000050, 0x3000);
+    cyc(40);
     wr16(0x000048, 0x2C00);
+    cyc(40);
     wr16(0x00004A, 0x2C00);
+    cyc(16);
     v = rd8(0x000049);
+    cyc(52);
     wr8(b | 0x3038, (uint8_t)(v >> 2));
+    cyc(16);
     v = rd8(0x00004F);
     cpu.p = (uint8_t)((cpu.p & ~P_C) | (v & 0x08 ? P_C : 0));
+    cyc(96);
     wr8(b | 0x210B, (uint8_t)(v >> 4 | 0x50));
+    cyc(40);
     wr8(b | 0x2101, 0x03);
+    cyc(40);
     wr8(b | 0x2107, 0x2C);
+    cyc(40);
     wr8(b | 0x2108, 0x73);
+    cyc(40);
     wr8(b | 0x2105, 0x02);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x02);
-    abi_TileRowBuildLong();
-    abi_TileRowUploadLong();
+    (cyc(62), abi_TileRowBuildLong());
+    (cyc(148), abi_TileRowUploadLong());
     op_sep(P_M);
     op_rep(P_X);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
-    abi_PaletteLoad70();
+    (cyc(172), abi_PaletteLoad70());
+    cyc(40);
     wr8(b | 0x4301, 0x22);
+    cyc(40);
     wr8(b | 0x2121, 0x80);
+    cyc(48);
     wr16(b | 0x4302, 0xFA17);
+    cyc(40);
     wr8(b | 0x4304, 0x7F);
+    cyc(48);
     wr16(b | 0x4305, 0x0100);
+    cyc(40);
     wr8(b | 0x4300, 0x00);
+    cyc(40);
     wr8(b | 0x420B, 0x01);
+    cyc(24);
     wr8(b | 0x2123, 0x00);
+    cyc(24);
     wr8(b | 0x2124, 0x00);
+    cyc(40);
     wr8(b | 0x2125, 0x20);
+    cyc(24);
     wr8(b | 0x212A, 0x00);
+    cyc(40);
     wr8(b | 0x212B, 0x0C);
+    cyc(24);
     wr8(b | 0x212E, 0x00);
+    cyc(24);
     wr8(b | 0x212F, 0x00);
+    cyc(24);
     wr8(b | 0x2126, 0x00);
+    cyc(24);
     wr8(b | 0x2127, 0x00);
+    cyc(40);
     wr8(b | 0x212C, 0x17);
+    cyc(40);
     wr8(b | 0x212D, 0x07);
-    abi_Set7EBC2AValues();
+    (cyc(62), abi_Set7EBC2AValues());
     op_sep(P_M);
+    cyc(134);
     wr8(b | 0x4310, 0x00);
+    cyc(40);
     wr8(b | 0x4311, 0x00);
+    cyc(48);
     wr16(b | 0x4312, 0xBC28);
+    cyc(40);
     wr8(b | 0x4314, 0x7E);
+    cyc(24);
     wr8(b | 0x4317, 0x00);
+    cyc(40);
     wr8(b | 0x4320, 0x02);
+    cyc(40);
     wr8(b | 0x4321, 0x0F);
+    cyc(48);
     wr16(b | 0x4322, 0xBC50);
+    cyc(40);
     wr8(b | 0x4324, 0x7E);
+    cyc(24);
     wr8(b | 0x4327, 0x00);
+    cyc(40);
     wr8(b | 0x4330, 0x01);
+    cyc(40);
     wr8(b | 0x4331, 0x26);
+    cyc(48);
     wr16(b | 0x4332, 0xB7A0);
+    cyc(40);
     wr8(b | 0x4334, 0x7E);
+    cyc(24);
     wr8(b | 0x4337, 0x00);
+    cyc(40);
     wr8(b | 0x4340, 0x02);
+    cyc(40);
     wr8(b | 0x4341, 0x10);
+    cyc(48);
     wr16(b | 0x4342, 0xC22E);
+    cyc(40);
     wr8(b | 0x4344, 0x7E);
+    cyc(24);
     wr8(b | 0x4347, 0x00);
+    cyc(40);
     wr8(b | 0x0316, 0x1E);
+    cyc(48);
     wr16(b | 0x084D, 0xBC50);
+    cyc(48);
     wr16(b | 0x084F, 0xBF3F);
+    cyc(48);
     wr16(b | 0x083E, 0xB7A0);
+    cyc(48);
     wr16(b | 0x0840, 0xB9E4);
+    cyc(24);
     wr8(b | 0x0842, 0x00);
-    abi_ScrollRegsClear();
+    (cyc(62), abi_ScrollRegsClear());
     op_sep(P_M);
+    cyc(70);
     wr16(b | 0x4209, 0x008F);
+    cyc(48);
     wr16(b | 0x4207, 0x0000);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x80);
     abi_Set7EBC2BTrio();
+    cyc(96);
     wr8(b | 0x2100, 0x80);
+    cyc(24);
     wr8(b | 0x084C, 0x00);
+    cyc(40);
     wr8(b | 0x420C, 0x02);
+    cyc(40);
     wr8(b | 0x06E3, 0xBE);
     abi_WaitScanline();
+    cyc(62);
     wr8(b | 0x06E3, 0x64);
     abi_WaitScanline();
+    cyc(46);
     rd8(b | 0x4210);
+    cyc(40);
     wr8(b | 0x4200, 0x31);
+    cyc(40);
     wr8(b | 0x05D9, 0xFF);
+    cyc(32);
     v = rd8(TIMEUP);
     a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.a = a;
@@ -738,13 +829,13 @@ void abi_UnusedScreenStart(void)
     wr8(b | 0x0306, 0x00);
     while (!rd8(cyc_then(24, b | 0x0854)))
         ;
-    (cyc(78), abi_GsuClearScreenIfSet());
+    cyc(78);
+    abi_GsuClearScreenIfSet();
     while (rd8(cyc_then(126, b | 0x0854)) != 0x02)
         ;
     cyc(56);
     wr8(b | 0x0854, 0x00);
-    (cyc(198), abi_SpriteSlotFirstLong());
-    cyc(176);
+    abi_SpriteSlotFirstLong();
     CrashWhite(cpu.db);
 }
 
@@ -761,5 +852,5 @@ void abi_ObjectLinkBobStart(void);
  */
 void abi_ObjectLinkBobStartLong(void)
 {
-    (cyc(70), abi_ObjectLinkBobStart());
+    abi_ObjectLinkBobStart();
 }

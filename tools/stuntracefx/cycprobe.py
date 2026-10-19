@@ -27,7 +27,15 @@ macros is left as it is.
 import csv, glob, json, os, subprocess, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-SRC = os.path.join(ROOT, 'src', 'stuntracefx')
+DECOMP = os.path.join(ROOT, 'src', 'stuntracefx')
+# the tree probed: the decomp, or (CYC_SRC) a copy of it, as cycwrite.py
+# --strip makes one without its written times
+SRC = os.path.abspath(os.environ.get('CYC_SRC', DECOMP))
+
+
+def rel_name(path):
+    """A file of the tree probed by its name in the decomp."""
+    return os.path.relpath(os.path.join(DECOMP, os.path.relpath(path, SRC)), ROOT)
 TIMING = ('cyc', 'cyc_then')      # machine.h's stated time: no access, no probes
 CONTROL = {'IfStmt', 'WhileStmt', 'ForStmt', 'DoStmt', 'SwitchStmt', 'LabelStmt', 'CaseStmt', 'DefaultStmt'}
 
@@ -436,7 +444,7 @@ def walk_file(path, pure, calls=None):
 def instrument(path, out, next_id, rows, pure, calls=None):
     text, w, order = walk_file(path, pure, calls)
     pieces, at = [], 0
-    rel = os.path.relpath(path, ROOT)
+    rel = rel_name(path)
     for i, (off, _order, s, kind) in order:
         pieces.append(text[at:off])
         if '@' in s:

@@ -27,10 +27,13 @@ static uint16_t preview_frame(unsigned n)
 {
     while (n--)
         abi_MenuFixedColourDown();
+    cyc(72);
     cpu.a = 0x0000;
     abi_RaceFrameStep();
     cpu.a = 0x0001;
+    cyc(56);
     wr16(0x0018FD, 0x0001);
+    cyc(32);
     cpu.a = rd16(0x001905);
     cpu.p = nz16(cpu.p, cpu.a);
     return cpu.a;
@@ -57,7 +60,7 @@ static void hdma_on(uint8_t channels)
     cpu.p &= (uint8_t)~P_X;
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | channels);
     cpu.x = 0x420C;
-    abi_FrameByteWritePush();
+    (cyc(22), abi_FrameByteWritePush());
     cpu.x = x;
     cpu.p = nz16(cpu.p, x);  /* PLX, X 16-bit */
     cpu.p &= (uint8_t)~P_M;
@@ -69,9 +72,9 @@ static void kind4_animation(uint16_t anim)
     uint16_t x;
 
     cpu.a = 0x0004;
-    abi_MenuActorFind();
+    (cyc(70), abi_MenuActorFind());
     x = cpu.x;
-    cyc(52);
+    cyc(22);
     cpu.a = rd16(ACTOR(x, 0x14));
     if (cpu.a != anim) {
         cpu.a = anim;
@@ -106,13 +109,12 @@ void abi_MenuPreviewIdle(void)
     cpu.a = 0xBCD2;
     cyc(46);
     wr16(ACTOR(x, 0x08), 0xBCD2);
-    (cyc(172), abi_MenuChoiceRepeat());
-    cyc(74);
+    abi_MenuChoiceRepeat();
     cpu.a = rd16(0x0018C9);
     abi_MenuSet1A66();
-    (cyc(420), abi_MenuSetPairAnimations());
+    abi_MenuSetPairAnimations();
     cpu.a = 0x0000;
-    abi_RaceFrameStep();
+    (cyc(50), abi_RaceFrameStep());
 }
 
 /*
@@ -140,10 +142,8 @@ void abi_MenuPreviewStart(void)
     wr16(ACTOR(x, 0x08), 0xBD55);
     cyc(46);
     wr16(ACTOR(x, 0x0A), 0x0014);
-    cyc(70);
     kind4_animation(0x00D8);
     groups_45(0x0000);
-    cyc(22);
     hdma_on(0xC0);
 }
 
@@ -177,22 +177,23 @@ void abi_MenuPreviewCountdown(void)
         cyc(52);
         wr16(ACTOR(x, 0x0A), n);
         if (n == 0x0013 || (cyc(40), n == 0x000E) || (cyc(40), n == 0x0009) || (cyc(34), n == 0x0004)) {
+            cyc(108);
             cpu.p |= P_M;
             cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x3F);
-            (cyc(106), abi_SoundPort0QueuePushRaw());
+            abi_SoundPort0QueuePushRaw();
             cpu.p &= (uint8_t)~P_M;
-        } else { cyc(16); }
-        cyc(58);
+        } else { cyc(30); }
+        cyc(44);
         n = rd16(ACTOR(x, 0x0A));
         cpu.a = n;
         if (!n)
-            { cyc(86); kind4_animation(0x0090); } else { cyc(22); }
+            { cyc(16); kind4_animation(0x0090); } else { cyc(22); }
     } else { cyc(22); }
     cyc(24);
     cpu.x = rd16(0x0011F9);
     abi_MenuFixedColourDown();
     cpu.a = 0x0000;
-    (cyc(22), abi_RaceFrameStep());
+    (cyc(72), abi_RaceFrameStep());
     cpu.a = 0x0001;
     cyc(56);
     wr16(0x0018FD, 0x0001);
@@ -210,7 +211,7 @@ void abi_MenuPreviewCountdown(void)
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x47);
         (cyc(100), abi_SoundPort0QueuePush());
         cpu.p &= (uint8_t)~P_M;
-        cyc(60);
+        cyc(46);
         x = rd16(0x0011F9);
         cpu.x = x;
         cyc(46);
@@ -223,7 +224,6 @@ void abi_MenuPreviewCountdown(void)
         cpu.p = nz16(cpu.p, cpu.a);
         cyc(56);
         wr16(0x7EFD65, 0x464A);
-        cyc(22);
         hdma_on(0xE0);
         return;
     }
@@ -241,7 +241,7 @@ void abi_MenuPreviewCountdown(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x46);
     (cyc(100), abi_SoundPort0QueuePush());
     cpu.p &= (uint8_t)~P_M;
-    cyc(60);
+    cyc(46);
     cpu.y = rd16(0x0011FB);
     (cyc(46), abi_MenuActorFree());
 }
@@ -274,7 +274,7 @@ static void wr_m(uint32_t a, uint16_t v)
     if (cpu.p & P_M)
         wr8(a, (uint8_t)v);
     else
-        wr16(a, v);
+        { cyc(24); wr16(a, v); }
 }
 
 /* A bank $17 picture to VRAM `vram`: its byte count is the big-endian
@@ -286,6 +286,7 @@ static void preview_picture(uint16_t vram, uint16_t pic)
 
     cpu.p &= (uint8_t)~(P_M | P_X);
     cpu.x = vram;
+    cyc(92);
     wr16(0x002116, vram);
     cyc(114);
     n = rd16(0x170000 | (uint16_t)(pic - 2));
@@ -329,89 +330,121 @@ void abi_MenuScreenOpenPreview(void)
     cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
     cpu.a = (uint16_t)(cpu.a & 0xFF00);
     cpu.db = 0x00;
+    cyc(262);
     wr8(0x002100, 0x80);
+    cyc(24);
     wr8(0x00420C, 0x00);
+    cyc(24);
     wr8(0x00420B, 0x00);
+    cyc(24);
     wr8(0x0011DA, 0x00);
+    cyc(24);
     wr8(0x004200, 0x00);
     cpu.p &= (uint8_t)~(P_M | P_X);
+    cyc(46);
     wr16(0x00162D, 0x0000);
+    cyc(24);
     wr16(0x0016AF, 0x0000);
+    cyc(24);
     wr16(0x001191, 0x0000);
+    cyc(24);
     wr16(0x001193, 0x0000);
+    cyc(48);
     wr16(0x000D7D, 0x0006);
+    cyc(48);
     wr16(0x001189, 0x1234);
+    cyc(24);
     wr16(0x00118F, 0x0000);
+    cyc(24);
     wr16(0x0011EB, 0x0000);
     cpu.a = 0x1234;
     abi_MenuActorPoolInit();
-    abi_MenuHdmaSetupB();
+    (cyc(140), abi_MenuHdmaSetupB());
     cpu.x = 0x0010;
-    abi_MenuActorSpawnList();
-    abi_RaceStart();
-    abi_MenuActorsRun();
-    abi_MenuOamBuild();
+    (cyc(156), abi_MenuActorSpawnList());
+    (cyc(62), abi_RaceStart());
+    (cyc(62), abi_MenuActorsRun());
+    (cyc(62), abi_MenuOamBuild());
+    cyc(100);
     wr_m(0x0011ED, 0x0000);
     wr_m(0x0011EF, 0x0000);
     cpu.p |= P_M;
     for (i = 0; i < sizeof ppu / sizeof ppu[0]; i++)
-        wr8(ppu[i].reg, ppu[i].v);
+        { cyc(62); wr8(ppu[i].reg, ppu[i].v); }
+    cyc(46);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x12);
     abi_MenuScrollReset();
     cpu.p &= (uint8_t)~P_M;
+    cyc(62);
     wr16(0x0000FB, 0xE3AC);
+    cyc(40);
     wr16(0x0000FD, 0x001C);
     cpu.a = 0x001C;
     cpu.p &= (uint8_t)~(P_M | P_X);
-    abi_MenuPaletteLoad();
+    (cyc(112), abi_MenuPaletteLoad());
     cpu.a = 0x0000;
+    cyc(56);
     wr16(0x7EFD65, 0x0000);
-    abi_MenuPaletteSave();
+    (cyc(40), abi_MenuPaletteSave());
+    cyc(48);
     wr16(0x0011DF, 0x0020);
     cpu.a = 0x0020;
     cpu.y = 0x0007;
     cpu.x = 0x0120;
-    abi_MenuPaletteScale();
+    (cyc(66), abi_MenuPaletteScale());
     cpu.a = 0x0020;
+    cyc(48);
     wr16(0x0011DF, 0x0020);
     cpu.y = 0x0007;
     cpu.x = 0x01A0;
-    abi_MenuPaletteScale();
+    (cyc(66), abi_MenuPaletteScale());
     preview_picture(0x3000, 0xCC78);
+    cyc(22);
     preview_picture(0x6800, 0xCE78);
     cpu.p &= (uint8_t)~(P_M | P_X);
-    abi_MenuPictureDC8CGrid0();
+    (cyc(90), abi_MenuPictureDC8CGrid0());
+    cyc(72);
     wr16(0x002116, 0x6000);
     for (x = 0; x != 0x1000; x = (uint16_t)(x + 2))
-        wr16(0x002118, rd16(0x703000 + x));
+        { cyc(32); wr16(0x002118, cyc_then(24, rd16(0x703000 + x))); }
+    cyc(46);
     preview_picture(0x4000, 0xDD8C);
     cpu.p &= (uint8_t)~(P_M | P_X);
     cpu.x = 0x1601;
+    cyc(114);
     wr16(0x0011F9, 0x1601);
-    abi_MenuLoadPicturesTo7F();
-    abi_MenuLoadClearGsu();
-    abi_MenuLoadBlank0800();
-    abi_MenuLoadBlank1000();
-    abi_MenuLoadBlank1800();
+    (cyc(46), abi_MenuLoadPicturesTo7F());
+    (cyc(88), abi_MenuLoadClearGsu());
+    (cyc(88), abi_MenuLoadBlank0800());
+    (cyc(88), abi_MenuLoadBlank1000());
+    (cyc(88), abi_MenuLoadBlank1800());
     cpu.p |= P_M;
+    cyc(104);
     wr8(0x000D3F, 0x20);
+    cyc(40);
     wr8(0x004209, 0xE0);
+    cyc(24);
     wr8(0x00420A, 0x00);
+    cyc(40);
     wr8(0x0011D7, 0x0F);
+    cyc(70);
     wr8(0x0010DA, 0x00);
     cpu.a = (uint16_t)(cpu.a & 0xFF00);
-    abi_SoundReset();
+    (cyc(62), abi_SoundReset());
     cpu.p |= P_M;
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x21);
+    cyc(134);
     wr8(0x004200, 0x21);
-    abi_MenuWaitFrame();
-    abi_MenuWaitFrame();
-    abi_MenuActorsRun();
-    abi_MenuOamBuild();
+    (cyc(46), abi_MenuWaitFrame());
+    (cyc(46), abi_MenuWaitFrame());
+    (cyc(62), abi_MenuActorsRun());
+    (cyc(62), abi_MenuOamBuild());
     cpu.p |= P_M;
+    cyc(162);
     wr8(0x00420C, 0x90);
-    wr8(0x0011D7, (uint8_t)(rd8(0x0011D7) | 0x0F));
-    abi_MenuWaitFrame();
+    cyc(24);
+    wr8(0x0011D7, cyc_then(40, (uint8_t)(rd8(0x0011D7) | 0x0F)));
+    (cyc(46), abi_MenuWaitFrame());
     cpu.db = db;
     cpu.p = p;
 }
@@ -433,13 +466,14 @@ static void frame_write(uint8_t v, uint16_t reg)
 static void palette_scale(uint16_t level, int word, uint16_t x, uint16_t y)
 {
     if (word)
-        wr16(0x0011DF, level);
+        { cyc(48); wr16(0x0011DF, level); }
     else
-        wr8(0x0011DF, (uint8_t)level);
+        { cyc(24); wr8(0x0011DF, (uint8_t)level); }
+    cyc(66);
     cpu.a = word ? level : (uint16_t)((cpu.a & 0xFF00) | (uint8_t)level);
     cpu.y = y;
     cpu.x = x;
-    (cyc(66), abi_MenuPaletteScale());
+    abi_MenuPaletteScale();
 }
 
 /*
@@ -482,86 +516,122 @@ void abi_MenuScreenOpenPreviewFade(void)
     cpu.a = (uint16_t)(cpu.a & 0xFF00);
     cpu.db = 0x00;
     cpu.p &= (uint8_t)~(P_M | P_X);
+    cyc(268);
     wr16(0x00162D, 0x0000);
+    cyc(24);
     wr16(0x0016AF, 0x0000);
+    cyc(24);
     wr16(0x001191, 0x0000);
+    cyc(24);
     wr16(0x001193, 0x0000);
+    cyc(24);
     wr16(0x0011EB, 0x0000);
+    cyc(48);
     wr16(0x000D7D, 0x0006);
+    cyc(48);
     wr16(0x001189, 0x1234);
+    cyc(24);
     wr16(0x00118F, 0x0000);
+    cyc(48);
     wr16(0x0011ED, 0x0000);
+    cyc(48);
     wr16(0x0011EF, 0x0000);
     cpu.a = 0x0000;
     abi_MenuActorPoolInit();
     cpu.x = 0x0010;
-    abi_MenuActorSpawnList();
+    (cyc(180), abi_MenuActorSpawnList());
     cpu.p |= P_M;
+    cyc(46);
     wr8(0x0011D7, 0x00);
-    abi_MenuWaitFrame();
+    (cyc(46), abi_MenuWaitFrame());
     cpu.p |= P_M;
+    cyc(40);
     wr8(0x000D3F, 0x20);
+    cyc(40);
     wr8(0x004209, 0xE0);
+    cyc(24);
     wr8(0x00420A, 0x00);
     cpu.p &= (uint8_t)~(P_M | P_X);
+    cyc(84);
     wr16(0x0000FB, 0xE3AC);
+    cyc(40);
     wr16(0x0000FD, 0x001C);
     for (x = 0, y = 0; x != 0x0018; x = (uint16_t)(x + 2), y = (uint16_t)(y + 2)) {
+        cyc(108);
         src = rd8(0x0000FB);
         src |= (uint32_t)rd8(0x0000FC) << 8;
         src |= (uint32_t)rd8(0x0000FD) << 16;
+        cyc(48);
         wr16(0x7EFF65 + x, rd16((src + y) & 0xFFFFFF));
+        cyc(56);
         wr16(0x7EFD65 + x, 0x0000);
     }
+    cyc(158);
     cpu.a = 0x0000;
     cpu.x = x;
     cpu.y = y;
     abi_RaceStart();
-    abi_MenuHdmaSetupB();
-    abi_MenuActorsRun();
-    abi_MenuOamBuild();
+    (cyc(46), abi_MenuHdmaSetupB());
+    (cyc(132), abi_MenuActorsRun());
+    (cyc(62), abi_MenuOamBuild());
+    cyc(122);
     for (i = 0; i < sizeof first / sizeof first[0]; i++)
         frame_write(first[i].v, first[i].reg);
     cpu.p |= P_M;
-    wr8(0x0011D7, (uint8_t)(rd8(0x0011D7) | 0x0F));
+    cyc(168);
+    wr8(0x0011D7, cyc_then(40, (uint8_t)(rd8(0x0011D7) | 0x0F)));
+    cyc(48);
     wr8(0x001909, 0x20);
     do {
+        cyc(46);
         abi_MenuWaitFrame();
         cpu.p |= P_M;
+        cyc(62);
         palette_scale((uint8_t)(0x20 - rd8(0x001909)), 0, 0x0000, 0x0007);
         cpu.p |= P_M;
+        cyc(32);
         palette_scale(rd8(0x001909), 0, 0x0018, 0x0003);
         cpu.p |= P_M;
-        wr8(0x0011D7, (uint8_t)(rd8(0x0011D7) | 0x0B));
+        cyc(24);
+        wr8(0x0011D7, cyc_then(40, (uint8_t)(rd8(0x0011D7) | 0x0B)));
+        cyc(32);
         v = (uint8_t)(rd8(0x001909) - 2);
+        cyc(60);
         wr8(0x001909, v);
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     } while (!(v & 0x80));
+    cyc(62);
     abi_MenuWaitFrame();
+    cyc(44);
     for (i = 0; i < sizeof full / sizeof full[0]; i++)
         frame_write(full[i].v, full[i].reg);
     cpu.p &= (uint8_t)~P_M;
+    cyc(206);
     wr16(0x0000FB, 0xE3AC);
+    cyc(40);
     wr16(0x0000FD, 0x001C);
     cpu.a = 0x001C;
     cpu.p &= (uint8_t)~(P_M | P_X);
-    abi_MenuPaletteLoad();
+    (cyc(112), abi_MenuPaletteLoad());
     cpu.a = 0x0000;
+    cyc(56);
     wr16(0x7EFD65, 0x0000);
-    abi_MenuPaletteSave();
+    (cyc(40), abi_MenuPaletteSave());
     cpu.p &= (uint8_t)~P_M;
     palette_scale(0x0020, 1, 0x0120, 0x0007);
     cpu.p &= (uint8_t)~P_M;
     palette_scale(0x0020, 1, 0x01A0, 0x0007);
     cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
-    abi_MenuActorsRun();
-    abi_MenuOamBuild();
+    (cyc(106), abi_MenuActorsRun());
+    (cyc(62), abi_MenuOamBuild());
     cpu.p |= P_M;
-    wr8(0x0011D7, (uint8_t)(rd8(0x0011D7) | 0x0B));
-    abi_MenuWaitFrame();
+    cyc(124);
+    wr8(0x0011D7, cyc_then(40, (uint8_t)(rd8(0x0011D7) | 0x0B)));
+    (cyc(46), abi_MenuWaitFrame());
     cpu.p |= P_M;
-    wr8(0x0011D7, (uint8_t)(rd8(0x0011D7) | 0x0F));
-    abi_MenuWaitFrame();
+    cyc(24);
+    wr8(0x0011D7, cyc_then(40, (uint8_t)(rd8(0x0011D7) | 0x0F)));
+    (cyc(46), abi_MenuWaitFrame());
     cpu.db = db;
     cpu.p = p;
 }
@@ -600,40 +670,31 @@ static uint32_t dpx(uint8_t off)
  */
 void abi_MenuSlideToPreview(void)
 {
-    cyc(22);
-    cpu.a = (uint16_t)(rd16(dpx(0x0A)) + 3);
+    cpu.a = (uint16_t)(rd16(cyc_then(22, dpx(0x0A))) + 3);
     op_cmp16(0x0080);
     if (cpu.a >= 0x0080) {
         cyc(18);
         cpu.a = 0x0080;
         cpu.p = nz16(cpu.p, cpu.a);
     }
-    cyc(106);
-    wr16(dpx(0x0A), cpu.a);
+    wr16(dpx(0x0A), cyc_then(106, cpu.a));
     abi_MenuSinePosition();
-    cyc(64);
-    cpu.a = rd16(dpx(0x0A));
+    cpu.a = rd16(cyc_then(64, dpx(0x0A)));
     op_cmp16(0x0080);
     if (cpu.a != 0x0080)
         { cyc(42); return; }
-    cyc(82);
-    wr16(dpx(0x08), 0xBA4E);
-    cyc(22);
-    wr16(dpx(0x0A), 0x0000);
+    wr16(dpx(0x08), cyc_then(82, 0xBA4E));
+    wr16(dpx(0x0A), cyc_then(22, 0x0000));
     cpu.a = 0x0004;
     cpu.p = nz16(cpu.p, cpu.a);
     (cyc(70), abi_MenuActorFind());
-    cyc(52);
-    cpu.a = rd16(dpx(0x14));
+    cpu.a = rd16(cyc_then(22, dpx(0x14)));
     op_cmp16(0x008A);
     if (cpu.a != 0x008A) {
         cpu.a = 0x008A;
-        cyc(82);
-        wr16(dpx(0x14), 0x008A);
-        cyc(22);
-        wr16(dpx(0x16), 0x0000);
-        cyc(22);
-        wr16(dpx(0x18), 0x0000);
+        wr16(dpx(0x14), cyc_then(82, 0x008A));
+        wr16(dpx(0x16), cyc_then(22, 0x0000));
+        wr16(dpx(0x18), cyc_then(22, 0x0000));
     } else { cyc(42); }
     cpu.a = 0x0000;
     cyc(56);
@@ -642,10 +703,10 @@ void abi_MenuSlideToPreview(void)
     cpu.a = rd16(0x0018CB);
     cpu.p = nz16(cpu.p, cpu.a);
     abi_MenuSet1A66();
-    (cyc(420), abi_MenuSetPairAnimations());
+    abi_MenuSetPairAnimations();
     cpu.a = 0x0000;
     cpu.p = nz16(cpu.p, 0);
-    abi_RaceFrameStep();
+    (cyc(50), abi_RaceFrameStep());
     cpu.a = 0x0001;
     cyc(56);
     wr16(0x0018FD, 0x0001);
@@ -666,15 +727,16 @@ static void preview_menu_loop(void)
     uint32_t b = (uint32_t)cpu.db << 16;
 
     do {
-        (cyc(68), abi_MenuWaitFrame());
+        cyc(68);
+        abi_MenuWaitFrame();
         cpu.p &= (uint8_t)~(P_M | P_X);
         cpu.a = 0x0000;
-        cyc(142);
+        cyc(56);
         wr16(0x0018FD, 0x0000);
         cyc(24);
         wr16(b | 0x11DD, cyc_then(14, (uint16_t)(rd16(b | 0x11DD) + 1)));
         (cyc(62), abi_MenuActorsRun());
-        (cyc(206), abi_MenuOamBuild());
+        (cyc(62), abi_MenuOamBuild());
         cpu.p &= (uint8_t)~P_M;
         cyc(146);
         wr16(b | 0x118B, 0x0000);
@@ -689,11 +751,12 @@ static void preview_menu_loop(void)
         cyc(46);
         cpu.a = rd16(b | 0x11EB);
     } while (!cpu.a);
+    cyc(116);
     cpu.p |= P_M;
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x04);
-    (cyc(116), abi_SoundPort1QueuePush());
+    abi_SoundPort1QueuePush();
     cpu.p &= (uint8_t)~P_M;
-    (cyc(82), abi_ApproachTargetZero());
+    (cyc(68), abi_ApproachTargetZero());
     (cyc(116), abi_MenuRunFrames());
 }
 
@@ -709,8 +772,8 @@ void abi_MenuPreviewRun(void)
 {
     cpu.p &= (uint8_t)~(P_M | P_X);
     abi_MenuScreenOpenPreview();
-    (cyc(230), abi_MenuWaitFrame());
-    (cyc(132), abi_ApproachTargetFull());
+    (cyc(144), abi_MenuWaitFrame());
+    (cyc(46), abi_ApproachTargetFull());
     cpu.p &= (uint8_t)~(P_M | P_X);
     (cyc(94), preview_menu_loop());
 }
@@ -735,7 +798,7 @@ void abi_MenuPreviewRunFade(void)
     b = (uint32_t)cpu.db << 16;
     cpu.p |= P_M;
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x0F);
-    cyc(246);
+    cyc(160);
     wr8(b | 0x11DA, 0x0F);
     cyc(24);
     wr8(b | 0x11DB, 0x0F);
@@ -781,20 +844,20 @@ void abi_CourseMenuRun(void)
     cyc(32);
     op_lda16(0x001917);
     if (!cpu.a) {
-        cyc(318);
         call_routine(0x0BAEF2, 1);
         op_rep(P_M);
         op_cmp16(0x0000);
         if (cpu.p & P_Z) {
-            (cyc(156), abi_MenuPreviewRunFade());
+            cyc(156);
+            abi_MenuPreviewRunFade();
             goto chosen;
         }
-    }
-    (cyc(84), abi_MenuPreviewRun());
+    } else { cyc(84); }
+    abi_MenuPreviewRun();
 chosen:
     op_rep(P_M);
     b = (uint32_t)cpu.db << 16;
-    cyc(162);
+    cyc(76);
     op_lda16(0x0018C3);
     cyc(24);
     wr16(b | 0x0D2B, cpu.a);
@@ -805,10 +868,10 @@ chosen:
     op_lda16(0x0018C3);
     op_cmp16(0x0002);
     if (cpu.p & P_Z)
-        (cyc(104), abi_SelectionCommit());
+        { cyc(104); abi_SelectionCommit(); }
     else
         abi_SelectionSave();
-    cyc(94);
+    cyc(22);
     op_sep(P_M);
     b = (uint32_t)cpu.db << 16;
     for (i = 0; i < 3; i++) {
@@ -819,7 +882,8 @@ chosen:
         cyc(32);
         wr8(0x70FC08u + i, (uint8_t)cpu.a);
     }
-    (cyc(62), abi_SaveChecksum());
+    cyc(62);
+    abi_SaveChecksum();
     op_sep(P_M);
     b = (uint32_t)cpu.db << 16;
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x1C);
@@ -867,9 +931,9 @@ void abi_MenuPreviewBackOut(void)
     cyc(32);
     cpu.a = rd16(0x0018CB);
     abi_MenuSet1A66();
-    (cyc(420), abi_MenuSetPairAnimations());
+    abi_MenuSetPairAnimations();
     cpu.a = 0x0000;
-    abi_RaceFrameStep();
+    (cyc(50), abi_RaceFrameStep());
 }
 
 /*
@@ -924,14 +988,18 @@ void abi_MenuPreviewBackEnd(void)
     uint16_t x;
 
     if (preview_frame(2))
-        return;
+        { cyc(16); return; }
+    cyc(46);
     x = rd16((uint32_t)cpu.db << 16 | 0x11F9);
     cpu.x = x;
+    cyc(46);
     wr16(ACTOR(x, 0x08), 0xBA4E);
+    cyc(46);
     wr16(ACTOR(x, 0x0A), 0x0014);
     kind4_animation(0x00CE);
     groups_45(0x0000);
     cpu.a = 0x0000;
+    cyc(56);
     wr16(0x001191, 0x0000);
     hdma_on(0xC0);
 }

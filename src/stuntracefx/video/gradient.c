@@ -16,19 +16,25 @@
 static uint16_t expand_runs(uint8_t bank, uint16_t x, uint16_t *y)
 {
     for (;;) {
+        cyc(204);
         uint16_t n = (uint16_t)(rd16(0x1FB44E + x) & 0x00FF), colour, out;
 
         if (!n)
             return x;
         wr16(0x0000F1, n);
+        cyc(92);
         colour = rd16(((uint32_t)bank << 16) + 0x0020 + *y);
         out = rd16(0x0000F3);
         do {
+            cyc(32);
             wr16((0x7FEF57 + out) & 0xFFFFFF, colour);
             out = (uint16_t)(out + 2);
+            cyc(44);
             n = (uint16_t)(rd16(0x0000F1) - 1);
+            cyc(14);
             wr16(0x0000F1, n);
         } while (n);
+        cyc(32);
         wr16(0x0000F3, out);
         x = (uint16_t)(x + 1);
         *y = (uint16_t)(*y + 2);
@@ -39,10 +45,11 @@ static uint16_t expand_runs(uint8_t bank, uint16_t x, uint16_t *y)
    1 (second list) uses the run table from `special`, any other from 0. */
 static uint16_t expand_list(uint8_t bank, uint16_t *y, uint16_t course, uint16_t special, int *carry)
 {
+    cyc(92);
     uint16_t c = (uint16_t)(rd16((uint32_t)bank << 16 | 0x0E3D) & 0x00FF);
 
     *carry = c >= course;
-    return expand_runs(bank, c == course ? special : 0, y);
+    return expand_runs(bank, c == course ? (cyc(10), special) : 0, y);
 }
 
 static void abi_expand(uint16_t course, uint16_t special)
@@ -71,7 +78,6 @@ static void abi_expand(uint16_t course, uint16_t special)
  */
 uint16_t GradientExpandFirst(uint8_t bank, uint16_t *y, int *carry)
 {
-    cyc(92);
     return expand_list(bank, y, 0x000A, 0x0028, carry);
 }
 
@@ -90,7 +96,6 @@ void abi_GradientExpandFirst(void)
  */
 uint16_t GradientExpandSecond(uint8_t bank, uint16_t *y, int *carry)
 {
-    cyc(92);
     return expand_list(bank, y, 0x0001, 0x0050, carry);
 }
 
@@ -148,6 +153,7 @@ void abi_GradientBuildColours(void)
 /* Store a word `count` times at $7F:3497 + X, stepping 2. */
 static uint16_t fill_cgadd(uint16_t value, uint16_t x, uint16_t count)
 {
+    cyc(16);
     do {
         cyc(96);
         wr16(0x7F3497 + x, value);
@@ -183,6 +189,7 @@ void abi_GradientFillCgadd(void)
  */
 void GradientFillCgaddB(uint16_t value, uint16_t x, uint16_t count)
 {
+    cyc(14);
     fill_cgadd(value, x, count);
 }
 
@@ -249,6 +256,7 @@ uint16_t GradientSetup(uint8_t bank)
     uint8_t blk;
     unsigned k;
 
+    cyc(152);
     wr8(b | 0x4320, 0x00);
     cyc(40);
     wr8(b | 0x4321, 0x21);
@@ -267,13 +275,12 @@ uint16_t GradientSetup(uint8_t bank)
     cyc(102);
     wr16(0x7F3497, 0x0117);
     x = 2;
-    cyc(30);
     GradientFillCgaddB(0x0181, x, 0x0050);
     x = (uint16_t)(x + 0xA0);
     cyc(156);
     wr16(0x7F3497 + x, 0x0118);
     x = (uint16_t)(x + 2);
-    cyc(58);
+    cyc(28);
     GradientFillCgaddB(0x0181, x, 0x0050);
     x = (uint16_t)(x + 0xA0);
     cyc(156);
@@ -288,6 +295,7 @@ uint16_t GradientSetup(uint8_t bank)
     cyc(90);
     c = rd16(b | 0x0E3D);
     i = (uint16_t)(((uint16_t)(c << 1) + c) & 0x00FF);
+    cyc(6);
     blk = rd8(0x03F6F3 + i);
     src = rd16(0x03F6F1 + i);
     for (k = 0; k < 0x20; k++)

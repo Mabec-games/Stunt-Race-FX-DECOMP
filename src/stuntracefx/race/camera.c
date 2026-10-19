@@ -26,6 +26,7 @@ static uint16_t asr_round(uint16_t v, unsigned n)
 {
     unsigned c = 0;
 
+    cyc(22);
     while (n--)
         { cyc(38); v = asr(v, &c); }
     return (v & 0x8000) ? (cyc(18), (uint16_t)(v + c)) : v;
@@ -53,6 +54,7 @@ static uint16_t add16(uint16_t a, uint16_t m, uint8_t *p)
 /* An angle byte of the target (+$15 or +$14) as the high byte. */
 static uint16_t angle_hi(uint32_t b, uint16_t y, uint16_t field)
 {
+    cyc(30);
     uint16_t v = rd16(b | (uint16_t)(field + y));
 
     return (uint16_t)((uint16_t)((v << 8) | (v >> 8)) & 0xFF00);
@@ -94,151 +96,239 @@ void abi_CameraFollowStep(void)
     unsigned i;
 
     cpu.p &= (uint8_t)~(P_M | P_X);
+    cyc(104);
     t = rd16(CAM(r, 0x02));
+    cyc(38);
     wr16(b | CAM_TARGET, t);
-    wr16(b | CAM_FLAGS, rd16(CAM(r, 0x00)));
+    cyc(58);
+    wr16(b | CAM_FLAGS, cyc_then(24, rd16(CAM(r, 0x00))));
+    cyc(24);
     a = (uint16_t)(rd16(b | CAM_FLAGS) & 0x0002);
     if (a) {
+        cyc(150);
         cpu.a = a;
         cpu.p = (uint8_t)(nz16(cpu.p, a) & ~(P_M | P_X));
         return;
     }
+    cyc(92);
     if (rd16(b | CAM_FLAGS) & 0x0004) {
-        g = rd16(0x7E2022 + rd16(b | CAM_TARGET));
+        cyc(100);
+        g = rd16(cyc_then(32, 0x7E2022 + rd16(b | CAM_TARGET)));
+        cyc(46);
         a = rd16(0x70004A + g);
         if (a & 0x8000)
-            a = (uint16_t)(~a + 1);
+            { cyc(32); a = (uint16_t)(~a + 1); }
         a = asr_round(a, 1);
+        cyc(74);
         wr16(0x000094, a);
         a = asr_round(a, 2);
+        cyc(16);
         wr16(0x000008, a);
+        cyc(16);
         wr16(0x000002, 0x0000);
-        wr16(CAM(r, 0x26), (uint16_t)(~rd16(0x000002) + 1));
-        wr16(CAM(r, 0x28), (uint16_t)(~rd16(0x000008) + 1));
-        wr16(CAM(r, 0x2A), (uint16_t)(~rd16(0x000094) + 1));
+        cyc(16);
+        wr16(CAM(r, 0x26), cyc_then(60, (uint16_t)(~rd16(0x000002) + 1)));
+        cyc(16);
+        wr16(CAM(r, 0x28), cyc_then(60, (uint16_t)(~rd16(0x000008) + 1)));
+        cyc(16);
+        wr16(CAM(r, 0x2A), cyc_then(60, (uint16_t)(~rd16(0x000094) + 1)));
     } else {
+        cyc(92);
         wr16(CAM(r, 0x26), 0x0000);
+        cyc(22);
         wr16(CAM(r, 0x28), 0x0000);
+        cyc(22);
         wr16(CAM(r, 0x2A), 0x0000);
     }
-    wr16(0x000002, rd16(CAM(r, 0x1A)));
-    wr16(0x000008, rd16(CAM(r, 0x1C)));
-    wr16(0x000094, rd16(CAM(r, 0x1E)));
+    wr16(0x000002, cyc_then(16, rd16(CAM(r, 0x1A))));
+    cyc(22);
+    wr16(0x000008, cyc_then(16, rd16(CAM(r, 0x1C))));
+    cyc(22);
+    wr16(0x000094, cyc_then(16, rd16(CAM(r, 0x1E))));
+    cyc(24);
     f = rd16(b | CAM_FLAGS);
     if (f & 0x0100) {
+        cyc(64);
         wr16(b | 0x065E, 0x0000);
+        cyc(24);
         wr16(b | 0x0660, 0x0000);
+        cyc(24);
         wr16(b | 0x0662, 0x0000);
     } else if (!(f & 0x1C00)) {
+        cyc(110);
         y = rd16(b | CAM_TARGET);
         cpu.y = y;
         a = (uint16_t)(~angle_hi(b, y, 0x2015) + 1);
+        cyc(104);
         wr16(CAM(r, 0x16), a);
+        cyc(24);
         wr16(b | 0x0660, a);
         a = asr_n(angle_hi(b, y, 0x2014), 2);
+        cyc(78);
         wr16(CAM(r, 0x14), a);
+        cyc(24);
         wr16(b | 0x065E, a);
+        cyc(24);
         wr16(b | 0x0662, 0x0000);
     } else {
+        cyc(116);
         y = rd16(b | CAM_TARGET);
         cpu.y = y;
+        cyc(62);
         g = rd16(0x70247A);
-        if ((rd16(0x700042 + g) & 0x000C) && !(rd16(b | CAM_FLAGS) & 0x0200)) {
+        cyc(46);
+        if ((rd16(0x700042 + g) & 0x000C) && !(rd16(cyc_then(100, b | CAM_FLAGS)) & 0x0200)) {
+            cyc(40);
             a = (uint16_t)(~angle_hi(b, y, 0x2015) + 1);
+            cyc(118);
             a = (uint16_t)(a - rd16(CAM(r, 0x16)));
             a = asr_n(a, 1);
+            cyc(42);
             a = (uint16_t)(a + rd16(CAM(r, 0x16)));
         } else {
             a = (uint16_t)(~angle_hi(b, y, 0x2015) + 1);
+            cyc(118);
             a = (uint16_t)(a - rd16(CAM(r, 0x16)));
+            cyc(24);
             wr16(b | CAM_LAG, a);
+            cyc(24);
             switch (rd16(b | CAM_FLAGS) & 0x1C00) {
             case 0x0400:
+                cyc(172);
                 g = rd16(0x70247A);
+                cyc(46);
                 w = rd16(0x70006C + g);
                 if (w & 0x8000)
                     w = (uint16_t)(~w + 1);
                 a = asr_round(rd16(b | CAM_LAG), (w - 0x7EF4) & 0x8000 ? 2 : 1);
                 break;
             case 0x0800:
+                cyc(174);
                 a = asr_round(rd16(b | CAM_LAG), 2);
                 break;
             case 0x0C00:
+                cyc(214);
                 cpu.a = rd16(b | CAM_LAG);
                 abi_ScaleFiveThirtySeconds();
+                cyc(44);
                 a = asr_round(cpu.a, 1);
                 break;
             case 0x1000:
+                cyc(254);
                 cpu.a = rd16(b | CAM_LAG);
                 abi_ScaleFiveThirtySeconds();
+                cyc(22);
                 a = asr_round(cpu.a, 2);
                 break;
             default:
+                cyc(248);
                 a = rd16(b | CAM_LAG);
                 break;
             }
+            cyc(58);
             a = (uint16_t)(a + rd16(CAM(r, 0x16)));
         }
+        cyc(22);
         wr16(CAM(r, 0x16), a);
+        cyc(24);
         wr16(b | 0x0660, a);
         a = asr_round(angle_hi(b, y, 0x2014), 2);
+        cyc(66);
         wr16(CAM(r, 0x14), a);
+        cyc(24);
         wr16(b | 0x065E, a);
+        cyc(24);
         wr16(b | 0x0662, 0x0000);
     }
     a = rd16(b | 0x065E);
+    cyc(36);
     a = (uint16_t)(a + rd16(CAM(r, 0x35)));
+    cyc(62);
     wr16(b | 0x065E, (uint16_t)(~a + 1));
+    cyc(24);
     a = rd16(b | 0x0660);
-    wr16(b | 0x0660, (uint16_t)(a + rd16(CAM(r, 0x37))));
+    cyc(36);
+    wr16(b | 0x0660, cyc_then(24, (uint16_t)(a + rd16(CAM(r, 0x37)))));
+    cyc(24);
     a = rd16(b | 0x0662);
-    wr16(b | 0x0662, (uint16_t)(a + rd16(CAM(r, 0x39))));
+    cyc(36);
+    wr16(b | 0x0662, cyc_then(24, (uint16_t)(a + rd16(CAM(r, 0x39)))));
     cpu.p |= P_M;
-    abi_Gsu8325();
+    (cyc(84), abi_Gsu8325());
     cpu.p &= (uint8_t)~P_M;
+    cyc(22);
     for (i = 0; i < 18; i += 2)
-        wr16(b | (uint16_t)(0x064C + i), rd16(b | (uint16_t)(0x0608 + i)));
+        { cyc(24); wr16(b | (uint16_t)(0x064C + i), cyc_then(24, rd16(b | (uint16_t)(0x0608 + i)))); }
+    cyc(84);
     cpu.p |= P_M;
     abi_Gsu82CE();
     cpu.p &= (uint8_t)~(P_M | P_X);
     cpu.x = r;
+    cyc(82);
     f = rd16(b | CAM_FLAGS);
     p = cpu.p;
     if (f & 0x0008) {
         y = cpu.y;
+        cyc(100);
         a = rd16(b | (uint16_t)(0x200C + y));
+        cyc(30);
         a = (uint16_t)(a + rd16(0x0000B7));
+        cyc(36);
         a = asr_n((uint16_t)(a - rd16(CAM(r, 0x08))), 2);
+        cyc(48);
         a = add16(a, rd16(CAM(r, 0x08)), &p);
+        cyc(22);
         wr16(CAM(r, 0x08), a);
+        cyc(30);
         a = rd16(b | (uint16_t)(0x200E + y));
+        cyc(30);
         a = (uint16_t)(a + rd16(0x0000B9));
+        cyc(36);
         a = asr_n((uint16_t)(a - rd16(CAM(r, 0x0A))), 3);
+        cyc(54);
         a = add16(a, rd16(CAM(r, 0x0A)), &p);
+        cyc(22);
         wr16(CAM(r, 0x0A), a);
+        cyc(30);
         a = rd16(b | (uint16_t)(0x2010 + y));
+        cyc(30);
         a = (uint16_t)(a + rd16(0x0000BB));
+        cyc(36);
         a = asr_n((uint16_t)(a - rd16(CAM(r, 0x0C))), 2);
+        cyc(48);
         a = add16(a, rd16(CAM(r, 0x0C)), &p);
+        cyc(22);
         wr16(CAM(r, 0x0C), a);
     } else {
         y = rd16(b | CAM_TARGET);
         cpu.y = y;
+        cyc(30);
         a = rd16(b | (uint16_t)(0x200C + y));
+        cyc(30);
         a = add16(a, rd16(0x0000B7), &p);
+        cyc(22);
         wr16(CAM(r, 0x08), a);
+        cyc(30);
         a = rd16(b | (uint16_t)(0x200E + y));
+        cyc(30);
         a = add16(a, rd16(0x0000B9), &p);
         if (f & 0x0010) {
+            cyc(36);
             a = (uint16_t)(a - rd16(CAM(r, 0x0A)));
             a = asr_n(a, (a & 0x8000) ? 1 : 2);
+            cyc(64);
             a = add16(a, rd16(CAM(r, 0x0A)), &p);
         }
+        cyc(22);
         wr16(CAM(r, 0x0A), a);
+        cyc(30);
         a = rd16(b | (uint16_t)(0x2010 + y));
+        cyc(30);
         a = add16(a, rd16(0x0000BB), &p);
+        cyc(22);
         wr16(CAM(r, 0x0C), a);
     }
+    cyc(102);
     cpu.a = a;
     cpu.p = (uint8_t)(p & ~(P_M | P_X));
 }

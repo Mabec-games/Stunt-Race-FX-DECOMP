@@ -21,25 +21,33 @@ static uint16_t slide_step(uint16_t a)
 {
     uint16_t v;
 
+    cyc(256);
     if (!(rd8(0x000DA5) & 0x80))
-        return (uint16_t)(a & 0xFF00);
+        { cyc(38); return (uint16_t)(a & 0xFF00); }
+    cyc(78);
     if (!(rd16(0x0019FC) & 0x8000))
-        v = (uint16_t)(rd16(0x0019F6) + rd16(0x0019F8));
+        { cyc(40); v = (uint16_t)(rd16(0x0019F6) + rd16(cyc_then(38, 0x0019F8))); }
     else
-        v = (uint16_t)(rd16(0x0019F6) - rd16(0x0019F8));
+        { cyc(68); v = (uint16_t)(rd16(0x0019F6) - rd16(cyc_then(38, 0x0019F8))); }
+    cyc(24);
     if (v == rd16(0x0019FA)) {
+        cyc(46);
         uint16_t dir = rd16(0x0019FC);
         if (!(dir & 0x8000))
-            return dir;
-        wr8(0x000DA5, rd8(0x000DA5) & 0x7F);
+            { cyc(22); return dir; }
+        cyc(70);
+        wr8(0x000DA5, cyc_then(48, rd8(0x000DA5) & 0x7F));
+        cyc(78);
         wr16(0x7F3470, 0xFFFF);
         a = 0xFFFF;
     } else {
+        cyc(40);
         wr16(0x0019F6, v);
         a = v;
     }
     {
         uint8_t hi = rd8(0x0019F7);
+        cyc(32);
         wr8(0x7F3468, hi);
         return (uint16_t)((a & 0xFF00) | hi);
     }

@@ -17,11 +17,15 @@ static uint8_t cgram_put(uint8_t c, uint32_t src, unsigned n)
     uint8_t v = 0;
     unsigned i;
 
+    cyc(56);
     wr8(CGADD, c);
     for (i = 0; i < n; i++) {
+        cyc(32);
         v = rd8(src + i);
+        cyc(24);
         wr8(CGDATA, v);
     }
+    cyc(42);
     return v;
 }
 
@@ -30,8 +34,7 @@ static uint8_t raster_colours(void)
 {
     cyc(88);
     if (rd8(PALETTE_ANIMATE) == 0)
-        { cyc(62); return cgram_put(0x00, 0x7EFD65, 2); }
-    cyc(56);
+        { cyc(6); return cgram_put(0x00, 0x7EFD65, 2); }
     return cgram_put(0xE1, 0x7EFF27, 6);
 }
 
@@ -72,11 +75,13 @@ void abi_RasterColours(void)
 static uint8_t raster_palette_upload(int *animating)
 {
     *animating = 0;
+    cyc(46);
     if (rd8(PALETTE_ANIMATE) == 0)
-        return cgram_put(0x00, 0x7EFD65, 2);
+        { cyc(6); return cgram_put(0x00, 0x7EFD65, 2); } else { cyc(62); }
     CgramDma(0xFD65, 0x00, 0x0060);
+    cyc(88);
     if (rd8(PALETTE_ANIMATE) == 0)
-        return cgram_put(0x00, 0x7EFD65, 2);
+        return cgram_put(0x00, 0x7EFD65, 2); else { cyc(62); }
     *animating = 1;
     CgramDma(0xFEC5, 0xB0, 0x0020);
     return raster_colours();
@@ -115,9 +120,10 @@ void abi_RasterPaletteUpload(void)
  */
 uint8_t RasterColoursCycling(uint16_t x)
 {
+    cyc(52);
     cgram_put(0xE1, 0x7EFF27, 6);
     if (!(rd8(0x000E3B) & 0x01))
-        return cgram_put(0x10, (0x7EFD85 + x) & 0xFFFFFF, 4);
+        { cyc(16); return cgram_put(0x10, (0x7EFD85 + x) & 0xFFFFFF, 4); } else { cyc(22); }
     return cgram_put(0x12, (0x7EFD89 + x) & 0xFFFFFF, 4);
 }
 
@@ -138,7 +144,6 @@ void abi_RasterColoursCycling(void)
  */
 uint8_t RasterColoursE4(uint16_t x)
 {
-    cyc(148);
     return cgram_put(0xE4, (0x7EFF2D + x) & 0xFFFFFF, 12);
 }
 
@@ -155,6 +160,7 @@ void abi_RasterColoursE4(void)
    phase; *x the table offset used; tracks C and V as the original does. */
 static uint16_t cycle_step(uint32_t phase_addr, uint32_t table, uint32_t dest, uint16_t *x, uint8_t *p)
 {
+    cyc(24);
     uint16_t phase = rd16(phase_addr), i = phase, next;
 
     if (phase >= 8) {
@@ -193,12 +199,10 @@ static uint16_t palette_cycle(uint16_t *x, uint8_t *p)
 {
     cyc(276);
     if (!(rd8(0x000E3B) & 0x01)) {
-        cyc(78);
+        cyc(54);
         cycle_step(0x7EFD5B, 0x7EB71B, 0x7EFD85, x, p);
-        cyc(24);
         return cycle_step(0x7EFD5D, 0x7EB6FB, 0x7EFD87, x, p);
-    }
-    cyc(84);
+    } else { cyc(60); }
     return cycle_step(0x7EFD5F, 0x7EB70B, 0x7EFD89, x, p);
 }
 
@@ -236,13 +240,19 @@ uint16_t PaletteLoad16(uint8_t bank, uint16_t src)
     uint16_t c = 0, n;
     unsigned i;
 
+    cyc(540);
     wr16(0x0000F1, 0x0010);
     for (i = 0; i < 16; i++) {
+        cyc(78);
         c = rd16((uint32_t)bank << 16 | (uint16_t)(src + 2 * i));
         wr16(0x7F35D7 + 2 * i, c);
+        cyc(32);
         wr16(0x7F37D7 + 2 * i, c);
+        cyc(32);
         wr16(0x7EFD65 + 2 * i, c);
+        cyc(72);
         n = rd16(0x0000F1);
+        cyc(14);
         wr16(0x0000F1, (uint16_t)(n - 1));
     }
     return c;
@@ -273,7 +283,7 @@ uint8_t RasterColoursUnless0D22(uint8_t bank, int *ran)
 
     *ran = !v;
     if (v)
-        { cyc(22); return v; }
+        { cyc(22); return v; } else { cyc(92); }
     RasterColoursE4(0);
     return RasterColoursCycling(0);
 }
@@ -286,7 +296,8 @@ void abi_RasterColoursUnless0D22(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     if (ran)
         cpu.x = 0;
-}
+cyc(70);
+    }
 
 /*
  * @routine 04:E1FE PaletteDarkenFour
@@ -300,6 +311,7 @@ uint16_t PaletteDarkenFour(uint16_t v)
 {
     unsigned i;
 
+    cyc(102);
     wr16(0x7F345C, v);
     for (i = 0; i < 4; i++) {
         cyc(32);
@@ -329,13 +341,18 @@ uint16_t PaletteCopy16To7F39D7(uint8_t bank, uint16_t src)
     uint16_t w = 0, n;
     unsigned i;
 
+    cyc(450);
     wr16(0x0000F1, 0x0010);
     for (i = 0; i < 16; i++) {
+        cyc(78);
         w = rd16((uint32_t)bank << 16 | (uint16_t)(src + 2 * i));
         wr16(0x7F39D7 + 2 * i, w);
+        cyc(72);
         n = rd16(0x0000F1);
+        cyc(14);
         wr16(0x0000F1, (uint16_t)(n - 1));
     }
+    cyc(82);
     return w;
 }
 
@@ -372,6 +389,7 @@ void abi_PaletteCopy16To7F39D7(void)
 uint16_t PaletteCourseLoad(uint8_t bank, uint16_t *xo, uint16_t *yo, uint8_t *p)
 {
     uint32_t b = (uint32_t)bank << 16, src;
+    cyc(46);
     uint16_t c = rd16(b | 0x0E3D), i, x, y, w, d, s;
     uint8_t blk;
     unsigned k;
@@ -379,20 +397,26 @@ uint16_t PaletteCourseLoad(uint8_t bank, uint16_t *xo, uint16_t *yo, uint8_t *p)
     s = (uint16_t)((uint16_t)(c << 1) + rd16(b | 0x0E3D));
     *p = (uint8_t)((*p & ~P_V) | ((~((uint16_t)(c << 1) ^ c) & ((uint16_t)(c << 1) ^ s) & 0x8000) ? P_V : 0));
     i = (uint16_t)(s & 0x00FF);
+    cyc(208);
     blk = rd8(0x03F64B + i);
     y = rd16(0x03F649 + i);
     for (x = 0x0020; x < 0x0200; x = (uint16_t)(x + 2)) {
         src = ((uint32_t)blk << 16) + 0x0020 + y;
+        cyc(180);
         w = rd16(src & 0xFFFFFF);
         wr16(0x7F35D7 + x, w);
+        cyc(32);
         wr16(0x7F37D7 + x, w);
+        cyc(32);
         wr16(0x7EFD65 + x, w);
         y = (uint16_t)(y + 2);
     }
+    cyc(330);
     blk = rd8(0x03F69F + i);
     y = rd16(0x03F69D + i);
     for (x = 0x0020; x < 0x0200; x = (uint16_t)(x + 2)) {
         src = ((uint32_t)blk << 16) + 0x0020 + y;
+        cyc(180);
         wr16(0x7F39D7 + x, rd16(src & 0xFFFFFF));
         y = (uint16_t)(y + 2);
     }
@@ -405,45 +429,63 @@ uint16_t PaletteCourseLoad(uint8_t bank, uint16_t *xo, uint16_t *yo, uint8_t *p)
         uint16_t n = (uint16_t)((x >> 1) & 0x000F), bits;
 
         y = (uint16_t)((x >> 4) & 0x001E);
+        cyc(226);
         wr16(0x0000F1, n);
+        cyc(70);
         bits = rd16(b | (uint16_t)(0xEF1F + y));
         while (n) {
             bits >>= 1;
+            cyc(52);
             n = (uint16_t)(rd16(0x0000F1) - 1);
+            cyc(14);
             wr16(0x0000F1, n);
         }
         w = rd16(0x7F37D7 + x);
+        cyc(32);
         d = rd16(0x7F39D7 + x);
-        *p = (uint8_t)((*p & ~P_C) | (w >= d ? P_C : 0));
+        *p = (uint8_t)((*p & ~P_C) | (w >= d ? (cyc(22), P_C) : (cyc(22), 0)));
         if (!(bits & 1)) {
             if (w == d)
-                wr16(0x7F39D7 + x, (uint16_t)(w & 0x001F ? w - 1 : w + 1));
+                { cyc(168); wr16(0x7F39D7 + x, (uint16_t)(w & 0x001F ? w - 1 : (cyc(6), w + 1))); }
         } else if (w != d) {
+            cyc(26);
             wr16(0x7F39D7 + x, w);
         }
         if (!x)
             break;
         x = (uint16_t)(x - 2);
     }
+    cyc(92);
     wr16(b | 0x0E21, 0x45CC);
+    cyc(48);
     wr16(b | 0x0E23, 0x2528);
+    cyc(48);
     wr16(b | 0x0E25, 0x1CE5);
+    cyc(48);
     wr16(b | 0x0E27, 0x739A);
+    cyc(48);
     wr16(b | 0x0E29, 0x1CE5);
+    cyc(48);
     wr16(b | 0x0E2B, 0x2528);
+    cyc(24);
     w = rd16(b | 0x10DC);
     if (!w) {
         *xo = 0xFFFE;
         *yo = y;
         *p = (uint8_t)((nz16(*p, 0) & ~(P_M | P_X)));
         return 0;
-    }
+    } else { cyc(40); }
     for (k = 0; k < 0x20; k++) {
+        cyc(92);
         wr8(0x7EFEC5 + k, 0x00);
+        cyc(32);
         wr8(0x7F3937 + k, 0x00);
+        cyc(32);
         wr8(0x7F3B37 + k, 0x00);
+        cyc(32);
         wr8(0x7F3737 + k, 0x00);
     }
+    cyc(32);
     *xo = 0x0020;
     *yo = y;
     *p = (uint8_t)((nz8(*p, 0) | P_M | P_C) & ~P_X);
@@ -498,7 +540,7 @@ static BlendEnd colour_blend(uint8_t bank, uint8_t p)
     t = rd16(b | 0x3450);
     cyc(38);
     f = rd16(b | 0x344E);
-    cyc(100);
+    cyc(46);
     m = PpuMultiply((uint8_t)(t - f));
     cyc(80);
     f = rd16(b | 0x344E);
@@ -509,7 +551,7 @@ static BlendEnd colour_blend(uint8_t bank, uint8_t p)
     t = rd16(b | 0x3454);
     cyc(38);
     f = rd16(b | 0x3452);
-    cyc(100);
+    cyc(46);
     m = PpuMultiply((uint8_t)(t - f));
     cyc(80);
     f = rd16(b | 0x3452);
@@ -520,7 +562,7 @@ static BlendEnd colour_blend(uint8_t bank, uint8_t p)
     t = rd16(b | 0x3458);
     cyc(38);
     f = rd16(b | 0x3456);
-    cyc(100);
+    cyc(46);
     m = PpuMultiply((uint8_t)(t - f));
     cyc(80);
     bl = rd16(b | 0x3456);
@@ -593,13 +635,16 @@ static KeptEnd palette_kept_colours_step(uint8_t bank, uint16_t a, uint16_t x, u
     KeptEnd e;
     enum { NONE, SKIP, ONE, TWO, ODD } go = NONE;
 
-    if (!rd8(b | 0x0D53) && rd8(b | (uint16_t)(0x0E05 + y))
-        && (a = rd16(b | (uint16_t)(0x0D1E + x)), a & 0x4000)) {
+    cyc(102);
+    if (!rd8(b | 0x0D53) && rd8(cyc_then(40, b | (uint16_t)(0x0E05 + y)))
+        && (a = rd16(cyc_then(62, b | (uint16_t)(0x0D1E + x))), a & 0x4000)) {
+        cyc(86);
         t = rd8(b | (uint16_t)(0x0E01 + y));
         if (t == 0xFF) {
             go = TWO;
         } else {
             t++;
+            cyc(76);
             wr8(b | (uint16_t)(0x0E01 + y), t);
             go = t >= 0xB4 ? TWO : t >= 0x78 ? ONE : t >= 0x3C ? ODD : SKIP;
         }
@@ -607,6 +652,7 @@ static KeptEnd palette_kept_colours_step(uint8_t bank, uint16_t a, uint16_t x, u
         t = rd8(b | (uint16_t)(0x0E01 + y));
         if (!t) {
             a = 0x7E63;
+            cyc(100);
             wr16(0x7EFF2B, a);
         } else if (t >= 0x78) {
             wr8(b | (uint16_t)(0x0E01 + y), (uint8_t)(t - 5));
@@ -624,7 +670,7 @@ static KeptEnd palette_kept_colours_step(uint8_t bank, uint16_t a, uint16_t x, u
     }
     /* SKIP steps by one on every fourth frame, ODD on every other one. */
     if (go == SKIP)
-        go = (rd8(b | 0x0E3B) & 0x03) ? NONE : ONE;
+        { cyc(120); go = (rd8(b | 0x0E3B) & 0x03) ? (cyc(38), NONE) : ONE; }
     else if (go == ODD)
         go = (rd8(b | 0x0E3B) & 0x01) ? NONE : ONE;
     if (go == ONE || go == TWO) {
@@ -634,7 +680,9 @@ static KeptEnd palette_kept_colours_step(uint8_t bank, uint16_t a, uint16_t x, u
         a = rd16(0x7EB4E9 + x);
         wr16(0x7EFF2B, a);
     }
+    cyc(46);
     v = rd8(b | (uint16_t)(0x0DFD + y));
+    cyc(38);
     d = rd8(b | (uint16_t)(0x0DFB + y));
     s = (unsigned)v - d;
     p = (uint8_t)(p & ~(P_C | P_V));
@@ -642,19 +690,26 @@ static KeptEnd palette_kept_colours_step(uint8_t bank, uint16_t a, uint16_t x, u
         p |= P_C;
     if ((v ^ d) & (v ^ (uint8_t)s) & 0x80)
         p |= P_V;
+    cyc(30);
     wr8(b | (uint16_t)(0x0DFD + y), (uint8_t)s);
     if (p & P_C) {
+        cyc(22);
         e.a = (uint16_t)((a & 0xFF00) | (uint8_t)s);
         e.p = (uint8_t)(nz8(p, (uint8_t)s) | P_M);
     } else {
         step = cycle13(rd8(b | (uint16_t)(0x0DFF + y)), 1);
+        cyc(82);
         wr8(b | (uint16_t)(0x0DFF + y), step);
         x = (uint8_t)(step << 1);
-        wr16(0x7EFF27, rd16(0x7EB505 + x));
+        cyc(82);
+        wr16(0x7EFF27, cyc_then(32, rd16(0x7EB505 + x)));
+        cyc(32);
         e.a = rd16(0x7EB521 + x);
+        cyc(32);
         wr16(0x7EFF29, e.a);
         e.p = (uint8_t)(nz16(p, e.a) & ~(P_C | P_M));
     }
+    cyc(42);
     e.x = x;
     return e;
 }
@@ -752,14 +807,20 @@ void abi_ColourBlendToTarget(void)
     uint32_t b = (uint32_t)cpu.db << 16;
     uint16_t t;
 
+    cyc(16);
     wr16(0x0000F1, cpu.a);
+    cyc(24);
     t = rd16(b | 0x3470);
     if (t & 0x8000)
-        t = rd16(0x0000F1);
+        { cyc(32); t = rd16(0x0000F1); } else { cyc(22); }
+    cyc(16);
     wr16(0x0000F3, t);
+    cyc(24);
     t = rd16(b | 0x3468);
+    cyc(16);
     wr16(0x0000F5, t);
-    abi_ColourBlendBy();
+    (cyc(46), abi_ColourBlendBy());
+    cyc(74);
     wr16(0x000E21 + cpu.x, cpu.a);
 }
 
@@ -787,11 +848,12 @@ static FlashEnd player_colours_flash(uint8_t bank, uint8_t v, uint16_t y, uint8_
     k = (uint8_t)(v >> 5);
     src = 0x0E21;
     if (!k) {
+        cyc(178);
         wr8(b | (uint16_t)(0x0E1F + y), 0x00);
     } else {
         n = (uint8_t)(8 - k);
         p = (uint8_t)(p & ~P_V);
-        cyc(114);
+        cyc(292);
         wr8(0x0000F9, n);
         cyc(30);
         wr8(0x0000FA, (uint8_t)(n << 1));
@@ -845,7 +907,6 @@ void PlayerColoursFlash(uint8_t bank, uint8_t level, uint16_t y)
 
 void abi_PlayerColoursFlash(void)
 {
-    cyc(178);
     FlashEnd e = player_colours_flash(cpu.db, (uint8_t)cpu.a, cpu.y, cpu.p);
 
     cpu.a = e.a;
@@ -862,7 +923,8 @@ void abi_PlayerColoursFlash(void)
  */
 void abi_PlayerColoursFlashRts(void)
 {
-}
+cyc(42);
+    }
 
 /*
  * @routine 7E:B53F StatusColourPick
@@ -971,6 +1033,7 @@ void abi_PalettesStep(void)
     uint8_t p0 = cpu.p, v;
 
     cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
+    cyc(136);
     v = rd8(b | 0x0E5F);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     if (v) {
@@ -1009,29 +1072,38 @@ void abi_FadeValueStep(void)
 
     cpu.db = 0x7E;
     cpu.p |= P_M;
+    cyc(148);
     v = (uint8_t)(rd8(0x000DA5) & 0x80);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     if (!v) {
+        cyc(64);
         v = (uint8_t)(rd8(0x000DA5) & 0x20);
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
         if (v) {
             cpu.p &= (uint8_t)~(P_M | P_C);
+            cyc(78);
             w = rd16(b | 0x19FE);
+            cyc(38);
             w = op_adc16(w, rd16(b | 0x1A00), &cpu.p);
             cpu.a = w;
+            cyc(24);
             op_cmp16(rd16(b | 0x1A02));
             if (!(cpu.p & P_Z))
-                wr16(b | 0x19FE, w);
+                { cyc(36); wr16(b | 0x19FE, w); }
             else {
+                cyc(72);
                 v = (uint8_t)(rd8(0x000DA5) & 0xDF);
+                cyc(48);
                 wr8(0x000DA5, v);
             }
             cpu.p |= P_M;
             v = rd8(b | 0x19FF);
             cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+            cyc(32);
             wr8(0x7F3460, v);
-        }
-    }
+        } else { cyc(38); }
+    } else { cyc(38); }
+    cyc(58);
     cpu.db = db0;
     op_plp(p0);
 }
@@ -1042,32 +1114,40 @@ static uint16_t fade_part(uint32_t b, uint16_t m, uint16_t step)
 {
     uint16_t c;
 
+    cyc(30);
     op_lda16(b | (uint16_t)(0x0722 + cpu.y));
     op_and16(m);
+    cyc(46);
     wr16(b | 0x1F2B, cpu.a);
+    cyc(94);
     op_lda16(0x02D65A + (uint32_t)cpu.x);
     op_and16(m);
     c = rd16(b | 0x1F2B);
     op_cmp16(c);
     if (cpu.a == c)
-        return cpu.a;
+        { cyc(4); return cpu.a; }
     if (cpu.p & P_C) {
+        cyc(58);
         op_lda16(b | 0x1F2B);
         if (step == 1) {
             cpu.a++;
             cpu.p = nz16(cpu.p, cpu.a);
         } else {
+            cyc(24);
             op_add16(step);
         }
     } else {
+        cyc(52);
         op_lda16(b | 0x1F2B);
         if (step == 1) {
             cpu.a--;
             cpu.p = nz16(cpu.p, cpu.a);
         } else {
+            cyc(18);
             op_sub16(step);
         }
-    }
+    cyc(22);
+        }
     return cpu.a;
 }
 
@@ -1089,27 +1169,36 @@ void abi_PaletteFadeStep(void)
     uint16_t n, v;
 
     op_sep(P_M);
+    cyc(46);
     op_lda8(b | 0x0CFA);
     if (!(uint8_t)cpu.a)
-        return;
+        { cyc(60); return; }
     v = (uint8_t)(cpu.a - 1);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.p = nz8(cpu.p, (uint8_t)v);
+    cyc(60);
     wr8(b | 0x0CFA, (uint8_t)v);
     op_rep(P_M | P_X);
+    cyc(24);
     cpu.x = rd16(b | 0x1168);
     cpu.p = nz16(cpu.p, cpu.x);
+    cyc(24);
     cpu.y = rd16(b | 0x1168);
     cpu.p = nz16(cpu.p, cpu.y);
+    cyc(24);
     op_lda16(b | 0x1167);
     do {
+        cyc(30);
         n = cpu.a;
-        wr16(0x00003E, fade_part(b, 0x7C00, 0x0400));
-        wr16(0x000040, fade_part(b, 0x03E0, 0x0020));
+        wr16(0x00003E, cyc_then(30, fade_part(b, 0x7C00, 0x0400)));
+        wr16(0x000040, cyc_then(30, fade_part(b, 0x03E0, 0x0020)));
         fade_part(b, 0x001F, 1);
+        cyc(30);
         cpu.a |= rd16(0x00003E);
+        cyc(16);
         cpu.a |= rd16(0x000040);
         cpu.p = nz16(cpu.p, cpu.a);
+        cyc(30);
         wr16(b | (uint16_t)(0x0722 + cpu.y), cpu.a);
         cpu.y = (uint16_t)(cpu.y + 2);
         cpu.x = (uint16_t)(cpu.x + 2);
@@ -1117,13 +1206,15 @@ void abi_PaletteFadeStep(void)
         cpu.a = (uint16_t)(n - 1);
         cpu.p = nz16(cpu.p, cpu.a);
     } while (cpu.a);
-}
+cyc(172);
+    }
 
 /* LDA $0D30, INC, back to 0 at $16, STA $0D30, ASL, TAX (M 8-bit): the
    cycle's next step and its table offset (with X 16-bit, TAX also takes
    A's high byte). */
 static void palette_cycle_step(uint32_t b)
 {
+    cyc(56);
     uint8_t v = (uint8_t)(rd8(b | 0x0D30) + 1);
 
     if (v >= 0x16)
@@ -1162,33 +1253,44 @@ void abi_CoursePaletteCycle(void)
 
     op_sep(P_M);
     cpu.db = 0x04;
+    cyc(140);
     op_lda8(b | 0x0E3D);
     c = (uint8_t)cpu.a;
     if (c == 0x03) {
         palette_cycle_step(b);
         op_rep(P_M);
         for (i = 0; i < 4; i++) {
+            cyc(32);
             cpu.a = rd16(b + c3[i] + cpu.x);
+            cyc(48);
             wr16(0x7EFD7D + 2 * i, cpu.a);
         }
     } else if (c == 0x07) {
+        cyc(44);
         palette_cycle_step(b);
         op_rep(P_M);
         for (i = 0; i < 4; i++)
-            wr16(0x7F37EF + 2 * i, fixed7[i]);
+            { cyc(56); wr16(0x7F37EF + 2 * i, fixed7[i]); }
         for (i = 0; i < 4; i++) {
+            cyc(80);
             cpu.a = rd16(b + c7[i] + cpu.x);
             wr16(0x7F39EF + 2 * i, cpu.a);
         }
     } else if (c == 0x0B) {
+        cyc(100);
         palette_cycle_step(b);
+        cyc(32);
         v = rd8(0x7F3460);
-        v = rd8(b + (v >= 0x18 ? 0xE433 : 0xE407) + cpu.x);
+        cyc(104);
+        v = rd8(b + (v >= 0x18 ? 0xE433 : (cyc(6), 0xE407)) + cpu.x);
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
         wr8(0x7EFD83, v);
+        cyc(32);
         wr8(0x7F37F5, v);
+        cyc(32);
         wr8(0x7F39F5, v);
-    }
+    } else { cyc(114); }
+    cyc(40);
     op_sep(P_M);
     cpu.db = db0;
     op_plp(p0);
@@ -1222,7 +1324,7 @@ static void hc_bit(uint16_t m)
 static void hc_step(uint16_t *r, uint16_t end)
 {
     *r = (uint16_t)(*r + 2);
-    cpu.p = (uint8_t)((nz16(cpu.p, (uint16_t)(*r - end)) & ~P_C) | (*r >= end ? P_C : 0));
+    cpu.p = (uint8_t)((nz16(cpu.p, (uint16_t)(*r - end)) & ~P_C) | (*r >= end ? (cyc(28), P_C) : (cyc(28), 0)));
 }
 
 enum { HC_START, HC_ROWS_REST, HC_FROM14 };
@@ -1251,326 +1353,429 @@ static void hud_colour_step(int from)
     cpu.db = 0x7F;
     cpu.p = nz8(cpu.p, 0x7F);
     op_rep(P_M | P_X);
+    cyc(156);
     op_lda16(HC_TO(4));
     if (cpu.a) {
         if (cpu.a & 0x8000) {
             op_and16(0x7FFF);
+            cyc(90);
             wr16(HC_TGT(0), cpu.a);
+            cyc(24);
             op_lda16(HC_AMT(0));
             op_add16(0x0002);
             op_cmp16(0x001F);
             if (cpu.p & P_C)
-                op_lda16_imm(0x001F);
+                op_lda16_imm(0x001F); else { cyc(20); }
+            cyc(38);
             goto store_amount;
         }
+        cyc(70);
         op_lda16(0x000E3D);
         op_and16(0x00FF);
         op_cmp16(0x0006);
         if (cpu.p & P_Z) {
+            cyc(88);
             op_lda16(HC_AMT(0));
             op_sub16(0x0003);
             op_cmp16(0x000A);
             if (cpu.p & P_C)
-                goto store_amount;
+                { cyc(52); goto store_amount; }
             op_lda16_imm(0x000A);
             goto floor;
         }
         op_cmp16(0x0004);
         if (cpu.p & P_Z) {
+            cyc(118);
             op_lda16(HC_AMT(0));
             op_sub16(0x0003);
             op_cmp16(0x000F);
             if (cpu.p & P_C)
-                goto store_amount;
+                { cyc(52); goto store_amount; } else { cyc(22); }
             op_lda16_imm(0x000F);
             goto floor;
         }
+        cyc(132);
         op_lda16(0x000D60);
         op_cmp16(0x0F00);
         if (!(cpu.p & P_Z)) {
+            cyc(60);
             op_lda16(HC_AMT(0));
             goto store_amount;
         }
+        cyc(66);
         op_lda16(HC_AMT(0));
         if (!cpu.a)
             goto gradient;
         op_sub16(0x0003);
         if (cpu.p & P_C)
-            goto store_amount;
+            { cyc(48); goto store_amount; }
         op_lda16_imm(0xFFFF);
+        cyc(74);
         wr16(HC_TGT(0), 0xFFFF);
         op_lda16_imm(0x0000);
+        cyc(10);
         wr16(HC_TO(4), 0x0000);
         goto store_amount;
 floor:
+        cyc(78);
         wr16(HC_AMT(0), cpu.a);
         op_lda16_imm(0x0000);
+        cyc(10);
         wr16(HC_TO(4), 0x0000);
         goto gradient;
 store_amount:
+        cyc(46);
         wr16(HC_AMT(0), cpu.a);
-    }
+    } else { cyc(24); }
 gradient:
+    cyc(54);
     op_lda16(0x000DA4);
     hc_bit(0x0800);
     if (cpu.a & 0x0800) {
+        cyc(64);
         wr16(HC_TGT(8), cpu.a);
         cpu.y = 0x0080;
         cpu.p = nz16(cpu.p, cpu.y);
         cpu.x = 0x00FE;
         cpu.p = nz16(cpu.p, cpu.x);
+        cyc(80);
         op_lda16(0x000D7F);
         if (cpu.a) {
+            cyc(18);
             cpu.x = 0x01FE;
             cpu.p = nz16(cpu.p, cpu.x);
         }
+        cyc(46);
         op_lda16(HC_TGT(0));
         if (!(cpu.a & 0x8000)) {
-            wr16(hc_dp(0xF3), cpu.a);
+            wr16(hc_dp(0xF3), cyc_then(32, cpu.a));
             op_lda16_imm(0x0000);
-            wr16(hc_dp(0xF1), 0x0000);
+            wr16(hc_dp(0xF1), cyc_then(2, 0x0000));
+            cyc(24);
             op_lda16(HC_AMT(0));
-            wr16(hc_dp(0xF5), cpu.a);
-            abi_ColourBlendBy();
+            wr16(hc_dp(0xF5), cyc_then(16, cpu.a));
+            (cyc(46), abi_ColourBlendBy());
         }
+        cyc(74);
         op_lda16(0x000D7F);
         op_asl16();
         op_tax16();
         op_lda16_imm(0xF757);
+        cyc(16);
         wr16(0x000D9A + cpu.x, cpu.a);
         op_lda16_imm(0x0000);
         cpu.x = 0x0004;
         cpu.p = nz16(cpu.p, cpu.x);
         do {
+            cyc(42);
             wr16(HC_BUFFER + cpu.x, cpu.a);
+            cyc(36);
             hc_step(&cpu.x, 0x0020);
         } while (cpu.x != 0x0020);
+        cyc(28);
         goto end;
     }
+    cyc(70);
     op_lda16(HC_TGT(8));
     if (cpu.a) {
+        cyc(40);
         op_lda16(HC_TGT(0));
+        cyc(24);
         wr16(HC_TGT(4), cpu.a);
         op_lda16_imm(0x0000);
+        cyc(10);
         wr16(HC_TGT(8), 0x0000);
         cpu.x = 0x0004;
         cpu.p = nz16(cpu.p, cpu.x);
         goto blend_rows;
     }
+    cyc(46);
     op_lda16(HC_TGT(12));
     cpu.a++;
     cpu.p = nz16(cpu.p, cpu.a);
     op_cmp16(0x0003);
     if (cpu.p & P_C)
-        op_lda16_imm(0x0000);
+        op_lda16_imm(0x0000); else { cyc(20); }
+    cyc(60);
     wr16(HC_TGT(12), cpu.a);
     op_asl16();
     op_tax16();
+    cyc(30);
     op_lda16(0x7EE69C + cpu.x);
     op_tay16();
     op_add16(0x0100);
+    cyc(76);
     wr16(HC_TO(2), cpu.a);
+    cyc(32);
     op_lda16(0x000D7F);
     op_asl16();
     op_tax16();
     cpu.a = cpu.y;
     cpu.p = nz16(cpu.p, cpu.a);
     op_add16(0xEC57);
+    cyc(82);
     wr16(0x000D9A + cpu.x, cpu.a);
+    cyc(32);
     op_lda16(0x000D96);
     op_tax16();
+    cyc(8);
     op_lda16(HC_TGT(0));
     if (cpu.a & 0x8000) {
+        cyc(40);
         op_lda16(HC_TO(8));
         abi_PpuMultiplierSetLowByteTimes8();
+        cyc(94);
         op_lda16(0x7FEF57 + cpu.x);
-        wr16(hc_dp(0xF1), cpu.a);
+        wr16(hc_dp(0xF1), cyc_then(16, cpu.a));
         goto a_to;
         for (;;) {
+            cyc(24);
             op_lda16(0x7FEF57 + cpu.x);
+            cyc(30);
             op_cmp16(rd16(0x7FEF55 + cpu.x));
             if (!(cpu.p & P_Z)) {
-                wr16(hc_dp(0xF1), cpu.a);
+                wr16(hc_dp(0xF1), cyc_then(34, cpu.a));
                 goto a_to;
             }
-            wr16(hc_dp(0xF1), cpu.a);
+            wr16(hc_dp(0xF1), cyc_then(28, cpu.a));
+            cyc(30);
             op_lda16(0x7FF357 + cpu.x);
+            cyc(30);
             op_cmp16(rd16(0x7FF355 + cpu.x));
             if (!(cpu.p & P_Z))
-                goto a_blend;
+                { cyc(18); goto a_blend; }
+            cyc(42);
             op_lda16(0x7FEC55 + cpu.y);
             goto a_store;
 a_to:
             op_lda16(0x7FF357 + cpu.x);
 a_blend:
-            wr16(hc_dp(0xF3), cpu.a);
+            wr16(hc_dp(0xF3), cyc_then(16, cpu.a));
+            cyc(46);
             abi_ColourBlend();
 a_store:
             wr16(0x7FEC57 + cpu.y, cpu.a);
             hc_step(&cpu.x, 0);
+            cyc(52);
             hc_step(&cpu.y, rd16(HC_TO(2)));
             if (cpu.p & P_C)
-                break;
+                { cyc(22); break; }
         }
         goto buffer4;
     }
+    cyc(52);
     op_lda16(0x7FEF57 + cpu.x);
-    wr16(hc_dp(0xF1), cpu.a);
+    wr16(hc_dp(0xF1), cyc_then(16, cpu.a));
     goto b_to;
     for (;;) {
+        cyc(24);
         op_lda16(0x7FEF57 + cpu.x);
+        cyc(30);
         op_cmp16(rd16(0x7FEF55 + cpu.x));
         if (!(cpu.p & P_Z)) {
-            wr16(hc_dp(0xF1), cpu.a);
+            wr16(hc_dp(0xF1), cyc_then(34, cpu.a));
             goto b_to;
         }
-        wr16(hc_dp(0xF1), cpu.a);
+        wr16(hc_dp(0xF1), cyc_then(28, cpu.a));
+        cyc(30);
         op_lda16(0x7FF357 + cpu.x);
+        cyc(30);
         op_cmp16(rd16(0x7FF355 + cpu.x));
         if (!(cpu.p & P_Z))
-            goto b_blend;
+            { cyc(18); goto b_blend; }
+        cyc(42);
         op_lda16(0x7FEC55 + cpu.y);
         goto b_store;
 b_to:
         op_lda16(0x7FF357 + cpu.x);
 b_blend:
-        wr16(hc_dp(0xF3), cpu.a);
+        wr16(hc_dp(0xF3), cyc_then(16, cpu.a));
+        cyc(24);
         op_lda16(HC_TO(8));
-        wr16(hc_dp(0xF5), cpu.a);
-        abi_ColourBlendBy();
+        wr16(hc_dp(0xF5), cyc_then(16, cpu.a));
+        (cyc(46), abi_ColourBlendBy());
 rows_rest:
         pushed = cpu.a;
+        cyc(96);
         op_lda16(HC_TGT(0));
         if (cpu.a & 0x8000) {
             cpu.a = pushed;
             cpu.p = nz16(cpu.p, cpu.a);
             goto b_store;
         }
-        wr16(hc_dp(0xF3), cpu.a);
+        wr16(hc_dp(0xF3), cyc_then(32, cpu.a));
         cpu.a = pushed;
         cpu.p = nz16(cpu.p, cpu.a);
-        wr16(hc_dp(0xF1), cpu.a);
+        wr16(hc_dp(0xF1), cyc_then(52, cpu.a));
+        cyc(24);
         op_lda16(HC_AMT(0));
-        wr16(hc_dp(0xF5), cpu.a);
-        abi_ColourBlendBy();
+        wr16(hc_dp(0xF5), cyc_then(16, cpu.a));
+        (cyc(46), abi_ColourBlendBy());
 b_store:
+        cyc(88);
         wr16(0x7FEC57 + cpu.y, cpu.a);
         hc_step(&cpu.x, 0);
+        cyc(52);
         hc_step(&cpu.y, rd16(HC_TO(2)));
         if (cpu.p & P_C)
             break;
     }
 buffer4:
+    cyc(10);
     cpu.x = 0x0004;
     cpu.p = nz16(cpu.p, cpu.x);
 buffer:
+    cyc(48);
     op_lda16(HC_TO(8));
+    cyc(24);
     op_cmp16(rd16(HC_TO(12)));
     if (!(cpu.p & P_Z)) {
+        cyc(42);
         op_lda16(HC_TGT(0));
         if (cpu.a & 0x8000)
             goto blend_both;
         goto blend_rows;
     }
+    cyc(36);
     op_lda16(HC_TGT(0));
     if (cpu.a & 0x8000) {
+        cyc(40);
         op_lda16(HC_TGT(4));
         if (cpu.a & 0x8000)
             goto hud;
         do {
+            cyc(54);
             op_lda16(HC_WORK_A + cpu.x);
+            cyc(32);
             wr16(HC_BUFFER + cpu.x, cpu.a);
+            cyc(24);
             hc_step(&cpu.x, 0x0200);
         } while (!(cpu.p & P_C));
         goto hud;
     }
+    cyc(46);
     op_cmp16(rd16(HC_TGT(4)));
     if (cpu.p & P_Z) {
+        cyc(42);
         op_lda16(HC_AMT(0));
+        cyc(24);
         op_cmp16(rd16(HC_AMT(4)));
         if (cpu.p & P_Z)
-            goto keep;
-    }
+            { cyc(14); goto keep; }
+    } else { cyc(18); }
+    cyc(42);
     op_lda16(HC_AMT(0));
     abi_PpuMultiplierSetLowByteTimes8();
+    cyc(18);
     do {
+        cyc(78);
         op_lda16(HC_WORK_B + cpu.x);
+        cyc(32);
         op_cmp16(rd16(HC_WORK_C + cpu.x));
         if (!(cpu.p & P_Z)) {
+            cyc(36);
             op_lda16(HC_TGT(0));
-            wr16(hc_dp(0xF3), cpu.a);
+            wr16(hc_dp(0xF3), cyc_then(16, cpu.a));
+            cyc(32);
             op_lda16(HC_WORK_A + cpu.x);
-            wr16(hc_dp(0xF1), cpu.a);
-            abi_ColourBlend();
+            wr16(hc_dp(0xF1), cyc_then(16, cpu.a));
+            (cyc(46), abi_ColourBlend());
+            cyc(74);
             wr16(HC_BUFFER + cpu.x, cpu.a);
-        }
+        } else { cyc(18); }
         hc_step(&cpu.x, 0x0200);
     } while (!(cpu.p & P_C));
+    cyc(24);
     goto hud;
 blend_rows:
+    cyc(2);
     do {
+        cyc(78);
         op_lda16(HC_WORK_B + cpu.x);
+        cyc(46);
         op_sub16(rd16(HC_WORK_C + cpu.x));
         if (cpu.a) {
+            cyc(30);
             op_cmp16(0x0001);
             if (cpu.p & P_Z)
-                goto from_b;
+                goto from_b; else { cyc(36); }
             op_cmp16(0xFFFF);
             if (cpu.p & P_Z)
                 goto from_b;
+            cyc(40);
             op_lda16(HC_TO(8));
             if (!cpu.a)
                 goto from_b;
             op_cmp16(0x001F);
             if (cpu.p & P_Z) {
+                cyc(84);
                 op_lda16(HC_WORK_C + cpu.x);
                 goto work;
             }
+            cyc(90);
             op_lda16(HC_WORK_B + cpu.x);
-            wr16(hc_dp(0xF1), cpu.a);
+            wr16(hc_dp(0xF1), cyc_then(16, cpu.a));
+            cyc(32);
             op_lda16(HC_WORK_C + cpu.x);
-            wr16(hc_dp(0xF3), cpu.a);
+            wr16(hc_dp(0xF3), cyc_then(16, cpu.a));
+            cyc(24);
             op_lda16(HC_TO(8));
-            wr16(hc_dp(0xF5), cpu.a);
-            abi_ColourBlendBy();
+            wr16(hc_dp(0xF5), cyc_then(16, cpu.a));
+            (cyc(46), abi_ColourBlendBy());
             goto work;
 from_b:
+            cyc(54);
             op_lda16(HC_WORK_B + cpu.x);
 work:
+            cyc(54);
             wr16(HC_WORK_A + cpu.x, cpu.a);
-            wr16(hc_dp(0xF1), cpu.a);
+            wr16(hc_dp(0xF1), cyc_then(16, cpu.a));
+            cyc(24);
             op_lda16(HC_TGT(0));
-            wr16(hc_dp(0xF3), cpu.a);
+            wr16(hc_dp(0xF3), cyc_then(16, cpu.a));
+            cyc(24);
             op_lda16(HC_AMT(0));
-            wr16(hc_dp(0xF5), cpu.a);
-            abi_ColourBlendBy();
+            wr16(hc_dp(0xF5), cyc_then(16, cpu.a));
+            (cyc(46), abi_ColourBlendBy());
+            cyc(74);
             wr16(HC_BUFFER + cpu.x, cpu.a);
-        }
+        } else { cyc(16); }
         hc_step(&cpu.x, 0x0200);
     } while (!(cpu.p & P_C));
+    cyc(22);
     goto hud;
 blend_both:
+    cyc(46);
     op_lda16(HC_TO(8));
-    wr16(hc_dp(0xF5), cpu.a);
+    wr16(hc_dp(0xF5), cyc_then(16, cpu.a));
     abi_PpuMultiplierSetLowByteTimes8();
+    cyc(18);
     do {
+        cyc(78);
         op_lda16(HC_WORK_B + cpu.x);
+        cyc(46);
         op_sub16(rd16(HC_WORK_C + cpu.x));
         if (cpu.a) {
+            cyc(52);
             op_cmp16(0x0001);
             if (!(cpu.p & P_Z)) {
+                cyc(36);
                 op_cmp16(0xFFFF);
                 if (!(cpu.p & P_Z)) {
+                    cyc(26);
                     op_lda16(HC_WORK_B + cpu.x);
-                    wr16(hc_dp(0xF1), cpu.a);
+                    wr16(hc_dp(0xF1), cyc_then(16, cpu.a));
+                    cyc(32);
                     op_lda16(HC_WORK_C + cpu.x);
-                    wr16(hc_dp(0xF3), cpu.a);
-                    abi_ColourBlend();
+                    wr16(hc_dp(0xF3), cyc_then(16, cpu.a));
+                    (cyc(46), abi_ColourBlend());
+                    cyc(74);
                     wr16(HC_WORK_A + cpu.x, cpu.a);
+                    cyc(32);
                     wr16(HC_BUFFER + cpu.x, cpu.a);
                 }
             }
-        }
+        } else { cyc(16); }
         hc_step(&cpu.x, 0x0200);
     } while (!(cpu.p & P_C));
 hud:
@@ -1581,6 +1786,7 @@ hud:
         int i;
 
         for (i = 0; i < 6; i++) {
+            cyc(96);
             op_lda16_imm(hud[i].colour);
             cpu.x = hud[i].x;
             cpu.p = nz16(cpu.p, cpu.x);
@@ -1588,44 +1794,62 @@ hud:
         }
     }
     op_rep(P_M | P_X);
+    cyc(74);
     op_lda16(0x000E3D);
     op_and16(0x00FF);
     op_cmp16(0x0007);
     if (cpu.p & P_Z) {
+        cyc(82);
         op_lda16(HC_TO(4));
         if (!cpu.a) {
+            cyc(40);
             op_lda16(HC_TO(8));
-            wr16(hc_dp(0xF5), cpu.a);
+            wr16(hc_dp(0xF5), cyc_then(16, cpu.a));
             abi_PpuMultiplierSetLowByteTimes8();
             cpu.x = 0x0018;
             cpu.p = nz16(cpu.p, cpu.x);
+            cyc(42);
             do {
+                cyc(78);
                 op_lda16(HC_WORK_B + cpu.x);
-                wr16(hc_dp(0xF1), cpu.a);
+                wr16(hc_dp(0xF1), cyc_then(16, cpu.a));
+                cyc(32);
                 op_lda16(HC_WORK_C + cpu.x);
-                wr16(hc_dp(0xF3), cpu.a);
-                abi_ColourBlend();
+                wr16(hc_dp(0xF3), cyc_then(16, cpu.a));
+                (cyc(46), abi_ColourBlend());
+                cyc(74);
                 wr16(HC_WORK_A + cpu.x, cpu.a);
+                cyc(32);
                 wr16(HC_BUFFER + cpu.x, cpu.a);
                 hc_step(&cpu.x, 0x0020);
             } while (!(cpu.p & P_C));
-        }
-    }
+        cyc(18);
+            }
+    } else { cyc(42); }
 keep:
+    cyc(46);
     op_lda16(HC_TO(8));
+    cyc(24);
     wr16(HC_TO(12), cpu.a);
+    cyc(24);
     op_lda16(HC_AMT(0));
+    cyc(24);
     wr16(HC_AMT(4), cpu.a);
+    cyc(24);
     op_lda16(HC_TGT(0));
+    cyc(24);
     wr16(HC_TGT(4), cpu.a);
 end:
+    cyc(20);
     op_sep(P_M | P_X);
     if (from != HC_START) {
         cpu.s++;
         db0 = rd8((uint16_t)cpu.s);
         cpu.s++;
+        cyc(20);
         p0 = rd8((uint16_t)cpu.s);
-    }
+    } else { cyc(36); }
+    cyc(2);
     cpu.db = db0;
     cpu.p = nz8(cpu.p, db0);
     op_plp(p0);

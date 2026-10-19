@@ -28,22 +28,26 @@ static uint32_t dbw(uint8_t bank, uint16_t a)
  */
 uint16_t OamClassName(uint8_t bank, uint16_t *x, uint16_t *y)
 {
-    uint16_t a = (uint16_t)((uint16_t)(rd16(dbw(bank, 0x0D7B)) + 1) << 2);
+    uint16_t a = (uint16_t)((uint16_t)(rd16(cyc_then(68, dbw(bank, 0x0D7B))) + 1) << 2);
     uint8_t c, n;
 
     *y = a;
-    c = rd8(dbw(bank, 0x0D4A));
+    c = rd8(cyc_then(102, dbw(bank, 0x0D4A)));
     a = (uint16_t)((a & 0xFF00) | c);
     if (!c)
-        return a;
-    *x = c == 1 ? 0x0006 : 0x0000;
+        { cyc(6); return a; }
+    *x = c == 1 ? (cyc(16), 0x0006) : 0x0000;
+    cyc(110);
     wr8(0x0000F1, 0x06);
     do {
+        cyc(92);
         c = rd8(CLASS_NAMES + *x);
         wr8(dbw(bank, (uint16_t)(0x0377 + *y)), c);
         *x = (uint16_t)(*x + 1);
         *y = (uint16_t)(*y + 4);
+        cyc(86);
         n = (uint8_t)(rd8(0x0000F1) - 1);
+        cyc(6);
         wr8(0x0000F1, n);
     } while (n);
     return (uint16_t)((a & 0xFF00) | c);
@@ -54,6 +58,6 @@ void abi_OamClassName(void)
     uint16_t x = cpu.x, y = cpu.y;
 
     cpu.a = OamClassName(cpu.db, &x, &y);
-    cpu.x = (cpu.p & P_X) ? (uint8_t)x : x;
+    cpu.x = (cpu.p & P_X) ? (uint8_t)x : (cyc(86), x);
     cpu.y = (cpu.p & P_X) ? (uint8_t)y : y;
 }

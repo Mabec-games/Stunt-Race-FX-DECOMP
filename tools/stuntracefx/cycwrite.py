@@ -2,9 +2,12 @@
 """cycwrite.py: the solved costs written into the decomp's C, as cyc().
 
     cycwrite.py COSTS.csv [--skip FUNCS.txt] [--dry]
+    cycwrite.py --strip DIR
 
 COSTS.csv is cycsolve.py's (id, ..., cost), numbered as cycprobe.py numbers
-the probes of the tree as it is now (so it comes from probes of this tree).
+the probes of the tree probed: the decomp, or with CYC_SRC a copy of it
+(--strip DIR makes one without the times this tool wrote, so a solve from
+it is written whole, replacing them).
 Each probe with a cost becomes the time its place stands for:
 
     a block's start, an arm, a case, the place paths join:  cyc(N);
@@ -33,7 +36,7 @@ ROOT = cycprobe.ROOT
 def plan(path, text, got, cost, skip):
     """The edits for one file: (offset, rank, text) with rank ordering the
     edits at one offset, and what was left out and why."""
-    rel = os.path.relpath(path, ROOT)
+    rel = cycprobe.rel_name(path)
     stmt = collections.Counter()           # offset -> clocks before the statement there
     wraps = {}                             # (start, end) -> clocks, a body given braces
     skips = []                             # (offset, wrapped start, clocks)
@@ -106,8 +109,68 @@ def apply(text, edits):
     return ''.join(out)
 
 
+def _close(text, i, op, cl):
+    """The index of the bracket closing the one opened just before i."""
+    depth, q = 1, i
+    while q < len(text):
+        ch = text[q]
+        if ch in '"\'':
+            end = q + 1
+            while end < len(text) and text[end] != ch:
+                end += 2 if text[end] == '\\' else 1
+            q = end + 1
+            continue
+        if text.startswith('/*', q):
+            q = text.index('*/', q) + 2
+            continue
+        if text.startswith('//', q):
+            q = text.index('\n', q)
+            continue
+        if ch == op:
+            depth += 1
+        elif ch == cl:
+            depth -= 1
+            if depth == 0:
+                return q
+        q += 1
+    raise ValueError('unbalanced')
+
+
+def strip(text):
+    """The text without what this tool writes: every cyc(N) with N a
+    number, in each of its forms (a time written by hand, cyc(t->x), stays)."""
+    import re
+    out = re.sub(r' else \{ cyc\(\d+\); \}', '', text)
+    # forms around code: { cyc(N); X }, (cyc(N), X), cyc_then(N, X)
+    for pat, op, cl, tail in ((r'\{ cyc\(\d+\); ', '{', '}', ' }'), (r'\(cyc\(\d+\), ', '(', ')', ')'),
+                              (r'cyc_then\(\d+, ', '(', ')', ')')):
+        while True:
+            m = re.search(pat, out)
+            if not m:
+                break
+            q = _close(out, m.end(), op, cl)
+            if not out[:q + 1].endswith(tail):
+                raise ValueError('cycwrite: %r at %d does not close as written' % (m.group(0), m.start()))
+            out = out[:m.start()] + out[m.end():q + 1 - len(tail)] + out[q + 1:]
+    out = re.sub(r'cyc\(\d+\);\n[ \t]*', '', out)
+    out = re.sub(r'cyc\(\d+\); ', '', out)
+    return out
+
+
 def main(argv):
     args = argv[1:]
+    if args[:1] == ['--strip']:
+        # a copy of the decomp without the written times, for probing
+        import glob, shutil
+        out = os.path.abspath(args[1])
+        src = cycprobe.SRC
+        for f in glob.glob(os.path.join(src, '**', '*.[ch]'), recursive=True):
+            o = os.path.join(out, os.path.relpath(f, src))
+            os.makedirs(os.path.dirname(o), exist_ok=True)
+            with open(o, 'w') as w:
+                w.write(strip(open(f).read()))
+        print('cycwrite: the decomp without its written times in %s' % out)
+        return 0
     dry = '--dry' in args
     if dry:
         args.remove('--dry')
@@ -130,13 +193,18 @@ def main(argv):
     for path, text, got in cycprobe.all_probes():
         edits, why = plan(path, text, got, cost, skip)
         left.update(why)
+        # into the decomp, from the tree probed (the decomp itself, or its
+        # copy without written times: CYC_SRC); a file with no times is
+        # written too, so a time written before goes
+        dest = os.path.join(cycprobe.DECOMP, os.path.relpath(path, cycprobe.SRC))
+        new = apply(text, edits)
+        if not dry and new != open(dest).read():
+            with open(dest, 'w') as f:
+                f.write(new)
         if not edits:
             continue
         files += 1
         written += sum(1 for e in edits if e[2].startswith(('cyc', '{ cyc', ' else', '(cyc')))
-        if not dry:
-            with open(path, 'w') as f:
-                f.write(apply(text, edits))
     print('cycwrite: %d costs in %d files%s' % (written, files, ' (dry run)' if dry else ''))
     for why, n in left.most_common():
         print('  %6d left: %s' % (n, why))

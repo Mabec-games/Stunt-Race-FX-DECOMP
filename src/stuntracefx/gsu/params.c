@@ -20,9 +20,12 @@ uint16_t GsuParamsUpdate(void)
     unsigned i;
 
     for (i = 0; i < 8; i++) {
+        cyc(130);
         v = rd16(from[i]);
+        cyc(32);
         wr16(to[i], v);
     }
+    cyc(72);
     return v;
 }
 
@@ -55,6 +58,7 @@ uint16_t GsuParamsFromDp(uint8_t bank)
         cyc(32);
         wr16(to[i], v);
     }
+    cyc(74);
     return v;
 }
 
@@ -67,6 +71,7 @@ void abi_GsuParamsFromDp(void)
 /* $70:0216 = the word at `table` + index in the data bank. */
 static uint16_t param_216(uint8_t bank, uint16_t table, uint16_t index)
 {
+    cyc(152);
     uint16_t v = rd16((uint32_t)bank << 16 | (uint16_t)(table + index));
 
     wr16(0x700216, v);
@@ -82,7 +87,7 @@ static void abi_param_216(uint16_t table)
         x &= 0x00FF;
     cpu.x = x;
     cpu.a = param_216(cpu.db, table, x);
-    cpu.p = (uint8_t)((nz16(cpu.p, cpu.a) & ~P_C) | (a & 0x8000 ? P_C : 0));
+    cpu.p = (uint8_t)((nz16(cpu.p, cpu.a) & ~P_C) | (a & 0x8000 ? P_C : (cyc(42), 0)));
 }
 
 /*
@@ -95,6 +100,7 @@ static void abi_param_216(uint16_t table)
  */
 uint16_t GsuParam216A(uint8_t bank, uint16_t index)
 {
+    cyc(24);
     return param_216(bank, 0x8E3E, index);
 }
 
@@ -111,6 +117,7 @@ void abi_GsuParam216A(void)
  */
 uint16_t GsuParam216B(uint8_t bank, uint16_t index)
 {
+    cyc(70);
     return param_216(bank, 0x8E52, index);
 }
 
@@ -153,6 +160,7 @@ uint16_t GsuTableEntryTo1F4C(uint8_t bank, uint16_t entry, uint8_t *p)
         v = rd16(t | (uint16_t)(s + 2 * i));
         wr16(t | (uint16_t)(0x1F4C + 2 * i), v);
     }
+    cyc(72);
     return v;
 }
 
@@ -188,6 +196,7 @@ static uint8_t gsu_200(uint8_t b1, uint8_t b2, uint8_t b3)
  */
 void GsuBytes200_BFB7B6(void)
 {
+    cyc(62);
     gsu_200(0xBF, 0xB7, 0xB6);
 }
 
@@ -321,7 +330,6 @@ void abi_GsuBytes200_BFB2B3(void)
  */
 void abi_GsuBytes200_BF12B6(void)
 {
-    cyc(262);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0xBF, 0x12, 0xB6));
 }
 
@@ -369,7 +377,6 @@ void abi_GsuBytes200_BFB7B6_D8C4(void)
  */
 void abi_GsuBytes200_BFBAB9_D8E1(void)
 {
-    cyc(134);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0xBF, 0xBA, 0xB9));
 }
 
@@ -382,7 +389,6 @@ void abi_GsuBytes200_BFBAB9_D8E1(void)
  */
 void abi_GsuBytes200_BFB3BE_D8FE(void)
 {
-    cyc(62);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0xBF, 0xB3, 0xBE));
 }
 
@@ -406,6 +412,7 @@ void abi_GsuBytes200_BFBBBE(void)
  */
 void GsuBytes200_0F0405(void)
 {
+    cyc(62);
     gsu_200(0x0F, 0x04, 0x05);
 }
 
@@ -422,6 +429,7 @@ void abi_GsuBytes200_0F0405(void)
  */
 void GsuBytes200_0F090A(void)
 {
+    cyc(62);
     gsu_200(0x0F, 0x09, 0x0A);
 }
 
@@ -438,7 +446,6 @@ void abi_GsuBytes200_0F090A(void)
  */
 void GsuBytes200_0F050E(void)
 {
-    cyc(140);
     gsu_200(0x0F, 0x05, 0x0E);
 }
 
@@ -455,7 +462,6 @@ void abi_GsuBytes200_0F050E(void)
  */
 void GsuBytes200_0F080E(void)
 {
-    cyc(156);
     gsu_200(0x0F, 0x08, 0x0E);
 }
 
@@ -489,7 +495,7 @@ uint16_t GsuTableEntryNext(uint8_t bank, uint16_t entry, uint8_t *p)
     *p = (uint8_t)((*p & ~P_C) | (a >= last ? (cyc(18), P_C) : 0));
     if (a == last)
         a = 0x0000;
-    cyc(124);
+    cyc(144);
     return (uint16_t)(a + 1);
 }
 
@@ -504,18 +510,21 @@ void abi_GsuTableEntryNext(void)
 /* The body; X, Y and the flags as the exit leaves them. */
 static uint16_t gsu_records_upload(uint16_t *x, uint16_t *y, uint8_t *p)
 {
+    cyc(164);
     uint16_t n = rd16(0x000CEE), s, d;
     unsigned i;
 
+    cyc(32);
     wr16(0x7001C8, n);
     if (!n)
-        return 0;
+        { cyc(118); return 0; }
     s = 0xF77F;
     d = 0x0AAA;
+    cyc(102);
     wr16(0x001F2B, n);
     do {
         for (i = 0; i < 30; i += 2)
-            wr16(0x700000 | (uint16_t)(d + i), rd16(0x7E0000 + s + i));
+            { cyc(32); wr16(0x700000 | (uint16_t)(d + i), cyc_then(30, rd16(0x7E0000 + s + i))); }
         d = (uint16_t)(d + 0x1E);
         *p = (uint8_t)(*p & ~(P_C | P_V));
         if ((unsigned)s + 0x1E > 0xFFFF)
@@ -523,9 +532,12 @@ static uint16_t gsu_records_upload(uint16_t *x, uint16_t *y, uint8_t *p)
         if (~s & (uint16_t)(s + 0x1E) & 0x8000)
             *p |= P_V;
         s = (uint16_t)(s + 0x1E);
+        cyc(164);
         n = (uint16_t)(rd16(0x001F2B) - 1);
+        cyc(46);
         wr16(0x001F2B, n);
     } while (n);
+    cyc(88);
     *x = s;
     *y = d;
     return 0;
@@ -578,7 +590,6 @@ void abi_GsuBytes200_BFBABD(void)
  */
 void GsuBytes200_0F0708(void)
 {
-    cyc(62);
     gsu_200(0x0F, 0x07, 0x08);
 }
 
@@ -595,7 +606,6 @@ void abi_GsuBytes200_0F0708(void)
  */
 void GsuBytes200_0F0D03(void)
 {
-    cyc(62);
     gsu_200(0x0F, 0x0D, 0x03);
 }
 

@@ -13,6 +13,7 @@ void abi_ObjectChildFollow(void);
 /* The object's record address, read through the data bank. */
 static uint16_t record_of(uint8_t bank, uint16_t obj)
 {
+    cyc(46);
     return rd16((uint32_t)bank << 16 | (uint16_t)(0x2022 + obj));
 }
 
@@ -24,7 +25,7 @@ static void exit_record(uint16_t rec, uint16_t a)
         cpu.a = 0x0000;
         cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z | P_M);
         return;
-    }
+    } else { cyc(102); }
     cpu.a = a;
     cpu.p = (uint8_t)(nz16(cpu.p, cpu.x) | P_M);
 }
@@ -38,6 +39,7 @@ static void exit_record(uint16_t rec, uint16_t a)
  */
 uint16_t GsuRecordMode2(uint8_t bank, uint16_t obj)
 {
+    cyc(68);
     uint16_t rec = record_of(bank, obj);
 
     if (rec)
@@ -89,6 +91,7 @@ void abi_GsuRecordSetFlags(void)
  */
 uint16_t GsuRecordFlag10(uint8_t bank, uint16_t obj, uint16_t *a)
 {
+    cyc(68);
     uint16_t rec = record_of(bank, obj);
 
     if (rec) {
@@ -117,12 +120,17 @@ void abi_GsuRecordFlag10(void)
  */
 uint16_t GsuRecordPosition(uint8_t bank, uint16_t obj, uint16_t *a)
 {
+    cyc(90);
     uint16_t rec = record_of(bank, obj);
 
     if (rec) {
-        wr16(0x70000C + rec, rd16(0x000002));
-        wr16(0x70000E + rec, rd16(0x000008));
+        cyc(76);
+        wr16(0x70000C + rec, cyc_then(32, rd16(0x000002)));
+        cyc(16);
+        wr16(0x70000E + rec, cyc_then(32, rd16(0x000008)));
+        cyc(16);
         *a = rd16(0x000094);
+        cyc(32);
         wr16(0x700010 + rec, *a);
     }
     return rec;
@@ -145,6 +153,7 @@ void abi_GsuRecordPosition(void)
  */
 uint16_t GsuRecordWord88(uint8_t bank, uint16_t obj, uint16_t *y)
 {
+    cyc(76);
     *y = rd16((uint32_t)bank << 16 | (uint16_t)(0x2006 + obj));
     cyc(36);
     return (uint16_t)(rd16(cyc_then(46, 0x700088 + record_of(bank, *y))) - 1);
@@ -169,8 +178,11 @@ uint16_t GsuRecordWord58(uint8_t bank, uint16_t obj, uint16_t *y, int *clear)
 {
     uint16_t rec;
 
+    cyc(76);
     *y = rd16((uint32_t)bank << 16 | (uint16_t)(0x2006 + obj));
+    cyc(36);
     rec = record_of(bank, *y);
+    cyc(46);
     *clear = !(rd16(0x700042 + rec) & 0x0410);
     return rd16(0x700058 + rec);
 }
@@ -196,13 +208,17 @@ uint16_t GsuRecordFlag4(uint8_t bank, uint16_t obj, int *has)
     uint32_t b = (uint32_t)bank << 16;
     uint16_t rec, w;
 
-    *has = (rd8(b | (uint16_t)(0x2022 + obj)) | rd8(b | (uint16_t)(0x2023 + obj))) != 0;
+    cyc(30);
+    *has = (rd8(b | (uint16_t)(0x2022 + obj)) | rd8(cyc_then(30, b | (uint16_t)(0x2023 + obj)))) != 0;
     if (!*has) {
+        cyc(62);
         wr8(b | (uint16_t)(0x2036 + obj), 0xFF);
         return 0x00FF;
-    }
+    } else { cyc(28); }
     rec = record_of(bank, obj);
+    cyc(76);
     w = (uint16_t)(rd16(0x70001C + rec) | 0x0004);
+    cyc(56);
     wr16(0x70001C + rec, w);
     return (uint16_t)(w & 0xFF00);
 }
@@ -217,10 +233,12 @@ void abi_GsuRecordFlag4(void)
         cpu.y = cpu.x;
         cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z | P_M);
     } else {
+        cyc(8);
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xFF);
         cpu.p = (uint8_t)((cpu.p & ~P_Z) | P_N | P_M);
     }
-}
+cyc(96);
+    }
 
 /*
  * @routine 08:D83D GsuRecordVelocity
@@ -235,6 +253,7 @@ void abi_GsuRecordFlag4(void)
 uint16_t GsuRecordVelocity(uint8_t bank, uint16_t obj, int *has, uint8_t *p)
 {
     uint32_t b = (uint32_t)bank << 16;
+    cyc(68);
     uint16_t rec = record_of(bank, obj), v = 0, w;
     unsigned i;
 
@@ -265,7 +284,8 @@ void abi_GsuRecordVelocity(void)
     } else {
         cpu.p = (uint8_t)((p & ~P_Z) | P_N | P_M);
     }
-}
+cyc(96);
+    }
 
 /*
  * @routine 08:B863 GsuRecordWords88
@@ -328,8 +348,7 @@ uint16_t GsuRecordStep6A(uint8_t bank, uint16_t obj, int *ran, uint8_t *p)
     cyc(24);
     *ran = rd8(b | 0x0D62) != 0;
     if (!*ran)
-        return 0;
-    cyc(52);
+        { cyc(64); return 0; } else { cyc(52); }
     rec = record_of(bank, obj);
     cyc(46);
     f = rd16(0x700042 + rec);
@@ -363,7 +382,7 @@ void abi_GsuRecordStep6A(void)
         cpu.a &= 0xFF00;
         cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
         return;
-    } else { cyc(36); }
+    } else { cyc(100); }
     cpu.a = a;
     cpu.p = (uint8_t)(nz16(p, cpu.x) | P_M);
 }
@@ -388,6 +407,7 @@ static uint16_t asr3(uint16_t v, uint8_t *p)
 uint16_t ObjectVelocityFromRecordOf(uint8_t bank, uint16_t obj, uint16_t from, uint8_t *p)
 {
     uint32_t b = (uint32_t)bank << 16;
+    cyc(128);
     uint16_t rec = record_of(bank, from), v = 0;
     unsigned i;
 
@@ -395,8 +415,10 @@ uint16_t ObjectVelocityFromRecordOf(uint8_t bank, uint16_t obj, uint16_t from, u
     for (i = 0; i < 3; i++) {
         cyc(32);
         v = asr3(rd16(0x70002E + 2 * i + rec), p);
+        cyc(144);
         wr16(b | (uint16_t)(0x202E + 2 * i + obj), v);
     }
+    cyc(138);
     return v;
 }
 
@@ -424,6 +446,7 @@ uint16_t GsuRecordFromObject(uint8_t bank, uint16_t obj)
         {0x2053, 0x0C}, {0x2055, 0x0E}, {0x2057, 0x10}, {0x2020, 0x14},
         {0x200C, 0x1E}, {0x200E, 0x20}, {0x2010, 0x22}};
     uint32_t b = (uint32_t)bank << 16;
+    cyc(104);
     uint16_t rec = record_of(bank, obj), v;
     unsigned i;
 
@@ -442,7 +465,6 @@ uint16_t GsuRecordFromObject(uint8_t bank, uint16_t obj)
 
 void abi_GsuRecordFromObject(void)
 {
-    cyc(104);
     cpu.a = GsuRecordFromObject(cpu.db, cpu.x);
     cpu.y = cpu.x;
     cpu.p = (uint8_t)(nz16(cpu.p, cpu.x) | P_M);
@@ -472,6 +494,7 @@ void abi_GsuRecordPositionFromObject(void)
         cyc(32);
         wr16(0x70001E + 2 * i + rec, v);
     }
+    cyc(72);
     cpu.a = v;
     cpu.y = cpu.x;
     cpu.p = (uint8_t)(nz16(cpu.p, cpu.x) | P_M);
@@ -483,6 +506,7 @@ uint16_t ScaleThreeQuarters(uint16_t v);
 static uint16_t three_quarters(uint16_t v, uint8_t *p)
 {
     uint16_t half = (uint16_t)((v >> 1) | (v & 0x8000)), quarter = (uint16_t)((half >> 1) | (half & 0x8000));
+    cyc(120);
     uint16_t r = ScaleThreeQuarters(v);
 
     *p = (uint8_t)((*p & ~(P_C | P_V)) | ((unsigned)half + quarter > 0xFFFF ? P_C : 0)
@@ -503,6 +527,7 @@ static uint16_t three_quarters(uint16_t v, uint8_t *p)
 uint16_t ObjectVelocityFromRecordScaled(uint8_t bank, uint16_t obj, uint8_t *p)
 {
     uint32_t b = (uint32_t)bank << 16;
+    cyc(76);
     uint16_t rec = record_of(bank, cyc_then(6, rd16(b | (uint16_t)(0x2027 + obj)))), v;
 
     cyc(60);
@@ -570,13 +595,18 @@ static uint8_t record_new(uint8_t bank, uint16_t obj, uint16_t program, uint16_t
     uint32_t b = (uint32_t)bank << 16;
     uint16_t rec;
 
+    cyc(162);
     GsuRun(0x04, program);
+    cyc(214);
     wr16(b | RECORD_0A_WORD, word0a);
     rec = rd16(GSU_RECORD_ARG);
+    cyc(30);
     wr16(b | (uint16_t)(0x2022 + obj), rec);
     if (!rec)
         return 0xFF;
-    wr16(0x70000A + rec, rd16(b | RECORD_0A_WORD));
+    cyc(104);
+    wr16(0x70000A + rec, cyc_then(32, rd16(b | RECORD_0A_WORD)));
+    cyc(36);
     GsuRecordFromObject(bank, obj);
     return 0x00;
 }
@@ -651,6 +681,7 @@ uint8_t GsuRecordNew424Piece(uint8_t bank, uint16_t obj)
 
 void abi_GsuRecordNew424Piece(void)
 {
+    cyc(62);
     abi_record_new(0x8C0A, 0x907A);
 }
 
@@ -724,6 +755,7 @@ uint8_t GsuRecordNew426(uint8_t bank, uint16_t obj)
 
 void abi_GsuRecordNew426(void)
 {
+    cyc(62);
     abi_record_new(0x8B33, 0x910A);
 }
 
@@ -745,10 +777,10 @@ static uint16_t record_amount_go(uint8_t bank, uint16_t rec, uint16_t program, u
 
 static uint16_t record_amount_run(uint8_t bank, uint16_t rec, uint8_t amount, uint16_t program, uint8_t *p)
 {
+    cyc(208);
     wr16(GSU_IN_AMOUNT, (uint16_t)(amount << 8));
     cyc(46);
     wr16(GSU_RECORD_ARG, rec);
-    cyc(100);
     return record_amount_go(bank, rec, program, p);
 }
 
@@ -787,7 +819,7 @@ static void flags8a(int set)
 
     cpu.p &= (uint8_t)~P_M;
     if (set) {
-        cyc(222);
+        cyc(210);
         a = (uint16_t)(a | rd16(at));
     } else {
         a ^= 0x00FF;
@@ -798,7 +830,7 @@ static void flags8a(int set)
     wr16(at, a);
     cpu.a = a;
     cpu.p |= P_M;
-    cpu.p = (cpu.p & P_X) ? nz8(cpu.p, (uint8_t)cpu.x) : (cyc(138), nz16(cpu.p, cpu.x));
+    cpu.p = (cpu.p & P_X) ? nz8(cpu.p, (uint8_t)cpu.x) : (cyc(160), nz16(cpu.p, cpu.x));
 }
 
 /*
@@ -843,6 +875,7 @@ uint16_t GsuRecordRaise6A(uint8_t bank, uint16_t rec, uint8_t amount, uint8_t *p
 {
     /* the inputs are stored before the flag is read, and the record is
        read back from $70:238E for the match */
+    cyc(208);
     wr16(GSU_IN_AMOUNT, (uint16_t)(amount << 8));
     cyc(46);
     wr16(GSU_RECORD_ARG, rec);
@@ -885,40 +918,59 @@ uint16_t ObjectTurnFromRecord(uint8_t bank, uint16_t rec, uint16_t obj, uint8_t 
     uint8_t a, sum, t;
     uint16_t w;
 
-    wr8(b | (uint16_t)(0x2016 + obj), rd8(0x700029 + rec));
-    wr8(b | (uint16_t)(0x2015 + obj), rd8(0x700025 + rec));
-    wr8(b | 0x1F5A, (uint8_t)-rd8(0x001A75));
-    wr8(b | 0x1F2B, rd8(0x001A77));
-    sum = (uint8_t)(rd8(b | (uint16_t)(0x2016 + obj)) + rd8(b | 0x1F2B));
+    cyc(54);
+    wr8(b | (uint16_t)(0x2016 + obj), cyc_then(30, rd8(0x700029 + rec)));
+    cyc(32);
+    wr8(b | (uint16_t)(0x2015 + obj), cyc_then(30, rd8(0x700025 + rec)));
+    cyc(76);
+    wr8(b | 0x1F5A, cyc_then(54, (uint8_t)-rd8(0x001A75)));
+    cyc(22);
+    wr8(b | 0x1F2B, cyc_then(24, rd8(0x001A77)));
+    cyc(66);
+    sum = (uint8_t)(rd8(b | (uint16_t)(0x2016 + obj)) + rd8(cyc_then(38, b | 0x1F2B)));
     a = (uint8_t)((sum >> 1) | (sum & 0x80));
     if (a & 0x80)
-        a = (uint8_t)-(uint8_t)((uint8_t)-a & 0xFC);
+        { cyc(70); a = (uint8_t)-(uint8_t)((uint8_t)-a & 0xFC); }
     a &= 0xFC;
     if (!((uint8_t)(a - 0x08) & 0x80))
-        a = 0x08;
+        { cyc(10); a = 0x08; }
     if ((uint8_t)(a - 0xF8) & 0x80)
-        a = 0xF8;
+        { cyc(10); a = 0xF8; }
+    cyc(168);
     wr8(b | 0x1F58, a);
-    t = (uint8_t)(rd8(b | (uint16_t)(0x2015 + obj)) - rd8(b | 0x1F5A));
+    cyc(30);
+    t = (uint8_t)(rd8(b | (uint16_t)(0x2015 + obj)) - rd8(cyc_then(38, b | 0x1F5A)));
     if (t & 0x80)
-        t = (uint8_t)-t;
+        { cyc(24); t = (uint8_t)-t; }
+    cyc(60);
     if (!((uint8_t)(t - 0x40) & 0x80))
-        wr8(b | 0x1F58, (uint8_t)-rd8(b | 0x1F58));
+        { cyc(18); wr8(b | 0x1F58, cyc_then(54, (uint8_t)-rd8(b | 0x1F58))); }
+    cyc(46);
     w = rd16(b | 0x1F58);
-    w = (w & 0x0080) ? (uint16_t)(w | 0xFF00) : (uint16_t)(w & 0x00FF);
+    w = (w & 0x0080) ? (cyc(16), (uint16_t)(w | 0xFF00)) : (uint16_t)(w & 0x00FF);
+    cyc(152);
     w = (uint16_t)(w + 8 + rd16(b | (uint16_t)(0x2029 + obj)));
+    cyc(30);
     wr16(b | (uint16_t)(0x205D + obj), w);
     ObjectTableC056(bank, obj, p);
+    cyc(160);
     a = (uint8_t)(rd8(b | 0x1F5A) | 0x80);
+    cyc(46);
     wr8(b | (uint16_t)(0x2018 + obj), a);
+    cyc(24);
     a = rd8(b | 0x0D62);
     if (!a) {
+        cyc(40);
         *p = nz8(*p, 0);
         return (uint16_t)(w & 0xFF00);
     }
-    wr8(b | 0x1F5A, (uint8_t)-rd8(0x001AB0));
+    cyc(92);
+    wr8(b | 0x1F5A, cyc_then(54, (uint8_t)-rd8(0x001AB0)));
+    cyc(14);
     ObjectTableC056(bank, obj, p);
+    cyc(160);
     a = (uint8_t)(rd8(b | 0x1F5A) | 0x80);
+    cyc(46);
     wr8(b | (uint16_t)(0x2019 + obj), a);
     *p = nz8(*p, a);
     return (uint16_t)((w & 0xFF00) | a);
@@ -938,11 +990,12 @@ uint16_t ObjectRebucket(uint16_t obj);
    +$18); A's low byte becomes 1 when it is non-zero. */
 static uint16_t sync_tail(uint8_t bank, uint16_t a, uint16_t *y, uint8_t *p)
 {
+    cyc(24);
     *y = rd16((uint32_t)bank << 16 | 0x1F3C);
     if (!*y) {
         *p = nz16(*p, 0);
         return a;
-    }
+    } else { cyc(10); }
     *p = nz8(*p, 0x01);
     return (uint16_t)((a & 0xFF00) | 0x01);
 }
@@ -950,6 +1003,7 @@ static uint16_t sync_tail(uint8_t bank, uint16_t a, uint16_t *y, uint8_t *p)
 /* No record ($08:CE69): $1F3C = 0, A = 0, carry set. */
 static uint16_t sync_none(uint8_t bank, uint8_t *p)
 {
+    cyc(92);
     wr16((uint32_t)bank << 16 | 0x1F3C, 0x0000);
     *p = (uint8_t)(nz8(*p, 0) | P_C);
     return 0x0000;
@@ -960,7 +1014,9 @@ static uint16_t sync_start(uint8_t bank, uint16_t obj)
 {
     int has;
 
+    cyc(62);
     ObjectRebucket(obj);
+    cyc(156);
     GsuRecordFlag4(bank, obj, &has);
     return record_of(bank, obj);
 }
@@ -990,26 +1046,38 @@ uint16_t ObjectSyncFromRecord(uint8_t bank, uint16_t obj, uint16_t *y, uint8_t *
 
     /* Rebucket, GsuRecordFlag4, then +$24 bit 1 cleared before the record
        (+$22) is read, in the asm's order. */
+    cyc(62);
     ObjectRebucket(obj);
+    cyc(156);
     GsuRecordFlag4(bank, obj, &has);
-    wr8(b | (uint16_t)(0x2024 + obj), rd8(b | (uint16_t)(0x2024 + obj)) & 0xFD);
+    wr8(b | (uint16_t)(0x2024 + obj), cyc_then(46, rd8(b | (uint16_t)(0x2024 + obj)) & 0xFD));
+    cyc(20);
     rec = record_of(bank, obj);
     if (!rec) {
         *y = obj;
         return sync_none(bank, p);
     }
-    wr16(b | 0x1F3C, rd16(0x700018 + rec));
-    wr16(0x700024 + rec, (uint16_t)(rd8(b | (uint16_t)(0x2015 + obj)) << 8));
-    wr16(0x700012 + rec, rd16(b | (uint16_t)(0x205A + obj)) & 0x007F);
-    wr16(b | (uint16_t)(0x200C + obj), rd16(0x70001E + rec));
-    wr16(b | (uint16_t)(0x200E + obj), rd16(0x700020 + rec));
-    wr16(b | (uint16_t)(0x2010 + obj), rd16(0x700022 + rec));
+    cyc(62);
+    wr16(b | 0x1F3C, cyc_then(24, rd16(0x700018 + rec)));
+    cyc(30);
+    wr16(0x700024 + rec, cyc_then(84, (uint16_t)(rd8(b | (uint16_t)(0x2015 + obj)) << 8)));
+    cyc(30);
+    wr16(0x700012 + rec, cyc_then(56, rd16(b | (uint16_t)(0x205A + obj)) & 0x007F));
+    cyc(32);
+    wr16(b | (uint16_t)(0x200C + obj), cyc_then(30, rd16(0x70001E + rec)));
+    cyc(32);
+    wr16(b | (uint16_t)(0x200E + obj), cyc_then(30, rd16(0x700020 + rec)));
+    cyc(32);
+    wr16(b | (uint16_t)(0x2010 + obj), cyc_then(30, rd16(0x700022 + rec)));
+    cyc(32);
     a = rd16(0x70001C + rec) & 0x0002;
     if (a) {
+        cyc(106);
         f = (uint8_t)(rd8(b | (uint16_t)(0x2024 + obj)) | 0x02);
+        cyc(46);
         wr8(b | (uint16_t)(0x2024 + obj), f);
         a = f;
-    }
+    } else { cyc(82); }
     *p &= (uint8_t)~P_C;
     return sync_tail(bank, a, y, p);
 }
@@ -1040,7 +1108,6 @@ uint16_t ObjectSyncToRecord(uint8_t bank, uint16_t obj, uint16_t *y, uint8_t *p)
 
     if (!rec) {
         *y = obj;
-        cyc(92);
         return sync_none(bank, p);
     }
     cyc(60);
@@ -1083,28 +1150,32 @@ void abi_ObjectSyncToRecord(void)
 uint16_t RecordContactFlags(uint8_t bank)
 {
     uint32_t b = (uint32_t)bank << 16;
+    cyc(24);
     uint16_t c = rd16(b | 0x1F3A), f;
 
     if (c) {
         if (c & 0x0001)
             c = 0x0001;
         else if (c & 0x0002)
-            c = 0x0002;
+            { cyc(46); c = 0x0002; }
         else if (c & 0x0004)
-            c = 0x0004;
-        wr16(b | 0x1F38, (uint16_t)(c | 0x0004 | rd16(b | 0x1F38)));
-    }
+            { cyc(92); c = 0x0004; } else { cyc(52); }
+        cyc(150);
+        wr16(b | 0x1F38, cyc_then(24, (uint16_t)(c | 0x0004 | rd16(b | 0x1F38))));
+    } else { cyc(22); }
+    cyc(24);
     f = rd16(b | 0x1F36);
     if (f & 0x0001)
-        wr16(b | 0x1F38, (uint16_t)(rd16(b | 0x1F38) | 0x0008));
+        { cyc(64); wr16(b | 0x1F38, cyc_then(48, (uint16_t)(rd16(b | 0x1F38) | 0x0008))); } else { cyc(46); }
+    cyc(86);
     if (f & 0x0800)
-        wr16(b | 0x1F38, (uint16_t)(rd16(b | 0x1F38) | 0x0080));
+        { cyc(18); wr16(b | 0x1F38, cyc_then(48, (uint16_t)(rd16(b | 0x1F38) | 0x0080))); }
+    cyc(24);
     return rd16(b | 0x1F38);
 }
 
 void abi_RecordContactFlags(void)
 {
-    cyc(24);
     cpu.a = RecordContactFlags(cpu.db);
     cpu.p = nz16(cpu.p, cpu.a);
 }
@@ -1128,6 +1199,7 @@ uint16_t GsuRecordLand(uint8_t bank, uint16_t obj, uint8_t *p)
     unsigned i;
     static const uint8_t stop[6] = {0x2E, 0x30, 0x32, 0x36, 0x34, 0x38};
 
+    cyc(130);
     if (!(a = rd16(0x702482)))
         { cyc(22); return a; }
     rec = record_of(bank, obj);
@@ -1181,8 +1253,8 @@ uint16_t ObjectSyncAngles(uint8_t bank, uint16_t obj, uint16_t *y, uint8_t *p)
     uint16_t rec = sync_start(bank, obj), a;
 
     if (!rec) {
+        cyc(24);
         *y = obj;
-        cyc(116);
         return sync_none(bank, p);
     }
     cyc(66);
@@ -1226,7 +1298,7 @@ int RecordNextContact(uint8_t bank, uint16_t *a, uint16_t *y, uint8_t *p, uint16
     uint16_t e = rd16(b | 0x1F3C), r;
 
     if (!e) {
-        cyc(82);
+        cyc(96);
         *a = 0;
         *p = (uint8_t)(nz16(*p, 0) & ~P_C);
         return 0;
@@ -1253,7 +1325,7 @@ int RecordNextContact(uint8_t bank, uint16_t *a, uint16_t *y, uint8_t *p, uint16
     wr16(b | 0x1F36, cyc_then(24, rd16(0x700016 + r)));
     cyc(24);
     wr16(b | 0x1F38, 0x0000);
-    cyc(70);
+    cyc(46);
     *a = RecordContactFlags(bank);
     *y = r;
     *p = (uint8_t)(nz16(*p, x) | P_C);
@@ -1284,32 +1356,48 @@ void abi_RecordNextContact(void)
 uint16_t RecordContactSummary(uint8_t bank, uint16_t obj, uint16_t *y)
 {
     uint32_t b = (uint32_t)bank << 16;
+    cyc(68);
     uint16_t rec = record_of(bank, obj), e, r, f;
 
     if (!rec)
-        return 0;
+        { cyc(20); return 0; }
+    cyc(90);
     wr16(b | 0x1F38, 0x0000);
+    cyc(32);
     if (rd16(0x70001C + rec) & 0x0001) {
-        wr16(b | 0x1F38, (uint16_t)(rd16(b | 0x1F38) | 0x0010));
+        cyc(64);
+        wr16(b | 0x1F38, cyc_then(48, (uint16_t)(rd16(b | 0x1F38) | 0x0010)));
+        cyc(32);
         if (rd16(0x7026F2) & 0x0020)
-            wr16(b | 0x1F38, (uint16_t)(rd16(b | 0x1F38) | 0x0080));
-    }
+            { cyc(64); wr16(b | 0x1F38, cyc_then(48, (uint16_t)(rd16(b | 0x1F38) | 0x0080))); } else { cyc(46); }
+    } else { cyc(46); }
+    cyc(32);
     f = rd16(0x70002C + rec) & 0x0020;
-    wr16(b | 0x1F38, (uint16_t)(f | rd16(b | 0x1F38)));
+    cyc(48);
+    wr16(b | 0x1F38, cyc_then(24, (uint16_t)(f | rd16(b | 0x1F38))));
+    cyc(24);
     wr16(b | 0x1F36, 0x0000);
+    cyc(24);
     wr16(b | 0x1F3A, 0x0000);
-    for (e = rd16(0x700018 + rec); e; e = rd16(0x70000E + e)) {
+    cyc(32);
+    for (e = rd16(0x700018 + rec); e; e = rd16(cyc_then(46, 0x70000E + e))) {
         if (!(rd16(0x700010 + e) & 0x0002))
-            continue;
+            { cyc(32); continue; }
+        cyc(72);
         r = rd16(0x70000C + e);
         /* the flags are read again only after +$64, as the original does */
+        cyc(60);
         f = rd16(0x700016 + r);
         if (f & 0x0002) {
+            cyc(72);
             f = rd16(0x700064 + r);
-            wr16(b | 0x1F3A, (uint16_t)(f | rd16(b | 0x1F3A)));
+            cyc(24);
+            wr16(b | 0x1F3A, cyc_then(24, (uint16_t)(f | rd16(b | 0x1F3A))));
+            cyc(32);
             f = rd16(0x700016 + r);
-        }
-        wr16(b | 0x1F36, (uint16_t)(f | rd16(b | 0x1F36)));
+        } else { cyc(46); }
+        cyc(24);
+        wr16(b | 0x1F36, cyc_then(24, (uint16_t)(f | rd16(b | 0x1F36))));
         *y = e;
     }
     return RecordContactFlags(bank);
@@ -1326,7 +1414,7 @@ void SoundPort0QueuePush(uint8_t command);
 /* CMP of two 16-bit values: N, Z, C. */
 static uint8_t cmp16(uint8_t p, uint16_t a, uint16_t m)
 {
-    return (uint8_t)((nz16(p, (uint16_t)(a - m)) & ~P_C) | (a >= m ? P_C : 0));
+    return (uint8_t)((nz16(p, (uint16_t)(a - m)) & ~P_C) | (a >= m ? (cyc(24), P_C) : 0));
 }
 
 #define SEQ_COUNT 0x1A33u
@@ -1350,13 +1438,15 @@ static uint32_t ctl_field(uint32_t b, uint16_t obj, uint16_t off)
 /* BIT # (16-bit or 8-bit): Z from A AND m. */
 static void ctl_bit(uint16_t m)
 {
-    cpu.p = (uint8_t)((cpu.p & ~P_Z) | ((cpu.a & m) ? 0 : P_Z));
+    cpu.p = (uint8_t)((cpu.p & ~P_Z) | ((cpu.a & m) ? (cyc(38), 0) : (cyc(38), P_Z)));
 }
 
 /* LDA abs; BIT #m: is button m held (in $1AF0, or $1AF2 last frame)? */
 static int ctl_held(uint32_t b, uint16_t at, uint16_t m)
 {
+    cyc(24);
     op_lda16(b | at);
+    cyc(8);
     ctl_bit(m);
     return (cpu.a & m) != 0;
 }
@@ -1375,6 +1465,7 @@ static void ctl_rec_or(uint32_t w, uint16_t m)
 static void ctl_flags_or(uint32_t b, uint8_t m)
 {
     uint32_t w = ctl_field(b, cpu.y, 0x2025);
+    cyc(30);
     uint8_t v = (uint8_t)(rd8(w) | m);
 
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
@@ -1388,15 +1479,14 @@ static void ctl_linked_flags(uint32_t b, uint8_t m1, uint8_t m2)
 {
     uint16_t y = cpu.y;
 
-    cyc(60);
-    op_lda16(ctl_field(b, cpu.y, 0x204F));
+    op_lda16(cyc_then(60, ctl_field(b, cpu.y, 0x204F)));
     op_tay16();
     op_sep(P_M);
-    cyc(52);
+    cyc(36);
     ctl_flags_or(b, m1);
     if (m2)
-        { cyc(30); ctl_flags_or(b, m2); }
-    cyc(14);
+        ctl_flags_or(b, m2);
+    cyc(28);
     op_rep(P_M);
     cpu.y = y;
     cpu.p = nz16(cpu.p, y);
@@ -1405,18 +1495,21 @@ static void ctl_linked_flags(uint32_t b, uint8_t m1, uint8_t m2)
 /* The player's flag word: $1A60 for player 2 ($1A5D set), else $1A5E. */
 static uint16_t ctl_player_word(uint32_t b)
 {
+    cyc(46);
     op_lda16(b | CTL_PLAYER);
     op_and16(0x00FF);
-    return cpu.a ? 0x1A60 : 0x1A5E;
+    return cpu.a ? 0x1A60 : (cyc(6), 0x1A5E);
 }
 
 /* PHA ... PLA around the player test, then the word stored back. */
 static void ctl_player_store(uint32_t b, uint16_t v)
 {
+    cyc(76);
     uint16_t at = ctl_player_word(b);
 
     cpu.a = v;
     cpu.p = nz16(cpu.p, v);
+    cyc(98);
     wr16(b | at, v);
 }
 
@@ -1455,129 +1548,155 @@ void abi_CarControlsToRecord(void)
 
     op_sep(P_M);
     op_rep(P_X);
+    cyc(46);
     wr16(b | 0x1F18, cpu.x);
-    f = (uint8_t)(rd8(ctl_field(b, obj, 0x2025)) & 0x04);
+    f = (uint8_t)(rd8(cyc_then(30, ctl_field(b, obj, 0x2025))) & 0x04);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | f);
     cpu.p = nz8(cpu.p, f);
     op_rep(P_M);
     cpu.y = obj;
     cpu.p = nz16(cpu.p, obj);
-    op_lda16(ctl_field(b, obj, 0x2022));
+    op_lda16(cyc_then(138, ctl_field(b, obj, 0x2022)));
     if (f) {
         if (cpu.a) {
             op_tax16();
             r = 0x700000u + cpu.x;
             ctl_rec_or(r + 0x40, 0x0200);
+            cyc(32);
             op_lda16(r + 0x42);
             ctl_bit(0x1000);
             if (!(cpu.a & 0x1000)) {
                 op_and16(0xD800);
+                cyc(56);
                 wr16(r + 0x42, cpu.a);
             }
         }
         goto out;
     }
     if (!cpu.a)
-        goto out;
+        { cyc(46); goto out; }
     op_tax16();
     r = 0x700000u + cpu.x;
+    cyc(38);
     op_lda16(r + 0x1C);
     op_and16(0x0010);
     if (cpu.a)
-        goto out;
+        { cyc(68); goto out; } else { cyc(44); }
     if (ctl_held(b, SEQ_INPUT, 0x2000)) {
+        cyc(46);
         abi_RecordButtonSequence();
+        cyc(42);
         if (!ctl_held(b, SEQ_PREV, 0x2000)) {
             uint16_t y = cpu.y;
 
-            op_lda16(ctl_field(b, cpu.y, 0x204F));
+            op_lda16(cyc_then(60, ctl_field(b, cpu.y, 0x204F)));
             op_tay16();
             op_sep(P_M);
+            cyc(36);
             ctl_flags_or(b, 0x01);
+            cyc(24);
             op_lda8(b | SEQ_INPUT);
             ctl_bit(0x20);
             if (cpu.a & 0x20) {
+                cyc(24);
                 op_lda8(b | SEQ_INPUT);
                 ctl_bit(0x10);
                 if (cpu.a & 0x10)
-                    ctl_flags_or(b, 0x02);
-            }
+                    ctl_flags_or(b, 0x02); else { cyc(26); }
+            } else { cyc(26); }
+            cyc(10);
             op_rep(P_M);
             cpu.y = y;
             cpu.p = nz16(cpu.p, y);
         }
     }
+    cyc(50);
     op_lda16(b | 0x0D62);
     op_and16(0x00FF);
     if (cpu.a) {
+        cyc(44);
         abi_RandomStepLong();
         op_and16(0x0003);
         op_add16(0x006E);
+        cyc(198);
         wr16(b | 0x1F2B, cpu.a);
-        op_lda16(ctl_field(b, cpu.y, 0x2029));
+        op_lda16(cyc_then(30, ctl_field(b, cpu.y, 0x2029)));
         if (!(cpu.a & 0x8000)) {
+            cyc(40);
             op_cmp16(rd16(b | 0x1F2B));
             if (cpu.p & P_N) {
                 cpu.a++;
                 cpu.p = nz16(cpu.p, cpu.a);
-                wr16(ctl_field(b, cpu.y, 0x2029), cpu.a);
+                wr16(ctl_field(b, cpu.y, 0x2029), cyc_then(56, cpu.a));
                 op_cmp16(0x000A);
                 if (!(cpu.p & P_N)) {
+                    cyc(36);
                     for (i = 0; i < 4; i++)
                         if (ctl_held(b, SEQ_INPUT, clear_timer[i]))
                             break;
                     if (i < 4) {
                         op_lda16_imm(0xFFFF);
-                        wr16(ctl_field(b, cpu.y, 0x2029), 0xFFFF);
+                        wr16(ctl_field(b, cpu.y, 0x2029), cyc_then(42, 0xFFFF));
                     }
-                }
-            } else {
+                } else { cyc(20); }
+            cyc(14);
+                } else {
+                cyc(50);
                 op_lda16(r + 0x64);
                 ctl_bit(0x0008);
                 if (!(cpu.a & 0x0008)) {
                     cpu.a |= 0x0008;
                     cpu.p = nz16(cpu.p, cpu.a);
+                    cyc(58);
                     wr16(r + 0x64, cpu.a);
                     ctl_linked_flags(b, 0x01, 0x02);
                 }
             }
-        }
-    }
+        } else { cyc(14); }
+    } else { cyc(60); }
+    cyc(32);
     op_lda16(b | 0x0D53);
     op_and16(0x00FF);
     if (cpu.a)
-        goto out;
+        { cyc(68); goto out; }
+    cyc(76);
     op_lda16(r + 0x40);
     op_and16(0xFDFF);
+    cyc(54);
     wr16(r + 0x40, cpu.a);
+    cyc(32);
     op_lda16(r + 0x42);
     ctl_bit(0x1000);
     if (cpu.a & 0x1000)
-        goto out;
+        { cyc(32); goto out; }
+    cyc(40);
     op_lda16(r + 0x42);
     op_and16(0xD800);
+    cyc(54);
     wr16(r + 0x42, cpu.a);
     if (ctl_held(b, SEQ_INPUT, 0x0200))
         ctl_rec_or(r + 0x42, 0x0001);
-    else if (ctl_held(b, SEQ_INPUT, 0x0100))
-        ctl_rec_or(r + 0x42, 0x0002);
+    else { cyc(26); if (ctl_held(b, SEQ_INPUT, 0x0100))
+        ctl_rec_or(r + 0x42, 0x0002); else { cyc(26); } }
     if (ctl_held(b, SEQ_INPUT, 0x0020))
         ctl_rec_or(r + 0x42, 0x0004);
-    else if (ctl_held(b, SEQ_INPUT, 0x0010))
-        ctl_rec_or(r + 0x42, 0x0008);
+    else { cyc(26); if (ctl_held(b, SEQ_INPUT, 0x0010))
+        ctl_rec_or(r + 0x42, 0x0008); else { cyc(26); } }
     if (ctl_held(b, SEQ_INPUT, 0x0080)) {
         ctl_rec_or(r + 0x42, 0x2040);
+        cyc(32);
         op_lda16(r + 0x4A);
         op_sub16(0x0032);
         if (cpu.p & P_N)
-            ctl_rec_or(r + 0x42, 0x0020);
-    }
+            { cyc(48); ctl_rec_or(r + 0x42, 0x0020); } else { cyc(54); }
+    } else { cyc(26); }
     if (ctl_held(b, SEQ_INPUT, 0x4000)) {
+        cyc(32);
         op_lda16(r + 0x6A);
         if (cpu.a)
-            ctl_rec_or(r + 0x42, 0x0400);
+            { cyc(16); ctl_rec_or(r + 0x42, 0x0400); }
         else {
-            op_lda16(b | ctl_player_word(b));
+            op_lda16(cyc_then(62, b | ctl_player_word(b)));
             ctl_bit(0x0010);
             if (!(cpu.a & 0x0010)) {
                 v = cpu.a;
@@ -1585,40 +1704,50 @@ void abi_CarControlsToRecord(void)
                 abi_SoundPort0QueuePush();
                 v |= 0x0010;
                 ctl_player_store(b, v);
-            }
+            } else { cyc(30); }
         }
     } else {
-        op_lda16(b | ctl_player_word(b));
+        cyc(4);
+        op_lda16(cyc_then(62, b | ctl_player_word(b)));
         ctl_bit(0x0010);
         if (cpu.a & 0x0010)
             ctl_player_store(b, (uint16_t)(cpu.a & 0xFFEF));
     }
     if (ctl_held(b, SEQ_INPUT, 0x0040) && !ctl_held(b, SEQ_PREV, 0x0040)) {
+        cyc(32);
         op_lda16(r + 0x5E);
         if (!cpu.a) {
+            cyc(48);
             op_lda16(r + 0x40);
             op_and16(0x0100);
             if (!cpu.a)
-                ctl_rec_or(r + 0x42, 0x0080);
-        }
-    }
+                { cyc(38); ctl_rec_or(r + 0x42, 0x0080); } else { cyc(44); }
+        } else { cyc(22); }
+    } else { cyc(26); }
     if (ctl_held(b, SEQ_INPUT, 0x8000))
-        ctl_rec_or(r + 0x42, 0x0010);
+        ctl_rec_or(r + 0x42, 0x0010); else { cyc(26); }
+    cyc(32);
     op_lda16(r + 0x40);
     op_and16(0x0100);
     if (cpu.a) {
+        cyc(38);
         if (ctl_held(b, SEQ_INPUT, 0x0400)) {
+            cyc(32);
             op_lda16(r + 0x26);
             op_sub16(0x0600);
+            cyc(64);
             wr16(r + 0x26, cpu.a);
-        }
+        } else { cyc(26); }
         if (ctl_held(b, SEQ_INPUT, 0x0800)) {
+            cyc(32);
             op_lda16(r + 0x26);
             op_add16(0x0600);
+            cyc(70);
             wr16(r + 0x26, cpu.a);
-        }
-    }
+        } else { cyc(26); }
+    } else { cyc(44); }
 out:
+    cyc(102);
     cpu.x = obj;
     cpu.p = nz16(cpu.p, obj);
     op_sep(P_M);
@@ -1651,7 +1780,7 @@ static void ctl_player(uint16_t held, uint16_t prev, uint8_t player, uint16_t ca
     (cyc(62), abi_CarControlsToRecord());
     cpu.y = player;
     cpu.p = nz16(cpu.p, cpu.y);
-    (cyc(188), abi_ObjectLinkedHandlerByState());
+    (cyc(86), abi_ObjectLinkedHandlerByState());
 }
 
 /*
@@ -1677,16 +1806,24 @@ void abi_PlayerControlsFrame(void)
     op_rep(P_X);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x7E);
     cpu.db = 0x7E;
+    cyc(94);
     ctl_player(0x0309, 0x1F23, 0, 0x0346);
+    cyc(68);
     op_lda8(0x7E0D62);
     if ((uint8_t)cpu.a)
         ctl_player(0x030D, 0x1F25, 1, 0x034A);
     op_rep(P_M);
+    cyc(68);
     op_lda16(0x7E0309);
+    cyc(24);
     wr16(0x7E1F23, cpu.a);
+    cyc(24);
     op_lda16(0x7E030D);
+    cyc(24);
     wr16(0x7E1F25, cpu.a);
+    cyc(24);
     wr16(0x7E0309, 0x0000);
+    cyc(24);
     wr16(0x7E030D, 0x0000);
     op_sep(P_M);
     cpu.db = db;
@@ -1720,17 +1857,16 @@ uint16_t RecordButtonSequence(uint8_t bank, uint16_t rec, uint8_t *p)
     s = rd16(b | SEQ_STAGE);
     *p = nz16(*p, s);
     if (s != 0)
-        { cyc(40); *p = cmp16(*p, s, 0x0001); }
+        { cyc(16); *p = cmp16(*p, s, 0x0001); }
     if (s != 0 && s != 1)
-        { cyc(40); *p = cmp16(*p, s, 0x0002); }
+        { cyc(16); *p = cmp16(*p, s, 0x0002); }
     if (s <= 2) {
         cyc(46);
         n = rd16(b | SEQ_COUNT);
-        cyc(24);
         *p = cmp16(*p, n, 0x0005);
         if (!(*p & P_N))
             goto reset;
-        cyc(40);
+        cyc(64);
         in = rd16(b | SEQ_INPUT);
         *p = nz16(*p, in);
         if (!(in & press[s])) {
@@ -1747,16 +1883,14 @@ uint16_t RecordButtonSequence(uint8_t bank, uint16_t rec, uint8_t *p)
         *p = nz16(*p, s);
         return in;
     }
-    cyc(16);
     *p = cmp16(*p, s, 0x0003);
     if (s == 3) {
-        cyc(70);
+        cyc(62);
         n = rd16(b | SEQ_COUNT);
-        cyc(24);
         *p = cmp16(*p, n, 0x0011);
         if (!(*p & P_N))
             goto reset;
-        cyc(40);
+        cyc(64);
         in = rd16(b | SEQ_INPUT);
         *p = nz16(*p, in);
         if (!(in & 0x0800)) {
@@ -1766,14 +1900,13 @@ uint16_t RecordButtonSequence(uint8_t bank, uint16_t rec, uint8_t *p)
         }
         cyc(70);
         n = rd16(b | SEQ_COUNT);
-        cyc(24);
         *p = cmp16(*p, n, 0x000C);
         if (*p & P_N)
-            goto reset;
+            { cyc(24); goto reset; } else { cyc(8); }
     }
-    cyc(134);
+    cyc(126);
     SoundPort0QueuePush(0x48);
-    cyc(54);
+    cyc(40);
     wr16(0x700040 + rec, cyc_then(56, (uint16_t)(rd16(0x700040 + rec) | 0x2000)));
     cyc(56);
     wr16(0x70006A + rec, 0x0180);
@@ -1817,26 +1950,39 @@ uint16_t ObjectPoseFromRecord(uint8_t bank, uint16_t obj, uint8_t *p)
     uint16_t rec, z;
     uint8_t s, v;
 
-    wr8(b | (uint16_t)(0x2025 + obj), rd8(b | (uint16_t)(0x2025 + obj)) & 0xDF);
-    wr8(b | (uint16_t)(0x2025 + obj), rd8(b | (uint16_t)(0x2025 + obj)) & 0xBF);
+    cyc(52);
+    wr8(b | (uint16_t)(0x2025 + obj), cyc_then(46, rd8(b | (uint16_t)(0x2025 + obj)) & 0xDF));
+    cyc(30);
+    wr8(b | (uint16_t)(0x2025 + obj), cyc_then(46, rd8(b | (uint16_t)(0x2025 + obj)) & 0xBF));
+    cyc(60);
     s = rd8(b | (uint16_t)(0x2036 + obj));
     *p = (uint8_t)((*p & ~P_C) | (s >= 0x01 ? P_C : 0));
     if (s == 0x01)
-        wr8(b | (uint16_t)(0x2036 + obj), 0x02);
+        { cyc(78); wr8(b | (uint16_t)(0x2036 + obj), 0x02); } else { cyc(38); }
+    cyc(6);
     rec = record_of(bank, obj);
     if (s == 0x01)
-        wr16(0x700016 + rec, (uint16_t)(rd16(0x700016 + rec) | 0x0400));
+        { cyc(46); wr16(0x700016 + rec, cyc_then(56, (uint16_t)(rd16(0x700016 + rec) | 0x0400))); }
     else
-        wr16(0x700016 + rec, (uint16_t)(rd16(0x700016 + rec) & 0xFBFF));
+        { cyc(46); wr16(0x700016 + rec, cyc_then(56, (uint16_t)(rd16(0x700016 + rec) & 0xFBFF))); }
     rec = record_of(bank, obj);
-    wr16(0x700090 + rec, rd16(0x700040 + rec));
-    wr16(b | (uint16_t)(0x200C + obj), rd16(0x70001E + rec));
-    wr16(b | (uint16_t)(0x200E + obj), rd16(0x700020 + rec));
+    cyc(46);
+    wr16(0x700090 + rec, cyc_then(32, rd16(0x700040 + rec)));
+    cyc(32);
+    wr16(b | (uint16_t)(0x200C + obj), cyc_then(30, rd16(0x70001E + rec)));
+    cyc(32);
+    wr16(b | (uint16_t)(0x200E + obj), cyc_then(30, rd16(0x700020 + rec)));
+    cyc(32);
     z = rd16(0x700022 + rec);
+    cyc(30);
     wr16(b | (uint16_t)(0x2010 + obj), z);
-    wr8(b | (uint16_t)(0x2014 + obj), rd8(0x700027 + rec));
-    wr8(b | (uint16_t)(0x2016 + obj), rd8(0x700029 + rec));
+    cyc(54);
+    wr8(b | (uint16_t)(0x2014 + obj), cyc_then(30, rd8(0x700027 + rec)));
+    cyc(32);
+    wr8(b | (uint16_t)(0x2016 + obj), cyc_then(30, rd8(0x700029 + rec)));
+    cyc(32);
     v = rd8(0x700025 + rec);
+    cyc(30);
     wr8(b | (uint16_t)(0x2015 + obj), v);
     *p = nz16(*p, obj);
     return (uint16_t)((z & 0xFF00) | v);
@@ -1864,6 +2010,7 @@ uint16_t GsuRecordSet2AHigh(uint8_t bank, uint16_t obj, uint8_t value, uint8_t *
 {
     uint16_t w = (uint16_t)(value << 8), rec;
 
+    cyc(148);
     wr16((uint32_t)bank << 16 | 0x1F36, w);
     cyc(6);
     rec = record_of(bank, obj);
@@ -1897,6 +2044,7 @@ static void set_handler08(uint16_t h)
     cpu.p &= (uint8_t)~P_M;
     cpu.a = h;
     cpu.p = nz16(cpu.p, h);
+    cyc(76);
     wr16(b | (uint16_t)(0x201A + cpu.x), h);
     cpu.p |= P_M;
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x08);
@@ -1933,9 +2081,8 @@ void abi_ObjectRecordMarkSetup(void)
     uint32_t b;
     uint8_t v;
 
-    cyc(76);
     set_handler08(0xCDA4);
-    (cyc(174), abi_ObjectStubZero());
+    (cyc(62), abi_ObjectStubZero());
     abi_GsuRecordNew422();
     b = (uint32_t)cpu.db << 16 | (uint16_t)(0x2009 + cpu.x);
     cyc(30);
@@ -2053,7 +2200,8 @@ void abi_ObjectSpinStep(void)
         cyc(56);
         wr16(0x700024 + rec, v & 0x00FF);
     } else { cyc(8); }
-    (cyc(98), abi_ObjectSyncFromRecord());
+    cyc(98);
+    abi_ObjectSyncFromRecord();
 }
 
 /*
@@ -2068,10 +2216,10 @@ void abi_ObjectSpinStep(void)
 void abi_ObjectSpinRecord(void)
 {
     abi_GsuRecordNew424();
-    (cyc(68), abi_GsuRecordMode2());
+    abi_GsuRecordMode2();
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x20);
     cpu.p = nz8(cpu.p, 0x20);
-    (cyc(270), abi_GsuRecordSet2AHigh());
+    (cyc(20), abi_GsuRecordSet2AHigh());
     (cyc(102), abi_ObjectSpinStep());
 }
 
@@ -2095,7 +2243,6 @@ void abi_ObjectSpinSetup(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x08);
     cyc(68);
     wr8(b | (uint16_t)(0x201F + cpu.x), 0x08);
-    cyc(76);
     set_handler08(0xCDDE);
     abi_ObjectSpinRecord();
 }
@@ -2140,17 +2287,22 @@ void abi_GsuRecordListFlag80(void)
     uint16_t x0 = cpu.x, v;
 
     cpu.p &= (uint8_t)~P_M;
+    cyc(82);
     op_lda16(b | (uint16_t)(0x2022 + cpu.x));
     op_tax16();
+    cyc(16);
     op_lda16(0x70003E + cpu.x);
     for (;;) {
+        cyc(54);
         op_tax16();
         if (!cpu.x)
-            break;
+            { cyc(74); break; }
         v = (uint16_t)(rd16(0x700016 + cpu.x) | 0x0080);
         cpu.a = v;
         cpu.p = nz16(cpu.p, v);
+        cyc(56);
         wr16(0x700016 + cpu.x, v);
+        cyc(32);
         op_lda16(0x700034 + cpu.x);
     }
     cpu.x = x0;
@@ -2166,13 +2318,15 @@ void abi_GsuRecordListFlag80(void)
  */
 void abi_ReturnLongC096(void)
 {
-}
+cyc(44);
+    }
 
 /* LDA addr, ORA #$20, STA addr (8-bit). */
 static void or20(uint32_t addr)
 {
     uint8_t v;
 
+    cyc(60);
     op_lda8(addr);
     v = (uint8_t)(cpu.a | 0x20);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
@@ -2187,9 +2341,9 @@ static void or20(uint32_t addr)
 static void lda_m(uint32_t addr)
 {
     if (cpu.p & P_M)
-        op_lda8(addr);
+        { cyc(36); op_lda8(addr); }
     else
-        op_lda16(addr);
+        { cyc(14); op_lda16(addr); }
 }
 
 /*
@@ -2218,18 +2372,23 @@ void abi_ObjectRecordChildrenMark(void)
     uint8_t f;
 
     op_sep(P_M);
+    cyc(46);
     wr8(b | 0x1F1A, (uint8_t)cpu.a);
+    cyc(24);
     wr16(b | 0x1F18, cpu.x);
+    cyc(30);
     op_lda8(b | (uint16_t)(0x2024 + cpu.x));
     f = (uint8_t)(cpu.a & 0x08);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | f);
     cpu.p = nz8(cpu.p, f);
     if (f) {
+        cyc(94);
         for (;;) {
+            cyc(52);
             cpu.y = rd16(b | (uint16_t)(0x2006 + cpu.x));
             cpu.p = nz16(cpu.p, cpu.y);
             if (!cpu.y)
-                break;
+                { cyc(102); break; }
             cpu.x = cpu.y;
             cpu.p = nz16(cpu.p, cpu.x);
             or20(b | (uint16_t)(0x2024 + cpu.x));
@@ -2241,35 +2400,46 @@ void abi_ObjectRecordChildrenMark(void)
     cpu.y = cpu.x;
     cpu.p = nz16(cpu.p, cpu.y);
     cpu.p &= (uint8_t)~P_M;
+    cyc(104);
     op_lda16(b | (uint16_t)(0x2022 + cpu.x));
     op_tax16();
     cpu.p |= P_M;
+    cyc(38);
     op_lda8(0x700027 + cpu.x);
+    cyc(24);
     wr8(b | 0x1F58, (uint8_t)cpu.a);
+    cyc(32);
     op_lda8(0x700029 + cpu.x);
+    cyc(24);
     wr8(b | 0x1F59, (uint8_t)cpu.a);
     cpu.p &= (uint8_t)~P_M;
+    cyc(84);
     op_lda16(0x700016 + cpu.x);
     op_and16(0x0400);
     f = cpu.a != 0;
+    cyc(70);
     op_lda16(0x70003E + cpu.x);
     op_tax16();
     for (;;) {
         lda_m(b | (uint16_t)(0x2006 + cpu.y));
         op_tay16();
         if (!cpu.y)
-            break;
+            { cyc(138); break; } else { cyc(22); }
         if (f) {
             cpu.p |= P_M;
             or20(b | (uint16_t)(0x2024 + cpu.y));
             cpu.p &= (uint8_t)~P_M;
+            cyc(54);
             v = (uint16_t)(rd16(0x700016 + cpu.x) | 0x0480);
             cpu.a = v;
             cpu.p = nz16(cpu.p, v);
+            cyc(56);
             wr16(0x700016 + cpu.x, v);
         } else {
+            cyc(54);
             abi_ObjectChildFollow();
         }
+        cyc(120);
         lda_m(0x700034 + cpu.x);
         op_tax16();
     }

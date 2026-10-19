@@ -26,11 +26,13 @@ static uint32_t dbw(uint8_t bank, uint16_t a)
  */
 uint16_t PlayerVehicleRaised(uint8_t bank, uint8_t player)
 {
-    uint16_t obj = rd16(dbw(bank, player ? 0x034A : 0x0346));
+    uint16_t obj = rd16(cyc_then(152, dbw(bank, player ? (cyc(6), 0x034A) : 0x0346)));
 
     obj = rd16(0x7E204F + obj);
+    cyc(46);
     obj = rd16(0x7E204F + obj);
-    return (rd16(0x000000 + obj) & 0x4000) ? 0x0008 : 0x0000;
+    cyc(46);
+    return (rd16(0x000000 + obj) & 0x4000) ? (cyc(172), 0x0008) : 0x0000;
 }
 
 void abi_PlayerVehicleRaised(void)
@@ -60,19 +62,23 @@ uint16_t BackdropScrollFromView(uint8_t bank, uint16_t *x)
     uint16_t a, t;
     unsigned s;
 
+    cyc(54);
     *x = (uint8_t)(rd8(0x000D7F) << 1);
     a = (uint16_t)(rd16(0x0006CF) >> 2);
-    wr16(dbw(bank, (uint16_t)(0x0D92 + *x)), a);
+    wr16(dbw(bank, (uint16_t)(0x0D92 + *x)), cyc_then(58, a));
+    cyc(62);
     a = PlayerVehicleRaised(bank, (uint8_t)*x);
+    cyc(224);
     a = (uint16_t)(a + rd16(0x0006CD));
     a = (uint16_t)(a + 0x0018);
     s = (unsigned)(uint16_t)(a << 1) + 0xEF99 + (a >> 15);
     t = (uint16_t)s;
     if (t >= 0xF257)
-        t = 0xF257;
-    wr16(dbw(bank, (uint16_t)(0x0D96 + *x)), t);
+        { cyc(18); t = 0xF257; }
+    wr16(dbw(bank, (uint16_t)(0x0D96 + *x)), cyc_then(182, t));
+    cyc(82);
     a = (uint16_t)(a + rd16(BACKDROP_Y_BASE + *x));
-    wr16(dbw(bank, (uint16_t)(0x0D8E + *x)), a);
+    wr16(dbw(bank, (uint16_t)(0x0D8E + *x)), cyc_then(30, a));
     return a;
 }
 

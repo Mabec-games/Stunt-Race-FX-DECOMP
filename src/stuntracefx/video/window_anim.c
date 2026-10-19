@@ -16,6 +16,7 @@
  */
 uint8_t WindowStep3437(uint8_t bank, uint8_t *x, uint8_t *p)
 {
+    cyc(92);
     uint8_t v = rd8((uint32_t)bank << 16 | 0x3437);
     unsigned s = v + 2u;
     uint8_t r = (uint8_t)s;
@@ -89,12 +90,14 @@ uint8_t WindowStep3439(uint8_t bank, uint8_t *x, uint8_t *p)
 
     *p = (uint8_t)((*p & ~P_V) | ((~(v ^ 1) & (v ^ r) & 0x80) ? P_V : 0));
     if (r >= 0xE0) {
+        cyc(24);
         (*x)++;
         r = 0xE0;
         *p = (uint8_t)(nz8(*p, r) | P_C);
     } else {
         *p = (uint8_t)(nz8(*p, (uint8_t)(r - 0xE0)) & ~P_C);
     }
+    cyc(92);
     wr8((uint32_t)bank << 16 | 0x3439, r);
     return r;
 }
@@ -137,6 +140,7 @@ static void window_step_down(uint16_t addr, uint8_t n)
  */
 void abi_WindowStep3433By2(void)
 {
+    cyc(88);
     window_step_down(0x3433, 2);
 }
 
@@ -200,32 +204,39 @@ void abi_WindowEdgesStep(void)
 
     op_sep(P_M | P_X);
     cpu.db = 0x7F;
+    cyc(112);
     v = rd8(b | 0x340D);
-    cpu.p = (uint8_t)((cpu.p & ~P_C) | (v >= 0x1F ? P_C : 0));
+    cpu.p = (uint8_t)((cpu.p & ~P_C) | (v >= 0x1F ? (cyc(38), P_C) : 0));
     if (v < 0x1F)
-        wr8(b | 0x340D, (uint8_t)(rd8(b | 0x340D) + 1));
+        { cyc(56); wr8(b | 0x340D, cyc_then(6, (uint8_t)(rd8(b | 0x340D) + 1))); }
     cpu.x = 0x00;
+    cyc(40);
     v = (uint8_t)((rd8(b | 0x3437) ^ 0xFF) + 1);
+    cyc(54);
     m = rd8(b | 0x3433);
-    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - m)) & ~P_C) | (v >= m ? P_C : 0));
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - m)) & ~P_C) | (v >= m ? P_C : (cyc(16), 0)));
     if (v == m) {
         abi_WindowStep3437();
         abi_WindowStep3433By2();
     } else if (v < m) {
         abi_WindowStep3437();
-        abi_WindowStep3433By3();
+        (cyc(88), abi_WindowStep3433By3());
     } else {
+        cyc(78);
         abi_WindowStep3437By3();
         abi_WindowStep3433By2();
     }
     abi_WindowStep3439();
     abi_WindowStep3435();
-    cpu.p = (uint8_t)((cpu.p & ~P_C) | (cpu.x >= 0x02 ? P_C : 0));
+    cpu.p = (uint8_t)((cpu.p & ~P_C) | (cpu.x >= 0x02 ? P_C : (cyc(80), 0)));
     if (cpu.x >= 0x02) {
+        cyc(122);
         wr8(0x000D61, 0x80);
+        cyc(48);
         wr8(0x000E3A, 0x01);
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
     }
+    cyc(72);
     cpu.db = db0;
     cpu.p = nz8(cpu.p, db0);
 }

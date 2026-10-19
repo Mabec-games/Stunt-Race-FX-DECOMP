@@ -35,11 +35,9 @@ uint16_t SpriteSlotFirst(uint8_t bank, uint16_t *x, uint8_t *p)
     uint8_t m;
     int found = 0;
 
-    wr8(dbw(bank, 0x1F2C), 0x00);
-    cyc(24);
-    m = rd8(dbw(bank, SLOT_MASK));
-    cyc(24);
-    wr8(dbw(bank, 0x1F2B), m);
+    wr8(dbw(bank, 0x1F2C), cyc_then(24, 0x00));
+    m = rd8(cyc_then(24, dbw(bank, SLOT_MASK)));
+    wr8(dbw(bank, 0x1F2B), cyc_then(24, m));
     *p &= (uint8_t)~P_M;
     if (m) {
         cyc(10);
@@ -47,12 +45,10 @@ uint16_t SpriteSlotFirst(uint8_t bank, uint16_t *x, uint8_t *p)
         for (*x = 8; *x; ) {
             uint16_t c = (*p & P_C) ? 0x8000 : 0;
 
-            cyc(100);
-            w = rd16(dbw(bank, 0x1F2B));
+            w = rd16(cyc_then(100, dbw(bank, 0x1F2B)));
             *p = (uint8_t)((*p & ~P_C) | (w & 1 ? P_C : 0));
             w = (uint16_t)(c | w >> 1);
-            cyc(14);
-            wr16(dbw(bank, 0x1F2B), w);
+            wr16(dbw(bank, 0x1F2B), cyc_then(14, w));
             *p = nz16(*p, w);
             if (*p & P_C) {
                 found = 1;
@@ -73,8 +69,7 @@ uint16_t SpriteSlotFirst(uint8_t bank, uint16_t *x, uint8_t *p)
         a = 0x0000;
         *p = nz16(*p, a);
     }
-    cyc(46);
-    wr16(dbw(bank, 0x06D8), a);
+    wr16(dbw(bank, 0x06D8), cyc_then(46, a));
     return a;
 }
 
@@ -82,7 +77,6 @@ void abi_SpriteSlotFirst(void)
 {
     uint8_t p = cpu.p;
 
-    cyc(24);
     cpu.a = SpriteSlotFirst(cpu.db, &cpu.x, &p);
     cpu.p = p;
 }
@@ -103,11 +97,12 @@ uint16_t SpriteSlotFirstLong(uint8_t bank, uint16_t *x)
 
 void abi_SpriteSlotFirstLong(void)
 {
+    cyc(174);
     uint8_t p = (uint8_t)((cpu.p | P_M) & ~P_X);
     uint16_t x = cpu.x;
 
     cpu.a = SpriteSlotFirst(cpu.db, &x, &p);
-    cpu.x = (cpu.p & P_X) ? (uint8_t)x : x;
+    cpu.x = (cpu.p & P_X) ? (uint8_t)x : (cyc(176), x);
 }
 
 /*
@@ -129,36 +124,47 @@ uint8_t SpriteSlot1Countdown(uint8_t bank, uint16_t *x)
     uint16_t r = 0x059D;
     uint8_t a;
 
-    a = (uint8_t)(rd8(dbw(bank, 0x08FB)) + 1);
+    a = (uint8_t)(rd8(cyc_then(90, dbw(bank, 0x08FB))) + 1);
     if (!a) {
-        a = (uint8_t)(rd8(dbw(bank, SLOT_MASK)) & 0xFD);
-        wr8(dbw(bank, SLOT_MASK), a);
+        a = (uint8_t)(rd8(cyc_then(82, dbw(bank, SLOT_MASK))) & 0xFD);
+        wr8(dbw(bank, SLOT_MASK), cyc_then(40, a));
         return a;
     }
-    wr8(dbw(bank, SLOT_MASK), (uint8_t)(rd8(dbw(bank, SLOT_MASK)) | 0x02));
+    wr8(dbw(bank, SLOT_MASK), cyc_then(40, (uint8_t)(rd8(cyc_then(98, dbw(bank, SLOT_MASK))) | 0x02)));
     *x = r;
+    cyc(90);
     wr8((uint16_t)(r + 4), 0x00);
+    cyc(38);
     wr8((uint16_t)(r + 5), 0x02);
+    cyc(38);
     wr8((uint16_t)(r + 6), 0xA7);
-    wr8((uint16_t)(r + 0), (uint8_t)(rd8((uint16_t)(r + 7)) | 0xE0));
-    if (!rd8(dbw(bank, 0x08FB))) {
+    cyc(22);
+    wr8((uint16_t)(r + 0), cyc_then(38, (uint8_t)(rd8((uint16_t)(r + 7)) | 0xE0)));
+    if (!rd8(cyc_then(24, dbw(bank, 0x08FB)))) {
+        cyc(48);
         a = rd8(0x7EFF65);
         if (a) {
+            cyc(38);
             a = rd8((uint16_t)(r + 7));
             if (!a)
-                goto count;
+                { cyc(22); goto count; }
             a = (uint8_t)(a - 2);
+            cyc(66);
             wr8((uint16_t)(r + 7), a);
             return a;
         }
+        cyc(68);
         wr8(0x7EFF65, (uint8_t)(a + 1));
     }
+    cyc(44);
     wr8((uint16_t)(r + 4), 0x00);
+    cyc(38);
     wr8((uint16_t)(r + 6), 0xE7);
     a = 0xFF;
+    cyc(38);
     wr8((uint16_t)(r + 0), a);
 count:
-    wr8(dbw(bank, 0x08FB), (uint8_t)(rd8(dbw(bank, 0x08FB)) - 1));
+    wr8(dbw(bank, 0x08FB), cyc_then(6, (uint8_t)(rd8(cyc_then(24, dbw(bank, 0x08FB))) - 1)));
     return a;
 }
 
@@ -168,7 +174,7 @@ void abi_SpriteSlot1Countdown(void)
     uint8_t a = SpriteSlot1Countdown(cpu.db, &x);
 
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
-    cpu.x = (cpu.p & P_X) ? (uint8_t)x : x;
+    cpu.x = (cpu.p & P_X) ? (uint8_t)x : (cyc(72), x);
 }
 
 /*
@@ -185,10 +191,8 @@ uint8_t SpriteSlot4Brighten(uint8_t bank)
     uint16_t r = 0x05B5;
     uint8_t a;
 
-    cyc(164);
-    a = rd8(dbw(bank, SLOT_MASK));
-    cyc(40);
-    wr8(dbw(bank, SLOT_MASK), (uint8_t)(a | 0x10));
+    a = rd8(cyc_then(164, dbw(bank, SLOT_MASK)));
+    wr8(dbw(bank, SLOT_MASK), cyc_then(40, (uint8_t)(a | 0x10)));
     cyc(90);
     wr8((uint16_t)(r + 4), 0x00);
     cyc(38);
@@ -206,6 +210,7 @@ uint8_t SpriteSlot4Brighten(uint8_t bank)
         cyc(68);
         wr8((uint16_t)(r + 7), a);
     } else { cyc(38); }
+    cyc(106);
     return a;
 }
 
@@ -230,10 +235,8 @@ uint8_t SpriteSlot4Darken(uint8_t bank)
     uint16_t r = 0x05B5;
     uint8_t a;
 
-    cyc(164);
-    a = rd8(dbw(bank, SLOT_MASK));
-    cyc(40);
-    wr8(dbw(bank, SLOT_MASK), (uint8_t)(a | 0x10));
+    a = rd8(cyc_then(164, dbw(bank, SLOT_MASK)));
+    wr8(dbw(bank, SLOT_MASK), cyc_then(40, (uint8_t)(a | 0x10)));
     cyc(90);
     wr8((uint16_t)(r + 4), 0x00);
     cyc(38);
@@ -252,11 +255,9 @@ uint8_t SpriteSlot4Darken(uint8_t bank)
         wr8((uint16_t)(r + 7), a);
         return a;
     }
-    cyc(68);
-    a = rd8(dbw(bank, SLOT_MASK));
+    a = rd8(cyc_then(68, dbw(bank, SLOT_MASK)));
     a = (uint8_t)(a & 0xEF);
-    cyc(40);
-    wr8(dbw(bank, SLOT_MASK), a);
+    wr8(dbw(bank, SLOT_MASK), cyc_then(40, a));
     return a;
 }
 
@@ -279,10 +280,8 @@ uint8_t SpriteSlot4Full(uint8_t bank)
     uint16_t r = 0x05B5;
     uint8_t a;
 
-    cyc(164);
-    a = rd8(dbw(bank, SLOT_MASK));
-    cyc(40);
-    wr8(dbw(bank, SLOT_MASK), (uint8_t)(a | 0x10));
+    a = rd8(cyc_then(164, dbw(bank, SLOT_MASK)));
+    wr8(dbw(bank, SLOT_MASK), cyc_then(40, (uint8_t)(a | 0x10)));
     cyc(90);
     wr8((uint16_t)(r + 4), 0x00);
     cyc(38);
@@ -308,10 +307,8 @@ static void slot_show(uint8_t bank, uint16_t r, uint8_t bit, uint8_t k)
 {
     uint8_t a;
 
-    cyc(164);
-    a = rd8(dbw(bank, SLOT_MASK));
-    cyc(40);
-    wr8(dbw(bank, SLOT_MASK), (uint8_t)(a | bit));
+    a = rd8(cyc_then(164, dbw(bank, SLOT_MASK)));
+    wr8(dbw(bank, SLOT_MASK), cyc_then(40, (uint8_t)(a | bit)));
     cyc(90);
     wr8((uint16_t)(r + 4), 0x00);
     cyc(38);
@@ -345,6 +342,7 @@ uint8_t SpriteSlot2Brighten(uint8_t bank)
         cyc(68);
         wr8((uint16_t)(r + 7), a);
     } else { cyc(38); }
+    cyc(106);
     return a;
 }
 
@@ -378,12 +376,9 @@ void abi_SpriteSlot1Start(void)
 {
     uint8_t b = cpu.db, p = cpu.p, a;
 
-    cyc(106);
-    wr8(dbw(b, 0x08FB), 0x28);
-    cyc(68);
-    a = rd8(dbw(b, SLOT_MASK));
-    cyc(40);
-    wr8(dbw(b, SLOT_MASK), (uint8_t)(a | 0x02));
+    wr8(dbw(b, 0x08FB), cyc_then(106, 0x28));
+    a = rd8(cyc_then(68, dbw(b, SLOT_MASK)));
+    wr8(dbw(b, SLOT_MASK), cyc_then(40, (uint8_t)(a | 0x02)));
     cpu.x = 0x059D;
     cyc(106);
     wr8(0x05A4, 0x1E);
@@ -391,8 +386,7 @@ void abi_SpriteSlot1Start(void)
     wr8(0x05A1, 0x00);
     cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
     (cyc(62), abi_SpriteSlot1Countdown());
-    cyc(118);
-    wr8(dbw(b, 0x084C), 0x00);
+    wr8(dbw(b, 0x084C), cyc_then(46, 0x00));
     op_plp(p);
 }
 
@@ -419,7 +413,8 @@ static void slot_colour(uint8_t bank, uint16_t r, uint8_t bit, uint8_t c1, uint8
         cyc(22);
         wr8((uint16_t)(r + 3), c23);
     }
-}
+cyc(108);
+    }
 
 /*
  * @routine 02:E117 SpriteSlot6Yellow
@@ -488,11 +483,9 @@ void abi_SpriteSlot5Off(void)
 {
     uint8_t a;
 
-    cyc(142);
-    a = rd8(dbw(cpu.db, SLOT_MASK));
+    a = rd8(cyc_then(142, dbw(cpu.db, SLOT_MASK)));
     a = (uint8_t)(a & 0xDF);
-    cyc(40);
-    wr8(dbw(cpu.db, SLOT_MASK), a);
+    wr8(dbw(cpu.db, SLOT_MASK), cyc_then(40, a));
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
 }
 
@@ -524,11 +517,9 @@ uint8_t SpriteSlot2Darken(uint8_t bank)
         wr8((uint16_t)(r + 7), a);
         return a;
     }
-    cyc(68);
-    a = rd8(dbw(bank, SLOT_MASK));
+    a = rd8(cyc_then(68, dbw(bank, SLOT_MASK)));
     a = (uint8_t)(a & 0xFB);
-    cyc(40);
-    wr8(dbw(bank, SLOT_MASK), a);
+    wr8(dbw(bank, SLOT_MASK), cyc_then(40, a));
     return a;
 }
 
@@ -560,10 +551,8 @@ void abi_SpriteSlot2FadeOut(void)
 {
     uint8_t a;
 
-    cyc(164);
-    a = rd8(dbw(cpu.db, SLOT_MASK));
-    cyc(40);
-    wr8(dbw(cpu.db, SLOT_MASK), (uint8_t)(a | 0x04));
+    a = rd8(cyc_then(164, dbw(cpu.db, SLOT_MASK)));
+    wr8(dbw(cpu.db, SLOT_MASK), cyc_then(40, (uint8_t)(a | 0x04)));
     cyc(106);
     wr8(0x05AC, 0x1F);
     (cyc(110), abi_SpriteSlot2Darken());

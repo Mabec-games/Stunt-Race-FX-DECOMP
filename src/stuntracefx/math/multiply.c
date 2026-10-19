@@ -46,6 +46,7 @@ void abi_PpuMultiplierSetLowByteTimes8(void)
  */
 uint16_t PpuMultiply(uint8_t v)
 {
+    cyc(54);
     wr8(M7B, v);
     cyc(54);
     return rd16(MPYM);
@@ -53,7 +54,6 @@ uint16_t PpuMultiply(uint8_t v)
 
 void abi_PpuMultiply(void)
 {
-    cyc(54);
     cpu.a = PpuMultiply((uint8_t)cpu.a);
     cpu.p = (uint8_t)(nz16(cpu.p, cpu.a) & ~P_M);
 }

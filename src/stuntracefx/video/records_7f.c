@@ -23,6 +23,7 @@ void Records7FFromF634(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
 
     *x = 0;
     *y = 0xF634;
+    cyc(52);
     while ((v = rd8(cyc_then(160, b | *y))) != 0xFF) {
         d = (uint8_t)(v - 0x28);
         cyc(80);
@@ -53,7 +54,6 @@ void abi_Records7FFromF634(void)
 {
     uint8_t p = cpu.p;
 
-    cyc(52);
     Records7FFromF634(cpu.db, &cpu.x, &cpu.y, &p);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xFF);
     cpu.p = (uint8_t)((p & ~P_X) | P_M);
@@ -80,6 +80,7 @@ uint16_t Records7FFromF170(uint8_t bank)
     uint8_t v;
     unsigned i, k;
 
+    cyc(46);
     while ((v = rd8(cyc_then(170, b | y))) != 0xFF) {
         cyc(40);
         wr8(0x7F43D8 + x, v);
@@ -116,7 +117,6 @@ uint16_t Records7FFromF170(uint8_t bank)
 
 void abi_Records7FFromF170(void)
 {
-    cyc(46);
     cpu.y = Records7FFromF170(cpu.db);
     cpu.a = 0x0001;
     cpu.x = 0x0009;

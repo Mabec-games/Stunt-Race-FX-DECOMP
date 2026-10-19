@@ -34,24 +34,30 @@
  */
 static uint8_t smul_at(uint32_t a_at, uint32_t b_at, uint8_t *p)
 {
+    cyc(16);
     uint8_t a = rd8(a_at), b, h, neg = 0;
 
     if (a & 0x80) {
+        cyc(36);
         a = (uint8_t)(~a + 1);
         neg ^= 1;
     }
+    cyc(54);
     wr8(WRMPYA, (uint8_t)(a << 1));
+    cyc(16);
     b = rd8(b_at);
     if (b & 0x80) {
+        cyc(36);
         b = (uint8_t)(~b + 1);
         neg ^= 1;
     }
+    cyc(40);
     wr8(WRMPYB, b);
     h = rd8(RDMPYH);
     if (neg) {
         *p |= P_C;
         h = op_sbc8(0x00, h, p);
-    }
+    } else { cyc(40); }
     return h;
 }
 
@@ -87,6 +93,7 @@ static uint8_t flat(uint8_t i, uint8_t *p)
 {
     uint8_t v;
 
+    cyc(156);
     wr8(H_SIN_A, rd8(SIN_TABLE + i));
     wr8(H_COS_A, rd8(COS_TABLE + i));
     v = smul_at(H_SPEED, H_SIN_A, p);
@@ -104,14 +111,16 @@ static uint8_t pitched(uint8_t ia, uint8_t ib, uint8_t *p)
 {
     uint8_t v;
 
+    cyc(90);
     wr8(H_SIN_A, rd8(SIN_TABLE + ia));
     wr8(H_COS_A, rd8(COS_TABLE + ia));
+    cyc(54);
     wr8(H_SIN_B, rd8(SIN_TABLE + ib));
     wr8(H_COS_B, rd8(COS_TABLE + ib));
-    wr8(H_X, smul_at(H_SPEED, H_SIN_A, p));
+    wr8(H_X, cyc_then(14, smul_at(H_SPEED, H_SIN_A, p)));
     v = smul_at(H_X, H_COS_B, p);
     store_dec(H_X, v);
-    wr8(H_Z, smul_at(H_SPEED, H_COS_A, p));
+    wr8(H_Z, cyc_then(14, smul_at(H_SPEED, H_COS_A, p)));
     v = smul_at(H_Z, H_COS_B, p);
     store_dec(H_Z, v);
     v = smul_at(H_SPEED, H_SIN_B, p);
@@ -124,6 +133,7 @@ static uint8_t pitched(uint8_t ia, uint8_t ib, uint8_t *p)
    C is set by the last sign test (CMP #0); A keeps its high byte. */
 static void save_xy(void)
 {
+    cyc(16);
     wr16(H_SAVE_X, cpu.x);
     cyc(16);
     wr16(H_SAVE_Y, cpu.y);
@@ -156,7 +166,7 @@ void HeadingFlat(void)
 
     cyc(30);
     wr8(H_SPEED, cyc_then(16, rd8(b | (uint16_t)(0x2017 + cpu.x))));
-    (cyc(38), save_xy());
+    (cyc(22), save_xy());
     cyc(16);
     wr16(H_Y, 0x0000);
     cyc(30);
@@ -187,7 +197,7 @@ void HeadingFlatMirrored(void)
     wr8(H_SPEED, cyc_then(16, rd8(b | (uint16_t)(0x2017 + cpu.x))));
     cyc(30);
     i = rd8(b | (uint16_t)(0x2015 + cpu.x));
-    (cyc(16), save_xy());
+    save_xy();
     cyc(16);
     wr16(H_Y, 0x0000);
     cyc(80);
@@ -223,12 +233,12 @@ void HeadingPitched(void)
     wr8(H_Y + 1, 0x00);
     cyc(16);
     wr8(H_Z + 1, 0x00);
-    (cyc(16), save_xy());
+    save_xy();
     cyc(30);
     h = rd8(b | (uint16_t)(0x2015 + cpu.x));
     cyc(44);
     pitch = rd8(b | (uint16_t)(0x2014 + cpu.x));
-    cyc(208);
+    cyc(118);
     v = pitched(h, (uint8_t)(~pitch + 1), &p);
     finish(v, p);
 }
@@ -250,12 +260,11 @@ static void pitched_1f7c(void)
     wr8(H_Y + 1, 0x00);
     cyc(16);
     wr8(H_Z + 1, 0x00);
-    (cyc(16), save_xy());
+    save_xy();
     cyc(112);
     h = rd8(0x001F7D);
     cyc(68);
     pitch = rd8(0x001F7C);
-    cyc(90);
     v = pitched((uint8_t)(~h + 1), pitch, &p);
     finish(v, p);
 }
@@ -320,7 +329,7 @@ void HeadingFlatQuarterTurn(void)
 
     cyc(16);
     wr8(H_SPEED, (uint8_t)cpu.a);
-    (cyc(16), save_xy());
+    save_xy();
     cyc(16);
     wr16(H_Y, 0x0000);
     p |= P_C;
@@ -350,7 +359,7 @@ void HeadingFlatSpeedA(void)
 
     cyc(16);
     wr8(H_SPEED, (uint8_t)cpu.a);
-    (cyc(16), save_xy());
+    save_xy();
     cyc(16);
     wr16(H_Y, 0x0000);
     cyc(30);
@@ -372,6 +381,7 @@ static void move_by(uint8_t *p)
     uint32_t b = (uint32_t)cpu.db << 16;
     uint16_t v;
 
+    cyc(52);
     v = rd16(b | (uint16_t)(0x200C + cpu.x));
     *p &= (uint8_t)~P_C;
     cyc(30);
@@ -425,7 +435,6 @@ void ObjectMoveByVectorTimes4(void)
 
     (cyc(22), double_vector());
     double_vector();
-    cyc(52);
     move_by(&p);
     cpu.p = (uint8_t)(p | P_M);
 }
@@ -447,7 +456,6 @@ void ObjectMoveByVectorTimes2(void)
     uint8_t p = cpu.p;
 
     (cyc(22), double_vector());
-    cyc(52);
     move_by(&p);
     cpu.p = (uint8_t)(p | P_M);
 }
@@ -468,7 +476,6 @@ void ObjectMoveByVector(void)
 {
     uint8_t p = cpu.p;
 
-    cyc(52);
     move_by(&p);
     cpu.p = (uint8_t)(p | P_M);
 }
@@ -489,7 +496,7 @@ static void velocity_from_vector(int shift)
     unsigned i;
     int k;
 
-    abi_HeadingPitchedFrom1F7C();
+    (cyc(62), abi_HeadingPitchedFrom1F7C());
     b = (uint32_t)cpu.db << 16;
     cyc(94);
     for (i = 0; i < 3; i++) {
@@ -505,6 +512,7 @@ static void velocity_from_vector(int shift)
         cyc(30);
         wr16(b | (uint16_t)(0x202E + 2 * i + cpu.x), v);
     }
+    cyc(66);
     cpu.a = v;
     cpu.p |= P_M;
 }
@@ -525,7 +533,6 @@ void ObjectVelocityFromHeading(void)
 
 void abi_ObjectVelocityFromHeading(void)
 {
-    cyc(62);
     velocity_from_vector(0);
 }
 
@@ -543,7 +550,6 @@ void ObjectVelocityFromHeadingTimes2(void)
 
 void abi_ObjectVelocityFromHeadingTimes2(void)
 {
-    cyc(62);
     velocity_from_vector(1);
 }
 
@@ -561,7 +567,6 @@ void ObjectVelocityFromHeadingTimes4(void)
 
 void abi_ObjectVelocityFromHeadingTimes4(void)
 {
-    cyc(62);
     velocity_from_vector(2);
 }
 
@@ -579,7 +584,6 @@ void ObjectVelocityFromHeadingTimes8(void)
 
 void abi_ObjectVelocityFromHeadingTimes8(void)
 {
-    cyc(62);
     velocity_from_vector(3);
 }
 

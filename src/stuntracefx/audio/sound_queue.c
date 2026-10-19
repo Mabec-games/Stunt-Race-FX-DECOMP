@@ -18,20 +18,28 @@ static void queue_push(uint32_t queue, uint32_t head, uint32_t count, uint8_t va
 {
     uint8_t n;
 
+    cyc(46);
     if (rd8(SOUND_MUTED) != 0)
         return;
+    cyc(40);
     n = rd8(count);
     if (n == 0) {
-        wr8(count, (uint8_t)(rd8(count) + 1));
-        wr8(queue + rd8(head), value);
+        cyc(46);
+        wr8(count, cyc_then(6, (uint8_t)(rd8(count) + 1)));
+        cyc(24);
+        wr8(queue + rd8(head), cyc_then(30, value));
     } else if (n < 0x10) {
+        cyc(122);
         uint8_t slot = (uint8_t)(n + rd8(head));
         if (slot >= 0x10)
-            slot -= 0x10;
+            { cyc(10); slot -= 0x10; }
+        cyc(110);
         wr8(queue + slot, value);
-        wr8(count, (uint8_t)(rd8(count) + 1));
+        cyc(24);
+        wr8(count, cyc_then(6, (uint8_t)(rd8(count) + 1)));
+    } else { cyc(54); }
+cyc(200);
     }
-}
 
 /*
  * @routine 04:D649 SoundPort0QueuePushRaw
@@ -42,6 +50,7 @@ static void queue_push(uint32_t queue, uint32_t head, uint32_t count, uint8_t va
  */
 void SoundPort0QueuePushRaw(uint8_t command)
 {
+    cyc(252);
     queue_push(SOUND_PORT0_QUEUE, SOUND_PORT0_HEAD, SOUND_PORT0_COUNT, command);
 }
 
@@ -62,8 +71,9 @@ void abi_SoundPort0QueuePushRaw(void)
  */
 void SoundPort0QueuePush(uint8_t command)
 {
+    cyc(238);
     if (rd8(CURRENT_PLAYER) != 0)
-        command |= 0x80;
+        { cyc(10); command |= 0x80; }
     queue_push(SOUND_PORT0_QUEUE, SOUND_PORT0_HEAD, SOUND_PORT0_COUNT, command);
 }
 
@@ -241,8 +251,7 @@ void abi_SoundPortsSend(void)
         cyc(60);
         op_plp(p0);
         return;
-    }
-    cyc(38);
+    } else { cyc(38); }
     ring_send(b, 0x2140, 0x0DCC, 0x0DC8, 0x0DA8);
     if (ring_send(b, 0x2141, 0x0DCE, 0x0DCA, 0x0DB8))
         { cyc(24); wr8(b | 0x0DD2, (uint8_t)cpu.a); }

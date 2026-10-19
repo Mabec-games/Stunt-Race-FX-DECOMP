@@ -17,11 +17,15 @@ uint8_t SaveChecksum(void)
     static const uint16_t order[9] = {0xFC0B, 0xFC06, 0xFC07, 0xFC0C, 0xFC0D, 0xFC0E, 0xFC08, 0xFC09, 0xFC0A};
     unsigned sum = 0, carry = 0, i;
 
+    cyc(58);
     for (i = 0; i < 9; i++) {
+        cyc(32);
         sum = (sum & 0xFF) + rd8(0x700000 + order[i]) + carry;
         carry = sum > 0xFF;
     }
+    cyc(32);
     wr8(0x70FC14, (uint8_t)sum);
+    cyc(32);
     wr8(0x70FC15, (uint8_t)sum);
     return (uint8_t)sum;
 }

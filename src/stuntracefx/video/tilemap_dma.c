@@ -19,14 +19,22 @@ static void upload(uint16_t gradient_src, uint16_t src)
     uint8_t p = cpu.p;
     uint16_t v;
 
+    cyc(68);
     v = rd16(b | gradient_src);
+    cyc(32);
     wr16(0x7F348D, v);
+    cyc(48);
     wr16(b | 0x4302, src);
+    cyc(62);
     wr8(b | 0x4304, 0x7F);
     wr8(b | 0x2115, 0x80);
+    cyc(48);
     wr16(b | 0x2116, 0x5C00);
+    cyc(48);
     wr16(b | 0x4300, 0x1801);
+    cyc(48);
     wr16(b | 0x4305, 0x0440);
+    cyc(40);
     wr8(b | 0x420B, 0x01);
     cpu.a = (uint16_t)((v & 0xFF00) | 0x01);
     cpu.x = 0x0440;
@@ -52,7 +60,6 @@ void TilemapDmaE817(void)
 
 void abi_TilemapDmaE817(void)
 {
-    cyc(68);
     upload(0x0D9C, 0xE817);
 }
 
@@ -70,7 +77,7 @@ void TilemapDmaE3D7(void)
 
 void abi_TilemapDmaE3D7(void)
 {
-    cyc(92);
+    cyc(24);
     upload(0x0D9A, 0xE3D7);
 }
 
@@ -88,7 +95,7 @@ void Bg2Band2TilemapE817(void)
     cpu.x = 0x02;
     cpu.y &= 0x00FF;
     (cyc(84), abi_Bg2ScrollFromTable());
-    cyc(156);
+    cyc(88);
     upload(0x0D9C, 0xE817);
 }
 
@@ -110,7 +117,7 @@ void Bg2Band0TilemapE3D7(void)
     cpu.x = 0x00;
     cpu.y &= 0x00FF;
     (cyc(84), abi_Bg2ScrollFromTable());
-    cyc(180);
+    cyc(112);
     upload(0x0D9A, 0xE3D7);
 }
 

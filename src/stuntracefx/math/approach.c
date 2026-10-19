@@ -16,14 +16,15 @@ static uint16_t halve(uint16_t v, uint16_t sign)
     uint16_t r = (uint16_t)((v >> 1) | (v & sign));
 
     if (r & sign)
-        r = (uint16_t)(r + (v & 1));
+        { cyc(6); r = (uint16_t)(r + (v & 1)); }
+    cyc(60);
     return r;
 }
 
 /* The value at $3E: a word or a byte, as the routine's width reads it. */
 static uint16_t value(int wide)
 {
-    return wide ? rd16(APPROACH_VALUE) : rd8(APPROACH_VALUE);
+    return wide ? rd16(cyc_then(48, APPROACH_VALUE)) : rd8(APPROACH_VALUE);
 }
 
 /* The step as each routine makes it, reading and writing $3E as often and
@@ -32,7 +33,7 @@ static uint16_t value(int wide)
    it moved, V from the add of the step. */
 static uint16_t approach(uint16_t target, int wide, uint16_t min, int shifts, int *moved, uint8_t *p)
 {
-    uint16_t mask = wide ? 0xFFFF : 0x00FF, sign = wide ? 0x8000 : 0x0080;
+    uint16_t mask = wide ? 0xFFFF : (cyc(16), 0x00FF), sign = wide ? 0x8000 : 0x0080;
     uint16_t cur, d, s;
     int i;
 
@@ -40,27 +41,30 @@ static uint16_t approach(uint16_t target, int wide, uint16_t min, int shifts, in
     cur = value(wide);
     *moved = target != cur;
     if (!*moved) {
+        cyc(16);
         cur = value(wide);
         *p = (uint8_t)(wide ? nz16(*p, cur) : nz8(*p, (uint8_t)cur)) | P_C;
         return cur;
-    }
+    } else { cyc(4); }
     cur = value(wide);
     d = (uint16_t)(target - cur) & mask;
     if (!(d & sign)) {
         if (d < min)
-            d = min;
+            { cyc(40); d = min; }
     } else if (!((uint16_t)(d + min) & sign)) {
+        cyc(40);
         d = (uint16_t)(-min) & mask;
-    }
+    } else { cyc(30); }
+    cyc(68);
     for (i = 0; i < shifts; i++)
         d = halve(d, sign) & mask;
     cur = value(wide);
     s = (uint16_t)(d + cur) & mask;
     *p = (uint8_t)((*p & ~(P_C | P_V)) | ((~(d ^ cur) & (d ^ s) & sign) ? P_V : 0));
     if (wide)
-        wr16(APPROACH_VALUE, s);
+        { cyc(16); wr16(APPROACH_VALUE, s); }
     else
-        wr8(APPROACH_VALUE, (uint8_t)s);
+        { cyc(16); wr8(APPROACH_VALUE, (uint8_t)s); }
     s = value(wide);
     *p = wide ? nz16(*p, s) : nz8(*p, (uint8_t)s);
     return s;
@@ -72,7 +76,7 @@ static void abi_approach(int wide, uint16_t min, int shifts)
     uint8_t p = cpu.p;
     uint16_t v = approach(cpu.a, wide, min, shifts, &moved, &p);
 
-    cpu.a = wide ? v : (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.a = wide ? (cyc(58), v) : (cyc(58), (uint16_t)((cpu.a & 0xFF00) | v));
     cpu.p = p;
 }
 
@@ -205,7 +209,6 @@ uint16_t ApproachHalfMin2Byte(uint8_t target, int *moved, uint8_t *p)
 
 void abi_ApproachHalfMin2Byte(void)
 {
-    cyc(16);
     abi_approach(0, 2, 1);
 }
 
@@ -222,7 +225,6 @@ uint16_t ApproachEighthMin8Byte(uint8_t target, int *moved, uint8_t *p)
 
 void abi_ApproachEighthMin8Byte(void)
 {
-    cyc(16);
     abi_approach(0, 8, 3);
 }
 
@@ -240,7 +242,7 @@ uint16_t ApproachQuarterMin4Byte(uint8_t target, int *moved, uint8_t *p)
 
 void abi_ApproachQuarterMin4Byte(void)
 {
-    cyc(78);
+    cyc(58);
     abi_approach(0, 4, 2);
 }
 
@@ -260,7 +262,6 @@ uint16_t ApproachSixteenthMin16Byte(uint8_t target, int *moved, uint8_t *p)
 
 void abi_ApproachSixteenthMin16Byte(void)
 {
-    cyc(16);
     abi_approach(0, 16, 4);
 }
 
@@ -280,7 +281,6 @@ uint16_t ApproachThirtySecondMin32Byte(uint8_t target, int *moved, uint8_t *p)
 
 void abi_ApproachThirtySecondMin32Byte(void)
 {
-    cyc(16);
     abi_approach(0, 32, 5);
 }
 
@@ -300,7 +300,6 @@ uint16_t ApproachSixtyFourthMin64Byte(uint8_t target, int *moved, uint8_t *p)
 
 void abi_ApproachSixtyFourthMin64Byte(void)
 {
-    cyc(16);
     abi_approach(0, 64, 6);
 }
 
@@ -320,6 +319,5 @@ uint16_t ApproachOneTwentyEighthMin128Byte(uint8_t target, int *moved, uint8_t *
 
 void abi_ApproachOneTwentyEighthMin128Byte(void)
 {
-    cyc(16);
     abi_approach(0, 128, 7);
 }

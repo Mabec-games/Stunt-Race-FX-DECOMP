@@ -90,10 +90,12 @@ void MenuWaitFrame(uint8_t bank)
 {
     uint32_t a = (uint32_t)bank << 16 | 0x11D8;
 
-    wr16(a, (uint16_t)(rd16(a) | 0x0001));
-    while (rd16(a))
-        ;
-}
+    cyc(68);
+    wr16(a, cyc_then(48, (uint16_t)(rd16(a) | 0x0001)));
+    while (rd16(cyc_then(24, a)))
+        { cyc(22); ; }
+cyc(86);
+    }
 
 void abi_MenuWaitFrame(void)
 {
@@ -120,12 +122,13 @@ void MenuRunFrames(void)
     uint8_t p = cpu.p, a;
 
     cpu.p |= P_M;
+    cyc(22);
     do {
         cyc(68);
         MenuWaitFrame(cpu.db);
         cpu.a = 0x0000;
-        (cyc(148), MenuActorsRun());
-        cyc(206);
+        (cyc(62), MenuActorsRun());
+        cyc(62);
         cpu.a = MenuOamBuild(&cpu.x, &cpu.y);
         b = (uint32_t)cpu.db << 16;
         cyc(146);
@@ -133,13 +136,14 @@ void MenuRunFrames(void)
         cyc(24);
         a = rd8(b | 0x11DA);
     } while (a != rd8(cyc_then(24, b | 0x11DB)));
+    cyc(86);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
     cpu.p = p;
 }
 
 void abi_MenuRunFrames(void)
 {
-    (cyc(22), MenuRunFrames());
+    MenuRunFrames();
 }
 
 int MenuActorFind(uint8_t bank, uint16_t kind, uint16_t *x, uint16_t *y, uint8_t *p);
@@ -151,6 +155,7 @@ static uint16_t actor_find8(uint8_t kind, uint16_t x)
 {
     uint16_t i;
 
+    cyc(86);
     wr8(0x0011E1, kind);
     cyc(24);
     for (i = (uint16_t)(rd16(0x0011F7) - 2); !(i & 0x8000); i = (uint16_t)(i - 2)) {
@@ -173,8 +178,8 @@ static void menu_frame(void)
     cyc(46);
     MenuWaitFrame(cpu.db);
     cpu.a = 0x0000;
-    (cyc(148), MenuActorsRun());
-    cyc(206);
+    (cyc(62), MenuActorsRun());
+    cyc(62);
     cpu.a = MenuOamBuild(&cpu.x, &cpu.y);
     b = (uint32_t)cpu.db << 16;
     cyc(146);
@@ -192,7 +197,6 @@ static void region_stop(void)
 {
     uint16_t x;
 
-    cyc(86);
     x = actor_find8(0x0F, cpu.x);
     cyc(80);
     if (rd8((uint16_t)(x + 0x14)) != 0x1E) {
@@ -205,13 +209,12 @@ static void region_stop(void)
     }
     cyc(38);
     wr8((uint16_t)(x + 0x06), 0x60);
-    cyc(86);
     x = actor_find8(0x10, x);
     cyc(80);
     wr8((uint16_t)(x + 0x10), 0x00);
     cpu.x = x;
     (cyc(62), MenuActorsRun());
-    cyc(206);
+    cyc(62);
     cpu.a = MenuOamBuild(&cpu.x, &cpu.y);
     cyc(146);
     wr8(0x0011D7, cyc_then(40, (uint8_t)(rd8(0x0011D7) | 0x0F)));
@@ -238,6 +241,7 @@ void MenuRegionCheck(void)
 
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | s);
     if (!s) {
+        cyc(182);
         cpu.p = p;
         cpu.db = db;
         return;
@@ -270,6 +274,7 @@ void abi_MenuRegionPal(void)
    $18FB set. */
 static int held_or_18fb(uint32_t b)
 {
+    cyc(46);
     return (rd16(b | 0x0309) & 0x000F) || (rd16(cyc_then(64, b | 0x030D)) & 0x000F) || rd16(cyc_then(72, 0x0018FB));
 }
 
@@ -295,10 +300,9 @@ uint16_t MenuHeldRestart(void)
     if (!held_or_18fb(b)) {
         cpu.p = nz16(cpu.p, 0x0000);
         return 0x0000;
-    }
-    cyc(116);
+    } else { cyc(116); }
     MenuActorFind(cpu.db, 0x000F, &x, &y, &p);
-    cyc(52);
+    cyc(22);
     a = rd16((uint16_t)(x + 0x14));
     p = (uint8_t)((p & ~P_C) | (a >= 0x0018 ? P_C : 0));
     if (a != 0x0018) {
@@ -315,14 +319,15 @@ uint16_t MenuHeldRestart(void)
     do {
         menu_frame();
         cpu.p &= (uint8_t)~(P_M | P_X);
-    } while (held_or_18fb(cyc_then(46, b)));
+    } while (held_or_18fb(b));
+    cyc(82);
     cpu.p = nz16(cpu.p, 0xFFFF);
     return 0xFFFF;
 }
 
 void abi_MenuHeldRestart(void)
 {
-    cpu.a = (cyc(46), MenuHeldRestart());
+    cpu.a = MenuHeldRestart();
 }
 
 void MenuScreenOpen0(void);
@@ -343,17 +348,18 @@ void MenuScreen0Run(void)
 
     do {
         cpu.p &= (uint8_t)~(P_M | P_X);
-        (cyc(306), MenuScreenOpen0());
+        MenuScreenOpen0();
         cyc(76);
         do {
-            (cyc(22), menu_frame());
+            cyc(22);
+            menu_frame();
             cpu.p &= (uint8_t)~(P_M | P_X);
             b = (uint32_t)cpu.db << 16;
             cyc(46);
             cpu.a = rd16(b | 0x11EB);
         } while (!cpu.a);
         MenuRegionCheck();
-        cpu.a = (cyc(228), MenuHeldRestart());
+        cpu.a = MenuHeldRestart();
     } while (cpu.a == 0xFFFF);
     b = (uint32_t)cpu.db << 16;
     cyc(184);

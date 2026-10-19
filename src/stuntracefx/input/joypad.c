@@ -107,6 +107,7 @@ void abi_JoypadAccumulate(void)
 /* ROL $1182 with the carry `bit`. */
 static void serial_shift(uint32_t b, uint8_t bit)
 {
+    cyc(38);
     uint8_t v = rd8(b | 0x1182);
 
     cyc(6);
@@ -119,13 +120,15 @@ static void serial_shift(uint32_t b, uint8_t bit)
 static uint8_t serial_rest(uint32_t b, uint8_t port, int y)
 {
     for (; y >= 0; y--)
-        serial_shift(b, (rd8(b | (uint16_t)(0x4016 + port)) & 0x02) ? 1 : 0);
+        { cyc(60); serial_shift(b, (rd8(b | (uint16_t)(0x4016 + port)) & 0x02) ? 1 : (cyc(38), 0)); }
+    cyc(54);
     return rd8(b | 0x1182);
 }
 
 /* Eight serial reads into a cleared $1182, first bit highest. */
 static uint8_t serial_byte(uint32_t b, uint8_t port)
 {
+    cyc(24);
     wr8(b | 0x1182, 0x00);
     return serial_rest(b, port, 7);
 }
@@ -141,11 +144,10 @@ static int port_check(uint32_t b, uint8_t port, int stage, int y)
 
     if (stage <= 1) {
         if (stage == 0) {
+            cyc(198);
             wr8(b | 0x4016, 0x01);
-            cyc(24);
             v = serial_byte(b, port);
         } else {
-            cyc(38);
             serial_shift(b, 1);
             cyc(22);
             v = serial_rest(b, port, y - 1);
@@ -158,10 +160,8 @@ static int port_check(uint32_t b, uint8_t port, int stage, int y)
     if (stage == 2) {
         cyc(40);
         wr8(b | 0x4016, 0x00);
-        cyc(24);
         v = serial_byte(b, port);
     } else {
-        cyc(38);
         serial_shift(b, 1);
         cyc(22);
         v = serial_rest(b, port, y - 1);
@@ -292,4 +292,5 @@ void abi_FrameSoundAndJoypads(void)
         cyc(24);
         wr16(b | (uint16_t)(0x118B + i * 2), cpu.a);
     }
-}
+cyc(42);
+    }
