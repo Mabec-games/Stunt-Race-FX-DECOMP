@@ -22,7 +22,7 @@
  *                        as poke, but written when the next call starts, so
  *                        the game itself never runs on those bytes
  *   call ADDR [long] [keep] [noreturn] [a=HEX] [x=] [y=] [p=] [db=] [d=] [frames=N]
- *        [press=B[+B...]@F ...] [frame=PPDD] [php] [rti=PP] [vblank]
+ *        [press=B[+B...]@F ...] [frame=PPDD] [php] [phb] [rti=PP] [vblank]
  *                        run the routine at ADDR once as a unit test: entered
  *                        by a JSR (by a JSL with long) from a stub in work RAM
  *                        with those registers, the game's state as the script
@@ -43,7 +43,10 @@
  *                        for code that ends PLB, PLP, RTS; php
  *                        (without long) is the same for code that ends
  *                        PLP, RTS: a JSR to a trampoline that pushes P
- *                        (PHP, so P = p=) and jumps (JMP) to ADDR; rti
+ *                        (PHP, so P = p=) and jumps (JMP) to ADDR; phb
+ *                        (with long) the same for code that ends PLB,
+ *                        RTL: a JSL to a trampoline that pushes the data
+ *                        bank (PHB, so DB = db=) and jumps (JML); rti
  *                        enters ADDR as an interrupt does, for an interrupt
  *                        handler: a stub in bank 00 pushes the frame an
  *                        interrupt pushes (PB and PC of its own loop, then
@@ -333,6 +336,7 @@ static long call_frame = -1;  /* frame=: the P and DB pushed above the return */
 static long call_rti = -1;    /* rti=: entered as an interrupt, this P pushed */
 static int call_frame_long;   /* frame= with long (JSL), else with a JSR */
 static int call_php;           /* php: (JSR) the entry P pushed above the return */
+static int call_phb;           /* phb: (JSL) the entry DB pushed above the return */
 static int call_vblank;        /* vblank: may start in the vertical blank (NMI off) */
 static int call_noreturn;     /* noreturn: told to lockstep when the call starts */
 static uint32_t call_target;
@@ -376,6 +380,10 @@ static int call_exec(uint32_t pc)
             if (lockstep) lockstep_unit_entry(call_target, call_stub + 3, call_from.s, (uint16_t)(call_from.s - 4));
         }
         if (call_rti >= 0) {
+            if (checklib_on) check_unit_entry(call_target, call_loop, call_from.s, (uint16_t)(call_from.s - 4));
+            if (lockstep) lockstep_unit_entry(call_target, call_loop, call_from.s, (uint16_t)(call_from.s - 4));
+        }
+        if (call_phb) {
             if (checklib_on) check_unit_entry(call_target, call_loop, call_from.s, (uint16_t)(call_from.s - 4));
             if (lockstep) lockstep_unit_entry(call_target, call_loop, call_from.s, (uint16_t)(call_from.s - 4));
         }
@@ -429,6 +437,7 @@ static void call(const char *line, int lineno) {
         else if (!strncmp(tok[i], "frame=", 6)) call_frame = (long)(v & 0xFFFF);
         else if (!strncmp(tok[i], "rti=", 4)) call_rti = (long)(v & 0xFF);
         else if (!strcmp(tok[i], "php")) call_php = 1;
+        else if (!strcmp(tok[i], "phb")) call_phb = 1;
         else if (!strcmp(tok[i], "vblank")) call_vblank = 1;
         else if (!strncmp(tok[i], "press=", 6) && strchr(tok[i], '@') && npress < 8) {
             char pb[64]; snprintf(pb, sizeof pb, "%s", tok[i] + 6);
@@ -447,6 +456,7 @@ static void call(const char *line, int lineno) {
     else die("%s:%d: call: a JSR can't reach bank %02X from work RAM; use long", script_path, lineno, bank);
     uint8_t stub[16]; int m = 0;
     if (call_php && lng) die("%s:%d: call: php is for a JSR call (frame= for long)", script_path, lineno);
+    if (call_phb && !lng) die("%s:%d: call: phb is for a JSL call (long)", script_path, lineno);
     call_target = addr;
     call_noreturn = noreturn;
     call_frame_long = lng;
@@ -458,8 +468,8 @@ static void call(const char *line, int lineno) {
         stub[m++] = 0xF4; stub[m++] = (uint8_t)(l >> 8); stub[m++] = (uint8_t)sb;
         stub[m++] = 0xF4; stub[m++] = (uint8_t)call_rti; stub[m++] = (uint8_t)l;
         stub[m++] = 0x5C; stub[m++] = (uint8_t)addr; stub[m++] = (uint8_t)(addr >> 8); stub[m++] = (uint8_t)bank;
-    } else if (call_frame >= 0 && lng) {
-        /* JSL to the trampoline at +6; there PEA #frame, JML ADDR. */
+    } else if ((call_frame >= 0 && lng) || call_phb) {
+        /* JSL to the trampoline at +6; there PEA #frame (or PHB), JML ADDR. */
         uint16_t t = (uint16_t)(at + 6);
         stub[m++] = 0x22; stub[m++] = (uint8_t)t; stub[m++] = (uint8_t)(t >> 8); stub[m++] = (uint8_t)sb;
     } else if (call_frame >= 0) {
@@ -481,6 +491,10 @@ static void call(const char *line, int lineno) {
         stub[m++] = 0xF4; stub[m++] = (uint8_t)call_frame; stub[m++] = (uint8_t)(call_frame >> 8);
         if (lng) { stub[m++] = 0x5C; stub[m++] = (uint8_t)addr; stub[m++] = (uint8_t)(addr >> 8); stub[m++] = (uint8_t)bank; }
         else { stub[m++] = 0x4C; stub[m++] = (uint8_t)addr; stub[m++] = (uint8_t)(addr >> 8); }
+    }
+    if (call_phb) {
+        stub[m++] = 0x8B;
+        stub[m++] = 0x5C; stub[m++] = (uint8_t)addr; stub[m++] = (uint8_t)(addr >> 8); stub[m++] = (uint8_t)bank;
     }
     if (call_php) {
         stub[m++] = 0x08;
@@ -538,6 +552,7 @@ static void call(const char *line, int lineno) {
     call_frame = -1;
     call_rti = -1;
     call_php = 0;
+    call_phb = 0;
     call_vblank = 0;
 }
 
