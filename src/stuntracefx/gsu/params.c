@@ -20,7 +20,9 @@ uint16_t GsuParamsUpdate(void)
     unsigned i;
 
     for (i = 0; i < 8; i++) {
-        cyc(130);
+        /* the first after the entry (PHP, REP); then LDA direct page (16)
+           or absolute (24) */
+        cyc(i == 0 ? 130 : from[i] < 0x100 ? 16 : 24);
         v = rd16(from[i]);
         cyc(32);
         wr16(to[i], v);

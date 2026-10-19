@@ -1528,6 +1528,7 @@ gradient:
         cyc(94);
         op_lda16(0x7FEF57 + cpu.x);
         wr16(hc_dp(0xF1), cyc_then(16, cpu.a));
+        cyc(52);                                /* BRA, LDA abs,X */
         goto a_to;
         for (;;) {
             cyc(24);
@@ -1536,6 +1537,7 @@ gradient:
             op_cmp16(rd16(0x7FEF55 + cpu.x));
             if (!(cpu.p & P_Z)) {
                 wr16(hc_dp(0xF1), cyc_then(34, cpu.a));
+                cyc(30);                        /* LDA abs,X */
                 goto a_to;
             }
             wr16(hc_dp(0xF1), cyc_then(28, cpu.a));
@@ -1547,6 +1549,7 @@ gradient:
                 { cyc(18); goto a_blend; }
             cyc(42);
             op_lda16(0x7FEC55 + cpu.y);
+            cyc(52);                            /* BRA, STA abs,Y */
             goto a_store;
 a_to:
             op_lda16(0x7FF357 + cpu.x);
@@ -1554,8 +1557,8 @@ a_blend:
             wr16(hc_dp(0xF3), cyc_then(16, cpu.a));
             cyc(46);
             abi_ColourBlend();
+            cyc(72);                            /* RTS, STA abs,Y */
 a_store:
-            cyc(52);
             wr16(0x7FEC57 + cpu.y, cpu.a);
             hc_step(&cpu.x, 0);
             cyc(52);
@@ -1568,6 +1571,7 @@ a_store:
     cyc(52);
     op_lda16(0x7FEF57 + cpu.x);
     wr16(hc_dp(0xF1), cyc_then(16, cpu.a));
+    cyc(52);                                    /* BRA, LDA abs,X */
     goto b_to;
     for (;;) {
         cyc(24);
@@ -1576,6 +1580,7 @@ a_store:
         op_cmp16(rd16(0x7FEF55 + cpu.x));
         if (!(cpu.p & P_Z)) {
             wr16(hc_dp(0xF1), cyc_then(34, cpu.a));
+            cyc(30);                            /* LDA abs,X */
             goto b_to;
         }
         wr16(hc_dp(0xF1), cyc_then(28, cpu.a));
@@ -1587,6 +1592,7 @@ a_store:
             { cyc(18); goto b_blend; }
         cyc(42);
         op_lda16(0x7FEC55 + cpu.y);
+        cyc(52);                                /* BRA, STA abs,Y */
         goto b_store;
 b_to:
         op_lda16(0x7FF357 + cpu.x);
@@ -1603,6 +1609,7 @@ rows_rest:
         if (cpu.a & 0x8000) {
             cpu.a = pushed;
             cpu.p = nz16(cpu.p, cpu.a);
+            cyc(88);                            /* BMI, PLA, STA abs,Y */
             goto b_store;
         }
         wr16(hc_dp(0xF3), cyc_then(32, cpu.a));
@@ -1613,8 +1620,8 @@ rows_rest:
         op_lda16(HC_AMT(0));
         wr16(hc_dp(0xF5), cyc_then(16, cpu.a));
         (cyc(46), abi_ColourBlendBy());
-b_store:
         cyc(88);
+b_store:
         wr16(0x7FEC57 + cpu.y, cpu.a);
         hc_step(&cpu.x, 0);
         cyc(52);

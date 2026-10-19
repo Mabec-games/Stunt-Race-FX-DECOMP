@@ -57,6 +57,7 @@ static uint16_t draw_record(uint16_t o, uint16_t r)
         cyc(30);
         wr16(REC(r, 0x14), cyc_then(30, (uint16_t)(a - rd16(0x0000C9))));
     }
+    cyc(30);
     wr16(REC(r, 0x08), cyc_then(30, rd16(OBJ(o, 0x04))));
     cyc(30);
     wr16(REC(r, 0x04), cyc_then(30, rd16(OBJ(o, 0x14))));
@@ -78,6 +79,7 @@ static uint16_t draw_record(uint16_t o, uint16_t r)
         cyc(114);
         wr8(REC(r, 0x18), 0x00);
     }
+    cyc(30);
     v = rd8(OBJ(o, 0x24));
     cyc(30);
     wr8(REC(r, 0x07), v);
@@ -94,9 +96,8 @@ static uint16_t draw_record(uint16_t o, uint16_t r)
         cyc(46);
         v = rd8(OBJ(o, 0x19));
         if (!(v & 0x80))
-            { cyc(40); v = rd8(0x7E05E9); }
-    cyc(22);
-        } else {
+            { cyc(40); v = rd8(0x7E05E9); } else { cyc(22); }
+    } else {
         cyc(52);
         v = rd8(OBJ(o, 0x18));
         if (!(v & 0x80))

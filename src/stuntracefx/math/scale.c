@@ -265,6 +265,9 @@ uint16_t ScaleDp02Dp94(uint8_t *p)
     cyc(16);
     uint16_t a = asr1(asr1(rd16(0x000002))), b, s;
 
+    /* XBA, BIT #, then ORA # and BRA (negative) or AND #, then CLC,
+       ADC #, AND #, STA (the shifts' time is asr1's) */
+    cyc((a & 0x8000) ? 164 : 148);
     a = (uint16_t)(int16_t)(int8_t)(uint8_t)(a >> 8);
     a = (uint16_t)((uint16_t)(a + 0x20) & 0xFFFE);
     wr16(0x000002, a);
