@@ -1218,8 +1218,11 @@ void abi_ObjectAttachLinked(void)
    the end of the chain (+$3C). */
 static void groups_chain(uint16_t *y)
 {
+    uint32_t c = 46;                    /* in: SEP, LDA; round again: TAY, BNE, SEP, LDA (82) */
+
     do {
-        cyc(82);
+        cyc(c);
+        c = 82;
         if (!(rd8(0x7E1F2D) == 0x23 && (rd8(cyc_then(62, 0x7E2024 + *y)) & 0x10))
             && !(rd8(cyc_then(68, 0x7E2036 + *y)) & 0x80))
             { cyc(62); wr8(0x7E2036 + *y, 0x03); }
@@ -1321,6 +1324,7 @@ typedef struct {
 /* The body of BucketTriggersFromArea, with everything its exit leaves. */
 static AreaEnd bucket_triggers_from_area(uint8_t bank, uint16_t rec, uint8_t p)
 {
+    uint32_t c;
     uint32_t b = (uint32_t)bank << 16;
     uint16_t x = 0, y = rec, v, w, n;
     AreaEnd e;
@@ -1352,8 +1356,10 @@ static AreaEnd bucket_triggers_from_area(uint8_t bank, uint16_t rec, uint8_t p)
         v = rd16(b | 0x1F2B);
         cyc(16);
         wr16(0x000004, v);
+        c = 16;                         /* in: LDA; round again: the branch back and LDA (38) */
         do {
-            cyc(38);
+            cyc(c);
+            c = 38;
             v = rd16(0x000002);
             cyc(38);
             w = rd16(b | 0x1F03);
@@ -3195,10 +3201,12 @@ void abi_ObjectPlaceOnParent(void)
     wr8(dp8(0x02), cyc_then(16, v));
     wr8(dp8(0x04), cyc_then(16, v));
     sign_byte(dp8(0x05), v);
+    cyc((v & 0x80) ? 46 : 24);          /* BRA (negative), LDA abs */
     v = rd8(b | 0x1F59);
     wr8(dp8(0x08), cyc_then(16, v));
     wr8(dp8(0x0A), cyc_then(16, v));
     sign_byte(dp8(0x0B), v);
+    cyc((v & 0x80) ? 46 : 24);          /* BRA (negative), LDA abs */
     v = rd8(b | 0x1F5A);
     wr8(dp8(0x94), cyc_then(16, v));
     cyc(24);
@@ -3239,6 +3247,7 @@ void abi_ObjectPlaceOnParent(void)
     for (i = 0; i < 3; i++) {
         cyc(30);
         w = rd16(b | (uint16_t)(to[i] + cpu.x));
+        cyc(from[i] < 0x100 ? 30 : 38);  /* CLC, ADC direct page or absolute */
         cpu.p &= (uint8_t)~P_C;
         cpu.a = op_adc16(w, rd16(from[i]), &cpu.p);
         cyc(30);

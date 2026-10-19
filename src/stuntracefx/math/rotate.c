@@ -110,6 +110,20 @@ static uint8_t rotate8(uint32_t xa, uint32_t va, uint32_t out, uint32_t out2)
 }
 
 /*
+ * The angle's cos and sin from the byte tables at $00:973E and $00:96FE
+ * to $0625 and $0624: LDA abs,X (24, the ROM byte 8, and 6 more when the
+ * 8-bit index crosses a page), STA abs (24), each. The caller's time runs
+ * through the cos STA; only the cos load's page crossing is stated here.
+ */
+static void sin_cos(uint8_t i)
+{
+    cyc((0x3E + i) > 0xFF ? 6 : 0);
+    wr8(0x000625, rd8(0x00973E + i));
+    cyc(32 + ((0xFE + i) > 0xFF ? 6 : 0));
+    wr8(0x000624, cyc_then(24, rd8(0x0096FE + i)));
+}
+
+/*
  * @routine 03:C27F RotateXZ
  * WHAT IT DOES: Rotates the vector (x, z) in direct page $02 and $94 by the
  * angle A: x' = x cos + z sin goes to direct page $04, z' = z cos - x sin to
@@ -123,13 +137,10 @@ static uint8_t rotate8(uint32_t xa, uint32_t va, uint32_t out, uint32_t out2)
  */
 uint8_t RotateXZ(uint8_t angle)
 {
-    uint8_t i = (uint8_t)-angle, c, s;
+    uint8_t i = (uint8_t)-angle;
 
     cyc(292);
-    c = rd8(0x00973E + i);
-    wr8(0x000625, c);
-    s = rd8(0x0096FE + i);
-    wr8(0x000624, s);
+    sin_cos(i);
     return rotate8(0x000002, 0x000094, 0x000004, 0x0005F2);
 }
 
@@ -154,13 +165,8 @@ void abi_RotateXZ(void)
  */
 uint8_t RotateXZFrom08(uint8_t angle)
 {
-    uint8_t c, s;
-
     cyc(324);
-    c = rd8(0x00973E + angle);
-    wr8(0x000625, c);
-    s = rd8(0x0096FE + angle);
-    wr8(0x000624, s);
+    sin_cos(angle);
     return rotate8(0x000008, 0x000094, 0x00000A, 0x0005F2);
 }
 
@@ -183,13 +189,8 @@ void abi_RotateXZFrom08(void)
  */
 uint8_t RotateXY(uint8_t angle)
 {
-    uint8_t c, s;
-
     cyc(324);
-    c = rd8(0x00973E + angle);
-    wr8(0x000625, c);
-    s = rd8(0x0096FE + angle);
-    wr8(0x000624, s);
+    sin_cos(angle);
     return rotate8(0x000002, 0x000008, 0x000004, 0x00000A);
 }
 

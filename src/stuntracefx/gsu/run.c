@@ -13,13 +13,15 @@
 #include "cpu_ops.h"
 
 /* Poll until the Super FX stops (status bit 5 clear), counting each poll:
-   an 8-bit INC of $FE, and of $FF only when $FE wraps to 0. */
-static void gsu_wait(void)
+   an 8-bit INC of $FE, and of $FF only when $FE wraps to 0. `first` is
+   the time before the first INC's read: GsuWait's SEP and the INC (38),
+   or GsuRun's INC alone (16); after a poll, AND #, BNE and the INC (54). */
+static void gsu_wait(uint32_t first)
 {
     uint8_t n;
 
+    cyc(first);
     do {
-        cyc(38);
         n = (uint8_t)(rd8(GSU_WAIT_COUNT) + 1);
         cyc(6);
         wr8(GSU_WAIT_COUNT, n);
@@ -29,7 +31,19 @@ static void gsu_wait(void)
             cyc(6);
             wr8(GSU_WAIT_COUNT + 1, n);
         } else { cyc(22); }
-    } while (cyc_loop(16, rd8(cyc_then(24, GSU_SFR)) & 0x20));
+    } while (cyc_loop(54, rd8(cyc_then(24, GSU_SFR)) & 0x20));
+}
+
+/* After the poll: the screen mode value back to SCMR. */
+static uint8_t gsu_scmr_back(void)
+{
+    uint8_t mode;
+
+    cyc(56);
+    mode = rd8(GSU_SCMR_SHADOW);
+    cyc(24);
+    wr8(GSU_SCMR, mode);
+    return mode;
 }
 
 /*
@@ -43,14 +57,8 @@ static void gsu_wait(void)
  */
 uint8_t GsuWait(void)
 {
-    uint8_t mode;
-
-    gsu_wait();
-    cyc(56);
-    mode = rd8(GSU_SCMR_SHADOW);
-    cyc(24);
-    wr8(GSU_SCMR, mode);
-    return mode;
+    gsu_wait(38);
+    return gsu_scmr_back();
 }
 
 void abi_GsuWait(void)
@@ -81,7 +89,8 @@ uint8_t GsuRun(uint8_t bank, uint16_t start)
     wr8(GSU_SFR, 0x00);
     cyc(24);
     wr16(GSU_R15, start);
-    return GsuWait();
+    gsu_wait(16);                       /* its own copy of the poll, no SEP */
+    return gsu_scmr_back();
 }
 
 void abi_GsuRun(void)
@@ -364,8 +373,9 @@ void abi_FrameRunGsuAB13B(void)
     cyc(46);
     op_lda8(b | 0x0D62);
     if ((uint8_t)cpu.a)
-        { cyc(16); abi_FrameObjectsWhileGsuRuns(); }
-    cyc(88);
+        { cyc(16); abi_FrameObjectsWhileGsuRuns(); cyc(88); }
+    else
+        cyc(68);                        /* the branch over the call, then the call to GsuWait */
     abi_GsuWait();
     op_rep(P_M);
     b = (uint32_t)cpu.db << 16;
