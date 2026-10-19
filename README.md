@@ -65,16 +65,16 @@ _Snapshot 2026-10-18._
 
 ```
 M1  Behaviour exact (T3 + T4)
-    ████████████████████████████████████████   99.9%   212,296 / 212,542 B of the game's code
+    ████████████████████████████████████████  100.0%   212,542 / 212,542 B of the game's code
 M2  Byte exact (T4)
-    ████████████████████████████████████████   99.9%   212,296 / 212,542 B of the game's code
+    ████████████████████████████████████████  100.0%   212,542 / 212,542 B of the game's code
 ```
 
-The bars measure the whole game's S-CPU, Super FX and SPC700 code, 212,542 B: 212,480 B the scripts have run and 62 B the [routine census](docs/stuntracefx/ROUTINE_CENSUS.md) finds that no script has run yet. Certified so far: 2326 routines behaviour exact, 2326 of them byte exact.
+The bars measure the whole game's S-CPU, Super FX and SPC700 code, 212,542 B: 212,480 B the scripts have run and 62 B the [routine census](docs/stuntracefx/ROUTINE_CENSUS.md) finds that no script has run yet. Certified so far: 2333 routines behaviour exact, 2333 of them byte exact.
 
 | Processor | M1: behaviour exact | M2: byte exact |
 |---|---|---|
-| **S-CPU (65816)** | `████████████████████` 99.8%: 148,189/148,435 B | `████████████████████` 99.8%: 148,189/148,435 B |
+| **S-CPU (65816)** | `████████████████████` 100.0%: 148,435/148,435 B | `████████████████████` 100.0%: 148,435/148,435 B |
 | **Super FX (GSU-1)** | `████████████████████` 100.0%: 51,172/51,172 B | `████████████████████` 100.0%: 51,172/51,172 B |
 | **SPC700 (sound)** | `████████████████████` 100.0%: 12,935/12,935 B | `████████████████████` 100.0%: 12,935/12,935 B |
 <!-- PROGRESS:END -->
@@ -102,7 +102,7 @@ have run and the 62 B the routine census (`tools/stuntracefx/census.py`) finds
 by following the code statically (calls, jumps, tables, handler pointers,
 Super FX calls, orphans) where no script has gone. The numerator is the code
 bytes inside routines whose C is certified behaviour exact (T3) or whose
-assembly is also byte exact (T4), for M1, and T4 only for M2. 7 routine(s)
+assembly is also byte exact (T4), for M1, and T4 only for M2. 0 routine(s)
 are in the tree but not yet certified (T2).
 
 **Why not routines.** A routine count keeps growing as the work goes on:

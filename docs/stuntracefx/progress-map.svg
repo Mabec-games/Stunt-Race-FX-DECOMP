@@ -2074,7 +2074,7 @@
 <rect x="1395.7" y="528.5" width="36.6" height="35.4" fill="#3fb950"><title>CrashGreen  008048  220B  T4  [system]</title></rect>
 <rect x="1432.9" y="400.3" width="31.6" height="41.0" fill="#3fb950"><title>BootWarm  038BAA  220B  T4  [system]</title></rect>
 <rect x="1432.9" y="442.0" width="31.6" height="34.4" fill="#3fb950"><title>GsuPictureUploadStep  7F0800  185B  T4  [system]</title></rect>
-<rect x="1432.9" y="476.9" width="31.6" height="30.8" fill="#d29922"><title>SoftResetCheck  07AADC  166B  T2  [system]</title></rect>
+<rect x="1432.9" y="476.9" width="31.6" height="30.8" fill="#3fb950"><title>SoftResetCheck  07AADC  166B  T4  [system]</title></rect>
 <rect x="1432.9" y="508.3" width="31.6" height="29.3" fill="#3fb950"><title>DebugLastCarMotionPanel  08F431  158B  T4  [system]</title></rect>
 <rect x="1432.9" y="538.2" width="31.6" height="25.7" fill="#3fb950"><title>BootColdStart  038AA9  139B  T4  [system]</title></rect>
 <rect x="1465.0" y="400.3" width="27.5" height="28.9" fill="#3fb950"><title>TimeMarkEnd  7EF18F  136B  T4  [system]</title></rect>
@@ -2108,7 +2108,7 @@
 <rect x="1566.5" y="477.6" width="15.4" height="17.7" fill="#3fb950"><title>DebugFxWordsPanel  08F7C5  48B  T4  [system]</title></rect>
 <rect x="1582.5" y="477.6" width="15.4" height="17.7" fill="#3fb950"><title>FrameCountAndPortsEnd  7F1042  48B  T4  [system]</title></rect>
 <rect x="1512.5" y="495.9" width="15.7" height="16.9" fill="#3fb950"><title>DebugHexByte  03D782  47B  T4  [system]</title></rect>
-<rect x="1512.5" y="513.4" width="15.7" height="16.9" fill="#d29922"><title>SoftResetApu  07AB8C  47B  T2  [system]</title></rect>
+<rect x="1512.5" y="513.4" width="15.7" height="16.9" fill="#3fb950"><title>SoftResetApu  07AB8C  47B  T4  [system]</title></rect>
 <rect x="1512.5" y="530.9" width="15.7" height="16.9" fill="#3fb950"><title>FrameInputAndCountEnd  7F1072  47B  T4  [system]</title></rect>
 <rect x="1512.5" y="548.5" width="15.7" height="15.4" fill="#3fb950"><title>DebugFxTestPanel  08F337  43B  T4  [system]</title></rect>
 <rect x="1528.8" y="495.9" width="13.5" height="18.0" fill="#3fb950"><title>HalfRateApproach  7F0FDC  43B  T4  [system]</title></rect>
@@ -2133,7 +2133,7 @@
 <rect x="1555.3" y="533.5" width="9.6" height="11.3" fill="#3fb950"><title>Set0D37FromTable  02FC44  20B  T4  [system]</title></rect>
 <rect x="1555.3" y="545.4" width="9.6" height="9.5" fill="#3fb950"><title>Set7EBC2BTrio  02D65A  17B  T4  [system]</title></rect>
 <rect x="1555.3" y="555.6" width="9.6" height="8.3" fill="#3fb950"><title>BootSoftRestart  038C86  15B  T4  [system]</title></rect>
-<rect x="1565.5" y="533.5" width="7.2" height="10.3" fill="#d29922"><title>SoftResetLong  07AACE  14B  T2  [system]</title></rect>
+<rect x="1565.5" y="533.5" width="7.2" height="10.3" fill="#3fb950"><title>SoftResetLong  07AACE  14B  T4  [system]</title></rect>
 <rect x="1565.5" y="544.4" width="7.2" height="9.5" fill="#3fb950"><title>CrashWhite  008014  13B  T4  [system]</title></rect>
 <rect x="1565.5" y="554.4" width="7.2" height="9.5" fill="#3fb950"><title>DebugPrintHexWord  03D499  13B  T4  [system]</title></rect>
 <rect x="1573.4" y="533.5" width="8.3" height="7.6" fill="#3fb950"><title>DemoRunThird  03865E  12B  T4  [system]</title></rect>
@@ -2142,20 +2142,20 @@
 <rect x="1573.4" y="541.7" width="7.9" height="7.2" fill="#3fb950"><title>DemoRunFourth  038653  11B  T4  [system]</title></rect>
 <rect x="1573.4" y="549.6" width="7.9" height="7.2" fill="#3fb950"><title>FrameQueuesFlush  7F0D20  11B  T4  [system]</title></rect>
 <rect x="1573.4" y="557.4" width="7.9" height="6.5" fill="#3fb950"><title>ApproachTargetFull  0BE2C5  10B  T4  [system]</title></rect>
-<rect x="1581.9" y="541.7" width="7.7" height="5.3" fill="#d29922"><title>ResetVector  00FE88  8B  T2  [system]</title></rect>
+<rect x="1581.9" y="541.7" width="7.7" height="5.3" fill="#3fb950"><title>ResetVector  00FE88  8B  T4  [system]</title></rect>
 <rect x="1590.2" y="541.7" width="7.7" height="5.3" fill="#3fb950"><title>WaitHBlank  7EA2FD  8B  T4  [system]</title></rect>
 <rect x="1581.9" y="547.6" width="8.2" height="4.9" fill="#3fb950"><title>ApproachTargetZero  0BE2CF  8B  T4  [system]</title></rect>
 <rect x="1590.8" y="547.6" width="7.1" height="4.9" fill="#3fb950"><title>KeepRegisters  7EF217  7B  T4  [system]</title></rect>
-<rect x="1581.9" y="553.1" width="5.3" height="5.6" fill="#d29922"><title>SoftResetWarmBoot  07AB82  6B  T2  [system]</title></rect>
+<rect x="1581.9" y="553.1" width="5.3" height="5.6" fill="#3fb950"><title>SoftResetWarmBoot  07AB82  6B  T4  [system]</title></rect>
 <rect x="1581.9" y="559.3" width="5.3" height="4.6" fill="#3fb950"><title>DataBankTest  7EE18B  5B  T4  [system]</title></rect>
 <rect x="1587.8" y="553.1" width="4.7" height="4.0" fill="#3fb950"><title>WindowTable7FLong  7EA467  4B  T4  [system]</title></rect>
 <rect x="1593.2" y="553.1" width="4.7" height="4.0" fill="#3fb950"><title>WramFillZeroLong  038CF2  4B  T4  [system]</title></rect>
-<rect x="1587.8" y="557.7" width="3.0" height="6.2" fill="#d29922"><title>SoftResetApuLong  07AB88  4B  T2  [system]</title></rect>
+<rect x="1587.8" y="557.7" width="3.0" height="6.2" fill="#3fb950"><title>SoftResetApuLong  07AB88  4B  T4  [system]</title></rect>
 <rect x="1591.4" y="557.7" width="3.9" height="3.5" fill="#3fb950"><title>DebugPanelSep  08F8F3  3B  T4  [system]</title></rect>
 <rect x="1591.4" y="561.8" width="3.9" height="2.1" fill="#3fb950"><title>Hang  0BE21F  2B  T4  [system]</title></rect>
 <rect x="1595.8" y="557.7" width="2.1" height="1.7" fill="#3fb950"><title>ReturnOnly  03F329  1B  T4  [system]</title></rect>
 <rect x="1595.8" y="559.9" width="2.1" height="1.7" fill="#3fb950"><title>DebugPanelNone  08F1A9  1B  T4  [system]</title></rect>
-<rect x="1595.8" y="562.2" width="2.1" height="1.7" fill="#d29922"><title>InterruptReturn  00FE90  1B  T2  [system]</title></rect>
+<rect x="1595.8" y="562.2" width="2.1" height="1.7" fill="#3fb950"><title>InterruptReturn  00FE90  1B  T4  [system]</title></rect>
 <text x="1286.7" y="576.5" font-size="10" fill="#8b949e">math</text>
 <rect x="1285.2" y="581.5" width="60.0" height="46.1" fill="#3fb950"><title>HeadingPitched  03BAEB  459B  T4  [math]</title></rect>
 <rect x="1345.8" y="581.5" width="59.4" height="46.1" fill="#3fb950"><title>HeadingPitchedFrom1F7C  03BCC7  454B  T4  [math]</title></rect>
@@ -2344,4 +2344,4 @@
 <rect x="1589.9" y="873.7" width="8.0" height="13.4" fill="#3fb950"><title>JoypadPortCheck  7F10CD  21B  T4  [input]</title></rect>
 <rect x="1578.8" y="887.7" width="10.1" height="10.2" fill="#3fb950"><title>JoypadPortCheckBit  7F10E2  20B  T4  [input]</title></rect>
 <rect x="1589.4" y="887.7" width="8.5" height="10.2" fill="#3fb950"><title>JoypadPortCheckLatchOff  7F10F6  17B  T4  [input]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 2326 &#183; T3 behaviour-exact 0 &#183; 212,296/212,542 bytes exact (99.9%) &#183; green=T4 blue=T3 amber=T2 gray=T1</text></svg>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 2333 &#183; T3 behaviour-exact 0 &#183; 212,542/212,542 bytes exact (100.0%) &#183; green=T4 blue=T3 amber=T2 gray=T1</text></svg>
