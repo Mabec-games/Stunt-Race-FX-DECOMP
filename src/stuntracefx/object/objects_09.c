@@ -1340,8 +1340,8 @@ void abi_ObjectSkyBallFall(void)
  * the first time (+$25 bit 0) it drops a ball (kind $B7A8, handler
  * $09:9634, ObjectBallDrop) and keeps falling ($180 back, $1E up, +$14
  * toward $F8); rebucketed each frame.
- * HOW: A 16-bit compare (BEQ or BMI); ApproachQuarterMin4, 03:CDC1 and
- * 03:D07C (original code) ease the moves. Reached only by
+ * HOW: A 16-bit compare (BEQ or BMI); ApproachQuarterMin4, ApproachHalfMin2 (03:CDC1)
+ * and ApproachSixteenthMin16Byte (03:D07C) ease the moves. Reached only by
  * unit_objects_09.
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket.
  */
@@ -1765,7 +1765,7 @@ static void cannon_ball_frame(uint16_t dx)
  * (+$27; X and Z eased to the gate's, then its drift +$2B and rise +$29
  * added), then it flies off ($100 a frame along X, drifting) until its life
  * +$0A runs out; rebucketed.
- * HOW: ApproachQuarterMin4, 03:CDC1 (original code), ObjectRelease,
+ * HOW: ApproachQuarterMin4, ApproachHalfMin2 (03:CDC1), ObjectRelease,
  * ObjectRebucket. Reached only by unit_objects_09.
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket.
  */
@@ -7404,6 +7404,108 @@ void abi_ObjectWindowResetGateStep(void)
     window_set_frame(0x00, 0x00, 0x0A, 0xBF, 0x08);
 }
 
+/* BRK in bank $09 with the next instruction at `next`: PB, PC and P
+   pushed, I set and D clear, and the vector's handler (InterruptReturn,
+   00:FE90) at once returns by RTI: P, PC and PB pulled back. */
+static void brk_09(uint16_t next)
+{
+    uint8_t p = cpu.p;
+
+    wr8((uint16_t)cpu.s, 0x09);
+    wr8((uint16_t)(cpu.s - 1), (uint8_t)(next >> 8));
+    wr8((uint16_t)(cpu.s - 2), (uint8_t)next);
+    wr8((uint16_t)(cpu.s - 3), p);
+    cpu.s = (uint16_t)(cpu.s - 4);
+    cpu.p = (uint8_t)((cpu.p | P_I) & ~P_D);
+    op_plp(rd8((uint16_t)(cpu.s + 1)));
+    rd8((uint16_t)(cpu.s + 2));
+    rd8((uint16_t)(cpu.s + 3));
+    rd8((uint16_t)(cpu.s + 4));
+    cpu.s = (uint16_t)(cpu.s + 4);
+}
+
+void abi_RasterIrq(void);
+
+/* 09:EC71 reached with M 16-bit (a hit while the slide is held at $7FFF):
+   the in mark's byte code runs as other instructions. LDA +$25 (a word),
+   AND #$F001, TSB $5C (a word), STY $EC,X (a word), ORA #$25BD, then JSR
+   $0109: in bank $09 that is work RAM, the interrupt stubs (copied there
+   at the start: three NOPs, JSL RasterIrq, RTI). The raster interrupt's
+   handler runs as a subroutine and returns; the RTI then pulls P (the low
+   byte of the JSR's return, $80), PC and PB from the stack, two of them
+   from this routine's caller's frame: the CPU leaves the routine there
+   (cpu.unwound; pc where it lands). From ObjectRunHandlerA's dispatch
+   that is $CA:E7EC, ROM data, not code: the original game runs off its
+   program on this path. Not reached in the traces so far. */
+static void slide_gate_held_m16(void)
+{
+    uint16_t w, m, lo, hi;
+    uint8_t bank;
+
+    op_lda16(F(0x2025, cpu.x));
+    op_and16(0xF001);
+    m = rd16((uint16_t)(cpu.d + 0x5C));
+    cpu.p = (uint8_t)((cpu.p & ~P_Z) | ((cpu.a & m) ? 0 : P_Z));
+    wr16((uint16_t)(cpu.d + 0x5C), (uint16_t)(m | cpu.a));
+    wr16((uint16_t)(cpu.d + 0xEC + cpu.x), cpu.y);
+    cpu.a = (uint16_t)(cpu.a | 0x25BD);
+    cpu.p = nz16(cpu.p, cpu.a);
+    /* JSR $0109: the return $09:EC80 pushed */
+    wr8((uint16_t)cpu.s, 0xEC);
+    wr8((uint16_t)(cpu.s - 1), 0x80);
+    cpu.s = (uint16_t)(cpu.s - 2);
+    /* $010C: JSL $7E:A2D9, its return $09:010F pushed and pulled */
+    wr8((uint16_t)cpu.s, 0x09);
+    wr8((uint16_t)(cpu.s - 1), 0x01);
+    wr8((uint16_t)(cpu.s - 2), 0x0F);
+    cpu.s = (uint16_t)(cpu.s - 3);
+    abi_RasterIrq();
+    rd8((uint16_t)(cpu.s + 1));
+    rd8((uint16_t)(cpu.s + 2));
+    rd8((uint16_t)(cpu.s + 3));
+    cpu.s = (uint16_t)(cpu.s + 3);
+    /* $0110: RTI */
+    op_plp(rd8((uint16_t)(cpu.s + 1)));
+    lo = rd8((uint16_t)(cpu.s + 2));
+    hi = rd8((uint16_t)(cpu.s + 3));
+    bank = rd8((uint16_t)(cpu.s + 4));
+    cpu.s = (uint16_t)(cpu.s + 4);
+    w = (uint16_t)(lo | hi << 8);
+    cpu.pc = (uint32_t)bank << 16 | w;
+    cpu.unwound = 1;
+}
+
+/* 09:ECB9 reached with M 8-bit (no hit while the screen flashes): the out
+   mark's word code runs as other instructions. LDA +$25 and AND #$02 take
+   one byte each, so the $00 that follows is a BRK (and the next byte its
+   signature); then TSB $5C, CMP $BD09EC,X, AND $20, ORA #$02, a second
+   BRK, AND $20, LDA +$25, AND #$FE, SBC $20259D,X (long, X), and on as
+   written: SEP #$20, sound $10, the RTL. */
+static void slide_gate_out_m8(void)
+{
+    uint8_t a, m;
+
+    a = ld8(F(0x2025, cpu.x));
+    lda8((uint8_t)(a & 0x02));
+    brk_09(0xECC0);
+    m = rd8((uint16_t)(cpu.d + 0x5C));
+    cpu.p = (uint8_t)((cpu.p & ~P_Z) | (((uint8_t)cpu.a & m) ? 0 : P_Z));
+    wr8((uint16_t)(cpu.d + 0x5C), (uint8_t)(m | (uint8_t)cpu.a));
+    m = rd8((0xBD09ECu + cpu.x) & 0xFFFFFF);
+    a = (uint8_t)cpu.a;
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(a - m)) & ~P_C) | (a >= m ? P_C : 0));
+    lda8((uint8_t)(a & rd8((uint16_t)(cpu.d + 0x20))));
+    lda8((uint8_t)((uint8_t)cpu.a | 0x02));
+    brk_09(0xECCC);
+    lda8((uint8_t)((uint8_t)cpu.a & rd8((uint16_t)(cpu.d + 0x20))));
+    a = ld8(F(0x2025, cpu.x));
+    lda8((uint8_t)(a & 0xFE));
+    a = op_sbc8((uint8_t)cpu.a, rd8((0x20259Du + cpu.x) & 0xFFFFFF), &cpu.p);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
+    cpu.p |= P_M;
+    sound1(0x10);
+}
+
 /* 09:EC2A: the slide gate's frame. A car's hit, unless the screen is
    flashing ($0DA5 bit 0) or the slide is held ($7F:3470 = $7FFF), starts
    the slide up ($7F:3470 = $800, step $100 to $700, direction 0, $0DA5 bit
@@ -7413,8 +7515,8 @@ void abi_ObjectWindowResetGateStep(void)
    Two paths reach code with the other register width than the code was
    written for: a hit while the slide is held comes to 09:EC71 with M
    16-bit, and no hit while flashing comes to 09:ECB9 with M 8-bit; the
-   original runs their operand bytes as other instructions, so the C hands
-   both to the original code. */
+   original runs their operand bytes as other instructions
+   (slide_gate_held_m16, slide_gate_out_m8). */
 static void slide_gate_frame(void)
 {
     uint16_t v;
@@ -7427,7 +7529,7 @@ static void slide_gate_frame(void)
             op_lda16(0x7F3470);
             op_cmp16(0x7FFF);
             if (cpu.a == 0x7FFF) {
-                jump_routine(0x09EC71);
+                slide_gate_held_m16();
                 return;
             }
             st16w(0x7F3470, 0x0800);
@@ -7445,7 +7547,7 @@ static void slide_gate_frame(void)
     }
     lda8((uint8_t)(ld8(db() | 0x0DA5) & 0x01));
     if ((uint8_t)cpu.a) {
-        jump_routine(0x09ECB9);
+        slide_gate_out_m8();
         return;
     }
     cpu.p &= (uint8_t)~P_M;
@@ -7506,8 +7608,8 @@ void abi_ObjectSlideGateUpRecord(void)
  * plays sound $10 the first time; +$25 bits 0 and 1 mark in and out.
  * HOW: ObjectSyncFromRecord, RecordContactSummary; the out mark's +$25
  * accesses are words (M 16-bit). A hit while held and no hit while
- * flashing reach code with the other register width (09:EC71, 09:ECB9),
- * which runs as the original.
+ * flashing reach code with the other register width (09:EC71, 09:ECB9):
+ * the operand bytes run as other instructions.
  * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
  * it.
  */

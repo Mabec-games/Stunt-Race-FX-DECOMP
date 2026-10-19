@@ -1138,6 +1138,10 @@ static long snap_offset(uint32_t a);
 static void (*core_run_until)(const struct SfxboxRegs *, uint32_t, uint16_t);
 static void (*core_run_out)(const struct SfxboxRegs *, uint16_t);
 static long asm_unplaced;
+/* C that called or jumped (call_routine, jump_routine) to an address where
+   no routine with C starts: the hybrid ran original code there. The decomp
+   is all C, so any is a failure. */
+static long c_no_c;
 
 /* The hybrid's report, and its end. */
 static void hybrid_finish(long frames)
@@ -1147,9 +1151,10 @@ static void hybrid_finish(long frames)
     gbad |= spc_lockstep_summary(sg, sizeof sg);
     strncat(g, sg, sizeof g - strlen(g) - 1);
     fprintf(lsrep, "frames %ld compared %ld, differing %ld; calls swapped %ld, entered other ways %ld, unmatched %ld, "
-            "hardware accesses off the timeline %ld, interrupts not pending where taken %ld, original-code calls not placed %ld%s: %s\n",
+            "hardware accesses off the timeline %ld, interrupts not pending where taken %ld, original-code calls not placed %ld, "
+            "C calls to code with no C %ld%s: %s\n",
             frames, frames_compared, diff_frames, calls_swapped, calls_fallback, mismatched_calls, timed_unmatched, irq_missed, asm_unplaced,
-            g, diff_frames || mismatched_calls || timed_unmatched || irq_missed || asm_unplaced || gbad ? "DIVERGENT" : calls_swapped || gsu_count() || spc_count() ? "IDENTICAL" : "UNCOVERED");
+            c_no_c, g, diff_frames || mismatched_calls || timed_unmatched || irq_missed || asm_unplaced || c_no_c || gbad ? "DIVERGENT" : calls_swapped || gsu_count() || spc_count() ? "IDENTICAL" : "UNCOVERED");
     fclose(lsrep);
     _exit(0);
 }
@@ -1390,11 +1395,19 @@ static void jump_original(uint32_t addr, const uint8_t *pushed, int n, int searc
     if (hs != (uint16_t)(s + n) && ls_escape_set) longjmp(ls_escape, 1);
 }
 
+static void no_c(uint32_t addr)
+{
+    if (c_no_c++ < 5)
+        fprintf(lsrep, "OFF frame %ld: C reached %06X, where no routine has C (in %s)\n", cur_frame, addr,
+                ls_cur_name ? ls_cur_name : "-");
+}
+
 void jump_routine_pushed(uint32_t addr, const uint8_t *pushed, int n)
 {
     if (!n)
         for (int i = 0; i < nroutines; i++)
             if (routines[i].addr == addr) { routines[i].abi(); return; }
+    if (machine_live && !past_end) no_c(addr);
     if (!machine_live) {
         if (cur) cur->needs_asm = 1;
         if (c_running) longjmp(abort_c, 1);
@@ -1408,7 +1421,7 @@ void jump_routine(uint32_t addr)
     jump_routine_pushed(addr, NULL, 0);
 }
 
-void jump_original_code(uint32_t addr)
+static void jump_original_code(uint32_t addr)
 {
     if (!machine_live) {
         if (cur) cur->needs_asm = 1;
@@ -1418,6 +1431,21 @@ void jump_original_code(uint32_t addr)
     /* A branch back to the start of the routine whose C is running (Hang)
        is no entry the original marks: nothing to look for in its record. */
     jump_original(addr, NULL, 0, addr != ls_entry_pc);
+}
+
+/* machine.h's two ends that no C follows. A branch to itself and a jump
+   to code that resets the stack: the hybrid ends the call there and runs
+   on as the original (the C of the code a restart goes to is checked on its
+   own, by unit calls). */
+void cpu_loop_forever(uint32_t at)
+{
+    jump_original_code(at);
+}
+
+void cpu_restart(uint32_t at, void (*entry)(void))
+{
+    (void)entry;
+    jump_original_code(at);
 }
 
 void call_routine(uint32_t addr, int long_call)
@@ -1432,6 +1460,7 @@ void call_routine(uint32_t addr, int long_call)
         if (c_running) longjmp(abort_c, 1);
         return;
     }
+    if (!past_end) no_c(addr);
     run_original(addr, long_call);
 }    /* the original's run ended inside this call */
 

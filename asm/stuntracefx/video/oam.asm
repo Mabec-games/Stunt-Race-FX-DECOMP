@@ -1889,6 +1889,14 @@ OamStagePause:
     stz.w !palette_animate
     lda.b #$00
     sta.w !wram_0D2F
+
+; @routine 07:BB16 OamStagePauseLoop
+; WHAT IT DOES: OamStagePause's frames from inside: each frame the stage's
+; handler with the presses cleared, until $0D2D is 0; then the PLP and RTS
+; through whatever the stack holds. PauseResults jumps here.
+; HOW: As OamStagePause's loop.
+; Entry: data bank $07; D = $0000. Exit: P pulled; S 3 higher.
+%at($07BB16)
 .lBB16:
     sep.b #$20
     lda.w !hud_blank+4
@@ -2112,6 +2120,13 @@ OamStagePause2:
     stz.w !palette_animate          ; not reached in the traces so far
     lda.b #$00                      ; not reached in the traces so far
     sta.w !wram_0D2F                ; not reached in the traces so far
+
+; @routine 07:BB7C OamStagePause2Loop
+; WHAT IT DOES: OamStagePause2's frames from inside, as OamStagePauseLoop
+; with the stage table at $07:BBA2. PauseResultsP2 jumps here.
+; HOW: As OamStagePauseLoop.
+; Entry: as OamStagePauseLoop. Exit: as OamStagePauseLoop.
+%at($07BB7C)
 .lBB7C:
     sep.b #$20
     lda.w !hud_blank+4

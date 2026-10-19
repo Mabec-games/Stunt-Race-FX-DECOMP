@@ -3261,7 +3261,7 @@ void abi_ObjectCarRecordTake(void)
     op_rep(P_M);
     op_lda16(0x70238E);
     if (!cpu.a) {
-        jump_routine(0x08A033);
+        /* BRL to the RTL at 08:A033: the routine returns. */
         return;
     }
     wr16(car_field(0x2022), cpu.a);
@@ -3372,7 +3372,7 @@ void abi_ObjectCarRecordRestart(void)
     op_rep(P_M);
     op_lda16(0x70238E);
     if (!cpu.a) {
-        jump_routine(0x08A033);
+        /* BRL to the RTL at 08:A033: the routine returns. */
         return;
     }
     wr16(car_field(0x2022), cpu.a);

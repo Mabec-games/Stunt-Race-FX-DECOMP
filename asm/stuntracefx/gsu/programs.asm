@@ -394,16 +394,25 @@ ViewReset:
     plp
     rtl
 
-; The tail ViewDefaults ends in ($03:AE73), with an entry of its own at
-; $03:AE70 (PHP, then 8-bit registers) that no traced code calls: seeds the
-; random number state ($E6-$E9: $1A6C's byte, then $A7, $55, $7F), clears
-; $9C, $BD, $99, $9F-$A1, $9D, $D3, the view position's high bytes, $035D,
-; $035E and $05FA, then runs ViewReset, ReadTable9022 and GsuParamsFromDp
-; and returns through the PLP.
+; @routine 03:AE70 ViewSetup
+; WHAT IT DOES: The view's setup with P kept (nothing in the game calls
+; it): seeds the random number state ($E6-$E9: $1A6C's byte, then $A7,
+; $55, $7F), clears $9C, $BD, $99, $9F-$A1, $9D, $D3, the view position's
+; high bytes, $035D, $035E and $05FA, then runs ViewReset, ReadTable9022
+; and GsuParamsFromDp and returns through the PLP.
+; HOW: PHP, SEP #$30, then ViewSetupTail.
+; Entry: D = $0000; any widths. Exit: P unchanged.
 %at($03AE70)
 ViewSetup:
     php                             ; not reached in the traces so far
     sep.b #$30                      ; not reached in the traces so far
+
+; @routine 03:AE73 ViewSetupTail
+; WHAT IT DOES: ViewSetup from inside, its P already pushed: the long jumps
+; at the ends of ViewDefaults and AttractViewStart come here.
+; HOW: As ViewSetup after its SEP; the PLP pulls the caller's P.
+; Entry: M 8-bit, X 8-bit; D = $0000; P pushed. Exit: P pulled.
+%at($03AE73)
 ViewSetupTail:
     lda.w !wram_1A6C
     sta.b !random_e6

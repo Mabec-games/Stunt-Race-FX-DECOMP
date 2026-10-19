@@ -386,7 +386,7 @@ ObjectPaceCarStart:
 ; code at $08:CD7E. At $1F71 = 2: the record's +$1C gets bit 4, its +$24
 ; bits 5 and 3, its Y + $B1E0, and its handler cleared.
 ; HOW: 16-bit record words through $70:0000 + its +$22; the code at
-; $08:CD7E runs as original code.
+; $08:CD7E is a JSL and an RTL.
 ; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; Y = the object; as
 ; the code at $08:CD7E leaves it, or A low byte 0 after the clear.
 %at($08EF19)
@@ -2869,7 +2869,7 @@ ObjectParentRecordBit8:
 ; spray. Last its +$24 bit 5 follows +$25 bits 2 and 7 and bit 6 the
 ; link chain's end (bit 14).
 ; HOW: The car in $1F18; the record in X; the latches through $1A5D; the
-; code at $08:A034 runs as original code.
+; code at $08:A034 is CarCrashParts.
 ; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; X = the object.
 %at($08C124)
 PlayerCarEvents:
@@ -4072,8 +4072,7 @@ CameraPointFromTable:
 ; four parts made ($08:9C4F); +$36 = 3.
 ; HOW: NOP, then the shared start at $08:9C4F. With no record in hand
 ; ($70:2476 = 0) the start branches to 08:9DA8 with M still 16-bit, so
-; its LDA #$03, STA $2036,X run as LDA #$9D03, ROL $20,X: that path runs
-; as the original.
+; its LDA #$03, STA $2036,X run as LDA #$9D03, ROL $20,X before the RTL.
 ; Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte 3.
 %at($089BD9)
 ObjectRingStartZ:
@@ -5310,7 +5309,7 @@ CameraDirectorPath:
 ; WHAT IT DOES: The replay camera behind the car: mode $21, target offset
 ; (0, -$8C, -$1F4), the code at $08:8F03, handler $08:8EA2
 ; (CameraDirectorWait) with count $50; then its first frame.
-; HOW: Falls into CameraDirectorWait; $08:8F03 runs as original code.
+; HOW: Falls into CameraDirectorWait; $08:8F03 is CameraSnapToCar.
 ; Entry: M 8-bit, X 16-bit; X = object. Exit: as CameraDirectorWait.
 %at($088E5D)
 CameraDirectorBehind:

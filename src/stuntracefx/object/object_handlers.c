@@ -2554,7 +2554,7 @@ static void snd16(uint16_t s)
  * spray. Last its +$24 bit 5 follows +$25 bits 2 and 7 and bit 6 the
  * link chain's end (bit 14).
  * HOW: The car in $1F18; the record in X; the latches through $1A5D; the
- * code at $08:A034 runs as original code.
+ * code at $08:A034 is CarCrashParts.
  * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; X = the object.
  */
 void abi_PlayerCarEvents(void)
@@ -3346,8 +3346,18 @@ static void ring_spawn(void)
     if (!cpu.a) {
         /* With no matched record the original branches to 08:9DA8 with M
            still 16-bit, where LDA #$03, STA $2036,X decode as LDA #$9D03,
-           ROL $20,X, then the RTL: run as the original. */
-        jump_routine(0x089DA8);
+           ROL $20,X (a word, direct page), then the RTL. */
+        uint16_t at, w;
+
+        cpu.a = 0x9D03;
+        cpu.p = nz16(cpu.p, 0x9D03);
+        at = (uint16_t)(cpu.d + 0x20 + cpu.x);
+        w = rd16(at);
+        v = (uint8_t)(cpu.p & P_C);
+        cpu.p = (uint8_t)((cpu.p & ~P_C) | (w >> 15));
+        w = (uint16_t)(w << 1 | v);
+        wr16(at, w);
+        cpu.p = nz16(cpu.p, w);
         return;
     }
     cpu.x = cpu.a;
@@ -3412,9 +3422,10 @@ static void ring_start(uint8_t h, uint16_t vx, uint16_t vy, uint16_t vz)
  * four parts made ($08:9C4F); +$36 = 3.
  * HOW: NOP, then the shared start at $08:9C4F. With no record in hand
  * ($70:2476 = 0) the start branches to 08:9DA8 with M still 16-bit, so
- * its LDA #$03, STA $2036,X run as LDA #$9D03, ROL $20,X: that path runs
- * as the original.
- * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte 3.
+ * its LDA #$03, STA $2036,X run as LDA #$9D03, ROL $20,X (direct page,
+ * a word) before the RTL.
+ * Entry: M 8-bit, X 16-bit; X = object. Exit: M 8-bit; A low byte 3; on
+ * the no-record path M 16-bit, A = $9D03, the flags from the ROL.
  */
 void abi_ObjectRingStartZ(void)
 {
@@ -4229,7 +4240,7 @@ void abi_CameraDirectorWait(void)
  * WHAT IT DOES: The replay camera behind the car: mode $21, target offset
  * (0, -$8C, -$1F4), the code at $08:8F03, handler $08:8EA2
  * (CameraDirectorWait) with count $50; then its first frame.
- * HOW: Falls into CameraDirectorWait; $08:8F03 runs as original code.
+ * HOW: Falls into CameraDirectorWait; $08:8F03 is CameraSnapToCar.
  * Entry: M 8-bit, X 16-bit; X = object. Exit: as CameraDirectorWait.
  */
 void abi_CameraDirectorBehind(void)

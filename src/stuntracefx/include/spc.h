@@ -53,11 +53,17 @@ static inline void spc_call(void (*abi)(void), uint16_t ret)
     abi();
 }
 
-/* A jump from the C into code that stays original (the driver's reload
-   loop, its start, the IPL ROM): the call ends here, as the checks end it
-   at the original's first instruction at `addr` (hybrid.py lists every
-   literal address passed). Write the address as a literal (0x0675). */
-void spc_jump_original(uint16_t addr);
+/* The driver jumps to `at`, code that never comes back to what called it
+   (the reload loop at $0675, which ends by restarting the driver): every
+   C frame of the calls under it is gone, and `entry`, the C of the code at
+   `at`, runs from there. Write the address as a literal (0x0675); the
+   checks end the call there and take `entry` on its own. */
+void spc_restart(uint16_t at, void (*entry)(void));
+
+/* JMP $FFC0: the console's boot ROM (the SPC700's own, not the game's): it
+   takes the next upload from the S-CPU by its transfer protocol and runs
+   it. Never returns. */
+void spc_boot_rom(void);
 
 /* RET: the return address pulled (low byte first); the checks end the call
    at it. */

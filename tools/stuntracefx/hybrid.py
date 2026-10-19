@@ -165,16 +165,17 @@ def main(src=None, lib=None):
         t.write('const uint32_t sfx_catalog[] = {%s0};\nconst int sfx_catalog_count = %d;\n'
                 % (''.join('0x%s, ' % a for a in entries), len(entries)))
         # Code the C reaches with call_routine, jump_routine or
-        # jump_original_code that the original enters by a jump (a BRL or
+        # cpu_loop_forever or cpu_restart that the original enters by a jump (a BRL or
         # JML tail jump, as BigSpritesRow6 to 07:9EE9), not as a
         # catalogued routine: the lockstep run marks those entries too.
         known = {int(a, 16) for a in entries}
-        jumps = sorted({int(m, 16) for f in files for m in re.findall(r'(?:call_routine|jump_routine|jump_routine_pushed|jump_original_code)\(0x([0-9A-Fa-f]{6})', open(f).read())} - known)
+        jumps = sorted({int(m, 16) for f in files for m in re.findall(r'(?:call_routine|jump_routine|jump_routine_pushed|cpu_loop_forever|cpu_restart)\(0x([0-9A-Fa-f]{6})', open(f).read())} - known)
         t.write('const uint32_t sfx_jump_entries[] = {%s0};\nconst int sfx_jump_entry_count = %d;\n'
                 % (''.join('0x%06X, ' % a for a in jumps), len(jumps)))
-        # SPC700 code the C jumps into as original code (spc_jump_original):
+        # SPC700 code the C ends at (spc_restart, spc_boot_rom at $FFC0):
         # the checks end a call there.
-        sj = sorted({int(m, 16) for f in files for m in re.findall(r'spc_jump_original\(0x([0-9A-Fa-f]{4})\)', open(f).read())})
+        sj = sorted({int(m, 16) for f in files for m in re.findall(r'spc_restart\(0x([0-9A-Fa-f]{4})', open(f).read())}
+                    | ({0xFFC0} if any('spc_boot_rom()' in open(f).read() for f in files) else set()))
         t.write('const uint16_t sfx_spc_jump_entries[] = {%s0};\nconst int sfx_spc_jump_entry_count = %d;\n'
                 % (''.join('0x%04X, ' % a for a in sj), len(sj)))
     cmd = ['cc', '-O2', '-Wall', '-Wextra', '-std=c99', '-shared', '-fPIC', '-undefined', 'dynamic_lookup',

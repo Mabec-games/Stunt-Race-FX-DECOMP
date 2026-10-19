@@ -569,6 +569,8 @@ void abi_GsuF441Player1(void);
 void abi_GsuF441Player2(void);
 void abi_OamStagePause(void);
 void abi_OamStagePause2(void);
+void abi_OamStagePauseLoop(void);
+void abi_OamStagePause2Loop(void);
 void abi_PauseOnStart(void);
 void abi_RaceFinishPhases10(void);
 void abi_RaceFinishPhases0E(void);
@@ -1592,9 +1594,9 @@ static void pause_stage_ten(uint32_t b)
  * (GsuF15BThree); counts $0E58 down, at its end sets $0D2E = 1, slides the
  * window up and sets $0D2F and the delay $0D5F to 8; then counts the delay
  * down, and at its end sets $0D2F = $0D2D = $A and runs pad 2's pause loop
- * (07:BB7C, in OamStagePause2).
- * HOW: 8-bit; the pause loop is a jump that leaves through the caller's
- * frame.
+ * (OamStagePause2Loop, 07:BB7C).
+ * HOW: 8-bit; the pause loop is a jump (its end leaves through the
+ * caller's frame).
  * Entry: D = $0000. Exit: as the path leaves it.
  */
 void abi_PauseResultsP2(void)
@@ -1621,7 +1623,7 @@ void abi_PauseResultsP2(void)
         return;
     }
     pause_stage_ten(b);
-    jump_routine(0x07BB7C);
+    abi_OamStagePause2Loop();
 }
 
 void abi_GsuF15BFourA(void);
@@ -1643,7 +1645,7 @@ void abi_PhaseGlyphsFourB(void)
 /* 07:EB51: the paused results: counts $0E58 down, at its end sound $51,
    $0D2E cleared, the window slid up, $0D2F = 8, the delay $0D5F = $14;
    then counts the delay down; at its end the time-up sound $30 at 9:59,
-   $0D2F = $0D2D = $A and pad 1's pause loop (07:BB16, in OamStagePause). */
+   $0D2F = $0D2D = $A and pad 1's pause loop (OamStagePauseLoop, 07:BB16). */
 static void pause_results(void)
 {
     uint32_t b = (uint32_t)cpu.db << 16;
@@ -1680,7 +1682,7 @@ static void pause_results(void)
         }
     }
     pause_stage_ten(b);
-    jump_routine(0x07BB16);
+    abi_OamStagePauseLoop();
 }
 
 /*
@@ -1702,9 +1704,9 @@ void abi_PauseResultsFourB(void)
  * (GsuF15BThree); counts $0E58 down, at its end sound $51, $0D2E cleared,
  * the window slid up, $0D2F = 8 and the delay $0D5F = $14; then counts the
  * delay down; at its end sound $30 on port 0 when the time is 9:59,
- * $0D2F = $0D2D = $A and pad 1's pause loop (07:BB16, in OamStagePause).
- * HOW: 8-bit; the pause loop is a long jump that leaves through the
- * caller's frame. The 9:59 sound is not reached in the traces so far.
+ * $0D2F = $0D2D = $A and pad 1's pause loop (OamStagePauseLoop, 07:BB16).
+ * HOW: 8-bit; the pause loop is a long jump (its end leaves through the
+ * caller's frame). The 9:59 sound is not reached in the traces so far.
  * Entry: D = $0000. Exit: as the path leaves it.
  */
 void abi_PauseResults(void)
@@ -1812,6 +1814,10 @@ static void apu_upload(uint16_t a, uint16_t y)
     cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
 }
 
+void abi_BootWarm(void);
+void abi_BootWarmRace(void);
+void abi_BootWarmAttract(void);
+
 /*
  * @routine 07:EBE9 SoftResetToBootWarm
  * WHAT IT DOES: Restarts the game after the race: the screen blanked, the
@@ -1819,8 +1825,8 @@ static void apu_upload(uint16_t a, uint16_t y)
  * of $F3B5, $1E) and blocks $1B ($85F8) and $19 ($9A98) uploaded, each
  * after command 5 on APU port 1 and a delay; SoundReset, 1 to APU port 0;
  * then BootWarm.
- * HOW: Delay loops of $4000 counts of A; P saved around each step; BootWarm
- * resets the stack, so it runs as original code.
+ * HOW: Delay loops of $4000 counts of A; P saved around each step; a long
+ * jump to BootWarm, which resets the stack (cpu_restart).
  * Entry: any widths. Exit: never returns.
  */
 void abi_SoftResetToBootWarm(void)
@@ -1848,21 +1854,21 @@ void abi_SoftResetToBootWarm(void)
     lda8_imm(0x01);
     wr8(0x002140, 0x01);
     cpu.p &= (uint8_t)~P_I;
-    jump_original_code(0x038BAA);
+    cpu_restart(0x038BAA, abi_BootWarm);
 }
 
 /*
  * @routine 07:EC6B RaceRestart
  * WHAT IT DOES: Runs the race again: the screen blanked, the NMI, DMA and
  * HDMA off, then on in BootWarm at 03:8BCD (the stack reset, RaceLoop).
- * HOW: A long jump into BootWarm, which resets the stack, so it runs as
- * original code.
+ * HOW: A long jump into BootWarm (BootWarmRace), which resets the stack
+ * (cpu_restart).
  * Entry: any widths. Exit: never returns.
  */
 void abi_RaceRestart(void)
 {
     screen_off();
-    jump_original_code(0x038BCD);
+    cpu_restart(0x038BCD, abi_BootWarmRace);
 }
 
 /*
@@ -1876,7 +1882,7 @@ void abi_RaceRestart(void)
 void abi_RaceEndToAttract(void)
 {
     screen_off();
-    jump_original_code(0x038BF8);
+    cpu_restart(0x038BF8, abi_BootWarmAttract);
 }
 
 /*

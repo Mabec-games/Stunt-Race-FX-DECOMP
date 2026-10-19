@@ -6032,7 +6032,7 @@ L1AE9:
     /* 1AE9 call $1AEF */
     spc_call(abi_SpcKeyOffAll, 0x1AEC);
     /* 1AEC jmp $0675 */
-    { spc_jump_original(0x0675); return; }
+    { spc_restart(0x0675, abi_SpcReload); return; }
 L1AFF:
     /* 1AFF call $1A83 */
     spc_call(abi_SpcSfxStopAll, 0x1B02);
@@ -6069,7 +6069,7 @@ L1B15:
     /* 1B1D mov.w $00F1,a */
     spc_st(0x00F1, spc.a);
     /* 1B20 jmp $FFC0 */
-    { spc_jump_original(0xFFC0); return; }
+    { spc_boot_rom(); return; }
 L1B23:
     /* 1B23 mov.b a,$20 */
     spc.a = spc_nz(spc_rd(spc_dp(0x20)));
@@ -6465,7 +6465,7 @@ L1AE9:
     /* 1AE9 call $1AEF */
     spc_call(abi_SpcKeyOffAll, 0x1AEC);
     /* 1AEC jmp $0675 */
-    { spc_jump_original(0x0675); return; }
+    { spc_restart(0x0675, abi_SpcReload); return; }
 L1AF6:
     /* 1AF6 mov.b a,$59 */
     spc.a = spc_nz(spc_rd(spc_dp(0x59)));
@@ -6486,7 +6486,7 @@ L1B15:
     /* 1B1D mov.w $00F1,a */
     spc_st(0x00F1, spc.a);
     /* 1B20 jmp $FFC0 */
-    { spc_jump_original(0xFFC0); return; }
+    { spc_boot_rom(); return; }
 }
 
 /*
@@ -9275,7 +9275,7 @@ L1AE9:
     /* 1AE9 call $1AEF */
     spc_call(abi_SpcKeyOffAll, 0x1AEC);
     /* 1AEC jmp $0675 */
-    { spc_jump_original(0x0675); return; }
+    { spc_restart(0x0675, abi_SpcReload); return; }
 L1B15:
     /* 1B15 call $1AEF */
     spc_call(abi_SpcKeyOffAll, 0x1B18);
@@ -9286,7 +9286,7 @@ L1B15:
     /* 1B1D mov.w $00F1,a */
     spc_st(0x00F1, spc.a);
     /* 1B20 jmp $FFC0 */
-    { spc_jump_original(0xFFC0); return; }
+    { spc_boot_rom(); return; }
 }
 
 /*

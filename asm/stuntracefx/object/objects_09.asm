@@ -1439,8 +1439,8 @@ ObjectSkyBallLaunch:
 ; the first time (+$25 bit 0) it drops a ball (kind $B7A8, handler
 ; $09:9634, ObjectBallDrop) and keeps falling ($180 back, $1E up, +$14
 ; toward $F8); rebucketed each frame.
-; HOW: A 16-bit compare (BEQ or BMI); ApproachQuarterMin4, 03:CDC1 and
-; 03:D07C (original code) ease the moves. Reached only by
+; HOW: A 16-bit compare (BEQ or BMI); ApproachQuarterMin4, ApproachHalfMin2 (03:CDC1)
+; and ApproachSixteenthMin16Byte (03:D07C) ease the moves. Reached only by
 ; unit_objects_09.
 ; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket.
 %at($099520)
@@ -2179,7 +2179,7 @@ ObjectCannonBallsRight:
 ; (+$27; X and Z eased to the gate's, then its drift +$2B and rise +$29
 ; added), then it flies off ($100 a frame along X, drifting) until its life
 ; +$0A runs out; rebucketed.
-; HOW: ApproachQuarterMin4, 03:CDC1 (original code), ObjectRelease,
+; HOW: ApproachQuarterMin4, ApproachHalfMin2 (03:CDC1), ObjectRelease,
 ; ObjectRebucket. Reached only by unit_objects_09.
 ; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as ObjectRebucket.
 %at($099ACB)
@@ -11281,8 +11281,8 @@ ObjectSlideGateUpRecord:
 ; plays sound $10 the first time; +$25 bits 0 and 1 mark in and out.
 ; HOW: ObjectSyncFromRecord, RecordContactSummary; the out mark's +$25
 ; accesses are words (M 16-bit). A hit while held and no hit while
-; flashing reach code with the other register width (09:EC71, 09:ECB9),
-; which runs as the original.
+; flashing reach code with the other register width (09:EC71, 09:ECB9):
+; its operand bytes run as other instructions.
 ; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as the path leaves
 ; it.
 %at($09EC2A)

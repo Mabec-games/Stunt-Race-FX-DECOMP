@@ -8,6 +8,8 @@
 #include "spc.h"
 #include "spc_ops.h"
 
+void abi_SpcReload(void);
+
 void abi_SpcBSfxFrame(void);
 void abi_SpcBPortRemap(void);
 void abi_SpcBChannelGuards(void);
@@ -2532,7 +2534,7 @@ L19F5:
     /* 19F5 call $19FB */
     spc_call(abi_SpcBKeyOffAll, 0x19F8);
     /* 19F8 jmp $0675 */
-    { spc_jump_original(0x0675); return; }
+    { spc_restart(0x0675, abi_SpcReload); return; }
 L1A0B:
     /* 1A0B call $198F */
     spc_call(abi_SpcBSfxStopAll, 0x1A0E);
@@ -2569,7 +2571,7 @@ L1A21:
     /* 1A29 mov.w $00F1,a */
     spc_st(0x00F1, spc.a);
     /* 1A2C jmp $FFC0 */
-    { spc_jump_original(0xFFC0); return; }
+    { spc_boot_rom(); return; }
 L162A:
     /* 162A clr1 $29.4 */
     spc_bit_set(0x29, 4, 0);
@@ -2933,7 +2935,7 @@ L19F5:
     /* 19F5 call $19FB */
     spc_call(abi_SpcBKeyOffAll, 0x19F8);
     /* 19F8 jmp $0675 */
-    { spc_jump_original(0x0675); return; }
+    { spc_restart(0x0675, abi_SpcReload); return; }
 L1A02:
     /* 1A02 mov.b a,$59 */
     spc.a = spc_nz(spc_rd(spc_dp(0x59)));
@@ -2954,7 +2956,7 @@ L1A21:
     /* 1A29 mov.w $00F1,a */
     spc_st(0x00F1, spc.a);
     /* 1A2C jmp $FFC0 */
-    { spc_jump_original(0xFFC0); return; }
+    { spc_boot_rom(); return; }
 }
 
 /*
@@ -5723,7 +5725,7 @@ L19F5:
     /* 19F5 call $19FB */
     spc_call(abi_SpcBKeyOffAll, 0x19F8);
     /* 19F8 jmp $0675 */
-    { spc_jump_original(0x0675); return; }
+    { spc_restart(0x0675, abi_SpcReload); return; }
 L1A21:
     /* 1A21 call $19FB */
     spc_call(abi_SpcBKeyOffAll, 0x1A24);
@@ -5734,7 +5736,7 @@ L1A21:
     /* 1A29 mov.w $00F1,a */
     spc_st(0x00F1, spc.a);
     /* 1A2C jmp $FFC0 */
-    { spc_jump_original(0xFFC0); return; }
+    { spc_boot_rom(); return; }
 }
 
 /*

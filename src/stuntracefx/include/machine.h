@@ -78,8 +78,11 @@ static inline uint8_t nz8(uint8_t p, uint8_t v)
 /* Call the routine at `addr` (a JSL when `long_call`, else a JSR) with the
    register file in `cpu` as its entry state, leaving its exit state there:
    how the C makes the calls the original makes through an address it
-   computes (handler tables, addresses pushed for an RTL). A routine with C
-   runs its abi_ wrapper; one without runs as original code. */
+   computes (handler tables, addresses pushed for an RTL): the abi_
+   wrapper of the routine with C that starts there. (Every routine has C;
+   the verification harness fails a run in which C reaches an address where
+   none starts. A computed address past a table's end, which the game
+   never makes, is the original's own runaway.) */
 void call_routine(uint32_t addr, int long_call);
 /* The original JMPs to addr (a jump table's handler, a tail jump): run it
    in the calling routine's own frame, to wherever it leaves that frame (its
@@ -88,11 +91,18 @@ void jump_routine(uint32_t addr);
 /* As jump_routine, for code the original reaches with values it pushed
    first (PHP, PHB...) still on the stack: pushed[0] the first pushed. */
 void jump_routine_pushed(uint32_t addr, const uint8_t *pushed, int n);
-/* The original jumps to addr: run it as original code, even where a
-   routine with C starts there. For a branch to itself (an idle loop makes
-   no access, so a C loop would give the timeline nothing to move on by),
-   and for code that resets the stack (BootWarm), which ends the call it
-   runs in: the hybrid then follows the original's calls from there. */
-void jump_original_code(uint32_t addr);
+/* A branch to itself (BRA to its own address, at `at`): the CPU never goes
+   on. It makes no access, so nothing changes but time; the interrupts the
+   machine raises still run between its passes. Never returns. (`at` is
+   where the loop is: the verification harness finds it in the original's
+   record there.) */
+void cpu_loop_forever(uint32_t at);
+/* The original jumps to `at`, code that resets the stack (LDX #$02FF,
+   TXS): every frame of the calls under it is gone, the C's own included,
+   and `entry`, the C of the code at `at`, runs from there with the
+   registers in `cpu`. Never returns. (The verification harness ends the call it
+   runs in there and follows the original from `at`; `entry` is checked on
+   its own, by unit calls.) */
+void cpu_restart(uint32_t at, void (*entry)(void));
 
 #endif

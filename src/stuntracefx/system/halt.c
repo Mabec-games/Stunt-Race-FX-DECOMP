@@ -70,13 +70,12 @@ void abi_SystemHaltSpawn(void)
 /*
  * @routine 0B:E21F Hang
  * WHAT IT DOES: Stops the game: a branch to itself, for ever.
- * HOW: BRA to its own address (in the C, that branch run as original
- * code: jump_original_code). Never returns.
+ * HOW: BRA to its own address (cpu_loop_forever). Never returns.
  * Entry: any. Exit: does not return.
  */
 void Hang(void)
 {
-    jump_original_code(0x0BE21F);
+    cpu_loop_forever(0x0BE21F);
 }
 
 void abi_Hang(void)

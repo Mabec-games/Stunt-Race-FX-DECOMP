@@ -197,10 +197,23 @@ uint8_t spc_rd(uint16_t a)
 static jmp_buf live_abort;
 static void live_jump(uint16_t addr);
 
-void spc_jump_original(uint16_t addr)
+/* The C's jump to code it does not follow (spc.h): the call ends there,
+   and the core runs on from addr. */
+static void spc_jump_original(uint16_t addr)
 {
     if (live) live_jump(addr);
     if (c_running) { c_jumped = addr; longjmp(c_abort, 1); }
+}
+
+void spc_restart(uint16_t at, void (*entry)(void))
+{
+    (void)entry;
+    spc_jump_original(at);
+}
+
+void spc_boot_rom(void)
+{
+    spc_jump_original(0xFFC0);
 }
 
 void spc_wr(uint16_t a, uint8_t v)

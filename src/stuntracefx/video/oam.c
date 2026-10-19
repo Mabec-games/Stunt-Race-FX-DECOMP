@@ -1800,7 +1800,7 @@ void abi_OamFillEvery4(void)
 }
 
 /* JMP ($BB3C,X) / ($BBA2,X) with X = $0D2F after SEP #$30: the handler
-   from the table, reached as original code. */
+   from the table (jump_routine). */
 static void oam_stage_dispatch(uint32_t table)
 {
     op_sep(P_M | P_X);
@@ -1898,6 +1898,40 @@ void abi_OamWordRow5(void)
 void abi_SoundPort1QueuePush(void);
 void abi_OamHighBits18(void);
 
+/* The pause's frames: each waits for $0D52 (set in the vertical blank),
+   clears it, runs the stage's handler and clears both pads' presses,
+   until $0D2D is 0. */
+static void stage_loop(uint32_t b, void (*dispatch)(void))
+{
+    do {
+        do {
+            op_sep(P_M);
+            op_lda8(b | 0x0D52);
+        } while (!(uint8_t)cpu.a);
+        wr8(b | 0x0D52, 0x00);
+        dispatch();
+        op_rep(P_M);
+        wr16(b | 0x0D1A, 0x0000);
+        wr16(b | 0x0D1C, 0x0000);
+        op_sep(P_M);
+        op_lda8(b | 0x0D2D);
+    } while ((uint8_t)cpu.a);
+}
+
+/* PLP, RTS through the stack as it is: P, then the return address in the
+   program bank $07; the caller's frame is left (cpu.unwound). */
+static void plp_rts(void)
+{
+    uint16_t ret;
+
+    op_plp(rd8((uint16_t)(cpu.s + 1)));
+    cpu.s = (uint16_t)(cpu.s + 1);
+    ret = rd16((uint16_t)(cpu.s + 1));
+    cpu.s = (uint16_t)(cpu.s + 2);
+    cpu.pc = 0x070000u | (uint16_t)(ret + 1);
+    cpu.unwound = 1;
+}
+
 /*
  * @routine 07:BAE6 OamStagePause
  * WHAT IT DOES: When Select was pressed ($0D1A bit 12): $0D2E = 0, sound
@@ -1942,20 +1976,30 @@ void abi_OamStagePause(void)
     cpu.a = (uint16_t)(cpu.a & 0xFF00);
     cpu.p = nz8(cpu.p, 0);
     wr8(b | 0x0D2F, 0x00);
-    do {
-        do {
-            op_sep(P_M);
-            op_lda8(b | 0x0D52);
-        } while (!(uint8_t)cpu.a);
-        wr8(b | 0x0D52, 0x00);
-        abi_OamStageDispatchBB3C();
-        op_rep(P_M);
-        wr16(b | 0x0D1A, 0x0000);
-        wr16(b | 0x0D1C, 0x0000);
-        op_sep(P_M);
-        op_lda8(b | 0x0D2D);
-    } while ((uint8_t)cpu.a);
+    stage_loop(b, abi_OamStageDispatchBB3C);
     op_plp(p0);
+}
+
+/*
+ * @routine 07:BB16 OamStagePauseLoop
+ * WHAT IT DOES: OamStagePause's frames from inside: each frame (waiting
+ * for $0D52 from the vertical blank) the stage's handler
+ * (OamStageDispatchBB3C) with both pads' presses cleared, until $0D2D is
+ * 0; then the PLP and RTS of OamStagePause, taking P and the return
+ * address from whatever the stack holds. PauseResults jumps here (its
+ * stage $A); the stages after it leave by RaceRestart or RaceEndToAttract,
+ * which reset the stack, so in play this end is not reached in the traces
+ * so far (from PauseResults it would pull the low byte of RaceSoundsPlayer's
+ * JSR as P).
+ * HOW: As OamStagePause's loop; the PLP and RTS through the stack, so the
+ * routine leaves through its caller's frame (cpu.unwound).
+ * Entry: data bank $07; D = $0000. Exit: P pulled; S 3 higher; pc where
+ * the RTS lands.
+ */
+void abi_OamStagePauseLoop(void)
+{
+    stage_loop((uint32_t)cpu.db << 16, abi_OamStageDispatchBB3C);
+    plp_rts();
 }
 
 void abi_GsuCF42To3000(void);
@@ -2147,20 +2191,22 @@ void abi_OamStagePause2(void)
     cpu.a = (uint16_t)(cpu.a & 0xFF00);
     cpu.p = nz8(cpu.p, 0);
     wr8(b | 0x0D2F, 0x00);
-    do {
-        do {
-            op_sep(P_M);
-            op_lda8(b | 0x0D52);
-        } while (!(uint8_t)cpu.a);
-        wr8(b | 0x0D52, 0x00);
-        abi_OamStageDispatchBBA2();
-        op_rep(P_M);
-        wr16(b | 0x0D1A, 0x0000);
-        wr16(b | 0x0D1C, 0x0000);
-        op_sep(P_M);
-        op_lda8(b | 0x0D2D);
-    } while ((uint8_t)cpu.a);
+    stage_loop(b, abi_OamStageDispatchBBA2);
     op_plp(p0);
+}
+
+/*
+ * @routine 07:BB7C OamStagePause2Loop
+ * WHAT IT DOES: OamStagePause2's frames from inside, as
+ * OamStagePauseLoop with the stage table at $07:BBA2
+ * (OamStageDispatchBBA2): PauseResultsP2 jumps here.
+ * HOW: As OamStagePauseLoop.
+ * Entry: as OamStagePauseLoop. Exit: as OamStagePauseLoop.
+ */
+void abi_OamStagePause2Loop(void)
+{
+    stage_loop((uint32_t)cpu.db << 16, abi_OamStageDispatchBBA2);
+    plp_rts();
 }
 
 /* OverlaySpritesStep's state 0: the overlay at (154, 106), plain, state

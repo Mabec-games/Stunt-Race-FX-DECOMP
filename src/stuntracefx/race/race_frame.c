@@ -1278,6 +1278,7 @@ void abi_WaitScanline(void);
 void abi_SpriteSlotFirstLong(void);
 void abi_RaceHudLoad(void);
 void abi_ViewParamsByPlayers(void);
+uint16_t ViewSetupTail(uint8_t bank);
 
 /*
  * @routine 7E:F29F AttractViewStart
@@ -1285,7 +1286,7 @@ void abi_ViewParamsByPlayers(void);
  * WHAT IT DOES: Starts the attract race's view: $70:01D0 = $1234, $70:01C4 =
  * 1, $70:108C = the players ($0D62), direct page $A0 = $80, $05EF = $FF and
  * $00 = 0, the view's parameters for the players (ViewParamsByPlayers), then
- * on at 03:AE73, which returns to this routine's caller.
+ * on in ViewSetupTail (03:AE73), which returns to this routine's caller.
  * HOW: Run from its ROM copy at $02:CFC6 (the JSR reaches $02:D410, the
  * copy of ViewParamsByPlayers); P pushed first, a long jump to finish.
  * Entry: any widths; D = $0000. Exit: as 03:AE73 leaves it.
@@ -1312,8 +1313,12 @@ void abi_AttractViewStart(void)
     wr8((uint16_t)cpu.d, 0x00);
     op_sep(P_M | P_X);
     abi_ViewParamsByPlayers();
-    /* 03:AE73 ends with the PLP of this routine's PHP. */
-    jump_routine_pushed(0x03AE73, pushed, 1);
+    /* the long jump to ViewSetupTail (03:AE73), whose PLP is of this
+       routine's PHP */
+    cpu.a = ViewSetupTail(cpu.db);
+    cpu.x = 0x0080;
+    cpu.y = 0x0000;
+    op_plp(pushed[0]);
 }
 
 /*

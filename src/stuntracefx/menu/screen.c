@@ -1263,6 +1263,8 @@ void abi_DemoRunFirst(void);
 void abi_DemoRunSecond(void);
 void abi_DemoRunFourth(void);
 
+void abi_BootWarm(void);
+
 /*
  * @routine 0B:AF10 TitleScreenLoop
  * WHAT IT DOES: The title screen's frames: each runs the objects and builds
@@ -1274,7 +1276,7 @@ void abi_DemoRunFourth(void);
  * cleared and frame updates 0-3 asked for each frame; the menu's exit
  * ($11EB) leaves with A = 0.
  * HOW: The idle object through direct page + X; a branch back for the next
- * frame. BootWarm resets the stack, so it runs as original code.
+ * frame. BootWarm resets the stack (cpu_restart).
  * Entry: M 16-bit, X 16-bit; D = $0000. Exit: A = 0 or $FFFF; M 16-bit, X
  * 16-bit; or BootWarm, which never returns.
  */
@@ -1332,7 +1334,7 @@ void abi_TitleScreenLoop(void)
                         op_lda16_imm(0xFFFF);
                         return;
                     }
-                    jump_original_code(0x038BAA);
+                    cpu_restart(0x038BAA, abi_BootWarm);
                     return;
                 }
             }

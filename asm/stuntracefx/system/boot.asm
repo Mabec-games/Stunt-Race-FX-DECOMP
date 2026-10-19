@@ -267,6 +267,14 @@ BootWarm:
     jsl.l CourseMenuRun
     jsl.l RaceModeSetup
     jsl.l Set7EFFA6Sequence
+
+; @routine 03:8BCD BootWarmRace
+; WHAT IT DOES: BootWarm from its race (RaceRestart's way back in): the
+; screen blanked and HDMA off, interrupts off, the stack reset, sound on,
+; RaceLoop; then on as BootWarm.
+; HOW: Entered by RaceRestart's JML. Never returns.
+; Entry: any. Exit: never returns.
+%at($038BCD)
 .race:
     phk
     plb
@@ -287,6 +295,14 @@ BootWarm:
     sta.w !INIDISP
     sei
     jsl.l RaceVideoInit
+
+; @routine 03:8BF8 BootWarmAttract
+; WHAT IT DOES: BootWarm from its attract race (RaceEndToAttract's way back
+; in): the screen blanked, HDMA and interrupts off, the stack reset, the
+; attract race set up and run for ever.
+; HOW: Entered by RaceEndToAttract's JML. Never returns.
+; Entry: any. Exit: never returns.
+%at($038BF8)
 .attract:
     phk
     plb

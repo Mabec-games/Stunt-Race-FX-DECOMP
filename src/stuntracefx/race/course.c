@@ -1769,8 +1769,8 @@ void abi_CourseRecordsDispatch(void)
     }
 }
 
-/* JMP (table,X) with X = $0D40 (8-bit): the state's step; the targets
-   without C run as original code. */
+/* JMP (table,X) with X = $0D40 (8-bit): the state's step; any other word
+   (a state past the table's end) through jump_routine. */
 static void screen_state(uint32_t b, uint16_t table)
 {
     cpu.x = rd8(b | 0x0D40);

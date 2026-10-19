@@ -237,8 +237,8 @@ static void run_cmp8(uint8_t v, uint8_t m)
  * rows (BackdropRowsUpdate), value A (HudDrawValueA) and the colour work
  * at $7E:E34F; with $0D62 set, the backdrop scroll (BackdropScrollFromView)
  * and value C for screen buffer 1 ($0D7F), else value B.
- * HOW: 8-bit tests; long loads of $0D2B and $0D7F; $7E:E34F is reached as
- * original code (call_routine) until it has C.
+ * HOW: 8-bit tests; long loads of $0D2B and $0D7F; $7E:E34F (HudColourStep)
+ * through call_routine.
  * Entry: any widths; D = $0000. Exit: as the last call leaves it.
  */
 void abi_HudFrameWhileGsuRuns(void)

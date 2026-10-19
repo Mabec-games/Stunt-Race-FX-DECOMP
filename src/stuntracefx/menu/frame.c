@@ -167,8 +167,7 @@ static void menu_frame(void)
 /* MenuRegionCheck's PAL stop (from 0B:AE58), with DB = 0: the kind $0F
    object's animation $1E at Y $60, +$10 of the kind $10 object cleared,
    the objects run and the sprite table built once, frame updates 0-3
-   asked for, then the loop for ever (its branch to itself at 0B:AE8A run
-   as original code). */
+   asked for, then the branch to itself at 0B:AE8A for ever. */
 static void region_stop(void)
 {
     uint16_t x;
@@ -186,7 +185,7 @@ static void region_stop(void)
     MenuActorsRun();
     cpu.a = MenuOamBuild(&cpu.x, &cpu.y);
     wr8(0x0011D7, (uint8_t)(rd8(0x0011D7) | 0x0F));
-    jump_original_code(0x0BAE8A);
+    cpu_loop_forever(0x0BAE8A);
 }
 
 /*

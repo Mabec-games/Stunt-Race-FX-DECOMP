@@ -997,9 +997,8 @@ void abi_TimesKeepAndAdvance(void)
  * override $0D4C set, clears it, sets $0D48 = 2 and goes on at $07:EC6B;
  * without it at $07:EBDD (decoded from the ROM bytes and not reached in the
  * traces so far). Otherwise nothing (not reached either).
- * HOW: 8-bit tests through the data bank; the two continuations are jumps,
- * reached as original code (jump_routine); $07:EC6B leaves through the
- * caller's frame.
+ * HOW: 8-bit tests through the data bank; the two continuations are jumps
+ * (jump_routine: RaceRestart, RaceEndLeave); RaceRestart never returns.
  * Entry: any widths. Exit: M 8-bit; as the continuation leaves it.
  */
 void abi_WindowClosedDigitStep(void)

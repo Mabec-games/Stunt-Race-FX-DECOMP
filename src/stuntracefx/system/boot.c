@@ -229,9 +229,9 @@ static void boot_dma(uint32_t b, uint16_t to, uint8_t wbank, uint8_t from_bank, 
     wr8(b | MDMAEN, 0x01);
 }
 
-enum { BOOT_COLD, BOOT_START, BOOT_WARM, BOOT_SOFT, BOOT_SOFT_REST };
+enum { BOOT_COLD, BOOT_START, BOOT_WARM, BOOT_RACE, BOOT_ATTRACT, BOOT_SOFT, BOOT_SOFT_REST };
 
-/* The boot's code from one of its four entries; none returns. */
+/* The boot's code from one of its entries; none returns. */
 static void boot_run(int from)
 {
     uint32_t b = 0x030000;
@@ -242,6 +242,10 @@ static void boot_run(int from)
         goto start;
     case BOOT_WARM:
         goto warm;
+    case BOOT_RACE:
+        goto race;
+    case BOOT_ATTRACT:
+        goto attract;
     case BOOT_SOFT:
         goto soft;
     case BOOT_SOFT_REST:
@@ -322,6 +326,7 @@ warm:
     abi_CourseMenuRun();
     abi_RaceModeSetup();
     abi_Set7EFFA6Sequence();
+race:
     boot_bank03();
     boot_blank(b);
     boot_stack();
@@ -343,6 +348,7 @@ warm:
     b = (uint32_t)cpu.db << 16;
     boot_blank(b);
     abi_RaceVideoInit();
+attract:
     boot_bank03();
     b = 0x030000;
     boot_blank(b);
@@ -472,6 +478,33 @@ void abi_BootStart(void)
 void abi_BootWarm(void)
 {
     boot_run(BOOT_WARM);
+}
+
+/*
+ * @routine 03:8BCD BootWarmRace
+ * WHAT IT DOES: BootWarm from its race (RaceRestart's way back in, the race
+ * run again with the menus' choices kept): the screen blanked and HDMA
+ * off, interrupts off, the stack reset to $02FF, sound on, RaceLoop; then
+ * on as BootWarm (the video reset and the attract race, for ever).
+ * HOW: As BootWarm from its .race label. Never returns.
+ * Entry: any. Exit: never returns.
+ */
+void abi_BootWarmRace(void)
+{
+    boot_run(BOOT_RACE);
+}
+
+/*
+ * @routine 03:8BF8 BootWarmAttract
+ * WHAT IT DOES: BootWarm from its attract race (RaceEndToAttract's way
+ * back in): the screen blanked, HDMA and interrupts off, the stack reset,
+ * the attract race set up and run for ever, as BootWarm's end.
+ * HOW: As BootWarm from its .attract label. Never returns.
+ * Entry: any. Exit: never returns.
+ */
+void abi_BootWarmAttract(void)
+{
+    boot_run(BOOT_ATTRACT);
 }
 
 /*

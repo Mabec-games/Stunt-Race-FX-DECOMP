@@ -717,7 +717,7 @@ StuntPanelStep:                         ; the panel's state $0E41
 ; $0E5B and $0D55 cleared, the HUD's sprites hidden (OamHideForHudMode),
 ; StuntRecordTime and RecordsLoadSpecialCourseLong, and the course's
 ; mark (StuntCourseMark).
-; HOW: 8-bit registers; the calls without C run as original code.
+; HOW: 8-bit registers.
 ; Entry: any widths; data bank $07. Exit: M and X 8-bit; A as the last
 ; step leaves it.
 %at($07E137)
@@ -839,7 +839,7 @@ StuntPanelShow:
 ; $0E81, waits until the overlay has faded (OverlayFramesUntilFaded) and
 ; goes on at RaceRestart with $0DD4 set, else at
 ; RaceEndVideoReset.
-; HOW: 8-bit; the two continuations are jumps, reached as original code.
+; HOW: 8-bit; the two continuations are jumps.
 ; Entry: any widths. Exit: M and X 8-bit; A low byte $19D8 with nothing
 ; to do; otherwise as the continuation leaves it.
 %at($07E1E2)

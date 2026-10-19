@@ -1947,7 +1947,7 @@ void abi_StuntRecordTime(void)
 {
     uint32_t b = (uint32_t)cpu.db << 16;
     uint16_t t, k, n;
-    uint8_t lo, sum, pushed[2];
+    uint8_t lo, sum;
 
     op_sep(P_M);
     op_lda8(b | 0x19EC);
@@ -1966,9 +1966,14 @@ void abi_StuntRecordTime(void)
     if (cpu.p & P_C)
         op_cmp16(0x0010);
     if (cpu.a < 0x000C || cpu.a >= 0x0010) {
-        pushed[0] = (uint8_t)(t >> 8);
-        pushed[1] = (uint8_t)t;
-        jump_routine_pushed(0x07AE29, pushed, 2);
+        /* the score pushed (PHA, 16-bit: high byte first) is what the RTS
+           at 07:AE29 pulls as its return address: on at $07:score + 1 */
+        uint16_t ret;
+
+        wr8((uint16_t)cpu.s, (uint8_t)(t >> 8));
+        wr8((uint16_t)(cpu.s - 1), (uint8_t)t);
+        ret = rd16((uint16_t)(cpu.s - 1));
+        jump_routine(0x070000 | (uint16_t)(ret + 1));
         return;
     }
     wr16(special_dp(0xF1), cpu.a);

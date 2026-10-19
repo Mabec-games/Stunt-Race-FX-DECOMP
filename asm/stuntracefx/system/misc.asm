@@ -218,8 +218,7 @@ WordCopyStep:
 ; @routine 03:8648 DemoRunSecond
 ; WHAT IT DOES: Runs the second of the attract demos: $1A57 = $6B (its
 ; offset in the demo tables), then the shared demo run at $03:8683.
-; HOW: A tail JMP into the demo run, reached as original code
-; (jump_routine).
+; HOW: A tail JMP into the demo run (DemoRun).
 ; Entry: D = $0000. Exit: as the demo run leaves it.
 %at($038648)
 DemoRunSecond:
@@ -231,8 +230,7 @@ DemoRunSecond:
 ; @routine 03:8653 DemoRunFourth
 ; WHAT IT DOES: Runs the third demo of the title screen's cycle: $1A57 = $FC
 ; (its offset in the demo tables), then the shared demo run at $03:8683.
-; HOW: A tail JMP into the demo run, reached as original code
-; (jump_routine).
+; HOW: A tail JMP into the demo run (DemoRun).
 ; Entry: D = $0000. Exit: as the demo run leaves it.
 %at($038653)
 DemoRunFourth:
@@ -700,8 +698,7 @@ WramFillZero:
 ; WHAT IT DOES: Runs the first of the attract demos: $1A57 = 0 (its offset
 ; in the demo tables at $03:8004), then the shared demo run at $03:8683
 ; (course, settings and the race itself).
-; HOW: A tail JMP into the demo runs of the routine at $03:8648, reached
-; as original code (jump_routine).
+; HOW: A tail JMP into the demo runs of the routine at $03:8648 (DemoRun).
 ; Entry: D = $0000. Exit: as the demo run leaves it.
 %at($03863D)
 DemoRunFirst:

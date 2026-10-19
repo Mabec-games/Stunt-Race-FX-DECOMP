@@ -171,8 +171,8 @@ void abi_PlayerStatsAndPaletteAnimate(void)
 void abi_PlayerStatsFromRecord(void);
 
 /* LDA $0DD6 (in the current width), TAX, JMP (table,X): the race phase's
-   handler, reached as original code; it returns to the caller, or through
-   the caller's frame. */
+   handler (jump_routine); it returns to the caller, or through the
+   caller's frame. */
 static void phase_jump(uint16_t table)
 {
     uint32_t b = (uint32_t)cpu.db << 16;
@@ -848,7 +848,7 @@ void abi_StuntCourseMark(void)
  * $0E5B and $0D55 cleared, the HUD's sprites hidden (OamHideForHudMode),
  * StuntRecordTime and RecordsLoadSpecialCourseLong, and the course's
  * mark (StuntCourseMark).
- * HOW: 8-bit registers; the calls without C run as original code.
+ * HOW: 8-bit registers.
  * Entry: any widths; data bank $07. Exit: M and X 8-bit; A as the last
  * step leaves it.
  */
@@ -939,7 +939,7 @@ void abi_StuntPanelShow(void)
  * $0E81, waits until the overlay has faded (OverlayFramesUntilFaded) and
  * goes on at RaceRestart with $0DD4 set, else at
  * RaceEndVideoReset.
- * HOW: 8-bit; the two continuations are jumps, reached as original code.
+ * HOW: 8-bit; the two continuations are jumps (jump_routine).
  * Entry: any widths. Exit: M and X 8-bit; A low byte $19D8 with nothing
  * to do; otherwise as the continuation leaves it.
  */
