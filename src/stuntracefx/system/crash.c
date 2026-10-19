@@ -10,6 +10,7 @@
  */
 #include "machine.h"
 #include "hw.h"
+#include "cpu_ops.h"
 
 #define CRASH_COLOUR 0x1A2Eu
 #define CRASH_CODE 0x000717u
@@ -61,6 +62,7 @@ static void crash_body(uint8_t bank, uint16_t code)
     wr8(INIDISP, 0x0F);
     wr8(HDMAEN, 0x02);
     for (;;) {
+        delay_turns(20000);
         a = rd16(CRASH_CODE);
         if (a == rd16(CRASH_SCROLL)) {
             /* As the loop leaves them: 16-bit, IRQs masked, Z and C from

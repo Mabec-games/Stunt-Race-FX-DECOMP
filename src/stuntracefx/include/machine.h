@@ -104,5 +104,10 @@ void cpu_loop_forever(uint32_t at);
    runs in there and follows the original from `at`; `entry` is checked on
    its own, by unit calls.) */
 void cpu_restart(uint32_t at, void (*entry)(void));
+/* Time the original spends with no access the C makes: a delay loop's
+   turns (its fetches and internal cycles), `clocks` master clocks (21.477
+   MHz). The rest of the machine runs meanwhile, so the time matters: the
+   sound CPU acting on a command before the next one arrives. */
+void cpu_idle(uint32_t clocks);
 
 #endif

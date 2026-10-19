@@ -1936,8 +1936,8 @@ void abi_TimeUpRecordUpdate(void)
  * higher score goes in at its place (tag RecordTagCar0, 4 or 8), the
  * lower ones moving down, and the course's 48 bytes are summed into
  * $70:FC33 + course. For any other course its RTS takes the score it
- * pushed as the return address (no run reaches that: the courses here
- * are $0C-$0F).
+ * pushed as the return address (a score of $AE28 lands on that RTS, which
+ * then returns; in play the courses here are $0C-$0F).
  * HOW: SED for the BCD add; $F1 holds course * 48 (also $0D14), $F3 the
  * car, $F7 the entry's offset; the score is kept on the stack.
  * Entry: any widths; data bank $07, D = $0000. Exit: M 16-bit, X 16-bit;
@@ -1973,6 +1973,8 @@ void abi_StuntRecordTime(void)
         wr8((uint16_t)cpu.s, (uint8_t)(t >> 8));
         wr8((uint16_t)(cpu.s - 1), (uint8_t)t);
         ret = rd16((uint16_t)(cpu.s - 1));
+        if ((uint16_t)(ret + 1) == 0xAE29)
+            return;     /* this RTS again: it returns to the caller */
         jump_routine(0x070000 | (uint16_t)(ret + 1));
         return;
     }

@@ -747,11 +747,13 @@ void SoundDataLoad(uint16_t which, uint16_t input);
 void ApuUpload(uint8_t bank, uint16_t addr);
 
 /* A sound block upload as the menu does it: port 1 (and 2) = 5, a delay,
-   the upload. The delays are counted loops; they cost time, not state. */
+   the upload, a delay. The delays are counted loops: time, no state. */
 static void menu_apu_upload(uint8_t bank, uint16_t addr)
 {
     wr16(APUIO1, 0x0005);
+    delay_turns(0x4000);
     ApuUpload(bank, addr);
+    delay_turns(0x4000);
 }
 
 /* Picture `in68` (Super FX input $1C) to VRAM `vram`; its byte count is
@@ -804,6 +806,7 @@ void MenuScreenOpen6(void)
     for (i = 0; i < sizeof ppu / sizeof ppu[0]; i++)
         wr8(ppu[i].reg, ppu[i].v);
     wr16(APUIO1, 0x0005);
+    delay_turns(0x4000);
     SoundDataLoad(0xF3B5, 0x001E);
     menu_apu_upload(0x1B, 0x85F8);
     menu_apu_upload(0x19, 0x9A98);
@@ -907,6 +910,7 @@ static void champion_sound(void (*load)(void), uint16_t a, uint16_t y, int delay
     cpu.p &= (uint8_t)~(P_M | P_X);
     cpu.a = 0x0005;
     wr16(APUIO1, 0x0005);
+    delay_turns(0x4000);
     cpu.a = 0x0000;
     cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
     cpu.a = a;
@@ -915,6 +919,7 @@ static void champion_sound(void (*load)(void), uint16_t a, uint16_t y, int delay
     load();
     if (delay_after) {
         cpu.p &= (uint8_t)~P_M;
+        delay_turns(0x4000);
         cpu.a = 0x0000;
         cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
     }

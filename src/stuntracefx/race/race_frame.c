@@ -460,6 +460,7 @@ static void pick_sound(uint32_t b)
 /* LDA #$4000, DEC A until 0: A = 0, Z set. */
 static void delay_4000(void)
 {
+    delay_turns(0x4000);
     cpu.a = 0x0000;
     cpu.p = nz16(cpu.p, 0);
 }

@@ -519,9 +519,10 @@ static void ld3(uint16_t a, uint16_t x, uint16_t y, uint16_t last)
     cpu.p = nz16(cpu.p, last);
 }
 
-/* LDA #n / DEC A / BNE: a delay, leaving A = 0. */
-static void delay_a(void)
+/* LDA #n / DEC A / BNE: a delay of n turns, leaving A = 0. */
+static void delay_a(uint32_t n)
 {
+    delay_turns(n);
     cpu.a = 0;
     cpu.p = nz16(cpu.p, 0);
 }
@@ -582,6 +583,7 @@ static void upload_sprites_palette(uint32_t b)
     uint8_t v;
 
     cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
+    delay_turns(1);
     cpu.x = 0;
     cpu.p = nz16(cpu.p, 0);
     v = rd8(b | 0x0D28);
@@ -601,6 +603,7 @@ static void upload_sprites_palette(uint32_t b)
     }
     cpu.p &= (uint8_t)~(P_M | P_X);
     abi_CgramUploadAll();
+    delay_turns(0x0A);
     cpu.x = 0;
     cpu.p = nz16(cpu.p, 0);
 }
@@ -829,7 +832,7 @@ static int race_stage(uint32_t b)
     cpu.p = nz16(cpu.p, cpu.x);
     switch (rd16(0x7E0000 | (uint16_t)(0xA7D1 + cpu.x))) {
     case 0xA82D:
-        delay_a();
+        delay_a(1);
         sel = rd16(b | 0x0D7F);
         cpu.a = sel;
         cpu.p = nz16(cpu.p, sel);
@@ -845,7 +848,7 @@ static int race_stage(uint32_t b)
         abi_VramDmaFromBank7F();
         break;
     case 0xA85E:
-        delay_a();
+        delay_a(1);
         next_stage(b, 0x0004);
         ld3(0x2200, 0x4E00, 0x1100, 0x2200);
         abi_VramDmaFromGsuRam();
@@ -855,7 +858,7 @@ static int race_stage(uint32_t b)
         flag_0357(b, 0);
         break;
     case 0xA88F:
-        delay_a();
+        delay_a(4);
         next_stage(b, 0x0006);
         op_lda16(b | 0x0D9A);
         wr16(0x7F348D, cpu.a);
@@ -882,7 +885,7 @@ static int race_stage(uint32_t b)
             upload_sprites_palette(b);
             break;
         }
-        delay_a();
+        delay_a(1);
         next_stage(b, 0x0008);
         ld3(0x2200, 0xB800, 0x3400, 0x2200);
         abi_VramDmaFromGsuRam();
@@ -891,7 +894,7 @@ static int race_stage(uint32_t b)
         abi_VramDmaFromBank7F();
         break;
     case 0xA92C:
-        delay_a();
+        delay_a(1);
         next_stage(b, 0x000A);
         ld3(0x2200, 0xDA00, 0x4500, 0x2200);
         abi_VramDmaFromGsuRam();
@@ -901,7 +904,7 @@ static int race_stage(uint32_t b)
         flag_0357(b, 0);
         break;
     case 0xA95B:
-        delay_a();
+        delay_a(4);
         cpu.a = 0;
         cpu.p = nz16(cpu.p, 0);
         wr16(b | 0x0D7D, 0x0000);

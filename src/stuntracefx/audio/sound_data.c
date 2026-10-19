@@ -53,12 +53,9 @@ static void put_block(uint16_t which, uint16_t input)
  */
 void SoundDataLoad(uint16_t which, uint16_t input)
 {
-    uint16_t wait = 0x4000;
-
     put_block(which, input);
     ApuUpload(0x70, 0x6000);
-    while (--wait)
-        ;
+    delay_turns(0x4000);
 }
 
 void abi_SoundDataLoad(void)
@@ -68,6 +65,7 @@ void abi_SoundDataLoad(void)
     cpu.a = 0x0070;
     cpu.y = 0x6000;
     abi_ApuUpload();
+    delay_turns(0x4000);
     cpu.a = 0x0000;
     cpu.p = (uint8_t)((cpu.p & ~(P_N | P_M)) | P_Z);
 }
@@ -208,6 +206,7 @@ void abi_MusicLoadForCourse(void);
 /* LDA #$4000, DEC A until 0 (16-bit A): A = 0, Z set. */
 static void delay_4000(void)
 {
+    delay_turns(0x4000);
     cpu.a = 0x0000;
     cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
 }

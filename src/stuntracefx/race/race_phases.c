@@ -1798,6 +1798,7 @@ static void apu_command5(void)
     op_rep(P_M | P_X);
     op_lda16_imm(0x0005);
     wr16(0x002141, 0x0005);
+    delay_turns(0x4000);
     cpu.a = 0x0000;
     cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
 }
@@ -1810,6 +1811,7 @@ static void apu_upload(uint16_t a, uint16_t y)
     cpu.p = nz16(cpu.p, y);
     abi_ApuUpload();
     op_rep(P_M);
+    delay_turns(0x4000);
     cpu.a = 0x0000;
     cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
 }

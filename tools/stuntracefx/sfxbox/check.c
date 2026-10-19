@@ -1407,7 +1407,15 @@ void jump_routine_pushed(uint32_t addr, const uint8_t *pushed, int n)
     if (!n)
         for (int i = 0; i < nroutines; i++)
             if (routines[i].addr == addr) { routines[i].abi(); return; }
-    if (machine_live && !past_end) no_c(addr);
+    if (machine_live && !past_end) {
+        /* with bytes pushed the hybrid runs the original even where C
+           starts (its C is checked on its own): only an address with no
+           routine at all counts */
+        int have = 0;
+        for (int i = 0; i < nroutines && !have; i++)
+            have = routines[i].addr == addr;
+        if (!have) no_c(addr);
+    }
     if (!machine_live) {
         if (cur) cur->needs_asm = 1;
         if (c_running) longjmp(abort_c, 1);
@@ -1440,6 +1448,13 @@ static void jump_original_code(uint32_t addr)
 void cpu_loop_forever(uint32_t at)
 {
     jump_original_code(at);
+}
+
+/* Time with no access: the hybrid's clock is the original's record, which
+   holds it already. */
+void cpu_idle(uint32_t clocks)
+{
+    (void)clocks;
 }
 
 void cpu_restart(uint32_t at, void (*entry)(void))

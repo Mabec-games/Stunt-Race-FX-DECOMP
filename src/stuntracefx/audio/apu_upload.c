@@ -8,6 +8,7 @@
  * block of length 0 ends the list and its address is where the SPC700 starts.
  */
 #include "machine.h"
+#include "cpu_ops.h"
 #include "hw.h"
 #include "wram.h"
 
@@ -156,9 +157,12 @@ void abi_ApuUpload(void)
  * HOW: An 8-bit store to port 1, then falls into ApuSettleDelay.
  * Entry: M 16-bit. Exit: as ApuSettleDelay.
  */
+void ApuSettleDelay(void);
+
 void ApuPort1Send05(void)
 {
     wr8(APUIO1, 0x05);
+    ApuSettleDelay();
 }
 
 void abi_ApuPort1Send05(void)
@@ -177,10 +181,12 @@ void abi_ApuPort1Send05(void)
  */
 void ApuSettleDelay(void)
 {
+    delay_turns(0x4000);
 }
 
 void abi_ApuSettleDelay(void)
 {
+    ApuSettleDelay();
     cpu.a = 0;
     cpu.p = (uint8_t)((cpu.p & ~(P_M | P_N)) | P_Z);
 }

@@ -3807,6 +3807,17 @@ void abi_DataBank7E(void)
     cpu.p = nz8(cpu.p, 0x7E);
 }
 
+/*
+ * @routine 08:A033 DataBank7EEnd
+ * WHAT IT DOES: Nothing: DataBank7E's RTL alone, where code that has
+ * nothing to do jumps to return.
+ * HOW: RTL.
+ * Entry: any. Exit: every register unchanged.
+ */
+void abi_DataBank7EEnd(void)
+{
+}
+
 void abi_ApproachEighthMin8(void);
 void abi_ObjectPathCommand(void);
 void abi_CameraFollowStep(void);

@@ -4700,6 +4700,13 @@ DataBank7E:
     lda.b #$7E                      ; not reached in the traces so far
     pha
     plb
+
+; @routine 08:A033 DataBank7EEnd
+; WHAT IT DOES: Nothing: DataBank7E's RTL alone, where code that has
+; nothing to do jumps to return.
+; HOW: RTL.
+; Entry: any. Exit: every register unchanged.
+%at($08A033)
 RtlA033:
     rtl
 

@@ -233,4 +233,13 @@ static inline void op_plp(uint8_t p)
     }
 }
 
+/* A delay loop of `turns` passes of a decrement (DEC A, DEX or DEY) and a
+   BNE back: 14 clocks for each decrement (its fetch and an internal
+   cycle), 22 for each BNE taken (two fetches and one), 16 for the last,
+   not taken. */
+static inline void delay_turns(uint32_t turns)
+{
+    cpu_idle(turns * 36u - 6u);
+}
+
 #endif

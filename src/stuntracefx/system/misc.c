@@ -33,6 +33,8 @@ void abi_DataBankTest(void)
  */
 void abi_DelayLoop13(void)
 {
+    /* NOP, DEY, BNE: 14 + 14 + 22 clocks a turn, 16 for the last BNE */
+    cpu_idle(0x13u * 50u - 6u);
     cpu.x &= 0x00FF;
     cpu.y = 0;
 }

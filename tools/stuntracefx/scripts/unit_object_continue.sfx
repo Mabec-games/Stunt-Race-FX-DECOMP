@@ -1,7 +1,7 @@
 # unit_object_continue: unit tests (call) from the start of a Novice race
 # for the bank 03 object commands that go on at an address in the object
 # (03:D25F-D2D9), on object 1 ($2189): its own handler at +$1A (08:9BD9),
-# none (bank and address 0), and bank 0 at $1F00 where an RTL is staged.
+# none (bank and address 0), and the lone RTL at $08:A033 (DataBank7EEnd).
 load build/stuntracefx/states/novice_coupe_race1.state
 call 03:D29E long x=0189 y=0311 p=20 db=7E d=0000
 wait 1
@@ -11,9 +11,8 @@ set 7E21A5 00
 call 03:D29E long x=0189 y=0311 p=20 db=7E d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-set 7E21A3 00,1F
-set 7E21A5 00
-set 7E1F00 6B
+set 7E21A3 33,A0
+set 7E21A5 08
 call 03:D29E long x=0189 y=0311 p=20 db=7E d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
@@ -27,18 +26,16 @@ set 7E21A8 00
 call 03:D2BC long x=0189 y=0311 p=20 db=7E d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-set 7E21A6 00,1F
-set 7E21A8 00
-set 7E1F00 6B
+set 7E21A6 33,A0
+set 7E21A8 08
 call 03:D2BC long x=0189 y=0311 p=20 db=7E d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
 call 03:D29D long x=0189 y=0311 p=20 db=7E d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-set 7E21A3 00,1F
-set 7E21A5 00
-set 7E1F00 6B
+set 7E21A3 33,A0
+set 7E21A5 08
 set 7E21C2 7F
 call 03:D25F long x=0189 y=0311 p=20 db=7E d=0000
 wait 1
@@ -48,9 +45,8 @@ set 7E21A5 00
 call 03:D25F long x=0189 y=0311 p=20 db=7E d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-set 7E21A3 00,1F
-set 7E21A5 00
-set 7E1F00 6B
+set 7E21A3 33,A0
+set 7E21A5 08
 set 7E21C2 7F
 call 03:D269 long x=0189 y=0311 p=20 db=7E d=0000
 wait 1
@@ -60,9 +56,8 @@ set 7E21A5 00
 call 03:D269 long x=0189 y=0311 p=20 db=7E d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-set 7E21A3 00,1F
-set 7E21A5 00
-set 7E1F00 6B
+set 7E21A3 33,A0
+set 7E21A5 08
 set 7E21C2 7F
 call 03:D271 long x=0189 y=0311 p=20 db=7E d=0000
 wait 1
@@ -72,9 +67,8 @@ set 7E21A5 00
 call 03:D271 long x=0189 y=0311 p=20 db=7E d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-set 7E21A3 00,1F
-set 7E21A5 00
-set 7E1F00 6B
+set 7E21A3 33,A0
+set 7E21A5 08
 set 7E21C2 7F
 call 03:D279 long x=0189 y=0311 p=20 db=7E d=0000
 wait 1
@@ -84,9 +78,8 @@ set 7E21A5 00
 call 03:D279 long x=0189 y=0311 p=20 db=7E d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-set 7E21A3 00,1F
-set 7E21A5 00
-set 7E1F00 6B
+set 7E21A3 33,A0
+set 7E21A5 08
 set 7E21C2 7F
 call 03:D281 long x=0189 y=0311 p=20 db=7E d=0000
 wait 1
@@ -96,9 +89,8 @@ set 7E21A5 00
 call 03:D281 long x=0189 y=0311 p=20 db=7E d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-set 7E21A3 00,1F
-set 7E21A5 00
-set 7E1F00 6B
+set 7E21A3 33,A0
+set 7E21A5 08
 set 7E21C2 7F
 call 03:D289 long x=0189 y=0311 p=20 db=7E d=0000
 wait 1
@@ -108,9 +100,8 @@ set 7E21A5 00
 call 03:D289 long x=0189 y=0311 p=20 db=7E d=0000
 wait 1
 load build/stuntracefx/states/novice_coupe_race1.state
-set 7E21A3 00,1F
-set 7E21A5 00
-set 7E1F00 6B
+set 7E21A3 33,A0
+set 7E21A5 08
 set 7E21C2 7F
 call 03:D291 long x=0189 y=0311 p=20 db=7E d=0000
 wait 1

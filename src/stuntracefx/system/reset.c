@@ -216,11 +216,13 @@ void abi_SoftResetApu(void)
 
     op_sep(P_M);
     op_rep(P_X);
+    delay_turns(0x8000);
     cpu.x = 0x0000;
     cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x06);
     cpu.p = nz8(cpu.p, 0x06);
     wr8(APUIO1, 0x06);
+    delay_turns(0x8000);
     cpu.x = 0x0000;
     cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
     p1 = cpu.p;
@@ -231,6 +233,7 @@ void abi_SoftResetApu(void)
     cpu.p = nz16(cpu.p, cpu.y);
     abi_ApuUpload();
     op_rep(P_M);
+    delay_turns(0x4000);
     cpu.a = 0x0000;
     cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
     op_plp(p1);
