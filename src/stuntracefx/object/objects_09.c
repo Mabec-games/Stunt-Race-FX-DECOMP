@@ -6511,8 +6511,9 @@ static void duo_frame(void)
     lda8((uint8_t)(cpu.a & 0x01));
     if (!(uint8_t)cpu.a) {
         and8(F(0x2025, cpu.x), 0xFE);
+        cyc(24);
     } else { cyc(6); if (!bit25(0x01)) {
-        cyc(18);
+        cyc(24);
         or8(F(0x2025, cpu.x), 0x01);
         cpu.p |= P_M;
         st8i((cyc(22), db()) | 0x1A5D, 0x00);

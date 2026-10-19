@@ -138,13 +138,14 @@ static void add16(uint32_t addr, uint16_t v)
     cpu.p |= P_M;
 }
 
-/* REP #$20, LDA addr, CLC, ADC by (a word), STA addr, SEP #$20. */
-static void add16m(uint32_t addr, uint32_t by)
+/* REP #$20, LDA addr, CLC, ADC by (a word), STA addr, SEP #$20; adc is
+   the time of CLC and the ADC to its read (30 direct page, 38 absolute). */
+static void add16m(uint32_t addr, uint32_t by, uint32_t adc)
 {
     cpu.p &= (uint8_t)~P_M;
     cyc(74);
     op_lda16(addr);
-    op_add16(rd16(by));
+    op_add16(rd16(cyc_then(adc, by)));
     cyc(30);
     wr16(addr, cpu.a);
     cpu.p |= P_M;
@@ -343,9 +344,9 @@ static void detach_frame(void)
         lda8(v);
     }
     do {
-        add16m(F(0x200C, cpu.x), dp(0x04));
-        add16m(F(0x200E, cpu.x), dp(0x0A));
-        add16m(F(0x2010, cpu.x), db() | 0x05F2);
+        add16m(F(0x200C, cpu.x), dp(0x04), 30);
+        add16m(F(0x200E, cpu.x), dp(0x0A), 30);
+        add16m(F(0x2010, cpu.x), db() | 0x05F2, 38);
         cyc(54);
         lda8(v);
         v--;
@@ -588,9 +589,9 @@ void abi_PartKnockOff(void)
     ld8(cyc_then(14, F(0x2049, cpu.y)));
     abi_ObjectSet5DByKind();
     (cyc(64), part_on_car());
-    add16m(F(0x200C, cpu.x), dp(0x04));
-    add16m(F(0x200E, cpu.x), dp(0x0A));
-    add16m(F(0x2010, cpu.x), db() | 0x05F2);
+    add16m(F(0x200C, cpu.x), dp(0x04), 30);
+    add16m(F(0x200E, cpu.x), dp(0x0A), 30);
+    add16m(F(0x2010, cpu.x), db() | 0x05F2, 38);
     (cyc(22), abi_ObjectVelocityFromRecordOf());
     abi_GsuRecordNew426();
     if (cpu.p & P_N) {
@@ -1094,6 +1095,7 @@ void abi_CarCrashParts(void)
         goto fail; else { cyc(30); }
     lda8((uint8_t)(ld8(db() | 0x1F58) & 0x01));
     sound0((uint8_t)cpu.a ? 0x5B : (cyc(6), 0x43));
+    cyc(58);                            /* CLC, RTL */
     cpu.p &= (uint8_t)~P_C;
     return;
 fail:
@@ -1174,7 +1176,7 @@ static void rival_frame(void)
         lda8(0x03);
         abi_CarCrashParts();
         if (!(cpu.p & P_C)) {
-            cyc(68);
+            cyc(10);
             dec8(db() | 0x1F71);
             cpu.p &= (uint8_t)~P_M;
             op_lda16(cyc_then(52, F(0x2022, cpu.x)));

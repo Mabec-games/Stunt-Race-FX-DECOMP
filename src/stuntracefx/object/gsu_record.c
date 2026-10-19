@@ -1362,7 +1362,7 @@ void abi_RecordNextContact(void)
  */
 uint16_t RecordContactSummary(uint8_t bank, uint16_t obj, uint16_t *y)
 {
-    uint32_t b = (uint32_t)bank << 16;
+    uint32_t b = (uint32_t)bank << 16, t;
     cyc(68);
     uint16_t rec = record_of(bank, obj), e, r, f;
 
@@ -1387,7 +1387,11 @@ uint16_t RecordContactSummary(uint8_t bank, uint16_t obj, uint16_t *y)
     cyc(24);
     wr16(b | 0x1F3A, 0x0000);
     cyc(32);
-    for (e = rd16(0x700018 + rec); e; e = rd16(cyc_then(46, 0x70000E + e))) {
+    for (e = rd16(0x700018 + rec), t = 0; ; e = rd16(cyc_then(46, 0x70000E + e)), t = 22) {
+        /* BRA back (22), TAX and BEQ (22 taken), the LDA long's opcode */
+        cyc(t + (e ? 62 : 36));
+        if (!e)
+            break;
         if (!(rd16(0x700010 + e) & 0x0002))
             { cyc(32); continue; }
         cyc(72);
@@ -1407,6 +1411,7 @@ uint16_t RecordContactSummary(uint8_t bank, uint16_t obj, uint16_t *y)
         wr16(b | 0x1F36, cyc_then(24, (uint16_t)(f | rd16(b | 0x1F36))));
         *y = e;
     }
+    cyc(82);
     return RecordContactFlags(bank);
 }
 

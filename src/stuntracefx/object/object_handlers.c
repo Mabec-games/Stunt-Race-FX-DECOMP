@@ -3054,17 +3054,18 @@ static uint16_t latch_addr(void)
    bit cleared. 16-bit, the latch word re-chosen before the store. Returns
    the time from its last access to the code after it (each copy's tail in
    the assembly): unchanged, BIT # and the branch taken, then on the BRA
-   (68 on, 46 off); changed, the BRAs after the store (on: 44 for player
-   2's word, 22 for player 1's; off: 22 or 0). */
+   (68 on, 46 off; 22 more for player 2's word, its BRA); changed, the
+   BRAs after the store (on: 44 for player 2's word, 22 for player 1's;
+   off: 22 or 0). */
 static uint32_t latch(uint16_t bit, int on, AbiFn snd)
 {
     uint32_t b = db();
-    uint16_t w, at;
+    uint16_t w, at, word = latch_addr();
 
-    op_lda16(cyc_then(62, b | latch_addr()));
+    op_lda16(cyc_then(62, b | word));
     cpu.p = (uint8_t)((cpu.p & ~P_Z) | ((cpu.a & bit) ? 0 : P_Z));
     if (((cpu.a & bit) ? 1 : 0) == on)
-        return on ? 68 : 46;
+        return (on ? 68 : 46) + (word == 0x1A60 ? 22 : 0);   /* player 2's word: BRA */
     w = cpu.a;
     snd();
     w = on ? (uint16_t)(w | bit) : (uint16_t)(w & ~bit);
@@ -3205,7 +3206,7 @@ void abi_PlayerCarEvents(void)
         { cyc(6); tail = latch(0x0001, 0, abi_PlayerSound24); }
     cyc(tail + 32);                             /* LDA long at $C280 */
     op_lda16(0x700042 + cpu.x);
-    cyc(78);
+    cyc(cpu.a & 0x0080 ? 72 : 78);              /* BEQ to the next line: 6 more taken */
     op_lda16(0x700042 + cpu.x);
     found = 0;
     if (cpu.a & 0x2000) {
@@ -3266,10 +3267,11 @@ void abi_PlayerCarEvents(void)
     cyc(54);
     op_lda16(0x70002C + cpu.x);
     if (cpu.a & 0x0100)
-        snd16(0x000A);
+        { snd16(0x000A); cyc(62); }             /* BRA, LDA long */
     else if (cpu.a & 0x0200)
-        { cyc(46); snd16(0x000D); }
-    cyc(124);
+        { cyc(46); snd16(0x000D); cyc(40); }
+    else
+        cyc(124);
     op_lda16(0x700062 + cpu.x);
     if (cpu.a & 0x8000) {
         cyc(74);
@@ -3319,7 +3321,7 @@ void abi_PlayerCarEvents(void)
         lda8(0x01);
         abi_CarCrashParts();
         if (!(cpu.p & P_C)) {
-            cyc(126);
+            cyc(68);
             lda8((uint8_t)(rd8(b | (uint16_t)(0x2025 + cpu.x)) | 0x10));
             cyc(16);
             wr8(b | (uint16_t)(0x2025 + cpu.x), (uint8_t)cpu.a);
@@ -3360,7 +3362,7 @@ void abi_PlayerCarEvents(void)
                 cyc(48);
                 lda8(0x01);
                 abi_CarCrashParts();
-                cyc(104);
+                cyc(46);
                 op_lda8(b | 0x0D62);
                 if (!(uint8_t)cpu.a)
                     { cyc(78); abi_ObjectBurstSpawn(); }
@@ -3470,6 +3472,7 @@ tail:
             lda8((uint8_t)(rd8(b | (uint16_t)(0x2024 + cpu.x)) & 0xDF));
             cyc(16);
             wr8(b | (uint16_t)(0x2024 + cpu.x), (uint8_t)cpu.a);
+            cyc(22);                    /* BRA */
             goto link;
         }
     }
@@ -3478,6 +3481,7 @@ tail:
     cyc(16);
     wr8(b | (uint16_t)(0x2024 + cpu.x), (uint8_t)cpu.a);
 link:
+    cyc(30);
     cpu.y = rd16(b | (uint16_t)(0x204F + cpu.x));
     cpu.p &= (uint8_t)~P_M;
     cyc(52);

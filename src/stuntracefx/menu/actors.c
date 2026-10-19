@@ -391,7 +391,7 @@ void abi_MenuActorBlink(void)
 uint16_t MenuActorAnimate(uint8_t bank, uint16_t rec, uint16_t *x, uint8_t *p)
 {
     uint32_t b = (uint32_t)bank << 16;
-    cyc(110);
+    cyc(22);
     uint16_t anim = rd16((uint16_t)(rec + 0x14)), t, pos, i, d, g, m;
     unsigned s;
 
@@ -448,6 +448,7 @@ void abi_MenuActorAnimate(void)
 {
     uint8_t p = cpu.p;
 
+    cyc(88);
     cpu.a = MenuActorAnimate(cpu.db, cpu.x, &cpu.x, &p);
     cpu.p = p;
 }
@@ -712,6 +713,7 @@ uint16_t MenuActorAnimateFrame(uint8_t bank, uint16_t *x, uint8_t *p)
     uint16_t a;
     int i;
 
+    cyc(88);
     MenuActorAnimate(bank, *x, x, p);
     cyc(74);
     a = rd16(0x0018FD);
@@ -720,8 +722,9 @@ uint16_t MenuActorAnimateFrame(uint8_t bank, uint16_t *x, uint8_t *p)
         *p = nz16(*p, a);
         return a;
     }
+    /* BEQ and JSR, then the RTS and the next JSR */
     for (i = 0; i < 3; i++)
-        a = MenuActorAnimate(bank, *x, x, p);
+        { cyc(i ? 88 : 62); a = MenuActorAnimate(bank, *x, x, p); }
     cyc(84);
     return a;
 }
