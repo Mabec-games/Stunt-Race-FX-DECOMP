@@ -30,6 +30,12 @@ void gsu_lockstep_past_end(void);       /* the S-CPU side has run past the origi
 int gsu_lockstep_is_past_end(void);     /* either side has: the frame is not compared */
 int gsu_lockstep_ring_room(void);       /* the original may start its next frame */
 void lockstep_drain(void);              /* check.c: the hybrid takes the S-CPU ops recorded so far */
+/* The Super FX C's timing (SFXBOX_GSUCYCLOG, as check.c's SFXBOX_CYCLOG):
+   a probe passed (check.c's sfx_probe: 1 if it is the Super FX C's, on
+   its thread), and the report's line of its accesses at the original's
+   clocks. */
+int gsu_probe(unsigned id);
+void gsu_timing_line(FILE *report);
 /* The hybrid's totals for the report line; 1 if any of them is a divergence. */
 int gsu_lockstep_summary(char *buf, size_t n);
 #endif

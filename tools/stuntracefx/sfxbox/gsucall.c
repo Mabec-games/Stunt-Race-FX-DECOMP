@@ -745,12 +745,79 @@ static void replay_to(uint32_t to)
     if (to > ci) ci = to;
 }
 
+/* SFXBOX_GSUCYCLOG=FILE (hybrid side, a library built by cycprobe.py): for
+   each RAM access of the C placed on the original's, and each call's end,
+   the probes the C passed since the one before, the clocks the original's
+   Super FX spent between the two (its steps) and the clocks the C states
+   (gsu_cyc), as records like check.c's SFXBOX_CYCLOG, which cycsolve.py
+   reads. With or without the file, each is judged: the report's Super FX
+   timing line. A probe or a stated time counts only on the Super FX's own
+   thread (the S-CPU's and SPC700's C run on theirs, interleaved). */
+static FILE *gcyclog;
+static uint32_t gprobe[1 << 16], gpn, gsaid, gfrom;
+static int gover, gquiet, gcyclog_ops;
+static long gtm_on, gtm_off;
+static void *gthread;
+extern void *(*sfxbox_co_active)(void);
+
+static int on_gsu_thread(void) { return mode == 2 && sfxbox_co_active && sfxbox_co_active() == gthread; }
+
+int gsu_probe(unsigned id)
+{
+    if (!gcyclog || !on_gsu_thread()) return 0;
+    if (gpn < (uint32_t)(sizeof gprobe / sizeof gprobe[0])) gprobe[gpn++] = id;
+    else gover = 1;
+    return 1;
+}
+
+void gsu_cyc(uint32_t clocks)
+{
+    if (on_gsu_thread()) gsaid += clocks;
+}
+
+/* The interval ending at the record's op `to` (an access placed, or the
+   call's end at cn): its clocks are the steps since the access before. */
+static void gcyc_put(uint8_t type, uint32_t to)
+{
+    uint32_t gap = 0, hdr[4];
+    for (uint32_t q = gfrom; q < to; q++) if (cops[q] == OP_STEP) gap += carg[q];
+    if (!gquiet) {
+        if (gover) gap = 0xFFFFFFFFu;
+        else if (gap == gsaid) gtm_on++;
+        else gtm_off++;
+        if (gcyclog) {
+            fputc(type, gcyclog);
+            hdr[0] = gap; hdr[1] = 0; hdr[2] = gsaid; hdr[3] = gpn;
+            fwrite(hdr, 4, 4, gcyclog);
+            fwrite(gprobe, 4, gpn, gcyclog);
+            if (gcyclog_ops) {
+                /* the original's operations in the interval: kind, then
+                   its argument (SFXBOX_GSUCYCLOG_OPS) */
+                uint32_t m = to > gfrom ? to - gfrom : 0;
+                fwrite(&m, 4, 1, gcyclog);
+                for (uint32_t q = gfrom; q < to; q++) { fputc(cops[q], gcyclog); fwrite(&carg[q], 4, 1, gcyclog); }
+            }
+        }
+    }
+    gpn = 0; gover = 0; gsaid = 0;
+    gfrom = to + 1;
+}
+
+void gsu_timing_line(FILE *rep)
+{
+    if (!nrt) return;
+    fprintf(rep, "super fx timing: %ld of the Super FX C's accesses and returns at the original's clocks, %ld not\n",
+            gtm_on, gtm_off);
+    if (gcyclog) { fclose(gcyclog); gcyclog = NULL; }
+}
+
 static uint8_t live_ram(int write, uint32_t a, uint8_t v)
 {
     uint8_t want = write ? OP_WRITE : OP_READ;
     uint32_t off = ram_off(a), from = ci;
     for (uint32_t j = ci; j < cn; j++)
         if (cops[j] == want && ram_off(carg[j]) == off) {
+            gcyc_put('A', j);
             replay_to(j);
             ci = j + 1;
             break;
@@ -820,9 +887,16 @@ static int hybrid_exec(uint32_t pc, uint32_t prev_end)
     st.ramcl = 0;
     core_put(&st);
     model_from(&st);
+    /* the call's time from its start; the store left buffered is the
+       entry's, not the C's (unjudged); none past the record's end */
+    gpn = 0; gover = 0; gsaid = 0; gfrom = 0;
+    gthread = sfxbox_co_active ? sfxbox_co_active() : NULL;
+    gquiet = past_end;
+    if (gcyclog && !past_end) { uint32_t at = pc & 0xFFFFFF; fputc('S', gcyclog); fwrite(&at, 4, 1, gcyclog); }
     mode = 2;
-    if (pend) live_ram(1, pend_addr, pend_val);
+    if (pend) { int q = gquiet; gquiet = 1; live_ram(1, pend_addr, pend_val); gquiet = q; }
     rt[idx].abi();
+    gcyc_put('E', cn);
     mode = 0;
     replay_to(cn);
 
@@ -857,6 +931,12 @@ void gsu_lockstep_role(int r, FILE *rep, volatile int *stk)
 {
     if (!nrt || !sh) return;
     role = r; lsrep = rep; stuck = stk;
+    if (role == 2 && getenv("SFXBOX_GSUCYCLOG")) {
+        gcyclog = fopen(getenv("SFXBOX_GSUCYCLOG"), "wb");
+        if (!gcyclog) { perror("SFXBOX_GSUCYCLOG"); exit(2); }
+        gcyclog_ops = getenv("SFXBOX_GSUCYCLOG_OPS") != NULL;
+        if (gcyclog_ops) fputc('O', gcyclog);
+    }
     if (getenv("SFXBOX_LS_GPLACE")) sscanf(getenv("SFXBOX_LS_GPLACE"), "%ld,%ld", &place_from, &place_to);
     if (role == 1) {
         static struct GsuCallbacks cb = {orig_insn, orig_step, orig_ram, orig_cache};

@@ -48,6 +48,15 @@ void gsu_wr8(uint32_t addr, uint8_t value);
 void gsu_plot(uint8_t x, uint8_t y);
 uint8_t gsu_rpix(uint8_t x, uint8_t y);
 
+/* The Super FX's time between its accesses, as the original spends it: in
+   master clocks (two for each cycle of the GSU-1's 10.7 MHz clock), the
+   instructions run, their fetches from ROM or the cache, the waits for the
+   ROM and RAM buffers. The stated forms of a branch and a loop, as
+   machine.h's cyc_then and cyc_loop. */
+void gsu_cyc(uint32_t clocks);
+static inline uint32_t gsu_cyc_then(uint32_t clocks, uint32_t v) { gsu_cyc(clocks); return v; }
+static inline int gsu_cyc_loop(uint32_t clocks, int again) { if (again) gsu_cyc(clocks); return again; }
+
 /* Game pak RAM address `a` in the current RAM bank. */
 static inline uint32_t gsu_ram(uint16_t a)
 {

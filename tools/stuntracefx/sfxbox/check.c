@@ -1156,6 +1156,7 @@ static void hybrid_finish(long frames)
     strncat(g, sg, sizeof g - strlen(g) - 1);
     fprintf(lsrep, "timing: %ld of the S-CPU C's accesses and returns at the original's clocks, %ld not, %ld with an interrupt "
             "or a frame left between (not judged)\n", tm_on, tm_off, tm_unjudged);
+    gsu_timing_line(lsrep);
     fprintf(lsrep, "frames %ld compared %ld, differing %ld; calls swapped %ld, entered other ways %ld, unmatched %ld, "
             "hardware accesses off the timeline %ld, interrupts not pending where taken %ld, original-code calls not placed %ld, "
             "C calls to code with no C %ld%s: %s\n",
@@ -1553,6 +1554,7 @@ static int on_cpu_thread(void) { return !sfxbox_co_active || sfxbox_co_active() 
 
 void sfx_probe(unsigned id)
 {
+    if (gsu_probe(id)) return;   /* the Super FX's C, on its own thread */
     if (!cyclog || !machine_live || !on_cpu_thread()) return;
     if (cyc_n < (uint32_t)(sizeof cyc_probe / sizeof cyc_probe[0])) cyc_probe[cyc_n++] = id;
     else cyc_over = 1;
