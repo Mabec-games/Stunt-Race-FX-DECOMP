@@ -21,6 +21,11 @@ these lead to more routines:
   orphans     untouched gaps that follow the end of code (RTS, RTL, RTI, a
               jump), decode cleanly and call or jump to known code: routines
               nothing found refers to; walked in turn until none are left
+  dead code   untouched gaps that decode, from their first byte to their
+              last, as blocks each ending in RTS, RTL or a jump to known code
+              or into the gap, using only opcodes the traced code uses:
+              routines nothing refers to and that need not follow code or call
+              it (dead code); counted as orphans
 
 Code the traces ran is decoded with the widths they saw, and its targets are
 certain. Code decoded statically counts only block by block: a block that
@@ -359,6 +364,39 @@ class Census:
                 o += n
 
 
+WIDTHS = (M8 | X8, M16 | X16, M8 | X16, M16 | X8)
+
+
+def dead_code(c, start, end, used):
+    """The gap start..end decodes as code end to end: block after block,
+    each ending in RTS, RTL or a jump to known code or into the gap, each
+    instruction an opcode the traced code uses. Data that happens to decode
+    ends in RTI or an indirect jump, jumps to nowhere or uses opcodes the game
+    never runs, and none of the game's data gaps passes."""
+    rom, mp = c.rom, c.mp
+
+    def ends(pc, q):
+        op = rom[q]
+        if op in (0x60, 0x6B):
+            return True
+        if op in (0x80, 0x82, 0x4C, 0x5C):
+            t = c.static_target(pc, q, op, M8 | X8)
+            to = c.off(t)
+            return to is not None and (mp[to] & 1 or c.code[to] == 1 or start <= to < end)
+        return False
+    pos = start
+    while pos < end:
+        for fl in WIDTHS:
+            ins, how = c.block(codemap.run_addr(pos), fl)
+            if (how == 'end' and ins and ins[-1][1] + ins[-1][2] <= end and ends(ins[-1][0], ins[-1][1])
+                    and all(rom[q] in used for _, q, _, _ in ins)):
+                break
+        else:
+            return False
+        pos = ins[-1][1] + ins[-1][2]
+    return True
+
+
 def orphans(c, known):
     """Untouched, unreached gaps in code banks that look like routines no
     reference reaches: the gap follows an end (RTS RTL RTI JMP JML BRA BRL)
@@ -367,6 +405,8 @@ def orphans(c, known):
     found = []
     rom, mp = c.rom, c.mp
     n = len(rom)
+    if not hasattr(c, 'used'):
+        c.used = {rom[o] for o in range(n) if mp[o] & 1 and not mp[o] & 0x30}
     o = 0
     while o < n - 4:
         if mp[o] & 0x77 or c.code[o] or c.gcode[o]:
@@ -377,6 +417,9 @@ def orphans(c, known):
             g += 1
         start, o = o, g
         if g - start < 6 or start == 0:
+            continue
+        if len(set(rom[start:g])) >= 3 and dead_code(c, start, g, c.used):
+            found.append((codemap.run_addr(start), g - start))
             continue
         # Does known code end right before the gap?
         p = start - 1
