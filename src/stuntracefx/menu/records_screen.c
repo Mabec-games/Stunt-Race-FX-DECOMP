@@ -94,6 +94,7 @@ static void sound16(uint16_t v)
 /* LDA #v (8-bit), JSL SoundPort0QueuePush. */
 static void sound8(uint8_t v)
 {
+    cyc(62);
     lda8(v);
     abi_SoundPort0QueuePush();
 }
@@ -101,11 +102,12 @@ static void sound8(uint8_t v)
 /* SEP #$30, then the metasprites' origin ($0D3B, $0D3C) and REP #$30. */
 static void origin(uint8_t x, uint8_t y)
 {
-    uint32_t b = db();
+    uint32_t b = (cyc(34), db());
 
     op_sep(P_M | P_X);
     lda8(x);
     wr8(b | 0x0D3B, x);
+    cyc(40);
     lda8(y);
     wr8(b | 0x0D3C, y);
     op_rep(P_M | P_X);
@@ -117,7 +119,7 @@ static void md_first(uint16_t id)
     cpu.y = 0x0000;
     cpu.x = id;
     cpu.p = nz16(cpu.p, id);
-    wr16(db() | 0x0D71, 0x0000);
+    wr16((cyc(72), db()) | 0x0D71, 0x0000);
     abi_MetaspriteDraw();
 }
 
@@ -141,8 +143,9 @@ static void md_next(uint32_t group, uint16_t prev, uint16_t slot, uint16_t id)
    offset. */
 static void slot_to_y(uint16_t slot, int d)
 {
-    op_lda16(db() | slot);
+    op_lda16((cyc(64), db()) | slot);
     if (d) {
+        cyc(14);
         cpu.a = (uint16_t)(cpu.a + d);
         cpu.p = nz16(cpu.p, cpu.a);
     }
@@ -165,9 +168,10 @@ void abi_RecordsMenuBack(void)
 {
     op_rep(P_M | P_X);
     sound16(0x002F);
-    abi_CourseScreenState8();
-    abi_OamBufferHideLargeLong();
+    (cyc(68), abi_CourseScreenState8());
+    (cyc(286), abi_OamBufferHideLargeLong());
     op_sep(P_M);
+    cyc(112);
     lda8(0xF0);
     wr8(0x000E92, 0xF0);
     op_rep(P_M);
@@ -186,10 +190,11 @@ void abi_RecordsMenuGo(void)
 {
     op_sep(P_M | P_X);
     sound8(0x46);
+    cyc(38);
     lda8(0x0A);
     wr8(db() | 0x0D40, 0x0A);
-    abi_ColourMathA7Start();
-    abi_OamBufferHideLargeLong();
+    (cyc(146), abi_ColourMathA7Start());
+    (cyc(288), abi_OamBufferHideLargeLong());
 }
 
 /* SEP #$20, cursor $0D50 = `choice`, REP #$30, the attribute fills from
@@ -219,7 +224,7 @@ static void choice_show(uint8_t choice, AbiFn f1, AbiFn f5, AbiFn f12, uint8_t l
 static void records_view(void)
 {
     op_lda16_imm(0x000C);
-    wr16(db() | 0x0D40, 0x000C);
+    wr16((cyc(50), db()) | 0x0D40, 0x000C);
     sound16(0x0024);
 }
 
@@ -250,13 +255,16 @@ static void all_bottom_show(void)
  */
 void abi_RecordsMenuAllTop(void)
 {
+    cyc(6);
     if (pressed(0x9000)) {
-        abi_RecordsMenuGo();
+        (cyc(64), abi_RecordsMenuGo());
         return;
     }
+    cyc(6);
     if (pressed(0x0400)) {
+        cyc(40);
         sound16(0x0045);
-        all_middle_show();
+        (cyc(44), all_middle_show());
         return;
     }
     all_top_show();
@@ -274,7 +282,7 @@ void abi_RecordsMenuAllTop(void)
  */
 void abi_RecordsMenuAllMiddle(void)
 {
-    uint32_t b = db();
+    uint32_t b = (cyc(46), db());
     uint8_t v;
 
     op_sep(P_M);
@@ -283,20 +291,25 @@ void abi_RecordsMenuAllMiddle(void)
     cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x03)) & ~P_C) | (v >= 0x03 ? P_C : 0));
     if (v != 0x03) {
         op_rep(P_M);
+        cyc(38);
         if (pressed(0x9000)) {
             records_view();
             return;
         }
     }
     op_rep(P_M);
+    cyc(6);
     if (pressed(0x0800)) {
+        cyc(40);
         sound16(0x0045);
-        all_top_show();
+        (cyc(44), all_top_show());
         return;
     }
+    cyc(6);
     if (pressed(0x0400)) {
+        cyc(40);
         sound16(0x0045);
-        all_bottom_show();
+        (cyc(44), all_bottom_show());
         return;
     }
     all_middle_show();
@@ -314,13 +327,16 @@ void abi_RecordsMenuAllMiddle(void)
  */
 void abi_RecordsMenuAllBottom(void)
 {
+    cyc(6);
     if (pressed(0x9000)) {
-        abi_RecordsMenuBack();
+        (cyc(64), abi_RecordsMenuBack());
         return;
     }
+    cyc(6);
     if (pressed(0x0800)) {
+        cyc(40);
         sound16(0x0045);
-        all_middle_show();
+        (cyc(44), all_middle_show());
         return;
     }
     all_bottom_show();
@@ -330,14 +346,16 @@ void abi_RecordsMenuAllBottom(void)
    else (returns 0). */
 static int menu_wait(void)
 {
-    uint32_t b = db();
+    uint32_t b = (cyc(46), db());
     uint8_t v;
 
     op_sep(P_M);
     op_lda8(b | 0x0D41);
     if (!(uint8_t)cpu.a)
         return 1;
+    cyc(40);
     v = (uint8_t)(rd8(b | 0x0D41) - 1);
+    cyc(6);
     wr8(b | 0x0D41, v);
     cpu.p = nz8(cpu.p, v);
     return 0;
@@ -350,14 +368,14 @@ static int menu_back(void)
     op_rep(P_M);
     if (!pressed(0x4000))
         return 0;
-    abi_RecordsMenuBack();
+    (cyc(70), abi_RecordsMenuBack());
     return 1;
 }
 
 /* LDX $0D50 (8-bit), the menu's JMP (table,X): the handler's address. */
 static uint16_t menu_handler(uint16_t table)
 {
-    uint8_t x = rd8(db() | 0x0D50);
+    uint8_t x = rd8((cyc(24), db()) | 0x0D50);
 
     cpu.x = x;
     cpu.p = nz8(cpu.p, x);
@@ -371,16 +389,17 @@ static void all_menu(void)
 {
     uint16_t h;
 
-    if (!menu_wait() || menu_back())
+    if (!(cyc(40), menu_wait()) || (cyc(28), menu_back()))
         return;
     h = menu_handler(0xF519);
     switch (h) {
-    case 0xF51F: abi_RecordsMenuAllTop(); break;
-    case 0xF5C6: abi_RecordsMenuAllBottom(); break;
-    case 0xF55E: abi_RecordsMenuAllMiddle(); break;
+    case 0xF51F: (cyc(46), abi_RecordsMenuAllTop()); break;
+    case 0xF5C6: (cyc(46), abi_RecordsMenuAllBottom()); break;
+    case 0xF55E: (cyc(46), abi_RecordsMenuAllMiddle()); break;
     default: jump_routine(0x020000 | h); break;
     }
-}
+cyc(42);
+    }
 
 /* The Speed Trax records menu's highlights. */
 static void speed_top_show(void)
@@ -427,13 +446,16 @@ void abi_RecordsMenuSpeedTop(void)
  */
 void abi_RecordsMenuSpeedBottom(void)
 {
+    cyc(6);
     if (pressed(0x9000)) {
-        abi_RecordsMenuBack();
+        (cyc(64), abi_RecordsMenuBack());
         return;
     }
+    cyc(6);
     if (pressed(0x0800)) {
+        cyc(40);
         sound16(0x0045);
-        speed_top_show();
+        (cyc(44), speed_top_show());
         return;
     }
     speed_bottom_show();
@@ -508,17 +530,21 @@ static void speed_alt_bottom_show(void)
 void abi_RecordsMenuSpeedAltTop(void)
 {
     op_rep(P_M);
+    cyc(6);
     if (pressed(0x4000)) {
-        speed_alt_leave();
+        (cyc(116), speed_alt_leave());
         return;
     }
+    cyc(6);
     if (pressed(0x9000)) {
-        abi_RecordsMenuGo();
+        (cyc(64), abi_RecordsMenuGo());
         return;
     }
+    cyc(6);
     if (pressed(0x0400)) {
+        cyc(40);
         sound16(0x0045);
-        speed_alt_bottom_show();
+        (cyc(44), speed_alt_bottom_show());
         return;
     }
     speed_alt_top_show();
@@ -585,13 +611,16 @@ void abi_RecordsMenuSpeedAlt(void)
  */
 void abi_RecordsMenuTwoTop(void)
 {
+    cyc(6);
     if (pressed(0x9000)) {
-        abi_RecordsMenuGo();
+        (cyc(70), abi_RecordsMenuGo());
         return;
     }
+    cyc(6);
     if (pressed(0x0400)) {
+        cyc(40);
         sound16(0x0045);
-        speed_bottom_show();
+        (cyc(44), speed_bottom_show());
         return;
     }
     speed_top_show();
@@ -608,13 +637,16 @@ void abi_RecordsMenuTwoTop(void)
  */
 void abi_RecordsMenuTwoBottom(void)
 {
+    cyc(6);
     if (pressed(0x9000)) {
-        abi_RecordsMenuBack();
+        (cyc(70), abi_RecordsMenuBack());
         return;
     }
+    cyc(6);
     if (pressed(0x0800)) {
+        cyc(40);
         sound16(0x0045);
-        speed_top_show();
+        (cyc(44), speed_top_show());
         return;
     }
     speed_bottom_show();
@@ -633,15 +665,16 @@ void abi_RecordsMenuTwo(void)
 {
     uint16_t h;
 
-    if (!menu_wait() || menu_back())
+    if (!menu_wait() || (cyc(28), menu_back()))
         return;
     h = menu_handler(0xF77E);
     switch (h) {
-    case 0xF782: abi_RecordsMenuTwoTop(); break;
-    case 0xF7BB: abi_RecordsMenuTwoBottom(); break;
+    case 0xF782: (cyc(46), abi_RecordsMenuTwoTop()); break;
+    case 0xF7BB: (cyc(46), abi_RecordsMenuTwoBottom()); break;
     default: jump_routine(0x020000 | h); break;
     }
-}
+cyc(42);
+    }
 
 /*
  * @routine 02:F81A RecordsMenuThreeTop
@@ -654,13 +687,16 @@ void abi_RecordsMenuTwo(void)
  */
 void abi_RecordsMenuThreeTop(void)
 {
+    cyc(6);
     if (pressed(0x9000)) {
-        abi_RecordsMenuGo();
+        (cyc(64), abi_RecordsMenuGo());
         return;
     }
+    cyc(6);
     if (pressed(0x0400)) {
+        cyc(40);
         sound16(0x0045);
-        all_middle_show();
+        (cyc(66), all_middle_show());
         return;
     }
     all_top_show();
@@ -677,18 +713,23 @@ void abi_RecordsMenuThreeTop(void)
  */
 void abi_RecordsMenuThreeMiddle(void)
 {
+    cyc(6);
     if (pressed(0x9000)) {
         records_view();
         return;
     }
+    cyc(6);
     if (pressed(0x0800)) {
+        cyc(40);
         sound16(0x0045);
-        all_top_show();
+        (cyc(44), all_top_show());
         return;
     }
+    cyc(6);
     if (pressed(0x0400)) {
+        cyc(40);
         sound16(0x0045);
-        all_bottom_show();
+        (cyc(44), all_bottom_show());
         return;
     }
     all_middle_show();
@@ -705,13 +746,16 @@ void abi_RecordsMenuThreeMiddle(void)
  */
 void abi_RecordsMenuThreeBottom(void)
 {
+    cyc(6);
     if (pressed(0x9000)) {
-        abi_RecordsMenuBack();
+        (cyc(64), abi_RecordsMenuBack());
         return;
     }
+    cyc(6);
     if (pressed(0x0800)) {
+        cyc(40);
         sound16(0x0045);
-        all_middle_show();
+        (cyc(44), all_middle_show());
         return;
     }
     all_bottom_show();
@@ -731,16 +775,17 @@ void abi_RecordsMenuThree(void)
 {
     uint16_t h;
 
-    if (!menu_wait() || menu_back())
+    if (!menu_wait() || (cyc(28), menu_back()))
         return;
     h = menu_handler(0xF814);
     switch (h) {
-    case 0xF81A: abi_RecordsMenuThreeTop(); break;
-    case 0xF8B6: abi_RecordsMenuThreeBottom(); break;
-    case 0xF85B: abi_RecordsMenuThreeMiddle(); break;
+    case 0xF81A: (cyc(46), abi_RecordsMenuThreeTop()); break;
+    case 0xF8B6: (cyc(46), abi_RecordsMenuThreeBottom()); break;
+    case 0xF85B: (cyc(46), abi_RecordsMenuThreeMiddle()); break;
     default: jump_routine(0x020000 | h); break;
     }
-}
+cyc(42);
+    }
 
 /* PHP, REP #$30, Y = ($0D73 & $FF) * 4, SEP #$20: the page mark's sprite
    buffer offset. Returns the P pushed. */
@@ -749,7 +794,7 @@ static uint8_t page_mark_y(void)
     uint8_t p = cpu.p;
 
     op_rep(P_M | P_X);
-    op_lda16(db() | 0x0D73);
+    op_lda16((cyc(46), db()) | 0x0D73);
     op_and16(0x00FF);
     op_asl16();
     op_asl16();
@@ -768,9 +813,11 @@ static void page_mark_flip(uint8_t p)
 
     lda8(0xF0);
     for (i = 0; i < 3; i++)
-        wr8(b | (uint16_t)(0x0377 + i * 8 + cpu.y), 0xF0);
+        { cyc(30); wr8(b | (uint16_t)(0x0377 + i * 8 + cpu.y), 0xF0); }
     for (i = 0; i < 3; i++) {
+        cyc(30);
         v = (uint8_t)(rd8(b | (uint16_t)(0x0378 + i * 8 + cpu.y)) | 0x40);
+        cyc(46);
         lda8(v);
         wr8(b | (uint16_t)(0x0378 + i * 8 + cpu.y), v);
     }
@@ -790,10 +837,14 @@ void abi_RecordsPageMarkFlipHide(void)
     uint32_t b = db();
     uint8_t p = page_mark_y();
 
+    cyc(90);
     lda8(0xF0);
     wr8(b | (uint16_t)(0x037A + cpu.y), 0xF0);
+    cyc(30);
     wr8(b | (uint16_t)(0x0382 + cpu.y), 0xF0);
+    cyc(30);
     wr8(b | (uint16_t)(0x038A + cpu.y), 0xF0);
+    cyc(38);
     page_mark_flip(p);
 }
 
@@ -809,7 +860,7 @@ void abi_RecordsPageMarkFlipHide(void)
  */
 void abi_RecordsPageMarkFlip(void)
 {
-    page_mark_flip(page_mark_y());
+    page_mark_flip(cyc_then(60, page_mark_y()));
 }
 
 /*
@@ -1002,15 +1053,16 @@ void abi_SpeedRecordsScreen(void)
  */
 void abi_SpeedRecordsLeaveCar(void)
 {
-    uint32_t b = db();
+    uint32_t b = (cyc(40), db());
 
     lda8(0x04);
     wr8(b | 0x0D89, 0x04);
     op_rep(P_M);
     op_lda16_imm(0x8669);
+    cyc(18);
     wr16(0x0018DB, 0x8669);
     op_sep(P_M);
-    abi_ColourMathA7Start();
+    (cyc(168), abi_ColourMathA7Start());
 }
 
 /* The course's best time, name and car from the save's records at `save`
@@ -1025,36 +1077,48 @@ static void best_time(uint32_t save, uint16_t first, int d_time, int d_rest)
     uint8_t p;
 
     slot_to_y(0x0D75, d_time);
+    cyc(24);
     op_lda16(b | 0x0E3D);
     op_sub16(first);
+    cyc(32);
     wr16(dp(0xF1), cpu.a);
     op_asl16();
     op_asl16();
     p = (uint8_t)(cpu.p & ~P_C);
+    cyc(30);
     cpu.a = op_adc16(cpu.a, rd16(dp(0xF1)), &p);
     cpu.p = p;
     op_and16(0x00FF);
     op_tax16();
     x = cpu.x;
+    cyc(38);
     op_lda16(save + x);
     op_cmp16(0xFFFF);
     if (cpu.a != 0xFFFF) {
+        cyc(98);
         op_lda16(save + x);
-        abi_RecordTimeDigitsLarge();
+        (cyc(46), abi_RecordTimeDigitsLarge());
         cpu.x = x;
         cpu.p = nz16(cpu.p, x);
+        cyc(96);
         op_lda16(save + 2 + x);
-        abi_RecordNameLettersLarge();
+        (cyc(46), abi_RecordNameLettersLarge());
+        cyc(2);
         slot_to_y(0x0D75, d_rest);
+        cyc(32);
         op_lda16(save + 4 + x);
-        abi_SpritePiecesCarAt51();
+        (cyc(46), abi_SpritePiecesCarAt51());
         return;
     }
+    cyc(2);
     slot_to_y(0x0D75, d_rest);
     op_sep(P_M);
+    cyc(68);
     lda8(0x0F);
     wr8(b | (uint16_t)(0x0376 + cpu.y), 0x0F);
+    cyc(30);
     wr8(b | (uint16_t)(0x037A + cpu.y), 0x0F);
+    cyc(30);
     wr8(b | (uint16_t)(0x037E + cpu.y), 0x0F);
 }
 
@@ -1070,31 +1134,35 @@ static void special_row(uint16_t slot, uint16_t k, int stunt, AbiFn place)
     uint16_t y;
 
     slot_to_y(slot, 0);
+    cyc(32);
     op_lda16(0x000F2B + k);
     if (!stunt)
-        op_cmp16(0xFFFF);
+        { cyc(20); op_cmp16(0xFFFF); }
     if (stunt ? cpu.a != 0 : cpu.a != 0xFFFF) {
         y = cpu.y;
         if (stunt)
-            abi_RecordScoreDigits();
+            (cyc(92), abi_RecordScoreDigits());
         else
-            abi_RecordTimeDigitsSmall();
+            (cyc(92), abi_RecordTimeDigitsSmall());
+        cyc(74);
         op_lda16(0x000F43 + k);
         if (stunt)
-            abi_RecordNameLettersSmall();
+            (cyc(46), abi_RecordNameLettersSmall());
         else
-            abi_RecordNameLetters();
+            (cyc(190), abi_RecordNameLetters());
+        cyc(96);
         op_lda16(0x000F13 + k);
         cpu.y = y;
         cpu.p = nz16(cpu.p, y);
-        abi_RecordTagCarSet();
+        (cyc(246), abi_RecordTagCarSet());
         place();
         return;
     }
-    abi_OamHideEntries0To2();
+    (cyc(122), abi_OamHideEntries0To2());
     if (stunt)
-        abi_OamHideEntries3And9();
-}
+        (cyc(142), abi_OamHideEntries3And9());
+cyc(2);
+    }
 
 /*
  * @routine 02:F148 StuntRecordsScreen
@@ -1172,36 +1240,44 @@ void abi_StuntRecordsScreen(void)
  */
 void abi_BattleRecordsScreen(void)
 {
-    uint32_t b = db();
+    uint32_t b = (cyc(6), db());
     uint8_t p;
 
     origin(0x81, 0x89);
     md_first(0x000D);
+    cyc(128);
     md_next(0x04EE01, 0, 0x0D73, 0x000C);
+    cyc(166);
     md_next(0x04EDFD, 0x0D73, 0x0D75, 0x000B);
+    cyc(40);
     slot_to_y(0x0D73, 0);
+    cyc(24);
     op_lda16(b | 0x0D89);
     op_asl16();
     p = (uint8_t)(cpu.p & ~P_C);
+    cyc(38);
     cpu.a = op_adc16(cpu.a, rd16(b | 0x0D89), &p);
     cpu.p = p;
     op_and16(0x00FF);
-    abi_SpritePiecesAtLeft();
+    (cyc(92), abi_SpritePiecesAtLeft());
+    cyc(42);
     op_lda16(b | 0x0D73);
     op_add16(0x0003);
     op_asl16();
     op_asl16();
     op_tay16();
+    cyc(62);
     op_lda16(b | 0x0D8A);
     op_asl16();
     p = (uint8_t)(cpu.p & ~P_C);
+    cyc(38);
     cpu.a = op_adc16(cpu.a, rd16(b | 0x0D8A), &p);
     cpu.p = p;
     op_and16(0x00FF);
-    abi_SpritePiecesAtRight();
-    abi_SpriteTextAt8152B();
-    abi_OamPalettesE28D();
-    abi_RecordsMenuTwo();
+    (cyc(92), abi_SpritePiecesAtRight());
+    (cyc(86), abi_SpriteTextAt8152B());
+    (cyc(172), abi_OamPalettesE28D());
+    (cyc(224), abi_RecordsMenuTwo());
 }
 
 /*

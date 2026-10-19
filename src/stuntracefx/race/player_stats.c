@@ -35,31 +35,44 @@ void SpeedSampleAdd(uint8_t bank, uint16_t speed, uint16_t player, uint8_t *p, u
     uint8_t v;
 
     if (speed >= 0x8000)
-        speed = (uint16_t)(~speed + 1);
+        { cyc(32); speed = (uint16_t)(~speed + 1); }
+    cyc(92);
     wr8(b | M7A, (uint8_t)speed);
+    cyc(44);
     wr8(b | M7A, (uint8_t)(speed >> 8));
+    cyc(40);
     wr8(b | M7B, 0x3C);
+    cyc(46);
     m = rd16(b | MPYM);
-    v = m < 0x00FF ? (uint8_t)m : 0xFF;
+    v = m < 0x00FF ? (uint8_t)m : (cyc(18), 0xFF);
+    cyc(98);
     wr8(b | (uint16_t)(0x0DDA + player), v);
-    sum = player == 0 ? 0x0DDC : 0x0DE0;
+    sum = player == 0 ? 0x0DDC : (cyc(6), 0x0DE0);
     cnt = player == 0 ? 0x0DE4 : 0x0DE6;
+    cyc(124);
     s = (unsigned)v + rd16(b | sum);
     lo = (uint16_t)s;
+    cyc(24);
     wr16(b | sum, lo);
+    cyc(24);
     hi = rd16(b | (uint16_t)(sum + 2));
     h = (unsigned)hi + (s >> 16);
     *p = (uint8_t)((*p & ~(P_V | P_C)) | ((~hi & (uint16_t)h & 0x8000) ? P_V : 0));
     if (h > 0xFFFF) {
+        cyc(88);
         wr16(b | sum, 0xFFFF);
+        cyc(24);
         wr16(b | (uint16_t)(player == 0 ? sum + 2 : sum), 0xFFFF);
         *a = 0xFFFF;
         *p = (uint8_t)(nz16(*p, 0xFFFF) | P_C);
         return;
     }
+    cyc(70);
     wr16(b | (uint16_t)(sum + 2), (uint16_t)h);
     *a = (uint16_t)h;
+    cyc(24);
     m = (uint16_t)(rd16(b | cnt) + 1);
+    cyc(14);
     wr16(b | cnt, m);
     *p = nz16(*p, m);
 }
@@ -93,34 +106,49 @@ void PlayerStatsFromRecord(void)
     uint16_t x = cpu.x, y = cpu.y, w;
     uint8_t v;
 
+    cyc(76);
     v = rd8(b | 0x0E57);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.p = nz8(cpu.p, v);
     if (!v) {
-        wr8(b | (uint16_t)(0x0DEC + y), rd8(0x700040 + x));
-        wr8(b | (uint16_t)(0x0DEE + y), rd8(0x700041 + x));
-        wr8(b | (uint16_t)(0x0DF0 + y), rd8(0x700042 + x));
-        wr8(b | (uint16_t)(0x0DF2 + y), rd8(0x700043 + x));
-        wr8(b | (uint16_t)(0x0DF6 + y), rd8(0x70004E + x));
+        cyc(48);
+        wr8(b | (uint16_t)(0x0DEC + y), cyc_then(30, rd8(0x700040 + x)));
+        cyc(32);
+        wr8(b | (uint16_t)(0x0DEE + y), cyc_then(30, rd8(0x700041 + x)));
+        cyc(32);
+        wr8(b | (uint16_t)(0x0DF0 + y), cyc_then(30, rd8(0x700042 + x)));
+        cyc(32);
+        wr8(b | (uint16_t)(0x0DF2 + y), cyc_then(30, rd8(0x700043 + x)));
+        cyc(32);
+        wr8(b | (uint16_t)(0x0DF6 + y), cyc_then(30, rd8(0x70004E + x)));
+        cyc(54);
         w = rd16(0x700082 + x) >> 3;
         v = (uint8_t)w;
+        cyc(94);
         wr8(b | (uint16_t)(0x0DF9 + y), v);
         if (v >= 0x3F)
-            v = 0x3F;
+            { cyc(10); v = 0x3F; }
+        cyc(98);
         wr8(b | (uint16_t)(0x0DFB + y), (uint8_t)((v << 1) + 0x30));
+        cyc(54);
         cpu.a = rd16(0x70004A + x);
         cpu.p &= (uint8_t)~P_M;
-        abi_SpeedSampleAdd();
+        (cyc(46), abi_SpeedSampleAdd());
+        cyc(74);
         w = rd16(0x70006A + x);
         cpu.p = (uint8_t)((cpu.p & ~P_C) | (w & 0x0004 ? P_C : 0));
         w >>= 3;
+        cyc(94);
         wr8(b | (uint16_t)(0x0E05 + y), (uint8_t)w);
-        wr8(b | (uint16_t)(0x0DE8 + y), rd8(0x70007A + x));
+        cyc(32);
+        wr8(b | (uint16_t)(0x0DE8 + y), cyc_then(46, rd8(0x70007A + x)));
+        cyc(32);
         v = (uint8_t)(rd8(0x700088 + x) & 0x0F);
+        cyc(46);
         wr8(b | (uint16_t)(0x0DF4 + y), v);
         cpu.a = (uint16_t)((w & 0xFF00) | v);
         cpu.p = (uint8_t)(nz8(cpu.p, v) | P_M);
-    }
+    } else { cyc(22); }
     abi_GsuRecordBits60();
 }
 
@@ -137,11 +165,12 @@ static void stats_player0(void)
 
     cpu.p &= (uint8_t)~(P_M | P_X);
     cpu.y = 0x0000;
+    cyc(100);
     r = rd16(0x702476);
     cpu.a = r;
     cpu.x = r;
     cpu.p |= P_M;
-    PlayerStatsFromRecord();
+    (cyc(30), PlayerStatsFromRecord());
 }
 
 /*
@@ -159,6 +188,7 @@ void PlayerStatsAndPaletteAnimate(void)
     stats_player0();
     cpu.p |= P_M;
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xFF);
+    cyc(240);
     wr8(((uint32_t)cpu.db << 16) | 0x0E5F, 0xFF);
     cpu.p = p;
 }
@@ -178,11 +208,12 @@ static void phase_jump(uint16_t table)
     uint32_t b = (uint32_t)cpu.db << 16;
 
     if (cpu.p & P_M)
-        op_lda8(b | 0x0DD6);
+        { cyc(46); op_lda8(b | 0x0DD6); }
     else
         op_lda16(b | 0x0DD6);
     cpu.x = (cpu.p & P_X) ? (uint16_t)(cpu.a & 0x00FF) : cpu.a;
     cpu.p = (cpu.p & P_X) ? nz8(cpu.p, (uint8_t)cpu.x) : nz16(cpu.p, cpu.x);
+    cyc(60);
     jump_routine(0x070000 | rd16(0x070000 | (uint16_t)(table + cpu.x)));
 }
 
@@ -196,6 +227,7 @@ static void phase_jump(uint16_t table)
  */
 void abi_PhaseDispatchE232(void)
 {
+    cyc(218);
     phase_jump(0xE232);
 }
 
@@ -209,6 +241,7 @@ void abi_PhaseDispatchE232(void)
 void abi_PhaseDispatchE24F(void)
 {
     op_sep(P_M | P_X);
+    cyc(118);
     phase_jump(0xE24F);
 }
 
@@ -235,7 +268,7 @@ static void player0_stats(void)
  */
 void abi_PlayerStatsThenPhaseE232(void)
 {
-    player0_stats();
+    (cyc(118), player0_stats());
     cpu.y = 0;
     cpu.p = nz8(cpu.p, 0);
     abi_PhaseDispatchE232();
@@ -257,20 +290,25 @@ void abi_PlayerStatsThenPhaseDD35(void)
     uint32_t b;
     uint8_t v;
 
-    player0_stats();
+    (cyc(146), player0_stats());
     b = (uint32_t)cpu.db << 16;
+    cyc(202);
     op_lda8(b | 0x10CD);
     if ((uint8_t)cpu.a) {
+        cyc(40);
         op_lda8(b | 0x0DD6);
         v = (uint8_t)cpu.a;
-        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x08)) & ~P_C) | (v >= 0x08 ? P_C : 0));
+        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x08)) & ~P_C) | (v >= 0x08 ? P_C : (cyc(16), 0)));
         if (v >= 0x08) {
             cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
             cpu.p = nz8(cpu.p, 0x01);
+            cyc(72);
             wr8(b | 0x0E3A, 0x01);
+            cyc(24);
             op_lda8(b | 0x0D61);
             if (!((uint8_t)cpu.a & 0x80))
-                return;
+                { cyc(24); return; }
+            cyc(40);
             jump_routine(0x07EBE9);
             return;
         }
@@ -297,7 +335,9 @@ static void race_x_block(uint32_t b, uint8_t stage, void (*flag)(uint32_t), void
     op_sep(P_M);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | stage);
     cpu.p = nz8(cpu.p, stage);
+    cyc(62);
     wr8(b | 0x0D22, stage);
+    cyc(24);
     wr8(b | 0x0D23, stage);
     flag(b);
     park();
@@ -308,11 +348,14 @@ static void race_x_block(uint32_t b, uint8_t stage, void (*flag)(uint32_t), void
    P pulled: from the stack for an inner entry, else as kept. */
 static void race_frame_end(uint32_t b, uint16_t pressed, int inner, uint8_t p0, uint8_t db0)
 {
+    cyc(56);
     wr16(b | pressed, 0x0000);
     if (inner) {
         cpu.s++;
+        cyc(20);
         db0 = rd8((uint16_t)cpu.s);
         cpu.s++;
+        cyc(20);
         p0 = rd8((uint16_t)cpu.s);
     }
     cpu.db = db0;
@@ -332,6 +375,7 @@ static void race_flag_p1(uint32_t b)
 {
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xFF);
     cpu.p = nz8(cpu.p, 0xFF);
+    cyc(40);
     wr8(b | 0x0D5C, 0xFF);
 }
 
@@ -339,6 +383,7 @@ static void race_flag_p2(uint32_t b)
 {
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
     cpu.p = nz8(cpu.p, 0x01);
+    cyc(40);
     wr8(b | 0x0D5D, 0x01);
 }
 
@@ -348,6 +393,7 @@ static void race_stats(uint16_t player, uint32_t rec)
     op_rep(P_M | P_X);
     cpu.y = player;
     cpu.p = nz16(cpu.p, player);
+    cyc(172);
     op_lda16(rec);
     op_tax16();
     op_sep(P_M);
@@ -427,7 +473,8 @@ void abi_RaceXPressPlayer1(void)
 {
     uint32_t b = (uint32_t)cpu.db << 16;
 
-    race_x_block(b, 0x0C, race_flag_p1, abi_OamHighBits18Park48);
+    (cyc(56), race_x_block(b, 0x0C, race_flag_p1, abi_OamHighBits18Park48));
+    cyc(38);
     race_frame_end(b, 0x0D1A, 1, 0, 0);
 }
 
@@ -444,7 +491,8 @@ void abi_RaceXPressPlayer2(void)
 {
     uint32_t b = (uint32_t)cpu.db << 16;
 
-    race_x_block(b, 0x0E, race_flag_p2, abi_OamHighBits58Park112);
+    (cyc(56), race_x_block(b, 0x0E, race_flag_p2, abi_OamHighBits58Park112));
+    cyc(38);
     race_frame_end(b, 0x0D1C, 1, 0, 0);
 }
 
@@ -476,8 +524,10 @@ static void p1_cmp8(uint8_t m)
 /* INC / DEC abs (8-bit). */
 static uint8_t p1_step8(uint32_t at, int d)
 {
+    cyc(22);
     uint8_t v = (uint8_t)(rd8(at) + d);
 
+    cyc(6);
     wr8(at, v);
     cpu.p = nz8(cpu.p, v);
     return v;
@@ -497,10 +547,11 @@ static void p1_digit_glyph(uint32_t b, unsigned shift, uint16_t at)
 
     op_lda16(b | 0x0E74);
     for (i = 0; i < shift; i++)
-        op_lsr16();
+        { cyc(6); op_lsr16(); }
     op_and16(0x000F);
     op_asl16();
     op_add16(0x1400);
+    cyc(84);
     wr16(b | at, cpu.a);
 }
 
@@ -620,43 +671,59 @@ void abi_PlayerOnePhaseTally(void)
     cpu.x = 0x0002;
     cpu.p = nz16(cpu.p, cpu.x);
     do {
+        cyc(54);
         op_lda16(b | (uint16_t)(0x0FB0 + cpu.x));
         op_add16(0x000B);
+        cyc(134);
         op_cmp16(rd16(0x07DF70 + cpu.x));
         if (cpu.p & P_C)
-            op_lda16(0x07DF70 + cpu.x);
+            { cyc(42); op_lda16(0x07DF70 + cpu.x); }
         wr16(b | (uint16_t)(0x0FB0 + cpu.x), cpu.a);
+        cyc(50);
         p1_next(0x0032);
     } while (!(cpu.p & P_C));
+    cyc(42);
     op_lda16(b | 0x0FB0);
     op_add16(0x000B);
     op_cmp16(0x00AC);
     if (cpu.p & P_C) {
         op_sep(P_M);
+        cyc(120);
         op_lda8(b | 0x0E74);
+        cyc(24);
         wr8(b | 0x0E70, (uint8_t)cpu.a);
+        cyc(40);
         p1_lda8(0x40);
         wr8(b | 0x0E58, 0x40);
+        cyc(40);
         p1_lda8(0x0E);
         wr8(b | 0x0DD6, 0x0E);
+        cyc(40);
         p1_lda8(0x0C);
         wr8(b | 0x0D65, 0x0C);
         op_rep(P_M);
         op_lda16_imm(0x0006);
+        cyc(10);
         wr16(b | 0x0D6F, 0x0006);
         op_lda16_imm(0xFFFE);
+        cyc(10);
         wr16(b | 0x0D6B, 0xFFFE);
+        cyc(24);
         op_lda16(b | 0x0E6C);
+        cyc(24);
         wr16(b | 0x0E74, cpu.a);
         op_lda16_imm(0x00AC);
-    }
+    } else { cyc(94); }
+    cyc(10);
     wr16(b | 0x0FB0, cpu.a);
     op_lda16_imm(0x0020);
+    cyc(18);
     wr16(0x700210, 0x0020);
     abi_GsuBytes200_BFBAB9();
+    cyc(96);
     op_lda16(b | 0x0FB0);
-    abi_GsuDigitPair0E74At();
-    abi_GlyphSpritesDrawAll();
+    (cyc(78), abi_GsuDigitPair0E74At());
+    (cyc(182), abi_GlyphSpritesDrawAll());
 }
 
 /*
@@ -674,37 +741,52 @@ void abi_PlayerOnePhaseEnd(void)
 {
     uint32_t b = (uint32_t)cpu.db << 16;
 
+    cyc(24);
     op_lda8(b | 0x0E58);
     if ((uint8_t)cpu.a) {
+        cyc(56);
         p1_cmp8(0x0A);
         if (cpu.p & P_Z) {
+            cyc(54);
             p1_lda8(0x04);
             abi_SoundPort1QueuePush();
         }
         if (!p1_step8(b | 0x0E58, -1)) {
+            cyc(56);
             p1_lda8(0x01);
             wr8(b | 0x19DF, 0x01);
-            abi_WindowSlideUpSound();
-        }
+            (cyc(62), abi_WindowSlideUpSound());
+        } else { cyc(22); }
     } else {
+        cyc(46);
         op_lda8(b | 0x19D8);
+        cyc(10);
         p1_cmp8(0x05);
         if (cpu.p & P_Z) {
+            cyc(52);
             op_lda8(b | 0x0E74);
+            cyc(24);
             wr8(b | 0x0E6C, (uint8_t)cpu.a);
+            cyc(24);
             wr8(b | 0x0D4C, 0x00);
+            cyc(40);
             p1_lda8(0x02);
             wr8(b | 0x0D48, 0x02);
+            cyc(24);
             op_lda8(b | 0x0D8B);
+            cyc(24);
             wr8(b | 0x0D89, (uint8_t)cpu.a);
             op_rep(P_M);
+            cyc(24);
             op_lda16(b | 0x0D8C);
+            cyc(32);
             wr16(0x0018DB, cpu.a);
+            cyc(24);
             jump_routine(0x07EC6B);
             return;
         }
     }
-    abi_GlyphSpritesDrawAll();
+    (cyc(68), abi_GlyphSpritesDrawAll());
 }
 
 /*
@@ -786,9 +868,11 @@ void abi_SaveChecksum(void);
    byte for the count $0E3F, through the data bank. */
 static void stunt_count_byte(uint32_t b)
 {
+    cyc(24);
     op_lda8(b | 0x0E3F);
     cpu.x = (uint8_t)cpu.a;
     cpu.p = nz8(cpu.p, (uint8_t)cpu.x);
+    cyc(82);
     op_lda8(b | (uint16_t)(0xE115 + cpu.x));
     op_rep(P_M);
     op_and16(0x00FF);
@@ -799,10 +883,11 @@ static void stunt_count_down(uint32_t b)
 {
     uint8_t v = (uint8_t)(rd8(b | 0x0E3F) - 1);
 
+    cyc(6);
     wr8(b | 0x0E3F, v);
     cpu.p = nz8(cpu.p, v);
     if (!v)
-        wr8(b | 0x0E41, 0x00);
+        { cyc(40); wr8(b | 0x0E41, 0x00); } else { cyc(22); }
 }
 
 /*
@@ -821,22 +906,26 @@ void abi_StuntCourseMark(void)
     uint8_t v, bit;
 
     op_sep(P_M);
+    cyc(46);
     op_lda8(b | 0x0E3D);
     switch ((uint8_t)cpu.a) {
     case 0x0C: bit = 0x01; break;
-    case 0x0D: bit = 0x02; break;
-    case 0x0E: bit = 0x04; break;
-    case 0x0F: bit = 0x08; break;
+    case 0x0D: cyc(54); bit = 0x02; break;
+    case 0x0E: cyc(86); bit = 0x04; break;
+    case 0x0F: cyc(118); bit = 0x08; break;
     default:
+        cyc(56);
         cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)((uint8_t)cpu.a - 0x0F)) & ~P_C) | ((uint8_t)cpu.a >= 0x0F ? P_C : 0));
         return;
     }
     cpu.p |= P_C;  /* the compare that matched */
+    cyc(86);
     v = (uint8_t)(rd8(0x70FC06) | bit);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.p = nz8(cpu.p, v);
+    cyc(32);
     wr8(0x70FC06, v);
-    abi_SaveChecksum();
+    (cyc(62), abi_SaveChecksum());
 }
 
 /*
@@ -859,40 +948,51 @@ void abi_StuntPanelWait(void)
 
     abi_PauseOnStart();
     op_sep(P_M | P_X);
+    cyc(68);
     op_lda8(b | 0x19ED);
     v = (uint8_t)cpu.a;
     if (!v)
-        return;
+        { cyc(22); return; }
+    cyc(40);
     m = rd8(b | 0x1A2D);
     cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - m)) & ~P_C) | (v >= m ? P_C : 0));
     if (v == m)
         return;
+    cyc(40);
     wr8(b | 0x1A2D, v);
     cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x08)) & ~P_C) | (v >= 0x08 ? P_C : 0));
     if (v != 0x08) {
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x04);
+        cyc(72);
         wr8(b | 0x0E41, 0x04);
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x0F);
         cpu.p = nz8(cpu.p, 0x0F);
+        cyc(40);
         wr8(b | 0x0E3F, 0x0F);
         return;
     }
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x02);
     cpu.p = nz8(cpu.p, 0x02);
-    abi_SoundPort0QueuePushRaw();
-    abi_CarFinishSound();
+    (cyc(60), abi_SoundPort0QueuePushRaw());
+    (cyc(44), abi_CarFinishSound());
     op_sep(P_M | P_X);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x06);
+    cyc(66);
     wr8(b | 0x0E41, 0x06);
+    cyc(24);
     wr8(b | 0x0E5B, 0x00);
+    cyc(24);
     wr8(b | 0x0D55, 0x00);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x20);
     cpu.p = nz8(cpu.p, 0x20);
+    cyc(40);
     wr8(b | 0x0E3F, 0x20);
-    abi_OamHideForHudMode();
+    (cyc(46), abi_OamHideForHudMode());
+    cyc(144);
     call_routine(0x07AE07, 0);
+    cyc(266);
     call_routine(0x07B31B, 1);
-    abi_StuntCourseMark();
+    (cyc(122), abi_StuntCourseMark());
 }
 
 /*
@@ -911,6 +1011,7 @@ void abi_StuntPanelCount(void)
     stunt_count_byte(b);
     abi_GsuF15BTwoLines();
     op_sep(P_M | P_X);
+    cyc(182);
     stunt_count_down(b);
 }
 
@@ -929,6 +1030,7 @@ void abi_StuntPanelShow(void)
     stunt_count_byte(b);
     call_routine(0x078821, 0);
     op_sep(P_M);
+    cyc(204);
     stunt_count_down(b);
 }
 
@@ -949,21 +1051,26 @@ void abi_StuntPhaseEnd(void)
     uint8_t v;
 
     op_sep(P_M | P_X);
+    cyc(24);
     op_lda8(b | 0x19D8);
     v = (uint8_t)cpu.a;
     cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x05)) & ~P_C) | (v >= 0x05 ? P_C : 0));
     if (v != 0x05)
         return;
+    cyc(56);
     wr8(b | 0x0D59, 0x00);
+    cyc(24);
     wr8(b | 0x0E80, 0x00);
+    cyc(24);
     wr8(b | 0x0E81, 0x00);
-    abi_OverlayFramesUntilFaded();
+    (cyc(24), abi_OverlayFramesUntilFaded());
     op_sep(P_M);
+    cyc(104);
     op_lda8(b | 0x0DD4);
     if ((uint8_t)cpu.a)
-        jump_routine(0x07EC6B);
+        { cyc(40); jump_routine(0x07EC6B); }
     else
-        jump_routine(0x07EC80);
+        { cyc(46); jump_routine(0x07EC80); }
 }
 
 /*
@@ -985,21 +1092,27 @@ void abi_StuntPanelDone(void)
     op_lda16_imm(0x0020);
     call_routine(0x078929, 0);
     op_sep(P_M);
+    cyc(204);
     v = (uint8_t)(rd8(b | 0x0E3F) - 1);
+    cyc(6);
     wr8(b | 0x0E3F, v);
     cpu.p = nz8(cpu.p, v);
     if (v)
-        return;
+        { cyc(22); return; }
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x08);
     cpu.p = nz8(cpu.p, 0x08);
+    cyc(56);
     wr8(b | 0x0E41, 0x08);
     op_sep(P_M);
+    cyc(46);
     wr8(b | 0x19DF, 0x00);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
     cpu.p = nz8(cpu.p, 0x01);
+    cyc(40);
     wr8(b | 0x0D22, 0x01);
+    cyc(24);
     wr8(b | 0x0D23, 0x00);
-    abi_WindowSlideUpSound();
+    (cyc(62), abi_WindowSlideUpSound());
 }
 
 /*
@@ -1024,21 +1137,27 @@ void abi_StuntPhaseRace(void)
     uint16_t w;
 
     op_rep(P_M);
+    cyc(24);
     op_lda16(b | 0x0E70);
     if (!cpu.a) {
         op_sep(P_M);
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x0C);
+        cyc(84);
         wr8(b | (uint16_t)(0x0DD6 + cpu.y), 0x0C);
+        cyc(24);
         wr8(b | 0x0D55, 0x00);
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x80);
+        cyc(40);
         wr8(b | 0x0E5A, 0x80);
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x31);
         cpu.p = nz8(cpu.p, 0x31);
-        abi_SoundPort0QueuePush();
+        (cyc(62), abi_SoundPort0QueuePush());
         return;
     }
     op_sep(P_M);
+    cyc(68);
     w = (uint16_t)(rd8(b | (uint16_t)(0x0DEE + cpu.y)) << 8);
+    cyc(44);
     w |= rd8(b | (uint16_t)(0x0DEC + cpu.y));
     op_rep(P_M);
     cpu.a = (uint16_t)(w & 0x0001);
@@ -1046,36 +1165,44 @@ void abi_StuntPhaseRace(void)
     if (cpu.a) {
         op_rep(P_M);
         op_lda16_imm(0x801F);
-        abi_PaletteDarkenFour();
+        (cyc(120), abi_PaletteDarkenFour());
         op_sep(P_M);
+        cyc(90);
         wr8(b | 0x0D5B, 0x00);
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xF0);
+        cyc(40);
         wr8(b | 0x0E18, 0xF0);
+        cyc(24);
         wr8(b | 0x0E5B, 0x00);
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x0E);
+        cyc(46);
         wr8(b | (uint16_t)(0x0DD6 + cpu.y), 0x0E);
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x0C);
         cpu.p = nz8(cpu.p, 0x0C);
+        cyc(40);
         wr8(b | 0x0E56, 0x0C);
+        cyc(24);
         wr8(b | 0x0E4B, 0x0C);
         abi_OamHide75Up();
-        abi_SoundReset();
+        (cyc(78), abi_SoundReset());
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x37);
         cpu.p = nz8(cpu.p, 0x37);
-        abi_SoundPort0QueuePush();
+        (cyc(134), abi_SoundPort0QueuePush());
         return;
     }
     op_sep(P_M | P_X);
+    cyc(70);
     cpu.x = rd8(b | 0x0E41);
     cpu.p = nz8(cpu.p, (uint8_t)cpu.x);
     switch (rd16(0x070000 | (uint16_t)(0xE12D + cpu.x))) {
-    case 0xE137: abi_StuntPanelWait(); break;
-    case 0xE1AE: abi_StuntPanelCount(); break;
-    case 0xE1C8: abi_StuntPanelShow(); break;
-    case 0xE205: abi_StuntPanelDone(); break;
-    case 0xE1E2: abi_StuntPhaseEnd(); break;
+    case 0xE137: (cyc(46), abi_StuntPanelWait()); break;
+    case 0xE1AE: (cyc(46), abi_StuntPanelCount()); break;
+    case 0xE1C8: (cyc(46), abi_StuntPanelShow()); break;
+    case 0xE205: (cyc(46), abi_StuntPanelDone()); break;
+    case 0xE1E2: (cyc(46), abi_StuntPhaseEnd()); cyc(38); break;
     }
-}
+cyc(2);
+    }
 
 /*
  * @routine 07:E08F StuntPhaseStep
@@ -1136,13 +1263,17 @@ static void hud_car_word(uint16_t set, uint16_t clear)
 
     op_rep(P_M | P_X);
     x = rd16(0x7E0346);
+    cyc(30);
     y = rd16(0x7E0000 | (uint16_t)(0x204F + x));
+    cyc(30);
     y = rd16(0x7E0000 | (uint16_t)(0x204F + y));
+    cyc(44);
     w = (uint16_t)(rd16(0x7E0000 | y) & 0x4000);
     cpu.x = x;
     cpu.y = y;
-    w = w ? set : clear;
+    w = w ? (cyc(16), set) : clear;
     cpu.a = w;
+    cyc(102);
     wr16(0x000D29, w);
     op_sep(P_M | P_X);
     cpu.p = nz8(cpu.p, cpu.db);
@@ -1203,6 +1334,7 @@ static void hud_mode_two(int inner, uint8_t p0, uint8_t db0)
 
 void abi_RaceHudModeTwo(void)
 {
+    cyc(134);
     hud_mode_two(1, 0, 0);
 }
 
@@ -1316,10 +1448,11 @@ void abi_RaceSoundsAndHud(void)
     cpu.db = 0x07;
     cpu.p = nz8(cpu.p, 0x07);
     op_sep(P_M | P_X);
-    abi_SoftResetCheck();
+    (cyc(140), abi_SoftResetCheck());
     cpu.y = 0x0000;
     cpu.p = nz8(cpu.p, 0);
-    abi_EngineSoundsPlayer1();
+    (cyc(132), abi_EngineSoundsPlayer1());
+    cyc(118);
     op_lda8(0x070D2B);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | (uint8_t)(cpu.a << 1));
     cpu.x = (uint8_t)cpu.a;
@@ -1327,7 +1460,7 @@ void abi_RaceSoundsAndHud(void)
     switch (rd16(0x07DABE + cpu.x)) {
     case 0xDAC6: hud_mode_zero(p0, db0); break;
     case 0xDB36: hud_mode_one(p0, db0); break;
-    case 0xDC47: hud_mode_two(0, p0, db0); break;
+    case 0xDC47: cyc(208); hud_mode_two(0, p0, db0); break;
     }
 }
 
@@ -1348,19 +1481,26 @@ void abi_TimeUpPhaseStart(void)
 
     op_rep(P_M);
     op_lda16_imm(0x00DA);
+    cyc(10);
     wr16(b | 0x0FB0, 0x00DA);
     op_lda16_imm(0x0014);
+    cyc(10);
     wr16(b | 0x0FE0, 0x0014);
     op_lda16_imm(0xFF9E);
+    cyc(10);
     wr16(b | 0x0FB2, 0xFF9E);
     op_lda16_imm(0x0040);
+    cyc(10);
     wr16(b | 0x0FE2, 0x0040);
     for (i = 0; i < 2; i++) {
+        cyc(24);
         v = (uint16_t)(rd16(b | 0x0DD6) + 1);
+        cyc(14);
         wr16(b | 0x0DD6, v);
         cpu.p = nz16(cpu.p, v);
     }
-}
+cyc(2);
+    }
 
 /*
  * @routine 07:DBB8 TimeUpPhaseSlideIn
@@ -1370,6 +1510,7 @@ void abi_TimeUpPhaseStart(void)
  */
 void abi_TimeUpPhaseSlideIn(void)
 {
+    cyc(46);
     call_routine(0x07A492, 0);
 }
 
@@ -1381,6 +1522,7 @@ void abi_TimeUpPhaseSlideIn(void)
  */
 void abi_TimeUpPhaseSlideOut(void)
 {
+    cyc(46);
     call_routine(0x07A451, 0);
 }
 
@@ -1410,40 +1552,54 @@ void abi_TimeUpPhaseRace(void)
 
     abi_PauseOnStart();
     op_sep(P_M);
+    cyc(90);
     op_lda8(b | 0x0E66);
+    cyc(56);
     if (time_cmp8(0x09)) {
         op_lda8(b | 0x0E64);
+        cyc(56);
         if (time_cmp8(0x59)) {
             op_lda8(b | 0x0E63);
+            cyc(78);
             if (time_cmp8(0x99)) {
                 cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x20);
                 wr8(b | 0x0E5A, 0x20);
                 cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x0C);
+                cyc(40);
                 wr8(b | 0x0DD6, 0x0C);
                 cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x31);
                 cpu.p = nz8(cpu.p, 0x31);
-                abi_SoundPort0QueuePush();
+                (cyc(62), abi_SoundPort0QueuePush());
                 return;
             }
         }
     }
+    cyc(6);
     op_lda8(b | 0x1F71);
     if ((uint8_t)cpu.a)
-        return;
+        { cyc(24); return; }
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x08);
+    cyc(56);
     wr8(b | 0x0DD6, 0x08);
+    cyc(24);
     wr8(b | 0x0D53, 0x08);
+    cyc(24);
     wr8(b | 0x0E5B, 0x00);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x30);
+    cyc(40);
     wr8(b | 0x0E58, 0x30);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x3E);
     cpu.p = nz8(cpu.p, 0x3E);
-    abi_SoundPort0QueuePush();
+    (cyc(62), abi_SoundPort0QueuePush());
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x55);
     cpu.p = nz8(cpu.p, 0x55);
+    cyc(38);
     wr8(b | 0x0592, 0x55);
+    cyc(24);
     wr8(b | 0x0593, 0x55);
+    cyc(24);
     wr8(b | 0x0594, 0x55);
+    cyc(46);
     call_routine(0x07AD1B, 0);
 }
 
@@ -1452,11 +1608,12 @@ void abi_TimeUpPhaseRace(void)
 static void race_end_go_on(uint32_t b)
 {
     op_sep(P_M);
+    cyc(46);
     op_lda8(b | 0x0DD4);
     if ((uint8_t)cpu.a)
-        jump_routine(0x07EC6B);
+        { cyc(40); jump_routine(0x07EC6B); }
     else
-        jump_routine(0x07EC80);
+        { cyc(46); jump_routine(0x07EC80); }
 }
 
 /*
@@ -1476,25 +1633,31 @@ void abi_TimeUpPhaseEnd(void)
     uint8_t v;
 
     op_sep(P_M);
+    cyc(46);
     op_lda8(b | 0x0E58);
     v = (uint8_t)cpu.a;
     if (!v) {
         op_sep(P_M);
+        cyc(68);
         wr8(b | 0x0D59, 0x00);
-        abi_ChampionshipScreenLoop();
+        (cyc(24), abi_ChampionshipScreenLoop());
+        cyc(58);
         race_end_go_on(b);
         return;
     }
     v = (uint8_t)(v - 1);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cyc(54);
     wr8(b | 0x0E58, v);
-    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x20)) & ~P_C) | (v >= 0x20 ? P_C : 0));
-    abi_HudLapDigitsDraw();
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x20)) & ~P_C) | (v >= 0x20 ? P_C : (cyc(6), 0)));
+    (cyc(16), abi_HudLapDigitsDraw());
     op_sep(P_M);
+    cyc(182);
     op_lda8(b | 0x0FA3);
     if ((uint8_t)cpu.a & 0x80)
-        abi_HudLeadWordDraw();
-}
+        (cyc(124), abi_HudLeadWordDraw());
+cyc(24);
+    }
 
 /*
  * @routine 07:DB71 TimeUpPhaseStep
@@ -1512,25 +1675,26 @@ void abi_TimeUpPhaseStep(void)
     op_rep(P_M | P_X);
     cpu.y = 0x0000;
     cpu.p = nz16(cpu.p, 0);
+    cyc(56);
     op_lda16(0x702476);
     op_tax16();
     op_sep(P_M);
     abi_PlayerStatsFromRecord();
     op_sep(P_X);
     if (cpu.p & P_M)
-        op_lda8(b | 0x0DD6);
+        { cyc(202); op_lda8(b | 0x0DD6); }
     else
         op_lda16(b | 0x0DD6);
     cpu.x = (uint8_t)cpu.a;
     cpu.p = nz8(cpu.p, (uint8_t)cpu.x);
     switch (rd16(0x07DB89 + cpu.x)) {
-    case 0xDB97: abi_TimeUpPhaseStart(); break;
-    case 0xDBB8: abi_TimeUpPhaseSlideIn(); break;
-    case 0xDBBC: abi_TimeUpPhaseSlideOut(); break;
-    case 0xDBC0: abi_TimeUpPhaseRace(); break;
-    case 0xDC15: abi_TimeUpPhaseEnd(); break;
-    case 0xEBDC: jump_routine(0x07EBDC); break;
-    case 0xECA4: jump_routine(0x07ECA4); break;
+    case 0xDB97: (cyc(60), abi_TimeUpPhaseStart()); break;
+    case 0xDBB8: (cyc(60), abi_TimeUpPhaseSlideIn()); cyc(2); break;
+    case 0xDBBC: (cyc(60), abi_TimeUpPhaseSlideOut()); cyc(2); break;
+    case 0xDBC0: (cyc(60), abi_TimeUpPhaseRace()); break;
+    case 0xDC15: (cyc(60), abi_TimeUpPhaseEnd()); break;
+    case 0xEBDC: cyc(62); jump_routine(0x07EBDC); break;
+    case 0xECA4: cyc(60); jump_routine(0x07ECA4); cyc(2); break;
     }
 }
 

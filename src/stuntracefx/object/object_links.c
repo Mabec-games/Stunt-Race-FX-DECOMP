@@ -111,7 +111,7 @@ void ObjectListFreeAll(void)
 
 void abi_ObjectListFreeAll(void)
 {
-    free_list();
+    (cyc(76), free_list());
 }
 
 /*
@@ -127,7 +127,7 @@ void ObjectListFreeAllCopy(void)
 
 void abi_ObjectListFreeAllCopy(void)
 {
-    free_list();
+    (cyc(76), free_list());
 }
 
 /*
@@ -146,20 +146,30 @@ void ObjectLinkChild(uint8_t bank, uint8_t tag, uint16_t parent, uint16_t child)
     uint32_t b = (uint32_t)bank << 16;
     uint16_t at = parent, next;
 
+    cyc(24);
     wr8(b | 0x1F2B, tag);
+    cyc(24);
     tag = rd8(b | 0x1F2B);
+    cyc(30);
     wr8(b | (uint16_t)(0x2048 + child), tag);
+    cyc(88);
     wr16(b | (uint16_t)(0x2006 + child), parent);
+    cyc(126);
     wr16(b | (uint16_t)(0x2027 + child), 0x0000);
+    cyc(60);
     wr16(LINKS_SCRATCH, child);
     for (;;) {
+        cyc(58);
         next = rd16(b | (uint16_t)(0x2027 + at));
         if (!next)
-            break;
+            break; else { cyc(8); }
         at = next;
     }
+    cyc(32);
     child = rd16(LINKS_SCRATCH);
+    cyc(30);
     wr16(b | (uint16_t)(0x2027 + at), child);
+    cyc(16);
     (void)rd16(LINKS_SCRATCH);
 }
 
@@ -181,13 +191,16 @@ static uint16_t find_tag(uint8_t bank, uint8_t tag, uint16_t from, uint8_t *a, u
 
     wr8(b | 0x1A30, tag);
     for (;;) {
+        cyc(60);
         next = rd16(b | (uint16_t)(0x2027 + at));
         if (!next)
             return 0;
+        cyc(46);
         t = rd8(b | (uint16_t)(0x2048 + next));
         *a = t;
+        cyc(24);
         want = rd8(b | 0x1A30);
-        *p = (uint8_t)((*p & ~P_C) | (t >= want ? P_C : 0));
+        *p = (uint8_t)((*p & ~P_C) | (t >= want ? P_C : (cyc(22), 0)));
         if (t == want)
             return next;
         at = next;
@@ -206,6 +219,7 @@ static uint16_t find_tag(uint8_t bank, uint8_t tag, uint16_t from, uint8_t *a, u
  */
 uint16_t ObjectChildFindTagX(uint8_t bank, uint8_t tag, uint16_t obj, uint8_t *a, uint8_t *p)
 {
+    cyc(24);
     return find_tag(bank, tag, obj, a, p);
 }
 
@@ -228,6 +242,7 @@ void abi_ObjectChildFindTagX(void)
  */
 uint16_t ObjectChildFindTagY(uint8_t bank, uint8_t tag, uint16_t obj, uint8_t *a, uint8_t *p)
 {
+    cyc(24);
     return find_tag(bank, tag, obj, a, p);
 }
 
@@ -252,14 +267,19 @@ void abi_ObjectChildFindTagY(void)
  */
 int ObjectSpawnA040(uint16_t *a, uint16_t *x, uint16_t *y)
 {
+    cyc(62);
     if (!ObjectAlloc(a, x, y)) {
+        cyc(68);
         *x = 0x0000;
         return 0;
     }
     *y = *x;
+    cyc(374);
     ObjectInit(*y);
+    cyc(200);
     wr8(0x7E2036 + *x, 0x03);
     *a = 0xA040;
+    cyc(78);
     wr16(0x7E2004 + *x, *a);
     return 1;
 }

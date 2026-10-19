@@ -45,28 +45,37 @@ void RaceFrameStepPause(void)
     uint8_t p = cpu.p, v;
 
     cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
+    cyc(90);
     v = rd8(b | 0x1168);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     if (!v) {
+        cyc(40);
         v = rd8(b | 0x08FB);
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
         if (v == 0xFF) {
+            cyc(72);
             wr8(b | 0x1168, 0x02);
             cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x02);
-            abi_RaceFrameRun();
-            abi_RaceFrameRun();
+            (cyc(62), abi_RaceFrameRun());
+            (cyc(120), abi_RaceFrameRun());
             cpu.p |= P_M;
+            cyc(48);
             wait_start(b, 0);
             wait_start(b, 1);
             wait_start(b, 0);
+            cyc(56);
             wr8(b | 0x030A, 0x00);
+            cyc(24);
             wr8(b | 0x030C, 0x00);
+            cyc(24);
             wr8(b | 0x0309, 0x00);
+            cyc(24);
             wr8(b | 0x030B, 0x00);
+            cyc(40);
             wr8(b | 0x1168, 0x01);
             cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
-        }
-    }
+        } else { cyc(38); }
+    } else { cyc(22); }
     op_plp(p);
 }
 
@@ -88,8 +97,8 @@ void FrameQueuesFlush(void)
     uint8_t p = cpu.p;
 
     cpu.p &= (uint8_t)~(P_M | P_X);
-    abi_VramDmaQueueFlush();
-    abi_ByteWritesIfPending();
+    (cyc(90), abi_VramDmaQueueFlush());
+    (cyc(116), abi_ByteWritesIfPending());
     op_plp(p);
 }
 

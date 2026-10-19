@@ -18,10 +18,12 @@
 void OamHideRange(uint16_t offset, uint16_t count)
 {
     do {
+        cyc(124);
         wr8(OAM_BUFFER + 1 + offset, 0xF0);
         offset += 4;
     } while (--count);
-}
+cyc(144);
+    }
 
 void abi_OamHideRange(void)
 {
@@ -129,6 +131,7 @@ static uint16_t sprite_strip(uint16_t index, uint16_t offset, uint32_t table, ui
  */
 uint16_t SpriteStrip4(uint16_t selector, uint16_t offset)
 {
+    cyc(234);
     return sprite_strip((uint16_t)((selector >> 1) & 0x00F8), offset, 0x7F09CD, 0x0010, 3);
 }
 
@@ -155,6 +158,7 @@ void abi_SpriteStrip4(void)
  */
 uint16_t SpriteStrip6(uint16_t selector, uint16_t offset)
 {
+    cyc(234);
     return sprite_strip((uint16_t)((selector & 0x0038) << 1), offset, 0x7F0A66, 0x0008, 5);
 }
 
@@ -185,14 +189,15 @@ void OamBufferClear(void)
     int x;
 
     for (x = 0x01FC; x >= 0; x -= 4)
-        wr16(0x000375 + (unsigned)x, 0xF0F0);
+        { cyc(110); wr16(0x000375 + (unsigned)x, 0xF0F0); }
+    cyc(70);
     for (x = 0x1E; x >= 0; x -= 2)
-        wr16(0x000575 + (unsigned)x, 0x0000);
+        { cyc(82); wr16(0x000575 + (unsigned)x, 0x0000); }
 }
 
 void abi_OamBufferClear(void)
 {
-    OamBufferClear();
+    (cyc(14), OamBufferClear());
     cpu.a = 0x0000;
     cpu.x = (cpu.p & P_X) ? 0x00FE : 0xFFFE;
 }
@@ -275,6 +280,7 @@ uint8_t OamSprite0AddY(uint8_t bank, uint8_t lines, uint8_t *p)
 
     *p = (uint8_t)((nz8(*p, (uint8_t)s) & ~(P_C | P_V)) | (s > 0xFF ? P_C : 0)
                    | ((~(lines ^ y) & (lines ^ (uint8_t)s) & 0x80) ? P_V : 0));
+    cyc(24);
     wr8(a, (uint8_t)s);
     return (uint8_t)s;
 }
@@ -293,6 +299,7 @@ static uint16_t oam_attr_fill(uint8_t bank, uint16_t first, uint16_t count, uint
     uint16_t x = (uint16_t)(first << 2);
 
     do {
+        cyc(122);
         wr8((uint32_t)bank << 16 | (uint16_t)(0x0378 + x), attr);
         x = (uint16_t)(x + 4);
     } while (--count);
@@ -305,6 +312,7 @@ static void abi_oam_attr_fill(uint16_t count, uint8_t attr)
     uint16_t a4 = (uint16_t)(cpu.a << 2);
 
     cpu.p = (uint8_t)((cpu.p & ~(P_C | P_N | P_M)) | ((cpu.a << 1) & 0x8000 ? P_C : 0) | P_Z);
+    cyc(12);
     cpu.x = oam_attr_fill(cpu.db, cpu.a, count, attr);
     cpu.y = 0;
     cpu.a = (uint16_t)((a4 & 0xFF00) | attr);
@@ -326,6 +334,7 @@ void OamAttr36x4(uint8_t bank, uint16_t first)
 
 void abi_OamAttr36x4(void)
 {
+    cyc(22);
     abi_oam_attr_fill(4, 0x36);
 }
 
@@ -342,6 +351,7 @@ void OamAttr38x6(uint8_t bank, uint16_t first)
 
 void abi_OamAttr38x6(void)
 {
+    cyc(22);
     abi_oam_attr_fill(6, 0x38);
 }
 
@@ -373,6 +383,7 @@ void OamHideEntries3And9(uint8_t bank, uint16_t y)
     uint32_t b = (uint32_t)bank << 16;
 
     wr16(b | (uint16_t)(0x0381 + y), 0xF000);
+    cyc(30);
     wr16(b | (uint16_t)(0x0399 + y), 0xF000);
 }
 
@@ -394,7 +405,9 @@ void OamHideEntries0To2(uint8_t bank, uint16_t y)
     uint32_t b = (uint32_t)bank << 16;
 
     wr16(b | (uint16_t)(0x0375 + y), 0xF000);
+    cyc(30);
     wr16(b | (uint16_t)(0x0379 + y), 0xF000);
+    cyc(30);
     wr16(b | (uint16_t)(0x037D + y), 0xF000);
 }
 
@@ -446,11 +459,16 @@ static uint8_t oam_block(uint8_t bank, uint16_t x, uint8_t x0, uint8_t dx, uint8
     uint32_t b = (uint32_t)bank << 16;
     unsigned s = (unsigned)x0 + dx;
 
+    cyc(92);
     wr8(b | (uint16_t)(0x0435 + x), x0);
     *p = (uint8_t)((*p & ~(P_C | P_V)) | (s > 0xFF ? P_C : 0) | ((~(x0 ^ dx) & (x0 ^ (uint8_t)s) & 0x80) ? P_V : 0));
+    cyc(60);
     wr8(b | (uint16_t)(0x0439 + x), (uint8_t)s);
+    cyc(46);
     wr8(b | (uint16_t)(0x0440 + x), attr_a);
+    cyc(30);
     wr8(b | (uint16_t)(0x0444 + x), attr_a);
+    cyc(46);
     wr8(b | (uint16_t)(0x0448 + x), attr_b);
     return attr_b;
 }
@@ -472,6 +490,7 @@ void abi_OamBlock59Left(void)
 {
     uint8_t p = cpu.p;
 
+    cyc(22);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | oam_block(cpu.db, 0x002C, 0x30, 0x22, 0x0C, 0x06, &p));
     cpu.x = 0x002C;
     cpu.p = (uint8_t)(p & ~(P_N | P_Z | P_X));
@@ -490,6 +509,7 @@ void abi_OamBlock123Left(void)
 {
     uint8_t p = cpu.p;
 
+    cyc(22);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | oam_block(cpu.db, 0x012C, 0x7E, 0x22, 0x0C, 0x06, &p));
     cpu.x = 0x012C;
     cpu.p = (uint8_t)(p & ~(P_N | P_Z | P_X));
@@ -529,6 +549,7 @@ void abi_OamBlock59Right(void)
 {
     uint8_t p = cpu.p;
 
+    cyc(68);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | oam_block(cpu.db, 0x002C, 0x5F, 0x1A, 0x06, 0x0C, &p));
     cpu.x = 0x002C;
     cpu.p = (uint8_t)(p & ~(P_N | P_Z | P_X));
@@ -546,6 +567,7 @@ void abi_OamBlock123Right(void)
 {
     uint8_t p = cpu.p;
 
+    cyc(68);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | oam_block(cpu.db, 0x012C, 0xAD, 0x1A, 0x06, 0x0C, &p));
     cpu.x = 0x012C;
     cpu.p = (uint8_t)(p & ~(P_N | P_Z | P_X));
@@ -567,6 +589,7 @@ void abi_OamBlock52Right(void)
 {
     uint8_t p = cpu.p;
 
+    cyc(46);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | oam_block_52(cpu.db, 0x87, 0x1A, 0x06, 0x0C, &p));
     cpu.x = 0x0010;
     cpu.p = (uint8_t)(p & ~(P_N | P_Z | P_X));
@@ -588,17 +611,24 @@ uint16_t OamColumn8(uint8_t bank, uint16_t *x, uint8_t *p)
     unsigned i;
 
     for (i = 0; i < 8; i++) {
+        cyc(108);
         v = rd16(0x0000F1);
+        cyc(30);
         wr16(b | (uint16_t)(0x0375 + *x), v);
+        cyc(54);
         wr16(0x0000F1, (uint16_t)(v + 0x10));
+        cyc(16);
         v = rd16(0x0000F3);
+        cyc(30);
         wr16(b | (uint16_t)(0x0377 + *x), v);
         s = (uint16_t)(v + 2);
         *p = (uint8_t)((*p & ~(P_C | P_V)) | ((unsigned)v + 2 > 0xFFFF ? P_C : 0) | ((~v & s & 0x8000) ? P_V : 0));
+        cyc(54);
         wr16(0x0000F3, s);
         v = s;
         *x = (uint16_t)(*x + 4);
     }
+    cyc(150);
     return v;
 }
 
@@ -626,9 +656,13 @@ uint8_t OamHighBits58(uint8_t bank)
     uint8_t v = 0;
     unsigned i;
 
+    cyc(130);
     wr8(b | 0x0E15, 0xF8);
+    cyc(16);
     for (i = 0; i < 4; i++) {
+        cyc(24);
         v = (uint8_t)(rd8(b | (uint16_t)(0x058B + i)) | bits[i]);
+        cyc(46);
         wr8(b | (uint16_t)(0x058B + i), v);
     }
     return v;
@@ -672,7 +706,8 @@ uint8_t OamPaletteFromTableE30F(uint8_t bank, uint16_t *y)
     uint32_t b = (uint32_t)bank << 16;
 
     *y = (uint16_t)(rd16(b | 0x0D79) << 2);
-    return OamSetPalette(bank, rd8(0x04E30F + (rd16(b | 0x0D48) & 0x00FF)), 0x0016, y);
+    cyc(66);
+    return OamSetPalette(bank, rd8(cyc_then(86, 0x04E30F + (rd16(b | 0x0D48) & 0x00FF))), 0x0016, y);
 }
 
 void abi_OamPaletteFromTableE30F(void)
@@ -693,8 +728,9 @@ uint8_t OamPaletteFromTableE26A(uint8_t bank, uint16_t *y)
 {
     uint32_t b = (uint32_t)bank << 16;
     uint16_t n = rd16(b | 0x10D8);
-    uint8_t bits = n ? rd8(0x04E26A + ((uint16_t)(n - 1) & 0x00FF)) : 0x0A;
+    uint8_t bits = n ? rd8(cyc_then(84, 0x04E26A + ((uint16_t)(n - 1) & 0x00FF))) : 0x0A;
 
+    cyc(38);
     *y = (uint16_t)((uint16_t)(rd16(b | 0x0D7B) + 0x0D) << 2);
     return OamSetPalette(bank, bits, 0x0016, y);
 }
@@ -718,7 +754,8 @@ uint8_t OamPaletteFromTableE26AByMode(uint8_t bank, uint16_t *y)
     uint32_t b = (uint32_t)bank << 16;
 
     *y = (uint16_t)(rd16(b | 0x0D79) << 2);
-    return OamSetPalette(bank, rd8(0x04E26A + (rd16(b | 0x0D48) & 0x00FF)), 0x0012, y);
+    cyc(66);
+    return OamSetPalette(bank, rd8(cyc_then(86, 0x04E26A + (rd16(b | 0x0D48) & 0x00FF))), 0x0012, y);
 }
 
 void abi_OamPaletteFromTableE26AByMode(void)
@@ -742,11 +779,16 @@ uint8_t OamPalettesE28D(uint8_t bank, uint16_t *y)
     uint32_t b = (uint32_t)bank << 16;
 
     *y = (uint16_t)(rd16(b | 0x0D75) << 2);
-    OamSetPalette(bank, rd8(0x04E30B + (rd16(b | 0x0D48) & 0x00FF)), 0x0012, y);
+    cyc(66);
+    OamSetPalette(bank, rd8(cyc_then(86, 0x04E30B + (rd16(b | 0x0D48) & 0x00FF))), 0x0012, y);
+    cyc(174);
     *y = (uint16_t)((uint16_t)(rd16(b | 0x0D75) + 0x16) << 2);
-    OamSetPalette(bank, rd8(0x04E313 + (rd16(b | 0x0D89) & 0x00FF)), 0x0006, y);
+    cyc(104);
+    OamSetPalette(bank, rd8(cyc_then(86, 0x04E313 + (rd16(b | 0x0D89) & 0x00FF))), 0x0006, y);
+    cyc(174);
     *y = (uint16_t)((uint16_t)(rd16(b | 0x0D75) + 0x1C) << 2);
-    return OamSetPalette(bank, rd8(0x04E313 + (rd16(b | 0x0D8A) & 0x00FF)), 0x0006, y);
+    cyc(104);
+    return OamSetPalette(bank, rd8(cyc_then(86, 0x04E313 + (rd16(b | 0x0D8A) & 0x00FF))), 0x0006, y);
 }
 
 void abi_OamPalettesE28D(void)
@@ -770,9 +812,13 @@ uint8_t OamHighBits18(uint8_t bank)
     uint8_t v = 0;
     unsigned i;
 
+    cyc(130);
     wr8(b | 0x0E14, 0xF8);
+    cyc(38);
     for (i = 0; i < 4; i++) {
+        cyc(24);
         v = (uint8_t)(rd8(b | (uint16_t)(0x057B + i)) | bits[i]);
+        cyc(46);
         wr8(b | (uint16_t)(0x057B + i), v);
     }
     return v;
@@ -797,8 +843,11 @@ void OamHighBits58Park112(uint8_t bank)
 {
     uint32_t b = (uint32_t)bank << 16;
 
+    cyc(68);
     OamHighBits58(bank);
+    cyc(140);
     wr16(b | 0x0591, 0x5555);
+    cyc(24);
     wr16(b | 0x0593, 0x5555);
 }
 
@@ -823,11 +872,14 @@ void OamHide36And96(uint8_t bank)
     uint32_t b = (uint32_t)bank << 16;
     unsigned i;
 
+    cyc(130);
     OamHideRange(0x0090, 0x0015);
+    cyc(2);
     OamHideRange(0x0180, 0x0010);
     for (i = 0; i < 4; i++)
-        wr8(b | (uint16_t)(0x058D + i), 0x00);
-}
+        { cyc(24); wr8(b | (uint16_t)(0x058D + i), 0x00); }
+cyc(70);
+    }
 
 void abi_OamHide36And96(void)
 {
@@ -850,15 +902,22 @@ void OamHide75Up(uint8_t bank)
 {
     uint32_t b = (uint32_t)bank << 16;
 
+    cyc(152);
     wr8(b | 0x0E0C, 0xF8);
+    cyc(24);
     wr8(b | 0x0E14, 0xF8);
+    cyc(24);
     if (rd8(b | 0x0D2B)) {
+        cyc(34);
         OamHideRange(0x012C, 0x000C);
+        cyc(24);
         OamHideRange(0x0180, 0x0020);
     } else {
+        cyc(40);
         OamHideRange(0x012C, 0x0035);
     }
-}
+cyc(38);
+    }
 
 void abi_OamHide75Up(void)
 {
@@ -892,16 +951,20 @@ void OamLargeColumns(uint8_t bank)
     for (i = 0; i < 3; i++) {
         uint16_t x = first[i];
 
+        cyc(18);
         wr16(0x0000F1, pos[i]);
+        cyc(40);
         wr16(0x0000F3, tile[i]);
+        cyc(2);
         OamColumn8(bank, &x, &p);
     }
     for (i = 0; i < 6; i++)
-        wr8(b | high[i], 0xAA);
+        { cyc(40); wr8(b | high[i], 0xAA); }
 }
 
 void abi_OamLargeColumns(void)
 {
+    cyc(128);
     OamLargeColumns(cpu.db);
     cpu.a = 0x06AA;
     cpu.x = cpu.p & P_X ? 0x00C0 : 0x01C0;  /* the final pull restores X's width */
@@ -1262,6 +1325,7 @@ void OamAttr36x6(uint8_t bank, uint16_t first)
 
 void abi_OamAttr36x6(void)
 {
+    cyc(22);
     abi_oam_attr_fill(6, 0x36);
 }
 
@@ -1278,6 +1342,7 @@ void OamAttr38x4(uint8_t bank, uint16_t first)
 
 void abi_OamAttr38x4(void)
 {
+    cyc(22);
     abi_oam_attr_fill(4, 0x38);
 }
 
@@ -1289,6 +1354,7 @@ void abi_OamAttr38x4(void)
  */
 void abi_OamAttr36x7(void)
 {
+    cyc(22);
     abi_oam_attr_fill(7, 0x36);
 }
 
@@ -1304,8 +1370,11 @@ void OamHighBits18Park48(uint8_t bank)
 {
     uint32_t b = (uint32_t)bank << 16;
 
+    cyc(68);
     OamHighBits18(bank);
+    cyc(140);
     wr16(b | 0x0581, 0x5555);
+    cyc(24);
     wr16(b | 0x0583, 0x5555);
 }
 
@@ -1440,6 +1509,7 @@ static void pieces_xy(uint16_t x, uint16_t y, int y_first)
 /* Piece set A to $10C3, then pieces_xy. */
 static void pieces_at_xy(uint16_t x, uint16_t y, int y_first)
 {
+    cyc(24);
     wr16(((uint32_t)cpu.db << 16) | 0x10C3, cpu.a);
     pieces_xy(x, y, y_first);
 }
@@ -1533,10 +1603,14 @@ void abi_SpritePiecesCarAt51(void)
     uint32_t b = (uint32_t)cpu.db << 16;
     uint16_t v;
 
+    cyc(24);
     wr16(b | 0x10C3, cpu.a);
     v = (uint16_t)(cpu.a << 1);
+    cyc(52);
     v = (uint16_t)((v + rd16(b | 0x10C3)) & 0x000F);
+    cyc(48);
     wr16(b | 0x10C3, v);
+    cyc(24);
     wr16(b | 0x10C5, 0x0000);
     pieces_xy(0x0081 - 0x0030, 0x0089 - 0x0002, 0);
 }
@@ -1585,30 +1659,47 @@ void abi_SpritePiecesTwoCarsTop(void)
     uint8_t v, n;
 
     cpu.p |= P_M;
+    cyc(206);
     if ((rd8(b | 0x0E3B) & 0x07) == 0x07) {
+        cyc(72);
         v = (uint8_t)(rd8(b | 0x10BB) + 1);
         if (v >= 0x04)
             v = 0x00;
+        cyc(86);
         wr8(b | 0x10BB, v);
-    }
+    } else { cyc(54); }
+    cyc(40);
     wr8(b | 0x10C1, 0x30);
+    cyc(40);
     wr8(b | 0x10C5, 0x30);
+    cyc(40);
     wr8(b | 0x10BF, 0x38);
+    cyc(40);
     wr8(b | 0x10BD, 0x34);
+    cyc(24);
     n = rd8(b | 0x0D89);
+    cyc(52);
     n = (uint8_t)((n << 1) + rd8(b | 0x0D89));
+    cyc(24);
     wr8(b | 0x10C3, n);
+    cyc(132);
     car_pieces(0x00C0);
     cpu.p |= P_M | P_X;
     cpu.x &= 0x00FF;
     cpu.y &= 0x00FF;
     n = rd8(b | 0x0D8A);
+    cyc(52);
     n = (uint8_t)((n << 1) + rd8(b | 0x0D8A));
+    cyc(24);
     wr8(b | 0x10C3, n);
+    cyc(40);
     wr8(b | 0x10BD, 0x7C);
+    cyc(132);
     car_pieces(0x00CC);
     cpu.p |= P_M;
+    cyc(16);
     wr8(b | 0x0581, 0x20);
+    cyc(40);
     wr8(b | 0x0582, 0x58);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x58);
     cpu.p = nz8(cpu.p, 0x58);
@@ -1636,30 +1727,47 @@ void abi_SpritePiecesTwoCars(void)
     cpu.p |= P_M | P_X;
     cpu.x &= 0x00FF;
     cpu.y &= 0x00FF;
+    cyc(206);
     if ((rd8(b | 0x0E3B) & 0x03) == 0x03) {
+        cyc(72);
         v = (uint8_t)(rd8(b | 0x10BB) + 1);
         if (v >= 0x04)
-            v = 0x00;
+            { cyc(10); v = 0x00; }
+        cyc(76);
         wr8(b | 0x10BB, v);
-    }
+    } else { cyc(54); }
+    cyc(40);
     wr8(b | 0x10C1, 0x30);
+    cyc(40);
     wr8(b | 0x10C5, 0x30);
+    cyc(40);
     wr8(b | 0x10BF, 0xA0);
+    cyc(40);
     wr8(b | 0x10BD, 0x84);
+    cyc(24);
     n = rd8(b | 0x0D89);
+    cyc(52);
     n = (uint8_t)((n << 1) + rd8(b | 0x0D89));
+    cyc(24);
     wr8(b | 0x10C3, n);
+    cyc(132);
     car_pieces(0x00C0);
     cpu.p |= P_M | P_X;
     cpu.x &= 0x00FF;
     cpu.y &= 0x00FF;
     n = rd8(b | 0x0D8A);
+    cyc(52);
     n = (uint8_t)((n << 1) + rd8(b | 0x0D8A));
+    cyc(24);
     wr8(b | 0x10C3, n);
+    cyc(40);
     wr8(b | 0x10BD, 0xCC);
+    cyc(132);
     car_pieces(0x00CC);
     cpu.p |= P_M;
+    cyc(16);
     wr8(b | 0x0581, 0x20);
+    cyc(40);
     wr8(b | 0x0582, 0x58);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x58);
     cpu.p = nz8(cpu.p, 0x58);
@@ -1689,11 +1797,13 @@ static void stage_next_if(uint32_t b, uint16_t at, uint8_t v)
     uint8_t c = rd8(b | at);
 
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | c);
-    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(c - v)) & ~P_C) | (c >= v ? P_C : 0));
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(c - v)) & ~P_C) | (c >= v ? (cyc(38), P_C) : 0));
     if (c != v)
         return;
-    wr8(b | 0x0D54, (uint8_t)(rd8(b | 0x0D54) + 1));
-    wr8(b | 0x0D54, (uint8_t)(rd8(b | 0x0D54) + 1));
+    cyc(18);
+    wr8(b | 0x0D54, cyc_then(6, (uint8_t)(rd8(b | 0x0D54) + 1)));
+    cyc(24);
+    wr8(b | 0x0D54, cyc_then(6, (uint8_t)(rd8(b | 0x0D54) + 1)));
 }
 
 /* Restart $0D54 when the byte at `at` equals v. */
@@ -1804,8 +1914,10 @@ void abi_OamFillEvery4(void)
 static void oam_stage_dispatch(uint32_t table)
 {
     op_sep(P_M | P_X);
+    cyc(24);
     cpu.x = rd8((uint32_t)cpu.db << 16 | 0x0D2F);
     cpu.p = nz8(cpu.p, (uint8_t)cpu.x);
+    cyc(46);
     jump_routine((uint32_t)0x070000 | rd16(table + cpu.x));
 }
 
@@ -1952,6 +2064,7 @@ void abi_OamStagePause(void)
     op_rep(P_M);
     op_lda16(b | 0x0D1A);
     if (!(cpu.a & 0x1000)) {
+        cyc(24);
         cpu.p |= P_Z;
         op_plp(p0);
         return;
@@ -1960,21 +2073,28 @@ void abi_OamStagePause(void)
     op_sep(P_M);
     cpu.a = (uint16_t)(cpu.a & 0xFF00);
     cpu.p = nz8(cpu.p, 0);
+    cyc(108);
     wr8(b | 0x0D2E, 0x00);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x15);
     cpu.p = nz8(cpu.p, 0x15);
-    abi_SoundPort1QueuePush();
+    (cyc(62), abi_SoundPort1QueuePush());
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
     cpu.p = nz8(cpu.p, 0x01);
+    cyc(38);
     wr8(b | 0x19BD, 0x01);
     abi_OamHighBits18();
+    cyc(94);
     v = (uint8_t)(rd8(b | 0x0D2D) - 1);
+    cyc(6);
     wr8(b | 0x0D2D, v);
     cpu.p = nz8(cpu.p, v);
+    cyc(24);
     wr8(b | 0x0E5B, 0x00);
+    cyc(24);
     wr8(b | 0x0E5F, 0x00);
     cpu.a = (uint16_t)(cpu.a & 0xFF00);
     cpu.p = nz8(cpu.p, 0);
+    cyc(40);
     wr8(b | 0x0D2F, 0x00);
     stage_loop(b, abi_OamStageDispatchBB3C);
     op_plp(p0);
@@ -2165,6 +2285,7 @@ void abi_OamStagePause2(void)
     uint8_t p0 = cpu.p, v;
 
     op_rep(P_M);
+    cyc(46);
     op_lda16(b | 0x0D1C);
     if (!(cpu.a & 0x1000)) {
         cpu.p |= P_Z;
@@ -2175,21 +2296,28 @@ void abi_OamStagePause2(void)
     op_sep(P_M);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xFF);
     cpu.p = nz8(cpu.p, 0xFF);
+    cyc(108);
     wr8(b | 0x0D2E, 0xFF);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x15);
     cpu.p = nz8(cpu.p, 0x15);
-    abi_SoundPort1QueuePush();
+    (cyc(62), abi_SoundPort1QueuePush());
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
     cpu.p = nz8(cpu.p, 0x01);
+    cyc(38);
     wr8(b | 0x19BD, 0x01);
     abi_OamHighBits58();
+    cyc(94);
     v = (uint8_t)(rd8(b | 0x0D2D) - 1);
+    cyc(6);
     wr8(b | 0x0D2D, v);
     cpu.p = nz8(cpu.p, v);
+    cyc(24);
     wr8(b | 0x0E5B, 0x00);
+    cyc(24);
     wr8(b | 0x0E5F, 0x00);
     cpu.a = (uint16_t)(cpu.a & 0xFF00);
     cpu.p = nz8(cpu.p, 0);
+    cyc(40);
     wr8(b | 0x0D2F, 0x00);
     stage_loop(b, abi_OamStageDispatchBBA2);
     op_plp(p0);
@@ -2217,8 +2345,11 @@ static void overlay_state0(void)
 
     op_rep(P_M);
     wr16(b | 0x10A4, 0x009A);
+    cyc(48);
     wr16(b | 0x10A6, 0x006A);
+    cyc(24);
     wr16(b | 0x10A8, 0x0000);
+    cyc(48);
     wr16(b | 0x10A2, 0x0001);
 }
 
@@ -2369,11 +2500,13 @@ void abi_OverlaySpritesStep(void)
  */
 void abi_OverlaySpritesState0(void)
 {
-    overlay_state0();
-    overlay_draw();
+    (cyc(48), overlay_state0());
+    (cyc(2), overlay_draw());
+    cyc(20);
     cpu.db = rd8((uint16_t)(cpu.s + 1));
     cpu.s = (uint16_t)(cpu.s + 1);
     cpu.p = nz8(cpu.p, cpu.db);
+    cyc(20);
     op_plp(rd8((uint16_t)(cpu.s + 1)));
     cpu.s = (uint16_t)(cpu.s + 1);
 }
@@ -2406,14 +2539,20 @@ void abi_OverlayFramesUntilFaded(void)
     do {
         op_sep(P_M | P_X);
         oam_wait_tick(b);
+        cyc(46);
         call_routine(0x07C6AA, 0);
-        abi_OverlaySpritesStep();
+        (cyc(104), abi_OverlaySpritesStep());
         op_rep(P_M);
+        cyc(82);
         wr16(b | 0x0D1A, 0x0000);
+        cyc(24);
         wr16(b | 0x0D1C, 0x0000);
+        cyc(24);
         wr16(b | 0x0309, 0x0000);
+        cyc(24);
         wr16(b | 0x030D, 0x0000);
         op_sep(P_M);
+        cyc(46);
         op_lda8(b | 0x0D61);
     } while (!(cpu.a & 0x80));
 }
@@ -2423,6 +2562,7 @@ static void oam_dec8(uint32_t at)
 {
     uint8_t v = (uint8_t)(rd8(at) - 1);
 
+    cyc(6);
     wr8(at, v);
     cpu.p = nz8(cpu.p, v);
 }
@@ -2517,6 +2657,7 @@ static void hide9(uint16_t offset)
  */
 void abi_OamHide55To63(void)
 {
+    cyc(84);
     hide9(0x00DC);
 }
 
@@ -2529,5 +2670,6 @@ void abi_OamHide55To63(void)
  */
 void abi_OamHide119To127(void)
 {
+    cyc(84);
     hide9(0x01DC);
 }

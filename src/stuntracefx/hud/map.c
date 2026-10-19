@@ -101,10 +101,11 @@ void abi_MapMarkersPanelA(void)
 {
     uint32_t b = (uint32_t)cpu.db << 16;
 
+    cyc(46);
     abi_map_markers_setup(b | 0x0E0A, 0xFFFC, 0x0158);
     cpu.a = 0xFFFC;
     cpu.p = (uint8_t)(nz16((uint8_t)(cpu.p & ~P_M), 0x0158));
-    abi_MapMarkerSprites();
+    (cyc(116), abi_MapMarkerSprites());
 }
 
 /*

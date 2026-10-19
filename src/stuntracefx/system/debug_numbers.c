@@ -38,8 +38,10 @@ void DebugHexByte(void)
     uint16_t a = cpu.a, d;
 
     cpu.p &= (uint8_t)~(P_M | P_X);
+    cyc(208);
     d = rd16(HEX_DIGITS + ((a & 0x00F0) >> 4));
     draw((uint16_t)((d & 0x00FF) - 0x0020));
+    cyc(288);
     d = rd16(HEX_DIGITS + (a & 0x000F));
     draw((uint16_t)((d & 0x00FF) - 0x0020));
     op_plp(p);
@@ -47,7 +49,7 @@ void DebugHexByte(void)
 
 void abi_DebugHexByte(void)
 {
-    DebugHexByte();
+    (cyc(104), DebugHexByte());
 }
 
 /*
@@ -94,7 +96,7 @@ void DebugDecimalByte(void)
 
 void abi_DebugDecimalByte(void)
 {
-    DebugDecimalByte();
+    (cyc(104), DebugDecimalByte());
 }
 
 /*
@@ -121,7 +123,7 @@ void DebugSignedByte(void)
 
 void abi_DebugSignedByte(void)
 {
-    DebugSignedByte();
+    (cyc(104), DebugSignedByte());
 }
 
 /* The long wrappers: every register and P saved; the byte stored at $06E7

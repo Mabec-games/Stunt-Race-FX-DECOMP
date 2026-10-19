@@ -36,13 +36,16 @@ void ScrollRegsClear(uint8_t bank)
     uint16_t r;
 
     for (r = 0x210D; r <= 0x2114; r++) {
+        cyc(24);
         wr8(dbw(bank, r), 0x00);
+        cyc(24);
         wr8(dbw(bank, r), 0x00);
     }
 }
 
 void abi_ScrollRegsClear(void)
 {
+    cyc(44);
     ScrollRegsClear(cpu.db);
 }
 
@@ -102,12 +105,15 @@ uint16_t PaletteToBuffers(uint8_t index, uint16_t *x)
     uint16_t o = (uint16_t)(index << 5), y, w = 0;
 
     for (y = 0; y != 0x20; y = (uint16_t)(y + 2)) {
+        cyc(180);
         w = rd16(PALETTES + o);
         wr16(0x7EE997u + y, w);
+        cyc(30);
         wr16(0x7E0802u + y, w);
         o = (uint16_t)(o + 2);
     }
     *x = o;
+    cyc(150);
     return (uint16_t)((w & 0xFF00) | rd8(TIMEUP));
 }
 
@@ -115,6 +121,7 @@ void abi_PaletteToBuffers(void)
 {
     uint16_t x;
 
+    cyc(212);
     cpu.a = PaletteToBuffers((uint8_t)cpu.a, &x);
     cpu.x = x;
     cpu.y = 0x0020;
@@ -154,7 +161,7 @@ void ColoursRedDouble(void)
 
 void abi_ColoursRedDouble(void)
 {
-    ColoursRedDouble();
+    (cyc(162), ColoursRedDouble());
     cpu.a = 0x0000;
 }
 
@@ -171,11 +178,12 @@ void ColoursClear(uint8_t bank)
     int x;
 
     for (x = 0xDF; x >= 0; x--)
-        wr8(dbw(bank, (uint16_t)(COLOURS + x)), 0x00);
+        { cyc(66); wr8(dbw(bank, (uint16_t)(COLOURS + x)), 0x00); }
 }
 
 void abi_ColoursClear(void)
 {
+    cyc(56);
     ColoursClear(cpu.db);
     cpu.a = (uint16_t)(cpu.a & 0xFF00);
     cpu.p = nz16((uint8_t)(cpu.p | P_M), cpu.x);
@@ -190,8 +198,11 @@ void abi_ColoursClear(void)
  */
 void Set7EBC2AValues(void)
 {
+    cyc(92);
     wr8(0x7EBC2A, 0x5F);
+    cyc(48);
     wr8(0x7EBC2C, 0x2D);
+    cyc(48);
     wr8(0x7EBC2E, 0x32);
 }
 
@@ -212,12 +223,19 @@ void abi_Set7EBC2AValues(void)
  */
 void ScreenBlankAndWait(uint8_t bank)
 {
+    cyc(90);
     wr8(dbw(bank, 0x420C), 0x00);
+    cyc(40);
     wr8(dbw(bank, 0x2100), 0x80);
+    cyc(138);
     Set7EBC2BTrio(0x80);
+    cyc(112);
     wr8(dbw(bank, 0x06E3), 0x96);
+    cyc(212);
     WaitScanline(bank);
+    cyc(266);
     wr8(dbw(bank, 0x06E3), 0x8C);
+    cyc(212);
     WaitScanline(bank);
 }
 
@@ -286,7 +304,7 @@ void HardwareRegsInit02Long(void)
 
 void abi_HardwareRegsInit02Long(void)
 {
-    abi_HardwareRegsInit02();
+    (cyc(46), abi_HardwareRegsInit02());
 }
 
 /*
@@ -315,16 +333,20 @@ uint16_t TileRowBuild(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     int back;
 
     *p &= (uint8_t)~(P_M | P_X);
+    cyc(46);
     wr16(dbw(bank, 0x08EA), 0x0000);
+    cyc(24);
     a = (uint16_t)(rd16(dbw(bank, 0x08ED)) & 0x00FF);
     if (!a) {
+        cyc(40);
         *p = nz16(*p, a);
         return a;
     }
+    cyc(116);
     a = rd16(dbw(bank, 0x0342));
     back = (a & 0x8000) != 0;
     if (back)
-        a = (uint16_t)-a;
+        { cyc(44); a = (uint16_t)-a; }
     return tile_row_pick(bank, a, back, x, y, p);
 }
 
@@ -335,24 +357,30 @@ static uint16_t tile_row_pick(uint8_t bank, uint16_t a, int back, uint16_t *x, u
     uint16_t t, i, w;
 
     *x = (uint16_t)((a >> 8 & 0x0007) << 1);
+    cyc(160);
     t = rd16(0x008BAEu + *x);
     if (t == rd16(dbw(bank, 0x08E8))) {
+        cyc(16);
         *p = (uint8_t)((*p & ~P_N) | P_Z | P_C);
         return t;
     }
+    cyc(46);
     wr16(dbw(bank, 0x08E8), t);
-    i = back ? (uint16_t)(t + 0x3E) : t;
+    i = back ? (cyc(38), (uint16_t)(t + 0x3E)) : t;
     for (*y = 0; *y != 0x40; *y = (uint16_t)(*y + 2)) {
         unsigned s;
 
+        cyc(114);
         w = rd16((uint16_t)i);
         a = rd16(dbw(bank, 0x08E6));
         s = (unsigned)w + a;
         *p = (uint8_t)((*p & ~P_V) | ((~(w ^ a) & (w ^ s) & 0x8000) ? P_V : 0));
+        cyc(30);
         wr16(dbw(bank, (uint16_t)(ROW + *y)), (uint16_t)s);
-        i = back ? (uint16_t)(i - 2) : (uint16_t)(i + 2);
+        i = back ? (cyc(64), (uint16_t)(i - 2)) : (cyc(64), (uint16_t)(i + 2));
     }
     *x = i;
+    cyc(80);
     wr16(dbw(bank, 0x08EA), 0x0001);
     *p = (uint8_t)((*p & ~(P_N | P_Z)) | P_C);
     return 0x0001;
@@ -375,6 +403,7 @@ void abi_TileRowBuild(void)
  */
 void abi_TileRowBuildZero(void)
 {
+    cyc(30);
     cpu.a = tile_row_pick(cpu.db, 0x0000, 0, &cpu.x, &cpu.y, &cpu.p);
 }
 
@@ -391,7 +420,7 @@ uint16_t TileRowBuildLong(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
 
 void abi_TileRowBuildLong(void)
 {
-    abi_TileRowBuild();
+    (cyc(46), abi_TileRowBuild());
 }
 
 /*
@@ -403,13 +432,21 @@ void abi_TileRowBuildLong(void)
  */
 void TileRowUpload(uint8_t bank)
 {
+    cyc(40);
     wr8(dbw(bank, 0x2115), 0x80);
+    cyc(40);
     wr8(dbw(bank, 0x4301), 0x18);
+    cyc(48);
     wr16(dbw(bank, 0x4302), ROW);
+    cyc(24);
     wr8(dbw(bank, 0x4304), 0x00);
+    cyc(48);
     wr16(dbw(bank, 0x2116), 0x2FA0);
+    cyc(48);
     wr16(dbw(bank, 0x4305), 0x0040);
+    cyc(40);
     wr8(dbw(bank, 0x4300), 0x01);
+    cyc(40);
     wr8(dbw(bank, 0x420B), 0x01);
 }
 
@@ -435,6 +472,7 @@ void TileRowUploadLong(uint8_t bank)
 
 void abi_TileRowUploadLong(void)
 {
+    cyc(112);
     TileRowUpload(cpu.db);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
     cpu.x = 0x0040;
@@ -523,7 +561,8 @@ void abi_UnusedScreenTilesLocked(void)
 {
     uint8_t p = cpu.p;
 
-    abi_UnusedScreenTiles();
+    (cyc(98), abi_UnusedScreenTiles());
+    cyc(156);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | rd8(TIMEUP));
     op_plp(p);
 }
@@ -691,17 +730,21 @@ void abi_UnusedScreenStart(void)
 
     op_sep(P_M);
     op_rep(P_X);
-    while (rd8(0x000000))
+    while (rd8(cyc_then(60, 0x000000)))
         ;
+    cyc(48);
     wr8(0x000000, 0x02);
+    cyc(24);
     wr8(b | 0x0306, 0x00);
-    while (!rd8(b | 0x0854))
+    while (!rd8(cyc_then(24, b | 0x0854)))
         ;
-    abi_GsuClearScreenIfSet();
-    while (rd8(b | 0x0854) != 0x02)
+    (cyc(78), abi_GsuClearScreenIfSet());
+    while (rd8(cyc_then(126, b | 0x0854)) != 0x02)
         ;
+    cyc(56);
     wr8(b | 0x0854, 0x00);
-    abi_SpriteSlotFirstLong();
+    (cyc(198), abi_SpriteSlotFirstLong());
+    cyc(176);
     CrashWhite(cpu.db);
 }
 
@@ -718,5 +761,5 @@ void abi_ObjectLinkBobStart(void);
  */
 void abi_ObjectLinkBobStartLong(void)
 {
-    abi_ObjectLinkBobStart();
+    (cyc(70), abi_ObjectLinkBobStart());
 }

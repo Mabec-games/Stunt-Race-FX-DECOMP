@@ -18,14 +18,14 @@ uint8_t WaitHBlank(void)
     uint8_t v;
 
     do
-        v = rd8(HVBJOY);
+        { cyc(62); v = rd8(HVBJOY); }
     while (!(v & 0x40));
     return v;
 }
 
 void abi_WaitHBlank(void)
 {
-    uint8_t v = WaitHBlank();
+    uint8_t v = (cyc(8), WaitHBlank());
 
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.p = (uint8_t)(nz8(cpu.p, v) & ~P_Z);
@@ -193,6 +193,7 @@ static void copy8(uint32_t to, uint32_t from)
 
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.p = nz8(cpu.p, v);
+    cyc(24);
     wr8(to, v);
 }
 
@@ -205,8 +206,10 @@ static void irq_ack(void)
 /* INC of a work RAM byte with M 8-bit. */
 static void inc8(uint32_t addr)
 {
+    cyc(24);
     uint8_t v = (uint8_t)(rd8(addr) + 1);
 
+    cyc(6);
     wr8(addr, v);
     cpu.p = nz8(cpu.p, v);
 }
@@ -258,7 +261,9 @@ static void split_bg2(uint8_t v, uint8_t ylo, uint8_t yhi_pos, uint8_t yneg, uin
 static void window_colours(uint32_t b, uint16_t first)
 {
     copy8(COLDATA, b | first);
+    cyc(24);
     copy8(COLDATA, b | (uint16_t)(first + 1));
+    cyc(24);
     copy8(COLDATA, b | (uint16_t)(first + 2));
 }
 
@@ -581,8 +586,10 @@ void abi_RasterIrq(void)
 
     op_rep(P_M | P_X);
     a0 = cpu.a;
+    cyc(62);
     op_lda16(0x004210);
     if (!(cpu.a & 0x8000)) {
+        cyc(48);
         op_lda16(0x003030);
         cpu.a = a0;
         cpu.p = nz16(cpu.p, a0);
@@ -596,7 +603,7 @@ void abi_RasterIrq(void)
     cpu.p = nz8(cpu.p, 0);
     cpu.db = 0x00;
     cpu.p = nz8(cpu.p, 0);
-    abi_RasterStage();
+    (cyc(246), abi_RasterStage());
     op_rep(P_M | P_X);
     cpu.y = y0;
     cpu.p = nz16(cpu.p, y0);
@@ -622,16 +629,21 @@ static uint16_t time_stamp(void)
     cpu.p |= P_I;
     f = rd16(0x000306);
     f = (uint16_t)(((f >> 8) | (f << 8)) & 0xFF00);
+    cyc(76);
     wr16(0x001A37, f);
+    cyc(54);
     rd8(0x002137);
     cpu.p &= (uint8_t)~P_I;
+    cyc(46);
     lo = rd8(0x00213D);
+    cyc(52);
     hi = rd8(0x00213D);
     v = (uint16_t)(((hi << 8) | lo) & 0x01FF);
     if (!((uint16_t)(v - 0x0100) & 0x8000))
         v = 0x00FF;
     if ((uint16_t)(v - 0x0011) & 0x8000)
         v = (uint16_t)(v + 0x0100);
+    cyc(236);
     m = rd16(0x001A37);
     cpu.p &= (uint8_t)~P_C;
     return op_adc16(v, m, &cpu.p);
@@ -651,7 +663,8 @@ void abi_TimeMarkStart(void)
     uint16_t t;
 
     cpu.p &= (uint8_t)~P_M;
-    t = time_stamp();
+    t = (cyc(68), time_stamp());
+    cyc(32);
     wr16(0x001A39 + cpu.x, t);
     cpu.a = t;
 }
@@ -674,35 +687,47 @@ void abi_TimeMarkEnd(void)
     uint16_t t, a, m;
 
     cpu.p &= (uint8_t)~P_M;
-    t = time_stamp();
+    t = (cyc(68), time_stamp());
+    cyc(32);
     wr16(0x001A37, t);
+    cyc(32);
     a = rd16(0x001A39 + cpu.x);
     a = (uint16_t)(a & 0x00FF);
     cpu.p = nz16(cpu.p, a);
     if ((uint16_t)(a - 0x00D1) & 0x8000) {
+        cyc(96);
         a = rd16(0x001A39 + cpu.x);
         a = (uint16_t)(a & 0xFF00);
+        cyc(56);
         wr16(0x001A39, a);
+        cyc(32);
         a = rd16(0x001A37);
         a = (uint16_t)(a & 0xFF00);
+        cyc(62);
         m = rd16((uint32_t)cpu.db << 16 | 0x1A39);
         cpu.p |= P_C;
         a = op_sbc16(a, m, &cpu.p);
         a = (uint16_t)((a >> 8) | (a << 8));
         a = (uint16_t)(a << 6);
         a = (uint16_t)(~a + 1);
+        cyc(182);
         m = rd16(0x001A37);
         cpu.p &= (uint8_t)~P_C;
         a = op_adc16(a, m, &cpu.p);
+        cyc(32);
         wr16(0x001A37, a);
-    }
+    } else { cyc(70); }
+    cyc(32);
     a = rd16(0x001A37);
+    cyc(46);
     m = rd16(0x001A39 + cpu.x);
     cpu.p |= P_C;
     a = op_sbc16(a, m, &cpu.p);
+    cyc(40);
     m = rd16(0x001A37 + cpu.x);
     cpu.p &= (uint8_t)~P_C;
     a = op_adc16(a, m, &cpu.p);
+    cyc(32);
     wr16(0x001A37 + cpu.x, a);
     cpu.a = a;
 }

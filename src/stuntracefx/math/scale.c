@@ -22,6 +22,7 @@ static uint16_t three_quarters(uint16_t v, uint8_t *p)
     uint16_t half = asr1(v), quarter;
 
     wr16(SCALE_SCRATCH, half);
+    cyc(68);
     quarter = asr1(half);
     *p &= (uint8_t)~P_C;
     return op_adc16(quarter, rd16(SCALE_SCRATCH), p);
@@ -61,6 +62,7 @@ void abi_ScaleThreeQuarters(void)
  */
 uint16_t ScaleQuarter(uint16_t v, uint8_t *p)
 {
+    cyc(120);
     uint16_t r = asr1(asr1(v));
 
     *p = (uint8_t)((nz16(*p, r) & ~P_C) | (v >> 1 & 1));
@@ -85,9 +87,11 @@ void abi_ScaleQuarter(void)
  */
 uint16_t ScaleNineSixteenths(uint16_t v, uint8_t *p)
 {
+    cyc(54);
     uint16_t half = asr1(v), sixteenth;
 
     wr16(SCALE_SCRATCH, half);
+    cyc(144);
     sixteenth = asr1(asr1(asr1(half)));
     *p &= (uint8_t)~P_C;
     return op_adc16(sixteenth, rd16(SCALE_SCRATCH), p);
@@ -111,9 +115,11 @@ void abi_ScaleNineSixteenths(void)
  */
 uint16_t ScaleFiveEighths(uint16_t v, uint8_t *p)
 {
+    cyc(54);
     uint16_t half = asr1(v), eighth;
 
     wr16(SCALE_SCRATCH, half);
+    cyc(106);
     eighth = asr1(asr1(half));
     *p &= (uint8_t)~P_C;
     return op_adc16(eighth, rd16(SCALE_SCRATCH), p);
@@ -137,15 +143,19 @@ void abi_ScaleFiveEighths(void)
  */
 uint16_t ScaleSevenEighths(uint16_t v, uint8_t *p)
 {
+    cyc(54);
     uint16_t half = asr1(v), quarter, r;
 
     wr16(SCALE_SCRATCH, half);
+    cyc(54);
     quarter = asr1(half);
     wr16(SCALE_SCRATCH2, quarter);
+    cyc(68);
     r = asr1(quarter);
     *p &= (uint8_t)~P_C;
     r = op_adc16(r, rd16(SCALE_SCRATCH), p);
     *p &= (uint8_t)~P_C;
+    cyc(30);
     return op_adc16(r, rd16(SCALE_SCRATCH2), p);
 }
 
@@ -170,19 +180,25 @@ void abi_ScaleSevenEighths(void)
 uint16_t ScaleFifteenSixteenths(uint8_t bank, uint16_t v, uint8_t *p)
 {
     uint32_t eighth_at = (uint32_t)bank << 16 | 0x1F2B;
+    cyc(54);
     uint16_t half = asr1(v), quarter, eighth, r;
 
     wr16(SCALE_SCRATCH, half);
+    cyc(54);
     quarter = asr1(half);
     wr16(SCALE_SCRATCH2, quarter);
+    cyc(62);
     eighth = asr1(quarter);
     wr16(eighth_at, eighth);
+    cyc(76);
     r = asr1(eighth);
     *p &= (uint8_t)~P_C;
     r = op_adc16(r, rd16(eighth_at), p);
     *p &= (uint8_t)~P_C;
+    cyc(30);
     r = op_adc16(r, rd16(SCALE_SCRATCH), p);
     *p &= (uint8_t)~P_C;
+    cyc(30);
     return op_adc16(r, rd16(SCALE_SCRATCH2), p);
 }
 
@@ -209,14 +225,21 @@ uint16_t Mode7ScaleProduct(uint16_t value, int positive)
 {
     uint16_t q;
 
-    wr16(WRDIVL, positive ? value : (uint16_t)-value);
-    wr8(WRDIVB, rd8(0x7F340A));
+    cyc(80);
+    wr16(WRDIVL, positive ? value : (cyc(44), (uint16_t)-value));
+    cyc(54);
+    wr8(WRDIVB, cyc_then(24, rd8(0x7F340A)));
+    cyc(144);
     q = rd16(RDDIVL);
     if (!positive)
-        q = (uint16_t)-q;
+        { cyc(16); q = (uint16_t)-q; }
+    cyc(68);
     wr8(M7A, (uint8_t)q);
+    cyc(44);
     wr8(M7A, (uint8_t)(q >> 8));
-    wr8(M7B, rd8(0x7F3408));
+    cyc(32);
+    wr8(M7B, cyc_then(24, rd8(0x7F3408)));
+    cyc(46);
     return rd16(MPYL);
 }
 
@@ -316,6 +339,7 @@ uint16_t ScaleFiveThirtySeconds(uint8_t bank, uint16_t v, uint8_t *p)
     uint16_t e = asr1(asr1(asr1(v))), t;
 
     wr16(eighth_at, e);
+    cyc(114);
     t = asr1(asr1(e));
     *p &= (uint8_t)~P_C;
     return op_adc16(t, rd16(eighth_at), p);
@@ -336,12 +360,16 @@ static void blend_words(void)
     unsigned i;
 
     for (i = 0; i < 4; i++) {
+        cyc(32);
         cpu.a = rd16((uint32_t)(0x7F343A + i * 2));
         cpu.p |= P_C;
+        cyc(46);
         cpu.a = op_sbc16(cpu.a, rd16((uint32_t)(0x7F3442 + i * 2)), &cpu.p);
         abi_Mode7ScaleProduct();
         cpu.p &= (uint8_t)~P_C;
+        cyc(88);
         cpu.a = op_adc16(cpu.a, rd16((uint32_t)(0x7F3442 + i * 2)), &cpu.p);
+        cyc(32);
         wr16((uint32_t)(0x7F3432 + i * 2), cpu.a);
     }
 }
@@ -359,14 +387,17 @@ static void blend_words(void)
 void abi_BlendStepUp(void)
 {
     cpu.p &= (uint8_t)~(P_M | P_X);
+    cyc(54);
     cpu.a = rd16(0x7F3408);
+    cyc(32);
     op_cmp16(rd16(0x7F340A));
     if (cpu.p & P_Z)
-        return;
+        { cyc(12); return; }
     cpu.a = (uint16_t)(cpu.a + 1);
     cpu.p = nz16(cpu.p, cpu.a);
+    cyc(64);
     wr16(0x7F3408, cpu.a);
-    blend_words();
+    (cyc(22), blend_words());
 }
 
 /*
@@ -381,12 +412,14 @@ void abi_BlendStepUp(void)
 void abi_BlendStepDown(void)
 {
     cpu.p &= (uint8_t)~(P_M | P_X);
+    cyc(54);
     cpu.a = rd16(0x7F3408);
     cpu.p = nz16(cpu.p, cpu.a);
     if (cpu.p & P_Z)
-        return;
+        { cyc(16); return; }
     cpu.a = (uint16_t)(cpu.a - 1);
     cpu.p = nz16(cpu.p, cpu.a);
+    cyc(68);
     wr16(0x7F3408, cpu.a);
     blend_words();
 }

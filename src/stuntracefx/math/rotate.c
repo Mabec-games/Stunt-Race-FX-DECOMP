@@ -259,7 +259,7 @@ store:
  */
 void abi_MulWordByteLong(void)
 {
-    abi_MulWordByte();
+    (cyc(46), abi_MulWordByte());
 }
 
 /* One MulWordByte: $67-$68 = the word at v, $69 = the byte at f. */
@@ -268,12 +268,17 @@ static uint16_t mul_at(uint16_t v, uint16_t f)
     uint8_t t;
 
     t = rd8(v);
+    cyc(16);
     wr8(0x000067, t);
+    cyc(16);
     t = rd8((uint16_t)(v + 1));
+    cyc(16);
     wr8(0x000068, t);
+    cyc(24);
     t = rd8(f);
+    cyc(16);
     wr8(0x000069, t);
-    abi_MulWordByteLong();
+    (cyc(62), abi_MulWordByteLong());
     return cpu.a;
 }
 
@@ -339,19 +344,24 @@ void abi_RotateXZWide(void)
     uint8_t p = cpu.p, db = cpu.db;
 
     if (p & P_X) {
+        cyc(16);
         wr8(0x00003E, (uint8_t)cpu.x);
+        cyc(16);
         wr8(0x000040, (uint8_t)cpu.y);
     } else {
+        cyc(16);
         wr16(0x00003E, cpu.x);
+        cyc(16);
         wr16(0x000040, cpu.y);
     }
     op_sep(P_X);
     cpu.db = 0x00;
+    cyc(186);
     rotate_wide((uint8_t)cpu.a, 0x0002, 0x0004);
     cpu.db = db;
     op_plp(p);
-    cpu.y = (p & P_X) ? rd8(0x000040) : rd16(0x000040);
-    cpu.x = (p & P_X) ? rd8(0x00003E) : rd16(0x00003E);
+    cpu.y = (p & P_X) ? rd8(cyc_then(30, 0x000040)) : rd16(cyc_then(30, 0x000040));
+    cpu.x = (p & P_X) ? rd8(cyc_then(16, 0x00003E)) : rd16(cyc_then(16, 0x00003E));
     cpu.p = (p & P_X) ? nz8(p, (uint8_t)cpu.x) : nz16(p, cpu.x);
 }
 
@@ -369,18 +379,23 @@ void abi_RotateXZWideFrom08(void)
     uint8_t p = cpu.p, db = cpu.db;
 
     if (p & P_X) {
+        cyc(16);
         wr8(0x00003E, (uint8_t)cpu.x);
+        cyc(16);
         wr8(0x000040, (uint8_t)cpu.y);
     } else {
+        cyc(16);
         wr16(0x00003E, cpu.x);
+        cyc(16);
         wr16(0x000040, cpu.y);
     }
     op_sep(P_X);
     cpu.db = 0x00;
+    cyc(216);
     rotate_wide((uint8_t)(~(uint8_t)cpu.a + 1), 0x0008, 0x000A);
     cpu.db = db;
     op_plp(p);
-    cpu.y = (p & P_X) ? rd8(0x000040) : rd16(0x000040);
-    cpu.x = (p & P_X) ? rd8(0x00003E) : rd16(0x00003E);
+    cpu.y = (p & P_X) ? rd8(cyc_then(30, 0x000040)) : rd16(cyc_then(30, 0x000040));
+    cpu.x = (p & P_X) ? rd8(cyc_then(16, 0x00003E)) : rd16(cyc_then(16, 0x00003E));
     cpu.p = (p & P_X) ? nz8(p, (uint8_t)cpu.x) : nz16(p, cpu.x);
 }

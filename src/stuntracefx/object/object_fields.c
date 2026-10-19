@@ -41,7 +41,7 @@ uint16_t ObjectStubZeroCopy(void)
 
 void abi_ObjectStubZeroCopy(void)
 {
-    cpu.a = ObjectStubZeroCopy();
+    cpu.a = (cyc(112), ObjectStubZeroCopy());
     cpu.p = (uint8_t)(nz16(cpu.p, cpu.a) | P_M);
 }
 
@@ -59,17 +59,26 @@ uint16_t ObjectPlaceAtOffset(uint8_t bank, uint16_t from, uint16_t to, uint8_t *
     uint32_t b = (uint32_t)bank << 16;
     uint16_t v;
 
+    cyc(30);
     v = rd16(b | (uint16_t)(0x200C + from));
     *p &= (uint8_t)~P_C;
+    cyc(30);
     v = op_adc16(v, rd16(0x000004), p);
+    cyc(30);
     wr16(b | (uint16_t)(0x200C + to), v);
+    cyc(30);
     v = rd16(b | (uint16_t)(0x2010 + from));
     *p &= (uint8_t)~P_C;
+    cyc(38);
     v = op_adc16(v, rd16(b | 0x05F2), p);
+    cyc(30);
     wr16(b | (uint16_t)(0x2010 + to), v);
+    cyc(30);
     v = rd16(b | (uint16_t)(0x200E + from));
     *p &= (uint8_t)~P_C;
+    cyc(30);
     v = op_adc16(v, rd16(0x00000A), p);
+    cyc(30);
     wr16(b | (uint16_t)(0x200E + to), v);
     return v;
 }
@@ -172,7 +181,7 @@ void ObjectStubSwapTwice(void)
 void abi_ObjectStubSwapTwice(void)
 {
     cpu.p |= P_M;
-    cpu.p = (cpu.p & P_X) ? nz8(cpu.p, (uint8_t)cpu.y) : nz16(cpu.p, cpu.y);
+    cpu.p = (cpu.p & P_X) ? nz8(cpu.p, (uint8_t)cpu.y) : (cyc(32), nz16(cpu.p, cpu.y));
 }
 
 /*
@@ -187,9 +196,13 @@ void ObjectStopX(uint8_t bank, uint16_t obj)
 {
     uint32_t b = (uint32_t)bank << 16;
 
+    cyc(52);
     wr16(b | (uint16_t)(0x202E + obj), 0x0000);
+    cyc(30);
     wr16(b | (uint16_t)(0x2030 + obj), 0x0000);
+    cyc(30);
     wr16(b | (uint16_t)(0x2032 + obj), 0x0000);
+    cyc(52);
     wr8(b | (uint16_t)(0x2017 + obj), 0x00);
 }
 
@@ -210,9 +223,13 @@ void ObjectStopY(uint8_t bank, uint16_t obj)
 {
     uint32_t b = (uint32_t)bank << 16;
 
+    cyc(76);
     wr16(b | (uint16_t)(0x202E + obj), 0x0000);
+    cyc(30);
     wr16(b | (uint16_t)(0x2030 + obj), 0x0000);
+    cyc(30);
     wr16(b | (uint16_t)(0x2032 + obj), 0x0000);
+    cyc(52);
     wr8(b | (uint16_t)(0x2017 + obj), 0x00);
 }
 

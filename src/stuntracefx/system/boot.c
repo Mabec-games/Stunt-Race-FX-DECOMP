@@ -162,6 +162,7 @@ static void boot_bank03(void)
 static void boot_stack(void)
 {
     op_rep(P_X);
+    cyc(98);
     boot_ldx(0x02FF);
     cpu.s = 0x02FF;
 }
@@ -206,6 +207,7 @@ static void boot_blank(uint32_t b)
 {
     op_sep(P_M);
     wr8(b | HDMAEN, 0x00);
+    cyc(40);
     boot_lda8(0x80);
     wr8(b | INIDISP, 0x80);
     cpu.p |= P_I;

@@ -22,21 +22,29 @@ uint16_t MenuGaugeFromButtonB(void)
 {
     uint16_t g;
 
+    cyc(154);
     if (rd16(JOY1_HELD) & 0x8000) {
+        cyc(78);
         g = (uint16_t)(rd16(MENU_GAUGE) + 0x0028);
         if (g >= 0x00FF)
-            g = 0x00FF;
+            { cyc(18); g = 0x00FF; }
+        cyc(116);
         wr16(MENU_GAUGE, g);
     } else {
+        cyc(72);
         g = rd16(MENU_GAUGE);
         if (g != 0) {
             g = (uint16_t)(g - 0x000C);
             if (g & 0x8000)
-                g = 0;
+                { cyc(18); g = 0; }
+            cyc(108);
             wr16(MENU_GAUGE, g);
         }
-    }
+    cyc(22);
+        }
+    cyc(32);
     g = rd16(MENU_GAUGE);
+    cyc(16);
     wr16(0x000002, g);
     return g;
 }
@@ -139,15 +147,19 @@ uint16_t GaugeFromSpeed(uint8_t bank, uint16_t *x)
 
     if (a) {
         *x = a;
+        cyc(92);
         a = rd16(0x70004A + *x);
         if (a & 0x8000)
-            a = (uint16_t)((uint16_t)(~a + 1) >> 1);
+            { cyc(46); a = (uint16_t)((uint16_t)(~a + 1) >> 1); }
         if (a >= 0x0257)
-            a = 0x0257;
+            { cyc(18); a = 0x0257; }
         a = (uint16_t)(a >> 2);
+        cyc(178);
         *x = GaugeTableIndex(bank, a);
+        cyc(76);
         a = rd8(0x0BB158 + *x);
     }
+    cyc(132);
     wr16(0x000002, a);
     return a;
 }
@@ -156,6 +168,7 @@ void abi_GaugeFromSpeed(void)
 {
     uint16_t x = cpu.x;
 
+    cyc(60);
     cpu.a = GaugeFromSpeed(cpu.db, &x);
     cpu.x = (cpu.p & P_X) ? (uint8_t)x : x;
 }
@@ -173,12 +186,15 @@ void abi_GaugeFromSpeedZero(void)
 {
     uint16_t x, a;
 
+    cyc(84);
     x = GaugeTableIndex(cpu.db, 0x0000);
+    cyc(208);
     a = rd8(0x0BB158 + x);
     wr16(0x000002, a);
     cpu.a = a;
     cpu.x = x;
     cpu.s++;
+    cyc(20);
     op_plp(rd8((uint16_t)cpu.s));
 }
 

@@ -84,22 +84,27 @@ static uint16_t draw_record(uint16_t o, uint16_t r)
    on the far side; then at most $31 records, and never model $A040. */
 static int drawn(uint16_t o)
 {
+    cyc(30);
     uint8_t f = rd8(OBJ(o, 0x24));
     int16_t n;
 
     if (f & 0x20)
         return 0;
     if (f & 0x40) {
+        cyc(94);
         if (rd8(OBJ(o, 0x26)) == 0x02) {
+            cyc(62);
             if (rd8(DRAW_SIDE))
                 return 0;
-        } else if (!rd8(DRAW_SIDE)) {
+        } else { cyc(56); if (!rd8(DRAW_SIDE)) {
             return 0;
-        }
-    }
+        } }
+    } else { cyc(48); }
+    cyc(68);
     n = (int16_t)(rd16(DRAW_COUNT) - 0x0031);
     if (n >= 0)
-        return 0;
+        { cyc(8); return 0; }
+    cyc(76);
     return rd16(OBJ(o, 0x04)) != 0xA040;
 }
 
@@ -195,10 +200,14 @@ void abi_ObjectDrawListClear08(void)
 {
     uint8_t db, p;
 
-    wr8(OBJ(cpu.y, 0x08), (uint8_t)(rd8(OBJ(cpu.y, 0x08)) & 0xFD));
+    cyc(52);
+    wr8(OBJ(cpu.y, 0x08), cyc_then(46, (uint8_t)(rd8(OBJ(cpu.y, 0x08)) & 0xFD)));
+    cyc(44);
     draw_bucket(cpu.y, cpu.x, 1);
-    draw_triggers();
+    (cyc(2), draw_triggers());
+    cyc(66);
     db = rd8((uint16_t)(cpu.s + 1));
+    cyc(20);
     p = rd8((uint16_t)(cpu.s + 2));
     cpu.db = db;
     cpu.p = p;

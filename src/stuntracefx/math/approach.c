@@ -107,6 +107,7 @@ uint16_t ApproachQuarterMin4(uint16_t target, int *moved, uint8_t *p)
 
 void abi_ApproachQuarterMin4(void)
 {
+    cyc(30);
     abi_approach(1, 4, 2);
 }
 
@@ -123,6 +124,7 @@ uint16_t ApproachEighthMin8(uint16_t target, int *moved, uint8_t *p)
 
 void abi_ApproachEighthMin8(void)
 {
+    cyc(16);
     abi_approach(1, 8, 3);
 }
 
@@ -203,6 +205,7 @@ uint16_t ApproachHalfMin2Byte(uint8_t target, int *moved, uint8_t *p)
 
 void abi_ApproachHalfMin2Byte(void)
 {
+    cyc(16);
     abi_approach(0, 2, 1);
 }
 
@@ -219,6 +222,7 @@ uint16_t ApproachEighthMin8Byte(uint8_t target, int *moved, uint8_t *p)
 
 void abi_ApproachEighthMin8Byte(void)
 {
+    cyc(16);
     abi_approach(0, 8, 3);
 }
 
@@ -236,6 +240,7 @@ uint16_t ApproachQuarterMin4Byte(uint8_t target, int *moved, uint8_t *p)
 
 void abi_ApproachQuarterMin4Byte(void)
 {
+    cyc(78);
     abi_approach(0, 4, 2);
 }
 
@@ -255,6 +260,7 @@ uint16_t ApproachSixteenthMin16Byte(uint8_t target, int *moved, uint8_t *p)
 
 void abi_ApproachSixteenthMin16Byte(void)
 {
+    cyc(16);
     abi_approach(0, 16, 4);
 }
 
@@ -274,6 +280,7 @@ uint16_t ApproachThirtySecondMin32Byte(uint8_t target, int *moved, uint8_t *p)
 
 void abi_ApproachThirtySecondMin32Byte(void)
 {
+    cyc(16);
     abi_approach(0, 32, 5);
 }
 
@@ -293,6 +300,7 @@ uint16_t ApproachSixtyFourthMin64Byte(uint8_t target, int *moved, uint8_t *p)
 
 void abi_ApproachSixtyFourthMin64Byte(void)
 {
+    cyc(16);
     abi_approach(0, 64, 6);
 }
 
@@ -312,5 +320,6 @@ uint16_t ApproachOneTwentyEighthMin128Byte(uint8_t target, int *moved, uint8_t *
 
 void abi_ApproachOneTwentyEighthMin128Byte(void)
 {
+    cyc(16);
     abi_approach(0, 128, 7);
 }

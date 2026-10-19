@@ -140,6 +140,7 @@ static inline void op_and16(uint16_t m)
 
 static inline void op_lsr16(void)
 {
+    cyc(8);
     cpu.p = (uint8_t)((cpu.p & ~P_C) | (cpu.a & 1));
     cpu.a >>= 1;
     cpu.p = nz16(cpu.p, cpu.a);
@@ -163,6 +164,7 @@ static inline void op_rol16(void)
 /* XBA: N and Z from the new low byte. */
 static inline void op_xba(void)
 {
+    cyc(20);
     cpu.a = (uint16_t)(cpu.a << 8 | cpu.a >> 8);
     cpu.p = nz8(cpu.p, (uint8_t)cpu.a);
 }
@@ -176,6 +178,7 @@ static inline void op_add16(uint16_t m)
 
 static inline void op_sub16(uint16_t m)
 {
+    cyc(16);
     cpu.p |= P_C;
     cpu.a = op_sbc16(cpu.a, m, &cpu.p);
 }
@@ -204,6 +207,7 @@ static inline void op_tay16(void)
 
 static inline void op_txa16(void)
 {
+    cyc(44);
     cpu.a = cpu.x;
     cpu.p = nz16(cpu.p, cpu.a);
 }

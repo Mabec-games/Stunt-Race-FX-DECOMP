@@ -34,6 +34,7 @@ static uint16_t upload_rows(uint8_t bank, uint16_t next, uint8_t rows_less_one, 
     uint16_t end;
 
     wr16(dbw(bank, 0x0D7D), next);
+    cyc(238);
     mode = VramDmaWideRowsFromGsuRam(rows_less_one, src, vram, &end);
     return (uint16_t)((end & 0xFF00) | mode);
 }
@@ -45,8 +46,11 @@ static uint8_t upload_done(uint8_t bank, uint8_t sc)
     uint8_t f;
 
     wr8(dbw(bank, 0x0357), 0x01);
+    cyc(40);
     wr8(dbw(bank, BG1SC), sc);
+    cyc(24);
     f = (uint8_t)(rd8(dbw(bank, 0x11D7)) | 0x20);
+    cyc(40);
     wr8(dbw(bank, 0x11D7), f);
     return f;
 }
@@ -69,23 +73,32 @@ static uint8_t upload_done(uint8_t bank, uint8_t sc)
  */
 uint16_t GsuPictureUploadStep(uint8_t bank, int *copied)
 {
+    cyc(68);
     uint16_t stage = rd16(dbw(bank, 0x0D7D)), a = 0;
 
     *copied = 1;
     switch (stage) {
     case 0x0:
+        cyc(116);
         return upload_rows(bank, 0x0002, 3, 0x2C00, 0x0000);
     case 0x2:
+        cyc(116);
         return upload_rows(bank, 0x0004, 3, 0x3C00, 0x0580);
     case 0x4:
+        cyc(116);
         a = upload_rows(bank, 0x0006, 4, 0x4C00, 0x0B00);
+        cyc(132);
         return (uint16_t)((a & 0xFF00) | upload_done(bank, 0x60));
     case 0x8:
+        cyc(116);
         return upload_rows(bank, 0x000A, 3, 0x5000, 0x1760);
     case 0xA:
+        cyc(116);
         return upload_rows(bank, 0x000C, 3, 0x4000, 0x11E0);
     case 0xC:
+        cyc(116);
         a = upload_rows(bank, 0x0006, 4, 0x2C00, 0x0B00);
+        cyc(132);
         return (uint16_t)((a & 0xFF00) | upload_done(bank, 0x64));
     }
     *copied = 0;
@@ -229,17 +242,26 @@ void abi_WindowOpenCloseStep(void);
    last byte written in *last. */
 static uint16_t blink_colour(uint8_t bank, uint8_t *last)
 {
+    cyc(48);
     uint16_t c = (uint16_t)(rd16(0x001901) + 1), x;
 
+    cyc(46);
     wr16(0x001901, c);
     if (c == 0x0005) {
+        cyc(96);
         wr16(0x001901, 0x0000);
-        wr16(0x0018FF, (uint16_t)((rd16(0x0018FF) + 1) & 0x0001));
-    }
+        cyc(32);
+        wr16(0x0018FF, cyc_then(70, (uint16_t)((rd16(0x0018FF) + 1) & 0x0001)));
+    } else { cyc(46); }
+    cyc(32);
     x = (uint16_t)(rd16(0x0018FF) << 1);
+    cyc(90);
     wr8(dbw(bank, CGADD), 0xD9);
-    wr8(dbw(bank, CGDATA), rd8(BLINK_COLOURS + x));
+    cyc(32);
+    wr8(dbw(bank, CGDATA), cyc_then(24, rd8(BLINK_COLOURS + x)));
+    cyc(32);
     *last = rd8(BLINK_COLOURS + 1 + x);
+    cyc(24);
     wr8(dbw(bank, CGDATA), *last);
     return x;
 }

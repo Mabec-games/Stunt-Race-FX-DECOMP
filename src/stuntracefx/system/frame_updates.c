@@ -27,19 +27,29 @@
  */
 static uint8_t oam_dma_if_pending(int *ran)
 {
+    cyc(90);
     uint8_t flags = rd8(FRAME_UPDATE_FLAGS);
 
     *ran = (flags & 0x04) != 0;
     if (!*ran)
-        return 0;
+        { cyc(38); return 0; }
+    cyc(56);
     wr8(DMAP0, 0x00);
+    cyc(40);
     wr8(DMAP0 + 1, 0x04);
+    cyc(48);
     wr16(A1T0L, OAM_BUFFER);
+    cyc(40);
     wr8(A1B0, 0x00);
+    cyc(48);
     wr16(DAS0L, 0x0220);
+    cyc(48);
     wr16(OAMADDL, 0x0000);
+    cyc(40);
     wr8(MDMAEN, 0x01);
+    cyc(24);
     flags = rd8(FRAME_UPDATE_FLAGS) & 0xFB;
+    cyc(40);
     wr8(FRAME_UPDATE_FLAGS, flags);
     return flags;
 }
@@ -58,7 +68,8 @@ void abi_OamDmaIfPending(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | oam_dma_if_pending(&pending));
     if (pending)
         cpu.x = 0;
-}
+cyc(32);
+    }
 
 /*
  * @routine 7F:0F03 CgramDmaIfPending
@@ -71,19 +82,29 @@ void abi_OamDmaIfPending(void)
  */
 static uint8_t cgram_dma_if_pending(int *ran)
 {
+    cyc(90);
     uint8_t flags = rd8(FRAME_UPDATE_FLAGS);
 
     *ran = (flags & 0x08) != 0;
     if (!*ran)
-        return 0;
+        { cyc(38); return 0; }
+    cyc(56);
     wr8(DMAP0, 0x00);
+    cyc(40);
     wr8(DMAP0 + 1, 0x22);
+    cyc(48);
     wr16(A1T0L, (uint16_t)PALETTE_BUFFER);
+    cyc(40);
     wr8(A1B0, (uint8_t)(PALETTE_BUFFER >> 16));
+    cyc(48);
     wr16(DAS0L, 0x0200);
+    cyc(24);
     wr8(CGADD, 0x00);
+    cyc(40);
     wr8(MDMAEN, 0x01);
+    cyc(24);
     flags = rd8(FRAME_UPDATE_FLAGS) & 0xF7;
+    cyc(40);
     wr8(FRAME_UPDATE_FLAGS, flags);
     return flags;
 }
@@ -176,15 +197,21 @@ void abi_ByteWritesIfPending(void)
  */
 static int vram_dma_queue_add(uint16_t *size_out)
 {
+    cyc(98);
     uint16_t x = rd16(0x0016AF);
 
     if (x == 0x0200)
         return 0;
-    wr16(0x0016B9 + x, rd16(0x0016B3));
-    wr8(0x0016BB + x, rd8(0x0016B5));
-    wr16(0x0016BC + x, rd16(0x0016B7));
-    wr16(0x0016BE + x, rd16(0x0016B1));
+    cyc(64);
+    wr16(0x0016B9 + x, cyc_then(32, rd16(0x0016B3)));
+    cyc(46);
+    wr8(0x0016BB + x, cyc_then(32, rd8(0x0016B5)));
+    cyc(46);
+    wr16(0x0016BC + x, cyc_then(32, rd16(0x0016B7)));
+    cyc(24);
+    wr16(0x0016BE + x, cyc_then(32, rd16(0x0016B1)));
     *size_out = (uint16_t)(x + 8);
+    cyc(76);
     wr16(0x0016AF, *size_out);
     return 1;
 }
@@ -194,6 +221,7 @@ uint16_t VramDmaQueueAddA(uint16_t a)
 {
     uint16_t size;
 
+    cyc(62);
     return vram_dma_queue_add(&size) ? size : a;
 }
 
@@ -219,9 +247,11 @@ static uint16_t word_list_append(uint32_t size_addr, uint32_t list, uint16_t val
     uint16_t x = rd16(size_addr);
 
     if (x == 0x0010)
-        return x;
+        { cyc(46); return x; }
+    cyc(72);
     wr16(list + x, value);
     x = (uint16_t)(x + 2);
+    cyc(52);
     wr16(size_addr, x);
     return x;
 }
@@ -368,19 +398,32 @@ static uint8_t frame_input_and_count_end(uint8_t bank, uint16_t *hi, uint16_t *x
     uint16_t w;
     uint8_t v;
 
+    cyc(54);
     w = rd16(0x0018BF);
+    cyc(32);
     wr16(0x0018BB, w);
+    cyc(32);
     w = rd16(0x0018C1);
+    cyc(32);
     wr16(0x0018BD, w);
+    cyc(24);
     w = rd16(b | 0x0311);
+    cyc(114);
     word_list_append(0x001191, 0x001195, w);
+    cyc(94);
     w = rd16(b | 0x0313);
     *hi = (uint16_t)(w & 0xFF00);
+    cyc(114);
     *x = word_list_append(0x001193, 0x0011B5, w);
-    wr8(b | 0x0E3B, (uint8_t)(rd8(b | 0x0E3B) + 1));
-    wr8(b | 0x0306, (uint8_t)(rd8(b | 0x0306) + 1));
-    wr8(0x000006, (uint8_t)(rd8(0x000006) + 1));
+    cyc(116);
+    wr8(b | 0x0E3B, cyc_then(6, (uint8_t)(rd8(b | 0x0E3B) + 1)));
+    cyc(24);
+    wr8(b | 0x0306, cyc_then(6, (uint8_t)(rd8(b | 0x0306) + 1)));
+    cyc(16);
+    wr8(0x000006, cyc_then(6, (uint8_t)(rd8(0x000006) + 1)));
+    cyc(24);
     v = rd8(b | 0x11DA);
+    cyc(24);
     wr8(b | 0x2100, v);
     return v;
 }
@@ -434,22 +477,31 @@ uint8_t FrameCountAndPortsEnd(uint8_t bank, uint16_t *high, int *checked)
     uint16_t v;
     uint8_t lum;
 
-    wr8(0x000006, (uint8_t)(rd8(0x000006) + 1));
-    wr8(b | 0x0E3B, (uint8_t)(rd8(b | 0x0E3B) + 1));
-    wr8(b | 0x0306, (uint8_t)(rd8(b | 0x0306) + 1));
+    cyc(38);
+    wr8(0x000006, cyc_then(6, (uint8_t)(rd8(0x000006) + 1)));
+    cyc(24);
+    wr8(b | 0x0E3B, cyc_then(6, (uint8_t)(rd8(b | 0x0E3B) + 1)));
+    cyc(24);
+    wr8(b | 0x0306, cyc_then(6, (uint8_t)(rd8(b | 0x0306) + 1)));
+    cyc(78);
     wr16(0x0018FB, 0x0000);
+    cyc(32);
     v = rd16(0x001903);
     *high = (uint16_t)(v & 0xFF00);
     *checked = 0;
     if (v) {
+        cyc(198);
         int found = JoypadPortCheck(bank, 0);
 
+        cyc(232);
         found |= JoypadPortCheck(bank, 1);
         if (found)
-            *high = 0x0000;
+            *high = 0x0000; else { cyc(28); }
         *checked = 1;
     }
+    cyc(68);
     lum = rd8(b | 0x11DA);
+    cyc(24);
     wr8(b | INIDISP, lum);
     return lum;
 }

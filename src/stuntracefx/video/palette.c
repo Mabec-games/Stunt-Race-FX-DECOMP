@@ -28,8 +28,10 @@ static uint8_t cgram_put(uint8_t c, uint32_t src, unsigned n)
 /* Colours $E1-$E3 when animating, else just colour 0. */
 static uint8_t raster_colours(void)
 {
+    cyc(88);
     if (rd8(PALETTE_ANIMATE) == 0)
-        return cgram_put(0x00, 0x7EFD65, 2);
+        { cyc(62); return cgram_put(0x00, 0x7EFD65, 2); }
+    cyc(56);
     return cgram_put(0xE1, 0x7EFF27, 6);
 }
 
@@ -136,6 +138,7 @@ void abi_RasterColoursCycling(void)
  */
 uint8_t RasterColoursE4(uint16_t x)
 {
+    cyc(148);
     return cgram_put(0xE4, (0x7EFF2D + x) & 0xFFFFFF, 12);
 }
 
@@ -155,18 +158,22 @@ static uint16_t cycle_step(uint32_t phase_addr, uint32_t table, uint32_t dest, u
     uint16_t phase = rd16(phase_addr), i = phase, next;
 
     if (phase >= 8) {
+        cyc(72);
         i = (uint16_t)(0x000F - phase);
         *p = (uint8_t)((*p & ~P_V) | (((0x000F ^ phase) & (0x000F ^ i) & 0x8000) ? P_V : 0));
     }
     *x = (uint16_t)(i << 1);
-    wr16(dest, rd16(table + *x));
+    cyc(106);
+    wr16(dest, cyc_then(30, rd16(table + *x)));
     next = (uint16_t)(phase + 1);
     if (next >= 0x0010) {
+        cyc(18);
         next = 0;
         *p |= P_C;
     } else {
         *p &= (uint8_t)~P_C;
     }
+    cyc(124);
     wr16(phase_addr, next);
     return next;
 }
@@ -184,10 +191,14 @@ static uint16_t cycle_step(uint32_t phase_addr, uint32_t table, uint32_t dest, u
  */
 static uint16_t palette_cycle(uint16_t *x, uint8_t *p)
 {
+    cyc(276);
     if (!(rd8(0x000E3B) & 0x01)) {
+        cyc(78);
         cycle_step(0x7EFD5B, 0x7EB71B, 0x7EFD85, x, p);
+        cyc(24);
         return cycle_step(0x7EFD5D, 0x7EB6FB, 0x7EFD87, x, p);
     }
+    cyc(84);
     return cycle_step(0x7EFD5F, 0x7EB70B, 0x7EFD89, x, p);
 }
 
@@ -257,11 +268,12 @@ void abi_PaletteLoad16(void)
  */
 uint8_t RasterColoursUnless0D22(uint8_t bank, int *ran)
 {
+    cyc(90);
     uint8_t v = rd8((uint32_t)bank << 16 | 0x0D22);
 
     *ran = !v;
     if (v)
-        return v;
+        { cyc(22); return v; }
     RasterColoursE4(0);
     return RasterColoursCycling(0);
 }
@@ -290,7 +302,9 @@ uint16_t PaletteDarkenFour(uint16_t v)
 
     wr16(0x7F345C, v);
     for (i = 0; i < 4; i++) {
+        cyc(32);
         v = (uint16_t)(rd16(0x7F37F7 + 2 * i) - 1);
+        cyc(46);
         wr16(0x7F39F7 + 2 * i, v);
     }
     return v;
@@ -453,13 +467,18 @@ typedef struct {
    `at`; the word is then shifted right 5 in place (five LSRs). */
 static void blend_split(uint32_t at, uint32_t dp)
 {
+    cyc(16);
     uint16_t v = rd16(dp), w;
     int i;
 
+    cyc(24);
     for (i = 0; i < 5; i++) {
+        cyc(16);
         w = rd16(dp);
+        cyc(14);
         wr16(dp, (uint16_t)(w >> 1));
     }
+    cyc(24);
     wr16(at, (uint16_t)(v & 0x1F));
 }
 
@@ -475,32 +494,50 @@ static BlendEnd colour_blend(uint8_t bank, uint8_t p)
     blend_split(b | 0x3450, 0x0000F3);
     blend_split(b | 0x3454, 0x0000F3);
     blend_split(b | 0x3458, 0x0000F3);
+    cyc(24);
     t = rd16(b | 0x3450);
+    cyc(38);
     f = rd16(b | 0x344E);
+    cyc(100);
     m = PpuMultiply((uint8_t)(t - f));
+    cyc(80);
     f = rd16(b | 0x344E);
     r = (uint16_t)((m + f) & 0x1F);
+    cyc(48);
     wr16(b | 0x344E, r);
+    cyc(24);
     t = rd16(b | 0x3454);
+    cyc(38);
     f = rd16(b | 0x3452);
+    cyc(100);
     m = PpuMultiply((uint8_t)(t - f));
+    cyc(80);
     f = rd16(b | 0x3452);
     g = (uint16_t)(m + f);
+    cyc(24);
     wr16(b | 0x3452, g);
+    cyc(24);
     t = rd16(b | 0x3458);
+    cyc(38);
     f = rd16(b | 0x3456);
+    cyc(100);
     m = PpuMultiply((uint8_t)(t - f));
+    cyc(80);
     bl = rd16(b | 0x3456);
     s = (uint16_t)(m + bl);
     p = (uint8_t)(p & ~(P_V | P_C));
     if (~(m ^ bl) & (m ^ s) & 0x8000)
         p |= P_V;
     bl = (uint16_t)((uint16_t)((uint16_t)(s >> 8 | s << 8) << 2) & 0x7C00);
+    cyc(88);
     wr16(0x0000F1, bl);
+    cyc(24);
     g = rd16(b | 0x3452);
     if (g & 0x0800)
         p |= P_C;
+    cyc(110);
     bl = rd16(0x0000F1);
+    cyc(24);
     r = rd16(b | 0x344E);
     e.a = (uint16_t)(((g << 5) & 0x03E0) | bl | r);
     e.p = (uint8_t)(nz16(p, e.a) & ~P_M);
@@ -539,7 +576,7 @@ void abi_ColourBlend(void)
 static uint8_t cycle13(uint8_t v, uint8_t n)
 {
     v = (uint8_t)(v + n);
-    return v < 0x0D ? v : (n == 1 ? 0 : (uint8_t)(v - 0x0D));
+    return v < 0x0D ? v : (cyc(10), (n == 1 ? 0 : (uint8_t)(v - 0x0D)));
 }
 
 typedef struct {
@@ -675,8 +712,9 @@ uint16_t ColourBlendBy(uint8_t bank)
 
 void abi_ColourBlendBy(void)
 {
+    cyc(16);
     PpuMultiplierSetLowByteTimes8((uint8_t)rd16(0x0000F5));
-    abi_ColourBlend();
+    (cyc(22), abi_ColourBlend());
 }
 
 void abi_ColourBlendBy(void);
@@ -744,7 +782,7 @@ static FlashEnd player_colours_flash(uint8_t bank, uint8_t v, uint16_t y, uint8_
         p = (uint8_t)(p & ~P_V);
         if (~(v ^ 0x60) & (v ^ s) & 0x80)
             p |= P_V;
-        v = s > 0xFF ? 0xFF : (uint8_t)s;
+        v = s > 0xFF ? (cyc(10), 0xFF) : (uint8_t)s;
     }
     k = (uint8_t)(v >> 5);
     src = 0x0E21;
@@ -753,22 +791,32 @@ static FlashEnd player_colours_flash(uint8_t bank, uint8_t v, uint16_t y, uint8_
     } else {
         n = (uint8_t)(8 - k);
         p = (uint8_t)(p & ~P_V);
+        cyc(114);
         wr8(0x0000F9, n);
+        cyc(30);
         wr8(0x0000FA, (uint8_t)(n << 1));
+        cyc(30);
         c = rd8(b | (uint16_t)(0x0E1F + y));
         if (c >= (uint8_t)(n << 1))
-            c = 0xFF;
+            { cyc(10); c = 0xFF; }
         c = (uint8_t)(c + 1);
+        cyc(90);
         wr8(b | (uint16_t)(0x0E1F + y), c);
         if (c < n)
-            src = 0x0E27;
-    }
+            { cyc(6); src = 0x0E27; }
+    cyc(18);
+        }
     p = (uint8_t)((p & ~P_C) | ((y & 0x8000) ? P_C : 0));
     e.y = (uint16_t)(y << 1);
+    cyc(116);
     e.x = rd16(b | (uint16_t)(0x0D83 + e.y));
-    wr16(0x7E01C8 + e.x, rd16(b | src));
-    wr16(0x7E01CA + e.x, rd16(b | (uint16_t)(src + 2)));
+    cyc(38);
+    wr16(0x7E01C8 + e.x, cyc_then(32, rd16(b | src)));
+    cyc(24);
+    wr16(0x7E01CA + e.x, cyc_then(32, rd16(b | (uint16_t)(src + 2))));
+    cyc(24);
     e.a = rd16(b | (uint16_t)(src + 4));
+    cyc(32);
     wr16(0x7E01CC + e.x, e.a);
     e.p = (uint8_t)(nz16(p, e.a) & ~(P_M | P_X));
     return e;
@@ -797,6 +845,7 @@ void PlayerColoursFlash(uint8_t bank, uint8_t level, uint16_t y)
 
 void abi_PlayerColoursFlash(void)
 {
+    cyc(178);
     FlashEnd e = player_colours_flash(cpu.db, (uint8_t)cpu.a, cpu.y, cpu.p);
 
     cpu.a = e.a;
@@ -835,56 +884,70 @@ void abi_StatusColourPick(void)
     uint8_t v;
     int table = 0;
 
+    cyc(30);
     v = rd8(b | (uint16_t)(0x0DDA + cpu.y));
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.p = nz8(cpu.p, v);
     if (v == 0) {
+        cyc(68);
         cpu.p &= (uint8_t)~P_M;
         cpu.a = 0x0000;
         cpu.p = nz16(cpu.p, 0);
         goto store;
     }
+    cyc(46);
     v = rd8(b | (uint16_t)(0x0DF2 + cpu.y));
     flags = (uint16_t)(v << 8);
+    cyc(50);
     flags |= rd8(b | (uint16_t)(0x0DF0 + cpu.y));
     cpu.a = flags;
     cpu.p &= (uint8_t)~P_M;
     if (flags & 0x0400) {
+        cyc(150);
         v = rd8(b | (uint16_t)(0x0E05 + cpu.y));
         if (v) {
             cpu.a = flags;
+            cyc(104);
             t = rd16(b | 0x0E3B);
             cpu.x = (uint16_t)((t & 0x0003) << 1);
             cpu.p = (uint8_t)(cpu.p & ~P_C);
+            cyc(84);
             cpu.a = rd16((uint32_t)(0x7EB5B9 + cpu.x));
             cpu.p = nz16(cpu.p, cpu.a);
             goto store;
-        }
+        } else { cyc(12); }
     }
+    cyc(86);
     if (flags & 0x0010) {
+        cyc(74);
         v = rd8(b | (uint16_t)(0x0DDA + cpu.y));
         cpu.p = (uint8_t)((cpu.p & ~P_C) | (v >= 0x3C ? P_C : 0));
         if (v >= 0x3C) {
+            cyc(78);
             t = rd16(b | 0x0E3B);
             table = 1;
         }
     }
     if (!table) {
+        cyc(84);
         t = rd16(b | 0x0E3B);
         cpu.a = t;
         if (t & 0x0001) {
+            cyc(46);
             cpu.p = nz16(cpu.p, t);
             return;
-        }
+        } else { cyc(32); }
         cpu.p = (uint8_t)((cpu.p & ~P_C) | (t & 0x0001));
         t = (uint16_t)(t >> 1);
     }
     cpu.x = (uint16_t)((t & 0x0003) << 1);
     cpu.p = (uint8_t)(cpu.p & ~P_C);
+    cyc(106);
     cpu.a = rd16((uint32_t)(0x7EB5B1 + cpu.x));
     cpu.p = nz16(cpu.p, cpu.a);
 store:
     cpu.x = 0x0000;
+    cyc(78);
     wr16(0x7EFD8B, cpu.a);
     cpu.p = nz16(cpu.p, 0);
 }
@@ -912,17 +975,19 @@ void abi_PalettesStep(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     if (v) {
         cpu.y = 0x0000;
+        cyc(64);
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | rd8(b | 0x0DDA));
-        abi_PlayerColoursFlash();
+        (cyc(46), abi_PlayerColoursFlash());
         cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
         cpu.y = 0x0000;
-        abi_StatusColourPick();
+        (cyc(156), abi_StatusColourPick());
         abi_PaletteCycle();
         op_sep(P_M | P_X);
         cpu.y = 0x00;
         cpu.x = 0x00;
-        abi_PaletteKeptColoursStep();
-    }
+        (cyc(70), abi_PaletteKeptColoursStep());
+    } else { cyc(22); }
+    cyc(28);
     op_plp(p0);
 }
 
@@ -1062,11 +1127,12 @@ static void palette_cycle_step(uint32_t b)
     uint8_t v = (uint8_t)(rd8(b | 0x0D30) + 1);
 
     if (v >= 0x16)
-        v = 0x00;
+        { cyc(10); v = 0x00; }
+    cyc(76);
     wr8(b | 0x0D30, v);
     v = (uint8_t)(v << 1);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.x = (cpu.p & P_X) ? v : cpu.a;
+    cpu.x = (cpu.p & P_X) ? (cyc(28), v) : (cyc(28), cpu.a);
     cpu.p = nz8(cpu.p, v);
 }
 
@@ -1645,22 +1711,30 @@ void abi_PaletteCycleFourth(void)
     uint16_t x;
     uint8_t v, db;
 
+    cyc(24);
     x = rd16(b | 0xFD61);
+    cyc(32);
     v = rd8(0x7EB6EB + x);
+    cyc(30);
     wr8(b | (uint16_t)(0xFD8B + cpu.y), v);
+    cyc(32);
     v = rd8(0x7EB6EC + x);
+    cyc(30);
     wr8(b | (uint16_t)(0xFD8C + cpu.y), v);
     x = (uint16_t)(x + 2);
     if (x >= 0x0010) {
+        cyc(18);
         cpu.p |= P_C;
         x = 0x0000;
     } else {
         cpu.p &= (uint8_t)~P_C;
     }
+    cyc(98);
     wr16(b | 0xFD61, x);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.x = x;
     cpu.s++;
+    cyc(20);
     db = rd8((uint16_t)cpu.s);
     cpu.db = db;
     cpu.p = nz8(cpu.p, db);

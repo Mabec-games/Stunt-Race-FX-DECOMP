@@ -37,8 +37,10 @@ static void ease_half(uint8_t bank, uint16_t rec, uint16_t off, uint16_t v)
 {
     uint16_t old = rd16(absidx(bank, off, rec)), a;
 
+    cyc(82);
     a = asr16((uint16_t)(v - old));
     old = rd16(absidx(bank, off, rec));
+    cyc(30);
     wr16(absidx(bank, off, rec), (uint16_t)(a + old));
 }
 
@@ -119,10 +121,15 @@ static uint16_t area_origin(uint8_t bank, uint16_t out, uint8_t *p)
 {
     uint16_t v = ScaleDp02Dp94Long(p);
 
+    cyc(156);
     wr16(dbw(bank, out), v);
+    cyc(16);
     v = rd16(0x000002);
+    cyc(24);
     wr16(dbw(bank, (uint16_t)(out + 2)), v);
+    cyc(16);
     v = rd16(0x000094);
+    cyc(24);
     wr16(dbw(bank, (uint16_t)(out + 4)), v);
     return v;
 }
@@ -146,30 +153,52 @@ uint16_t ViewFromRecord(uint8_t bank, uint16_t rec, uint8_t *p)
     uint16_t obj, v;
 
     *p &= (uint8_t)~(P_M | P_X);
-    wr16(0x0000C5, rd16((uint16_t)(rec + 0x08)));
-    wr16(0x0000C7, rd16((uint16_t)(rec + 0x0A)));
-    wr16(0x0000C9, rd16((uint16_t)(rec + 0x0C)));
-    wr16(dbw(bank, 0x0664), rd16((uint16_t)(rec + 0x0E)));
-    wr16(dbw(bank, 0x0666), rd16((uint16_t)(rec + 0x10)));
-    wr16(dbw(bank, 0x0668), rd16((uint16_t)(rec + 0x12)));
+    cyc(44);
+    wr16(0x0000C5, cyc_then(16, rd16((uint16_t)(rec + 0x08))));
+    cyc(22);
+    wr16(0x0000C7, cyc_then(16, rd16((uint16_t)(rec + 0x0A))));
+    cyc(22);
+    wr16(0x0000C9, cyc_then(16, rd16((uint16_t)(rec + 0x0C))));
+    cyc(22);
+    wr16(dbw(bank, 0x0664), cyc_then(24, rd16((uint16_t)(rec + 0x0E))));
+    cyc(22);
+    wr16(dbw(bank, 0x0666), cyc_then(24, rd16((uint16_t)(rec + 0x10))));
+    cyc(22);
+    wr16(dbw(bank, 0x0668), cyc_then(24, rd16((uint16_t)(rec + 0x12))));
+    cyc(52);
     obj = rd16((uint16_t)(rec + 0x02));
-    wr16(0x70247A, rd16(0x7E2022 + obj));
-    wr16(0x000002, rd16(0x0000C5));
-    wr16(0x000094, rd16(0x0000C9));
+    cyc(46);
+    wr16(0x70247A, cyc_then(32, rd16(0x7E2022 + obj)));
+    cyc(82);
+    wr16(0x000002, cyc_then(16, rd16(0x0000C5)));
+    cyc(16);
+    wr16(0x000094, cyc_then(16, rd16(0x0000C9)));
+    cyc(124);
     area_origin(bank, 0x1EF5, p);
+    cyc(58);
     if (rd16(rec) & 0x2000) {
+        cyc(64);
         v = rd16(dbw(bank, 0x1EF5));
+        cyc(24);
         wr16(dbw(bank, 0x1EFB), v);
+        cyc(24);
         v = rd16(dbw(bank, 0x1EF7));
+        cyc(24);
         wr16(dbw(bank, 0x1EFD), v);
+        cyc(24);
         v = rd16(dbw(bank, 0x1EF9));
+        cyc(24);
         wr16(dbw(bank, 0x1EFF), v);
         *p = nz16(*p, v);
         return v;
     }
+    cyc(98);
     obj = rd16((uint16_t)(rec + 0x02));
-    wr16(0x000002, rd16(0x7E200C + obj));
-    wr16(0x000094, rd16(0x7E2010 + obj));
+    cyc(46);
+    wr16(0x000002, cyc_then(16, rd16(0x7E200C + obj)));
+    cyc(32);
+    wr16(0x000094, cyc_then(16, rd16(0x7E2010 + obj)));
+    cyc(124);
     v = area_origin(bank, 0x1EFB, p);
     *p = nz16(*p, rec);
     return v;

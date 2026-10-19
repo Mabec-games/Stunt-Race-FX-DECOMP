@@ -53,8 +53,11 @@ static void put_block(uint16_t which, uint16_t input)
  */
 void SoundDataLoad(uint16_t which, uint16_t input)
 {
+    cyc(589852);
     put_block(which, input);
+    cyc(204);
     ApuUpload(0x70, 0x6000);
+    cyc(590012);
     delay_turns(0x4000);
 }
 
@@ -85,6 +88,7 @@ static uint8_t cmp16(uint8_t p, uint16_t a, uint16_t m)
 static uint16_t music_index(uint16_t n)
 {
     wr16(0x0000F1, n);
+    cyc(44);
     return (uint16_t)((uint16_t)(n << 1) + rd16(0x0000F1));
 }
 
@@ -92,6 +96,7 @@ static uint16_t music_index(uint16_t n)
    word, $FFFF for none, and a bank byte): ApuPort1Send05, then ApuUpload. */
 static void upload_entry(uint16_t entry)
 {
+    cyc(78);
     uint16_t addr = rd16(0x040000 | entry);
 
     cpu.a = addr;
@@ -100,6 +105,7 @@ static void upload_entry(uint16_t entry)
         return;
     cpu.y = addr;
     abi_ApuPort1Send05();
+    cyc(110);
     cpu.a = (uint16_t)(rd16(0x040000 | (uint16_t)(entry + 2)) & 0x00FF);
     abi_ApuUpload();
 }
@@ -166,37 +172,44 @@ void abi_MusicLoadForCourse(void)
         {0x0002, 0x0010}, {0x0004, 0x0D30}, {0x0006, 0x0D30}, {0x0016, 0x0D30}};
     unsigned n;
 
+    cyc(86);
     i = music_index((uint16_t)(cpu.a & 0x000F));
     cpu.x = i;
-    abi_ApuPort1Send05();
+    (cyc(22), abi_ApuPort1Send05());
     cpu.p &= (uint8_t)~(P_M | P_X);
     upload_entry((uint16_t)(0xD41E + i));
     cpu.p &= (uint8_t)~(P_M | P_X);
-    abi_ApuSettleDelay();
+    (cyc(63), abi_ApuSettleDelay());
     cpu.p &= (uint8_t)~(P_M | P_X);
     cpu.x = i;
     v = (uint16_t)(rd16(b | 0x0D2B) & 0x00FF);
+    cyc(48);
     cpu.p = cmp16(cpu.p, v, 0x0002);
     if (v != 0x0002) {
+        cyc(40);
         upload_entry((uint16_t)(0xD42D + i));
         cpu.p &= (uint8_t)~(P_M | P_X);
-        abi_ApuSettleDelay();
+        (cyc(44), abi_ApuSettleDelay());
         return;
     }
     abi_ApuPort1Send05();
     cpu.p &= (uint8_t)~P_M;
-    i = music_index((uint16_t)(rd16(b | 0x0D8A) & 0x000F));
+    i = music_index(cyc_then(40, (uint16_t)(rd16(b | 0x0D8A) & 0x000F)));
+    cyc(178);
     src = rd16(0x040000 | (uint16_t)(0xD41E + i));
     for (k = 0; k < 0x1000; k++)
-        wr8(0x703000 + k, rd8(0x190000 | (uint16_t)(src + k)));
+        { cyc(44); wr8(0x703000 + k, rd8(0x190000 | (uint16_t)(src + k))); }
+    cyc(84);
     for (n = 0; n < 4; n++) {
+        cyc(32);
         v = rd16(0x703000 + patch[n].off);
+        cyc(70);
         wr16(0x703000 + patch[n].off, (uint16_t)(v + patch[n].add));
     }
     cpu.x = (uint16_t)(src + 0x1000);
     cpu.y = 0x3000;
     cpu.a = 0x0070;
-    abi_ApuUpload();
+    (cyc(110), abi_ApuUpload());
     abi_ApuSettleDelay();
 }
 
@@ -206,6 +219,7 @@ void abi_MusicLoadForCourse(void);
 /* LDA #$4000, DEC A until 0 (16-bit A): A = 0, Z set. */
 static void delay_4000(void)
 {
+    cyc(589714);
     delay_turns(0x4000);
     cpu.a = 0x0000;
     cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
@@ -216,7 +230,7 @@ static void port1_5_delay(void)
 {
     cpu.a = 0x0005;
     wr16(0x002141, 0x0005);
-    delay_4000();
+    (cyc(138), delay_4000());
 }
 
 /* PHP, REP #$30, port1_5_delay, the upload or load with A and Y, (REP
@@ -253,6 +267,7 @@ static void upload_listed(uint16_t list)
     cpu.y = w;
     cpu.p = nz16(cpu.p, w);
     abi_ApuPort1Send05();
+    cyc(110);
     cpu.a = (uint16_t)(rd16(0x040000 + list + 2 + cpu.x) & 0x00FF);
     cpu.p = nz16(cpu.p, cpu.a);
     abi_ApuUpload();

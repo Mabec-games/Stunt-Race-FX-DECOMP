@@ -42,13 +42,16 @@ static uint16_t fade_out(uint8_t *p)
     if (level & 0x8000) {
         *p = nz16(*p, level);
     } else if (level >= 0x0058) {
+        cyc(54);
         level = (uint16_t)(level - 0x0058);
         *p = (uint8_t)(nz16(*p, level) | P_C);
         *p = (uint8_t)(*p & ~P_V);
     } else {
+        cyc(94);
         *p = (uint8_t)((*p & ~(P_C | P_V | P_Z)) | P_N);
         level = 0x8000;
     }
+    cyc(46);
     wr16(FADE_LEVEL, level);
     return level;
 }

@@ -41,6 +41,7 @@ static void reset_fill(uint8_t bank, uint16_t x, uint16_t y)
  */
 void abi_SoftResetWarmBoot(void)
 {
+    cyc(32);
     jump_routine(0x038BAA);
 }
 
@@ -154,7 +155,7 @@ void abi_SoftResetLong(void)
     op_sep(P_M);
     cpu.db = 0x07;
     cpu.p = nz8(cpu.p, 0x07);
-    abi_SoftResetCheck();
+    (cyc(162), abi_SoftResetCheck());
     op_sep(P_M);
     cpu.db = db;
     cpu.p = nz8(cpu.p, db);
@@ -178,6 +179,7 @@ void abi_ResetVector(void)
     cpu.e = 0;
     cpu.p = (uint8_t)((cpu.p & ~P_C) | (old_e ? P_C : 0));
     cpu.p &= (uint8_t)~P_D;
+    cyc(88);
     jump_routine(0x038AA9);
 }
 
@@ -195,6 +197,7 @@ void abi_InterruptReturn(void)
 {
     /* P from the frame; the PC and PB above it are the return, taken as
        for any routine's. */
+    cyc(20);
     op_plp(rd8((uint16_t)(cpu.s + 1)));
 }
 

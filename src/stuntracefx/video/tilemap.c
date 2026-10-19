@@ -115,12 +115,19 @@ void VramDmaTileFromGsuRam(uint16_t tile, uint16_t vram, uint8_t *p)
 
     *p = (uint8_t)((*p & ~(P_C | P_V)) | (s > 0xFFFF ? P_C : 0)
                    | ((~(a ^ f1) & (a ^ (uint16_t)s) & 0x8000) ? P_V : 0));
+    cyc(24);
     wr16(A1T0L, (uint16_t)s);
+    cyc(24);
     wr16(VMADDL, vram);
+    cyc(48);
     wr16(DMAP0, 0x1801);
+    cyc(48);
     wr16(DAS0L, 0x0020);
+    cyc(62);
     wr8(VMAIN, 0x80);
+    cyc(40);
     wr8(A1B0, 0x70);
+    cyc(40);
     wr8(MDMAEN, 0x01);
 }
 
@@ -194,6 +201,7 @@ void VramFrameRows2B0(uint8_t bank)
 
 void abi_VramFrameRows2B0(void)
 {
+    cyc(160);
     cpu.p = (uint8_t)(nz16(frame_rows(cpu.db, 0x02B0, cpu.p), cpu.a) & ~(P_M | P_X));
     cpu.x = 0;
 }
@@ -211,6 +219,7 @@ void VramFrameRows1B0(uint8_t bank)
 
 void abi_VramFrameRows1B0(void)
 {
+    cyc(160);
     cpu.p = (uint8_t)(nz16(frame_rows(cpu.db, 0x01B0, cpu.p), cpu.a) & ~(P_M | P_X));
     cpu.x = 0;
 }
@@ -231,6 +240,7 @@ void VramPictureRows2B0(void)
 
 void abi_VramPictureRows2B0(void)
 {
+    cyc(184);
     cpu.p = (uint8_t)(nz16(picture_rows(0x02B0, cpu.p), cpu.a) & ~(P_M | P_X));
     cpu.x = 0x0180;
 }
@@ -248,6 +258,7 @@ void VramPictureRows1B0(void)
 
 void abi_VramPictureRows1B0(void)
 {
+    cyc(184);
     cpu.p = (uint8_t)(nz16(picture_rows(0x01B0, cpu.p), cpu.a) & ~(P_M | P_X));
     cpu.x = 0x0180;
 }
@@ -275,7 +286,8 @@ uint16_t TilemapRowFrom7FBBD7(uint16_t *x, uint8_t *p)
     unsigned i;
 
     for (i = 0; i < 4; i++)
-        wr16(0x7F93D7 + 2 * i + *x, rd16(0x7FBBD7 + 2 * i + *x));
+        { cyc(32); wr16(0x7F93D7 + 2 * i + *x, cyc_then(32, rd16(0x7FBBD7 + 2 * i + *x))); }
+    cyc(24);
     return step_40(x, p);
 }
 
@@ -565,7 +577,7 @@ uint16_t TilemapLevelColumns(void)
 
 void abi_TilemapLevelColumns(void)
 {
-    cpu.a = TilemapLevelColumns();
+    cpu.a = (cyc(6), TilemapLevelColumns());
     cpu.x = cpu.a;
     cpu.y = 0x000C;
     if (cpu.p & P_X)
@@ -588,14 +600,21 @@ uint16_t TilemapRowToE3D7(uint8_t bank, uint16_t *x, uint16_t *y)
     uint32_t b = (uint32_t)bank << 16;
     uint16_t src, v = 0, n;
 
+    cyc(40);
     wr16(0x0000F3, 0x0020);
-    src = (rd16(0x000DA4) & 0x4000) ? 0xBBD7 : 0x93D7;
+    cyc(32);
+    src = (rd16(0x000DA4) & 0x4000) ? (cyc(6), 0xBBD7) : 0x93D7;
+    cyc(18);
     do {
+        cyc(52);
         v = rd16(b | (uint16_t)(src + *x));
+        cyc(30);
         wr16(b | (uint16_t)(0xE3D7 + *y), v);
         *x = (uint16_t)(*x + 2);
         *y = (uint16_t)(*y + 2);
+        cyc(72);
         n = (uint16_t)(rd16(0x0000F3) - 1);
+        cyc(14);
         wr16(0x0000F3, n);
     } while (n);
     return v;
@@ -616,34 +635,52 @@ static uint16_t backdrop_rows_update(uint8_t bank, uint16_t *xo, uint16_t *yo)
     uint16_t sel = rd16(0x000D7F), x = (uint16_t)(sel << 1), y, h, s, a, end;
     unsigned n;
 
-    ObjectLinkFlag4000Step();
+    (cyc(188), ObjectLinkFlag4000Step());
+    cyc(140);
     h = rd16(0x0006CD);
     s = (uint16_t)((h << 1) + 0x42 + (h >> 15));
-    wr16(b | 0x0D96, s < 0x0300 ? s : 0x0300);
-    wr16(b | (uint16_t)(0x0D8E + x), (uint16_t)((h & 0x0007) - 0x20 + rd16(0x7EE811 + x)));
-    wr16(b | (uint16_t)(0x0D92 + x), (uint16_t)(((rd16(b | 0x06CF) >> 1) & 0x0007) - 0x18));
+    cyc(138);
+    wr16(b | 0x0D96, s < 0x0300 ? s : (cyc(18), 0x0300));
+    cyc(144);
+    wr16(b | (uint16_t)(0x0D8E + x), cyc_then(30, (uint16_t)((h & 0x0007) - 0x20 + rd16(0x7EE811 + x))));
+    cyc(24);
+    wr16(b | (uint16_t)(0x0D92 + x), cyc_then(106, (uint16_t)(((rd16(b | 0x06CF) >> 1) & 0x0007) - 0x18)));
+    cyc(70);
     wr8(0x00211B, 0x40);
+    cyc(48);
     wr8(0x00211B, 0x01);
-    wr16(0x00211C, (uint16_t)(((uint16_t)(rd16(b | 0x06CD) + rd16(b | 0x0DA2)) >> 3) & 0x003F));
-    wr16(0x0000F1, rd16(0x002134));
-    x = (uint16_t)(((rd16(b | 0x06CF) >> 3) & 0x00FE) + rd16(0x0000F1));
+    cyc(46);
+    wr16(0x00211C, cyc_then(98, (uint16_t)(((uint16_t)(rd16(b | 0x06CD) + rd16(cyc_then(38, b | 0x0DA2))) >> 3) & 0x003F)));
+    cyc(32);
+    wr16(0x0000F1, cyc_then(16, rd16(0x002134)));
+    cyc(24);
+    x = (uint16_t)(((rd16(b | 0x06CF) >> 3) & 0x00FE) + rd16(cyc_then(96, 0x0000F1)));
+    cyc(186);
     wr16(0x0000F1, 0x0011);
+    cyc(32);
     sel = rd16(0x000D7F);
-    y = sel ? 0x0440 : 0x0000;
+    y = sel ? (cyc(6), 0x0440) : 0x0000;
     end = sel ? 0x0880 : 0x0440;
+    cyc(18);
     for (;;) {
+        cyc(18);
         if (x >= 0x2800) {
             a = 0x20C0;
             do {
+                cyc(104);
                 wr16(0x7F0000 | (uint16_t)(0xE3D7 + y), a);
                 y = (uint16_t)(y + 2);
             } while (y < end);
+            cyc(52);
             break;
         }
+        cyc(90);
         TilemapRowToE3D7(0x7F, &x, &y);
         x = (uint16_t)(x + 0x0100);
         a = x;
+        cyc(140);
         n = (uint16_t)(rd16(0x0000F1) - 1);
+        cyc(14);
         wr16(0x0000F1, (uint16_t)n);
         if (!n)
             break;
@@ -703,6 +740,7 @@ void abi_BackdropRowsUpdate(void)
 uint16_t BackdropAnglesFromView(uint8_t bank)
 {
     uint32_t b = (uint32_t)bank << 16;
+    cyc(98);
     uint16_t v = rd16(b | 0x0664), w;
     int i;
 
@@ -710,14 +748,17 @@ uint16_t BackdropAnglesFromView(uint8_t bank)
         v = (uint16_t)((v >> 1) | (v & 0x8000));
     v = (uint16_t)-v;
     if (!((uint16_t)(v - 0x00E8) & 0x8000))
-        v = 0x00E8;
+        { cyc(18); v = 0x00E8; }
     if ((uint16_t)(v - 0xFFC8) & 0x8000)
-        v = 0xFFC8;
+        { cyc(18); v = 0xFFC8; }
+    cyc(444);
     wr16(b | 0x06CD, (uint16_t)((v + 0x0098) & 0x01FF));
+    cyc(24);
     w = rd16(b | 0x0666);
     for (i = 0; i < 5; i++)
         w = (uint16_t)((w >> 1) | (w & 0x8000));
     w &= 0x07FF;
+    cyc(238);
     wr16(b | 0x06CF, w);
     return w;
 }
@@ -769,7 +810,7 @@ void abi_TilemapPaletteCycle107(void)
     cpu.x = 0x0107;
     cpu.y = 0x000D;
     cpu.p &= (uint8_t)~P_X;
-    abi_TilemapPaletteCycle();
+    (cyc(52), abi_TilemapPaletteCycle());
 }
 
 /*
@@ -953,13 +994,16 @@ void abi_DigitTiles1184(void)
 
     for (i = 0; i < 3; i++) {
         cpu.p |= P_M;
+        cyc(54);
         v = rd8(0x001184 + i);
         cpu.p &= (uint8_t)~(P_M | P_C);
         cpu.a = op_adc16(v, 0x00CA, &cpu.p);
         cpu.a |= 0x2000;
         cpu.p = nz16(cpu.p, cpu.a);
+        cyc(140);
         wr16(0x7F9481 + i * 2, cpu.a);
     }
+    cyc(22);
     cpu.p |= P_M;
 }
 
@@ -973,19 +1017,26 @@ void abi_DigitTiles1184(void)
  */
 void abi_TimesKeepAndAdvance(void)
 {
+    cyc(22);
     uint32_t b = (uint32_t)cpu.db << 16;
     uint8_t v;
     unsigned i;
 
     cpu.p |= P_M;
     for (i = 0; i < 3; i++)
-        wr8(b | (uint16_t)(0x0EEA + i), rd8(b | (uint16_t)(0x0EE7 + i)));
+        { cyc(24); wr8(b | (uint16_t)(0x0EEA + i), cyc_then(24, rd8(b | (uint16_t)(0x0EE7 + i)))); }
+    cyc(40);
     wr8(b | 0x0E3F, 0x00);
+    cyc(24);
     v = (uint8_t)(rd8(b | 0x0D59) + 1);
+    cyc(6);
     wr8(b | 0x0D59, v);
     cpu.p = nz8(cpu.p, v);
+    cyc(40);
     wr8(b | 0x0D23, 0x02);
+    cyc(46);
     wr8(b | 0x19DF, 0x00);
+    cyc(40);
     wr8(b | 0x19D8, 0x02);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x02);
     cpu.p = nz8(cpu.p, 0x02);
@@ -1006,19 +1057,25 @@ void abi_WindowClosedDigitStep(void)
     uint32_t b = (uint32_t)cpu.db << 16;
 
     op_sep(P_M);
+    cyc(46);
     op_lda8(b | 0x19D8);
-    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)((uint8_t)cpu.a - 0x05)) & ~P_C) | ((uint8_t)cpu.a >= 0x05 ? P_C : 0));
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)((uint8_t)cpu.a - 0x05)) & ~P_C) | ((uint8_t)cpu.a >= 0x05 ? P_C : (cyc(80), 0)));
     if ((uint8_t)cpu.a != 0x05)
         return;
+    cyc(56);
     op_lda8(b | 0x0D4C);
     if (!(uint8_t)cpu.a) {
+        cyc(46);
         jump_routine(0x07EBDD);
         return;
     }
+    cyc(40);
     wr8(b | 0x0D4C, 0x00);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x02);
     cpu.p = nz8(cpu.p, 0x02);
+    cyc(40);
     wr8(b | 0x0D48, 0x02);
+    cyc(24);
     jump_routine(0x07EC6B);
 }
 
@@ -1034,14 +1091,17 @@ static void bg2_scroll_corner(uint32_t b)
     op_lda16_imm(0xFFE0);
     wr16(b | 0x0D8E, 0xFFE0);
     op_lda16_imm(0xFFE8);
+    cyc(10);
     wr16(b | 0x0D92, 0xFFE8);
 }
 
 /* INC $0D59 (8-bit). */
 static void stage_next(uint32_t b)
 {
+    cyc(24);
     uint8_t v = (uint8_t)(rd8(b | 0x0D59) + 1);
 
+    cyc(6);
     wr8(b | 0x0D59, v);
     cpu.p = nz8(cpu.p, v);
 }

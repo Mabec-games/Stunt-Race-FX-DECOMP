@@ -42,7 +42,7 @@ static void halt(void)
 
 void SystemHalt(void)
 {
-    halt();
+    (cyc(70), halt());
 }
 
 void abi_SystemHalt(void)
@@ -59,7 +59,7 @@ void abi_SystemHalt(void)
  */
 void SystemHaltSpawn(void)
 {
-    halt();
+    (cyc(70), halt());
 }
 
 void abi_SystemHaltSpawn(void)
@@ -107,34 +107,49 @@ void DebugByteHalt(void)
     cpu.p = nz8(cpu.p, cpu.db);
     b = (uint32_t)cpu.db << 16;
     for (;;) {
+        cyc(70);
         wr8(INIDISP, 0x0F);
+        cyc(40);
         wr8(b | 0x0D61, 0x0F);
+        cyc(32);
         wr8((uint16_t)(cpu.d + 0x00), 0x02);
+        cyc(70);
         wr8((uint16_t)(cpu.d + 0x46), 0x80);
+        cyc(32);
         wr8((uint16_t)(cpu.d + 0x47), 0x06);
+        cyc(40);
         wr8(b | 0x0307, 0x00);
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x69);
         cpu.p = nz8(cpu.p, 0x69);
         abi_DebugPrintHexByte();
         op_sep(P_M);
+        cyc(344);
         wr8(b | 0x0357, 0x00);
         op_rep(P_M);
+        cyc(24);
         wr16(b | 0x0D7F, 0x0000);
+        cyc(24);
         v = (uint16_t)(rd16(b | 0x0374) & 0xFFF7);
+        cyc(48);
         wr16(b | 0x303A, v);
+        cyc(56);
         wr16(0x70021A, 0x2C00);
+        cyc(16);
         wr16((uint16_t)(cpu.d + 0x48), 0x2C00);
+        cyc(24);
         v = (uint16_t)(rd16(b | 0x0374) | 0x0018);
         cpu.a = v;
+        cyc(48);
         wr16(b | 0x303A, v);
         op_sep(P_M);
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x0B);
         cpu.p = nz8(cpu.p, 0x0B);
+        cyc(70);
         wr8(GSU_SCBR, 0x0B);
     }
 }
 
 void abi_DebugByteHalt(void)
 {
-    DebugByteHalt();
+    (cyc(94), DebugByteHalt());
 }

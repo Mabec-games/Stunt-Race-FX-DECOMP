@@ -27,8 +27,8 @@ static uint16_t asr_round(uint16_t v, unsigned n)
     unsigned c = 0;
 
     while (n--)
-        v = asr(v, &c);
-    return (v & 0x8000) ? (uint16_t)(v + c) : v;
+        { cyc(38); v = asr(v, &c); }
+    return (v & 0x8000) ? (cyc(18), (uint16_t)(v + c)) : v;
 }
 
 static uint16_t asr_n(uint16_t v, unsigned n)
@@ -36,7 +36,7 @@ static uint16_t asr_n(uint16_t v, unsigned n)
     unsigned c;
 
     while (n--)
-        v = asr(v, &c);
+        { cyc(32); v = asr(v, &c); }
     return v;
 }
 

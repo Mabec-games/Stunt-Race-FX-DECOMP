@@ -130,9 +130,11 @@ static void digit_tiles(uint32_t at, uint8_t d)
     uint8_t v = (uint8_t)(d << 1);
 
     cpu.p = (uint8_t)((cpu.p & ~P_C) | (d >> 7));
+    cyc(62);
     lda8(v);
     wr8(at, v);
     v++;
+    cyc(46);
     lda8(v);
     wr8(at + 4, v);
 }
@@ -141,10 +143,15 @@ static void digit_tiles(uint32_t at, uint8_t d)
    best time's sprites. */
 static void time_tiles(uint8_t min, uint8_t sec, uint8_t hund)
 {
+    cyc(130);
     digit_tiles(0x000467, (uint8_t)(min & 0x0F));
+    cyc(54);
     digit_tiles(0x00046F, (uint8_t)(sec >> 4));
+    cyc(14);
     digit_tiles(0x0004D7, (uint8_t)(sec & 0x0F));
+    cyc(54);
     digit_tiles(0x0004DF, (uint8_t)(hund >> 4));
+    cyc(14);
     digit_tiles(0x0004E7, (uint8_t)(hund & 0x0F));
 }
 
@@ -186,10 +193,10 @@ void abi_HudBestTimeDigits(void)
 {
     uint8_t p = cpu.p;
 
-    abi_TimeUnpackBcdLong();
+    (cyc(84), abi_TimeUnpackBcdLong());
     op_sep(P_M | P_X);
     time_tiles((uint8_t)cpu.a, (uint8_t)cpu.x, (uint8_t)cpu.y);
-    abi_HudBestTimeSprites();
+    (cyc(84), abi_HudBestTimeSprites());
     op_plp(p);
 }
 
@@ -208,10 +215,12 @@ void abi_RecordOffsetAllCourses(void)
 
     op_lda16(b | 0x0E3D);
     op_sub16(0x0014);
+    cyc(32);
     wr16((uint16_t)(cpu.d + 0xF1), cpu.a);
     op_asl16();
     op_asl16();
     p = (uint8_t)(cpu.p & ~P_C);
+    cyc(30);
     cpu.a = op_adc16(cpu.a, rd16((uint16_t)(cpu.d + 0xF1)), &p);
     cpu.p = p;
     op_and16(0x00FF);
@@ -688,7 +697,7 @@ static void hud_leave_stack(void)
  */
 void RaceHudSetup(uint8_t p, uint8_t db)
 {
-    race_hud_setup();
+    (cyc(198), race_hud_setup());
     cpu.db = db;
     cpu.p = nz8(cpu.p, db);
     op_plp(p);
@@ -696,8 +705,8 @@ void RaceHudSetup(uint8_t p, uint8_t db)
 
 void abi_RaceHudSetup(void)
 {
-    race_hud_setup();
-    hud_leave_stack();
+    (cyc(152), race_hud_setup());
+    (cyc(86), hud_leave_stack());
 }
 
 /*
@@ -713,7 +722,7 @@ void abi_RaceHudSetup(void)
  */
 void RaceHudSetupTwoPlayers(uint8_t p, uint8_t db)
 {
-    race_hud_setup_two();
+    (cyc(64), race_hud_setup_two());
     cpu.db = db;
     cpu.p = nz8(cpu.p, db);
     op_plp(p);
@@ -721,6 +730,6 @@ void RaceHudSetupTwoPlayers(uint8_t p, uint8_t db)
 
 void abi_RaceHudSetupTwoPlayers(void)
 {
-    race_hud_setup_two();
-    hud_leave_stack();
+    (cyc(18), race_hud_setup_two());
+    (cyc(86), hud_leave_stack());
 }

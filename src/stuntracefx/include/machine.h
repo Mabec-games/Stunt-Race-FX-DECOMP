@@ -114,5 +114,13 @@ void cpu_idle(uint32_t clocks);
    clocks. The C states it where its code stands for the original's, so
    each access comes at the original's time. */
 void cyc(uint32_t clocks);
+/* `v`, with the time before an access stated after the access's other
+   arguments are worked out: where the access is reached in the middle of
+   an expression, so no statement before it stands for that place. */
+static inline uint32_t cyc_then(uint32_t clocks, uint32_t v)
+{
+    cyc(clocks);
+    return v;
+}
 
 #endif

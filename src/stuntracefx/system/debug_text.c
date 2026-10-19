@@ -157,13 +157,19 @@ uint16_t DebugShowErrors(uint8_t bank)
     unsigned i;
 
     for (i = 0; i < 3; i++) {
+        cyc(54);
         a = rd16(errors[i].flag);
         if (!a)
             continue;
+        cyc(56);
         wr16(TEXT_POS, errors[i].pos);
+        cyc(48);
         wr16((uint32_t)bank << 16 | TEXT_HALF, 0x0000);
+        cyc(54);
         wr8(0x000056, 0x08);
+        cyc(62);
         wr16(0x000054, errors[i].text);
+        cyc(242);
         DebugPrint(bank);
         a = errors[i].text;
     }

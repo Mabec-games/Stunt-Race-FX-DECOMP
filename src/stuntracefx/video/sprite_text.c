@@ -77,6 +77,7 @@ void abi_OamTextLine(void)
  */
 void OamTextLineLong(uint16_t *xp, uint16_t *yp, uint16_t *ap)
 {
+    cyc(284);
     OamTextLine(0x07, xp, yp, ap);
 }
 
@@ -211,6 +212,7 @@ void SpriteTextAt8152C(uint8_t bank)
 
 void abi_SpriteTextAt8152C(void)
 {
+    cyc(22);
     abi_sprite_text_line_at(0x81, 0x52);
 }
 

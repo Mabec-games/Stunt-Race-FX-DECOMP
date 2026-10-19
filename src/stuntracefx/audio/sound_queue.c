@@ -82,6 +82,7 @@ void abi_SoundPort0QueuePush(void)
  */
 void SoundPort1QueuePush(uint8_t command)
 {
+    cyc(192);
     queue_push(SOUND_PORT1_QUEUE, SOUND_PORT1_HEAD, SOUND_PORT1_COUNT, command);
 }
 
@@ -102,16 +103,27 @@ void abi_SoundPort1QueuePush(void)
  */
 void SoundReset(void)
 {
+    cyc(92);
     wr8(SOUND_MUTED, 0);
+    cyc(32);
     wr8(WRAM_0DD0, 0);
+    cyc(32);
     wr8(SOUND_PORT1_LAST, 0);
+    cyc(32);
     wr8(SOUND_PORT0_HEAD, 0);
+    cyc(32);
     wr8(SOUND_PORT1_HEAD, 0);
+    cyc(32);
     wr8(SOUND_PORT1_COUNT, 0);
+    cyc(32);
     wr8(SOUND_PORT0_COUNT, 0);
+    cyc(32);
     wr8(WRAM_0E1B, 0);
+    cyc(32);
     wr8(WRAM_0E1C, 0);
+    cyc(32);
     wr8(APUIO3, 0);
+    cyc(32);
     wr8(APUIO2, 0);
 }
 
@@ -131,26 +143,35 @@ static int ring_send(uint32_t b, uint16_t port, uint16_t count, uint16_t head, u
 {
     uint8_t v, n;
 
+    cyc(24);
     v = rd8(b | port);
     if (v) {
+        cyc(16);
         v = 0x00;
     } else {
+        cyc(40);
         n = rd8(b | count);
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | n);
         if (!n)
-            return 0;
+            { cyc(22); return 0; }
+        cyc(40);
         cpu.x = rd8(b | head);
+        cyc(24);
         v = rd8(b | (uint16_t)(ring + cpu.x));
+        cyc(24);
         n = (uint8_t)(rd8(b | count) - 1);
+        cyc(6);
         wr8(b | count, n);
         if (n) {
             cpu.x = (uint8_t)(cpu.x + 1);
             if (cpu.x >= 0x10)
                 cpu.x = 0x00;
+            cyc(92);
             wr8(b | head, (uint8_t)cpu.x);
-        }
+        } else { cyc(22); }
     }
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cyc(46);
     wr8(b | port, v);
     return 1;
 }
@@ -176,56 +197,75 @@ void abi_SoundPortsSend(void)
     uint8_t p0 = cpu.p, v;
 
     op_sep(P_M | P_X);
+    cyc(46);
     v = rd8(b | 0x10E2);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     if (v) {
+        cyc(40);
         wr8(b | 0x2140, v);
+        cyc(24);
         wr8(b | 0x10E2, 0x00);
         op_plp(p0);
         return;
     }
+    cyc(46);
     v = rd8(b | 0x10E3);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     if (v) {
+        cyc(40);
         wr8(b | 0x2141, v);
+        cyc(24);
         wr8(b | 0x10E3, 0x00);
         op_plp(p0);
         return;
-    }
+    } else { cyc(6); }
     {
         static const uint16_t hold[2] = {0x10DA, 0x10DC};
         int i;
 
         for (i = 0; i < 2; i++) {
+            cyc(40);
             v = rd8(b | hold[i]);
             cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
             if (v) {
+                cyc(50);
                 op_plp(p0);
                 return;
             }
         }
     }
+    cyc(40);
     v = rd8(b | 0x0E3B);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     if (!(v & 0x01)) {
+        cyc(60);
         op_plp(p0);
         return;
     }
+    cyc(38);
     ring_send(b, 0x2140, 0x0DCC, 0x0DC8, 0x0DA8);
     if (ring_send(b, 0x2141, 0x0DCE, 0x0DCA, 0x0DB8))
-        wr8(b | 0x0DD2, (uint8_t)cpu.a);
+        { cyc(24); wr8(b | 0x0DD2, (uint8_t)cpu.a); }
+    cyc(24);
     v = rd8(b | 0x0E4B);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     if (v) {
         cpu.a = (uint16_t)(cpu.a & 0xFF00);
+        cyc(62);
         wr8(b | 0x2142, 0x00);
+        cyc(24);
         wr8(b | 0x2143, 0x00);
     } else {
+        cyc(40);
         v = rd8(b | 0x0E47);
+        cyc(24);
         wr8(b | 0x2142, v);
+        cyc(24);
         v = rd8(b | 0x0E49);
+        cyc(24);
         wr8(b | 0x2143, v);
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     }
+    cyc(28);
     op_plp(p0);
 }

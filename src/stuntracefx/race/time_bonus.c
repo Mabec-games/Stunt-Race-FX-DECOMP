@@ -55,6 +55,7 @@ static uint8_t digit(uint8_t bank, uint16_t d)
    the data bank. */
 static void abi_digit_exit(uint16_t d, uint8_t mode)
 {
+    cyc(158);
     uint16_t w = rd16((uint32_t)cpu.db << 16 | (uint16_t)(0x8E3E + (d << 1)));
 
     cpu.a = (uint16_t)((w & 0xFF00) | mode);
@@ -136,10 +137,11 @@ uint8_t GsuTimeDigitsGrow(uint8_t bank)
 void abi_GsuTimeDigitsGrow(void)
 {
     cpu.x = rd16((uint32_t)cpu.db << 16 | 0x0D6B);
+    cyc(102);
     cpu.a = rd16(SIZE_GROW + cpu.x);
     wr16(GSU_SIZE, cpu.a);
     abi_GsuBytes200_BFB5BB();
-    abi_GsuTimeDigits();
+    (cyc(128), abi_GsuTimeDigits());
 }
 
 /*
@@ -160,7 +162,7 @@ void abi_GsuTimeDigitsFull(void)
     cpu.a = 0x0020;
     wr16(GSU_SIZE, cpu.a);
     abi_GsuBytes200_BFB5BB();
-    abi_GsuTimeDigits();
+    (cyc(128), abi_GsuTimeDigits());
 }
 
 /* The tail of the three GsuBonusDigits entries: the size to $70:0210, then
@@ -180,12 +182,13 @@ static int bonus_digits(uint8_t bank, uint16_t size)
 static void abi_bonus_digits(void)
 {
     wr16(GSU_SIZE, cpu.a);
+    cyc(24);
     cpu.a = rd16((uint32_t)cpu.db << 16 | 0x0E6C);
     cpu.p = nz16(cpu.p, cpu.a);
     if (!cpu.a)
-        return;
-    abi_GsuBytes200_BFB7B6();
-    abi_GsuDigitPair0E74();
+        { cyc(58); return; }
+    (cyc(22), abi_GsuBytes200_BFB7B6());
+    (cyc(128), abi_GsuDigitPair0E74());
 }
 
 /*
@@ -207,6 +210,7 @@ void GsuBonusDigitsGrow(uint8_t bank)
 void abi_GsuBonusDigitsGrow(void)
 {
     cpu.x = rd16((uint32_t)cpu.db << 16 | 0x0D6B);
+    cyc(102);
     cpu.a = rd16(SIZE_GROW + cpu.x);
     abi_bonus_digits();
 }
@@ -226,7 +230,9 @@ void GsuBonusDigitsBounce(uint8_t bank)
 
 void abi_GsuBonusDigitsBounce(void)
 {
+    cyc(24);
     cpu.x = rd16((uint32_t)cpu.db << 16 | 0x0D6B);
+    cyc(102);
     cpu.a = rd16(SIZE_BOUNCE + cpu.x);
     abi_bonus_digits();
 }
@@ -247,7 +253,7 @@ void GsuBonusDigitsFull(uint8_t bank)
 void abi_GsuBonusDigitsFull(void)
 {
     cpu.a = 0x0020;
-    abi_bonus_digits();
+    (cyc(56), abi_bonus_digits());
 }
 
 /* The 65816's 16-bit ADC and SBC, binary or decimal as the D flag in *p
@@ -308,6 +314,7 @@ static uint16_t sbc16p(uint16_t a, uint16_t m, uint8_t *p)
 static uint16_t adc_decimal16(uint16_t a, uint16_t m, int *c)
 {
     uint8_t p = (uint8_t)(P_D | (*c ? P_C : 0));
+    cyc(14);
     uint16_t r = adc16p(a, m, &p);
 
     *c = p & P_C;
@@ -317,6 +324,7 @@ static uint16_t adc_decimal16(uint16_t a, uint16_t m, int *c)
 static uint16_t sbc_decimal16(uint16_t a, uint16_t m, int *c)
 {
     uint8_t p = (uint8_t)(P_D | (*c ? P_C : 0));
+    cyc(46);
     uint16_t r = sbc16p(a, m, &p);
 
     *c = p & P_C;
@@ -361,10 +369,13 @@ static void sound_push_decimal(uint8_t command)
 
     if (rd8(SOUND_MUTED) != 0)
         return;
+    cyc(40);
     n = rd8(SOUND_PORT0_COUNT);
     if (n == 0) {
-        wr8(SOUND_PORT0_COUNT, (uint8_t)(rd8(SOUND_PORT0_COUNT) + 1));
-        wr8(SOUND_PORT0_QUEUE + rd8(SOUND_PORT0_HEAD), command);
+        cyc(46);
+        wr8(SOUND_PORT0_COUNT, cyc_then(6, (uint8_t)(rd8(SOUND_PORT0_COUNT) + 1)));
+        cyc(24);
+        wr8(SOUND_PORT0_QUEUE + rd8(SOUND_PORT0_HEAD), cyc_then(30, command));
     } else if (n < 0x10) {
         c = 0;
         slot = adc_decimal8(n, rd8(SOUND_PORT0_HEAD), &c);
@@ -375,7 +386,8 @@ static void sound_push_decimal(uint8_t command)
         wr8(SOUND_PORT0_QUEUE + slot, command);
         wr8(SOUND_PORT0_COUNT, (uint8_t)(rd8(SOUND_PORT0_COUNT) + 1));
     }
-}
+cyc(162);
+    }
 
 /*
  * @routine 07:90EE TimeDigitBytes
@@ -435,7 +447,7 @@ void abi_TimeDigitBytes(void)
 /* A 16-bit INC of a work-RAM word: one read, one write. */
 static void inc16(uint32_t addr)
 {
-    wr16(addr, (uint16_t)(rd16(addr) + 1));
+    wr16(addr, cyc_then(14, (uint16_t)(rd16(addr) + 1)));
 }
 
 static void sound(uint16_t command)
@@ -460,7 +472,7 @@ static void draw_mirrored(void)
     abi_GsuFA5AThreeShifted();
     abi_GsuFA5AFromTables();
     abi_GsuFA5ASixLeft();
-    abi_GsuFA35FromTables();
+    (cyc(150), abi_GsuFA35FromTables());
 }
 
 /* The bonus digits at the animation's size, then the time at full size
@@ -484,13 +496,14 @@ static void draw_bonus_then_time(uint32_t b)
    else the eleven pieces of GsuPiecesStep10CB ($07:8FBD). */
 static void draw_frame(uint32_t b)
 {
+    cyc(24);
     cpu.a = rd16(b | 0x0E6C);
     if (cpu.a) {
-        abi_GsuBytes200_BFB7B6();
-        abi_GsuFA5AThree();
+        (cyc(16), abi_GsuBytes200_BFB7B6());
+        (cyc(174), abi_GsuFA5AThree());
         abi_GsuFA5AFromTables();
         abi_GsuFA5ASix();
-        abi_GsuFA35FromTables();
+        (cyc(18), abi_GsuFA35FromTables());
     } else {
         abi_GsuPiecesStep10CB();
     }
@@ -516,7 +529,7 @@ static void draw_pieces(uint32_t b)
 {
     cpu.a = 0x0030;
     wr16(b | 0x0D6D, cpu.a);
-    abi_GsuFA5AThree();
+    (cyc(102), abi_GsuFA5AThree());
     abi_GsuFA5AFromTables();
     abi_GsuFA5ASix();
     abi_GsuFA1BFromTables();
@@ -526,13 +539,15 @@ static void draw_pieces(uint32_t b)
    decimal; the rest when less is left. */
 static void count_bonus(uint32_t b)
 {
+    cyc(108);
     uint16_t v = rd16(b | 0x0E74);
     int c;
 
     cpu.a = v;
     if (!v)
-        return;
+        { cyc(22); return; }
     c = 1;
+    cyc(54);
     v = sbc_decimal16(v, rd16(b | 0x0E7C), &c);
     if (!c) {
         c = 0;
@@ -544,7 +559,9 @@ static void count_bonus(uint32_t b)
     } else {
         wr16(b | 0x0E74, v);
         c = 0;
+        cyc(24);
         cpu.a = rd16(b | TIME_BCD);             /* LDA, then ADC */
+        cyc(38);
         cpu.a = adc_decimal16(cpu.a, rd16(b | 0x0E7C), &c);
         wr16(b | TIME_BCD, cpu.a);
     }
@@ -557,31 +574,39 @@ static void take_from_time(uint32_t b)
     uint16_t v;
     int c;
 
+    cyc(78);
     v = rd16(b | TIME_BCD);
     if (v >= 0x0009) {
         c = 1;
+        cyc(62);
         v = sbc_decimal16(v, 0x0003, &c);
         wr16(b | TIME_BCD, v);
         c = 0;
+        cyc(24);
         v = adc_decimal16(rd16(b | 0x0E74), 0x0003, &c);
     } else {
         c = 1;
+        cyc(56);
         v = sbc_decimal16(v, 0x0001, &c);
         wr16(b | TIME_BCD, v);
         if (v == 0) {
             cpu.a = 0x0044;
+            cyc(394);
             sound_push_decimal(0x44);
             cpu.p = nz8(cpu.p, cpu.db);
         }
         c = 0;
+        cyc(70);
         v = adc_decimal16(rd16(b | 0x0E74), 0x0001, &c);
     }
     if (v >= 0x0099) {
         cpu.a = 0x0044;
+        cyc(418);
         sound_push_decimal(0x44);
         v = 0x0099;
     }
     cpu.a = v;
+    cyc(94);
     wr16(b | 0x0E74, v);
 }
 
@@ -836,12 +861,14 @@ static void asl16(void)
 static void add16(uint16_t m)
 {
     cpu.p &= (uint8_t)~P_C;
+    cyc(62);
     cpu.a = adc16p(cpu.a, m, &cpu.p);
 }
 
 static void sub16(uint16_t m)
 {
     cpu.p |= P_C;
+    cyc(124);
     cpu.a = sbc16p(cpu.a, m, &cpu.p);
 }
 
@@ -850,6 +877,7 @@ static void inc16_nz(uint32_t addr)
 {
     uint16_t v = (uint16_t)(rd16(addr) + 1);
 
+    cyc(14);
     wr16(addr, v);
     cpu.p = nz16(cpu.p, v);
 }
@@ -889,9 +917,11 @@ static int bonus_flag(uint32_t b)
 static void transfer_digits(uint32_t b)
 {
     abi_GsuBytes200_BFBAB9();
+    cyc(72);
     lda16(b | 0x0D69);
+    cyc(32);
     wr16(GSU_SIZE, cpu.a);
-    abi_GsuDigitPair0E74();
+    (cyc(102), abi_GsuDigitPair0E74());
 }
 
 /*
@@ -1145,20 +1175,23 @@ void abi_GsuDigitPair0E74At(void)
     wr16(0x70020A, cpu.a);
     op_lda16_imm(0x0008);
     op_lda16_imm(0x0008);
+    cyc(4);
     wr16(0x70020C, 0x0008);
+    cyc(24);
     op_lda16(b | 0x0E74);
     op_lsr16();
     op_lsr16();
     op_lsr16();
     op_lsr16();
     op_and16(0x000F);
-    abi_GsuParam216A();
-    run_f15b();
+    (cyc(46), abi_GsuParam216A());
+    (cyc(166), run_f15b());
     op_rep(P_M | P_X);
+    cyc(118);
     op_lda16(b | 0x0E74);
     op_and16(0x000F);
-    abi_GsuParam216A();
-    run_f15b();
+    (cyc(22), abi_GsuParam216A());
+    (cyc(166), run_f15b());
 }
 
 /*
@@ -1176,11 +1209,12 @@ void abi_GsuDigitPair0E74At(void)
 void abi_TimeBonusPiecesMirrored(void)
 {
     abi_GsuBytes200_BFB7B6();
-    abi_GsuFA5AThree();
+    (cyc(174), abi_GsuFA5AThree());
     abi_GsuFA5AFromTables();
     abi_GsuFA5ASix();
     abi_GsuFA1BFromTables();
     cpu.s++;
+    cyc(20);
     op_plp(rd8((uint16_t)cpu.s));
 }
 

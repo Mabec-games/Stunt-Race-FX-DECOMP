@@ -20,13 +20,14 @@ uint8_t WindowStep3437(uint8_t bank, uint8_t *x, uint8_t *p)
     unsigned s = v + 2u;
     uint8_t r = (uint8_t)s;
 
-    *p = (uint8_t)((nz8(*p, r) & ~(P_C | P_V)) | (s > 0xFF ? P_C : 0)
+    *p = (uint8_t)((nz8(*p, r) & ~(P_C | P_V)) | (s > 0xFF ? (cyc(24), P_C) : 0)
                    | ((~(v ^ 2) & (v ^ r) & 0x80) ? P_V : 0));
     if (s > 0xFF) {
         (*x)++;
         r = 0xFF;
         *p = nz8(*p, r);
     }
+    cyc(76);
     wr8((uint32_t)bank << 16 | 0x3437, r);
     return r;
 }
@@ -50,15 +51,17 @@ void abi_WindowStep3437(void)
  */
 uint8_t WindowStep3435(uint8_t bank, uint8_t *x, uint8_t *p)
 {
+    cyc(112);
     uint8_t v = rd8((uint32_t)bank << 16 | 0x3435), r = (uint8_t)(v - 3);
 
-    *p = (uint8_t)((nz8(*p, r) & ~(P_C | P_V)) | (v >= 3 ? P_C : 0)
+    *p = (uint8_t)((nz8(*p, r) & ~(P_C | P_V)) | (v >= 3 ? P_C : (cyc(24), 0))
                    | (((v ^ 3) & (v ^ r) & 0x80) ? P_V : 0));
     if (v < 3) {
         (*x)++;
         r = 0x01;
         *p = nz8(*p, r);
     }
+    cyc(76);
     wr8((uint32_t)bank << 16 | 0x3435, r);
     return r;
 }
@@ -110,15 +113,17 @@ void abi_WindowStep3439(void)
 static void window_step_down(uint16_t addr, uint8_t n)
 {
     uint32_t a = (uint32_t)cpu.db << 16 | addr;
+    cyc(24);
     uint8_t v = rd8(a), r = (uint8_t)(v - n);
 
-    cpu.p = (uint8_t)((nz8(cpu.p, r) & ~(P_C | P_V)) | (v >= n ? P_C : 0)
+    cpu.p = (uint8_t)((nz8(cpu.p, r) & ~(P_C | P_V)) | (v >= n ? P_C : (cyc(24), 0))
                       | (((v ^ n) & (v ^ r) & 0x80) ? P_V : 0));
     if (v < n) {
         cpu.x = (uint8_t)(cpu.x + 1);
         r = 0x01;
         cpu.p = nz8(cpu.p, r);
     }
+    cyc(76);
     wr8(a, r);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | r);
 }
@@ -157,15 +162,18 @@ void abi_WindowStep3433By3(void)
 void abi_WindowStep3437By3(void)
 {
     uint32_t a = (uint32_t)cpu.db << 16 | 0x3437;
+    cyc(24);
     uint8_t v = rd8(a), r;
 
     cpu.p &= (uint8_t)~P_C;
     r = op_adc8(v, 0x03, &cpu.p);
     if (cpu.p & P_C) {
+        cyc(24);
         cpu.x = (uint8_t)(cpu.x + 1);
         r = 0xFF;
         cpu.p = nz8(cpu.p, r);
     }
+    cyc(76);
     wr8(a, r);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | r);
 }

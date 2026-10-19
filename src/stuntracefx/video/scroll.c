@@ -31,7 +31,7 @@ uint8_t Bg2ScrollFromTable(uint16_t band)
 
 void abi_Bg2ScrollFromTable(void)
 {
-    uint8_t v = Bg2ScrollFromTable((cpu.p & P_X) ? (uint8_t)cpu.x : cpu.x);
+    uint8_t v = Bg2ScrollFromTable((cpu.p & P_X) ? (uint8_t)cpu.x : (cyc(6), cpu.x));
 
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.p = nz8(cpu.p, v);
@@ -47,11 +47,16 @@ void abi_Bg2ScrollFromTable(void)
  */
 void ScrollHdmaSet(void)
 {
+    cyc(76);
     uint16_t v = rd16(0x000E37);
 
+    cyc(32);
     wr16(0x0010AE, v);
+    cyc(32);
     wr16(0x0010B7, v);
+    cyc(56);
     wr16(0x0010B1, 0x0130);
+    cyc(32);
     wr16(0x0010B4, 0x0130);
 }
 

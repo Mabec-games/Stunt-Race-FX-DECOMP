@@ -23,17 +23,25 @@ void Records7FFromF634(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
 
     *x = 0;
     *y = 0xF634;
-    while ((v = rd8(b | *y)) != 0xFF) {
+    while ((v = rd8(cyc_then(160, b | *y))) != 0xFF) {
         d = (uint8_t)(v - 0x28);
+        cyc(80);
         wr8(0x7F43D8 + *x, d);
+        cyc(62);
         wr8(0x7F4800 + *x, (uint8_t)(d + 0x50));
+        cyc(48);
         wr8(0x7F43D7 + *x, 0x10);
+        cyc(48);
         wr8(0x7F47FF + *x, 0x60);
+        cyc(100);
         d = (uint8_t)(rd8(b | (uint16_t)(*y + 1)) - 0x28);
         wr8(0x7F43D9 + *x, d);
         *p = (uint8_t)((*p & ~P_V) | ((~(d ^ 0x50) & (d ^ (uint8_t)(d + 0x50)) & 0x80) ? P_V : 0));
+        cyc(62);
         wr8(0x7F4801 + *x, (uint8_t)(d + 0x50));
+        cyc(48);
         wr8(0x7F43DA + *x, 0xA0);
+        cyc(48);
         wr8(0x7F4802 + *x, 0xF0);
         *x = (uint16_t)(*x + 4);
         *y = (uint16_t)(*y + 2);
@@ -45,6 +53,7 @@ void abi_Records7FFromF634(void)
 {
     uint8_t p = cpu.p;
 
+    cyc(52);
     Records7FFromF634(cpu.db, &cpu.x, &cpu.y, &p);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xFF);
     cpu.p = (uint8_t)((p & ~P_X) | P_M);
@@ -71,30 +80,43 @@ uint16_t Records7FFromF170(uint8_t bank)
     uint8_t v;
     unsigned i, k;
 
-    while ((v = rd8(b | y)) != 0xFF) {
+    while ((v = rd8(cyc_then(170, b | y))) != 0xFF) {
+        cyc(40);
         wr8(0x7F43D8 + x, v);
+        cyc(48);
         wr8(0x7F43D7 + x, 0x18);
+        cyc(70);
         wr8(0x7F43D9 + x, rd8(b | (uint16_t)(y + 1)));
+        cyc(48);
         wr8(0x7F43DA + x, 0xE7);
         x = (uint16_t)(x + 4);
         y = (uint16_t)(y + 2);
     }
     for (i = 0; i < 0x20; i++)
-        for (k = 0; k < 8; k++)
-            wr8(to[k] + i, rd8(from[k] + i));
+        { cyc(52); for (k = 0; k < 8; k++)
+            { cyc(72); wr8(to[k] + i, rd8(from[k] + i)); } }
+    cyc(86);
     wr8(b | (WMADDH & 0xFFFF), 0x7F);
+    cyc(70);
     wr16(b | (WMADDL & 0xFFFF), 0x5187);
+    cyc(40);
     wr8(b | (DMAP0 & 0xFFFF), 0x00);
+    cyc(40);
     wr8(b | (BBAD0 & 0xFFFF), 0x80);
+    cyc(48);
     wr16(b | (A1T0L & 0xFFFF), 0xF849);
+    cyc(40);
     wr8(b | (A1B0 & 0xFFFF), 0x09);
+    cyc(48);
     wr16(b | (DAS0L & 0xFFFF), 0x0040);
+    cyc(48);
     wr16(b | (MDMAEN & 0xFFFF), 0x0001);
     return (uint16_t)(y & 0x00FF);
 }
 
 void abi_Records7FFromF170(void)
 {
+    cyc(46);
     cpu.y = Records7FFromF170(cpu.db);
     cpu.a = 0x0001;
     cpu.x = 0x0009;

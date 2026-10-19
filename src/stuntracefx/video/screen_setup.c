@@ -29,24 +29,38 @@ void VideoRegsReset(uint8_t bank, uint16_t x)
     static const uint32_t off[] = {HTIMEL, HTIMEH, VTIMEL, VTIMEH, NMITIMEN, MDMAEN, HDMAEN};
     unsigned i;
 
+    cyc(106);
     io8(bank, BGMODE, 0x03);
+    cyc(24);
     io8(bank, MOSAIC, 0x00);
+    cyc(40);
     io8(bank, OBSEL, 0x03);
+    cyc(40);
     io8(bank, BG1SC, 0x7A);
+    cyc(40);
     io8(bank, BG2SC, 0x5A);
+    cyc(40);
     io8(bank, BG12NBA, 0x60);
+    cyc(24);
     io8(bank, CGADD, 0x00);
+    cyc(24);
     io8(bank, CGDATA, 0x00);
+    cyc(24);
     io8(bank, CGDATA, 0x00);
     for (i = 0; i < sizeof zero / sizeof zero[0]; i++)
-        io8(bank, zero[i], 0x00);
+        { cyc(24); io8(bank, zero[i], 0x00); }
+    cyc(24);
     io8(bank, COLDATA, (uint8_t)x);
     io8(bank, SETINI, (uint8_t)(x >> 8));
+    cyc(24);
     io8(bank, SETINI, 0x00);
     for (i = 0; i < sizeof off / sizeof off[0]; i++)
-        io8(bank, off[i], 0x00);
+        { cyc(24); io8(bank, off[i], 0x00); }
+    cyc(40);
     io8(bank, GSU_SCBR, 0x0B);
+    cyc(78);
     wr16(0x70021A, 0x2C00);
+    cyc(16);
     wr16(0x000048, 0x2C00);
 }
 
@@ -158,15 +172,25 @@ void VideoStartUploads(uint8_t bank)
 {
     uint32_t b = (uint32_t)bank << 16;
 
+    cyc(216);
     io8(bank, NMITIMEN, 0x00);
+    cyc(16);
     wr8(0x000000, 0x00);
+    cyc(24);
     rd8(b | 0x1073);
+    cyc(54);
     rd16(GSU_SFR);
+    cyc(48);
     wr16(b | 0x0374, 0x0003);
+    cyc(40);
     io8(bank, VMAIN, 0x80);
+    cyc(48);
     wr16(b | (VMADDL & 0xFFFF), 0x0000);
+    cyc(108);
     DmaFromDescriptor(bank, 0xF873);
+    cyc(118);
     wr16(b | (VMADDL & 0xFFFF), 0x7C00);
+    cyc(108);
     DmaFromDescriptor(bank, 0xF87A);
 }
 
@@ -197,7 +221,7 @@ static void video_gsu_vram(uint16_t y, uint16_t x)
     cpu.y = y;
     cpu.x = x;
     cpu.p = nz16(cpu.p, x);
-    abi_GsuCF42ToVram();
+    (cyc(116), abi_GsuCF42ToVram());
 }
 
 /* REP #$30, LDA and LDX (x_last: LDX first), JSL GsuCF42To3000. */
@@ -207,7 +231,7 @@ static void video_gsu_3000(uint16_t a, uint16_t x, int x_first)
     cpu.a = a;
     cpu.x = x;
     cpu.p = nz16(cpu.p, x_first ? a : x);
-    abi_GsuCF42To3000();
+    (cyc(46), abi_GsuCF42To3000());
 }
 
 /* PHP, REP #$20: DMA channel 0 in mode 1 of `size` bytes from $70:src to
@@ -218,15 +242,21 @@ static void video_gsu_ram_dma(uint16_t src, uint16_t vram, uint16_t size)
 
     cpu.p &= (uint8_t)~P_M;
     wr16(DMAP0, 0x1801);
+    cyc(56);
     wr16(A1T0L, src);
+    cyc(56);
     wr16(VMADDL, vram);
     cpu.a = size;
+    cyc(56);
     wr16(DAS0L, size);
     cpu.p |= P_M;
+    cyc(70);
     wr8(VMAIN, 0x80);
+    cyc(48);
     wr8(A1B0, 0x70);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
     cpu.p = nz8(cpu.p, 0x01);
+    cyc(48);
     wr8(MDMAEN, 0x01);
     op_plp(p);
 }
@@ -274,7 +304,7 @@ static void video_mvn(uint32_t src, uint32_t dst, uint16_t n)
 
     cpu.p &= (uint8_t)~(P_M | P_X);
     for (i = 0; i < n; i++)
-        wr8(dst + i, rd8(src + i));
+        { cyc(36); wr8(dst + i, rd8(src + i)); }
     cpu.a = 0xFFFF;
     cpu.x = (uint16_t)(src + n);
     cpu.y = (uint16_t)(dst + n);
@@ -497,18 +527,24 @@ void abi_RaceVideoInit(void)
     cpu.db = 0x03;
     cpu.p = nz8(cpu.p, 0x03);
     op_sep(P_M);
+    cyc(118);
     op_lda8(b | 0x0D24);
     v = (uint8_t)cpu.a;
-    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x03)) & ~P_C) | (v >= 0x03 ? P_C : 0));
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x03)) & ~P_C) | (v >= 0x03 ? P_C : (cyc(38), 0)));
     if (v >= 0x03) {
+        cyc(56);
         wr8(b | 0x0EED, 0x00);
+        cyc(24);
         wr8(b | 0x0EEE, 0x00);
+        cyc(24);
         wr8(b | 0x0EEF, 0x00);
         op_rep(P_M);
+        cyc(24);
         wr16(b | 0x0E6C, 0x0000);
+        cyc(24);
         wr16(b | 0x0E6E, 0x0000);
     }
-    abi_RaceVideoSetup();
+    (cyc(62), abi_RaceVideoSetup());
     cpu.db = db0;
     cpu.p = nz8(cpu.p, db0);
 }

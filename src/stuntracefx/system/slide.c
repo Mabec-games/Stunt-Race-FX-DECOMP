@@ -76,29 +76,39 @@ void abi_SlideOutWobble(void)
     uint8_t a, m;
 
     cpu.p |= P_M;
+    cyc(46);
     a = rd8(b | 0x19F7);
-    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(a - 0x0F)) & ~P_C) | (a >= 0x0F ? P_C : 0));
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(a - 0x0F)) & ~P_C) | (a >= 0x0F ? P_C : (cyc(38), 0)));
     if (a == 0x0F) {
         cpu.p &= (uint8_t)~P_C;
+        cyc(56);
         a = op_adc8(rd8(b | 0x1A05), 0x01, &cpu.p);
+        cyc(54);
         wr8(b | 0x1A05, a);
-        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(a - 0x02)) & ~P_C) | (a >= 0x02 ? P_C : 0));
+        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(a - 0x02)) & ~P_C) | (a >= 0x02 ? P_C : (cyc(38), 0)));
         if (a == 0x02) {
+            cyc(56);
             wr8(b | 0x1A05, 0x00);
+            cyc(32);
             a = rd8(0x7F3468);
             cpu.p &= (uint8_t)~P_C;
+            cyc(38);
             a = op_adc8(a, rd8(b | 0x1A04), &cpu.p);
+            cyc(32);
             wr8(0x7F3468, a);
-            m = a == 0x0F ? 0x0F : 0x0B;
-            cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(a - m)) & ~P_C) | (a >= m ? P_C : 0));
+            m = a == 0x0F ? 0x0F : (cyc(32), 0x0B);
+            cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(a - m)) & ~P_C) | (a >= m ? (cyc(56), P_C) : 0));
             if (a == 0x0F || a == 0x0B) {
+                cyc(6);
                 a = (uint8_t)((rd8(b | 0x1A04) ^ 0xFF) + 1);
                 cpu.p = nz8(cpu.p, a);
+                cyc(54);
                 wr8(b | 0x1A04, a);
             }
         }
     }
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
+    cyc(20);
     cpu.db = rd8((uint16_t)(cpu.s + 1));
     cpu.p = nz8(cpu.p, cpu.db);
 }

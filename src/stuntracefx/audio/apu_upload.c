@@ -48,6 +48,7 @@ uint8_t ApuUploadNextByte(uint16_t *offset)
 {
     uint16_t low;
 
+    cyc(46);
     return apu_upload_next_byte(offset, &low);
 }
 
@@ -161,6 +162,7 @@ void ApuSettleDelay(void);
 
 void ApuPort1Send05(void)
 {
+    cyc(146);
     wr8(APUIO1, 0x05);
     ApuSettleDelay();
 }
@@ -181,12 +183,13 @@ void abi_ApuPort1Send05(void)
  */
 void ApuSettleDelay(void)
 {
+    cyc(589832);
     delay_turns(0x4000);
 }
 
 void abi_ApuSettleDelay(void)
 {
-    ApuSettleDelay();
+    (cyc(177), ApuSettleDelay());
     cpu.a = 0;
     cpu.p = (uint8_t)((cpu.p & ~(P_M | P_N)) | P_Z);
 }
@@ -207,6 +210,7 @@ void ApuUploadBank19(void)
 
 void abi_ApuUploadBank19(void)
 {
+    cyc(154);
     ApuUploadEnd end = apu_upload(0x19, 0xC27C);
 
     cpu.a = 0;

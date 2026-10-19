@@ -22,7 +22,7 @@ static uint16_t halve(uint16_t v)
     uint16_t r = (uint16_t)((v >> 1) | (v & 0x8000));
 
     if (r & 0x8000)
-        r = (uint16_t)(r + (v & 1));
+        { cyc(18); r = (uint16_t)(r + (v & 1)); }
     return r;
 }
 
@@ -136,7 +136,9 @@ int ObjectPathStart(uint8_t bank, uint16_t obj, uint16_t path, uint16_t *a, uint
     uint16_t t = (uint16_t)(path - 0x85B9);
 
     *p = (uint8_t)((*p & ~P_V) | (((path ^ 0x85B9) & (path ^ t) & 0x8000) ? P_V : 0));
+    cyc(190);
     wr16(field(bank, obj, 0x29), t);
+    cyc(180);
     return ObjectPathCommand(bank, obj, a, y, p);
 }
 

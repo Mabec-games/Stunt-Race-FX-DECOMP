@@ -29,19 +29,24 @@ static void bare_object(uint32_t b, uint16_t y, uint16_t slot, uint16_t link)
     uint16_t o;
 
     cpu.p |= P_M;
-    abi_ObjectAlloc();
+    (cyc(90), abi_ObjectAlloc());
     if (!(cpu.p & P_C)) {
-        abi_CrashGreen();
+        (cyc(130), abi_CrashGreen());
         return;
     }
     cpu.y = cpu.x;
-    abi_ObjectInit();
+    (cyc(358), abi_ObjectInit());
     cpu.y = y;
     o = cpu.x;
+    cyc(212);
     wr16(b | slot, o);
+    cyc(48);
     wr8(OBJ_FIELD(o, 0x36), 0x03);
+    cyc(78);
     wr16(OBJ_FIELD(o, 0x4F), link);
+    cyc(78);
     wr16(OBJ_FIELD(o, 0x1A), rd16(b | (uint16_t)(0x8001 + y)));
+    cyc(78);
     wr16(OBJ_FIELD(o, 0x1B), rd16(b | (uint16_t)(0x8002 + y)));
 }
 

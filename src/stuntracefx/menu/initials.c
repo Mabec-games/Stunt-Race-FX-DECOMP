@@ -27,7 +27,7 @@ static uint32_t dbw(uint8_t bank, uint16_t a)
 /* Compare as CMP does: C when a >= b; N, Z from a - b. */
 static uint8_t cmp16(uint8_t p, uint16_t a, uint16_t b)
 {
-    return (uint8_t)((nz16(p, (uint16_t)(a - b)) & ~P_C) | (a >= b ? P_C : 0));
+    return (uint8_t)((nz16(p, (uint16_t)(a - b)) & ~P_C) | (a >= b ? (cyc(18), P_C) : 0));
 }
 
 /* SoundPort0QueuePush: N, Z come back from the data bank. */
@@ -47,10 +47,13 @@ static int hold_repeats(uint32_t held_bit_set, uint32_t count, uint8_t *p, uint1
     if (!held_bit_set) {
         *a = 0x0000;
         *p = nz16(*p, *a);
+        cyc(102);
         wr16(count, *a);
         return 0;
     }
+    cyc(72);
     v = (uint16_t)(rd16(count) + 1);
+    cyc(86);
     *p = cmp16(*p, v, 0x000D);
     *a = v;
     if (*p & P_C)
@@ -150,6 +153,7 @@ void abi_MenuInitialsStep(void)
 {
     uint8_t p = cpu.p;
 
+    cyc(24);
     cpu.a = MenuInitialsStep(cpu.db, &cpu.x, &cpu.y, &p);
     cpu.p = p;
 }
@@ -217,7 +221,7 @@ static void sound_port0(uint8_t n)
     cpu.p |= P_M;
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | n);
     cpu.p = nz8(cpu.p, n);
-    abi_SoundPort0QueuePush();
+    (cyc(100), abi_SoundPort0QueuePush());
     cpu.p &= (uint8_t)~P_M;
 }
 
@@ -227,7 +231,7 @@ static void set10(uint16_t k, uint16_t v)
     cpu.a = k;
     cpu.y = v;
     cpu.p = nz16(cpu.p, v);
-    abi_MenuActorsSet10();
+    (cyc(38), abi_MenuActorsSet10());
 }
 
 /* Kind k's actor (MenuActorFind) to animation n, restarting its position
@@ -237,13 +241,17 @@ static void kind_anim(uint16_t k, uint16_t n)
     cpu.a = k;
     cpu.p = nz16(cpu.p, k);
     abi_MenuActorFind();
+    cyc(52);
     cpu.a = rd16(dpx(0x14));
     op_cmp16(n);
     if (cpu.a == n)
-        return;
+        { cyc(42); return; }
     cpu.a = n;
+    cyc(82);
     wr16(dpx(0x14), n);
+    cyc(22);
     wr16(dpx(0x16), 0x0000);
+    cyc(22);
     wr16(dpx(0x18), 0x0000);
 }
 
@@ -348,6 +356,7 @@ static void kinds67_anim(void)
     uint16_t x = cpu.x;
 
     kind_anim(0x0006, 0x00C2);
+    cyc(70);
     kind_anim(0x0007, 0x00C8);
     cpu.x = x;
 }

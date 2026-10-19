@@ -50,7 +50,7 @@ static uint16_t sub16(uint16_t a, uint16_t m)
 static uint16_t abs16(uint16_t a)
 {
     if (a & 0x8000)
-        a = ld16((uint16_t)(~a + 1));
+        { cyc(32); a = ld16((uint16_t)(~a + 1)); }
     return a;
 }
 
@@ -71,29 +71,43 @@ void abi_ObjectAtPoint(void)
     uint8_t b = cpu.db;
     uint16_t x, a, m;
 
+    cyc(24);
     x = ld16(rd16(w(b, LIST_HEAD)));
     if (!x)
-        goto none;
+        { cyc(12); goto none; }
 loop:
+    cyc(46);
     a = rd16(f(b, x, 0x24));
+    cyc(76);
     a = ld16((uint16_t)(a & 0x0001));
     if (!a)
         goto next;
     m = rd16(f(b, x, 0x27));
+    cyc(16);
     wr16(0x000004, m);
+    cyc(30);
     a = rd16(f(b, x, 0x0C));
+    cyc(30);
     m = rd16(0x000002);
+    cyc(46);
     a = abs16(sub16(a, m));
     m = rd16(0x000004);
+    cyc(20);
     a = sub16(a, m);
     if (!(a & 0x8000))
         goto next;
+    cyc(20);
     m = rd16(f(b, x, 0x29));
+    cyc(16);
     wr16(0x000004, m);
+    cyc(30);
     a = rd16(f(b, x, 0x10));
+    cyc(30);
     m = rd16(0x000008);
+    cyc(46);
     a = abs16(sub16(a, m));
     m = rd16(0x000004);
+    cyc(14);
     a = sub16(a, m);
     if (a & 0x8000) {
         cpu.a = a;
@@ -102,11 +116,13 @@ loop:
     }
 next:
     cpu.a = a;
-    cpu.y = ld16(rd16(f(b, x, 0x00)));
+    cyc(26);
+    cpu.y = ld16(cyc_then(20, rd16(f(b, x, 0x00))));
     x = ld16(cpu.y);
     if (x)
         goto loop;
 none:
+    cyc(32);
     cpu.x = ld16(0x0000);
 }
 
@@ -127,8 +143,10 @@ void abi_ObjectNextOfKind(void)
     uint8_t b = cpu.db;
     uint16_t a = cpu.a, x, y = cpu.y, m;
 
+    cyc(16);
     wr16(0x00003E, cpu.x);
-    x = ld16(rd16(w(b, RESUME)));
+    cyc(24);
+    x = ld16(cyc_then(46, rd16(w(b, RESUME))));
     if (!x)
         goto ended;
     cmp16(a, 0x0000);
@@ -136,44 +154,56 @@ void abi_ObjectNextOfKind(void)
         goto any;
     y = ld16(x);
 kind:
+    cyc(54);
     m = rd16(f(b, x, 0x04));
+    cyc(4);
     cmp16(a, m);
     if (cpu.p & P_Z)
         goto found;
 skip:
-    y = ld16(rd16(f(b, x, 0x00)));
+    cyc(42);
+    y = ld16(cyc_then(12, rd16(f(b, x, 0x00))));
     x = ld16(y);
     if (x)
         goto kind;
 found:
+    cyc(34);
     m = rd16(0x00003E);
+    cyc(10);
     cmp16(x, m);
     if (cpu.p & P_Z)
         goto skip;
-    y = ld16(rd16(f(b, x, 0x00)));
+    cyc(36);
+    y = ld16(cyc_then(24, rd16(f(b, x, 0x00))));
     wr16(w(b, RESUME), y);
+    cyc(30);
     cpu.y = ld16(x);
-    cpu.x = ld16(rd16(0x00003E));
+    cpu.x = ld16(cyc_then(44, rd16(0x00003E)));
     return;
 ended:
+    cyc(24);
     cpu.y = ld16(0x0000);
     wr16(w(b, RESUME), 0x0000);
-    cpu.x = ld16(rd16(0x00003E));
+    cyc(16);
+    cpu.x = ld16(cyc_then(44, rd16(0x00003E)));
     return;
 any:
-    y = ld16(rd16(f(b, x, 0x00)));
+    cyc(46);
+    y = ld16(cyc_then(46, rd16(f(b, x, 0x00))));
     if (!y) {
         cpu.y = y;
         goto ended;
     }
     x = ld16(y);
     m = rd16(0x00003E);
+    cyc(40);
     cmp16(x, m);
     if (cpu.p & P_Z)
         goto any;
     wr16(w(b, RESUME), x);
     cpu.y = y;
-    cpu.x = ld16(rd16(0x00003E));
+    cyc(16);
+    cpu.x = ld16(cyc_then(44, rd16(0x00003E)));
 }
 
 /*
@@ -196,60 +226,80 @@ void abi_ObjectNextFlagged(void)
     cmp16(a, 0x0000);
     if (!a)
         goto any;
+    cyc(56);
     wr16(0x00003E, cpu.x);
-    x = ld16(rd16(w(b, RESUME)));
+    cyc(24);
+    x = ld16(cyc_then(2, rd16(w(b, RESUME))));
     if (!x)
         goto ended;
     y = ld16(x);
 kind:
+    cyc(58);
     m = rd16(f(b, x, 0x04));
     cmp16(a, m);
     if (cpu.p & P_Z)
         goto match;
 skip:
-    y = ld16(rd16(f(b, x, 0x00)));
+    cyc(46);
+    y = ld16(cyc_then(8, rd16(f(b, x, 0x00))));
     x = ld16(y);
     if (x)
         goto kind;
 match:
+    cyc(38);
     m = rd16(0x00003E);
+    cyc(40);
     cmp16(x, m);
     if (cpu.p & P_Z)
         goto skip;
     wr16(w(b, WORK), a);
+    cyc(52);
     v = rd8(f(b, x, 0x24));
+    cyc(16);
     m = rd8(0x000002);
     v = (uint8_t)(v & m);
     a = (uint16_t)((a & 0xFF00) | v);
     cpu.p = nz8(cpu.p, v);
     if (!v) {
-        a = ld16(rd16(w(b, WORK)));
+        cyc(62);
+        a = ld16(cyc_then(6, rd16(w(b, WORK))));
         goto skip;
     }
-    y = ld16(rd16(f(b, x, 0x00)));
+    cyc(74);
+    y = ld16(cyc_then(24, rd16(f(b, x, 0x00))));
     wr16(w(b, RESUME), y);
+    cyc(30);
     cpu.y = ld16(x);
     cpu.a = a;
-    cpu.x = ld16(rd16(0x00003E));
+    cpu.x = ld16(cyc_then(44, rd16(0x00003E)));
     return;
 ended:
+    cyc(68);
     cpu.y = ld16(0x0000);
     wr16(w(b, RESUME), 0x0000);
-    cpu.x = ld16(rd16(0x00003E));
+    cyc(16);
+    cpu.x = ld16(cyc_then(44, rd16(0x00003E)));
     return;
 any:
+    cyc(62);
     wr16(0x00003E, cpu.x);
-    x = ld16(rd16(w(b, RESUME)));
+    cyc(24);
+    x = ld16(cyc_then(2, rd16(w(b, RESUME))));
     if (!x)
         goto ended;
+    cyc(22);
     y = ld16(x);
     cpu.p |= P_M;
 flagloop:
+    cyc(44);
     m = rd16(0x00003E);
+    cyc(6);
     cmp16(x, m);
     if (cpu.p & P_Z)
         goto next;
+    cyc(40);
     v = rd8(f(b, x, 0x24));
+    cyc(16);
     m = rd8(0x000002);
     v = (uint8_t)(v & m);
     a = (uint16_t)((a & 0xFF00) | v);
@@ -257,16 +307,19 @@ flagloop:
     if (v)
         goto found;
 next:
-    y = ld16(rd16(f(b, x, 0x00)));
+    cyc(46);
+    y = ld16(cyc_then(8, rd16(f(b, x, 0x00))));
     x = ld16(y);
     if (x)
         goto flagloop;
 found:
-    y = ld16(rd16(f(b, x, 0x00)));
+    cyc(52);
+    y = ld16(cyc_then(24, rd16(f(b, x, 0x00))));
     wr16(w(b, RESUME), y);
+    cyc(30);
     cpu.y = ld16(x);
     cpu.a = a;
-    cpu.x = ld16(rd16(0x00003E));
+    cpu.x = ld16(cyc_then(66, rd16(0x00003E)));
     cpu.p &= (uint8_t)~P_M;
 }
 
@@ -282,8 +335,10 @@ static uint16_t distance(uint16_t x, uint16_t self, int *below_max)
     cpu.y = self;
     abi_ObjectDistanceApprox();
     cpu.p &= (uint8_t)~P_M;
-    d = ld16(rd16(w(cpu.db, DIST)));
+    cyc(112);
+    d = ld16(cyc_then(16, rd16(w(cpu.db, DIST))));
     m = rd16(0x00003E);
+    cyc(22);
     cmp16(d, m);
     *below_max = (cpu.p & P_N) != 0;
     return d;
@@ -308,78 +363,105 @@ void abi_ObjectNearestOfKind(void)
     int below;
 
     self = cpu.x;
+    cyc(16);
     wr16(0x000004, self);
+    cyc(24);
     x = ld16(rd16(w(b, RESUME)));
     if (!x)
         goto none;
     cmp16(a, 0x0000);
     if (!a)
         goto any;
+    cyc(78);
     wr16(0x00000A, a);
+    cyc(16);
     wr16(0x000040, 0x0000);
 kind:
+    cyc(16);
     m = rd16(0x000004);
+    cyc(22);
     cmp16(x, m);
     if (cpu.p & P_Z)
         goto kind_next;
-    a = ld16(rd16(f(b, x, 0x04)));
+    cyc(24);
+    a = ld16(cyc_then(16, rd16(f(b, x, 0x04))));
     m = rd16(0x00000A);
+    cyc(22);
     cmp16(a, m);
     if (!(cpu.p & P_Z))
         goto kind_next;
-    self = ld16(rd16(0x000004));
+    cyc(10);
+    self = ld16(cyc_then(62, rd16(0x000004)));
     d = distance(x, self, &below);
     a = d;
     if (!below)
         goto kind_next;
+    cyc(10);
     m = rd16(0x000042);
+    cyc(32);
     cmp16(d, m);
     if (cpu.p & P_N)
         goto kind_next;
     wr16(0x00003E, d);
+    cyc(16);
     wr16(0x000040, x);
 kind_next:
-    y = ld16(rd16(f(b, x, 0x00)));
+    cyc(30);
+    y = ld16(cyc_then(36, rd16(f(b, x, 0x00))));
     x = ld16(y);
     if (x)
         goto kind;
-    y = ld16(rd16(f(b, x, 0x00)));
+    cyc(24);
+    y = ld16(cyc_then(24, rd16(f(b, x, 0x00))));
     wr16(w(b, RESUME), y);
-    cpu.y = ld16(rd16(0x000040));
+    cyc(16);
+    cpu.y = ld16(cyc_then(16, rd16(0x000040)));
     cpu.a = a;
-    cpu.x = ld16(rd16(0x000004));
+    cpu.x = ld16(cyc_then(44, rd16(0x000004)));
     return;
 none:
+    cyc(86);
     cpu.y = ld16(0x0000);
-    cpu.x = ld16(rd16(0x000004));
+    cpu.x = ld16(cyc_then(44, rd16(0x000004)));
     return;
 any:
+    cyc(84);
     wr16(0x000040, 0x0000);
 any_loop:
+    cyc(16);
     m = rd16(0x000004);
+    cyc(22);
     cmp16(x, m);
     if (cpu.p & P_Z)
         goto any_next;
-    self = ld16(rd16(0x000004));
+    cyc(10);
+    self = ld16(cyc_then(62, rd16(0x000004)));
     d = distance(x, self, &below);
     a = d;
     if (!below)
         goto any_next;
+    cyc(10);
     m = rd16(0x000042);
+    cyc(22);
     cmp16(d, m);
     if (cpu.p & P_N)
         goto any_next;
+    cyc(10);
     wr16(0x00003E, d);
+    cyc(16);
     wr16(0x000040, x);
 any_next:
-    y = ld16(rd16(f(b, x, 0x00)));
+    cyc(30);
+    y = ld16(cyc_then(36, rd16(f(b, x, 0x00))));
     x = ld16(y);
     if (x)
         goto any_loop;
+    cyc(18);
     wr16(w(b, RESUME), y);
-    cpu.y = ld16(rd16(0x000040));
+    cyc(16);
+    cpu.y = ld16(cyc_then(16, rd16(0x000040)));
     cpu.a = a;
-    cpu.x = ld16(rd16(0x000004));
+    cpu.x = ld16(cyc_then(44, rd16(0x000004)));
 }
 
 /*
@@ -401,68 +483,88 @@ void abi_ObjectFirstWithin(void)
     int below;
 
     self = cpu.x;
+    cyc(16);
     wr16(0x000004, self);
-    x = ld16(rd16(w(b, RESUME)));
+    cyc(24);
+    x = ld16(cyc_then(60, rd16(w(b, RESUME))));
     if (!x) {
+        cyc(2);
         cpu.y = ld16(0x0000);
-        cpu.x = ld16(rd16(0x000004));
+        cpu.x = ld16(cyc_then(44, rd16(0x000004)));
         return;
     }
     cmp16(a, 0x0000);
     if (!a)
         goto any;
+    cyc(12);
     wr16(0x00000A, a);
+    cyc(16);
     wr16(0x000040, 0x0000);
 kind:
+    cyc(16);
     m = rd16(0x000004);
+    cyc(32);
     cmp16(x, m);
     if (cpu.p & P_Z)
         goto kind_next;
-    a = ld16(rd16(f(b, x, 0x04)));
+    cyc(14);
+    a = ld16(cyc_then(16, rd16(f(b, x, 0x04))));
     m = rd16(0x00000A);
+    cyc(32);
     cmp16(a, m);
     if (!(cpu.p & P_Z))
         goto kind_next;
-    self = ld16(rd16(0x000004));
+    self = ld16(cyc_then(62, rd16(0x000004)));
     d = distance(x, self, &below);
     a = d;
     if (!below)
         goto kind_next;
+    cyc(10);
     m = rd16(0x000042);
+    cyc(26);
     cmp16(d, m);
     if (!(cpu.p & P_N))
         goto done;
 kind_next:
-    y = ld16(rd16(f(b, x, 0x00)));
+    cyc(20);
+    y = ld16(cyc_then(34, rd16(f(b, x, 0x00))));
     x = ld16(y);
     if (x)
-        goto kind;
+        { cyc(2); goto kind; }
     goto done;
 any:
+    cyc(18);
     m = rd16(0x000004);
+    cyc(22);
     cmp16(x, m);
     if (cpu.p & P_Z)
         goto any_next;
-    self = ld16(rd16(0x000004));
+    cyc(10);
+    self = ld16(cyc_then(62, rd16(0x000004)));
     d = distance(x, self, &below);
     a = d;
     if (!below)
         goto any_next;
+    cyc(10);
     m = rd16(0x000042);
+    cyc(26);
     cmp16(d, m);
     if (!(cpu.p & P_N))
         goto done;
 any_next:
-    y = ld16(rd16(f(b, x, 0x00)));
+    cyc(30);
+    y = ld16(cyc_then(34, rd16(f(b, x, 0x00))));
     x = ld16(y);
     if (x)
         goto any;
 done:
-    y = ld16(rd16(f(b, x, 0x00)));
+    cyc(26);
+    y = ld16(cyc_then(24, rd16(f(b, x, 0x00))));
     wr16(w(b, RESUME), y);
+    cyc(30);
     cpu.y = ld16(x);
     cpu.a = a;
-    cpu.x = ld16(rd16(0x000004));
+    cpu.x = ld16(cyc_then(44, rd16(0x000004)));
 }
 
 /*
@@ -478,17 +580,21 @@ void abi_ObjectFirstOfKind(void)
     uint8_t b = cpu.db;
     uint16_t x, y, m;
 
+    cyc(46);
     y = rd16(w(b, LIST_HEAD));
     for (;;) {
         x = y;
+        cyc(44);
         m = rd16(f(b, x, 0x04));
         if (cpu.a == m)
             break;
+        cyc(46);
         y = rd16(f(b, x, 0x00));
         if (!y) {
+            cyc(18);
             x = 0x0000;
             break;
-        }
+        } else { cyc(22); }
     }
     cpu.x = x;
     cpu.y = y;
@@ -561,42 +667,58 @@ void abi_ObjectDistanceApprox(void)
     uint16_t a, m, t;
 
     cpu.p &= (uint8_t)~P_M;
+    cyc(52);
     a = rd16(f(b, cpu.y, 0x0C));
+    cyc(44);
     m = rd16(f(b, cpu.x, 0x0C));
+    cyc(32);
     a = abs16(sub16(a, m));
     wr16(0x000002, a);
+    cyc(30);
     a = rd16(f(b, cpu.y, 0x10));
+    cyc(44);
     m = rd16(f(b, cpu.x, 0x10));
+    cyc(32);
     a = abs16(sub16(a, m));
     wr16(0x000008, a);
-    a = ld16(rd16(0x000002));
+    cyc(38);
+    a = ld16(cyc_then(54, rd16(0x000002)));
     wr16(0x000002, asr1(a));
-    a = ld16(rd16(0x000008));
+    cyc(16);
+    a = ld16(cyc_then(54, rd16(0x000008)));
     wr16(0x000008, asr1(a));
-    a = ld16(rd16(0x000008));
+    cyc(16);
+    a = ld16(cyc_then(30, rd16(0x000008)));
     m = rd16(0x000002);
+    cyc(38);
     a = add16(a, m);
     cpu.p = (uint8_t)((cpu.p & ~P_C) | (a >> 15));
     a = ld16((uint16_t)(a << 1));
     wr16(w(b, DIST), a);
-    a = ld16(rd16(0x000008));
+    cyc(16);
+    a = ld16(cyc_then(16, rd16(0x000008)));
     m = rd16(0x000002);
+    cyc(32);
     cmp16(a, m);
     if (cpu.p & P_N)
-        a = ld16(rd16(0x000002));
+        { cyc(6); a = ld16(cyc_then(38, rd16(0x000002))); }
     else
-        a = ld16(rd16(0x000008));
+        a = ld16(cyc_then(60, rd16(0x000008)));
     m = rd16(w(b, DIST));
+    cyc(16);
     a = add16(a, m);
     wr16(0x000002, a);
     cpu.p = (uint8_t)((cpu.p & ~P_C) | (a >> 15));
     a = (uint16_t)(a << 1);
     cpu.p = (uint8_t)((cpu.p & ~P_C) | (a >> 15));
+    cyc(44);
     a = ld16((uint16_t)(a << 1));
     wr16(0x000008, a);
-    a = ld16(rd16(0x000002));
+    cyc(16);
+    a = ld16(cyc_then(68, rd16(0x000002)));
     a = asr1(a);
     m = rd16(0x000008);
+    cyc(138);
     a = add16(a, m);
     a = asr1(a);
     a = asr1(a);
@@ -622,25 +744,38 @@ void abi_ObjectDistanceXY(void)
     uint16_t a, m;
 
     cpu.p &= (uint8_t)~P_M;
+    cyc(52);
     a = rd16(f(b, cpu.y, 0x0C));
+    cyc(44);
     m = rd16(f(b, cpu.x, 0x0C));
+    cyc(10);
     a = sub16(a, m);
     wr16(0x000002, a);
     if (a & 0x8000) {
+        cyc(70);
         m = rd16(0x000002);
         a = sub16(0x0000, m);
-    }
+    } else { cyc(28); }
+    cyc(18);
     wr16(w(b, 0x1A62), a);
+    cyc(30);
     a = rd16(f(b, cpu.y, 0x0E));
+    cyc(44);
     m = rd16(f(b, cpu.x, 0x0E));
+    cyc(10);
     a = sub16(a, m);
     wr16(0x000008, a);
     if (!(a & 0x8000)) {
+        cyc(54);
         m = rd16(w(b, 0x1A62));
+        cyc(46);
         a = add16(a, m);
     } else {
+        cyc(60);
         a = rd16(w(b, 0x1A62));
+        cyc(16);
         m = rd16(0x000008);
+        cyc(18);
         a = sub16(a, m);
     }
     wr16(w(b, 0x1A62), a);
@@ -654,6 +789,7 @@ void abi_Gsu81E3Long(void);
 static uint16_t neg_if(uint16_t a, uint16_t at)
 {
     if (a & 0x8000) {
+        cyc(42);
         uint16_t m = rd16(at);
 
         a = sub16(0x0000, m);
@@ -668,10 +804,14 @@ static uint16_t fold(uint8_t b, uint16_t a, uint16_t at)
     uint16_t m;
 
     if (!(a & 0x8000)) {
+        cyc(54);
         m = rd16(w(b, DIST));
+        cyc(28);
         return add16(a, m);
     }
+    cyc(60);
     a = rd16(w(b, DIST));
+    cyc(16);
     m = rd16(at);
     return sub16(a, m);
 }
@@ -691,21 +831,32 @@ void abi_ObjectOffsetDistanceXZ(void)
     uint16_t a, m;
 
     cpu.p &= (uint8_t)~P_M;
+    cyc(52);
     a = rd16(f(b, cpu.y, 0x0C));
+    cyc(30);
     m = rd16(0x000004);
+    cyc(44);
     a = add16(a, m);
     m = rd16(f(b, cpu.x, 0x0C));
+    cyc(10);
     a = sub16(a, m);
     wr16(0x000002, a);
+    cyc(28);
     a = neg_if(a, 0x0002);
+    cyc(18);
     wr16(w(b, DIST), a);
+    cyc(30);
     a = rd16(f(b, cpu.y, 0x10));
+    cyc(38);
     m = rd16(w(b, 0x05F2));
+    cyc(44);
     a = add16(a, m);
     m = rd16(f(b, cpu.x, 0x10));
+    cyc(10);
     a = sub16(a, m);
     wr16(0x000008, a);
     a = fold(b, a, 0x0008);
+    cyc(18);
     wr16(w(b, DIST), a);
     cpu.a = a;
     cpu.p |= P_M;
@@ -778,8 +929,8 @@ void abi_ObjectPointGsu81E3(void)
 {
     uint16_t x = cpu.x, y = cpu.y;
 
-    abi_ObjectPointDistanceXZ();
-    abi_Gsu81E3Long();
+    (cyc(122), abi_ObjectPointDistanceXZ());
+    (cyc(264), abi_Gsu81E3Long());
     cpu.a = (uint16_t)(cpu.a >> 8);
     cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
     cpu.y = y;
@@ -803,15 +954,24 @@ void abi_ObjectVelocityAddFrom(void)
     static const uint16_t dp[3] = {0x02, 0x08, 0x94};
 
     cpu.p &= (uint8_t)~P_M;
+    cyc(38);
     wr16(0x00003E, cpu.x);
+    cyc(46);
     for (i = 0; i < 3; i++) {
+        cyc(30);
         a = rd16(f(b, cpu.y, (uint16_t)(0x2E + 2 * i)));
+        cyc(16);
         wr16(dp[i], a);
     }
+    cyc(16);
     wr16(0x00003E, cpu.y);
+    cyc(46);
     for (i = 0; i < 3; i++) {
+        cyc(30);
         a = rd16(f(b, cpu.x, (uint16_t)(0x2E + 2 * i)));
+        cyc(30);
         m = rd16(dp[i]);
+        cyc(30);
         a = add16(a, m);
         wr16(f(b, cpu.x, (uint16_t)(0x2E + 2 * i)), a);
     }
@@ -843,14 +1003,21 @@ void abi_ObjectPairGsu81E3(void)
     uint8_t b = cpu.db;
     uint16_t x = cpu.x, y = cpu.y, a, m;
 
+    cyc(90);
     a = rd16(f(b, y, 0x0C));
+    cyc(44);
     m = rd16(f(b, x, 0x0C));
+    cyc(10);
     a = sub16(a, m);
     wr16(0x000002, a);
+    cyc(30);
     a = rd16(f(b, y, 0x10));
+    cyc(44);
     m = rd16(f(b, x, 0x10));
+    cyc(10);
     a = sub16(a, m);
     wr16(0x000008, a);
+    cyc(198);
     gsu_pair_end(x, y);
 }
 
@@ -869,14 +1036,20 @@ void abi_ObjectPairPitchGsu81E3(void)
     uint8_t b = cpu.db;
     uint16_t x = cpu.x, y = cpu.y, a, m;
 
-    abi_ObjectDistanceApprox();
+    (cyc(122), abi_ObjectDistanceApprox());
     cpu.p &= (uint8_t)~P_M;
+    cyc(112);
     a = rd16(w(b, DIST));
+    cyc(16);
     wr16(0x000008, a);
+    cyc(30);
     a = rd16(f(b, y, 0x0E));
+    cyc(44);
     m = rd16(f(b, x, 0x0E));
+    cyc(10);
     a = sub16(a, m);
     wr16(0x000002, a);
+    cyc(198);
     gsu_pair_end(x, y);
 }
 
@@ -894,22 +1067,35 @@ void abi_ObjectPairOffsetGsu81E3(void)
     uint8_t b = cpu.db;
     uint16_t x = cpu.x, y = cpu.y, a, m;
 
+    cyc(90);
     a = rd16(f(b, y, 0x0C));
+    cyc(44);
     m = rd16(f(b, x, 0x0C));
+    cyc(10);
     a = sub16(a, m);
     wr16(0x000002, a);
+    cyc(30);
     a = rd16(f(b, y, 0x10));
+    cyc(44);
     m = rd16(f(b, x, 0x10));
+    cyc(10);
     a = sub16(a, m);
     wr16(0x000008, a);
+    cyc(38);
     a = rd16(0x000002);
+    cyc(30);
     m = rd16(0x000004);
+    cyc(16);
     a = add16(a, m);
     wr16(0x000002, a);
+    cyc(16);
     a = rd16(0x000008);
+    cyc(38);
     m = rd16(w(b, 0x05F2));
+    cyc(16);
     a = add16(a, m);
     wr16(0x000008, a);
+    cyc(198);
     gsu_pair_end(x, y);
 }
 
@@ -928,15 +1114,22 @@ void abi_ObjectPairOffsetPitchGsu81E3(void)
     uint8_t b = cpu.db;
     uint16_t x = cpu.x, y = cpu.y, a, m;
 
-    abi_ObjectOffsetDistanceXZ();
+    (cyc(122), abi_ObjectOffsetDistanceXZ());
     cpu.p &= (uint8_t)~P_M;
+    cyc(112);
     a = rd16(w(b, DIST));
+    cyc(16);
     wr16(0x000008, a);
+    cyc(30);
     a = rd16(f(b, y, 0x0E));
+    cyc(44);
     m = rd16(f(b, x, 0x0E));
+    cyc(24);
     a = sub16(a, m);
     m = rd16(0x00000A);
+    cyc(10);
     a = sub16(a, m);
     wr16(0x000002, a);
+    cyc(198);
     gsu_pair_end(x, y);
 }

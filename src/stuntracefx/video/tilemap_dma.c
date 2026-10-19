@@ -52,6 +52,7 @@ void TilemapDmaE817(void)
 
 void abi_TilemapDmaE817(void)
 {
+    cyc(68);
     upload(0x0D9C, 0xE817);
 }
 
@@ -69,6 +70,7 @@ void TilemapDmaE3D7(void)
 
 void abi_TilemapDmaE3D7(void)
 {
+    cyc(92);
     upload(0x0D9A, 0xE3D7);
 }
 
@@ -85,7 +87,8 @@ void Bg2Band2TilemapE817(void)
     cpu.p |= P_M | P_X;
     cpu.x = 0x02;
     cpu.y &= 0x00FF;
-    abi_Bg2ScrollFromTable();
+    (cyc(84), abi_Bg2ScrollFromTable());
+    cyc(156);
     upload(0x0D9C, 0xE817);
 }
 
@@ -106,7 +109,8 @@ void Bg2Band0TilemapE3D7(void)
     cpu.p |= P_M | P_X;
     cpu.x = 0x00;
     cpu.y &= 0x00FF;
-    abi_Bg2ScrollFromTable();
+    (cyc(84), abi_Bg2ScrollFromTable());
+    cyc(180);
     upload(0x0D9A, 0xE3D7);
 }
 

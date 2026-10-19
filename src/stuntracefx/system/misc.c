@@ -34,6 +34,7 @@ void abi_DataBankTest(void)
 void abi_DelayLoop13(void)
 {
     /* NOP, DEY, BNE: 14 + 14 + 22 clocks a turn, 16 for the last BNE */
+    cyc(1176);
     cpu_idle(0x13u * 50u - 6u);
     cpu.x &= 0x00FF;
     cpu.y = 0;
@@ -108,6 +109,7 @@ uint16_t Set0D37FromTable(uint8_t bank, uint16_t *x)
     uint16_t v;
 
     *x = (uint16_t)((rd16(b | 0x0D48) & 0x00FF) << 1);
+    cyc(124);
     v = rd16(0x02FC58 + *x);
     wr16(b | 0x0D37, v);
     return v;
@@ -130,7 +132,9 @@ void abi_Set0D37FromTable(void)
 void Set7EBC2BTrio(uint8_t v)
 {
     wr8(0x7EBC2B, v);
+    cyc(32);
     wr8(0x7EBC2D, v);
+    cyc(32);
     wr8(0x7EBC2F, v);
 }
 
@@ -149,13 +153,17 @@ void abi_Set7EBC2BTrio(void)
 uint8_t Countdown0DF8(uint8_t bank)
 {
     uint32_t b = (uint32_t)bank << 16;
+    cyc(98);
     uint8_t v = rd8(b | 0x0DF8);
 
     if (v) {
-        wr8(b | 0x0DF8, (uint8_t)(rd8(b | 0x0DF8) - 1));
+        cyc(46);
+        wr8(b | 0x0DF8, cyc_then(6, (uint8_t)(rd8(b | 0x0DF8) - 1)));
         return v;
     }
-    wr8(b | 0x0E5C, (uint8_t)(rd8(b | 0x0E5C) - 1));
+    cyc(40);
+    wr8(b | 0x0E5C, cyc_then(6, (uint8_t)(rd8(b | 0x0E5C) - 1)));
+    cyc(24);
     wr8(b | 0x1160, 0x00);
     return v;
 }
@@ -189,23 +197,26 @@ void abi_ChampionshipFinish(void)
     uint8_t v;
 
     cpu.p |= P_M;
+    cyc(46);
     wr8(b | 0x0D59, 0x00);
-    abi_OverlayFramesUntilFaded();
+    (cyc(24), abi_OverlayFramesUntilFaded());
     cpu.p |= P_M;
+    cyc(104);
     wr8(b | 0x0D48, 0x00);
-    abi_RecordTimeInsert();
-    abi_RecordsUnpackCourseRunning();
+    (cyc(46), abi_RecordTimeInsert());
+    (cyc(28), abi_RecordsUnpackCourseRunning());
     cpu.p &= (uint8_t)~P_M;
-    abi_ChampionScreenRun();
+    (cyc(494), abi_ChampionScreenRun());
     cpu.p |= P_M;
+    cyc(176);
     v = rd8(b | 0x0D4A);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.p = nz8(cpu.p, (uint8_t)(v - 0x02));
     cpu.p = (uint8_t)(v >= 0x02 ? cpu.p | P_C : cpu.p & ~P_C);
     if (v == 0x02)
-        abi_BootSoftRestart();
+        (cyc(64), abi_BootSoftRestart());
     else
-        abi_SoftResetToBootWarm();
+        (cyc(62), abi_SoftResetToBootWarm());
 }
 
 /*
@@ -219,12 +230,12 @@ void Set7EFFA6Sequence(void)
     unsigned i;
 
     for (i = 0; i < 4; i++)
-        wr16(0x7EFFA6 + 2 * i, (uint16_t)(i + 1));
+        { cyc(56); wr16(0x7EFFA6 + 2 * i, (uint16_t)(i + 1)); }
 }
 
 void abi_Set7EFFA6Sequence(void)
 {
-    Set7EFFA6Sequence();
+    (cyc(44), Set7EFFA6Sequence());
     cpu.a = 0x0004;
 }
 
@@ -309,6 +320,7 @@ void abi_DemoRunFirst(void)
     cpu.a = 0x0000;
     cpu.p = nz16(cpu.p, 0);
     wr16((uint32_t)cpu.db << 16 | 0x1A57, 0x0000);
+    cyc(24);
     jump_routine(0x038683);
 }
 
@@ -336,7 +348,9 @@ void abi_DemoRunSecond(void)
     op_rep(P_M | P_X);
     cpu.a = 0x006B;
     cpu.p = nz16(cpu.p, cpu.a);
+    cyc(48);
     wr16((uint32_t)cpu.db << 16 | 0x1A57, 0x006B);
+    cyc(24);
     jump_routine(0x038683);
 }
 
@@ -352,7 +366,9 @@ void abi_DemoRunThird(void)
     op_rep(P_M | P_X);
     cpu.a = 0x0159;
     cpu.p = nz16(cpu.p, cpu.a);
+    cyc(48);
     wr16((uint32_t)cpu.db << 16 | 0x1A57, 0x0159);
+    cyc(62);
     call_routine(0x038683, 1);
     jump_routine(0x03866A);
 }
@@ -373,12 +389,16 @@ void abi_DemoRunThirdRest(void)
     op_rep(P_M | P_X);
     cpu.a = 0x01FA;
     cpu.p = nz16(cpu.p, cpu.a);
+    cyc(48);
     wr16((uint32_t)cpu.db << 16 | 0x1A57, 0x01FA);
+    cyc(62);
     call_routine(0x038683, 1);
     op_rep(P_M | P_X);
     cpu.a = 0x0287;
     cpu.p = nz16(cpu.p, cpu.a);
+    cyc(106);
     wr16((uint32_t)cpu.db << 16 | 0x1A57, 0x0287);
+    cyc(62);
     call_routine(0x038683, 1);
 }
 
@@ -430,7 +450,9 @@ static void demo_lda8(uint8_t v)
 static void demo_blank(uint32_t b)
 {
     op_sep(P_M);
+    cyc(118);
     wr8(b | HDMAEN, 0x00);
+    cyc(40);
     demo_lda8(0x80);
     wr8(b | INIDISP, 0x80);
     cpu.p |= P_I;
@@ -441,11 +463,12 @@ static void demo_blank(uint32_t b)
    over). */
 static int demo_fade_done(uint32_t b)
 {
+    cyc(24);
     op_lda16(b | 0x0D61);
     if (cpu.a & 0x0080)
         cpu.a |= 0xFF00;
     else
-        cpu.a &= 0x00FF;
+        { cyc(92); cpu.a &= 0x00FF; }
     cpu.p = nz16(cpu.p, cpu.a);
     return (cpu.a & 0x8000) != 0;
 }
@@ -454,6 +477,7 @@ static int demo_fade_done(uint32_t b)
 static void demo_fade_out(uint32_t b)
 {
     op_sep(P_M);
+    cyc(84);
     demo_lda8(0x01);
     wr8(b | 0x0E3A, 0x01);
     op_rep(P_M);
@@ -469,7 +493,7 @@ static void demo_camera(uint8_t db)
     cpu.x = 0x1A64;
     cpu.p = nz16(cpu.p, 0x1A64);
     abi_CameraFollowStep();
-    abi_ObjectFaceTied();
+    (cyc(164), abi_ObjectFaceTied());
     cpu.db = db;
     cpu.p = nz8(cpu.p, db);
     op_rep(P_M | P_X);

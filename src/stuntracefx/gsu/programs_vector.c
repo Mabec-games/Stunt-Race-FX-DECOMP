@@ -65,15 +65,21 @@ void VectorGsu81E3(void)
     uint16_t x = cpu.x, y = cpu.y, u, v;
 
     cpu.p &= (uint8_t)~P_M;
+    cyc(98);
     u = rd16(0x000004);
+    cyc(30);
     v = rd16(0x000002);
+    cyc(16);
     wr16(0x000002, (uint16_t)(u - v));
+    cyc(24);
     u = rd16(b | 0x05F2);
+    cyc(30);
     v = rd16(0x000094);
     cpu.a = (uint16_t)(u - v);
     cpu.p = (uint8_t)((cpu.p & ~(P_C | P_V)) | (u >= v ? P_C : 0) | (((u ^ v) & (u ^ cpu.a) & 0x8000) ? P_V : 0));
+    cyc(16);
     wr16(0x000008, cpu.a);
-    abi_Gsu81E3Long();
+    (cyc(198), abi_Gsu81E3Long());
     cpu.y = y;
     cpu.x = x;
     cpu.p = nz16(cpu.p & ~P_M, x);
@@ -145,8 +151,10 @@ static void rol_dp(uint16_t a, uint8_t *p)
 
 static void lsr_dp(uint16_t a, uint8_t *p)
 {
+    cyc(38);
     uint8_t v = rd8(a);
 
+    cyc(6);
     wr8(a, lsr8(v, p));
 }
 
@@ -399,47 +407,78 @@ void abi_ViewFromAnglesGsu8277(void)
     unsigned i;
 
     op_rep(P_M | P_X);
+    cyc(16);
     w = rd16(0x0000C5);
     w = (uint16_t)((w & 0x00FF) ^ 0x00FF);
+    cyc(102);
     wr16(0x000002, (uint16_t)(w - 0x0780));
+    cyc(16);
     w = rd16(0x0000C9);
     w = (uint16_t)((w & 0x00FF) ^ 0x00FF);
+    cyc(102);
     wr16(0x000094, (uint16_t)(w - 0x0780));
+    cyc(54);
     w = rd16(0x0000C7);
+    cyc(16);
     wr16(0x000008, (uint16_t)(0 - w));
+    cyc(16);
     w = rd16(0x0000C5);
+    cyc(182);
     wr8(b | 0x067C, (uint8_t)(w >> 8));
+    cyc(38);
     w = rd16(0x0000C9);
+    cyc(182);
     wr8(b | 0x067D, (uint8_t)(w >> 8));
     cpu.a = (uint16_t)(w >> 8);
     op_sep(P_M);
     abi_Gsu8277();
     op_rep(P_M);
+    cyc(144);
     w = rd16(0x0000B7);
+    cyc(16);
     wr16(0x000002, w);
+    cyc(16);
     w = rd16(0x0000B9);
+    cyc(16);
     wr16(0x000008, w);
+    cyc(16);
     w = rd16(0x0000BB);
+    cyc(16);
     wr16(0x000094, w);
+    cyc(44);
     for (i = 0; i < 9; i++) {
+        cyc(24);
         w = rd16(b | (uint16_t)(0x064C + 2 * i));
+        cyc(290);
         w = asr7(w, &cpu.p);
         wr16(b | (uint16_t)(0x066A + 2 * i), w);
     }
+    cyc(60);
     w = rd16(0x000002);
+    cyc(32);
     wr16(0x700068, w);
+    cyc(16);
     w = rd16(0x000008);
+    cyc(32);
     wr16(0x70002C, w);
+    cyc(16);
     w = rd16(0x000094);
+    cyc(32);
     wr16(0x70002E, w);
     for (i = 0; i < 6; i++) {
+        cyc(24);
         w = rd16(b | gsu_words[i]);
+        cyc(32);
         wr16(0x700154 + 2 * i, w);
     }
     op_sep(P_M);
+    cyc(68);
     w = (uint16_t)((w & 0xFF00) | rd8(b | 0x067C));
+    cyc(32);
     wr8(0x700162, (uint8_t)w);
+    cyc(24);
     w = (uint16_t)((w & 0xFF00) | rd8(b | 0x067D));
+    cyc(32);
     wr8(0x700164, (uint8_t)w);
     cpu.a = w;
     cpu.p = nz8(cpu.p, (uint8_t)w);
@@ -463,19 +502,27 @@ void abi_ViewToGsuParams(void)
     unsigned i;
 
     op_rep(P_M);
+    cyc(24);
     w = (uint16_t)(rd16(b | 0x1167) & 0x00FF);
     if (w) {
+        cyc(40);
         for (i = 0; i < 3; i++) {
+            cyc(24);
             w = rd16(b | 0x1168);
+            cyc(32);
             wr16(0x7000D8 + 2 * i, w);
         }
-    }
+    } else { cyc(46); }
     for (i = 0; i < 3; i++) {
+        cyc(16);
         w = rd16((uint16_t)(0x00C5 + 2 * i));
+        cyc(32);
         wr16(0x7000D8 + 2 * i, w);
     }
     for (i = 0; i < 9; i++) {
+        cyc(24);
         w = rd16(b | (uint16_t)(0x064C + 2 * i));
+        cyc(32);
         wr16(0x7000E4 + 2 * i, w);
     }
     cpu.a = w;
