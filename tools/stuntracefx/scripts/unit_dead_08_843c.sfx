@@ -1,0 +1,70 @@
+# unit_dead_08_843c: unit tests of bank $08 code nothing calls or jumps to
+# (08:843C-8524), on object 1 (the player) of a Novice race:
+# - the two set-ups 08:843C and 08:8472 (each runs on into the shared
+#   record set-up at 08:84A8);
+# - their handlers 08:844F and 08:8485, which clear $1F4C-$1F50 and walk
+#   the object's contacts (08:84DF): none (the record's +$18 is 0); then,
+#   with a contact list in unused Super FX RAM at $70:7E00 (as
+#   unit_contacts), a contact without bit 2 of its flags followed by one
+#   for player 1 (word bit 0: flags 5), whose camera point ($1A64, the link
+#   of its link $01EB) takes $1F4C-$1F50; one for player 2 (word bit 1:
+#   flags 6; object 2 as $034A, linked to $01EB) followed by one for
+#   neither (word $10: flags $14); and one for player 2 with no link;
+# - the shared set-up 08:84A8 and the record handler it stores, 08:84B7,
+#   each called directly.
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:843C long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:8472 long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:844F long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 701CF0 00,7E
+set 707E0C 80,7E
+set 707E0E 40,7E
+set 707E10 02,00
+set 707E96 02,00
+set 707EE4 00,00
+set 707E4C 20,7E
+set 707E4E 00,00
+set 707E50 02,00
+set 707E36 02,00
+set 707E84 01,00
+call 08:844F long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E034A 63,00
+set 7E20B2 EB,01
+set 701CF0 00,7E
+set 707E0C 80,7E
+set 707E0E 40,7E
+set 707E10 02,00
+set 707E96 02,00
+set 707EE4 02,00
+set 707E4C 20,7E
+set 707E4E 00,00
+set 707E50 02,00
+set 707E36 02,00
+set 707E84 10,00
+call 08:8485 long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E034A 63,00
+set 7E20B2 00,00
+set 701CF0 00,7E
+set 707E0C 80,7E
+set 707E0E 00,00
+set 707E10 02,00
+set 707E96 02,00
+set 707EE4 02,00
+call 08:844F long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:84A8 long x=0001 p=20 db=7E d=0000
+wait 1
+load build/stuntracefx/states/novice_coupe_race1.state
+call 08:84B7 long x=0001 p=20 db=7E d=0000
+wait 1

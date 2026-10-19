@@ -1,5 +1,7 @@
 ; lamps_08.asm: course object set-ups of bank $08 no course in the scripts
 ; places: break-off pieces, lamps, a lamp stack and a falling object.
+; Also bank $08 code nothing in the game calls: two camera pads
+; (08:843C-8524) and a spray of eight pieces (08:D8E4-DC12).
 ; C: src/stuntracefx/object/lamps_08.c.
 
 incsrc "../include/macros.inc"
@@ -722,4 +724,177 @@ ObjectPlayerPassCount:
     ora.b #$01
     sta.w !obj_25,x
 .lDC12:
+    rtl
+
+; @routine 08:843C ObjectCameraPad
+; WHAT IT DOES: Sets up a pad that resets the camera of a player touching
+; it: its handler becomes $08:844F (ObjectCameraPadStep), then the shared
+; set-up (ObjectCameraPadSetup). Nothing in the game calls it; a direct
+; call is its only way in.
+; HOW: A JML to the set-up.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as
+; ObjectCameraPadSetup.
+%at($08843C)
+ObjectCameraPad:
+    rep.b #$20
+    lda.w #$844F
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+    jml.l ObjectCameraPadSetup
+
+; @routine 08:844F ObjectCameraPadStep
+; WHAT IT DOES: A tick of ObjectCameraPad: $1F4C, $1F4E and $1F50 set to
+; 0 and given to the camera point of every player touching it
+; (ObjectContactsCameraPoint).
+; HOW: Three 16-bit stores of 0, then the call.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as
+; ObjectContactsCameraPoint.
+%at($08844F)
+ObjectCameraPadStep:
+    rep.b #$20
+    lda.w #$0000
+    sta.w !wram_1F4C
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0000
+    sta.w !wram_1F4E
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0000
+    sta.w !wram_1F50
+    sep.b #$20
+    jsl.l ObjectContactsCameraPoint
+    rtl
+
+; @routine 08:8472 ObjectCameraPadB
+; WHAT IT DOES: ObjectCameraPad with its own copy of the handler,
+; $08:8485 (ObjectCameraPadStepB). Nothing in the game calls it.
+; HOW: As ObjectCameraPad.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as
+; ObjectCameraPadSetup.
+%at($088472)
+ObjectCameraPadB:
+    rep.b #$20
+    lda.w #$8485
+    sta.w !obj_1a_w,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1c,x
+    jml.l ObjectCameraPadSetup
+
+; @routine 08:8485 ObjectCameraPadStepB
+; WHAT IT DOES: ObjectCameraPadB's copy of ObjectCameraPadStep.
+; HOW: As ObjectCameraPadStep.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as
+; ObjectContactsCameraPoint.
+%at($088485)
+ObjectCameraPadStepB:
+    rep.b #$20
+    lda.w #$0000
+    sta.w !wram_1F4C
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0000
+    sta.w !wram_1F4E
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0000
+    sta.w !wram_1F50
+    sep.b #$20
+    jsl.l ObjectContactsCameraPoint
+    rtl
+
+; @routine 08:84A8 ObjectCameraPadSetup
+; WHAT IT DOES: The set-up both camera pads jump to: the record handler
+; (+$1D, +$1F) becomes $08:84B7 (ObjectCameraPadRecord), which then runs.
+; HOW: Runs on into ObjectCameraPadRecord.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as
+; ObjectCameraPadRecord.
+%at($0884A8)
+ObjectCameraPadSetup:
+    rep.b #$20
+    lda.w #$84B7
+    sta.w !obj_1d,x
+    sep.b #$20
+    lda.b #$08
+    sta.w !obj_1f,x
+
+; @routine 08:84B7 ObjectCameraPadRecord
+; WHAT IT DOES: The Super FX record of a camera pad (ObjectCameraPad,
+; ObjectCameraPadB): a new record (GsuRecordNew42D) with bit 4 of its
+; flags (GsuRecordFlag10), the three sizes in direct page $02, $08 and
+; $94 all $0780, and its position (GsuRecordPosition). It is the record
+; handler ObjectCameraPadSetup stores at +$1D.
+; HOW: Three 16-bit stores of $0780 between the calls.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as
+; GsuRecordPosition.
+%at($0884B7)
+ObjectCameraPadRecord:
+    jsl.l GsuRecordNew42D
+    jsl.l GsuRecordFlag10
+    rep.b #$20
+    lda.w #$0780
+    sta.b !dp_02
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0780
+    sta.b !dp_08
+    sep.b #$20
+    rep.b #$20
+    lda.w #$0780
+    sta.b !dp_94
+    sep.b #$20
+    jsl.l GsuRecordPosition
+    rtl
+
+; @routine 08:84DF ObjectContactsCameraPoint
+; WHAT IT DOES: Takes object X's position back from its record
+; (ObjectSyncFromRecord) and, when the record has contacts, walks them
+; (RecordNextContact): for each with bit 2 of its flags, the player its
+; bit 0 or bit 1 names ($0346 or $034A) gets $1F4C, $1F4E and $1F50 as
+; +$2C, +$2E and +$30 of its camera point (the link, +$4F, of its link),
+; when it has a link.
+; HOW: X kept on the stack (PHX, PLX) while it is the player and then
+; its link; BIT #imm tests of the flags in A; the stores 16-bit through
+; the data bank with Y.
+; Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit; X = the
+; object; carry clear; A and the rest as the last call left them.
+%at($0884DF)
+ObjectContactsCameraPoint:
+    jsl.l ObjectSyncFromRecord
+    and.b #$01
+    beq .l8524
+.l84E7:
+    jsl.l RecordNextContact
+    bcc .l8524
+    bit.b #$04
+    beq .l84E7
+    phx
+    bit.b #$01
+    beq .l84FB
+    ldx.w !wram_0346
+    bra .l8502
+.l84FB:
+    bit.b #$02
+    beq .l8521
+    ldx.w !wram_034A
+.l8502:
+    ldy.w !obj_link_w,x
+    beq .l8521
+    tyx
+    ldy.w !obj_link_w,x
+    rep.b #$20
+    lda.w !wram_1F4C
+    sta.w !dp_2c,y
+    lda.w !wram_1F4E
+    sta.w !dp_2e,y
+    lda.w !wram_1F50
+    sta.w !dp_30,y
+    sep.b #$20
+.l8521:
+    plx
+    bra .l84E7
+.l8524:
     rtl

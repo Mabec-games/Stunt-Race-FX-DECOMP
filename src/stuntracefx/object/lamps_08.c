@@ -3,7 +3,10 @@
  * scripts places (08:D61B-D83C): a burst of fifteen break-off pieces,
  * lamps and stacks of lamps lit by their own light (+$5D) as the lamps of
  * bank $09 are, and a falling object with a Super FX record. Each is
- * entered with X = the object; unit_lamps_08 calls them in a race.
+ * entered with X = the object; unit_lamps_08 calls them in a race. Also
+ * bank $08 code nothing in the game calls (unit_dead_08_*): two pads that
+ * reset a touching player's camera point (08:843C-8524) and a spray of
+ * eight pieces with its handler (08:D8E4-DC12).
  *
  * Objects are at $2000 + X through the data bank (X 16-bit, M 8-bit).
  */
@@ -22,6 +25,10 @@ void abi_ApproachSixteenthMin16Byte(void);
 void abi_ApproachEighthMin8(void);
 void abi_ObjectCopyPositionFrom(void);
 void abi_ObjectApplyVelocity(void);
+void abi_GsuRecordNew42D(void);
+void abi_GsuRecordPosition(void);
+void abi_RecordNextContact(void);
+void abi_ObjectContactsCameraPoint(void);
 
 static uint32_t db(void)
 {
@@ -484,4 +491,180 @@ void abi_ObjectPlayerPassCount(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.p = nz8(cpu.p, v);
     wr8(F(0x2025, cpu.x), v);
+}
+
+/* LDA #v, STA d (direct page, D = $0000), 16-bit, between REP and SEP. */
+static void dp16i(uint16_t d, uint16_t v)
+{
+    cpu.p &= (uint8_t)~P_M;
+    op_lda16_imm(v);
+    wr16(d, v);
+    cpu.p |= P_M;
+}
+
+/*
+ * @routine 08:84B7 ObjectCameraPadRecord
+ * WHAT IT DOES: The Super FX record of a camera pad (ObjectCameraPad,
+ * ObjectCameraPadB): a new record (GsuRecordNew42D) with bit 4 of its
+ * flags (GsuRecordFlag10), the three sizes in direct page $02, $08 and
+ * $94 all $0780, and its position (GsuRecordPosition). It is the record
+ * handler ObjectCameraPadSetup stores at +$1D.
+ * HOW: Three 16-bit stores of $0780 between the calls.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as
+ * GsuRecordPosition.
+ */
+void abi_ObjectCameraPadRecord(void)
+{
+    abi_GsuRecordNew42D();
+    abi_GsuRecordFlag10();
+    dp16i(0x000002, 0x0780);
+    dp16i(0x000008, 0x0780);
+    dp16i(0x000094, 0x0780);
+    abi_GsuRecordPosition();
+}
+
+/*
+ * @routine 08:84A8 ObjectCameraPadSetup
+ * WHAT IT DOES: The set-up both camera pads jump to: the record handler
+ * (+$1D, +$1F) becomes $08:84B7 (ObjectCameraPadRecord), which then runs.
+ * HOW: Runs on into ObjectCameraPadRecord.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as
+ * ObjectCameraPadRecord.
+ */
+void abi_ObjectCameraPadSetup(void)
+{
+    st16i(F(0x201D, cpu.x), 0x84B7);
+    st8i(F(0x201F, cpu.x), 0x08);
+    abi_ObjectCameraPadRecord();
+}
+
+/*
+ * @routine 08:843C ObjectCameraPad
+ * WHAT IT DOES: Sets up a pad that resets the camera of a player touching
+ * it: its handler becomes $08:844F (ObjectCameraPadStep), then the shared
+ * set-up (ObjectCameraPadSetup). Nothing in the game calls it; a direct
+ * call is its only way in.
+ * HOW: A JML to the set-up.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as
+ * ObjectCameraPadSetup.
+ */
+void abi_ObjectCameraPad(void)
+{
+    handler(cpu.x, 0x844F);
+    abi_ObjectCameraPadSetup();
+}
+
+/*
+ * @routine 08:8472 ObjectCameraPadB
+ * WHAT IT DOES: ObjectCameraPad with its own copy of the handler,
+ * $08:8485 (ObjectCameraPadStepB). Nothing in the game calls it.
+ * HOW: As ObjectCameraPad.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as
+ * ObjectCameraPadSetup.
+ */
+void abi_ObjectCameraPadB(void)
+{
+    handler(cpu.x, 0x8485);
+    abi_ObjectCameraPadSetup();
+}
+
+/* The camera pads' handler: the offsets $1F4C, $1F4E, $1F50 all 0, then
+   ObjectContactsCameraPoint. */
+static void camera_pad_step(void)
+{
+    st16i(db() | 0x1F4C, 0x0000);
+    st16i(db() | 0x1F4E, 0x0000);
+    st16i(db() | 0x1F50, 0x0000);
+    abi_ObjectContactsCameraPoint();
+}
+
+/*
+ * @routine 08:844F ObjectCameraPadStep
+ * WHAT IT DOES: A tick of ObjectCameraPad: $1F4C, $1F4E and $1F50 set to
+ * 0 and given to the camera point of every player touching it
+ * (ObjectContactsCameraPoint).
+ * HOW: Three 16-bit stores of 0, then the call.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as
+ * ObjectContactsCameraPoint.
+ */
+void abi_ObjectCameraPadStep(void)
+{
+    camera_pad_step();
+}
+
+/*
+ * @routine 08:8485 ObjectCameraPadStepB
+ * WHAT IT DOES: ObjectCameraPadB's copy of ObjectCameraPadStep.
+ * HOW: As ObjectCameraPadStep.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: as
+ * ObjectContactsCameraPoint.
+ */
+void abi_ObjectCameraPadStepB(void)
+{
+    camera_pad_step();
+}
+
+/*
+ * @routine 08:84DF ObjectContactsCameraPoint
+ * WHAT IT DOES: Takes object X's position back from its record
+ * (ObjectSyncFromRecord) and, when the record has contacts, walks them
+ * (RecordNextContact): for each with bit 2 of its flags, the player its
+ * bit 0 or bit 1 names ($0346 or $034A) gets $1F4C, $1F4E and $1F50 as
+ * +$2C, +$2E and +$30 of its camera point (the link, +$4F, of its link),
+ * when it has a link.
+ * HOW: X kept on the stack (PHX, PLX) while it is the player and then
+ * its link; BIT #imm tests of the flags in A; the stores 16-bit through
+ * the data bank with Y.
+ * Entry: M 8-bit, X 16-bit; X = object; D = $0000. Exit: M 8-bit; X = the
+ * object; carry clear; A and the rest as the last call left them.
+ */
+void abi_ObjectContactsCameraPoint(void)
+{
+    uint16_t x0;
+    uint8_t f;
+    static const uint16_t to[3] = {0x002C, 0x002E, 0x0030}, from[3] = {0x1F4C, 0x1F4E, 0x1F50};
+    unsigned i;
+
+    abi_ObjectSyncFromRecord();
+    f = (uint8_t)(cpu.a & 0x01);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | f);
+    cpu.p = nz8(cpu.p, f);
+    if (!f)
+        return;
+    for (;;) {
+        abi_RecordNextContact();
+        if (!(cpu.p & P_C))
+            return;
+        f = (uint8_t)cpu.a;
+        cpu.p = (uint8_t)((cpu.p & ~P_Z) | ((f & 0x04) ? 0 : P_Z));
+        if (!(f & 0x04))
+            continue;
+        x0 = cpu.x;
+        cpu.p = (uint8_t)((cpu.p & ~P_Z) | ((f & 0x01) ? 0 : P_Z));
+        if (f & 0x01) {
+            cpu.x = rd16(db() | 0x0346);
+        } else {
+            cpu.p = (uint8_t)((cpu.p & ~P_Z) | ((f & 0x02) ? 0 : P_Z));
+            if (!(f & 0x02))
+                goto next;
+            cpu.x = rd16(db() | 0x034A);
+        }
+        cpu.p = nz16(cpu.p, cpu.x);
+        cpu.y = rd16(F(0x204F, cpu.x));
+        cpu.p = nz16(cpu.p, cpu.y);
+        if (!cpu.y)
+            goto next;
+        cpu.x = cpu.y;
+        cpu.y = rd16(F(0x204F, cpu.x));
+        cpu.p = nz16(cpu.p, cpu.y);
+        cpu.p &= (uint8_t)~P_M;
+        for (i = 0; i < 3; i++) {
+            op_lda16(db() | from[i]);
+            wr16(db() | (uint16_t)(to[i] + cpu.y), cpu.a);
+        }
+        cpu.p |= P_M;
+next:
+        cpu.x = x0;
+        cpu.p = nz16(cpu.p, cpu.x);
+    }
 }
