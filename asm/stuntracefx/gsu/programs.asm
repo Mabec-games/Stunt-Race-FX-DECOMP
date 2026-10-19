@@ -1362,6 +1362,296 @@ GsuF15BTwoLines:
     rep.b #$10
     rts
 
+; @routine 07:8188 GsuPiecesFromRecord
+; WHAT IT DOES: Copies a piece record at X (through the data bank) to the
+; Super FX inputs: its words +$00 to +$0A to $70:020A-$70:0214 and +$0E to
+; $70:0216 (+$0C is read and dropped), then draws the pieces of the list
+; after it (GsuPiecesListFAF2). Nothing calls it (no JSR, JSL, pointer or table reaches it), so a
+; direct call is its only way in.
+; HOW: Seven loads and stores, the X step past the record with CLC, ADC
+; #$000E; then as GsuPiecesListFAF2.
+; Entry: M 16-bit, X 16-bit; X = the record. Exit: A = $FFFF; X = the end
+; marker's offset; N clear, Z and C set (CMP #$FFFF); V from the ADC.
+%at($078188)
+GsuPiecesFromRecord:
+    lda.w !bank0_base,x
+    sta.l !gsu_bytes_200+10
+    lda.w !bank0_base+2,x
+    sta.l !gsu_bytes_200+12
+    lda.w !bank0_base+4,x
+    sta.l !gsu_bytes_200+14
+    lda.w !bank0_base+6,x
+    sta.l !gsu_bytes_200+16
+    lda.w !bank0_base+8,x
+    sta.l !gsu_bytes_200+18
+    lda.w !bank0_base+10,x
+    sta.l !gsu_bytes_200+20
+    lda.w !bank0_base+12,x
+    lda.w !bank0_base+14,x
+    sta.l !gsu_in_216
+    txa
+    clc
+    adc.w #$000E
+    tax
+
+; @routine 07:81C2 GsuPiecesListFAF2
+; WHAT IT DOES: Draws each piece of the list at X (words through the data
+; bank, ended by $FFFF): the word to $70:0216, the renderer bytes 0, $BF,
+; $B7, $B6 (GsuBytes200_BFB7B6) and Super FX program $07:FAF2 (GsuRun).
+; Entered from GsuPiecesFromRecord and GsuPiecesFromBytes; nothing else calls it (no jsr, jsl, pointer or table reaches it), so a
+; direct call is its only way in.
+; HOW: X and P pushed around the two calls (PHX, PHP; PLP, PLX), X
+; stepped by 2.
+; Entry: M 16-bit, X 16-bit; X = the list. Exit: A = $FFFF; X = the end
+; marker's offset; N clear, Z and C set (CMP #$FFFF); the other flags as at
+; entry.
+%at($0781C2)
+GsuPiecesListFAF2:
+    lda.w !bank0_base,x
+    cmp.w #$FFFF
+    beq .done
+    sta.l !gsu_in_216
+    phx
+    php
+    jsl.l GsuBytes200_BFB7B6
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FAF2
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    plp
+    plx
+    inx
+    inx
+    bra GsuPiecesListFAF2
+.done:
+    rts
+
+; @routine 07:81EC GsuPiecesReturn
+; WHAT IT DOES: A lone RTS after GsuPiecesFromRecord's own. Nothing calls it (no JSR, JSL, pointer or table reaches it), so a
+; direct call is its only way in.
+; HOW: RTS.
+; Entry: any. Exit: nothing changed.
+%at($0781EC)
+GsuPiecesReturn:
+    rts
+
+; @routine 07:81ED GsuPiecesListF6DF
+; WHAT IT DOES: As GsuPiecesListFAF2 with Super FX program $07:F6DF: each
+; piece of the list at X (ended by $FFFF) to $70:0216, the bytes 0, $BF,
+; $B7, $B6 and the program. Nothing calls it (no JSR, JSL, pointer or table reaches it), so a
+; direct call is its only way in.
+; HOW: REP #$30 at the top of each piece; X and P pushed around the calls.
+; Entry: X = the list. Exit: A = $FFFF; X = the end marker's offset; M and X
+; 16-bit; N clear, Z and C set (CMP #$FFFF); the other flags as at entry.
+%at($0781ED)
+GsuPiecesListF6DF:
+    rep.b #$30
+    lda.w !bank0_base,x
+    cmp.w #$FFFF
+    beq .done
+    sta.l !gsu_in_216
+    phx
+    php
+    jsl.l GsuBytes200_BFB7B6
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$F6DF
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    plp
+    plx
+    inx
+    inx
+    bra GsuPiecesListF6DF
+.done:
+    rts
+
+; @routine 07:8219 GsuPieceOffsetFromView
+; WHAT IT DOES: Halves the Super FX words $70:003E and $70:003A into $0E84
+; and $0E82, then sets the piece position $70:020A to $0E82 less half the
+; PPU product of $70:020E and $0E8E (negated), and $70:020C to $0E84 plus
+; the product of $70:0210 and $FFF0. Nothing calls it (no JSR, JSL, pointer or table reaches it), so a
+; direct call is its only way in.
+; HOW: The PPU multiplier: 16-bit stores to M7A ($211B, its high byte to
+; M7B) and M7B ($211C, its high byte to M7C), the product's middle word
+; read at MPYM ($2135); SEC, SBC, EOR #$FFFF, INC; CLC, ADC. Registers and
+; $0Exx through the data bank.
+; Entry: M 16-bit; data bank with the PPU registers. Exit: A = the new
+; $70:020C; X, Y unchanged; N, V, Z, C from the ADC.
+%at($078219)
+GsuPieceOffsetFromView:
+    lda.l !gsu_in_3e
+    lsr a
+    sta.w !wram_0E84
+    lda.l !gsu_in_3a
+    lsr a
+    sta.w !wram_0E82
+    lda.l !gsu_bytes_200+14
+    sta.w !M7A
+    lda.w !wram_0E8E
+    sta.w !M7B
+    lda.w !MPYM
+    lsr a
+    sec
+    sbc.w !wram_0E82
+    eor.w #$FFFF
+    inc a
+    sta.l !gsu_bytes_200+10
+    lda.l !gsu_bytes_200+16
+    sta.w !M7A
+    lda.w #$FFF0
+    sta.w !M7B
+    lda.w !MPYM
+    clc
+    adc.w !wram_0E84
+    sta.l !gsu_bytes_200+12
+    rts
+
+; @routine 07:825F GsuPieceScaleFromView
+; WHAT IT DOES: Sets the Super FX inputs from the view: $70:020E = (the
+; PPU product of $0E86 and $70:003A) / $0E8E, $70:0210 = (the product of
+; $0E8E and $70:003E) / $0E8E, and $70:0214 and $70:0212 the reciprocals
+; ($FFFF / the value, GsuReciprocal) of those two. Nothing calls it (no JSR, JSL, pointer or table reaches it), so a
+; direct call is its only way in.
+; HOW: The PPU multiplier as in GsuPieceOffsetFromView, the CPU divider
+; (16-bit stores to WRDIVL and WRDIVB, whose high byte goes to HTIMEL;
+; the quotient read at RDDIVL), with NOPs to wait for it; $0E8E kept on
+; the stack (PHA, PLX), the first quotient too (PHA, PLA).
+; Entry: M 16-bit, X 16-bit, D = $0000; data bank with the PPU registers.
+; Exit: A = the second reciprocal; X = $0E8E; N, Z from A; C set.
+%at($07825F)
+GsuPieceScaleFromView:
+    lda.w !wram_0E86
+    sta.w !M7A
+    lda.l !gsu_in_3a
+    sta.w !M7B
+    lda.w !MPYM
+    sta.w !WRDIVL
+    lda.w !wram_0E8E
+    pha
+    sta.w !WRDIVB
+    sta.w !M7A
+    lda.l !gsu_in_3e
+    sta.w !M7B
+    lda.w !RDDIVL
+    ldx.w !MPYM
+    stx.w !WRDIVL
+    plx
+    stx.w !WRDIVB
+    sta.l !gsu_bytes_200+14
+    pha
+    nop
+    nop
+    lda.w !RDDIVL
+    sta.l !gsu_bytes_200+16
+    sta.b !recip_divisor
+    sta.b !recip_divisor
+    jsr.w GsuReciprocal
+    sta.l !gsu_bytes_200+20
+    pla
+    sta.b !recip_divisor
+    jsr.w GsuReciprocal
+    sta.l !gsu_bytes_200+18
+    rts
+
+; @routine 07:82B4 GsuReciprocal
+; WHAT IT DOES: $FFFF divided by the word at $F1, both halved first when it
+; is above $FF (so the divisor fits the CPU divider's 8 bits).
+; HOW: $F3 = $FFFF; CMP #$00FF with $F1, LSR of both words; then WRDIVL =
+; $F3, WRDIVB = $F1 (16-bit: the high byte to HTIMEL), four NOPs, the
+; quotient read at RDDIVL.
+; Entry: M 16-bit, D = $0000; $F1 = the divisor; data bank with the
+; divider. Exit: A = the quotient; N, Z from it; C set; $F3 = $FFFF or
+; $7FFF.
+%at($0782B4)
+GsuReciprocal:
+    lda.w #$FFFF
+    sta.b !recip_dividend
+    lda.w #$00FF
+    cmp.b !recip_divisor
+    bcs .fits
+    lsr.b !recip_divisor
+    lsr.b !recip_dividend
+.fits:
+    lda.b !recip_dividend
+    sta.w !WRDIVL
+    lda.b !recip_divisor
+    sta.w !WRDIVB
+    nop
+    nop
+    nop
+    nop
+    lda.w !RDDIVL
+    rts
+
+; @routine 07:82D6 GsuReciprocalReturn
+; WHAT IT DOES: A lone RTS after GsuReciprocal's. Nothing calls it (no JSR, JSL, pointer or table reaches it), so a
+; direct call is its only way in.
+; HOW: RTS.
+; Entry: any. Exit: nothing changed.
+%at($0782D6)
+GsuReciprocalReturn:
+    rts
+
+; @routine 07:82D7 GsuPiecesFromBytes
+; WHAT IT DOES: As GsuPiecesFromRecord for a record of bytes and words at
+; X: +$00 and +$01 (bytes) to $70:020A and $70:020C, the words +$02 to +$08
+; to $70:020E-$70:0214, then the pieces of the list the word at +$0B
+; points to (GsuPiecesListFAF2; +$0A is read and dropped). Nothing calls it (no JSR, JSL, pointer or table reaches it), so a
+; direct call is its only way in.
+; HOW: Loads through the data bank (AND #$00FF for the bytes), TAX of the
+; list address; then as GsuPiecesListFAF2.
+; Entry: M 16-bit, X 16-bit; X = the record. Exit: A = $FFFF; X = the end
+; marker's offset; N clear, Z and C set (CMP #$FFFF); the other flags as at
+; entry.
+%at($0782D7)
+GsuPiecesFromBytes:
+    lda.w !bank0_base,x
+    and.w #$00FF
+    sta.l !gsu_bytes_200+10
+    lda.w !bank0_base+1,x
+    and.w #$00FF
+    sta.l !gsu_bytes_200+12
+    lda.w !bank0_base+2,x
+    sta.l !gsu_bytes_200+14
+    lda.w !bank0_base+4,x
+    sta.l !gsu_bytes_200+16
+    lda.w !bank0_base+6,x
+    sta.l !gsu_bytes_200+18
+    lda.w !bank0_base+8,x
+    sta.l !gsu_bytes_200+20
+    lda.w !bank0_base+10,x
+    and.w #$00FF
+    lda.w !bank0_base+11,x
+    tax
+.list:
+    lda.w !bank0_base,x
+    cmp.w #$FFFF
+    beq .done
+    sta.l !gsu_in_216
+    phx
+    php
+    jsl.l GsuBytes200_BFB7B6
+    sep.b #$20
+    rep.b #$10
+    ldx.w #$FAF2
+    lda.b #$07
+    jsl.l GsuRun
+    rep.b #$20
+    rep.b #$10
+    plp
+    plx
+    inx
+    inx
+    bra .list
+.done:
+    rts
+
 ; @routine 07:833B GsuPiecesStep10CB
 ; WHAT IT DOES: Steps the counter at $10CB (up to $14) and draws eleven
 ; pieces from ($10, $28): $800C, $8814, $8408, $8C04, $8C10, space, $8C14,

@@ -1,0 +1,48 @@
+# unit_dead_07: unit tests (call) for the bank 07 piece code nothing calls,
+# each called directly (its only way in) from a Novice race, data bank 0:
+# - GsuPiecesFromRecord (07:8188) on a record at $1E80 (X $10, Y $28,
+#   then pieces $800C and $8814), GsuPiecesListFAF2 (07:81C2) and
+#   GsuPiecesListF6DF (07:81ED) on that list (with the record's inputs
+#   at $70:020A, as GsuPiecesFromRecord leaves them), GsuPiecesFromBytes (07:82D7)
+#   on a byte record at $1EA0 naming the same list;
+# - the lone RTSs GsuPiecesReturn (07:81EC) and GsuReciprocalReturn
+#   (07:82D6);
+# - GsuPieceOffsetFromView (07:8219) and GsuPieceScaleFromView (07:825F)
+#   with the race's own view words, the second with $0E86 = $0100 and
+#   $0E8E = $0040 (a divisor of 0 would leave the divider's result to
+#   the hardware alone);
+# - GsuReciprocal (07:82B4) with $F1 = $0040 and with $0300 (above
+#   $FF: both halved).
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1E80 10,00,28,00,10,00,04,00,00,00,00,00,00,00,0C,80,14,88,FF,FF
+call 07:8188 x=1E80 p=00 db=00 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1E80 10,00,28,00,10,00,04,00,00,00,00,00,00,00,0C,80,14,88,FF,FF
+set 70020A 10,00,28,00,10,00,04,00,00,00,00,00
+call 07:81C2 x=1E8E p=00 db=00 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1E80 10,00,28,00,10,00,04,00,00,00,00,00,00,00,0C,80,14,88,FF,FF
+set 70020A 10,00,28,00,10,00,04,00,00,00,00,00
+call 07:81ED x=1E8E p=00 db=00 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E1E80 10,00,28,00,10,00,04,00,00,00,00,00,00,00,0C,80,14,88,FF,FF
+set 7E1EA0 10,28,10,00,04,00,00,00,00,00,00,8E,1E
+call 07:82D7 x=1EA0 p=00 db=00 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:81EC p=30 db=00 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+call 07:82D6 p=30 db=00 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0E8E 40,00
+call 07:8219 p=00 db=00 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E0E86 00,01
+set 7E0E8E 40,00
+call 07:825F p=00 db=00 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E00F1 40,00
+call 07:82B4 p=00 db=00 d=0000
+load build/stuntracefx/states/novice_coupe_race1.state
+set 7E00F1 00,03
+call 07:82B4 p=00 db=00 d=0000
+wait 2

@@ -1129,6 +1129,252 @@ void abi_GlyphRowsAt56(void)
 
 void GsuBytes200_BFBAB9(void);
 
+/* DB:X + k for an absolute,X load (the sum carries into the next bank). */
+static uint32_t absx(uint8_t bank, uint16_t x, uint16_t k)
+{
+    return (((uint32_t)bank << 16) + x + k) & 0xFFFFFF;
+}
+
+/* The piece list loop of 07:81C2 and 07:81ED: each word of the list at X
+   up to $FFFF to $70:0216, then GsuBytes200_BFB7B6 and the program (X and
+   P kept across the calls). N, Z, C as CMP #$FFFF leaves them at the end. */
+static void pieces_list(uint16_t program)
+{
+    uint16_t a;
+
+    for (;;) {
+        a = rd16(absx(cpu.db, cpu.x, 0));
+        if (a == 0xFFFF)
+            break;
+        wr16(0x700216, a);
+        GsuBytes200_BFB7B6();
+        GsuRun(0x07, program);
+        cpu.x = (uint16_t)(cpu.x + 2);
+    }
+    cpu.a = 0xFFFF;
+    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C)) | P_Z | P_C);
+}
+
+/*
+ * @routine 07:8188 GsuPiecesFromRecord
+ * WHAT IT DOES: Copies a piece record at X (through the data bank) to the
+ * Super FX inputs: its words +$00 to +$0A to $70:020A-$70:0214 and +$0E to
+ * $70:0216 (+$0C is read and dropped), then draws the pieces of the list
+ * after it (GsuPiecesListFAF2). Nothing calls it (no JSR, JSL, pointer or table reaches it), so a
+ * direct call is its only way in.
+ * HOW: Seven loads and stores, the X step past the record with CLC, ADC
+ * #$000E; then as GsuPiecesListFAF2.
+ * Entry: M 16-bit, X 16-bit; X = the record. Exit: A = $FFFF; X = the end
+ * marker's offset; N clear, Z and C set (CMP #$FFFF); V from the ADC.
+ */
+void abi_GsuPiecesFromRecord(void)
+{
+    static const uint16_t to[6] = {0x020A, 0x020C, 0x020E, 0x0210, 0x0212, 0x0214};
+    unsigned i;
+
+    for (i = 0; i < 6; i++)
+        wr16(0x700000 | to[i], rd16(absx(cpu.db, cpu.x, (uint16_t)(2 * i))));
+    rd16(absx(cpu.db, cpu.x, 0x000C));
+    wr16(0x700216, rd16(absx(cpu.db, cpu.x, 0x000E)));
+    cpu.p &= (uint8_t)~P_C;
+    cpu.x = op_adc16(cpu.x, 0x000E, &cpu.p);
+    pieces_list(0xFAF2);
+}
+
+/*
+ * @routine 07:81C2 GsuPiecesListFAF2
+ * WHAT IT DOES: Draws each piece of the list at X (words through the data
+ * bank, ended by $FFFF): the word to $70:0216, the renderer bytes 0, $BF,
+ * $B7, $B6 (GsuBytes200_BFB7B6) and Super FX program $07:FAF2 (GsuRun).
+ * Entered from GsuPiecesFromRecord and GsuPiecesFromBytes; nothing else calls it (no jsr, jsl, pointer or table reaches it), so a
+ * direct call is its only way in.
+ * HOW: X and P pushed around the two calls (PHX, PHP; PLP, PLX), X
+ * stepped by 2.
+ * Entry: M 16-bit, X 16-bit; X = the list. Exit: A = $FFFF; X = the end
+ * marker's offset; N clear, Z and C set (CMP #$FFFF); the other flags as at
+ * entry.
+ */
+void abi_GsuPiecesListFAF2(void)
+{
+    pieces_list(0xFAF2);
+}
+
+/*
+ * @routine 07:81EC GsuPiecesReturn
+ * WHAT IT DOES: A lone RTS after GsuPiecesFromRecord's own. Nothing calls it (no JSR, JSL, pointer or table reaches it), so a
+ * direct call is its only way in.
+ * HOW: RTS.
+ * Entry: any. Exit: nothing changed.
+ */
+void abi_GsuPiecesReturn(void)
+{
+}
+
+/*
+ * @routine 07:81ED GsuPiecesListF6DF
+ * WHAT IT DOES: As GsuPiecesListFAF2 with Super FX program $07:F6DF: each
+ * piece of the list at X (ended by $FFFF) to $70:0216, the bytes 0, $BF,
+ * $B7, $B6 and the program. Nothing calls it (no JSR, JSL, pointer or table reaches it), so a
+ * direct call is its only way in.
+ * HOW: REP #$30 at the top of each piece; X and P pushed around the calls.
+ * Entry: X = the list. Exit: A = $FFFF; X = the end marker's offset; M and X
+ * 16-bit; N clear, Z and C set (CMP #$FFFF); the other flags as at entry.
+ */
+void abi_GsuPiecesListF6DF(void)
+{
+    cpu.p &= (uint8_t)~(P_M | P_X);
+    pieces_list(0xF6DF);
+}
+
+/*
+ * @routine 07:8219 GsuPieceOffsetFromView
+ * WHAT IT DOES: Halves the Super FX words $70:003E and $70:003A into $0E84
+ * and $0E82, then sets the piece position $70:020A to $0E82 less half the
+ * PPU product of $70:020E and $0E8E (negated), and $70:020C to $0E84 plus
+ * the product of $70:0210 and $FFF0. Nothing calls it (no JSR, JSL, pointer or table reaches it), so a
+ * direct call is its only way in.
+ * HOW: The PPU multiplier: 16-bit stores to M7A ($211B, its high byte to
+ * M7B) and M7B ($211C, its high byte to M7C), the product's middle word
+ * read at MPYM ($2135); SEC, SBC, EOR #$FFFF, INC; CLC, ADC. Registers and
+ * $0Exx through the data bank.
+ * Entry: M 16-bit; data bank with the PPU registers. Exit: A = the new
+ * $70:020C; X, Y unchanged; N, V, Z, C from the ADC.
+ */
+void abi_GsuPieceOffsetFromView(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t a;
+
+    wr16(b | 0x0E84, (uint16_t)(rd16(0x70003E) >> 1));
+    wr16(b | 0x0E82, (uint16_t)(rd16(0x70003A) >> 1));
+    wr16(b | 0x211B, rd16(0x70020E));
+    wr16(b | 0x211C, rd16(b | 0x0E8E));
+    a = (uint16_t)(rd16(b | 0x2135) >> 1);
+    cpu.p |= P_C;
+    a = op_sbc16(a, rd16(b | 0x0E82), &cpu.p);
+    a = (uint16_t)((a ^ 0xFFFF) + 1);
+    wr16(0x70020A, a);
+    wr16(b | 0x211B, rd16(0x700210));
+    wr16(b | 0x211C, 0xFFF0);
+    a = rd16(b | 0x2135);
+    cpu.p &= (uint8_t)~P_C;
+    a = op_adc16(a, rd16(b | 0x0E84), &cpu.p);
+    wr16(0x70020C, a);
+    cpu.a = a;
+}
+
+/*
+ * @routine 07:82B4 GsuReciprocal
+ * WHAT IT DOES: $FFFF divided by the word at $F1, both halved first when it
+ * is above $FF (so the divisor fits the CPU divider's 8 bits).
+ * HOW: $F3 = $FFFF; CMP #$00FF with $F1, LSR of both words; then WRDIVL =
+ * $F3, WRDIVB = $F1 (16-bit: the high byte to HTIMEL), four NOPs, the
+ * quotient read at RDDIVL.
+ * Entry: M 16-bit, D = $0000; $F1 = the divisor; data bank with the
+ * divider. Exit: A = the quotient; N, Z from it; C set; $F3 = $FFFF or
+ * $7FFF.
+ */
+uint16_t GsuReciprocal(uint8_t bank, uint8_t *p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t a;
+
+    wr16(0x0000F3, 0xFFFF);
+    if (0x00FF < rd16(0x0000F1)) {
+        wr16(0x0000F1, (uint16_t)(rd16(0x0000F1) >> 1));
+        wr16(0x0000F3, (uint16_t)(rd16(0x0000F3) >> 1));
+    }
+    wr16(b | 0x4204, rd16(0x0000F3));
+    wr16(b | 0x4206, rd16(0x0000F1));
+    a = rd16(b | 0x4214);
+    *p = (uint8_t)(nz16(*p, a) | P_C);
+    return a;
+}
+
+void abi_GsuReciprocal(void)
+{
+    cpu.a = GsuReciprocal(cpu.db, &cpu.p);
+}
+
+/*
+ * @routine 07:825F GsuPieceScaleFromView
+ * WHAT IT DOES: Sets the Super FX inputs from the view: $70:020E = (the
+ * PPU product of $0E86 and $70:003A) / $0E8E, $70:0210 = (the product of
+ * $0E8E and $70:003E) / $0E8E, and $70:0214 and $70:0212 the reciprocals
+ * ($FFFF / the value, GsuReciprocal) of those two. Nothing calls it (no JSR, JSL, pointer or table reaches it), so a
+ * direct call is its only way in.
+ * HOW: The PPU multiplier as in GsuPieceOffsetFromView, the CPU divider
+ * (16-bit stores to WRDIVL and WRDIVB, whose high byte goes to HTIMEL;
+ * the quotient read at RDDIVL), with NOPs to wait for it; $0E8E kept on
+ * the stack (PHA, PLX), the first quotient too (PHA, PLA).
+ * Entry: M 16-bit, X 16-bit, D = $0000; data bank with the PPU registers.
+ * Exit: A = the second reciprocal; X = $0E8E; N, Z from A; C set.
+ */
+void abi_GsuPieceScaleFromView(void)
+{
+    uint32_t b = (uint32_t)cpu.db << 16;
+    uint16_t e, q1, q2;
+
+    wr16(b | 0x211B, rd16(b | 0x0E86));
+    wr16(b | 0x211C, rd16(0x70003A));
+    wr16(b | 0x4204, rd16(b | 0x2135));
+    e = rd16(b | 0x0E8E);
+    wr16(b | 0x4206, e);
+    wr16(b | 0x211B, e);
+    wr16(b | 0x211C, rd16(0x70003E));
+    q1 = rd16(b | 0x4214);
+    wr16(b | 0x4204, rd16(b | 0x2135));
+    wr16(b | 0x4206, e);
+    wr16(0x70020E, q1);
+    q2 = rd16(b | 0x4214);
+    wr16(0x700210, q2);
+    wr16(0x0000F1, q2);
+    wr16(0x0000F1, q2);
+    wr16(0x700214, GsuReciprocal(cpu.db, &cpu.p));
+    wr16(0x0000F1, q1);
+    cpu.a = GsuReciprocal(cpu.db, &cpu.p);
+    wr16(0x700212, cpu.a);
+    cpu.x = e;
+}
+
+/*
+ * @routine 07:82D6 GsuReciprocalReturn
+ * WHAT IT DOES: A lone RTS after GsuReciprocal's. Nothing calls it (no JSR, JSL, pointer or table reaches it), so a
+ * direct call is its only way in.
+ * HOW: RTS.
+ * Entry: any. Exit: nothing changed.
+ */
+void abi_GsuReciprocalReturn(void)
+{
+}
+
+/*
+ * @routine 07:82D7 GsuPiecesFromBytes
+ * WHAT IT DOES: As GsuPiecesFromRecord for a record of bytes and words at
+ * X: +$00 and +$01 (bytes) to $70:020A and $70:020C, the words +$02 to +$08
+ * to $70:020E-$70:0214, then the pieces of the list the word at +$0B
+ * points to (GsuPiecesListFAF2; +$0A is read and dropped). Nothing calls it (no JSR, JSL, pointer or table reaches it), so a
+ * direct call is its only way in.
+ * HOW: Loads through the data bank (AND #$00FF for the bytes), TAX of the
+ * list address; then as GsuPiecesListFAF2.
+ * Entry: M 16-bit, X 16-bit; X = the record. Exit: A = $FFFF; X = the end
+ * marker's offset; N clear, Z and C set (CMP #$FFFF); the other flags as at
+ * entry.
+ */
+void abi_GsuPiecesFromBytes(void)
+{
+    static const uint16_t to[4] = {0x020E, 0x0210, 0x0212, 0x0214};
+    unsigned i;
+
+    wr16(0x70020A, (uint16_t)(rd16(absx(cpu.db, cpu.x, 0)) & 0x00FF));
+    wr16(0x70020C, (uint16_t)(rd16(absx(cpu.db, cpu.x, 1)) & 0x00FF));
+    for (i = 0; i < 4; i++)
+        wr16(0x700000 | to[i], rd16(absx(cpu.db, cpu.x, (uint16_t)(2 + 2 * i))));
+    rd16(absx(cpu.db, cpu.x, 0x000A));
+    cpu.x = rd16(absx(cpu.db, cpu.x, 0x000B));
+    pieces_list(0xFAF2);
+}
+
 /*
  * @routine 07:833B GsuPiecesStep10CB
  * WHAT IT DOES: Steps the counter at $10CB (up to $14) and draws eleven
