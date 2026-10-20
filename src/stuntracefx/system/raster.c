@@ -286,6 +286,7 @@ static void split_bg2(uint8_t v, uint8_t ylo, uint8_t yhi_pos, uint8_t yneg, uin
     } else {
         put8(BG2VOFS, ylo);
         put8(BG2VOFS, yhi_pos);
+        cyc(22);                                       /* BRA */
     }
     put8(BG2HOFS, xlo);
     put8(BG2HOFS, 0x01);
@@ -595,6 +596,7 @@ void abi_RasterStage(void)
         if (v) {
             cyc(32);
             split_bg2(v, 0xE8, 0x01, 0x68, 0xF0);
+            cyc(22);                                   /* BRA */
         } else {
             cyc(46);
             op_lda8(b | 0x0D5D);
@@ -606,7 +608,6 @@ void abi_RasterStage(void)
             put8(BG1SC, 0x1C);
             put8(BG2SC, 0x3F);
         }
-        cyc(22);
         put8(BGMODE, 0x01);
         put8(TM, 0x03);
         put8(HDMAEN, 0x1C);

@@ -982,6 +982,7 @@ uint16_t ObjectRecordFlag70Step(uint8_t bank, uint16_t obj, uint16_t a, uint8_t 
         if (n) {
             wr8(field(bank, obj, 0x48), cyc_then(66, (uint8_t)(n - 1)));
             *p = nz8(*p, (uint8_t)(n - 1));
+            cyc(68);                    /* JMP to the RTL, RTL */
             return (uint16_t)((a & 0xFF00) | n);
         } else { cyc(26); }
     }
@@ -996,6 +997,7 @@ uint16_t ObjectRecordFlag70Step(uint8_t bank, uint16_t obj, uint16_t a, uint8_t 
     if (flag)
         cyc(22);                        /* BRA */
     *p = nz16(*p, obj);
+    cyc(102);                           /* PLX, SEP, RTL */
     return w;
 }
 
@@ -1005,7 +1007,6 @@ void abi_ObjectRecordFlag70Step(void)
 
     cpu.a = ObjectRecordFlag70Step(cpu.db, cpu.x, cpu.a, &p);
     cpu.p = (uint8_t)(p | P_M);
-    cyc(102);
 }
 
 uint16_t GsuRecordWords88(void);
@@ -1016,12 +1017,20 @@ static uint8_t cmp8(uint8_t p, uint8_t a, uint8_t m)
     return (uint8_t)((nz8(p, (uint8_t)(a - m)) & ~P_C) | (a >= m ? (cyc(7), P_C) : (cyc(7), 0)));
 }
 
-/* Points the linked object (+$4F) at the handler $08:addr. */
-static uint16_t set_linked_handler(uint8_t bank, uint16_t obj, uint16_t addr)
+/* Points the linked object (+$4F) at the handler $08:addr. k is the record
+   kind ($1F58) the handler was picked by (read again, then compared with 1
+   and 4), or -1 when picked by no kind. */
+static uint16_t set_linked_handler(uint8_t bank, uint16_t obj, uint16_t addr, int k)
 {
     uint32_t b = (uint32_t)bank << 16;
     uint16_t y = rd16(cyc_then(52, field(bank, obj, 0x4F)));
 
+    if (k >= 0) {
+        cyc(24);
+        rd8(b | 0x1F58);
+        cyc(k == 1 ? 38 : k == 4 ? 70 : 64);           /* CMP, BEQ (taken) */
+    }
+    cyc(76);
     wr16(b | (uint16_t)(0x201A + y), addr);
     cyc(68);
     wr8(b | (uint16_t)(0x201C + y), 0x08);
@@ -1071,7 +1080,7 @@ uint16_t ObjectLinkedHandlerByState(uint8_t bank, uint16_t obj, uint16_t a, uint
         *p = cmp8(*p, k, 0x01);
         if (k != 0x01)
             *p = cmp8(*p, k, 0x04); else { cyc(7); }
-        *y = set_linked_handler(bank, obj, k == 0x01 ? 0x91EB : k == 0x04 ? 0x93D7 : 0x92DF);
+        *y = set_linked_handler(bank, obj, k == 0x01 ? 0x91EB : k == 0x04 ? 0x93D7 : 0x92DF, k);
     } else {
         *p = cmp8(*p, v, 0x0C);
         if (v != 0x0C)
@@ -1089,7 +1098,7 @@ uint16_t ObjectLinkedHandlerByState(uint8_t bank, uint16_t obj, uint16_t a, uint
                 *p = nz8(*p, 0);
                 return (uint16_t)(w & 0xFF00);
             }
-            *y = set_linked_handler(bank, obj, 0x94A1);
+            *y = set_linked_handler(bank, obj, 0x94A1, -1);
         } else {
             cyc(74);
             v = rd8(b | 0x19ED);
@@ -1097,7 +1106,7 @@ uint16_t ObjectLinkedHandlerByState(uint8_t bank, uint16_t obj, uint16_t a, uint
             *p = cmp8(*p, v, 0x08);
             if (v != 0x08)
                 { cyc(40); return (uint16_t)((a & 0xFF00) | v); }
-            *y = set_linked_handler(bank, obj, 0x951B);
+            *y = set_linked_handler(bank, obj, 0x951B, -1);
         }
     }
     a = 0x0000;
@@ -1895,7 +1904,7 @@ static int run_handler(uint8_t bank, uint16_t obj, uint16_t word_at, uint16_t ba
     wr16(b | 0x0354, h);
     if (need_no_record && (cpu.a = rd16(cyc_then(30, b | (uint16_t)(0x2022 + obj)))) != 0)
         return 0;
-    cyc(24);
+    cyc(need_no_record ? 40 : 24);                     /* B: BNE not taken */
     wr16(b | 0x034C, obj);
     cyc(182);
     hb = rd8(b | 0x0356);
@@ -2789,6 +2798,14 @@ static void sign_byte(uint32_t at, uint8_t a)
     wr8(at, (a & 0x80) ? (cyc(10), 0xFF) : 0x00);
 }
 
+/* sign_byte, with the BRA over the zero store taken after the $FF store. */
+static void sign_byte_bra(uint32_t at, uint8_t a)
+{
+    sign_byte(at, a);
+    if (a & 0x80)
+        cyc(22);                                       /* BRA */
+}
+
 /* Object X at its parent (+$27)'s position plus an offset turned by the
    parent's angles +$14 (RotateXZFrom08) and +$15 (RotateXZ) and doubled,
    then rebucketed. A trail's offset is (0, -10, +$32), +$32 moving by -5
@@ -2839,7 +2856,7 @@ static void parent_place_from(uint32_t b, int attached, int stage)
     cyc(24);
     wr8(b | 0x05F2, v);
     cyc(8);
-    sign_byte(b | 0x05F3, v);
+    sign_byte_bra(b | 0x05F3, v);
     for (i = 0; i < 2; i++) {
         if (i) {
             wr8(dp8(0x02), cyc_then(16, rd8(cyc_then(16, dp8(0x04)))));

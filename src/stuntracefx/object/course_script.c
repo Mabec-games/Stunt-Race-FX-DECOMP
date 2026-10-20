@@ -103,6 +103,7 @@ void abi_CourseScriptRun(void)
             o = spawn(y);
             cyc(54);
             wr8(OBJ_FIELD(o, 0x09), cyc_then(48, (uint8_t)(rd8(OBJ_FIELD(o, 0x09)) | 0x01)));
+            cyc(22);                                   /* REP */
             x = (uint16_t)(y + 0x16);
             break;
         case 0x806F:                                   /* $10, not reached */
@@ -118,7 +119,6 @@ void abi_CourseScriptRun(void)
             x = (uint16_t)(y + 0x18);
             break;
         case 0x808F:                                   /* $0A */
-            cyc(22);
             o = spawn(y);
             cyc(92);
             v = rd8(b | (uint16_t)(0x8016 + y));
@@ -129,6 +129,7 @@ void abi_CourseScriptRun(void)
             wr8(OBJ_FIELD(o, 0x49), rd8(b | (uint16_t)(0x8017 + y)));
             cyc(70);
             wr8(OBJ_FIELD(o, 0x4A), rd8(b | (uint16_t)(0x8018 + y)));
+            cyc(22);                                   /* REP */
             x = (uint16_t)(y + 0x19);
             break;
         case 0x80BA:                                   /* $06 */
@@ -204,7 +205,7 @@ void abi_CourseScriptRun(void)
             x = (uint16_t)(y + 0x1A);
             break;
         case 0x8196:                                   /* $12 */
-            cyc(238);
+            cyc(216);
             n = (uint16_t)((uint16_t)((rd16(b | (uint16_t)(0x8001 + y)) & 0x00FF) - 1) << 3);
             wr16(0x7EFF66 + n, rd16(b | (uint16_t)(0x8002 + y)));
             cyc(78);
@@ -213,6 +214,7 @@ void abi_CourseScriptRun(void)
             wr16(0x7EFF6A + n, rd16(b | (uint16_t)(0x8006 + y)));
             cyc(92);
             wr8(0x7EFF6C + n, rd8(b | (uint16_t)(0x8008 + y)));
+            cyc(22);                                   /* REP */
             x = (uint16_t)(y + 9);
             break;
         case 0x81CC:                                   /* $14 */

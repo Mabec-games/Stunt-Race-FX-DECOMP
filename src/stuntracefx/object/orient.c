@@ -92,6 +92,7 @@ void ObjectFaceTied(void)
         a = asr16(asr16(neg_angle(absidx(bank, 0x2016, cpu.x))));
         ease_half(bank, rec, 0x0012, a);
         cpu.x = cpu.y;
+        cyc(22);                                       /* BRA */
     } else { cyc(114); if (rd16(rec) & 0x4000) {
         cpu.y = rec;
         cyc(76);
@@ -101,8 +102,8 @@ void ObjectFaceTied(void)
         ease_half(bank, rec, 0x0010, neg_angle(absidx(bank, 0x2015, cpu.x)));
         ease_half(bank, rec, 0x0012, neg_angle(absidx(bank, 0x2016, cpu.x)));
         cpu.x = cpu.y;
-    } else { cyc(10); } }
-    cyc(58);
+    } else { cyc(32); } }
+    cyc(36);
     a = rd16(cpu.x) & 0x8000;
     if (!a)
         { cyc(62); wr16((uint16_t)(cpu.x + 0x12), 0x0000); } else { cyc(46); }

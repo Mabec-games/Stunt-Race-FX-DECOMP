@@ -176,7 +176,7 @@ void abi_RaceStartCountdownStunt(void)
 
 /* Sound 5 on port 0, the timer $0E55 = t, both phases 2, $10CB and $10CC
    cleared. */
-static void race_ready(uint8_t t)
+static void race_ready(uint8_t t, int bra)
 {
     uint32_t b = (uint32_t)cpu.db << 16;
 
@@ -185,6 +185,8 @@ static void race_ready(uint8_t t)
     cyc(8);
     lda8_imm(t);
     wr8(b | 0x0E55, t);
+    if (bra)
+        cyc(22);                                       /* BRA */
     lda8_imm(0x02);
     phases_both(b);
     cyc(24);
@@ -203,7 +205,7 @@ static void race_ready(uint8_t t)
  */
 void abi_RaceReadyShort(void)
 {
-    race_ready(0x1E);
+    race_ready(0x1E, 1);
 }
 
 /*
@@ -214,7 +216,7 @@ void abi_RaceReadyShort(void)
  */
 void abi_RaceReadyLong(void)
 {
-    race_ready(0x36);
+    race_ready(0x36, 0);
 }
 
 /* 07:E370: REP #$20, GsuTimeDigitsFull. */
@@ -2491,7 +2493,7 @@ void abi_TimeUpRace(void)
         return;
     }
     cmp8_imm(0x18);
-    cyc(72);
+    cyc(v == 0x18 ? 66 : 72);                          /* BNE not taken / taken */
     wr8(b | 0x0E5A, v);
     cyc(42);
 }

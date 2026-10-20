@@ -635,6 +635,7 @@ static void take_from_time(uint32_t b)
         c = 0;
         cyc(70);
         v = adc_decimal16(rd16(b | 0x0E74), 0x0001, &c);
+        cyc(22);                                       /* BRA */
     }
     if (v >= 0x0099) {
         cyc(24);
@@ -1086,6 +1087,8 @@ void TimeBonusTransfer(void)
         add16(step);
         cyc(48);
         wr16(b | TIME_BCD, cpu.a);
+        if (step != 0x0003)
+            cyc(22);                    /* BRA */
         lda16(b | 0x0D65);
         if (!cpu.a) {
             lda16_imm(0x0012);

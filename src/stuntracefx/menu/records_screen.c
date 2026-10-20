@@ -114,15 +114,17 @@ static void origin(uint8_t x, uint8_t y)
     op_rep(P_M | P_X);
 }
 
-/* LDY #0, LDX #id, STZ $0D71, MetaspriteDraw: a screen's first group. */
-static void md_first(uint16_t id)
+/* LDY #0, LDX #id, STZ $0D71, MetaspriteDraw: a screen's first group; bra
+   is the time of a BRA after it (none when the next group follows). */
+static void md_first(uint16_t id, uint8_t bra)
 {
     cpu.y = 0x0000;
     cpu.x = id;
     cpu.p = nz16(cpu.p, id);
     wr16(db() | 0x0D71, cyc_then(72, 0x0000));
     (cyc(46), abi_MetaspriteDraw());
-    cyc(22);
+    if (bra)
+        cyc(bra);
 }
 
 /* LDA.L group (CLC, ADC prev when there is one), TAY, STA slot, LDX #id,
@@ -1019,7 +1021,7 @@ void abi_SpeedRecordsScreen(void)
     op_lda8(b | 0x0D4C);
     if ((uint8_t)cpu.a) {
         origin(0x89, 0x89);
-        md_first(0x001A);
+        md_first(0x001A, 0);
         md_next(0x04EE35, 0, 0x0D73, 0x0019);
         md_next(0x04EE31, 0x0D73, 0x0D75, 0x0000);
         cyc(24);
@@ -1036,7 +1038,9 @@ void abi_SpeedRecordsScreen(void)
     cyc(24);
     op_lda16(b | 0x0D48);
     op_and16(0x00FF);
-    md_first(cpu.a ? (cyc(44), 0x001B) : (cyc(38), 0x0005));
+    if (cpu.a)
+        { cyc(44); md_first(0x001B, 0); }
+    else { cyc(38); md_first(0x0005, 22 /* BRA */); }
     md_next(0x04EDE1, 0, 0x0D73, 0x0001);
     md_next(0x04EDD1, 0x0D73, 0x0D75, 0x0002);
     md_next(0x04EDD5, 0x0D75, 0x0D77, 0x0003);
@@ -1243,7 +1247,7 @@ void abi_StuntRecordsScreen(void)
             cyc(60);
             wr16(b | 0x0E3D, cpu.a);
         } else { cyc(30); } }
-        md_first(0x0015);
+        md_first(0x0015, 0);
         md_next(0x04EE21, 0, 0x0D73, 0x0013);
         op_rep(P_M);
         md_next(0x04EE19, 0x0D73, 0x0D75, 0x0014);
@@ -1253,7 +1257,7 @@ void abi_StuntRecordsScreen(void)
         return;
     } else { cyc(30); }
     origin(0x81, 0x89);
-    md_first(0x0012);
+    md_first(0x0012, 0);
     md_next(0x04EDF5, 0, 0x0D73, 0x0007);
     md_next(0x04EDE9, 0x0D73, 0x0D75, 0x0008);
     md_next(0x04EDED, 0x0D75, 0x0D77, 0x0009);
@@ -1284,7 +1288,7 @@ void abi_BattleRecordsScreen(void)
     uint8_t p;
 
     origin(0x81, 0x89);
-    md_first(0x000D);
+    md_first(0x000D, 0);
     md_next(0x04EE01, 0, 0x0D73, 0x000C);
     md_next(0x04EDFD, 0x0D73, 0x0D75, 0x000B);
     slot_to_y(0x0D73, 0);
@@ -1342,7 +1346,7 @@ void abi_AllRecordsScreen(void)
     if ((uint8_t)cpu.a) {
         cyc(6);
         origin(0x89, 0x89);
-        md_first(0x0018);
+        md_first(0x0018, 0);
         md_next(0x04EE2D, 0, 0x0D73, 0x0016);
         md_next(0x04EE25, 0x0D73, 0x0D75, 0x0017);
         best_time(0x70FC5E, 0x0014, -1, 0);
@@ -1351,7 +1355,7 @@ void abi_AllRecordsScreen(void)
         return;
     } else { cyc(30); }
     origin(0x89, 0x89);
-    md_first(0x0012);
+    md_first(0x0012, 0);
     md_next(0x04EE05, 0, 0x0D73, 0x000F);
     md_next(0x04EE09, 0x0D73, 0x0D75, 0x0010);
     md_next(0x04EE0D, 0x0D75, 0x0D77, 0x0011);
