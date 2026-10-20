@@ -120,5 +120,5 @@ void abi_SlideOutWobble(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
     cyc(20);
     cpu.db = rd8((uint16_t)(cpu.s + 1));
-    cpu.p = nz8(cpu.p, cpu.db);
+    cpu.p = nz8(cpu.p, cpu.db);    cyc(44);                            /* RTL */
 }

@@ -430,7 +430,7 @@ void abi_WindowEdgesFillOnes(void)
 
     cpu.p &= (uint8_t)~(P_M | P_X);
     do {
-        cyc(144);
+        cyc(x == 0 ? 126 : 144);
         wr16((0x7FF883u + x) & 0xFFFFFF, 0x0001);
         x = (uint16_t)(x + 2);
         y--;
@@ -700,8 +700,8 @@ static int window_slide(uint8_t bank, uint8_t step, uint8_t stop, uint8_t *a, ui
     }
     cyc(94);
     wr8(0x001A14, v);
-    (cyc(8), WindowHdmaFFD1());
-    cyc(112);
+    (cyc(step == 0x01 ? 70 : 62), WindowHdmaFFD1());  /* JMP, JSR */
+    cyc(70);
     wr8(0x0019AD, 0x40);
     cyc(48);
     wr8(0x0019AC, 0x20);
@@ -875,7 +875,7 @@ void abi_WindowLayoutStep(void)
             return;
         } else { cyc(38); }
     }
-    cyc(70);
+    cyc(req == 0x01 ? 94 : 70);         /* the request 1 JMPs to the common part */
     wr8(0x0019BD, 0x00);
     cyc(54);
     s = rd16(0x0019B6);
@@ -1236,6 +1236,7 @@ void abi_WindowBandsAnimate(void)
         cyc(40);
         wr8(b | 0x19D8, 0x04);
     } else if (v != 0x04 && (cyc(32), v != 0x05)) {
+        cyc(v == 0x03 ? 96 : 90);       /* the compares to CMP #3, BEQ */
         goto out;
     }
     cpu.p |= P_M;
@@ -1407,12 +1408,13 @@ void abi_WindowSplitAnimate(void)
             cyc(48);
             wr16(b | 0x19E2, 0x0000);
         }
-        cyc(102);
+        cyc(v == 0x01 ? 102 : 78);     /* JMP for the open side, REP, LDA # */
         wr16(0x000DA4, 0x0000);
         op_sep(P_M | P_X);
         cyc(48);
         wr8(0x0019D8, 0x04);
     } else if (v != 0x04 && (cyc(32), v != 0x05)) {
+        cyc(v == 0x03 ? 96 : 68);       /* the compares to CMP #3, BEQ; SEP at state 3 */
         goto out;
     }
     cpu.p |= P_M;
@@ -1466,7 +1468,7 @@ void abi_WindowSplitAnimate(void)
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x05);
     } else {
         cpu.p |= P_M;
-        cyc(88);
+        cyc(92);
         wr8(b | 0x19D8, 0x00);
     }
 out:
@@ -1587,6 +1589,7 @@ void abi_ColdataLowBandStep(void)
 {
     uint32_t b = (uint32_t)cpu.db << 16;
     uint8_t v;
+    uint32_t tail = 46;
 
     op_rep(P_M | P_X);
     cyc(112);
@@ -1600,7 +1603,7 @@ void abi_ColdataLowBandStep(void)
     cpu.a = (uint16_t)(rd16(b + cpu.y) & 0x4000);
     cpu.p = nz16(cpu.p, cpu.a);
     op_sep(P_M | P_X);
-    cyc(64);
+    cyc(cpu.a ? 64 : 70);               /* BEQ taken or not */
     v = rd8(b | 0x19D3);
     if (cpu.a) {
         if (!v) {
@@ -1619,10 +1622,11 @@ void abi_ColdataLowBandStep(void)
             cyc(48);
             wr8(0x0019CF, 0x20);
             v = 0x20;
+            tail = 38;                  /* LDX #imm, SEP: no BEQ before */
         } else { cyc(14); }
         cpu.x = 0x00;
     }
-    cyc(46);
+    cyc(tail);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     band_step(0x0019CF, b | 0x19CD, 0x7ED56E + cpu.x);
 }
@@ -1653,11 +1657,11 @@ void abi_ColdataLevelStep(void)
     cpu.a = op_adc16(cpu.a, rd16((uint32_t)cpu.db << 16 | 0x19C5), &cpu.p);
     op_cmp16(0xE000);
     if (cpu.p & P_Z)
-        { cyc(4); return; }
+        { cyc(8); return; }
     op_cmp16(0xEF00);
     if (cpu.p & P_Z)
-        { cyc(40); return; }
-    cyc(104);
+        { cyc(48); return; }
+    cyc(112);
     wr16(0x0019C3, cpu.a);
     op_sep(P_M | P_X);
     for (x = 0;; x = (uint8_t)(x + 2)) {
@@ -1700,6 +1704,7 @@ static void window_slide_check_step(void)
     const uint32_t b = 0x7E0000;
     uint8_t v;
     uint16_t m;
+    int called, same;
 
     op_sep(P_M);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xE0);
@@ -1712,11 +1717,14 @@ static void window_slide_check_step(void)
     cyc(32);
     op_lda8(0x0019C4);
     cmp8((uint8_t)cpu.a, 0xE1);
-    if (cpu.p & P_C)
+    called = cpu.p & P_C;
+    if (called) {
+        cyc(62);                        /* CMP, JSR */
         abi_WindowHdmaFFD1();
+    }
     op_sep(P_M);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x06);
-    cyc(100);
+    cyc(called ? 62 : 100);
     wr8(b | 0x19A9, 0x06);
     abi_ColdataLevelStep();
     op_rep(P_M);
@@ -1745,7 +1753,8 @@ static void window_slide_check_step(void)
     cpu.a = rd16(0x0019C9);
     cyc(30);
     m = rd16(b + 0x200E + cpu.x);
-    if (cpu.a != m) {
+    same = cpu.a == m;
+    if (!same) {
         int down = cpu.a >= m;
 
         op_sep(P_M);
@@ -1758,7 +1767,7 @@ static void window_slide_check_step(void)
         abi_ColdataLowBandStep();
     }
     op_sep(P_M);
-    cyc(96);
+    cyc(same ? 76 : 96);
     v = rd8(0x0019CB);
     cyc(32);
     wr8(0x7FFF8B, v);

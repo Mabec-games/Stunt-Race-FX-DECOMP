@@ -180,7 +180,7 @@ static void boot_stack(void)
 /* Work RAM and Super FX RAM cleared: three fills (A = bank, X = start,
    Y = count) by `fill`, then $70:0000 = 0 and MVN from each byte of
    $70:0000-$27FF to the next, P and the data bank kept around it. */
-static void boot_clear(void (*fill)(void))
+static void boot_clear(void (*fill)(void), uint32_t after)
 {
     static const struct { uint8_t bank; uint16_t x, y; } f[3] = {
         {0x00, 0x0300, 0x2100}, {0x7E, 0x2000, 0xE000}, {0x7F, 0x0000, 0xFFFF}};
@@ -198,7 +198,7 @@ static void boot_clear(void (*fill)(void))
     p = cpu.p;
     op_rep(P_M | P_X);
     op_lda16_imm(0x0000);
-    cyc(104);
+    cyc(after);
     wr16(0x700000, 0x0000);
     op_lda16_imm(0x27FF);
     boot_ldx(0x0000);
@@ -306,7 +306,7 @@ static void boot_run(int from)
     boot_bank03();
     op_sep(P_M);
     op_rep(P_X);
-    boot_clear(abi_WramFillZero);
+    boot_clear(abi_WramFillZero, 62);
     abi_ApuUploadBank19();
     abi_SaveUnlocksCheck();
     op_rep(P_M | P_X);
@@ -336,7 +336,7 @@ start:
     (cyc(62), abi_MenuScreen0Run());
     op_rep(P_M | P_X);
     op_lda16_imm(0x0003);
-    cyc(62);
+    cyc(18);
     wr16(0x001915, 0x0003);
     op_lda16_imm(0x0000);
     cyc(18);
@@ -390,7 +390,7 @@ attract:
     op_rep(P_X);
     b = (uint32_t)cpu.db << 16;
     boot_lda8(0x01);
-    cyc(122);
+    cyc(22);
     wr8(b | 0x3039, 0x01);
     boot_lda8(0x01);
     cyc(8);
@@ -400,7 +400,7 @@ attract:
     op_rep(P_X);
     cyc(98);
     call_routine(0x02CF45, 1);
-    abi_CourseDataPointer();
+    (cyc(62), abi_CourseDataPointer());
     (cyc(62), abi_CourseScriptRun());
     (cyc(62), abi_ObjectPlaceAll());
     b = (uint32_t)cpu.db << 16;
@@ -470,7 +470,7 @@ soft_rest:
     wr8(b | HDMAEN, 0x00);
     op_sep(P_M);
     op_rep(P_X);
-    boot_clear(abi_WramFillZeroLong);
+    boot_clear(abi_WramFillZeroLong, 106);
     abi_SoftResetApuLong();
     b = (uint32_t)cpu.db << 16;
     goto start;

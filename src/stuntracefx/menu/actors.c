@@ -165,6 +165,7 @@ static uint16_t find_last_kind;
 int MenuActorFind(uint8_t bank, uint16_t kind, uint16_t *x, uint16_t *y, uint8_t *p)
 {
     uint16_t i;
+    int walked = 0;
 
     find_last_kind = kind;
     wr16(dbw(bank, 0x11E1), cyc_then(24, kind));
@@ -180,8 +181,9 @@ int MenuActorFind(uint8_t bank, uint16_t kind, uint16_t *x, uint16_t *y, uint8_t
             return 1;
         } else { cyc(12); }
         i = (uint16_t)(i - 2);
+        walked = 1;
     }
-    cyc(92);
+    cyc(walked ? 80 : 92);
     *y = i;
     *p = nz16(*p, i);
     return 0;
@@ -656,6 +658,7 @@ static uint16_t add32(uint16_t rec, uint8_t to, uint8_t from, uint8_t *p)
 void abi_MenuActorAddX(void)
 {
     cpu.a = add32(cpu.x, 0x00, 0x1C, &cpu.p);
+    cyc(42);
 }
 
 /*
@@ -670,6 +673,7 @@ void abi_MenuActorAddX(void)
 void abi_MenuActorAddY(void)
 {
     cpu.a = add32(cpu.x, 0x04, 0x20, &cpu.p);
+    cyc(42);
 }
 
 /*
@@ -688,9 +692,12 @@ void abi_MenuActorsKind2Lower(void)
 {
     uint16_t y = (uint16_t)(rd16(cyc_then(24, dbw(cpu.db, 0x11F7))) - 2);
 
+    int first = 1;
+
     cpu.p = nz16(cpu.p, y);
     while (!(cpu.p & P_N)) {
-        cyc(74);
+        cyc(first ? 74 : 80);
+        first = 0;
         cpu.x = rd16(((uint32_t)cpu.db << 16) + 0x1239u + y);
         cyc(22);
         cpu.a = rd16((uint16_t)(cpu.x + 0x1A));
@@ -706,7 +713,7 @@ void abi_MenuActorsKind2Lower(void)
         y = (uint16_t)(y - 2);
         cpu.p = nz16(cpu.p, y);
     }
-    cyc(86);
+    cyc(first ? 92 : 86);
     cpu.y = y;
 }
 
@@ -2586,6 +2593,7 @@ void MenuDropAwayFinishCurrent(uint8_t bank, uint8_t *p)
 void abi_MenuDropAwayFinishCurrent(void)
 {
     (cyc(40), abi_MenuDropAwayFinish());
+    cyc(42);
 }
 
 /* ROR of a 16-bit word in memory: c in at bit 15, bit 0 out to c. */
@@ -2660,7 +2668,10 @@ uint16_t MenuOamBuild(uint16_t *x, uint16_t *y)
     wr16(0x0011E1, 0x0000);
     cyc(24);
     /* into the body: BPL 74, or BMI and BRL 98, to the STY */
-    for (i = (uint16_t)(rd16(0x0011F7) - 2), t = 74; cyc_loop(t, !(i & 0x8000));
+    i = (uint16_t)(rd16(0x0011F7) - 2);
+    if (i & 0x8000)
+        cyc(24);
+    for (t = 74; cyc_loop(t, !(i & 0x8000));
          i = (uint16_t)(rd16(cyc_then(46, 0x0011FB)) - 2), t = 98) {
         wr16(0x0011FB, i);
         cyc(30);
@@ -2672,39 +2683,52 @@ uint16_t MenuOamBuild(uint16_t *x, uint16_t *y)
         n = rd16((uint16_t)(rec + 0x12));
         if (n == 0x0000) {
             /* one sprite from the record */
+            cyc(46);
             wr16(0x0011F1, 0x0000);
-            wr16(0x0011F3, rd16((uint16_t)(rec + 0x0C)));
+            cyc(22);
+            wr16(0x0011F3, cyc_then(24, rd16((uint16_t)(rec + 0x0C))));
+            cyc(24);
             *y = rd16(0x001205);
             if (*y == 0x0200)
-                continue;
-            sx = (uint16_t)(rd16((uint16_t)(rec + 0x02)) - rd16(0x0011ED));
+                { cyc(48); continue; }
+            cyc(68);
+            sx = (uint16_t)(rd16((uint16_t)(rec + 0x02)) - rd16(cyc_then(38, 0x0011ED)));
             if (sx & 0x8000) {
                 if (sx < 0xFFF0)
-                    continue;
-                wr16(0x0011F1, (uint16_t)(rd16(0x0011F1) + 1));
+                    { cyc(64); continue; }
+                cyc(86);
+                wr16(0x0011F1, cyc_then(14, (uint16_t)(rd16(0x0011F1) + 1)));
+                cyc(52);
             } else if (sx >= 0x0100) {
+                cyc(70);
                 continue;
-            }
+            } else { cyc(98); }
             wr16(OAM_BUFFER + *y, sx);
-            sy = (uint16_t)(rd16((uint16_t)(rec + 0x06)) - rd16(0x0011EF));
+            cyc(22);
+            sy = (uint16_t)(rd16((uint16_t)(rec + 0x06)) - rd16(cyc_then(38, 0x0011EF)));
             if (sy & 0x8000) {
                 if (sy < 0xFFF0)
-                    continue;
+                    { cyc(58); continue; }
                 c = 1;
+                cyc(92);
             } else {
                 if (sy >= 0x00E0)
-                    continue;
+                    { cyc(70); continue; }
                 c = 0;
+                cyc(98);
             }
             wr16(OAM_BUFFER + 1 + *y, sy);
-            wr16(OAM_BUFFER + 2 + *y, (uint16_t)(rd16((uint16_t)(rec + 0x0E)) | rd16((uint16_t)(rec + 0x10))));
+            cyc(22);
+            wr16(OAM_BUFFER + 2 + *y, cyc_then(30, (uint16_t)(rd16((uint16_t)(rec + 0x0E)) | rd16(cyc_then(22, (uint16_t)(rec + 0x10))))));
             *y = (uint16_t)(*y + 4);
+            cyc(80);
             wr16(0x001205, *y);
             ror_mem(0x0011F1, &c);
             ror_mem(0x0011E1, &c);
             ror_mem(0x0011F3, &c);
             ror_mem(0x0011E1, &c);
             oam_high_step();
+            cyc(2);
             continue;
         }
         if (n == 0xFFFF)
@@ -2727,23 +2751,24 @@ uint16_t MenuOamBuild(uint16_t *x, uint16_t *y)
             cyc(24);
             *y = rd16(0x001205);
             if (*y == 0x0200)
-                break;
+                { cyc(48); break; }
             cyc(78);
             sx = (uint16_t)(rd16(0x7F1356 + *x) + rd16(cyc_then(38, 0x0011FD)));
             if (sx & 0x8000) {
                 if (sx < 0xFFF0)
-                    goto next;
-                wr16(0x0011F1, (uint16_t)(rd16(0x0011F1) + 1));
+                    { cyc(62); goto next; }
+                cyc(80);
+                wr16(0x0011F1, cyc_then(14, (uint16_t)(rd16(0x0011F1) + 1)));
+                cyc(52);
             } else if (sx >= 0x0100) {
                 cyc(68);
                 goto next;
-            }
-            cyc(92);
+            } else { cyc(92); }
             wr16(OAM_BUFFER + *y, sx);
             cyc(32);
             sy = (uint16_t)(rd16(0x7F1358 + *x) + rd16(cyc_then(38, 0x0011FF)));
             if (sy & 0x8000 ? sy < 0xFFF0 : sy >= 0x00E0)
-                goto next;
+                { cyc(sy & 0x8000 ? 78 : 68); goto next; }
             cyc(92);
             wr16(OAM_BUFFER + 1 + *y, sy);
             *y = (uint16_t)(*y + 2);

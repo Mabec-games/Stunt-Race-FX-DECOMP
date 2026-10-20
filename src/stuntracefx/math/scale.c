@@ -78,6 +78,7 @@ void abi_ScaleQuarter(void)
 
     cpu.a = ScaleQuarter(cpu.a, &p);
     cpu.p = p;
+    cyc(4);
 }
 
 /*
@@ -92,10 +93,11 @@ uint16_t ScaleNineSixteenths(uint16_t v, uint8_t *p)
 {
     uint16_t half = asr1(v), sixteenth;
 
-    cyc(6);
+    cyc(8);
     wr16(SCALE_SCRATCH, half);
     sixteenth = asr1(asr1(asr1(half)));
     *p &= (uint8_t)~P_C;
+    cyc(6);
     return op_adc16(sixteenth, rd16(SCALE_SCRATCH), p);
 }
 
@@ -105,6 +107,7 @@ void abi_ScaleNineSixteenths(void)
 
     cpu.a = ScaleNineSixteenths(cpu.a, &p);
     cpu.p = p;
+    cyc(44);
 }
 
 /*
@@ -119,11 +122,11 @@ uint16_t ScaleFiveEighths(uint16_t v, uint8_t *p)
 {
     uint16_t half = asr1(v), eighth;
 
-    cyc(6);
+    cyc(8);
     wr16(SCALE_SCRATCH, half);
     eighth = asr1(asr1(half));
     *p &= (uint8_t)~P_C;
-    cyc(10);
+    cyc(14);
     return op_adc16(eighth, rd16(SCALE_SCRATCH), p);
 }
 
@@ -133,6 +136,7 @@ void abi_ScaleFiveEighths(void)
 
     cpu.a = ScaleFiveEighths(cpu.a, &p);
     cpu.p = p;
+    cyc(44);
 }
 
 /*
@@ -147,14 +151,14 @@ uint16_t ScaleSevenEighths(uint16_t v, uint8_t *p)
 {
     uint16_t half = asr1(v), quarter, r;
 
-    cyc(6);
+    cyc(8);
     wr16(SCALE_SCRATCH, half);
     quarter = asr1(half);
-    cyc(6);
+    cyc(8);
     wr16(SCALE_SCRATCH2, quarter);
     r = asr1(quarter);
     *p &= (uint8_t)~P_C;
-    cyc(20);
+    cyc(22);
     r = op_adc16(r, rd16(SCALE_SCRATCH), p);
     *p &= (uint8_t)~P_C;
     cyc(30);
@@ -167,6 +171,7 @@ void abi_ScaleSevenEighths(void)
 
     cpu.a = ScaleSevenEighths(cpu.a, &p);
     cpu.p = p;
+    cyc(44);
 }
 
 /*
@@ -184,17 +189,17 @@ uint16_t ScaleFifteenSixteenths(uint8_t bank, uint16_t v, uint8_t *p)
     uint32_t eighth_at = (uint32_t)bank << 16 | 0x1F2B;
     uint16_t half = asr1(v), quarter, eighth, r;
 
-    cyc(6);
+    cyc(8);
     wr16(SCALE_SCRATCH, half);
     quarter = asr1(half);
-    cyc(6);
+    cyc(8);
     wr16(SCALE_SCRATCH2, quarter);
     eighth = asr1(quarter);
-    cyc(14);
+    cyc(16);
     wr16(eighth_at, eighth);
     r = asr1(eighth);
     *p &= (uint8_t)~P_C;
-    cyc(28);
+    cyc(30);
     r = op_adc16(r, rd16(eighth_at), p);
     *p &= (uint8_t)~P_C;
     cyc(30);
@@ -210,6 +215,7 @@ void abi_ScaleFifteenSixteenths(void)
 
     cpu.a = ScaleFifteenSixteenths(cpu.db, cpu.a, &p);
     cpu.p = p;
+    cyc(44);
 }
 
 /*
@@ -407,7 +413,7 @@ void abi_BlendStepUp(void)
     cyc(32);
     op_cmp16(rd16(0x7F340A));
     if (cpu.p & P_Z)
-        { cyc(56); return; }
+        { cyc(60); return; }
     cpu.a = (uint16_t)(cpu.a + 1);
     cpu.p = nz16(cpu.p, cpu.a);
     cyc(68);

@@ -220,11 +220,11 @@ void abi_MenuVramClear(void)
     cpu.p &= (uint8_t)~(P_M | P_X);
     cyc(94);
     wr16(b | 0x2116, 0x0000);
+    cyc(24);
     do {
-        cyc(74);
         wr16(b | 0x2118, 0x0000);
         x = (uint16_t)(x - 2);
-    } while (x);
+    } while (cyc_loop(74, x));
     cyc(86);
     cpu.x = 0;
     cpu.y = 0;
@@ -261,6 +261,7 @@ void abi_MenuWindowSetup(void)
     wr8(b | 0x212F, 0x01);
     cyc(24);
     wr8(b | 0x212D, 0x01);
+    cyc(70);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
 }
 
@@ -281,6 +282,7 @@ void abi_MenuColourMathSetup(void)
     wr8(CGWSEL, 0x02);
     cyc(40);
     wr8((uint32_t)cpu.db << 16 | 0x212D, 0x00);
+    cyc(70);
     cpu.a = (uint16_t)(cpu.a & 0xFF00);
 }
 
@@ -1455,6 +1457,8 @@ void abi_ChampionScreenOpen(void)
     cpu.a = a == 0x0008 ? 0x0000 : 0x0020;
     cyc(120);
     wr16(0x001927, cpu.a);
+    if (a != 0x0008)
+        cyc(22);   /* BRA */
     cpu.a = 0x1234;
     cyc(48);
     wr16(0x001189, 0x1234);

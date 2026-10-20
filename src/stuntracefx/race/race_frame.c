@@ -180,9 +180,9 @@ void abi_CarFinishSoundP2(void);
 
 /* RaceFinishPhasesTail ($07:AA4E): $0E58 = $30, $0E5B = $0E5F = 0 and
    sound 2 on port 0. */
-static void finish_tail(uint32_t b)
+static void finish_tail(uint32_t b, uint32_t pre, uint32_t post)
 {
-    cyc(62);
+    cyc(pre + 40);                      /* the jump in (BRA 22, JMP 24, or none), LDA #, STA */
     wr8(b | 0x0E58, 0x30);
     cyc(24);
     wr8(b | 0x0E5B, 0x00);
@@ -190,7 +190,7 @@ static void finish_tail(uint32_t b)
     wr8(b | 0x0E5F, 0x00);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x02);
     (cyc(24), abi_SoundPort0QueuePushRaw());
-    cyc(42);
+    cyc(post);                          /* RTS; 34 for RaceFinishSplit, which has X 8-bit */
 }
 
 static void finish_phases(uint8_t p1, uint8_t p2)
@@ -198,6 +198,7 @@ static void finish_phases(uint8_t p1, uint8_t p2)
     uint32_t b = (uint32_t)cpu.db << 16;
     uint16_t y = cpu.y;
     uint8_t lo, hi;
+    int both = 0;
 
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x37);
     (cyc(62), abi_SoundPort0QueuePush());
@@ -221,10 +222,11 @@ static void finish_phases(uint8_t p1, uint8_t p2)
             cpu.p |= P_M;
             abi_CarFinishSound();
             cpu.p |= P_M;
-            cyc(52);
+            cyc(40);
             wr8(b | 0x0DD6, 0x14);
             cyc(24);
             wr8(b | 0x0DD7, 0x14);
+            both = 1;
         } else {
             cpu.p |= P_M;
             cyc(124);
@@ -233,7 +235,7 @@ static void finish_phases(uint8_t p1, uint8_t p2)
             wr8(b | 0x0DD6, p1);
         }
     }
-    finish_tail(b);
+    finish_tail(b, both ? 0 : 22, 42);
 }
 
 
@@ -274,13 +276,13 @@ void abi_RaceFinishSplit(void)
     if (one) {
         cyc(6);
         abi_CarFinishSound();
-        cyc(52);
+        cyc(40);
         wr8(b | 0x0DD6, 0x12);
         cyc(40);
         wr8(b | 0x0DD7, 0x0A);
     } else {
         abi_CarFinishSoundP2();
-        cyc(52);
+        cyc(40);
         wr8(b | 0x0DD7, 0x12);
         cyc(40);
         wr8(b | 0x0DD6, 0x0A);
@@ -289,7 +291,7 @@ void abi_RaceFinishSplit(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x08);
     cpu.p = nz8(cpu.p, 0x08);
     abi_SoundPort0QueuePush();
-    finish_tail(b);
+    finish_tail(b, one ? 8 : 6, 34);
 }
 
 /*
@@ -571,6 +573,7 @@ void abi_RaceModeSetup(void)
         v = rd8(0x70FC0B);
         cyc(78);
         wr8(b | 0x0D4A, (v & 0x01) ? 0x00 : (cyc(16), 0x01));
+        cyc(22);                        /* BRA */
     } else
         { cyc(62); wr8(b | 0x0D4A, 0x00); }
     cyc(24);

@@ -91,14 +91,21 @@ static void store_dec(uint32_t at, uint8_t v)
     } else { cyc(38); }
 }
 
+/* The extra 6 clocks of an indexed read that crosses a page. */
+static uint32_t crossed(uint32_t table, uint8_t i)
+{
+    return ((table & 0xFF) + i) > 0xFF ? 6 : 0;
+}
+
 /* The flat vector from the sine and cosine at table index i: x = speed
    sin, z = speed cos; y was cleared by the caller. */
 static uint8_t flat(uint8_t i, uint8_t *p)
 {
     uint8_t v;
 
-    cyc(156);
+    cyc(150 + crossed(SIN_TABLE, i));
     wr8(H_SIN_A, rd8(SIN_TABLE + i));
+    cyc(48 + crossed(COS_TABLE, i));
     wr8(H_COS_A, rd8(COS_TABLE + i));
     v = smul_at(H_SPEED, H_SIN_A, p);
     store_extended(H_X, v);
@@ -115,13 +122,13 @@ static uint8_t pitched(uint8_t ia, uint8_t ib, uint8_t *p)
 {
     uint8_t v;
 
-    cyc(90);
+    cyc(84 + crossed(SIN_TABLE, ia));
     wr8(H_SIN_A, rd8(SIN_TABLE + ia));
-    cyc(48);
+    cyc(48 + crossed(COS_TABLE, ia));
     wr8(H_COS_A, rd8(COS_TABLE + ia));
-    cyc(54);
+    cyc(48 + crossed(SIN_TABLE, ib));
     wr8(H_SIN_B, rd8(SIN_TABLE + ib));
-    cyc(48);
+    cyc(48 + crossed(COS_TABLE, ib));
     wr8(H_COS_B, rd8(COS_TABLE + ib));
     wr8(H_X, cyc_then(14, smul_at(H_SPEED, H_SIN_A, p)));
     v = smul_at(H_X, H_COS_B, p);
@@ -152,6 +159,7 @@ static void finish(uint8_t v, uint8_t p)
     cpu.x = rd16(H_SAVE_X);
     cyc(16);
     cpu.y = rd16(H_SAVE_Y);
+    cyc(72);
     cpu.p = nz8(cpu.p, cpu.db);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
 }
@@ -174,7 +182,9 @@ void HeadingFlat(void)
     wr8(H_SPEED, cyc_then(16, rd8(b | (uint16_t)(0x2017 + cpu.x))));
     (cyc(22), save_xy());
     cyc(16);
-    wr16(H_Y, 0x0000);
+    wr8(H_Y, 0x00);
+    cyc(16);
+    wr8(H_Y + 1, 0x00);
     cyc(30);
     i = rd8(b | (uint16_t)(0x2015 + cpu.x));
     v = flat(i, &p);
@@ -205,7 +215,9 @@ void HeadingFlatMirrored(void)
     i = rd8(b | (uint16_t)(0x2015 + cpu.x));
     save_xy();
     cyc(16);
-    wr16(H_Y, 0x0000);
+    wr8(H_Y, 0x00);
+    cyc(16);
+    wr8(H_Y + 1, 0x00);
     cyc(80);
     v = flat((uint8_t)(~i + 2), &p);
     finish(v, p);
@@ -337,7 +349,9 @@ void HeadingFlatQuarterTurn(void)
     wr8(H_SPEED, (uint8_t)cpu.a);
     save_xy();
     cyc(16);
-    wr16(H_Y, 0x0000);
+    wr8(H_Y, 0x00);
+    cyc(16);
+    wr8(H_Y + 1, 0x00);
     p |= P_C;
     cyc(60);
     i = op_sbc8(0x40, rd8(b | (uint16_t)(0x2015 + cpu.x)), &p);
@@ -367,7 +381,9 @@ void HeadingFlatSpeedA(void)
     wr8(H_SPEED, (uint8_t)cpu.a);
     save_xy();
     cyc(16);
-    wr16(H_Y, 0x0000);
+    wr8(H_Y, 0x00);
+    cyc(16);
+    wr8(H_Y + 1, 0x00);
     cyc(30);
     i = rd8(b | (uint16_t)(0x2015 + cpu.x));
     cyc(36);
@@ -419,7 +435,9 @@ static void double_vector(void)
     uint16_t v;
 
     for (i = 0; i < 3; i++) {
+        cyc(16);
         v = rd16(at[i]);
+        cyc(14);
         wr16(at[i], (uint16_t)(v << 1));
     }
 }
@@ -440,6 +458,7 @@ void ObjectMoveByVectorTimes4(void)
     (cyc(22), double_vector());
     double_vector();
     move_by(&p);
+    cyc(66);
     cpu.p = (uint8_t)(p | P_M);
 }
 
@@ -461,6 +480,7 @@ void ObjectMoveByVectorTimes2(void)
 
     (cyc(22), double_vector());
     move_by(&p);
+    cyc(66);
     cpu.p = (uint8_t)(p | P_M);
 }
 
@@ -481,6 +501,7 @@ void ObjectMoveByVector(void)
     uint8_t p = cpu.p;
 
     move_by(&p);
+    cyc(66);
     cpu.p = (uint8_t)(p | P_M);
 }
 
@@ -502,7 +523,7 @@ static void velocity_from_vector(int shift)
 
     (cyc(62), abi_HeadingPitchedFrom1F7C());
     b = (uint32_t)cpu.db << 16;
-    cyc(94);
+    cyc(22);
     for (i = 0; i < 3; i++) {
         cyc(16);
         v = rd16(from[i]);
@@ -615,7 +636,7 @@ void ObjectVelocityLevelFromDp(void)
     wr8(b | 0x1F7D, 0x40);
     (cyc(62), abi_HeadingPitchedFrom1F7C());
     b = (uint32_t)cpu.db << 16;
-    cyc(110);
+    cyc(38);
     v = rd16(H_X);
     cyc(30);
     wr16(b | (uint16_t)(0x202E + cpu.x), v);
@@ -625,6 +646,7 @@ void ObjectVelocityLevelFromDp(void)
     wr16(b | (uint16_t)(0x2030 + cpu.x), v);
     cyc(30);
     wr16(b | (uint16_t)(0x2032 + cpu.x), 0x0000);
+    cyc(66);
     cpu.a = v;
     cpu.p = (uint8_t)(nz16(cpu.p, v) | P_M);
 }

@@ -13,7 +13,7 @@ void abi_Bg2ScrollFromTable(void);
 /* The gradient source word at gradient_src (through the data bank) to
    $7F:348D, then channel 0 from $7F:src to VMDATA at VRAM $5C00, $440
    bytes; P saved and restored. */
-static void upload(uint16_t gradient_src, uint16_t src)
+static void upload(uint16_t gradient_src, uint16_t src, int bra)
 {
     uint32_t b = (uint32_t)cpu.db << 16;
     uint8_t p = cpu.p;
@@ -27,6 +27,7 @@ static void upload(uint16_t gradient_src, uint16_t src)
     wr16(b | 0x4302, src);
     cyc(62);
     wr8(b | 0x4304, 0x7F);
+    cyc(bra ? 62 : 40);                 /* BRA into the shared tail, or not */
     wr8(b | 0x2115, 0x80);
     cyc(48);
     wr16(b | 0x2116, 0x5C00);
@@ -38,6 +39,7 @@ static void upload(uint16_t gradient_src, uint16_t src)
     wr8(b | 0x420B, 0x01);
     cpu.a = (uint16_t)((v & 0xFF00) | 0x01);
     cpu.x = 0x0440;
+    cyc(28);
     op_plp(p);
 }
 
@@ -55,12 +57,12 @@ static void upload(uint16_t gradient_src, uint16_t src)
  */
 void TilemapDmaE817(void)
 {
-    upload(0x0D9C, 0xE817);
+    upload(0x0D9C, 0xE817, 1);
 }
 
 void abi_TilemapDmaE817(void)
 {
-    upload(0x0D9C, 0xE817);
+    upload(0x0D9C, 0xE817, 1);
 }
 
 /*
@@ -72,13 +74,13 @@ void abi_TilemapDmaE817(void)
  */
 void TilemapDmaE3D7(void)
 {
-    upload(0x0D9A, 0xE3D7);
+    upload(0x0D9A, 0xE3D7, 0);
 }
 
 void abi_TilemapDmaE3D7(void)
 {
     cyc(24);
-    upload(0x0D9A, 0xE3D7);
+    upload(0x0D9A, 0xE3D7, 0);
 }
 
 /*
@@ -95,8 +97,9 @@ void Bg2Band2TilemapE817(void)
     cpu.x = 0x02;
     cpu.y &= 0x00FF;
     (cyc(84), abi_Bg2ScrollFromTable());
-    cyc(88);
-    upload(0x0D9C, 0xE817);
+    cyc(46);
+    upload(0x0D9C, 0xE817, 1);
+    cyc(42);                            /* RTS */
 }
 
 void abi_Bg2Band2TilemapE817(void)
@@ -117,8 +120,9 @@ void Bg2Band0TilemapE3D7(void)
     cpu.x = 0x00;
     cpu.y &= 0x00FF;
     (cyc(84), abi_Bg2ScrollFromTable());
-    cyc(112);
-    upload(0x0D9A, 0xE3D7);
+    cyc(70);
+    upload(0x0D9A, 0xE3D7, 0);
+    cyc(42);                            /* RTS */
 }
 
 void abi_Bg2Band0TilemapE3D7(void)

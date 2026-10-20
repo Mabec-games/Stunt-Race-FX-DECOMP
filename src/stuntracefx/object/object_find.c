@@ -307,7 +307,7 @@ static uint16_t distance(uint16_t x, uint16_t self, int *below_max)
     cpu.y = self;
     (cyc(46), abi_ObjectDistanceApprox());
     cpu.p &= (uint8_t)~P_M;
-    d = ld16(rd16(cyc_then(112, w(cpu.db, DIST))));
+    d = ld16(rd16(cyc_then(46, w(cpu.db, DIST))));
     m = rd16(0x00003E);
     cmp16(d, m);
     *below_max = (cpu.p & P_N) != 0;
@@ -562,12 +562,14 @@ void abi_ObjectCountOfKind(void)
 {
     uint8_t b = cpu.db;
     uint16_t x, y, m, n;
+    int first = 1;
 
     y = rd16(cyc_then(46, w(b, LIST_HEAD)));
     wr16(w(b, WORK), cyc_then(24, 0x0000));
     do {
         x = y;
-        m = rd16(cyc_then(66, f(b, x, 0x04)));
+        m = rd16(cyc_then(first ? 44 : 66, f(b, x, 0x04)));
+        first = 0;
         if (cpu.a == m) {
             n = rd16(cyc_then(40, w(b, WORK)));
             wr16(w(b, WORK), cyc_then(14, (uint16_t)(n + 1)));
@@ -577,6 +579,7 @@ void abi_ObjectCountOfKind(void)
     cpu.a = rd16(cyc_then(40, w(b, WORK)));
     cpu.x = x;
     cpu.y = y;
+    cyc(72);                            /* PLP, RTL */
 }
 
 /* LDA; CMP #$8000; ROR: halves keeping the sign, C = the bit shifted out. */
@@ -670,6 +673,7 @@ void abi_ObjectDistanceApprox(void)
     wr16(w(b, DIST), cyc_then(122, t));
     cpu.a = t;
     cpu.p |= P_M;
+    cyc(66);                            /* SEP, RTL */
 }
 
 /*
@@ -717,6 +721,7 @@ void abi_ObjectDistanceXY(void)
     wr16(w(b, 0x1A62), cyc_then(18, a));
     cpu.a = a;
     cpu.p |= P_M;
+    cyc(66);                            /* SEP, RTL */
 }
 
 void abi_Gsu81E3Long(void);
@@ -786,6 +791,7 @@ void abi_ObjectOffsetDistanceXZ(void)
     wr16(w(b, DIST), cyc_then(18, a));
     cpu.a = a;
     cpu.p |= P_M;
+    cyc(66);                            /* SEP, RTL */
 }
 
 /* ObjectPointDistanceXZ and ObjectPointDistanceXY: from object X to the
@@ -804,6 +810,7 @@ static void point_distance(uint32_t second, uint16_t field2)
     wr16(0x000002, a);
     a = neg_if(a, 0x0002);
     wr16(w(b, DIST), cyc_then(18, a));
+    cyc(second > 0xFFFF ? 24 : 16);     /* LDA abs or dp */
     a = rd16(second);
     m = rd16(cyc_then(44, f(b, cpu.x, field2)));
     a = sub16(a, m);
@@ -813,6 +820,7 @@ static void point_distance(uint32_t second, uint16_t field2)
     wr16(w(b, DIST), cyc_then(18, a));
     cpu.a = a;
     cpu.p |= P_M;
+    cyc(66);                            /* SEP, RTL */
 }
 
 /*
@@ -859,12 +867,13 @@ void abi_ObjectPointGsu81E3(void)
     uint16_t x = cpu.x, y = cpu.y;
 
     (cyc(122), abi_ObjectPointDistanceXZ());
-    (cyc(66), abi_Gsu81E3Long());
+    (cyc(62), abi_Gsu81E3Long());
     cpu.a = (uint16_t)(cpu.a >> 8);
     cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
     cpu.y = y;
     cpu.x = x;
     cpu.p = nz16(cpu.p, x);
+    cyc(226);                           /* XBA, AND, SEP, REP, PLY, PLX, RTL */
 }
 
 /*
@@ -914,6 +923,7 @@ static void gsu_pair_end(uint16_t x, uint16_t y)
     cpu.y = y;
     cpu.x = x;
     cpu.p = nz16(cpu.p, x);
+    cyc(138);                           /* PLY, PLX, RTL */
 }
 
 /*
@@ -960,7 +970,7 @@ void abi_ObjectPairPitchGsu81E3(void)
 
     (cyc(122), abi_ObjectDistanceApprox());
     cpu.p &= (uint8_t)~P_M;
-    a = rd16(cyc_then(112, w(b, DIST)));
+    a = rd16(cyc_then(46, w(b, DIST)));
     cyc(16);
     wr16(0x000008, a);
     a = rd16(cyc_then(30, f(b, y, 0x0E)));
@@ -1026,7 +1036,7 @@ void abi_ObjectPairOffsetPitchGsu81E3(void)
 
     (cyc(122), abi_ObjectOffsetDistanceXZ());
     cpu.p &= (uint8_t)~P_M;
-    a = rd16(cyc_then(112, w(b, DIST)));
+    a = rd16(cyc_then(46, w(b, DIST)));
     cyc(16);
     wr16(0x000008, a);
     a = rd16(cyc_then(30, f(b, y, 0x0E)));

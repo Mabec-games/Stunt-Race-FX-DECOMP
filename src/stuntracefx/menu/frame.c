@@ -216,7 +216,7 @@ static void region_stop(void)
     (cyc(62), MenuActorsRun());
     cyc(62);
     cpu.a = MenuOamBuild(&cpu.x, &cpu.y);
-    cyc(146);
+    cyc(46);
     wr8(0x0011D7, cyc_then(40, (uint8_t)(rd8(0x0011D7) | 0x0F)));
     cpu_loop_forever(0x0BAE8A);
 }

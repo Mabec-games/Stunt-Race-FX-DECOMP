@@ -53,7 +53,7 @@ static uint16_t step_p1(uint8_t bank, uint32_t table, uint16_t instead, uint16_t
     cyc(32);
     s = rd16(SAVE_PROGRESS) & 0x00FF;
     if (!s || (!(s & 0x0004) && rd16(cyc_then(136, MENU_MODE)) != 0x0003)) {
-        cyc(102);
+        cyc(s ? 72 : 102);              /* CMP #3, BEQ not taken; or the CMP #0 branch taken */
         c = rd16(CHOICE_P1);
         if (c == 0x0003)
             { cyc(96); wr16(CHOICE_P1, instead); } else { cyc(46); }

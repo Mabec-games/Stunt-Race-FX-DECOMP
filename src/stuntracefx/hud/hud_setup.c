@@ -147,7 +147,7 @@ static void digit_tiles(uint32_t at, uint8_t d)
    best time's sprites. */
 static void time_tiles(uint8_t min, uint8_t sec, uint8_t hund)
 {
-    cyc(130);
+    cyc(min == 0xFF ? 130 : 44);        /* no time ($FFFF) or the unpacked BCD */
     digit_tiles(0x000467, (uint8_t)(min & 0x0F));
     cyc(54);
     digit_tiles(0x00046F, (uint8_t)(sec >> 4));
@@ -238,7 +238,7 @@ void abi_RecordOffsetAllCourses(void)
 /* The best time's ten sprites with no time: tile $3F (blank) at Y $BC. */
 static void no_time(void)
 {
-    cyc(64);
+    cyc(68);
     hud_bytes(no_time_sprites, 40, 0);
 }
 
@@ -293,6 +293,7 @@ static int mode_all(uint32_t b)
         } else {
             cyc(6);
             abi_HudBestTimeDigits();
+            cyc(58);            /* HudBestTimeSprites' SEPs, RTL, PLP, RTL; JMP RaceHudFlags */
         }
         flags();
         return 0;
@@ -311,7 +312,7 @@ static int mode_all(uint32_t b)
     {
         uint8_t m, s, h;
 
-        cyc(88);
+        cyc(92);
         op_lda8(b | 0x0F63);
         m = (uint8_t)cpu.a;
         digit_tiles(0x000467, (uint8_t)(m & 0x0F));
@@ -335,6 +336,7 @@ static int mode_all(uint32_t b)
         digit_tiles(0x0004E7, (uint8_t)(h & 0x0F));
     }
     abi_HudBestTimeSprites();
+    cyc(28);                    /* its SEPs and RTL, then JMP RaceHudFlags */
     flags();
     return 0;
 }
@@ -390,6 +392,7 @@ static void mode_stunt(uint32_t b)
             op_sep(P_M | P_X);
             time_tiles((uint8_t)cpu.a, (uint8_t)cpu.x, (uint8_t)cpu.y);
             abi_HudBestTimeSprites();
+            cyc(28);            /* its SEPs and RTL, then JMP RaceHudFlags */
         }
         flags();
         return;
@@ -795,14 +798,21 @@ static void race_hud_setup_two(void)
 static void hud_leave_stack(void)
 {
     uint16_t lo;
+    uint8_t p;
 
-    cyc(42);
+    cyc(34);                            /* SEP and PLB, after hud_end's 8 */
     cpu.db = rd8((uint16_t)(cpu.s + 1));
     cpu.s = (uint16_t)(cpu.s + 1);
     cpu.p = nz8(cpu.p, cpu.db);
     cyc(20);
-    op_plp(rd8((uint16_t)(cpu.s + 1)));
+    p = rd8((uint16_t)(cpu.s + 1));
+    cpu.p = p;
+    if (p & P_X) {
+        cpu.x &= 0x00FF;
+        cpu.y &= 0x00FF;
+    }
     cpu.s = (uint16_t)(cpu.s + 1);
+    cyc(20);                            /* RTL */
     lo = (uint16_t)(rd16((uint16_t)(cpu.s + 1)) + 1);
     cpu.pc = (uint32_t)rd8((uint16_t)(cpu.s + 3)) << 16 | lo;
     cpu.s = (uint16_t)(cpu.s + 3);

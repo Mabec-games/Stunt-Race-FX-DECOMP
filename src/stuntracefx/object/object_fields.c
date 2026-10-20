@@ -89,6 +89,7 @@ void abi_ObjectPlaceAtOffset(void)
 
     cpu.a = ObjectPlaceAtOffset(cpu.db, cpu.x, cpu.y, &p);
     cpu.p = p;
+    cyc(44);                            /* RTL */
 }
 
 /*
@@ -117,7 +118,7 @@ uint8_t ObjectStepByte17(uint8_t bank, uint8_t step, uint16_t obj, uint8_t *p)
     cyc(38);
     d = op_sbc8(v, rd8(b | 0x1F2B), p);
     if (!d) {
-        cyc(6);
+        cyc(64);                        /* BEQ taken, SEC, RTL */
         *p |= P_C;
         return d;
     }
@@ -129,6 +130,7 @@ uint8_t ObjectStepByte17(uint8_t bank, uint8_t step, uint16_t obj, uint8_t *p)
         cyc(40);
         v = rd8(b | 0x1F2B);
         *p = nz8(*p, v);
+        cyc(22);                        /* BRA */
     } else {
         cyc(52);
         v = rd8(b | (uint16_t)(0x2017 + obj));
@@ -143,6 +145,7 @@ uint8_t ObjectStepByte17(uint8_t bank, uint8_t step, uint16_t obj, uint8_t *p)
                 *p |= P_C;
                 cyc(62);
                 v = op_sbc8(v, rd8(FIELDS_SCRATCH), p);
+                cyc(6);
             }
         } else {
             *p = nz8(*p, 0x00);
@@ -151,6 +154,7 @@ uint8_t ObjectStepByte17(uint8_t bank, uint8_t step, uint16_t obj, uint8_t *p)
     cyc(30);
     wr8(b | (uint16_t)(0x2017 + obj), v);
     *p &= (uint8_t)~P_C;
+    cyc(58);                            /* CLC, RTL */
     return v;
 }
 
@@ -222,6 +226,7 @@ void abi_ObjectStopX(void)
 {
     ObjectStopX(cpu.db, cpu.x);
     cpu.p |= P_M;
+    cyc(44);                            /* RTL */
 }
 
 /*
@@ -250,4 +255,5 @@ void abi_ObjectStopY(void)
     ObjectStopY(cpu.db, cpu.y);
     cpu.a = 0x0000;
     cpu.p = (uint8_t)(nz16(cpu.p, 0x0000) | P_M);
+    cyc(44);                            /* RTL */
 }

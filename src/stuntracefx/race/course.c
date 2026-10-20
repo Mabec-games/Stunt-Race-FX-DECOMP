@@ -116,14 +116,18 @@ static int cursor_up_open(uint32_t b)
     return 1;
 }
 
-/* REP #$20, then the first of two buttons pressed moves the cursor. */
-static void cursor_two(uint32_t b, uint16_t m1, uint8_t to1, uint16_t m2, uint8_t to2)
+/* REP #$20, then the first of two buttons pressed moves the cursor; with
+   neither, `idle` more than the not-taken branch (the cursors at 3 end with
+   a taken BEQ). */
+static void cursor_two(uint32_t b, uint16_t m1, uint8_t to1, uint16_t m2, uint8_t to2, unsigned idle)
 {
     op_rep(P_M);
     if (cursor_pressed(b, m1))
         { cyc(36); cursor_to(b, to1); }
     else if (cursor_pressed(b, m2))
         { cyc(36); cursor_to(b, to2); }
+    else
+        cyc(idle);
     cyc(42);
 }
 
@@ -138,7 +142,7 @@ static void cursor_two(uint32_t b, uint16_t m1, uint8_t to1, uint16_t m2, uint8_
  */
 void abi_CourseCursorAt0(void)
 {
-    cursor_two((uint32_t)cpu.db << 16, 0x0100, 0x01, 0x0800, 0x02);
+    cursor_two((uint32_t)cpu.db << 16, 0x0100, 0x01, 0x0800, 0x02, 0);
 }
 
 /*
@@ -150,7 +154,7 @@ void abi_CourseCursorAt0(void)
  */
 void abi_CourseCursorAt1(void)
 {
-    cursor_two((uint32_t)cpu.db << 16, 0x0200, 0x00, 0x0800, 0x03);
+    cursor_two((uint32_t)cpu.db << 16, 0x0200, 0x00, 0x0800, 0x03, 0);
 }
 
 /*
@@ -162,7 +166,7 @@ void abi_CourseCursorAt1(void)
  */
 void abi_CourseCursorAt2(void)
 {
-    cursor_two((uint32_t)cpu.db << 16, 0x0100, 0x03, 0x0400, 0x00);
+    cursor_two((uint32_t)cpu.db << 16, 0x0100, 0x03, 0x0400, 0x00, 0);
 }
 
 /*
@@ -175,8 +179,7 @@ void abi_CourseCursorAt2(void)
  */
 void abi_CourseCursorAt3(void)
 {
-    cursor_two((uint32_t)cpu.db << 16, 0x0200, 0x02, 0x0400, 0x01);
-    cyc(6);
+    cursor_two((uint32_t)cpu.db << 16, 0x0200, 0x02, 0x0400, 0x01, 6);
 }
 
 /*
@@ -195,8 +198,8 @@ void abi_CourseCursorAt2Open(void)
 
     op_rep(P_M);
     if (cursor_pressed(b, 0x0800) && cursor_up_open(b))
-        { cyc(10); return; } else { cyc(6); }
-    cursor_two(b, 0x0100, 0x03, 0x0400, 0x00);
+        { cyc(42); return; } else { cyc(6); }
+    cursor_two(b, 0x0100, 0x03, 0x0400, 0x00, 0);
 }
 
 /*
@@ -214,9 +217,8 @@ void abi_CourseCursorAt3Open(void)
 
     op_rep(P_M);
     if (cursor_pressed(b, 0x0800) && cursor_up_open(b))
-        { cyc(10); return; } else { cyc(6); }
-    cursor_two(b, 0x0200, 0x02, 0x0400, 0x01);
-    cyc(6);
+        { cyc(42); return; } else { cyc(6); }
+    cursor_two(b, 0x0200, 0x02, 0x0400, 0x01, 6);
 }
 
 /*
@@ -363,7 +365,7 @@ void abi_CourseWindowZoomSetup(void)
     cyc(56);
     wr16(0x7F3408, 0x0000);
     (cyc(62), abi_WindowTable7FLong());
-    cyc(194);
+    cyc(150);   /* WindowTable7FLong states its RTL */
 }
 
 /* 03:FB64, the zoom's start from X and Y (the offsets for
@@ -477,7 +479,7 @@ static void course_zoom_race(uint16_t a)
     cpu.x = rd16(((uint32_t)cpu.db << 16) | 0x0D2B);
     cpu.p = nz16(cpu.p, cpu.x);
     if (cpu.x)
-        { cyc(334); course_zoom(box_offset(a, 0x0040), 0x0018); }
+        course_zoom(box_offset_in(a, 0x0040, 256), 0x0018);   /* BEQ not taken */
     else
         course_zoom(box_offset(a, 0x0000), 0x0000);
 }
@@ -687,31 +689,19 @@ static void sel_choose(uint32_t b)
     cyc(42);
 }
 
-/*
- * @routine 02:E7F5 SpeedCourseSelectStep
- * WHAT IT DOES: The Speed Trax course select's frame: the level columns
- * for groups 0-2 by the save's opened bits ($70:FC0B bits 0-2: 0 open, 4
- * closed; group 0 open with bit 0 set, groups 1 and 2 with theirs) drawn
- * (TilemapLevelColumns); once the fade is full ($0D61 = $0F), on page 0
- * ($0D63 = 0) the scroll $0E37 runs up to $50 by 4, on page 1 down to 0;
- * there, the cursor's rows: Up ($0800) and Down ($0400) move it between
- * the open groups (sound $45, $0D4A, and $0D63 down on page 1's top), and
- * otherwise Start or A zooms into the course and the cursor moves.
- * HOW: 8-bit; the pads' word 16-bit.
- * Entry: M 8-bit, X 8-bit; data bank $7E or a mirror. Exit: M 8-bit; as
- * the last step leaves it.
- */
-void abi_SpeedCourseSelectStep(void)
+/* The body of SpeedCourseSelectStep, up to its RTS. */
+static void speed_select_body(void)
 {
     uint32_t b = (uint32_t)cpu.db << 16;
     static const uint8_t bits[3] = {0x01, 0x02, 0x04};
     uint8_t v;
     int i, open;
 
+
     for (i = 0; i < 3; i++) {
         open = sel_open(bits[i]);
-        /* the first copy branches with BNE, the others with BEQ: 16 less taken */
-        v = open ? (cyc(i ? 78 : 62), 0x00) : (cyc(i ? 38 : 54), 0x04);
+        /* the first copy branches with BNE, the others with BEQ */
+        v = open ? (cyc(i ? 78 : 62), 0x00) : (cyc(i ? 116 : 132), 0x04);
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
         cpu.p = nz8(cpu.p, v);
         cpu.x = (uint16_t)(i * 4);
@@ -757,7 +747,8 @@ void abi_SpeedCourseSelectStep(void)
             return;
         } else { cyc(44); }
         op_sep(P_M);
-        if (sel_open(0x04) && (cyc(2), sel_pressed(b, 0x0800))) {
+        open = sel_open(0x04);
+        if (open && (cyc(2), sel_pressed(b, 0x0800))) {
             sel_sound();
             cyc(8);
             v = (uint8_t)(rd8(b | 0x0D63) - 1);
@@ -766,14 +757,15 @@ void abi_SpeedCourseSelectStep(void)
             cyc(16);
             sel_row(b, 0x02);
             return;
-        } else { cyc(66); }
+        } else { cyc(open ? 66 : 60); }  /* BEQ taken at once: 6 less */
         op_sep(P_M);
-        if (sel_open(0x01) && (cyc(2), sel_pressed(b, 0x0400))) {
+        open = sel_open(0x01);
+        if (open && (cyc(2), sel_pressed(b, 0x0400))) {
             sel_sound();
             cyc(8);
             wr8(b | 0x0D4A, 0x00);
             return;
-        } else { cyc(68); }
+        } else { cyc(open ? 68 : 62); }
         sel_choose(b);
         return;
     }
@@ -792,7 +784,8 @@ void abi_SpeedCourseSelectStep(void)
     cyc(24);
     op_lda8(b | 0x0D4A);
     v = (uint8_t)cpu.a;
-    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x01)) & ~P_C) | (v >= 0x01 ? (cyc(56), P_C) : (cyc(62), 0)));
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x01)) & ~P_C) | (v >= 0x01 ? P_C : 0));
+    cyc(56);
     if (v == 0x01) {
         if (sel_pressed(b, 0x0400)) {
             op_sep(P_M);
@@ -822,6 +815,26 @@ void abi_SpeedCourseSelectStep(void)
         return;
     } else { cyc(68); }
     sel_choose(b);
+}
+
+/*
+ * @routine 02:E7F5 SpeedCourseSelectStep
+ * WHAT IT DOES: The Speed Trax course select's frame: the level columns
+ * for groups 0-2 by the save's opened bits ($70:FC0B bits 0-2: 0 open, 4
+ * closed; group 0 open with bit 0 set, groups 1 and 2 with theirs) drawn
+ * (TilemapLevelColumns); once the fade is full ($0D61 = $0F), on page 0
+ * ($0D63 = 0) the scroll $0E37 runs up to $50 by 4, on page 1 down to 0;
+ * there, the cursor's rows: Up ($0800) and Down ($0400) move it between
+ * the open groups (sound $45, $0D4A, and $0D63 down on page 1's top), and
+ * otherwise Start or A zooms into the course and the cursor moves.
+ * HOW: 8-bit; the pads' word 16-bit.
+ * Entry: M 8-bit, X 8-bit; data bank $7E or a mirror. Exit: M 8-bit; as
+ * the last step leaves it.
+ */
+void abi_SpeedCourseSelectStep(void)
+{
+    speed_select_body();
+    cyc(42);                            /* RTS */
 }
 
 void abi_StuntSelectMarks(void);
@@ -865,6 +878,7 @@ void abi_StuntCourseSelectStep(void)
             if (v >= 0x50)
                 v = 0x50;
             sel_scroll(b, v);
+            cyc(42);
             return;
         }
         (cyc(84), abi_Set0D37FromTable());
@@ -889,22 +903,26 @@ void abi_StuntCourseSelectStep(void)
         if (v & 0x80)
             { cyc(10); v = 0x00; }
         sel_scroll(b, v);
+        cyc(42);
         return;
     } else { cyc(68); }
     call_routine(0x02FC60, 0);  /* TimeUpSelectDraw */
     abi_FlashingMetaspriteDraw();
+    cyc(24);
     if (sel_pressed16(b, 0x9000)) {
         op_sep(P_M);
+        cyc(86);                        /* BIT, BEQ, SEP, LDA abs */
         op_lda8(b | 0x0D4E);
         if ((uint8_t)cpu.a)
-            call_routine(0x03FADB, 1);  /* CourseZoomTimeUpNext */
+            { cyc(84); call_routine(0x03FADB, 1); }  /* BNE taken, JSL: CourseZoomTimeUpNext */
         else
-            call_routine(0x03FAFF, 1);  /* CourseZoomTimeUp */
-        cyc(52);
+            { cyc(78); call_routine(0x03FAFF, 1); }  /* BEQ not taken, JSL: CourseZoomTimeUp */
+        cyc(42);
         return;
     } else { cyc(68); }
     op_sep(P_M);
     call_routine(0x02EB6D, 0);  /* TimeUpCursorStep */
+    cyc(42);
 }
 
 /*
@@ -971,6 +989,7 @@ void abi_TimeUpSelectDraw(void)
     cpu.a = v;
     cyc(70);
     wr16(b | 0x0D37, v);
+    cyc(28);                            /* PLP; op_plp states the RTS */
     op_plp(p0);
 }
 
@@ -992,6 +1011,8 @@ static void time_up_set(uint32_t at, uint8_t v)
     wr8(at, v);
 }
 
+static void time_up_cursor_body(void);
+
 /*
  * @routine 02:EB6D TimeUpCursorStep
  * WHAT IT DOES: The time-up course select's cursor: with $0D4E set, Down
@@ -1004,6 +1025,13 @@ static void time_up_set(uint32_t at, uint8_t v)
  * else 16-bit; A as the last step leaves it.
  */
 void abi_TimeUpCursorStep(void)
+{
+    time_up_cursor_body();
+    cyc(42);                            /* RTS */
+}
+
+/* The body of TimeUpCursorStep, up to its RTS. */
+static void time_up_cursor_body(void)
 {
     uint32_t b = (uint32_t)cpu.db << 16;
     uint8_t v;
@@ -1088,9 +1116,10 @@ void abi_CourseZoomTimeUp(void)
     op_lda16(b | 0x0D48);
     cpu.p |= P_C;
     a = op_sbc16(cpu.a, 0x0002, &cpu.p);
-    cyc(390);
+    cyc(50);
     a = asl3(a);
     course_zoom(box_offset(a, 0x0080), 0x0008);
+    cyc(94);
 }
 
 /*
@@ -1107,25 +1136,33 @@ void abi_CourseZoomTimeUpNext(void)
     uint16_t a;
 
     op_rep(P_M | P_X);
+    cyc(24);
     op_lda16(b | 0x0E3D);
     a = cpu.a;
+    cyc(24);
     op_cmp16(0x0017);
     if (a >= 0x0017) {
-        cyc(44);
+        cyc(16 + 14);                   /* BCC not taken, INC */
         a = (uint16_t)(a + 1);
         cpu.a = a;
         cpu.p = nz16(cpu.p, a);
+        cyc(24);
         op_cmp16(0x001B);
         if (a < 0x001B)
-            { cyc(20); goto store; }
-    }
+            { cyc(22); goto store; }    /* BCC taken */
+        cyc(16);
+    } else { cyc(22); }
     a = 0x0017;
-    op_lda16_imm(a);
+    cpu.a = a;
+    cpu.p = nz16(cpu.p, a);
+    cyc(24);                            /* LDA # */
 store:
-    cyc(52);
+    cyc(24);
     wr16(b | 0x0E3D, a);
-    op_lda16_imm(0x0000);
-    course_zoom(box_offset(0x0000, 0x00A0), 0x0008);
+    cpu.a = 0x0000;
+    cpu.p = nz16(cpu.p, 0x0000);
+    course_zoom(box_offset_in(0x0000, 0x00A0, 264), 0x0008);
+    cyc(94);
 }
 
 void abi_RecordsUnpackCourseTotals(void);
@@ -1194,7 +1231,7 @@ void abi_CourseRecordsKey(void)
     uint8_t v;
 
     if (!records_key(b))
-        return;
+        { cyc(42); return; }
     cpu.s = (uint16_t)(cpu.s + 1);
     cpu.s = (uint16_t)(cpu.s + 1);
     v = rd8((uint16_t)cpu.s);
@@ -1211,7 +1248,7 @@ void abi_CourseRecordsKey(void)
 static int records_key_inner(uint32_t b)
 {
     if (!records_key(b))
-        return 0; else { cyc(98); }
+        { cyc(42); return 0; } else { cyc(98); }
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xE6);
     cpu.p = nz8(cpu.p, 0xE6);
     return 1;
@@ -1246,6 +1283,7 @@ void abi_CourseRecordsSelectStep(void)
 {
     uint32_t b = (uint32_t)cpu.db << 16;
     uint8_t v;
+    int open;
 
     op_rep(P_M | P_X);
     op_sep(P_M | P_X);
@@ -1266,11 +1304,12 @@ void abi_CourseRecordsSelectStep(void)
             cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
             cyc(150);
             wr8(b | 0x0E37, v);
+            cyc(42);
             return;
         }
         if (records_key_inner(b))
             return;
-        cyc(66);
+        cyc(24);
         op_lda8(b | 0x0D4A);
         if (!(uint8_t)cpu.a) {
             records_sprite(b, 0xB0);
@@ -1285,7 +1324,8 @@ void abi_CourseRecordsSelectStep(void)
         records_sprite(b, 0x60);
         op_sep(P_M);
         cyc(22);
-        if (sel_open(0x02) && (cyc(2), sel_pressed(b, 0x0800))) {
+        open = sel_open(0x02);
+        if (open && (cyc(2), sel_pressed(b, 0x0800))) {
             sel_sound();
             cyc(8);
             v = (uint8_t)(rd8(b | 0x0D63) - 1);
@@ -1293,8 +1333,9 @@ void abi_CourseRecordsSelectStep(void)
             wr8(b | 0x0D63, v);
             cyc(16);
             sel_row(b, 0x02);
+            cyc(42);
             return;
-        } else { cyc(62); }
+        } else { cyc(open ? 68 : 62); }
         if (sel_pressed(b, 0x0400)) {
             sel_sound();
             cyc(8);
@@ -1317,6 +1358,7 @@ void abi_CourseRecordsSelectStep(void)
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
         cyc(124);
         wr8(b | 0x0E37, v);
+        cyc(42);
         return;
     } else { cyc(86); }
     if (records_key_inner(b))
@@ -1334,12 +1376,14 @@ void abi_CourseRecordsSelectStep(void)
             wr8(b | 0x0D63, 0x00);
             cyc(24);
             wr8(b | 0x0D4A, 0x00);
+            cyc(42);
             return;
         } else { cyc(68); }
         if (sel_pressed(b, 0x0800)) {
             sel_sound();
             sel_row(b, 0x02);
         } else { cyc(44); }
+        cyc(42);
         return;
     }
     records_sprite(b, 0x60);
@@ -1348,6 +1392,7 @@ void abi_CourseRecordsSelectStep(void)
         sel_sound();
         sel_row(b, 0x01);
     } else { cyc(44); }
+    cyc(42);
 }
 
 /*
@@ -1386,6 +1431,8 @@ void abi_CourseRecordsOpening(void)
     cyc(26);
 }
 
+static void records_reopen_body(void);
+
 /*
  * @routine 02:E76B CourseRecordsReopen
  * WHAT IT DOES: State 8 of $0D43 (no run reaches it): counts $0D42 up; at
@@ -1395,6 +1442,13 @@ void abi_CourseRecordsOpening(void)
  * compare with $2A, or A low byte 0.
  */
 void abi_CourseRecordsReopen(void)
+{
+    records_reopen_body();
+    cyc(42);                            /* RTS */
+}
+
+/* The body of CourseRecordsReopen, up to its RTS. */
+static void records_reopen_body(void)
 {
     uint32_t b = (uint32_t)cpu.db << 16;
     cyc(24);
@@ -1518,7 +1572,7 @@ void abi_CourseRecordsShown(void)
         cyc(24);
         op_lda8(b | 0x0D63);
         if ((uint8_t)cpu.a)
-            { cyc(238); abi_CourseZoomFromSelection4(); }
+            { cyc(84); abi_CourseZoomFromSelection4(); }
         else
             { cyc(78); abi_CourseZoomFromSelection(); }
         cyc(42);
@@ -1557,6 +1611,8 @@ void abi_CourseScreenWindowStep(void)
     cyc(42);
 }
 
+static void wipe_out_body(void);
+
 /*
  * @routine 02:E414 CourseScreenWipeOut
  * WHAT IT DOES: State 14 (Stunt Trax and the all-courses select): $0D45 =
@@ -1568,6 +1624,13 @@ void abi_CourseScreenWindowStep(void)
  * last store leaves it.
  */
 void abi_CourseScreenWipeOut(void)
+{
+    wipe_out_body();
+    cyc(42);                            /* RTS */
+}
+
+/* The body of CourseScreenWipeOut, up to its RTS. */
+static void wipe_out_body(void)
 {
     uint32_t b = (uint32_t)cpu.db << 16;
     uint8_t v, p;
@@ -1615,6 +1678,8 @@ void abi_CourseScreenWipeOut(void)
     wr8(b | 0x0D40, 0x10);
 }
 
+static void wipe_in_body(void);
+
 /*
  * @routine 02:E44B CourseScreenWipeIn
  * WHAT IT DOES: State 18: $0D45 = 6, the scroll HDMA's first count ($10AD)
@@ -1625,6 +1690,13 @@ void abi_CourseScreenWipeOut(void)
  * last store leaves it.
  */
 void abi_CourseScreenWipeIn(void)
+{
+    wipe_in_body();
+    cyc(42);                            /* RTS */
+}
+
+/* The body of CourseScreenWipeIn, up to its RTS. */
+static void wipe_in_body(void)
 {
     uint32_t b = (uint32_t)cpu.db << 16;
     uint8_t v, p;
@@ -1698,8 +1770,8 @@ static void preview_rows(int all, uint16_t last)
     op_lda16(b | 0x0FAA);
     op_cmp16(0x0003);
     if (cpu.a >= 0x0003)
-        { cyc(36); return; }
-    cyc(66);
+        { cyc(40); return; }
+    cyc(70);
     wr16(b | 0x0FA8, 0x0000);
     for (;;) {
         cyc(62);
@@ -1707,7 +1779,7 @@ static void preview_rows(int all, uint16_t last)
             call_routine(0x07C673, 1);
         else
             call_routine(0x07C663, 1);
-        cyc(146);
+        cyc(24);   /* PreviewRowDraw* state their tail */
         op_lda16(b | 0x0FA8);
         v = (uint16_t)(cpu.a + 1);
         cpu.a = v;
@@ -1715,21 +1787,21 @@ static void preview_rows(int all, uint16_t last)
         op_cmp16(0x0004);
         if (v >= 0x0004)
             break;
-        cyc(74);
+        cyc(78);
         wr16(b | 0x0FA8, v);
     }
-    cyc(80);
+    cyc(84);
     op_lda16(b | 0x0FA6);
     op_cmp16(last);
     if (cpu.a < last) {
-        cyc(60);
+        cyc(64);
         v = (uint16_t)(rd16(b | 0x0FA6) + 1);
         cyc(14);
         wr16(b | 0x0FA6, v);
         cpu.p = nz16(cpu.p, v);
         return;
     }
-    cyc(66);
+    cyc(70);
     wr16(b | 0x0FA6, 0x0000);
     cyc(24);
     v = (uint16_t)(rd16(b | 0x0FAA) + 1);
@@ -1751,6 +1823,7 @@ static void preview_rows(int all, uint16_t last)
 void abi_CoursePreviewRowsStunt(void)
 {
     preview_rows(0, 0x0006);
+    cyc(42);
 }
 
 /*
@@ -1763,6 +1836,7 @@ void abi_CoursePreviewRowsStunt(void)
 void abi_CoursePreviewRowsAll(void)
 {
     preview_rows(1, 0x0007);
+    cyc(42);
 }
 
 /*
@@ -1834,6 +1908,7 @@ void abi_CourseScreenStartSpeed(void)
 void abi_CourseScreenStartAll(void)
 {
     screen_state2((uint32_t)cpu.db << 16);
+    cyc(42);
 }
 
 /*
@@ -1872,6 +1947,8 @@ void abi_CourseScreenNothing(void)
     cyc(42);
 }
 
+static void zoom_out_body(void);
+
 /*
  * @routine 02:E580 CourseScreenZoomOut
  * WHAT IT DOES: State 12 (Stunt Trax and the all-courses select): the
@@ -1883,6 +1960,13 @@ void abi_CourseScreenNothing(void)
  * the last step leaves it.
  */
 void abi_CourseScreenZoomOut(void)
+{
+    zoom_out_body();
+    cyc(42);                            /* RTS */
+}
+
+/* The body of CourseScreenZoomOut, up to its RTS. */
+static void zoom_out_body(void)
 {
     uint16_t v, w;
     uint8_t p;
@@ -1910,9 +1994,11 @@ void abi_CourseScreenZoomOut(void)
     cpu.p = nz8(cpu.p, 0x0E);
     cyc(102);
     wr8(((uint32_t)cpu.db << 16) | 0x0D40, 0x0E);
-    abi_ColourMathOffLong();
-    (cyc(132), abi_CoursePreviewReset());
+    (cyc(62), abi_ColourMathOffLong());
+    (cyc(46), abi_CoursePreviewReset());
 }
+
+static void zoom_in_body(void);
 
 /*
  * @routine 02:E5B4 CourseScreenZoomIn
@@ -1926,13 +2012,20 @@ void abi_CourseScreenZoomOut(void)
  */
 void abi_CourseScreenZoomIn(void)
 {
+    zoom_in_body();
+    cyc(42);                            /* RTS */
+}
+
+/* The body of CourseScreenZoomIn, up to its RTS. */
+static void zoom_in_body(void)
+{
     uint16_t v, t;
     uint8_t p;
 
-    abi_ColourMathA3Long();
+    (cyc(62), abi_ColourMathA3Long());
     op_rep(P_M | P_X);
     p = (uint8_t)(cpu.p & ~P_C);
-    cyc(118);
+    cyc(32);
     v = op_adc16(rd16(0x7F3438), 0x0300, &p);
     cyc(70);
     wr16(0x7F3438, v);
@@ -1996,7 +2089,7 @@ void abi_CourseRecordsDispatch(void)
     case 0xE750: abi_CourseRecordsOpening(); break;
     case 0xE795: abi_CourseRecordsShown(); cyc(0); break;
     case 0xE781: abi_CourseRecordsClosing(); cyc(0); break;
-    case 0xE76B: abi_CourseRecordsReopen(); cyc(16); break;
+    case 0xE76B: abi_CourseRecordsReopen(); break;
     }
     cyc(0);
 }
@@ -2011,23 +2104,23 @@ static void screen_state(uint32_t b, uint16_t table)
     cyc(46);
     switch (rd16(0x020000 | (uint16_t)(table + cpu.x))) {
     case 0xE564: abi_CourseScreenStartSpeed(); cyc(0); break;
-    case 0xE56D: abi_CourseScreenStartAll(); cyc(42); break;
+    case 0xE56D: abi_CourseScreenStartAll(); break;
     case 0xE573: abi_CourseScreenStartBattle(); cyc(0); break;
     case 0xE579: abi_CourseScreenStartStunt(); cyc(0); break;
     case 0xE5F0: abi_CourseRecordsDispatch(); break;
-    case 0xE7F5: abi_SpeedCourseSelectStep(); cyc(42); break;
+    case 0xE7F5: abi_SpeedCourseSelectStep(); break;
     case 0xE9AB: abi_StuntCourseSelectStep(); cyc(0); break;
     case 0xEA32: abi_BattleCourseSelectStep(); cyc(0); break;
     case 0xED3E: abi_CourseZoomInStep(); cyc(0); break;
     case 0xE3F1: abi_CourseScreenWindowStep(); cyc(0); break;
     case 0xE57F: abi_CourseScreenNothing(); break;
-    case 0xE580: abi_CourseScreenZoomOut(); cyc(42); break;
-    case 0xE414: abi_CourseScreenWipeOut(); cyc(42); break;
-    case 0xE4BD: abi_CoursePreviewRowsStunt(); cyc(42); break;
-    case 0xE51E: abi_CoursePreviewRowsAll(); cyc(42); break;
-    case 0xE44B: abi_CourseScreenWipeIn(); cyc(42); break;
-    case 0xE5B4: abi_CourseScreenZoomIn(); cyc(42); break;
-    case 0xED98: jump_routine(0x02ED98); cyc(42); break;
+    case 0xE580: abi_CourseScreenZoomOut(); break;
+    case 0xE414: abi_CourseScreenWipeOut(); break;
+    case 0xE4BD: abi_CoursePreviewRowsStunt(); break;
+    case 0xE51E: abi_CoursePreviewRowsAll(); break;
+    case 0xE44B: abi_CourseScreenWipeIn(); break;
+    case 0xE5B4: abi_CourseScreenZoomIn(); break;
+    case 0xED98: jump_routine(0x02ED98); break;
     case 0xEDD2: jump_routine(0x02EDD2); cyc(0); break;
     case 0xED75: jump_routine(0x02ED75); break;
     case 0xF148: jump_routine(0x02F148); break;
@@ -2094,6 +2187,7 @@ void abi_CourseScreenStep(void)
             wr8(b | 0x0D24, 0x00);
             cyc(24);
             wr8(b | 0x0D25, 0x00);
+            cyc(22);                    /* BRA */
         } else {
             cyc(62);
             op_lda16(b | 0x0D1C);
@@ -2108,6 +2202,7 @@ void abi_CourseScreenStep(void)
                     wr8(b | 0x0D24, 0x00);
                     cyc(24);
                     wr8(b | 0x0D25, 0x00);
+                    cyc(22);            /* BRA */
                 } else {
                     op_sep(P_M);
                     cyc(86);
@@ -2219,10 +2314,13 @@ static void fade_done(uint32_t b, uint8_t panel, uint8_t state)
  */
 void abi_CourseScreenFadeLeave(void)
 {
-    if (fade_step())
+    if (fade_step()) {
         fade_done((uint32_t)cpu.db << 16, 0x08, 0x00);
-    cyc(128);
+        cyc(42);
+    } else { cyc(58); }
 }
+
+static void fade_back_body(void);
 
 /*
  * @routine 02:ED98 CourseScreenFadeBack
@@ -2235,6 +2333,13 @@ void abi_CourseScreenFadeLeave(void)
  * the sound's push leaves it.
  */
 void abi_CourseScreenFadeBack(void)
+{
+    fade_back_body();
+    cyc(42);                            /* RTS */
+}
+
+/* The body of CourseScreenFadeBack, up to its RTS. */
+static void fade_back_body(void)
 {
     uint32_t b = (uint32_t)cpu.db << 16;
 

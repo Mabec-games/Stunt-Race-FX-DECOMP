@@ -14,16 +14,17 @@ void abi_ByteWritesIfPending(void);
 
 /* Wait for scanline $64 (WaitScanline) and read JOY1H, until START (bit
    4) is as `held` says. */
-static void wait_start(uint32_t b, int held)
+static void wait_start(uint32_t b, int held, int first)
 {
     uint8_t j;
 
     do {
-        cyc(72);
+        cyc(first ? 62 : 72); /* the first: SEP, LDA #, STA */
         wr8(b | 0x06E3, 0x64);
+        first = 0;
         abi_WaitScanline();
         cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
-        cyc(46);
+        cyc(68);
         j = rd8(b | 0x4219);
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | j);
     } while (cyc_loop(6, ((j & 0x10) != 0) != held));
@@ -61,10 +62,9 @@ void RaceFrameStepPause(void)
             (cyc(62), abi_RaceFrameRun());
             (cyc(120), abi_RaceFrameRun());
             cpu.p |= P_M;
-            cyc(48);
-            wait_start(b, 0);
-            wait_start(b, 1);
-            wait_start(b, 0);
+            wait_start(b, 0, 1);
+            wait_start(b, 1, 0);
+            wait_start(b, 0, 0);
             cyc(56);
             wr8(b | 0x030A, 0x00);
             cyc(24);
@@ -102,6 +102,7 @@ void FrameQueuesFlush(void)
     cpu.p &= (uint8_t)~(P_M | P_X);
     (cyc(90), abi_VramDmaQueueFlush());
     (cyc(46), abi_ByteWritesIfPending());
+    cyc(30);
     op_plp(p);
 }
 

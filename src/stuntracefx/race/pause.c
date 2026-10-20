@@ -176,7 +176,7 @@ void abi_PauseStageResumeA(void)
     uint32_t b = (uint32_t)cpu.db << 16;
 
     if (!timer_out(b))
-        { cyc(22); return; } else { cyc(62); }
+        { cyc(64); return; } else { cyc(62); }
     abi_Gauge6APlace();
     cyc(22);
     pause_resume(b);
@@ -472,9 +472,11 @@ void abi_PauseStageChoiceP2(void)
     cyc(22);
     if (presses(b, 0x0D1C, 0x9000)) {
         choice_made(b, 0);
+        cyc(42);
         return;
     }
     choice_move(b, 0x0D1C, 1, abi_OamBlock123Left, abi_OamBlock123Right);
+    cyc(42);
 }
 
 /* Counts the timer $0D5F down; at 0 $0D2E = owner, $19DF cleared, the
@@ -494,6 +496,8 @@ static void continue_wait(uint8_t owner)
     lda8_imm(owner);
     cyc(38);
     wr8(b | 0x0D2E, owner);
+    if (owner == 0xFF)
+        cyc(22);   /* BRA */
     lda8_imm(0x00);
     cyc(16);
     wr8(b | 0x19DF, 0x00);
@@ -512,6 +516,7 @@ static void continue_wait(uint8_t owner)
 void abi_PauseStageContinueP2(void)
 {
     continue_wait(0xFF);
+    cyc(42);
 }
 
 /*
@@ -842,6 +847,7 @@ void abi_PauseQuitMenuCursor0(void)
     lda8_imm(0x00);
     cyc(16);
     wr8((uint32_t)cpu.db << 16 | 0x0D50, 0x00);
+    cyc(42);
 }
 
 /*
@@ -860,4 +866,5 @@ void abi_PauseQuitMenuBack(void)
     abi_SoundPort0QueuePush();
     cyc(8);
     wr8((uint32_t)cpu.db << 16 | 0x0D50, 0x00);
+    cyc(42);
 }

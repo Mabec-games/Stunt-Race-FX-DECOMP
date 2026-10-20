@@ -243,6 +243,7 @@ void GsuBytes200_0F010B(void)
 void abi_GsuBytes200_0F010B(void)
 {
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0x0F, 0x01, 0x0B));
+    cyc(72);
 }
 
 /*
@@ -496,19 +497,21 @@ void abi_GsuBytes200_0F080E(void)
 uint16_t GsuTableEntryNext(uint8_t bank, uint16_t entry, uint8_t *p)
 {
     uint32_t t;
-    uint16_t a, last;
+    uint16_t a, last, base;
 
     cyc(24);
     wr16((uint32_t)bank << 16 | 0x1F4C, entry);
     cyc(62);
     t = (uint32_t)(rd16(0x701094) & 0x00FF) << 16;
     cyc(164);
+    base = rd16(0x701092);
+    cyc(38);
     a = rd16(t | 0x1F4C);
-    last = rd16(cyc_then(84, t | rd16(0x701092)));
-    *p = (uint8_t)((*p & ~P_C) | (a >= last ? (cyc(18), P_C) : 0));
+    last = rd16(t | base);
+    *p = (uint8_t)((*p & ~P_C) | (a >= last ? P_C : 0));
+    cyc(a == last ? 208 : 190);         /* CMP, BNE (taken or not), LDA #0, INC, PLB, PLX, RTL */
     if (a == last)
         a = 0x0000;
-    cyc(160);
     return (uint16_t)(a + 1);
 }
 

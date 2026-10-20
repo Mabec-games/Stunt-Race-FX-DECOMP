@@ -124,15 +124,27 @@ static void palette_cycle(uint16_t x, uint16_t y)
 }
 
 /* The step $0D59 by the table at t: JMP (t,X) with X = $0D59 * 2. */
-static void step_dispatch(uint32_t b, uint16_t t)
+static uint16_t step_dispatch(uint32_t b, uint16_t t)
 {
+    uint16_t target;
+
     cyc(98);
     op_lda8(b | 0x0D59);
     asl8();
     cpu.x = (uint16_t)(cpu.a & 0x00FF);
     cpu.p = nz8(cpu.p, (uint8_t)cpu.x);
     cyc(74);
-    jump_routine(0x070000 | rd16(0x070000 | (uint16_t)(t + cpu.x)));
+    target = rd16(0x070000 | (uint16_t)(t + cpu.x));
+    jump_routine(0x070000 | target);
+    return target;
+}
+
+/* The steps ChampionshipScreenStep (tilemap.c) also runs: it states their
+   RTS; the others state it themselves. */
+static unsigned step_rts(uint16_t target)
+{
+    return target == 0xCC83 || target == 0xCC9B || target == 0xCF6F ||
+           target == 0xCCBF || target == 0xD029 ? 42 : 0;
 }
 
 /*
@@ -155,19 +167,16 @@ void abi_ResultsScreenStep(void)
     cpu.p = nz8(cpu.p, (uint8_t)cpu.x);
     switch (cpu.x) {
     case 0:
-        step_dispatch(b, 0xC6C3);
-        cyc(42);
+        cyc(step_rts(step_dispatch(b, 0xC6C3)));
         return;
     case 2:
-        step_dispatch(b, 0xC715);
-        cyc(42);
+        cyc(step_rts(step_dispatch(b, 0xC715)));
         return;
     case 4:
         cyc(116);
         return;
     case 6:
-        step_dispatch(b, 0xC6EB);
-        cyc(42);
+        cyc(step_rts(step_dispatch(b, 0xC6EB)));
         return;
     default:
         jump_routine(0x070000 | rd16(0x070000 | (uint16_t)(0xC6B2 + cpu.x)));
@@ -227,7 +236,7 @@ static void record_cars(uint32_t b, uint16_t empty)
             if (!cpu.a)
                 continue;
         } else {
-            cyc(42);
+            cyc(46);
             op_cmp16(empty);
             if (cpu.a == empty)
                 continue;
@@ -247,6 +256,7 @@ static void record_cars(uint32_t b, uint16_t empty)
         (cyc(24), abi_SpritePieces3());
         op_sep(P_M);
         lda8_imm(0x60);
+        cyc(62);
         wr8(b | (uint16_t)(0x0588 + n), 0x60);
     }
 }
@@ -268,7 +278,7 @@ static void records_wait(uint8_t next, const uint16_t *rows, uint16_t count, uin
         op_sep(P_M);
         sound(0x46, 0);
         lda8_imm(next);
-        cyc(24);
+        cyc(40);
         wr8(b | 0x0D59, next);
         lda8_imm(0x55);
         cyc(40);
@@ -334,6 +344,7 @@ void abi_StuntRecordsWait(void)
     static const uint16_t rows[3] = {0x018F, 0x024F, 0x09AF};
 
     records_wait(0x0A, rows, 0x0007, 0x40, 0x0000);
+    cyc(42);
 }
 
 /*
@@ -348,6 +359,7 @@ void abi_TimedRecordsWait(void)
     static const uint16_t rows[3] = {0x0195, 0x0255, 0x0315};
 
     records_wait(0x0D, rows, 0x000B, 0x58, 0xFFFF);
+    cyc(42);
 }
 
 /*
@@ -370,6 +382,7 @@ void abi_ResultsNext(void)
     cyc(40);
     wr8(b | 0x0D23, 0x00);
     inc8_mem(b | 0x0D59);
+    cyc(42);
 }
 
 /*
@@ -395,7 +408,7 @@ void abi_ResultsUnpackNext(void)
  */
 void abi_KeepTimeDigits(void)
 {
-    cyc(148);
+    cyc(62);
     wr16(0x0000F1, cpu.y);
     cyc(16);
     wr16(0x0000F3, cpu.x);
@@ -584,13 +597,15 @@ void abi_StuntRecordsDraw(void)
     uint32_t b = (uint32_t)cpu.db << 16;
     unsigned n;
 
+    int broke = 0;
+
     panel(0x001F, 0xFB21);
     op_rep(P_M | P_X);
     for (n = 0; n < 3; n++) {
-        cyc(66);
+        cyc(n ? 66 : 24);
         op_lda16(b | (uint16_t)(0x0F2B + 2 * n));
         if (!cpu.a)
-            break;
+            { broke = 1; break; }
         cpu.x = (uint16_t)(0x0190 + 0xC0 * n);
         cpu.p = nz16(cpu.p, cpu.x);
         abi_ScoreTiles();
@@ -598,12 +613,13 @@ void abi_StuntRecordsDraw(void)
         op_lda16(b | (uint16_t)(0x0F43 + 2 * n));
         abi_NameTiles26();
     }
-    cyc(44);
+    cyc(broke ? 44 : 64);               /* BEQ taken, or the RTS; SEP */
     op_sep(P_M);
     inc8_mem(b | 0x0D59);
     lda8_imm(0x02);
     cyc(40);
     wr8(b | 0x10A2, 0x02);
+    cyc(42);
 }
 
 /*
@@ -617,8 +633,9 @@ void abi_ResultsPanelFAB5(void)
 {
     panel(0x001F, 0xFAB5);
     op_sep(P_M);
-    cyc(64);
+    cyc(22);
     inc8_mem(((uint32_t)cpu.db << 16) | 0x0D59);
+    cyc(42);
 }
 
 /*
@@ -635,14 +652,16 @@ void abi_TimedRecordsDraw(void)
     uint32_t b = (uint32_t)cpu.db << 16;
     unsigned n;
 
+    int broke = 0;
+
     panel(0x001C, 0xF3F2);
     op_rep(P_M);
     for (n = 0; n < 3; n++) {
-        cyc(66);
+        cyc(n ? 66 : 24);
         op_lda16(b | (uint16_t)(0x0F2B + 2 * n));
         op_cmp16(0xFFFF);
         if (cpu.a == 0xFFFF)
-            break; else { cyc(36); }
+            { broke = 1; break; } else { cyc(36); }
         abi_TimeUnpackBcd();
         abi_KeepTimeDigits();
         if (n)
@@ -654,12 +673,13 @@ void abi_TimedRecordsDraw(void)
         op_lda16(b | (uint16_t)(0x0F43 + 2 * n));
         abi_NameTiles16();
     }
-    cyc(64);
+    cyc(broke ? 68 : 64);               /* CMP, BEQ taken, or the RTS; SEP */
     op_sep(P_M);
     inc8_mem(b | 0x0D59);
     lda8_imm(0x02);
     cyc(40);
     wr8(b | 0x10A2, 0x02);
+    cyc(42);
 }
 
 /*
@@ -672,8 +692,9 @@ void abi_ResultsPanelF38E(void)
 {
     panel(0x001C, 0xF38E);
     op_sep(P_M);
-    cyc(64);
+    cyc(22);
     inc8_mem(((uint32_t)cpu.db << 16) | 0x0D59);
+    cyc(42);
 }
 
 /* B or START on the records: step `skip` (sound $46) for a placed player
@@ -681,7 +702,7 @@ void abi_ResultsPanelF38E(void)
 static void records_choice(uint32_t b, uint8_t skip, int check_10cd)
 {
     if (!pressed(b, 0x9000))
-        { cyc(6); return; }
+        { cyc(6 + 42); return; }
     op_rep(P_M | P_X);
     if (check_10cd) {
         cyc(2);
@@ -699,14 +720,16 @@ static void records_choice(uint32_t b, uint8_t skip, int check_10cd)
     cyc(78);
     wr8(b | 0x0D59, skip);
     cyc(16);
-    sound(0x46, 0);
+    sound(0x46, 16);
+    cyc(42);
     return;
 next:
     cyc(44);
     op_sep(P_M);
     inc8_mem(b | 0x0D59);
     cyc(16);
-    sound(0x46, 0);
+    sound(0x46, 16);
+    cyc(42);
 }
 
 /*
@@ -767,11 +790,12 @@ void abi_ResultsPanelFB99(void)
     wr8(b | 0x0DD5, 0x00);
     panel(0x001F, 0xFB99);
     op_sep(P_M);
-    cyc(64);
+    cyc(22);
     inc8_mem(b | 0x0D59);
     lda8_imm(0x02);
     cyc(40);
     wr8(b | 0x0D23, 0x02);
+    cyc(42);
 }
 
 /*
@@ -787,18 +811,23 @@ void abi_ResultsPanelFA39(void)
     uint32_t b = (uint32_t)cpu.db << 16;
 
     panel(0x001F, 0xFA39);
+    int total, record;
+
     op_sep(P_M);
     cyc(46);
     op_lda8(b | 0x0EEF);
-    if ((uint8_t)cpu.a)
+    total = (uint8_t)cpu.a != 0;
+    if (total)
         { cyc(62); abi_ResultsTotalTiles(); }
-    cyc(46);
+    cyc(total ? 24 : 46);               /* LDA abs, or BEQ taken first */
     op_lda8(b | 0x0F81);
     cmp8_imm(0xFF);
-    if ((uint8_t)cpu.a != 0xFF)
+    record = (uint8_t)cpu.a != 0xFF;
+    if (record)
         { cyc(78); abi_RecordTimeTiles(); }
-    cyc(38);
+    cyc(record ? 0 : 38);
     inc8_mem(b | 0x0D59);
+    cyc(42);
 }
 
 /*
@@ -921,7 +950,7 @@ static void car_change(uint32_t b, int right)
         } else {
         cyc(22);
         op_sep(P_M);
-        sound(0x45, 0);
+        sound(0x45, 16);
         cyc(8);
         op_lda8(b | 0x0D89);
         v = (uint8_t)(cpu.a - 1);
@@ -943,7 +972,7 @@ static void car_change(uint32_t b, int right)
     cyc(60);
     wr8(b | 0x0D89, (uint8_t)cpu.a);
     op_sep(P_M | P_X);
-    cyc(46);
+    cyc(right ? 46 : 24);               /* BRA, or not; LDA abs */
     op_lda8(b | 0x0D89);
     cpu.x = (uint16_t)(cpu.a & 0x00FF);
     cpu.p = nz8(cpu.p, (uint8_t)cpu.x);
@@ -1066,7 +1095,7 @@ void abi_ResultsMenu(void)
             return;
         } else { cyc(28); }
         op_sep(P_M);
-        sound(0x45, 0);
+        sound(0x45, 16);
         lda8_imm(0x01);
         cyc(24);
         wr8(b | 0x0DD4, 0x01);
@@ -1125,6 +1154,8 @@ void abi_ResultsMenu(void)
 }
 
 void abi_SoundPort0QueuePushRaw(void);
+void abi_SoundPort0QueuePushRawX8(void);
+void abi_SoundPort0QueuePushRawWide(void);
 void abi_OamTextLine(void);
 void abi_OamWordRow5(void);
 void abi_TilemapPaletteFill(void);
@@ -1163,6 +1194,7 @@ void abi_ResultsChampionScreen(void)
     op_sep(P_M);
     cyc(22);
     inc8_mem(b | 0x0D59);
+    cyc(42);
 }
 
 /*
@@ -1188,6 +1220,7 @@ void abi_ResultsWaitWindow(void)
     lda8_imm(0x06);
     cyc(32);
     wr8(b | 0x0D23, 0x06);
+    cyc(42);
 }
 
 /* The results' text line: $0D45's low nibble 2; direct page $F2 = $60,
@@ -1269,7 +1302,7 @@ void abi_ResultsTotalLineWords(void)
     cyc(46);
     op_lda8(b | 0x0EEC);
     if ((uint8_t)cpu.a)
-        { cyc(40); jump_routine(0x07D3F6); } else { cyc(22); }
+        { cyc(40); jump_routine(0x07D3F6); } else { cyc(22 + 42); }
 }
 
 /* A BCD count byte at `at` one more (SED, CLC, ADC #1, CLD) shown as two
@@ -1340,6 +1373,7 @@ void abi_StuntResultsCount(void)
         cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - m)) & ~P_C) | (v >= m ? P_C : 0));
         if (v != m) {
             count_digits(b, 0x0E80, 0x7F956F, 0x7F9571);
+            cyc(42);
             return;
         } else { cyc(22); }
     }
@@ -1353,12 +1387,15 @@ void abi_StuntResultsCount(void)
         cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - m)) & ~P_C) | (v >= m ? P_C : 0));
         if (v != m) {
             count_digits(b, 0x0E81, 0x7F95EF, 0x7F95F1);
+            cyc(42);
             return;
         }
     }
+    cyc(100);                           /* BEQ taken, LDA #, JSL */
     lda8_imm(0x3F);
-    abi_SoundPort0QueuePushRaw();
+    abi_SoundPort0QueuePushRawWide();
     inc8_mem(b | 0x0D59);
+    cyc(42);
 }
 
 /* One character of lap Y's split ($0EDE + Y: hundredths, seconds, minutes)
@@ -1472,6 +1509,7 @@ static void lap_char(void)
         wr16(b | 0x0E43, cpu.a);
         cyc(24);
         wr16(b | 0x0E3F, 0x0000);
+        cyc(42);
         return;
     default:
         jump_routine(0x070000 | rd16(0x07D191 + cpu.x));
@@ -1484,6 +1522,7 @@ static void lap_char(void)
     inc8_mem(b | 0x0E3F);
     inc8_mem(b | 0x0E43);
     inc8_mem(b | 0x0E43);
+    cyc(42);
 }
 
 /* SEP #$20, REP #$10, Y = the lap's offset, lap_char. */
@@ -1603,11 +1642,12 @@ void abi_RaceTimeTiles(void)
     cyc(30);
     wr8(b | (uint16_t)(0x0EFB + cpu.x), (uint8_t)cpu.a);
     inc8_mem(b | 0x0D59);
+    cyc(42);
 }
 
 /* SEP #$20, REP #$10, TilemapPaletteFill on y entries from x with the
    palette bits f at $F1. */
-static void palette_fill(uint16_t x, uint16_t y, uint8_t f)
+static void palette_fill(uint16_t x, uint16_t y, uint8_t f, unsigned t)
 {
     op_sep(P_M);
     op_rep(P_X);
@@ -1616,7 +1656,7 @@ static void palette_fill(uint16_t x, uint16_t y, uint8_t f)
     cpu.y = y;
     cpu.p = nz16(cpu.p, y);
     lda8_imm(f);
-    cyc(94);
+    cyc(t);
     wr8(0x0000F1, f);
     abi_TilemapPaletteFill();
 }
@@ -1641,6 +1681,7 @@ void abi_ResultsBlinkWait(void)
         cyc(60);
         op_sep(P_M);
         palette_cycle(0x038F, 0x0007);
+        cyc(42);
         return;
     }
     cyc(56);
@@ -1649,7 +1690,8 @@ void abi_ResultsBlinkWait(void)
     cyc(24);
     lda8_imm(0x28);
     abi_SoundPort0QueuePushRaw();
-    palette_fill(0x038F, 0x0007, 0x00);
+    palette_fill(0x038F, 0x0007, 0x00, 94);
+    cyc(42);
 }
 
 /* The digit tiles of the byte at `at` (read for each): its high nibble at
@@ -1680,6 +1722,7 @@ static void minutes_tile(uint8_t mins, uint32_t at)
         lda8_imm(v);
         cyc(48);
         wr8(at + 1, v);
+        cyc(22);                        /* BRA */
     } else {
         cyc(102);
         wr8(at, t);
@@ -1706,7 +1749,7 @@ void abi_ResultsTotalTiles(void)
 
     cyc(24);
     minutes_tile(rd8(b | 0x0EEF), 0x7F95F7);
-    cyc(46);
+    cyc(24);
     wr8(0x7F95F9, cyc_then(76, low_digit_tile(rd8(b | 0x0EEF))));
     lda8_imm(0xE6);
     cyc(48);
@@ -1722,6 +1765,7 @@ void abi_ResultsTotalTiles(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cyc(76);
     wr8(0x7F9605, v);
+    cyc(42);
 }
 
 /* A decimal-mode byte at `at` less m with borrow (SEC first when sec). */
@@ -1859,7 +1903,8 @@ void abi_ResultsBonusCount(void)
         wr8(b | 0x10A2, 0x02);
         cyc(24);
         lda8_imm(0x3F);
-        abi_SoundPort0QueuePushRaw();
+        abi_SoundPort0QueuePushRawX8();
+        cyc(24);                        /* JMP */
         goto tiles;
     }
     op_sep(P_M);
@@ -1920,12 +1965,13 @@ void abi_ResultsBonusCount(void)
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
         cyc(56);
         wr8(b | 0x0EEE, v);
-        cyc(30);
-        bcd_add(b, 0x0EEF, 0x01, 1);
-    } else { cyc(30); }
+        cyc(30);                        /* CLC, LDA */
+        cpu.p &= (uint8_t)~P_C;
+        bcd_add(b, 0x0EEF, 0x01, 0);
+    } else { cyc(38); }
 tiles:
     cpu.p &= (uint8_t)~P_D;
-    cyc(46);
+    cyc(38);
     wr8(0x7F9765, cyc_then(76, low_digit_tile(rd8(b | 0x0EEC))));
     bcd_tiles(b | 0x0EEB, 0x7F9769, 0x7F976B);
     bcd_tiles(b | 0x0EEA, 0x7F976F, 0x7F9771);
@@ -1969,7 +2015,7 @@ void abi_ResultsRecordCompare(void)
     static const uint16_t mine[3] = {0x0EEF, 0x0EEE, 0x0EED};
     uint8_t x, v, m;
     int r = 0;
-    unsigned i;
+    unsigned i, last = 3;
 
     op_sep(P_M | P_X);
     x = car_times(b);
@@ -1986,18 +2032,20 @@ void abi_ResultsRecordCompare(void)
         }
         if (v != m) {
             r = 1;
+            last = i;
             break;
         }
     }
-    cyc(20);
+    cyc(r > 0 && last == 2 ? 14 : 20);  /* BCC, BEQ not taken at the last compare */
     if (r > 0) {
-        palette_fill(0x0221, 0x0008, 0x10);
+        palette_fill(0x0221, 0x0008, 0x10, 102);
+        cyc(22);                        /* BRA */
     } else if (r < 0) {
         cyc(26);
         op_lda8(b | (uint16_t)(0x0F78 + x));
         cmp8_imm(0xFF);
         if ((uint8_t)cpu.a != 0xFF)
-            { cyc(48); palette_fill(0x0361, 0x0008, 0x10); } else { cyc(38); }
+            { cyc(32); palette_fill(0x0361, 0x0008, 0x10, 102); } else { cyc(38); }
         cyc(22);
         op_sep(P_M);
         palette_cycle(0x0221, 0x0008);
@@ -2015,13 +2063,14 @@ void abi_ResultsRecordCompare(void)
     cyc(38);
     cmp8_imm(0x07);
     if ((uint8_t)cpu.a == 0x07)
-        return; else { cyc(32); }
+        { cyc(42); return; } else { cyc(32); }
     cmp8_imm(0x01);
     if ((uint8_t)cpu.a != 0x01)
-        return;
+        { cyc(42); return; }
     lda8_imm(0x03);
     cyc(34);
     wr8(b | 0x10A2, 0x03);
+    cyc(42);
 }
 
 /*
@@ -2056,6 +2105,7 @@ void abi_RecordTimeTiles(void)
         cyc(102);
         wr8(0x7F9737, t);
     }
+    cyc(t == 0xC0 ? 46 : 24);           /* BRA, or not; LDA abs,X */
     wr8(0x7F9739, cyc_then(76, low_digit_tile(rd8(b | (uint16_t)(0x0F78 + x)))));
     lda8_imm(0xE6);
     cyc(48);
@@ -2071,4 +2121,5 @@ void abi_RecordTimeTiles(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cyc(76);
     wr8(0x7F9745, v);
+    cyc(42);
 }

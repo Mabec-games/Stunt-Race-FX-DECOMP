@@ -205,6 +205,17 @@ static int bits25(uint16_t o, uint8_t m)
     return (uint8_t)cpu.a != 0;
 }
 
+/* As bits25, for a BNE on the result: taken (22) is 4 less than the way
+   bits25 stands for. */
+static int bits25b(uint16_t o, uint8_t m)
+{
+    uint8_t v = (uint8_t)(ld8(cyc_then(10, F(0x2025, o))) & m);
+
+    cyc(v ? 22 : 26);
+    lda8(v);
+    return v != 0;
+}
+
 /* LDA #v, JSL SoundPort0QueuePush. */
 static void sound0(uint8_t v)
 {
@@ -621,11 +632,12 @@ void abi_PartKnockOff(void)
     (cyc(62), abi_ObjectVelocityFromRecordOf());
     (cyc(62), abi_GsuRecordNew426());
     if (cpu.p & P_N) {
-        cyc(16);
-        if (bits25(cpu.x, 0x01)) {
-            cyc(22);
+        cyc(20);
+        if (bits25b(cpu.x, 0x01)) {
             parent();
+            cyc(4);
             and8(F(0x2025, cpu.y), 0xFB);
+            cyc(4);
             and8(F(0x2025, cpu.y), 0xEF);
         } else { cyc(48); }
         abi_ObjectRelease();
@@ -649,6 +661,7 @@ void abi_PartKnockOff(void)
         cpu.x = sx;
         cpu.p = nz16(cpu.p, sx);
         cpu.p |= P_M;
+        cyc(36);                        /* PLX of 16 bits, SEP, less the other way's BMI taken */
     }
     cpu.p &= (uint8_t)~P_M;
     op_lda16(cyc_then(60, dp(0x04)));
@@ -977,8 +990,11 @@ static int shed(uint16_t kind, uint8_t o48, uint8_t o49, uint8_t o4a, uint8_t c,
 {
     uint8_t a;
 
-    if (!spawn(kind))
-        return first; else { cyc(28); }
+    if (!spawn(kind)) {
+        /* BCS not taken, JML; for another part the next part's REP, LDA #, STA, less its st16i */
+        cyc(first ? 48 : 52);
+        return first;
+    } else { cyc(28); }
     st8i(F(0x2048, cpu.y), o48);
     st8i(F(0x2049, cpu.y), cyc_then(6, o49));
     st8i(F(0x204A, cpu.y), cyc_then(6, o4a));
@@ -1012,7 +1028,9 @@ static int shed(uint16_t kind, uint8_t o48, uint8_t o49, uint8_t o4a, uint8_t c,
     handler(cpu.y, 0xAC97);
     (cyc(46), abi_ObjectCallHandler());
     cyc(118);
-    return !bits25(cpu.x, 0x04);
+    if (!bits25(cpu.x, 0x04))
+        { cyc(22); return 1; }          /* BNE not taken, JML: 22 more than the way on */
+    return 0;
 }
 
 /* 08:A096: the six parts of one car set. */
@@ -1020,16 +1038,17 @@ static int crash_set_a096(void)
 {
     cpu.p |= P_M;
     if (shed(0xA8C8, 0xD8, 0xEC, 0xB6, 0x23, 1, 1))
-        { cyc(48); return 1; }
+        return 1;
     shed(0xA83C, 0x00, 0xDC, 0x14, 0x00, 0, 0);
-    cyc(26);
+    cyc(0);
     shed(0xA858, 0x00, 0xEC, 0x1C, 0x0A, 1, 0);
-    cyc(26);
+    cyc(0);
     shed(0xA874, 0x00, 0xE0, 0xE2, 0x14, 0, 0);
-    cyc(26);
+    cyc(0);
     shed(0xA890, 0x00, 0xE8, 0xC6, 0x19, 1, 0);
-    cyc(26);
+    cyc(0);
     shed(0xA8AC, 0x28, 0xEC, 0xB6, 0x1E, 0, 0);
+    cyc(24);
     return 0;
 }
 
@@ -1038,7 +1057,7 @@ static int crash_set_a33d(void)
 {
     cpu.p |= P_M;
     if (shed(0xA44C, 0x00, 0xEE, 0x42, 0x23, 1, 1))
-        { cyc(48); return 1; }
+        return 1;
     shed(0xA430, 0x00, 0xF1, 0x3C, 0x00, 0, 0);
     cyc(0);
     shed(0xA3C0, 0x00, 0xCE, 0x0F, 0x0A, 1, 0);
@@ -1057,7 +1076,7 @@ static int crash_set_a5e4(void)
 {
     cpu.p |= P_M;
     if (shed(0xA3A4, 0x00, 0xE3, 0xC5, 0x23, 1, 1))
-        { cyc(48); return 1; }
+        return 1;
     shed(0xA318, 0x00, 0xF9, 0x2D, 0x00, 0, 0);
     cyc(0);
     shed(0xA334, 0xE9, 0xFA, 0xF8, 0x0A, 1, 0);
@@ -1076,7 +1095,7 @@ static int crash_set_a88b(void)
 {
     cpu.p |= P_M;
     if (shed(0xA4F4, 0x00, 0xEC, 0xC5, 0x23, 1, 1))
-        { cyc(48); return 1; }
+        return 1;
     shed(0xA468, 0x00, 0xFA, 0x21, 0x00, 0, 0);
     cyc(0);
     shed(0xA484, 0x00, 0xD5, 0xEE, 0x0A, 1, 0);
@@ -1108,12 +1127,12 @@ void abi_CarCrashParts(void)
 {
     static const uint16_t model[8] = {0x81B9, 0x853D, 0x8411, 0x82E5, 0x876E, 0x8AA8, 0x8990, 0x8886};
     static int (*const set[4])(void) = {crash_set_a5e4, crash_set_a88b, crash_set_a33d, crash_set_a096};
-    int i;
+    int i, hit;
 
     wr8(db() | 0x1F58, cyc_then(24, (uint8_t)cpu.a));
     cyc(4);
     if (bits25(cpu.x, 0x04) || (cyc(0), bits25(cpu.x, 0x80)))
-        { cyc(48); goto fail; }
+        { cyc(22); goto fail; }
     cpu.p &= (uint8_t)~P_M;
     op_lda16(cyc_then(48, F(0x2027, cpu.x)));
     for (i = 0; i < 8; i++) {
@@ -1125,12 +1144,13 @@ void abi_CarCrashParts(void)
     if (i == 8 || set[i & 3]())
         goto fail; else { cyc(4); }
     lda8(cyc_then(34, (uint8_t)(ld8(db() | 0x1F58) & 0x01)));
-    sound0((uint8_t)cpu.a ? 0x5B : (cyc(6), 0x43));
-    cyc(58);                            /* CLC, RTL */
+    hit = (uint8_t)cpu.a != 0;
+    sound0(hit ? 0x5B : (cyc(6), 0x43));
+    cyc(58);                            /* CLC, RTL; the hit's BRA (22) is its caller's */
     cpu.p &= (uint8_t)~P_C;
     return;
 fail:
-    cyc(54);
+    cyc(80);                            /* SEP, SEC, RTL */
     cpu.p |= P_M;
     cpu.p |= P_C;
 }
@@ -1166,6 +1186,7 @@ static void rec_word(uint32_t field, int op, uint16_t m)
 static void rival_frame(void)
 {
     uint16_t car;
+    uint8_t v;
 
     cpu.p &= (uint8_t)~P_M;
     op_lda16(cyc_then(46, db() | 0x1AEC));
@@ -1188,9 +1209,9 @@ static void rival_frame(void)
     abi_RandomStepLong();
     cmp8(0xF2);
     if ((uint8_t)cpu.a >= 0xF2)
-        { cyc(120); rec_word(0x700070, 2, 0x0002); } else { cyc(82); }
+        { cyc(6); rec_word(0x700070, 2, 0x0002); cyc(58); } else { cyc(26); }
     car = cpu.x;
-    wr16(db() | 0x1F18, cyc_then(82, car));
+    wr16(db() | 0x1F18, cyc_then(24, car));
     cpu.p &= (uint8_t)~P_M;
     op_lda16(cyc_then(52, F(0x2022, cpu.x)));
     cpu.x = cpu.a;
@@ -1207,8 +1228,11 @@ static void rival_frame(void)
         lda8(0x03);
         abi_CarCrashParts();
         if (!(cpu.p & P_C)) {
-            cyc(10);
-            dec8(db() | 0x1F71);
+            cyc(62);                    /* the hit sound's BRA, BCS not taken, DEC abs to its read */
+            v = (uint8_t)(rd8(db() | 0x1F71) - 1);
+            cyc(6);
+            wr8(db() | 0x1F71, v);
+            cpu.p = nz8(cpu.p, v);
             cpu.p &= (uint8_t)~P_M;
             op_lda16(cyc_then(52, F(0x2022, cpu.x)));
             cpu.x = cpu.a;
@@ -1230,8 +1254,11 @@ static void rival_frame(void)
     cpu.p |= P_M;
     cpu.x = rd16(cyc_then(46, db() | 0x1F18));
     cpu.p = nz16(cpu.p, cpu.x);
-    if (bits25(cpu.x, 0x04))
-        { cyc(22); or8(F(0x2024, cpu.x), 0x20); } else { cyc(48); }
+    cyc(4);
+    if (bits25b(cpu.x, 0x04))
+        or8(F(0x2024, cpu.x), 0x20);
+    else
+        cyc(48);
     cyc(24);
     abi_ObjectCarFrame();
 }
@@ -1250,7 +1277,7 @@ static void rival_car(int b)
     (cyc(38), abi_ObjectCarSpawnListed());
     sx = cpu.x;
     cpu.p &= (uint8_t)~P_M;
-    op_lda16(cyc_then(220, F(0x2022, cpu.x)));
+    op_lda16(cyc_then(88, F(0x2022, cpu.x)));
     cpu.x = cpu.a;
     cpu.p = nz16(cpu.p, cpu.x);
     at = (0x700064 + cpu.x) & 0xFFFFFF;

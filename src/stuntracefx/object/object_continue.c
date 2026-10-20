@@ -18,9 +18,10 @@ static void continue_at(uint16_t addr_at, uint16_t bank_at)
 
     cyc(30);
     bank = rd8(b | (uint16_t)(bank_at + cpu.x));
+    cyc(bank ? 96 : 90);                /* PHA, REP, BNE, LDA abs,X */
     addr = rd16(b | (uint16_t)(addr_at + cpu.x));
-    if (!bank && (cyc(16), !addr)) {
-        cyc(56);
+    if (!bank && (cyc(addr ? 16 : 22), !addr)) {   /* BEQ not taken / taken */
+        cyc(94);                        /* SEP, PLA, RTL */
         cpu.a = 0x0000;
         cpu.p = nz8((uint8_t)(cpu.p | P_M), 0x00);
         return;

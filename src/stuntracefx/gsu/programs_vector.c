@@ -24,7 +24,7 @@ uint16_t Gsu8277(void)
     uint16_t v;
     unsigned i;
 
-    cyc(182);
+    cyc((cpu.p & P_X) ? 104 : 120);     /* PHP, REP, PHX, PHY, the vector's first load */
     v = rd16(0x000002);
     cyc(32);
     wr16(0x700068, v);
@@ -90,10 +90,11 @@ void VectorGsu81E3(void)
     cpu.p = (uint8_t)((cpu.p & ~(P_C | P_V)) | (u >= v ? P_C : 0) | (((u ^ v) & (u ^ cpu.a) & 0x8000) ? P_V : 0));
     cyc(16);
     wr16(0x000008, cpu.a);
-    abi_Gsu81E3Long();
+    (cyc(62), abi_Gsu81E3Long());
     cpu.y = y;
     cpu.x = x;
     cpu.p = nz16(cpu.p & ~P_M, x);
+    cyc(138);                           /* REP, PLY, PLX, RTL */
 }
 
 void abi_VectorGsu81E3(void)
@@ -192,6 +193,7 @@ void ScaledOffset(uint8_t bank, uint8_t *ra, uint8_t *rx, uint8_t *p)
 {
     uint32_t b = (uint32_t)bank << 16;
     uint8_t a, x = 0, v;
+    uint32_t pre = 40;                  /* the JMP out of the shift loop, to the LDA */
 
     *p = nz8(*p, x);
     cyc(32);
@@ -230,18 +232,26 @@ void ScaledOffset(uint8_t bank, uint8_t *ra, uint8_t *rx, uint8_t *p)
     } else { cyc(22); }
     cyc(16);
     if (a) {
+        int again = 0;
+
         x++;
         a = lsr8(a, p);
         while (a) {
+            if (again)
+                cyc(6);                 /* BNE taken, not BEQ not taken */
+            again = 1;
             ror_dp(0x88, p);
             x++;
             a = lsr8(a, p);
         }
+        if (!again)
+            cyc(6);                     /* BEQ taken */
         ror_dp(0x88, p);
     } else {
         cyc(22);
         a = rd8(0x000088);
         *p = nz8(*p, a);
+        pre = 38;                       /* BMI taken */
         if (!(a & 0x80)) {
             if (!a) {
                 cyc(48);
@@ -253,6 +263,7 @@ void ScaledOffset(uint8_t bank, uint8_t *ra, uint8_t *rx, uint8_t *p)
                 cyc(16);
                 wr8(0x00008D, a);
                 *p = nz8(*p, a);
+                cyc(24);                /* JMP */
                 *ra = a;
                 *rx = x;
                 return;
@@ -263,9 +274,10 @@ void ScaledOffset(uint8_t bank, uint8_t *ra, uint8_t *rx, uint8_t *p)
             } while (!(a & 0x80));
             cyc(148);
             wr8(0x000088, a);
+            pre = 16;
         }
     }
-    cyc(38);
+    cyc(pre);
     a = rd8(0x00008A);
     cyc(16);
     v = rd8(0x000088);
@@ -288,15 +300,18 @@ void ScaledOffset(uint8_t bank, uint8_t *ra, uint8_t *rx, uint8_t *p)
     wr8(0x00008E, a);
     cyc(16);
     x = rd8(0x000088);
+    cyc(48 + (x > 0x97 ? 6 : 0));       /* LDA table,x (a page crossing costs 6), LDX */
     a = rd8(b | (uint16_t)(0x8368 + x));
     x = rd8(0x00008A);
     *p |= P_C;
-    cyc(92);
+    cyc(92 + (x > 0x97 ? 6 : 0));
     v = rd8(b | (uint16_t)(0x8368 + x));
     a = op_sbc8(a, v, p);
     x = a;
+    cyc(x > 0x97 ? 6 : 0);
     a = rd8(b | (uint16_t)(0x8268 + x));
     wr8(0x00008D, a);
+    cyc(48 + (x > 0x97 ? 6 : 0));
     a = rd8(b | (uint16_t)(0x8168 + x));
     x = rd8(0x00008E);
     if (x & 0x80) {
@@ -307,12 +322,19 @@ void ScaledOffset(uint8_t bank, uint8_t *ra, uint8_t *rx, uint8_t *p)
             x++;
         } while (x);
     } else {
-        while (x) {
-            a = asl8(a, p);
-            rol_dp(0x8D, p);
-            x--;
-        }
-        cyc(22);
+        if (x) {
+            int again = 0;
+
+            while (x) {
+                if (again)
+                    cyc(4);             /* DEX, BNE taken */
+                again = 1;
+                a = asl8(a, p);
+                rol_dp(0x8D, p);
+                x--;
+            }
+            cyc(38);                    /* DEX, BNE, JMP */
+        } else { cyc(22); }
     }
     cyc(32);
     wr8(0x00008C, a);
@@ -333,6 +355,7 @@ void ScaledOffset(uint8_t bank, uint8_t *ra, uint8_t *rx, uint8_t *p)
         v = rd8(0x00008D);
         a = op_sbc8(a, v, p);
         wr8(0x00008D, a);
+        cyc(24);                        /* JMP */
     } else {
         *p &= (uint8_t)~P_C;
         cyc(52);
@@ -361,6 +384,7 @@ void abi_ScaledOffset(void)
     ScaledOffset(cpu.db, &a, &x, &cpu.p);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
     cpu.x = x;
+    cyc(44);                            /* RTL */
 }
 
 /*
@@ -399,6 +423,7 @@ void abi_ScaledOffsetPair(void)
         cyc(16);
         wr8(0x00008B, a);
         (cyc(62), abi_ScaledOffset());
+        cyc(16);
         a = rd8(0x00008C);
         cyc(16);
         wr8(out[i], a);
@@ -436,6 +461,7 @@ void abi_ScaledOffsetPair(void)
     a = op_sbc8(a, v, &cpu.p);
     wr8(0x000079, a);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
+    cyc(44);                            /* RTL */
 }
 
 /* LDA / CMP #$8000 / ROR seven times: an arithmetic shift right by 7. */
@@ -500,7 +526,7 @@ void abi_ViewFromAnglesGsu8277(void)
     wr8(b | 0x067D, (uint8_t)(w >> 8));
     cpu.a = (uint16_t)(w >> 8);
     op_sep(P_M);
-    abi_Gsu8277();
+    (cyc(62), abi_Gsu8277());
     op_rep(P_M);
     cyc(16);
     w = rd16(0x0000B7);
@@ -552,6 +578,7 @@ void abi_ViewFromAnglesGsu8277(void)
     cpu.a = w;
     cpu.p = nz8(cpu.p, (uint8_t)w);
     op_sep(P_M | P_X);
+    cyc(44);                            /* RTL */
 }
 
 /*

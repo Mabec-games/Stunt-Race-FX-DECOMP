@@ -232,7 +232,7 @@ static void choice_show_at(int entry, uint8_t choice, AbiFn f1, AbiFn f5, AbiFn 
 
 static void choice_show(uint8_t choice, AbiFn f1, AbiFn f5, AbiFn f12, uint8_t lines)
 {
-    choice_show_at(84, choice, f1, f5, f12, lines);
+    choice_show_at(92, choice, f1, f5, f12, lines);
 }
 
 /* LDA #$000C, STA $0D40 (16-bit: state $0C, $0D41 cleared), sound $24:
@@ -243,12 +243,12 @@ static void records_view(void)
     wr16(db() | 0x0D40, 0x000C);
     cyc(10);
     sound16(0x0024);
+    cyc(50);                            /* the push's tail, RTS */
 }
 
 /* The three-choice menus' highlights. */
 static void all_top_show(void)
 {
-    cyc(8);
     choice_show(0x00, abi_OamAttr36x4, abi_OamAttr38x7, abi_OamAttr38x6, 0x00);
 }
 
@@ -417,20 +417,12 @@ static void all_menu(void)
 /* The Speed Trax records menu's highlights. */
 static void speed_top_show(void)
 {
-    cyc(8);
     choice_show(0x00, abi_OamAttr36x4, abi_OamAttr38x6, 0, 0x00);
 }
 
 static void speed_bottom_show(void)
 {
     choice_show(0x02, abi_OamAttr38x4, abi_OamAttr36x6, 0, 0x0F);
-}
-
-/* After the sound push from an M 16-bit caller: its tail is 8 shorter than
-   the 200 the push states. */
-static void speed_bottom_show_after_sound(void)
-{
-    choice_show_at(76, 0x02, abi_OamAttr38x4, abi_OamAttr36x6, 0, 0x0F);
 }
 
 /*
@@ -450,8 +442,9 @@ void abi_RecordsMenuSpeedTop(void)
         return;
     } else { cyc(30); }
     if (pressed(0x0400)) {
+        int entry = (cpu.p & P_M) ? 92 : 76;   /* the sound push's tail: 16 shorter from M 16-bit */
         sound16(0x0045);
-        speed_bottom_show_after_sound();
+        choice_show_at(entry, 0x02, abi_OamAttr38x4, abi_OamAttr36x6, 0, 0x0F);
         return;
     }
     speed_top_show();
@@ -477,7 +470,7 @@ void abi_RecordsMenuSpeedBottom(void)
         sound16(0x0045);
         speed_top_show();
         return;
-    } else { cyc(8); }
+    }
     speed_bottom_show();
 }
 
@@ -531,13 +524,13 @@ static void speed_alt_leave(void)
     cpu.p = nz8(cpu.p, v);
     (cyc(62), abi_OamBufferHideLargeLong());
     lda8(0xF0);
-    cyc(90);
+    cyc(48);
     wr8(0x000E92, 0xF0);
+    cyc(42);                            /* RTS */
 }
 
 static void speed_alt_top_show(void)
 {
-    cyc(8);
     choice_show(0x00, abi_OamAttr36x4, abi_OamAttr38x4, 0, 0x00);
 }
 
@@ -589,7 +582,13 @@ void abi_RecordsMenuSpeedAltTop(void)
 void abi_RecordsMenuSpeedAltBottom(void)
 {
     op_rep(P_M);
-    if (pressed(0x4000) || (cyc(30), pressed(0x9000))) {
+    if (pressed(0x4000)) {
+        cyc(30);                        /* BRL */
+        speed_alt_leave();
+        return;
+    }
+    cyc(30);
+    if (pressed(0x9000)) {
         speed_alt_leave();
         return;
     } else { cyc(30); }
@@ -1114,6 +1113,7 @@ void abi_SpeedRecordsLeaveCar(void)
     wr16(0x0018DB, 0x8669);
     op_sep(P_M);
     (cyc(22), abi_ColourMathA7Start());
+    cyc(86);
 }
 
 /* The course's best time, name and car from the save's records at `save`
@@ -1191,10 +1191,10 @@ static void special_row(uint16_t slot, uint16_t k, int stunt, AbiFn place)
     if (stunt ? cpu.a != 0 : cpu.a != 0xFFFF) {
         y = cpu.y;
         if (stunt)
-            abi_RecordScoreDigits();
+            { cyc(24); abi_RecordScoreDigits(); }
         else
             abi_RecordTimeDigitsSmall();
-        cyc(74);
+        cyc(32);   /* the digits routines state their RTS */
         op_lda16(0x000F43 + k);
         if (stunt)
             { cyc(46); abi_RecordNameLettersSmall(); }
@@ -1206,6 +1206,7 @@ static void special_row(uint16_t slot, uint16_t k, int stunt, AbiFn place)
         cpu.p = nz16(cpu.p, y);
         (cyc(128), abi_RecordTagCarSet());
         place();
+        cyc(22);                        /* BRA over the hiding calls */
         return;
     }
     abi_OamHideEntries0To2();

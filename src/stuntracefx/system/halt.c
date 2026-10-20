@@ -26,6 +26,7 @@ void abi_DebugPrintHexByte(void);
 static void halt(void)
 {
     uint16_t y = 0;
+    int first = 1;
 
     cyc(70);
     wr8(INIDISP, 0x0F);
@@ -36,7 +37,7 @@ static void halt(void)
     cyc(32);
     wr8(TM, 0x00);
     for (;;) {
-        cyc(210);
+        cyc(first ? 84 : 210);              /* the first round: LDX, TXY, TXA; then INY, nine NOPs, JMP, TXA */
         wr8(CGADD, 0x00);
         cyc(32);
         wr8(CGADD, 0x00);
@@ -45,6 +46,7 @@ static void halt(void)
         cyc(32);
         wr8(CGDATA, (uint8_t)y);
         y = (uint16_t)(y + 1);
+        first = 0;
     }
 }
 

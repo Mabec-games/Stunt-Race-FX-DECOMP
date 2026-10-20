@@ -1118,14 +1118,15 @@ void abi_FadeValueStep(void)
             cyc(24);
             op_cmp16(rd16(b | 0x1A02));
             if (!(cpu.p & P_Z))
-                { cyc(36); wr16(b | 0x19FE, w); }
+                { cyc(40); wr16(b | 0x19FE, w); cyc(24); }  /* JMP .show */
             else {
-                cyc(72);
+                cyc(76);
                 v = (uint8_t)(rd8(0x000DA5) & 0xDF);
                 cyc(48);
                 wr8(0x000DA5, v);
             }
             cpu.p |= P_M;
+            cyc(46);                    /* SEP, LDA abs */
             v = rd8(b | 0x19FF);
             cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
             cyc(32);
@@ -1154,9 +1155,9 @@ static uint16_t fade_part(uint32_t b, uint16_t m, uint16_t step)
     c = rd16(b | 0x1F2B);
     op_cmp16(c);
     if (cpu.a == c)
-        { cyc(4); return cpu.a; }
+        { cyc(8); return cpu.a; }
     if (cpu.p & P_C) {
-        cyc(58);
+        cyc(62);
         op_lda16(b | 0x1F2B);
         if (step == 1) {
             cpu.a++;
@@ -1166,7 +1167,7 @@ static uint16_t fade_part(uint32_t b, uint16_t m, uint16_t step)
             op_add16(step);
         }
     } else {
-        cyc(52);
+        cyc(56);
         op_lda16(b | 0x1F2B);
         if (step == 1) {
             cpu.a--;
@@ -1216,7 +1217,7 @@ void abi_PaletteFadeStep(void)
     cpu.p = nz16(cpu.p, cpu.y);
     cyc(24);
     op_lda16(b | 0x1167);
-    do {
+    for (;;) {
         cyc(30);
         n = cpu.a;
         wr16(0x00003E, cyc_then(30, fade_part(b, 0x7C00, 0x0400)));
@@ -1234,7 +1235,10 @@ void abi_PaletteFadeStep(void)
         cpu.p = nz16(cpu.p, cpu.x);
         cpu.a = (uint16_t)(n - 1);
         cpu.p = nz16(cpu.p, cpu.a);
-    } while (cpu.a);
+        if (!cpu.a)
+            break;
+        cyc(152);               /* INY, INY, INX, INX, PLA, DEC, BEQ, BRL */
+    }
     cyc(172);
 }
 
@@ -1290,6 +1294,7 @@ void abi_CoursePaletteCycle(void)
     static const uint16_t c7[4] = {0xE50F, 0xE53B, 0xE4B7, 0xE4E3};
     static const uint16_t fixed7[4] = {0x14A7, 0x1086, 0x15FF, 0x269F};
     unsigned i;
+    int bright = 0;
 
     op_sep(P_M);
     cpu.db = 0x04;
@@ -1307,7 +1312,7 @@ void abi_CoursePaletteCycle(void)
             cyc(placed_read(at) ? 32 : 48);        /* a ROM read's 16 clocks are stated */
             wr16(0x7EFD7D + 2 * i, cpu.a);
         }
-        cyc(22);                        /* JMP */
+        cyc(24);                        /* JMP */
     } else if (c == 0x07) {
         cyc(44);
         palette_cycle_step(b);
@@ -1319,22 +1324,25 @@ void abi_CoursePaletteCycle(void)
             cpu.a = rd16(b + c7[i] + cpu.x);
             wr16(0x7F39EF + 2 * i, cpu.a);
         }
-        cyc(22);                        /* JMP */
+        cyc(24);                        /* JMP */
     } else if (c == 0x0B) {
         cyc(100);
         palette_cycle_step(b);
         cyc(32);
         v = rd8(0x7F3460);
+        bright = v >= 0x18;
         cyc(104);
-        v = rd8(b + (v >= 0x18 ? 0xE433 : (cyc(6), 0xE407)) + cpu.x);
+        v = rd8(b + (bright ? 0xE433 : (cyc(6), 0xE407)) + cpu.x);
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
         wr8(0x7EFD83, v);
         cyc(32);
         wr8(0x7F37F5, v);
         cyc(32);
         wr8(0x7F39F5, v);
-    } else { cyc(136); }
-    cyc(82);
+        if (bright)
+            cyc(22);                    /* BRA */
+    } else { cyc(138); }
+    cyc(80);
     op_sep(P_M);
     cpu.db = db0;
     op_plp(p0);
@@ -1383,6 +1391,7 @@ static void hud_colour_step(int from)
 {
     uint8_t p0 = cpu.p, db0 = cpu.db;
     uint16_t pushed;
+    int first;
 
     switch (from) {
     case HC_ROWS_REST:
@@ -1409,7 +1418,7 @@ static void hud_colour_step(int from)
             op_add16(0x0002);
             op_cmp16(0x001F);
             if (cpu.p & P_C)
-                op_lda16_imm(0x001F); else { cyc(24); }
+                { op_lda16_imm(0x001F); cyc(4); } else { cyc(24); }
             cyc(38);
             goto store_amount;
         }
@@ -1502,8 +1511,8 @@ gradient_load:
             op_lda16(HC_AMT(0));
             wr16(hc_dp(0xF5), cyc_then(16, cpu.a));
             (cyc(46), abi_ColourBlendBy());
-        }
-        cyc(54);
+            cyc(32);
+        } else { cyc(54); }
         op_lda16(0x000D7F);
         op_asl16();
         op_tax16();
@@ -1654,7 +1663,7 @@ b_blend:
         goto rows_tail;
 rows_rest:
         pushed = cpu.a;
-        cyc(96);
+        cyc(54);
 rows_tail:
         op_lda16(HC_TGT(0));
         if (cpu.a & 0x8000) {
@@ -1690,7 +1699,7 @@ buffer:
     cyc(24);
     op_cmp16(rd16(HC_TO(12)));
     if (!(cpu.p & P_Z)) {
-        cyc(42);
+        cyc(46);
         op_lda16(HC_TGT(0));
         if (cpu.a & 0x8000)
             goto blend_both;
@@ -1811,21 +1820,24 @@ blend_both:
     cyc(46);
     op_lda16(HC_TO(8));
     wr16(hc_dp(0xF5), cyc_then(16, cpu.a));
-    abi_PpuMultiplierSetLowByteTimes8();
-    cyc(18);
+    (cyc(46), abi_PpuMultiplierSetLowByteTimes8());
+    first = 1;
     do {
-        cyc(78);
+        cyc(first ? 32 : 78);           /* LDA long; after the first, INX, INX, CPX, BCC too */
+        first = 0;
         op_lda16(HC_WORK_B + cpu.x);
         cyc(46);
         op_sub16(rd16(HC_WORK_C + cpu.x));
         if (cpu.a) {
             cyc(52);
             op_cmp16(0x0001);
-            if (!(cpu.p & P_Z)) {
-                cyc(36);
+            if (cpu.p & P_Z)
+                { cyc(4); } else {
+                cyc(40);
                 op_cmp16(0xFFFF);
-                if (!(cpu.p & P_Z)) {
-                    cyc(26);
+                if (cpu.p & P_Z)
+                    { cyc(4); } else {
+                    cyc(30);
                     op_lda16(HC_WORK_B + cpu.x);
                     wr16(hc_dp(0xF1), cyc_then(16, cpu.a));
                     cyc(32);
@@ -1841,6 +1853,7 @@ blend_both:
         } else { cyc(16); }
         hc_step(&cpu.x, 0x0200);
     } while (!(cpu.p & P_C));
+    cyc(40);                            /* CPX, BCC not taken */
 hud:
     {
         static const struct { uint16_t colour, x; } hud[6] = {
@@ -2025,4 +2038,5 @@ void abi_PaletteCycleFourth(void)
     db = rd8((uint16_t)cpu.s);
     cpu.db = db;
     cpu.p = nz8(cpu.p, db);
+    cyc(42);                            /* RTS */
 }

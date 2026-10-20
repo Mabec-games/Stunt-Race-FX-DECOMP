@@ -603,10 +603,10 @@ static int fourth_car(uint32_t b)
 /* Sound $45, then the car at `at` one on (Right) or back (Left): 0 to 2
    in turn, 3 after 2 (Right) or before 0 (Left) only with the fourth car;
    Right from 3 wraps to 0, Left from 0 without it to 2. */
-static void car_step(uint32_t b, uint16_t at, int right)
+static void car_step(uint32_t b, uint16_t at, int right, int p2)
 {
     uint8_t v;
-    int four;
+    int four = 0;
 
     op_sep(right ? (cyc(102), P_M | P_X) : (cyc(124), P_M));
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x45);
@@ -631,13 +631,16 @@ static void car_step(uint32_t b, uint16_t at, int right)
             cyc(40);
             four = fourth_car(b);
             v = four ? (cyc(2), 0x03) : (cyc(2), 0x02);
+            if (four == 1)
+                cyc(22);                /* BRA to the store */
         }
     }
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.p = nz8(cpu.p, v);
     cyc(60);
     wr8(b | at, v);
-    cyc(22);
+    if (right || (four == 1 && !p2))
+        cyc(22);                        /* BRA to the second player's check, or the end */
 }
 
 /*
@@ -665,7 +668,7 @@ void abi_CarSelectTwoPlayers(void)
         op_lda16(b | pad[i]);
         if (cpu.a & 0x0100) {
             cpu.p &= (uint8_t)~P_Z;
-            car_step(b, car[i], 1);
+            car_step(b, car[i], 1, i);
             continue;
         }
         cpu.p |= P_Z;
@@ -674,7 +677,7 @@ void abi_CarSelectTwoPlayers(void)
         op_lda16(b | pad[i]);
         cpu.p = (cpu.a & 0x0200) ? (uint8_t)(cpu.p & ~P_Z) : (cyc(46), (uint8_t)(cpu.p | P_Z));
         if (cpu.a & 0x0200)
-            car_step(b, car[i], 0);
+            car_step(b, car[i], 0, i);
     }
     op_sep(P_M | P_X);
     cyc(24);

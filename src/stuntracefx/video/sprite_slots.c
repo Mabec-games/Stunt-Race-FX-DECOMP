@@ -124,6 +124,7 @@ uint8_t SpriteSlot1Countdown(uint8_t bank, uint16_t *x)
 {
     uint16_t r = 0x059D;
     uint8_t a;
+    unsigned t = 44; /* BNE taken, STZ; or REP, SEP, LDA #, STZ */
 
     a = (uint8_t)(rd8(cyc_then(90, dbw(bank, 0x08FB))) + 1);
     if (!a) {
@@ -153,12 +154,14 @@ uint8_t SpriteSlot1Countdown(uint8_t bank, uint16_t *x)
             a = (uint8_t)(a - 2);
             cyc(66);
             wr8((uint16_t)(r + 7), a);
+            cyc(22); /* BRA */
             return a;
         }
         cyc(68);
         wr8(0x7EFF65, (uint8_t)(a + 1));
+        t = 82;
     }
-    cyc(44);
+    cyc(t);
     wr8((uint16_t)(r + 4), 0x00);
     cyc(38);
     wr8((uint16_t)(r + 6), 0xE7);
@@ -255,11 +258,13 @@ uint8_t SpriteSlot4Darken(uint8_t bank)
         a = (uint8_t)(a - 1);
         cyc(52);
         wr8((uint16_t)(r + 7), a);
+        cyc(106); /* PLX, PLP, RTS */
         return a;
     }
     a = rd8(cyc_then(68, dbw(bank, SLOT_MASK)));
     a = (uint8_t)(a & 0xEF);
     wr8(dbw(bank, SLOT_MASK), cyc_then(40, a));
+    cyc(150); /* SEP, REP, PLX, PLP, RTS */
     return a;
 }
 
@@ -294,6 +299,7 @@ uint8_t SpriteSlot4Full(uint8_t bank)
     wr8((uint16_t)(r + 0), 0xFF);
     cyc(38);
     wr8((uint16_t)(r + 7), 0x1F);
+    cyc(106); /* PLX, PLP, RTS */
     return 0x1F;
 }
 
@@ -362,6 +368,7 @@ void abi_SpriteSlot2Brighten(void)
 void abi_SpriteSlot2BrightenLong(void)
 {
     (cyc(46), abi_SpriteSlot2Brighten());
+    cyc(44); /* RTL */
 }
 
 /*
@@ -389,6 +396,7 @@ void abi_SpriteSlot1Start(void)
     cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
     (cyc(62), abi_SpriteSlot1Countdown());
     wr8(dbw(b, 0x084C), cyc_then(46, 0x00));
+    cyc(30);
     op_plp(p);
 }
 
@@ -488,6 +496,7 @@ void abi_SpriteSlot5Off(void)
     a = rd8(cyc_then(142, dbw(cpu.db, SLOT_MASK)));
     a = (uint8_t)(a & 0xDF);
     wr8(dbw(cpu.db, SLOT_MASK), cyc_then(40, a));
+    cyc(152); /* SEP, REP, PLX, PLP, RTL */
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
 }
 
@@ -517,11 +526,13 @@ uint8_t SpriteSlot2Darken(uint8_t bank)
         a = (uint8_t)(a - 1);
         cyc(52);
         wr8((uint16_t)(r + 7), a);
+        cyc(106); /* PLX, PLP, RTS */
         return a;
     }
     a = rd8(cyc_then(68, dbw(bank, SLOT_MASK)));
     a = (uint8_t)(a & 0xFB);
     wr8(dbw(bank, SLOT_MASK), cyc_then(40, a));
+    cyc(150); /* SEP, REP, PLX, PLP, RTS */
     return a;
 }
 
@@ -539,6 +550,7 @@ void abi_SpriteSlot2Darken(void)
 void abi_SpriteSlot2DarkenLong(void)
 {
     (cyc(46), abi_SpriteSlot2Darken());
+    cyc(44); /* RTL */
 }
 
 /*
@@ -558,6 +570,7 @@ void abi_SpriteSlot2FadeOut(void)
     cyc(106);
     wr8(0x05AC, 0x1F);
     (cyc(110), abi_SpriteSlot2Darken());
+    cyc(44); /* RTL */
 }
 
 /*

@@ -144,7 +144,7 @@ static void gauge6_place(uint16_t at, uint8_t y, uint8_t x)
     op_sep(P_M | P_X);
     cyc(62);
     wr8(b | at, y);
-    cyc(38);
+    cyc(x ? 16 : 38);                   /* LDX #imm; panel B's also BRAs to the shared tail */
     for (i = 0; i < 4; i++) {
         cyc(24);
         v = (uint8_t)(rd8(b | (uint16_t)(0x057B + i + x)) & keep[i]);

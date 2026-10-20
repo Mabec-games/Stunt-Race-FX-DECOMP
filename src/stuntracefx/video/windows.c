@@ -117,7 +117,7 @@ static void windows_colour_add03(void)
 {
     cyc(146);
     wr8(CGADSUB, 0x03);
-    WindowsColourWindowOnly();
+    (cyc(46), WindowsColourWindowOnly());
 }
 
 /*
@@ -223,6 +223,7 @@ void abi_BobStep(void)
     if (v != 0x02) {
         cyc(94);
         wr8(0x001A1E + cpu.x, v);
+        cyc(66);                        /* JMP, RTS */
         return;
     }
     cpu.p &= (uint8_t)~P_C;
@@ -243,6 +244,7 @@ void abi_BobStep(void)
         wr8(b | at, v);
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
         cpu.p = nz8(cpu.p, v);
+        cyc(cpu.x == 0x01 ? 42 : 64);   /* RTS, after BRA for bob 0 */
         return;
     }
     cyc(86);
@@ -259,7 +261,7 @@ void abi_BobStep(void)
     if (v != 0x1C) {
         cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x16)) & ~P_C) | (v >= 0x16 ? P_C : 0));
         if (v != 0x16)
-            return;
+            { cyc(66); return; }    /* JMP, RTS */
     }
     v = (uint8_t)((rd8(0x001A20 + cpu.x) ^ 0xFF) + 1);
     wr8(0x001A20 + cpu.x, v);
@@ -281,7 +283,7 @@ static int bob_window(uint8_t x, uint16_t at)
     cpu.x = x;
     (cyc(62), abi_BobStep());
     op_sep(P_M | P_X);
-    cyc(98);
+    cyc(32);
     v = rd8((uint32_t)(0x001A1C + x));
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x18)) & ~P_C) | (v >= 0x18 ? P_C : 0));
@@ -366,6 +368,7 @@ void abi_WindowSweepStep(void)
     if (v != 0x02) {
         cyc(94);
         wr8(0x001A17 + cpu.x, v);
+        cyc(66);                        /* JMP, RTS */
         return;
     }
     cpu.p &= (uint8_t)~P_C;
@@ -396,6 +399,7 @@ void abi_WindowSweepStep(void)
         wr8(b | 0x1A16, 0xF0);
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xF0);
         cpu.p = nz8(cpu.p, 0xF0);
+        cyc(42);                        /* RTS */
         return;
     }
     cyc(86);
@@ -412,7 +416,7 @@ void abi_WindowSweepStep(void)
     if (v != 0xF2) {
         cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0xE8)) & ~P_C) | (v >= 0xE8 ? P_C : 0));
         if (v != 0xE8)
-            return;
+            { cyc(66); return; }    /* JMP, RTS */
     }
     cyc(70);
     v = (uint8_t)((rd8(0x001A19 + cpu.x) ^ 0xFF) + 1);
@@ -420,6 +424,7 @@ void abi_WindowSweepStep(void)
     wr8(0x001A19 + cpu.x, v);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.p = nz8(cpu.p, v);
+    cyc(42);                            /* RTS */
 }
 
 /*
@@ -457,7 +462,7 @@ void abi_WindowSweep(void)
         { cyc(68); abi_WindowHdmaFFD5(); }
     else
         abi_WindowHdmaFFD1();
-    cyc(84);
+    cyc(v ? 84 : 66);                   /* JMP, RTS after FFD1; FFD5's RTS is not stated by it */
 }
 
 /*
@@ -493,11 +498,10 @@ void abi_WindowSweepIfOn(void)
                 cyc(94);
                 wr8(b | 0x19A9, 0x04);
                 (cyc(46), abi_WindowSweep());
-            } else { cyc(14); }
-        } else { cyc(14); }
-        cyc(2);
-    }
-    cyc(80);
+            } else { cyc(38); }
+        } else { cyc(38); }
+    } else { cyc(22); }
+    cyc(58);
     cpu.db = db0;
     op_plp(p0);
 }
@@ -527,6 +531,7 @@ void abi_OscillatorStep(void)
         cyc(80);
         wr8(0x001A0E + cpu.x, 0x80);
         a = 0x04;
+        cyc(18);                        /* LDA #, JMP instead of BNE */
     } else {
         cyc(70);
         a = (uint8_t)(rd8(0x001A11) >> 5);
@@ -550,6 +555,7 @@ void abi_OscillatorStep(void)
             wr8(0x001A0C + cpu.x, 0x01);
             cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
             cpu.p = nz8(cpu.p, 0x01);
+            cyc(66);
             return;
         }
     }
@@ -626,7 +632,7 @@ void abi_OscillatorWindow(void)
         { cyc(68); abi_WindowHdmaFFD5(); }
     else
         { cyc(62); abi_WindowHdmaFFD1(); }
-    cyc(66);
+    cyc(v ? 84 : 66);                   /* FFD5's RTS is not stated by it */
 }
 
 void abi_ObjectLinkEventTrigger(void);
@@ -725,7 +731,7 @@ void abi_WindowsColourSubtract3(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x03);
     cpu.p = nz8(cpu.p, 0x03);
     wr8(0x002131, 0x03);
-    abi_WindowsColourWindowOnly();
+    (cyc(46), abi_WindowsColourWindowOnly());
 }
 
 void abi_WindowSlideStep(void);
@@ -771,7 +777,7 @@ void abi_WindowSlideOrOscillate(void)
                 cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
                 cpu.p = nz8(cpu.p, v);
                 if (v)
-                    { cyc(10); goto out; }
+                    { cyc(32); goto out; }
             }
             op_sep(P_M);
             cyc(84);

@@ -220,6 +220,7 @@ void abi_MulWordByte(void)
     uint32_t b = (uint32_t)cpu.db << 16;
     uint8_t a, m, y;
     uint16_t w, n;
+    uint32_t pre, st;
 
     cyc(16);
     wr8(0x00006C, 0x00);
@@ -247,6 +248,8 @@ void abi_MulWordByte(void)
     wr8(b | 0x4203, a);
     cyc(44);
     a = rd8(0x000068);
+    pre = 48;                           /* JMP, LDY */
+    st = 16;
     goto add;
 pos_s_neg_v:
     cpu.p |= P_C;
@@ -258,6 +261,8 @@ pos_s_neg_v:
     cyc(32);
     m = rd8(0x000068);
     a = op_sbc8(0x00, m, &cpu.p);
+    pre = 32;                           /* what op_sbc8 does not state: JMP, LDY */
+    st = 34;
     goto sub;
 neg_s:
     a = (uint8_t)(~a + 1);
@@ -276,6 +281,8 @@ neg_s:
     wr8(b | 0x4203, a);
     cyc(58);
     a = rd8(0x000068);
+    pre = 24;                           /* LDY */
+    st = 34;
     goto sub;
 neg_s_neg_v:
     cpu.p |= P_C;
@@ -287,9 +294,11 @@ neg_s_neg_v:
     cyc(60);
     m = rd8(0x000068);
     a = op_sbc8(0x00, m, &cpu.p);
+    pre = 8;                            /* LDY, less what op_sbc8 states */
+    st = 16;
     goto add;
 sub:
-    cyc(24);
+    cyc(pre);
     y = rd8(b | 0x4217);
     cyc(24);
     wr8(b | 0x4203, a);
@@ -307,7 +316,7 @@ sub:
     w = op_sbc16(w, n, &cpu.p);
     goto store;
 add:
-    cyc(48);
+    cyc(pre);
     y = rd8(b | 0x4217);
     cyc(24);
     wr8(b | 0x4203, a);
@@ -324,7 +333,7 @@ add:
     cpu.p &= (uint8_t)~P_C;
     w = op_adc16(w, n, &cpu.p);
 store:
-    cyc(34);
+    cyc(st);
     wr16(0x00006A, w);
     cyc(64);
     cpu.a = w;
@@ -341,6 +350,7 @@ store:
 void abi_MulWordByteLong(void)
 {
     (cyc(46), abi_MulWordByte());
+    cyc(44);                            /* RTL */
 }
 
 /* One MulWordByte: $67-$68 = the word at v, $69 = the byte at f. */
@@ -375,9 +385,10 @@ static void rotate_wide(uint8_t i, uint16_t xa, uint16_t out)
     t = rd8(0x0096FE + i);
     wr8(0x0005F6, t);
     t = rd8(0x00973E + i);
+    cyc(0x3E + i > 0xFF ? 62 : 56);     /* LDA abs,X (6 more over a page), STA */
     wr8(0x0005F7, t);
     mul_at(xa, 0x05F6);
-    cyc(60);
+    cyc(16);
     t = rd8(0x00006A);
     cyc(24);
     wr8(0x0005F2, t);
@@ -387,7 +398,7 @@ static void rotate_wide(uint8_t i, uint16_t xa, uint16_t out)
     wr8(0x0005F3, t);
     mul_at(0x0094, 0x05F7);
     cpu.p &= (uint8_t)~P_C;
-    cyc(60);
+    cyc(16);
     t = rd8(0x00006A);
     cyc(38);
     v = rd8(0x0005F2);
@@ -402,7 +413,7 @@ static void rotate_wide(uint8_t i, uint16_t xa, uint16_t out)
     cyc(24);
     wr8(0x0005F3, t);
     mul_at(0x0094, 0x05F6);
-    cyc(60);
+    cyc(16);
     t = rd8(0x00006A);
     cyc(16);
     wr8(out, t);
@@ -412,7 +423,7 @@ static void rotate_wide(uint8_t i, uint16_t xa, uint16_t out)
     wr8((uint16_t)(out + 1), t);
     mul_at(xa, 0x05F7);
     cpu.p |= P_C;
-    cyc(60);
+    cyc(16);
     t = rd8(0x00006A);
     cyc(30);
     v = rd8(out);

@@ -182,8 +182,10 @@ void abi_CameraFollowStep(void)
         g = rd16(0x70247A);
         cyc(46);
         uint16_t rec = rd16(0x700042 + g);
+        unsigned jmp = 0;
 
         if ((rec & 0x000C) && !(rd16(cyc_then(100, b | CAM_FLAGS)) & 0x0200)) {
+            jmp = 24; /* ends in JMP .pitch */
             cyc(40);
             a = (uint16_t)(~angle_hi(b, y, 0x2015) + 1);
             cyc(118);
@@ -221,7 +223,7 @@ void abi_CameraFollowStep(void)
                 cyc(214);
                 cpu.a = rd16(b | CAM_LAG);
                 abi_ScaleFiveThirtySeconds();
-                cyc(44);
+                cyc(22); /* BRA */
                 a = asr_round(cpu.a, 1);
                 break;
             case 0x1000:
@@ -234,6 +236,7 @@ void abi_CameraFollowStep(void)
             default:
                 cyc(248);
                 a = rd16(b | CAM_LAG);
+                cyc(22); /* BRA */
                 break;
             }
             cyc(36);
@@ -243,6 +246,7 @@ void abi_CameraFollowStep(void)
         wr16(CAM(r, 0x16), a);
         cyc(24);
         wr16(b | 0x0660, a);
+        cyc(jmp);
         a = asr_round(angle_hi(b, y, 0x2014), 2);
         cyc(66);
         wr16(CAM(r, 0x14), a);

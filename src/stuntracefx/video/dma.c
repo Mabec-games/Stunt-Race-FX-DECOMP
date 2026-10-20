@@ -695,6 +695,7 @@ static void copy8(uint32_t to, uint32_t from)
 static void upload_sprites_palette(uint32_t b)
 {
     uint8_t v;
+    int via_oam = 0;
 
     cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
     cyc(92);
@@ -717,10 +718,10 @@ static void upload_sprites_palette(uint32_t b)
             cpu.y = 0x0220;
             cpu.p = nz16(cpu.p, cpu.y);
             abi_OamDma();
+            via_oam = 1;
         }
-        cyc(20);
     }
-    cyc(90);
+    cyc(via_oam ? 68 : 90);
     cpu.p &= (uint8_t)~(P_M | P_X);
     abi_CgramUploadAll();
     cyc(24);
@@ -971,7 +972,8 @@ void abi_NmiFrameUpload(void)
         cyc(28);
         return;
     } else { cyc(22); }
-    race_stage(b);
+    if (race_stage(b))
+        cyc(28);
     op_plp(p0);
 }
 
@@ -1015,7 +1017,7 @@ static int race_stage(uint32_t b)
         ld3(0x2200, 0x4E00, 0x1100, 0x2200);
         abi_VramDmaFromGsuRam();
         cpu.p &= (uint8_t)~(P_M | P_X);
-        cyc(64);
+        cyc(22);
         ld3(0x0240, 0xE5D7, 0x5CC0, 0x5CC0);
         abi_VramDmaFromBank7F();
         flag_0357(b, 0);
@@ -1031,7 +1033,7 @@ static int race_stage(uint32_t b)
         ld3(0x2400, 0x7000, 0x2200, 0x2400);
         abi_VramDmaFromGsuRam();
         cpu.p |= P_M;
-        cyc(64);
+        cyc(22);
         put8(BG12NBA, 0x60);
         put8(BG1SC, 0x78);
         copy8(BG2HOFS, b | 0x0D92);
@@ -1071,7 +1073,7 @@ static int race_stage(uint32_t b)
         ld3(0x2200, 0xDA00, 0x4500, 0x2200);
         abi_VramDmaFromGsuRam();
         cpu.p &= (uint8_t)~(P_M | P_X);
-        cyc(64);
+        cyc(22);
         ld3(0x0240, 0xEA17, 0x5EE0, 0x5EE0);
         abi_VramDmaFromBank7F();
         flag_0357(b, 0);
@@ -1089,7 +1091,7 @@ static int race_stage(uint32_t b)
         ld3(0x2400, 0x9400, 0x2200, 0x2400);
         abi_VramDmaFromGsuRam();
         cpu.p |= P_M;
-        cyc(64);
+        cyc(22);
         copy8(BG2HOFS, b | 0x0D94);
         copy8(BG2HOFS, b | 0x0D95);
         copy8(BG2VOFS, b | 0x0D90);
@@ -1130,7 +1132,6 @@ static int race_stage(uint32_t b)
         abi_CgramUploadAll();
         return 0;
     }
-    cyc(28);
     return 1;
 }
 
@@ -1168,7 +1169,7 @@ void abi_VramRowsCopyUnused(void)
 {
     uint32_t b = (uint32_t)cpu.db << 16;
 
-    do {
+    for (;;) {
         cyc(30);
         op_lda16(b | cpu.x);
         cyc(32);
@@ -1176,7 +1177,10 @@ void abi_VramRowsCopyUnused(void)
         cpu.x = (uint16_t)(cpu.x + 2);
         cpu.y = (uint16_t)(cpu.y - 1);
         cpu.p = nz16(cpu.p, cpu.y);
-    } while (cpu.y);
+        if (!cpu.y)
+            break;
+        cyc(64); /* INX, INX, DEY, BNE taken */
+    }
     cyc(100);
 }
 
@@ -1211,13 +1215,15 @@ void abi_NmiFrameUploadSprites(void)
 void VramClearWords(uint8_t bank, uint16_t at, uint16_t n)
 {
     uint32_t b = (uint32_t)bank << 16;
+    int first = 1;
 
     cyc(48);
     wr16(b | 0x2115, 0x0080);
     cyc(24);
     wr16(b | 0x2116, at);
     do {
-        cyc(60);
+        cyc(first ? 48 : 60); /* LDA #0 first, else DEX, BNE taken */
+        first = 0;
         wr16(b | 0x2118, 0x0000);
         n = (uint16_t)(n - 1);
     } while (n);

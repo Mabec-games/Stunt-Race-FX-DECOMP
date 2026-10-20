@@ -118,10 +118,10 @@ static void serial_shift(uint32_t b, uint8_t bit)
 /* The serial loop from count y (7 down to 0): each pass one read of data
    line 2 (bit 1) of joypad port `port` shifted into $1182; returns the
    byte. */
-static uint8_t serial_rest(uint32_t b, uint8_t port, int y)
+static uint8_t serial_rest(uint32_t b, uint8_t port, int y, uint16_t lead)
 {
-    for (; y >= 0; y--)
-        { cyc(60); serial_shift(b, (rd8(b | (uint16_t)(0x4016 + port)) & 0x02) ? 1 : (cyc(38), 0)); }
+    for (; y >= 0; y--, lead = 60)
+        { cyc(lead); serial_shift(b, (rd8(b | (uint16_t)(0x4016 + port)) & 0x02) ? (cyc(32), 1) : (cyc(38), 0)); }
     cyc(54);
     return rd8(b | 0x1182);
 }
@@ -131,7 +131,7 @@ static uint8_t serial_byte(uint32_t b, uint8_t port)
 {
     cyc(24);
     wr8(b | 0x1182, 0x00);
-    return serial_rest(b, port, 7);
+    return serial_rest(b, port, 7, 40);
 }
 
 /* JoypadPortCheck from `stage`: 0 the start (latch set, first eight
@@ -151,7 +151,7 @@ static int port_check(uint32_t b, uint8_t port, int stage, int y)
         } else {
             serial_shift(b, 1);
             cyc(22);
-            v = serial_rest(b, port, y - 1);
+            v = serial_rest(b, port, y - 1, 60);
         }
         cyc(38);
         if (v != 0xFF)
@@ -165,7 +165,7 @@ static int port_check(uint32_t b, uint8_t port, int stage, int y)
     } else {
         serial_shift(b, 1);
         cyc(22);
-        v = serial_rest(b, port, y - 1);
+        v = serial_rest(b, port, y - 1, 60);
     }
     if (v != 0xFF) {
         cyc(110);

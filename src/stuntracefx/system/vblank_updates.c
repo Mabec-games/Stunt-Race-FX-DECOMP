@@ -86,7 +86,7 @@ uint16_t GsuPictureUploadStep(uint8_t bank, int *copied)
         return cyc_then(70, upload_rows(bank, 0x000C, 3, 0x4000, 0x11E0));
     case 0xC:
         a = upload_rows(bank, 0x0006, 4, 0x2C00, 0x0B00);
-        return (uint16_t)((a & 0xFF00) | upload_done(bank, 0x64));
+        return cyc_then(70, (uint16_t)((a & 0xFF00) | upload_done(bank, 0x64)));
     }
     cyc(138);
     *copied = 0;

@@ -214,7 +214,7 @@ void abi_RaceClockStep(void)
     cpu.a = a;
     op_cmp16(0x0060);
     if (a >= 0x0060) {
-        cyc(60);
+        cyc(64);
         wr16(b | 0x0E64, 0x0000);
         cpu.p &= (uint8_t)~P_C;
         cyc(24);
@@ -224,7 +224,7 @@ void abi_RaceClockStep(void)
         cpu.a = a;
         op_cmp16(0x0010);
         if (a >= 0x0010) {
-            cyc(84);
+            cyc(88);
             wr16(b | 0x0E66, 0x0009);
             cyc(48);
             wr16(b | 0x0E64, 0x0059);

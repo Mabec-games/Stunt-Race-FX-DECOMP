@@ -77,18 +77,29 @@ static void bare_object(uint32_t b, uint16_t y, uint16_t slot, uint16_t link)
  * the end opcode; M 8-bit; N, Z from the data bank pulled back; C, V from
  * adding $8000.
  */
+/* 16 when a word at a is ROM (banks $00-$3F and $80-$BF from $8000), whose
+   clocks the C states; work RAM reads are placed on the original's. */
+static uint32_t rom_word_at(uint32_t a)
+{
+    uint8_t bank = (uint8_t)(a >> 16);
+
+    return (bank < 0x40 || (bank >= 0x80 && bank < 0xC0)) && (a & 0xFFFF) >= 0x8000 ? 16 : 0;
+}
+
 void abi_CourseScriptRun(void)
 {
     uint8_t db = cpu.db;
     uint32_t b;
     uint16_t x = cpu.x, y, op, o, a, n, i;
     uint8_t v;
+    int first = 1;
 
     cpu.db = (uint8_t)cpu.a;
     b = (uint32_t)cpu.db << 16;
     for (;;) {
         cpu.p &= (uint8_t)~(P_M | P_X);
-        cyc(124);
+        cyc(first ? 124 : 108 + rom_word_at(b + 0x8000 + x));
+        first = 0;
         op = (uint16_t)(rd16(b | (uint16_t)(0x8000 + x)) & 0x00FF);
         y = x;
         cpu.y = y;

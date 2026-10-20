@@ -56,7 +56,7 @@ uint8_t OamWriteSprites36To46(void)
     cyc(24);
     wr8(OAMADDH, 0x00);
     for (i = 0; i < 0x2C; i++) {
-        cyc(80);
+        cyc(i ? 80 : 54);               /* INX, DEY, BNE taken; the first: LDY */
         v = rd8(OAM_BUFFER + 0x90 + i);
         cyc(24);
         wr8(OAMDATA, v);
@@ -1637,7 +1637,7 @@ void abi_SpritePiecesAtRight(void)
 }
 
 /* The position (x, y) of the piece set in $10C3 (Y stored first when
-   `y_first`), then SpritePieces3 from sprite buffer offset Y and REP #$20.
+   `y_first`; 2 with the BRA to the shared tail), then SpritePieces3 from sprite buffer offset Y and REP #$20.
    The set-up subtracts leave C set and N, Z, V clear for SpritePieces3 to
    overwrite. */
 static void pieces_xy(uint16_t x, uint16_t y, int y_first)
@@ -1647,6 +1647,7 @@ static void pieces_xy(uint16_t x, uint16_t y, int y_first)
     if (y_first) {
         cyc(86);
         wr16(b | 0x10BF, y);
+        cyc(y_first == 2 ? 108 : 86);   /* 2: the BRA to the shared tail */
         wr16(b | 0x10BD, x);
     } else {
         cyc(86);
@@ -1655,8 +1656,9 @@ static void pieces_xy(uint16_t x, uint16_t y, int y_first)
         wr16(b | 0x10BF, y);
     }
     cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_V)) | P_C);
-    abi_SpritePieces3();
+    (cyc(62), abi_SpritePieces3());
     cpu.p &= (uint8_t)~P_M;
+    cyc(64);
 }
 
 /* Piece set A to $10C3, then pieces_xy. */
@@ -1678,7 +1680,7 @@ static void pieces_at_xy(uint16_t x, uint16_t y, int y_first)
  */
 void abi_SpritePiecesAt46Y71(void)
 {
-    pieces_at_xy(0x0081 - 0x003B, 0x0089 - 0x0018, 1);
+    pieces_at_xy(0x0081 - 0x003B, 0x0089 - 0x0018, 2);
 }
 
 /*
@@ -1690,7 +1692,7 @@ void abi_SpritePiecesAt46Y71(void)
  */
 void abi_SpritePiecesAt46Y82(void)
 {
-    pieces_at_xy(0x0081 - 0x003B, 0x0089 - 0x0007, 1);
+    pieces_at_xy(0x0081 - 0x003B, 0x0089 - 0x0007, 2);
 }
 
 /*
@@ -1714,7 +1716,7 @@ void abi_SpritePiecesAt46Y93(void)
  */
 void abi_SpritePiecesAt62Y71(void)
 {
-    pieces_at_xy(0x0089 - 0x0027, 0x0089 - 0x0018, 1);
+    pieces_at_xy(0x0089 - 0x0027, 0x0089 - 0x0018, 2);
 }
 
 /*
@@ -1726,7 +1728,7 @@ void abi_SpritePiecesAt62Y71(void)
  */
 void abi_SpritePiecesAt62Y83(void)
 {
-    pieces_at_xy(0x0089 - 0x0027, 0x0089 - 0x0006, 1);
+    pieces_at_xy(0x0089 - 0x0027, 0x0089 - 0x0006, 2);
 }
 
 /*
@@ -1814,7 +1816,7 @@ void abi_SpritePiecesTwoCarsTop(void)
     uint8_t v, n;
 
     cpu.p |= P_M;
-    cyc(110);
+    cyc(46);
     if ((rd8(b | 0x0E3B) & 0x07) == 0x07) {
         cyc(72);
         v = (uint8_t)(rd8(b | 0x10BB) + 1);
@@ -1850,6 +1852,7 @@ void abi_SpritePiecesTwoCarsTop(void)
     wr8(b | 0x10BD, 0x7C);
     car_pieces(0x00CC);
     cpu.p |= P_M;
+    cyc(16);
     wr8(b | 0x0581, 0x20);
     cyc(40);
     wr8(b | 0x0582, 0x58);
@@ -1954,10 +1957,10 @@ static void stage_next_if(uint32_t b, uint16_t at, uint8_t v)
     uint8_t c = rd8(b | at);
 
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | c);
-    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(c - v)) & ~P_C) | (c >= v ? (cyc(38), P_C) : 0));
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(c - v)) & ~P_C) | (c >= v ? P_C : 0));
     if (c != v)
-        return;
-    cyc(18);
+        { cyc(38); return; }            /* CMP, BNE taken */
+    cyc(56);                            /* CMP, BNE not taken, INC's fetch */
     wr8(b | 0x0D54, cyc_then(6, (uint8_t)(rd8(b | 0x0D54) + 1)));
     cyc(24);
     wr8(b | 0x0D54, cyc_then(6, (uint8_t)(rd8(b | 0x0D54) + 1)));
@@ -2016,7 +2019,10 @@ void abi_OamDirectStage(void)
     switch (cpu.x) {
     case 0x02:
         stage_next_if(b, 0x0E16, 0xAC);
-        /* fall through */
+        cyc(6);                         /* on into the stage 0 code, no JMP */
+        cpu.p &= (uint8_t)~P_X;
+        oam_direct(b, 0xE8, 0x01D0, 0x0030, 0);
+        break;
     case 0x00:
         cyc(52);
         cpu.p &= (uint8_t)~P_X;
@@ -2472,7 +2478,7 @@ void abi_OamHideForHudMode(void)
         cpu.p = nz16(cpu.p, cpu.y);
         abi_OamFillEvery4();
     } else if (v != 0x02) {
-        cyc(70);
+        cyc(v < 0x02 ? 164 : 174);      /* BEQ, CMP, BCC, BEQ, LDA, LDX, LDY, JSR */
         oam_hide(0x012C, 0x000D);
         cpu.x = 0x0180;
         cpu.y = 0x0020;
@@ -2523,7 +2529,7 @@ void abi_OamStagePause2(void)
     cyc(24);
     wr8(b | 0x19BD, 0x01);
     abi_OamHighBits58();
-    cyc(94);
+    cyc(24);
     v = (uint8_t)(rd8(b | 0x0D2D) - 1);
     cyc(6);
     wr8(b | 0x0D2D, v);
@@ -2574,7 +2580,7 @@ static void overlay_state0(void)
 /* OverlaySpritesStep after its state's step: the bob and tile step by the
    frame count, the palette by the picture at $10A0, the twelve sprites
    placed (or off screen), their high bits $AA. */
-static void overlay_draw(void)
+static void overlay_draw(unsigned lead)
 {
     const uint32_t b = 0x040000;
     uint8_t v, bob, step;
@@ -2582,7 +2588,7 @@ static void overlay_draw(void)
     uint32_t in, off;
 
     op_sep(P_M);
-    cyc(68);
+    cyc(lead);                          /* 22 more after a BRA to it */
     if (rd8(b | 0x0E3B) & 0x04) {
         bob = 0x00;
         step = 0x00;
@@ -2653,7 +2659,6 @@ static void overlay_draw(void)
     wr8(b | 0x057F, 0xAA);
     cyc(24);
     wr8(b | 0x0580, 0xAA);
-    cyc(58);
 }
 
 /*
@@ -2751,7 +2756,8 @@ void abi_OverlaySpritesStep(void)
         wr16(b | 0x10A2, 0x0007);
         break;
     }
-    overlay_draw();
+    overlay_draw(68);
+    cyc(58);                            /* PLB, PLP, RTL less op_plp's */
     cpu.db = db0;
     op_plp(p0);
 }
@@ -2769,7 +2775,7 @@ void abi_OverlaySpritesStep(void)
 void abi_OverlaySpritesState0(void)
 {
     overlay_state0();
-    (cyc(2), overlay_draw());
+    (cyc(2), overlay_draw(68));
     cyc(20);
     cpu.db = rd8((uint16_t)(cpu.s + 1));
     cpu.s = (uint16_t)(cpu.s + 1);
@@ -2777,6 +2783,7 @@ void abi_OverlaySpritesState0(void)
     cyc(20);
     op_plp(rd8((uint16_t)(cpu.s + 1)));
     cpu.s = (uint16_t)(cpu.s + 1);
+    cyc(2);
 }
 
 /* Waits for the vertical blank: $0D52, set by each, read until it is set,
@@ -2931,7 +2938,7 @@ void abi_PauseOnStart(void)
    the pull), Y = 0, P unchanged. */
 static void hide9(uint16_t offset)
 {
-    cyc(50);
+    cyc(160);
     OamHideRange(offset, 0x0009);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xF0);
     cpu.x = (uint16_t)(offset + 4 * 9);

@@ -171,6 +171,7 @@ void abi_WindowTable7FLong(void)
 {
     cyc(46);
     abi_WindowTable7F();
+    cyc(44);
 }
 
 void abi_JoypadRead(void);
@@ -757,6 +758,7 @@ void abi_TimeMarkStart(void)
     t = time_stamp();
     cyc(32);
     wr16(0x001A39 + cpu.x, t);
+    cyc(44);
     cpu.a = t;
 }
 
@@ -820,5 +822,6 @@ void abi_TimeMarkEnd(void)
     a = op_adc16(a, m, &cpu.p);
     cyc(32);
     wr16(0x001A37 + cpu.x, a);
+    cyc(44);
     cpu.a = a;
 }

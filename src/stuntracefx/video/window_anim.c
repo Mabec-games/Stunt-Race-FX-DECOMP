@@ -159,7 +159,6 @@ void abi_WindowStep3433By2(void)
 void abi_WindowStep3433By3(void)
 {
     window_step_down(0x3433, 3);
-    cyc(22);
 }
 
 /*
@@ -186,6 +185,7 @@ void abi_WindowStep3437By3(void)
     cyc(76);
     wr8(a, r);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | r);
+    cyc(42);                            /* RTS */
 }
 
 void abi_WindowStep3433By2(void);
@@ -227,10 +227,12 @@ void abi_WindowEdgesStep(void)
     } else if (v < m) {
         abi_WindowStep3437();
         (cyc(46), abi_WindowStep3433By3());
+        cyc(22);                    /* BRA */
     } else {
         cyc(78);
         abi_WindowStep3437By3();
-        abi_WindowStep3433By2();
+        (cyc(46), abi_WindowStep3433By2());
+        cyc(22);                    /* BRA */
     }
     abi_WindowStep3439();
     (cyc(46), abi_WindowStep3435());

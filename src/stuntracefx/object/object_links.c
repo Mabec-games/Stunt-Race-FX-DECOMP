@@ -20,12 +20,14 @@ static void free_list(void)
 {
     uint32_t b = (uint32_t)cpu.db << 16;
     uint16_t x = cpu.x, obj, next;
+    int first = 1;
 
     cpu.p &= (uint8_t)~P_X;
     cyc(76);
     obj = rd16(b | 0x0325);
     while (obj) {
-        cyc(46);
+        cyc(first ? 46 : 102);  /* later ones: PLY, TYX, BNE taken */
+        first = 0;
         next = rd16(b | (uint16_t)(0x2000 + obj));
         cpu.p |= P_M;
         cpu.x = obj;
@@ -34,7 +36,7 @@ static void free_list(void)
         cpu.y = next;
         obj = next;
     }
-    cyc(102);
+    cyc(first ? 102 : 146);
     cpu.x = x;
     cpu.p = nz16(cpu.p, x);
 }
@@ -59,7 +61,7 @@ void ObjectListTableFirst(void)
 {
     uint32_t b = (uint32_t)cpu.db << 16;
     uint8_t p = cpu.p;
-    uint16_t x, a = cpu.a, at, v;
+    uint16_t x, a = cpu.a, at, v, t = 132;
 
     cyc(68);
     wr16(b | 0x0D04, 0x0000);
@@ -96,11 +98,12 @@ void ObjectListTableFirst(void)
                 cyc(14);
                 wr16(b | 0x0D04, (uint16_t)(v + 1));
                 cpu.y = 0x000A;
-            }
+            } else { t = 112; /* BIT, BNE taken */ }
         } else { cyc(66); }
         do {
-            cyc(132);
+            cyc(t);
             x = rd16(b | (uint16_t)(0x2000 + x));
+            t = 154; /* later objects: BNE taken at the top */
         } while (x);
         cyc(8);
         cpu.a = 0x0000;
@@ -192,6 +195,7 @@ void ObjectLinkChild(uint8_t bank, uint8_t tag, uint16_t parent, uint16_t child)
     wr16(b | (uint16_t)(0x2027 + at), child);
     cyc(16);
     (void)rd16(LINKS_SCRATCH);
+    cyc(66);                            /* SEP, RTL */
 }
 
 void abi_ObjectLinkChild(void)
@@ -295,7 +299,7 @@ int ObjectSpawnA040(uint16_t *a, uint16_t *x, uint16_t *y)
     } else { cyc(56); }
     *y = *x;
     ObjectInit(*y);
-    cyc(200);
+    cyc(48);
     wr8(0x7E2036 + *x, 0x03);
     *a = 0xA040;
     cyc(78);

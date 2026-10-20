@@ -35,6 +35,7 @@ static uint8_t hud_slide_in(uint8_t *p)
     }
     cyc(76);
     wr8(HUD_SLIDE, r);
+    cyc(42);
     return r;
 }
 
@@ -110,7 +111,7 @@ static void hud_sprites_y(uint32_t b)
     v = v0;
     for (i = 0; i < 4; i++) {
         if (i) {
-            cyc(36);
+            cyc(i == 3 ? 14 : 36);   /* PLA, CLC, ADC; PHA unless the last */
             cpu.p &= (uint8_t)~P_C;
             v = adc8i(v, 0x10);
         }
@@ -244,6 +245,7 @@ void abi_HudSlideOut(void)
     }
     cyc(54);
     wr8(b | 0x0D57, v);
+    cyc(42);
 }
 
 /* AE18 and AE30's body: $F9 = the panel's Y offset, X its sprites; by stage
@@ -276,6 +278,7 @@ static void hud_panel_slide(uint8_t f9, uint16_t x, int panel_a)
         }
     }
     hud_sprites_y(b);
+    cyc(28);
     op_plp(p0);
 }
 
@@ -334,7 +337,9 @@ void abi_HudPanelsStep(void)
         v = lda8(b | 0x0E16);
         cpu.p |= P_C;
         v = op_sbc8(v, 0x04, &cpu.p);
-        cmp8(v, 0xAC);
+        /* CMP #$AC, BCS taken (38) or not, LDA #$AC (48) */
+        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0xAC)) & ~P_C) | (v >= 0xAC ? P_C : 0));
+        cyc(v >= 0xAC ? 38 : 48);
         if (v < 0xAC)
             v = 0xAC;
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
@@ -346,34 +351,36 @@ void abi_HudPanelsStep(void)
         cyc(22);
         v = lda8(b | 0x0E12);
         cpu.p &= (uint8_t)~P_C;
-        v = adc8i(v, 0x04);
-        if (!(v & 0x80)) {
-            cyc(4);
-            cmp8(v, 0x1F);
+        v = op_adc8(v, 0x04, &cpu.p);
+        if (v & 0x80) {
+            cyc(76);
+        } else {
+            cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x1F)) & ~P_C) | (v >= 0x1F ? P_C : 0));
+            cyc(v >= 0x1F ? 118 : 108);
             if (v >= 0x1F)
                 v = 0x1F;
         }
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-        cyc(74);
         wr8(b | 0x0E12, v);
         hud_gauge_b_x(b);
         break;
     case 0x06:
         cyc(22);
         v = lda8(b | 0x0E0B);
-        cyc(18);
         cpu.p &= (uint8_t)~P_C;
-        v = adc8i(v, 0x04);
-        if (!(v & 0x80)) {
-            cmp8(v, 0x2A);
+        v = op_adc8(v, 0x04, &cpu.p);
+        if (v & 0x80) {
+            cyc(76);
+        } else {
+            cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x2A)) & ~P_C) | (v >= 0x2A ? P_C : 0));
             if (v >= 0x2A) {
-                cyc(60);
+                cyc(118);
                 wr8(b | 0x0E0C, 0x7C);
                 v = 0x2A;
-            }
+                cyc(40);
+            } else { cyc(108); }
         }
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-        cyc(40);
         wr8(b | 0x0E0B, v);
         hud_panel_b_y(b);
         break;
@@ -386,7 +393,7 @@ void abi_HudPanelsStep(void)
             { cyc(22); abi_HudSlideOut(); }
         cpu.p &= (uint8_t)~P_X;
         cpu.x = 0x0000;
-        cyc(104);
+        cyc(62);
         wr16((uint16_t)(cpu.d + 0xF9), 0x0000);
         hud_sprites_y(b);
         break;

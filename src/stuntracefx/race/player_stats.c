@@ -315,7 +315,7 @@ void abi_PlayerStatsThenPhaseDD35(void)
             jump_routine(0x07EBE9);
             return;
         }
-    }
+    } else { cyc(22); }                 /* BEQ taken */
     phase_jump(0xDD35);
 }
 
@@ -352,7 +352,7 @@ static void race_x_block(uint32_t b, uint8_t stage, void (*flag)(uint32_t), void
    P pulled: from the stack for an inner entry, else as kept. */
 static void race_frame_end(uint32_t b, uint16_t pressed, int inner, uint8_t p0, uint8_t db0)
 {
-    cyc(56);
+    cyc(inner ? 24 : 56);
     wr16(b | pressed, 0x0000);
     if (inner) {
         cpu.s++;
@@ -484,7 +484,6 @@ void abi_RaceXPressPlayer1(void)
     uint32_t b = (uint32_t)cpu.db << 16;
 
     race_x_block(b, 0x0C, race_flag_p1, abi_OamHighBits18Park48);
-    cyc(38);
     race_frame_end(b, 0x0D1A, 1, 0, 0);
 }
 
@@ -502,7 +501,6 @@ void abi_RaceXPressPlayer2(void)
     uint32_t b = (uint32_t)cpu.db << 16;
 
     race_x_block(b, 0x0E, race_flag_p2, abi_OamHighBits58Park112);
-    cyc(38);
     race_frame_end(b, 0x0D1C, 1, 0, 0);
 }
 
@@ -964,7 +962,7 @@ void abi_StuntCourseMark(void)
     case 0x0E: cyc(86); bit = 0x04; break;
     case 0x0F: cyc(118); bit = 0x08; break;
     default:
-        cyc(56);
+        cyc(170);                       /* the four compares, RTS */
         cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)((uint8_t)cpu.a - 0x0F)) & ~P_C) | ((uint8_t)cpu.a >= 0x0F ? P_C : 0));
         return;
     }
@@ -976,6 +974,7 @@ void abi_StuntCourseMark(void)
     cyc(32);
     wr8(0x70FC06, v);
     (cyc(62), abi_SaveChecksum());
+    cyc(42);                            /* RTS */
 }
 
 /*
@@ -1008,7 +1007,7 @@ void abi_StuntPanelWait(void)
     m = rd8(b | 0x1A2D);
     cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - m)) & ~P_C) | (v >= m ? P_C : 0));
     if (v == m)
-        return;
+        { cyc(64); return; }            /* BEQ taken, RTS */
     cyc(40);
     wr8(b | 0x1A2D, v);
     cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x08)) & ~P_C) | (v >= 0x08 ? (cyc(62), P_C) : 0));
@@ -1020,6 +1019,7 @@ void abi_StuntPanelWait(void)
         cpu.p = nz8(cpu.p, 0x0F);
         cyc(40);
         wr8(b | 0x0E3F, 0x0F);
+        cyc(42);                        /* RTS */
         return;
     }
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x02);
@@ -1028,7 +1028,7 @@ void abi_StuntPanelWait(void)
     (cyc(30), abi_CarFinishSound());
     op_sep(P_M | P_X);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x06);
-    cyc(52);
+    cyc(40);
     wr8(b | 0x0E41, 0x06);
     cyc(24);
     wr8(b | 0x0E5B, 0x00);
@@ -1041,7 +1041,7 @@ void abi_StuntPanelWait(void)
     (cyc(46), abi_OamHideForHudMode());
     cyc(46);
     call_routine(0x07AE07, 0);
-    cyc(266);
+    cyc(224);
     call_routine(0x07B31B, 1);
     (cyc(122), abi_StuntCourseMark());
 }
@@ -1103,9 +1103,9 @@ void abi_StuntPhaseEnd(void)
     cyc(24);
     op_lda8(b | 0x19D8);
     v = (uint8_t)cpu.a;
-    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x05)) & ~P_C) | (v >= 0x05 ? P_C : (cyc(54), 0)));
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x05)) & ~P_C) | (v >= 0x05 ? P_C : 0));
     if (v != 0x05)
-        return;
+        { cyc(80); return; }            /* CMP, BNE taken, RTS */
     cyc(56);
     wr8(b | 0x0D59, 0x00);
     cyc(24);
@@ -1114,7 +1114,7 @@ void abi_StuntPhaseEnd(void)
     wr8(b | 0x0E81, 0x00);
     abi_OverlayFramesUntilFaded();
     op_sep(P_M);
-    cyc(104);
+    cyc(46);
     op_lda8(b | 0x0DD4);
     if ((uint8_t)cpu.a)
         { cyc(40); jump_routine(0x07EC6B); }
@@ -1147,7 +1147,7 @@ void abi_StuntPanelDone(void)
     wr8(b | 0x0E3F, v);
     cpu.p = nz8(cpu.p, v);
     if (v)
-        { cyc(22); return; }
+        { cyc(64); return; }            /* BNE taken, RTS */
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x08);
     cpu.p = nz8(cpu.p, 0x08);
     cyc(56);
@@ -1162,6 +1162,7 @@ void abi_StuntPanelDone(void)
     cyc(24);
     wr8(b | 0x0D23, 0x00);
     (cyc(62), abi_WindowSlideUpSound());
+    cyc(42);                            /* RTS */
 }
 
 /*
@@ -1218,7 +1219,7 @@ void abi_StuntPhaseRace(void)
         op_lda16_imm(0x801F);
         abi_PaletteDarkenFour();
         op_sep(P_M);
-        cyc(90);
+        cyc(46);
         wr8(b | 0x0D5B, 0x00);
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xF0);
         cyc(40);
@@ -1250,7 +1251,7 @@ void abi_StuntPhaseRace(void)
     case 0xE137: abi_StuntPanelWait(); break;
     case 0xE1AE: abi_StuntPanelCount(); break;
     case 0xE1C8: abi_StuntPanelShow(); break;
-    case 0xE205: abi_StuntPanelDone(); cyc(16); break;
+    case 0xE205: abi_StuntPanelDone(); break;
     case 0xE1E2: abi_StuntPhaseEnd(); break;
     }
 }
@@ -1287,7 +1288,7 @@ void abi_StuntPhaseStep(void)
     case 0xE2E9: jump_routine(0x07E2E9); cyc(0); break;
     case 0xE404: jump_routine(0x07E404); break;
     case 0xE0B7: abi_StuntPhaseRace(); break;
-    case 0xE1E2: abi_StuntPhaseEnd(); cyc(26); break;
+    case 0xE1E2: abi_StuntPhaseEnd(); break;
     case 0xEBDC: jump_routine(0x07EBDC); break;
     case 0xECF4: jump_routine(0x07ECF4); cyc(0); break;
     case 0xE99D: jump_routine(0x07E99D); cyc(42); break;
@@ -1357,8 +1358,7 @@ static void hud_end(int both, int inner, uint8_t p0, uint8_t db0)
     cpu.db = db0;
     cpu.p = nz8(cpu.p, db0);
     op_plp(p0);
-    if (!inner)
-        cyc(58);                                /* PLB, RTL */
+    cyc(inner ? 2 : 58);                        /* RTL; PLB, RTL */
 }
 
 /*
@@ -1431,6 +1431,7 @@ static void hud_mode_zero(uint8_t p0, uint8_t db0)
             cyc(24);
             op_lda8(b | 0x0D61);
             if (!((uint8_t)cpu.a & 0x80)) {
+                cyc(42);                /* BPL taken, and the 20 the others state before */
                 hud_end(0, 0, p0, db0);
                 return;
             }
@@ -1484,7 +1485,7 @@ static void hud_mode_one(uint8_t p0, uint8_t db0)
         (cyc(62), abi_TimeUpPhaseStep());
         cyc(46);
         call_routine(0x07A6DD, 0);
-        cyc(100);
+        cyc(48);
         hud_end(1, 0, p0, db0);
         return;
     } else { cyc(78); }
@@ -1629,7 +1630,7 @@ void abi_TimeUpPhaseRace(void)
 
     abi_PauseOnStart();
     op_sep(P_M);
-    cyc(68);
+    cyc(46);
     op_lda8(b | 0x0E66);
     if (time_cmp8(0x09)) {
         cyc(56);
@@ -1647,6 +1648,7 @@ void abi_TimeUpPhaseRace(void)
                 cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x31);
                 cpu.p = nz8(cpu.p, 0x31);
                 (cyc(62), abi_SoundPort0QueuePush());
+                cyc(42);                /* RTS */
                 return;
             }
         }
@@ -1654,7 +1656,7 @@ void abi_TimeUpPhaseRace(void)
     cyc(62);
     op_lda8(b | 0x1F71);
     if ((uint8_t)cpu.a)
-        { cyc(38); return; }
+        { cyc(64); return; }            /* BNE taken, RTS */
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x08);
     cyc(56);
     wr8(b | 0x0DD6, 0x08);
@@ -1678,6 +1680,7 @@ void abi_TimeUpPhaseRace(void)
     wr8(b | 0x0594, 0x55);
     cyc(46);
     call_routine(0x07AD1B, 0);
+    cyc(42);                            /* RTS */
 }
 
 /* SEP #$20, LDA $0DD4: on at RaceRestart when set, else at
@@ -1728,11 +1731,13 @@ void abi_TimeUpPhaseEnd(void)
     cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x20)) & ~P_C) | (v >= 0x20 ? (cyc(16), P_C) : (cyc(22), 0)));
     abi_HudLapDigitsDraw();
     op_sep(P_M);
-    cyc(182);
+    cyc(88);
     op_lda8(b | 0x0FA3);
-    if ((uint8_t)cpu.a & 0x80)
-        { cyc(124); abi_HudLeadWordDraw(); }
-    cyc(64);
+    if ((uint8_t)cpu.a & 0x80) {
+        cyc(124);
+        abi_HudLeadWordDraw();
+        cyc(42);                        /* RTS */
+    } else { cyc(64); }                 /* BPL taken, RTS */
 }
 
 /*
@@ -1753,12 +1758,13 @@ void abi_TimeUpPhaseStep(void)
     cpu.p = nz16(cpu.p, 0);
     cyc(56);
     op_lda16(0x702476);
-    op_tax16();
-    op_sep(P_M);
-    abi_PlayerStatsFromRecord();
+    cpu.x = cpu.a;
+    cpu.p = nz16(cpu.p, cpu.x);
+    cpu.p |= P_M;
+    (cyc(82), abi_PlayerStatsFromRecord());     /* TAX, SEP, JSR */
     op_sep(P_X);
     if (cpu.p & P_M)
-        { cyc(202); op_lda8(b | 0x0DD6); }
+        { cyc(24); op_lda8(b | 0x0DD6); }
     else
         op_lda16(b | 0x0DD6);
     cpu.x = (uint8_t)cpu.a;
@@ -1768,7 +1774,7 @@ void abi_TimeUpPhaseStep(void)
     case 0xDB97: abi_TimeUpPhaseStart(); break;
     case 0xDBB8: abi_TimeUpPhaseSlideIn(); cyc(42); break;
     case 0xDBBC: abi_TimeUpPhaseSlideOut(); cyc(42); break;
-    case 0xDBC0: abi_TimeUpPhaseRace(); cyc(26); break;
+    case 0xDBC0: abi_TimeUpPhaseRace(); break;
     case 0xDC15: abi_TimeUpPhaseEnd(); break;
     case 0xEBDC: jump_routine(0x07EBDC); break;
     case 0xECA4: jump_routine(0x07ECA4); cyc(42); break;
@@ -1779,13 +1785,14 @@ void abi_RaceEndCountdownFadeOn(void);
 void abi_RaceEndCountdownOn(void);
 
 /* LDA $0D52 until set (the vertical blank), then clear it. */
-static void race_end_vblank(uint32_t b)
+static void race_end_vblank(uint32_t b, uint32_t branch)
 {
+    cyc(branch);                        /* the branch back to the top, if any */
     do {
         op_sep(P_M);
-        cyc(54);
+        cyc(46);
         op_lda8(b | 0x0D52);
-    } while (cyc_loop(14, !(uint8_t)cpu.a));
+    } while (cyc_loop(22, !(uint8_t)cpu.a));
     cyc(40);
     wr8(b | 0x0D52, 0x00);
 }
@@ -1804,9 +1811,11 @@ void abi_RaceEndCountdownFade(void)
 {
     uint32_t b = (uint32_t)cpu.db << 16;
     uint8_t v;
+    uint32_t branch = 0;
 
     for (;;) {
-        race_end_vblank(b);
+        race_end_vblank(b, branch);
+        branch = 22;
         cyc(24);
         op_lda8(b | 0x0E56);
         v = (uint8_t)cpu.a;
@@ -1858,15 +1867,17 @@ void abi_RaceEndCountdown(void)
 {
     uint32_t b = (uint32_t)cpu.db << 16;
     uint8_t v;
+    uint32_t branch = 0;
 
     do {
-        race_end_vblank(b);
+        race_end_vblank(b, branch);
+        branch = 0;
         cyc(24);
         v = (uint8_t)(rd8(b | 0x0E5A) - 1);
         cyc(6);
         wr8(b | 0x0E5A, v);
         cpu.p = nz8(cpu.p, v);
-    } while (cyc_loop(14, v));
+    } while (cyc_loop(22, v));
     cyc(40);
     wr8(b | 0x0D59, 0x00);
     (cyc(46), abi_ChampionshipScreenLoop());

@@ -61,6 +61,25 @@ void abi_SoundPort0QueuePushRaw(void)
     cyc(8);
 }
 
+/* From a caller with M and X 8-bit: the pulls take no extra byte. */
+void abi_SoundPort0QueuePushRawX8(void)
+{
+    SoundPort0QueuePushRaw((uint8_t)cpu.a);
+    cpu.p = nz8(cpu.p, cpu.db);
+}
+
+/* With the caller's widths: A 16-bit makes its push and pull 8 longer, X
+   and Y 16-bit 16 (the entry's BRA is queue_push's). */
+void abi_SoundPort0QueuePushRawWide(void)
+{
+    unsigned wide = (cpu.p & P_M ? 0 : 8) + (cpu.p & P_X ? 0 : 16);
+
+    cyc(198 + wide);
+    queue_push(SOUND_PORT0_QUEUE, SOUND_PORT0_HEAD, SOUND_PORT0_COUNT, (uint8_t)cpu.a);
+    cyc(wide);
+    cpu.p = nz8(cpu.p, cpu.db);
+}
+
 /*
  * @routine 04:D656 SoundPort0QueuePush
  * WHAT IT DOES: Queues a sound command for APU port 0 on behalf of the player
@@ -104,16 +123,16 @@ void abi_SoundPort0QueuePushX8(void)
  * Entry: any widths; A low byte = command. Exit: every register unchanged
  * except N and Z, which the final pull of DB sets from DB.
  */
-static void port1_push(uint8_t command, uint16_t tail)
+static void port1_push(uint8_t command, uint16_t entry, uint16_t tail)
 {
-    cyc(192);
+    cyc(entry);
     queue_push(SOUND_PORT1_QUEUE, SOUND_PORT1_HEAD, SOUND_PORT1_COUNT, command);
     cyc(tail);
 }
 
 void SoundPort1QueuePush(uint8_t command)
 {
-    port1_push(command, 16);
+    port1_push(command, 192, 16);
 }
 
 void abi_SoundPort1QueuePush(void)
@@ -125,7 +144,7 @@ void abi_SoundPort1QueuePush(void)
 /* From a caller with X 8-bit: PLY/PLX pull a byte each, 16 clocks less. */
 void abi_SoundPort1QueuePushX8(void)
 {
-    port1_push((uint8_t)cpu.a, 0);
+    port1_push((uint8_t)cpu.a, 192, 0);
     cpu.p = nz8(cpu.p, cpu.db);
 }
 
@@ -243,6 +262,7 @@ void abi_SoundPortsSend(void)
         wr8(b | 0x2140, v);
         cyc(24);
         wr8(b | 0x10E2, 0x00);
+        cyc(28);                        /* PLP; op_plp states the RTS */
         op_plp(p0);
         return;
     }
@@ -254,6 +274,7 @@ void abi_SoundPortsSend(void)
         wr8(b | 0x2141, v);
         cyc(24);
         wr8(b | 0x10E3, 0x00);
+        cyc(28);
         op_plp(p0);
         return;
     } else { cyc(6); }

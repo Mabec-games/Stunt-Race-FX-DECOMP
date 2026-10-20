@@ -509,7 +509,11 @@ void abi_ViewSetup(void)
     cpu.a = view_setup_tail(cpu.db);
     cpu.x = 0x0080;
     cpu.y = 0x0000;
-    op_plp(p0);
+    cpu.p = p0;                         /* the tail's PLP and RTL are stated */
+    if (p0 & P_X) {
+        cpu.x &= 0x00FF;
+        cpu.y &= 0x00FF;
+    }
 }
 
 /* ViewSetup from inside (03:AE73), its P already pushed: the long jumps at
@@ -1331,7 +1335,7 @@ static uint8_t glyph_rows_at(uint16_t input, uint16_t x, const uint16_t *piece, 
     wr16(0x70020C, 0x0028);
     GsuBytes200_BFB7B6();
     for (i = 0; i < n; i++) {
-        cyc(150);
+        cyc(i ? 194 : 150);
         wr16(0x700216, piece[i]);
         mode = f15b();
     }
@@ -1404,6 +1408,7 @@ static void pieces_list(uint16_t program)
         (cyc(52), GsuBytes200_BFB7B6());
         cyc(218);
         GsuRun(0x07, program);
+        cyc(program == 0xF6DF ? 252 : 230);     /* RTL, the rest of the loop */
         cpu.x = (uint16_t)(cpu.x + 2);
     }
     cpu.a = 0xFFFF;
@@ -1531,6 +1536,7 @@ void abi_GsuPieceOffsetFromView(void)
     cyc(32);
     wr16(0x70020C, a);
     cpu.a = a;
+    cyc(42);                            /* RTS */
 }
 
 /*
@@ -1571,6 +1577,7 @@ uint16_t GsuReciprocal(uint8_t bank, uint8_t *p)
 void abi_GsuReciprocal(void)
 {
     cpu.a = GsuReciprocal(cpu.db, &cpu.p);
+    cyc(42);                            /* RTS */
 }
 
 /*
@@ -1631,6 +1638,7 @@ void abi_GsuPieceScaleFromView(void)
     cyc(74);
     wr16(0x700212, cpu.a);
     cpu.x = e;
+    cyc(42);                            /* RTS */
 }
 
 /*
@@ -2117,12 +2125,12 @@ void abi_BigSpritesCountDraw(void)
     wr16(0x70020C, 0x0010);
     for (i = 0; i < 4; i++) {
         sprite24x40(near_[i]);
-        if (i < 3 && (cyc(116), !count_at_least((uint8_t)(i + 1))))
+        if (i < 3 && (cyc(44), !count_at_least((uint8_t)(i + 1))))
             { cyc(24); goto count; } else { cyc(6); }
     }
     cpu.a = 0x0040;
     cpu.p = nz16(cpu.p, 0x0040);
-    cyc(188);
+    cyc(116);
     wr16(0x70020A, 0x0040);
     cpu.a = 0x0040;
     cyc(56);
@@ -2131,10 +2139,10 @@ void abi_BigSpritesCountDraw(void)
         { cyc(24); goto count; } else { cyc(6); }
     for (i = 0; i < 4; i++) {
         sprite24x40(far_[i]);
-        if (i < 3 && (cyc(116), !count_at_least(need_far[i])))
+        if (i < 3 && (cyc(44), !count_at_least(need_far[i])))
             goto count;
     }
-cyc(78);
+cyc(6);
 count:
     cpu.p |= P_M;
     cyc(84);
@@ -2152,19 +2160,20 @@ count:
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cyc(76);
     wr8((uint32_t)cpu.db << 16 | 0x1160, v);
+    cyc(42);                            /* RTS */
 }
 
 /* The common start: the renderer bytes (setter), then, with $0E5C set,
    BigSpritesCountDraw instead (a branch, so its RTS returns from the
    caller). Returns 0 when the branch was taken. */
-static int big_sprites_start(void (*setter)(void))
+static int big_sprites_start(void (*setter)(void), uint32_t lda)
 {
     uint8_t v;
 
     cpu.p &= (uint8_t)~P_M;
     (cyc(68), setter());
     cpu.p |= P_M;
-    cyc(118);
+    cyc(lda);                           /* SEP, LDA; 22 less after BFBCBD, which states 22 itself */
     v = rd8((uint32_t)cpu.db << 16 | 0x0E5C);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.p = nz8(cpu.p, v);
@@ -2211,8 +2220,8 @@ void abi_BigSpritesRow6(void)
     uint16_t w;
     unsigned i;
 
-    if (!(cyc(16), big_sprites_start(abi_GsuBytes200_BFB5BB)))
-        { cyc(42); return; }
+    if (!(cyc(16), big_sprites_start(abi_GsuBytes200_BFB5BB, 118)))
+        return;
     big_sprites_at(0x0018, 0x0028);
     for (i = 0; i < 4; i++)
         { sprite24x40(first[i]); if (i < 3) cyc(44); }
@@ -2242,12 +2251,12 @@ void abi_BigSpritesRow5(void)
     static const uint16_t src[5] = {0xA006, 0xAA12, 0xA000, 0xAA18, 0xA500};
     unsigned i;
 
-    if (!(cyc(16), big_sprites_start(abi_GsuBytes200_BFBCBD)))
-        { cyc(42); return; }
+    if (!(cyc(16), big_sprites_start(abi_GsuBytes200_BFBCBD, 96)))
+        return;
     big_sprites_at(0x0020, 0x0028);
     for (i = 0; i < 5; i++)
-        { cyc(116); sprite24x40(src[i]); }
-    cyc(158);
+        { if (i) cyc(44); sprite24x40(src[i]); }
+    cyc(86);
 }
 
 void abi_GsuBytes200_BFB3BE(void);
@@ -3271,7 +3280,7 @@ void abi_GlyphSlideThree(void)
         if (cpu.p & P_Z)
             { cyc(108); abi_GsuBytes200_BFB7B6(); }
         else if (op_cmp16(0x8006), cpu.p & P_Z)
-            { cyc(78); abi_GsuBytes200_BFBCBD(); cyc(22); /* BRA */ }
+            { cyc(78); abi_GsuBytes200_BFBCBD(); /* its own 22 is the BRA */ }
         else if (op_cmp16(0x800C), cpu.p & P_Z)
             { cyc(114); abi_GsuBytes200_BFBAB9(); cyc(22); /* BRA */ }
         else
@@ -3347,8 +3356,8 @@ void abi_GlyphSpritesDrawAll(void)
     if (!cpu.a) {
         abi_GsuBytes200_BFB3BE();
         for (i = 0; i < 4; i++)
-            abi_GlyphSpriteDrawLeft8();
-    cyc(22);
+            { if (i) cyc(56); abi_GlyphSpriteDrawLeft8(); }
+    cyc(196);                           /* the draw's rest, BRA, JSR */
         } else {
         cyc(84);
         abi_GsuBytes200_BFB3BE();
@@ -3374,15 +3383,16 @@ void abi_TimeUnpackBcd(void);
 
 /* REP #$30, then the renderer bytes by player 1's lead ($0FA3, signed):
    negative, positive or 0. */
-static void lead_bytes(int8_t lead, void (*neg)(void), void (*pos)(void), void (*zero)(void))
+static int lead_bytes(int8_t lead, void (*neg)(void), void (*pos)(void), void (*zero)(void))
 {
     op_rep(P_M | P_X);
     if (lead < 0)
         { cyc(84); neg(); }
     else if (lead > 0)
-        { cyc(100); pos(); }
+        { cyc(100); pos(); return 1; }
     else
         { cyc(94); zero(); }
+    return 0;
 }
 
 /* SEP #$20, LDA $0FA3 (8-bit): player 1's lead, the flags from it. */
@@ -3395,10 +3405,10 @@ static int8_t lead_read(uint32_t b)
 }
 
 /* LDA #$0093, STA.L $70:020A, LDA #y, STA.L $70:020C: the draw position. */
-static void times_at(uint16_t y)
+static void times_at(uint16_t y, uint32_t less)
 {
     op_lda16_imm(0x0093);
-    cyc(112);
+    cyc(112 - less);                    /* 22 less after the setters BFB3BE and BF11BD */
     wr16(0x70020A, 0x0093);
     op_lda16_imm(y);
     cyc(18);
@@ -3406,24 +3416,31 @@ static void times_at(uint16_t y)
 }
 
 /* LDY #seq, JSR GsuF329Sequence. */
-static void times_seq(uint16_t seq)
+static void times_seq_tail(uint16_t seq, uint32_t tail)
 {
     cpu.y = seq;
     cpu.p = nz16(cpu.p, seq);
     abi_GsuF329Sequence();
-    cyc(42);
+    cyc(tail);
+}
+
+static void times_seq(uint16_t seq)
+{
+    times_seq_tail(seq, 42);
 }
 
 /* 07:8A5D on: the first row ($0F64 at y 88), then the second's renderer
    bytes by the lead (negative B2B3, positive 11BD, 0 10B9) and the second
    row ($0F69 at y 108); then P pulled. */
-static void times_rows(uint32_t b, uint8_t p0)
+static void times_rows(uint32_t b, uint8_t p0, uint32_t less)
 {
-    times_at(0x0058);
-    times_seq(0x0F64);
-    lead_bytes(lead_read(b), abi_GsuBytes200_BFB2B3, abi_GsuBytes200_BF11BD, abi_GsuBytes200_BF10B9);
-    times_at(0x006C);
-    times_seq(0x0F69);
+    int pos;
+
+    times_at(0x0058, less);
+    times_seq_tail(0x0F64, 28);
+    pos = lead_bytes(lead_read(b), abi_GsuBytes200_BFB2B3, abi_GsuBytes200_BF11BD, abi_GsuBytes200_BF10B9);
+    times_at(0x006C, pos ? 22 : 0);
+    times_seq_tail(0x0F69, 28);
     op_plp(p0);
 }
 
@@ -3451,6 +3468,7 @@ void abi_HudTimesDraw(void)
     uint32_t b = (uint32_t)cpu.db << 16;
     uint8_t p0 = cpu.p;
     int8_t lead;
+    int neg;
 
     op_rep(P_M | P_X);
     cyc(46);
@@ -3472,48 +3490,51 @@ void abi_HudTimesDraw(void)
     op_lda16(b | 0x0D2B);
     op_cmp16(0x0003);
     if (cpu.p & P_Z) {
-        cyc(60);
+        cyc(64);
         op_lda16(b | 0x0D4C);
         if (cpu.a) {
             cyc(90);
             abi_HudTimesPackedDraw();
+            cyc(28);
             op_plp(p0);
             return;
         }
     }
-    cyc(66);
+    cyc(70);
     op_lda16(b | 0x0F2B);
     op_cmp16(0xFFFF);
     if (cpu.p & P_Z) {
         cyc(20);
         abi_GsuBytes200_BFB3BE();
         cyc(2);
-        times_at(0x006C);
-        times_seq(0x0F69);
+        times_at(0x006C, 0);
+        times_seq_tail(0x0F69, 28);
         op_plp(p0);
         return;
     }
     op_sep(P_M);
-    cyc(88);
+    cyc(92);
     op_lda8(b | 0x0E57);
     if (cpu.a & 0xFF) {
         abi_HudLapDigitsDraw();
-        cyc(164);
+        cyc(70);
         lead = lead_read(b);
         if (lead > 0)
-            { cyc(140); abi_HudLeadWordDraw(); }
-        cyc(50);
+            { cyc(140); abi_HudLeadWordDraw(); cyc(28); }
+        else
+            cyc(50);
         op_plp(p0);
         return;
     }
     cyc(46);
     op_lda8(b | 0x0FA3);
     op_rep(P_M | P_X);
-    if ((int8_t)cpu.a < 0)
+    neg = (int8_t)cpu.a < 0;
+    if (neg)
         { cyc(6); abi_GsuBytes200_BFB3BE(); }
     else
         { cyc(100); abi_GsuBytes200_BFB2B3(); }
-    times_rows(b, p0);
+    times_rows(b, p0, neg ? 22 : 0);
 }
 
 /*
@@ -3533,7 +3554,7 @@ void abi_HudTimesDrawEven(void)
     op_rep(P_M | P_X);
     (cyc(62), abi_GsuBytes200_BF10B9());
     cpu.s++;
-    times_rows(b, rd8((uint16_t)cpu.s));
+    times_rows(b, rd8((uint16_t)cpu.s), 0);
 }
 
 /*
@@ -3553,7 +3574,7 @@ void abi_TimeDigitsStore(void)
     op_sep(P_M | P_X);
     x = (uint8_t)cpu.x;
     y = (uint8_t)cpu.y;
-    cyc(156);
+    cyc(70);
     wr8(b | 0x0F64, (uint8_t)cpu.a);
     cyc(94);
     wr8(b | 0x0F65, (uint8_t)(x >> 4));
@@ -3574,6 +3595,7 @@ static void packed_time_draw(uint32_t b, uint16_t at)
 {
     cyc(24);
     op_lda16(b | at);
+    cyc(46);                            /* JSR */
     abi_TimeUnpackBcd();
     abi_TimeDigitsStore();
     op_rep(P_M | P_X);
@@ -3583,9 +3605,11 @@ static void packed_time_draw(uint32_t b, uint16_t at)
 /* 07:8B38 on: the first packed time ($1163, unless $FFFF) at (147, 88),
    then the second's colour by the lead and the second ($1161) at (147,
    108). */
-static void packed_rows(uint32_t b)
+static void packed_rows(uint32_t b, uint32_t less)
 {
-    times_at(0x0058);
+    int pos;
+
+    times_at(0x0058, less);
     cyc(24);
     op_lda16(b | 0x1163);
     op_cmp16(0xFFFF);
@@ -3594,10 +3618,10 @@ static void packed_rows(uint32_t b)
         abi_TimeUnpackBcd();
         abi_TimeDigitsStore();
         op_rep(P_M | P_X);
-        times_seq(0x0F64);
-    } else { cyc(70); }
-    lead_bytes(lead_read(b), abi_GsuBytes200_BFB2B3, abi_GsuBytes200_BF11BD, abi_GsuBytes200_BF10B9);
-    times_at(0x006C);
+        times_seq_tail(0x0F64, 28);
+    } else { cyc(74); }
+    pos = lead_bytes(lead_read(b), abi_GsuBytes200_BFB2B3, abi_GsuBytes200_BF11BD, abi_GsuBytes200_BF10B9);
+    times_at(0x006C, pos ? 22 : 0);
     packed_time_draw(b, 0x1161);
 }
 
@@ -3624,7 +3648,7 @@ void abi_HudTimesPackedDraw(void)
         { cyc(6); abi_GsuBytes200_BFB3BE(); }
     else
         { cyc(100); abi_GsuBytes200_BFB2B3(); }
-    packed_rows(b);
+    packed_rows(b, lead < 0 ? 22 : 0);
 }
 
 /*
@@ -3641,7 +3665,7 @@ void abi_HudTimesPackedEven(void)
 
     op_rep(P_M | P_X);
     (cyc(62), abi_GsuBytes200_BF10B9());
-    packed_rows(b);
+    packed_rows(b, 0);
 }
 
 /* REP #$20, LDA #glyph, STA.L $70:0216, then Super FX program $07:F329. */
@@ -3678,7 +3702,7 @@ void abi_HudLeadWordDraw(void)
     wr16(0x70020C, 0x0048);
     for (i = 0; i < 4; i++)
         word_glyph(first[i]);
-    cyc(126);
+    cyc(32);
     v = rd16(0x70020A);
     cpu.p &= (uint8_t)~P_C;
     cpu.a = op_adc16(v, 0x0008, &cpu.p);
@@ -3686,7 +3710,7 @@ void abi_HudLeadWordDraw(void)
     wr16(0x70020A, cpu.a);
     for (i = 0; i < 6; i++)
         word_glyph(rest[i]);
-    cyc(114);
+    cyc(42);                            /* RTS */
 }
 
 /* LDA digit, AND #$00FF, JSR GsuParam216A, then Super FX program
@@ -3723,27 +3747,21 @@ void abi_HudLapDigitsDraw(void)
     cyc(18);
     wr16(0x70020C, 0x0028);
     lap_digit(b, 0x0F69);
-    cyc(94);
     glyph_prog(0xFAB0, 0x9014);
-    cyc(94);
     lap_digit(b, 0x0F6A);
-    cyc(94);
     lap_digit(b, 0x0F6B);
-    cyc(94);
     glyph_prog(0xFAB0, 0x9018);
-    cyc(94);
     lap_digit(b, 0x0F6C);
-    cyc(94);
     lap_digit(b, 0x0F6D);
 }
 void abi_GsuBytes200_BFBABD(void);
 
 /* REP #$30, LDA #x, STA.L $70:020A, then Super FX program $07:F5C9. */
-static void blank_mark_at(uint16_t x)
+static void blank_mark_at(uint16_t x, uint32_t t)
 {
     op_rep(P_M | P_X);
     op_lda16_imm(x);
-    cyc(62);
+    cyc(t);                             /* 62 from a branch, 18 after a run's REPs */
     wr16(0x70020A, x);
     glyph_prog_run(0xF5C9);
 }
@@ -3777,10 +3795,8 @@ void abi_HudBlankDraw(void)
     cyc(18);
     wr16(0x70020C, 0x006C);
     glyph_prog_run(0xF5C9);
-    cyc(50);
-    blank_mark_at(0x0016);
-    cyc(50);
-    blank_mark_at(0x0028);
+    blank_mark_at(0x0016, 18);
+    blank_mark_at(0x0028, 18);
     (cyc(94), abi_GsuBytes200_BFB7B6());
     op_rep(P_M | P_X);
     op_lda16_imm(0x0E08);
@@ -3793,16 +3809,24 @@ void abi_HudBlankDraw(void)
     if (n) {
         cpu.p = (uint8_t)((nz16(cpu.p, (uint16_t)(n - 2)) & ~P_C) | (n >= 2 ? P_C : (cyc(6), 0)));
         if (n > 2) {
+            cyc(122);
             op_plp(p0);
             return;
         }
     }
     if (n == 0)
-        blank_mark_at(0x0028);
+        blank_mark_at(0x0028, 62);
+    if (n <= 1) {
+        if (n == 0)
+            blank_mark_at(0x0016, 18);
+        else
+            { cyc(50); blank_mark_at(0x0016, 62); }
+    }
     if (n <= 1)
-        { cyc(50); blank_mark_at(0x0016); }
-    cyc(50);
-    blank_mark_at(0x0004);
+        blank_mark_at(0x0004, 18);
+    else
+        { cyc(50); blank_mark_at(0x0004, n == 2 ? 52 : 62); }
+    cyc(28);
     op_plp(p0);
 }
 
@@ -3831,14 +3855,13 @@ static void glyph_slide_draw(uint32_t b)
     cyc(32);
     wr16(0x70020C, cpu.a);
     for (i = 0; i < 6; i++) {
-        cyc(94);
         if (i == 3)
             draw_pos_add(0x70020A, 0x0008, 0);
         glyph_prog(0xFAB0, one[i]);
     }
     cyc(94);
     abi_GsuBytes200_BFBCBD();
-    cyc(96);
+    cyc(74);
     op_lda16(b | 0x0FB2);
     cyc(32);
     wr16(0x70020A, cpu.a);
@@ -3848,10 +3871,10 @@ static void glyph_slide_draw(uint32_t b)
     wr16(0x70020C, cpu.a);
     for (i = 0; i < 8; i++) {
         if (i == 3)
-            { cyc(94); draw_pos_add(0x70020A, 0x0008, 0); }
+            draw_pos_add(0x70020A, 0x0008, 0);
         glyph_prog(0xFAB0, two[i]);
     }
-    cyc(136);
+    cyc(42);                            /* RTS */
 }
 
 /* CMP #m (16-bit): N, Z, C as the compare sets them. */
@@ -3915,6 +3938,7 @@ void abi_GlyphSpritesSlideOut(void)
             cpu.p = nz16(cpu.p, 0x0006);
             cyc(70);
             wr16(b | 0x0DD6, 0x0006);
+            cyc(42);                    /* RTS */
             return;
         }
     } else { cyc(50); }
@@ -4036,7 +4060,7 @@ static uint8_t f15b_four(void (*setter)(void), const uint16_t *in216)
     wr16(0x70020C, 0x0018);
     (cyc(62), setter());
     for (i = 0; i < 4; i++) {
-        cyc(194);
+        cyc(i ? 194 : 150);
         wr16(0x700216, in216[i]);
         mode = f15b();
     }
@@ -4099,28 +4123,28 @@ void abi_BigSpritesNine(void)
     uint16_t w;
     unsigned i;
 
-    if (!(cyc(16), big_sprites_start(abi_GsuBytes200_BFB7B6)))
-        { cyc(42); return; }
+    if (!(cyc(16), big_sprites_start(abi_GsuBytes200_BFB7B6, 118)))
+        return;
     big_sprites_at(0x0029, 0x0021);
     for (i = 0; i < 3; i++)
-        sprite24x40(first[i]);
-    cyc(148);
+        { if (i) cyc(44); sprite24x40(first[i]); }
+    cyc(76);
     w = rd16(0x70020A);
     cpu.p &= (uint8_t)~P_C;
     cpu.a = op_adc16(w, 0x0006, &cpu.p);
     cyc(70);
     wr16(0x70020A, cpu.a);
     for (i = 0; i < 2; i++)
-        sprite24x40(second[i]);
+        { if (i) cyc(44); sprite24x40(second[i]); }
     cpu.a = 0x0038;
-    cyc(172);
+    cyc(100);
     wr16(0x70020A, 0x0038);
     cpu.a = 0x0050;
     cpu.p = nz16(cpu.p, 0x0050);
     cyc(56);
     wr16(0x70020C, 0x0050);
     for (i = 0; i < 4; i++)
-        sprite24x40(third[i]);
+        { if (i) cyc(44); sprite24x40(third[i]); }
 }
 
 /*
@@ -4136,11 +4160,11 @@ void abi_BigSpritesRow6B(void)
     static const uint16_t src[6] = {0xAA18, 0xAA0C, 0xA512, 0xA000, 0xAA18, 0xA500};
     unsigned i;
 
-    if (!big_sprites_start(abi_GsuBytes200_BFB3BE))
-        { cyc(42); return; }
+    if (!big_sprites_start(abi_GsuBytes200_BFB3BE, 118))
+        return;
     big_sprites_at(0x0018, 0x0028);
     for (i = 0; i < 6; i++)
-        sprite24x40(src[i]);
+        { if (i) cyc(44); sprite24x40(src[i]); }
     cyc(200);
 }
 
@@ -4164,6 +4188,7 @@ void abi_GsuClearScreenIfSet(void)
 {
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | GsuClearScreenIfSet());
     cpu.x = 0xAECA;
+    cyc(102);                           /* GsuRun's PLB, RTL, then the PLP and RTL left */
     op_plp(cpu.p);
 }
 
@@ -4187,5 +4212,6 @@ void abi_GsuClear6000IfSet(void)
 {
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | GsuClear6000IfSet());
     cpu.x = 0xAEE1;
+    cyc(102);                           /* GsuRun's PLB, RTL, then the PLP and RTL left */
     op_plp(cpu.p);
 }

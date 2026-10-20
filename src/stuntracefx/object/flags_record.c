@@ -211,6 +211,7 @@ void abi_ObjectStopMarked(void)
     lda8(0x00);
     cyc(38);
     wr8(F(0x201C, cpu.x), 0x00);
+    cyc(44); /* RTL */
 }
 
 /*
@@ -448,7 +449,7 @@ void abi_ObjectFlagsRecord(void)
 
     abi_GsuRecordNew422();
     if (cpu.p & P_N)
-        { cyc(46); return; }
+        { cyc(46 + 44); return; } /* BRL; RTL */
     cpu.p &= (uint8_t)~P_M;
     obj = cpu.x;
     cpu.y = obj;

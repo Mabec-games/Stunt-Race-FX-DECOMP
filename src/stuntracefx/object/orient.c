@@ -187,6 +187,7 @@ uint16_t ViewFromRecord(uint8_t bank, uint16_t rec, uint8_t *p)
         v = rd16(cyc_then(24, dbw(bank, 0x1EF9)));
         wr16(dbw(bank, 0x1EFF), cyc_then(24, v));
         *p = nz16(*p, v);
+        cyc(66);                        /* BRA, RTL */
         return v;
     }
     cyc(98);

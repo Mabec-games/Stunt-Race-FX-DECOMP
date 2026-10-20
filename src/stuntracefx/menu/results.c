@@ -539,6 +539,7 @@ void abi_ResultsOverOrHide(void)
     cpu.p = nz16(cpu.p, cpu.x);
     set_field(0x10, 0xFFFF);
     set_field(0x08, 0xDF7B);
+    cyc(42);
 }
 
 void abi_MenuActorsSet10(void);
@@ -577,7 +578,7 @@ static void place_object(uint16_t kind, uint16_t anim0, uint16_t pos, uint16_t h
         op_cmp16(0x0002);
         anim = (cpu.p & P_Z) ? (uint16_t)(anim0 + 6) : (cyc(6), (uint16_t)(anim0 + 12));
     }
-    op_lda16(cyc_then(96, fld(0x14)));
+    op_lda16(cyc_then(place == 1 ? 96 : 100, fld(0x14)));
     op_cmp16(anim);
     if (!(cpu.p & P_Z)) {
         cyc(40);
@@ -587,7 +588,8 @@ static void place_object(uint16_t kind, uint16_t anim0, uint16_t pos, uint16_t h
     }
     set_field(0x02, pos);
     set_field(0x08, handler);
-    cyc(22);
+    if (place <= 2)
+        cyc(22);   /* BRA past the next place's code */
 }
 
 void abi_ResultsLower(void)
@@ -891,13 +893,14 @@ void abi_ResultsNoTime(void)
     if (cpu.p & P_Z) {
         letters = 0x0023;
         other = 0x001D;
+        cyc(78);
     } else {
         cyc(30);
         op_cmp16(0x0021);
         letters = (cpu.p & P_Z) ? (cyc(6), 0x0024) : 0x0025;
         other = (cpu.p & P_Z) ? 0x001E : 0x001F;
+        cyc(82);
     }
-    cyc(82);
     op_lda16_imm(letters);
     abi_MenuActorFind();
     (cyc(46), abi_ResultsBlankLetters());
@@ -1062,20 +1065,21 @@ void abi_ResultsPhaseAnim(void)
 
     byte_of(0x000DD6);
     for (i = 0; i < 5; i++) {
-        cyc(36);
+        cyc(40);
         op_cmp16(phase[i]);
         if (cpu.p & P_Z)
             break;
     }
     if (i == 5)
-        { cyc(64); return; }
-    op_lda16(cyc_then(50, fld(0x14)));
+        { cyc(60); return; }
+    op_lda16(cyc_then(46, fld(0x14)));
     op_cmp16(anim[i]);
     if (cpu.p & P_Z)
-        return; else { cyc(36); }
+        { cyc(64); return; } else { cyc(40); }
     set_field(0x14, anim[i]);
     wr16(fld(0x16), cyc_then(22, 0x0000));
     wr16(fld(0x18), cyc_then(22, 0x0000));
+    cyc(42);
 }
 
 /* ResultsPlace0-3: place n's points object: after its count +$0A runs
@@ -1100,10 +1104,12 @@ static void place_points(uint16_t n, uint16_t handler)
         if (cpu.p & P_Z) {
             cyc(110);
             abi_ResultsPhaseAnim();
+            cyc(42);
             return;
-        } else { cyc(80); }
+        } else { cyc(cpu.p & P_C ? 50 : 80); }
         if (!(cpu.p & P_C)) {
             set_field(0x10, 0xFFFF);
+            cyc(42);
             return;
         }
     } else { cyc(18); }
@@ -1142,6 +1148,7 @@ void abi_ResultsPlace0(void)
 void abi_ResultsPlace0Hide(void)
 {
     set_field(0x10, 0xFFFF);
+    cyc(42);
 }
 
 /*
@@ -1187,6 +1194,7 @@ void abi_ResultsPlace3(void)
 void abi_ResultsPlace0Animate(void)
 {
     abi_MenuActorAnimateFrame();
+    cyc(42);
 }
 
 /*
@@ -1198,6 +1206,7 @@ void abi_ResultsPlace0Animate(void)
 void abi_ResultsPlace1Animate(void)
 {
     abi_MenuActorAnimateFrame();
+    cyc(42);
 }
 
 /*
@@ -1209,6 +1218,7 @@ void abi_ResultsPlace1Animate(void)
 void abi_ResultsPlace2Animate(void)
 {
     abi_MenuActorAnimateFrame();
+    cyc(42);
 }
 
 /*
@@ -1220,4 +1230,5 @@ void abi_ResultsPlace2Animate(void)
 void abi_ResultsPlace3Animate(void)
 {
     abi_MenuActorAnimateFrame();
+    cyc(42);
 }

@@ -112,6 +112,7 @@ void DebugDrawChar(uint8_t bank, uint8_t ch, uint16_t *a, uint16_t *x, uint16_t 
     cyc(74);
     wr16(TEXT_POS, pos);
     *a = pos;
+    cyc(70); /* PLP, RTS */
 }
 
 void abi_DebugDrawChar(void)
@@ -136,11 +137,12 @@ void DebugPrint(uint8_t bank)
     uint32_t s;
     uint16_t y = 0, a = 0, x = 0, yy = 0;
     uint8_t c;
+    unsigned top;
 
     cyc(242);
     wr16((uint32_t)bank << 16 | TEXT_HALF, 0x0000);
-    for (;;) {
-        cyc(150);
+    for (top = 150;; top = 90) { /* later rounds follow a draw: its tail is stated */
+        cyc(top);
         s = rd24(0x000054);
         cyc(168);
         c = rd8((s + y) & 0xFFFFFF);
@@ -151,7 +153,6 @@ void DebugPrint(uint8_t bank)
         c = (uint8_t)(c - 0x20);
         DebugDrawChar(0x00, c, &a, &x, &yy);
         y = (uint16_t)(y + 1);
-        cyc(10);
     }
 }
 

@@ -2320,6 +2320,7 @@ void abi_GsuRecordListFlag80(void)
 {
     uint32_t b = (uint32_t)cpu.db << 16;
     uint16_t x0 = cpu.x, v;
+    int first;
 
     cpu.p &= (uint8_t)~P_M;
     cyc(82);
@@ -2327,8 +2328,8 @@ void abi_GsuRecordListFlag80(void)
     op_tax16();
     cyc(16);
     op_lda16(0x70003E + cpu.x);
-    for (;;) {
-        cyc(54);
+    for (first = 1;; first = 0) {
+        cyc(first ? 32 : 54);           /* later rounds: after the BRA */
         op_tax16();
         if (!cpu.x)
             { cyc(74); break; }
@@ -2373,12 +2374,13 @@ static void or20(uint32_t addr)
 /* LDA addr at the width M has: ObjectChildFollow returns with M 8-bit, so
    after its first call ObjectRecordChildrenMark's 16-bit walk goes on with
    8-bit loads (A's high byte kept) and 16-bit transfers. */
-static void lda_m(uint32_t addr)
+static void lda_m(uint32_t addr, int back)
 {
+    cyc(back ? 36 : 14);                /* back: after the BRA to the top */
     if (cpu.p & P_M)
-        { cyc(36); op_lda8(addr); }
+        op_lda8(addr);
     else
-        { cyc(14); op_lda16(addr); }
+        op_lda16(addr);
 }
 
 /*
@@ -2405,6 +2407,7 @@ void abi_ObjectRecordChildrenMark(void)
     uint32_t b = (uint32_t)cpu.db << 16;
     uint16_t x0 = cpu.x, v;
     uint8_t f;
+    int back;
 
     op_sep(P_M);
     cyc(46);
@@ -2452,11 +2455,11 @@ void abi_ObjectRecordChildrenMark(void)
     op_lda16(0x700016 + cpu.x);
     op_and16(0x0400);
     f = cpu.a != 0;
-    cyc(70);
+    cyc(f ? 76 : 70);                   /* BNE taken or not */
     op_lda16(0x70003E + cpu.x);
     op_tax16();
-    for (;;) {
-        lda_m(b | (uint16_t)(0x2006 + cpu.y));
+    for (back = 0;; back = 1) {
+        lda_m(b | (uint16_t)(0x2006 + cpu.y), back);
         op_tay16();
         if (!cpu.y)
             { cyc(138); break; } else { cyc(22); }
@@ -2474,8 +2477,11 @@ void abi_ObjectRecordChildrenMark(void)
             cyc(54);
             abi_ObjectChildFollow();
         }
-        cyc(120);
-        lda_m(0x700034 + cpu.x);
+        cyc(32);
+        if (cpu.p & P_M)
+            op_lda8(0x700034 + cpu.x);
+        else
+            op_lda16(0x700034 + cpu.x);
         op_tax16();
     }
     cpu.p |= P_M;

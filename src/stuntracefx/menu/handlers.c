@@ -183,7 +183,7 @@ uint16_t MenuButtonSequence(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     a = rd16((uint16_t)(*x + 0x14));
     *p = cmp16(*p, a, 0x0152);
     if (a == 0x0152)
-        return a;
+        { cyc(42); return a; }          /* RTS */
     a = 0x0152;
     cyc(86);
     wr16((uint16_t)(*x + 0x14), a);
@@ -192,6 +192,7 @@ uint16_t MenuButtonSequence(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     cyc(22);
     wr16((uint16_t)(*x + 0x18), 0x0000);
     *p = nz16(*p, a);
+    cyc(42);                            /* RTS */
     return a;
 }
 
@@ -414,7 +415,7 @@ uint16_t MenuBg1RiseAway(uint8_t bank, uint16_t *x, uint8_t *p)
         cyc(62);
         SoundPort0QueuePushRaw(0x13);
     }
-    cyc(142);
+    cyc(pos & 0x8000 ? 142 : 106);      /* BMI not taken, BRL */
     pos = rd16((uint16_t)(*x + 0x20));
     v = (uint16_t)(0 - pos);
     cyc(202);
@@ -540,7 +541,7 @@ static void menu_sound(uint8_t cmd)
 
 /* LDA +$14,X, CMP #a, BEQ; else LDA #a, STA +$14,X, STZ +$16,X, STZ
    +$18,X: animation a started unless it is the one playing. */
-static void menu_anim(uint16_t a)
+static int menu_anim(uint16_t a)
 {
     cyc(22);
     uint16_t x = cpu.x, v = rd16((uint16_t)(x + 0x14));
@@ -548,7 +549,7 @@ static void menu_anim(uint16_t a)
     cpu.a = v;
     cpu.p = cmp16(cpu.p, v, a);
     if (v == a)
-        return;
+        return 1;
     cpu.a = a;
     cpu.p = nz16(cpu.p, a);
     cyc(86);
@@ -557,6 +558,7 @@ static void menu_anim(uint16_t a)
     wr16((uint16_t)(x + 0x16), 0x0000);
     cyc(22);
     wr16((uint16_t)(x + 0x18), 0x0000);
+    return 0;
 }
 
 /* LDA $118B, AND #mask: the buttons newly pressed under mask. */
@@ -604,6 +606,7 @@ void MenuSequenceColourOff(uint8_t bank)
     FrameByteWritePush(bank, HDMAEN, 0x10);
     cyc(144);
     FrameByteWritePush(bank, TSW, 0x00);
+    cyc(208);                           /* the push's end, PLX, REP, RTS */
 }
 
 void abi_MenuSequenceColourOff(void)
@@ -621,10 +624,12 @@ static void menu_erase_cancel(int sound)
     cyc(16);
     menu_handler(0xD606);
     (cyc(46), abi_MenuSequenceColourOff());
-    if (sound)
-        { cyc(208); menu_sound(0x47); } else { cyc(186); }
-    cyc(22);
+    if (sound) {
+        menu_sound(0x47);
+        cyc(22);
+    }
     menu_anim(0x0002);
+    cyc(42);                            /* RTS */
 }
 
 /*
@@ -644,7 +649,9 @@ static void menu_erase_cancel(int sound)
 void abi_MenuEraseConfirm(void)
 {
     abi_MenuActorAnimateFrame();
-    if (menu_pressed(0x0200) && !menu_choice()) {
+    if (!menu_pressed(0x0200)) {
+        cyc(24);                        /* AND #imm */
+    } else if (!menu_choice()) {
         cpu.a = 0x0001;
         cpu.p = nz16(cpu.p, 0x0001);
         cyc(62);
@@ -661,7 +668,7 @@ void abi_MenuEraseConfirm(void)
         menu_anim(0x0152);
     } else { cyc(46); }
     if (!menu_pressed(0x8000))
-        { cyc(46); return; }
+        { cyc(88); return; }            /* BEQ taken, RTS */
     if (!menu_choice()) {
         cyc(6);
         menu_erase_cancel(1);
@@ -672,6 +679,7 @@ void abi_MenuEraseConfirm(void)
     cyc(22);
     wr16((uint16_t)(cpu.x + 0x0A), 0x0000);
     menu_sound(0x46);
+    cyc(64);                            /* REP, RTS */
 }
 
 /*
@@ -687,12 +695,13 @@ void abi_MenuEraseSave(void)
     uint16_t x;
 
     for (x = 0; x != 0x0400; x = (uint16_t)(x + 2))
-        { cyc(106); wr16(SAVE_AREA + x, 0x0000); }
+        { cyc(x == 0 ? 80 : 106); wr16(SAVE_AREA + x, 0x0000); }
     cyc(130);
     cpu.a = 0x0000;
     cpu.x = 0x0400;
     cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z | P_C);
     abi_SaveUnlocksCheck();
+    cyc(42);                            /* RTS */
 }
 
 /*
@@ -710,14 +719,16 @@ void abi_MenuEraseSave(void)
 void abi_MenuEraseConfirm2(void)
 {
     abi_MenuActorAnimateFrame();
-    if (menu_pressed(0x0200) && !menu_choice()) {
+    if (!menu_pressed(0x0200)) {
+        cyc(24);                        /* AND #imm */
+    } else if (!menu_choice()) {
         cpu.a = 0x0001;
         cpu.p = nz16(cpu.p, 0x0001);
         cyc(62);
         wr16((uint16_t)(cpu.x + 0x0A), 0x0001);
         menu_anim(0x015C);
         menu_sound(0x45);
-    } else { cyc(24); }
+    }
     cyc(22);
     if (menu_pressed(0x0100) && menu_choice()) {
         cyc(38);
@@ -727,14 +738,14 @@ void abi_MenuEraseConfirm2(void)
     } else { cyc(24); }
     cyc(22);
     if (!menu_pressed(0x8000))
-        { cyc(46); return; }
+        { cyc(88); return; }            /* BEQ taken, RTS */
     if (!menu_choice()) {
         cyc(6);
         menu_erase_cancel(1);
         return;
-    } else { cyc(36); }
+    } else { cyc(62); }
     abi_MenuEraseSave();
-    cpu.x = rd16(cyc_then(260, dbw(cpu.db, 0x11F9)));
+    cpu.x = rd16(cyc_then(24, dbw(cpu.db, 0x11F9)));
     cpu.p = nz16(cpu.p, cpu.x);
     menu_anim(0x0170);
     menu_sound(0x36);
@@ -744,6 +755,7 @@ void abi_MenuEraseConfirm2(void)
     cpu.p = nz16(cpu.p, 0x0040);
     cyc(46);
     wr16((uint16_t)(cpu.x + 0x0A), 0x0040);
+    cyc(42);                            /* RTS */
 }
 
 /*
@@ -764,7 +776,7 @@ void abi_MenuEraseDone(void)
     c = dec_field(cpu.x, 0x0A);
     cpu.p = nz16(cpu.p, c);
     if (!(c & 0x8000))
-        { cyc(22); return; }
+        { cyc(64); return; }            /* BPL taken, RTS */
     menu_erase_cancel(0);
 }
 

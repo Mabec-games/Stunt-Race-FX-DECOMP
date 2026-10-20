@@ -94,7 +94,7 @@ uint16_t MenuInitialsStep(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
             cyc(16);
             sound0(bank, 0x46, p);
             MenuRowPalette5(bank, x, y, p);
-            cyc(74);
+            cyc(32);
             a = (uint16_t)(rd16(POSITION) - 1);
             *p = nz16(*p, a);
             cyc(46);

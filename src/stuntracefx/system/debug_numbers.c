@@ -41,9 +41,10 @@ void DebugHexByte(void)
     cyc(248);
     d = rd16(HEX_DIGITS + ((a & 0x00F0) >> 4));
     draw((uint16_t)((d & 0x00FF) - 0x0020));
-    cyc(224);
+    cyc(154);
     d = rd16(HEX_DIGITS + (a & 0x000F));
     draw((uint16_t)((d & 0x00FF) - 0x0020));
+    cyc(28);
     op_plp(p);
 }
 
@@ -88,14 +89,15 @@ void DebugDecimalByte(void)
         { cyc(26); draw((uint16_t)((cpu.a & 0xFF00) | h)); }
     cpu.y = h;
     cpu.x = v;
-    cyc(366);
+    cyc(h != 0xFF ? 296 : 366);
     t = rd8(DECIMAL_PAIRS + v);
     cpu.p = (uint8_t)((p & ~P_C) | ((t >> 4) ? (t >> 3 & 1) : (cyc(34), (h == 0xFF))));
     if ((t >> 4) || h != 0xFF)
-        { cyc(34); draw((uint16_t)((cpu.a & 0xFF00) | (t >> 4))); }
-    cyc(84);
+        { cyc(34); draw((uint16_t)((cpu.a & 0xFF00) | (t >> 4))); cyc(14); }
+    else { cyc(84); }
     cpu.p = nz8(cpu.p, (uint8_t)(t & 0x0F));
     draw((uint16_t)(t & 0x0F));
+    cyc(42); /* RTS */
 }
 
 void abi_DebugDecimalByte(void)
@@ -124,7 +126,7 @@ void DebugSignedByte(void)
         cyc(46);
         draw((uint16_t)((cpu.a & 0xFF00) | 0x29));
     }
-    cyc(122);
+    cyc(52);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     DebugDecimalByte();
 }
@@ -145,7 +147,8 @@ static void long_wrapper(void (*print)(void))
     uint16_t a;
 
     cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
-    cyc(194);
+    /* PHA pushes a word with M 16-bit; PHX and PHY a byte each with X 8-bit */
+    cyc((saved.p & P_M ? 194 : 202) - (saved.p & P_X ? 16 : 0));
     wr8((uint32_t)cpu.db << 16 | NUM_BYTE, (uint8_t)cpu.a);
     cpu.db = 0x00;
     cyc(90);
@@ -155,7 +158,7 @@ static void long_wrapper(void (*print)(void))
     cpu = saved;
     if (saved.p & P_M)
         cpu.a = (uint16_t)((a & 0xFF00) | (saved.a & 0x00FF)); else { cyc(8); }
-    cyc(298);
+    cyc(200 - (saved.p & P_X ? 16 : 0)); /* PLP, PLY, PLX, PLA, PLB, RTL */
     cpu.p = nz8(cpu.p, cpu.db);
 }
 
@@ -175,7 +178,7 @@ void DebugPrintHexByte(void)
 
 void abi_DebugPrintHexByte(void)
 {
-    (cyc(82), long_wrapper(DebugHexByte));
+    long_wrapper(DebugHexByte);
 }
 
 /*
@@ -231,9 +234,9 @@ void DebugPrintHexWord(void)
     uint16_t a = cpu.a;
 
     cpu.a = (uint16_t)(a << 8 | a >> 8);
-    (cyc(22), abi_DebugPrintHexByte());
+    (cyc((cpu.p & P_M ? 22 : 30) + 82), abi_DebugPrintHexByte()); /* PHA, XBA, JSL */
     cpu.a = (uint16_t)(cpu.a << 8 | cpu.a >> 8);
-    abi_DebugPrintHexByte();
+    (cyc(82), abi_DebugPrintHexByte()); /* XBA, JSL */
     if (cpu.p & P_M) {
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | (a & 0x00FF));
         cpu.p = nz8(cpu.p, (uint8_t)a);
@@ -283,7 +286,7 @@ void DebugPrintDecimalWord(void)
     }
     cpu.p &= (uint8_t)~P_M;
     x = 0;
-    cyc(neg ? 132 : 84);
+    cyc(neg ? 62 : 84);
     wr16(NUM_DIGIT, 0x0000);
     do {
         cyc(2);
@@ -314,7 +317,7 @@ void DebugPrintDecimalWord(void)
             draw((uint16_t)((cpu.a & 0xFF00) | (uint8_t)(n + 0x10)));
         }
         cpu.p &= (uint8_t)~P_M;
-        cyc(skip ? 124 : 180);
+        cyc(skip ? 124 : 110);
         wr16(NUM_DIGIT, 0x0000);
         x = (uint16_t)(x + 2);
     } while (cyc_loop(50, x != 0x000A));
@@ -324,7 +327,7 @@ void DebugPrintDecimalWord(void)
         cpu.p |= P_M;
         draw((uint16_t)((cpu.a & 0xFF00) | 0x10));
     }
-    cyc(300);
+    cyc(drawn ? 300 : 230);
     cpu = saved;
 }
 
@@ -355,7 +358,7 @@ void DebugPrintBinaryByte(void)
     cyc(60);
     wr8(NUM_BITS, (uint8_t)cpu.a);
     for (i = 0; i < 4; i++) {
-        cyc(32);
+        cyc(i ? 152 : 32); /* later pairs: ROL, ASL x3, PLP, ROL, PHA, LDA #0 first */
         v = rd8(NUM_BITS);
         lo = v & 1;
         cyc(6);
@@ -368,11 +371,11 @@ void DebugPrintBinaryByte(void)
     }
     cyc(22);
     for (i = 3; i >= 0; i--) {
-        cyc(172);
+        cyc(74);
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | pair[i]);
         DebugHexByte();
     }
-    cyc(128);
+    cyc(30);
     op_plp(p);
 }
 

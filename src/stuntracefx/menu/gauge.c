@@ -141,7 +141,7 @@ uint16_t GaugeTableIndex(uint8_t bank, uint16_t value)
 void abi_GaugeTableIndex(void)
 {
     cpu.a = GaugeTableIndex(cpu.db, cpu.x);
-    cpu.x = (cpu.p & P_X) ? (uint8_t)cpu.a : (cyc(84), cpu.a);
+    cpu.x = (cpu.p & P_X) ? (uint8_t)cpu.a : cpu.a;
 }
 
 /*
@@ -175,7 +175,7 @@ uint16_t GaugeFromSpeed(uint8_t bank, uint16_t *x)
         *x = GaugeTableIndex(bank, a);
         cyc(76);
         a = rd8(0x0BB158 + *x);
-    }
+    } else { cyc(84); }                 /* CMP, BNE, BRL */
     cyc(48);
     wr16(0x000002, a);
     return a;
@@ -204,7 +204,7 @@ void abi_GaugeFromSpeedZero(void)
 
     cyc(84);
     x = GaugeTableIndex(cpu.db, 0x0000);
-    cyc(208);
+    cyc(124);
     a = rd8(0x0BB158 + x);
     wr16(0x000002, a);
     cpu.a = a;
@@ -368,7 +368,8 @@ uint16_t SpeedGauge2Update(uint8_t bank, uint16_t a)
     cyc(16);
     t = rd16(0x000002);
     if (g != t) {
-        g = (uint16_t)(g > t ? g - 4 : (cyc(6), g + 4));
+        int down = g > t;
+        g = (uint16_t)(down ? g - 4 : (cyc(6), g + 4));
         cyc(94);
         wr16(b | GAUGE_2, g);
         cyc(30);
@@ -379,7 +380,7 @@ uint16_t SpeedGauge2Update(uint8_t bank, uint16_t a)
             cyc(54);
             wr8(0x000E47, (uint8_t)a);
             return a;
-        } else { cyc(32); }
+        } else { cyc(down ? 54 : 32); }   /* down: BRA to the shared store */
     }
     cyc(70);
     wr16(b | GAUGE_2, 0xFFFF);

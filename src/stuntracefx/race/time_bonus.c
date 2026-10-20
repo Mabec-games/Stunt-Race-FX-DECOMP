@@ -1164,27 +1164,31 @@ void abi_TimeBonusTransfer(void)
  * instruction leaves them (after a draw: A = the table word's high byte
  * and the screen mode value, X = the program, N and Z from the data bank).
  */
-void TimeLeftDigits(void)
+/* The clocks to state after the work: the RTS and what precedes it. */
+static uint32_t time_left_digits(void)
 {
     uint32_t b = (uint32_t)cpu.db << 16;
     uint8_t v;
 
     if (!bonus_flag(b))
-        return;
+        return 58;
     cyc(46);
     v = rd8(b | 0x0DD6);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x0C)) & ~P_C) | (v >= 0x0C ? (cyc(16), P_C) : (cyc(60), 0)));
     if (v == 0x0C)
-        return;
+        return 58;
     cpu.p &= (uint8_t)~(P_M | P_X);
     lda16(b | TIME_BCD);
     if (!cpu.a) {
         cyc(22);
         lda16(b | 0x0E78);
-        if (cpu.a)
-            { cyc(40); wr16(b | 0x0E78, 0x0000); }
-        return;
+        if (cpu.a) {
+            cyc(40);
+            wr16(b | 0x0E78, 0x0000);
+            return 42;
+        }
+        return 64;
     }
     cmp16(0x0100);
     if (cpu.p & P_C) {                  /* three digits */
@@ -1217,7 +1221,7 @@ void TimeLeftDigits(void)
         param_digit();
         gsu_run(0xF6DF);
         cyc(28);
-        return;
+        return 58;
     }
     cmp16(0x0010);
     if (cpu.p & P_C) {                  /* two digits */
@@ -1245,7 +1249,7 @@ void TimeLeftDigits(void)
         param_digit();
         gsu_run(0xF6DF);
         cyc(28);
-        return;
+        return 58;
     }
     cyc(104);
     cmp16(rd16(b | 0x0E78));            /* one large digit */
@@ -1286,12 +1290,17 @@ void TimeLeftDigits(void)
     cyc(72);
     gsu_run(0xFAF2);
     cyc(28);
+    return 58;
+}
+
+void TimeLeftDigits(void)
+{
+    time_left_digits();
 }
 
 void abi_TimeLeftDigits(void)
 {
-    TimeLeftDigits();
-    cyc(58);
+    cyc(time_left_digits());
 }
 
 void abi_GsuRun(void);

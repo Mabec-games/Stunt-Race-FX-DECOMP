@@ -706,7 +706,7 @@ void abi_MenuSlideToPreview(void)
     op_cmp16(0x008A);
     if (cpu.a != 0x008A) {
         cpu.a = 0x008A;
-        wr16(dpx(0x14), cyc_then(82, 0x008A));
+        wr16(dpx(0x14), cyc_then(86, 0x008A));
         wr16(dpx(0x16), cyc_then(22, 0x0000));
         wr16(dpx(0x18), cyc_then(22, 0x0000));
     } else { cyc(46); }
@@ -791,6 +791,7 @@ void abi_MenuPreviewRun(void)
     (cyc(46), abi_ApproachTargetFull());
     cpu.p &= (uint8_t)~(P_M | P_X);
     (cyc(24), preview_menu_loop());
+    cyc(44);                            /* RTL */
 }
 
 /*
@@ -875,7 +876,7 @@ void abi_CourseMenuRun(void)
     abi_MenuPreviewRun();
     op_rep(P_M);
     b = (uint32_t)cpu.db << 16;
-    cyc(76);
+    cyc(32);
 chosen:
     op_lda16(0x0018C3);
     cyc(24);

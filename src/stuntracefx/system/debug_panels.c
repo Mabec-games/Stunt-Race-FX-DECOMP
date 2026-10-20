@@ -183,6 +183,7 @@ void DebugMatchSpeedPanel(void)
 void abi_DebugMatchSpeedPanel(void)
 {
     DebugMatchSpeedPanel();
+    cyc(44);                            /* RTL */
 }
 
 /*
@@ -208,6 +209,7 @@ void DebugLastCarPanel(void)
 void abi_DebugLastCarPanel(void)
 {
     DebugLastCarPanel();
+    cyc(44);                            /* RTL */
 }
 
 /*
@@ -292,6 +294,7 @@ void DebugFxTestPanel(void)
 void abi_DebugFxTestPanel(void)
 {
     DebugFxTestPanel();
+    cyc(44);                            /* RTL */
 }
 
 /*
@@ -404,6 +407,7 @@ void DebugModelChainPanel(void)
 void abi_DebugModelChainPanel(void)
 {
     DebugModelChainPanel();
+    cyc(44);                            /* RTL */
 }
 
 /*
@@ -447,6 +451,7 @@ void DebugLastCarMotionPanel(void)
 void abi_DebugLastCarMotionPanel(void)
 {
     DebugLastCarMotionPanel();
+    cyc(44);                            /* RTL */
 }
 
 /*
@@ -487,6 +492,7 @@ void DebugTrafficHexPanel(void)
 void abi_DebugTrafficHexPanel(void)
 {
     DebugTrafficHexPanel();
+    cyc(44);                            /* RTL */
 }
 
 /*
@@ -524,6 +530,7 @@ void DebugWorkBytesPanel(void)
 void abi_DebugWorkBytesPanel(void)
 {
     DebugWorkBytesPanel();
+    cyc(44);                            /* RTL */
 }
 
 /* X = the viewed object's statistics record: the byte at +$22 of the
@@ -565,6 +572,7 @@ void DebugViewRecordPanel(void)
 void abi_DebugViewRecordPanel(void)
 {
     DebugViewRecordPanel();
+    cyc(44);                            /* RTL */
 }
 
 /*
@@ -590,6 +598,7 @@ void DebugViewSpeedPanel(void)
 void abi_DebugViewSpeedPanel(void)
 {
     DebugViewSpeedPanel();
+    cyc(44);                            /* RTL */
 }
 
 /* Prints the object at the head of bucket X, then up to three more along
@@ -665,6 +674,7 @@ void DebugBucketsPanel(void)
 void abi_DebugBucketsPanel(void)
 {
     DebugBucketsPanel();
+    cyc(20);                            /* RTL */
 }
 
 /*
@@ -691,6 +701,7 @@ void DebugFxWordsPanel(void)
 void abi_DebugFxWordsPanel(void)
 {
     DebugFxWordsPanel();
+    cyc(28);                            /* RTL */
 }
 
 /*
@@ -740,6 +751,7 @@ void DebugCounterPanel(void)
 void abi_DebugCounterPanel(void)
 {
     DebugCounterPanel();
+    cyc(28);                            /* RTL */
 }
 
 /*
@@ -781,4 +793,5 @@ void DebugFxTestWordPanel(void)
 void abi_DebugFxTestWordPanel(void)
 {
     DebugFxTestWordPanel();
+    cyc(28);                            /* RTL */
 }

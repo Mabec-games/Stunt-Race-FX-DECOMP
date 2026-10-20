@@ -68,6 +68,7 @@ void abi_SoftResetCheck(void)
     uint32_t b = (uint32_t)cpu.db << 16;
     uint8_t v;
     uint16_t i;
+    int fresh = 0;
 
     op_sep(P_M);
     cyc(68);
@@ -83,7 +84,7 @@ void abi_SoftResetCheck(void)
             op_plp(p0);
             return;
         }
-        cyc(88);
+        cyc(92);
         op_lda16(b | 0x0309);
         op_and16(0xCFCF);
         if (cpu.a) {
@@ -104,10 +105,11 @@ void abi_SoftResetCheck(void)
         wr8(b | 0x0E3A, 0x01);
         reset_lda8(0x70);
         wr8(b | RESET_FRAMES, 0x70);
+        fresh = 1;
     }
     do {
         do
-            { cyc(46); op_lda8(b | RESET_TICK); }
+            { cyc(fresh ? 24 : 46); fresh = 0; op_lda8(b | RESET_TICK); }
         while (!(uint8_t)cpu.a);
         cyc(40);
         wr8(b | RESET_TICK, 0x00);
@@ -144,7 +146,7 @@ void abi_SoftResetCheck(void)
     v = cpu.p;
     op_rep(P_M | P_X);
     op_lda16_imm(0x0000);
-    cyc(148);
+    cyc(106);
     wr16(0x700000, 0x0000);
     op_lda16_imm(0x27FF);
     cpu.x = 0x0000;
@@ -221,8 +223,16 @@ void abi_InterruptReturn(void)
 {
     /* P from the frame; the PC and PB above it are the return, taken as
        for any routine's. */
+    uint8_t p;
+
     cyc(20);
-    op_plp(rd8((uint16_t)(cpu.s + 1)));
+    p = rd8((uint16_t)(cpu.s + 1));
+    cyc(24);   /* the pulls of PC and PB */
+    cpu.p = p;
+    if (p & P_X) {
+        cpu.x &= 0x00FF;
+        cpu.y &= 0x00FF;
+    }
 }
 
 void abi_ApuUpload(void);
@@ -262,7 +272,7 @@ void abi_SoftResetApu(void)
     cpu.p = nz16(cpu.p, cpu.y);
     abi_ApuUpload();
     op_rep(P_M);
-    cyc(106);
+    cyc(84);
     delay_turns(0x4000);
     cpu.a = 0x0000;
     cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
