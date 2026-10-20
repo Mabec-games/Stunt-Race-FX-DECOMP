@@ -3091,6 +3091,8 @@ static uint32_t latch(uint16_t bit, int on, AbiFn snd)
     if (((cpu.a & bit) ? 1 : 0) == on)
         return (on ? 68 : 46) + (word == 0x1A60 ? 22 : 0);   /* player 2's word: BRA */
     w = cpu.a;
+    if (word == 0x1A60)
+        cyc(22);                            /* player 2's BRA past player 1's load */
     snd();
     w = on ? (uint16_t)(w | bit) : (uint16_t)(w & ~bit);
     cpu.p &= (uint8_t)~P_M;
@@ -3153,6 +3155,7 @@ void abi_PlayerCarEvents(void)
     uint8_t v;
     int found;
     uint32_t to_c4a2 = 104, tail = 78;
+    int16_t lvl;
 
     cyc(24);
     wr16(b | 0x1F18, obj);
@@ -3209,7 +3212,10 @@ void abi_PlayerCarEvents(void)
                 cyc(32);
                 op_lda16(0x70004A + cpu.x);
                 cpu.a = abs16(cpu.a);
+                lvl = (int16_t)cpu.a;
                 abi_SoundAtRateForLevel();
+                if (cpu.a == 0x0023 && lvl >= 0x28)     /* queued: the RTS, and the BRA below $A0 */
+                    tail += lvl < 0xA0 ? 50 : 28;
             }
         } else {
             cyc(102);
@@ -3420,7 +3426,7 @@ void abi_PlayerCarEvents(void)
         (cyc(46), abi_ObjectSpawnD460UnlessFlag());
         cpu.p &= (uint8_t)~P_M;
         cpu.x = x;
-        cyc(198);
+        cyc(192);
     } else {
         cyc(78);
         op_lda16(0x700042 + cpu.x);

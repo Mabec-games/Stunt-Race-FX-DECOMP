@@ -2589,7 +2589,7 @@ void abi_ObjectSpawnD460UnlessFlag(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.p = nz8(cpu.p, v);
     if (v)
-        return;
+        { cyc(6); return; }
     cpu.p &= (uint8_t)~P_M;
     cpu.a = 0xA158;
     cyc(86);
