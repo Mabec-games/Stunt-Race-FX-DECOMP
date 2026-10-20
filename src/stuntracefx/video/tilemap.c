@@ -965,6 +965,7 @@ static uint8_t row_mark(uint16_t x, uint16_t count, uint8_t bits, uint32_t mark,
     TilemapPaletteFill(xp, yp, a);
     cyc(32);
     v = (uint8_t)((rd8(mark) & 0xE3) | mark_bits);
+    cyc(48);                            /* AND #, ORA, STA */
     wr8(mark, v);
     *a = (uint16_t)((*a & 0xFF00) | v);
     return v;

@@ -2805,15 +2805,15 @@ static void glyph_grid3(uint16_t first, void (*mid)(void), void (*row2)(void))
             if (r == 1 && row2)
                 { cyc(62); row2(); }
         }
-        for (c = 0; cyc_loop(0, c < 3); c++) {
-            if (r == 0 && c == 2 && (cyc(0), mid))
-                { cyc(134); mid(); } else { cyc(0); }
-            cyc(0);
+        for (c = 0; c < 3; c++) {
+            if (c)
+                cyc(72);                /* the last glyph's GsuRun returning */
+            if (r == 0 && c == 2 && mid)
+                { cyc(134); mid(); }
             glyph_prog(0xF280, (uint16_t)((first + r) << 8 | (0x1A + 2 * c)));
         }
         cyc(42);
     }
-    cyc(0);
 }
 
 /*

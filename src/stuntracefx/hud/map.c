@@ -87,7 +87,7 @@ void abi_MapMarkerSprites(void);
    first slot. */
 static void abi_map_markers_setup(uint32_t x_at, uint16_t step, uint16_t slot)
 {
-    wr16(0x0000F1, cyc_then(4, (uint16_t)(rd16(x_at) & 0x00FF)));   /* AND #, STA */
+    wr16(0x0000F1, cyc_then(40, (uint16_t)(rd16(x_at) & 0x00FF)));   /* AND #, STA */
     cyc(24);
     wr16(0x0000F3, cyc_then(40, (uint16_t)(rd16(x_at + 2) & 0xFF00)));
     cyc(40);
@@ -118,7 +118,7 @@ void abi_MapMarkersPanelA(void)
 {
     uint32_t b = (uint32_t)cpu.db << 16;
 
-    cyc(82);
+    cyc(46);
     abi_map_markers_setup(b | 0x0E0A, 0xFFFC, 0x0158);
     cpu.a = 0xFFFC;
     cpu.p = (uint8_t)(nz16((uint8_t)(cpu.p & ~P_M), 0x0158));
@@ -165,9 +165,14 @@ void abi_MapMarkersPanelB(void)
         cpu.p = (uint8_t)(nz8(cpu.p, 0) | P_M);
         return;
     }
-    cyc(280);
+    /* the setup's stores come before the $0D62 read that picks the first
+       slot */
+    cyc(10);
+    abi_map_markers_setup(b | 0x0E09, 0x0004, 0);
+    cyc(46);                            /* SEP, LDA long */
     v = rd8(b | 0x0D62);
-    abi_map_markers_setup(b | 0x0E09, 0x0004, v ? 0x0054 : (cyc(16), 0x0180));
+    cpu.y = v ? 0x0054 : 0x0180;
+    cyc(v ? 108 : 124);                 /* BNE, LDY # (and BRA), JSL */
     cpu.a = (uint16_t)(0x0000 | v);
     cpu.p = (uint8_t)(nz16((uint8_t)(cpu.p | P_M), cpu.y));
     abi_MapMarkerSprites();
