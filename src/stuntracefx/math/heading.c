@@ -35,13 +35,14 @@
 static uint8_t smul_at(uint32_t a_at, uint32_t b_at, uint8_t *p)
 {
     cyc(16);
-    uint8_t a = rd8(a_at), b, h, neg = 0;
+    uint8_t a = rd8(a_at), b, h, neg = 0, a_neg;
 
     if (a & 0x80) {
         cyc(36);
         a = (uint8_t)(~a + 1);
         neg ^= 1;
     }
+    a_neg = neg;
     cyc(54);
     wr8(WRMPYA, (uint8_t)(a << 1));
     cyc(16);
@@ -53,6 +54,9 @@ static uint8_t smul_at(uint32_t a_at, uint32_t b_at, uint8_t *p)
     }
     cyc(40);
     wr8(WRMPYB, b);
+    /* four NOPs and LDA RDMPYH; or NOP, JMP, then LDA #0 / SEC / SBC (82
+       when only b was negated, 92 when only a was) */
+    cyc(!neg ? 80 : a_neg ? 92 : 82);
     h = rd8(RDMPYH);
     if (neg) {
         *p |= P_C;

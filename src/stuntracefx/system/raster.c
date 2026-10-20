@@ -329,6 +329,7 @@ void abi_RasterStage(void)
     cyc(30);
     switch (rd16(0x7E0000 | (uint16_t)(0xA30D + cpu.x))) {
     case 0xA330:
+        cyc(46);
         abi_WaitHBlank();
         copy8(INIDISP, b | 0x0D61);
         put8(VTIMEL, 0xC8);
@@ -337,6 +338,7 @@ void abi_RasterStage(void)
         frame_counts(b);
         break;
     case 0xA34D:
+        cyc(46);
         abi_WaitHBlank();
         put8(INIDISP, 0x80);
         put8(VTIMEL, 0x17);
@@ -622,6 +624,7 @@ void abi_RasterStage(void)
         put8(VTIMEL, 0x10);
         break;
     case 0xA763:
+        cyc(46);
         abi_WaitHBlank();
         put8(INIDISP, 0x80);
         (cyc(62), abi_VblankUpdates());

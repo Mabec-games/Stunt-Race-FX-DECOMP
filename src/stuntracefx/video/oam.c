@@ -1225,7 +1225,8 @@ static MetaspriteEnd metasprite_draw(uint8_t bank, uint16_t group, uint16_t slot
         if (!(lo & 0x01)) {
             cyc(366);
             mask = rd16(b | (uint16_t)(0xFA8D + ((y >> 2) & 0x0003)));
-            cyc(32);
+            /* the mask's two bytes are stated when they are ROM; RAM is placed */
+            cyc(bank == 0x7E || bank == 0x7F || bank == 0x70 || bank == 0x71 ? 16 : 32);
             wr16(0x0000F3, mask);
             hi = (uint16_t)(mask & 0xFF00);
             cyc(54);

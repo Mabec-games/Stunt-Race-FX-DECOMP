@@ -503,14 +503,14 @@ uint16_t UnusedScreenTiles(void)
     cyc(70);
     wr16(0x002116, 0x2C40);
     for (y = 0; y != 0x10; y++) {
-        cyc(212);
+        cyc(y ? 212 : 126); /* the first row follows LDA, LDY, PHA */
         wr16(0x002118, 0x39A0);
         cyc(24);
         wr16(0x002118, 0x39A0);
         cyc(24);
         wr16(0x002118, 0x39A0);
         for (x = 0; x != 0x1A; x++) {
-            cyc(84);
+            cyc(x ? 122 : 84); /* CLC, ADC, INX, CPX, BNE taken */
             wr16(0x002118, a);
             a = (uint16_t)(a + 0x10);
         }

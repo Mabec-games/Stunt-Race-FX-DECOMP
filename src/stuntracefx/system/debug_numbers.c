@@ -265,7 +265,7 @@ void abi_DebugPrintHexWord(void)
 void DebugPrintDecimalWord(void)
 {
     Regs65816 saved = cpu;
-    uint16_t v, pw, n, x, drawn = 0;
+    uint16_t v, pw, n, x, drawn = 0, neg = 0, skip;
 
     cpu.p &= (uint8_t)~(P_M | P_X);
     cyc(172);
@@ -279,10 +279,11 @@ void DebugPrintDecimalWord(void)
         cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
         cyc(30);
         draw((uint16_t)((cpu.a & 0xFF00) | 0x0D));
+        neg = 1;
     }
     cpu.p &= (uint8_t)~P_M;
     x = 0;
-    cyc(84);
+    cyc(neg ? 132 : 84);
     wr16(NUM_DIGIT, 0x0000);
     do {
         cyc(2);
@@ -304,15 +305,16 @@ void DebugPrintDecimalWord(void)
         wr16(NUM_VALUE, v);
         cyc(16);
         n = rd16(NUM_DIGIT);
-        if (n || drawn) {
+        skip = !(n || drawn);
+        if (!skip) {
             drawn = 1;
             cpu.p |= P_M;
-            cyc(168);
+            cyc(n ? 168 : 202);
             n = rd8(NUM_DIGIT);
             draw((uint16_t)((cpu.a & 0xFF00) | (uint8_t)(n + 0x10)));
         }
         cpu.p &= (uint8_t)~P_M;
-        cyc(180);
+        cyc(skip ? 124 : 180);
         wr16(NUM_DIGIT, 0x0000);
         x = (uint16_t)(x + 2);
     } while (cyc_loop(50, x != 0x000A));
