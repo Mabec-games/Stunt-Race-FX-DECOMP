@@ -47,6 +47,7 @@ uint16_t GsuScreenFlip(uint8_t bank)
     wr16(b | (GSU_SCMR & 0xFFFF), mode);
     cyc(70);
     wr8(GSU_SCBR, 0x0B);
+    cyc(42);
     return (uint16_t)((mode & 0xFF00) | 0x0B);
 }
 
@@ -98,6 +99,7 @@ uint16_t GsuScreenFlipMenu(uint8_t bank)
     wr16(b | (GSU_SCMR & 0xFFFF), mode);
     cyc(70);
     wr8(GSU_SCBR, base);
+    cyc(42);
     return (uint16_t)((mode & 0xFF00) | base);
 }
 
@@ -149,6 +151,7 @@ uint16_t GsuScreenToggle(uint8_t bank)
     wr16(b | (GSU_SCMR & 0xFFFF), mode);
     cyc(70);
     wr8(GSU_SCBR, base);
+    cyc(42);
     return (uint16_t)((mode & 0xFF00) | base);
 }
 

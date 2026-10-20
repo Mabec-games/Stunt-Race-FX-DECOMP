@@ -165,7 +165,7 @@ void abi_RotateXZ(void)
  */
 uint8_t RotateXZFrom08(uint8_t angle)
 {
-    cyc(324);
+    cyc(262);
     sin_cos(angle);
     return rotate8(0x000008, 0x000094, 0x00000A, 0x0005F2);
 }
@@ -189,7 +189,7 @@ void abi_RotateXZFrom08(void)
  */
 uint8_t RotateXY(uint8_t angle)
 {
-    cyc(324);
+    cyc(262);
     sin_cos(angle);
     return rotate8(0x000002, 0x000008, 0x000004, 0x00000A);
 }

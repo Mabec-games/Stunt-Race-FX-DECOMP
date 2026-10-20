@@ -62,6 +62,7 @@ void VideoRegsReset(uint8_t bank, uint16_t x)
     wr16(0x70021A, 0x2C00);
     cyc(16);
     wr16(0x000048, 0x2C00);
+    cyc(72);
 }
 
 void abi_VideoRegsReset(void)
@@ -214,7 +215,7 @@ void VideoStartUploads(uint8_t bank)
 {
     uint32_t b = (uint32_t)bank << 16;
 
-    cyc(216);
+    cyc(82);
     io8(bank, NMITIMEN, 0x00);
     cyc(16);
     wr8(0x000000, 0x00);
@@ -228,10 +229,13 @@ void VideoStartUploads(uint8_t bank)
     io8(bank, VMAIN, 0x80);
     cyc(48);
     wr16(b | (VMADDL & 0xFFFF), 0x0000);
+    cyc(70);
     DmaFromDescriptor(bank, 0xF873);
-    cyc(118);
+    cyc(48);
     wr16(b | (VMADDL & 0xFFFF), 0x7C00);
+    cyc(70);
     DmaFromDescriptor(bank, 0xF87A);
+    cyc(72);
 }
 
 void abi_VideoStartUploads(void)
@@ -267,6 +271,7 @@ static void video_gsu_vram(uint16_t y, uint16_t x)
 /* REP #$30, LDA and LDX (x_last: LDX first), JSL GsuCF42To3000. */
 static void video_gsu_3000(uint16_t a, uint16_t x, int x_first)
 {
+    cyc(28);
     cpu.p &= (uint8_t)~(P_M | P_X);
     cpu.a = a;
     cpu.x = x;
@@ -281,7 +286,7 @@ static void video_gsu_ram_dma(uint16_t src, uint16_t vram, uint16_t size)
     uint8_t p = cpu.p;
 
     cpu.p &= (uint8_t)~P_M;
-    cyc(108);
+    cyc(80);
     wr16(DMAP0, 0x1801);
     cyc(56);
     wr16(A1T0L, src);
@@ -300,6 +305,7 @@ static void video_gsu_ram_dma(uint16_t src, uint16_t vram, uint16_t size)
     cyc(48);
     wr8(MDMAEN, 0x01);
     op_plp(p);
+    cyc(28);
 }
 
 /* The data bank $7F (PHB, PHA, PLB), then the course tilemap from the
@@ -325,9 +331,9 @@ static void video_tilemap_rows(uint16_t y0)
         for (i = 0; i < 5; i++) {
             cpu.a = src[i];
             cpu.p = nz16(cpu.p, src[i]);
-            abi_TilemapRowFromGsuRam();
+            (cyc(70), abi_TilemapRowFromGsuRam());
         }
-        cyc(58);
+        cyc(16);
         a = rd16(0x0000F1);
         cpu.p &= (uint8_t)~P_C;
         a = op_adc16(a, 0x0040, &cpu.p);
@@ -335,8 +341,8 @@ static void video_tilemap_rows(uint16_t y0)
         wr16(0x0000F1, a);
         cpu.a = a;
         op_cmp16(0x0800);
-    } while (!(cpu.p & P_C));
-    cyc(108);
+    } while (cyc_loop(46, !(cpu.p & P_C)));
+    cyc(112);
 }
 
 /* MVN within bank $7F or from $70 to $7F: n bytes from src to dst, a
@@ -400,12 +406,12 @@ void abi_RaceVideoSetup(void)
     cpu.p = nz8(cpu.p, 0x03);
     cpu.p &= (uint8_t)~P_M;
     (cyc(200), abi_VideoRegsReset());
-    abi_VideoStartUploads();
-    (cyc(204), abi_SoundIndicesFromHandlers());
-    cyc(88);
+    (cyc(62), abi_VideoStartUploads());
+    (cyc(62), abi_SoundIndicesFromHandlers());
+    cyc(16);
     video_gsu_vram(0xF80D, 0xF7DA);
     cpu.p &= (uint8_t)~(P_M | P_X);
-    cyc(90);
+    cyc(46);
     a = rd16(b | 0x0E3D);
     cpu.p = (uint8_t)((cpu.p & ~P_C) | (a >> 15));
     a = (uint16_t)(a << 1);
@@ -416,19 +422,20 @@ void abi_RaceVideoSetup(void)
     cpu.a = k3;
     cpu.p = nz16(cpu.p, k3);
     (cyc(100), abi_PaletteCourseLoad());
-    (cyc(126), abi_CgramDmaAll());
+    (cyc(62), abi_CgramDmaAll());
     cpu.p &= (uint8_t)~(P_M | P_X);
     cpu.x = k3;
+    cyc(268);
     op_lda16(b + 0xF807 + k3);
     op_sep(P_M);
     cpu.x = k3;
     cpu.p = nz16(cpu.p, k3);
     abi_GradientBuildColours();
     op_sep(P_M);
-    cyc(182);
+    cyc(46);
     op_lda8(b | 0x0D62);
     if ((uint8_t)cpu.a) {
-        cyc(92);
+        cyc(138);
         cpu.y = k3;
         cpu.p = nz16(cpu.p, k3);
         abi_MenuCourseGraphics();
@@ -437,17 +444,18 @@ void abi_RaceVideoSetup(void)
 
             cpu.p &= (uint8_t)~(P_M | P_X);
             cpu.a = 0x0000;
-            cyc(284);
+            cyc(122);
             wr16(0x7F9BD7, 0x0000);
             video_mvn(0x7F9BD7, 0x7F9BD8, 0x2000);
             op_plp(p1);
         }
         video_gsu_vram(0xF84C, 0xF7E3);
-        cyc(132);
+        cyc(88);
         video_mvn(0x703000, 0x7F93D7, 0x0800);
+        cyc(44);
         video_gsu_3000(0xC770, 0x0018, 0);
         cpu.p &= (uint8_t)~(P_M | P_X);
-        cyc(130);
+        cyc(158);
         video_gsu_ram_dma(0x3000, 0x7C00, 0x0800);
         cpu.p &= (uint8_t)~(P_M | P_X);
         video_gsu_ram_dma(0x3600, 0x6600, 0x0400);
@@ -468,7 +476,7 @@ void abi_RaceVideoSetup(void)
     cyc(156);
     op_lda16(b + 0xF54D + k3);
     if (cpu.a) {
-        cyc(190);
+        cyc(146);
         cpu.p &= (uint8_t)~P_C;
         cpu.a = op_adc16(k3, 0xF54D, &cpu.p);
         cpu.x = cpu.a;
@@ -476,13 +484,13 @@ void abi_RaceVideoSetup(void)
         cpu.p = nz16(cpu.p, 0xF85A);
         abi_GsuCF42ToVram();
     }
-    cyc(60);
+    cyc(16);
     video_gsu_vram(0xF814, 0xF7DD);
     cyc(18);
     video_gsu_3000(0xD970, 0x001D, 0);
     abi_CoursePictureToVram();
     op_sep(P_M | P_X);
-    cyc(166);
+    cyc(24);
     v = rd8(b | 0x0D2B);
     cpu.p = (uint8_t)((cpu.p & ~P_C) | (v >> 7));
     v = (uint8_t)(v << 1);
@@ -508,8 +516,9 @@ void abi_RaceVideoSetup(void)
         cyc(58);
         video_gsu_3000(0xFA38, 0x0018, 1);
         cpu.p &= (uint8_t)~(P_M | P_X);
-        cyc(130);
+        cyc(158);
         video_gsu_ram_dma(0x3000, 0x5AC0, 0x0180);
+        cyc(16);
         video_gsu_3000(0xFB90, 0x0018, 1);
         goto mode2;
     } else { cyc(14); }
@@ -542,22 +551,23 @@ mode0:
     cyc(130);
     wr16(b | 0x2116, 0x5B40);
     for (y = 0x0080; y; y--) {
-        cyc(96);
+        cyc(32);
         cpu.a = rd16(0x703000 + cpu.x);
         cyc(24);
         wr16(b | 0x2118, cpu.a);
         cpu.x = (uint16_t)(cpu.x + 2);
+        cyc(64);
     }
-    cyc(72);
+    cyc(52);
     cpu.y = 0x0000;
     cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
     video_gsu_3000(0xFAE8, 0x0018, 1);
 mode2:
     cpu.p &= (uint8_t)~(P_M | P_X);
-    abi_ScreenFrameAndPictures();
+    (cyc(90), abi_ScreenFrameAndPictures());
     cpu.p &= (uint8_t)~(P_M | P_X);
     cpu.y = k3;
-    cyc(400);
+    cyc(256);
     cpu.a = rd16(b + 0xF5A3 + k3);
     cpu.x = cpu.a;
     op_lda16(b + 0xF5A1 + k3);
@@ -572,6 +582,7 @@ mode2:
     cpu.a = (uint16_t)(rd16(b + 0xF5F7 + k3) & 0x00FF);
     cpu.p = nz16(cpu.p, cpu.a);
     if (cpu.a) {
+        cyc(72);
         cpu.x = cpu.a;
         op_lda16(b + 0xF5F5 + k3);
         abi_GsuCF42To3000();
@@ -626,6 +637,7 @@ void abi_RaceVideoInit(void)
     abi_RaceVideoSetup();
     cpu.db = db0;
     cpu.p = nz8(cpu.p, db0);
+    cyc(72);
 }
 
 void abi_SoundReset(void);
@@ -638,13 +650,14 @@ void abi_RaceTimeInit(void);
 static void hud_tile(uint32_t b, uint16_t from, uint16_t w, uint16_t vram)
 {
     cpu.a = from;
-    cyc(70);
+    cyc(34);
     wr16(0x0000F1, from);
     cyc(24);
     op_lda16(b | w);
     cpu.x = vram;
     cpu.p = nz16(cpu.p, vram);
-    abi_VramDmaTileFromGsuRam();
+    (cyc(70), abi_VramDmaTileFromGsuRam());
+    cyc(6);
 }
 
 void RaceHudSetup(uint8_t p, uint8_t db);
@@ -674,6 +687,7 @@ void RaceHudSetupTwoPlayers(uint8_t p, uint8_t db);
  */
 void abi_RaceHudLoad(void)
 {
+    cyc(178);
     const uint32_t b = 0x030000;
     uint8_t pushed[2] = {cpu.p, cpu.db};
     uint16_t w, x;
@@ -683,7 +697,7 @@ void abi_RaceHudLoad(void)
     cpu.p = nz8(cpu.p, 0x03);
     abi_SoundReset();
     op_sep(P_M);
-    cyc(118);
+    cyc(46);
     op_lda8(b | 0x0D4C);
     if ((uint8_t)cpu.a && (op_lda8(cyc_then(40, b | 0x0D2B)), !(uint8_t)cpu.a)) {
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x04);
@@ -693,7 +707,7 @@ void abi_RaceHudLoad(void)
     } else
         { cyc(84); abi_SoundIndicesFromHandlers(); }
     abi_CourseSoundLoad();
-    cyc(4);
+    cyc(18);
     video_gsu_3000(0x8078, 0x001D, 0);
     cpu.p &= (uint8_t)~(P_M | P_X);
     cyc(162);
@@ -703,33 +717,34 @@ void abi_RaceHudLoad(void)
     cpu.a = x;
     cpu.x = x;
     cpu.p = nz16(cpu.p, x);
-    cyc(10);
+    cyc(46);
     w = rd16(b | (uint16_t)(0xDD56 + x));
     if (w == 0xDDA4) {
         cyc(34);
         hud_tile(b, 0x30A0, 0x18E5, 0x62F0);
-        cyc(34);
+        cyc(0);
         hud_tile(b, 0x30A0, 0x18E7, 0x63E0);
-        cyc(34);
+        cyc(0);
         hud_tile(b, 0x30A0, 0x18E9, 0x63F0);
         w = 0xDDCE;
-    }
-    cyc(34);
+    } else { cyc(34); }
+    cyc(0);
     if (w == 0xDDCE) {
         op_sep(P_M);
-        cyc(76);
+        cyc(40);
         op_lda8(b | 0x0D4E);
         if ((uint8_t)cpu.a)
             w = 0xDD5E;
     }
     if (w == 0xDD94)
         hud_tile(b, 0x3000, 0x18E5, 0x62F0);
-    cyc(8);
+    cyc(0);
     if (w == 0xDD5E)
-        { cyc(14); video_gsu_ram_dma(0x3080, 0x63F0, 0x0020); }
+        { cyc(14); video_gsu_ram_dma(0x3080, 0x63F0, 0x0020); } else { cyc(36); }
+    cyc(8);
     cpu.p &= (uint8_t)~(P_M | P_X);
     hud_tile(b, 0x3000, 0x18E3, 0x62E0);
-    cyc(80);
+    cyc(10);
     video_gsu_vram(0xF845, 0xF804);
     cyc(18);
     video_gsu_3000(0xD920, 0x0018, 0);
@@ -738,9 +753,9 @@ void abi_RaceHudLoad(void)
     op_sep(P_M);
     (cyc(110), abi_SoundReset());
     op_sep(P_M);
-    abi_RaceTimeInit();
+    (cyc(68), abi_RaceTimeInit());
     cpu.p &= (uint8_t)~(P_M | P_X);
-    cyc(88);
+    cyc(46);
     x = (uint16_t)((rd16(b | 0x0E3D) & 0x00FF) << 1);
     cpu.x = x;
     cyc(132);
@@ -753,5 +768,5 @@ void abi_RaceHudLoad(void)
         { cyc(46); RaceHudSetupTwoPlayers(pushed[0], pushed[1]); }
     else
         { cyc(46); RaceHudSetup(pushed[0], pushed[1]); }
-    cyc(204);
+    cyc(72);
 }

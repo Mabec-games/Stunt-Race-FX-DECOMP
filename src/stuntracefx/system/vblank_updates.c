@@ -44,7 +44,7 @@ static uint8_t upload_done(uint8_t bank, uint8_t sc)
 {
     uint8_t f;
 
-    wr8(dbw(bank, 0x0357), cyc_then(132, 0x01));
+    wr8(dbw(bank, 0x0357), cyc_then(62, 0x01));
     wr8(dbw(bank, BG1SC), cyc_then(40, sc));
     f = (uint8_t)(rd8(cyc_then(24, dbw(bank, 0x11D7))) | 0x20);
     wr8(dbw(bank, 0x11D7), cyc_then(40, f));
@@ -79,7 +79,7 @@ uint16_t GsuPictureUploadStep(uint8_t bank, int *copied)
         return cyc_then(70, upload_rows(bank, 0x0004, 3, 0x3C00, 0x0580));
     case 0x4:
         a = upload_rows(bank, 0x0006, 4, 0x4C00, 0x0B00);
-        return (uint16_t)((a & 0xFF00) | upload_done(bank, 0x60));
+        return cyc_then(70, (uint16_t)((a & 0xFF00) | upload_done(bank, 0x60)));
     case 0x8:
         return cyc_then(70, upload_rows(bank, 0x000A, 3, 0x5000, 0x1760));
     case 0xA:
@@ -101,7 +101,7 @@ void abi_GsuPictureUploadStep(void)
     if (!copied) {
         cpu.x = 0x0006;
         return;
-    } else { cyc(70); }
+    } else { cyc(0); }
     cpu.a = a;
     cpu.x = 0x00FF;
     cpu.y = 0x0001;
@@ -231,6 +231,7 @@ void abi_WindowOpenCloseStep(void)
 
     cpu.a = WindowOpenCloseStep(cpu.db, &p);
     cpu.p = p;
+    cyc(64);
 }
 
 void abi_WindowOpenCloseStep(void);
@@ -270,7 +271,7 @@ static uint8_t vblank_end(uint8_t bank)
 {
     uint8_t v;
 
-    wr8(dbw(bank, 0x11D7), cyc_then(40, (uint8_t)(rd8(cyc_then(116, dbw(bank, 0x11D7))) & 0xDF)));
+    wr8(dbw(bank, 0x11D7), cyc_then(40, (uint8_t)(rd8(cyc_then(46, dbw(bank, 0x11D7))) & 0xDF)));
     do
         v = (uint8_t)(rd8(cyc_then(24, dbw(bank, HVBJOY))) & 0x01);
     while (cyc_loop(38, v));
@@ -328,7 +329,7 @@ void abi_VblankUpdates(void)
     (cyc(46), abi_GsuPictureUploadStep());
     (cyc(46), abi_WindowOpenCloseStep());
     cpu.p |= P_M;
-    v = rd8(cyc_then(110, dbw(cpu.db, 0x11D7))) & 0x20;
+    v = rd8(cyc_then(46, dbw(cpu.db, 0x11D7))) & 0x20;
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.p = nz8(cpu.p, (uint8_t)v);
     if (!v) {

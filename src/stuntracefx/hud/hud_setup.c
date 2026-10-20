@@ -120,7 +120,7 @@ static void hud_bytes(const HudByte *t, unsigned n, int x8)
         wr8(t[i].a, t[i].v);
     }
     if (x8)
-        { cyc(68); op_sep(P_X); }
+        { cyc(40); op_sep(P_X); }
     else
         op_rep(P_X);
 }
@@ -166,8 +166,9 @@ static void time_tiles(uint8_t min, uint8_t sec, uint8_t hund)
  */
 void abi_RaceHudSpritesHide(void)
 {
-    cyc(22);
+    cyc(0);
     hud_bytes(hide_sprites, 12, 1);
+    cyc(28);
 }
 
 /*
@@ -394,7 +395,7 @@ static void mode_stunt(uint32_t b)
     lda8(0xF0);
     cyc(86);
     wr8(b | 0x0E18, 0xF0);
-    (cyc(24), abi_RaceHudSpritesHide());
+    (cyc(46), abi_RaceHudSpritesHide());
     cyc(18);
     hud_bytes(stunt_score_sprites, 42, 1);
     slide_word(0x2127);
@@ -444,14 +445,16 @@ static void mode_speed_battle(uint32_t b, int speed)
         wr8(b | 0x0467, 0x3F);
         hud_bytes(battle_alt_sprites, 6, 1);
         op_sep(P_M);
-        abi_RaceHudSpritesHide();
+        (cyc(50), abi_RaceHudSpritesHide());
     } else {
         cyc(46);
         player_tiles(b, 0x0DF4, 0x046F);
         hud_bytes(battle_p1_sprites, 6, 1);
+        cyc(6);
         player_tiles(b, 0x0DF8, 0x0467);
         hud_bytes(battle_p2_sprites, 6, 1);
         op_sep(P_M);
+        cyc(28);
         op_lda8(b | 0x0D4C);
         if ((uint8_t)cpu.a) {
             cyc(34);
@@ -469,8 +472,9 @@ static void mode_speed_battle(uint32_t b, int speed)
 /* The end of both set-ups: RaceVarsReset, SEP #$20. */
 static void hud_end(void)
 {
-    (cyc(86), abi_RaceVarsReset());
+    (cyc(62), abi_RaceVarsReset());
     op_sep(P_M);
+    cyc(8);
 }
 
 /* The one-player HUD (from $03:DECA up to the end's PLB, PLP). */
@@ -485,7 +489,7 @@ static void race_hud_setup(void)
     abi_SoundFromTableD89();
     op_rep(P_M | P_X);
     op_lda16_imm(0xA325);
-    cyc(74);
+    cyc(18);
     wr16(0x70004E, 0xA325);
     (cyc(62), abi_OamBufferClear());
     op_sep(P_M);
@@ -493,14 +497,14 @@ static void race_hud_setup(void)
     cpu.x = 0x0000;
     cpu.y = 0x0000;
     cpu.p = nz16(cpu.p, 0);
-    abi_OamFromList();
+    (cyc(116), abi_OamFromList());
     cpu.x = 0x0200;
     cpu.y = 0x01AA;
     cpu.p = nz16(cpu.p, 0x01AA);
-    abi_OamFromList();
+    (cyc(94), abi_OamFromList());
     op_sep(P_M | P_X);
     b = (uint32_t)cpu.db << 16;
-    cyc(46);
+    cyc(24);
     op_lda8(b | 0x0D2B);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | (uint8_t)(cpu.a << 1));
     cpu.p = nz8(cpu.p, (uint8_t)cpu.a);
@@ -524,7 +528,7 @@ static void race_hud_setup(void)
     abi_OamDmaAll();
     op_sep(P_M | P_X);
     b = (uint32_t)cpu.db << 16;
-    cyc(138);
+    cyc(24);
     wr8(b | BG1HOFS, 0x00);
     cyc(24);
     wr8(b | BG1HOFS, 0x00);
@@ -633,9 +637,9 @@ static void race_hud_setup(void)
     cpu.y = 0x0080;
     cpu.x = 0x0002;
     op_lda16_imm(0x0181);
-    abi_GradientFillCgadd();
+    (cyc(80), abi_GradientFillCgadd());
     op_lda16_imm(0x0000);
-    cyc(118);
+    cyc(18);
     wr16(0x7F3497 + cpu.x, 0x0000);
     op_lda16_imm(0xEC57);
     cyc(18);
@@ -660,7 +664,7 @@ static void race_hud_setup(void)
     op_lda16_imm(0x0001);
     cyc(18);
     wr16(0x7001C4, 0x0001);
-    hud_end();
+    (cyc(24), hud_end());
 }
 
 /* The two-player HUD (from $03:E6FA up to the end's PLB, PLP): the Super
@@ -689,13 +693,13 @@ static void race_hud_setup_two(void)
     op_lda16_imm(0x0002);
     cyc(18);
     wr16(0x7001C4, 0x0002);
-    abi_MenuCourseScreenSetup();
+    (cyc(62), abi_MenuCourseScreenSetup());
     (cyc(46), abi_PaletteCourseLoad());
     op_rep(P_M | P_X);
     b = (uint32_t)cpu.db << 16;
     cpu.x = 0x00BC;
     for (cpu.y = 0x0000; cpu.y < 0x0020; ) {
-        cyc(228);
+        cyc(164);
         v = (uint16_t)(rd16(b | (uint16_t)(0xE7EA + cpu.y)) - 0x0800);
         wr16(0x000375 + cpu.x, v);
         v = (uint16_t)(v + 0x6850);
@@ -708,10 +712,10 @@ static void race_hud_setup_two(void)
         wr16(0x000477 + cpu.x, v);
         cpu.x = (uint16_t)(cpu.x + 4);
         cpu.y = (uint16_t)(cpu.y + 4);
-        cyc(46);
+        cyc(110);
     }
     op_lda16_imm(0x0000);
-    cyc(116);
+    cyc(52);
     wr16(b | 0x0425, 0x0000);
     cyc(24);
     wr16(b | 0x0429, 0x0000);
@@ -779,7 +783,7 @@ static void race_hud_setup_two(void)
     cpu.x = 0xF804;
     cpu.p = nz16(cpu.p, 0xF804);
     abi_GsuCF42ToVram();
-    (cyc(20), hud_end());
+    (cyc(0), hud_end());
 }
 
 /* PLB, PLP (the data bank and P RaceHudLoad pushed), RTL: for an entry
@@ -825,7 +829,7 @@ static void hud_leave_stack(void)
  */
 void RaceHudSetup(uint8_t p, uint8_t db)
 {
-    race_hud_setup();
+    (cyc(84), race_hud_setup());
     cpu.db = db;
     cpu.p = nz8(cpu.p, db);
     op_plp(p);

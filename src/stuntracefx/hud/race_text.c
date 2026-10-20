@@ -40,7 +40,7 @@ uint16_t OamClassName(uint8_t bank, uint16_t *x, uint16_t *y)
     cyc(110);
     wr8(0x0000F1, 0x06);
     do {
-        cyc(92);
+        cyc(70);
         c = rd8(CLASS_NAMES + *x);
         wr8(dbw(bank, (uint16_t)(0x0377 + *y)), c);
         *x = (uint16_t)(*x + 1);
@@ -49,7 +49,7 @@ uint16_t OamClassName(uint8_t bank, uint16_t *x, uint16_t *y)
         n = (uint8_t)(rd8(0x0000F1) - 1);
         cyc(6);
         wr8(0x0000F1, n);
-    } while (n);
+    } while (cyc_loop(22, n));
     return (uint16_t)((a & 0xFF00) | c);
 }
 

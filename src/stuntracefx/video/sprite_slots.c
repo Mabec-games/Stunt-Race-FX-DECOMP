@@ -70,6 +70,7 @@ uint16_t SpriteSlotFirst(uint8_t bank, uint16_t *x, uint8_t *p)
         *p = nz16(*p, a);
     }
     wr16(dbw(bank, 0x06D8), cyc_then(46, a));
+    cyc(42);
     return a;
 }
 
@@ -97,12 +98,12 @@ uint16_t SpriteSlotFirstLong(uint8_t bank, uint16_t *x)
 
 void abi_SpriteSlotFirstLong(void)
 {
-    cyc(174);
+    cyc(112);
     uint8_t p = (uint8_t)((cpu.p | P_M) & ~P_X);
     uint16_t x = cpu.x;
 
     cpu.a = SpriteSlotFirst(cpu.db, &x, &p);
-    cpu.x = (cpu.p & P_X) ? (uint8_t)x : (cyc(176), x);
+    cpu.x = (cpu.p & P_X) ? (uint8_t)x : (cyc(72), x);
 }
 
 /*

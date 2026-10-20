@@ -21,7 +21,7 @@ static uint16_t slide_step(uint16_t a)
 {
     uint16_t v;
 
-    cyc(256);
+    cyc(148);
     if (!(rd8(0x000DA5) & 0x80))
         { cyc(38); return (uint16_t)(a & 0xFF00); }
     cyc(78);
@@ -61,6 +61,7 @@ void SlideStep(void)
 void abi_SlideStep(void)
 {
     cpu.a = slide_step(cpu.a);
+    cyc(100);
 }
 
 /*

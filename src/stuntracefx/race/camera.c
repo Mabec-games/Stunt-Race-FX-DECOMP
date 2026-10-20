@@ -209,11 +209,11 @@ void abi_CameraFollowStep(void)
                 if (w & 0x8000)
                     w = (uint16_t)(~w + 1);
                 cyc(36 + 24 + (((w - 0x7EF4) & 0x8000) ? 16 : 22) + 24);
-                a = asr_round(rd16(b | CAM_LAG), (w - 0x7EF4) & 0x8000 ? 2 : 1);
+                a = asr_round(rd16(b | CAM_LAG), cyc_then(22, (w - 0x7EF4) & 0x8000 ? 2 : 1));
                 break;
             case 0x0800:
                 cyc(174);
-                a = asr_round(rd16(b | CAM_LAG), 2);
+                a = asr_round(rd16(b | CAM_LAG), cyc_then(22, 2));
                 break;
             case 0x0C00:
                 cyc(214);
@@ -225,8 +225,8 @@ void abi_CameraFollowStep(void)
             case 0x1000:
                 cyc(254);
                 cpu.a = rd16(b | CAM_LAG);
-                abi_ScaleFiveThirtySeconds();
-                cyc(22);
+                (cyc(62), abi_ScaleFiveThirtySeconds());
+                cyc(0);
                 a = asr_round(cpu.a, 2);
                 break;
             default:
@@ -234,7 +234,7 @@ void abi_CameraFollowStep(void)
                 a = rd16(b | CAM_LAG);
                 break;
             }
-            cyc(58);
+            cyc(36);
             a = (uint16_t)(a + rd16(CAM(r, 0x16)));
         }
         cyc(22);

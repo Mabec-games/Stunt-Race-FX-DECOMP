@@ -16,7 +16,7 @@
  */
 uint8_t WindowStep3437(uint8_t bank, uint8_t *x, uint8_t *p)
 {
-    cyc(92);
+    cyc(24);
     uint8_t v = rd8((uint32_t)bank << 16 | 0x3437);
     unsigned s = v + 2u;
     uint8_t r = (uint8_t)s;
@@ -30,6 +30,7 @@ uint8_t WindowStep3437(uint8_t bank, uint8_t *x, uint8_t *p)
     }
     cyc(76);
     wr8((uint32_t)bank << 16 | 0x3437, r);
+    cyc(42);
     return r;
 }
 
@@ -52,7 +53,7 @@ void abi_WindowStep3437(void)
  */
 uint8_t WindowStep3435(uint8_t bank, uint8_t *x, uint8_t *p)
 {
-    cyc(112);
+    cyc(24);
     uint8_t v = rd8((uint32_t)bank << 16 | 0x3435), r = (uint8_t)(v - 3);
 
     *p = (uint8_t)((nz8(*p, r) & ~(P_C | P_V)) | (v >= 3 ? P_C : (cyc(24), 0))
@@ -64,6 +65,7 @@ uint8_t WindowStep3435(uint8_t bank, uint8_t *x, uint8_t *p)
     }
     cyc(76);
     wr8((uint32_t)bank << 16 | 0x3435, r);
+    cyc(42);
     return r;
 }
 
@@ -86,7 +88,7 @@ void abi_WindowStep3435(void)
  */
 uint8_t WindowStep3439(uint8_t bank, uint8_t *x, uint8_t *p)
 {
-    cyc(112);
+    cyc(70);
     uint8_t v = rd8((uint32_t)bank << 16 | 0x3439), r = (uint8_t)(v + 1);
 
     *p = (uint8_t)((*p & ~P_V) | ((~(v ^ 1) & (v ^ r) & 0x80) ? P_V : 0));
@@ -100,6 +102,7 @@ uint8_t WindowStep3439(uint8_t bank, uint8_t *x, uint8_t *p)
     }
     cyc(92);
     wr8((uint32_t)bank << 16 | 0x3439, r);
+    cyc(42);
     return r;
 }
 
@@ -130,6 +133,7 @@ static void window_step_down(uint16_t addr, uint8_t n)
     cyc(76);
     wr8(a, r);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | r);
+    cyc(42);
 }
 
 /*
@@ -141,7 +145,7 @@ static void window_step_down(uint16_t addr, uint8_t n)
  */
 void abi_WindowStep3433By2(void)
 {
-    cyc(88);
+    cyc(0);
     window_step_down(0x3433, 2);
 }
 
@@ -216,23 +220,23 @@ void abi_WindowEdgesStep(void)
     v = (uint8_t)((rd8(b | 0x3437) ^ 0xFF) + 1);
     cyc(54);
     m = rd8(b | 0x3433);
-    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - m)) & ~P_C) | (v >= m ? P_C : (cyc(16), 0)));
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - m)) & ~P_C) | (v >= m ? P_C : (cyc(84), 0)));
     if (v == m) {
-        abi_WindowStep3437();
-        abi_WindowStep3433By2();
+        (cyc(68), abi_WindowStep3437());
+        (cyc(46), abi_WindowStep3433By2());
     } else if (v < m) {
         abi_WindowStep3437();
-        (cyc(88), abi_WindowStep3433By3());
+        (cyc(46), abi_WindowStep3433By3());
     } else {
         cyc(78);
         abi_WindowStep3437By3();
         abi_WindowStep3433By2();
     }
     abi_WindowStep3439();
-    abi_WindowStep3435();
-    cpu.p = (uint8_t)((cpu.p & ~P_C) | (cpu.x >= 0x02 ? P_C : (cyc(80), 0)));
+    (cyc(46), abi_WindowStep3435());
+    cpu.p = (uint8_t)((cpu.p & ~P_C) | (cpu.x >= 0x02 ? P_C : (cyc(38), 0)));
     if (cpu.x >= 0x02) {
-        cyc(122);
+        cyc(80);
         wr8(0x000D61, 0x80);
         cyc(48);
         wr8(0x000E3A, 0x01);

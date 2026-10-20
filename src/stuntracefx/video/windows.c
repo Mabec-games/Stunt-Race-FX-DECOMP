@@ -16,7 +16,7 @@
  */
 void WindowsColourAddBg12(void)
 {
-    cyc(146);
+    cyc(70);
     wr8(W12SEL, 0x99);
     cyc(48);
     wr8(WOBJSEL, 0x30);
@@ -30,6 +30,7 @@ void WindowsColourAddBg12(void)
     wr8(WOBJLOG, 0x01);
     cyc(48);
     wr8(TMW, 0x17);
+    cyc(42);
 }
 
 void abi_WindowsColourAddBg12(void)
@@ -48,7 +49,7 @@ void abi_WindowsColourAddBg12(void)
  */
 void WindowsColourWindowOnly(void)
 {
-    cyc(116);
+    cyc(70);
     wr8(W12SEL, 0x00);
     cyc(32);
     wr8(W34SEL, 0x00);
@@ -62,6 +63,7 @@ void WindowsColourWindowOnly(void)
     wr8(WOBJLOG, 0x00);
     cyc(48);
     wr8(TMW, 0x03);
+    cyc(42);
 }
 
 void abi_WindowsColourWindowOnly(void)
@@ -81,7 +83,7 @@ void abi_WindowsColourWindowOnly(void)
  */
 void WindowsAllInverted(void)
 {
-    cyc(146);
+    cyc(70);
     wr8(CGADSUB, 0xBF);
     cyc(48);
     wr8(W12SEL, 0xAA);
@@ -97,6 +99,7 @@ void WindowsAllInverted(void)
     wr8(WOBJLOG, 0x00);
     cyc(48);
     wr8(TMW, 0x1F);
+    cyc(42);
 }
 
 void abi_WindowsAllInverted(void)
@@ -170,11 +173,11 @@ static uint8_t windows_setup_select(uint8_t *sel)
     cyc(140);
     *sel = rd8(0x7E19A9);
     switch (*sel) {
-    case 0: WindowsColourAddBg12(); cyc(142); return 0x17;
-    case 2: ColourMathSub83Windowed(); cyc(184); return 0x03;
+    case 0: cyc(76); WindowsColourAddBg12(); cyc(100); return 0x17;
+    case 2: cyc(76); ColourMathSub83Windowed(); cyc(100); return 0x03;
     case 4: windows_colour_add03(); cyc(184); return 0x03;
     case 6: WindowsColourSub81(); cyc(142); return 0x01;
-    default: WindowsAllInverted(); cyc(142); return 0x1F;
+    default: cyc(76); WindowsAllInverted(); cyc(100); return 0x1F;
     }
 }
 
@@ -565,6 +568,7 @@ void abi_OscillatorStep(void)
     if (c != v) {
         cyc(48);
         wr8(0x001A0A + cpu.x, c);
+        cyc(66);
         return;
     }
     wr8(0x001A0A + cpu.x, 0x00);
@@ -607,7 +611,7 @@ void abi_OscillatorWindow(void)
     wr8(0x001A11, v);
     cpu.x = 0x00;
     (cyc(62), abi_OscillatorStep());
-    cyc(90);
+    cyc(24);
     v = rd8(b | 0x1A08);
     cyc(32);
     wr8(0x0019AD, v);
@@ -621,8 +625,8 @@ void abi_OscillatorWindow(void)
     if (v)
         { cyc(68); abi_WindowHdmaFFD5(); }
     else
-        abi_WindowHdmaFFD1();
-    cyc(84);
+        { cyc(62); abi_WindowHdmaFFD1(); }
+    cyc(66);
 }
 
 void abi_ObjectLinkEventTrigger(void);
@@ -672,7 +676,7 @@ void abi_BobWindowsRun(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     if (v == 0xFF)
         { cyc(38); goto out; }
-    abi_ObjectLinkEventTrigger();
+    (cyc(78), abi_ObjectLinkEventTrigger());
     op_sep(P_M | P_X);
     cyc(126);
     v = (uint8_t)(rd8(b | 0x0DA4) & 0x80);
@@ -696,7 +700,7 @@ void abi_BobWindowsRun(void)
     op_sep(P_M | P_X);
     abi_ObjectLinkEventTrigger2();
     cpu.p |= P_M;
-    cyc(92);
+    cyc(46);
     v = (uint8_t)(rd8(b | 0x0DA6) & 0x80);
     if (v) {
         bob_setup(b);
@@ -742,13 +746,13 @@ void abi_WindowSlideOrOscillate(void)
 
     cpu.db = 0x7E;
     op_sep(P_M);
-    cyc(326);
+    cyc(222);
     op_lda8(0x7E19D8);
     if (!(uint8_t)cpu.a) {
         cyc(48);
         op_lda8(0x0019BC);
         v = (uint8_t)cpu.a;
-        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0xFF)) & ~P_C) | (v >= 0xFF ? (cyc(14), P_C) : 0));
+        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0xFF)) & ~P_C) | (v >= 0xFF ? (cyc(38), P_C) : 0));
         if (v != 0xFF) {
             cyc(78);
             op_lda8(0x7E0DA5);
@@ -782,12 +786,12 @@ void abi_WindowSlideOrOscillate(void)
                 cyc(94);
                 wr8(0x7E19A9, 0x02);
                 (cyc(46), abi_OscillatorWindow());
-            } else { cyc(14); }
+            } else { cyc(38); }
         }
-        cyc(2);
-    }
+        cyc(0);
+    } else { cyc(22); }
 out:
-    cyc(142);
+    cyc(58);
     cpu.db = db0;
     op_plp(p0);
 }

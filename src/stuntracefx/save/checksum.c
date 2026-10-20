@@ -27,6 +27,7 @@ uint8_t SaveChecksum(void)
     wr8(0x70FC14, (uint8_t)sum);
     cyc(32);
     wr8(0x70FC15, (uint8_t)sum);
+    cyc(72);
     return (uint8_t)sum;
 }
 

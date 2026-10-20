@@ -33,12 +33,12 @@ static void bare_object(uint32_t b, uint16_t y, uint16_t slot, uint16_t link)
     if (!(cpu.p & P_C)) {
         abi_CrashGreen();
         return;
-    } else { cyc(14); }
+    } else { cyc(98); }
     cpu.y = cpu.x;
     abi_ObjectInit();
     cpu.y = y;
     o = cpu.x;
-    cyc(212);
+    cyc(60);
     wr16(b | slot, o);
     cyc(48);
     wr8(OBJ_FIELD(o, 0x36), 0x03);
@@ -162,7 +162,7 @@ void abi_CourseScriptRun(void)
             cpu.x = 0x0800;
             cpu.y = 0x0000;
             cpu.a = a;
-            (cyc(22), abi_ObjectPoolInit());
+            (cyc(84), abi_ObjectPoolInit());
             x = (uint16_t)(y + 1);
             break;
         case 0x8112:                                   /* $08 */

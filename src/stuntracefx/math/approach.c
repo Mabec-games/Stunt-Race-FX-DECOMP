@@ -255,7 +255,7 @@ uint16_t ApproachQuarterMin4Byte(uint8_t target, int *moved, uint8_t *p)
 
 void abi_ApproachQuarterMin4Byte(void)
 {
-    cyc(58);
+    cyc(0);
     abi_approach(0, 4, 2);
 }
 

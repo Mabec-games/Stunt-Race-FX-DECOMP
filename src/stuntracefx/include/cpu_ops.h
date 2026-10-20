@@ -131,7 +131,7 @@ static inline void op_lda8(uint32_t addr)
 /* CMP # or CMP memory (16-bit). */
 static inline void op_cmp16(uint16_t m)
 {
-    cyc(4);
+    cyc(0);
     cpu.p = (uint8_t)((nz16(cpu.p, (uint16_t)(cpu.a - m)) & ~P_C) | (cpu.a >= m ? P_C : 0));
 }
 

@@ -237,10 +237,11 @@ uint16_t VramDmaQueueAddA(uint16_t a)
 
 void VramDmaQueueAdd(void)
 {
-    cyc(62);
+    cyc(0);
     uint16_t size;
 
     vram_dma_queue_add(&size);
+    cyc(108);
 }
 
 void abi_VramDmaQueueAdd(void)
@@ -343,7 +344,7 @@ static FlushEnd vram_dma_queue_flush(void)
     end.a = x;
     if (!(x & 0x8000)) {
         do {
-            cyc(164);
+            cyc(122);
             wr16(A1T0L, cyc_then(24, rd16(0x0016B9 + x)));
             cyc(32);
             wr16(VMADDL, cyc_then(24, rd16(0x0016BC + x)));
@@ -356,7 +357,7 @@ static FlushEnd vram_dma_queue_flush(void)
             cyc(24);
             wr8(MDMAEN, 0x01);
             x = (uint16_t)(x - 8);
-        } while (!(x & 0x8000));
+        } while (cyc_loop(42, !(x & 0x8000)));
         cyc(44);
         end.a = x;
         end.x = x;
@@ -403,7 +404,7 @@ void SystemHalt(void);
 uint16_t FrameByteWritePush(uint8_t bank, uint16_t addr, uint8_t value)
 {
     uint32_t b = (uint32_t)bank << 16;
-    cyc(358);
+    cyc(182);
     uint16_t x = rd16(b | (uint16_t)BYTE_WRITES_SIZE);
 
     if (x == 0x0080)

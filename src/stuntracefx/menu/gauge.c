@@ -22,7 +22,7 @@ uint16_t MenuGaugeFromButtonB(void)
 {
     uint16_t g;
 
-    cyc(154);
+    cyc(76);
     if (rd16(JOY1_HELD) & 0x8000) {
         cyc(78);
         g = (uint16_t)(rd16(MENU_GAUGE) + 0x0028);
@@ -68,7 +68,7 @@ void abi_MenuGaugeFromButtonB(void)
  */
 uint16_t MenuGaugeSlideToTarget(void)
 {
-    cyc(130);
+    cyc(68);
     uint16_t g = rd16(MENU_GAUGE), target = rd16(cyc_then(16, 0x000002));
 
     if (g != target) {
@@ -83,13 +83,13 @@ uint16_t MenuGaugeSlideToTarget(void)
             g = rd16(MENU_GAUGE);
             cyc(16);
             wr16(0x000002, g);
-            cyc(48);
+            cyc(70);
             return g;
         }
     }
     cyc(70);
     wr16(MENU_GAUGE, 0xFF00);
-    cyc(70);
+    cyc(92);
     return 0xFF00;
 }
 
@@ -132,7 +132,7 @@ uint16_t GaugeTableIndex(uint8_t bank, uint16_t value)
             break;
         } }
     cyc(i == 4 ? 70 : 92);                  /* the last case has no BRA */
-    return (uint16_t)(off + rd16(0x0011DF));
+    return cyc_then(84, (uint16_t)(off + rd16(0x0011DF)));
 }
 
 void abi_GaugeTableIndex(void)
@@ -173,7 +173,7 @@ uint16_t GaugeFromSpeed(uint8_t bank, uint16_t *x)
         cyc(76);
         a = rd8(0x0BB158 + *x);
     }
-    cyc(132);
+    cyc(48);
     wr16(0x000002, a);
     return a;
 }
@@ -236,9 +236,10 @@ uint16_t SpeedGaugeUpdate(uint8_t bank, uint16_t a, uint16_t *x)
             cyc(84);
             a = GaugeFromSpeed(bank, x);
         } else {
+            cyc(78);
             a = MenuGaugeFromButtonB();
         }
-    cyc(48);
+    cyc(70);
         } else {
         cyc(68);
         a = GaugeFromSpeed(bank, x);
@@ -247,10 +248,10 @@ uint16_t SpeedGaugeUpdate(uint8_t bank, uint16_t a, uint16_t *x)
             cyc(78);
             a = rd16((uint32_t)bank << 16 | 0x117E);
             if (!(a & 0x8000))
-                a = MenuGaugeSlideToTarget();
-        } else { cyc(16); }
+                { cyc(62); a = MenuGaugeSlideToTarget(); } else { cyc(22); }
+        } else { cyc(38); }
     }
-    cyc(60);
+    cyc(38);
     a = (uint16_t)((a & 0xFF00) | rd8(0x000002));
     cyc(32);
     wr8(0x000E49, (uint8_t)a);
@@ -388,4 +389,5 @@ uint16_t SpeedGauge2Update(uint8_t bank, uint16_t a)
 void abi_SpeedGauge2Update(void)
 {
     cpu.a = SpeedGauge2Update(cpu.db, cpu.a);
+    cyc(72);
 }

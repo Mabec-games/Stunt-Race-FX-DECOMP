@@ -18,7 +18,7 @@
  */
 uint16_t JoypadRead(void)
 {
-    cyc(144);
+    cyc(98);
     uint16_t now1 = rd16(JOY1L);
     cyc(54);
     uint16_t new1 = (uint16_t)((now1 ^ rd16(JOY1_HELD)) & rd16(cyc_then(32, JOY1L)));
@@ -96,6 +96,7 @@ uint16_t JoypadAccumulate(void)
     held = (uint16_t)(now | rd16(JOY1_HELD));
     cyc(24);
     wr16(JOY1_HELD, held);
+    cyc(70);
     return held;
 }
 
@@ -280,7 +281,7 @@ void abi_FrameSoundAndJoypads(void)
     unsigned i;
 
     (cyc(46), abi_SoundPortsSend());
-    abi_JoypadRead();
+    (cyc(46), abi_JoypadRead());
     cpu.p &= (uint8_t)~P_M;
     cyc(92);
     for (i = 0; i < 2; i++) {

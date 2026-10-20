@@ -38,7 +38,7 @@ static void queue_push(uint32_t queue, uint32_t head, uint32_t count, uint8_t va
         cyc(24);
         wr8(count, cyc_then(6, (uint8_t)(rd8(count) + 1)));
     } else { cyc(54); }
-    cyc(200);
+    cyc(184);
 }
 
 /*
@@ -58,6 +58,7 @@ void abi_SoundPort0QueuePushRaw(void)
 {
     SoundPort0QueuePushRaw((uint8_t)cpu.a);
     cpu.p = nz8(cpu.p, cpu.db);  /* the last pull restores DB */
+    cyc(8);
 }
 
 /*
@@ -75,6 +76,7 @@ void SoundPort0QueuePush(uint8_t command)
     if (rd8(CURRENT_PLAYER) != 0)
         { cyc(10); command |= 0x80; }
     queue_push(SOUND_PORT0_QUEUE, SOUND_PORT0_HEAD, SOUND_PORT0_COUNT, command);
+    cyc(16);
 }
 
 void abi_SoundPort0QueuePush(void)
@@ -94,6 +96,7 @@ void SoundPort1QueuePush(uint8_t command)
 {
     cyc(192);
     queue_push(SOUND_PORT1_QUEUE, SOUND_PORT1_HEAD, SOUND_PORT1_COUNT, command);
+    cyc(16);
 }
 
 void abi_SoundPort1QueuePush(void)
@@ -135,6 +138,7 @@ void SoundReset(void)
     wr8(APUIO3, 0);
     cyc(32);
     wr8(APUIO2, 0);
+    cyc(72);
 }
 
 void abi_SoundReset(void)

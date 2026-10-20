@@ -13,7 +13,7 @@
    bit stays, the low bit falls out into carry. */
 static uint16_t asr1(uint16_t v)
 {
-    cyc(48);
+    cyc(46);
     return (uint16_t)((v >> 1) | (v & 0x8000));
 }
 
@@ -22,8 +22,9 @@ static uint16_t three_quarters(uint16_t v, uint8_t *p)
 {
     uint16_t half = asr1(v), quarter;
 
-    cyc(62);
+    cyc(8);
     wr16(SCALE_SCRATCH, half);
+    cyc(2);
     quarter = asr1(half);
     *p &= (uint8_t)~P_C;
     cyc(20);
@@ -43,7 +44,7 @@ uint16_t ScaleThreeQuarters(uint16_t v)
 {
     uint8_t p = 0;
 
-    return three_quarters(v, &p);
+    return cyc_then(44, three_quarters(v, &p));
 }
 
 void abi_ScaleThreeQuarters(void)
@@ -226,7 +227,7 @@ uint16_t Mode7ScaleProduct(uint16_t value, int positive)
 {
     uint16_t q;
 
-    cyc(80);
+    cyc(40);
     wr16(WRDIVL, positive ? value : (cyc(44), (uint16_t)-value));
     cyc(54);
     wr8(WRDIVB, cyc_then(24, rd8(0x7F340A)));
@@ -241,7 +242,7 @@ uint16_t Mode7ScaleProduct(uint16_t value, int positive)
     cyc(32);
     wr8(M7B, cyc_then(24, rd8(0x7F3408)));
     cyc(46);
-    return rd16(MPYL);
+    return cyc_then(42, rd16(MPYL));
 }
 
 void abi_Mode7ScaleProduct(void)
@@ -270,6 +271,7 @@ uint16_t ScaleDp02Dp94(uint8_t *p)
     cyc((a & 0x8000) ? 164 : 148);
     a = (uint16_t)(int16_t)(int8_t)(uint8_t)(a >> 8);
     a = (uint16_t)((uint16_t)(a + 0x20) & 0xFFFE);
+    cyc(4);
     wr16(0x000002, a);
     cyc(16);
     b = (uint16_t)((int16_t)(rd16(0x000094) & 0xF800) >> 5);
@@ -300,7 +302,7 @@ void abi_ScaleDp02Dp94(void)
  */
 uint16_t ScaleObjectXZ(uint16_t obj, uint8_t *p)
 {
-    cyc(122);
+    cyc(32);
     wr16(0x000002, cyc_then(16, rd16(0x7E200C + obj)));
     cyc(32);
     wr16(0x000094, cyc_then(16, rd16(0x7E2010 + obj)));
@@ -325,8 +327,8 @@ void abi_ScaleDp02Dp94(void);
  */
 uint16_t ScaleDp02Dp94Long(uint8_t *p)
 {
-    cyc(108);
-    return ScaleDp02Dp94(p);
+    cyc(46);
+    return cyc_then(44, ScaleDp02Dp94(p));
 }
 
 void abi_ScaleDp02Dp94Long(void)
@@ -348,11 +350,11 @@ uint16_t ScaleFiveThirtySeconds(uint8_t bank, uint16_t v, uint8_t *p)
     uint32_t eighth_at = (uint32_t)bank << 16 | 0x1F2B;
     uint16_t e = asr1(asr1(asr1(v))), t;
 
-    cyc(56);
+    cyc(0);
     wr16(eighth_at, e);
     t = asr1(asr1(e));
     *p &= (uint8_t)~P_C;
-    cyc(18);
+    cyc(22);
     return op_adc16(t, rd16(eighth_at), p);
 }
 
@@ -362,6 +364,7 @@ void abi_ScaleFiveThirtySeconds(void)
 
     cpu.a = ScaleFiveThirtySeconds(cpu.db, cpu.a, &p);
     cpu.p = p;
+    cyc(44);
 }
 
 /* The four words at $7F:3432: base ($7F:3442) + (target ($7F:343A) - base)
@@ -376,9 +379,9 @@ static void blend_words(void)
         cpu.p |= P_C;
         cyc(46);
         cpu.a = op_sbc16(cpu.a, rd16((uint32_t)(0x7F3442 + i * 2)), &cpu.p);
-        abi_Mode7ScaleProduct();
+        (cyc(40), abi_Mode7ScaleProduct());
         cpu.p &= (uint8_t)~P_C;
-        cyc(88);
+        cyc(46);
         cpu.a = op_adc16(cpu.a, rd16((uint32_t)(0x7F3442 + i * 2)), &cpu.p);
         cyc(32);
         wr16((uint32_t)(0x7F3432 + i * 2), cpu.a);
@@ -407,7 +410,7 @@ void abi_BlendStepUp(void)
         { cyc(56); return; }
     cpu.a = (uint16_t)(cpu.a + 1);
     cpu.p = nz16(cpu.p, cpu.a);
-    cyc(64);
+    cyc(68);
     wr16(0x7F3408, cpu.a);
     (cyc(22), blend_words());
 }

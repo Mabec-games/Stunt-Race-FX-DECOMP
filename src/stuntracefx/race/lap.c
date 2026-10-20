@@ -57,7 +57,7 @@ uint8_t LapSplit(uint8_t bank, uint8_t x, uint8_t *p)
     uint32_t b = (uint32_t)bank << 16;
     uint8_t frac, secs, mins, v;
 
-    cyc(84);
+    cyc(38);
     mins = rd8(b | 0x0E66);
     cyc(16);
     wr8(0x0000F1, mins);
@@ -117,7 +117,7 @@ uint8_t LapSplit(uint8_t bank, uint8_t x, uint8_t *p)
     cyc(24);
     wr8(b | 0x0F69, mins);
 
-    *p = (uint8_t)((nz8(*p, mins) & ~(P_C | P_D)) | (secs & 0x08 ? (cyc(118), P_C) : (cyc(118), 0)));
+    *p = (uint8_t)((nz8(*p, mins) & ~(P_C | P_D)) | (secs & 0x08 ? (cyc(56), P_C) : (cyc(56), 0)));
     return mins;
 }
 
@@ -142,7 +142,7 @@ void abi_RaceTimeKeep(void)
     uint32_t b = (uint32_t)cpu.db << 16;
 
     op_sep(P_M);
-    cyc(92);
+    cyc(46);
     op_lda8(b | 0x0E63);
     cyc(24);
     wr8(b | 0x0EE7, (uint8_t)cpu.a);
@@ -154,4 +154,5 @@ void abi_RaceTimeKeep(void)
     op_lda8(b | 0x0E66);
     cyc(24);
     wr8(b | 0x0EE9, (uint8_t)cpu.a);
+    cyc(42);
 }

@@ -137,6 +137,7 @@ void abi_ObjectPathCommand(void)
 
     ObjectPathCommand(cpu.db, cpu.x, &cpu.a, &cpu.y, &p);
     cpu.p = (uint8_t)(nz16(p, cpu.x) | P_M);
+    cyc(28);
 }
 
 /*
@@ -152,8 +153,8 @@ int ObjectPathStart(uint8_t bank, uint16_t obj, uint16_t path, uint16_t *a, uint
     uint16_t t = (uint16_t)(path - 0x85B9);
 
     *p = (uint8_t)((*p & ~P_V) | (((path ^ 0x85B9) & (path ^ t) & 0x8000) ? P_V : 0));
-    wr16(field(bank, obj, 0x29), cyc_then(190, t));
-    return ObjectPathCommand(bank, obj, a, y, p);
+    wr16(field(bank, obj, 0x29), cyc_then(104, t));
+    return cyc_then(22, ObjectPathCommand(bank, obj, a, y, p));
 }
 
 void abi_ObjectPathStart(void)

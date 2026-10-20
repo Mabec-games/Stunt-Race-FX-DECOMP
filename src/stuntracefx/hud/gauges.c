@@ -44,6 +44,7 @@ static void abi_gauge(void (*gauge)(void), uint16_t lo_at, uint16_t hi_at, uint1
     cpu.y = slot;
     cpu.p = nz16((uint8_t)((cpu.p | P_M) & ~P_X), slot);
     gauge();
+    cyc(28);
 }
 
 /*
@@ -71,8 +72,10 @@ void HudGaugesPanelA(uint8_t bank)
 
 void abi_HudGaugesPanelA(void)
 {
+    cyc(28);
     abi_gauge(abi_SpriteBar4WithMarker, 0x0E0F, 0x0E11, 0x0DFA, 0x0140, 86);
     abi_gauge(abi_SpriteBar6WithMarker, 0x0E13, 0x0E15, 0x0E06, 0x016C, 86);
+    cyc(14);
 }
 
 /*
@@ -126,6 +129,7 @@ void abi_HudGaugesPanelB(void)
     cyc(40);
     split = rd8(b | 0x0D62) != 0;
     abi_gauge(abi_SpriteBar6WithMarker, 0x0E12, 0x0E14, 0x0E05, split ? (cyc(50), 0x006C) : 0x012C, split ? 86 : 108);
+    cyc(14);
 }
 
 /* Gauge y at `at` = y, then the X-position high bits of the twelve sprites

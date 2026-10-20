@@ -424,6 +424,7 @@ void abi_ObjectFrameSwingStep(void)
 void abi_ObjectRecordFlag4Step(void)
 {
     (cyc(62), abi_GsuRecordFlag4());
+    cyc(38);
 }
 
 /*
@@ -441,6 +442,7 @@ void abi_ObjectRecordFlag4Step(void)
  */
 void abi_ObjectFlagsRecord(void)
 {
+    cyc(62);
     uint32_t b = (uint32_t)cpu.db << 16;
     uint16_t obj, rec, v, w;
 

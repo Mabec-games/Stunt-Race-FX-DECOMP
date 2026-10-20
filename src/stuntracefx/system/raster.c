@@ -17,10 +17,10 @@ uint8_t WaitHBlank(void)
 {
     uint8_t v;
 
-    cyc(8);
+    cyc(0);
     do
-        { cyc(62); v = rd8(HVBJOY); }
-    while (!(v & 0x40));
+        { cyc(24); v = rd8(HVBJOY); }
+    while (cyc_loop(38, !(v & 0x40)));
     cyc(74);
     return v;
 }
@@ -46,7 +46,7 @@ void WaitScanline(uint8_t bank)
     uint32_t b = (uint32_t)bank << 16;
     uint8_t lo;
 
-    cyc(212);
+    cyc(150);
     wr8(b | 0x06E4, 0x00);
     do {
         cyc(46);
@@ -56,7 +56,7 @@ void WaitScanline(uint8_t bank)
         cyc(44);
         rd8(OPVCT);
     } while (cyc_loop(22, lo != rd8(cyc_then(44, b | 0x06E3))));
-    cyc(204);
+    cyc(182);
 }
 
 void abi_WaitScanline(void)
@@ -169,6 +169,7 @@ void abi_WindowTable7F(void)
  */
 void abi_WindowTable7FLong(void)
 {
+    cyc(46);
     abi_WindowTable7F();
 }
 
@@ -348,7 +349,7 @@ void abi_RasterStage(void)
         (cyc(46), abi_SoundPortsSend());
         break;
     case 0xA375:
-        cyc(22);
+        cyc(68);
         abi_WaitHBlank();
         put8(TM, 0x13);
         copy8(BG2VOFS, b | 0x0E37);
@@ -357,11 +358,11 @@ void abi_RasterStage(void)
         irq_ack();
         put8(b | 0x0D3F, 0x12);
         frame_counts(b);
-        abi_JoypadRead();
-        abi_FadeStepFixed();
-        (cyc(110), abi_SoundPortsSend());
+        (cyc(46), abi_JoypadRead());
+        (cyc(46), abi_FadeStepFixed());
+        (cyc(46), abi_SoundPortsSend());
         break;
-    case 0xA3A8: cyc(22); {
+    case 0xA3A8: cyc(68); {
         uint8_t c;
 
         abi_WaitHBlank();
@@ -422,10 +423,10 @@ void abi_RasterStage(void)
             (cyc(80), abi_VramDmaFromGsuRam());
             op_rep(P_M);
             op_lda16_imm(0xFFFF);
-            cyc(60);
+            cyc(18);
             wr16(0x000D81, 0xFFFF);
         } else { cyc(22); }
-        cyc(100);
+        cyc(46);
         abi_WindowTable7F();
         op_sep(P_M);
         cyc(22);
@@ -446,7 +447,7 @@ void abi_RasterStage(void)
         put8(b | 0x0D52, 0xFF);
         (cyc(46), abi_FadeStep());
         (cyc(46), abi_JoypadAccumulate());
-        (cyc(116), abi_SoundPortsSend());
+        (cyc(46), abi_SoundPortsSend());
         (cyc(46), abi_RaceClockStep());
         op_rep(P_M);
         op_lda16_imm(0x01D8);
@@ -454,16 +455,16 @@ void abi_RasterStage(void)
         wr16(b | 0x0E60, 0x01D8);
         abi_HudDrawTime();
         (cyc(46), abi_HudPanelsStep());
-        abi_PalettesStep();
+        (cyc(46), abi_PalettesStep());
         break;
     case 0xA53D:
         put8(VTIMEL, 0xD0);
         irq_ack();
         put8(b | 0x0D3F, 0x06);
         (cyc(62), abi_WindowHdmaNormal());
-        abi_WindowLayoutStepForScreen();
-        abi_WindowSlideOrOscillate();
-        abi_WindowSweepIfOn();
+        (cyc(62), abi_WindowLayoutStepForScreen());
+        (cyc(62), abi_WindowSlideOrOscillate());
+        (cyc(62), abi_WindowSweepIfOn());
         (cyc(62), abi_WindowSlideCheck());
         (cyc(62), abi_BobWindowsRun());
         (cyc(62), abi_WindowBandsAnimate());
@@ -476,7 +477,7 @@ void abi_RasterStage(void)
         cyc(56);
         wr8(INIDISP, (uint8_t)cpu.x);
         (cyc(46), abi_NmiFrameUpload());
-        (cyc(74), abi_OamDirectStage());
+        (cyc(46), abi_OamDirectStage());
         (cyc(46), abi_RasterColoursUnless0D22());
         op_sep(P_M);
         b = (uint32_t)cpu.db << 16;
@@ -492,7 +493,7 @@ void abi_RasterStage(void)
         break;
     case 0xA5B6:
         cyc(24);
-        ldx8(rd8(b | 0x0D61));
+        ldx8(cyc_then(46, rd8(b | 0x0D61)));
         abi_WaitHBlank();
         cyc(24);
         wr8(INIDISP, (uint8_t)cpu.x);
@@ -515,16 +516,16 @@ void abi_RasterStage(void)
         cyc(10);
         wr16(b | 0x0E60, 0x0100);
         abi_HudDrawTime();
-        abi_HudPanelASlide();
-        abi_HudPanelBSlide();
-        (cyc(74), abi_SoundPortsSend());
+        (cyc(46), abi_HudPanelASlide());
+        (cyc(46), abi_HudPanelBSlide());
+        (cyc(46), abi_SoundPortsSend());
         op_sep(P_M | P_X);
         cpu.y = 0x01;
         ldx8(0x02);
         abi_PaletteKeptColoursStep();
         break;
     case 0xA60F:
-        cyc(16);
+        cyc(62);
         ldx8(0x80);
         abi_WaitHBlank();
         cyc(38);
@@ -553,7 +554,7 @@ void abi_RasterStage(void)
         break;
     case 0xA681:
         cyc(24);
-        ldx8(rd8(b | 0x0D61));
+        ldx8(cyc_then(46, rd8(b | 0x0D61)));
         abi_WaitHBlank();
         cyc(24);
         wr8(INIDISP, (uint8_t)cpu.x);
@@ -572,19 +573,19 @@ void abi_RasterStage(void)
         (cyc(62), abi_WindowSplitAnimate());
         break;
     case 0xA6B0:
-        cyc(16);
+        cyc(62);
         ldx8(0x80);
         abi_WaitHBlank();
         cyc(24);
         wr8(INIDISP, (uint8_t)cpu.x);
         (cyc(46), abi_NmiFrameUpload());
-        (cyc(90), abi_OamDmaAll());
+        (cyc(62), abi_OamDmaAll());
         (cyc(62), abi_WindowLayoutStepForScreen());
-        (cyc(146), abi_RasterPaletteUpload());
+        (cyc(104), abi_RasterPaletteUpload());
         (cyc(46), abi_JoypadAccumulate());
-        (cyc(132), abi_WindowHdmaBands());
+        (cyc(62), abi_WindowHdmaBands());
         (cyc(62), abi_WindowLayoutStepForScreen());
-        (cyc(162), abi_BobWindowsRun());
+        (cyc(120), abi_BobWindowsRun());
         (cyc(62), abi_WindowBandsAnimate());
         op_sep(P_M | P_X);
         b = (uint32_t)cpu.db << 16;
@@ -601,7 +602,7 @@ void abi_RasterStage(void)
                 put8(BG12NBA, 0x40); else { cyc(84); }
             ldx8(0x00);
             abi_Bg2ScrollFromTable();
-            cyc(42);
+            cyc(0);
             put8(BG1SC, 0x1C);
             put8(BG2SC, 0x3F);
         }
@@ -631,10 +632,11 @@ void abi_RasterStage(void)
         irq_ack();
         break;
     case 0xA781:
+        cyc(46);
         abi_WaitHBlank();
         put8(INIDISP, 0x80);
-        abi_AnimTilesQueueNext();
-        (cyc(134), abi_VblankUpdates());
+        (cyc(62), abi_AnimTilesQueueNext());
+        (cyc(62), abi_VblankUpdates());
         (cyc(46), abi_FrameSoundAndJoypads());
         (cyc(62), abi_FrameInputAndCountEnd());
         op_sep(P_M);

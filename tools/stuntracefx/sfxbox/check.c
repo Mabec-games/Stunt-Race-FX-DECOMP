@@ -1463,14 +1463,15 @@ void cpu_loop_forever(uint32_t at)
    next access (cyc_put). */
 static int on_cpu_thread(void);
 static uint32_t cyc_said;
+static void cyc_mark(uint32_t clocks);
 void cpu_idle(uint32_t clocks)
 {
-    if (machine_live && on_cpu_thread()) cyc_said += clocks;
+    if (machine_live && on_cpu_thread()) { cyc_said += clocks; cyc_mark(clocks); }
 }
 
 void cyc(uint32_t clocks)
 {
-    if (machine_live && on_cpu_thread()) cyc_said += clocks;
+    if (machine_live && on_cpu_thread()) { cyc_said += clocks; cyc_mark(clocks); }
 }
 
 void cpu_restart(uint32_t at, void (*entry)(void))
@@ -1551,6 +1552,18 @@ extern void *(*sfxbox_co_active)(void);
 static void *cyc_thread;
 
 static int on_cpu_thread(void) { return !sfxbox_co_active || sfxbox_co_active() == cyc_thread; }
+
+/* SFXBOX_CYCLOG_SAID: each time the C states (cyc, cpu_idle) goes into the
+   probe list too, as 1 << 31 | its clocks, so a record says where in the
+   C's path each stated time came. */
+static int cyc_said_marks = -1;
+static void cyc_mark(uint32_t clocks)
+{
+    if (cyc_said_marks < 0) cyc_said_marks = getenv("SFXBOX_CYCLOG_SAID") != NULL;
+    if (!cyc_said_marks || !cyclog) return;
+    if (cyc_n < (uint32_t)(sizeof cyc_probe / sizeof cyc_probe[0])) cyc_probe[cyc_n++] = 1u << 31 | clocks;
+    else cyc_over = 1;
+}
 
 void sfx_probe(unsigned id)
 {

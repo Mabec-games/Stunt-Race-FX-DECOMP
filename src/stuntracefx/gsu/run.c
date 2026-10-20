@@ -58,7 +58,7 @@ static uint8_t gsu_scmr_back(void)
 uint8_t GsuWait(void)
 {
     gsu_wait(38);
-    return gsu_scmr_back();
+    return cyc_then(42, gsu_scmr_back());
 }
 
 void abi_GsuWait(void)
@@ -180,12 +180,12 @@ void abi_GsuRecordsUpload(void);
  */
 void FrameObjectsWhileGsuRuns(void)
 {
-    (cyc(92), abi_BucketTriggersFromView());
-    (cyc(180), abi_ObjectDrawListBuild());
-    (cyc(124), abi_BucketTriggersFixedArea());
-    (cyc(180), abi_ObjectGroupsActivate());
+    (cyc(46), abi_BucketTriggersFromView());
+    (cyc(46), abi_ObjectDrawListBuild());
+    (cyc(46), abi_BucketTriggersFixedArea());
+    (cyc(46), abi_ObjectGroupsActivate());
     (cyc(46), abi_GsuWait());
-    (cyc(104), abi_GsuRecordsUpload());
+    (cyc(62), abi_GsuRecordsUpload());
 }
 
 void abi_FrameObjectsWhileGsuRuns(void)
@@ -225,7 +225,7 @@ void FrameRunGsu8FCA(void)
     wr8(GSU_SFR, 0x00);
     cyc(24);
     wr16(GSU_R15, 0x8FCA);
-    FrameObjectsWhileGsuRuns();
+    (cyc(46), FrameObjectsWhileGsuRuns());
     cyc(80);
     n = rd16(0x0000FE);
     cyc(24);
@@ -233,6 +233,7 @@ void FrameRunGsu8FCA(void)
     cpu.a = n;
     cpu.db = db;
     cpu.p = (uint8_t)(nz8(cpu.p | P_M, db) & ~P_X);
+    cyc(94);
 }
 
 void abi_FrameRunGsu8FCA(void)
@@ -277,15 +278,16 @@ static void run_cmp8(uint8_t v, uint8_t m)
  */
 void abi_HudFrameWhileGsuRuns(void)
 {
+    cyc(62);
     uint32_t b;
     uint8_t v;
 
     abi_SlideStep();
-    (cyc(162), abi_FadeValueStep());
-    abi_DataBankTest();
+    (cyc(62), abi_FadeValueStep());
+    (cyc(62), abi_DataBankTest());
     op_sep(P_M | P_X);
     b = (uint32_t)cpu.db << 16;
-    cyc(230);
+    cyc(24);
     op_lda8(b | 0x0D62);
     if ((uint8_t)cpu.a) {
         cyc(72);
@@ -296,28 +298,30 @@ void abi_HudFrameWhileGsuRuns(void)
         v = (uint8_t)cpu.y;
         abi_BackdropScrollFromView();
         if (v == 0x01)
-            { cyc(116); abi_HudDrawValueC(); }
+            { cyc(46); abi_HudDrawValueC(); }
         else
-            { cyc(116); abi_HudDrawValueB(); }
-        cyc(106);
+            { cyc(46); abi_HudDrawValueB(); }
+        cyc(0);
         return;
     }
     cpu.x = 0x00;
     cyc(70);
     op_lda8(0x000D2B);
     v = (uint8_t)cpu.a;
+    cyc(42);
     run_cmp8(v, 0x01);
     if (v != 0x01) {
         run_cmp8(v, 0x03);
         if (v != 0x03)
-            abi_HudDigitSprites62();
+            { cyc(64); abi_HudDigitSprites62(); }
         cyc(12);
     }
     if (v != 0x03)
-        abi_HudDrawDigits19EC();
+        { cyc(34); abi_HudDrawDigits19EC(); }
+    cyc(46);
     abi_BackdropRowsUpdate();
-    abi_HudDrawValueA();
-    cyc(168);
+    (cyc(46), abi_HudDrawValueA());
+    cyc(62);
     call_routine(0x7EE34F, 1);
 }
 
@@ -339,6 +343,7 @@ static void start_ab13(uint32_t b)
     wr8(b | 0x3030, 0x00);
     cyc(24);
     wr16(b | 0x301E, 0xAB13);
+    cyc(46);
 }
 
 /*
@@ -373,13 +378,13 @@ void abi_FrameRunGsuAB13B(void)
     cyc(46);
     op_lda8(b | 0x0D62);
     if ((uint8_t)cpu.a)
-        { cyc(16); abi_FrameObjectsWhileGsuRuns(); cyc(88); }
+        { cyc(62); abi_FrameObjectsWhileGsuRuns(); cyc(88); }
     else
         cyc(68);                        /* the branch over the call, then the call to GsuWait */
     abi_GsuWait();
     op_rep(P_M);
     b = (uint32_t)cpu.db << 16;
-    cyc(58);
+    cyc(16);
     op_lda16(0x0000FE);
     cyc(24);
     wr16(b | 0x1F21, cpu.a);
@@ -410,7 +415,7 @@ void abi_FrameRunGsuAB13A(void)
     wr8(b | 0x1F22, 0x00);
     start_ab13(b);
     abi_HudFrameWhileGsuRuns();
-    (cyc(116), abi_HudGaugesPanelA());
+    (cyc(88), abi_HudGaugesPanelA());
     (cyc(46), abi_GsuWait());
-    (cyc(88), abi_MapMarkersPanelA());
+    (cyc(46), abi_MapMarkersPanelA());
 }

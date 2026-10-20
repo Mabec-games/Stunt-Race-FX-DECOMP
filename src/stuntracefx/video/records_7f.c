@@ -23,8 +23,8 @@ void Records7FFromF634(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
 
     *x = 0;
     *y = 0xF634;
-    cyc(52);
-    while ((v = rd8(cyc_then(160, b | *y))) != 0xFF) {
+    cyc(0);
+    while ((v = rd8(cyc_then(144, b | *y))) != 0xFF) {
         d = (uint8_t)(v - 0x28);
         cyc(80);
         wr8(0x7F43D8 + *x, d);
@@ -46,6 +46,7 @@ void Records7FFromF634(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
         wr8(0x7F4802 + *x, 0xF0);
         *x = (uint16_t)(*x + 4);
         *y = (uint16_t)(*y + 2);
+        cyc(16);
     }
     *p = (uint8_t)((*p & ~P_N) | P_Z | P_C);
 }
@@ -81,7 +82,7 @@ uint16_t Records7FFromF170(uint8_t bank)
     unsigned i, k;
 
     cyc(46);
-    while ((v = rd8(cyc_then(170, b | y))) != 0xFF) {
+    while ((v = rd8(cyc_then(108, b | y))) != 0xFF) {
         cyc(40);
         wr8(0x7F43D8 + x, v);
         cyc(48);
@@ -92,6 +93,7 @@ uint16_t Records7FFromF170(uint8_t bank)
         wr8(0x7F43DA + x, 0xE7);
         x = (uint16_t)(x + 4);
         y = (uint16_t)(y + 2);
+        cyc(62);
     }
     for (i = 0; i < 0x20; i++)
         { cyc(52); for (k = 0; k < 8; k++)

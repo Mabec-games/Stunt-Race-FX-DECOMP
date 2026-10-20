@@ -38,6 +38,7 @@ uint8_t HalfRateApproach(void)
 void abi_HalfRateApproach(void)
 {
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | HalfRateApproach());
+    cyc(70);
 }
 
 /*
@@ -68,6 +69,7 @@ void ApproachTargetZero(uint8_t bank)
 {
     cyc(68);
     wr8((uint32_t)bank << 16 | 0x11DB, 0x00);
+    cyc(70);
 }
 
 void abi_ApproachTargetZero(void)

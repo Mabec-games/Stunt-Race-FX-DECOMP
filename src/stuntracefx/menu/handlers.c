@@ -61,7 +61,7 @@ uint16_t MenuWaitThenAnimate(uint8_t bank, uint16_t a, uint16_t *x, uint8_t *p)
     }
     cyc(68);
     wr16((uint16_t)(*x + 0x08), 0xD5F6);
-    return MenuActorAnimateFrame(bank, x, p);
+    return cyc_then(42, MenuActorAnimateFrame(bank, x, p));
 }
 
 void abi_MenuWaitThenAnimate(void)
@@ -140,7 +140,7 @@ uint16_t MenuButtonSequence(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     MenuActorAnimateFrame(bank, x, p);
     pressed = rd16(cyc_then(24, dbw(bank, 0x118B)));
     if (!pressed) {
-        cyc(22);
+        cyc(64);
         *p = nz16(*p, pressed);
         return pressed;
     }
@@ -162,7 +162,7 @@ uint16_t MenuButtonSequence(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     if (!(pressed & mask)) {
         cyc(38);
         wr16((uint16_t)(*x + 0x0A), 0x0000);
-        return MenuSelectConfirm(bank, x, y, p) ? (cyc(64), 0xFF46) : 0x0000;
+        return MenuSelectConfirm(bank, x, y, p) ? (cyc(42), 0xFF46) : (cyc(42), 0x0000);
     }
     wr16(dbw(bank, 0x118B), cyc_then(46, 0x0000));
     cyc(22);
@@ -171,7 +171,7 @@ uint16_t MenuButtonSequence(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     wr16((uint16_t)(*x + 0x0A), step);
     *p = cmp16(*p, step, 0x0008);
     if (step != 0x0008)
-        { cyc(46); return step; } else { cyc(62); }
+        { cyc(88); return step; } else { cyc(62); }
     MenuSequenceColourMath(bank);
     cyc(308);
     SoundPort0QueuePush(0x46);
@@ -219,7 +219,7 @@ uint16_t MenuWaitThenSequence(uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y
     uint16_t c = dec_field(*x, 0x1E);
 
     if (!(c & 0x8000)) {
-        cyc(16);
+        cyc(58);
         *p = nz16(*p, c);
         return a;
     }
@@ -268,13 +268,14 @@ uint16_t MenuChoiceObjectFrames(uint8_t bank, uint16_t a, uint16_t *x, uint16_t 
  */
 uint16_t MenuChoiceObject38(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
 {
+    cyc(46);
     uint16_t a;
 
     MenuChoiceObjectUpdate(*x, p);
     a = 0x0038;
     *p = nz16(*p, a);
-    wr16(dbw(bank, 0x11E3), cyc_then(90, a));
-    return MenuChoiceObjectFrames(bank, a, x, y, p);
+    wr16(dbw(bank, 0x11E3), cyc_then(48, a));
+    return cyc_then(42, MenuChoiceObjectFrames(bank, a, x, y, p));
 }
 
 void abi_MenuChoiceObject38(void)
@@ -328,10 +329,10 @@ uint16_t MenuChoiceObject48Start(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t
     uint16_t a = rd16(0x70FC0B) & 0x00FF;
 
     if (a) {
-        cyc(64);
+        cyc(110);
         MenuActorCopyGroup(bank, x, p);
         a = 0xCB3D;
-        cyc(88);
+        cyc(46);
         wr16((uint16_t)(*x + 0x08), a);
         *p = nz16(*p, a);
         return a;
@@ -346,13 +347,14 @@ uint16_t MenuChoiceObject48Start(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t
         cyc(22);
         wr16((uint16_t)(*x + 0x18), 0x0000);
     }
+    cyc(46);
     MenuActorCopyGroup(bank, x, p);
-    wr16(dbw(bank, 0x11E3), cyc_then(90, 0x0048));
-    cyc(2);
+    wr16(dbw(bank, 0x11E3), cyc_then(48, 0x0048));
+    cyc(70);
     MenuActorUploadFrames(bank, *x, 0x0000, x, p);
     *y = 0xFFFF;
     a = 0xCB74;
-    cyc(88);
+    cyc(46);
     wr16((uint16_t)(*x + 0x08), a);
     *p = nz16(*p, a);
     return a;
@@ -364,6 +366,7 @@ void abi_MenuChoiceObject48Start(void)
 
     cpu.a = MenuChoiceObject48Start(cpu.db, &cpu.x, &cpu.y, &p);
     cpu.p = p;
+    cyc(42);
 }
 
 /*
@@ -405,18 +408,18 @@ uint16_t MenuBg1RiseAway(uint8_t bank, uint16_t *x, uint8_t *p)
     wr16((uint16_t)(*x + 0x20), pos);
     cyc(22);
     pos = rd16((uint16_t)(*x + 0x20));
-    if ((pos & 0x8000) && (cyc(26), pos < 0xFFA8)) {
-        cyc(88);
+    if ((pos & 0x8000) && (cyc(10), pos < 0xFFA8)) {
+        cyc(104);
         wr16((uint16_t)(*x + 0x08), 0xCF27);
         cyc(62);
         SoundPort0QueuePushRaw(0x13);
     }
-    cyc(126);
+    cyc(142);
     pos = rd16((uint16_t)(*x + 0x20));
     v = (uint16_t)(0 - pos);
-    cyc(26);
+    cyc(202);
     FrameByteWritePush(bank, BG1VOFS, (uint8_t)(v >> 8));
-    cyc(148);
+    cyc(324);
     FrameByteWritePush(bank, BG1VOFS, (uint8_t)v);
     cyc(188);
     pos = rd16((uint16_t)(*x + 0x20));
@@ -424,6 +427,7 @@ uint16_t MenuBg1RiseAway(uint8_t bank, uint16_t *x, uint8_t *p)
     cyc(60);
     wr16((uint16_t)(*x + 0x06), v);
     *p &= (uint8_t)~(P_M | P_X);
+    cyc(42);
     return v;
 }
 
@@ -444,6 +448,7 @@ void abi_MenuBg1RiseAway(void)
  */
 void abi_MenuActorNoStep(void)
 {
+    cyc(42);
 }
 
 /*
@@ -454,6 +459,7 @@ void abi_MenuActorNoStep(void)
  */
 void abi_MenuActorNoStepE0DF(void)
 {
+    cyc(42);
 }
 
 void abi_VramDmaQueueAdd(void);
@@ -480,7 +486,7 @@ void abi_MenuSelectionFramesCycle(void)
     n = dec_field(obj, 0x0A);
     cpu.p = nz16(cpu.p, n);
     if (!(n & 0x8000))
-        { cyc(22); return; }
+        { cyc(64); return; }
     cyc(62);
     wr16((uint16_t)(obj + 0x0A), 0x0006);
     cyc(22);
@@ -513,6 +519,7 @@ void abi_MenuSelectionFramesCycle(void)
     cyc(68);
     cpu.x = rd16(b | 0x11F9);
     cpu.p = nz16(cpu.p, cpu.x);
+    cyc(42);
 }
 
 void abi_SoundPort0QueuePush(void);

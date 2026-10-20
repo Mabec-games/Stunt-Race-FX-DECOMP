@@ -66,7 +66,7 @@ static uint8_t apu_upload_next_byte(uint16_t *offset, uint16_t *low)
 
 uint8_t ApuUploadNextByte(uint16_t *offset)
 {
-    cyc(46);
+    cyc(0);
     uint16_t low;
 
     return apu_upload_next_byte(offset, &low);
@@ -107,18 +107,18 @@ static ApuUploadEnd apu_upload(uint8_t bank, uint16_t addr)
     }
     cyc(6);
     for (;;) {
-        cyc(70);
+        cyc(116);
         uint8_t lo = ApuUploadNextByte(&offset);
-        cyc(20);
+        cyc(66);
         uint8_t hi = ApuUploadNextByte(&offset);
         uint16_t length = (uint16_t)(lo | hi << 8);
         uint8_t more = length != 0;
         uint8_t index = 0;
         unsigned carry = 1;
 
-        cyc(34);
+        cyc(80);
         wr8(APUIO2, cyc_then(24, ApuUploadNextByte(&offset)));
-        wr8(APUIO3, cyc_then(24, ApuUploadNextByte(&offset)));
+        wr8(APUIO3, cyc_then(70, ApuUploadNextByte(&offset)));
         cyc(78);
         wr8(APUIO1, more);
         cyc(68);
@@ -128,10 +128,10 @@ static ApuUploadEnd apu_upload(uint8_t bank, uint16_t addr)
         }
         cyc(38);
         if (!more)
-            { cyc(38); break; }
-        wr16(APUIO0, cyc_then(104, (uint16_t)(ApuUploadNextByte(&offset) << 8 | index)));
+            { cyc(38); break; } else { cyc(8); }
+        wr16(APUIO0, cyc_then(142, (uint16_t)(ApuUploadNextByte(&offset) << 8 | index)));
         while (--length) {
-            cyc(78);
+            cyc(124);
             uint8_t data = ApuUploadNextByte(&offset);
             while (rd8(cyc_then(44, APUIO0)) != index) {
                 cyc(2);
@@ -197,7 +197,7 @@ void ApuSettleDelay(void);
 
 void ApuPort1Send05(void)
 {
-    cyc(146);
+    cyc(62);
     wr8(APUIO1, 0x05);
     ApuSettleDelay();
 }
@@ -218,13 +218,13 @@ void abi_ApuPort1Send05(void)
  */
 void ApuSettleDelay(void)
 {
-    cyc(74);
+    cyc(90);
     delay_turns(0x4000);
 }
 
 void abi_ApuSettleDelay(void)
 {
-    (cyc(46), ApuSettleDelay());
+    (cyc(0), ApuSettleDelay());
     cpu.a = 0;
     cpu.p = (uint8_t)((cpu.p & ~(P_M | P_N)) | P_Z);
 }

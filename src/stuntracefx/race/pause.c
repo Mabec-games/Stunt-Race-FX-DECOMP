@@ -108,6 +108,7 @@ static void pause_resume(uint32_t b)
     wr8(b | 0x0D2D, 0x00);
     dec8_mem(b | 0x0E5B);
     dec8_mem(b | 0x0E5F);
+    cyc(42);
 }
 
 /*
@@ -126,6 +127,7 @@ void abi_PauseStageStart(void)
     wr8(b | 0x0D5F, 0x0A);
     cyc(16);
     stage(b, 0x02);
+    cyc(42);
 }
 
 /*
@@ -140,6 +142,7 @@ void abi_PauseStageWait(void)
 
     if (timer_out(b))
         { cyc(32); stage(b, 0x04); } else { cyc(22); }
+    cyc(42);
 }
 
 /*
@@ -155,7 +158,7 @@ void abi_PauseStageResumeB(void)
     uint32_t b = (uint32_t)cpu.db << 16;
 
     if (!timer_out(b))
-        { cyc(22); return; } else { cyc(62); }
+        { cyc(64); return; } else { cyc(62); }
     abi_Gauge6BPlace();
     cyc(22);
     pause_resume(b);
@@ -196,6 +199,7 @@ void abi_PauseStageReplayEnd(void)
         cmp8_imm(0x01);
         if ((uint8_t)cpu.a == 0x01)
             abi_OamPlaceRows75And112();
+        cyc(42);
         return;
     }
     lda8_imm(0x93);
@@ -234,7 +238,7 @@ void abi_PauseStageQuit(void)
     uint32_t b = (uint32_t)cpu.db << 16;
 
     if (!timer_out(b))
-        { cyc(16); return; }
+        { cyc(58); return; }
     cyc(46);
     op_lda8(b | 0x0D2B);
     if (!(uint8_t)cpu.a) {
@@ -244,10 +248,12 @@ void abi_PauseStageQuit(void)
         lda8_imm(0x70);
         cyc(16);
         wr8(b | 0x0D5F, 0x70);
+        cyc(42);
         return;
     } else { cyc(38); }
     stage(b, 0x0C);
     slide_up(b, 0x00);
+    cyc(42);
 }
 
 /*
@@ -274,12 +280,12 @@ void abi_PauseStageLeave(void)
         cyc(24);
         op_lda8(b | 0x0D61);
         if ((uint8_t)cpu.a & 0x80)
-            { cyc(40); abi_SoftResetToBootWarm(); } else { cyc(22); }
+            { cyc(40); abi_SoftResetToBootWarm(); } else { cyc(64); }
         return;
     }
     cyc(46);
     wr8(b | 0x0D59, 0x00);
-    (cyc(16), abi_ChampionshipScreenLoop());
+    (cyc(46), abi_ChampionshipScreenLoop());
     op_sep(P_M);
     cyc(46);
     op_lda8(b | 0x0DD4);
@@ -301,7 +307,7 @@ void abi_PauseStageQuitWait(void)
     uint32_t b = (uint32_t)cpu.db << 16;
 
     if (!timer_out(b))
-        { cyc(22); return; }
+        { cyc(64); return; }
     cyc(40);
     op_lda8(b | 0x0D24);
     if ((uint8_t)cpu.a)
@@ -336,9 +342,9 @@ static void choice_made(uint32_t b, int quit_extra)
         cyc(40);
         op_lda8(b | 0x0D4C);
         if ((uint8_t)cpu.a)
-            { cyc(22); return; } else { cyc(32); }
+            { cyc(22); return; } else { cyc(78); }
         abi_Countdown0DF8();
-        cyc(108);
+        cyc(54);
         lda8_imm(0x22);
         abi_SoundPort1QueuePush();
         return;
@@ -420,9 +426,11 @@ void abi_PauseStageChoice(void)
     if (presses(b, 0x0D1A, 0x9000)) {
         cyc(18);
         choice_made(b, 1);
+        cyc(42);
         return;
     }
     choice_move(b, 0x0D1A, 0, abi_OamBlock52Left, abi_OamBlock52Right);
+    cyc(42);
 }
 
 /*
@@ -442,9 +450,11 @@ void abi_PauseStageChoiceP1(void)
     cyc(22);
     if (presses(b, 0x0D1A, 0x9000)) {
         choice_made(b, 0);
+        cyc(42);
         return;
     }
     choice_move(b, 0x0D1A, 1, abi_OamBlock59Left, abi_OamBlock59Right);
+    cyc(42);
 }
 
 /*
@@ -512,6 +522,7 @@ void abi_PauseStageContinueP2(void)
 void abi_PauseStageContinue(void)
 {
     continue_wait(0x00);
+    cyc(42);
 }
 
 /* 07:BEAB: the quit menu opened: $19DF cleared, the split window state 2,
@@ -519,7 +530,7 @@ void abi_PauseStageContinue(void)
 static void quit_menu_open(uint32_t b)
 {
     lda8_imm(0x00);
-    cyc(86);
+    cyc(16);
     wr8(b | 0x19DF, 0x00);
     lda8_imm(0x02);
     cyc(16);
@@ -532,6 +543,7 @@ static void quit_menu_open(uint32_t b)
     stage(b, 0x0C);
     cyc(24);
     wr8(b | 0x0D22, 0x0C);
+    cyc(42);
 }
 
 /* LDA $19D8, CMP #5: the split window closed. */
@@ -585,7 +597,7 @@ void abi_PauseStageQuitMenu(void)
     uint32_t b = (uint32_t)cpu.db << 16;
 
     if (!window_closed(b))
-        return;
+        { cyc(42); return; }
     op_sep(P_M);
     lda8_imm(0x00);
     cyc(38);
@@ -614,7 +626,7 @@ void abi_PauseStageQuitTaken(void)
     op_sep(P_M);
     cyc(22);
     if (!window_closed(b))
-        { cyc(6); return; }
+        { cyc(48); return; }
     cyc(18);
     op_lda8(b | 0x0D50);
     if ((uint8_t)cpu.a)
@@ -627,9 +639,9 @@ void abi_PauseStageQuitTaken(void)
    palette 5 (rows 87, 107, 187 on the screen). */
 static void rows(void (*r87)(void), void (*r107)(void), void (*r187)(void))
 {
-    (cyc(44), r87());
-    (cyc(64), r107());
-    (cyc(64), r187());
+    (cyc(22), r87());
+    (cyc(46), r107());
+    (cyc(46), r187());
     cyc(42);
 }
 
@@ -672,7 +684,7 @@ static void quit_menu_take(uint32_t b, uint16_t which, uint8_t d, void (*park)(v
             wr8(b | 0x0D23, d);
             park();
         }
-        cyc(108);
+        cyc(38);
         lda8_imm(0x46);
         abi_SoundPort0QueuePush();
         lda8_imm(0x06);
@@ -709,6 +721,7 @@ static void quit_menu(uint16_t pad, uint16_t which, uint8_t d, void (*park)(void
     op_sep(P_M);
     if (cpu.a & 0x9000) {
         quit_menu_take(b, which, d, park);
+        cyc(42);
         return;
     }
     cyc(46);
@@ -733,6 +746,7 @@ static void quit_menu(uint16_t pad, uint16_t which, uint8_t d, void (*park)(void
                 wr8(b | 0x0D50, 0x00);
             }
         } else { cyc(22); }
+        cyc(46);
         op_sep(P_M);
         rows(abi_TilemapRow87Palette5, abi_TilemapPaletteCycle107, abi_TilemapRow187Palette5);
         return;
@@ -741,9 +755,9 @@ static void quit_menu(uint16_t pad, uint16_t which, uint8_t d, void (*park)(void
         cyc(46);
         break;
     case 0x06:
-        cyc(70);
+        cyc(92);
         abi_CarSelectTwoPlayers();
-        cars();
+        (cyc(46), cars());
         break;
     default:
         jump_routine(0x070000 | rd16(0x070000 | (uint16_t)((pad == 0x0D1A ? 0xC02D : 0xBF39) + cpu.x)));

@@ -33,11 +33,13 @@ uint8_t CourseFromSelection(uint8_t bank, uint8_t *p)
     *p = (uint8_t)((nz8(*p, (uint8_t)s) & ~(P_C | P_V)) | (s > 0xFF ? P_C : 0)
                    | ((~(a ^ b) & (a ^ s) & 0x80) ? P_V : 0));
     wr8(dbw(bank, 0x0E3D), cyc_then(24, (uint8_t)s));
+    cyc(42);
     return (uint8_t)s;
 }
 
 void abi_CourseFromSelection(void)
 {
+    cyc(24);
     uint8_t p = cpu.p;
 
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | CourseFromSelection(cpu.db, &p));
@@ -57,7 +59,9 @@ uint8_t CourseFromSelectionLong(uint8_t bank, uint8_t *p)
 
 void abi_CourseFromSelectionLong(void)
 {
+    cyc(46);
     abi_CourseFromSelection();
+    cyc(44);
 }
 
 void abi_SoundPort0QueuePush(void);
@@ -119,7 +123,7 @@ static void cursor_two(uint32_t b, uint16_t m1, uint8_t to1, uint16_t m2, uint8_
         { cyc(36); cursor_to(b, to1); }
     else if (cursor_pressed(b, m2))
         { cyc(36); cursor_to(b, to2); }
-    cyc(10);
+    cyc(42);
 }
 
 /*
@@ -261,28 +265,29 @@ void abi_CourseCursorStep(void)
  */
 void abi_CourseZoomInStep(void)
 {
+    cyc(62);
     uint32_t b = (uint32_t)cpu.db << 16;
     uint8_t a8, m8;
 
     abi_ColourMathA3Long();
     op_rep(P_M | P_X);
-    (cyc(148), abi_BlendStepUp());
-    abi_FixedColourFromStep();
-    cyc(76);
+    (cyc(62), abi_BlendStepUp());
+    (cyc(62), abi_FixedColourFromStep());
+    cyc(32);
     op_lda8(0x7F3408);
     a8 = (uint8_t)cpu.a;
     cyc(32);
     m8 = rd8(0x7F340A);
-    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(a8 - m8)) & ~P_C) | (a8 >= m8 ? P_C : (cyc(22), 0)));
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(a8 - m8)) & ~P_C) | (a8 >= m8 ? P_C : (cyc(64), 0)));
     if (a8 != m8)
         return;
     op_sep(P_M);
     cyc(62);
     wr8(b | 0x0D50, 0x00);
-    abi_RecordsLoadForCourse();
+    (cyc(62), abi_RecordsLoadForCourse());
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x20);
     cpu.p = nz8(cpu.p, 0x20);
-    cyc(184);
+    cyc(40);
     wr8(b | 0x0D41, 0x20);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x06);
     cpu.p = nz8(cpu.p, 0x06);
@@ -290,6 +295,7 @@ void abi_CourseZoomInStep(void)
     wr8(b | 0x0D40, 0x06);
     cyc(24);
     wr8(b | 0x10D8, 0x00);
+    cyc(42);
 }
 
 /*
@@ -336,7 +342,7 @@ void abi_CourseWindowZoomSetup(void)
     uint32_t b = (uint32_t)cpu.db << 16;
     unsigned i;
 
-    cyc(262);
+    cyc(0);
     for (i = 0; i < 4; i++) {
         cyc(78);
         cpu.a = rd16(b + 0xFB8E + cpu.y + 2 * i);
@@ -355,7 +361,7 @@ void abi_CourseWindowZoomSetup(void)
     cpu.p = nz16(cpu.p, 0x0000);
     cyc(56);
     wr16(0x7F3408, 0x0000);
-    (cyc(162), abi_WindowTable7FLong());
+    (cyc(62), abi_WindowTable7FLong());
     cyc(216);
 }
 
@@ -374,7 +380,7 @@ static void course_zoom(uint16_t x, uint16_t y)
     op_rep(P_M | P_X);
     abi_CourseWindowZoomSetup();
     abi_ColourMathA3();
-    (cyc(104), abi_OamBufferHideLargeLong());
+    (cyc(62), abi_OamBufferHideLargeLong());
     op_sep(P_M);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x04);
     cyc(62);
@@ -392,6 +398,7 @@ static uint16_t box_offset(uint16_t a, uint16_t add)
 {
     cpu.p &= (uint8_t)~P_C;
     cpu.a = op_adc16(a, add, &cpu.p);
+    cyc(262);
     return cpu.a;
 }
 
@@ -409,7 +416,7 @@ static uint16_t asl3(uint16_t a)
    $0D48 * 8 + $80 to target y. */
 static void course_choose(uint16_t list, uint16_t y)
 {
-    cyc(126);
+    cyc(24);
     uint32_t b = (uint32_t)cpu.db << 16;
     uint16_t a;
 
@@ -422,7 +429,7 @@ static void course_choose(uint16_t list, uint16_t y)
     wr16(b | 0x0E3D, a);
     a = asl3(rd16(b | 0x0D48));
     course_zoom(box_offset(a, 0x0080), y);
-    cyc(62);
+    cyc(94);
 }
 
 /*
@@ -488,14 +495,14 @@ static void course_zoom_box(uint16_t a)
  */
 void abi_CourseZoomFromSelection4(void)
 {
-    cyc(256);
+    cyc(84);
     uint8_t v;
     uint16_t a;
 
     op_sep(P_M);
     abi_CourseFromSelectionLong();
     v = (uint8_t)cpu.a;
-    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x0C)) & ~P_C) | (v >= 0x0C ? (cyc(174), P_C) : (cyc(246), 0)));
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x0C)) & ~P_C) | (v >= 0x0C ? (cyc(88), P_C) : (cyc(160), 0)));
     if (v < 0x0C) {
         op_rep(P_M | P_X);
         a = (uint16_t)(cpu.a & 0x00FF);
@@ -523,9 +530,9 @@ void abi_CourseZoomFromSelection(void)
     uint8_t v;
 
     op_sep(P_M | P_X);
-    (cyc(132), abi_CourseFromSelectionLong());
+    (cyc(62), abi_CourseFromSelectionLong());
     v = (uint8_t)cpu.a;
-    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x0C)) & ~P_C) | (v >= 0x0C ? (cyc(174), P_C) : (cyc(214), 0)));
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x0C)) & ~P_C) | (v >= 0x0C ? (cyc(88), P_C) : (cyc(128), 0)));
     if (v < 0x0C) {
         op_rep(P_M | P_X);
         course_zoom_race((uint16_t)(cpu.a & 0x00FF));
@@ -557,7 +564,7 @@ void abi_LevelColumnsSet4(void)
     uint32_t b = (uint32_t)cpu.db << 16;
     int i;
 
-    cyc(78);
+    cyc(0);
     for (i = 0; i < 4; i++) {
         if (cpu.p & P_M)
             { cyc(30); wr8(b | (uint16_t)(0x0F05 + i + cpu.x), (uint8_t)cpu.a); }
@@ -638,7 +645,7 @@ static void sel_cursor(uint32_t b, uint8_t y)
     cpu.p = nz8(cpu.p, y);
     cyc(56);
     wr8(b | 0x0D38, y);
-    abi_MenuCursorFourWay();
+    (cyc(46), abi_MenuCursorFourWay());
 }
 
 /* 02:E954: Start or A ($9000) zooms into the course (the page's own
@@ -653,7 +660,7 @@ static void sel_choose(uint32_t b)
     cyc(46);
     if (sel_pressed16(b, 0x9000)) {
         if (page)
-            abi_CourseZoomFromSelection4();
+            { cyc(102); abi_CourseZoomFromSelection4(); }
         else
             { cyc(102); abi_CourseZoomFromSelection(); }
         return;
@@ -695,15 +702,15 @@ void abi_SpeedCourseSelectStep(void)
 
     for (i = 0; i < 3; i++) {
         open = sel_open(bits[i]);
-        v = open ? 0x00 : (cyc(38), 0x04);
+        v = open ? (cyc(78), 0x00) : (cyc(38), 0x04);
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
         cpu.p = nz8(cpu.p, v);
         cpu.x = (uint16_t)(i * 4);
         cpu.p = nz8(cpu.p, (uint8_t)cpu.x);
         abi_LevelColumnsSet4();
     }
-    abi_TilemapLevelColumns();
-    cyc(122);                           /* its end is TilemapLevelColumns' now */
+    (cyc(46), abi_TilemapLevelColumns());
+    cyc(24);                           /* its end is TilemapLevelColumns' now */
     op_lda8(b | 0x0D61);
     v = (uint8_t)cpu.a;
     cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x0F)) & ~P_C) | (v >= 0x0F ? P_C : (cyc(32), 0)));
@@ -725,7 +732,8 @@ void abi_SpeedCourseSelectStep(void)
             sel_scroll(b, v);
             return;
         }
-        abi_FlashingMetaspriteDrawByMode();
+        (cyc(84), abi_FlashingMetaspriteDrawByMode());
+        cyc(24);
         op_lda8(b | 0x0D4A);
         if (!(uint8_t)cpu.a) {
             cyc(38);
@@ -770,11 +778,12 @@ void abi_SpeedCourseSelectStep(void)
             { cyc(10); v = 0x00; }
         sel_scroll(b, v);
         return;
-    } else { cyc(8); }
+    } else { cyc(92); }
     abi_FlashingMetaspriteDrawByMode();
+    cyc(24);
     op_lda8(b | 0x0D4A);
     v = (uint8_t)cpu.a;
-    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x01)) & ~P_C) | (v >= 0x01 ? (cyc(62), P_C) : (cyc(62), 0)));
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x01)) & ~P_C) | (v >= 0x01 ? (cyc(56), P_C) : (cyc(62), 0)));
     if (v == 0x01) {
         if (sel_pressed(b, 0x0400)) {
             op_sep(P_M);
@@ -797,7 +806,7 @@ void abi_SpeedCourseSelectStep(void)
         } else { cyc(68); }
         sel_choose(b);
         return;
-    }
+    } else { cyc(6); }
     if (sel_pressed(b, 0x0400)) {
         sel_sound();
         sel_row(b, 0x01);
@@ -833,7 +842,7 @@ void abi_StuntCourseSelectStep(void)
     v = (uint8_t)cpu.a;
     cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x0F)) & ~P_C) | (v >= 0x0F ? P_C : 0));
     if (v != 0x0F)
-        return;
+        { cyc(74); return; }
     cyc(62);
     op_lda8(b | 0x0D63);
     if (!(uint8_t)cpu.a) {
@@ -849,14 +858,18 @@ void abi_StuntCourseSelectStep(void)
             sel_scroll(b, v);
             return;
         }
-        abi_Set0D37FromTable();
-        abi_FlashingMetaspriteDraw();
+        (cyc(84), abi_Set0D37FromTable());
+        (cyc(46), abi_FlashingMetaspriteDraw());
+        cyc(24);
         if (sel_pressed16(b, 0x9000)) {
+            cyc(102);
             abi_CourseZoomStunt();
+            cyc(42);
             return;
         } else { cyc(68); }
         op_sep(P_M);
         abi_RaceFadeStageDispatch();
+        cyc(42);
         return;
     }
     cyc(46);
@@ -905,14 +918,18 @@ void abi_BattleCourseSelectStep(void)
     v = (uint8_t)cpu.a;
     cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x0F)) & ~P_C) | (v >= 0x0F ? P_C : 0));
     if (v != 0x0F)
-        return;
-    abi_Set0D37FromTable();
-    abi_FlashingMetaspriteDraw();
+        { cyc(74); return; }
+    (cyc(84), abi_Set0D37FromTable());
+    (cyc(46), abi_FlashingMetaspriteDraw());
+    cyc(24);
     if (sel_pressed16(b, 0x9000)) {
+        cyc(102);
         abi_CourseZoomBattle();
+        cyc(42);
         return;
     } else { cyc(46); }
     abi_CourseCursorStep();
+    cyc(42);
 }
 
 /*
@@ -1128,7 +1145,7 @@ static int records_key(uint32_t b)
             cpu.p = nz8(cpu.p, 0);
             cyc(84);
             wr8(b | 0x0D35, 0x00);
-            (cyc(50), abi_FlashingMetaspriteDraw0());
+            (cyc(46), abi_FlashingMetaspriteDraw0());
             return 0;
         } else { cyc(40); }
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x46);
@@ -1138,7 +1155,7 @@ static int records_key(uint32_t b)
     cyc(46);
     abi_RecordsUnpackCourseTotals();
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x02);
-    cyc(168);
+    cyc(40);
     wr8(b | 0x0D44, 0x02);
     cyc(24);
     wr8(b | 0x0D43, 0x02);
@@ -1185,7 +1202,7 @@ void abi_CourseRecordsKey(void)
 static int records_key_inner(uint32_t b)
 {
     if (!records_key(b))
-        return 0; else { cyc(56); }
+        return 0; else { cyc(98); }
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xE6);
     cpu.p = nz8(cpu.p, 0xE6);
     return 1;
@@ -1244,7 +1261,7 @@ void abi_CourseRecordsSelectStep(void)
         }
         if (records_key_inner(b))
             return;
-        cyc(24);
+        cyc(66);
         op_lda8(b | 0x0D4A);
         if (!(uint8_t)cpu.a) {
             records_sprite(b, 0xB0);
@@ -1253,6 +1270,7 @@ void abi_CourseRecordsSelectStep(void)
                 sel_sound();
                 sel_row(b, 0x01);
             } else { cyc(44); }
+            cyc(42);
             return;
         } else { cyc(6); }
         records_sprite(b, 0x60);
@@ -1273,6 +1291,7 @@ void abi_CourseRecordsSelectStep(void)
             cyc(8);
             wr8(b | 0x0D4A, 0x00);
         } else { cyc(44); }
+        cyc(42);
         return;
     }
     cyc(46);
@@ -1341,7 +1360,7 @@ void abi_CourseRecordsOpening(void)
     wr8(b | 0x0D42, v);
     cpu.p = nz8(cpu.p, v);
     if (v)
-        { cyc(38); return; }
+        { cyc(64); return; }
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x2A);
     cyc(56);
     wr8(b | 0x0D42, 0x2A);
@@ -1351,10 +1370,11 @@ void abi_CourseRecordsOpening(void)
     cyc(24);
     op_lda8(b | 0x0D4C);
     if ((uint8_t)cpu.a)
-        { cyc(38); return; } else { cyc(78); }
+        { cyc(64); return; } else { cyc(78); }
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x2D);
     cpu.p = nz8(cpu.p, 0x2D);
     abi_SoundPort0QueuePush();
+    cyc(26);
 }
 
 /*
@@ -1424,6 +1444,7 @@ static void records_pulse(uint32_t b)
     cpu.p = nz8(cpu.p, v);
     cyc(86);
     wr8(0x000F05 + (uint32_t)x, v);
+    cyc(42);
 }
 
 /*
@@ -1456,6 +1477,7 @@ void abi_CourseRecordsClosing(void)
     wr8(b | 0x0D43, 0x00);
     cyc(24);
     wr8(b | 0x0D44, 0x00);
+    cyc(42);
 }
 
 /*
@@ -1490,12 +1512,13 @@ void abi_CourseRecordsShown(void)
             { cyc(238); abi_CourseZoomFromSelection4(); }
         else
             { cyc(78); abi_CourseZoomFromSelection(); }
+        cyc(42);
         return;
     }
     cyc(46);
     op_lda8(b | 0x0D4C);
     if ((uint8_t)cpu.a)
-        { cyc(16); return; }
+        { cyc(58); return; }
     records_pulse(b);
 }
 
@@ -1522,6 +1545,7 @@ void abi_BattleCourseSelectStep(void);
 void abi_CourseScreenWindowStep(void)
 {
     (cyc(62), abi_WindowEdgesStep());
+    cyc(42);
 }
 
 /*
@@ -1789,6 +1813,7 @@ void abi_CourseScreenStartSpeed(void)
     screen_state2(b);
     cyc(24);
     wr8(b | 0x10D8, 0x00);
+    cyc(42);
 }
 
 /*
@@ -1811,6 +1836,7 @@ void abi_CourseScreenStartAll(void)
 void abi_CourseScreenStartBattle(void)
 {
     screen_state2((uint32_t)cpu.db << 16);
+    cyc(42);
 }
 
 /*
@@ -1822,6 +1848,7 @@ void abi_CourseScreenStartBattle(void)
 void abi_CourseScreenStartStunt(void)
 {
     screen_state2((uint32_t)cpu.db << 16);
+    cyc(42);
 }
 
 /*
@@ -1939,12 +1966,13 @@ void abi_CourseScreenZoomIn(void)
  */
 void abi_CourseRecordsDispatch(void)
 {
+    cyc(46);
     uint32_t b = (uint32_t)cpu.db << 16;
     uint8_t v;
 
     abi_TilemapLevelColumns();
     op_sep(P_M);
-    cyc(144);                           /* its end is TilemapLevelColumns' now */
+    cyc(46);                           /* its end is TilemapLevelColumns' now */
     op_lda8(b | 0x0D61);
     v = (uint8_t)cpu.a;
     cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x0F)) & ~P_C) | (v >= 0x0F ? P_C : (cyc(74), 0)));
@@ -1955,13 +1983,13 @@ void abi_CourseRecordsDispatch(void)
     cpu.p = nz8(cpu.p, (uint8_t)cpu.x);
     cyc(46);
     switch (rd16(0x02E603 + cpu.x)) {
-    case 0xE648: abi_CourseRecordsSelectStep(); cyc(16); break;
+    case 0xE648: abi_CourseRecordsSelectStep(); cyc(0); break;
     case 0xE750: abi_CourseRecordsOpening(); break;
-    case 0xE795: abi_CourseRecordsShown(); cyc(16); break;
-    case 0xE781: abi_CourseRecordsClosing(); cyc(16); break;
+    case 0xE795: abi_CourseRecordsShown(); cyc(0); break;
+    case 0xE781: abi_CourseRecordsClosing(); cyc(0); break;
     case 0xE76B: abi_CourseRecordsReopen(); cyc(16); break;
     }
-    cyc(26);
+    cyc(0);
 }
 
 /* JMP (table,X) with X = $0D40 (8-bit): the state's step; any other word
@@ -1973,16 +2001,16 @@ static void screen_state(uint32_t b, uint16_t table)
     cpu.p = nz8(cpu.p, (uint8_t)cpu.x);
     cyc(46);
     switch (rd16(0x020000 | (uint16_t)(table + cpu.x))) {
-    case 0xE564: abi_CourseScreenStartSpeed(); cyc(42); break;
+    case 0xE564: abi_CourseScreenStartSpeed(); cyc(0); break;
     case 0xE56D: abi_CourseScreenStartAll(); cyc(42); break;
-    case 0xE573: abi_CourseScreenStartBattle(); cyc(42); break;
-    case 0xE579: abi_CourseScreenStartStunt(); cyc(42); break;
+    case 0xE573: abi_CourseScreenStartBattle(); cyc(0); break;
+    case 0xE579: abi_CourseScreenStartStunt(); cyc(0); break;
     case 0xE5F0: abi_CourseRecordsDispatch(); break;
     case 0xE7F5: abi_SpeedCourseSelectStep(); cyc(42); break;
-    case 0xE9AB: abi_StuntCourseSelectStep(); cyc(74); break;
-    case 0xEA32: abi_BattleCourseSelectStep(); cyc(74); break;
-    case 0xED3E: abi_CourseZoomInStep(); cyc(42); break;
-    case 0xE3F1: abi_CourseScreenWindowStep(); cyc(42); break;
+    case 0xE9AB: abi_StuntCourseSelectStep(); cyc(0); break;
+    case 0xEA32: abi_BattleCourseSelectStep(); cyc(0); break;
+    case 0xED3E: abi_CourseZoomInStep(); cyc(0); break;
+    case 0xE3F1: abi_CourseScreenWindowStep(); cyc(0); break;
     case 0xE57F: abi_CourseScreenNothing(); break;
     case 0xE580: abi_CourseScreenZoomOut(); cyc(42); break;
     case 0xE414: abi_CourseScreenWipeOut(); cyc(42); break;
@@ -1991,7 +2019,7 @@ static void screen_state(uint32_t b, uint16_t table)
     case 0xE44B: abi_CourseScreenWipeIn(); cyc(42); break;
     case 0xE5B4: abi_CourseScreenZoomIn(); cyc(42); break;
     case 0xED98: jump_routine(0x02ED98); cyc(42); break;
-    case 0xEDD2: jump_routine(0x02EDD2); cyc(42); break;
+    case 0xEDD2: jump_routine(0x02EDD2); cyc(0); break;
     case 0xED75: jump_routine(0x02ED75); break;
     case 0xF148: jump_routine(0x02F148); break;
     case 0xF30A: jump_routine(0x02F30A); break;
@@ -2060,7 +2088,7 @@ void abi_CourseScreenStep(void)
         } else {
             cyc(62);
             op_lda16(b | 0x0D1C);
-            cpu.p = (uint8_t)((cpu.p & ~(P_N | P_V | P_Z)) | ((cpu.a >> 8) & 0xC0) | ((cpu.a & 0x2000) ? 0 : (cyc(24), P_Z)));
+            cpu.p = (uint8_t)((cpu.p & ~(P_N | P_V | P_Z)) | ((cpu.a >> 8) & 0xC0) | ((cpu.a & 0x2000) ? 0 : (cyc(46), P_Z)));
             if (cpu.a & 0x2000) {
                 cyc(64);
                 op_lda16(b | 0x030D);
@@ -2080,7 +2108,7 @@ void abi_CourseScreenStep(void)
                     cyc(24);
                     op_lda8(b | 0x0D25);
                     v = (uint8_t)cpu.a;
-                    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x07)) & ~P_C) | (v >= 0x07 ? P_C : 0));
+                    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x07)) & ~P_C) | (v >= 0x07 ? P_C : (cyc(38), 0)));
                     if (v >= 0x07) {
                         cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x03);
                         cyc(72);
@@ -2106,13 +2134,13 @@ void abi_CourseScreenStep(void)
                         wr8(0x70FC0B, 0x07);
                         (cyc(62), abi_SaveChecksum());
                     }
-                    cyc(16);
+                    cyc(0);
                 }
             }
         }
-    } else { cyc(16); }
+    } else { cyc(38); }
     op_sep(P_M | P_X);
-    cyc(46);
+    cyc(24);
     op_lda8(b | 0x0D24);
     v = (uint8_t)cpu.a;
     cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x03)) & ~P_C) | (v >= 0x03 ? (cyc(18), P_C) : 0));
@@ -2140,6 +2168,7 @@ void abi_CourseScreenState8(void)
     cpu.p = nz8(cpu.p, 0x08);
     cyc(62);
     wr8(((uint32_t)cpu.db << 16) | 0x0D40, 0x08);
+    cyc(42);
 }
 
 /* REP #$20, BlendStepDown, REP #$20, LDA.L $7F:3408: whether the blend is
@@ -2167,7 +2196,7 @@ static void fade_done(uint32_t b, uint8_t panel, uint8_t state)
     cpu.p = nz8(cpu.p, state);
     cyc(40);
     wr8(b | 0x0D40, state);
-    abi_ColourMathOffLong();
+    (cyc(62), abi_ColourMathOffLong());
 }
 
 /*
@@ -2203,7 +2232,7 @@ void abi_CourseScreenFadeBack(void)
     if (!fade_step())
         { cyc(16); return; }
     fade_done(b, 0x06, 0x02);
-    cyc(110);
+    cyc(24);
     op_lda8(b | 0x0D2B);
     if ((uint8_t)cpu.a)
         { cyc(22); return; }

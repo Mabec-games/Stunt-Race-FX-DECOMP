@@ -80,7 +80,7 @@ static uint8_t adc8i(uint8_t v, uint8_t m)
 /* CMP #imm, 8-bit. */
 static void cmp8(uint8_t v, uint8_t m)
 {
-    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - m)) & ~P_C) | (v >= m ? (cyc(38), P_C) : (cyc(48), 0)));
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - m)) & ~P_C) | (v >= m ? (cyc(38), P_C) : (cyc(76), 0)));
 }
 
 
@@ -250,7 +250,7 @@ static void hud_panel_slide(uint8_t f9, uint16_t x, int panel_a)
 
     cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
     cpu.x = x;
-    cyc(176);
+    cyc(106);
     wr8(b | 0x00F9, f9);
     v = lda8(b | 0x0D54);
     cmp8(v, 0x08);
@@ -285,6 +285,7 @@ static void hud_panel_slide(uint8_t f9, uint16_t x, int panel_a)
  */
 void abi_HudPanelASlide(void)
 {
+    cyc(24);
     hud_panel_slide(0xF8, 0x0020, 1);
 }
 
@@ -297,7 +298,7 @@ void abi_HudPanelASlide(void)
  */
 void abi_HudPanelBSlide(void)
 {
-    cyc(4);
+    cyc(0);
     hud_panel_slide(0x4A, 0x0120, 0);
 }
 

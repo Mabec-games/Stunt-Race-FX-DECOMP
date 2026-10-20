@@ -152,7 +152,8 @@ static void handler_none(uint16_t o)
 static int spawn(uint16_t kind)
 {
     st16i((cyc(16), db()) | 0x1F2B, kind);
-    abi_ObjectSpawn();
+    (cyc(84), abi_ObjectSpawn());
+    cyc(22);
     return (cpu.p & P_C) != 0;
 }
 
@@ -197,8 +198,8 @@ void abi_ObjectLampTower(void)
     if (spawn(0xA120)) {
         lamp(cpu.y, 0x64);
         st16i(F(0x205D, cpu.y), cyc_then(22, 0x9973));
-        (cyc(22), abi_ObjectCopyPositionTo());
-        add16(F(0x200E, cpu.y), 0xFA88);
+        (cyc(84), abi_ObjectCopyPositionTo());
+        add16(F(0x200E, cpu.y), cyc_then(22, 0xFA88));
         swap_xy();
         abi_ObjectRebucket();
         (cyc(58), swap_xy());
@@ -573,7 +574,7 @@ static void record_at(uint16_t x, uint16_t y, uint16_t z)
     st16i(0x000008, y);
     cyc(30);
     st16i(0x000094, z);
-    abi_GsuRecordPosition();
+    (cyc(84), abi_GsuRecordPosition());
 }
 
 /* 09:8EAF: a spark: a new object of kind $A0CC lit by $996B (+$5F = t) at
@@ -896,12 +897,13 @@ static void handlers2(uint16_t r, uint16_t f)
 static int hit(void)
 {
     (cyc(62), abi_ObjectSyncFromRecord());
-    cyc(56);
+    cyc(80);
     lda8((uint8_t)(cpu.a & 0x01));
     if (!(uint8_t)cpu.a)
-        return 0; else { cyc(36); }
+        return 0; else { cyc(38); }
+    cyc(36);
     abi_RecordContactSummary();
-    cyc(84);
+    cyc(0);
     lda8((uint8_t)(cpu.a & 0x01));
     return (uint8_t)cpu.a != 0;
 }
@@ -926,7 +928,7 @@ static void bumper_frame(void)
         add8(F(0x2015, cpu.x), 0x0C);
     } else { cyc(48); }
     if (!hit()) {
-        cyc(42);
+        cyc(18);
         and8(F(0x2025, cpu.x), 0xFE);
         cyc(38);
         return;
@@ -945,8 +947,10 @@ static void bumper_frame(void)
    then its frame. */
 static void bumper_record(void)
 {
+    cyc(62);
     abi_GsuRecordNew424();
-    abi_GsuRecordFlag10();
+    (cyc(62), abi_GsuRecordFlag10());
+    cyc(58);
     lda8(0x01);
     abi_GsuRecordSet2AHigh();
     (cyc(102), bumper_frame());
@@ -1012,7 +1016,7 @@ static void switch_frame(void)
     if ((uint8_t)cpu.a)
         { cyc(44); return; } else { cyc(18); }
     if (!hit())
-        { cyc(80); return; } else { cyc(36); }
+        { cyc(56); return; } else { cyc(36); }
     or8(F(0x2025, cpu.x), 0x01);
     add8(F(0x2015, cpu.x), 0x0C);
     cyc(58);
@@ -1025,7 +1029,8 @@ static void switch_frame(void)
 static void switch_record(void)
 {
     abi_GsuRecordNew424();
-    abi_GsuRecordFlag10();
+    (cyc(62), abi_GsuRecordFlag10());
+    cyc(58);
     lda8(0x01);
     abi_GsuRecordSet2AHigh();
     (cyc(102), switch_frame());
@@ -1045,7 +1050,7 @@ void abi_ObjectSwitch(void)
     lda8(0x00);
     lda8(0x80);
     wr8(F(0x205A, cpu.x), cyc_then(22, 0x80));
-    switch_record();
+    (cyc(62), switch_record());
 }
 
 /*
@@ -1145,7 +1150,7 @@ void abi_ObjectPlatformStep(void)
 static void post1_frame(void)
 {
     if (!hit())
-        { cyc(80); return; } else { cyc(18); }
+        { cyc(56); return; } else { cyc(18); }
     ease8(F(0x2014, cpu.x), 0x33, abi_ApproachHalfMin2Byte);
     cpu.p |= P_M;
     or8((cyc(16), db()) | 0x1A07, 0x01);
@@ -1154,6 +1159,7 @@ static void post1_frame(void)
 /* 09:939D: a post's record ($42D) with flag bit 4 at (v, v, v). */
 static void post_record(uint16_t v)
 {
+    cyc(62);
     abi_GsuRecordNew42D();
     abi_GsuRecordFlag10();
     record_at(v, v, v);
@@ -1257,7 +1263,7 @@ void abi_ObjectSkyBallLaunch(void)
 static void post2_frame(void)
 {
     if (!hit())
-        { cyc(80); return; } else { cyc(64); }
+        { cyc(56); return; } else { cyc(64); }
     lda8(cyc_then(18, (uint8_t)(ld8(F(0x2025, cpu.x)) & 0x01)));
     if (!(uint8_t)cpu.a) {
         or8(F(0x2025, cpu.x), 0x01);
@@ -2503,7 +2509,7 @@ static int bit25(uint8_t m)
 static int lap_is(uint8_t lap)
 {
     cpu.p |= P_M;
-    ld8((cyc(38), db()) | 0x0DEA);
+    ld8((cyc(14), db()) | 0x0DEA);
     cyc(10);
     cmp8(lap);
     cyc(38);
@@ -2513,6 +2519,7 @@ static int lap_is(uint8_t lap)
 /* A gate's record: a new one ($42D) with flag bit 4 at (s, s, s). */
 static void gate42d(uint16_t s)
 {
+    cyc(62);
     abi_GsuRecordNew42D();
     abi_GsuRecordFlag10();
     record_at(s, s, s);
@@ -2535,10 +2542,10 @@ static int next_contact(void)
         cyc(84);
         abi_RecordNextContact();
         if (!(cpu.p & P_C))
-            return 0; else { cyc(170); }
+            return 0; else { cyc(50); }
         lda8((uint8_t)(cpu.a & 0x01));
         if ((uint8_t)cpu.a)
-            { cyc(16); return 1; }
+            { cyc(0); return 1; }
     }
 }
 
@@ -2661,7 +2668,7 @@ static void flash_frame(uint16_t flash, uint16_t step, uint16_t end)
         cpu.p |= P_M;
         or8((cyc(16), db()) | 0x0DA5, 0x21);
         return;
-    } else { cyc(64); }
+    } else { cyc(40); }
     cpu.p |= P_M;
     and8(F(0x2025, cpu.x), 0xFE);
     cyc(38);
@@ -2988,7 +2995,7 @@ static void lap_flash_frame(void)
     uint8_t lap;
 
     if (!hit())
-        { cyc(80); return; } else { cyc(74); }
+        { cyc(56); return; } else { cyc(74); }
     cpu.p |= P_M;
     lap = ld8(db() | 0x0DEA);
     cyc(38);
@@ -3135,8 +3142,8 @@ void abi_ObjectSweepGateStep(void)
 static void slide_chime_frame(void)
 {
     (cyc(62), abi_ObjectSyncFromRecord());
-    (cyc(80), abi_RecordContactSummary());
-    cyc(120);
+    (cyc(142), abi_RecordContactSummary());
+    cyc(12);
     lda8((uint8_t)(cpu.a & 0x01));
     if ((uint8_t)cpu.a) {
         if (!bit25(0x02)) {
@@ -3145,6 +3152,7 @@ static void slide_chime_frame(void)
             and8(F(0x2025, cpu.x), 0xFB);
             sound1(0x13);
         } else { cyc(44); }
+        cyc(24);
         if (!lap_is(0x01))
             { cyc(28); return; } else { cyc(22); }
         if (bit25(0x01))
@@ -3617,7 +3625,7 @@ static int released_by_hud(void)
     cpu.p &= (uint8_t)~P_M;
     op_lda16(cyc_then(46, db() | 0x0D2B));
     if (!cpu.a)
-        { cyc(44); return 0; } else { cyc(38); }
+        { cyc(44); return 0; } else { cyc(100); }
     cpu.p |= P_M;
     abi_ObjectRelease();
     return 1;
@@ -3640,8 +3648,9 @@ void abi_ObjectPopMarker(void)
         { cyc(66); return; }
     cpu.p |= P_M;
     if (spawn(0xB7FC)) {
+        cyc(62);
         abi_ObjectCopyPositionTo();
-        ld8(F(0x2015, cpu.x));
+        ld8(cyc_then(22, F(0x2015, cpu.x)));
         wr8(F(0x2015, cpu.y), cyc_then(30, (uint8_t)cpu.a));
         add16(F(0x200E, cpu.y), cyc_then(22, 0xFE20));
         cyc(44);
@@ -3658,7 +3667,7 @@ static void time_gate_frame(void)
     uint8_t v, r;
 
     if (!hit())
-        { cyc(80); return; } else { cyc(58); }
+        { cyc(56); return; } else { cyc(34); }
     v = ld8(F(0x2048, cpu.x));
     wr8(db() | 0x1F58, cyc_then(24, v));
     cpu.p |= P_M;
@@ -3790,7 +3799,7 @@ static int lap_matches_0a(void)
 {
     uint8_t v, r;
 
-    v = ld8(cyc_then(22, F(0x200A, cpu.x)));
+    v = ld8(cyc_then(0, F(0x200A, cpu.x)));
     wr8(db() | 0x1F58, cyc_then(24, v));
     cpu.p |= P_M;
     v = ld8((cyc(38), db()) | 0x0DEA);
@@ -3810,6 +3819,7 @@ static void lap_take_0a(void)
     v = ld8((cyc(16), db()) | 0x1F58);
     wr8(F(0x200A, cpu.x), cyc_then(30, v));
     st16i(F(0x2004, cpu.x), cyc_then(22, 0xA040));
+    cyc(80);
 }
 
 /* PHX, TYX: a spark of `kind` at the player $0346's position following
@@ -3828,8 +3838,8 @@ static void spark_follow(uint16_t kind)
         cpu.x = rd16(cyc_then(24, db() | 0x0346));
         cpu.p = nz16(cpu.p, cpu.x);
         st8i(F(0x200A, cpu.y), cyc_then(6, 0x0A));
-        abi_ObjectCopyPositionTo();
-        st16i(F(0x2027, cpu.y), 0x0000);
+        (cyc(62), abi_ObjectCopyPositionTo());
+        st16i(F(0x2027, cpu.y), cyc_then(22, 0x0000));
         a = (uint8_t)cpu.a;
         cpu.p &= (uint8_t)~P_M;
         cpu.a = cpu.x;
@@ -3849,11 +3859,13 @@ static void spark_follow(uint16_t kind)
    lit ($A040) when +$0A is this lap, else `kind`. */
 static void lap_ball_record(uint16_t kind)
 {
+    cyc(62);
     abi_GsuRecordNew42D();
     abi_GsuRecordFlag10();
+    cyc(58);
     lda8(0x14);
     abi_GsuRecordSet2AHigh();
-    if ((cyc(102), lap_matches_0a()))
+    if ((cyc(124), lap_matches_0a()))
         { cyc(16); st16i(F(0x2004, cpu.x), 0xA040); }
     else
         { cyc(22); st16i(F(0x2004, cpu.x), kind); }
@@ -3874,11 +3886,11 @@ static void ball_up_frame(void)
         cyc(80);
         abi_RecordNextContact();
         if (!(cpu.p & P_C))
-            { cyc(66); return; } else { cyc(208); }
+            { cyc(66); return; } else { cyc(72); }
         lda8((uint8_t)(cpu.a & 0x0B));
         cmp8(0x01);
         if ((uint8_t)cpu.a == 0x01)
-            break; else { cyc(32); }
+            break; else { cyc(10); }
         cmp8(0x02);
         if ((uint8_t)cpu.a == 0x02)
             break;
@@ -3889,7 +3901,7 @@ static void ball_up_frame(void)
     lda8(0x40);
     abi_GsuRecordRaise6A();
     cpu.p |= P_M;
-    cyc(240);
+    cyc(94);
     sound0(0x25);
     spark_follow(0xB7A8);
     cyc(32);
@@ -3958,9 +3970,9 @@ void abi_ObjectSparkFollow(void)
 {
     cpu.y = rd16(cyc_then(30, F(0x2029, cpu.x)));
     cpu.p = nz16(cpu.p, cpu.y);
-    abi_ObjectCopyPositionFrom();
-    if (!dec8(F(0x200A, cpu.x)))
-        { cyc(22); abi_ObjectRelease(); } else { cyc(20); }
+    (cyc(62), abi_ObjectCopyPositionFrom());
+    if (!dec8(cyc_then(22, F(0x200A, cpu.x))))
+        { cyc(84); abi_ObjectRelease(); } else { cyc(20); }
     cyc(50);
     add16(F(0x200E, cpu.x), 0xFF40);
     add16(F(0x2027, cpu.x), cyc_then(44, 0xFFD8));
@@ -3985,7 +3997,7 @@ static void ball_down_frame(void)
     lap_take_0a();
     lda8(0x40);
     abi_GsuRecordLower82();
-    cyc(218);
+    cyc(72);
     sound0(0x1B);
     cpu.p |= P_M;
     cyc(22);
@@ -4048,7 +4060,7 @@ void abi_ObjectLapBallDownStep(void)
 static void count_gate_frame(void)
 {
     if (!hit())
-        { cyc(80); return; } else { cyc(36); }
+        { cyc(56); return; } else { cyc(36); }
     if (bit25(0x01))
         { cyc(44); return; } else { cyc(18); }
     or8(F(0x2025, cpu.x), 0x01);
@@ -4105,8 +4117,10 @@ void abi_ObjectCountGateStep(void)
    +$2A high $14 at ($500, $500, $500); then its frame. */
 static void count_marker_record(void)
 {
+    cyc(62);
     abi_GsuRecordNew424Alt();
-    abi_GsuRecordMode2();
+    (cyc(62), abi_GsuRecordMode2());
+    cyc(58);
     lda8(0x14);
     abi_GsuRecordSet2AHigh();
     cyc(102);
@@ -4118,8 +4132,8 @@ static void count_marker_frame(void)
 {
     cpu.p |= P_M;
     if (ld8((cyc(38), db()) | 0x19E8))
-        abi_ObjectStep48To8();
-    cyc(84);
+        { cyc(62); abi_ObjectStep48To8(); } else { cyc(22); }
+    cyc(62);
     abi_ObjectSyncFromRecord();
     cyc(118);
 }
@@ -4199,7 +4213,7 @@ static void count_trigger_frame(void)
     for (;;) {
         abi_RecordNextContact();
         if (!(cpu.p & P_C))
-            return; else { cyc(208); }
+            return; else { cyc(50); }
         lda8((uint8_t)(cpu.a & 0x01));
         if ((uint8_t)cpu.a)
             break;
@@ -4208,9 +4222,9 @@ static void count_trigger_frame(void)
     if (!(uint8_t)cpu.a) {
         cyc(18);
         or8(F(0x2025, cpu.x), 0x01);
-        abi_HudCountMove19EE();
-    } else { cyc(2); }
-    cyc(64);
+        (cyc(46), abi_HudCountMove19EE());
+    } else { cyc(44); }
+    cyc(22);
     cpu.p |= P_M;
     st8i(db() | 0x19E8, 0x01);
 }
@@ -4227,7 +4241,7 @@ static void count_trigger_frame(void)
 void abi_ObjectCountTrigger(void)
 {
     handlers2(0xB0DC, 0xB103);
-    count_trigger_record();
+    (cyc(62), count_trigger_record());
     count_trigger_frame();
     cyc(38);
 }
@@ -4321,7 +4335,7 @@ static void lap_store(uint16_t f)
     uint8_t v;
 
     cpu.p |= P_M;
-    v = ld8((cyc(32), db()) | 0x0DEA);
+    v = ld8((cyc(28), db()) | 0x0DEA);
     wr8(db() | 0x1F58, cyc_then(24, v));
     v = ld8((cyc(16), db()) | 0x1F58);
     wr8(F(f, cpu.x), cyc_then(30, v));
@@ -4812,7 +4826,7 @@ void abi_LapCrowdSpawn2(void)
 static void life_down(void)
 {
     if (!dec8(F(0x200A, cpu.x)))
-        { cyc(22); abi_ObjectRelease(); } else { cyc(20); }
+        { cyc(84); abi_ObjectRelease(); } else { cyc(20); }
     cyc(50);
 }
 
@@ -4902,6 +4916,7 @@ void abi_LapCrowdStep2(void)
    to 2). */
 static void crowd_gate_frame(void)
 {
+    cyc(62);
     uint8_t lap;
 
     abi_ObjectSyncToRecord();
@@ -4994,8 +5009,8 @@ void abi_ObjectFloaterSpawner(void)
     handler(cpu.x, 0xC956);
     if (!spawn(0xB3B8))
         { cyc(48); return; }
-    abi_ObjectCopyPositionTo();
-    add16(F(0x200E, cpu.y), 0x06E0);
+    (cyc(62), abi_ObjectCopyPositionTo());
+    add16(F(0x200E, cpu.y), cyc_then(22, 0x06E0));
     st8i(F(0x200A, cpu.y), cyc_then(28, 0x28));
     cyc(22);
     handler(cpu.y, 0xC95C);
@@ -5129,12 +5144,12 @@ static void orbit(int arm, uint8_t r1, uint8_t r2, uint8_t r3, int xz)
         sign_arm(db() | 0x05F3, !(r3 & 0x80));
     cyc(22);
     ld8(F(0x2016, cpu.y));
-    abi_RotateXY();
+    (cyc(62), abi_RotateXY());
     orbit_again();
     if (xz) {
         cyc(22);
         ld8(F(0x2014, cpu.y));
-        abi_RotateXZFrom08();
+        (cyc(62), abi_RotateXZFrom08());
         orbit_again();
         ld8(cyc_then(22, F(0x2015, cpu.y)));
         (cyc(62), abi_RotateXZ());
@@ -5156,6 +5171,7 @@ static void orbit(int arm, uint8_t r1, uint8_t r2, uint8_t r3, int xz)
 static void orbiter(uint16_t h, uint16_t f)
 {
     if (spawn(0xA040)) {
+        cyc(62);
         uint8_t a;
 
         abi_ObjectCopyPositionTo();
@@ -5163,7 +5179,7 @@ static void orbiter(uint16_t h, uint16_t f)
         cpu.p &= (uint8_t)~P_M;
         cpu.a = cpu.y;
         cpu.p = nz16(cpu.p, cpu.a);
-        wr16(F(0x2027, cpu.x), cyc_then(66, cpu.y));
+        wr16(F(0x2027, cpu.x), cyc_then(88, cpu.y));
         cpu.p |= P_M;
         cyc(52);
         lda8(a);
@@ -5420,7 +5436,7 @@ static void bell_frame(void)
         or8(F(0x2025, cpu.x), 0x01);
         sound0(0x2E);
         return;
-    } else { cyc(42); }
+    } else { cyc(18); }
     and8(F(0x2025, cpu.x), 0xFE);
 }
 
@@ -5990,15 +6006,15 @@ static int rail_slide(uint16_t step)
     op_cmp16(t);
     cpu.p |= P_M;
     if (cpu.a == t)
-        { cyc(66); return 1; }
+        { cyc(70); return 1; }
     cpu.p &= (uint8_t)~P_M;
     if (cpu.p & P_N)
         op_add16(step);
     else
         { cyc(10); op_sub16(step); }
-    wr16(F(0x2010, cpu.x), cyc_then(168, cpu.a));
+    wr16(F(0x2010, cpu.x), cyc_then(172, cpu.a));
     cpu.p |= P_M;
-    (cyc(22), abi_ObjectSyncToRecord());
+    (cyc(84), abi_ObjectSyncToRecord());
     return 0;
 }
 
@@ -6071,7 +6087,7 @@ void abi_RailRiseStep(void)
 {
     colour_cycle6();
     if (rail_slide(0x0140))
-        abi_ObjectRelease(); else { cyc(52); }
+        { cyc(62); abi_ObjectRelease(); } else { cyc(52); }
     cyc(66);
 }
 
@@ -6091,7 +6107,7 @@ static void rail_drop_frame(void)
     lda8(v);
     wr8(F(0x205A, cpu.x), cyc_then(112, v));
     add16(F(0x2010, cpu.x), cyc_then(22, 0x0040));
-    (cyc(22), abi_ObjectSyncToRecord());
+    (cyc(84), abi_ObjectSyncToRecord());
     cyc(118);
 }
 
@@ -6136,8 +6152,8 @@ static void rail(uint16_t dx, uint16_t dz, uint16_t t)
         { cyc(48); return; }
     colour_from_dp0(F(0x205A, cpu.y));
     st8i(F(0x2015, cpu.y), cyc_then(6, 0x80));
-    abi_ObjectCopyPositionTo();
-    add16(F(0x200C, cpu.y), dx);
+    (cyc(62), abi_ObjectCopyPositionTo());
+    add16(F(0x200C, cpu.y), cyc_then(22, dx));
     add16(F(0x2010, cpu.y), cyc_then(44, dz));
     copy16(F(0x2027, cpu.y), cyc_then(22, F(0x2010, cpu.y)));
     add16(F(0x2027, cpu.y), cyc_then(44, t));
@@ -6163,6 +6179,7 @@ void abi_RailsSpawn(void)
     rail(0xFB00, 0x0000, 0x1180);
     rail(0xF9C0, 0xFB00, 0x1680);
     rail(0xF740, 0x0000, 0x1180);
+    cyc(42);
 }
 
 /* 09:D184: a car's hit on lap 2 puts up the rails (RailsSpawn), plays sound
@@ -6170,13 +6187,13 @@ void abi_RailsSpawn(void)
 static void finale_frame(void)
 {
     if (!hit())
-        { cyc(80); return; } else { cyc(36); }
+        { cyc(56); return; } else { cyc(36); }
     if (!lap_is(0x02))
         { cyc(28); return; } else { cyc(30); }
     abi_RailsSpawn();
-    cyc(42);
+    cyc(0);
     sound0(0x33);
-    abi_ObjectRelease();
+    (cyc(62), abi_ObjectRelease());
     cyc(66);
 }
 
@@ -6317,9 +6334,9 @@ static void breakable_gate_frame(void)
     uint8_t lap;
 
     if (!hit())
-        { cyc(80); return; } else { cyc(36); }
+        { cyc(56); return; } else { cyc(12); }
     if (lap_eq(0x200A))
-        { cyc(60); return; }
+        { cyc(60); return; } else { cyc(4); }
     lap_store(0x200A);
     cpu.p |= P_M;
     lap = ld8((cyc(38), db()) | 0x0DEA);
@@ -6520,9 +6537,9 @@ static void duo_frame(void)
         and8(F(0x2025, cpu.x), 0xFD);
         cyc(38);
         return;
-    } else { cyc(22); }
+    } else { cyc(84); }
     abi_RecordContactSummary();
-    cyc(120);
+    cyc(12);
     lda8((uint8_t)(cpu.a & 0x01));
     if (!(uint8_t)cpu.a) {
         and8(F(0x2025, cpu.x), 0xFE);
@@ -6534,10 +6551,11 @@ static void duo_frame(void)
         st8i((cyc(22), db()) | 0x1A5D, 0x00);
         sound0(0x5A);
     } else { cyc(44); } }
+    cyc(62);
     abi_RecordContactSummary();
     lda8((uint8_t)(cpu.a & 0x02));
     if (!(uint8_t)cpu.a) {
-        cyc(120);
+        cyc(12);
         and8(F(0x2025, cpu.x), 0xFD);
         cyc(60);
         return;
@@ -6555,7 +6573,8 @@ static void duo_frame(void)
 static void record424alt(uint8_t h)
 {
     abi_GsuRecordNew424Alt();
-    abi_GsuRecordFlag10();
+    (cyc(62), abi_GsuRecordFlag10());
+    cyc(58);
     lda8(h);
     abi_GsuRecordSet2AHigh();
 }
@@ -6572,6 +6591,7 @@ static void record424alt(uint8_t h)
 void abi_ObjectDuoGate(void)
 {
     handlers2(0xE00A, 0xE018);
+    cyc(62);
     record424alt(0x14);
     (cyc(102), duo_frame());
 }
@@ -6903,7 +6923,7 @@ void abi_GateSlideStep(void)
     op_cmp16(t);
     cpu.p |= P_M;
     if (cpu.a == t) {
-        cyc(88);
+        cyc(92);
         cpu.p |= P_M;
         st8i(db() | 0x1A29, 0x02);
         return;
@@ -6913,7 +6933,7 @@ void abi_GateSlideStep(void)
         op_add16(0x0280);
     else
         { cyc(10); op_sub16(0x0280); }
-    wr16(F(0x200C, cpu.x), cyc_then(168, cpu.a));
+    wr16(F(0x200C, cpu.x), cyc_then(172, cpu.a));
     cpu.p |= P_M;
     cyc(44);
 }
@@ -6922,17 +6942,18 @@ void abi_GateSlideStep(void)
    on lap 2 eases the scale +$15 toward $80 (ApproachHalfMin2Byte). */
 static void slide_lap_frame(void)
 {
+    cyc(62);
     uint8_t lap;
 
     abi_ObjectSyncToRecord();
     cyc(92);
     lda8((uint8_t)(cpu.a & 0x01));
     if (!(uint8_t)cpu.a)
-        { cyc(44); return; }
+        { cyc(44); return; } else { cyc(62); }
     abi_RecordContactSummary();
     lda8((uint8_t)(cpu.a & 0x01));
     if (!(uint8_t)cpu.a)
-        return; else { cyc(158); }
+        return; else { cyc(50); }
     cpu.p |= P_M;
     lap = ld8(db() | 0x0DEA);
     cyc(62);
@@ -7304,22 +7325,23 @@ void abi_ObjectFadeGate1Step(void)
 static void window_gate_frame(int on)
 {
     if (!synced())
-        { cyc(66); return; } else { cyc(22); }
+        { cyc(66); return; } else { cyc(84); }
     abi_RecordContactSummary();
     lda8((uint8_t)(cpu.a & 0x01));
     if ((uint8_t)cpu.a) {
-        cyc(136);
+        cyc(28);
         cpu.p |= P_M;
         if (on)
             or8(db() | 0x0DA5, 0x40);
         else
             and8(db() | 0x0DA5, 0xBF);
-    } else { cyc(126); }
+        cyc(62);
+    } else { cyc(80); }
     abi_RecordContactSummary();
-    cyc(126);
+    cyc(56);
     lda8((uint8_t)(cpu.a & 0x02));
     if (!(uint8_t)cpu.a)
-        { cyc(38); return; } else { cyc(10); }
+        { cyc(0); return; } else { cyc(10); }
     cpu.p |= P_M;
     if (on)
         or8(db() | 0x0DA7, 0x40);
@@ -7432,11 +7454,11 @@ static void slide_bits_frame(uint8_t and_m, uint8_t or_m, uint8_t snd)
     uint8_t v;
 
     if (!hit()) {
-        cyc(42);
+        cyc(18);
         and8(F(0x2025, cpu.x), 0xFE);
         cyc(38);
         return;
-    } else { cyc(52); }
+    } else { cyc(28); }
     cpu.p |= P_M;
     if (and_m == 0xFF) {
         or8(db() | 0x0DA5, or_m);
@@ -7876,7 +7898,7 @@ static void slide_gate_frame(void)
     uint16_t v;
 
     if (hit()) {
-        cyc(52);
+        cyc(28);
         cpu.p |= P_M;
         lda8((uint8_t)(ld8(db() | 0x0DA5) & 0x01));
         if (!(uint8_t)cpu.a) {
@@ -7888,6 +7910,7 @@ static void slide_gate_frame(void)
                 slide_gate_held_m16();
                 return;
             } else { cyc(66); }
+            cyc(4);
             st16w(0x7F3470, 0x0800);
             slide_set(0x0100, 0x0700, 0x0000);
             cpu.p |= P_M;
@@ -7901,7 +7924,7 @@ static void slide_gate_frame(void)
         cyc(22);
         sound1(0x11);
         return;
-    } else { cyc(58); }
+    } else { cyc(34); }
     lda8((uint8_t)(ld8(db() | 0x0DA5) & 0x01));
     if ((uint8_t)cpu.a) {
         cyc(40);
@@ -7913,7 +7936,7 @@ static void slide_gate_frame(void)
     op_lda16(0x7F3470);
     op_cmp16(0x7FFF);
     if (cpu.a != 0x7FFF)
-        { cyc(36); slide_set(0x0100, 0xFF00, 0x8000); } else { cyc(42); }
+        { cyc(40); slide_set(0x0100, 0xFF00, 0x8000); } else { cyc(46); }
     op_lda16(cyc_then(30, F(0x2025, cpu.x)));
     op_and16(0x0002);
     if (cpu.a)
@@ -8038,9 +8061,9 @@ static void shard(uint16_t kind, uint8_t s48, uint8_t s49, uint8_t s4a, uint8_t 
     st8i(F(0x2048, cpu.y), s48);
     st8i(F(0x2049, cpu.y), cyc_then(6, s49));
     st8i(F(0x204A, cpu.y), cyc_then(6, s4a));
-    abi_ObjectCopyPositionTo();
-    abi_ObjectCopy14To();
-    st8i((cyc(22), db()) | 0x1F58, vx);
+    (cyc(62), abi_ObjectCopyPositionTo());
+    (cyc(62), abi_ObjectCopy14To());
+    st8i((cyc(0), db()) | 0x1F58, vx);
     st8i(db() | 0x1F59, vy);
     axis_from(db() | 0x1F58, dp(0x02), dp(0x04), dp(0x05));
     axis_from(db() | 0x1F59, dp(0x08), dp(0x0A), dp(0x0B));
@@ -8056,10 +8079,10 @@ static void shard_from_z(void)
 
     axis_from(dp(0x00), dp(0x94), db() | 0x05F2, db() | 0x05F3);
     ld8(F(0x2016, cpu.x));
-    abi_RotateXY();
+    (cyc(62), abi_RotateXY());
     orbit_again();
     ld8(cyc_then(22, F(0x2014, cpu.x)));
-    abi_RotateXZFrom08();
+    (cyc(62), abi_RotateXZFrom08());
     orbit_again();
     ld8(cyc_then(22, F(0x2015, cpu.x)));
     (cyc(62), abi_RotateXZ());
@@ -8360,18 +8383,19 @@ static void bounce_colour(uint16_t lim, uint16_t pos)
     op_add16(rd16(cyc_then(44, F(0x2029, cpu.x))));
     wr16(F(0x2027, cpu.x), cyc_then(30, cpu.a));
     op_cmp16(lim);
-    if (cpu.a == lim || (cyc(30), (op_cmp16((uint16_t)-lim), cpu.a == (uint16_t)-lim))) {
-        op_lda16(cyc_then(72, F(0x2029, cpu.x)));
+    if (cpu.a == lim || (cyc(34), (op_cmp16((uint16_t)-lim), cpu.a == (uint16_t)-lim))) {
+        op_lda16(cyc_then(76, F(0x2029, cpu.x)));
         cpu.a ^= 0xFFFF;
         cpu.p = nz16(cpu.p, cpu.a);
         cpu.a++;
         cpu.p = nz16(cpu.p, cpu.a);
         wr16(F(0x2029, cpu.x), cyc_then(68, cpu.a));
-    } else { cyc(48); }
+    } else { cyc(52); }
     cpu.p |= P_M;
     add16_via(F(pos, cpu.x), F(0x2027, cpu.x));
     colour_cycle(0x0A);
     add8(F(0x2015, cpu.x), 0x08);
+    cyc(42);
 }
 
 /*
@@ -8427,8 +8451,10 @@ static void shatter_marker_frame(void)
 /* 09:C217: the marker's record ($42D, flag bit 4, +$2A high 1). */
 static void shatter_marker_record(void)
 {
+    cyc(62);
     abi_GsuRecordNew42D();
     abi_GsuRecordFlag10();
+    cyc(58);
     lda8(0x01);
     abi_GsuRecordSet2AHigh();
 }
@@ -8564,7 +8590,7 @@ static void lap_light_frame(void)
         return;
     } else { cyc(18); }
     if (!hit())
-        { cyc(42); return; } else { cyc(20); }
+        { cyc(18); return; } else { cyc(0); }
     lap_store(0x200A);
     sound0(0x5C);
     or8(F(0x2025, cpu.x), 0x01);
@@ -8583,6 +8609,7 @@ static void lap_light_frame(void)
  */
 void abi_ObjectLapLightRecord(void)
 {
+    cyc(62);
     abi_GsuRecordNew42D();
     abi_GsuRecordFlag10();
     lap_light_frame();
@@ -8877,7 +8904,7 @@ void abi_ObjectShardStep(void)
     axis_from(db() | 0x1F59, dp(0x08), dp(0x0A), dp(0x0B));
     axis_from(dp(0x00), dp(0x94), db() | 0x05F2, db() | 0x05F3);
     ld8(F(0x2014, cpu.x));
-    abi_RotateXZFrom08();
+    (cyc(62), abi_RotateXZFrom08());
     orbit_again();
     ld8(cyc_then(22, F(0x2015, cpu.x)));
     (cyc(62), abi_RotateXZ());
@@ -8923,8 +8950,8 @@ void abi_ObjectRisingSpark(void)
 {
     cpu.y = rd16(cyc_then(30, F(0x2029, cpu.x)));
     cpu.p = nz16(cpu.p, cpu.y);
-    abi_ObjectCopyPositionFrom();
-    life_down();
+    (cyc(62), abi_ObjectCopyPositionFrom());
+    (cyc(22), life_down());
     add16(F(0x200E, cpu.x), 0xFF80);
     add16(F(0x2027, cpu.x), cyc_then(44, 0xFFD8));
     add16_via(F(0x200E, cpu.x), F(0x2027, cpu.x));
@@ -8944,16 +8971,16 @@ static void bonus_marker2_frame(void (*shatter)(void), uint16_t kind, uint8_t bo
     uint8_t v;
 
     (cyc(46), abi_MarkerBounceY());
-    (cyc(42), abi_ObjectSyncToRecord());
+    (cyc(62), abi_ObjectSyncToRecord());
     cyc(70);
     lda8((uint8_t)(cpu.a & 0x01));
     if (!(uint8_t)cpu.a)
         { cyc(66); return; }
     if (!next_contact())
-        return;
+        return; else { cyc(24); }
     abi_HudCountUp19EC();
     sx = cpu.x;
-    (cyc(118), shatter());
+    (cyc(76), shatter());
     cpu.x = sx;
     cpu.p = nz16(cpu.p, sx);
     cyc(66);
@@ -8963,8 +8990,8 @@ static void bonus_marker2_frame(void (*shatter)(void), uint16_t kind, uint8_t bo
         cpu.x = rd16(cyc_then(24, db() | 0x0346));
         cpu.p = nz16(cpu.p, cpu.x);
         st8i(F(0x200A, cpu.y), cyc_then(6, 0x0A));
-        abi_ObjectCopyPositionTo();
-        st16i(F(0x2027, cpu.y), 0x0000);
+        (cyc(62), abi_ObjectCopyPositionTo());
+        st16i(F(0x2027, cpu.y), cyc_then(22, 0x0000));
         a = (uint8_t)cpu.a;
         cpu.p &= (uint8_t)~P_M;
         cpu.a = cpu.x;
@@ -8990,7 +9017,7 @@ static void bonus_marker2_frame(void (*shatter)(void), uint16_t kind, uint8_t bo
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     wr8(db() | 0x19EF, cyc_then(40, v));
     cpu.p &= (uint8_t)~P_D;
-    (cyc(14), abi_ObjectRelease());
+    (cyc(76), abi_ObjectRelease());
     cyc(66);
 }
 
@@ -9067,7 +9094,7 @@ void abi_ObjectBonusMarker5(void)
     cyc(22);
     handlers2(0xBFEE, 0xBFF6);
     st8i(F(0x2048, cpu.x), cyc_then(6, 0x01));
-    abi_GsuRecordNew42D();
+    (cyc(62), abi_GsuRecordNew42D());
     abi_GsuRecordFlag10();
     bonus_marker2_frame(abi_ObjectShatter2, 0xB604, 0x05);
 }
@@ -9081,6 +9108,7 @@ void abi_ObjectBonusMarker5(void)
  */
 void abi_ObjectBonusMarker5Record(void)
 {
+    cyc(62);
     abi_GsuRecordNew42D();
     abi_GsuRecordFlag10();
     bonus_marker2_frame(abi_ObjectShatter2, 0xB604, 0x05);

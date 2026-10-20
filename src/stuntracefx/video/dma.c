@@ -81,6 +81,7 @@ uint8_t VramDmaFromGsuRam(uint16_t size, uint16_t src, uint16_t vram)
     mode = rd8(GSU_SCMR_SHADOW) | 0x18;
     cyc(40);
     wr8(GSU_SCMR, mode);
+    cyc(42);
     return mode;
 }
 
@@ -153,6 +154,7 @@ void abi_VramDmaRowsFromGsuRam(void)
     cpu.x = 0x01;
     cpu.y = 0;
     cpu.p = (uint8_t)(nz16(cpu.p, mode) | P_X);
+    cyc(42);
 }
 
 /*
@@ -179,6 +181,7 @@ void OamDma(uint16_t src, uint16_t size)
     wr8(A1B0, 0x00);
     cyc(40);
     wr8(MDMAEN, 0x01);
+    cyc(42);
 }
 
 void abi_OamDma(void)
@@ -201,13 +204,14 @@ void OamDmaAll(void)
 {
     cyc(160);
     OamDma(OAM_BUFFER, 0x0220);
+    cyc(72);
 }
 
 void abi_OamDmaAll(void)
 {
     OamDmaAll();
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
-    cpu.x = (cpu.p & P_X) ? (cyc(114), 0x00) : 0x0400;
+    cpu.x = (cpu.p & P_X) ? (cyc(0), 0x00) : 0x0400;
     cpu.y = (cpu.p & P_X) ? 0x20 : 0x0220;
 }
 
@@ -222,7 +226,7 @@ void abi_OamDmaAll(void)
  */
 void CgramDma(uint16_t src, uint8_t colour, uint16_t size)
 {
-    cyc(118);
+    cyc(24);
     wr16(A1T0L, src);
     cyc(24);
     wr16(DAS0L, size);
@@ -243,6 +247,7 @@ void abi_CgramDma(void)
     cpu.x &= 0x00FF;
     cpu.y &= 0x00FF;
     cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z)) | P_M | P_X);
+    cyc(42);
 }
 
 /* Work RAM $7E:FD65: the full 512-byte palette as the game last built it. */
@@ -257,8 +262,9 @@ void abi_CgramDma(void)
  */
 void CgramDmaAll(void)
 {
-    cyc(68);
+    cyc(162);
     CgramDma(PALETTE_BUFFER, 0x00, 0x0200);
+    cyc(72);
 }
 
 void abi_CgramDmaAll(void)
@@ -283,22 +289,24 @@ static uint16_t vram_write_row(uint16_t vram, uint16_t *x)
     uint16_t src, w;
     unsigned i;
 
-    cyc(138);
+    cyc(68);
     wr16(VMADDL, vram);
     cyc(40);
     src = rd16(0x000002);
     for (i = 0; i < 64; i++) {
-        cyc(96);
+        cyc(32);
         w = rd16(0x703000 + (uint16_t)(src + 2 * i));
         cyc(24);
         wr16(0x002118, w);
+        cyc(64);
     }
     *x = (uint16_t)(src + 0x80);
-    cyc(74);
+    cyc(10);
     src = rd16(0x000002);
     src = (uint16_t)(src + 0x0200);
     cyc(54);
     wr16(0x000002, src);
+    cyc(70);
     return src;
 }
 
@@ -372,6 +380,7 @@ uint8_t VramDmaWideRowsFromGsuRam(uint8_t rows_less_one, uint16_t src, uint16_t 
     cyc(40);
     wr8(GSU_SCMR, mode);
     *next = s;
+    cyc(70);
     return mode;
 }
 
@@ -397,7 +406,7 @@ void abi_VramDmaWideRowsFromGsuRam(void)
  */
 static int vram_upload_gsu_buffer(uint16_t *src)
 {
-    cyc(114);
+    cyc(24);
     if (rd8(0x000D32) == 0)
         { cyc(22); return 0; }
     cyc(56);
@@ -440,7 +449,7 @@ void abi_VramUploadGsuBuffer(void)
         cpu.a &= 0xFF00;
         cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
     }
-    cyc(136);
+    cyc(42);
 }
 
 /*
@@ -456,13 +465,14 @@ void DmaFromDescriptor(uint8_t bank, uint16_t desc)
 {
     int y;
 
-    cyc(108);
+    cyc(38);
     wr16(0x0000FB, desc);
     cyc(2);
     for (y = 6; y >= 0; y--)
         { cyc(106); wr8(DMAP0 + (unsigned)y, rd8((uint32_t)bank << 16 | (uint16_t)(desc + y))); }
     cyc(70);
     wr8(MDMAEN, 0x01);
+    cyc(70);
 }
 
 void abi_DmaFromDescriptor(void)
@@ -488,7 +498,7 @@ void abi_DmaFromDescriptor(void)
  */
 uint16_t CoursePictureToVram(uint8_t bank)
 {
-    cyc(268);
+    cyc(108);
     uint16_t w = rd16(cyc_then(106, 0x7F0B96 + 2 * (unsigned)rd8((uint32_t)bank << 16 | 0x0E3D)));
     uint16_t t = (uint16_t)(w & 0xFFFC);
 
@@ -499,17 +509,19 @@ uint16_t CoursePictureToVram(uint8_t bank)
     t = rd16(0x000002);
     cyc(16);
     wr16(0x000002, (uint16_t)(t + ((w & 0x0003) << 7)));
+    cyc(70);
     VramWriteRowFromGsuRam(0x6480);
     cyc(70);
     VramWriteRowFromGsuRam(0x6580);
     cyc(70);
     VramWriteRowFromGsuRam(0x64C0);
     cyc(70);
-    return VramWriteRowFromGsuRam(0x65C0);
+    return cyc_then(72, VramWriteRowFromGsuRam(0x65C0));
 }
 
 void abi_CoursePictureToVram(void)
 {
+    cyc(160);
     uint16_t a = CoursePictureToVram(cpu.db);
 
     cpu.a = a;
@@ -540,7 +552,7 @@ uint8_t AnimTilesQueueNext(uint8_t bank, uint16_t *a)
     uint16_t off;
     uint8_t f;
 
-    cyc(138);
+    cyc(76);
     off = rd16(0x0018F7);
     off = (uint16_t)((off + 0x0400) & 0x1FFF);
     cyc(94);
@@ -559,6 +571,7 @@ uint8_t AnimTilesQueueNext(uint8_t bank, uint16_t *a)
     f = (uint8_t)(rd8(b | 0x11D7) | 0x02);
     cyc(40);
     wr8(b | 0x11D7, f);
+    cyc(72);
     return f;
 }
 
@@ -590,12 +603,12 @@ void abi_CgramUploadAll(void)
     cpu.x = 0x0000;
     cpu.y = 0x0200;
     cpu.p = nz16(cpu.p, cpu.y);
-    abi_CgramDma();
+    (cyc(94), abi_CgramDma());
     cpu.p = p0;
     if (p0 & P_X) {
         cpu.x &= 0x00FF;
         cpu.y &= 0x00FF;
-    } else { cyc(112); }
+    } else { cyc(70); }
 }
 
 void abi_TilemapRowsTo5C00(void);
@@ -650,7 +663,7 @@ static void flag_0357(uint32_t b, int z)
     cpu.p |= P_M;
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
     cpu.p = nz8(cpu.p, 0x01);
-    cyc(104);
+    cyc(62);
     wr8(b | 0x0357, 0x01);
     if (z)
         { cyc(16); wr8(0x000000, 0x00); }
@@ -807,7 +820,7 @@ static void split_stage(uint32_t b)
         break;
     case 0xAB63:
         cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
-        abi_TilemapRowsTo5C00();
+        (cyc(90), abi_TilemapRowsTo5C00());
         /* fall through */
     case 0xAB6A:
         cyc(138);
@@ -820,9 +833,9 @@ static void split_stage(uint32_t b)
         cpu.x = 0;
         cpu.y &= 0x00FF;
         cpu.p = nz8(cpu.p, 0);
-        (cyc(126), abi_Bg2ScrollFromTable());
+        (cyc(84), abi_Bg2ScrollFromTable());
         cpu.p &= (uint8_t)~(P_M | P_X);
-        (cyc(110), abi_CgramUploadAll());
+        (cyc(68), abi_CgramUploadAll());
         break;
     case 0xAB85:
         cpu.p &= (uint8_t)~(P_M | P_X);
@@ -839,14 +852,14 @@ static void split_stage(uint32_t b)
         break;
     case 0xAB4C:
         cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
-        abi_VramUploadGsuBuffer();
+        (cyc(90), abi_VramUploadGsuBuffer());
         cpu.x = 0x0375;
         cpu.y = 0x0220;
         cpu.p = nz16(cpu.p, cpu.y);
-        abi_OamDma();
+        (cyc(94), abi_OamDma());
         /* fall through */
     case 0xAB5C:
-        cyc(110);
+        cyc(68);
         cpu.p &= (uint8_t)~(P_M | P_X);
         abi_CgramUploadAll();
         break;
@@ -955,6 +968,7 @@ void abi_NmiFrameUpload(void)
         cyc(40);
         split_stage(b);
         op_plp(p0);
+        cyc(28);
         return;
     } else { cyc(22); }
     race_stage(b);
@@ -990,7 +1004,7 @@ static int race_stage(uint32_t b)
         ld3(0x2200, 0x2C00, 0x0000, 0x2200);
         abi_VramDmaFromGsuRam();
         cpu.p &= (uint8_t)~(P_M | P_X);
-        cyc(64);
+        cyc(22);
         ld3(0x0200, 0xE3D7, 0x5BC0, 0x5BC0);
         abi_VramDmaFromBank7F();
         break;
@@ -1047,7 +1061,7 @@ static int race_stage(uint32_t b)
         ld3(0x2200, 0xB800, 0x3400, 0x2200);
         abi_VramDmaFromGsuRam();
         cpu.p &= (uint8_t)~(P_M | P_X);
-        cyc(64);
+        cyc(22);
         ld3(0x0200, 0xE817, 0x5DE0, 0x5DE0);
         abi_VramDmaFromBank7F();
         break;
@@ -1116,6 +1130,7 @@ static int race_stage(uint32_t b)
         abi_CgramUploadAll();
         return 0;
     }
+    cyc(28);
     return 1;
 }
 

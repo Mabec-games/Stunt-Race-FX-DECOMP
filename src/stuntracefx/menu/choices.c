@@ -31,6 +31,7 @@ static uint32_t dbw(uint8_t bank, uint16_t a)
    MenuSet1A66 leaves (X = c * 2, Y = $1A64) before the second call. */
 static uint16_t show_choice(uint8_t bank, uint16_t c, uint16_t *x, uint16_t *y, uint8_t *p)
 {
+    cyc(46);
     MenuSet1A66(bank, c);
     *x = (uint16_t)(c << 1);
     *y = 0x1A64;
@@ -81,14 +82,14 @@ uint16_t MenuChoiceStepP1(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     uint16_t a = rd16(cyc_then(24, dbw(bank, PRESS))) & 0x0200;
 
     if (a)
-        { cyc(140); step_p1(bank, CHOICE_LEFT, 0x0002, x, y, p); } else { cyc(4); }
-    a = rd16(cyc_then(66, dbw(bank, PRESS))) & 0x0100;
+        { cyc(140); step_p1(bank, CHOICE_LEFT, 0x0002, x, y, p); } else { cyc(46); }
+    a = rd16(cyc_then(24, dbw(bank, PRESS))) & 0x0100;
     if (!a) {
-        cyc(4);
+        cyc(88);
         *p = nz16(*p, a);
         return a;
     } else { cyc(140); }
-    return step_p1(bank, CHOICE_RIGHT, 0x0001, x, y, p);
+    return cyc_then(42, step_p1(bank, CHOICE_RIGHT, 0x0001, x, y, p));
 }
 
 void abi_MenuChoiceStepP1(void)
@@ -122,7 +123,7 @@ uint16_t MenuChoicePressesP1(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     }
     do {
         *x = i;
-        cyc(216);
+        cyc(90);
         v = rd16(0x001195 + i);
         wr16(dbw(bank, PRESS), cyc_then(24, v));
         v |= rd16(cyc_then(24, dbw(bank, 0x118B)));
@@ -130,10 +131,11 @@ uint16_t MenuChoicePressesP1(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
         cyc(76);
         MenuChoiceStepP1(bank, x, y, p);
         i = (uint16_t)(i - 2);
-    } while (!(i & 0x8000));
-    cyc(220);
+    } while (cyc_loop(42, !(i & 0x8000)));
+    cyc(136);
     wr16(0x001191, 0x0000);
     *p = nz16(*p, 0);
+    cyc(42);
     return 0;
 }
 
@@ -166,7 +168,7 @@ static uint16_t step_p2(uint8_t bank, uint32_t table, uint16_t instead, uint16_t
     }
     cyc(32);
     c = rd16(CHOICE_P2);
-    cyc(30);
+    cyc(76);
     MenuChoiceRepeat(x, p);
     cyc(4);
     return show_choice(bank, c, x, y, p);
@@ -186,14 +188,14 @@ uint16_t MenuChoiceStepP2(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     uint16_t a = rd16(cyc_then(100, dbw(bank, PRESS))) & 0x0200;
 
     if (a)
-        { cyc(140); step_p2(bank, CHOICE_LEFT, 0x0002, x, y, p); } else { cyc(4); }
-    a = rd16(cyc_then(66, dbw(bank, PRESS))) & 0x0100;
+        { cyc(140); step_p2(bank, CHOICE_LEFT, 0x0002, x, y, p); } else { cyc(46); }
+    a = rd16(cyc_then(24, dbw(bank, PRESS))) & 0x0100;
     if (!a) {
-        cyc(4);
+        cyc(88);
         *p = nz16(*p, a);
         return a;
     } else { cyc(140); }
-    return step_p2(bank, CHOICE_RIGHT, 0x0001, x, y, p);
+    return cyc_then(42, step_p2(bank, CHOICE_RIGHT, 0x0001, x, y, p));
 }
 
 void abi_MenuChoiceStepP2(void)
@@ -224,17 +226,18 @@ uint16_t MenuChoicePressesP2(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     }
     do {
         *x = i;
-        cyc(216);
+        cyc(90);
         v = rd16(0x0011B5 + i);
         wr16(dbw(bank, PRESS), cyc_then(24, v));
         v |= rd16(cyc_then(24, dbw(bank, 0x118D)));
         wr16(dbw(bank, 0x118D), cyc_then(24, v));
         MenuChoiceStepP2(bank, x, y, p);
         i = (uint16_t)(i - 2);
-    } while (!(i & 0x8000));
-    cyc(220);
+    } while (cyc_loop(42, !(i & 0x8000)));
+    cyc(136);
     wr16(0x001193, 0x0000);
     *p = nz16(*p, 0);
+    cyc(42);
     return 0;
 }
 
@@ -287,7 +290,7 @@ static uint16_t start_anim(uint16_t rec, uint16_t v, uint8_t *p)
    from X. */
 static uint16_t set10(uint8_t bank, uint16_t kind, uint16_t value, uint16_t *x, uint16_t *y, uint8_t *p)
 {
-    cyc(38);
+    cyc(94);
     uint16_t a = MenuActorsSet10(bank, kind, value, p);
 
     *y = 0xFFFE;
@@ -339,14 +342,14 @@ uint16_t MenuChoicesFromSave(uint16_t menu, uint16_t *x)
         v = choice_from_save(0x70FC0C, 0, x);
         cyc(132);
         wr16(CHOICE_P1, v);
-        cyc(22);
+        cyc(92);
         return v;
     case 1:
         cyc(176);
         v = choice_from_save(0x70FC0C, 4, x);
         cyc(188);
         wr16(CHOICE_P1, v);
-        cyc(22);
+        cyc(92);
         return v;
     case 2:
         cyc(216);
@@ -356,6 +359,7 @@ uint16_t MenuChoicesFromSave(uint16_t menu, uint16_t *x)
         v = choice_from_save(0x70FC0E, 4, x);
         cyc(188);
         wr16(CHOICE_P2, v);
+        cyc(70);
         return v;
     }
     cyc(196);
@@ -443,11 +447,12 @@ void abi_MenuSettingsRowMarker(void)
  */
 uint16_t MenuSettingsShow(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
 {
+    cyc(62);
     uint16_t i, v, a;
 
     SelectionTables18CBLong(bank);
     MenuChoiceAnimations(bank, x, y, p);
-    cyc(74);
+    cyc(32);
     i = (uint16_t)(rd16(SETTING_ROW) << 1);
     cyc(60);
     v = rd16(SETTINGS + i);
@@ -474,6 +479,7 @@ uint16_t MenuSettingsShow(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     }
     *x = rd16(cyc_then(46, dbw(bank, CURRENT)));
     *p = nz16(*p, *x);
+    cyc(42);
     return a;
 }
 
@@ -549,7 +555,7 @@ uint16_t MenuSettingsInput(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     } else { cyc(46); }
     *x = rd16(cyc_then(24, dbw(bank, CURRENT)));
     MenuSettingsShow(bank, x, y, p);
-    return MenuChoiceAnimations(bank, x, y, p);
+    return cyc_then(42, MenuChoiceAnimations(bank, x, y, p));
 }
 
 void abi_MenuSettingsInput(void)
@@ -598,10 +604,10 @@ uint16_t MenuSettingsHandler(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     wr16(0x0018FD, 0x0000);
     MenuFixedColourUp(bank, *x, p);
     MenuSettingsInput(bank, x, y, p);
-    *y = rd16(cyc_then(108, dbw(bank, 0x118B)));
+    *y = rd16(cyc_then(24, dbw(bank, 0x118B)));
     a = *y & 0xF000;
     if (!a) {
-        cyc(54);
+        cyc(96);
         *p = nz16(*p, a);
         return a;
     } else { cyc(60); }
@@ -663,10 +669,10 @@ uint16_t MenuSettingsHandler2(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p
 
     MenuFixedColourUp(bank, *x, p);
     MenuSettingsInput(bank, x, y, p);
-    *y = rd16(cyc_then(108, dbw(bank, 0x118B)));
+    *y = rd16(cyc_then(24, dbw(bank, 0x118B)));
     a = *y & 0xF000;
     if (!a) {
-        cyc(54);
+        cyc(96);
         *p = nz16(*p, a);
         return a;
     } else { cyc(60); }
@@ -725,7 +731,7 @@ uint16_t MenuModeSelect(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
 
     a = MenuChoiceUpDown(bank);
     *p = (uint8_t)(nz16(*p, a) & ~P_M);
-    *y = rd16(cyc_then(66, dbw(bank, 0x118B)));  /* MenuChoiceUpDown leaves it in Y */
+    *y = rd16(cyc_then(24, dbw(bank, 0x118B)));  /* MenuChoiceUpDown leaves it in Y */
     a = *y & 0x9000;
     if (!a) {
         cyc(46);
@@ -758,22 +764,24 @@ uint16_t MenuModeSelect(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     wr16((uint16_t)(*x + 0x0A), 0x0000);
     cyc(70);
     *x = MenuActorSpawn(bank, 0x0270, &a, y, p);
-    cyc(74);
+    cyc(32);
     MenuChoicesFromSave(rd16(MENU_MODE), x);
-    cyc(126);
+    cyc(56);
     wr16(0x0018D3, 0x0000);
     cyc(32);
     c = rd16(CHOICE_P1);
     a = show_choice(bank, c, x, y, p);
-    *x = rd16(cyc_then(66, dbw(bank, CURRENT)));
+    *x = rd16(cyc_then(24, dbw(bank, CURRENT)));
     *p = nz16(*p, *x);
     return a;
 }
 
 void abi_MenuModeSelect(void)
 {
+    cyc(46);
     uint8_t p = cpu.p;
 
     cpu.a = MenuModeSelect(cpu.db, &cpu.x, &cpu.y, &p);
     cpu.p = p;
+    cyc(42);
 }

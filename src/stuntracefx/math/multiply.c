@@ -30,11 +30,12 @@ uint16_t PpuMultiplierSetLowByteTimes8(uint8_t v)
 
 void abi_PpuMultiplierSetLowByteTimes8(void)
 {
-    cyc(46);
+    cyc(0);
     uint16_t factor = PpuMultiplierSetLowByteTimes8((uint8_t)cpu.a);
 
     cpu.a = (uint16_t)(factor << 8 | factor >> 8);
     cpu.p = (uint8_t)(nz8(cpu.p, (uint8_t)(factor >> 8)) & ~(P_C | P_M));
+    cyc(64);
 }
 
 /*

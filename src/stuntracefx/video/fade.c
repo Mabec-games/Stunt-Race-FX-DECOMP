@@ -15,7 +15,7 @@
 static uint8_t clamp_flags(uint8_t p, uint16_t sum)
 {
     if (sum >= 0x0F00)
-        return (uint8_t)((p & ~(P_N | P_Z)) | P_C);
+        return (uint8_t)((p & ~(P_N | P_Z)) | P_C); else { cyc(20); }
     return (uint8_t)(nz16(p, (uint16_t)(sum - 0x0F00)) & ~P_C);
 }
 
@@ -76,9 +76,10 @@ void abi_FadeStepFixed(void)
 {
     uint8_t p = cpu.p;
 
-    cyc(140);
+    cyc(94);
     cpu.a = rd8(FADE_OUT) == 0 ? (cyc(62), fade_in(0x0098, &p)) : (cyc(6), fade_out(&p));
     cpu.p = (uint8_t)(p | P_M);
+    cyc(64);
 }
 
 /*

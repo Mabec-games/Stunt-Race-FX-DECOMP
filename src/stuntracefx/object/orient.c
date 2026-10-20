@@ -75,13 +75,14 @@ void ObjectFaceTied(void)
         wr16(0x000004, cyc_then(16, rd16(cyc_then(44, absidx(bank, 0x0008, rec)))));
         wr16(0x00000A, cyc_then(16, rd16(cyc_then(30, absidx(bank, 0x000A, rec)))));
         wr16(absidx(bank, 0x05F2, 0), cyc_then(24, rd16(cyc_then(30, absidx(bank, 0x000C, rec)))));
-        abi_ObjectGsu81E3();
+        (cyc(62), abi_ObjectGsu81E3());
         wr16(absidx(bank, 0x0010, rec), cyc_then(108, (uint16_t)(cpu.a + 0x8000)));
         if (!(rd16(cyc_then(30, absidx(bank, 0x0000, rec))) & 0x0040)) {
+            cyc(102);
             abi_ObjectGsu80BCThen81E3();
             a = cpu.a;
         } else {
-            cyc(6);
+            cyc(108);
             abi_ObjectGsu80BCThen81E3();
             old = rd16(cyc_then(22, absidx(bank, 0x000E, rec)));
             a = asr16(asr16((uint16_t)(cpu.a - old)));
@@ -100,7 +101,7 @@ void ObjectFaceTied(void)
         ease_half(bank, rec, 0x0010, neg_angle(absidx(bank, 0x2015, cpu.x)));
         ease_half(bank, rec, 0x0012, neg_angle(absidx(bank, 0x2016, cpu.x)));
         cpu.x = cpu.y;
-    } else { cyc(32); } }
+    } else { cyc(10); } }
     cyc(58);
     a = rd16(cpu.x) & 0x8000;
     if (!a)
@@ -126,9 +127,10 @@ static uint32_t dbw(uint8_t bank, uint16_t a)
    `out`, `out` + 2 and `out` + 4; returns the last value stored. */
 static uint16_t area_origin(uint8_t bank, uint16_t out, uint8_t *p)
 {
+    cyc(62);
     uint16_t v = ScaleDp02Dp94Long(p);
 
-    wr16(dbw(bank, out), cyc_then(156, v));
+    wr16(dbw(bank, out), cyc_then(112, v));
     cyc(16);
     v = rd16(0x000002);
     wr16(dbw(bank, (uint16_t)(out + 2)), cyc_then(24, v));
@@ -194,6 +196,7 @@ uint16_t ViewFromRecord(uint8_t bank, uint16_t rec, uint8_t *p)
     wr16(0x000094, cyc_then(16, rd16(0x7E2010 + obj)));
     v = area_origin(bank, 0x1EFB, p);
     *p = nz16(*p, rec);
+    cyc(80);
     return v;
 }
 

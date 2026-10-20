@@ -24,7 +24,7 @@ static uint8_t sbc8(uint8_t a, uint8_t m, int *c)
 uint8_t RandomStep(void)
 {
     int c = 0;
-    cyc(168);
+    cyc(60);
     uint8_t a = rd8(0x0000E6);
 
     cyc(30);
@@ -43,6 +43,7 @@ uint8_t RandomStep(void)
     a = sbc8(a, rd8(0x0000E6), &c);
     cyc(16);
     wr8(0x0000E6, a);
+    cyc(70);
     return a;
 }
 
@@ -67,7 +68,7 @@ void abi_RandomStep(void)
 uint16_t RandomWordStep(uint8_t bank)
 {
     uint32_t at = (uint32_t)bank << 16 | 0x0D18;
-    cyc(80);
+    cyc(68);
     uint16_t x = rd16(at), t, y, v;
 
     /* low byte = hi ^ lo, high byte = lo (the word read again for the EOR) */
@@ -107,10 +108,10 @@ void abi_RandomWordStep(void)
  */
 uint8_t RandomStepLong(void)
 {
-    return RandomStep();
+    return cyc_then(44, RandomStep());
 }
 
 void abi_RandomStepLong(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | RandomStepLong());
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | (cyc(46), RandomStepLong()));
 }

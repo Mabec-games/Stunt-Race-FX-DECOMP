@@ -105,7 +105,7 @@ static uint8_t check_records(uint8_t bank, uint16_t base, uint16_t sums, unsigne
     unsigned y;
 
     for (y = 0; y < count; y++, x = (uint8_t)(x + 5)) {
-        cyc(212);
+        cyc(144);
         uint8_t xs = x;
 
         a = sum(&xs, p);
@@ -114,7 +114,7 @@ static uint8_t check_records(uint8_t bank, uint16_t base, uint16_t sums, unsigne
             cyc(40);
             a = rd8(b | (uint16_t)(base + x));
             if (a)
-                { cyc(22); continue; }
+                { cyc(90); continue; }
         } else { cyc(6); }
         cyc(62);
         wr8(b | (uint16_t)(base + x), 0xFF);
@@ -129,8 +129,9 @@ static uint8_t check_records(uint8_t bank, uint16_t base, uint16_t sums, unsigne
         cyc(46);
         wr8(b | (uint16_t)(sums + y), 0xFE);
         a = 0xFE;
+        cyc(68);
     }
-    cyc(136);
+    cyc(90);
     return a;
 }
 
@@ -226,7 +227,7 @@ void SaveBlocksCheck(uint8_t bank, uint8_t *p)
     uint8_t v, s, blk;
     unsigned i;
 
-    cyc(108);
+    cyc(62);
     wr16(0x0000F3, 0x000C);
     do {
         cyc(38);
@@ -255,7 +256,7 @@ void SaveBlocksCheck(uint8_t bank, uint8_t *p)
             sum_byte(b | (uint16_t)(0xFCD3 + x), p);
             cyc(46);
         }
-        cyc(102);
+        cyc(56);
         x = rd16(0x0000F3);
         cyc(30);
         v = rd8(b | (uint16_t)(0xFC33 + x));
@@ -267,7 +268,7 @@ reset:
         cyc(54);
         x = rd16(0x0000F5);
         for (i = 0; i < 12; i++, x += 4) {
-            cyc(138);
+            cyc(92);
             wr8(b | (uint16_t)(0xFCD0 + x), 0x00);
             cyc(30);
             wr8(b | (uint16_t)(0xFCD1 + x), 0x00);
@@ -275,8 +276,9 @@ reset:
             wr8(b | (uint16_t)(0xFCD2 + x), 0xFF);
             cyc(30);
             wr8(b | (uint16_t)(0xFCD3 + x), 0xFF);
+            cyc(46);
         }
-        cyc(102);
+        cyc(56);
         x = rd16(0x0000F3);
         cyc(46);
         wr8(b | (uint16_t)(0xFC33 + x), 0xE8);
@@ -289,7 +291,7 @@ next:
         cyc(16);
         blk = rd8(0x0000F3);
     } while (cyc_loop(38, blk < 0x10));
-    cyc(52);
+    cyc(74);
 }
 
 void abi_SaveBlocksCheck(void)
@@ -332,7 +334,7 @@ uint8_t SaveTablesCheck(uint8_t bank, uint8_t *p)
     cyc(16);
     wr8(0x0000F6, 0x00);
     for (k = 2; k >= 0; k--) {
-        cyc(122);
+        cyc(86);
         wr8(0x0000F3, first[k]);
         cyc(56);
         wr8(0x0000F5, second[k]);
@@ -341,7 +343,7 @@ uint8_t SaveTablesCheck(uint8_t bank, uint8_t *p)
         cyc(40);
         x = rd16(0x0000F3);
         for (i = 0; i < 12; i++, x += 2) {
-            cyc(108);
+            cyc(44);
             v = rd8(b | (uint16_t)(0xFC88 + x));
             cyc(16);
             sum = rd8(0x0000F1);
@@ -360,8 +362,9 @@ uint8_t SaveTablesCheck(uint8_t bank, uint8_t *p)
             sum = add8(v, sum, p);
             cyc(16);
             wr8(0x0000F1, sum);
+            cyc(64);
         }
-        cyc(74);
+        cyc(10);
         x = rd16(0x0000F5);
         for (i = 0; i < 9; i++, x++) {
             cyc(94);
@@ -378,19 +381,20 @@ uint8_t SaveTablesCheck(uint8_t bank, uint8_t *p)
         sum = rd8(0x0000F1);
         *p = (uint8_t)((*p & ~P_C) | (a >= sum ? P_C : 0));
         if (a == sum)
-            { cyc(38); continue; }
+            { cyc(74); continue; }
 reset:
         cyc(84);
         x = rd16(0x0000F3);
         for (i = 0; i < 24; i++, x++)
-            { cyc(80); wr8(b | (uint16_t)(0xFC88 + x), 0xFF); }
-        cyc(60);
+            { cyc(54); wr8(b | (uint16_t)(0xFC88 + x), 0xFF); cyc(26); }
+        cyc(34);
         x = rd16(0x0000F5);
         for (i = 0; i < 9; i++, x++)
             { cyc(80); wr8(b | (uint16_t)(0xFC6D + x), 0x00); }
         a = 0xE8;
         cyc(128);
         wr8(0x70FC2D + k, a);
+        cyc(36);
     }
     return a;
 }
@@ -403,6 +407,7 @@ void abi_SaveTablesCheck(void)
     cpu.x = 0xFFFF;
     cpu.y = 0x0000;
     cpu.p = (uint8_t)(((p & ~(P_Z | P_X)) | P_N | P_M));
+    cyc(36);
 }
 
 /* One entry byte of SaveBlocksValidate: $FF passes; otherwise `bad` says
@@ -447,10 +452,10 @@ static void save_blocks_validate(uint8_t bank, uint8_t *p, int from_bad)
 
     if (from_bad)
         { cyc(28); goto reset; }
-    cyc(180);
+    cyc(62);
     wr16(0x0000F3, 0x0000);
     for (;;) {
-        cyc(62);
+        cyc(38);
         w = rd16(0x0000F3);
         x = (uint16_t)(w << 2);
         cyc(96);
@@ -506,7 +511,7 @@ static void save_blocks_validate(uint8_t bank, uint8_t *p, int from_bad)
         cyc(16);
         blk = rd8(0x0000F3);
         if (blk >= 0x0C)
-            { cyc(80); return; } else { cyc(32); }
+            { cyc(80); return; } else { cyc(56); }
         continue;
 reset:
         cyc(92);
@@ -526,6 +531,7 @@ reset:
             { cyc(30); wr8(b | (uint16_t)(0xFFD0 + y + j), 0xFF); }
         cyc(46);
         wr8(b | (uint16_t)(0xFC33 + x), 0xCC);
+        cyc(24);
     }
 }
 
@@ -592,11 +598,12 @@ void abi_SaveValidate(void)
     uint8_t p = cpu.p;
 
     abi_SaveTablesCheck();
-    abi_SaveBlocksValidate();
-    abi_SaveBlocksCheck();
-    abi_SaveRecordsCheckB();
-    abi_SaveRecordsCheckA();
+    (cyc(46), abi_SaveBlocksValidate());
+    (cyc(46), abi_SaveBlocksCheck());
+    (cyc(46), abi_SaveRecordsCheckB());
+    (cyc(46), abi_SaveRecordsCheckA());
     cpu.p = p;
+    cyc(72);
 }
 
 /* The unlock bytes of the save in the order their checksum adds them. */
@@ -668,6 +675,7 @@ void abi_SaveUnlocksCheck(void)
     abi_SaveValidate();
     cpu.db = db;
     cpu.p = p;
+    cyc(100);
 }
 
 void abi_TimeUnpackBcd(void);
@@ -694,7 +702,7 @@ void abi_RecordsUnpackCourse(void)
     unsigned i;
 
     cpu.p &= (uint8_t)~(P_M | P_X);
-    cyc(114);
+    cyc(68);
     a = rd16(b | 0x0D4A);
     cyc(52);
     a = (uint16_t)((uint16_t)(a << 1) + rd16(b | 0x0D4A));
@@ -708,11 +716,11 @@ void abi_RecordsUnpackCourse(void)
         cpu.x = x;
         cyc(32);
         cpu.a = rd16(0x70FC88 + (uint16_t)(x + 2 * i));
-        abi_TimeUnpackBcd();
+        (cyc(46), abi_TimeUnpackBcd());
         cpu.p |= P_M | P_X;
         cpu.x &= 0x00FF;
         cpu.y &= 0x00FF;
-        cyc(132);
+        cyc(46);
         wr8(b | (uint16_t)(0x0F76 + 3 * i), (uint8_t)cpu.y);
         cyc(24);
         wr8(b | (uint16_t)(0x0F77 + 3 * i), (uint8_t)cpu.x);
@@ -731,7 +739,7 @@ void abi_RecordsUnpackCourse(void)
         cyc(24);
         wr8(b | (uint16_t)(0x10CF + i), (uint8_t)a);
     }
-    cyc(110);
+    cyc(70);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | (uint8_t)a);
     cpu.p = p;
 }
@@ -745,8 +753,10 @@ void abi_RecordsUnpackCourse(void)
  */
 void abi_RecordsUnpackCourseTotals(void)
 {
+    cyc(46);
     abi_RecordsUnpackCourse();
-    abi_TimeTotalsSum();
+    (cyc(46), abi_TimeTotalsSum());
+    cyc(44);
 }
 
 /*
@@ -758,8 +768,9 @@ void abi_RecordsUnpackCourseTotals(void)
  */
 void abi_RecordsUnpackCourseRunning(void)
 {
-    (cyc(62), abi_RecordsUnpackCourse());
-    abi_TimeRunningTotals();
+    (cyc(46), abi_RecordsUnpackCourse());
+    (cyc(46), abi_TimeRunningTotals());
+    cyc(44);
 }
 
 /*
@@ -1153,6 +1164,7 @@ void abi_RecordRowDraw(void)
         wr8(b | (uint16_t)(0x037A + y), 0xF0);
         cyc(30);
         wr8(b | (uint16_t)(0x037E + y), 0xF0);
+        cyc(42);
         return;
     }
     for (i = 0; i < 3; i++) {
@@ -1194,6 +1206,7 @@ static void record_row(unsigned n)
     cyc(24);
     cpu.y = rd16(b | (uint16_t)(0x0D75 + n * 2));
     (cyc(46), abi_RecordRowDraw());
+    cyc(42);
 }
 
 /* SEP #$20, REP #$10, then the time offset to $F2. */
@@ -1201,7 +1214,7 @@ static void record_row_time(uint8_t t)
 {
     cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | t);
-    wr8(dp(0xF2), cyc_then(160, t));
+    wr8(dp(0xF2), cyc_then(68, t));
 }
 
 /*
@@ -1262,7 +1275,7 @@ void abi_RecordRow1Time0(void)
  */
 void abi_RecordRow2Time4(void)
 {
-    cyc(46);
+    cyc(8);
     record_row_time(0x0C);
     record_row(1);
 }
@@ -1275,7 +1288,7 @@ void abi_RecordRow2Time4(void)
  */
 void abi_RecordRow3Time8(void)
 {
-    cyc(46);
+    cyc(8);
     record_row_time(0x18);
     record_row(2);
 }
@@ -1289,9 +1302,11 @@ void abi_RecordRow3Time8(void)
  */
 void abi_RecordRowsGroupFirsts(void)
 {
+    cyc(46);
     abi_RecordRow1Time0();
-    abi_RecordRow2Time4();
-    abi_RecordRow3Time8();
+    (cyc(46), abi_RecordRow2Time4());
+    (cyc(46), abi_RecordRow3Time8());
+    cyc(42);
 }
 
 /*
@@ -1305,11 +1320,12 @@ void abi_RecordRowsFirstTimes(void)
 {
     unsigned n;
 
-    for (n = 0; n < 3; n++) {
+    for (n = 0; cyc_loop(8, n < 3); n++) {
         record_row_time((uint8_t)(n * 3));
         cyc(46);
         record_row(n);
     }
+    cyc(42);
 }
 
 void abi_SoundPort0QueuePush(void);
@@ -1362,7 +1378,7 @@ void abi_RecordTimeCompare(void)
         return;
     }
     cpu.p |= P_M;
-    cyc(88);
+    cyc(92);
     v = rd8(b | (uint16_t)(0x0F5B + cpu.x));
     cyc(62);
     wr8(b | 0x0F68, (uint8_t)(v & 0x0F));
@@ -1416,7 +1432,7 @@ static void record_compare_by_mode(uint16_t x)
         cpu.p = nz16(cpu.p, cpu.a);
         abi_SoundPort0QueuePush();
     } else {
-        cyc(104);
+        cyc(108);
         op_cmp16(0x0002);
         if (cpu.a == 0x0002)
             abi_PlayerSound35();
@@ -1428,7 +1444,7 @@ static void record_compare_by_mode(uint16_t x)
         }
         cyc(34);
     }
-    cyc(96);
+    cyc(80);
     cpu.p = p0;
 }
 
@@ -1510,7 +1526,7 @@ static void records_load_sorted(uint32_t b, uint16_t x, int descending)
         x = (uint16_t)(x + 4);
         cyc(36);
     }
-    cyc(40);
+    cyc(4);
     for (i = 0x14; i >= 0; i -= 2) {
         cyc(48);
         x = (uint16_t)i;
@@ -1558,7 +1574,7 @@ static uint16_t records_player_place(uint32_t b)
 static uint16_t records_offset(uint16_t a)
 {
     cpu.p &= (uint8_t)~P_C;
-    cyc(80);
+    cyc(84);
     a = op_adc16((uint16_t)(a << 1), rd16((uint16_t)(cpu.d + 0xF3)), &cpu.p);
     cpu.p = (uint8_t)((cpu.p & ~P_C) | ((a >> 12) & 1));    /* the last ASL */
     return (uint16_t)(a << 4);
@@ -1577,7 +1593,7 @@ void abi_RecordsLoadSpecialCourse(void)
     cpu.a = a;
     op_cmp16(0x000C);
     if (a < 0x000C)
-        { cyc(42); return; } else { cyc(42); }
+        { cyc(42); return; } else { cyc(46); }
     op_cmp16(0x0010);
     if (a >= 0x0010)
         return;
@@ -1614,9 +1630,9 @@ static void unpack_to(uint32_t b, uint16_t a, uint16_t to)
     cpu.p &= (uint8_t)~(P_M | P_X);
     cpu.a = a;
     cpu.p = nz16(cpu.p, a);
-    abi_TimeUnpackBcd();
+    (cyc(46), abi_TimeUnpackBcd());
     op_sep(P_M | P_X);
-    cyc(110);
+    cyc(24);
     wr8(b | to, (uint8_t)cpu.y);
     cyc(24);
     wr8(b | (uint16_t)(to + 1), (uint8_t)cpu.x);
@@ -1674,13 +1690,14 @@ void abi_RecordsLoadForCourse(void)
 
     cpu.p |= P_M;
     cpu.db = 0x07;
-    cyc(202);
+    cyc(140);
     v = rd8(0x070000 | 0x0E3D);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     if (v < 0x0C)
         { cyc(84); abi_RecordsLoadCourse(); }
     else if (v < 0x10)
         { cyc(110); abi_RecordsLoadSpecialCourse(); } else { cyc(6); }
+    cyc(144);
     cpu.db = db0;
     op_plp(p0);
 }
@@ -1694,6 +1711,7 @@ void abi_RecordsLoadForCourse(void)
  */
 void abi_RecordsLoadCourseLong(void)
 {
+    cyc(162);
     uint8_t p0 = cpu.p, db0 = cpu.db;
 
     cpu.p |= P_M;
@@ -1749,7 +1767,7 @@ void abi_SpecialRecordsChecksum(void)
     uint32_t b = (uint32_t)cpu.db << 16;
     int i;
 
-    cyc(46);
+    cyc(24);
     op_lda16(b | 0x0E3D);
     op_and16(0x00FF);
     op_cmp16(0x000C);
@@ -1763,7 +1781,7 @@ void abi_SpecialRecordsChecksum(void)
         op_asl16();
         op_tax16();
         op_sep(P_M);
-        cyc(124);
+        cyc(128);
         op_lda8(SPECIAL_LAPS + cpu.x);
         for (i = 1; i < 4; i++) {
             wr8(special_dp(0xF1), cyc_then(16, (uint8_t)cpu.a));
@@ -1797,6 +1815,7 @@ void abi_SpecialRecordsChecksum(void)
     cyc(32);
     wr8(0x70FC33 + cpu.x, (uint8_t)cpu.a);
     op_rep(P_M | P_X);
+    cyc(42);
 }
 
 /* Entry +a's word to entry +b (the course's entries, from X). */
@@ -1819,7 +1838,7 @@ static uint16_t special_pack(uint32_t b, uint16_t at)
     cyc(24);
     cpu.y = rd16(b | (uint16_t)(at + 2));
     cpu.p = nz16(cpu.p, cpu.y);
-    abi_TimePackBcd();
+    (cyc(46), abi_TimePackBcd());
     return cpu.a;
 }
 
@@ -1864,7 +1883,7 @@ void abi_SpecialRecordInsert(void)
     op_cmp16(0x000C);
     if (cpu.p & P_C)
         goto none;
-    wr16(special_dp(0xF1), cyc_then(80, cpu.a));
+    wr16(special_dp(0xF1), cyc_then(84, cpu.a));
     op_asl16();
     op_add16(rd16(cyc_then(44, special_dp(0xF1))));
     op_asl16();
@@ -1881,7 +1900,7 @@ void abi_SpecialRecordInsert(void)
     op_cmp16(0x0004);
     if (cpu.p & P_C)
         { cyc(6); goto none; }
-    wr16(special_dp(0xF3), cyc_then(74, cpu.a));
+    wr16(special_dp(0xF3), cyc_then(78, cpu.a));
     op_asl16();
     op_add16(rd16(cyc_then(44, special_dp(0xF3))));
     op_asl16();
@@ -1894,9 +1913,9 @@ void abi_SpecialRecordInsert(void)
     cyc(68);
     op_cmp16(rd16(SPECIAL_SAVES + cpu.x));
     if (!(cpu.p & P_C)) {
-        cyc(94);
+        cyc(98);
         abi_RecordTagCar0();
-        cyc(42);
+        cyc(0);
         special_move(4, 8);
         special_move(6, 10);
         special_move(0, 4);
@@ -1921,7 +1940,7 @@ void abi_SpecialRecordInsert(void)
                 cyc(48);
                 op_cmp16(rd16(SPECIAL_SAVES + cpu.x));
                 if (cpu.p & P_C)
-                    { cyc(36); goto checksum; }
+                    { cyc(36); goto checksum; } else { cyc(4); }
             } else { cyc(4); }
             cpu.x = (uint16_t)(cpu.x + 4);
             cpu.p = nz16(cpu.p, cpu.x);
@@ -1930,9 +1949,9 @@ void abi_SpecialRecordInsert(void)
             cpu.p = nz16(cpu.p, n);
         } while (cyc_loop(8, n));
         r1 = special_pack(b, 0x0EF0);
-        cyc(56);
+        cyc(14);
         r2 = special_pack(b, 0x0EF3);
-        cyc(96);
+        cyc(54);
         op_lda16(b | 0x0E3D);
         op_and16(0x00FF);
         op_asl16();
@@ -1983,6 +2002,7 @@ void abi_SpecialRecordInsert(void)
     cyc(32);
     wr16(SPECIAL_SAVES + 10 + cpu.x, cpu.a);
 checksum:
+    cyc(22);
     abi_SpecialRecordsChecksum();
     return;
 none:
@@ -2003,7 +2023,7 @@ void abi_RecordCarTimes12(void)
 {
     uint32_t b = (uint32_t)cpu.db << 16;
 
-    cyc(70);
+    cyc(24);
     op_lda16(b | 0x0D89);
     op_asl16();
     cyc(52);
@@ -2011,6 +2031,7 @@ void abi_RecordCarTimes12(void)
     op_asl16();
     op_asl16();
     op_and16(0x00FF);
+    cyc(92);
 }
 
 void abi_RecordCarTimes12(void);
@@ -2021,8 +2042,9 @@ static void record_tag(uint16_t extra)
     abi_RecordCarTimes12();
     if (extra)
         op_add16(extra);
-    cyc(138);
+    cyc(46);
     wr16((uint32_t)cpu.db << 16 | 0x10C7, cpu.a);
+    cyc(42);
 }
 
 /*
@@ -2034,6 +2056,7 @@ static void record_tag(uint16_t extra)
  */
 void abi_RecordTagCar0(void)
 {
+    cyc(46);
     record_tag(0);
 }
 

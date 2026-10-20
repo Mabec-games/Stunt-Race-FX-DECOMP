@@ -28,16 +28,18 @@ static void held_sound_set(uint32_t held, uint8_t announce, uint8_t sound)
    Returns the command chosen, which is what the original leaves in A. */
 static uint8_t player_hold_sound(uint8_t p1, uint8_t p2)
 {
-    cyc(179);
+    cyc(107);
     if (rd8(CURRENT_PLAYER) == 0) {
         cyc(64);
         if (rd8(PLAYER1_HELD_SOUND) != p1)
             held_sound_set(PLAYER1_HELD_SOUND, 0x09, p1); else { cyc(16); }
+        cyc(72);
         return p1;
     }
     cyc(70);
     if (rd8(PLAYER2_HELD_SOUND) != p2)
         held_sound_set(PLAYER2_HELD_SOUND, 0x14, p2); else { cyc(16); }
+    cyc(72);
     return p2;
 }
 
@@ -88,7 +90,7 @@ void abi_PlayerHoldSound33(void)
  */
 static uint8_t player_stop_held_sound(void)
 {
-    cyc(166);
+    cyc(68);
     uint8_t two = rd8(CURRENT_PLAYER) != 0;
     uint32_t held = two ? PLAYER2_HELD_SOUND : PLAYER1_HELD_SOUND;
     uint8_t stop = two ? (cyc(6), 0x1A) : 0x0A;
@@ -111,6 +113,7 @@ void PlayerStopHeldSound(void)
 void abi_PlayerStopHeldSound(void)
 {
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | player_stop_held_sound());
+    cyc(72);
 }
 
 /*
@@ -157,7 +160,7 @@ void abi_PlayerHoldSound35(void)
  */
 static uint8_t sound_0e1a_stop(void)
 {
-    cyc(108);
+    cyc(46);
     if (rd8(WRAM_0E1A) == 0)
         { cyc(72); return 0; }
     cyc(40);
@@ -176,6 +179,7 @@ void Sound0E1AStop(void)
 void abi_Sound0E1AStop(void)
 {
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | sound_0e1a_stop());
+    cyc(22);
 }
 
 /* Send p1 (player 1) or p2 (player 2) on port 1; returns the one sent. */
@@ -218,6 +222,7 @@ void PlayerSound24(void)
 void abi_PlayerSound24(void)
 {
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | player_sound(0x24, 0x26));
+    cyc(72);
 }
 
 /*
@@ -250,6 +255,7 @@ void PlayerSound0B(void)
 void abi_PlayerSound0B(void)
 {
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | player_sound(0x0B, 0x1B));
+    cyc(72);
 }
 
 /*
@@ -282,6 +288,7 @@ void PlayerSound0C(void)
 void abi_PlayerSound0C(void)
 {
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | player_sound(0x0C, 0x1C));
+    cyc(72);
 }
 
 void SoundPort0QueuePushRaw(uint8_t command);
@@ -297,13 +304,14 @@ void SoundPort0QueuePushRaw(uint8_t command);
 /* The lookup and push, with the index read once (LDX) and returned. */
 static uint8_t sound_d89(uint8_t *index)
 {
-    cyc(152);
+    cyc(68);
     uint8_t i = rd8(0x000D89), command;
 
     cyc(48);
     command = rd8(0x03EDEF + i);
     SoundPort0QueuePushRaw(command);
     *index = i;
+    cyc(72);
     return command;
 }
 
@@ -334,16 +342,17 @@ static uint8_t sound_pair_from_table(uint8_t *x)
 {
     uint8_t c;
 
-    cyc(236);
+    cyc(68);
     *x = rd8(0x000D8A);
     cyc(64);
     c = (uint8_t)(rd8(0x0BFB18 + *x) | 0x80);
     SoundPort0QueuePushRaw(c);
-    cyc(30);
+    cyc(46);
     *x = rd8(0x000D89);
     cyc(48);
     c = rd8(0x0BFB18 + *x);
     SoundPort0QueuePushRaw(c);
+    cyc(72);
     return c;
 }
 
@@ -400,7 +409,8 @@ void abi_SoundAtRateForLevel(void)
     uint8_t p = cpu.p;
 
     cpu.a = SoundAtRateForLevel(cpu.db, cpu.a, &queued, &p);
-    cpu.p = queued ? nz8(p, cpu.db) : (cyc(66), p);
+    cpu.p = queued ? nz8(p, cpu.db) : (cyc(50), p);
+    cyc(16);
 }
 
 void SoundPort0QueuePush(uint8_t command);
@@ -418,10 +428,11 @@ int SoundIfFlag40(uint8_t bank, uint16_t flags, uint8_t y, uint8_t *x)
 {
     if (!(flags & 0x0040))
         { cyc(138); return 0; }
-    cyc(162);
+    cyc(116);
     *x = rd8((uint32_t)bank << 16 | (uint16_t)(0x0D89 + y));
     cyc(100);
     SoundPort0QueuePush(rd8(0x04D0D6 + *x));
+    cyc(46);
     return 1;
 }
 
@@ -434,6 +445,7 @@ void abi_SoundIfFlag40(void)
         cpu.y &= 0x00FF;
     }
     cpu.p = (uint8_t)((nz16(cpu.p, cpu.a) & ~P_M) | P_X);
+    cyc(38);
 }
 
 /*
@@ -482,7 +494,7 @@ void abi_SoundHoldByFlags(void)
         cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) | P_C | P_M);
     else
         { cyc(38); cpu.p = (uint8_t)(nz8(cpu.p, a) | P_M); }
-    cyc(122);
+    cyc(26);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
 }
 
@@ -524,7 +536,7 @@ static void abi_engine_sounds(uint16_t phase, uint16_t pressed, uint16_t held)
 
     cpu.x &= 0x00FF;
     cpu.y &= 0x00FF;
-    cyc(90);
+    cyc(68);
     v = rd8(b | 0x0E4B);
     if (!v) {
         cyc(40);
@@ -533,17 +545,18 @@ static void abi_engine_sounds(uint16_t phase, uint16_t pressed, uint16_t held)
             cpu.p = (uint8_t)((cpu.p & ~P_M) | P_X);
             cyc(78);
             cpu.a = rd16(b | pressed);
-            abi_SoundIfFlag40();
+            (cyc(46), abi_SoundIfFlag40());
             cpu.p &= (uint8_t)~P_M;
-            cyc(130);
+            cyc(46);
             cpu.a = rd16(b | held);
             cyc(138);
             abi_SoundHoldByFlags();
             cpu.p = p;
+            cyc(72);
             return;
         } else { cyc(16); }
     }
-    cyc(118);
+    cyc(94);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.p = p;
 }
@@ -576,7 +589,7 @@ void EngineSoundsPlayer2(uint8_t bank, uint8_t player)
 
 void abi_EngineSoundsPlayer2(void)
 {
-    cyc(40);
+    cyc(0);
     abi_engine_sounds(0x0DD7, 0x0D1C, 0x030D);
 }
 
@@ -657,6 +670,7 @@ uint8_t SoundIndicesFromHandlers(uint8_t bank, uint8_t *x)
     i = (uint8_t)HandlerSoundIndex(rd16(0x0018DD), &p);
     cyc(92);
     wr8(b | 0x0D8A, i);
+    cyc(72);
     return i;
 }
 
@@ -692,7 +706,7 @@ void abi_SoundNearCarOnce(void)
     uint16_t x0, w;
 
     op_sep(P_M | P_X);
-    cyc(108);
+    cyc(46);
     v = rd8(b | 0x0E1A);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     if (v != 0) {
@@ -782,6 +796,7 @@ void abi_NearCarSoundUpdate(void)
         cpu.a = v;
     }
     if (v) {
+        cyc(94);
         cpu.p = p0;
         return;
     }
@@ -793,8 +808,9 @@ void abi_NearCarSoundUpdate(void)
         cpu.a = (uint16_t)((lv & 0xFF00) | 0x01);
         cyc(84);
         wr8(b | 0x117C, 0x01);
-        abi_Sound0E1AStop();
+        (cyc(62), abi_Sound0E1AStop());
         cpu.p = p0;
+        cyc(72);
         return;
     }
     cyc(88);
@@ -810,6 +826,7 @@ void abi_NearCarSoundUpdate(void)
     cpu.a = v;
     cyc(24);
     if (v == rd16(b | 0x115E)) {
+        cyc(94);
         cpu.p = p0;
         return;
     }
@@ -818,8 +835,9 @@ void abi_NearCarSoundUpdate(void)
     (cyc(70), abi_SoundPort1QueuePush());
     cyc(32);
     wr16(b | 0x117C, 0x0000);
-    abi_SoundNearCarOnce();
+    (cyc(62), abi_SoundNearCarOnce());
     cpu.p = p0;
+    cyc(94);
 }
 
 /*

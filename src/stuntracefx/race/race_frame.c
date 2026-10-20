@@ -70,11 +70,11 @@ void abi_RaceFrameStep(void)
     cpu.p &= (uint8_t)~P_X;
     cpu.x = 0x1A64;
     (cyc(136), abi_ViewFromRecord());
-    (cyc(142), abi_FrameRunGsu8FCA());
-    (cyc(156), abi_ViewUpdateAndGsuAEF8());
+    (cyc(62), abi_FrameRunGsu8FCA());
+    (cyc(62), abi_ViewUpdateAndGsuAEF8());
     cpu.a = arg;
     if (!arg) {
-        cyc(234);
+        cyc(146);
         cpu.p |= P_M;
         while (!rd8(cyc_then(46, 0x030357)))
             ;
@@ -82,9 +82,9 @@ void abi_RaceFrameStep(void)
         cpu.p &= (uint8_t)~(P_M | P_X);
         abi_GsuAB13WithParams();
         (cyc(46), abi_GsuScreenFlip());
-        cyc(88);
+        cyc(46);
         wr8(0x030357, 0x00);
-    } else { cyc(240); }
+    } else { cyc(80); }
     cyc(100);
     cpu.db = db;
     cpu.p = p;
@@ -125,10 +125,10 @@ void abi_RaceStart(void)
     cpu.a = 0xA545;
     cyc(78);
     wr16(0x70004E, 0xA545);
-    abi_ObjectPoolInit();
+    (cyc(62), abi_ObjectPoolInit());
     abi_ViewDefaults();
     cpu.p &= (uint8_t)~P_M;
-    cyc(120);
+    cyc(78);
     wr16(0x70021A, 0x2C00);
     cyc(16);
     wr16(0x000048, 0x2C00);
@@ -150,17 +150,17 @@ void abi_RaceStart(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
     abi_RaceFrameStep();
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
-    abi_RaceFrameStep();
+    (cyc(72), abi_RaceFrameStep());
     cpu.p &= (uint8_t)~(P_M | P_X);
-    cyc(106);
+    cyc(178);
     wr16(b | 0x1A66, cyc_then(54, rd16(0x00116C)));
     cpu.p |= P_M;
     cyc(62);
     wr8(b | 0x0357, 0x01);
     cpu.p &= (uint8_t)~(P_M | P_X);
     for (x = 0; x != 0x3400; x = (uint16_t)(x + 2))
-        { cyc(106); wr16(0x702C00 + x, 0x0000); }
-    cyc(140);
+        { cyc(102); wr16(0x702C00 + x, 0x0000); cyc(4); }
+    cyc(136);
     cpu.a = 0x0000;
     cpu.x = 0x3400;
     cpu.y = 0x1A64;
@@ -305,7 +305,7 @@ void abi_RaceFinishSplit(void)
  */
 void abi_RaceFinishPhases0E(void)
 {
-    cyc(46);
+    cyc(16);
     finish_phases(0x0E, 0x0E);
 }
 
@@ -475,7 +475,7 @@ void abi_RaceVarsReset(void)
     cpu.a = (uint16_t)(rd16(b | 0x0E3D) & 0x00FF);
     op_cmp16(0x000A);
     cpu.a = cpu.a == 0x000A ? (cyc(16), 0xFFF0) : 0x0000;
-    cyc(114);
+    cyc(118);
     wr16(b | 0x0DA2, cpu.a);
     cyc(32);
     for (i = 0; i < sizeof race_reset / sizeof race_reset[0]; i++) {
@@ -506,9 +506,9 @@ static void pick_sound(uint32_t b)
     cpu.a = rd16(0x0018DB);
     cyc(24);
     wr16(b | 0x0D8C, cpu.a);
-    abi_HandlerSoundIndex();
+    (cyc(46), abi_HandlerSoundIndex());
     op_sep(P_M | P_X);
-    cyc(70);
+    cyc(24);
     wr8(b | 0x0D8B, (uint8_t)cpu.a);
 }
 
@@ -599,10 +599,10 @@ void abi_RaceModeSetup(void)
     mode = rd8(b | 0x0D2B);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | mode);
     if (mode == 0x00) {
-        cyc(22);
+        cyc(84);
         abi_RecordsUnpackCourseRunning();
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x02);
-        cyc(42);
+        cyc(40);
         wr8(b | 0x0DF8, 0x02);
         op_plp(p0);
         cyc(30);
@@ -816,7 +816,7 @@ static void race_load_copy(uint16_t dst)
 static void race_load_views(uint16_t x)
 {
     race_load_gsu(0xF868, x);
-    cyc(44);
+    cyc(0);
     race_load_copy(0x93D7);
     race_load_copy(0xBBD7);
 }
@@ -825,7 +825,7 @@ static void race_load_views(uint16_t x)
 static void race_load_scroll(uint32_t b, uint16_t scroll)
 {
     cpu.p &= (uint8_t)~P_M;
-    cyc(62);
+    cyc(46);
     wr16(b | 0x0E35, 0x0000);
     if (scroll) {
         cyc(24);
@@ -845,8 +845,9 @@ static void race_load_scroll(uint32_t b, uint16_t scroll)
 static uint8_t race_load_0d63(uint32_t b)
 {
     op_sep(P_M);
-    cyc(46);
+    cyc(22);
     op_lda8(b | 0x0D63);
+    cyc(16);
     return (uint8_t)cpu.a;
 }
 
@@ -885,16 +886,16 @@ void abi_RaceLoad(void)
     cpu.db = 0x03;
     cpu.p = nz8(cpu.p, 0x03);
     (cyc(156), abi_VideoRegsReset());
-    (cyc(134), abi_SaveUnlocksCheck());
-    (cyc(256), abi_SoundIndicesFromHandlers());
-    cyc(134);
+    (cyc(62), abi_SaveUnlocksCheck());
+    (cyc(62), abi_SoundIndicesFromHandlers());
+    cyc(62);
     race_load_sound(abi_SoundDataLoad, 0xE049, 0x001E, 0);
     race_load_sound(abi_ApuUpload, 0x001B, 0xB8A0, 1);
     race_load_sound(abi_ApuUpload, 0x001B, 0xD5FC, 1);
     abi_SoundReset();
     op_sep(P_M);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
-    cyc(134);
+    cyc(62);
     wr8(b | 0x2140, 0x01);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x03);
     cpu.p = nz8(cpu.p, 0x03);
@@ -912,15 +913,15 @@ void abi_RaceLoad(void)
     cpu.x = 0xFFFE;
     cpu.p = nz16(cpu.p, 0xFFFE);
     abi_CgramDmaAll();
-    (cyc(176), abi_OamBufferClear());
-    (cyc(108), abi_ReturnOnly());
-    abi_VideoRegsReset();
-    (cyc(134), abi_RaceVarsReset());
+    (cyc(104), abi_OamBufferClear());
+    (cyc(46), abi_ReturnOnly());
+    (cyc(62), abi_VideoRegsReset());
+    (cyc(62), abi_RaceVarsReset());
     race_load_gsu(0xF837, 0xF7E6);
-    cyc(44);
+    cyc(0);
     race_load_gsu(0xF822, 0xF801);
     op_sep(P_M | P_X);
-    cyc(68);
+    cyc(24);
     v = rd8(b | 0x0D2B);
     cpu.p = (uint8_t)((cpu.p & ~P_C) | (v >> 7));
     v = (uint8_t)(v << 1);
@@ -934,13 +935,13 @@ void abi_RaceLoad(void)
     case 0xF1BC:
         race_load_views(w == 0xF1EE ? 0xF7F2 : 0xF7FB);
         race_load_gsu(0xF83E, 0xF7E9);
-        cyc(44);
+        cyc(24);
         race_load_scroll(b, race_load_0d63(b) ? 0x0000 : (cyc(6), 0x0050));
         break;
     case 0xF256:
         race_load_views(0xF7F5);
         race_load_gsu(0xF83E, 0xF7EF);
-        cyc(28);
+        cyc(0);
         race_load_scroll(b, 0x0000);
         op_sep(P_M);
         cyc(22);
@@ -949,7 +950,7 @@ void abi_RaceLoad(void)
     case 0xF2A7:
         race_load_views(0xF7F8);
         race_load_gsu(0xF83E, 0xF7EC);
-        cyc(28);
+        cyc(0);
         race_load_scroll(b, 0x0000);
         if (race_load_0d63(b))
             race_load_scroll(b, 0x0000);
@@ -960,6 +961,7 @@ void abi_RaceLoad(void)
             cyc(22);
             wr8(b | 0x0D48, 0x00);
         }
+        cyc(22);
         break;
     }
     cyc(46);
@@ -968,6 +970,7 @@ void abi_RaceLoad(void)
     cpu.db = db0;
     cpu.p = nz8(cpu.p, db0);
     op_plp(p0);
+    cyc(80);
 }
 
 void abi_PlayerControlsFrame(void);
@@ -1037,7 +1040,7 @@ static void frame_view_from(uint16_t slot)
 static void frame_side0(void)
 {
     op_sep(P_M);
-    cyc(140);
+    cyc(46);
     wr8((uint32_t)cpu.db << 16 | 0x1F07, 0x00);
     frame_lda8_imm(0xFF);
     cyc(48);
@@ -1047,7 +1050,7 @@ static void frame_side0(void)
     (cyc(62), abi_FrameRunGsu8FCA());
     op_sep(P_M);
     op_rep(P_X);
-    cyc(240);
+    cyc(146);
     frame_lda8_imm(0x01);
     cpu.x = 0xBBC7;
     cpu.p = nz16(cpu.p, cpu.x);
@@ -1136,15 +1139,15 @@ void abi_RaceFrameRun(void)
 
     frame_start();
     frame_view_from(0x0346);
-    (cyc(142), abi_PlayerControlsFrame());
+    (cyc(62), abi_PlayerControlsFrame());
     frame_side0();
     op_sep(P_M);
     op_rep(P_X);
     (cyc(200), abi_ObjectsRunHandlers());
     (cyc(62), abi_ViewUpdateAndGsuAEF8());
-    (cyc(222), abi_PaletteFadeStep());
+    (cyc(134), abi_PaletteFadeStep());
     (cyc(62), abi_WordCopyStep());
-    (cyc(122), abi_BackdropAnglesFromView());
+    (cyc(62), abi_BackdropAnglesFromView());
     op_sep(P_M);
     b = (uint32_t)cpu.db << 16;
     frame_lda8_imm(0x01);
@@ -1166,7 +1169,7 @@ void abi_RaceFrameRun(void)
     (cyc(62), abi_NearCarSoundUpdate());
     op_rep(P_M);
     b = (uint32_t)cpu.db << 16;
-    cyc(118);
+    cyc(24);
     op_lda16(b | 0x1AE8);
     cyc(24);
     wr16(b | 0x1AEA, cpu.a);
@@ -1190,7 +1193,7 @@ void abi_RaceFrameRun(void)
     abi_GsuScreenToggle();
     op_sep(P_M);
     b = (uint32_t)cpu.db << 16;
-    cyc(88);
+    cyc(46);
     wr8(b | 0x0357, 0x00);
     frame_time(db, p0);
     cyc(58);                            /* its return */
@@ -1232,20 +1235,20 @@ void abi_RaceFrameRunTwoPlayers(void)
     op_rep(P_X);
     (cyc(84), abi_ObjectsRunHandlers());
     frame_view_from(0x0346);
-    (cyc(142), abi_PlayerControlsFrame());
+    (cyc(62), abi_PlayerControlsFrame());
     frame_side0();
     op_sep(P_M);
     op_rep(P_X);
     (cyc(156), abi_ViewUpdateAndGsuAEF8());
     op_rep(P_M);
-    (cyc(222), abi_PaletteFadeStep());
+    (cyc(134), abi_PaletteFadeStep());
     (cyc(62), abi_WordCopyStep());
-    (cyc(122), abi_BackdropAnglesFromView());
+    (cyc(62), abi_BackdropAnglesFromView());
     frame_view_from(0x034A);
     op_sep(P_M);
     b = (uint32_t)cpu.db << 16;
     frame_lda8_imm(0x01);
-    cyc(142);
+    cyc(62);
     wr8(b | 0x1F07, 0x01);
     op_rep(P_M);
     cyc(24);
@@ -1262,10 +1265,10 @@ void abi_RaceFrameRunTwoPlayers(void)
     (cyc(84), abi_RaceSoundsPlayer1());
     (cyc(46), abi_GsuScreenFlipMenu());
     op_sep(P_M);
-    cyc(88);
+    cyc(46);
     wr8((uint32_t)cpu.db << 16 | 0x0357, 0x00);
     (cyc(62), abi_ViewUpdateAndGsuAEF8());
-    (cyc(222), abi_BackdropAnglesFromView());
+    (cyc(134), abi_BackdropAnglesFromView());
     op_rep(P_M);
     b = (uint32_t)cpu.db << 16;
     cyc(24);
@@ -1281,11 +1284,11 @@ void abi_RaceFrameRunTwoPlayers(void)
     cyc(100);
     op_lda16(0x702478);
     (cyc(62), abi_SpeedGauge2Update());
-    (cyc(134), abi_RaceSoundsPlayer2());
+    (cyc(62), abi_RaceSoundsPlayer2());
     op_sep(P_M);
     (cyc(68), abi_GsuScreenFlipMenu());
     op_sep(P_M);
-    cyc(88);
+    cyc(46);
     wr8((uint32_t)cpu.db << 16 | 0x0357, 0x00);
     frame_time(db, p0);
     cyc(58);                            /* its return */
@@ -1385,7 +1388,7 @@ void abi_RaceLoop(void)
     b = (uint32_t)cpu.db << 16;
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x10);
     cpu.p = nz8(cpu.p, 0x10);
-    cyc(142);
+    cyc(62);
     wr8(b | 0x0D3F, 0x10);
     cyc(24);
     wr8(b | 0x0D61, 0x00);
@@ -1549,8 +1552,8 @@ void abi_AttractCourseSetup(void)
     wr8(HDMAEN, 0x00);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x80);
     cpu.p = nz8(cpu.p, 0x80);
-    abi_Set7EBC2BTrio();
-    cyc(96);
+    (cyc(78), abi_Set7EBC2BTrio());
+    cyc(24);
     wr8(INIDISP, (uint8_t)cpu.a);
     cyc(24);
     wr8(0x00084B, 0x00);
@@ -1560,17 +1563,18 @@ void abi_AttractCourseSetup(void)
     cpu.p = nz8(cpu.p, 0x6E);
     cyc(40);
     wr8(0x0006E3, 0x6E);
-    abi_WaitScanline();
+    (cyc(62), abi_WaitScanline());
     op_sep(P_M);
     op_rep(P_X);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x64);
     cpu.p = nz8(cpu.p, 0x64);
-    cyc(40);
+    cyc(62);
     wr8(0x0006E3, 0x64);
-    abi_WaitScanline();
+    (cyc(62), abi_WaitScanline());
     op_sep(P_M);
     op_rep(P_X);
     op_rep(P_M | P_X);
+    cyc(22);
     for (i = 0; i < sizeof clear16 / sizeof clear16[0]; i++)
         { cyc(24); wr16(clear16[i], 0x0000); }
     cyc(22);
@@ -1578,14 +1582,14 @@ void abi_AttractCourseSetup(void)
     for (i = 0; i < sizeof clear8 / sizeof clear8[0]; i++)
         { cyc(24); wr8(clear8[i], 0x00); }
     abi_AttractViewStart();
-    abi_SpriteSlotFirstLong();
-    (cyc(178), abi_RaceHudLoad());
+    (cyc(20), abi_SpriteSlotFirstLong());
+    (cyc(62), abi_RaceHudLoad());
     op_sep(P_M);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
     cpu.p = nz8(cpu.p, 0x01);
     cpu.x = 0xD1EB;
     cpu.p = nz16(cpu.p, cpu.x);
-    abi_GsuRun();
+    (cyc(124), abi_GsuRun());
     op_sep(P_M);
     op_rep(P_X);
     cpu.db = db0;

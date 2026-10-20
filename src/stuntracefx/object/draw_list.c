@@ -23,7 +23,7 @@ static uint16_t draw_record(uint16_t o, uint16_t r)
     uint16_t a, t;
     uint8_t v;
 
-    cyc(76);
+    cyc(68);
     if (rd16(OBJ(o, 0x24)) & 0x0080) {
         cyc(70);
         wr16(REC(r, 0x12), cyc_then(30, rd16(OBJ(o, 0x0C))));
@@ -145,7 +145,7 @@ static int drawn(uint16_t o)
     if (n >= 0)
         { cyc(8); return 0; }
     cyc(76);
-    return rd16(OBJ(o, 0x04)) != 0xA040;
+    return cyc_then(8, rd16(OBJ(o, 0x04)) != 0xA040);
 }
 
 /*
@@ -184,7 +184,7 @@ static void draw_bucket(uint16_t o, uint16_t r, int next)
     cpu.y = 0;
     cyc(52);
     wr16(DRAW_NEXT, r);
-    cyc(2);
+    cyc(24);
 }
 
 /* The triggers from $1F2B on, each bucket's objects drawn; A = 0 and X =
@@ -194,14 +194,14 @@ static void draw_triggers(void)
     uint16_t pos, a;
 
     for (;;) {
-        cyc(46);
+        cyc(24);
         pos = rd16(TRIGGER_POS);
         cyc(30);
         a = rd16(TRIGGER_LIST + pos);
         cpu.x = pos;
         cpu.a = a;
         if (!a)
-            { cyc(66); return; }
+            { cyc(144); return; }
         cyc(46);
         wr16(TRIGGER_WORD, a);
         cyc(30);
@@ -212,7 +212,7 @@ static void draw_triggers(void)
         cyc(70);
         a = rd16(0x7F0000 + (a & 0x07FE));
         if (!a)
-            continue;
+            { cyc(22); continue; }
         cyc(46);
         draw_bucket(a, rd16(DRAW_NEXT), 0);
     }

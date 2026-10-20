@@ -43,6 +43,7 @@ static uint8_t bg2_scroll(uint16_t band, int wide)
 
 uint8_t Bg2ScrollFromTable(uint16_t band)
 {
+    cyc(6);
     return bg2_scroll(band, 0);
 }
 
@@ -53,6 +54,7 @@ void abi_Bg2ScrollFromTable(void)
 
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.p = nz8(cpu.p, v);
+    cyc(42);
 }
 
 /*

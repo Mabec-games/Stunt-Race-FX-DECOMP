@@ -79,7 +79,7 @@ void abi_SoftResetCheck(void)
         op_and16(0x3030);
         op_cmp16(0x3030);
         if (!(cpu.p & P_Z)) {
-            cyc(172);
+            cyc(120);
             op_plp(p0);
             return;
         }
@@ -184,7 +184,7 @@ void abi_SoftResetLong(void)
     cpu.db = db;
     cpu.p = nz8(cpu.p, db);
     op_plp(p0);
-    cyc(24);
+    cyc(80);
 }
 
 /*

@@ -32,6 +32,7 @@ static uint16_t asr3(uint16_t v)
  */
 uint16_t MapMarkerSprites(uint8_t bank, uint16_t *y)
 {
+    cyc(30);
     uint32_t b = (uint32_t)bank << 16;
     uint16_t i, obj, sx, v;
 
@@ -39,7 +40,7 @@ uint16_t MapMarkerSprites(uint8_t bank, uint16_t *y)
         cyc(70);
         obj = rd16(0x7EFFBD + i);
         if (!obj)
-            { cyc(160); return i; }
+            { cyc(118); return i; }
         cyc(98);
         v = asr3(rd16(0x7E200C + obj));
         cyc(164);
@@ -86,7 +87,7 @@ void abi_MapMarkerSprites(void);
    first slot. */
 static void abi_map_markers_setup(uint32_t x_at, uint16_t step, uint16_t slot)
 {
-    wr16(0x0000F1, cyc_then(40, (uint16_t)(rd16(x_at) & 0x00FF)));
+    wr16(0x0000F1, cyc_then(4, (uint16_t)(rd16(x_at) & 0x00FF)));
     cyc(24);
     wr16(0x0000F3, cyc_then(40, (uint16_t)(rd16(x_at + 2) & 0xFF00)));
     cyc(40);
@@ -117,11 +118,12 @@ void abi_MapMarkersPanelA(void)
 {
     uint32_t b = (uint32_t)cpu.db << 16;
 
-    cyc(46);
+    cyc(82);
     abi_map_markers_setup(b | 0x0E0A, 0xFFFC, 0x0158);
     cpu.a = 0xFFFC;
     cpu.p = (uint8_t)(nz16((uint8_t)(cpu.p & ~P_M), 0x0158));
-    (cyc(116), abi_MapMarkerSprites());
+    (cyc(86), abi_MapMarkerSprites());
+    cyc(42);
 }
 
 /*
@@ -165,8 +167,9 @@ void abi_MapMarkersPanelB(void)
     }
     cyc(280);
     v = rd8(b | 0x0D62);
-    abi_map_markers_setup(b | 0x0E09, 0x0004, v ? 0x0054 : (cyc(10), 0x0180));
+    abi_map_markers_setup(b | 0x0E09, 0x0004, v ? 0x0054 : (cyc(16), 0x0180));
     cpu.a = (uint16_t)(0x0000 | v);
     cpu.p = (uint8_t)(nz16((uint8_t)(cpu.p | P_M), cpu.y));
     abi_MapMarkerSprites();
+    cyc(42);
 }
