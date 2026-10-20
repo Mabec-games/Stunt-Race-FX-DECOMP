@@ -118,6 +118,7 @@ void DebugSignedByte(void)
     if (v & 0x80) {
         cyc(40);
         draw((uint16_t)((cpu.a & 0xFF00) | 0x24));
+        cyc(30); /* EOR, INC */
         v = (uint8_t)(~v + 1);
     } else {
         cyc(46);

@@ -54,10 +54,12 @@ void DebugDrawChar(uint8_t bank, uint8_t ch, uint16_t *a, uint16_t *x, uint16_t 
     *y = (uint16_t)((ch << 2) + rd16(TEXT_ROWS));
     cyc(54);
     wr16(TEXT_ROWS, 0x0006);
+    rows = 6;
     do {
-        cyc(92);
+        cyc(rows == 6 ? 76 : 92); /* PHX first, BRL after */
         v = rd8(b | TEXT_HALF);
         f = rd8(b | (uint16_t)(TEXT_FONT + *y));
+        cyc((v & 0x04) ? 94 : 100); /* BEQ not taken / taken */
         wr8(b | TEXT_BITS, f);
         high = (v & 0x04) ? (cyc(40), (uint8_t)(f >> 4)) : (uint8_t)(f & 0xF0);
         cyc(40);
@@ -71,9 +73,10 @@ void DebugDrawChar(uint8_t bank, uint8_t ch, uint16_t *a, uint16_t *x, uint16_t 
         high = rd8(b | TEXT_HIGH);
         cyc(40);
         wr8(b | TEXT_MASK, (uint8_t)~(bits | high));
+        cyc((v & 0x04) ? 46 : 24); /* BRA */
         if (!(rd8(b | TEXT_HALF) & 0x04))
             for (i = 0; i < 8; i++)
-                { cyc(80); wr8(0x700000 + cell[i].off + *x, cell[i].cleared); } else { cyc(38); }
+                { cyc(i == 0 ? 80 : i == 5 ? 48 : 32); wr8(0x700000 + cell[i].off + *x, cell[i].cleared); } else { cyc(38); }
         for (i = 0; i < 8; i++) {
             cyc(32);
             v = rd8(0x700000 + cell[i].off + *x);
