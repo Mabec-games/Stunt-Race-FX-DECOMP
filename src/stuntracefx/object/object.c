@@ -1757,9 +1757,9 @@ uint16_t ObjectFree(uint8_t bank, uint16_t obj)
         cyc(44);
         wr16(b | (uint16_t)(0x2000 + prev), next);
         if (next)
-            { cyc(60); wr16(b | (uint16_t)(0x2002 + next), prev); }
+            { cyc(60); wr16(b | (uint16_t)(0x2002 + next), prev); cyc(36); }   /* BRA, PLX */
         else
-            { cyc(46); wr16(b | 0x032B, prev); }
+            { cyc(46); wr16(b | 0x032B, prev); cyc(14); }                      /* PLX */
     }
     cyc(46);
     head = rd16(b | 0x032D);

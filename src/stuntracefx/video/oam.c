@@ -1290,8 +1290,10 @@ static uint8_t cycled_attr(uint8_t attr, uint8_t phase)
     return (uint8_t)((attr & 0xF1) | pal[phase == 1][k]);
 }
 
-/* The shared body: set selector to $0D35, then from $02:F958 on. */
-static uint16_t flashing_metasprite_draw(uint8_t bank, uint16_t set, uint16_t *x, uint16_t *y)
+/* The shared body: set selector to $0D35, then from $02:F958 on; first is
+   the time from the store of $0D35 to the first high-table store (each
+   entry's own way in: 78 falling in, 102 with a JMP). */
+static uint16_t flashing_metasprite_draw(uint8_t bank, uint16_t set, uint16_t *x, uint16_t *y, uint32_t first)
 {
     uint32_t b = (uint32_t)bank << 16;
     uint16_t i, ph;
@@ -1300,7 +1302,7 @@ static uint16_t flashing_metasprite_draw(uint8_t bank, uint16_t set, uint16_t *x
     cyc(88);
     wr16(b | 0x0D35, set);
     for (i = 0; i < 0x20; i++)
-        { cyc(90); wr16(b | (uint16_t)(0x0575 + i), 0xAAAA); }
+        { cyc(i ? 90 : first); wr16(b | (uint16_t)(0x0575 + i), 0xAAAA); }
     cyc(78);
     if (!rd16(b | 0x0D37)) {
         cyc(86);
@@ -1381,7 +1383,7 @@ static uint16_t flashing_metasprite_draw(uint8_t bank, uint16_t set, uint16_t *x
 uint16_t FlashingMetaspriteDraw(uint8_t bank, uint16_t *x, uint16_t *y)
 {
     cyc(4);
-    return flashing_metasprite_draw(bank, 0x0008, x, y);
+    return flashing_metasprite_draw(bank, 0x0008, x, y, 78);
 }
 
 void abi_FlashingMetaspriteDraw(void)
@@ -1404,7 +1406,7 @@ void abi_FlashingMetaspriteDraw(void)
 uint16_t FlashingMetaspriteDraw0(uint8_t bank, uint16_t *x, uint16_t *y)
 {
     cyc(4);
-    return flashing_metasprite_draw(bank, 0x0000, x, y);
+    return flashing_metasprite_draw(bank, 0x0000, x, y, 102);
 }
 
 void abi_FlashingMetaspriteDraw0(void)
@@ -1430,7 +1432,7 @@ void abi_FlashingMetaspriteDrawByMode(void)
     cyc(68);
     uint16_t set = (rd16(((uint32_t)cpu.db << 16) | 0x0D4C) & 0x00FF) ? 0x0014 : (cyc(6), 0x000E);
 
-    cpu.a = flashing_metasprite_draw(cpu.db, set, &cpu.x, &cpu.y);
+    cpu.a = flashing_metasprite_draw(cpu.db, set, &cpu.x, &cpu.y, 102);
     if (cpu.p & P_X) {
         cpu.x &= 0x00FF;
         cpu.y &= 0x00FF;
@@ -1593,6 +1595,7 @@ static void pieces_at(uint16_t x)
     wr16(b | 0x10C3, cpu.a);
     cyc(86);
     wr16(b | 0x10BD, x);
+    cyc(x == 0x0081 - 0x0024 ? 108 : 86);   /* the left one's BRA to SpritePiecesAtY */
     wr16(b | 0x10BF, 0x0089 - 0x000B);
     cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_V)) | P_C);
     (cyc(62), abi_SpritePieces3());
@@ -1925,7 +1928,7 @@ static void oam_direct(uint32_t b, uint8_t addr, uint16_t x, uint16_t n, int hid
     wr8(b | 0x2103, 0x00);
     cpu.x = x;
     for (cpu.y = n; cpu.y; cpu.y--) {
-        cyc(hide && cpu.y != n ? 50 : (cyc(0), 40));  /* hiding, round again: INX, DEY, BNE */
+        cyc(cpu.y != n ? (hide ? 50 : 40) : (hide ? 40 : 14));  /* round again: INX, DEY, BNE */
         v = hide ? 0xF0 : rd8(cyc_then(40, b | (uint16_t)(0x0375 + cpu.x)));
         cyc(24);
         wr8(b | 0x2104, v);
@@ -2323,7 +2326,7 @@ void abi_PictureTurnStep(void)
     uint32_t b = (uint32_t)cpu.db << 16;
     uint8_t p0 = cpu.p;
     uint16_t m, k, t, y;
-    int first;
+    int first, buf3000;
 
     op_sep(P_M);
     do
@@ -2382,6 +2385,7 @@ void abi_PictureTurnStep(void)
     cyc(44);
     cpu.y = rd16(b | 0x0D7F);
     cpu.p = nz16(cpu.p, cpu.y);
+    buf3000 = cpu.y != 0;
     if (cpu.y) {
         cyc(78);
         abi_GsuCF42To3000();
@@ -2403,7 +2407,7 @@ void abi_PictureTurnStep(void)
     abi_GsuRun();
     op_rep(P_M | P_X);
     op_sep(P_M);
-    cyc(162);                           /* GsuRun's return (72), REP, REP, SEP, DEC's opcode */
+    cyc(buf3000 ? 162 : 140);           /* GsuRun's return (72), REP, REP, SEP, DEC's opcode; the $3000 arm's BRA */
     wr8(b | 0x0D32, cyc_then(6, (uint8_t)(rd8(b | 0x0D32) - 1)));
     op_plp(p0);
     cyc(28);

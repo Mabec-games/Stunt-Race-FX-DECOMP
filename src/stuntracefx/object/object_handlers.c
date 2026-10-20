@@ -1123,6 +1123,7 @@ static void child_flags(void)
         lda8(v);
         cyc(16);
         wr8(b | (uint16_t)(0x2024 + cpu.x), v);
+        cyc(22);                        /* BRA */
     } else {
         cyc(40);                        /* neither bit: the branches over both */
     }

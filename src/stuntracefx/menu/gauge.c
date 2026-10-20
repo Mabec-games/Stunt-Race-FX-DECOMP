@@ -333,6 +333,7 @@ uint16_t SpeedGauge2Update(uint8_t bank, uint16_t a)
     v = rd16(0x70004A + x);
     cyc(60);
     wr16(0x000002, (v & 0x8000) ? (cyc(2), 0x0000) : (uint16_t)(v >> 2));
+    cyc(v & 0x8000 ? 32 : 54);          /* the LSR arm's BRA */
     if ((uint16_t)(rd16(0x700044 + x) - 4) & 0x8000) {
         cyc(78);
         t = (uint16_t)(rd16(0x700050 + x) >> 3);

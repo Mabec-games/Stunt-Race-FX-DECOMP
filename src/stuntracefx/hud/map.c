@@ -87,7 +87,7 @@ void abi_MapMarkerSprites(void);
    first slot. */
 static void abi_map_markers_setup(uint32_t x_at, uint16_t step, uint16_t slot)
 {
-    wr16(0x0000F1, cyc_then(4, (uint16_t)(rd16(x_at) & 0x00FF)));
+    wr16(0x0000F1, cyc_then(40, (uint16_t)(rd16(x_at) & 0x00FF)));   /* AND #, STA */
     cyc(24);
     wr16(0x0000F3, cyc_then(40, (uint16_t)(rd16(x_at + 2) & 0xFF00)));
     cyc(40);
