@@ -167,7 +167,6 @@ lAB6E:
     R[11] = 0xAB73;
     gsu_code(0x01ab6f, 4); gsu_code(0x01bf6d, 1);
     abi_FxEffectsRun();
-    gsu_code(0x01ab73, 1);
 lAB73:
     R[0] = gsu_sub(R[0], R[0], 0);
     gsu_code(0x01ab74, 5);
@@ -175,7 +174,6 @@ lAB73:
     R[11] = 0xAB7D;
     gsu_code(0x01ab79, 4); gsu_code(0x01d12f, 1);
     abi_FxTextNotice();
-    gsu_code(0x01ab7d, 1);
 lAB7D:
     gsu_code(0x01ab7e, 2);
     R[0] = gsu_rpix_r(R[1], R[2]);
@@ -596,7 +594,6 @@ lAD31:
     R[11] = 0xAD53;
     gsu_code(0x01ad4e, 5); gsu_code(0x018561, 1);
     abi_FxModelDraw();
-    gsu_code(0x01ad53, 1);
 lAD53:
     R[10] = gsu_dec(R[10]);
     R[10] = gsu_dec(R[10]);
@@ -746,7 +743,6 @@ lB155:
     R[11] = 0xB160;
     gsu_code(0x01b15c, 4); gsu_code(0x019276, 1);
     abi_FxSpriteMaterial();
-    gsu_code(0x01b160, 1);
 lB160:
     gsu_code(0x01b161, 3);
     R[0] = gsu_ldw(FX_FACE_KIND);
@@ -2612,8 +2608,10 @@ lBF65:
     at = nx;
     goto dispatch;
 dispatch:
-    if (at == ret)
+    if (at == ret) {
+        gsu_code(0x010000 | at, 1);
         return;
+    }
     gsu_code(0x010000 | at, 1);   /* where it jumps: its first byte */
 fetched:
 enter:

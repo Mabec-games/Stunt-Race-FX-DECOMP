@@ -244,7 +244,7 @@ uint16_t FxDivideHalving(uint16_t hi, uint16_t lo, uint16_t *divisor, uint16_t *
 
 void abi_FxDivideHalving(void)
 {
-    halving_divide(gsu.r[0], gsu.r[4], gsu.r[6], 0x96D6, GSU_COPY(2));
+    halving_divide(gsu.r[0], gsu.r[4], gsu.r[6], 0x96D6, GSU_COPY(1));
 }
 
 /*

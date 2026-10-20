@@ -512,5 +512,5 @@ void abi_FxEffectsRun(void)
         gsu_code(0x01bfb2, 1);
     } else { gsu_code(0x01bf76, 6); gsu_code(0x01bfb2, 1); }
     gsu_code(0x01bfb3, 4);
-    gsu_pull(&gsu.r[10]);       /* the return address, into R15 */
+    gsu_code(0x010000 | gsu_pull(&gsu.r[10]), 1);
 }

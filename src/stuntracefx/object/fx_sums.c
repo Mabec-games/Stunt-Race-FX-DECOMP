@@ -153,6 +153,7 @@ FxRotateLeft FxSumsRotateLocal(int copy)
 
 void abi_FxSumsRotateLocal(void)
 {
+    uint16_t ret = gsu.r[11];
     FxRotateLeft o = FxSumsRotateLocal(GSU_COPY(0));
 
     gsu.r[0] = o.y;
@@ -162,6 +163,7 @@ void abi_FxSumsRotateLocal(void)
     gsu.r[4] = o.old;
     gsu.r[5] = o.part;
     gsu.r[6] = o.m;
+    gsu_code(0x040000 | ret, 1);
 }
 
 /*
@@ -320,11 +322,13 @@ FxRegs FxSumsPushWorld(FxRegs g, int copy)
 
 void abi_FxSumsPushWorld(void)
 {
+    uint16_t ret = gsu.r[11];
     FxRegs g;
 
     memcpy(g.r, gsu.r, sizeof g.r);
     g = FxSumsPushWorld(g, GSU_COPY(0));
     memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
+    gsu_code(0x040000 | ret, 1);
 }
 
 /*
@@ -341,11 +345,13 @@ FxRegs FxSumsPushLocal(FxRegs g, int copy)
 
 void abi_FxSumsPushLocal(void)
 {
+    uint16_t ret = gsu.r[11];
     FxRegs g;
 
     memcpy(g.r, gsu.r, sizeof g.r);
     g = FxSumsPushLocal(g, GSU_COPY(0));
     memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
+    gsu_code(0x040000 | ret, 1);
 }
 
 #define FX_PUSH_FLAGS 0x2480u    /* the pushes' flag bytes so far */
@@ -799,9 +805,12 @@ static void push_from_sum(int shift, int copy)
  */
 void abi_FxPushAt4(void)
 {
+    uint16_t ret = gsu.r[11];
+
     push3(GSU_COPY(2));
     push_from_sum(2, GSU_COPY(0));
     push_at_tail(GSU_COPY(0));
+    gsu_code(0x040000 | ret, 1);
 }
 
 /*
@@ -873,7 +882,6 @@ void abi_FxPushAt4Twist(void)
     gsu.r[11] = 0x9A53;
     gsu_code(0x049a4d, 6); gsu_code(0x049a9b, 1);
     abi_FxPushAt4();
-    gsu_code(0x049a53, 1);
     spin_add(FX_TURN_CROSS, FX_SPIN + 2, 4, 0, GSU_COPY(3));
     gsu_code(0x049a61, 4);
     gsu_pull(&gsu.r[10]);       /* the return address, into R15 */
@@ -1011,6 +1019,7 @@ static const GsuCode abi_FxHitAddScaled_fetch[1][3] = {
 
 void abi_FxHitAddScaled(void)
 {
+    uint16_t ret = gsu.r[11];
     uint32_t m;
     int i;
 
@@ -1022,6 +1031,7 @@ void abi_FxHitAddScaled(void)
         gsu.r[3] = gsu.r[1];
         gsu_code(0x049888, 8);
         hit_add(1, GSU_COPY(0));
+        gsu_code(0x040000 | ret, 1);
         return;
     } else { gsu_code(0x049888, 7); gsu_code(0x049899, 1); }
     for (i = 1; i <= 3; i++) {
@@ -1032,6 +1042,7 @@ void abi_FxHitAddScaled(void)
         gsu.r[i] = gsu.r[4];
     }
     hit_add(0, GSU_COPY(1));
+    gsu_code(0x040000 | ret, 1);
 }
 
 /*

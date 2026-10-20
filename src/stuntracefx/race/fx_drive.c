@@ -401,9 +401,11 @@ FxRegs FxSteerFromInput(FxRegs g, int copy)
 
 void abi_FxSteerFromInput(void)
 {
+    uint16_t ret = gsu.r[11];
     FxRegs g;
 
     memcpy(g.r, gsu.r, sizeof g.r);
     g = FxSteerFromInput(g, GSU_COPY(0));
     memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
+    gsu_code(0x040000 | ret, 1);
 }

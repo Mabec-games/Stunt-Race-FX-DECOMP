@@ -373,7 +373,7 @@ void abi_FxProjectVertex(void)
         gsu_code(0x018c72, 3);
         gsu.r[9] = gsu_ldw(0x002A);
         gsu_code(0x018c75, 4);
-        gsu_pull(&gsu.r[10]);       /* the return address, into R15 */
+        gsu_code(0x010000 | gsu_pull(&gsu.r[10]), 1);       /* the return address, into R15 */
         return;
     } else { gsu_code(0x018c0f, 6); }
     gsu.r[6] = gsu_bic(gsu.r[6], 0x0001);
@@ -432,4 +432,5 @@ code:
     ;
     gsu.r[0] = gsu_or(gsu_swap(gsu_xor(0x1F, gsu.r[6])), gsu.r[6]);
     gsu_code(0x018c55, 7);
+    gsu_code(0x010000 | gsu.r[11], 1);
 }

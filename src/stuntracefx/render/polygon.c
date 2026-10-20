@@ -190,7 +190,7 @@ void abi_FxPolygonProject(void)
         gsu.r[11] = 0xC445;
         gsu_code(0x01c43f, 6); gsu_code(0x018bff, 1);
         abi_FxProjectVertex();
-        gsu_code(0x01c445, 2);
+        gsu_code(0x01c446, 1);
         gsu_push(&gsu.r[10], gsu.r[0]);
         gsu.r[0] = gsu_and(gsu.r[0], 15);
         c = !gsu.z;
@@ -529,7 +529,7 @@ void abi_FxPolygonDraw(void)
     gsu_code(0x01c3ff, 5); gsu_code(0x01c412, 1);
     abi_FxPolygonProject();
     gsu_code(0x01c404, 5);
-    gsu_pull(&gsu.r[10]);
+    gsu_code(0x010000 | gsu_pull(&gsu.r[10]), 1);
     return;
 none:
     ;
@@ -537,5 +537,5 @@ none:
     gsu_code(0x01c40a, 4);
     gsu_stw(FX_COUNT, gsu.r[0]);
     gsu_code(0x01c40e, 4);
-    gsu_pull(&gsu.r[10]);
+    gsu_code(0x010000 | gsu_pull(&gsu.r[10]), 1);
 }

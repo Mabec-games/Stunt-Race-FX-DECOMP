@@ -306,12 +306,10 @@ l9069:
     R[11] = 0x906E;
     gsu_code(0x04906a, 4); gsu_code(0x04ce1d, 1);
     abi_FxRankCars();
-    gsu_code(0x04906e, 1);
 l906E:
     R[11] = 0x9073;
     gsu_code(0x04906f, 4); gsu_code(0x04cf08, 1);
     abi_FxNearestCar();
-    gsu_code(0x049073, 1);
 l9073:
     R[0] = gsu_sub(R[0], R[0], 0);
     gsu_code(0x049074, 5);
@@ -343,7 +341,6 @@ l907A:
     R[11] = 0x909B;
     gsu_code(0x049095, 6); gsu_code(0x0495be, 1);
     abi_FxRecordMove();
-    gsu_code(0x04909b, 1);
 l909B:
     R[11] = 0x90A0;
     gsu_code(0x04909c, 4); gsu_code(0x0491ff, 1);
@@ -478,7 +475,6 @@ l912D:
     R[11] = 0x9134;
     gsu_code(0x04912e, 6); gsu_code(0x0495be, 1);
     abi_FxRecordMove();
-    gsu_code(0x049134, 1);
 l9134:
     R[11] = 0x9139;
     gsu_code(0x049135, 4); gsu_code(0x0491ff, 1);
@@ -585,7 +581,6 @@ l9185:
     R[11] = 0x91B2;
     gsu_code(0x0491ac, 6); gsu_code(0x0495be, 1);
     abi_FxRecordMove();
-    gsu_code(0x0491b2, 1);
 l91B2:
     R[1] = 0x001E;
     R[1] = gsu_add(R[1], R[9], 0);
@@ -831,7 +826,6 @@ l92C5:
     R[11] = 0x92D0;
     gsu_code(0x0492cc, 4); gsu_code(0x049683, 1);
     abi_FxPushSet();
-    gsu_code(0x0492d0, 1);
 l92D0:
     R[3] = 0x23A4;
     R[11] = 0x92D8;
@@ -2296,7 +2290,6 @@ lA759:
     R[11] = 0xA76A;
     gsu_code(0x04a75a, 16); gsu_code(0x0496c3, 1);
     abi_FxSumsPushWorld();
-    gsu_code(0x04a76a, 1);
 lA76A:
     R[1] = 0x0036;
     R[1] = gsu_add(R[1], R[9], 0);
@@ -2473,7 +2466,6 @@ lA80E:
     R[11] = 0xA849;
     gsu_code(0x04a831, 24); gsu_code(0x0496c3, 1);
     abi_FxSumsPushWorld();
-    gsu_code(0x04a849, 1);
 lA849:
     R[1] = 0x0036;
     R[1] = gsu_add(R[1], R[9], 0);
@@ -2958,7 +2950,6 @@ lAB01:
     R[11] = 0xAB06;
     gsu_code(0x04ab02, 4); gsu_code(0x049683, 1);
     abi_FxPushSet();
-    gsu_code(0x04ab06, 1);
 lAB06:
     R[0] = R[0];
     gsu_moves(R[0]);
@@ -3116,7 +3107,6 @@ lABC8:
     R[11] = 0xABE5;
     gsu_code(0x04abe1, 4); gsu_code(0x0496c3, 1);
     abi_FxSumsPushWorld();
-    gsu_code(0x04abe5, 1);
 lABE5:
     R[0] = 0x0000;
     gsu_code(0x04abe6, 4);
@@ -3455,7 +3445,6 @@ lAD80:
     R[11] = 0xAD8B;
     gsu_code(0x04ad81, 10); gsu_code(0x04973f, 1);
     abi_FxSumsPushLocal();
-    gsu_code(0x04ad8b, 1);
 lAD8B:
     R[6] = 0x0048;
     R[6] = gsu_add(R[6], R[8], 0);
@@ -3500,12 +3489,10 @@ lADBB:
     R[11] = 0xADC4;
     gsu_code(0x04adbc, 8); gsu_code(0x04973f, 1);
     abi_FxSumsPushLocal();
-    gsu_code(0x04adc4, 1);
 lADC4:
     R[11] = 0xADC9;
     gsu_code(0x04adc5, 4); gsu_code(0x0497bb, 1);
     abi_FxSumsRotateLocal();
-    gsu_code(0x04adc9, 1);
 lADC9:
     gsu_code(0x04adca, 4);
     R[0] = gsu_ldw(FX_WORLD_SUM);
@@ -3538,7 +3525,6 @@ lADDE:
     R[11] = 0xADFA;
     gsu_code(0x04adf6, 4); gsu_code(0x04987d, 1);
     abi_FxHitAddScaled();
-    gsu_code(0x04adfa, 1);
 lADFA:
     gsu_code(0x04adfb, 4);
     R[2] = gsu_ldw(FX_WHEEL_FLAGS);
@@ -4265,7 +4251,6 @@ lB148:
     R[11] = 0xB15F;
     gsu_code(0x04b159, 6); gsu_code(0x0496c3, 1);
     abi_FxSumsPushWorld();
-    gsu_code(0x04b15f, 1);
 lB15F:
     gsu_code(0x04b160, 4);
     R[6] = gsu_ldw(FX_SIZES);
@@ -4471,7 +4456,6 @@ lB23B:
     R[11] = 0xB242;
     gsu_code(0x04b23c, 6); gsu_code(0x0495be, 1);
     abi_FxRecordMove();
-    gsu_code(0x04b242, 1);
 lB242:
     gsu_code(0x04b243, 2);
     gsu_stw(R[10], R[8]);
@@ -4867,7 +4851,6 @@ lB436:
     R[11] = 0xB43B;
     gsu_code(0x04b437, 4); gsu_code(0x04ba05, 1);
     abi_FxSteerFromInput();
-    gsu_code(0x04b43b, 1);
 lB43B:
     R[1] = 0x0070;
     R[1] = gsu_add(R[1], R[8], 0);
@@ -5151,12 +5134,10 @@ lB562:
     R[11] = 0xB594;
     gsu_code(0x04b585, 15); gsu_code(0x04973f, 1);
     abi_FxSumsPushLocal();
-    gsu_code(0x04b594, 1);
 lB594:
     R[11] = 0xB599;
     gsu_code(0x04b595, 4); gsu_code(0x0497bb, 1);
     abi_FxSumsRotateLocal();
-    gsu_code(0x04b599, 1);
 lB599:
     R[1] = 0x0000;
     R[2] = 0x0000;
@@ -5165,7 +5146,6 @@ lB599:
     R[11] = 0xB5AA;
     gsu_code(0x04b59a, 16); gsu_code(0x04987d, 1);
     abi_FxHitAddScaled();
-    gsu_code(0x04b5aa, 1);
 lB5AA:
     R[10] = gsu_dec(R[10]);
     R[10] = gsu_dec(R[10]);
@@ -5256,7 +5236,6 @@ lB5FF:
     R[11] = 0xB616;
     gsu_code(0x04b612, 4); gsu_code(0x04a4ed, 1);
     abi_FxCarMoveParts();
-    gsu_code(0x04b616, 1);
 lB616:
     R[11] = 0xB61B;
     gsu_code(0x04b617, 4); gsu_code(0x04a607, 1);
@@ -5265,7 +5244,6 @@ lB61B:
     R[11] = 0xB620;
     gsu_code(0x04b61c, 4); gsu_code(0x04bc7b, 1);
     abi_FxRecordHoldY();
-    gsu_code(0x04b620, 1);
 lB620:
     R[2] = 0x0042;
     R[2] = gsu_add(R[2], R[8], 0);
@@ -5314,12 +5292,10 @@ lB658:
     R[11] = 0xB65D;
     gsu_code(0x04b659, 4); gsu_code(0x04bcba, 1);
     abi_FxRecordAlignment();
-    gsu_code(0x04b65d, 1);
 lB65D:
     R[11] = 0xB662;
     gsu_code(0x04b65e, 4); gsu_code(0x04bb17, 1);
     abi_FxCarHit();
-    gsu_code(0x04b662, 1);
 lB662:
     R[1] = 0x0070;
     R[1] = gsu_add(R[1], R[8], 0);
@@ -5357,7 +5333,6 @@ lB68E:
     R[11] = 0xB693;
     gsu_code(0x04b68f, 4); gsu_code(0x04c378, 1);
     abi_FxRecordHeadingAhead();
-    gsu_code(0x04b693, 1);
 lB693:
     R[2] = R[0];
     R[1] = 0x0024;
@@ -6013,7 +5988,6 @@ lB990:
     R[11] = 0xB995;
     gsu_code(0x04b991, 4); gsu_code(0x04cdca, 1);
     abi_FxLapSegment();
-    gsu_code(0x04b995, 1);
 lB995:
     R[0] = 0x0086;
     R[0] = gsu_add(R[0], R[8], 0);
@@ -6022,7 +5996,6 @@ lB995:
     R[11] = 0xB99F;
     gsu_code(0x04b99b, 4); gsu_code(0x04ced6, 1);
     abi_FxCourseNextDistance();
-    gsu_code(0x04b99f, 1);
 lB99F:
     R[1] = R[0];
     R[0] = 0x0084;
@@ -6370,7 +6343,6 @@ lBE60:
     R[11] = 0xBECD;
     gsu_code(0x04bec9, 4); gsu_code(0x049a9b, 1);
     abi_FxPushAt4();
-    gsu_code(0x04becd, 1);
 lBECD:
     gsu_code(0x04bece, 3); gsu_code(0x04bf28, 1);
     goto lBF28;
@@ -6773,8 +6745,16 @@ lC77C:
     nx = (uint16_t)(gsu_ldw(R[10]));
     at = nx;
     goto dispatch;
-dispatch:
+stated:   /* the code returned to has its first byte stated */
     if (at == ret || (ret != 0xFFFF && (int16_t)(base - R[10]) >= 4))
+        return;
+    goto fetched;
+dispatch:
+    if (at == ret) {
+        gsu_code(0x040000 | at, 1);   /* the code returned to: its first byte */
+        return;
+    }
+    if (ret != 0xFFFF && (int16_t)(base - R[10]) >= 4)
         return;
     gsu_code(0x040000 | at, 1);   /* where it jumps: its first byte */
 fetched:
@@ -7177,7 +7157,7 @@ enter:
     case 0x99EE: nx = R[11]; abi_FxPushAtHalf(); at = nx; goto dispatch;
     case 0x9A19: nx = R[11]; abi_FxPushAtQuarter(); at = nx; goto dispatch;
     case 0x9A4A: nx = R[11]; abi_FxPushAt4Twist(); at = nx; goto dispatch;
-    case 0x9A9B: nx = R[11]; abi_FxPushAt4(); at = nx; goto dispatch;
+    case 0x9A9B: nx = R[11]; abi_FxPushAt4(); at = nx; goto stated;
     }
     return;   /* not an address the code jumps to */
 }

@@ -138,6 +138,7 @@ void abi_FxMatrixApply(void)
     uint16_t sum = FxMatrixApply(gsu.r[1], gsu.r[2], gsu.r[3], out, &part, &e, GSU_COPY(0));
 
     apply_exit(out, sum, part, e, GSU_COPY(1));
+    gsu_code(0x010000 | gsu.r[11], 1);
 }
 
 /*

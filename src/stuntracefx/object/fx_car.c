@@ -405,11 +405,13 @@ FxRegs FxCarMoveParts(FxRegs g, int copy)
 
 void abi_FxCarMoveParts(void)
 {
+    uint16_t ret = gsu.r[11];
     FxRegs g;
 
     memcpy(g.r, gsu.r, sizeof g.r);
     g = FxCarMoveParts(g, GSU_COPY(0));
     memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
+    gsu_code(0x040000 | ret, 1);
 }
 
 /*
@@ -925,9 +927,11 @@ cleared:
 
 void abi_FxCarHit(void)
 {
+    uint16_t ret = gsu.r[11];
     FxRegs g;
 
     memcpy(g.r, gsu.r, sizeof g.r);
     g = FxCarHit(g, GSU_COPY(0));
     memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
+    gsu_code(0x040000 | ret, 1);
 }

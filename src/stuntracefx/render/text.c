@@ -409,5 +409,5 @@ void abi_FxTextNotice(void)
 done:
     ;
     gsu_code(0x01d1c7, 4);
-    gsu_pull(&gsu.r[10]);       /* the return address, into R15 */
+    gsu_code(0x010000 | gsu_pull(&gsu.r[10]), 1);
 }

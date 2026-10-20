@@ -1587,7 +1587,6 @@ l8BCC:
     R[11] = 0x8BE0;
     gsu_code(0x018bd8, 8); gsu_code(0x018bff, 1);
     abi_FxProjectVertex();
-    gsu_code(0x018be0, 1);
 l8BE0:
     gsu_code(0x018be1, 2);
     gsu_stw(R[8], R[1]);
@@ -2947,7 +2946,6 @@ l90F0:
     R[11] = 0x9106;
     gsu_code(0x019100, 6); gsu_code(0x01a931, 1);
     abi_FxDrawList();
-    gsu_code(0x019106, 1);
 l9106:
     R[10] = gsu_dec(R[10]);
     R[10] = gsu_dec(R[10]);
@@ -3116,7 +3114,6 @@ l91A6:
     R[11] = 0x91C1;
     gsu_code(0x0191bc, 5); gsu_code(0x01c339, 1);
     abi_FxPolygonDraw();
-    gsu_code(0x0191c1, 1);
 l91C1:
     R[0] = R[0];
     gsu_moves(R[0]);
@@ -3138,7 +3135,6 @@ l91CA:
     R[11] = 0x91DA;
     gsu_code(0x0191d6, 4); gsu_code(0x0198d7, 1);
     abi_FxPolygonGather();
-    gsu_code(0x0191da, 1);
 l91DA:
     R[0] = R[0];
     gsu_moves(R[0]);
@@ -3168,7 +3164,6 @@ l91F5:
     R[11] = 0x91FA;
     gsu_code(0x0191f6, 4); gsu_code(0x01a25f, 1);
     abi_FxPolygonClipScreen();
-    gsu_code(0x0191fa, 1);
 l91FA:
     R[0] = R[0];
     gsu_moves(R[0]);
@@ -3242,7 +3237,6 @@ l9243:
     R[11] = 0x9248;
     gsu_code(0x019244, 4); gsu_code(0x01a931, 1);
     abi_FxDrawList();
-    gsu_code(0x019248, 1);
 l9248:
     R[10] = gsu_dec(R[10]);
     R[10] = gsu_dec(R[10]);
@@ -4770,8 +4764,10 @@ lAB11:
     gsu_code(0x01ab12, 1);
     goto dispatch;
 dispatch:
-    if (at == ret)
+    if (at == ret) {
+        gsu_code(0x010000 | at, 1);
         return;
+    }
     gsu_code(0x010000 | at, 1);   /* where it jumps: its first byte */
 fetched:
     if (at == 0x8651 || at == 0x90CD)

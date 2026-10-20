@@ -164,6 +164,7 @@ FxLapLeft FxLapSegment(uint16_t rec, FxLapLeft o, int copy)
 
 void abi_FxLapSegment(void)
 {
+    uint16_t ret = gsu.r[11];
     FxLapLeft o = {gsu.r[0], gsu.r[1], gsu.r[2], gsu.r[3], gsu.r[4], gsu.r[14]};
 
     o = FxLapSegment(gsu.r[8], o, GSU_COPY(0));
@@ -173,6 +174,7 @@ void abi_FxLapSegment(void)
     gsu.r[3] = o.r3;
     gsu.r[4] = o.r4;
     gsu.r[14] = o.r14;
+    gsu_code(0x040000 | ret, 1);
 }
 
 /* A word of the table through the ROM buffer (GETB, INC, GETBH, INC). */
@@ -580,11 +582,13 @@ FxRegs FxRecordHeadingAhead(FxRegs g)
 
 void abi_FxRecordHeadingAhead(void)
 {
+    uint16_t ret = gsu.r[11];
     FxRegs g;
 
     memcpy(g.r, gsu.r, sizeof g.r);
     g = FxRecordHeadingAhead(g);
     memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
+    gsu_code(0x040000 | ret, 1);
 }
 
 void abi_FxTableEntryWords(void);
@@ -620,6 +624,7 @@ static uint16_t quarter_apart(uint16_t a, uint16_t b, int copy)
  */
 void abi_FxCourseNextDistance(void)
 {
+    uint16_t ret = gsu.r[11];
     gsu_code(0x04ced7, 2);
     gsu_push(&gsu.r[10], gsu.r[11]);
     gsu.r[11] = 0xCEDF;
@@ -638,6 +643,7 @@ void abi_FxCourseNextDistance(void)
     gsu.r[0] = gsu_add(gsu.r[0], gsu.r[4], 0);
     gsu_code(0x04ceff, 9);
     gsu_pull(&gsu.r[10]);
+    gsu_code(0x040000 | ret, 1);
 }
 
 void abi_FxBearingTo(void);

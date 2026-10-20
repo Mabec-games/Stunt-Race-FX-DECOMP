@@ -62,8 +62,10 @@ uint16_t FxPushSet(uint16_t amount, int copy)
 
 void abi_FxPushSet(void)
 {
+    uint16_t ret = gsu.r[11];
     gsu.r[0] = FxPushSet(gsu.r[2], GSU_COPY(0));
     gsu.r[2] = 0x8100;
+    gsu_code(0x040000 | ret, 1);
 }
 
 /*
@@ -150,10 +152,12 @@ uint16_t FxRecordHoldY(uint16_t rec, uint16_t *y_out, int copy)
 
 void abi_FxRecordHoldY(void)
 {
+    uint16_t ret = gsu.r[11];
     uint16_t y;
 
     gsu.r[0] = FxRecordHoldY(gsu.r[8], &y, GSU_COPY(0));
     gsu.r[1] = y;
+    gsu_code(0x040000 | ret, 1);
 }
 
 /*
@@ -276,11 +280,13 @@ FxRegs FxRecordAlignment(FxRegs g, int copy)
 
 void abi_FxRecordAlignment(void)
 {
+    uint16_t ret = gsu.r[11];
     FxRegs g;
 
     memcpy(g.r, gsu.r, sizeof g.r);
     g = FxRecordAlignment(g, GSU_COPY(0));
     memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
+    gsu_code(0x040000 | ret, 1);
 }
 
 typedef struct {

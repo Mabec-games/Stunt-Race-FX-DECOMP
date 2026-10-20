@@ -1575,11 +1575,11 @@ static void gather_return(int count, int copy)
         gsu_codes(gather_return_fetch[copy], 2);
         R[0] = gsu_ldw(FX_COUNT);
         gsu_codes(gather_return_fetch[copy] + 2, 1);
-        gsu_pull(&R[10]);
+        gsu_code(0x010000 | gsu_pull(&R[10]), 1);
     } else {
         R[0] = gsu_sub(R[0], R[0], 0);
         gsu_codes(gather_return_fetch[copy] + 3, 2);
-        gsu_pull(&R[10]);
+        gsu_code(0x010000 | gsu_pull(&R[10]), 1);
     }
 }
 
@@ -1759,7 +1759,7 @@ void abi_FxPolygonGather(void)
         R[11] = 0x9A18;
         gsu_code(0x019a12, 6); gsu_code(0x018bff, 1);
         (abi_FxProjectVertex());
-        gsu_code(0x019a18, 3);
+        gsu_code(0x019a19, 2);
         gsu_stw(R[8], R[1]);
         R[8] = gsu_inc(R[8]);
         R[8] = gsu_inc(R[8]);
@@ -1874,6 +1874,8 @@ static int clip_polygon_edge(int k, int copy)
 
 void abi_FxPolygonClipScreen(void)
 {
+    uint16_t ret = R[11];
+
     gsu_code(0x01a260, 3);
     R[8] = gsu_ldw(FX_POLY_OUT);
     R[9] = FX_CLIP_LIST;
@@ -1890,10 +1892,14 @@ void abi_FxPolygonClipScreen(void)
     if (gsu.s) {
         gsu_code(0x01a271, 9);
         clip_line(GSU_COPY(0));
+        gsu_code(0x010000 | ret, 1);
         return;
     } else { gsu_code(0x01a271, 8); gsu_code(0x01a27d, 1); }
     if (!clip_polygon_edge(0, GSU_COPY(0)) || (!clip_polygon_edge(1, GSU_COPY(1))) || (!clip_polygon_edge(2, GSU_COPY(2))) || (!clip_polygon_edge(3, GSU_COPY(3))))
+    {
+        gsu_code(0x010000 | ret, 1);
         return;
+    }
     /* A635 */
     gsu_code(0x01a636, 3);
     R[1] = gsu_ldw(FX_POLY_OUT);
@@ -1932,7 +1938,7 @@ void abi_FxPolygonClipScreen(void)
         R[0] = gsu_ldw(FX_COUNT_OUT);
     } else { gsu_code(0x01a63c, 4); gsu_code(0x01a657, 1); }
     gsu_code(0x01a658, 4);
-    gsu_pull(&R[10]);
+    gsu_code(0x010000 | gsu_pull(&R[10]), 1);
 }
 
 /*
@@ -1967,7 +1973,7 @@ void abi_FxDrawList(void)
     R[0] = DRAW_LIST;
     R[0] = gsu_sub(R[0], R[1], 0);
     if (gsu.z)
-        { gsu_code(0x01a935, 8); return; } else { gsu_code(0x01a935, 6); gsu_code(0x01a93d, 1); }
+        { gsu_code(0x01a935, 8); gsu_code(0x010000 | R[11], 1); return; } else { gsu_code(0x01a935, 6); gsu_code(0x01a93d, 1); }
     gsu_code(0x01a93e, 2);
     gsu_push(&R[10], R[11]);
     gsu_code(0x01a940, 5);
@@ -2027,7 +2033,7 @@ void abi_FxDrawList(void)
         gsu_code(0x01a92a, 3);
         R[10] = gsu_ldw(FX_LIST_STACK);
         gsu_code(0x01a92d, 4);
-        gsu_pull(&R[10]);
+        gsu_code(0x010000 | gsu_pull(&R[10]), 1);
         return;
     }
 }

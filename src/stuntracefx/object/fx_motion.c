@@ -116,10 +116,12 @@ FxMoveRegs FxRecordMove(uint16_t rec, uint16_t kind, int copy)
 
 void abi_FxRecordMove(void)
 {
+    uint16_t ret = gsu.r[11];
     FxMoveRegs g = FxRecordMove(gsu.r[8], gsu.r[1], GSU_COPY(0));
 
     gsu.r[0] = g.r0;
     gsu.r[2] = g.r2;
     gsu.r[3] = g.r3;
     gsu.r[5] = g.r5;
+    gsu_code(0x040000 | ret, 1);
 }
