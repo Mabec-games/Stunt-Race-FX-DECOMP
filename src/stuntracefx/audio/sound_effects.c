@@ -769,7 +769,7 @@ void abi_SoundNearCarOnce(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     abi_SoundPort0QueuePush();
     cpu.p = p0;
-    cyc(50);
+    cyc(v == 0x1E ? 50 : 72);                       /* BRA .done except .sound1E */
 }
 
 void abi_Sound0E1AStop(void);

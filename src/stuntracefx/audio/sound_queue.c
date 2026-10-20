@@ -70,19 +70,31 @@ void abi_SoundPort0QueuePushRaw(void)
  * Entry: any widths; A low byte = command. Exit: every register unchanged
  * except N and Z, which the final pull of DB sets from DB.
  */
-void SoundPort0QueuePush(uint8_t command)
+static void port0_push(uint8_t command, uint16_t tail)
 {
     cyc(238);
     if (rd8(CURRENT_PLAYER) != 0)
         { cyc(10); command |= 0x80; }
     queue_push(SOUND_PORT0_QUEUE, SOUND_PORT0_HEAD, SOUND_PORT0_COUNT, command);
-    cyc(16);
+    cyc(tail);
+}
+
+void SoundPort0QueuePush(uint8_t command)
+{
+    port0_push(command, 16);
 }
 
 void abi_SoundPort0QueuePush(void)
 {
     SoundPort0QueuePush((uint8_t)cpu.a);
     cpu.p = nz8(cpu.p, cpu.db);  /* the last pull restores DB */
+}
+
+/* From a caller with X 8-bit: PLY/PLX pull a byte each, 16 clocks less. */
+void abi_SoundPort0QueuePushX8(void)
+{
+    port0_push((uint8_t)cpu.a, 0);
+    cpu.p = nz8(cpu.p, cpu.db);
 }
 
 /*
@@ -92,17 +104,29 @@ void abi_SoundPort0QueuePush(void)
  * Entry: any widths; A low byte = command. Exit: every register unchanged
  * except N and Z, which the final pull of DB sets from DB.
  */
-void SoundPort1QueuePush(uint8_t command)
+static void port1_push(uint8_t command, uint16_t tail)
 {
     cyc(192);
     queue_push(SOUND_PORT1_QUEUE, SOUND_PORT1_HEAD, SOUND_PORT1_COUNT, command);
-    cyc(16);
+    cyc(tail);
+}
+
+void SoundPort1QueuePush(uint8_t command)
+{
+    port1_push(command, 16);
 }
 
 void abi_SoundPort1QueuePush(void)
 {
     SoundPort1QueuePush((uint8_t)cpu.a);
     cpu.p = nz8(cpu.p, cpu.db);  /* the last pull restores DB */
+}
+
+/* From a caller with X 8-bit: PLY/PLX pull a byte each, 16 clocks less. */
+void abi_SoundPort1QueuePushX8(void)
+{
+    port1_push((uint8_t)cpu.a, 0);
+    cpu.p = nz8(cpu.p, cpu.db);
 }
 
 /*

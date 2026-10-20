@@ -215,7 +215,7 @@ static void stack_light(uint16_t up)
     add16(F(0x200E, cpu.y), up);
     swap_xy();
     abi_ObjectRebucket();
-    (cyc(132), swap_xy());
+    (cyc(38), swap_xy());
 }
 
 /*

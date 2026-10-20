@@ -2354,13 +2354,13 @@ void abi_PhaseNothingECF3(void)
 }
 
 /* 07:ED10 / 07:ED80: $0E5A = t, $0E59 one less, sound $51, then after(). */
-static void time_up_tick(uint32_t b, uint8_t t, void (*after)(void))
+static void time_up_tick(uint32_t b, uint8_t t, void (*after)(void), uint8_t push_x)
 {
     lda8_imm(t);
     cyc(22);
     wr8(b | 0x0E5A, t);
     dec8_mem(b | 0x0E59);
-    cyc(38);
+    cyc(38 + push_x);                           /* X 16-bit: the push's PHY/PHX take 2 bytes each */
     lda8_imm(0x51);
     abi_SoundPort0QueuePush();
     (cyc(46), after());
@@ -2408,7 +2408,7 @@ void abi_TimeUpStunt(void)
     op_lda8(b | 0x0E59);
     if (!(uint8_t)cpu.a) {
         if (time_up_wait(b))
-            time_up_tick(b, 0x20, abi_OamHide75Up); else { cyc(16); }
+            time_up_tick(b, 0x20, abi_OamHide75Up, 16); else { cyc(16); }
         cyc(32);
         return;
     }
@@ -2462,7 +2462,7 @@ void abi_TimeUpRace(void)
             return;
         } else { cyc(6); }
         if (time_up_wait(b))
-            time_up_tick(b, 0x24, abi_Countdown0DF8); else { cyc(16); }
+            time_up_tick(b, 0x24, abi_Countdown0DF8, 0); else { cyc(16); }
         cyc(32);
         return;
     }

@@ -13,10 +13,11 @@ void abi_ApuUpload(void);
 /* Copy `bytes` from $1E:src to $70:6000, a word at a time. */
 static void copy_to_6000(uint16_t src, uint16_t bytes)
 {
+    uint16_t first = (src == 0x8000) ? 144 : 154;   /* CMP, BNE, LDX lead in */
     uint16_t x;
 
     for (x = 0; x < bytes; x = (uint16_t)(x + 2))
-        { cyc(154); wr16(0x706000 + x, rd16(0x1E0000 + (uint16_t)(src + x))); }
+        { cyc(x == 0 ? first : 154); wr16(0x706000 + x, rd16(0x1E0000 + (uint16_t)(src + x))); }
 }
 
 /* Put sound block `which` at $70:6000: $8000, $91BC and $AFC6 are copied
@@ -44,7 +45,7 @@ static void put_block(uint16_t which, uint16_t input)
         cyc(124);
         GsuRun(0x01, 0xCF42);
     }
-    cyc(204);
+    cyc(which == 0x8000 || which == 0x91BC || which == 0xAFC6 ? 200 : 204);
 }
 
 /*

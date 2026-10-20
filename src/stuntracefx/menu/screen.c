@@ -1517,14 +1517,16 @@ void abi_MenuRunFrames(void);
 void abi_ChampionScreenRun(void)
 {
     uint32_t b;
+    int first;
 
     cpu.p &= (uint8_t)~(P_M | P_X);
     abi_ChampionScreenOpen();
     (cyc(46), abi_MenuWaitFrame());
     (cyc(46), abi_ApproachTargetFull());
-    cyc(48);
+    first = 1;
     do {
-        cyc(68);
+        cyc(first ? 46 : 68);           /* JSR; later rounds also the BEQ back */
+        first = 0;
         abi_MenuWaitFrame();
         (cyc(62), abi_MenuActorsRun());
         (cyc(62), abi_MenuOamBuild());
@@ -1693,7 +1695,7 @@ void abi_TitleScreenRun(void)
     (cyc(46), abi_ApproachTargetFull());
     op_rep(P_M | P_X);
     op_lda16_imm(0x0000);
-    cyc(88);
+    cyc(18);
     wr16(0x001913, 0x0000);
     abi_TitleScreenLoop();
 }

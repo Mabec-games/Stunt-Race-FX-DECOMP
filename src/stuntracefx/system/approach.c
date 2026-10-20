@@ -51,6 +51,7 @@ void ApproachTargetFull(uint8_t bank)
 {
     cyc(84);
     wr8((uint32_t)bank << 16 | 0x11DB, 0x0F);
+    cyc(70);
 }
 
 void abi_ApproachTargetFull(void)

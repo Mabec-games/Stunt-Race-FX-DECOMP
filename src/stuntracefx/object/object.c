@@ -943,15 +943,17 @@ uint16_t ObjectRebucket(uint16_t obj)
     uint16_t key = ScaleObjectXZ(obj, &p);
 
     cyc(120);
-    if (key == rd16(0x7E2040 + obj))
+    if (key == rd16(0x7E2040 + obj)) {
+        cyc(94);
         return key;
+    }
     cyc(108);
     ObjectBucketRemove(obj);
     cyc(68);
     wr16(0x7E2040 + obj, key);
     cyc(62);
     ObjectBucketInsert(obj);
-    cyc(122);
+    cyc(216);
     return obj;
 }
 
@@ -2213,7 +2215,7 @@ void abi_ObjectSpawnFromScript(void)
     cpu.x = o;
     cpu.p &= (uint8_t)~P_M;
     abi_ObjectRebucket();
-    cyc(170);
+    cyc(76);
     bank = rd8(OBJ_FIELD(o, 0x1C));
     cyc(134);
     w = (uint16_t)(rd16(OBJ_FIELD(o, 0x1A)) - 0x8000);
@@ -2297,8 +2299,10 @@ void abi_ObjectSpawnChanceD460(void)
     (cyc(62), abi_RandomStepLong());
     cpu.p = (uint8_t)((cpu.p & ~P_C) | ((uint8_t)cpu.a >= 0xB2 ? P_C : (cyc(14), 0)));
     cpu.p = nz8(cpu.p, (uint8_t)((uint8_t)cpu.a - 0xB2));
-    if ((uint8_t)cpu.a < 0xB2)
+    if ((uint8_t)cpu.a < 0xB2) {
+        cyc(2);
         return;
+    }
     cpu.p &= (uint8_t)~P_M;
     cpu.a = 0xA158;
     cyc(108);
@@ -2322,6 +2326,7 @@ void abi_ObjectSpawnChanceD460(void)
     cpu.p |= P_M;
     cpu.a = (uint16_t)((cpu.x & 0xFF00) | a);
     cpu.p = nz8(cpu.p, a);
+    cyc(2);
 }
 
 /*
@@ -2410,7 +2415,7 @@ static void spawn_sparkle(uint32_t b)
     (cyc(22), swap_xy());
     abi_ObjectRebucket();
     swap_xy();
-    cyc(98);
+    cyc(4);
 }
 
 /*
@@ -2501,7 +2506,7 @@ void abi_ObjectSparkleStep(void)
     wr8(b | (uint16_t)(0x2048 + cpu.x), v);
     cpu.p = nz8(cpu.p, v);
     (cyc(62), abi_ObjectRebucket());
-    cyc(132);
+    cyc(38);
 }
 
 /*
@@ -2910,7 +2915,7 @@ static void parent_place_from(uint32_t b, int attached, int stage)
     } else { cyc(22); }
     cyc(62);
     abi_ObjectRebucket();
-    cyc(132);
+    cyc(38);
 }
 
 static void parent_place(uint32_t b, int attached)
@@ -3744,7 +3749,7 @@ void abi_ObjectCarFrame(void)
     (cyc(62), abi_ObjectNearFocus());
     abi_ObjectPoseFromRecord();
     (cyc(62), abi_ObjectRebucket());
-    cyc(132);
+    cyc(38);
 }
 
 void abi_CrashWhite(void);
@@ -4036,7 +4041,7 @@ void abi_ObjectCarRecordRestart(void)
 void abi_ObjectCarPoseStep(void)
 {
     (cyc(62), abi_ObjectRebucket());
-    (cyc(156), abi_ObjectPoseFromRecord());
+    (cyc(62), abi_ObjectPoseFromRecord());
     (cyc(166), abi_GsuRecordFlag4());
 }
 
@@ -4106,7 +4111,7 @@ void abi_ObjectTimedStep(void)
     uint8_t v;
 
     (cyc(62), abi_ObjectRebucket());
-    cyc(124);
+    cyc(30);
     v = rd8(b | (uint16_t)(0x204B + cpu.x));
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.p = nz8(cpu.p, v);

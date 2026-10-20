@@ -158,14 +158,19 @@ static int spawn(uint16_t kind)
 }
 
 /* PHX, TYX, PLY: X and Y swapped, N and Z from Y. */
-static void swap_xy(void)
+static void swap_xy_less(unsigned less)
 {
-    cyc(164);
+    cyc(164 - less);
     uint16_t t = cpu.x;
 
     cpu.x = cpu.y;
     cpu.y = t;
     cpu.p = nz16(cpu.p, cpu.y);
+}
+
+static void swap_xy(void)
+{
+    swap_xy_less(0);
 }
 
 /* +$24 |= 8, +$3A = 0, +$5F = t: an object lit by its own light ($5D). */
@@ -202,7 +207,7 @@ void abi_ObjectLampTower(void)
         add16(F(0x200E, cpu.y), cyc_then(22, 0xFA88));
         swap_xy();
         abi_ObjectRebucket();
-        (cyc(10), swap_xy());
+        (cyc(10), swap_xy_less(94));
     }
     cyc(0);
     handler_none(cpu.x);
@@ -504,7 +509,7 @@ void abi_ObjectScoreCounterStep(void)
     }
     cyc(84);
     abi_ObjectRebucket();
-    cyc(132);
+    cyc(38);
 }
 
 /* 09:8DF8: synced from its record; released when +$0A has run down. */
@@ -3791,7 +3796,7 @@ void abi_ObjectPopMarkerStep(void)
 {
     add8(F(0x2014, cpu.x), 0xF8);
     (cyc(62), abi_ObjectRebucket());
-    cyc(132);
+    cyc(38);
 }
 
 /* +$0A against the lap $0DEA (through $1F58): 1 when equal. */
@@ -3980,7 +3985,7 @@ void abi_ObjectSparkFollow(void)
     add8(F(0x2015, cpu.x), cyc_then(22, 0x10));
     add8(F(0x2014, cpu.x), 0x10);
     (cyc(62), abi_ObjectRebucket());
-    cyc(132);
+    cyc(38);
 }
 
 /* 09:AF17: the down ball's frame: as the up ball's (contact flags bit 0),
@@ -4729,7 +4734,7 @@ static void swing_frame(void)
         cyc(62);                        /* JSL */
     }
     abi_ObjectRebucket();
-    cyc(132);
+    cyc(38);
 }
 
 /*
@@ -5043,7 +5048,7 @@ void abi_ObjectFloaterSpawnerStep(void)
 void abi_ObjectFloaterStep(void)
 {
     (cyc(62), abi_ObjectRebucket());
-    add8(F(0x2015, cpu.x), cyc_then(94, 0x08));
+    add8(F(0x2015, cpu.x), cyc_then(0, 0x08));
     if (bit25(0x01))
         { cyc(66); add16(F(0x200E, cpu.x), 0xFFEC); cyc(44); /* SEP */ }
     else
@@ -5333,7 +5338,7 @@ static void spinner_frame(int arm)
     lda8(v);
     wr8(F(0x205A, cpu.x), cyc_then(112, v));
     (cyc(62), abi_ObjectRebucket());
-    cyc(132);
+    cyc(38);
 }
 
 /*
@@ -5430,7 +5435,7 @@ void abi_ObjectSpinnerCentreStep(void)
     add8(F(0x2015, cpu.x), 0xF8);
     add8(F(0x2014, cpu.x), 0x0C);
     (cyc(62), abi_ObjectRebucket());
-    cyc(132);
+    cyc(38);
 }
 
 /* 09:CC20: a car's hit, the first time (+$25 bit 0), rings sound $2E; no
@@ -5708,7 +5713,7 @@ step:
     add8(F(0x2016, cpu.x), 0xAA);
     cyc(62);
     abi_ObjectRebucket();
-    cyc(132);
+    cyc(38);
 }
 
 /*
@@ -5802,7 +5807,7 @@ void abi_ObjectFanCentreStep(void)
 {
     add8(F(0x2016, cpu.x), 0xF8);
     (cyc(62), abi_ObjectRebucket());
-    cyc(132);
+    cyc(38);
 }
 
 /*
@@ -5893,7 +5898,7 @@ void abi_ObjectWheelCentreStep(void)
 {
     add8(F(0x2016, cpu.x), 0x08);
     (cyc(62), abi_ObjectRebucket());
-    cyc(132);
+    cyc(38);
 }
 
 /* One piece of the breakable's burst: kind $ABF4 at X's position, handler
@@ -6723,7 +6728,7 @@ void abi_ObjectLampPost(void)
     add16(F(0x200E, cpu.y), 0xFD94);
     swap_xy();
     abi_ObjectRebucket();
-    (cyc(176), swap_xy());
+    (cyc(82), swap_xy());
 }
 
 /*
@@ -7069,7 +7074,7 @@ static void meter_frame(void)
         cyc(up ? 84 : 62);              /* BRA (counting up), JSL */
     } else { cyc(84); }
     abi_ObjectRebucket();
-    cyc(132);
+    cyc(38);
 }
 
 /*
@@ -8665,7 +8670,7 @@ void abi_ObjectPuffFollow(void)
     cpu.p = nz16(cpu.p, cpu.y);
     abi_ObjectCopyPositionFrom();
     (cyc(40), abi_ObjectRebucket());
-    st8i_hi(F(0x2018, cpu.x), cyc_then(110, 0x01));
+    st8i_hi(F(0x2018, cpu.x), cyc_then(16, 0x01));
     cpu.p &= (uint8_t)~P_M;
     op_lda16(cyc_then(52, F(0x2029, cpu.x)));
     cyc(16);
@@ -8948,7 +8953,7 @@ void abi_ObjectShardStep(void)
     add8(F(0x2015, cpu.x), cyc_then(22, 0x12));
     (cyc(22), life_down());
     (cyc(40), abi_ObjectRebucket());
-    cyc(132);
+    cyc(38);
 }
 
 /*
@@ -8972,7 +8977,7 @@ void abi_ObjectRisingSpark(void)
     add16_via(F(0x200E, cpu.x), F(0x2027, cpu.x));
     add8(F(0x2015, cpu.x), cyc_then(22, 0x12));
     (cyc(62), abi_ObjectRebucket());
-    cyc(132);
+    cyc(38);
 }
 
 /* 09:BF34 / BFF6: the marker bounces and syncs to its record; a car's

@@ -11,6 +11,7 @@
 #include "cpu_ops.h"
 
 void abi_SoundPort0QueuePush(void);
+void abi_SoundPort0QueuePushX8(void);
 void abi_TilemapPaletteCycle(void);
 void abi_SpritePieces3(void);
 void abi_RecordsUnpackCourseRunning(void);
@@ -100,12 +101,14 @@ static int pressed(uint32_t b, uint16_t mask)
     return (cpu.a & mask) != 0;
 }
 
-/* Sound $45 or $46 on port 0, 8-bit. */
-static void sound(uint8_t s)
+/* Sound $45 or $46 on port 0, 8-bit; tail is the push's PLY/PLX bytes past
+   8-bit (16 with X 16-bit, else 0). */
+static void sound(uint8_t s, unsigned tail)
 {
     cyc(62);
     lda8_imm(s);
-    abi_SoundPort0QueuePush();
+    abi_SoundPort0QueuePushX8();
+    cyc(tail);
 }
 
 /* TilemapPaletteCycle on y entries from offset x, X 16-bit. */
@@ -263,7 +266,7 @@ static void records_wait(uint8_t next, const uint16_t *rows, uint16_t count, uin
     if (pressed(b, 0x9000)) {
         cyc(22);
         op_sep(P_M);
-        sound(0x46);
+        sound(0x46, 0);
         lda8_imm(next);
         cyc(24);
         wr8(b | 0x0D59, next);
@@ -696,14 +699,14 @@ static void records_choice(uint32_t b, uint8_t skip, int check_10cd)
     cyc(78);
     wr8(b | 0x0D59, skip);
     cyc(16);
-    sound(0x46);
+    sound(0x46, 0);
     return;
 next:
     cyc(44);
     op_sep(P_M);
     inc8_mem(b | 0x0D59);
     cyc(16);
-    sound(0x46);
+    sound(0x46, 0);
 }
 
 /*
@@ -894,7 +897,7 @@ static void car_change(uint32_t b, int right)
 
     if (right) {
         op_sep(P_M | P_X);
-        sound(0x45);
+        sound(0x45, 16);
         cyc(8);
         op_lda8(b | 0x0D89);
         v = (uint8_t)(cpu.a + 1);
@@ -918,7 +921,7 @@ static void car_change(uint32_t b, int right)
         } else {
         cyc(22);
         op_sep(P_M);
-        sound(0x45);
+        sound(0x45, 0);
         cyc(8);
         op_lda8(b | 0x0D89);
         v = (uint8_t)(cpu.a - 1);
@@ -990,20 +993,20 @@ void abi_ResultsMenu(void)
             lda8_imm(0x01);
             cyc(72);
             wr8(b | 0x0E3A, 0x01);
-            sound(0x46);
+            sound(0x46, 0);
             return;
         }
         if (c == 0x02) {
             cyc(60);
             inc8_mem(b | 0x0DD4);
-            sound(0x46);
+            sound(0x46, 16);
             (cyc(8), rows_car());
             return;
         }
         lda8_imm(0x00);
         cyc(94);
         wr8(b | 0x0DD4, 0x00);
-        sound(0x46);
+        sound(0x46, 16);
         lda8_imm(0x55);
         cyc(24);
         wr8(b | 0x0582, 0x55);
@@ -1026,7 +1029,7 @@ void abi_ResultsMenu(void)
             if (!(uint8_t)cpu.a) {
                 cyc(16);
                 inc8_mem(b | 0x0DD4);
-                sound(0x45);
+                sound(0x45, 16);
                 rows_course();
                 return;
             } else { cyc(16); }
@@ -1041,7 +1044,7 @@ void abi_ResultsMenu(void)
             op_sep(P_M);
             cyc(52);
             wr8(b | 0x0DD4, 0x00);
-            sound(0x45);
+            sound(0x45, 0);
             rows_retry();
             return;
         }
@@ -1049,7 +1052,7 @@ void abi_ResultsMenu(void)
             cyc(22);
             op_sep(P_M);
             inc8_mem(b | 0x0DD4);
-            sound(0x45);
+            sound(0x45, 16);
             (cyc(8), rows_car());
             return;
         }
@@ -1063,7 +1066,7 @@ void abi_ResultsMenu(void)
             return;
         } else { cyc(28); }
         op_sep(P_M);
-        sound(0x45);
+        sound(0x45, 0);
         lda8_imm(0x01);
         cyc(24);
         wr8(b | 0x0DD4, 0x01);

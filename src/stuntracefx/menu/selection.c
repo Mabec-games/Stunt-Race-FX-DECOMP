@@ -265,11 +265,15 @@ void abi_SaveChecksum(void);
    $18CB, shifted into the high nibble, kept with bits 0-1 of $70:FC0C;
    otherwise the entry kept with bits 4-5 of $70:FC0C. Returns A as the
    store leaves it. */
+static uint16_t save_mode;              /* the mode save_selection last saw */
+
 static uint16_t save_selection(uint8_t bank, uint16_t *x)
 {
     uint32_t b = (uint32_t)bank << 16;
     cyc(32);
     uint16_t mode = rd16(0x0018C3), v;
+
+    save_mode = mode;
 
     if (mode == 3) {
         cyc(78);
@@ -350,7 +354,7 @@ void abi_SelectionSave(void)
         cpu.x &= 0x00FF;
         cpu.y &= 0x00FF;
     }
-    cyc(94);
+    cyc(save_mode == 3 ? 72 : 94);      /* the other arms end in a BRA */
 }
 
 void SoundPort0QueuePush(uint8_t command);

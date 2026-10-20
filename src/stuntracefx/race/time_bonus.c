@@ -44,9 +44,9 @@ void abi_SoundPort0QueuePush(void);
 #define SIZE_BOUNCE 0x0792ADu
 
 /* One digit: $70:0216 from the table at $8E3E, then program $07:F15B. */
-static uint8_t digit(uint8_t bank, uint16_t d)
+static uint8_t digit(uint8_t bank, uint16_t d, uint16_t pre)
 {
-    cyc(70);
+    cyc(pre);
     GsuParam216A(bank, (uint16_t)(d << 1));
     cyc(188);
     return GsuRun(0x07, 0xF15B);
@@ -67,7 +67,7 @@ static void abi_digit_exit(uint16_t d, uint8_t mode)
 
 /* The body of GsuTimeDigits; returns the last digit drawn, *mode the screen
    mode value. */
-static uint16_t time_digits(uint8_t bank, uint8_t *mode)
+static uint16_t time_digits(uint8_t bank, uint8_t *mode, int x8)
 {
     uint32_t b = (uint32_t)bank << 16;
     uint16_t v;
@@ -93,10 +93,10 @@ static uint16_t time_digits(uint8_t bank, uint8_t *mode)
         v = rd16(b | TIME_BCD);
     } else { cyc(46); }
     cyc(56);
-    digit(bank, (uint16_t)((v >> 4) & 0x000F));
+    digit(bank, (uint16_t)((v >> 4) & 0x000F), x8 ? 64 : 70);
     cyc(162);
     v = (uint16_t)(rd16(b | TIME_BCD) & 0x000F);
-    *mode = digit(bank, v);
+    *mode = digit(bank, v, 70);
     return v;
 }
 
@@ -118,14 +118,14 @@ uint8_t GsuTimeDigits(uint8_t bank)
 {
     uint8_t mode;
 
-    time_digits(bank, &mode);
+    time_digits(bank, &mode, 0);
     return mode;
 }
 
 void abi_GsuTimeDigits(void)
 {
     uint8_t mode;
-    uint16_t d = time_digits(cpu.db, &mode);
+    uint16_t d = time_digits(cpu.db, &mode, cpu.p & P_X);
 
     abi_digit_exit(d, mode);
 }

@@ -790,7 +790,7 @@ void abi_MenuPreviewRun(void)
     (cyc(46), abi_MenuWaitFrame());
     (cyc(46), abi_ApproachTargetFull());
     cpu.p &= (uint8_t)~(P_M | P_X);
-    (cyc(94), preview_menu_loop());
+    (cyc(24), preview_menu_loop());
 }
 
 /*

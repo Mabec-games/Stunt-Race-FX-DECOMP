@@ -358,7 +358,7 @@ static void detach_frame(void)
     } while (v);
     cyc(56);
     abi_ObjectRebucket();
-    cyc(132);
+    cyc(38);
 }
 
 /*
@@ -459,7 +459,7 @@ static void return_frame(void)
         cyc(hit ? 62 : 84);             /* JSL, after the $4E arm's BRA */
     } else { cyc(88); }
     abi_ObjectRebucket();
-    st8i(F(0x2036, cpu.x), cyc_then(100, 0x03));
+    st8i(F(0x2036, cpu.x), cyc_then(6, 0x03));
     if (ld8(cyc_then(14, F(0x204B, cpu.x)))) {
         dec8(F(0x204B, cpu.x));
         return;
@@ -574,7 +574,7 @@ static void fly_frame(void)
         wr8(F(0x2027, cpu.x), cyc_then(66, v));
     } else { cyc(68); }
     abi_ObjectSpawnChanceD460();
-    cyc(130);
+    cyc(128);
 }
 
 /*
@@ -708,7 +708,7 @@ static void player_drive(void)
     (cyc(46), abi_GsuRecordStep6A());
     (cyc(46), abi_ObjectMoveForward());
     (cyc(62), abi_ObjectRebucket());
-    st8i(F(0x2036, cpu.x), cyc_then(100, 0x03));
+    st8i(F(0x2036, cpu.x), cyc_then(6, 0x03));
 }
 
 /* 08:AF93: player 1's frame (see PlayerCar1Step). */

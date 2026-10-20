@@ -1029,7 +1029,7 @@ static uint16_t sync_start(uint8_t bank, uint16_t obj)
 
     cyc(62);
     ObjectRebucket(obj);
-    cyc(156);
+    cyc(62);
     GsuRecordFlag4(bank, obj, &has);
     cyc(116);
     return record_of(bank, obj);
@@ -1062,7 +1062,7 @@ uint16_t ObjectSyncFromRecord(uint8_t bank, uint16_t obj, uint16_t *y, uint8_t *
        (+$22) is read, in the asm's order. */
     cyc(62);
     ObjectRebucket(obj);
-    cyc(156);
+    cyc(62);
     GsuRecordFlag4(bank, obj, &has);
     cyc(126);
     wr8(b | (uint16_t)(0x2024 + obj), cyc_then(46, rd8(b | (uint16_t)(0x2024 + obj)) & 0xFD));
@@ -2097,7 +2097,7 @@ static void set_handler08(uint16_t h)
 void abi_ObjectRecordMarkStep(void)
 {
     (cyc(62), abi_ObjectRebucket());
-    (cyc(156), abi_GsuRecordFlag4());
+    (cyc(62), abi_GsuRecordFlag4());
 }
 
 /*
@@ -2149,7 +2149,7 @@ uint16_t ObjectSyncFromRecordFall(uint8_t bank, uint16_t obj, uint16_t *y, uint8
 
     cyc(62);
     ObjectRebucket(obj);
-    cyc(156);
+    cyc(62);
     GsuRecordFlag4(bank, obj, &has);
     cyc(116);
     rec = record_of(bank, obj);

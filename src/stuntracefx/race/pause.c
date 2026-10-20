@@ -11,6 +11,7 @@
 
 void abi_SoundPort0QueuePush(void);
 void abi_SoundPort1QueuePush(void);
+void abi_SoundPort1QueuePushX8(void);
 void abi_WindowSlideUpSound(void);
 void abi_Gauge6BPlace(void);
 void abi_Gauge6APlace(void);
@@ -346,7 +347,7 @@ static void choice_made(uint32_t b, int quit_extra)
         abi_Countdown0DF8();
         cyc(cpu.p & P_X ? 38 : 54);     /* 8-bit X: PHX and PHY in the push push a byte each */
         lda8_imm(0x22);
-        abi_SoundPort1QueuePush();
+        abi_SoundPort1QueuePushX8();
         return;
     }
     op_sep(P_M);
