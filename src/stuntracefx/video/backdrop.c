@@ -28,6 +28,7 @@ uint16_t PlayerVehicleRaised(uint8_t bank, uint8_t player)
 {
     uint16_t obj = rd16(cyc_then(152, dbw(bank, player ? (cyc(6), 0x034A) : 0x0346)));
 
+    cyc(player ? 32 : 54);              /* player 1's load has a BRA after it */
     obj = rd16(0x7E204F + obj);
     cyc(46);
     obj = rd16(0x7E204F + obj);

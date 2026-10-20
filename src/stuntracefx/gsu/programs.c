@@ -346,12 +346,14 @@ static uint8_t f441(uint8_t kind)
         GsuBytes200_0F050E();
         cyc(56);
         wr16(0x700216, 0x080E);
+        cyc(22);                        /* BRA */
     } else {
         cyc(156);
         GsuBytes200_0F080E();
         cyc(56);
         wr16(0x700216, 0x0A0E);
     }
+    cyc(56);
     wr16(0x70020A, 0x0074);
     cyc(56);
     wr16(0x70020C, 0x003C);

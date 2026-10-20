@@ -521,7 +521,7 @@ uint16_t CoursePictureToVram(uint8_t bank)
 
 void abi_CoursePictureToVram(void)
 {
-    cyc(160);
+    cyc(98);
     uint16_t a = CoursePictureToVram(cpu.db);
 
     cpu.a = a;

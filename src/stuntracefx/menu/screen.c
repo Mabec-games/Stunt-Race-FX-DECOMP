@@ -117,6 +117,7 @@ void MenuOamFromList(uint8_t bank, uint16_t *x, uint16_t *y)
         *y = (uint16_t)(*y + 2);
         cyc(56);
     }
+    cyc(18);
 }
 
 void abi_MenuOamFromList(void)

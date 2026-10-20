@@ -206,6 +206,7 @@ void PlayerSound23(void)
 void abi_PlayerSound23(void)
 {
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | player_sound(0x23, 0x25));
+    cyc(72);
 }
 
 /*
@@ -239,6 +240,7 @@ void PlayerSound0D(void)
 void abi_PlayerSound0D(void)
 {
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | player_sound(0x0D, 0x18));
+    cyc(72);
 }
 
 /*
@@ -272,6 +274,7 @@ void PlayerSound12(void)
 void abi_PlayerSound12(void)
 {
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | player_sound(0x12, 0x19));
+    cyc(72);
 }
 
 /*

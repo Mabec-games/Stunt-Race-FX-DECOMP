@@ -488,7 +488,7 @@ void abi_RaceVideoSetup(void)
     video_gsu_vram(0xF814, 0xF7DD);
     cyc(18);
     video_gsu_3000(0xD970, 0x001D, 0);
-    abi_CoursePictureToVram();
+    (cyc(62), abi_CoursePictureToVram());
     op_sep(P_M | P_X);
     cyc(24);
     v = rd8(b | 0x0D2B);

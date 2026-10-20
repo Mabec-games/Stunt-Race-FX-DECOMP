@@ -1534,8 +1534,8 @@ uint8_t SpritePieces3(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p, uint16
     uint8_t attr = 0, n;
     unsigned t;
 
-    cyc(86);
-    i = rd8(cyc_then(86, 0x07B981 + (rd16(b | 0x10BB) & 0x00FF)));
+    cyc(24);
+    i = rd8(cyc_then(148, 0x07B981 + (rd16(b | 0x10BB) & 0x00FF)));
     i = (uint16_t)(i + rd16(b | 0x10C3));
     cyc(182);
     *x = *set = rd16(0x1CF09E + ((uint16_t)(i << 2) & 0x00FF));
@@ -2323,6 +2323,7 @@ void abi_PictureTurnStep(void)
     uint32_t b = (uint32_t)cpu.db << 16;
     uint8_t p0 = cpu.p;
     uint16_t m, k, t, y;
+    int first;
 
     op_sep(P_M);
     do
@@ -2362,9 +2363,10 @@ void abi_PictureTurnStep(void)
         op_lda16(b | 0x0D33);
         t = (uint16_t)(cpu.a + 1);
     }
-    for (;;) {
-        cyc(38);
+    for (first = 1;; first = 0) {
+        cyc(first ? 38 : 46);           /* going round: BRA, then the STA again */
         wr16(b | 0x0D33, t);
+        cyc(52);
         y = (uint16_t)((uint16_t)(t << 1) + rd16(b | 0x0D33));
         cpu.y = y;
         cyc(170);
@@ -2373,6 +2375,8 @@ void abi_PictureTurnStep(void)
         if (cpu.a >= 0x8000)
             break;
         t = cpu.a;
+        cyc(38);
+        wr16(b | 0x0D33, t);            /* STA, BRA back to the STA at .lC5F3 */
     }
     cpu.p = (uint8_t)(nz16(cpu.p, (uint16_t)(cpu.a - 0x8000)) | P_C);
     cyc(44);
@@ -2399,6 +2403,7 @@ void abi_PictureTurnStep(void)
     abi_GsuRun();
     op_rep(P_M | P_X);
     op_sep(P_M);
+    cyc(162);                           /* GsuRun's return (72), REP, REP, SEP, DEC's opcode */
     wr8(b | 0x0D32, cyc_then(6, (uint8_t)(rd8(b | 0x0D32) - 1)));
     op_plp(p0);
     cyc(28);
@@ -2576,6 +2581,7 @@ static void overlay_draw(void)
     }
     cyc(64);
     wr8(0x0000F5, bob);
+    cyc(bob ? 32 : 38);                 /* to STA $F1: LDA #8, or the BRA */
     wr8(0x0000F1, step);
     op_rep(P_M | P_X);
     cyc(24);
@@ -2624,9 +2630,9 @@ static void overlay_draw(void)
         cpu.x = (uint16_t)(cpu.x + 3);
         cpu.y = (uint16_t)(cpu.y + 4);
         /* INX x3, INY x4, CPY # (122), BCC; round again 22 and REP, LDA
-           long, AND #, CLC, ADC abs (132, the table word's 16 counted by
-           its read) */
-        in = off + 122 + 22 + 132 - 16;
+           long, AND #, CLC, ADC abs (132 with the table word's ROM read;
+           the REP's 22 is op_rep's) */
+        in = off + 122 + 22 + 132 - 22;
     } while (cpu.y < 0x00C0);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xAA);
     cyc(off + 122 + 16 + 40);           /* BCC not taken, LDA #, STA abs */

@@ -342,7 +342,7 @@ static void record_slot_copy(uint8_t a)
  */
 void abi_RecordSlotCopy0(void)
 {
-    record_slot_copy((cyc(2), cyc_then(4, course_times_9())));
+    record_slot_copy(cyc_then(2, (cyc(2), cyc_then(2, course_times_9()))));
 }
 
 /*

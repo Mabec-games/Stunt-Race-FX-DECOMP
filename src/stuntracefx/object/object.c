@@ -1241,9 +1241,13 @@ static void groups_chain(uint16_t *y)
     do {
         cyc(c);
         c = 82;
-        if (!(rd8(0x7E1F2D) == 0x23 && (rd8(cyc_then(62, 0x7E2024 + *y)) & 0x10))
-            && !(rd8(cyc_then(68, 0x7E2036 + *y)) & 0x80))
-            { cyc(62); wr8(0x7E2036 + *y, 0x03); }
+        if (!(rd8(0x7E1F2D) == 0x23 && (rd8(cyc_then(62, 0x7E2024 + *y)) & 0x10))) {
+            if (!(rd8(cyc_then(68, 0x7E2036 + *y)) & 0x80))
+                { cyc(62); wr8(0x7E2036 + *y, 0x03); }
+            else
+                cyc(22);                /* BMI */
+        } else
+            cyc(64);                    /* AND, BEQ, JML */
         cyc(52);
         *y = rd16(0x7E203C + *y);
     } while (*y);
@@ -1632,6 +1636,7 @@ int ObjectAlloc(uint16_t *a, uint16_t *x, uint16_t *y)
         wr16(0x7E2002 + rec, 0x0000);
         cyc(24);
         wr16(OBJ_USED_HEAD, rec);
+        cyc(22);                        /* BRA */
     } else {
         cyc(66);
         wr16(0x7E2000 + rec, cyc_then(30, rd16(0x7E2000 + last)));
@@ -1641,6 +1646,7 @@ int ObjectAlloc(uint16_t *a, uint16_t *x, uint16_t *y)
         wr16(0x7E2002 + rec, last);
         *a = last;
     }
+    cyc(24);
     wr16(OBJ_USED_LAST, rec);
     cyc(30);
     next = rd16(0x7E2000 + rec);

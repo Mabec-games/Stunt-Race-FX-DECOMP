@@ -208,7 +208,7 @@ static int bits25(uint16_t o, uint8_t m)
 /* LDA #v, JSL SoundPort0QueuePush. */
 static void sound0(uint8_t v)
 {
-    cyc(52);
+    cyc(48);
     lda8(v);
     abi_SoundPort0QueuePush();
 }
@@ -450,7 +450,7 @@ static void return_frame(void)
     v = ld8(cyc_then(14, F(0x204B, cpu.x)));
     cmp8(0x01);
     if (v == 0x01)
-        { cyc(4); sound0(bits25(cpu.x, 0x02) ? (cyc(32), 0x4D) : (cyc(6), 0x4E)); } else { cyc(88); }
+        { cyc(4); sound0(cyc_then(4, bits25(cpu.x, 0x02) ? (cyc(32), 0x4D) : (cyc(6), 0x4E))); } else { cyc(88); }
     abi_ObjectRebucket();
     st8i(F(0x2036, cpu.x), cyc_then(100, 0x03));
     if (ld8(cyc_then(14, F(0x204B, cpu.x)))) {
@@ -501,7 +501,7 @@ void abi_PartReturn(void)
     cyc(4);
     handler(cpu.x, 0xAE0F);
     st8i(F(0x204B, cpu.x), cyc_then(6, 0x0A));
-    sound0(cyc_then(10, bits25(cpu.x, 0x02) ? (cyc(26), 0x4C) : 0x4B));
+    sound0(cyc_then(14, bits25(cpu.x, 0x02) ? (cyc(26), 0x4C) : 0x4B));
     return_frame();
     cyc(38);
 }
@@ -1108,7 +1108,7 @@ void abi_CarCrashParts(void)
     }
     if (i == 8 || set[i & 3]())
         goto fail; else { cyc(4); }
-    lda8(cyc_then(26, (uint8_t)(ld8(db() | 0x1F58) & 0x01)));
+    lda8(cyc_then(30, (uint8_t)(ld8(db() | 0x1F58) & 0x01)));
     sound0((uint8_t)cpu.a ? 0x5B : (cyc(6), 0x43));
     cyc(58);                            /* CLC, RTL */
     cpu.p &= (uint8_t)~P_C;
