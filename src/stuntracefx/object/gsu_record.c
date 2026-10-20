@@ -1827,7 +1827,7 @@ void abi_PlayerControlsFrame(void)
     if ((uint8_t)cpu.a)
         ctl_player(0x030D, 0x1F25, 1, 0x034A);
     op_rep(P_M);
-    cyc(68);
+    cyc(46);
     op_lda16(0x7E0309);
     cyc(24);
     wr16(0x7E1F23, cpu.a);

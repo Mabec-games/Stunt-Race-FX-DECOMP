@@ -28,6 +28,7 @@ uint16_t ObjectLinkedSet1A(uint16_t obj, uint16_t value)
 
     cyc(82);
     wr16(0x7E201A + linked, value);
+    cyc(24);
     return linked;
 }
 

@@ -2871,7 +2871,7 @@ static void glyph_load_time(uint32_t b, uint16_t from, uint16_t extra)
     int i;
 
     op_sep(P_M);
-    cyc(12);
+    cyc(0);
     for (i = 0; i < 3; i++) {
         cyc(24);
         op_lda8(b | (uint16_t)(from + i));

@@ -2059,7 +2059,7 @@ uint16_t MenuDropBounce(uint8_t bank, uint16_t *x, uint8_t *p)
         cyc(100);
         SoundPort0QueuePush(0x19);
     }
-    cyc(82);
+    cyc(22);
     h = rd16((uint16_t)(*x + 0x20));
     queue_bg1_vscroll(bank, h);
     s = (unsigned)h + 0x4D;

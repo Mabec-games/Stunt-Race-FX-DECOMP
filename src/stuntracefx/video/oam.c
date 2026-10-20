@@ -1905,8 +1905,8 @@ static void oam_direct(uint32_t b, uint8_t addr, uint16_t x, uint16_t n, int hid
     wr8(b | 0x2103, 0x00);
     cpu.x = x;
     for (cpu.y = n; cpu.y; cpu.y--) {
-        cyc(hide && cpu.y != n ? 50 : (cyc(26), 40));  /* hiding, round again: INX, DEY, BNE */
-        v = hide ? 0xF0 : rd8(cyc_then(14, b | (uint16_t)(0x0375 + cpu.x)));
+        cyc(hide && cpu.y != n ? 50 : (cyc(0), 40));  /* hiding, round again: INX, DEY, BNE */
+        v = hide ? 0xF0 : rd8(cyc_then(40, b | (uint16_t)(0x0375 + cpu.x)));
         cyc(24);
         wr8(b | 0x2104, v);
         cpu.x = (uint16_t)(cpu.x + 1);

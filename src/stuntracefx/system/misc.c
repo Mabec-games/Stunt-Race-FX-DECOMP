@@ -681,7 +681,7 @@ void abi_DemoRun(void)
         cpu.p = nz16(cpu.p, cpu.x);
         for (;;) {
             /* $8762: the next command, X kept in $1A57. */
-            cyc(48);
+            cyc(24);
             wr16(b | 0x1A57, cpu.x);
             cyc(238);
             op_lda16(0x038004 + cpu.x);

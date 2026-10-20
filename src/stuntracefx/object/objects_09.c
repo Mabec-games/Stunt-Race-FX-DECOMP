@@ -201,9 +201,9 @@ void abi_ObjectLampTower(void)
         add16(F(0x200E, cpu.y), 0xFA88);
         swap_xy();
         abi_ObjectRebucket();
-        (cyc(84), swap_xy());
+        (cyc(58), swap_xy());
     }
-    cyc(48);
+    cyc(0);
     handler_none(cpu.x);
 }
 

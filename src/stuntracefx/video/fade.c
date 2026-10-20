@@ -29,7 +29,7 @@ static uint16_t fade_in(uint16_t step, uint8_t *p)
     *p = clamp_flags(*p, sum);
     if (sum >= 0x0F00)
         sum = 0x0F00;
-    cyc(108);
+    cyc(88);
     wr16(FADE_LEVEL, sum);
     return sum;
 }

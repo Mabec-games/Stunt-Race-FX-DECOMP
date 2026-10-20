@@ -512,7 +512,7 @@ void abi_ObjectPaceCarStep(void)
             wr8(b | 0x1F71, 0x01);
             cpu.p &= (uint8_t)~P_M;
         }
-        cyc(54);
+        cyc(50);
         op_lda16(0x700042 + cpu.x);
         op_and16(0xF7FF);
         cyc(54);

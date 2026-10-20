@@ -85,6 +85,7 @@ static void put7f(uint32_t addr, uint8_t v)
 
 void abi_WindowTable7F(void)
 {
+    cyc(54);
     uint8_t a, b2;
 
     op_sep(P_M);

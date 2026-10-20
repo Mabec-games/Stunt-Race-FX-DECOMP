@@ -737,7 +737,7 @@ static void player_record(uint16_t n, uint32_t match, int read64)
             cpu.p = nz16(cpu.p, cpu.a);
         }
         at = (0x70001C + cpu.x) & 0xFFFFFF;
-        cyc(56);
+        cyc(32);
         op_lda16(at);
         cpu.a |= 0x0008;
         cpu.p = nz16(cpu.p, cpu.a);

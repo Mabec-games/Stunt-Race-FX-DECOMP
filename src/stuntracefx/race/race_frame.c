@@ -943,7 +943,7 @@ void abi_RaceLoad(void)
         cyc(28);
         race_load_scroll(b, 0x0000);
         op_sep(P_M);
-        cyc(44);
+        cyc(22);
         wr8(b | 0x0D48, 0x00);
         break;
     case 0xF2A7:
@@ -957,12 +957,12 @@ void abi_RaceLoad(void)
             cyc(6);
             race_load_scroll(b, 0x0050);
             op_sep(P_M);
-            cyc(44);
+            cyc(22);
             wr8(b | 0x0D48, 0x00);
         }
         break;
     }
-    cyc(68);
+    cyc(46);
     abi_RaceScreenSetup();
     op_sep(P_M);
     cpu.db = db0;

@@ -1205,7 +1205,7 @@ hold:
 panel:
     op_sep(P_M);
     lda8_imm(0x08);
-    cyc(96);
+    cyc(66);
     wr8(PY(b, 0x0E41), 0x08);
     op_sep(P_M | P_X);
     cpu.x = 0x0006;
