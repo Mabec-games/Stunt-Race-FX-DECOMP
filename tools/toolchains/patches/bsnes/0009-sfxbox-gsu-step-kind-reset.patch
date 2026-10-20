@@ -1,0 +1,12 @@
+--- a/bsnes/sfc/coprocessor/superfx/superfx.cpp
++++ b/bsnes/sfc/coprocessor/superfx/superfx.cpp
+@@ -148,6 +148,9 @@
+ 
+   GSU::power();
+   create(SuperFX::Enter, Frequency * overclock);
++  // A state loaded while a step was tagged (a wait for the bus, say) leaves
++  // that wait unfinished on the old thread: the tag starts again here.
++  sfxboxStepKind = 0;
+ 
+   romMask = rom.size() - 1;
+   ramMask = ram.size() - 1;
