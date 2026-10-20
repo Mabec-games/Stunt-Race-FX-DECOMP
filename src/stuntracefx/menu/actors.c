@@ -1970,9 +1970,9 @@ void abi_MenuRowStart(void)
 
 /* BG1's vertical scroll = -pos, queued for the next vertical blank as two
    writes to BG1VOFS: the high byte first, then the low byte. */
-static void queue_bg1_vscroll(uint8_t bank, uint16_t pos)
+static void queue_bg1_vscroll(uint8_t bank, uint16_t pos, uint32_t in)
 {
-    cyc(176);
+    cyc(in);                            /* to the first push: each caller's own */
     uint16_t d = (uint16_t)(0 - pos);
 
     FrameByteWritePush(bank, (uint16_t)BG1VOFS, (uint8_t)(d >> 8));
@@ -2025,7 +2025,7 @@ uint16_t MenuDropStart(uint8_t bank, uint16_t rec, uint16_t a, uint8_t *p)
     cyc(60);
     h = rd16((uint16_t)(rec + 0x20));
     *p = negate_flags(*p, h);
-    queue_bg1_vscroll(bank, h);
+    queue_bg1_vscroll(bank, h, 300);
     cyc(144);
     for (i = 0; i < sizeof set / sizeof set[0]; i++)
         { cyc(176); FrameByteWritePush(bank, (uint16_t)set[i].reg, set[i].v); }
@@ -2080,8 +2080,10 @@ uint16_t MenuDropBounce(uint8_t bank, uint16_t *x, uint8_t *p)
     *p = (uint8_t)((*p & ~(P_C | P_V)) | (s > 0xFFFF ? P_C : 0) | ((~(h ^ v) & (h ^ (uint16_t)s) & 0x8000) ? P_V : 0));
     cyc(22);
     wr16((uint16_t)(*x + 0x20), (uint16_t)s);
+    cyc(22);
+    rd16((uint16_t)(*x + 0x20));        /* LDA again for the BMI */
     if (!(s & 0x8000)) {
-        cyc(76);
+        cyc(38);
         a = (uint16_t)(rd16((uint16_t)(*x + 0x22)) - 2);
         if (a & 0x8000) {
             *x = rd16(cyc_then(74, dbw(bank, CURRENT)));
@@ -2097,9 +2099,9 @@ uint16_t MenuDropBounce(uint8_t bank, uint16_t *x, uint8_t *p)
         cyc(100);
         SoundPort0QueuePush(0x19);
     }
-    cyc(22);
+    cyc(82);                            /* BMI taken or REP after the sound; LDA #0, SEC, SBC */
     h = rd16((uint16_t)(*x + 0x20));
-    queue_bg1_vscroll(bank, h);
+    queue_bg1_vscroll(bank, h, 202);
     s = (unsigned)h + 0x4D;
     a = (uint16_t)s;
     *p = (uint8_t)((nz16(*p, a) & ~(P_C | P_V | P_M | P_X)) | (s > 0xFFFF ? P_C : 0) | ((~h & a & 0x8000) ? P_V : 0));
@@ -2127,9 +2129,11 @@ static void queue_regs(uint8_t bank, const struct reg_write *w, unsigned n)
 {
     unsigned i;
 
+    /* between pushes: FrameByteWritePush's return (108), PLX, the LDA #
+       (only when the value changes: 16), SEP, REP, PHX, LDX #, JSL */
     cyc(22);
     for (i = 0; i < n; i++)
-        { cyc(176); FrameByteWritePush(bank, (uint16_t)w[i].reg, w[i].v); }
+        { cyc(i ? 304 + (w[i].v != w[i - 1].v ? 16 : 0) : 176); FrameByteWritePush(bank, (uint16_t)w[i].reg, w[i].v); }
     cyc(190);
 }
 
@@ -2168,21 +2172,24 @@ uint16_t MenuDropAway(uint8_t bank, uint16_t *x, uint8_t *p)
     h = (uint16_t)s;
     cyc(22);
     wr16((uint16_t)(*x + 0x20), h);
+    cyc(22);
+    rd16((uint16_t)(*x + 0x20));        /* LDA again for the BMI */
     if (!(h & 0x8000)) {
         if (h >= 0x00DC) {
-            *x = rd16(cyc_then(124, dbw(bank, CURRENT)));
+            *x = rd16(cyc_then(86, dbw(bank, CURRENT)));
             cyc(46);
             wr16((uint16_t)(*x + 0x08), 0xCE89);
             *p = (uint8_t)(nz16(*p, 0xCE89) | P_C);
             return 0xCE89;
         }
         if (h >= 0x001E)
-            { cyc(332); FrameByteWritePush(bank, (uint16_t)HDMAEN, 0x20); }
-        cyc(204);
-    }
-    cyc(22);
+            { cyc(294); FrameByteWritePush(bank, (uint16_t)HDMAEN, 0x20); cyc(226); }
+        else
+            cyc(162);                   /* BMI, CMP, BCS, CMP, BCC taken; LDA #0, SEC, SBC */
+    } else
+        cyc(82);                        /* BMI taken; LDA #0, SEC, SBC */
     h = rd16((uint16_t)(*x + 0x20));
-    queue_bg1_vscroll(bank, h);
+    queue_bg1_vscroll(bank, h, 202);
     s = (unsigned)h + 0x4D;
     a = (uint16_t)s;
     *p = (uint8_t)((nz16(*p, a) & ~(P_C | P_V | P_M | P_X)) | (s > 0xFFFF ? P_C : 0) | ((~h & a & 0x8000) ? P_V : 0));
