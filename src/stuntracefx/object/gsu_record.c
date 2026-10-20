@@ -1989,7 +1989,7 @@ uint16_t ObjectPoseFromRecord(uint8_t bank, uint16_t obj, uint8_t *p)
     cyc(6);
     rec = record_of(bank, obj);
     if (s == 0x01)
-        { cyc(46); wr16(0x700016 + rec, cyc_then(56, (uint16_t)(rd16(0x700016 + rec) | 0x0400))); }
+        { cyc(46); wr16(0x700016 + rec, cyc_then(56, (uint16_t)(rd16(0x700016 + rec) | 0x0400))); cyc(22); }   /* BRA */
     else
         { cyc(46); wr16(0x700016 + rec, cyc_then(56, (uint16_t)(rd16(0x700016 + rec) & 0xFBFF))); }
     cyc(108);

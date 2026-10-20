@@ -1079,10 +1079,10 @@ void abi_OamPlaceRows75And112(void)
    the strip's span once the value reaches it, in the slot before the
    strip. The OAM writes for the marker go through the data bank. */
 static uint16_t bar_marker(uint8_t bank, uint16_t v, uint16_t y, uint16_t span,
-                           uint16_t tile_far, uint16_t tile_near)
+                           uint16_t tile_far, uint16_t tile_near, uint32_t in)
 {
     uint32_t b = (uint32_t)bank << 16;
-    cyc(212);
+    cyc(in);                            /* from the strip's last store: each bar's own */
     uint16_t tile, pos = rd16(0x000002);
 
     if (v >= span) {
@@ -1125,7 +1125,7 @@ uint16_t SpriteBar4WithMarker(uint8_t bank, uint8_t value, uint16_t pos, uint16_
     v = rd8(0x000004);
     cyc(122);
     SpriteStrip4(v, (uint16_t)(y + 4));
-    return bar_marker(bank, v, y, 0x0010, 0x3C20, 0x3622);
+    return bar_marker(bank, v, y, 0x0010, 0x3C20, 0x3622, v >= 0x0010 ? 212 : 240);   /* BCC taken: 28 more */
 }
 
 void abi_SpriteBar4WithMarker(void)
@@ -1162,7 +1162,7 @@ uint16_t SpriteBar6WithMarker(uint8_t bank, uint8_t value, uint16_t pos, uint16_
     v = rd8(0x000004);
     cyc(122);
     SpriteStrip6(v, (uint16_t)(y + 4));
-    return bar_marker(bank, v, y, 0x0008, 0x3C1F, 0x3C1E);
+    return bar_marker(bank, v, y, 0x0008, 0x3C1F, 0x3C1E, 212);
 }
 
 void abi_SpriteBar6WithMarker(void)

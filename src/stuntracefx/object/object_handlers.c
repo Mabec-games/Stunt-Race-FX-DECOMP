@@ -3518,6 +3518,7 @@ link:
         lda8((uint8_t)(rd8(b | (uint16_t)(0x2024 + cpu.x)) | 0x40));
         cyc(16);
         wr8(b | (uint16_t)(0x2024 + cpu.x), (uint8_t)cpu.a);
+        cyc(22);                        /* BRA */
     } else {
         cyc(96);
         lda8((uint8_t)(rd8(b | (uint16_t)(0x2024 + cpu.x)) & 0xBF));

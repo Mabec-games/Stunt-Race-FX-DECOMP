@@ -702,7 +702,8 @@ void abi_SpeedCourseSelectStep(void)
 
     for (i = 0; i < 3; i++) {
         open = sel_open(bits[i]);
-        v = open ? (cyc(78), 0x00) : (cyc(38), 0x04);
+        /* the first copy branches with BNE, the others with BEQ: 16 less taken */
+        v = open ? (cyc(i ? 78 : 62), 0x00) : (cyc(i ? 38 : 54), 0x04);
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
         cpu.p = nz8(cpu.p, v);
         cpu.x = (uint16_t)(i * 4);

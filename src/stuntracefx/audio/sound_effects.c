@@ -465,6 +465,9 @@ void abi_SoundIfFlag40(void)
 int SoundHoldByFlags(uint8_t bank, uint16_t flags, uint8_t y, uint8_t *a)
 {
     uint32_t at = (uint32_t)bank << 16 | (uint16_t)(0x0DD8 + y);
+
+    /* BIT #$8000 and BNE (taken with bit 15), BIT #$4000 and BEQ, LDA */
+    cyc(flags & 0x8000 ? 92 : flags & 0x4000 ? 126 : 132);
     uint8_t v = rd8(at);
 
     if (flags & 0xC000) {
@@ -552,7 +555,7 @@ static void abi_engine_sounds(uint16_t phase, uint16_t pressed, uint16_t held)
             cpu.p &= (uint8_t)~P_M;
             cyc(46);
             cpu.a = rd16(b | held);
-            cyc(138);
+            cyc(46);                    /* JSR */
             abi_SoundHoldByFlags();
             cpu.p = p;
             cyc(72);
