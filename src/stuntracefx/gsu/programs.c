@@ -1019,7 +1019,7 @@ uint8_t GsuF15BFive(void)
     wr16(0x70020C, 0x0018);
     (cyc(62), GsuBytes200_0F090A());
     for (i = 0; i < 5; i++) {
-        cyc(194);
+        cyc(i ? 194 : 150);             /* the first follows GsuBytes200_0F090A */
         wr16(0x700216, in216[i]);
         mode = f15b();
     }
@@ -1290,7 +1290,7 @@ uint8_t GsuF15BTwoLines(uint16_t input)
     wr16(0x70020C, 0x0008);
     (cyc(62), GsuBytes200_BFB7B6());
     for (i = 0; i < 3; i++) {
-        cyc(194);
+        cyc(i ? 194 : 150);             /* the first follows GsuBytes200_BFB7B6 */
         wr16(0x700216, first[i]);
         f15b();
     }
@@ -2810,7 +2810,7 @@ static void glyph_grid3(uint16_t first, void (*mid)(void), void (*row2)(void))
             if (c)
                 cyc(72);                /* the last glyph's GsuRun returning */
             if (r == 0 && c == 2 && mid)
-                { cyc(134); mid(); }
+                { cyc(62); mid(); }
             glyph_prog(0xF280, (uint16_t)((first + r) << 8 | (0x1A + 2 * c)));
         }
         cyc(42);
@@ -3336,14 +3336,15 @@ void abi_GlyphSpritesDrawAll(void)
     (cyc(86), abi_GsuBytes200_BFB3BE());
     (cyc(118), abi_GlyphSpriteDraw());
     (cyc(190), abi_GsuBytes200_BFBCBD());
-    (cyc(74), abi_GlyphSpriteDraw());
+    (cyc(96), abi_GlyphSpriteDraw());
     (cyc(174), abi_GlyphSpriteDraw());
     (cyc(190), abi_GsuBytes200_BFB3BE());
     cyc(72);
     for (i = 0; i < 5; i++)
         { (cyc(46), abi_GlyphSpriteDraw()); cyc(128); }
-    cyc(190);
+    cyc(62);                            /* JSL; the loop's 128 is the rest of the last draw */
     abi_GsuBytes200_BFBCBD();
+    cyc(50);
     for (i = 0; cyc_loop(46, i < 3); i++)
         { abi_GlyphSpriteDraw(); cyc(128); }
     cyc(24);
@@ -3359,10 +3360,11 @@ void abi_GlyphSpritesDrawAll(void)
         cyc(72);
         for (i = 0; i < 4; i++)
             { (cyc(46), abi_GlyphSpriteDraw()); cyc(128); }
-        cyc(190);
+        cyc(62);
         abi_GsuBytes200_BF12B6();
         for (i = 0; i < 9; i++)
             { (cyc(46), abi_GlyphSpriteDraw()); cyc(128); }
+        cyc(46);                        /* JSR */
     }
     abi_GlyphGrid1A();
     (cyc(118), abi_GlyphGrid1D());

@@ -72,7 +72,9 @@ uint16_t MenuGaugeSlideToTarget(void)
     uint16_t g = rd16(MENU_GAUGE), target = rd16(cyc_then(16, 0x000002));
 
     if (g != target) {
-        if (g >= target)
+        int down = g >= target;
+
+        if (down)
             g = (uint16_t)(g - 0x0008);
         else
             { cyc(6); g = (uint16_t)(g + 0x0004); }
@@ -86,6 +88,7 @@ uint16_t MenuGaugeSlideToTarget(void)
             cyc(70);
             return g;
         }
+        cyc(down ? 62 : 40);        /* SEC, SBC, BPL; the down arm's BRA */
     }
     cyc(70);
     wr16(MENU_GAUGE, 0xFF00);

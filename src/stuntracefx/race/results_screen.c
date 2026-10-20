@@ -1368,6 +1368,7 @@ static void lap_char(void)
     uint32_t b = (uint32_t)cpu.db << 16;
     uint16_t y = cpu.y, at;
     uint8_t v;
+    unsigned tail = 86;
 
     cyc(48);
     cpu.x = rd8(b | 0x0E3F);
@@ -1389,6 +1390,7 @@ static void lap_char(void)
         cpu.p = nz16(cpu.p, cpu.x);
         v = 0xE6;
         cpu.p = nz8(cpu.p, v);
+        tail = 70;                      /* LDA #, BRA, STA long */
         break;
     case 0x04:
         cyc(70);
@@ -1423,6 +1425,7 @@ static void lap_char(void)
         cpu.p = nz16(cpu.p, cpu.x);
         v = 0xE7;
         cpu.p = nz8(cpu.p, v);
+        tail = 70;
         break;
     case 0x0A:
         cyc(70);
@@ -1462,6 +1465,7 @@ static void lap_char(void)
         cyc(32);
         op_lda16(b | 0x0E43);
         op_add16(at);
+        cyc(at == 0x00F4 ? 84 : 62);    /* CLC, ADC #; the sound path: BRA */
         wr16(b | 0x0E43, cpu.a);
         cyc(24);
         wr16(b | 0x0E3F, 0x0000);
@@ -1471,7 +1475,7 @@ static void lap_char(void)
         return;
     }
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cyc(86);
+    cyc(tail);
     wr8((uint32_t)(TILES + cpu.x), v);
     inc8_mem(b | 0x0E3F);
     inc8_mem(b | 0x0E3F);

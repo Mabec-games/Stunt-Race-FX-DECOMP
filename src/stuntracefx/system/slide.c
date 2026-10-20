@@ -44,9 +44,10 @@ static uint16_t slide_step(uint16_t a)
         cyc(40);
         wr16(0x0019F6, v);
         a = v;
+        cyc(24);                        /* JMP */
     }
     {
-        uint8_t hi = rd8(0x0019F7);
+        uint8_t hi = (cyc(46), rd8(0x0019F7));      /* SEP, LDA */
         cyc(32);
         wr8(0x7F3468, hi);
         return (uint16_t)((a & 0xFF00) | hi);

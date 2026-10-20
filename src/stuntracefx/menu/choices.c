@@ -397,6 +397,7 @@ uint16_t MenuSettingsRowMarker(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *
 {
     cyc(138);
     uint16_t row, a;
+    unsigned tail = 54;
 
     MenuActorFind(bank, 0x000D, x, y, p);
     cyc(32);
@@ -406,8 +407,8 @@ uint16_t MenuSettingsRowMarker(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *
     else if (row == 1)
         { cyc(62); start_anim(*x, 0x005A, p); }
     else if (row == 2)
-        { cyc(108); start_anim(*x, 0x006E, p); }
-    cyc(54);
+        { cyc(108); start_anim(*x, 0x006E, p); tail = 32; /* no BRA after the last arm */ }
+    cyc(tail);
     row = rd16(SETTING_ROW);
     a = (uint16_t)(row << 5);
     {
@@ -449,6 +450,7 @@ uint16_t MenuSettingsShow(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
 {
     cyc(62);
     uint16_t i, v, a;
+    unsigned tail = 46;
 
     SelectionTables18CBLong(bank);
     MenuChoiceAnimations(bank, x, y, p);
@@ -474,10 +476,11 @@ uint16_t MenuSettingsShow(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
             if (a == 2) {
                 MenuActorFind(bank, 0x0003, x, y, p);
                 a = start_anim(*x, 0x0030, p);
+                tail = 24;              /* no BRA after the last arm */
             }
         }
     }
-    *x = rd16(cyc_then(46, dbw(bank, CURRENT)));
+    *x = rd16(cyc_then(tail, dbw(bank, CURRENT)));
     *p = nz16(*p, *x);
     cyc(42);
     return a;
@@ -506,6 +509,7 @@ void abi_MenuSettingsShow(void)
 uint16_t MenuSettingsInput(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
 {
     uint16_t v, i;
+    unsigned lead = 66;
 
     if (rd16(cyc_then(158, dbw(bank, 0x118B))) & 0x0200) {
         cyc(72);
@@ -515,9 +519,9 @@ uint16_t MenuSettingsInput(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
             wr16(SETTING_ROW, (uint16_t)(v - 1));
             sound0(bank, 0x46, p);
             MenuSettingsRowMarker(bank, x, y, p);
-        }
+        } else { lead = 46; }           /* BEQ taken, LDA */
     } else { cyc(4); }
-    if (rd16(cyc_then(66, dbw(bank, 0x118B))) & 0x0100) {
+    if (rd16(cyc_then(lead, dbw(bank, 0x118B))) & 0x0100) {
         cyc(72);
         v = rd16(SETTING_ROW);
         if (v != 0x0002) {

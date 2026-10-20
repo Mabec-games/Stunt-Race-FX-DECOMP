@@ -33,6 +33,7 @@ static uint16_t draw_record(uint16_t o, uint16_t r)
         wr16(REC(r, 0x14), cyc_then(30, rd16(OBJ(o, 0x10))));
         cyc(54);
         wr16(REC(r, 0x02), 0xF060);
+        cyc(22);                        /* BRA */
     } else {
         cyc(76);
         a = rd16(OBJ(o, 0x0E));
@@ -75,6 +76,7 @@ static uint16_t draw_record(uint16_t o, uint16_t r)
         wr8(REC(r, 0x0D), cyc_then(30, rd8(OBJ(o, 0x49))));
         cyc(30);
         wr8(REC(r, 0x0E), cyc_then(30, rd8(OBJ(o, 0x4A))));
+        cyc(22);                        /* BRA */
     } else {
         cyc(114);
         wr8(REC(r, 0x18), 0x00);

@@ -824,6 +824,7 @@ void abi_ObjectChildFollow(void)
 {
     uint32_t b = (cyc(92), db());
     uint16_t obj = cpu.x, me, w, d;
+    unsigned lead = 110;
 
     abi_ObjectRebucket();
     me = cpu.x;
@@ -938,12 +939,12 @@ void abi_ObjectChildFollow(void)
     }
     cyc(28);
     if ((cyc(20), child_d1bf()))
-        { cyc(0); child_handler(0xD3D3); } else { cyc(0); }
+        { cyc(0); child_handler(0xD3D3); lead = 88; /* falls into $BF53, no BRA */ } else { cyc(0); }
 place:
     /* $08:BF53 */
     cpu.y = me;
     cpu.p &= (uint8_t)~P_M;
-    cyc(110);
+    cyc(lead);
     cpu.x = rd16(b | (uint16_t)(0x2022 + cpu.y));
     cyc(46);
     op_lda16(0x70001E + cpu.x);
@@ -2759,6 +2760,7 @@ void abi_ObjectExhaustStep(void)
     uint32_t b = db();
     uint8_t v, w, p;
     uint16_t t;
+    unsigned end = 132;
 
     cyc(30);
     op_lda8(b | (uint16_t)(0x204B + cpu.x));
@@ -2799,6 +2801,7 @@ void abi_ObjectExhaustStep(void)
         if (v != w) {
             cyc(62);
             wr8(b | (uint16_t)(0x2048 + cpu.x), v);
+            cyc((uint8_t)(v - w) & 0x80 ? 38 : 16);   /* BRA after the first STA only */
             lda8(0x02);
             wr8(b | (uint16_t)(0x2039 + cpu.x), 0x02);
             lda8(0x08);
@@ -2938,7 +2941,7 @@ state2:
             static const uint16_t f[3] = {0x200C, 0x200E, 0x2010}, s[3] = {0x1F4C, 0x1F4E, 0x1F50};
 
             cpu.p &= (uint8_t)~P_M;
-            cyc(74);
+            cyc(t ? 74 : 52)       /* first: no SEP before the REP */;
             op_lda16(b | (uint16_t)(f[t] + cpu.x));
             cyc(38);
             op_add16(rd16(b | s[t]));
@@ -2961,9 +2964,10 @@ state2:
             wr16(b | (uint16_t)(f[t] + cpu.x), cpu.a);
             cpu.p |= P_M;
         }
+        end = 60;                       /* SEP, BRA, LDA, STA */
     }
     lda8(0x03);
-    cyc(132);
+    cyc(end);
     wr8(b | (uint16_t)(0x2036 + cpu.x), 0x03);
     cyc(38);
     return;
@@ -3296,13 +3300,15 @@ void abi_PlayerCarEvents(void)
         cyc(124);
     op_lda16(0x700062 + cpu.x);
     if (cpu.a & 0x8000) {
+        int a1 = 0;
+
         cyc(74);
         w = (uint16_t)((cpu.a ^ 0xFFFF) + 1);
         cyc(34);
         if (!below16(w, 0x0041)) {
             cyc(0);
             if (below16(w, 0x0050))
-                snd16(0x0016);
+                { snd16(0x0016); a1 = 1; }
             else if (below16(w, 0x005A))
                 snd16(0x0017);
             else if (below16(w, 0x006E))
@@ -3330,7 +3336,7 @@ void abi_PlayerCarEvents(void)
             cpu.p &= (uint8_t)~P_M;
             cpu.y = ysave;
             cpu.x = x;
-        } else { cyc(10); }
+        } else { cyc(a1 ? 18 : 10); }
         cyc(72);
     }
     cyc(54);
@@ -3441,6 +3447,7 @@ void abi_PlayerCarEvents(void)
     op_lda16(0x700082 + cpu.x);
     if (!below16(cpu.a, 0x0199)) {
         uint16_t at;
+        unsigned lead = 92;
 
         cpu.p |= P_M;
         cyc(40);
@@ -3449,8 +3456,11 @@ void abi_PlayerCarEvents(void)
         cyc(56);
         op_lda8(b | at);
         v = (uint8_t)cpu.a;
+        if (at == 0x1A60)
+            lead = 114;                     /* the BRA past player 1's load */
         if (!(v & 0x20)) {
             lda8(0x11);
+            cyc(at == 0x1A60 ? 116 : 94);  /* player 2's: BRA; BIT, BNE, PHA, PHA, LDA #, STA long */
             wr8(0x001FFE, 0x11);
             cyc(76);
             lda8(0x3D);
@@ -3462,9 +3472,10 @@ void abi_PlayerCarEvents(void)
             lda8(v);
             cyc(54);
             wr8(b | at, v);
+            lead = at == 0x1A60 ? 76 : 54;      /* player 2's: BRA */
         }
         x = cpu.x;
-        cyc(92);
+        cyc(lead);
         cpu.x = rd16(b | 0x1F18);
         cyc(30);
         lda8(cyc_then(34, (uint8_t)(rd8(b | (uint16_t)(0x2025 + cpu.x)) & 0x04)));
@@ -3742,7 +3753,7 @@ void abi_ObjectLampAnimate(void)
     else if (v == 0x1C)
         { cyc(114); lamp_look_step(0xE609); }
     else if (v == 0x10)
-        { cyc(228); sta16_imm(b | (uint16_t)(0x205D + cpu.x), 0x9AAF); }
+        { cyc(228); sta16_imm(b | (uint16_t)(0x205D + cpu.x), 0x9AAF); cyc(22); /* SEP */ }
     else {
         lda8(0x00);
         cyc(192);
@@ -4064,6 +4075,7 @@ store:
             op_lda16_imm(0xFFCE);
             cyc(2);
             wr16(0x000094, 0xFFCE);
+            cyc(22);                    /* BRA */
         } else {
             op_lda16(cyc_then(44, dpx(0x00, cpu.x)));
             cpu.a |= 0x4000;
@@ -4115,14 +4127,14 @@ static const uint16_t ring_vx[4] = {0xFF90, 0xFFDB, 0x0025, 0x0070};
    counted in $1F58; with all four +$16 = $40, +$15 + $20 and handler
    $08:9DBE (ObjectRingSpin), else handler $08:9DAE (ObjectRingIdle).
    +$36 = 3 unless it went idle. */
-static void ring_spawn(void)
+static void ring_spawn(unsigned lead)
 {
     uint32_t b = db();
     uint16_t x = cpu.x;
     unsigned i;
     uint8_t v, p;
 
-    cyc(68);
+    cyc(lead);
     op_lda8(b | 0x0DD6);
     cyc(20);
     cmp8n((uint8_t)cpu.a, 0x08);
@@ -4214,7 +4226,8 @@ done:
 }
 
 /* A ring's start: heading +$15 and velocity, then $08:9C4F. */
-static void ring_start(uint8_t h, uint16_t vx, uint16_t vy, uint16_t vz)
+static void ring_start(uint8_t h, uint16_t vx, uint16_t vy, uint16_t vz,
+                       unsigned lead)
 {
     uint32_t b = db();
 
@@ -4227,7 +4240,7 @@ static void ring_start(uint8_t h, uint16_t vx, uint16_t vy, uint16_t vz)
     sta16_imm(b | (uint16_t)(0x2030 + cpu.x), vy);
     cyc(6);
     sta16_imm(b | (uint16_t)(0x2032 + cpu.x), vz);
-    ring_spawn();
+    ring_spawn(lead);
 }
 
 /*
@@ -4244,7 +4257,7 @@ static void ring_start(uint8_t h, uint16_t vx, uint16_t vy, uint16_t vz)
  */
 void abi_ObjectRingStartZ(void)
 {
-    ring_start(0x00, 0x0000, 0x0000, 0xFDA8);
+    ring_start(0x00, 0x0000, 0x0000, 0xFDA8, 68); /* SEP, BRA, LDA */
 }
 
 /*
@@ -4256,7 +4269,7 @@ void abi_ObjectRingStartZ(void)
  */
 void abi_ObjectRingStartX(void)
 {
-    ring_start(0xC0, 0xFDA8, 0x0000, 0x0000);
+    ring_start(0xC0, 0xFDA8, 0x0000, 0x0000, 68);
 }
 
 /*
@@ -4268,7 +4281,7 @@ void abi_ObjectRingStartX(void)
  */
 void abi_ObjectRingStartBackZ(void)
 {
-    ring_start(0x80, 0x0000, 0x0000, 0x0258);
+    ring_start(0x80, 0x0000, 0x0000, 0x0258, 68);
 }
 
 /*
@@ -4280,7 +4293,7 @@ void abi_ObjectRingStartBackZ(void)
  */
 void abi_ObjectRingStartBackX(void)
 {
-    ring_start(0x40, 0x0258, 0x0000, 0x0000);
+    ring_start(0x40, 0x0258, 0x0000, 0x0000, 46); /* falls through, no BRA */
 }
 
 /*
