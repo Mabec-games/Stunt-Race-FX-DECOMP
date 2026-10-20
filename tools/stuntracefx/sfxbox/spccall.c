@@ -178,9 +178,11 @@ static uint8_t entry_byte(int d, uint16_t a)
 static int live;   /* the hybrid's C runs on the live machine (lockstep) */
 static uint8_t live_access(int write, uint16_t a, uint8_t v);
 
+static uintptr_t ssite;   /* the C's call site of the access being placed (SFXBOX_SPCCYCLOG) */
+
 uint8_t spc_rd(uint16_t a)
 {
-    if (live) return live_access(0, a, 0);
+    if (live) { ssite = (uintptr_t)__builtin_return_address(0); return live_access(0, a, 0); }
     if (!c_running) return apu[a];
     if (++c_accesses > (1L << 22)) { c_bad = 2; longjmp(c_abort, 1); }
     if (is_io(a) && a != 0xF2 && a != 0xF8 && a != 0xF9) {
@@ -218,7 +220,7 @@ void spc_boot_rom(void)
 
 void spc_wr(uint16_t a, uint8_t v)
 {
-    if (live) { live_access(1, a, v); return; }
+    if (live) { ssite = (uintptr_t)__builtin_return_address(0); live_access(1, a, v); return; }
     if (!c_running) return;
     if (++c_accesses > (1L << 22)) { c_bad = 2; longjmp(c_abort, 1); }
     if (is_io(a)) push_io(&ciow, &nciow, &ciowcap, a, v);
@@ -551,13 +553,85 @@ static void sfetch_all(void)
     while (sopen) sfetch(1);
 }
 
+/* The SPC700 C's stated time (spc_cyc, spc.h) against the original's. The
+   original's steps are clocks of the core's SMP, two to an SPC700 cycle (the
+   wait states at their reset value; the $F4-$F7 reads take their cycle in
+   two halves, one before the access and one after, and the second belongs
+   to the access's interval). Each interval, from the access placed before
+   to this one (its own cycle included), or from the last access to the end
+   of the call (its return, or the jump into original code): the original's
+   steps against twice the cycles the C stated. Not judged: an access or the
+   end of a call with no record to compare (the script ended inside the call,
+   or a state load cut it), and an access with no counterpart in the record.
+   SFXBOX_SPCCYCLOG=FILE writes check.c's SFXBOX_CYCLOG records, the times in
+   cycles: 'S' the call's APU address, 'A' an access, 'E' the call's end. */
+static FILE *scyclog;
+static long stm_on, stm_off, stm_nocmp, stm_unplaced;
+static uint32_t sfrom, ssaid;
+static uintptr_t sbase;
+static void *sthread;
+static int shave;   /* the call being run has a record */
+extern void *(*sfxbox_co_active)(void);
+
+void spc_cyc(unsigned n)
+{
+    if (live && (!sfxbox_co_active || sfxbox_co_active() == sthread)) ssaid += n;
+}
+
+/* The interval ending before op `to`. */
+static void scyc_put(uint8_t type, uint32_t to, int judged)
+{
+    uint64_t clocks = 0;
+    for (uint32_t q = sfrom; q < to && q < scn; q++)
+        if (scops[q] == SOP_STEP) clocks += scarg[q] & 0x7FFFFFFFu;
+    uint32_t gap = 0xFFFFFFFFu;
+    if (judged) {
+        gap = (uint32_t)((clocks + 1) / 2);
+        if (clocks == (uint64_t)ssaid * 2) stm_on++;
+        else stm_off++;
+    } else if (type == 'A' && shave && !scut) stm_unplaced++;
+    else stm_nocmp++;
+    if (scyclog) {
+        uint32_t hdr[4] = {gap, type == 'A' ? (uint32_t)(ssite - sbase) : 0, ssaid, 0};
+        fputc(type, scyclog);
+        fwrite(hdr, 4, 4, scyclog);
+    }
+    ssaid = 0;
+    if (to > sfrom) sfrom = to;
+}
+
+/* The end of the call, at its return or its jump. */
+static void scyc_end(void)
+{
+    scyc_put('E', scn, shave && !scut);
+}
+
+void spc_timing_line(FILE *rep)
+{
+    if (!nrt) return;
+    fprintf(rep, "spc timing: %ld of the SPC700 C's accesses and returns at the original's clocks, %ld not; not judged: "
+            "%ld with no record to compare (the script ended inside the call, or a state load cut it), %ld accesses "
+            "with no counterpart in the record\n", stm_on, stm_off, stm_nocmp, stm_unplaced);
+    if (scyclog) { fclose(scyclog); scyclog = NULL; }
+}
+
 static uint8_t live_access(int write, uint16_t a, uint8_t v)
 {
     uint8_t want = write ? SOP_WRITE : SOP_READ;
     for (uint32_t j = sci;; j++) {
         if (j == scn && !sfetch(1)) break;
-        if (scops[j] == want && scarg[j] == a) { sreplay_to(j); sci = j + 1; return core_bus(write, a, v); }
+        if (scops[j] == want && scarg[j] == a) {
+            uint32_t to = j;
+            /* a read of $F4-$F7: half its cycle follows the access */
+            if (!write && (a & 0xFFFC) == 0xF4) {
+                if (j + 1 == scn) sfetch(1);
+                if (j + 1 < scn && scops[j + 1] == SOP_STEP) to = j + 1;
+            }
+            scyc_put('A', to + 1, 1);
+            sreplay_to(j); sci = j + 1; return core_bus(write, a, v);
+        }
     }
+    scyc_put('A', scn, 0);
     /* The original's record was cut by a state load: the C runs on to the
        frame's end (the load replaces the machine), each access timed like
        the record's last step, so a loop polling a timer can end. */
@@ -585,6 +659,7 @@ static int hybrid_exec(uint16_t pc, uint16_t prev_end)
     SCall rec = {0};
     scn = sci = 0;
     sopen = 0; scut = 0;
+    sfrom = 0; ssaid = 0; shave = 0;
     struct SmpState st;
     core_get(&st);
     if (k < SLOAD(ssh->o_calls)) {
@@ -596,6 +671,7 @@ static int hybrid_exec(uint16_t pc, uint16_t prev_end)
                     (unsigned long long)k, rt[idx].name, pc, rec.frame, sframe);
         }
         sopen = 1;
+        shave = 1;
         sfetch(0);
         SSTORE(ssh->h_calls, k + 1);
     } else {
@@ -604,12 +680,19 @@ static int hybrid_exec(uint16_t pc, uint16_t prev_end)
     }
     hs_calls++; hs_fcalls++;
     spc.a = st.a; spc.x = st.x; spc.y = st.y; spc.sp = st.s; spc_set_psw(st.p);
+    if (scyclog && shave) {
+        uint32_t at = rt[idx].apu;
+        fputc('S', scyclog);
+        fwrite(&at, 4, 1, scyclog);
+    }
+    sthread = sfxbox_co_active ? sfxbox_co_active() : NULL;
     live = 1;
     if (setjmp(live_abort) == 0) {
         rt[idx].abi();
         live = 0;
         called_prev = 0;   /* the next instruction follows the C's RET */
         sfetch_all();
+        scyc_end();
         sreplay_to(scn);
         struct SmpState out = {rec.ret, spc.a, spc.x, spc.y, spc.sp, spc_psw()};
         core_put(&out);
@@ -624,6 +707,7 @@ static void live_jump(uint16_t addr)
     live = 0;
     called_prev = 0;
     sfetch_all();
+    scyc_end();
     sreplay_to(scn);
     struct SmpState out = {addr, spc.a, spc.x, spc.y, spc.sp, spc_psw()};
     core_put(&out);
@@ -634,6 +718,12 @@ void spc_lockstep_role(int r, FILE *rep, volatile int *stk)
 {
     if (!nrt || !ssh) return;
     srole = r; slsrep = rep; sstuck = stk;
+    if (r == 2 && getenv("SFXBOX_SPCCYCLOG")) {
+        Dl_info di;
+        scyclog = fopen(getenv("SFXBOX_SPCCYCLOG"), "wb");
+        if (!scyclog) { perror("SFXBOX_SPCCYCLOG"); exit(2); }
+        if (dladdr((void *)rt[0].abi, &di)) sbase = (uintptr_t)di.dli_fbase;
+    }
     if (r == 1) {
         static struct SfxboxSmpCallbacks cb = {orig_insn, orig_mem, orig_step};
         set_cb(&cb, NULL);

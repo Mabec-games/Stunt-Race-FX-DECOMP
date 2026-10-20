@@ -1188,6 +1188,7 @@ static void hybrid_finish(long frames)
             "with more probes than the log holds, %ld in a call that left through its caller's frame, %ld with an interrupt "
             "whose refetch read lies in an earlier interval\n", tm_on, tm_off, tm_overflow, tm_unwound, tm_irq_bad);
     gsu_timing_line(lsrep);
+    spc_timing_line(lsrep);
     fprintf(lsrep, "frames %ld compared %ld, differing %ld; calls swapped %ld, entered other ways %ld, unmatched %ld, "
             "hardware accesses off the timeline %ld, interrupts not pending where taken %ld, original-code calls not placed %ld, "
             "C calls to code with no C %ld%s: %s\n",

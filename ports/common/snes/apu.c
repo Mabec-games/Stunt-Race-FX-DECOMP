@@ -165,6 +165,10 @@ uint8_t spc_rd(uint16_t addr);
 void spc_wr(uint16_t addr, uint8_t v);
 void spc_restart(uint16_t at, void (*entry)(void));
 void spc_boot_rom(void);
+void spc_cyc(unsigned n);
+
+/* Stated time: the port's SPC700 spends spc_access_cycles per access. */
+void spc_cyc(unsigned n) { (void)n; }
 
 uint8_t spc_rd(uint16_t addr)
 {

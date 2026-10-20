@@ -27,6 +27,14 @@ extern SpcRegs spc;
 uint8_t spc_rd(uint16_t addr);
 void spc_wr(uint16_t addr, uint8_t v);
 
+/* The time the original spends before an access of the C's (spc_rd, spc_wr),
+   besides the access: its opcode and operand fetches, dummy reads and
+   internal cycles from the cycle after the access before to the cycle of
+   this one's own, `n` SPC700 cycles. A call states the cycles after its last
+   access through the end of its RET too. A routine that calls another states
+   its own CALL's cycles. The checks compare it with the original's. */
+void spc_cyc(unsigned n);
+
 static inline uint16_t spc_dp(uint8_t d) { return (uint16_t)(spc.p ? 0x0100 | d : d); }
 static inline uint16_t spc_ya(void) { return (uint16_t)(spc.y << 8 | spc.a); }
 static inline void spc_set_ya(uint16_t v) { spc.a = (uint8_t)v; spc.y = (uint8_t)(v >> 8); }
