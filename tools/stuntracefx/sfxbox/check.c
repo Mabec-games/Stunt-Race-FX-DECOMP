@@ -925,6 +925,27 @@ static void ls_insn(uint32_t pc)
 /* An interrupt taken inside a call: its place in the call's cycles is marked
    with the registers at that moment (ops 5-8), so the hybrid can take it at
    the same point; the handler's own cycles are not recorded. */
+/* The last two timing events recorded (kind, address), to see whether an
+   interrupt took the place of an instruction's last internal cycle. */
+static struct { uint8_t kind; uint32_t addr; } tm_prev[2];
+
+/* The opcodes whose last cycle is an internal one the CPU turns into a
+   read of the next opcode when an interrupt is pending (idleIRQ in the
+   core): CLC CLD CLI CLV SEC SED SEI, the register transfers, INC DEC
+   ASL LSR ROL ROR on A, INX INY DEX DEY, NOP, XCE. */
+static int ends_in_idle_irq(uint8_t op)
+{
+    switch (op) {
+    case 0x18: case 0xD8: case 0x58: case 0xB8: case 0x38: case 0xF8: case 0x78:
+    case 0xAA: case 0xA8: case 0x8A: case 0x9B: case 0x98: case 0xBB:
+    case 0x5B: case 0x1B: case 0x7B: case 0x3B: case 0xBA: case 0x9A:
+    case 0x1A: case 0x3A: case 0x0A: case 0x4A: case 0x2A: case 0x6A:
+    case 0xE8: case 0xC8: case 0xCA: case 0x88: case 0xEA: case 0xFB:
+        return 1;
+    }
+    return 0;
+}
+
 static void ls_interrupt(uint32_t resume_pc, uint16_t s)
 {
     if (!m.active) return;
@@ -934,7 +955,14 @@ static void ls_interrupt(uint32_t resume_pc, uint16_t s)
     if (m.in_irq) return;
     m.pre_irq_op = *core_opcode;
     struct SfxboxRegs r; core_regs(&r);
-    ls_op(0x50, (resume_pc & 0xFFFFFF) | (uint32_t)r.e << 24);
+    /* Such an instruction's recorded last cycle is then a read of the next
+       opcode (the poll, then the read at the resume address, just before
+       this point), where the C states the internal cycle it has without an
+       interrupt. The marker's clocks nibble says so (cyc_put). */
+    int refetch = ends_in_idle_irq(m.pre_irq_op) && tm_prev[0].kind == 1 && tm_prev[0].addr == (resume_pc & 0xFFFFFF)
+                  && tm_prev[1].kind == 4;
+    tm_prev[0].kind = tm_prev[1].kind = 0;
+    ls_op(0x50 | refetch, (resume_pc & 0xFFFFFF) | (uint32_t)r.e << 24);
     ls_op(0x60, r.a | (uint32_t)r.x << 16);
     ls_op(0x70, r.y | (uint32_t)s << 16);
     ls_op(0x80, r.d | (uint32_t)r.db << 16 | (uint32_t)r.p << 24);
@@ -944,6 +972,8 @@ static void ls_interrupt(uint32_t resume_pc, uint16_t s)
 static void ls_timing(int kind, int clocks, uint32_t addr)
 {
     if (!m.active || m.in_irq) return;
+    tm_prev[1] = tm_prev[0];
+    tm_prev[0].kind = (uint8_t)kind; tm_prev[0].addr = addr & 0xFFFFFF;
     ls_op((uint8_t)(kind << 4 | (clocks / 2)), addr);
 }
 
@@ -1140,7 +1170,7 @@ static void (*core_run_until)(const struct SfxboxRegs *, uint32_t, uint16_t);
 static void (*core_run_out)(const struct SfxboxRegs *, uint16_t);
 static long asm_unplaced;
 static FILE *cyclog;      /* SFXBOX_CYCLOG (see cyc_put) */
-static long tm_on, tm_off, tm_unjudged;   /* the timing check (cyc_put) */
+static long tm_on, tm_off, tm_overflow, tm_unwound, tm_irq_bad;   /* the timing check (cyc_put) */
 static int cyclog_ops;    /* SFXBOX_CYCLOG_OPS: the original's operations too */
 /* C that called or jumped (call_routine, jump_routine) to an address where
    no routine with C starts: the hybrid ran original code there. The decomp
@@ -1154,8 +1184,9 @@ static void hybrid_finish(long frames)
     int gbad = gsu_lockstep_summary(g, sizeof g);
     gbad |= spc_lockstep_summary(sg, sizeof sg);
     strncat(g, sg, sizeof g - strlen(g) - 1);
-    fprintf(lsrep, "timing: %ld of the S-CPU C's accesses and returns at the original's clocks, %ld not, %ld with an interrupt "
-            "or a frame left between (not judged)\n", tm_on, tm_off, tm_unjudged);
+    fprintf(lsrep, "timing: %ld of the S-CPU C's accesses and returns at the original's clocks, %ld not; not judged: %ld "
+            "with more probes than the log holds, %ld in a call that left through its caller's frame, %ld with an interrupt "
+            "whose refetch read lies in an earlier interval\n", tm_on, tm_off, tm_overflow, tm_unwound, tm_irq_bad);
     gsu_timing_line(lsrep);
     fprintf(lsrep, "frames %ld compared %ld, differing %ld; calls swapped %ld, entered other ways %ld, unmatched %ld, "
             "hardware accesses off the timeline %ld, interrupts not pending where taken %ld, original-code calls not placed %ld, "
@@ -1583,18 +1614,25 @@ static uint32_t cyc_said;
 static void cyc_put(uint8_t type, uint32_t to)
 {
     uint32_t gap = 0, hdr[4];
-    int irq = 0;
+    int irq_bad = 0;
     for (long q = cyc_last + 1; q < (long)to; q++) {
         uint8_t k = cur_ops[q] >> 4;
         if (k >= 1 && k <= 3) gap += (uint32_t)(cur_ops[q] & 15) * 2;
-        if (k >= 5 && k <= 8) irq = 1;
+        /* An interrupt taken between instructions costs the C nothing: its
+           entry and handler are not in the record. Only an instruction that
+           ends in an internal cycle changes: with the interrupt pending that
+           cycle is a read of the next opcode, flagged on the marker
+           (ls_interrupt), which the C states as the internal cycle (6). */
+        if (k == 5 && (cur_ops[q] & 15)) {
+            if (q - 1 > cyc_last && cur_ops[q - 1] >> 4 == 1) gap = gap - (uint32_t)(cur_ops[q - 1] & 15) * 2 + 6;
+            else irq_bad = 1;   /* the read is not in this interval: not told */
+        }
     }
-    /* An interrupt taken between the two accesses moves the original's
-       cycles (an internal cycle becomes the refetch of the opcode): that
-       time is the interrupt's, so the interval says nothing of the code. */
-    if (irq) gap = 0xFFFFFFFEu;
+    if (irq_bad) gap = 0xFFFFFFFEu;
     if (cyc_over) gap = 0xFFFFFFFFu;
-    if (gap >= 0xFFFFFFFEu) tm_unjudged++;
+    if (cyc_over & 2) tm_unwound++;
+    else if (cyc_over) tm_overflow++;
+    else if (irq_bad) tm_irq_bad++;
     else if (gap == cyc_said) tm_on++;
     else tm_off++;
     if (!cyclog) goto done;
@@ -1769,7 +1807,7 @@ static int ls_exec(uint32_t pc)
     ls_escape_set = 0;
     machine_live = 0;
     while (fetch_more(cur_n + 1)) {}
-    if (cpu.unwound) cyc_over = 1;
+    if (cpu.unwound) cyc_over |= 2;
     cyc_put('E', cur_n);
     replay_to(cur_n);
     struct SfxboxRegs out = {cpu.a, cpu.x, cpu.y, cpu.unwound ? cpu.s : exit_s, cpu.d, cpu.db, cpu.p, cpu.e, cpu.unwound ? cpu.pc : ret};
