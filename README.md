@@ -99,68 +99,20 @@ sources:
 
 ## Cycle-exact
 
-**All three processors' C runs at the original's speed, to the clock, over
-all 161 gameplay scripts.** Each routine states the time the original's
-instructions take, and sfxbox's lockstep run compares that with the time
-the original spent, interval by interval between bus accesses and from the
-last access to each return, with the game's state identical after every
-frame. Completed October 20, 2026.
+The C doesn't just compute the same results as the original; it takes the
+same time to do it, clock for clock, on all three processors (S-CPU,
+Super FX, sound chip). Each routine states the time its original
+instructions take, and the lockstep run checks that against the original.
 
-| Processor | How the C states time | Intervals judged | Off |
-|---|---|---|---|
-| S-CPU (65816) | `cyc(N)` master clocks (`machine.h`) | 619,887,256 | 0 |
-| Super FX (GSU-1) | the code bytes it fetches, priced by the GSU clock model (`gsu.h`) | 1,632,911,722 | 0 |
-| SPC700 (sound) | `spc_cyc(N)` cycles (`spc.h`) | 231,179,419 | 0 |
+**Where it stands:** everything normal play runs (all 161 gameplay scripts)
+is exact, 0 clocks off. Code that only the unit-test scripts reach (debug
+screens, unused screens, rarely taken branches) is not finished yet.
 
-What is and is not judged, precisely:
-
-- **Interrupts.** An interval an NMI or IRQ falls in is judged; the
-  handler's own time is not part of it (it is the handler's), and the one
-  internal cycle an interrupt turns into a read is priced as the internal
-  cycle it was.
-- **Calls that leave through their caller's frame** are judged too: one
-  that returns through it ends at its record's end, one that jumps into
-  code that resets the stack (a restart into BootWarm) at the original's
-  arrival there.
-- **The unit scripts** (164 scripts that call routines directly, most of
-  them code normal play never runs: debug screens, unused screens, dead
-  arms) all run whole with the state identical, but their timing still
-  differs in 9,179 S-CPU (345,008 clocks), 1,131,982 Super FX and 40 SPC700
-  intervals. The gameplay figures above do not cover that code.
-
-**Why it matters.** Behaviour exact proves the C computes the same results.
-It does not prove the game *plays* the same, because on the SNES timing is
-behaviour:
-
-- **The frame budget.** Stunt Race FX draws its 3D below the full frame
-  rate and drops frames when the S-CPU and Super FX fall behind. How much work
-  fits in a frame decides when a frame drops, so the game's feel, its
-  slowdowns included, depends on the exact time every routine takes.
-- **Interrupts and DMA land where they landed.** NMI, IRQ, HDMA and memory
-  refresh interrupt the code at a point fixed by elapsed clocks. If a routine
-  runs a few clocks fast or slow, an interrupt can fall on the other side of
-  a write, and the frame comes out different.
-- **The S-CPU and the Super FX work in parallel.** The S-CPU starts a Super
-  FX program and waits for it, or works alongside it. Who gets to shared RAM
-  first, and how long the S-CPU waits, depends on both processors' timing.
-- **A port can keep the original's pacing.** With every routine's time
-  stated, a native port built from this C can reproduce the original's
-  frame rate and slowdowns exactly, or drop them on purpose, instead of
-  guessing.
-
-**How it was reached.** The time each routine states is read from its
-assembly: the cost of each instruction, each branch taken or not, each byte
-fetched from ROM. Where the time depends on the path (a branch's direction,
-a register's width, which copy of shared code runs), the C carries that
-path's time; a shared C helper takes each caller's cost as a parameter
-rather than being split into copies. The Super FX's code statements are derived from the
-ROM by `tools/stuntracefx/gsuwalk.py`, the SPC700's by
-`tools/stuntracefx/spcwalk.py` (each instruction's bus cycles from the
-bsnes core, checked against the documented times). The sfxbox lockstep run
-logs, for every interval, the original's clocks against the clocks the C
-states (`SFXBOX_CYCLOG`, `SFXBOX_GSUCYCLOG`, `SFXBOX_SPCCYCLOG`), and
-`tools/stuntracefx/cycsolve.py` turns those intervals into what each
-stretch of the C costs. The S-CPU went from 0.165% off to exactly 0.
+**Why it matters:** on the SNES timing is behaviour. When a frame drops,
+where an interrupt lands, and how the S-CPU and Super FX share memory all
+depend on exactly how long each routine takes. Getting the time exact
+means the game plays the same, not just computes the same, and gives a
+native port the original's pacing to keep or drop on purpose.
 
 ## Current Status
 
