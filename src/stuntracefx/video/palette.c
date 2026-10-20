@@ -646,12 +646,22 @@ static KeptEnd palette_kept_colours_step(uint8_t bank, uint16_t a, uint16_t x, u
     uint32_t b = (uint32_t)bank << 16;
     uint8_t t, step = 0, v, d;
     unsigned s;
+    int up;
     KeptEnd e;
     enum { NONE, SKIP, ONE, TWO, ODD } go = NONE;
 
     cyc(102);
-    if (!rd8(b | 0x0D53) && rd8(cyc_then(40, b | (uint16_t)(0x0E05 + y)))
-        && (a = rd16(cyc_then(62, b | (uint16_t)(0x0D1E + x))), a & 0x4000)) {
+    if (rd8(b | 0x0D53))
+        up = 0, cyc(68);                /* BNE taken, SEP, LDA */
+    else if (!rd8(cyc_then(40, b | (uint16_t)(0x0E05 + y))))
+        up = 0, cyc(68);                /* BEQ taken, SEP, LDA */
+    else {
+        a = rd16(cyc_then(62, b | (uint16_t)(0x0D1E + x)));
+        up = (a & 0x4000) != 0;
+        if (!up)
+            cyc(92);                    /* BIT, BEQ taken, SEP, LDA */
+    }
+    if (up) {
         cyc(86);
         t = rd8(b | (uint16_t)(0x0E01 + y));
         if (t == 0xFF) {
@@ -663,7 +673,6 @@ static KeptEnd palette_kept_colours_step(uint8_t bank, uint16_t a, uint16_t x, u
             go = t >= 0xB4 ? TWO : t >= 0x78 ? ONE : t >= 0x3C ? ODD : SKIP;
         }
     } else {
-        cyc(92);
         t = rd8(b | (uint16_t)(0x0E01 + y));
         if (!t) {
             a = 0x7E63;
@@ -712,6 +721,7 @@ static KeptEnd palette_kept_colours_step(uint8_t bank, uint16_t a, uint16_t x, u
         e.a = (uint16_t)((a & 0xFF00) | (uint8_t)s);
         e.p = (uint8_t)(nz8(p, (uint8_t)s) | P_M);
     } else {
+        cyc(40 + (((0x0DFF + y) ^ 0x0DFF) & 0xFF00 ? 6 : 0));  /* BCS, LDA abs,Y */
         step = cycle13(rd8(b | (uint16_t)(0x0DFF + y)), 1);
         cyc(82);
         wr8(b | (uint16_t)(0x0DFF + y), step);
@@ -1245,6 +1255,17 @@ static void palette_cycle_step(uint32_t b)
     cpu.p = nz8(cpu.p, v);
 }
 
+/* Whether a read at `a` is of work RAM, a register or the Super FX's RAM
+   (the low half of the banks below $40, or banks $70, $71, $7E, $7F), which
+   the lockstep places on the original's own access: the clocks of its bytes
+   are then not part of the interval, as a ROM read's are. */
+static int placed_read(uint32_t a)
+{
+    uint32_t bank = a >> 16 & 0xFF, lo = a & 0xFFFF;
+
+    return bank == 0x70 || bank == 0x71 || bank == 0x7E || bank == 0x7F || ((bank & 0x40) == 0 && lo < 0x8000);
+}
+
 /*
  * @routine 04:E32D CoursePaletteCycle
  * WHAT IT DOES: Steps the colour cycle of courses 3, 7 and $0B: the step
@@ -1278,9 +1299,11 @@ void abi_CoursePaletteCycle(void)
         palette_cycle_step(b);
         op_rep(P_M);
         for (i = 0; i < 4; i++) {
+            uint32_t at = (b + c3[i] + cpu.x) & 0xFFFFFF;
+
             cyc(32);
-            cpu.a = rd16(b + c3[i] + cpu.x);
-            cyc(48);
+            cpu.a = rd16(at);
+            cyc(placed_read(at) ? 32 : 48);        /* a ROM read's 16 clocks are stated */
             wr16(0x7EFD7D + 2 * i, cpu.a);
         }
     } else if (c == 0x07) {
@@ -1444,9 +1467,12 @@ floor:
 store_amount:
         cyc(46);
         wr16(HC_AMT(0), cpu.a);
+        cyc(32);
+        goto gradient_load;
     } else { cyc(24); }
 gradient:
     cyc(54);
+gradient_load:
     op_lda16(0x000DA4);
     hc_bit(0x0800);
     if (cpu.a & 0x0800) {

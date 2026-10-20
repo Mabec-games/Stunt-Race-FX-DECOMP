@@ -74,7 +74,7 @@ static void or8(uint32_t addr, uint8_t m)
     uint8_t v = (uint8_t)(ld8(addr) | m);
 
     lda8(v);
-    cyc(20);
+    cyc((addr & 0xFFFF) >= 0x2000 ? 26 : 20);   /* STA abs,X (an object field) or abs */
     wr8(addr, v);
 }
 
@@ -85,7 +85,7 @@ static void and8(uint32_t addr, uint8_t m)
     uint8_t v = (uint8_t)(ld8(addr) & m);
 
     lda8(v);
-    cyc(26);
+    cyc((addr & 0xFFFF) >= 0x2000 ? 26 : 20);
     wr8(addr, v);
 }
 
@@ -202,7 +202,7 @@ void abi_ObjectLampTower(void)
         add16(F(0x200E, cpu.y), cyc_then(22, 0xFA88));
         swap_xy();
         abi_ObjectRebucket();
-        (cyc(58), swap_xy());
+        (cyc(10), swap_xy());
     }
     cyc(0);
     handler_none(cpu.x);
@@ -4711,21 +4711,23 @@ static void swing_frame(void)
         cyc(66);
         add16(F(0x200C, cpu.x), 0x0028);
         (cyc(4), ease8(F(0x2015, cpu.x), 0xC0, abi_ApproachEighthMin8Byte));
+        cyc(22);
     } else {
         cyc(40);
         add16(F(0x200C, cpu.x), 0xFFD8);
         (cyc(4), ease8(F(0x2015, cpu.x), 0x40, abi_ApproachEighthMin8Byte));
+        cyc(46);                        /* JMP */
     }
-    cyc(46);
     if (ld8(F(0x200A, cpu.x))) {
         cyc(44);
         dec8(F(0x200A, cpu.x));
+        cyc(86);                        /* JMP, JSL */
     } else {
         cyc(70);
         eor8(F(0x2025, cpu.x), 0x01);
         st8i(F(0x200A, cpu.x), cyc_then(6, 0x50));
+        cyc(62);                        /* JSL */
     }
-    cyc(86);
     abi_ObjectRebucket();
     cyc(132);
 }
@@ -5043,9 +5045,9 @@ void abi_ObjectFloaterStep(void)
     (cyc(62), abi_ObjectRebucket());
     add8(F(0x2015, cpu.x), cyc_then(94, 0x08));
     if (bit25(0x01))
-        { cyc(66); add16(F(0x200E, cpu.x), 0xFFEC); }
+        { cyc(66); add16(F(0x200E, cpu.x), 0xFFEC); cyc(44); /* SEP */ }
     else
-        { cyc(40); add16(F(0x200E, cpu.x), 0x0014); }
+        { cyc(40); add16(F(0x200E, cpu.x), 0x0014); cyc(68); /* SEP, JMP */ }
     if (ld8(F(0x200A, cpu.x))) {
         cyc(44);
         dec8(F(0x200A, cpu.x));
@@ -5112,7 +5114,7 @@ static void asl5(uint32_t at)
     op_lda16(at);
     for (i = 0; cyc_loop(14, i < 5); i++)
         op_asl16();
-    cyc(16);
+    cyc((at & 0xFFFF) > 0xFF ? 24 : 16);   /* STA abs or dp */
     wr16(at, cpu.a);
 }
 
@@ -5993,7 +5995,7 @@ static void copy16(uint32_t dst, uint32_t src)
     cpu.p &= (uint8_t)~P_M;
     cyc(52);
     op_lda16(src);
-    cyc(30);
+    cyc((dst & 0xFFFF) >= 0x2000 ? 30 : 24);   /* STA abs,X (an object field) or abs */
     wr16(dst, cpu.a);
     cpu.p |= P_M;
 }
@@ -7045,6 +7047,8 @@ static void meter_frame(void)
     cpu.p |= P_M;
     v = ld8((cyc(38), db()) | 0x1A29);
     if (v) {
+        int up = v == 0x01;
+
         cyc(70);
         cmp8(0x01);
         if (v == 0x01) {
@@ -7062,6 +7066,7 @@ static void meter_frame(void)
         }
         cyc(22);
         show48();
+        cyc(up ? 84 : 62);              /* BRA (counting up), JSL */
     } else { cyc(84); }
     abi_ObjectRebucket();
     cyc(132);
@@ -8037,20 +8042,24 @@ static void colour_cycle(uint8_t n)
    negative value, else 0. */
 static void axis_from(uint32_t src, uint32_t lo, uint32_t lo2, uint32_t hi)
 {
-    cyc(4);
+    uint32_t w2 = (lo2 & 0xFFFF) > 0xFF ? 8 : 0, wh = (hi & 0xFFFF) > 0xFF ? 8 : 0;
+
+    cyc((src & 0xFFFF) < 0x100 ? 0 : 4);        /* LDA dp or abs */
     uint8_t r = ld8(src);
 
     cyc(16);
     wr8(lo, r);
+    cyc(16 + w2);
     wr8(lo2, r);
     if (r & 0x80) {
         lda8(0xFF);
         cyc(44);
         wr8(hi, 0xFF);
+        cyc(22);                        /* BRA */
     } else {
+        cyc(54 + wh);
         wr8(hi, 0x00);
     }
-    cyc(22);
 }
 
 /* One shard: a new object of `kind` with spin bytes +$48-$4A, at X's
@@ -8084,7 +8093,7 @@ static void shard_from_z(void)
     int i;
 
     axis_from(dp(0x00), dp(0x94), db() | 0x05F2, db() | 0x05F3);
-    ld8(F(0x2016, cpu.x));
+    ld8(cyc_then(22, F(0x2016, cpu.x)));
     (cyc(62), abi_RotateXY());
     orbit_again();
     ld8(cyc_then(22, F(0x2014, cpu.x)));
@@ -8909,7 +8918,7 @@ void abi_ObjectShardStep(void)
     axis_from(db() | 0x1F58, dp(0x02), dp(0x04), dp(0x05));
     axis_from(db() | 0x1F59, dp(0x08), dp(0x0A), dp(0x0B));
     axis_from(dp(0x00), dp(0x94), db() | 0x05F2, db() | 0x05F3);
-    ld8(F(0x2014, cpu.x));
+    ld8(cyc_then(22, F(0x2014, cpu.x)));
     (cyc(62), abi_RotateXZFrom08());
     orbit_again();
     ld8(cyc_then(22, F(0x2015, cpu.x)));

@@ -1230,6 +1230,7 @@ void abi_WindowBandsAnimate(void)
             cyc(56);
             wr16(0x0019D9, 0x0000);
         }
+        cyc(v == 0x01 ? 102 : 78);      /* JMP for the open side, REP, LDA # */
         wr16(0x000DA4, 0x0000);
         op_sep(P_M | P_X);
         cyc(40);
@@ -1262,7 +1263,7 @@ void abi_WindowBandsAnimate(void)
     cyc(24);
     op_cmp16(rd16(b | 0x19D9));
     if (!(cpu.p & P_Z))
-        { cyc(48); wr16(0x0019D4, a); }
+        { cyc(48); wr16(0x0019D4, a); cyc(24); /* JMP */ }
     else {
         cpu.p |= P_M;
         cyc(76);
@@ -1277,7 +1278,7 @@ void abi_WindowBandsAnimate(void)
         wr8(b | 0x19D8, 0x05);
     }
     op_sep(P_M | P_X);
-    cyc(56);
+    cyc(32);
     v = rd8(0x0019D5);
     cpu.x = (uint8_t)(v << 1);
     cyc(52);

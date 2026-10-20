@@ -367,7 +367,7 @@ uint8_t SaveTablesCheck(uint8_t bank, uint8_t *p)
         cyc(10);
         x = rd16(0x0000F5);
         for (i = 0; i < 9; i++, x++) {
-            cyc(94);
+            cyc(i ? 94 : 68);           /* the first round has no INX, DEY, BNE */
             v = rd8(b | (uint16_t)(0xFC6D + x));
             cyc(16);
             sum = rd8(0x0000F1);
@@ -390,7 +390,7 @@ reset:
         cyc(34);
         x = rd16(0x0000F5);
         for (i = 0; i < 9; i++, x++)
-            { cyc(80); wr8(b | (uint16_t)(0xFC6D + x), 0x00); }
+            { cyc(i ? 80 : 70); wr8(b | (uint16_t)(0xFC6D + x), 0x00); }
         a = 0xE8;
         cyc(128);
         wr8(0x70FC2D + k, a);

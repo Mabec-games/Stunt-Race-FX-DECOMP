@@ -449,8 +449,15 @@ static void return_frame(void)
     abi_ObjectApplyVelocity();
     v = ld8(cyc_then(14, F(0x204B, cpu.x)));
     cmp8(0x01);
-    if (v == 0x01)
-        { cyc(4); sound0(cyc_then(8, bits25(cpu.x, 0x02) ? (cyc(32), 0x4D) : (cyc(6), 0x4E))); } else { cyc(88); }
+    if (v == 0x01) {
+        int hit;
+
+        cyc(4);
+        hit = bits25(cpu.x, 0x02);
+        cyc(8);
+        sound0(hit ? (cyc(32), 0x4D) : (cyc(6), 0x4E));
+        cyc(hit ? 62 : 84);             /* JSL, after the $4E arm's BRA */
+    } else { cyc(88); }
     abi_ObjectRebucket();
     st8i(F(0x2036, cpu.x), cyc_then(100, 0x03));
     if (ld8(cyc_then(14, F(0x204B, cpu.x)))) {
@@ -501,7 +508,16 @@ void abi_PartReturn(void)
     cyc(4);
     handler(cpu.x, 0xAE0F);
     st8i(F(0x204B, cpu.x), cyc_then(6, 0x0A));
-    sound0(cyc_then(18, bits25(cpu.x, 0x02) ? (cyc(26), 0x4C) : 0x4B));
+    {
+        int hit;
+
+        cyc(4);
+        hit = bits25(cpu.x, 0x02);
+        cyc(14);
+        sound0(hit ? (cyc(26), 0x4C) : 0x4B);
+        if (!hit)
+            cyc(22);                    /* BRA */
+    }
     return_frame();
     cyc(38);
 }
@@ -749,7 +765,7 @@ static void player_record(uint16_t n, uint32_t match, int read64)
             cpu.p = nz16(cpu.p, cpu.a);
         }
         at = (0x70001C + cpu.x) & 0xFFFFFF;
-        cyc(32);
+        cyc(read64 ? 56 : 32);          /* ORA # before the LDA after the +$64 read */
         op_lda16(at);
         cpu.a |= 0x0008;
         cpu.p = nz16(cpu.p, cpu.a);

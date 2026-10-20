@@ -43,8 +43,7 @@ static uint8_t bg2_scroll(uint16_t band, int wide)
 
 uint8_t Bg2ScrollFromTable(uint16_t band)
 {
-    cyc(6);
-    return bg2_scroll(band, 0);
+    return bg2_scroll(band, 1);
 }
 
 void abi_Bg2ScrollFromTable(void)

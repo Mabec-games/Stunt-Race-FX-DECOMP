@@ -24,6 +24,7 @@ uint8_t CourseFromSelection(uint8_t bank, uint8_t *p)
     if (rd8(dbw(bank, 0x0D4C))) {
         a = rd8(cyc_then(40, dbw(bank, 0x0D4A)));
         b = 0x14;
+        cyc(30);                        /* CLC, ADC # */
     } else {
         a = rd8(cyc_then(46, dbw(bank, 0x0D4A)));
         a = (uint8_t)(a << 2);
@@ -362,7 +363,7 @@ void abi_CourseWindowZoomSetup(void)
     cyc(56);
     wr16(0x7F3408, 0x0000);
     (cyc(62), abi_WindowTable7FLong());
-    cyc(216);
+    cyc(194);
 }
 
 /* 03:FB64, the zoom's start from X and Y (the offsets for
@@ -394,12 +395,17 @@ static void course_zoom(uint16_t x, uint16_t y)
 }
 
 /* CLC, ADC #add, TAX: the start box's offset. */
-static uint16_t box_offset(uint16_t a, uint16_t add)
+static uint16_t box_offset_in(uint16_t a, uint16_t add, uint32_t clocks)
 {
     cpu.p &= (uint8_t)~P_C;
     cpu.a = op_adc16(a, add, &cpu.p);
-    cyc(262);
+    cyc(clocks);
     return cpu.a;
+}
+
+static uint16_t box_offset(uint16_t a, uint16_t add)
+{
+    return box_offset_in(a, add, 262);
 }
 
 /* ASL A three times (16-bit): C the last bit out. */
@@ -427,8 +433,10 @@ static void course_choose(uint16_t list, uint16_t y)
     cpu.a = a;
     cpu.p = nz16(cpu.p, a);
     wr16(b | 0x0E3D, a);
+    cyc(list == 0xFB86 ? 48 : 24);      /* the stunt list: AND #$00FF before the LDA */
     a = asl3(rd16(b | 0x0D48));
-    course_zoom(box_offset(a, 0x0080), y);
+    /* TAX, LDY #, then the stunt list's BRA to the zoom (the battle list falls into it) */
+    course_zoom(box_offset_in(a, 0x0080, list == 0xFB86 ? 280 : 258), y);
     cyc(94);
 }
 
@@ -657,7 +665,7 @@ static void sel_choose(uint32_t b)
 
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | page);
     cpu.p = nz8(cpu.p, page);
-    cyc(46);
+    cyc(page ? 46 : 40);                /* BNE taken or not */
     if (sel_pressed16(b, 0x9000)) {
         if (page)
             { cyc(102); abi_CourseZoomFromSelection4(); }

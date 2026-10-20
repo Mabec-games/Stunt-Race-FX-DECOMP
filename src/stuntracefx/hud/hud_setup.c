@@ -116,7 +116,9 @@ static void hud_bytes(const HudByte *t, unsigned n, int x8)
     cyc(22);
     for (i = 0; i < n; i++) {
         lda8(t[i].v);
-        cyc(48);
+        /* a new sprite macro (its bytes lie in one 4-byte group) comes after
+           SEP #$20, SEP/REP #$10 and its own SEP #$20 */
+        cyc(48 + (i && ((t[i].a - 0x465) >> 2) != ((t[i - 1].a - 0x465) >> 2) ? 66 : 0));
         wr8(t[i].a, t[i].v);
     }
     if (x8)
@@ -498,10 +500,12 @@ static void race_hud_setup(void)
     cpu.y = 0x0000;
     cpu.p = nz16(cpu.p, 0);
     (cyc(116), abi_OamFromList());
+    cyc(42);                            /* RTS */
     cpu.x = 0x0200;
     cpu.y = 0x01AA;
     cpu.p = nz16(cpu.p, 0x01AA);
     (cyc(94), abi_OamFromList());
+    cyc(42);                            /* RTS */
     op_sep(P_M | P_X);
     b = (uint32_t)cpu.db << 16;
     cyc(24);
