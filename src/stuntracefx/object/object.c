@@ -2116,6 +2116,12 @@ void abi_CrashGreen(void);
  * comparing the script byte with $EA; V from subtracting $8000 (set when
  * the script pointer is below $8000).
  */
+/* A bank $00 word at a: 16 when it is ROM ($8000 up), whose reads the C states. */
+static uint32_t rom_word(uint16_t a)
+{
+    return a >= 0x8000 ? 16 : 0;
+}
+
 void abi_ObjectSpawnFromScript(void)
 {
     uint32_t b = (uint32_t)cpu.db << 16;
@@ -2155,14 +2161,15 @@ void abi_ObjectSpawnFromScript(void)
     if (w & 0x0200) {
         cyc(234);
         r = rd16(OBJ_FIELD(o, 0x20));
+        /* the words are ROM (two reads of 8 the C states) or work RAM */
         cyc(44);
-        wr16(OBJ_FIELD(o, 0x53), cyc_then(32, rd16((uint16_t)(0x000A + r))));
+        wr16(OBJ_FIELD(o, 0x53), cyc_then(32 + rom_word((uint16_t)(0x000A + r)), rd16((uint16_t)(0x000A + r))));
         cyc(30);
-        wr16(OBJ_FIELD(o, 0x55), cyc_then(32, rd16((uint16_t)(0x000C + r))));
+        wr16(OBJ_FIELD(o, 0x55), cyc_then(32 + rom_word((uint16_t)(0x000C + r)), rd16((uint16_t)(0x000C + r))));
         cyc(30);
-        wr16(OBJ_FIELD(o, 0x57), cyc_then(48, rd16((uint16_t)(0x000E + r))));
-    }
-    cyc(94);
+        wr16(OBJ_FIELD(o, 0x57), cyc_then(32 + rom_word((uint16_t)(0x000E + r)), rd16((uint16_t)(0x000E + r))));
+        cyc(94);
+    } else { cyc(76); }
     t = rd16(b | (uint16_t)(0x800E + y));
     cyc(62);
     wr16(OBJ_FIELD(o, 0x53), cyc_then(32, (uint16_t)(t + rd16(OBJ_FIELD(o, 0x53)))));

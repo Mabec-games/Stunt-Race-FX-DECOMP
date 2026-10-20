@@ -2213,8 +2213,9 @@ void abi_BigSpritesRow6(void)
     if (!(cyc(16), big_sprites_start(abi_GsuBytes200_BFB5BB)))
         { cyc(42); return; }
     big_sprites_at(0x0018, 0x0028);
+    /* between sprites: GsuRun's return (72), then 44 */
     for (i = 0; i < 4; i++)
-        { sprite24x40(first[i]); cyc(116); }
+        { sprite24x40(first[i]); if (i < 3) cyc(116); }
     cyc(148);
     w = rd16(0x70020A);
     cpu.p &= (uint8_t)~P_C;
@@ -2222,7 +2223,7 @@ void abi_BigSpritesRow6(void)
     cyc(70);
     wr16(0x70020A, cpu.a);
     for (i = 0; i < 2; i++)
-        { sprite24x40(second[i]); cyc(44); }
+        { sprite24x40(second[i]); cyc(i ? 44 : 116); }
     cyc(42);
 }
 
