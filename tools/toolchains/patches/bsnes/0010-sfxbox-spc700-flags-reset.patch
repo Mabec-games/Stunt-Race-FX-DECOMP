@@ -1,0 +1,14 @@
+--- a/bsnes/sfc/smp/smp.cpp
++++ b/bsnes/sfc/smp/smp.cpp
+@@ -72,6 +72,11 @@
+ auto SMP::power(bool reset) -> void {
+   SPC700::power();
+   create(Enter, system.apuFrequency() / 12.0);
++  // A state loaded while the SMP was inside a fetch, a dummy read or a
++  // store's read leaves that flag set on the old thread: they start clear.
++  sfxbox_smp_fetching = 0;
++  sfxbox_smp_dummy = 0;
++  sfxbox_smp_store = 0;
+ 
+   r.pc.byte.l = iplrom[62];
+   r.pc.byte.h = iplrom[63];
