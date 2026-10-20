@@ -353,6 +353,7 @@ void abi_MenuInitialsFrame(void)
         cyc(56);
         wr16(0x001191, 0x0000);
         sound_port0(0x47);
+        cyc(22);
         return;
     }
     cpu.a = pad;

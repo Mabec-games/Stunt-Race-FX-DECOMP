@@ -1447,7 +1447,7 @@ void abi_RaceLoop(void)
         cyc(40);
         wr8(b | 0x0D7F, 0x01);
         (cyc(62), abi_SoftResetLong());
-        (cyc(86), abi_ScrollHdmaSet());
+        (cyc(62), abi_ScrollHdmaSet());
         (cyc(62), abi_OamBufferHideLargeLong());
         /* JSR LoopLeaveWhenEnded: its return address (02:E332) on the
            stack, which it drops on the way out of the loop. */

@@ -253,6 +253,7 @@ void SaveBlocksCheck(uint8_t bank, uint8_t *p)
             wr8(0x0000F1, s);
             sum_byte(b | (uint16_t)(0xFCD2 + x), p);
             sum_byte(b | (uint16_t)(0xFCD3 + x), p);
+            cyc(46);
         }
         cyc(102);
         x = rd16(0x0000F3);
@@ -386,7 +387,7 @@ reset:
         cyc(60);
         x = rd16(0x0000F5);
         for (i = 0; i < 9; i++, x++)
-            { cyc(70); wr8(b | (uint16_t)(0xFC6D + x), 0x00); }
+            { cyc(80); wr8(b | (uint16_t)(0xFC6D + x), 0x00); }
         a = 0xE8;
         cyc(128);
         wr8(0x70FC2D + k, a);
@@ -1507,6 +1508,7 @@ static void records_load_sorted(uint32_t b, uint16_t x, int descending)
         cyc(76);
         wr16(b | (uint16_t)(0x0F13 + y), rd16(b | (uint16_t)(0xB4EB + y)));
         x = (uint16_t)(x + 4);
+        cyc(36);
     }
     cyc(40);
     for (i = 0x14; i >= 0; i -= 2) {

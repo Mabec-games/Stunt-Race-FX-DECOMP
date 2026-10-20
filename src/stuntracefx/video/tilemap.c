@@ -167,13 +167,13 @@ static uint8_t frame_rows(uint8_t bank, uint16_t base, uint8_t p)
     cyc(160);
     wr16(0x0000F3, base);
     for (i = 0; i < 0x20; i++)
-        { cyc(118); wr16(VMDATAL, (uint16_t)(0x2001 + base)); }
+        { cyc(130); wr16(VMDATAL, (uint16_t)(0x2001 + base)); }
     cyc(18);
     for (i = 0; i < 0x23; i++) {
         cyc(60);
         mode = rd16(b | 0x0D2B) & 0x00FF;
         t = 0x2002;
-        if ((mode == 1 || (cyc(40), mode == 3)) && !(rd16(cyc_then(94, b | 0x10CD)) & 0x00FF))
+        if ((mode == 1 || (cyc(58), mode == 3)) && !(rd16(cyc_then(94, b | 0x10CD)) & 0x00FF))
             t = 0x2010; else { cyc(28); }
         s = (unsigned)t + base;
         cyc(134);
@@ -196,7 +196,7 @@ static uint8_t picture_rows(uint16_t base, uint8_t p)
     cyc(184);
     wr16(0x0000F3, base);
     for (x = 0; x < 0x180; x += 2) {
-        cyc(56);
+        cyc(106);
         t = rd16(0x703000 + x);
         s = (unsigned)t + base;
         cyc(70);

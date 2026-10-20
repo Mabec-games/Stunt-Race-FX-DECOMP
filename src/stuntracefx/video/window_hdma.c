@@ -670,6 +670,7 @@ void abi_WindowLayoutStepForScreen(void)
     abi_WindowLayoutStep();
     cpu.db = db;
     cpu.p = p;
+    cyc(42);
 }
 
 /* One step of the window slide: the slide position at $1A14 moves by
@@ -862,7 +863,7 @@ void abi_WindowLayoutStep(void)
         cyc(34);
         v = rd8(b | 0x19BC);
         if (v != 0xFF) {
-            cyc(74);
+            cyc(32);
             cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
             cpu.p = (uint8_t)(nz8(cpu.p, (uint8_t)(v + 1)) & ~P_C);
             return;
@@ -978,7 +979,7 @@ void WindowsInit(void)
     cyc(42);
     if (rd8(b | 0x0D62)) {
         for (x = 0; x < 0x0280; x++) {
-            cyc(72);
+            cyc(92);
             v = (uint8_t)(rd8(0x7FF883 + x) + 0xD8);
             cyc(62);
             wr8(0x7FF883 + x, v);
@@ -1266,7 +1267,7 @@ void abi_WindowBandsAnimate(void)
         wr8(b | 0x19D8, 0x05);
     }
     op_sep(P_M | P_X);
-    cyc(32);
+    cyc(56);
     v = rd8(0x0019D5);
     cpu.x = (uint8_t)(v << 1);
     cyc(52);

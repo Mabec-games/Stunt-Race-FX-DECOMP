@@ -171,13 +171,13 @@ static void slot_to_y(uint16_t slot, int d)
 void abi_RecordsMenuBack(void)
 {
     op_rep(P_M | P_X);
-    cyc(10);
+    cyc(26);
     sound16(0x002F);
     (cyc(54), abi_CourseScreenState8());
     (cyc(104), abi_OamBufferHideLargeLong());
     op_sep(P_M);
     lda8(0xF0);
-    cyc(112);
+    cyc(70);
     wr8(0x000E92, 0xF0);
     op_rep(P_M);
 }

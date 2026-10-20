@@ -165,6 +165,7 @@ uint8_t Countdown0DF8(uint8_t bank)
     if (v) {
         cyc(46);
         wr8(b | 0x0DF8, cyc_then(6, (uint8_t)(rd8(b | 0x0DF8) - 1)));
+        cyc(54);
         return v;
     }
     cyc(40);

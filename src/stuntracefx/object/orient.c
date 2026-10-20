@@ -100,7 +100,7 @@ void ObjectFaceTied(void)
         ease_half(bank, rec, 0x0010, neg_angle(absidx(bank, 0x2015, cpu.x)));
         ease_half(bank, rec, 0x0012, neg_angle(absidx(bank, 0x2016, cpu.x)));
         cpu.x = cpu.y;
-    } }
+    } else { cyc(32); } }
     cyc(58);
     a = rd16(cpu.x) & 0x8000;
     if (!a)

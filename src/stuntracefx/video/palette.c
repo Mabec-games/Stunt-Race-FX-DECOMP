@@ -342,7 +342,7 @@ uint16_t PaletteCopy16To7F39D7(uint8_t bank, uint16_t src)
     uint16_t w = 0, n;
     unsigned i;
 
-    cyc(450);
+    cyc(428);
     wr16(0x0000F1, 0x0010);
     for (i = 0; i < 16; i++) {
         cyc(78);
@@ -354,7 +354,7 @@ uint16_t PaletteCopy16To7F39D7(uint8_t bank, uint16_t src)
         wr16(0x0000F1, (uint16_t)(n - 1));
         cyc(22);
     }
-    cyc(82);
+    cyc(60);
     return w;
 }
 
@@ -656,7 +656,7 @@ static KeptEnd palette_kept_colours_step(uint8_t bank, uint16_t a, uint16_t x, u
             go = t >= 0xB4 ? TWO : t >= 0x78 ? ONE : t >= 0x3C ? ODD : SKIP;
         }
     } else {
-        cyc(68);
+        cyc(92);
         t = rd8(b | (uint16_t)(0x0E01 + y));
         if (!t) {
             a = 0x7E63;
@@ -1802,7 +1802,7 @@ hud:
         int i;
 
         for (i = 0; i < 6; i++) {
-            cyc(96);
+            cyc(98);
             op_lda16_imm(hud[i].colour);
             cpu.x = hud[i].x;
             cpu.p = nz16(cpu.p, cpu.x);

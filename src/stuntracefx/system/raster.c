@@ -583,7 +583,7 @@ void abi_RasterStage(void)
         (cyc(46), abi_JoypadAccumulate());
         (cyc(132), abi_WindowHdmaBands());
         (cyc(62), abi_WindowLayoutStepForScreen());
-        (cyc(204), abi_BobWindowsRun());
+        (cyc(162), abi_BobWindowsRun());
         (cyc(62), abi_WindowBandsAnimate());
         op_sep(P_M | P_X);
         b = (uint32_t)cpu.db << 16;
@@ -604,6 +604,7 @@ void abi_RasterStage(void)
             put8(BG1SC, 0x1C);
             put8(BG2SC, 0x3F);
         }
+        cyc(22);
         put8(BGMODE, 0x01);
         put8(TM, 0x03);
         put8(HDMAEN, 0x1C);

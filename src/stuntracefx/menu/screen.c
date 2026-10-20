@@ -832,7 +832,7 @@ void MenuScreenOpen0(void)
     cyc(48);
     wr16(VMADDL, 0x4000);
     for (x = 0; x != 0x0720; x = (uint16_t)(x + 2))
-        { cyc(96); wr16(VMDATAL, rd16(0x1CDC8C + x)); }
+        { cyc(146); wr16(VMDATAL, rd16(0x1CDC8C + x)); }
     cyc(114);
     wr16(0x00162D, 0x0000);
     cyc(24);
@@ -986,7 +986,7 @@ void MenuScreenOpen6(void)
     cyc(114);
     wr16(VMADDL, 0x7000);
     for (x = 0; x != 0x0040; x = (uint16_t)(x + 2))
-        { cyc(96); wr16(VMDATAL, rd16(0x1CBE58 + x)); }
+        { cyc(146); wr16(VMDATAL, rd16(0x1CBE58 + x)); }
     cyc(24);
     menu_picture(0x0000, 0xBABC);
     menu_picture(0x6000, 0xBE58);
@@ -1265,7 +1265,7 @@ void abi_ChampionScreenOpen(void)
     cyc(186);
     wr16(VMADDL, 0x6000);
     for (x = 0x0000; x != 0x0800; x = (uint16_t)(x + 2)) {
-        cyc(56);
+        cyc(106);
         a = rd16(0x703000 + x);
         cpu.a = champion_add(a, 0x0100);
         cyc(62);

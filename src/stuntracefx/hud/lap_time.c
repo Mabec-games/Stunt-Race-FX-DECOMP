@@ -237,7 +237,7 @@ void abi_TimeTotalsSum(void)
         cyc(16);
         wr8(0x0000F3, 0);
         for (i = 0; i < 4; i++) {
-            cyc(56);
+            cyc(98);
             cpu.x = (uint16_t)(g * 12 + i * 3);
             abi_TimeAddToTotal();
         }
@@ -638,7 +638,7 @@ static void sum_into_f1(uint32_t addr, uint8_t x, unsigned n)
 
     while (n--) {
         cpu.p &= (uint8_t)~P_C;
-        cyc(76);
+        cyc(96);
         a = rd8(addr + x);
         cyc(16);
         a = op_adc8(a, rd8(0x0000F1), &cpu.p);

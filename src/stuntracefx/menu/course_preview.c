@@ -407,7 +407,7 @@ void abi_MenuScreenOpenPreview(void)
     cyc(72);
     wr16(0x002116, 0x6000);
     for (x = 0; x != 0x1000; x = (uint16_t)(x + 2))
-        { cyc(32); wr16(0x002118, cyc_then(24, rd16(0x703000 + x))); }
+        { cyc(32); wr16(0x002118, cyc_then(24, rd16(0x703000 + x))); cyc(74); }
     cyc(46);
     preview_picture(0x4000, 0xDD8C);
     cpu.p &= (uint8_t)~(P_M | P_X);
@@ -558,7 +558,7 @@ void abi_MenuScreenOpenPreviewFade(void)
     cyc(40);
     wr16(0x0000FD, 0x001C);
     for (x = 0, y = 0; x != 0x0018; x = (uint16_t)(x + 2), y = (uint16_t)(y + 2)) {
-        cyc(108);
+        cyc(118);
         src = rd8(0x0000FB);
         src |= (uint32_t)rd8(0x0000FC) << 8;
         src |= (uint32_t)rd8(0x0000FD) << 16;

@@ -2133,7 +2133,7 @@ void abi_ObjectSpawnFromScript(void)
         cyc(30);
         wr16(OBJ_FIELD(o, 0x57), cyc_then(48, rd16((uint16_t)(0x000E + r))));
     }
-    cyc(76);
+    cyc(94);
     t = rd16(b | (uint16_t)(0x800E + y));
     cyc(62);
     wr16(OBJ_FIELD(o, 0x53), cyc_then(32, (uint16_t)(t + rd16(OBJ_FIELD(o, 0x53)))));

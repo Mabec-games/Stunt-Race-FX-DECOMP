@@ -67,7 +67,7 @@ void abi_RandomStep(void)
 uint16_t RandomWordStep(uint8_t bank)
 {
     uint32_t at = (uint32_t)bank << 16 | 0x0D18;
-    cyc(68);
+    cyc(80);
     uint16_t x = rd16(at), t, y, v;
 
     /* low byte = hi ^ lo, high byte = lo (the word read again for the EOR) */

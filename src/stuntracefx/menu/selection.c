@@ -48,7 +48,7 @@ uint16_t MenuChoiceRepeat(uint16_t *x, uint8_t *p)
     cyc(172);
     uint16_t a = rd16(0x0018CB), b;
 
-    cyc(220);
+    cyc(32);
     wr16(0x0018D3, 0x0000);
     b = rd16(0x0018C9);
     *p = (uint8_t)((nz16(*p, (uint16_t)(a - b)) & ~P_C) | (a >= b ? (cyc(74), P_C) : 0));

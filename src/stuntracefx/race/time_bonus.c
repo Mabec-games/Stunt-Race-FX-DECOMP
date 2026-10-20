@@ -834,7 +834,7 @@ void TimeBonusTally(void)
         cyc(48);
         wr16(b | 0x0D6D, cpu.a);
         (cyc(46), abi_TimeDigitBytes());
-        cyc(160);
+        cyc(50);
         cpu.x = rd16(b | 0x0D6B);
         cyc(80);
         cpu.a = rd16(SIZE_GROW + cpu.x);

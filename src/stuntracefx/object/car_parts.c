@@ -1018,7 +1018,7 @@ static int crash_set_a33d(void)
     shed(0xA3F8, 0x00, 0xEF, 0xF6, 0x19, 1, 0);
     cyc(0);
     shed(0xA414, 0x00, 0x0F, 0x02, 0x1E, 0, 0);
-    cyc(2);
+    cyc(24);
     return 0;
 }
 

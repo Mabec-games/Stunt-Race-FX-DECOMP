@@ -742,7 +742,7 @@ void abi_WindowSlideOrOscillate(void)
 
     cpu.db = 0x7E;
     op_sep(P_M);
-    cyc(368);
+    cyc(326);
     op_lda8(0x7E19D8);
     if (!(uint8_t)cpu.a) {
         cyc(48);

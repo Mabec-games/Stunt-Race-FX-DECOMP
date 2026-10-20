@@ -327,7 +327,7 @@ void MenuActorIdleC47B(void)
 
 void abi_MenuActorIdleC47B(void)
 {
-    cyc(42);
+    cyc(0);
 }
 
 /*
@@ -1411,7 +1411,7 @@ uint16_t MenuChoiceObjectFrames(uint8_t bank, uint16_t a, uint16_t *x, uint16_t 
     cyc(14);
     wr16((uint16_t)(*x + 0x1E), t);
     if (!(t & 0x8000)) {
-        cyc(130);
+        cyc(88);
         *p = nz16(*p, t);
         return a;
     }
@@ -1422,7 +1422,7 @@ uint16_t MenuChoiceObjectFrames(uint8_t bank, uint16_t a, uint16_t *x, uint16_t 
     a = rd16((uint16_t)(*x + 0x22));
     *p = nz16(*p, a);
     if (!a)
-        { cyc(130); return a; }
+        { cyc(88); return a; }
     cyc(44);
     a = rd16((uint16_t)(*x + 0x10));
     if (a & 0x8000) {
@@ -2139,6 +2139,7 @@ uint16_t MenuDropAway(uint8_t bank, uint16_t *x, uint8_t *p)
         }
         if (h >= 0x001E)
             { cyc(156); FrameByteWritePush(bank, (uint16_t)HDMAEN, 0x20); }
+        cyc(204);
     }
     cyc(22);
     h = rd16((uint16_t)(*x + 0x20));

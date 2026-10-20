@@ -276,6 +276,7 @@ void abi_GsuBytes200_BFBCBD(void)
 {
     cyc(62);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0xBF, 0xBC, 0xBD));
+    cyc(22);
 }
 
 /*

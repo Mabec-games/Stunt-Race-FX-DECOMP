@@ -748,6 +748,7 @@ uint16_t MenuModeSelect(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
             a = MenuActorFree(bank, *x, *y);
             *x = 0xFFFF;
             *p = (uint8_t)((*p & ~P_Z) | P_N);
+            cyc(42);
             return a;
         }
     }

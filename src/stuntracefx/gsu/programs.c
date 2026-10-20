@@ -1267,7 +1267,7 @@ uint8_t GsuF15BTwoLines(uint16_t input)
     wr16(0x70020C, 0x0008);
     GsuBytes200_BFB7B6();
     for (i = 0; i < 3; i++) {
-        cyc(150);
+        cyc(194);
         wr16(0x700216, first[i]);
         f15b();
     }
@@ -1276,7 +1276,7 @@ uint8_t GsuF15BTwoLines(uint16_t input)
     cyc(56);
     wr16(0x70020C, 0x002C);
     for (i = 0; i < 13; i++) {
-        cyc(78);
+        cyc(194);
         wr16(0x700216, second[i]);
         mode = f15b();
     }
@@ -2187,7 +2187,7 @@ void abi_BigSpritesRow6(void)
         { cyc(42); return; }
     big_sprites_at(0x0018, 0x0028);
     for (i = 0; i < 4; i++)
-        sprite24x40(first[i]);
+        { sprite24x40(first[i]); cyc(116); }
     cyc(148);
     w = rd16(0x70020A);
     cpu.p &= (uint8_t)~P_C;
@@ -2442,6 +2442,7 @@ void abi_GlyphListDraw(void)
                     { cyc(6); abi_GsuBytes200_BFB3BE(); }
                 else
                     { cyc(16); abi_GsuBytes200_BFBCBD(); }
+                cyc(94);
             }
             x = cpu.x;
             p = cpu.p;
@@ -2456,7 +2457,7 @@ void abi_GlyphListDraw(void)
         {
             uint16_t lim = rd16(0x0000F3);
 
-            cpu.p = (uint8_t)((nz16(cpu.p, (uint16_t)(cpu.x - lim)) & ~P_C) | (cpu.x >= lim ? P_C : 0));
+            cpu.p = (uint8_t)((nz16(cpu.p, (uint16_t)(cpu.x - lim)) & ~P_C) | (cpu.x >= lim ? (cyc(148), P_C) : 0));
         }
     } while (cyc_loop(22, !(cpu.p & P_C)));
 }
@@ -2561,7 +2562,7 @@ static void time_glyph(uint32_t b, uint16_t glyph, uint8_t x, int last)
     cyc(46);
     wr8(b | (uint16_t)(0x1135 + cpu.y), 0x68);
     if (!last)
-        cpu.y = (uint16_t)(cpu.y + 2); else { cyc(30); }
+        cpu.y = (uint16_t)(cpu.y + 2); else { cyc(120); }
     cyc(12);
 }
 
@@ -2684,7 +2685,7 @@ void abi_GsuBytes200_BFBBBE(void);
 static void glyph_prog(uint16_t prog, uint16_t glyph)
 {
     op_lda16_imm(glyph);
-    cyc(18);
+    cyc(112);
     wr16(0x700216, glyph);
     op_sep(P_M);
     op_rep(P_X);
@@ -2741,7 +2742,7 @@ void abi_GlyphWordAt1C28(void)
     wr16(0x70020E, 0x0010);
     abi_GsuBytes200_BFBCBD();
     for (i = 0; i < 5; i++) {
-        cyc(72);
+        cyc(0);
         op_rep(P_M);
         glyph_prog(0xF15B, g1[i]);
     }
@@ -2769,9 +2770,9 @@ static void glyph_grid3(uint16_t first, void (*mid)(void), void (*row2)(void))
             if (r == 1 && row2)
                 { cyc(62); row2(); }
         }
-        for (c = 0; c < 3; c++) {
-            if (r == 0 && c == 2 && (cyc(22), mid))
-                { cyc(134); mid(); } else { cyc(22); }
+        for (c = 0; cyc_loop(22, c < 3); c++) {
+            if (r == 0 && c == 2 && (cyc(0), mid))
+                { cyc(134); mid(); } else { cyc(0); }
             cyc(72);
             glyph_prog(0xF280, (uint16_t)((first + r) << 8 | (0x1A + 2 * c)));
         }
@@ -3237,7 +3238,7 @@ void abi_GlyphSlideThree(void)
             { cyc(114); abi_GsuBytes200_BFBAB9(); }
         else
             { cyc(92); abi_GsuBytes200_BFB3BE(); }
-        cyc(124);
+        cyc(146);
         x = cpu.x;
         p = cpu.p;
         glyph_prog_run(0xF3D2);
@@ -3296,10 +3297,10 @@ void abi_GlyphSpritesDrawAll(void)
     (cyc(128), abi_GlyphSpriteDraw());
     (cyc(184), abi_GsuBytes200_BFB3BE());
     for (i = 0; i < 5; i++)
-        abi_GlyphSpriteDraw();
+        { abi_GlyphSpriteDraw(); cyc(128); }
     cyc(200);
     abi_GsuBytes200_BFBCBD();
-    for (i = 0; i < 3; i++)
+    for (i = 0; cyc_loop(128, i < 3); i++)
         abi_GlyphSpriteDraw();
     cyc(224);
     op_lda16(b | 0x0FAE);
@@ -3312,11 +3313,11 @@ void abi_GlyphSpritesDrawAll(void)
         cyc(6);
         abi_GsuBytes200_BFB3BE();
         for (i = 0; i < 4; i++)
-            abi_GlyphSpriteDraw();
+            { abi_GlyphSpriteDraw(); cyc(128); }
         cyc(262);
         abi_GsuBytes200_BF12B6();
         for (i = 0; i < 9; i++)
-            abi_GlyphSpriteDraw();
+            { abi_GlyphSpriteDraw(); cyc(128); }
     }
     abi_GlyphGrid1A();
     abi_GlyphGrid1D();

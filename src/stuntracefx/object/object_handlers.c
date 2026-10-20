@@ -4516,7 +4516,7 @@ void abi_ObjectDemoCarStep(void)
         cpu.x = x;
         cpu.p = nz16(cpu.p, x);
     }
-    cyc(84);
+    cyc(120);
     abi_ObjectRebucket();
     (cyc(156), abi_ObjectPoseFromRecord());
     lda8(0x03);

@@ -377,7 +377,7 @@ static void course_zoom(uint16_t x, uint16_t y)
     (cyc(104), abi_OamBufferHideLargeLong());
     op_sep(P_M);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x04);
-    cyc(104);
+    cyc(62);
     wr8(0x030D40, 0x04);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x24);
     cpu.p = nz8(cpu.p, 0x24);
@@ -422,6 +422,7 @@ static void course_choose(uint16_t list, uint16_t y)
     wr16(b | 0x0E3D, a);
     a = asl3(rd16(b | 0x0D48));
     course_zoom(box_offset(a, 0x0080), y);
+    cyc(62);
 }
 
 /*
@@ -494,7 +495,7 @@ void abi_CourseZoomFromSelection4(void)
     op_sep(P_M);
     abi_CourseFromSelectionLong();
     v = (uint8_t)cpu.a;
-    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x0C)) & ~P_C) | (v >= 0x0C ? P_C : (cyc(246), 0)));
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x0C)) & ~P_C) | (v >= 0x0C ? (cyc(174), P_C) : (cyc(246), 0)));
     if (v < 0x0C) {
         op_rep(P_M | P_X);
         a = (uint16_t)(cpu.a & 0x00FF);
@@ -524,7 +525,7 @@ void abi_CourseZoomFromSelection(void)
     op_sep(P_M | P_X);
     (cyc(132), abi_CourseFromSelectionLong());
     v = (uint8_t)cpu.a;
-    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x0C)) & ~P_C) | (v >= 0x0C ? (cyc(514), P_C) : (cyc(214), 0)));
+    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x0C)) & ~P_C) | (v >= 0x0C ? (cyc(174), P_C) : (cyc(214), 0)));
     if (v < 0x0C) {
         op_rep(P_M | P_X);
         course_zoom_race((uint16_t)(cpu.a & 0x00FF));
@@ -649,7 +650,7 @@ static void sel_choose(uint32_t b)
 
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | page);
     cpu.p = nz8(cpu.p, page);
-    cyc(40);
+    cyc(46);
     if (sel_pressed16(b, 0x9000)) {
         if (page)
             abi_CourseZoomFromSelection4();
