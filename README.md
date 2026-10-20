@@ -97,6 +97,47 @@ sources:
   rebuilds the ROM byte for byte (T4). It is the reading the C is written
   from, and the byte-exact rebuild proves that reading is right.
 
+## Cycle-exact
+
+**The C runs at the original's speed, to the clock.** Every S-CPU (65816)
+routine states, in master clocks, the time the original's instructions take
+(`cyc(N)` and its kin in `machine.h`). Run in lockstep with the original over
+all 161 gameplay scripts, the time the C states between every pair of bus
+accesses equals the time the original spent there: 0 clocks off in about 20
+billion compared, with the game's state identical after every frame.
+Completed October 20, 2026.
+
+**Why it matters.** Behaviour exact proves the C computes the same results.
+It does not prove the game *plays* the same, because on the SNES timing is
+behaviour:
+
+- **The frame budget.** Stunt Race FX draws its 3D below the full frame
+  rate and drops frames when the S-CPU and Super FX fall behind. How much work
+  fits in a frame decides when a frame drops, so the game's feel, its
+  slowdowns included, depends on the exact time every routine takes.
+- **Interrupts and DMA land where they landed.** NMI, IRQ, HDMA and memory
+  refresh interrupt the code at a point fixed by elapsed clocks. If a routine
+  runs a few clocks fast or slow, an interrupt can fall on the other side of
+  a write, and the frame comes out different.
+- **The S-CPU and the Super FX work in parallel.** The S-CPU starts a Super
+  FX program and waits for it, or works alongside it. Who gets to shared RAM
+  first, and how long the S-CPU waits, depends on both processors' timing.
+- **A port can keep the original's pacing.** With every routine's time
+  stated, a native port built from this C can reproduce the original's
+  frame rate and slowdowns exactly, or drop them on purpose, instead of
+  guessing.
+
+**How it was reached.** The time each routine states is read from its
+assembly: the cost of each instruction, each branch taken or not, each byte
+fetched from ROM. Where the time depends on the path (a branch's direction,
+a register's width, which copy of shared code runs), the C carries that
+path's time; a shared C helper takes each caller's cost as a parameter
+rather than being split into copies. The sfxbox lockstep run logs, for
+every interval between two bus accesses, the original's clocks against the
+clocks the C states (`SFXBOX_CYCLOG`), and `tools/stuntracefx/cycsolve.py`
+turns those intervals into what each stretch of the C costs. The work went from 0.165%
+off to exactly 0.
+
 ## Current Status
 
 **Both milestones are met: M1 and M2 are at 100%.** M1 counts routines whose
