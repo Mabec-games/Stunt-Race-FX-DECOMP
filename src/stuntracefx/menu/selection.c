@@ -45,18 +45,21 @@ void abi_MenuRowPosition(void)
  */
 uint16_t MenuChoiceRepeat(uint16_t *x, uint8_t *p)
 {
-    cyc(126);
+    cyc(78);
+    wr16(0x0018D3, 0x0000);
+    cyc(32);
     uint16_t a = rd16(0x0018CB), b;
 
     cyc(32);
-    wr16(0x0018D3, 0x0000);
     b = rd16(0x0018C9);
-    *p = (uint8_t)((nz16(*p, (uint16_t)(a - b)) & ~P_C) | (a >= b ? (cyc(74), P_C) : 0));
+    *p = (uint8_t)((nz16(*p, (uint16_t)(a - b)) & ~P_C) | (a >= b ? P_C : 0));
     if (a != b)
         { cyc(22); return a; }
+    cyc(48);                            /* BNE not taken, LDA long */
     b = rd16(0x0018C9);
     *x = (uint16_t)(b << 1);
     a = rd16(0x0BC758 + *x);
+    cyc(108);                           /* ASL, TAX, LDA long (its 2 ROM bytes), STA long */
     wr16(0x0018D3, a);
     *p = (uint8_t)((nz16(*p, a) & ~P_C) | (b & 0x8000 ? P_C : 0));
     return a;
@@ -160,17 +163,19 @@ void abi_MenuSet1A66(void)
  */
 void MenuStateInit(void)
 {
-    static const struct { uint32_t addr; uint16_t v; } set[] = {
-        {0x000D7D, 0x0006}, {0x0018FD, 0x0000}, {0x001903, 0x0000}, {0x0018B9, 0x0001},
-        {0x001901, 0x0000}, {0x0018FF, 0x0000}, {0x0018F7, 0x0000}, {0x0018C3, 0x0000},
-        {0x0018CB, 0x0000}, {0x0018C9, 0x0000}, {0x0018ED, 0x0000}, {0x0018CD, 0x0000},
-        {0x0018F5, 0x0000}, {0x0018D3, 0x0000}, {0x0018D5, 0x0000}, {0x0018D7, 0x0000},
-        {0x0018D9, 0x0003}, {0x0018C7, 0x0001}, {0x0018EB, 0x0001}, {0x0018CF, 0x0001},
-        {0x0018D1, 0x0002}};
+    /* Each store's clocks since the one before: 56 with an LDA # first, 32
+       without (STA long). */
+    static const struct { uint32_t addr; uint16_t v; uint8_t c; } set[] = {
+        {0x000D7D, 0x0006, 100}, {0x0018FD, 0x0000, 56}, {0x001903, 0x0000, 56}, {0x0018B9, 0x0001, 56},
+        {0x001901, 0x0000, 56}, {0x0018FF, 0x0000, 32}, {0x0018F7, 0x0000, 32}, {0x0018C3, 0x0000, 32},
+        {0x0018CB, 0x0000, 32}, {0x0018C9, 0x0000, 32}, {0x0018ED, 0x0000, 32}, {0x0018CD, 0x0000, 32},
+        {0x0018F5, 0x0000, 32}, {0x0018D3, 0x0000, 56}, {0x0018D5, 0x0000, 56}, {0x0018D7, 0x0000, 56},
+        {0x0018D9, 0x0003, 56}, {0x0018C7, 0x0001, 56}, {0x0018EB, 0x0001, 32}, {0x0018CF, 0x0001, 32},
+        {0x0018D1, 0x0002, 56}};
     unsigned i;
 
     for (i = 0; i < sizeof set / sizeof set[0]; i++)
-        { cyc(100); wr16(set[i].addr, set[i].v); }
+        { cyc(set[i].c); wr16(set[i].addr, set[i].v); }
     cyc(32);
     wr16(0x0018EF, cyc_then(56, rd16(0x70FC08) & 0x00FF));
     cyc(32);
@@ -274,6 +279,7 @@ static uint16_t save_selection(uint8_t bank, uint16_t *x)
         wr8(0x70FC0D, (uint8_t)v);
         return v;
     }
+    cyc(mode == 1 ? 118 : 112);         /* CMP #, BEQ, CMP #, BEQ, LDA long */
     wr16(b | 0x11DF, cyc_then(48, rd16(0x70FC0C) & (mode == 1 ? 0x0003 : 0x0030)));
     cyc(32);
     *x = (uint16_t)(rd16(0x0018CB) << 1);

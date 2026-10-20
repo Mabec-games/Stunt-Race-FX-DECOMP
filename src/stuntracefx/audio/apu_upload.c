@@ -118,7 +118,7 @@ static ApuUploadEnd apu_upload(uint8_t bank, uint16_t addr)
 
         cyc(80);
         wr8(APUIO2, cyc_then(24, ApuUploadNextByte(&offset)));
-        wr8(APUIO3, cyc_then(70, ApuUploadNextByte(&offset)));
+        wr8(APUIO3, cyc_then(24, ApuUploadNextByte(&offset)));
         cyc(78);
         wr8(APUIO1, more);
         cyc(68);
@@ -129,7 +129,7 @@ static ApuUploadEnd apu_upload(uint8_t bank, uint16_t addr)
         cyc(38);
         if (!more)
             { cyc(38); break; } else { cyc(38); }
-        wr16(APUIO0, cyc_then(112, (uint16_t)(ApuUploadNextByte(&offset) << 8 | index)));
+        wr16(APUIO0, cyc_then(104, (uint16_t)(ApuUploadNextByte(&offset) << 8 | index)));
         while (--length) {
             cyc(124);
             uint8_t data = ApuUploadNextByte(&offset);

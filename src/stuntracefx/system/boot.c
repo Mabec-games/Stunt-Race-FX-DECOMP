@@ -123,8 +123,15 @@ void abi_HardwareRegsInit(void)
 
     op_sep(P_M | P_X);
     b = (uint32_t)cpu.db << 16;
-    for (i = 0; i < sizeof writes / sizeof writes[0]; i++)
-        { cyc(40); wr8(b | writes[i].reg, writes[i].v); }
+    for (i = 0; i < sizeof writes / sizeof writes[0]; i++) {
+        uint16_t reg = writes[i].reg;
+
+        /* STA abs 24; 40 after the LDA/LDX/LDY # that loads its value (the
+           first write has SEP and LDA # ahead). */
+        cyc(i == 0 || reg == 0x2101 || reg == 0x2115 || (reg == 0x211B && !writes[i].v)
+            || reg == 0x2130 || reg == 0x2132 || reg == 0x4201 ? 40 : 24);
+        wr8(b | reg, writes[i].v);
+    }
     cyc(44);
     cpu.a = (uint16_t)(cpu.a & 0xFF00);
     cpu.x = 0x00FF;

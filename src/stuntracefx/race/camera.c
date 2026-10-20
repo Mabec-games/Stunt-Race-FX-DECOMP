@@ -181,7 +181,9 @@ void abi_CameraFollowStep(void)
         cyc(62);
         g = rd16(0x70247A);
         cyc(46);
-        if ((rd16(0x700042 + g) & 0x000C) && !(rd16(cyc_then(100, b | CAM_FLAGS)) & 0x0200)) {
+        uint16_t rec = rd16(0x700042 + g);
+
+        if ((rec & 0x000C) && !(rd16(cyc_then(100, b | CAM_FLAGS)) & 0x0200)) {
             cyc(40);
             a = (uint16_t)(~angle_hi(b, y, 0x2015) + 1);
             cyc(118);
@@ -190,7 +192,7 @@ void abi_CameraFollowStep(void)
             cyc(42);
             a = (uint16_t)(a + rd16(CAM(r, 0x16)));
         } else {
-            cyc(82);
+            cyc((rec & 0x000C) ? 46 : 82);  /* AND, BNE taken; or PLX, AND, BEQ taken */
             a = (uint16_t)(~angle_hi(b, y, 0x2015) + 1);
             cyc(118);
             a = (uint16_t)(a - rd16(CAM(r, 0x16)));
@@ -310,7 +312,7 @@ void abi_CameraFollowStep(void)
         cyc(22);
         wr16(CAM(r, 0x0C), a);
     } else {
-        cyc(116);
+        cyc((f & 0x0010) ? 116 : 110);    /* BNE taken 22, not 16 */
         y = rd16(b | CAM_TARGET);
         cpu.y = y;
         cyc(30);

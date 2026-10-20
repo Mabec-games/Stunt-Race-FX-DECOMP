@@ -1063,7 +1063,7 @@ void OamPlaceRows75And112(uint8_t bank)
     cyc(24);
     wr8(b | (uint16_t)(OAM_BUFFER + 1 + 4 * 115), 0x80);
     for (i = 0; i < 6; i++)
-        { cyc(40); wr8(b | high[i], 0x00); }
+        { cyc(i & 1 ? 24 : 40); wr8(b | high[i], 0x00); }   /* LDA # before each pair */
     cyc(70);
 }
 
@@ -1162,7 +1162,7 @@ uint16_t SpriteBar6WithMarker(uint8_t bank, uint8_t value, uint16_t pos, uint16_
     v = rd8(0x000004);
     cyc(122);
     SpriteStrip6(v, (uint16_t)(y + 4));
-    return bar_marker(bank, v, y, 0x0008, 0x3C1F, 0x3C1E, 212);
+    return bar_marker(bank, v, y, 0x0008, 0x3C1F, 0x3C1E, v >= 0x0008 ? 212 : 240);   /* BCC taken: 28 more */
 }
 
 void abi_SpriteBar6WithMarker(void)

@@ -59,14 +59,20 @@ void abi_SpriteYOnScreen(void);
    The tails below are entered by jumps from routines that pushed P, so
    each ends with that routine's PLP (done by the caller here). */
 
-static uint8_t lda8(uint32_t a)
+/* LDA abs after n clocks of the code before it. */
+static uint8_t lda8_after(uint32_t a, unsigned n)
 {
-    cyc(48);
+    cyc(n);
     uint8_t v = rd8(a);
 
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.p = nz8(cpu.p, v);
     return v;
+}
+
+static uint8_t lda8(uint32_t a)
+{
+    return lda8_after(a, 48);
 }
 
 static uint8_t adc8i(uint8_t v, uint8_t m)
@@ -252,7 +258,7 @@ static void hud_panel_slide(uint8_t f9, uint16_t x, int panel_a)
     cpu.x = x;
     cyc(106);
     wr8(b | 0x00F9, f9);
-    v = lda8(b | 0x0D54);
+    v = lda8_after(b | 0x0D54, panel_a ? 24 : 48);   /* A: STA, LDA; B: STA, LDX #, LDA */
     cmp8(v, 0x08);
     if (v < 0x08) {
         op_plp(p0);
