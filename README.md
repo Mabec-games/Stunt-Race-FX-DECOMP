@@ -108,9 +108,9 @@ frame. Completed October 20, 2026.
 
 | Processor | How the C states time | Intervals judged | Off |
 |---|---|---|---|
-| S-CPU (65816) | `cyc(N)` master clocks (`machine.h`) | 619,883,394 | 0 |
+| S-CPU (65816) | `cyc(N)` master clocks (`machine.h`) | 619,887,256 | 0 |
 | Super FX (GSU-1) | the code bytes it fetches, priced by the GSU clock model (`gsu.h`) | 1,632,911,722 | 0 |
-| SPC700 (sound) | `spc_cyc(N)` cycles (`spc.h`) | 231,178,319 | 0 |
+| SPC700 (sound) | `spc_cyc(N)` cycles (`spc.h`) | 231,179,419 | 0 |
 
 What is and is not judged, precisely:
 
@@ -118,11 +118,14 @@ What is and is not judged, precisely:
   handler's own time is not part of it (it is the handler's), and the one
   internal cycle an interrupt turns into a read is priced as the internal
   cycle it was.
-- **Not judged:** 25 S-CPU intervals, in calls that leave through their
-  caller's frame (code that never returns to where it was called from).
+- **Calls that leave through their caller's frame** are judged too: one
+  that returns through it ends at its record's end, one that jumps into
+  code that resets the stack (a restart into BootWarm) at the original's
+  arrival there.
 - **The unit scripts** (164 scripts that call routines directly, most of
   them code normal play never runs: debug screens, unused screens, dead
-  arms) still differ in about 53,600 S-CPU, 145 Super FX and 21,000 SPC700
+  arms) all run whole with the state identical, but their timing still
+  differs in 9,179 S-CPU (345,008 clocks), 1,131,982 Super FX and 40 SPC700
   intervals. The gameplay figures above do not cover that code.
 
 **Why it matters.** Behaviour exact proves the C computes the same results.

@@ -691,7 +691,7 @@ static void exec_range(int from, int to) {
             /* Calls still open (one that never returns, as a stop screen)
                belong to the machine the load replaced: they never end. */
             if (checklib_on) check_rollback(0);
-            if (lockstep) { lockstep_state_loaded(); spc_lockstep_state_loaded(); }
+            if (lockstep) { lockstep_state_loaded(); gsu_lockstep_state_loaded(); spc_lockstep_state_loaded(); }
             /* The core takes the hook away while it runs original code
                for the checker (an interrupt handler, a routine with no C)
                and puts it back after; a load can leave such a run where it

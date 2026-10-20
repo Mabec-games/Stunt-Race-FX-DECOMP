@@ -605,6 +605,7 @@ typedef struct {
     uint64_t opoff;
     uint32_t opn;
     int done, stopped, up;   /* up: it returned two levels up, at end */
+    int cut;                 /* the original's call cut by a state load in the script, at a frame's end */
     uint8_t romcl, ramcl;
     uint16_t ramar, prefix;
     uint8_t sreg, dreg;
@@ -720,7 +721,7 @@ static void orig_insn(uint32_t pc, uint32_t prev_end, uint8_t opcode)
     uint64_t k = LOAD(sh->o_calls);
     WAIT_UNTIL(k - LOAD(sh->h_calls) < CALLRING);
     CallRec *rec = &sh->calls[k % CALLRING];
-    rec->frame = frame_now; rec->opoff = LOAD(sh->o_ops); rec->opn = 0; rec->stopped = 0; rec->up = 0;
+    rec->frame = frame_now; rec->opoff = LOAD(sh->o_ops); rec->opn = 0; rec->stopped = 0; rec->up = 0; rec->cut = 0;
     STORE(rec->done, 0);
     STORE(sh->o_calls, k + 1);
     sh->fcalls[frame_now % NSLOT]++;
@@ -749,6 +750,7 @@ static uint8_t *cops;
 static uint32_t *carg;
 static uint32_t cn, ci, ccap;
 static int past_end;
+static int ccut;   /* the call's record was cut by a state load: the C stops where it ends */
 static long h_calls, h_unmatched, h_stopped, h_fcalls, h_entered_other;
 static long place_from = -1, place_to = -1;
 static const char *cur_name;
@@ -866,6 +868,15 @@ void gsu_timing_line(FILE *rep)
     if (gcyclog) { fclose(gcyclog); gcyclog = NULL; }
 }
 
+/* The C has come to the end of a record a state load cut: the original's
+   frame ended there and the machine was replaced. The C waits out the
+   frame as the original did (the load then leaves it, never resumed). */
+static void cut_wait(void)
+{
+    replay_to(cn);
+    for (;;) core_time(1u << 20);
+}
+
 static uint8_t live_ram(int write, uint32_t a, uint8_t v)
 {
     uint8_t want = write ? OP_WRITE : OP_READ;
@@ -885,6 +896,8 @@ static uint8_t live_ram(int write, uint32_t a, uint8_t v)
         }
     if (place_from >= 0 && frame_now >= place_from && frame_now <= place_to)
         fprintf(lsrep, "GPLACE %ld %s %s %06X %u -> %u\n", frame_now, cur_name, write ? "w" : "r", a, from, ci);
+    if (ccut && ci == from)
+        cut_wait();
     return core_bus(write, a, v);
 }
 
@@ -930,6 +943,7 @@ static int hybrid_exec(uint32_t pc, uint32_t prev_end)
                     (unsigned long long)k, cur_name, pc, rec.frame, frame_now);
         }
         if (rec.stopped) h_stopped++;
+        ccut = rec.cut;
         cn = rec.opn;
         if (cn > ccap) {
             ccap = cn;
@@ -984,6 +998,7 @@ static int hybrid_exec(uint32_t pc, uint32_t prev_end)
     mode = 2;
     if (pend) { int q = gquiet; gquiet = 1; live_ram(1, pend_addr, pend_val); gquiet = q; }
     rt[idx].abi();
+    if (ccut) cut_wait();
     gcyc_put('E', cn);
     mode = 0;
     replay_to(cn);
@@ -1017,6 +1032,24 @@ static int hybrid_exec(uint32_t pc, uint32_t prev_end)
     out.pipeline = core_fetch(ret);
     core_put(&out);
     return 1;
+}
+
+/* A state loaded in the script: on the original side, a call still being
+   recorded went with the machine it ran on; its record ends here, cut
+   (the next program the loaded machine starts is a call of its own, as on
+   the hybrid). On the hybrid, a C left running there is never resumed. */
+void gsu_lockstep_state_loaded(void)
+{
+    if (!sh) return;
+    if (role == 1 && m.active) {
+        CallRec *rec = &sh->calls[m.call % CALLRING];
+        rec->cut = 1;
+        STORE(rec->done, 1);
+        m.active = 0;
+    } else if (role == 2) {
+        mode = 0;
+        ccut = 0;
+    }
 }
 
 void gsu_lockstep_role(int r, FILE *rep, volatile int *stk)

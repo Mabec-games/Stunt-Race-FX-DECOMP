@@ -570,7 +570,7 @@ void abi_PauseStageQuitMenuP2(void)
     uint32_t b = (uint32_t)cpu.db << 16;
 
     if (!window_closed(b))
-        { cyc(6); return; }
+        { cyc(48); return; }   /* BNE taken, RTS */
     op_sep(P_M);
     lda8_imm(0xFF);
     cyc(32);

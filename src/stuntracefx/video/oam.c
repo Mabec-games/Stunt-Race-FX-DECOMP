@@ -774,12 +774,13 @@ void abi_OamPaletteFromTableE30F(void)
 uint8_t OamPaletteFromTableE26A(uint8_t bank, uint16_t *y)
 {
     uint32_t b = (uint32_t)bank << 16;
-    cyc(188);
+    cyc(68);
+    *y = (uint16_t)((uint16_t)(rd16(b | 0x0D7B) + 0x0D) << 2);
+    cyc(104);
     uint16_t n = rd16(b | 0x10D8);
     uint8_t bits = n ? rd8(cyc_then(84, 0x04E26A + ((uint16_t)(n - 1) & 0x00FF))) : 0x0A;
 
     cyc(132);
-    *y = (uint16_t)((uint16_t)(rd16(b | 0x0D7B) + 0x0D) << 2);
     return cyc_then(72, OamSetPalette(bank, bits, 0x0016, y));
 }
 

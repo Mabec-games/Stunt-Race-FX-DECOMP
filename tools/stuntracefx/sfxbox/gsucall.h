@@ -29,6 +29,7 @@ void gsu_lockstep_done(void);           /* the original side has finished */
 void gsu_lockstep_past_end(void);       /* the S-CPU side has run past the original's record */
 int gsu_lockstep_is_past_end(void);     /* either side has: the frame is not compared */
 int gsu_lockstep_ring_room(void);       /* the original may start its next frame */
+void gsu_lockstep_state_loaded(void);   /* a state was loaded in the script */
 void lockstep_drain(void);              /* check.c: the hybrid takes the S-CPU ops recorded so far */
 /* The Super FX C's timing (SFXBOX_GSUCYCLOG, as check.c's SFXBOX_CYCLOG):
    a probe passed (check.c's sfx_probe: 1 if it is the Super FX C's, on

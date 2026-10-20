@@ -432,7 +432,7 @@ attract:
         abi_SpriteSlot1Countdown();
         op_sep(P_M);
         b = (uint32_t)cpu.db << 16;
-        cyc(114);
+        cyc(46);
         op_lda8(b | 0x0D62);
         if ((uint8_t)cpu.a)
             abi_RaceFrameRunTwoPlayers();
@@ -440,7 +440,7 @@ attract:
             { cyc(84); abi_RaceFrameRun(); }
         op_sep(P_M);
         b = (uint32_t)cpu.db << 16;
-        cyc(104);
+        cyc(46);
         op_lda8(b | 0x05E9);
         cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(cpu.a - 0x1E)) & ~P_C) | ((uint8_t)cpu.a >= 0x1E ? P_C : (cyc(24), 0)));
         if (cpu.p & P_C)
