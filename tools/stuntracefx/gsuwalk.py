@@ -54,7 +54,7 @@ DEBUG2 = os.environ.get('GSUWALK_DEBUG') == '2'
 # ---- where the original is ----
 
 class St:
-    __slots__ = ('bank', 'pc', 'np', 'seg', 'out', 'val', 'rest', 'done', 'regs', 'lk', 'pend', 'called')
+    __slots__ = ('bank', 'pc', 'np', 'seg', 'out', 'val', 'rest', 'done', 'regs', 'lk', 'pend', 'called', 'retb')
 
     def __init__(self, bank, pc):
         self.bank, self.pc, self.np, self.seg = bank, pc, pc + 1, pc
@@ -66,6 +66,7 @@ class St:
         self.lk = None           # the pc right after a LINK just passed (a call's jump is there)
         self.pend = None         # a branch whose delay slot ran: (its pc, 'taken' or 'fall', the site)
         self.called = None       # a call whose delay slot's access ran, the C's call to come: its return address
+        self.retb = False        # the routine stated the first byte of the code it returns to (gsu_code(BANK | at, 1))
 
     @property
     def r13(self):
@@ -75,7 +76,7 @@ class St:
         s = St.__new__(St)
         s.bank, s.pc, s.np, s.seg = self.bank, self.pc, self.np, self.seg
         s.out, s.val, s.rest, s.done, s.regs = list(self.out), self.val, list(self.rest), self.done, dict(self.regs)
-        s.lk, s.pend, s.called = self.lk, self.pend, self.called
+        s.lk, s.pend, s.called, s.retb = self.lk, self.pend, self.called, self.retb
         return s
 
     def key(self):
@@ -663,6 +664,20 @@ class Ctx:
 
     def call(self, n, states, stmt):
         name = callee(n)
+        if is_ret_code(n):
+            # the first byte of the code returned to, stated by the routine
+            # that returns (its address the C's: R11, or the pulled R15):
+            # its callers do not state it (a helper run in line can hold
+            # its routine's return)
+            sts = states
+            for a in kids(n)[1:]:
+                sts = self.expr(a, sts, stmt)
+            out = []
+            for s in sts:
+                s = s.copy()
+                s.retb, s.val = True, None
+                out.append(s)
+            return out
         if name in ('gsu_code', 'gsu_cache', 'gsu_codes'):
             return states                           # code stated before: not the C's own work
         if name in CODE_WRAP:
@@ -718,6 +733,8 @@ class Ctx:
                 ci = self.w.copy_of(fn, s, mode)
                 self.dbg(n, '%s %s at %s' % (mode, fn.name, s.where()))
                 res = self.w.walk_fn(fn, s, mode, self.constants(n, fn))
+                if any(x.retb and not x.done for x in res):
+                    self.fail(n, '%s states a returned-to byte and does not return' % fn.name)
                 self.note_call(n, fn, ci)
                 out += res
         return out
@@ -944,6 +961,11 @@ class Ctx:
             r = r.copy()
             r.done, r.out, r.rest, r.val = False, [], [], None
             r.jump_to(ret)
+            if r.retb:
+                # the callee stated the first byte returned to
+                if rom(r.bank, ret) == 0x02:
+                    self.fail(n, 'a CACHE returned to at %02X:%04X' % (r.bank, ret))
+                r.out, r.retb = [], False
             out.append(r)
         return out
 
@@ -1873,8 +1895,20 @@ def indent_at(text, o):
     return m.group(0)
 
 
+def is_ret_code(n):
+    """gsu_code(BANK | at, 1): the first byte of the code a routine returns
+    to, at an address the C has (R11, the pulled R15), stated by hand at
+    the return; the walk keeps it."""
+    if n.get('kind') != 'CallExpr' or callee(n) != 'gsu_code' or len(kids(n)) < 2:
+        return False
+    a = kids(n)[1]
+    while a.get('kind') in ('ImplicitCastExpr', 'ParenExpr', 'CStyleCastExpr') and kids(a):
+        a = kids(a)[0]
+    return a.get('kind') == 'BinaryOperator' and a.get('opcode') == '|'
+
+
 def is_code_call(n):
-    return n.get('kind') == 'CallExpr' and callee(n) in CODE_FN
+    return n.get('kind') == 'CallExpr' and callee(n) in CODE_FN and not is_ret_code(n)
 
 
 def copy_type(top):
@@ -2232,11 +2266,25 @@ class Emit:
         p = par.get(id(st), {})
         b = span(st)[0]
         if p.get('kind') in ('CompoundStmt', 'LabelStmt'):
-            self.edit(fn, b, b, self.code(how, row, 'stmt') + '\n' + indent_at(text, b), 1)
+            ls = text.rfind('\n', 0, b) + 1
+            sep = '\n' + indent_at(text, b) if text[ls:b].strip() == '' else ' '   # on a line of its own, or in line
+            self.edit(fn, b, b, self.code(how, row, 'stmt') + sep, 1)
         else:
             self.edit(fn, b, b, '{ ' + self.code(how, row, 'stmt') + ' ', 0)
             e = stmt_end(text, st)
             self.edit(fn, e, e, ' }', 7)
+
+    @staticmethod
+    def ret_code_before(par, st):
+        """The returned-to byte's statement right before a return: the
+        return's own code goes ahead of it, as the original fetches the
+        delay slot before the code returned to."""
+        p = par.get(id(st), {})
+        if p.get('kind') != 'CompoundStmt':
+            return None
+        ch = kids(p)
+        i = next((k for k, c in enumerate(ch) if c is st), 0)
+        return ch[i - 1] if i and is_ret_code(bare(ch[i - 1])) else None
 
     def at_end(self, fn, par, arm, how, row):
         """At the end of a statement (an if's arm, a loop's body)."""
@@ -2293,9 +2341,13 @@ class Emit:
                 self.edit(fn, b, eb, '{ %s ret_ = ' % ty, 0)
                 self.edit(fn, ee, en, '; %s return ret_; }' % self.code(how, row, 'stmt'), 7)
             else:
-                self.before_stmt(fn, par, node, how, row)
+                self.before_stmt(fn, par, self.ret_code_before(par, node) or node, how, row)
         elif kind == 'fnend':
-            self.at_end(fn, par, fn.body, how, row)
+            last = kids(fn.body)[-1] if kids(fn.body) else None
+            if last is not None and is_ret_code(bare(last)):
+                self.before_stmt(fn, par, last, how, row)
+            else:
+                self.at_end(fn, par, fn.body, how, row)
         elif kind == 'then':
             self.at_end(fn, par, kids(node)[1] if node.get('kind') == 'IfStmt' else node, how, row)
         elif kind == 'else':
