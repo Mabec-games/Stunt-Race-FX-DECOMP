@@ -988,11 +988,13 @@ uint16_t ObjectRecordFlag70Step(uint8_t bank, uint16_t obj, uint16_t a, uint8_t 
     rec = rd16(cyc_then(104, field(bank, obj, 0x22)));
     if (!rec)
         { cyc(84); CrashWhite(bank); }
-    cyc(148);
+    cyc(flag ? 142 : 148);              /* BEQ taken without the flag */
     w = rd16(0x700070 + rec);
     w = flag ? (uint16_t)(w | 0x0004) : (uint16_t)(w & 0xFFFB);
     cyc(56);
     wr16(0x700070 + rec, w);
+    if (flag)
+        cyc(22);                        /* BRA */
     *p = nz16(*p, obj);
     return w;
 }

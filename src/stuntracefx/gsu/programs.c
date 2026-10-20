@@ -25,6 +25,7 @@ static void cf42_inputs(uint16_t in68, uint16_t dest)
 {
     cyc(32);
     wr16(GSU_IN_68, in68);
+    cyc(dest == 0x3000 ? 56 : 78);      /* LDA #, STA long: $C000 and $4000 BRA there */
     wr16(GSU_DEST, dest);
     cyc(56);
     wr16(GSU_IN_A2, 0x0000);
