@@ -1214,6 +1214,11 @@ static void record_rest(void);
 static void leave_frame(struct SfxboxRegs *out);
 static jmp_buf ls_escape;
 static int ls_escape_set;
+/* Where the C left the call by a jump or call to original code that did
+   not come back (a restart into BootWarm): the record index of the
+   original's entry there, -2 when that entry is not in the record, -1
+   when the C has not left that way. */
+static long ls_left_at = -1;
 
 static void run_original(uint32_t addr, int long_call)
 {
@@ -1262,6 +1267,7 @@ static void run_original(uint32_t addr, int long_call)
         leave_frame(&out);
         cpu.a = out.a; cpu.x = out.x; cpu.y = out.y; cpu.d = out.d; cpu.db = out.db; cpu.p = out.p; cpu.e = out.e;
         cpu.s = out.s; cpu.pc = out.pc; cpu.unwound = 1;
+        ls_left_at = found ? (long)j : -2;
         if (found) record_rest();
         else cur_i = cur_n;
         if (ls_escape_set) longjmp(ls_escape, 1);
@@ -1430,6 +1436,7 @@ static void jump_original(uint32_t addr, const uint8_t *pushed, int n, int searc
     leave_frame(&out);
     cpu.a = out.a; cpu.x = out.x; cpu.y = out.y; cpu.d = out.d; cpu.db = out.db; cpu.p = out.p; cpu.e = out.e;
     cpu.s = out.s; cpu.pc = out.pc; cpu.unwound = 1;
+    ls_left_at = found ? (long)j : -2;
     if (found) record_rest();
     else cur_i = cur_n;
     if (hs != (uint16_t)(s + n) && ls_escape_set) longjmp(ls_escape, 1);
@@ -1799,6 +1806,7 @@ static int ls_exec(uint32_t pc)
         if (!sfxbox_co_active) { fprintf(stderr, "sfxbox: SFXBOX_CYCLOG needs the core's co_active\n"); exit(2); }
     }
     cyc_n = 0; cyc_over = 0; cyc_last = -1; cyc_said = 0;
+    ls_left_at = -1;
     machine_live = 1;
     if (sfxbox_co_active) cyc_thread = sfxbox_co_active();
     if (setjmp(ls_escape) == 0) {
@@ -1808,8 +1816,15 @@ static int ls_exec(uint32_t pc)
     ls_escape_set = 0;
     machine_live = 0;
     while (fetch_more(cur_n + 1)) {}
-    if (cpu.unwound) cyc_over |= 2;
-    cyc_put('E', cur_n);
+    /* A call that left through its caller's frame ends where the C left:
+       by its own return through that frame, at the end of the record as
+       any call; by a jump to original code that never comes back (a
+       restart), at the original's entry there, the record going on as the
+       original's code after it. */
+    long end = cur_n;
+    if (cpu.unwound && ls_left_at == -2) cyc_over |= 2;
+    else if (cpu.unwound && ls_left_at > cyc_last) end = ls_left_at;
+    cyc_put('E', (uint32_t)end);
     replay_to(cur_n);
     struct SfxboxRegs out = {cpu.a, cpu.x, cpu.y, cpu.unwound ? cpu.s : exit_s, cpu.d, cpu.db, cpu.p, cpu.e, cpu.unwound ? cpu.pc : ret};
     core_set_regs(&out);

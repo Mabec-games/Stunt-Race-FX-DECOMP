@@ -1645,6 +1645,7 @@ void abi_TitleScreenLoop(void)
                         op_lda16_imm(0xFFFF);
                         return;
                     }
+                    cyc(48); /* BCS, JML */
                     cpu_restart(0x038BAA, abi_BootWarm);
                     return;
                 }

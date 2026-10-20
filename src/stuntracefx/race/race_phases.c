@@ -2199,6 +2199,7 @@ void abi_SoftResetToBootWarm(void)
     cyc(38);
     wr8(0x002140, 0x01);
     cpu.p &= (uint8_t)~P_I;
+    cyc(46); /* CLI, JML */
     cpu_restart(0x038BAA, abi_BootWarm);
 }
 
@@ -2213,6 +2214,7 @@ void abi_SoftResetToBootWarm(void)
 void abi_RaceRestart(void)
 {
     screen_off();
+    cyc(32); /* JML */
     cpu_restart(0x038BCD, abi_BootWarmRace);
 }
 
@@ -2227,6 +2229,7 @@ void abi_RaceRestart(void)
 void abi_RaceEndToAttract(void)
 {
     screen_off();
+    cyc(32); /* JML */
     cpu_restart(0x038BF8, abi_BootWarmAttract);
 }
 
