@@ -925,9 +925,9 @@ static void stunt_count_byte(uint32_t b)
 }
 
 /* DEC $0E3F (8-bit); at 0, $0E41 = 0. */
-static void stunt_count_down(uint32_t b)
+static void stunt_count_down(uint32_t b, uint32_t lead)
 {
-    cyc(66);
+    cyc(lead);
     uint8_t v = (uint8_t)(rd8(b | 0x0E3F) - 1);
 
     cyc(6);
@@ -1062,7 +1062,7 @@ void abi_StuntPanelCount(void)
     stunt_count_byte(b);
     abi_GsuF15BTwoLines();
     op_sep(P_M | P_X);
-    stunt_count_down(b);
+    stunt_count_down(b, 66);
 }
 
 /*
@@ -1080,7 +1080,7 @@ void abi_StuntPanelShow(void)
     stunt_count_byte(b);
     call_routine(0x078821, 0);
     op_sep(P_M);
-    stunt_count_down(b);
+    stunt_count_down(b, 46);
 }
 
 /*
@@ -1112,7 +1112,7 @@ void abi_StuntPhaseEnd(void)
     wr8(b | 0x0E80, 0x00);
     cyc(24);
     wr8(b | 0x0E81, 0x00);
-    abi_OverlayFramesUntilFaded();
+    (cyc(46), abi_OverlayFramesUntilFaded());
     op_sep(P_M);
     cyc(46);
     op_lda8(b | 0x0DD4);
@@ -1590,6 +1590,7 @@ void abi_TimeUpPhaseSlideIn(void)
 {
     cyc(46);
     call_routine(0x07A492, 0);
+    cyc(42);                            /* RTS */
 }
 
 /*
@@ -1602,6 +1603,7 @@ void abi_TimeUpPhaseSlideOut(void)
 {
     cyc(46);
     call_routine(0x07A451, 0);
+    cyc(42);                            /* RTS */
 }
 
 /* CMP # (8-bit): N, Z, C as the compare sets them; whether equal. */
@@ -1729,9 +1731,9 @@ void abi_TimeUpPhaseEnd(void)
     cyc(54);
     wr8(b | 0x0E58, v);
     cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x20)) & ~P_C) | (v >= 0x20 ? (cyc(16), P_C) : (cyc(22), 0)));
-    abi_HudLapDigitsDraw();
+    (cyc(62), abi_HudLapDigitsDraw());      /* CMP, JSR */
     op_sep(P_M);
-    cyc(88);
+    cyc(46);
     op_lda8(b | 0x0FA3);
     if ((uint8_t)cpu.a & 0x80) {
         cyc(124);
@@ -1772,12 +1774,12 @@ void abi_TimeUpPhaseStep(void)
     cyc(60);
     switch (rd16(0x07DB89 + cpu.x)) {
     case 0xDB97: abi_TimeUpPhaseStart(); break;
-    case 0xDBB8: abi_TimeUpPhaseSlideIn(); cyc(42); break;
-    case 0xDBBC: abi_TimeUpPhaseSlideOut(); cyc(42); break;
+    case 0xDBB8: abi_TimeUpPhaseSlideIn(); break;
+    case 0xDBBC: abi_TimeUpPhaseSlideOut(); break;
     case 0xDBC0: abi_TimeUpPhaseRace(); break;
     case 0xDC15: abi_TimeUpPhaseEnd(); break;
     case 0xEBDC: jump_routine(0x07EBDC); break;
-    case 0xECA4: jump_routine(0x07ECA4); cyc(42); break;
+    case 0xECA4: jump_routine(0x07ECA4); break;
     }
 }
 

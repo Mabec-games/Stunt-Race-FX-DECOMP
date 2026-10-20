@@ -1752,6 +1752,7 @@ static void preview_rows(int all, uint16_t last)
 {
     uint32_t b = (uint32_t)cpu.db << 16;
     uint16_t v;
+    int first;
 
     op_rep(P_M | P_X);
     cyc(24);
@@ -1773,8 +1774,8 @@ static void preview_rows(int all, uint16_t last)
         { cyc(40); return; }
     cyc(70);
     wr16(b | 0x0FA8, 0x0000);
-    for (;;) {
-        cyc(62);
+    for (first = 1;; first = 0) {
+        cyc(first ? 62 : 84);               /* JSL; after the first, BRA back too */
         if (all)
             call_routine(0x07C673, 1);
         else

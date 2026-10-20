@@ -147,7 +147,7 @@ static void digit_tiles(uint32_t at, uint8_t d)
    best time's sprites. */
 static void time_tiles(uint8_t min, uint8_t sec, uint8_t hund)
 {
-    cyc(min == 0xFF ? 130 : 44);        /* no time ($FFFF) or the unpacked BCD */
+    cyc(min == 0xFF ? 86 : 0);          /* no time ($FFFF) or the unpacked BCD, after TimeUnpackBcdLong's RTL */
     digit_tiles(0x000467, (uint8_t)(min & 0x0F));
     cyc(54);
     digit_tiles(0x00046F, (uint8_t)(sec >> 4));
@@ -291,7 +291,7 @@ static int mode_all(uint32_t b)
         if (cpu.a == 0xFFFF) {
             no_time();
         } else {
-            cyc(6);
+            cyc(102);
             abi_HudBestTimeDigits();
             cyc(58);            /* HudBestTimeSprites' SEPs, RTL, PLP, RTL; JMP RaceHudFlags */
         }
@@ -387,7 +387,7 @@ static void mode_stunt(uint32_t b)
             cyc(24);
             no_time();
         } else {
-            cyc(12);
+            cyc(108);
             abi_TimeUnpackBcdLong();
             op_sep(P_M | P_X);
             time_tiles((uint8_t)cpu.a, (uint8_t)cpu.x, (uint8_t)cpu.y);
@@ -491,7 +491,7 @@ static void race_hud_setup(void)
     static const uint16_t hdma_bytes[9] = {0x20, 0x13, 0x40, 0x12, 0x40, 0x12, 0x01, 0x13, 0x00};
 
     op_sep(P_M);
-    abi_SoundFromTableD89();
+    (cyc(84), abi_SoundFromTableD89());
     op_rep(P_M | P_X);
     op_lda16_imm(0xA325);
     cyc(18);
@@ -842,7 +842,7 @@ static void hud_leave_stack(void)
  */
 void RaceHudSetup(uint8_t p, uint8_t db)
 {
-    (cyc(84), race_hud_setup());
+    race_hud_setup();
     cpu.db = db;
     cpu.p = nz8(cpu.p, db);
     op_plp(p);

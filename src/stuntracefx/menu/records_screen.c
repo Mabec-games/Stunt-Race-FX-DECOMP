@@ -969,7 +969,7 @@ void abi_SpeedRecordsPage(void)
         abi_RecordsPageMarkFlipHide();
         lda8(0x09);
         wr8(dp(0xF7), cyc_then(32, 0x09));
-        abi_RecordRowsGroupFirsts();
+        (cyc(46), abi_RecordRowsGroupFirsts());
         break;
     default:
         jump_routine(0x020000 | h);
@@ -1193,7 +1193,7 @@ static void special_row(uint16_t slot, uint16_t k, int stunt, AbiFn place)
         if (stunt)
             { cyc(24); abi_RecordScoreDigits(); }
         else
-            abi_RecordTimeDigitsSmall();
+            { cyc(24); abi_RecordTimeDigitsSmall(); }
         cyc(32);   /* the digits routines state their RTS */
         op_lda16(0x000F43 + k);
         if (stunt)

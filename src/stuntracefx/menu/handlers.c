@@ -602,9 +602,9 @@ static void menu_handler(uint16_t h)
  */
 void MenuSequenceColourOff(uint8_t bank)
 {
-    cyc(22);
+    cyc(198);
     FrameByteWritePush(bank, HDMAEN, 0x10);
-    cyc(144);
+    cyc(320);
     FrameByteWritePush(bank, TSW, 0x00);
     cyc(208);                           /* the push's end, PLX, REP, RTS */
 }

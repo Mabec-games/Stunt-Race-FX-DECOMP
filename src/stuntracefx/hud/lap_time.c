@@ -124,7 +124,8 @@ void abi_TimeUnpackBcd(void)
  */
 void abi_TimeUnpackBcdLong(void)
 {
-    (cyc(92), abi_TimeUnpackBcd());
+    (cyc(46), abi_TimeUnpackBcd());
+    cyc(44);                            /* RTL */
 }
 
 /* Adds the BCD time at $0F76 + X (hundredths, seconds, minutes) to the

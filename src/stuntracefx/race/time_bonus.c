@@ -67,12 +67,12 @@ static void abi_digit_exit(uint16_t d, uint8_t mode)
 
 /* The body of GsuTimeDigits; returns the last digit drawn, *mode the screen
    mode value. */
-static uint16_t time_digits(uint8_t bank, uint8_t *mode, int x8)
+static uint16_t time_digits(uint8_t bank, uint8_t *mode, int x8, uint32_t lead)
 {
     uint32_t b = (uint32_t)bank << 16;
     uint16_t v;
 
-    cyc(128);
+    cyc(lead);                          /* 72 more after a setter, whose return is not stated */
     wr16(GSU_X, 0x00AC);
     cyc(56);
     wr16(GSU_Y, 0x0008);
@@ -118,16 +118,21 @@ uint8_t GsuTimeDigits(uint8_t bank)
 {
     uint8_t mode;
 
-    time_digits(bank, &mode, 0);
+    time_digits(bank, &mode, 0, 128);
     return mode;
+}
+
+static void abi_time_digits(uint32_t lead)
+{
+    uint8_t mode;
+    uint16_t d = time_digits(cpu.db, &mode, cpu.p & P_X, lead);
+
+    abi_digit_exit(d, mode);
 }
 
 void abi_GsuTimeDigits(void)
 {
-    uint8_t mode;
-    uint16_t d = time_digits(cpu.db, &mode, cpu.p & P_X);
-
-    abi_digit_exit(d, mode);
+    abi_time_digits(128);
 }
 
 /*
@@ -447,7 +452,7 @@ void abi_TimeDigitBytes(void)
         cyc(78);
         cpu.p = nz16(cpu.p, v);
         abi_GsuBytes200_BFBAB9();
-        cyc(88);
+        cyc(114);                       /* PLP, RTL, RTS */
         return;
     }
     cyc(46);
@@ -457,14 +462,14 @@ void abi_TimeDigitBytes(void)
         cyc(102);
         cpu.p = (uint8_t)(nz16(cpu.p, (uint16_t)(v - 0x0020)) | P_C);
         abi_GsuBytes200_BFB5BB();
-        cyc(110);
+        cyc(136);                       /* PLP, RTL, BRA, RTS */
         return;
     } else { cyc(86); }
     cpu.p = (uint8_t)((nz16(cpu.p, (uint16_t)(v - 0x0010)) & ~P_C) | (v >= 0x0010 ? P_C : (cyc(6), 0)));
     if (v >= 0x0010)
-        abi_GsuBytes200_BFBCBD();
+        { cyc(62); abi_GsuBytes200_BFBCBD(); cyc(114); }     /* its own 22 is the BRA */
     else
-        abi_GsuBytes200_BFB7B6();
+        { cyc(62); abi_GsuBytes200_BFB7B6(); cyc(114); }       /* PLP, RTL, RTS */
 }
 
 /* A 16-bit INC of a work-RAM word: one read, one write. */
@@ -507,7 +512,7 @@ static void draw_mirrored(void)
 static void draw_bonus_then_time(uint32_t b)
 {
     (cyc(46), abi_TimeDigitBytes());
-    cyc(50);
+    cyc(24);
     cpu.x = rd16(b | 0x0D6B);
     cyc(80);
     cpu.a = rd16(SIZE_GROW + cpu.x);
@@ -515,10 +520,11 @@ static void draw_bonus_then_time(uint32_t b)
     (cyc(46), abi_GsuDigitPair0E74());
     (cyc(70), abi_TimeDigitBytes());
     cpu.a = 0x0020;
-    cyc(82);
+    cyc(56);
     wr16(GSU_SIZE, cpu.a);
     (cyc(46), abi_TimeDigitBytes());
-    abi_GsuTimeDigits();
+    cyc(46);                            /* JSR */
+    abi_time_digits(56);
     draw_mirrored();
 }
 
@@ -842,7 +848,7 @@ void TimeBonusTally(void)
         cyc(48);
         wr16(b | 0x0D6D, cpu.a);
         (cyc(46), abi_TimeDigitBytes());
-        cyc(50);
+        cyc(24);
         cpu.x = rd16(b | 0x0D6B);
         cyc(80);
         cpu.a = rd16(SIZE_GROW + cpu.x);
@@ -1369,11 +1375,11 @@ void abi_GsuDigitPair0E74At(void)
  */
 void abi_TimeBonusPiecesMirrored(void)
 {
-    abi_GsuBytes200_BFB7B6();
-    (cyc(72), abi_GsuFA5AThree());
-    abi_GsuFA5AFromTables();
+    (cyc(62), abi_GsuBytes200_BFB7B6());
+    (cyc(118), abi_GsuFA5AThree());
+    (cyc(46), abi_GsuFA5AFromTables());
     abi_GsuFA5ASix();
-    abi_GsuFA1BFromTables();
+    (cyc(46), abi_GsuFA1BFromTables());
     cpu.s++;
     cyc(20);
     op_plp(rd8((uint16_t)cpu.s));

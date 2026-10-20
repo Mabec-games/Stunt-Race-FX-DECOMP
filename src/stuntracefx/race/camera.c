@@ -222,7 +222,7 @@ void abi_CameraFollowStep(void)
             case 0x0C00:
                 cyc(214);
                 cpu.a = rd16(b | CAM_LAG);
-                abi_ScaleFiveThirtySeconds();
+                (cyc(62), abi_ScaleFiveThirtySeconds());
                 cyc(22); /* BRA */
                 a = asr_round(cpu.a, 1);
                 break;

@@ -816,7 +816,7 @@ void abi_RaceFinishSounds(void)
         cyc(30);
         op_plp(p0);
         return;
-    } else { cyc(18); }
+    } else { cyc(22); }
     cpu.x = 0x0006;
     cpu.p = nz16(cpu.p, 0x0006);
     abi_RecordTimeCompare();
@@ -1068,7 +1068,7 @@ static void lap_override(uint32_t b)
     cyc(30);
     op_lda16(b | 0x0EDE);
     op_and16(0x00FF);
-    (cyc(22), abi_TimePackBcd());
+    (cyc(68), abi_TimePackBcd());
     cyc(24);
     wr16(b | 0x1161, cpu.a);
     cpu.x = x;                                  /* PLX */
@@ -1079,6 +1079,7 @@ static void lap_override(uint32_t b)
     if (cpu.a < t) {
         cyc(48);
         wr16(0x70FC5E + cpu.x, cpu.a);
+        cyc(92);                                /* PHX, JSL */
         call_routine(0x03DF10, 1);
         cpu.x = x;
         cpu.p = nz16(cpu.p, x);
@@ -1154,7 +1155,7 @@ static void lap_finish(uint32_t b)
         cyc(22);
         wr8(PY(b, 0x0DD6), 0x0A);
         (cyc(46), abi_OamHideForHudMode());
-        (cyc(16), abi_Countdown0DF8());
+        (cyc(62), abi_Countdown0DF8());
         cyc(108);
         lda8_imm(0x51);
         abi_SoundPort0QueuePushX8();
@@ -2356,7 +2357,7 @@ void abi_TimeUpBattle(void)
             cyc(70);
             lda8_imm(0x51);
             abi_SoundPort0QueuePush();
-            abi_OamHide75Up();
+            (cyc(46), abi_OamHide75Up());
             lda8_imm(0x3C);
             cyc(16);
             wr8(b | 0x0E5A, 0x3C);

@@ -863,7 +863,7 @@ static void record_time_unpack(void)
     uint16_t y = cpu.y;
 
     abi_TimeUnpackBcdLong();
-    wr16(dp(0xF1), cyc_then(60, cpu.y));
+    wr16(dp(0xF1), cyc_then(16, cpu.y));
     wr16(dp(0xF3), cyc_then(16, cpu.x));
     cpu.y = y;
     cpu.p = nz16(cpu.p, y);
@@ -904,7 +904,7 @@ void abi_RecordTimeDigitsLarge(void)
     uint32_t b = (uint32_t)cpu.db << 16;
     uint8_t p = cpu.p, v;
 
-    (cyc(22), record_time_unpack());
+    (cyc(114), record_time_unpack());           /* PHP, PHY, JSL */
     cyc(58);
     large_digit(b, 0x0387, (uint8_t)(cpu.a & 0x0F));
     v = rd8(cyc_then(16, dp(0xF3)));
@@ -955,7 +955,7 @@ void abi_RecordTimeDigitsSmall(void)
     uint32_t b = (uint32_t)cpu.db << 16;
     uint8_t v;
 
-    record_time_unpack();
+    (cyc(92), record_time_unpack());            /* PHY, JSL */
     v = (uint8_t)(cpu.a & 0x0F);
     set_a8(v);
     cyc(104);
@@ -2223,9 +2223,9 @@ void abi_TimeUpRecordUpdate(void)
     cpu.x = rd16(b | 0x0E64);
     cyc(24);
     cpu.y = rd16(b | 0x0E66);
-    abi_TimePackBcd();
+    (cyc(46), abi_TimePackBcd());
     t = cpu.a;
-    cyc(96);
+    cyc(54);
     op_lda16(b | 0x0E3D);
     p = (uint8_t)(cpu.p | P_C);
     k = op_sbc16(cpu.a, 0x0017, &p);

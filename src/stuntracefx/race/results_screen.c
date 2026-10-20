@@ -253,7 +253,7 @@ static void record_cars(uint32_t b, uint16_t empty)
         op_rep(P_M);
         cpu.y = (uint16_t)(0x0130 + 0x10 * n);
         cpu.p = nz16(cpu.p, cpu.y);
-        (cyc(24), abi_SpritePieces3());
+        (cyc(86), abi_SpritePieces3());
         op_sep(P_M);
         lda8_imm(0x60);
         cyc(62);
@@ -297,7 +297,7 @@ static void records_wait(uint8_t next, const uint16_t *rows, uint16_t count, uin
     op_lda16(b | 0x10C9);
     place = cpu.a;
     if (place) {
-        cyc(52);
+        cyc(56);
         op_cmp16(0x0002);
         palette_cycle(place == 0x0002 ? (cyc(6), rows[1]) : place > 0x0002 ? rows[2] : (cyc(16), rows[0]), count);
     } else { cyc(22); }
@@ -661,7 +661,7 @@ void abi_TimedRecordsDraw(void)
         op_lda16(b | (uint16_t)(0x0F2B + 2 * n));
         op_cmp16(0xFFFF);
         if (cpu.a == 0xFFFF)
-            { broke = 1; break; } else { cyc(36); }
+            { broke = 1; break; } else { cyc(86); }
         abi_TimeUnpackBcd();
         abi_KeepTimeDigits();
         if (n)

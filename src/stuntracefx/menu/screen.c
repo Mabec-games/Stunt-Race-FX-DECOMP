@@ -1724,6 +1724,6 @@ void abi_MenuScrollZeroBg12(void)
     cpu.y &= 0x00FF;
     cpu.a &= 0xFF00;
     for (i = 0; i < 8; i++)
-        { cyc(44); FrameByteWritePush(cpu.db, reg[i], 0x00); }
+        { cyc(i ? 304 : 220); FrameByteWritePush(cpu.db, reg[i], 0x00); }
     cyc(214);
 }
