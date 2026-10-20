@@ -459,6 +459,7 @@ void abi_RaceVideoSetup(void)
         video_gsu_ram_dma(0x3000, 0x7C00, 0x0800);
         cpu.p &= (uint8_t)~(P_M | P_X);
         video_gsu_ram_dma(0x3600, 0x6600, 0x0400);
+        cyc(16);
         op_plp(db0);
         cpu.db = p0;
         cpu.p = nz8(cpu.p, p0);

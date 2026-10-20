@@ -962,7 +962,7 @@ static void finish_alone(uint32_t b, uint16_t colour, uint8_t phase, uint8_t t)
     wr8(b | 0x0E56, t);
     cyc(24);
     wr8(b | 0x0E4B, t);
-    abi_OamHide75Up();
+    (cyc(46), abi_OamHide75Up());
     (cyc(62), abi_SoundReset());
     cyc(38);
     lda8_imm(0x37);

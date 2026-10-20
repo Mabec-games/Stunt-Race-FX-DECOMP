@@ -1336,6 +1336,7 @@ void abi_RaceLoop(void)
 {
     uint32_t b = (uint32_t)cpu.db << 16;
     uint8_t v;
+    int first;
 
     op_sep(P_M);
     cyc(46);
@@ -1410,11 +1411,12 @@ void abi_RaceLoop(void)
     cyc(40);
     wr8(b | 0x4200, 0x31);
     cpu.p &= (uint8_t)~P_I;
+    first = 1;                          /* CLI then SEP: 8 less than a retry */
     for (;;) {
         op_sep(P_M);
         b = (uint32_t)cpu.db << 16;
         do
-            { cyc(68); op_lda8(b | 0x0D52); }
+            { cyc(first ? 60 : 68); first = 0; op_lda8(b | 0x0D52); }
         while (!(uint8_t)cpu.a);
         cyc(40);
         wr8(b | 0x0D52, 0x00);
@@ -1595,6 +1597,7 @@ void abi_AttractCourseSetup(void)
     cpu.x = 0xD1EB;
     cpu.p = nz16(cpu.p, cpu.x);
     (cyc(124), abi_GsuRun());
+    cyc(94);                            /* SEP, REP, PLB, PLP, CLI, RTL */
     op_sep(P_M);
     op_rep(P_X);
     cpu.db = db0;

@@ -1234,7 +1234,7 @@ void abi_StuntPhaseRace(void)
         wr8(b | 0x0E56, 0x0C);
         cyc(24);
         wr8(b | 0x0E4B, 0x0C);
-        abi_OamHide75Up();
+        (cyc(46), abi_OamHide75Up());
         abi_SoundReset();
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x37);
         cpu.p = nz8(cpu.p, 0x37);

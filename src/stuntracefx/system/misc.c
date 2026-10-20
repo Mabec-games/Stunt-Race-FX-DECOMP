@@ -630,6 +630,7 @@ void abi_DemoRun(void)
     op_sep(P_M);
     b = (uint32_t)cpu.db << 16;
     demo_lda8(0x03);
+    cyc(22);
     wr8(b | 0x0D2B, 0x03);
     (cyc(62), abi_CourseDataPointer());
     (cyc(62), abi_CourseScriptRun());
