@@ -22,6 +22,7 @@ static void wait_start(uint32_t b, int held, int first)
         cyc(first ? 62 : 72); /* the first: SEP, LDA #, STA */
         wr8(b | 0x06E3, 0x64);
         first = 0;
+        cyc(62); /* JSL */
         abi_WaitScanline();
         cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
         cyc(68);
@@ -60,7 +61,7 @@ void RaceFrameStepPause(void)
             wr8(b | 0x1168, 0x02);
             cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x02);
             (cyc(62), abi_RaceFrameRun());
-            (cyc(120), abi_RaceFrameRun());
+            (cyc(62), abi_RaceFrameRun());
             cpu.p |= P_M;
             wait_start(b, 0, 1);
             wait_start(b, 1, 0);

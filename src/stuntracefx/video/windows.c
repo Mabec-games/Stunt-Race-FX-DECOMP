@@ -118,6 +118,7 @@ static void windows_colour_add03(void)
     cyc(146);
     wr8(CGADSUB, 0x03);
     (cyc(46), WindowsColourWindowOnly());
+    cyc(42);                            /* RTS */
 }
 
 /*
@@ -147,6 +148,7 @@ void WindowsColourSub81(void)
     wr8(WOBJLOG, 0x00);
     cyc(48);
     wr8(TMW, 0x01);
+    cyc(42);                            /* RTS */
 }
 
 void abi_WindowsColourSub81(void)
@@ -175,8 +177,8 @@ static uint8_t windows_setup_select(uint8_t *sel)
     switch (*sel) {
     case 0: cyc(76); WindowsColourAddBg12(); cyc(100); return 0x17;
     case 2: cyc(76); ColourMathSub83Windowed(); cyc(100); return 0x03;
-    case 4: windows_colour_add03(); cyc(184); return 0x03;
-    case 6: WindowsColourSub81(); cyc(142); return 0x01;
+    case 4: windows_colour_add03(); cyc(100); return 0x03;
+    case 6: WindowsColourSub81(); cyc(100); return 0x01;
     default: cyc(76); WindowsAllInverted(); cyc(100); return 0x1F;
     }
 }
@@ -322,9 +324,9 @@ void abi_BobWindow0(void)
     v = rd8((uint32_t)cpu.db << 16 | 0x0D62);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     if (v)
-        { cyc(68); abi_WindowHdmaFFD5(); }
+        { cyc(68); abi_WindowHdmaFFD5(); cyc(42); }
     else
-        abi_WindowHdmaFFD1();
+        { cyc(62); abi_WindowHdmaFFD1(); cyc(66); } /* JMP, RTS */
 }
 
 /*
@@ -338,8 +340,9 @@ void abi_BobWindow0(void)
 void abi_BobWindow1(void)
 {
     if (bob_window(1, 0x19AF))
-        { cyc(46); abi_WindowHdmaFFD9(); }
-    cyc(84);
+        { cyc(46); abi_WindowHdmaFFD9(); cyc(42); }
+    else
+        cyc(84);
 }
 
 /*
@@ -443,12 +446,12 @@ void abi_WindowSweep(void)
     op_sep(P_M | P_X);
     cpu.x = 0x00;
     (cyc(62), abi_WindowSweepStep());
-    cyc(98);
+    cyc(32);
     v = rd8(0x001A15);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0xEE)) & ~P_C) | (v >= 0xEE ? P_C : 0));
     if (v == 0xEE)
-        { cyc(56); return; }
+        { cyc(80); return; }
     cyc(64);
     wr8(0x0019AC, v);
     cyc(32);
@@ -461,8 +464,8 @@ void abi_WindowSweep(void)
     if (v)
         { cyc(68); abi_WindowHdmaFFD5(); }
     else
-        abi_WindowHdmaFFD1();
-    cyc(v ? 84 : 66);                   /* JMP, RTS after FFD1; FFD5's RTS is not stated by it */
+        (cyc(62), abi_WindowHdmaFFD1());
+    cyc(v ? 42 : 66);                   /* RTS; JMP, RTS after FFD1 */
 }
 
 /*
@@ -632,7 +635,7 @@ void abi_OscillatorWindow(void)
         { cyc(68); abi_WindowHdmaFFD5(); }
     else
         { cyc(62); abi_WindowHdmaFFD1(); }
-    cyc(v ? 84 : 66);                   /* FFD5's RTS is not stated by it */
+    cyc(v ? 42 : 66);                   /* RTS; JMP, RTS after FFD1 */
 }
 
 void abi_ObjectLinkEventTrigger(void);
@@ -697,7 +700,7 @@ void abi_BobWindowsRun(void)
         if (!v)
             { cyc(22); goto out; }
     } else {                    /* WindowHdmaFFD1 left M 16-bit: a word */
-        cyc(108);
+        cyc(24);
         cpu.a = rd16(b | 0x0D62);
         if (!cpu.a)
             goto out;
@@ -732,6 +735,7 @@ void abi_WindowsColourSubtract3(void)
     cpu.p = nz8(cpu.p, 0x03);
     wr8(0x002131, 0x03);
     (cyc(46), abi_WindowsColourWindowOnly());
+    cyc(42);                            /* RTS */
 }
 
 void abi_WindowSlideStep(void);

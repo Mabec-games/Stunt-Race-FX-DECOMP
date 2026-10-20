@@ -2686,6 +2686,7 @@ void abi_OverlaySpritesStep(void)
     const uint32_t b = 0x040000;
     uint8_t p0 = cpu.p, db0 = cpu.db, s;
     uint16_t a;
+    unsigned lead = 68;                 /* 46 when the draw is entered by falling into it */
 
     op_sep(P_M | P_X);
     cpu.db = 0x04;
@@ -2754,9 +2755,10 @@ void abi_OverlaySpritesStep(void)
         wr16(b | 0x10A4, 0x009A);
         cyc(48);
         wr16(b | 0x10A2, 0x0007);
+        lead = 46;
         break;
     }
-    overlay_draw(68);
+    overlay_draw(lead);
     cyc(58);                            /* PLB, PLP, RTL less op_plp's */
     cpu.db = db0;
     op_plp(p0);

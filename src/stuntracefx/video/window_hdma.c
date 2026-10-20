@@ -1315,6 +1315,7 @@ static void window_bands_3(uint16_t at, uint16_t addr)
     wr16(WINDOW_HDMA + at + 7, addr);
     cpu.a = addr;
     cpu.p = (uint8_t)((cpu.p & ~(P_Z | P_M)) | P_N);
+    cyc(42); /* RTS */
 }
 
 /*
@@ -1470,6 +1471,10 @@ void abi_WindowSplitAnimate(void)
         cpu.p |= P_M;
         cyc(92);
         wr8(b | 0x19D8, 0x00);
+        cyc(58);                        /* falls into the pulls: no BRA */
+        cpu.db = db0;
+        op_plp(p0);
+        return;
     }
 out:
     cyc(80);

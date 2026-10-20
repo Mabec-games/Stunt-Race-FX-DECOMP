@@ -241,7 +241,7 @@ void DebugPrintHexWord(void)
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | (a & 0x00FF));
         cpu.p = nz8(cpu.p, (uint8_t)a);
     } else {
-        cyc(24);
+        cyc(8);
         cpu.a = a;
         cpu.p = nz16(cpu.p, a);
     }
@@ -371,7 +371,7 @@ void DebugPrintBinaryByte(void)
     }
     cyc(22);
     for (i = 3; i >= 0; i--) {
-        cyc(74);
+        cyc(i == 3 ? 172 : 74); /* the first: ROL, ASL x3, PLP, ROL, PHA, PLA, JSR */
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | pair[i]);
         DebugHexByte();
     }

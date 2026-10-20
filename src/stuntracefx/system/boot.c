@@ -180,7 +180,7 @@ static void boot_stack(void)
 /* Work RAM and Super FX RAM cleared: three fills (A = bank, X = start,
    Y = count) by `fill`, then $70:0000 = 0 and MVN from each byte of
    $70:0000-$27FF to the next, P and the data bank kept around it. */
-static void boot_clear(void (*fill)(void), uint32_t after)
+static void boot_clear(void (*fill)(void), uint32_t first, uint32_t rest, uint32_t after)
 {
     static const struct { uint8_t bank; uint16_t x, y; } f[3] = {
         {0x00, 0x0300, 0x2100}, {0x7E, 0x2000, 0xE000}, {0x7F, 0x0000, 0xFFFF}};
@@ -188,7 +188,7 @@ static void boot_clear(void (*fill)(void), uint32_t after)
     unsigned i;
 
     for (i = 0; i < 3; i++) {
-        cyc(90);
+        cyc(i ? rest : first);
         boot_lda8(f[i].bank);
         boot_ldx(f[i].x);
         boot_ldy(f[i].y);
@@ -306,7 +306,7 @@ static void boot_run(int from)
     boot_bank03();
     op_sep(P_M);
     op_rep(P_X);
-    boot_clear(abi_WramFillZero, 62);
+    boot_clear(abi_WramFillZero, 90, 48, 62);
     abi_ApuUploadBank19();
     abi_SaveUnlocksCheck();
     op_rep(P_M | P_X);
@@ -470,9 +470,10 @@ soft_rest:
     wr8(b | HDMAEN, 0x00);
     op_sep(P_M);
     op_rep(P_X);
-    boot_clear(abi_WramFillZeroLong, 106);
+    boot_clear(abi_WramFillZeroLong, 86, 64, 62);
     abi_SoftResetApuLong();
     b = (uint32_t)cpu.db << 16;
+    cyc(24); /* JMP */
     goto start;
 }
 

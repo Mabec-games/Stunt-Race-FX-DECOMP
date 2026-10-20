@@ -348,7 +348,7 @@ void abi_RasterStage(void)
         wr8(b | 0x0D3F, 0x00);
         put8(b | 0x0D52, 0xFF);
         put8(HDMAEN, 0x02);
-        abi_JoypadRead();
+        (cyc(46), abi_JoypadRead());
         (cyc(132), abi_OamDmaAll());
         (cyc(46), abi_SoundPortsSend());
         break;

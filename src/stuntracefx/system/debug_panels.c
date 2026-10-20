@@ -85,6 +85,13 @@ static uint16_t fx_field(uint16_t field, uint16_t x)
     return rd16(GSU_RAM + field + x);
 }
 
+/* The same straight after a print: the opcode and operand bytes 16 later. */
+static uint16_t fx_field_w(uint16_t field, uint16_t x)
+{
+    cyc(16);
+    return fx_field(field, x);
+}
+
 /*
  * @routine 08:F10D DebugTimersPanel
  * WHAT IT DOES: Prints the list of timers at $08:FE5E down the left of
@@ -615,7 +622,7 @@ static int bucket_row(uint16_t x, uint16_t pos)
     v = rd16(OBJECT_BUCKETS + x);
     print16(abi_DebugPrintHexWord, v, pos);
     for (i = 1; i < 5; i++) {
-        cyc(44);
+        cyc(60);
         x = cpu.a;
         cpu.x = x;
         cpu.p = nz16(cpu.p, x);
@@ -625,7 +632,7 @@ static int bucket_row(uint16_t x, uint16_t pos)
         v = rd16(OBJ_NEXT + x);
         print16(abi_DebugPrintHexWord, v, (uint16_t)(pos + 0x1400 * i));
     }
-    cyc(8);
+    cyc(24);
     return 1;
 }
 
@@ -654,14 +661,14 @@ void DebugBucketsPanel(void)
     v = (uint16_t)(((v >> 4) + 1) & 0x00FE);
     cyc(118);
     print16(abi_DebugPrintHexWord, v, 0x1C40);
-    print16(abi_DebugPrintHexWord, rd16(FX_PUSH_TURN), 0x3040);
+    print16(abi_DebugPrintHexWord, rd16(cyc_then(32, FX_PUSH_TURN)), 0x3040);
     cpu.p &= (uint8_t)~P_X;
-    x = rd16(cyc_then(14, dbw(VIEW_OBJECT)));
+    x = rd16(cyc_then(46, dbw(VIEW_OBJECT)));
     cpu.x = x;
     cyc(32);
     print16(abi_DebugPrintHexWord, rd16(OBJ_BUCKET + x), 0x1E80);
-    print16(abi_DebugPrintHexWord, rd16(cyc_then(8, dbw(VIEW_AREA))), 0x1EC0);
-    x = rd16(cyc_then(30, dbw(VIEW_OBJECT)));
+    print16(abi_DebugPrintHexWord, rd16(cyc_then(24, dbw(VIEW_AREA))), 0x1EC0);
+    x = rd16(cyc_then(46, dbw(VIEW_OBJECT)));
     cyc(32);
     v = rd16(OBJ_BUCKET + x);
     cpu.x = v;
@@ -691,7 +698,7 @@ void DebugFxWordsPanel(void)
 
     cyc(32);
     print16(abi_DebugPrintHexWord, rd16(FX_RAM_TEST), 0x4940);
-    cyc(16);
+    cyc(32);
     x = rd16(FX_CAR_LAST);
     cpu.x = x;
     cyc(30);
@@ -701,7 +708,7 @@ void DebugFxWordsPanel(void)
 void abi_DebugFxWordsPanel(void)
 {
     DebugFxWordsPanel();
-    cyc(28);                            /* RTL */
+    cyc(44);                            /* RTL */
 }
 
 /*
@@ -724,34 +731,34 @@ void DebugCounterPanel(void)
     cyc(54);
     print8(abi_DebugPrintDecimalByte, rd8(FX_GSU_108E), 0x0440);
     cpu.p &= (uint8_t)~P_M;
-    print16(abi_DebugPrintHexWord, rd16(cyc_then(60, dbw(GSU_WAIT_POLLS))), 0x0480);
-    print16(abi_DebugPrintHexWord, rd16(cyc_then(8, dbw(GSU_AB13_POLLS))), 0x04C0);
+    print16(abi_DebugPrintHexWord, rd16(cyc_then(46, dbw(GSU_WAIT_POLLS))), 0x0480);
+    print16(abi_DebugPrintHexWord, rd16(cyc_then(24, dbw(GSU_AB13_POLLS))), 0x04C0);
     cpu.p &= (uint8_t)~P_X;
-    x = rd16(cyc_then(30, dbw(VIEW_OBJECT)));
+    x = rd16(cyc_then(46, dbw(VIEW_OBJECT)));
     cpu.x = x;
     cpu.p |= P_M;
     cyc(54);
     print8(abi_DebugPrintDecimalByte, rd8(OBJ_4C + x), 0x0500);
-    cyc(46);
+    cyc(32);
     print8(abi_DebugPrintDecimalByte, rd8(OBJ_4E + x), 0x0540);
     cpu.p &= (uint8_t)~P_M;
-    cyc(68);
+    cyc(54);
     x = rd16(FX_CAR_LAST);
     cpu.x = x;
     cyc(30);
     print16(abi_DebugPrintHexWord, fx_field(0x0050, x), 0x0600);
-    print16(abi_DebugPrintHexWord, fx_field(0x004E, x), 0x0640);
-    print16(abi_DebugPrintHexWord, fx_field(0x004A, x), 0x0680);
-    print16(abi_DebugPrintHexWord, fx_field(0x003C, x), 0x06C0);
-    print16(abi_DebugPrintHexWord, fx_field(0x0056, x), 0x0700);
-    cyc(16);
+    print16(abi_DebugPrintHexWord, fx_field_w(0x004E, x), 0x0640);
+    print16(abi_DebugPrintHexWord, fx_field_w(0x004A, x), 0x0680);
+    print16(abi_DebugPrintHexWord, fx_field_w(0x003C, x), 0x06C0);
+    print16(abi_DebugPrintHexWord, fx_field_w(0x0056, x), 0x0700);
+    cyc(32);
     print16(abi_DebugPrintHexWord, rd16(FX_RAM_TEST), 0x0740);
 }
 
 void abi_DebugCounterPanel(void)
 {
     DebugCounterPanel();
-    cyc(28);                            /* RTL */
+    cyc(44);                            /* RTL */
 }
 
 /*
@@ -793,5 +800,5 @@ void DebugFxTestWordPanel(void)
 void abi_DebugFxTestWordPanel(void)
 {
     DebugFxTestWordPanel();
-    cyc(28);                            /* RTL */
+    cyc(44);                            /* RTL */
 }

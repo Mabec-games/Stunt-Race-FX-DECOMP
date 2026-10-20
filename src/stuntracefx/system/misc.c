@@ -136,7 +136,7 @@ void abi_Set0D37FromTable(void)
  */
 void Set7EBC2BTrio(uint8_t v)
 {
-    cyc(60);
+    cyc(76);
     wr8(0x7EBC2B, v);
     cyc(32);
     wr8(0x7EBC2D, v);
@@ -147,7 +147,6 @@ void Set7EBC2BTrio(uint8_t v)
 
 void abi_Set7EBC2BTrio(void)
 {
-    cyc(16);
     Set7EBC2BTrio((uint8_t)cpu.a);
 }
 
@@ -362,7 +361,8 @@ void abi_DemoRunFirst(void)
  */
 void abi_WramFillZeroLong(void)
 {
-    (cyc(106), abi_WramFillZero());
+    (cyc(46), abi_WramFillZero());
+    cyc(44); /* RTL */
 }
 
 /*

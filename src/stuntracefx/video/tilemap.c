@@ -478,7 +478,7 @@ void abi_ScreenFrameAndPictures(void)
 
     cpu.p = (uint8_t)((cpu.p & ~P_M) | P_X);
     cpu.a = 0x7800;
-    cyc(208);
+    cyc(114);
     wr16(VMADDL, cpu.a);
     cpu.x = 0x80;
     cyc(40);

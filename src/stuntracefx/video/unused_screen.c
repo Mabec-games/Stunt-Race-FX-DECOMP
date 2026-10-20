@@ -241,10 +241,13 @@ void ScreenBlankAndWait(uint8_t bank)
 {
     wr8(dbw(bank, 0x420C), cyc_then(90, 0x00));
     wr8(dbw(bank, 0x2100), cyc_then(40, 0x80));
+    cyc(62); /* JSL */
     Set7EBC2BTrio(0x80);
     wr8(dbw(bank, 0x06E3), cyc_then(40, 0x96));
+    cyc(62); /* JSL */
     WaitScanline(bank);
     wr8(dbw(bank, 0x06E3), cyc_then(84, 0x8C));
+    cyc(62); /* JSL */
     WaitScanline(bank);
     cyc(116); /* SEP, REP, PLP, RTL */
 }
@@ -799,7 +802,7 @@ void abi_UnusedScreenSetup(void)
     cyc(48);
     wr16(b | 0x4207, 0x0000);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x80);
-    abi_Set7EBC2BTrio();
+    (cyc(78), abi_Set7EBC2BTrio());
     cyc(24);
     wr8(b | 0x2100, 0x80);
     cyc(24);
@@ -808,10 +811,10 @@ void abi_UnusedScreenSetup(void)
     wr8(b | 0x420C, 0x02);
     cyc(40);
     wr8(b | 0x06E3, 0xBE);
-    abi_WaitScanline();
+    (cyc(62), abi_WaitScanline());
     cyc(84);
     wr8(b | 0x06E3, 0x64);
-    abi_WaitScanline();
+    (cyc(62), abi_WaitScanline());
     cyc(68);
     rd8(b | 0x4210);
     cyc(40);
@@ -853,8 +856,8 @@ void abi_UnusedScreenStart(void)
         ;
     cyc(78);
     abi_GsuClearScreenIfSet();
-    while (rd8(cyc_then(126, b | 0x0854)) != 0x02)
-        ;
+    while (rd8(cyc_then(24, b | 0x0854)) != 0x02)
+        cyc(38); /* CMP, BNE taken */
     cyc(56);
     wr8(b | 0x0854, 0x00);
     (cyc(62), abi_SpriteSlotFirstLong());

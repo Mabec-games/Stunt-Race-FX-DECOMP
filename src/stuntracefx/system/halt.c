@@ -132,7 +132,7 @@ void DebugByteHalt(void)
         wr8(b | 0x0307, 0x00);
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x69);
         cpu.p = nz8(cpu.p, 0x69);
-        (cyc(8), abi_DebugPrintHexByte());
+        (cyc(90), abi_DebugPrintHexByte()) /* PLA, JSL */;
         op_sep(P_M);
         cyc(46);
         wr8(b | 0x0357, 0x00);

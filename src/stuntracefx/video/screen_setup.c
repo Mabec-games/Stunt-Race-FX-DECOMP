@@ -505,7 +505,7 @@ void abi_RaceVideoSetup(void)
     if (w == 0xDA5B)
         goto mode3;
     if (w == 0xDB66)
-        goto mode2;
+        { cyc(8); goto mode2; }
     if (w != 0xDAC0)
         goto done;
     op_sep(P_M);
@@ -521,7 +521,7 @@ void abi_RaceVideoSetup(void)
         video_gsu_ram_dma(0x3000, 0x5AC0, 0x0180);
         cyc(16);
         video_gsu_3000(0xFB90, 0x0018, 1);
-        cyc(22);                                /* BRA */
+        cyc(138);                               /* the Super FX call's return, BRA */
         goto mode2;
     } else { cyc(14); }
 mode3:
@@ -533,9 +533,10 @@ mode3:
         cyc(58);
         video_gsu_3000(0xFA38, 0x0018, 1);
         cpu.p &= (uint8_t)~(P_M | P_X);
-        cyc(130);
+        cyc(158);
         video_gsu_ram_dma(0x3180, 0x5AC0, 0x0100);
         video_gsu_3000(0xFC20, 0x0018, 1);
+        cyc(140);                               /* the Super FX call's return, JMP */
         goto mode2;
     }
 mode0:
@@ -564,9 +565,10 @@ mode0:
     cpu.y = 0x0000;
     cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
     video_gsu_3000(0xFAE8, 0x0018, 1);
+    cyc(116);                                   /* the Super FX call's return */
 mode2:
     cpu.p &= (uint8_t)~(P_M | P_X);
-    (cyc(90), abi_ScreenFrameAndPictures());
+    (cyc(68), abi_ScreenFrameAndPictures());
     cpu.p &= (uint8_t)~(P_M | P_X);
     cpu.y = k3;
     cyc(256);
@@ -709,7 +711,7 @@ void abi_RaceHudLoad(void)
         cyc(22);                                /* BRA */
     } else
         { cyc(84); abi_SoundIndicesFromHandlers(); }
-    abi_CourseSoundLoad();
+    (cyc(62), abi_CourseSoundLoad());
     cyc(18);
     video_gsu_3000(0x8078, 0x001D, 0);
     cpu.p &= (uint8_t)~(P_M | P_X);

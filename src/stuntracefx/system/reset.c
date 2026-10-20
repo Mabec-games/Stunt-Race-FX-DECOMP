@@ -23,9 +23,9 @@ static void reset_lda8(uint8_t v)
 }
 
 /* WramFillZeroLong on a work RAM range: A = bank, X = start, Y = count. */
-static void reset_fill(uint8_t bank, uint16_t x, uint16_t y)
+static void reset_fill(uint8_t bank, uint16_t x, uint16_t y, uint32_t pre)
 {
-    cyc(48);
+    cyc(pre);
     reset_lda8(bank);
     cpu.x = x;
     cpu.p = nz16(cpu.p, x);
@@ -131,22 +131,22 @@ void abi_SoftResetCheck(void)
     cyc(24);
     wr8(b | RESET_STATE, 0x00);
     abi_SoftResetApu();
+    cyc(22); /* SEP */
     op_sep(P_M);
+    cyc(24);
     wr8(b | 0x0D2B, 0x00);
     cyc(24);
     wr8(b | 0x0D62, 0x00);
     op_sep(P_M);
     op_rep(P_X);
-    reset_fill(0x00, 0x0300, 0x2100);
-    cyc(64);
-    reset_fill(0x7E, 0x2000, 0xE000);
-    cyc(64);
-    reset_fill(0x7F, 0x0000, 0xFFFF);
+    reset_fill(0x00, 0x0300, 0x2100, 108);
+    reset_fill(0x7E, 0x2000, 0xE000, 86);
+    reset_fill(0x7F, 0x0000, 0xFFFF, 86);
     db = cpu.db;
     v = cpu.p;
     op_rep(P_M | P_X);
     op_lda16_imm(0x0000);
-    cyc(106);
+    cyc(62);
     wr16(0x700000, 0x0000);
     op_lda16_imm(0x27FF);
     cpu.x = 0x0000;
@@ -272,7 +272,7 @@ void abi_SoftResetApu(void)
     cpu.p = nz16(cpu.p, cpu.y);
     abi_ApuUpload();
     op_rep(P_M);
-    cyc(84);
+    cyc(38);
     delay_turns(0x4000);
     cpu.a = 0x0000;
     cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
@@ -289,4 +289,5 @@ void abi_SoftResetApu(void)
 void abi_SoftResetApuLong(void)
 {
     abi_SoftResetApu();
+    cyc(44); /* RTL */
 }
