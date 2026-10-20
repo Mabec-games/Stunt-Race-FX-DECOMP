@@ -6,7 +6,7 @@
  * address first (a dummy read, which on an I/O register reaches the
  * hardware: a store to $F3 reads the DSP register), except MOV (X+),A, MOV
  * dd,ds and PUSH; a read-modify-write reads once and writes once; TSET and
- * TCLR read twice. spc_st and spc_rmw make those accesses, so the C makes the
+ * TCLR read twice. spc_st, spc_rmw and the others make those accesses, each with the cycles before it, so the C makes the
  * assembly's accesses in its order and number.
  */
 #ifndef STUNTRACEFX_SPC_OPS_H
@@ -115,59 +115,9 @@ static inline void spc_das(void)
     spc_nz(spc.a);
 }
 
-/* A store: the dummy read, then the write. */
-static inline void spc_st(uint16_t addr, uint8_t v) { spc_rd(addr); spc_wr(addr, v); }
-
-/* A read-modify-write through op (ASL, INC, ...). */
-static inline void spc_rmw(uint16_t addr, uint8_t (*op)(uint8_t)) { spc_wr(addr, op(spc_rd(addr))); }
-
-/* MOVW d,YA: a dummy read of the low byte, then both writes. */
-static inline void spc_movw_st(uint8_t d)
-{
-    spc_rd(spc_dp(d));
-    spc_wr(spc_dp(d), spc.a);
-    spc_wr(spc_dp((uint8_t)(d + 1)), spc.y);
-}
-
-/* MOVW YA,d (N, Z from the word). */
-static inline void spc_movw_ld(uint8_t d)
-{
-    uint16_t v = spc_rd(spc_dp(d));
-    v |= (uint16_t)(spc_rd(spc_dp((uint8_t)(d + 1))) << 8);
-    spc_set_ya(spc_nz16(v));
-}
-
-/* INCW, DECW d: each byte read then written in turn. */
-static inline void spc_incw(uint8_t d, int adjust)
-{
-    uint16_t v = (uint16_t)(spc_rd(spc_dp(d)) + adjust);
-    spc_wr(spc_dp(d), (uint8_t)v);
-    v = (uint16_t)(v + (spc_rd(spc_dp((uint8_t)(d + 1))) << 8));
-    spc_wr(spc_dp((uint8_t)(d + 1)), (uint8_t)(v >> 8));
-    spc_nz16(v);
-}
-
-/* TSET, TCLR !a: N, Z from A - the byte; it is read twice. */
-static inline void spc_tset(uint16_t addr, int set)
-{
-    uint8_t v = spc_rd(addr);
-    uint8_t d = (uint8_t)(spc.a - v);
-    spc.z = d == 0;
-    spc.n = d >> 7;
-    spc_rd(addr);
-    spc_wr(addr, set ? (uint8_t)(v | spc.a) : (uint8_t)(v & ~spc.a));
-}
-
-/* SET1, CLR1 d.b. */
-static inline void spc_bit_set(uint8_t d, int bit, int set)
-{
-    uint8_t v = spc_rd(spc_dp(d));
-    spc_wr(spc_dp(d), set ? (uint8_t)(v | 1 << bit) : (uint8_t)(v & ~(1 << bit)));
-}
-
-/* The same with the time stated: the cycles before each access, in order
-   (spc.h: spc_cyc). */
-static inline void spc_st_cyc(uint16_t addr, uint8_t v, unsigned before_read, unsigned before_write)
+/* The accesses that are several, with the cycles before each (spc.h: spc_cyc),
+   in order. A store: the dummy read, then the write. */
+static inline void spc_st(uint16_t addr, uint8_t v, unsigned before_read, unsigned before_write)
 {
     spc_cyc(before_read);
     spc_rd(addr);
@@ -175,7 +125,7 @@ static inline void spc_st_cyc(uint16_t addr, uint8_t v, unsigned before_read, un
     spc_wr(addr, v);
 }
 
-static inline void spc_rmw_cyc(uint16_t addr, uint8_t (*op)(uint8_t), unsigned before_read, unsigned before_write)
+static inline void spc_rmw(uint16_t addr, uint8_t (*op)(uint8_t), unsigned before_read, unsigned before_write)
 {
     spc_cyc(before_read);
     uint8_t v = spc_rd(addr);
@@ -183,7 +133,7 @@ static inline void spc_rmw_cyc(uint16_t addr, uint8_t (*op)(uint8_t), unsigned b
     spc_wr(addr, op(v));
 }
 
-static inline void spc_movw_st_cyc(uint8_t d, unsigned before_read, unsigned before_low, unsigned before_high)
+static inline void spc_movw_st(uint8_t d, unsigned before_read, unsigned before_low, unsigned before_high)
 {
     spc_cyc(before_read);
     spc_rd(spc_dp(d));
@@ -193,7 +143,7 @@ static inline void spc_movw_st_cyc(uint8_t d, unsigned before_read, unsigned bef
     spc_wr(spc_dp((uint8_t)(d + 1)), spc.y);
 }
 
-static inline void spc_movw_ld_cyc(uint8_t d, unsigned before_low, unsigned before_high)
+static inline void spc_movw_ld(uint8_t d, unsigned before_low, unsigned before_high)
 {
     spc_cyc(before_low);
     uint16_t v = spc_rd(spc_dp(d));
@@ -202,7 +152,7 @@ static inline void spc_movw_ld_cyc(uint8_t d, unsigned before_low, unsigned befo
     spc_set_ya(spc_nz16(v));
 }
 
-static inline void spc_incw_cyc(uint8_t d, int adjust, unsigned before_read_low, unsigned before_write_low,
+static inline void spc_incw(uint8_t d, int adjust, unsigned before_read_low, unsigned before_write_low,
                                 unsigned before_read_high, unsigned before_write_high)
 {
     spc_cyc(before_read_low);
@@ -216,7 +166,7 @@ static inline void spc_incw_cyc(uint8_t d, int adjust, unsigned before_read_low,
     spc_nz16(v);
 }
 
-static inline void spc_tset_cyc(uint16_t addr, int set, unsigned before_read, unsigned before_reread, unsigned before_write)
+static inline void spc_tset(uint16_t addr, int set, unsigned before_read, unsigned before_reread, unsigned before_write)
 {
     spc_cyc(before_read);
     uint8_t v = spc_rd(addr);
@@ -229,7 +179,7 @@ static inline void spc_tset_cyc(uint16_t addr, int set, unsigned before_read, un
     spc_wr(addr, set ? (uint8_t)(v | spc.a) : (uint8_t)(v & ~spc.a));
 }
 
-static inline void spc_bit_set_cyc(uint8_t d, int bit, int set, unsigned before_read, unsigned before_write)
+static inline void spc_bit_set(uint8_t d, int bit, int set, unsigned before_read, unsigned before_write)
 {
     spc_cyc(before_read);
     uint8_t v = spc_rd(spc_dp(d));

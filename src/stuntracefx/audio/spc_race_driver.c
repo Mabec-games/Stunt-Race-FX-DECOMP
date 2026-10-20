@@ -126,12 +126,12 @@ void abi_SpcReload(void)
     spc.a = spc_nz(0xAA);
     spc_cyc(2);
     /* 0677 mov.w $00F4,a */
-    spc_st_cyc(0x00F4, spc.a, 4, 1);
+    spc_st(0x00F4, spc.a, 4, 1);
     /* 067A mov a,#$BB */
     spc.a = spc_nz(0xBB);
     spc_cyc(2);
     /* 067C mov.w $00F5,a */
-    spc_st_cyc(0x00F5, spc.a, 4, 1);
+    spc_st(0x00F5, spc.a, 4, 1);
 L067F:
     /* 067F mov.w a,$00F4 */
     spc_cyc(4);
@@ -163,11 +163,11 @@ L068D:
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x00F5));
     /* 0695 mov.w $00F4,y */
-    spc_st_cyc(0x00F4, spc.y, 4, 1);
+    spc_st(0x00F4, spc.y, 4, 1);
     /* 0698 mov ($14)+y,a */
     spc_cyc(3);
     { uint16_t p = spc_rd(spc_dp(0x14)); p |= (spc_cyc(1), spc_rd(spc_dp(0x15))) << 8;
-      spc_st_cyc((uint16_t)(p + spc.y), spc.a, 2, 1); }
+      spc_st((uint16_t)(p + spc.y), spc.a, 2, 1); }
     /* 069A inc y */
     spc.y = spc_inc(spc.y);
     spc_cyc(2);
@@ -175,7 +175,7 @@ L068D:
     if (!spc.z) { spc_cyc(4); goto L068D; }
     spc_cyc(2);
     /* 069D inc.b $15 */
-    spc_rmw_cyc(spc_dp(0x15), spc_inc, 3, 1);
+    spc_rmw(spc_dp(0x15), spc_inc, 3, 1);
     /* 069F bra $068D */
     spc_cyc(4);
     goto L068D;
@@ -210,7 +210,7 @@ L06A8:
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x00F5));
     /* 06B6 mov.w $00F4,y */
-    spc_st_cyc(0x00F4, spc.y, 4, 1);
+    spc_st(0x00F4, spc.y, 4, 1);
     /* 06B9 bne $0688 */
     if (!spc.z) { spc_cyc(4); goto L0688; }
     spc_cyc(2);
@@ -218,7 +218,7 @@ L06A8:
     spc.x = spc_nz(0x31);
     spc_cyc(2);
     /* 06BD mov.w $00F1,x */
-    spc_st_cyc(0x00F1, spc.x, 4, 1);
+    spc_st(0x00F1, spc.x, 4, 1);
     /* 06C0 jmp $0800 */
     { spc_cyc(3); abi_SpcReset(); return; }
 }
@@ -263,7 +263,7 @@ L0807:
     spc.a = spc_inc(spc.a);
     spc_cyc(2);
     /* 080D call $0D73 */
-    spc_call_cyc(abi_SpcSetEchoDelay, 0x0810, 5, 1, 2);
+    spc_call(abi_SpcSetEchoDelay, 0x0810, 5, 1, 2);
     /* 0810 mov a,#$00 */
     spc.a = spc_nz(0x00);
     spc_cyc(2);
@@ -272,7 +272,7 @@ L0807:
     spc_cyc(2);
 L0813:
     /* 0813 mov.w $0200+x,a */
-    spc_st_cyc((uint16_t)(0x0200 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0200 + spc.x), spc.a, 5, 1);
     /* 0816 inc x */
     spc.x = spc_inc(spc.x);
     spc_cyc(2);
@@ -281,7 +281,7 @@ L0813:
     spc_cyc(2);
 L0819:
     /* 0819 mov.w $0300+x,a */
-    spc_st_cyc((uint16_t)(0x0300 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0300 + spc.x), spc.a, 5, 1);
     /* 081C inc x */
     spc.x = spc_inc(spc.x);
     spc_cyc(2);
@@ -290,7 +290,7 @@ L0819:
     spc_cyc(2);
 L081F:
     /* 081F mov.w $0400+x,a */
-    spc_st_cyc((uint16_t)(0x0400 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0400 + spc.x), spc.a, 5, 1);
     /* 0822 inc x */
     spc.x = spc_inc(spc.x);
     spc_cyc(2);
@@ -299,7 +299,7 @@ L081F:
     spc_cyc(2);
 L0825:
     /* 0825 mov.w $0500+x,a */
-    spc_st_cyc((uint16_t)(0x0500 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0500 + spc.x), spc.a, 5, 1);
     /* 0828 inc x */
     spc.x = spc_inc(spc.x);
     spc_cyc(2);
@@ -317,7 +317,7 @@ L0825:
     spc_cyc(2);
 L082F:
     /* 082F mov.w $0361+x,a */
-    spc_st_cyc((uint16_t)(0x0361 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0361 + spc.x), spc.a, 5, 1);
     /* 0832 inc x */
     spc.x = spc_inc(spc.x);
     spc_cyc(2);
@@ -337,12 +337,12 @@ L082F:
     spc.y = spc_nz(0x0C);
     spc_cyc(2);
     /* 083C call $09E8 */
-    spc_call_cyc(abi_SpcDspWrite, 0x083F, 5, 1, 2);
+    spc_call(abi_SpcDspWrite, 0x083F, 5, 1, 2);
     /* 083F mov y,#$1C */
     spc.y = spc_nz(0x1C);
     spc_cyc(2);
     /* 0841 call $09E8 */
-    spc_call_cyc(abi_SpcDspWrite, 0x0844, 5, 1, 2);
+    spc_call(abi_SpcDspWrite, 0x0844, 5, 1, 2);
     /* 0844 mov a,#$3F */
     spc.a = spc_nz(0x3F);
     spc_cyc(2);
@@ -350,40 +350,40 @@ L082F:
     spc.y = spc_nz(0x5D);
     spc_cyc(2);
     /* 0848 call $09E8 */
-    spc_call_cyc(abi_SpcDspWrite, 0x084B, 5, 1, 2);
+    spc_call(abi_SpcDspWrite, 0x084B, 5, 1, 2);
     /* 084B mov a,#$30 */
     spc.a = spc_nz(0x30);
     spc_cyc(2);
     /* 084D mov.w $00F1,a */
-    spc_st_cyc(0x00F1, spc.a, 4, 1);
+    spc_st(0x00F1, spc.a, 4, 1);
     /* 0850 mov a,#$10 */
     spc.a = spc_nz(0x10);
     spc_cyc(2);
     /* 0852 mov.w $00FA,a */
-    spc_st_cyc(0x00FA, spc.a, 4, 1);
+    spc_st(0x00FA, spc.a, 4, 1);
     /* 0855 mov.b $53,a */
-    spc_st_cyc(spc_dp(0x53), spc.a, 3, 1);
+    spc_st(spc_dp(0x53), spc.a, 3, 1);
     /* 0857 mov a,#$01 */
     spc.a = spc_nz(0x01);
     spc_cyc(2);
     /* 0859 mov.w $00F1,a */
-    spc_st_cyc(0x00F1, spc.a, 4, 1);
+    spc_st(0x00F1, spc.a, 4, 1);
     /* 085C dec a */
     spc.a = spc_dec(spc.a);
     spc_cyc(2);
     /* 085D mov.b $04,a */
-    spc_st_cyc(spc_dp(0x04), spc.a, 3, 1);
+    spc_st(spc_dp(0x04), spc.a, 3, 1);
     /* 085F mov.b $05,a */
-    spc_st_cyc(spc_dp(0x05), spc.a, 3, 1);
+    spc_st(spc_dp(0x05), spc.a, 3, 1);
     /* 0861 mov.b $06,a */
-    spc_st_cyc(spc_dp(0x06), spc.a, 3, 1);
+    spc_st(spc_dp(0x06), spc.a, 3, 1);
     /* 0863 mov.b $07,a */
-    spc_st_cyc(spc_dp(0x07), spc.a, 3, 1);
+    spc_st(spc_dp(0x07), spc.a, 3, 1);
     /* 0865 dec a */
     spc.a = spc_dec(spc.a);
     spc_cyc(2);
     /* 0866 mov.b $46,a */
-    spc_st_cyc(spc_dp(0x46), spc.a, 3, 1);
+    spc_st(spc_dp(0x46), spc.a, 3, 1);
 L0868:
     /* 0868 mov y,#$0A */
     spc.y = spc_nz(0x0A);
@@ -415,7 +415,7 @@ L0878:
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x3F9F + spc.y)));
     /* 087B mov.w $00F2,a */
-    spc_st_cyc(0x00F2, spc.a, 4, 1);
+    spc_st(0x00F2, spc.a, 4, 1);
     /* 087E mov.w a,$06C2+y */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x06C2 + spc.y)));
@@ -426,15 +426,15 @@ L0878:
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(spc.x)));
     /* 0883 mov.w $00F3,a */
-    spc_st_cyc(0x00F3, spc.a, 4, 1);
+    spc_st(0x00F3, spc.a, 4, 1);
 L0886:
     /* 0886 dbnz y,$086A */
     if (--spc.y) { spc_cyc(6); goto L086A; }
     spc_cyc(4);
     /* 0888 mov.b $45,y */
-    spc_st_cyc(spc_dp(0x45), spc.y, 3, 1);
+    spc_st(spc_dp(0x45), spc.y, 3, 1);
     /* 088A mov.b $46,y */
-    spc_st_cyc(spc_dp(0x46), spc.y, 3, 1);
+    spc_st(spc_dp(0x46), spc.y, 3, 1);
     /* 088C mov.b a,$18 */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x18)));
@@ -451,9 +451,9 @@ L0886:
     spc.c ^= 1;
     spc_cyc(3);
     /* 0893 ror.b $18 */
-    spc_rmw_cyc(spc_dp(0x18), spc_ror, 3, 1);
+    spc_rmw(spc_dp(0x18), spc_ror, 3, 1);
     /* 0895 ror.b $19 */
-    spc_rmw_cyc(spc_dp(0x19), spc_ror, 3, 1);
+    spc_rmw(spc_dp(0x19), spc_ror, 3, 1);
 L0897:
     /* 0897 mov.w y,$00FD */
     spc_cyc(4);
@@ -478,12 +478,12 @@ L0897:
     spc_cyc(3);
     spc.a = spc_adc(spc.a, spc_rd(spc_dp(0x43)));
     /* 08A3 mov.b $43,a */
-    spc_st_cyc(spc_dp(0x43), spc.a, 3, 1);
+    spc_st(spc_dp(0x43), spc.a, 3, 1);
     /* 08A5 bcc $08B1 */
     if (!spc.c) { spc_cyc(4); goto L08B1; }
     spc_cyc(2);
     /* 08A7 call $10B0 */
-    spc_call_cyc(abi_SpcSfxFrame, 0x08AA, 5, 1, 2);
+    spc_call(abi_SpcSfxFrame, 0x08AA, 5, 1, 2);
     /* 08AA cmp $4C,$4D */
     spc_cyc(3);
     { uint8_t r = spc_rd(spc_dp(0x4D)); spc_cmp((spc_cyc(2), spc_rd(spc_dp(0x4C))), r); }
@@ -492,7 +492,7 @@ L0897:
     if (spc.z) { spc_cyc(4); goto L08B1; }
     spc_cyc(2);
     /* 08AF inc.b $4C */
-    spc_rmw_cyc(spc_dp(0x4C), spc_inc, 3, 1);
+    spc_rmw(spc_dp(0x4C), spc_inc, 3, 1);
 L08B1:
     /* 08B1 mov.b a,$53 */
     spc_cyc(3);
@@ -510,18 +510,18 @@ L08B1:
     spc_cyc(3);
     spc.a = spc_adc(spc.a, spc_rd(spc_dp(0x51)));
     /* 08B8 mov.b $51,a */
-    spc_st_cyc(spc_dp(0x51), spc.a, 3, 1);
+    spc_st(spc_dp(0x51), spc.a, 3, 1);
     /* 08BA bcc $08C9 */
     if (!spc.c) { spc_cyc(4); goto L08C9; }
     spc_cyc(2);
     /* 08BC call $0A6F */
-    spc_call_cyc(abi_SpcMusicFrame, 0x08BF, 5, 1, 2);
+    spc_call(abi_SpcMusicFrame, 0x08BF, 5, 1, 2);
     /* 08BF mov x,#$03 */
     spc.x = spc_nz(0x03);
     spc_cyc(2);
 L08C1:
     /* 08C1 call $08E2 */
-    spc_call_cyc(abi_SpcPortExchange, 0x08C4, 5, 1, 2);
+    spc_call(abi_SpcPortExchange, 0x08C4, 5, 1, 2);
     /* 08C4 dec x */
     spc.x = spc_dec(spc.x);
     spc_cyc(2);
@@ -542,7 +542,7 @@ L08C9:
     spc.x = spc_nz(0x00);
     spc_cyc(2);
     /* 08CF mov $47,#$01 */
-    spc_st_cyc(spc_dp(0x47), 0x01, 4, 1);
+    spc_st(spc_dp(0x47), 0x01, 4, 1);
 L08D2:
     /* 08D2 mov.b a,$31+x */
     spc_cyc(4);
@@ -551,7 +551,7 @@ L08D2:
     if (spc.z) { spc_cyc(4); goto L08D9; }
     spc_cyc(2);
     /* 08D6 call $0FD6 */
-    spc_call_cyc(abi_SpcVoiceBetweenTicks, 0x08D9, 5, 1, 2);
+    spc_call(abi_SpcVoiceBetweenTicks, 0x08D9, 5, 1, 2);
 L08D9:
     /* 08D9 inc x */
     spc.x = spc_inc(spc.x);
@@ -560,7 +560,7 @@ L08D9:
     spc.x = spc_inc(spc.x);
     spc_cyc(2);
     /* 08DB asl.b $47 */
-    spc_rmw_cyc(spc_dp(0x47), spc_asl, 3, 1);
+    spc_rmw(spc_dp(0x47), spc_asl, 3, 1);
     /* 08DD bne $08D2 */
     if (!spc.z) { spc_cyc(4); goto L08D2; }
     spc_cyc(2);
@@ -583,7 +583,7 @@ void abi_SpcPortExchange(void)
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(spc_dp((uint8_t)(0x04 + spc.x))));
     /* 08E4 mov.w $00F4+x,a */
-    spc_st_cyc((uint16_t)(0x00F4 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x00F4 + spc.x), spc.a, 5, 1);
 L08E7:
     /* 08E7 mov.w a,$00F4+x */
     spc_cyc(5);
@@ -595,9 +595,9 @@ L08E7:
     if (!spc.z) { spc_cyc(4); goto L08E7; }
     spc_cyc(2);
     /* 08EF mov.w $0558+x,a */
-    spc_st_cyc((uint16_t)(0x0558 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0558 + spc.x), spc.a, 5, 1);
     /* 08F2 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -618,7 +618,7 @@ void abi_SpcNoteOn(void)
     if (!spc.c) { spc_cyc(4); goto L08FC; }
     spc_cyc(2);
     /* 08F7 call $0BBE */
-    spc_call_cyc(abi_SpcSetInstrument, 0x08FA, 5, 1, 2);
+    spc_call(abi_SpcSetInstrument, 0x08FA, 5, 1, 2);
     /* 08FA mov y,#$A4 */
     spc.y = spc_nz(0xA4);
     spc_cyc(2);
@@ -657,12 +657,12 @@ L08FC:
     spc_cyc(5);
     spc.a = spc_adc(spc.a, spc_rd((uint16_t)(0x02F0 + spc.x)));
     /* 0910 mov.w $0361+x,a */
-    spc_st_cyc((uint16_t)(0x0361 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0361 + spc.x), spc.a, 5, 1);
     /* 0913 mov.w a,$0381+x */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x0381 + spc.x)));
     /* 0916 mov.w $0360+x,a */
-    spc_st_cyc((uint16_t)(0x0360 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0360 + spc.x), spc.a, 5, 1);
     /* 0919 mov.w a,$02B1+x */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x02B1 + spc.x)));
@@ -676,18 +676,18 @@ L08FC:
     spc.a = spc_ror(spc.a);
     spc_cyc(2);
     /* 0920 mov.w $02A0+x,a */
-    spc_st_cyc((uint16_t)(0x02A0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x02A0 + spc.x), spc.a, 5, 1);
     /* 0923 mov a,#$00 */
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 0925 mov.b $B0+x,a */
-    spc_st_cyc(spc_dp((uint8_t)(0xB0 + spc.x)), spc.a, 4, 1);
+    spc_st(spc_dp((uint8_t)(0xB0 + spc.x)), spc.a, 4, 1);
     /* 0927 mov.w $0100+x,a */
-    spc_st_cyc((uint16_t)(0x0100 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0100 + spc.x), spc.a, 5, 1);
     /* 092A mov.w $02D0+x,a */
-    spc_st_cyc((uint16_t)(0x02D0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x02D0 + spc.x), spc.a, 5, 1);
     /* 092D mov.b $C0+x,a */
-    spc_st_cyc(spc_dp((uint8_t)(0xC0 + spc.x)), spc.a, 4, 1);
+    spc_st(spc_dp((uint8_t)(0xC0 + spc.x)), spc.a, 4, 1);
     /* 092F or $5E,$47 */
     spc_cyc(3);
     { uint8_t r = spc_rd(spc_dp(0x47)); uint8_t l = (spc_cyc(2), spc_rd(spc_dp(0x5E))); spc_cyc(1); spc_wr(spc_dp(0x5E), spc_or(l, r)); }
@@ -698,7 +698,7 @@ L08FC:
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x0280 + spc.x)));
     /* 0938 mov.b $A0+x,a */
-    spc_st_cyc(spc_dp((uint8_t)(0xA0 + spc.x)), spc.a, 4, 1);
+    spc_st(spc_dp((uint8_t)(0xA0 + spc.x)), spc.a, 4, 1);
     /* 093A beq $095A */
     if (spc.z) { spc_cyc(4); goto L095A; }
     spc_cyc(2);
@@ -706,7 +706,7 @@ L08FC:
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x0281 + spc.x)));
     /* 093F mov.b $A1+x,a */
-    spc_st_cyc(spc_dp((uint8_t)(0xA1 + spc.x)), spc.a, 4, 1);
+    spc_st(spc_dp((uint8_t)(0xA1 + spc.x)), spc.a, 4, 1);
     /* 0941 mov.w a,$0290+x */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x0290 + spc.x)));
@@ -723,7 +723,7 @@ L08FC:
     spc_cyc(5);
     spc.a = spc_sbc(spc.a, spc_rd((uint16_t)(0x0291 + spc.x)));
     /* 094D mov.w $0361+x,a */
-    spc_st_cyc((uint16_t)(0x0361 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0361 + spc.x), spc.a, 5, 1);
 L0950:
     /* 0950 mov.w a,$0291+x */
     spc_cyc(5);
@@ -735,10 +735,10 @@ L0950:
     spc_cyc(5);
     spc.a = spc_adc(spc.a, spc_rd((uint16_t)(0x0361 + spc.x)));
     /* 0957 call $0DDC */
-    spc_call_cyc(abi_SpcSlideToNote, 0x095A, 5, 1, 2);
+    spc_call(abi_SpcSlideToNote, 0x095A, 5, 1, 2);
 L095A:
     /* 095A call $0DF4 */
-    spc_call_cyc(abi_SpcLoadPitch, 0x095D, 5, 1, 2);
+    spc_call(abi_SpcLoadPitch, 0x095D, 5, 1, 2);
     /* 095D mov y,#$00 */
     spc.y = spc_nz(0x00);
     spc_cyc(2);
@@ -810,12 +810,12 @@ L0973:
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x06CE + spc.y)));
     /* 0980 mov.b $15,a */
-    spc_st_cyc(spc_dp(0x15), spc.a, 3, 1);
+    spc_st(spc_dp(0x15), spc.a, 3, 1);
     /* 0982 mov.w a,$06CD+y */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x06CD + spc.y)));
     /* 0985 mov.b $14,a */
-    spc_st_cyc(spc_dp(0x14), spc.a, 3, 1);
+    spc_st(spc_dp(0x14), spc.a, 3, 1);
     /* 0987 mov.w a,$06D0+y */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x06D0 + spc.y)));
@@ -848,20 +848,20 @@ L0973:
     spc_cyc(3);
     { uint16_t v = spc_rd(spc_dp(0x14)); v |= (spc_cyc(2), spc_rd(spc_dp(0x15))) << 8; spc_set_ya(spc_addw(spc_ya(), v)); }
     /* 0999 mov.b $15,y */
-    spc_st_cyc(spc_dp(0x15), spc.y, 3, 1);
+    spc_st(spc_dp(0x15), spc.y, 3, 1);
     /* 099B asl a */
     spc.a = spc_asl(spc.a);
     spc_cyc(2);
     /* 099C rol.b $15 */
-    spc_rmw_cyc(spc_dp(0x15), spc_rol, 3, 1);
+    spc_rmw(spc_dp(0x15), spc_rol, 3, 1);
     /* 099E mov.b $14,a */
-    spc_st_cyc(spc_dp(0x14), spc.a, 3, 1);
+    spc_st(spc_dp(0x14), spc.a, 3, 1);
     /* 09A0 bra $09A6 */
     spc_cyc(4);
     goto L09A6;
 L09A2:
     /* 09A2 lsr.b $15 */
-    spc_rmw_cyc(spc_dp(0x15), spc_lsr, 3, 1);
+    spc_rmw(spc_dp(0x15), spc_lsr, 3, 1);
     /* 09A4 ror a */
     spc.a = spc_ror(spc.a);
     spc_cyc(2);
@@ -876,7 +876,7 @@ L09A6:
     if (!spc.z) { spc_cyc(4); goto L09A2; }
     spc_cyc(2);
     /* 09AA mov.b $14,a */
-    spc_st_cyc(spc_dp(0x14), spc.a, 3, 1);
+    spc_st(spc_dp(0x14), spc.a, 3, 1);
     /* 09AC pop x */
     spc_cyc(4);
     spc.x = spc_pull();
@@ -972,7 +972,7 @@ L09A6:
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x16)));
     /* 09DA call $09E0 */
-    spc_call_cyc(abi_SpcDspWriteVoice, 0x09DD, 5, 1, 2);
+    spc_call(abi_SpcDspWriteVoice, 0x09DD, 5, 1, 2);
     /* 09DD inc y */
     spc.y = spc_inc(spc.y);
     spc_cyc(2);
@@ -982,7 +982,7 @@ L09A6:
     { abi_SpcDspWriteVoice(); return; }
 L08F2:
     /* 08F2 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -1014,7 +1014,7 @@ void abi_SpcDspWriteVoice(void)
     { spc_cyc(2); abi_SpcDspWrite(); return; }
 L09EE:
     /* 09EE ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -1029,11 +1029,11 @@ L09EE:
 void abi_SpcDspWrite(void)
 {
     /* 09E8 mov.w $00F2,y */
-    spc_st_cyc(0x00F2, spc.y, 4, 1);
+    spc_st(0x00F2, spc.y, 4, 1);
     /* 09EB mov.w $00F3,a */
-    spc_st_cyc(0x00F3, spc.a, 4, 1);
+    spc_st(0x00F3, spc.a, 4, 1);
     /* 09EE ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -1056,7 +1056,7 @@ void abi_SpcReadPatternWord(void)
       spc_cyc(2);
       spc.a = spc_nz(spc_rd((uint16_t)(p + spc.y))); }
     /* 09FA incw $40 */
-    spc_incw_cyc(0x40, +1, 3, 1, 1, 1);
+    spc_incw(0x40, +1, 3, 1, 1, 1);
     /* 09FC push a */
     spc_cyc(3);
     spc_push(spc.a);
@@ -1067,7 +1067,7 @@ void abi_SpcReadPatternWord(void)
       spc_cyc(2);
       spc.a = spc_nz(spc_rd((uint16_t)(p + spc.y))); }
     /* 09FF incw $40 */
-    spc_incw_cyc(0x40, +1, 3, 1, 1, 1);
+    spc_incw(0x40, +1, 3, 1, 1, 1);
     /* 0A01 mov y,a */
     spc.y = spc_nz(spc.a);
     spc_cyc(2);
@@ -1075,7 +1075,7 @@ void abi_SpcReadPatternWord(void)
     spc_cyc(4);
     spc.a = spc_pull();
     /* 0A03 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -1094,17 +1094,17 @@ void abi_SpcMusicPause(void)
     if ((spc_rd(spc_dp(0x29)) >> 1 & 1)) { spc_cyc(4); goto L0A3B; }
     spc_cyc(2);
     /* 0A63 set1 $29.1 */
-    spc_bit_set_cyc(0x29, 1, 1, 3, 1);
+    spc_bit_set(0x29, 1, 1, 3, 1);
     /* 0A65 mov $1B,#$00 */
-    spc_st_cyc(spc_dp(0x1B), 0x00, 4, 1);
+    spc_st(spc_dp(0x1B), 0x00, 4, 1);
     /* 0A68 mov $1C,#$00 */
-    spc_st_cyc(spc_dp(0x1C), 0x00, 4, 1);
+    spc_st(spc_dp(0x1C), 0x00, 4, 1);
     /* 0A6B bra $0A58 */
     spc_cyc(4);
     goto L0A58;
 L0A3B:
     /* 0A3B ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L0A58:
     /* 0A58 mov.b a,$1A */
@@ -1114,9 +1114,9 @@ L0A58:
     spc.a = spc_eor(spc.a, 0xFF);
     spc_cyc(2);
     /* 0A5C tset $0046,a */
-    spc_tset_cyc(0x0046, 1, 4, 1, 1);
+    spc_tset(0x0046, 1, 4, 1, 1);
     /* 0A5F ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -1148,9 +1148,9 @@ void abi_SpcMusicFrame(void)
     spc_cyc(2);
 L0A7B:
     /* 0A7B mov.w $0584,a */
-    spc_st_cyc(0x0584, spc.a, 4, 1);
+    spc_st(0x0584, spc.a, 4, 1);
     /* 0A7E mov $1B,#$00 */
-    spc_st_cyc(spc_dp(0x1B), 0x00, 4, 1);
+    spc_st(spc_dp(0x1B), 0x00, 4, 1);
 L0A81:
     /* 0A81 mov.b a,$1C */
     spc_cyc(3);
@@ -1170,7 +1170,7 @@ L0A81:
     spc_cyc(1);
 L0A8C:
     /* 0A8C call $09F6 */
-    spc_call_cyc(abi_SpcReadPatternWord, 0x0A8F, 5, 1, 2);
+    spc_call(abi_SpcReadPatternWord, 0x0A8F, 5, 1, 2);
     /* 0A8F bne $0AA5 */
     if (!spc.z) { spc_cyc(4); goto L0AA5; }
     spc_cyc(2);
@@ -1181,15 +1181,15 @@ L0A8C:
     if (spc.z) { spc_cyc(4); goto L0A3C; }
     spc_cyc(2);
     /* 0A94 dec.b $42 */
-    spc_rmw_cyc(spc_dp(0x42), spc_dec, 3, 1);
+    spc_rmw(spc_dp(0x42), spc_dec, 3, 1);
     /* 0A96 bpl $0A9A */
     if (!spc.n) { spc_cyc(4); goto L0A9A; }
     spc_cyc(2);
     /* 0A98 mov.b $42,a */
-    spc_st_cyc(spc_dp(0x42), spc.a, 3, 1);
+    spc_st(spc_dp(0x42), spc.a, 3, 1);
 L0A9A:
     /* 0A9A call $09F6 */
-    spc_call_cyc(abi_SpcReadPatternWord, 0x0A9D, 5, 1, 2);
+    spc_call(abi_SpcReadPatternWord, 0x0A9D, 5, 1, 2);
     /* 0A9D mov.b x,$42 */
     spc_cyc(3);
     spc.x = spc_nz(spc_rd(spc_dp(0x42)));
@@ -1224,7 +1224,7 @@ L0AA9:
       spc_cyc(2);
       spc.a = spc_nz(spc_rd((uint16_t)(p + spc.y))); }
     /* 0AAB mov.w $0030+y,a */
-    spc_st_cyc((uint16_t)(0x0030 + spc.y), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0030 + spc.y), spc.a, 5, 1);
     /* 0AAE dec y */
     spc.y = spc_dec(spc.y);
     spc_cyc(2);
@@ -1235,7 +1235,7 @@ L0AA9:
     spc.x = spc_nz(0x00);
     spc_cyc(2);
     /* 0AB3 mov $47,#$01 */
-    spc_st_cyc(spc_dp(0x47), 0x01, 4, 1);
+    spc_st(spc_dp(0x47), 0x01, 4, 1);
 L0AB6:
     /* 0AB6 mov.b a,$31+x */
     spc_cyc(4);
@@ -1253,22 +1253,22 @@ L0AB6:
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 0AC1 call $0BBE */
-    spc_call_cyc(abi_SpcSetInstrument, 0x0AC4, 5, 1, 2);
+    spc_call(abi_SpcSetInstrument, 0x0AC4, 5, 1, 2);
 L0AC4:
     /* 0AC4 mov a,#$00 */
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 0AC6 mov.b $80+x,a */
-    spc_st_cyc(spc_dp((uint8_t)(0x80 + spc.x)), spc.a, 4, 1);
+    spc_st(spc_dp((uint8_t)(0x80 + spc.x)), spc.a, 4, 1);
     /* 0AC8 mov.b $90+x,a */
-    spc_st_cyc(spc_dp((uint8_t)(0x90 + spc.x)), spc.a, 4, 1);
+    spc_st(spc_dp((uint8_t)(0x90 + spc.x)), spc.a, 4, 1);
     /* 0ACA mov.b $91+x,a */
-    spc_st_cyc(spc_dp((uint8_t)(0x91 + spc.x)), spc.a, 4, 1);
+    spc_st(spc_dp((uint8_t)(0x91 + spc.x)), spc.a, 4, 1);
     /* 0ACC inc a */
     spc.a = spc_inc(spc.a);
     spc_cyc(2);
     /* 0ACD mov.b $70+x,a */
-    spc_st_cyc(spc_dp((uint8_t)(0x70 + spc.x)), spc.a, 4, 1);
+    spc_st(spc_dp((uint8_t)(0x70 + spc.x)), spc.a, 4, 1);
     /* 0ACF inc x */
     spc.x = spc_inc(spc.x);
     spc_cyc(2);
@@ -1276,7 +1276,7 @@ L0AC4:
     spc.x = spc_inc(spc.x);
     spc_cyc(2);
     /* 0AD1 asl.b $47 */
-    spc_rmw_cyc(spc_dp(0x47), spc_asl, 3, 1);
+    spc_rmw(spc_dp(0x47), spc_asl, 3, 1);
     /* 0AD3 bne $0AB6 */
     if (!spc.z) { spc_cyc(4); goto L0AB6; }
     spc_cyc(2);
@@ -1285,12 +1285,12 @@ L0AD5:
     spc.x = spc_nz(0x00);
     spc_cyc(2);
     /* 0AD7 mov.b $5E,x */
-    spc_st_cyc(spc_dp(0x5E), spc.x, 3, 1);
+    spc_st(spc_dp(0x5E), spc.x, 3, 1);
     /* 0AD9 mov $47,#$01 */
-    spc_st_cyc(spc_dp(0x47), 0x01, 4, 1);
+    spc_st(spc_dp(0x47), 0x01, 4, 1);
 L0ADC:
     /* 0ADC mov.b $44,x */
-    spc_st_cyc(spc_dp(0x44), spc.x, 3, 1);
+    spc_st(spc_dp(0x44), spc.x, 3, 1);
     /* 0ADE mov.b a,$31+x */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(spc_dp((uint8_t)(0x31 + spc.x))));
@@ -1298,13 +1298,13 @@ L0ADC:
     if (spc.z) { spc_cyc(4); goto L0B4F; }
     spc_cyc(2);
     /* 0AE2 dec.b $70+x */
-    spc_rmw_cyc(spc_dp((uint8_t)(0x70 + spc.x)), spc_dec, 4, 1);
+    spc_rmw(spc_dp((uint8_t)(0x70 + spc.x)), spc_dec, 4, 1);
     /* 0AE4 bne $0B49 */
     if (!spc.z) { spc_cyc(4); goto L0B49; }
     spc_cyc(2);
 L0AE6:
     /* 0AE6 call $0BB4 */
-    spc_call_cyc(abi_SpcTrackRead, 0x0AE9, 5, 1, 2);
+    spc_call(abi_SpcTrackRead, 0x0AE9, 5, 1, 2);
     /* 0AE9 bne $0B06 */
     if (!spc.z) { spc_cyc(4); goto L0B06; }
     spc_cyc(2);
@@ -1315,9 +1315,9 @@ L0AE6:
     if (spc.z) { spc_cyc(4); goto L0A8C; }
     spc_cyc(2);
     /* 0AEF call $0D05 */
-    spc_call_cyc(abi_SpcSubroutineRestart, 0x0AF2, 5, 1, 2);
+    spc_call(abi_SpcSubroutineRestart, 0x0AF2, 5, 1, 2);
     /* 0AF2 dec.b $80+x */
-    spc_rmw_cyc(spc_dp((uint8_t)(0x80 + spc.x)), spc_dec, 4, 1);
+    spc_rmw(spc_dp((uint8_t)(0x80 + spc.x)), spc_dec, 4, 1);
     /* 0AF4 bne $0AE6 */
     if (!spc.z) { spc_cyc(4); goto L0AE6; }
     spc_cyc(2);
@@ -1325,18 +1325,18 @@ L0AE6:
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x0230 + spc.x)));
     /* 0AF9 mov.b $30+x,a */
-    spc_st_cyc(spc_dp((uint8_t)(0x30 + spc.x)), spc.a, 4, 1);
+    spc_st(spc_dp((uint8_t)(0x30 + spc.x)), spc.a, 4, 1);
     /* 0AFB mov.w a,$0231+x */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x0231 + spc.x)));
     /* 0AFE mov.b $31+x,a */
-    spc_st_cyc(spc_dp((uint8_t)(0x31 + spc.x)), spc.a, 4, 1);
+    spc_st(spc_dp((uint8_t)(0x31 + spc.x)), spc.a, 4, 1);
     /* 0B00 bra $0AE6 */
     spc_cyc(4);
     goto L0AE6;
 L0B02:
     /* 0B02 clr1 $2C.0 */
-    spc_bit_set_cyc(0x2C, 0, 0, 3, 1);
+    spc_bit_set(0x2C, 0, 0, 3, 1);
     /* 0B04 bra $0A8C */
     spc_cyc(4);
     goto L0A8C;
@@ -1349,9 +1349,9 @@ L0B06:
     if (spc.n) { spc_cyc(4); goto L0B2B; }
     spc_cyc(2);
     /* 0B0B mov.w $0200+x,a */
-    spc_st_cyc((uint16_t)(0x0200 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0200 + spc.x), spc.a, 5, 1);
     /* 0B0E call $0BB4 */
-    spc_call_cyc(abi_SpcTrackRead, 0x0B11, 5, 1, 2);
+    spc_call(abi_SpcTrackRead, 0x0B11, 5, 1, 2);
     /* 0B11 bmi $0B2B */
     if (spc.n) { spc_cyc(4); goto L0B2B; }
     spc_cyc(2);
@@ -1372,7 +1372,7 @@ L0B06:
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x0650 + spc.y)));
     /* 0B1B mov.w $0201+x,a */
-    spc_st_cyc((uint16_t)(0x0201 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0201 + spc.x), spc.a, 5, 1);
     /* 0B1E pop a */
     spc_cyc(4);
     spc.a = spc_pull();
@@ -1386,9 +1386,9 @@ L0B06:
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x0658 + spc.y)));
     /* 0B25 mov.w $0210+x,a */
-    spc_st_cyc((uint16_t)(0x0210 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0210 + spc.x), spc.a, 5, 1);
     /* 0B28 call $0BB4 */
-    spc_call_cyc(abi_SpcTrackRead, 0x0B2B, 5, 1, 2);
+    spc_call(abi_SpcTrackRead, 0x0B2B, 5, 1, 2);
 L0B2B:
     /* 0B2B cmp a,#$E0 */
     spc_cmp(spc.a, 0xE0);
@@ -1397,18 +1397,18 @@ L0B2B:
     if (!spc.c) { spc_cyc(4); goto L0B34; }
     spc_cyc(2);
     /* 0B2F call $0BA2 */
-    spc_call_cyc(abi_SpcVcmdDispatch, 0x0B32, 5, 1, 2);
+    spc_call(abi_SpcVcmdDispatch, 0x0B32, 5, 1, 2);
     /* 0B32 bra $0AE6 */
     spc_cyc(4);
     goto L0AE6;
 L0B34:
     /* 0B34 call $08F3 */
-    spc_call_cyc(abi_SpcNoteOn, 0x0B37, 5, 1, 2);
+    spc_call(abi_SpcNoteOn, 0x0B37, 5, 1, 2);
     /* 0B37 mov.w a,$0200+x */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x0200 + spc.x)));
     /* 0B3A mov.b $70+x,a */
-    spc_st_cyc(spc_dp((uint8_t)(0x70 + spc.x)), spc.a, 4, 1);
+    spc_st(spc_dp((uint8_t)(0x70 + spc.x)), spc.a, 4, 1);
     /* 0B3C mov y,a */
     spc.y = spc_nz(spc.a);
     spc_cyc(2);
@@ -1429,16 +1429,16 @@ L0B34:
     spc_cyc(2);
 L0B45:
     /* 0B45 mov.b $71+x,a */
-    spc_st_cyc(spc_dp((uint8_t)(0x71 + spc.x)), spc.a, 4, 1);
+    spc_st(spc_dp((uint8_t)(0x71 + spc.x)), spc.a, 4, 1);
     /* 0B47 bra $0B4C */
     spc_cyc(4);
     goto L0B4C;
 L0B49:
     /* 0B49 call $0EE4 */
-    spc_call_cyc(abi_SpcVoiceTick, 0x0B4C, 5, 1, 2);
+    spc_call(abi_SpcVoiceTick, 0x0B4C, 5, 1, 2);
 L0B4C:
     /* 0B4C call $0DBC */
-    spc_call_cyc(abi_SpcSlideCheck, 0x0B4F, 5, 1, 2);
+    spc_call(abi_SpcSlideCheck, 0x0B4F, 5, 1, 2);
 L0B4F:
     /* 0B4F inc x */
     spc.x = spc_inc(spc.x);
@@ -1447,7 +1447,7 @@ L0B4F:
     spc.x = spc_inc(spc.x);
     spc_cyc(2);
     /* 0B51 asl.b $47 */
-    spc_rmw_cyc(spc_dp(0x47), spc_asl, 3, 1);
+    spc_rmw(spc_dp(0x47), spc_asl, 3, 1);
     /* 0B53 bne $0ADC */
     if (!spc.z) { spc_cyc(4); goto L0ADC; }
     spc_cyc(2);
@@ -1558,13 +1558,13 @@ L0B8A:
     spc_cyc(1);
     spc_wr(spc_dp(0x59), spc.y);
     /* 0B8C mov $5E,#$FF */
-    spc_st_cyc(spc_dp(0x5E), 0xFF, 4, 1);
+    spc_st(spc_dp(0x5E), 0xFF, 4, 1);
 L0B8F:
     /* 0B8F mov x,#$00 */
     spc.x = spc_nz(0x00);
     spc_cyc(2);
     /* 0B91 mov $47,#$01 */
-    spc_st_cyc(spc_dp(0x47), 0x01, 4, 1);
+    spc_st(spc_dp(0x47), 0x01, 4, 1);
 L0B94:
     /* 0B94 mov.b a,$31+x */
     spc_cyc(4);
@@ -1573,7 +1573,7 @@ L0B94:
     if (spc.z) { spc_cyc(4); goto L0B9B; }
     spc_cyc(2);
     /* 0B98 call $0E1B */
-    spc_call_cyc(abi_SpcVoiceEffects, 0x0B9B, 5, 1, 2);
+    spc_call(abi_SpcVoiceEffects, 0x0B9B, 5, 1, 2);
 L0B9B:
     /* 0B9B inc x */
     spc.x = spc_inc(spc.x);
@@ -1582,42 +1582,42 @@ L0B9B:
     spc.x = spc_inc(spc.x);
     spc_cyc(2);
     /* 0B9D asl.b $47 */
-    spc_rmw_cyc(spc_dp(0x47), spc_asl, 3, 1);
+    spc_rmw(spc_dp(0x47), spc_asl, 3, 1);
     /* 0B9F bne $0B94 */
     if (!spc.z) { spc_cyc(4); goto L0B94; }
     spc_cyc(2);
     /* 0BA1 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L0A04:
     /* 0A04 mov x,#$0E */
     spc.x = spc_nz(0x0E);
     spc_cyc(2);
     /* 0A06 mov $47,#$80 */
-    spc_st_cyc(spc_dp(0x47), 0x80, 4, 1);
+    spc_st(spc_dp(0x47), 0x80, 4, 1);
 L0A09:
     /* 0A09 mov a,#$FF */
     spc.a = spc_nz(0xFF);
     spc_cyc(2);
     /* 0A0B mov.w $0301+x,a */
-    spc_st_cyc((uint16_t)(0x0301 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0301 + spc.x), spc.a, 5, 1);
     /* 0A0E mov a,#$0A */
     spc.a = spc_nz(0x0A);
     spc_cyc(2);
     /* 0A10 call $0C17 */
-    spc_call_cyc(abi_SpcSetPan, 0x0A13, 5, 1, 2);
+    spc_call(abi_SpcSetPan, 0x0A13, 5, 1, 2);
     /* 0A13 mov.w $0211+x,a */
-    spc_st_cyc((uint16_t)(0x0211 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0211 + spc.x), spc.a, 5, 1);
     /* 0A16 mov.w $0381+x,a */
-    spc_st_cyc((uint16_t)(0x0381 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0381 + spc.x), spc.a, 5, 1);
     /* 0A19 mov.w $02F0+x,a */
-    spc_st_cyc((uint16_t)(0x02F0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x02F0 + spc.x), spc.a, 5, 1);
     /* 0A1C mov.w $0280+x,a */
-    spc_st_cyc((uint16_t)(0x0280 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0280 + spc.x), spc.a, 5, 1);
     /* 0A1F mov.b $B1+x,a */
-    spc_st_cyc(spc_dp((uint8_t)(0xB1 + spc.x)), spc.a, 4, 1);
+    spc_st(spc_dp((uint8_t)(0xB1 + spc.x)), spc.a, 4, 1);
     /* 0A21 mov.b $C1+x,a */
-    spc_st_cyc(spc_dp((uint8_t)(0xC1 + spc.x)), spc.a, 4, 1);
+    spc_st(spc_dp((uint8_t)(0xC1 + spc.x)), spc.a, 4, 1);
     /* 0A23 dec x */
     spc.x = spc_dec(spc.x);
     spc_cyc(2);
@@ -1625,36 +1625,36 @@ L0A09:
     spc.x = spc_dec(spc.x);
     spc_cyc(2);
     /* 0A25 lsr.b $47 */
-    spc_rmw_cyc(spc_dp(0x47), spc_lsr, 3, 1);
+    spc_rmw(spc_dp(0x47), spc_lsr, 3, 1);
     /* 0A27 bne $0A09 */
     if (!spc.z) { spc_cyc(4); goto L0A09; }
     spc_cyc(2);
     /* 0A29 mov.b $5A,a */
-    spc_st_cyc(spc_dp(0x5A), spc.a, 3, 1);
+    spc_st(spc_dp(0x5A), spc.a, 3, 1);
     /* 0A2B mov.b $68,a */
-    spc_st_cyc(spc_dp(0x68), spc.a, 3, 1);
+    spc_st(spc_dp(0x68), spc.a, 3, 1);
     /* 0A2D mov.b $54,a */
-    spc_st_cyc(spc_dp(0x54), spc.a, 3, 1);
+    spc_st(spc_dp(0x54), spc.a, 3, 1);
     /* 0A2F mov.b $50,a */
-    spc_st_cyc(spc_dp(0x50), spc.a, 3, 1);
+    spc_st(spc_dp(0x50), spc.a, 3, 1);
     /* 0A31 mov.b $42,a */
-    spc_st_cyc(spc_dp(0x42), spc.a, 3, 1);
+    spc_st(spc_dp(0x42), spc.a, 3, 1);
     /* 0A33 mov.b $5F,a */
-    spc_st_cyc(spc_dp(0x5F), spc.a, 3, 1);
+    spc_st(spc_dp(0x5F), spc.a, 3, 1);
     /* 0A35 mov $59,#$C0 */
-    spc_st_cyc(spc_dp(0x59), 0xC0, 4, 1);
+    spc_st(spc_dp(0x59), 0xC0, 4, 1);
     /* 0A38 mov $53,#$20 */
-    spc_st_cyc(spc_dp(0x53), 0x20, 4, 1);
+    spc_st(spc_dp(0x53), 0x20, 4, 1);
 L0A3B:
     /* 0A3B ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L0A3C:
     /* 0A3C bra $0A60 */
     { spc_cyc(4); abi_SpcMusicPause(); return; }
 L0A3E:
     /* 0A3E mov.w $0584,a */
-    spc_st_cyc(0x0584, spc.a, 4, 1);
+    spc_st(0x0584, spc.a, 4, 1);
     /* 0A41 mov.b a,$1B */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x1B)));
@@ -1662,9 +1662,9 @@ L0A3E:
     if (spc.z) { spc_cyc(4); goto L0A81; }
     spc_cyc(2);
     /* 0A45 mov.b $1C,a */
-    spc_st_cyc(spc_dp(0x1C), spc.a, 3, 1);
+    spc_st(spc_dp(0x1C), spc.a, 3, 1);
     /* 0A47 mov $1B,#$00 */
-    spc_st_cyc(spc_dp(0x1B), 0x00, 4, 1);
+    spc_st(spc_dp(0x1B), 0x00, 4, 1);
     /* 0A4A asl a */
     spc.a = spc_asl(spc.a);
     spc_cyc(2);
@@ -1688,7 +1688,7 @@ L0A3E:
     spc_cyc(1);
     spc_wr(spc_dp(0x41), spc.y);
     /* 0A55 mov $0C,#$02 */
-    spc_st_cyc(spc_dp(0x0C), 0x02, 4, 1);
+    spc_st(spc_dp(0x0C), 0x02, 4, 1);
 L0A58:
     /* 0A58 mov.b a,$1A */
     spc_cyc(3);
@@ -1697,9 +1697,9 @@ L0A58:
     spc.a = spc_eor(spc.a, 0xFF);
     spc_cyc(2);
     /* 0A5C tset $0046,a */
-    spc_tset_cyc(0x0046, 1, 4, 1, 1);
+    spc_tset(0x0046, 1, 4, 1, 1);
     /* 0A5F ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L0A6D:
     /* 0A6D bra $0A04 */
@@ -1758,18 +1758,18 @@ void abi_SpcVcmdDispatch(void)
       spc_cyc(1);
       spc.a = spc_nz(spc_rd(p)); }
     /* 0BB6 inc.b $30+x */
-    spc_rmw_cyc(spc_dp((uint8_t)(0x30 + spc.x)), spc_inc, 4, 1);
+    spc_rmw(spc_dp((uint8_t)(0x30 + spc.x)), spc_inc, 4, 1);
     /* 0BB8 bne $0BBC */
     if (!spc.z) { spc_cyc(4); goto L0BBC; }
     spc_cyc(2);
     /* 0BBA inc.b $31+x */
-    spc_rmw_cyc(spc_dp((uint8_t)(0x31 + spc.x)), spc_inc, 4, 1);
+    spc_rmw(spc_dp((uint8_t)(0x31 + spc.x)), spc_inc, 4, 1);
 L0BBC:
     /* 0BBC mov y,a */
     spc.y = spc_nz(spc.a);
     spc_cyc(2);
     /* 0BBD ret */
-    switch (spc_ret_cyc(4, 1)) {
+    switch (spc_ret(4, 1)) {
     case 0x0BBE: { abi_SpcSetInstrument(); return; }
     case 0x0C17: { abi_SpcSetPan(); return; }
     case 0x0C25: goto L0C25;
@@ -1801,15 +1801,15 @@ L0BBC:
     return;
 L0C25:
     /* 0C25 mov.b $91+x,a */
-    spc_st_cyc(spc_dp((uint8_t)(0x91 + spc.x)), spc.a, 4, 1);
+    spc_st(spc_dp((uint8_t)(0x91 + spc.x)), spc.a, 4, 1);
     /* 0C27 push a */
     spc_cyc(3);
     spc_push(spc.a);
     spc_cyc(1);
     /* 0C28 call $0BB4 */
-    spc_call_cyc(abi_SpcTrackRead, 0x0C2B, 5, 1, 2);
+    spc_call(abi_SpcTrackRead, 0x0C2B, 5, 1, 2);
     /* 0C2B mov.w $0350+x,a */
-    spc_st_cyc((uint16_t)(0x0350 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0350 + spc.x), spc.a, 5, 1);
     /* 0C2E setc */
     spc.c = 1;
     spc_cyc(2);
@@ -1820,42 +1820,42 @@ L0C25:
     spc_cyc(4);
     spc.x = spc_pull();
     /* 0C33 call $0DFF */
-    spc_call_cyc(abi_SpcFadeDelta, 0x0C36, 5, 1, 2);
+    spc_call(abi_SpcFadeDelta, 0x0C36, 5, 1, 2);
     /* 0C36 mov.w $0340+x,a */
-    spc_st_cyc((uint16_t)(0x0340 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0340 + spc.x), spc.a, 5, 1);
     /* 0C39 mov a,y */
     spc.a = spc_nz(spc.y);
     spc_cyc(2);
     /* 0C3A mov.w $0341+x,a */
-    spc_st_cyc((uint16_t)(0x0341 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0341 + spc.x), spc.a, 5, 1);
     /* 0C3D ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L0C3E:
     /* 0C3E mov.w $02B0+x,a */
-    spc_st_cyc((uint16_t)(0x02B0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x02B0 + spc.x), spc.a, 5, 1);
     /* 0C41 call $0BB4 */
-    spc_call_cyc(abi_SpcTrackRead, 0x0C44, 5, 1, 2);
+    spc_call(abi_SpcTrackRead, 0x0C44, 5, 1, 2);
     /* 0C44 mov.w $02A1+x,a */
-    spc_st_cyc((uint16_t)(0x02A1 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x02A1 + spc.x), spc.a, 5, 1);
     /* 0C47 call $0BB4 */
-    spc_call_cyc(abi_SpcTrackRead, 0x0C4A, 5, 1, 2);
+    spc_call(abi_SpcTrackRead, 0x0C4A, 5, 1, 2);
 L0C4A:
     /* 0C4A mov.b $B1+x,a */
-    spc_st_cyc(spc_dp((uint8_t)(0xB1 + spc.x)), spc.a, 4, 1);
+    spc_st(spc_dp((uint8_t)(0xB1 + spc.x)), spc.a, 4, 1);
     /* 0C4C mov.w $02C1+x,a */
-    spc_st_cyc((uint16_t)(0x02C1 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x02C1 + spc.x), spc.a, 5, 1);
     /* 0C4F mov a,#$00 */
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 0C51 mov.w $02B1+x,a */
-    spc_st_cyc((uint16_t)(0x02B1 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x02B1 + spc.x), spc.a, 5, 1);
     /* 0C54 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L0C55:
     /* 0C55 mov.w $02B1+x,a */
-    spc_st_cyc((uint16_t)(0x02B1 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x02B1 + spc.x), spc.a, 5, 1);
     /* 0C58 push a */
     spc_cyc(3);
     spc_push(spc.a);
@@ -1876,9 +1876,9 @@ L0C55:
     spc_cyc(3);
     spc.x = spc_nz(spc_rd(spc_dp(0x44)));
     /* 0C61 mov.w $02C0+x,a */
-    spc_st_cyc((uint16_t)(0x02C0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x02C0 + spc.x), spc.a, 5, 1);
     /* 0C64 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L0C65:
     /* 0C65 mov a,#$00 */
@@ -1892,15 +1892,15 @@ L0C65:
     spc_cyc(1);
     spc_wr(spc_dp(0x59), spc.y);
     /* 0C69 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L0C6A:
     /* 0C6A mov.b $5A,a */
-    spc_st_cyc(spc_dp(0x5A), spc.a, 3, 1);
+    spc_st(spc_dp(0x5A), spc.a, 3, 1);
     /* 0C6C call $0BB4 */
-    spc_call_cyc(abi_SpcTrackRead, 0x0C6F, 5, 1, 2);
+    spc_call(abi_SpcTrackRead, 0x0C6F, 5, 1, 2);
     /* 0C6F mov.b $5B,a */
-    spc_st_cyc(spc_dp(0x5B), spc.a, 3, 1);
+    spc_st(spc_dp(0x5B), spc.a, 3, 1);
     /* 0C71 setc */
     spc.c = 1;
     spc_cyc(2);
@@ -1911,7 +1911,7 @@ L0C6A:
     spc_cyc(3);
     spc.x = spc_nz(spc_rd(spc_dp(0x5A)));
     /* 0C76 call $0DFF */
-    spc_call_cyc(abi_SpcFadeDelta, 0x0C79, 5, 1, 2);
+    spc_call(abi_SpcFadeDelta, 0x0C79, 5, 1, 2);
     /* 0C79 movw $5C,ya */
     spc_cyc(3);
     spc_rd(spc_dp(0x5C));
@@ -1920,7 +1920,7 @@ L0C6A:
     spc_cyc(1);
     spc_wr(spc_dp(0x5D), spc.y);
     /* 0C7B ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L0C7C:
     /* 0C7C mov a,#$00 */
@@ -1934,15 +1934,15 @@ L0C7C:
     spc_cyc(1);
     spc_wr(spc_dp(0x53), spc.y);
     /* 0C80 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L0C81:
     /* 0C81 mov.b $54,a */
-    spc_st_cyc(spc_dp(0x54), spc.a, 3, 1);
+    spc_st(spc_dp(0x54), spc.a, 3, 1);
     /* 0C83 call $0BB4 */
-    spc_call_cyc(abi_SpcTrackRead, 0x0C86, 5, 1, 2);
+    spc_call(abi_SpcTrackRead, 0x0C86, 5, 1, 2);
     /* 0C86 mov.b $55,a */
-    spc_st_cyc(spc_dp(0x55), spc.a, 3, 1);
+    spc_st(spc_dp(0x55), spc.a, 3, 1);
     /* 0C88 setc */
     spc.c = 1;
     spc_cyc(2);
@@ -1953,7 +1953,7 @@ L0C81:
     spc_cyc(3);
     spc.x = spc_nz(spc_rd(spc_dp(0x54)));
     /* 0C8D call $0DFF */
-    spc_call_cyc(abi_SpcFadeDelta, 0x0C90, 5, 1, 2);
+    spc_call(abi_SpcFadeDelta, 0x0C90, 5, 1, 2);
     /* 0C90 movw $56,ya */
     spc_cyc(3);
     spc_rd(spc_dp(0x56));
@@ -1962,34 +1962,34 @@ L0C81:
     spc_cyc(1);
     spc_wr(spc_dp(0x57), spc.y);
     /* 0C92 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L0C93:
     /* 0C93 mov.b $50,a */
-    spc_st_cyc(spc_dp(0x50), spc.a, 3, 1);
+    spc_st(spc_dp(0x50), spc.a, 3, 1);
     /* 0C95 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L0C96:
     /* 0C96 mov.w $02F0+x,a */
-    spc_st_cyc((uint16_t)(0x02F0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x02F0 + spc.x), spc.a, 5, 1);
     /* 0C99 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L0C9A:
     /* 0C9A mov.w $02E0+x,a */
-    spc_st_cyc((uint16_t)(0x02E0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x02E0 + spc.x), spc.a, 5, 1);
     /* 0C9D call $0BB4 */
-    spc_call_cyc(abi_SpcTrackRead, 0x0CA0, 5, 1, 2);
+    spc_call(abi_SpcTrackRead, 0x0CA0, 5, 1, 2);
     /* 0CA0 mov.w $02D1+x,a */
-    spc_st_cyc((uint16_t)(0x02D1 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x02D1 + spc.x), spc.a, 5, 1);
     /* 0CA3 call $0BB4 */
-    spc_call_cyc(abi_SpcTrackRead, 0x0CA6, 5, 1, 2);
+    spc_call(abi_SpcTrackRead, 0x0CA6, 5, 1, 2);
 L0CA6:
     /* 0CA6 mov.b $C1+x,a */
-    spc_st_cyc(spc_dp((uint8_t)(0xC1 + spc.x)), spc.a, 4, 1);
+    spc_st(spc_dp((uint8_t)(0xC1 + spc.x)), spc.a, 4, 1);
     /* 0CA8 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L0CA9:
     /* 0CA9 mov a,#$01 */
@@ -2004,51 +2004,51 @@ L0CAD:
     spc_cyc(2);
 L0CAF:
     /* 0CAF mov.w $0290+x,a */
-    spc_st_cyc((uint16_t)(0x0290 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0290 + spc.x), spc.a, 5, 1);
     /* 0CB2 mov a,y */
     spc.a = spc_nz(spc.y);
     spc_cyc(2);
     /* 0CB3 mov.w $0281+x,a */
-    spc_st_cyc((uint16_t)(0x0281 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0281 + spc.x), spc.a, 5, 1);
     /* 0CB6 call $0BB4 */
-    spc_call_cyc(abi_SpcTrackRead, 0x0CB9, 5, 1, 2);
+    spc_call(abi_SpcTrackRead, 0x0CB9, 5, 1, 2);
     /* 0CB9 mov.w $0280+x,a */
-    spc_st_cyc((uint16_t)(0x0280 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0280 + spc.x), spc.a, 5, 1);
     /* 0CBC call $0BB4 */
-    spc_call_cyc(abi_SpcTrackRead, 0x0CBF, 5, 1, 2);
+    spc_call(abi_SpcTrackRead, 0x0CBF, 5, 1, 2);
     /* 0CBF mov.w $0291+x,a */
-    spc_st_cyc((uint16_t)(0x0291 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0291 + spc.x), spc.a, 5, 1);
     /* 0CC2 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L0CC3:
     /* 0CC3 mov.w $0280+x,a */
-    spc_st_cyc((uint16_t)(0x0280 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0280 + spc.x), spc.a, 5, 1);
     /* 0CC6 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L0CC7:
     /* 0CC7 mov.w $0301+x,a */
-    spc_st_cyc((uint16_t)(0x0301 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0301 + spc.x), spc.a, 5, 1);
     /* 0CCA mov a,#$00 */
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 0CCC mov.w $0300+x,a */
-    spc_st_cyc((uint16_t)(0x0300 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0300 + spc.x), spc.a, 5, 1);
     /* 0CCF ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L0CD0:
     /* 0CD0 mov.b $90+x,a */
-    spc_st_cyc(spc_dp((uint8_t)(0x90 + spc.x)), spc.a, 4, 1);
+    spc_st(spc_dp((uint8_t)(0x90 + spc.x)), spc.a, 4, 1);
     /* 0CD2 push a */
     spc_cyc(3);
     spc_push(spc.a);
     spc_cyc(1);
     /* 0CD3 call $0BB4 */
-    spc_call_cyc(abi_SpcTrackRead, 0x0CD6, 5, 1, 2);
+    spc_call(abi_SpcTrackRead, 0x0CD6, 5, 1, 2);
     /* 0CD6 mov.w $0320+x,a */
-    spc_st_cyc((uint16_t)(0x0320 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0320 + spc.x), spc.a, 5, 1);
     /* 0CD9 setc */
     spc.c = 1;
     spc_cyc(2);
@@ -2059,48 +2059,48 @@ L0CD0:
     spc_cyc(4);
     spc.x = spc_pull();
     /* 0CDE call $0DFF */
-    spc_call_cyc(abi_SpcFadeDelta, 0x0CE1, 5, 1, 2);
+    spc_call(abi_SpcFadeDelta, 0x0CE1, 5, 1, 2);
     /* 0CE1 mov.w $0310+x,a */
-    spc_st_cyc((uint16_t)(0x0310 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0310 + spc.x), spc.a, 5, 1);
     /* 0CE4 mov a,y */
     spc.a = spc_nz(spc.y);
     spc_cyc(2);
     /* 0CE5 mov.w $0311+x,a */
-    spc_st_cyc((uint16_t)(0x0311 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0311 + spc.x), spc.a, 5, 1);
     /* 0CE8 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L0CE9:
     /* 0CE9 mov.w $0381+x,a */
-    spc_st_cyc((uint16_t)(0x0381 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0381 + spc.x), spc.a, 5, 1);
     /* 0CEC ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L0CED:
     /* 0CED mov.w $0240+x,a */
-    spc_st_cyc((uint16_t)(0x0240 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0240 + spc.x), spc.a, 5, 1);
     /* 0CF0 call $0BB4 */
-    spc_call_cyc(abi_SpcTrackRead, 0x0CF3, 5, 1, 2);
+    spc_call(abi_SpcTrackRead, 0x0CF3, 5, 1, 2);
     /* 0CF3 mov.w $0241+x,a */
-    spc_st_cyc((uint16_t)(0x0241 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0241 + spc.x), spc.a, 5, 1);
     /* 0CF6 call $0BB4 */
-    spc_call_cyc(abi_SpcTrackRead, 0x0CF9, 5, 1, 2);
+    spc_call(abi_SpcTrackRead, 0x0CF9, 5, 1, 2);
     /* 0CF9 mov.b $80+x,a */
-    spc_st_cyc(spc_dp((uint8_t)(0x80 + spc.x)), spc.a, 4, 1);
+    spc_st(spc_dp((uint8_t)(0x80 + spc.x)), spc.a, 4, 1);
     /* 0CFB mov.b a,$30+x */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(spc_dp((uint8_t)(0x30 + spc.x))));
     /* 0CFD mov.w $0230+x,a */
-    spc_st_cyc((uint16_t)(0x0230 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0230 + spc.x), spc.a, 5, 1);
     /* 0D00 mov.b a,$31+x */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(spc_dp((uint8_t)(0x31 + spc.x))));
     /* 0D02 mov.w $0231+x,a */
-    spc_st_cyc((uint16_t)(0x0231 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0231 + spc.x), spc.a, 5, 1);
     { abi_SpcSubroutineRestart(); return; }
 L0D10:
     /* 0D10 mov.b $4F,a */
-    spc_st_cyc(spc_dp(0x4F), spc.a, 3, 1);
+    spc_st(spc_dp(0x4F), spc.a, 3, 1);
     /* 0D12 and.b a,$1A */
     spc_cyc(3);
     spc.a = spc_and(spc.a, spc_rd(spc_dp(0x1A)));
@@ -2108,9 +2108,9 @@ L0D10:
     spc_cyc(3);
     spc.a = spc_eor(spc.a, spc_rd(spc_dp(0x4F)));
     /* 0D16 mov.b $4A,a */
-    spc_st_cyc(spc_dp(0x4A), spc.a, 3, 1);
+    spc_st(spc_dp(0x4A), spc.a, 3, 1);
     /* 0D18 call $0BB4 */
-    spc_call_cyc(abi_SpcTrackRead, 0x0D1B, 5, 1, 2);
+    spc_call(abi_SpcTrackRead, 0x0D1B, 5, 1, 2);
     /* 0D1B mov a,#$00 */
     spc.a = spc_nz(0x00);
     spc_cyc(2);
@@ -2122,7 +2122,7 @@ L0D10:
     spc_cyc(1);
     spc_wr(spc_dp(0x61), spc.y);
     /* 0D1F call $0BB4 */
-    spc_call_cyc(abi_SpcTrackRead, 0x0D22, 5, 1, 2);
+    spc_call(abi_SpcTrackRead, 0x0D22, 5, 1, 2);
     /* 0D22 mov a,#$00 */
     spc.a = spc_nz(0x00);
     spc_cyc(2);
@@ -2134,17 +2134,17 @@ L0D10:
     spc_cyc(1);
     spc_wr(spc_dp(0x63), spc.y);
     /* 0D26 clr1 $48.5 */
-    spc_bit_set_cyc(0x48, 5, 0, 3, 1);
+    spc_bit_set(0x48, 5, 0, 3, 1);
     /* 0D28 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L0D29:
     /* 0D29 mov.b $68,a */
-    spc_st_cyc(spc_dp(0x68), spc.a, 3, 1);
+    spc_st(spc_dp(0x68), spc.a, 3, 1);
     /* 0D2B call $0BB4 */
-    spc_call_cyc(abi_SpcTrackRead, 0x0D2E, 5, 1, 2);
+    spc_call(abi_SpcTrackRead, 0x0D2E, 5, 1, 2);
     /* 0D2E mov.b $69,a */
-    spc_st_cyc(spc_dp(0x69), spc.a, 3, 1);
+    spc_st(spc_dp(0x69), spc.a, 3, 1);
     /* 0D30 setc */
     spc.c = 1;
     spc_cyc(2);
@@ -2155,7 +2155,7 @@ L0D29:
     spc_cyc(3);
     spc.x = spc_nz(spc_rd(spc_dp(0x68)));
     /* 0D35 call $0DFF */
-    spc_call_cyc(abi_SpcFadeDelta, 0x0D38, 5, 1, 2);
+    spc_call(abi_SpcFadeDelta, 0x0D38, 5, 1, 2);
     /* 0D38 movw $64,ya */
     spc_cyc(3);
     spc_rd(spc_dp(0x64));
@@ -2164,9 +2164,9 @@ L0D29:
     spc_cyc(1);
     spc_wr(spc_dp(0x65), spc.y);
     /* 0D3A call $0BB4 */
-    spc_call_cyc(abi_SpcTrackRead, 0x0D3D, 5, 1, 2);
+    spc_call(abi_SpcTrackRead, 0x0D3D, 5, 1, 2);
     /* 0D3D mov.b $6A,a */
-    spc_st_cyc(spc_dp(0x6A), spc.a, 3, 1);
+    spc_st(spc_dp(0x6A), spc.a, 3, 1);
     /* 0D3F setc */
     spc.c = 1;
     spc_cyc(2);
@@ -2177,7 +2177,7 @@ L0D29:
     spc_cyc(3);
     spc.x = spc_nz(spc_rd(spc_dp(0x68)));
     /* 0D44 call $0DFF */
-    spc_call_cyc(abi_SpcFadeDelta, 0x0D47, 5, 1, 2);
+    spc_call(abi_SpcFadeDelta, 0x0D47, 5, 1, 2);
     /* 0D47 movw $66,ya */
     spc_cyc(3);
     spc_rd(spc_dp(0x66));
@@ -2186,7 +2186,7 @@ L0D29:
     spc_cyc(1);
     spc_wr(spc_dp(0x67), spc.y);
     /* 0D49 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L0D4A:
     /* 0D4A movw $60,ya */
@@ -2204,19 +2204,19 @@ L0D4A:
     spc_cyc(1);
     spc_wr(spc_dp(0x63), spc.y);
     /* 0D4E set1 $48.5 */
-    spc_bit_set_cyc(0x48, 5, 1, 3, 1);
+    spc_bit_set(0x48, 5, 1, 3, 1);
     /* 0D50 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L0D51:
     /* 0D51 call $0D73 */
-    spc_call_cyc(abi_SpcSetEchoDelay, 0x0D54, 5, 1, 2);
+    spc_call(abi_SpcSetEchoDelay, 0x0D54, 5, 1, 2);
     /* 0D54 call $0BB4 */
-    spc_call_cyc(abi_SpcTrackRead, 0x0D57, 5, 1, 2);
+    spc_call(abi_SpcTrackRead, 0x0D57, 5, 1, 2);
     /* 0D57 mov.b $4E,a */
-    spc_st_cyc(spc_dp(0x4E), spc.a, 3, 1);
+    spc_st(spc_dp(0x4E), spc.a, 3, 1);
     /* 0D59 call $0BB4 */
-    spc_call_cyc(abi_SpcTrackRead, 0x0D5C, 5, 1, 2);
+    spc_call(abi_SpcTrackRead, 0x0D5C, 5, 1, 2);
     /* 0D5C mov y,#$08 */
     spc.y = spc_nz(0x08);
     spc_cyc(2);
@@ -2234,7 +2234,7 @@ L0D62:
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x3FAA + spc.x)));
     /* 0D65 call $09E8 */
-    spc_call_cyc(abi_SpcDspWrite, 0x0D68, 5, 1, 2);
+    spc_call(abi_SpcDspWrite, 0x0D68, 5, 1, 2);
     /* 0D68 inc x */
     spc.x = spc_inc(spc.x);
     spc_cyc(2);
@@ -2257,23 +2257,23 @@ L0D62:
     spc_cyc(3);
     spc.x = spc_nz(spc_rd(spc_dp(0x44)));
     /* 0D72 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L0DB9:
     /* 0DB9 mov.b $5F,a */
-    spc_st_cyc(spc_dp(0x5F), spc.a, 3, 1);
+    spc_st(spc_dp(0x5F), spc.a, 3, 1);
     /* 0DBB ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L0DCC:
     /* 0DCC mov.b $A1+x,a */
-    spc_st_cyc(spc_dp((uint8_t)(0xA1 + spc.x)), spc.a, 4, 1);
+    spc_st(spc_dp((uint8_t)(0xA1 + spc.x)), spc.a, 4, 1);
     /* 0DCE call $0BB4 */
-    spc_call_cyc(abi_SpcTrackRead, 0x0DD1, 5, 1, 2);
+    spc_call(abi_SpcTrackRead, 0x0DD1, 5, 1, 2);
     /* 0DD1 mov.b $A0+x,a */
-    spc_st_cyc(spc_dp((uint8_t)(0xA0 + spc.x)), spc.a, 4, 1);
+    spc_st(spc_dp((uint8_t)(0xA0 + spc.x)), spc.a, 4, 1);
     /* 0DD3 call $0BB4 */
-    spc_call_cyc(abi_SpcTrackRead, 0x0DD6, 5, 1, 2);
+    spc_call(abi_SpcTrackRead, 0x0DD6, 5, 1, 2);
     /* 0DD6 clrc */
     spc.c = 0;
     spc_cyc(2);
@@ -2315,18 +2315,18 @@ void abi_SpcTrackRead(void)
 void abi_SpcTrackAdvance(void)
 {
     /* 0BB6 inc.b $30+x */
-    spc_rmw_cyc(spc_dp((uint8_t)(0x30 + spc.x)), spc_inc, 4, 1);
+    spc_rmw(spc_dp((uint8_t)(0x30 + spc.x)), spc_inc, 4, 1);
     /* 0BB8 bne $0BBC */
     if (!spc.z) { spc_cyc(4); goto L0BBC; }
     spc_cyc(2);
     /* 0BBA inc.b $31+x */
-    spc_rmw_cyc(spc_dp((uint8_t)(0x31 + spc.x)), spc_inc, 4, 1);
+    spc_rmw(spc_dp((uint8_t)(0x31 + spc.x)), spc_inc, 4, 1);
 L0BBC:
     /* 0BBC mov y,a */
     spc.y = spc_nz(spc.a);
     spc_cyc(2);
     /* 0BBD ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -2341,7 +2341,7 @@ L0BBC:
 void abi_SpcSetInstrument(void)
 {
     /* 0BBE mov.w $0211+x,a */
-    spc_st_cyc((uint16_t)(0x0211 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0211 + spc.x), spc.a, 5, 1);
     { abi_SpcLoadInstrument(); return; }
 }
 
@@ -2442,7 +2442,7 @@ L0BCA:
     spc_cyc(4);
     spc_wr_cyc(spc_dp(0x48), spc_and(spc_rd(spc_dp(0x48)), 0x20), 1);
     /* 0BEE tset $0048,a */
-    spc_tset_cyc(0x0048, 1, 4, 1, 1);
+    spc_tset(0x0048, 1, 4, 1, 1);
     /* 0BF1 or $49,$47 */
     spc_cyc(3);
     { uint8_t r = spc_rd(spc_dp(0x47)); uint8_t l = (spc_cyc(2), spc_rd(spc_dp(0x49))); spc_cyc(1); spc_wr(spc_dp(0x49), spc_or(l, r)); }
@@ -2457,7 +2457,7 @@ L0BF7:
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x47)));
     /* 0BF9 tclr $0049,a */
-    spc_tset_cyc(0x0049, 0, 4, 1, 1);
+    spc_tset(0x0049, 0, 4, 1, 1);
 L0BFC:
     /* 0BFC mov a,($14)+y */
     spc_cyc(3);
@@ -2466,9 +2466,9 @@ L0BFC:
       spc.a = spc_nz(spc_rd((uint16_t)(p + spc.y))); }
 L0BFE:
     /* 0BFE mov.w $00F2,x */
-    spc_st_cyc(0x00F2, spc.x, 4, 1);
+    spc_st(0x00F2, spc.x, 4, 1);
     /* 0C01 mov.w $00F3,a */
-    spc_st_cyc(0x00F3, spc.a, 4, 1);
+    spc_st(0x00F3, spc.a, 4, 1);
     /* 0C04 inc x */
     spc.x = spc_inc(spc.x);
     spc_cyc(2);
@@ -2490,7 +2490,7 @@ L0BFE:
       spc_cyc(2);
       spc.a = spc_nz(spc_rd((uint16_t)(p + spc.y))); }
     /* 0C0D mov.w $0221+x,a */
-    spc_st_cyc((uint16_t)(0x0221 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0221 + spc.x), spc.a, 5, 1);
     /* 0C10 inc y */
     spc.y = spc_inc(spc.y);
     spc_cyc(2);
@@ -2500,10 +2500,10 @@ L0BFE:
       spc_cyc(2);
       spc.a = spc_nz(spc_rd((uint16_t)(p + spc.y))); }
     /* 0C13 mov.w $0220+x,a */
-    spc_st_cyc((uint16_t)(0x0220 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0220 + spc.x), spc.a, 5, 1);
 L0C16:
     /* 0C16 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -2518,19 +2518,19 @@ L0C16:
 void abi_SpcSetPan(void)
 {
     /* 0C17 mov.w $0351+x,a */
-    spc_st_cyc((uint16_t)(0x0351 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0351 + spc.x), spc.a, 5, 1);
     /* 0C1A and a,#$1F */
     spc.a = spc_and(spc.a, 0x1F);
     spc_cyc(2);
     /* 0C1C mov.w $0331+x,a */
-    spc_st_cyc((uint16_t)(0x0331 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0331 + spc.x), spc.a, 5, 1);
     /* 0C1F mov a,#$00 */
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 0C21 mov.w $0330+x,a */
-    spc_st_cyc((uint16_t)(0x0330 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0330 + spc.x), spc.a, 5, 1);
     /* 0C24 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -2548,14 +2548,14 @@ void abi_SpcSubroutineRestart(void)
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x0240 + spc.x)));
     /* 0D08 mov.b $30+x,a */
-    spc_st_cyc(spc_dp((uint8_t)(0x30 + spc.x)), spc.a, 4, 1);
+    spc_st(spc_dp((uint8_t)(0x30 + spc.x)), spc.a, 4, 1);
     /* 0D0A mov.w a,$0241+x */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x0241 + spc.x)));
     /* 0D0D mov.b $31+x,a */
-    spc_st_cyc(spc_dp((uint8_t)(0x31 + spc.x)), spc.a, 4, 1);
+    spc_st(spc_dp((uint8_t)(0x31 + spc.x)), spc.a, 4, 1);
     /* 0D0F ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -2570,12 +2570,12 @@ void abi_SpcSubroutineRestart(void)
 void abi_SpcSetEchoDelay(void)
 {
     /* 0D73 mov.b $4D,a */
-    spc_st_cyc(spc_dp(0x4D), spc.a, 3, 1);
+    spc_st(spc_dp(0x4D), spc.a, 3, 1);
     /* 0D75 mov y,#$7D */
     spc.y = spc_nz(0x7D);
     spc_cyc(2);
     /* 0D77 mov.w $00F2,y */
-    spc_st_cyc(0x00F2, spc.y, 4, 1);
+    spc_st(0x00F2, spc.y, 4, 1);
     /* 0D7A mov.w a,$00F3 */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x00F3));
@@ -2603,7 +2603,7 @@ void abi_SpcSetEchoDelay(void)
     spc.a = spc_adc(spc.a, spc_rd(spc_dp(0x4C)));
 L0D8B:
     /* 0D8B mov.b $4C,a */
-    spc_st_cyc(spc_dp(0x4C), spc.a, 3, 1);
+    spc_st(spc_dp(0x4C), spc.a, 3, 1);
     /* 0D8D mov y,#$04 */
     spc.y = spc_nz(0x04);
     spc_cyc(2);
@@ -2612,12 +2612,12 @@ L0D8F:
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x3F9F + spc.y)));
     /* 0D92 mov.w $00F2,a */
-    spc_st_cyc(0x00F2, spc.a, 4, 1);
+    spc_st(0x00F2, spc.a, 4, 1);
     /* 0D95 mov a,#$00 */
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 0D97 mov.w $00F3,a */
-    spc_st_cyc(0x00F3, spc.a, 4, 1);
+    spc_st(0x00F3, spc.a, 4, 1);
     /* 0D9A dbnz y,$0D8F */
     if (--spc.y) { spc_cyc(6); goto L0D8F; }
     spc_cyc(4);
@@ -2631,7 +2631,7 @@ L0D8F:
     spc.y = spc_nz(0x6C);
     spc_cyc(2);
     /* 0DA2 call $09E8 */
-    spc_call_cyc(abi_SpcDspWrite, 0x0DA5, 5, 1, 2);
+    spc_call(abi_SpcDspWrite, 0x0DA5, 5, 1, 2);
     /* 0DA5 mov.b a,$4D */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x4D)));
@@ -2639,7 +2639,7 @@ L0D8F:
     spc.y = spc_nz(0x7D);
     spc_cyc(2);
     /* 0DA9 call $09E8 */
-    spc_call_cyc(abi_SpcDspWrite, 0x0DAC, 5, 1, 2);
+    spc_call(abi_SpcDspWrite, 0x0DAC, 5, 1, 2);
 L0DAC:
     /* 0DAC asl a */
     spc.a = spc_asl(spc.a);
@@ -2694,17 +2694,17 @@ void abi_SpcSlideCheck(void)
     if (!spc.z) { spc_cyc(4); goto L0DF3; }
     spc_cyc(2);
     /* 0DC6 call $0BB6 */
-    spc_call_cyc(abi_SpcTrackAdvance, 0x0DC9, 5, 1, 2);
+    spc_call(abi_SpcTrackAdvance, 0x0DC9, 5, 1, 2);
     /* 0DC9 call $0BB4 */
-    spc_call_cyc(abi_SpcTrackRead, 0x0DCC, 5, 1, 2);
+    spc_call(abi_SpcTrackRead, 0x0DCC, 5, 1, 2);
     /* 0DCC mov.b $A1+x,a */
-    spc_st_cyc(spc_dp((uint8_t)(0xA1 + spc.x)), spc.a, 4, 1);
+    spc_st(spc_dp((uint8_t)(0xA1 + spc.x)), spc.a, 4, 1);
     /* 0DCE call $0BB4 */
-    spc_call_cyc(abi_SpcTrackRead, 0x0DD1, 5, 1, 2);
+    spc_call(abi_SpcTrackRead, 0x0DD1, 5, 1, 2);
     /* 0DD1 mov.b $A0+x,a */
-    spc_st_cyc(spc_dp((uint8_t)(0xA0 + spc.x)), spc.a, 4, 1);
+    spc_st(spc_dp((uint8_t)(0xA0 + spc.x)), spc.a, 4, 1);
     /* 0DD3 call $0BB4 */
-    spc_call_cyc(abi_SpcTrackRead, 0x0DD6, 5, 1, 2);
+    spc_call(abi_SpcTrackRead, 0x0DD6, 5, 1, 2);
     /* 0DD6 clrc */
     spc.c = 0;
     spc_cyc(2);
@@ -2717,7 +2717,7 @@ void abi_SpcSlideCheck(void)
     { abi_SpcSlideToNote(); return; }
 L0DF3:
     /* 0DF3 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -2735,7 +2735,7 @@ void abi_SpcSlideToNote(void)
     spc.a = spc_and(spc.a, 0x7F);
     spc_cyc(2);
     /* 0DDE mov.w $0380+x,a */
-    spc_st_cyc((uint16_t)(0x0380 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0380 + spc.x), spc.a, 5, 1);
     /* 0DE1 setc */
     spc.c = 1;
     spc_cyc(2);
@@ -2753,16 +2753,16 @@ void abi_SpcSlideToNote(void)
     spc_cyc(4);
     spc.x = spc_pull();
     /* 0DE9 call $0DFF */
-    spc_call_cyc(abi_SpcFadeDelta, 0x0DEC, 5, 1, 2);
+    spc_call(abi_SpcFadeDelta, 0x0DEC, 5, 1, 2);
     /* 0DEC mov.w $0370+x,a */
-    spc_st_cyc((uint16_t)(0x0370 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0370 + spc.x), spc.a, 5, 1);
     /* 0DEF mov a,y */
     spc.a = spc_nz(spc.y);
     spc_cyc(2);
     /* 0DF0 mov.w $0371+x,a */
-    spc_st_cyc((uint16_t)(0x0371 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0371 + spc.x), spc.a, 5, 1);
     /* 0DF3 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -2780,14 +2780,14 @@ void abi_SpcLoadPitch(void)
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x0361 + spc.x)));
     /* 0DF7 mov.b $11,a */
-    spc_st_cyc(spc_dp(0x11), spc.a, 3, 1);
+    spc_st(spc_dp(0x11), spc.a, 3, 1);
     /* 0DF9 mov.w a,$0360+x */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x0360 + spc.x)));
     /* 0DFC mov.b $10,a */
-    spc_st_cyc(spc_dp(0x10), spc.a, 3, 1);
+    spc_st(spc_dp(0x10), spc.a, 3, 1);
     /* 0DFE ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -2805,7 +2805,7 @@ void abi_SpcFadeDelta(void)
     spc.c ^= 1;
     spc_cyc(3);
     /* 0E00 ror.b $12 */
-    spc_rmw_cyc(spc_dp(0x12), spc_ror, 3, 1);
+    spc_rmw(spc_dp(0x12), spc_ror, 3, 1);
     /* 0E02 bpl $0E07 */
     if (!spc.n) { spc_cyc(4); goto L0E07; }
     spc_cyc(2);
@@ -2870,7 +2870,7 @@ void abi_SpcNegateIfNeg(void)
     { uint16_t v = spc_rd(spc_dp(0x14)); v |= (spc_cyc(2), spc_rd(spc_dp(0x15))) << 8; spc_set_ya(spc_subw(spc_ya(), v)); }
 L0E1A:
     /* 0E1A ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -2894,7 +2894,7 @@ void abi_SpcVoiceEffects(void)
     spc_cyc(3);
     { uint8_t r = spc_rd(spc_dp(0x47)); uint8_t l = (spc_cyc(2), spc_rd(spc_dp(0x5E))); spc_cyc(1); spc_wr(spc_dp(0x5E), spc_or(l, r)); }
     /* 0E22 dec.b $90+x */
-    spc_rmw_cyc(spc_dp((uint8_t)(0x90 + spc.x)), spc_dec, 4, 1);
+    spc_rmw(spc_dp((uint8_t)(0x90 + spc.x)), spc_dec, 4, 1);
     /* 0E24 bne $0E30 */
     if (!spc.z) { spc_cyc(4); goto L0E30; }
     spc_cyc(2);
@@ -2902,7 +2902,7 @@ void abi_SpcVoiceEffects(void)
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 0E28 mov.w $0300+x,a */
-    spc_st_cyc((uint16_t)(0x0300 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0300 + spc.x), spc.a, 5, 1);
     /* 0E2B mov.w a,$0320+x */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x0320 + spc.x)));
@@ -2920,7 +2920,7 @@ L0E30:
     spc_cyc(5);
     spc.a = spc_adc(spc.a, spc_rd((uint16_t)(0x0310 + spc.x)));
     /* 0E37 mov.w $0300+x,a */
-    spc_st_cyc((uint16_t)(0x0300 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0300 + spc.x), spc.a, 5, 1);
     /* 0E3A mov.w a,$0301+x */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x0301 + spc.x)));
@@ -2929,7 +2929,7 @@ L0E30:
     spc.a = spc_adc(spc.a, spc_rd((uint16_t)(0x0311 + spc.x)));
 L0E40:
     /* 0E40 mov.w $0301+x,a */
-    spc_st_cyc((uint16_t)(0x0301 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0301 + spc.x), spc.a, 5, 1);
 L0E43:
     /* 0E43 mov.b y,$C1+x */
     spc_cyc(4);
@@ -2974,21 +2974,21 @@ L0E5C:
     spc.a = spc_adc(spc.a, spc_rd((uint16_t)(0x02D1 + spc.x)));
 L0E60:
     /* 0E60 mov.w $02D0+x,a */
-    spc_st_cyc((uint16_t)(0x02D0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x02D0 + spc.x), spc.a, 5, 1);
     /* 0E63 call $105C */
-    spc_call_cyc(abi_SpcTremoloFactor, 0x0E66, 5, 1, 2);
+    spc_call(abi_SpcTremoloFactor, 0x0E66, 5, 1, 2);
     /* 0E66 bra $0E6F */
     spc_cyc(4);
     goto L0E6F;
 L0E68:
     /* 0E68 inc.b $C0+x */
-    spc_rmw_cyc(spc_dp((uint8_t)(0xC0 + spc.x)), spc_inc, 4, 1);
+    spc_rmw(spc_dp((uint8_t)(0xC0 + spc.x)), spc_inc, 4, 1);
 L0E6A:
     /* 0E6A mov a,#$FF */
     spc.a = spc_nz(0xFF);
     spc_cyc(2);
     /* 0E6C call $1067 */
-    spc_call_cyc(abi_SpcVolumeCalc, 0x0E6F, 5, 1, 2);
+    spc_call(abi_SpcVolumeCalc, 0x0E6F, 5, 1, 2);
 L0E6F:
     /* 0E6F mov.b a,$91+x */
     spc_cyc(4);
@@ -3000,7 +3000,7 @@ L0E6F:
     spc_cyc(3);
     { uint8_t r = spc_rd(spc_dp(0x47)); uint8_t l = (spc_cyc(2), spc_rd(spc_dp(0x5E))); spc_cyc(1); spc_wr(spc_dp(0x5E), spc_or(l, r)); }
     /* 0E76 dec.b $91+x */
-    spc_rmw_cyc(spc_dp((uint8_t)(0x91 + spc.x)), spc_dec, 4, 1);
+    spc_rmw(spc_dp((uint8_t)(0x91 + spc.x)), spc_dec, 4, 1);
     /* 0E78 bne $0E84 */
     if (!spc.z) { spc_cyc(4); goto L0E84; }
     spc_cyc(2);
@@ -3008,7 +3008,7 @@ L0E6F:
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 0E7C mov.w $0330+x,a */
-    spc_st_cyc((uint16_t)(0x0330 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0330 + spc.x), spc.a, 5, 1);
     /* 0E7F mov.w a,$0350+x */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x0350 + spc.x)));
@@ -3026,7 +3026,7 @@ L0E84:
     spc_cyc(5);
     spc.a = spc_adc(spc.a, spc_rd((uint16_t)(0x0340 + spc.x)));
     /* 0E8B mov.w $0330+x,a */
-    spc_st_cyc((uint16_t)(0x0330 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0330 + spc.x), spc.a, 5, 1);
     /* 0E8E mov.w a,$0331+x */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x0331 + spc.x)));
@@ -3035,7 +3035,7 @@ L0E84:
     spc.a = spc_adc(spc.a, spc_rd((uint16_t)(0x0341 + spc.x)));
 L0E94:
     /* 0E94 mov.w $0331+x,a */
-    spc_st_cyc((uint16_t)(0x0331 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0331 + spc.x), spc.a, 5, 1);
     { abi_SpcVoiceVolumeWrite(); return; }
 }
 
@@ -3077,7 +3077,7 @@ void abi_SpcVoiceVolumeWrite(void)
     { abi_SpcVoiceVolumeLR(); return; }
 L0EE3:
     /* 0EE3 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -3101,7 +3101,7 @@ void abi_SpcVoiceVolumeLR(void)
     spc.a = spc_lsr(spc.a);
     spc_cyc(2);
     /* 0EA9 mov.b $12,a */
-    spc_st_cyc(spc_dp(0x12), spc.a, 3, 1);
+    spc_st(spc_dp(0x12), spc.a, 3, 1);
 L0EAB:
     /* 0EAB mov.b y,$11 */
     spc_cyc(3);
@@ -3173,7 +3173,7 @@ L0ED1:
     spc_cyc(3);
     spc.y = spc_nz(spc_rd(spc_dp(0x12)));
     /* 0ED3 call $09E0 */
-    spc_call_cyc(abi_SpcDspWriteVoice, 0x0ED6, 5, 1, 2);
+    spc_call(abi_SpcDspWriteVoice, 0x0ED6, 5, 1, 2);
     /* 0ED6 mov y,#$14 */
     spc.y = spc_nz(0x14);
     spc_cyc(2);
@@ -3191,13 +3191,13 @@ L0ED1:
     spc_cyc(1);
     spc_wr(spc_dp(0x11), spc.y);
     /* 0EDE inc.b $12 */
-    spc_rmw_cyc(spc_dp(0x12), spc_inc, 3, 1);
+    spc_rmw(spc_dp(0x12), spc_inc, 3, 1);
     /* 0EE0 bbc $12.1,$0EAB */
     spc_cyc(3);
     if (!(spc_rd(spc_dp(0x12)) >> 1 & 1)) { spc_cyc(4); goto L0EAB; }
     spc_cyc(2);
     /* 0EE3 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -3218,7 +3218,7 @@ void abi_SpcVoiceTick(void)
     if (spc.z) { spc_cyc(4); goto L0F4D; }
     spc_cyc(2);
     /* 0EE8 dec.b $71+x */
-    spc_rmw_cyc(spc_dp((uint8_t)(0x71 + spc.x)), spc_dec, 4, 1);
+    spc_rmw(spc_dp((uint8_t)(0x71 + spc.x)), spc_dec, 4, 1);
     /* 0EEA beq $0EF1 */
     if (spc.z) { spc_cyc(4); goto L0EF1; }
     spc_cyc(2);
@@ -3234,7 +3234,7 @@ L0EF1:
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(spc_dp((uint8_t)(0x80 + spc.x))));
     /* 0EF3 mov.b $17,a */
-    spc_st_cyc(spc_dp(0x17), spc.a, 3, 1);
+    spc_st(spc_dp(0x17), spc.a, 3, 1);
     /* 0EF5 mov.b a,$30+x */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(spc_dp((uint8_t)(0x30 + spc.x))));
@@ -3325,7 +3325,7 @@ L0F1F:
     if (spc.z) { spc_cyc(4); goto L0F46; }
     spc_cyc(2);
     /* 0F23 dec.b $17 */
-    spc_rmw_cyc(spc_dp(0x17), spc_dec, 3, 1);
+    spc_rmw(spc_dp(0x17), spc_dec, 3, 1);
     /* 0F25 bne $0F31 */
     if (!spc.z) { spc_cyc(4); goto L0F31; }
     spc_cyc(2);
@@ -3400,10 +3400,10 @@ L0F46:
     spc.y = spc_nz(0x5C);
     spc_cyc(2);
     /* 0F4A call $09E0 */
-    spc_call_cyc(abi_SpcDspWriteVoice, 0x0F4D, 5, 1, 2);
+    spc_call(abi_SpcDspWriteVoice, 0x0F4D, 5, 1, 2);
 L0F4D:
     /* 0F4D clr1 $13.7 */
-    spc_bit_set_cyc(0x13, 7, 0, 3, 1);
+    spc_bit_set(0x13, 7, 0, 3, 1);
     /* 0F4F mov.b a,$A0+x */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(spc_dp((uint8_t)(0xA0 + spc.x))));
@@ -3417,15 +3417,15 @@ L0F4D:
     if (spc.z) { spc_cyc(4); goto L0F5B; }
     spc_cyc(2);
     /* 0F57 dec.b $A1+x */
-    spc_rmw_cyc(spc_dp((uint8_t)(0xA1 + spc.x)), spc_dec, 4, 1);
+    spc_rmw(spc_dp((uint8_t)(0xA1 + spc.x)), spc_dec, 4, 1);
     /* 0F59 bra $0F7F */
     spc_cyc(4);
     goto L0F7F;
 L0F5B:
     /* 0F5B set1 $13.7 */
-    spc_bit_set_cyc(0x13, 7, 1, 3, 1);
+    spc_bit_set(0x13, 7, 1, 3, 1);
     /* 0F5D dec.b $A0+x */
-    spc_rmw_cyc(spc_dp((uint8_t)(0xA0 + spc.x)), spc_dec, 4, 1);
+    spc_rmw(spc_dp((uint8_t)(0xA0 + spc.x)), spc_dec, 4, 1);
     /* 0F5F bne $0F6C */
     if (!spc.z) { spc_cyc(4); goto L0F6C; }
     spc_cyc(2);
@@ -3433,7 +3433,7 @@ L0F5B:
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x0381 + spc.x)));
     /* 0F64 mov.w $0360+x,a */
-    spc_st_cyc((uint16_t)(0x0360 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0360 + spc.x), spc.a, 5, 1);
     /* 0F67 mov.w a,$0380+x */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x0380 + spc.x)));
@@ -3451,7 +3451,7 @@ L0F6C:
     spc_cyc(5);
     spc.a = spc_adc(spc.a, spc_rd((uint16_t)(0x0370 + spc.x)));
     /* 0F73 mov.w $0360+x,a */
-    spc_st_cyc((uint16_t)(0x0360 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0360 + spc.x), spc.a, 5, 1);
     /* 0F76 mov.w a,$0361+x */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x0361 + spc.x)));
@@ -3460,10 +3460,10 @@ L0F6C:
     spc.a = spc_adc(spc.a, spc_rd((uint16_t)(0x0371 + spc.x)));
 L0F7C:
     /* 0F7C mov.w $0361+x,a */
-    spc_st_cyc((uint16_t)(0x0361 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0361 + spc.x), spc.a, 5, 1);
 L0F7F:
     /* 0F7F call $0DF4 */
-    spc_call_cyc(abi_SpcLoadPitch, 0x0F82, 5, 1, 2);
+    spc_call(abi_SpcLoadPitch, 0x0F82, 5, 1, 2);
     /* 0F82 mov.b a,$B1+x */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(spc_dp((uint8_t)(0xB1 + spc.x))));
@@ -3497,7 +3497,7 @@ L0F99:
     spc.p = 1;
     spc_cyc(2);
     /* 0F9A inc.b $00+x */
-    spc_rmw_cyc(spc_dp((uint8_t)(0x00 + spc.x)), spc_inc, 4, 1);
+    spc_rmw(spc_dp((uint8_t)(0x00 + spc.x)), spc_inc, 4, 1);
     /* 0F9C clrp */
     spc.p = 0;
     spc_cyc(2);
@@ -3519,7 +3519,7 @@ L0FA2:
     spc.a = spc_adc(spc.a, spc_rd((uint16_t)(0x02C0 + spc.x)));
 L0FA6:
     /* 0FA6 mov.b $B1+x,a */
-    spc_st_cyc(spc_dp((uint8_t)(0xB1 + spc.x)), spc.a, 4, 1);
+    spc_st(spc_dp((uint8_t)(0xB1 + spc.x)), spc.a, 4, 1);
     /* 0FA8 mov.w a,$02A0+x */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x02A0 + spc.x)));
@@ -3530,9 +3530,9 @@ L0FA6:
     spc_cyc(5);
     spc.a = spc_adc(spc.a, spc_rd((uint16_t)(0x02A1 + spc.x)));
     /* 0FAF mov.w $02A0+x,a */
-    spc_st_cyc((uint16_t)(0x02A0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x02A0 + spc.x), spc.a, 5, 1);
     /* 0FB2 mov.b $12,a */
-    spc_st_cyc(spc_dp(0x12), spc.a, 3, 1);
+    spc_st(spc_dp(0x12), spc.a, 3, 1);
     /* 0FB4 asl a */
     spc.a = spc_asl(spc.a);
     spc_cyc(2);
@@ -3579,21 +3579,21 @@ L0FC6:
     spc_cyc(2);
 L0FCA:
     /* 0FCA call $1047 */
-    spc_call_cyc(abi_SpcAddDelta, 0x0FCD, 5, 1, 2);
+    spc_call(abi_SpcAddDelta, 0x0FCD, 5, 1, 2);
 L0FCD:
     /* 0FCD jmp $095D */
     spc_cyc(3);
     goto L095D;
 L0FD0:
     /* 0FD0 inc.b $B0+x */
-    spc_rmw_cyc(spc_dp((uint8_t)(0xB0 + spc.x)), spc_inc, 4, 1);
+    spc_rmw(spc_dp((uint8_t)(0xB0 + spc.x)), spc_inc, 4, 1);
 L0FD2:
     /* 0FD2 bbs $13.7,$0FCD */
     spc_cyc(3);
     if ((spc_rd(spc_dp(0x13)) >> 7 & 1)) { spc_cyc(4); goto L0FCD; }
     spc_cyc(2);
     /* 0FD5 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L095D:
     /* 095D mov y,#$00 */
@@ -3667,12 +3667,12 @@ L0973:
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x06CE + spc.y)));
     /* 0980 mov.b $15,a */
-    spc_st_cyc(spc_dp(0x15), spc.a, 3, 1);
+    spc_st(spc_dp(0x15), spc.a, 3, 1);
     /* 0982 mov.w a,$06CD+y */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x06CD + spc.y)));
     /* 0985 mov.b $14,a */
-    spc_st_cyc(spc_dp(0x14), spc.a, 3, 1);
+    spc_st(spc_dp(0x14), spc.a, 3, 1);
     /* 0987 mov.w a,$06D0+y */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x06D0 + spc.y)));
@@ -3705,20 +3705,20 @@ L0973:
     spc_cyc(3);
     { uint16_t v = spc_rd(spc_dp(0x14)); v |= (spc_cyc(2), spc_rd(spc_dp(0x15))) << 8; spc_set_ya(spc_addw(spc_ya(), v)); }
     /* 0999 mov.b $15,y */
-    spc_st_cyc(spc_dp(0x15), spc.y, 3, 1);
+    spc_st(spc_dp(0x15), spc.y, 3, 1);
     /* 099B asl a */
     spc.a = spc_asl(spc.a);
     spc_cyc(2);
     /* 099C rol.b $15 */
-    spc_rmw_cyc(spc_dp(0x15), spc_rol, 3, 1);
+    spc_rmw(spc_dp(0x15), spc_rol, 3, 1);
     /* 099E mov.b $14,a */
-    spc_st_cyc(spc_dp(0x14), spc.a, 3, 1);
+    spc_st(spc_dp(0x14), spc.a, 3, 1);
     /* 09A0 bra $09A6 */
     spc_cyc(4);
     goto L09A6;
 L09A2:
     /* 09A2 lsr.b $15 */
-    spc_rmw_cyc(spc_dp(0x15), spc_lsr, 3, 1);
+    spc_rmw(spc_dp(0x15), spc_lsr, 3, 1);
     /* 09A4 ror a */
     spc.a = spc_ror(spc.a);
     spc_cyc(2);
@@ -3733,7 +3733,7 @@ L09A6:
     if (!spc.z) { spc_cyc(4); goto L09A2; }
     spc_cyc(2);
     /* 09AA mov.b $14,a */
-    spc_st_cyc(spc_dp(0x14), spc.a, 3, 1);
+    spc_st(spc_dp(0x14), spc.a, 3, 1);
     /* 09AC pop x */
     spc_cyc(4);
     spc.x = spc_pull();
@@ -3829,7 +3829,7 @@ L09A6:
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x16)));
     /* 09DA call $09E0 */
-    spc_call_cyc(abi_SpcDspWriteVoice, 0x09DD, 5, 1, 2);
+    spc_call(abi_SpcDspWriteVoice, 0x09DD, 5, 1, 2);
     /* 09DD inc y */
     spc.y = spc_inc(spc.y);
     spc_cyc(2);
@@ -3850,7 +3850,7 @@ L09A6:
 void abi_SpcVoiceBetweenTicks(void)
 {
     /* 0FD6 clr1 $13.7 */
-    spc_bit_set_cyc(0x13, 7, 0, 3, 1);
+    spc_bit_set(0x13, 7, 0, 3, 1);
     /* 0FD8 mov.b a,$C1+x */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(spc_dp((uint8_t)(0xC1 + spc.x))));
@@ -3865,7 +3865,7 @@ void abi_SpcVoiceBetweenTicks(void)
     if (spc.a != spc_rd(spc_dp((uint8_t)(0xC0 + spc.x)))) { spc_cyc(4); goto L0FE5; }
     spc_cyc(2);
     /* 0FE2 call $104F */
-    spc_call_cyc(abi_SpcTremoloBetweenTicks, 0x0FE5, 5, 1, 2);
+    spc_call(abi_SpcTremoloBetweenTicks, 0x0FE5, 5, 1, 2);
 L0FE5:
     /* 0FE5 mov.w a,$0331+x */
     spc_cyc(5);
@@ -3899,19 +3899,19 @@ L0FE5:
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x0340 + spc.x)));
     /* 0FF9 call $1031 */
-    spc_call_cyc(abi_SpcAddScaledDelta, 0x0FFC, 5, 1, 2);
+    spc_call(abi_SpcAddScaledDelta, 0x0FFC, 5, 1, 2);
 L0FFC:
     /* 0FFC bbc $13.7,$1002 */
     spc_cyc(3);
     if (!(spc_rd(spc_dp(0x13)) >> 7 & 1)) { spc_cyc(4); goto L1002; }
     spc_cyc(2);
     /* 0FFF call $0EA6 */
-    spc_call_cyc(abi_SpcVoiceVolumeLR, 0x1002, 5, 1, 2);
+    spc_call(abi_SpcVoiceVolumeLR, 0x1002, 5, 1, 2);
 L1002:
     /* 1002 clr1 $13.7 */
-    spc_bit_set_cyc(0x13, 7, 0, 3, 1);
+    spc_bit_set(0x13, 7, 0, 3, 1);
     /* 1004 call $0DF4 */
-    spc_call_cyc(abi_SpcLoadPitch, 0x1007, 5, 1, 2);
+    spc_call(abi_SpcLoadPitch, 0x1007, 5, 1, 2);
     /* 1007 mov.b a,$A0+x */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(spc_dp((uint8_t)(0xA0 + spc.x))));
@@ -3934,7 +3934,7 @@ L1002:
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x0370 + spc.x)));
     /* 1016 call $1031 */
-    spc_call_cyc(abi_SpcAddScaledDelta, 0x1019, 5, 1, 2);
+    spc_call(abi_SpcAddScaledDelta, 0x1019, 5, 1, 2);
 L1019:
     /* 1019 mov.b a,$B1+x */
     spc_cyc(4);
@@ -4042,12 +4042,12 @@ L0973:
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x06CE + spc.y)));
     /* 0980 mov.b $15,a */
-    spc_st_cyc(spc_dp(0x15), spc.a, 3, 1);
+    spc_st(spc_dp(0x15), spc.a, 3, 1);
     /* 0982 mov.w a,$06CD+y */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x06CD + spc.y)));
     /* 0985 mov.b $14,a */
-    spc_st_cyc(spc_dp(0x14), spc.a, 3, 1);
+    spc_st(spc_dp(0x14), spc.a, 3, 1);
     /* 0987 mov.w a,$06D0+y */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x06D0 + spc.y)));
@@ -4080,20 +4080,20 @@ L0973:
     spc_cyc(3);
     { uint16_t v = spc_rd(spc_dp(0x14)); v |= (spc_cyc(2), spc_rd(spc_dp(0x15))) << 8; spc_set_ya(spc_addw(spc_ya(), v)); }
     /* 0999 mov.b $15,y */
-    spc_st_cyc(spc_dp(0x15), spc.y, 3, 1);
+    spc_st(spc_dp(0x15), spc.y, 3, 1);
     /* 099B asl a */
     spc.a = spc_asl(spc.a);
     spc_cyc(2);
     /* 099C rol.b $15 */
-    spc_rmw_cyc(spc_dp(0x15), spc_rol, 3, 1);
+    spc_rmw(spc_dp(0x15), spc_rol, 3, 1);
     /* 099E mov.b $14,a */
-    spc_st_cyc(spc_dp(0x14), spc.a, 3, 1);
+    spc_st(spc_dp(0x14), spc.a, 3, 1);
     /* 09A0 bra $09A6 */
     spc_cyc(4);
     goto L09A6;
 L09A2:
     /* 09A2 lsr.b $15 */
-    spc_rmw_cyc(spc_dp(0x15), spc_lsr, 3, 1);
+    spc_rmw(spc_dp(0x15), spc_lsr, 3, 1);
     /* 09A4 ror a */
     spc.a = spc_ror(spc.a);
     spc_cyc(2);
@@ -4108,7 +4108,7 @@ L09A6:
     if (!spc.z) { spc_cyc(4); goto L09A2; }
     spc_cyc(2);
     /* 09AA mov.b $14,a */
-    spc_st_cyc(spc_dp(0x14), spc.a, 3, 1);
+    spc_st(spc_dp(0x14), spc.a, 3, 1);
     /* 09AC pop x */
     spc_cyc(4);
     spc.x = spc_pull();
@@ -4204,7 +4204,7 @@ L09A6:
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x16)));
     /* 09DA call $09E0 */
-    spc_call_cyc(abi_SpcDspWriteVoice, 0x09DD, 5, 1, 2);
+    spc_call(abi_SpcDspWriteVoice, 0x09DD, 5, 1, 2);
     /* 09DD inc y */
     spc.y = spc_inc(spc.y);
     spc_cyc(2);
@@ -4214,7 +4214,7 @@ L09A6:
     { abi_SpcDspWriteVoice(); return; }
 L0FB2:
     /* 0FB2 mov.b $12,a */
-    spc_st_cyc(spc_dp(0x12), spc.a, 3, 1);
+    spc_st(spc_dp(0x12), spc.a, 3, 1);
     /* 0FB4 asl a */
     spc.a = spc_asl(spc.a);
     spc_cyc(2);
@@ -4261,7 +4261,7 @@ L0FC6:
     spc_cyc(2);
 L0FCA:
     /* 0FCA call $1047 */
-    spc_call_cyc(abi_SpcAddDelta, 0x0FCD, 5, 1, 2);
+    spc_call(abi_SpcAddDelta, 0x0FCD, 5, 1, 2);
 L0FCD:
     /* 0FCD jmp $095D */
     spc_cyc(3);
@@ -4272,7 +4272,7 @@ L0FD2:
     if ((spc_rd(spc_dp(0x13)) >> 7 & 1)) { spc_cyc(4); goto L0FCD; }
     spc_cyc(2);
     /* 0FD5 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -4287,11 +4287,11 @@ L0FD2:
 void abi_SpcAddScaledDelta(void)
 {
     /* 1031 set1 $13.7 */
-    spc_bit_set_cyc(0x13, 7, 1, 3, 1);
+    spc_bit_set(0x13, 7, 1, 3, 1);
     /* 1033 mov.b $12,y */
-    spc_st_cyc(spc_dp(0x12), spc.y, 3, 1);
+    spc_st(spc_dp(0x12), spc.y, 3, 1);
     /* 1035 call $0E11 */
-    spc_call_cyc(abi_SpcNegateIfNeg, 0x1038, 5, 1, 2);
+    spc_call(abi_SpcNegateIfNeg, 0x1038, 5, 1, 2);
     /* 1038 push y */
     spc_cyc(3);
     spc_push(spc.y);
@@ -4303,9 +4303,9 @@ void abi_SpcAddScaledDelta(void)
     spc_mul();
     spc_cyc(9);
     /* 103C mov.b $14,y */
-    spc_st_cyc(spc_dp(0x14), spc.y, 3, 1);
+    spc_st(spc_dp(0x14), spc.y, 3, 1);
     /* 103E mov $15,#$00 */
-    spc_st_cyc(spc_dp(0x15), 0x00, 4, 1);
+    spc_st(spc_dp(0x15), 0x00, 4, 1);
     /* 1041 mov.b y,$51 */
     spc_cyc(3);
     spc.y = spc_nz(spc_rd(spc_dp(0x51)));
@@ -4332,7 +4332,7 @@ void abi_SpcAddScaledDelta(void)
 void abi_SpcAddDelta(void)
 {
     /* 1047 call $0E11 */
-    spc_call_cyc(abi_SpcNegateIfNeg, 0x104A, 5, 1, 2);
+    spc_call(abi_SpcNegateIfNeg, 0x104A, 5, 1, 2);
     /* 104A addw ya,$10 */
     spc_cyc(3);
     { uint16_t v = spc_rd(spc_dp(0x10)); v |= (spc_cyc(2), spc_rd(spc_dp(0x11))) << 8; spc_set_ya(spc_addw(spc_ya(), v)); }
@@ -4344,7 +4344,7 @@ void abi_SpcAddDelta(void)
     spc_cyc(1);
     spc_wr(spc_dp(0x11), spc.y);
     /* 104E ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -4359,7 +4359,7 @@ void abi_SpcAddDelta(void)
 void abi_SpcTremoloBetweenTicks(void)
 {
     /* 104F set1 $13.7 */
-    spc_bit_set_cyc(0x13, 7, 1, 3, 1);
+    spc_bit_set(0x13, 7, 1, 3, 1);
     /* 1051 mov.b y,$51 */
     spc_cyc(3);
     spc.y = spc_nz(spc_rd(spc_dp(0x51)));
@@ -4453,9 +4453,9 @@ void abi_SpcVolumeCalc(void)
     spc.a = spc_nz(spc.y);
     spc_cyc(2);
     /* 1076 mov.w $0321+x,a */
-    spc_st_cyc((uint16_t)(0x0321 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0321 + spc.x), spc.a, 5, 1);
     /* 1079 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -4482,84 +4482,84 @@ void abi_SpcSfxFrame(void)
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x0558));
     /* 10BA mov.b $04,a */
-    spc_st_cyc(spc_dp(0x04), spc.a, 3, 1);
+    spc_st(spc_dp(0x04), spc.a, 3, 1);
     /* 10BC mov.b $00,a */
-    spc_st_cyc(spc_dp(0x00), spc.a, 3, 1);
+    spc_st(spc_dp(0x00), spc.a, 3, 1);
     /* 10BE bra $10C3 */
     spc_cyc(4);
     goto L10C3;
 L10C0:
     /* 10C0 mov $00,#$00 */
-    spc_st_cyc(spc_dp(0x00), 0x00, 4, 1);
+    spc_st(spc_dp(0x00), 0x00, 4, 1);
 L10C3:
     /* 10C3 mov.w a,$0559 */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x0559));
     /* 10C6 mov.b $05,a */
-    spc_st_cyc(spc_dp(0x05), spc.a, 3, 1);
+    spc_st(spc_dp(0x05), spc.a, 3, 1);
     /* 10C8 mov.b $01,a */
-    spc_st_cyc(spc_dp(0x01), spc.a, 3, 1);
+    spc_st(spc_dp(0x01), spc.a, 3, 1);
     /* 10CA mov.w a,$055A */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x055A));
     /* 10CD mov.b $06,a */
-    spc_st_cyc(spc_dp(0x06), spc.a, 3, 1);
+    spc_st(spc_dp(0x06), spc.a, 3, 1);
     /* 10CF mov.b $02,a */
-    spc_st_cyc(spc_dp(0x02), spc.a, 3, 1);
+    spc_st(spc_dp(0x02), spc.a, 3, 1);
     /* 10D1 mov.w a,$055B */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x055B));
     /* 10D4 mov.b $07,a */
-    spc_st_cyc(spc_dp(0x07), spc.a, 3, 1);
+    spc_st(spc_dp(0x07), spc.a, 3, 1);
     /* 10D6 mov.b $03,a */
-    spc_st_cyc(spc_dp(0x03), spc.a, 3, 1);
+    spc_st(spc_dp(0x03), spc.a, 3, 1);
     /* 10D8 bbc $29.1,$10DF */
     spc_cyc(3);
     if (!(spc_rd(spc_dp(0x29)) >> 1 & 1)) { spc_cyc(4); goto L10DF; }
     spc_cyc(2);
     /* 10DB clr1 $29.0 */
-    spc_bit_set_cyc(0x29, 0, 0, 3, 1);
+    spc_bit_set(0x29, 0, 0, 3, 1);
     /* 10DD clr1 $29.1 */
-    spc_bit_set_cyc(0x29, 1, 0, 3, 1);
+    spc_bit_set(0x29, 1, 0, 3, 1);
 L10DF:
     /* 10DF call $111B */
-    spc_call_cyc(abi_SpcPort1Remap, 0x10E2, 5, 1, 2);
+    spc_call(abi_SpcPort1Remap, 0x10E2, 5, 1, 2);
     /* 10E2 call $15C4 */
-    spc_call_cyc(abi_SpcEchoTransition, 0x10E5, 5, 1, 2);
+    spc_call(abi_SpcEchoTransition, 0x10E5, 5, 1, 2);
     /* 10E5 call $1AB0 */
-    spc_call_cyc(abi_SpcMusicFade, 0x10E8, 5, 1, 2);
+    spc_call(abi_SpcMusicFade, 0x10E8, 5, 1, 2);
     /* 10E8 call $17A5 */
-    spc_call_cyc(abi_SpcPortCommand, 0x10EB, 5, 1, 2);
+    spc_call(abi_SpcPortCommand, 0x10EB, 5, 1, 2);
     /* 10EB call $112F */
-    spc_call_cyc(abi_SpcChannelGuards, 0x10EE, 5, 1, 2);
+    spc_call(abi_SpcChannelGuards, 0x10EE, 5, 1, 2);
     /* 10EE call $1B7A */
-    spc_call_cyc(abi_SpcCommandBlock, 0x10F1, 5, 1, 2);
+    spc_call(abi_SpcCommandBlock, 0x10F1, 5, 1, 2);
     /* 10F1 call $1B2C */
-    spc_call_cyc(abi_SpcCommandChannelCheck, 0x10F4, 5, 1, 2);
+    spc_call(abi_SpcCommandChannelCheck, 0x10F4, 5, 1, 2);
     /* 10F4 call $1523 */
-    spc_call_cyc(abi_SpcTempoBend, 0x10F7, 5, 1, 2);
+    spc_call(abi_SpcTempoBend, 0x10F7, 5, 1, 2);
     /* 10F7 call $117C */
-    spc_call_cyc(abi_SpcStaggeredChecks, 0x10FA, 5, 1, 2);
+    spc_call(abi_SpcStaggeredChecks, 0x10FA, 5, 1, 2);
     /* 10FA call $11F8 */
-    spc_call_cyc(abi_SpcGameStateTick, 0x10FD, 5, 1, 2);
+    spc_call(abi_SpcGameStateTick, 0x10FD, 5, 1, 2);
     /* 10FD call $1B92 */
-    spc_call_cyc(abi_SpcSfxHolds, 0x1100, 5, 1, 2);
+    spc_call(abi_SpcSfxHolds, 0x1100, 5, 1, 2);
     /* 1100 call $16F1 */
-    spc_call_cyc(abi_SpcPitchRampB, 0x1103, 5, 1, 2);
+    spc_call(abi_SpcPitchRampB, 0x1103, 5, 1, 2);
     /* 1103 call $174B */
-    spc_call_cyc(abi_SpcPitchRampA, 0x1106, 5, 1, 2);
+    spc_call(abi_SpcPitchRampA, 0x1106, 5, 1, 2);
     /* 1106 call $16C1 */
-    spc_call_cyc(abi_SpcCommandFilter, 0x1109, 5, 1, 2);
+    spc_call(abi_SpcCommandFilter, 0x1109, 5, 1, 2);
     /* 1109 call $13FA */
-    spc_call_cyc(abi_SpcCommand4C, 0x110C, 5, 1, 2);
+    spc_call(abi_SpcCommand4C, 0x110C, 5, 1, 2);
     /* 110C call $1436 */
-    spc_call_cyc(abi_SpcCommandTimers, 0x110F, 5, 1, 2);
+    spc_call(abi_SpcCommandTimers, 0x110F, 5, 1, 2);
     /* 110F call $CAC0 */
-    spc_call_cyc(abi_SpcNoiseSample, 0x1112, 5, 1, 2);
+    spc_call(abi_SpcNoiseSample, 0x1112, 5, 1, 2);
     /* 1112 call $16B1 */
-    spc_call_cyc(abi_SpcPort1Clamp, 0x1115, 5, 1, 2);
+    spc_call(abi_SpcPort1Clamp, 0x1115, 5, 1, 2);
     /* 1115 call $17DF */
-    spc_call_cyc(abi_SpcPort1Command, 0x1118, 5, 1, 2);
+    spc_call(abi_SpcPort1Command, 0x1118, 5, 1, 2);
     /* 1118 jmp $1C07 */
     spc_cyc(3);
     goto L1C07;
@@ -4568,9 +4568,9 @@ L1C07:
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x1D)));
     /* 1C09 call $1424 */
-    spc_call_cyc(abi_SpcSoundQueuePush, 0x1C0C, 5, 1, 2);
+    spc_call(abi_SpcSoundQueuePush, 0x1C0C, 5, 1, 2);
     /* 1C0C mov $1D,#$00 */
-    spc_st_cyc(spc_dp(0x1D), 0x00, 4, 1);
+    spc_st(spc_dp(0x1D), 0x00, 4, 1);
     /* 1C0F cmp $1D,#$00 */
     spc_cyc(4);
     spc_cmp(spc_rd(spc_dp(0x1D)), 0x00);
@@ -4582,7 +4582,7 @@ L1C07:
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 1C16 mov.w $057B,a */
-    spc_st_cyc(0x057B, spc.a, 4, 1);
+    spc_st(0x057B, spc.a, 4, 1);
     /* 1C19 bra $1C25 */
     spc_cyc(4);
     goto L1C25;
@@ -4597,7 +4597,7 @@ L1C1B:
     if (spc.z) { spc_cyc(4); goto L1C25; }
     spc_cyc(2);
     /* 1C22 inc.w $057B */
-    spc_rmw_cyc(0x057B, spc_inc, 4, 1);
+    spc_rmw(0x057B, spc_inc, 4, 1);
 L1C25:
     /* 1C25 cmp $1D,#$00 */
     spc_cyc(4);
@@ -4645,7 +4645,7 @@ L1C3F:
     spc.x = spc_dec(spc.x);
     spc_cyc(2);
     /* 1C43 mov.w $0588+x,a */
-    spc_st_cyc((uint16_t)(0x0588 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0588 + spc.x), spc.a, 5, 1);
     /* 1C46 inc x */
     spc.x = spc_inc(spc.x);
     spc_cyc(2);
@@ -4665,7 +4665,7 @@ L1C3F:
     spc.x = spc_nz(0x00);
     spc_cyc(2);
     /* 1C4F mov.w $057B,x */
-    spc_st_cyc(0x057B, spc.x, 4, 1);
+    spc_st(0x057B, spc.x, 4, 1);
     /* 1C52 bra $1C63 */
     spc_cyc(4);
     goto L1C63;
@@ -4684,7 +4684,7 @@ L1C5A:
     { spc_cyc(3); abi_SpcSfxChannelsFrame(); return; }
 L1C5D:
     /* 1C5D mov.b $1E,a */
-    spc_st_cyc(spc_dp(0x1E), spc.a, 3, 1);
+    spc_st(spc_dp(0x1E), spc.a, 3, 1);
     /* 1C5F mov.b a,$1D */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x1D)));
@@ -4693,28 +4693,28 @@ L1C5D:
     spc_cyc(2);
 L1C63:
     /* 1C63 mov.b $23,a */
-    spc_st_cyc(spc_dp(0x23), spc.a, 3, 1);
+    spc_st(spc_dp(0x23), spc.a, 3, 1);
     /* 1C65 call $1C8A */
-    spc_call_cyc(abi_SpcSfxLookup, 0x1C68, 5, 1, 2);
+    spc_call(abi_SpcSfxLookup, 0x1C68, 5, 1, 2);
     /* 1C68 call $1C9E */
-    spc_call_cyc(abi_SpcSfxChannel, 0x1C6B, 5, 1, 2);
+    spc_call(abi_SpcSfxChannel, 0x1C6B, 5, 1, 2);
     /* 1C6B call $1CA5 */
-    spc_call_cyc(abi_SpcSfxMode, 0x1C6E, 5, 1, 2);
+    spc_call(abi_SpcSfxMode, 0x1C6E, 5, 1, 2);
     /* 1C6E call $1C84 */
-    spc_call_cyc(abi_SpcSfxActivate, 0x1C71, 5, 1, 2);
+    spc_call(abi_SpcSfxActivate, 0x1C71, 5, 1, 2);
     /* 1C71 call $1CED */
-    spc_call_cyc(abi_SpcSfxChannelSave, 0x1C74, 5, 1, 2);
+    spc_call(abi_SpcSfxChannelSave, 0x1C74, 5, 1, 2);
     /* 1C74 mov.b a,$23 */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x23)));
     /* 1C76 mov.w $0410+x,a */
-    spc_st_cyc((uint16_t)(0x0410 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0410 + spc.x), spc.a, 5, 1);
     /* 1C79 push x */
     spc_cyc(3);
     spc_push(spc.x);
     spc_cyc(1);
     /* 1C7A call $1CCD */
-    spc_call_cyc(abi_SpcSfxChannelsFrame, 0x1C7D, 5, 1, 2);
+    spc_call(abi_SpcSfxChannelsFrame, 0x1C7D, 5, 1, 2);
     /* 1C7D pop x */
     spc_cyc(4);
     spc.x = spc_pull();
@@ -4722,9 +4722,9 @@ L1C63:
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 1C80 mov.w $0410+x,a */
-    spc_st_cyc((uint16_t)(0x0410 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0410 + spc.x), spc.a, 5, 1);
     /* 1C83 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -4750,7 +4750,7 @@ void abi_SpcPort1Remap(void)
     if (!spc.z) { spc_cyc(4); goto L1126; }
     spc_cyc(2);
     /* 1123 mov $01,#$12 */
-    spc_st_cyc(spc_dp(0x01), 0x12, 4, 1);
+    spc_st(spc_dp(0x01), 0x12, 4, 1);
 L1126:
     /* 1126 cmp $01,#$0A */
     spc_cyc(4);
@@ -4760,10 +4760,10 @@ L1126:
     if (!spc.z) { spc_cyc(4); goto L112E; }
     spc_cyc(2);
     /* 112B mov $01,#$0C */
-    spc_st_cyc(spc_dp(0x01), 0x0C, 4, 1);
+    spc_st(spc_dp(0x01), 0x0C, 4, 1);
 L112E:
     /* 112E ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -4797,7 +4797,7 @@ void abi_SpcChannelGuards(void)
     { spc_cyc(3); abi_SpcSfxStop(); return; }
 L112E:
     /* 112E ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -4812,7 +4812,7 @@ L112E:
 void abi_SpcStaggeredChecks(void)
 {
     /* 117C inc.w $0581 */
-    spc_rmw_cyc(0x0581, spc_inc, 4, 1);
+    spc_rmw(0x0581, spc_inc, 4, 1);
     /* 117F mov.w a,$0581 */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x0581));
@@ -4862,7 +4862,7 @@ void abi_SpcStaggeredChecks(void)
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 11A0 mov.w $0581,a */
-    spc_st_cyc(0x0581, spc.a, 4, 1);
+    spc_st(0x0581, spc.a, 4, 1);
 L11A3:
     /* 11A3 cmp $1C,#$01 */
     spc_cyc(4);
@@ -4872,10 +4872,10 @@ L11A3:
     if (spc.z) { spc_cyc(4); goto L11AB; }
     spc_cyc(2);
     /* 11A8 mov $2A,#$00 */
-    spc_st_cyc(spc_dp(0x2A), 0x00, 4, 1);
+    spc_st(spc_dp(0x2A), 0x00, 4, 1);
 L11AB:
     /* 11AB ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L11AC:
     /* 11AC bbc $2D.3,$11A3 */
@@ -4892,7 +4892,7 @@ L11AC:
     if (!spc.z) { spc_cyc(4); goto L11A3; }
     spc_cyc(2);
     /* 11B6 mov $20,#$08 */
-    spc_st_cyc(spc_dp(0x20), 0x08, 4, 1);
+    spc_st(spc_dp(0x20), 0x08, 4, 1);
     /* 11B9 jmp $1908 */
     { spc_cyc(3); abi_SpcSfxStopIf(); return; }
 L11BC:
@@ -4901,7 +4901,7 @@ L11BC:
     if ((spc_rd(spc_dp(0x2A)) >> 0 & 1)) { spc_cyc(4); goto L11C5; }
     spc_cyc(2);
     /* 11BF mov $20,#$0C */
-    spc_st_cyc(spc_dp(0x20), 0x0C, 4, 1);
+    spc_st(spc_dp(0x20), 0x0C, 4, 1);
     /* 11C2 jmp $192B */
     spc_cyc(3);
     goto L192B;
@@ -4917,7 +4917,7 @@ L11CA:
     if ((spc_rd(spc_dp(0x2A)) >> 2 & 1)) { spc_cyc(4); goto L11D3; }
     spc_cyc(2);
     /* 11CD mov $20,#$0A */
-    spc_st_cyc(spc_dp(0x20), 0x0A, 4, 1);
+    spc_st(spc_dp(0x20), 0x0A, 4, 1);
     /* 11D0 jmp $1915 */
     spc_cyc(3);
     goto L1915;
@@ -4945,7 +4945,7 @@ L11E1:
     if ((spc_rd(spc_dp(0x2A)) >> 4 & 1)) { spc_cyc(4); goto L11A3; }
     spc_cyc(2);
     /* 11E4 mov $20,#$0B */
-    spc_st_cyc(spc_dp(0x20), 0x0B, 4, 1);
+    spc_st(spc_dp(0x20), 0x0B, 4, 1);
     /* 11E7 jmp $1920 */
     spc_cyc(3);
     goto L1920;
@@ -4955,7 +4955,7 @@ L11EA:
     if ((spc_rd(spc_dp(0x2A)) >> 7 & 1)) { spc_cyc(4); goto L11F3; }
     spc_cyc(2);
     /* 11ED mov $20,#$0E */
-    spc_st_cyc(spc_dp(0x20), 0x0E, 4, 1);
+    spc_st(spc_dp(0x20), 0x0E, 4, 1);
     /* 11F0 jmp $1936 */
     spc_cyc(3);
     goto L1936;
@@ -4967,7 +4967,7 @@ L11F3:
     { spc_cyc(3); abi_SpcSoundQueuePush(); return; }
 L1915:
     /* 1915 clr1 $2A.2 */
-    spc_bit_set_cyc(0x2A, 2, 0, 3, 1);
+    spc_bit_set(0x2A, 2, 0, 3, 1);
     /* 1917 mov.w a,$0395 */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x0395));
@@ -4982,7 +4982,7 @@ L1915:
     goto L193F;
 L1920:
     /* 1920 clr1 $2A.4 */
-    spc_bit_set_cyc(0x2A, 4, 0, 3, 1);
+    spc_bit_set(0x2A, 4, 0, 3, 1);
     /* 1922 mov.w a,$0395 */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x0395));
@@ -4997,7 +4997,7 @@ L1920:
     goto L193F;
 L192B:
     /* 192B clr1 $2A.0 */
-    spc_bit_set_cyc(0x2A, 0, 0, 3, 1);
+    spc_bit_set(0x2A, 0, 0, 3, 1);
     /* 192D mov.w a,$0395 */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x0395));
@@ -5012,7 +5012,7 @@ L192B:
     goto L193F;
 L1936:
     /* 1936 clr1 $2A.7 */
-    spc_bit_set_cyc(0x2A, 7, 0, 3, 1);
+    spc_bit_set(0x2A, 7, 0, 3, 1);
     /* 1938 mov.w a,$0395 */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x0395));
@@ -5036,10 +5036,10 @@ L193F:
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x20)));
     /* 1948 mov.w $03E0+x,a */
-    spc_st_cyc((uint16_t)(0x03E0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03E0 + spc.x), spc.a, 5, 1);
 L194B:
     /* 194B ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L113E:
     /* 113E bbc $2D.5,$116F */
@@ -5115,14 +5115,14 @@ L1158:
     spc_cyc(2);
 L116F:
     /* 116F ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L1170:
     /* 1170 mov x,#$07 */
     spc.x = spc_nz(0x07);
     spc_cyc(2);
     /* 1172 call $194C */
-    spc_call_cyc(abi_SpcSfxStop, 0x1175, 5, 1, 2);
+    spc_call(abi_SpcSfxStop, 0x1175, 5, 1, 2);
     /* 1175 bra $1158 */
     spc_cyc(4);
     goto L1158;
@@ -5158,7 +5158,7 @@ void abi_SpcGameStateTick(void)
     if (!(spc_rd(spc_dp(0x2D)) >> 4 & 1)) { spc_cyc(4); goto L1204; }
     spc_cyc(2);
     /* 1202 set1 $2D.7 */
-    spc_bit_set_cyc(0x2D, 7, 1, 3, 1);
+    spc_bit_set(0x2D, 7, 1, 3, 1);
 L1204:
     /* 1204 mov.w a,$CB10 */
     spc_cyc(4);
@@ -5173,7 +5173,7 @@ L1204:
     spc.a = spc_nz(0x04);
     spc_cyc(2);
     /* 120D clr1 $2D.4 */
-    spc_bit_set_cyc(0x2D, 4, 0, 3, 1);
+    spc_bit_set(0x2D, 4, 0, 3, 1);
     /* 120F bra $1215 */
     spc_cyc(4);
     goto L1215;
@@ -5182,10 +5182,10 @@ L1211:
     spc.a = spc_nz(0x1E);
     spc_cyc(2);
     /* 1213 set1 $2D.4 */
-    spc_bit_set_cyc(0x2D, 4, 1, 3, 1);
+    spc_bit_set(0x2D, 4, 1, 3, 1);
 L1215:
     /* 1215 mov.w $1C05,a */
-    spc_st_cyc(0x1C05, spc.a, 4, 1);
+    spc_st(0x1C05, spc.a, 4, 1);
     /* 1218 mov.w a,$056A */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x056A));
@@ -5196,7 +5196,7 @@ L1215:
     if (spc.z) { spc_cyc(4); goto L1222; }
     spc_cyc(2);
     /* 121F inc.w $056A */
-    spc_rmw_cyc(0x056A, spc_inc, 4, 1);
+    spc_rmw(0x056A, spc_inc, 4, 1);
 L1222:
     /* 1222 mov.b a,$1B */
     spc_cyc(3);
@@ -5215,9 +5215,9 @@ L122A:
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 122C mov.w $056A,a */
-    spc_st_cyc(0x056A, spc.a, 4, 1);
+    spc_st(0x056A, spc.a, 4, 1);
     /* 122F mov.w $056B,a */
-    spc_st_cyc(0x056B, spc.a, 4, 1);
+    spc_st(0x056B, spc.a, 4, 1);
 L1232:
     /* 1232 mov.w a,$056A */
     spc_cyc(4);
@@ -5239,7 +5239,7 @@ L1239:
     if (spc.z) { spc_cyc(4); goto L1243; }
     spc_cyc(2);
     /* 1240 inc.w $056B */
-    spc_rmw_cyc(0x056B, spc_inc, 4, 1);
+    spc_rmw(0x056B, spc_inc, 4, 1);
 L1243:
     /* 1243 cmp $1D,#$35 */
     spc_cyc(4);
@@ -5252,7 +5252,7 @@ L1243:
     spc.a = spc_nz(0xFF);
     spc_cyc(2);
     /* 124A mov.w $056B,a */
-    spc_st_cyc(0x056B, spc.a, 4, 1);
+    spc_st(0x056B, spc.a, 4, 1);
 L124D:
     /* 124D cmp $1B,#$02 */
     spc_cyc(4);
@@ -5265,7 +5265,7 @@ L124D:
     spc.a = spc_nz(0x01);
     spc_cyc(2);
     /* 1254 mov.w $0567,a */
-    spc_st_cyc(0x0567, spc.a, 4, 1);
+    spc_st(0x0567, spc.a, 4, 1);
 L1257:
     /* 1257 mov.w a,$0567 */
     spc_cyc(4);
@@ -5274,7 +5274,7 @@ L1257:
     if (spc.z) { spc_cyc(4); goto L126E; }
     spc_cyc(2);
     /* 125C inc.w $0567 */
-    spc_rmw_cyc(0x0567, spc_inc, 4, 1);
+    spc_rmw(0x0567, spc_inc, 4, 1);
     /* 125F mov.w a,$0567 */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x0567));
@@ -5288,9 +5288,9 @@ L1257:
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 1268 mov.w $0567,a */
-    spc_st_cyc(0x0567, spc.a, 4, 1);
+    spc_st(0x0567, spc.a, 4, 1);
     /* 126B mov $1B,#$03 */
-    spc_st_cyc(spc_dp(0x1B), 0x03, 4, 1);
+    spc_st(spc_dp(0x1B), 0x03, 4, 1);
 L126E:
     /* 126E mov.b a,$53 */
     spc_cyc(3);
@@ -5368,7 +5368,7 @@ L1298:
     goto L129C;
 L129C:
     /* 129C mov.w $0586,a */
-    spc_st_cyc(0x0586, spc.a, 4, 1);
+    spc_st(0x0586, spc.a, 4, 1);
     /* 129F mov.w a,$0397 */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x0397));
@@ -5395,7 +5395,7 @@ L129C:
     spc.a = spc_nz(0x01);
     spc_cyc(2);
     /* 12B2 mov.w $055F,a */
-    spc_st_cyc(0x055F, spc.a, 4, 1);
+    spc_st(0x055F, spc.a, 4, 1);
     /* 12B5 bra $1315 */
     spc_cyc(4);
     goto L1315;
@@ -5407,7 +5407,7 @@ L12B7:
     if (spc.z) { spc_cyc(4); goto L12CA; }
     spc_cyc(2);
     /* 12BC dec.w $0582 */
-    spc_rmw_cyc(0x0582, spc_dec, 4, 1);
+    spc_rmw(0x0582, spc_dec, 4, 1);
     /* 12BF mov.w a,$0582 */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x0582));
@@ -5432,7 +5432,7 @@ L12CA:
     if (!spc.z) { spc_cyc(4); goto L1315; }
     spc_cyc(2);
     /* 12CF inc.w $055F */
-    spc_rmw_cyc(0x055F, spc_inc, 4, 1);
+    spc_rmw(0x055F, spc_inc, 4, 1);
     /* 12D2 mov.w a,$055F */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x055F));
@@ -5443,33 +5443,33 @@ L12CA:
     if (!spc.z) { spc_cyc(4); goto L1315; }
     spc_cyc(2);
     /* 12D9 mov $40,#$48 */
-    spc_st_cyc(spc_dp(0x40), 0x48, 4, 1);
+    spc_st(spc_dp(0x40), 0x48, 4, 1);
     /* 12DC mov $41,#$EE */
-    spc_st_cyc(spc_dp(0x41), 0xEE, 4, 1);
+    spc_st(spc_dp(0x41), 0xEE, 4, 1);
     /* 12DF set1 $2C.0 */
-    spc_bit_set_cyc(0x2C, 0, 1, 3, 1);
+    spc_bit_set(0x2C, 0, 1, 3, 1);
     /* 12E1 mov.w a,$0586 */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x0586));
     /* 12E4 mov.w $0582,a */
-    spc_st_cyc(0x0582, spc.a, 4, 1);
+    spc_st(0x0582, spc.a, 4, 1);
     /* 12E7 mov x,#$00 */
     spc.x = spc_nz(0x00);
     spc_cyc(2);
     /* 12E9 call $1D63 */
-    spc_call_cyc(abi_SpcSfxTakeVoice, 0x12EC, 5, 1, 2);
+    spc_call(abi_SpcSfxTakeVoice, 0x12EC, 5, 1, 2);
     /* 12EC inc x */
     spc.x = spc_inc(spc.x);
     spc_cyc(2);
     /* 12ED call $1D63 */
-    spc_call_cyc(abi_SpcSfxTakeVoice, 0x12F0, 5, 1, 2);
+    spc_call(abi_SpcSfxTakeVoice, 0x12F0, 5, 1, 2);
     /* 12F0 mov.b a,$59 */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x59)));
     /* 12F2 mov.w $0587,a */
-    spc_st_cyc(0x0587, spc.a, 4, 1);
+    spc_st(0x0587, spc.a, 4, 1);
     /* 12F5 mov $59,#$BE */
-    spc_st_cyc(spc_dp(0x59), 0xBE, 4, 1);
+    spc_st(spc_dp(0x59), 0xBE, 4, 1);
     /* 12F8 bra $1315 */
     spc_cyc(4);
     goto L1315;
@@ -5478,29 +5478,29 @@ L12FA:
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x0587));
     /* 12FD mov.b $59,a */
-    spc_st_cyc(spc_dp(0x59), spc.a, 3, 1);
+    spc_st(spc_dp(0x59), spc.a, 3, 1);
     /* 12FF mov x,#$00 */
     spc.x = spc_nz(0x00);
     spc_cyc(2);
     /* 1301 call $1E31 */
-    spc_call_cyc(abi_SpcSfxRelease, 0x1304, 5, 1, 2);
+    spc_call(abi_SpcSfxRelease, 0x1304, 5, 1, 2);
     /* 1304 mov x,#$01 */
     spc.x = spc_nz(0x01);
     spc_cyc(2);
     /* 1306 call $1E31 */
-    spc_call_cyc(abi_SpcSfxRelease, 0x1309, 5, 1, 2);
+    spc_call(abi_SpcSfxRelease, 0x1309, 5, 1, 2);
     /* 1309 bra $1315 */
     spc_cyc(4);
     goto L1315;
 L130B:
     /* 130B inc.b $50 */
-    spc_rmw_cyc(spc_dp(0x50), spc_inc, 3, 1);
+    spc_rmw(spc_dp(0x50), spc_inc, 3, 1);
     /* 130D mov $40,#$48 */
-    spc_st_cyc(spc_dp(0x40), 0x48, 4, 1);
+    spc_st(spc_dp(0x40), 0x48, 4, 1);
     /* 1310 mov $41,#$EE */
-    spc_st_cyc(spc_dp(0x41), 0xEE, 4, 1);
+    spc_st(spc_dp(0x41), 0xEE, 4, 1);
     /* 1313 set1 $2C.0 */
-    spc_bit_set_cyc(0x2C, 0, 1, 3, 1);
+    spc_bit_set(0x2C, 0, 1, 3, 1);
 L1315:
     /* 1315 cmp $01,#$1D */
     spc_cyc(4);
@@ -5519,7 +5519,7 @@ L1315:
     if (!spc.z) { spc_cyc(4); goto L1324; }
     spc_cyc(2);
     /* 1321 mov $01,#$00 */
-    spc_st_cyc(spc_dp(0x01), 0x00, 4, 1);
+    spc_st(spc_dp(0x01), 0x00, 4, 1);
 L1324:
     /* 1324 cmp $1B,#$01 */
     spc_cyc(4);
@@ -5547,7 +5547,7 @@ L1324:
     spc.a = spc_nz(0x02);
     spc_cyc(2);
     /* 1337 call $1424 */
-    spc_call_cyc(abi_SpcSoundQueuePush, 0x133A, 5, 1, 2);
+    spc_call(abi_SpcSoundQueuePush, 0x133A, 5, 1, 2);
 L133A:
     /* 133A mov.w a,$056A */
     spc_cyc(4);
@@ -5584,7 +5584,7 @@ L133A:
     spc.a = spc_nz(0x24);
     spc_cyc(2);
     /* 1354 call $1424 */
-    spc_call_cyc(abi_SpcSoundQueuePush, 0x1357, 5, 1, 2);
+    spc_call(abi_SpcSoundQueuePush, 0x1357, 5, 1, 2);
 L1357:
     /* 1357 cmp $1D,#$39 */
     spc_cyc(4);
@@ -5594,31 +5594,31 @@ L1357:
     if (!spc.z) { spc_cyc(4); goto L1376; }
     spc_cyc(2);
     /* 135C mov $2A,#$00 */
-    spc_st_cyc(spc_dp(0x2A), 0x00, 4, 1);
+    spc_st(spc_dp(0x2A), 0x00, 4, 1);
     /* 135F set1 $2D.3 */
-    spc_bit_set_cyc(0x2D, 3, 1, 3, 1);
+    spc_bit_set(0x2D, 3, 1, 3, 1);
     /* 1361 set1 $2D.6 */
-    spc_bit_set_cyc(0x2D, 6, 1, 3, 1);
+    spc_bit_set(0x2D, 6, 1, 3, 1);
     /* 1363 mov a,#$01 */
     spc.a = spc_nz(0x01);
     spc_cyc(2);
     /* 1365 mov.w $0579,a */
-    spc_st_cyc(0x0579, spc.a, 4, 1);
+    spc_st(0x0579, spc.a, 4, 1);
     /* 1368 mov x,#$07 */
     spc.x = spc_nz(0x07);
     spc_cyc(2);
     /* 136A call $1A92 */
-    spc_call_cyc(abi_SpcSfxStopRequest, 0x136D, 5, 1, 2);
+    spc_call(abi_SpcSfxStopRequest, 0x136D, 5, 1, 2);
     /* 136D dec x */
     spc.x = spc_dec(spc.x);
     spc_cyc(2);
     /* 136E call $1A92 */
-    spc_call_cyc(abi_SpcSfxStopRequest, 0x1371, 5, 1, 2);
+    spc_call(abi_SpcSfxStopRequest, 0x1371, 5, 1, 2);
     /* 1371 mov x,#$08 */
     spc.x = spc_nz(0x08);
     spc_cyc(2);
     /* 1373 call $1908 */
-    spc_call_cyc(abi_SpcSfxStopIf, 0x1376, 5, 1, 2);
+    spc_call(abi_SpcSfxStopIf, 0x1376, 5, 1, 2);
 L1376:
     /* 1376 cmp $1D,#$32 */
     spc_cyc(4);
@@ -5628,40 +5628,40 @@ L1376:
     if (!spc.z) { spc_cyc(4); goto L139C; }
     spc_cyc(2);
     /* 137B set1 $2D.5 */
-    spc_bit_set_cyc(0x2D, 5, 1, 3, 1);
+    spc_bit_set(0x2D, 5, 1, 3, 1);
     /* 137D mov x,#$04 */
     spc.x = spc_nz(0x04);
     spc_cyc(2);
     /* 137F call $194C */
-    spc_call_cyc(abi_SpcSfxStop, 0x1382, 5, 1, 2);
+    spc_call(abi_SpcSfxStop, 0x1382, 5, 1, 2);
     /* 1382 mov a,#$00 */
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 1384 mov.b $2A,a */
-    spc_st_cyc(spc_dp(0x2A), spc.a, 3, 1);
+    spc_st(spc_dp(0x2A), spc.a, 3, 1);
     /* 1386 mov.b $1C,a */
-    spc_st_cyc(spc_dp(0x1C), spc.a, 3, 1);
+    spc_st(spc_dp(0x1C), spc.a, 3, 1);
     /* 1388 call $0A60 */
-    spc_call_cyc(abi_SpcMusicPause, 0x138B, 5, 1, 2);
+    spc_call(abi_SpcMusicPause, 0x138B, 5, 1, 2);
     /* 138B set1 $2D.3 */
-    spc_bit_set_cyc(0x2D, 3, 1, 3, 1);
+    spc_bit_set(0x2D, 3, 1, 3, 1);
     /* 138D set1 $2D.6 */
-    spc_bit_set_cyc(0x2D, 6, 1, 3, 1);
+    spc_bit_set(0x2D, 6, 1, 3, 1);
     /* 138F mov x,#$02 */
     spc.x = spc_nz(0x02);
     spc_cyc(2);
     /* 1391 call $194C */
-    spc_call_cyc(abi_SpcSfxStop, 0x1394, 5, 1, 2);
+    spc_call(abi_SpcSfxStop, 0x1394, 5, 1, 2);
     /* 1394 dec x */
     spc.x = spc_dec(spc.x);
     spc_cyc(2);
     /* 1395 call $194C */
-    spc_call_cyc(abi_SpcSfxStop, 0x1398, 5, 1, 2);
+    spc_call(abi_SpcSfxStop, 0x1398, 5, 1, 2);
     /* 1398 dec x */
     spc.x = spc_dec(spc.x);
     spc_cyc(2);
     /* 1399 call $194C */
-    spc_call_cyc(abi_SpcSfxStop, 0x139C, 5, 1, 2);
+    spc_call(abi_SpcSfxStop, 0x139C, 5, 1, 2);
 L139C:
     /* 139C cmp $1D,#$03 */
     spc_cyc(4);
@@ -5671,23 +5671,23 @@ L139C:
     if (!spc.z) { spc_cyc(4); goto L13B3; }
     spc_cyc(2);
     /* 13A1 set1 $2D.5 */
-    spc_bit_set_cyc(0x2D, 5, 1, 3, 1);
+    spc_bit_set(0x2D, 5, 1, 3, 1);
     /* 13A3 mov x,#$05 */
     spc.x = spc_nz(0x05);
     spc_cyc(2);
     /* 13A5 call $194C */
-    spc_call_cyc(abi_SpcSfxStop, 0x13A8, 5, 1, 2);
+    spc_call(abi_SpcSfxStop, 0x13A8, 5, 1, 2);
     /* 13A8 dec x */
     spc.x = spc_dec(spc.x);
     spc_cyc(2);
     /* 13A9 call $194C */
-    spc_call_cyc(abi_SpcSfxStop, 0x13AC, 5, 1, 2);
+    spc_call(abi_SpcSfxStop, 0x13AC, 5, 1, 2);
     /* 13AC set1 $2D.3 */
-    spc_bit_set_cyc(0x2D, 3, 1, 3, 1);
+    spc_bit_set(0x2D, 3, 1, 3, 1);
     /* 13AE mov $2A,#$00 */
-    spc_st_cyc(spc_dp(0x2A), 0x00, 4, 1);
+    spc_st(spc_dp(0x2A), 0x00, 4, 1);
     /* 13B1 set1 $2D.6 */
-    spc_bit_set_cyc(0x2D, 6, 1, 3, 1);
+    spc_bit_set(0x2D, 6, 1, 3, 1);
 L13B3:
     /* 13B3 mov.w a,$0579 */
     spc_cyc(4);
@@ -5696,7 +5696,7 @@ L13B3:
     if (spc.z) { spc_cyc(4); goto L13CA; }
     spc_cyc(2);
     /* 13B8 inc.w $0579 */
-    spc_rmw_cyc(0x0579, spc_inc, 4, 1);
+    spc_rmw(0x0579, spc_inc, 4, 1);
     /* 13BB mov.w a,$0579 */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x0579));
@@ -5710,12 +5710,12 @@ L13B3:
     if (spc.n) { spc_cyc(4); goto L13CA; }
     spc_cyc(2);
     /* 13C3 set1 $2D.5 */
-    spc_bit_set_cyc(0x2D, 5, 1, 3, 1);
+    spc_bit_set(0x2D, 5, 1, 3, 1);
     /* 13C5 mov a,#$00 */
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 13C7 mov.w $0579,a */
-    spc_st_cyc(0x0579, spc.a, 4, 1);
+    spc_st(0x0579, spc.a, 4, 1);
 L13CA:
     /* 13CA mov.w a,$0395 */
     spc_cyc(4);
@@ -5755,7 +5755,7 @@ L13D7:
     goto L13E6;
 L13E3:
     /* 13E3 mov $01,#$00 */
-    spc_st_cyc(spc_dp(0x01), 0x00, 4, 1);
+    spc_st(spc_dp(0x01), 0x00, 4, 1);
 L13E6:
     /* 13E6 mov.w a,$0397 */
     spc_cyc(4);
@@ -5779,10 +5779,10 @@ L13E6:
     spc.x = spc_nz(0x04);
     spc_cyc(2);
     /* 13F6 call $194C */
-    spc_call_cyc(abi_SpcSfxStop, 0x13F9, 5, 1, 2);
+    spc_call(abi_SpcSfxStop, 0x13F9, 5, 1, 2);
 L13F9:
     /* 13F9 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -5807,43 +5807,43 @@ void abi_SpcCommand4C(void)
     spc.x = spc_nz(0x07);
     spc_cyc(2);
     /* 1401 call $1A92 */
-    spc_call_cyc(abi_SpcSfxStopRequest, 0x1404, 5, 1, 2);
+    spc_call(abi_SpcSfxStopRequest, 0x1404, 5, 1, 2);
     /* 1404 dec x */
     spc.x = spc_dec(spc.x);
     spc_cyc(2);
     /* 1405 call $1A92 */
-    spc_call_cyc(abi_SpcSfxStopRequest, 0x1408, 5, 1, 2);
+    spc_call(abi_SpcSfxStopRequest, 0x1408, 5, 1, 2);
     /* 1408 dec x */
     spc.x = spc_dec(spc.x);
     spc_cyc(2);
     /* 1409 call $194C */
-    spc_call_cyc(abi_SpcSfxStop, 0x140C, 5, 1, 2);
+    spc_call(abi_SpcSfxStop, 0x140C, 5, 1, 2);
     /* 140C dec x */
     spc.x = spc_dec(spc.x);
     spc_cyc(2);
     /* 140D call $194C */
-    spc_call_cyc(abi_SpcSfxStop, 0x1410, 5, 1, 2);
+    spc_call(abi_SpcSfxStop, 0x1410, 5, 1, 2);
     /* 1410 dec x */
     spc.x = spc_dec(spc.x);
     spc_cyc(2);
     /* 1411 call $194C */
-    spc_call_cyc(abi_SpcSfxStop, 0x1414, 5, 1, 2);
+    spc_call(abi_SpcSfxStop, 0x1414, 5, 1, 2);
     /* 1414 mov a,#$01 */
     spc.a = spc_nz(0x01);
     spc_cyc(2);
     /* 1416 mov.w $0579,a */
-    spc_st_cyc(0x0579, spc.a, 4, 1);
+    spc_st(0x0579, spc.a, 4, 1);
     /* 1419 set1 $2D.3 */
-    spc_bit_set_cyc(0x2D, 3, 1, 3, 1);
+    spc_bit_set(0x2D, 3, 1, 3, 1);
     /* 141B mov $2A,#$00 */
-    spc_st_cyc(spc_dp(0x2A), 0x00, 4, 1);
+    spc_st(spc_dp(0x2A), 0x00, 4, 1);
     /* 141E call $0A60 */
-    spc_call_cyc(abi_SpcMusicPause, 0x1421, 5, 1, 2);
+    spc_call(abi_SpcMusicPause, 0x1421, 5, 1, 2);
     /* 1421 set1 $2D.6 */
-    spc_bit_set_cyc(0x2D, 6, 1, 3, 1);
+    spc_bit_set(0x2D, 6, 1, 3, 1);
 L1423:
     /* 1423 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -5886,12 +5886,12 @@ L1430:
     spc_cyc(4);
     spc.a = spc_pull();
     /* 1431 mov.w $0588+x,a */
-    spc_st_cyc((uint16_t)(0x0588 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0588 + spc.x), spc.a, 5, 1);
     /* 1434 pop x */
     spc_cyc(4);
     spc.x = spc_pull();
     /* 1435 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -5920,7 +5920,7 @@ void abi_SpcCommandTimers(void)
     spc.a = spc_nz(0x01);
     spc_cyc(2);
     /* 1440 mov.w $0568,a */
-    spc_st_cyc(0x0568, spc.a, 4, 1);
+    spc_st(0x0568, spc.a, 4, 1);
 L1443:
     /* 1443 mov.w a,$0568 */
     spc_cyc(4);
@@ -5929,7 +5929,7 @@ L1443:
     if (spc.z) { spc_cyc(4); goto L144B; }
     spc_cyc(2);
     /* 1448 inc.w $0568 */
-    spc_rmw_cyc(0x0568, spc_inc, 4, 1);
+    spc_rmw(0x0568, spc_inc, 4, 1);
 L144B:
     /* 144B mov.w a,$0568 */
     spc_cyc(4);
@@ -5983,13 +5983,13 @@ L146B:
     spc_cyc(2);
 L146D:
     /* 146D call $1424 */
-    spc_call_cyc(abi_SpcSoundQueuePush, 0x1470, 5, 1, 2);
+    spc_call(abi_SpcSoundQueuePush, 0x1470, 5, 1, 2);
 L1470:
     /* 1470 mov a,#$00 */
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 1472 mov.w $0568,a */
-    spc_st_cyc(0x0568, spc.a, 4, 1);
+    spc_st(0x0568, spc.a, 4, 1);
 L1475:
     /* 1475 cmp $1D,#$20 */
     spc_cyc(4);
@@ -6010,13 +6010,13 @@ L1475:
     goto L14A3;
 L1481:
     /* 1481 set1 $2C.4 */
-    spc_bit_set_cyc(0x2C, 4, 1, 3, 1);
+    spc_bit_set(0x2C, 4, 1, 3, 1);
     /* 1483 bra $1487 */
     spc_cyc(4);
     goto L1487;
 L1485:
     /* 1485 set1 $2C.5 */
-    spc_bit_set_cyc(0x2C, 5, 1, 3, 1);
+    spc_bit_set(0x2C, 5, 1, 3, 1);
 L1487:
     /* 1487 mov.w a,$0397 */
     spc_cyc(4);
@@ -6041,19 +6041,19 @@ L1487:
     spc_cyc(2);
 L1496:
     /* 1496 mov $1D,#$1B */
-    spc_st_cyc(spc_dp(0x1D), 0x1B, 4, 1);
+    spc_st(spc_dp(0x1D), 0x1B, 4, 1);
     /* 1499 bra $149E */
     spc_cyc(4);
     goto L149E;
 L149B:
     /* 149B mov $1D,#$27 */
-    spc_st_cyc(spc_dp(0x1D), 0x27, 4, 1);
+    spc_st(spc_dp(0x1D), 0x27, 4, 1);
 L149E:
     /* 149E mov a,#$01 */
     spc.a = spc_nz(0x01);
     spc_cyc(2);
     /* 14A0 mov.w $055D,a */
-    spc_st_cyc(0x055D, spc.a, 4, 1);
+    spc_st(0x055D, spc.a, 4, 1);
 L14A3:
     /* 14A3 mov.w a,$055D */
     spc_cyc(4);
@@ -6062,7 +6062,7 @@ L14A3:
     if (spc.z) { spc_cyc(4); goto L14AB; }
     spc_cyc(2);
     /* 14A8 inc.w $055D */
-    spc_rmw_cyc(0x055D, spc_inc, 4, 1);
+    spc_rmw(0x055D, spc_inc, 4, 1);
 L14AB:
     /* 14AB mov.w a,$055D */
     spc_cyc(4);
@@ -6077,7 +6077,7 @@ L14AB:
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 14B4 mov.w $055D,a */
-    spc_st_cyc(0x055D, spc.a, 4, 1);
+    spc_st(0x055D, spc.a, 4, 1);
     /* 14B7 bbs $2C.4,$14BF */
     spc_cyc(3);
     if ((spc_rd(spc_dp(0x2C)) >> 4 & 1)) { spc_cyc(4); goto L14BF; }
@@ -6091,23 +6091,23 @@ L14AB:
     goto L14CF;
 L14BF:
     /* 14BF clr1 $2C.4 */
-    spc_bit_set_cyc(0x2C, 4, 0, 3, 1);
+    spc_bit_set(0x2C, 4, 0, 3, 1);
     /* 14C1 mov a,#$20 */
     spc.a = spc_nz(0x20);
     spc_cyc(2);
     /* 14C3 call $1424 */
-    spc_call_cyc(abi_SpcSoundQueuePush, 0x14C6, 5, 1, 2);
+    spc_call(abi_SpcSoundQueuePush, 0x14C6, 5, 1, 2);
     /* 14C6 bra $14CF */
     spc_cyc(4);
     goto L14CF;
 L14C8:
     /* 14C8 clr1 $2C.5 */
-    spc_bit_set_cyc(0x2C, 5, 0, 3, 1);
+    spc_bit_set(0x2C, 5, 0, 3, 1);
     /* 14CA mov a,#$16 */
     spc.a = spc_nz(0x16);
     spc_cyc(2);
     /* 14CC call $1424 */
-    spc_call_cyc(abi_SpcSoundQueuePush, 0x14CF, 5, 1, 2);
+    spc_call(abi_SpcSoundQueuePush, 0x14CF, 5, 1, 2);
 L14CF:
     /* 14CF cmp $1D,#$37 */
     spc_cyc(4);
@@ -6117,7 +6117,7 @@ L14CF:
     if (!spc.z) { spc_cyc(4); goto L14D7; }
     spc_cyc(2);
     /* 14D4 inc.w $0580 */
-    spc_rmw_cyc(0x0580, spc_inc, 4, 1);
+    spc_rmw(0x0580, spc_inc, 4, 1);
 L14D7:
     /* 14D7 cmp $1D,#$30 */
     spc_cyc(4);
@@ -6139,13 +6139,13 @@ L14D7:
     spc.a = spc_nz(0x43);
     spc_cyc(2);
     /* 14E5 call $1424 */
-    spc_call_cyc(abi_SpcSoundQueuePush, 0x14E8, 5, 1, 2);
+    spc_call(abi_SpcSoundQueuePush, 0x14E8, 5, 1, 2);
 L14E8:
     /* 14E8 mov a,#$00 */
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 14EA mov.w $0580,a */
-    spc_st_cyc(0x0580, spc.a, 4, 1);
+    spc_st(0x0580, spc.a, 4, 1);
 L14ED:
     /* 14ED mov.w a,$0560 */
     spc_cyc(4);
@@ -6170,7 +6170,7 @@ L14FA:
     spc.a = spc_nz(0x01);
     spc_cyc(2);
     /* 14FC mov.w $0560,a */
-    spc_st_cyc(0x0560, spc.a, 4, 1);
+    spc_st(0x0560, spc.a, 4, 1);
     /* 14FF mov.b a,$18 */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x18)));
@@ -6181,13 +6181,13 @@ L14FA:
     spc.a = spc_adc(spc.a, 0x1E);
     spc_cyc(2);
     /* 1505 mov.w $0561,a */
-    spc_st_cyc(0x0561, spc.a, 4, 1);
+    spc_st(0x0561, spc.a, 4, 1);
     /* 1508 bra $1522 */
     spc_cyc(4);
     goto L1522;
 L150A:
     /* 150A inc.w $0560 */
-    spc_rmw_cyc(0x0560, spc_inc, 4, 1);
+    spc_rmw(0x0560, spc_inc, 4, 1);
     /* 150D cmp.w a,$0561 */
     spc_cyc(4);
     spc_cmp(spc.a, spc_rd(0x0561));
@@ -6198,23 +6198,23 @@ L150A:
     spc.a = spc_nz(0x29);
     spc_cyc(2);
     /* 1514 call $1424 */
-    spc_call_cyc(abi_SpcSoundQueuePush, 0x1517, 5, 1, 2);
+    spc_call(abi_SpcSoundQueuePush, 0x1517, 5, 1, 2);
     /* 1517 mov $1D,#$29 */
-    spc_st_cyc(spc_dp(0x1D), 0x29, 4, 1);
+    spc_st(spc_dp(0x1D), 0x29, 4, 1);
     /* 151A mov a,#$00 */
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 151C mov.w $0560,a */
-    spc_st_cyc(0x0560, spc.a, 4, 1);
+    spc_st(0x0560, spc.a, 4, 1);
     /* 151F mov.w $0561,a */
-    spc_st_cyc(0x0561, spc.a, 4, 1);
+    spc_st(0x0561, spc.a, 4, 1);
 L1522:
     /* 1522 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L1435:
     /* 1435 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -6229,7 +6229,7 @@ L1435:
 void abi_SpcTempoBend(void)
 {
     /* 1523 call $15A1 */
-    spc_call_cyc(abi_SpcTempoBendStart, 0x1526, 5, 1, 2);
+    spc_call(abi_SpcTempoBendStart, 0x1526, 5, 1, 2);
     /* 1526 bbs $2C.2,$152D */
     spc_cyc(3);
     if ((spc_rd(spc_dp(0x2C)) >> 2 & 1)) { spc_cyc(4); goto L152D; }
@@ -6240,7 +6240,7 @@ void abi_SpcTempoBend(void)
     spc_cyc(2);
 L152C:
     /* 152C ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L152D:
     /* 152D mov.w a,$0555 */
@@ -6260,25 +6260,25 @@ L152D:
     goto L156C;
 L1538:
     /* 1538 clr1 $2C.2 */
-    spc_bit_set_cyc(0x2C, 2, 0, 3, 1);
+    spc_bit_set(0x2C, 2, 0, 3, 1);
     /* 153A clr1 $2C.3 */
-    spc_bit_set_cyc(0x2C, 3, 0, 3, 1);
+    spc_bit_set(0x2C, 3, 0, 3, 1);
     /* 153C mov a,#$00 */
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 153E mov.w $0555,a */
-    spc_st_cyc(0x0555, spc.a, 4, 1);
+    spc_st(0x0555, spc.a, 4, 1);
     /* 1541 mov.w $0553,a */
-    spc_st_cyc(0x0553, spc.a, 4, 1);
+    spc_st(0x0553, spc.a, 4, 1);
     /* 1544 mov.w $0554,a */
-    spc_st_cyc(0x0554, spc.a, 4, 1);
+    spc_st(0x0554, spc.a, 4, 1);
     /* 1547 mov.w $0569,a */
-    spc_st_cyc(0x0569, spc.a, 4, 1);
+    spc_st(0x0569, spc.a, 4, 1);
     /* 154A mov.w a,$0578 */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x0578));
     /* 154D mov.b $50,a */
-    spc_st_cyc(spc_dp(0x50), spc.a, 3, 1);
+    spc_st(spc_dp(0x50), spc.a, 3, 1);
     /* 154F mov.w a,$0566 */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x0566));
@@ -6290,17 +6290,17 @@ L1554:
     spc.a = spc_nz(0x04);
     spc_cyc(2);
     /* 1556 mov.w $0554,a */
-    spc_st_cyc(0x0554, spc.a, 4, 1);
+    spc_st(0x0554, spc.a, 4, 1);
     /* 1559 mov.b a,$53 */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x53)));
     /* 155B mov.w $0566,a */
-    spc_st_cyc(0x0566, spc.a, 4, 1);
+    spc_st(0x0566, spc.a, 4, 1);
     /* 155E mov.b a,$50 */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x50)));
     /* 1560 mov.w $0578,a */
-    spc_st_cyc(0x0578, spc.a, 4, 1);
+    spc_st(0x0578, spc.a, 4, 1);
     /* 1563 mov y,#$7F */
     spc.y = spc_nz(0x7F);
     spc_cyc(2);
@@ -6314,10 +6314,10 @@ L1554:
     spc_div();
     spc_cyc(12);
     /* 1569 mov.w $0569,a */
-    spc_st_cyc(0x0569, spc.a, 4, 1);
+    spc_st(0x0569, spc.a, 4, 1);
 L156C:
     /* 156C inc.w $0555 */
-    spc_rmw_cyc(0x0555, spc_inc, 4, 1);
+    spc_rmw(0x0555, spc_inc, 4, 1);
     /* 156F mov.w a,$0555 */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x0555));
@@ -6331,7 +6331,7 @@ L156C:
     spc_div();
     spc_cyc(12);
     /* 1577 mov.b $20,a */
-    spc_st_cyc(spc_dp(0x20), spc.a, 3, 1);
+    spc_st(spc_dp(0x20), spc.a, 3, 1);
     /* 1579 setc */
     spc.c = 1;
     spc_cyc(2);
@@ -6342,14 +6342,14 @@ L156C:
     spc_cyc(3);
     spc.a = spc_sbc(spc.a, spc_rd(spc_dp(0x20)));
     /* 157F mov.b $50,a */
-    spc_st_cyc(spc_dp(0x50), spc.a, 3, 1);
+    spc_st(spc_dp(0x50), spc.a, 3, 1);
     /* 1581 mov.w a,$0569 */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x0569));
     /* 1584 mov.b $20,a */
-    spc_st_cyc(spc_dp(0x20), spc.a, 3, 1);
+    spc_st(spc_dp(0x20), spc.a, 3, 1);
     /* 1586 mov $21,#$00 */
-    spc_st_cyc(spc_dp(0x21), 0x00, 4, 1);
+    spc_st(spc_dp(0x21), 0x00, 4, 1);
     /* 1589 mov.w a,$0553 */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x0553));
@@ -6360,9 +6360,9 @@ L156C:
     spc_cyc(3);
     { uint16_t v = spc_rd(spc_dp(0x20)); v |= (spc_cyc(2), spc_rd(spc_dp(0x21))) << 8; spc_set_ya(spc_addw(spc_ya(), v)); }
     /* 1591 mov.w $0553,a */
-    spc_st_cyc(0x0553, spc.a, 4, 1);
+    spc_st(0x0553, spc.a, 4, 1);
     /* 1594 mov.w $0554,y */
-    spc_st_cyc(0x0554, spc.y, 4, 1);
+    spc_st(0x0554, spc.y, 4, 1);
     /* 1597 mov.w a,$0566 */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x0566));
@@ -6374,9 +6374,9 @@ L156C:
     spc.a = spc_sbc(spc.a, spc_rd(0x0554));
 L159E:
     /* 159E mov.b $53,a */
-    spc_st_cyc(spc_dp(0x53), spc.a, 3, 1);
+    spc_st(spc_dp(0x53), spc.a, 3, 1);
     /* 15A0 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -6418,7 +6418,7 @@ void abi_SpcTempoBendStart(void)
     if (spc.z) { spc_cyc(4); goto L15BF; }
     spc_cyc(2);
     /* 15B4 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L15B5:
     /* 15B5 cmp $1C,#$01 */
@@ -6429,20 +6429,20 @@ L15B5:
     if (!spc.z) { spc_cyc(4); goto L15BE; }
     spc_cyc(2);
     /* 15BA set1 $2C.2 */
-    spc_bit_set_cyc(0x2C, 2, 1, 3, 1);
+    spc_bit_set(0x2C, 2, 1, 3, 1);
     /* 15BC clr1 $2C.3 */
-    spc_bit_set_cyc(0x2C, 3, 0, 3, 1);
+    spc_bit_set(0x2C, 3, 0, 3, 1);
 L15BE:
     /* 15BE ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L15BF:
     /* 15BF clr1 $2C.2 */
-    spc_bit_set_cyc(0x2C, 2, 0, 3, 1);
+    spc_bit_set(0x2C, 2, 0, 3, 1);
     /* 15C1 set1 $2C.3 */
-    spc_bit_set_cyc(0x2C, 3, 1, 3, 1);
+    spc_bit_set(0x2C, 3, 1, 3, 1);
     /* 15C3 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -6490,85 +6490,85 @@ void abi_SpcEchoTransition(void)
     if ((spc_rd(spc_dp(0x28)) >> 1 & 1)) { spc_cyc(4); goto L15DE; }
     spc_cyc(2);
     /* 15DD ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L15DE:
     /* 15DE mov a,#$01 */
     spc.a = spc_nz(0x01);
     spc_cyc(2);
     /* 15E0 mov.w $0551,a */
-    spc_st_cyc(0x0551, spc.a, 4, 1);
+    spc_st(0x0551, spc.a, 4, 1);
 L15E3:
     /* 15E3 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L15E4:
     /* 15E4 mov.b a,$4A */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x4A)));
     /* 15E6 mov.w $0570,a */
-    spc_st_cyc(0x0570, spc.a, 4, 1);
+    spc_st(0x0570, spc.a, 4, 1);
     /* 15E9 mov.b a,$4E */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x4E)));
     /* 15EB mov.w $0571,a */
-    spc_st_cyc(0x0571, spc.a, 4, 1);
+    spc_st(0x0571, spc.a, 4, 1);
     /* 15EE mov.b a,$61 */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x61)));
     /* 15F0 mov.w $0572,a */
-    spc_st_cyc(0x0572, spc.a, 4, 1);
+    spc_st(0x0572, spc.a, 4, 1);
     /* 15F3 mov.b a,$63 */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x63)));
     /* 15F5 mov.w $0573,a */
-    spc_st_cyc(0x0573, spc.a, 4, 1);
+    spc_st(0x0573, spc.a, 4, 1);
     /* 15F8 mov a,#$01 */
     spc.a = spc_nz(0x01);
     spc_cyc(2);
     /* 15FA mov.w $0550,a */
-    spc_st_cyc(0x0550, spc.a, 4, 1);
+    spc_st(0x0550, spc.a, 4, 1);
     /* 15FD ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L15FE:
     /* 15FE mov.w a,$0570 */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x0570));
     /* 1601 mov.b $4A,a */
-    spc_st_cyc(spc_dp(0x4A), spc.a, 3, 1);
+    spc_st(spc_dp(0x4A), spc.a, 3, 1);
     /* 1603 mov.w a,$0571 */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x0571));
     /* 1606 mov.b $4E,a */
-    spc_st_cyc(spc_dp(0x4E), spc.a, 3, 1);
+    spc_st(spc_dp(0x4E), spc.a, 3, 1);
     /* 1608 mov.w a,$0572 */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x0572));
     /* 160B mov.b $61,a */
-    spc_st_cyc(spc_dp(0x61), spc.a, 3, 1);
+    spc_st(spc_dp(0x61), spc.a, 3, 1);
     /* 160D mov.w a,$0573 */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x0573));
     /* 1610 mov.b $63,a */
-    spc_st_cyc(spc_dp(0x63), spc.a, 3, 1);
+    spc_st(spc_dp(0x63), spc.a, 3, 1);
     /* 1612 mov a,#$00 */
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 1614 mov.w $0551,a */
-    spc_st_cyc(0x0551, spc.a, 4, 1);
+    spc_st(0x0551, spc.a, 4, 1);
     /* 1617 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L1618:
     /* 1618 mov $4A,#$00 */
-    spc_st_cyc(spc_dp(0x4A), 0x00, 4, 1);
+    spc_st(spc_dp(0x4A), 0x00, 4, 1);
     /* 161B set1 $4A.7 */
-    spc_bit_set_cyc(0x4A, 7, 1, 3, 1);
+    spc_bit_set(0x4A, 7, 1, 3, 1);
     /* 161D set1 $4A.6 */
-    spc_bit_set_cyc(0x4A, 6, 1, 3, 1);
+    spc_bit_set(0x4A, 6, 1, 3, 1);
     /* 161F call $1624 */
-    spc_call_cyc(abi_SpcEchoTransitionStep, 0x1622, 5, 1, 2);
+    spc_call(abi_SpcEchoTransitionStep, 0x1622, 5, 1, 2);
     /* 1622 bra $167C */
     spc_cyc(4);
     goto L167C;
@@ -6589,7 +6589,7 @@ L167C:
     spc.a = spc_eor(spc.a, 0xFF);
     spc_cyc(2);
     /* 1685 mov.w $0552,a */
-    spc_st_cyc(0x0552, spc.a, 4, 1);
+    spc_st(0x0552, spc.a, 4, 1);
     /* 1688 mov a,#$64 */
     spc.a = spc_nz(0x64);
     spc_cyc(2);
@@ -6618,7 +6618,7 @@ L167C:
     spc_cyc(4);
     spc.a = spc_adc(spc.a, spc_rd(0x0571));
     /* 1699 mov.b $4E,a */
-    spc_st_cyc(spc_dp(0x4E), spc.a, 3, 1);
+    spc_st(spc_dp(0x4E), spc.a, 3, 1);
     /* 169B mov a,#$64 */
     spc.a = spc_nz(0x64);
     spc_cyc(2);
@@ -6647,11 +6647,11 @@ L167C:
     spc_cyc(4);
     spc.a = spc_adc(spc.a, spc_rd(0x0572));
     /* 16AC mov.b $61,a */
-    spc_st_cyc(spc_dp(0x61), spc.a, 3, 1);
+    spc_st(spc_dp(0x61), spc.a, 3, 1);
     /* 16AE mov.b $63,a */
-    spc_st_cyc(spc_dp(0x63), spc.a, 3, 1);
+    spc_st(spc_dp(0x63), spc.a, 3, 1);
     /* 16B0 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -6681,7 +6681,7 @@ void abi_SpcEchoTransitionStep(void)
     if (spc.z) { spc_cyc(4); goto L1656; }
     spc_cyc(2);
     /* 162F dec.w $0550 */
-    spc_rmw_cyc(0x0550, spc_dec, 4, 1);
+    spc_rmw(0x0550, spc_dec, 4, 1);
     /* 1632 mov.w a,$0550 */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x0550));
@@ -6692,7 +6692,7 @@ void abi_SpcEchoTransitionStep(void)
     if (spc.z) { spc_cyc(4); goto L163A; }
     spc_cyc(2);
     /* 1639 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L163A:
     /* 163A bbs $28.1,$1650 */
@@ -6700,11 +6700,11 @@ L163A:
     if ((spc_rd(spc_dp(0x28)) >> 1 & 1)) { spc_cyc(4); goto L1650; }
     spc_cyc(2);
     /* 163D ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L163E:
     /* 163E inc.w $0550 */
-    spc_rmw_cyc(0x0550, spc_inc, 4, 1);
+    spc_rmw(0x0550, spc_inc, 4, 1);
     /* 1641 mov.w a,$0550 */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x0550));
@@ -6721,7 +6721,7 @@ L163E:
     if (spc.z) { spc_cyc(4); goto L1650; }
     spc_cyc(2);
     /* 164C ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L164D:
     /* 164D bbs $28.0,$1655 */
@@ -6733,10 +6733,10 @@ L1650:
     spc.a = spc_nz(0x02);
     spc_cyc(2);
     /* 1652 mov.w $0551,a */
-    spc_st_cyc(0x0551, spc.a, 4, 1);
+    spc_st(0x0551, spc.a, 4, 1);
 L1655:
     /* 1655 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L1656:
     /* 1656 bbs $28.0,$1662 */
@@ -6751,9 +6751,9 @@ L1656:
     spc.a = spc_nz(0x03);
     spc_cyc(2);
     /* 165E mov.w $0551,a */
-    spc_st_cyc(0x0551, spc.a, 4, 1);
+    spc_st(0x0551, spc.a, 4, 1);
     /* 1661 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L1662:
     /* 1662 mov.w a,$0550 */
@@ -6769,9 +6769,9 @@ L1662:
     spc.a = spc_nz(0x01);
     spc_cyc(2);
     /* 166B mov.w $0551,a */
-    spc_st_cyc(0x0551, spc.a, 4, 1);
+    spc_st(0x0551, spc.a, 4, 1);
     /* 166E ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L166F:
     /* 166F mov.w a,$0550 */
@@ -6787,9 +6787,9 @@ L166F:
     spc.a = spc_nz(0x03);
     spc_cyc(2);
     /* 1678 mov.w $0551,a */
-    spc_st_cyc(0x0551, spc.a, 4, 1);
+    spc_st(0x0551, spc.a, 4, 1);
     /* 167B ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -6823,10 +6823,10 @@ void abi_SpcPort1Clamp(void)
     if (spc.n) { spc_cyc(4); goto L16C0; }
     spc_cyc(2);
     /* 16BD mov $01,#$00 */
-    spc_st_cyc(spc_dp(0x01), 0x00, 4, 1);
+    spc_st(spc_dp(0x01), 0x00, 4, 1);
 L16C0:
     /* 16C0 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -6871,10 +6871,10 @@ L16C8:
     goto L16C8;
 L16D4:
     /* 16D4 mov $1D,#$00 */
-    spc_st_cyc(spc_dp(0x1D), 0x00, 4, 1);
+    spc_st(spc_dp(0x1D), 0x00, 4, 1);
 L16D7:
     /* 16D7 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -6893,17 +6893,17 @@ void abi_SpcPitchRampB(void)
     if (!(spc_rd(spc_dp(0x28)) >> 2 & 1)) { spc_cyc(4); goto L16F7; }
     spc_cyc(2);
     /* 16F4 call $16FE */
-    spc_call_cyc(abi_SpcPitchRampBUp, 0x16F7, 5, 1, 2);
+    spc_call(abi_SpcPitchRampBUp, 0x16F7, 5, 1, 2);
 L16F7:
     /* 16F7 bbc $28.3,$16FD */
     spc_cyc(3);
     if (!(spc_rd(spc_dp(0x28)) >> 3 & 1)) { spc_cyc(4); goto L16FD; }
     spc_cyc(2);
     /* 16FA call $171F */
-    spc_call_cyc(abi_SpcPitchRampBDown, 0x16FD, 5, 1, 2);
+    spc_call(abi_SpcPitchRampBDown, 0x16FD, 5, 1, 2);
 L16FD:
     /* 16FD ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -6927,17 +6927,17 @@ void abi_SpcPitchRampBUp(void)
     if (spc.z) { spc_cyc(4); goto L171E; }
     spc_cyc(2);
     /* 1705 inc.w $0547 */
-    spc_rmw_cyc(0x0547, spc_inc, 4, 1);
+    spc_rmw(0x0547, spc_inc, 4, 1);
     /* 1708 mov.w a,$054D */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x054D));
     /* 170B mov.b $20,a */
-    spc_st_cyc(spc_dp(0x20), spc.a, 3, 1);
+    spc_st(spc_dp(0x20), spc.a, 3, 1);
     /* 170D mov.w a,$054F */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x054F));
     /* 1710 mov.b $21,a */
-    spc_st_cyc(spc_dp(0x21), spc.a, 3, 1);
+    spc_st(spc_dp(0x21), spc.a, 3, 1);
     /* 1712 mov a,#$20 */
     spc.a = spc_nz(0x20);
     spc_cyc(2);
@@ -6948,12 +6948,12 @@ void abi_SpcPitchRampBUp(void)
     spc_cyc(3);
     { uint16_t v = spc_rd(spc_dp(0x20)); v |= (spc_cyc(2), spc_rd(spc_dp(0x21))) << 8; spc_set_ya(spc_addw(spc_ya(), v)); }
     /* 1718 mov.w $054D,a */
-    spc_st_cyc(0x054D, spc.a, 4, 1);
+    spc_st(0x054D, spc.a, 4, 1);
     /* 171B mov.w $054F,y */
-    spc_st_cyc(0x054F, spc.y, 4, 1);
+    spc_st(0x054F, spc.y, 4, 1);
 L171E:
     /* 171E ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -6977,7 +6977,7 @@ void abi_SpcPitchRampBDown(void)
     if (spc.z) { spc_cyc(4); goto L173E; }
     spc_cyc(2);
     /* 1726 dec.w $0547 */
-    spc_rmw_cyc(0x0547, spc_dec, 4, 1);
+    spc_rmw(0x0547, spc_dec, 4, 1);
     /* 1729 mov.w a,$054D */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x054D));
@@ -6985,33 +6985,33 @@ void abi_SpcPitchRampBDown(void)
     spc_cyc(4);
     spc.y = spc_nz(spc_rd(0x054F));
     /* 172F mov $20,#$20 */
-    spc_st_cyc(spc_dp(0x20), 0x20, 4, 1);
+    spc_st(spc_dp(0x20), 0x20, 4, 1);
     /* 1732 mov $21,#$00 */
-    spc_st_cyc(spc_dp(0x21), 0x00, 4, 1);
+    spc_st(spc_dp(0x21), 0x00, 4, 1);
     /* 1735 subw ya,$20 */
     spc_cyc(3);
     { uint16_t v = spc_rd(spc_dp(0x20)); v |= (spc_cyc(2), spc_rd(spc_dp(0x21))) << 8; spc_set_ya(spc_subw(spc_ya(), v)); }
     /* 1737 mov.w $054D,a */
-    spc_st_cyc(0x054D, spc.a, 4, 1);
+    spc_st(0x054D, spc.a, 4, 1);
     /* 173A mov.w $054F,y */
-    spc_st_cyc(0x054F, spc.y, 4, 1);
+    spc_st(0x054F, spc.y, 4, 1);
     /* 173D ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L173E:
     /* 173E clr1 $28.2 */
-    spc_bit_set_cyc(0x28, 2, 0, 3, 1);
+    spc_bit_set(0x28, 2, 0, 3, 1);
     /* 1740 clr1 $28.3 */
-    spc_bit_set_cyc(0x28, 3, 0, 3, 1);
+    spc_bit_set(0x28, 3, 0, 3, 1);
     /* 1742 mov a,#$00 */
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 1744 mov.w $054D,a */
-    spc_st_cyc(0x054D, spc.a, 4, 1);
+    spc_st(0x054D, spc.a, 4, 1);
     /* 1747 mov.w $054F,a */
-    spc_st_cyc(0x054F, spc.a, 4, 1);
+    spc_st(0x054F, spc.a, 4, 1);
     /* 174A ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -7030,17 +7030,17 @@ void abi_SpcPitchRampA(void)
     if (!(spc_rd(spc_dp(0x29)) >> 2 & 1)) { spc_cyc(4); goto L1751; }
     spc_cyc(2);
     /* 174E call $1758 */
-    spc_call_cyc(abi_SpcPitchRampAUp, 0x1751, 5, 1, 2);
+    spc_call(abi_SpcPitchRampAUp, 0x1751, 5, 1, 2);
 L1751:
     /* 1751 bbc $29.3,$1757 */
     spc_cyc(3);
     if (!(spc_rd(spc_dp(0x29)) >> 3 & 1)) { spc_cyc(4); goto L1757; }
     spc_cyc(2);
     /* 1754 call $1779 */
-    spc_call_cyc(abi_SpcPitchRampADown, 0x1757, 5, 1, 2);
+    spc_call(abi_SpcPitchRampADown, 0x1757, 5, 1, 2);
 L1757:
     /* 1757 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -7064,17 +7064,17 @@ void abi_SpcPitchRampAUp(void)
     if (spc.z) { spc_cyc(4); goto L1778; }
     spc_cyc(2);
     /* 175F inc.w $0543 */
-    spc_rmw_cyc(0x0543, spc_inc, 4, 1);
+    spc_rmw(0x0543, spc_inc, 4, 1);
     /* 1762 mov.w a,$0549 */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x0549));
     /* 1765 mov.b $20,a */
-    spc_st_cyc(spc_dp(0x20), spc.a, 3, 1);
+    spc_st(spc_dp(0x20), spc.a, 3, 1);
     /* 1767 mov.w a,$054B */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x054B));
     /* 176A mov.b $21,a */
-    spc_st_cyc(spc_dp(0x21), spc.a, 3, 1);
+    spc_st(spc_dp(0x21), spc.a, 3, 1);
     /* 176C mov a,#$3C */
     spc.a = spc_nz(0x3C);
     spc_cyc(2);
@@ -7085,12 +7085,12 @@ void abi_SpcPitchRampAUp(void)
     spc_cyc(3);
     { uint16_t v = spc_rd(spc_dp(0x20)); v |= (spc_cyc(2), spc_rd(spc_dp(0x21))) << 8; spc_set_ya(spc_addw(spc_ya(), v)); }
     /* 1772 mov.w $0549,a */
-    spc_st_cyc(0x0549, spc.a, 4, 1);
+    spc_st(0x0549, spc.a, 4, 1);
     /* 1775 mov.w $054B,y */
-    spc_st_cyc(0x054B, spc.y, 4, 1);
+    spc_st(0x054B, spc.y, 4, 1);
 L1778:
     /* 1778 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -7114,7 +7114,7 @@ void abi_SpcPitchRampADown(void)
     if (spc.z) { spc_cyc(4); goto L1798; }
     spc_cyc(2);
     /* 1780 dec.w $0543 */
-    spc_rmw_cyc(0x0543, spc_dec, 4, 1);
+    spc_rmw(0x0543, spc_dec, 4, 1);
     /* 1783 mov.w a,$0549 */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x0549));
@@ -7122,33 +7122,33 @@ void abi_SpcPitchRampADown(void)
     spc_cyc(4);
     spc.y = spc_nz(spc_rd(0x054B));
     /* 1789 mov $20,#$3C */
-    spc_st_cyc(spc_dp(0x20), 0x3C, 4, 1);
+    spc_st(spc_dp(0x20), 0x3C, 4, 1);
     /* 178C mov $21,#$00 */
-    spc_st_cyc(spc_dp(0x21), 0x00, 4, 1);
+    spc_st(spc_dp(0x21), 0x00, 4, 1);
     /* 178F subw ya,$20 */
     spc_cyc(3);
     { uint16_t v = spc_rd(spc_dp(0x20)); v |= (spc_cyc(2), spc_rd(spc_dp(0x21))) << 8; spc_set_ya(spc_subw(spc_ya(), v)); }
     /* 1791 mov.w $0549,a */
-    spc_st_cyc(0x0549, spc.a, 4, 1);
+    spc_st(0x0549, spc.a, 4, 1);
     /* 1794 mov.w $054B,y */
-    spc_st_cyc(0x054B, spc.y, 4, 1);
+    spc_st(0x054B, spc.y, 4, 1);
     /* 1797 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L1798:
     /* 1798 clr1 $29.2 */
-    spc_bit_set_cyc(0x29, 2, 0, 3, 1);
+    spc_bit_set(0x29, 2, 0, 3, 1);
     /* 179A clr1 $29.3 */
-    spc_bit_set_cyc(0x29, 3, 0, 3, 1);
+    spc_bit_set(0x29, 3, 0, 3, 1);
     /* 179C mov a,#$00 */
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 179E mov.w $0549,a */
-    spc_st_cyc(0x0549, spc.a, 4, 1);
+    spc_st(0x0549, spc.a, 4, 1);
     /* 17A1 mov.w $054B,a */
-    spc_st_cyc(0x054B, spc.a, 4, 1);
+    spc_st(0x054B, spc.a, 4, 1);
     /* 17A4 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -7163,7 +7163,7 @@ L1798:
 void abi_SpcPortCommand(void)
 {
     /* 17A5 mov $1D,#$00 */
-    spc_st_cyc(spc_dp(0x1D), 0x00, 4, 1);
+    spc_st(spc_dp(0x1D), 0x00, 4, 1);
     /* 17A8 mov.b a,$00 */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x00)));
@@ -7186,15 +7186,15 @@ void abi_SpcPortCommand(void)
     spc.a = spc_inc(spc.a);
     spc_cyc(2);
     /* 17B4 mov.b $1D,a */
-    spc_st_cyc(spc_dp(0x1D), spc.a, 3, 1);
+    spc_st(spc_dp(0x1D), spc.a, 3, 1);
     /* 17B6 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L17B7:
     /* 17B7 mov.b $1D,a */
-    spc_st_cyc(spc_dp(0x1D), spc.a, 3, 1);
+    spc_st(spc_dp(0x1D), spc.a, 3, 1);
     /* 17B9 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L17BA:
     /* 17BA bbs $29.0,$17DE */
@@ -7205,7 +7205,7 @@ L17BA:
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x00)));
     /* 17BF mov.b $1B,a */
-    spc_st_cyc(spc_dp(0x1B), spc.a, 3, 1);
+    spc_st(spc_dp(0x1B), spc.a, 3, 1);
     /* 17C1 cmp a,#$02 */
     spc_cmp(spc.a, 0x02);
     spc_cyc(2);
@@ -7217,28 +7217,28 @@ L17C5:
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 17C7 mov.b $2E,a */
-    spc_st_cyc(spc_dp(0x2E), spc.a, 3, 1);
+    spc_st(spc_dp(0x2E), spc.a, 3, 1);
     /* 17C9 mov.b $2F,a */
-    spc_st_cyc(spc_dp(0x2F), spc.a, 3, 1);
+    spc_st(spc_dp(0x2F), spc.a, 3, 1);
     /* 17CB mov.w $0553,a */
-    spc_st_cyc(0x0553, spc.a, 4, 1);
+    spc_st(0x0553, spc.a, 4, 1);
     /* 17CE mov.w $0554,a */
-    spc_st_cyc(0x0554, spc.a, 4, 1);
+    spc_st(0x0554, spc.a, 4, 1);
     /* 17D1 mov.w $0555,a */
-    spc_st_cyc(0x0555, spc.a, 4, 1);
+    spc_st(0x0555, spc.a, 4, 1);
     /* 17D4 clr1 $29.0 */
-    spc_bit_set_cyc(0x29, 0, 0, 3, 1);
+    spc_bit_set(0x29, 0, 0, 3, 1);
     /* 17D6 clr1 $29.1 */
-    spc_bit_set_cyc(0x29, 1, 0, 3, 1);
+    spc_bit_set(0x29, 1, 0, 3, 1);
     /* 17D8 clr1 $29.6 */
-    spc_bit_set_cyc(0x29, 6, 0, 3, 1);
+    spc_bit_set(0x29, 6, 0, 3, 1);
     /* 17DA clr1 $2C.2 */
-    spc_bit_set_cyc(0x2C, 2, 0, 3, 1);
+    spc_bit_set(0x2C, 2, 0, 3, 1);
     /* 17DC clr1 $2C.3 */
-    spc_bit_set_cyc(0x2C, 3, 0, 3, 1);
+    spc_bit_set(0x2C, 3, 0, 3, 1);
 L17DE:
     /* 17DE ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -7262,7 +7262,7 @@ void abi_SpcPort1Command(void)
     if (!spc.z) { spc_cyc(4); goto L17EA; }
     spc_cyc(2);
     /* 17E5 mov $20,#$00 */
-    spc_st_cyc(spc_dp(0x20), 0x00, 4, 1);
+    spc_st(spc_dp(0x20), 0x00, 4, 1);
     /* 17E8 bra $17ED */
     spc_cyc(4);
     goto L17ED;
@@ -7287,7 +7287,7 @@ L17ED:
     if (spc.n) { spc_cyc(4); goto L17FA; }
     spc_cyc(2);
     /* 17F7 mov $20,#$00 */
-    spc_st_cyc(spc_dp(0x20), 0x00, 4, 1);
+    spc_st(spc_dp(0x20), 0x00, 4, 1);
 L17FA:
     /* 17FA mov.b a,$20 */
     spc_cyc(3);
@@ -7341,7 +7341,7 @@ L187E:
     if ((spc_rd(spc_dp(0x2D)) >> 3 & 1)) { spc_cyc(4); goto L18D5; }
     spc_cyc(2);
     /* 1881 set1 $2A.6 */
-    spc_bit_set_cyc(0x2A, 6, 1, 3, 1);
+    spc_bit_set(0x2A, 6, 1, 3, 1);
     /* 1883 mov a,#$02 */
     spc.a = spc_nz(0x02);
     spc_cyc(2);
@@ -7354,7 +7354,7 @@ L1887:
     if ((spc_rd(spc_dp(0x2D)) >> 6 & 1)) { spc_cyc(4); goto L18D5; }
     spc_cyc(2);
     /* 188A set1 $2A.2 */
-    spc_bit_set_cyc(0x2A, 2, 1, 3, 1);
+    spc_bit_set(0x2A, 2, 1, 3, 1);
     /* 188C mov a,#$25 */
     spc.a = spc_nz(0x25);
     spc_cyc(2);
@@ -7367,7 +7367,7 @@ L1890:
     if ((spc_rd(spc_dp(0x2D)) >> 6 & 1)) { spc_cyc(4); goto L18D5; }
     spc_cyc(2);
     /* 1893 set1 $2A.4 */
-    spc_bit_set_cyc(0x2A, 4, 1, 3, 1);
+    spc_bit_set(0x2A, 4, 1, 3, 1);
     /* 1895 mov a,#$15 */
     spc.a = spc_nz(0x15);
     spc_cyc(2);
@@ -7380,7 +7380,7 @@ L1899:
     if ((spc_rd(spc_dp(0x2D)) >> 6 & 1)) { spc_cyc(4); goto L18D5; }
     spc_cyc(2);
     /* 189C set1 $2A.0 */
-    spc_bit_set_cyc(0x2A, 0, 1, 3, 1);
+    spc_bit_set(0x2A, 0, 1, 3, 1);
     /* 189E mov a,#$17 */
     spc.a = spc_nz(0x17);
     spc_cyc(2);
@@ -7393,7 +7393,7 @@ L18A2:
     if ((spc_rd(spc_dp(0x2D)) >> 6 & 1)) { spc_cyc(4); goto L18D5; }
     spc_cyc(2);
     /* 18A5 set1 $2A.7 */
-    spc_bit_set_cyc(0x2A, 7, 1, 3, 1);
+    spc_bit_set(0x2A, 7, 1, 3, 1);
     /* 18A7 mov a,#$21 */
     spc.a = spc_nz(0x21);
     spc_cyc(2);
@@ -7406,9 +7406,9 @@ L18AC:
     if ((spc_rd(spc_dp(0x29)) >> 2 & 1)) { spc_cyc(4); goto L18D5; }
     spc_cyc(2);
     /* 18AF set1 $29.2 */
-    spc_bit_set_cyc(0x29, 2, 1, 3, 1);
+    spc_bit_set(0x29, 2, 1, 3, 1);
     /* 18B1 clr1 $29.3 */
-    spc_bit_set_cyc(0x29, 3, 0, 3, 1);
+    spc_bit_set(0x29, 3, 0, 3, 1);
     /* 18B3 mov a,#$00 */
     spc.a = spc_nz(0x00);
     spc_cyc(2);
@@ -7424,9 +7424,9 @@ L18B9:
     if (!(spc_rd(spc_dp(0x29)) >> 2 & 1)) { spc_cyc(4); goto L18D5; }
     spc_cyc(2);
     /* 18BC clr1 $29.2 */
-    spc_bit_set_cyc(0x29, 2, 0, 3, 1);
+    spc_bit_set(0x29, 2, 0, 3, 1);
     /* 18BE set1 $29.3 */
-    spc_bit_set_cyc(0x29, 3, 1, 3, 1);
+    spc_bit_set(0x29, 3, 1, 3, 1);
     /* 18C0 mov.w a,$0549 */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x0549));
@@ -7434,23 +7434,23 @@ L18B9:
     spc_cyc(4);
     spc.y = spc_nz(spc_rd(0x054B));
     /* 18C6 mov $20,#$00 */
-    spc_st_cyc(spc_dp(0x20), 0x00, 4, 1);
+    spc_st(spc_dp(0x20), 0x00, 4, 1);
     /* 18C9 mov $21,#$02 */
-    spc_st_cyc(spc_dp(0x21), 0x02, 4, 1);
+    spc_st(spc_dp(0x21), 0x02, 4, 1);
     /* 18CC subw ya,$20 */
     spc_cyc(3);
     { uint16_t v = spc_rd(spc_dp(0x20)); v |= (spc_cyc(2), spc_rd(spc_dp(0x21))) << 8; spc_set_ya(spc_subw(spc_ya(), v)); }
 L18CE:
     /* 18CE mov.w $0549,a */
-    spc_st_cyc(0x0549, spc.a, 4, 1);
+    spc_st(0x0549, spc.a, 4, 1);
     /* 18D1 mov.w $054B,y */
-    spc_st_cyc(0x054B, spc.y, 4, 1);
+    spc_st(0x054B, spc.y, 4, 1);
     /* 18D4 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L18D5:
     /* 18D5 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L18D6:
     /* 18D6 bbs $28.2,$18D5 */
@@ -7458,9 +7458,9 @@ L18D6:
     if ((spc_rd(spc_dp(0x28)) >> 2 & 1)) { spc_cyc(4); goto L18D5; }
     spc_cyc(2);
     /* 18D9 set1 $28.2 */
-    spc_bit_set_cyc(0x28, 2, 1, 3, 1);
+    spc_bit_set(0x28, 2, 1, 3, 1);
     /* 18DB clr1 $28.3 */
-    spc_bit_set_cyc(0x28, 3, 0, 3, 1);
+    spc_bit_set(0x28, 3, 0, 3, 1);
     /* 18DD mov a,#$40 */
     spc.a = spc_nz(0x40);
     spc_cyc(2);
@@ -7476,9 +7476,9 @@ L18E3:
     if (!(spc_rd(spc_dp(0x28)) >> 2 & 1)) { spc_cyc(4); goto L18D5; }
     spc_cyc(2);
     /* 18E6 clr1 $28.2 */
-    spc_bit_set_cyc(0x28, 2, 0, 3, 1);
+    spc_bit_set(0x28, 2, 0, 3, 1);
     /* 18E8 set1 $28.3 */
-    spc_bit_set_cyc(0x28, 3, 1, 3, 1);
+    spc_bit_set(0x28, 3, 1, 3, 1);
     /* 18EA mov.w a,$054D */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x054D));
@@ -7486,19 +7486,19 @@ L18E3:
     spc_cyc(4);
     spc.y = spc_nz(spc_rd(0x054F));
     /* 18F0 mov $20,#$40 */
-    spc_st_cyc(spc_dp(0x20), 0x40, 4, 1);
+    spc_st(spc_dp(0x20), 0x40, 4, 1);
     /* 18F3 mov $21,#$00 */
-    spc_st_cyc(spc_dp(0x21), 0x00, 4, 1);
+    spc_st(spc_dp(0x21), 0x00, 4, 1);
     /* 18F6 subw ya,$20 */
     spc_cyc(3);
     { uint16_t v = spc_rd(spc_dp(0x20)); v |= (spc_cyc(2), spc_rd(spc_dp(0x21))) << 8; spc_set_ya(spc_subw(spc_ya(), v)); }
 L18F8:
     /* 18F8 mov.w $054D,a */
-    spc_st_cyc(0x054D, spc.a, 4, 1);
+    spc_st(0x054D, spc.a, 4, 1);
     /* 18FB mov.w $054F,y */
-    spc_st_cyc(0x054F, spc.y, 4, 1);
+    spc_st(0x054F, spc.y, 4, 1);
     /* 18FE ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L18FF:
     /* 18FF mov.b a,$20 */
@@ -7511,13 +7511,13 @@ L18FF:
     spc.a = spc_sbc(spc.a, 0x32);
     spc_cyc(2);
     /* 1904 mov.w $0530,a */
-    spc_st_cyc(0x0530, spc.a, 4, 1);
+    spc_st(0x0530, spc.a, 4, 1);
     /* 1907 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L1915:
     /* 1915 clr1 $2A.2 */
-    spc_bit_set_cyc(0x2A, 2, 0, 3, 1);
+    spc_bit_set(0x2A, 2, 0, 3, 1);
     /* 1917 mov.w a,$0395 */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x0395));
@@ -7532,7 +7532,7 @@ L1915:
     goto L193F;
 L1920:
     /* 1920 clr1 $2A.4 */
-    spc_bit_set_cyc(0x2A, 4, 0, 3, 1);
+    spc_bit_set(0x2A, 4, 0, 3, 1);
     /* 1922 mov.w a,$0395 */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x0395));
@@ -7547,7 +7547,7 @@ L1920:
     goto L193F;
 L192B:
     /* 192B clr1 $2A.0 */
-    spc_bit_set_cyc(0x2A, 0, 0, 3, 1);
+    spc_bit_set(0x2A, 0, 0, 3, 1);
     /* 192D mov.w a,$0395 */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x0395));
@@ -7562,7 +7562,7 @@ L192B:
     goto L193F;
 L1936:
     /* 1936 clr1 $2A.7 */
-    spc_bit_set_cyc(0x2A, 7, 0, 3, 1);
+    spc_bit_set(0x2A, 7, 0, 3, 1);
     /* 1938 mov.w a,$0395 */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x0395));
@@ -7586,27 +7586,27 @@ L193F:
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x20)));
     /* 1948 mov.w $03E0+x,a */
-    spc_st_cyc((uint16_t)(0x03E0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03E0 + spc.x), spc.a, 5, 1);
 L194B:
     /* 194B ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L1956:
     /* 1956 clr1 $28.0 */
-    spc_bit_set_cyc(0x28, 0, 0, 3, 1);
+    spc_bit_set(0x28, 0, 0, 3, 1);
     /* 1958 clr1 $28.1 */
-    spc_bit_set_cyc(0x28, 1, 0, 3, 1);
+    spc_bit_set(0x28, 1, 0, 3, 1);
     /* 195A ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L195B:
     /* 195B clr1 $28.0 */
-    spc_bit_set_cyc(0x28, 0, 0, 3, 1);
+    spc_bit_set(0x28, 0, 0, 3, 1);
     /* 195D set1 $28.1 */
-    spc_bit_set_cyc(0x28, 1, 1, 3, 1);
+    spc_bit_set(0x28, 1, 1, 3, 1);
 L195F:
     /* 195F ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L1960:
     /* 1960 bbc $29.0,$195F */
@@ -7617,30 +7617,30 @@ L1960:
     spc.a = spc_nz(0x4C);
     spc_cyc(2);
     /* 1965 call $1424 */
-    spc_call_cyc(abi_SpcSoundQueuePush, 0x1968, 5, 1, 2);
+    spc_call(abi_SpcSoundQueuePush, 0x1968, 5, 1, 2);
     /* 1968 clr1 $29.0 */
-    spc_bit_set_cyc(0x29, 0, 0, 3, 1);
+    spc_bit_set(0x29, 0, 0, 3, 1);
     /* 196A mov a,#$00 */
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 196C mov.w $045F,a */
-    spc_st_cyc(0x045F, spc.a, 4, 1);
+    spc_st(0x045F, spc.a, 4, 1);
     /* 196F mov.w $045E,a */
-    spc_st_cyc(0x045E, spc.a, 4, 1);
+    spc_st(0x045E, spc.a, 4, 1);
     /* 1972 mov.w $045D,a */
-    spc_st_cyc(0x045D, spc.a, 4, 1);
+    spc_st(0x045D, spc.a, 4, 1);
     /* 1975 mov.w $045C,a */
-    spc_st_cyc(0x045C, spc.a, 4, 1);
+    spc_st(0x045C, spc.a, 4, 1);
     /* 1978 mov.w $04FF,a */
-    spc_st_cyc(0x04FF, spc.a, 4, 1);
+    spc_st(0x04FF, spc.a, 4, 1);
     /* 197B mov.w $04FE,a */
-    spc_st_cyc(0x04FE, spc.a, 4, 1);
+    spc_st(0x04FE, spc.a, 4, 1);
     /* 197E mov.w $04FD,a */
-    spc_st_cyc(0x04FD, spc.a, 4, 1);
+    spc_st(0x04FD, spc.a, 4, 1);
     /* 1981 mov.w $04FC,a */
-    spc_st_cyc(0x04FC, spc.a, 4, 1);
+    spc_st(0x04FC, spc.a, 4, 1);
     /* 1984 call $0A60 */
-    spc_call_cyc(abi_SpcMusicPause, 0x1987, 5, 1, 2);
+    spc_call(abi_SpcMusicPause, 0x1987, 5, 1, 2);
     /* 1987 jmp $1798 */
     spc_cyc(3);
     goto L1798;
@@ -7657,62 +7657,62 @@ L198A:
     if (!(spc_rd(spc_dp(0x29)) >> 7 & 1)) { spc_cyc(4); goto L19A9; }
     spc_cyc(2);
     /* 1993 clr1 $29.7 */
-    spc_bit_set_cyc(0x29, 7, 0, 3, 1);
+    spc_bit_set(0x29, 7, 0, 3, 1);
     /* 1995 mov.w a,$0574 */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x0574));
     /* 1998 mov.b $4A,a */
-    spc_st_cyc(spc_dp(0x4A), spc.a, 3, 1);
+    spc_st(spc_dp(0x4A), spc.a, 3, 1);
     /* 199A mov.w a,$0575 */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x0575));
     /* 199D mov.b $4E,a */
-    spc_st_cyc(spc_dp(0x4E), spc.a, 3, 1);
+    spc_st(spc_dp(0x4E), spc.a, 3, 1);
     /* 199F mov.w a,$0576 */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x0576));
     /* 19A2 mov.b $61,a */
-    spc_st_cyc(spc_dp(0x61), spc.a, 3, 1);
+    spc_st(spc_dp(0x61), spc.a, 3, 1);
     /* 19A4 mov.w a,$0577 */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x0577));
     /* 19A7 mov.b $63,a */
-    spc_st_cyc(spc_dp(0x63), spc.a, 3, 1);
+    spc_st(spc_dp(0x63), spc.a, 3, 1);
 L19A9:
     /* 19A9 mov a,#$4B */
     spc.a = spc_nz(0x4B);
     spc_cyc(2);
     /* 19AB call $1424 */
-    spc_call_cyc(abi_SpcSoundQueuePush, 0x19AE, 5, 1, 2);
+    spc_call(abi_SpcSoundQueuePush, 0x19AE, 5, 1, 2);
     /* 19AE clr1 $29.0 */
-    spc_bit_set_cyc(0x29, 0, 0, 3, 1);
+    spc_bit_set(0x29, 0, 0, 3, 1);
     /* 19B0 clr1 $2D.6 */
-    spc_bit_set_cyc(0x2D, 6, 0, 3, 1);
+    spc_bit_set(0x2D, 6, 0, 3, 1);
     /* 19B2 mov x,#$07 */
     spc.x = spc_nz(0x07);
     spc_cyc(2);
     /* 19B4 call $19CC */
-    spc_call_cyc(abi_SpcSfxChannelResume, 0x19B7, 5, 1, 2);
+    spc_call(abi_SpcSfxChannelResume, 0x19B7, 5, 1, 2);
     /* 19B7 dec x */
     spc.x = spc_dec(spc.x);
     spc_cyc(2);
     /* 19B8 call $19CC */
-    spc_call_cyc(abi_SpcSfxChannelResume, 0x19BB, 5, 1, 2);
+    spc_call(abi_SpcSfxChannelResume, 0x19BB, 5, 1, 2);
     /* 19BB dec x */
     spc.x = spc_dec(spc.x);
     spc_cyc(2);
     /* 19BC call $19CC */
-    spc_call_cyc(abi_SpcSfxChannelResume, 0x19BF, 5, 1, 2);
+    spc_call(abi_SpcSfxChannelResume, 0x19BF, 5, 1, 2);
     /* 19BF dec x */
     spc.x = spc_dec(spc.x);
     spc_cyc(2);
     /* 19C0 call $19CC */
-    spc_call_cyc(abi_SpcSfxChannelResume, 0x19C3, 5, 1, 2);
+    spc_call(abi_SpcSfxChannelResume, 0x19C3, 5, 1, 2);
     /* 19C3 mov x,#$01 */
     spc.x = spc_nz(0x01);
     spc_cyc(2);
     /* 19C5 call $194C */
-    spc_call_cyc(abi_SpcSfxStop, 0x19C8, 5, 1, 2);
+    spc_call(abi_SpcSfxStop, 0x19C8, 5, 1, 2);
     /* 19C8 dec x */
     spc.x = spc_dec(spc.x);
     spc_cyc(2);
@@ -7727,7 +7727,7 @@ L19F9:
     spc_cyc(3);
     spc_wr_cyc(spc_dp(0x2B), spc_rd(spc_dp(0x2A)), 2);
     /* 19FF mov $2A,#$00 */
-    spc_st_cyc(spc_dp(0x2A), 0x00, 4, 1);
+    spc_st(spc_dp(0x2A), 0x00, 4, 1);
     /* 1A02 mov.w a,$0551 */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x0551));
@@ -7735,87 +7735,87 @@ L19F9:
     if (spc.z) { spc_cyc(4); goto L1A2B; }
     spc_cyc(2);
     /* 1A07 set1 $29.7 */
-    spc_bit_set_cyc(0x29, 7, 1, 3, 1);
+    spc_bit_set(0x29, 7, 1, 3, 1);
     /* 1A09 set1 $2D.6 */
-    spc_bit_set_cyc(0x2D, 6, 1, 3, 1);
+    spc_bit_set(0x2D, 6, 1, 3, 1);
     /* 1A0B mov.b a,$4A */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x4A)));
     /* 1A0D mov.w $0574,a */
-    spc_st_cyc(0x0574, spc.a, 4, 1);
+    spc_st(0x0574, spc.a, 4, 1);
     /* 1A10 mov.b a,$4E */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x4E)));
     /* 1A12 mov.w $0575,a */
-    spc_st_cyc(0x0575, spc.a, 4, 1);
+    spc_st(0x0575, spc.a, 4, 1);
     /* 1A15 mov.b a,$61 */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x61)));
     /* 1A17 mov.w $0576,a */
-    spc_st_cyc(0x0576, spc.a, 4, 1);
+    spc_st(0x0576, spc.a, 4, 1);
     /* 1A1A mov.b a,$63 */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x63)));
     /* 1A1C mov.w $0577,a */
-    spc_st_cyc(0x0577, spc.a, 4, 1);
+    spc_st(0x0577, spc.a, 4, 1);
     /* 1A1F mov a,#$50 */
     spc.a = spc_nz(0x50);
     spc_cyc(2);
     /* 1A21 mov.b $4E,a */
-    spc_st_cyc(spc_dp(0x4E), spc.a, 3, 1);
+    spc_st(spc_dp(0x4E), spc.a, 3, 1);
     /* 1A23 mov a,#$11 */
     spc.a = spc_nz(0x11);
     spc_cyc(2);
     /* 1A25 mov.b $61,a */
-    spc_st_cyc(spc_dp(0x61), spc.a, 3, 1);
+    spc_st(spc_dp(0x61), spc.a, 3, 1);
     /* 1A27 mov a,#$11 */
     spc.a = spc_nz(0x11);
     spc_cyc(2);
     /* 1A29 mov.b $63,a */
-    spc_st_cyc(spc_dp(0x63), spc.a, 3, 1);
+    spc_st(spc_dp(0x63), spc.a, 3, 1);
 L1A2B:
     /* 1A2B set1 $29.0 */
-    spc_bit_set_cyc(0x29, 0, 1, 3, 1);
+    spc_bit_set(0x29, 0, 1, 3, 1);
     /* 1A2D mov a,#$4A */
     spc.a = spc_nz(0x4A);
     spc_cyc(2);
     /* 1A2F call $1424 */
-    spc_call_cyc(abi_SpcSoundQueuePush, 0x1A32, 5, 1, 2);
+    spc_call(abi_SpcSoundQueuePush, 0x1A32, 5, 1, 2);
     /* 1A32 mov x,#$07 */
     spc.x = spc_nz(0x07);
     spc_cyc(2);
     /* 1A34 call $1A54 */
-    spc_call_cyc(abi_SpcSfxChannelPause, 0x1A37, 5, 1, 2);
+    spc_call(abi_SpcSfxChannelPause, 0x1A37, 5, 1, 2);
     /* 1A37 dec x */
     spc.x = spc_dec(spc.x);
     spc_cyc(2);
     /* 1A38 call $1A54 */
-    spc_call_cyc(abi_SpcSfxChannelPause, 0x1A3B, 5, 1, 2);
+    spc_call(abi_SpcSfxChannelPause, 0x1A3B, 5, 1, 2);
     /* 1A3B dec x */
     spc.x = spc_dec(spc.x);
     spc_cyc(2);
     /* 1A3C call $1A54 */
-    spc_call_cyc(abi_SpcSfxChannelPause, 0x1A3F, 5, 1, 2);
+    spc_call(abi_SpcSfxChannelPause, 0x1A3F, 5, 1, 2);
     /* 1A3F dec x */
     spc.x = spc_dec(spc.x);
     spc_cyc(2);
     /* 1A40 call $1A54 */
-    spc_call_cyc(abi_SpcSfxChannelPause, 0x1A43, 5, 1, 2);
+    spc_call(abi_SpcSfxChannelPause, 0x1A43, 5, 1, 2);
     /* 1A43 mov x,#$07 */
     spc.x = spc_nz(0x07);
     spc_cyc(2);
     /* 1A45 call $194C */
-    spc_call_cyc(abi_SpcSfxStop, 0x1A48, 5, 1, 2);
+    spc_call(abi_SpcSfxStop, 0x1A48, 5, 1, 2);
     /* 1A48 dec x */
     spc.x = spc_dec(spc.x);
     spc_cyc(2);
     /* 1A49 call $194C */
-    spc_call_cyc(abi_SpcSfxStop, 0x1A4C, 5, 1, 2);
+    spc_call(abi_SpcSfxStop, 0x1A4C, 5, 1, 2);
     /* 1A4C dec x */
     spc.x = spc_dec(spc.x);
     spc_cyc(2);
     /* 1A4D call $194C */
-    spc_call_cyc(abi_SpcSfxStop, 0x1A50, 5, 1, 2);
+    spc_call(abi_SpcSfxStop, 0x1A50, 5, 1, 2);
     /* 1A50 dec x */
     spc.x = spc_dec(spc.x);
     spc_cyc(2);
@@ -7823,16 +7823,16 @@ L1A2B:
     { spc_cyc(3); abi_SpcSfxStop(); return; }
 L1A67:
     /* 1A67 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L1AE9:
     /* 1AE9 call $1AEF */
-    spc_call_cyc(abi_SpcKeyOffAll, 0x1AEC, 5, 1, 2);
+    spc_call(abi_SpcKeyOffAll, 0x1AEC, 5, 1, 2);
     /* 1AEC jmp $0675 */
     { spc_cyc(3); spc_restart(0x0675, abi_SpcReload); return; }
 L1AFF:
     /* 1AFF call $1A83 */
-    spc_call_cyc(abi_SpcSfxStopAll, 0x1B02, 5, 1, 2);
+    spc_call(abi_SpcSfxStopAll, 0x1B02, 5, 1, 2);
     /* 1B02 mov.b a,$59 */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x59)));
@@ -7840,15 +7840,15 @@ L1AFF:
     if (spc.z) { spc_cyc(4); goto L1AE9; }
     spc_cyc(2);
     /* 1B06 set1 $2C.7 */
-    spc_bit_set_cyc(0x2C, 7, 1, 3, 1);
+    spc_bit_set(0x2C, 7, 1, 3, 1);
     /* 1B08 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L1B09:
     /* 1B09 set1 $2D.0 */
-    spc_bit_set_cyc(0x2D, 0, 1, 3, 1);
+    spc_bit_set(0x2D, 0, 1, 3, 1);
     /* 1B0B call $1A83 */
-    spc_call_cyc(abi_SpcSfxStopAll, 0x1B0E, 5, 1, 2);
+    spc_call(abi_SpcSfxStopAll, 0x1B0E, 5, 1, 2);
     /* 1B0E mov.b a,$59 */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x59)));
@@ -7856,13 +7856,13 @@ L1B09:
     if (spc.z) { spc_cyc(4); goto L1B15; }
     spc_cyc(2);
     /* 1B12 set1 $2D.0 */
-    spc_bit_set_cyc(0x2D, 0, 1, 3, 1);
+    spc_bit_set(0x2D, 0, 1, 3, 1);
     /* 1B14 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L1B15:
     /* 1B15 call $1AEF */
-    spc_call_cyc(abi_SpcKeyOffAll, 0x1B18, 5, 1, 2);
+    spc_call(abi_SpcKeyOffAll, 0x1B18, 5, 1, 2);
     /* 1B18 mov.w a,$00F1 */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x00F1));
@@ -7870,7 +7870,7 @@ L1B15:
     spc.a = spc_or(spc.a, 0x80);
     spc_cyc(2);
     /* 1B1D mov.w $00F1,a */
-    spc_st_cyc(0x00F1, spc.a, 4, 1);
+    spc_st(0x00F1, spc.a, 4, 1);
     /* 1B20 jmp $FFC0 */
     { spc_cyc(3); spc_boot_rom(); return; }
 L1B23:
@@ -7884,28 +7884,28 @@ L1B23:
     spc.a = spc_sbc(spc.a, 0x2A);
     spc_cyc(2);
     /* 1B28 mov.w $0562,a */
-    spc_st_cyc(0x0562, spc.a, 4, 1);
+    spc_st(0x0562, spc.a, 4, 1);
     /* 1B2B ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L1798:
     /* 1798 clr1 $29.2 */
-    spc_bit_set_cyc(0x29, 2, 0, 3, 1);
+    spc_bit_set(0x29, 2, 0, 3, 1);
     /* 179A clr1 $29.3 */
-    spc_bit_set_cyc(0x29, 3, 0, 3, 1);
+    spc_bit_set(0x29, 3, 0, 3, 1);
     /* 179C mov a,#$00 */
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 179E mov.w $0549,a */
-    spc_st_cyc(0x0549, spc.a, 4, 1);
+    spc_st(0x0549, spc.a, 4, 1);
     /* 17A1 mov.w $054B,a */
-    spc_st_cyc(0x054B, spc.a, 4, 1);
+    spc_st(0x054B, spc.a, 4, 1);
     /* 17A4 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L17DE:
     /* 17DE ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -7920,7 +7920,7 @@ L17DE:
 void abi_SpcSfxStopIf(void)
 {
     /* 1908 clr1 $2A.6 */
-    spc_bit_set_cyc(0x2A, 6, 0, 3, 1);
+    spc_bit_set(0x2A, 6, 0, 3, 1);
     /* 190A mov.w a,$0394 */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x0394));
@@ -7947,10 +7947,10 @@ L1941:
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x20)));
     /* 1948 mov.w $03E0+x,a */
-    spc_st_cyc((uint16_t)(0x03E0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03E0 + spc.x), spc.a, 5, 1);
 L194B:
     /* 194B ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -7965,7 +7965,7 @@ L194B:
 void abi_SpcSfxStop(void)
 {
     /* 194C mov $20,#$01 */
-    spc_st_cyc(spc_dp(0x20), 0x01, 4, 1);
+    spc_st(spc_dp(0x20), 0x01, 4, 1);
     /* 194F bra $1941 */
     spc_cyc(4);
     goto L1941;
@@ -7980,10 +7980,10 @@ L1941:
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x20)));
     /* 1948 mov.w $03E0+x,a */
-    spc_st_cyc((uint16_t)(0x03E0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03E0 + spc.x), spc.a, 5, 1);
 L194B:
     /* 194B ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -7998,11 +7998,11 @@ L194B:
 void abi_SpcEchoModeA(void)
 {
     /* 1951 clr1 $28.1 */
-    spc_bit_set_cyc(0x28, 1, 0, 3, 1);
+    spc_bit_set(0x28, 1, 0, 3, 1);
     /* 1953 set1 $28.0 */
-    spc_bit_set_cyc(0x28, 0, 1, 3, 1);
+    spc_bit_set(0x28, 0, 1, 3, 1);
     /* 1955 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -8020,7 +8020,7 @@ void abi_SpcSfxChannelResume(void)
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x0460 + spc.x)));
     /* 19CF mov.w $03C8+x,a */
-    spc_st_cyc((uint16_t)(0x03C8 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03C8 + spc.x), spc.a, 5, 1);
     /* 19D2 mov.w a,$0458+x */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x0458 + spc.x)));
@@ -8032,12 +8032,12 @@ void abi_SpcSfxChannelResume(void)
     spc_push(spc.a);
     spc_cyc(1);
     /* 19D8 call $19EA */
-    spc_call_cyc(abi_SpcSfxPointer, 0x19DB, 5, 1, 2);
+    spc_call(abi_SpcSfxPointer, 0x19DB, 5, 1, 2);
     /* 19DB mov a,#$00 */
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 19DD mov.w $0458+x,a */
-    spc_st_cyc((uint16_t)(0x0458 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0458 + spc.x), spc.a, 5, 1);
     /* 19E0 pop a */
     spc_cyc(4);
     spc.a = spc_pull();
@@ -8046,12 +8046,12 @@ void abi_SpcSfxChannelResume(void)
     spc_push(spc.x);
     spc_cyc(1);
     /* 19E2 call $219C */
-    spc_call_cyc(abi_SpcSfxStart, 0x19E5, 5, 1, 2);
+    spc_call(abi_SpcSfxStart, 0x19E5, 5, 1, 2);
     /* 19E5 pop x */
     spc_cyc(4);
     spc.x = spc_pull();
     /* 19E6 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L19E7:
     /* 19E7 jmp $194C */
@@ -8081,7 +8081,7 @@ void abi_SpcSfxPointer(void)
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x0702 + spc.y)));
     /* 19F0 mov.b $24,a */
-    spc_st_cyc(spc_dp(0x24), spc.a, 3, 1);
+    spc_st(spc_dp(0x24), spc.a, 3, 1);
     /* 19F2 inc y */
     spc.y = spc_inc(spc.y);
     spc_cyc(2);
@@ -8089,9 +8089,9 @@ void abi_SpcSfxPointer(void)
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x0702 + spc.y)));
     /* 19F6 mov.b $25,a */
-    spc_st_cyc(spc_dp(0x25), spc.a, 3, 1);
+    spc_st(spc_dp(0x25), spc.a, 3, 1);
     /* 19F8 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -8116,17 +8116,17 @@ L1A59:
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x04F8 + spc.x)));
     /* 1A5C mov.w $0458+x,a */
-    spc_st_cyc((uint16_t)(0x0458 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0458 + spc.x), spc.a, 5, 1);
     /* 1A5F mov a,#$00 */
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 1A61 mov.w $04F8+x,a */
-    spc_st_cyc((uint16_t)(0x04F8 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x04F8 + spc.x), spc.a, 5, 1);
     /* 1A64 mov.w $0480+x,a */
-    spc_st_cyc((uint16_t)(0x0480 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0480 + spc.x), spc.a, 5, 1);
 L1A67:
     /* 1A67 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L1A68:
     /* 1A68 mov.w a,$0480+x */
@@ -8145,19 +8145,19 @@ L1A68:
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x03C8 + spc.x)));
     /* 1A74 mov.w $0460+x,a */
-    spc_st_cyc((uint16_t)(0x0460 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0460 + spc.x), spc.a, 5, 1);
     /* 1A77 mov.w a,$0390+x */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x0390 + spc.x)));
     /* 1A7A mov.w $0458+x,a */
-    spc_st_cyc((uint16_t)(0x0458 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0458 + spc.x), spc.a, 5, 1);
     /* 1A7D mov a,#$00 */
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 1A7F mov.w $0480+x,a */
-    spc_st_cyc((uint16_t)(0x0480 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0480 + spc.x), spc.a, 5, 1);
     /* 1A82 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -8172,15 +8172,15 @@ L1A68:
 void abi_SpcSfxStopAll(void)
 {
     /* 1A83 mov $2A,#$00 */
-    spc_st_cyc(spc_dp(0x2A), 0x00, 4, 1);
+    spc_st(spc_dp(0x2A), 0x00, 4, 1);
     /* 1A86 call $1AAA */
-    spc_call_cyc(abi_SpcFadeOutStart, 0x1A89, 5, 1, 2);
+    spc_call(abi_SpcFadeOutStart, 0x1A89, 5, 1, 2);
     /* 1A89 mov x,#$07 */
     spc.x = spc_nz(0x07);
     spc_cyc(2);
 L1A8B:
     /* 1A8B call $1A92 */
-    spc_call_cyc(abi_SpcSfxStopRequest, 0x1A8E, 5, 1, 2);
+    spc_call(abi_SpcSfxStopRequest, 0x1A8E, 5, 1, 2);
     /* 1A8E dec x */
     spc.x = spc_dec(spc.x);
     spc_cyc(2);
@@ -8188,7 +8188,7 @@ L1A8B:
     if (!spc.n) { spc_cyc(4); goto L1A8B; }
     spc_cyc(2);
     /* 1A91 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -8206,11 +8206,11 @@ void abi_SpcSfxStopRequest(void)
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 1A94 mov.w $04F8+x,a */
-    spc_st_cyc((uint16_t)(0x04F8 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x04F8 + spc.x), spc.a, 5, 1);
     /* 1A97 mov.w $0480+x,a */
-    spc_st_cyc((uint16_t)(0x0480 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0480 + spc.x), spc.a, 5, 1);
     /* 1A9A mov.b $2A,a */
-    spc_st_cyc(spc_dp(0x2A), spc.a, 3, 1);
+    spc_st(spc_dp(0x2A), spc.a, 3, 1);
     /* 1A9C mov.w a,$0408+x */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x0408 + spc.x)));
@@ -8221,12 +8221,12 @@ void abi_SpcSfxStopRequest(void)
     spc.a = spc_nz(0x01);
     spc_cyc(2);
     /* 1AA3 mov.w $04C0+x,a */
-    spc_st_cyc((uint16_t)(0x04C0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x04C0 + spc.x), spc.a, 5, 1);
     /* 1AA6 mov.w $04C8+x,a */
-    spc_st_cyc((uint16_t)(0x04C8 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x04C8 + spc.x), spc.a, 5, 1);
 L1AA9:
     /* 1AA9 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -8245,10 +8245,10 @@ void abi_SpcFadeOutStart(void)
     if ((spc_rd(spc_dp(0x29)) >> 0 & 1)) { spc_cyc(4); goto L1AAF; }
     spc_cyc(2);
     /* 1AAD set1 $29.6 */
-    spc_bit_set_cyc(0x29, 6, 1, 3, 1);
+    spc_bit_set(0x29, 6, 1, 3, 1);
 L1AAF:
     /* 1AAF ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -8276,9 +8276,9 @@ void abi_SpcMusicFade(void)
     spc_cyc(3);
     { uint16_t v = spc_rd(spc_dp(0x2E)); v |= (spc_cyc(2), spc_rd(spc_dp(0x2F))) << 8; spc_set_ya(spc_addw(spc_ya(), v)); }
     /* 1AB9 mov.b $2E,a */
-    spc_st_cyc(spc_dp(0x2E), spc.a, 3, 1);
+    spc_st(spc_dp(0x2E), spc.a, 3, 1);
     /* 1ABB mov.b $2F,y */
-    spc_st_cyc(spc_dp(0x2F), spc.y, 3, 1);
+    spc_st(spc_dp(0x2F), spc.y, 3, 1);
     /* 1ABD mov a,#$00 */
     spc.a = spc_nz(0x00);
     spc_cyc(2);
@@ -8289,7 +8289,7 @@ void abi_SpcMusicFade(void)
     spc_cyc(3);
     { uint16_t v = spc_rd(spc_dp(0x2E)); v |= (spc_cyc(2), spc_rd(spc_dp(0x2F))) << 8; spc_set_ya(spc_subw(spc_ya(), v)); }
     /* 1AC4 mov.w $0565,y */
-    spc_st_cyc(0x0565, spc.y, 4, 1);
+    spc_st(0x0565, spc.y, 4, 1);
     /* 1AC7 cmp y,#$00 */
     spc_cmp(spc.y, 0x00);
     spc_cyc(2);
@@ -8315,18 +8315,18 @@ void abi_SpcMusicFade(void)
     if (spc.z) { spc_cyc(4); goto L1AD8; }
     spc_cyc(2);
     /* 1AD7 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L1AD8:
     /* 1AD8 mov a,#$00 */
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 1ADA mov.b $2E,a */
-    spc_st_cyc(spc_dp(0x2E), spc.a, 3, 1);
+    spc_st(spc_dp(0x2E), spc.a, 3, 1);
     /* 1ADC mov.b $2F,a */
-    spc_st_cyc(spc_dp(0x2F), spc.a, 3, 1);
+    spc_st(spc_dp(0x2F), spc.a, 3, 1);
     /* 1ADE clr1 $29.6 */
-    spc_bit_set_cyc(0x29, 6, 0, 3, 1);
+    spc_bit_set(0x29, 6, 0, 3, 1);
     /* 1AE0 bbs $2C.7,$1AE9 */
     spc_cyc(3);
     if ((spc_rd(spc_dp(0x2C)) >> 7 & 1)) { spc_cyc(4); goto L1AE9; }
@@ -8339,7 +8339,7 @@ L1AD8:
     { spc_cyc(3); abi_SpcMusicPause(); return; }
 L1AE9:
     /* 1AE9 call $1AEF */
-    spc_call_cyc(abi_SpcKeyOffAll, 0x1AEC, 5, 1, 2);
+    spc_call(abi_SpcKeyOffAll, 0x1AEC, 5, 1, 2);
     /* 1AEC jmp $0675 */
     { spc_cyc(3); spc_restart(0x0675, abi_SpcReload); return; }
 L1AF6:
@@ -8347,15 +8347,15 @@ L1AF6:
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x59)));
     /* 1AF8 mov.w $0564,a */
-    spc_st_cyc(0x0564, spc.a, 4, 1);
+    spc_st(0x0564, spc.a, 4, 1);
     /* 1AFB mov.w $0565,a */
-    spc_st_cyc(0x0565, spc.a, 4, 1);
+    spc_st(0x0565, spc.a, 4, 1);
     /* 1AFE ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L1B15:
     /* 1B15 call $1AEF */
-    spc_call_cyc(abi_SpcKeyOffAll, 0x1B18, 5, 1, 2);
+    spc_call(abi_SpcKeyOffAll, 0x1B18, 5, 1, 2);
     /* 1B18 mov.w a,$00F1 */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x00F1));
@@ -8363,7 +8363,7 @@ L1B15:
     spc.a = spc_or(spc.a, 0x80);
     spc_cyc(2);
     /* 1B1D mov.w $00F1,a */
-    spc_st_cyc(0x00F1, spc.a, 4, 1);
+    spc_st(0x00F1, spc.a, 4, 1);
     /* 1B20 jmp $FFC0 */
     { spc_cyc(3); spc_boot_rom(); return; }
 }
@@ -8449,9 +8449,9 @@ L1B40:
     spc_push(spc.y);
     spc_cyc(1);
     /* 1B49 call $1C8A */
-    spc_call_cyc(abi_SpcSfxLookup, 0x1B4C, 5, 1, 2);
+    spc_call(abi_SpcSfxLookup, 0x1B4C, 5, 1, 2);
     /* 1B4C call $1C9E */
-    spc_call_cyc(abi_SpcSfxChannel, 0x1B4F, 5, 1, 2);
+    spc_call(abi_SpcSfxChannel, 0x1B4F, 5, 1, 2);
     /* 1B4F pop y */
     spc_cyc(4);
     spc.y = spc_pull();
@@ -8496,7 +8496,7 @@ L1B5B:
     goto L1B5B;
 L1B67:
     /* 1B67 mov.b $20,x */
-    spc_st_cyc(spc_dp(0x20), spc.x, 3, 1);
+    spc_st(spc_dp(0x20), spc.x, 3, 1);
     /* 1B69 mov a,y */
     spc.a = spc_nz(spc.y);
     spc_cyc(2);
@@ -8514,16 +8514,16 @@ L1B6F:
     spc_cyc(3);
     spc_wr_cyc(spc_dp(0x1F), spc_rd(spc_dp(0x1D)), 2);
     /* 1B72 mov $1D,#$00 */
-    spc_st_cyc(spc_dp(0x1D), 0x00, 4, 1);
+    spc_st(spc_dp(0x1D), 0x00, 4, 1);
     /* 1B75 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L1B76:
     /* 1B76 mov $1F,#$00 */
-    spc_st_cyc(spc_dp(0x1F), 0x00, 4, 1);
+    spc_st(spc_dp(0x1F), 0x00, 4, 1);
 L1B79:
     /* 1B79 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -8561,10 +8561,10 @@ L1B7C:
     goto L1B7C;
 L1B88:
     /* 1B88 mov $1D,#$00 */
-    spc_st_cyc(spc_dp(0x1D), 0x00, 4, 1);
+    spc_st(spc_dp(0x1D), 0x00, 4, 1);
 L1B8B:
     /* 1B8B ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -8592,7 +8592,7 @@ L1B94:
     spc.a = spc_inc(spc.a);
     spc_cyc(2);
     /* 1B9A mov.w $0468+x,a */
-    spc_st_cyc((uint16_t)(0x0468 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0468 + spc.x), spc.a, 5, 1);
 L1B9D:
     /* 1B9D inc x */
     spc.x = spc_inc(spc.x);
@@ -8610,7 +8610,7 @@ L1B9D:
     if (spc.z) { spc_cyc(4); goto L1BD3; }
     spc_cyc(2);
     /* 1BA6 call $19EA */
-    spc_call_cyc(abi_SpcSfxPointer, 0x1BA9, 5, 1, 2);
+    spc_call(abi_SpcSfxPointer, 0x1BA9, 5, 1, 2);
     /* 1BA9 mov y,#$00 */
     spc.y = spc_nz(0x00);
     spc_cyc(2);
@@ -8635,7 +8635,7 @@ L1B9D:
     if (spc.z) { spc_cyc(4); goto L1BBB; }
     spc_cyc(2);
     /* 1BB8 mov $1D,#$00 */
-    spc_st_cyc(spc_dp(0x1D), 0x00, 4, 1);
+    spc_st(spc_dp(0x1D), 0x00, 4, 1);
 L1BBB:
     /* 1BBB mov y,#$00 */
     spc.y = spc_nz(0x00);
@@ -8664,15 +8664,15 @@ L1BBD:
     goto L1BBD;
 L1BCA:
     /* 1BCA mov.w $0470+x,a */
-    spc_st_cyc((uint16_t)(0x0470 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0470 + spc.x), spc.a, 5, 1);
     /* 1BCD mov a,#$01 */
     spc.a = spc_nz(0x01);
     spc_cyc(2);
     /* 1BCF mov.w $0468+x,a */
-    spc_st_cyc((uint16_t)(0x0468 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0468 + spc.x), spc.a, 5, 1);
 L1BD2:
     /* 1BD2 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L1BD3:
     /* 1BD3 mov y,#$00 */
@@ -8696,11 +8696,11 @@ L1BDA:
     if (!spc.z) { spc_cyc(4); goto L1BD5; }
     spc_cyc(2);
     /* 1BDF ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L1BE0:
     /* 1BE0 mov.b $26,a */
-    spc_st_cyc(spc_dp(0x26), spc.a, 3, 1);
+    spc_st(spc_dp(0x26), spc.a, 3, 1);
     /* 1BE2 mov x,#$00 */
     spc.x = spc_nz(0x00);
     spc_cyc(2);
@@ -8743,9 +8743,9 @@ L1BF1:
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 1BFC mov.w $0468+y,a */
-    spc_st_cyc((uint16_t)(0x0468 + spc.y), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0468 + spc.y), spc.a, 5, 1);
     /* 1BFF mov.w $0470+y,a */
-    spc_st_cyc((uint16_t)(0x0470 + spc.y), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0470 + spc.y), spc.a, 5, 1);
     /* 1C02 bra $1BDA */
     spc_cyc(4);
     goto L1BDA;
@@ -8765,7 +8765,7 @@ void abi_SpcSfxFrameHoldReset(void)
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 1C16 mov.w $057B,a */
-    spc_st_cyc(0x057B, spc.a, 4, 1);
+    spc_st(0x057B, spc.a, 4, 1);
     /* 1C19 bra $1C25 */
     spc_cyc(4);
     goto L1C25;
@@ -8816,7 +8816,7 @@ L1C3F:
     spc.x = spc_dec(spc.x);
     spc_cyc(2);
     /* 1C43 mov.w $0588+x,a */
-    spc_st_cyc((uint16_t)(0x0588 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0588 + spc.x), spc.a, 5, 1);
     /* 1C46 inc x */
     spc.x = spc_inc(spc.x);
     spc_cyc(2);
@@ -8836,7 +8836,7 @@ L1C3F:
     spc.x = spc_nz(0x00);
     spc_cyc(2);
     /* 1C4F mov.w $057B,x */
-    spc_st_cyc(0x057B, spc.x, 4, 1);
+    spc_st(0x057B, spc.x, 4, 1);
     /* 1C52 bra $1C63 */
     spc_cyc(4);
     goto L1C63;
@@ -8855,7 +8855,7 @@ L1C5A:
     { spc_cyc(3); abi_SpcSfxChannelsFrame(); return; }
 L1C5D:
     /* 1C5D mov.b $1E,a */
-    spc_st_cyc(spc_dp(0x1E), spc.a, 3, 1);
+    spc_st(spc_dp(0x1E), spc.a, 3, 1);
     /* 1C5F mov.b a,$1D */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x1D)));
@@ -8864,28 +8864,28 @@ L1C5D:
     spc_cyc(2);
 L1C63:
     /* 1C63 mov.b $23,a */
-    spc_st_cyc(spc_dp(0x23), spc.a, 3, 1);
+    spc_st(spc_dp(0x23), spc.a, 3, 1);
     /* 1C65 call $1C8A */
-    spc_call_cyc(abi_SpcSfxLookup, 0x1C68, 5, 1, 2);
+    spc_call(abi_SpcSfxLookup, 0x1C68, 5, 1, 2);
     /* 1C68 call $1C9E */
-    spc_call_cyc(abi_SpcSfxChannel, 0x1C6B, 5, 1, 2);
+    spc_call(abi_SpcSfxChannel, 0x1C6B, 5, 1, 2);
     /* 1C6B call $1CA5 */
-    spc_call_cyc(abi_SpcSfxMode, 0x1C6E, 5, 1, 2);
+    spc_call(abi_SpcSfxMode, 0x1C6E, 5, 1, 2);
     /* 1C6E call $1C84 */
-    spc_call_cyc(abi_SpcSfxActivate, 0x1C71, 5, 1, 2);
+    spc_call(abi_SpcSfxActivate, 0x1C71, 5, 1, 2);
     /* 1C71 call $1CED */
-    spc_call_cyc(abi_SpcSfxChannelSave, 0x1C74, 5, 1, 2);
+    spc_call(abi_SpcSfxChannelSave, 0x1C74, 5, 1, 2);
     /* 1C74 mov.b a,$23 */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x23)));
     /* 1C76 mov.w $0410+x,a */
-    spc_st_cyc((uint16_t)(0x0410 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0410 + spc.x), spc.a, 5, 1);
     /* 1C79 push x */
     spc_cyc(3);
     spc_push(spc.x);
     spc_cyc(1);
     /* 1C7A call $1CCD */
-    spc_call_cyc(abi_SpcSfxChannelsFrame, 0x1C7D, 5, 1, 2);
+    spc_call(abi_SpcSfxChannelsFrame, 0x1C7D, 5, 1, 2);
     /* 1C7D pop x */
     spc_cyc(4);
     spc.x = spc_pull();
@@ -8893,9 +8893,9 @@ L1C63:
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 1C80 mov.w $0410+x,a */
-    spc_st_cyc((uint16_t)(0x0410 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0410 + spc.x), spc.a, 5, 1);
     /* 1C83 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -8913,9 +8913,9 @@ void abi_SpcSfxActivate(void)
     spc.a = spc_nz(0x01);
     spc_cyc(2);
     /* 1C86 mov.w $0408+x,a */
-    spc_st_cyc((uint16_t)(0x0408 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0408 + spc.x), spc.a, 5, 1);
     /* 1C89 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -8942,7 +8942,7 @@ void abi_SpcSfxLookup(void)
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x0702 + spc.y)));
     /* 1C90 mov.b $20,a */
-    spc_st_cyc(spc_dp(0x20), spc.a, 3, 1);
+    spc_st(spc_dp(0x20), spc.a, 3, 1);
     /* 1C92 inc y */
     spc.y = spc_inc(spc.y);
     spc_cyc(2);
@@ -8950,7 +8950,7 @@ void abi_SpcSfxLookup(void)
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x0702 + spc.y)));
     /* 1C96 mov.b $21,a */
-    spc_st_cyc(spc_dp(0x21), spc.a, 3, 1);
+    spc_st(spc_dp(0x21), spc.a, 3, 1);
     /* 1C98 mov y,#$00 */
     spc.y = spc_nz(0x00);
     spc_cyc(2);
@@ -8963,7 +8963,7 @@ void abi_SpcSfxLookup(void)
     spc.x = spc_nz(spc.a);
     spc_cyc(2);
     /* 1C9D ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -8978,7 +8978,7 @@ void abi_SpcSfxLookup(void)
 void abi_SpcSfxChannel(void)
 {
     /* 1C9E mov.b $26,x */
-    spc_st_cyc(spc_dp(0x26), spc.x, 3, 1);
+    spc_st(spc_dp(0x26), spc.x, 3, 1);
     /* 1CA0 mov a,x */
     spc.a = spc_nz(spc.x);
     spc_cyc(2);
@@ -8989,7 +8989,7 @@ void abi_SpcSfxChannel(void)
     spc.x = spc_nz(spc.a);
     spc_cyc(2);
     /* 1CA4 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -9015,7 +9015,7 @@ void abi_SpcSfxMode(void)
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 1CAD mov.w $04F8+x,a */
-    spc_st_cyc((uint16_t)(0x04F8 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x04F8 + spc.x), spc.a, 5, 1);
     /* 1CB0 mov a,#$02 */
     spc.a = spc_nz(0x02);
     spc_cyc(2);
@@ -9028,9 +9028,9 @@ L1CB4:
     spc_cyc(2);
 L1CB6:
     /* 1CB6 mov.w $0480+x,a */
-    spc_st_cyc((uint16_t)(0x0480 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0480 + spc.x), spc.a, 5, 1);
     /* 1CB9 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L1CBA:
     /* 1CBA mov.w a,$0480+x */
@@ -9052,10 +9052,10 @@ L1CBA:
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x0390 + spc.x)));
     /* 1CC9 mov.w $04F8+x,a */
-    spc_st_cyc((uint16_t)(0x04F8 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x04F8 + spc.x), spc.a, 5, 1);
 L1CCC:
     /* 1CCC ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -9080,9 +9080,9 @@ L1CCF:
     if (spc.z) { spc_cyc(4); goto L1CDA; }
     spc_cyc(2);
     /* 1CD4 call $1CE2 */
-    spc_call_cyc(abi_SpcSfxChannelLoad, 0x1CD7, 5, 1, 2);
+    spc_call(abi_SpcSfxChannelLoad, 0x1CD7, 5, 1, 2);
     /* 1CD7 call $1CF8 */
-    spc_call_cyc(abi_SpcSfxChannelStep, 0x1CDA, 5, 1, 2);
+    spc_call(abi_SpcSfxChannelStep, 0x1CDA, 5, 1, 2);
 L1CDA:
     /* 1CDA inc x */
     spc.x = spc_inc(spc.x);
@@ -9098,7 +9098,7 @@ L1CDA:
     goto L1CCF;
 L1CE1:
     /* 1CE1 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -9116,14 +9116,14 @@ void abi_SpcSfxChannelLoad(void)
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x0488 + spc.x)));
     /* 1CE5 mov.b $20,a */
-    spc_st_cyc(spc_dp(0x20), spc.a, 3, 1);
+    spc_st(spc_dp(0x20), spc.a, 3, 1);
     /* 1CE7 mov.w a,$0490+x */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x0490 + spc.x)));
     /* 1CEA mov.b $21,a */
-    spc_st_cyc(spc_dp(0x21), spc.a, 3, 1);
+    spc_st(spc_dp(0x21), spc.a, 3, 1);
     /* 1CEC ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -9141,14 +9141,14 @@ void abi_SpcSfxChannelSave(void)
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x20)));
     /* 1CEF mov.w $0488+x,a */
-    spc_st_cyc((uint16_t)(0x0488 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0488 + spc.x), spc.a, 5, 1);
     /* 1CF2 mov.b a,$21 */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x21)));
     /* 1CF4 mov.w $0490+x,a */
-    spc_st_cyc((uint16_t)(0x0490 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0490 + spc.x), spc.a, 5, 1);
     /* 1CF7 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -9196,11 +9196,11 @@ void abi_SpcSfxChannelStep(void)
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 1D10 mov.w $0390+x,a */
-    spc_st_cyc((uint16_t)(0x0390 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0390 + spc.x), spc.a, 5, 1);
     /* 1D13 mov.w $03F8+x,a */
-    spc_st_cyc((uint16_t)(0x03F8 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03F8 + spc.x), spc.a, 5, 1);
     /* 1D16 mov.w $0408+x,a */
-    spc_st_cyc((uint16_t)(0x0408 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0408 + spc.x), spc.a, 5, 1);
     /* 1D19 jmp $1E31 */
     { spc_cyc(3); abi_SpcSfxRelease(); return; }
 L1D1C:
@@ -9214,14 +9214,14 @@ L1D1C:
     spc.a = spc_nz(0x02);
     spc_cyc(2);
     /* 1D23 mov.w $03F8+x,a */
-    spc_st_cyc((uint16_t)(0x03F8 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03F8 + spc.x), spc.a, 5, 1);
     /* 1D26 call $1E89 */
-    spc_call_cyc(abi_SpcKeyOnVoice, 0x1D29, 5, 1, 2);
+    spc_call(abi_SpcKeyOnVoice, 0x1D29, 5, 1, 2);
     /* 1D29 mov a,#$00 */
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 1D2B mov.w $03E8+x,a */
-    spc_st_cyc((uint16_t)(0x03E8 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03E8 + spc.x), spc.a, 5, 1);
 L1D2E:
     /* 1D2E jmp $1E9D */
     spc_cyc(3);
@@ -9231,7 +9231,7 @@ L1D31:
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 1D33 mov.w $03E8+x,a */
-    spc_st_cyc((uint16_t)(0x03E8 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03E8 + spc.x), spc.a, 5, 1);
 L1D36:
     /* 1D36 mov.w a,$0410+x */
     spc_cyc(5);
@@ -9243,7 +9243,7 @@ L1D36:
     spc.a = spc_nz(0x03);
     spc_cyc(2);
     /* 1D3D mov.w $03F8+x,a */
-    spc_st_cyc((uint16_t)(0x03F8 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03F8 + spc.x), spc.a, 5, 1);
     /* 1D40 mov.w a,$03E8+x */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x03E8 + spc.x)));
@@ -9260,7 +9260,7 @@ L1D36:
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 1D4B mov.w $03F0+x,a */
-    spc_st_cyc((uint16_t)(0x03F0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03F0 + spc.x), spc.a, 5, 1);
     /* 1D4E bra $1D1C */
     spc_cyc(4);
     goto L1D1C;
@@ -9270,19 +9270,19 @@ L1D50:
     spc.a = spc_nz(spc_rd((uint16_t)(0x0410 + spc.x)));
 L1D53:
     /* 1D53 mov.w $0390+x,a */
-    spc_st_cyc((uint16_t)(0x0390 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0390 + spc.x), spc.a, 5, 1);
     /* 1D56 mov a,#$01 */
     spc.a = spc_nz(0x01);
     spc_cyc(2);
     /* 1D58 mov.w $03F8+x,a */
-    spc_st_cyc((uint16_t)(0x03F8 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03F8 + spc.x), spc.a, 5, 1);
     /* 1D5B mov a,#$00 */
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 1D5D mov.w $03F0+x,a */
-    spc_st_cyc((uint16_t)(0x03F0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03F0 + spc.x), spc.a, 5, 1);
     /* 1D60 mov.w $03E0+x,a */
-    spc_st_cyc((uint16_t)(0x03E0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03E0 + spc.x), spc.a, 5, 1);
     { abi_SpcSfxTakeVoice(); return; }
 L1D69:
     /* 1D69 jmp $1DE8 */
@@ -9342,7 +9342,7 @@ L1D8D:
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 1D8F mov.w $03E0+x,a */
-    spc_st_cyc((uint16_t)(0x03E0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03E0 + spc.x), spc.a, 5, 1);
     /* 1D92 bra $1D2E */
     spc_cyc(4);
     goto L1D2E;
@@ -9416,7 +9416,7 @@ L1DCE:
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 1DD0 mov.w $03E0+x,a */
-    spc_st_cyc((uint16_t)(0x03E0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03E0 + spc.x), spc.a, 5, 1);
     /* 1DD3 mov.w a,$04F8+x */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x04F8 + spc.x)));
@@ -9427,7 +9427,7 @@ L1DCE:
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 1DDA mov.w $04F8+x,a */
-    spc_st_cyc((uint16_t)(0x04F8 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x04F8 + spc.x), spc.a, 5, 1);
     /* 1DDD jmp $1D2E */
     spc_cyc(3);
     goto L1D2E;
@@ -9446,7 +9446,7 @@ L1DE8:
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 1DEA mov.w $03E0+x,a */
-    spc_st_cyc((uint16_t)(0x03E0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03E0 + spc.x), spc.a, 5, 1);
     /* 1DED mov.w a,$04F8+x */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x04F8 + spc.x)));
@@ -9454,36 +9454,36 @@ L1DE8:
     if (spc.z) { spc_cyc(4); goto L1DF5; }
     spc_cyc(2);
     /* 1DF2 call $1424 */
-    spc_call_cyc(abi_SpcSoundQueuePush, 0x1DF5, 5, 1, 2);
+    spc_call(abi_SpcSoundQueuePush, 0x1DF5, 5, 1, 2);
 L1DF5:
     /* 1DF5 mov a,#$04 */
     spc.a = spc_nz(0x04);
     spc_cyc(2);
     /* 1DF7 mov.w $03F8+x,a */
-    spc_st_cyc((uint16_t)(0x03F8 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03F8 + spc.x), spc.a, 5, 1);
     /* 1DFA call $1E93 */
-    spc_call_cyc(abi_SpcKeyOffVoice, 0x1DFD, 5, 1, 2);
+    spc_call(abi_SpcKeyOffVoice, 0x1DFD, 5, 1, 2);
     /* 1DFD mov a,#$00 */
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 1DFF mov.w $0480+x,a */
-    spc_st_cyc((uint16_t)(0x0480 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0480 + spc.x), spc.a, 5, 1);
     /* 1E02 mov.w $04F8+x,a */
-    spc_st_cyc((uint16_t)(0x04F8 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x04F8 + spc.x), spc.a, 5, 1);
     /* 1E05 mov.w $03F0+x,a */
-    spc_st_cyc((uint16_t)(0x03F0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03F0 + spc.x), spc.a, 5, 1);
     /* 1E08 mov.w $03C8+x,a */
-    spc_st_cyc((uint16_t)(0x03C8 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03C8 + spc.x), spc.a, 5, 1);
     /* 1E0B mov.w $04F0+x,a */
-    spc_st_cyc((uint16_t)(0x04F0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x04F0 + spc.x), spc.a, 5, 1);
     /* 1E0E ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L1E9D:
     /* 1E9D call $1EA6 */
-    spc_call_cyc(abi_SpcSfxRead, 0x1EA0, 5, 1, 2);
+    spc_call(abi_SpcSfxRead, 0x1EA0, 5, 1, 2);
     /* 1EA0 call $23CF */
-    spc_call_cyc(abi_SpcSfxSpecial, 0x1EA3, 5, 1, 2);
+    spc_call(abi_SpcSfxSpecial, 0x1EA3, 5, 1, 2);
     /* 1EA3 jmp $22D3 */
     spc_cyc(3);
     goto L22D3;
@@ -9517,7 +9517,7 @@ L22D3:
     if (spc.z) { spc_cyc(4); goto L22E8; }
     spc_cyc(2);
     /* 22E3 call $2336 */
-    spc_call_cyc(abi_SpcSfxFadeVolume, 0x22E6, 5, 1, 2);
+    spc_call(abi_SpcSfxFadeVolume, 0x22E6, 5, 1, 2);
     /* 22E6 bra $22EB */
     spc_cyc(4);
     goto L22EB;
@@ -9527,12 +9527,12 @@ L22E8:
     spc.a = spc_nz(spc_rd((uint16_t)(0x0398 + spc.x)));
 L22EB:
     /* 22EB call $23B2 */
-    spc_call_cyc(abi_SpcSfxVolumeAdjust, 0x22EE, 5, 1, 2);
+    spc_call(abi_SpcSfxVolumeAdjust, 0x22EE, 5, 1, 2);
     /* 22EE pop y */
     spc_cyc(4);
     spc.y = spc_pull();
     /* 22EF call $09E8 */
-    spc_call_cyc(abi_SpcDspWrite, 0x22F2, 5, 1, 2);
+    spc_call(abi_SpcDspWrite, 0x22F2, 5, 1, 2);
     /* 22F2 inc y */
     spc.y = spc_inc(spc.y);
     spc_cyc(2);
@@ -9553,11 +9553,11 @@ L22EB:
     if (spc.z) { spc_cyc(4); goto L2309; }
     spc_cyc(2);
     /* 22FE call $CA96 */
-    spc_call_cyc(abi_SpcIndexRight, 0x2301, 5, 1, 2);
+    spc_call(abi_SpcIndexRight, 0x2301, 5, 1, 2);
     /* 2301 call $2336 */
-    spc_call_cyc(abi_SpcSfxFadeVolume, 0x2304, 5, 1, 2);
+    spc_call(abi_SpcSfxFadeVolume, 0x2304, 5, 1, 2);
     /* 2304 call $CA9F */
-    spc_call_cyc(abi_SpcIndexLeft, 0x2307, 5, 1, 2);
+    spc_call(abi_SpcIndexLeft, 0x2307, 5, 1, 2);
     /* 2307 bra $230C */
     spc_cyc(4);
     goto L230C;
@@ -9567,12 +9567,12 @@ L2309:
     spc.a = spc_nz(spc_rd((uint16_t)(0x03A0 + spc.x)));
 L230C:
     /* 230C call $23B2 */
-    spc_call_cyc(abi_SpcSfxVolumeAdjust, 0x230F, 5, 1, 2);
+    spc_call(abi_SpcSfxVolumeAdjust, 0x230F, 5, 1, 2);
     /* 230F pop y */
     spc_cyc(4);
     spc.y = spc_pull();
     /* 2310 call $09E8 */
-    spc_call_cyc(abi_SpcDspWrite, 0x2313, 5, 1, 2);
+    spc_call(abi_SpcDspWrite, 0x2313, 5, 1, 2);
     /* 2313 inc y */
     spc.y = spc_inc(spc.y);
     spc_cyc(2);
@@ -9580,7 +9580,7 @@ L230C:
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x03B8 + spc.x)));
     /* 2317 call $09E8 */
-    spc_call_cyc(abi_SpcDspWrite, 0x231A, 5, 1, 2);
+    spc_call(abi_SpcDspWrite, 0x231A, 5, 1, 2);
     /* 231A inc y */
     spc.y = spc_inc(spc.y);
     spc_cyc(2);
@@ -9588,7 +9588,7 @@ L230C:
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x03C0 + spc.x)));
     /* 231E call $09E8 */
-    spc_call_cyc(abi_SpcDspWrite, 0x2321, 5, 1, 2);
+    spc_call(abi_SpcDspWrite, 0x2321, 5, 1, 2);
     /* 2321 inc y */
     spc.y = spc_inc(spc.y);
     spc_cyc(2);
@@ -9596,7 +9596,7 @@ L230C:
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x03C8 + spc.x)));
     /* 2325 call $09E8 */
-    spc_call_cyc(abi_SpcDspWrite, 0x2328, 5, 1, 2);
+    spc_call(abi_SpcDspWrite, 0x2328, 5, 1, 2);
     /* 2328 inc y */
     spc.y = spc_inc(spc.y);
     spc_cyc(2);
@@ -9604,7 +9604,7 @@ L230C:
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x03D0 + spc.x)));
     /* 232C call $09E8 */
-    spc_call_cyc(abi_SpcDspWrite, 0x232F, 5, 1, 2);
+    spc_call(abi_SpcDspWrite, 0x232F, 5, 1, 2);
     /* 232F inc y */
     spc.y = spc_inc(spc.y);
     spc_cyc(2);
@@ -9626,7 +9626,7 @@ L230C:
 void abi_SpcSfxTakeVoice(void)
 {
     /* 1D63 call $1E0F */
-    spc_call_cyc(abi_SpcSfxMarkVoice, 0x1D66, 5, 1, 2);
+    spc_call(abi_SpcSfxMarkVoice, 0x1D66, 5, 1, 2);
     /* 1D66 jmp $1E93 */
     { spc_cyc(3); abi_SpcKeyOffVoice(); return; }
 }
@@ -9664,7 +9664,7 @@ L1DE8:
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 1DEA mov.w $03E0+x,a */
-    spc_st_cyc((uint16_t)(0x03E0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03E0 + spc.x), spc.a, 5, 1);
     /* 1DED mov.w a,$04F8+x */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x04F8 + spc.x)));
@@ -9672,36 +9672,36 @@ L1DE8:
     if (spc.z) { spc_cyc(4); goto L1DF5; }
     spc_cyc(2);
     /* 1DF2 call $1424 */
-    spc_call_cyc(abi_SpcSoundQueuePush, 0x1DF5, 5, 1, 2);
+    spc_call(abi_SpcSoundQueuePush, 0x1DF5, 5, 1, 2);
 L1DF5:
     /* 1DF5 mov a,#$04 */
     spc.a = spc_nz(0x04);
     spc_cyc(2);
     /* 1DF7 mov.w $03F8+x,a */
-    spc_st_cyc((uint16_t)(0x03F8 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03F8 + spc.x), spc.a, 5, 1);
     /* 1DFA call $1E93 */
-    spc_call_cyc(abi_SpcKeyOffVoice, 0x1DFD, 5, 1, 2);
+    spc_call(abi_SpcKeyOffVoice, 0x1DFD, 5, 1, 2);
     /* 1DFD mov a,#$00 */
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 1DFF mov.w $0480+x,a */
-    spc_st_cyc((uint16_t)(0x0480 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0480 + spc.x), spc.a, 5, 1);
     /* 1E02 mov.w $04F8+x,a */
-    spc_st_cyc((uint16_t)(0x04F8 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x04F8 + spc.x), spc.a, 5, 1);
     /* 1E05 mov.w $03F0+x,a */
-    spc_st_cyc((uint16_t)(0x03F0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03F0 + spc.x), spc.a, 5, 1);
     /* 1E08 mov.w $03C8+x,a */
-    spc_st_cyc((uint16_t)(0x03C8 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03C8 + spc.x), spc.a, 5, 1);
     /* 1E0B mov.w $04F0+x,a */
-    spc_st_cyc((uint16_t)(0x04F0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x04F0 + spc.x), spc.a, 5, 1);
     /* 1E0E ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L1E9D:
     /* 1E9D call $1EA6 */
-    spc_call_cyc(abi_SpcSfxRead, 0x1EA0, 5, 1, 2);
+    spc_call(abi_SpcSfxRead, 0x1EA0, 5, 1, 2);
     /* 1EA0 call $23CF */
-    spc_call_cyc(abi_SpcSfxSpecial, 0x1EA3, 5, 1, 2);
+    spc_call(abi_SpcSfxSpecial, 0x1EA3, 5, 1, 2);
     /* 1EA3 jmp $22D3 */
     spc_cyc(3);
     goto L22D3;
@@ -9735,7 +9735,7 @@ L22D3:
     if (spc.z) { spc_cyc(4); goto L22E8; }
     spc_cyc(2);
     /* 22E3 call $2336 */
-    spc_call_cyc(abi_SpcSfxFadeVolume, 0x22E6, 5, 1, 2);
+    spc_call(abi_SpcSfxFadeVolume, 0x22E6, 5, 1, 2);
     /* 22E6 bra $22EB */
     spc_cyc(4);
     goto L22EB;
@@ -9745,12 +9745,12 @@ L22E8:
     spc.a = spc_nz(spc_rd((uint16_t)(0x0398 + spc.x)));
 L22EB:
     /* 22EB call $23B2 */
-    spc_call_cyc(abi_SpcSfxVolumeAdjust, 0x22EE, 5, 1, 2);
+    spc_call(abi_SpcSfxVolumeAdjust, 0x22EE, 5, 1, 2);
     /* 22EE pop y */
     spc_cyc(4);
     spc.y = spc_pull();
     /* 22EF call $09E8 */
-    spc_call_cyc(abi_SpcDspWrite, 0x22F2, 5, 1, 2);
+    spc_call(abi_SpcDspWrite, 0x22F2, 5, 1, 2);
     /* 22F2 inc y */
     spc.y = spc_inc(spc.y);
     spc_cyc(2);
@@ -9771,11 +9771,11 @@ L22EB:
     if (spc.z) { spc_cyc(4); goto L2309; }
     spc_cyc(2);
     /* 22FE call $CA96 */
-    spc_call_cyc(abi_SpcIndexRight, 0x2301, 5, 1, 2);
+    spc_call(abi_SpcIndexRight, 0x2301, 5, 1, 2);
     /* 2301 call $2336 */
-    spc_call_cyc(abi_SpcSfxFadeVolume, 0x2304, 5, 1, 2);
+    spc_call(abi_SpcSfxFadeVolume, 0x2304, 5, 1, 2);
     /* 2304 call $CA9F */
-    spc_call_cyc(abi_SpcIndexLeft, 0x2307, 5, 1, 2);
+    spc_call(abi_SpcIndexLeft, 0x2307, 5, 1, 2);
     /* 2307 bra $230C */
     spc_cyc(4);
     goto L230C;
@@ -9785,12 +9785,12 @@ L2309:
     spc.a = spc_nz(spc_rd((uint16_t)(0x03A0 + spc.x)));
 L230C:
     /* 230C call $23B2 */
-    spc_call_cyc(abi_SpcSfxVolumeAdjust, 0x230F, 5, 1, 2);
+    spc_call(abi_SpcSfxVolumeAdjust, 0x230F, 5, 1, 2);
     /* 230F pop y */
     spc_cyc(4);
     spc.y = spc_pull();
     /* 2310 call $09E8 */
-    spc_call_cyc(abi_SpcDspWrite, 0x2313, 5, 1, 2);
+    spc_call(abi_SpcDspWrite, 0x2313, 5, 1, 2);
     /* 2313 inc y */
     spc.y = spc_inc(spc.y);
     spc_cyc(2);
@@ -9798,7 +9798,7 @@ L230C:
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x03B8 + spc.x)));
     /* 2317 call $09E8 */
-    spc_call_cyc(abi_SpcDspWrite, 0x231A, 5, 1, 2);
+    spc_call(abi_SpcDspWrite, 0x231A, 5, 1, 2);
     /* 231A inc y */
     spc.y = spc_inc(spc.y);
     spc_cyc(2);
@@ -9806,7 +9806,7 @@ L230C:
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x03C0 + spc.x)));
     /* 231E call $09E8 */
-    spc_call_cyc(abi_SpcDspWrite, 0x2321, 5, 1, 2);
+    spc_call(abi_SpcDspWrite, 0x2321, 5, 1, 2);
     /* 2321 inc y */
     spc.y = spc_inc(spc.y);
     spc_cyc(2);
@@ -9814,7 +9814,7 @@ L230C:
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x03C8 + spc.x)));
     /* 2325 call $09E8 */
-    spc_call_cyc(abi_SpcDspWrite, 0x2328, 5, 1, 2);
+    spc_call(abi_SpcDspWrite, 0x2328, 5, 1, 2);
     /* 2328 inc y */
     spc.y = spc_inc(spc.y);
     spc_cyc(2);
@@ -9822,7 +9822,7 @@ L230C:
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x03D0 + spc.x)));
     /* 232C call $09E8 */
-    spc_call_cyc(abi_SpcDspWrite, 0x232F, 5, 1, 2);
+    spc_call(abi_SpcDspWrite, 0x232F, 5, 1, 2);
     /* 232F inc y */
     spc.y = spc_inc(spc.y);
     spc_cyc(2);
@@ -9840,7 +9840,7 @@ L1D8D:
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 1D8F mov.w $03E0+x,a */
-    spc_st_cyc((uint16_t)(0x03E0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03E0 + spc.x), spc.a, 5, 1);
     /* 1D92 bra $1D2E */
     spc_cyc(4);
     goto L1D2E;
@@ -9857,7 +9857,7 @@ L1D8D:
 void abi_SpcSfxMarkVoice(void)
 {
     /* 1E0F call $1E19 */
-    spc_call_cyc(abi_SpcVoiceMask, 0x1E12, 5, 1, 2);
+    spc_call(abi_SpcVoiceMask, 0x1E12, 5, 1, 2);
     /* 1E12 mov.b a,$1A */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x1A)));
@@ -9865,9 +9865,9 @@ void abi_SpcSfxMarkVoice(void)
     spc_cyc(3);
     spc.a = spc_or(spc.a, spc_rd(spc_dp(0x22)));
     /* 1E16 mov.b $1A,a */
-    spc_st_cyc(spc_dp(0x1A), spc.a, 3, 1);
+    spc_st(spc_dp(0x1A), spc.a, 3, 1);
     /* 1E18 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -9882,9 +9882,9 @@ void abi_SpcSfxMarkVoice(void)
 void abi_SpcVoiceMask(void)
 {
     /* 1E19 mov.b $22,x */
-    spc_st_cyc(spc_dp(0x22), spc.x, 3, 1);
+    spc_st(spc_dp(0x22), spc.x, 3, 1);
     /* 1E1B inc.b $22 */
-    spc_rmw_cyc(spc_dp(0x22), spc_inc, 3, 1);
+    spc_rmw(spc_dp(0x22), spc_inc, 3, 1);
     /* 1E1D mov a,#$00 */
     spc.a = spc_nz(0x00);
     spc_cyc(2);
@@ -9896,14 +9896,14 @@ L1E20:
     spc.a = spc_rol(spc.a);
     spc_cyc(2);
     /* 1E21 dec.b $22 */
-    spc_rmw_cyc(spc_dp(0x22), spc_dec, 3, 1);
+    spc_rmw(spc_dp(0x22), spc_dec, 3, 1);
     /* 1E23 bne $1E20 */
     if (!spc.z) { spc_cyc(4); goto L1E20; }
     spc_cyc(2);
     /* 1E25 mov.b $22,a */
-    spc_st_cyc(spc_dp(0x22), spc.a, 3, 1);
+    spc_st(spc_dp(0x22), spc.a, 3, 1);
     /* 1E27 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -9918,9 +9918,9 @@ L1E20:
 void abi_SpcVoiceMaskNot(void)
 {
     /* 1E28 mov.b $22,x */
-    spc_st_cyc(spc_dp(0x22), spc.x, 3, 1);
+    spc_st(spc_dp(0x22), spc.x, 3, 1);
     /* 1E2A inc.b $22 */
-    spc_rmw_cyc(spc_dp(0x22), spc_inc, 3, 1);
+    spc_rmw(spc_dp(0x22), spc_inc, 3, 1);
     /* 1E2C mov a,#$FF */
     spc.a = spc_nz(0xFF);
     spc_cyc(2);
@@ -9935,14 +9935,14 @@ L1E20:
     spc.a = spc_rol(spc.a);
     spc_cyc(2);
     /* 1E21 dec.b $22 */
-    spc_rmw_cyc(spc_dp(0x22), spc_dec, 3, 1);
+    spc_rmw(spc_dp(0x22), spc_dec, 3, 1);
     /* 1E23 bne $1E20 */
     if (!spc.z) { spc_cyc(4); goto L1E20; }
     spc_cyc(2);
     /* 1E25 mov.b $22,a */
-    spc_st_cyc(spc_dp(0x22), spc.a, 3, 1);
+    spc_st(spc_dp(0x22), spc.a, 3, 1);
     /* 1E27 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -9957,7 +9957,7 @@ L1E20:
 void abi_SpcSfxRelease(void)
 {
     /* 1E31 call $1E28 */
-    spc_call_cyc(abi_SpcVoiceMaskNot, 0x1E34, 5, 1, 2);
+    spc_call(abi_SpcVoiceMaskNot, 0x1E34, 5, 1, 2);
     /* 1E34 mov.b a,$1A */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x1A)));
@@ -9965,7 +9965,7 @@ void abi_SpcSfxRelease(void)
     spc_cyc(3);
     spc.a = spc_and(spc.a, spc_rd(spc_dp(0x22)));
     /* 1E38 mov.b $1A,a */
-    spc_st_cyc(spc_dp(0x1A), spc.a, 3, 1);
+    spc_st(spc_dp(0x1A), spc.a, 3, 1);
     /* 1E3A push x */
     spc_cyc(3);
     spc_push(spc.x);
@@ -9986,14 +9986,14 @@ void abi_SpcSfxRelease(void)
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x0211 + spc.x)));
     /* 1E42 call $0BC1 */
-    spc_call_cyc(abi_SpcLoadInstrument, 0x1E45, 5, 1, 2);
+    spc_call(abi_SpcLoadInstrument, 0x1E45, 5, 1, 2);
     /* 1E45 pop x */
     spc_cyc(4);
     spc.x = spc_pull();
     /* 1E46 mov.b $20,x */
-    spc_st_cyc(spc_dp(0x20), spc.x, 3, 1);
+    spc_st(spc_dp(0x20), spc.x, 3, 1);
     /* 1E48 inc.b $20 */
-    spc_rmw_cyc(spc_dp(0x20), spc_inc, 3, 1);
+    spc_rmw(spc_dp(0x20), spc_inc, 3, 1);
     /* 1E4A mov.b a,$4F */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x4F)));
@@ -10002,7 +10002,7 @@ L1E4C:
     spc.a = spc_lsr(spc.a);
     spc_cyc(2);
     /* 1E4D dec.b $20 */
-    spc_rmw_cyc(spc_dp(0x20), spc_dec, 3, 1);
+    spc_rmw(spc_dp(0x20), spc_dec, 3, 1);
     /* 1E4F bne $1E4C */
     if (!spc.z) { spc_cyc(4); goto L1E4C; }
     spc_cyc(2);
@@ -10010,7 +10010,7 @@ L1E4C:
     if (!spc.c) { spc_cyc(4); goto L1E5E; }
     spc_cyc(2);
     /* 1E53 call $1E19 */
-    spc_call_cyc(abi_SpcVoiceMask, 0x1E56, 5, 1, 2);
+    spc_call(abi_SpcVoiceMask, 0x1E56, 5, 1, 2);
     /* 1E56 mov.b a,$4A */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x4A)));
@@ -10018,13 +10018,13 @@ L1E4C:
     spc_cyc(3);
     spc.a = spc_or(spc.a, spc_rd(spc_dp(0x22)));
     /* 1E5A mov.b $4A,a */
-    spc_st_cyc(spc_dp(0x4A), spc.a, 3, 1);
+    spc_st(spc_dp(0x4A), spc.a, 3, 1);
     /* 1E5C bra $1E67 */
     spc_cyc(4);
     goto L1E67;
 L1E5E:
     /* 1E5E call $1E28 */
-    spc_call_cyc(abi_SpcVoiceMaskNot, 0x1E61, 5, 1, 2);
+    spc_call(abi_SpcVoiceMaskNot, 0x1E61, 5, 1, 2);
     /* 1E61 mov.b a,$4A */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x4A)));
@@ -10032,10 +10032,10 @@ L1E5E:
     spc_cyc(3);
     spc.a = spc_and(spc.a, spc_rd(spc_dp(0x22)));
     /* 1E65 mov.b $4A,a */
-    spc_st_cyc(spc_dp(0x4A), spc.a, 3, 1);
+    spc_st(spc_dp(0x4A), spc.a, 3, 1);
 L1E67:
     /* 1E67 call $1E28 */
-    spc_call_cyc(abi_SpcVoiceMaskNot, 0x1E6A, 5, 1, 2);
+    spc_call(abi_SpcVoiceMaskNot, 0x1E6A, 5, 1, 2);
     /* 1E6A mov.b a,$1A */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x1A)));
@@ -10043,9 +10043,9 @@ L1E67:
     spc_cyc(3);
     spc.a = spc_and(spc.a, spc_rd(spc_dp(0x22)));
     /* 1E6E mov.b $1A,a */
-    spc_st_cyc(spc_dp(0x1A), spc.a, 3, 1);
+    spc_st(spc_dp(0x1A), spc.a, 3, 1);
     /* 1E70 call $1E19 */
-    spc_call_cyc(abi_SpcVoiceMask, 0x1E73, 5, 1, 2);
+    spc_call(abi_SpcVoiceMask, 0x1E73, 5, 1, 2);
     /* 1E73 mov.b a,$47 */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x47)));
@@ -10053,7 +10053,7 @@ L1E67:
     spc_cyc(3);
     spc.a = spc_or(spc.a, spc_rd(spc_dp(0x22)));
     /* 1E77 mov.b $47,a */
-    spc_st_cyc(spc_dp(0x47), spc.a, 3, 1);
+    spc_st(spc_dp(0x47), spc.a, 3, 1);
     /* 1E79 mov.b a,$5E */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x5E)));
@@ -10061,7 +10061,7 @@ L1E67:
     spc_cyc(3);
     spc.a = spc_or(spc.a, spc_rd(spc_dp(0x20)));
     /* 1E7D mov.b $5E,a */
-    spc_st_cyc(spc_dp(0x5E), spc.a, 3, 1);
+    spc_st(spc_dp(0x5E), spc.a, 3, 1);
     /* 1E7F push x */
     spc_cyc(3);
     spc_push(spc.x);
@@ -10079,12 +10079,12 @@ L1E67:
     spc.x = spc_nz(spc.a);
     spc_cyc(2);
     /* 1E84 call $0E97 */
-    spc_call_cyc(abi_SpcVoiceVolumeWrite, 0x1E87, 5, 1, 2);
+    spc_call(abi_SpcVoiceVolumeWrite, 0x1E87, 5, 1, 2);
     /* 1E87 pop x */
     spc_cyc(4);
     spc.x = spc_pull();
     /* 1E88 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -10099,7 +10099,7 @@ L1E67:
 void abi_SpcKeyOnVoice(void)
 {
     /* 1E89 call $1E19 */
-    spc_call_cyc(abi_SpcVoiceMask, 0x1E8C, 5, 1, 2);
+    spc_call(abi_SpcVoiceMask, 0x1E8C, 5, 1, 2);
     /* 1E8C mov.b a,$45 */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x45)));
@@ -10107,9 +10107,9 @@ void abi_SpcKeyOnVoice(void)
     spc_cyc(3);
     spc.a = spc_or(spc.a, spc_rd(spc_dp(0x22)));
     /* 1E90 mov.b $45,a */
-    spc_st_cyc(spc_dp(0x45), spc.a, 3, 1);
+    spc_st(spc_dp(0x45), spc.a, 3, 1);
     /* 1E92 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -10124,7 +10124,7 @@ void abi_SpcKeyOnVoice(void)
 void abi_SpcKeyOffVoice(void)
 {
     /* 1E93 call $1E19 */
-    spc_call_cyc(abi_SpcVoiceMask, 0x1E96, 5, 1, 2);
+    spc_call(abi_SpcVoiceMask, 0x1E96, 5, 1, 2);
     /* 1E96 mov.b a,$46 */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x46)));
@@ -10132,9 +10132,9 @@ void abi_SpcKeyOffVoice(void)
     spc_cyc(3);
     spc.a = spc_or(spc.a, spc_rd(spc_dp(0x22)));
     /* 1E9A mov.b $46,a */
-    spc_st_cyc(spc_dp(0x46), spc.a, 3, 1);
+    spc_st(spc_dp(0x46), spc.a, 3, 1);
     /* 1E9C ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -10173,7 +10173,7 @@ void abi_SpcSfxRead(void)
     if (spc.n) { spc_cyc(4); goto L1EBC; }
     spc_cyc(2);
     /* 1EB9 call $194C */
-    spc_call_cyc(abi_SpcSfxStop, 0x1EBC, 5, 1, 2);
+    spc_call(abi_SpcSfxStop, 0x1EBC, 5, 1, 2);
 L1EBC:
     /* 1EBC mov.w a,$03F0+x */
     spc_cyc(5);
@@ -10188,7 +10188,7 @@ L1EBC:
     spc.a = spc_inc(spc.a);
     spc_cyc(2);
     /* 1EC4 mov.w $03F0+x,a */
-    spc_st_cyc((uint16_t)(0x03F0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03F0 + spc.x), spc.a, 5, 1);
 L1EC7:
     /* 1EC7 bra $1ECF */
     spc_cyc(4);
@@ -10198,13 +10198,13 @@ L1EC9:
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 1ECB mov.w $03F0+x,a */
-    spc_st_cyc((uint16_t)(0x03F0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03F0 + spc.x), spc.a, 5, 1);
     /* 1ECE ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L1ECF:
     /* 1ECF call $1CE2 */
-    spc_call_cyc(abi_SpcSfxChannelLoad, 0x1ED2, 5, 1, 2);
+    spc_call(abi_SpcSfxChannelLoad, 0x1ED2, 5, 1, 2);
     /* 1ED2 mov.w a,$03F0+x */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x03F0 + spc.x)));
@@ -10222,62 +10222,62 @@ L1ECF:
     goto L1F30;
 L1EDD:
     /* 1EDD ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L1EDE:
     /* 1EDE mov a,#$00 */
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 1EE0 mov.w $0400+x,a */
-    spc_st_cyc((uint16_t)(0x0400 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0400 + spc.x), spc.a, 5, 1);
     /* 1EE3 mov.w $0438+x,a */
-    spc_st_cyc((uint16_t)(0x0438 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0438 + spc.x), spc.a, 5, 1);
     /* 1EE6 mov.w $0520+x,a */
-    spc_st_cyc((uint16_t)(0x0520 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0520 + spc.x), spc.a, 5, 1);
     /* 1EE9 mov.w $0478+x,a */
-    spc_st_cyc((uint16_t)(0x0478 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0478 + spc.x), spc.a, 5, 1);
     /* 1EEC mov.w $0448+x,a */
-    spc_st_cyc((uint16_t)(0x0448 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0448 + spc.x), spc.a, 5, 1);
     /* 1EEF mov.w $0440+x,a */
-    spc_st_cyc((uint16_t)(0x0440 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0440 + spc.x), spc.a, 5, 1);
     /* 1EF2 mov.w $03A8+x,a */
-    spc_st_cyc((uint16_t)(0x03A8 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03A8 + spc.x), spc.a, 5, 1);
     /* 1EF5 mov.w $03B0+x,a */
-    spc_st_cyc((uint16_t)(0x03B0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03B0 + spc.x), spc.a, 5, 1);
     /* 1EF8 mov.w $04C0+x,a */
-    spc_st_cyc((uint16_t)(0x04C0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x04C0 + spc.x), spc.a, 5, 1);
     /* 1EFB mov.w $04C8+x,a */
-    spc_st_cyc((uint16_t)(0x04C8 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x04C8 + spc.x), spc.a, 5, 1);
     /* 1EFE mov.w $04F0+x,a */
-    spc_st_cyc((uint16_t)(0x04F0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x04F0 + spc.x), spc.a, 5, 1);
     /* 1F01 mov.w $0398+x,a */
-    spc_st_cyc((uint16_t)(0x0398 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0398 + spc.x), spc.a, 5, 1);
     /* 1F04 mov.w $04A8+x,a */
-    spc_st_cyc((uint16_t)(0x04A8 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x04A8 + spc.x), spc.a, 5, 1);
     /* 1F07 mov.w $03A0+x,a */
-    spc_st_cyc((uint16_t)(0x03A0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03A0 + spc.x), spc.a, 5, 1);
     /* 1F0A mov.w $04B0+x,a */
-    spc_st_cyc((uint16_t)(0x04B0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x04B0 + spc.x), spc.a, 5, 1);
     /* 1F0D mov.w $03B8+x,a */
-    spc_st_cyc((uint16_t)(0x03B8 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03B8 + spc.x), spc.a, 5, 1);
     /* 1F10 mov.w $0498+x,a */
-    spc_st_cyc((uint16_t)(0x0498 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0498 + spc.x), spc.a, 5, 1);
     /* 1F13 mov.w $03C0+x,a */
-    spc_st_cyc((uint16_t)(0x03C0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03C0 + spc.x), spc.a, 5, 1);
     /* 1F16 mov.w $04A0+x,a */
-    spc_st_cyc((uint16_t)(0x04A0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x04A0 + spc.x), spc.a, 5, 1);
     /* 1F19 mov a,#$8F */
     spc.a = spc_nz(0x8F);
     spc_cyc(2);
     /* 1F1B mov.w $03D0+x,a */
-    spc_st_cyc((uint16_t)(0x03D0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03D0 + spc.x), spc.a, 5, 1);
     /* 1F1E mov a,#$E0 */
     spc.a = spc_nz(0xE0);
     spc_cyc(2);
     /* 1F20 mov.w $03D8+x,a */
-    spc_st_cyc((uint16_t)(0x03D8 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03D8 + spc.x), spc.a, 5, 1);
     /* 1F23 call $1E28 */
-    spc_call_cyc(abi_SpcVoiceMaskNot, 0x1F26, 5, 1, 2);
+    spc_call(abi_SpcVoiceMaskNot, 0x1F26, 5, 1, 2);
     /* 1F26 mov.b a,$4A */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x4A)));
@@ -10285,7 +10285,7 @@ L1EDE:
     spc_cyc(3);
     spc.a = spc_and(spc.a, spc_rd(spc_dp(0x22)));
     /* 1F2A mov.b $4A,a */
-    spc_st_cyc(spc_dp(0x4A), spc.a, 3, 1);
+    spc_st(spc_dp(0x4A), spc.a, 3, 1);
     /* 1F2C mov y,#$01 */
     spc.y = spc_nz(0x01);
     spc_cyc(2);
@@ -10300,7 +10300,7 @@ L1F30:
     spc.a = spc_dec(spc.a);
     spc_cyc(2);
     /* 1F34 mov.w $0418+x,a */
-    spc_st_cyc((uint16_t)(0x0418 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0418 + spc.x), spc.a, 5, 1);
     /* 1F37 beq $1F43 */
     if (spc.z) { spc_cyc(4); goto L1F43; }
     spc_cyc(2);
@@ -10311,7 +10311,7 @@ L1F30:
     if (spc.z) { spc_cyc(4); goto L1F43; }
     spc_cyc(2);
     /* 1F3D call $224A */
-    spc_call_cyc(abi_SpcSfxPitchSlide, 0x1F40, 5, 1, 2);
+    spc_call(abi_SpcSfxPitchSlide, 0x1F40, 5, 1, 2);
     /* 1F40 jmp $2286 */
     spc_cyc(3);
     goto L2286;
@@ -10392,7 +10392,7 @@ L1F99:
     spc_cyc(4);
     spc.x = spc_pull();
     /* 1F9A ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L1F9B:
     /* 1F9B push a */
@@ -10416,24 +10416,24 @@ L1F9B:
     goto L1FAF;
 L1FA7:
     /* 1FA7 call $1E93 */
-    spc_call_cyc(abi_SpcKeyOffVoice, 0x1FAA, 5, 1, 2);
+    spc_call(abi_SpcKeyOffVoice, 0x1FAA, 5, 1, 2);
 L1FAA:
     /* 1FAA mov a,#$01 */
     spc.a = spc_nz(0x01);
     spc_cyc(2);
     /* 1FAC mov.w $03E8+x,a */
-    spc_st_cyc((uint16_t)(0x03E8 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03E8 + spc.x), spc.a, 5, 1);
 L1FAF:
     /* 1FAF mov a,#$00 */
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 1FB1 mov.w $0478+x,a */
-    spc_st_cyc((uint16_t)(0x0478 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0478 + spc.x), spc.a, 5, 1);
     /* 1FB4 pop a */
     spc_cyc(4);
     spc.a = spc_pull();
     /* 1FB5 mov.w $0418+x,a */
-    spc_st_cyc((uint16_t)(0x0418 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0418 + spc.x), spc.a, 5, 1);
     /* 1FB8 cmp a,#$7F */
     spc_cmp(spc.a, 0x7F);
     spc_cyc(2);
@@ -10452,12 +10452,12 @@ L1FC0:
     spc_cyc(2);
 L1FC2:
     /* 1FC2 mov.w $0420+x,a */
-    spc_st_cyc((uint16_t)(0x0420 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0420 + spc.x), spc.a, 5, 1);
     /* 1FC5 mov a,y */
     spc.a = spc_nz(spc.y);
     spc_cyc(2);
     /* 1FC6 mov.w $0400+x,a */
-    spc_st_cyc((uint16_t)(0x0400 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0400 + spc.x), spc.a, 5, 1);
     /* 1FC9 jmp $1CED */
     { spc_cyc(3); abi_SpcSfxChannelSave(); return; }
 L1FCC:
@@ -10501,12 +10501,12 @@ L1FCC:
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0xCAA8 + spc.x)));
     /* 1FDD mov.b $22,a */
-    spc_st_cyc(spc_dp(0x22), spc.a, 3, 1);
+    spc_st(spc_dp(0x22), spc.a, 3, 1);
     /* 1FDF mov.w a,$CAA9+x */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0xCAA9 + spc.x)));
     /* 1FE2 mov.b $23,a */
-    spc_st_cyc(spc_dp(0x23), spc.a, 3, 1);
+    spc_st(spc_dp(0x23), spc.a, 3, 1);
     /* 1FE4 pop a */
     spc_cyc(4);
     spc.a = spc_pull();
@@ -10517,7 +10517,7 @@ L1FCC:
     spc.a = spc_sbc(spc.a, 0x07);
     spc_cyc(2);
     /* 1FE8 mov.b $24,a */
-    spc_st_cyc(spc_dp(0x24), spc.a, 3, 1);
+    spc_st(spc_dp(0x24), spc.a, 3, 1);
     /* 1FEA beq $1FFE */
     if (spc.z) { spc_cyc(4); goto L1FFE; }
     spc_cyc(2);
@@ -10535,7 +10535,7 @@ L1FEC:
     spc_div();
     spc_cyc(12);
     /* 1FF3 mov.b $23,a */
-    spc_st_cyc(spc_dp(0x23), spc.a, 3, 1);
+    spc_st(spc_dp(0x23), spc.a, 3, 1);
     /* 1FF5 mov.b a,$22 */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x22)));
@@ -10543,9 +10543,9 @@ L1FEC:
     spc_div();
     spc_cyc(12);
     /* 1FF8 mov.b $22,a */
-    spc_st_cyc(spc_dp(0x22), spc.a, 3, 1);
+    spc_st(spc_dp(0x22), spc.a, 3, 1);
     /* 1FFA inc.b $24 */
-    spc_rmw_cyc(spc_dp(0x24), spc_inc, 3, 1);
+    spc_rmw(spc_dp(0x24), spc_inc, 3, 1);
     /* 1FFC bne $1FEC */
     if (!spc.z) { spc_cyc(4); goto L1FEC; }
     spc_cyc(2);
@@ -10557,16 +10557,16 @@ L1FFE:
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x22)));
     /* 2001 mov.w $03B8+x,a */
-    spc_st_cyc((uint16_t)(0x03B8 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03B8 + spc.x), spc.a, 5, 1);
     /* 2004 mov.w $0498+x,a */
-    spc_st_cyc((uint16_t)(0x0498 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0498 + spc.x), spc.a, 5, 1);
     /* 2007 mov.b a,$23 */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x23)));
     /* 2009 mov.w $03C0+x,a */
-    spc_st_cyc((uint16_t)(0x03C0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03C0 + spc.x), spc.a, 5, 1);
     /* 200C mov.w $04A0+x,a */
-    spc_st_cyc((uint16_t)(0x04A0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x04A0 + spc.x), spc.a, 5, 1);
     /* 200F mov.w a,$0440+x */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x0440 + spc.x)));
@@ -10578,7 +10578,7 @@ L1FFE:
     spc_push(spc.x);
     spc_cyc(1);
     /* 2015 mov.b $24,a */
-    spc_st_cyc(spc_dp(0x24), spc.a, 3, 1);
+    spc_st(spc_dp(0x24), spc.a, 3, 1);
     /* 2017 mov.b a,$23 */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x23)));
@@ -10672,12 +10672,12 @@ L2045:
     spc_cyc(4);
     spc.x = spc_pull();
     /* 2048 mov.w $03B8+x,a */
-    spc_st_cyc((uint16_t)(0x03B8 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03B8 + spc.x), spc.a, 5, 1);
     /* 204B mov a,y */
     spc.a = spc_nz(spc.y);
     spc_cyc(2);
     /* 204C mov.w $03C0+x,a */
-    spc_st_cyc((uint16_t)(0x03C0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03C0 + spc.x), spc.a, 5, 1);
 L204F:
     /* 204F pop y */
     spc_cyc(4);
@@ -10702,7 +10702,7 @@ L2059:
     spc_cyc(4);
     spc.x = spc_pull();
     /* 205A mov.w $0478+x,a */
-    spc_st_cyc((uint16_t)(0x0478 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0478 + spc.x), spc.a, 5, 1);
 L205D:
     /* 205D bra $2050 */
     spc_cyc(4);
@@ -10720,13 +10720,13 @@ L205F:
       spc_cyc(2);
       spc.a = spc_nz(spc_rd((uint16_t)(p + spc.y))); }
     /* 2063 mov.w $03C8+x,a */
-    spc_st_cyc((uint16_t)(0x03C8 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03C8 + spc.x), spc.a, 5, 1);
     /* 2066 bra $205D */
     spc_cyc(4);
     goto L205D;
 L209E:
     /* 209E set1 $2C.6 */
-    spc_bit_set_cyc(0x2C, 6, 1, 3, 1);
+    spc_bit_set(0x2C, 6, 1, 3, 1);
 L20A0:
     /* 20A0 pop x */
     spc_cyc(4);
@@ -10756,11 +10756,11 @@ L20AD:
       spc_cyc(2);
       spc.a = spc_nz(spc_rd((uint16_t)(p + spc.y))); }
     /* 20AF call $2068 */
-    spc_call_cyc(abi_SpcSfxEngineScale, 0x20B2, 5, 1, 2);
+    spc_call(abi_SpcSfxEngineScale, 0x20B2, 5, 1, 2);
     /* 20B2 mov.w $0398+x,a */
-    spc_st_cyc((uint16_t)(0x0398 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0398 + spc.x), spc.a, 5, 1);
     /* 20B5 mov.w $04A8+x,a */
-    spc_st_cyc((uint16_t)(0x04A8 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x04A8 + spc.x), spc.a, 5, 1);
     /* 20B8 bbs $2C.6,$20BC */
     spc_cyc(3);
     if ((spc_rd(spc_dp(0x2C)) >> 6 & 1)) { spc_cyc(4); goto L20BC; }
@@ -10775,11 +10775,11 @@ L20BC:
       spc_cyc(2);
       spc.a = spc_nz(spc_rd((uint16_t)(p + spc.y))); }
     /* 20BE call $2068 */
-    spc_call_cyc(abi_SpcSfxEngineScale, 0x20C1, 5, 1, 2);
+    spc_call(abi_SpcSfxEngineScale, 0x20C1, 5, 1, 2);
     /* 20C1 mov.w $03A0+x,a */
-    spc_st_cyc((uint16_t)(0x03A0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03A0 + spc.x), spc.a, 5, 1);
     /* 20C4 mov.w $04B0+x,a */
-    spc_st_cyc((uint16_t)(0x04B0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x04B0 + spc.x), spc.a, 5, 1);
     /* 20C7 jmp $20DE */
     spc_cyc(3);
     goto L20DE;
@@ -10790,9 +10790,9 @@ L20CA:
       spc_cyc(2);
       spc.a = spc_nz(spc_rd((uint16_t)(p + spc.y))); }
     /* 20CC mov.w $0398+x,a */
-    spc_st_cyc((uint16_t)(0x0398 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0398 + spc.x), spc.a, 5, 1);
     /* 20CF mov.w $04A8+x,a */
-    spc_st_cyc((uint16_t)(0x04A8 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x04A8 + spc.x), spc.a, 5, 1);
     /* 20D2 bbs $2C.6,$20D6 */
     spc_cyc(3);
     if ((spc_rd(spc_dp(0x2C)) >> 6 & 1)) { spc_cyc(4); goto L20D6; }
@@ -10807,19 +10807,19 @@ L20D6:
       spc_cyc(2);
       spc.a = spc_nz(spc_rd((uint16_t)(p + spc.y))); }
     /* 20D8 mov.w $03A0+x,a */
-    spc_st_cyc((uint16_t)(0x03A0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03A0 + spc.x), spc.a, 5, 1);
     /* 20DB mov.w $04B0+x,a */
-    spc_st_cyc((uint16_t)(0x04B0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x04B0 + spc.x), spc.a, 5, 1);
 L20DE:
     /* 20DE mov a,#$00 */
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 20E0 mov.w $03A8+x,a */
-    spc_st_cyc((uint16_t)(0x03A8 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03A8 + spc.x), spc.a, 5, 1);
     /* 20E3 mov.w $03B0+x,a */
-    spc_st_cyc((uint16_t)(0x03B0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03B0 + spc.x), spc.a, 5, 1);
     /* 20E6 clr1 $2C.6 */
-    spc_bit_set_cyc(0x2C, 6, 0, 3, 1);
+    spc_bit_set(0x2C, 6, 0, 3, 1);
 L20E8:
     /* 20E8 jmp $1F47 */
     spc_cyc(3);
@@ -10840,7 +10840,7 @@ L20EB:
     spc.a = spc_and(spc.a, 0x0F);
     spc_cyc(2);
     /* 20F1 mov.b $22,a */
-    spc_st_cyc(spc_dp(0x22), spc.a, 3, 1);
+    spc_st(spc_dp(0x22), spc.a, 3, 1);
     /* 20F3 mov.w a,$03D0+x */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x03D0 + spc.x)));
@@ -10878,7 +10878,7 @@ L20FA:
     spc.a = spc_asl(spc.a);
     spc_cyc(2);
     /* 2104 mov.b $22,a */
-    spc_st_cyc(spc_dp(0x22), spc.a, 3, 1);
+    spc_st(spc_dp(0x22), spc.a, 3, 1);
     /* 2106 mov.w a,$03D0+x */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x03D0 + spc.x)));
@@ -10893,7 +10893,7 @@ L210B:
     spc.a = spc_or(spc.a, 0x80);
     spc_cyc(2);
     /* 210F mov.w $03D0+x,a */
-    spc_st_cyc((uint16_t)(0x03D0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03D0 + spc.x), spc.a, 5, 1);
 L2112:
     /* 2112 bra $20E8 */
     spc_cyc(4);
@@ -10929,7 +10929,7 @@ L2114:
     spc.a = spc_asl(spc.a);
     spc_cyc(2);
     /* 211F mov.b $22,a */
-    spc_st_cyc(spc_dp(0x22), spc.a, 3, 1);
+    spc_st(spc_dp(0x22), spc.a, 3, 1);
     /* 2121 mov.w a,$03D8+x */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x03D8 + spc.x)));
@@ -10955,7 +10955,7 @@ L2128:
     spc.a = spc_and(spc.a, 0x1F);
     spc_cyc(2);
     /* 212E mov.b $22,a */
-    spc_st_cyc(spc_dp(0x22), spc.a, 3, 1);
+    spc_st(spc_dp(0x22), spc.a, 3, 1);
     /* 2130 mov.w a,$03D8+x */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x03D8 + spc.x)));
@@ -10967,7 +10967,7 @@ L2135:
     spc_cyc(3);
     spc.a = spc_or(spc.a, spc_rd(spc_dp(0x22)));
     /* 2137 mov.w $03D8+x,a */
-    spc_st_cyc((uint16_t)(0x03D8 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03D8 + spc.x), spc.a, 5, 1);
 L213A:
     /* 213A bra $2112 */
     spc_cyc(4);
@@ -10985,7 +10985,7 @@ L213C:
       spc_cyc(2);
       spc.a = spc_nz(spc_rd((uint16_t)(p + spc.y))); }
     /* 2140 mov.w $0428+x,a */
-    spc_st_cyc((uint16_t)(0x0428 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0428 + spc.x), spc.a, 5, 1);
     /* 2143 inc y */
     spc.y = spc_inc(spc.y);
     spc_cyc(2);
@@ -10995,12 +10995,12 @@ L213C:
       spc_cyc(2);
       spc.a = spc_nz(spc_rd((uint16_t)(p + spc.y))); }
     /* 2146 mov.w $0430+x,a */
-    spc_st_cyc((uint16_t)(0x0430 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0430 + spc.x), spc.a, 5, 1);
     /* 2149 mov a,#$01 */
     spc.a = spc_nz(0x01);
     spc_cyc(2);
     /* 214B mov.w $0438+x,a */
-    spc_st_cyc((uint16_t)(0x0438 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0438 + spc.x), spc.a, 5, 1);
 L214E:
     /* 214E bra $213A */
     spc_cyc(4);
@@ -11014,7 +11014,7 @@ L2150:
     if ((spc_rd(spc_dp(0x28)) >> 0 & 1)) { spc_cyc(4); goto L2169; }
     spc_cyc(2);
     /* 2154 call $1E19 */
-    spc_call_cyc(abi_SpcVoiceMask, 0x2157, 5, 1, 2);
+    spc_call(abi_SpcVoiceMask, 0x2157, 5, 1, 2);
     /* 2157 mov.b a,$4A */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x4A)));
@@ -11022,7 +11022,7 @@ L2150:
     spc_cyc(3);
     spc.a = spc_or(spc.a, spc_rd(spc_dp(0x22)));
     /* 215B mov.b $4A,a */
-    spc_st_cyc(spc_dp(0x4A), spc.a, 3, 1);
+    spc_st(spc_dp(0x4A), spc.a, 3, 1);
     /* 215D bra $2169 */
     spc_cyc(4);
     goto L2169;
@@ -11031,7 +11031,7 @@ L215F:
     spc_cyc(4);
     spc.x = spc_pull();
     /* 2160 call $1E28 */
-    spc_call_cyc(abi_SpcVoiceMaskNot, 0x2163, 5, 1, 2);
+    spc_call(abi_SpcVoiceMaskNot, 0x2163, 5, 1, 2);
     /* 2163 mov.b a,$4A */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x4A)));
@@ -11039,7 +11039,7 @@ L215F:
     spc_cyc(3);
     spc.a = spc_and(spc.a, spc_rd(spc_dp(0x22)));
     /* 2167 mov.b $4A,a */
-    spc_st_cyc(spc_dp(0x4A), spc.a, 3, 1);
+    spc_st(spc_dp(0x4A), spc.a, 3, 1);
 L2169:
     /* 2169 bra $214E */
     spc_cyc(4);
@@ -11054,7 +11054,7 @@ L216B:
       spc_cyc(2);
       spc.a = spc_nz(spc_rd((uint16_t)(p + spc.y))); }
     /* 216E mov.b $24,a */
-    spc_st_cyc(spc_dp(0x24), spc.a, 3, 1);
+    spc_st(spc_dp(0x24), spc.a, 3, 1);
     /* 2170 inc y */
     spc.y = spc_inc(spc.y);
     spc_cyc(2);
@@ -11064,7 +11064,7 @@ L216B:
       spc_cyc(2);
       spc.a = spc_nz(spc_rd((uint16_t)(p + spc.y))); }
     /* 2173 mov.b $25,a */
-    spc_st_cyc(spc_dp(0x25), spc.a, 3, 1);
+    spc_st(spc_dp(0x25), spc.a, 3, 1);
     /* 2175 push y */
     spc_cyc(3);
     spc_push(spc.y);
@@ -11127,7 +11127,7 @@ L2192:
     spc.a = spc_inc(spc.a);
     spc_cyc(2);
     /* 2195 call $219C */
-    spc_call_cyc(abi_SpcSfxStart, 0x2198, 5, 1, 2);
+    spc_call(abi_SpcSfxStart, 0x2198, 5, 1, 2);
 L2198:
     /* 2198 pop y */
     spc_cyc(4);
@@ -11149,10 +11149,10 @@ L21C8:
     if (!spc.z) { spc_cyc(4); goto L21D1; }
     spc_cyc(2);
     /* 21CE call $194C */
-    spc_call_cyc(abi_SpcSfxStop, 0x21D1, 5, 1, 2);
+    spc_call(abi_SpcSfxStop, 0x21D1, 5, 1, 2);
 L21D1:
     /* 21D1 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L21D2:
     /* 21D2 pop x */
@@ -11167,7 +11167,7 @@ L21D2:
       spc_cyc(2);
       spc.a = spc_nz(spc_rd((uint16_t)(p + spc.y))); }
     /* 21D6 mov.w $0500+x,a */
-    spc_st_cyc((uint16_t)(0x0500 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0500 + spc.x), spc.a, 5, 1);
     /* 21D9 inc y */
     spc.y = spc_inc(spc.y);
     spc_cyc(2);
@@ -11177,7 +11177,7 @@ L21D2:
       spc_cyc(2);
       spc.a = spc_nz(spc_rd((uint16_t)(p + spc.y))); }
     /* 21DC mov.w $0508+x,a */
-    spc_st_cyc((uint16_t)(0x0508 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0508 + spc.x), spc.a, 5, 1);
     /* 21DF inc y */
     spc.y = spc_inc(spc.y);
     spc_cyc(2);
@@ -11187,7 +11187,7 @@ L21D2:
       spc_cyc(2);
       spc.a = spc_nz(spc_rd((uint16_t)(p + spc.y))); }
     /* 21E2 mov.w $0510+x,a */
-    spc_st_cyc((uint16_t)(0x0510 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0510 + spc.x), spc.a, 5, 1);
     /* 21E5 inc y */
     spc.y = spc_inc(spc.y);
     spc_cyc(2);
@@ -11197,12 +11197,12 @@ L21D2:
       spc_cyc(2);
       spc.a = spc_nz(spc_rd((uint16_t)(p + spc.y))); }
     /* 21E8 mov.w $0518+x,a */
-    spc_st_cyc((uint16_t)(0x0518 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0518 + spc.x), spc.a, 5, 1);
     /* 21EB mov a,#$01 */
     spc.a = spc_nz(0x01);
     spc_cyc(2);
     /* 21ED mov.w $0520+x,a */
-    spc_st_cyc((uint16_t)(0x0520 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0520 + spc.x), spc.a, 5, 1);
 L21F0:
     /* 21F0 jmp $1F47 */
     spc_cyc(3);
@@ -11220,7 +11220,7 @@ L21F3:
       spc_cyc(2);
       spc.a = spc_nz(spc_rd((uint16_t)(p + spc.y))); }
     /* 21F7 mov.w $0440+x,a */
-    spc_st_cyc((uint16_t)(0x0440 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0440 + spc.x), spc.a, 5, 1);
 L21FA:
     /* 21FA bra $21F0 */
     spc_cyc(4);
@@ -11233,7 +11233,7 @@ L21FC:
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 21FF mov.w $0438+x,a */
-    spc_st_cyc((uint16_t)(0x0438 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0438 + spc.x), spc.a, 5, 1);
 L2202:
     /* 2202 bra $21FA */
     spc_cyc(4);
@@ -11246,7 +11246,7 @@ L2204:
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 2207 mov.w $0520+x,a */
-    spc_st_cyc((uint16_t)(0x0520 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0520 + spc.x), spc.a, 5, 1);
 L220A:
     /* 220A bra $2202 */
     spc_cyc(4);
@@ -11276,12 +11276,12 @@ L220C:
       spc_cyc(2);
       spc.a = spc_nz(spc_rd((uint16_t)(p + spc.y))); }
     /* 2214 mov.b $21,a */
-    spc_st_cyc(spc_dp(0x21), spc.a, 3, 1);
+    spc_st(spc_dp(0x21), spc.a, 3, 1);
     /* 2216 pop a */
     spc_cyc(4);
     spc.a = spc_pull();
     /* 2217 mov.b $20,a */
-    spc_st_cyc(spc_dp(0x20), spc.a, 3, 1);
+    spc_st(spc_dp(0x20), spc.a, 3, 1);
     /* 2219 mov y,#$00 */
     spc.y = spc_nz(0x00);
     spc_cyc(2);
@@ -11301,7 +11301,7 @@ L221E:
       spc_cyc(2);
       spc.a = spc_nz(spc_rd((uint16_t)(p + spc.y))); }
     /* 2222 mov.w $0448+x,a */
-    spc_st_cyc((uint16_t)(0x0448 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0448 + spc.x), spc.a, 5, 1);
 L2225:
     /* 2225 bra $220A */
     spc_cyc(4);
@@ -11311,12 +11311,12 @@ L2227:
     spc_cyc(4);
     spc.x = spc_pull();
     /* 2228 call $1E93 */
-    spc_call_cyc(abi_SpcKeyOffVoice, 0x222B, 5, 1, 2);
+    spc_call(abi_SpcKeyOffVoice, 0x222B, 5, 1, 2);
     /* 222B mov a,#$02 */
     spc.a = spc_nz(0x02);
     spc_cyc(2);
     /* 222D mov.w $0478+x,a */
-    spc_st_cyc((uint16_t)(0x0478 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0478 + spc.x), spc.a, 5, 1);
 L2230:
     /* 2230 bra $2225 */
     spc_cyc(4);
@@ -11334,7 +11334,7 @@ L2232:
       spc_cyc(2);
       spc.a = spc_nz(spc_rd((uint16_t)(p + spc.y))); }
     /* 2236 mov.w $04F0+x,a */
-    spc_st_cyc((uint16_t)(0x04F0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x04F0 + spc.x), spc.a, 5, 1);
 L2239:
     /* 2239 bra $2230 */
     spc_cyc(4);
@@ -11363,7 +11363,7 @@ L223B:
     spc_push(spc.x);
     spc_cyc(1);
     /* 2243 call $EDF0 */
-    spc_call_cyc(abi_SpcNoiseSampleInit, 0x2246, 5, 1, 2);
+    spc_call(abi_SpcNoiseSampleInit, 0x2246, 5, 1, 2);
     /* 2246 pop x */
     spc_cyc(4);
     spc.x = spc_pull();
@@ -11384,24 +11384,24 @@ L2286:
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x0500 + spc.x)));
     /* 228E mov.b $20,a */
-    spc_st_cyc(spc_dp(0x20), spc.a, 3, 1);
+    spc_st(spc_dp(0x20), spc.a, 3, 1);
     /* 2290 mov.w a,$0508+x */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x0508 + spc.x)));
     /* 2293 mov.b $21,a */
-    spc_st_cyc(spc_dp(0x21), spc.a, 3, 1);
+    spc_st(spc_dp(0x21), spc.a, 3, 1);
     /* 2295 call $22B0 */
-    spc_call_cyc(abi_SpcSfxVolumeSlide, 0x2298, 5, 1, 2);
+    spc_call(abi_SpcSfxVolumeSlide, 0x2298, 5, 1, 2);
     /* 2298 mov.w a,$0510+x */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x0510 + spc.x)));
     /* 229B mov.b $20,a */
-    spc_st_cyc(spc_dp(0x20), spc.a, 3, 1);
+    spc_st(spc_dp(0x20), spc.a, 3, 1);
     /* 229D mov.w a,$0518+x */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x0518 + spc.x)));
     /* 22A0 mov.b $21,a */
-    spc_st_cyc(spc_dp(0x21), spc.a, 3, 1);
+    spc_st(spc_dp(0x21), spc.a, 3, 1);
     /* 22A2 mov a,x */
     spc.a = spc_nz(spc.x);
     spc_cyc(2);
@@ -11415,7 +11415,7 @@ L2286:
     spc.x = spc_nz(spc.a);
     spc_cyc(2);
     /* 22A7 call $22B0 */
-    spc_call_cyc(abi_SpcSfxVolumeSlide, 0x22AA, 5, 1, 2);
+    spc_call(abi_SpcSfxVolumeSlide, 0x22AA, 5, 1, 2);
     /* 22AA mov a,x */
     spc.a = spc_nz(spc.x);
     spc_cyc(2);
@@ -11430,7 +11430,7 @@ L2286:
     spc_cyc(2);
 L22AF:
     /* 22AF ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -11445,7 +11445,7 @@ L22AF:
 void abi_SpcSfxReadNoAge(void)
 {
     /* 1EDD ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -11468,7 +11468,7 @@ void abi_SpcSfxEngineScale(void)
     spc_push(spc.y);
     spc_cyc(1);
     /* 206A mov.b $22,a */
-    spc_st_cyc(spc_dp(0x22), spc.a, 3, 1);
+    spc_st(spc_dp(0x22), spc.a, 3, 1);
     /* 206C mov.w a,$04F0+x */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x04F0 + spc.x)));
@@ -11498,11 +11498,11 @@ L2078:
     spc.x = spc_nz(0x02);
     spc_cyc(2);
     /* 207D call $CA89 */
-    spc_call_cyc(abi_SpcDiv16, 0x2080, 5, 1, 2);
+    spc_call(abi_SpcDiv16, 0x2080, 5, 1, 2);
     /* 2080 mov.b $24,a */
-    spc_st_cyc(spc_dp(0x24), spc.a, 3, 1);
+    spc_st(spc_dp(0x24), spc.a, 3, 1);
     /* 2082 mov.b $25,y */
-    spc_st_cyc(spc_dp(0x25), spc.y, 3, 1);
+    spc_st(spc_dp(0x25), spc.y, 3, 1);
     /* 2084 mov a,#$80 */
     spc.a = spc_nz(0x80);
     spc_cyc(2);
@@ -11526,7 +11526,7 @@ L2078:
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x22)));
     /* 208F call $CA75 */
-    spc_call_cyc(abi_SpcMul16, 0x2092, 5, 1, 2);
+    spc_call(abi_SpcMul16, 0x2092, 5, 1, 2);
     /* 2092 mov a,y */
     spc.a = spc_nz(spc.y);
     spc_cyc(2);
@@ -11544,7 +11544,7 @@ L2097:
     spc_cyc(4);
     spc.x = spc_pull();
     /* 2099 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L209A:
     /* 209A mov.b a,$22 */
@@ -11566,7 +11566,7 @@ L209A:
 void abi_SpcSfxStart(void)
 {
     /* 219C mov.b $23,a */
-    spc_st_cyc(spc_dp(0x23), spc.a, 3, 1);
+    spc_st(spc_dp(0x23), spc.a, 3, 1);
     /* 219E push a */
     spc_cyc(3);
     spc_push(spc.a);
@@ -11598,21 +11598,21 @@ void abi_SpcSfxStart(void)
     if (spc.z) { spc_cyc(4); goto L21C6; }
     spc_cyc(2);
     /* 21AF call $1C9E */
-    spc_call_cyc(abi_SpcSfxChannel, 0x21B2, 5, 1, 2);
+    spc_call(abi_SpcSfxChannel, 0x21B2, 5, 1, 2);
     /* 21B2 call $1CA5 */
-    spc_call_cyc(abi_SpcSfxMode, 0x21B5, 5, 1, 2);
+    spc_call(abi_SpcSfxMode, 0x21B5, 5, 1, 2);
     /* 21B5 mov.b a,$24 */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x24)));
     /* 21B7 mov.w $0488+x,a */
-    spc_st_cyc((uint16_t)(0x0488 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0488 + spc.x), spc.a, 5, 1);
     /* 21BA mov.b a,$25 */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x25)));
     /* 21BC mov.w $0490+x,a */
-    spc_st_cyc((uint16_t)(0x0490 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0490 + spc.x), spc.a, 5, 1);
     /* 21BF call $1C84 */
-    spc_call_cyc(abi_SpcSfxActivate, 0x21C2, 5, 1, 2);
+    spc_call(abi_SpcSfxActivate, 0x21C2, 5, 1, 2);
     /* 21C2 pop a */
     spc_cyc(4);
     spc.a = spc_pull();
@@ -11624,23 +11624,23 @@ L21C6:
     spc_cyc(4);
     spc.a = spc_pull();
     /* 21C7 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L1D53:
     /* 1D53 mov.w $0390+x,a */
-    spc_st_cyc((uint16_t)(0x0390 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0390 + spc.x), spc.a, 5, 1);
     /* 1D56 mov a,#$01 */
     spc.a = spc_nz(0x01);
     spc_cyc(2);
     /* 1D58 mov.w $03F8+x,a */
-    spc_st_cyc((uint16_t)(0x03F8 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03F8 + spc.x), spc.a, 5, 1);
     /* 1D5B mov a,#$00 */
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 1D5D mov.w $03F0+x,a */
-    spc_st_cyc((uint16_t)(0x03F0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03F0 + spc.x), spc.a, 5, 1);
     /* 1D60 mov.w $03E0+x,a */
-    spc_st_cyc((uint16_t)(0x03E0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03E0 + spc.x), spc.a, 5, 1);
     { abi_SpcSfxTakeVoice(); return; }
 }
 
@@ -11664,12 +11664,12 @@ void abi_SpcSfxPitchSlide(void)
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x0428 + spc.x)));
     /* 2252 mov.b $20,a */
-    spc_st_cyc(spc_dp(0x20), spc.a, 3, 1);
+    spc_st(spc_dp(0x20), spc.a, 3, 1);
     /* 2254 mov.w a,$0430+x */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x0430 + spc.x)));
     /* 2257 mov.b $21,a */
-    spc_st_cyc(spc_dp(0x21), spc.a, 3, 1);
+    spc_st(spc_dp(0x21), spc.a, 3, 1);
     /* 2259 mov.w a,$04A0+x */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x04A0 + spc.x)));
@@ -11683,12 +11683,12 @@ void abi_SpcSfxPitchSlide(void)
     spc_cyc(3);
     { uint16_t v = spc_rd(spc_dp(0x20)); v |= (spc_cyc(2), spc_rd(spc_dp(0x21))) << 8; spc_set_ya(spc_addw(spc_ya(), v)); }
     /* 2262 mov.w $0498+x,a */
-    spc_st_cyc((uint16_t)(0x0498 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0498 + spc.x), spc.a, 5, 1);
     /* 2265 mov a,y */
     spc.a = spc_nz(spc.y);
     spc_cyc(2);
     /* 2266 mov.w $04A0+x,a */
-    spc_st_cyc((uint16_t)(0x04A0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x04A0 + spc.x), spc.a, 5, 1);
     /* 2269 bmi $227B */
     if (spc.n) { spc_cyc(4); goto L227B; }
     spc_cyc(2);
@@ -11706,15 +11706,15 @@ void abi_SpcSfxPitchSlide(void)
     spc.a = spc_nz(spc_rd((uint16_t)(0x0498 + spc.x)));
 L2273:
     /* 2273 mov.w $03B8+x,a */
-    spc_st_cyc((uint16_t)(0x03B8 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03B8 + spc.x), spc.a, 5, 1);
     /* 2276 mov a,y */
     spc.a = spc_nz(spc.y);
     spc_cyc(2);
     /* 2277 mov.w $03C0+x,a */
-    spc_st_cyc((uint16_t)(0x03C0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03C0 + spc.x), spc.a, 5, 1);
 L227A:
     /* 227A ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L227B:
     /* 227B mov a,#$00 */
@@ -11761,12 +11761,12 @@ void abi_SpcSfxVolumeSlide(void)
     spc_cyc(3);
     { uint16_t v = spc_rd(spc_dp(0x20)); v |= (spc_cyc(2), spc_rd(spc_dp(0x21))) << 8; spc_set_ya(spc_addw(spc_ya(), v)); }
     /* 22B9 mov.w $03A8+x,a */
-    spc_st_cyc((uint16_t)(0x03A8 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03A8 + spc.x), spc.a, 5, 1);
     /* 22BC mov a,y */
     spc.a = spc_nz(spc.y);
     spc_cyc(2);
     /* 22BD mov.w $04A8+x,a */
-    spc_st_cyc((uint16_t)(0x04A8 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x04A8 + spc.x), spc.a, 5, 1);
     /* 22C0 bmi $22C4 */
     if (spc.n) { spc_cyc(4); goto L22C4; }
     spc_cyc(2);
@@ -11795,9 +11795,9 @@ L22CD:
     spc_cyc(2);
 L22CF:
     /* 22CF mov.w $0398+x,a */
-    spc_st_cyc((uint16_t)(0x0398 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0398 + spc.x), spc.a, 5, 1);
     /* 22D2 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -11833,7 +11833,7 @@ void abi_SpcSfxFadeVolume(void)
     spc.a = spc_inc(spc.a);
     spc_cyc(2);
     /* 2343 mov.w $04C0+x,a */
-    spc_st_cyc((uint16_t)(0x04C0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x04C0 + spc.x), spc.a, 5, 1);
     /* 2346 bra $2361 */
     spc_cyc(4);
     goto L2361;
@@ -11842,7 +11842,7 @@ L2348:
     spc.a = spc_inc(spc.a);
     spc_cyc(2);
     /* 2349 mov.w $04C0+x,a */
-    spc_st_cyc((uint16_t)(0x04C0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x04C0 + spc.x), spc.a, 5, 1);
     /* 234C mov.w a,$0398+x */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x0398 + spc.x)));
@@ -11860,17 +11860,17 @@ L2348:
     spc.x = spc_nz(0x3C);
     spc_cyc(2);
     /* 2356 call $CA89 */
-    spc_call_cyc(abi_SpcDiv16, 0x2359, 5, 1, 2);
+    spc_call(abi_SpcDiv16, 0x2359, 5, 1, 2);
     /* 2359 pop x */
     spc_cyc(4);
     spc.x = spc_pull();
     /* 235A mov.w $04D0+x,a */
-    spc_st_cyc((uint16_t)(0x04D0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x04D0 + spc.x), spc.a, 5, 1);
     /* 235D mov a,y */
     spc.a = spc_nz(spc.y);
     spc_cyc(2);
     /* 235E mov.w $04E0+x,a */
-    spc_st_cyc((uint16_t)(0x04E0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x04E0 + spc.x), spc.a, 5, 1);
 L2361:
     /* 2361 mov.w a,$04C0+x */
     spc_cyc(5);
@@ -11879,7 +11879,7 @@ L2361:
     spc.a = spc_dec(spc.a);
     spc_cyc(2);
     /* 2365 mov.b $22,a */
-    spc_st_cyc(spc_dp(0x22), spc.a, 3, 1);
+    spc_st(spc_dp(0x22), spc.a, 3, 1);
     /* 2367 mov.w a,$04D0+x */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x04D0 + spc.x)));
@@ -11900,14 +11900,14 @@ L2361:
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x22)));
     /* 2372 call $CA75 */
-    spc_call_cyc(abi_SpcMul16, 0x2375, 5, 1, 2);
+    spc_call(abi_SpcMul16, 0x2375, 5, 1, 2);
     /* 2375 pop x */
     spc_cyc(4);
     spc.x = spc_pull();
     /* 2376 mov.b $22,a */
-    spc_st_cyc(spc_dp(0x22), spc.a, 3, 1);
+    spc_st(spc_dp(0x22), spc.a, 3, 1);
     /* 2378 mov.b $23,y */
-    spc_st_cyc(spc_dp(0x23), spc.y, 3, 1);
+    spc_st(spc_dp(0x23), spc.y, 3, 1);
     /* 237A mov.w a,$0398+x */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x0398 + spc.x)));
@@ -11924,7 +11924,7 @@ L2361:
     spc.a = spc_nz(spc.y);
     spc_cyc(2);
     /* 2384 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L2385:
     /* 2385 bbs $2C.7,$238D */
@@ -11948,32 +11948,32 @@ L2390:
     goto L1B15;
 L2393:
     /* 2393 mov.b $22,x */
-    spc_st_cyc(spc_dp(0x22), spc.x, 3, 1);
+    spc_st(spc_dp(0x22), spc.x, 3, 1);
     /* 2395 bbs $22.3,$23A2 */
     spc_cyc(3);
     if ((spc_rd(spc_dp(0x22)) >> 3 & 1)) { spc_cyc(4); goto L23A2; }
     spc_cyc(2);
     /* 2398 call $194C */
-    spc_call_cyc(abi_SpcSfxStop, 0x239B, 5, 1, 2);
+    spc_call(abi_SpcSfxStop, 0x239B, 5, 1, 2);
 L239B:
     /* 239B mov a,#$FF */
     spc.a = spc_nz(0xFF);
     spc_cyc(2);
     /* 239D mov.w $04C0+x,a */
-    spc_st_cyc((uint16_t)(0x04C0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x04C0 + spc.x), spc.a, 5, 1);
     /* 23A0 inc a */
     spc.a = spc_inc(spc.a);
     spc_cyc(2);
     /* 23A1 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L23A2:
     /* 23A2 call $CA9F */
-    spc_call_cyc(abi_SpcIndexLeft, 0x23A5, 5, 1, 2);
+    spc_call(abi_SpcIndexLeft, 0x23A5, 5, 1, 2);
     /* 23A5 call $194C */
-    spc_call_cyc(abi_SpcSfxStop, 0x23A8, 5, 1, 2);
+    spc_call(abi_SpcSfxStop, 0x23A8, 5, 1, 2);
     /* 23A8 call $CA96 */
-    spc_call_cyc(abi_SpcIndexRight, 0x23AB, 5, 1, 2);
+    spc_call(abi_SpcIndexRight, 0x23AB, 5, 1, 2);
     /* 23AB bra $239B */
     spc_cyc(4);
     goto L239B;
@@ -11982,18 +11982,18 @@ L23AD:
     spc.a = spc_inc(spc.a);
     spc_cyc(2);
     /* 23AE mov.w $04C0+x,a */
-    spc_st_cyc((uint16_t)(0x04C0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x04C0 + spc.x), spc.a, 5, 1);
     /* 23B1 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L1AE9:
     /* 1AE9 call $1AEF */
-    spc_call_cyc(abi_SpcKeyOffAll, 0x1AEC, 5, 1, 2);
+    spc_call(abi_SpcKeyOffAll, 0x1AEC, 5, 1, 2);
     /* 1AEC jmp $0675 */
     { spc_cyc(3); spc_restart(0x0675, abi_SpcReload); return; }
 L1B15:
     /* 1B15 call $1AEF */
-    spc_call_cyc(abi_SpcKeyOffAll, 0x1B18, 5, 1, 2);
+    spc_call(abi_SpcKeyOffAll, 0x1B18, 5, 1, 2);
     /* 1B18 mov.w a,$00F1 */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x00F1));
@@ -12001,7 +12001,7 @@ L1B15:
     spc.a = spc_or(spc.a, 0x80);
     spc_cyc(2);
     /* 1B1D mov.w $00F1,a */
-    spc_st_cyc(0x00F1, spc.a, 4, 1);
+    spc_st(0x00F1, spc.a, 4, 1);
     /* 1B20 jmp $FFC0 */
     { spc_cyc(3); spc_boot_rom(); return; }
 }
@@ -12021,7 +12021,7 @@ void abi_SpcSfxVolumeAdjust(void)
     spc_push(spc.y);
     spc_cyc(1);
     /* 23B3 mov.b $22,a */
-    spc_st_cyc(spc_dp(0x22), spc.a, 3, 1);
+    spc_st(spc_dp(0x22), spc.a, 3, 1);
     /* 23B5 cmp a,#$00 */
     spc_cmp(spc.a, 0x00);
     spc_cyc(2);
@@ -12057,7 +12057,7 @@ L23C9:
     spc_cyc(4);
     spc.y = spc_pull();
     /* 23CA ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L23CB:
     /* 23CB mov.b a,$22 */
@@ -12082,7 +12082,7 @@ void abi_SpcSfxSpecial(void)
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x0390 + spc.x)));
     /* 23D2 mov.b $20,a */
-    spc_st_cyc(spc_dp(0x20), spc.a, 3, 1);
+    spc_st(spc_dp(0x20), spc.a, 3, 1);
     /* 23D4 push x */
     spc_cyc(3);
     spc_push(spc.x);
@@ -12114,7 +12114,7 @@ L23E3:
     spc_cyc(4);
     spc.x = spc_pull();
     /* 23E4 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L23E5:
     /* 23E5 mov a,x */
@@ -12148,27 +12148,27 @@ L2441:
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x2419 + spc.x)));
     /* 2446 mov.b $22,a */
-    spc_st_cyc(spc_dp(0x22), spc.a, 3, 1);
+    spc_st(spc_dp(0x22), spc.a, 3, 1);
     /* 2448 mov.w a,$2423+x */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x2423 + spc.x)));
     /* 244B mov.b $23,a */
-    spc_st_cyc(spc_dp(0x23), spc.a, 3, 1);
+    spc_st(spc_dp(0x23), spc.a, 3, 1);
     /* 244D mov.w a,$242D+x */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x242D + spc.x)));
     /* 2450 mov.b $24,a */
-    spc_st_cyc(spc_dp(0x24), spc.a, 3, 1);
+    spc_st(spc_dp(0x24), spc.a, 3, 1);
     /* 2452 mov.w a,$2437+x */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x2437 + spc.x)));
     /* 2455 mov.b $25,a */
-    spc_st_cyc(spc_dp(0x25), spc.a, 3, 1);
+    spc_st(spc_dp(0x25), spc.a, 3, 1);
     /* 2457 pop x */
     spc_cyc(4);
     spc.x = spc_pull();
     /* 2458 call $25A0 */
-    spc_call_cyc(abi_SpcEngineVolume, 0x245B, 5, 1, 2);
+    spc_call(abi_SpcEngineVolume, 0x245B, 5, 1, 2);
     /* 245B push x */
     spc_cyc(3);
     spc_push(spc.x);
@@ -12184,12 +12184,12 @@ L2441:
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 2463 mov.w $0539,a */
-    spc_st_cyc(0x0539, spc.a, 4, 1);
+    spc_st(0x0539, spc.a, 4, 1);
     /* 2466 mov.b a,$03 */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x03)));
     /* 2468 mov.w $053B,a */
-    spc_st_cyc(0x053B, spc.a, 4, 1);
+    spc_st(0x053B, spc.a, 4, 1);
     /* 246B setc */
     spc.c = 1;
     spc_cyc(2);
@@ -12207,7 +12207,7 @@ L2441:
     spc.a = spc_nz(0x01);
     spc_cyc(2);
     /* 2473 mov.w $053D,a */
-    spc_st_cyc(0x053D, spc.a, 4, 1);
+    spc_st(0x053D, spc.a, 4, 1);
 L2476:
     /* 2476 pop a */
     spc_cyc(4);
@@ -12235,29 +12235,29 @@ L247F:
     if (spc.v) { spc_cyc(4); goto L248E; }
     spc_cyc(2);
     /* 2484 mov.w $0535,a */
-    spc_st_cyc(0x0535, spc.a, 4, 1);
+    spc_st(0x0535, spc.a, 4, 1);
     /* 2487 mov a,#$00 */
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 2489 mov.w $0537,a */
-    spc_st_cyc(0x0537, spc.a, 4, 1);
+    spc_st(0x0537, spc.a, 4, 1);
     /* 248C bra $2496 */
     spc_cyc(4);
     goto L2496;
 L248E:
     /* 248E mov.w $0535,a */
-    spc_st_cyc(0x0535, spc.a, 4, 1);
+    spc_st(0x0535, spc.a, 4, 1);
     /* 2491 mov a,#$01 */
     spc.a = spc_nz(0x01);
     spc_cyc(2);
     /* 2493 mov.w $0537,a */
-    spc_st_cyc(0x0537, spc.a, 4, 1);
+    spc_st(0x0537, spc.a, 4, 1);
 L2496:
     /* 2496 mov a,#$00 */
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 2498 mov.w $0533,a */
-    spc_st_cyc(0x0533, spc.a, 4, 1);
+    spc_st(0x0533, spc.a, 4, 1);
     /* 249B jmp $254F */
     spc_cyc(3);
     goto L254F;
@@ -12276,7 +12276,7 @@ L249E:
     spc.a = spc_nz(0x02);
     spc_cyc(2);
     /* 24A4 mov.w $053D,a */
-    spc_st_cyc(0x053D, spc.a, 4, 1);
+    spc_st(0x053D, spc.a, 4, 1);
     /* 24A7 bra $2476 */
     spc_cyc(4);
     goto L2476;
@@ -12291,9 +12291,9 @@ L24A9:
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 24AF mov.w $0535,a */
-    spc_st_cyc(0x0535, spc.a, 4, 1);
+    spc_st(0x0535, spc.a, 4, 1);
     /* 24B2 mov.w $0536,a */
-    spc_st_cyc(0x0536, spc.a, 4, 1);
+    spc_st(0x0536, spc.a, 4, 1);
     /* 24B5 bra $24DC */
     spc_cyc(4);
     goto L24DC;
@@ -12317,28 +12317,28 @@ L24B7:
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x056D));
     /* 24C3 mov.b $22,a */
-    spc_st_cyc(spc_dp(0x22), spc.a, 3, 1);
+    spc_st(spc_dp(0x22), spc.a, 3, 1);
     /* 24C5 mov.w a,$056F */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x056F));
     /* 24C8 mov.b $23,a */
-    spc_st_cyc(spc_dp(0x23), spc.a, 3, 1);
+    spc_st(spc_dp(0x23), spc.a, 3, 1);
     /* 24CA incw $22 */
-    spc_incw_cyc(0x22, +1, 3, 1, 1, 1);
+    spc_incw(0x22, +1, 3, 1, 1, 1);
     /* 24CC incw $22 */
-    spc_incw_cyc(0x22, +1, 3, 1, 1, 1);
+    spc_incw(0x22, +1, 3, 1, 1, 1);
     /* 24CE incw $22 */
-    spc_incw_cyc(0x22, +1, 3, 1, 1, 1);
+    spc_incw(0x22, +1, 3, 1, 1, 1);
     /* 24D0 mov.b a,$22 */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x22)));
     /* 24D2 mov.w $056D,a */
-    spc_st_cyc(0x056D, spc.a, 4, 1);
+    spc_st(0x056D, spc.a, 4, 1);
     /* 24D5 mov.b a,$23 */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x23)));
     /* 24D7 mov.w $056F,a */
-    spc_st_cyc(0x056F, spc.a, 4, 1);
+    spc_st(0x056F, spc.a, 4, 1);
     /* 24DA bra $24E4 */
     spc_cyc(4);
     goto L24E4;
@@ -12347,9 +12347,9 @@ L24DC:
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* 24DE mov.w $056D,a */
-    spc_st_cyc(0x056D, spc.a, 4, 1);
+    spc_st(0x056D, spc.a, 4, 1);
     /* 24E1 mov.w $056F,a */
-    spc_st_cyc(0x056F, spc.a, 4, 1);
+    spc_st(0x056F, spc.a, 4, 1);
 L24E4:
     /* 24E4 mov.w a,$0533 */
     spc_cyc(4);
@@ -12364,9 +12364,9 @@ L24E4:
     if (spc.n) { spc_cyc(4); goto L2506; }
     spc_cyc(2);
     /* 24EC mov $22,#$01 */
-    spc_st_cyc(spc_dp(0x22), 0x01, 4, 1);
+    spc_st(spc_dp(0x22), 0x01, 4, 1);
     /* 24EF mov $23,#$00 */
-    spc_st_cyc(spc_dp(0x23), 0x00, 4, 1);
+    spc_st(spc_dp(0x23), 0x00, 4, 1);
     /* 24F2 mov.w y,$0537 */
     spc_cyc(4);
     spc.y = spc_nz(spc_rd(0x0537));
@@ -12387,9 +12387,9 @@ L24E4:
     spc_cyc(2);
 L2500:
     /* 2500 mov.w $0535,a */
-    spc_st_cyc(0x0535, spc.a, 4, 1);
+    spc_st(0x0535, spc.a, 4, 1);
     /* 2503 mov.w $0537,y */
-    spc_st_cyc(0x0537, spc.y, 4, 1);
+    spc_st(0x0537, spc.y, 4, 1);
 L2506:
     /* 2506 mov.w a,$0533 */
     spc_cyc(4);
@@ -12407,7 +12407,7 @@ L2506:
     spc.a = spc_inc(spc.a);
     spc_cyc(2);
     /* 2511 mov.w $0533,a */
-    spc_st_cyc(0x0533, spc.a, 4, 1);
+    spc_st(0x0533, spc.a, 4, 1);
 L2514:
     /* 2514 mov.w a,$0533 */
     spc_cyc(4);
@@ -12433,12 +12433,12 @@ L2521:
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x0535));
     /* 2525 mov.b $20,a */
-    spc_st_cyc(spc_dp(0x20), spc.a, 3, 1);
+    spc_st(spc_dp(0x20), spc.a, 3, 1);
     /* 2527 mov.w a,$0537 */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x0537));
     /* 252A mov.b $21,a */
-    spc_st_cyc(spc_dp(0x21), spc.a, 3, 1);
+    spc_st(spc_dp(0x21), spc.a, 3, 1);
     /* 252C mov.w a,$053D */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x053D));
@@ -12459,12 +12459,12 @@ L2521:
     spc_cyc(2);
 L2538:
     /* 2538 mov.w $0539,a */
-    spc_st_cyc(0x0539, spc.a, 4, 1);
+    spc_st(0x0539, spc.a, 4, 1);
     /* 253B mov a,y */
     spc.a = spc_nz(spc.y);
     spc_cyc(2);
     /* 253C mov.w $053B,a */
-    spc_st_cyc(0x053B, spc.a, 4, 1);
+    spc_st(0x053B, spc.a, 4, 1);
     /* 253F bra $254F */
     spc_cyc(4);
     goto L254F;
@@ -12496,7 +12496,7 @@ L2548:
     goto L2521;
 L254F:
     /* 254F mov $20,#$00 */
-    spc_st_cyc(spc_dp(0x20), 0x00, 4, 1);
+    spc_st(spc_dp(0x20), 0x00, 4, 1);
     /* 2552 mov $21,$24 */
     spc_cyc(3);
     spc_wr_cyc(spc_dp(0x21), spc_rd(spc_dp(0x24)), 2);
@@ -12510,14 +12510,14 @@ L254F:
     spc_mul();
     spc_cyc(9);
     /* 255B mov $20,#$00 */
-    spc_st_cyc(spc_dp(0x20), 0x00, 4, 1);
+    spc_st(spc_dp(0x20), 0x00, 4, 1);
     /* 255E addw ya,$20 */
     spc_cyc(3);
     { uint16_t v = spc_rd(spc_dp(0x20)); v |= (spc_cyc(2), spc_rd(spc_dp(0x21))) << 8; spc_set_ya(spc_addw(spc_ya(), v)); }
     /* 2560 mov.b $20,a */
-    spc_st_cyc(spc_dp(0x20), spc.a, 3, 1);
+    spc_st(spc_dp(0x20), spc.a, 3, 1);
     /* 2562 mov.b $21,y */
-    spc_st_cyc(spc_dp(0x21), spc.y, 3, 1);
+    spc_st(spc_dp(0x21), spc.y, 3, 1);
     /* 2564 mov.w a,$0549 */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x0549));
@@ -12528,9 +12528,9 @@ L254F:
     spc_cyc(3);
     { uint16_t v = spc_rd(spc_dp(0x20)); v |= (spc_cyc(2), spc_rd(spc_dp(0x21))) << 8; spc_set_ya(spc_addw(spc_ya(), v)); }
     /* 256C mov.b $20,a */
-    spc_st_cyc(spc_dp(0x20), spc.a, 3, 1);
+    spc_st(spc_dp(0x20), spc.a, 3, 1);
     /* 256E mov.b $21,y */
-    spc_st_cyc(spc_dp(0x21), spc.y, 3, 1);
+    spc_st(spc_dp(0x21), spc.y, 3, 1);
     /* 2570 mov.w a,$054D */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x054D));
@@ -12541,9 +12541,9 @@ L254F:
     spc_cyc(3);
     { uint16_t v = spc_rd(spc_dp(0x20)); v |= (spc_cyc(2), spc_rd(spc_dp(0x21))) << 8; spc_set_ya(spc_addw(spc_ya(), v)); }
     /* 2578 mov.b $20,a */
-    spc_st_cyc(spc_dp(0x20), spc.a, 3, 1);
+    spc_st(spc_dp(0x20), spc.a, 3, 1);
     /* 257A mov.b $21,y */
-    spc_st_cyc(spc_dp(0x21), spc.y, 3, 1);
+    spc_st(spc_dp(0x21), spc.y, 3, 1);
     /* 257C mov.w a,$056D */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x056D));
@@ -12554,9 +12554,9 @@ L254F:
     spc_cyc(3);
     { uint16_t v = spc_rd(spc_dp(0x20)); v |= (spc_cyc(2), spc_rd(spc_dp(0x21))) << 8; spc_set_ya(spc_addw(spc_ya(), v)); }
     /* 2584 mov.b $20,a */
-    spc_st_cyc(spc_dp(0x20), spc.a, 3, 1);
+    spc_st(spc_dp(0x20), spc.a, 3, 1);
     /* 2586 mov.b $21,y */
-    spc_st_cyc(spc_dp(0x21), spc.y, 3, 1);
+    spc_st(spc_dp(0x21), spc.y, 3, 1);
     /* 2588 setc */
     spc.c = 1;
     spc_cyc(2);
@@ -12567,7 +12567,7 @@ L254F:
     if (spc.n) { spc_cyc(4); goto L2591; }
     spc_cyc(2);
     /* 258E mov $21,#$3F */
-    spc_st_cyc(spc_dp(0x21), 0x3F, 4, 1);
+    spc_st(spc_dp(0x21), 0x3F, 4, 1);
 L2591:
     /* 2591 mov $0B,$03 */
     spc_cyc(3);
@@ -12579,27 +12579,27 @@ L2591:
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x20)));
     /* 2597 mov.w $03B8+x,a */
-    spc_st_cyc((uint16_t)(0x03B8 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03B8 + spc.x), spc.a, 5, 1);
     /* 259A mov.b a,$21 */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x21)));
     /* 259C mov.w $03C0+x,a */
-    spc_st_cyc((uint16_t)(0x03C0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03C0 + spc.x), spc.a, 5, 1);
     /* 259F ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L25E2:
     /* 25E2 pop x */
     spc_cyc(4);
     spc.x = spc_pull();
     /* 25E3 mov $22,#$28 */
-    spc_st_cyc(spc_dp(0x22), 0x28, 4, 1);
+    spc_st(spc_dp(0x22), 0x28, 4, 1);
     /* 25E6 mov $23,#$03 */
-    spc_st_cyc(spc_dp(0x23), 0x03, 4, 1);
+    spc_st(spc_dp(0x23), 0x03, 4, 1);
     /* 25E9 mov $24,#$02 */
-    spc_st_cyc(spc_dp(0x24), 0x02, 4, 1);
+    spc_st(spc_dp(0x24), 0x02, 4, 1);
     /* 25EC call $2634 */
-    spc_call_cyc(abi_SpcEngineRevTimer, 0x25EF, 5, 1, 2);
+    spc_call(abi_SpcEngineRevTimer, 0x25EF, 5, 1, 2);
     /* 25EF mov.w a,$03E8+x */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x03E8 + spc.x)));
@@ -12619,7 +12619,7 @@ L25F6:
     goto L2609;
 L25FB:
     /* 25FB call $2600 */
-    spc_call_cyc(abi_SpcEngineToggle, 0x25FE, 5, 1, 2);
+    spc_call(abi_SpcEngineToggle, 0x25FE, 5, 1, 2);
     /* 25FE bra $25F6 */
     spc_cyc(4);
     goto L25F6;
@@ -12628,46 +12628,46 @@ L2609:
     spc.a = spc_nz(0x80);
     spc_cyc(2);
     /* 260B mov.w $03B8+x,a */
-    spc_st_cyc((uint16_t)(0x03B8 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03B8 + spc.x), spc.a, 5, 1);
     /* 260E mov a,#$01 */
     spc.a = spc_nz(0x01);
     spc_cyc(2);
     /* 2610 mov.w $03C0+x,a */
-    spc_st_cyc((uint16_t)(0x03C0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03C0 + spc.x), spc.a, 5, 1);
     /* 2613 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L2614:
     /* 2614 mov a,#$10 */
     spc.a = spc_nz(0x10);
     spc_cyc(2);
     /* 2616 mov.w $03B8+x,a */
-    spc_st_cyc((uint16_t)(0x03B8 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03B8 + spc.x), spc.a, 5, 1);
     /* 2619 mov a,#$01 */
     spc.a = spc_nz(0x01);
     spc_cyc(2);
     /* 261B mov.w $03C0+x,a */
-    spc_st_cyc((uint16_t)(0x03C0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03C0 + spc.x), spc.a, 5, 1);
     /* 261E ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L261F:
     /* 261F mov $22,#$1E */
-    spc_st_cyc(spc_dp(0x22), 0x1E, 4, 1);
+    spc_st(spc_dp(0x22), 0x1E, 4, 1);
     /* 2622 mov $23,#$03 */
-    spc_st_cyc(spc_dp(0x23), 0x03, 4, 1);
+    spc_st(spc_dp(0x23), 0x03, 4, 1);
     /* 2625 mov $24,#$01 */
-    spc_st_cyc(spc_dp(0x24), 0x01, 4, 1);
+    spc_st(spc_dp(0x24), 0x01, 4, 1);
     /* 2628 bra $2633 */
     spc_cyc(4);
     goto L2633;
 L262A:
     /* 262A mov $22,#$14 */
-    spc_st_cyc(spc_dp(0x22), 0x14, 4, 1);
+    spc_st(spc_dp(0x22), 0x14, 4, 1);
     /* 262D mov $23,#$0A */
-    spc_st_cyc(spc_dp(0x23), 0x0A, 4, 1);
+    spc_st(spc_dp(0x23), 0x0A, 4, 1);
     /* 2630 mov $24,#$02 */
-    spc_st_cyc(spc_dp(0x24), 0x02, 4, 1);
+    spc_st(spc_dp(0x24), 0x02, 4, 1);
 L2633:
     /* 2633 pop x */
     spc_cyc(4);
@@ -12701,7 +12701,7 @@ L2666:
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0xEE20 + spc.y)));
     /* 266B mov.b $20,a */
-    spc_st_cyc(spc_dp(0x20), spc.a, 3, 1);
+    spc_st(spc_dp(0x20), spc.a, 3, 1);
     /* 266D inc y */
     spc.y = spc_inc(spc.y);
     spc_cyc(2);
@@ -12709,7 +12709,7 @@ L2666:
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0xEE20 + spc.y)));
     /* 2671 mov.b $21,a */
-    spc_st_cyc(spc_dp(0x21), spc.a, 3, 1);
+    spc_st(spc_dp(0x21), spc.a, 3, 1);
     /* 2673 mov.w a,$04A0+x */
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0x04A0 + spc.x)));
@@ -12735,12 +12735,12 @@ L2681:
     { uint16_t v = spc_rd(spc_dp(0x20)); v |= (spc_cyc(2), spc_rd(spc_dp(0x21))) << 8; spc_set_ya(spc_addw(spc_ya(), v)); }
 L2683:
     /* 2683 mov.w $03B8+x,a */
-    spc_st_cyc((uint16_t)(0x03B8 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03B8 + spc.x), spc.a, 5, 1);
     /* 2686 mov a,y */
     spc.a = spc_nz(spc.y);
     spc_cyc(2);
     /* 2687 mov.w $03C0+x,a */
-    spc_st_cyc((uint16_t)(0x03C0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03C0 + spc.x), spc.a, 5, 1);
     /* 268A mov.b a,$02 */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x02)));
@@ -12764,9 +12764,9 @@ L2683:
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0xEE30 + spc.y)));
     /* 2697 call $26C0 */
-    spc_call_cyc(abi_SpcSfxPanScale, 0x269A, 5, 1, 2);
+    spc_call(abi_SpcSfxPanScale, 0x269A, 5, 1, 2);
     /* 269A mov.w $0398+x,a */
-    spc_st_cyc((uint16_t)(0x0398 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0398 + spc.x), spc.a, 5, 1);
     /* 269D inc y */
     spc.y = spc_inc(spc.y);
     spc_cyc(2);
@@ -12774,11 +12774,11 @@ L2683:
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0xEE30 + spc.y)));
     /* 26A1 call $26C0 */
-    spc_call_cyc(abi_SpcSfxPanScale, 0x26A4, 5, 1, 2);
+    spc_call(abi_SpcSfxPanScale, 0x26A4, 5, 1, 2);
     /* 26A4 mov.w $03A0+x,a */
-    spc_st_cyc((uint16_t)(0x03A0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03A0 + spc.x), spc.a, 5, 1);
     /* 26A7 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L26A8:
     /* 26A8 eor a,#$0F */
@@ -12794,9 +12794,9 @@ L26A8:
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0xEE30 + spc.y)));
     /* 26AF call $26C0 */
-    spc_call_cyc(abi_SpcSfxPanScale, 0x26B2, 5, 1, 2);
+    spc_call(abi_SpcSfxPanScale, 0x26B2, 5, 1, 2);
     /* 26B2 mov.w $03A0+x,a */
-    spc_st_cyc((uint16_t)(0x03A0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03A0 + spc.x), spc.a, 5, 1);
     /* 26B5 inc y */
     spc.y = spc_inc(spc.y);
     spc_cyc(2);
@@ -12804,11 +12804,11 @@ L26A8:
     spc_cyc(5);
     spc.a = spc_nz(spc_rd((uint16_t)(0xEE30 + spc.y)));
     /* 26B9 call $26C0 */
-    spc_call_cyc(abi_SpcSfxPanScale, 0x26BC, 5, 1, 2);
+    spc_call(abi_SpcSfxPanScale, 0x26BC, 5, 1, 2);
     /* 26BC mov.w $0398+x,a */
-    spc_st_cyc((uint16_t)(0x0398 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0398 + spc.x), spc.a, 5, 1);
     /* 26BF ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -12842,7 +12842,7 @@ void abi_SpcEngineVolume(void)
     spc_div();
     spc_cyc(12);
     /* 25AA mov.b $20,a */
-    spc_st_cyc(spc_dp(0x20), spc.a, 3, 1);
+    spc_st(spc_dp(0x20), spc.a, 3, 1);
     /* 25AC pop x */
     spc_cyc(4);
     spc.x = spc_pull();
@@ -12881,7 +12881,7 @@ L25BB:
     spc_cyc(2);
 L25C0:
     /* 25C0 call $25D8 */
-    spc_call_cyc(abi_SpcEngineDamp, 0x25C3, 5, 1, 2);
+    spc_call(abi_SpcEngineDamp, 0x25C3, 5, 1, 2);
     /* 25C3 mov.w y,$056B */
     spc_cyc(4);
     spc.y = spc_nz(spc_rd(0x056B));
@@ -12913,11 +12913,11 @@ L25C0:
     spc.x = spc_pull();
 L25D1:
     /* 25D1 mov.w $0398+x,a */
-    spc_st_cyc((uint16_t)(0x0398 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x0398 + spc.x), spc.a, 5, 1);
     /* 25D4 mov.w $03A0+x,a */
-    spc_st_cyc((uint16_t)(0x03A0 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03A0 + spc.x), spc.a, 5, 1);
     /* 25D7 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -12953,7 +12953,7 @@ void abi_SpcEngineDamp(void)
     spc.y = spc_pull();
 L25E1:
     /* 25E1 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -12972,15 +12972,15 @@ void abi_SpcEngineToggle(void)
     if ((spc_rd(spc_dp(0x28)) >> 6 & 1)) { spc_cyc(4); goto L2606; }
     spc_cyc(2);
     /* 2603 set1 $28.6 */
-    spc_bit_set_cyc(0x28, 6, 1, 3, 1);
+    spc_bit_set(0x28, 6, 1, 3, 1);
     /* 2605 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 L2606:
     /* 2606 clr1 $28.6 */
-    spc_bit_set_cyc(0x28, 6, 0, 3, 1);
+    spc_bit_set(0x28, 6, 0, 3, 1);
     /* 2608 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -13033,7 +13033,7 @@ void abi_SpcEngineRevTimer(void)
     spc.a = spc_inc(spc.a);
     spc_cyc(2);
     /* 2647 mov.w $0545,a */
-    spc_st_cyc(0x0545, spc.a, 4, 1);
+    spc_st(0x0545, spc.a, 4, 1);
     /* 264A pop a */
     spc_cyc(4);
     spc.a = spc_pull();
@@ -13050,15 +13050,15 @@ void abi_SpcEngineRevTimer(void)
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x24)));
     /* 2653 mov.w $03E8+x,a */
-    spc_st_cyc((uint16_t)(0x03E8 + spc.x), spc.a, 5, 1);
+    spc_st((uint16_t)(0x03E8 + spc.x), spc.a, 5, 1);
     /* 2656 mov a,#$01 */
     spc.a = spc_nz(0x01);
     spc_cyc(2);
     /* 2658 mov.w $0545,a */
-    spc_st_cyc(0x0545, spc.a, 4, 1);
+    spc_st(0x0545, spc.a, 4, 1);
 L265B:
     /* 265B ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -13114,7 +13114,7 @@ void abi_SpcSfxPanScale(void)
     spc_cyc(3);
     spc.a = spc_sbc(spc.a, spc_rd(spc_dp(0x22)));
     /* 26D5 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -13136,9 +13136,9 @@ void abi_SpcMul16(void)
     spc_mul();
     spc_cyc(9);
     /* CA77 mov.b $26,a */
-    spc_st_cyc(spc_dp(0x26), spc.a, 3, 1);
+    spc_st(spc_dp(0x26), spc.a, 3, 1);
     /* CA79 mov.b $27,y */
-    spc_st_cyc(spc_dp(0x27), spc.y, 3, 1);
+    spc_st(spc_dp(0x27), spc.y, 3, 1);
     /* CA7B mov a,x */
     spc.a = spc_nz(spc.x);
     spc_cyc(2);
@@ -13174,7 +13174,7 @@ void abi_SpcMul16(void)
     spc_cyc(3);
     { uint16_t v = spc_rd(spc_dp(0x26)); v |= (spc_cyc(2), spc_rd(spc_dp(0x27))) << 8; spc_set_ya(spc_addw(spc_ya(), v)); }
     /* CA88 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -13206,7 +13206,7 @@ void abi_SpcDiv16(void)
     spc_div();
     spc_cyc(12);
     /* CA8F mov.b $27,a */
-    spc_st_cyc(spc_dp(0x27), spc.a, 3, 1);
+    spc_st(spc_dp(0x27), spc.a, 3, 1);
     /* CA91 pop a */
     spc_cyc(4);
     spc.a = spc_pull();
@@ -13217,7 +13217,7 @@ void abi_SpcDiv16(void)
     spc_cyc(3);
     spc.y = spc_nz(spc_rd(spc_dp(0x27)));
     /* CA95 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -13256,7 +13256,7 @@ void abi_SpcIndexRight(void)
     spc.x = spc_inc(spc.x);
     spc_cyc(2);
     /* CA9E ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -13295,7 +13295,7 @@ void abi_SpcIndexLeft(void)
     spc.x = spc_dec(spc.x);
     spc_cyc(2);
     /* CAA7 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -13329,11 +13329,11 @@ LCAC2:
     if (!spc.z) { spc_cyc(4); goto LCAC2; }
     spc_cyc(2);
     /* CACC ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 LCACD:
     /* CACD dec.w $0563 */
-    spc_rmw_cyc(0x0563, spc_dec, 4, 1);
+    spc_rmw(0x0563, spc_dec, 4, 1);
     /* CAD0 mov.w a,$0563 */
     spc_cyc(4);
     spc.a = spc_nz(spc_rd(0x0563));
@@ -13350,7 +13350,7 @@ LCACD:
     spc.y = spc_nz(spc.a);
     spc_cyc(2);
     /* CAD9 mov $20,#$07 */
-    spc_st_cyc(spc_dp(0x20), 0x07, 4, 1);
+    spc_st(spc_dp(0x20), 0x07, 4, 1);
 LCADC:
     /* CADC inc y */
     spc.y = spc_inc(spc.y);
@@ -13367,9 +13367,9 @@ LCADF:
     spc.c ^= spc_rd(0x0019) >> 5 & 1;
     spc_cyc(1);
     /* CAE5 rol.b $18 */
-    spc_rmw_cyc(spc_dp(0x18), spc_rol, 3, 1);
+    spc_rmw(spc_dp(0x18), spc_rol, 3, 1);
     /* CAE7 rol.b $19 */
-    spc_rmw_cyc(spc_dp(0x19), spc_rol, 3, 1);
+    spc_rmw(spc_dp(0x19), spc_rol, 3, 1);
     /* CAE9 mov.b a,$19 */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x19)));
@@ -13380,7 +13380,7 @@ LCADF:
     spc.a = spc_or(spc.a, 0x11);
     spc_cyc(2);
     /* CAEF mov.w $FF00+y,a */
-    spc_st_cyc((uint16_t)(0xFF00 + spc.y), spc.a, 5, 1);
+    spc_st((uint16_t)(0xFF00 + spc.y), spc.a, 5, 1);
     /* CAF2 inc y */
     spc.y = spc_inc(spc.y);
     spc_cyc(2);
@@ -13394,7 +13394,7 @@ LCADF:
     spc.a = spc_or(spc.a, 0x11);
     spc_cyc(2);
     /* CAF9 mov.w $FF00+y,a */
-    spc_st_cyc((uint16_t)(0xFF00 + spc.y), spc.a, 5, 1);
+    spc_st((uint16_t)(0xFF00 + spc.y), spc.a, 5, 1);
     /* CAFC inc y */
     spc.y = spc_inc(spc.y);
     spc_cyc(2);
@@ -13409,7 +13409,7 @@ LCADF:
     { uint8_t v = (uint8_t)(spc_rd(spc_dp(0x20)) - 1); spc_cyc(1); spc_wr(spc_dp(0x20), v); if (v) { spc_cyc(3); goto LCADC; } }
     spc_cyc(1);
     /* CB03 ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }
 
@@ -13431,7 +13431,7 @@ void abi_SpcNoiseSampleInit(void)
     spc_cyc(2);
 LEDF4:
     /* EDF4 mov.w $FF00+y,a */
-    spc_st_cyc((uint16_t)(0xFF00 + spc.y), spc.a, 5, 1);
+    spc_st((uint16_t)(0xFF00 + spc.y), spc.a, 5, 1);
     /* EDF7 inc y */
     spc.y = spc_inc(spc.y);
     spc_cyc(2);
@@ -13469,7 +13469,7 @@ LEDF4:
     spc.a = spc_inc(spc.a);
     spc_cyc(2);
     /* EE04 mov.w $FF00+y,a */
-    spc_st_cyc((uint16_t)(0xFF00 + spc.y), spc.a, 5, 1);
+    spc_st((uint16_t)(0xFF00 + spc.y), spc.a, 5, 1);
     /* EE07 mov y,#$FF */
     spc.y = spc_nz(0xFF);
     spc_cyc(2);
@@ -13477,13 +13477,13 @@ LEDF4:
     spc.a = spc_nz(0x00);
     spc_cyc(2);
     /* EE0B mov.w $3F8C,a */
-    spc_st_cyc(0x3F8C, spc.a, 4, 1);
+    spc_st(0x3F8C, spc.a, 4, 1);
     /* EE0E mov.w $3F8D,y */
-    spc_st_cyc(0x3F8D, spc.y, 4, 1);
+    spc_st(0x3F8D, spc.y, 4, 1);
     /* EE11 mov.w $3F8E,a */
-    spc_st_cyc(0x3F8E, spc.a, 4, 1);
+    spc_st(0x3F8E, spc.a, 4, 1);
     /* EE14 mov.w $3F8F,y */
-    spc_st_cyc(0x3F8F, spc.y, 4, 1);
+    spc_st(0x3F8F, spc.y, 4, 1);
     /* EE17 mov.b a,$18 */
     spc_cyc(3);
     spc.a = spc_nz(spc_rd(spc_dp(0x18)));
@@ -13494,9 +13494,9 @@ LEDF4:
     if (!spc.z) { spc_cyc(4); goto LEE1F; }
     spc_cyc(2);
     /* EE1D inc.b $18 */
-    spc_rmw_cyc(spc_dp(0x18), spc_inc, 3, 1);
+    spc_rmw(spc_dp(0x18), spc_inc, 3, 1);
 LEE1F:
     /* EE1F ret */
-    spc_ret_cyc(4, 1);
+    spc_ret(4, 1);
     return;
 }

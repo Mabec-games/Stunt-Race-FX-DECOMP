@@ -28,7 +28,7 @@ its own cycles, so a statement does not depend on the path that reaches it:
    to another routine (abi_X(); return;, spc_restart, spc_boot_rom) its
    cycles before the call, and the callee's first interval starts at its own
    opcode fetch;
- - a RET is spc_ret_cyc(first, second), its two pulls (spc.h): it ends on the
+ - a RET is spc_ret(first, second), its two pulls (spc.h): it ends on the
    second, so there is nothing after.
 A statement is written as a line of its own before the statement that holds
 the access, or as (spc_cyc(n), access) where the access is not the first in
@@ -218,8 +218,11 @@ READS = {'spc_rd': 'R', 'spc_wr': 'W', 'spc_push': 'W', 'spc_pull': 'R', 'spc_re
          'spc_st': 'RW', 'spc_rmw': 'RW', 'spc_bit_set': 'RW', 'spc_tset': 'RRW', 'spc_incw': 'RWRW',
          'spc_movw_st': 'RWW', 'spc_movw_ld': 'RR'}
 # The helpers that make several accesses with no place between them for a
-# statement take the cycles before each (spc_ops.h, spc.h: NAME_cyc), one
-# amount per access; spc_call_cyc takes the three of a CALL, spc_wr_cyc one.
+# statement take the cycles before each (spc_ops.h, spc.h) as arguments after
+# their own, one amount per access; spc_call takes the three of a CALL.
+# spc_wr_cyc is spc_wr with its amount, for a value that reads.
+BASE = {'spc_st': 2, 'spc_rmw': 2, 'spc_bit_set': 3, 'spc_tset': 2, 'spc_incw': 2, 'spc_movw_st': 1, 'spc_movw_ld': 1,
+        'spc_call': 2, 'spc_ret': 0, 'spc_wr': 2}
 CYCFN = {'spc_st': 2, 'spc_rmw': 2, 'spc_bit_set': 2, 'spc_tset': 3, 'spc_incw': 4, 'spc_movw_st': 3,
          'spc_movw_ld': 2, 'spc_ret': 2, 'spc_call': 3, 'spc_wr': 1}
 JUMPS = ('spc_restart', 'spc_boot_rom')
@@ -249,10 +252,12 @@ def strip(text):
 
 
 def unsuffix(text):
-    """NAME_cyc(args, amounts) written back as NAME(args)."""
-    pat = re.compile(r'\b(%s)_cyc\(' % '|'.join(CYCFN))
+    """The amounts taken off the helpers that take them (spc_st(a, v, 4, 1)
+    written back as spc_st(a, v)); spc_wr_cyc becomes spc_wr."""
+    pat = re.compile(r'\b(spc_wr_cyc|%s)\(' % '|'.join(n for n in CYCFN if n != 'spc_wr'))
+    pos = 0
     while True:
-        m = pat.search(text)
+        m = pat.search(text, pos)
         if not m:
             return text
         o = m.end() - 1
@@ -264,9 +269,13 @@ def unsuffix(text):
             depth -= ch in ')]}'
             if ch == ',' and depth == 0:
                 commas.append(j)
-        keep = len(commas) + 1 - CYCFN[m.group(1)]
-        inner = text[o + 1:commas[keep - 1]] if keep > 0 else ''
-        text = text[:m.start()] + m.group(1) + '(' + inner + ')' + text[c + 1:]
+        name = 'spc_wr' if m.group(1) == 'spc_wr_cyc' else m.group(1)
+        nargs = len(commas) + 1 if text[o + 1:c].strip() else 0
+        keep = BASE[name]
+        if m.group(1) == 'spc_wr_cyc' or nargs > keep:
+            inner = text[o + 1:commas[keep - 1]] if keep > 0 else ''
+            text = text[:m.start()] + name + '(' + inner + ')' + text[c + 1:]
+        pos = m.start() + len(name) + 1
 
 
 def mask(text):
@@ -313,7 +322,7 @@ def calls_in(code, base):
     flat = []
     for m in CALLNAME.finditer(code):
         n = m.group(1)
-        if n in READS or n in JUMPS or n.startswith('abi_') or n == 'spc_ret_cyc':
+        if n in READS or n in JUMPS or n.startswith('abi_'):
             o = m.end() - 1
             flat.append(Call(n, base + m.start(), base + match_paren(code, o) + 1, base + o))
     top, stack = [], []
@@ -611,7 +620,6 @@ def annotate(r, text, code, rom, out, ed, rows):
                 continue
             c = cl[0]
             n1, n2, n3 = data[0][0], data[1][0] - data[0][0], T - data[1][0]
-            ed.add(c.start, c.start + len('spc_call'), 'spc_call_cyc')
             ed.add(c.end - 1, c.end - 1, ', %d, %d, %d' % (n1, n2, n3))
             for n in (n1, n2, n3):
                 row(c.start, n, 'call')
@@ -633,10 +641,11 @@ def annotate(r, text, code, rom, out, ed, rows):
             k += m
             nested = c.inner and any(i.name in READS for i in c.inner)
             if c.name == 'spc_ret':
-                ed.add(c.start, c.end, 'spc_ret_cyc(%d, %d)' % tuple(amounts))
+                ed.add(c.start, c.end, 'spc_ret(%d, %d)' % tuple(amounts))
                 out.st['ret'] += 1
             elif m > 1 or (c.name == 'spc_wr' and nested):
-                ed.add(c.start, c.start + len(c.name), c.name + '_cyc')
+                if c.name == 'spc_wr':
+                    ed.add(c.start, c.start + len(c.name), 'spc_wr_cyc')
                 ed.add(c.end - 1, c.end - 1, ''.join(', %d' % n for n in amounts))
                 out.st['helper_args'] += len(amounts)
             else:

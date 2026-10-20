@@ -37,7 +37,8 @@ void spc_cyc(unsigned n);
 
 /* spc_wr with its time stated after its arguments are evaluated (a value that
    reads: spc_wr_cyc(a, f(spc_rd(b)), n) states the read's time inside the
-   argument and the write's here). */
+   argument and the write's here). It is spc_wr with the time after the
+   arguments, which spc_wr itself, a primitive the checks provide, cannot take. */
 static inline void spc_wr_cyc(uint16_t addr, uint8_t v, unsigned before)
 {
     spc_cyc(before);
@@ -62,18 +63,11 @@ static inline void spc_set_psw(uint8_t v)
     spc.h = v >> 3 & 1; spc.i = v >> 2 & 1; spc.z = v >> 1 & 1; spc.c = v & 1;
 }
 
-/* CALL: the return address pushed (high byte first), then the routine. */
-static inline void spc_call(void (*abi)(void), uint16_t ret)
-{
-    spc_push((uint8_t)(ret >> 8));
-    spc_push((uint8_t)ret);
-    abi();
-}
-
-/* CALL with its time stated: the cycles before the first push (the opcode and
-   operand fetches and the idle cycle, with the push's own), before the second,
-   and after it (the idle cycles up to the routine's first fetch). */
-static inline void spc_call_cyc(void (*abi)(void), uint16_t ret, unsigned first, unsigned second, unsigned after)
+/* CALL, with the cycles before the first push (the opcode and operand
+   fetches and the idle cycle, with the push's own), before the second, and
+   after it (the idle cycles up to the routine's first fetch): the return
+   address pushed (high byte first), then the routine. */
+static inline void spc_call(void (*abi)(void), uint16_t ret, unsigned first, unsigned second, unsigned after)
 {
     spc_cyc(first);
     spc_push((uint8_t)(ret >> 8));
@@ -95,18 +89,10 @@ void spc_restart(uint16_t at, void (*entry)(void));
    it. Never returns. */
 void spc_boot_rom(void);
 
-/* RET: the return address pulled (low byte first); the checks end the call
-   at it. */
-static inline uint16_t spc_ret(void)
-{
-    uint16_t lo = spc_pull();
-    return (uint16_t)(lo | spc_pull() << 8);
-}
-
-/* RET with its time stated: the cycles before the first pull (the opcode
-   fetch, the dummy read and the idle cycle included) and before the second.
-   The two pulls are one call, so spc_cyc cannot go between them. */
-static inline uint16_t spc_ret_cyc(unsigned first, unsigned second)
+/* RET, with the cycles before the first pull (the opcode fetch, the dummy
+   read and the idle cycle included) and before the second: the return address
+   pulled (low byte first); the checks end the call at it. */
+static inline uint16_t spc_ret(unsigned first, unsigned second)
 {
     spc_cyc(first);
     uint16_t lo = spc_pull();
