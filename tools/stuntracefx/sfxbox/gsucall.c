@@ -272,8 +272,10 @@ uint8_t gsu_rpix(uint8_t x, uint8_t y)
 static uint32_t mfetch[1 << 16], mfn;
 static int mfetch_on;
 
+static uint32_t last_code;   /* the last code byte the C stated (bank:address) */
 void gsu_code(uint32_t addr, uint32_t n)
 {
+    if (n) last_code = (addr & 0xFF0000) | ((addr + n - 1) & 0xFFFF);
     if (mfetch_on)
         for (uint32_t i = 0; i < n && mfn < (uint32_t)(sizeof mfetch / sizeof mfetch[0]); i++)
             mfetch[mfn++] = (addr & 0xFF0000) | ((addr + i) & 0xFFFF);
@@ -998,8 +1000,17 @@ static int hybrid_exec(uint32_t pc, uint32_t prev_end)
     mode = 2;
     in_pixels = 0;   /* a call a state load cut inside a pixel flush left it set */
     if (pend) { int q = gquiet; gquiet = 1; live_ram(1, pend_addr, pend_val); gquiet = q; }
+    last_code = 0xFFFFFFFFu;
     rt[idx].abi();
     if (ccut) cut_wait();
+    /* A routine run on its own from code with no C (a unit call's stub,
+       which returns it to a STOP): the byte of the code it ends at is that
+       code's, as a C caller states it after its call. A routine that states
+       it itself (gsu_code(BANK | R11, 1)), and a program its own STOP, has. */
+    if (!past_end) {
+        uint32_t back = (pc & 0xFF0000) | ((prog || rec.up) ? (uint16_t)rec.end : st.r[11]);
+        if (last_code != back) gsuclk_code(&gclk, back, 1);
+    }
     gcyc_put('E', cn);
     mode = 0;
     replay_to(cn);

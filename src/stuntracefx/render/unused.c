@@ -558,8 +558,7 @@ lB0B5:
     R[1] = gsu_ldw(FX_MODEL_CE);
     R[11] = 0xB0D5;
     gsu_code(0x01b0d1, 4); gsu_code(0x01b17d, 1);
-    abi_FxObjectSpriteAt();
-    gsu_code(0x01b0d5, 1);
+    abi_FxObjectSpriteAt();   /* it states the byte it returns to */
 lB0D5:
     gsu_code(0x01b0d6, 2);
     R[0] = gsu_rpix_r(R[1], R[2]);
@@ -962,8 +961,7 @@ l84DA:
     gsu_sbk(R[0]);
     R[11] = 0x84F3;
     gsu_code(0x0184ef, 4); gsu_code(0x018576, 1);
-    abi_FxModelDrawFlagged();
-    gsu_code(0x0184f3, 1);
+    abi_FxModelDrawFlagged();   /* it states the byte it returns to */
 l84F3:
     gsu_code(0x0184f4, 3);
     R[0] = gsu_ldw(0x0020);
@@ -994,8 +992,7 @@ l84F3:
     gsu_stw(0x0028, R[0]);
     R[11] = 0x8513;
     gsu_code(0x01850f, 4); gsu_code(0x018584, 1);
-    abi_FxModelDrawFlags8000();
-    gsu_code(0x018513, 1);
+    abi_FxModelDrawFlags8000();   /* it states the byte it returns to */
 l8513:
     return;   /* the STOP: the program ends here */
 l8515:
@@ -1062,8 +1059,7 @@ l8515:
     R[0] = 0x8000;
     R[11] = 0x855F;
     gsu_code(0x018558, 7); gsu_code(0x01858f, 1);
-    abi_FxModelDrawWithFlags();
-    gsu_code(0x01855f, 1);
+    abi_FxModelDrawWithFlags();   /* it states the byte it returns to */
 l855F:
     return;   /* the STOP: the program ends here */
 dispatch:
