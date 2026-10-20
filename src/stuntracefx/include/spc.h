@@ -35,6 +35,15 @@ void spc_wr(uint16_t addr, uint8_t v);
    its own CALL's cycles. The checks compare it with the original's. */
 void spc_cyc(unsigned n);
 
+/* spc_wr with its time stated after its arguments are evaluated (a value that
+   reads: spc_wr_cyc(a, f(spc_rd(b)), n) states the read's time inside the
+   argument and the write's here). */
+static inline void spc_wr_cyc(uint16_t addr, uint8_t v, unsigned before)
+{
+    spc_cyc(before);
+    spc_wr(addr, v);
+}
+
 static inline uint16_t spc_dp(uint8_t d) { return (uint16_t)(spc.p ? 0x0100 | d : d); }
 static inline uint16_t spc_ya(void) { return (uint16_t)(spc.y << 8 | spc.a); }
 static inline void spc_set_ya(uint16_t v) { spc.a = (uint8_t)v; spc.y = (uint8_t)(v >> 8); }
@@ -61,6 +70,19 @@ static inline void spc_call(void (*abi)(void), uint16_t ret)
     abi();
 }
 
+/* CALL with its time stated: the cycles before the first push (the opcode and
+   operand fetches and the idle cycle, with the push's own), before the second,
+   and after it (the idle cycles up to the routine's first fetch). */
+static inline void spc_call_cyc(void (*abi)(void), uint16_t ret, unsigned first, unsigned second, unsigned after)
+{
+    spc_cyc(first);
+    spc_push((uint8_t)(ret >> 8));
+    spc_cyc(second);
+    spc_push((uint8_t)ret);
+    spc_cyc(after);
+    abi();
+}
+
 /* The driver jumps to `at`, code that never comes back to what called it
    (the reload loop at $0675, which ends by restarting the driver): every
    C frame of the calls under it is gone, and `entry`, the C of the code at
@@ -78,6 +100,17 @@ void spc_boot_rom(void);
 static inline uint16_t spc_ret(void)
 {
     uint16_t lo = spc_pull();
+    return (uint16_t)(lo | spc_pull() << 8);
+}
+
+/* RET with its time stated: the cycles before the first pull (the opcode
+   fetch, the dummy read and the idle cycle included) and before the second.
+   The two pulls are one call, so spc_cyc cannot go between them. */
+static inline uint16_t spc_ret_cyc(unsigned first, unsigned second)
+{
+    spc_cyc(first);
+    uint16_t lo = spc_pull();
+    spc_cyc(second);
     return (uint16_t)(lo | spc_pull() << 8);
 }
 
