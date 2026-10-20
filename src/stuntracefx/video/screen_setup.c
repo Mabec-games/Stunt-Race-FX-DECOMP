@@ -520,6 +520,7 @@ void abi_RaceVideoSetup(void)
         video_gsu_ram_dma(0x3000, 0x5AC0, 0x0180);
         cyc(16);
         video_gsu_3000(0xFB90, 0x0018, 1);
+        cyc(22);                                /* BRA */
         goto mode2;
     } else { cyc(14); }
 mode3:
@@ -704,6 +705,7 @@ void abi_RaceHudLoad(void)
         cpu.p = nz8(cpu.p, 0x04);
         cyc(56);
         wr8(b | 0x0D89, 0x04);
+        cyc(22);                                /* BRA */
     } else
         { cyc(84); abi_SoundIndicesFromHandlers(); }
     abi_CourseSoundLoad();

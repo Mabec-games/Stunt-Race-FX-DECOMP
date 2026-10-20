@@ -111,6 +111,7 @@ void abi_MenuPreviewIdle(void)
     cyc(46);
     wr16(ACTOR(x, 0x08), 0xBCD2);
     (cyc(46), abi_MenuChoiceRepeat());
+    cyc(74);                            /* RTS, the LDA long's fetch */
     cpu.a = rd16(0x0018C9);
     (cyc(46), abi_MenuSet1A66());
     abi_MenuSetPairAnimations();

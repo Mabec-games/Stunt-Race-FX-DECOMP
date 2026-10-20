@@ -209,11 +209,11 @@ void abi_RecordsMenuGo(void)
 /* SEP #$20, cursor $0D50 = `choice`, REP #$30, the attribute fills from
    entries 1, 5 and $0C (the last only for a three-choice menu), SEP #$20,
    OamSprite0AddY by `lines`: the cursor's choice highlighted. */
-static void choice_show(uint8_t choice, AbiFn f1, AbiFn f5, AbiFn f12, uint8_t lines)
+static void choice_show_at(int entry, uint8_t choice, AbiFn f1, AbiFn f5, AbiFn f12, uint8_t lines)
 {
     op_sep(P_M);
     lda8(choice);
-    wr8(db() | 0x0D50, cyc_then(84, choice));
+    wr8(db() | 0x0D50, cyc_then(entry, choice));
     op_rep(P_M | P_X);
     op_lda16_imm(0x0001);
     (cyc(32), f1());
@@ -228,6 +228,11 @@ static void choice_show(uint8_t choice, AbiFn f1, AbiFn f5, AbiFn f12, uint8_t l
     lda8(lines);
     (cyc(84), abi_OamSprite0AddY());
     cyc(42);
+}
+
+static void choice_show(uint8_t choice, AbiFn f1, AbiFn f5, AbiFn f12, uint8_t lines)
+{
+    choice_show_at(84, choice, f1, f5, f12, lines);
 }
 
 /* LDA #$000C, STA $0D40 (16-bit: state $0C, $0D41 cleared), sound $24:
@@ -421,6 +426,13 @@ static void speed_bottom_show(void)
     choice_show(0x02, abi_OamAttr38x4, abi_OamAttr36x6, 0, 0x0F);
 }
 
+/* After the sound push from an M 16-bit caller: its tail is 8 shorter than
+   the 200 the push states. */
+static void speed_bottom_show_after_sound(void)
+{
+    choice_show_at(76, 0x02, abi_OamAttr38x4, abi_OamAttr36x6, 0, 0x0F);
+}
+
 /*
  * @routine 02:F629 RecordsMenuSpeedTop
  * WHAT IT DOES: The Speed Trax records menu with the cursor on its first
@@ -439,7 +451,7 @@ void abi_RecordsMenuSpeedTop(void)
     } else { cyc(30); }
     if (pressed(0x0400)) {
         sound16(0x0045);
-        speed_bottom_show();
+        speed_bottom_show_after_sound();
         return;
     }
     speed_top_show();

@@ -660,7 +660,12 @@ uint16_t ObjectLinkEventTrigger(uint8_t bank, uint16_t a, uint16_t *x, uint16_t 
     *y = rd16(b | (uint16_t)(0x204F + *y));
     cyc(44);
     a = rd16(b | *y) & 0x4000;
-    if (!a || !(a = rd16(cyc_then(86, b | 0x1A24)))) {
+    if (!a) {
+        cyc(24);                        /* AND #, which the other exit has not run */
+        *p = (uint8_t)((*p & ~P_N) | P_Z);
+        return 0;
+    }
+    if (!(a = rd16(cyc_then(86, b | 0x1A24)))) {
         *p = (uint8_t)((*p & ~P_N) | P_Z);
         return 0;
     }

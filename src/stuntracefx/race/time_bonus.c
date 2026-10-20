@@ -542,10 +542,10 @@ static void draw_frame(uint32_t b)
 
 /* The time at the animation's size, the bonus digits when shown, then the
    frame ($07:8FA6). */
-static void draw_time(uint32_t b)
+static void draw_time(uint32_t b, int entry)
 {
     cpu.a = 0x0030;
-    cyc(78);
+    cyc(entry + 48);
     wr16(b | 0x0D6D, cpu.a);
     (cyc(46), abi_GsuTimeDigitsGrow());
     cyc(24);
@@ -680,6 +680,7 @@ void TimeBonusTally(void)
 {
     uint32_t b = (uint32_t)cpu.db << 16;
     uint16_t a, state;
+    int entry;
 
     cpu.p &= (uint8_t)~(P_M | P_X);
     cpu.a = 0x0006;
@@ -713,7 +714,9 @@ void TimeBonusTally(void)
             cpu.a = (uint16_t)(a + 2);
             cyc(98);
             wr16(b | 0x0D6B, cpu.a);
+            entry = 22;                 /* BRA */
         } else {
+            entry = 24;                 /* JMP */
             cyc(40);
             inc16(b | 0x0D65);
             inc16(b | 0x0D65);
@@ -728,7 +731,7 @@ void TimeBonusTally(void)
             cyc(46);
             wr16(b | 0x0E7C, cpu.a);
         }
-        draw_time(b);
+        draw_time(b, entry);
         return;
     case 0x8F27:                        /* 6: count the bonus into the time */
         cyc(24);
@@ -754,7 +757,7 @@ void TimeBonusTally(void)
         } else {
             count_bonus(b);
         }
-        draw_time(b);
+        draw_time(b, 30);
         return;
     case 0x8F86:                        /* 8: shrink the bonus digits */
         cyc(24);
@@ -802,6 +805,7 @@ void TimeBonusTally(void)
             inc16(b | 0x0D65);
             inc16(b | 0x0D65);
             sound(0x0040);
+            cyc(30);                    /* BRA, and 8 the callee lacks */
         } else {
             a = (uint16_t)(a + 2);
             cyc(98);

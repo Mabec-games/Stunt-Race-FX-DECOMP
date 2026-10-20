@@ -1718,7 +1718,7 @@ void abi_CarControlsToRecord(void)
         cyc(32);
         op_lda16(r + 0x6A);
         if (cpu.a)
-            { cyc(16); ctl_rec_or(r + 0x42, 0x0400); cyc(22); goto player_clear; }
+            { cyc(16); ctl_rec_or(r + 0x42, 0x0400); goto player_clear; }
         else {
             op_lda16(cyc_then(62, b | ctl_player_word(b)));
             ctl_bit(0x0010);

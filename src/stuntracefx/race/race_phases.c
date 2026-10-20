@@ -529,6 +529,7 @@ static void panel_line(uint32_t b, uint16_t at)
         lda8_imm(0x88);
         cyc(16);
         wr8(b | (uint16_t)(0x0520 + at), 0x88);
+        cyc(22);                        /* BRA */
     } else {
         lda8_imm(0x28);
         cyc(38);
@@ -2359,7 +2360,7 @@ static void time_up_tick(uint32_t b, uint8_t t, void (*after)(void))
     cyc(22);
     wr8(b | 0x0E5A, t);
     dec8_mem(b | 0x0E59);
-    cyc(54);
+    cyc(38);
     lda8_imm(0x51);
     abi_SoundPort0QueuePush();
     (cyc(46), after());

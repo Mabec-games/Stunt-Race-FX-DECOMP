@@ -2776,7 +2776,7 @@ void abi_GlyphWordAt1C28(void)
     wr16(0x70020E, 0x0010);
     (cyc(62), abi_GsuBytes200_BFBCBD());
     for (i = 0; i < 5; i++) {
-        cyc(72);
+        cyc(i ? 72 : 50);               /* GsuRun's tail; the first: the callee's states 22 of it */
         op_rep(P_M);
         glyph_prog(0xF15B, g1[i]);
     }
@@ -3276,12 +3276,12 @@ void abi_GlyphSlideThree(void)
         if (cpu.p & P_Z)
             { cyc(108); abi_GsuBytes200_BFB7B6(); }
         else if (op_cmp16(0x8006), cpu.p & P_Z)
-            { cyc(78); abi_GsuBytes200_BFBCBD(); }
+            { cyc(78); abi_GsuBytes200_BFBCBD(); cyc(22); /* BRA */ }
         else if (op_cmp16(0x800C), cpu.p & P_Z)
-            { cyc(114); abi_GsuBytes200_BFBAB9(); }
+            { cyc(114); abi_GsuBytes200_BFBAB9(); cyc(22); /* BRA */ }
         else
-            { cyc(182); abi_GsuBytes200_BFB3BE(); }
-        cyc(146);
+            { cyc(182); abi_GsuBytes200_BFB3BE(); cyc(22); /* BRA */ }
+        cyc(124);
         x = cpu.x;
         p = cpu.p;
         glyph_prog_run(0xF3D2);

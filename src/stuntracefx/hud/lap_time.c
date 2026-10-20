@@ -342,7 +342,7 @@ static void record_slot_copy(uint8_t a)
  */
 void abi_RecordSlotCopy0(void)
 {
-    record_slot_copy(cyc_then(2, (cyc(2), cyc_then(2, course_times_9()))));
+    record_slot_copy(cyc_then(2, cyc_then(2, cyc_then(2, course_times_9()))));
 }
 
 /*
@@ -646,10 +646,13 @@ void abi_TimePackBcd(void)
 static void sum_into_f1(uint32_t addr, uint8_t x, unsigned n)
 {
     uint8_t a = 0;
+    unsigned first = 1;
 
     while (n--) {
         cpu.p &= (uint8_t)~P_C;
-        cyc(96);
+        /* the first round comes from TAX, LDY, CLC; later ones from INX, DEY, BNE, CLC */
+        cyc(first ? 76 : 96);
+        first = 0;
         a = rd8(addr + x);
         cyc(16);
         a = op_adc8(a, rd8(0x0000F1), &cpu.p);
