@@ -996,6 +996,7 @@ static int hybrid_exec(uint32_t pc, uint32_t prev_end)
     gquiet = past_end;
     if (gcyclog && !past_end) { uint32_t at = pc & 0xFFFFFF; fputc('S', gcyclog); fwrite(&at, 4, 1, gcyclog); }
     mode = 2;
+    in_pixels = 0;   /* a call a state load cut inside a pixel flush left it set */
     if (pend) { int q = gquiet; gquiet = 1; live_ram(1, pend_addr, pend_val); gquiet = q; }
     rt[idx].abi();
     if (ccut) cut_wait();
