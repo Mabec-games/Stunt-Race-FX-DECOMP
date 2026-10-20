@@ -259,14 +259,19 @@ void abi_OamBufferHideLarge(void)
  */
 void OamFromList(uint8_t bank, uint16_t *x, uint16_t *y)
 {
-    uint32_t b = (uint32_t)bank << 16;
+    uint32_t b = (uint32_t)bank << 16, tail = 0;
     uint8_t v;
 
-    while ((v = rd8(cyc_then(136, b | (uint16_t)(0xF883 + *y)))) != 0xFF) {
+    /* each item: LDA abs,Y with its ROM byte (38), then to the store: CMP,
+       BEQ, CMP, BNE (94 for $FE, 100 for an entry); after it the INYs, INXs
+       and BRA back (134, or 114 after $FE with its BRA) */
+    while ((v = rd8(cyc_then(tail + 38, b | (uint16_t)(0xF883 + *y)))) != 0xFF) {
         if (v == 0xFE) {
+            cyc(94);
             wr8(b | (uint16_t)(0x0376 + *x), v);
+            tail = 114;
         } else {
-            cyc(2);
+            cyc(100);
             wr8(b | (uint16_t)(0x0375 + *x), v);
             cyc(68);
             wr8(b | (uint16_t)(0x0376 + *x), rd8(b | (uint16_t)(0xF884 + *y)));
@@ -275,11 +280,12 @@ void OamFromList(uint8_t bank, uint16_t *x, uint16_t *y)
             cyc(68);
             wr8(b | (uint16_t)(0x0378 + *x), rd8(b | (uint16_t)(0xF886 + *y)));
             *y = (uint16_t)(*y + 3);
+            tail = 134;
         }
-        cyc(116);
         *y = (uint16_t)(*y + 1);
         *x = (uint16_t)(*x + 4);
     }
+    cyc(38);                            /* CMP #$FF, BEQ */
 }
 
 void abi_OamFromList(void)

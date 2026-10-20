@@ -4018,6 +4018,7 @@ store:
         sta16_imm(b | (uint16_t)(0x2027 + obj), 0x0007);
         cpu.p &= (uint8_t)~P_M;
         x = 0x0000;
+        cyc(106);                       /* LDX #0, BRA to the join */
     } else {
         cpu.p &= (uint8_t)~P_M;
         cyc(152);
