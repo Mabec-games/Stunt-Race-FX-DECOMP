@@ -4543,6 +4543,7 @@ void abi_ObjectDemoCarStep(void)
         cyc(6);
         wr8(b | (uint16_t)(0x2048 + cpu.x), v);
         cpu.p = nz8(cpu.p, v);
+        cyc(84);                        /* BRA, JSL */
     } else {
         x = cpu.x;
         cpu.p &= (uint8_t)~P_M;
@@ -4557,8 +4558,8 @@ void abi_ObjectDemoCarStep(void)
         cpu.p |= P_M;
         cpu.x = x;
         cpu.p = nz16(cpu.p, x);
+        cyc(120);
     }
-    cyc(120);
     abi_ObjectRebucket();
     (cyc(156), abi_ObjectPoseFromRecord());
     lda8(0x03);

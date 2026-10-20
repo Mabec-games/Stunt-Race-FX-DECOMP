@@ -626,6 +626,7 @@ void abi_ColourBlend(void)
 
     cpu.a = e.a;
     cpu.p = e.p;
+    cyc(42);                                    /* RTS */
 }
 
 /* Steps a 13-entry cycle position by n, wrapping. */
@@ -845,7 +846,7 @@ void abi_ColourBlendToTarget(void)
     cyc(16);
     wr16(0x0000F5, t);
     (cyc(46), abi_ColourBlendBy());
-    cyc(74);
+    cyc(32);
     wr16(0x000E21 + cpu.x, cpu.a);
     cyc(42);
 }
@@ -1306,6 +1307,7 @@ void abi_CoursePaletteCycle(void)
             cyc(placed_read(at) ? 32 : 48);        /* a ROM read's 16 clocks are stated */
             wr16(0x7EFD7D + 2 * i, cpu.a);
         }
+        cyc(22);                        /* JMP */
     } else if (c == 0x07) {
         cyc(44);
         palette_cycle_step(b);
@@ -1317,6 +1319,7 @@ void abi_CoursePaletteCycle(void)
             cpu.a = rd16(b + c7[i] + cpu.x);
             wr16(0x7F39EF + 2 * i, cpu.a);
         }
+        cyc(22);                        /* JMP */
     } else if (c == 0x0B) {
         cyc(100);
         palette_cycle_step(b);
@@ -1330,7 +1333,7 @@ void abi_CoursePaletteCycle(void)
         wr8(0x7F37F5, v);
         cyc(32);
         wr8(0x7F39F5, v);
-    } else { cyc(114); }
+    } else { cyc(136); }
     cyc(82);
     op_sep(P_M);
     cpu.db = db0;
@@ -1601,7 +1604,7 @@ a_blend:
             wr16(hc_dp(0xF3), cyc_then(16, cpu.a));
             cyc(46);
             abi_ColourBlend();
-            cyc(72);                            /* RTS, STA abs,Y */
+            cyc(30);                            /* RTS, STA abs,Y */
 a_store:
             wr16(0x7FEC57 + cpu.y, cpu.a);
             hc_step(&cpu.x, 0);
@@ -1646,9 +1649,13 @@ b_blend:
         op_lda16(HC_TO(8));
         wr16(hc_dp(0xF5), cyc_then(16, cpu.a));
         (cyc(46), abi_ColourBlendBy());
+        pushed = cpu.a;
+        cyc(54);
+        goto rows_tail;
 rows_rest:
         pushed = cpu.a;
         cyc(96);
+rows_tail:
         op_lda16(HC_TGT(0));
         if (cpu.a & 0x8000) {
             cpu.a = pushed;
@@ -1664,7 +1671,7 @@ rows_rest:
         op_lda16(HC_AMT(0));
         wr16(hc_dp(0xF5), cyc_then(16, cpu.a));
         (cyc(46), abi_ColourBlendBy());
-        cyc(94);
+        cyc(52);
 b_store:
         wr16(0x7FEC57 + cpu.y, cpu.a);
         hc_step(&cpu.x, 0);
@@ -1734,7 +1741,7 @@ buffer:
             op_lda16(HC_WORK_A + cpu.x);
             wr16(hc_dp(0xF1), cyc_then(16, cpu.a));
             (cyc(46), abi_ColourBlend());
-            cyc(74);
+            cyc(32);
             wr16(HC_BUFFER + cpu.x, cpu.a);
         } else { cyc(22); }
         cyc(64);
@@ -1793,7 +1800,7 @@ work:
             op_lda16(HC_AMT(0));
             wr16(hc_dp(0xF5), cyc_then(16, cpu.a));
             (cyc(46), abi_ColourBlendBy());
-            cyc(74);
+            cyc(32);
             wr16(HC_BUFFER + cpu.x, cpu.a);
         } else { cyc(16); }
         hc_step(&cpu.x, 0x0200);
@@ -1825,7 +1832,7 @@ blend_both:
                     op_lda16(HC_WORK_C + cpu.x);
                     wr16(hc_dp(0xF3), cyc_then(16, cpu.a));
                     (cyc(46), abi_ColourBlend());
-                    cyc(74);
+                    cyc(32);
                     wr16(HC_WORK_A + cpu.x, cpu.a);
                     cyc(32);
                     wr16(HC_BUFFER + cpu.x, cpu.a);
@@ -1873,7 +1880,7 @@ hud:
                 op_lda16(HC_WORK_C + cpu.x);
                 wr16(hc_dp(0xF3), cyc_then(16, cpu.a));
                 (cyc(46), abi_ColourBlend());
-                cyc(74);
+                cyc(32);
                 wr16(HC_WORK_A + cpu.x, cpu.a);
                 cyc(32);
                 wr16(HC_BUFFER + cpu.x, cpu.a);

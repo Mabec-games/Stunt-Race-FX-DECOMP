@@ -504,8 +504,7 @@ static void race_hud_setup(void)
     cpu.x = 0x0200;
     cpu.y = 0x01AA;
     cpu.p = nz16(cpu.p, 0x01AA);
-    (cyc(94), abi_OamFromList());
-    cyc(42);                            /* RTS */
+    (cyc(52), abi_OamFromList());
     op_sep(P_M | P_X);
     b = (uint32_t)cpu.db << 16;
     cyc(24);

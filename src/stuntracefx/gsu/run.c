@@ -99,6 +99,7 @@ void abi_GsuRun(void)
 
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | mode);
     cpu.p = nz8(cpu.p, cpu.db);
+    cyc(72);                            /* PLB, RTL */
 }
 
 uint16_t GsuParamsUpdate(void);
@@ -389,6 +390,7 @@ void abi_FrameRunGsuAB13B(void)
     cyc(24);
     wr16(b | 0x1F21, cpu.a);
     (cyc(46), abi_MapMarkersPanelB());
+    cyc(44);                            /* RTL */
 }
 
 /*
@@ -418,4 +420,5 @@ void abi_FrameRunGsuAB13A(void)
     (cyc(88), abi_HudGaugesPanelA());
     (cyc(46), abi_GsuWait());
     (cyc(46), abi_MapMarkersPanelA());
+    cyc(44);                            /* RTL */
 }

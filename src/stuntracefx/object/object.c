@@ -3940,7 +3940,7 @@ void abi_ObjectCarRecordNew(void)
     cpu.y = y;
     cpu.x = x;
     cpu.p = nz16(cpu.p, x);
-    (cyc(144), abi_ObjectCarRecordTake());
+    (cyc(72), abi_ObjectCarRecordTake());
 }
 
 void abi_GsuRecordFromObject(void);
@@ -3977,7 +3977,7 @@ void abi_ObjectCarRecordRestart(void)
     cpu.x = x;
     cpu.p = nz16(cpu.p, x);
     op_rep(P_M);
-    cyc(176);
+    cyc(104);
     op_lda16(0x702390);
     wr16(car_field(0x2004), cyc_then(30, cpu.a));
     op_sep(P_M);

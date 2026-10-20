@@ -2040,7 +2040,7 @@ void abi_HudSixGlyphs(void)
         cpu.x = 0xF15B;
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x07);
         (cyc(146), abi_GsuRun());
-        cyc(116);
+        cyc(44);
     }
     cyc(42);
     cpu.p &= (uint8_t)~(P_M | P_X);
@@ -2214,17 +2214,16 @@ void abi_BigSpritesRow6(void)
     if (!(cyc(16), big_sprites_start(abi_GsuBytes200_BFB5BB)))
         { cyc(42); return; }
     big_sprites_at(0x0018, 0x0028);
-    /* between sprites: GsuRun's return (72), then 44 */
     for (i = 0; i < 4; i++)
-        { sprite24x40(first[i]); if (i < 3) cyc(116); }
-    cyc(148);
+        { sprite24x40(first[i]); if (i < 3) cyc(44); }
+    cyc(76);
     w = rd16(0x70020A);
     cpu.p &= (uint8_t)~P_C;
     cpu.a = op_adc16(w, 0x0010, &cpu.p);
     cyc(70);
     wr16(0x70020A, cpu.a);
     for (i = 0; i < 2; i++)
-        { sprite24x40(second[i]); cyc(i ? 44 : 116); }
+        { sprite24x40(second[i]); cyc(44); }
     cyc(42);
 }
 
@@ -2322,7 +2321,7 @@ void abi_GlyphAtY60(void)
     wr16(0x70020C, 0x0060);
     (cyc(62), abi_GsuBytes200_BFB5BB());
     (cyc(42), run_f329());
-    cyc(136);
+    cyc(64);
 }
 
 /* One step of the row at y 96: LDA #x, STA.L $70:020A, LDA #glyph, JSR
@@ -2481,8 +2480,8 @@ void abi_GlyphListDraw(void)
             op_plp(p);
             cpu.x = x;
             cpu.p = nz16(cpu.p, x);
-            /* GsuRun's PLP and RTL, the second REP, PLX, INX, INX, CPX */
-            cyc(160);
+            /* the second REP, PLX, INX, INX, CPX (GsuRun states its PLP and RTL) */
+            cyc(88);
         } else { cyc(66); }
         cpu.x = (uint16_t)(cpu.x + 2);
         {
@@ -2518,7 +2517,6 @@ static void glyph_sprite_at(uint32_t b, uint16_t x)
     run_f329();
     cpu.x = (uint16_t)(x + 2);
     cpu.p = nz16(cpu.p, cpu.x);
-    cyc(72);
 }
 
 void abi_GlyphSpriteDraw(void)
@@ -2776,16 +2774,15 @@ void abi_GlyphWordAt1C28(void)
     wr16(0x70020E, 0x0010);
     (cyc(62), abi_GsuBytes200_BFBCBD());
     for (i = 0; i < 5; i++) {
-        cyc(i ? 72 : 50);               /* GsuRun's tail; the first: the callee's states 22 of it */
+        if (!i)
+            cyc(50);
         op_rep(P_M);
         glyph_prog(0xF15B, g1[i]);
     }
-    cyc(72);
     draw_pos_add(0x70020A, 0x0004, 0);
     for (i = 0; i < 4; i++) {
         op_rep(P_M);
         glyph_prog(0xF15B, g2[i]);
-        cyc(72);
     }
     cyc(42);
 }
@@ -2800,20 +2797,18 @@ static void glyph_grid3(uint16_t first, void (*mid)(void), void (*row2)(void))
 
     for (r = 0; r < 3; r++) {
         if (r) {
-            cyc(30);
             draw_pos_add(0x70020C, 0x0008, 0);
             draw_pos_add(0x70020A, 0x0018, 1);
             if (r == 1 && row2)
                 { cyc(62); row2(); }
         }
         for (c = 0; c < 3; c++) {
-            if (c)
-                cyc(72);                /* the last glyph's GsuRun returning */
             if (r == 0 && c == 2 && mid)
                 { cyc(62); mid(); }
             glyph_prog(0xF280, (uint16_t)((first + r) << 8 | (0x1A + 2 * c)));
         }
-        cyc(42);
+        if (r == 2)
+            cyc(42);
     }
 }
 
@@ -3107,7 +3102,7 @@ static void glyph_prog_run(uint16_t prog)
     cpu.p = nz8(cpu.p, 0x07);
     (cyc(124), abi_GsuRun());
     op_rep(P_M | P_X);
-    cyc(94);
+    cyc(22);
 }
 
 /*
@@ -3367,7 +3362,7 @@ void abi_GlyphSpritesDrawAll(void)
         cyc(46);                        /* JSR */
     }
     abi_GlyphGrid1A();
-    (cyc(118), abi_GlyphGrid1D());
+    (cyc(46), abi_GlyphGrid1D());
     cyc(42);
 }
 

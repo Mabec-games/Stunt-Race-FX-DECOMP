@@ -582,11 +582,11 @@ void abi_RasterStage(void)
         (cyc(46), abi_NmiFrameUpload());
         (cyc(62), abi_OamDmaAll());
         (cyc(62), abi_WindowLayoutStepForScreen());
-        (cyc(104), abi_RasterPaletteUpload());
+        (cyc(46), abi_RasterPaletteUpload());
         (cyc(46), abi_JoypadAccumulate());
         (cyc(62), abi_WindowHdmaBands());
         (cyc(62), abi_WindowLayoutStepForScreen());
-        (cyc(120), abi_BobWindowsRun());
+        (cyc(62), abi_BobWindowsRun());
         (cyc(62), abi_WindowBandsAnimate());
         op_sep(P_M | P_X);
         b = (uint32_t)cpu.db << 16;

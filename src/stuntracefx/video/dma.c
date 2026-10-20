@@ -264,7 +264,7 @@ void CgramDmaAll(void)
 {
     cyc(162);
     CgramDma(PALETTE_BUFFER, 0x00, 0x0200);
-    cyc(72);
+    cyc(114);                           /* RTS, PLP, RTL */
 }
 
 void abi_CgramDmaAll(void)

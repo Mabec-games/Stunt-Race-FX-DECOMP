@@ -761,7 +761,7 @@ void abi_PlayerOnePhaseTally(void)
     cyc(96);
     op_lda16(b | 0x0FB0);
     (cyc(46), abi_GsuDigitPair0E74At());
-    (cyc(118), abi_GlyphSpritesDrawAll());
+    (cyc(46), abi_GlyphSpritesDrawAll());
     cyc(42);
 }
 
@@ -889,7 +889,6 @@ void abi_PlayerOnePhaseStep(void)
         break;
     case 0xDFD2:
         abi_PlayerOnePhaseTally();
-        cyc(72);
         break;
     case 0xECA4:
         jump_routine(0x07ECA4);
@@ -897,7 +896,6 @@ void abi_PlayerOnePhaseStep(void)
         break;
     case 0xE044:
         abi_PlayerOnePhaseEnd();
-        cyc(72);
         break;
     }
     cyc(0);
@@ -1359,6 +1357,8 @@ static void hud_end(int both, int inner, uint8_t p0, uint8_t db0)
     cpu.db = db0;
     cpu.p = nz8(cpu.p, db0);
     op_plp(p0);
+    if (!inner)
+        cyc(58);                                /* PLB, RTL */
 }
 
 /*
@@ -1389,7 +1389,7 @@ static void hud_mode_two(int inner, uint8_t p0, uint8_t db0)
     (cyc(90), abi_PlayerStatsThenPhaseDD35());
     (cyc(46), abi_HudTimesDraw());
     (cyc(62), abi_CoursePaletteCycle());
-    cyc(42);
+    cyc(20);
     hud_end(1, inner, p0, db0);
 }
 
@@ -1450,6 +1450,7 @@ static void hud_mode_zero(uint8_t p0, uint8_t db0)
         (cyc(46), abi_TimeBonusTally());
         (cyc(46), abi_TimeLeftDigits());
         (cyc(46), abi_TimeBonusTransfer());
+        cyc(42);
     } else {
         cyc(62);
         abi_PlayerStatsThenPhaseE232();
@@ -1457,8 +1458,8 @@ static void hud_mode_zero(uint8_t p0, uint8_t db0)
         (cyc(46), abi_TimeLeftDigits());
         (cyc(46), abi_HudHoldDraw());
         (cyc(62), abi_CoursePaletteCycle());
+        cyc(20);
     }
-    cyc(42);
     hud_end(0, 0, p0, db0);
 }
 

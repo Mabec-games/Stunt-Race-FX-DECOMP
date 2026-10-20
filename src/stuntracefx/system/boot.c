@@ -422,7 +422,7 @@ attract:
     op_sep(P_M);
     b = (uint32_t)cpu.db << 16;
     boot_lda8(0x01);
-    cyc(94);
+    cyc(22);
     wr8(b | 0x0357, 0x01);
     cyc(32);
     op_lda8(TIMEUP);

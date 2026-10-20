@@ -26,12 +26,13 @@ static uint16_t halve(uint16_t v)
     return r;
 }
 
-/* +$29 += n, with the add's V. */
-static uint16_t advance(uint8_t bank, uint16_t obj, uint16_t n, uint8_t *p)
+/* +$29 += n, with the add's V; jmp is the JMP to the shared tail (24) or 0. */
+static uint16_t advance(uint8_t bank, uint16_t obj, uint16_t n, uint16_t jmp, uint8_t *p)
 {
     uint16_t a = rd16(cyc_then(30, field(bank, obj, 0x29))), s = (uint16_t)(a + n);
 
     wr16(field(bank, obj, 0x29), cyc_then(68, s));
+    cyc(jmp);
     *p = (uint8_t)((*p & ~P_V) | ((~(a ^ n) & (a ^ s) & 0x8000) ? P_V : (cyc(162), 0)));
     return s;
 }
@@ -76,7 +77,7 @@ int ObjectPathCommand(uint8_t bank, uint16_t obj, uint16_t *a, uint16_t *y, uint
         wr16(field(bank, obj, 0x30), cyc_then(30, 0));
         wr16(field(bank, obj, 0x32), cyc_then(30, 0));
         wr16(field(bank, obj, 0x27), cyc_then(30, 0));
-        *a = advance(bank, obj, 8, p);
+        *a = advance(bank, obj, 8, 0, p);
         *y = obj;
     } else if (cmd == 2) {
         cyc(68);
@@ -84,7 +85,7 @@ int ObjectPathCommand(uint8_t bank, uint16_t obj, uint16_t *a, uint16_t *y, uint
         link = rd16(field(bank, obj, 0x4F));
         cyc(30);
         wr16(b | link, v);
-        *a = advance(bank, obj, 4, p);
+        *a = advance(bank, obj, 4, 24, p);
         *y = link;
     } else if (cmd == 1) {
         cyc(68);
@@ -118,7 +119,7 @@ int ObjectPathCommand(uint8_t bank, uint16_t obj, uint16_t *a, uint16_t *y, uint
             v = rd16(b | (uint16_t)(0x1F4E + 2 * i));
             wr16(field(bank, obj, (uint16_t)(0x2E + 2 * i)), cyc_then(30, v));
         }
-        *a = advance(bank, obj, 10, p);
+        *a = advance(bank, obj, 10, 0, p);
         *y = 0;
     } else {
         cyc(162);

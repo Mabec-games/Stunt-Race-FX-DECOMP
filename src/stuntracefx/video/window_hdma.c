@@ -676,7 +676,7 @@ void abi_WindowLayoutStepForScreen(void)
     abi_WindowLayoutStep();
     cpu.db = db;
     cpu.p = p;
-    cyc(42);
+    cyc(v ? 100 : 124);                 /* (JMP,) PLB, PLP, RTL */
 }
 
 /* One step of the window slide: the slide position at $1A14 moves by

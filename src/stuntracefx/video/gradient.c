@@ -121,7 +121,7 @@ void abi_GradientExpandSecond(void)
  */
 uint16_t GradientBuildColours(uint16_t x, int *carry)
 {
-    cyc(330);
+    cyc(288);
     uint8_t bank = rd8(0x03F6F3 + x);
     uint16_t y = rd16(0x03F6F1 + x), second;
     int i;

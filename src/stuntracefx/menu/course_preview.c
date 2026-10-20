@@ -819,6 +819,7 @@ void abi_MenuPreviewRunFade(void)
     wr8(b | 0x11DB, 0x0F);
     cpu.p &= (uint8_t)~(P_M | P_X);
     preview_menu_loop();
+    cyc(44);                            /* RTL */
 }
 
 void abi_SelectionSave(void);
@@ -865,14 +866,17 @@ void abi_CourseMenuRun(void)
         if (cpu.p & P_Z) {
             cyc(108);
             abi_MenuPreviewRunFade();
+            op_rep(P_M);
+            b = (uint32_t)cpu.db << 16;
+            cyc(32);
             goto chosen;
         }
     } else { cyc(84); }
     abi_MenuPreviewRun();
-chosen:
     op_rep(P_M);
     b = (uint32_t)cpu.db << 16;
     cyc(76);
+chosen:
     op_lda16(0x0018C3);
     cyc(24);
     wr16(b | 0x0D2B, cpu.a);

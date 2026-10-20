@@ -285,7 +285,7 @@ void OamFromList(uint8_t bank, uint16_t *x, uint16_t *y)
         *y = (uint16_t)(*y + 1);
         *x = (uint16_t)(*x + 4);
     }
-    cyc(38);                            /* CMP #$FF, BEQ */
+    cyc(80);                            /* CMP #$FF, BEQ */
 }
 
 void abi_OamFromList(void)
@@ -2413,7 +2413,7 @@ void abi_PictureTurnStep(void)
     abi_GsuRun();
     op_rep(P_M | P_X);
     op_sep(P_M);
-    cyc(buf3000 ? 162 : 140);           /* GsuRun's return (72), REP, REP, SEP, DEC's opcode; the $3000 arm's BRA */
+    cyc(buf3000 ? 90 : 68);             /* REP, REP, SEP, DEC's opcode; the $3000 arm's BRA */
     wr8(b | 0x0D32, cyc_then(6, (uint8_t)(rd8(b | 0x0D32) - 1)));
     op_plp(p0);
     cyc(28);

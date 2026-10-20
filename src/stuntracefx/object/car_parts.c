@@ -691,7 +691,7 @@ void abi_PartHit(void)
     cpu.p = nz16(cpu.p, sy);
     cpu.x = sx;
     cpu.p = nz16(cpu.p, sx);
-    or8(F(0x2025, cpu.x), cyc_then(144, 0x01));
+    or8(F(0x2025, cpu.x), cyc_then(72, 0x01));
     parent();
     or8(F(0x2025, cpu.y), 0x04);
     (cyc(22), abi_PartKnockOff());

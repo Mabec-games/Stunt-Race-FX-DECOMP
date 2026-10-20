@@ -170,7 +170,7 @@ static uint16_t step_p2(uint8_t bank, uint32_t table, uint16_t instead, uint16_t
     c = rd16(CHOICE_P2);
     cyc(76);
     MenuChoiceRepeat(x, p);
-    cyc(4);
+    cyc(78);                            /* RTS, PLA */
     return show_choice(bank, c, x, y, p);
 }
 

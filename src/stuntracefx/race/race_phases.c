@@ -2083,7 +2083,7 @@ void abi_RaceEndWindowNine(void)
 
     (cyc(46), abi_BigSpritesNine());
     op_sep(P_M);
-    cyc(204);
+    cyc(132);
     op_lda8(b | 0x0E58);
     v = (uint8_t)cpu.a;
     if (!v) {
@@ -2310,7 +2310,7 @@ void abi_TimeUpBattle(void)
 
     (cyc(46), abi_BigSpritesRow6());
     op_sep(P_M);
-    cyc(204);
+    cyc(132);
     op_lda8(b | 0x0E59);
     if (!(uint8_t)cpu.a) {
         cyc(40);
@@ -2404,7 +2404,7 @@ void abi_TimeUpStunt(void)
 
     (cyc(46), abi_BigSpritesRow6());
     op_sep(P_M);
-    cyc(118);
+    cyc(46);
     op_lda8(b | 0x0E59);
     if (!(uint8_t)cpu.a) {
         if (time_up_wait(b))
@@ -2445,7 +2445,7 @@ void abi_TimeUpRace(void)
 
     (cyc(46), abi_BigSpritesRow6());
     op_sep(P_M | P_X);
-    cyc(96);
+    cyc(24);
     op_lda8(b | 0x0E59);
     if (!(uint8_t)cpu.a) {
         cyc(40);

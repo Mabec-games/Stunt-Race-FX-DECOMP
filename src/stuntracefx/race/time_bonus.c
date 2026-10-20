@@ -1204,19 +1204,19 @@ void TimeLeftDigits(void)
         wr16(GSU_Y, cpu.a);
         gsu_run(0xF6DF);
         lda16_imm(0x00AC);
-        cyc(194);
+        cyc(122);
         wr16(GSU_X, cpu.a);
         lda16(b | 0x0E78);
         and16(0x00FF);
         lsr16(); lsr16(); lsr16(); lsr16();
         param_digit();
         gsu_run(0xF6DF);
-        cyc(138);
+        cyc(66);
         lda16(b | 0x0E78);
         and16(0x000F);
         param_digit();
         gsu_run(0xF6DF);
-        cyc(100);
+        cyc(28);
         return;
     }
     cmp16(0x0010);
@@ -1239,12 +1239,12 @@ void TimeLeftDigits(void)
         cyc(56);
         wr16(GSU_Y, cpu.a);
         gsu_run(0xF6DF);
-        cyc(138);
+        cyc(66);
         lda16(b | TIME_BCD);
         and16(0x000F);
         param_digit();
         gsu_run(0xF6DF);
-        cyc(100);
+        cyc(28);
         return;
     }
     cyc(104);
@@ -1285,7 +1285,7 @@ void TimeLeftDigits(void)
     (cyc(62), abi_GsuBytes200_BFB7B6());
     cyc(72);
     gsu_run(0xFAF2);
-    cyc(100);
+    cyc(28);
 }
 
 void abi_TimeLeftDigits(void)
@@ -1338,7 +1338,7 @@ void abi_GsuDigitPair0E74At(void)
     (cyc(124), abi_GsuParam216A());
     run_f15b();
     op_rep(P_M | P_X);
-    cyc(118);
+    cyc(46);
     op_lda16(b | 0x0E74);
     op_and16(0x000F);
     (cyc(68), abi_GsuParam216A());
