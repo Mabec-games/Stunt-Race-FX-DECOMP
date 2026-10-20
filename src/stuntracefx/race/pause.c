@@ -344,7 +344,7 @@ static void choice_made(uint32_t b, int quit_extra)
         if ((uint8_t)cpu.a)
             { cyc(22); return; } else { cyc(78); }
         abi_Countdown0DF8();
-        cyc(54);
+        cyc(cpu.p & P_X ? 38 : 54);     /* 8-bit X: PHX and PHY in the push push a byte each */
         lda8_imm(0x22);
         abi_SoundPort1QueuePush();
         return;

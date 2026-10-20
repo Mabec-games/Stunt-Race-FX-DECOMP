@@ -2025,10 +2025,11 @@ uint16_t MenuDropStart(uint8_t bank, uint16_t rec, uint16_t a, uint8_t *p)
     cyc(60);
     h = rd16((uint16_t)(rec + 0x20));
     *p = negate_flags(*p, h);
-    queue_bg1_vscroll(bank, h, 300);
+    queue_bg1_vscroll(bank, h, h ? 176 : 202);  /* negate_flags states 26 for a non-zero height */
     cyc(144);
     for (i = 0; i < sizeof set / sizeof set[0]; i++)
-        { cyc(176); FrameByteWritePush(bank, (uint16_t)set[i].reg, set[i].v); }
+        { cyc(i ? 304 + (set[i].v != set[i - 1].v ? 16 : 0) : 176);
+          FrameByteWritePush(bank, (uint16_t)set[i].reg, set[i].v); }
     cyc(166);
     *p = nz16(*p, rec);
     return (uint16_t)((uint16_t)(0 - h) & 0xFF00) | 0x04;
@@ -2123,6 +2124,7 @@ void abi_MenuDropBounce(void)
 struct reg_write {
     uint32_t reg;
     uint8_t v;
+    uint8_t lda;                        /* 1: an LDA # even though the value is unchanged */
 };
 
 static void queue_regs(uint8_t bank, const struct reg_write *w, unsigned n)
@@ -2133,7 +2135,7 @@ static void queue_regs(uint8_t bank, const struct reg_write *w, unsigned n)
        (only when the value changes: 16), SEP, REP, PHX, LDX #, JSL */
     cyc(22);
     for (i = 0; i < n; i++)
-        { cyc(i ? 304 + (w[i].v != w[i - 1].v ? 16 : 0) : 176); FrameByteWritePush(bank, (uint16_t)w[i].reg, w[i].v); }
+        { cyc(i ? 304 + (w[i].v != w[i - 1].v || w[i].lda ? 16 : 0) : 176); FrameByteWritePush(bank, (uint16_t)w[i].reg, w[i].v); }
     cyc(190);
 }
 
@@ -2224,7 +2226,7 @@ void abi_MenuDropAway(void)
 static uint16_t menu_drop_away_finish(uint8_t bank, uint8_t *p)
 {
     static const struct reg_write set[] = {
-        {BG1VOFS, 0x00}, {BG1VOFS, 0x00}, {HDMAEN, 0x00}, {TSW, 0x00},
+        {BG1VOFS, 0x00}, {BG1VOFS, 0x00}, {HDMAEN, 0x00, 1}, {TSW, 0x00},
         {TMW, 0x00}, {CGADSUB, 0x01}, {CGWSEL, 0x02}, {TS, 0x02},
         {BG2SC, 0x65}, {BG1SC, 0x61}, {BG12NBA, 0x20}, {TM, 0x17}};
     uint16_t x;

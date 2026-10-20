@@ -324,10 +324,11 @@ void abi_MenuScreenOpenPreview(void)
 {
     uint8_t p = cpu.p, db = cpu.db;
     uint16_t x;
-    static const struct { uint16_t reg; uint8_t v; } ppu[] = {
-        {0x2105, 0x03}, {0x2131, 0x00}, {0x2130, 0x00}, {0x2107, 0x61}, {0x2108, 0x69}, {0x210B, 0x30},
-        {0x210F, 0x00}, {0x210F, 0xFF}, {0x2127, 0xFF}, {0x210D, 0x00}, {0x210D, 0x01}, {0x212C, 0x13},
-        {0x2123, 0x30}, {0x2125, 0x03}, {0x212E, 0x12}};
+    /* cost: clocks since the previous store (LDA #, STA, or a STZ). */
+    static const struct { uint16_t reg; uint8_t v; uint8_t cost; } ppu[] = {
+        {0x2105, 0x03, 62}, {0x2131, 0x00, 24}, {0x2130, 0x00, 24}, {0x2107, 0x61, 40}, {0x2108, 0x69, 40},
+        {0x210B, 0x30, 40}, {0x210F, 0x00, 24}, {0x210F, 0xFF, 40}, {0x2127, 0xFF, 24}, {0x210D, 0x00, 24},
+        {0x210D, 0x01, 40}, {0x212C, 0x13, 40}, {0x2123, 0x30, 40}, {0x2125, 0x03, 40}, {0x212E, 0x12, 40}};
     unsigned i;
 
     cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
@@ -373,7 +374,7 @@ void abi_MenuScreenOpenPreview(void)
     wr_m(0x0011EF, 0x0000);
     cpu.p |= P_M;
     for (i = 0; i < sizeof ppu / sizeof ppu[0]; i++)
-        { cyc(62); wr8(ppu[i].reg, ppu[i].v); }
+        { cyc(ppu[i].cost); wr8(ppu[i].reg, ppu[i].v); }
     cyc(46);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x12);
     abi_MenuScrollReset();
@@ -394,13 +395,13 @@ void abi_MenuScreenOpenPreview(void)
     cpu.a = 0x0020;
     cpu.y = 0x0007;
     cpu.x = 0x0120;
-    (cyc(66), abi_MenuPaletteScale());
+    (cyc(110), abi_MenuPaletteScale());
     cpu.a = 0x0020;
     cyc(48);
     wr16(0x0011DF, 0x0020);
     cpu.y = 0x0007;
     cpu.x = 0x01A0;
-    (cyc(66), abi_MenuPaletteScale());
+    (cyc(110), abi_MenuPaletteScale());
     cyc(28);
     preview_picture(0x3000, 0xCC78);
     cyc(50);
@@ -475,7 +476,7 @@ static void palette_scale(uint16_t level, int word, uint16_t x, uint16_t y)
         { cyc(48); wr16(0x0011DF, level); }
     else
         { cyc(24); wr8(0x0011DF, (uint8_t)level); }
-    cyc(66);
+    cyc(110);
     cpu.a = word ? level : (uint16_t)((cpu.a & 0xFF00) | (uint8_t)level);
     cpu.y = y;
     cpu.x = x;
@@ -507,12 +508,15 @@ static void palette_scale(uint16_t level, int word, uint16_t x, uint16_t y)
  */
 void abi_MenuScreenOpenPreviewFade(void)
 {
-    static const struct { uint8_t v; uint16_t reg; } first[] = {
-        {0x61, 0x2107}, {0x70, 0x210B}, {0x01, 0x2131}, {0x02, 0x2130}, {0x02, 0x212D}, {0x00, 0x2132},
-        {0x00, 0x212F}, {0x00, 0x212E}, {0x03, 0x212C}, {0x01, 0x210D}, {0x00, 0x210D}};
-    static const struct { uint8_t v; uint16_t reg; } full[] = {
-        {0x00, 0x2131}, {0x00, 0x2130}, {0x69, 0x2108}, {0x30, 0x210B}, {0xFF, 0x210F}, {0x00, 0x210F},
-        {0x90, 0x420C}, {0x13, 0x212C}, {0xFF, 0x2127}, {0x30, 0x2123}, {0x03, 0x2125}, {0x12, 0x212E}};
+    /* lda: 0 when the block reuses A (no LDA #). */
+    static const struct { uint8_t v; uint16_t reg; uint8_t lda; } first[] = {
+        {0x61, 0x2107, 1}, {0x70, 0x210B, 1}, {0x01, 0x2131, 1}, {0x02, 0x2130, 1}, {0x02, 0x212D, 1},
+        {0x00, 0x2132, 1}, {0x00, 0x212F, 0}, {0x00, 0x212E, 0}, {0x03, 0x212C, 1}, {0x01, 0x210D, 1},
+        {0x00, 0x210D, 1}};
+    static const struct { uint8_t v; uint16_t reg; uint8_t lda; } full[] = {
+        {0x00, 0x2131, 1}, {0x00, 0x2130, 0}, {0x69, 0x2108, 1}, {0x30, 0x210B, 1}, {0xFF, 0x210F, 1},
+        {0x00, 0x210F, 1}, {0x90, 0x420C, 1}, {0x13, 0x212C, 1}, {0xFF, 0x2127, 1}, {0x30, 0x2123, 1},
+        {0x03, 0x2125, 1}, {0x12, 0x212E, 1}};
     uint8_t p = cpu.p, db = cpu.db, v;
     uint16_t x, y;
     uint32_t src;
@@ -583,7 +587,8 @@ void abi_MenuScreenOpenPreviewFade(void)
     (cyc(62), abi_MenuOamBuild());
     cyc(122);
     for (i = 0; i < sizeof first / sizeof first[0]; i++)
-        { frame_write(first[i].v, first[i].reg); cyc(100); }
+        { frame_write(first[i].v, first[i].reg);
+          cyc(i + 1 == sizeof first / sizeof first[0] ? 100 : first[i + 1].lda ? 244 : 228); }
     cpu.p |= P_M;
     cyc(68);
     wr8(0x0011D7, cyc_then(40, (uint8_t)(rd8(0x0011D7) | 0x0F)));
@@ -611,7 +616,7 @@ void abi_MenuScreenOpenPreviewFade(void)
     abi_MenuWaitFrame();
     cyc(44);
     for (i = 0; i < sizeof full / sizeof full[0]; i++)
-        { cyc(100); frame_write(full[i].v, full[i].reg); }
+        { cyc(!i ? 100 : full[i].lda ? 244 : 228); frame_write(full[i].v, full[i].reg); }
     cpu.p &= (uint8_t)~P_M;
     cyc(206);
     wr16(0x0000FB, 0xE3AC);

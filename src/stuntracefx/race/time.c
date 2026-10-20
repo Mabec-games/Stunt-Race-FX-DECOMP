@@ -31,14 +31,17 @@ static uint16_t adc_bcd16(uint16_t a, uint16_t m, uint8_t *p)
     return (uint16_t)r;
 }
 
-/* $0E70 += the BCD byte of `table` for the entry at $0D89 of this course. */
-static uint16_t add_course_value(uint32_t table, uint16_t *x, uint8_t *p)
+/* $0E70 += the BCD byte of `table` for the entry at $0D89 of this course.
+   `bra` is the clocks of the BRA into the shared tail (0 for the copy that
+   falls into it). */
+static uint16_t add_course_value(uint32_t table, uint8_t bra, uint16_t *x, uint8_t *p)
 {
     cyc(24);
     uint8_t i = CourseIndex12(rd8(0x000D89), p);
     uint16_t v;
 
     *x = i;
+    cyc(138 + bra);                     /* LDA long, [BRA,] REP, SED, AND #, CLC, ADC */
     v = adc_bcd16(rd8(table + i), rd16(0x000E70), p);
     cyc(24);
     wr16(0x000E70, v);
@@ -57,7 +60,7 @@ static uint16_t add_course_value(uint32_t table, uint16_t *x, uint8_t *p)
  */
 uint16_t RaceTimeAddD815(uint16_t *x, uint8_t *p)
 {
-    return add_course_value(0x03D815, x, p);
+    return add_course_value(0x03D815, 0, x, p);
 }
 
 void abi_RaceTimeAddD815(void)
@@ -76,7 +79,7 @@ void abi_RaceTimeAddD815(void)
  */
 uint16_t RaceTimeAddD814(uint16_t *x, uint8_t *p)
 {
-    return add_course_value(0x03D814, x, p);
+    return add_course_value(0x03D814, 22, x, p);
 }
 
 void abi_RaceTimeAddD814(void)

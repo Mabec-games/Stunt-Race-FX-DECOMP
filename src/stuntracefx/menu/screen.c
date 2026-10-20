@@ -360,9 +360,11 @@ uint16_t MenuPaletteScale(uint8_t bank, uint16_t *x, uint16_t *y)
 {
     uint32_t b = (uint32_t)bank << 16;
     uint16_t c, r = 0, prod;
+    int first = 1;
 
     do {
-        cyc(120);
+        cyc(first ? 76 : 120);          /* PHP, REP, LDA long, or the loop's end and LDA long */
+        first = 0;
         c = rd16(0x7EFF65 + *x);
         cyc(24);
         wr16(b | 0x11E3, c);
@@ -553,13 +555,13 @@ uint16_t MenuSpritePalettesScale(uint8_t bank, uint16_t factor)
 
     cyc(24);
     wr16(b | 0x11DF, factor);
-    cyc(96);
+    cyc(140);
     MenuPaletteScale(bank, &x, &y);
     cyc(60);
     wr16(b | 0x11DF, factor);
     x = 0x0120;
     y = 0x0007;
-    cyc(66);
+    cyc(110);
     return MenuPaletteScale(bank, &x, &y);
 }
 
@@ -582,7 +584,7 @@ static uint16_t cross_fade(uint8_t bank, uint16_t n, uint16_t *factor)
 
     cyc(114);
     wr16(b | 0x11DF, rd16(0x0BCFE5 + (uint16_t)(n & 0xFFFE)));
-    cyc(66);
+    cyc(110);
     MenuPaletteScale(bank, &x, &y);
     cyc(24);
     *factor = (uint16_t)(((uint16_t)(rd16(b | 0x11DF) - 1) ^ 0x001F) + 1);
@@ -590,7 +592,7 @@ static uint16_t cross_fade(uint8_t bank, uint16_t n, uint16_t *factor)
     wr16(b | 0x11DF, *factor);
     x = 0x0018;
     y = 0x0003;
-    cyc(66);
+    cyc(110);
     return MenuPaletteScale(bank, &x, &y);
 }
 
@@ -815,9 +817,10 @@ static void menu_screen_start(uint16_t list, uint8_t p)
  */
 void MenuScreenOpen0(void)
 {
-    static const struct { uint32_t reg; uint8_t v; } ppu[] = {
-        {BGMODE, 0x09}, {BG1SC, 0x60}, {BG2SC, 0x65}, {BG3SC, 0x7C},
-        {BG12NBA, 0x20}, {BG34NBA, 0x77}, {CGADSUB, 0x00}, {CGWSEL, 0x00}, {TS, 0x00}};
+    /* cost: LDA # and STA (40) or STZ (24). */
+    static const struct { uint32_t reg; uint8_t v; uint8_t cost; } ppu[] = {
+        {BGMODE, 0x09, 40}, {BG1SC, 0x60, 40}, {BG2SC, 0x65, 40}, {BG3SC, 0x7C, 40},
+        {BG12NBA, 0x20, 40}, {BG34NBA, 0x77, 40}, {CGADSUB, 0x00, 24}, {CGWSEL, 0x00, 24}, {TS, 0x00, 24}};
     uint8_t p = cpu.p, db = cpu.db;
     uint16_t x;
     unsigned i;
@@ -834,7 +837,7 @@ void MenuScreenOpen0(void)
     cyc(24);
     wr8(NMITIMEN, 0x00);
     for (i = 0; i < sizeof ppu / sizeof ppu[0]; i++)
-        { cyc(40); wr8(ppu[i].reg, ppu[i].v); }
+        { cyc(ppu[i].cost); wr8(ppu[i].reg, ppu[i].v); }
     cyc(62);
     SoundReset();
     (cyc(46), MenuScrollReset());
@@ -947,10 +950,11 @@ static void menu_picture(uint16_t vram, uint16_t in68)
  */
 void MenuScreenOpen6(void)
 {
-    static const struct { uint32_t reg; uint8_t v; } ppu[] = {
-        {BGMODE, 0x09}, {BG1SC, 0x60}, {BG2SC, 0x65}, {BG3SC, 0x7C},
-        {BG12NBA, 0x20}, {BG34NBA, 0x77}, {CGADSUB, 0x01}, {CGWSEL, 0x02}, {TS, 0x02},
-        {COLDATA, 0x00}, {TSW, 0x00}, {TMW, 0x00}};
+    /* cost: LDA # and STA (40) or STZ (24). */
+    static const struct { uint32_t reg; uint8_t v; uint8_t cost; } ppu[] = {
+        {BGMODE, 0x09, 40}, {BG1SC, 0x60, 40}, {BG2SC, 0x65, 40}, {BG3SC, 0x7C, 40},
+        {BG12NBA, 0x20, 40}, {BG34NBA, 0x77, 40}, {CGADSUB, 0x01, 40}, {CGWSEL, 0x02, 40}, {TS, 0x02, 40},
+        {COLDATA, 0x00, 24}, {TSW, 0x00, 24}, {TMW, 0x00, 24}};
     uint8_t p = cpu.p, db = cpu.db;
     uint16_t x, y;
     unsigned i;
@@ -967,7 +971,7 @@ void MenuScreenOpen6(void)
     cyc(24);
     wr8(NMITIMEN, 0x00);
     for (i = 0; i < sizeof ppu / sizeof ppu[0]; i++)
-        { cyc(40); wr8(ppu[i].reg, ppu[i].v); }
+        { cyc(ppu[i].cost); wr8(ppu[i].reg, ppu[i].v); }
     cyc(100);
     wr16(APUIO1, 0x0005);
     cyc(134);
@@ -990,13 +994,13 @@ void MenuScreenOpen6(void)
     wr16(0x0011DF, 0x0001);
     x = 0x0080;
     y = 0x003F;
-    cyc(66);
+    cyc(110);
     MenuPaletteScale(0x00, &x, &y);
     cyc(48);
     wr16(0x0011DF, 0x0020);
     x = 0x0018;
     y = 0x0003;
-    cyc(66);
+    cyc(110);
     MenuPaletteScale(0x00, &x, &y);
     MenuHdmaSetup(0x00);
     menu_picture(0x4000, 0xDC38);
@@ -1246,6 +1250,7 @@ void abi_ChampionScreenOpen(void)
             cpu.p = nz8(cpu.p, v);
             cyc(48);
             wr8(0x70FC0B, v);
+            cyc(bit == 0x04 ? 62 : 84);     /* [BRA,] JSL */
         }
     }
     abi_SaveChecksum();

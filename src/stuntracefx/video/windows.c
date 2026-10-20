@@ -678,7 +678,7 @@ void abi_BobWindowsRun(void)
         { cyc(38); goto out; }
     (cyc(78), abi_ObjectLinkEventTrigger());
     op_sep(P_M | P_X);
-    cyc(126);
+    cyc(cpu.p & P_Z ? 134 : 126);       /* beq taken at and.w, not bne at $0DA4 */
     v = (uint8_t)(rd8(b | 0x0DA4) & 0x80);
     if (v) {
         bob_setup(b);

@@ -177,7 +177,7 @@ static uint8_t frame_rows(uint8_t bank, uint16_t base, uint8_t p)
         cyc(48);
         mode = rd16(b | 0x0D2B) & 0x00FF;
         t = 0x2002;
-        if ((mode == 1 || (cyc(58), mode == 3)) && !(rd16(cyc_then(94, b | 0x10CD)) & 0x00FF))
+        if ((mode == 1 || (cyc(mode == 3 ? 40 : 58), mode == 3)) && !(rd16(cyc_then(94, b | 0x10CD)) & 0x00FF))
             t = 0x2010; else { cyc(28); }
         s = (unsigned)t + base;
         cyc(134);
@@ -371,23 +371,23 @@ void abi_TilemapRowFromFB4E(void)
  * (1 or more), $F1 = the palette bits. Exit: A low byte = the last
  * attribute byte; X past the last entry; Y = 0; Z set, N clear.
  */
-void TilemapPaletteFill(uint16_t *x, uint16_t *y, uint16_t *a)
+void TilemapPaletteFill(uint16_t *x, uint16_t *y, uint16_t *a, uint8_t entry)
 {
+    cyc(entry);                         /* JSR and LDA long, or PLX falling in */
     do {
-        cyc(78);
         uint8_t v = (uint8_t)((rd8(0x7F93D7 + *x) & 0xE3) | rd8(cyc_then(32, 0x0000F1)));
 
         cyc(32);
         wr8(0x7F93D7 + *x, v);
         *a = (uint16_t)((*a & 0xFF00) | v);
         *x += 2;
-    } while (cyc_loop(18, --*y));
+    } while (cyc_loop(96, --*y));
     cyc(100);
 }
 
 void abi_TilemapPaletteFill(void)
 {
-    TilemapPaletteFill(&cpu.x, &cpu.y, &cpu.a);
+    TilemapPaletteFill(&cpu.x, &cpu.y, &cpu.a, 78);
     cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
 }
 
@@ -432,7 +432,7 @@ int TilemapPaletteCycle(uint8_t bank, uint16_t *x, uint16_t *y, uint16_t *a)
     pal = rd8(0x070000 | (uint16_t)(table + phase));
     wr8(0x0000F1, pal);
     *a = (uint16_t)(rd8(0x070000 | (uint16_t)(table + phase + 1)) << 8);
-    TilemapPaletteFill(x, y, a);
+    TilemapPaletteFill(x, y, a, 68);
     return mode >= 2 ? 2 : 1;
 }
 
@@ -962,10 +962,10 @@ static uint8_t row_mark(uint16_t x, uint16_t count, uint8_t bits, uint32_t mark,
     wr8(0x0000F1, bits);
     *xp = x;
     *yp = count;
-    TilemapPaletteFill(xp, yp, a);
+    TilemapPaletteFill(xp, yp, a, 78);
     cyc(32);
     v = (uint8_t)((rd8(mark) & 0xE3) | mark_bits);
-    cyc(48);                            /* AND #, ORA, STA */
+    cyc(mark_bits ? 64 : 48);           /* AND #, (ORA # with bits), STA long */
     wr8(mark, v);
     *a = (uint16_t)((*a & 0xFF00) | v);
     return v;
