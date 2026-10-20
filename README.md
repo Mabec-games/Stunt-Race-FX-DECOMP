@@ -99,13 +99,31 @@ sources:
 
 ## Cycle-exact
 
-**The C runs at the original's speed, to the clock.** Every S-CPU (65816)
-routine states, in master clocks, the time the original's instructions take
-(`cyc(N)` and its kin in `machine.h`). Run in lockstep with the original over
-all 161 gameplay scripts, the time the C states between every pair of bus
-accesses equals the time the original spent there: 0 clocks off in about 20
-billion compared, with the game's state identical after every frame.
-Completed October 20, 2026.
+**All three processors' C runs at the original's speed, to the clock, over
+all 161 gameplay scripts.** Each routine states the time the original's
+instructions take, and sfxbox's lockstep run compares that with the time
+the original spent, interval by interval between bus accesses and from the
+last access to each return, with the game's state identical after every
+frame. Completed October 20, 2026.
+
+| Processor | How the C states time | Intervals judged | Off |
+|---|---|---|---|
+| S-CPU (65816) | `cyc(N)` master clocks (`machine.h`) | 619,883,394 | 0 |
+| Super FX (GSU-1) | the code bytes it fetches, priced by the GSU clock model (`gsu.h`) | 1,632,911,722 | 0 |
+| SPC700 (sound) | `spc_cyc(N)` cycles (`spc.h`) | 231,178,319 | 0 |
+
+What is and is not judged, precisely:
+
+- **Interrupts.** An interval an NMI or IRQ falls in is judged; the
+  handler's own time is not part of it (it is the handler's), and the one
+  internal cycle an interrupt turns into a read is priced as the internal
+  cycle it was.
+- **Not judged:** 25 S-CPU intervals, in calls that leave through their
+  caller's frame (code that never returns to where it was called from).
+- **The unit scripts** (164 scripts that call routines directly, most of
+  them code normal play never runs: debug screens, unused screens, dead
+  arms) still differ in about 53,600 S-CPU, 145 Super FX and 21,000 SPC700
+  intervals. The gameplay figures above do not cover that code.
 
 **Why it matters.** Behaviour exact proves the C computes the same results.
 It does not prove the game *plays* the same, because on the SNES timing is
@@ -132,11 +150,14 @@ assembly: the cost of each instruction, each branch taken or not, each byte
 fetched from ROM. Where the time depends on the path (a branch's direction,
 a register's width, which copy of shared code runs), the C carries that
 path's time; a shared C helper takes each caller's cost as a parameter
-rather than being split into copies. The sfxbox lockstep run logs, for
-every interval between two bus accesses, the original's clocks against the
-clocks the C states (`SFXBOX_CYCLOG`), and `tools/stuntracefx/cycsolve.py`
-turns those intervals into what each stretch of the C costs. The work went from 0.165%
-off to exactly 0.
+rather than being split into copies. The Super FX's code statements are derived from the
+ROM by `tools/stuntracefx/gsuwalk.py`, the SPC700's by
+`tools/stuntracefx/spcwalk.py` (each instruction's bus cycles from the
+bsnes core, checked against the documented times). The sfxbox lockstep run
+logs, for every interval, the original's clocks against the clocks the C
+states (`SFXBOX_CYCLOG`, `SFXBOX_GSUCYCLOG`, `SFXBOX_SPCCYCLOG`), and
+`tools/stuntracefx/cycsolve.py` turns those intervals into what each
+stretch of the C costs. The S-CPU went from 0.165% off to exactly 0.
 
 ## Current Status
 
