@@ -128,12 +128,10 @@ l8ADE:
     R[11] = 0x8B21;
     gsu_code(0x048b1b, 6); gsu_code(0x04c3b5, 1);
     abi_FxRecordSegment();
-    gsu_code(0x048b21, 1);
 l8B21:
     R[11] = 0x8B26;
     gsu_code(0x048b22, 4); gsu_code(0x04cca4, 1);
     abi_FxCourseNextEntry();
-    gsu_code(0x048b26, 1);
 l8B26:
     gsu_code(0x048b27, 4);
     gsu_stw(0x2390, R[0]);
@@ -514,12 +512,10 @@ lC3A2:
     R[11] = 0xC3AB;
     gsu_code(0x04c3a5, 6); gsu_code(0x04c3b5, 1);
     abi_FxRecordSegment();
-    gsu_code(0x04c3ab, 1);
 lC3AB:
     R[11] = 0xC3B0;
     gsu_code(0x04c3ac, 4); gsu_code(0x04cca4, 1);
     abi_FxCourseNextEntry();
-    gsu_code(0x04c3b0, 1);
 lC3B0:
     R[10] = gsu_dec(R[10]);
     R[10] = gsu_dec(R[10]);
@@ -550,7 +546,6 @@ lC19D:
     R[11] = 0xC1A5;
     gsu_code(0x04c19e, 7); gsu_code(0x04c1a7, 1);
     abi_FxMatrixFromAngles();
-    gsu_code(0x04c1a5, 1);
 lC1A5:
     return;   /* the STOP: the program ends here */
 dispatch:

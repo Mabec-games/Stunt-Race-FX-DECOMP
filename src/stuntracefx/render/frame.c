@@ -331,7 +331,6 @@ lAC25:
     R[11] = 0xAC2D;
     gsu_code(0x01ac29, 4); gsu_code(0x01ba13, 1);
     abi_FxParticlesDraw();
-    gsu_code(0x01ac2d, 1);
 lAC2D:
     gsu_code(0x01ac2e, 3); gsu_code(0x01ad53, 1);
     goto lAD53;
@@ -1063,7 +1062,6 @@ lB2FC:
     R[11] = 0xB303;
     gsu_code(0x01b2fd, 6); gsu_code(0x0181bc, 1);
     abi_FxDivide32By16Halving();
-    gsu_code(0x01b303, 1);
 lB303:
     R[9] = R[4];
     /* CACHE */

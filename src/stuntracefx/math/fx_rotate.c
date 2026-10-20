@@ -270,6 +270,7 @@ void abi_FxMatrixTranspose04(void)
     gsu.r[2] = left[1];
     gsu.r[3] = left[2];
     gsu.r[9] = (uint16_t)(m + 4);
+    gsu_code(0x040000 | gsu.r[11], 1);
 }
 
 #define FX_SINE16 0x983Eu      /* sine words by angle / 256, 257 entries */
@@ -465,6 +466,7 @@ void abi_FxMatrixFromAngles(void)
     gsu.r[12] = o.s0;
     gsu.r[13] = o.s1s2;
     gsu.r[14] = o.c1s2;
+    gsu_code(0x040000 | gsu.r[11], 1);
 }
 
 #define FX_ATAN 0x9E40u        /* angle words by tangent / 64, 257 entries */

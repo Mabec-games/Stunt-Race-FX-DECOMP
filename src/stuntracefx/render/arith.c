@@ -118,6 +118,7 @@ void abi_FxDivideSigned(void)
     gsu.r[7] = sign;
     gsu.r[12] = 0;
     gsu.r[13] = 0x81A3;
+    gsu_code(0x010000 | gsu.r[11], 1);
 }
 
 /*
@@ -225,6 +226,7 @@ divide:
 void abi_FxDivide32By16Halving(void)
 {
     halving_divide(gsu.r[0], gsu.r[4], gsu.r[6], 0x81D2, GSU_COPY(0));
+    gsu_code(0x010000 | gsu.r[11], 1);
 }
 
 /*
@@ -245,6 +247,7 @@ uint16_t FxDivideHalving(uint16_t hi, uint16_t lo, uint16_t *divisor, uint16_t *
 void abi_FxDivideHalving(void)
 {
     halving_divide(gsu.r[0], gsu.r[4], gsu.r[6], 0x96D6, GSU_COPY(1));
+    gsu_code(0x010000 | gsu.r[11], 1);
 }
 
 /*

@@ -489,10 +489,10 @@ FxRegs FxCarPose(FxRegs g, int copy)
     g.r[9] = FX_MATRIX;
     g.r[11] = 0xB9DF;
     memcpy(gsu.r, g.r, sizeof g.r);
-    gsu_code(0x04b9d7, 8); gsu_code(0x04c2c8, 1);
+    gsu_code(0x04b9d8, 7); gsu_code(0x04c2c8, 1);
     abi_FxMatrixTranspose04();
     memcpy(g.r, gsu.r, sizeof g.r);
-    gsu_code(0x04b9df, 5);
+    gsu_code(0x04b9e0, 4);
     g.r[8] = gsu_pull(&g.r[10]);
     for (i = 0; i < 3; i++) {
         gsu_codes(FxCarPose_fetch[0] + 6 + i, 1);

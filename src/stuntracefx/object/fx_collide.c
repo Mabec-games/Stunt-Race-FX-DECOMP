@@ -674,7 +674,7 @@ FxRegs FxRecordTouches(FxRegs g)
         g = FxListSweepRegs(g);
     } else { gsu_code(0x04a2f1, 4); gsu_code(0x04a2fc, 1); }
     gsu_code(0x04a2fd, 4);
-    gsu_pull(&g.r[10]);
+    gsu_code(0x040000 | gsu_pull(&g.r[10]), 1);
     return g;
 }
 
@@ -712,7 +712,7 @@ FxRegs FxAllTouches(FxRegs g)
         g.r[11] = 0xA1FF;
         gsu_code(0x04a1fa, 5); gsu_code(0x04a20b, 1);
         g = FxRecordTouches(g);
-        gsu_code(0x04a1ff, 5);
+        gsu_code(0x04a200, 4);
         g.r[0] = gsu_ldw(gsu_add(REC_ALL_NEXT, g.r[1], 0));
         gsu_code(0x04a204, 2); gsu_code(0x04a1f5, 1);
     }

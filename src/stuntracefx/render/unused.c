@@ -1293,7 +1293,6 @@ lB4CC:
     R[11] = 0xB4D5;
     gsu_code(0x01b4cd, 8); gsu_code(0x0181bc, 1);
     abi_FxDivide32By16Halving();
-    gsu_code(0x01b4d5, 1);
 lB4D5:
     R[9] = R[4];
     R[8] = R[4];
@@ -1470,7 +1469,6 @@ lB58C:
     R[11] = 0xB593;
     gsu_code(0x01b58d, 6); gsu_code(0x0181bc, 1);
     abi_FxDivide32By16Halving();
-    gsu_code(0x01b593, 1);
 lB593:
     R[9] = R[4];
     R[8] = R[4];
@@ -2329,7 +2327,6 @@ l8153:
     R[11] = 0x815A;
     gsu_code(0x018154, 6); gsu_code(0x0181bc, 1);
     abi_FxDivide32By16Halving();
-    gsu_code(0x01815a, 1);
 l815A:
     R[6] = R[4];
     gsu_code(0x01815b, 6);

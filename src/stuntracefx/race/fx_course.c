@@ -503,6 +503,7 @@ void abi_FxCourseNextEntry(void)
     memcpy(g.r, gsu.r, sizeof g.r);
     g = FxCourseNextEntry(g, GSU_COPY(0));
     memcpy(gsu.r, g.r, 15 * sizeof g.r[0]);
+    gsu_code(0x040000 | gsu.r[11], 1);
 }
 
 /* R1-R3 = record R8's position (+$1E, +$20, +$22). */
@@ -537,7 +538,7 @@ FxRegs FxRecordSegment(FxRegs g, int copy)
     gsu_code(0x04c3cc, 4); gsu_code(0x04cc06, 1);
     g = FxCourseNearest(g, GSU_COPY(0));
     gsu_code(0x04c3d0, 5);
-    gsu_pull(&g.r[10]);
+    gsu_code(0x040000 | gsu_pull(&g.r[10]), 1);
     return g;
 }
 
@@ -634,7 +635,7 @@ void abi_FxCourseNextDistance(void)
     gsu_code(0x04cedf, 5); gsu_code(0x04cca4, 1);
     abi_FxCourseNextEntry();
     gsu.r[0] = gsu_add(0x001E, gsu.r[8], 0);
-    gsu_code(0x04cee4, 5);
+    gsu_code(0x04cee5, 4);
     gsu.r[0] = quarter_apart(gsu_ldw(gsu.r[0]), gsu.r[1], GSU_COPY(0));
     gsu.r[4] = gsu.r[0];
     gsu.r[0] = gsu_add(0x0022, gsu.r[8], 0);
@@ -767,7 +768,7 @@ void abi_FxCarPlaceOnSegment(void)
     gsu_code(0x04c6d2, 4); gsu_code(0x04cca4, 1);
     abi_FxCourseNextEntry();
     gsu.r[11] = 0xC6DB;
-    gsu_code(0x04c6d6, 5); gsu_code(0x04cbe8, 1);
+    gsu_code(0x04c6d7, 4); gsu_code(0x04cbe8, 1);
     abi_FxBearingTo();
     gsu.r[1] = gsu.r[0];
     gsu.r[0] = gsu_add(0x0024, gsu.r[8], 0);
@@ -911,7 +912,7 @@ void abi_FxCarCatchUp(void)
             abi_FxCourseNextEntry();
             gsu.r[6] = gsu.r[0];
             gsu.r[0] = gsu_add(0x0058, gsu.r[8], 0);
-            gsu_code(0x04c5ff, 8);
+            gsu_code(0x04c600, 7);
             gsu_stw(gsu.r[0], gsu.r[6]);
             gsu.r[11] = 0xC60B;
             gsu_code(0x04c607, 4); gsu_code(0x04c65a, 1);

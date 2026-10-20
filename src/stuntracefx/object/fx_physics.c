@@ -4489,13 +4489,11 @@ lB242:
     R[11] = 0xB269;
     gsu_code(0x04b262, 7); gsu_code(0x04c1a7, 1);
     abi_FxMatrixFromAngles();
-    gsu_code(0x04b269, 1);
 lB269:
     R[9] = 0x00E4;
     R[11] = 0xB271;
     gsu_code(0x04b26a, 7); gsu_code(0x04c2c8, 1);
     abi_FxMatrixTranspose04();
-    gsu_code(0x04b271, 1);
 lB271:
     R[10] = gsu_dec(R[10]);
     R[10] = gsu_dec(R[10]);
@@ -4525,7 +4523,6 @@ lB28E:
     R[11] = 0xB293;
     gsu_code(0x04b28f, 4); gsu_code(0x04c3b5, 1);
     abi_FxRecordSegment();
-    gsu_code(0x04b293, 1);
 lB293:
     R[7] = R[0];
     R[0] = 0x0058;
@@ -6623,7 +6620,6 @@ lC498:
     R[11] = 0xC4A6;
     gsu_code(0x04c4a0, 6); gsu_code(0x04cca4, 1);
     abi_FxCourseNextEntry();
-    gsu_code(0x04c4a6, 1);
 lC4A6:
     R[11] = 0xC4AB;
     gsu_code(0x04c4a7, 4); gsu_code(0x04c7d5, 1);
@@ -6654,7 +6650,6 @@ lC4BE:
     R[11] = 0xC4C3;
     gsu_code(0x04c4bf, 4); gsu_code(0x04c3b5, 1);
     abi_FxRecordSegment();
-    gsu_code(0x04c4c3, 1);
 lC4C3:
     R[7] = R[0];
     R[0] = 0x0058;
@@ -6754,8 +6749,10 @@ dispatch:
         gsu_code(0x040000 | at, 1);   /* the code returned to: its first byte */
         return;
     }
-    if (ret != 0xFFFF && (int16_t)(base - R[10]) >= 4)
+    if (ret != 0xFFFF && (int16_t)(base - R[10]) >= 4) {
+        gsu_code(0x040000 | at, 1);   /* where it returns, two levels up: its first byte */
         return;
+    }
     gsu_code(0x040000 | at, 1);   /* where it jumps: its first byte */
 fetched:
     if (at == 0x957C || at == 0x9E91 || at == 0xB80F)

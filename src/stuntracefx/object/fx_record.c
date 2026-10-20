@@ -776,5 +776,5 @@ void abi_FxParticlesDraw(void)
             { gsu_code(0x01ba2a, 6); break; } else { gsu_code(0x01ba2a, 6); gsu_code(0x01ba24, 1); }
     }
     gsu_code(0x01ba30, 5);
-    gsu_pull(&gsu.r[10]);
+    gsu_code(0x010000 | gsu_pull(&gsu.r[10]), 1);
 }

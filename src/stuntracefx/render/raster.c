@@ -1160,7 +1160,7 @@ static void clip_cross(const ClipEdge *e, uint16_t ret, int copy)
     R[11] = ret;
     gsu_codes(clip_cross_fetch[copy] + 2, 3);
     abi_FxDivideSigned();
-    R[0] = gsu_add(R[4], R[e->y ? (gsu_codes(clip_cross_fetch[copy] + 5, 1), ((1))) : (gsu_codes(clip_cross_fetch[copy] + 6, 1), ((2)))], 0);
+    R[0] = gsu_add(R[4], R[e->y ? 1 : 2], 0);
     gsu_codes(clip_cross_fetch[copy] + 7, 1);
     R[6] = gsu_ldw(e->edge);
     if (e->dec_edge)

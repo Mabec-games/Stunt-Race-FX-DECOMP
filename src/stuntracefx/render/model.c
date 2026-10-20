@@ -3881,7 +3881,6 @@ l9AEF:
     R[11] = 0x9B01;
     gsu_code(0x019afb, 6); gsu_code(0x018186, 1); gsu_cache(0x8187);
     abi_FxDivideSigned();
-    gsu_code(0x019b01, 1);
 l9B01:
     R[0] = gsu_add(R[4], R[2], 0);
     gsu_code(0x019b02, 5);
@@ -3912,7 +3911,6 @@ l9B01:
     R[11] = 0x9B29;
     gsu_code(0x019b23, 6); gsu_code(0x018186, 1); gsu_cache(0x8187);
     abi_FxDivideSigned();
-    gsu_code(0x019b29, 1);
 l9B29:
     R[0] = gsu_add(R[4], R[2], 0);
     gsu_code(0x019b2a, 3);
@@ -3935,7 +3933,6 @@ l9B29:
     R[11] = 0x9B48;
     gsu_code(0x019b42, 6); gsu_code(0x018186, 1); gsu_cache(0x8187);
     abi_FxDivideSigned();
-    gsu_code(0x019b48, 1);
 l9B48:
     R[0] = gsu_add(R[4], R[2], 0);
     gsu_code(0x019b49, 3);
@@ -4130,7 +4127,6 @@ l9C13:
     R[11] = 0x9C25;
     gsu_code(0x019c1f, 6); gsu_code(0x018186, 1); gsu_cache(0x8187);
     abi_FxDivideSigned();
-    gsu_code(0x019c25, 1);
 l9C25:
     R[0] = gsu_add(R[4], R[2], 0);
     gsu_code(0x019c26, 5);
@@ -4161,7 +4157,6 @@ l9C25:
     R[11] = 0x9C4D;
     gsu_code(0x019c47, 6); gsu_code(0x018186, 1); gsu_cache(0x8187);
     abi_FxDivideSigned();
-    gsu_code(0x019c4d, 1);
 l9C4D:
     R[0] = gsu_add(R[4], R[2], 0);
     gsu_code(0x019c4e, 3);
@@ -4184,7 +4179,6 @@ l9C4D:
     R[11] = 0x9C6C;
     gsu_code(0x019c66, 6); gsu_code(0x018186, 1); gsu_cache(0x8187);
     abi_FxDivideSigned();
-    gsu_code(0x019c6c, 1);
 l9C6C:
     R[0] = gsu_add(R[4], R[2], 0);
     gsu_code(0x019c6d, 3);
@@ -4381,7 +4375,6 @@ l9D31:
     R[11] = 0x9D4C;
     gsu_code(0x019d46, 6); gsu_code(0x018186, 1); gsu_cache(0x8187);
     abi_FxDivideSigned();
-    gsu_code(0x019d4c, 1);
 l9D4C:
     R[0] = gsu_add(R[4], R[1], 0);
     gsu_code(0x019d4d, 5);
@@ -4411,7 +4404,6 @@ l9D4C:
     R[11] = 0x9D73;
     gsu_code(0x019d6d, 6); gsu_code(0x018186, 1); gsu_cache(0x8187);
     abi_FxDivideSigned();
-    gsu_code(0x019d73, 1);
 l9D73:
     R[0] = gsu_add(R[4], R[2], 0);
     gsu_code(0x019d74, 3);
@@ -4433,7 +4425,6 @@ l9D73:
     R[11] = 0x9D91;
     gsu_code(0x019d8b, 6); gsu_code(0x018186, 1); gsu_cache(0x8187);
     abi_FxDivideSigned();
-    gsu_code(0x019d91, 1);
 l9D91:
     R[0] = gsu_add(R[4], R[2], 0);
     gsu_code(0x019d92, 3);
@@ -4633,7 +4624,6 @@ l9E5C:
     R[11] = 0x9E77;
     gsu_code(0x019e71, 6); gsu_code(0x018186, 1); gsu_cache(0x8187);
     abi_FxDivideSigned();
-    gsu_code(0x019e77, 1);
 l9E77:
     R[0] = gsu_add(R[4], R[1], 0);
     gsu_code(0x019e78, 5);
@@ -4663,7 +4653,6 @@ l9E77:
     R[11] = 0x9E9E;
     gsu_code(0x019e98, 6); gsu_code(0x018186, 1); gsu_cache(0x8187);
     abi_FxDivideSigned();
-    gsu_code(0x019e9e, 1);
 l9E9E:
     R[0] = gsu_add(R[4], R[2], 0);
     gsu_code(0x019e9f, 3);
@@ -4685,7 +4674,6 @@ l9E9E:
     R[11] = 0x9EBC;
     gsu_code(0x019eb6, 6); gsu_code(0x018186, 1); gsu_cache(0x8187);
     abi_FxDivideSigned();
-    gsu_code(0x019ebc, 1);
 l9EBC:
     R[0] = gsu_add(R[4], R[2], 0);
     gsu_code(0x019ebd, 3);
