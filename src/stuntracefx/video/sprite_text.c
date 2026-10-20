@@ -239,7 +239,7 @@ void SpriteTextAt8152C(uint8_t bank)
 
 void abi_SpriteTextAt8152C(void)
 {
-    cyc(22);
+    cyc(68);
     abi_sprite_text_line_at(0x81, 0x52);
 }
 
@@ -257,5 +257,6 @@ void SpriteTextAt8952B(uint8_t bank)
 
 void abi_SpriteTextAt8952B(void)
 {
+    cyc(46);
     abi_sprite_text_line_at(0x89, 0x52);
 }

@@ -190,8 +190,10 @@ static void draw_bucket(uint16_t o, uint16_t r, int next)
 }
 
 /* The triggers from $1F2B on, each bucket's objects drawn; A = 0 and X =
-   the trigger position at the end. */
-static void draw_triggers(void)
+   the trigger position at the end. `end` is the time from the last list
+   word read to the end: the exit's PLB, PLP and RTS, or, for the arm that
+   reads the pushed data bank itself, up to that read. */
+static void draw_triggers(unsigned end)
 {
     uint16_t pos, a;
 
@@ -203,7 +205,7 @@ static void draw_triggers(void)
         cpu.x = pos;
         cpu.a = a;
         if (!a)
-            { cyc(144); return; }
+            { cyc(end); return; }
         cyc(46);
         wr16(TRIGGER_WORD, a);
         cyc(30);
@@ -228,7 +230,7 @@ void ObjectDrawListBuild(void)
     wr16(TRIGGER_POS, 0x0000);
     cyc(40);
     wr16(DRAW_NEXT, DRAW_LIST);
-    draw_triggers();
+    draw_triggers(144);
 }
 
 void abi_ObjectDrawListBuild(void)
@@ -260,7 +262,7 @@ void abi_ObjectDrawListClear08(void)
     cyc(52);
     wr8(OBJ(cpu.y, 0x08), cyc_then(46, (uint8_t)(rd8(OBJ(cpu.y, 0x08)) & 0xFD)));
     draw_bucket(cpu.y, cpu.x, 1);
-    (cyc(2), draw_triggers());
+    draw_triggers(66);
     db = rd8((uint16_t)(cpu.s + 1));
     cyc(20);
     p = rd8((uint16_t)(cpu.s + 2));

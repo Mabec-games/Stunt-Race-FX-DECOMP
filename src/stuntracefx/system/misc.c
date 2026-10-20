@@ -429,6 +429,7 @@ void abi_DemoRunThirdRest(void)
     wr16((uint32_t)cpu.db << 16 | 0x1A57, 0x0287);
     cyc(62);
     call_routine(0x038683, 1);
+    cyc(44);
 }
 
 /*
@@ -533,6 +534,16 @@ static void demo_camera(uint8_t db)
 static void demo_next(uint16_t n)
 {
     cyc(90);
+    cpu.a = (uint16_t)(cpu.x + n);
+    cpu.p = (uint8_t)(nz16(cpu.p, cpu.a) & ~(P_C | P_V));
+    cpu.x = cpu.a;
+}
+
+/* As demo_next without its closing JMP (24): for a command that stores
+   before it jumps back. */
+static void demo_next_before(uint16_t n)
+{
+    cyc(66);
     cpu.a = (uint16_t)(cpu.x + n);
     cpu.p = (uint8_t)(nz16(cpu.p, cpu.a) & ~(P_C | P_V));
     cpu.x = cpu.a;
@@ -735,13 +746,14 @@ void abi_DemoRun(void)
                 continue;
             }
             if (c == 0x07) {
-                demo_next(0x0001);
+                demo_next_before(0x0001);
                 op_sep(P_M);
                 demo_lda8(0x00);
                 wr8(b | 0x19DF, 0x00);
                 demo_lda8(0x01);
                 wr8(b | 0x19D8, 0x01);
                 op_rep(P_M);
+                cyc(24);                        /* JMP */
                 continue;
             } else { cyc(48); }
             if (c == 0x08) {
@@ -749,7 +761,7 @@ void abi_DemoRun(void)
                 op_and16(0x00FF);
                 op_cmp16(0x0005);
                 if (cpu.a != 0x0005)
-                    { cyc(46); break; } else { cyc(64); }
+                    { cyc(46); break; } else { cyc(68); }
                 demo_next(0x0001);
                 continue;
             } else { cyc(34); }
