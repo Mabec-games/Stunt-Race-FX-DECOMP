@@ -5060,15 +5060,21 @@ void abi_ObjectFloaterStep(void)
 /* LDA #r, STA lo, STA lo2, BIT #$80: the sign byte `hi` = $FF for a
    negative r, else 0 (r is a constant, so one of the two stores never
    runs). */
-static void orbit_axis(uint8_t r, uint32_t lo, uint32_t lo2, uint32_t hi)
+static void orbit_axis(uint8_t r, uint32_t lo, uint32_t lo2, uint32_t hi, uint32_t abs8)
 {
+    /* abs8: 8 more a store when lo2 and hi are absolute ($05F2/$05F3) */
     lda8(r);
     wr8(lo, r);
+    cyc(16 + abs8);
     wr8(lo2, r);
     if (r & 0x80) {
+        cyc(32);                        /* BIT #$80, BEQ not taken */
         lda8(0xFF);
+        cyc(16 + abs8);
         wr8(hi, 0xFF);
+        cyc(22);                        /* BRA */
     } else {
+        cyc(38 + 16 + abs8);            /* BIT #$80, BEQ to the STZ */
         wr8(hi, 0x00);
     }
 }
@@ -5111,10 +5117,10 @@ static void asl5(uint32_t at)
 }
 
 /* dst field of X = src field of Y + the word at `by` (16-bit). */
-static void orbit_add(uint16_t f, uint32_t by)
+static void orbit_add(uint16_t f, uint32_t by, uint32_t adc)
 {
     op_lda16(cyc_then(26, F(f, cpu.y)));
-    op_add16(rd16(by));
+    op_add16(rd16(cyc_then(adc, by)));  /* CLC, ADC: 30 direct page, 38 absolute */
     wr16(F(f, cpu.x), cyc_then(30, cpu.a));
 }
 
@@ -5129,17 +5135,17 @@ static void orbit(int arm, uint8_t r1, uint8_t r2, uint8_t r3, int xz)
     if (arm == 0) {
         cpu.y = rd16(cyc_then(30, F(0x2027, cpu.x)));
         cpu.p = nz16(cpu.p, cpu.y);
-        orbit_axis(r1, dp(0x02), dp(0x04), dp(0x05));
+        orbit_axis(r1, dp(0x02), dp(0x04), dp(0x05), 0);
     } else if (arm == 1) {
         sign_arm(dp(0x05), !(r1 & 0x80));
     }
     if (arm <= 1)
-        orbit_axis(r2, dp(0x08), dp(0x0A), dp(0x0B));
+        orbit_axis(r2, dp(0x08), dp(0x0A), dp(0x0B), 0);
     else if (arm == 2)
         sign_arm(dp(0x0B), !(r2 & 0x80)); else { cyc(4); }
     cyc(8);
     if (arm <= 2)
-        orbit_axis(r3, dp(0x94), db() | 0x05F2, db() | 0x05F3);
+        orbit_axis(r3, dp(0x94), db() | 0x05F2, db() | 0x05F3, 8);
     else
         sign_arm(db() | 0x05F3, !(r3 & 0x80));
     cyc(22);
@@ -5159,9 +5165,9 @@ static void orbit(int arm, uint8_t r1, uint8_t r2, uint8_t r3, int xz)
     asl5(dp(0x04));
     asl5(dp(0x0A));
     asl5((cyc(12), db()) | 0x05F2);
-    orbit_add(0x200C, dp(0x04));
-    orbit_add(0x2010, (cyc(4), db()) | 0x05F2);
-    orbit_add(0x200E, dp(0x0A));
+    orbit_add(0x200C, dp(0x04), 30);
+    orbit_add(0x2010, (cyc(4), db()) | 0x05F2, 38);
+    orbit_add(0x200E, dp(0x0A), 30);
     cpu.p |= P_M;
 }
 
