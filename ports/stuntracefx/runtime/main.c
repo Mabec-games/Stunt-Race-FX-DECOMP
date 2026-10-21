@@ -195,20 +195,29 @@ static void shot(const char *name)
     fclose(f);
 }
 
+/* the shots and dumps due now, at the end of a frame: those after the
+   frames a step has just run out, as the harness takes them */
+static void script_takes(void)
+{
+    while (step_at < nsteps && steps[step_at].kind) {
+        Step *s = &steps[step_at];
+        if (s->kind == 1)
+            shot(s->name);
+        else {
+            write_file(s->name, ".wram", snes_wram(), 0x20000);
+            write_file(s->name, ".gsuram", snes_sfx_ram(), 0x10000);
+        }
+        step_at++;
+    }
+}
+
 /* this frame's buttons from the script; 0 when it has ended */
 static int script_frame(uint16_t *b0, uint16_t *b1)
 {
     while (step_at < nsteps) {
         Step *s = &steps[step_at];
-        if (s->kind == 1) {
-            shot(s->name);
-            step_at++;
-            continue;
-        }
-        if (s->kind == 2) {
-            write_file(s->name, ".wram", snes_wram(), 0x20000);
-            write_file(s->name, ".gsuram", snes_sfx_ram(), 0x10000);
-            step_at++;
+        if (s->kind) {
+            script_takes();
             continue;
         }
         if (!step_left)
@@ -234,6 +243,10 @@ static char save_path[1024];
 static void save_load(void)
 {
     FILE *f;
+    /* a headless run (a test) starts with no save and keeps none: the
+       player's save is never read or written by one */
+    if (headless)
+        return;
     snprintf(save_path, sizeof save_path, "%s/stuntracefx.srm", host_save_dir());
     f = fopen(save_path, "rb");
     if (!f)
@@ -249,6 +262,8 @@ static void save_write(int force)
 {
     char tmp[1100];
     FILE *f;
+    if (headless)
+        return;
     if (!force && !memcmp(saved + 0xFC00, snes_sfx_ram() + 0xFC00, 0x400))
         return;
     memcpy(saved, snes_sfx_ram(), sizeof saved);
@@ -434,6 +449,15 @@ int main(int argc, char **argv)
     cart.sfx_ram_size = 0x10000;
     snes_power(&cart);
     save_load();
+    if (headless && script) {
+        /* The harness gives a step's first frame its buttons before that
+           frame runs; here they are set at the end of the frame before.
+           The first frame has none before it: it is taken now (its buttons
+           reach no joypad read), with the shots and dumps before it. */
+        uint16_t b0, b1;
+        script_takes();
+        script_frame(&b0, &b1);
+    }
     snes_frame_hook = frame;
     if (!headless) {
         host_thread_interactive();

@@ -51,7 +51,12 @@ static uint8_t sfr_irq, sfr_alt, sfr_b;
 static int go, pending;
 static uint64_t gsu_now, gsu_target;   /* master clocks */
 static GsuClock clk;
-static uint64_t clk_base;              /* gsu_now - clk.now */
+/* The cartridge clocks the Super FX from a crystal of its own, 21.44 MHz,
+   not the console's 21.477 MHz: the model's clocks (clk.now) are the Super
+   FX's, turned into the console's at the rate between them. */
+#define GSU_HZ 21440000u
+#define MASTER_HZ 21477273u
+static uint64_t run_master, run_clk;   /* a program's start: the console's clock, the model's */
 static Coro *gsu_co, *main_co;
 
 static void gsu_main(void *arg);
@@ -67,7 +72,9 @@ uint8_t gsu_rpix(uint8_t x, uint8_t y);
 void gsu_reset(void)
 {
     memset(&gsu, 0, sizeof gsu);
-    memset(ram_store, 0, sizeof ram_store);
+    /* a cartridge with no save: its RAM reads $FF throughout, as the
+       verification harness powers the original on */
+    memset(ram_store, 0xFF, sizeof ram_store);
     memset(cache, 0, sizeof cache);
     gsu_ram_mem = ram_store;
     pbr = cfgr = clsr = bramr = cbr_hi = cbr_lo = 0;
@@ -79,7 +86,7 @@ void gsu_reset(void)
     clk.bus = bus_wait;
     clk.pix_read = pix_read;
     clk.pix_write = pix_write;
-    clk_base = 0;
+    run_master = run_clk = 0;
     if (!gsu_co) {
         main_co = coro_self();
         gsu_co = coro_new(gsu_main, NULL, 8u << 20);
@@ -97,7 +104,7 @@ static void clk_sync(void)
 {
     if (!go)
         return;
-    gsu_now = clk_base + clk.now;
+    gsu_now = run_master + (clk.now - run_clk) * MASTER_HZ / GSU_HZ;
     if (gsu_now >= gsu_target)
         coro_switch(gsu_co, main_co);
 }
@@ -130,7 +137,8 @@ static void program_starts(void)
     gsu_now = snes_clock;
     /* the NOP the last STOP left in the pipeline runs first: it fetches
        the program's first byte */
-    clk_base = gsu_now - clk.now;
+    run_master = gsu_now;
+    run_clk = clk.now;
 }
 
 static void gsu_main(void *arg)

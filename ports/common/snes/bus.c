@@ -529,6 +529,19 @@ unsigned snes_access_clocks(uint32_t addr)
     return 6;
 }
 
+/* A read of the cartridge's ROM by the C: the C states its time with the
+   instruction around it (the checks place the C's reads of RAM and the
+   registers on the original's, and leave a ROM read in the time between),
+   so it adds none here. */
+static int rom_data(uint32_t addr)
+{
+    uint8_t bank = (uint8_t)(addr >> 16);
+    if (!(bank & 0x40))
+        return (uint16_t)addr >= 0x8000;
+    bank &= 0x7F;
+    return bank != 0x70 && bank != 0x71 && bank != 0x7E && bank != 0x7F;
+}
+
 /* No interrupt is taken between the two bytes of one word: a read
    straight after a read of the byte before it. */
 
@@ -544,7 +557,7 @@ uint8_t rd8(uint32_t addr)
     last_read = addr;
     last_was_read = 1;
     /* the clock first: what the read sees is the machine at its end */
-    snes_tick(snes_access_clocks(addr));
+    snes_tick(rom_data(addr) ? 0 : snes_access_clocks(addr));
     v = bus_read(addr, &cost, 0);
     snes_mdr = v;
     return v;
