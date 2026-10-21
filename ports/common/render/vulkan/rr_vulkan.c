@@ -92,9 +92,23 @@ static VkPipeline s_copy, s_sharp;
    line states), read with a nearest sampler through a set of their own;
    the composed picture, its pass and framebuffer, and the set that draws
    it onto the target as a picture is drawn */
-static VkImage s_crec[4], s_cpic;
-static VkDeviceMemory s_crec_mem[4], s_cpic_mem;
-static VkImageView s_crec_view[4], s_cpic_view;
+static VkImage s_crec[5], s_cpic;
+static VkDeviceMemory s_crec_mem[5], s_cpic_mem;
+static VkImageView s_crec_view[5], s_cpic_view;
+/* the copy of the tiles' bytes rr_pack writes (an attachment between
+   packs), its pass and framebuffer; the kept copies (sampled between
+   keeps); the pack's pipeline, a set for each canvas, the runs */
+static VkImage s_mirror, s_kept;
+static VkDeviceMemory s_mirror_mem, s_kept_mem;
+static VkImageView s_mirror_view, s_kept_view;
+static VkRenderPass s_mpass;
+static VkFramebuffer s_mfb;
+static VkPipeline s_pack;
+static VkDescriptorSet s_canvas_set[RR_CANVASES];
+static VkBuffer s_run_buf, s_mirror_buf;
+static VkDeviceMemory s_run_mem, s_mirror_buf_mem;
+static uint8_t *s_run_map, *s_mirror_map;
+static VkDeviceSize s_run_cap;
 static int s_crec_fresh = 1;
 static VkRenderPass s_cpass;
 static VkFramebuffer s_cfb;
@@ -104,18 +118,22 @@ static VkDescriptorPool s_cdpool;
 static VkDescriptorSet s_cset, s_cpic_set;
 static VkSampler s_nsmp;
 static VkPipeline s_compose;
-static const VkFormat k_crec_fmt[4] = { VK_FORMAT_R16_UINT, VK_FORMAT_R16_UINT, VK_FORMAT_R8_UINT, VK_FORMAT_R32_UINT };
-static const int k_crec_w[4] = { 256, 256, 544, RR_LINE_WORDS }, k_crec_h[4] = { 128 * RR_VERSIONS, 225, RR_VERSIONS, 225 };
-static const int k_crec_px[4] = { 2, 2, 1, 4 };
+/* the record's images: tiles, palettes, sprite tables, line states, the
+   bits of the tiles' bytes from the 3D canvas */
+static const VkFormat k_crec_fmt[5] = { VK_FORMAT_R16_UINT, VK_FORMAT_R16_UINT, VK_FORMAT_R8_UINT, VK_FORMAT_R32_UINT,
+                                        VK_FORMAT_R32_UINT };
+static const int k_crec_w[5] = { 256, 256, 544, RR_LINE_WORDS, 256 };
+static const int k_crec_h[5] = { 128 * RR_VERSIONS, 225, RR_VERSIONS, 225, 8 * RR_VERSIONS };
+static const int k_crec_px[5] = { 2, 2, 1, 4, 4 };
 
 /* the 3D canvas: the ROM's image, the canvas, its pass, framebuffer and
    pipeline, the ROM's set; the spans' buffer, the canvas read back, and
    the fill's own commands */
-static VkImage s_rom, s_canvas;
-static VkDeviceMemory s_rom_mem, s_canvas_mem;
-static VkImageView s_rom_view, s_canvas_view;
-static VkRenderPass s_fpass;
-static VkFramebuffer s_ffb;
+static VkImage s_rom, s_canvas[RR_CANVASES];
+static VkDeviceMemory s_rom_mem, s_canvas_mem[RR_CANVASES];
+static VkImageView s_rom_view, s_canvas_view[RR_CANVASES];
+static VkRenderPass s_fpass, s_fpass_load;     /* clearing first, or not */
+static VkFramebuffer s_ffb[RR_CANVASES];
 static VkPipeline s_fill;
 static VkDescriptorSet s_rom_set;
 static VkBuffer s_span_buf, s_canvas_buf;
@@ -443,8 +461,9 @@ static VkShaderModule module(const uint32_t *code, size_t size)
 }
 
 /* a pipeline: quads from the ring (quad = 1, pictures onto the target),
-   one triangle with no vertex input (quad = 0, the compose pass), or
-   spans as instances (quad = 2, two uint vec4s each: the 3D canvas) */
+   one triangle with no vertex input (quad = 0, the compose pass), spans
+   as instances (quad = 2, two uint vec4s each: the 3D canvas), or runs as
+   instances (quad = 3, a uint vec4 each: the pack) */
 static VkPipeline make_pipe(VkShaderModule vs, VkShaderModule fs, int quad, VkPipelineLayout layout, VkRenderPass pass)
 {
     VkPipelineShaderStageCreateInfo st[2];
@@ -470,8 +489,8 @@ static VkPipeline make_pipe(VkShaderModule vs, VkShaderModule fs, int quad, VkPi
     st[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
     st[1].module = fs;
     st[1].pName = "main";
-    if (quad == 2) {
-        vb.stride = RR_SPAN_WORDS * 4;
+    if (quad >= 2) {
+        vb.stride = quad == 2 ? RR_SPAN_WORDS * 4 : RR_RUN_WORDS * 4;
         vb.inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
         va[0].format = VK_FORMAT_R32G32B32A32_UINT;
     }
@@ -512,7 +531,7 @@ static int make_layout(void)
     VkDescriptorSetLayoutBinding b = { 0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, NULL };
     VkDescriptorSetLayoutCreateInfo li = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
     VkPipelineLayoutCreateInfo pi = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
-    VkDescriptorPoolSize ps = { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3 };
+    VkDescriptorPoolSize ps = { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3 + RR_CANVASES };
     VkDescriptorSetLayout two[2];
     VkDescriptorPoolCreateInfo dpi = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
     VkDescriptorSetAllocateInfo da = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
@@ -525,7 +544,7 @@ static int make_layout(void)
     pi.pSetLayouts = &s_lay;
     if (!VK_OK(vkCreatePipelineLayout(s_dev, &pi, NULL, &s_playout)))
         return 0;
-    dpi.maxSets = 3;
+    dpi.maxSets = 3 + RR_CANVASES;
     dpi.poolSizeCount = 1;
     dpi.pPoolSizes = &ps;
     if (!VK_OK(vkCreateDescriptorPool(s_dev, &dpi, NULL, &s_dpool)))
@@ -537,6 +556,12 @@ static int make_layout(void)
     if (!VK_OK(vkAllocateDescriptorSets(s_dev, &da, &s_set)) || !VK_OK(vkAllocateDescriptorSets(s_dev, &da, &s_cpic_set)) ||
         !VK_OK(vkAllocateDescriptorSets(s_dev, &da, &s_rom_set)))
         return 0;
+    {
+        int k;
+        for (k = 0; k < RR_CANVASES; k++)
+            if (!VK_OK(vkAllocateDescriptorSets(s_dev, &da, &s_canvas_set[k])))
+                return 0;
+    }
     si.magFilter = si.minFilter = VK_FILTER_LINEAR;
     si.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
     si.addressModeU = si.addressModeV = si.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
@@ -547,22 +572,36 @@ static int make_layout(void)
 /* the compositor's images, pass, set and pipeline */
 static int compose_make(void)
 {
-    VkDescriptorSetLayoutBinding b[4];
+    VkDescriptorSetLayoutBinding b[6];
     VkDescriptorSetLayoutCreateInfo li = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
     VkPipelineLayoutCreateInfo pi = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
-    VkDescriptorPoolSize ps = { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4 };
+    VkDescriptorPoolSize ps = { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 6 };
     VkDescriptorPoolCreateInfo dpi = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
     VkDescriptorSetAllocateInfo da = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
     VkSamplerCreateInfo si = { VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
     VkFramebufferCreateInfo fi = { VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
-    VkDescriptorImageInfo di[5];
+    VkDescriptorImageInfo di[7];
     VkWriteDescriptorSet wr[2];
     VkShaderModule vs, fs;
     int i;
-    for (i = 0; i < 4; i++)
+    for (i = 0; i < 5; i++)
         if (!image_fmt(k_crec_w[i], k_crec_h[i], k_crec_fmt[i], VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
                        &s_crec[i], &s_crec_mem[i], &s_crec_view[i]))
             return 0;
+    if (!image_fmt(256, 256, VK_FORMAT_R8_UINT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+                   &s_mirror, &s_mirror_mem, &s_mirror_view) ||
+        !image_fmt(256, 256 * RR_VERSIONS, VK_FORMAT_R8_UINT, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+                   &s_kept, &s_kept_mem, &s_kept_view))
+        return 0;
+    if (!(s_mpass = make_pass_fmt(VK_FORMAT_R8_UINT, 0)))
+        return 0;
+    fi.renderPass = s_mpass;
+    fi.attachmentCount = 1;
+    fi.pAttachments = &s_mirror_view;
+    fi.width = fi.height = 256;
+    fi.layers = 1;
+    if (!VK_OK(vkCreateFramebuffer(s_dev, &fi, NULL, &s_mfb)))
+        return 0;
     if (!image(256, 224, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, &s_cpic, &s_cpic_mem, &s_cpic_view))
         return 0;
     if (!(s_cpass = make_pass(2)))
@@ -583,13 +622,13 @@ static int compose_make(void)
     if (!VK_OK(vkCreateSampler(s_dev, &si, NULL, &s_nsmp)))
         return 0;
     memset(b, 0, sizeof b);
-    for (i = 0; i < 4; i++) {
+    for (i = 0; i < 6; i++) {
         b[i].binding = (uint32_t)i;
         b[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         b[i].descriptorCount = 1;
         b[i].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
     }
-    li.bindingCount = 4;
+    li.bindingCount = 6;
     li.pBindings = b;
     if (!VK_OK(vkCreateDescriptorSetLayout(s_dev, &li, NULL, &s_clay)))
         return 0;
@@ -607,26 +646,48 @@ static int compose_make(void)
     da.pSetLayouts = &s_clay;
     if (!VK_OK(vkAllocateDescriptorSets(s_dev, &da, &s_cset)))
         return 0;
-    for (i = 0; i < 5; i++) {
-        di[i].sampler = i < 4 ? s_nsmp : s_smp;
-        di[i].imageView = i < 4 ? s_crec_view[i] : s_cpic_view;
+    for (i = 0; i < 7; i++) {
+        di[i].sampler = i < 6 ? s_nsmp : s_smp;
+        di[i].imageView = i < 5 ? s_crec_view[i] : i == 5 ? s_kept_view : s_cpic_view;
         di[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     }
     memset(wr, 0, sizeof wr);
     wr[0].sType = wr[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     wr[0].dstSet = s_cset;
-    wr[0].descriptorCount = 4;
+    wr[0].descriptorCount = 6;
     wr[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     wr[0].pImageInfo = di;
     wr[1].dstSet = s_cpic_set;
     wr[1].descriptorCount = 1;
     wr[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    wr[1].pImageInfo = &di[4];
+    wr[1].pImageInfo = &di[6];
     vkUpdateDescriptorSets(s_dev, 2, wr, 0, NULL);
     vs = module(k_fullscreen_vert, sizeof k_fullscreen_vert);
     fs = module(k_compose_frag, sizeof k_compose_frag);
     s_compose = make_pipe(vs, fs, 0, s_cplayout, s_cpass);
-    return s_compose != VK_NULL_HANDLE;
+    if (!s_compose)
+        return 0;
+    /* the copies in their layouts between uses: the kept copies sampled,
+       the copy packed into an attachment */
+    {
+        VkCommandBufferBeginInfo bi = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+        VkSubmitInfo si = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
+        bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        vkBeginCommandBuffer(s_cmd, &bi);
+        barrier(s_cmd, s_kept, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0,
+                VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+        barrier(s_cmd, s_mirror, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 0,
+                VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+        vkEndCommandBuffer(s_cmd);
+        si.commandBufferCount = 1;
+        si.pCommandBuffers = &s_cmd;
+        if (!VK_OK(vkQueueSubmit(s_queue, 1, &si, s_fence)))
+            return 0;
+        vkWaitForFences(s_dev, 1, &s_fence, VK_TRUE, UINT64_MAX);
+        vkResetFences(s_dev, 1, &s_fence);
+    }
+    return 1;
 }
 
 int rr_open(void)
@@ -927,21 +988,21 @@ static int swap_make(void)
 void rr_compose(const RrPicture *p, const int d[4])
 {
     int i, v = p->versions < 1 ? 1 : p->versions > RR_VERSIONS ? RR_VERSIONS : p->versions;
-    const void *src[4] = { p->vram, p->palette, p->oam, p->lines };
-    const int h[4] = { 128 * v, 225, v, 225 };
+    const void *src[5] = { p->vram, p->palette, p->oam, p->lines, p->external };
+    const int h[5] = { 128 * v, 225, v, 225, 8 * v };
     VkRenderPassBeginInfo rp = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
     VkViewport vw = { 0, 0, 256, 224, 0, 1 };
     VkRect2D sc = { { 0, 0 }, { 256, 224 } };
-    long o[4];
+    long o[5];
     if (!s_recording || d[2] <= d[0] || d[3] <= d[1])
         return;
-    for (i = 0; i < 4; i++) {
+    for (i = 0; i < 5; i++) {
         size_t n = (size_t)k_crec_w[i] * (size_t)h[i] * (size_t)k_crec_px[i];
         if ((o[i] = ring_take(n)) < 0)
             return;
         memcpy(s_ring_map + o[i], src[i], n);
     }
-    for (i = 0; i < 4; i++) {
+    for (i = 0; i < 5; i++) {
         VkBufferImageCopy cp;
         barrier(s_cmd, s_crec[i], s_crec_fresh ? VK_IMAGE_LAYOUT_UNDEFINED : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
@@ -992,22 +1053,36 @@ static int fill_make(const uint8_t *rom, uint32_t size)
     VkDeviceMemory stage_mem;
     uint8_t *stage_map;
     uint32_t rows = size / 1024;
+    int k;
     if (!image_fmt(1024, (int)rows, VK_FORMAT_R8_UINT, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, &s_rom,
-                   &s_rom_mem, &s_rom_view) ||
-        !image_fmt(256, 256, VK_FORMAT_R16_UINT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
-                   &s_canvas, &s_canvas_mem, &s_canvas_view))
+                   &s_rom_mem, &s_rom_view))
         return 0;
-    if (!(s_fpass = make_pass_fmt(VK_FORMAT_R16_UINT, 1)))
+    if (!(s_fpass = make_pass_fmt(VK_FORMAT_R16_UINT, 1)) || !(s_fpass_load = make_pass_fmt(VK_FORMAT_R16_UINT, 0)))
         return 0;
-    fi.renderPass = s_fpass;
-    fi.attachmentCount = 1;
-    fi.pAttachments = &s_canvas_view;
-    fi.width = fi.height = 256;
-    fi.layers = 1;
-    if (!VK_OK(vkCreateFramebuffer(s_dev, &fi, NULL, &s_ffb)))
-        return 0;
+    for (k = 0; k < RR_CANVASES; k++) {
+        if (!image_fmt(256, 256, VK_FORMAT_R16_UINT,
+                       VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                       &s_canvas[k], &s_canvas_mem[k], &s_canvas_view[k]))
+            return 0;
+        fi.renderPass = s_fpass;
+        fi.attachmentCount = 1;
+        fi.pAttachments = &s_canvas_view[k];
+        fi.width = fi.height = 256;
+        fi.layers = 1;
+        if (!VK_OK(vkCreateFramebuffer(s_dev, &fi, NULL, &s_ffb[k])))
+            return 0;
+        di.sampler = s_nsmp;
+        di.imageView = s_canvas_view[k];
+        di.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        wr.dstSet = s_canvas_set[k];
+        wr.descriptorCount = 1;
+        wr.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        wr.pImageInfo = &di;
+        vkUpdateDescriptorSets(s_dev, 1, &wr, 0, NULL);
+    }
     s_fill = make_pipe(module(k_fill_vert, sizeof k_fill_vert), module(k_fill_frag, sizeof k_fill_frag), 2, s_playout, s_fpass);
-    if (!s_fill)
+    s_pack = make_pipe(module(k_pack_vert, sizeof k_pack_vert), module(k_pack_frag, sizeof k_pack_frag), 3, s_playout, s_mpass);
+    if (!s_fill || !s_pack)
         return 0;
     di.sampler = s_nsmp;
     di.imageView = s_rom_view;
@@ -1017,6 +1092,8 @@ static int fill_make(const uint8_t *rom, uint32_t size)
     wr.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     wr.pImageInfo = &di;
     vkUpdateDescriptorSets(s_dev, 1, &wr, 0, NULL);
+    if (!make_buffer(65536, VK_BUFFER_USAGE_TRANSFER_DST_BIT, &s_mirror_buf, &s_mirror_buf_mem, &s_mirror_map))
+        return 0;
     if (!make_buffer(256 * 256 * 2, VK_BUFFER_USAGE_TRANSFER_DST_BIT, &s_canvas_buf, &s_canvas_buf_mem, &s_canvas_map))
         return 0;
     cai.commandPool = s_pool;
@@ -1042,6 +1119,11 @@ static int fill_make(const uint8_t *rom, uint32_t size)
     barrier(s_fcmd, s_rom, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
             VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    /* the canvases are attachments between uses */
+    for (k = 0; k < RR_CANVASES; k++)
+        barrier(s_fcmd, s_canvas[k], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 0,
+                VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
     vkEndCommandBuffer(s_fcmd);
     si.commandBufferCount = 1;
     si.pCommandBuffers = &s_fcmd;
@@ -1069,7 +1151,7 @@ static void fill_wait(void)
     }
 }
 
-void rr_fill(const uint32_t *spans, int n)
+void rr_fill(const uint32_t *spans, int n, int clear, int canvas)
 {
     VkCommandBufferBeginInfo bi = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
     VkRenderPassBeginInfo rp = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
@@ -1100,8 +1182,8 @@ void rr_fill(const uint32_t *spans, int n)
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     vkBeginCommandBuffer(s_fcmd, &bi);
     memset(&cv, 0, sizeof cv);
-    rp.renderPass = s_fpass;
-    rp.framebuffer = s_ffb;
+    rp.renderPass = clear ? s_fpass : s_fpass_load;
+    rp.framebuffer = s_ffb[canvas];
     rp.renderArea = sc;
     rp.clearValueCount = 1;
     rp.pClearValues = &cv;
@@ -1115,8 +1197,126 @@ void rr_fill(const uint32_t *spans, int n)
         vkCmdDraw(s_fcmd, 12, (uint32_t)n, 0, 0);
     }
     vkCmdEndRenderPass(s_fcmd);
-    /* the canvas kept for a read back */
-    barrier(s_fcmd, s_canvas, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+    if (canvas == 0) {
+        /* canvas 0 kept for a read back */
+        barrier(s_fcmd, s_canvas[0], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT,
+                VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+        memset(&cp, 0, sizeof cp);
+        cp.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        cp.imageSubresource.layerCount = 1;
+        cp.imageExtent.width = cp.imageExtent.height = 256;
+        cp.imageExtent.depth = 1;
+        vkCmdCopyImageToBuffer(s_fcmd, s_canvas[0], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, s_canvas_buf, 1, &cp);
+        barrier(s_fcmd, s_canvas[0], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+    }
+    vkEndCommandBuffer(s_fcmd);
+    si.commandBufferCount = 1;
+    si.pCommandBuffers = &s_fcmd;
+    vkQueueSubmit(s_queue, 1, &si, s_ffence);
+    s_fsubmitted = 1;
+}
+
+/* the fill's command buffer begun again, the last use done */
+static void fill_begin(void)
+{
+    VkCommandBufferBeginInfo bi = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+    fill_wait();
+    vkResetCommandBuffer(s_fcmd, 0);
+    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    vkBeginCommandBuffer(s_fcmd, &bi);
+}
+
+static void fill_submit(void)
+{
+    VkSubmitInfo si = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
+    vkEndCommandBuffer(s_fcmd);
+    si.commandBufferCount = 1;
+    si.pCommandBuffers = &s_fcmd;
+    vkQueueSubmit(s_queue, 1, &si, s_ffence);
+    s_fsubmitted = 1;
+}
+
+/* the runs as instances, the canvas sampled while they are packed */
+void rr_pack(const uint32_t *runs, int n, int canvas)
+{
+    VkRenderPassBeginInfo rp = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
+    VkViewport vw = { 0, 0, 256, 256, 0, 1 };
+    VkRect2D sc = { { 0, 0 }, { 256, 256 } };
+    VkDeviceSize bytes = (VkDeviceSize)n * RR_RUN_WORDS * 4, zero = 0;
+    if (!s_pack || n <= 0)
+        return;
+    fill_wait();                                   /* the runs' buffer is free again */
+    if (bytes > s_run_cap) {
+        if (s_run_buf) {
+            vkDestroyBuffer(s_dev, s_run_buf, NULL);
+            vkFreeMemory(s_dev, s_run_mem, NULL);
+        }
+        s_run_cap = bytes * 2;
+        if (!make_buffer(s_run_cap, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &s_run_buf, &s_run_mem, &s_run_map)) {
+            s_run_cap = 0;
+            s_run_buf = VK_NULL_HANDLE;
+            return;
+        }
+    }
+    memcpy(s_run_map, runs, (size_t)bytes);
+    fill_begin();
+    barrier(s_fcmd, s_canvas[canvas], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    rp.renderPass = s_mpass;
+    rp.framebuffer = s_mfb;
+    rp.renderArea = sc;
+    vkCmdBeginRenderPass(s_fcmd, &rp, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdSetViewport(s_fcmd, 0, 1, &vw);
+    vkCmdSetScissor(s_fcmd, 0, 1, &sc);
+    vkCmdBindPipeline(s_fcmd, VK_PIPELINE_BIND_POINT_GRAPHICS, s_pack);
+    vkCmdBindDescriptorSets(s_fcmd, VK_PIPELINE_BIND_POINT_GRAPHICS, s_playout, 0, 1, &s_canvas_set[canvas], 0, NULL);
+    vkCmdBindVertexBuffers(s_fcmd, 0, 1, &s_run_buf, &zero);
+    vkCmdDraw(s_fcmd, 6, (uint32_t)n, 0, 0);
+    vkCmdEndRenderPass(s_fcmd);
+    barrier(s_fcmd, s_canvas[canvas], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+    fill_submit();
+}
+
+void rr_pack_keep(int version)
+{
+    VkImageCopy cp;
+    if (!s_pack || version < 0 || version >= RR_VERSIONS)
+        return;
+    fill_begin();
+    barrier(s_fcmd, s_mirror, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+            VK_PIPELINE_STAGE_TRANSFER_BIT);
+    barrier(s_fcmd, s_kept, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0,
+            VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+    memset(&cp, 0, sizeof cp);
+    cp.srcSubresource.aspectMask = cp.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    cp.srcSubresource.layerCount = cp.dstSubresource.layerCount = 1;
+    cp.dstOffset.y = 256 * version;
+    cp.extent.width = cp.extent.height = 256;
+    cp.extent.depth = 1;
+    vkCmdCopyImage(s_fcmd, s_mirror, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, s_kept, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &cp);
+    barrier(s_fcmd, s_mirror, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+    barrier(s_fcmd, s_kept, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    fill_submit();
+}
+
+int rr_pack_read(uint8_t *bytes)
+{
+    VkBufferImageCopy cp;
+    if (!s_pack)
+        return 0;
+    fill_begin();
+    barrier(s_fcmd, s_mirror, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
             VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
             VK_PIPELINE_STAGE_TRANSFER_BIT);
     memset(&cp, 0, sizeof cp);
@@ -1124,12 +1324,14 @@ void rr_fill(const uint32_t *spans, int n)
     cp.imageSubresource.layerCount = 1;
     cp.imageExtent.width = cp.imageExtent.height = 256;
     cp.imageExtent.depth = 1;
-    vkCmdCopyImageToBuffer(s_fcmd, s_canvas, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, s_canvas_buf, 1, &cp);
-    vkEndCommandBuffer(s_fcmd);
-    si.commandBufferCount = 1;
-    si.pCommandBuffers = &s_fcmd;
-    vkQueueSubmit(s_queue, 1, &si, s_ffence);
-    s_fsubmitted = 1;
+    vkCmdCopyImageToBuffer(s_fcmd, s_mirror, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, s_mirror_buf, 1, &cp);
+    barrier(s_fcmd, s_mirror, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+    fill_submit();
+    fill_wait();
+    memcpy(bytes, s_mirror_map, 65536);
+    return 1;
 }
 
 int rr_fill_read(uint16_t *canvas)

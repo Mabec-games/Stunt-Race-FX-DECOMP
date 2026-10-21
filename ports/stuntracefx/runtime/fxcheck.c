@@ -55,29 +55,24 @@ static void g_report(void)
             rr_name(), g_lists, g_pixels, g_bad, g_first, g_bad_pixels, g_wraps);
 }
 
-/* a span packed as rr.h's RrSpan words */
+void fx_span_pack(const FxSpan *p, uint32_t *w);
+
+/* a span packed as rr.h's span words */
 static void g_span(void *ctx, const FxSpan *p)
 {
-    uint32_t *w;
     (void)ctx;
     if (g_n == g_cap) {
         g_cap = g_cap ? g_cap * 2 : 4096;
         g_spans = (uint32_t *)realloc(g_spans, (size_t)g_cap * RR_SPAN_WORDS * 4);
     }
-    w = g_spans + (size_t)g_n++ * RR_SPAN_WORDS;
     if (p->x + p->n > 256)
         g_wraps++;
-    w[0] = p->x | (uint32_t)p->y << 8 | (uint32_t)p->n << 16;
-    w[1] = p->colour | (uint32_t)p->options << 8 | (uint32_t)(p->kind & 7) << 13 | (uint32_t)(p->mode & 3) << 16 |
-           (uint32_t)p->bank << 18 | (uint32_t)(p->layout & 3) << 26;
-    w[2] = p->tu | (uint32_t)p->tv << 16;
-    w[3] = p->du | (uint32_t)p->dv << 16;
-    w[4] = p->base | (uint32_t)p->mask << 16;
-    w[5] = p->palette;
-    w[6] = w[7] = 0;
+    fx_span_pack(p, g_spans + (size_t)g_n++ * RR_SPAN_WORDS);
 }
 
 /* the random lists: the pixels that differ */
+static long packed_bad;
+
 static long g_random(FxCanvas *ref)
 {
     static uint8_t ram[0x10000];
@@ -119,11 +114,38 @@ static long g_random(FxCanvas *ref)
             g_span(&mode, &p);
             fx_fill_span(&s, ref, &p);
         }
-        rr_fill(g_spans, g_n);
+        rr_fill(g_spans, g_n, 1, 0);
         rr_fill_read(g_canvas);
         for (i = 0; i < 256 * 256; i++)
             if (g_canvas[i] != (ref->set[i] ? (uint16_t)(0x100 | ref->px[i]) : 0))
                 d++;
+        /* the canvas packed as each layout lays it out at this depth: the
+           buffer's first 64 KB (or less) as runs of 256 bytes, against the
+           same bytes from the canvas here */
+        for (k = 0; k < 3; k++) {
+            static uint32_t runs[256 * RR_RUN_WORDS];
+            static uint8_t got[65536];
+            unsigned bpp = 2u << (mode - (mode >> 1)), rows_of = k == 0 ? 16u : k == 1 ? 20u : 24u, r;
+            for (r = 0; r < 256; r++) {
+                runs[r * RR_RUN_WORDS + 0] = r << 8 | 256u << 16;
+                runs[r * RR_RUN_WORDS + 1] = r << 8;
+                runs[r * RR_RUN_WORDS + 2] = (uint32_t)k | (uint32_t)mode << 2;
+                runs[r * RR_RUN_WORDS + 3] = 0;
+            }
+            rr_pack(runs, 256, 0);
+            if (!rr_pack_read(got))
+                break;
+            for (i = 0; i < 65536; i++) {
+                unsigned o = (unsigned)i, cn = o / (bpp * 8u), kk = o % (bpp * 8u), plane = (kk >> 4) * 2u + (kk & 1u);
+                unsigned x0 = cn / rows_of * 8u, y = cn % rows_of * 8u + ((kk & 15u) >> 1), b;
+                uint8_t want = 0;
+                if (x0 < 256u && y < 256u)
+                    for (b = 0; b < 8; b++)
+                        want |= (uint8_t)(((g_canvas[y << 8 | (x0 + b)] >> plane) & 1u) << (7 - b));
+                if (got[i] != want)
+                    packed_bad++;
+            }
+        }
     }
     g_wraps = 0;
     return d;
@@ -142,7 +164,11 @@ static void gpu_list(const FxDrawSource *s)
                 exit(2);
             }
             ref = (FxCanvas *)malloc(sizeof *ref);
-            fprintf(stderr, "fxgpucheck: %s, random spans: %ld pixels differ\n", rr_name(), g_random(ref));
+            {
+                long d = g_random(ref);
+                fprintf(stderr, "fxgpucheck: %s, random spans: %ld pixels differ; packed: %ld bytes differ\n", rr_name(), d,
+                        packed_bad);
+            }
             atexit(g_report);
         }
     }
@@ -150,7 +176,7 @@ static void gpu_list(const FxDrawSource *s)
         return;
     g_n = 0;
     fx_list_spans(s, g_span, NULL);
-    rr_fill(g_spans, g_n);
+    rr_fill(g_spans, g_n, 1, 0);
     memset(ref, 0, sizeof *ref);
     fx_draw_list(s, ref);
     rr_fill_read(g_canvas);

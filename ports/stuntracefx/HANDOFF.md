@@ -87,11 +87,20 @@ check above covers 21 plays.
   texel runs, 2-bit bitmaps, scaled 2-bit bitmaps, noise), from the draw
   lists (draw_list.c's walks), the scaled sprites (frame.c), the blits
   (bitmap.c), the HUD programs (hud.c) and the particles (fx_record.c);
-  PLOT's layout alias for lines past the height included. Every byte of
-  the screen uploaded to VRAM in the 21 plays matches them
-  (PORT_CANVASCHECK); render/fill fills them on Metal, OpenGL and Vulkan
-  exactly as fx_fill_span does (PORT_FXGPUCHECK). The GPU canvas is not
-  yet filled from the stream nor shown.
+  PLOT's layout alias for lines past the height included. One canvas
+  per RAM buffer (two: races alternate $2C00 and $9400). Every byte of
+  the screens uploaded to VRAM in the 21 plays matches them
+  (PORT_CANVASCHECK, 649M bytes); render/fill fills them on Metal, OpenGL
+  and Vulkan exactly as fx_fill_span does (PORT_FXGPUCHECK).
+- The 3D is shown from the GPU: VRAM bytes a screen upload writes are
+  marked external in the frame's record (video.h); before a frame is
+  composed the runtime (runtime/canvas.c) replays the operations on the
+  GPU up to each upload the frame shows and packs the upload's bytes into
+  the compositor's own copy (rr_pack), one copy per record version
+  (uploads land in blanked stretches inside frames too); the compositor
+  reads external bytes from it. PORT_GPUCHECK 0 on all 21 plays on all
+  three backends. The Super FX's own plotting still runs: its stated time
+  sets the pacing, and its RAM is the checks' reference.
 - GPU compositor (render/compose/core.glsl, one source for three shader
   languages via build.sh): on Metal, OpenGL and Vulkan, every frame of
   the 21 plays identical to vid_draw_frame (PORT_GPUCHECK).
@@ -101,12 +110,10 @@ check above covers 21 plays.
 
 ## Next, in order
 
-1. The 3D layer on the GPU: the operations of each uploaded screen
-   filled into the GPU canvas and the compositor reading the canvas where
-   the game shows the uploaded tiles (VRAM's copies of the screen: the
-   race stages in video/dma.c, the menu rows), checked by PORT_GPUCHECK
-   against the picture drawn from VRAM; then high resolution as triangles
-   with sub-pixel vertices from before the projection rounds.
+1. High resolution: the draw list's polygons as triangles at the
+   output's resolution, sub-pixel vertices from before the projection
+   rounds (the other drawers' rows scaled), composited where the original
+   canvas is; the original mode stays the gated one.
 2. Widescreen and field of view (PLAN.md phase 5).
 3. The game's C as plain C (PLAN.md phase 1): no cpu/spc/gsu register
    files, abi_ wrappers or rd8/wr8; the frame loop with no interrupts or

@@ -443,10 +443,23 @@ static void picture_of(const VidFrame *f, RrPicture *p)
     for (line = 1; line <= VID_HEIGHT; line++)
         vid_pack_line(f, line, &pic_lines[line * RR_LINE_WORDS]);
     p->vram = &f->vram[0][0];
+    p->external = &f->external[0][0];
     p->oam = &f->oam[0][0];
     p->versions = f->versions;
     p->palette = &f->palette[0][0];
     p->lines = pic_lines;
+}
+
+void canvas_gpu(void);
+void canvas_gpu_apply(const VidFrame *f);
+extern const uint8_t srfx_rom[], srfx_rom_end[];
+
+/* the 3D canvases fed from the game's screen operations, where the
+   renderer has them */
+static void canvases_start(void)
+{
+    if (rr_fill_rom(srfx_rom, (uint32_t)(srfx_rom_end - srfx_rom)))
+        canvas_gpu();
 }
 
 /* the renderer opened once for the headless checks, its target the
@@ -489,6 +502,7 @@ static void gpu_check(void)
             fprintf(stderr, "gpucheck: the renderer cannot open\n");
             exit(2);
         }
+        canvases_start();
         atexit(gpu_report);
         gpu_frames = 0;
     }
@@ -496,6 +510,7 @@ static void gpu_check(void)
     if (!got)
         got = (uint32_t *)malloc((size_t)tw * (size_t)th * 4);
     picture_of(vid_frame(), &p);
+    canvas_gpu_apply(vid_frame());
     rr_begin(0xFF000000u);
     rr_compose(&p, d);
     rr_present();
@@ -533,6 +548,7 @@ static void show(void)
     d[2] = d[0] + w;
     d[3] = d[1] + h;
     picture_of(vid_frame(), &p);
+    canvas_gpu_apply(vid_frame());
     rr_begin(0xFF000000u);
     rr_compose(&p, d);
     rr_present();
@@ -658,6 +674,7 @@ int main(int argc, char **argv)
             host_message_box("The renderer could not start on this computer.", "Stunt Race FX");
             return 1;
         }
+        canvases_start();
         s_rs = resample_new(32040, OUT_RATE);
         host_audio_open(OUT_RATE, audio_cb, NULL);
     }

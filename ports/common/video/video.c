@@ -31,11 +31,14 @@
 #include "video.h"
 
 static uint16_t vram[0x8000];
+static uint32_t external[0x800];       /* the bytes written from outside (video.h VidFrame) */
+static int external_on;
 static uint16_t cgram[256];
 static uint8_t oam[544];
 static uint32_t picture[VID_WIDTH * VID_HEIGHT];
 static uint32_t shown[VID_WIDTH * VID_HEIGHT];
 static unsigned long frames_done, shown_of;     /* frames finished; the one shown[] holds */
+static unsigned long copies;                    /* the copies of the tiles made */
 static int draw_lines = -1;                     /* lines drawn as recorded (PORT_VIDCHECK) */
 
 
@@ -76,6 +79,7 @@ int vid_forced_blank(void) { return (cur.inidisp & 0x80) != 0; }
 void vid_reset(void)
 {
     memset(vram, 0, sizeof vram);
+    memset(external, 0, sizeof external);
     memset(cgram, 0, sizeof cgram);
     memset(oam, 0, sizeof oam);
     memset(picture, 0, sizeof picture);
@@ -188,16 +192,20 @@ void vid_reg(uint8_t reg, uint8_t v)
         return;
     case 0x18: {
         uint16_t a = vram_remap(vmaddr) & 0x7FFF;
+        uint32_t b = (uint32_t)a << 1;
         dirty = 1;
         vram[a] = (uint16_t)((vram[a] & 0xFF00) | v);
+        external[b >> 5] = (external[b >> 5] & ~(1u << (b & 31))) | (uint32_t)external_on << (b & 31);
         if (!(vmain & 0x80))
             vram_step();
         return;
     }
     case 0x19: {
         uint16_t a = vram_remap(vmaddr) & 0x7FFF;
+        uint32_t b = (uint32_t)a << 1 | 1;
         dirty = 1;
         vram[a] = (uint16_t)((vram[a] & 0x00FF) | v << 8);
+        external[b >> 5] = (external[b >> 5] & ~(1u << (b & 31))) | (uint32_t)external_on << (b & 31);
         if (vmain & 0x80)
             vram_step();
         return;
@@ -240,6 +248,11 @@ void vid_reg(uint8_t reg, uint8_t v)
     case 0x33: cur.setini = v; return;
     }
 }
+
+void vid_vram_external(int on) { external_on = on != 0; }
+uint32_t vid_vram_next(uint8_t reg) { return (uint32_t)(vram_remap(vmaddr) & 0x7FFF) << 1 | (reg == 0x19); }
+unsigned long vid_frames(void) { return frames_done; }
+unsigned long vid_copies(void) { return copies; }
 
 void vid_frame_start(void)
 {
@@ -691,6 +704,8 @@ static void record_line(unsigned line)
     if (dirty && (making->versions == 0 || !(cur.inidisp & 0x80))) {
         if (making->versions < VID_VERSIONS) {
             memcpy(making->vram[making->versions], vram, sizeof vram);
+            memcpy(making->external[making->versions], external, sizeof external);
+            making->made[making->versions] = copies++;
             memcpy(making->oam[making->versions], oam, sizeof oam);
             making->versions++;
         } else {

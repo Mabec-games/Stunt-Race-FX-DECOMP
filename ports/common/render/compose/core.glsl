@@ -2,14 +2,28 @@
 // frame's record (ports/common/video/video.h's VidFrame): the shader form
 // of video.c's drawing, step for step, so the two agree on every pixel.
 // One source for GLSL and Metal: the prelude for each defines
-//   FETCH_VRAM(version, word)  FETCH_PAL(line, index)
-//   FETCH_OAM(version, byte)   FETCH_LINE(line, word)
+//   FETCH_VRAM_REC(version, word)  FETCH_PAL(line, index)
+//   FETCH_OAM(version, byte)       FETCH_LINE(line, word)
+//   FETCH_EXT(version, word)       FETCH_MIRROR(version, byte)
 // (integer textures: the tiles 256 words a row, 128 rows a copy; the
 // palettes a row a line; the sprite tables 544 bytes a row a copy; the
-// lines' packed state, VID_LINE_WORDS a row) and TP / TA, the textures as
-// a helper's parameters and arguments (empty where they are global).
+// lines' packed state, VID_LINE_WORDS a row; the bits of the tiles' bytes
+// that came from the 3D canvas, 2,048 words a copy, 256 a row; the
+// compositor's copies of those bytes, 256 a row, 256 rows a copy) and TP / TA, the textures
+// as a helper's parameters and arguments (empty where they are global).
 
 uint lw(uint line, uint i TP) { return FETCH_LINE(line, i); }
+
+// a word of the tiles: each byte from the record, or from the canvas's
+// copy where it came from the 3D canvas
+uint vram_word(uint ver, uint w TP)
+{
+    uint e = (FETCH_EXT(ver, w >> 4) >> ((w & 15u) * 2u)) & 3u, r = FETCH_VRAM_REC(ver, w);
+    if ((e & 1u) != 0u) r = (r & 0xFF00u) | FETCH_MIRROR(ver, w * 2u);
+    if ((e & 2u) != 0u) r = (r & 0x00FFu) | FETCH_MIRROR(ver, w * 2u + 1u) << 8;
+    return r;
+}
+#define FETCH_VRAM(v, w) vram_word(v, w TA)
 uint byte_of(uint w, uint k) { return (w >> (k * 8u)) & 255u; }
 
 // the depths of each layer's two priorities and the sprites' four

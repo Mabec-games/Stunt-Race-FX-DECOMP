@@ -85,10 +85,30 @@ int rr_fill_rom(const uint8_t *rom, uint32_t size)
     return 0;
 }
 
-void rr_fill(const uint32_t *spans, int n)
+void rr_fill(const uint32_t *spans, int n, int clear, int canvas)
 {
     (void)spans;
     (void)n;
+    (void)clear;
+    (void)canvas;
+}
+
+void rr_pack(const uint32_t *runs, int n, int canvas)
+{
+    (void)runs;
+    (void)n;
+    (void)canvas;
+}
+
+void rr_pack_keep(int version)
+{
+    (void)version;
+}
+
+int rr_pack_read(uint8_t *bytes)
+{
+    (void)bytes;
+    return 0;
 }
 
 int rr_fill_read(uint16_t *canvas)
