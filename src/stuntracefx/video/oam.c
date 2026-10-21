@@ -1858,6 +1858,7 @@ void abi_SpritePiecesTwoCarsTop(void)
     wr8(b | 0x0582, 0x58);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x58);
     cpu.p = nz8(cpu.p, 0x58);
+    cyc(110);                           /* RTS, the caller's BRA, the rows' SEP and JSR */
 }
 
 /*

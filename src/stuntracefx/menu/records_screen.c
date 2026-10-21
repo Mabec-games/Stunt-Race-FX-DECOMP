@@ -442,7 +442,7 @@ void abi_RecordsMenuSpeedTop(void)
         return;
     } else { cyc(30); }
     if (pressed(0x0400)) {
-        int entry = (cpu.p & P_M) ? 92 : 76;   /* the sound push's tail: 16 shorter from M 16-bit */
+        int entry = (!(cpu.p & P_M) && (cpu.p & P_X)) ? 76 : 92;   /* the sound push's tail: 16 shorter from X 8-bit */
         sound16(0x0045);
         choice_show_at(entry, 0x02, abi_OamAttr38x4, abi_OamAttr36x6, 0, 0x0F);
         return;
@@ -900,6 +900,7 @@ void abi_SpeedRecordsPage(void)
     uint32_t b = db();
     uint8_t v, old, p;
     uint16_t h;
+    uint32_t join = 68;
 
     op_rep(P_M);
     if (pressed(0x0100)) {
@@ -970,13 +971,14 @@ void abi_SpeedRecordsPage(void)
         lda8(0x09);
         wr8(dp(0xF7), cyc_then(32, 0x09));
         (cyc(46), abi_RecordRowsGroupFirsts());
+        join = 46;                      /* falls into .title: no BRA */
         break;
     default:
         jump_routine(0x020000 | h);
         return;
     }
     op_sep(P_M);
-    cyc(68);
+    cyc(join);
     op_lda8(b | 0x0E3D);
     old = (uint8_t)cpu.a;
     cyc(46);
@@ -1144,19 +1146,19 @@ static void best_time(uint32_t save, uint16_t first, int d_time, int d_rest)
     op_lda16(save + x);
     op_cmp16(0xFFFF);
     if (cpu.a != 0xFFFF) {
-        cyc(98);
+        cyc(102);
         op_lda16(save + x);
         (cyc(46), abi_RecordTimeDigitsLarge());
         cpu.x = x;
         cpu.p = nz16(cpu.p, x);
-        cyc(96);
+        cyc(68);
         op_lda16(save + 2 + x);
         (cyc(46), abi_RecordNameLettersLarge());
-        cyc(18);
         slot_to_y(0x0D75, d_rest);
         cyc(74);
         op_lda16(save + 4 + x);
         (cyc(46), abi_SpritePiecesCarAt51());
+        cyc(68);                        /* BRA, JSR */
         return;
     } else { cyc(46); }
     slot_to_y(0x0D75, d_rest);
@@ -1246,7 +1248,7 @@ void abi_StuntRecordsScreen(void)
             cpu.a = (uint16_t)(cpu.a + 1);
             op_cmp16(0x001B);
             if (cpu.a >= 0x001B)
-                op_lda16_imm(0x0017);
+                { op_lda16_imm(0x0017); cyc(4); }
             cyc(82);
             wr16(b | 0x0E3D, cpu.a);
         } else { cyc(30); if (pressed(0x0200)) {
@@ -1256,7 +1258,7 @@ void abi_StuntRecordsScreen(void)
             cpu.a = (uint16_t)(cpu.a - 1);
             op_cmp16(0x0017);
             if (cpu.a < 0x0017)
-                op_lda16_imm(0x001A);
+                { op_lda16_imm(0x001A); cyc(4); }
             cyc(60);
             wr16(b | 0x0E3D, cpu.a);
         } else { cyc(30); } }
@@ -1266,7 +1268,7 @@ void abi_StuntRecordsScreen(void)
         md_next(0x04EE19, 0x0D73, 0x0D75, 0x0014);
         best_time(0x70FC4A, 0x0017, 0, 1);
         abi_SpriteTextAt8152();
-        (cyc(48), abi_RecordsMenuTwo());
+        (cyc(24), abi_RecordsMenuTwo());
         return;
     } else { cyc(30); }
     origin(0x81, 0x89);

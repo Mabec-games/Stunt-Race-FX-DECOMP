@@ -90,20 +90,21 @@ void abi_MenuWaitThenAnimate(void)
  */
 void MenuSequenceColourMath(uint8_t bank)
 {
+    cyc(198);
     FrameByteWritePush(bank, HDMAEN, 0x50);
-    cyc(144);
+    cyc(320);
     FrameByteWritePush(bank, TSW, 0x07);
-    cyc(144);
+    cyc(320);
     FrameByteWritePush(bank, COLDATA, 0xFF);
-    cyc(144);
+    cyc(320);
     FrameByteWritePush(bank, CGADSUB, 0xA7);
-    cyc(144);
+    cyc(320);
     FrameByteWritePush(bank, CGWSEL, 0x20);
-    cyc(144);
+    cyc(320);
     FrameByteWritePush(bank, W12SEL, 0x00);
-    cyc(128);
+    cyc(304);
     FrameByteWritePush(bank, W34SEL, 0x00);
-    cyc(144);
+    cyc(320);
     FrameByteWritePush(bank, WOBJSEL, 0x30);
 }
 
@@ -171,7 +172,7 @@ uint16_t MenuButtonSequence(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     wr16((uint16_t)(*x + 0x0A), step);
     *p = cmp16(*p, step, 0x0008);
     if (step != 0x0008)
-        { cyc(88); return step; } else { cyc(62); }
+        { cyc(88); return step; } else { cyc(40); }
     MenuSequenceColourMath(bank);
     cyc(308);
     SoundPort0QueuePush(0x46);

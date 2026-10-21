@@ -510,9 +510,10 @@ uint16_t GsuTableEntryNext(uint8_t bank, uint16_t entry, uint8_t *p)
     base = rd16(0x701092);
     cyc(38);
     a = rd16(t | 0x1F4C);
+    cyc((t >> 16) < 0x70 ? 46 : 30);   /* CMP abs,X to its read; a ROM table's word is not placed */
     last = rd16(t | base);
     *p = (uint8_t)((*p & ~P_C) | (a >= last ? P_C : 0));
-    cyc(a == last ? 208 : 190);         /* CMP, BNE (taken or not), LDA #0, INC, PLB, PLX, RTL */
+    cyc(a == last ? 162 : 144);         /* CMP, BNE (taken or not), LDA #0, INC, PLB, PLX, RTL */
     if (a == last)
         a = 0x0000;
     return (uint16_t)(a + 1);

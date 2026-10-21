@@ -20,6 +20,7 @@ void abi_MenuFramesTarget7(void)
     cyc(84);
     wr8((uint32_t)cpu.db << 16 | 0x11DB, 0x07);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x07);
+    cyc(70);                            /* PLP, RTS */
 }
 
 /*
@@ -54,6 +55,7 @@ void abi_MenuRandomStep(void)
     cyc(24);
     wr16(b | 0x1189, a);
     cpu.a = a;
+    cyc(70);                            /* PLP, RTS */
 }
 
 /*
@@ -71,11 +73,12 @@ void abi_MenuDimOnL(void)
     cpu.a = (uint16_t)(rd16((uint32_t)cpu.db << 16 | 0x118F) & 0x0020);
     cpu.p = nz16(cpu.p, cpu.a);
     if (!cpu.a)
-        { cyc(24); return; }
+        { cyc(88); return; }           /* AND, BEQ taken, RTS */
     cpu.a = 0x0004;
     cpu.p = nz8(cpu.p, 0x04);
     cyc(110);
     wr8(INIDISP, 0x04);
+    cyc(64);                            /* REP, RTS */
 }
 
 /*

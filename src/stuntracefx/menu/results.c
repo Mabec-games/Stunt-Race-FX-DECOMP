@@ -261,7 +261,7 @@ void abi_ResultsPlaceWait(void)
             wr16(fld(0x0A), cyc_then(22, 0x0000));
             cyc(42);
             return;
-        } else { cyc(46); }
+        } else { cyc(42); }            /* CMP; the BNE taken is in the 46 below */
     }
     cyc(46);
     abi_MenuWaitThenAnimate();

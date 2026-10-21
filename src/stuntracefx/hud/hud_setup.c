@@ -205,6 +205,7 @@ void abi_HudBestTimeDigits(void)
     time_tiles((uint8_t)cpu.a, (uint8_t)cpu.x, (uint8_t)cpu.y);
     abi_HudBestTimeSprites();
     op_plp(p);
+    cyc(56);                            /* the rest of the SEPs, RTL and the RTL */
 }
 
 /*
@@ -293,7 +294,7 @@ static int mode_all(uint32_t b)
         } else {
             cyc(102);
             abi_HudBestTimeDigits();
-            cyc(58);            /* HudBestTimeSprites' SEPs, RTL, PLP, RTL; JMP RaceHudFlags */
+            cyc(2);             /* JMP RaceHudFlags */
         }
         flags();
         return 0;

@@ -1074,6 +1074,7 @@ void abi_ResultsMenu(void)
             cyc(52);
             wr8(b | 0x0DD4, 0x00);
             sound(0x45, 0);
+            cyc(16);
             rows_retry();
             return;
         }

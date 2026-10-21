@@ -918,7 +918,7 @@ void abi_ObjectVelocityAddFrom(void)
 /* The Gsu81E3Long wrappers: X and Y pushed and pulled, 16-bit after. */
 static void gsu_pair_end(uint16_t x, uint16_t y)
 {
-    abi_Gsu81E3Long();
+    (cyc(62), abi_Gsu81E3Long());
     cpu.p &= (uint8_t)~(P_M | P_X);
     cpu.y = y;
     cpu.x = x;

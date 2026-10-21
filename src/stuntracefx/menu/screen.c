@@ -1637,12 +1637,11 @@ void abi_TitleScreenLoop(void)
                     if (cpu.p & P_Z)
                         { cyc(108); abi_DemoRunFirst(); }
                     else {
-                        cyc(140);
                         op_cmp16(0x0001);
                         if (cpu.p & P_Z)
-                            abi_DemoRunSecond();
+                            { cyc(148); abi_DemoRunSecond(); }
                         else
-                            abi_DemoRunFourth();
+                            { cyc(142); abi_DemoRunFourth(); }
                     }
                     if (cpu.p & P_C) {
                         op_rep(P_M | P_X);

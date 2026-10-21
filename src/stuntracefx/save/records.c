@@ -1199,7 +1199,7 @@ void abi_RecordRowDraw(void)
     cyc(24);
     wr16(b | 0x10C5, 0x0000);
     cpu.a = 0x0057;
-    cyc(84);
+    cyc(92);
     abi_SpritePieces3();
     cpu.y = (uint16_t)(y + 4);
     cpu.p &= (uint8_t)~P_M;

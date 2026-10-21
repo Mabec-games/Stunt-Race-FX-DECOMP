@@ -1262,7 +1262,7 @@ static void rival_frame(void)
     if (bits25b(cpu.x, 0x04))
         or8(F(0x2024, cpu.x), 0x20);
     else
-        cyc(48);
+        cyc(22);
     cyc(24);
     abi_ObjectCarFrame();
 }
@@ -1281,7 +1281,7 @@ static void rival_car(int b)
     (cyc(62), abi_ObjectCarSpawnListed());
     sx = cpu.x;
     cpu.p &= (uint8_t)~P_M;
-    op_lda16(cyc_then(88, F(0x2022, cpu.x)));
+    op_lda16(cyc_then(82, F(0x2022, cpu.x)));
     cpu.x = cpu.a;
     cpu.p = nz16(cpu.p, cpu.x);
     at = (0x700064 + cpu.x) & 0xFFFFFF;
@@ -1300,7 +1300,7 @@ static void rival_car(int b)
         cyc(56);
         wr16(at, cpu.a);
     }
-    cyc(58);
+    cyc(62);
     cpu.x = sx;
     cpu.p = nz16(cpu.p, sx);
     cpu.p |= P_M;

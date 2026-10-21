@@ -320,8 +320,9 @@ void abi_CourseSoundLoad(void)
     cyc(68);
     op_lda8(b | 0x10DA);
     if ((uint8_t)cpu.a) {
-        cyc(46);
+        cyc(16);
         op_plp(p0);
+        cyc(30);
         return;
     }
     cyc(46);
@@ -330,8 +331,9 @@ void abi_CourseSoundLoad(void)
         cyc(46);
         op_lda8(b | 0x10DE);
         if ((uint8_t)cpu.a) {
-            cyc(46);
+            cyc(46);                    /* BEQ, BRL */
             op_plp(p0);
+            cyc(30);
             return;
         }
         cyc(46);

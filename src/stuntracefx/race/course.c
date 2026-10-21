@@ -907,7 +907,7 @@ void abi_StuntCourseSelectStep(void)
         return;
     } else { cyc(68); }
     call_routine(0x02FC60, 0);  /* TimeUpSelectDraw */
-    abi_FlashingMetaspriteDraw();
+    (cyc(46), abi_FlashingMetaspriteDraw());
     cyc(24);
     if (sel_pressed16(b, 0x9000)) {
         op_sep(P_M);

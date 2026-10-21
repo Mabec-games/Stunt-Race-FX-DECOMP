@@ -4067,7 +4067,7 @@ static uint8_t f15b_four(void (*setter)(void), const uint16_t *in216)
         wr16(0x700216, in216[i]);
         mode = f15b();
     }
-    cyc(174);
+    cyc(158);
     return mode;
 }
 

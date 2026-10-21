@@ -2099,6 +2099,7 @@ void abi_ObjectRecordMarkStep(void)
 {
     (cyc(62), abi_ObjectRebucket());
     (cyc(62), abi_GsuRecordFlag4());
+    cyc(44);
 }
 
 /*
@@ -2126,6 +2127,7 @@ void abi_ObjectRecordMarkSetup(void)
     cpu.p = nz8(cpu.p, v);
     cyc(46);
     wr8(b, v);
+    cyc(44);
 }
 
 /*
@@ -2192,6 +2194,7 @@ void abi_ObjectSyncFromRecordFall(void)
 
     cpu.a = ObjectSyncFromRecordFall(cpu.db, cpu.x, &cpu.y, &p);
     cpu.p = (uint8_t)(p | P_M);
+    cyc(80);                            /* the tail: BEQ, CLC, RTL */
 }
 
 /*
@@ -2203,6 +2206,7 @@ void abi_ObjectSyncFromRecordFall(void)
 void abi_ObjectSyncFallStep(void)
 {
     (cyc(62), abi_ObjectSyncFromRecordFall());
+    cyc(44);
 }
 
 /*
@@ -2292,6 +2296,7 @@ void abi_ObjectSpinSetup(void)
  */
 void abi_GsuRecordNew424Zero(void)
 {
+    cyc(62);
     abi_record_new(0x8C0A, 0x0000, 98);
 }
 
@@ -2304,6 +2309,7 @@ void abi_GsuRecordNew424Zero(void)
  */
 void abi_GsuRecordNew424B(void)
 {
+    cyc(62);
     abi_record_new(0x8C3B, 0x9185, 98);
 }
 

@@ -631,8 +631,6 @@ static void car_step(uint32_t b, uint16_t at, int right, int p2)
             cyc(40);
             four = fourth_car(b);
             v = four ? (cyc(2), 0x03) : (cyc(2), 0x02);
-            if (four == 1)
-                cyc(22);                /* BRA to the store */
         }
     }
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);

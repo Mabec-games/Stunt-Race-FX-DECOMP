@@ -65,6 +65,7 @@ void SpeedSampleAdd(uint8_t bank, uint16_t speed, uint16_t player, uint8_t *p, u
         wr16(b | (uint16_t)(player == 0 ? sum + 2 : sum), 0xFFFF);
         *a = 0xFFFF;
         *p = (uint8_t)(nz16(*p, 0xFFFF) | P_C);
+        cyc(42);
         return;
     }
     cyc(70);
@@ -668,6 +669,7 @@ void abi_PlayerOnePhaseRace(void)
         op_lda16_imm(0x0000);
         cyc(10);
         wr16(b | 0x1026, 0x0000);
+        cyc(42);
         return;
     } else { cyc(4); }
     op_cmp16(0x0002);
@@ -890,7 +892,6 @@ void abi_PlayerOnePhaseStep(void)
         break;
     case 0xECA4:
         jump_routine(0x07ECA4);
-        cyc(16);
         break;
     case 0xE044:
         abi_PlayerOnePhaseEnd();
@@ -1214,10 +1215,10 @@ void abi_StuntPhaseRace(void)
     cpu.a = (uint16_t)(w & 0x0001);
     cpu.p = nz16(cpu.p, cpu.a);
     if (cpu.a) {
-        cyc(18);
+        cyc(40);
         op_rep(P_M);
         op_lda16_imm(0x801F);
-        abi_PaletteDarkenFour();
+        (cyc(48), abi_PaletteDarkenFour());
         op_sep(P_M);
         cyc(46);
         wr8(b | 0x0D5B, 0x00);
@@ -1236,10 +1237,11 @@ void abi_StuntPhaseRace(void)
         cyc(24);
         wr8(b | 0x0E4B, 0x0C);
         (cyc(46), abi_OamHide75Up());
-        abi_SoundReset();
+        (cyc(62), abi_SoundReset());
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x37);
         cpu.p = nz8(cpu.p, 0x37);
-        (cyc(134), abi_SoundPort0QueuePush());
+        (cyc(62), abi_SoundPort0QueuePush());
+        cyc(26);
         return;
     }
     op_sep(P_M | P_X);
@@ -1485,7 +1487,7 @@ static void hud_mode_one(uint8_t p0, uint8_t db0)
         (cyc(62), abi_TimeUpPhaseStep());
         cyc(46);
         call_routine(0x07A6DD, 0);
-        cyc(48);
+        cyc(20);
         hud_end(1, 0, p0, db0);
         return;
     } else { cyc(78); }
@@ -1630,7 +1632,7 @@ void abi_TimeUpPhaseRace(void)
 {
     uint32_t b = (uint32_t)cpu.db << 16;
 
-    abi_PauseOnStart();
+    (cyc(46), abi_PauseOnStart());
     op_sep(P_M);
     cyc(46);
     op_lda8(b | 0x0E66);
@@ -1650,7 +1652,7 @@ void abi_TimeUpPhaseRace(void)
                 cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x31);
                 cpu.p = nz8(cpu.p, 0x31);
                 (cyc(62), abi_SoundPort0QueuePush());
-                cyc(42);                /* RTS */
+                cyc(26);                /* RTS, less the push's pulls it states */
                 return;
             }
         }
@@ -1722,7 +1724,7 @@ void abi_TimeUpPhaseEnd(void)
         op_sep(P_M);
         cyc(68);
         wr8(b | 0x0D59, 0x00);
-        (cyc(16), abi_ChampionshipScreenLoop());
+        (cyc(46), abi_ChampionshipScreenLoop());
         race_end_go_on(b);
         return;
     }
@@ -1846,7 +1848,7 @@ void abi_RaceEndCountdownFade(void)
             cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x30);
             cpu.p = nz8(cpu.p, 0x30);
             (cyc(24), abi_SoundPort0QueuePushRaw());
-            abi_ChampionshipScreenLoop();
+            (cyc(38), abi_ChampionshipScreenLoop());    /* JSR, less the push's pulls it states */
             abi_RaceEndCountdownFadeOn();
             return;
         }

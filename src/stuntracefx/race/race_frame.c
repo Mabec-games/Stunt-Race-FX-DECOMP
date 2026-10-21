@@ -193,7 +193,7 @@ static void finish_tail(uint32_t b, uint32_t pre, uint32_t post)
     cyc(post);                          /* RTS; 34 for RaceFinishSplit, which has X 8-bit */
 }
 
-static void finish_phases(uint8_t p1, uint8_t p2)
+static void finish_phases(uint8_t p1, uint8_t p2, unsigned sep, unsigned post)
 {
     uint32_t b = (uint32_t)cpu.db << 16;
     uint16_t y = cpu.y;
@@ -205,7 +205,7 @@ static void finish_phases(uint8_t p1, uint8_t p2)
     cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)y) & ~P_C) | P_C);     /* CPY #0 */
     if ((uint8_t)y != 0x00) {
         cpu.p |= P_M;
-        cyc(62);
+        cyc(62 + sep);                  /* BNE taken, SEP (RaceFinishPhases10 only), LDA #, STA */
         wr8(b | 0x0DD6, 0x12);
         cyc(40);
         wr8(b | 0x0DD7, p2);
@@ -235,7 +235,7 @@ static void finish_phases(uint8_t p1, uint8_t p2)
             wr8(b | 0x0DD6, p1);
         }
     }
-    finish_tail(b, both ? 0 : 22, 42);
+    finish_tail(b, both ? 0 : 22, post);
 }
 
 
@@ -308,7 +308,7 @@ void abi_RaceFinishSplit(void)
 void abi_RaceFinishPhases0E(void)
 {
     cyc(16);
-    finish_phases(0x0E, 0x0E);
+    finish_phases(0x0E, 0x0E, 0, 42);
 }
 
 /*
@@ -321,7 +321,7 @@ void abi_RaceFinishPhases0E(void)
  */
 void abi_RaceFinishPhases10(void)
 {
-    finish_phases(0x10, 0x10);
+    finish_phases(0x10, 0x10, 22, 34);
 }
 
 /* RaceVarsReset's stores in order: kind 0 through the data bank, 1 long,
@@ -968,8 +968,8 @@ void abi_RaceLoad(void)
             op_sep(P_M);
             cyc(22);
             wr8(b | 0x0D48, 0x00);
+            cyc(22);
         }
-        cyc(22);
         break;
     }
     cyc(46);

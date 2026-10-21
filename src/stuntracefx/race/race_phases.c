@@ -734,7 +734,7 @@ void abi_CarFinishSound(void)
     uint8_t p0 = cpu.p;
 
     op_sep(P_M | P_X);
-    cyc(54);
+    cyc(46);
     op_lda8(((uint32_t)cpu.db << 16) | 0x0D89);
     finish_sound((uint8_t)cpu.a);
     op_plp(p0);
@@ -795,7 +795,7 @@ void abi_RaceFinishSounds(void)
             cyc(22);
             lda8_imm(0x02);
             abi_SoundPort0QueuePushRaw();
-            (cyc(46), abi_CarFinishSound());
+            (cyc(54), abi_CarFinishSound());
             cyc(54);
             lda8_imm(0x48);
             abi_SoundPort0QueuePush();
@@ -803,7 +803,7 @@ void abi_RaceFinishSounds(void)
             cyc(16);
             lda8_imm(0x03);
             abi_SoundPort0QueuePushRaw();
-            (cyc(46), abi_CarFinishSound());
+            (cyc(54), abi_CarFinishSound());
         }
         cyc(30);
         op_plp(p0);
@@ -829,7 +829,7 @@ void abi_RaceFinishSounds(void)
     abi_SoundPort0QueuePushRaw();
     if (worse)
         cyc(22);   /* BRA */
-    (cyc(46), abi_CarFinishSound());
+    (cyc(54), abi_CarFinishSound());
     cyc(30);
     op_plp(p0);
 }
@@ -943,6 +943,7 @@ void abi_LapBannerWait(void)
         wr8(b | 0x0E57, 0xFF);
         lda8_imm(0x03);
         abi_SoundPort0QueuePushRaw();
+        cyc(8);                         /* the push's pulls at this caller's widths */
         lda8_imm(0x00);
     } else { cyc(60); }
     cyc(6);
@@ -1083,7 +1084,7 @@ static void lap_override(uint32_t b)
         call_routine(0x03DF10, 1);
         cpu.x = x;
         cpu.p = nz16(cpu.p, x);
-        cyc(88);
+        cyc(60);
         op_lda16(b | 0x0F11);
         cyc(32);
         wr16(0x70FC60 + cpu.x, cpu.a);
@@ -1526,7 +1527,7 @@ progress:
         lda8_imm(0xFF);
         wr8(b | 0x0D53, 0xFF);
         (cyc(46), abi_RaceFinishPhases10());
-        cyc(8);
+        cyc(16);
         return 1;
     }
     if (!(uint8_t)cpu.a) {
@@ -1675,7 +1676,7 @@ static void race_end_wait(void (*draw)(void))
     wr8(b | 0x0E56, 0x78);
     cyc(24);
     wr8(b | 0x0D55, 0x00);
-    (cyc(24), abi_RaceEndCountdownFade());
+    (cyc(46), abi_RaceEndCountdownFade());
 }
 
 void abi_BigSpritesRow6B(void);
@@ -2034,6 +2035,7 @@ static void pause_results(void)
             cyc(16);
             lda8_imm(0x30);
             abi_SoundPort0QueuePushRaw();
+            cyc(8);                     /* the push's pulls at this caller's widths */
         } else { cyc(6); }
     } else { cyc(6); }
     pause_stage_ten(b);
@@ -2050,6 +2052,7 @@ static void pause_results(void)
 void abi_PauseResultsFourB(void)
 {
     abi_GsuF15BFourB();
+    cyc(16);                            /* BRA (22) for the 6 pause_results states from PauseResults' entry */
     pause_results();
     cyc(26);
 }

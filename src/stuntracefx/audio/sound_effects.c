@@ -519,12 +519,19 @@ void PlayerSound35(void)
     SoundPort0QueuePush(0x35);
 }
 
+/* The test's byte v: BEQ taken (v = 1) 6 longer than not taken. */
+static void player_sound35(uint8_t v)
+{
+    cyc(v == 1 ? 116 : 110);
+    SoundPort0QueuePush(0x35);
+}
+
 void abi_PlayerSound35(void)
 {
     cyc(52);
     uint8_t v = rd8((uint32_t)cpu.db << 16 | (uint16_t)(0x0DF4 + cpu.y));
 
-    PlayerSound35();
+    player_sound35(v);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x35);
     cpu.p = (uint8_t)((nz8(cpu.p, cpu.db) & ~P_C) | P_M | (v >= 1 ? P_C : (cyc(42), 0)));
 }

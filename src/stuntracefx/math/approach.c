@@ -41,7 +41,7 @@ static uint16_t approach(uint16_t target, int wide, uint16_t min, int shifts, in
     int i;
 
     target &= mask;
-    cyc(wide ? 48 : 16);                        /* to the CMP's read */
+    cyc(16);                                    /* to the CMP's read */
     cur = wide ? rd16(APPROACH_VALUE) : rd8(APPROACH_VALUE);
     *moved = target != cur;
     if (!*moved) {
@@ -124,7 +124,7 @@ uint16_t ApproachQuarterMin4(uint16_t target, int *moved, uint8_t *p)
 
 void abi_ApproachQuarterMin4(void)
 {
-    cyc(30);
+    cyc(62);                                    /* JSL */
     abi_approach(1, 4, 2);
 }
 
@@ -141,7 +141,7 @@ uint16_t ApproachEighthMin8(uint16_t target, int *moved, uint8_t *p)
 
 void abi_ApproachEighthMin8(void)
 {
-    cyc(16);
+    cyc(48);
     abi_approach(1, 8, 3);
 }
 

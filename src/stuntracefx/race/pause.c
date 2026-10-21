@@ -405,7 +405,7 @@ static void choice_move(uint32_t b, uint16_t pad, int wide, void (*left)(void), 
     }
     abi_SoundPort0QueuePush();
     op_sep(P_M);
-    cyc(38);
+    cyc(wide ? 30 : 38);                /* the push's pulls at this caller's widths */
     wr8(b | 0x0D3D, 0x00);
     (cyc(46), right());
 }

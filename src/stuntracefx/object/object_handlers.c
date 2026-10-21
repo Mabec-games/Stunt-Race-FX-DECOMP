@@ -197,10 +197,10 @@ static uint16_t random_word(uint16_t off, uint16_t add)
 /* One burst piece: a new object of `kind` with handler $08:ED39
    (ObjectBurstPieceStart) at object X's position; none when the spawn
    fails. */
-static void burst_piece(uint16_t kind)
+static void burst_piece(uint16_t kind, int last)
 {
     if (!spawn(kind))
-        { cyc(48); return; }               /* BCS not taken, JML */
+        { cyc(last ? 70 : 48); return; }   /* BCS not taken, JML; the RTL after the last */
     set_handler(cpu.y, 0xED39);
     (cyc(62), abi_ObjectCopyPositionTo());
     cyc(22);
@@ -219,10 +219,10 @@ static void burst_piece(uint16_t kind)
 void abi_ObjectBurstSpawn(void)
 {
     cyc(22);
-    burst_piece(0xA5F0);
-    burst_piece(0xA60C);
-    burst_piece(0xA628);
-    burst_piece(0xA644);
+    burst_piece(0xA5F0, 0);
+    burst_piece(0xA60C, 0);
+    burst_piece(0xA628, 0);
+    burst_piece(0xA644, 1);
 }
 
 /*
@@ -241,7 +241,7 @@ void abi_ObjectBurstPieceStep(void)
 {
     (cyc(62), abi_ObjectSyncFromRecord());
     if (cpu.p & P_C) {
-        cyc(164);
+        cyc(126);
         abi_ObjectReleaseLong();
         return;
     } else { cyc(62); }
@@ -452,8 +452,8 @@ void abi_ObjectBlinkerStart(void)
         (cyc(66), swap_xy());
         abi_ObjectRebucket();
         swap_xy_less(94);
-    }
-    cyc(48);
+        cyc(48);
+    } else { cyc(26); }
     set_handler(cpu.x, 0xEE63);
     lda8(0x32);
     cyc(16);
@@ -465,8 +465,8 @@ void abi_ObjectBlinkerStart(void)
     sta16_imm(b | (uint16_t)(0x2020 + cpu.x), 0xD354);
     (cyc(84), abi_GsuRecordNew422());
     if (cpu.p & P_N) {
-        cyc(46);
-        return;                     /* JMP to the RTL at $08:A033 */
+        cyc(90);
+        return;                     /* BRL to the RTL at $08:A033 */
         return;
     } else { cyc(36); }
     record_place(0x02D0, 0x0190, 0x02D0, 0x4000);
@@ -913,7 +913,7 @@ void abi_ObjectChildFollow(void)
     } else { cyc(46); }
     if (d & 0x0800) {
         if (child_fast(b) && child_d1bf())
-            { cyc(72); child_handler(0xD249); } else { cyc(42); }
+            { cyc(6); child_handler(0xD249); } else { cyc(22); }
         cyc(2);
         goto place;
     } else { cyc(46); }
@@ -1660,7 +1660,6 @@ void abi_ObjectBreakOffB(void)
     piece_look(0x9B96, 0, 0x14);
     (cyc(46), abi_ObjectVelocityFromRecord());
     piece_drop();
-    cyc(22);
     piece_handler(0x03);
     (cyc(32), abi_ObjectPieceFall());
 }
@@ -2068,6 +2067,15 @@ static uint16_t sext_word(uint32_t at, uint32_t lead)
     return w;
 }
 
+/* `n` when a read at a is ROM (banks $00-$3F and $80-$BF from $8000), whose
+   clocks the C states; a work RAM read is placed on the original's. */
+static uint32_t rom_n(uint32_t a, uint32_t n)
+{
+    uint8_t bank = (uint8_t)(a >> 16);
+
+    return (bank < 0x40 || (bank >= 0x80 && bank < 0xC0)) && (a & 0xFFFF) >= 0x8000 ? n : 0;
+}
+
 /* $08:E13C: +$24 bit 5 (hidden), +$36 = 3. */
 static void attach_hide(void)
 {
@@ -2294,6 +2302,7 @@ void abi_ObjectAttachSpawn(void)
     uint32_t b = db();
     uint16_t t, i;
     uint8_t n;
+    int made = 0;
 
     cyc(24);
     wr16(b | 0x1F4C, cpu.x);
@@ -2306,17 +2315,17 @@ void abi_ObjectAttachSpawn(void)
     op_lda8(0x098090 + cpu.x);
     n = (uint8_t)cpu.a;
     if (n) {
+        cyc(80 + rom_n(0x098090 + cpu.x, 8));
         cpu.x++;
-        do {
-            cyc(88);
-            if (spawn(0xA040)) {
+        for (;;) {
+            if ((made = spawn(0xA040))) {
                 i = cpu.x;
                 cpu.p &= (uint8_t)~P_M;
                 cyc(76);
                 op_lda16(b | 0x1F4C);
                 cyc(30);
                 wr16(b | (uint16_t)(0x2006 + cpu.y), cpu.a);
-                cyc(48);
+                cyc(32 + rom_n(0x098090 + i, 16));
                 t = rd16(0x098090 + i);
                 cyc(92);
                 wr16(b | (uint16_t)(0x2004 + cpu.y), rd16(0x098000 + t));
@@ -2357,9 +2366,9 @@ void abi_ObjectAttachSpawn(void)
                 }
                 cyc(28);
                 cpu.p &= (uint8_t)~P_M;
-                wr16(b | (uint16_t)(0x202E + cpu.y), cyc_then(116, sext_word(0x098092 + cpu.x, 48)));
-                wr16(b | (uint16_t)(0x2030 + cpu.y), cyc_then(100, sext_word(0x098093 + cpu.x, 48)));
-                wr16(b | (uint16_t)(0x2032 + cpu.y), cyc_then(100, sext_word(0x098094 + cpu.x, 48)));
+                wr16(b | (uint16_t)(0x202E + cpu.y), cyc_then(100 + rom_n(0x098092 + cpu.x, 16), sext_word(0x098092 + cpu.x, 48)));
+                wr16(b | (uint16_t)(0x2030 + cpu.y), cyc_then(100, sext_word(0x098093 + cpu.x, 32 + rom_n(0x098093 + cpu.x, 16))));
+                wr16(b | (uint16_t)(0x2032 + cpu.y), cyc_then(100, sext_word(0x098094 + cpu.x, 32 + rom_n(0x098094 + cpu.x, 16))));
                 cpu.p |= P_M;
             } else { cyc(26); }
             cyc(86);
@@ -2370,9 +2379,12 @@ void abi_ObjectAttachSpawn(void)
             cpu.p |= P_M;
             n--;
             lda8(n);
-        } while (n);
-    } else { cyc(34); }
-    cyc(44);
+            if (!n)
+                break;
+            cyc(88);
+        }
+        cyc(made ? 44 : 22);            /* BEQ taken; the SEP of a made one */
+    } else { cyc(78); }
     cpu.x = rd16(b | 0x1F4C);
     cpu.p = nz16(cpu.p, cpu.x);
     cyc(44);
@@ -4166,6 +4178,7 @@ static void ring_spawn(unsigned lead)
         cyc(14);
         wr16(at, w);
         cpu.p = nz16(cpu.p, w);
+        cyc(44);                        /* RTL */
         return;
     }
     cpu.x = cpu.a;
@@ -4480,8 +4493,7 @@ void abi_ObjectMarkerFollow(void)
     cyc(24);
     op_lda8(b | 0x116A);
     if ((uint8_t)cpu.a)
-        { cyc(78); abi_ObjectRelease(); }
-    cyc(72);
+        { cyc(78); abi_ObjectRelease(); cyc(44); } else { cyc(66); }   /* RTL */
 }
 
 /*
@@ -5392,7 +5404,7 @@ void abi_CameraNearestCar(void)
         cyc(24);
         op_cmp16(rd16(b | 0x1F2D));
         if (cpu.p & P_N) {
-            cyc(36);
+            cyc(40);
             wr16(b | 0x1F2D, d);
             cyc(24);
             wr16(b | 0x1F52, car);

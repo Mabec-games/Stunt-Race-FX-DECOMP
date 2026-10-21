@@ -760,7 +760,7 @@ static void zoom_frame(uint16_t to, void (*fn)(void))
     cyc(16);
     wr16(0x00003E, cpu.a);
     op_lda16_imm(to);
-    (cyc(16), fn());
+    (cyc(48), fn());
     wr16(cam(0x000E), cyc_then(30, cpu.a));
     cpu.p |= P_M;
     (cyc(46), tail());
@@ -1446,7 +1446,6 @@ void abi_CameraPathFollow(void)
     cpu.y = 0x85C3;
     cpu.p = nz16(cpu.p, cpu.y);
     (cyc(86), abi_ObjectPathStart());
-    cyc(22);
     handler(cpu.x, 0x9888);
     mode(0x0001);
     (cyc(84), abi_CameraFollowLink());
@@ -1488,8 +1487,7 @@ static void path_go(uint16_t p, int set_mode)
     cpu.p = nz16(cpu.p, cpu.y);
     abi_ObjectPathStart();
     if (set_mode)
-        { cyc(0); mode(0x0001); }
-    cyc(84);
+        { cyc(0); mode(0x0001); cyc(84); } else { cyc(62); }
     abi_CameraFollowLink();
     (cyc(24), abi_CameraPathGo());
 }
@@ -1669,7 +1667,7 @@ void abi_CameraPathLowStep(void)
 {
     abi_CameraApproachTarget();
     if (cpu.p & P_C) {
-        cyc(50);
+        cyc(22);
         abi_CameraLowHold();
         return;
     } else { cyc(46); }
