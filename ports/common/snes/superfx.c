@@ -337,6 +337,8 @@ static GsuScreen screen(void)
     return s;
 }
 
+void (*snes_gsu_plot_hook)(uint8_t x, uint8_t y, uint8_t c);
+
 void gsu_plot(uint8_t x, uint8_t y)
 {
     GsuScreen s = screen();
@@ -358,6 +360,8 @@ void gsu_plot(uint8_t x, uint8_t y)
             c >>= 4;
         c &= 0x0F;
     }
+    if (snes_gsu_plot_hook)
+        snes_gsu_plot_hook(x, y, c);
     gsuclk_plot(&clk, &s, x, y, c);
     clk_sync();
 }

@@ -27,7 +27,8 @@ port.
   "ports never edit decomp source" with "ports never edit `src/`; the port's
   copy answers to the oracle".
 - **Graphics backends:** Metal, Vulkan, OpenGL, behind one small
-  interface, as Boss Rally.
+  interface, as Boss Rally. Everything shown is drawn by them: no
+  software rendering in the display path.
 - **Frame pacing as the original.** `RaceFrameStep` feeds the frames since
   the last game frame (`$0306` to `$06D4`) into the simulation, and that
   count is set by how long the Super FX takes to draw. The copy keeps a
@@ -86,11 +87,21 @@ character and tile store, palettes, a sprite list; per-line parameters in
 place of HDMA (windows, gradients, scroll splits); colour maths as blends.
 DMA to VRAM becomes uploads. Gate: 2D.
 
-**4. 3D.** The render path (`render/polygon.c`, `raster.c`, `bitmap.c`,
-`project.c`) emits a polygon list (screen vertices, colour or dither, the
-order `sort.c` gives) instead of plotting a planar bitmap for DMA.
-(a) A software rasteriser at the original's resolution; gate: 3D.
-(b) The four GPU backends, resolution scaling, sub-pixel vertices.
+**4. 3D.** The Super FX's 3D code already queues each frame's shapes in
+a draw list (raster.c: flat and textured polygons, lines, in draw order);
+the GPU backends draw that list, in two modes the remastered settings
+screen toggles, neither with a software rasteriser or the Super FX in the
+display path:
+(a) Original: at the original's resolution, the game's own fill exactly
+(each polygon's edges set up from the list as FxDrawList sets them up,
+the span rule evaluated in the shader). The game's fill lifted to plain C
+(`render/draw_list.c`) is the check's reference only; gate: 3D, every
+pixel against the Super FX's.
+(b) High resolution: triangles at the output's resolution, sub-pixel
+vertices from the projection before it rounds.
+The other things the Super FX plots (sprites, effects, weather, bitmaps)
+join the list as images. The 2D picture's compositing moves to the GPU
+as well.
 
 **5. Resolution and field of view.** A toggle between the original 4:3 and
 the display's own size and aspect:
