@@ -4,6 +4,7 @@
  * the buffer is $6800 bytes, 832 characters of 4 bits per pixel.
  */
 #include "gsu.h"
+#include "draw_list.h"
 
 #define FX_SCREEN_START 0x021Au  /* the word holding the buffer's start */
 #define FX_SCREEN_WORDS 0x3400u
@@ -21,6 +22,7 @@
  */
 uint16_t FxScreenClear(void)
 {
+    fx_op_clear();
     gsu_code(0x01aeba, 5);
     uint16_t at = gsu_ldw(FX_SCREEN_START);
     uint16_t n;

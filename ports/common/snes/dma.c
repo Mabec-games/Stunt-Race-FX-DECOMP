@@ -87,14 +87,20 @@ void dma_write(uint16_t reg, uint8_t v)
 
 /* one byte from A-bus address `a` to B-bus register `b`: to the picture
    (its tiles, palette, sprites and screen state) or work RAM's port */
+void (*snes_dma_hook)(uint32_t a, uint8_t b, uint8_t v);
+
 static void move(const Channel *c, uint32_t a, uint8_t b)
 {
+    uint8_t v;
     if (c->dmap & 0x80)
         snes_fatal("a transfer from register $21%02X: the game makes none", b);
+    v = bus_read_a(a);
+    if (snes_dma_hook)
+        snes_dma_hook(a, b, v);
     if (b < 0x34)
-        vid_reg(b, bus_read_a(a));
+        vid_reg(b, v);
     else
-        bus_write_b(b, bus_read_a(a));
+        bus_write_b(b, v);
 }
 
 /* the game's calls (native.h) */

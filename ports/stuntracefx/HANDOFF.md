@@ -40,6 +40,8 @@ pushed.
 | `PORT_VIDCHECK=1` | each frame drawn from its record (video.h VidFrame) against the picture drawn a line at a time (drawn only under this check) |
 | `PORT_FXCHECK=1` | the game's fill lifted to C (game/render/draw_list.c) against the Super FX's plots, every draw list; also counts pixels plotted outside the lists |
 | `PORT_GPUCHECK=1` with `RENDER=metal\|gl\|vulkan HOST=null` | the GPU compositor's frame, read back, against vid_draw_frame |
+| `PORT_FXGPUCHECK=1` (a GPU RENDER, HOST=null) | the 3D canvas filled on the GPU (render/fill) against draw_list.c's fill: random spans of every kind and layout, then every draw list |
+| `PORT_CANVASCHECK=1` (`PORT_CANVASDUMP=N`) | the Super FX screen as operations (runtime/canvas.c) against every byte the S-CPU uploads of it to VRAM, at the moment it is uploaded |
 | `PORT_RRCHECK=N` (windowed) | the presented frame at frame N (composed on the GPU) against the record's picture drawn on the CPU and scaled by the reference |
 | `ports/common/render/check/check.sh` | each backend's sharp bilinear against the reference |
 | `ports/common/audio/check/mix_replay LOG SOUND` (VOX=) | the native mixer fed bsnes's DSP inputs, against bsnes's samples |
@@ -80,6 +82,16 @@ check above covers 21 plays.
 - 3D: the Super FX queues each frame's shapes in a draw list ($08AA);
   game/render/draw_list.c is the game's fill (flat, textured, lines) in
   plain C, identical to the Super FX on every list of the 21 plays.
+- The Super FX screen as operations: the clear and every row each drawer
+  makes, as spans (game/include/draw_list.h FxSpan: flat, textured,
+  texel runs, 2-bit bitmaps, scaled 2-bit bitmaps, noise), from the draw
+  lists (draw_list.c's walks), the scaled sprites (frame.c), the blits
+  (bitmap.c), the HUD programs (hud.c) and the particles (fx_record.c);
+  PLOT's layout alias for lines past the height included. Every byte of
+  the screen uploaded to VRAM in the 21 plays matches them
+  (PORT_CANVASCHECK); render/fill fills them on Metal, OpenGL and Vulkan
+  exactly as fx_fill_span does (PORT_FXGPUCHECK). The GPU canvas is not
+  yet filled from the stream nor shown.
 - GPU compositor (render/compose/core.glsl, one source for three shader
   languages via build.sh): on Metal, OpenGL and Vulkan, every frame of
   the 21 plays identical to vid_draw_frame (PORT_GPUCHECK).
@@ -89,12 +101,12 @@ check above covers 21 plays.
 
 ## Next, in order
 
-1. The 3D layer on the GPU: original mode from the draw list (edge setup
-   as draw_list.c does it, spans filled in the shader), high resolution as
-   triangles with sub-pixel vertices from before the projection rounds;
-   the 3D picture composited where the game shows its tiles. Lift the other
-   Super FX drawers (objects, effects, weather, bitmaps: 11% of a race's
-   pixels, a third of a stunt course's) into draw operations too.
+1. The 3D layer on the GPU: the operations of each uploaded screen
+   filled into the GPU canvas and the compositor reading the canvas where
+   the game shows the uploaded tiles (VRAM's copies of the screen: the
+   race stages in video/dma.c, the menu rows), checked by PORT_GPUCHECK
+   against the picture drawn from VRAM; then high resolution as triangles
+   with sub-pixel vertices from before the projection rounds.
 2. Widescreen and field of view (PLAN.md phase 5).
 3. The game's C as plain C (PLAN.md phase 1): no cpu/spc/gsu register
    files, abi_ wrappers or rd8/wr8; the frame loop with no interrupts or

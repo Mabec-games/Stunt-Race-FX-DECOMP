@@ -55,10 +55,10 @@ void rr_compose(const RrPicture *p, const int d[4]);
    of colour indices, filled on the GPU from a draw list's spans (the
    game's FxSpan, packed in RR_SPAN_WORDS words each:
      0  x | row << 8 | count (1-256) << 16
-     1  colour | options << 8 | textured << 13 | colour depth << 14 |
-        bank << 16
+     1  colour | options << 8 | kind << 13 | colour depth << 16 |
+        bank << 18 | layout << 26
      2  u | v << 16          3  u step | v step << 16
-     4  base | mask << 16    5-7 0).
+     4  base | mask << 16    5  palette (four bytes)    6-7 0).
    rr_fill_rom: the cartridge ROM the textures come from (size a whole
    number of KB), once; 0 when this backend has no canvas. rr_fill: the
    canvas cleared, then the n spans filled in order. rr_fill_read: the

@@ -55,6 +55,8 @@ static void flat_span(Fill *f, uint8_t x, uint8_t y, uint16_t n)
     s.n = n;
     s.colour = f->colour;
     s.options = f->options;
+    s.mode = (uint8_t)f->src->mode;
+    s.layout = (uint8_t)f->src->layout;
     f->sink(f->ctx, &s);
 }
 
@@ -78,7 +80,7 @@ static uint16_t reciprocal(const Fill *f, uint16_t n)
 typedef struct {
     const FxDrawSource *src;
     FxCanvas *c;
-    uint8_t colour, options;
+    uint8_t colour, options, mode, layout;
 } Plot;
 
 static void set_colour(Plot *f, uint8_t v)
@@ -97,7 +99,7 @@ static void set_colour(Plot *f, uint8_t v)
 static void plot(Plot *f, uint8_t x, uint8_t y)
 {
     uint8_t c = f->colour;
-    int md = f->src->mode;
+    int md = f->mode;
     if (!(f->options & 0x01)) {
         if (md == 3) {
             if (f->options & 0x08) {
@@ -114,6 +116,13 @@ static void plot(Plot *f, uint8_t x, uint8_t y)
         if ((x ^ y) & 1)
             c >>= 4;
         c &= 0x0F;
+    }
+    if (f->layout < 3) {                 /* where the layout puts a line past the height */
+        unsigned h = 128u + 32u * f->layout, ax = x + 8u * (y / h);
+        if (ax > 255u)
+            return;
+        x = (uint8_t)ax;
+        y = (uint8_t)(y % h);
     }
     f->c->px[y << 8 | x] = c;
     f->c->set[y << 8 | x] = 1;
@@ -416,8 +425,10 @@ static uint16_t tex_polygon(Fill *f, uint16_t p, int n)
     f->options = (uint8_t)((word >> 8) & 0x1F);
     memset(&s, 0, sizeof s);
     s.options = f->options;
-    s.textured = 1;
+    s.kind = 1;
     s.bank = bank;
+    s.mode = (uint8_t)f->src->mode;
+    s.layout = (uint8_t)f->src->layout;
     s.base = base;
     s.mask = mask;
     /* the vertices copied below, u and v of each moved down a byte where
@@ -506,8 +517,19 @@ static uint16_t tex_polygon(Fill *f, uint16_t p, int n)
     return (uint16_t)(v + size);
 }
 
+uint16_t fx_noise_step(uint16_t s)
+{
+    uint16_t t = (uint16_t)((s & 0xFF) << 8 ^ s), w = (uint16_t)(t << 8 | t >> 8), r;
+    r = (uint16_t)(((t & 0xFF) * 2u) ^ w);
+    if (r & 1)
+        return (uint16_t)((r >> 1) ^ 0xFF00 ^ 0x8180);
+    r = (uint16_t)((r >> 1) ^ 0xFF00);
+    return r == 0xAA55 ? 0 : r;
+}
+
 void fx_fill_span(const FxDrawSource *src, FxCanvas *c, const FxSpan *s)
 {
+    uint16_t noise = s->tu;
     Plot f;
     uint16_t k, tu = s->tu, tv = s->tv;
     uint8_t x = s->x;
@@ -515,12 +537,30 @@ void fx_fill_span(const FxDrawSource *src, FxCanvas *c, const FxSpan *s)
     f.c = c;
     f.colour = s->colour;
     f.options = s->options;
+    f.mode = s->mode;
+    f.layout = s->layout;
     for (k = 0; k < s->n; k++, x++) {
-        if (s->textured) {
+        if (s->kind == 1) {
             uint16_t at = (uint16_t)((((tv & 0xFF00) | tu >> 8) & s->mask) + s->base);
             tv = (uint16_t)(tv + s->dv);
             tu = (uint16_t)(tu + s->du);
             set_colour(&f, rom_byte(src, s->bank, at));
+        } else if (s->kind == 2) {
+            uint16_t i = (uint16_t)(((uint32_t)s->tu + (uint32_t)k * s->du) >> 16);
+            set_colour(&f, rom_byte(src, s->bank, (uint16_t)(s->dv ? s->base - i : s->base + i)));
+        } else if (s->kind == 3) {
+            unsigned p = (unsigned)(rom_byte(src, s->bank, (uint16_t)(s->base + (k >> 2))) >> ((k & 3) * 2)) & 3u;
+            set_colour(&f, (uint8_t)(s->palette >> (p * 8)));
+        } else if (s->kind == 5) {
+            unsigned i;
+            noise = fx_noise_step(noise);
+            i = noise & 7u;
+            set_colour(&f, (uint8_t)(i < 4 ? s->palette >> (i * 8) : (i < 6 ? s->tv : s->dv) >> ((i & 1) * 8)));
+        } else if (s->kind == 4) {
+            uint16_t d = (uint16_t)(s->tu + k), sw = (uint16_t)(d << 8 | d >> 8);
+            uint16_t c = (uint16_t)(((int32_t)(int16_t)sw * (int16_t)s->du) >> 16);
+            uint8_t b = rom_byte(src, s->bank, (uint16_t)(s->base + (uint16_t)((int16_t)c >> 2)));
+            set_colour(&f, (uint8_t)(s->palette >> (((b >> ((c & 3) * 2)) & 3u) * 8)));
         }
         plot(&f, x, s->y);
     }

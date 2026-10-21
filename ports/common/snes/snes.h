@@ -79,6 +79,9 @@ extern void (*snes_write_hook)(uint32_t addr, uint8_t value);
 /* Each pixel the Super FX's PLOT writes, its colour after the plot rules
    (for the port's checks). */
 extern void (*snes_gsu_plot_hook)(uint8_t x, uint8_t y, uint8_t c);
+/* each byte a DMA moves, from A-bus address a to B-bus register $2100 + b
+   (a check's hook, PORT_CANVASCHECK) */
+extern void (*snes_dma_hook)(uint32_t a, uint8_t b, uint8_t v);
 
 /* ---- the picture ----------------------------------------------------------------- */
 

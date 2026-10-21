@@ -59,7 +59,7 @@ static void g_report(void)
 static void g_span(void *ctx, const FxSpan *p)
 {
     uint32_t *w;
-    int mode = *(const int *)ctx;
+    (void)ctx;
     if (g_n == g_cap) {
         g_cap = g_cap ? g_cap * 2 : 4096;
         g_spans = (uint32_t *)realloc(g_spans, (size_t)g_cap * RR_SPAN_WORDS * 4);
@@ -68,12 +68,13 @@ static void g_span(void *ctx, const FxSpan *p)
     if (p->x + p->n > 256)
         g_wraps++;
     w[0] = p->x | (uint32_t)p->y << 8 | (uint32_t)p->n << 16;
-    w[1] = p->colour | (uint32_t)p->options << 8 | (uint32_t)p->textured << 13 | (uint32_t)(mode & 3) << 14 |
-           (uint32_t)p->bank << 16;
+    w[1] = p->colour | (uint32_t)p->options << 8 | (uint32_t)(p->kind & 7) << 13 | (uint32_t)(p->mode & 3) << 16 |
+           (uint32_t)p->bank << 18 | (uint32_t)(p->layout & 3) << 26;
     w[2] = p->tu | (uint32_t)p->tv << 16;
     w[3] = p->du | (uint32_t)p->dv << 16;
     w[4] = p->base | (uint32_t)p->mask << 16;
-    w[5] = w[6] = w[7] = 0;
+    w[5] = p->palette;
+    w[6] = w[7] = 0;
 }
 
 /* the random lists: the pixels that differ */
@@ -89,6 +90,7 @@ static long g_random(FxCanvas *ref)
         s.rom = srfx_rom;
         s.rom_size = (uint32_t)(srfx_rom_end - srfx_rom);
         s.mode = mode;
+        s.layout = 3;
         memset(ref, 0, sizeof *ref);
         g_n = 0;
         for (i = 0; i < 4000; i++) {
@@ -103,14 +105,17 @@ static long g_random(FxCanvas *ref)
             p.n = (uint16_t)(1 + (r[0] >> 16) % 256);
             p.colour = (uint8_t)r[1];
             p.options = (uint8_t)((r[1] >> 8) & 0x1F);
-            p.textured = (uint8_t)((r[1] >> 13) & 1);
+            p.kind = (uint8_t)((r[1] >> 13) % 6);
+            p.palette = r[2] ^ r[5] << 8;
             p.bank = (uint8_t)(r[1] >> 16);
             p.tu = (uint16_t)r[2];
             p.tv = (uint16_t)r[3];
             p.du = (uint16_t)r[4];
-            p.dv = (uint16_t)(r[4] >> 8);
+            p.dv = (uint16_t)(p.kind == 2 ? (r[4] >> 8) & 1 : r[4] >> 8);
             p.base = (uint16_t)r[5];
             p.mask = (uint16_t)(r[5] >> 4);
+            p.mode = (uint8_t)mode;
+            p.layout = (uint8_t)(r[3] >> 20 & 3);
             g_span(&mode, &p);
             fx_fill_span(&s, ref, &p);
         }
@@ -144,7 +149,7 @@ static void gpu_list(const FxDrawSource *s)
     if (!gpu_on)
         return;
     g_n = 0;
-    fx_list_spans(s, g_span, (void *)&s->mode);
+    fx_list_spans(s, g_span, NULL);
     rr_fill(g_spans, g_n);
     memset(ref, 0, sizeof *ref);
     fx_draw_list(s, ref);
@@ -170,16 +175,19 @@ static void report(void)
             lists, pixels, bad_lists, first_bad, bad_pixels, outside);
 }
 
+void canvas_list(const FxDrawSource *s);
+
 void fx_list_begin(void)
 {
     FxDrawSource s;
-    if (gpu_on) {
-        s.ram = snes_sfx_ram();
-        s.rom = srfx_rom;
-        s.rom_size = (uint32_t)(srfx_rom_end - srfx_rom);
-        s.mode = gsu.scmr & 3;
+    s.ram = snes_sfx_ram();
+    s.rom = srfx_rom;
+    s.rom_size = (uint32_t)(srfx_rom_end - srfx_rom);
+    s.mode = gsu.scmr & 3;
+    s.layout = gsu_layout();
+    canvas_list(&s);
+    if (gpu_on)
         gpu_list(&s);
-    }
     if (on < 0) {
         on = getenv("PORT_FXCHECK") != NULL;
         if (on) {
@@ -197,6 +205,7 @@ void fx_list_begin(void)
     s.rom = srfx_rom;
     s.rom_size = (uint32_t)(srfx_rom_end - srfx_rom);
     s.mode = gsu.scmr & 3;
+    s.layout = 3;                        /* PLOT's own (x, y), as the hook gets them */
     fx_draw_list(&s, mine);
     open_now = 1;
 }

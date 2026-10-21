@@ -13,8 +13,45 @@
  */
 #include "gsu.h"
 #include "gsu_ops.h"
+#include "draw_list.h"
 
 #define R gsu.r
+
+/* A scaled sprite's row as a span (draw_list.h): opened as the row's loop
+   is set up, with the texel rule the loop follows, and made with the
+   pixels the loop plotted (R1 then less R1 now) as the row ends. */
+static FxSpan sprite_row;
+static int sprite_row_open;
+
+static void row_open(uint8_t kind, uint16_t tu, uint16_t du, uint16_t tv, uint16_t base, uint16_t dv)
+{
+    sprite_row.x = (uint8_t)R[1];
+    sprite_row.y = (uint8_t)R[2];
+    sprite_row.colour = gsu.colr;
+    sprite_row.options = gsu.por;
+    sprite_row.kind = kind;
+    sprite_row.bank = gsu.rombr;
+    sprite_row.mode = (uint8_t)(gsu.scmr & 3);
+    sprite_row.layout = gsu_layout();
+    sprite_row.tu = tu;
+    sprite_row.du = du;
+    sprite_row.tv = tv;
+    sprite_row.dv = dv;
+    sprite_row.base = base;
+    sprite_row.mask = 0xFFFF;
+    sprite_row.n = R[1];                 /* where the row starts, until it ends */
+    sprite_row_open = 1;
+}
+
+static void row_close(void)
+{
+    if (!sprite_row_open)
+        return;
+    sprite_row_open = 0;
+    sprite_row.n = (uint16_t)(R[1] - sprite_row.n);
+    if (sprite_row.n)
+        fx_op_span(&sprite_row);
+}
 
 #define FX_MODEL_AT              0x0016u
 #define FX_MODEL_18              0x0018u
@@ -931,6 +968,7 @@ lB22D:
     gsu_r14(gsu_add(R[0], R[5], 0));
     R[1] = R[3];
     R[12] = R[6];
+    row_open(1, 0, R[9], R[7], R[5], 0);
     gsu_code(0x01b23b, 4);
 lB23E:
     R[8] = gsu_add(R[8], R[9], 0);
@@ -945,6 +983,7 @@ lB23E:
     gsu_plot_r1();
     if (t) goto lB23E;
 lB246:
+    row_close();
     R[7] = gsu_add(R[7], R[9], 0);
     R[4] = gsu_dec(R[4]);
     t = !gsu.z;
@@ -1018,6 +1057,7 @@ lB280:
     gsu_r14(gsu_add(R[0], R[5], 0));
     R[1] = R[3];
     R[12] = R[6];
+    row_open(1, 0, (uint16_t)-R[9], R[7], R[5], 0);
     gsu_code(0x01b28e, 4);
 lB291:
     R[8] = gsu_sub(R[8], R[9], 0);
@@ -1032,6 +1072,7 @@ lB291:
     gsu_plot_r1();
     if (t) goto lB291;
 lB299:
+    row_close();
     R[7] = gsu_add(R[7], R[9], 0);
     R[4] = gsu_dec(R[4]);
     t = !gsu.z;
@@ -1155,6 +1196,7 @@ lB365:
     gsu_r14(gsu_add(R[0], R[5], 0));
     R[1] = R[3];
     R[0] = R[11];
+    row_open(2, R[11], R[9], 0, R[14], 0);
     gsu_code(0x01b377, 5);
     gsu_color(gsu_getb());   /* GETC */
     R[12] = R[6];
@@ -1195,6 +1237,7 @@ lB38F:
     gsu_plot_r1();
     if (t) goto lB38F;
 lB398:
+    row_close();
     R[7] = gsu_sub(R[7], R[9], 0);
     t = gsu.cy;
     R[2] = gsu_inc(R[2]);
@@ -1283,6 +1326,7 @@ lB3E9:
     gsu_r14(gsu_add(R[0], R[5], 0));
     R[1] = R[3];
     R[0] = R[11];
+    row_open(2, R[11], R[9], 0, R[14], 1);
     gsu_code(0x01b3fb, 5);
     gsu_color(gsu_getb());   /* GETC */
     R[12] = R[6];
@@ -1323,6 +1367,7 @@ lB413:
     gsu_plot_r1();
     if (t) goto lB413;
 lB41C:
+    row_close();
     R[7] = gsu_sub(R[7], R[9], 0);
     t = gsu.cy;
     R[2] = gsu_inc(R[2]);

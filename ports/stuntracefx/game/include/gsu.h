@@ -61,6 +61,13 @@ uint8_t gsu_rpix(uint8_t x, uint8_t y);
    any clocks beyond those (master clocks, 21.47 MHz). The stated forms of
    a branch and a loop, as machine.h's cyc_then and cyc_loop. */
 void gsu_code(uint32_t addr, uint32_t n);
+/* The screen's layout as PLOT reads it: 0-2 the 128, 160 and 192-line
+   heights (SCMR bits 2 and 5), 3 the sprite layout (POR bit 4). */
+static inline uint8_t gsu_layout(void)
+{
+    return (uint8_t)((gsu.por & 0x10) ? 3 : ((gsu.scmr >> 2) & 1) | ((gsu.scmr >> 4) & 2));
+}
+
 static inline uint32_t gsu_code_then(uint32_t addr, uint32_t n, uint32_t v) { gsu_code(addr, n); return v; }
 static inline int gsu_code_loop(uint32_t addr, uint32_t n, int again) { if (again) gsu_code(addr, n); return again; }
 void gsu_cache(uint16_t r15);

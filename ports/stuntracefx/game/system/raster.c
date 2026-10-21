@@ -4,6 +4,7 @@
 #include "machine.h"
 #include "native.h"
 #include "hw.h"
+#include "draw_list.h"
 #include "cpu_ops.h"
 
 /*
@@ -425,7 +426,9 @@ void abi_RasterStage(void)
             cpu.x = 0x2C00;
             cpu.y = 0x0400;
             op_lda16_imm(0x0800);
+            fx_op_upload(1);
             (cyc(80), abi_VramDmaFromGsuRam());
+            fx_op_upload(0);
             op_rep(P_M);
             op_lda16_imm(0xFFFF);
             cyc(18);

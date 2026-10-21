@@ -10,6 +10,7 @@
 #include "machine.h"
 #include "native.h"
 #include "hw.h"
+#include "draw_list.h"
 #include "wram.h"
 #include "cpu_ops.h"
 
@@ -112,6 +113,7 @@ uint16_t VramDmaRowsFromGsuRam(uint16_t src, uint16_t vram, uint8_t rows)
 {
     uint16_t mode;
 
+    fx_op_upload(1);
     cyc(24);
     ppu_wr16(VMADDL, vram);
     cyc(48);
@@ -137,6 +139,7 @@ uint16_t VramDmaRowsFromGsuRam(uint16_t src, uint16_t vram, uint8_t rows)
     mode = rd16(GSU_SCMR_SHADOW) | 0x0018;
     cyc(48);
     hw_wr16(GSU_SCMR, mode);
+    fx_op_upload(0);
     return mode;
 }
 
@@ -348,6 +351,7 @@ uint8_t VramDmaWideRowsFromGsuRam(uint8_t rows_less_one, uint16_t src, uint16_t 
     uint8_t mode;
     uint16_t s;
 
+    fx_op_upload(1);
     cyc(238);
     hw_wr(GSU_SCMR, cyc_then(40, rd8(GSU_SCMR_SHADOW) & 0xF7));
     cyc(38);
@@ -381,6 +385,7 @@ uint8_t VramDmaWideRowsFromGsuRam(uint8_t rows_less_one, uint16_t src, uint16_t 
     cyc(40);
     hw_wr(GSU_SCMR, mode);
     *next = s;
+    fx_op_upload(0);
     cyc(70);
     return mode;
 }
@@ -1005,7 +1010,9 @@ static int race_stage(uint32_t b)
         } else { cyc(22); }
         next_stage(b, 0x0002);
         ld3(0x2200, 0x2C00, 0x0000, 0x2200);
+        fx_op_upload(1);                /* a third of the race screen */
         abi_VramDmaFromGsuRam();
+        fx_op_upload(0);
         cpu.p &= (uint8_t)~(P_M | P_X);
         cyc(22);
         ld3(0x0200, 0xE3D7, 0x5BC0, 0x5BC0);
@@ -1016,7 +1023,9 @@ static int race_stage(uint32_t b)
         delay_a(1);
         next_stage(b, 0x0004);
         ld3(0x2200, 0x4E00, 0x1100, 0x2200);
+        fx_op_upload(1);                /* a third of the race screen */
         abi_VramDmaFromGsuRam();
+        fx_op_upload(0);
         cpu.p &= (uint8_t)~(P_M | P_X);
         cyc(22);
         ld3(0x0240, 0xE5D7, 0x5CC0, 0x5CC0);
@@ -1032,7 +1041,9 @@ static int race_stage(uint32_t b)
         cyc(32);
         wr16(0x7F348D, cpu.a);
         ld3(0x2400, 0x7000, 0x2200, 0x2400);
+        fx_op_upload(1);                /* a third of the race screen */
         abi_VramDmaFromGsuRam();
+        fx_op_upload(0);
         cpu.p |= P_M;
         cyc(22);
         put8(BG12NBA, 0x60);
@@ -1062,7 +1073,9 @@ static int race_stage(uint32_t b)
         delay_a(1);
         next_stage(b, 0x0008);
         ld3(0x2200, 0xB800, 0x3400, 0x2200);
+        fx_op_upload(1);                /* a third of the race screen */
         abi_VramDmaFromGsuRam();
+        fx_op_upload(0);
         cpu.p &= (uint8_t)~(P_M | P_X);
         cyc(22);
         ld3(0x0200, 0xE817, 0x5DE0, 0x5DE0);
@@ -1072,7 +1085,9 @@ static int race_stage(uint32_t b)
         delay_a(1);
         next_stage(b, 0x000A);
         ld3(0x2200, 0xDA00, 0x4500, 0x2200);
+        fx_op_upload(1);                /* a third of the race screen */
         abi_VramDmaFromGsuRam();
+        fx_op_upload(0);
         cpu.p &= (uint8_t)~(P_M | P_X);
         cyc(22);
         ld3(0x0240, 0xEA17, 0x5EE0, 0x5EE0);
@@ -1090,7 +1105,9 @@ static int race_stage(uint32_t b)
         cyc(32);
         wr16(0x7F348D, cpu.a);
         ld3(0x2400, 0x9400, 0x2200, 0x2400);
+        fx_op_upload(1);                /* a third of the race screen */
         abi_VramDmaFromGsuRam();
+        fx_op_upload(0);
         cpu.p |= P_M;
         cyc(22);
         copy8(BG2HOFS, b | 0x0D94);

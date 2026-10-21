@@ -27,6 +27,7 @@
  * runs it after the branch decision.
  */
 #include "gsu_ops.h"
+#include "draw_list.h"
 
 #define HUD_COLOURS     0x0200u  /* four colour bytes */
 #define HUD_X           0x020Au
@@ -779,11 +780,33 @@ static const uint8_t rpix_in_glyph_rows[7][6] = {{6, 7, 8, 9, 0, 0}, {6, 7, 8, 9
 /* gsuwalk: the copy of bitmap_row_end each copy of glyph_rows calls */
 static const uint8_t bitmap_row_end_in_glyph_rows[7] = {0, 0, 1, 2, 3, 4, 5};
 
+/* a row about to be drawn at (x, R2) from the bitmap, through the colour
+   table at R11, as a span (draw_list.h) */
+static void row_span(uint16_t x, uint8_t kind, uint16_t n, uint16_t tu, uint16_t du, uint16_t base)
+{
+    FxSpan row;
+    row.x = (uint8_t)x;
+    row.y = (uint8_t)R[2];
+    row.n = n;
+    row.colour = gsu.colr;
+    row.options = gsu.por;
+    row.kind = kind;
+    row.bank = gsu.rombr;
+    row.mode = (uint8_t)(gsu.scmr & 3);
+        row.layout = gsu_layout();
+    row.tu = tu;
+    row.du = du;
+    row.tv = row.dv = row.mask = 0;
+    row.base = base;
+    fx_op_palette_span(&row, R[11]);
+}
+
 static void glyph_rows(uint16_t row_start, unsigned bytes, int rpix_each, int copy)
 {
     R[13] = row_start;
     gsu_codes(glyph_rows_fetch[copy] + 3, 2);
     do {
+        row_span(R[1], 3, (uint16_t)(bytes * 4), 0, 0, R[14]);
         for (unsigned b = 0; b < bytes; b++) {
             bitmap_byte(GSU_COPY(bitmap_byte_in_glyph_rows[copy][b]));
             if (rpix_each)
@@ -956,8 +979,22 @@ static void noise_body(int copy)
     R[2] = 0;
     gsu_codes(noise_body_fetch[copy] + 5, 3);
     do {
+        FxSpan row;                          /* the row as a span (draw_list.h) */
+
         R[12] = R[9];
         R[13] = 0xEEBB;
+        row.x = (uint8_t)R[1];
+        row.y = (uint8_t)R[2];
+        row.n = R[9];
+        row.colour = gsu.colr;
+        row.options = gsu.por;
+        row.kind = 5;
+        row.bank = 0;
+        row.mode = (uint8_t)(gsu.scmr & 3);
+        row.layout = gsu_layout();
+        row.tu = R[8];
+        row.du = row.base = row.mask = 0;
+        fx_op_ramp_span(&row, R[6]);
         gsu_codes(noise_body_fetch[copy] + 8, 1);
         do {
             R[0] = gsu_lob(R[8]);
@@ -1068,6 +1105,7 @@ static void picture_rows(uint16_t src, uint16_t row_start, uint16_t bytes, int c
     R[13] = row_start;
     gsu_codes(picture_rows_fetch[copy] + 4, 1);
     do {
+        row_span(R[1], 3, (uint16_t)(bytes * 4), 0, 0, R[14]);
         R[3] = bytes;
         gsu_codes(picture_rows_fetch[copy] + 8, 3);
         do {
@@ -1501,6 +1539,9 @@ static void scaled_sprite(int copy)
     gsu_codes(scaled_sprite_fetch[copy] + 38, 2);
     R[4] = gsu_ldw(HUD_STEP_Y);
     do {
+        uint16_t row_x = R[1];
+        int first = 1;
+
         R[12] = R[5];
         R[13] = 0xFB7D;
         gsu_codes(scaled_sprite_fetch[copy] + 47, 1);
@@ -1517,6 +1558,12 @@ static void scaled_sprite(int copy)
                 gsu_codes(scaled_sprite_fetch[copy] + 52, 1);
                 gsu_r14(gsu_add(R[0], R[14], 0));
             } else { gsu_codes(scaled_sprite_fetch[copy] + 49, 2); }
+            if (first) {
+                /* the row as a span: the row's start in the bitmap, as each
+                   pixel works it out */
+                row_span(row_x, 4, R[5], (uint16_t)(row_x - R[8]), R[3], R[14]);
+                first = 0;
+            }
             R[0] = gsu_sub(R[1], R[8], 0);
             R[0] = gsu_swap(R[0]);
             R[6] = R[3];

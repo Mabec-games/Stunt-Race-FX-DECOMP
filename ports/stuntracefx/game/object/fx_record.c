@@ -7,6 +7,7 @@
  */
 #include <string.h>
 #include "gsu_ops.h"
+#include "draw_list.h"
 #include "fx_calls.h"
 
 #define REC_NEXT 0x0Eu
@@ -481,6 +482,22 @@ void abi_FxTimersProgram(void)
     }
 }
 
+/* n pixels of the plot colour from (x, y) as a span (draw_list.h) */
+static void flat_row(uint16_t x, uint16_t y, uint16_t n)
+{
+    FxSpan row;
+
+    memset(&row, 0, sizeof row);
+    row.x = (uint8_t)x;
+    row.y = (uint8_t)y;
+    row.n = n;
+    row.colour = gsu.colr;
+    row.options = gsu.por;
+    row.mode = (uint8_t)(gsu.scmr & 3);
+    row.layout = gsu_layout();
+    fx_op_span(&row);
+}
+
 /* COLOR, with the plot options' nibble modes. */
 static void fx_color(uint16_t v)
 {
@@ -584,6 +601,7 @@ static void fx_line(void)
             /* the branch's delay slot */
             /* the branch's delay slot */
             gsu_code(0x01bb9b, 2); gsu_code((cs) ? 0x01bba0 : 0x01bb9d, 1);   /* the branch's delay slot */
+            flat_row(gsu.r[1], gsu.r[2], 1);
             gsu_plot_r1();
             if (!cs) {
                 gsu.r[0] = gsu_add(gsu.r[0], gsu.r[3], 0);
@@ -612,6 +630,7 @@ static void fx_line(void)
             /* the branch's delay slot */
             /* the branch's delay slot */
             gsu_code(0x01bbb6, 2); gsu_code((cs) ? 0x01bbbb : 0x01bbb8, 1);   /* the branch's delay slot */
+            flat_row(gsu.r[1], gsu.r[2], 1);
             gsu_plot_r1();
             if (!cs) {
                 gsu.r[0] = gsu_add(gsu.r[0], gsu.r[9], 0);
@@ -701,6 +720,8 @@ static void fx_particle(int copy)
     gsu.r[0] = gsu_and(gsu.r[0], 0x0004);
     big = !gsu.z;
     if (!big) {
+        flat_row(gsu.r[1], gsu.r[2], 2);        /* the dot's two rows */
+        flat_row(gsu.r[1], (uint16_t)(gsu.r[2] + 1), 2);
         gsu_code(0x01bb02, 6);
         gsu_plot_r1();
         gsu_code(0x01bb08, 1);

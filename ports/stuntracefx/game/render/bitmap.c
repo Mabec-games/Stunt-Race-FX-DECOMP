@@ -5,6 +5,7 @@
  */
 #include "gsu.h"
 #include "gsu_ops.h"
+#include "draw_list.h"
 
 /* COLOR: the plot colour from a byte, as the plot options shape it (high
    nibble from the source's high nibble, or the high nibble kept). */
@@ -637,8 +638,21 @@ static void fx_blit(uint16_t rows, int bytes, uint16_t skip, uint16_t loop, int 
     gsu_codes(fx_blit_fetch[copy] + 3, 1);
     do {
         int b, p;
+        FxSpan row;                          /* the row as a span (draw_list.h) */
 
         gsu.r[1] = gsu.r[4];
+        row.x = (uint8_t)gsu.r[1];
+        row.y = (uint8_t)gsu.r[2];
+        row.n = (uint16_t)(bytes * 4);
+        row.colour = gsu.colr;
+        row.options = gsu.por;
+        row.kind = 3;
+        row.bank = gsu.rombr;
+        row.mode = (uint8_t)(gsu.scmr & 3);
+        row.layout = gsu_layout();
+        row.base = gsu.r[14];
+        row.tu = row.du = row.tv = row.dv = row.mask = 0;
+        fx_op_palette_span(&row, gsu.r[9]);
         for (b = 0; b < bytes; b++) {
             gsu_codes(fx_blit_fetch[copy] + 4 + b, 1);
             gsu.r[3] = gsu_getb();
