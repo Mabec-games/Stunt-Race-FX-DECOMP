@@ -18,6 +18,7 @@
 #include "rr.h"
 #include "rr_size.h"
 #include "host.h"
+#include "compose_src.h"
 
 /* the host's window for GL (the Windows host's HWND), its size in pixels;
    without one, offscreen */
@@ -54,7 +55,15 @@ static const char *k_sharp =
     "  o = vec4(texture(t, (i + 0.5 + f) / ts).rgb, 1.0);\n"
     "}\n";
 
+/* the compose pass: one triangle over the whole picture */
+static const char *k_compose_vs =
+    "#version 330 core\n"
+    "void main() { vec2 p = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2); gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0); }\n";
+
 static GLuint s_copy, s_sharp, s_vao, s_vbo, s_fbo, s_col, s_pic;
+/* the compositor: its program, the record's textures (units 0-3), the
+   composed picture and its framebuffer */
+static GLuint s_compose, s_crec[4], s_cpic, s_cfbo;
 static int s_pw, s_ph;
 static int s_rw, s_rh, s_window;
 
@@ -74,9 +83,9 @@ static GLuint shader(GLenum kind, const char *src)
     return s;
 }
 
-static GLuint program(const char *fs)
+static GLuint program(const char *vs, const char *fs)
 {
-    GLuint p = glCreateProgram(), v = shader(GL_VERTEX_SHADER, k_vs), f = shader(GL_FRAGMENT_SHADER, fs);
+    GLuint p = glCreateProgram(), v = shader(GL_VERTEX_SHADER, vs), f = shader(GL_FRAGMENT_SHADER, fs);
     GLint ok = 0;
     if (!v || !f)
         return 0;
@@ -118,14 +127,44 @@ static void targets(int w, int h)
 int rr_open(void)
 {
     void *win = host_window_handle();
-    int w = 0, h = 0;
+    int w = 0, h = 0, i;
     if (!gl_ctx_open(win) || !gl_api_load())
         return 0;
     s_window = win != NULL;
-    s_copy = program(k_copy);
-    s_sharp = program(k_sharp);
-    if (!s_copy || !s_sharp)
+    s_copy = program(k_vs, k_copy);
+    s_sharp = program(k_vs, k_sharp);
+    s_compose = program(k_compose_vs, k_compose_gl);
+    if (!s_copy || !s_sharp || !s_compose)
         return 0;
+    {
+        static const char *const names[4] = { "t_vram", "t_pal", "t_oam", "t_line" };
+        static const GLint fmt[4] = { GL_R16UI, GL_R16UI, GL_R8UI, GL_R32UI };
+        static const GLenum type[4] = { GL_UNSIGNED_SHORT, GL_UNSIGNED_SHORT, GL_UNSIGNED_BYTE, GL_UNSIGNED_INT };
+        static const int tw[4] = { 256, 256, 544, RR_LINE_WORDS }, th[4] = { 128 * RR_VERSIONS, 225, RR_VERSIONS, 225 };
+        glGenTextures(4, s_crec);
+        for (i = 0; i < 4; i++) {
+            glUniform1i(glGetUniformLocation(s_compose, names[i]), i);
+            glBindTexture(GL_TEXTURE_2D, s_crec[i]);
+            /* integer textures: complete only without mipmaps or filtering */
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glTexImage2D(GL_TEXTURE_2D, 0, fmt[i], tw[i], th[i], 0, GL_RED_INTEGER, type[i], NULL);
+        }
+        glGenTextures(1, &s_cpic);
+        glBindTexture(GL_TEXTURE_2D, s_cpic);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 256, 224, 0, GL_BGRA, GL_UNSIGNED_BYTE, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glGenFramebuffers(1, &s_cfbo);
+        glBindFramebuffer(GL_FRAMEBUFFER, s_cfbo);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, s_cpic, 0);
+        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+            fprintf(stderr, "rr: gl: the compositor's target is not complete\n");
+            return 0;
+        }
+    }
     glGenVertexArrays(1, &s_vao);
     glBindVertexArray(s_vao);
     glGenBuffers(1, &s_vbo);
@@ -173,25 +212,17 @@ void rr_begin(uint32_t argb)
     glClear(GL_COLOR_BUFFER_BIT);
 }
 
-void rr_image(const uint32_t *argb, int w, int h, const int d[4])
+/* texture tex (w x h, on unit 0) drawn over target rectangle d: one to one
+   when d is w x h, else sharp bilinear */
+static void draw(GLuint tex, int w, int h, const int d[4])
 {
     static const int ix[6] = { 0, 1, 2, 2, 1, 3 };
     float c[4][4] = { { (float)d[0], (float)d[1], 0, 0 }, { (float)d[2], (float)d[1], 1, 0 },
                       { (float)d[0], (float)d[3], 0, 1 }, { (float)d[2], (float)d[3], 1, 1 } };
     float q[6][4];
     int i;
-    if (w <= 0 || h <= 0 || d[2] <= d[0] || d[3] <= d[1])
-        return;
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, s_pic);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-    if (w != s_pw || h != s_ph) {
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_BGRA, GL_UNSIGNED_BYTE, argb);
-        s_pw = w;
-        s_ph = h;
-    } else {
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_BGRA, GL_UNSIGNED_BYTE, argb);
-    }
+    glBindTexture(GL_TEXTURE_2D, tex);
     for (i = 0; i < 6; i++) {
         q[i][0] = c[ix[i]][0] / s_rw * 2 - 1;
         q[i][1] = 1 - c[ix[i]][1] / s_rh * 2;
@@ -204,13 +235,47 @@ void rr_image(const uint32_t *argb, int w, int h, const int d[4])
     glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
-/* The compositor (render/compose/core.glsl): not yet on this backend; it
-   draws nothing (the shader source is generated for it: compose_src.h's
-   k_compose_gl, vulkan/compose_spv.h). */
+void rr_image(const uint32_t *argb, int w, int h, const int d[4])
+{
+    if (w <= 0 || h <= 0 || d[2] <= d[0] || d[3] <= d[1])
+        return;
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, s_pic);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+    if (w != s_pw || h != s_ph) {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_BGRA, GL_UNSIGNED_BYTE, argb);
+        s_pw = w;
+        s_ph = h;
+    } else {
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_BGRA, GL_UNSIGNED_BYTE, argb);
+    }
+    draw(s_pic, w, h, d);
+}
+
+/* the picture composed into s_cpic (its row 0 the first line, as the
+   pictures are uploaded), then drawn over d as rr_image draws */
 void rr_compose(const RrPicture *p, const int d[4])
 {
-    (void)p;
-    (void)d;
+    int i, v = p->versions < 1 ? 1 : p->versions > RR_VERSIONS ? RR_VERSIONS : p->versions;
+    const void *src[4] = { p->vram, p->palette, p->oam, p->lines };
+    static const GLenum type[4] = { GL_UNSIGNED_SHORT, GL_UNSIGNED_SHORT, GL_UNSIGNED_BYTE, GL_UNSIGNED_INT };
+    const int tw[4] = { 256, 256, 544, RR_LINE_WORDS }, th[4] = { 128 * v, 225, v, 225 };
+    if (d[2] <= d[0] || d[3] <= d[1])
+        return;
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    for (i = 0; i < 4; i++) {
+        glActiveTexture(GL_TEXTURE0 + (GLenum)i);
+        glBindTexture(GL_TEXTURE_2D, s_crec[i]);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, tw[i], th[i], GL_RED_INTEGER, type[i], src[i]);
+    }
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+    glBindFramebuffer(GL_FRAMEBUFFER, s_cfbo);
+    glViewport(0, 0, 256, 224);
+    glUseProgram(s_compose);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+    glBindFramebuffer(GL_FRAMEBUFFER, s_fbo);
+    glViewport(0, 0, s_rw, s_rh);
+    draw(s_cpic, 256, 224, d);
 }
 
 void rr_present(void)

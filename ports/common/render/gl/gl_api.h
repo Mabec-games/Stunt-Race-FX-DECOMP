@@ -52,6 +52,8 @@ typedef ptrdiff_t GLsizeiptr, GLintptr;
 #define GL_UNPACK_ROW_LENGTH 0x0CF2
 #define GL_TEXTURE_2D 0x0DE1
 #define GL_UNSIGNED_BYTE 0x1401
+#define GL_UNSIGNED_SHORT 0x1403
+#define GL_UNSIGNED_INT 0x1405
 #define GL_FLOAT 0x1406
 #define GL_RED 0x1903
 #define GL_RGBA 0x1908
@@ -77,6 +79,10 @@ typedef ptrdiff_t GLsizeiptr, GLintptr;
 #define GL_RG 0x8227
 #define GL_RG8 0x822B
 #define GL_R8 0x8229
+#define GL_R8UI 0x8232
+#define GL_R16UI 0x8234
+#define GL_R32UI 0x8236
+#define GL_RED_INTEGER 0x8D94
 #define GL_RGBA8 0x8058
 #define GL_RGBA32F 0x8814
 #define GL_DEPTH_COMPONENT32F 0x8CAC
