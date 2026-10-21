@@ -187,6 +187,11 @@ static void dsp_sample(int16_t l, int16_t r)
     if (sound_f) fwrite(p, 2, 2, sound_f);
     dsp_samples++;
 }
+/* --voices FILE: with each DSP sample, each voice's state (harness patch
+   0013: 8 x 5 32-bit values, envelope level and mode, interpolation
+   position, BRR block address and offset) */
+static FILE *voices_f;
+static void dsp_voices(const int32_t *st) { fwrite(st, 4, 40, voices_f); }
 static void apu_write(uint16_t address, uint8_t data, int phase)
 {
     uint8_t rec[8] = { (uint8_t)dsp_samples, (uint8_t)(dsp_samples >> 8), (uint8_t)(dsp_samples >> 16),
@@ -773,6 +778,9 @@ int main(int argc, char **argv) {
         else if (!strcmp(argv[i], "--check") && i + 1 < argc) checklib = argv[++i];
         else if (!strcmp(argv[i], "--only") && i + 1 < argc) only = argv[++i];
         else if (!strcmp(argv[i], "--lockstep") && i + 1 < argc) locklib = argv[++i];
+        else if (!strcmp(argv[i], "--voices") && i + 1 < argc) {
+            if (!(voices_f = fopen(argv[++i], "wb"))) die("cannot write %s", argv[i]);
+        }
         else if (!strcmp(argv[i], "--apulog") && i + 1 < argc) {
             if (!(apulog_f = fopen(argv[++i], "wb"))) die("cannot write %s", argv[i]);
         }
@@ -802,6 +810,11 @@ int main(int argc, char **argv) {
         void (**tap)(int16_t, int16_t) = dlsym(core, "sfxbox_dsp_sample");
         if (!tap) die("missing symbol sfxbox_dsp_sample (the core predates patch 0011)");
         *tap = dsp_sample;
+    }
+    if (voices_f) {
+        void (**tap)(const int32_t *) = dlsym(core, "sfxbox_dsp_voices");
+        if (!tap) die("missing symbol sfxbox_dsp_voices (the core predates patch 0013)");
+        *tap = dsp_voices;
     }
     if (apulog_f) {
         void (**tap)(uint16_t, uint8_t, int) = dlsym(core, "sfxbox_apu_write");
@@ -850,6 +863,7 @@ int main(int argc, char **argv) {
     if (pacing_f) fclose(pacing_f);
     if (sound_f) fclose(sound_f);
     if (apulog_f) fclose(apulog_f);
+    if (voices_f) fclose(voices_f);
     printf("frames %ld\n", frames);
     return 0;
 }

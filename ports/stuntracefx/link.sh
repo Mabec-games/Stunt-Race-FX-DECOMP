@@ -51,7 +51,7 @@ ${SYM}_end:
 EOS
 
 CFLAGS="-O2 -g -std=gnu11 -fno-strict-aliasing -ffp-contract=off"
-INC="-Iports/common/snes -Iports/common/video -Iports/common/render -Iports/common/host -I$GAME/include -Iports/stuntracefx/runtime"
+INC="-Iports/common/snes -Iports/common/video -Iports/common/audio -Iports/common/render -Iports/common/host -I$GAME/include -Iports/stuntracefx/runtime"
 case "$TARGET" in
   *mingw*|*windows*) OSHOST=ports/common/host/win32/host_win32.c; EXE=.exe; OSLIBS="-static -lwinmm";;
   *)                 OSHOST=ports/common/host/posix/host_posix.c; EXE=;     OSLIBS=;;
@@ -75,7 +75,7 @@ for f in $(find "$GAME" -name '*.c' | sort); do
   compile "$f" "-w -I$GAME/include"
 done
 # the machine layer and the runtime (an app with its own host calls srfx_main)
-for f in ports/common/snes/*.c ports/common/video/*.c ports/stuntracefx/runtime/*.c "$OUT/gen/routines.c"; do
+for f in ports/common/snes/*.c ports/common/video/*.c ports/common/audio/*.c ports/stuntracefx/runtime/*.c "$OUT/gen/routines.c"; do
   if [ "$HOST" = lib ] && [ "$f" = ports/stuntracefx/runtime/main.c ]; then
     compile "$f" "-Wall $INC -Dmain=srfx_main"
   else

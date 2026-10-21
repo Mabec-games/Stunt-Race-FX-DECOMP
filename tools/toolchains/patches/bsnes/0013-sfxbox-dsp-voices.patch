@@ -1,0 +1,44 @@
+--- a/bsnes/emulator/sfxbox.hpp
++++ b/bsnes/emulator/sfxbox.hpp
+@@ -26,6 +26,10 @@
+ // through $F2/$F3), with the DSP's clock cycle within its sample (0-31,
+ // the next it runs) at that moment, when set.
+ extern void (*sfxbox_apu_write)(uint16_t address, uint8_t data, int dsp_phase);
++// With each DSP sample, each voice's state then (8 x 5 values: envelope
++// level, envelope mode, interpolation position, BRR block address, offset
++// in the block), when set.
++extern void (*sfxbox_dsp_voices)(const int32_t *state);
+ void sfxbox_gsu_insn(uint32_t addr);
+ // SPC700: an instruction starts at pc; an opcode or operand byte is fetched
+ // (with its value); a data read.
+--- a/bsnes/target-libretro/sfxbox.cpp
++++ b/bsnes/target-libretro/sfxbox.cpp
+@@ -15,6 +15,7 @@
+ int (*sfxbox_cpu_exec)(uint32_t pc) = nullptr;
+ void (*sfxbox_dsp_sample)(int16_t left, int16_t right) = nullptr;
+ void (*sfxbox_apu_write)(uint16_t address, uint8_t data, int dsp_phase) = nullptr;
++void (*sfxbox_dsp_voices)(const int32_t *state) = nullptr;
+ SfxboxGsuCallbacks sfxbox_gsu_cb = {};
+ int sfxbox_gsu_hooked = 0;
+ int (*sfxbox_gsu_exec)(uint32_t pc, uint32_t prev_end) = nullptr;
+--- a/bsnes/sfc/dsp/SPC_DSP.h
++++ b/bsnes/sfc/dsp/SPC_DSP.h
+@@ -28,6 +28,8 @@
+ 	int sample_count() const;
+ 	// the next clock cycle to run within the sample (sfxbox)
+ 	int clock_phase() const { return m.phase; }
++	// each voice's state, 5 values a voice (sfxbox)
++	void voice_states(int32_t *o) const { for(int i = 0; i < voice_count; i++) { const voice_t& v = m.voices[i]; o[5*i] = v.env; o[5*i+1] = v.env_mode; o[5*i+2] = v.interp_pos; o[5*i+3] = v.brr_addr; o[5*i+4] = v.brr_offset; } }
+ 
+ // Emulation
+ 
+--- a/bsnes/sfc/dsp/dsp.cpp
++++ b/bsnes/sfc/dsp/dsp.cpp
+@@ -21,6 +21,7 @@
+   if(count > 0) {
+     if(!system.runAhead)
+     for(uint n = 0; n < count; n += 2) {
++      if(sfxbox_dsp_voices) { int32_t st[40]; spc_dsp.voice_states(st); sfxbox_dsp_voices(st); }
+       if(sfxbox_dsp_sample) sfxbox_dsp_sample(samplebuffer[n + 0], samplebuffer[n + 1]);
+       float left  = samplebuffer[n + 0] / 32768.0f;
+       float right = samplebuffer[n + 1] / 32768.0f;

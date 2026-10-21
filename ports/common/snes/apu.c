@@ -73,7 +73,8 @@ void apu_reset(void)
     spc_cycles = spc_target = 0;
     atomic_store(&ring_w, 0);
     atomic_store(&ring_r, 0);
-    dsp_reset(aram);
+    mix_init(aram);
+    mix_regs_reset();
     if (!spc_co) {
         main_co = coro_self();
         spc_co = coro_new(spc_main, NULL, 4u << 20);
@@ -111,7 +112,7 @@ static void spc_advance(unsigned cycles)
         unsigned r = atomic_load_explicit(&ring_r, memory_order_acquire);
         int16_t l, rr;
         dsp_div -= 32;
-        dsp_sample(&l, &rr);
+        mix_frame(&l, &rr);
         if (w - r < RING) {
             ring[(w % RING) * 2] = l;
             ring[(w % RING) * 2 + 1] = rr;
@@ -180,7 +181,7 @@ uint8_t spc_rd(uint16_t addr)
         return aram[addr];
     switch (addr) {
     case 0xF2: return dsp_addr;
-    case 0xF3: return dsp_read(dsp_addr & 0x7F);
+    case 0xF3: return mix_reg_read(dsp_addr & 0x7F);
     case 0xF4: case 0xF5: case 0xF6: case 0xF7: return port_in[addr - 0xF4];
     case 0xF8: case 0xF9: return aram[addr];
     case 0xFD: case 0xFE: case 0xFF:
@@ -215,7 +216,7 @@ void spc_wr(uint16_t addr, uint8_t v)
     case 0xF2: dsp_addr = v; return;
     case 0xF3:
         if (dsp_addr < 0x80)
-            dsp_write(dsp_addr, v);
+            mix_reg_write(dsp_addr, v);
         return;
     case 0xF4: case 0xF5: case 0xF6: case 0xF7: port_out[addr - 0xF4] = v; return;
     case 0xF8: case 0xF9: aram[addr] = v; return;

@@ -6,6 +6,8 @@
 
 #include "snes.h"
 #include "video.h"
+#include "mixer.h"
+#include "mixer_regs.h"
 
 /* ---- bus.c ---- */
 extern uint8_t snes_mdr;                    /* the data bus's last value (open bus) */
@@ -47,10 +49,5 @@ void apu_sync(void);                         /* the SPC700 up to the S-CPU's tim
 uint8_t apu_debug_port(int n);               /* what the S-CPU last wrote to port n */
 void apu_debug(char *out, int n);            /* the SPC700's clock and last access, for PORT_DEBUG */
 
-/* ---- dsp.c ---- */
-void dsp_reset(uint8_t *aram);
-uint8_t dsp_read(uint8_t reg);
-void dsp_write(uint8_t reg, uint8_t v);
-void dsp_sample(int16_t *l, int16_t *r);    /* one output sample (32 SPC700 cycles) */
 
 #endif
