@@ -2,6 +2,7 @@
  * misc.c: small routines of the frame code that have no other home yet.
  */
 #include "machine.h"
+#include "native.h"
 #include "cpu_ops.h"
 #include "hw.h"
 
@@ -484,7 +485,7 @@ static void demo_blank(uint32_t b)
     cyc(46);
     wr8(b | HDMAEN, 0x00);
     demo_lda8(0x80);
-    wr8(b | INIDISP, 0x80);
+    ppu_wr(b | INIDISP, 0x80);
     cpu.p |= P_I;
 }
 
@@ -872,7 +873,7 @@ end:
     b = (uint32_t)cpu.db << 16;
     demo_lda8(0x80);
     cyc(148);
-    wr8(b | INIDISP, 0x80);
+    ppu_wr(b | INIDISP, 0x80);
     cyc(24);
     wr8(b | NMITIMEN, 0x00);
     cyc(24);

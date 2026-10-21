@@ -9,6 +9,7 @@
  * and the VRAM transfer queue at $16B9 (bit 1).
  */
 #include "machine.h"
+#include "native.h"
 #include "hw.h"
 #include "wram.h"
 
@@ -44,7 +45,7 @@ static uint8_t oam_dma_if_pending(int *ran)
     cyc(48);
     wr16(DAS0L, 0x0220);
     cyc(48);
-    wr16(OAMADDL, 0x0000);
+    ppu_wr16(OAMADDL, 0x0000);
     cyc(40);
     wr8(MDMAEN, 0x01);
     cyc(24);
@@ -99,7 +100,7 @@ static uint8_t cgram_dma_if_pending(int *ran)
     cyc(48);
     wr16(DAS0L, 0x0200);
     cyc(24);
-    wr8(CGADD, 0x00);
+    ppu_wr(CGADD, 0x00);
     cyc(40);
     wr8(MDMAEN, 0x01);
     cyc(24);
@@ -164,7 +165,7 @@ static ByteWritesEnd byte_writes_if_pending(uint8_t bank, uint16_t x0, uint16_t 
                 cyc(46);
                 end.a = rd16(BYTE_WRITES + 2 + x);
                 cyc(52);
-                wr8((uint32_t)bank << 16 | end.y, (uint8_t)end.a);
+                reg_wr((uint32_t)bank << 16 | end.y, (uint8_t)end.a);
                 x = (uint16_t)(x - 4);
             } while (cyc_loop(32, !(x & 0x8000)));
             cyc(34);
@@ -336,7 +337,7 @@ static FlushEnd vram_dma_queue_flush(void)
         { cyc(38); return end; }
     end.ran = 1;
     cyc(72);
-    wr8(VMAIN, 0x80);
+    ppu_wr(VMAIN, 0x80);
     cyc(40);
     wr8(DMAP0 + 1, 0x18);
     cyc(46);
@@ -347,7 +348,7 @@ static FlushEnd vram_dma_queue_flush(void)
             cyc(122);
             wr16(A1T0L, cyc_then(24, rd16(0x0016B9 + x)));
             cyc(32);
-            wr16(VMADDL, cyc_then(24, rd16(0x0016BC + x)));
+            ppu_wr16(VMADDL, cyc_then(24, rd16(0x0016BC + x)));
             cyc(32);
             wr16(DAS0L, cyc_then(24, rd16(0x0016BE + x)));
             cyc(54);
@@ -454,7 +455,7 @@ static uint8_t frame_input_and_count_end(uint8_t bank, uint16_t *hi, uint16_t *x
     cyc(24);
     v = rd8(b | 0x11DA);
     cyc(24);
-    wr8(b | 0x2100, v);
+    ppu_wr(b | 0x2100, v);
     return v;
 }
 
@@ -531,7 +532,7 @@ uint8_t FrameCountAndPortsEnd(uint8_t bank, uint16_t *high, int *checked)
     cyc(68);
     lum = rd8(b | 0x11DA);
     cyc(24);
-    wr8(b | INIDISP, lum);
+    ppu_wr(b | INIDISP, lum);
     return lum;
 }
 

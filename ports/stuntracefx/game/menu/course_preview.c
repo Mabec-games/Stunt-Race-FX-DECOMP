@@ -3,6 +3,7 @@
  * frame (RaceFrameStep) drawn each menu frame behind the course select.
  */
 #include "machine.h"
+#include "native.h"
 #include "cpu_ops.h"
 
 void abi_MenuFixedColourDown(void);
@@ -291,7 +292,7 @@ static void preview_picture(uint16_t vram, uint16_t pic)
     cpu.p &= (uint8_t)~(P_M | P_X);
     cpu.x = vram;
     cyc(64);
-    wr16(0x002116, vram);
+    ppu_wr16(0x002116, vram);
     cyc(114);
     n = rd16(0x170000 | (uint16_t)(pic - 2));
     cpu.a = (uint16_t)((n << 8) | (n >> 8));
@@ -336,7 +337,7 @@ void abi_MenuScreenOpenPreview(void)
     cpu.a = (uint16_t)(cpu.a & 0xFF00);
     cpu.db = 0x00;
     cyc(262);
-    wr8(0x002100, 0x80);
+    ppu_wr(0x002100, 0x80);
     cyc(24);
     wr8(0x00420C, 0x00);
     cyc(24);
@@ -375,7 +376,7 @@ void abi_MenuScreenOpenPreview(void)
     wr_m(0x0011EF, 0x0000);
     cpu.p |= P_M;
     for (i = 0; i < sizeof ppu / sizeof ppu[0]; i++)
-        { cyc(ppu[i].cost); wr8(ppu[i].reg, ppu[i].v); }
+        { cyc(ppu[i].cost); reg_wr(ppu[i].reg, ppu[i].v); }
     cyc(46);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x12);
     abi_MenuScrollReset();
@@ -410,9 +411,9 @@ void abi_MenuScreenOpenPreview(void)
     cpu.p &= (uint8_t)~(P_M | P_X);
     (cyc(90), abi_MenuPictureDC8CGrid0());
     cyc(72);
-    wr16(0x002116, 0x6000);
+    ppu_wr16(0x002116, 0x6000);
     for (x = 0; x != 0x1000; x = (uint16_t)(x + 2))
-        { cyc(32); wr16(0x002118, cyc_then(24, rd16(0x703000 + x))); cyc(74); }
+        { cyc(32); ppu_wr16(0x002118, cyc_then(24, rd16(0x703000 + x))); cyc(74); }
     cyc(0);
     preview_picture(0x4000, 0xDD8C);
     cpu.p &= (uint8_t)~(P_M | P_X);
@@ -917,7 +918,7 @@ chosen:
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x80);
     cpu.p = nz8(cpu.p, 0x80);
     cyc(40);
-    wr8(b | 0x2100, 0x80);
+    ppu_wr(b | 0x2100, 0x80);
     op_plp(p0);
     cyc(30);
 }

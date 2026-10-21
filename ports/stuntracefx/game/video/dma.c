@@ -8,6 +8,7 @@
  * and then give ROM and RAM back to the Super FX.
  */
 #include "machine.h"
+#include "native.h"
 #include "hw.h"
 #include "wram.h"
 #include "cpu_ops.h"
@@ -20,7 +21,7 @@ static void vram_channel(uint16_t size, uint16_t src, uint16_t vram)
     cyc(24);
     wr16(A1T0L, src);
     cyc(24);
-    wr16(VMADDL, vram);
+    ppu_wr16(VMADDL, vram);
     cyc(48);
     wr16(DMAP0, 0x1801);
 }
@@ -40,7 +41,7 @@ void VramDmaFromBank7F(uint16_t size, uint16_t src, uint16_t vram)
     cyc(62);
     wr8(A1B0, 0x7F);
     cyc(40);
-    wr8(VMAIN, 0x80);
+    ppu_wr(VMAIN, 0x80);
     cyc(40);
     wr8(MDMAEN, 0x01);
     cyc(42);
@@ -72,7 +73,7 @@ uint8_t VramDmaFromGsuRam(uint16_t size, uint16_t src, uint16_t vram)
     cyc(62);
     wr8(A1B0, 0x70);
     cyc(40);
-    wr8(VMAIN, 0x80);
+    ppu_wr(VMAIN, 0x80);
     cyc(24);
     wr8(GSU_SCMR, cyc_then(40, rd8(GSU_SCMR_SHADOW) & 0xF7));
     cyc(40);
@@ -112,13 +113,13 @@ uint16_t VramDmaRowsFromGsuRam(uint16_t src, uint16_t vram, uint8_t rows)
     uint16_t mode;
 
     cyc(24);
-    wr16(VMADDL, vram);
+    ppu_wr16(VMADDL, vram);
     cyc(48);
     wr16(DMAP0, 0x1801);
     cyc(62);
     wr8(A1B0, 0x70);
     cyc(40);
-    wr8(VMAIN, 0x80);
+    ppu_wr(VMAIN, 0x80);
     cyc(54);
     wr16(GSU_SCMR, cyc_then(48, rd16(GSU_SCMR_SHADOW) & 0xFFF7));
     for (;;) {
@@ -170,9 +171,9 @@ void OamDma(uint16_t src, uint16_t size)
     cyc(24);
     wr16(A1T0L, src);
     cyc(40);
-    wr8(OAMADDL, 0x00);
+    ppu_wr(OAMADDL, 0x00);
     cyc(24);
-    wr8(OAMADDH, 0x00);
+    ppu_wr(OAMADDH, 0x00);
     cyc(24);
     wr16(DAS0L, size);
     cyc(48);
@@ -233,7 +234,7 @@ void CgramDma(uint16_t src, uint8_t colour, uint16_t size)
     cyc(48);
     wr16(DMAP0, 0x2200);
     cyc(46);
-    wr8(CGADD, colour);
+    ppu_wr(CGADD, colour);
     cyc(40);
     wr8(A1B0, 0x7E);
     cyc(40);
@@ -290,14 +291,14 @@ static uint16_t vram_write_row(uint16_t vram, uint16_t *x)
     unsigned i;
 
     cyc(68);
-    wr16(VMADDL, vram);
+    ppu_wr16(VMADDL, vram);
     cyc(40);
     src = rd16(0x000002);
     for (i = 0; i < 64; i++) {
         cyc(32);
         w = rd16(0x703000 + (uint16_t)(src + 2 * i));
         cyc(24);
-        wr16(0x002118, w);
+        ppu_wr16(0x002118, w);
         cyc(64);
     }
     *x = (uint16_t)(src + 0x80);
@@ -352,9 +353,9 @@ uint8_t VramDmaWideRowsFromGsuRam(uint8_t rows_less_one, uint16_t src, uint16_t 
     cyc(38);
     wr16(0x0000FB, src);
     cyc(24);
-    wr16(VMADDL, vram);
+    ppu_wr16(VMADDL, vram);
     cyc(84);
-    wr8(VMAIN, 0x80);
+    ppu_wr(VMAIN, 0x80);
     cyc(40);
     wr8(DMAP0 + 1, 0x18);
     cyc(40);
@@ -410,9 +411,9 @@ static int vram_upload_gsu_buffer(uint16_t *src)
     if (rd8(0x000D32) == 0)
         { cyc(22); return 0; }
     cyc(56);
-    wr8(VMAIN, 0x80);
+    ppu_wr(VMAIN, 0x80);
     cyc(48);
-    wr16(VMADDL, 0x6600);
+    ppu_wr16(VMADDL, 0x6600);
     cyc(48);
     wr16(DMAP0, 0x1801);
     cyc(40);
@@ -675,7 +676,7 @@ static void put8(uint32_t addr, uint8_t v)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.p = nz8(cpu.p, v);
     cyc(40);
-    wr8(addr, v);
+    reg_wr(addr, v);
 }
 
 /* LDA abs / STA reg with M 8-bit. */
@@ -687,7 +688,7 @@ static void copy8(uint32_t to, uint32_t from)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.p = nz8(cpu.p, v);
     cyc(24);
-    wr8(to, v);
+    reg_wr(to, v);
 }
 
 /* The stage at $A800: sprites to OAM when $0D28 is set (and $0D54 clear),
@@ -761,7 +762,7 @@ static void split_picture(uint32_t b, uint16_t x)
     cpu.x = x;
     cpu.p = nz16(cpu.p, x);
     cyc(92);
-    wr16(VMADDL, x);
+    ppu_wr16(VMADDL, x);
     cpu.x = 0x1680;
     cyc(48);
     wr16(DAS0L, 0x1680);
@@ -792,7 +793,7 @@ static void split_picture(uint32_t b, uint16_t x)
     put8(b | 0x0D23, 0x10);
     put8(CGADD, 0x00);
     for (i = 1; i < 7; i++)
-        { cyc(24); wr8(CGADD, 0x00); }
+        { cyc(24); ppu_wr(CGADD, 0x00); }
     put8(CGDATA, 0xC4);
     cyc(32);
     wr8(0x7EFD65, 0xC4);
@@ -883,7 +884,7 @@ static void split_stage(uint32_t b)
         wr16(A1T0L, 0x93D7);
         cpu.a = 0x7800;
         cyc(48);
-        wr16(VMADDL, 0x7800);
+        ppu_wr16(VMADDL, 0x7800);
         cpu.a = 0x1801;
         cpu.p = nz16(cpu.p, 0x1801);
         cyc(48);
@@ -921,7 +922,7 @@ static void split_stage(uint32_t b)
         wr16(DAS0L, 0x0C00);
         cpu.x = 0x6600;
         cyc(48);
-        wr16(VMADDL, 0x6600);
+        ppu_wr16(VMADDL, 0x6600);
         cpu.x = 0x1801;
         cpu.p = nz16(cpu.p, 0x1801);
         cyc(48);
@@ -1173,7 +1174,7 @@ void abi_VramRowsCopyUnused(void)
         cyc(30);
         op_lda16(b | cpu.x);
         cyc(32);
-        wr16(0x002118, cpu.a);
+        ppu_wr16(0x002118, cpu.a);
         cpu.x = (uint16_t)(cpu.x + 2);
         cpu.y = (uint16_t)(cpu.y - 1);
         cpu.p = nz16(cpu.p, cpu.y);
@@ -1218,13 +1219,13 @@ void VramClearWords(uint8_t bank, uint16_t at, uint16_t n)
     int first = 1;
 
     cyc(48);
-    wr16(b | 0x2115, 0x0080);
+    ppu_wr16(b | 0x2115, 0x0080);
     cyc(24);
-    wr16(b | 0x2116, at);
+    ppu_wr16(b | 0x2116, at);
     do {
         cyc(first ? 48 : 60); /* LDA #0 first, else DEX, BNE taken */
         first = 0;
-        wr16(b | 0x2118, 0x0000);
+        ppu_wr16(b | 0x2118, 0x0000);
         n = (uint16_t)(n - 1);
     } while (n);
     cyc(72);

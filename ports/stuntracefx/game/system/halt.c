@@ -6,6 +6,7 @@
  * calls.
  */
 #include "machine.h"
+#include "native.h"
 #include "hw.h"
 #include "cpu_ops.h"
 
@@ -29,22 +30,22 @@ static void halt(void)
     int first = 1;
 
     cyc(70);
-    wr8(INIDISP, 0x0F);
+    ppu_wr(INIDISP, 0x0F);
     cyc(48);
     wr8(HDMAEN, 0x00);
     cyc(32);
     wr8(NMITIMEN, 0x00);
     cyc(32);
-    wr8(TM, 0x00);
+    ppu_wr(TM, 0x00);
     for (;;) {
         cyc(first ? 84 : 210);              /* the first round: LDX, TXY, TXA; then INY, nine NOPs, JMP, TXA */
-        wr8(CGADD, 0x00);
+        ppu_wr(CGADD, 0x00);
         cyc(32);
-        wr8(CGADD, 0x00);
+        ppu_wr(CGADD, 0x00);
         cyc(46);
-        wr8(CGDATA, (uint8_t)y);
+        ppu_wr(CGDATA, (uint8_t)y);
         cyc(32);
-        wr8(CGDATA, (uint8_t)y);
+        ppu_wr(CGDATA, (uint8_t)y);
         y = (uint16_t)(y + 1);
         first = 0;
     }
@@ -119,7 +120,7 @@ void DebugByteHalt(void)
     cyc(94);
     for (;;) {
         cyc(70);
-        wr8(INIDISP, 0x0F);
+        ppu_wr(INIDISP, 0x0F);
         cyc(40);
         wr8(b | 0x0D61, 0x0F);
         cyc(32);

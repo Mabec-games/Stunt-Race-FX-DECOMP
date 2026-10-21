@@ -4,6 +4,7 @@
  * gradient behind it.
  */
 #include "machine.h"
+#include "native.h"
 #include "hw.h"
 
 uint8_t SoundPairFromTable(void);
@@ -69,7 +70,7 @@ uint16_t MenuCourseScreenSetup(uint8_t bank)
     GsuCF42To3000(0xD970, 0x001D);
     cyc(62);
     CoursePictureToVram(bank);
-    wr8(dbw(bank, 0x2101), cyc_then(62, 0x03));
+    ppu_wr(dbw(bank, 0x2101), cyc_then(62, 0x03));
     wr8(dbw(bank, 0x0D3F), cyc_then(62, 0x08));
     wr8(dbw(bank, 0x0D7D), cyc_then(40, 0x0C));
     for (i = 0; i < sizeof course_params / sizeof course_params[0]; i++)

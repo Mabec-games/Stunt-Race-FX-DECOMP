@@ -3,6 +3,7 @@
  * PPU: $0D47 for CGADSUB, and the fixed colour's intensity at $7F:340D.
  */
 #include "machine.h"
+#include "native.h"
 
 void SoundPort1QueuePushW(uint8_t command, unsigned wide);
 
@@ -103,7 +104,7 @@ void WindowsColourWindowOnly(void);
 void ColourMathSub83Windowed(void)
 {
     cyc(70);
-    wr8(0x002131, 0x83);
+    ppu_wr(0x002131, 0x83);
     (cyc(46), WindowsColourWindowOnly());
     cyc(42);
 }

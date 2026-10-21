@@ -7,6 +7,7 @@
  * panel state $0D56. All run with 8-bit registers and data bank $07.
  */
 #include "machine.h"
+#include "native.h"
 #include "cpu_ops.h"
 
 void abi_SoundPort0QueuePush(void);
@@ -2173,7 +2174,7 @@ static void screen_off(void)
     op_sep(P_M);
     lda8_imm(0x80);
     cyc(52);
-    wr8(0x002100, 0x80);
+    ppu_wr(0x002100, 0x80);
     cyc(24);
     wr8(0x004200, 0x00);
     cyc(24);
@@ -2299,7 +2300,7 @@ void abi_RaceEndVideoReset(void)
     wr8(0x00420C, 0x00);
     lda8_imm(0x80);
     cyc(16);
-    wr8(0x002100, 0x80);
+    ppu_wr(0x002100, 0x80);
     cpu.p |= P_I;
     (cyc(76), abi_RaceVideoInit());
     (cyc(0), abi_RaceEndToAttract());

@@ -14,6 +14,9 @@
 
 #include <stdint.h>
 
+#include "machine.h"
+#include "native.h"
+
 /* The time of a register access the C does the work of (the port's clock). */
 void io_read_time(uint32_t addr, uint8_t value);
 void io_write_time(uint32_t addr, uint8_t value);
@@ -40,6 +43,44 @@ static inline void io_wr16(uint32_t addr, uint16_t v)
 {
     io_write_time(addr, (uint8_t)v);
     io_write_time((addr + 1) & 0xFFFFFF, (uint8_t)(v >> 8));
+}
+
+/* ---- the picture (ports/common/video) ----
+   The screen state's registers ($2100-$2133): each write's value to the
+   picture, at the access's time. */
+void vid_reg(uint8_t reg, uint8_t v);
+
+static inline int ppu_reg(uint32_t addr)
+{
+    return !(addr & 0x400000) && (addr & 0xFFFF) >= 0x2100 && (addr & 0xFFFF) <= 0x2133;
+}
+
+static inline void ppu_wr(uint32_t addr, uint8_t v)
+{
+    io_write_time(addr, v);
+    vid_reg((uint8_t)addr, v);
+}
+
+static inline void ppu_wr16(uint32_t addr, uint16_t v)
+{
+    ppu_wr(addr, (uint8_t)v);
+    ppu_wr((addr + 1) & 0xFFFFFF, (uint8_t)(v >> 8));
+}
+
+/* A write to a register the code computes (a table's, a queue's): to the
+   part that register belongs to. */
+static inline void reg_wr(uint32_t addr, uint8_t v)
+{
+    if (ppu_reg(addr))
+        ppu_wr(addr, v);
+    else
+        wr8(addr, v);
+}
+
+static inline void reg_wr16(uint32_t addr, uint16_t v)
+{
+    reg_wr(addr, (uint8_t)v);
+    reg_wr((addr + 1) & 0xFFFFFF, (uint8_t)(v >> 8));
 }
 
 /* ---- the joypads ----

@@ -11,6 +11,7 @@
  * address (D = $0000); the lists through the data bank.
  */
 #include "machine.h"
+#include "native.h"
 #include "hw.h"
 #include "cpu_ops.h"
 #include "wram.h"
@@ -56,7 +57,7 @@ void MenuActorPoolInit(uint8_t bank)
     wr16(dbw(bank, 0x1201), cyc_then(48, 0x0200));
     wr16(dbw(bank, 0x1203), cyc_then(48, 0x0020));
     wr16(dbw(bank, 0x120B), cyc_then(48, 0x2881));
-    wr8(dbw(bank, 0x2101), cyc_then(62, 0x02));
+    ppu_wr(dbw(bank, 0x2101), cyc_then(62, 0x02));
     cyc(94);
 }
 

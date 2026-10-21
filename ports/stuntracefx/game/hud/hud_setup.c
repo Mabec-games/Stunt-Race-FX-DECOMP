@@ -12,6 +12,7 @@
  * a table of the bytes in the order they are stored.
  */
 #include "machine.h"
+#include "native.h"
 #include "cpu_ops.h"
 #include "hw.h"
 
@@ -540,25 +541,25 @@ static void race_hud_setup(void)
     op_sep(P_M | P_X);
     b = (uint32_t)cpu.db << 16;
     cyc(24);
-    wr8(b | BG1HOFS, 0x00);
+    ppu_wr(b | BG1HOFS, 0x00);
     cyc(24);
-    wr8(b | BG1HOFS, 0x00);
+    ppu_wr(b | BG1HOFS, 0x00);
     lda8(0xEF);
     cyc(40);
-    wr8(b | BG1VOFS, 0xEF);
+    ppu_wr(b | BG1VOFS, 0xEF);
     cpu.x = 0xFF;
     cpu.p = nz8(cpu.p, 0xFF);
     cyc(40);
-    wr8(b | BG1VOFS, 0xFF);
+    ppu_wr(b | BG1VOFS, 0xFF);
     cyc(24);
-    wr8(b | BG2HOFS, 0x00);
+    ppu_wr(b | BG2HOFS, 0x00);
     cyc(24);
-    wr8(b | BG2HOFS, 0x00);
+    ppu_wr(b | BG2HOFS, 0x00);
     lda8(0x80);
     cyc(40);
-    wr8(b | BG2VOFS, 0x80);
+    ppu_wr(b | BG2VOFS, 0x80);
     cyc(24);
-    wr8(b | BG2VOFS, 0x00);
+    ppu_wr(b | BG2VOFS, 0x00);
     lda8(0x04);
     cyc(40);
     wr8(b | 0x0D3F, 0x04);

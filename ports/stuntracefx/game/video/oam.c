@@ -3,6 +3,7 @@
  * each frame. Each sprite is four bytes: X, Y, tile, attributes.
  */
 #include "machine.h"
+#include "native.h"
 #include "hw.h"
 #include "wram.h"
 #include "cpu_ops.h"
@@ -52,14 +53,14 @@ uint8_t OamWriteSprites36To46(void)
     unsigned i;
 
     cyc(170);
-    wr8(OAMADDL, 0x48);
+    ppu_wr(OAMADDL, 0x48);
     cyc(24);
-    wr8(OAMADDH, 0x00);
+    ppu_wr(OAMADDH, 0x00);
     for (i = 0; i < 0x2C; i++) {
         cyc(i ? 80 : 54);               /* INX, DEY, BNE taken; the first: LDY */
         v = rd8(OAM_BUFFER + 0x90 + i);
         cyc(24);
-        wr8(OAMDATA, v);
+        ppu_wr(OAMDATA, v);
     }
     cyc(114);
     return v;
@@ -1935,15 +1936,15 @@ static void oam_direct(uint32_t b, uint8_t addr, uint16_t x, uint16_t n, int hid
     uint8_t v = addr;
 
     cyc(80);
-    wr8(b | 0x2102, addr);
+    ppu_wr(b | 0x2102, addr);
     cyc(24);
-    wr8(b | 0x2103, 0x00);
+    ppu_wr(b | 0x2103, 0x00);
     cpu.x = x;
     for (cpu.y = n; cpu.y; cpu.y--) {
         cyc(cpu.y != n ? (hide ? 50 : 40) : (hide ? 40 : 14));  /* round again: INX, DEY, BNE */
         v = hide ? 0xF0 : rd8(cyc_then(40, b | (uint16_t)(0x0375 + cpu.x)));
         cyc(24);
-        wr8(b | 0x2104, v);
+        ppu_wr(b | 0x2104, v);
         cpu.x = (uint16_t)(cpu.x + 1);
     }
     cyc(72);

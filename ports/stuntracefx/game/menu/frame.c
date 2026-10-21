@@ -4,6 +4,7 @@
  * once it has applied the frame's updates.
  */
 #include "machine.h"
+#include "native.h"
 #include "hw.h"
 #include "cpu_ops.h"
 
@@ -77,7 +78,7 @@ void abi_MenuDimOnL(void)
     cpu.a = 0x0004;
     cpu.p = nz8(cpu.p, 0x04);
     cyc(110);
-    wr8(INIDISP, 0x04);
+    ppu_wr(INIDISP, 0x04);
     cyc(64);                            /* REP, RTS */
 }
 
@@ -368,7 +369,7 @@ void MenuScreen0Run(void)
     } while (cpu.a == 0xFFFF);
     b = (uint32_t)cpu.db << 16;
     cyc(102);
-    wr8(b | (uint16_t)INIDISP, 0x80);
+    ppu_wr(b | (uint16_t)INIDISP, 0x80);
     cyc(24);
     wr8(b | (uint16_t)NMITIMEN, 0x00);
     cyc(24);

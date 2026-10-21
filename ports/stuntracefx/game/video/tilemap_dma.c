@@ -6,6 +6,7 @@
  * boot); no play runs it; unit_tilemap_dma calls it.
  */
 #include "machine.h"
+#include "native.h"
 #include "cpu_ops.h"
 
 void abi_Bg2ScrollFromTable(void);
@@ -28,9 +29,9 @@ static void upload(uint16_t gradient_src, uint16_t src, int bra)
     cyc(62);
     wr8(b | 0x4304, 0x7F);
     cyc(bra ? 62 : 40);                 /* BRA into the shared tail, or not */
-    wr8(b | 0x2115, 0x80);
+    ppu_wr(b | 0x2115, 0x80);
     cyc(48);
-    wr16(b | 0x2116, 0x5C00);
+    ppu_wr16(b | 0x2116, 0x5C00);
     cyc(48);
     wr16(b | 0x4300, 0x1801);
     cyc(48);

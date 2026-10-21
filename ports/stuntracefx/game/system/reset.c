@@ -3,6 +3,7 @@
  * restart the game.
  */
 #include "machine.h"
+#include "native.h"
 #include "cpu_ops.h"
 #include "hw.h"
 
@@ -121,7 +122,7 @@ void abi_SoftResetCheck(void)
     } while (v);
     reset_lda8(0x80);
     cyc(16);
-    wr8(b | INIDISP, 0x80);
+    ppu_wr(b | INIDISP, 0x80);
     cyc(24);
     wr8(b | NMITIMEN, 0x00);
     cyc(24);

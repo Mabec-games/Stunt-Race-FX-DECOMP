@@ -4,12 +4,13 @@
  * the callers keep in the I/O banks.
  */
 #include "machine.h"
+#include "native.h"
 #include "hw.h"
 #include "cpu_ops.h"
 
 static void io8(uint8_t bank, uint32_t reg, uint8_t v)
 {
-    wr8((uint32_t)bank << 16 | (reg & 0xFFFF), v);
+    reg_wr((uint32_t)bank << 16 | (reg & 0xFFFF), v);
 }
 
 /*
@@ -228,11 +229,11 @@ void VideoStartUploads(uint8_t bank)
     cyc(40);
     io8(bank, VMAIN, 0x80);
     cyc(48);
-    wr16(b | (VMADDL & 0xFFFF), 0x0000);
+    ppu_wr16(b | (VMADDL & 0xFFFF), 0x0000);
     cyc(70);
     DmaFromDescriptor(bank, 0xF873);
     cyc(48);
-    wr16(b | (VMADDL & 0xFFFF), 0x7C00);
+    ppu_wr16(b | (VMADDL & 0xFFFF), 0x7C00);
     cyc(70);
     DmaFromDescriptor(bank, 0xF87A);
     cyc(72);
@@ -291,13 +292,13 @@ static void video_gsu_ram_dma(uint16_t src, uint16_t vram, uint16_t size)
     cyc(56);
     wr16(A1T0L, src);
     cyc(56);
-    wr16(VMADDL, vram);
+    ppu_wr16(VMADDL, vram);
     cpu.a = size;
     cyc(56);
     wr16(DAS0L, size);
     cpu.p |= P_M;
     cyc(70);
-    wr8(VMAIN, 0x80);
+    ppu_wr(VMAIN, 0x80);
     cyc(48);
     wr8(A1B0, 0x70);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
@@ -553,12 +554,12 @@ mode0:
     cpu.p = nz16(cpu.p, cpu.x);
     cpu.a = 0x5B40;
     cyc(130);
-    wr16(b | 0x2116, 0x5B40);
+    ppu_wr16(b | 0x2116, 0x5B40);
     for (y = 0x0080; y; y--) {
         cyc(32);
         cpu.a = rd16(0x703000 + cpu.x);
         cyc(24);
-        wr16(b | 0x2118, cpu.a);
+        ppu_wr16(b | 0x2118, cpu.a);
         cpu.x = (uint16_t)(cpu.x + 2);
         cyc(64);
     }

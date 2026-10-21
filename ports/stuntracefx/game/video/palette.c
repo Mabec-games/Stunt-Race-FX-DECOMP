@@ -4,6 +4,7 @@
  * RAM from $7E:FD65 (512 bytes); a few colours are kept apart at $7E:FF27.
  */
 #include "machine.h"
+#include "native.h"
 #include "hw.h"
 #include "cpu_ops.h"
 
@@ -18,12 +19,12 @@ static uint8_t cgram_put(uint8_t c, uint32_t src, unsigned n)
     unsigned i;
 
     cyc(40);
-    wr8(CGADD, c);
+    ppu_wr(CGADD, c);
     for (i = 0; i < n; i++) {
         cyc(32);
         v = rd8(src + i);
         cyc(24);
-        wr8(CGDATA, v);
+        ppu_wr(CGDATA, v);
     }
     cyc(24);
     return v;

@@ -22,6 +22,9 @@
 #include <string.h>
 
 #include "snes_internal.h"
+#ifndef _WIN32
+#include <dlfcn.h>
+#endif
 
 uint8_t rd8(uint32_t addr);
 void wr8(uint32_t addr, uint8_t value);
@@ -47,6 +50,38 @@ static uint8_t rdnmi_flag, timeup_flag;
 static int nmi_pending, cart_irq;
 
 static void latch_counters(void);
+static void *wr8_site;   /* where the last wr8 came from (PORT_AUDIT) */
+
+static int audit_on(void)
+{
+    static int on = -1;
+    if (on < 0)
+        on = getenv("PORT_AUDIT") != NULL;
+    return on;
+}
+
+static void audit_site(uint16_t off)
+{
+    static void *seen[1024];
+    static int n;
+    int i;
+    for (i = 0; i < n; i++)
+        if (seen[i] == wr8_site)
+            return;
+    if (n < 1024)
+        seen[n++] = wr8_site;
+#ifndef _WIN32
+    {
+        Dl_info di;
+        if (dladdr(wr8_site, &di) && di.dli_sname) {
+            fprintf(stderr, "audit: $%04X written by %s+%ld\n", off, di.dli_sname,
+                    (long)((char *)wr8_site - (char *)di.dli_saddr));
+            return;
+        }
+    }
+#endif
+    fprintf(stderr, "audit: $%04X written at %p\n", off, wr8_site);
+}
 
 /* the joypads */
 static uint16_t joy_held[2], joy_auto[2];
@@ -496,6 +531,11 @@ static void bus_write(uint32_t addr, uint8_t v, unsigned *cost, int kind)
         if (kind == 1 && ((off >= 0x2100 && off < 0x2200) || (off >= 0x4000 && off < 0x4400)))
             return;
         if (off >= 0x2100 && off < 0x2200) {
+            /* the screen state comes to the picture by the game's own calls
+               (native.h); a write here is to a register the code computed
+               (a table's): PORT_AUDIT=1 names each such place once */
+            if (kind == 0 && off < 0x2134 && audit_on())
+                audit_site(off);
             bus_write_b((uint8_t)off, v);
             return;
         }
@@ -604,6 +644,7 @@ uint8_t rd8(uint32_t addr)
 
 void wr8(uint32_t addr, uint8_t value)
 {
+    wr8_site = __builtin_return_address(0);
     unsigned cost;
     addr &= 0xFFFFFF;
     last_was_read = 0;

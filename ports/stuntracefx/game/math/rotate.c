@@ -219,7 +219,8 @@ void abi_RotateXY(void)
 void abi_MulWordByte(void)
 {
     uint32_t b = (uint32_t)cpu.db << 16;
-    uint8_t a, m, y;
+    uint8_t a, m, y, mpya = 0;
+    uint16_t prod = 0;
     uint16_t w, n;
     uint32_t pre, st;
 
@@ -237,7 +238,7 @@ void abi_MulWordByte(void)
     cpu.p = (uint8_t)((cpu.p & ~P_C) | (a >> 7));
     a = (uint8_t)(a << 1);
     cyc(54);
-    wr8(b | 0x4202, a);
+    io_wr8(b | 0x4202, mpya = a);
     cyc(16);
     a = rd8(0x000068);
     cpu.p = nz8(cpu.p, a);
@@ -246,7 +247,8 @@ void abi_MulWordByte(void)
     cyc(32);
     a = rd8(0x000067);
     cyc(24);
-    wr8(b | 0x4203, a);
+    io_wr8(b | 0x4203, a);
+    prod = cpu_mul(mpya, a);
     cyc(44);
     a = rd8(0x000068);
     pre = 48;                           /* JMP, LDY */
@@ -258,7 +260,8 @@ pos_s_neg_v:
     m = rd8(0x000067);
     a = op_sbc8(0x00, m, &cpu.p);
     cyc(8);
-    wr8(b | 0x4203, a);
+    io_wr8(b | 0x4203, a);
+    prod = cpu_mul(mpya, a);
     cyc(32);
     m = rd8(0x000068);
     a = op_sbc8(0x00, m, &cpu.p);
@@ -270,7 +273,7 @@ neg_s:
     cpu.p = (uint8_t)((cpu.p & ~P_C) | (a >> 7));
     a = (uint8_t)(a << 1);
     cyc(90);
-    wr8(b | 0x4202, a);
+    io_wr8(b | 0x4202, mpya = a);
     cyc(16);
     a = rd8(0x000068);
     cpu.p = nz8(cpu.p, a);
@@ -279,7 +282,8 @@ neg_s:
     cyc(32);
     a = rd8(0x000067);
     cyc(24);
-    wr8(b | 0x4203, a);
+    io_wr8(b | 0x4203, a);
+    prod = cpu_mul(mpya, a);
     cyc(58);
     a = rd8(0x000068);
     pre = 24;                           /* LDY */
@@ -291,7 +295,8 @@ neg_s_neg_v:
     m = rd8(0x000067);
     a = op_sbc8(0x00, m, &cpu.p);
     cyc(8);
-    wr8(b | 0x4203, a);
+    io_wr8(b | 0x4203, a);
+    prod = cpu_mul(mpya, a);
     cyc(60);
     m = rd8(0x000068);
     a = op_sbc8(0x00, m, &cpu.p);
@@ -300,15 +305,16 @@ neg_s_neg_v:
     goto add;
 sub:
     cyc(pre);
-    y = rd8(b | 0x4217);
+    y = io_rd8(b | 0x4217, (uint8_t)(prod >> 8));
     cyc(24);
-    wr8(b | 0x4203, a);
+    io_wr8(b | 0x4203, a);
+    prod = cpu_mul(mpya, a);
     cyc(16);
     wr8(0x00006A, y);
     cyc(38);
     w = rd16(0x00006C);
     cyc(38);
-    n = rd16(b | 0x4216);
+    n = io_rd16(b | 0x4216, prod);
     cpu.p |= P_C;
     w = op_sbc16(w, n, &cpu.p);
     cyc(24);
@@ -318,15 +324,16 @@ sub:
     goto store;
 add:
     cyc(pre);
-    y = rd8(b | 0x4217);
+    y = io_rd8(b | 0x4217, (uint8_t)(prod >> 8));
     cyc(24);
-    wr8(b | 0x4203, a);
+    io_wr8(b | 0x4203, a);
+    prod = cpu_mul(mpya, a);
     cyc(16);
     wr8(0x00006A, y);
     cyc(38);
     w = rd16(0x00006C);
     cyc(24);
-    n = rd16(b | 0x4216);
+    n = io_rd16(b | 0x4216, prod);
     cpu.p &= (uint8_t)~P_C;
     w = op_adc16(w, n, &cpu.p);
     cyc(30);

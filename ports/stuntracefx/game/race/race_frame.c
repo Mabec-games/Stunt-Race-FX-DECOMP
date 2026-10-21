@@ -3,6 +3,7 @@
  * sets up the Super FX, runs the course script and steps two frames.
  */
 #include "machine.h"
+#include "native.h"
 #include "hw.h"
 #include "cpu_ops.h"
 
@@ -486,9 +487,9 @@ void abi_RaceVarsReset(void)
                    : (uint16_t)(cpu.d + race_reset[i].addr);
 
         if (race_reset[i].width == 2)
-            { cyc(race_reset[i].cost); wr16(a, race_reset[i].v); }
+            { cyc(race_reset[i].cost); reg_wr16(a, race_reset[i].v); }
         else
-            { cyc(race_reset[i].cost); wr8(a, (uint8_t)race_reset[i].v); }
+            { cyc(race_reset[i].cost); reg_wr(a, (uint8_t)race_reset[i].v); }
     }
     cyc(44);
     cpu.a = 0x0080;
@@ -1567,7 +1568,7 @@ void abi_AttractCourseSetup(void)
     cpu.p = nz8(cpu.p, 0x80);
     (cyc(78), abi_Set7EBC2BTrio());
     cyc(24);
-    wr8(INIDISP, (uint8_t)cpu.a);
+    ppu_wr(INIDISP, (uint8_t)cpu.a);
     cyc(24);
     wr8(0x00084B, 0x00);
     cyc(24);

@@ -8,6 +8,7 @@
  * $70:00E4; $07:EE88 reads an eight-word ramp at $70:3C00.
  */
 #include "machine.h"
+#include "native.h"
 #include "hw.h"
 #include "cpu_ops.h"
 
@@ -125,11 +126,11 @@ void GsuCF42ToVram(uint8_t bank, uint16_t in, uint16_t out)
     cyc(102);
     GsuRun(0x01, 0xCF42);
     cyc(214);
-    wr8(VMAIN, rd8(b | out));
+    ppu_wr(VMAIN, rd8(b | out));
     cyc(62);
-    wr8(VMADDL, rd8(b | (uint16_t)(out + 1)));
+    ppu_wr(VMADDL, rd8(b | (uint16_t)(out + 1)));
     cyc(62);
-    wr8(VMADDH, rd8(b | (uint16_t)(out + 2)));
+    ppu_wr(VMADDH, rd8(b | (uint16_t)(out + 2)));
     cyc(62);
     wr8(DMAP0, rd8(b | (uint16_t)(out + 3)));
     cyc(62);
@@ -1508,18 +1509,19 @@ void abi_GsuPiecesListF6DF(void)
 void abi_GsuPieceOffsetFromView(void)
 {
     uint32_t b = (uint32_t)cpu.db << 16;
-    uint16_t a;
+    uint16_t a, m;
 
     cyc(32);
     wr16(b | 0x0E84, cyc_then(38, (uint16_t)(rd16(0x70003E) >> 1)));
     cyc(32);
     wr16(b | 0x0E82, cyc_then(38, (uint16_t)(rd16(0x70003A) >> 1)));
     cyc(32);
-    wr16(b | 0x211B, cyc_then(24, rd16(0x70020E)));
+    io_wr16(b | 0x211B, m = cyc_then(24, rd16(0x70020E)));
+    ppu_mul_factor = (int16_t)m;
     cyc(24);
-    wr16(b | 0x211C, cyc_then(24, rd16(b | 0x0E8E)));
+    io_wr16(b | 0x211C, m = cyc_then(24, rd16(b | 0x0E8E)));   /* M7B, then M7C */
     cyc(24);
-    a = (uint16_t)(rd16(b | 0x2135) >> 1);
+    a = (uint16_t)(io_rd16(b | 0x2135, (uint16_t)(ppu_mul((uint8_t)m) >> 8)) >> 1);
     cpu.p |= P_C;
     cyc(52);
     a = op_sbc16(a, rd16(b | 0x0E82), &cpu.p);
@@ -1527,11 +1529,12 @@ void abi_GsuPieceOffsetFromView(void)
     cyc(64);
     wr16(0x70020A, a);
     cyc(32);
-    wr16(b | 0x211B, cyc_then(24, rd16(0x700210)));
+    io_wr16(b | 0x211B, m = cyc_then(24, rd16(0x700210)));
+    ppu_mul_factor = (int16_t)m;
     cyc(48);
-    wr16(b | 0x211C, 0xFFF0);
+    io_wr16(b | 0x211C, 0xFFF0);
     cyc(24);
-    a = rd16(b | 0x2135);
+    a = io_rd16(b | 0x2135, (uint16_t)(ppu_mul(0xF0) >> 8));
     cpu.p &= (uint8_t)~P_C;
     cyc(38);
     a = op_adc16(a, rd16(b | 0x0E84), &cpu.p);
@@ -1555,7 +1558,7 @@ void abi_GsuPieceOffsetFromView(void)
 uint16_t GsuReciprocal(uint8_t bank, uint8_t *p)
 {
     uint32_t b = (uint32_t)bank << 16;
-    uint16_t a;
+    uint16_t a, n, d;
 
     cyc(40);
     wr16(0x0000F3, 0xFFFF);
@@ -1567,11 +1570,13 @@ uint16_t GsuReciprocal(uint8_t bank, uint8_t *p)
         wr16(0x0000F3, cyc_then(14, (uint16_t)(rd16(0x0000F3) >> 1)));
     } else { cyc(22); }
     cyc(16);
-    wr16(b | 0x4204, cyc_then(24, rd16(0x0000F3)));
+    io_wr16(b | 0x4204, n = cyc_then(24, rd16(0x0000F3)));
     cyc(16);
-    wr16(b | 0x4206, cyc_then(24, rd16(0x0000F1)));
+    d = cyc_then(24, rd16(0x0000F1));
+    io_wr8(b | 0x4206, (uint8_t)d);
+    wr8(b | 0x4207, (uint8_t)(d >> 8));      /* the high byte to HTIMEL */
     cyc(80);
-    a = rd16(b | 0x4214);
+    a = io_rd16(b | 0x4214, cpu_div(n, (uint8_t)d));
     *p = (uint8_t)(nz16(*p, a) | P_C);
     return a;
 }
@@ -1599,32 +1604,38 @@ void abi_GsuReciprocal(void)
 void abi_GsuPieceScaleFromView(void)
 {
     uint32_t b = (uint32_t)cpu.db << 16;
-    uint16_t e, q1, q2;
+    uint16_t e, q1, q2, m, n;
 
     cyc(24);
-    wr16(b | 0x211B, cyc_then(24, rd16(b | 0x0E86)));
+    io_wr16(b | 0x211B, m = cyc_then(24, rd16(b | 0x0E86)));
+    ppu_mul_factor = (int16_t)m;
     cyc(32);
-    wr16(b | 0x211C, cyc_then(24, rd16(0x70003A)));
+    io_wr16(b | 0x211C, m = cyc_then(24, rd16(0x70003A)));    /* M7B, then M7C */
     cyc(24);
-    wr16(b | 0x4204, cyc_then(24, rd16(b | 0x2135)));
+    io_wr16(b | 0x4204, n = cyc_then(24, io_rd16(b | 0x2135, (uint16_t)(ppu_mul((uint8_t)m) >> 8))));
     cyc(24);
     e = rd16(b | 0x0E8E);
     cyc(54);
-    wr16(b | 0x4206, e);
+    io_wr8(b | 0x4206, (uint8_t)e);
+    wr8(b | 0x4207, (uint8_t)(e >> 8));      /* the high byte to HTIMEL */
+    q1 = cpu_div(n, (uint8_t)e);
     cyc(24);
-    wr16(b | 0x211B, e);
+    io_wr16(b | 0x211B, e);
+    ppu_mul_factor = (int16_t)e;
     cyc(32);
-    wr16(b | 0x211C, cyc_then(24, rd16(0x70003E)));
+    io_wr16(b | 0x211C, m = cyc_then(24, rd16(0x70003E)));
     cyc(24);
-    q1 = rd16(b | 0x4214);
+    q1 = io_rd16(b | 0x4214, q1);
     cyc(24);
-    wr16(b | 0x4204, cyc_then(24, rd16(b | 0x2135)));
+    io_wr16(b | 0x4204, n = cyc_then(24, io_rd16(b | 0x2135, (uint16_t)(ppu_mul((uint8_t)m) >> 8))));
     cyc(60);
-    wr16(b | 0x4206, e);
+    io_wr8(b | 0x4206, (uint8_t)e);
+    wr8(b | 0x4207, (uint8_t)(e >> 8));
+    q2 = cpu_div(n, (uint8_t)e);
     cyc(32);
     wr16(0x70020E, q1);
     cyc(82);
-    q2 = rd16(b | 0x4214);
+    q2 = io_rd16(b | 0x4214, q2);
     cyc(32);
     wr16(0x700210, q2);
     cyc(16);

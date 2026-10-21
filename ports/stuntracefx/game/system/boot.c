@@ -134,7 +134,7 @@ void abi_HardwareRegsInit(void)
         if ((reg >= 0x4202 && reg <= 0x4206) || reg == 0x211B || reg == 0x211C)
             io_wr8(b | reg, writes[i].v);   /* the multiply units: as C */
         else
-            wr8(b | reg, writes[i].v);
+            reg_wr(b | reg, writes[i].v);
     }
     ppu_mul_factor = 0x0100;                 /* M7A: $00, then $01 */
     cyc(44);
@@ -227,7 +227,7 @@ static void boot_blank(uint32_t b)
     cyc(96);
     wr8(b | HDMAEN, 0x00);
     boot_lda8(0x80);
-    wr8(b | INIDISP, 0x80);
+    ppu_wr(b | INIDISP, 0x80);
     cpu.p |= P_I;
 }
 
@@ -466,7 +466,7 @@ soft_rest:
     cyc(22);
     wr8(b | APUIO1, 0x06);
     boot_lda8(0x80);
-    wr8(b | INIDISP, 0x80);
+    ppu_wr(b | INIDISP, 0x80);
     cyc(24);
     wr8(b | NMITIMEN, 0x00);
     cyc(24);
