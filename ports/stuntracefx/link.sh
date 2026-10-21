@@ -8,6 +8,8 @@
 #        CC       the compiler; one aimed at Windows (x86_64-w64-mingw32-gcc)
 #                 builds stuntracefx.exe with host/win32 under the host
 #        OUT      build directory (default build/stuntracefx/port/HOST)
+#        GAME     the game's C (default ports/stuntracefx/game; src/stuntracefx
+#                 builds the reference the port's copy is checked against)
 #        SRFX_ROM your cartridge's ROM (default reference/stuntracefx/Stunt
 #                 Race FX (USA) (Rev 1).sfc), checked by its SHA-1 and built
 #                 into the executable: the game needs no ROM once built
@@ -16,6 +18,7 @@ cd "$(dirname "$0")/../.."
 HOST=${HOST:-null}
 CC=${CC:-clang}
 OUT=${OUT:-build/stuntracefx/port/$HOST}
+GAME=${GAME:-ports/stuntracefx/game}
 ROM=${SRFX_ROM:-reference/stuntracefx/Stunt Race FX (USA) (Rev 1).sfc}
 case "$OUT" in build/*) ;; *) echo "link: OUT must be under build/ (got $OUT)" >&2; exit 2;; esac
 TARGET=$($CC -dumpmachine)
@@ -23,7 +26,7 @@ SHA=$(python3 -c "import hashlib,sys;print(hashlib.sha1(open(sys.argv[1],'rb').r
 [ "$SHA" = 781e376ff453a83c7bcf72339abe6b842efd9c86 ] || { echo "link: $ROM is not Stunt Race FX (USA) (Rev 1)" >&2; exit 2; }
 mkdir -p "$OUT/gen" "$OUT/obj"
 
-python3 ports/stuntracefx/tools/routines.py "$ROM" "$OUT/gen/routines.c" >/dev/null
+SRFX_GAME="$GAME" python3 ports/stuntracefx/tools/routines.py "$ROM" "$OUT/gen/routines.c" >/dev/null
 
 # the ROM, as data in the executable
 ROMABS=$(cd "$(dirname "$ROM")" && pwd)/$(basename "$ROM")
@@ -43,7 +46,7 @@ ${SYM}_end:
 EOS
 
 CFLAGS="-O2 -g -std=gnu11 -fno-strict-aliasing -ffp-contract=off"
-INC="-Iports/common/snes -Iports/common/host -Iports/stuntracefx/game/include -Iports/stuntracefx/runtime"
+INC="-Iports/common/snes -Iports/common/host -I$GAME/include -Iports/stuntracefx/runtime"
 case "$TARGET" in
   *mingw*|*windows*) OSHOST=ports/common/host/win32/host_win32.c; EXE=.exe; OSLIBS="-static -lwinmm";;
   *)                 OSHOST=ports/common/host/posix/host_posix.c; EXE=;     OSLIBS=;;
@@ -59,8 +62,8 @@ compile() {   # source, extra flags
 }
 
 # the game: every C file
-for f in $(find ports/stuntracefx/game -name '*.c' | sort); do
-  compile "$f" "-w -Iports/stuntracefx/game/include"
+for f in $(find "$GAME" -name '*.c' | sort); do
+  compile "$f" "-w -I$GAME/include"
 done
 # the machine layer and the runtime (an app with its own host calls srfx_main)
 for f in ports/common/snes/*.c ports/stuntracefx/runtime/*.c "$OUT/gen/routines.c"; do

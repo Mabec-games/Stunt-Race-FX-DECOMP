@@ -23,7 +23,7 @@ same reading of the tags as tools/stuntracefx/hybrid.py's.
 import glob, os, re, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-SRC = os.path.join(ROOT, 'ports', 'stuntracefx', 'game')
+SRC = os.path.join(ROOT, os.environ.get('SRFX_GAME', 'ports/stuntracefx/game'))
 sys.path.insert(0, os.path.join(ROOT, 'tools', 'stuntracefx'))
 import spc700, spcmap  # noqa: E402
 
