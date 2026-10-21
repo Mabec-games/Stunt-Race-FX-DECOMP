@@ -17,13 +17,13 @@
 static void vram_channel(uint16_t size, uint16_t src, uint16_t vram)
 {
     cyc(24);
-    wr16(DAS0L, size);
+    dma_wr16(DAS0L, size);
     cyc(24);
-    wr16(A1T0L, src);
+    dma_wr16(A1T0L, src);
     cyc(24);
     ppu_wr16(VMADDL, vram);
     cyc(48);
-    wr16(DMAP0, 0x1801);
+    dma_wr16(DMAP0, 0x1801);
 }
 
 /*
@@ -39,11 +39,11 @@ void VramDmaFromBank7F(uint16_t size, uint16_t src, uint16_t vram)
 {
     vram_channel(size, src, vram);
     cyc(62);
-    wr8(A1B0, 0x7F);
+    dma_wr(A1B0, 0x7F);
     cyc(40);
     ppu_wr(VMAIN, 0x80);
     cyc(40);
-    wr8(MDMAEN, 0x01);
+    mdmaen_wr(MDMAEN, 0x01);
     cyc(42);
 }
 
@@ -71,13 +71,13 @@ uint8_t VramDmaFromGsuRam(uint16_t size, uint16_t src, uint16_t vram)
 
     vram_channel(size, src, vram);
     cyc(62);
-    wr8(A1B0, 0x70);
+    dma_wr(A1B0, 0x70);
     cyc(40);
     ppu_wr(VMAIN, 0x80);
     cyc(24);
     wr8(GSU_SCMR, cyc_then(40, rd8(GSU_SCMR_SHADOW) & 0xF7));
     cyc(40);
-    wr8(MDMAEN, 0x01);
+    mdmaen_wr(MDMAEN, 0x01);
     cyc(24);
     mode = rd8(GSU_SCMR_SHADOW) | 0x18;
     cyc(40);
@@ -115,20 +115,20 @@ uint16_t VramDmaRowsFromGsuRam(uint16_t src, uint16_t vram, uint8_t rows)
     cyc(24);
     ppu_wr16(VMADDL, vram);
     cyc(48);
-    wr16(DMAP0, 0x1801);
+    dma_wr16(DMAP0, 0x1801);
     cyc(62);
-    wr8(A1B0, 0x70);
+    dma_wr(A1B0, 0x70);
     cyc(40);
     ppu_wr(VMAIN, 0x80);
     cyc(54);
     wr16(GSU_SCMR, cyc_then(48, rd16(GSU_SCMR_SHADOW) & 0xFFF7));
     for (;;) {
         cyc(60);
-        wr16(A1T0L, src);
+        dma_wr16(A1T0L, src);
         cyc(70);
-        wr16(DAS0L, 0x0140);
+        dma_wr16(DAS0L, 0x0140);
         cyc(62);
-        wr8(MDMAEN, 0x01);
+        mdmaen_wr(MDMAEN, 0x01);
         if (--rows == 0)
             break; else { cyc(54); }
         src = (uint16_t)(src + 0x0200);
@@ -169,19 +169,19 @@ void abi_VramDmaRowsFromGsuRam(void)
 void OamDma(uint16_t src, uint16_t size)
 {
     cyc(24);
-    wr16(A1T0L, src);
+    dma_wr16(A1T0L, src);
     cyc(40);
     ppu_wr(OAMADDL, 0x00);
     cyc(24);
     ppu_wr(OAMADDH, 0x00);
     cyc(24);
-    wr16(DAS0L, size);
+    dma_wr16(DAS0L, size);
     cyc(48);
-    wr16(DMAP0, 0x0400);
+    dma_wr16(DMAP0, 0x0400);
     cyc(40);
-    wr8(A1B0, 0x00);
+    dma_wr(A1B0, 0x00);
     cyc(40);
-    wr8(MDMAEN, 0x01);
+    mdmaen_wr(MDMAEN, 0x01);
     cyc(42);
 }
 
@@ -228,17 +228,17 @@ void abi_OamDmaAll(void)
 void CgramDma(uint16_t src, uint8_t colour, uint16_t size)
 {
     cyc(24);
-    wr16(A1T0L, src);
+    dma_wr16(A1T0L, src);
     cyc(24);
-    wr16(DAS0L, size);
+    dma_wr16(DAS0L, size);
     cyc(48);
-    wr16(DMAP0, 0x2200);
+    dma_wr16(DMAP0, 0x2200);
     cyc(46);
     ppu_wr(CGADD, colour);
     cyc(40);
-    wr8(A1B0, 0x7E);
+    dma_wr(A1B0, 0x7E);
     cyc(40);
-    wr8(MDMAEN, 0x01);
+    mdmaen_wr(MDMAEN, 0x01);
 }
 
 void abi_CgramDma(void)
@@ -357,24 +357,24 @@ uint8_t VramDmaWideRowsFromGsuRam(uint8_t rows_less_one, uint16_t src, uint16_t 
     cyc(84);
     ppu_wr(VMAIN, 0x80);
     cyc(40);
-    wr8(DMAP0 + 1, 0x18);
+    dma_wr(DMAP0 + 1, 0x18);
     cyc(40);
-    wr8(A1B0, 0x70);
+    dma_wr(A1B0, 0x70);
     cyc(40);
-    wr8(DMAP0, 0x01);
+    dma_wr(DMAP0, 0x01);
     cyc(14);
     do {
         cyc(84);
-        wr16(DAS0L, 0x02C0);
+        dma_wr16(DAS0L, 0x02C0);
         cyc(16);
         s = rd16(0x0000FB);
         cyc(24);
-        wr16(A1T0L, s);
+        dma_wr16(A1T0L, s);
         s = (uint16_t)(s + 0x0400);
         cyc(54);
         wr16(0x0000FB, s);
         cyc(24);
-        wr8(MDMAEN, 0x01);
+        mdmaen_wr(MDMAEN, 0x01);
     } while (!(--rows_less_one & 0x80));
     cyc(76);
     mode = rd8(GSU_SCMR_SHADOW) | 0x18;
@@ -415,17 +415,17 @@ static int vram_upload_gsu_buffer(uint16_t *src)
     cyc(48);
     ppu_wr16(VMADDL, 0x6600);
     cyc(48);
-    wr16(DMAP0, 0x1801);
+    dma_wr16(DMAP0, 0x1801);
     cyc(40);
-    wr8(A1B0, 0x70);
+    dma_wr(A1B0, 0x70);
     cyc(48);
-    wr16(DAS0L, 0x0C00);
+    dma_wr16(DAS0L, 0x0C00);
     cyc(24);
     *src = rd8(0x000D7F) ? (cyc(16), 0x4000) : 0xD000;
     cyc(70);
-    wr16(A1T0L, *src);
+    dma_wr16(A1T0L, *src);
     cyc(40);
-    wr8(MDMAEN, 0x01);
+    mdmaen_wr(MDMAEN, 0x01);
     cyc(24);
     wr8(0x000D32, 0x00);
     return 1;
@@ -470,9 +470,9 @@ void DmaFromDescriptor(uint8_t bank, uint16_t desc)
     wr16(0x0000FB, desc);
     cyc(2);
     for (y = 6; y >= 0; y--)
-        { cyc(106); wr8(DMAP0 + (unsigned)y, rd8((uint32_t)bank << 16 | (uint16_t)(desc + y))); }
+        { cyc(106); dma_wr(DMAP0 + (unsigned)y, rd8((uint32_t)bank << 16 | (uint16_t)(desc + y))); }
     cyc(70);
-    wr8(MDMAEN, 0x01);
+    mdmaen_wr(MDMAEN, 0x01);
     cyc(70);
 }
 
@@ -765,14 +765,14 @@ static void split_picture(uint32_t b, uint16_t x)
     ppu_wr16(VMADDL, x);
     cpu.x = 0x1680;
     cyc(48);
-    wr16(DAS0L, 0x1680);
+    dma_wr16(DAS0L, 0x1680);
     cpu.x = 0x9BD7;
     cyc(48);
-    wr16(A1T0L, 0x9BD7);
+    dma_wr16(A1T0L, 0x9BD7);
     cpu.x = 0x1801;
     cpu.p = nz16(cpu.p, 0x1801);
     cyc(48);
-    wr16(DMAP0, 0x1801);
+    dma_wr16(DMAP0, 0x1801);
     put8(A1B0, 0x7F);
     put8(VMAIN, 0x80);
     cyc(24);
@@ -878,17 +878,17 @@ static void split_stage(uint32_t b)
         cpu.p &= (uint8_t)~P_M;
         cpu.a = 0x0800;
         cyc(70);
-        wr16(DAS0L, 0x0800);
+        dma_wr16(DAS0L, 0x0800);
         cpu.a = 0x93D7;
         cyc(48);
-        wr16(A1T0L, 0x93D7);
+        dma_wr16(A1T0L, 0x93D7);
         cpu.a = 0x7800;
         cyc(48);
         ppu_wr16(VMADDL, 0x7800);
         cpu.a = 0x1801;
         cpu.p = nz16(cpu.p, 0x1801);
         cyc(48);
-        wr16(DMAP0, 0x1801);
+        dma_wr16(DMAP0, 0x1801);
         cpu.p |= P_M;
         cyc(22);
         put8(A1B0, 0x7F);
@@ -915,18 +915,18 @@ static void split_stage(uint32_t b)
         src = rd16(b | 0x10A0);
         cpu.x = src;
         cyc(24);
-        wr16(A1T0L, src);
+        dma_wr16(A1T0L, src);
         put8(A1B0, 0x7F);
         cpu.x = 0x0C00;
         cyc(48);
-        wr16(DAS0L, 0x0C00);
+        dma_wr16(DAS0L, 0x0C00);
         cpu.x = 0x6600;
         cyc(48);
         ppu_wr16(VMADDL, 0x6600);
         cpu.x = 0x1801;
         cpu.p = nz16(cpu.p, 0x1801);
         cyc(48);
-        wr16(DMAP0, 0x1801);
+        dma_wr16(DMAP0, 0x1801);
         put8(VMAIN, 0x80);
         put8(MDMAEN, 0x01);
         put8(b | 0x0D23, 0x02);

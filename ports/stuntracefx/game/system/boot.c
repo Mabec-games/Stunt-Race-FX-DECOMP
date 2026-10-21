@@ -225,7 +225,7 @@ static void boot_blank(uint32_t b)
 {
     op_sep(P_M);
     cyc(96);
-    wr8(b | HDMAEN, 0x00);
+    hdmaen_wr(b | HDMAEN, 0x00);
     boot_lda8(0x80);
     ppu_wr(b | INIDISP, 0x80);
     cpu.p |= P_I;
@@ -236,21 +236,21 @@ static void boot_dma(uint32_t b, uint16_t to, uint8_t wbank, uint8_t from_bank, 
 {
     boot_ldx(0x8000);
     cyc(26);
-    wr16(b | 0x4300, 0x8000);
+    dma_wr16(b | 0x4300, 0x8000);
     boot_ldy(to);
     cyc(48);
     wr16(b | WMADDL, to);
     boot_lda8(wbank);
     wr8(b | WMADDH, wbank);
     cyc(24);
-    wr16(b | 0x4302, 0x8000);
+    dma_wr16(b | 0x4302, 0x8000);
     boot_lda8(from_bank);
-    wr8(b | 0x4304, from_bank);
+    dma_wr(b | 0x4304, from_bank);
     boot_ldy(count);
     cyc(48);
-    wr16(b | 0x4305, count);
+    dma_wr16(b | 0x4305, count);
     boot_lda8(0x01);
-    wr8(b | MDMAEN, 0x01);
+    mdmaen_wr(b | MDMAEN, 0x01);
 }
 
 enum { BOOT_COLD, BOOT_START, BOOT_WARM, BOOT_RACE, BOOT_ATTRACT, BOOT_SOFT, BOOT_SOFT_REST };
@@ -470,9 +470,9 @@ soft_rest:
     cyc(24);
     wr8(b | NMITIMEN, 0x00);
     cyc(24);
-    wr8(b | MDMAEN, 0x00);
+    mdmaen_wr(b | MDMAEN, 0x00);
     cyc(24);
-    wr8(b | HDMAEN, 0x00);
+    hdmaen_wr(b | HDMAEN, 0x00);
     op_sep(P_M);
     op_rep(P_X);
     boot_clear(abi_WramFillZeroLong, 86, 64, 62);

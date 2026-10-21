@@ -288,23 +288,23 @@ static void video_gsu_ram_dma(uint16_t src, uint16_t vram, uint16_t size)
 
     cpu.p &= (uint8_t)~P_M;
     cyc(80);
-    wr16(DMAP0, 0x1801);
+    dma_wr16(DMAP0, 0x1801);
     cyc(56);
-    wr16(A1T0L, src);
+    dma_wr16(A1T0L, src);
     cyc(56);
     ppu_wr16(VMADDL, vram);
     cpu.a = size;
     cyc(56);
-    wr16(DAS0L, size);
+    dma_wr16(DAS0L, size);
     cpu.p |= P_M;
     cyc(70);
     ppu_wr(VMAIN, 0x80);
     cyc(48);
-    wr8(A1B0, 0x70);
+    dma_wr(A1B0, 0x70);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
     cpu.p = nz8(cpu.p, 0x01);
     cyc(48);
-    wr8(MDMAEN, 0x01);
+    mdmaen_wr(MDMAEN, 0x01);
     op_plp(p);
     cyc(28);
 }

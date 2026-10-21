@@ -185,13 +185,13 @@ void MenuHdmaSetup(uint8_t bank)
     cyc(112);
     for (i = 0; i < 4; i++) {
         cyc(40);
-        wr8(b | ch[i].base, ch[i].mode);
+        dma_wr(b | ch[i].base, ch[i].mode);
         cyc(40);
-        wr8(b | (uint16_t)(ch[i].base + 1), ch[i].reg);
+        dma_wr(b | (uint16_t)(ch[i].base + 1), ch[i].reg);
         cyc(48);
-        wr16(b | (uint16_t)(ch[i].base + 2), ch[i].table);
+        dma_wr16(b | (uint16_t)(ch[i].base + 2), ch[i].table);
         cyc(40);
-        wr8(b | (uint16_t)(ch[i].base + 4), 0x7F);
+        dma_wr(b | (uint16_t)(ch[i].base + 4), 0x7F);
     }
     cyc(70);
 }
@@ -308,15 +308,15 @@ void MenuHdmaSetupB(uint8_t bank)
     cyc(66);
     for (i = 0; i < 4; i++) {
         cyc(40);
-        wr8(b | ch[i].base, ch[i].mode);
+        dma_wr(b | ch[i].base, ch[i].mode);
         cyc(40);
-        wr8(b | (uint16_t)(ch[i].base + 1), ch[i].reg);
+        dma_wr(b | (uint16_t)(ch[i].base + 1), ch[i].reg);
         cyc(48);
-        wr16(b | (uint16_t)(ch[i].base + 2), ch[i].table);
+        dma_wr16(b | (uint16_t)(ch[i].base + 2), ch[i].table);
         cyc(40);
-        wr8(b | (uint16_t)(ch[i].base + 4), 0x7F);
+        dma_wr(b | (uint16_t)(ch[i].base + 4), 0x7F);
         if (i == 0)
-            { cyc(40); wr8(b | 0x4377, 0x00); }
+            { cyc(40); dma_wr(b | 0x4377, 0x00); }
     }
     cyc(48);
     wr8(0x7F1354, 0xFF);
@@ -834,9 +834,9 @@ void MenuScreenOpen0(void)
     cyc(306);
     ppu_wr(INIDISP, 0x80);
     cyc(24);
-    wr8(HDMAEN, 0x00);
+    hdmaen_wr(HDMAEN, 0x00);
     cyc(24);
-    wr8(MDMAEN, 0x00);
+    mdmaen_wr(MDMAEN, 0x00);
     cyc(24);
     wr8(0x0011DA, 0x00);
     cyc(24);
@@ -968,9 +968,9 @@ void MenuScreenOpen6(void)
     cyc(318);
     ppu_wr(INIDISP, 0x80);
     cyc(24);
-    wr8(HDMAEN, 0x00);
+    hdmaen_wr(HDMAEN, 0x00);
     cyc(24);
-    wr8(MDMAEN, 0x00);
+    mdmaen_wr(MDMAEN, 0x00);
     cyc(24);
     wr8(0x0011DA, 0x00);
     cyc(24);
@@ -1202,9 +1202,9 @@ void abi_ChampionScreenOpen(void)
     cyc(324);
     ppu_wr(INIDISP, 0x80);
     cyc(24);
-    wr8(HDMAEN, 0x00);
+    hdmaen_wr(HDMAEN, 0x00);
     cyc(24);
-    wr8(MDMAEN, 0x00);
+    mdmaen_wr(MDMAEN, 0x00);
     cyc(24);
     wr8(0x0011DA, 0x00);
     cyc(24);
@@ -1481,7 +1481,7 @@ void abi_ChampionScreenOpen(void)
     (cyc(62), abi_MenuOamBuild());
     op_sep(P_M);
     cyc(62);
-    wr8(HDMAEN, 0xF0);
+    hdmaen_wr(HDMAEN, 0xF0);
     cyc(40);
     wr8(0x000D3F, 0x20);
     cyc(40);

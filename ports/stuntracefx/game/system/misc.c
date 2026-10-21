@@ -313,15 +313,15 @@ void WramFillZero(uint8_t bank, uint16_t addr, uint16_t count)
     cyc(24);
     wr8(0x002183, bank);
     cyc(24);
-    wr16(0x004305, count);
+    dma_wr16(0x004305, count);
     cyc(48);
-    wr16(0x004302, 0x8D26);
+    dma_wr16(0x004302, 0x8D26);
     cyc(40);
-    wr8(0x004304, 0x03);
+    dma_wr(0x004304, 0x03);
     cyc(48);
-    wr16(0x004300, 0x8008);
+    dma_wr16(0x004300, 0x8008);
     cyc(40);
-    wr8(0x00420B, 0x01);
+    mdmaen_wr(0x00420B, 0x01);
     cyc(42);
 }
 
@@ -483,7 +483,7 @@ static void demo_blank(uint32_t b)
 {
     op_sep(P_M);
     cyc(46);
-    wr8(b | HDMAEN, 0x00);
+    hdmaen_wr(b | HDMAEN, 0x00);
     demo_lda8(0x80);
     ppu_wr(b | INIDISP, 0x80);
     cpu.p |= P_I;
@@ -877,9 +877,9 @@ end:
     cyc(24);
     wr8(b | NMITIMEN, 0x00);
     cyc(24);
-    wr8(b | MDMAEN, 0x00);
+    mdmaen_wr(b | MDMAEN, 0x00);
     cyc(24);
-    wr8(b | HDMAEN, 0x00);
+    hdmaen_wr(b | HDMAEN, 0x00);
     op_rep(P_M);
     cyc(24);
     op_lda16(b | 0x1A5B);

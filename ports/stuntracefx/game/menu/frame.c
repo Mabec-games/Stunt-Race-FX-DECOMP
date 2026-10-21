@@ -373,9 +373,9 @@ void MenuScreen0Run(void)
     cyc(24);
     wr8(b | (uint16_t)NMITIMEN, 0x00);
     cyc(24);
-    wr8(b | (uint16_t)HDMAEN, 0x00);
+    hdmaen_wr(b | (uint16_t)HDMAEN, 0x00);
     cyc(24);
-    wr8(b | (uint16_t)MDMAEN, 0x00);
+    mdmaen_wr(b | (uint16_t)MDMAEN, 0x00);
     cpu.a = 0x0080;
     cpu.p = (uint8_t)((cpu.p & ~(P_Z | P_C)) | P_N | P_M);
     cyc(44);

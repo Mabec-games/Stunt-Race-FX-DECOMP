@@ -7,6 +7,7 @@
  * $7F:3493 (copied from $0D96 and $0D98) scrolls the gradient.
  */
 #include "machine.h"
+#include "native.h"
 #include "hw.h"
 
 /* The run expansion GradientExpandFirst and GradientExpandSecond share,
@@ -261,21 +262,21 @@ uint16_t GradientSetup(uint8_t bank)
     unsigned k;
 
     cyc(152);
-    wr8(b | 0x4320, 0x00);
+    dma_wr(b | 0x4320, 0x00);
     cyc(40);
-    wr8(b | 0x4321, 0x21);
+    dma_wr(b | 0x4321, 0x21);
     cyc(40);
-    wr8(b | 0x4324, 0x7F);
+    dma_wr(b | 0x4324, 0x7F);
     cyc(70);
-    wr16(b | 0x4322, 0x3497);
+    dma_wr16(b | 0x4322, 0x3497);
     cyc(48);
-    wr16(b | 0x4330, 0x0042);
+    dma_wr16(b | 0x4330, 0x0042);
     cyc(48);
-    wr16(b | 0x4331, 0x0022);
+    dma_wr16(b | 0x4331, 0x0022);
     cyc(48);
-    wr16(b | 0x4334, 0x007F);
+    dma_wr16(b | 0x4334, 0x007F);
     cyc(70);
-    wr16(b | 0x4332, 0x3489);
+    dma_wr16(b | 0x4332, 0x3489);
     cyc(102);
     wr16(0x7F3497, 0x0117);
     x = 2;
@@ -296,7 +297,7 @@ uint16_t GradientSetup(uint8_t bank)
     for (k = 0; k < 5; k++)
         { cyc(48); wr8(cnt[k].a, cnt[k].v); }
     cyc(40);
-    wr8(b | 0x4337, 0x7F);
+    dma_wr(b | 0x4337, 0x7F);
     cyc(90);
     c = rd8(b | 0x0E3D);
     i = (uint16_t)(((uint16_t)(c << 1) + rd8(cyc_then(52, b | 0x0E3D))) & 0x00FF);

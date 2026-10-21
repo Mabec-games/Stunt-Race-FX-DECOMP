@@ -132,19 +132,19 @@ void VramDmaTileFromGsuRam(uint16_t tile, uint16_t vram, uint8_t *p)
     *p = (uint8_t)((*p & ~(P_C | P_V)) | (s > 0xFFFF ? P_C : 0)
                    | ((~(a ^ f1) & (a ^ (uint16_t)s) & 0x8000) ? P_V : 0));
     cyc(24);
-    wr16(A1T0L, (uint16_t)s);
+    dma_wr16(A1T0L, (uint16_t)s);
     cyc(24);
     ppu_wr16(VMADDL, vram);
     cyc(48);
-    wr16(DMAP0, 0x1801);
+    dma_wr16(DMAP0, 0x1801);
     cyc(48);
-    wr16(DAS0L, 0x0020);
+    dma_wr16(DAS0L, 0x0020);
     cyc(62);
     ppu_wr(VMAIN, 0x80);
     cyc(40);
-    wr8(A1B0, 0x70);
+    dma_wr(A1B0, 0x70);
     cyc(40);
-    wr8(MDMAEN, 0x01);
+    mdmaen_wr(MDMAEN, 0x01);
     cyc(64);
 }
 

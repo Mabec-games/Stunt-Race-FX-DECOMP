@@ -132,21 +132,21 @@ void GsuCF42ToVram(uint8_t bank, uint16_t in, uint16_t out)
     cyc(62);
     ppu_wr(VMADDH, rd8(b | (uint16_t)(out + 2)));
     cyc(62);
-    wr8(DMAP0, rd8(b | (uint16_t)(out + 3)));
+    dma_wr(DMAP0, rd8(b | (uint16_t)(out + 3)));
     cyc(62);
-    wr8(BBAD0, rd8(b | (uint16_t)(out + 4)));
+    dma_wr(BBAD0, rd8(b | (uint16_t)(out + 4)));
     cyc(40);
-    wr8(A1T0L, 0x00);
+    dma_wr(A1T0L, 0x00);
     cyc(40);
-    wr8(A1T0H, 0x30);
+    dma_wr(A1T0H, 0x30);
     cyc(40);
-    wr8(A1B0, 0x70);
+    dma_wr(A1B0, 0x70);
     cyc(62);
-    wr8(DAS0L, rd8(b | (uint16_t)(out + 5)));
+    dma_wr(DAS0L, rd8(b | (uint16_t)(out + 5)));
     cyc(62);
-    wr8(DAS0H, rd8(b | (uint16_t)(out + 6)));
+    dma_wr(DAS0H, rd8(b | (uint16_t)(out + 6)));
     cyc(40);
-    wr8(MDMAEN, 0x01);
+    mdmaen_wr(MDMAEN, 0x01);
     cyc(44);
 }
 

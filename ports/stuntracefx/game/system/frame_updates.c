@@ -35,19 +35,19 @@ static uint8_t oam_dma_if_pending(int *ran)
     if (!*ran)
         { cyc(38); return 0; }
     cyc(56);
-    wr8(DMAP0, 0x00);
+    dma_wr(DMAP0, 0x00);
     cyc(40);
-    wr8(DMAP0 + 1, 0x04);
+    dma_wr(DMAP0 + 1, 0x04);
     cyc(48);
-    wr16(A1T0L, OAM_BUFFER);
+    dma_wr16(A1T0L, OAM_BUFFER);
     cyc(40);
-    wr8(A1B0, 0x00);
+    dma_wr(A1B0, 0x00);
     cyc(48);
-    wr16(DAS0L, 0x0220);
+    dma_wr16(DAS0L, 0x0220);
     cyc(48);
     ppu_wr16(OAMADDL, 0x0000);
     cyc(40);
-    wr8(MDMAEN, 0x01);
+    mdmaen_wr(MDMAEN, 0x01);
     cyc(24);
     flags = rd8(FRAME_UPDATE_FLAGS) & 0xFB;
     cyc(40);
@@ -90,19 +90,19 @@ static uint8_t cgram_dma_if_pending(int *ran)
     if (!*ran)
         { cyc(38); return 0; }
     cyc(56);
-    wr8(DMAP0, 0x00);
+    dma_wr(DMAP0, 0x00);
     cyc(40);
-    wr8(DMAP0 + 1, 0x22);
+    dma_wr(DMAP0 + 1, 0x22);
     cyc(48);
-    wr16(A1T0L, (uint16_t)PALETTE_BUFFER);
+    dma_wr16(A1T0L, (uint16_t)PALETTE_BUFFER);
     cyc(40);
-    wr8(A1B0, (uint8_t)(PALETTE_BUFFER >> 16));
+    dma_wr(A1B0, (uint8_t)(PALETTE_BUFFER >> 16));
     cyc(48);
-    wr16(DAS0L, 0x0200);
+    dma_wr16(DAS0L, 0x0200);
     cyc(24);
     ppu_wr(CGADD, 0x00);
     cyc(40);
-    wr8(MDMAEN, 0x01);
+    mdmaen_wr(MDMAEN, 0x01);
     cyc(24);
     flags = rd8(FRAME_UPDATE_FLAGS) & 0xF7;
     cyc(40);
@@ -339,24 +339,24 @@ static FlushEnd vram_dma_queue_flush(void)
     cyc(72);
     ppu_wr(VMAIN, 0x80);
     cyc(40);
-    wr8(DMAP0 + 1, 0x18);
+    dma_wr(DMAP0 + 1, 0x18);
     cyc(46);
     x = (uint16_t)(rd16(0x0016AF) - 8);
     end.a = x;
     if (!(x & 0x8000)) {
         do {
             cyc(122);
-            wr16(A1T0L, cyc_then(24, rd16(0x0016B9 + x)));
+            dma_wr16(A1T0L, cyc_then(24, rd16(0x0016B9 + x)));
             cyc(32);
             ppu_wr16(VMADDL, cyc_then(24, rd16(0x0016BC + x)));
             cyc(32);
-            wr16(DAS0L, cyc_then(24, rd16(0x0016BE + x)));
+            dma_wr16(DAS0L, cyc_then(24, rd16(0x0016BE + x)));
             cyc(54);
-            wr8(A1B0, cyc_then(24, rd8(0x0016BB + x)));
+            dma_wr(A1B0, cyc_then(24, rd8(0x0016BB + x)));
             cyc(40);
-            wr8(DMAP0, 0x01);
+            dma_wr(DMAP0, 0x01);
             cyc(24);
-            wr8(MDMAEN, 0x01);
+            mdmaen_wr(MDMAEN, 0x01);
             x = (uint16_t)(x - 8);
         } while (cyc_loop(42, !(x & 0x8000)));
         cyc(44);

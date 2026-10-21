@@ -126,9 +126,9 @@ void abi_SoftResetCheck(void)
     cyc(24);
     wr8(b | NMITIMEN, 0x00);
     cyc(24);
-    wr8(b | MDMAEN, 0x00);
+    mdmaen_wr(b | MDMAEN, 0x00);
     cyc(24);
-    wr8(b | HDMAEN, 0x00);
+    hdmaen_wr(b | HDMAEN, 0x00);
     cyc(24);
     wr8(b | RESET_STATE, 0x00);
     abi_SoftResetApu();

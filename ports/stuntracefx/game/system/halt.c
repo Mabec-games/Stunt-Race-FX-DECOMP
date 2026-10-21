@@ -32,7 +32,7 @@ static void halt(void)
     cyc(70);
     ppu_wr(INIDISP, 0x0F);
     cyc(48);
-    wr8(HDMAEN, 0x00);
+    hdmaen_wr(HDMAEN, 0x00);
     cyc(32);
     wr8(NMITIMEN, 0x00);
     cyc(32);

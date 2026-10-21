@@ -1563,7 +1563,7 @@ void abi_AttractCourseSetup(void)
     cpu.p |= P_I;
     op_sep(P_M);
     cyc(192);
-    wr8(HDMAEN, 0x00);
+    hdmaen_wr(HDMAEN, 0x00);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x80);
     cpu.p = nz8(cpu.p, 0x80);
     (cyc(78), abi_Set7EBC2BTrio());

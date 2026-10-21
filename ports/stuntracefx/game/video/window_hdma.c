@@ -5,6 +5,7 @@
  * setting; $FFD1 and $FFDD are other ones.
  */
 #include "machine.h"
+#include "native.h"
 #include "hw.h"
 #include "cpu_ops.h"
 
@@ -1129,29 +1130,29 @@ void WindowsInit(void)
             { cyc(24); wr8(b | zero[i], 0x00); }
     }
     cyc(84);
-    wr8(b | DMAP4, 0x44);
+    dma_wr(b | DMAP4, 0x44);
     cyc(40);
-    wr8(b | BBAD4, 0x26);
+    dma_wr(b | BBAD4, 0x26);
     cyc(48);
-    wr16(b | A1T4L, 0xF85B);
+    dma_wr16(b | A1T4L, 0xF85B);
     cyc(40);
-    wr8(b | A1B4, 0x7F);
+    dma_wr(b | A1B4, 0x7F);
     cyc(48);
-    wr16(b | DAS4L, 0x0000);
+    dma_wr16(b | DAS4L, 0x0000);
     cyc(40);
-    wr8(b | DASB4, 0x7F);
+    dma_wr(b | DASB4, 0x7F);
     cyc(40);
-    wr8(b | DMAP5, 0x00);
+    dma_wr(b | DMAP5, 0x00);
     cyc(40);
-    wr8(b | BBAD5, 0x32);
+    dma_wr(b | BBAD5, 0x32);
     cyc(48);
-    wr16(b | A1T5L, 0xFF8B);
+    dma_wr16(b | A1T5L, 0xFF8B);
     cyc(40);
-    wr8(b | A1B5, 0x7F);
+    dma_wr(b | A1B5, 0x7F);
     cyc(48);
-    wr16(b | DAS5L, 0x0000);
+    dma_wr16(b | DAS5L, 0x0000);
     cyc(40);
-    wr8(b | DASB5, 0x7F);
+    dma_wr(b | DASB5, 0x7F);
     cyc(100);
 }
 
@@ -1510,16 +1511,16 @@ void abi_WindowHdmaChannelsSetup(void)
         uint16_t base = (uint16_t)(0x4370 - 0x10 * i);
 
         cyc(40);
-        wr8(b | base, ch[i].dmap);
+        dma_wr(b | base, ch[i].dmap);
         cyc(40);
-        wr8(b | (uint16_t)(base + 1), ch[i].bbad);
+        dma_wr(b | (uint16_t)(base + 1), ch[i].bbad);
         cpu.x = ch[i].a1t;
         cyc(48);
-        wr16(b | (uint16_t)(base + 2), cpu.x);
+        dma_wr16(b | (uint16_t)(base + 2), cpu.x);
         cyc(40);
-        wr8(b | (uint16_t)(base + 4), 0x7F);
+        dma_wr(b | (uint16_t)(base + 4), 0x7F);
         if (i == 1)
-            { cyc(40); wr8(b | (uint16_t)(base + 7), 0x00); }
+            { cyc(40); dma_wr(b | (uint16_t)(base + 7), 0x00); }
     }
     cpu.a = (uint16_t)(cpu.a & 0xFF00);
     cyc(48);

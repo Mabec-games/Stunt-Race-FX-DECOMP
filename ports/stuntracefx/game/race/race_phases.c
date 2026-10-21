@@ -2178,9 +2178,9 @@ static void screen_off(void)
     cyc(24);
     wr8(0x004200, 0x00);
     cyc(24);
-    wr8(0x00420B, 0x00);
+    mdmaen_wr(0x00420B, 0x00);
     cyc(24);
-    wr8(0x00420C, 0x00);
+    hdmaen_wr(0x00420C, 0x00);
 }
 
 /* REP #$30, command 5 to APU port 1 (16-bit), the delay of $4000 counts
@@ -2297,7 +2297,7 @@ void abi_RaceEndVideoReset(void)
 {
     op_sep(P_M);
     cyc(46);
-    wr8(0x00420C, 0x00);
+    hdmaen_wr(0x00420C, 0x00);
     lda8_imm(0x80);
     cyc(16);
     ppu_wr(0x002100, 0x80);

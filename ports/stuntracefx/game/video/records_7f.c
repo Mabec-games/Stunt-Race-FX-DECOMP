@@ -4,6 +4,7 @@
  * from position lists in bank $09 that end with $FF.
  */
 #include "machine.h"
+#include "native.h"
 #include "hw.h"
 
 /*
@@ -103,17 +104,18 @@ uint16_t Records7FFromF170(uint8_t bank)
     cyc(70);
     wr16(b | (WMADDL & 0xFFFF), 0x5187);
     cyc(40);
-    wr8(b | (DMAP0 & 0xFFFF), 0x00);
+    dma_wr(b | (DMAP0 & 0xFFFF), 0x00);
     cyc(40);
-    wr8(b | (BBAD0 & 0xFFFF), 0x80);
+    dma_wr(b | (BBAD0 & 0xFFFF), 0x80);
     cyc(48);
-    wr16(b | (A1T0L & 0xFFFF), 0xF849);
+    dma_wr16(b | (A1T0L & 0xFFFF), 0xF849);
     cyc(40);
-    wr8(b | (A1B0 & 0xFFFF), 0x09);
+    dma_wr(b | (A1B0 & 0xFFFF), 0x09);
     cyc(48);
-    wr16(b | (DAS0L & 0xFFFF), 0x0040);
+    dma_wr16(b | (DAS0L & 0xFFFF), 0x0040);
     cyc(48);
-    wr16(b | (MDMAEN & 0xFFFF), 0x0001);
+    mdmaen_wr(b | (MDMAEN & 0xFFFF), 0x01);   /* a 16-bit store: HDMAEN after */
+    hdmaen_wr(b | (HDMAEN & 0xFFFF), 0x00);
     return (uint16_t)(y & 0x00FF);
 }
 

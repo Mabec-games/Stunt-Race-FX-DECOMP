@@ -30,7 +30,7 @@ static void crash_body(uint8_t bank, uint16_t code)
     cyc(46);
     wr8((uint32_t)bank << 16 | (uint16_t)NMITIMEN, 0x00);
     cyc(24);
-    wr8((uint32_t)bank << 16 | (uint16_t)HDMAEN, 0x00);
+    hdmaen_wr((uint32_t)bank << 16 | (uint16_t)HDMAEN, 0x00);
     cpu.p |= P_I;
     cyc(38);
     ppu_wr((uint32_t)bank << 16 | (uint16_t)TM, 0x00);
@@ -77,15 +77,15 @@ static void crash_body(uint8_t bank, uint16_t code)
     cyc(24);
     ppu_wr(COLDATA, 0x00);
     cyc(24);
-    wr8(DMAP1, 0x00);
+    dma_wr(DMAP1, 0x00);
     cyc(40);
-    wr8(BBAD1, 0x00);
+    dma_wr(BBAD1, 0x00);
     cyc(40);
-    wr8(A1B1, 0x00);
+    dma_wr(A1B1, 0x00);
     cyc(48);
-    wr16(A1T1L, 0x812E);
+    dma_wr16(A1T1L, 0x812E);
     cyc(24);
-    wr8(DASB1, 0x00);
+    dma_wr(DASB1, 0x00);
     cyc(24);
     ppu_wr(BG1VOFS, 0x00);
     cyc(24);
@@ -97,7 +97,7 @@ static void crash_body(uint8_t bank, uint16_t code)
     cyc(40);
     ppu_wr(INIDISP, 0x0F);
     cyc(40);
-    wr8(HDMAEN, 0x02);
+    hdmaen_wr(HDMAEN, 0x02);
     for (;;) {
         cyc(92);
         delay_turns(20000);

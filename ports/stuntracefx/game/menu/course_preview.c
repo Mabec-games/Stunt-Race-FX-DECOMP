@@ -339,9 +339,9 @@ void abi_MenuScreenOpenPreview(void)
     cyc(262);
     ppu_wr(0x002100, 0x80);
     cyc(24);
-    wr8(0x00420C, 0x00);
+    hdmaen_wr(0x00420C, 0x00);
     cyc(24);
-    wr8(0x00420B, 0x00);
+    mdmaen_wr(0x00420B, 0x00);
     cyc(24);
     wr8(0x0011DA, 0x00);
     cyc(24);
@@ -448,7 +448,7 @@ void abi_MenuScreenOpenPreview(void)
     (cyc(62), abi_MenuOamBuild());
     cpu.p |= P_M;
     cyc(62);
-    wr8(0x00420C, 0x90);
+    hdmaen_wr(0x00420C, 0x90);
     cyc(24);
     wr8(0x0011D7, cyc_then(40, (uint8_t)(rd8(0x0011D7) | 0x0F)));
     (cyc(46), abi_MenuWaitFrame());
@@ -914,7 +914,7 @@ chosen:
     cyc(24);
     wr8(b | 0x4200, 0x00);
     cyc(24);
-    wr8(b | 0x420C, 0x00);
+    hdmaen_wr(b | 0x420C, 0x00);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x80);
     cpu.p = nz8(cpu.p, 0x80);
     cyc(40);

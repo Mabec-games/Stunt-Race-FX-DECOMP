@@ -331,12 +331,15 @@ static void cpu_reg_write(uint16_t off, uint8_t v)
     case 0x4208: htime = (uint16_t)((htime & 0xFF) | (v & 1) << 8); irq_schedule(1); events_next(); return;
     case 0x4209: vtime = (uint16_t)((vtime & 0x100) | v); irq_schedule(1); events_next(); return;
     case 0x420A: vtime = (uint16_t)((vtime & 0xFF) | (v & 1) << 8); irq_schedule(1); events_next(); return;
-    case 0x420B: dma_start(v); return;
-    case 0x420C: dma_hdmaen = v; return;
+    case 0x420B: if (audit_on()) audit_site(0x420B); dma_start(v); return;
+    case 0x420C: if (audit_on()) audit_site(0x420C); dma_hdmaen = v; return;
     case 0x420D: memsel = v; return;
     }
-    if (off >= 0x4300 && off < 0x4380)
+    if (off >= 0x4300 && off < 0x4380) {
+        if (audit_on())
+            audit_site(off);
         dma_write(off, v);
+    }
 }
 
 /* the joypads' serial ports: a strobe latches the buttons, then each read

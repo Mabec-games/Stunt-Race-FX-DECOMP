@@ -67,12 +67,55 @@ static inline void ppu_wr16(uint32_t addr, uint16_t v)
     ppu_wr((addr + 1) & 0xFFFFFF, (uint8_t)(v >> 8));
 }
 
+/* ---- transfers: the copies into the picture's tiles, palette and sprites
+   and the per-line tables (the console's DMA, $4300-$437F, MDMAEN and
+   HDMAEN): each channel's settings, a copy run on the channels in
+   `channels`, the per-line tables on those channels ---- */
+void dma_reg(uint8_t reg, uint8_t v);       /* $4300 + reg: channel reg >> 4 */
+void dma_go(uint8_t channels);
+void hdma_set(uint8_t channels);
+
+static inline int dma_reg_addr(uint32_t addr)
+{
+    return !(addr & 0x400000) && (addr & 0xFF80) == 0x4300;
+}
+
+static inline void dma_wr(uint32_t addr, uint8_t v)
+{
+    io_write_time(addr, v);
+    dma_reg((uint8_t)(addr & 0x7F), v);
+}
+
+static inline void dma_wr16(uint32_t addr, uint16_t v)
+{
+    dma_wr(addr, (uint8_t)v);
+    dma_wr((addr + 1) & 0xFFFFFF, (uint8_t)(v >> 8));
+}
+
+static inline void mdmaen_wr(uint32_t addr, uint8_t v)
+{
+    io_write_time(addr, v);
+    dma_go(v);
+}
+
+static inline void hdmaen_wr(uint32_t addr, uint8_t v)
+{
+    io_write_time(addr, v);
+    hdma_set(v);
+}
+
 /* A write to a register the code computes (a table's, a queue's): to the
    part that register belongs to. */
 static inline void reg_wr(uint32_t addr, uint8_t v)
 {
     if (ppu_reg(addr))
         ppu_wr(addr, v);
+    else if (dma_reg_addr(addr))
+        dma_wr(addr, v);
+    else if (!(addr & 0x400000) && (addr & 0xFFFF) == 0x420B)
+        mdmaen_wr(addr, v);
+    else if (!(addr & 0x400000) && (addr & 0xFFFF) == 0x420C)
+        hdmaen_wr(addr, v);
     else
         wr8(addr, v);
 }

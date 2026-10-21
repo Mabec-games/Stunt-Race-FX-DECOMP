@@ -240,7 +240,7 @@ void abi_Set7EBC2AValues(void)
  */
 void ScreenBlankAndWait(uint8_t bank)
 {
-    wr8(dbw(bank, 0x420C), cyc_then(90, 0x00));
+    hdmaen_wr(dbw(bank, 0x420C), cyc_then(90, 0x00));
     ppu_wr(dbw(bank, 0x2100), cyc_then(40, 0x80));
     cyc(62); /* JSL */
     Set7EBC2BTrio(0x80);
@@ -456,13 +456,13 @@ void abi_TileRowBuildLong(void)
 void TileRowUpload(uint8_t bank)
 {
     ppu_wr(dbw(bank, 0x2115), cyc_then(40, 0x80));
-    wr8(dbw(bank, 0x4301), cyc_then(40, 0x18));
-    wr16(dbw(bank, 0x4302), cyc_then(48, ROW));
-    wr8(dbw(bank, 0x4304), cyc_then(24, 0x00));
+    dma_wr(dbw(bank, 0x4301), cyc_then(40, 0x18));
+    dma_wr16(dbw(bank, 0x4302), cyc_then(48, ROW));
+    dma_wr(dbw(bank, 0x4304), cyc_then(24, 0x00));
     ppu_wr16(dbw(bank, 0x2116), cyc_then(48, 0x2FA0));
-    wr16(dbw(bank, 0x4305), cyc_then(48, 0x0040));
-    wr8(dbw(bank, 0x4300), cyc_then(40, 0x01));
-    wr8(dbw(bank, 0x420B), cyc_then(40, 0x01));
+    dma_wr16(dbw(bank, 0x4305), cyc_then(48, 0x0040));
+    dma_wr(dbw(bank, 0x4300), cyc_then(40, 0x01));
+    mdmaen_wr(dbw(bank, 0x420B), cyc_then(40, 0x01));
     cyc(42); /* RTS */
 }
 
@@ -711,19 +711,19 @@ void abi_UnusedScreenSetup(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
     (cyc(100), abi_PaletteLoad70());
     cyc(40);
-    wr8(b | 0x4301, 0x22);
+    dma_wr(b | 0x4301, 0x22);
     cyc(40);
     ppu_wr(b | 0x2121, 0x80);
     cyc(48);
-    wr16(b | 0x4302, 0xFA17);
+    dma_wr16(b | 0x4302, 0xFA17);
     cyc(40);
-    wr8(b | 0x4304, 0x7F);
+    dma_wr(b | 0x4304, 0x7F);
     cyc(48);
-    wr16(b | 0x4305, 0x0100);
+    dma_wr16(b | 0x4305, 0x0100);
     cyc(40);
-    wr8(b | 0x4300, 0x00);
+    dma_wr(b | 0x4300, 0x00);
     cyc(40);
-    wr8(b | 0x420B, 0x01);
+    mdmaen_wr(b | 0x420B, 0x01);
     cyc(24);
     ppu_wr(b | 0x2123, 0x00);
     cyc(24);
@@ -749,45 +749,45 @@ void abi_UnusedScreenSetup(void)
     (cyc(62), abi_Set7EBC2AValues());
     op_sep(P_M);
     cyc(62);
-    wr8(b | 0x4310, 0x00);
+    dma_wr(b | 0x4310, 0x00);
     cyc(40);
-    wr8(b | 0x4311, 0x00);
+    dma_wr(b | 0x4311, 0x00);
     cyc(48);
-    wr16(b | 0x4312, 0xBC28);
+    dma_wr16(b | 0x4312, 0xBC28);
     cyc(40);
-    wr8(b | 0x4314, 0x7E);
+    dma_wr(b | 0x4314, 0x7E);
     cyc(24);
-    wr8(b | 0x4317, 0x00);
+    dma_wr(b | 0x4317, 0x00);
     cyc(40);
-    wr8(b | 0x4320, 0x02);
+    dma_wr(b | 0x4320, 0x02);
     cyc(40);
-    wr8(b | 0x4321, 0x0F);
+    dma_wr(b | 0x4321, 0x0F);
     cyc(48);
-    wr16(b | 0x4322, 0xBC50);
+    dma_wr16(b | 0x4322, 0xBC50);
     cyc(40);
-    wr8(b | 0x4324, 0x7E);
+    dma_wr(b | 0x4324, 0x7E);
     cyc(24);
-    wr8(b | 0x4327, 0x00);
+    dma_wr(b | 0x4327, 0x00);
     cyc(40);
-    wr8(b | 0x4330, 0x01);
+    dma_wr(b | 0x4330, 0x01);
     cyc(40);
-    wr8(b | 0x4331, 0x26);
+    dma_wr(b | 0x4331, 0x26);
     cyc(48);
-    wr16(b | 0x4332, 0xB7A0);
+    dma_wr16(b | 0x4332, 0xB7A0);
     cyc(40);
-    wr8(b | 0x4334, 0x7E);
+    dma_wr(b | 0x4334, 0x7E);
     cyc(24);
-    wr8(b | 0x4337, 0x00);
+    dma_wr(b | 0x4337, 0x00);
     cyc(40);
-    wr8(b | 0x4340, 0x02);
+    dma_wr(b | 0x4340, 0x02);
     cyc(40);
-    wr8(b | 0x4341, 0x10);
+    dma_wr(b | 0x4341, 0x10);
     cyc(48);
-    wr16(b | 0x4342, 0xC22E);
+    dma_wr16(b | 0x4342, 0xC22E);
     cyc(40);
-    wr8(b | 0x4344, 0x7E);
+    dma_wr(b | 0x4344, 0x7E);
     cyc(24);
-    wr8(b | 0x4347, 0x00);
+    dma_wr(b | 0x4347, 0x00);
     cyc(40);
     wr8(b | 0x0316, 0x1E);
     cyc(48);
@@ -813,7 +813,7 @@ void abi_UnusedScreenSetup(void)
     cyc(24);
     wr8(b | 0x084C, 0x00);
     cyc(40);
-    wr8(b | 0x420C, 0x02);
+    hdmaen_wr(b | 0x420C, 0x02);
     cyc(40);
     wr8(b | 0x06E3, 0xBE);
     (cyc(62), abi_WaitScanline());

@@ -25,19 +25,19 @@ static void upload(uint16_t gradient_src, uint16_t src, int bra)
     cyc(32);
     wr16(0x7F348D, v);
     cyc(48);
-    wr16(b | 0x4302, src);
+    dma_wr16(b | 0x4302, src);
     cyc(62);
-    wr8(b | 0x4304, 0x7F);
+    dma_wr(b | 0x4304, 0x7F);
     cyc(bra ? 62 : 40);                 /* BRA into the shared tail, or not */
     ppu_wr(b | 0x2115, 0x80);
     cyc(48);
     ppu_wr16(b | 0x2116, 0x5C00);
     cyc(48);
-    wr16(b | 0x4300, 0x1801);
+    dma_wr16(b | 0x4300, 0x1801);
     cyc(48);
-    wr16(b | 0x4305, 0x0440);
+    dma_wr16(b | 0x4305, 0x0440);
     cyc(40);
-    wr8(b | 0x420B, 0x01);
+    mdmaen_wr(b | 0x420B, 0x01);
     cpu.a = (uint16_t)((v & 0xFF00) | 0x01);
     cpu.x = 0x0440;
     cyc(28);
