@@ -91,7 +91,10 @@ the display's own size and aspect:
   never changes how the game plays;
 - the 2D: the HUD anchored to the screen's edges and corners; the
   backgrounds (sky, horizon) extended across the width; full-screen menus
-  and pictures pillarboxed;
+  and pictures pillarboxed; the 2D layers scaled to the output with sharp
+  bilinear filtering (nearest to the largest whole multiple, then bilinear
+  for the rest), as Boss Rally, so pixels stay crisp at any size without
+  uneven widths;
 - the 3D drawn at the output resolution, not scaled up.
 
 Gate: with the toggle on original, every gate above unchanged; the wide
