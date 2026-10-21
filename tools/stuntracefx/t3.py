@@ -34,8 +34,14 @@ B = os.path.join(ROOT, 'build', 'stuntracefx')
 SFXBOX = os.path.join(B, 'box', 'sfxbox')
 LIB = os.path.join(B, 'hybrid', 'libsrfx.dylib')
 SCRIPTS = os.path.join(ROOT, 'tools', 'stuntracefx', 'scripts')
-LIVE = os.path.join(ROOT, 'config', 'stuntracefx', 't3_live.csv')
-IMAGE = os.path.join(ROOT, 'config', 'stuntracefx', 'whole_image.csv')
+# The C judged (SRFX_GATE_TREE, default the decomp's) and where its records
+# and work go (SRFX_GATE_OUT, a directory under build/stuntracefx: another
+# tree's records kept apart from the decomp's; default the decomp's own).
+TREE = os.environ.get('SRFX_GATE_TREE', 'src/stuntracefx').rstrip('/')
+OUTD = os.environ.get('SRFX_GATE_OUT')
+LIVE = os.path.join(B, OUTD, 't3_live.csv') if OUTD else os.path.join(ROOT, 'config', 'stuntracefx', 't3_live.csv')
+IMAGE = os.path.join(B, OUTD, 'whole_image.csv') if OUTD else os.path.join(ROOT, 'config', 'stuntracefx', 'whole_image.csv')
+WORKD = os.path.join(B, OUTD) if OUTD else B
 
 
 # A run still going after this is stuck. The longest scripts take about 35
@@ -58,7 +64,7 @@ def run(cmd):
 
 def one(script, only):
     name = os.path.splitext(os.path.basename(script))[0]
-    d = os.path.join(B, 'check', name)
+    d = os.path.join(WORKD, 'check', name)
     os.makedirs(d, exist_ok=True)
     rep = os.path.join(d, 'check.txt')
     if os.path.exists(rep):
@@ -83,7 +89,7 @@ def one(script, only):
 # gate run reruns a script, or a routine, only when one of those changed
 # since the revision its last passing result was measured on, and carries
 # the other results forward to the new revision. --full reruns everything.
-SHARED = ('src/stuntracefx/include/', 'tools/stuntracefx/sfxbox/', 'tools/toolchains/patches/',
+SHARED = (TREE + '/include/', 'tools/stuntracefx/sfxbox/', 'tools/toolchains/patches/',
           'tools/stuntracefx/hybrid.py')
 
 
@@ -97,7 +103,7 @@ def changed_since(rev):
 
 
 def shared_changed(paths):
-    return any(p.startswith(SHARED) or (p.startswith('src/stuntracefx/') and not p.endswith('.c'))
+    return any(p.startswith(SHARED) or (p.startswith(TREE + '/') and not p.endswith('.c'))
                for p in paths)
 
 
@@ -117,7 +123,7 @@ def changed_routines(rev, paths):
     """Every routine whose C was added, changed or removed between `rev` and HEAD."""
     out = set()
     for p in paths:
-        if p.startswith('src/stuntracefx/') and p.endswith('.c'):
+        if p.startswith(TREE + '/') and p.endswith('.c'):
             out |= tags_in(rev, p) | tags_in('HEAD', p)
     return out
 
@@ -134,7 +140,7 @@ def reached():
     # SPC700's opcode bit, folded back onto the ROM, for SPC700 code).
     have = {r['addr'] for r in rows}
     tags = []
-    for dp, dn, fn in os.walk(os.path.join(ROOT, 'src', 'stuntracefx')):
+    for dp, dn, fn in os.walk(os.path.join(ROOT, TREE)):
         for f in fn:
             if f.endswith('.c'):
                 text = open(os.path.join(dp, f)).read()
@@ -173,7 +179,7 @@ def script_stale(name, rev, prev):
     return 'C changed for %s' % ' '.join(sorted(hit)[:4]) if hit else ''
 
 
-GATE_LIB = os.path.join(B, 'hybrid', 'gate', 'libsrfx.dylib')
+GATE_LIB = os.path.join(WORKD, 'libsrfx.dylib') if OUTD else os.path.join(B, 'hybrid', 'gate', 'libsrfx.dylib')
 
 
 @functools.lru_cache(maxsize=None)
@@ -190,7 +196,7 @@ def build_gate_lib():
 def stale_routines(rev):
     """Routines whose per-call result must be measured again for HEAD."""
     have = {}
-    for dp, dn, fn in os.walk(os.path.join(ROOT, 'src', 'stuntracefx')):
+    for dp, dn, fn in os.walk(os.path.join(ROOT, TREE)):
         for f in fn:
             if f.endswith('.c'):
                 for a in tags_in('HEAD', os.path.relpath(os.path.join(dp, f), ROOT)):
@@ -206,7 +212,7 @@ def stale_routines(rev):
 
 
 def _cache_path(name):
-    return os.path.join(B, 'check', name, 'rows.json')
+    return os.path.join(WORKD, 'check', name, 'rows.json')
 
 
 def _load_cache(name):
@@ -232,7 +238,7 @@ def live(only, full=False):
     LIB = GATE_LIB
     scripts = sorted(glob.glob(os.path.join(SCRIPTS, '*.sfx')))
     have = set()
-    for dp, dn, fn in os.walk(os.path.join(ROOT, 'src', 'stuntracefx')):
+    for dp, dn, fn in os.walk(os.path.join(ROOT, TREE)):
         for f in fn:
             if f.endswith('.c'):
                 have |= tags_in('HEAD', os.path.relpath(os.path.join(dp, f), ROOT))
@@ -318,7 +324,7 @@ def live(only, full=False):
 
 def source_rev():
     rev = subprocess.run(['git', 'rev-parse', '--short', 'HEAD'], capture_output=True, text=True, cwd=ROOT).stdout.strip()
-    dirty = subprocess.run(['git', 'status', '--porcelain', '--', 'src/stuntracefx'], capture_output=True, text=True, cwd=ROOT).stdout.strip()
+    dirty = subprocess.run(['git', 'status', '--porcelain', '--', TREE], capture_output=True, text=True, cwd=ROOT).stdout.strip()
     return rev + ('+dirty' if dirty else '')
 
 
@@ -341,7 +347,7 @@ def pieces(script):
     if not any(l.split()[0] in ('call', 'fx', 'spccall') for l in lines):
         return [script]
     name = os.path.splitext(os.path.basename(script))[0]
-    d = os.path.join(B, 'image', name, 'pieces')
+    d = os.path.join(WORKD, 'image', name, 'pieces')
     os.makedirs(d, exist_ok=True)
     for old in glob.glob(os.path.join(d, '*.sfx')):
         os.remove(old)
@@ -380,7 +386,7 @@ def pieces(script):
 
 def image_one(script):
     name = os.path.splitext(os.path.basename(script))[0]
-    d = os.path.join(B, 'image', name)
+    d = os.path.join(WORKD, 'image', name)
     os.makedirs(d, exist_ok=True)
     rep = os.path.join(d, 'lockstep.txt')
     if os.path.exists(rep):
@@ -599,7 +605,7 @@ def assess(addrs, image_ok=None):
     for a in addrs:
         addr = int(a, 16)
         key = '%06X' % addr
-        cpath, ctext, cm = find_tagged(os.path.join(ROOT, 'src', 'stuntracefx'), ('.c',), addr)
+        cpath, ctext, cm = find_tagged(os.path.join(ROOT, TREE), ('.c',), addr)
         apath, atext, am = find_tagged(os.path.join(ROOT, 'asm', 'stuntracefx'), ('.asm',), addr)
         if not cpath:
             out.append((key, am.group(3) if am else '', 'T2' if apath else 'T1', [('C', False, 'no C')]))

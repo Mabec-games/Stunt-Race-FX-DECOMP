@@ -32,7 +32,9 @@ static uint16_t halve(uint16_t v, uint16_t sign, uint32_t imm)
 /* The step as each routine makes it, reading and writing $3E as often and
    in the order the routine does (CMP, SBC, ADC, STA, then the tail's LDA),
    and the shared tails (to their RTL): $3E; *moved (when asked) whether it
-   moved. */
+   moved; the add's overflow, for the routines' register exit (approach_v). */
+static int approach_v;
+
 static uint16_t approach(uint16_t target, int wide, uint16_t min, int shifts, int *moved)
 {
     int m;
@@ -74,6 +76,7 @@ static uint16_t approach(uint16_t target, int wide, uint16_t min, int shifts, in
     cyc(30);                                    /* CLC, ADC */
     cur = wide ? rd16(APPROACH_VALUE) : rd8(APPROACH_VALUE);
     s = (uint16_t)(d + cur) & mask;
+    approach_v = (~(d ^ cur) & (d ^ s) & sign) != 0;
     cyc(16);                                    /* STA */
     if (wide)
         wr16(APPROACH_VALUE, s);
@@ -85,6 +88,18 @@ static uint16_t approach(uint16_t target, int wide, uint16_t min, int shifts, in
     return s;
 }
 
+/* The adapters' register exit (for the verification harness's calls): N, Z
+   from $3E; C clear when it moved, set when it was there; V from the add
+   when it moved. */
+static void approach_exit(uint16_t v, int wide, int moved)
+{
+    cpu.p = (uint8_t)(wide ? nz16(cpu.p, v) : nz8(cpu.p, (uint8_t)v));
+    if (moved)
+        cpu.p = (uint8_t)((cpu.p & ~(P_C | P_V)) | (approach_v ? P_V : 0));
+    else
+        cpu.p |= P_C;
+}
+
 /*
  * @routine 03:CDC1 ApproachHalfMin2
  * WHAT IT DOES: Moves $3E half of the way toward A, by at least 1.
@@ -94,6 +109,15 @@ static uint16_t approach(uint16_t target, int wide, uint16_t min, int shifts, in
 uint16_t ApproachHalfMin2(uint16_t target, int *moved)
 {
     return approach(target, 1, 2, 1, moved);
+}
+
+void abi_ApproachHalfMin2(void)
+{
+    int moved;
+    uint16_t v = ApproachHalfMin2(cpu.a, &moved);
+
+    cpu.a = v;
+    approach_exit(v, 1, moved);
 }
 
 /*
@@ -110,6 +134,15 @@ uint16_t ApproachQuarterMin4(uint16_t target, int *moved)
     return approach(target, 1, 4, 2, moved);
 }
 
+void abi_ApproachQuarterMin4(void)
+{
+    int moved;
+    uint16_t v = ApproachQuarterMin4(cpu.a, &moved);
+
+    cpu.a = v;
+    approach_exit(v, 1, moved);
+}
+
 /*
  * @routine 03:CE30 ApproachEighthMin8
  * WHAT IT DOES: Moves $3E an eighth of the way toward A, by at least 1.
@@ -120,6 +153,15 @@ uint16_t ApproachEighthMin8(uint16_t target, int *moved)
 {
     cyc(48);
     return approach(target, 1, 8, 3, moved);
+}
+
+void abi_ApproachEighthMin8(void)
+{
+    int moved;
+    uint16_t v = ApproachEighthMin8(cpu.a, &moved);
+
+    cpu.a = v;
+    approach_exit(v, 1, moved);
 }
 
 /*
@@ -133,6 +175,15 @@ uint16_t ApproachSixteenthMin16(uint16_t target, int *moved)
     return approach(target, 1, 16, 4, moved);
 }
 
+void abi_ApproachSixteenthMin16(void)
+{
+    int moved;
+    uint16_t v = ApproachSixteenthMin16(cpu.a, &moved);
+
+    cpu.a = v;
+    approach_exit(v, 1, moved);
+}
+
 /*
  * @routine 03:CEC3 ApproachThirtySecondMin32
  * WHAT IT DOES: Moves $3E a thirty-second of the way toward A, by at least 1.
@@ -142,6 +193,15 @@ uint16_t ApproachSixteenthMin16(uint16_t target, int *moved)
 uint16_t ApproachThirtySecondMin32(uint16_t target, int *moved)
 {
     return approach(target, 1, 32, 5, moved);
+}
+
+void abi_ApproachThirtySecondMin32(void)
+{
+    int moved;
+    uint16_t v = ApproachThirtySecondMin32(cpu.a, &moved);
+
+    cpu.a = v;
+    approach_exit(v, 1, moved);
 }
 
 /*
@@ -155,6 +215,15 @@ uint16_t ApproachSixtyFourthMin64(uint16_t target, int *moved)
     return approach(target, 1, 64, 6, moved);
 }
 
+void abi_ApproachSixtyFourthMin64(void)
+{
+    int moved;
+    uint16_t v = ApproachSixtyFourthMin64(cpu.a, &moved);
+
+    cpu.a = v;
+    approach_exit(v, 1, moved);
+}
+
 /*
  * @routine 03:CF7A ApproachOneTwentyEighthMin128
  * WHAT IT DOES: Moves $3E a 128th of the way toward A, by at least 1.
@@ -164,6 +233,15 @@ uint16_t ApproachSixtyFourthMin64(uint16_t target, int *moved)
 uint16_t ApproachOneTwentyEighthMin128(uint16_t target, int *moved)
 {
     return approach(target, 1, 128, 7, moved);
+}
+
+void abi_ApproachOneTwentyEighthMin128(void)
+{
+    int moved;
+    uint16_t v = ApproachOneTwentyEighthMin128(cpu.a, &moved);
+
+    cpu.a = v;
+    approach_exit(v, 1, moved);
 }
 
 /*
@@ -177,6 +255,15 @@ uint8_t ApproachHalfMin2Byte(uint8_t target, int *moved)
     return (uint8_t)approach(target, 0, 2, 1, moved);
 }
 
+void abi_ApproachHalfMin2Byte(void)
+{
+    int moved;
+    uint8_t v = ApproachHalfMin2Byte((uint8_t)cpu.a, &moved);
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    approach_exit(v, 0, moved);
+}
+
 /*
  * @routine 03:D042 ApproachEighthMin8Byte
  * WHAT IT DOES: Moves the byte at $3E an eighth of the way toward A, by at least 1.
@@ -186,6 +273,15 @@ uint8_t ApproachHalfMin2Byte(uint8_t target, int *moved)
 uint8_t ApproachEighthMin8Byte(uint8_t target, int *moved)
 {
     return (uint8_t)approach(target, 0, 8, 3, moved);
+}
+
+void abi_ApproachEighthMin8Byte(void)
+{
+    int moved;
+    uint8_t v = ApproachEighthMin8Byte((uint8_t)cpu.a, &moved);
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    approach_exit(v, 0, moved);
 }
 
 /*
@@ -198,6 +294,15 @@ uint8_t ApproachEighthMin8Byte(uint8_t target, int *moved)
 uint8_t ApproachQuarterMin4Byte(uint8_t target, int *moved)
 {
     return (uint8_t)approach(target, 0, 4, 2, moved);
+}
+
+void abi_ApproachQuarterMin4Byte(void)
+{
+    int moved;
+    uint8_t v = ApproachQuarterMin4Byte((uint8_t)cpu.a, &moved);
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    approach_exit(v, 0, moved);
 }
 
 /*
@@ -214,6 +319,15 @@ uint8_t ApproachSixteenthMin16Byte(uint8_t target, int *moved)
     return (uint8_t)approach(target, 0, 16, 4, moved);
 }
 
+void abi_ApproachSixteenthMin16Byte(void)
+{
+    int moved;
+    uint8_t v = ApproachSixteenthMin16Byte((uint8_t)cpu.a, &moved);
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    approach_exit(v, 0, moved);
+}
+
 /*
  * @routine 03:D0BD ApproachThirtySecondMin32Byte
  * WHAT IT DOES: Moves the byte at $3E a thirty-second of the way toward A, by
@@ -226,6 +340,15 @@ uint8_t ApproachSixteenthMin16Byte(uint8_t target, int *moved)
 uint8_t ApproachThirtySecondMin32Byte(uint8_t target, int *moved)
 {
     return (uint8_t)approach(target, 0, 32, 5, moved);
+}
+
+void abi_ApproachThirtySecondMin32Byte(void)
+{
+    int moved;
+    uint8_t v = ApproachThirtySecondMin32Byte((uint8_t)cpu.a, &moved);
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    approach_exit(v, 0, moved);
 }
 
 /*
@@ -242,6 +365,15 @@ uint8_t ApproachSixtyFourthMin64Byte(uint8_t target, int *moved)
     return (uint8_t)approach(target, 0, 64, 6, moved);
 }
 
+void abi_ApproachSixtyFourthMin64Byte(void)
+{
+    int moved;
+    uint8_t v = ApproachSixtyFourthMin64Byte((uint8_t)cpu.a, &moved);
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    approach_exit(v, 0, moved);
+}
+
 /*
  * @routine 03:D154 ApproachOneTwentyEighthMin128Byte
  * WHAT IT DOES: Meant to move the byte at $3E a 128th of the way toward A;
@@ -254,4 +386,13 @@ uint8_t ApproachSixtyFourthMin64Byte(uint8_t target, int *moved)
 uint8_t ApproachOneTwentyEighthMin128Byte(uint8_t target, int *moved)
 {
     return (uint8_t)approach(target, 0, 128, 7, moved);
+}
+
+void abi_ApproachOneTwentyEighthMin128Byte(void)
+{
+    int moved;
+    uint8_t v = ApproachOneTwentyEighthMin128Byte((uint8_t)cpu.a, &moved);
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    approach_exit(v, 0, moved);
 }

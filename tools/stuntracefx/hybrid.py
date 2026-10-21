@@ -20,12 +20,15 @@ def export_head():
     """The committed C tree at HEAD, so gates measure a commit while the
     working tree keeps changing. Returns (source dir, short revision)."""
     rev = subprocess.run(['git', 'rev-parse', '--short', 'HEAD'], capture_output=True, text=True, cwd=ROOT).stdout.strip()
-    dst = os.path.join(ROOT, 'build', 'stuntracefx', 'gate_src')
+    tree = os.environ.get('SRFX_GATE_TREE', 'src/stuntracefx').rstrip('/')
+    out = os.environ.get('SRFX_GATE_OUT')
+    dst = os.path.join(ROOT, 'build', 'stuntracefx', out, 'gate_src') if out else \
+        os.path.join(ROOT, 'build', 'stuntracefx', 'gate_src')
     shutil.rmtree(dst, ignore_errors=True)
     os.makedirs(dst)
-    arc = subprocess.run(['git', 'archive', 'HEAD', 'src/stuntracefx'], capture_output=True, cwd=ROOT).stdout
+    arc = subprocess.run(['git', 'archive', 'HEAD', tree], capture_output=True, cwd=ROOT).stdout
     subprocess.run(['tar', '-x', '-C', dst], input=arc, check=True)
-    return os.path.join(dst, 'src', 'stuntracefx'), rev
+    return os.path.join(dst, tree), rev
 TAG = re.compile(r'@routine\s+([0-9A-Fa-f]{2}):([0-9A-Fa-f]{4})\s+(\w+)')
 ALIAS = re.compile(r'@alias\s+([0-9A-Fa-f]{2}):([0-9A-Fa-f]{4})')
 SPC = re.compile(r'@spc\s+([0-9A-Fa-f]{4})\b')
