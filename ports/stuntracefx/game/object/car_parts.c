@@ -10,6 +10,7 @@
  * handlers live at +$1A/+$1C (bank $08).
  */
 #include "machine.h"
+#include "math_calls.h"
 #include "cpu_ops.h"
 
 void abi_RotateXY(void);
@@ -30,8 +31,6 @@ void abi_RecordContactSummary(void);
 void abi_ObjectBreakOffContact(void);
 void abi_ObjectSpawnChanceD460(void);
 void abi_SoundPort0QueuePush(void);
-void abi_ApproachQuarterMin4(void);
-void abi_ApproachQuarterMin4Byte(void);
 void abi_ObjectApplyVelocity(void);
 void abi_ObjectListAppend(void);
 void abi_ObjectCarRecordNew(void);
@@ -443,7 +442,7 @@ static void return_frame(void)
             wr16(0x00003E, cpu.a);
             cyc((t[i] & 0xFFFF) < 0x100 ? 16 : 24);   /* LDA direct page or absolute */
             op_lda16(t[i]);
-            abi_ApproachQuarterMin4();
+            cpu.a = ApproachQuarterMin4(cpu.a, NULL);
             wr16(F(f[i], cpu.x), cyc_then(30, cpu.a));
             cpu.p |= P_M;
         }
@@ -452,7 +451,7 @@ static void return_frame(void)
             cyc(14);
             wr8(0x00003E, cyc_then(16, ld8(F(0x2014 + i, cpu.x))));
             ld8(cyc_then(14, F(0x2014 + i, cpu.y)));
-            (cyc(62), abi_ApproachQuarterMin4Byte());
+            (cyc(62), cpu.a = (uint16_t)((cpu.a & 0xFF00) | ApproachQuarterMin4Byte((uint8_t)cpu.a, NULL)));
             wr8(F(0x2014 + i, cpu.x), cyc_then(30, (uint8_t)cpu.a));
         }
         cyc(62);

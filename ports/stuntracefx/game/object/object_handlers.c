@@ -9,6 +9,7 @@
  * the object in hand is $70:0000 + ($70:2476).
  */
 #include "machine.h"
+#include "math_calls.h"
 #include "cpu_ops.h"
 
 void abi_ObjectSpawn(void);
@@ -978,7 +979,6 @@ place:
 
 void abi_ObjectVelocityFromRecordOf(void);
 void abi_ObjectSpawnChanceD460(void);
-void abi_ApproachQuarterMin4(void);
 void abi_ObjectApplyVelocity(void);
 
 /*
@@ -1267,21 +1267,21 @@ void abi_ObjectChildReturn(void)
     wr16(0x00003E, cyc_then(16, rd16(b | (uint16_t)(0x200C + cpu.x))));
     cyc(16);
     op_lda16(0x000004);
-    abi_ApproachQuarterMin4();
+    cpu.a = ApproachQuarterMin4(cpu.a, NULL);
     cyc(30);
     wr16(b | (uint16_t)(0x200C + cpu.x), cpu.a);
     cyc(74);
     wr16(0x00003E, cyc_then(16, rd16(b | (uint16_t)(0x200E + cpu.x))));
     cyc(16);
     op_lda16(0x00000A);
-    abi_ApproachQuarterMin4();
+    cpu.a = ApproachQuarterMin4(cpu.a, NULL);
     cyc(30);
     wr16(b | (uint16_t)(0x200E + cpu.x), cpu.a);
     cyc(74);
     wr16(0x00003E, cyc_then(16, rd16(b | (uint16_t)(0x2010 + cpu.x))));
     cyc(24);
     op_lda16(b | 0x05F2);
-    abi_ApproachQuarterMin4();
+    cpu.a = ApproachQuarterMin4(cpu.a, NULL);
     cyc(30);
     wr16(b | (uint16_t)(0x2010 + cpu.x), cpu.a);
     cpu.p |= P_M;
@@ -3932,7 +3932,6 @@ void abi_ObjectLampDropBStart(void)
     abi_ObjectLampDropB();
 }
 
-void abi_ApproachQuarterMin4(void);
 
 /* A bank $00 direct page word at the pointer X (D = $0000): dp,X. */
 static uint32_t dpx(uint16_t off, uint16_t x)
@@ -4119,7 +4118,7 @@ store:
         wr16(0x00003E, cyc_then(16, rd16(cyc_then(66, dpx(pos[i], cpu.x)))));
         cyc(16);
         op_lda16(off[i]);
-        abi_ApproachQuarterMin4();
+        cpu.a = ApproachQuarterMin4(cpu.a, NULL);
         wr16(dpx(pos[i], cpu.x), cyc_then(22, cpu.a));
     }
     for (i = 0; i < 3; i++) {
@@ -4349,7 +4348,7 @@ void abi_ObjectRingSpin(void)
     wr16(0x00003E, cyc_then(16, rd16(b | (uint16_t)(0x200E + cpu.x))));
     cyc(30);
     op_lda16(b | (uint16_t)(0x2027 + cpu.x));
-    abi_ApproachQuarterMin4();
+    cpu.a = ApproachQuarterMin4(cpu.a, NULL);
     cyc(30);
     wr16(b | (uint16_t)(0x200E + cpu.x), cpu.a);
     cpu.p |= P_M;
@@ -4735,7 +4734,6 @@ void abi_DataBank7EEnd(void)
     cyc(44);                            /* RTL */
 }
 
-void abi_ApproachEighthMin8(void);
 void abi_ObjectPathCommand(void);
 void abi_CameraFollowStep(void);
 void abi_ObjectFaceTied(void);
@@ -4767,7 +4765,7 @@ void abi_CameraApproachTarget(void)
         wr16(0x00003E, cyc_then(16, rd16(b | (uint16_t)(pos[i] + cpu.y))));
         cyc(30);
         op_lda16(b | (uint16_t)(tgt[i] + cpu.y));
-        (cyc(14), abi_ApproachEighthMin8());
+        (cyc(14), cpu.a = ApproachEighthMin8(cpu.a, NULL));
         cyc(30);
         wr16(b | (uint16_t)(pos[i] + cpu.y), cpu.a);
         cpu.p |= P_M;

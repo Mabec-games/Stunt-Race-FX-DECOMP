@@ -12,6 +12,7 @@
  * Objects are at $2000 + X through the data bank (X 16-bit, M 8-bit).
  */
 #include "machine.h"
+#include "math_calls.h"
 #include "cpu_ops.h"
 
 void abi_ObjectSpawn(void);
@@ -22,8 +23,6 @@ void abi_GsuRecordNew424(void);
 void abi_GsuRecordFlag10(void);
 void abi_GsuRecordSet2AHigh(void);
 void abi_RandomStepLong(void);
-void abi_ApproachSixteenthMin16Byte(void);
-void abi_ApproachEighthMin8(void);
 void abi_ObjectCopyPositionFrom(void);
 void abi_ObjectApplyVelocity(void);
 void abi_GsuRecordNew42D(void);
@@ -410,7 +409,7 @@ static void spray_piece_step(void)
     wr8(0x00003E, (uint8_t)cpu.a);
     cyc(58);
     lda8(0x00);
-    abi_ApproachSixteenthMin16Byte();
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | ApproachSixteenthMin16Byte((uint8_t)cpu.a, NULL));
     wr8(F(0x2014, cpu.x), cyc_then(30, (uint8_t)cpu.a));
     op_lda8(cyc_then(30, F(0x2015, cpu.x)));
     cpu.p &= (uint8_t)~P_C;
@@ -426,7 +425,7 @@ static void spray_piece_step(void)
     cyc(16);
     wr16(0x00003E, cpu.a);
     op_lda16(cyc_then(30, F(0x2029, cpu.x)));
-    (cyc(14), abi_ApproachEighthMin8());
+    (cyc(14), cpu.a = ApproachEighthMin8(cpu.a, NULL));
     wr16(F(0x2030, cpu.x), cyc_then(30, cpu.a));
     cpu.p |= P_M;
     cpu.p &= (uint8_t)~P_M;
@@ -434,7 +433,7 @@ static void spray_piece_step(void)
     cyc(16);
     wr16(0x00003E, cpu.a);
     op_lda16_imm(0x05DC);
-    abi_ApproachEighthMin8();
+    cpu.a = ApproachEighthMin8(cpu.a, NULL);
     wr16(F(0x2032, cpu.x), cyc_then(30, cpu.a));
     cpu.p |= P_M;
     cyc(66);

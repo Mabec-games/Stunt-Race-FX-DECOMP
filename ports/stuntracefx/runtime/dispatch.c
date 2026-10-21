@@ -20,6 +20,10 @@
  *   SPC700                       the routine with C at the APU address
  *                                whose code the APU RAM holds (the race and
  *                                battle drivers share addresses)
+ *
+ * PORT_CALLTRACE=FILE: each routine call_routine and jump_routine reach
+ * (and each interrupt handler), once, into FILE as BB:AAAA how NAME: the
+ * routines the game reaches through computed addresses.
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -37,7 +41,23 @@ static port_jmp_buf top;
 static void (*next_entry)(void);
 static int in_interrupt;
 
-static const PortRoutine *find(uint32_t addr)
+static void traced(const char *how, const PortRoutine *r)
+{
+    static FILE *f;
+    static int on = -1;
+    static uint8_t seen[0x10000];
+    if (on < 0) {
+        const char *path = getenv("PORT_CALLTRACE");
+        on = path && (f = fopen(path, "a")) != NULL;
+    }
+    if (!on || seen[(r - port_routines) & 0xFFFF])
+        return;
+    seen[(r - port_routines) & 0xFFFF] = 1;
+    fprintf(f, "%02X:%04X %s %s\n", (unsigned)(r->addr >> 16), (unsigned)(r->addr & 0xFFFF), how, r->name);
+    fflush(f);
+}
+
+static const PortRoutine *find_any(uint32_t addr)
 {
     int lo = 0, hi = port_routine_count - 1;
     addr &= 0xFFFFFF;
@@ -51,6 +71,18 @@ static const PortRoutine *find(uint32_t addr)
             hi = mid - 1;
     }
     return NULL;
+}
+
+/* the routine that starts at addr, for a computed call: NULL when none
+   does; fatal when one does but its C is only called by name (no abi_
+   adapter: the plays never reached it this way) */
+static const PortRoutine *find(uint32_t addr)
+{
+    const PortRoutine *r = find_any(addr);
+    if (r && !r->abi)
+        snes_fatal("the game reaches %s ($%02X:%04X) through an address, and its C has no abi_ adapter for that",
+                   r->name, (unsigned)((addr >> 16) & 0xFF), (unsigned)(addr & 0xFFFF));
+    return r;
 }
 
 /* The game reached an address with no routine: on the console the CPU
@@ -67,6 +99,7 @@ void call_routine(uint32_t addr, int long_call)
     (void)long_call;
     if (!r)
         runaway("calls", addr);
+    traced("call", r);
     r->abi();
 }
 
@@ -75,6 +108,7 @@ void jump_routine(uint32_t addr)
     const PortRoutine *r = find(addr);
     if (!r)
         runaway("jumps to", addr);
+    traced("jump", r);
     r->abi();
 }
 
@@ -84,6 +118,7 @@ void jump_routine_pushed(uint32_t addr, const uint8_t *pushed, int n)
     int k;
     if (!r)
         runaway("jumps to", addr);
+    traced("jump", r);
     for (k = 0; k < n; k++)
         wr8((uint16_t)(cpu.s - k), pushed[k]);
     cpu.s = (uint16_t)(cpu.s - n);
@@ -175,6 +210,7 @@ static void take_interrupt(int nmi)
                 snes_cpu_clocks(6 + fetch(at + 3));
                 push8((uint8_t)(ret >> 8));
                 push8((uint8_t)ret);
+                traced("interrupt", r);
                 r->abi();
                 if (cpu.unwound)
                     snes_fatal("an interrupt handler left through its caller's frame");
@@ -185,6 +221,7 @@ static void take_interrupt(int nmi)
             } else {
                 /* JML: opcode and address fetched */
                 snes_cpu_clocks(fetch(at) + fetch(at + 1) + fetch(at + 2) + fetch(at + 3));
+                traced("interrupt", r);
                 r->abi();
                 break;
             }
@@ -212,6 +249,7 @@ static void gsu_run(uint8_t bank, uint16_t addr)
     const PortRoutine *r = find((uint32_t)bank << 16 | addr);
     if (!r)
         snes_fatal("Super FX program at $%02X:%04X has no C", bank, addr);
+    traced("gsu", r);
     r->abi();
 }
 

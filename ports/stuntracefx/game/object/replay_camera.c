@@ -11,6 +11,7 @@
  * bank (X 16-bit, M 8-bit).
  */
 #include "machine.h"
+#include "math_calls.h"
 #include "cpu_ops.h"
 
 void abi_CameraFollowLink(void);
@@ -20,9 +21,6 @@ void abi_CameraDirectorSkip2(void);
 void abi_CameraApproachTarget(void);
 void abi_ObjectPathStart(void);
 void abi_ObjectVelocityFromRecordOf(void);
-void abi_ApproachEighthMin8(void);
-void abi_ApproachThirtySecondMin32(void);
-void abi_ApproachSixtyFourthMin64(void);
 void abi_ScaleThreeQuarters(void);
 void abi_GsuTableEntryNext(void);
 void abi_GsuTableEntryTo1F4C(void);
@@ -537,7 +535,7 @@ static void drift_frame(uint16_t ty, void (*done)(void))
         cyc(16);
         wr16(0x00003E, cpu.a);
         op_lda16_imm(t[i]);
-        abi_ApproachEighthMin8();
+        cpu.a = ApproachEighthMin8(cpu.a, NULL);
         wr16(F(v[i], cpu.x), cyc_then(30, cpu.a));
         cpu.p |= P_M;
     }
@@ -752,7 +750,7 @@ void abi_CameraFixedSide(void)
 }
 
 /* A zoom frame: the camera's zoom +$0E eased toward `to` by `fn`; the tail. */
-static void zoom_frame(uint16_t to, void (*fn)(void))
+static void zoom_frame(uint16_t to, uint16_t (*fn)(uint16_t, int *))
 {
     link();
     cpu.p &= (uint8_t)~P_M;
@@ -760,7 +758,8 @@ static void zoom_frame(uint16_t to, void (*fn)(void))
     cyc(16);
     wr16(0x00003E, cpu.a);
     op_lda16_imm(to);
-    (cyc(48), fn());
+    cyc(48);
+    cpu.a = fn(cpu.a, NULL);
     wr16(cam(0x000E), cyc_then(30, cpu.a));
     cpu.p |= P_M;
     (cyc(46), tail());
@@ -775,7 +774,7 @@ static void zoom_frame(uint16_t to, void (*fn)(void))
  */
 void abi_CameraZoomInStep(void)
 {
-    zoom_frame(0x1000, abi_ApproachThirtySecondMin32);
+    zoom_frame(0x1000, ApproachThirtySecondMin32);
 }
 
 /*
@@ -787,7 +786,7 @@ void abi_CameraZoomInStep(void)
  */
 void abi_CameraZoomOutStep(void)
 {
-    zoom_frame(0x2000, abi_ApproachSixtyFourthMin64);
+    zoom_frame(0x2000, ApproachSixtyFourthMin64);
 }
 
 /*
