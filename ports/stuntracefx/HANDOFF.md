@@ -39,7 +39,7 @@ pushed.
 | `PORT_AUDIT=1` (headless) | names any rd8/wr8 that reaches a register |
 | `PORT_VIDCHECK=1` | each frame drawn from its record (video.h VidFrame) against the picture drawn a line at a time |
 | `PORT_FXCHECK=1` | the game's fill lifted to C (game/render/draw_list.c) against the Super FX's plots, every draw list; also counts pixels plotted outside the lists |
-| `PORT_GPUCHECK=1` with `RENDER=metal HOST=null` | the GPU compositor's frame, read back, against vid_draw_frame |
+| `PORT_GPUCHECK=1` with `RENDER=metal\|gl\|vulkan HOST=null` | the GPU compositor's frame, read back, against vid_draw_frame |
 | `PORT_RRCHECK=N` (windowed) | the presented frame at frame N against the reference |
 | `ports/common/render/check/check.sh` | each backend's sharp bilinear against the reference |
 | `ports/common/audio/check/mix_replay LOG SOUND` (VOX=) | the native mixer fed bsnes's DSP inputs, against bsnes's samples |
@@ -81,14 +81,12 @@ check above covers 21 plays.
   game/render/draw_list.c is the game's fill (flat, textured, lines) in
   plain C, identical to the Super FX on every list of the 21 plays.
 - GPU compositor (render/compose/core.glsl, one source for three shader
-  languages via build.sh): on Metal, every frame of the 21 plays identical
-  to vid_draw_frame (PORT_GPUCHECK).
+  languages via build.sh): on Metal, OpenGL and Vulkan, every frame of
+  the 21 plays identical to vid_draw_frame (PORT_GPUCHECK).
 
 ## Next, in order
 
-1. GPU compositor exact on Metal (PORT_GPUCHECK to 0 on all 21 plays),
-   then the same on OpenGL and Vulkan (their rr_compose is a stub); then
-   the window draws through it and the line-by-line drawing becomes the
+1. The window draws through it and the line-by-line drawing becomes the
    check's reference only.
 2. The 3D layer on the GPU: original mode from the draw list (edge setup
    as draw_list.c does it, spans filled in the shader), high resolution as
