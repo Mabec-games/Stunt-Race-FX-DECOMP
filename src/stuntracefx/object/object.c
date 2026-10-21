@@ -1823,8 +1823,6 @@ void abi_ObjectFreeLong(void)
  * compare; the object at $034C: N, Z from the new count; otherwise as
  * ObjectFree.
  */
-static int release_counted;             /* the last ObjectRelease counted $035C instead of freeing */
-
 uint16_t ObjectRelease(uint8_t bank, uint16_t obj, uint16_t a, uint8_t *p)
 {
     uint32_t b = (uint32_t)bank << 16;
@@ -1839,11 +1837,9 @@ uint16_t ObjectRelease(uint8_t bank, uint16_t obj, uint16_t a, uint8_t *p)
         cyc(6);
         wr8(b | 0x035C, n);
         *p = nz8(*p, n);
-        cyc(38);
-        release_counted = 1;
+        cyc(66);                        /* BRA, RTL */
         return a;
     } else { cyc(84); }
-    release_counted = 0;
     a = ObjectFreeLong(bank, obj);
     *p = (*p & P_X) ? nz8(*p, (uint8_t)obj) : (cyc(44), nz16(*p, obj));
     return a;
@@ -1881,7 +1877,7 @@ void ObjectCallHandler(uint16_t obj)
     cpu.p = (uint8_t)(nz16(cpu.p, a) | P_M);
     cyc(110);
     call_routine((uint32_t)bank << 16 | addr, 1);
-    cyc(130);
+    cyc(124);
     wr8((uint32_t)cpu.db << 16 | 0x1F58, keep);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | keep);
 }
@@ -1928,7 +1924,7 @@ static int run_handler(uint8_t bank, uint16_t obj, uint16_t word_at, uint16_t ba
     cpu.p = (uint8_t)(nz16(p, cpu.a) | P_M);
     cyc(110);
     call_routine((uint32_t)hb << 16 | h, 1);
-    cyc(114);
+    cyc(108);
     return 1;
 }
 
@@ -2387,7 +2383,7 @@ void abi_ObjectReleaseLong(void)
 {
     cpu.p |= P_M;
     (cyc(84), abi_ObjectRelease());
-    cyc(release_counted ? 66 : 44);     /* the counted path's BRA is in this tail */
+    cyc(44);
 }
 
 void abi_ObjectRebucket(void);
@@ -2522,7 +2518,7 @@ void abi_ObjectSparkleStep(void)
     wr8(b | (uint16_t)(0x2048 + cpu.x), v);
     cpu.p = nz8(cpu.p, v);
     (cyc(62), abi_ObjectRebucket());
-    cyc(38);
+    cyc(44);
 }
 
 /*
@@ -2936,7 +2932,7 @@ static void parent_place_from(uint32_t b, int attached, int stage)
     } else { cyc(22); }
     cyc(62);
     abi_ObjectRebucket();
-    cyc(38);
+    cyc(44);
 }
 
 static void parent_place(uint32_t b, int attached)
@@ -3767,7 +3763,7 @@ void abi_ObjectCarFrame(void)
             cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
             cpu.p = nz8(cpu.p, v);
             wr8(car_field(0x2024), cyc_then(46, v));
-            cyc(38);
+            cyc(44);
             return;
         } else { cyc(32); }
     }
@@ -3776,7 +3772,7 @@ void abi_ObjectCarFrame(void)
     (cyc(62), abi_ObjectNearFocus());
     abi_ObjectPoseFromRecord();
     (cyc(62), abi_ObjectRebucket());
-    cyc(38);
+    cyc(44);
 }
 
 void abi_CrashWhite(void);
@@ -4053,7 +4049,7 @@ void abi_ObjectCarRecordRestart(void)
     wr16(car_field(0x2057), cyc_then(38, 0x008C));
     op_sep(P_M);
     abi_GsuRecordFromObject();
-    (cyc(142), abi_ObjectChildrenSpawn());
+    (cyc(62), abi_ObjectChildrenSpawn());
     cyc(44);                            /* RTL */
 }
 
@@ -4070,7 +4066,7 @@ void abi_ObjectCarPoseStep(void)
 {
     (cyc(62), abi_ObjectRebucket());
     (cyc(62), abi_ObjectPoseFromRecord());
-    (cyc(166), abi_GsuRecordFlag4());
+    (cyc(86), abi_GsuRecordFlag4());
     cyc(44);                            /* RTL */
 }
 
@@ -4096,7 +4092,7 @@ void abi_ObjectCarRecordSetup(void)
     op_sep(P_M);
     op_rep(P_M);
     op_lda16_imm(0x0004);
-    (cyc(22), abi_ObjectCarRecordNew());
+    (cyc(70), abi_ObjectCarRecordNew());
     op_rep(P_M);
     op_lda16(cyc_then(30, car_field(0x2022)));
     rec = cpu.a;

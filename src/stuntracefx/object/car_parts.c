@@ -369,7 +369,7 @@ static void detach_frame(void)
     } while (v);
     cyc(56);
     abi_ObjectRebucket();
-    cyc(38);
+    cyc(44);
 }
 
 /*
@@ -502,7 +502,7 @@ static void return_frame(void)
 void abi_PartReturnStep(void)
 {
     return_frame();
-    cyc(38);
+    cyc(44);
 }
 
 /*
@@ -530,7 +530,7 @@ void abi_PartReturn(void)
             cyc(22);                    /* BRA */
     }
     return_frame();
-    cyc(38);
+    cyc(44);
 }
 
 /* 08:AD70: the flying part's frame (see PartFlyStep). */
@@ -583,9 +583,10 @@ static void fly_frame(void)
             return;
         }
         wr8(F(0x2027, cpu.x), cyc_then(66, v));
+        cyc(46);
     } else { cyc(68); }
     abi_ObjectSpawnChanceD460();
-    cyc(128);
+    cyc(134);
 }
 
 /*
@@ -639,8 +640,9 @@ void abi_PartKnockOff(void)
             and8(F(0x2025, cpu.y), 0xFB);
             cyc(4);
             and8(F(0x2025, cpu.y), 0xEF);
-        } else { cyc(48); }
-        abi_ObjectRelease();
+        } else { cyc(22); }
+        (cyc(62), abi_ObjectRelease());
+        cyc(44);
         return;
     } else { cyc(36); }
     if (!(ld8(F(0x2027, cpu.x)) & 0x80)) {
@@ -744,10 +746,11 @@ static void player1_frame(void)
     op_and16(0x0002);
     cpu.p |= P_M;
     if (cpu.a)
-        { cyc(60); or8(F(0x2024, cpu.y), 0x02); } else { cyc(104); }
+        { cyc(60); or8(F(0x2024, cpu.y), 0x02); } else { cyc(66); }
     cyc(36);
     cpu.x = sx;
     cpu.p = nz16(cpu.p, sx);
+    cyc(44);
 }
 
 /* A player car's record (ObjectCarRecordNew with A = n, M 16-bit); with
@@ -868,7 +871,7 @@ static void player2_frame(void)
     wr16(db() | 0x1AF2, cyc_then(24, cpu.a));
     cpu.p |= P_M;
     (cyc(22), player_drive());
-    cyc(38);
+    cyc(44);
 }
 
 /*
@@ -1146,7 +1149,7 @@ void abi_CarCrashParts(void)
     lda8(cyc_then(34, (uint8_t)(ld8(db() | 0x1F58) & 0x01)));
     hit = (uint8_t)cpu.a != 0;
     sound0(hit ? 0x5B : (cyc(6), 0x43));
-    cyc(58);                            /* CLC, RTL; the hit's BRA (22) is its caller's */
+    cyc(hit ? 80 : 58);                 /* BRA after the hit's sound, CLC, RTL */
     cpu.p &= (uint8_t)~P_C;
     return;
 fail:
@@ -1201,12 +1204,13 @@ static void rival_frame(void)
             st8i(F(0x2036, cpu.x), 0x02);
             cyc(6);
             rec_word(0x70001C, 0, 0x0020);
+            cyc(58);
         } else {
             rec_word(0x70001C, 1, 0xFFDF);
+            cyc(80);                    /* SEP, PLX, BRA */
         }
-    cyc(58);
-        } else { cyc(66); }
-    abi_RandomStepLong();
+    } else { cyc(66); }
+    (cyc(62), abi_RandomStepLong());
     cmp8(0xF2);
     if ((uint8_t)cpu.a >= 0xF2)
         { cyc(6); rec_word(0x700070, 2, 0x0002); cyc(58); } else { cyc(26); }
@@ -1228,7 +1232,7 @@ static void rival_frame(void)
         lda8(0x03);
         abi_CarCrashParts();
         if (!(cpu.p & P_C)) {
-            cyc(62);                    /* the hit sound's BRA, BCS not taken, DEC abs to its read */
+            cyc(40);                    /* BCS not taken, DEC abs to its read */
             v = (uint8_t)(rd8(db() | 0x1F71) - 1);
             cyc(6);
             wr8(db() | 0x1F71, v);
@@ -1274,7 +1278,7 @@ static void rival_car(int b)
     inc8(db() | 0x1F71);
     st8i(F(0x2048, cpu.x), cyc_then(6, 0x00));
     st8i(F(0x2026, cpu.x), cyc_then(6, 0x00));
-    (cyc(38), abi_ObjectCarSpawnListed());
+    (cyc(62), abi_ObjectCarSpawnListed());
     sx = cpu.x;
     cpu.p &= (uint8_t)~P_M;
     op_lda16(cyc_then(88, F(0x2022, cpu.x)));

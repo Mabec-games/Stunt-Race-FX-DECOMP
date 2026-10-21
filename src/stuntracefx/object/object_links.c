@@ -296,7 +296,7 @@ int ObjectSpawnA040(uint16_t *a, uint16_t *x, uint16_t *y)
         cyc(68);
         *x = 0x0000;
         return 0;
-    } else { cyc(56); }
+    } else { cyc(140); }
     *y = *x;
     ObjectInit(*y);
     cyc(48);

@@ -425,7 +425,7 @@ void abi_ObjectFrameSwingStep(void)
 void abi_ObjectRecordFlag4Step(void)
 {
     (cyc(62), abi_GsuRecordFlag4());
-    cyc(38);
+    cyc(44);
 }
 
 /*

@@ -134,9 +134,9 @@ static void mode(uint16_t v)
 /* 08:8EF9: the director's tail: CameraFollowLink, +$36 = 3. */
 static void tail(void)
 {
-    (cyc(58), abi_CameraFollowLink());
-    st8i(F(0x2036, cpu.x), cyc_then(108, 0x03));
-    cyc(38);
+    (cyc(62), abi_CameraFollowLink());
+    st8i(F(0x2036, cpu.x), cyc_then(6, 0x03));
+    cyc(44);
 }
 
 /* 08:8EC1: back to the director's table: the camera's +$04 and +$34
@@ -201,7 +201,7 @@ void abi_CameraSnapToCar(void)
     m = cpu.a;
     cpu.p |= P_M;
     (cyc(52), snap());
-    (cyc(102), link());
+    link();
     cpu.p &= (uint8_t)~P_M;
     cpu.a = m;
     cpu.p = nz16(cpu.p, m);
@@ -315,7 +315,7 @@ static void overhead_frame(void)
     op_lda16(cyc_then(58, F(0x200C, cpu.y)));
     cpu.p |= P_C;
     cpu.a = op_sbc16(cpu.a, rd16(cyc_then(38, db() | 0x1F4C)), &cpu.p);
-    abi_ScaleThreeQuarters();
+    (cyc(56), abi_ScaleThreeQuarters());       /* JSL, less the SBC's 6 */
     cpu.p &= (uint8_t)~P_C;
     cpu.a = op_adc16(cpu.a, rd16(cyc_then(82, db() | 0x1F4C)), &cpu.p);
     cyc(22);
@@ -323,7 +323,7 @@ static void overhead_frame(void)
     op_lda16(cyc_then(30, F(0x2010, cpu.y)));
     cpu.p |= P_C;
     cpu.a = op_sbc16(cpu.a, rd16(cyc_then(38, db() | 0x1F50)), &cpu.p);
-    abi_ScaleThreeQuarters();
+    (cyc(56), abi_ScaleThreeQuarters());       /* JSL, less the SBC's 6 */
     cpu.p &= (uint8_t)~P_C;
     cpu.a = op_adc16(cpu.a, rd16(cyc_then(82, db() | 0x1F50)), &cpu.p);
     cyc(22);
@@ -331,7 +331,7 @@ static void overhead_frame(void)
     cpu.p |= P_M;
     cpu.x = sx;
     cpu.p = nz16(cpu.p, sx);
-    (cyc(58), tail());
+    (cyc(82), tail());
 }
 
 /*
@@ -390,8 +390,7 @@ void abi_CameraOverhead(void)
     copy16(cam(0x000C), db() | 0x1F50);
     cyc(22);
     mode(0x0003);
-    (cyc(22), abi_CameraFollowLink());
-    cyc(102);
+    (cyc(84), abi_CameraFollowLink());
     handler(cpu.x, 0x8FFE);
     st8i(F(0x2048, cpu.x), cyc_then(6, 0x0A));
     overhead_frame();
@@ -407,7 +406,7 @@ void abi_CameraOverhead(void)
 void abi_CameraTableStep(void)
 {
     (cyc(62), abi_CameraPointFromTable());
-    tail();
+    (cyc(24), tail());
 }
 
 /*
@@ -421,7 +420,7 @@ void abi_CameraTableStep(void)
 void abi_CameraSnapToTable(void)
 {
     snap();
-    (cyc(102), link());
+    link();
     st16i(cam(0x0004), 0x0000);
     cyc(22);
     mode(0x0755);
@@ -436,7 +435,7 @@ static void path_frame(void)
 {
     abi_CameraApproachTarget();
     if (!(cpu.p & P_C)) {
-        cyc(50);
+        cyc(46);
         tail();
         return;
     }
@@ -459,7 +458,7 @@ static void path_shot(uint16_t path)
     cpu.p = nz16(cpu.p, cpu.y);
     (cyc(100), abi_ObjectPathStart());
     (cyc(62), abi_CameraFollowLink());
-    (cyc(102), path_frame());
+    path_frame();
 }
 
 /*
@@ -554,7 +553,7 @@ static void drift_frame(uint16_t ty, void (*done)(void))
         wr8(F(0x2048, cpu.x), cyc_then(6, n));
         cpu.p = nz8(cpu.p, n);
     }
-    (cyc(28), tail());
+    (cyc(24), tail());
 }
 
 /* A drift shot: frame f, mode 3, +$48 = n, the director's velocity an
@@ -682,11 +681,10 @@ static void fixed_shot(uint16_t f, int n, uint16_t dx, uint16_t dz)
     op_lda16((0x700058 + cpu.x) & 0xFFFFFF);
     cpu.x = sx;
     cpu.p = nz16(cpu.p, sx);
-    cyc(20);
+    cyc(36);
     while (n--)
-        { cyc(78); abi_GsuTableEntryNext(); }
-    cyc(16);
-    abi_GsuTableEntryTo1F4C();
+        { cyc(62); abi_GsuTableEntryNext(); }
+    (cyc(62), abi_GsuTableEntryTo1F4C());
     link();
     op_lda16(cyc_then(24, db() | 0x1F4C));
     if (dx)
@@ -700,7 +698,7 @@ static void fixed_shot(uint16_t f, int n, uint16_t dx, uint16_t dz)
         { cyc(38); op_add16(dz); }
     wr16(cam(0x000C), cyc_then(30, cpu.a));
     cpu.p |= P_M;
-    (cyc(22), tail());
+    (cyc(46), tail());
 }
 
 /*
@@ -711,7 +709,7 @@ static void fixed_shot(uint16_t f, int n, uint16_t dx, uint16_t dz)
  */
 void abi_CameraHoldStep(void)
 {
-    tail();
+    (cyc(24), tail());
 }
 
 /*
@@ -736,7 +734,7 @@ void abi_CameraFixedAhead(void)
  */
 void abi_CameraHoldStep2(void)
 {
-    tail();
+    (cyc(24), tail());
 }
 
 /*
@@ -765,7 +763,7 @@ static void zoom_frame(uint16_t to, void (*fn)(void))
     (cyc(16), fn());
     wr16(cam(0x000E), cyc_then(30, cpu.a));
     cpu.p |= P_M;
-    (cyc(50), tail());
+    (cyc(46), tail());
 }
 
 /*
@@ -821,7 +819,7 @@ void abi_CameraOrbitStep(void)
         cyc(22);
         abi_CameraZoomOut();
         return;
-    } else { cyc(44); }
+    } else { cyc(40); }
     tail();
 }
 
@@ -902,7 +900,7 @@ void abi_CameraEnd(void)
 {
     handler(cpu.x, 0x958C);
     car_rec_set(0x70001C, 0x0010, 1);
-    (cyc(58), tail());
+    (cyc(82), tail());
 }
 
 /*
@@ -913,7 +911,7 @@ void abi_CameraEnd(void)
  */
 void abi_CameraEndStep(void)
 {
-    tail();
+    (cyc(24), tail());
 }
 
 /*
@@ -941,7 +939,7 @@ void abi_CameraStillStep(void)
         cpu.p = nz8(cpu.p, n);
     }
     (cyc(62), abi_CameraPointFromTable());
-    tail();
+    (cyc(24), tail());
 }
 
 /*
@@ -1070,7 +1068,7 @@ static void follower_frame(void)
     lda8((uint8_t)(cpu.a & 0x01));
     if ((uint8_t)cpu.a) {
         cyc(74);
-        abi_RecordContactSummary();
+        (cyc(62), abi_RecordContactSummary());
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | (cpu.a & 0x18));
         cpu.p = nz8(cpu.p, (uint8_t)cpu.a);
         if ((uint8_t)cpu.a) {
@@ -1110,9 +1108,10 @@ void abi_CameraFollowCar(void)
 {
     view(0x05);
     handler(cpu.x, 0x95C7);
-    abi_GsuRecordNewCamera();
+    (cyc(62), abi_GsuRecordNewCamera());
     follow_step();
-    (cyc(86), abi_ObjectSyncToRecord());
+    (cyc(148), abi_ObjectSyncToRecord());
+    cyc(80);
     cyc(44); /* RTL */
 }
 
@@ -1200,7 +1199,7 @@ static void track_half_frame(void)
         abi_CameraReturn();
         return;
     }
-    tail();
+    (cyc(24), tail());
 }
 
 /*
@@ -1221,7 +1220,7 @@ void abi_CameraTrackHalf(void)
     cpu.p &= (uint8_t)~P_M;
     op_lda16(cyc_then(52, F(0x2029, cpu.x)));
     (cyc(62), abi_GsuTableEntryNext());
-    (cyc(16), abi_GsuTableEntryTo1F4C());
+    (cyc(62), abi_GsuTableEntryTo1F4C());
     copy16x(dpa(0x04), db() | 0x1F4C, 24, 16);
     cpu.p &= (uint8_t)~P_M;
     op_lda16(cyc_then(24, db() | 0x1F4E));
@@ -1229,7 +1228,7 @@ void abi_CameraTrackHalf(void)
     op_lda16(cyc_then(24, db() | 0x1F50));
     wr16(db() | 0x05F2, cyc_then(24, cpu.a));
     op_lda16(cyc_then(30, F(0x2029, cpu.x)));
-    abi_GsuTableEntryTo1F4C();
+    (cyc(62), abi_GsuTableEntryTo1F4C());
     op_lda16(cyc_then(24, db() | 0x1F4E));
     op_add16(0xFE0C);
     wr16(db() | 0x1F4E, cyc_then(62, cpu.a));
@@ -1240,8 +1239,8 @@ void abi_CameraTrackHalf(void)
     wr16(F(0x200E, cpu.x), cyc_then(30, mid(cpu.a, (cyc(38), db()) | 0x1F4E)));
     op_lda16(cyc_then(24, db() | 0x05F2));
     wr16(F(0x2010, cpu.x), cyc_then(30, mid(cpu.a, db() | 0x1F50)));
-    abi_ObjectGsu81E3();
-    abi_ObjectGsu80BCThen81E3();
+    (cyc(62), abi_ObjectGsu81E3());
+    (cyc(62), abi_ObjectGsu80BCThen81E3());
     cpu.a ^= 0xFFFF;
     cpu.p = nz16(cpu.p, cpu.a);
     cpu.a++;
@@ -1285,7 +1284,7 @@ void abi_CameraBesideWait(void)
         wr8(F(0x2048, cpu.x), cyc_then(6, n));
         cpu.p = nz8(cpu.p, n);
     }
-    (cyc(8), tail());
+    (cyc(32), tail());
 }
 
 /*
@@ -1378,10 +1377,10 @@ static void lift_frame(void)
     op_cmp16(0xFC18);
     cpu.p |= P_M;
     if (cpu.p & P_N) {
-        cyc(72);
+        cyc(100);
         tail();
         return;
-    } else { cyc(90); }
+    } else { cyc(94); }
     abi_CameraBeside();
 }
 
@@ -1430,7 +1429,7 @@ void abi_CameraPathFollowStep(void)
 {
     st8i(F(0x2036, cpu.x), cyc_then(6, 0x03));
     abi_CameraApproachTarget();
-    (cyc(28), abi_CameraFollowLink());
+    (cyc(62), abi_CameraFollowLink());
     cyc(44); /* RTL */
 }
 
@@ -1446,12 +1445,12 @@ void abi_CameraPathFollow(void)
 {
     cpu.y = 0x85C3;
     cpu.p = nz16(cpu.p, cpu.y);
-    abi_ObjectPathStart();
+    (cyc(86), abi_ObjectPathStart());
     cyc(22);
     handler(cpu.x, 0x9888);
     mode(0x0001);
-    (cyc(22), abi_CameraFollowLink());
-    (cyc(102), abi_CameraPathFollowStep());
+    (cyc(84), abi_CameraFollowLink());
+    abi_CameraPathFollowStep();
 }
 
 /*
@@ -1464,7 +1463,7 @@ void abi_CameraPathFollow(void)
 void abi_CameraPathGoStep(void)
 {
     abi_CameraApproachTarget();
-    (cyc(28), tail());
+    (cyc(24), tail());
 }
 
 /*
@@ -1492,7 +1491,7 @@ static void path_go(uint16_t p, int set_mode)
         { cyc(0); mode(0x0001); }
     cyc(84);
     abi_CameraFollowLink();
-    (cyc(126), abi_CameraPathGo());
+    (cyc(24), abi_CameraPathGo());
 }
 
 /*
@@ -1625,7 +1624,7 @@ static void low_frame(void)
 void abi_CameraLowHoldStep(void)
 {
     low_frame();
-    (cyc(22), tail());
+    (cyc(46), tail());
 }
 
 /*
@@ -1642,8 +1641,8 @@ void abi_CameraLowBehind(void)
     cyc(22);
     handler(cpu.x, 0x9A25);
     low_frame();
-    (cyc(22), abi_CameraFollowLink());
-    (cyc(126), abi_CameraLowHoldStep());
+    (cyc(84), abi_CameraFollowLink());
+    (cyc(24), abi_CameraLowHoldStep());
 }
 
 /*
@@ -1673,7 +1672,7 @@ void abi_CameraPathLowStep(void)
         cyc(50);
         abi_CameraLowHold();
         return;
-    } else { cyc(50); }
+    } else { cyc(46); }
     tail();
 }
 
@@ -1683,12 +1682,11 @@ static void path_low(uint16_t p, int jmp)
 {
     cpu.y = p;
     cpu.p = nz16(cpu.p, cpu.y);
-    abi_ObjectPathStart();
+    (cyc(86), abi_ObjectPathStart());
     if (jmp)
         cyc(24); /* JMP into the shared part */
     mode(0x0001);
-    (cyc(22), abi_CameraFollowLink());
-    cyc(102);
+    (cyc(84), abi_CameraFollowLink());
     handler(cpu.x, 0x9A0D);
     abi_CameraPathLowStep();
 }

@@ -115,7 +115,7 @@ static void handler_none(uint16_t o)
 static int spawn(uint16_t kind)
 {
     st16i(db() | 0x1F2B, kind);
-    abi_ObjectSpawn();
+    (cyc(84), abi_ObjectSpawn());
     return (cpu.p & P_C) != 0;
 }
 
@@ -157,7 +157,7 @@ void abi_ObjectBreakOffBurst15(void)
     do {
         cyc(18);
         if (spawn(0xA1AC)) {
-            abi_ObjectCopyPositionTo();
+            (cyc(84), abi_ObjectCopyPositionTo());
             lo = (uint8_t)cpu.a;
             cpu.p &= (uint8_t)~P_M;
             cpu.a = cpu.x;
@@ -196,7 +196,7 @@ void abi_ObjectLampPair08(void)
         cyc(22);
         lamp(cpu.y, 0x50);
         st16i(F(0x205D, cpu.y), cyc_then(6, 0x9973));
-        (cyc(22), abi_ObjectCopyPositionTo());
+        (cyc(84), abi_ObjectCopyPositionTo());
         add16(F(0x200E, cpu.y), cyc_then(22, 0xFEC0));
     } else { cyc(26); }
     cyc(22);
@@ -213,7 +213,7 @@ static void stack_light(uint16_t up)
     cyc(22);
     lamp(cpu.y, 0x32);
     st16i(F(0x205D, cpu.y), cyc_then(6, 0x9975));
-    (cyc(22), abi_ObjectCopyPositionTo());
+    (cyc(84), abi_ObjectCopyPositionTo());
     add16(F(0x200E, cpu.y), cyc_then(22, up));
     swap_xy(164);
     abi_ObjectRebucket();
@@ -287,10 +287,10 @@ void abi_ObjectFallerStep(void)
  */
 void abi_ObjectFallerRecord(void)
 {
-    abi_GsuRecordNew424();
-    abi_GsuRecordFlag10();
+    (cyc(62), abi_GsuRecordNew424());
+    (cyc(62), abi_GsuRecordFlag10());
     lda8(0x20);
-    abi_GsuRecordSet2AHigh();
+    (cyc(58), abi_GsuRecordSet2AHigh());
     (cyc(102), abi_ObjectFallerStep());
 }
 
@@ -419,8 +419,8 @@ static void spray_piece_step(void)
     wr8(F(0x2015, cpu.x), cyc_then(60, v));
     cpu.y = rd16(cyc_then(30, F(0x2027, cpu.x)));
     cpu.p = nz16(cpu.p, cpu.y);
-    abi_ObjectCopyPositionFrom();
-    abi_ObjectApplyVelocity();
+    (cyc(62), abi_ObjectCopyPositionFrom());
+    (cyc(62), abi_ObjectApplyVelocity());
     cpu.p &= (uint8_t)~P_M;
     op_lda16(cyc_then(52, F(0x2030, cpu.x)));
     cyc(16);
@@ -452,7 +452,7 @@ static void spray_piece_step(void)
 void abi_ObjectSprayPieceStart(void)
 {
     handler(cpu.x, 0xDB90);
-    abi_RandomStepLong();
+    (cyc(62), abi_RandomStepLong());
     wr8(F(0x2014, cpu.x), cyc_then(30, (uint8_t)cpu.a));
     spray_piece_step();
 }
@@ -550,14 +550,14 @@ static void dp16i(uint16_t d, uint16_t v)
  */
 void abi_ObjectCameraPadRecord(void)
 {
-    abi_GsuRecordNew42D();
+    (cyc(62), abi_GsuRecordNew42D());
     abi_GsuRecordFlag10();
     dp16i(0x000002, 0x0780);
     cyc(22);
     dp16i(0x000008, 0x0780);
     cyc(22);
     dp16i(0x000094, 0x0780);
-    abi_GsuRecordPosition();
+    (cyc(84), abi_GsuRecordPosition());
     cyc(44);
 }
 

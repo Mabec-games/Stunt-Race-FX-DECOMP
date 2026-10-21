@@ -1323,6 +1323,7 @@ int RecordNextContact(uint8_t bank, uint16_t *a, uint16_t *y, uint8_t *p, uint16
         cyc(72);
         e = rd16(0x70000E + e);
         if (!e) {
+            cyc(154);               /* BNE, PLX, BRA, SEP, CLC, RTL */
             *a = 0;
             *p = (uint8_t)(nz16(*p, x) & ~P_C);
             return 0;
@@ -1608,7 +1609,6 @@ void abi_CarControlsToRecord(void)
     if (ctl_held(b, SEQ_INPUT, 0x2000)) {
         cyc(46);
         abi_RecordButtonSequence();
-        cyc(42);
         if (!ctl_held(b, SEQ_PREV, 0x2000)) {
             uint16_t y = cpu.y;
 
@@ -1960,6 +1960,7 @@ void abi_RecordButtonSequence(void)
 
     cpu.a = RecordButtonSequence(cpu.db, cpu.x, &p);
     cpu.p = p;
+    cyc(42);
 }
 
 /*
@@ -2251,10 +2252,10 @@ void abi_ObjectSpinStep(void)
 void abi_ObjectSpinRecord(void)
 {
     abi_GsuRecordNew424();
-    abi_GsuRecordMode2();
+    (cyc(62), abi_GsuRecordMode2());
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x20);
     cpu.p = nz8(cpu.p, 0x20);
-    (cyc(20), abi_GsuRecordSet2AHigh());
+    (cyc(78), abi_GsuRecordSet2AHigh());
     (cyc(102), abi_ObjectSpinStep());
 }
 
