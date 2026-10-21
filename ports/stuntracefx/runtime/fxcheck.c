@@ -19,20 +19,22 @@ extern const uint8_t srfx_rom[], srfx_rom_end[];
 
 static int on = -1, open_now;
 static FxCanvas *mine, *chip;
-static long lists, bad_lists, bad_pixels, skipped, first_bad = -1, pixels;
+static long lists, bad_lists, bad_pixels, skipped, first_bad = -1, pixels, outside;
 
 static void chip_plot(uint8_t x, uint8_t y, uint8_t c)
 {
-    if (!open_now)
+    if (!open_now) {
+        outside++;
         return;
+    }
     chip->px[y << 8 | x] = c;
     chip->set[y << 8 | x] = 1;
 }
 
 static void report(void)
 {
-    fprintf(stderr, "fxcheck: %ld lists (%ld pixels), %ld differ (first at frame %ld), %ld pixels; %ld textured polygons not compared\n",
-            lists, pixels, bad_lists, first_bad, bad_pixels, skipped);
+    fprintf(stderr, "fxcheck: %ld lists (%ld pixels), %ld differ (first at frame %ld), %ld pixels; %ld textured polygons not compared; %ld pixels plotted outside the lists\n",
+            lists, pixels, bad_lists, first_bad, bad_pixels, skipped, outside);
 }
 
 void fx_list_begin(void)
