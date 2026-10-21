@@ -74,6 +74,8 @@ extern int (*snes_irq_masked)(void);
 /* A frame's picture is finished (the start of the vertical blank): show it,
    take input, keep time. Called from inside an access. */
 extern void (*snes_frame_hook)(void);
+/* Each write by the S-CPU's C, before it lands (for the port's checks). */
+extern void (*snes_write_hook)(uint32_t addr, uint8_t value);
 
 /* ---- the picture ----------------------------------------------------------------- */
 /* The last finished frame: SNES_WIDTH x SNES_HEIGHT pixels, 0xFFRRGGBB. */

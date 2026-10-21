@@ -34,6 +34,7 @@ static SnesCart s_cart;
 void (*snes_interrupt_hook)(int nmi);
 int (*snes_irq_masked)(void);
 void (*snes_frame_hook)(void);
+void (*snes_write_hook)(uint32_t addr, uint8_t value);
 
 static uint8_t wram[0x20000];
 static uint32_t wram_port;
@@ -570,6 +571,8 @@ void wr8(uint32_t addr, uint8_t value)
     last_was_read = 0;
     snes_tick(snes_access_clocks(addr));
     snes_mdr = value;
+    if (snes_write_hook)
+        snes_write_hook(addr, value);
     bus_write(addr, value, &cost, 0);
 }
 

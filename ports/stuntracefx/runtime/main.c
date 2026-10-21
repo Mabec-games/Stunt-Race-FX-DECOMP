@@ -369,6 +369,32 @@ static void audio_cb(float *lr, int frames, void *user)
     }
 }
 
+/* ---- the pacing record (--pacing FILE) ----
+   At each race frame's start, where the frames since the last one ($0306)
+   go to $06D4: the video frame, the count, and hashes of work RAM (the
+   stack, $0100-$02FF, left out) and of the Super FX's RAM: the lines
+   sfxbox --pacing writes (its second field the original's STA; here 0). */
+static FILE *pacing_f;
+
+static uint32_t fnv(const uint8_t *p, size_t n, uint32_t h)
+{
+    while (n--)
+        h = (h ^ *p++) * 16777619u;
+    return h;
+}
+
+static void pacing_write(uint32_t addr, uint8_t value)
+{
+    uint8_t bank = (uint8_t)(addr >> 16);
+    const uint8_t *w = snes_wram();
+    (void)value;
+    if ((addr & 0xFFFF) != 0x06D4 || !(bank == 0x7E || (bank & 0x7F) < 0x40))
+        return;
+    fprintf(pacing_f, "%ld %06X %u %08x %08x\n", frame_no, 0u, w[0x306],
+            fnv(w + 0x300, 0x20000 - 0x300, fnv(w, 0x100, 2166136261u)),
+            fnv(snes_sfx_ram(), 0x10000, 2166136261u));
+}
+
 /* ---- each frame ---- */
 static uint64_t next_due;
 #define FRAME_NS 16639267ull          /* 1 / 60.0988 s */
@@ -438,6 +464,14 @@ int main(int argc, char **argv)
             out_dir = argv[++i];
         else if (!strcmp(argv[i], "--frames") && i + 1 < argc)
             max_frames = atol(argv[++i]);
+        else if (!strcmp(argv[i], "--pacing") && i + 1 < argc) {
+            if (!(pacing_f = fopen(argv[++i], "w"))) {
+                fprintf(stderr, "port: cannot write %s\n", argv[i]);
+                return 2;
+            }
+            setvbuf(pacing_f, NULL, _IOLBF, 0);
+            snes_write_hook = pacing_write;
+        }
     }
     host_set_app_name("Stunt Race FX", "Stunt Race FX");
     host_init(argc, argv);

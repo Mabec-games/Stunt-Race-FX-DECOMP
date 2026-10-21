@@ -349,8 +349,31 @@ static uint32_t call_target;
 static char staged[64][1024];
 static int staged_line[64], nstaged;
 
+/* --pacing FILE: at each race frame's start, where the frames since the
+   last one ($0306) go to $06D4 (the STA in RaceFrameRun, RaceFrameStep and
+   RaceFrameRunTwoPlayers), a line: the video frame, the routine's STA, the
+   count, and hashes of work RAM (the stack, $0100-$02FF, left out) and of
+   the Super FX's RAM. The native port writes the same lines. */
+static FILE *pacing_f;
+
+static uint32_t fnv(const uint8_t *p, size_t n, uint32_t h)
+{
+    while (n--) h = (h ^ *p++) * 16777619u;
+    return h;
+}
+
+static void pacing(uint32_t pc)
+{
+    uint32_t at = pc & 0x7FFFFF;
+    if (at != 0x02D7D8 && at != 0x03B7D1 && at != 0x0BFB31) return;
+    size_t n, g; uint8_t *w = sfxbox_memory_p("wram", &n), *r = sfxbox_memory_p("gsuram", &g);
+    uint32_t hw = fnv(w + 0x300, n - 0x300, fnv(w, 0x100, 2166136261u));
+    fprintf(pacing_f, "%ld %06X %u %08x %08x\n", frames, at, w[0x306], hw, fnv(r, g, 2166136261u));
+}
+
 static int call_exec(uint32_t pc)
 {
+    if (pacing_f) pacing(pc);
     /* Not while the Super FX runs: it may hold the ROM and its RAM, and the
        S-CPU reads neither then (the game waits in work RAM). Nor in the
        vertical blank, where the NMI would land between the JSR and the
@@ -727,6 +750,9 @@ int main(int argc, char **argv) {
         else if (!strcmp(argv[i], "--check") && i + 1 < argc) checklib = argv[++i];
         else if (!strcmp(argv[i], "--only") && i + 1 < argc) only = argv[++i];
         else if (!strcmp(argv[i], "--lockstep") && i + 1 < argc) locklib = argv[++i];
+        else if (!strcmp(argv[i], "--pacing") && i + 1 < argc) {
+            if (!(pacing_f = fopen(argv[++i], "w"))) die("cannot write %s", argv[i]);
+        }
         else die("usage: sfxbox --rom ROM --script FILE --out DIR [--core DYLIB] [--trace]");
     }
     if (!rom || !scr || !outdir) die("usage: sfxbox --rom ROM --script FILE --out DIR [--core DYLIB] [--trace]");
@@ -777,6 +803,7 @@ int main(int argc, char **argv) {
     if (checklib) check_end();
     if (lockstep) lockstep_end(frames);
     if (trace && sfxbox_trace_write_p(outdir)) die("trace write failed");
+    if (pacing_f) fclose(pacing_f);
     printf("frames %ld\n", frames);
     return 0;
 }
