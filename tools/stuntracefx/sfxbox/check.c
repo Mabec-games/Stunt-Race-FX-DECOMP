@@ -1170,7 +1170,7 @@ static void (*core_run_until)(const struct SfxboxRegs *, uint32_t, uint16_t);
 static void (*core_run_out)(const struct SfxboxRegs *, uint16_t);
 static long asm_unplaced;
 static FILE *cyclog;      /* SFXBOX_CYCLOG (see cyc_put) */
-static long tm_on, tm_off, tm_overflow, tm_unwound, tm_irq_bad;   /* the timing check (cyc_put) */
+static long tm_on, tm_off, tm_overflow, tm_unwound, tm_irq_bad, tm_cut;   /* the timing check (cyc_put) */
 static int cyclog_ops;    /* SFXBOX_CYCLOG_OPS: the original's operations too */
 /* C that called or jumped (call_routine, jump_routine) to an address where
    no routine with C starts: the hybrid ran original code there. The decomp
@@ -1186,7 +1186,7 @@ static void hybrid_finish(long frames)
     strncat(g, sg, sizeof g - strlen(g) - 1);
     fprintf(lsrep, "timing: %ld of the S-CPU C's accesses and returns at the original's clocks, %ld not; not judged: %ld "
             "with more probes than the log holds, %ld in a call that left through its caller's frame, %ld with an interrupt "
-            "whose refetch read lies in an earlier interval\n", tm_on, tm_off, tm_overflow, tm_unwound, tm_irq_bad);
+            "whose refetch read lies in an earlier interval, %ld returns of a call a state load cut\n", tm_on, tm_off, tm_overflow, tm_unwound, tm_irq_bad, tm_cut);
     gsu_timing_line(lsrep);
     spc_timing_line(lsrep);
     fprintf(lsrep, "frames %ld compared %ld, differing %ld; calls swapped %ld, entered other ways %ld, unmatched %ld, "
@@ -1638,7 +1638,8 @@ static void cyc_put(uint8_t type, uint32_t to)
     }
     if (irq_bad) gap = 0xFFFFFFFEu;
     if (cyc_over) gap = 0xFFFFFFFFu;
-    if (cyc_over & 2) tm_unwound++;
+    if (cyc_over & 4) tm_cut++;
+    else if (cyc_over & 2) tm_unwound++;
     else if (cyc_over) tm_overflow++;
     else if (irq_bad) tm_irq_bad++;
     else if (gap == cyc_said) tm_on++;
@@ -1822,7 +1823,10 @@ static int ls_exec(uint32_t pc)
        restart), at the original's entry there, the record going on as the
        original's code after it. */
     long end = cur_n;
-    if (cpu.unwound && ls_left_at == -2) cyc_over |= 2;
+    /* A record a state load cut ends where the original's call stopped, not
+       at its return: the C's return has nothing to be compared with. */
+    if (cur_cut) cyc_over |= 4;
+    else if (cpu.unwound && ls_left_at == -2) cyc_over |= 2;
     else if (cpu.unwound && ls_left_at > cyc_last) end = ls_left_at;
     cyc_put('E', (uint32_t)end);
     replay_to(cur_n);
