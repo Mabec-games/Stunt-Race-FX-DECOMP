@@ -59,6 +59,11 @@ int  host_window_open(int width, int height, const char *title);
 void host_window_close(void);
 /* 1 while any of the window can be seen (not minimised, hidden or covered) */
 int  host_window_visible(void);
+/* the window for a renderer that draws on it itself (ports/common/render):
+   the OS's handle (a CAMetalLayer on macOS, an HWND on Windows; NULL
+   without a window) and its drawable size in pixels */
+void *host_window_handle(void);
+void host_window_pixels(int *w, int *h);
 /* the next event, waiting up to wait_ms for one; 1 if *ev was filled */
 int  host_poll_event(host_event *ev, uint32_t wait_ms);
 void host_message_box(const char *text, const char *caption);

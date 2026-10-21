@@ -8,6 +8,11 @@
 #        CC       the compiler; one aimed at Windows (x86_64-w64-mingw32-gcc)
 #                 builds stuntracefx.exe with host/win32 under the host
 #        OUT      build directory (default build/stuntracefx/port/HOST)
+#        RENDER   the renderer (ports/common/render): metal (macOS's default),
+#                 vulkan (needs the Vulkan headers and loader: VULKAN_SDK,
+#                 else Homebrew's; on macOS it runs on MoltenVK), gl
+#                 (Windows' default; offscreen only on macOS), soft (the
+#                 headless default)
 #        GAME     the game's C (default ports/stuntracefx/game; src/stuntracefx
 #                 builds the reference the port's copy is checked against)
 #        SRFX_ROM your cartridge's ROM (default reference/stuntracefx/Stunt
@@ -46,7 +51,7 @@ ${SYM}_end:
 EOS
 
 CFLAGS="-O2 -g -std=gnu11 -fno-strict-aliasing -ffp-contract=off"
-INC="-Iports/common/snes -Iports/common/video -Iports/common/host -I$GAME/include -Iports/stuntracefx/runtime"
+INC="-Iports/common/snes -Iports/common/video -Iports/common/render -Iports/common/host -I$GAME/include -Iports/stuntracefx/runtime"
 case "$TARGET" in
   *mingw*|*windows*) OSHOST=ports/common/host/win32/host_win32.c; EXE=.exe; OSLIBS="-static -lwinmm";;
   *)                 OSHOST=ports/common/host/posix/host_posix.c; EXE=;     OSLIBS=;;
@@ -85,7 +90,36 @@ esac
 compile "$OUT/gen/romdata.S" ""
 compile "$OSHOST" "-Wall -Iports/common/host"
 
-LIBS="$OSLIBS"
+# the renderer
+case "$HOST" in
+  macos|lib) RENDER=${RENDER:-metal};;
+  windows)   RENDER=${RENDER:-gl};;
+  *)         RENDER=${RENDER:-soft};;
+esac
+RLIBS=
+case "$RENDER" in
+  metal)  compile ports/common/render/metal/rr_metal.m "-Wall -fobjc-arc -Iports/common/render -Iports/common/host"
+          RLIBS="-framework Metal -framework QuartzCore -framework Foundation";;
+  gl)     compile ports/common/render/gl/rr_gl.c "-Wall -Iports/common/render -Iports/common/host"
+          compile ports/common/render/gl/gl_ctx.c "-Wall"
+          case "$TARGET" in *mingw*|*windows*) RLIBS="-lopengl32 -lgdi32";; *) RLIBS="-framework OpenGL";; esac;;
+  vulkan) VK=${VULKAN_SDK:-$(brew --prefix 2>/dev/null)}
+          compile ports/common/render/vulkan/rr_vulkan.c "-Wall -Iports/common/render -Iports/common/host -I$VK/include"
+          case "$TARGET" in
+            *mingw*|*windows*)
+              # vulkan-1.dll through an import library of the functions the
+              # renderer calls (no Vulkan SDK needed to build)
+              { echo "LIBRARY vulkan-1.dll"; echo "EXPORTS"
+                grep -o 'vk[A-Z][A-Za-z0-9]*(' ports/common/render/vulkan/rr_vulkan.c | tr -d '(' | sort -u; } > "$OUT/vulkan-1.def"
+              x86_64-w64-mingw32-dlltool -d "$OUT/vulkan-1.def" -l "$OUT/libvulkan-1.a"
+              RLIBS="-L$OUT -lvulkan-1";;
+            *) RLIBS="-L$VK/lib -lvulkan -Wl,-rpath,$VK/lib";;
+          esac;;
+  soft)   compile ports/common/render/soft/rr_soft.c "-Wall -Iports/common/render -Iports/common/host";;
+  *) echo "link: unknown RENDER $RENDER" >&2; exit 2;;
+esac
+
+LIBS="$OSLIBS $RLIBS"
 case "$HOST" in
   null)    compile ports/common/host/null/host_null.c "-Wall -Iports/common/host";;
   macos)   compile ports/common/host/macos/host_macos.m "-Wall -fobjc-arc -Iports/common/host"

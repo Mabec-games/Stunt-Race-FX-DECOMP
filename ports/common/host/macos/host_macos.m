@@ -3,10 +3,10 @@
  *
  * The game keeps its own loop on the main thread, so this host never runs
  * [NSApp run]: each host_poll_event drains Cocoa's queue itself. Frames
- * arrive as ARGB pixels through host_present and are shown as the view's
- * layer contents, scaled to the window with nearest-neighbour filtering at
- * the shape the game asks for (the window is held at that shape; full
- * screen letterboxes it).
+ * are drawn by the renderer (render/metal or render/vulkan) into the
+ * view's CAMetalLayer (host_macos_metal_layer), one drawable pixel per
+ * window pixel; or arrive as ARGB pixels through host_present (the software
+ * renderer) and are shown as the view's layer contents.
  *
  * PORT_SAVEDIR names the save folder (default ~/Library/Application
  * Support/<app>); PORT_NOACTIVATE=1 opens the window without taking the
@@ -14,6 +14,7 @@
  */
 #import <Cocoa/Cocoa.h>
 #import <QuartzCore/QuartzCore.h>
+#import <Metal/Metal.h>
 #import <AudioToolbox/AudioToolbox.h>
 #import <GameController/GameController.h>
 #include <sys/stat.h>
@@ -268,6 +269,51 @@ int host_window_visible(void)
 {
     return s_win && ([s_win occlusionState] & NSWindowOcclusionStateVisible) != 0;
 }
+
+/* the window's CAMetalLayer, for a renderer that draws with Metal or
+   Vulkan (MoltenVK): the view's layer becomes a Metal layer */
+CAMetalLayer *host_macos_metal_layer(void)
+{
+    static CAMetalLayer *ml;
+    if (!s_view)
+        return nil;
+    if (!ml) {
+        ml = [CAMetalLayer layer];
+        [ml setPixelFormat:MTLPixelFormatBGRA8Unorm];
+        [ml setFramebufferOnly:NO];            /* the renderer copies its frame in */
+        [ml setMagnificationFilter:kCAFilterNearest];
+        [s_view setLayer:ml];
+        [s_view setWantsLayer:YES];
+        [ml setContentsScale:[s_win backingScaleFactor]];
+        [ml setDrawableSize:CGSizeMake([s_view bounds].size.width * [s_win backingScaleFactor],
+                                       [s_view bounds].size.height * [s_win backingScaleFactor])];
+    }
+    return ml;
+}
+
+/* the Metal layer's drawable kept at the view's size in pixels, so the
+   renderer draws one pixel per window pixel; *w x *h is that size */
+void host_macos_layer_fit(int *w, int *h)
+{
+    CAMetalLayer *ml = host_macos_metal_layer();
+    CGFloat sc;
+    CGSize b, want;
+    *w = *h = 0;
+    if (!ml)
+        return;
+    sc = [s_win backingScaleFactor];
+    b = [s_view bounds].size;
+    want = CGSizeMake(floor(b.width * sc + 0.5), floor(b.height * sc + 0.5));
+    if ([ml contentsScale] != sc)
+        [ml setContentsScale:sc];
+    if (!CGSizeEqualToSize([ml drawableSize], want) && want.width >= 1 && want.height >= 1)
+        [ml setDrawableSize:want];
+    *w = (int)want.width;
+    *h = (int)want.height;
+}
+
+void *host_window_handle(void) { return (__bridge void *)host_macos_metal_layer(); }
+void host_window_pixels(int *w, int *h) { host_macos_layer_fit(w, h); }
 
 /* a picture of ARGB pixels (0xAARRGGBB, top row first) onto the window, at
    the shape `aspect` (width over height): drawn into the largest rectangle

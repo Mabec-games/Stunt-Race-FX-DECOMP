@@ -35,6 +35,8 @@
 #include "host.h"
 #include "snes.h"
 #include "video.h"
+#include "rr.h"
+#include "rr_size.h"
 #include "dispatch.h"
 
 /* the ROM, built in (romdata.S: the builder's own ROM) */
@@ -407,6 +409,64 @@ static void quit(void)
     exit(0);
 }
 
+/* PORT_RRCHECK=N: at frame N, the frame the renderer presented, read back,
+   against the reference drawing of the same picture (rr_size.h); the
+   largest difference in any channel printed, then the port ends (exit 1
+   when it is over 2) */
+static void rr_self_check(int tw, int th, const int d[4])
+{
+    static long at = -2;
+    uint32_t *got, *want;
+    size_t i, n = (size_t)tw * (size_t)th;
+    int maxd = 0;
+    if (at == -2)
+        at = getenv("PORT_RRCHECK") ? atol(getenv("PORT_RRCHECK")) : -1;
+    if (at < 0 || frame_no != at)
+        return;
+    got = (uint32_t *)malloc(n * 4);
+    want = (uint32_t *)malloc(n * 4);
+    if (!got || !want || !rr_read(got))
+        exit(2);
+    for (i = 0; i < n; i++)
+        want[i] = 0xFF000000u;
+    rr_ref_image(want, tw, th, vid_picture(), VID_WIDTH, VID_HEIGHT, d);
+    for (i = 0; i < n; i++) {
+        int sh;
+        for (sh = 0; sh < 24; sh += 8) {
+            int a = (int)((got[i] >> sh) & 0xFF) - (int)((want[i] >> sh) & 0xFF);
+            if (a < 0)
+                a = -a;
+            if (a > maxd)
+                maxd = a;
+        }
+    }
+    fprintf(stderr, "rrcheck: %s, frame %ld, %dx%d: largest difference %d\n", rr_name(), frame_no, tw, th, maxd);
+    exit(maxd > 2);
+}
+
+/* the frame on the window: the picture at the original's 4:3 (its 256 x
+   224 pixels, 8:7 each), as large as the window holds, centred, sharp
+   bilinear */
+static void show(void)
+{
+    int tw, th, w, h, d[4];
+    rr_target(&tw, &th);
+    w = th * 4 / 3;
+    h = th;
+    if (w > tw) {
+        w = tw;
+        h = tw * 3 / 4;
+    }
+    d[0] = (tw - w) / 2;
+    d[1] = (th - h) / 2;
+    d[2] = d[0] + w;
+    d[3] = d[1] + h;
+    rr_begin(0xFF000000u);
+    rr_image(vid_picture(), VID_WIDTH, VID_HEIGHT, d);
+    rr_present();
+    rr_self_check(tw, th, d);
+}
+
 static void frame(void)
 {
     uint16_t b0 = 0, b1 = 0;
@@ -421,7 +481,7 @@ static void frame(void)
         }
         return;
     }
-    host_present(vid_picture(), SNES_WIDTH, SNES_HEIGHT, 4.0f / 3.0f);
+    show();
     {
         host_event e;
         while (host_poll_event(&e, 0)) {
@@ -497,6 +557,10 @@ int main(int argc, char **argv)
     if (!headless) {
         host_thread_interactive();
         host_window_open(SNES_WIDTH, SNES_HEIGHT, "Stunt Race FX");
+        if (!rr_open()) {
+            host_message_box("The renderer could not start on this computer.", "Stunt Race FX");
+            return 1;
+        }
         host_audio_open(OUT_RATE, audio_cb, NULL);
     }
     port_start();

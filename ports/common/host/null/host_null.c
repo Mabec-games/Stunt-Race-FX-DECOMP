@@ -58,6 +58,12 @@ int host_window_open(int width, int height, const char *title)
 
 void host_window_close(void) {}
 int host_window_visible(void) { return 0; }
+/* no window: a renderer draws offscreen */
+void *host_window_handle(void) { return NULL; }
+void host_window_pixels(int *w, int *h) { *w = *h = 0; }
+#ifdef _WIN32
+void *host_win32_instance(void) { return NULL; }
+#endif
 
 void host_present(const uint32_t *argb, int w, int h, float aspect)
 {

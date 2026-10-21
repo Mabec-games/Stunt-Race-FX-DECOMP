@@ -4,8 +4,9 @@
  *
  * The game keeps its own loop on the main thread, so this host never runs a
  * message loop of its own: host_poll_event drains the real queue. Frames
- * arrive as ARGB pixels through host_present, shown scaled with
- * StretchDIBits at the shape the game asks for, letterboxed.
+ * are drawn on the window by the renderer (render/gl or render/vulkan,
+ * host_window_handle), or arrive as ARGB pixels through host_present (the
+ * software renderer), shown scaled with StretchDIBits.
  *
  *   keys      a key message's virtual key
  *   sound     WASAPI, shared mode, 32-bit float, on its own thread
@@ -182,6 +183,7 @@ int host_window_open(int width, int height, const char *title)
     if (s_win)
         return 1;
     memset(&wc, 0, sizeof wc);
+    wc.style = CS_OWNDC;              /* (an OpenGL context keeps its DC) */
     wc.lpfnWndProc = wnd_proc;
     wc.hInstance = GetModuleHandleA(NULL);
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);
@@ -214,6 +216,21 @@ void host_window_close(void)
 int host_window_visible(void)
 {
     return s_win && IsWindowVisible(s_win) && !IsIconic(s_win);
+}
+
+/* the window for a renderer that draws on it (render/gl, render/vulkan):
+   its HWND, its client area in pixels, the module */
+void *host_window_handle(void) { return (void *)s_win; }
+void *host_win32_instance(void) { return (void *)GetModuleHandleA(NULL); }
+
+void host_window_pixels(int *w, int *h)
+{
+    RECT r;
+    *w = *h = 0;
+    if (s_win && GetClientRect(s_win, &r)) {
+        *w = r.right - r.left;
+        *h = r.bottom - r.top;
+    }
 }
 
 void host_present(const uint32_t *argb, int w, int h, float aspect)
