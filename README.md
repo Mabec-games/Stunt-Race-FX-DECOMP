@@ -1,4 +1,4 @@
-# Stunt Race FX: byte-exact decompilation
+# Stunt Race FX: bit-exact & cycle-exact decompilation
 
 **Complete: 100% of the game's code is decompiled, behaviour exact, byte
 exact and cycle exact.** Started October 11, 2026; behaviour and byte exact
