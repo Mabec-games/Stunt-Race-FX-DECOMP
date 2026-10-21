@@ -942,6 +942,8 @@ void abi_RaceLoad(void)
     case 0xF1EE:
     case 0xF1BC:
         race_load_views(w == 0xF1EE ? 0xF7F2 : 0xF7FB);
+        if (w == 0xF1BC)
+            cyc(22);                    /* BRA to $F21E */
         race_load_gsu(0xF83E, 0xF7E9);
         cyc(24);
         race_load_scroll(b, race_load_0d63(b) ? 0x0000 : (cyc(6), 0x0050));

@@ -1065,9 +1065,11 @@ static void follower_frame(void)
     cpu.p |= P_M;
     st8i((cyc(36), db()) | 0x1F41, 0xFF);
     (cyc(62), abi_ObjectSyncAngles());
-    lda8((uint8_t)(cpu.a & 0x01));
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | (cpu.a & 0x01));
+    cpu.p = nz8(cpu.p, (uint8_t)cpu.a);
+    cyc(16);                            /* AND #$01 */
     if ((uint8_t)cpu.a) {
-        cyc(74);
+        cyc(16);                        /* BEQ not taken */
         (cyc(62), abi_RecordContactSummary());
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | (cpu.a & 0x18));
         cpu.p = nz8(cpu.p, (uint8_t)cpu.a);
@@ -1084,7 +1086,6 @@ static void follower_frame(void)
             cyc(22);
         } else { cyc(16); } /* AND, BEQ taken */
         } else {
-        cyc(58);
         for (i = 0; i < 3; i++)
             { cyc(8); copy16x(dpa(dpo[i]), db() | keep[i], 60, 16); }
     }
@@ -1111,7 +1112,6 @@ void abi_CameraFollowCar(void)
     (cyc(62), abi_GsuRecordNewCamera());
     follow_step();
     (cyc(148), abi_ObjectSyncToRecord());
-    cyc(80);
     cyc(44); /* RTL */
 }
 

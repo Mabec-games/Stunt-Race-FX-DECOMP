@@ -273,7 +273,7 @@ void abi_ObjectLampLow08(void)
 void abi_ObjectFallerStep(void)
 {
     (cyc(62), abi_ObjectSyncFromRecord());
-    cyc(124);
+    cyc(44);
 }
 
 /*
@@ -668,8 +668,7 @@ void abi_ObjectContactsCameraPoint(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | f);
     cpu.p = nz8(cpu.p, f);
     if (!f)
-        { cyc(206); return; } else { cyc(32); }
-    cyc(80);
+        { cyc(126); return; } else { cyc(32); }
     for (;;) {
         cyc(62);
         abi_RecordNextContact();
@@ -811,7 +810,7 @@ static void record_match_step(void)
     unsigned i;
 
     (cyc(62), abi_ObjectSyncFromRecord());
-    op_lda8(cyc_then(110, F(0x2024, cpu.x)));
+    op_lda8(cyc_then(30, F(0x2024, cpu.x)));
     f = (uint8_t)(cpu.a & 0xFD);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | f);
     cpu.p = nz8(cpu.p, f);

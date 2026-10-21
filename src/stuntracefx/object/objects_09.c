@@ -267,7 +267,7 @@ static void gate_frame(void)
     (cyc(62), abi_ObjectSyncFromRecord());
     lda8((uint8_t)(cpu.a & 0x01));
     if ((uint8_t)cpu.a) {
-        cyc(92);
+        cyc(12);
         (cyc(62), abi_RecordContactSummary());
         lda8((uint8_t)(cpu.a & 0x01));
         if ((uint8_t)cpu.a) {
@@ -281,7 +281,7 @@ static void gate_frame(void)
             return;
         }
     }
-    cyc(98);
+    cyc(18);
     and8(F(0x2025, cpu.x), 0xFE);
     cyc(44);
 }
@@ -538,7 +538,7 @@ void abi_ObjectScoreCounterStep(void)
 static void piece_frame(void)
 {
     (cyc(62), abi_ObjectSyncFromRecord());
-    if (dec8(cyc_then(102, F(0x200A, cpu.x))) == 0)
+    if (dec8(cyc_then(22, F(0x200A, cpu.x))) == 0)
         { cyc(84); abi_ObjectRelease(); cyc(44); } else { cyc(92); }
 }
 
@@ -662,10 +662,9 @@ static void shell_frame(void)
     add16(F(0x2015, cpu.x), cyc_then(44, 0x000C));
     add16(F(0x2016, cpu.x), cyc_then(44, 0x000C));
     (cyc(84), abi_ObjectSyncFromRecord());
-    cyc(56);
     lda8((uint8_t)(cpu.a & 0x01));
     if (!(uint8_t)cpu.a)
-        { cyc(86); return; } else { cyc(36); }
+        { cyc(62); return; } else { cyc(12); }
     (cyc(62), abi_RecordContactSummary());
     lda8((uint8_t)(cpu.a & 0x01));
     if (!(uint8_t)cpu.a)
@@ -792,10 +791,9 @@ void abi_ObjectFireworkShellPair(void)
 static void finish_gate_frame(void)
 {
     (cyc(62), abi_ObjectSyncFromRecord());
-    cyc(56);
     lda8((uint8_t)(cpu.a & 0x01));
     if (!(uint8_t)cpu.a)
-        { cyc(86); return; } else { cyc(36); }
+        { cyc(62); return; } else { cyc(12); }
     (cyc(62), abi_RecordContactSummary());
     lda8((uint8_t)(cpu.a & 0x01));
     if (!(uint8_t)cpu.a)
@@ -935,7 +933,6 @@ static void handlers2(uint16_t r, uint16_t f)
 static int hit(void)
 {
     (cyc(62), abi_ObjectSyncFromRecord());
-    cyc(80);
     lda8((uint8_t)(cpu.a & 0x01));
     if (!(uint8_t)cpu.a)
         return 0; else { cyc(38); }
@@ -1147,7 +1144,7 @@ static void platform_record(void)
     cyc(102);
     record_at(0x0500, 0x1180, 0x0500);
     (cyc(62), abi_ObjectSyncFromRecord());
-    cyc(124);
+    cyc(44);
 }
 
 /*
@@ -1188,7 +1185,7 @@ void abi_ObjectPlatformRecord(void)
 void abi_ObjectPlatformStep(void)
 {
     (cyc(62), abi_ObjectSyncFromRecord());
-    cyc(124);
+    cyc(44);
 }
 
 /* 09:93C4: the first switch post's frame: a hit squashes +$14 toward $33
@@ -1552,11 +1549,10 @@ static void drop_frame(void)
     add8(F(0x2015, cpu.x), 0x10);
     add8(F(0x2014, cpu.x), 0x10);
     (cyc(62), abi_ObjectSyncFromRecord());
-    cyc(64);
     lda8((uint8_t)(cpu.a & 0x01));
     if (!(uint8_t)cpu.a)
-        { cyc(78); return; }
-    cyc(90);
+        { cyc(62); return; }
+    cyc(74);
     for (;;) {
         abi_RecordNextContact();
         if (!(cpu.p & P_C))
@@ -1965,8 +1961,9 @@ void abi_ObjectSyncToRecord(void);
 static int hit_to_n(int *late)
 {
     (cyc(62), abi_ObjectSyncToRecord());
-    cyc(64);
-    lda8((uint8_t)(cpu.a & 0x01));
+    cyc(4);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | (cpu.a & 0x01));
+    cpu.p = nz8(cpu.p, (uint8_t)cpu.a);
     *late = 0;
     if (!(uint8_t)cpu.a)
         return 0; else { cyc(28); }
@@ -2622,8 +2619,9 @@ static void gate42d(uint16_t s)
 static int synced(void)
 {
     (cyc(62), abi_ObjectSyncFromRecord());
-    cyc(70);
-    lda8((uint8_t)(cpu.a & 0x01));
+    cyc(10);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | (cpu.a & 0x01));
+    cpu.p = nz8(cpu.p, (uint8_t)cpu.a);
     return (uint8_t)cpu.a != 0;
 }
 
@@ -3249,7 +3247,7 @@ void abi_ObjectSweepGateStep(void)
 static void slide_chime_frame(void)
 {
     (cyc(62), abi_ObjectSyncFromRecord());
-    (cyc(142), abi_RecordContactSummary());
+    (cyc(62), abi_RecordContactSummary());
     cyc(12);
     lda8((uint8_t)(cpu.a & 0x01));
     if ((uint8_t)cpu.a) {
@@ -4252,7 +4250,7 @@ static void count_marker_frame(void)
         { cyc(62); abi_ObjectStep48To8(); } else { cyc(22); }
     cyc(62);
     abi_ObjectSyncFromRecord();
-    cyc(124);
+    cyc(44);
 }
 
 /*
@@ -4323,7 +4321,7 @@ static void count_trigger_record(void)
 static void count_trigger_frame(void)
 {
     (cyc(62), abi_ObjectSyncFromRecord());
-    cyc(98);
+    cyc(18);
     lda8((uint8_t)(cpu.a & 0x01));
     if (!(uint8_t)cpu.a)
         { cyc(44); return; } else { cyc(56); }
@@ -4544,7 +4542,7 @@ void abi_ObjectBobStep(void)
 static void burst_piece_frame(void)
 {
     (cyc(62), abi_ObjectSyncFromRecord());
-    if (!dec8(cyc_then(102, F(0x200A, cpu.x))))
+    if (!dec8(cyc_then(22, F(0x200A, cpu.x))))
         { cyc(84); abi_ObjectRelease(); } else { cyc(48); }
     add8(F(0x2014, cpu.x), 0x18);
     add8(F(0x2015, cpu.x), 0x18);
@@ -5044,7 +5042,7 @@ static void crowd_gate_frame(void)
     uint8_t lap;
 
     abi_ObjectSyncToRecord();
-    cyc(92);
+    cyc(12);
     lda8((uint8_t)(cpu.a & 0x01));
     if (!(uint8_t)cpu.a)
         { cyc(50); return; }
@@ -6183,7 +6181,7 @@ void abi_RailStep(void)
 {
     colour_cycle6();
     if (rail_slide(0x0280))
-        abi_RailStop(); else { cyc(124); }
+        abi_RailStop(); else { cyc(44); }
 }
 
 /* 09:D42C: the drop's frame: the colour counts up to 6 (then the rise,
@@ -6224,7 +6222,7 @@ void abi_RailRiseStep(void)
 {
     colour_cycle6();
     if (rail_slide(0x0140))
-        { cyc(62); abi_ObjectRelease(); cyc(44); } else { cyc(124); }
+        { cyc(62); abi_ObjectRelease(); cyc(44); } else { cyc(44); }
 }
 
 static void rail_drop_frame(void)
@@ -6244,7 +6242,7 @@ static void rail_drop_frame(void)
     wr8(F(0x205A, cpu.x), cyc_then(112, v));
     add16(F(0x2010, cpu.x), cyc_then(22, 0x0040));
     (cyc(84), abi_ObjectSyncToRecord());
-    cyc(124);
+    cyc(44);
 }
 
 /*
@@ -7093,7 +7091,7 @@ static void slide_lap_frame(void)
     uint8_t lap;
 
     abi_ObjectSyncToRecord();
-    cyc(92);
+    cyc(12);
     lda8((uint8_t)(cpu.a & 0x01));
     if (!(uint8_t)cpu.a)
         { cyc(50); return; } else { cyc(62); }
@@ -8600,8 +8598,9 @@ static void shatter_marker_frame(void)
 {
     (cyc(46), abi_MarkerBounceY());
     (cyc(62), abi_ObjectSyncToRecord());
-    cyc(70);
-    lda8((uint8_t)(cpu.a & 0x01));
+    cyc(10);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | (cpu.a & 0x01));
+    cpu.p = nz8(cpu.p, (uint8_t)cpu.a);
     if (!(uint8_t)cpu.a)
         { cyc(72); return; }
     if (!next_contact())
@@ -8755,7 +8754,7 @@ static void lap_light_frame(void)
     if (bit25(0x01)) {
         cyc(106);
         abi_ObjectSyncFromRecord();
-        (cyc(126), abi_ObjectCountUpTo2());
+        (cyc(46), abi_ObjectCountUpTo2());
         { cyc(44); return; }
     } else { cyc(18); }
     if (!hit())
@@ -9145,8 +9144,9 @@ static void bonus_marker2_frame(void (*shatter)(void), uint16_t kind, uint8_t bo
 
     (cyc(46), abi_MarkerBounceY());
     (cyc(62), abi_ObjectSyncToRecord());
-    cyc(70);
-    lda8((uint8_t)(cpu.a & 0x01));
+    cyc(10);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | (cpu.a & 0x01));
+    cpu.p = nz8(cpu.p, (uint8_t)cpu.a);
     if (!(uint8_t)cpu.a)
         { cyc(72); return; }
     if (!next_contact())
@@ -9407,7 +9407,7 @@ static void hit_lamp_frame(uint16_t flag)
         { cyc(62); abi_ObjectStep48To8(); } else { cyc(22); }
     cyc(62);
     abi_ObjectSyncFromRecord();
-    cyc(124);
+    cyc(44);
 }
 
 /* The switch's record: GsuRecordNew42D with flag $10 at ($3C0, $3C0,
@@ -9425,8 +9425,9 @@ static void hit_switch_record(void)
 static void hit_switch_frame(uint16_t flag)
 {
     (cyc(62), abi_ObjectSyncFromRecord());
-    cyc(70);
-    lda8((uint8_t)(cpu.a & 0x01));
+    cyc(10);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | (cpu.a & 0x01));
+    cpu.p = nz8(cpu.p, (uint8_t)cpu.a);
     if (!(uint8_t)cpu.a || !next_contact_t(28))
         { cyc(72); return; } else { cyc(22); }
     lda8((uint8_t)(ld8(F(0x2025, cpu.x)) & 0x01));

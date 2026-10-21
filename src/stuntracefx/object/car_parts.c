@@ -542,7 +542,7 @@ static void fly_frame(void)
     (cyc(62), abi_ObjectSyncFromRecord());
     lda8((uint8_t)(cpu.a & 0x01));
     if (!(uint8_t)cpu.a) {
-        cyc(96);
+        cyc(16);
         parent();
         cyc(4);
         if (bits25(cpu.y, 0x10)) {
@@ -556,7 +556,7 @@ static void fly_frame(void)
                 return;
             }
         }
-    } else { cyc(80); }
+    }
     cyc(28);
     st8i(F(0x2036, cpu.x), 0x03);
     parent();

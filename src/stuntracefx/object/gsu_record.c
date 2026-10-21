@@ -1006,9 +1006,11 @@ static uint16_t sync_tail(uint8_t bank, uint16_t a, uint16_t *y, uint8_t *p)
     *y = rd16((uint32_t)bank << 16 | 0x1F3C);
     if (!*y) {
         *p = nz16(*p, 0);
+        cyc(80);                        /* BEQ taken, CLC, RTL */
         return a;
     } else { cyc(10); }
     *p = nz8(*p, 0x01);
+    cyc(80);                            /* LDA #1 rest, CLC, RTL */
     return (uint16_t)((a & 0xFF00) | 0x01);
 }
 
@@ -1018,7 +1020,7 @@ static uint16_t sync_none(uint8_t bank, uint8_t *p)
     cyc(92);
     wr16((uint32_t)bank << 16 | 0x1F3C, 0x0000);
     *p = (uint8_t)(nz8(*p, 0) | P_C);
-    cyc(38);
+    cyc(118);                           /* SEP, SEP, LDA #0, SEC, RTL */
     return 0x0000;
 }
 
@@ -2194,7 +2196,6 @@ void abi_ObjectSyncFromRecordFall(void)
 
     cpu.a = ObjectSyncFromRecordFall(cpu.db, cpu.x, &cpu.y, &p);
     cpu.p = (uint8_t)(p | P_M);
-    cyc(80);                            /* the tail: BEQ, CLC, RTL */
 }
 
 /*
@@ -2241,7 +2242,7 @@ void abi_ObjectSpinStep(void)
     } else { cyc(8); }
     cyc(98);
     abi_ObjectSyncFromRecord();
-    cyc(124);
+    cyc(44);
 }
 
 /*
