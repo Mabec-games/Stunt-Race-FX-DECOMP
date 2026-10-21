@@ -37,10 +37,10 @@ pushed.
 |---|---|
 | `python3 ports/stuntracefx/tools/same.py` | every play from power-on, the port against the reference port (a3f26e3, built once into build/stuntracefx/port/ref): shots, dumps, the pacing record, byte for byte. About 2 minutes. |
 | `PORT_AUDIT=1` (headless) | names any rd8/wr8 that reaches a register |
-| `PORT_VIDCHECK=1` | each frame drawn from its record (video.h VidFrame) against the picture drawn a line at a time |
+| `PORT_VIDCHECK=1` | each frame drawn from its record (video.h VidFrame) against the picture drawn a line at a time (drawn only under this check) |
 | `PORT_FXCHECK=1` | the game's fill lifted to C (game/render/draw_list.c) against the Super FX's plots, every draw list; also counts pixels plotted outside the lists |
 | `PORT_GPUCHECK=1` with `RENDER=metal\|gl\|vulkan HOST=null` | the GPU compositor's frame, read back, against vid_draw_frame |
-| `PORT_RRCHECK=N` (windowed) | the presented frame at frame N against the reference |
+| `PORT_RRCHECK=N` (windowed) | the presented frame at frame N (composed on the GPU) against the record's picture drawn on the CPU and scaled by the reference |
 | `ports/common/render/check/check.sh` | each backend's sharp bilinear against the reference |
 | `ports/common/audio/check/mix_replay LOG SOUND` (VOX=) | the native mixer fed bsnes's DSP inputs, against bsnes's samples |
 | `ports/common/audio/check/resample_check` | the resampler against exact tones |
@@ -83,21 +83,22 @@ check above covers 21 plays.
 - GPU compositor (render/compose/core.glsl, one source for three shader
   languages via build.sh): on Metal, OpenGL and Vulkan, every frame of
   the 21 plays identical to vid_draw_frame (PORT_GPUCHECK).
+  The window draws through it; the CPU draws a picture only for a check
+  or a shot (vid_picture: the finished frame from its record). The
+  software backend has no compositor (headless only).
 
 ## Next, in order
 
-1. The window draws through it and the line-by-line drawing becomes the
-   check's reference only.
-2. The 3D layer on the GPU: original mode from the draw list (edge setup
+1. The 3D layer on the GPU: original mode from the draw list (edge setup
    as draw_list.c does it, spans filled in the shader), high resolution as
    triangles with sub-pixel vertices from before the projection rounds;
    the 3D picture composited where the game shows its tiles. Lift the other
    Super FX drawers (objects, effects, weather, bitmaps: 11% of a race's
    pixels, a third of a stunt course's) into draw operations too.
-3. Widescreen and field of view (PLAN.md phase 5).
-4. The game's C as plain C (PLAN.md phase 1): no cpu/spc/gsu register
+2. Widescreen and field of view (PLAN.md phase 5).
+3. The game's C as plain C (PLAN.md phase 1): no cpu/spc/gsu register
    files, abi_ wrappers or rd8/wr8; the frame loop with no interrupts or
    coroutines; Super FX programs as calls; the sound drivers as a native
    sequencer calling mixer.h; pacing from the stated time.
-5. Remove every stepping stone (vid_reg, mixer_regs.c, dma.c, hw_rd/hw_wr,
+4. Remove every stepping stone (vid_reg, mixer_regs.c, dma.c, hw_rd/hw_wr,
    ports/common/snes), update PORT.md and the READMEs.

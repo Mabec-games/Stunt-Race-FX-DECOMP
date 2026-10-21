@@ -5,10 +5,14 @@
  *
  * The game sets the state with whole values (vid_reg: a register number of
  * the console's picture unit, $2100 + reg, and its value) and fills the
- * tiles, palette and sprites through the data calls. vid_render_line draws
- * one line from the state at that moment (the port's clock calls it as the
- * line's horizontal blank comes, after the line's changes and before its
- * per-line tables):
+ * tiles, palette and sprites through the data calls. vid_render_line
+ * records one line's state at that moment into the frame's record (the
+ * port's clock calls it as the line's horizontal blank comes, after the
+ * line's changes and before its per-line tables); the GPU compositor draws
+ * the frame from the record. The drawing here is the reference the
+ * compositor is checked against: a frame drawn from its record
+ * (vid_draw_frame, vid_picture), and under PORT_VIDCHECK each line drawn
+ * as it is recorded, against which the record itself is checked:
  *
  *   backgrounds  modes 0-7: 2, 4 and 8 bits a pixel, 8x8 and 16x16 tiles,
  *                maps of 32 or 64 tiles each way, mosaic, offset-per-tile
@@ -31,6 +35,8 @@ static uint16_t cgram[256];
 static uint8_t oam[544];
 static uint32_t picture[VID_WIDTH * VID_HEIGHT];
 static uint32_t shown[VID_WIDTH * VID_HEIGHT];
+static unsigned long frames_done, shown_of;     /* frames finished; the one shown[] holds */
+static int draw_lines = -1;                     /* lines drawn as recorded (PORT_VIDCHECK) */
 
 
 static VidScreen cur = { .inidisp = 0x80 };   /* the state as the game sets it */
@@ -56,7 +62,15 @@ static uint8_t oam_latch;
 static uint8_t range_over, time_over;
 static unsigned mosaic_y;
 
-const uint32_t *vid_picture(void) { return shown; }
+/* the last finished frame, drawn from its record when first asked for */
+const uint32_t *vid_picture(void)
+{
+    if (frames_done && shown_of != frames_done) {
+        vid_draw_frame(finished, shown);
+        shown_of = frames_done;
+    }
+    return shown;
+}
 int vid_forced_blank(void) { return (cur.inidisp & 0x80) != 0; }
 
 void vid_reset(void)
@@ -66,6 +80,7 @@ void vid_reset(void)
     memset(oam, 0, sizeof oam);
     memset(picture, 0, sizeof picture);
     memset(shown, 0, sizeof shown);
+    frames_done = shown_of = 0;
     cur.inidisp = 0x80;
     cur.obsel = cur.bgmode = cur.mosaic = cur.m7sel = 0;
     memset(cur.bgsc, 0, sizeof cur.bgsc);
@@ -243,6 +258,7 @@ void vid_vblank_start(void)
     VidFrame *t = finished;
     finished = making;
     making = t;
+    frames_done++;
     if (check < 0)
         check = getenv("PORT_VIDCHECK") != NULL;
     if (check) {
@@ -256,7 +272,6 @@ void vid_vblank_start(void)
     }
     if (!(cur.inidisp & 0x80))
         oam_at = (uint16_t)(cur.oamaddr << 1);
-    memcpy(shown, picture, sizeof shown);
 }
 
 /* ---- drawing ---------------------------------------------------------------------- */
@@ -692,13 +707,25 @@ static void draw_line(unsigned line, uint32_t *out);
 
 void vid_render_line(unsigned line)
 {
+    unsigned msize;
+    if (draw_lines < 0)
+        draw_lines = getenv("PORT_VIDCHECK") != NULL;
+    if (mosaic_y == 0)
+        mosaic_y = 1;
     record_line(line);
-    making->mosaic_row[line] = (uint8_t)(mosaic_y ? mosaic_y : 1);
-    s = &making->line[line];
-    d_vram = vram;
-    d_cgram = cgram;
-    d_oam = oam;
-    draw_line(line, &picture[(line - 1) * VID_WIDTH]);
+    making->mosaic_row[line] = (uint8_t)mosaic_y;
+    if (draw_lines) {
+        s = &making->line[line];
+        d_vram = vram;
+        d_cgram = cgram;
+        d_oam = oam;
+        draw_line(line, &picture[(line - 1) * VID_WIDTH]);
+    }
+    /* the vertical mosaic: the line the next lines repeat moves on every
+       `size` lines */
+    msize = (making->line[line].mosaic >> 4) + 1u;
+    if (msize == 1 || line % msize == 0)
+        mosaic_y = line + 1;
 }
 
 void vid_draw_frame(const VidFrame *f, uint32_t *out)
@@ -752,12 +779,10 @@ static void draw_line(unsigned line, uint32_t *out)
     static const uint8_t z1p[3][2] = { { 6, 9 }, { 5, 8 }, { 1, 11 } };
     static const uint8_t z2[2][2] = { { 3, 7 }, { 1, 5 } }, o2[4] = { 2, 4, 6, 8 };
     static const uint8_t z7[2][2] = { { 3, 3 }, { 1, 5 } }, o7[4] = { 2, 4, 6, 7 };
-    if (mosaic_y == 0)
-        mosaic_y = 1;
     if (s->inidisp & 0x80) {
         for (x = 0; x < VID_WIDTH; x++)
             out[x] = 0xFF000000u;   /* black, opaque as every pixel drawn */
-        goto mosaic_step;
+        return;
     }
     for (x = 0; x < 256; x++) {
         main_px[x].color = d_cgram[0];
@@ -846,15 +871,5 @@ static void draw_line(unsigned line, uint32_t *out)
             b = b * (bright + 1u) / 16u;
         }
         out[x] = 0xFF000000u | (r << 3 | r >> 2) << 16 | (g << 3 | g >> 2) << 8 | (b << 3 | b >> 2);
-    }
-mosaic_step:
-    /* the vertical s->mosaic: the line the next lines repeat moves on every
-       `size` lines */
-    {
-        unsigned msize = (s->mosaic >> 4) + 1u;
-        if (msize > 1 && (line % msize) == 0)
-            mosaic_y = line + 1;
-        else if (msize == 1)
-            mosaic_y = line + 1;
     }
 }

@@ -503,12 +503,13 @@ static void gpu_check(void)
     }
 }
 
-/* the frame on the window: the picture at the original's 4:3 (its 256 x
-   224 pixels, 8:7 each), as large as the window holds, centred, sharp
-   bilinear */
+/* the frame on the window: the picture composed on the GPU from the
+   frame's record, at the original's 4:3 (its 256 x 224 pixels, 8:7 each),
+   as large as the window holds, centred, sharp bilinear */
 static void show(void)
 {
     int tw, th, w, h, d[4];
+    RrPicture p;
     rr_target(&tw, &th);
     w = th * 4 / 3;
     h = th;
@@ -520,8 +521,9 @@ static void show(void)
     d[1] = (th - h) / 2;
     d[2] = d[0] + w;
     d[3] = d[1] + h;
+    picture_of(vid_frame(), &p);
     rr_begin(0xFF000000u);
-    rr_image(vid_picture(), VID_WIDTH, VID_HEIGHT, d);
+    rr_compose(&p, d);
     rr_present();
     rr_self_check(tw, th, d);
 }
