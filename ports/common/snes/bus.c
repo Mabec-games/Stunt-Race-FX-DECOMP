@@ -46,6 +46,8 @@ static uint16_t htime = 0x1FF, vtime = 0x1FF;
 static uint8_t rdnmi_flag, timeup_flag;
 static int nmi_pending, cart_irq;
 
+static void latch_counters(void);
+
 /* the joypads */
 static uint16_t joy_held[2], joy_auto[2];
 static uint16_t joy_shift[2];
@@ -120,7 +122,7 @@ static void line_begin(void)
         rdnmi_flag = 1;
         if (nmitimen & 0x80)
             nmi_pending = 1;
-        ppu_vblank_start();
+        vid_vblank_start();
         /* the frame is done: the front end shows it and sets the buttons
            the joypads' read now takes */
         if (getenv("PORT_DEBUG")) {
@@ -146,7 +148,7 @@ static void line_begin(void)
     } else if (vline == 0) {
         rdnmi_flag = 0;
         frames++;
-        ppu_frame_start();
+        vid_frame_start();
         hdma_init();
     }
     irq_schedule(0);
@@ -168,7 +170,7 @@ static void run_events(void)
         if (!line_done_hblank && snes_clock >= line_start + HBLANK_AT) {
             line_done_hblank = 1;
             if (vline >= 1 && vline <= 224)
-                ppu_render_line(vline);
+                vid_render_line(vline);
             if (vline <= 224)
                 hdma_line();
             gsu_sync();
@@ -269,7 +271,7 @@ static void cpu_reg_write(uint16_t off, uint8_t v)
     }
     case 0x4201:
         if ((wrio & 0x80) && !(v & 0x80))
-            ppu_latch_counters();
+            latch_counters();
         wrio = v;
         return;
     case 0x4202: wrmpya = v; return;
@@ -329,11 +331,47 @@ void snes_set_joypad(int port, uint16_t buttons)
         joy_held[port] = (uint16_t)(buttons & 0xFFF0);
 }
 
+/* ---- the counters' latch (the picture unit's $2137, $213C-$213D, $213F) ---- */
+static uint16_t h_latch, v_latch;
+static uint8_t h_flip, v_flip, latch_flag, ppu2_mdr;
+
+static void latch_counters(void)
+{
+    h_latch = (uint16_t)snes_hcounter();
+    v_latch = (uint16_t)snes_vcounter();
+    latch_flag = 1;
+}
+
+static uint8_t counters_read(uint8_t reg)
+{
+    uint8_t v;
+    switch (reg) {
+    case 0x37:
+        latch_counters();
+        return snes_mdr;
+    case 0x3C:
+        v = h_flip ? (uint8_t)((h_latch >> 8 & 1) | (ppu2_mdr & 0xFE)) : (uint8_t)h_latch;
+        h_flip ^= 1;
+        return ppu2_mdr = v;
+    case 0x3D:
+        v = v_flip ? (uint8_t)((v_latch >> 8 & 1) | (ppu2_mdr & 0xFE)) : (uint8_t)v_latch;
+        v_flip ^= 1;
+        return ppu2_mdr = v;
+    case 0x3F:
+        v = (uint8_t)(latch_flag << 6 | (ppu2_mdr & 0x20) | 0x03);
+        h_flip = v_flip = 0;
+        latch_flag = 0;
+        return ppu2_mdr = v;
+    }
+    snes_fatal("the game read picture register $21%02X, which the port's C does not read", reg);
+    return 0;
+}
+
 /* ---- the B bus --------------------------------------------------------------------- */
 uint8_t bus_read_b(uint8_t reg)
 {
     if (reg >= 0x34 && reg < 0x40)
-        return ppu_read(reg);
+        return counters_read(reg);
     if (reg >= 0x40 && reg < 0x80) {
         apu_sync();
         return apu_port_read(reg & 3);
@@ -349,7 +387,7 @@ uint8_t bus_read_b(uint8_t reg)
 void bus_write_b(uint8_t reg, uint8_t v)
 {
     if (reg < 0x34) {
-        ppu_write(reg, v);
+        vid_reg(reg, v);
         return;
     }
     if (reg >= 0x40 && reg < 0x80) {
@@ -636,7 +674,9 @@ void snes_power(const SnesCart *cart)
     frames = 0;
     line_done_hblank = line_done_refresh = 0;
     irq_at = NEVER;
-    ppu_reset();
+    vid_reset();
+    h_latch = v_latch = 0;
+    h_flip = v_flip = latch_flag = ppu2_mdr = 0;
     dma_reset();
     gsu_reset();
     apu_reset();

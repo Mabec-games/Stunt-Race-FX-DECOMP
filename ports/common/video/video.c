@@ -1,13 +1,14 @@
 /*
- * ppu.c: the picture processor, drawn a line at a time.
+ * video.c: the picture, native: the game's screen state (its modes, layers,
+ * scroll, windows, colour maths, brightness), its tiles and maps, palette
+ * and sprite table, drawn a line at a time into a 256 x 224 picture.
  *
- * The registers ($2100-$213F) behave as the hardware's do: the double-
- * written scroll and Mode 7 registers with their shared latches, VRAM's
- * address increment and remapping and its read prefetch, CGRAM's and OAM's
- * byte pairs, the counters' latch and flip-flops. ppu_render_line draws one
- * line from the state at that moment (the machine calls it as the clock
- * passes the line's horizontal blank, after the line's register writes and
- * before its HDMA), into a 256 x 224 picture:
+ * The game sets the state with whole values (vid_reg: a register number of
+ * the console's picture unit, $2100 + reg, and its value) and fills the
+ * tiles, palette and sprites through the data calls. vid_render_line draws
+ * one line from the state at that moment (the port's clock calls it as the
+ * line's horizontal blank comes, after the line's changes and before its
+ * per-line tables):
  *
  *   backgrounds  modes 0-7: 2, 4 and 8 bits a pixel, 8x8 and 16x16 tiles,
  *                maps of 32 or 64 tiles each way, mosaic, offset-per-tile
@@ -22,13 +23,13 @@
  */
 #include <string.h>
 
-#include "snes_internal.h"
+#include "video.h"
 
 static uint16_t vram[0x8000];
 static uint16_t cgram[256];
 static uint8_t oam[544];
-static uint32_t picture[SNES_WIDTH * SNES_HEIGHT];
-static uint32_t shown[SNES_WIDTH * SNES_HEIGHT];
+static uint32_t picture[VID_WIDTH * VID_HEIGHT];
+static uint32_t shown[VID_WIDTH * VID_HEIGHT];
 
 static uint8_t inidisp = 0x80, obsel, bgmode, mosaic, bgsc[4], bgnba[2], m7sel;
 static uint8_t w12sel, w34sel, wobjsel, wh[4], wbglog, wobjlog, tm, ts, tmw, tsw, cgwsel, cgadsub, setini;
@@ -44,16 +45,13 @@ static uint8_t cgaddr, cg_flip, cg_latch;
 static uint16_t oamaddr, oam_at;
 static uint8_t oam_prio, oam_latch;
 static uint8_t fixed_r, fixed_g, fixed_b;
-static uint8_t ppu1_mdr, ppu2_mdr;
-static uint16_t h_latch, v_latch;
-static uint8_t h_flip, v_flip, latch_flag;
 static uint8_t range_over, time_over;
 static unsigned mosaic_y;
 
-const uint32_t *snes_picture(void) { return shown; }
-int ppu_forced_blank(void) { return (inidisp & 0x80) != 0; }
+const uint32_t *vid_picture(void) { return shown; }
+int vid_forced_blank(void) { return (inidisp & 0x80) != 0; }
 
-void ppu_reset(void)
+void vid_reset(void)
 {
     memset(vram, 0, sizeof vram);
     memset(cgram, 0, sizeof cgram);
@@ -77,7 +75,6 @@ void ppu_reset(void)
     oamaddr = oam_at = 0;
     oam_prio = oam_latch = 0;
     fixed_r = fixed_g = fixed_b = 0;
-    h_flip = v_flip = latch_flag = 0;
     range_over = time_over = 0;
 }
 
@@ -98,14 +95,7 @@ static void vram_step(void)
     vmaddr = (uint16_t)(vmaddr + inc[vmain & 3]);
 }
 
-void ppu_latch_counters(void)
-{
-    h_latch = (uint16_t)snes_hcounter();
-    v_latch = (uint16_t)snes_vcounter();
-    latch_flag = 1;
-}
-
-void ppu_write(uint8_t reg, uint8_t v)
+void vid_reg(uint8_t reg, uint8_t v)
 {
     switch (reg) {
     case 0x00:
@@ -225,72 +215,13 @@ void ppu_write(uint8_t reg, uint8_t v)
     }
 }
 
-uint8_t ppu_read(uint8_t reg)
-{
-    uint8_t v;
-    switch (reg) {
-    case 0x34: case 0x35: case 0x36: {
-        int32_t p = (int32_t)m7a * (int8_t)m7b_last;
-        return ppu1_mdr = (uint8_t)(p >> ((reg - 0x34) * 8));
-    }
-    case 0x37:
-        ppu_latch_counters();
-        return snes_mdr;
-    case 0x38: {
-        uint16_t a = oam_at & 0x3FF;
-        v = a < 0x200 ? oam[a] : oam[0x200 | (a & 0x1F)];
-        oam_at = (uint16_t)((oam_at + 1) & 0x3FF);
-        return ppu1_mdr = v;
-    }
-    case 0x39:
-        v = (uint8_t)vram_prefetch;
-        if (!(vmain & 0x80)) {
-            vram_prefetch = vram[vram_remap(vmaddr) & 0x7FFF];
-            vram_step();
-        }
-        return ppu1_mdr = v;
-    case 0x3A:
-        v = (uint8_t)(vram_prefetch >> 8);
-        if (vmain & 0x80) {
-            vram_prefetch = vram[vram_remap(vmaddr) & 0x7FFF];
-            vram_step();
-        }
-        return ppu1_mdr = v;
-    case 0x3B:
-        if (!cg_flip)
-            v = (uint8_t)cgram[cgaddr];
-        else {
-            v = (uint8_t)((cgram[cgaddr] >> 8 & 0x7F) | (ppu2_mdr & 0x80));
-            cgaddr++;
-        }
-        cg_flip ^= 1;
-        return ppu2_mdr = v;
-    case 0x3C:
-        v = h_flip ? (uint8_t)((h_latch >> 8 & 1) | (ppu2_mdr & 0xFE)) : (uint8_t)h_latch;
-        h_flip ^= 1;
-        return ppu2_mdr = v;
-    case 0x3D:
-        v = v_flip ? (uint8_t)((v_latch >> 8 & 1) | (ppu2_mdr & 0xFE)) : (uint8_t)v_latch;
-        v_flip ^= 1;
-        return ppu2_mdr = v;
-    case 0x3E:
-        return ppu1_mdr = (uint8_t)(time_over << 7 | range_over << 6 | (ppu1_mdr & 0x10) | 0x01);
-    case 0x3F:
-        v = (uint8_t)(latch_flag << 6 | (ppu2_mdr & 0x20) | 0x03);
-        h_flip = v_flip = 0;
-        latch_flag = 0;
-        return ppu2_mdr = v;
-    }
-    return snes_mdr;
-}
-
-void ppu_frame_start(void)
+void vid_frame_start(void)
 {
     mosaic_y = 1;
     range_over = time_over = 0;
 }
 
-void ppu_vblank_start(void)
+void vid_vblank_start(void)
 {
     if (!(inidisp & 0x80))
         oam_at = (uint16_t)(oamaddr << 1);
@@ -701,9 +632,9 @@ static int region(unsigned mode, int inside)
     return 1;
 }
 
-void ppu_render_line(unsigned line)
+void vid_render_line(unsigned line)
 {
-    uint32_t *out = &picture[(line - 1) * SNES_WIDTH];
+    uint32_t *out = &picture[(line - 1) * VID_WIDTH];
     unsigned mode = bgmode & 7, x, n;
     uint8_t bright = inidisp & 0x0F;
     uint16_t fixed = (uint16_t)(fixed_r | fixed_g << 5 | fixed_b << 10);
@@ -716,7 +647,7 @@ void ppu_render_line(unsigned line)
     if (mosaic_y == 0)
         mosaic_y = 1;
     if (inidisp & 0x80) {
-        memset(out, 0, SNES_WIDTH * 4);
+        memset(out, 0, VID_WIDTH * 4);
         goto mosaic_step;
     }
     for (x = 0; x < 256; x++) {

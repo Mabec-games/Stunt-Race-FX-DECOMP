@@ -78,8 +78,6 @@ extern void (*snes_frame_hook)(void);
 extern void (*snes_write_hook)(uint32_t addr, uint8_t value);
 
 /* ---- the picture ----------------------------------------------------------------- */
-/* The last finished frame: SNES_WIDTH x SNES_HEIGHT pixels, 0xFFRRGGBB. */
-const uint32_t *snes_picture(void);
 
 /* ---- input ----------------------------------------------------------------------- */
 /* The buttons held on controller port 1 or 2 (0 or 1), in the joypad's

@@ -34,6 +34,7 @@
 
 #include "host.h"
 #include "snes.h"
+#include "video.h"
 #include "dispatch.h"
 
 /* the ROM, built in (romdata.S: the builder's own ROM) */
@@ -179,7 +180,7 @@ static void write_file(const char *name, const char *ext, const void *p, size_t 
 
 static void shot(const char *name)
 {
-    const uint32_t *px = snes_picture();
+    const uint32_t *px = vid_picture();
     char path[1024];
     FILE *f;
     int i;
@@ -420,7 +421,7 @@ static void frame(void)
         }
         return;
     }
-    host_present(snes_picture(), SNES_WIDTH, SNES_HEIGHT, 4.0f / 3.0f);
+    host_present(vid_picture(), SNES_WIDTH, SNES_HEIGHT, 4.0f / 3.0f);
     {
         host_event e;
         while (host_poll_event(&e, 0)) {

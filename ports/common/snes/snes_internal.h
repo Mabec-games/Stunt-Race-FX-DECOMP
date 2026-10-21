@@ -5,6 +5,7 @@
 #define PORT_SNES_INTERNAL_H
 
 #include "snes.h"
+#include "video.h"
 
 /* ---- bus.c ---- */
 extern uint8_t snes_mdr;                    /* the data bus's last value (open bus) */
@@ -29,15 +30,6 @@ void hdma_init(void);                        /* the frame's start */
 void hdma_line(void);                        /* each line's horizontal blank */
 extern uint8_t dma_hdmaen;
 
-/* ---- ppu.c ---- */
-void ppu_reset(void);
-uint8_t ppu_read(uint8_t reg);
-void ppu_write(uint8_t reg, uint8_t v);
-void ppu_render_line(unsigned line);         /* lines 1-224 */
-void ppu_frame_start(void);                  /* line 0 */
-void ppu_vblank_start(void);                 /* line 225: the frame is done */
-void ppu_latch_counters(void);               /* SLHV, or WRIO bit 7 falling */
-int ppu_forced_blank(void);
 
 /* ---- superfx.c ---- */
 void gsu_reset(void);
