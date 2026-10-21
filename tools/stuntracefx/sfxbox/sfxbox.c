@@ -170,6 +170,15 @@ static void video(const void *data, unsigned w, unsigned h, size_t pitch) {
         }
     }
 }
+/* --sound FILE: the DSP's output from power-on as the chip makes it (the
+   core's sfxbox_dsp_sample, before its resampler), 16-bit stereo, left
+   first, 32,040 frames a second; the native port's --sound writes the same */
+static FILE *sound_f;
+static void dsp_sample(int16_t l, int16_t r)
+{
+    int16_t p[2] = { l, r };
+    fwrite(p, 2, 2, sound_f);
+}
 static void audio(int16_t l, int16_t r) { (void)l; (void)r; }
 static size_t audio_batch(const int16_t *d, size_t n) { (void)d; return n; }
 static void poll(void) {}
@@ -750,6 +759,9 @@ int main(int argc, char **argv) {
         else if (!strcmp(argv[i], "--check") && i + 1 < argc) checklib = argv[++i];
         else if (!strcmp(argv[i], "--only") && i + 1 < argc) only = argv[++i];
         else if (!strcmp(argv[i], "--lockstep") && i + 1 < argc) locklib = argv[++i];
+        else if (!strcmp(argv[i], "--sound") && i + 1 < argc) {
+            if (!(sound_f = fopen(argv[++i], "wb"))) die("cannot write %s", argv[i]);
+        }
         else if (!strcmp(argv[i], "--pacing") && i + 1 < argc) {
             if (!(pacing_f = fopen(argv[++i], "w"))) die("cannot write %s", argv[i]);
         }
@@ -769,6 +781,11 @@ int main(int argc, char **argv) {
     *(void **)&sfxbox_co_active = dlsym(core, "co_active");
     LOAD(sfxbox_core_regs) LOAD(sfxbox_core_set_regs) LOAD(sfxbox_core_bus_read)
     if (!(cpu_exec_hook = dlsym(core, "sfxbox_cpu_exec"))) die("missing symbol sfxbox_cpu_exec");
+    if (sound_f) {
+        void (**tap)(int16_t, int16_t) = dlsym(core, "sfxbox_dsp_sample");
+        if (!tap) die("missing symbol sfxbox_dsp_sample (the core predates patch 0011)");
+        *tap = dsp_sample;
+    }
 
     retro_set_environment_p(env);
     retro_init_p();
@@ -804,6 +821,7 @@ int main(int argc, char **argv) {
     if (lockstep) lockstep_end(frames);
     if (trace && sfxbox_trace_write_p(outdir)) die("trace write failed");
     if (pacing_f) fclose(pacing_f);
+    if (sound_f) fclose(sound_f);
     printf("frames %ld\n", frames);
     return 0;
 }

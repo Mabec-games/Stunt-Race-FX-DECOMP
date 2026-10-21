@@ -378,6 +378,17 @@ static void audio_cb(float *lr, int frames, void *user)
    stack, $0100-$02FF, left out) and of the Super FX's RAM: the lines
    sfxbox --pacing writes (its second field the original's STA; here 0). */
 static FILE *pacing_f;
+/* --sound FILE: the DSP's output from power-on, 16-bit stereo, left first
+   (raw, 32,040 frames a second), as sfxbox --sound writes it */
+static FILE *sound_f;
+
+static void sound_drain(void)
+{
+    int16_t b[2048 * 2];
+    int n;
+    while ((n = snes_audio_take(b, 2048)) > 0)
+        fwrite(b, 4, (size_t)n, sound_f);
+}
 
 static uint32_t fnv(const uint8_t *p, size_t n, uint32_t h)
 {
@@ -472,7 +483,10 @@ static void frame(void)
     uint16_t b0 = 0, b1 = 0;
     frame_no++;
     if (headless) {
-        int more = script_frame(&b0, &b1);
+        int more;
+        if (sound_f)
+            sound_drain();
+        more = script_frame(&b0, &b1);
         snes_set_joypad(0, b0);
         snes_set_joypad(1, b1);
         if ((max_frames >= 0 && frame_no >= max_frames) || (!more && nsteps && max_frames < 0)) {
@@ -525,6 +539,12 @@ int main(int argc, char **argv)
             out_dir = argv[++i];
         else if (!strcmp(argv[i], "--frames") && i + 1 < argc)
             max_frames = atol(argv[++i]);
+        else if (!strcmp(argv[i], "--sound") && i + 1 < argc) {
+            if (!(sound_f = fopen(argv[++i], "wb"))) {
+                fprintf(stderr, "port: cannot write %s\n", argv[i]);
+                return 2;
+            }
+        }
         else if (!strcmp(argv[i], "--pacing") && i + 1 < argc) {
             if (!(pacing_f = fopen(argv[++i], "w"))) {
                 fprintf(stderr, "port: cannot write %s\n", argv[i]);

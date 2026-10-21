@@ -11,6 +11,16 @@ port.
 
 ## Decisions
 
+- **Zero emulation when done.** The finished port is the game's own source
+  as native C over native components, nothing else: no bus (rd8/wr8), no
+  console register files or register-number interfaces, no CPU, SPC700 or
+  Super FX register state, no DMA or HDMA engines, no interrupt or chip
+  models, no `ports/common/snes`. Each native part takes calls that say what
+  the game means (a layer's tiles and scroll, a palette, a sprite list; a
+  voice's sample, pitch, envelope; the echo) and does it natively: BRR is
+  the samples' codec, the Gaussian kernel a resampler, ADSR an envelope.
+  Steps on the way may keep a register-shaped interface for one verified
+  move at a time; each such interface is removed before the work is done.
 - **The port has its own copy of the game** (`ports/stuntracefx/game`),
   lifted from the decomp. The decomp stays unchanged as the reference; the
   copy is checked against the original at every step. This replaces
