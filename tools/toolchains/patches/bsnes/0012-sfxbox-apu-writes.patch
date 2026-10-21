@@ -1,0 +1,54 @@
+--- a/bsnes/emulator/sfxbox.hpp
++++ b/bsnes/emulator/sfxbox.hpp
+@@ -22,6 +22,10 @@
+ // The DSP's output, each stereo sample as the chip makes it (before the
+ // core's resampler), when set.
+ extern void (*sfxbox_dsp_sample)(int16_t left, int16_t right);
++// Each write the SPC700 makes (APU RAM, its I/O registers and so the DSP's
++// through $F2/$F3), with the DSP's clock cycle within its sample (0-31,
++// the next it runs) at that moment, when set.
++extern void (*sfxbox_apu_write)(uint16_t address, uint8_t data, int dsp_phase);
+ void sfxbox_gsu_insn(uint32_t addr);
+ // SPC700: an instruction starts at pc; an opcode or operand byte is fetched
+ // (with its value); a data read.
+--- a/bsnes/target-libretro/sfxbox.cpp
++++ b/bsnes/target-libretro/sfxbox.cpp
+@@ -14,6 +14,7 @@
+ int sfxbox_cpu_irq = 0;
+ int (*sfxbox_cpu_exec)(uint32_t pc) = nullptr;
+ void (*sfxbox_dsp_sample)(int16_t left, int16_t right) = nullptr;
++void (*sfxbox_apu_write)(uint16_t address, uint8_t data, int dsp_phase) = nullptr;
+ SfxboxGsuCallbacks sfxbox_gsu_cb = {};
+ int sfxbox_gsu_hooked = 0;
+ int (*sfxbox_gsu_exec)(uint32_t pc, uint32_t prev_end) = nullptr;
+--- a/bsnes/sfc/dsp/SPC_DSP.h
++++ b/bsnes/sfc/dsp/SPC_DSP.h
+@@ -26,6 +26,8 @@
+ 	// a multiple of 2. Undefined if more samples were generated than
+ 	// output buffer could hold.
+ 	int sample_count() const;
++	// the next clock cycle to run within the sample (sfxbox)
++	int clock_phase() const { return m.phase; }
+ 
+ // Emulation
+ 
+--- a/bsnes/sfc/dsp/dsp.hpp
++++ b/bsnes/sfc/dsp/dsp.hpp
+@@ -7,6 +7,7 @@
+   auto main() -> void;
+   auto read(uint8 address) -> uint8;
+   auto write(uint8 address, uint8 data) -> void;
++  auto phase() const -> int { return spc_dsp.clock_phase(); }
+ 
+   auto load() -> bool;
+   auto power(bool reset) -> void;
+--- a/bsnes/sfc/smp/memory.cpp
++++ b/bsnes/sfc/smp/memory.cpp
+@@ -37,6 +37,7 @@
+ auto SMP::write(uint16 address, uint8 data) -> void {
+   wait(address);
+   if(sfxbox_smp_cb.mem) sfxbox_smp_cb.mem(1, address, data);
++  if(sfxbox_apu_write) sfxbox_apu_write(address, data, dsp.phase());
+   writeRAM(address, data);  //even IO writes affect underlying RAM
+   if((address & 0xfff0) == 0x00f0) writeIO(address, data);
+ }

@@ -174,10 +174,24 @@ static void video(const void *data, unsigned w, unsigned h, size_t pitch) {
    core's sfxbox_dsp_sample, before its resampler), 16-bit stereo, left
    first, 32,040 frames a second; the native port's --sound writes the same */
 static FILE *sound_f;
+/* --apulog FILE: what the DSP is given, for the native mixer's replay
+   check: the APU RAM at power-on (65,536 bytes), then each write the
+   SPC700 makes, 8 bytes (little-endian): the DSP samples made before it
+   (32 bits), the DSP's cycle within the sample it is making (0-31), the
+   address (16 bits), the byte */
+static FILE *apulog_f;
+static uint32_t dsp_samples;
 static void dsp_sample(int16_t l, int16_t r)
 {
     int16_t p[2] = { l, r };
-    fwrite(p, 2, 2, sound_f);
+    if (sound_f) fwrite(p, 2, 2, sound_f);
+    dsp_samples++;
+}
+static void apu_write(uint16_t address, uint8_t data, int phase)
+{
+    uint8_t rec[8] = { (uint8_t)dsp_samples, (uint8_t)(dsp_samples >> 8), (uint8_t)(dsp_samples >> 16),
+                       (uint8_t)(dsp_samples >> 24), (uint8_t)phase, (uint8_t)address, (uint8_t)(address >> 8), data };
+    fwrite(rec, 1, 8, apulog_f);
 }
 static void audio(int16_t l, int16_t r) { (void)l; (void)r; }
 static size_t audio_batch(const int16_t *d, size_t n) { (void)d; return n; }
@@ -759,6 +773,9 @@ int main(int argc, char **argv) {
         else if (!strcmp(argv[i], "--check") && i + 1 < argc) checklib = argv[++i];
         else if (!strcmp(argv[i], "--only") && i + 1 < argc) only = argv[++i];
         else if (!strcmp(argv[i], "--lockstep") && i + 1 < argc) locklib = argv[++i];
+        else if (!strcmp(argv[i], "--apulog") && i + 1 < argc) {
+            if (!(apulog_f = fopen(argv[++i], "wb"))) die("cannot write %s", argv[i]);
+        }
         else if (!strcmp(argv[i], "--sound") && i + 1 < argc) {
             if (!(sound_f = fopen(argv[++i], "wb"))) die("cannot write %s", argv[i]);
         }
@@ -781,10 +798,15 @@ int main(int argc, char **argv) {
     *(void **)&sfxbox_co_active = dlsym(core, "co_active");
     LOAD(sfxbox_core_regs) LOAD(sfxbox_core_set_regs) LOAD(sfxbox_core_bus_read)
     if (!(cpu_exec_hook = dlsym(core, "sfxbox_cpu_exec"))) die("missing symbol sfxbox_cpu_exec");
-    if (sound_f) {
+    if (sound_f || apulog_f) {
         void (**tap)(int16_t, int16_t) = dlsym(core, "sfxbox_dsp_sample");
         if (!tap) die("missing symbol sfxbox_dsp_sample (the core predates patch 0011)");
         *tap = dsp_sample;
+    }
+    if (apulog_f) {
+        void (**tap)(uint16_t, uint8_t, int) = dlsym(core, "sfxbox_apu_write");
+        if (!tap) die("missing symbol sfxbox_apu_write (the core predates patch 0012)");
+        *tap = apu_write;
     }
 
     retro_set_environment_p(env);
@@ -799,6 +821,11 @@ int main(int argc, char **argv) {
     struct retro_game_info gi = {rom, data, n, NULL};
     if (!retro_load_game_p(&gi)) die("load failed: %s", rom);
     if (trace) sfxbox_trace_begin_p();
+    if (apulog_f) {
+        size_t n; uint8_t *a = sfxbox_memory_p("apuram", &n);
+        if (!a || n != 65536) die("no APU RAM view");
+        fwrite(a, 1, n, apulog_f);
+    }
     if (checklib) {
         char rp[4096]; snprintf(rp, sizeof rp, "%s/check.txt", outdir);
         if (check_begin(core, checklib, only, rp)) die("check setup failed");
@@ -822,6 +849,7 @@ int main(int argc, char **argv) {
     if (trace && sfxbox_trace_write_p(outdir)) die("trace write failed");
     if (pacing_f) fclose(pacing_f);
     if (sound_f) fclose(sound_f);
+    if (apulog_f) fclose(apulog_f);
     printf("frames %ld\n", frames);
     return 0;
 }

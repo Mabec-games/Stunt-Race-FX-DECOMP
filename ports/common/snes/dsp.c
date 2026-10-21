@@ -39,6 +39,7 @@ typedef struct {
     int env_mode;
     int env, hidden_env;
     int out;                 /* the last output, for the next voice's modulation */
+    int cut_in;              /* samples until a voice that reached an end-no-loop block is cut */
 } Voice;
 
 static uint8_t *ram;
@@ -214,6 +215,8 @@ static void brr_decode(Voice *vc, int ch)
             }
         } else {
             vc->brr_addr = (uint16_t)(vc->brr_addr + 9);
+            if ((ram[vc->brr_addr] & 3) == 1)
+                vc->cut_in = 3;           /* the next block ends with no loop */
         }
         vc->brr_offset = 1;
     }
@@ -341,6 +344,10 @@ void dsp_sample(int16_t *lo, int16_t *ro)
             regs[(ch << 4) | 8] = 0;
             regs[(ch << 4) | 9] = 0;
             continue;
+        }
+        if (vc->cut_in && !--vc->cut_in) {
+            vc->env_mode = ENV_RELEASE;
+            vc->env = 0;
         }
         if (regs[R_NON] & (1u << ch))
             out = (int16_t)(noise * 2);
