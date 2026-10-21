@@ -86,8 +86,19 @@ int  rr_fill_rom(const uint8_t *rom, uint32_t size);
 void rr_fill(const uint32_t *spans, int n, int clear, int canvas);
 int  rr_fill_read(uint16_t *canvas);
 void rr_pack(const uint32_t *runs, int n, int canvas);
-/* the copy as it stands kept as the tiles' bytes of copy `version` of
-   the frame to be composed (0 to RR_VERSIONS - 1) */
+/* rr_chars: n of the characters the uploads complete copied from a
+   canvas into the compositor's atlas of them (the compositor draws a
+   character all of whose bytes came from a canvas from the atlas), at
+   the canvases' scale: RR_CHAR_WORDS words each:
+     0  the slot: the character's VRAM byte address / 32; bit 31: the
+        upload did not make it whole (the compositor draws it from the
+        tiles' bytes)
+     1  its first pixel in the canvas: x | y << 16
+     2-3 0 (the backend's)
+   rr_pack_keep: the copy and the atlas as they stand kept as copy
+   `version`'s of the frame to be composed (0 to RR_VERSIONS - 1). */
+#define RR_CHAR_WORDS 4
+void rr_chars(const uint32_t *chars, int n, int canvas);
 void rr_pack_keep(int version);
 /* the compositor's copy of the tiles' bytes read back (65,536); 0 when
    this backend keeps none */

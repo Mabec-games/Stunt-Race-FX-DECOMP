@@ -190,6 +190,44 @@ static void replay(long from, long to)
 
 static long applied;                  /* the operations the GPU's canvases have */
 
+static long split_chars;              /* characters an upload's run did not hold whole */
+
+/* the characters runs[i..i+n) complete, into the atlas */
+static void chars_of(long i, long n)
+{
+    static uint32_t *chars;
+    static long cap;
+    long k, m = 0;
+    for (k = i; k < i + n; k++) {
+        const uint32_t *w = runs[k].w;
+        unsigned vb = w[0] & 0xFFFFu, len = w[0] >> 16, o = w[1], ht = w[2] & 3u, md = (w[2] >> 2) & 3u;
+        unsigned bpp = 2u << (md - (md >> 1)), cb = bpp * 8u, rows_of = ht == 0 ? 16u : ht == 1 ? 20u : 24u, cs;
+        if (bpp < 4u)
+            continue;
+        for (cs = o - o % cb; cs < o + len; cs += cb) {
+            unsigned vcs = vb + cs - o, cn = cs / cb, x0 = cn / rows_of * 8u, y0 = cn % rows_of * 8u, whole = 1;
+            if (cs < o || cs + cb > o + len) {
+                /* bytes of it from another moment: the slot marked so */
+                split_chars++;
+                whole = 0;
+                vcs = (vb + cs - o) & ~31u;
+            }
+            if ((vcs & 31u) || x0 >= 256u || y0 >= 256u)
+                continue;
+            if (m == cap) {
+                cap = cap ? cap * 2 : 1024;
+                chars = (uint32_t *)realloc(chars, (size_t)cap * RR_CHAR_WORDS * 4);
+            }
+            chars[m * RR_CHAR_WORDS + 0] = vcs >> 5 | (whole ? 0u : 0x80000000u);
+            chars[m * RR_CHAR_WORDS + 1] = x0 | y0 << 16;
+            chars[m * RR_CHAR_WORDS + 2] = chars[m * RR_CHAR_WORDS + 3] = 0;
+            m++;
+        }
+    }
+    if (m)
+        rr_chars(chars, (int)m, (int)runs[i].w[3]);
+}
+
 /* the uploads before copy `made` of VRAM packed into the GPU's copy */
 static void apply_before(unsigned long made)
 {
@@ -212,6 +250,7 @@ static void apply_before(unsigned long made)
             batch[(size_t)k * RR_RUN_WORDS + 3] = 0;
         }
         rr_pack(batch, (int)n, (int)runs[i].w[3]);
+        chars_of(i, n);
         i = j;
     }
     memmove(runs, runs + i, (size_t)(runs_n - i) * sizeof *runs);

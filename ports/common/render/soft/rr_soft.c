@@ -100,6 +100,13 @@ void rr_pack(const uint32_t *runs, int n, int canvas)
     (void)canvas;
 }
 
+void rr_chars(const uint32_t *chars, int n, int canvas)
+{
+    (void)chars;
+    (void)n;
+    (void)canvas;
+}
+
 void rr_pack_keep(int version)
 {
     (void)version;

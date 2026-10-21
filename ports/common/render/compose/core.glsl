@@ -5,11 +5,14 @@
 //   FETCH_VRAM_REC(version, word)  FETCH_PAL(line, index)
 //   FETCH_OAM(version, byte)       FETCH_LINE(line, word)
 //   FETCH_EXT(version, word)       FETCH_MIRROR(version, byte)
+//   FETCH_ATLAS(version, x, y)
 // (integer textures: the tiles 256 words a row, 128 rows a copy; the
 // palettes a row a line; the sprite tables 544 bytes a row a copy; the
 // lines' packed state, VID_LINE_WORDS a row; the bits of the tiles' bytes
 // that came from the 3D canvas, 2,048 words a copy, 256 a row; the
-// compositor's copies of those bytes, 256 a row, 256 rows a copy) and TP / TA, the textures
+// compositor's copies of those bytes, 256 a row, 256 rows a copy; the
+// characters' atlas, a slot 8s x 8s a character, 64 slots a row, a
+// quarter of its height a copy) and TP / TA, the textures
 // as a helper's parameters and arguments (empty where they are global).
 
 uint lw(uint line, uint i TP) { return FETCH_LINE(line, i); }
@@ -81,6 +84,19 @@ uint map_entry(uint ver, uint sc, uint tx, uint ty TP)
     return FETCH_VRAM(ver, (base + off) & 0x7FFFu);
 }
 
+// a character's pixel (x, y) from the atlas when all its bytes came
+// from a 3D canvas (4 or 8 bits a pixel) at one time, else 256: the atlas
+// holds it as the upload left it (0x100 | colour; 0 when an upload made
+// it in pieces), its slot the byte address / 32
+uint atlas_pixel(uint ver, uint ca, uint y, uint x, uint bpp TP)
+{
+    uint b = (ca & 0x7FFFu) * 2u, full = 0xFFFFFFFFu;
+    if (bpp < 4u || FETCH_EXT(ver, b >> 5) != full || (bpp == 8u && FETCH_EXT(ver, (b >> 5) + 1u) != full)) return 256u;
+    uint slot = b >> 5, side = ATLAS_WIDTH / 64u;
+    uint t = FETCH_ATLAS(ver, (slot & 63u) * side + x * (side / 8u), (slot >> 6) * side + y * (side / 8u));
+    return t < 0x100u ? 256u : t & ((1u << bpp) - 1u);
+}
+
 uint tile_pixel(uint ver, uint ca, uint y, uint x, uint bpp TP)
 {
     uint bit = 7u - x, c = 0u;
@@ -139,7 +155,8 @@ uint bg_pixel(uint line, uint ver, uint n, uint mode, uint x TP)
         if (py >= 8u) ch += 16u;
     }
     uint ca = (nba + (ch & 0x3FFu) * (bpp * 4u)) & 0xFFFFu;
-    uint c = tile_pixel(ver, ca, py & 7u, px & 7u, bpp TA);
+    uint c = atlas_pixel(ver, ca, py & 7u, px & 7u, bpp TA);
+    if (c == 256u) c = tile_pixel(ver, ca, py & 7u, px & 7u, bpp TA);
     uint pal = (e >> 10) & 7u, prio = (e >> 13) & 1u, color;
     if (c == 0u) return prio << 16;
     if (bpp == 8u) color = (byte_of(w6, 1u) & 1u) != 0u ? direct_color(c, pal) : FETCH_PAL(line, c);

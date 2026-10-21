@@ -62,14 +62,19 @@ static const char *k_compose_vs =
     "void main() { vec2 p = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2); gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0); }\n";
 
 static GLuint s_copy, s_sharp, s_vao, s_vbo, s_fbo, s_col, s_pic;
-/* the compositor: its program, the record's textures (units 0-5: the
+/* the compositor: its program, the record's textures (units 0-6: the
    tiles, palettes, sprite tables, line states, the bits of the tiles'
-   bytes from the 3D canvas, and the kept copies of those bytes), the
-   composed picture and its framebuffer */
-static GLuint s_compose, s_crec[6], s_cpic, s_cfbo;
+   bytes from the 3D canvas, the kept copies of those bytes, and the kept
+   copies of the characters' atlas), the composed picture and its
+   framebuffer */
+static GLuint s_compose, s_crec[7], s_cpic, s_cfbo;
 /* the copy of the tiles' bytes rr_pack writes, its framebuffer, the kept
    copies' framebuffer; the pack's program and its runs */
 static GLuint s_mirror, s_mirror_fbo, s_kept_fbo, s_pack, s_run_vao, s_run_vbo;
+/* the characters' atlas, its framebuffer, the kept copies' framebuffer;
+   the characters' program and their instances; the canvases' scale */
+static GLuint s_atlas, s_atlas_fbo, s_akept_fbo, s_chars, s_char_vao, s_char_vbo;
+static int s_scale = 1;
 /* the 3D canvas: its program, the ROM (unit 0), the canvas and its
    framebuffer, the spans' vertex array and buffer */
 static GLuint s_fill, s_rom, s_canvas[RR_CANVASES], s_canvas_fbo[RR_CANVASES], s_span_vao, s_span_vbo;
@@ -146,14 +151,16 @@ int rr_open(void)
     if (!s_copy || !s_sharp || !s_compose)
         return 0;
     {
-        static const char *const names[6] = { "t_vram", "t_pal", "t_oam", "t_line", "t_ext", "t_mirror" };
-        static const GLint fmt[6] = { GL_R16UI, GL_R16UI, GL_R8UI, GL_R32UI, GL_R32UI, GL_R8UI };
-        static const GLenum type[6] = { GL_UNSIGNED_SHORT, GL_UNSIGNED_SHORT, GL_UNSIGNED_BYTE, GL_UNSIGNED_INT,
-                                        GL_UNSIGNED_INT, GL_UNSIGNED_BYTE };
-        static const int tw[6] = { 256, 256, 544, RR_LINE_WORDS, 256, 256 };
-        static const int th[6] = { 128 * RR_VERSIONS, 225, RR_VERSIONS, 225, 8 * RR_VERSIONS, 256 * RR_VERSIONS };
-        glGenTextures(6, s_crec);
-        for (i = 0; i < 6; i++) {
+        static const char *const names[7] = { "t_vram", "t_pal", "t_oam", "t_line", "t_ext", "t_mirror", "t_atlas" };
+        static const GLint fmt[7] = { GL_R16UI, GL_R16UI, GL_R8UI, GL_R32UI, GL_R32UI, GL_R8UI, GL_R16UI };
+        static const GLenum type[7] = { GL_UNSIGNED_SHORT, GL_UNSIGNED_SHORT, GL_UNSIGNED_BYTE, GL_UNSIGNED_INT,
+                                        GL_UNSIGNED_INT, GL_UNSIGNED_BYTE, GL_UNSIGNED_SHORT };
+        const int tw[7] = { 256, 256, 544, RR_LINE_WORDS, 256, 256, 512 * s_scale };
+        const int th[7] = { 128 * RR_VERSIONS, 225, RR_VERSIONS, 225, 8 * RR_VERSIONS, 256 * RR_VERSIONS,
+                            256 * s_scale * RR_VERSIONS };
+        static const GLuint zero[4] = { 0, 0, 0, 0 };
+        glGenTextures(7, s_crec);
+        for (i = 0; i < 7; i++) {
             glUniform1i(glGetUniformLocation(s_compose, names[i]), i);
             glBindTexture(GL_TEXTURE_2D, s_crec[i]);
             /* integer textures: complete only without mipmaps or filtering */
@@ -188,6 +195,22 @@ int rr_open(void)
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, s_crec[5], 0);
         if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
             fprintf(stderr, "rr: gl: the tiles' copies are not complete\n");
+            return 0;
+        }
+        glGenTextures(1, &s_atlas);
+        glBindTexture(GL_TEXTURE_2D, s_atlas);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_R16UI, 512 * s_scale, 256 * s_scale, 0, GL_RED_INTEGER, GL_UNSIGNED_SHORT, NULL);
+        glGenFramebuffers(1, &s_atlas_fbo);
+        glBindFramebuffer(GL_FRAMEBUFFER, s_atlas_fbo);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, s_atlas, 0);
+        glClearBufferuiv(GL_COLOR, 0, zero);    /* every slot invalid until a character is made in it */
+        glGenFramebuffers(1, &s_akept_fbo);
+        glBindFramebuffer(GL_FRAMEBUFFER, s_akept_fbo);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, s_crec[6], 0);
+        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+            fprintf(stderr, "rr: gl: the atlas's copies are not complete\n");
             return 0;
         }
     }
@@ -296,6 +319,8 @@ void rr_compose(const RrPicture *p, const int d[4])
     }
     glActiveTexture(GL_TEXTURE0 + 5);
     glBindTexture(GL_TEXTURE_2D, s_crec[5]);
+    glActiveTexture(GL_TEXTURE0 + 6);
+    glBindTexture(GL_TEXTURE_2D, s_crec[6]);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
     glBindFramebuffer(GL_FRAMEBUFFER, s_cfbo);
     glViewport(0, 0, 256, 224);
@@ -344,6 +369,18 @@ int rr_fill_rom(const uint8_t *rom, uint32_t size)
         glGenBuffers(1, &s_run_vbo);
         glBindBuffer(GL_ARRAY_BUFFER, s_run_vbo);
         glVertexAttribIPointer(0, 4, GL_UNSIGNED_INT, RR_RUN_WORDS * 4, (const void *)0);
+        glVertexAttribDivisor(0, 1);
+        glEnableVertexAttribArray(0);
+        s_chars = program(k_char_gl_vert, k_char_gl_frag);
+        if (!s_chars)
+            return 0;
+        glUseProgram(s_chars);
+        glUniform1i(glGetUniformLocation(s_chars, "t_canvas"), 0);
+        glGenVertexArrays(1, &s_char_vao);
+        glBindVertexArray(s_char_vao);
+        glGenBuffers(1, &s_char_vbo);
+        glBindBuffer(GL_ARRAY_BUFFER, s_char_vbo);
+        glVertexAttribIPointer(0, 4, GL_UNSIGNED_INT, RR_CHAR_WORDS * 4, (const void *)0);
         glVertexAttribDivisor(0, 1);
         glEnableVertexAttribArray(0);
         glGenVertexArrays(1, &s_span_vao);
@@ -410,6 +447,36 @@ void rr_pack(const uint32_t *runs, int n, int canvas)
     glViewport(0, 0, s_rw, s_rh);
 }
 
+void rr_chars(const uint32_t *chars, int n, int canvas)
+{
+    static uint32_t *w;
+    static int cap;
+    int i;
+    if (!s_chars || n <= 0)
+        return;
+    if (n > cap) {
+        cap = n * 2;
+        w = (uint32_t *)realloc(w, (size_t)cap * RR_CHAR_WORDS * 4);
+    }
+    memcpy(w, chars, (size_t)n * RR_CHAR_WORDS * 4);
+    for (i = 0; i < n; i++) {                   /* the scale and the atlas's size, for the shader */
+        w[i * RR_CHAR_WORDS + 2] = (uint32_t)s_scale;
+        w[i * RR_CHAR_WORDS + 3] = (uint32_t)(512 * s_scale) | (uint32_t)(256 * s_scale) << 16;
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, s_atlas_fbo);
+    glViewport(0, 0, 512 * s_scale, 256 * s_scale);
+    glBindVertexArray(s_char_vao);
+    glBindBuffer(GL_ARRAY_BUFFER, s_char_vbo);
+    glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)((size_t)n * RR_CHAR_WORDS * 4), w, GL_STREAM_DRAW);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, s_canvas[canvas]);
+    glUseProgram(s_chars);
+    glDrawArraysInstanced(GL_TRIANGLES, 0, 6, n);
+    glBindVertexArray(s_vao);
+    glBindFramebuffer(GL_FRAMEBUFFER, s_fbo);
+    glViewport(0, 0, s_rw, s_rh);
+}
+
 void rr_pack_keep(int version)
 {
     if (!s_pack || version < 0 || version >= RR_VERSIONS)
@@ -417,6 +484,10 @@ void rr_pack_keep(int version)
     glBindFramebuffer(GL_READ_FRAMEBUFFER, s_mirror_fbo);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, s_kept_fbo);
     glBlitFramebuffer(0, 0, 256, 256, 0, 256 * version, 256, 256 * version + 256, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, s_atlas_fbo);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, s_akept_fbo);
+    glBlitFramebuffer(0, 0, 512 * s_scale, 256 * s_scale, 0, 256 * s_scale * version, 512 * s_scale,
+                      256 * s_scale * (version + 1), GL_COLOR_BUFFER_BIT, GL_NEAREST);
     glBindFramebuffer(GL_FRAMEBUFFER, s_fbo);
 }
 

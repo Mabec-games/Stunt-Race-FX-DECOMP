@@ -101,6 +101,19 @@ static VkImageView s_crec_view[5], s_cpic_view;
 static VkImage s_mirror, s_kept;
 static VkDeviceMemory s_mirror_mem, s_kept_mem;
 static VkImageView s_mirror_view, s_kept_view;
+/* the characters' atlas (an attachment between uses) and its kept copies
+   (sampled), its framebuffer, the characters' pipeline and instances; the
+   canvases' scale */
+static VkImage s_atlas, s_akept;
+static VkDeviceMemory s_atlas_mem, s_akept_mem;
+static VkImageView s_atlas_view, s_akept_view;
+static VkFramebuffer s_afb;
+static VkPipeline s_chars;
+static VkBuffer s_char_buf;
+static VkDeviceMemory s_char_mem;
+static uint8_t *s_char_map;
+static VkDeviceSize s_char_cap;
+static int s_scale = 1;
 static VkRenderPass s_mpass;
 static VkFramebuffer s_mfb;
 static VkPipeline s_pack;
@@ -572,15 +585,15 @@ static int make_layout(void)
 /* the compositor's images, pass, set and pipeline */
 static int compose_make(void)
 {
-    VkDescriptorSetLayoutBinding b[6];
+    VkDescriptorSetLayoutBinding b[7];
     VkDescriptorSetLayoutCreateInfo li = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
     VkPipelineLayoutCreateInfo pi = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
-    VkDescriptorPoolSize ps = { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 6 };
+    VkDescriptorPoolSize ps = { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 7 };
     VkDescriptorPoolCreateInfo dpi = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
     VkDescriptorSetAllocateInfo da = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
     VkSamplerCreateInfo si = { VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
     VkFramebufferCreateInfo fi = { VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
-    VkDescriptorImageInfo di[7];
+    VkDescriptorImageInfo di[8];
     VkWriteDescriptorSet wr[2];
     VkShaderModule vs, fs;
     int i;
@@ -591,7 +604,12 @@ static int compose_make(void)
     if (!image_fmt(256, 256, VK_FORMAT_R8_UINT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
                    &s_mirror, &s_mirror_mem, &s_mirror_view) ||
         !image_fmt(256, 256 * RR_VERSIONS, VK_FORMAT_R8_UINT, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-                   &s_kept, &s_kept_mem, &s_kept_view))
+                   &s_kept, &s_kept_mem, &s_kept_view) ||
+        !image_fmt(512 * s_scale, 256 * s_scale, VK_FORMAT_R16_UINT,
+                   VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+                   &s_atlas, &s_atlas_mem, &s_atlas_view) ||
+        !image_fmt(512 * s_scale, 256 * s_scale * RR_VERSIONS, VK_FORMAT_R16_UINT,
+                   VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, &s_akept, &s_akept_mem, &s_akept_view))
         return 0;
     if (!(s_mpass = make_pass_fmt(VK_FORMAT_R8_UINT, 0)))
         return 0;
@@ -622,13 +640,13 @@ static int compose_make(void)
     if (!VK_OK(vkCreateSampler(s_dev, &si, NULL, &s_nsmp)))
         return 0;
     memset(b, 0, sizeof b);
-    for (i = 0; i < 6; i++) {
+    for (i = 0; i < 7; i++) {
         b[i].binding = (uint32_t)i;
         b[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         b[i].descriptorCount = 1;
         b[i].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
     }
-    li.bindingCount = 6;
+    li.bindingCount = 7;
     li.pBindings = b;
     if (!VK_OK(vkCreateDescriptorSetLayout(s_dev, &li, NULL, &s_clay)))
         return 0;
@@ -646,21 +664,21 @@ static int compose_make(void)
     da.pSetLayouts = &s_clay;
     if (!VK_OK(vkAllocateDescriptorSets(s_dev, &da, &s_cset)))
         return 0;
-    for (i = 0; i < 7; i++) {
-        di[i].sampler = i < 6 ? s_nsmp : s_smp;
-        di[i].imageView = i < 5 ? s_crec_view[i] : i == 5 ? s_kept_view : s_cpic_view;
+    for (i = 0; i < 8; i++) {
+        di[i].sampler = i < 7 ? s_nsmp : s_smp;
+        di[i].imageView = i < 5 ? s_crec_view[i] : i == 5 ? s_kept_view : i == 6 ? s_akept_view : s_cpic_view;
         di[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     }
     memset(wr, 0, sizeof wr);
     wr[0].sType = wr[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     wr[0].dstSet = s_cset;
-    wr[0].descriptorCount = 6;
+    wr[0].descriptorCount = 7;
     wr[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     wr[0].pImageInfo = di;
     wr[1].dstSet = s_cpic_set;
     wr[1].descriptorCount = 1;
     wr[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    wr[1].pImageInfo = &di[6];
+    wr[1].pImageInfo = &di[7];
     vkUpdateDescriptorSets(s_dev, 2, wr, 0, NULL);
     vs = module(k_fullscreen_vert, sizeof k_fullscreen_vert);
     fs = module(k_compose_frag, sizeof k_compose_frag);
@@ -679,6 +697,23 @@ static int compose_make(void)
         barrier(s_cmd, s_mirror, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 0,
                 VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
                 VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+        barrier(s_cmd, s_akept, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0,
+                VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+        /* the atlas: every slot invalid until a character is made in it */
+        {
+            VkClearColorValue zero;
+            VkImageSubresourceRange r;
+            memset(&zero, 0, sizeof zero);
+            memset(&r, 0, sizeof r);
+            r.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            r.levelCount = r.layerCount = 1;
+            barrier(s_cmd, s_atlas, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0,
+                    VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+            vkCmdClearColorImage(s_cmd, s_atlas, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &zero, 1, &r);
+            barrier(s_cmd, s_atlas, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                    VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+        }
         vkEndCommandBuffer(s_cmd);
         si.commandBufferCount = 1;
         si.pCommandBuffers = &s_cmd;
@@ -1082,7 +1117,17 @@ static int fill_make(const uint8_t *rom, uint32_t size)
     }
     s_fill = make_pipe(module(k_fill_vert, sizeof k_fill_vert), module(k_fill_frag, sizeof k_fill_frag), 2, s_playout, s_fpass);
     s_pack = make_pipe(module(k_pack_vert, sizeof k_pack_vert), module(k_pack_frag, sizeof k_pack_frag), 3, s_playout, s_mpass);
-    if (!s_fill || !s_pack)
+    s_chars = make_pipe(module(k_char_vert, sizeof k_char_vert), module(k_char_frag, sizeof k_char_frag), 3, s_playout,
+                        s_fpass_load);
+    if (!s_fill || !s_pack || !s_chars)
+        return 0;
+    fi.renderPass = s_fpass_load;
+    fi.attachmentCount = 1;
+    fi.pAttachments = &s_atlas_view;
+    fi.width = (uint32_t)(512 * s_scale);
+    fi.height = (uint32_t)(256 * s_scale);
+    fi.layers = 1;
+    if (!VK_OK(vkCreateFramebuffer(s_dev, &fi, NULL, &s_afb)))
         return 0;
     di.sampler = s_nsmp;
     di.imageView = s_rom_view;
@@ -1283,6 +1328,56 @@ void rr_pack(const uint32_t *runs, int n, int canvas)
     fill_submit();
 }
 
+void rr_chars(const uint32_t *chars, int n, int canvas)
+{
+    VkRenderPassBeginInfo rp = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
+    VkViewport vw = { 0, 0, (float)(512 * s_scale), (float)(256 * s_scale), 0, 1 };
+    VkRect2D sc = { { 0, 0 }, { (uint32_t)(512 * s_scale), (uint32_t)(256 * s_scale) } };
+    VkDeviceSize bytes = (VkDeviceSize)n * RR_CHAR_WORDS * 4, zero = 0;
+    uint32_t *w;
+    int i;
+    if (!s_chars || n <= 0)
+        return;
+    fill_wait();                                   /* the characters' buffer is free again */
+    if (bytes > s_char_cap) {
+        if (s_char_buf) {
+            vkDestroyBuffer(s_dev, s_char_buf, NULL);
+            vkFreeMemory(s_dev, s_char_mem, NULL);
+        }
+        s_char_cap = bytes * 2;
+        if (!make_buffer(s_char_cap, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, &s_char_buf, &s_char_mem, &s_char_map)) {
+            s_char_cap = 0;
+            s_char_buf = VK_NULL_HANDLE;
+            return;
+        }
+    }
+    w = (uint32_t *)s_char_map;
+    memcpy(w, chars, (size_t)bytes);
+    for (i = 0; i < n; i++) {                      /* the scale and the atlas's size, for the shader */
+        w[i * RR_CHAR_WORDS + 2] = (uint32_t)s_scale;
+        w[i * RR_CHAR_WORDS + 3] = (uint32_t)(512 * s_scale) | (uint32_t)(256 * s_scale) << 16;
+    }
+    fill_begin();
+    barrier(s_fcmd, s_canvas[canvas], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    rp.renderPass = s_fpass_load;
+    rp.framebuffer = s_afb;
+    rp.renderArea = sc;
+    vkCmdBeginRenderPass(s_fcmd, &rp, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdSetViewport(s_fcmd, 0, 1, &vw);
+    vkCmdSetScissor(s_fcmd, 0, 1, &sc);
+    vkCmdBindPipeline(s_fcmd, VK_PIPELINE_BIND_POINT_GRAPHICS, s_chars);
+    vkCmdBindDescriptorSets(s_fcmd, VK_PIPELINE_BIND_POINT_GRAPHICS, s_playout, 0, 1, &s_canvas_set[canvas], 0, NULL);
+    vkCmdBindVertexBuffers(s_fcmd, 0, 1, &s_char_buf, &zero);
+    vkCmdDraw(s_fcmd, 6, (uint32_t)n, 0, 0);
+    vkCmdEndRenderPass(s_fcmd);
+    barrier(s_fcmd, s_canvas[canvas], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+    fill_submit();
+}
+
 void rr_pack_keep(int version)
 {
     VkImageCopy cp;
@@ -1301,6 +1396,22 @@ void rr_pack_keep(int version)
     cp.extent.width = cp.extent.height = 256;
     cp.extent.depth = 1;
     vkCmdCopyImage(s_fcmd, s_mirror, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, s_kept, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &cp);
+    /* and the atlas */
+    barrier(s_fcmd, s_atlas, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+            VK_PIPELINE_STAGE_TRANSFER_BIT);
+    barrier(s_fcmd, s_akept, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0,
+            VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+    cp.dstOffset.y = 256 * s_scale * version;
+    cp.extent.width = (uint32_t)(512 * s_scale);
+    cp.extent.height = (uint32_t)(256 * s_scale);
+    vkCmdCopyImage(s_fcmd, s_atlas, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, s_akept, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &cp);
+    barrier(s_fcmd, s_atlas, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+    barrier(s_fcmd, s_akept, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
     barrier(s_fcmd, s_mirror, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
             VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);

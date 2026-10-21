@@ -63,6 +63,10 @@ static id<MTLTexture> s_cvram[3], s_cpal[3], s_coam[3], s_cline[3], s_cpic[3], s
 /* the compositor's copy of the tiles' bytes that come from the 3D canvas
    (rr_pack writes it), its pipeline, the runs and their commands */
 static id<MTLTexture> s_mirror, s_mirror_kept;   /* the copy packed into; its copies kept, a frame's versions */
+static id<MTLTexture> s_atlas, s_atlas_kept;     /* the characters' atlas, and its copies kept */
+static id<MTLRenderPipelineState> s_chars;
+static id<MTLBuffer> s_char_buf;
+static int s_scale = 1;                          /* the canvases' scale */
 static id<MTLRenderPipelineState> s_pack;
 static id<MTLBuffer> s_runs;
 static id<MTLCommandBuffer> s_pack_cmd;
@@ -179,6 +183,27 @@ int rr_open(void)
             }
             s_mirror = int_texture(MTLPixelFormatR8Uint, 256, 256, 1);
             s_mirror_kept = int_texture(MTLPixelFormatR8Uint, 256, 256 * RR_VERSIONS, 0);
+            s_atlas = int_texture(MTLPixelFormatR16Uint, 512 * s_scale, 256 * s_scale, 1);
+            s_atlas_kept = int_texture(MTLPixelFormatR16Uint, 512 * s_scale, 256 * s_scale * RR_VERSIONS, 0);
+            {                                   /* every slot invalid until a character is made in it */
+                MTLRenderPassDescriptor *rp = [MTLRenderPassDescriptor renderPassDescriptor];
+                id<MTLCommandBuffer> c = [s_q commandBuffer];
+                rp.colorAttachments[0].texture = s_atlas;
+                rp.colorAttachments[0].loadAction = MTLLoadActionClear;
+                rp.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 0);
+                rp.colorAttachments[0].storeAction = MTLStoreActionStore;
+                [[c renderCommandEncoderWithDescriptor:rp] endEncoding];
+                [c commit];
+            }
+            d = [MTLRenderPipelineDescriptor new];
+            d.vertexFunction = [fl newFunctionWithName:@"char_vs"];
+            d.fragmentFunction = [fl newFunctionWithName:@"char_fs"];
+            d.colorAttachments[0].pixelFormat = MTLPixelFormatR16Uint;
+            s_chars = [s_dev newRenderPipelineStateWithDescriptor:d error:&err];
+            if (!s_chars) {
+                fprintf(stderr, "rr: metal characters pipeline: %s\n", [[err description] UTF8String]);
+                return 0;
+            }
             for (i = 0; i < RR_CANVASES; i++) {
                 MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatR16Uint
                                                                                                width:256 height:256 mipmapped:NO];
@@ -335,6 +360,7 @@ void rr_compose(const RrPicture *p, const int d[4])
         [e setFragmentTexture:s_cline[k] atIndex:3];
         [e setFragmentTexture:s_cext[k] atIndex:4];
         [e setFragmentTexture:s_mirror_kept atIndex:5];
+        [e setFragmentTexture:s_atlas_kept atIndex:6];
         [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
         [e endEncoding];
         resume_target();
@@ -416,6 +442,41 @@ void rr_pack(const uint32_t *runs, int n, int canvas)
     }
 }
 
+void rr_chars(const uint32_t *chars, int n, int canvas)
+{
+    @autoreleasepool {
+        size_t bytes = (size_t)n * RR_CHAR_WORDS * 4;
+        MTLRenderPassDescriptor *rp = [MTLRenderPassDescriptor renderPassDescriptor];
+        id<MTLCommandBuffer> c;
+        id<MTLRenderCommandEncoder> e;
+        uint32_t *w;
+        int i;
+        if (!s_chars || n <= 0)
+            return;
+        if (s_pack_cmd)                        /* the buffers are free again */
+            [s_pack_cmd waitUntilCompleted];
+        if (!s_char_buf || [s_char_buf length] < bytes)
+            s_char_buf = [s_dev newBufferWithLength:bytes * 2 options:MTLResourceStorageModeShared];
+        w = (uint32_t *)[s_char_buf contents];
+        memcpy(w, chars, bytes);
+        for (i = 0; i < n; i++) {               /* the scale and the atlas's size, for the shader */
+            w[i * RR_CHAR_WORDS + 2] = (uint32_t)s_scale;
+            w[i * RR_CHAR_WORDS + 3] = (uint32_t)(512 * s_scale) | (uint32_t)(256 * s_scale) << 16;
+        }
+        c = s_pack_cmd = [s_q commandBuffer];
+        rp.colorAttachments[0].texture = s_atlas;
+        rp.colorAttachments[0].loadAction = MTLLoadActionLoad;
+        rp.colorAttachments[0].storeAction = MTLStoreActionStore;
+        e = [c renderCommandEncoderWithDescriptor:rp];
+        [e setRenderPipelineState:s_chars];
+        [e setVertexBuffer:s_char_buf offset:0 atIndex:0];
+        [e setFragmentTexture:s_canvas[canvas] atIndex:0];
+        [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6 instanceCount:(NSUInteger)n];
+        [e endEncoding];
+        [c commit];
+    }
+}
+
 void rr_pack_keep(int version)
 {
     @autoreleasepool {
@@ -428,6 +489,9 @@ void rr_pack_keep(int version)
         [b copyFromTexture:s_mirror sourceSlice:0 sourceLevel:0 sourceOrigin:MTLOriginMake(0, 0, 0)
                 sourceSize:MTLSizeMake(256, 256, 1) toTexture:s_mirror_kept destinationSlice:0 destinationLevel:0
          destinationOrigin:MTLOriginMake(0, (NSUInteger)(256 * version), 0)];
+        [b copyFromTexture:s_atlas sourceSlice:0 sourceLevel:0 sourceOrigin:MTLOriginMake(0, 0, 0)
+                sourceSize:MTLSizeMake((NSUInteger)(512 * s_scale), (NSUInteger)(256 * s_scale), 1) toTexture:s_atlas_kept
+          destinationSlice:0 destinationLevel:0 destinationOrigin:MTLOriginMake(0, (NSUInteger)(256 * s_scale * version), 0)];
         [b endEncoding];
         [c commit];
     }
