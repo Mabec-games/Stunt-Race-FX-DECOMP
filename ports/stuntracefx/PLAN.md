@@ -6,7 +6,7 @@ decomp's C runs on `ports/common/snes`, a model of the console under it
 (bus, PPU, DMA and HDMA, Super FX registers, sound unit, DSP, coroutines).
 This plan replaces every console part with a native component: a 2D
 compositor, a polygon renderer, a sequencer and mixer, a frame loop, input
-and save APIs, on Metal, Direct3D, Vulkan and OpenGL, as in the Boss Rally
+and save APIs, on Metal, Vulkan and OpenGL, as in the Boss Rally
 port.
 
 ## Decisions
@@ -16,7 +16,7 @@ port.
   copy is checked against the original at every step. This replaces
   "ports never edit decomp source" with "ports never edit `src/`; the port's
   copy answers to the oracle".
-- **Graphics backends:** Metal, Direct3D, Vulkan, OpenGL, behind one small
+- **Graphics backends:** Metal, Vulkan, OpenGL, behind one small
   interface, as Boss Rally.
 - **Frame pacing as the original.** `RaceFrameStep` feeds the frames since
   the last game frame (`$0306` to `$06D4`) into the simulation, and that
