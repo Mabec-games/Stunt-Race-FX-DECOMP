@@ -110,14 +110,15 @@ check above covers 21 plays.
 
 ## Next, in order
 
-1. High resolution: the draw list's polygons as triangles at the
-   output's resolution, sub-pixel vertices from before the projection
-   rounds (the other drawers' rows scaled), composited where the original
-   canvas is; the original mode stays the gated one.
-2. Widescreen and field of view (PLAN.md phase 5).
-3. The game's C as plain C (PLAN.md phase 1): no cpu/spc/gsu register
+1. The game's C as plain C (PLAN.md phase 1): no cpu/spc/gsu register
    files, abi_ wrappers or rd8/wr8; the frame loop with no interrupts or
    coroutines; Super FX programs as calls; the sound drivers as a native
    sequencer calling mixer.h; pacing from the stated time.
-4. Remove every stepping stone (vid_reg, mixer_regs.c, dma.c, hw_rd/hw_wr,
+2. Remove every stepping stone (vid_reg, mixer_regs.c, dma.c, hw_rd/hw_wr,
    ports/common/snes), update PORT.md and the READMEs.
+3. Widescreen and field of view (PLAN.md phase 5).
+4. Last (Jeff, 2026-10-21: a remaster feature): high resolution, the draw
+   list's polygons as triangles at the output's resolution, sub-pixel
+   vertices from before the projection rounds (the other drawers' rows
+   scaled), drawn through the characters' atlas at the canvases' scale;
+   the original mode stays the gated one.
