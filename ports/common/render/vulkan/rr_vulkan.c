@@ -944,6 +944,26 @@ void rr_compose(const RrPicture *p, const int d[4])
     draw(s_cpic_set, 256, 224, d);
 }
 
+/* the 3D canvas (not yet on this backend) */
+int rr_fill_rom(const uint8_t *rom, uint32_t size)
+{
+    (void)rom;
+    (void)size;
+    return 0;
+}
+
+void rr_fill(const uint32_t *spans, int n)
+{
+    (void)spans;
+    (void)n;
+}
+
+int rr_fill_read(uint16_t *canvas)
+{
+    (void)canvas;
+    return 0;
+}
+
 void rr_present(void)
 {
     VkSubmitInfo si = { VK_STRUCTURE_TYPE_SUBMIT_INFO };

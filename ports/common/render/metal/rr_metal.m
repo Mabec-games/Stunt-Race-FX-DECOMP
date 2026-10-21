@@ -16,6 +16,7 @@
 #include "rr_size.h"
 #include "host.h"
 #include "compose_src.h"
+#include "fill_src.h"
 
 CAMetalLayer *host_macos_metal_layer(void);
 void host_macos_layer_fit(int *w, int *h);
@@ -59,6 +60,12 @@ static uint32_t s_clear;
    the composed picture */
 static id<MTLRenderPipelineState> s_compose;
 static id<MTLTexture> s_cvram[3], s_cpal[3], s_coam[3], s_cline[3], s_cpic[3];
+/* the 3D canvas: its fill's pipeline, the ROM, the canvas, the spans and
+   the last fill's commands */
+static id<MTLRenderPipelineState> s_fill;
+static id<MTLTexture> s_rom, s_canvas;
+static id<MTLBuffer> s_spans;
+static id<MTLCommandBuffer> s_fill_cmd;
 #define VB_SIZE (1u << 16)
 
 static id<MTLRenderPipelineState> make_pipe(NSString *fs, id<MTLLibrary> lib)
@@ -132,6 +139,29 @@ int rr_open(void)
                 s_coam[i] = int_texture(MTLPixelFormatR8Uint, 544, RR_VERSIONS, 0);
                 s_cline[i] = int_texture(MTLPixelFormatR32Uint, RR_LINE_WORDS, 225, 0);
                 s_cpic[i] = int_texture(MTLPixelFormatBGRA8Unorm, 256, 224, 1);
+            }
+        }
+        {
+            id<MTLLibrary> fl = [s_dev newLibraryWithSource:[NSString stringWithUTF8String:k_fill_msl] options:nil error:&err];
+            MTLRenderPipelineDescriptor *d = [MTLRenderPipelineDescriptor new];
+            if (!fl) {
+                fprintf(stderr, "rr: metal fill: %s\n", [[err description] UTF8String]);
+                return 0;
+            }
+            d.vertexFunction = [fl newFunctionWithName:@"fill_vs"];
+            d.fragmentFunction = [fl newFunctionWithName:@"fill_fs"];
+            d.colorAttachments[0].pixelFormat = MTLPixelFormatR16Uint;
+            s_fill = [s_dev newRenderPipelineStateWithDescriptor:d error:&err];
+            if (!s_fill) {
+                fprintf(stderr, "rr: metal fill pipeline: %s\n", [[err description] UTF8String]);
+                return 0;
+            }
+            {
+                MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatR16Uint
+                                                                                               width:256 height:256 mipmapped:NO];
+                td.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
+                td.storageMode = MTLStorageModeShared;
+                s_canvas = [s_dev newTextureWithDescriptor:td];
             }
         }
         s_copy = make_pipe(@"bfs", lib);
@@ -287,6 +317,59 @@ void rr_compose(const RrPicture *p, const int d[4])
         [s_enc setVertexBuffer:s_vb[s_pi] offset:(NSUInteger)off atIndex:0];
         [s_enc setFragmentTexture:s_cpic[k] atIndex:0];
         [s_enc drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6];
+    }
+}
+
+int rr_fill_rom(const uint8_t *rom, uint32_t size)
+{
+    @autoreleasepool {
+        if (!s_dev || size < 1024 || size % 1024)
+            return 0;
+        s_rom = int_texture(MTLPixelFormatR8Uint, 1024, (int)(size / 1024), 0);
+        [s_rom replaceRegion:MTLRegionMake2D(0, 0, 1024, size / 1024) mipmapLevel:0 withBytes:rom bytesPerRow:1024];
+        return 1;
+    }
+}
+
+void rr_fill(const uint32_t *spans, int n)
+{
+    @autoreleasepool {
+        size_t bytes = (size_t)(n > 0 ? n : 1) * RR_SPAN_WORDS * 4;
+        MTLRenderPassDescriptor *rp = [MTLRenderPassDescriptor renderPassDescriptor];
+        id<MTLRenderCommandEncoder> e;
+        if (!s_rom)
+            return;
+        if (s_fill_cmd)                        /* the spans' buffer is free again */
+            [s_fill_cmd waitUntilCompleted];
+        if (!s_spans || [s_spans length] < bytes)
+            s_spans = [s_dev newBufferWithLength:bytes * 2 options:MTLResourceStorageModeShared];
+        if (n > 0)
+            memcpy([s_spans contents], spans, (size_t)n * RR_SPAN_WORDS * 4);
+        s_fill_cmd = [s_q commandBuffer];
+        rp.colorAttachments[0].texture = s_canvas;
+        rp.colorAttachments[0].loadAction = MTLLoadActionClear;
+        rp.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 0);
+        rp.colorAttachments[0].storeAction = MTLStoreActionStore;
+        e = [s_fill_cmd renderCommandEncoderWithDescriptor:rp];
+        if (n > 0) {
+            [e setRenderPipelineState:s_fill];
+            [e setVertexBuffer:s_spans offset:0 atIndex:0];
+            [e setFragmentTexture:s_rom atIndex:0];
+            [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:12 instanceCount:(NSUInteger)n];
+        }
+        [e endEncoding];
+        [s_fill_cmd commit];
+    }
+}
+
+int rr_fill_read(uint16_t *canvas)
+{
+    @autoreleasepool {
+        if (!s_fill_cmd)
+            return 0;
+        [s_fill_cmd waitUntilCompleted];
+        [s_canvas getBytes:canvas bytesPerRow:512 fromRegion:MTLRegionMake2D(0, 0, 256, 256) mipmapLevel:0];
+        return 1;
     }
 }
 

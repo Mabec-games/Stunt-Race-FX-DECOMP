@@ -449,6 +449,22 @@ static void picture_of(const VidFrame *f, RrPicture *p)
     p->lines = pic_lines;
 }
 
+/* the renderer opened once for the headless checks, its target the
+   picture's size: 0 when it cannot open */
+int port_rr_headless(void)
+{
+    static int open = -1;
+    if (open < 0) {
+#ifdef _WIN32
+        _putenv("RR_SIZE=256x224");
+#else
+        setenv("RR_SIZE", "256x224", 1);
+#endif
+        open = rr_open();
+    }
+    return open;
+}
+
 /* PORT_GPUCHECK=1 (headless): each finished frame composed by the
    renderer's GPU compositor, one to one, read back and compared with the
    picture drawn from the same record (video.c); at exit, the frames and
@@ -469,12 +485,7 @@ static void gpu_check(void)
     int tw, th, x, y;
     long bad = 0;
     if (gpu_frames < 0) {
-#ifdef _WIN32
-        _putenv("RR_SIZE=256x224");
-#else
-        setenv("RR_SIZE", "256x224", 1);
-#endif
-        if (!rr_open()) {
+        if (!port_rr_headless()) {
             fprintf(stderr, "gpucheck: the renderer cannot open\n");
             exit(2);
         }
