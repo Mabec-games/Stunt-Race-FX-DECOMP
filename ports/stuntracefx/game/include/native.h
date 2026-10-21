@@ -42,6 +42,13 @@ static inline void io_wr16(uint32_t addr, uint16_t v)
     io_write_time((addr + 1) & 0xFFFFFF, (uint8_t)(v >> 8));
 }
 
+/* ---- the joypads ----
+   The buttons the frame's automatic read took (JOY1L, JOY2L: $4218,
+   $421A), a bit each, from bit 15 down: B, Y, SELECT, START, up, down,
+   left, right, A, X, L, R; bits 3-0 clear. The serial ports ($4016, $4017) answer as a
+   plain joypad's: its second data line (bit 1, the Super Multitap's) low. */
+uint16_t input_pad(int port);
+
 /* ---- the multiply and divide units, as C ----
    The S-CPU's: 8 x 8 unsigned multiply ($4202, $4203; product $4216), and
    16 / 8 unsigned divide ($4204-$4206; quotient $4214, by 0 all ones). The

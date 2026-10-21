@@ -590,6 +590,9 @@ void io_read_time(uint32_t addr, uint8_t value)
     snes_mdr = value;
 }
 
+/* The buttons the frame's automatic read took (native.h). */
+uint16_t input_pad(int port) { return joy_auto[port & 1]; }
+
 void io_write_time(uint32_t addr, uint8_t value)
 {
     addr &= 0xFFFFFF;
