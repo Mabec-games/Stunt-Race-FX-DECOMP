@@ -576,6 +576,28 @@ void wr8(uint32_t addr, uint8_t value)
     bus_write(addr, value, &cost, 0);
 }
 
+/* A register access whose work the port's C does itself (native.h): its
+   time, as rd8's and wr8's, and for a read the place an interrupt can come;
+   the value is what the C worked out (the bus holds it after). */
+void io_read_time(uint32_t addr, uint8_t value)
+{
+    addr &= 0xFFFFFF;
+    if (!(last_was_read && addr == ((last_read + 1) & 0xFFFFFF)))
+        check_interrupts();
+    last_read = addr;
+    last_was_read = 1;
+    snes_tick(snes_access_clocks(addr));
+    snes_mdr = value;
+}
+
+void io_write_time(uint32_t addr, uint8_t value)
+{
+    addr &= 0xFFFFFF;
+    last_was_read = 0;
+    snes_tick(snes_access_clocks(addr));
+    snes_mdr = value;
+}
+
 /* A stretch with no access (a delay loop): the clock moves on in short
    steps, interrupts taken between them as between the loop's turns */
 void snes_cpu_wait(uint32_t clocks)

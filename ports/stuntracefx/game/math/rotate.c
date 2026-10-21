@@ -3,6 +3,7 @@
  * hardware multiplier.
  */
 #include "machine.h"
+#include "native.h"
 #include "hw.h"
 #include "cpu_ops.h"
 
@@ -30,7 +31,7 @@ static uint8_t smul(uint8_t a, uint32_t at)
     } else {
         cyc(54);                                /* BMI, ASL, STA */
     }
-    wr8(WRMPYA, (uint8_t)(a << 1));
+    io_wr8(WRMPYA, (uint8_t)(a << 1));
     cyc(24);
     b = rd8(at);
     nb = (b & 0x80) != 0;
@@ -40,15 +41,15 @@ static uint8_t smul(uint8_t a, uint32_t at)
     } else {
         cyc(40);                                /* BMI, STA */
     }
-    wr8(WRMPYB, b);
+    io_wr8(WRMPYB, b);
     if (na == nb) {
         cyc(80);
-        h = rd8(RDMPYH);
+        h = io_rd8(RDMPYH, (uint8_t)(cpu_mul((uint8_t)(a << 1), b) >> 8));
         cyc(24);                                /* JMP */
         return h;
     }
     cyc(na ? 92 : 82);
-    h = rd8(RDMPYH);
+    h = io_rd8(RDMPYH, (uint8_t)(cpu_mul((uint8_t)(a << 1), b) >> 8));
     return (uint8_t)-h;
 }
 

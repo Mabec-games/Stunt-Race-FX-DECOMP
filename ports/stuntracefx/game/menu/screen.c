@@ -3,6 +3,7 @@
  * saved copy, sprite lists and pictures drawn by the Super FX.
  */
 #include "machine.h"
+#include "native.h"
 #include "cpu_ops.h"
 #include "hw.h"
 
@@ -350,12 +351,14 @@ void abi_MenuHdmaSetupB(void)
  */
 static uint16_t scale_component(uint32_t b, uint8_t v)
 {
+    uint8_t f;
+
     cyc(70);
-    wr8(WRMPYA, v);
+    io_wr8(WRMPYA, v);
     cyc(24);
-    wr8(WRMPYB, cyc_then(24, rd8(b | 0x11DF)));
+    io_wr8(WRMPYB, f = cyc_then(24, rd8(b | 0x11DF)));
     cyc(102);
-    return rd16(RDMPYL);
+    return io_rd16(RDMPYL, cpu_mul(v, f));
 }
 
 uint16_t MenuPaletteScale(uint8_t bank, uint16_t *x, uint16_t *y)

@@ -3,6 +3,7 @@
  * the start after a soft reset and the session's loop.
  */
 #include "machine.h"
+#include "native.h"
 #include "cpu_ops.h"
 #include "hw.h"
 
@@ -130,8 +131,12 @@ void abi_HardwareRegsInit(void)
            first write has SEP and LDA # ahead). */
         cyc(i == 0 || reg == 0x2101 || reg == 0x2115 || (reg == 0x211B && !writes[i].v)
             || reg == 0x2130 || reg == 0x2132 || reg == 0x4201 ? 40 : 24);
-        wr8(b | reg, writes[i].v);
+        if ((reg >= 0x4202 && reg <= 0x4206) || reg == 0x211B || reg == 0x211C)
+            io_wr8(b | reg, writes[i].v);   /* the multiply units: as C */
+        else
+            wr8(b | reg, writes[i].v);
     }
+    ppu_mul_factor = 0x0100;                 /* M7A: $00, then $01 */
     cyc(44);
     cpu.a = (uint16_t)(cpu.a & 0xFF00);
     cpu.x = 0x00FF;

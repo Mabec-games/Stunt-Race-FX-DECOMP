@@ -2,6 +2,7 @@
  * tilemap.c: BG tilemap buffers in work RAM and their uploads.
  */
 #include "machine.h"
+#include "native.h"
 #include "hw.h"
 #include "cpu_ops.h"
 
@@ -743,7 +744,7 @@ static uint16_t backdrop_rows_update(uint8_t bank, uint16_t *xo, uint16_t *yo)
 {
     uint32_t b = (uint32_t)bank << 16;
     cyc(76);
-    uint16_t sel = rd16(0x000D7F), x = (uint16_t)(sel << 1), y, h, s, a, end;
+    uint16_t sel = rd16(0x000D7F), x = (uint16_t)(sel << 1), y, h, s, a, end, mb;
     unsigned n;
 
     (cyc(90), ObjectLinkFlag4000Step());
@@ -757,13 +758,15 @@ static uint16_t backdrop_rows_update(uint8_t bank, uint16_t *xo, uint16_t *yo)
     cyc(24);
     wr16(b | (uint16_t)(0x0D92 + x), cyc_then(106, (uint16_t)(((rd16(b | 0x06CF) >> 1) & 0x0007) - 0x18)));
     cyc(70);
-    wr8(0x00211B, 0x40);
+    io_wr8(0x00211B, 0x40);
     cyc(48);
-    wr8(0x00211B, 0x01);
+    io_wr8(0x00211B, 0x01);
+    ppu_mul_factor = 0x0140;
     cyc(46);
-    wr16(0x00211C, cyc_then(98, (uint16_t)(((uint16_t)(rd16(b | 0x06CD) + rd16(cyc_then(38, b | 0x0DA2))) >> 3) & 0x003F)));
+    /* M7B, then M7C (no part here) */
+    io_wr16(0x00211C, mb = cyc_then(98, (uint16_t)(((uint16_t)(rd16(b | 0x06CD) + rd16(cyc_then(38, b | 0x0DA2))) >> 3) & 0x003F)));
     cyc(32);
-    wr16(0x0000F1, cyc_then(16, rd16(0x002134)));
+    wr16(0x0000F1, cyc_then(16, io_rd16(0x002134, (uint16_t)ppu_mul((uint8_t)mb))));
     cyc(24);
     x = (uint16_t)(((rd16(b | 0x06CF) >> 3) & 0x00FE) + rd16(cyc_then(96, 0x0000F1)));
     cyc(186);

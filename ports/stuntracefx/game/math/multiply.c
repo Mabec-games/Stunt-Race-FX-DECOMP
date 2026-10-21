@@ -6,6 +6,7 @@
  * 8-bit factor multiplies; MPYL/M/H hold the 24-bit product.
  */
 #include "machine.h"
+#include "native.h"
 #include "hw.h"
 
 /*
@@ -17,14 +18,17 @@
  * Entry: M 16-bit. Exit: A = the factor with its bytes swapped; N, Z from its
  * high byte; C clear; M 16-bit.
  */
+int16_t ppu_mul_factor;
+
 uint16_t PpuMultiplierSetLowByteTimes8(uint8_t v)
 {
     uint16_t factor = (uint16_t)(v << 3);
 
     cyc(168);
-    wr8(M7A, (uint8_t)factor);
+    io_wr8(M7A, (uint8_t)factor);
     cyc(52);
-    wr8(M7A, (uint8_t)(factor >> 8));
+    io_wr8(M7A, (uint8_t)(factor >> 8));
+    ppu_mul_factor = (int16_t)factor;
     return factor;
 }
 
@@ -48,9 +52,9 @@ void abi_PpuMultiplierSetLowByteTimes8(void)
 uint16_t PpuMultiply(uint8_t v)
 {
     cyc(54);
-    wr8(M7B, v);
+    io_wr8(M7B, v);
     cyc(54);
-    return rd16(MPYM);
+    return io_rd16(MPYM, (uint16_t)(ppu_mul(v) >> 8));
 }
 
 void abi_PpuMultiply(void)

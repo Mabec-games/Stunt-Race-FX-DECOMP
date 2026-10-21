@@ -10,6 +10,7 @@
  * runs these; unit_heading_03 calls them.
  */
 #include "machine.h"
+#include "native.h"
 #include "hw.h"
 #include "cpu_ops.h"
 
@@ -44,7 +45,7 @@ static uint8_t smul_at(uint32_t a_at, uint32_t b_at, uint8_t *p)
     }
     a_neg = neg;
     cyc(54);
-    wr8(WRMPYA, (uint8_t)(a << 1));
+    io_wr8(WRMPYA, (uint8_t)(a << 1));
     cyc(16);
     b = rd8(b_at);
     if (b & 0x80) {
@@ -53,11 +54,11 @@ static uint8_t smul_at(uint32_t a_at, uint32_t b_at, uint8_t *p)
         neg ^= 1;
     }
     cyc(40);
-    wr8(WRMPYB, b);
+    io_wr8(WRMPYB, b);
     /* four NOPs and LDA RDMPYH; or NOP, JMP, then LDA #0 / SEC / SBC (82
        when only b was negated, 92 when only a was) */
     cyc(!neg ? 80 : a_neg ? 92 : 82);
-    h = rd8(RDMPYH);
+    h = io_rd8(RDMPYH, (uint8_t)(cpu_mul((uint8_t)(a << 1), b) >> 8));
     if (neg) {
         *p |= P_C;
         h = op_sbc8(0x00, h, p);
