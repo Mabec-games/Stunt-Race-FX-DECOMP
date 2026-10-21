@@ -1,6 +1,6 @@
 #!/bin/sh
-# Build Stunt Race FX native: the decomp's C (src/stuntracefx, compiled as
-# it is, never edited), the machine layer (ports/common/snes), the port's
+# Build Stunt Race FX native: the port's game (ports/stuntracefx/game, lifted
+# from the decomp's C and checked against the original), the machine layer (ports/common/snes), the port's
 # runtime (ports/stuntracefx/runtime) and one host (ports/common/host).
 #   env: HOST     null (default: headless, for tests) | macos | windows |
 #                 lib (a static library, libstuntracefx.a, for an app that
@@ -43,7 +43,7 @@ ${SYM}_end:
 EOS
 
 CFLAGS="-O2 -g -std=gnu11 -fno-strict-aliasing -ffp-contract=off"
-INC="-Iports/common/snes -Iports/common/host -Isrc/stuntracefx/include -Iports/stuntracefx/runtime"
+INC="-Iports/common/snes -Iports/common/host -Iports/stuntracefx/game/include -Iports/stuntracefx/runtime"
 case "$TARGET" in
   *mingw*|*windows*) OSHOST=ports/common/host/win32/host_win32.c; EXE=.exe; OSLIBS="-static -lwinmm";;
   *)                 OSHOST=ports/common/host/posix/host_posix.c; EXE=;     OSLIBS=;;
@@ -58,9 +58,9 @@ compile() {   # source, extra flags
   OBJS="$OBJS $o"
 }
 
-# the decomp: every C file, as it is (its own warnings are the decomp's)
-for f in $(find src/stuntracefx -name '*.c' | sort); do
-  compile "$f" "-w -Isrc/stuntracefx/include"
+# the game: every C file
+for f in $(find ports/stuntracefx/game -name '*.c' | sort); do
+  compile "$f" "-w -Iports/stuntracefx/game/include"
 done
 # the machine layer and the runtime (an app with its own host calls srfx_main)
 for f in ports/common/snes/*.c ports/stuntracefx/runtime/*.c "$OUT/gen/routines.c"; do

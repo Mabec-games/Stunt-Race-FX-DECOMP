@@ -3,7 +3,8 @@
 
     routines.py ROM OUT.c
 
-Every `@routine BB:AAAA Name` tag in src/stuntracefx names a routine and the
+Every `@routine BB:AAAA Name` tag in the port's game (ports/stuntracefx/game,
+lifted from the decomp) names a routine and the
 address the original enters it at; `@alias BB:AAAA` in its header is the
 same code entered at another address (work RAM code the game also runs from
 its ROM copy). The port's runtime looks a routine up by that address when
@@ -22,7 +23,7 @@ same reading of the tags as tools/stuntracefx/hybrid.py's.
 import glob, os, re, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-SRC = os.path.join(ROOT, 'src', 'stuntracefx')
+SRC = os.path.join(ROOT, 'ports', 'stuntracefx', 'game')
 sys.path.insert(0, os.path.join(ROOT, 'tools', 'stuntracefx'))
 import spc700, spcmap  # noqa: E402
 
