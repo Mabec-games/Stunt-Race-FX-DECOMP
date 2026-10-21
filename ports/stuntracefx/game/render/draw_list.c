@@ -8,6 +8,10 @@
  *
  * The fill copies each polygon's vertices below its entry (so the edge
  * walks can run past the end), so it works on its own copy of the RAM.
+ *
+ * The edge walks give each shape's rows as spans (draw_list.h FxSpan);
+ * fx_fill_span plots a span's pixels as the Super FX does, and a GPU fills
+ * the same spans in its shader.
  */
 #include <stdlib.h>
 #include <string.h>
@@ -36,9 +40,23 @@
 typedef struct {
     uint8_t *ram;
     const FxDrawSource *src;
-    FxCanvas *c;
+    FxSpanSink sink;
+    void *ctx;
     uint8_t colour, options;     /* COLOR and CMODE as the shape sets them */
 } Fill;
+
+/* a flat row (or a line's pixel): n pixels of the shape's colour */
+static void flat_span(Fill *f, uint8_t x, uint8_t y, uint16_t n)
+{
+    FxSpan s;
+    memset(&s, 0, sizeof s);
+    s.x = x;
+    s.y = y;
+    s.n = n;
+    s.colour = f->colour;
+    s.options = f->options;
+    f->sink(f->ctx, &s);
+}
 
 static uint16_t rd16(const uint8_t *m, uint16_t a) { return (uint16_t)(m[a] | m[(uint16_t)(a + 1)] << 8); }
 static void wr16(uint8_t *m, uint16_t a, uint16_t v) { m[a] = (uint8_t)v; m[(uint16_t)(a + 1)] = (uint8_t)(v >> 8); }
@@ -57,7 +75,13 @@ static uint16_t reciprocal(const Fill *f, uint16_t n)
 
 /* COLOR and GETC: the colour from a byte as the plot options shape it
    (the source's high nibble into the low one, or the high nibble kept) */
-static void set_colour(Fill *f, uint8_t v)
+typedef struct {
+    const FxDrawSource *src;
+    FxCanvas *c;
+    uint8_t colour, options;
+} Plot;
+
+static void set_colour(Plot *f, uint8_t v)
 {
     if (f->options & 0x04)
         f->colour = (uint8_t)((f->colour & 0xF0) | v >> 4);
@@ -70,7 +94,7 @@ static void set_colour(Fill *f, uint8_t v)
 /* PLOT's rules: colour 0 (its low nibble outside 8 bits, or with the
    high nibble kept) is not written unless the options say so; dither
    picks the high nibble on odd pixels */
-static void plot(Fill *f, uint8_t x, uint8_t y)
+static void plot(Plot *f, uint8_t x, uint8_t y)
 {
     uint8_t c = f->colour;
     int md = f->src->mode;
@@ -118,7 +142,7 @@ static uint16_t flat_polygon(Fill *f, uint16_t p, int n)
     uint8_t *m = f->ram;
     uint16_t v = (uint16_t)(p + 1), size = (uint16_t)(4 * n), dst = (uint16_t)(v - size), top_at = 0, src = v;
     uint16_t ymin = 0x03FF, ymax = 0, left_at, right_at;
-    uint16_t lx, rx, ls, rs, lrows, rrows, row, x;
+    uint16_t lx, rx, ls, rs, lrows, rrows, row;
     int i;
     f->options = 0;
     f->colour = m[p];
@@ -150,8 +174,7 @@ static uint16_t flat_polygon(Fill *f, uint16_t p, int n)
             dst = (uint16_t)(dst + 4);
         }
         if ((int16_t)(xmax - xmin) > 0)
-            for (x = xmin; x != xmax; x++)
-                plot(f, (uint8_t)x, (uint8_t)ymin);
+            flat_span(f, (uint8_t)xmin, (uint8_t)ymin, (uint16_t)(xmax - xmin));
         return (uint16_t)(v + size);
     }
     row = ymin;
@@ -202,12 +225,8 @@ static uint16_t flat_polygon(Fill *f, uint16_t p, int n)
         do {
             uint8_t l = (uint8_t)(lx >> 8), r = (uint8_t)(rx >> 8);
             int16_t count = (int16_t)(uint16_t)(r - l);
-            if (count >= 0) {
-                uint16_t px = l;
-                int k;
-                for (k = 0; k <= count; k++, px++)
-                    plot(f, (uint8_t)px, (uint8_t)row);
-            }
+            if (count >= 0)
+                flat_span(f, l, (uint8_t)row, (uint16_t)(count + 1));
             lx = edge_step(lx, ls);
             lrows--;
             rx = edge_step(rx, rs);
@@ -254,7 +273,7 @@ static uint16_t line(Fill *f, uint16_t p)
         carry = e >= dy;
         e = (uint16_t)(e - dy);
         do {
-            plot(f, (uint8_t)x, (uint8_t)y);
+            flat_span(f, (uint8_t)x, (uint8_t)y, 1);
             if (!carry) {
                 e = (uint16_t)(e + dx);
                 y = (uint16_t)(y + sy);
@@ -270,7 +289,7 @@ static uint16_t line(Fill *f, uint16_t p)
         carry = e >= dx;
         e = (uint16_t)(e - dx);
         do {
-            plot(f, (uint8_t)x, (uint8_t)y);
+            flat_span(f, (uint8_t)x, (uint8_t)y, 1);
             if (!carry) {
                 e = (uint16_t)(e + dy);
                 x = (uint16_t)(x + sx);
@@ -390,10 +409,17 @@ static uint16_t tex_polygon(Fill *f, uint16_t p, int n)
     uint16_t v = (uint16_t)(p + 7), size = (uint16_t)(8 * n), src = v, dst = (uint16_t)(v - size), top_at = 0;
     uint16_t ymin = 0x03FF, ymax = 0, row;
     TexEdge l, r;
+    FxSpan s;
     int i;
-    f->options = 0;
-    set_colour(f, (uint8_t)word);
+    /* COLOR with the options clear, then CMODE */
+    f->colour = (uint8_t)word;
     f->options = (uint8_t)((word >> 8) & 0x1F);
+    memset(&s, 0, sizeof s);
+    s.options = f->options;
+    s.textured = 1;
+    s.bank = bank;
+    s.base = base;
+    s.mask = mask;
     /* the vertices copied below, u and v of each moved down a byte where
        they are (and so in the copy) */
     for (i = 0; i < n; i++) {
@@ -448,7 +474,7 @@ static uint16_t tex_polygon(Fill *f, uint16_t p, int n)
         row = (uint16_t)(count << 8 | (row & 0xFF));
         do {
             uint8_t xl = (uint8_t)(l.x >> 8), xr = (uint8_t)(r.x >> 8);
-            uint16_t width = (uint16_t)(xr - xl), recip, du, dv, tu, tv, px;
+            uint16_t width = (uint16_t)(xr - xl), recip, du, dv, tu, tv;
             if (xr >= xl)
                 width = (uint16_t)(width + 1);
             else
@@ -458,13 +484,15 @@ static uint16_t tex_polygon(Fill *f, uint16_t p, int n)
             dv = across(m, RIGHT_DV, RIGHT_V, LEFT_V, LEFT_DV, recip, &tv);
             tu = (uint16_t)(tu + rd16(m, TEX_U_OFF));
             tv = (uint16_t)(tv + rd16(m, TEX_V_OFF));
-            for (px = xl; width; width--, px++) {
-                uint16_t at = (uint16_t)((((tv & 0xFF00) | tu >> 8) & mask) + base);
-                tv = (uint16_t)(tv + dv);
-                tu = (uint16_t)(tu + du);
-                set_colour(f, rom_byte(f->src, bank, at));
-                plot(f, (uint8_t)px, (uint8_t)row);
-            }
+            s.x = xl;
+            s.y = (uint8_t)row;
+            s.n = width;
+            s.colour = f->colour;
+            s.tu = tu;
+            s.tv = tv;
+            s.du = du;
+            s.dv = dv;
+            f->sink(f->ctx, &s);
             l.x = edge_step(l.x, l.slope);
             r.x = edge_step(r.x, r.slope);
             row++;
@@ -478,7 +506,27 @@ static uint16_t tex_polygon(Fill *f, uint16_t p, int n)
     return (uint16_t)(v + size);
 }
 
-void fx_draw_list(const FxDrawSource *src, FxCanvas *c, int *skipped)
+void fx_fill_span(const FxDrawSource *src, FxCanvas *c, const FxSpan *s)
+{
+    Plot f;
+    uint16_t k, tu = s->tu, tv = s->tv;
+    uint8_t x = s->x;
+    f.src = src;
+    f.c = c;
+    f.colour = s->colour;
+    f.options = s->options;
+    for (k = 0; k < s->n; k++, x++) {
+        if (s->textured) {
+            uint16_t at = (uint16_t)((((tv & 0xFF00) | tu >> 8) & s->mask) + s->base);
+            tv = (uint16_t)(tv + s->dv);
+            tu = (uint16_t)(tu + s->du);
+            set_colour(&f, rom_byte(src, s->bank, at));
+        }
+        plot(&f, x, s->y);
+    }
+}
+
+void fx_list_spans(const FxDrawSource *src, FxSpanSink sink, void *ctx)
 {
     Fill f;
     uint16_t at, end;
@@ -488,8 +536,8 @@ void fx_draw_list(const FxDrawSource *src, FxCanvas *c, int *skipped)
     memcpy(ram, src->ram, 0x10000);
     f.ram = ram;
     f.src = src;
-    f.c = c;
-    *skipped = 0;
+    f.sink = sink;
+    f.ctx = ctx;
     end = (uint16_t)(ram[LIST_END] | ram[LIST_END + 1] << 8);
     if (end != DRAW_LIST) {
         ram[end] = ram[(uint16_t)(end + 1)] = 0;   /* the list's end, as FxDrawList writes it */
@@ -508,4 +556,23 @@ void fx_draw_list(const FxDrawSource *src, FxCanvas *c, int *skipped)
         }
     }
     free(ram);
+}
+
+typedef struct {
+    const FxDrawSource *src;
+    FxCanvas *c;
+} CanvasSink;
+
+static void to_canvas(void *ctx, const FxSpan *s)
+{
+    const CanvasSink *k = (const CanvasSink *)ctx;
+    fx_fill_span(k->src, k->c, s);
+}
+
+void fx_draw_list(const FxDrawSource *src, FxCanvas *c)
+{
+    CanvasSink k;
+    k.src = src;
+    k.c = c;
+    fx_list_spans(src, to_canvas, &k);
 }
