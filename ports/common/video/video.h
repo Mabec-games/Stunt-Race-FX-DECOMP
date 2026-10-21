@@ -32,10 +32,17 @@ typedef struct {
     VidScreen line[VID_HEIGHT + 1];         /* lines 1-224 */
     uint16_t palette[VID_HEIGHT + 1][256];
     uint8_t version[VID_HEIGHT + 1];        /* the copy each line shows */
+    uint8_t mosaic_row[VID_HEIGHT + 1];     /* the line a vertical mosaic repeats */
     int versions;
     uint16_t vram[VID_VERSIONS][0x8000];
     uint8_t oam[VID_VERSIONS][544];
 } VidFrame;
+
+/* A line's screen state packed for the GPU compositor: VID_LINE_WORDS
+   32-bit words (the layout render/compose/core.glsl reads), its copy and
+   mosaic row included. */
+#define VID_LINE_WORDS 20
+void vid_pack_line(const VidFrame *f, unsigned line, uint32_t *w);
 
 /* the last finished frame's record */
 const VidFrame *vid_frame(void);

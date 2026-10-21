@@ -204,6 +204,15 @@ void rr_image(const uint32_t *argb, int w, int h, const int d[4])
     glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
+/* The compositor (render/compose/core.glsl): not yet on this backend; it
+   draws nothing (the shader source is generated for it: compose_src.h's
+   k_compose_gl, vulkan/compose_spv.h). */
+void rr_compose(const RrPicture *p, const int d[4])
+{
+    (void)p;
+    (void)d;
+}
+
 void rr_present(void)
 {
     if (s_window) {

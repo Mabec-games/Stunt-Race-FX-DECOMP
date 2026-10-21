@@ -33,6 +33,24 @@ void rr_begin(uint32_t argb);
    rectangle d (x0, y0, x1, y1, target pixels, top left origin): sharp
    bilinear, or one to one when d is w x h */
 void rr_image(const uint32_t *argb, int w, int h, const int d[4]);
+/* A picture to compose on the GPU (render/compose/core.glsl), a frame's
+   record (ports/common/video/video.h's VidFrame): the copies of the tiles
+   (versions x 32,768 words) and sprite tables (versions x 544 bytes), each
+   line's palette (225 x 256 colours, line 0 unused) and packed state (225
+   x RR_LINE_WORDS words). */
+#define RR_LINE_WORDS 20
+#define RR_VERSIONS 4
+typedef struct {
+    const uint16_t *vram;
+    const uint8_t *oam;
+    int versions;
+    const uint16_t *palette;
+    const uint32_t *lines;
+} RrPicture;
+/* the picture composed (256 x 224) and drawn over rectangle d as rr_image
+   draws */
+void rr_compose(const RrPicture *p, const int d[4]);
+
 /* the frame done: shown in the window, when there is one */
 void rr_present(void);
 /* the last presented frame, read back: rr_target's w x h pixels into argb;

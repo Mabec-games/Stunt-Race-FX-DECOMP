@@ -693,6 +693,7 @@ static void draw_line(unsigned line, uint32_t *out);
 void vid_render_line(unsigned line)
 {
     record_line(line);
+    making->mosaic_row[line] = (uint8_t)(mosaic_y ? mosaic_y : 1);
     s = &making->line[line];
     d_vram = vram;
     d_cgram = cgram;
@@ -706,6 +707,7 @@ void vid_draw_frame(const VidFrame *f, uint32_t *out)
     mosaic_y = 1;
     for (line = 1; line <= VID_HEIGHT; line++) {
         s = &f->line[line];
+        mosaic_y = f->mosaic_row[line];
         d_vram = f->vram[f->version[line]];
         d_cgram = f->palette[line];
         d_oam = f->oam[f->version[line]];
@@ -715,6 +717,29 @@ void vid_draw_frame(const VidFrame *f, uint32_t *out)
 }
 
 const VidFrame *vid_frame(void) { return finished; }
+
+void vid_pack_line(const VidFrame *f, unsigned line, uint32_t *w)
+{
+    const VidScreen *l = &f->line[line];
+    w[0] = l->inidisp | l->obsel << 8 | l->bgmode << 16 | (uint32_t)l->mosaic << 24;
+    w[1] = l->bgsc[0] | l->bgsc[1] << 8 | l->bgsc[2] << 16 | (uint32_t)l->bgsc[3] << 24;
+    w[2] = l->bgnba[0] | l->bgnba[1] << 8 | l->m7sel << 16 | (uint32_t)l->setini << 24;
+    w[3] = l->w12sel | l->w34sel << 8 | l->wobjsel << 16 | (uint32_t)l->wbglog << 24;
+    w[4] = l->wh[0] | l->wh[1] << 8 | l->wh[2] << 16 | (uint32_t)l->wh[3] << 24;
+    w[5] = l->wobjlog | l->tm << 8 | l->ts << 16 | (uint32_t)l->tmw << 24;
+    w[6] = l->tsw | l->cgwsel << 8 | l->cgadsub << 16 | (uint32_t)l->oam_prio << 24;
+    w[7] = l->bghofs[0] | (uint32_t)l->bghofs[1] << 16;
+    w[8] = l->bghofs[2] | (uint32_t)l->bghofs[3] << 16;
+    w[9] = l->bgvofs[0] | (uint32_t)l->bgvofs[1] << 16;
+    w[10] = l->bgvofs[2] | (uint32_t)l->bgvofs[3] << 16;
+    w[11] = l->fixed_r | l->fixed_g << 8 | l->fixed_b << 16;
+    w[12] = l->oamaddr | (uint32_t)f->version[line] << 16 | (uint32_t)f->mosaic_row[line] << 24;
+    w[13] = (uint16_t)l->m7a | (uint32_t)(uint16_t)l->m7b << 16;
+    w[14] = (uint16_t)l->m7c | (uint32_t)(uint16_t)l->m7d << 16;
+    w[15] = (uint16_t)l->m7x | (uint32_t)(uint16_t)l->m7y << 16;
+    w[16] = l->m7hofs | (uint32_t)l->m7vofs << 16;
+    w[17] = w[18] = w[19] = 0;
+}
 
 static void draw_line(unsigned line, uint32_t *out)
 {

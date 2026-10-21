@@ -434,6 +434,75 @@ static void rr_self_check(int tw, int th, const int d[4])
     exit(maxd > 2);
 }
 
+/* the frame's record as the renderer's compositor takes it */
+static uint32_t pic_lines[(VID_HEIGHT + 1) * RR_LINE_WORDS];
+
+static void picture_of(const VidFrame *f, RrPicture *p)
+{
+    unsigned line;
+    for (line = 1; line <= VID_HEIGHT; line++)
+        vid_pack_line(f, line, &pic_lines[line * RR_LINE_WORDS]);
+    p->vram = &f->vram[0][0];
+    p->oam = &f->oam[0][0];
+    p->versions = f->versions;
+    p->palette = &f->palette[0][0];
+    p->lines = pic_lines;
+}
+
+/* PORT_GPUCHECK=1 (headless): each finished frame composed by the
+   renderer's GPU compositor, one to one, read back and compared with the
+   picture drawn from the same record (video.c); at exit, the frames and
+   pixels that differ */
+static long gpu_frames = -1, gpu_bad, gpu_pixels, gpu_first = -1;
+
+static void gpu_report(void)
+{
+    fprintf(stderr, "gpucheck: %s, %ld frames, %ld differ (first at frame %ld), %ld pixels\n", rr_name(), gpu_frames,
+            gpu_bad, gpu_first, gpu_pixels);
+}
+
+static void gpu_check(void)
+{
+    static uint32_t *got, want[VID_WIDTH * VID_HEIGHT];
+    static const int d[4] = { 0, 0, VID_WIDTH, VID_HEIGHT };
+    RrPicture p;
+    int tw, th, x, y;
+    long bad = 0;
+    if (gpu_frames < 0) {
+#ifdef _WIN32
+        _putenv("RR_SIZE=256x224");
+#else
+        setenv("RR_SIZE", "256x224", 1);
+#endif
+        if (!rr_open()) {
+            fprintf(stderr, "gpucheck: the renderer cannot open\n");
+            exit(2);
+        }
+        atexit(gpu_report);
+        gpu_frames = 0;
+    }
+    rr_target(&tw, &th);
+    if (!got)
+        got = (uint32_t *)malloc((size_t)tw * (size_t)th * 4);
+    picture_of(vid_frame(), &p);
+    rr_begin(0xFF000000u);
+    rr_compose(&p, d);
+    rr_present();
+    rr_read(got);
+    vid_draw_frame(vid_frame(), want);
+    for (y = 0; y < VID_HEIGHT; y++)
+        for (x = 0; x < VID_WIDTH; x++)
+            if ((got[y * tw + x] | 0xFF000000u) != want[y * VID_WIDTH + x])
+                bad++;
+    gpu_frames++;
+    if (bad) {
+        gpu_bad++;
+        gpu_pixels += bad;
+        if (gpu_first < 0)
+            gpu_first = frame_no;
+    }
+}
+
 /* the frame on the window: the picture at the original's 4:3 (its 256 x
    224 pixels, 8:7 each), as large as the window holds, centred, sharp
    bilinear */
@@ -463,6 +532,11 @@ static void frame(void)
     frame_no++;
     if (headless) {
         int more;
+        static int gc = -1;
+        if (gc < 0)
+            gc = getenv("PORT_GPUCHECK") != NULL;
+        if (gc && frame_no > 1)
+            gpu_check();
         if (sound_f)
             sound_drain();
         more = script_frame(&b0, &b1);

@@ -15,6 +15,7 @@
 #include "rr.h"
 #include "rr_size.h"
 #include "host.h"
+#include "compose_src.h"
 
 CAMetalLayer *host_macos_metal_layer(void);
 void host_macos_layer_fit(int *w, int *h);
@@ -54,6 +55,10 @@ static id<MTLRenderCommandEncoder> s_enc;
 static dispatch_semaphore_t s_inflight;
 static int s_rw, s_rh;
 static uint32_t s_clear;
+/* the compositor: its pipeline, each frame-in-flight's record textures and
+   the composed picture */
+static id<MTLRenderPipelineState> s_compose;
+static id<MTLTexture> s_cvram[3], s_cpal[3], s_coam[3], s_cline[3], s_cpic[3];
 #define VB_SIZE (1u << 16)
 
 static id<MTLRenderPipelineState> make_pipe(NSString *fs, id<MTLLibrary> lib)
@@ -68,6 +73,15 @@ static id<MTLRenderPipelineState> make_pipe(NSString *fs, id<MTLLibrary> lib)
     if (!p)
         fprintf(stderr, "rr: metal pipeline %s: %s\n", [fs UTF8String], [[err description] UTF8String]);
     return p;
+}
+
+static id<MTLTexture> int_texture(MTLPixelFormat f, int w, int h, int target)
+{
+    MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:f width:(NSUInteger)w
+                                                                                  height:(NSUInteger)h mipmapped:NO];
+    td.usage = MTLTextureUsageShaderRead | (target ? MTLTextureUsageRenderTarget : 0);
+    td.storageMode = target ? MTLStorageModePrivate : MTLStorageModeShared;
+    return [s_dev newTextureWithDescriptor:td];
 }
 
 static void targets(int w, int h)
@@ -96,6 +110,29 @@ int rr_open(void)
         if (!lib) {
             fprintf(stderr, "rr: metal shader: %s\n", [[err description] UTF8String]);
             return 0;
+        }
+        {
+            id<MTLLibrary> cl = [s_dev newLibraryWithSource:[NSString stringWithUTF8String:k_compose_msl] options:nil error:&err];
+            MTLRenderPipelineDescriptor *d = [MTLRenderPipelineDescriptor new];
+            if (!cl) {
+                fprintf(stderr, "rr: metal compositor: %s\n", [[err description] UTF8String]);
+                return 0;
+            }
+            d.vertexFunction = [cl newFunctionWithName:@"compose_vs"];
+            d.fragmentFunction = [cl newFunctionWithName:@"compose_fs"];
+            d.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
+            s_compose = [s_dev newRenderPipelineStateWithDescriptor:d error:&err];
+            if (!s_compose) {
+                fprintf(stderr, "rr: metal compositor pipeline: %s\n", [[err description] UTF8String]);
+                return 0;
+            }
+            for (i = 0; i < 3; i++) {
+                s_cvram[i] = int_texture(MTLPixelFormatR16Uint, 256, 128 * RR_VERSIONS, 0);
+                s_cpal[i] = int_texture(MTLPixelFormatR16Uint, 256, 225, 0);
+                s_coam[i] = int_texture(MTLPixelFormatR8Uint, 544, RR_VERSIONS, 0);
+                s_cline[i] = int_texture(MTLPixelFormatR32Uint, RR_LINE_WORDS, 225, 0);
+                s_cpic[i] = int_texture(MTLPixelFormatBGRA8Unorm, 256, 224, 1);
+            }
         }
         s_copy = make_pipe(@"bfs", lib);
         s_sharp = make_pipe(@"sfs", lib);
@@ -202,6 +239,53 @@ void rr_image(const uint32_t *argb, int w, int h, const int d[4])
         [s_enc setRenderPipelineState:d[2] - d[0] == w && d[3] - d[1] == h ? s_copy : s_sharp];
         [s_enc setVertexBuffer:s_vb[s_pi] offset:(NSUInteger)off atIndex:0];
         [s_enc setFragmentTexture:t atIndex:0];
+        [s_enc drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6];
+    }
+}
+
+/* the target's pass again, after a pass of another's */
+static void resume_target(void)
+{
+    MTLRenderPassDescriptor *rp = [MTLRenderPassDescriptor renderPassDescriptor];
+    rp.colorAttachments[0].texture = s_col;
+    rp.colorAttachments[0].loadAction = MTLLoadActionLoad;
+    rp.colorAttachments[0].storeAction = MTLStoreActionStore;
+    s_enc = [s_cmd renderCommandEncoderWithDescriptor:rp];
+}
+
+void rr_compose(const RrPicture *p, const int d[4])
+{
+    @autoreleasepool {
+        int k = s_pi, v = p->versions < 1 ? 1 : p->versions > RR_VERSIONS ? RR_VERSIONS : p->versions;
+        long off;
+        MTLRenderPassDescriptor *rp;
+        id<MTLRenderCommandEncoder> e;
+        if (!s_enc || d[2] <= d[0] || d[3] <= d[1])
+            return;
+        [s_cvram[k] replaceRegion:MTLRegionMake2D(0, 0, 256, (NSUInteger)(128 * v)) mipmapLevel:0 withBytes:p->vram bytesPerRow:512];
+        [s_cpal[k] replaceRegion:MTLRegionMake2D(0, 0, 256, 225) mipmapLevel:0 withBytes:p->palette bytesPerRow:512];
+        [s_coam[k] replaceRegion:MTLRegionMake2D(0, 0, 544, (NSUInteger)v) mipmapLevel:0 withBytes:p->oam bytesPerRow:544];
+        [s_cline[k] replaceRegion:MTLRegionMake2D(0, 0, RR_LINE_WORDS, 225) mipmapLevel:0 withBytes:p->lines
+                      bytesPerRow:RR_LINE_WORDS * 4];
+        [s_enc endEncoding];
+        rp = [MTLRenderPassDescriptor renderPassDescriptor];
+        rp.colorAttachments[0].texture = s_cpic[k];
+        rp.colorAttachments[0].loadAction = MTLLoadActionDontCare;
+        rp.colorAttachments[0].storeAction = MTLStoreActionStore;
+        e = [s_cmd renderCommandEncoderWithDescriptor:rp];
+        [e setRenderPipelineState:s_compose];
+        [e setFragmentTexture:s_cvram[k] atIndex:0];
+        [e setFragmentTexture:s_cpal[k] atIndex:1];
+        [e setFragmentTexture:s_coam[k] atIndex:2];
+        [e setFragmentTexture:s_cline[k] atIndex:3];
+        [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
+        [e endEncoding];
+        resume_target();
+        if ((off = quad(d)) < 0)
+            return;
+        [s_enc setRenderPipelineState:d[2] - d[0] == 256 && d[3] - d[1] == 224 ? s_copy : s_sharp];
+        [s_enc setVertexBuffer:s_vb[s_pi] offset:(NSUInteger)off atIndex:0];
+        [s_enc setFragmentTexture:s_cpic[k] atIndex:0];
         [s_enc drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6];
     }
 }

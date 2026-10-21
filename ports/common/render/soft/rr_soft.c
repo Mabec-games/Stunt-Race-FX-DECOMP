@@ -69,6 +69,14 @@ void rr_image(const uint32_t *argb, int w, int h, const int d[4])
     rr_ref_image(s_px, s_w, s_h, argb, w, h, d);
 }
 
+/* (the software backend has no compositor: headless runs that do not
+   check it) */
+void rr_compose(const RrPicture *p, const int d[4])
+{
+    (void)p;
+    (void)d;
+}
+
 void rr_present(void)
 {
     host_present(s_px, s_w, s_h, (float)s_w / (float)s_h);
