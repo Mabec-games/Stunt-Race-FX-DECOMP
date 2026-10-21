@@ -18,6 +18,7 @@ import os, sys, threading, time
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 os.environ['SRFX_GATE_TREE'] = 'ports/stuntracefx/game'
 os.environ['SRFX_GATE_OUT'] = 'portgate'
+os.environ['SRFX_GATE_SHIM'] = 'ports/stuntracefx/hybrid/shim.c'
 sys.path.insert(0, os.path.join(ROOT, 'tools', 'stuntracefx'))
 import t3  # noqa: E402
 

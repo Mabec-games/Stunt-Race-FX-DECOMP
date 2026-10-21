@@ -685,6 +685,14 @@ void hw_wr(uint32_t addr, uint8_t value) { access_wr(addr, value); }
 /* A register access whose work the port's C does itself (native.h): its
    time, as rd8's and wr8's, and for a read the place an interrupt can come;
    the value is what the C worked out (the bus holds it after). */
+void io_read_time(uint32_t addr, uint8_t value);
+
+uint8_t io_read(uint32_t addr, uint8_t value)
+{
+    io_read_time(addr, value);
+    return value;
+}
+
 void io_read_time(uint32_t addr, uint8_t value)
 {
     addr &= 0xFFFFFF;

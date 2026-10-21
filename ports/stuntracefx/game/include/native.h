@@ -17,21 +17,22 @@
 #include "machine.h"
 #include "native.h"
 
-/* The time of a register access the C does the work of (the port's clock). */
-void io_read_time(uint32_t addr, uint8_t value);
+/* The time of a register access the C does the work of (the port's clock):
+   a read gives back the value (the C's, in the port; the verification
+   harness's shim reads it from the console it runs). */
+uint8_t io_read(uint32_t addr, uint8_t value);
 void io_write_time(uint32_t addr, uint8_t value);
 
 static inline uint8_t io_rd8(uint32_t addr, uint8_t v)
 {
-    io_read_time(addr, v);
-    return v;
+    return io_read(addr, v);
 }
 
 static inline uint16_t io_rd16(uint32_t addr, uint16_t v)
 {
-    io_read_time(addr, (uint8_t)v);
-    io_read_time((addr + 1) & 0xFFFFFF, (uint8_t)(v >> 8));
-    return v;
+    uint8_t lo = io_read(addr, (uint8_t)v);
+
+    return (uint16_t)(lo | io_read((addr + 1) & 0xFFFFFF, (uint8_t)(v >> 8)) << 8);
 }
 
 static inline void io_wr8(uint32_t addr, uint8_t v)

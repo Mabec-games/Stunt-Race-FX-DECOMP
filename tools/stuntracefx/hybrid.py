@@ -183,6 +183,10 @@ def main(src=None, lib=None):
                 % (''.join('0x%04X, ' % a for a in sj), len(sj)))
     cmd = ['cc', '-O2', '-g', '-Wall', '-Wextra', '-std=c99', '-shared', '-fPIC', '-undefined', 'dynamic_lookup',
            '-I', os.path.join(SRC, 'include'), '-o', LIB, table] + files
+    # SRFX_GATE_SHIM: C the judged tree needs from its own runtime (the
+    # port's native interfaces, as bus accesses), built in with it
+    if os.environ.get('SRFX_GATE_SHIM'):
+        cmd.append(os.path.join(ROOT, os.environ['SRFX_GATE_SHIM']))
     p = subprocess.run(cmd, capture_output=True, text=True)
     sys.stdout.write(p.stdout + p.stderr)
     if p.returncode or not os.path.exists(LIB):
