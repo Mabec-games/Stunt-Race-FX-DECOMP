@@ -201,7 +201,8 @@ static void finish_phases(uint8_t p1, uint8_t p2, unsigned sep, unsigned post)
     int both = 0;
 
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x37);
-    (cyc(62), abi_SoundPort0QueuePush());
+    (cyc(78), abi_SoundPort0QueuePush());
+    cyc(16);
     cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)y) & ~P_C) | P_C);     /* CPY #0 */
     if ((uint8_t)y != 0x00) {
         cpu.p |= P_M;
@@ -287,11 +288,11 @@ void abi_RaceFinishSplit(void)
         cyc(40);
         wr8(b | 0x0DD6, 0x0A);
     }
-    cyc(62);
+    cyc(78);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x08);
     cpu.p = nz8(cpu.p, 0x08);
     abi_SoundPort0QueuePush();
-    finish_tail(b, one ? 8 : 6, 34);
+    finish_tail(b, one ? 24 : 22, 34);
 }
 
 /*

@@ -87,10 +87,11 @@ static void cursor_to(uint32_t b, uint8_t to)
     op_sep(P_M);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x45);
     cpu.p = nz8(cpu.p, 0x45);
+    cyc(16);
     abi_SoundPort0QueuePush();
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | to);
     cpu.p = nz8(cpu.p, to);
-    cyc(24);
+    cyc(40);
     wr8(b | 0x0D48, to);
 }
 
@@ -108,10 +109,11 @@ static int cursor_up_open(uint32_t b)
         return 0;
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x45);
     cpu.p = nz8(cpu.p, 0x45);
+    cyc(16);
     abi_SoundPort0QueuePush();
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xFF);
     cpu.p = nz8(cpu.p, 0xFF);
-    cyc(24);
+    cyc(40);
     wr8(b | 0x0D63, 0xFF);
     return 1;
 }
@@ -125,7 +127,7 @@ static void cursor_two(uint32_t b, uint16_t m1, uint8_t to1, uint16_t m2, uint8_
     if (cursor_pressed(b, m1))
         { cyc(36); cursor_to(b, to1); }
     else if (cursor_pressed(b, m2))
-        { cyc(36); cursor_to(b, to2); }
+        { cyc(idle ? 54 : 36); cursor_to(b, to2); }   /* at 3: BEQ not taken, JMP */
     else
         cyc(idle);
     cyc(42);
@@ -623,7 +625,8 @@ static void sel_sound(void)
 {
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x45);
     cpu.p = nz8(cpu.p, 0x45);
-    (cyc(40), abi_SoundPort0QueuePush());
+    (cyc(56), abi_SoundPort0QueuePush());
+    cyc(16);
 }
 
 /* LDA #v, STA $0D4A: the cursor's row. */
@@ -1193,10 +1196,11 @@ static int records_key(uint32_t b)
             wr8(b | 0x0D35, 0x00);
             (cyc(46), abi_FlashingMetaspriteDraw0());
             return 0;
-        } else { cyc(40); }
+        } else { cyc(56); }
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x46);
         cpu.p = nz8(cpu.p, 0x46);
         abi_SoundPort0QueuePush();
+        cyc(16);
     } else { cyc(38); }
     cyc(46);
     abi_RecordsUnpackCourseTotals();
@@ -1424,11 +1428,11 @@ void abi_CourseRecordsOpening(void)
     cyc(24);
     op_lda8(b | 0x0D4C);
     if ((uint8_t)cpu.a)
-        { cyc(64); return; } else { cyc(78); }
+        { cyc(64); return; } else { cyc(94); }
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x2D);
     cpu.p = nz8(cpu.p, 0x2D);
     abi_SoundPort0QueuePush();
-    cyc(26);
+    cyc(42);
 }
 
 static void records_reopen_body(void);
@@ -2222,11 +2226,12 @@ void abi_CourseScreenStep(void)
                         cyc(18);
                         for (i = 0x0B; i >= 0; i--)
                             { cyc(68); wr8(0x000F05 + (uint32_t)i, 0x00); }
-                        cyc(92);
+                        cyc(108);
                         cpu.x = 0xFF;
                         cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x36);
                         cpu.p = nz8(cpu.p, 0x36);
                         abi_SoundPort0QueuePush();
+                        cyc(16);
                         op_sep(P_M | P_X);
                         cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x0F);
                         cyc(32);

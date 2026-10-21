@@ -542,10 +542,10 @@ static void panel_line(uint32_t b, uint16_t at)
         wr8(b | (uint16_t)(0x0400 + at), 0x28);
     }
     panel_next_delay(b, 0x32);
-    cyc(38);
+    cyc(54);
     lda8_imm(0x49);
     abi_SoundPort0QueuePush();
-    cyc(26);
+    cyc(42);
 }
 
 /*
@@ -619,9 +619,10 @@ void abi_ResultsPanelSteps(void)
                 { cyc(24); wr8(b | marks[i], 0xA2); }
         }
         panel_next_delay(b, 0x32);
-        cyc(38);
+        cyc(54);
         lda8_imm(0x4A);
         abi_SoundPort0QueuePush();
+        cyc(16);
         lda8_imm(0x01);
         wr8(b | 0x0E5B, 0x01);
         cyc(24);
@@ -716,8 +717,9 @@ static void finish_sound(uint8_t car)
     cyc(44);
     cmp8_imm(0x04);
     lda8_imm(car < 0x04 ? 0x08 : (cyc(16), 0x15));
+    cyc(16);
     abi_SoundPort0QueuePush();
-    cyc(12);
+    cyc(28);
 }
 
 /*
@@ -811,6 +813,7 @@ void abi_RaceFinishSounds(void)
     } else { cyc(104); }
     op_cmp16(0x0002);
     if (cpu.a == 0x0002) {
+        cyc(4);                         /* BEQ taken, JSR: 108 in all after the load */
         abi_PlayerSound35();
         (cyc(88), abi_CarFinishSound());
         cyc(30);
@@ -842,7 +845,7 @@ static void finish_both(uint32_t b)
     cyc(16);
     wr8(b | 0x0DD6, 0x08);
     (cyc(46), abi_CarFinishSound());
-    cyc(50);
+    cyc(54);
     lda8_imm(0x04);
     abi_SoundPort1QueuePushX8();
     cyc(42);
@@ -980,7 +983,7 @@ static void finish_alone(uint32_t b, uint16_t colour, uint8_t phase, uint8_t t)
     wr8(b | 0x0E4B, t);
     (cyc(46), abi_OamHide75Up());
     (cyc(62), abi_SoundReset());
-    cyc(38);
+    cyc(54);
     lda8_imm(0x37);
     abi_SoundPort0QueuePush();
 }
@@ -999,8 +1002,9 @@ static void lap_override(uint32_t b)
     uint16_t x, t;
 
     lda8_imm(0x35);
+    cyc(16);
     abi_SoundPort0QueuePush();
-    cyc(8);
+    cyc(24);
     op_lda8(b | 0x0DEA);
     v = (uint8_t)(cpu.a + 1);
     lda8_imm(v);
@@ -1157,7 +1161,7 @@ static void lap_finish(uint32_t b)
         wr8(PY(b, 0x0DD6), 0x0A);
         (cyc(46), abi_OamHideForHudMode());
         (cyc(62), abi_Countdown0DF8());
-        cyc(108);
+        cyc(54);
         lda8_imm(0x51);
         abi_SoundPort0QueuePushX8();
         cyc(42);
@@ -1323,11 +1327,11 @@ static void lap_crossed(uint32_t b)
         cyc(10);
         wr16(b | 0x0E5D, 0x012C);
         op_sep(P_M);
-        cyc(60);
+        cyc(76);
         lda8_imm(0x48);
         abi_SoundPort0QueuePush();
         lda8_imm(0x06);
-        cyc(6);
+        cyc(22);
         wr8(PY(b, 0x0E41), 0x06);
         lda8_imm(0x17);
         cyc(22);
@@ -1343,15 +1347,16 @@ static void lap_crossed(uint32_t b)
     if (v > 0x02) {
         lap_finish(b);
         return;
-    } else { cyc(68); }
+    }
     cmp8_imm(0x01);
     if (v != 0x01) {
-        cyc(38);
+        cyc(54);
         lda8_imm(0x48);
         abi_SoundPort0QueuePushX8();
         cyc(42);
         return;
     }
+    cyc(68);
     abi_RaceTimeAddD814();
     op_rep(P_M);
     op_lda16_imm(0x012C);
@@ -1364,13 +1369,13 @@ static void lap_crossed(uint32_t b)
     lda8_imm(0x17);
     cyc(22);
     wr8(PY(b, 0x0E3F), 0x17);
-    cyc(38);
+    cyc(54);
     lda8_imm(0x48);
     abi_SoundPort0QueuePush();
     op_sep(P_M | P_X);
     cpu.x = 0x0000;
     cpu.p = nz8(cpu.p, 0x00);
-    (cyc(46), abi_LapSplit());
+    (cyc(62), abi_LapSplit());
     (cyc(62), abi_RecordCompareTime0());
     cyc(42);
 }
@@ -1434,10 +1439,10 @@ time_up:
         lda8_imm(0x0C);
         cyc(22);
         wr8(PY(b, 0x0DD6), 0x0C);
-        cyc(38);
+        cyc(54);
         lda8_imm(0x31);
         abi_SoundPort0QueuePush();
-        return 1;
+        return 2;
     }
     lda8_imm(0x20);
     cyc(38);
@@ -1448,10 +1453,10 @@ time_up:
     phases_both(b);
     cyc(24);
     wr8(b | 0x0D53, 0x00);
-    cyc(38);
+    cyc(54);
     lda8_imm(0x31);
     abi_SoundPort0QueuePush();
-    return 1;
+    return 2;
 progress:
     op_sep(P_M);
     cyc(52);
@@ -1513,7 +1518,7 @@ progress:
     if (w & 0x1000) {
         if (!(uint8_t)cpu.a) {
             finish_alone(b, 0xFC00, 0x10, 0x0E);
-            return 1;
+            return 2;
         }
         lda8_imm(0x10);
         cyc(38);
@@ -1521,9 +1526,10 @@ progress:
         lda8_imm(0x0C);
         cyc(16);
         wr8(b | 0x0E56, 0x0C);
-        cyc(38);
+        cyc(54);
         lda8_imm(0x37);
         abi_SoundPort0QueuePush();
+        cyc(16);
         lda8_imm(0xFF);
         wr8(b | 0x0D53, 0xFF);
         (cyc(46), abi_RaceFinishPhases10());
@@ -1532,7 +1538,7 @@ progress:
     }
     if (!(uint8_t)cpu.a) {
         finish_alone(b, 0x801F, 0x0E, 0x0C);
-        return 1;
+        return 2;
     }
     lda8_imm(0x0E);
     cyc(38);
@@ -1568,12 +1574,15 @@ progress:
  */
 void abi_RacePhaseLapP1(void)
 {
+    int r;
+
     cyc(46);
     abi_GsuF441Player1();
     (cyc(118), abi_OamStagePause());
     cyc(22);
-    if (race_phase())
-        cyc(26);
+    r = race_phase();
+    if (r)
+        cyc(r == 2 ? 42 : 26);
 }
 
 /*
@@ -1585,12 +1594,15 @@ void abi_RacePhaseLapP1(void)
  */
 void abi_RacePhaseLapP2(void)
 {
+    int r;
+
     cyc(46);
     abi_GsuF441Player2();
     (cyc(118), abi_OamStagePause2());
     cyc(22);
-    if (race_phase())
-        cyc(26);
+    r = race_phase();
+    if (r)
+        cyc(r == 2 ? 42 : 26);
 }
 
 /*
@@ -1602,10 +1614,13 @@ void abi_RacePhaseLapP2(void)
  */
 void abi_RacePhaseLap(void)
 {
+    int r;
+
     cyc(46);
     abi_PauseOnStart();
-    if (race_phase())
-        cyc(26);
+    r = race_phase();
+    if (r)
+        cyc(r == 2 ? 42 : 26);
 }
 
 void abi_GsuF15BFive(void);
@@ -2403,10 +2418,10 @@ static void time_up_tick(uint32_t b, uint8_t t, void (*after)(void), uint8_t pus
     cyc(22);
     wr8(b | 0x0E5A, t);
     dec8_mem(b | 0x0E59);
-    cyc(38 + push_x);                           /* X 16-bit: the push's PHY/PHX take 2 bytes each */
+    cyc(54);
     lda8_imm(0x51);
     abi_SoundPort0QueuePush();
-    (cyc(46), after());
+    (cyc(62 - push_x), after());      /* push_x 16: X 16-bit, the push states those pulls */
     cyc(10);
 }
 

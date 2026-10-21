@@ -535,6 +535,7 @@ mode3:
         cpu.p &= (uint8_t)~(P_M | P_X);
         cyc(158);
         video_gsu_ram_dma(0x3180, 0x5AC0, 0x0100);
+        cyc(16);
         video_gsu_3000(0xFC20, 0x0018, 1);
         cyc(140);                               /* the Super FX call's return, JMP */
         goto mode2;

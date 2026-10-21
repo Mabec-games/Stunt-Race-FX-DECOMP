@@ -4,7 +4,7 @@
  */
 #include "machine.h"
 
-void SoundPort1QueuePush(uint8_t command);
+void SoundPort1QueuePushW(uint8_t command, unsigned wide);
 
 /*
  * @routine 03:FE57 ColourMathA3
@@ -37,8 +37,8 @@ void abi_ColourMathA3(void)
 void ColourMathA7Start(void)
 {
     cyc(100);
-    SoundPort1QueuePush(0x04);
-    cyc(24);
+    SoundPort1QueuePushW(0x04, 0);      /* after SEP #$30 */
+    cyc(40);
     wr8(0x000D47, 0xA7);
     cyc(78);
     wr16(0x7F3408, 0x0000);

@@ -443,6 +443,7 @@ void abi_WindowEdgesFillOnes(void)
     cyc(102);
     cpu.pc = (cpu.pc & 0xFF0000) | (uint16_t)(rd16((uint16_t)(cpu.s + 1)) + 1);
     cpu.s = (uint16_t)(cpu.s + 2);
+    cyc(6);                             /* the RTS's last cycle */
     cpu.unwound = 1;
 }
 
@@ -1380,7 +1381,7 @@ void abi_WindowSplitAnimate(void)
     v = rd8(b | 0x19D8);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     if (!v)
-        goto out;
+        { cyc(16); goto out_fall; }          /* BNE not taken */
     cyc(68);
     v = rd8(b | 0x19D8);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
@@ -1477,7 +1478,9 @@ void abi_WindowSplitAnimate(void)
         return;
     }
 out:
-    cyc(80);
+    cyc(22);                            /* a taken branch */
+out_fall:
+    cyc(58);                            /* PLB, PLP, RTL with op_plp */
     cpu.db = db0;
     op_plp(p0);
 }

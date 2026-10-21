@@ -1262,11 +1262,10 @@ static uint32_t time_left_digits(void)
     if (!(cpu.p & P_Z)) {
         cyc(17);
         wr16(b | 0x0E78, cpu.a);
-        cyc(94);
+        cyc(86);
         lda16_imm(0x0042);
         abi_SoundPort0QueuePush();
-    } else { cyc(14); }
-    cyc(8);
+    } else { cyc(22); }
     lda16(b | TIME_BCD);
     param_digit();
     cyc(22);

@@ -1456,11 +1456,11 @@ static void record_compare_by_mode(uint16_t x)
     cpu.a = rd16(b | 0x0D2B);
     cpu.p = nz16(cpu.p, cpu.a);
     if (cpu.a == 0x0000) {
-        cyc(116);
+        cyc(108);
         cpu.a = 0x0035;
         cpu.p = nz16(cpu.p, cpu.a);
         abi_SoundPort0QueuePush();
-        cyc(80);
+        cyc(72);
     } else {
         cyc(108);
         op_cmp16(0x0002);

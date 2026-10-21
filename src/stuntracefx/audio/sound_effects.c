@@ -730,8 +730,8 @@ void abi_SoundNearCarOnce(void)
     cyc(54);
     wr8(b | 0x0E1A, (uint8_t)(v - 1));
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x1D);
-    (cyc(62), abi_SoundPort1QueuePush());
-    cyc(38);
+    (cyc(78), abi_SoundPort1QueuePush());
+    cyc(54);
     v = rd8(0x000D53);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     if (v != 0) {
@@ -772,7 +772,7 @@ void abi_SoundNearCarOnce(void)
         return;
     }
     cyc(182);
-    cpu.p |= P_M;
+    cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);        /* REP #$30 above, SEP #$20 */
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     abi_SoundPort0QueuePush();
     cpu.p = p0;
@@ -845,8 +845,8 @@ void abi_NearCarSoundUpdate(void)
     }
     cyc(40);
     wr16(b | 0x115E, v);
-    (cyc(70), abi_SoundPort1QueuePush());
-    cyc(32);
+    (cyc(62), abi_SoundPort1QueuePush());
+    cyc(24);
     wr16(b | 0x117C, 0x0000);
     (cyc(62), abi_SoundNearCarOnce());
     cpu.p = p0;

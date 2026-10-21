@@ -89,15 +89,23 @@ void abi_SoundPort0QueuePushRawWide(void)
  * Entry: any widths; A low byte = command. Exit: every register unchanged
  * except N and Z, which the final pull of DB sets from DB.
  */
-static void port0_push(uint8_t command, uint16_t tail)
+static unsigned push_wide(void)
 {
-    cyc(238);
+    return (cpu.p & P_M ? 0 : 8) + (cpu.p & P_X ? 0 : 16);
+}
+
+/* wide: the caller's PHA/PLA 8 longer with A 16-bit, PHY/PHX/PLX/PLY 16 with
+   X and Y 16-bit. */
+static void port0_push(uint8_t command, unsigned wide)
+{
+    cyc(222 + wide);
     if (rd8(CURRENT_PLAYER) != 0)
         { cyc(10); command |= 0x80; }
     queue_push(SOUND_PORT0_QUEUE, SOUND_PORT0_HEAD, SOUND_PORT0_COUNT, command);
-    cyc(tail);
+    cyc(wide);
 }
 
+/* From C: M 8-bit, X 16-bit. */
 void SoundPort0QueuePush(uint8_t command)
 {
     port0_push(command, 16);
@@ -105,15 +113,13 @@ void SoundPort0QueuePush(uint8_t command)
 
 void abi_SoundPort0QueuePush(void)
 {
-    SoundPort0QueuePush((uint8_t)cpu.a);
+    port0_push((uint8_t)cpu.a, push_wide());
     cpu.p = nz8(cpu.p, cpu.db);  /* the last pull restores DB */
 }
 
-/* From a caller with X 8-bit: PLY/PLX pull a byte each, 16 clocks less. */
 void abi_SoundPort0QueuePushX8(void)
 {
-    port0_push((uint8_t)cpu.a, 0);
-    cpu.p = nz8(cpu.p, cpu.db);
+    abi_SoundPort0QueuePush();
 }
 
 /*
@@ -123,29 +129,34 @@ void abi_SoundPort0QueuePushX8(void)
  * Entry: any widths; A low byte = command. Exit: every register unchanged
  * except N and Z, which the final pull of DB sets from DB.
  */
-static void port1_push(uint8_t command, uint16_t entry, uint16_t tail)
+static void port1_push(uint8_t command, unsigned wide)
 {
-    cyc(entry);
+    cyc(176 + wide);
     queue_push(SOUND_PORT1_QUEUE, SOUND_PORT1_HEAD, SOUND_PORT1_COUNT, command);
-    cyc(tail);
+    cyc(wide);
 }
 
+/* From C: M 8-bit, X 16-bit. */
 void SoundPort1QueuePush(uint8_t command)
 {
-    port1_push(command, 192, 16);
+    port1_push(command, 16);
+}
+
+/* From C with the caller's widths: wide as for port0_push. */
+void SoundPort1QueuePushW(uint8_t command, unsigned wide)
+{
+    port1_push(command, wide);
 }
 
 void abi_SoundPort1QueuePush(void)
 {
-    SoundPort1QueuePush((uint8_t)cpu.a);
+    port1_push((uint8_t)cpu.a, push_wide());
     cpu.p = nz8(cpu.p, cpu.db);  /* the last pull restores DB */
 }
 
-/* From a caller with X 8-bit: PLY/PLX pull a byte each, 16 clocks less. */
 void abi_SoundPort1QueuePushX8(void)
 {
-    port1_push((uint8_t)cpu.a, 192, 0);
-    cpu.p = nz8(cpu.p, cpu.db);
+    abi_SoundPort1QueuePush();
 }
 
 /*

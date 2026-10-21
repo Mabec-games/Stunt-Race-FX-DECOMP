@@ -342,7 +342,7 @@ void abi_BobWindow1(void)
     if (bob_window(1, 0x19AF))
         { cyc(46); abi_WindowHdmaFFD9(); cyc(42); }
     else
-        cyc(84);
+        cyc(80);
 }
 
 /*

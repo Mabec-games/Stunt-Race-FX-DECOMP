@@ -76,7 +76,7 @@ void ObjectFaceTied(void)
         wr16(0x00000A, cyc_then(16, rd16(cyc_then(30, absidx(bank, 0x000A, rec)))));
         wr16(absidx(bank, 0x05F2, 0), cyc_then(24, rd16(cyc_then(30, absidx(bank, 0x000C, rec)))));
         (cyc(62), abi_ObjectGsu81E3());
-        wr16(absidx(bank, 0x0010, rec), cyc_then(108, (uint16_t)(cpu.a + 0x8000)));
+        wr16(absidx(bank, 0x0010, rec), cyc_then(68, (uint16_t)(cpu.a + 0x8000)));
         if (!(rd16(cyc_then(30, absidx(bank, 0x0000, rec))) & 0x0040)) {
             cyc(102);
             abi_ObjectGsu80BCThen81E3();

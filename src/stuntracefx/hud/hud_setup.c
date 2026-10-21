@@ -396,6 +396,7 @@ static void mode_stunt(uint32_t b)
             cyc(28);            /* its SEPs and RTL, then JMP RaceHudFlags */
         }
         flags();
+        cyc(22);
         return;
     }
     lda8(0xF0);
@@ -465,6 +466,7 @@ static void mode_speed_battle(uint32_t b, int speed)
         if ((uint8_t)cpu.a) {
             cyc(34);
             slide_word(0x3947);
+            cyc(6);                     /* BRA */
             return;
         } else { cyc(2); }
     }
@@ -473,6 +475,8 @@ static void mode_speed_battle(uint32_t b, int speed)
     op_sep(P_M);
     cyc(46);
     op_lda8(b | 0x10CD);
+    if (!(uint8_t)cpu.a)
+        cyc(6);                         /* BEQ taken */
 }
 
 /* The end of both set-ups: RaceVarsReset, SEP #$20. */
@@ -524,7 +528,7 @@ static void race_hud_setup(void)
             mode_speed_battle(b, 1); else { cyc(30); }
         break;
     case 0xE263: mode_stunt(b); cyc(8); break;
-    case 0xE4DD: mode_speed_battle(b, 1); cyc(6); break;
+    case 0xE4DD: mode_speed_battle(b, 1); break;
     case 0xE4E7: mode_speed_battle(b, 0); break;
     default: jump_routine(0x030000 | h); return;
     }

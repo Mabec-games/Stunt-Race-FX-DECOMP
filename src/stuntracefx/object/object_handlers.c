@@ -3133,7 +3133,7 @@ static int below16(uint16_t a, uint16_t k)
 static void snd16(uint16_t s)
 {
     op_lda16_imm(s);
-    (cyc(66), abi_SoundPort0QueuePush());
+    (cyc(58), abi_SoundPort0QueuePush());
 }
 
 /*
@@ -3166,7 +3166,7 @@ void abi_PlayerCarEvents(void)
     uint16_t obj = cpu.x, rec, w, x;
     uint8_t v;
     int found;
-    uint32_t to_c4a2 = 104, tail = 78;
+    uint32_t to_c4a2 = 104, tail = 78, sparkle = 186;
     int16_t lvl;
 
     cyc(24);
@@ -3286,21 +3286,22 @@ void abi_PlayerCarEvents(void)
     op_lda16(0x700094 + cpu.x);
     w = cpu.a;
     if (w && (cyc(56), !(w & 0x8000))) {
+        sparkle = 186;
         if (!below16(w, 0x0032)) {
             if (below16(w, 0x01F4))
-                { cyc(30); snd16(0x0054); }
+                { cyc(60); snd16(0x0054); sparkle = 178; }
             else if (below16(w, 0x0320))
-                { cyc(30); snd16(0x0055); }
+                { cyc(60); snd16(0x0055); sparkle = 178; }
             else if (below16(w, 0x044C))
-                { cyc(30); snd16(0x0056); }
+                { cyc(60); snd16(0x0056); sparkle = 178; }
             else if (below16(w, 0x07D0))
-                { cyc(60); snd16(0x0057); }
+                { cyc(60); snd16(0x0057); sparkle = 178; }
         }
         cpu.a = w;
         if (!below16(w, 0x0032)) {
             x = cpu.x;
             cpu.p |= P_M;
-            cyc(186);
+            cyc(sparkle);
             cpu.x = rd16(b | 0x1F18);
             (cyc(62), abi_ObjectSpawnSparklePair());
             cpu.p &= (uint8_t)~P_M;
@@ -3311,14 +3312,14 @@ void abi_PlayerCarEvents(void)
     cyc(54);
     op_lda16(0x70002C + cpu.x);
     if (cpu.a & 0x0100)
-        { cyc(30); snd16(0x000A); cyc(62); }             /* BRA, LDA long */
+        { cyc(30); snd16(0x000A); cyc(54); }             /* BRA, LDA long */
     else if (cpu.a & 0x0200)
-        { cyc(76); snd16(0x000D); cyc(40); }
+        { cyc(76); snd16(0x000D); cyc(32); }
     else
         cyc(124);
     op_lda16(0x700062 + cpu.x);
     if (cpu.a & 0x8000) {
-        int a1 = 0;
+        int a1 = 0, pushed = 0;
 
         cyc(74);
         w = (uint16_t)((cpu.a ^ 0xFFFF) + 1);
@@ -3326,13 +3327,13 @@ void abi_PlayerCarEvents(void)
         if (!below16(w, 0x0041)) {
             cyc(0);
             if (below16(w, 0x0050))
-                { snd16(0x0016); a1 = 1; }
+                { snd16(0x0016); a1 = 1; pushed = 1; }
             else if (below16(w, 0x005A))
-                snd16(0x0017);
+                { snd16(0x0017); pushed = 1; }
             else if (below16(w, 0x006E))
-                snd16(0x0018);
+                { snd16(0x0018); pushed = 1; }
             else if (below16(w, 0x03E8))
-                snd16(0x0019);
+                { snd16(0x0019); pushed = 1; }
         }
         if (!below16(w, 0x0046)) {
             uint16_t ysave = cpu.y;
@@ -3340,7 +3341,7 @@ void abi_PlayerCarEvents(void)
             x = cpu.x;
             cpu.x = cpu.y;
             cpu.p |= P_M;
-            cyc(186);
+            cyc(pushed ? 178 : 186);
             lda8((uint8_t)(rd8(b | (uint16_t)(0x2025 + cpu.x)) | 0x20));
             cyc(16);
             wr8(b | (uint16_t)(0x2025 + cpu.x), (uint8_t)cpu.a);
@@ -3354,7 +3355,7 @@ void abi_PlayerCarEvents(void)
             cpu.p &= (uint8_t)~P_M;
             cpu.y = ysave;
             cpu.x = x;
-        } else { cyc(a1 ? 18 : 10); }
+        } else { cyc(a1 ? 10 : pushed ? 2 : 10); }
         cyc(72);
     }
     cyc(54);

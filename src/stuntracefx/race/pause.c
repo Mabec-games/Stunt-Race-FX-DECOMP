@@ -97,10 +97,10 @@ static void stage(uint32_t b, uint8_t s)
    ($0D1A, $0D1C) and $0D2D cleared, $0E5B and $0E5F one less. */
 static void pause_resume(uint32_t b)
 {
-    cyc(38);
+    cyc(54);
     lda8_imm(0x16);
     abi_SoundPort1QueuePush();
-    cyc(8);
+    cyc(24);
     wr8(b | 0x0D1A, 0x00);
     cyc(24);
     wr8(b | 0x0D1C, 0x00);
@@ -345,7 +345,7 @@ static void choice_made(uint32_t b, int quit_extra)
         if ((uint8_t)cpu.a)
             { cyc(22); return; } else { cyc(78); }
         abi_Countdown0DF8();
-        cyc(cpu.p & P_X ? 38 : 54);     /* 8-bit X: PHX and PHY in the push push a byte each */
+        cyc(54);
         lda8_imm(0x22);
         abi_SoundPort1QueuePushX8();
         return;
@@ -384,7 +384,9 @@ static void choice_move(uint32_t b, uint16_t pad, int wide, void (*left)(void), 
         if (!presses(b, pad, 0x0200))
             return;
         op_lda16_imm(0x0045);
+        cyc(8);
         abi_SoundPort0QueuePush();
+        cyc(8);
         op_sep(P_M);
         cyc(14);
         dec8_mem(b | 0x0D3D);
@@ -403,9 +405,10 @@ static void choice_move(uint32_t b, uint16_t pad, int wide, void (*left)(void), 
             return;
         op_lda16_imm(0x0045);
     }
+    cyc(wide ? 16 : 8);
     abi_SoundPort0QueuePush();
     op_sep(P_M);
-    cyc(wide ? 30 : 38);                /* the push's pulls at this caller's widths */
+    cyc(46);
     wr8(b | 0x0D3D, 0x00);
     (cyc(46), right());
 }
@@ -660,7 +663,9 @@ static int cursor_move(uint32_t b, uint16_t pad, uint16_t bit, uint8_t to)
         return 0; else { cyc(20); }
     op_sep(P_M);
     lda8_imm(0x45);
+    cyc(16);
     abi_SoundPort0QueuePush();
+    cyc(16);
     lda8_imm(to);
     wr8(b | 0x0D50, to);
     return 1;
@@ -689,23 +694,28 @@ static void quit_menu_take(uint32_t b, uint16_t which, uint8_t d, void (*park)(v
             cyc(16);
             wr8(b | 0x0D23, d);
             park();
-        }
+        } else { cyc(22); }                /* BNE taken */
         cyc(38);
         lda8_imm(0x46);
+        cyc(16);
         abi_SoundPort0QueuePush();
+        cyc(16);
         lda8_imm(0x06);
         wr8(b | 0x0D50, 0x06);
         return;
     } else { cyc(54); }
     if ((uint8_t)cpu.a > 0x04) {
         lda8_imm(0x46);
+        cyc(16);
         abi_SoundPort0QueuePush();
-        cyc(8);
+        cyc(24);
         wr8(b | 0x0D50, 0x00);
         return;
     }
     lda8_imm(0x46);
+    cyc(16);
     abi_SoundPort0QueuePush();
+    cyc(16);
     stage(b, 0x0E);
     lda8_imm(0x01);
     cyc(16);
@@ -747,7 +757,9 @@ static void quit_menu(uint16_t pad, uint16_t which, uint8_t d, void (*park)(void
                 cyc(20);
                 op_sep(P_M);
                 lda8_imm(0x45);
+                cyc(16);
                 abi_SoundPort0QueuePush();
+                cyc(16);
                 lda8_imm(0x00);
                 wr8(b | 0x0D50, 0x00);
             }
@@ -861,10 +873,10 @@ void abi_PauseQuitMenuCursor0(void)
 void abi_PauseQuitMenuBack(void)
 {
     op_sep(P_M);
-    cyc(60);
+    cyc(76);
     lda8_imm(0x46);
     abi_SoundPort0QueuePush();
-    cyc(8);
+    cyc(24);
     wr8((uint32_t)cpu.db << 16 | 0x0D50, 0x00);
     cyc(42);
 }

@@ -481,7 +481,8 @@ static void step_with_sound(uint32_t b, uint16_t at, int d)
     wr8(b | at, v);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x45);
     cpu.p = nz8(cpu.p, 0x45);
-    (cyc(62), abi_SoundPort0QueuePush());
+    (cyc(78), abi_SoundPort0QueuePush());
+    cyc(16);
 }
 
 /*
@@ -514,14 +515,16 @@ void abi_MenuCursorFourWay(void)
             cyc(24);
             wr8(b | 0x0D4C, 0x00);
             cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x45);
-            (cyc(62), abi_SoundPort0QueuePush());
+            (cyc(78), abi_SoundPort0QueuePush());
+            cyc(16);
         } else if (pad_bit(b, 0x0200)) {
             cyc(108);
             wr8(b | 0x0D48, 0x01);
             cyc(24);
             wr8(b | 0x0D4C, 0x00);
             cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x45);
-            (cyc(62), abi_SoundPort0QueuePush());
+            (cyc(78), abi_SoundPort0QueuePush());
+            cyc(16);
         } else { cyc(26); }
     cyc(24);
         } else {
@@ -608,11 +611,11 @@ static void car_step(uint32_t b, uint16_t at, int right, int p2)
     uint8_t v;
     int four = 0;
 
-    op_sep(right ? (cyc(102), P_M | P_X) : (cyc(124), P_M));
+    op_sep(right ? (cyc(118), P_M | P_X) : (cyc(140), P_M));
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x45);
     cpu.p = nz8(cpu.p, 0x45);
     abi_SoundPort0QueuePush();
-    cyc(8);
+    cyc(24);
     v = rd8(b | at);
     if (right) {
         cyc(46);

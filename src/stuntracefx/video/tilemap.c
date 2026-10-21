@@ -1166,6 +1166,7 @@ void abi_TimesKeepAndAdvance(void)
     wr8(b | 0x19D8, 0x02);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x02);
     cpu.p = nz8(cpu.p, 0x02);
+    cyc(42);
 }
 
 /*
@@ -1377,9 +1378,11 @@ void abi_ChampionshipScreenStep(void)
     }
     case 0xD029:
         abi_TimesKeepAndAdvance();
-        break;
+        return;
     default:
         jump_routine(0x070000 | t);
+        if (t == 0xCC83 || t == 0xCC9B || t == 0xCF6F || t == 0xCCBF)
+            return;
         break;
     }
     cyc(42);

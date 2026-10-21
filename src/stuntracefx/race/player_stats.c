@@ -601,9 +601,10 @@ void abi_PlayerOnePhaseRace(void)
             { cyc(42); return; }
         cyc(18);
         wr8(b | 0x0DEA, (uint8_t)cpu.a);
-        cyc(22);
+        cyc(38);
         p1_lda8(0x35);
         abi_SoundPort0QueuePush();
+        cyc(16);
         p1_step8(b | 0x0DF8, 1);
         cyc(16);
         p1_step8(b | 0x0FAE, 1);
@@ -613,10 +614,10 @@ void abi_PlayerOnePhaseRace(void)
     op_sep(P_M);
     p1_lda8(0x02);
     abi_SoundPort0QueuePushRaw();
-    cyc(14);
+    cyc(30);
     p1_lda8(0x15);
     abi_SoundPort0QueuePush();
-    (cyc(30), abi_OamHideForHudMode());
+    (cyc(46), abi_OamHideForHudMode());
     p1_lda8(0x0A);
     wr8(b | 0x0DD6, 0x0A);
     cyc(24);
@@ -787,7 +788,9 @@ void abi_PlayerOnePhaseEnd(void)
         p1_cmp8(0x0A);
         if (cpu.p & P_Z) {
             p1_lda8(0x04);
+            cyc(16);
             abi_SoundPort1QueuePush();
+            cyc(16);
         }
         if (!p1_step8(b | 0x0E58, -1)) {
             p1_lda8(0x01);
@@ -1026,7 +1029,7 @@ void abi_StuntPanelWait(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x02);
     cpu.p = nz8(cpu.p, 0x02);
     abi_SoundPort0QueuePushRaw();
-    (cyc(30), abi_CarFinishSound());
+    (cyc(38), abi_CarFinishSound());
     op_sep(P_M | P_X);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x06);
     cyc(40);
@@ -1202,8 +1205,8 @@ void abi_StuntPhaseRace(void)
         wr8(b | 0x0E5A, 0x80);
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x31);
         cpu.p = nz8(cpu.p, 0x31);
-        (cyc(62), abi_SoundPort0QueuePush());
-        cyc(26);
+        (cyc(78), abi_SoundPort0QueuePush());
+        cyc(42);
         return;
     }
     op_sep(P_M);
@@ -1240,8 +1243,8 @@ void abi_StuntPhaseRace(void)
         (cyc(62), abi_SoundReset());
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x37);
         cpu.p = nz8(cpu.p, 0x37);
-        (cyc(62), abi_SoundPort0QueuePush());
-        cyc(26);
+        (cyc(78), abi_SoundPort0QueuePush());
+        cyc(42);
         return;
     }
     op_sep(P_M | P_X);
@@ -1651,8 +1654,8 @@ void abi_TimeUpPhaseRace(void)
                 wr8(b | 0x0DD6, 0x0C);
                 cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x31);
                 cpu.p = nz8(cpu.p, 0x31);
-                (cyc(62), abi_SoundPort0QueuePush());
-                cyc(26);                /* RTS, less the push's pulls it states */
+                (cyc(78), abi_SoundPort0QueuePush());
+                cyc(42);                /* RTS */
                 return;
             }
         }
@@ -1673,10 +1676,10 @@ void abi_TimeUpPhaseRace(void)
     wr8(b | 0x0E58, 0x30);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x3E);
     cpu.p = nz8(cpu.p, 0x3E);
-    (cyc(62), abi_SoundPort0QueuePush());
+    (cyc(78), abi_SoundPort0QueuePush());
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x55);
     cpu.p = nz8(cpu.p, 0x55);
-    cyc(24);
+    cyc(40);
     wr8(b | 0x0592, 0x55);
     cyc(24);
     wr8(b | 0x0593, 0x55);

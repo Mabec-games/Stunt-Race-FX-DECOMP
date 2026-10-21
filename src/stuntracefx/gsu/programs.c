@@ -1755,10 +1755,10 @@ static uint16_t sbc16(uint16_t a, uint16_t b)
 }
 
 /* The exit of the two routines below: X, Y restored (N, Z from X), M
-   16-bit. */
-static void restore_xy(uint16_t x, uint16_t y)
+   16-bit; `clocks` is the time of their exit code. */
+static void restore_xy(uint16_t x, uint16_t y, unsigned clocks)
 {
-    cyc(98);
+    cyc(clocks);
     cpu.y = y;
     cpu.x = x;
     cpu.p = (uint8_t)(nz16(cpu.p & ~P_M, x));
@@ -1788,7 +1788,7 @@ void ObjectGsu80BCThen81E3(void)
     wr16(0x000002, cpu.a);
     (cyc(62), abi_Gsu81E3Long());
     cyc(62);
-    restore_xy(x, y);
+    restore_xy(x, y, 98);
 }
 
 void abi_ObjectGsu80BCThen81E3(void)
@@ -1823,7 +1823,7 @@ void ObjectGsu81E3(void)
     cyc(16);
     wr16(0x000008, cpu.a);
     (cyc(62), abi_Gsu81E3Long());
-    restore_xy(x, y);
+    restore_xy(x, y, 138);                  /* REP, PLY, PLX, RTL */
 }
 
 void abi_ObjectGsu81E3(void)
@@ -4018,7 +4018,7 @@ void abi_GlyphSpritesSlideIn(void)
             (cyc(40), abi_SoundPort0QueuePushRaw());
             cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x3A);
             cpu.p = nz8(cpu.p, 0x3A);
-            (cyc(78), abi_SoundPort0QueuePush());
+            (cyc(86), abi_SoundPort0QueuePush());
         }
         cyc(24);
         v = (uint8_t)(rd8(b | 0x0E55) - 1);

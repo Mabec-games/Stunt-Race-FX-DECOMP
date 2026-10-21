@@ -344,7 +344,7 @@ void abi_ObjectScoreGate(void)
         wr8(F(0x205A, cpu.y), cyc_then(44, 0x80));
         st8i(F(0x2048, cpu.y), cyc_then(6, 0x00));
         st8i(F(0x200A, cpu.y), cyc_then(6, 0x50));
-    } else { cyc(48); }
+    } else { cyc(26); }
     gate_record();
 }
 
@@ -1569,7 +1569,7 @@ static void drop_frame(void)
     lda8(0x40);
     abi_GsuRecordRaise6A();
     cpu.p |= P_M;
-    cyc(228);
+    cyc(80);
     lda8(0x25);
     abi_SoundPort0QueuePush();
     sx = cpu.x;                                 /* PHX */
@@ -4014,7 +4014,7 @@ static void ball_up_frame(void)
     lda8(0x40);
     abi_GsuRecordRaise6A();
     cpu.p |= P_M;
-    cyc(94);
+    cyc(22);
     sound0(0x25);
     spark_follow(0xB7A8);
     cyc(44);
@@ -6782,7 +6782,6 @@ static void burst_gate_frame(void)
         { cyc(88); return; } else { cyc(18); }
     or8(F(0x2025, cpu.x), 0x01);
     (cyc(62), abi_ObjectBreakableBurst2());
-    cyc(44);
     sound0(0x5A);
     cyc(44);
 }

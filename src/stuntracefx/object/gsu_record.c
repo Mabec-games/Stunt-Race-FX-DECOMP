@@ -891,9 +891,9 @@ uint16_t GsuRecordRaise6A(uint8_t bank, uint16_t rec, uint8_t amount, uint8_t *p
     wr16(GSU_RECORD_ARG, rec);
     cyc(46);
     if (rd16(0x700040 + rec) & 0x0001)
-        return 0x0001;
+        { cyc(148); return 0x0001; }
     cyc(72);
-    return record_amount_go(bank, rd16(GSU_RECORD_ARG), 0xBF51, p);
+    return cyc_then(72, record_amount_go(bank, rd16(GSU_RECORD_ARG), 0xBF51, p));   /* GsuRun's PLB, RTL */
 }
 
 void abi_GsuRecordRaise6A(void)
@@ -2119,7 +2119,7 @@ void abi_ObjectRecordMarkSetup(void)
 
     set_handler08(0xCDA4);
     (cyc(62), abi_ObjectStubZero());
-    abi_GsuRecordNew422();
+    (cyc(62), abi_GsuRecordNew422());
     b = (uint32_t)cpu.db << 16 | (uint16_t)(0x2009 + cpu.x);
     cyc(30);
     v = (uint8_t)(rd8(b) | 0x01);
@@ -2255,7 +2255,7 @@ void abi_ObjectSpinStep(void)
  */
 void abi_ObjectSpinRecord(void)
 {
-    abi_GsuRecordNew424();
+    (cyc(62), abi_GsuRecordNew424());
     (cyc(62), abi_GsuRecordMode2());
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x20);
     cpu.p = nz8(cpu.p, 0x20);

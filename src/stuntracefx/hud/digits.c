@@ -423,7 +423,7 @@ void abi_HudCountMove19EE(void)
     (cyc(100), abi_GsuRecordRaise6A());
     cpu.p |= P_M;
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x7F);
-    (cyc(172), abi_GsuRecordLower82());
+    (cyc(100), abi_GsuRecordLower82());
     (cyc(72), abi_HudCountMove19EECopy());
 }
 
