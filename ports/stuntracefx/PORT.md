@@ -43,32 +43,41 @@ harness these reach the emulated console; here they reach
 
 ### Time
 
-The S-CPU's C keeps the master clock (21.477 MHz): each access takes the
-bus time the hardware gives it (8 clocks for ROM and RAM, 6 for registers,
-12 for the joypads' serial ports) plus a share of the instruction fetches
-and internal cycles around it, which the C does not make
-(`snes_cpu_overhead`, charged once per instruction: the second byte of a
-word follows a bus cycle after the first); a delay loop states its own
-time (`cpu_idle`). The picture is drawn a line at a time as the clock
-passes each line's horizontal blank, after the line's register writes and
-before its HDMA; the timers' IRQ, the vertical blank's NMI flag and the
-joypads' automatic read happen where the hardware puts them. Interrupts
-are taken where the S-CPU's C reads the bus (never between the bytes of
-one word, nor between a read and its write back), running the vector's
-code in bank 0: the stubs the game copies to $0101 (NOPs, a JSL to the
-raster handler's C, RTI) with the frame the interrupt pushes.
+The game's time is its C's. The decomp is cycle exact on all three
+processors, and the port spends exactly the time each processor's C
+states, nothing estimated:
 
-**The timing is being made exact.** The Super FX's is the GSU-1's own
-(`gsu_clock.c`): the C says which of the original's code bytes it stands
-for (`gsu_code`) and the clock prices each fetch as the hardware does (the
-code cache, its line fills, ROM), with the RAM and ROM buffers, MULT and
-FMULT, the pixel caches and the waits for the bus while the S-CPU has it.
-The S-CPU still adds an overhead of 26 clocks to each access it makes
-(`snes_cpu_overhead`, `PORT_CPU_OVERHEAD`) until its C's stated times are
-switched on. `PORT_DEBUG=1` prints each frame's state.
+- **S-CPU** (master clock, 21.477 MHz): each access takes the bus time
+  the hardware gives it (8 clocks for ROM and RAM, 6 for registers, 12
+  for the joypads' serial ports), and between two accesses the clock moves
+  on by what the C states (`cyc`: the original's fetches and internal
+  cycles; `cpu_idle` for a delay loop).
+- **Super FX**: the GSU-1's own clock (`gsu_clock.c`). The C says which of
+  the original's code bytes it stands for (`gsu_code`, `gsu_cyc`), and the
+  clock prices each fetch as the hardware does (the code cache, its line
+  fills, ROM), with the RAM and ROM buffers, MULT and FMULT, the pixel
+  caches and the waits for the bus while the S-CPU has it.
+- **SPC700**: the clock moves on by what the C states (`spc_cyc`: the
+  original's cycles up to and including each access).
+
+Two pieces of console code have no C, and each takes its own
+instructions' cycles, counted as the decomp counts them: the interrupt
+stubs the game copies to $0101 (the interrupt's own sequence, NOPs, a JSL
+to the raster handler's C, which states its RTL, and RTI), and the SPC700's
+boot ROM (`apu.c`'s `ipl`, an instruction at a time). The console's
+own stalls of the S-CPU come from the hardware, not from any code: DMA
+(8 clocks a byte), HDMA in each line's horizontal blank, and the work
+RAM's refresh, 40 clocks a line.
+
+The picture is drawn a line at a time as the clock passes each line's
+horizontal blank, after the line's register writes and before its HDMA;
+the timers' IRQ, the vertical blank's NMI flag and the joypads' automatic
+read happen where the hardware puts them. Interrupts are taken where the
+S-CPU's C reads the bus (never between the bytes of one word, nor between
+a read and its write back). `PORT_DEBUG=1` prints each frame's state.
 
 The Super FX and the SPC700 run their C on coroutines of their own, each
-with its own clock, moved on by their accesses. The S-CPU brings them up to
+with its own clock, moved on by their time. The S-CPU brings them up to
 its time before it touches their registers, RAM or ports and once a line;
 each hands back when it gets there. So a running Super FX program's status,
 RAM and end-of-program interrupt, and the sound CPU's replies, appear when

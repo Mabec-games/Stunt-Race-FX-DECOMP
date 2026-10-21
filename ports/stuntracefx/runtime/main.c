@@ -424,8 +424,6 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "--frames") && i + 1 < argc)
             max_frames = atol(argv[++i]);
     }
-    if (getenv("PORT_CPU_OVERHEAD"))
-        snes_cpu_overhead = (unsigned)atoi(getenv("PORT_CPU_OVERHEAD"));
     host_set_app_name("Stunt Race FX", "Stunt Race FX");
     host_init(argc, argv);
     if (script)

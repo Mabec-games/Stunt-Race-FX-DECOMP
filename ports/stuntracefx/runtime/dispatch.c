@@ -90,13 +90,16 @@ void jump_routine_pushed(uint32_t addr, const uint8_t *pushed, int n)
     r->abi();
 }
 
+/* the clocks the fetch of a code byte at `at` takes */
+static unsigned fetch(uint32_t at) { return snes_access_clocks(at); }
+
 void cpu_loop_forever(uint32_t at)
 {
     (void)at;
     in_interrupt = 0;
     for (;;) {
-        /* BRA to itself: two fetches and an internal cycle */
-        snes_cpu_idle(3);
+        /* BRA to itself: its opcode and operand fetched, an internal cycle */
+        snes_cpu_clocks(fetch(at) + fetch(at + 1) + 6);
         snes_cpu_interrupts();
     }
 }
@@ -132,23 +135,29 @@ static uint8_t pull8(void)
     return rd8((uint16_t)cpu.s);
 }
 
+/* The vector's code (the stubs at $0101) has no C: its time is its
+   instructions', cycle by cycle as the 65816 runs them in native mode. */
 static void take_interrupt(int nmi)
 {
     Regs65816 saved = cpu;
-    uint16_t at = (uint16_t)(snes_peek(nmi ? 0x00FFEA : 0x00FFEE) | snes_peek(nmi ? 0x00FFEB : 0x00FFEF) << 8);
+    uint32_t vector = nmi ? 0x00FFEA : 0x00FFEE;
+    uint16_t at = (uint16_t)(snes_peek(vector) | snes_peek(vector + 1) << 8);
     int steps;
-    /* the frame the interrupt pushes: PB, PC, P; then I set, D clear */
+    /* the interrupt's sequence: two internal cycles; the frame it pushes,
+       PB, PC, P; the vector read; then I set, D clear */
+    snes_cpu_clocks(6 + 6);
     push8((uint8_t)(cpu.pc >> 16));
     push8((uint8_t)(cpu.pc >> 8));
     push8((uint8_t)cpu.pc);
     push8(cpu.p);
+    snes_cpu_clocks(fetch(vector) + fetch(vector + 1));
     cpu.p = (uint8_t)((cpu.p | P_I) & ~P_D);
     cpu.pc = at;
     in_interrupt++;
     for (steps = 0; steps < 64; steps++) {
         uint8_t op = snes_peek(at);
-        if (op == 0xEA) {                     /* NOP */
-            snes_cpu_idle(1);
+        if (op == 0xEA) {                     /* NOP: fetch, internal cycle */
+            snes_cpu_clocks(fetch(at) + 6);
             at++;
         } else if (op == 0x22 || op == 0x5C) {  /* JSL, JML to the handler */
             uint32_t t = snes_peek((uint16_t)(at + 1)) | snes_peek((uint16_t)(at + 2)) << 8 |
@@ -157,8 +166,13 @@ static void take_interrupt(int nmi)
             if (!r)
                 runaway("takes an interrupt to", t);
             if (op == 0x22) {
+                /* JSL: opcode and address fetched, PB pushed, an internal
+                   cycle, the bank fetched, PC pushed; the handler's C
+                   states its RTL */
                 uint16_t ret = (uint16_t)(at + 3);
+                snes_cpu_clocks(fetch(at) + fetch(at + 1) + fetch(at + 2));
                 push8(0x00);
+                snes_cpu_clocks(6 + fetch(at + 3));
                 push8((uint8_t)(ret >> 8));
                 push8((uint8_t)ret);
                 r->abi();
@@ -169,10 +183,14 @@ static void take_interrupt(int nmi)
                 pull8();
                 at = (uint16_t)(at + 4);
             } else {
+                /* JML: opcode and address fetched */
+                snes_cpu_clocks(fetch(at) + fetch(at + 1) + fetch(at + 2) + fetch(at + 3));
                 r->abi();
                 break;
             }
         } else if (op == 0x40) {              /* RTI */
+            /* fetch, two internal cycles, P, PC and PB pulled */
+            snes_cpu_clocks(fetch(at) + 6 + 6);
             pull8();
             pull8();
             pull8();

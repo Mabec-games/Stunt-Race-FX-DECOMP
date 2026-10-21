@@ -11,8 +11,9 @@
  * and the DSP). The processors themselves are the game's C.
  *
  * Time. Each access the S-CPU's C makes takes the time that access takes on
- * the bus, plus a share of the instruction fetches and internal cycles the
- * C does not make (snes_cpu_overhead), in master clocks (21.477 MHz). The
+ * the bus, and between two accesses the clock moves on by the time the C
+ * states (its cyc: the original's fetches and internal cycles), in master
+ * clocks (21.477 MHz). The
  * picture is drawn a line at a time as that clock passes each line's
  * horizontal blank, HDMA runs there, and the interrupts the game asks for
  * are raised when the clock reaches them. The Super FX and the SPC700 run
@@ -59,7 +60,6 @@ uint8_t *snes_sfx_ram(void);
 
 /* ---- time ------------------------------------------------------------------------ */
 extern uint64_t snes_clock;            /* master clocks since power on */
-extern unsigned snes_cpu_overhead;     /* clocks added to each S-CPU access */
 uint32_t snes_frame(void);             /* frames begun since power on */
 unsigned snes_vcounter(void);
 unsigned snes_hcounter(void);          /* dots, 0-339 */
@@ -121,12 +121,9 @@ void snes_fatal(const char *fmt, ...);
    interrupt stubs and such) */
 uint8_t snes_peek(uint32_t addr);
 
-/* The 65816's own bus, for running original code (cpu65816.c): accesses
-   that take only their own time, internal cycles, and the place between
-   two instructions where an interrupt may be taken. */
-uint8_t snes_cpu_read(uint32_t addr);
-void snes_cpu_write(uint32_t addr, uint8_t v);
-void snes_cpu_idle(unsigned cycles);
+/* the clocks one S-CPU access to `addr` takes on the bus */
+unsigned snes_access_clocks(uint32_t addr);
+/* the place between two instructions where an interrupt may be taken */
 void snes_cpu_interrupts(void);
 /* clocks with no access (a delay loop), interrupts taken along the way */
 void snes_cpu_wait(uint32_t clocks);

@@ -10,9 +10,9 @@
  *
  * Each access moves the master clock on by the time the bus takes for it
  * (8 clocks for ROM and RAM on this SlowROM cartridge, 6 for most
- * registers, 12 for the joypads' serial ports) and snes_cpu_overhead more:
- * the opcode and operand fetches and internal cycles around a data access,
- * which the C does not make. Passing a line's horizontal blank draws that
+ * registers, 12 for the joypads' serial ports); the opcode and operand
+ * fetches and internal cycles between two accesses are the time the C
+ * states (cyc: snes_cpu_clocks), the original's own. Passing a line's horizontal blank draws that
  * line and runs HDMA; passing line 225 starts the vertical blank (the NMI
  * flag, the joypads' automatic read, the frame's hook).
  */
@@ -27,7 +27,6 @@ uint8_t rd8(uint32_t addr);
 void wr8(uint32_t addr, uint8_t value);
 
 uint64_t snes_clock;
-unsigned snes_cpu_overhead = 26;   /* measured with the Super FX's cost: superfx.c */
 uint8_t snes_mdr;
 const SnesCart *snes_cart;
 static SnesCart s_cart;
@@ -57,10 +56,14 @@ static uint64_t joy_busy_until;
 static unsigned vline;
 static uint64_t line_start;
 static uint32_t frames;
-static int line_done_hblank;
+static int line_done_hblank, line_done_refresh;
 static uint64_t irq_at, next_event;
 #define NEVER UINT64_MAX
 #define HBLANK_AT 1096                    /* dot 274 */
+/* the work RAM's refresh: the S-CPU stopped for 40 clocks once a line, at
+   dot 134 */
+#define REFRESH_AT 536
+#define REFRESH_CLOCKS 40
 
 /* where an interrupt may not be taken: the read straight after a read of
    the byte before it (the second byte of one word) */
@@ -105,7 +108,8 @@ static void irq_schedule(int written)
 
 static void events_next(void)
 {
-    uint64_t e = line_done_hblank ? line_start + SNES_LINE_CLOCKS : line_start + HBLANK_AT;
+    uint64_t e = !line_done_refresh ? line_start + REFRESH_AT
+               : line_done_hblank ? line_start + SNES_LINE_CLOCKS : line_start + HBLANK_AT;
     next_event = irq_at < e ? irq_at : e;
 }
 
@@ -155,6 +159,11 @@ static void run_events(void)
             irq_at = NEVER;
             continue;
         }
+        if (!line_done_refresh && snes_clock >= line_start + REFRESH_AT) {
+            line_done_refresh = 1;
+            snes_clock += REFRESH_CLOCKS;
+            continue;
+        }
         if (!line_done_hblank && snes_clock >= line_start + HBLANK_AT) {
             line_done_hblank = 1;
             if (vline >= 1 && vline <= 224)
@@ -168,7 +177,7 @@ static void run_events(void)
         if (snes_clock >= line_start + SNES_LINE_CLOCKS) {
             line_start += SNES_LINE_CLOCKS;
             vline = vline + 1 == SNES_LINES ? 0 : vline + 1;
-            line_done_hblank = 0;
+            line_done_hblank = line_done_refresh = 0;
             irq_at = NEVER;
             line_begin();
             continue;
@@ -506,7 +515,7 @@ uint8_t snes_peek(uint32_t addr)
 /* ---- the decomp's bus -------------------------------------------------------------- */
 /* the clocks one access takes: 8 for memory (ROM, RAM), 6 for registers,
    12 for the joypads' serial ports */
-static unsigned access_clocks(uint32_t addr)
+unsigned snes_access_clocks(uint32_t addr)
 {
     uint8_t bank = (uint8_t)(addr >> 16);
     uint16_t off = (uint16_t)addr;
@@ -520,11 +529,8 @@ static unsigned access_clocks(uint32_t addr)
     return 6;
 }
 
-/* The overhead is charged once per instruction: the second byte of a word
-   (the access straight after one of the byte before it, of the same kind)
-   comes a bus cycle after the first, as the CPU makes it. */
-static uint32_t last_write = 0xFFFFFFFFu;
-static int last_was_write;
+/* No interrupt is taken between the two bytes of one word: a read
+   straight after a read of the byte before it. */
 
 uint8_t rd8(uint32_t addr)
 {
@@ -537,9 +543,8 @@ uint8_t rd8(uint32_t addr)
         check_interrupts();
     last_read = addr;
     last_was_read = 1;
-    last_was_write = 0;
     /* the clock first: what the read sees is the machine at its end */
-    snes_tick(access_clocks(addr) + (second ? 0 : snes_cpu_overhead));
+    snes_tick(snes_access_clocks(addr));
     v = bus_read(addr, &cost, 0);
     snes_mdr = v;
     return v;
@@ -548,43 +553,12 @@ uint8_t rd8(uint32_t addr)
 void wr8(uint32_t addr, uint8_t value)
 {
     unsigned cost;
-    int second;
     addr &= 0xFFFFFF;
-    second = last_was_write && addr == ((last_write + 1) & 0xFFFFFF);
     last_was_read = 0;
-    last_was_write = 1;
-    last_write = addr;
-    snes_tick(access_clocks(addr) + (second ? 0 : snes_cpu_overhead));
+    snes_tick(snes_access_clocks(addr));
     snes_mdr = value;
     bus_write(addr, value, &cost, 0);
 }
-
-/* the 65816 interpreter's bus (cpu65816.c): an access takes only its own
-   time (the fetches are real there), and interrupts are taken between its
-   instructions */
-uint8_t snes_cpu_read(uint32_t addr)
-{
-    unsigned cost;
-    uint8_t v;
-    addr &= 0xFFFFFF;
-    snes_tick(access_clocks(addr));
-    v = bus_read(addr, &cost, 0);
-    snes_mdr = v;
-    last_was_read = 0;
-    return v;
-}
-
-void snes_cpu_write(uint32_t addr, uint8_t v)
-{
-    unsigned cost;
-    addr &= 0xFFFFFF;
-    snes_tick(access_clocks(addr));
-    snes_mdr = v;
-    bus_write(addr, v, &cost, 0);
-    last_was_read = 0;
-}
-
-void snes_cpu_idle(unsigned cycles) { snes_tick(cycles * 6); }
 
 /* A stretch with no access (a delay loop): the clock moves on in short
    steps, interrupts taken between them as between the loop's turns */
@@ -619,7 +593,7 @@ void snes_power(const SnesCart *cart)
     vline = 0;
     line_start = 0;
     frames = 0;
-    line_done_hblank = 0;
+    line_done_hblank = line_done_refresh = 0;
     irq_at = NEVER;
     ppu_reset();
     dma_reset();
