@@ -1,7 +1,16 @@
 # Stunt Race FX: byte-exact decompilation
 
-**Complete: 100% of the game's code is decompiled, behaviour exact and byte
-exact.** Started October 11, 2026; completed October 18, 2026.
+**Complete: 100% of the game's code is decompiled, behaviour exact, byte
+exact and cycle exact.** Started October 11, 2026; behaviour and byte exact
+October 18, 2026; cycle exact on all three processors October 20, 2026.
+
+> **Cycle exact, clock for clock, on every processor.** The C does not just
+> compute what the original computes: it takes exactly as long to do it.
+> Across all 325 scripts (161 of gameplay, 164 unit tests that reach debug
+> screens, unused code and rarely taken branches), every interval the C
+> states between two memory accesses matches the original's to the master
+> clock, on the S-CPU (65816), the Super FX (GSU-1) and the SPC700 at once:
+> **0 clocks off, every script identical.** See [Cycle-exact](#cycle-exact).
 
 | | Behaviour exact (M1) | Byte exact (M2) |
 |---|---|---|
@@ -21,6 +30,8 @@ exact.** Started October 11, 2026; completed October 18, 2026.
   identical). Routines that never return (they restart or stop the game)
   are judged by that lockstep run.
 - **The whole ROM rebuilds byte for byte** from the companion assembly.
+- **Every routine is cycle exact.** With all the C in place, all 325 scripts
+  run 0 master clocks off the original on the S-CPU, Super FX and SPC700.
 
 The numbers are from the full gate on the final tree (`python3
 tools/stuntracefx/gate.py --full`, with every script retraced); the
@@ -99,20 +110,41 @@ sources:
 
 ## Cycle-exact
 
-The C doesn't just compute the same results as the original; it takes the
-same time to do it, clock for clock, on all three processors (S-CPU,
-Super FX, sound chip). Each routine states the time its original
-instructions take, and the lockstep run checks that against the original.
+**Done: the whole decompilation is cycle exact on all three processors.**
+This is the third proof, and the hardest. Behaviour exact says the C gives
+the same answers; byte exact says the assembly is the same program. Cycle
+exact says the C *is* the original in time as well: run in place of the
+original code, it spends the same master clocks between every pair of memory
+accesses, on the S-CPU, the Super FX and the SPC700 together.
 
-**Where it stands:** everything normal play runs (all 161 gameplay scripts)
-is exact, 0 clocks off. Code that only the unit-test scripts reach (debug
-screens, unused screens, rarely taken branches) is not finished yet.
+| | Scripts | Clocks off | State |
+|---|---|---|---|
+| Gameplay (attract, Speed, Stunt, Battle Trax, Test Run, menus, seeded random play) | 161 | **0** | identical |
+| Unit tests (debug screens, unused screens and code, rarely taken branches) | 164 | **0** | identical |
+| **All** | **325** | **0** on S-CPU, Super FX and SPC700 | **identical** |
 
-**Why it matters:** on the SNES timing is behaviour. When a frame drops,
-where an interrupt lands, and how the S-CPU and Super FX share memory all
-depend on exactly how long each routine takes. Getting the time exact
-means the game plays the same, not just computes the same, and gives a
-native port the original's pacing to keep or drop on purpose.
+**How it is checked.** Each routine's C states the time its original
+instructions take (`cyc(N)` on the S-CPU; on the Super FX, the code bytes
+the C stands for, derived from the ROM; on the SPC700, its own clocks). The
+lockstep run places every memory access the C makes on the original's
+matching access, and compares the clocks the original spent since the
+access before with the clocks the C stated: any difference, of even one
+master clock, is a failure. Every number comes from the original's
+instructions, never fitted to a measurement. Where one C helper stands for
+code the original reaches several ways, each caller passes its own time.
+The only interval in the whole run not compared is one in `unit_hud_colours`
+that a state load cuts before the original returns: there is no original
+return there to compare with.
+
+**Why it matters.** On the SNES, timing *is* behaviour. When a frame drops,
+where an interrupt lands mid-routine, when the S-CPU waits on the Super FX
+for the shared bus, and when the sound CPU answers a command all depend on
+exactly how long each piece of code takes. A decompilation that is only
+behaviour exact can still play differently: a lag frame in another place, a
+raster effect a line off, a sound a frame late. Cycle exact closes that
+last gap. It is a complete record of how the original *runs*, not only of
+what it computes, and it gives a native port the original's exact pacing to
+keep, or to drop on purpose.
 
 ## Current Status
 
