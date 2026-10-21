@@ -31,25 +31,37 @@ static uint8_t oam[544];
 static uint32_t picture[VID_WIDTH * VID_HEIGHT];
 static uint32_t shown[VID_WIDTH * VID_HEIGHT];
 
-static uint8_t inidisp = 0x80, obsel, bgmode, mosaic, bgsc[4], bgnba[2], m7sel;
-static uint8_t w12sel, w34sel, wobjsel, wh[4], wbglog, wobjlog, tm, ts, tmw, tsw, cgwsel, cgadsub, setini;
-static uint16_t bghofs[4], bgvofs[4];
+/* The screen state a line is drawn from: each line's, as it stood at the
+   line's horizontal blank, is kept for the frame (VidFrame). */
+typedef struct {
+    uint8_t inidisp, obsel, bgmode, mosaic, bgsc[4], bgnba[2], m7sel;
+    uint8_t w12sel, w34sel, wobjsel, wh[4], wbglog, wobjlog, tm, ts, tmw, tsw, cgwsel, cgadsub, setini;
+    uint16_t bghofs[4], bgvofs[4];
+    uint16_t m7hofs, m7vofs;
+    int16_t m7a, m7b, m7c, m7d, m7x, m7y;
+    uint8_t fixed_r, fixed_g, fixed_b;
+    uint16_t oamaddr;
+    uint8_t oam_prio;
+} VidScreen;
+
+static VidScreen cur = { .inidisp = 0x80 };   /* the state as the game sets it */
+static const VidScreen *s = &cur;             /* the state being drawn */
+static VidScreen lines[VID_HEIGHT + 1];         /* this frame's, line by line */
+
+/* the data ports: where the game's writes of tiles, palette and sprites go */
 static uint8_t bgofs_latch, bghofs_latch;
-static uint16_t m7hofs, m7vofs;
 static uint8_t m7_latch;
-static int16_t m7a, m7b, m7c, m7d, m7x, m7y;
 static uint8_t m7b_last;
 static uint8_t vmain;
 static uint16_t vmaddr, vram_prefetch;
 static uint8_t cgaddr, cg_flip, cg_latch;
-static uint16_t oamaddr, oam_at;
-static uint8_t oam_prio, oam_latch;
-static uint8_t fixed_r, fixed_g, fixed_b;
+static uint16_t oam_at;
+static uint8_t oam_latch;
 static uint8_t range_over, time_over;
 static unsigned mosaic_y;
 
 const uint32_t *vid_picture(void) { return shown; }
-int vid_forced_blank(void) { return (inidisp & 0x80) != 0; }
+int vid_forced_blank(void) { return (cur.inidisp & 0x80) != 0; }
 
 void vid_reset(void)
 {
@@ -58,23 +70,23 @@ void vid_reset(void)
     memset(oam, 0, sizeof oam);
     memset(picture, 0, sizeof picture);
     memset(shown, 0, sizeof shown);
-    inidisp = 0x80;
-    obsel = bgmode = mosaic = m7sel = 0;
-    memset(bgsc, 0, sizeof bgsc);
-    memset(bgnba, 0, sizeof bgnba);
-    w12sel = w34sel = wobjsel = wbglog = wobjlog = tm = ts = tmw = tsw = cgwsel = cgadsub = setini = 0;
-    memset(wh, 0, sizeof wh);
-    memset(bghofs, 0, sizeof bghofs);
-    memset(bgvofs, 0, sizeof bgvofs);
+    cur.inidisp = 0x80;
+    cur.obsel = cur.bgmode = cur.mosaic = cur.m7sel = 0;
+    memset(cur.bgsc, 0, sizeof cur.bgsc);
+    memset(cur.bgnba, 0, sizeof cur.bgnba);
+    cur.w12sel = cur.w34sel = cur.wobjsel = cur.wbglog = cur.wobjlog = cur.tm = cur.ts = cur.tmw = cur.tsw = cur.cgwsel = cur.cgadsub = cur.setini = 0;
+    memset(cur.wh, 0, sizeof cur.wh);
+    memset(cur.bghofs, 0, sizeof cur.bghofs);
+    memset(cur.bgvofs, 0, sizeof cur.bgvofs);
     bgofs_latch = bghofs_latch = m7_latch = 0;
-    m7hofs = m7vofs = 0;
-    m7a = m7b = m7c = m7d = m7x = m7y = 0;
+    cur.m7hofs = cur.m7vofs = 0;
+    cur.m7a = cur.m7b = cur.m7c = cur.m7d = cur.m7x = cur.m7y = 0;
     vmain = 0;
     vmaddr = vram_prefetch = 0;
     cgaddr = cg_flip = cg_latch = 0;
-    oamaddr = oam_at = 0;
-    oam_prio = oam_latch = 0;
-    fixed_r = fixed_g = fixed_b = 0;
+    cur.oamaddr = oam_at = 0;
+    cur.oam_prio = oam_latch = 0;
+    cur.fixed_r = cur.fixed_g = cur.fixed_b = 0;
     range_over = time_over = 0;
 }
 
@@ -100,17 +112,17 @@ void vid_reg(uint8_t reg, uint8_t v)
     switch (reg) {
     case 0x00:
         /* forced blank lifted in the vertical blank: OAM's address reloads */
-        inidisp = v;
+        cur.inidisp = v;
         return;
-    case 0x01: obsel = v; return;
+    case 0x01: cur.obsel = v; return;
     case 0x02:
-        oamaddr = (uint16_t)((oamaddr & 0x100) | v);
-        oam_at = (uint16_t)(oamaddr << 1);
+        cur.oamaddr = (uint16_t)((cur.oamaddr & 0x100) | v);
+        oam_at = (uint16_t)(cur.oamaddr << 1);
         return;
     case 0x03:
-        oamaddr = (uint16_t)((oamaddr & 0xFF) | (v & 1) << 8);
-        oam_prio = v & 0x80;
-        oam_at = (uint16_t)(oamaddr << 1);
+        cur.oamaddr = (uint16_t)((cur.oamaddr & 0xFF) | (v & 1) << 8);
+        cur.oam_prio = v & 0x80;
+        oam_at = (uint16_t)(cur.oamaddr << 1);
         return;
     case 0x04: {
         uint16_t a = oam_at & 0x3FF;
@@ -127,28 +139,28 @@ void vid_reg(uint8_t reg, uint8_t v)
         oam_at = (uint16_t)((oam_at + 1) & 0x3FF);
         return;
     }
-    case 0x05: bgmode = v; return;
-    case 0x06: mosaic = v; return;
-    case 0x07: case 0x08: case 0x09: case 0x0A: bgsc[reg - 7] = v; return;
-    case 0x0B: bgnba[0] = v; return;
-    case 0x0C: bgnba[1] = v; return;
+    case 0x05: cur.bgmode = v; return;
+    case 0x06: cur.mosaic = v; return;
+    case 0x07: case 0x08: case 0x09: case 0x0A: cur.bgsc[reg - 7] = v; return;
+    case 0x0B: cur.bgnba[0] = v; return;
+    case 0x0C: cur.bgnba[1] = v; return;
     case 0x0D: case 0x0F: case 0x11: case 0x13: {
         int n = (reg - 0x0D) >> 1;
-        bghofs[n] = (uint16_t)(((v << 8) | (bgofs_latch & ~7) | (bghofs_latch & 7)) & 0x3FF);
+        cur.bghofs[n] = (uint16_t)(((v << 8) | (bgofs_latch & ~7) | (bghofs_latch & 7)) & 0x3FF);
         bgofs_latch = v;
         bghofs_latch = v;
         if (reg == 0x0D) {
-            m7hofs = (uint16_t)(((v << 8) | m7_latch) & 0x1FFF);
+            cur.m7hofs = (uint16_t)(((v << 8) | m7_latch) & 0x1FFF);
             m7_latch = v;
         }
         return;
     }
     case 0x0E: case 0x10: case 0x12: case 0x14: {
         int n = (reg - 0x0E) >> 1;
-        bgvofs[n] = (uint16_t)(((v << 8) | bgofs_latch) & 0x3FF);
+        cur.bgvofs[n] = (uint16_t)(((v << 8) | bgofs_latch) & 0x3FF);
         bgofs_latch = v;
         if (reg == 0x0E) {
-            m7vofs = (uint16_t)(((v << 8) | m7_latch) & 0x1FFF);
+            cur.m7vofs = (uint16_t)(((v << 8) | m7_latch) & 0x1FFF);
             m7_latch = v;
         }
         return;
@@ -176,13 +188,13 @@ void vid_reg(uint8_t reg, uint8_t v)
             vram_step();
         return;
     }
-    case 0x1A: m7sel = v; return;
-    case 0x1B: m7a = (int16_t)(v << 8 | m7_latch); m7_latch = v; return;
-    case 0x1C: m7b = (int16_t)(v << 8 | m7_latch); m7_latch = v; m7b_last = v; return;
-    case 0x1D: m7c = (int16_t)(v << 8 | m7_latch); m7_latch = v; return;
-    case 0x1E: m7d = (int16_t)(v << 8 | m7_latch); m7_latch = v; return;
-    case 0x1F: m7x = (int16_t)(v << 8 | m7_latch); m7_latch = v; return;
-    case 0x20: m7y = (int16_t)(v << 8 | m7_latch); m7_latch = v; return;
+    case 0x1A: cur.m7sel = v; return;
+    case 0x1B: cur.m7a = (int16_t)(v << 8 | m7_latch); m7_latch = v; return;
+    case 0x1C: cur.m7b = (int16_t)(v << 8 | m7_latch); m7_latch = v; m7b_last = v; return;
+    case 0x1D: cur.m7c = (int16_t)(v << 8 | m7_latch); m7_latch = v; return;
+    case 0x1E: cur.m7d = (int16_t)(v << 8 | m7_latch); m7_latch = v; return;
+    case 0x1F: cur.m7x = (int16_t)(v << 8 | m7_latch); m7_latch = v; return;
+    case 0x20: cur.m7y = (int16_t)(v << 8 | m7_latch); m7_latch = v; return;
     case 0x21: cgaddr = v; cg_flip = 0; return;
     case 0x22:
         if (!cg_flip) {
@@ -194,24 +206,24 @@ void vid_reg(uint8_t reg, uint8_t v)
             cg_flip = 0;
         }
         return;
-    case 0x23: w12sel = v; return;
-    case 0x24: w34sel = v; return;
-    case 0x25: wobjsel = v; return;
-    case 0x26: case 0x27: case 0x28: case 0x29: wh[reg - 0x26] = v; return;
-    case 0x2A: wbglog = v; return;
-    case 0x2B: wobjlog = v; return;
-    case 0x2C: tm = v; return;
-    case 0x2D: ts = v; return;
-    case 0x2E: tmw = v; return;
-    case 0x2F: tsw = v; return;
-    case 0x30: cgwsel = v; return;
-    case 0x31: cgadsub = v; return;
+    case 0x23: cur.w12sel = v; return;
+    case 0x24: cur.w34sel = v; return;
+    case 0x25: cur.wobjsel = v; return;
+    case 0x26: case 0x27: case 0x28: case 0x29: cur.wh[reg - 0x26] = v; return;
+    case 0x2A: cur.wbglog = v; return;
+    case 0x2B: cur.wobjlog = v; return;
+    case 0x2C: cur.tm = v; return;
+    case 0x2D: cur.ts = v; return;
+    case 0x2E: cur.tmw = v; return;
+    case 0x2F: cur.tsw = v; return;
+    case 0x30: cur.cgwsel = v; return;
+    case 0x31: cur.cgadsub = v; return;
     case 0x32:
-        if (v & 0x20) fixed_r = v & 0x1F;
-        if (v & 0x40) fixed_g = v & 0x1F;
-        if (v & 0x80) fixed_b = v & 0x1F;
+        if (v & 0x20) cur.fixed_r = v & 0x1F;
+        if (v & 0x40) cur.fixed_g = v & 0x1F;
+        if (v & 0x80) cur.fixed_b = v & 0x1F;
         return;
-    case 0x33: setini = v; return;
+    case 0x33: cur.setini = v; return;
     }
 }
 
@@ -223,8 +235,8 @@ void vid_frame_start(void)
 
 void vid_vblank_start(void)
 {
-    if (!(inidisp & 0x80))
-        oam_at = (uint16_t)(oamaddr << 1);
+    if (!(cur.inidisp & 0x80))
+        oam_at = (uint16_t)(cur.oamaddr << 1);
     memcpy(shown, picture, sizeof shown);
 }
 
@@ -265,7 +277,7 @@ static const uint8_t mode_bpp[8][4] = {
 
 static uint16_t map_entry(int n, unsigned tx, unsigned ty)
 {
-    uint8_t sc = bgsc[n];
+    uint8_t sc = s->bgsc[n];
     uint16_t base = (uint16_t)((sc & 0xFC) << 8);
     uint16_t off = (uint16_t)((ty & 31) << 5 | (tx & 31));
     if ((tx & 32) && (sc & 1))
@@ -290,16 +302,16 @@ static uint8_t tile_pixel(uint16_t ca, unsigned y, unsigned x, unsigned bpp)
 
 static void draw_bg(int n, unsigned line, unsigned mode)
 {
-    unsigned bpp = mode_bpp[mode][n], big = (bgmode >> (4 + n)) & 1;
+    unsigned bpp = mode_bpp[mode][n], big = (s->bgmode >> (4 + n)) & 1;
     unsigned tshift = big ? 4 : 3, x;
-    unsigned msize = (mosaic & (1u << n)) ? ((mosaic >> 4) + 1u) : 1u;
+    unsigned msize = (s->mosaic & (1u << n)) ? ((s->mosaic >> 4) + 1u) : 1u;
     unsigned y = msize > 1 ? mosaic_y : line;
-    uint16_t nba = (uint16_t)(((n < 2 ? bgnba[0] : bgnba[1]) >> ((n & 1) * 4) & 0x0F) << 12);
+    uint16_t nba = (uint16_t)(((n < 2 ? s->bgnba[0] : s->bgnba[1]) >> ((n & 1) * 4) & 0x0F) << 12);
     int opt = mode == 2 || mode == 4 || mode == 6;
     int hires = mode == 5 || mode == 6;
     for (x = 0; x < 256; x++) {
         unsigned sx = msize > 1 ? x - x % msize : x;
-        unsigned hofs = bghofs[n], vofs = bgvofs[n];
+        unsigned hofs = s->bghofs[n], vofs = s->bgvofs[n];
         unsigned xx, yy, tx, ty, px, py, c;
         uint16_t e, ch, ca;
         uint8_t pal;
@@ -308,8 +320,8 @@ static void draw_bg(int n, unsigned line, unsigned mode)
         if (opt && n < 2) {
             unsigned col = (sx + (hofs & 7)) >> 3;
             if (col > 0) {
-                unsigned bx = ((col - 1) * 8 + (bghofs[2] & ~7u)) >> 3;
-                unsigned by = bgvofs[2] >> 3;
+                unsigned bx = ((col - 1) * 8 + (s->bghofs[2] & ~7u)) >> 3;
+                unsigned by = s->bgvofs[2] >> 3;
                 uint16_t hv = map_entry(2, bx, by), vv;
                 if (mode == 4) {
                     if (hv & 0x8000) {
@@ -351,7 +363,7 @@ static void draw_bg(int n, unsigned line, unsigned mode)
         if (!c)
             continue;
         if (bpp == 8)
-            lp[x].color = (cgwsel & 1) ? direct_color((uint8_t)c, pal) : cgram[c];
+            lp[x].color = (s->cgwsel & 1) ? direct_color((uint8_t)c, pal) : cgram[c];
         else if (bpp == 4)
             lp[x].color = cgram[(pal * 16 + c) & 0xFF];
         else
@@ -365,14 +377,14 @@ static int clip10(int v) { return (v & 0x2000) ? (v | ~0x3FF) : (v & 0x3FF); }
 /* Mode 7: BG1 (or BG2, EXTBG, with bit 7 as priority) through the matrix */
 static void draw_m7(int n, unsigned line)
 {
-    int a = m7a, b = m7b, c = m7c, d = m7d;
-    int cx = sext13(m7x), cy = sext13(m7y);
-    int hofs = sext13(m7hofs), vofs = sext13(m7vofs);
-    unsigned msize = (mosaic & (1u << n)) ? ((mosaic >> 4) + 1u) : 1u;
+    int a = s->m7a, b = s->m7b, c = s->m7c, d = s->m7d;
+    int cx = sext13(s->m7x), cy = sext13(s->m7y);
+    int hofs = sext13(s->m7hofs), vofs = sext13(s->m7vofs);
+    unsigned msize = (s->mosaic & (1u << n)) ? ((s->mosaic >> 4) + 1u) : 1u;
     int y = (int)(msize > 1 ? mosaic_y : line);
     int x0, y0, ox, oy, px, py;
     unsigned x;
-    if (m7sel & 2)
+    if (s->m7sel & 2)
         y = 255 - y;
     x0 = clip10(hofs - cx);
     y0 = clip10(vofs - cy);
@@ -382,16 +394,16 @@ static void draw_m7(int n, unsigned line)
         int sx = (int)(msize > 1 ? x - x % msize : x);
         int tx, ty;
         uint8_t tile, pix;
-        if (m7sel & 1)
+        if (s->m7sel & 1)
             sx = 255 - sx;
         px = (ox + a * sx) >> 8;
         py = (oy + c * sx) >> 8;
         if ((px | py) & ~0x3FF) {
-            if ((m7sel & 0xC0) == 0x80) {
+            if ((s->m7sel & 0xC0) == 0x80) {
                 lp[x].opaque = 0;
                 continue;
             }
-            if ((m7sel & 0xC0) == 0xC0)
+            if ((s->m7sel & 0xC0) == 0xC0)
                 tile = 0;
             else
                 tile = (uint8_t)vram[((py >> 3 & 127) << 7 | (px >> 3 & 127)) & 0x7FFF];
@@ -409,7 +421,7 @@ static void draw_m7(int n, unsigned line)
         }
         lp[x].opaque = pix != 0;
         if (pix)
-            lp[x].color = (cgwsel & 1) && n == 0 ? direct_color(pix, 0) : cgram[pix];
+            lp[x].color = (s->cgwsel & 1) && n == 0 ? direct_color(pix, 0) : cgram[pix];
     }
 }
 
@@ -426,13 +438,13 @@ static ObjPx op[256];
 
 static void draw_obj(unsigned line)
 {
-    unsigned first = oam_prio ? (oamaddr >> 1) & 0x7F : 0;
+    unsigned first = s->oam_prio ? (s->oamaddr >> 1) & 0x7F : 0;
     unsigned i, n = 0, tiles = 0, k;
     unsigned list[32];
     unsigned row = (line - 1) & 0xFF;
-    uint16_t base = (uint16_t)((obsel & 7) << 13);
-    uint16_t gap = (uint16_t)((((obsel >> 3) & 3) + 1) << 12);
-    unsigned sz = obsel >> 5;
+    uint16_t base = (uint16_t)((s->obsel & 7) << 13);
+    uint16_t gap = (uint16_t)((((s->obsel >> 3) & 3) + 1) << 12);
+    unsigned sz = s->obsel >> 5;
     memset(op, 0, sizeof op);
     for (i = 0; i < 128; i++) {
         unsigned s = (first + i) & 0x7F;
@@ -532,7 +544,7 @@ static void draw_obj(unsigned line)
 /* ---- windows ---- */
 static uint8_t win_mask(uint8_t sel, uint8_t logic, unsigned x)
 {
-    int w1 = x >= wh[0] && x <= wh[1], w2 = x >= wh[2] && x <= wh[3];
+    int w1 = x >= s->wh[0] && x <= s->wh[1], w2 = x >= s->wh[2] && x <= s->wh[3];
     int e1 = sel & 2, e2 = sel & 8;
     if (!e1 && !e2)
         return 0;
@@ -551,29 +563,29 @@ static uint8_t win_mask(uint8_t sel, uint8_t logic, unsigned x)
 static uint8_t layer_sel(int layer)
 {
     switch (layer) {
-    case 0: return w12sel & 0x0F;
-    case 1: return w12sel >> 4;
-    case 2: return w34sel & 0x0F;
-    case 3: return w34sel >> 4;
-    case 4: return wobjsel & 0x0F;
+    case 0: return s->w12sel & 0x0F;
+    case 1: return s->w12sel >> 4;
+    case 2: return s->w34sel & 0x0F;
+    case 3: return s->w34sel >> 4;
+    case 4: return s->wobjsel & 0x0F;
     }
-    return wobjsel >> 4;
+    return s->wobjsel >> 4;
 }
 
 static uint8_t layer_logic(int layer)
 {
     if (layer < 4)
-        return (uint8_t)(wbglog >> (layer * 2));
+        return (uint8_t)(s->wbglog >> (layer * 2));
     if (layer == 4)
-        return wobjlog;
-    return (uint8_t)(wobjlog >> 2);
+        return s->wobjlog;
+    return (uint8_t)(s->wobjlog >> 2);
 }
 
 /* put a layer's line onto the main and sub screens at its depths */
 static void put_layer(int layer, const uint8_t z[2])
 {
     unsigned x;
-    int on_main = (tm >> layer) & 1, on_sub = (ts >> layer) & 1;
+    int on_main = (s->tm >> layer) & 1, on_sub = (s->ts >> layer) & 1;
     uint8_t sel = layer_sel(layer), logic = layer_logic(layer);
     for (x = 0; x < 256; x++) {
         uint8_t zz;
@@ -583,13 +595,13 @@ static void put_layer(int layer, const uint8_t z[2])
         zz = z[lp[x].prio];
         if (!zz)
             continue;
-        inside = ((tmw | tsw) >> layer & 1) ? win_mask(sel, logic, x) : 0;
-        if (on_main && zz > main_px[x].z && !(inside && (tmw >> layer & 1))) {
+        inside = ((s->tmw | s->tsw) >> layer & 1) ? win_mask(sel, logic, x) : 0;
+        if (on_main && zz > main_px[x].z && !(inside && (s->tmw >> layer & 1))) {
             main_px[x].color = lp[x].color;
             main_px[x].z = zz;
             main_px[x].layer = (uint8_t)layer;
         }
-        if (on_sub && zz > sub_px[x].z && !(inside && (tsw >> layer & 1))) {
+        if (on_sub && zz > sub_px[x].z && !(inside && (s->tsw >> layer & 1))) {
             sub_px[x].color = lp[x].color;
             sub_px[x].z = zz;
             sub_px[x].layer = (uint8_t)layer;
@@ -600,7 +612,7 @@ static void put_layer(int layer, const uint8_t z[2])
 static void put_obj(const uint8_t z[4])
 {
     unsigned x;
-    int on_main = (tm >> 4) & 1, on_sub = (ts >> 4) & 1;
+    int on_main = (s->tm >> 4) & 1, on_sub = (s->ts >> 4) & 1;
     uint8_t sel = layer_sel(4), logic = layer_logic(4);
     for (x = 0; x < 256; x++) {
         uint8_t zz;
@@ -608,13 +620,13 @@ static void put_obj(const uint8_t z[4])
         if (!op[x].opaque)
             continue;
         zz = z[op[x].prio];
-        inside = ((tmw | tsw) >> 4 & 1) ? win_mask(sel, logic, x) : 0;
-        if (on_main && zz > main_px[x].z && !(inside && (tmw >> 4 & 1))) {
+        inside = ((s->tmw | s->tsw) >> 4 & 1) ? win_mask(sel, logic, x) : 0;
+        if (on_main && zz > main_px[x].z && !(inside && (s->tmw >> 4 & 1))) {
             main_px[x].color = op[x].color;
             main_px[x].z = zz;
             main_px[x].layer = op[x].math ? 4 : 6;
         }
-        if (on_sub && zz > sub_px[x].z && !(inside && (tsw >> 4 & 1))) {
+        if (on_sub && zz > sub_px[x].z && !(inside && (s->tsw >> 4 & 1))) {
             sub_px[x].color = op[x].color;
             sub_px[x].z = zz;
             sub_px[x].layer = op[x].math ? 4 : 6;
@@ -634,10 +646,13 @@ static int region(unsigned mode, int inside)
 
 void vid_render_line(unsigned line)
 {
-    uint32_t *out = &picture[(line - 1) * VID_WIDTH];
-    unsigned mode = bgmode & 7, x, n;
-    uint8_t bright = inidisp & 0x0F;
-    uint16_t fixed = (uint16_t)(fixed_r | fixed_g << 5 | fixed_b << 10);
+    uint32_t *out;
+    lines[line] = cur;
+    s = &lines[line];
+    out = &picture[(line - 1) * VID_WIDTH];
+    unsigned mode = s->bgmode & 7, x, n;
+    uint8_t bright = s->inidisp & 0x0F;
+    uint16_t fixed = (uint16_t)(s->fixed_r | s->fixed_g << 5 | s->fixed_b << 10);
     /* the depths of each layer's two priorities and of the sprites' four */
     static const uint8_t z0[4][2] = { { 8, 11 }, { 7, 10 }, { 2, 5 }, { 1, 4 } }, o0[4] = { 3, 6, 9, 12 };
     static const uint8_t z1[3][2] = { { 6, 9 }, { 5, 8 }, { 1, 3 } }, o1[4] = { 2, 4, 7, 10 };
@@ -646,7 +661,7 @@ void vid_render_line(unsigned line)
     static const uint8_t z7[2][2] = { { 3, 3 }, { 1, 5 } }, o7[4] = { 2, 4, 6, 7 };
     if (mosaic_y == 0)
         mosaic_y = 1;
-    if (inidisp & 0x80) {
+    if (s->inidisp & 0x80) {
         memset(out, 0, VID_WIDTH * 4);
         goto mosaic_step;
     }
@@ -659,55 +674,55 @@ void vid_render_line(unsigned line)
         sub_px[x].layer = 5;
     }
     if (mode == 7) {
-        if ((tm | ts) & 1) {
+        if ((s->tm | s->ts) & 1) {
             draw_m7(0, line);
             put_layer(0, z7[0]);
         }
-        if ((setini & 0x40) && ((tm | ts) & 2)) {
+        if ((s->setini & 0x40) && ((s->tm | s->ts) & 2)) {
             draw_m7(1, line);
             put_layer(1, z7[1]);
         }
     } else {
         for (n = 0; n < 4; n++) {
             const uint8_t *z;
-            if (!mode_bpp[mode][n] || !((tm | ts) >> n & 1))
+            if (!mode_bpp[mode][n] || !((s->tm | s->ts) >> n & 1))
                 continue;
             if (mode == 0)
                 z = z0[n];
             else if (mode == 1)
-                z = (bgmode & 0x08) ? z1p[n] : z1[n];
+                z = (s->bgmode & 0x08) ? z1p[n] : z1[n];
             else
                 z = z2[n];
             draw_bg((int)n, line, mode);
             put_layer((int)n, z);
         }
     }
-    if ((tm | ts) & 0x10) {
+    if ((s->tm | s->ts) & 0x10) {
         draw_obj(line);
         put_obj(mode == 0 ? o0 : mode == 1 ? o1 : mode == 7 ? o7 : o2);
     }
     for (x = 0; x < 256; x++) {
-        Pixel *m = &main_px[x], *s = &sub_px[x];
+        Pixel *m = &main_px[x], *sp = &sub_px[x];
         int cw = win_mask(layer_sel(5), layer_logic(5), x);
-        int clip = region(cgwsel >> 6, cw);
-        int prevent = region(cgwsel >> 4, cw);
+        int clip = region(s->cgwsel >> 6, cw);
+        int prevent = region(s->cgwsel >> 4, cw);
         unsigned bit = m->layer == 5 ? 5 : m->layer == 6 ? 8 : m->layer;
         uint16_t c = clip ? 0 : m->color;
         unsigned r = c & 31, g = (c >> 5) & 31, b = (c >> 10) & 31;
-        if (bit < 8 && (cgadsub >> bit & 1) && !prevent) {
+        if (bit < 8 && (s->cgadsub >> bit & 1) && !prevent) {
             uint16_t o;
-            int halve = (cgadsub & 0x40) != 0 && !clip;
-            if (cgwsel & 2) {
-                if (s->layer == 5) {
+            int halve = (s->cgadsub & 0x40) != 0 && !clip;
+            if (s->cgwsel & 2) {
+                if (sp->layer == 5) {
                     o = fixed;
                     halve = 0;
                 } else {
-                    o = s->color;
+                    o = sp->color;
                 }
             } else {
                 o = fixed;
             }
-            if (cgadsub & 0x80) {
+            if (s->cgadsub & 0x80) {
                 int rr = (int)r - (o & 31), gg = (int)g - ((o >> 5) & 31), bb = (int)b - ((o >> 10) & 31);
                 r = rr < 0 ? 0 : (unsigned)rr;
                 g = gg < 0 ? 0 : (unsigned)gg;
@@ -739,10 +754,10 @@ void vid_render_line(unsigned line)
         out[x] = 0xFF000000u | (r << 3 | r >> 2) << 16 | (g << 3 | g >> 2) << 8 | (b << 3 | b >> 2);
     }
 mosaic_step:
-    /* the vertical mosaic: the line the next lines repeat moves on every
+    /* the vertical s->mosaic: the line the next lines repeat moves on every
        `size` lines */
     {
-        unsigned msize = (mosaic >> 4) + 1u;
+        unsigned msize = (s->mosaic >> 4) + 1u;
         if (msize > 1 && (line % msize) == 0)
             mosaic_y = line + 1;
         else if (msize == 1)
