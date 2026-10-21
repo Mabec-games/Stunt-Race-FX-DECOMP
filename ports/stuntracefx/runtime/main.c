@@ -504,8 +504,19 @@ static void frame(void)
     }
 }
 
+/* PORT_VIDCHECK=1: the frames drawn from their records against the
+   picture drawn a line at a time (video.c), at exit */
+extern unsigned long vid_check_frames, vid_check_bad, vid_version_overflow;
+static void vidcheck_report(void)
+{
+    if (getenv("PORT_VIDCHECK"))
+        fprintf(stderr, "vidcheck: %lu frames, %lu differ; %lu needed more copies than kept\n", vid_check_frames,
+                vid_check_bad, vid_version_overflow);
+}
+
 int main(int argc, char **argv)
 {
+    atexit(vidcheck_report);
     static SnesCart cart;
     const char *script = NULL;
     int i;

@@ -21,6 +21,7 @@
  *                the colour window's clip and prevent regions
  *   brightness   and forced blank
  */
+#include <stdlib.h>
 #include <string.h>
 
 #include "video.h"
@@ -31,22 +32,17 @@ static uint8_t oam[544];
 static uint32_t picture[VID_WIDTH * VID_HEIGHT];
 static uint32_t shown[VID_WIDTH * VID_HEIGHT];
 
-/* The screen state a line is drawn from: each line's, as it stood at the
-   line's horizontal blank, is kept for the frame (VidFrame). */
-typedef struct {
-    uint8_t inidisp, obsel, bgmode, mosaic, bgsc[4], bgnba[2], m7sel;
-    uint8_t w12sel, w34sel, wobjsel, wh[4], wbglog, wobjlog, tm, ts, tmw, tsw, cgwsel, cgadsub, setini;
-    uint16_t bghofs[4], bgvofs[4];
-    uint16_t m7hofs, m7vofs;
-    int16_t m7a, m7b, m7c, m7d, m7x, m7y;
-    uint8_t fixed_r, fixed_g, fixed_b;
-    uint16_t oamaddr;
-    uint8_t oam_prio;
-} VidScreen;
 
 static VidScreen cur = { .inidisp = 0x80 };   /* the state as the game sets it */
 static const VidScreen *s = &cur;             /* the state being drawn */
-static VidScreen lines[VID_HEIGHT + 1];         /* this frame's, line by line */
+/* the frames' records: one being made, the last finished */
+static VidFrame frames[2];
+static VidFrame *making = &frames[0], *finished = &frames[1];
+static int dirty = 1;                           /* the tiles or sprites changed since the last copy */
+unsigned long vid_version_overflow;             /* frames that needed more copies than VID_VERSIONS */
+/* what the drawing reads: the live memory, or a record's */
+static const uint16_t *d_vram = vram, *d_cgram = cgram;
+static const uint8_t *d_oam = oam;
 
 /* the data ports: where the game's writes of tiles, palette and sprites go */
 static uint8_t bgofs_latch, bghofs_latch;
@@ -125,6 +121,7 @@ void vid_reg(uint8_t reg, uint8_t v)
         oam_at = (uint16_t)(cur.oamaddr << 1);
         return;
     case 0x04: {
+        dirty = 1;
         uint16_t a = oam_at & 0x3FF;
         if (a < 0x200) {
             if (!(a & 1))
@@ -176,6 +173,7 @@ void vid_reg(uint8_t reg, uint8_t v)
         return;
     case 0x18: {
         uint16_t a = vram_remap(vmaddr) & 0x7FFF;
+        dirty = 1;
         vram[a] = (uint16_t)((vram[a] & 0xFF00) | v);
         if (!(vmain & 0x80))
             vram_step();
@@ -183,6 +181,7 @@ void vid_reg(uint8_t reg, uint8_t v)
     }
     case 0x19: {
         uint16_t a = vram_remap(vmaddr) & 0x7FFF;
+        dirty = 1;
         vram[a] = (uint16_t)((vram[a] & 0x00FF) | v << 8);
         if (vmain & 0x80)
             vram_step();
@@ -233,8 +232,28 @@ void vid_frame_start(void)
     range_over = time_over = 0;
 }
 
+/* PORT_VIDCHECK=1: each finished frame drawn again from its record and
+   compared with the picture drawn a line at a time */
+unsigned long vid_check_frames, vid_check_bad;
+static uint32_t check_pic[VID_WIDTH * VID_HEIGHT];
+
 void vid_vblank_start(void)
 {
+    static int check = -1;
+    VidFrame *t = finished;
+    finished = making;
+    making = t;
+    if (check < 0)
+        check = getenv("PORT_VIDCHECK") != NULL;
+    if (check) {
+        uint8_t ro = range_over, to = time_over;
+        vid_draw_frame(finished, check_pic);
+        range_over = ro;
+        time_over = to;
+        vid_check_frames++;
+        if (memcmp(check_pic, picture, sizeof picture))
+            vid_check_bad++;
+    }
     if (!(cur.inidisp & 0x80))
         oam_at = (uint16_t)(cur.oamaddr << 1);
     memcpy(shown, picture, sizeof shown);
@@ -284,7 +303,7 @@ static uint16_t map_entry(int n, unsigned tx, unsigned ty)
         off += 0x400;
     if ((ty & 32) && (sc & 2))
         off += (sc & 1) ? 0x800 : 0x400;
-    return vram[(base + off) & 0x7FFF];
+    return d_vram[(base + off) & 0x7FFF];
 }
 
 /* one pixel's colour index (0 transparent) from a tile row: char address
@@ -293,7 +312,7 @@ static uint8_t tile_pixel(uint16_t ca, unsigned y, unsigned x, unsigned bpp)
 {
     unsigned bit = 7 - x, c = 0, p;
     for (p = 0; p < bpp; p += 2) {
-        uint16_t w = vram[(ca + p * 4 + y) & 0x7FFF];
+        uint16_t w = d_vram[(ca + p * 4 + y) & 0x7FFF];
         c |= ((w >> bit) & 1u) << p;
         c |= ((w >> (bit + 8)) & 1u) << (p + 1);
     }
@@ -363,11 +382,11 @@ static void draw_bg(int n, unsigned line, unsigned mode)
         if (!c)
             continue;
         if (bpp == 8)
-            lp[x].color = (s->cgwsel & 1) ? direct_color((uint8_t)c, pal) : cgram[c];
+            lp[x].color = (s->cgwsel & 1) ? direct_color((uint8_t)c, pal) : d_cgram[c];
         else if (bpp == 4)
-            lp[x].color = cgram[(pal * 16 + c) & 0xFF];
+            lp[x].color = d_cgram[(pal * 16 + c) & 0xFF];
         else
-            lp[x].color = cgram[((mode == 0 ? n * 32 : 0) + pal * 4 + c) & 0xFF];
+            lp[x].color = d_cgram[((mode == 0 ? n * 32 : 0) + pal * 4 + c) & 0xFF];
     }
 }
 
@@ -406,13 +425,13 @@ static void draw_m7(int n, unsigned line)
             if ((s->m7sel & 0xC0) == 0xC0)
                 tile = 0;
             else
-                tile = (uint8_t)vram[((py >> 3 & 127) << 7 | (px >> 3 & 127)) & 0x7FFF];
+                tile = (uint8_t)d_vram[((py >> 3 & 127) << 7 | (px >> 3 & 127)) & 0x7FFF];
         } else {
-            tile = (uint8_t)vram[((py >> 3) << 7 | (px >> 3)) & 0x7FFF];
+            tile = (uint8_t)d_vram[((py >> 3) << 7 | (px >> 3)) & 0x7FFF];
         }
         tx = px & 7;
         ty = py & 7;
-        pix = (uint8_t)(vram[(tile * 64 + ty * 8 + tx) & 0x7FFF] >> 8);
+        pix = (uint8_t)(d_vram[(tile * 64 + ty * 8 + tx) & 0x7FFF] >> 8);
         if (n == 1) {
             lp[x].prio = pix >> 7;
             pix &= 0x7F;
@@ -421,7 +440,7 @@ static void draw_m7(int n, unsigned line)
         }
         lp[x].opaque = pix != 0;
         if (pix)
-            lp[x].color = (s->cgwsel & 1) && n == 0 ? direct_color(pix, 0) : cgram[pix];
+            lp[x].color = (s->cgwsel & 1) && n == 0 ? direct_color(pix, 0) : d_cgram[pix];
     }
 }
 
@@ -448,10 +467,10 @@ static void draw_obj(unsigned line)
     memset(op, 0, sizeof op);
     for (i = 0; i < 128; i++) {
         unsigned s = (first + i) & 0x7F;
-        uint8_t hi = (uint8_t)(oam[0x200 + (s >> 2)] >> ((s & 3) * 2));
+        uint8_t hi = (uint8_t)(d_oam[0x200 + (s >> 2)] >> ((s & 3) * 2));
         unsigned big = (hi >> 1) & 1, h = obj_h[sz][big], w = obj_w[sz][big];
-        int x = oam[s * 4] | ((hi & 1) << 8);
-        unsigned y = oam[s * 4 + 1];
+        int x = d_oam[s * 4] | ((hi & 1) << 8);
+        unsigned y = d_oam[s * 4 + 1];
         if (x >= 256)
             x -= 512;
         if (((row - y) & 0xFF) >= h)
@@ -472,9 +491,9 @@ static void draw_obj(unsigned line)
             keep[k] = 0;
         for (k = n; k-- > 0;) {
             unsigned s = list[k];
-            uint8_t hi = (uint8_t)(oam[0x200 + (s >> 2)] >> ((s & 3) * 2));
+            uint8_t hi = (uint8_t)(d_oam[0x200 + (s >> 2)] >> ((s & 3) * 2));
             unsigned big = (hi >> 1) & 1, w = obj_w[sz][big];
-            int x = oam[s * 4] | ((hi & 1) << 8);
+            int x = d_oam[s * 4] | ((hi & 1) << 8);
             unsigned c, cols = w >> 3, on = 0;
             if (x >= 256)
                 x -= 512;
@@ -496,12 +515,12 @@ static void draw_obj(unsigned line)
         }
         for (k = n; k-- > 0;) {
             unsigned s = list[k];
-            uint8_t hi = (uint8_t)(oam[0x200 + (s >> 2)] >> ((s & 3) * 2));
+            uint8_t hi = (uint8_t)(d_oam[0x200 + (s >> 2)] >> ((s & 3) * 2));
             unsigned big = (hi >> 1) & 1, h = obj_h[sz][big], w = obj_w[sz][big];
-            int x = oam[s * 4] | ((hi & 1) << 8);
-            unsigned y = oam[s * 4 + 1];
-            uint16_t name = (uint16_t)(oam[s * 4 + 2] | (oam[s * 4 + 3] & 1) << 8);
-            uint8_t attr = oam[s * 4 + 3];
+            int x = d_oam[s * 4] | ((hi & 1) << 8);
+            unsigned y = d_oam[s * 4 + 1];
+            uint16_t name = (uint16_t)(d_oam[s * 4 + 2] | (d_oam[s * 4 + 3] & 1) << 8);
+            uint8_t attr = d_oam[s * 4 + 3];
             unsigned pal = (attr >> 1) & 7, prio = (attr >> 4) & 3;
             unsigned r = (row - y) & 0xFF, c, cols = w >> 3, drawn = 0;
             if (keep[k] < 0)
@@ -533,7 +552,7 @@ static void draw_obj(unsigned line)
                         continue;
                     op[sx].opaque = 1;
                     op[sx].prio = (uint8_t)prio;
-                    op[sx].color = cgram[128 + pal * 16 + ci];
+                    op[sx].color = d_cgram[128 + pal * 16 + ci];
                     op[sx].math = pal >= 4;
                 }
             }
@@ -644,12 +663,61 @@ static int region(unsigned mode, int inside)
     return 1;
 }
 
+/* this line into the frame's record: its screen state and palette, and
+   which copy of the tiles and sprites it shows (a new copy when they have
+   changed since the last line shown; the game changes them only while
+   the screen is blanked) */
+static void record_line(unsigned line)
+{
+    if (line == 1) {
+        making->versions = 0;
+        dirty = 1;
+    }
+    if (dirty && (making->versions == 0 || !(cur.inidisp & 0x80))) {
+        if (making->versions < VID_VERSIONS) {
+            memcpy(making->vram[making->versions], vram, sizeof vram);
+            memcpy(making->oam[making->versions], oam, sizeof oam);
+            making->versions++;
+        } else {
+            vid_version_overflow++;
+        }
+        dirty = 0;
+    }
+    making->line[line] = cur;
+    memcpy(making->palette[line], cgram, sizeof cgram);
+    making->version[line] = (uint8_t)(making->versions - 1);
+}
+
+static void draw_line(unsigned line, uint32_t *out);
+
 void vid_render_line(unsigned line)
 {
-    uint32_t *out;
-    lines[line] = cur;
-    s = &lines[line];
-    out = &picture[(line - 1) * VID_WIDTH];
+    record_line(line);
+    s = &making->line[line];
+    d_vram = vram;
+    d_cgram = cgram;
+    d_oam = oam;
+    draw_line(line, &picture[(line - 1) * VID_WIDTH]);
+}
+
+void vid_draw_frame(const VidFrame *f, uint32_t *out)
+{
+    unsigned line, keep = mosaic_y;
+    mosaic_y = 1;
+    for (line = 1; line <= VID_HEIGHT; line++) {
+        s = &f->line[line];
+        d_vram = f->vram[f->version[line]];
+        d_cgram = f->palette[line];
+        d_oam = f->oam[f->version[line]];
+        draw_line(line, out + (line - 1) * VID_WIDTH);
+    }
+    mosaic_y = keep;
+}
+
+const VidFrame *vid_frame(void) { return finished; }
+
+static void draw_line(unsigned line, uint32_t *out)
+{
     unsigned mode = s->bgmode & 7, x, n;
     uint8_t bright = s->inidisp & 0x0F;
     uint16_t fixed = (uint16_t)(s->fixed_r | s->fixed_g << 5 | s->fixed_b << 10);
@@ -666,7 +734,7 @@ void vid_render_line(unsigned line)
         goto mosaic_step;
     }
     for (x = 0; x < 256; x++) {
-        main_px[x].color = cgram[0];
+        main_px[x].color = d_cgram[0];
         main_px[x].z = 0;
         main_px[x].layer = 5;
         sub_px[x].color = fixed;
