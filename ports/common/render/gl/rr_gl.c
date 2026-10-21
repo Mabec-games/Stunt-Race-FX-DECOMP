@@ -19,6 +19,7 @@
 #include "rr_size.h"
 #include "host.h"
 #include "compose_src.h"
+#include "fill_src.h"
 
 /* the host's window for GL (the Windows host's HWND), its size in pixels;
    without one, offscreen */
@@ -64,6 +65,9 @@ static GLuint s_copy, s_sharp, s_vao, s_vbo, s_fbo, s_col, s_pic;
 /* the compositor: its program, the record's textures (units 0-3), the
    composed picture and its framebuffer */
 static GLuint s_compose, s_crec[4], s_cpic, s_cfbo;
+/* the 3D canvas: its program, the ROM (unit 0), the canvas and its
+   framebuffer, the spans' vertex array and buffer */
+static GLuint s_fill, s_rom, s_canvas, s_canvas_fbo, s_span_vao, s_span_vbo;
 static int s_pw, s_ph;
 static int s_rw, s_rh, s_window;
 
@@ -278,24 +282,86 @@ void rr_compose(const RrPicture *p, const int d[4])
     draw(s_cpic, 256, 224, d);
 }
 
-/* the 3D canvas (not yet on this backend) */
+/* the 3D canvas: the spans as instances (two integer vec4s each), the
+   canvas row 0 the framebuffer's first row */
 int rr_fill_rom(const uint8_t *rom, uint32_t size)
 {
-    (void)rom;
-    (void)size;
-    return 0;
+    if (size < 1024 || size % 1024)
+        return 0;
+    if (!s_fill) {
+        GLuint u;
+        s_fill = program(k_fill_gl_vert, k_fill_gl_frag);
+        if (!s_fill)
+            return 0;
+        glUseProgram(s_fill);
+        glUniform1i(glGetUniformLocation(s_fill, "t_rom"), 0);
+        glGenTextures(1, &s_canvas);
+        glBindTexture(GL_TEXTURE_2D, s_canvas);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_R16UI, 256, 256, 0, GL_RED_INTEGER, GL_UNSIGNED_SHORT, NULL);
+        glGenFramebuffers(1, &s_canvas_fbo);
+        glBindFramebuffer(GL_FRAMEBUFFER, s_canvas_fbo);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, s_canvas, 0);
+        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+            fprintf(stderr, "rr: gl: the 3D canvas is not complete\n");
+            return 0;
+        }
+        glBindFramebuffer(GL_FRAMEBUFFER, s_fbo);
+        glGenVertexArrays(1, &s_span_vao);
+        glBindVertexArray(s_span_vao);
+        glGenBuffers(1, &s_span_vbo);
+        glBindBuffer(GL_ARRAY_BUFFER, s_span_vbo);
+        for (u = 0; u < 2; u++) {
+            glVertexAttribIPointer(u, 4, GL_UNSIGNED_INT, RR_SPAN_WORDS * 4, (const void *)(size_t)(u * 16));
+            glVertexAttribDivisor(u, 1);
+            glEnableVertexAttribArray(u);
+        }
+        glBindVertexArray(s_vao);
+        glGenTextures(1, &s_rom);
+    }
+    glBindTexture(GL_TEXTURE_2D, s_rom);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, 1024, (GLsizei)(size / 1024), 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, rom);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+    return 1;
 }
 
 void rr_fill(const uint32_t *spans, int n)
 {
-    (void)spans;
-    (void)n;
+    static const GLuint zero[4] = { 0, 0, 0, 0 };
+    size_t bytes = (size_t)n * RR_SPAN_WORDS * 4;
+    if (!s_fill)
+        return;
+    glBindFramebuffer(GL_FRAMEBUFFER, s_canvas_fbo);
+    glViewport(0, 0, 256, 256);
+    glClearBufferuiv(GL_COLOR, 0, zero);
+    if (n > 0) {
+        glBindVertexArray(s_span_vao);
+        glBindBuffer(GL_ARRAY_BUFFER, s_span_vbo);
+        glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)bytes, spans, GL_STREAM_DRAW);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, s_rom);
+        glUseProgram(s_fill);
+        glDrawArraysInstanced(GL_TRIANGLES, 0, 12, n);
+        glBindVertexArray(s_vao);
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, s_fbo);
+    glViewport(0, 0, s_rw, s_rh);
 }
 
 int rr_fill_read(uint16_t *canvas)
 {
-    (void)canvas;
-    return 0;
+    if (!s_fill)
+        return 0;
+    glBindFramebuffer(GL_FRAMEBUFFER, s_canvas_fbo);
+    glPixelStorei(GL_PACK_ALIGNMENT, 2);
+    glReadPixels(0, 0, 256, 256, GL_RED_INTEGER, GL_UNSIGNED_SHORT, canvas);
+    glPixelStorei(GL_PACK_ALIGNMENT, 4);
+    glBindFramebuffer(GL_FRAMEBUFFER, s_fbo);
+    return 1;
 }
 
 void rr_present(void)

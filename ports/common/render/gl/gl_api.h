@@ -54,6 +54,7 @@ typedef ptrdiff_t GLsizeiptr, GLintptr;
 #define GL_UNSIGNED_BYTE 0x1401
 #define GL_UNSIGNED_SHORT 0x1403
 #define GL_UNSIGNED_INT 0x1405
+#define GL_COLOR 0x1800
 #define GL_FLOAT 0x1406
 #define GL_RED 0x1903
 #define GL_RGBA 0x1908
@@ -164,7 +165,11 @@ typedef ptrdiff_t GLsizeiptr, GLintptr;
     X(void, glBindFramebuffer, (GLenum, GLuint)) \
     X(void, glFramebufferTexture2D, (GLenum, GLenum, GLenum, GLuint, GLint)) \
     X(GLenum, glCheckFramebufferStatus, (GLenum)) \
-    X(void, glBlitFramebuffer, (GLint, GLint, GLint, GLint, GLint, GLint, GLint, GLint, GLbitfield, GLenum))
+    X(void, glBlitFramebuffer, (GLint, GLint, GLint, GLint, GLint, GLint, GLint, GLint, GLbitfield, GLenum)) \
+    X(void, glVertexAttribIPointer, (GLuint, GLint, GLenum, GLsizei, const void *)) \
+    X(void, glVertexAttribDivisor, (GLuint, GLuint)) \
+    X(void, glDrawArraysInstanced, (GLenum, GLint, GLsizei, GLsizei)) \
+    X(void, glClearBufferuiv, (GLenum, GLint, const GLuint *))
 
 #define GL_DECL(ret, name, args) typedef ret (GLAPIENTRY *PFN_##name) args; extern PFN_##name name##_p;
 GL_FUNCS(GL_DECL)
@@ -217,6 +222,10 @@ GL_FUNCS(GL_DECL)
 #define glFramebufferTexture2D glFramebufferTexture2D_p
 #define glCheckFramebufferStatus glCheckFramebufferStatus_p
 #define glBlitFramebuffer glBlitFramebuffer_p
+#define glVertexAttribIPointer glVertexAttribIPointer_p
+#define glVertexAttribDivisor glVertexAttribDivisor_p
+#define glDrawArraysInstanced glDrawArraysInstanced_p
+#define glClearBufferuiv glClearBufferuiv_p
 
 /* ---- the context (gl_ctx.c, built with the system's own headers) ---------------------- */
 /* a 3.3 core context current on this thread: on the window (an HWND on Windows) when win is
