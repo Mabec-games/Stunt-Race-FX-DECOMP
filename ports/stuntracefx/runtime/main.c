@@ -13,8 +13,9 @@
  *                                    N frames with no input
  *
  * Time is the console's: a frame each 1/60.0988 s against the wall clock,
- * the sound drained at the DSP's rate (32,040 Hz) and resampled to the
- * device's, the rate trimmed by up to 0.5% to keep 50 ms buffered.
+ * the sound drained at the mixer's rate (32,040 Hz) and resampled to the
+ * device's (windowed sinc), the rate trimmed by up to 0.5% to keep 50 ms
+ * buffered.
  *
  * Controls (a game controller in port 1 and 2; the keyboard is port 1):
  *   SNES    keyboard          controller
@@ -37,6 +38,7 @@
 #include "video.h"
 #include "rr.h"
 #include "rr_size.h"
+#include "resample.h"
 #include "dispatch.h"
 
 /* the ROM, built in (romdata.S: the builder's own ROM) */
@@ -327,49 +329,26 @@ static uint16_t pad_buttons(int index)
     return b;
 }
 
-/* ---- sound: the DSP's 32,040 Hz to the device's rate ---- */
+/* ---- sound: the mixer's 32,040 Hz to the device's rate ----
+   The windowed-sinc resampler (ports/common/audio/resample.c), its ratio
+   trimmed by up to 0.5% to keep 50 ms of the mixer's output queued. */
 #define OUT_RATE 48000
-static double src_pos;
-static int16_t src_buf[4096 * 2];
-static int src_n, src_at;
+static Resampler *s_rs;
 
 static void audio_cb(float *lr, int frames, void *user)
 {
-    int q = snes_audio_queued(), i;
-    double target = 32040 * 0.05, step;
+    int16_t in[2048 * 2];
+    int got, made, q;
+    double target = 32040 * 0.05, d;
     (void)user;
-    step = 32040.0 / OUT_RATE * (1.0 + 0.005 * ((q - target) / target > 1 ? 1 : (q - target) / target < -1 ? -1 : (q - target) / target));
-    for (i = 0; i < frames; i++) {
-        double f;
-        int16_t *a, *b;
-        while (src_at + 1 >= src_n) {
-            int keep = src_n - src_at, got;
-            if (keep > 0)
-                memmove(src_buf, src_buf + src_at * 2, (size_t)keep * 4);
-            else
-                keep = 0;
-            src_n = keep;
-            src_at = 0;
-            got = snes_audio_take(src_buf + src_n * 2, 4096 - src_n);
-            if (got <= 0)
-                break;
-            src_n += got;
-        }
-        if (src_at + 1 >= src_n) {
-            lr[2 * i] = lr[2 * i + 1] = 0;
-            continue;
-        }
-        f = src_pos;
-        a = src_buf + src_at * 2;
-        b = a + 2;
-        lr[2 * i] = (float)((a[0] + (b[0] - a[0]) * f) / 32768.0);
-        lr[2 * i + 1] = (float)((a[1] + (b[1] - a[1]) * f) / 32768.0);
-        src_pos += step;
-        while (src_pos >= 1.0) {
-            src_pos -= 1.0;
-            src_at++;
-        }
-    }
+    while (resample_queued(s_rs) < 12000 && (got = snes_audio_take(in, 2048)) > 0)
+        resample_push(s_rs, in, got);
+    q = resample_queued(s_rs) + snes_audio_queued();
+    d = (q - target) / target;
+    resample_adjust(s_rs, 0.005 * (d > 1 ? 1 : d < -1 ? -1 : d));
+    made = resample_pull(s_rs, lr, frames);
+    if (made < frames)
+        memset(lr + 2 * made, 0, (size_t)(frames - made) * 2 * sizeof *lr);
 }
 
 /* ---- the pacing record (--pacing FILE) ----
@@ -581,6 +560,7 @@ int main(int argc, char **argv)
             host_message_box("The renderer could not start on this computer.", "Stunt Race FX");
             return 1;
         }
+        s_rs = resample_new(32040, OUT_RATE);
         host_audio_open(OUT_RATE, audio_cb, NULL);
     }
     port_start();
