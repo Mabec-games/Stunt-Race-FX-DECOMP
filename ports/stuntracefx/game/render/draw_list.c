@@ -4,8 +4,7 @@
  * (16-bit values, the slopes from the ROM's reciprocal table, the edges'
  * rounding and clamping), into a canvas of pixels instead of the Super
  * FX's screen. The list is the one the Super FX's 3D code queued (the
- * format is raster.c's): flat polygons and lines here; textured polygons
- * are counted, not drawn yet.
+ * format is raster.c's): flat polygons, lines and textured polygons.
  *
  * The fill copies each polygon's vertices below its entry (so the edge
  * walks can run past the end), so it works on its own copy of the RAM.
@@ -18,6 +17,21 @@
 #define LIST_END    0x005Cu
 #define DRAW_LIST   0x08AAu
 #define RECIPROCALS 0x94A0u      /* bank $00: 1/n words */
+/* the textured fill's words in RAM (raster.c's names) */
+#define LEFT_U      0x0070u
+#define RIGHT_U     0x0072u
+#define LEFT_U_PREV 0x0074u
+#define RIGHT_U_PREV 0x0076u
+#define LEFT_DU     0x0078u
+#define RIGHT_DU    0x007Au
+#define LEFT_V      0x007Cu
+#define RIGHT_V     0x007Eu
+#define LEFT_V_PREV 0x0080u
+#define RIGHT_V_PREV 0x0082u
+#define LEFT_DV     0x0084u
+#define RIGHT_DV    0x0086u
+#define TEX_U_OFF   0x00C0u
+#define TEX_V_OFF   0x00C2u
 
 typedef struct {
     uint8_t *ram;
@@ -25,6 +39,9 @@ typedef struct {
     FxCanvas *c;
     uint8_t colour, options;     /* COLOR and CMODE as the shape sets them */
 } Fill;
+
+static uint16_t rd16(const uint8_t *m, uint16_t a) { return (uint16_t)(m[a] | m[(uint16_t)(a + 1)] << 8); }
+static void wr16(uint8_t *m, uint16_t a, uint16_t v) { m[a] = (uint8_t)v; m[(uint16_t)(a + 1)] = (uint8_t)(v >> 8); }
 
 static uint8_t rom_byte(const FxDrawSource *s, uint8_t bank, uint16_t addr)
 {
@@ -36,6 +53,18 @@ static uint16_t reciprocal(const Fill *f, uint16_t n)
 {
     uint16_t at = (uint16_t)(RECIPROCALS + n + n);
     return (uint16_t)(rom_byte(f->src, 0, at) | rom_byte(f->src, 0, (uint16_t)(at + 1)) << 8);
+}
+
+/* COLOR and GETC: the colour from a byte as the plot options shape it
+   (the source's high nibble into the low one, or the high nibble kept) */
+static void set_colour(Fill *f, uint8_t v)
+{
+    if (f->options & 0x04)
+        f->colour = (uint8_t)((f->colour & 0xF0) | v >> 4);
+    else if (f->options & 0x08)
+        f->colour = (uint8_t)((f->colour & 0xF0) | (v & 0x0F));
+    else
+        f->colour = v;
 }
 
 /* PLOT's rules: colour 0 (its low nibble outside 8 bits, or with the
@@ -255,6 +284,200 @@ static uint16_t line(Fill *f, uint16_t p)
     return (uint16_t)(p + 9);
 }
 
+/* a difference of u or v to a step: its low byte as the high byte of a
+   signed word, times the reciprocal (FMULT), then ROL with FMULT's carry */
+static uint16_t uv_step(uint16_t d, uint16_t recip)
+{
+    uint32_t p = (uint32_t)((int32_t)(int16_t)(uint16_t)((d & 0xFF) << 8) * (int16_t)recip);
+    return (uint16_t)((p >> 16) << 1 | (p >> 15 & 1));
+}
+
+/* one edge's u or v for the row (tex_across): RIGHT += its step, the step
+   across the row from right less left, LEFT += its step; *left_was the
+   left value before its step */
+static uint16_t across(uint8_t *m, uint16_t step_r, uint16_t right, uint16_t left, uint16_t step_l, uint16_t recip,
+                       uint16_t *left_was)
+{
+    uint16_t r = rd16(m, right), l = rd16(m, left), d;
+    uint32_t p;
+    wr16(m, right, (uint16_t)(rd16(m, step_r) + r));
+    p = (uint32_t)((int32_t)(int16_t)(uint16_t)(r - l) * (int16_t)recip);
+    d = (uint16_t)((p >> 16) << 1 | (p >> 15 & 1));
+    wr16(m, left, (uint16_t)(rd16(m, step_l) + l));
+    *left_was = l;
+    return d;
+}
+
+typedef struct {
+    uint16_t x;                 /* 8.8 */
+    uint16_t slope, rows, at;
+} TexEdge;
+
+/* A7D9: the next left edge (the walk forward from at) */
+static int tex_left(Fill *f, TexEdge *e, uint16_t row)
+{
+    uint8_t *m = f->ram;
+    uint16_t from, to, y, recip;
+    e->x = (uint16_t)((uint16_t)(e->x + 0x7F) >> 8);
+    wr16(m, LEFT_U, (uint16_t)(rd16(m, LEFT_U) >> 8));
+    wr16(m, LEFT_V, (uint16_t)(rd16(m, LEFT_V) >> 8));
+    to = e->x;
+    for (;;) {
+        from = to;
+        wr16(m, LEFT_U_PREV, rd16(m, LEFT_U));
+        wr16(m, LEFT_V_PREV, rd16(m, LEFT_V));
+        to = m[e->at];
+        y = m[(uint16_t)(e->at + 2)];
+        wr16(m, LEFT_U, m[(uint16_t)(e->at + 4)]);
+        wr16(m, LEFT_V, m[(uint16_t)(e->at + 6)]);
+        e->at = (uint16_t)(e->at + 8);
+        e->rows = (uint16_t)(y - row);
+        if (e->rows)
+            break;
+    }
+    if (e->rows & 0x8000)
+        return 0;
+    recip = reciprocal(f, e->rows);
+    e->x = (uint16_t)(from << 8);
+    e->slope = slope((uint16_t)(to - from), recip);
+    wr16(m, LEFT_DU, uv_step((uint16_t)(rd16(m, LEFT_U) - rd16(m, LEFT_U_PREV)), recip));
+    wr16(m, LEFT_U, (uint16_t)(rd16(m, LEFT_U_PREV) << 8 | rd16(m, LEFT_U_PREV) >> 8));
+    wr16(m, LEFT_DV, uv_step((uint16_t)(rd16(m, LEFT_V) - rd16(m, LEFT_V_PREV)), recip));
+    wr16(m, LEFT_V, (uint16_t)(rd16(m, LEFT_V_PREV) << 8 | rd16(m, LEFT_V_PREV) >> 8));
+    return 1;
+}
+
+/* A879: the next right edge (the walk back from at) */
+static int tex_right(Fill *f, TexEdge *e, uint16_t row)
+{
+    uint8_t *m = f->ram;
+    uint16_t from, to, y, recip;
+    e->x = (uint16_t)((uint16_t)(e->x + 0x7F) >> 8);
+    wr16(m, RIGHT_U, (uint16_t)(rd16(m, RIGHT_U) >> 8));
+    wr16(m, RIGHT_V, (uint16_t)(rd16(m, RIGHT_V) >> 8));
+    to = e->x;
+    for (;;) {
+        from = to;
+        wr16(m, RIGHT_U_PREV, rd16(m, RIGHT_U));
+        wr16(m, RIGHT_V_PREV, rd16(m, RIGHT_V));
+        wr16(m, RIGHT_V, m[(uint16_t)(e->at - 2)]);
+        wr16(m, RIGHT_U, m[(uint16_t)(e->at - 4)]);
+        y = m[(uint16_t)(e->at - 6)];
+        e->at = (uint16_t)(e->at - 8);
+        to = m[e->at];
+        e->rows = (uint16_t)(y - row);
+        if (e->rows)
+            break;
+    }
+    if (e->rows & 0x8000)
+        return 0;
+    recip = reciprocal(f, e->rows);
+    e->x = (uint16_t)(from << 8);
+    e->slope = slope((uint16_t)(to - from), recip);
+    wr16(m, RIGHT_DU, uv_step((uint16_t)(rd16(m, RIGHT_U) - rd16(m, RIGHT_U_PREV)), recip));
+    wr16(m, RIGHT_U, (uint16_t)(rd16(m, RIGHT_U_PREV) << 8 | rd16(m, RIGHT_U_PREV) >> 8));
+    wr16(m, RIGHT_DV, uv_step((uint16_t)(rd16(m, RIGHT_V) - rd16(m, RIGHT_V_PREV)), recip));
+    wr16(m, RIGHT_V, (uint16_t)(rd16(m, RIGHT_V_PREV) << 8 | rd16(m, RIGHT_V_PREV) >> 8));
+    return 1;
+}
+
+/* A662: a textured polygon of n vertices, its bank byte at p */
+static uint16_t tex_polygon(Fill *f, uint16_t p, int n)
+{
+    uint8_t *m = f->ram;
+    uint8_t bank = m[p];
+    uint16_t word = rd16(m, (uint16_t)(p + 1)), base = rd16(m, (uint16_t)(p + 3)), mask = rd16(m, (uint16_t)(p + 5));
+    uint16_t v = (uint16_t)(p + 7), size = (uint16_t)(8 * n), src = v, dst = (uint16_t)(v - size), top_at = 0;
+    uint16_t ymin = 0x03FF, ymax = 0, row;
+    TexEdge l, r;
+    int i;
+    f->options = 0;
+    set_colour(f, (uint8_t)word);
+    f->options = (uint8_t)((word >> 8) & 0x1F);
+    /* the vertices copied below, u and v of each moved down a byte where
+       they are (and so in the copy) */
+    for (i = 0; i < n; i++) {
+        uint8_t y;
+        m[dst] = m[src];
+        y = m[(uint16_t)(src + 2)];
+        m[(uint16_t)(dst + 2)] = y;
+        if ((int16_t)(uint16_t)(y - ymin) < 0) {
+            ymin = y;
+            top_at = (uint16_t)(dst + 2);
+        }
+        if ((int16_t)(uint16_t)(y - ymax) >= 0)
+            ymax = y;
+        m[(uint16_t)(src + 4)] = m[(uint16_t)(src + 5)];
+        m[(uint16_t)(dst + 4)] = m[(uint16_t)(src + 5)];
+        m[(uint16_t)(src + 6)] = m[(uint16_t)(src + 7)];
+        m[(uint16_t)(dst + 6)] = m[(uint16_t)(src + 7)];
+        src = (uint16_t)(src + 8);
+        dst = (uint16_t)(dst + 8);
+    }
+    if (ymin == ymax)
+        return (uint16_t)(v + size);
+    {
+        uint16_t t = (uint16_t)(top_at - 2), x = m[t];
+        l.x = r.x = (uint16_t)(x << 8);
+        wr16(m, LEFT_U, (uint16_t)(m[(uint16_t)(t + 4)] << 8));
+        wr16(m, RIGHT_U, (uint16_t)(m[(uint16_t)(t + 4)] << 8));
+        wr16(m, LEFT_V, (uint16_t)(m[(uint16_t)(t + 6)] << 8));
+        wr16(m, RIGHT_V, (uint16_t)(m[(uint16_t)(t + 6)] << 8));
+        l.at = (uint16_t)(t + 8);
+        r.at = (uint16_t)(t + size);
+    }
+    l.rows = r.rows = 0;
+    row = ymin;
+    for (;;) {
+        uint16_t count, left_rows, right_rows;   /* count: the shorter edge's rows */
+        if (!l.rows && !tex_left(f, &l, row))
+            break;
+        if (!r.rows && !tex_right(f, &r, row))
+            break;
+        /* A710: the rows while both edges last, the shorter's count */
+        if (!((uint16_t)(l.rows - r.rows) & 0x8000)) {
+            left_rows = (uint16_t)(l.rows - r.rows);
+            right_rows = 0;
+            count = r.rows;
+        } else {
+            right_rows = (uint16_t)(r.rows - l.rows);
+            left_rows = 0;
+            count = l.rows;
+        }
+        /* the row in R2's low byte, the rows left in its high byte */
+        row = (uint16_t)(count << 8 | (row & 0xFF));
+        do {
+            uint8_t xl = (uint8_t)(l.x >> 8), xr = (uint8_t)(r.x >> 8);
+            uint16_t width = (uint16_t)(xr - xl), recip, du, dv, tu, tv, px;
+            if (xr >= xl)
+                width = (uint16_t)(width + 1);
+            else
+                width = 1;
+            recip = reciprocal(f, width);
+            du = across(m, RIGHT_DU, RIGHT_U, LEFT_U, LEFT_DU, recip, &tu);
+            dv = across(m, RIGHT_DV, RIGHT_V, LEFT_V, LEFT_DV, recip, &tv);
+            tu = (uint16_t)(tu + rd16(m, TEX_U_OFF));
+            tv = (uint16_t)(tv + rd16(m, TEX_V_OFF));
+            for (px = xl; width; width--, px++) {
+                uint16_t at = (uint16_t)((((tv & 0xFF00) | tu >> 8) & mask) + base);
+                tv = (uint16_t)(tv + dv);
+                tu = (uint16_t)(tu + du);
+                set_colour(f, rom_byte(f->src, bank, at));
+                plot(f, (uint8_t)px, (uint8_t)row);
+            }
+            l.x = edge_step(l.x, l.slope);
+            r.x = edge_step(r.x, r.slope);
+            row++;
+            row = (uint16_t)(row << 8 | row >> 8);
+            row--;
+            row = (uint16_t)(row << 8 | row >> 8);
+        } while (row >> 8);
+        l.rows = left_rows;
+        r.rows = right_rows;
+    }
+    return (uint16_t)(v + size);
+}
+
 void fx_draw_list(const FxDrawSource *src, FxCanvas *c, int *skipped)
 {
     Fill f;
@@ -280,11 +503,8 @@ void fx_draw_list(const FxDrawSource *src, FxCanvas *c, int *skipped)
                 at = line(&f, at);
             else if (type == 0)
                 break;
-            else {
-                int n = (uint8_t)~type;
-                (*skipped)++;
-                at = (uint16_t)(at + 7 + 8 * n);
-            }
+            else
+                at = tex_polygon(&f, at, (uint8_t)~type);
         }
     }
     free(ram);
