@@ -1,0 +1,100 @@
+# Stunt Race FX native port: plan
+
+The decomp (`src/stuntracefx`) is complete: byte exact at M2 and cycle exact
+on all three processors. The port now stops being a console. Today the
+decomp's C runs on `ports/common/snes`, a model of the console under it
+(bus, PPU, DMA and HDMA, Super FX registers, sound unit, DSP, coroutines).
+This plan replaces every console part with a native component: a 2D
+compositor, a polygon renderer, a sequencer and mixer, a frame loop, input
+and save APIs, on Metal, Direct3D, Vulkan and OpenGL, as in the Boss Rally
+port.
+
+## Decisions
+
+- **The port has its own copy of the game** (`ports/stuntracefx/game`),
+  lifted from the decomp. The decomp stays unchanged as the reference; the
+  copy is checked against the original at every step. This replaces
+  "ports never edit decomp source" with "ports never edit `src/`; the port's
+  copy answers to the oracle".
+- **Graphics backends:** Metal, Direct3D, Vulkan, OpenGL, behind one small
+  interface, as Boss Rally.
+- **Frame pacing as the original.** `RaceFrameStep` feeds the frames since
+  the last game frame (`$0306` to `$06D4`) into the simulation, and that
+  count is set by how long the Super FX takes to draw. The copy keeps a
+  counter of the time its C already states (`gsu_cyc`, the S-CPU's `cyc`)
+  and derives the count from it. A counter, not emulation. An unlocked rate
+  with interpolation can come after parity, on top of it.
+
+## The oracle
+
+bsnes, through sfxbox, is the reference for every phase: state, pixels,
+samples and pacing are checked against it, never guessed. None of its code
+goes into the port. Each gate runs only the scripts that reach the code just
+changed; one full run at the end of a phase.
+
+| gate | compares, per game frame, with sfxbox |
+|---|---|
+| state | the game's variables, object table, Super FX RAM outside the bitmap |
+| pacing | `$0306` / `$06D4` on every frame of every race script |
+| 2D | the composed frame, 256 x 224, pixel for pixel, mid-frame changes included |
+| 3D | the Super FX bitmap, pixel for pixel |
+| voice | the sequencer's per-tick voice events against the DSP register writes |
+| sound | the mixer's exact mode against the DSP's output, sample for sample |
+
+Frame boundaries come from sfxbox's NMI and game-frame points, so "the same
+frame" means the same on both sides.
+
+## Phases
+
+**0. The copy and the gates.** `ports/stuntracefx/game` from `src/`;
+the state and pacing gates against sfxbox, each proven able to fail (a one
+byte logic change must be caught) before it is relied on.
+
+**1. The C as C.** Area by area, state identical throughout:
+- `abi_` wrappers and the `cpu` register file become functions with
+  arguments and results;
+- work-RAM addresses become a typed `struct game` with the `wram.h` names;
+- `call_routine` / `jump_routine` become function tables; `cpu_restart` a
+  state transition;
+- the Super FX and SPC700 register files and RAM the same way;
+- `cyc` goes, but for the pacing counter.
+
+The bulk of the work: every file of the game.
+
+**2. The frame loop.** No interrupts, no coroutines. `main`: game step,
+the vertical blank's work as a call, present. Super FX programs are
+synchronous calls; the waits (Super FX polls, vertical blank, APU
+handshakes) go.
+
+**3. 2D video** (`ports/common/video`, portable C). Tile layers, a
+character and tile store, palettes, a sprite list; per-line parameters in
+place of HDMA (windows, gradients, scroll splits); colour maths as blends.
+DMA to VRAM becomes uploads. Gate: 2D.
+
+**4. 3D.** The render path (`render/polygon.c`, `raster.c`, `bitmap.c`,
+`project.c`) emits a polygon list (screen vertices, colour or dither, the
+order `sort.c` gives) instead of plotting a planar bitmap for DMA.
+(a) A software rasteriser at the original's resolution; gate: 3D.
+(b) The four GPU backends, resolution scaling, sub-pixel vertices.
+
+**5. Sound.** The race and battle drivers become a sequencer on the audio
+thread; the DSP a mixer (BRR decoded to PCM at load, envelopes, pitch,
+noise, echo and FIR); the `$2140` handshake a command API; the APU uploads
+asset loads. Gates: voice, sound. Better interpolation is a mode on top of
+the exact one.
+
+**6. Input, save, assets.** The joypad registers become an input API, the
+battery RAM a save struct; the ROM's data still comes from the player's
+ROM at build time.
+
+**7. Hosts.** `host.h`: surface, audio callback, input, files. macOS and
+Windows, then Linux and iOS. `ports/common/snes` is deleted.
+
+**8. After parity.** Widescreen (the game's view culling widened),
+high-resolution 3D, an unlocked frame rate.
+
+## Method
+
+One area at a time, each verified step committed at once, worked in one
+session unless parallel work is asked for. Every run's time stated before
+it starts.
