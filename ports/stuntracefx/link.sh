@@ -53,9 +53,13 @@ case "$TARGET" in
 esac
 
 OBJS=
+# the newest header: an object older than it is built again
+HDR="$OUT/obj/.headers"
+NEWEST=$(ls -t "$GAME"/include/*.h ports/common/*/*.h ports/stuntracefx/runtime/*.h | head -1)
+[ -f "$HDR" ] && [ ! "$NEWEST" -nt "$HDR" ] || touch -r "$NEWEST" "$HDR"
 compile() {   # source, extra flags
   o="$OUT/obj/$(echo "$1" | sed 's#/#__#g').o"
-  if [ ! -f "$o" ] || [ "$1" -nt "$o" ] || [ ports/stuntracefx/link.sh -nt "$o" ]; then
+  if [ ! -f "$o" ] || [ "$1" -nt "$o" ] || [ ports/stuntracefx/link.sh -nt "$o" ] || [ "$HDR" -nt "$o" ]; then
     $CC $CFLAGS $2 -c "$1" -o "$o"
   fi
   OBJS="$OBJS $o"

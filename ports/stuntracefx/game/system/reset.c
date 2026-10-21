@@ -124,7 +124,7 @@ void abi_SoftResetCheck(void)
     cyc(16);
     ppu_wr(b | INIDISP, 0x80);
     cyc(24);
-    wr8(b | NMITIMEN, 0x00);
+    hw_wr(b | NMITIMEN, 0x00);
     cyc(24);
     mdmaen_wr(b | MDMAEN, 0x00);
     cyc(24);
@@ -260,7 +260,7 @@ void abi_SoftResetApu(void)
     cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x06);
     cpu.p = nz8(cpu.p, 0x06);
-    wr8(APUIO1, 0x06);
+    hw_wr(APUIO1, 0x06);
     cyc(156);
     delay_turns(0x8000);
     cpu.x = 0x0000;

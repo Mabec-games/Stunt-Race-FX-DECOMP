@@ -223,7 +223,7 @@ void VideoStartUploads(uint8_t bank)
     cyc(24);
     rd8(b | 0x1073);
     cyc(54);
-    rd16(GSU_SFR);
+    hw_rd16(GSU_SFR);
     cyc(48);
     wr16(b | 0x0374, 0x0003);
     cyc(40);

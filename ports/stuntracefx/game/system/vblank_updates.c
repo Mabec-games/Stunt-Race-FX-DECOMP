@@ -274,7 +274,7 @@ static uint8_t vblank_end(uint8_t bank)
 
     wr8(dbw(bank, 0x11D7), cyc_then(40, (uint8_t)(rd8(cyc_then(46, dbw(bank, 0x11D7))) & 0xDF)));
     do
-        v = (uint8_t)(rd8(cyc_then(24, dbw(bank, HVBJOY))) & 0x01);
+        v = (uint8_t)(hw_rd(cyc_then(24, dbw(bank, HVBJOY))) & 0x01);
     while (cyc_loop(38, v));
     cyc(104);
     return v;

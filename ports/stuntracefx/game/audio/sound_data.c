@@ -4,6 +4,7 @@
  * unpacked there by Super FX program $01:CF42, then uploaded from there.
  */
 #include "machine.h"
+#include "native.h"
 #include "cpu_ops.h"
 
 uint8_t GsuRun(uint8_t bank, uint16_t start);
@@ -245,7 +246,7 @@ static void port1_5_delay(void)
 {
     cpu.a = 0x0005;
     cyc(100);
-    wr16(0x002141, 0x0005);
+    hw_wr16(0x002141, 0x0005);
     (cyc(134), delay_4000());
 }
 
@@ -347,7 +348,7 @@ void abi_CourseSoundLoad(void)
         delay_4000();
         cpu.a = 0x0005;
         cyc(18);
-        wr16(0x002141, 0x0005);
+        hw_wr16(0x002141, 0x0005);
         cpu.p &= (uint8_t)~P_M;
         delay_4000();
         for (x = 0x0000; x < 0x1518; x = (uint16_t)(x + 2)) {
@@ -372,7 +373,7 @@ void abi_CourseSoundLoad(void)
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x04);
         cpu.p = nz8(cpu.p, 0x04);
         cyc(62);
-        wr8(b | 0x2140, 0x04);
+        hw_wr(b | 0x2140, 0x04);
         op_plp(p0);
         cyc(30);
         return;

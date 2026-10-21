@@ -345,7 +345,7 @@ void abi_MenuScreenOpenPreview(void)
     cyc(24);
     wr8(0x0011DA, 0x00);
     cyc(24);
-    wr8(0x004200, 0x00);
+    hw_wr(0x004200, 0x00);
     cpu.p &= (uint8_t)~(P_M | P_X);
     cyc(46);
     wr16(0x00162D, 0x0000);
@@ -429,9 +429,9 @@ void abi_MenuScreenOpenPreview(void)
     cyc(62);
     wr8(0x000D3F, 0x20);
     cyc(40);
-    wr8(0x004209, 0xE0);
+    hw_wr(0x004209, 0xE0);
     cyc(24);
-    wr8(0x00420A, 0x00);
+    hw_wr(0x00420A, 0x00);
     cyc(40);
     wr8(0x0011D7, 0x0F);
     cyc(70);
@@ -441,7 +441,7 @@ void abi_MenuScreenOpenPreview(void)
     cpu.p |= P_M;
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x21);
     cyc(62);
-    wr8(0x004200, 0x21);
+    hw_wr(0x004200, 0x21);
     (cyc(46), abi_MenuWaitFrame());
     (cyc(46), abi_MenuWaitFrame());
     (cyc(62), abi_MenuActorsRun());
@@ -560,9 +560,9 @@ void abi_MenuScreenOpenPreviewFade(void)
     cyc(40);
     wr8(0x000D3F, 0x20);
     cyc(40);
-    wr8(0x004209, 0xE0);
+    hw_wr(0x004209, 0xE0);
     cyc(24);
-    wr8(0x00420A, 0x00);
+    hw_wr(0x00420A, 0x00);
     cpu.p &= (uint8_t)~(P_M | P_X);
     cyc(84);
     wr16(0x0000FB, 0xE3AC);
@@ -912,7 +912,7 @@ chosen:
     cyc(62);
     wr8(b | 0x0D3F, 0x1C);
     cyc(24);
-    wr8(b | 0x4200, 0x00);
+    hw_wr(b | 0x4200, 0x00);
     cyc(24);
     hdmaen_wr(b | 0x420C, 0x00);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x80);

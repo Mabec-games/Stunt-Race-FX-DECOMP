@@ -2176,7 +2176,7 @@ static void screen_off(void)
     cyc(52);
     ppu_wr(0x002100, 0x80);
     cyc(24);
-    wr8(0x004200, 0x00);
+    hw_wr(0x004200, 0x00);
     cyc(24);
     mdmaen_wr(0x00420B, 0x00);
     cyc(24);
@@ -2190,7 +2190,7 @@ static void apu_command5(void)
     op_rep(P_M | P_X);
     op_lda16_imm(0x0005);
     cyc(26);
-    wr16(0x002141, 0x0005);
+    hw_wr16(0x002141, 0x0005);
     cyc(96);
     delay_turns(0x4000);
     cpu.a = 0x0000;
@@ -2250,7 +2250,7 @@ void abi_SoftResetToBootWarm(void)
     op_sep(P_M);
     lda8_imm(0x01);
     cyc(38);
-    wr8(0x002140, 0x01);
+    hw_wr(0x002140, 0x01);
     cpu.p &= (uint8_t)~P_I;
     cyc(46); /* CLI, JML */
     cpu_restart(0x038BAA, abi_BootWarm);

@@ -100,9 +100,9 @@ uint16_t Records7FFromF170(uint8_t bank)
         { cyc(52); for (k = 0; k < 8; k++)
             { cyc(72); wr8(to[k] + i, rd8(from[k] + i)); } }
     cyc(86);
-    wr8(b | (WMADDH & 0xFFFF), 0x7F);
+    hw_wr(b | (WMADDH & 0xFFFF), 0x7F);
     cyc(70);
-    wr16(b | (WMADDL & 0xFFFF), 0x5187);
+    hw_wr16(b | (WMADDL & 0xFFFF), 0x5187);
     cyc(40);
     dma_wr(b | (DMAP0 & 0xFFFF), 0x00);
     cyc(40);

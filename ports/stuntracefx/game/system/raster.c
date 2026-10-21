@@ -20,7 +20,7 @@ uint8_t WaitHBlank(void)
 
     cyc(0);
     do
-        { cyc(24); v = rd8(HVBJOY); }
+        { cyc(24); v = hw_rd(HVBJOY); }
     while (cyc_loop(38, !(v & 0x40)));
     cyc(74);
     return v;
@@ -51,11 +51,11 @@ void WaitScanline(uint8_t bank)
     wr8(b | 0x06E4, 0x00);
     do {
         cyc(46);
-        rd8(SLHV);
+        hw_rd(SLHV);
         cyc(24);
-        lo = rd8(OPVCT);
+        lo = hw_rd(OPVCT);
         cyc(44);
-        rd8(OPVCT);
+        hw_rd(OPVCT);
     } while (cyc_loop(22, lo != rd8(cyc_then(44, b | 0x06E3))));
     cyc(182);
 }
@@ -264,7 +264,7 @@ static void hblank_inline(void)
     uint8_t v;
 
     do
-        { cyc(24); v = rd8(HVBJOY); }
+        { cyc(24); v = hw_rd(HVBJOY); }
     while (cyc_loop(38, !(v & 0x40)));
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.p = (uint8_t)(nz8(cpu.p, v) & ~P_Z);
@@ -505,7 +505,7 @@ void abi_RasterStage(void)
         put8(VTIMEL, 0x6F);
         put8(HTIMEH, 0x00);
         cyc(24);
-        wr8(VTIMEH, 0x00);
+        hw_wr(VTIMEH, 0x00);
         put8(HTIMEL, 0x10);
         irq_ack();
         put8(b | 0x0D3F, 0x0A);
@@ -725,12 +725,12 @@ static uint16_t time_stamp(void)
     cyc(76);
     wr16(0x001A37, f);
     cyc(54);
-    rd8(0x002137);
+    hw_rd(0x002137);
     cpu.p &= (uint8_t)~P_I;
     cyc(46);
-    lo = rd8(0x00213D);
+    lo = hw_rd(0x00213D);
     cyc(52);
-    hi = rd8(0x00213D);
+    hi = hw_rd(0x00213D);
     v = (uint16_t)(((hi << 8) | lo) & 0x01FF);
     if (!((uint16_t)(v - 0x0100) & 0x8000))
         v = 0x00FF;

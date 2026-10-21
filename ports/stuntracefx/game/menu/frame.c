@@ -241,7 +241,7 @@ static void region_stop(void)
 void MenuRegionCheck(void)
 {
     cyc(178);
-    uint8_t p = cpu.p, db = cpu.db, s = rd8(STAT78) & 0x10;
+    uint8_t p = cpu.p, db = cpu.db, s = hw_rd(STAT78) & 0x10;
 
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | s);
     if (!s) {
@@ -371,7 +371,7 @@ void MenuScreen0Run(void)
     cyc(102);
     ppu_wr(b | (uint16_t)INIDISP, 0x80);
     cyc(24);
-    wr8(b | (uint16_t)NMITIMEN, 0x00);
+    hw_wr(b | (uint16_t)NMITIMEN, 0x00);
     cyc(24);
     hdmaen_wr(b | (uint16_t)HDMAEN, 0x00);
     cyc(24);

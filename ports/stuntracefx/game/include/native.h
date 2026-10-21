@@ -45,6 +45,48 @@ static inline void io_wr16(uint32_t addr, uint16_t v)
     io_write_time((addr + 1) & 0xFFFFFF, (uint8_t)(v >> 8));
 }
 
+/* A console register the port still answers as the console does (the
+   clock's interrupts and timers, work RAM's port, the sound unit's ports,
+   the Super FX's registers), at the access's time. rd8 and wr8 are for
+   memory: PORT_AUDIT=1 names any place they reach a register. */
+uint8_t hw_rd(uint32_t addr);
+void hw_wr(uint32_t addr, uint8_t v);
+
+static inline uint16_t hw_rd16(uint32_t addr)
+{
+    uint8_t lo = hw_rd(addr);
+
+    return (uint16_t)(lo | hw_rd((addr + 1) & 0xFFFFFF) << 8);
+}
+
+static inline void hw_wr16(uint32_t addr, uint16_t v)
+{
+    hw_wr(addr, (uint8_t)v);
+    hw_wr((addr + 1) & 0xFFFFFF, (uint8_t)(v >> 8));
+}
+
+static inline int hw_reg(uint32_t addr)
+{
+    uint16_t off = (uint16_t)addr;
+
+    return !(addr & 0x400000) && ((off >= 0x2100 && off < 0x2200) || (off >= 0x3000 && off < 0x3400)
+                                  || (off >= 0x4000 && off < 0x4400));
+}
+
+/* A read of an address the code computes: a register's answer, else
+   memory. */
+static inline uint8_t reg_rd(uint32_t addr)
+{
+    return hw_reg(addr) ? hw_rd(addr) : rd8(addr);
+}
+
+static inline uint16_t reg_rd16(uint32_t addr)
+{
+    uint8_t lo = reg_rd(addr);
+
+    return (uint16_t)(lo | reg_rd((addr + 1) & 0xFFFFFF) << 8);
+}
+
 /* ---- the picture (ports/common/video) ----
    The screen state's registers ($2100-$2133): each write's value to the
    picture, at the access's time. */
@@ -116,6 +158,8 @@ static inline void reg_wr(uint32_t addr, uint8_t v)
         mdmaen_wr(addr, v);
     else if (!(addr & 0x400000) && (addr & 0xFFFF) == 0x420C)
         hdmaen_wr(addr, v);
+    else if (hw_reg(addr))
+        hw_wr(addr, v);
     else
         wr8(addr, v);
 }

@@ -1574,7 +1574,7 @@ uint16_t GsuReciprocal(uint8_t bank, uint8_t *p)
     cyc(16);
     d = cyc_then(24, rd16(0x0000F1));
     io_wr8(b | 0x4206, (uint8_t)d);
-    wr8(b | 0x4207, (uint8_t)(d >> 8));      /* the high byte to HTIMEL */
+    hw_wr(b | 0x4207, (uint8_t)(d >> 8));      /* the high byte to HTIMEL */
     cyc(80);
     a = io_rd16(b | 0x4214, cpu_div(n, (uint8_t)d));
     *p = (uint8_t)(nz16(*p, a) | P_C);
@@ -1617,7 +1617,7 @@ void abi_GsuPieceScaleFromView(void)
     e = rd16(b | 0x0E8E);
     cyc(54);
     io_wr8(b | 0x4206, (uint8_t)e);
-    wr8(b | 0x4207, (uint8_t)(e >> 8));      /* the high byte to HTIMEL */
+    hw_wr(b | 0x4207, (uint8_t)(e >> 8));      /* the high byte to HTIMEL */
     q1 = cpu_div(n, (uint8_t)e);
     cyc(24);
     io_wr16(b | 0x211B, e);
@@ -1630,7 +1630,7 @@ void abi_GsuPieceScaleFromView(void)
     io_wr16(b | 0x4204, n = cyc_then(24, io_rd16(b | 0x2135, (uint16_t)(ppu_mul((uint8_t)m) >> 8))));
     cyc(60);
     io_wr8(b | 0x4206, (uint8_t)e);
-    wr8(b | 0x4207, (uint8_t)(e >> 8));
+    hw_wr(b | 0x4207, (uint8_t)(e >> 8));
     q2 = cpu_div(n, (uint8_t)e);
     cyc(32);
     wr16(0x70020E, q1);

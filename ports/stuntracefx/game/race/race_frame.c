@@ -115,11 +115,11 @@ void abi_RaceStart(void)
     cyc(84);
     wr8(b | 0x0374, 0x03);
     cyc(40);
-    wr8(b | GSU_CLSR, 0x01);
+    hw_wr(b | GSU_CLSR, 0x01);
     cyc(40);
-    wr8(b | GSU_CFGR, 0x20);
+    hw_wr(b | GSU_CFGR, 0x20);
     cyc(40);
-    wr8(b | GSU_SCBR, 0x0B);
+    hw_wr(b | GSU_SCBR, 0x0B);
     cyc(24);
     wr8(b | 0x0D62, 0x00);
     cpu.p &= (uint8_t)~(P_M | P_X);
@@ -617,7 +617,7 @@ void abi_RaceModeSetup(void)
 
         cpu.p &= (uint8_t)~(P_M | P_X);
         cyc(148);
-        wr16(0x002141, 0x0005);
+        hw_wr16(0x002141, 0x0005);
         (cyc(40), delay_4000());
         cpu.a = 0x001A;
         cpu.y = 0xF091;
@@ -737,7 +737,7 @@ void abi_LoopLeaveWhenEnded(void)
     cpu.s = (uint16_t)(cpu.s + 2);
     op_sep(P_M | P_X);
     cyc(24);
-    wr8(NMITIMEN, 0x00);
+    hw_wr(NMITIMEN, 0x00);
     cpu.p |= P_I;
     cyc(34);
     cpu.db = rd8((uint16_t)(cpu.s + 1));
@@ -779,7 +779,7 @@ static void race_load_sound(void (*load)(void), uint16_t a, uint16_t y, int dela
     cpu.p &= (uint8_t)~(P_M | P_X);
     cpu.a = 0x0005;
     cyc(38);
-    wr16(0x002141, 0x0005);
+    hw_wr16(0x002141, 0x0005);
     (cyc(40), delay_4000());
     cpu.a = a;
     cpu.y = y;
@@ -905,7 +905,7 @@ void abi_RaceLoad(void)
     op_sep(P_M);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
     cyc(62);
-    wr8(b | 0x2140, 0x01);
+    hw_wr(b | 0x2140, 0x01);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x03);
     cpu.p = nz8(cpu.p, 0x03);
     cyc(40);
@@ -1416,7 +1416,7 @@ void abi_RaceLoop(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x31);
     cpu.p = nz8(cpu.p, 0x31);
     cyc(40);
-    wr8(b | 0x4200, 0x31);
+    hw_wr(b | 0x4200, 0x31);
     cpu.p &= (uint8_t)~P_I;
     first = 1;                          /* CLI then SEP: 8 less than a retry */
     for (;;) {

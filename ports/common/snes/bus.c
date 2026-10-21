@@ -60,7 +60,7 @@ static int audit_on(void)
     return on;
 }
 
-static void audit_site(uint16_t off)
+static void audit_site(uint16_t off, int w)
 {
     static void *seen[1024];
     static int n;
@@ -74,13 +74,13 @@ static void audit_site(uint16_t off)
     {
         Dl_info di;
         if (dladdr(wr8_site, &di) && di.dli_sname) {
-            fprintf(stderr, "audit: $%04X written by %s+%ld\n", off, di.dli_sname,
+            fprintf(stderr, "audit: $%04X %s by %s+%ld\n", off, w ? "written" : "read", di.dli_sname,
                     (long)((char *)wr8_site - (char *)di.dli_saddr));
             return;
         }
     }
 #endif
-    fprintf(stderr, "audit: $%04X written at %p\n", off, wr8_site);
+    fprintf(stderr, "audit: $%04X %s at %p\n", off, w ? "written" : "read", wr8_site);
 }
 
 /* the joypads */
@@ -331,15 +331,12 @@ static void cpu_reg_write(uint16_t off, uint8_t v)
     case 0x4208: htime = (uint16_t)((htime & 0xFF) | (v & 1) << 8); irq_schedule(1); events_next(); return;
     case 0x4209: vtime = (uint16_t)((vtime & 0x100) | v); irq_schedule(1); events_next(); return;
     case 0x420A: vtime = (uint16_t)((vtime & 0xFF) | (v & 1) << 8); irq_schedule(1); events_next(); return;
-    case 0x420B: if (audit_on()) audit_site(0x420B); dma_start(v); return;
-    case 0x420C: if (audit_on()) audit_site(0x420C); dma_hdmaen = v; return;
+    case 0x420B: dma_start(v); return;
+    case 0x420C: dma_hdmaen = v; return;
     case 0x420D: memsel = v; return;
     }
-    if (off >= 0x4300 && off < 0x4380) {
-        if (audit_on())
-            audit_site(off);
+    if (off >= 0x4300 && off < 0x4380)
         dma_write(off, v);
-    }
 }
 
 /* the joypads' serial ports: a strobe latches the buttons, then each read
@@ -534,11 +531,6 @@ static void bus_write(uint32_t addr, uint8_t v, unsigned *cost, int kind)
         if (kind == 1 && ((off >= 0x2100 && off < 0x2200) || (off >= 0x4000 && off < 0x4400)))
             return;
         if (off >= 0x2100 && off < 0x2200) {
-            /* the screen state comes to the picture by the game's own calls
-               (native.h); a write here is to a register the code computed
-               (a table's): PORT_AUDIT=1 names each such place once */
-            if (kind == 0 && off < 0x2134 && audit_on())
-                audit_site(off);
             bus_write_b((uint8_t)off, v);
             return;
         }
@@ -627,7 +619,7 @@ static int rom_data(uint32_t addr)
 /* No interrupt is taken between the two bytes of one word: a read
    straight after a read of the byte before it. */
 
-uint8_t rd8(uint32_t addr)
+static uint8_t access_rd(uint32_t addr)
 {
     unsigned cost;
     uint8_t v;
@@ -645,9 +637,30 @@ uint8_t rd8(uint32_t addr)
     return v;
 }
 
-void wr8(uint32_t addr, uint8_t value)
+/* A register's address (the B bus, the Super FX's, the CPU's): the game's
+   C reaches those by its calls to the parts (native.h), not by rd8/wr8 */
+static int reg_addr(uint32_t addr)
 {
-    wr8_site = __builtin_return_address(0);
+    uint16_t off = (uint16_t)addr;
+    if (addr & 0x400000)
+        return 0;
+    return (off >= 0x2100 && off < 0x2200) || (off >= 0x3000 && off < 0x3400) || (off >= 0x4000 && off < 0x4400);
+}
+
+uint8_t rd8(uint32_t addr)
+{
+    if (audit_on() && reg_addr(addr & 0xFFFFFF)) {
+        wr8_site = __builtin_return_address(0);
+        audit_site((uint16_t)addr, 0);
+    }
+    return access_rd(addr);
+}
+
+/* A register the port still answers as the console does (native.h). */
+uint8_t hw_rd(uint32_t addr) { return access_rd(addr); }
+
+static void access_wr(uint32_t addr, uint8_t value)
+{
     unsigned cost;
     addr &= 0xFFFFFF;
     last_was_read = 0;
@@ -657,6 +670,17 @@ void wr8(uint32_t addr, uint8_t value)
         snes_write_hook(addr, value);
     bus_write(addr, value, &cost, 0);
 }
+
+void wr8(uint32_t addr, uint8_t value)
+{
+    if (audit_on() && reg_addr(addr & 0xFFFFFF)) {
+        wr8_site = __builtin_return_address(0);
+        audit_site((uint16_t)addr, 1);
+    }
+    access_wr(addr, value);
+}
+
+void hw_wr(uint32_t addr, uint8_t value) { access_wr(addr, value); }
 
 /* A register access whose work the port's C does itself (native.h): its
    time, as rd8's and wr8's, and for a read the place an interrupt can come;

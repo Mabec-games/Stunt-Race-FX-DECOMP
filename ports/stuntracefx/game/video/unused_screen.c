@@ -118,7 +118,7 @@ uint16_t PaletteToBuffers(uint8_t index, uint16_t *x)
     }
     *x = o;
     cyc(150);
-    w = (uint16_t)((w & 0xFF00) | rd8(TIMEUP));
+    w = (uint16_t)((w & 0xFF00) | hw_rd(TIMEUP));
     cyc(94); /* REP, CLI, PLB, PLP, RTL */
     return w;
 }
@@ -598,7 +598,7 @@ void abi_UnusedScreenTilesLocked(void)
 
     (cyc(98), abi_UnusedScreenTiles());
     cyc(32);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | rd8(TIMEUP));
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | hw_rd(TIMEUP));
     cyc(44);
     op_plp(p);
 }
@@ -638,16 +638,16 @@ void abi_UnusedScreenSetup(void)
     op_sep(P_M | P_X);
     cpu.p |= P_I;
     cyc(38);
-    wr8(b | 0x4200, 0x00);
+    hw_wr(b | 0x4200, 0x00);
     cyc(16);
     wr8(0x000000, 0x00);
     cyc(24);
     wr8(b | 0x084C, 0x00);
     cyc(24);
-    rd8(b | 0x4211);
+    hw_rd(b | 0x4211);
     op_rep(P_M);
     cyc(32);
-    rd16(0x003030);
+    hw_rd16(0x003030);
     cyc(48);
     wr16(b | 0x0374, 0x0021);
     (cyc(62), abi_ScreenBlankAndWait());
@@ -689,7 +689,7 @@ void abi_UnusedScreenSetup(void)
     cyc(16);
     v = rd8(0x000049);
     cyc(52);
-    wr8(b | 0x3038, (uint8_t)(v >> 2));
+    hw_wr(b | 0x3038, (uint8_t)(v >> 2));
     cyc(16);
     v = rd8(0x00004F);
     cpu.p = (uint8_t)((cpu.p & ~P_C) | (v & 0x08 ? P_C : 0));
@@ -803,9 +803,9 @@ void abi_UnusedScreenSetup(void)
     (cyc(62), abi_ScrollRegsClear());
     op_sep(P_M);
     cyc(70);
-    wr16(b | 0x4209, 0x008F);
+    hw_wr16(b | 0x4209, 0x008F);
     cyc(48);
-    wr16(b | 0x4207, 0x0000);
+    hw_wr16(b | 0x4207, 0x0000);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x80);
     (cyc(78), abi_Set7EBC2BTrio());
     cyc(24);
@@ -821,13 +821,13 @@ void abi_UnusedScreenSetup(void)
     wr8(b | 0x06E3, 0x64);
     (cyc(62), abi_WaitScanline());
     cyc(68);
-    rd8(b | 0x4210);
+    hw_rd(b | 0x4210);
     cyc(40);
-    wr8(b | 0x4200, 0x31);
+    hw_wr(b | 0x4200, 0x31);
     cyc(40);
     wr8(b | 0x05D9, 0xFF);
     cyc(32);
-    v = rd8(TIMEUP);
+    v = hw_rd(TIMEUP);
     a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.a = a;
     cpu.x = 0x0000;

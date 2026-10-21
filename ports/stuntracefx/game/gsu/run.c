@@ -8,6 +8,7 @@
  * restoring its own screen mode value.
  */
 #include "machine.h"
+#include "native.h"
 #include "hw.h"
 #include "wram.h"
 #include "cpu_ops.h"
@@ -31,7 +32,7 @@ static void gsu_wait(uint32_t first)
             cyc(6);
             wr8(GSU_WAIT_COUNT + 1, n);
         } else { cyc(22); }
-    } while (cyc_loop(54, rd8(cyc_then(24, GSU_SFR)) & 0x20));
+    } while (cyc_loop(54, hw_rd(cyc_then(24, GSU_SFR)) & 0x20));
 }
 
 /* After the poll: the screen mode value back to SCMR. */
@@ -42,7 +43,7 @@ static uint8_t gsu_scmr_back(void)
     cyc(56);
     mode = rd8(GSU_SCMR_SHADOW);
     cyc(24);
-    wr8(GSU_SCMR, mode);
+    hw_wr(GSU_SCMR, mode);
     return mode;
 }
 
@@ -82,13 +83,13 @@ void abi_GsuWait(void)
 uint8_t GsuRun(uint8_t bank, uint16_t start)
 {
     cyc(32);
-    wr8(GSU_PBR, bank);
+    hw_wr(GSU_PBR, bank);
     cyc(112);
-    wr8(GSU_SCMR, cyc_then(40, rd8(GSU_SCMR_SHADOW) | 0x18));
+    hw_wr(GSU_SCMR, cyc_then(40, rd8(GSU_SCMR_SHADOW) | 0x18));
     cyc(24);
-    wr8(GSU_SFR, 0x00);
+    hw_wr(GSU_SFR, 0x00);
     cyc(24);
-    wr16(GSU_R15, start);
+    hw_wr16(GSU_R15, start);
     gsu_wait(16);                       /* its own copy of the poll, no SEP */
     return gsu_scmr_back();
 }
@@ -112,11 +113,11 @@ static uint8_t gsu_ab13_with_params(uint8_t bank, uint16_t *last)
 
     *last = (cyc(22), GsuParamsUpdate());
     cyc(108);
-    wr8(b | 0x3034, 0x01);
+    hw_wr(b | 0x3034, 0x01);
     cyc(24);
-    wr8(b | 0x303A, cyc_then(40, (uint8_t)(rd8(b | 0x0374) | 0x18)));
+    hw_wr(b | 0x303A, cyc_then(40, (uint8_t)(rd8(b | 0x0374) | 0x18)));
     cyc(24);
-    wr16(b | 0x301E, 0xAB13);
+    hw_wr16(b | 0x301E, 0xAB13);
     do {
         cyc(46);
         uint8_t n = (uint8_t)(rd8(b | 0x1F21) + 1);
@@ -125,11 +126,11 @@ static uint8_t gsu_ab13_with_params(uint8_t bank, uint16_t *last)
         wr8(b | 0x1F21, n);
         if (!n)
             { cyc(40); wr8(b | 0x1F22, cyc_then(6, (uint8_t)(rd8(b | 0x1F22) + 1))); } else { cyc(22); }
-    } while (cyc_loop(16, rd8(cyc_then(24, b | 0x3030)) & 0x20));
+    } while (cyc_loop(16, hw_rd(cyc_then(24, b | 0x3030)) & 0x20));
     cyc(56);
     mode = rd8(b | 0x0374);
     cyc(24);
-    wr8(b | 0x303A, mode);
+    hw_wr(b | 0x303A, mode);
     return mode;
 }
 
@@ -218,14 +219,14 @@ void FrameRunGsu8FCA(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x04);
     cpu.x = 0x8FCA;
     cyc(72);
-    wr8(GSU_PBR, 0x04);
+    hw_wr(GSU_PBR, 0x04);
     cpu.db = 0x00;
     cyc(112);
-    wr8(GSU_SCMR, cyc_then(40, (uint8_t)(rd8(GSU_SCMR_SHADOW) | 0x18)));
+    hw_wr(GSU_SCMR, cyc_then(40, (uint8_t)(rd8(GSU_SCMR_SHADOW) | 0x18)));
     cyc(24);
-    wr8(GSU_SFR, 0x00);
+    hw_wr(GSU_SFR, 0x00);
     cyc(24);
-    wr16(GSU_R15, 0x8FCA);
+    hw_wr16(GSU_R15, 0x8FCA);
     (cyc(46), FrameObjectsWhileGsuRuns());
     cyc(80);
     n = rd16(0x0000FE);
@@ -334,16 +335,16 @@ static void start_ab13(uint32_t b)
     cpu.x = 0xAB13;
     cpu.p = nz16(cpu.p, 0xAB13);
     cyc(64);
-    wr8(b | 0x3034, 0x01);
+    hw_wr(b | 0x3034, 0x01);
     cyc(24);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | (uint8_t)(rd8(b | 0x0374) | 0x18));
     cpu.p = nz8(cpu.p, (uint8_t)cpu.a);
     cyc(40);
-    wr8(b | 0x303A, (uint8_t)cpu.a);
+    hw_wr(b | 0x303A, (uint8_t)cpu.a);
     cyc(24);
-    wr8(b | 0x3030, 0x00);
+    hw_wr(b | 0x3030, 0x00);
     cyc(24);
-    wr16(b | 0x301E, 0xAB13);
+    hw_wr16(b | 0x301E, 0xAB13);
     cyc(46);
 }
 

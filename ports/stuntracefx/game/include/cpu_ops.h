@@ -8,6 +8,7 @@
 #define STUNTRACEFX_CPU_OPS_H
 
 #include "machine.h"
+#include "native.h"
 
 /* The 65816's 16-bit ADC and SBC, binary or decimal as the D flag in *p
    says, as the emulator core computes them: the result, with N, Z, C and V
@@ -108,7 +109,7 @@ static inline uint8_t op_sbc8(uint8_t a, uint8_t m, uint8_t *p)
 /* LDA (16-bit), from memory or immediate. */
 static inline void op_lda16(uint32_t addr)
 {
-    cpu.a = rd16(addr);
+    cpu.a = reg_rd16(addr);
     cpu.p = nz16(cpu.p, cpu.a);
 }
 
@@ -122,7 +123,7 @@ static inline void op_lda16_imm(uint16_t v)
 /* LDA (8-bit): the low byte of A. */
 static inline void op_lda8(uint32_t addr)
 {
-    uint8_t v = rd8(addr);
+    uint8_t v = reg_rd(addr);
 
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.p = nz8(cpu.p, v);

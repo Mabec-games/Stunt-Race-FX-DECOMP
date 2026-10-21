@@ -791,13 +791,13 @@ static void menu_screen_start(uint16_t list, uint8_t p)
     cyc(62);
     wr8(0x000D3F, 0x1E);
     cyc(40);
-    wr8(VTIMEL, 0xE0);
+    hw_wr(VTIMEL, 0xE0);
     cyc(24);
-    wr8(VTIMEH, 0x00);
+    hw_wr(VTIMEH, 0x00);
     cyc(40);
     wr8(0x0011D7, 0x0C);
     cyc(40);
-    wr8(NMITIMEN, 0x21);
+    hw_wr(NMITIMEN, 0x21);
     cyc(46);
     MenuWaitFrame(0x00);
 }
@@ -840,7 +840,7 @@ void MenuScreenOpen0(void)
     cyc(24);
     wr8(0x0011DA, 0x00);
     cyc(24);
-    wr8(NMITIMEN, 0x00);
+    hw_wr(NMITIMEN, 0x00);
     for (i = 0; i < sizeof ppu / sizeof ppu[0]; i++)
         { cyc(ppu[i].cost); reg_wr(ppu[i].reg, ppu[i].v); }
     cyc(62);
@@ -910,7 +910,7 @@ void ApuUpload(uint8_t bank, uint16_t addr);
 static void menu_apu_upload(uint8_t bank, uint16_t addr)
 {
     cyc(38);
-    wr16(APUIO1, 0x0005);
+    hw_wr16(APUIO1, 0x0005);
     cyc(134);
     delay_turns(0x4000);
     ApuUpload(bank, addr);
@@ -974,11 +974,11 @@ void MenuScreenOpen6(void)
     cyc(24);
     wr8(0x0011DA, 0x00);
     cyc(24);
-    wr8(NMITIMEN, 0x00);
+    hw_wr(NMITIMEN, 0x00);
     for (i = 0; i < sizeof ppu / sizeof ppu[0]; i++)
         { cyc(ppu[i].cost); reg_wr(ppu[i].reg, ppu[i].v); }
     cyc(100);
-    wr16(APUIO1, 0x0005);
+    hw_wr16(APUIO1, 0x0005);
     cyc(134);
     delay_turns(0x4000);
     SoundDataLoad(0xF3B5, 0x001E);
@@ -987,7 +987,7 @@ void MenuScreenOpen6(void)
     menu_apu_upload(0x19, 0x9A98);
     SoundReset();
     cyc(62);
-    wr8(APUIO0, 0x01);
+    hw_wr(APUIO0, 0x01);
     (cyc(46), MenuScrollReset());
     cyc(84);
     wr16(0x0000FB, 0x989C);
@@ -1114,7 +1114,7 @@ static void champion_sound(void (*load)(void), uint16_t a, uint16_t y, int delay
     cpu.p &= (uint8_t)~(P_M | P_X);
     cpu.a = 0x0005;
     cyc(86);
-    wr16(APUIO1, 0x0005);
+    hw_wr16(APUIO1, 0x0005);
     cyc(134);
     delay_turns(0x4000);
     cpu.a = 0x0000;
@@ -1208,7 +1208,7 @@ void abi_ChampionScreenOpen(void)
     cyc(24);
     wr8(0x0011DA, 0x00);
     cyc(24);
-    wr8(NMITIMEN, 0x00);
+    hw_wr(NMITIMEN, 0x00);
     for (i = 0; i < sizeof ppu / sizeof ppu[0]; i++)
         { cyc(40); reg_wr(ppu[i].reg, ppu[i].v); }
     cyc(16);
@@ -1233,7 +1233,7 @@ void abi_ChampionScreenOpen(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
     cpu.p = nz8(cpu.p, 0x01);
     cyc(62);
-    wr8(APUIO0, 0x01);
+    hw_wr(APUIO0, 0x01);
     (cyc(46), abi_MenuScrollReset());
     op_sep(P_M);
     cyc(54);
@@ -1485,15 +1485,15 @@ void abi_ChampionScreenOpen(void)
     cyc(40);
     wr8(0x000D3F, 0x20);
     cyc(40);
-    wr8(VTIMEL, 0xE0);
+    hw_wr(VTIMEL, 0xE0);
     cyc(24);
-    wr8(VTIMEH, 0x00);
+    hw_wr(VTIMEH, 0x00);
     cyc(40);
     wr8(0x0011D7, 0x0C);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x21);
     cpu.p = nz8(cpu.p, 0x21);
     cyc(40);
-    wr8(NMITIMEN, 0x21);
+    hw_wr(NMITIMEN, 0x21);
     (cyc(46), abi_MenuWaitFrame());
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x03);
     cpu.p = nz8(cpu.p, 0x03);

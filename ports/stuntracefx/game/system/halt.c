@@ -34,7 +34,7 @@ static void halt(void)
     cyc(48);
     hdmaen_wr(HDMAEN, 0x00);
     cyc(32);
-    wr8(NMITIMEN, 0x00);
+    hw_wr(NMITIMEN, 0x00);
     cyc(32);
     ppu_wr(TM, 0x00);
     for (;;) {
@@ -143,7 +143,7 @@ void DebugByteHalt(void)
         cyc(24);
         v = (uint16_t)(rd16(b | 0x0374) & 0xFFF7);
         cyc(48);
-        wr16(b | 0x303A, v);
+        hw_wr16(b | 0x303A, v);
         cyc(56);
         wr16(0x70021A, 0x2C00);
         cyc(16);
@@ -152,12 +152,12 @@ void DebugByteHalt(void)
         v = (uint16_t)(rd16(b | 0x0374) | 0x0018);
         cpu.a = v;
         cyc(48);
-        wr16(b | 0x303A, v);
+        hw_wr16(b | 0x303A, v);
         op_sep(P_M);
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x0B);
         cpu.p = nz8(cpu.p, 0x0B);
         cyc(70);
-        wr8(GSU_SCBR, 0x0B);
+        hw_wr(GSU_SCBR, 0x0B);
     }
 }
 

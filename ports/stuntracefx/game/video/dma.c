@@ -75,13 +75,13 @@ uint8_t VramDmaFromGsuRam(uint16_t size, uint16_t src, uint16_t vram)
     cyc(40);
     ppu_wr(VMAIN, 0x80);
     cyc(24);
-    wr8(GSU_SCMR, cyc_then(40, rd8(GSU_SCMR_SHADOW) & 0xF7));
+    hw_wr(GSU_SCMR, cyc_then(40, rd8(GSU_SCMR_SHADOW) & 0xF7));
     cyc(40);
     mdmaen_wr(MDMAEN, 0x01);
     cyc(24);
     mode = rd8(GSU_SCMR_SHADOW) | 0x18;
     cyc(40);
-    wr8(GSU_SCMR, mode);
+    hw_wr(GSU_SCMR, mode);
     cyc(42);
     return mode;
 }
@@ -121,7 +121,7 @@ uint16_t VramDmaRowsFromGsuRam(uint16_t src, uint16_t vram, uint8_t rows)
     cyc(40);
     ppu_wr(VMAIN, 0x80);
     cyc(54);
-    wr16(GSU_SCMR, cyc_then(48, rd16(GSU_SCMR_SHADOW) & 0xFFF7));
+    hw_wr16(GSU_SCMR, cyc_then(48, rd16(GSU_SCMR_SHADOW) & 0xFFF7));
     for (;;) {
         cyc(60);
         dma_wr16(A1T0L, src);
@@ -136,7 +136,7 @@ uint16_t VramDmaRowsFromGsuRam(uint16_t src, uint16_t vram, uint8_t rows)
     cyc(60);
     mode = rd16(GSU_SCMR_SHADOW) | 0x0018;
     cyc(48);
-    wr16(GSU_SCMR, mode);
+    hw_wr16(GSU_SCMR, mode);
     return mode;
 }
 
@@ -349,7 +349,7 @@ uint8_t VramDmaWideRowsFromGsuRam(uint8_t rows_less_one, uint16_t src, uint16_t 
     uint16_t s;
 
     cyc(238);
-    wr8(GSU_SCMR, cyc_then(40, rd8(GSU_SCMR_SHADOW) & 0xF7));
+    hw_wr(GSU_SCMR, cyc_then(40, rd8(GSU_SCMR_SHADOW) & 0xF7));
     cyc(38);
     wr16(0x0000FB, src);
     cyc(24);
@@ -379,7 +379,7 @@ uint8_t VramDmaWideRowsFromGsuRam(uint8_t rows_less_one, uint16_t src, uint16_t 
     cyc(76);
     mode = rd8(GSU_SCMR_SHADOW) | 0x18;
     cyc(40);
-    wr8(GSU_SCMR, mode);
+    hw_wr(GSU_SCMR, mode);
     *next = s;
     cyc(70);
     return mode;
@@ -780,14 +780,14 @@ static void split_picture(uint32_t b, uint16_t x)
     cpu.a &= 0xFFF7;
     cpu.p = nz8(cpu.p, (uint8_t)cpu.a);
     cyc(40);
-    wr8(GSU_SCMR, (uint8_t)cpu.a);
+    hw_wr(GSU_SCMR, (uint8_t)cpu.a);
     put8(MDMAEN, 0x01);
     cyc(24);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | rd8(b | 0x0374));
     cpu.a |= 0x0018;
     cpu.p = nz8(cpu.p, (uint8_t)cpu.a);
     cyc(40);
-    wr8(GSU_SCMR, (uint8_t)cpu.a);
+    hw_wr(GSU_SCMR, (uint8_t)cpu.a);
     cyc(22);
     put8(BG12NBA, 0x70);
     put8(b | 0x0D23, 0x10);
@@ -898,14 +898,14 @@ static void split_stage(uint32_t b)
         cpu.a &= 0xFFF7;
         cpu.p = nz8(cpu.p, (uint8_t)cpu.a);
         cyc(40);
-        wr8(GSU_SCMR, (uint8_t)cpu.a);
+        hw_wr(GSU_SCMR, (uint8_t)cpu.a);
         put8(MDMAEN, 0x01);
         cyc(24);
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | rd8(b | 0x0374));
         cpu.a |= 0x0018;
         cpu.p = nz8(cpu.p, (uint8_t)cpu.a);
         cyc(40);
-        wr8(GSU_SCMR, (uint8_t)cpu.a);
+        hw_wr(GSU_SCMR, (uint8_t)cpu.a);
         break;
     case 0xAA5F: {
         uint16_t src;

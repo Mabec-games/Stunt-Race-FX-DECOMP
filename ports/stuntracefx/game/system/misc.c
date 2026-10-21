@@ -309,9 +309,9 @@ void abi_WordCopyStep(void)
 void WramFillZero(uint8_t bank, uint16_t addr, uint16_t count)
 {
     cyc(24);
-    wr16(0x002181, addr);
+    hw_wr16(0x002181, addr);
     cyc(24);
-    wr8(0x002183, bank);
+    hw_wr(0x002183, bank);
     cyc(24);
     dma_wr16(0x004305, count);
     cyc(48);
@@ -609,11 +609,11 @@ void abi_DemoRun(void)
     cyc(22);
     wr8(b | 0x0374, 0x01);
     demo_lda8(0x01);
-    wr8(b | 0x3039, 0x01);
+    hw_wr(b | 0x3039, 0x01);
     demo_lda8(0x20);
-    wr8(b | 0x3037, 0x20);
+    hw_wr(b | 0x3037, 0x20);
     demo_lda8(0x0B);
-    wr8(b | 0x3038, 0x0B);
+    hw_wr(b | 0x3038, 0x0B);
     (cyc(62), abi_Set7EFFA6Sequence());
     b = (uint32_t)cpu.db << 16;
     demo_blank(b);
@@ -632,7 +632,7 @@ void abi_DemoRun(void)
     b = (uint32_t)cpu.db << 16;
     demo_lda8(0x01);
     cyc(22);
-    wr8(b | 0x3039, 0x01);
+    hw_wr(b | 0x3039, 0x01);
     demo_lda8(0x01);
     cyc(8);
     wr8(0x7EFF65, 0x01);
@@ -875,7 +875,7 @@ end:
     cyc(148);
     ppu_wr(b | INIDISP, 0x80);
     cyc(24);
-    wr8(b | NMITIMEN, 0x00);
+    hw_wr(b | NMITIMEN, 0x00);
     cyc(24);
     mdmaen_wr(b | MDMAEN, 0x00);
     cyc(24);

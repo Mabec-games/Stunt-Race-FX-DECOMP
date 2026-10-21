@@ -7,6 +7,7 @@
  * when the sound CPU has taken the previous one.
  */
 #include "machine.h"
+#include "native.h"
 #include "cpu_ops.h"
 #include "hw.h"
 #include "wram.h"
@@ -189,9 +190,9 @@ void SoundReset(void)
     cyc(32);
     wr8(WRAM_0E1C, 0);
     cyc(32);
-    wr8(APUIO3, 0);
+    hw_wr(APUIO3, 0);
     cyc(32);
-    wr8(APUIO2, 0);
+    hw_wr(APUIO2, 0);
     cyc(72);
 }
 
@@ -212,7 +213,7 @@ static int ring_send(uint32_t b, uint16_t port, uint16_t count, uint16_t head, u
     uint8_t v, n;
 
     cyc(24);
-    v = rd8(b | port);
+    v = reg_rd(b | port);
     if (v) {
         cyc(16);
         v = 0x00;
@@ -240,7 +241,7 @@ static int ring_send(uint32_t b, uint16_t port, uint16_t count, uint16_t head, u
     }
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cyc(46);
-    wr8(b | port, v);
+    reg_wr(b | port, v);
     return 1;
 }
 
@@ -270,7 +271,7 @@ void abi_SoundPortsSend(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     if (v) {
         cyc(40);
-        wr8(b | 0x2140, v);
+        hw_wr(b | 0x2140, v);
         cyc(24);
         wr8(b | 0x10E2, 0x00);
         cyc(28);                        /* PLP; op_plp states the RTS */
@@ -282,7 +283,7 @@ void abi_SoundPortsSend(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     if (v) {
         cyc(40);
-        wr8(b | 0x2141, v);
+        hw_wr(b | 0x2141, v);
         cyc(24);
         wr8(b | 0x10E3, 0x00);
         cyc(28);
@@ -321,18 +322,18 @@ void abi_SoundPortsSend(void)
     if (v) {
         cpu.a = (uint16_t)(cpu.a & 0xFF00);
         cyc(62);
-        wr8(b | 0x2142, 0x00);
+        hw_wr(b | 0x2142, 0x00);
         cyc(24);
-        wr8(b | 0x2143, 0x00);
+        hw_wr(b | 0x2143, 0x00);
     } else {
         cyc(40);
         v = rd8(b | 0x0E47);
         cyc(24);
-        wr8(b | 0x2142, v);
+        hw_wr(b | 0x2142, v);
         cyc(24);
         v = rd8(b | 0x0E49);
         cyc(24);
-        wr8(b | 0x2143, v);
+        hw_wr(b | 0x2143, v);
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     }
     cyc(28);

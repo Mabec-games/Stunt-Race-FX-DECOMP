@@ -28,7 +28,7 @@ static void crash_body(uint8_t bank, uint16_t code)
     /* Through the caller's data bank: from bank $7E or $7F these four land
        in work RAM, and interrupts and HDMA stay on. */
     cyc(46);
-    wr8((uint32_t)bank << 16 | (uint16_t)NMITIMEN, 0x00);
+    hw_wr((uint32_t)bank << 16 | (uint16_t)NMITIMEN, 0x00);
     cyc(24);
     hdmaen_wr((uint32_t)bank << 16 | (uint16_t)HDMAEN, 0x00);
     cpu.p |= P_I;
@@ -123,7 +123,7 @@ static void crash_body(uint8_t bank, uint16_t code)
         cyc(24);
         ppu_wr(BG1VOFS, cyc_then(24, rd8(CRASH_SCROLL + 1)));
         cyc(40);
-        wr8(APUIO0, 0x03);
+        hw_wr(APUIO0, 0x03);
     }
 }
 
