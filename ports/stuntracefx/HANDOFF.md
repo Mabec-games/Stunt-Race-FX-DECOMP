@@ -81,7 +81,8 @@ check above covers 21 plays.
   game/render/draw_list.c is the game's fill (flat, textured, lines) in
   plain C, identical to the Super FX on every list of the 21 plays.
 - GPU compositor (render/compose/core.glsl, one source for three shader
-  languages via build.sh): on Metal; 126 of 1,499 frames still differ.
+  languages via build.sh): on Metal, every frame of the 21 plays identical
+  to vid_draw_frame (PORT_GPUCHECK).
 
 ## Next, in order
 

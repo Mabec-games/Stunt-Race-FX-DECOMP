@@ -755,7 +755,8 @@ static void draw_line(unsigned line, uint32_t *out)
     if (mosaic_y == 0)
         mosaic_y = 1;
     if (s->inidisp & 0x80) {
-        memset(out, 0, VID_WIDTH * 4);
+        for (x = 0; x < VID_WIDTH; x++)
+            out[x] = 0xFF000000u;   /* black, opaque as every pixel drawn */
         goto mosaic_step;
     }
     for (x = 0; x < 256; x++) {
