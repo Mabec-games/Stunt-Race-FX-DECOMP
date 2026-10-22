@@ -71,8 +71,14 @@ static uint16_t next_low;
 
 uint8_t ApuUploadNextByte(uint16_t *offset)
 {
-    cyc(0);
     return apu_upload_next_byte(offset, &next_low);
+}
+
+/* As the upload loop calls it. */
+static uint8_t next_byte(uint16_t *offset)
+{
+    cyc(0);
+    return ApuUploadNextByte(offset);
 }
 
 void abi_ApuUploadNextByte(void)
@@ -123,18 +129,18 @@ ApuUploadEnd ApuUpload(uint8_t bank, uint16_t addr)
     cyc(6);
     for (;;) {
         cyc(116);
-        uint8_t lo = ApuUploadNextByte(&offset);
+        uint8_t lo = next_byte(&offset);
         cyc(66);
-        uint8_t hi = ApuUploadNextByte(&offset);
+        uint8_t hi = next_byte(&offset);
         uint16_t length = (uint16_t)(lo | hi << 8);
         uint8_t more = length != 0;
         uint8_t index = 0;
         unsigned carry = 1;
 
         cyc(80);
-        hw_wr(APUIO2, cyc_then(24, ApuUploadNextByte(&offset)));
+        hw_wr(APUIO2, cyc_then(24, next_byte(&offset)));
         cyc(46);
-        hw_wr(APUIO3, cyc_then(24, ApuUploadNextByte(&offset)));
+        hw_wr(APUIO3, cyc_then(24, next_byte(&offset)));
         cyc(78);
         hw_wr(APUIO1, more);
         cyc(68);
@@ -145,10 +151,10 @@ ApuUploadEnd ApuUpload(uint8_t bank, uint16_t addr)
         cyc(38);
         if (!more)
             { cyc(38); break; } else { cyc(46); }
-        hw_wr16(APUIO0, cyc_then(104, (uint16_t)(ApuUploadNextByte(&offset) << 8 | index)));
+        hw_wr16(APUIO0, cyc_then(104, (uint16_t)(next_byte(&offset) << 8 | index)));
         while (--length) {
             cyc(124);
-            uint8_t data = ApuUploadNextByte(&offset);
+            uint8_t data = next_byte(&offset);
             while (hw_rd(cyc_then(44, APUIO0)) != index) {
                 cyc(2);
             }

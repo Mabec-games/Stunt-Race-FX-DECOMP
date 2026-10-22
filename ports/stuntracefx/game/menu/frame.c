@@ -7,6 +7,7 @@
 #include "native.h"
 #include "hw.h"
 #include "cpu_ops.h"
+#include "menu_calls.h"
 
 /*
  * @routine 0B:E2D7 MenuFramesTarget7
@@ -16,12 +17,17 @@
  * HOW: An 8-bit store through the data bank between PHP and PLP.
  * Entry: any widths. Exit: A low byte = 7; P unchanged.
  */
-void abi_MenuFramesTarget7(void)
+uint8_t MenuFramesTarget7(uint8_t bank)
 {
     cyc(84);
-    wr8((uint32_t)cpu.db << 16 | 0x11DB, 0x07);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x07);
+    wr8((uint32_t)bank << 16 | 0x11DB, 0x07);
     cyc(70);                            /* PLP, RTS */
+    return 0x07;
+}
+
+void abi_MenuFramesTarget7(void)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | MenuFramesTarget7(cpu.db));
 }
 
 /*
@@ -35,10 +41,9 @@ void abi_MenuFramesTarget7(void)
  * data bank, between PHP and PLP.
  * Entry: any widths. Exit: A = the new word; P unchanged.
  */
-void abi_MenuRandomStep(void)
+uint16_t MenuRandomStep(uint8_t bank, uint8_t p)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint8_t p = cpu.p;
+    uint32_t b = (uint32_t)bank << 16;
     uint16_t a;
 
     cyc(68);
@@ -55,8 +60,13 @@ void abi_MenuRandomStep(void)
     a ^= rd16(b | 0x11DD);
     cyc(24);
     wr16(b | 0x1189, a);
-    cpu.a = a;
     cyc(70);                            /* PLP, RTS */
+    return a;
+}
+
+void abi_MenuRandomStep(void)
+{
+    cpu.a = MenuRandomStep(cpu.db, cpu.p);
 }
 
 /*
@@ -68,18 +78,24 @@ void abi_MenuRandomStep(void)
  * Entry: M 16-bit. Exit: no L: A = 0; Z set, N clear. L: A = 4; N, Z
  * clear; M 16-bit.
  */
-void abi_MenuDimOnL(void)
+uint16_t MenuDimOnL(uint8_t bank)
 {
+    uint16_t a;
+
     cyc(24);
-    cpu.a = (uint16_t)(rd16((uint32_t)cpu.db << 16 | 0x118F) & 0x0020);
-    cpu.p = nz16(cpu.p, cpu.a);
-    if (!cpu.a)
-        { cyc(88); return; }           /* AND, BEQ taken, RTS */
-    cpu.a = 0x0004;
-    cpu.p = nz8(cpu.p, 0x04);
+    a = (uint16_t)(rd16((uint32_t)bank << 16 | 0x118F) & 0x0020);
+    if (!a)
+        { cyc(88); return 0x0000; }    /* AND, BEQ taken, RTS */
     cyc(110);
     ppu_wr(INIDISP, 0x04);
     cyc(64);                            /* REP, RTS */
+    return 0x0004;
+}
+
+void abi_MenuDimOnL(void)
+{
+    cpu.a = MenuDimOnL(cpu.db);
+    cpu.p = nz16(cpu.p, cpu.a);
 }
 
 /*
@@ -109,6 +125,22 @@ void abi_MenuWaitFrame(void)
 
 void MenuActorsRun(void);
 uint16_t MenuOamBuild(uint16_t *x, uint16_t *y);
+void MenuScreenOpen0(void);
+
+/* The objects run (MenuActorsRun, still in registers) with A, P = p and the
+   data bank going in, X passing through when there are none; the X and Y
+   they leave come back in *x and *y. */
+static void run_actors(uint8_t bank, uint16_t a, uint8_t p, uint16_t *x, uint16_t *y)
+{
+    cpu.db = bank;
+    cpu.p = p;
+    cpu.a = a;
+    cpu.x = *x;
+    cpu.y = *y;
+    (cyc(62), MenuActorsRun());
+    *x = cpu.x;
+    *y = cpu.y;
+}
 
 /*
  * @routine 0B:E2E1 MenuRunFrames
@@ -117,37 +149,41 @@ uint16_t MenuOamBuild(uint16_t *x, uint16_t *y);
  * (MenuActorsRun), builds the sprite table (MenuOamBuild) and asks for
  * every frame update (bits 0-4 of $11D7).
  * HOW: 8-bit A for the flags and the compare; P saved and restored.
- * Entry: any widths. Exit: A low byte = $11DA, high byte as MenuOamBuild
- * left it; X, Y as MenuOamBuild left them; P unchanged.
+ * Entry: any widths; p = P, *x and *y = X and Y. Exit: A low byte = $11DA,
+ * high byte as MenuOamBuild left it (returned); *x, *y as MenuOamBuild left
+ * them; P unchanged.
  */
-void MenuRunFrames(void)
+uint16_t MenuRunFrames(uint8_t bank, uint8_t p, uint16_t *x, uint16_t *y)
 {
-    uint32_t b;
-    uint8_t p = cpu.p, a;
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t a;
+    uint8_t m;
 
-    cpu.p |= P_M;
     cyc(22);
     do {
         cyc(68);
-        MenuWaitFrame(cpu.db);
-        cpu.a = 0x0000;
-        (cyc(62), MenuActorsRun());
+        MenuWaitFrame(bank);
+        run_actors(bank, 0x0000, (uint8_t)(p | P_M), x, y);
         cyc(62);
-        cpu.a = MenuOamBuild(&cpu.x, &cpu.y);
-        b = (uint32_t)cpu.db << 16;
+        a = MenuOamBuild(x, y);
         cyc(46);
         wr8(b | 0x11D7, cyc_then(40, (uint8_t)(rd8(b | 0x11D7) | 0x1F)));
         cyc(24);
-        a = rd8(b | 0x11DA);
-    } while (a != rd8(cyc_then(24, b | 0x11DB)));
+        m = rd8(b | 0x11DA);
+    } while (m != rd8(cyc_then(24, b | 0x11DB)));
     cyc(86);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
-    cpu.p = p;
+    return (uint16_t)((a & 0xFF00) | m);
 }
 
 void abi_MenuRunFrames(void)
 {
-    MenuRunFrames();
+    uint16_t x = cpu.x, y = cpu.y;
+    uint8_t p = cpu.p;
+
+    cpu.a = MenuRunFrames(cpu.db, p, &x, &y);
+    cpu.x = x;
+    cpu.y = y;
+    cpu.p = p;
 }
 
 int MenuActorFind(uint8_t bank, uint16_t kind, uint16_t *x, uint16_t *y, uint8_t *p);
@@ -173,35 +209,43 @@ static uint16_t actor_find8(uint8_t kind, uint16_t x)
 }
 
 /* One menu frame as the screen loops run it: wait for the vertical blank,
-   run the objects, build the sprite table and ask for frame updates 0-3. */
-static void menu_frame(void)
+   run the objects (with P = p), build the sprite table and ask for frame
+   updates 0-3. */
+static void menu_frame(uint8_t bank, uint8_t p, uint16_t *x, uint16_t *y)
 {
-    uint32_t b;
+    uint32_t b = (uint32_t)bank << 16;
     uint8_t f;
 
     cyc(46);
-    MenuWaitFrame(cpu.db);
-    cpu.a = 0x0000;
-    (cyc(62), MenuActorsRun());
+    MenuWaitFrame(bank);
+    run_actors(bank, 0x0000, p, x, y);
     cyc(62);
-    cpu.a = MenuOamBuild(&cpu.x, &cpu.y);
-    b = (uint32_t)cpu.db << 16;
+    MenuOamBuild(x, y);
     cyc(46);
     f = (uint8_t)(rd8(b | 0x11D7) | 0x0F);
     cyc(40);
     wr8(b | 0x11D7, f);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | f);
 }
 
-/* MenuRegionCheck's PAL stop (from 0B:AE58), with DB = 0: the kind $0F
-   object's animation $1E at Y $60, +$10 of the kind $10 object cleared,
-   the objects run and the sprite table built once, frame updates 0-3
-   asked for, then the branch to itself at 0B:AE8A for ever. */
-static void region_stop(void)
+/*
+ * @routine 0B:AE58 MenuRegionPal
+ * WHAT IT DOES: MenuRegionCheck's stop on a PAL console, which no NTSC
+ * run reaches: the region screen's objects set (animation $1E on the
+ * kind $0F object at Y $60, +$10 of the kind $10 object cleared), one
+ * frame's objects and sprites, then a loop for ever.
+ * HOW: With DB = 0: the kind $0F object's animation $1E at Y $60, +$10 of
+ * the kind $10 object cleared, the objects run and the sprite table built
+ * once, frame updates 0-3 asked for, then the branch to itself at 0B:AE8A
+ * for ever.
+ * Entry: M 8-bit, X 16-bit (x), D = $0000; DB = 0; P and DB on the stack;
+ * a = A (its high byte reaches the objects).
+ * Exit: does not return.
+ */
+void MenuRegionPal(uint16_t a, uint16_t x)
 {
-    uint16_t x;
+    uint16_t y = 0;
 
-    x = actor_find8(0x0F, cpu.x);
+    x = actor_find8(0x0F, x);
     cyc(80);
     if (rd8((uint16_t)(x + 0x14)) != 0x1E) {
         cyc(70);
@@ -216,13 +260,20 @@ static void region_stop(void)
     x = actor_find8(0x10, x);
     cyc(80);
     wr8((uint16_t)(x + 0x10), 0x00);
-    cpu.x = x;
-    (cyc(62), MenuActorsRun());
+    y = cpu.y;
+    run_actors(0x00, a, cpu.p, &x, &y);
     cyc(62);
-    cpu.a = MenuOamBuild(&cpu.x, &cpu.y);
+    cpu.a = MenuOamBuild(&x, &y);
+    cpu.x = x;
+    cpu.y = y;
     cyc(46);
     wr8(0x0011D7, cyc_then(40, (uint8_t)(rd8(0x0011D7) | 0x0F)));
     cpu_loop_forever(0x0BAE8A);
+}
+
+void abi_MenuRegionPal(void)
+{
+    MenuRegionPal(cpu.a, cpu.x);
 }
 
 /*
@@ -230,48 +281,32 @@ static void region_stop(void)
  * WHAT IT DOES: Stops the game on a PAL console (bit 4 of STAT78): starts
  * animation $1E on the kind $0F object and puts it at Y $60, clears +$10
  * of the kind $10 object, runs the objects once, builds the sprite table,
- * asks for frame updates 0-3 and then loops for ever. On NTSC it returns
- * at once; no script runs on PAL.
+ * asks for frame updates 0-3 and then loops for ever (MenuRegionPal). On
+ * NTSC it returns at once; no script runs on PAL.
  * HOW: DB = 0 and 8-bit A throughout, so the searches compare and the
  * field writes store single bytes. The loop is a branch to itself without
  * waiting for a frame, so the frame updates are never taken.
- * Entry: X 16-bit. Exit: (NTSC) A low byte = 0; X, Y unchanged; P and DB
- * unchanged.
+ * Entry: X 16-bit (x); a = A (used on PAL). Exit: (NTSC) A low byte = 0 (returned); X, Y
+ * unchanged; P and DB unchanged.
  */
-void MenuRegionCheck(void)
+uint8_t MenuRegionCheck(uint16_t a, uint16_t x)
 {
-    cyc(178);
-    uint8_t p = cpu.p, db = cpu.db, s = hw_rd(STAT78) & 0x10;
+    uint8_t s;
 
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | s);
+    cyc(178);
+    s = hw_rd(STAT78) & 0x10;
     if (!s) {
         cyc(136);
-        cpu.p = p;
-        cpu.db = db;
-        return;
+        return 0x00;
     }
     cpu.db = 0x00;
-    region_stop();
+    MenuRegionPal(a, x);
+    return s;
 }
 
 void abi_MenuRegionCheck(void)
 {
-    MenuRegionCheck();
-}
-
-/*
- * @routine 0B:AE58 MenuRegionPal
- * WHAT IT DOES: MenuRegionCheck's stop on a PAL console, which no NTSC
- * run reaches: the region screen's objects set (animation $1E on the
- * kind $0F object at Y $60, +$10 of the kind $10 object cleared), one
- * frame's objects and sprites, then a loop for ever.
- * HOW: As inside MenuRegionCheck.
- * Entry: M 8-bit, X 16-bit, D = $0000; DB = 0; P and DB on the stack.
- * Exit: does not return.
- */
-void abi_MenuRegionPal(void)
-{
-    region_stop();
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | MenuRegionCheck(cpu.a, cpu.x));
 }
 
 /* Any of bits 0-3 of either player's held buttons ($0309, $030D), or
@@ -290,52 +325,55 @@ static int held_or_18fb(uint32_t b)
  * its screen again). No script holds those buttons here.
  * HOW: The held words are read through the data bank; the frames are as
  * MenuRunFrames's, with frame updates 0-3.
- * Entry: X 16-bit, D = $0000. Exit: A = 0 or $FFFF; N, Z from it; M
- * 16-bit, X 16-bit; X, Y unchanged when 0, as the last frame left them
- * when $FFFF, C then from the compare of the animation with $18.
+ * Entry: X 16-bit, D = $0000; *x, *y = X, Y; *p = P. Exit: A = 0 or $FFFF
+ * (returned); N, Z from it; M 16-bit, X 16-bit; X, Y unchanged when 0, as
+ * the last frame left them when $FFFF, C then from the compare of the
+ * animation with $18 (*p).
  */
-uint16_t MenuHeldRestart(void)
+uint16_t MenuHeldRestart(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint16_t x = cpu.x, y = cpu.y, a;
-    uint8_t p = cpu.p;
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t a, rec = *x;
+    uint8_t found = *p, now;
 
-    cpu.p &= (uint8_t)~(P_M | P_X);
+    now = (uint8_t)(*p & ~(P_M | P_X));
     if (!held_or_18fb(b)) {
-        cpu.p = nz16(cpu.p, 0x0000);
+        *p = nz16(now, 0x0000);
         cyc(82);
         return 0x0000;
     } else { cyc(116); }
-    MenuActorFind(cpu.db, 0x000F, &x, &y, &p);
+    MenuActorFind(bank, 0x000F, &rec, y, &found);
     cyc(22);
-    a = rd16((uint16_t)(x + 0x14));
-    p = (uint8_t)((p & ~P_C) | (a >= 0x0018 ? P_C : 0));
+    a = rd16((uint16_t)(rec + 0x14));
+    found = (uint8_t)((found & ~P_C) | (a >= 0x0018 ? P_C : 0));
     if (a != 0x0018) {
         cyc(86);
-        wr16((uint16_t)(x + 0x14), 0x0018);
+        wr16((uint16_t)(rec + 0x14), 0x0018);
         cyc(22);
-        wr16((uint16_t)(x + 0x16), 0x0000);
+        wr16((uint16_t)(rec + 0x16), 0x0000);
         cyc(22);
-        wr16((uint16_t)(x + 0x18), 0x0000);
+        wr16((uint16_t)(rec + 0x18), 0x0000);
     }
-    cpu.x = x;
-    cpu.y = y;
-    cpu.p = (uint8_t)((p & ~(P_M | P_X)) | (cpu.p & (P_M | P_X)));
+    *x = rec;
+    now = (uint8_t)(found & ~(P_M | P_X));
     do {
-        menu_frame();
-        cpu.p &= (uint8_t)~(P_M | P_X);
+        menu_frame(bank, now, x, y);
     } while (held_or_18fb(b));
     cyc(82);
-    cpu.p = nz16(cpu.p, 0xFFFF);
+    *p = nz16(now, 0xFFFF);
     return 0xFFFF;
 }
 
 void abi_MenuHeldRestart(void)
 {
-    cpu.a = MenuHeldRestart();
-}
+    uint16_t x = cpu.x, y = cpu.y;
+    uint8_t p = cpu.p;
 
-void MenuScreenOpen0(void);
+    cpu.a = MenuHeldRestart(cpu.db, &x, &y, &p);
+    cpu.x = x;
+    cpu.y = y;
+    cpu.p = p;
+}
 
 /*
  * @routine 0B:AE0A MenuScreen0Run
@@ -344,30 +382,42 @@ void MenuScreenOpen0(void);
  * the region (MenuRegionCheck), opens it again while buttons are held
  * (MenuHeldRestart), then turns the display, interrupts, HDMA and DMA off.
  * HOW: Frames as MenuRunFrames's, with frame updates 0-3.
- * Entry: D = $0000. Exit: A = $0080; X, Y as the last frame left them; M
- * 8-bit, X 16-bit; N set, Z clear; C clear.
+ * Entry: D = $0000; a, *x, *y, *p = A, X, Y, P. Exit: A = $0080
+ * (returned); X, Y as the last frame left them; M 8-bit, X 16-bit; N set,
+ * Z clear; C clear.
  */
-void MenuScreen0Run(void)
+uint16_t MenuScreen0Run(uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y, uint8_t *p)
 {
     uint32_t b;
 
     do {
-        cpu.p &= (uint8_t)~(P_M | P_X);
+        *p &= (uint8_t)~(P_M | P_X);
+        /* MenuScreenOpen0 works in registers: A, X, Y, P and DB in, and out. */
+        cpu.a = a;
+        cpu.x = *x;
+        cpu.y = *y;
+        cpu.p = *p;
+        cpu.db = bank;
         MenuScreenOpen0();
+        a = cpu.a;
+        *x = cpu.x;
+        *y = cpu.y;
+        *p = cpu.p;
+        bank = cpu.db;
         cyc(76);
         do {
             cyc(22);
-            menu_frame();
-            cpu.p &= (uint8_t)~(P_M | P_X);
-            b = (uint32_t)cpu.db << 16;
+            menu_frame(bank, *p, x, y);
+            *p &= (uint8_t)~(P_M | P_X);
+            b = (uint32_t)bank << 16;
             cyc(46);
-            cpu.a = rd16(b | 0x11EB);
-        } while (!cpu.a);
+            a = rd16(b | 0x11EB);
+        } while (!a);
         cyc(62);
-        MenuRegionCheck();
-        cpu.a = (cyc(46), MenuHeldRestart());
-    } while (cpu.a == 0xFFFF);
-    b = (uint32_t)cpu.db << 16;
+        MenuRegionCheck(a, *x);
+        a = (cyc(46), MenuHeldRestart(bank, x, y, p));
+    } while (a == 0xFFFF);
+    b = (uint32_t)bank << 16;
     cyc(102);
     ppu_wr(b | (uint16_t)INIDISP, 0x80);
     cyc(24);
@@ -376,12 +426,18 @@ void MenuScreen0Run(void)
     hdmaen_wr(b | (uint16_t)HDMAEN, 0x00);
     cyc(24);
     mdmaen_wr(b | (uint16_t)MDMAEN, 0x00);
-    cpu.a = 0x0080;
-    cpu.p = (uint8_t)((cpu.p & ~(P_Z | P_C)) | P_N | P_M);
+    *p = (uint8_t)((*p & ~(P_Z | P_C)) | P_N | P_M);
     cyc(44);
+    return 0x0080;
 }
 
 void abi_MenuScreen0Run(void)
 {
-    MenuScreen0Run();
+    uint16_t x = cpu.x, y = cpu.y;
+    uint8_t p = cpu.p;
+
+    cpu.a = MenuScreen0Run(cpu.db, cpu.a, &x, &y, &p);
+    cpu.x = x;
+    cpu.y = y;
+    cpu.p = p;
 }

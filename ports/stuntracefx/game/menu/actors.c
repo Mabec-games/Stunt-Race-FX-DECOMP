@@ -15,6 +15,7 @@
 #include "hw.h"
 #include "cpu_ops.h"
 #include "wram.h"
+#include "menu_calls.h"
 
 #define ACTOR_FIRST 0x1265u
 #define ACTOR_SIZE 0x2Cu
@@ -192,40 +193,47 @@ int MenuActorFind(uint8_t bank, uint16_t kind, uint16_t *x, uint16_t *y, uint8_t
 
 /* MenuActorFind with an 8-bit accumulator (MenuRegionCheck's PAL stop):
    the kind is stored and compared as a byte with the low byte of +$1A;
-   A's high byte is kept. */
-static void actor_find_m8(void)
+   *a is A's low byte, as the last record looked at left it. */
+void MenuActorFind8(uint8_t bank, uint8_t kind, uint16_t *x, uint16_t *y, uint8_t *p, uint8_t *a)
 {
-    uint8_t bank = cpu.db, v = 0, m;
+    uint8_t v = 0, m;
     uint16_t i;
 
-    wr8(dbw(bank, 0x11E1), (uint8_t)cpu.a);
+    wr8(dbw(bank, 0x11E1), kind);
     i = (uint16_t)(rd16(dbw(bank, LIVE_LEN)) - 2);
-    cpu.p = nz16(cpu.p, i);
+    *p = nz16(*p, i);
     while (!(i & 0x8000)) {
-        cpu.x = rd16(dbw(bank, (uint16_t)(LIVE_LIST + i)));
-        v = rd8((uint16_t)(cpu.x + 0x1A));
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+        *x = rd16(dbw(bank, (uint16_t)(LIVE_LIST + i)));
+        v = rd8((uint16_t)(*x + 0x1A));
+        *a = v;
         m = rd8(dbw(bank, 0x11E1));
-        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - m)) & ~P_C) | (v >= m ? P_C : 0));
+        *p = (uint8_t)((nz8(*p, (uint8_t)(v - m)) & ~P_C) | (v >= m ? P_C : 0));
         if (v == m) {
-            cpu.y = i;
+            *y = i;
             return;
         }
         i = (uint16_t)(i - 2);
-        cpu.p = nz16(cpu.p, i);
+        *p = nz16(*p, i);
     }
-    cpu.y = i;
+    *y = i;
 }
 
 void abi_MenuActorFind(void)
 {
-    uint8_t p = cpu.p;
+    uint16_t x = cpu.x, y = cpu.y;
+    uint8_t p = cpu.p, a8 = (uint8_t)cpu.a;
 
     if (cpu.p & P_M) {
-        actor_find_m8();
+        MenuActorFind8(cpu.db, a8, &x, &y, &p, &a8);
+        cpu.x = x;
+        cpu.y = y;
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | a8);
+        cpu.p = p;
         return;
     }
-    MenuActorFind(cpu.db, cpu.a, &cpu.x, &cpu.y, &p);
+    MenuActorFind(cpu.db, cpu.a, &x, &y, &p);
+    cpu.x = x;
+    cpu.y = y;
     cpu.a = find_last_kind;
     cpu.p = p;
 }
@@ -656,10 +664,20 @@ static uint16_t add32(uint16_t rec, uint8_t to, uint8_t from, uint8_t *p)
  * Entry: M 16-bit, D = $0000; X = record. Exit: A = the new +$02; N, Z, C,
  * V from the high word's add.
  */
+uint16_t MenuActorAddX(uint16_t rec, uint8_t *p)
+{
+    uint16_t a = add32(rec, 0x00, 0x1C, p);
+
+    cyc(42);
+    return a;
+}
+
 void abi_MenuActorAddX(void)
 {
-    cpu.a = add32(cpu.x, 0x00, 0x1C, &cpu.p);
-    cyc(42);
+    uint8_t p = cpu.p;
+
+    cpu.a = MenuActorAddX(cpu.x, &p);
+    cpu.p = p;
 }
 
 /*
@@ -671,10 +689,20 @@ void abi_MenuActorAddX(void)
  * Entry: M 16-bit, D = $0000; X = record. Exit: A = the new +$06; N, Z, C,
  * V from the high word's add.
  */
+uint16_t MenuActorAddY(uint16_t rec, uint8_t *p)
+{
+    uint16_t a = add32(rec, 0x04, 0x20, p);
+
+    cyc(42);
+    return a;
+}
+
 void abi_MenuActorAddY(void)
 {
-    cpu.a = add32(cpu.x, 0x04, 0x20, &cpu.p);
-    cyc(42);
+    uint8_t p = cpu.p;
+
+    cpu.a = MenuActorAddY(cpu.x, &p);
+    cpu.p = p;
 }
 
 /*
@@ -689,33 +717,44 @@ void abi_MenuActorAddY(void)
  * A its last value read or added (both unchanged for an empty list); N set,
  * Z clear (DEY); C from the last CMP or ADC, V from the last ADC.
  */
-void abi_MenuActorsKind2Lower(void)
+void MenuActorsKind2Lower(uint8_t bank, uint16_t *x, uint16_t *y_out, uint16_t *a, uint8_t *p)
 {
-    uint16_t y = (uint16_t)(rd16(cyc_then(24, dbw(cpu.db, 0x11F7))) - 2);
-
+    uint16_t yy = (uint16_t)(rd16(cyc_then(24, dbw(bank, 0x11F7))) - 2);
     int first = 1;
 
-    cpu.p = nz16(cpu.p, y);
-    while (!(cpu.p & P_N)) {
+    *p = nz16(*p, yy);
+    while (!(*p & P_N)) {
         cyc(first ? 74 : 80);
         first = 0;
-        cpu.x = rd16(((uint32_t)cpu.db << 16) + 0x1239u + y);
+        *x = rd16(((uint32_t)bank << 16) + 0x1239u + yy);
         cyc(22);
-        cpu.a = rd16((uint16_t)(cpu.x + 0x1A));
-        cpu.p = cmp16(cpu.p, cpu.a, 0x0002);
-        if (cpu.p & P_Z) {
+        *a = rd16((uint16_t)(*x + 0x1A));
+        *p = cmp16(*p, *a, 0x0002);
+        if (*p & P_Z) {
             cyc(62);
-            cpu.a = rd16((uint16_t)(cpu.x + 0x06));
-            cpu.p &= (uint8_t)~P_C;
-            cpu.a = op_adc16(cpu.a, 0x000C, &cpu.p);
+            *a = rd16((uint16_t)(*x + 0x06));
+            *p &= (uint8_t)~P_C;
+            *a = op_adc16(*a, 0x000C, p);
             cyc(60);
-            wr16((uint16_t)(cpu.x + 0x06), cpu.a);
+            wr16((uint16_t)(*x + 0x06), *a);
         } else { cyc(46); }
-        y = (uint16_t)(y - 2);
-        cpu.p = nz16(cpu.p, y);
+        yy = (uint16_t)(yy - 2);
+        *p = nz16(*p, yy);
     }
     cyc(first ? 92 : 86);
+    *y_out = yy;
+}
+
+void abi_MenuActorsKind2Lower(void)
+{
+    uint16_t x = cpu.x, y = cpu.y, a = cpu.a;
+    uint8_t p = cpu.p;
+
+    MenuActorsKind2Lower(cpu.db, &x, &y, &a, &p);
+    cpu.x = x;
     cpu.y = y;
+    cpu.a = a;
+    cpu.p = p;
 }
 
 /*
@@ -2231,7 +2270,7 @@ void abi_MenuDropAway(void)
  * Entry: D = $0000. Exit: A = $40; X = $11F9; Y = $FFFE; N, Z clear; C
  * from MenuActorsSet10's last compare; M 16-bit, X 16-bit.
  */
-static uint16_t menu_drop_away_finish(uint8_t bank, uint8_t *p)
+uint16_t MenuDropAwayFinish(uint8_t bank, uint8_t *p)
 {
     static const struct reg_write set[] = {
         {BG1VOFS, 0x00}, {BG1VOFS, 0x00}, {HDMAEN, 0x00, 1}, {TSW, 0x00},
@@ -2255,16 +2294,11 @@ static uint16_t menu_drop_away_finish(uint8_t bank, uint8_t *p)
     return x;
 }
 
-void MenuDropAwayFinish(uint8_t bank, uint8_t *p)
-{
-    menu_drop_away_finish(bank, p);
-}
-
 void abi_MenuDropAwayFinish(void)
 {
     uint8_t p = cpu.p;
 
-    cpu.x = menu_drop_away_finish(cpu.db, &p);
+    cpu.x = MenuDropAwayFinish(cpu.db, &p);
     cpu.a = 0x0040;
     cpu.y = 0xFFFE;
     cpu.p = p;
@@ -2291,7 +2325,7 @@ uint16_t MenuDropAwayCheck(uint8_t bank, uint16_t *x, uint16_t *y, uint8_t *p)
     if (!(*p & P_Z))
         { cyc(46); return a; }
     *x = rd16(cyc_then(64, dbw(bank, CURRENT)));
-    *x = menu_drop_away_finish(bank, p);
+    *x = MenuDropAwayFinish(bank, p);
     *y = 0xFFFE;
     return 0x0040;
 }
