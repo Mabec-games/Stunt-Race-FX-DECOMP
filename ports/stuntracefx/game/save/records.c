@@ -5,6 +5,7 @@
 #include "machine.h"
 #include "cpu_ops.h"
 #include "hud_calls.h"
+#include "save_calls.h"
 
 /* Sum five bytes from `base` + X with 8-bit adds; X steps past them. */
 static uint8_t sum5(uint32_t base, uint8_t *x, uint8_t *p)
@@ -2808,37 +2809,55 @@ void abi_StuntRecordTime(void)
 
 /* LDA $0FA8; ASL; TAX; LDA.L row_table,X; STA $F3; then + $0FAA * 64 and +
    the character's byte from char_table at $0FA6: Y = A = $F3, X = $0FA6. */
-static void records_char_offset(uint32_t row_table, uint32_t char_table)
+/* The records panel's flags, for the adapters: C (and V when rc_v_set)
+   as the last step leaves them. */
+static uint8_t rc_c, rc_v;
+static int rc_v_set;
+static uint16_t rc_x;                   /* X as left */
+static int rc_m16;                      /* a step set M 16-bit (REP #$20) */
+static int rc_in_draw;                  /* inside a draw: Y is the offset (rc_y) */
+static int rc_preview;                  /* inside a preview's long entry: M 16-bit by its REP */
+static uint16_t rc_y;
+
+/* CLC; ADC (16-bit), binary: C and V to rc_c, rc_v. */
+static uint16_t rc_add(uint16_t a, uint16_t m)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    unsigned i;
+    uint16_t r = (uint16_t)(a + m);
+
+    rc_c = (unsigned)a + m > 0xFFFF ? P_C : 0;
+    rc_v = (~(a ^ m) & (a ^ r) & 0x8000) ? P_V : 0;
+    rc_v_set = 1;
+    return r;
+}
+
+static uint16_t records_char_offset(uint8_t bank, uint32_t row_table, uint32_t char_table)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t a, x;
 
     cyc(232);
-    op_lda16(b | 0x0FA8);
-    op_asl16();
-    op_tax16();
+    x = (uint16_t)(rd16(b | 0x0FA8) << 1);
+    cyc(30);                            /* TAX */
     cyc(62);
-    op_lda16(row_table + cpu.x);
-    wr16(0x0000F3, cpu.a);
+    a = rd16(row_table + x);
+    wr16(0x0000F3, a);
     cyc(24);
-    op_lda16(b | 0x0FAA);
-    op_and16(0x00FF);
-    for (i = 0; i < 6; i++)
-        op_asl16();
+    a = (uint16_t)(rd16(b | 0x0FAA) & 0x00FF);
+    cyc(2);
+    a = (uint16_t)(a << 6);
     cyc(136);
-    op_add16(rd16(0x0000F3));
+    a = rc_add(a, rd16(0x0000F3));
     cyc(16);
-    wr16(0x0000F3, cpu.a);
+    wr16(0x0000F3, a);
     cyc(24);
-    cpu.x = rd16(b | 0x0FA6);
-    cpu.p = nz16(cpu.p, cpu.x);
+    rc_x = rd16(b | 0x0FA6);
     cyc(100);
-    op_lda16(char_table + cpu.x);
-    op_and16(0x00FF);
-    op_add16(rd16(0x0000F3));
+    a = (uint16_t)(rd16(char_table + rc_x) & 0x00FF);
+    cyc(2);
+    a = rc_add(a, rd16(0x0000F3));
     cyc(16);
-    wr16(0x0000F3, cpu.a);
-    op_tay16();
+    wr16(0x0000F3, a);
+    return a;
 }
 
 /*
@@ -2850,9 +2869,22 @@ static void records_char_offset(uint32_t row_table, uint32_t char_table)
  * Entry: M 16-bit, X 16-bit; D = $0000. Exit: A = Y = $F3 = the offset;
  * X = $0FA6; N, Z from Y; C, V from the last add.
  */
+uint16_t RecordsCharOffsetStunt(uint8_t bank)
+{
+    return records_char_offset(bank, 0x07D8D4, 0x07D8DC);
+}
+
+/* The registers the offset routines leave: A = Y = the offset. */
+static void char_offset_exit(uint16_t r)
+{
+    cpu.a = cpu.y = r;
+    cpu.x = rc_x;
+    cpu.p = nz16((uint8_t)((cpu.p & ~(P_C | P_V)) | rc_c | rc_v), r);
+}
+
 void abi_RecordsCharOffsetStunt(void)
 {
-    records_char_offset(0x07D8D4, 0x07D8DC);
+    char_offset_exit(RecordsCharOffsetStunt(cpu.db));
 }
 
 /*
@@ -2862,9 +2894,14 @@ void abi_RecordsCharOffsetStunt(void)
  * HOW: As RecordsCharOffsetStunt.
  * Entry: M 16-bit, X 16-bit; D = $0000. Exit: as RecordsCharOffsetStunt.
  */
+uint16_t RecordsCharOffsetAll(uint8_t bank)
+{
+    return records_char_offset(bank, 0x07D8E3, 0x07D8EB);
+}
+
 void abi_RecordsCharOffsetAll(void)
 {
-    records_char_offset(0x07D8E3, 0x07D8EB);
+    char_offset_exit(RecordsCharOffsetAll(cpu.db));
 }
 
 /*
@@ -2877,119 +2914,122 @@ void abi_RecordsCharOffsetAll(void)
  * Entry: M 16-bit, X 16-bit; D = $0000. Exit: A = $F1 = the first word,
  * N and Z from it; X = the offset; C, V from the last add.
  */
-void abi_RecordsEntryLoad(void)
+uint16_t RecordsEntryLoad(uint8_t bank)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t a, v;
 
     cyc(126);
-    op_lda16(b | 0x0E3D);
-    op_asl16();
+    a = (uint16_t)(rd16(b | 0x0E3D) << 1);
     cyc(52);
-    op_add16(rd16(b | 0x0E3D));
-    op_and16(0x00FF);
-    op_asl16();
-    op_asl16();
-    op_asl16();
-    op_asl16();
+    a = rc_add(a, rd16(b | 0x0E3D));
+    cyc(2);
+    a = (uint16_t)((a & 0x00FF) << 4);
     cyc(94);
-    wr16(0x0000F1, cpu.a);
+    wr16(0x0000F1, a);
     cyc(24);
-    op_lda16(b | 0x0FA8);
-    op_and16(0x00FF);
-    op_asl16();
+    a = (uint16_t)(rd16(b | 0x0FA8) & 0x00FF);
+    cyc(2);
+    a = (uint16_t)(a << 1);
     cyc(74);
-    op_add16(rd16(b | 0x0FA8));
-    op_asl16();
-    op_asl16();
+    a = rc_add(a, rd16(b | 0x0FA8));
+    a = (uint16_t)(a << 2);
     cyc(58);
-    op_add16(rd16(0x0000F1));
+    a = rc_add(a, rd16(0x0000F1));
     cyc(16);
-    wr16(0x0000F1, cpu.a);
+    wr16(0x0000F1, a);
     cyc(24);
-    op_lda16(b | 0x0FAA);
-    op_asl16();
-    op_asl16();
+    a = (uint16_t)(rd16(b | 0x0FAA) << 2);
     cyc(58);
-    op_add16(rd16(0x0000F1));
+    a = rc_add(a, rd16(0x0000F1));
     cyc(16);
-    wr16(0x0000F1, cpu.a);
-    op_tax16();
+    wr16(0x0000F1, a);
+    cyc(30);                            /* TAX */
+    rc_x = a;
     cyc(16);
-    op_lda16(0x70FCD2 + cpu.x);
+    v = rd16(0x70FCD2 + (uint32_t)a);
     cyc(16);
-    wr16(0x0000F3, cpu.a);
+    wr16(0x0000F3, v);
     cyc(32);
-    op_lda16(0x70FCD0 + cpu.x);
+    v = rd16(0x70FCD0 + (uint32_t)a);
     cyc(16);
-    wr16(0x0000F1, cpu.a);
+    wr16(0x0000F1, v);
+    return v;
 }
 
-void abi_BinaryToBcd(void);
+void abi_RecordsEntryLoad(void)
+{
+    cpu.a = RecordsEntryLoad(cpu.db);
+    cpu.x = rc_x;
+    cpu.p = nz16((uint8_t)((cpu.p & ~(P_C | P_V)) | rc_c | rc_v), cpu.a);
+}
+
 
 /* LDA $0FA6; ASL; TAX: the handler index, C from the shift. */
-static uint16_t records_char_index(void)
+static uint16_t records_char_index(uint8_t bank)
 {
+    uint16_t v;
+
     cyc(128);
-    op_lda16(((uint32_t)cpu.db << 16) | 0x0FA6);
-    op_asl16();
-    op_tax16();
-    return cpu.x;
+    v = rd16(((uint32_t)bank << 16) | 0x0FA6);
+    rc_c = (uint8_t)(v >> 15);          /* the ASL */
+    cyc(30);                            /* TAX */
+    rc_x = (uint16_t)(v << 1);
+    return rc_x;
 }
 
 /* A digit of $F2 (the high nibble, or the low one with `low`) when $F2 is
    below $40, else `blank`. */
-static void stunt_score_digit(int low, uint16_t blank)
+static uint16_t stunt_score_digit(int low, uint16_t blank)
 {
-    op_sep(P_M);
-    cyc(82);
-    op_lda8(0x0000F2);
-    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(cpu.a - 0x40)) & ~P_C) | ((uint8_t)cpu.a >= 0x40 ? (cyc(2), P_C) : (cyc(32), 0)));
-    if ((uint8_t)cpu.a >= 0x40) {
-        op_rep(P_M);
-        op_lda16_imm(blank);
-        return;
-    }
-    if (!low) {
-        unsigned i;
-        uint8_t v = (uint8_t)cpu.a;
+    uint8_t v;
 
-        for (i = 0; i < 4; i++) {
-            cyc(14);
-            cpu.p = (uint8_t)((cpu.p & ~P_C) | (v & 1));
-            v >>= 1;
-        }
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-        cpu.p = nz8(cpu.p, v);
+    cyc(82);
+    v = rd8(0x0000F2);
+    if (v >= 0x40) {
+        cyc(2);
+        rc_c = P_C;
+        cyc(22);
+        cyc(38);
+        rc_m16 = 1;
+        return blank;
     }
-    op_rep(P_M);
-    op_and16(0x000F);
+    cyc(32);
+    rc_c = 0;
+    if (!low) {
+        cyc(14 * 4);
+        rc_c = (uint8_t)((v >> 3) & 1);
+        v >>= 4;
+    }
+    cyc(22);
+    cyc(2);
+    rc_m16 = 1;
+    return (uint16_t)(v & 0x0F);
 }
 
 /* Letter `which` (0-2) of the name word at $F3: bits 0-4 (LDA $F3), 5-9
    (three ASLs and XBA) or 10-14 (LDA $F4, two LSRs); AND #$1F, + $0A. */
-static void records_letter(int which)
+static uint16_t records_letter(int which)
 {
-    unsigned i;
+    uint16_t a;
 
     if (which == 0) {
         cyc(60);
-        op_lda16(0x0000F3);
+        a = rd16(0x0000F3);
     } else if (which == 1) {
         cyc(60);
-        op_lda16(0x0000F3);
+        a = rd16(0x0000F3);
         cyc(2);
-        for (i = 0; i < 3; i++)
-            { cyc(20); op_asl16(); }
-        op_xba();
+        cyc(60);
+        a = (uint16_t)(a << 3);
+        a = (uint16_t)(a << 8 | a >> 8);
     } else {
         cyc(60);
-        op_lda16(0x0000F4);
-        op_lsr16();
-        op_lsr16();
+        a = (uint16_t)(rd16(0x0000F4) >> 2);
     }
     cyc(16);
-    op_and16(0x001F);
-    op_add16(0x000A);
+    cyc(2);
+    return rc_add((uint16_t)(a & 0x001F), 0x000A);
 }
 
 /*
@@ -3004,72 +3044,116 @@ static void records_letter(int which)
  * Entry: M 16-bit, X 16-bit; D = $0000. Exit: M 16-bit; A = the tile;
  * X = $0FA6 * 2.
  */
-void abi_RecordsCharTileStunt(void)
+/* The jump of a records character past the table's end: to code still in
+   registers, with the state it has there (A = X = the index, C the
+   ASL's). */
+static void records_char_jump(uint8_t bank, uint32_t table)
 {
-    switch (records_char_index()) {
+    cpu.db = bank;
+    if (rc_preview)
+        cpu.p &= (uint8_t)~P_M;
+    cpu.a = cpu.x = rc_x;
+    if (rc_in_draw)
+        cpu.y = rc_y;
+    cpu.p = nz16((uint8_t)((cpu.p & ~P_C) | rc_c), rc_x);
+    if (rc_v_set)
+        cpu.p = (uint8_t)((cpu.p & ~P_V) | rc_v);
+    jump_routine(0x070000 | rd16(table + rc_x));
+}
+
+uint16_t RecordsCharTileStunt(uint8_t bank)
+{
+    uint16_t a;
+
+    switch (records_char_index(bank)) {
     case 0:
-        stunt_score_digit(0, 0x006D);
-        break;
+        return stunt_score_digit(0, 0x006D);
     case 2:
-        stunt_score_digit(1, 0x006E);
-        break;
+        return stunt_score_digit(1, 0x006E);
     case 4:
         cyc(60);
-        op_lda16(0x0000F1);
+        a = rd16(0x0000F1);
         cyc(56);
-        op_lsr16();
-        op_lsr16();
-        op_lsr16();
-        op_lsr16();
-        op_and16(0x000F);
-        break;
+        rc_c = (uint8_t)((a >> 3) & 1);
+        cyc(2);
+        return (uint16_t)((a >> 4) & 0x000F);
     case 6:
         cyc(60);
-        op_lda16(0x0000F1);
-        op_and16(0x000F);
-        break;
+        a = rd16(0x0000F1);
+        cyc(2);
+        return (uint16_t)(a & 0x000F);
     case 8:
-        records_letter(0);
+        a = records_letter(0);
         cyc(44);
-        break;
+        return a;
     case 10:
-        records_letter(1);
+        a = records_letter(1);
         cyc(44);
-        break;
+        return a;
     case 12:
-        records_letter(2);
+        a = records_letter(2);
         cyc(50);
-        break;
+        return a;
     default:
-        jump_routine(0x070000 | rd16(0x07D79D + cpu.x));
-        break;
+        records_char_jump(bank, 0x07D79D);
+        return 0;
     }
+}
+
+/* The registers a tile routine leaves: A the tile, X the index * 2. */
+static void char_tile_exit(uint16_t t)
+{
+    cpu.a = t;
+    cpu.x = rc_x;
+    cpu.p = nz16((uint8_t)((cpu.p & ~P_C) | rc_c), t);
+    if (rc_m16)
+        cpu.p &= (uint8_t)~P_M;
+    if (rc_v_set)
+        cpu.p = (uint8_t)((cpu.p & ~P_V) | rc_v);
+}
+
+void abi_RecordsCharTileStunt(void)
+{
+    rc_v_set = rc_m16 = rc_in_draw = rc_preview = 0;  /* V and M are the entry's unless a step sets them */
+    char_tile_exit(RecordsCharTileStunt(cpu.db));
 }
 
 /* A field of the packed time at $F1 (the seconds, ASL and XBA first, with
    `seconds`), masked, through BinaryToBcd: the tens with `tens`, else the
    units. */
-static void records_time_digit(uint16_t mask, int seconds, int tens)
+/* BinaryToBcd, binary; its C and V to rc_c, rc_v. */
+static uint16_t rc_bcd(uint16_t v)
 {
+    uint8_t p = 0;
+
+    v = BinaryToBcd(v, &p);
+    rc_c = (uint8_t)(p & P_C);
+    rc_v = (uint8_t)(p & P_V);
+    rc_v_set = 1;
+    return v;
+}
+
+static uint16_t records_time_digit(uint16_t mask, int seconds, int tens)
+{
+    uint16_t a;
+
     cyc(60);
-    op_lda16(0x0000F1);
+    a = rd16(0x0000F1);
     if (seconds) {
         cyc(34);
-        op_asl16();
-        op_xba();
+        a = (uint16_t)(a << 1);
+        a = (uint16_t)(a << 8 | a >> 8);
     }
     cyc(84);
-    op_and16(mask);
-    abi_BinaryToBcd();
+    cyc(2);
+    a = rc_bcd((uint16_t)(a & mask));
     if (tens) {
         cyc(34);
-        op_lsr16();
-        op_lsr16();
-        op_lsr16();
-        op_lsr16();
-    } else {
-        op_and16(0x000F);
+        rc_c = (uint8_t)((a >> 3) & 1);
+        return (uint16_t)(a >> 4);
     }
+    cyc(2);
+    return (uint16_t)(a & 0x000F);
 }
 
 /*
@@ -3083,64 +3167,64 @@ static void records_time_digit(uint16_t mask, int seconds, int tens)
  * Entry: M 16-bit, X 16-bit; D = $0000. Exit: M 16-bit; A = the tile;
  * X = $0FA6 * 2.
  */
-void abi_RecordsCharTileAll(void)
+uint16_t RecordsCharTileAll(uint8_t bank)
 {
+    uint16_t a;
     unsigned i;
-    int letter = 0;
 
-    switch (records_char_index()) {
+    switch (records_char_index(bank)) {
     case 0:
         cyc(60);
-        op_lda16(0x0000F1);
-        for (i = 0; i < 4; i++)
-            { cyc(35); op_rol16(); }
-        op_and16(0x0007);
-        abi_BinaryToBcd();
-        op_and16(0x000F);
-        break;
+        a = rd16(0x0000F1);
+        for (i = 0; i < 4; i++) {       /* ROL through carry */
+            uint8_t c = (uint8_t)(a >> 15);
+
+            cyc(35);
+            a = (uint16_t)(a << 1 | rc_c);
+            rc_c = c;
+        }
+        cyc(2);
+        a = rc_bcd((uint16_t)(a & 0x0007));
+        cyc(2);
+        return (uint16_t)(a & 0x000F);
     case 2:
-        records_time_digit(0x003F, 1, 1);
-        break;
+        return records_time_digit(0x003F, 1, 1);
     case 4:
-        records_time_digit(0x003F, 1, 0);
-        break;
+        return records_time_digit(0x003F, 1, 0);
     case 6:
-        records_time_digit(0x007F, 0, 1);
-        break;
+        return records_time_digit(0x007F, 0, 1);
     case 8:
-        records_time_digit(0x007F, 0, 0);
-        break;
+        return records_time_digit(0x007F, 0, 0);
     case 10:
-        records_letter(0);
-        letter = 1;
+        a = records_letter(0);
         break;
     case 12:
-        records_letter(1);
-        letter = 1;
+        a = records_letter(1);
         break;
     case 14:
-        records_letter(2);
+        a = records_letter(2);
         cyc(6);
-        letter = 1;
         break;
     default:
-        jump_routine(0x070000 | rd16(0x07D807 + cpu.x));
-        letter = 1;
-        break;
+        records_char_jump(bank, 0x07D807);
+        return 0;
     }
-    if (letter)
-        cyc(44);
+    cyc(44);
+    return a;
+}
+
+void abi_RecordsCharTileAll(void)
+{
+    rc_v_set = rc_m16 = rc_in_draw = rc_preview = 0;  /* V and M are the entry's unless a step sets them */
+    char_tile_exit(RecordsCharTileAll(cpu.db));
 }
 
 /* The tile's low byte to $7F:93D7 + Y (SEP #$20, TYX, STA.L, REP #$20). */
-static void records_char_store(void)
+static void records_char_store(uint16_t y, uint16_t t)
 {
-    op_sep(P_M);
-    cpu.x = cpu.y;
-    cpu.p = nz16(cpu.p, cpu.x);
     cyc(132);
-    wr8(0x7F93D7 + cpu.x, (uint8_t)cpu.a);
-    op_rep(P_M);
+    wr8(0x7F93D7 + (uint32_t)y, (uint8_t)t);
+    cyc(22);
     cyc(42);                            /* RTS */
 }
 
@@ -3154,14 +3238,52 @@ static void records_char_store(void)
  * A = the tile and X = Y, or as RecordsEntryLoad leaves them for an empty
  * entry.
  */
+/* The draws' exit, for the adapters: drawn (A the tile, X = Y the
+   offset) or empty (as RecordsEntryLoad leaves A, X; C, Z set for All). */
+static int rc_drawn;
+static uint16_t rc_a;
+static uint8_t rc_empty_flags;
+
+uint16_t RecordsCharDrawStunt(uint8_t bank)
+{
+    uint16_t t;
+
+    rc_y = RecordsCharOffsetStunt(bank);
+    rc_in_draw = 1;
+    rc_a = RecordsEntryLoad(bank);
+    rc_drawn = 0;
+    if (!rc_a) {
+        rc_empty_flags = (uint8_t)(P_Z | rc_c);
+        cyc(106);                       /* EntryLoad's RTS, BEQ taken, RTS */
+        return rc_a;
+    }
+    t = RecordsCharTileStunt(bank);
+    records_char_store(rc_y, t);
+    rc_drawn = 1;
+    return rc_a = t;
+}
+
+/* The registers a records character draw leaves. */
+static void char_draw_exit(void)
+{
+    cpu.a = rc_a;
+    cpu.y = rc_y;
+    if (rc_drawn) {
+        cpu.x = rc_y;
+        cpu.p = nz16((uint8_t)((cpu.p & ~(P_C | P_M)) | rc_c), rc_y);
+    } else {
+        cpu.x = rc_x;
+        cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C)) | rc_empty_flags);
+    }
+    if (rc_v_set)
+        cpu.p = (uint8_t)((cpu.p & ~P_V) | rc_v);
+}
+
 void abi_RecordsCharDrawStunt(void)
 {
-    abi_RecordsCharOffsetStunt();
-    abi_RecordsEntryLoad();
-    if (cpu.p & P_Z)
-        { cyc(106); return; }           /* EntryLoad's RTS, BEQ taken, RTS */
-    abi_RecordsCharTileStunt();
-    records_char_store();
+    rc_preview = 0;
+    RecordsCharDrawStunt(cpu.db);
+    char_draw_exit();
 }
 
 /*
@@ -3173,36 +3295,34 @@ void abi_RecordsCharDrawStunt(void)
  * Entry: M 16-bit, X 16-bit; D = $0000. Exit: as RecordsCharDrawStunt;
  * for an empty entry C and Z set.
  */
+uint16_t RecordsCharDrawAll(uint8_t bank)
+{
+    uint16_t t;
+
+    rc_y = RecordsCharOffsetAll(bank);
+    rc_in_draw = 1;
+    rc_a = RecordsEntryLoad(bank);
+    rc_drawn = 0;
+    if (rc_a == 0xFFFF) {
+        rc_empty_flags = P_Z | P_C;
+        cyc(130);
+        return rc_a;
+    } else { cyc(24); }
+    t = RecordsCharTileAll(bank);
+    records_char_store(rc_y, t);
+    rc_drawn = 1;
+    return rc_a = t;
+}
+
 void abi_RecordsCharDrawAll(void)
 {
-    abi_RecordsCharOffsetAll();
-    abi_RecordsEntryLoad();
-    op_cmp16(0xFFFF);
-    if (cpu.a == 0xFFFF)
-        { cyc(130); return; } else { cyc(24); }
-    abi_RecordsCharTileAll();
-    records_char_store();
+    rc_preview = 0;
+    RecordsCharDrawAll(cpu.db);
+    char_draw_exit();
 }
 
 /* PHP, SEP #$20, PHB, PHK, PLB, REP #$20, the JSR, SEP #$20, PLB, PLP. */
-static void records_char_long(void (*draw)(void))
-{
-    uint8_t p0 = cpu.p, db0 = cpu.db;
 
-    op_sep(P_M);
-    cpu.db = 0x07;
-    cpu.p = nz8(cpu.p, 0x07);
-    op_rep(P_M);
-    draw();
-    op_sep(P_M);
-    cpu.db = db0;
-    cyc(122);                           /* SEP, PLB, PLP, RTL */
-    cpu.p = p0;
-    if (p0 & P_X) {
-        cpu.x &= 0x00FF;
-        cpu.y &= 0x00FF;
-    }
-}
 
 /*
  * @routine 07:C663 PreviewRowDrawStunt
@@ -3213,9 +3333,35 @@ static void records_char_long(void (*draw)(void))
  * Entry: X 16-bit; D = $0000. Exit: P and the data bank unchanged; A, X,
  * Y as RecordsCharDrawStunt leaves them.
  */
+uint16_t PreviewRowDrawStunt(void)
+{
+    uint16_t a;
+
+    cyc(22);                            /* REP #$20 */
+    rc_preview = 1;
+    a = RecordsCharDrawStunt(0x07);
+    rc_preview = 0;
+    cyc(122);                           /* SEP, PLB, PLP, RTL */
+    return a;
+}
+
+/* The draws' registers with the caller's P (PLP). */
+static void preview_exit(uint8_t p0)
+{
+    char_draw_exit();
+    cpu.p = p0;
+    if (p0 & P_X) {
+        cpu.x &= 0x00FF;
+        cpu.y &= 0x00FF;
+    }
+}
+
 void abi_PreviewRowDrawStunt(void)
 {
-    records_char_long(abi_RecordsCharDrawStunt);
+    uint8_t p0 = cpu.p;
+
+    PreviewRowDrawStunt();
+    preview_exit(p0);
 }
 
 /*
@@ -3224,7 +3370,22 @@ void abi_PreviewRowDrawStunt(void)
  * HOW: As PreviewRowDrawStunt.
  * Entry: X 16-bit; D = $0000. Exit: as PreviewRowDrawStunt.
  */
+uint16_t PreviewRowDrawAll(void)
+{
+    uint16_t a;
+
+    cyc(22);
+    rc_preview = 1;
+    a = RecordsCharDrawAll(0x07);
+    rc_preview = 0;
+    cyc(122);
+    return a;
+}
+
 void abi_PreviewRowDrawAll(void)
 {
-    records_char_long(abi_RecordsCharDrawAll);
+    uint8_t p0 = cpu.p;
+
+    PreviewRowDrawAll();
+    preview_exit(p0);
 }
