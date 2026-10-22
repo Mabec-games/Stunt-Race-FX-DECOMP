@@ -11,6 +11,8 @@
 #include "cpu_ops.h"
 
 void SoundPort1QueuePush(uint8_t command);
+void SoundPort1QueuePushW(uint8_t command, unsigned wide);
+void SoundPort0QueuePushW(uint8_t command, unsigned wide);
 
 /* Start a held sound: announce it first if nothing was held, then send it. */
 static void held_sound_set(uint32_t held, uint8_t announce, uint8_t sound)
@@ -171,9 +173,9 @@ static uint8_t sound_0e1a_stop(void)
     return 0x08;
 }
 
-void Sound0E1AStop(void)
+uint8_t Sound0E1AStop(void)
 {
-    sound_0e1a_stop();
+    return sound_0e1a_stop();
 }
 
 void abi_Sound0E1AStop(void)
@@ -512,66 +514,76 @@ void abi_SoundHoldByFlags(void)
  * Entry: M 16-bit, X 16-bit; Y = player index (bytes). Exit: A low byte =
  * $35; M 8-bit; C set when the byte at $0DF4 + Y is 1 or more; N, Z from
  * the data bank.
+ * From C: returns C.
  */
-void PlayerSound35(void)
+int PlayerSound35(uint8_t bank, uint16_t y)
 {
-    cyc(116);
-    SoundPort0QueuePush(0x35);
-}
+    cyc(52);
+    uint8_t v = rd8((uint32_t)bank << 16 | (uint16_t)(0x0DF4 + y));
 
-/* The test's byte v: BEQ taken (v = 1) 6 longer than not taken. */
-static void player_sound35(uint8_t v)
-{
-    cyc(v == 1 ? 116 : 110);
+    cyc(v == 1 ? 116 : 110);            /* BEQ taken (v = 1) 6 longer than not */
     SoundPort0QueuePush(0x35);
+    if (v < 1)
+        cyc(42);
+    return v >= 1;
 }
 
 void abi_PlayerSound35(void)
 {
-    cyc(52);
-    uint8_t v = rd8((uint32_t)cpu.db << 16 | (uint16_t)(0x0DF4 + cpu.y));
+    int c = PlayerSound35(cpu.db, cpu.y);
 
-    player_sound35(v);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x35);
-    cpu.p = (uint8_t)((nz8(cpu.p, cpu.db) & ~P_C) | P_M | (v >= 1 ? P_C : (cyc(42), 0)));
+    cpu.p = (uint8_t)((nz8(cpu.p, cpu.db) & ~P_C) | P_M | (c ? P_C : 0));
 }
 
-void abi_SoundIfFlag40(void);
-void abi_SoundHoldByFlags(void);
+static int es_full;                     /* the engine sounds ran: A whole */
+static int es_xset;                     /* SoundIfFlag40 queued: X its byte */
+static uint8_t es_x;
 
 /* The engine sounds for one player: when $0E4B is 0 and the player's byte
    at `phase` is 6, SoundIfFlag40 with the player's newly pressed buttons
-   and SoundHoldByFlags with the buttons held (Y = the player). */
-static void abi_engine_sounds(uint16_t phase, uint16_t pressed, uint16_t held)
+   and SoundHoldByFlags with the buttons held. Returns A (its low byte
+   only, the byte that failed the test, unless es_full). */
+static uint16_t engine_sounds(uint8_t bank, uint8_t player, uint16_t phase, uint16_t pressed, uint16_t held)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint8_t p = cpu.p, v;
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t v, x, a;
+    uint16_t w;
 
-    cpu.x &= 0x00FF;
-    cpu.y &= 0x00FF;
+    es_full = 0;
+    es_xset = 0;
     cyc(68);
     v = rd8(b | 0x0E4B);
     if (!v) {
         cyc(40);
         v = rd8(b | phase);
         if (v == 0x06) {
-            cpu.p = (uint8_t)((cpu.p & ~P_M) | P_X);
             cyc(78);
-            cpu.a = rd16(b | pressed);
-            (cyc(46), abi_SoundIfFlag40());
-            cpu.p &= (uint8_t)~P_M;
+            w = rd16(b | pressed);
             cyc(46);
-            cpu.a = rd16(b | held);
+            if (SoundIfFlag40(bank, w, player, &x))
+                { es_x = x; es_xset = 1; }
+            cyc(38 + 46);
+            w = rd16(b | held);
             cyc(46);                    /* JSR */
-            abi_SoundHoldByFlags();
-            cpu.p = p;
-            cyc(72);
-            return;
+            if (!SoundHoldByFlags(bank, w, player, &a))
+                cyc(38);
+            cyc(26 + 72);
+            es_full = 1;
+            return (uint16_t)((w & 0xFF00) | a);
         } else { cyc(16); }
     }
     cyc(94);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = p;
+    return v;
+}
+
+static void engine_sounds_exit(uint16_t a)
+{
+    cpu.x &= 0x00FF;
+    cpu.y &= 0x00FF;
+    if (es_xset)
+        cpu.x = es_x;
+    cpu.a = es_full ? a : (uint16_t)((cpu.a & 0xFF00) | (uint8_t)a);
 }
 
 /*
@@ -584,26 +596,14 @@ static void abi_engine_sounds(uint16_t phase, uint16_t pressed, uint16_t held)
  * clear; A and X as the sound routines leave them, or A low byte = the byte
  * that failed the test.
  */
-static void engine_sounds(uint8_t bank, uint8_t player, uint16_t phase, uint16_t pressed, uint16_t held)
+uint16_t EngineSoundsPlayer2(uint8_t bank, uint8_t player)
 {
-    uint32_t b = (uint32_t)bank << 16;
-    uint8_t x, a;
-
-    if (rd8(b | 0x0E4B) || rd8(b | phase) != 0x06)
-        return;
-    SoundIfFlag40(bank, rd16(b | pressed), player, &x);
-    SoundHoldByFlags(bank, rd16(b | held), player, &a);
-}
-
-void EngineSoundsPlayer2(uint8_t bank, uint8_t player)
-{
-    engine_sounds(bank, player, 0x0DD7, 0x0D1C, 0x030D);
+    return engine_sounds(bank, player, 0x0DD7, 0x0D1C, 0x030D);
 }
 
 void abi_EngineSoundsPlayer2(void)
 {
-    cyc(0);
-    abi_engine_sounds(0x0DD7, 0x0D1C, 0x030D);
+    engine_sounds_exit(EngineSoundsPlayer2(cpu.db, (uint8_t)cpu.y));
 }
 
 /*
@@ -613,14 +613,14 @@ void abi_EngineSoundsPlayer2(void)
  * HOW: As EngineSoundsPlayer2.
  * Entry: as EngineSoundsPlayer2. Exit: as EngineSoundsPlayer2.
  */
-void EngineSoundsPlayer1(uint8_t bank, uint8_t player)
+uint16_t EngineSoundsPlayer1(uint8_t bank, uint8_t player)
 {
-    engine_sounds(bank, player, 0x0DD6, 0x0D1A, 0x0309);
+    return engine_sounds(bank, player, 0x0DD6, 0x0D1A, 0x0309);
 }
 
 void abi_EngineSoundsPlayer1(void)
 {
-    abi_engine_sounds(0x0DD6, 0x0D1A, 0x0309);
+    engine_sounds_exit(EngineSoundsPlayer1(cpu.db, (uint8_t)cpu.y));
 }
 
 /*
@@ -696,8 +696,7 @@ void abi_SoundIndicesFromHandlers(void)
     cpu.y &= 0x00FF;
 }
 
-void abi_SoundPort0QueuePush(void);
-void abi_SoundPort1QueuePush(void);
+static int sn_full;                     /* SoundNearCarOnce's A is whole */
 
 /*
  * @routine 04:D533 SoundNearCarOnce
@@ -711,75 +710,68 @@ void abi_SoundPort1QueuePush(void);
  * the no-match path are not reached in the traces so far.
  * Entry: DB a bank where $0E1A is work RAM. Exit: X and Y high bytes
  * cleared (SEP #$30 before the PHX); A as the path left it; P restored.
+ * From C: returns A (its low byte only unless sn_full).
  */
-void abi_SoundNearCarOnce(void)
+uint16_t SoundNearCarOnce(uint8_t bank)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint8_t p0 = cpu.p, v;
-    uint16_t x0, w;
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t v;
+    uint16_t x, a;
 
-    op_sep(P_M | P_X);
-    cyc(46);
+    sn_full = 0;
+    cyc(22 + 46);
     v = rd8(b | 0x0E1A);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    if (v != 0) {
-        cyc(72);
-        cpu.p = p0;
-        return;
-    }
+    if (v != 0)
+        { cyc(72); return v; }
     cyc(54);
-    wr8(b | 0x0E1A, (uint8_t)(v - 1));
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x1D);
-    (cyc(78), abi_SoundPort1QueuePush());
+    wr8(b | 0x0E1A, 0xFF);
+    cyc(78);
+    SoundPort1QueuePushW(0x1D, 0);
     cyc(54);
     v = rd8(0x000D53);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    if (v != 0) {
-        cyc(72);
-        cpu.p = p0;
-        return;
-    }
-    x0 = cpu.x;                                     /* PHX */
-    cyc(100);
-    cpu.x = rd16(0x702476);
+    if (v != 0)
+        { cyc(72); return v; }
+    cyc(100);                                       /* PHX, REP #$30, LDX */
+    x = rd16(0x702476);
     cyc(46);
-    w = rd16(0x700088 + cpu.x);
+    a = rd16(0x700088 + x);
     cyc(32);
-    wr16(0x0011DF, w);
+    wr16(0x0011DF, a);
     cyc(32);
-    cpu.x = rd16(0x702648);
+    x = rd16(0x702648);
     cyc(46);
-    cpu.a = rd16(0x700088 + cpu.x);
+    a = rd16(0x700088 + x);
     cyc(32);
-    if (cpu.a < rd16(0x0011DF)) {
-        cyc(108);
-        cpu.x = x0;
-        cpu.p = p0;
-        return;
-    }
+    sn_full = 1;
+    if (a < rd16(0x0011DF))
+        { cyc(108); return a; }
     cyc(48);
-    cpu.a = rd16(0x700066 + cpu.x);
-    cpu.x = x0;                                     /* PLX */
-    if (cpu.a == 0x876E)
+    a = rd16(0x700066 + x);
+    if (a == 0x876E)
         v = 0x1D;
-    else if (cpu.a == 0x8AA8)
+    else if (a == 0x8AA8)
         { cyc(40); v = 0x1F; }
-    else if (cpu.a == 0x8990)
+    else if (a == 0x8990)
         { cyc(80); v = 0x1E; }
-    else {
-        cyc(228);
-        cpu.p = p0;
-        return;
-    }
+    else
+        { cyc(228); return a; }
     cyc(182);
-    cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);        /* REP #$30 above, SEP #$20 */
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    abi_SoundPort0QueuePush();
-    cpu.p = p0;
+    SoundPort0QueuePushW(v, 16);                    /* M 8-bit, X 16-bit */
     cyc(v == 0x1E ? 50 : 72);                       /* BRA .done except .sound1E */
+    return (uint16_t)((a & 0xFF00) | v);
 }
 
-void abi_Sound0E1AStop(void);
+void abi_SoundNearCarOnce(void)
+{
+    uint16_t a = SoundNearCarOnce(cpu.db);
+
+    cpu.a = sn_full ? a : (uint16_t)((cpu.a & 0xFF00) | (uint8_t)a);
+    cpu.x &= 0x00FF;
+    cpu.y &= 0x00FF;
+}
+
+static int nc_low;                      /* NearCarSoundUpdate's A: low byte only */
+static int nc_once;                     /* SoundNearCarOnce ran */
 
 /*
  * @routine 07:EDC1 NearCarSoundUpdate
@@ -793,38 +785,33 @@ void abi_Sound0E1AStop(void);
  * Entry: any widths, DB a bank where $0E4B is work RAM. Exit: X, Y as
  * SoundNearCarOnce leaves them (high bytes cleared) when it runs; A as the
  * path left it; P restored.
+ * From C: d = the direct page; m16 with 16-bit A; returns A (its low byte
+ * only when nc_low).
  */
-void abi_NearCarSoundUpdate(void)
+uint16_t NearCarSoundUpdate(uint8_t bank, uint16_t d, int m16)
 {
-    uint32_t b = (uint32_t)cpu.db << 16, dp = (uint16_t)(cpu.d + 2);
-    uint8_t p0 = cpu.p;
-    uint16_t v, lv;
+    uint32_t b = (uint32_t)bank << 16, dp = (uint16_t)(d + 2);
+    uint16_t v, lv, a;
 
-    if (cpu.p & P_M) {
+    nc_low = 0;
+    nc_once = 0;
+    if (!m16)
         v = rd8(b | 0x0E4B);
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    } else {
-        cyc(46);
-        v = rd16(b | 0x0E4B);
-        cpu.a = v;
-    }
+    else
+        { cyc(46); v = rd16(b | 0x0E4B); }
     if (v) {
         cyc(94);
-        cpu.p = p0;
-        return;
+        nc_low = !m16;
+        return v;
     }
-    cpu.p &= (uint8_t)~(P_M | P_X);
     cyc(70);
     lv = rd16(0x702642);
     if (lv & 0x8000) {
-        cpu.p |= P_M;
-        cpu.a = (uint16_t)((lv & 0xFF00) | 0x01);
         cyc(84);
         wr8(b | 0x117C, 0x01);
-        (cyc(62), abi_Sound0E1AStop());
-        cpu.p = p0;
-        cyc(72);
-        return;
+        a = (uint16_t)((lv & 0xFF00) | (cyc(62), Sound0E1AStop()));
+        cyc(22 + 72);
+        return a;
     }
     cyc(88);
     wr16(dp, (uint16_t)(lv >> 4));
@@ -836,21 +823,32 @@ void abi_NearCarSoundUpdate(void)
     wr8(0x000E47, (uint8_t)v);
     cyc(92);
     v = (uint16_t)(0x0031 - rd16(0x702646));
-    cpu.a = v;
     cyc(24);
-    if (v == rd16(b | 0x115E)) {
-        cyc(94);
-        cpu.p = p0;
-        return;
-    }
+    if (v == rd16(b | 0x115E))
+        { cyc(94); return v; }
     cyc(40);
     wr16(b | 0x115E, v);
-    (cyc(62), abi_SoundPort1QueuePush());
+    cyc(62);
+    SoundPort1QueuePushW((uint8_t)v, 24);           /* M and X 16-bit */
     cyc(24);
     wr16(b | 0x117C, 0x0000);
-    (cyc(62), abi_SoundNearCarOnce());
-    cpu.p = p0;
+    a = (cyc(62), SoundNearCarOnce(bank));
+    if (!sn_full)
+        a = (uint16_t)((v & 0xFF00) | (uint8_t)a);
+    nc_once = 1;
     cyc(94);
+    return a;
+}
+
+void abi_NearCarSoundUpdate(void)
+{
+    uint16_t a = NearCarSoundUpdate(cpu.db, cpu.d, !(cpu.p & P_M));
+
+    cpu.a = nc_low ? (uint16_t)((cpu.a & 0xFF00) | (uint8_t)a) : a;
+    if (nc_once) {
+        cpu.x &= 0x00FF;
+        cpu.y &= 0x00FF;
+    }
 }
 
 /*
@@ -861,29 +859,30 @@ void abi_NearCarSoundUpdate(void)
  * the traces so far.
  * Entry: any widths. Exit: A low byte = $19D8's old value, or 1 when it
  * was clear; P unchanged.
+ * From C: x16 with 16-bit index registers.
  */
-void abi_WindowSlideUpSound(void)
+uint8_t WindowSlideUpSound(uint8_t bank, int x16)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint8_t p0 = cpu.p, v;
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t v;
 
-    cpu.p |= P_M;
     cyc(68);
-    v = rd8(b | 0x0DA5);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    if (v & 0x04) {
+    if (rd8(b | 0x0DA5) & 0x04) {
         cyc(110);
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x10);
-        abi_SoundPort1QueuePush();
+        SoundPort1QueuePushW(0x10, x16 ? 16 : 0);
     } else { cyc(38); }
     cyc(24);
     v = rd8(b | 0x19D8);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     if (!v) {
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
+        v = 0x01;
         cyc(56);
         wr8(b | 0x19D8, 0x01);
     } else { cyc(22); }
     cyc(72);
-    cpu.p = p0;
+    return v;
+}
+
+void abi_WindowSlideUpSound(void)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | WindowSlideUpSound(cpu.db, !(cpu.p & P_X)));
 }

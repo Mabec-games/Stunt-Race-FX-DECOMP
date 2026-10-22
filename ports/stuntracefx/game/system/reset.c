@@ -6,33 +6,39 @@
 #include "native.h"
 #include "cpu_ops.h"
 #include "hw.h"
+#include "audio_calls.h"
 
-void abi_SoundPort1QueuePush(void);
-void abi_SoftResetApu(void);
-void abi_WramFillZeroLong(void);
+void SoundPort1QueuePushW(uint8_t command, unsigned wide);
+void WramFillZero(uint8_t bank, uint16_t addr, uint16_t count);
+uint16_t SoftResetApu(void);
 
 #define RESET_STATE 0x0D51u     /* $0D51: a reset under way when not 0 */
 #define RESET_TICK 0x0D52u      /* set by each vertical blank */
 #define RESET_FRAMES 0x0D5Fu    /* frames left to wait */
 
-/* LDA # (8-bit). */
-static void reset_lda8(uint8_t v)
-{
-    cyc(40);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = nz8(cpu.p, v);
-}
-
-/* WramFillZeroLong on a work RAM range: A = bank, X = start, Y = count. */
+/* LDA #bank, LDX, LDY (the pre clocks), then WramFillZeroLong. */
 static void reset_fill(uint8_t bank, uint16_t x, uint16_t y, uint32_t pre)
 {
-    cyc(pre);
-    reset_lda8(bank);
-    cpu.x = x;
-    cpu.p = nz16(cpu.p, x);
-    cpu.y = y;
-    cpu.p = nz16(cpu.p, y);
-    abi_WramFillZeroLong();
+    cyc(pre + 40 + 46);
+    WramFillZero(bank, x, y);
+    cyc(44);                            /* RTL */
+}
+
+/* The jump to 03:8B34 with the registers the reset leaves: A = $FFFF,
+   X = $2800, Y = $2801 (the MVN's), M 8-bit, X 16-bit, C set when this
+   call started the reset (the CMP of the buttons), N, Z from the data
+   bank. */
+static void reset_jump(uint8_t bank, int started)
+{
+    cpu.a = 0xFFFF;
+    cpu.x = 0x2800;
+    cpu.y = 0x2801;
+    cpu.db = bank;
+    cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
+    if (started)
+        cpu.p |= P_C;
+    cpu.p = nz8(cpu.p, bank);
+    jump_routine(0x038B34);
 }
 
 /*
@@ -63,65 +69,50 @@ void abi_SoftResetWarmBoot(void)
  * Entry: any widths; DB = $07. Exit: P unchanged; A = the buttons masked
  * (no reset); the reset never returns.
  */
-void abi_SoftResetCheck(void)
+int SoftResetCheck(uint8_t bank, int x16, uint16_t *a)
 {
-    uint8_t p0 = cpu.p, db;
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)bank << 16;
     uint8_t v;
     uint16_t i;
     int fresh = 0;
 
-    op_sep(P_M);
     cyc(68);
-    op_lda8(b | RESET_STATE);
-    if (!(uint8_t)cpu.a) {
-        op_rep(P_M);
-        cyc(40);
-        op_lda16(b | 0x0309);
-        op_and16(0x3030);
-        op_cmp16(0x3030);
-        if (!(cpu.p & P_Z)) {
-            cyc(120);
-            op_plp(p0);
-            return;
-        }
+    if (!rd8(b | RESET_STATE)) {
+        cyc(22 + 40);
+        *a = rd16(b | 0x0309) & 0x3030;
+        cyc(2);
+        if (*a != 0x3030)
+            { cyc(120 + 42); return 0; }
         cyc(92);
-        op_lda16(b | 0x0309);
-        op_and16(0xCFCF);
-        if (cpu.a) {
-            cyc(96);
-            op_plp(p0);
-            return;
-        }
-        op_sep(P_M);
+        *a = rd16(b | 0x0309) & 0xCFCF;
+        cyc(2);
+        if (*a)
+            { cyc(96 + 42); return 0; }
         cyc(90);
         v = (uint8_t)(rd8(b | RESET_STATE) - 1);
         cyc(6);
         wr8(b | RESET_STATE, v);
-        cpu.p = nz8(cpu.p, v);
-        cyc(38);
-        reset_lda8(0x04);
-        abi_SoundPort1QueuePush();
-        reset_lda8(0x01);
+        cyc(38 + 40);
+        SoundPort1QueuePushW(0x04, x16 ? 16 : 0);
+        cyc(40);
         wr8(b | 0x0E3A, 0x01);
-        reset_lda8(0x70);
+        cyc(40);
         wr8(b | RESET_FRAMES, 0x70);
         fresh = 1;
     }
+    int started = fresh;
     do {
         do
-            { cyc(fresh ? 24 : 46); fresh = 0; op_lda8(b | RESET_TICK); }
-        while (!(uint8_t)cpu.a);
+            { cyc(fresh ? 24 : 46); fresh = 0; }
+        while (!rd8(b | RESET_TICK));
         cyc(40);
         wr8(b | RESET_TICK, 0x00);
         cyc(24);
         v = (uint8_t)(rd8(b | RESET_FRAMES) - 1);
         cyc(6);
         wr8(b | RESET_FRAMES, v);
-        cpu.p = nz8(cpu.p, v);
     } while (v);
-    reset_lda8(0x80);
-    cyc(16);
+    cyc(40 + 16);
     ppu_wr(b | INIDISP, 0x80);
     cyc(24);
     hw_wr(b | NMITIMEN, 0x00);
@@ -131,41 +122,31 @@ void abi_SoftResetCheck(void)
     hdmaen_wr(b | HDMAEN, 0x00);
     cyc(24);
     wr8(b | RESET_STATE, 0x00);
-    abi_SoftResetApu();
-    cyc(22); /* SEP */
-    op_sep(P_M);
-    cyc(24);
+    SoftResetApu();
+    cyc(22 + 24);                       /* SEP */
     wr8(b | 0x0D2B, 0x00);
     cyc(24);
     wr8(b | 0x0D62, 0x00);
-    op_sep(P_M);
-    op_rep(P_X);
+    cyc(22);                            /* REP #$10 */
     reset_fill(0x00, 0x0300, 0x2100, 108);
     reset_fill(0x7E, 0x2000, 0xE000, 86);
     reset_fill(0x7F, 0x0000, 0xFFFF, 86);
-    db = cpu.db;
-    v = cpu.p;
-    op_rep(P_M | P_X);
-    op_lda16_imm(0x0000);
-    cyc(62);
+    cyc(22 + 38 + 62);
     wr16(0x700000, 0x0000);
-    op_lda16_imm(0x27FF);
-    cpu.x = 0x0000;
-    cpu.p = nz16(cpu.p, 0);
-    cpu.y = 0x0001;
-    cpu.p = nz16(cpu.p, 1);
-    cyc(22);
+    cyc(38 + 22);
     for (i = 0; i <= 0x27FF; i++)
         { cyc(36); wr8(0x700001u + i, rd8(0x700000u + i)); }
-    cyc(58);
-    cpu.a = 0xFFFF;
-    cpu.x = 0x2800;
-    cpu.y = 0x2801;
-    cpu.db = 0x70;
-    op_plp(v);
-    cpu.db = db;
-    cpu.p = nz8(cpu.p, db);
-    jump_routine(0x038B34);
+    cyc(58 + 42);
+    reset_jump(bank, started);
+    return 1;
+}
+
+void abi_SoftResetCheck(void)
+{
+    uint16_t a;
+
+    if (!SoftResetCheck(cpu.db, !(cpu.p & P_X), &a))
+        cpu.a = a;
 }
 
 /*
@@ -175,19 +156,29 @@ void abi_SoftResetCheck(void)
  * Entry: any widths. Exit: as SoftResetCheck, then P and the data bank put
  * back.
  */
+int SoftResetLong(int x16, uint16_t *a)
+{
+    int r;
+
+    cyc(162);
+    r = SoftResetCheck(0x07, x16, a);
+    cyc(42 + 80);
+    return r;
+}
+
 void abi_SoftResetLong(void)
 {
     uint8_t p0 = cpu.p, db = cpu.db;
+    uint16_t a;
 
-    op_sep(P_M);
-    cpu.db = 0x07;
-    cpu.p = nz8(cpu.p, 0x07);
-    (cyc(162), abi_SoftResetCheck());
-    op_sep(P_M);
+    if (!SoftResetLong(!(cpu.p & P_X), &a))
+        cpu.a = a;
     cpu.db = db;
-    cpu.p = nz8(cpu.p, db);
-    op_plp(p0);
-    cyc(80);
+    cpu.p = p0;
+    if (p0 & P_X) {
+        cpu.x &= 0x00FF;
+        cpu.y &= 0x00FF;
+    }
 }
 
 /*
@@ -236,8 +227,6 @@ void abi_InterruptReturn(void)
     }
 }
 
-void abi_ApuUpload(void);
-
 /*
  * @routine 07:AB8C SoftResetApu
  * WHAT IT DOES: Restarts the sound for the soft reset: a pause, command $06
@@ -247,38 +236,32 @@ void abi_ApuUpload(void);
  * upload and around the whole.
  * Entry: any widths. Exit: P unchanged; A = 0; X = 0; Y as ApuUpload leaves
  * it.
+ * From C: returns Y.
  */
-void abi_SoftResetApu(void)
+uint16_t SoftResetApu(void)
 {
-    uint8_t p0 = cpu.p, p1;
+    ApuUploadEnd end;
 
-    op_sep(P_M);
-    op_rep(P_X);
-    cyc(162);
+    cyc(22 + 162);
     delay_turns(0x8000);
-    cpu.x = 0x0000;
-    cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x06);
-    cpu.p = nz8(cpu.p, 0x06);
     hw_wr(APUIO1, 0x06);
     cyc(156);
     delay_turns(0x8000);
-    cpu.x = 0x0000;
-    cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
-    p1 = cpu.p;
-    op_rep(P_M | P_X);
-    cpu.a = 0x0019;
-    cpu.p = nz16(cpu.p, cpu.a);
-    cpu.y = 0xC27C;
-    cpu.p = nz16(cpu.p, cpu.y);
-    abi_ApuUpload();
-    op_rep(P_M);
-    cyc(38);
+    cyc(22);
+    end = ApuUpload(0x19, 0xC27C);
+    cyc(22 + 38);
     delay_turns(0x4000);
+    cyc(42 + 42);                       /* PLP, PLP */
+    return end.offset;
+}
+
+void abi_SoftResetApu(void)
+{
+    cpu.y = SoftResetApu();
     cpu.a = 0x0000;
-    cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
-    op_plp(p1);
-    op_plp(p0);
+    cpu.x = 0x0000;
+    if (cpu.p & P_X)
+        cpu.y &= 0x00FF;
 }
 
 /*

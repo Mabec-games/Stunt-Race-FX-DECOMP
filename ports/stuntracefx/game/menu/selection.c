@@ -255,10 +255,6 @@ void abi_SelectionCommit(void)
 
 uint16_t HandlerTableB(uint16_t i);
 uint16_t SelectionTables18CB(uint8_t bank);
-void abi_HandlerTableA(void);
-void abi_HandlerTableB(void);
-void abi_SelectionTables18CB(void);
-void abi_SaveChecksum(void);
 
 /* The save byte for the selection's mode ($18C3): 3, the low byte of the
    $03:B540 entry for $18CB's low two bits at $70:FC0D; 1, that entry for
@@ -309,52 +305,41 @@ static uint16_t save_selection(uint8_t bank, uint16_t *x)
  * packed value; X = the table offset (low byte when X is 8-bit); P
  * unchanged.
  */
-void SelectionSave(uint8_t bank)
-{
-    uint16_t x;
-
-    wr16(0x0018DB, HandlerTableA(rd16(0x0018CB)));
-    wr16(0x0018DD, HandlerTableA(rd16(0x0018C9)));
-    wr16(0x0018DD, HandlerTableB(rd16(0x0018CD)));
-    wr16(0x0018DF, HandlerTableB(rd16(0x0018CF)));
-    wr16(0x0018E1, HandlerTableB(rd16(0x0018D1)));
-    SelectionTables18CB(bank);
-    save_selection(bank, &x);
-    SaveChecksum();
-}
-
-void abi_SelectionSave(void)
+uint16_t SelectionSave(uint8_t bank, uint16_t *x)
 {
     static const struct { uint32_t from, to; int b; } h[5] = {
         {0x0018CB, 0x0018DB, 0}, {0x0018C9, 0x0018DD, 0}, {0x0018CD, 0x0018DD, 1},
         {0x0018CF, 0x0018DF, 1}, {0x0018D1, 0x0018E1, 1}};
-    uint8_t p = cpu.p;
-    uint16_t x;
+    uint16_t v;
     unsigned i;
 
-    cpu.p &= (uint8_t)~(P_M | P_X);
     cyc(44);
     for (i = 0; i < 5; i++) {
         cyc(32);
-        cpu.a = rd16(h[i].from);
-        if (h[i].b)
-            { cyc(46); abi_HandlerTableB(); }
-        else
-            { cyc(46); abi_HandlerTableA(); }
+        v = rd16(h[i].from);
+        cyc(46);
+        v = h[i].b ? HandlerTableB(v) : HandlerTableA(v);
         cyc(32);
-        wr16(h[i].to, cpu.a);
+        wr16(h[i].to, v);
     }
     cyc(46);
-    abi_SelectionTables18CB();
-    cpu.a = save_selection(cpu.db, &x);
+    SelectionTables18CB(bank);
+    v = save_selection(bank, x);
+    v = (uint16_t)((v & 0xFF00) | (cyc(84), SaveChecksum()));
+    cyc(save_mode == 3 ? 72 : 94);      /* the other arms end in a BRA */
+    return v;
+}
+
+void abi_SelectionSave(void)
+{
+    uint16_t x;
+
+    cpu.a = SelectionSave(cpu.db, &x);
     cpu.x = x;
-    (cyc(84), abi_SaveChecksum());
-    cpu.p = p;
-    if (p & P_X) {
+    if (cpu.p & P_X) {
         cpu.x &= 0x00FF;
         cpu.y &= 0x00FF;
     }
-    cyc(save_mode == 3 ? 72 : 94);      /* the other arms end in a BRA */
 }
 
 void SoundPort0QueuePush(uint8_t command);
@@ -454,21 +439,18 @@ void abi_MenuSelectStart(void)
     cpu.p = (uint8_t)((cpu.p & ~(P_M | P_X | P_N)) | P_Z);
 }
 
-void abi_SoundPort0QueuePush(void);
+void SoundPort0QueuePushW(uint8_t command, unsigned wide);
+
+static uint16_t mc_pad;                 /* the pad word pad_bit last read */
 
 /* REP #$20, LDA $0D1A, BIT #bit, SEP #$20: whether that button is held. */
 static int pad_bit(uint32_t b, uint16_t bit)
 {
-    uint16_t a;
-
-    cpu.p &= (uint8_t)~P_M;
     cyc(62);
-    a = rd16(b | 0x0D1A);
-    cpu.a = a;
-    cpu.p = nz16(cpu.p, a);
-    cpu.p = (uint8_t)((cpu.p & ~P_Z) | ((a & bit) ? 0 : (cyc(52), P_Z)));
-    cpu.p |= P_M;
-    return (a & bit) != 0;
+    mc_pad = rd16(b | 0x0D1A);
+    if (!(mc_pad & bit))
+        { cyc(52); return 0; }
+    return 1;
 }
 
 /* A byte of work RAM moved by d (INC or DEC), then sound $45 on port 0. */
@@ -479,11 +461,13 @@ static void step_with_sound(uint32_t b, uint16_t at, int d)
 
     cyc(6);
     wr8(b | at, v);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x45);
-    cpu.p = nz8(cpu.p, 0x45);
-    (cyc(78), abi_SoundPort0QueuePush());
+    cyc(78);
+    SoundPort0QueuePushW(0x45, 0);
     cyc(16);
 }
+
+static int mc_x;                        /* MenuCursorFourWay's X, or -1 when left */
+static int mc_c;                        /* its C, or -1 when left */
 
 /*
  * @routine 02:EA53 MenuCursorFourWay
@@ -498,42 +482,41 @@ static void step_with_sound(uint32_t b, uint16_t at, int d)
  * and read again for each test. Several moves are not reached in the
  * traces so far.
  * Entry: any widths. Exit: M 8-bit, X 8-bit; A low byte = the cursor X.
+ * From C: returns the cursor X.
  */
-void abi_MenuCursorFourWay(void)
+uint8_t MenuCursorFourWay(uint8_t bank)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)bank << 16;
     uint8_t v;
 
-    op_sep(P_M | P_X);
-    cyc(24);
-    v = rd8(b | 0x0D4C);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    if (v) {
+    mc_x = -1;
+    mc_c = -1;
+    cyc(22 + 24);
+    if (rd8(b | 0x0D4C)) {
         if (pad_bit(b, 0x0100)) {
             cyc(102);
             wr8(b | 0x0D48, 0x02);
             cyc(24);
             wr8(b | 0x0D4C, 0x00);
-            cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x45);
-            (cyc(78), abi_SoundPort0QueuePush());
+            cyc(78);
+            SoundPort0QueuePushW(0x45, 0);
             cyc(16);
         } else if (pad_bit(b, 0x0200)) {
             cyc(108);
             wr8(b | 0x0D48, 0x01);
             cyc(24);
             wr8(b | 0x0D4C, 0x00);
-            cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x45);
-            (cyc(78), abi_SoundPort0QueuePush());
+            cyc(78);
+            SoundPort0QueuePushW(0x45, 0);
             cyc(16);
         } else { cyc(26); }
-    cyc(24);
-        } else {
-        op_sep(P_M | P_X);
-        cyc(46);
+        cyc(24);
+    } else {
+        cyc(22 + 46);
         v = rd8(b | 0x0D48);
-        cpu.p = (uint8_t)((cpu.p & ~P_C) | (v >> 7));     /* ASL A */
-        cpu.x = (uint8_t)(v << 1);
-        switch (cpu.x) {
+        mc_c = v >> 7;                  /* ASL A */
+        mc_x = (uint8_t)(v << 1);
+        switch (mc_x) {
         case 0:
             cyc(58);
             if (pad_bit(b, 0x0100))
@@ -564,85 +547,94 @@ void abi_MenuCursorFourWay(void)
         }
     }
     cyc(8);
-    v = rd8(b | 0x0D4C);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    if (v) {
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x88);
-        cpu.p = nz8(cpu.p, 0x88);
+    if (rd8(b | 0x0D4C)) {
         cyc(56);
         wr8(b | 0x0D37, 0x88);
-        return;
+        return 0x88;
     }
     cyc(46);
-    cpu.x = rd8(b | 0x0D48);
+    mc_x = rd8(b | 0x0D48);
     cyc(56);
-    v = rd8(b | (uint16_t)(0xEB49 + cpu.x));
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = nz8(cpu.p, v);
+    v = rd8(b | (uint16_t)(0xEB49 + mc_x));
     wr8(b | 0x0E91, v);
     cyc(24);
     wr8(b | 0x0D37, v);
+    return v;
 }
 
+void abi_MenuCursorFourWay(void)
+{
+    uint8_t v = MenuCursorFourWay(cpu.db);
+
+    cpu.p |= P_M | P_X;
+    cpu.x = mc_x >= 0 ? (uint16_t)mc_x : (uint16_t)(cpu.x & 0x00FF);
+    cpu.y &= 0x00FF;
+    if (mc_c >= 0)
+        cpu.p = (uint8_t)((cpu.p & ~P_C) | mc_c);
+    cpu.a = (uint16_t)((mc_pad & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
+}
+
+static int cs_c;                        /* C as the car steps leave it, or -1 */
+
 /* The fourth car is there in HUD mode 3 ($0D2B, read as X) or once bit 2
-   of $70:FC0B is set: LDX, CPX #3, then LDA.L, BIT #4. */
+   of $70:FC0B is set: LDX, CPX #3, then LDA.L, BIT #4. 2 for mode 3. */
 static int fourth_car(uint32_t b)
 {
-    uint8_t v;
+    uint8_t x;
 
     cyc(30);
-    cpu.x = rd8(b | 0x0D2B);
-    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(cpu.x - 0x03)) & ~P_C) | (cpu.x >= 0x03 ? P_C : 0));
-    if (cpu.x == 0x03)
+    x = rd8(b | 0x0D2B);
+    cs_c = x >= 0x03;
+    if (x == 0x03)
         return 2;
     cyc(64);
-    v = rd8(0x70FC0B);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = nz8(cpu.p, v);
-    cpu.p = (v & 0x04) ? (cyc(32), (uint8_t)(cpu.p & ~P_Z)) : (cyc(16), (uint8_t)(cpu.p | P_Z));
-    return (v & 0x04) != 0;
+    if (rd8(0x70FC0B) & 0x04)
+        { cyc(32); return 1; }
+    cyc(16);
+    return 0;
 }
 
 /* Sound $45, then the car at `at` one on (Right) or back (Left): 0 to 2
    in turn, 3 after 2 (Right) or before 0 (Left) only with the fourth car;
-   Right from 3 wraps to 0, Left from 0 without it to 2. */
-static void car_step(uint32_t b, uint16_t at, int right, int p2)
+   Right from 3 wraps to 0, Left from 0 without it to 2. wide: the sound
+   push's clocks for 16-bit index registers (Left keeps the caller's). */
+static void car_step(uint32_t b, uint16_t at, int right, int p2, unsigned wide)
 {
     uint8_t v;
     int four = 0;
 
-    op_sep(right ? (cyc(118), P_M | P_X) : (cyc(140), P_M));
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x45);
-    cpu.p = nz8(cpu.p, 0x45);
-    abi_SoundPort0QueuePush();
+    cyc(right ? 118 + 22 : 140);        /* ..., SEP */
+    SoundPort0QueuePushW(0x45, right ? 0 : wide);
     cyc(24);
     v = rd8(b | at);
     if (right) {
         cyc(46);
         v = (uint8_t)(v + 1);
-        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x03)) & ~P_C) | (v >= 0x03 ? P_C : 0));
+        cs_c = v >= 0x03;
         if (v == 0x03) {
             four = fourth_car(b);
             v = four ? 0x03 : 0x00;
         } else if (v > 0x03)
             v = 0x00;
-    cyc(2);
-        } else {
+        cyc(2);
+    } else {
         v = (uint8_t)(v - 1);
-        cpu.p = nz8(cpu.p, v);
         if (v & 0x80) {
             cyc(40);
             four = fourth_car(b);
             v = four ? (cyc(2), 0x03) : (cyc(2), 0x02);
         }
     }
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = nz8(cpu.p, v);
     cyc(60);
     wr8(b | at, v);
     if (right || (four == 1 && !p2))
         cyc(22);                        /* BRA to the second player's check, or the end */
 }
+
+uint16_t SelectionCommit(uint8_t bank, uint16_t *x);
+
+static uint8_t cs_last;                 /* the last byte loaded: player 1's choice */
 
 /*
  * @routine 07:C0CA CarSelectTwoPlayers
@@ -656,42 +648,55 @@ static void car_step(uint32_t b, uint16_t at, int right, int p2)
  * Right). Left on pad 1 and both buttons on pad 2 are not reached in the
  * traces so far.
  * Entry: X 8-bit. Exit: M, X 8-bit; as SelectionCommit leaves them.
+ * From C: x16 when entered with 16-bit index registers; returns A, *x =
+ * SelectionCommit's X.
  */
-void abi_CarSelectTwoPlayers(void)
+uint16_t CarSelectTwoPlayers(uint8_t bank, int x16, uint16_t *x)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)bank << 16;
     static const uint16_t pad[2] = {0x0D1A, 0x0D1C}, car[2] = {0x0D89, 0x0D8A};
+    uint16_t a;
     int i;
 
+    cs_c = -1;
     for (i = 0; i < 2; i++) {
-        op_rep(P_M);
-        cyc(24);
-        op_lda16(b | pad[i]);
-        if (cpu.a & 0x0100) {
-            cpu.p &= (uint8_t)~P_Z;
-            car_step(b, car[i], 1, i);
+        cyc(22 + 24);
+        if (rd16(b | pad[i]) & 0x0100) {
+            car_step(b, car[i], 1, i, 0);
+            x16 = 0;
             continue;
         }
-        cpu.p |= P_Z;
-        op_rep(P_M);
-        cyc(70);
-        op_lda16(b | pad[i]);
-        cpu.p = (cpu.a & 0x0200) ? (uint8_t)(cpu.p & ~P_Z) : (cyc(46), (uint8_t)(cpu.p | P_Z));
-        if (cpu.a & 0x0200)
-            car_step(b, car[i], 0, i);
+        cyc(22 + 70);
+        if (rd16(b | pad[i]) & 0x0200)
+            car_step(b, car[i], 0, i, x16 ? 16 : 0);
+        else
+            cyc(46);
     }
-    op_sep(P_M | P_X);
-    cyc(24);
-    cpu.x = rd8(b | 0x0D8A);
+    cyc(22 + 24);
+    i = rd8(b | 0x0D8A);
     cyc(72);
-    op_lda8(0x07C1BF + cpu.x);
-    wr8(0x0018C9, (uint8_t)cpu.a);
-    (cyc(62), abi_SelectionCommit());
-    cyc(24);
-    cpu.x = rd8(b | 0x0D89);
+    cs_last = rd8(0x07C1BF + (uint32_t)i);
+    wr8(0x0018C9, cs_last);
+    (cyc(62), SelectionCommit(bank, x));
+    cyc(72 + 24);                       /* SelectionCommit's PLP, RTL; LDX */
+    i = rd8(b | 0x0D89);
     cyc(72);
-    op_lda8(0x07C1BF + cpu.x);
-    wr8(0x0018CB, (uint8_t)cpu.a);
-    (cyc(62), abi_SelectionCommit());
-    cyc(42);
+    cs_last = rd8(0x07C1BF + (uint32_t)i);
+    wr8(0x0018CB, cs_last);
+    a = (cyc(62), SelectionCommit(bank, x));
+    cyc(72 + 42);
+    return a;
+}
+
+void abi_CarSelectTwoPlayers(void)
+{
+    uint16_t x;
+
+    cpu.a = CarSelectTwoPlayers(cpu.db, !(cpu.p & P_X), &x);
+    cpu.x = (uint8_t)x;
+    cpu.y &= 0x00FF;
+    cpu.p |= P_M | P_X;
+    if (cs_c >= 0)
+        cpu.p = (uint8_t)((cpu.p & ~P_C) | cs_c);
+    cpu.p = nz8(cpu.p, cs_last);
 }
