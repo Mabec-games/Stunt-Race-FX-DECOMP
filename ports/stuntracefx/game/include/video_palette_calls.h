@@ -54,4 +54,20 @@ uint16_t FadeValueStep(uint16_t a);
 int PaletteFadeStep(uint8_t bank, uint16_t *xo, uint16_t *yo);
 uint16_t CoursePaletteCycle(uint16_t a, int index8, uint16_t *xo);
 
+/* HudColourStep and its two inner entries: A, X and Y at the end; for an
+   inner entry also the data bank and P pulled from the stack (popped). */
+typedef struct {
+    uint16_t a, x, y;
+    uint8_t db, p;
+    int popped;
+} HudColourEnd;
+
+HudColourEnd HudColourStep(uint16_t x, uint16_t y);
+HudColourEnd HudColourRowsRest(uint8_t bank, uint16_t a, uint16_t x, uint16_t y);
+HudColourEnd HudColourStepFrom14(uint8_t bank, uint16_t y);
+
+/* PaletteCycleFourth returns the colour's high byte; *xo is the new phase,
+   *db the pulled data bank, *wrapped whether the phase wrapped. */
+uint8_t PaletteCycleFourth(uint8_t bank, uint16_t y, uint16_t *xo, uint8_t *db, int *wrapped);
+
 #endif
