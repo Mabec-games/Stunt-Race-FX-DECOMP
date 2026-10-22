@@ -65,4 +65,43 @@ uint8_t SpriteSlot6DimYellow(uint8_t bank);
 uint8_t SpriteSlot6Red(uint8_t bank);
 uint8_t SpriteSlot6Yellow(uint8_t bank);
 
+/* window_hdma.c: the window HDMA table in bank $7F and the window
+   animations. WindowRegs is A, X and Y for the routines whose register
+   callers read them: the registers in, the routine's out. */
+typedef struct {
+    uint16_t a, x, y;
+} WindowRegs;
+typedef struct {
+    uint16_t a, x, y;
+} WindowListEnd;
+
+void WindowHdmaFFDD(void);
+uint16_t WindowHdmaFromTable(uint16_t *sel);
+void WindowHdmaFFD1(void);
+int WindowHdmaNormal(uint8_t *last);
+int WindowHdmaBands(uint8_t *last);
+void WindowHdmaAt(uint8_t line, uint8_t *p);
+WindowListEnd WindowHdmaFromList(uint8_t db, uint8_t select);
+uint16_t WindowHdmaPreset(uint8_t bank, uint8_t index, uint16_t *x, uint16_t *y);
+void WindowEdgesFillOnes(void);
+uint8_t WindowEdgesFromPair(uint8_t bank, uint16_t pair, uint8_t *p);
+uint16_t WindowEdgesFromList(uint8_t bank, uint16_t *x, uint8_t *p);
+uint16_t WindowHdmaLayout(uint8_t bank, uint16_t *x);
+uint16_t WindowLayoutStepForScreen(uint16_t a_in, uint16_t *x, uint16_t *y);
+uint16_t WindowLayoutStep(uint8_t bank, uint8_t y, uint16_t *x, uint8_t *p, int *keep_hi);
+/* The slide: the result is A's low byte; *moved when A's high byte is $FF. */
+uint8_t WindowSlideDown(uint8_t bank, uint8_t *p, int *moved);
+uint8_t WindowSlideUp(uint8_t bank, uint8_t *p, int *moved);
+uint8_t WindowSlideStep(uint8_t bank, uint8_t *p, int *moved);
+void WindowsInit(void);
+WindowRegs WindowBandsAnimate(WindowRegs r, uint8_t p0);
+uint16_t WindowHdmaFFD5(void);
+uint16_t WindowHdmaFFD9(void);
+WindowRegs WindowSplitAnimate(WindowRegs r, uint8_t p0);
+void WindowHdmaChannelsSetup(uint8_t bank);
+WindowRegs ColdataTopBandStep(WindowRegs r, uint8_t bank, uint8_t *p);
+WindowRegs ColdataLowBandStep(uint8_t bank, uint16_t dp, uint8_t *p);
+WindowRegs ColdataLevelStep(WindowRegs r, uint8_t bank, uint8_t *p);
+WindowRegs WindowSlideCheck(WindowRegs r, uint8_t p0, uint16_t dp);
+
 #endif

@@ -8,6 +8,7 @@
 #include "native.h"
 #include "hw.h"
 #include "cpu_ops.h"
+#include "video_calls.h"
 
 #define WINDOW_HDMA 0x7FF85Bu
 
@@ -57,7 +58,7 @@ void abi_WindowHdmaFFDD(void)
  * Entry: any widths. Exit: A low byte = 0 (high byte that of the middle
  * address); X = $19B6; M 8-bit, X 16-bit; Z set, N clear.
  */
-static uint16_t window_hdma_from_table(uint16_t *sel)
+uint16_t WindowHdmaFromTable(uint16_t *sel)
 {
     cyc(46);
     uint16_t x = rd16(0x0019B6), mid;
@@ -88,16 +89,9 @@ static uint16_t window_hdma_from_table(uint16_t *sel)
     return mid;
 }
 
-void WindowHdmaFromTable(void)
-{
-    uint16_t sel;
-
-    window_hdma_from_table(&sel);
-}
-
 void abi_WindowHdmaFromTable(void)
 {
-    uint16_t sel, mid = window_hdma_from_table(&sel);
+    uint16_t sel, mid = WindowHdmaFromTable(&sel);
 
     cpu.a = (uint16_t)(mid & 0xFF00);
     cpu.x = sel;
@@ -156,8 +150,9 @@ static int window_hdma_off(uint8_t *last)
  * screen (four bands of 64 lines), unless window HDMA is off or no layout is
  * set ($19BC = $FF).
  * HOW: Four entries at $F857 and the end marker.
- * Entry: any widths. Exit: A = $F857 when written; X and Y high bytes clear;
- * P unchanged.
+ * Entry: any widths. Exit: A = $F857 when written (the result), else A's
+ * low byte = *last, the byte that stopped it; X and Y high bytes clear; P
+ * unchanged.
  */
 static int window_hdma_normal(uint8_t *last)
 {
@@ -179,22 +174,24 @@ static int window_hdma_normal(uint8_t *last)
     return 1;
 }
 
-void WindowHdmaNormal(void)
+int WindowHdmaNormal(uint8_t *last)
 {
-    uint8_t last;
+    int written = window_hdma_normal(last);
 
-    window_hdma_normal(&last);
+    if (!written)
+        cyc(22);
+    cyc(100);
+    return written;
 }
 
 void abi_WindowHdmaNormal(void)
 {
     uint8_t last;
 
-    if (window_hdma_normal(&last))
+    if (WindowHdmaNormal(&last))
         cpu.a = 0xF857;
     else
-        { cyc(22); cpu.a = (uint16_t)((cpu.a & 0xFF00) | last); }
-    cyc(100);
+        cpu.a = (uint16_t)((cpu.a & 0xFF00) | last);
     cpu.x &= 0x00FF;
     cpu.y &= 0x00FF;
 }
@@ -224,22 +221,22 @@ static int window_hdma_bands(uint8_t *last)
     return 1;
 }
 
-void WindowHdmaBands(void)
+int WindowHdmaBands(uint8_t *last)
 {
-    uint8_t last;
+    int written = window_hdma_bands(last);
 
-    window_hdma_bands(&last);
+    cyc(100);
+    return written;
 }
 
 void abi_WindowHdmaBands(void)
 {
     uint8_t last;
 
-    if (window_hdma_bands(&last))
+    if (WindowHdmaBands(&last))
         cpu.a = 0xF857;
     else
         cpu.a = (uint16_t)((cpu.a & 0xFF00) | last);
-    cyc(100);
     cpu.x &= 0x00FF;
     cpu.y &= 0x00FF;
 }
@@ -251,9 +248,9 @@ void abi_WindowHdmaBands(void)
  * HOW: Band heights come from A and the offsets at $19E2-$19E5 and the height
  * at $19DC.
  * Entry: M 8-bit; A low byte = line. Exit: A = $FFDD; M 16-bit; N set, Z
- * clear; C and V from the last height sum.
+ * clear; C and V (in *p) from the last height sum.
  */
-static void window_hdma_at(uint8_t line, uint8_t *p)
+void WindowHdmaAt(uint8_t line, uint8_t *p)
 {
     cyc(268);
     uint8_t h = rd8(0x0019DC), e2 = rd8(cyc_then(186, 0x0019E2));
@@ -280,18 +277,11 @@ static void window_hdma_at(uint8_t line, uint8_t *p)
     cyc(42);
 }
 
-void WindowHdmaAt(uint8_t line)
-{
-    uint8_t p = 0;
-
-    window_hdma_at(line, &p);
-}
-
 void abi_WindowHdmaAt(void)
 {
     uint8_t p = cpu.p;
 
-    window_hdma_at((uint8_t)cpu.a, &p);
+    WindowHdmaAt((uint8_t)cpu.a, &p);
     cpu.a = 0xFFDD;
     cpu.p = (uint8_t)((p & ~(P_Z | P_M)) | P_N);
 }
@@ -307,13 +297,9 @@ void abi_WindowHdmaAt(void)
  * 0; X = 3 + bytes copied; Y past the end marker's address... see wrapper;
  * M 8-bit, X 16-bit; Z set.
  */
-typedef struct {
-    uint16_t a, x, y;
-} ListEnd;
-
-static ListEnd window_hdma_from_list(uint8_t db, uint8_t select)
+WindowListEnd WindowHdmaFromList(uint8_t db, uint8_t select)
 {
-    ListEnd end;
+    WindowListEnd end;
     cyc(76);
     uint16_t y = rd16(0x7ED8DE + select), x = 3;
     uint8_t v;
@@ -338,14 +324,9 @@ static ListEnd window_hdma_from_list(uint8_t db, uint8_t select)
     return end;
 }
 
-void WindowHdmaFromList(uint8_t select)
-{
-    window_hdma_from_list(0x7E, select);
-}
-
 void abi_WindowHdmaFromList(void)
 {
-    ListEnd end = window_hdma_from_list(cpu.db, (uint8_t)cpu.x);
+    WindowListEnd end = WindowHdmaFromList(cpu.db, (uint8_t)cpu.x);
 
     cpu.a = 0xF800;
     cpu.x = end.x;
@@ -425,21 +406,25 @@ static uint8_t mirror80(uint8_t v, uint8_t *p)
  * C set, N clear (CPY #0); the RTS pulls its return address from the
  * filled stack.
  */
-void abi_WindowEdgesFillOnes(void)
+void WindowEdgesFillOnes(void)
 {
     uint16_t x = 0, y = 0x0800;
 
-    cpu.p &= (uint8_t)~(P_M | P_X);
     do {
         cyc(x == 0 ? 126 : 144);
         wr16((0x7FF883u + x) & 0xFFFFFF, 0x0001);
         x = (uint16_t)(x + 2);
         y--;
     } while (y);
+}
+
+void abi_WindowEdgesFillOnes(void)
+{
+    WindowEdgesFillOnes();
     cpu.a = 0x0001;
-    cpu.x = x;
+    cpu.x = 0x1000;
     cpu.y = 0;
-    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C)) | P_Z | P_C);
+    cpu.p = (uint8_t)((cpu.p & ~(P_M | P_X | P_N)) | P_Z | P_C);
     /* The RTS, through the return address the fill left on the stack. */
     cyc(102);
     cpu.pc = (cpu.pc & 0xFF0000) | (uint16_t)(rd16((uint16_t)(cpu.s + 1)) + 1);
@@ -632,53 +617,41 @@ void abi_WindowHdmaLayout(void)
     cpu.p = (uint8_t)(((cpu.p & ~(P_N | P_X)) | P_Z | P_M));
 }
 
-void abi_WindowHdmaLayout(void);
-
-/* The two window table builders WindowLayoutStep picks between by Y. */
-static void window_layout_apply(uint16_t y, uint8_t bank)
-{
-    if (y == 0)
-        WindowHdmaFromTable();
-    else
-        WindowHdmaLayout(bank, &y);
-}
-
-void WindowLayoutStep(uint8_t bank, uint16_t y);
-void abi_WindowLayoutStep(void);
-
 /*
  * @routine 7E:D28F WindowLayoutStepForScreen
  * WHAT IT DOES: Clears bit 5 of $0D45 and steps the window layout
  * (WindowLayoutStep) with Y = 0, or Y = 2 on the menu's course screen
  * ($0D62 set).
  * HOW: Data bank $7E inside, P and the data bank saved and restored.
- * Entry: any widths. Exit: A, X, Y as WindowLayoutStep leaves them; P and
- * the data bank unchanged.
+ * Entry: any widths; a_in = A (its high byte may come back), *x = X. Exit:
+ * the result is A, *x = X and *y = Y as WindowLayoutStep leaves them; P
+ * and the data bank unchanged.
  */
-void WindowLayoutStepForScreen(void)
+uint16_t WindowLayoutStepForScreen(uint16_t a_in, uint16_t *x, uint16_t *y)
 {
-    wr8(0x000D45, (uint8_t)(rd8(0x000D45) & 0xDF));
-    WindowLayoutStep(0x7E, rd8(0x7E0D62) ? 0x0002 : 0x0000);
-}
-
-void abi_WindowLayoutStepForScreen(void)
-{
-    uint8_t p = cpu.p, db = cpu.db, v;
+    uint8_t v, p = 0;
+    int keep;
+    uint16_t a;
 
     cyc(148);
     v = (uint8_t)(rd8(0x000D45) & 0xDF);
     cyc(48);
     wr8(0x000D45, v);
-    cpu.db = 0x7E;
     cyc(24);
     v = rd8(0x7E0D62);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.y = v ? (cyc(114), 0x0002) : (cyc(108), 0x0000);
-    cpu.p &= (uint8_t)~(P_M | P_X);
-    abi_WindowLayoutStep();
-    cpu.db = db;
-    cpu.p = p;
+    *y = v ? (cyc(114), 0x0002) : (cyc(108), 0x0000);
+    a = WindowLayoutStep(0x7E, (uint8_t)*y, x, &p, &keep);
     cyc(v ? 100 : 124);                 /* (JMP,) PLB, PLP, RTL */
+    return keep ? (uint16_t)((a_in & 0xFF00) | a) : a;
+}
+
+void abi_WindowLayoutStepForScreen(void)
+{
+    uint16_t x = cpu.x, y;
+
+    cpu.a = WindowLayoutStepForScreen(cpu.a, &x, &y);
+    cpu.x = x;
+    cpu.y = y;
 }
 
 /* One step of the window slide: the slide position at $1A14 moves by
@@ -714,51 +687,21 @@ static int window_slide(uint8_t bank, uint8_t step, uint8_t stop, uint8_t *a, ui
     return 1;
 }
 
-static void abi_window_slide(uint8_t step, uint8_t stop)
+/* The slide and the flags it leaves in *p; *moved when it moved (then A's
+   high byte is $FF, WindowHdmaFFD1's). */
+static uint8_t window_slide_flags(uint8_t bank, uint8_t step, uint8_t stop, uint8_t *p, int *moved)
 {
     uint8_t a, v;
-    int moved = window_slide(cpu.db, step, stop, &a, &v);
+
+    *moved = window_slide(bank, step, stop, &a, &v);
 
     uint8_t old = (uint8_t)(v - step);
     /* V from the step: ADC #1 (clear carry) going up, SBC #1 (set carry)
        going down. */
     int ov = step == 0x01 ? (cyc(24), (~(old ^ 0x01) & (old ^ v) & 0x80) != 0) : ((old ^ 0x01) & (old ^ v) & 0x80) != 0;
 
-    if (moved)
-        cpu.a = (uint16_t)(0xFF00 | a);   /* WindowHdmaFFD1 left $FFD1 */
-    else
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
-    cpu.p = (uint8_t)((nz8(cpu.p, a) & ~(P_C | P_V)) | P_M | (v >= stop ? P_C : 0) | (ov ? P_V : 0));
-}
-
-/*
- * @routine 7E:DDD9 WindowSlideStep
- * WHAT IT DOES: Steps the window slide the way bits 1-2 of $0DA5 ask: 2
- * slides it down (WindowSlideDown), 4 or 6 up (WindowSlideUp), 0 not at
- * all.
- * HOW: The bits are tested through the data bank.
- * Entry: X 16-bit or 8-bit (unchanged). Exit: M 8-bit; as the slide it
- * runs, or A low byte = 0 with Z set.
- */
-void abi_WindowSlideDown(void);
-void abi_WindowSlideUp(void);
-
-void abi_WindowSlideStep(void)
-{
-    uint8_t v;
-
-    cpu.p |= P_M;
-    cyc(92);
-    v = (uint8_t)(rd8(((uint32_t)cpu.db << 16) | 0x0DA5) & 0x06);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = nz8(cpu.p, v);
-    if (!v)
-        return;
-    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - 0x02)) & ~P_C) | (v >= 0x02 ? P_C : 0));
-    if (v == 0x02)
-        abi_WindowSlideDown();
-    else
-        { cyc(6); abi_WindowSlideUp(); }
+    *p = (uint8_t)((nz8(*p, a) & ~(P_C | P_V)) | P_M | (v >= stop ? P_C : 0) | (ov ? P_V : 0));
+    return a;
 }
 
 /*
@@ -767,20 +710,24 @@ void abi_WindowSlideStep(void)
  * the slide ends.
  * HOW: window_slide with +1, stopping at $96. Long accesses except $0DA5
  * (data bank).
- * Entry: X 16-bit or 8-bit (unchanged). Exit: M 8-bit; A low byte = $0DA5
- * when the slide ends, else the new position (A high byte $FF); N, Z from
- * it; C from comparing the new position with $96; V from the add.
+ * Entry: X 16-bit or 8-bit (unchanged); bank = DB, *p = P. Exit: M 8-bit;
+ * the result is A's low byte = $0DA5 when the slide ends, else the new
+ * position (A high byte $FF, *moved set); N, Z from it; C from comparing
+ * the new position with $96; V from the add (all in *p).
  */
-void WindowSlideDown(uint8_t bank)
+uint8_t WindowSlideDown(uint8_t bank, uint8_t *p, int *moved)
 {
-    uint8_t a, v;
-
-    window_slide(bank, 0x01, 0x96, &a, &v);
+    return window_slide_flags(bank, 0x01, 0x96, p, moved);
 }
 
 void abi_WindowSlideDown(void)
 {
-    abi_window_slide(0x01, 0x96);
+    uint8_t p = cpu.p;
+    int moved;
+    uint8_t a = WindowSlideDown(cpu.db, &p, &moved);
+
+    cpu.a = moved ? (uint16_t)(0xFF00 | a) : (uint16_t)((cpu.a & 0xFF00) | a);
+    cpu.p = p;
 }
 
 /*
@@ -790,16 +737,57 @@ void abi_WindowSlideDown(void)
  * HOW: As WindowSlideDown, with -1, stopping at $7F.
  * Entry: as WindowSlideDown. Exit: as WindowSlideDown, comparing with $7F.
  */
-void WindowSlideUp(uint8_t bank)
+uint8_t WindowSlideUp(uint8_t bank, uint8_t *p, int *moved)
 {
-    uint8_t a, v;
-
-    window_slide(bank, 0xFF, 0x7F, &a, &v);
+    return window_slide_flags(bank, 0xFF, 0x7F, p, moved);
 }
 
 void abi_WindowSlideUp(void)
 {
-    abi_window_slide(0xFF, 0x7F);
+    uint8_t p = cpu.p;
+    int moved;
+    uint8_t a = WindowSlideUp(cpu.db, &p, &moved);
+
+    cpu.a = moved ? (uint16_t)(0xFF00 | a) : (uint16_t)((cpu.a & 0xFF00) | a);
+    cpu.p = p;
+}
+
+/*
+ * @routine 7E:DDD9 WindowSlideStep
+ * WHAT IT DOES: Steps the window slide the way bits 1-2 of $0DA5 ask: 2
+ * slides it down (WindowSlideDown), 4 or 6 up (WindowSlideUp), 0 not at
+ * all.
+ * HOW: The bits are tested through the data bank.
+ * Entry: X 16-bit or 8-bit (unchanged); bank = DB, *p = P. Exit: M 8-bit;
+ * as the slide it runs (the result, *moved, *p), or A low byte = 0 with Z
+ * set.
+ */
+uint8_t WindowSlideStep(uint8_t bank, uint8_t *p, int *moved)
+{
+    uint8_t v;
+
+    *moved = 0;
+    *p |= P_M;
+    cyc(92);
+    v = (uint8_t)(rd8(((uint32_t)bank << 16) | 0x0DA5) & 0x06);
+    *p = nz8(*p, v);
+    if (!v)
+        return v;
+    *p = (uint8_t)((nz8(*p, (uint8_t)(v - 0x02)) & ~P_C) | (v >= 0x02 ? P_C : 0));
+    if (v == 0x02)
+        return WindowSlideDown(bank, p, moved);
+    cyc(6);
+    return WindowSlideUp(bank, p, moved);
+}
+
+void abi_WindowSlideStep(void)
+{
+    uint8_t p = cpu.p;
+    int moved;
+    uint8_t a = WindowSlideStep(cpu.db, &p, &moved);
+
+    cpu.a = moved ? (uint16_t)(0xFF00 | a) : (uint16_t)((cpu.a & 0xFF00) | a);
+    cpu.p = p;
 }
 
 /*
@@ -815,51 +803,24 @@ void abi_WindowSlideUp(void)
  * HOW: Long accesses to $19B6-$19BD except one data-bank read of $19BC and
  * the store to $19A9; the builder is called through the table at
  * $7E:DBC9.
- * Entry: Y = 0 or 2. Exit: when nothing moves, A low byte = $19BC, M 8-bit,
- * X 8-bit, N, Z, C from comparing it with $FF; at the -2 stop A low byte =
- * 0, Z, C set, N clear, M and X 8-bit; otherwise as the builder, with C
- * from the limit compare and V from the step add.
+ * Entry: bank = DB; y = Y (its low byte, 0 or 2); *x = X; *p = P. Exit:
+ * when nothing moves, A low byte = $19BC (the result, *keep_hi set: A's
+ * high byte is the caller's), M 8-bit, X 8-bit, N, Z, C from comparing it
+ * with $FF; at the -2 stop A low byte = 0, Z, C set, N clear, M and X
+ * 8-bit; otherwise as the builder, with C from the limit compare and V from
+ * the step add. *x is X's exit value, *p the flags.
  */
-void WindowLayoutStep(uint8_t bank, uint16_t y)
+uint16_t WindowLayoutStep(uint8_t bank, uint8_t y8, uint16_t *x, uint8_t *p, int *keep_hi)
 {
     uint32_t b = (uint32_t)bank << 16;
-    uint8_t req = rd8(0x0019BD);
-    uint16_t pos;
-    unsigned i;
-
-    y &= 0x00FF;
-    if (req == 0x01 || req == 0xFF) {
-        wr8(0x0019BC, 0xFF);
-        wr16(0x0019B8, req == 0x01 ? 0x0002 : 0xFFFE);
-        wr16(0x0019BA, req == 0x01 ? 0x0001 : 0x0000);
-    } else if (rd8(b | 0x19BC) != 0xFF) {
-        return;
-    }
-    wr8(0x0019BD, 0x00);
-    pos = (uint16_t)(rd16(0x0019B6) + rd16(0x0019B8));
-    if (pos == 0xFFFE) {
-        wr8(0x0019BC, 0x00);
-        return;
-    }
-    if (pos != rd16(0x7EDBC5 + y))
-        wr16(0x0019B6, pos);
-    wr8(b | 0x19A9, 0x00);
-    for (i = 0; i < 6; i++)
-        wr8(0x0019AC + i, 0xE7);
-    window_layout_apply(y, bank);
-}
-
-void abi_WindowLayoutStep(void)
-{
-    uint32_t b = (uint32_t)cpu.db << 16;
     cyc(54);
     uint8_t req = rd8(0x0019BD), v;
-    uint16_t y = (uint8_t)cpu.y, s, m, pos, lim;
+    uint16_t y = y8, s, m, pos, lim, a;
     unsigned i;
 
-    cpu.x &= 0x00FF;
-    cpu.y = y;
-    cpu.p |= P_M | P_X;
+    *keep_hi = 0;
+    *x &= 0x00FF;
+    *p |= P_M | P_X;
     if (req == 0x01 || (cyc(54), req == 0xFF)) {
         cyc(86);
         wr8(0x0019BC, 0xFF);
@@ -872,9 +833,9 @@ void abi_WindowLayoutStep(void)
         v = rd8(b | 0x19BC);
         if (v != 0xFF) {
             cyc(74);
-            cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-            cpu.p = (uint8_t)(nz8(cpu.p, (uint8_t)(v + 1)) & ~P_C);
-            return;
+            *keep_hi = 1;
+            *p = (uint8_t)(nz8(*p, (uint8_t)(v + 1)) & ~P_C);
+            return v;
         } else { cyc(38); }
     }
     cyc(req == 0x01 ? 94 : 70);         /* the request 1 JMPs to the common part */
@@ -884,20 +845,19 @@ void abi_WindowLayoutStep(void)
     cyc(46);
     m = rd16(0x0019B8);
     pos = (uint16_t)(s + m);
-    cpu.p = (uint8_t)(cpu.p & ~P_V);
+    *p = (uint8_t)(*p & ~P_V);
     if (~(s ^ m) & (s ^ pos) & 0x8000)
-        cpu.p |= P_V;
+        *p |= P_V;
     if (pos == 0xFFFE) {
         cyc(110);
         wr8(0x0019BC, 0x00);
-        cpu.a = 0x0000 | (pos & 0xFF00);
-        cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z | P_C);
+        *p = (uint8_t)((*p & ~P_N) | P_Z | P_C);
         cyc(42);
-        return;
+        return (uint16_t)(0x0000 | (pos & 0xFF00));
     }
     cyc(114);
     lim = rd16(0x7EDBC5 + y);
-    cpu.p = (uint8_t)((cpu.p & ~P_C) | (pos >= lim ? P_C : 0));
+    *p = (uint8_t)((*p & ~P_C) | (pos >= lim ? P_C : 0));
     if (pos != lim)
         { cyc(48); wr16(0x0019B6, pos); } else { cyc(22); }
     cyc(62);
@@ -905,18 +865,47 @@ void abi_WindowLayoutStep(void)
     cyc(16);
     for (i = 0; i < 6; i++)
         { cyc(32); wr8(0x0019AC + i, 0xE7); }
-    cpu.a = (uint16_t)((pos & 0xFF00) | 0xE7);
-    cpu.x = y;
-    cpu.p = (uint8_t)(nz16((uint8_t)(cpu.p & ~P_X), y) | P_M);
+    *x = y;
     if (y == 0)
-        { cyc(76); abi_WindowHdmaFromTable(); }
+        { cyc(76); a = (uint16_t)(WindowHdmaFromTable(x) & 0xFF00); }
     else
-        { cyc(76); abi_WindowHdmaLayout(); }
+        { cyc(76); a = WindowHdmaLayout(bank, x); }
+    *p = (uint8_t)((*p & ~(P_N | P_X)) | P_Z | P_M);
     cyc(42);
+    return a;
+}
+
+void abi_WindowLayoutStep(void)
+{
+    uint16_t x = cpu.x;
+    uint8_t p = cpu.p, y = (uint8_t)cpu.y;
+    int keep;
+    uint16_t a = WindowLayoutStep(cpu.db, y, &x, &p, &keep);
+
+    cpu.a = keep ? (uint16_t)((cpu.a & 0xFF00) | a) : a;
+    cpu.x = x;
+    cpu.y = y;
+    cpu.p = p;
 }
 
 void abi_Records7FFromF170(void);
 void abi_Records7FFromF634(void);
+
+/* The course records builders, still in registers: they read the data bank
+   (bank $09, where the lists are) and leave A, X, Y and P as they like, so
+   the registers WindowsInit's caller has are saved and put back. */
+static void records_7f(int course_screen)
+{
+    uint8_t db = cpu.db, p = cpu.p;
+
+    cpu.db = 0x09;
+    if (course_screen)
+        abi_Records7FFromF634();
+    else
+        abi_Records7FFromF170();
+    cpu.db = db;
+    cpu.p = p;
+}
 
 /* Bytes `n` from ROM $09:src to `dst` (bank $7F), long stores. */
 static void copy_rom09(uint16_t src, uint32_t dst, unsigned n)
@@ -946,15 +935,16 @@ static void copy_rom09(uint16_t src, uint32_t dst, unsigned n)
  * state stores are in the original's order, byte and word as it makes
  * them. The ROM bytes $09:xxxx indexed by the tables are read through the
  * data bank.
- * Entry: any widths, D = $0000. Exit: A = $007F; X = 0; Y as the last
- * callee left it; P and the data bank unchanged.
+ * Entry: any widths, D = $0000. Exit: A = $007F; X = 0; Y = 0 (the
+ * adapter's: WindowEdgesFromList leaves it so); P and the data bank
+ * unchanged.
  */
 void WindowsInit(void)
 {
     const uint32_t b = 0x090000;
-    uint16_t x, w, m;
+    uint16_t x, w, m, ex;
     unsigned i;
-    uint8_t v;
+    uint8_t v, ep = 0;
 
     cyc(70);
     copy_rom09(0xF999, 0x7FF857, 4);
@@ -962,26 +952,19 @@ void WindowsInit(void)
     copy_rom09(0xF9A1, 0x7FFFD5, 4);
     copy_rom09(0xF9A5, 0x7FFFD9, 4);
     copy_rom09(0xF9A9, 0x7FFFDD, 4);
-    cpu.p |= P_M | P_X;
-    cpu.x = 0x0004;
-    cpu.y &= 0x00FF;
     cyc(92);
     v = rd8(b | 0x0D62);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     if (v)
-        { cyc(68); abi_Records7FFromF634(); }
+        { cyc(68); records_7f(1); }
     else
-        { cyc(62); abi_Records7FFromF170(); }
+        { cyc(62); records_7f(0); }
     cyc(42);
-    cpu.p |= P_M | P_X;
-    cpu.x &= 0x00FF;
-    cpu.y &= 0x00FF;
     copy_rom09(0xF163, 0x7FF85B, 16);
     cyc(92);
     wr16(b | 0x19B6, 0x0000);
     do {
         cyc(46);
-        abi_WindowEdgesFromList();
+        WindowEdgesFromList(0x09, &ex, &ep);
     } while (cyc_loop(46, rd16(cyc_then(46, b | 0x19B6)) != 0x000E));
     cyc(34);
     for (x = 0; (w = rd16(cyc_then(172, 0x09FB74 + x))) != 0xFFFF; x = (uint16_t)(x + 2))
@@ -1158,18 +1141,41 @@ void WindowsInit(void)
 
 void abi_WindowsInit(void)
 {
-    uint8_t p = cpu.p, db = cpu.db;
-
-    cpu.db = 0x09;
     WindowsInit();
     cpu.a = 0x007F;
     cpu.x = 0x0000;
-    cpu.db = db;
-    cpu.p = p;
+    cpu.y = 0x0000;
 }
 
-void abi_WindowHdmaPreset(void);
-void abi_WindowHdmaFromList(void);
+/* The registers a routine leaves for callers that still work in them: the
+   caller's A, X and Y in, the routine's out. */
+
+/* SEP #$30's effect on the index registers: 8-bit X and Y clear their high
+   bytes. */
+static void index8(WindowRegs *r)
+{
+    cyc(22);
+    r->x &= 0x00FF;
+    r->y &= 0x00FF;
+}
+
+/* The PLP that ends a routine which saved P: p0's 8-bit index flag clears
+   the high bytes. */
+static void restore_p(WindowRegs *r, uint8_t p0)
+{
+    cyc(42);
+    if (p0 & P_X) {
+        r->x &= 0x00FF;
+        r->y &= 0x00FF;
+    }
+}
+
+/* CMP (16-bit) of v with m: N, Z and C. */
+static void cmp16(uint16_t v, uint16_t m, uint8_t *p)
+{
+    cyc(0);
+    *p = (uint8_t)((nz16(*p, (uint16_t)(v - m)) & ~P_C) | (v >= m ? P_C : 0));
+}
 
 /*
  * @routine 7E:D5EC WindowBandsAnimate
@@ -1185,34 +1191,33 @@ void abi_WindowHdmaFromList(void);
  * HOW: The data bank is the code's own ($7E) throughout; some accesses
  * are long to bank 0. States 3 and above 5 are not reached in the traces
  * so far.
- * Entry: any widths. Exit: P and the data bank restored; X and Y high
- * bytes cleared; A, X as the last step left them.
+ * Entry: any widths; r = A, X, Y; p0 = P. Exit: P and the data bank
+ * restored; X and Y high bytes cleared; the result is A, X, Y as the last
+ * step left them.
  */
-void abi_WindowBandsAnimate(void)
+WindowRegs WindowBandsAnimate(WindowRegs r, uint8_t p0)
 {
-    uint8_t p0 = cpu.p, db0 = cpu.db, v;
+    uint8_t v, pp = p0;
     uint32_t b = 0x7E0000;
-    uint16_t a;
+    uint16_t a, m;
 
-    cpu.db = 0x7E;
-    op_sep(P_M | P_X);
+    index8(&r);
     cyc(126);
     v = rd8(0x0019DF);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    r.a = (uint16_t)((r.a & 0xFF00) | v);
     if (v)
         { cyc(22); goto out; }
     cyc(40);
     v = rd8(b | 0x19D8);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    r.a = (uint16_t)((r.a & 0xFF00) | v);
     if (!v)
         { cyc(16); goto out; }
     cyc(68);
     v = rd8(b | 0x19D8);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    r.a = (uint16_t)((r.a & 0xFF00) | v);
     if (v == 0x01 || (cyc(38), v == 0x02)) {
         uint8_t fast;
 
-        cpu.p &= (uint8_t)~P_M;
         if (v == 0x01) {
             cyc(172);
             wr16(b | 0x19D6, 0x0080);
@@ -1220,10 +1225,8 @@ void abi_WindowBandsAnimate(void)
             wr16(0x0019D4, 0x0000);
         } else
             { cyc(166); wr16(b | 0x19D6, 0xFF80); }
-        cpu.p |= P_M;
         cyc(46);
         fast = rd8(b | 0x0D62);
-        cpu.p &= (uint8_t)~P_M;
         if (v == 0x01)
             { cyc(100); wr16(0x0019D9, fast ? (cyc(16), 0x0780) : 0x0C80); }
         else {
@@ -1234,14 +1237,13 @@ void abi_WindowBandsAnimate(void)
         }
         cyc(v == 0x01 ? 102 : 78);      /* JMP for the open side, REP, LDA # */
         wr16(0x000DA4, 0x0000);
-        op_sep(P_M | P_X);
+        index8(&r);
         cyc(40);
         wr8(b | 0x19D8, 0x04);
     } else if (v != 0x04 && (cyc(32), v != 0x05)) {
         cyc(v == 0x03 ? 96 : 90);       /* the compares to CMP #3, BEQ */
         goto out;
     }
-    cpu.p |= P_M;
     cyc(54);
     v = (uint8_t)(rd8(0x000D45) & 0xDF);
     cyc(48);
@@ -1256,23 +1258,22 @@ void abi_WindowBandsAnimate(void)
         for (i = 0; i < 6; i++)
             { cyc(24); wr8(b | (uint16_t)(0x19AC + i), v); }
     }
-    cpu.p &= (uint8_t)~P_M;
     cyc(54);
     a = rd16(0x0019D4);
-    cpu.p &= (uint8_t)~P_C;
+    pp &= (uint8_t)~P_C;
     cyc(38);
-    a = op_adc16(a, rd16(b | 0x19D6), &cpu.p);
-    cpu.a = a;
+    a = op_adc16(a, rd16(b | 0x19D6), &pp);
+    r.a = a;
     cyc(24);
-    op_cmp16(rd16(b | 0x19D9));
-    if (!(cpu.p & P_Z))
+    m = rd16(b | 0x19D9);
+    cyc(0);
+    if (a != m)
         { cyc(48); wr16(0x0019D4, a); cyc(24); /* JMP */ }
     else {
-        cpu.p |= P_M;
         cyc(76);
         v = rd8(0x0019D5);
         if (!v) {
-            cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+            r.a = (uint16_t)((r.a & 0xFF00) | v);
             cyc(40);
             wr8(b | 0x19D8, 0x00);
             goto out;
@@ -1280,23 +1281,40 @@ void abi_WindowBandsAnimate(void)
         cyc(62);
         wr8(b | 0x19D8, 0x05);
     }
-    op_sep(P_M | P_X);
+    index8(&r);
     cyc(32);
     v = rd8(0x0019D5);
-    cpu.x = (uint8_t)(v << 1);
+    r.x = (uint8_t)(v << 1);
     cyc(52);
     v = rd8(b | 0x0D62);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    r.a = (uint16_t)((r.a & 0xFF00) | v);
     if (v)
-        { cyc(62); abi_WindowHdmaPreset(); }
-    else
-        { cyc(68); abi_WindowHdmaFromList(); }
+        { cyc(62); r.a = WindowHdmaPreset(0x7E, (uint8_t)r.x, &r.x, &r.y); }
+    else {
+        WindowListEnd end;
+
+        cyc(68);
+        end = WindowHdmaFromList(0x7E, (uint8_t)r.x);
+        r.a = 0xF800;
+        r.x = end.x;
+        r.y = end.y;
+    }
     cyc(64);
-    op_sep(P_M | P_X);
+    index8(&r);
 out:
     cyc(58);
-    cpu.db = db0;
-    op_plp(p0);
+    restore_p(&r, p0);
+    return r;
+}
+
+void abi_WindowBandsAnimate(void)
+{
+    WindowRegs r = {cpu.a, cpu.x, cpu.y};
+
+    r = WindowBandsAnimate(r, cpu.p);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
 }
 
 /* Three bands of 16, 48 and 16 lines at entry offset `at`, all at the
@@ -1315,8 +1333,6 @@ static void window_bands_3(uint16_t at, uint16_t addr)
     wr16(WINDOW_HDMA + at + 4, addr);
     cyc(32);
     wr16(WINDOW_HDMA + at + 7, addr);
-    cpu.a = addr;
-    cpu.p = (uint8_t)((cpu.p & ~(P_Z | P_M)) | P_N);
     cyc(42); /* RTS */
 }
 
@@ -1326,11 +1342,18 @@ static void window_bands_3(uint16_t at, uint16_t addr)
  * and 16 lines at $FFD5.
  * HOW: Counts, then addresses. Reached by a unit test
  * (unit_uncalled).
- * Entry: any widths. Exit: as WindowHdmaFFD1, A = $FFD5.
+ * Entry: any widths. Exit: as WindowHdmaFFD1, A = $FFD5 (the result).
  */
-void abi_WindowHdmaFFD5(void)
+uint16_t WindowHdmaFFD5(void)
 {
     window_bands_3(3, 0xFFD5);
+    return 0xFFD5;
+}
+
+void abi_WindowHdmaFFD5(void)
+{
+    cpu.a = WindowHdmaFFD5();
+    cpu.p = (uint8_t)((cpu.p & ~(P_Z | P_M)) | P_N);
 }
 
 /*
@@ -1338,15 +1361,19 @@ void abi_WindowHdmaFFD5(void)
  * WHAT IT DOES: As WindowHdmaFFD5 for the sixth to eighth bands, at $FFD9.
  * HOW: As WindowHdmaFFD5. Reached by a unit test
  * (unit_uncalled).
- * Entry: any widths. Exit: as WindowHdmaFFD1, A = $FFD9.
+ * Entry: any widths. Exit: as WindowHdmaFFD1, A = $FFD9 (the result).
  */
-void abi_WindowHdmaFFD9(void)
+uint16_t WindowHdmaFFD9(void)
 {
     window_bands_3(15, 0xFFD9);
+    return 0xFFD9;
 }
 
-void abi_WindowHdmaAt(void);
-void abi_WindowHdmaFFDD(void);
+void abi_WindowHdmaFFD9(void)
+{
+    cpu.a = WindowHdmaFFD9();
+    cpu.p = (uint8_t)((cpu.p & ~(P_Z | P_M)) | P_N);
+}
 
 /*
  * @routine 7E:D75E WindowSplitAnimate
@@ -1361,33 +1388,32 @@ void abi_WindowHdmaFFDD(void);
  * HOW: The data bank is the code's ($7E); some accesses are long to bank
  * 0. The closing, state 3 and the state 0 end are not reached in the
  * traces so far.
- * Entry: any widths. Exit: P and the data bank restored; X and Y high
- * bytes cleared; A as the last step left it.
+ * Entry: any widths; r = A, X, Y; p0 = P. Exit: P and the data bank
+ * restored; X and Y high bytes cleared; the result is A as the last step
+ * left it.
  */
-void abi_WindowSplitAnimate(void)
+WindowRegs WindowSplitAnimate(WindowRegs r, uint8_t p0)
 {
-    uint8_t p0 = cpu.p, db0 = cpu.db, v, h;
+    uint8_t v, h, pp = p0, pj = 0;
     uint32_t b = 0x7E0000;
-    uint16_t a;
+    uint16_t a, m;
     unsigned i;
 
-    cpu.db = 0x7E;
-    op_sep(P_M | P_X);
+    index8(&r);
     cyc(126);
     v = rd8(0x0019DF);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    r.a = (uint16_t)((r.a & 0xFF00) | v);
     if (v != 0x01)
         { cyc(16); goto out; }
     cyc(56);
     v = rd8(b | 0x19D8);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    r.a = (uint16_t)((r.a & 0xFF00) | v);
     if (!v)
         { cyc(16); goto out_fall; }          /* BNE not taken */
     cyc(68);
     v = rd8(b | 0x19D8);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    r.a = (uint16_t)((r.a & 0xFF00) | v);
     if (v == 0x01 || (cyc(38), v == 0x02)) {
-        cpu.p &= (uint8_t)~P_M;
         if (v == 0x01) {
             cyc(180);
             wr16(0x0019DD, 0x0400);
@@ -1413,14 +1439,13 @@ void abi_WindowSplitAnimate(void)
         }
         cyc(v == 0x01 ? 102 : 78);     /* JMP for the open side, REP, LDA # */
         wr16(0x000DA4, 0x0000);
-        op_sep(P_M | P_X);
+        index8(&r);
         cyc(48);
         wr8(0x0019D8, 0x04);
     } else if (v != 0x04 && (cyc(32), v != 0x05)) {
         cyc(v == 0x03 ? 96 : 68);       /* the compares to CMP #3, BEQ; SEP at state 3 */
         goto out;
     }
-    cpu.p |= P_M;
     cyc(54);
     v = (uint8_t)(rd8(0x000D45) & 0xDF);
     cyc(48);
@@ -1431,59 +1456,64 @@ void abi_WindowSplitAnimate(void)
     v = rd8(b | 0x19E0);
     for (i = 0; i < 6; i++)
         { cyc(24); wr8(b | (uint16_t)(0x19AC + i), v); }
-    cpu.p &= (uint8_t)~(P_M | P_C);
+    pp &= (uint8_t)~P_C;
     cyc(54);
     a = rd16(0x0019DB);
     cyc(46);
-    a = op_adc16(a, rd16(0x0019DD), &cpu.p);
-    cpu.a = a;
+    a = op_adc16(a, rd16(0x0019DD), &pp);
+    r.a = a;
     cyc(24);
-    op_cmp16(rd16(b | 0x19D9));
-    if (!(cpu.p & P_Z)) {
+    m = rd16(b | 0x19D9);
+    cyc(0);
+    if (a != m) {
         cyc(48);
         wr16(0x0019DB, a);
-        cpu.p |= P_M;
         cyc(84);
         h = rd8(0x0019DC);
-        cpu.p |= P_C;
-        v = op_sbc8(0xFF, h, &cpu.p);
+        pp |= P_C;
+        v = op_sbc8(0xFF, h, &pp);
         cyc(30);
         h = rd8(0x0019DC);
-        cpu.p |= P_C;
-        v = op_sbc8(v, h, &cpu.p);
-        cpu.p = (uint8_t)((cpu.p & ~P_C) | (v & 0x01));
+        pp |= P_C;
+        v = op_sbc8(v, h, &pp);
         v = (uint8_t)(v >> 1);
-        cpu.p = nz8(cpu.p, v);
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-        (cyc(44), abi_WindowHdmaAt());
+        (cyc(44), WindowHdmaAt(v, &pj));
+        r.a = 0xFFDD;
         goto out;
     }
     cyc(76);
     a = rd16(0x0019DB);
-    cpu.a = a;
-    op_cmp16(0x7000);
+    r.a = a;
+    cmp16(a, 0x7000, &pp);
     if (a >= 0x7000) {
         cyc(86);
-        abi_WindowHdmaFFDD();
-        cpu.p |= P_M;
+        WindowHdmaFFDD();
         cyc(62);
         wr8(b | 0x19D8, 0x05);
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x05);
+        r.a = 0xFF05;
     } else {
-        cpu.p |= P_M;
         cyc(92);
         wr8(b | 0x19D8, 0x00);
         cyc(58);                        /* falls into the pulls: no BRA */
-        cpu.db = db0;
-        op_plp(p0);
-        return;
+        restore_p(&r, p0);
+        return r;
     }
 out:
     cyc(22);                            /* a taken branch */
 out_fall:
     cyc(58);                            /* PLB, PLP, RTL with op_plp */
-    cpu.db = db0;
-    op_plp(p0);
+    restore_p(&r, p0);
+    return r;
+}
+
+void abi_WindowSplitAnimate(void)
+{
+    WindowRegs r = {cpu.a, cpu.x, cpu.y};
+
+    r = WindowSplitAnimate(r, cpu.p);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
 }
 
 /*
@@ -1494,18 +1524,17 @@ out_fall:
  * $12FD and $1308; the window lines $7F:130D and $7F:130F cleared.
  * HOW: 8-bit register writes, the addresses 16-bit; through the data bank;
  * P saved and restored.
- * Entry: any widths. Exit: P restored; A = 0; X = $1308.
+ * Entry: any widths; bank = DB. Exit: P restored; A = 0 (low byte); X =
+ * $1308 (the adapter's: its low byte when X is 8-bit).
  */
-void abi_WindowHdmaChannelsSetup(void)
+void WindowHdmaChannelsSetup(uint8_t bank)
 {
     static const struct { uint8_t dmap, bbad; uint16_t a1t; } ch[5] = {
         {0x02, 0x0F, 0x12D5}, {0x42, 0x10, 0x12E2}, {0x00, 0x2C, 0x12F2}, {0x00, 0x27, 0x12FD}, {0x00, 0x27, 0x1308}};
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint8_t p0 = cpu.p;
+    uint32_t b = (uint32_t)bank << 16;
     int i;
 
-    op_sep(P_M);
-    op_rep(P_X);
+    cyc(22);                            /* REP #$10 */
     cyc(90);
     for (i = 0; i < 5; i++) {
         uint16_t base = (uint16_t)(0x4370 - 0x10 * i);
@@ -1514,51 +1543,61 @@ void abi_WindowHdmaChannelsSetup(void)
         dma_wr(b | base, ch[i].dmap);
         cyc(40);
         dma_wr(b | (uint16_t)(base + 1), ch[i].bbad);
-        cpu.x = ch[i].a1t;
         cyc(48);
-        dma_wr16(b | (uint16_t)(base + 2), cpu.x);
+        dma_wr16(b | (uint16_t)(base + 2), ch[i].a1t);
         cyc(40);
         dma_wr(b | (uint16_t)(base + 4), 0x7F);
         if (i == 1)
             { cyc(40); dma_wr(b | (uint16_t)(base + 7), 0x00); }
     }
-    cpu.a = (uint16_t)(cpu.a & 0xFF00);
     cyc(48);
     wr8(0x7F130D, 0x00);
     cyc(32);
     wr8(0x7F130F, 0x00);
-    op_plp(p0);
+    cyc(42);                            /* PLP */
     cyc(28);
 }
 
-/* CMP (8-bit) of v with m: N, Z and C. */
-static void cmp8(uint8_t v, uint8_t m)
+void abi_WindowHdmaChannelsSetup(void)
 {
-    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - m)) & ~P_C) | (v >= m ? (cyc(16), P_C) : 0));
+    WindowHdmaChannelsSetup(cpu.db);
+    cpu.a = (uint16_t)(cpu.a & 0xFF00);
+    cpu.x = 0x1308;
+    if (cpu.p & P_X) {
+        cpu.x &= 0x00FF;
+        cpu.y &= 0x00FF;
+    }
+}
+
+/* CMP (8-bit) of v with m: N, Z and C. */
+static void cmp8(uint8_t v, uint8_t m, uint8_t *p)
+{
+    *p = (uint8_t)((nz8(*p, (uint8_t)(v - m)) & ~P_C) | (v >= m ? (cyc(16), P_C) : 0));
 }
 
 /* LDA, CLC, ADC (8-bit) of two bytes, then CMP with the limit pair at
    `limits`: the sum is stored back at `at` unless it equals the first limit
-   or is below the second. */
-static void band_step(uint32_t at, uint32_t step, uint32_t limits)
+   or is below the second. The new A (its low byte the sum). */
+static uint16_t band_step(uint16_t a, uint32_t at, uint32_t step, uint32_t limits, uint8_t *p)
 {
     cyc(32);
     uint8_t v = rd8(at);
 
-    cpu.p &= (uint8_t)~P_C;
+    *p &= (uint8_t)~P_C;
     cyc(38);
-    v = op_adc8(v, rd8(step), &cpu.p);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    v = op_adc8(v, rd8(step), p);
+    a = (uint16_t)((a & 0xFF00) | v);
     cyc(32);
-    cmp8(v, rd8(limits));
-    if (cpu.p & P_Z)
-        { cyc(6); return; }
+    cmp8(v, rd8(limits), p);
+    if (*p & P_Z)
+        { cyc(6); return a; }
     cyc(48);
-    cmp8(v, rd8(limits + 1));
-    if (!(cpu.p & P_C))
-        { cyc(22); return; }
+    cmp8(v, rd8(limits + 1), p);
+    if (!(*p & P_C))
+        { cyc(22); return a; }
     cyc(32);
     wr8(at, v);
+    return a;
 }
 
 /*
@@ -1567,17 +1606,32 @@ static void band_step(uint32_t at, uint32_t step, uint32_t limits)
  * ($19CB) by $19C7, unless the new count equals the first byte of the
  * limit pair $19D1 in the list at $7E:D5AA or is below the second.
  * HOW: 8-bit; the pair's offset is $19D1.
- * Entry: any widths; data bank $7E. Exit: M and X 8-bit; A low byte the
- * new count; X = $19D1; N, Z, C from the last compare.
+ * Entry: any widths; bank = DB ($7E); r = A, X, Y; *p = P. Exit: M and X
+ * 8-bit; the result is A (low byte the new count), X = $19D1, Y with its
+ * high byte clear; N, Z, C from the last compare (in *p).
  */
+WindowRegs ColdataTopBandStep(WindowRegs r, uint8_t bank, uint8_t *p)
+{
+    uint32_t b = (uint32_t)bank << 16;
+
+    *p |= P_M | P_X;
+    index8(&r);
+    cyc(70);
+    r.x = rd8(b | 0x19D1);
+    r.a = band_step(r.a, 0x0019CB, b | 0x19C7, 0x7ED5AA + r.x, p);
+    return r;
+}
+
 void abi_ColdataTopBandStep(void)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    WindowRegs r = {cpu.a, cpu.x, cpu.y};
+    uint8_t p = cpu.p;
 
-    op_sep(P_M | P_X);
-    cyc(70);
-    cpu.x = rd8(b | 0x19D1);
-    band_step(0x0019CB, b | 0x19C7, 0x7ED5AA + cpu.x);
+    r = ColdataTopBandStep(r, cpu.db, &p);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.p = p;
 }
 
 /*
@@ -1590,31 +1644,35 @@ void abi_ColdataTopBandStep(void)
  * $40 (set), as $19D3 records it.
  * HOW: 16-bit for the links, then 8-bit; the step as ColdataTopBandStep.
  * The bit set, and each restart, are not reached in the traces so far.
- * Entry: any widths; data bank $7E. Exit: M and X 8-bit; A low byte the
- * new count; X the pair's offset; Y the second link (high byte clear); N,
- * Z, C from the last compare.
+ * Entry: any widths; bank = DB ($7E), dp = D; *p = P. Exit: M and X 8-bit;
+ * the result is A (low byte the new count; high byte $40 with the bit
+ * set), X the pair's offset, Y the second link (high byte clear); N, Z, C
+ * from the last compare (in *p).
  */
-void abi_ColdataLowBandStep(void)
+WindowRegs ColdataLowBandStep(uint8_t bank, uint16_t dp, uint8_t *p)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)bank << 16;
+    WindowRegs r;
     uint8_t v;
     uint32_t tail = 46;
 
-    op_rep(P_M | P_X);
+    cyc(22);                            /* REP #$30 */
+    *p &= (uint8_t)~(P_M | P_X);
     cyc(112);
-    cpu.x = rd16(b | 0x0346);
+    r.x = rd16(b | 0x0346);
     cyc(30);
-    cpu.y = rd16(b + 0x204F + cpu.x);
+    r.y = rd16(b + 0x204F + r.x);
     cyc(30);
-    cpu.a = rd16(b + 0x204F + cpu.y);
-    cpu.y = cpu.a;
+    r.a = rd16(b + 0x204F + r.y);
+    r.y = r.a;
     cyc(44);
-    cpu.a = (uint16_t)(rd16(b + cpu.y) & 0x4000);
-    cpu.p = nz16(cpu.p, cpu.a);
-    op_sep(P_M | P_X);
-    cyc(cpu.a ? 64 : 70);               /* BEQ taken or not */
+    r.a = (uint16_t)(rd16(b + r.y) & 0x4000);
+    *p = nz16(*p, r.a);
+    *p |= P_M | P_X;
+    index8(&r);
+    cyc(r.a ? 64 : 70);                 /* BEQ taken or not */
     v = rd8(b | 0x19D3);
-    if (cpu.a) {
+    if (r.a) {
         if (!v) {
             cyc(56);
             wr8(b | 0x19D3, 0x01);
@@ -1623,7 +1681,7 @@ void abi_ColdataLowBandStep(void)
             v = 0x40;
         } else { cyc(22); }
         cyc(16);
-        cpu.x = rd8((uint16_t)(cpu.d + 0x02));
+        r.x = rd8((uint16_t)(dp + 0x02));
     } else {
         if (v) {
             cyc(56);
@@ -1633,11 +1691,23 @@ void abi_ColdataLowBandStep(void)
             v = 0x20;
             tail = 38;                  /* LDX #imm, SEP: no BEQ before */
         } else { cyc(14); }
-        cpu.x = 0x00;
+        r.x = 0x00;
     }
     cyc(tail);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    band_step(0x0019CF, b | 0x19CD, 0x7ED56E + cpu.x);
+    r.a = (uint16_t)((r.a & 0xFF00) | v);
+    r.a = band_step(r.a, 0x0019CF, b | 0x19CD, 0x7ED56E + r.x, p);
+    return r;
+}
+
+void abi_ColdataLowBandStep(void)
+{
+    uint8_t p = cpu.p;
+    WindowRegs r = ColdataLowBandStep(cpu.db, cpu.d, &p);
+
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.p = p;
 }
 
 /*
@@ -1649,44 +1719,60 @@ void abi_ColdataLowBandStep(void)
  * part to it. The bands are every other byte of the list at $7E:D5B3, to
  * its $FF.
  * HOW: A 16-bit add, then 8-bit with X stepping by 2 from 0.
- * Entry: any widths; data bank $7E (for $19C5). Exit: at a limit, M and X
- * 16-bit and A the sum; otherwise M and X 8-bit, A low byte $FF (high byte
- * the new whole part) and X at the list's end; Z and C set, V from the
- * add.
+ * Entry: any widths; bank = DB ($7E, for $19C5); r = X, Y (A is not read);
+ * *p = P. Exit: at a limit, M and X 16-bit and A the sum, X and Y
+ * unchanged; otherwise M and X 8-bit, A low byte $FF (high byte the new
+ * whole part), X at the list's end and Y with its high byte clear; Z and C
+ * set, V from the add (in *p).
  */
-void abi_ColdataLevelStep(void)
+WindowRegs ColdataLevelStep(WindowRegs r, uint8_t bank, uint8_t *p)
 {
     uint8_t x, v;
 
-    op_rep(P_M | P_X);
+    cyc(22);                            /* REP #$30 */
+    *p &= (uint8_t)~(P_M | P_X);
     cyc(78);
-    cpu.a = rd16(0x0019C3);
-    cpu.p &= (uint8_t)~P_C;
+    r.a = rd16(0x0019C3);
+    *p &= (uint8_t)~P_C;
     cyc(38);
-    cpu.a = op_adc16(cpu.a, rd16((uint32_t)cpu.db << 16 | 0x19C5), &cpu.p);
-    op_cmp16(0xE000);
-    if (cpu.p & P_Z)
-        { cyc(8); return; }
-    op_cmp16(0xEF00);
-    if (cpu.p & P_Z)
-        { cyc(48); return; }
+    r.a = op_adc16(r.a, rd16((uint32_t)bank << 16 | 0x19C5), p);
+    cmp16(r.a, 0xE000, p);
+    if (*p & P_Z)
+        { cyc(8); return r; }
+    cmp16(r.a, 0xEF00, p);
+    if (*p & P_Z)
+        { cyc(48); return r; }
     cyc(112);
-    wr16(0x0019C3, cpu.a);
-    op_sep(P_M | P_X);
+    wr16(0x0019C3, r.a);
+    *p |= P_M | P_X;
+    index8(&r);
     for (x = 0;; x = (uint8_t)(x + 2)) {
         cyc(48);
         v = rd8(0x7ED5B3 + x);
         if (v == 0xFF)
             break;
         cyc(64);
-        cmp8(v, rd8(0x0019C4));
-        if (cpu.p & P_C)
+        cmp8(v, rd8(0x0019C4), p);
+        if (*p & P_C)
             { cyc(32); wr8(0x7FFF8E + x, cyc_then(32, rd8(0x0019C4))); } else { cyc(22); }
         cyc(36);
     }
-    cpu.x = x;
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xFF);
-    cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z | P_C);
+    r.x = x;
+    r.a = (uint16_t)((r.a & 0xFF00) | 0xFF);
+    *p = (uint8_t)((*p & ~P_N) | P_Z | P_C);
+    return r;
+}
+
+void abi_ColdataLevelStep(void)
+{
+    WindowRegs r = {cpu.a, cpu.x, cpu.y};
+    uint8_t p = cpu.p;
+
+    r = ColdataLevelStep(r, cpu.db, &p);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    cpu.p = p;
 }
 
 /*
@@ -1704,19 +1790,18 @@ void abi_ColdataLevelStep(void)
  * HOW: P and the data bank pushed ($7E) around it. The level's limit check
  * repeats ColdataLevelStep's add. The end of the slide, the $E1 case and a
  * Y below $19C9 are not reached in the traces so far.
- * Entry: any widths. Exit: P and the data bank restored; A, X, Y as the
- * last step left them (A low byte $0D45 after the slide's steps, 0 when no
- * slide).
+ * Entry: any widths; r = A, X, Y; p0 = P; dp = D. Exit: P and the data
+ * bank restored; the result is A, X, Y as the last step left them (A low
+ * byte $0D45 after the slide's steps, 0 when no slide).
  */
-static void window_slide_check_step(void)
+static WindowRegs window_slide_check_step(WindowRegs r, uint8_t p0, uint16_t dp)
 {
     const uint32_t b = 0x7E0000;
-    uint8_t v;
+    uint8_t v, pp = p0;
     uint16_t m;
     int called, same;
 
-    op_sep(P_M);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xE0);
+    r.a = (uint16_t)((r.a & 0xFF00) | 0xE0);
     cyc(108);
     wr8(0x0019AC, 0xE0);
     cyc(48);
@@ -1724,26 +1809,27 @@ static void window_slide_check_step(void)
     cyc(48);
     wr8(0x0019AE, 0xE0);
     cyc(32);
-    op_lda8(0x0019C4);
-    cmp8((uint8_t)cpu.a, 0xE1);
-    called = cpu.p & P_C;
+    v = rd8(0x0019C4);
+    r.a = (uint16_t)((r.a & 0xFF00) | v);
+    cmp8(v, 0xE1, &pp);
+    called = pp & P_C;
     if (called) {
         cyc(62);                        /* CMP, JSR */
-        abi_WindowHdmaFFD1();
+        WindowHdmaFFD1();
+        r.a = 0xFFD1;
     }
-    op_sep(P_M);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x06);
+    r.a = (uint16_t)((r.a & 0xFF00) | 0x06);
     cyc(called ? 62 : 100);
     wr8(b | 0x19A9, 0x06);
-    abi_ColdataLevelStep();
-    op_rep(P_M);
+    r = ColdataLevelStep(r, 0x7E, &pp);
+    cyc(22);                            /* REP #$20 */
     cyc(112);
-    cpu.a = rd16(0x0019C3);
-    cpu.p &= (uint8_t)~P_C;
+    r.a = rd16(0x0019C3);
+    pp &= (uint8_t)~P_C;
     cyc(38);
-    cpu.a = op_adc16(cpu.a, rd16(b | 0x19C5), &cpu.p);
-    if (cpu.a == 0xE000) {
-        op_sep(P_M | P_X);
+    r.a = op_adc16(r.a, rd16(b | 0x19C5), &pp);
+    if (r.a == 0xE000) {
+        index8(&r);
         cyc(78);
         v = (uint8_t)(rd8(0x000DA5) & 0xFE);
         cyc(48);
@@ -1752,30 +1838,28 @@ static void window_slide_check_step(void)
         v = (uint8_t)(rd8(0x000D45) & 0xDF);
         cyc(48);
         wr8(0x000D45, v);
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-        return;
+        r.a = (uint16_t)((r.a & 0xFF00) | v);
+        return r;
     }
-    op_rep(P_M | P_X);
+    cyc(22);                            /* REP #$30 */
     cyc(88);
-    cpu.x = rd16(b | 0x0346);
+    r.x = rd16(b | 0x0346);
     cyc(32);
-    cpu.a = rd16(0x0019C9);
+    r.a = rd16(0x0019C9);
     cyc(30);
-    m = rd16(b + 0x200E + cpu.x);
-    same = cpu.a == m;
+    m = rd16(b + 0x200E + r.x);
+    same = r.a == m;
     if (!same) {
-        int down = cpu.a >= m;
+        int down = r.a >= m;
 
-        op_sep(P_M);
         cyc(102);
         wr8(0x0019C7, down ? (cyc(6), 0xFE) : 0x02);
         cyc(48);
         wr8(0x0019CD, down ? 0x01 : 0xFF);
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | (down ? 0x01 : (cyc(24), 0xFF)));
-        abi_ColdataTopBandStep();
-        abi_ColdataLowBandStep();
+        r.a = (uint16_t)((r.a & 0xFF00) | (down ? 0x01 : (cyc(24), 0xFF)));
+        r = ColdataTopBandStep(r, 0x7E, &pp);
+        r = ColdataLowBandStep(0x7E, dp, &pp);
     }
-    op_sep(P_M);
     cyc(same ? 76 : 96);
     v = rd8(0x0019CB);
     cyc(32);
@@ -1784,44 +1868,55 @@ static void window_slide_check_step(void)
     v = rd8(0x0019CF);
     cyc(32);
     wr8(0x7FFFAB, v);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    op_rep(P_M | P_X);
+    r.a = (uint16_t)((r.a & 0xFF00) | v);
+    cyc(22);                            /* REP #$30 */
     cyc(24);
-    cpu.x = rd16(b | 0x0346);
+    r.x = rd16(b | 0x0346);
     cyc(30);
-    cpu.a = rd16(b + 0x200E + cpu.x);
+    r.a = rd16(b + 0x200E + r.x);
     cyc(32);
-    wr16(0x0019C9, cpu.a);
-    op_sep(P_M);
+    wr16(0x0019C9, r.a);
     cyc(54);
     v = (uint8_t)(rd8(0x000D45) | 0x20);
     cyc(48);
     wr8(0x000D45, v);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    r.a = (uint16_t)((r.a & 0xFF00) | v);
+    return r;
+}
+
+WindowRegs WindowSlideCheck(WindowRegs r, uint8_t p0, uint16_t dp)
+{
+    const uint32_t b = 0x7E0000;
+    uint8_t v;
+
+    cyc(140);
+    v = rd8(b | 0x19D8);
+    r.a = (uint16_t)((r.a & 0xFF00) | v);
+    if (!v) {
+        cyc(48);
+        v = rd8(0x0019BC);
+        r.a = (uint16_t)((r.a & 0xFF00) | v);
+        if (v != 0xFF) {
+            cyc(56);
+            v = rd8(b | 0x0DA5);
+            r.a = (uint16_t)((r.a & 0xFF00) | v);
+            if (v & 0x01)
+                r = window_slide_check_step(r, p0, dp);
+            else
+                { cyc(32); r.a = (uint16_t)(r.a & 0xFF00); }
+        } else { cyc(38); }
+    } else { cyc(22); }
+    cyc(58);
+    restore_p(&r, p0);
+    return r;
 }
 
 void abi_WindowSlideCheck(void)
 {
-    const uint32_t b = 0x7E0000;
-    uint8_t p0 = cpu.p, db0 = cpu.db;
+    WindowRegs r = {cpu.a, cpu.x, cpu.y};
 
-    cpu.db = 0x7E;
-    op_sep(P_M);
-    cyc(140);
-    op_lda8(b | 0x19D8);
-    if (!(uint8_t)cpu.a) {
-        cyc(48);
-        op_lda8(0x0019BC);
-        if ((uint8_t)cpu.a != 0xFF) {
-            cyc(56);
-            op_lda8(b | 0x0DA5);
-            if (cpu.a & 0x01)
-                window_slide_check_step();
-            else
-                { cyc(32); cpu.a = (uint16_t)(cpu.a & 0xFF00); }
-        } else { cyc(38); }
-    } else { cyc(22); }
-    cyc(58);
-    cpu.db = db0;
-    op_plp(p0);
+    r = WindowSlideCheck(r, cpu.p, cpu.d);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
 }
