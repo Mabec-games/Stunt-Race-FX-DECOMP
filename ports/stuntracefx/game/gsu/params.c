@@ -267,7 +267,8 @@ void GsuBytes200_BFB5BB(void)
 void abi_GsuBytes200_BFB5BB(void)
 {
     cyc(0);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0xBF, 0xB5, 0xBB));
+    GsuBytes200_BFB5BB();
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xBB);
 }
 
 /*
@@ -693,7 +694,8 @@ void GsuBytes200_0F0708(void)
 
 void abi_GsuBytes200_0F0708(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0x0F, 0x07, 0x08));
+    GsuBytes200_0F0708();
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x08);
 }
 
 /*
@@ -709,5 +711,6 @@ void GsuBytes200_0F0D03(void)
 
 void abi_GsuBytes200_0F0D03(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0x0F, 0x0D, 0x03));
+    GsuBytes200_0F0D03();
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x03);
 }
