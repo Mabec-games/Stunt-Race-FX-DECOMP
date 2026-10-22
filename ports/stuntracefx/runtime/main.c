@@ -201,7 +201,9 @@ static void shot(const char *name)
 }
 
 /* the shots and dumps due now, at the end of a frame: those after the
-   frames a step has just run out, as the harness takes them */
+   frames a step has just run out, as the harness takes them. PORT_IRQMASK:
+   each dump also as DIR/NAME.irq, the first 8 KB's bytes whose last write
+   was an interrupt's frame (1 each), which same.py leaves out */
 static void script_takes(void)
 {
     while (step_at < nsteps && steps[step_at].kind) {
@@ -211,6 +213,8 @@ static void script_takes(void)
         else {
             write_file(s->name, ".wram", snes_wram(), 0x20000);
             write_file(s->name, ".gsuram", snes_sfx_ram(), 0x10000);
+            if (getenv("PORT_IRQMASK"))
+                write_file(s->name, ".irq", snes_wram_irq(), 0x2000);
         }
         step_at++;
     }

@@ -158,9 +158,12 @@ void cpu_restart(uint32_t at, void (*entry)(void))
 }
 
 /* ---- interrupts ---- */
+/* a byte of an interrupt's frame: marked, for checks of the port against
+   itself (snes_wram_irq) */
 static void push8(uint8_t v)
 {
     wr8((uint16_t)cpu.s, v);
+    snes_wram_irq_mark((uint16_t)cpu.s);
     cpu.s--;
 }
 

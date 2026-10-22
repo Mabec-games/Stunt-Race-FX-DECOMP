@@ -140,6 +140,10 @@ void snes_cpu_clocks(uint32_t clocks);
 /* The machine's state at a frame boundary, for comparisons with the
    original: work RAM (128 KB) and the Super FX RAM. */
 const uint8_t *snes_wram(void);
+/* the first 8 KB's bytes whose last write was an interrupt's frame (1 each),
+   and the mark an interrupt's push sets */
+const uint8_t *snes_wram_irq(void);
+void snes_wram_irq_mark(uint16_t addr);
 
 #ifdef __cplusplus
 }

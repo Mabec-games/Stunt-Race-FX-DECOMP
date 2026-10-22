@@ -11,8 +11,10 @@ from the working tree first. Each
 script (default: every play in tools/stuntracefx/plays, without its save
 and load lines, a shot and a dump added at its end) runs on both from
 power-on with --pacing; every shot, dump and the pacing record must be the
-same, byte for byte. Exit 1 on any
-difference.
+same, byte for byte, except a work RAM byte whose last write was one of the
+port's interrupt frames (PORT_IRQMASK): the port pushes the P and the PC
+the C keeps, which are not the original's once routines are plain C (the
+gate judges the frames against the original). Exit 1 on any difference.
 """
 import concurrent.futures, filecmp, glob, os, shutil, subprocess, sys, tarfile, io
 
@@ -50,14 +52,30 @@ def script_for(path):
     return out
 
 
-def run(exe, script, out):
+def run(exe, script, out, env=None):
     shutil.rmtree(out, ignore_errors=True)
     os.makedirs(out)
     p = subprocess.run([exe, '--headless', '--script', script, '--out', out,
                         '--pacing', os.path.join(out, 'pacing.txt')],
-                       capture_output=True, text=True, timeout=1200)
+                       capture_output=True, text=True, timeout=1200, env=env)
     if p.returncode:
         open(os.path.join(out, 'failed.txt'), 'w').write(p.stderr[-2000:])
+
+
+def same_file(fa, fb):
+    """Byte for byte; a work RAM dump without the bytes the port's own
+    interrupt frames last wrote (its .irq), which hold a P and a PC that the
+    port's C no longer keeps as the original's."""
+    if not fb.endswith('.wram'):
+        return filecmp.cmp(fa, fb, shallow=False)
+    x, y = bytearray(open(fa, 'rb').read()), bytearray(open(fb, 'rb').read())
+    if len(x) != len(y):
+        return False
+    mask = open(fb[:-5] + '.irq', 'rb').read()
+    for i, m in enumerate(mask):
+        if m:
+            x[i] = y[i]
+    return x == y
 
 
 def one(path):
@@ -65,11 +83,12 @@ def one(path):
     s = script_for(path)
     a, b = os.path.join(WORK, name, 'ref'), os.path.join(WORK, name, 'port')
     run(REF_EXE, s, a)
-    run(PORT_EXE, s, b)
-    fa, fb = sorted(os.listdir(a)), sorted(os.listdir(b))
+    run(PORT_EXE, s, b, dict(os.environ, PORT_IRQMASK='1'))
+    fa = sorted(os.listdir(a))
+    fb = sorted(f for f in os.listdir(b) if not f.endswith('.irq'))
     if fa != fb:
         return name, 'files differ: %s' % sorted(set(fa) ^ set(fb))
-    bad = [f for f in fa if not filecmp.cmp(os.path.join(a, f), os.path.join(b, f), shallow=False)]
+    bad = [f for f in fa if not same_file(os.path.join(a, f), os.path.join(b, f))]
     return name, ('%d files differ: %s' % (len(bad), ' '.join(bad[:6]))) if bad else 'same (%d files)' % len(fa)
 
 

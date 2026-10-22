@@ -41,6 +41,11 @@ void (*snes_write_hook)(uint32_t addr, uint8_t value);
 
 static uint8_t wram[0x20000];
 static uint32_t wram_port;
+/* the bytes of the first 8 KB whose last write was an interrupt's frame
+   (snes_wram_irq_mark): the port's interrupts push a P and a PC that C no
+   longer keeps as the original's, so a check of the port against itself
+   leaves them out; any other write clears the mark */
+static uint8_t wram_irq[0x2000];
 
 /* the CPU's registers */
 static uint8_t nmitimen, wrio = 0xFF, wrmpya = 0xFF, wrmpyb, wrdivb, memsel;
@@ -124,6 +129,8 @@ uint32_t snes_frame(void) { return frames; }
 unsigned snes_vcounter(void) { return vline; }
 unsigned snes_hcounter(void) { return (unsigned)((snes_clock - line_start) / 4); }
 const uint8_t *snes_wram(void) { return wram; }
+const uint8_t *snes_wram_irq(void) { return wram_irq; }
+void snes_wram_irq_mark(uint16_t addr) { wram_irq[addr & 0x1FFF] = 1; }
 
 /* ---- interrupts and the beam --------------------------------------------------- */
 /* This line's IRQ time. At the line's start (written 0) every time on the
@@ -433,6 +440,8 @@ void bus_write_b(uint8_t reg, uint8_t v)
     switch (reg) {
     case 0x80:
         wram[wram_port] = v;
+        if (wram_port < 0x2000)
+            wram_irq[wram_port] = 0;
         wram_port = (wram_port + 1) & 0x1FFFF;
         return;
     case 0x81: wram_port = (wram_port & 0x1FF00) | v; return;
@@ -513,11 +522,14 @@ static void bus_write(uint32_t addr, uint8_t v, unsigned *cost, int kind)
     *cost = 8;
     if (bank == 0x7E || bank == 0x7F) {
         wram[(uint32_t)(bank & 1) << 16 | off] = v;
+        if (bank == 0x7E && off < 0x2000)
+            wram_irq[off] = 0;
         return;
     }
     if (!(bank & 0x40)) {
         if (off < 0x2000) {
             wram[off] = v;
+            wram_irq[off] = 0;
             return;
         }
         if (off >= 0x8000)
@@ -736,6 +748,7 @@ void snes_power(const SnesCart *cart)
     s_cart = *cart;
     snes_cart = &s_cart;
     memset(wram, 0, sizeof wram);
+    memset(wram_irq, 0, sizeof wram_irq);
     wram_port = 0;
     snes_clock = 0;
     nmitimen = 0;
