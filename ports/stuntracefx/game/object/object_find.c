@@ -10,6 +10,7 @@
  */
 #include "machine.h"
 #include "cpu_ops.h"
+#include "object_calls.h"
 
 #define LIST_HEAD 0x0325u
 #define RESUME 0x1F30u
@@ -27,24 +28,47 @@ static uint32_t w(uint8_t bank, uint16_t a)
 }
 
 /* LDA/LDX/LDY: N, Z from the 16-bit value. */
+/* The flags the searches leave for their adapters: C and V of the last
+   compare, subtract or add, with which of them were set (fcv_set: bit 0
+   C, bit 1 V). N and Z come from the value the routine ends on. */
+static uint8_t fc, fv;
+static int fcv_set;
+
+/* The flags over p: C and V where set, N and Z from v. */
+static uint8_t find_flags(uint8_t p, uint16_t v)
+{
+    if (fcv_set & 1)
+        p = (uint8_t)((p & ~P_C) | fc);
+    if (fcv_set & 2)
+        p = (uint8_t)((p & ~P_V) | fv);
+    return nz16(p, v);
+}
+
+/* LDA/LDX/LDY (16-bit): its time. */
 static uint16_t ld16(uint16_t v)
 {
     cyc(16);
-    cpu.p = nz16(cpu.p, v);
     return v;
 }
 
 /* CMP/CPX/CPY (16-bit). */
 static void cmp16(uint16_t r, uint16_t m)
 {
-    cpu.p = (uint8_t)((nz16(cpu.p, (uint16_t)(r - m)) & ~P_C) | (r >= m ? (cyc(22), P_C) : (cyc(22), 0)));
+    cyc(22);
+    fc = r >= m ? P_C : 0;
+    fcv_set |= 1;
 }
 
 /* SEC; SBC (16-bit). */
 static uint16_t sub16(uint16_t a, uint16_t m)
 {
-    cpu.p |= P_C;
-    return op_sbc16(a, m, &cpu.p);
+    uint16_t r = (uint16_t)(a - m);
+
+    cyc(6);                             /* op_sbc16's stated time */
+    fc = a >= m ? P_C : 0;
+    fv = ((a ^ m) & (a ^ r) & 0x8000) ? P_V : 0;
+    fcv_set |= 3;
+    return r;
 }
 
 /* EOR #$FFFF; INC A when negative (BPL skips it). */
@@ -67,11 +91,16 @@ static uint16_t abs16(uint16_t a)
  * object or 0; Y = the last link read; A, N, V, C from the last subtract
  * (Z from X when none is found).
  */
-void abi_ObjectAtPoint(void)
+/* What the searches leave in A and Y when they set them (ex_set: bit 0
+   A, bit 1 Y). */
+static uint16_t ex_a, ex_y;
+static int ex_set;
+
+uint16_t ObjectAtPoint(uint8_t b)
 {
-    uint8_t b = cpu.db;
     uint16_t x, a, m;
 
+    ex_set = fcv_set = 0;
     x = ld16(rd16(cyc_then(24, w(b, LIST_HEAD))));
     if (!x)
         { cyc(8); goto none; }
@@ -104,19 +133,31 @@ loop:
     a = sub16(a, m);
     if (a & 0x8000) {
         cyc(60);
-        cpu.a = a;
-        cpu.x = x;
-        return;
+        ex_a = a;
+        ex_set |= 1;
+        return x;
     }
 next:
-    cpu.a = a;
-    cpu.y = ld16(rd16(cyc_then(40, f(b, x, 0x00))));
-    x = ld16(cpu.y);
+    ex_a = a;
+    ex_y = ld16(rd16(cyc_then(40, f(b, x, 0x00))));
+    ex_set = 3;
+    x = ld16(ex_y);
     if (x)
         { cyc(4); goto loop; }
 none:
     cyc(50);
-    cpu.x = ld16(0x0000);
+    ld16(0x0000);
+    return 0;
+}
+
+void abi_ObjectAtPoint(void)
+{
+    cpu.x = ObjectAtPoint(cpu.db);
+    if (ex_set & 1)
+        cpu.a = ex_a;
+    if (ex_set & 2)
+        cpu.y = ex_y;
+    cpu.p = find_flags(cpu.p, cpu.x ? cpu.a : 0x0000);
 }
 
 /*
@@ -131,13 +172,15 @@ none:
  * Entry: M 16-bit, X 16-bit, D = $0000; data bank $7E. Exit: A, X
  * unchanged; Y as above; N, Z from X; C from the last compare.
  */
-void abi_ObjectNextOfKind(void)
-{
-    uint8_t b = cpu.db;
-    uint16_t a = cpu.a, x, y = cpu.y, m;
+static uint16_t ex_x;                   /* X reloaded from $3E */
 
+uint16_t ObjectNextOfKind(uint8_t b, uint16_t a, uint16_t self)
+{
+    uint16_t x, y, m;
+
+    fcv_set = 0;
     cyc(16);
-    wr16(0x00003E, cpu.x);
+    wr16(0x00003E, self);
     x = ld16(rd16(cyc_then(24, w(b, RESUME))));
     if (!x)
         goto ended;
@@ -148,7 +191,7 @@ void abi_ObjectNextOfKind(void)
 kind:
     m = rd16(cyc_then(34, f(b, x, 0x04)));
     cmp16(a, m);
-    if (cpu.p & P_Z)
+    if (a == m)
         { cyc(2); goto found; }
 skip:
     y = ld16(rd16(cyc_then(24, f(b, x, 0x00))));
@@ -160,36 +203,41 @@ found:
     m = rd16(0x00003E);
     cyc(6);
     cmp16(x, m);
-    if (cpu.p & P_Z)
+    if (x == m)
         goto skip;
     y = ld16(rd16(cyc_then(18, f(b, x, 0x00))));
     wr16(w(b, RESUME), cyc_then(8, y));
-    cpu.y = ld16(x);
+    y = ld16(x);
     cyc(14);
-    cpu.x = ld16(cyc_then(28, rd16(0x00003E)));
-    return;
+    ex_x = ld16(cyc_then(28, rd16(0x00003E)));
+    return y;
 ended:
-    cpu.y = ld16(0x0000);
+    y = ld16(0x0000);
     wr16(w(b, RESUME), cyc_then(38, 0x0000));
     cyc(16);
-    cpu.x = ld16(cyc_then(28, rd16(0x00003E)));
-    return;
+    ex_x = ld16(cyc_then(28, rd16(0x00003E)));
+    return y;
 any:
     y = ld16(rd16(cyc_then(54, f(b, x, 0x00))));
-    if (!y) {
-        cpu.y = y;
+    if (!y)
         goto ended;
-    }
     x = ld16(y);
     cyc(14);
     m = rd16(0x00003E);
     cmp16(x, m);
-    if (cpu.p & P_Z)
+    if (x == m)
         goto any;
     wr16(w(b, RESUME), cyc_then(18, x));
-    cpu.y = y;
     cyc(16);
-    cpu.x = ld16(cyc_then(28, rd16(0x00003E)));
+    ex_x = ld16(cyc_then(28, rd16(0x00003E)));
+    return y;
+}
+
+void abi_ObjectNextOfKind(void)
+{
+    cpu.y = ObjectNextOfKind(cpu.db, cpu.a, cpu.x);
+    cpu.x = ex_x;
+    cpu.p = find_flags(cpu.p, ex_x);
 }
 
 /*
@@ -203,17 +251,17 @@ any:
  * Y as above; A = the kind with the flag test's byte in its low byte (as
  * entered when the search ended); M 16-bit; N, Z from X.
  */
-void abi_ObjectNextFlagged(void)
+uint16_t ObjectNextFlagged(uint8_t b, uint16_t a, uint16_t self)
 {
-    uint8_t b = cpu.db;
-    uint16_t a = cpu.a, x, y = cpu.y, m;
+    uint16_t x, y, m;
     uint8_t v;
 
+    fcv_set = ex_set = 0;
     cmp16(a, 0x0000);
     if (!a)
         goto any;
     cyc(34);
-    wr16(0x00003E, cpu.x);
+    wr16(0x00003E, self);
     x = ld16(rd16(cyc_then(24, w(b, RESUME))));
     if (!x)
         goto ended;
@@ -221,7 +269,7 @@ void abi_ObjectNextFlagged(void)
 kind:
     m = rd16(cyc_then(28, f(b, x, 0x04)));
     cmp16(a, m);
-    if (cpu.p & P_Z)
+    if (a == m)
         { cyc(2); goto match; }
 skip:
     y = ld16(rd16(cyc_then(24, f(b, x, 0x00))));
@@ -232,7 +280,7 @@ match:
     cyc(14);
     m = rd16(0x00003E);
     cmp16(x, m);
-    if (cpu.p & P_Z)
+    if (x == m)
         goto skip;
     wr16(w(b, WORK), cyc_then(18, a));
     v = rd8(cyc_then(52, f(b, x, 0x24)));
@@ -240,44 +288,42 @@ match:
     m = rd8(0x000002);
     v = (uint8_t)(v & m);
     a = (uint16_t)((a & 0xFF00) | v);
-    cpu.p = nz8(cpu.p, v);
     if (!v) {
         a = ld16(cyc_then(12, rd16(cyc_then(62, w(b, WORK)))));
         goto skip;
     }
     y = ld16(rd16(cyc_then(74, f(b, x, 0x00))));
     wr16(w(b, RESUME), cyc_then(8, y));
-    cpu.y = ld16(x);
-    cpu.a = a;
+    y = ld16(x);
+    ex_a = a;
+    ex_set = 1;
     cyc(14);
-    cpu.x = ld16(cyc_then(28, rd16(0x00003E)));
-    return;
+    ex_x = ld16(cyc_then(28, rd16(0x00003E)));
+    return y;
 ended:
-    cpu.y = ld16(0x0000);
+    y = ld16(0x0000);
     wr16(w(b, RESUME), cyc_then(38, 0x0000));
     cyc(16);
-    cpu.x = ld16(cyc_then(28, rd16(0x00003E)));
-    return;
+    ex_x = ld16(cyc_then(28, rd16(0x00003E)));
+    return y;
 any:
     cyc(40);
-    wr16(0x00003E, cpu.x);
+    wr16(0x00003E, self);
     x = ld16(rd16(cyc_then(24, w(b, RESUME))));
     if (!x)
         goto ended; else { cyc(16); }
     y = ld16(x);
-    cpu.p |= P_M;
 flagloop:
     cyc(20);
     m = rd16(0x00003E);
     cmp16(x, m);
-    if (cpu.p & P_Z)
+    if (x == m)
         goto next;
     v = rd8(cyc_then(24, f(b, x, 0x24)));
     cyc(16);
     m = rd8(0x000002);
     v = (uint8_t)(v & m);
     a = (uint16_t)((a & 0xFF00) | v);
-    cpu.p = nz8(cpu.p, v);
     if (v)
         { cyc(24); goto found; } else { cyc(16); }
 next:
@@ -288,29 +334,39 @@ next:
 found:
     y = ld16(rd16(cyc_then(28, f(b, x, 0x00))));
     wr16(w(b, RESUME), cyc_then(8, y));
-    cpu.y = ld16(x);
-    cpu.a = a;
+    y = ld16(x);
+    ex_a = a;
+    ex_set = 1 | 4;                     /* 4: M 16-bit at the end (the loop ran 8-bit) */
     cyc(14);
-    cpu.x = ld16(cyc_then(50, rd16(0x00003E)));
-    cpu.p &= (uint8_t)~P_M;
+    ex_x = ld16(cyc_then(50, rd16(0x00003E)));
+    return y;
 }
 
-void abi_ObjectDistanceApprox(void);
+void abi_ObjectNextFlagged(void)
+{
+    cpu.y = ObjectNextFlagged(cpu.db, cpu.a, cpu.x);
+    cpu.x = ex_x;
+    if (ex_set & 1)
+        cpu.a = ex_a;
+    if (ex_set & 4)
+        cpu.p &= (uint8_t)~P_M;
+    cpu.p = find_flags(cpu.p, ex_x);
+}
+
+uint16_t ObjectDistanceApprox(uint8_t b, uint16_t x, uint16_t y);
 
 /* The distance test shared by ObjectNearestOfKind and ObjectFirstWithin:
    ObjectDistanceApprox from object y to x, then CMP $3E and CMP $42. */
-static uint16_t distance(uint16_t x, uint16_t self, int *below_max)
+static uint16_t distance(uint8_t b, uint16_t x, uint16_t self, int *below_max)
 {
     uint16_t d, m;
 
-    cpu.x = x;
-    cpu.y = self;
-    (cyc(46), abi_ObjectDistanceApprox());
-    cpu.p &= (uint8_t)~P_M;
-    d = ld16(rd16(cyc_then(46, w(cpu.db, DIST))));
+    (cyc(46), ObjectDistanceApprox(b, x, self));
+    d = ld16(rd16(cyc_then(46, w(b, DIST))));
     m = rd16(0x00003E);
     cmp16(d, m);
-    *below_max = (cpu.p & P_N) != 0;
+    *below_max = ((uint16_t)(d - m) & 0x8000) != 0;
+    ex_set |= 4;                        /* M 16-bit after it */
     return d;
 }
 
@@ -326,13 +382,12 @@ static uint16_t distance(uint16_t x, uint16_t self, int *below_max)
  * Entry: M 16-bit, X 16-bit, D = $0000; data bank $7E. Exit: X unchanged;
  * Y as above; A = the last distance (or the kind); M 16-bit; N, Z from X.
  */
-void abi_ObjectNearestOfKind(void)
+uint16_t ObjectNearestOfKind(uint8_t b, uint16_t a, uint16_t self)
 {
-    uint8_t b = cpu.db;
-    uint16_t a = cpu.a, x, y, m, self, d;
+    uint16_t x, y, m, d;
     int below;
 
-    self = cpu.x;
+    fcv_set = ex_set = 0;
     cyc(16);
     wr16(0x000004, self);
     x = ld16(rd16(cyc_then(24, w(b, RESUME))));
@@ -349,23 +404,23 @@ kind:
     cyc(16);
     m = rd16(0x000004);
     cmp16(x, m);
-    if (cpu.p & P_Z)
+    if (x == m)
         goto kind_next;
     a = ld16(rd16(cyc_then(24, f(b, x, 0x04))));
     m = rd16(0x00000A);
     cmp16(a, m);
-    if (!(cpu.p & P_Z))
+    if (a != m)
         goto kind_next;
     cyc(10);
     self = ld16(rd16(0x000004));
-    d = distance(x, self, &below);
+    d = distance(b, x, self, &below);
     a = d;
     if (!below)
         goto kind_next;
     cyc(10);
     m = rd16(0x000042);
     cmp16(d, m);
-    if (cpu.p & P_N)
+    if ((uint16_t)(d - m) & 0x8000)
         goto kind_next;
     cyc(10);
     wr16(0x00003E, d);
@@ -378,16 +433,12 @@ kind_next:
         { cyc(4); goto kind; }
     y = ld16(rd16(cyc_then(28, f(b, x, 0x00))));
     wr16(w(b, RESUME), cyc_then(8, y));
-    cyc(16);
-    cpu.y = ld16(rd16(0x000040));
-    cpu.a = a;
-    cpu.x = ld16(cyc_then(28, rd16(0x000004)));
-    return;
+    goto done;
 none:
-    cpu.y = ld16(0x0000);
+    y = ld16(0x0000);
     cyc(54);
-    cpu.x = ld16(cyc_then(28, rd16(0x000004)));
-    return;
+    ex_x = ld16(cyc_then(28, rd16(0x000004)));
+    return y;
 any:
     cyc(46);
     wr16(0x000040, 0x0000);
@@ -395,18 +446,18 @@ any_loop:
     cyc(16);
     m = rd16(0x000004);
     cmp16(x, m);
-    if (cpu.p & P_Z)
+    if (x == m)
         goto any_next;
     cyc(10);
     self = ld16(rd16(0x000004));
-    d = distance(x, self, &below);
+    d = distance(b, x, self, &below);
     a = d;
     if (!below)
         goto any_next;
     cyc(10);
     m = rd16(0x000042);
     cmp16(d, m);
-    if (cpu.p & P_N)
+    if ((uint16_t)(d - m) & 0x8000)
         goto any_next;
     cyc(10);
     wr16(0x00003E, d);
@@ -418,10 +469,30 @@ any_next:
     if (x)
         { cyc(4); goto any_loop; }
     wr16(w(b, RESUME), cyc_then(22, y));
+done:
     cyc(16);
-    cpu.y = ld16(rd16(0x000040));
-    cpu.a = a;
-    cpu.x = ld16(cyc_then(28, rd16(0x000004)));
+    y = ld16(rd16(0x000040));
+    ex_a = a;
+    ex_set |= 1;
+    ex_x = ld16(cyc_then(28, rd16(0x000004)));
+    return y;
+}
+
+/* The registers ObjectNearestOfKind and ObjectFirstWithin leave. */
+static void within_exit(uint16_t y)
+{
+    cpu.y = y;
+    cpu.x = ex_x;
+    if (ex_set & 1)
+        cpu.a = ex_a;
+    if (ex_set & 4)
+        cpu.p &= (uint8_t)~P_M;
+    cpu.p = find_flags(cpu.p, ex_x);
+}
+
+void abi_ObjectNearestOfKind(void)
+{
+    within_exit(ObjectNearestOfKind(cpu.db, cpu.a, cpu.x));
 }
 
 /*
@@ -436,21 +507,20 @@ any_next:
  * Entry: M 16-bit, X 16-bit, D = $0000; data bank $7E. Exit: X unchanged;
  * Y as above; A = the last distance (or the kind); M 16-bit; N, Z from X.
  */
-void abi_ObjectFirstWithin(void)
+uint16_t ObjectFirstWithin(uint8_t b, uint16_t a, uint16_t self)
 {
-    uint8_t b = cpu.db;
-    uint16_t a = cpu.a, x, y, m, self, d;
+    uint16_t x, y, m, d;
     int below;
 
-    self = cpu.x;
+    fcv_set = ex_set = 0;
     cyc(16);
     wr16(0x000004, self);
     x = ld16(rd16(cyc_then(24, w(b, RESUME))));
     if (!x) {
-        cpu.y = ld16(0x0000);
+        y = ld16(0x0000);
         cyc(30);
-        cpu.x = ld16(cyc_then(28, rd16(0x000004)));
-        return;
+        ex_x = ld16(cyc_then(28, rd16(0x000004)));
+        return y;
     }
     cmp16(a, 0x0000);
     if (!a)
@@ -463,23 +533,23 @@ kind:
     cyc(16);
     m = rd16(0x000004);
     cmp16(x, m);
-    if (cpu.p & P_Z)
+    if (x == m)
         { cyc(6); goto kind_next; }
     a = ld16(rd16(cyc_then(24, f(b, x, 0x04))));
     m = rd16(0x00000A);
     cmp16(a, m);
-    if (!(cpu.p & P_Z))
+    if (a != m)
         { cyc(6); goto kind_next; }
     cyc(10);
     self = ld16(rd16(0x000004));
-    d = distance(x, self, &below);
+    d = distance(b, x, self, &below);
     a = d;
     if (!below)
         goto kind_next;
     cyc(10);
     m = rd16(0x000042);
     cmp16(d, m);
-    if (!(cpu.p & P_N))
+    if (!((uint16_t)(d - m) & 0x8000))
         { cyc(2); goto done; }
 kind_next:
     y = ld16(rd16(cyc_then(24, f(b, x, 0x00))));
@@ -491,18 +561,18 @@ any:
     cyc(20);
     m = rd16(0x000004);
     cmp16(x, m);
-    if (cpu.p & P_Z)
+    if (x == m)
         goto any_next;
     cyc(10);
     self = ld16(rd16(0x000004));
-    d = distance(x, self, &below);
+    d = distance(b, x, self, &below);
     a = d;
     if (!below)
         goto any_next;
     cyc(10);
     m = rd16(0x000042);
     cmp16(d, m);
-    if (!(cpu.p & P_N))
+    if (!((uint16_t)(d - m) & 0x8000))
         { cyc(2); goto done; }
 any_next:
     y = ld16(rd16(cyc_then(30, f(b, x, 0x00))));
@@ -512,10 +582,17 @@ any_next:
 done:
     y = ld16(rd16(cyc_then(28, f(b, x, 0x00))));
     wr16(w(b, RESUME), cyc_then(8, y));
-    cpu.y = ld16(x);
-    cpu.a = a;
+    y = ld16(x);
+    ex_a = a;
+    ex_set |= 1;
     cyc(14);
-    cpu.x = ld16(cyc_then(28, rd16(0x000004)));
+    ex_x = ld16(cyc_then(28, rd16(0x000004)));
+    return y;
+}
+
+void abi_ObjectFirstWithin(void)
+{
+    within_exit(ObjectFirstWithin(cpu.db, cpu.a, cpu.x));
 }
 
 /*
@@ -526,16 +603,15 @@ done:
  * Entry: M 16-bit, X 16-bit; data bank $7E. Exit: A unchanged; X as
  * above; Y = the object or 0; P unchanged.
  */
-void abi_ObjectFirstOfKind(void)
+uint16_t ObjectFirstOfKind(uint8_t b, uint16_t a)
 {
-    uint8_t b = cpu.db;
     uint16_t x, y, m;
 
     y = rd16(cyc_then(46, w(b, LIST_HEAD)));
     for (;;) {
         x = y;
         m = rd16(cyc_then(44, f(b, x, 0x04)));
-        if (cpu.a == m)
+        if (a == m)
             break;
         y = rd16(cyc_then(46, f(b, x, 0x00)));
         if (!y) {
@@ -545,8 +621,14 @@ void abi_ObjectFirstOfKind(void)
         } else { cyc(22); }
     }
     cyc(94);
-    cpu.x = x;
-    cpu.y = y;
+    ex_y = y;
+    return x;
+}
+
+void abi_ObjectFirstOfKind(void)
+{
+    cpu.x = ObjectFirstOfKind(cpu.db, cpu.a);
+    cpu.y = ex_y;
 }
 
 /*
@@ -558,9 +640,8 @@ void abi_ObjectFirstOfKind(void)
  * Entry: M 16-bit, X 16-bit; data bank $7E. Exit: A = the count; X = the
  * last object; Y = 0; P unchanged.
  */
-void abi_ObjectCountOfKind(void)
+uint16_t ObjectCountOfKind(uint8_t b, uint16_t a)
 {
-    uint8_t b = cpu.db;
     uint16_t x, y, m, n;
     int first = 1;
 
@@ -570,16 +651,23 @@ void abi_ObjectCountOfKind(void)
         x = y;
         m = rd16(cyc_then(first ? 44 : 66, f(b, x, 0x04)));
         first = 0;
-        if (cpu.a == m) {
+        if (a == m) {
             n = rd16(cyc_then(40, w(b, WORK)));
             wr16(w(b, WORK), cyc_then(14, (uint16_t)(n + 1)));
         } else { cyc(22); }
         y = rd16(cyc_then(30, f(b, x, 0x00)));
     } while (y);
-    cpu.a = rd16(cyc_then(40, w(b, WORK)));
-    cpu.x = x;
-    cpu.y = y;
+    ex_x = x;
+    n = rd16(cyc_then(40, w(b, WORK)));
     cyc(72);                            /* PLP, RTL */
+    return n;
+}
+
+void abi_ObjectCountOfKind(void)
+{
+    cpu.a = ObjectCountOfKind(cpu.db, cpu.a);
+    cpu.x = ex_x;
+    cpu.y = 0x0000;
 }
 
 /* LDA; CMP #$8000; ROR: halves keeping the sign, C = the bit shifted out. */
@@ -587,18 +675,21 @@ static uint16_t asr1(uint16_t v)
 {
     uint16_t c = (v >= 0x8000) ? 0x8000 : 0;
 
-    cpu.p = (uint8_t)((cpu.p & ~P_C) | (v & 1));
-    v = (uint16_t)(c | v >> 1);
-    cpu.p = nz16(cpu.p, v);
-    return v;
+    fc = (uint8_t)(v & 1);
+    fcv_set |= 1;
+    return (uint16_t)(c | v >> 1);
 }
 
 /* CLC; ADC (16-bit). */
 static uint16_t add16(uint16_t a, uint16_t m)
 {
+    uint16_t r = (uint16_t)(a + m);
+
     cyc(16);
-    cpu.p &= (uint8_t)~P_C;
-    return op_adc16(a, m, &cpu.p);
+    fc = (unsigned)a + m > 0xFFFF ? P_C : 0;
+    fv = (~(a ^ m) & (a ^ r) & 0x8000) ? P_V : 0;
+    fcv_set |= 3;
+    return r;
 }
 
 /*
@@ -614,19 +705,17 @@ static uint16_t add16(uint16_t a, uint16_t m)
  * 8-bit; A = the estimate (both bytes); X, Y unchanged; N, Z, C from the
  * last halving, V from the last add.
  */
-void abi_ObjectDistanceApprox(void)
+uint16_t ObjectDistanceApprox(uint8_t b, uint16_t x, uint16_t y)
 {
-    uint8_t b = cpu.db;
     uint16_t a, m, t;
 
-    cpu.p &= (uint8_t)~P_M;
-    a = rd16(cyc_then(52, f(b, cpu.y, 0x0C)));
-    m = rd16(cyc_then(44, f(b, cpu.x, 0x0C)));
+    a = rd16(cyc_then(52, f(b, y, 0x0C)));
+    m = rd16(cyc_then(44, f(b, x, 0x0C)));
     a = abs16(sub16(a, m));
     cyc(32);
     wr16(0x000002, a);
-    a = rd16(cyc_then(30, f(b, cpu.y, 0x10)));
-    m = rd16(cyc_then(44, f(b, cpu.x, 0x10)));
+    a = rd16(cyc_then(30, f(b, y, 0x10)));
+    m = rd16(cyc_then(44, f(b, x, 0x10)));
     a = abs16(sub16(a, m));
     cyc(32);
     wr16(0x000008, a);
@@ -641,23 +730,20 @@ void abi_ObjectDistanceApprox(void)
     cyc(14);
     m = rd16(0x000002);
     a = add16(a, m);
-    cpu.p = (uint8_t)((cpu.p & ~P_C) | (a >> 15));
     a = ld16((uint16_t)(a << 1));
     wr16(w(b, DIST), cyc_then(6, a));
     cyc(16);
     a = ld16(rd16(0x000008));
     m = rd16(0x000002);
     cmp16(a, m);
-    if (cpu.p & P_N)
+    if ((uint16_t)(a - m) & 0x8000)
         { cyc(16); a = ld16(rd16(0x000002)); }
     else
         { cyc(10); a = ld16(cyc_then(22, rd16(0x000008))); }
     m = rd16(cyc_then(22, w(b, DIST)));
     a = add16(a, m);
     wr16(0x000002, a);
-    cpu.p = (uint8_t)((cpu.p & ~P_C) | (a >> 15));
     a = (uint16_t)(a << 1);
-    cpu.p = (uint8_t)((cpu.p & ~P_C) | (a >> 15));
     a = ld16((uint16_t)(a << 1));
     cyc(28);
     wr16(0x000008, a);
@@ -671,9 +757,21 @@ void abi_ObjectDistanceApprox(void)
     a = asr1(a);
     t = asr1(a);
     wr16(w(b, DIST), cyc_then(122, t));
-    cpu.a = t;
-    cpu.p |= P_M;
     cyc(66);                            /* SEP, RTL */
+    return t;
+}
+
+/* The distances' exit: A the result, M 8-bit, the flags of its last step. */
+static void distance_exit(uint16_t a)
+{
+    cpu.a = a;
+    cpu.p = (uint8_t)(find_flags(cpu.p, a) | P_M);
+}
+
+void abi_ObjectDistanceApprox(void)
+{
+    fcv_set = 0;
+    distance_exit(ObjectDistanceApprox(cpu.db, cpu.x, cpu.y));
 }
 
 /*
@@ -686,14 +784,12 @@ void abi_ObjectDistanceApprox(void)
  * 8-bit; A = the sum (both bytes); X, Y unchanged; N, Z, C, V from the
  * last add or subtract.
  */
-void abi_ObjectDistanceXY(void)
+uint16_t ObjectDistanceXY(uint8_t b, uint16_t x, uint16_t y)
 {
-    uint8_t b = cpu.db;
     uint16_t a, m;
 
-    cpu.p &= (uint8_t)~P_M;
-    a = rd16(cyc_then(52, f(b, cpu.y, 0x0C)));
-    m = rd16(cyc_then(44, f(b, cpu.x, 0x0C)));
+    a = rd16(cyc_then(52, f(b, y, 0x0C)));
+    m = rd16(cyc_then(44, f(b, x, 0x0C)));
     a = sub16(a, m);
     cyc(10);
     wr16(0x000002, a);
@@ -703,8 +799,8 @@ void abi_ObjectDistanceXY(void)
         a = sub16(0x0000, m);
     } else { cyc(28); }
     wr16(w(b, 0x1A62), cyc_then(18, a));
-    a = rd16(cyc_then(30, f(b, cpu.y, 0x0E)));
-    m = rd16(cyc_then(44, f(b, cpu.x, 0x0E)));
+    a = rd16(cyc_then(30, f(b, y, 0x0E)));
+    m = rd16(cyc_then(44, f(b, x, 0x0E)));
     a = sub16(a, m);
     cyc(10);
     wr16(0x000008, a);
@@ -719,12 +815,16 @@ void abi_ObjectDistanceXY(void)
         a = sub16(a, m);
     }
     wr16(w(b, 0x1A62), cyc_then(18, a));
-    cpu.a = a;
-    cpu.p |= P_M;
     cyc(66);                            /* SEP, RTL */
+    return a;
 }
 
-void abi_Gsu81E3Long(void);
+void abi_ObjectDistanceXY(void)
+{
+    distance_exit(ObjectDistanceXY(cpu.db, cpu.x, cpu.y));
+}
+
+uint16_t Gsu81E3Long(void);
 
 /* |a| as SEC; LDA #0; SBC when negative (BPL skips it). */
 static uint16_t neg_if(uint16_t a, uint16_t at)
@@ -764,47 +864,47 @@ static uint16_t fold(uint8_t b, uint16_t a, uint16_t at)
  * Entry: X 16-bit, D = $0000; data bank $7E. Exit: M 8-bit; A = the sum;
  * X, Y unchanged; N, Z, C, V from the last add or subtract.
  */
-void abi_ObjectOffsetDistanceXZ(void)
+uint16_t ObjectOffsetDistanceXZ(uint8_t b, uint16_t x, uint16_t y)
 {
-    uint8_t b = cpu.db;
     uint16_t a, m;
 
-    cpu.p &= (uint8_t)~P_M;
-    a = rd16(cyc_then(52, f(b, cpu.y, 0x0C)));
+    a = rd16(cyc_then(52, f(b, y, 0x0C)));
     cyc(30);
     m = rd16(0x000004);
     a = add16(a, m);
-    m = rd16(cyc_then(28, f(b, cpu.x, 0x0C)));
+    m = rd16(cyc_then(28, f(b, x, 0x0C)));
     a = sub16(a, m);
     cyc(10);
     wr16(0x000002, a);
     a = neg_if(a, 0x0002);
     wr16(w(b, DIST), cyc_then(18, a));
-    a = rd16(cyc_then(30, f(b, cpu.y, 0x10)));
+    a = rd16(cyc_then(30, f(b, y, 0x10)));
     m = rd16(cyc_then(38, w(b, 0x05F2)));
     a = add16(a, m);
-    m = rd16(cyc_then(28, f(b, cpu.x, 0x10)));
+    m = rd16(cyc_then(28, f(b, x, 0x10)));
     a = sub16(a, m);
     cyc(10);
     wr16(0x000008, a);
     a = fold(b, a, 0x0008);
     wr16(w(b, DIST), cyc_then(18, a));
-    cpu.a = a;
-    cpu.p |= P_M;
     cyc(66);                            /* SEP, RTL */
+    return a;
+}
+
+void abi_ObjectOffsetDistanceXZ(void)
+{
+    distance_exit(ObjectOffsetDistanceXZ(cpu.db, cpu.x, cpu.y));
 }
 
 /* ObjectPointDistanceXZ and ObjectPointDistanceXY: from object X to the
    point (direct page $04, the word at second, compared with field2). */
-static void point_distance(uint32_t second, uint16_t field2)
+static uint16_t point_distance(uint8_t b, uint16_t x, uint32_t second, uint16_t field2)
 {
-    uint8_t b = cpu.db;
     uint16_t a, m;
 
-    cpu.p &= (uint8_t)~P_M;
     cyc(38);
     a = rd16(0x000004);
-    m = rd16(cyc_then(44, f(b, cpu.x, 0x0C)));
+    m = rd16(cyc_then(44, f(b, x, 0x0C)));
     a = sub16(a, m);
     cyc(10);
     wr16(0x000002, a);
@@ -812,15 +912,14 @@ static void point_distance(uint32_t second, uint16_t field2)
     wr16(w(b, DIST), cyc_then(18, a));
     cyc(second > 0xFFFF ? 24 : 16);     /* LDA abs or dp */
     a = rd16(second);
-    m = rd16(cyc_then(44, f(b, cpu.x, field2)));
+    m = rd16(cyc_then(44, f(b, x, field2)));
     a = sub16(a, m);
     cyc(10);
     wr16(0x000008, a);
     a = fold(b, a, 0x0008);
     wr16(w(b, DIST), cyc_then(18, a));
-    cpu.a = a;
-    cpu.p |= P_M;
     cyc(66);                            /* SEP, RTL */
+    return a;
 }
 
 /*
@@ -833,9 +932,14 @@ static void point_distance(uint32_t second, uint16_t field2)
  * Entry: X 16-bit, D = $0000; data bank $7E. Exit: M 8-bit; A = the sum;
  * X, Y unchanged; N, Z, C, V from the last add or subtract.
  */
+uint16_t ObjectPointDistanceXZ(uint8_t b, uint16_t x)
+{
+    return point_distance(b, x, w(b, 0x05F2), 0x10);
+}
+
 void abi_ObjectPointDistanceXZ(void)
 {
-    point_distance(w(cpu.db, 0x05F2), 0x10);
+    distance_exit(ObjectPointDistanceXZ(cpu.db, cpu.x));
 }
 
 /*
@@ -847,9 +951,14 @@ void abi_ObjectPointDistanceXZ(void)
  * Entry: X 16-bit, D = $0000; data bank $7E. Exit: M 8-bit; A = the sum;
  * X, Y unchanged; N, Z, C, V from the last add or subtract.
  */
+uint16_t ObjectPointDistanceXY(uint8_t b, uint16_t x)
+{
+    return point_distance(b, x, 0x00000A, 0x0E);
+}
+
 void abi_ObjectPointDistanceXY(void)
 {
-    point_distance(0x00000A, 0x0E);
+    distance_exit(ObjectPointDistanceXY(cpu.db, cpu.x));
 }
 
 /*
@@ -862,18 +971,20 @@ void abi_ObjectPointDistanceXY(void)
  * = the high byte of Gsu81E3Long's result (high byte 0); X, Y unchanged;
  * N, Z from X.
  */
+uint16_t ObjectPointGsu81E3(uint8_t b, uint16_t x)
+{
+    uint16_t a;
+
+    (cyc(122), ObjectPointDistanceXZ(b, x));
+    a = (cyc(62), Gsu81E3Long());
+    cyc(226);                           /* XBA, AND, SEP, REP, PLY, PLX, RTL */
+    return (uint16_t)(a >> 8);
+}
+
 void abi_ObjectPointGsu81E3(void)
 {
-    uint16_t x = cpu.x, y = cpu.y;
-
-    (cyc(122), abi_ObjectPointDistanceXZ());
-    (cyc(62), abi_Gsu81E3Long());
-    cpu.a = (uint16_t)(cpu.a >> 8);
-    cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
-    cpu.y = y;
-    cpu.x = x;
-    cpu.p = nz16(cpu.p, x);
-    cyc(226);                           /* XBA, AND, SEP, REP, PLY, PLX, RTL */
+    cpu.a = ObjectPointGsu81E3(cpu.db, cpu.x);
+    cpu.p = (uint8_t)((find_flags(cpu.p, cpu.x) | P_M) & ~P_X);
 }
 
 /*
@@ -885,45 +996,52 @@ void abi_ObjectPointGsu81E3(void)
  * Entry: X 16-bit, D = $0000; data bank $7E. Exit: M 8-bit; A = X's new
  * +$32; X, Y unchanged; $3E = Y; N, Z, C, V from the last add.
  */
-void abi_ObjectVelocityAddFrom(void)
+uint16_t ObjectVelocityAddFrom(uint8_t b, uint16_t x, uint16_t y)
 {
-    uint8_t b = cpu.db;
-    uint16_t a, m, i;
+    uint16_t a = 0, m, i;
     static const uint16_t dp[3] = {0x02, 0x08, 0x94};
 
-    cpu.p &= (uint8_t)~P_M;
     cyc(38);
-    wr16(0x00003E, cpu.x);
+    wr16(0x00003E, x);
     cyc(46);
     for (i = 0; i < 3; i++) {
-        a = rd16(cyc_then(30, f(b, cpu.y, (uint16_t)(0x2E + 2 * i))));
+        a = rd16(cyc_then(30, f(b, y, (uint16_t)(0x2E + 2 * i))));
         cyc(16);
         wr16(dp[i], a);
     }
     cyc(16);
-    wr16(0x00003E, cpu.y);
+    wr16(0x00003E, y);
     cyc(46);
     for (i = 0; i < 3; i++) {
-        a = rd16(cyc_then(30, f(b, cpu.x, (uint16_t)(0x2E + 2 * i))));
+        a = rd16(cyc_then(30, f(b, x, (uint16_t)(0x2E + 2 * i))));
         cyc(30);
         m = rd16(dp[i]);
         a = add16(a, m);
-        wr16(f(b, cpu.x, (uint16_t)(0x2E + 2 * i)), cyc_then(14, a));
+        wr16(f(b, x, (uint16_t)(0x2E + 2 * i)), cyc_then(14, a));
     }
     cyc(66);
-    cpu.a = a;
-    cpu.p = (uint8_t)(cpu.p | P_M);
+    return a;
+}
+
+void abi_ObjectVelocityAddFrom(void)
+{
+    distance_exit(ObjectVelocityAddFrom(cpu.db, cpu.x, cpu.y));
 }
 
 /* The Gsu81E3Long wrappers: X and Y pushed and pulled, 16-bit after. */
-static void gsu_pair_end(uint16_t x, uint16_t y)
+static uint16_t gsu_pair_end(void)
 {
-    (cyc(62), abi_Gsu81E3Long());
-    cpu.p &= (uint8_t)~(P_M | P_X);
-    cpu.y = y;
-    cpu.x = x;
-    cpu.p = nz16(cpu.p, x);
+    uint16_t a = (cyc(62), Gsu81E3Long());
+
     cyc(138);                           /* PLY, PLX, RTL */
+    return a;
+}
+
+/* The pair routines' exit: M and X 16-bit; N, Z from X. */
+static void pair_exit(uint16_t a)
+{
+    cpu.a = a;
+    cpu.p = find_flags((uint8_t)(cpu.p & ~(P_M | P_X)), cpu.x);
 }
 
 /*
@@ -935,10 +1053,9 @@ static void gsu_pair_end(uint16_t x, uint16_t y)
  * Entry: M 16-bit, X 16-bit, D = $0000; data bank $7E. Exit: M, X 16-bit;
  * A as Gsu81E3Long leaves it; X, Y unchanged; N, Z from X.
  */
-void abi_ObjectPairGsu81E3(void)
+uint16_t ObjectPairGsu81E3(uint8_t b, uint16_t x, uint16_t y)
 {
-    uint8_t b = cpu.db;
-    uint16_t x = cpu.x, y = cpu.y, a, m;
+    uint16_t a, m;
 
     a = rd16(cyc_then(90, f(b, y, 0x0C)));
     m = rd16(cyc_then(44, f(b, x, 0x0C)));
@@ -950,7 +1067,13 @@ void abi_ObjectPairGsu81E3(void)
     a = sub16(a, m);
     cyc(10);
     wr16(0x000008, a);
-    gsu_pair_end(x, y);
+    return gsu_pair_end();
+}
+
+void abi_ObjectPairGsu81E3(void)
+{
+    fcv_set = 0;
+    pair_exit(ObjectPairGsu81E3(cpu.db, cpu.x, cpu.y));
 }
 
 /*
@@ -963,13 +1086,11 @@ void abi_ObjectPairGsu81E3(void)
  * Entry: X 16-bit, D = $0000; data bank $7E. Exit: M, X 16-bit; A as
  * Gsu81E3Long leaves it; X, Y unchanged; N, Z from X.
  */
-void abi_ObjectPairPitchGsu81E3(void)
+uint16_t ObjectPairPitchGsu81E3(uint8_t b, uint16_t x, uint16_t y)
 {
-    uint8_t b = cpu.db;
-    uint16_t x = cpu.x, y = cpu.y, a, m;
+    uint16_t a, m;
 
-    (cyc(122), abi_ObjectDistanceApprox());
-    cpu.p &= (uint8_t)~P_M;
+    (cyc(122), ObjectDistanceApprox(b, x, y));
     a = rd16(cyc_then(46, w(b, DIST)));
     cyc(16);
     wr16(0x000008, a);
@@ -978,7 +1099,12 @@ void abi_ObjectPairPitchGsu81E3(void)
     a = sub16(a, m);
     cyc(10);
     wr16(0x000002, a);
-    gsu_pair_end(x, y);
+    return gsu_pair_end();
+}
+
+void abi_ObjectPairPitchGsu81E3(void)
+{
+    pair_exit(ObjectPairPitchGsu81E3(cpu.db, cpu.x, cpu.y));
 }
 
 /*
@@ -990,10 +1116,9 @@ void abi_ObjectPairPitchGsu81E3(void)
  * Entry: M 16-bit, X 16-bit, D = $0000; data bank $7E. Exit: M, X 16-bit;
  * A as Gsu81E3Long leaves it; X, Y unchanged; N, Z from X.
  */
-void abi_ObjectPairOffsetGsu81E3(void)
+uint16_t ObjectPairOffsetGsu81E3(uint8_t b, uint16_t x, uint16_t y)
 {
-    uint8_t b = cpu.db;
-    uint16_t x = cpu.x, y = cpu.y, a, m;
+    uint16_t a, m;
 
     a = rd16(cyc_then(90, f(b, y, 0x0C)));
     m = rd16(cyc_then(44, f(b, x, 0x0C)));
@@ -1016,7 +1141,12 @@ void abi_ObjectPairOffsetGsu81E3(void)
     m = rd16(cyc_then(38, w(b, 0x05F2)));
     a = add16(a, m);
     wr16(0x000008, a);
-    gsu_pair_end(x, y);
+    return gsu_pair_end();
+}
+
+void abi_ObjectPairOffsetGsu81E3(void)
+{
+    pair_exit(ObjectPairOffsetGsu81E3(cpu.db, cpu.x, cpu.y));
 }
 
 /*
@@ -1029,13 +1159,11 @@ void abi_ObjectPairOffsetGsu81E3(void)
  * Entry: X 16-bit, D = $0000; data bank $7E. Exit: M, X 16-bit; A as
  * Gsu81E3Long leaves it; X, Y unchanged; N, Z from X.
  */
-void abi_ObjectPairOffsetPitchGsu81E3(void)
+uint16_t ObjectPairOffsetPitchGsu81E3(uint8_t b, uint16_t x, uint16_t y)
 {
-    uint8_t b = cpu.db;
-    uint16_t x = cpu.x, y = cpu.y, a, m;
+    uint16_t a, m;
 
-    (cyc(122), abi_ObjectOffsetDistanceXZ());
-    cpu.p &= (uint8_t)~P_M;
+    (cyc(122), ObjectOffsetDistanceXZ(b, x, y));
     a = rd16(cyc_then(46, w(b, DIST)));
     cyc(16);
     wr16(0x000008, a);
@@ -1047,5 +1175,10 @@ void abi_ObjectPairOffsetPitchGsu81E3(void)
     a = sub16(a, m);
     cyc(10);
     wr16(0x000002, a);
-    gsu_pair_end(x, y);
+    return gsu_pair_end();
+}
+
+void abi_ObjectPairOffsetPitchGsu81E3(void)
+{
+    pair_exit(ObjectPairOffsetPitchGsu81E3(cpu.db, cpu.x, cpu.y));
 }

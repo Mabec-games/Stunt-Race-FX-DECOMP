@@ -45,4 +45,25 @@ ObjectDrawListEnd ObjectDrawListBuild(uint16_t y);
    the next record x. */
 ObjectDrawListEnd ObjectDrawListClear08(uint16_t y, uint16_t x);
 
+/* The object list searches and distances (object/object_find.c); b is the
+   data bank. The searches return Y; X, A and flags are their adapters'. */
+uint16_t ObjectAtPoint(uint8_t b);
+uint16_t ObjectNextOfKind(uint8_t b, uint16_t a, uint16_t self);
+uint16_t ObjectNextFlagged(uint8_t b, uint16_t a, uint16_t self);
+uint16_t ObjectNearestOfKind(uint8_t b, uint16_t a, uint16_t self);
+uint16_t ObjectFirstWithin(uint8_t b, uint16_t a, uint16_t self);
+uint16_t ObjectFirstOfKind(uint8_t b, uint16_t a);
+uint16_t ObjectCountOfKind(uint8_t b, uint16_t a);
+uint16_t ObjectDistanceApprox(uint8_t b, uint16_t x, uint16_t y);
+uint16_t ObjectDistanceXY(uint8_t b, uint16_t x, uint16_t y);
+uint16_t ObjectOffsetDistanceXZ(uint8_t b, uint16_t x, uint16_t y);
+uint16_t ObjectPointDistanceXZ(uint8_t b, uint16_t x);
+uint16_t ObjectPointDistanceXY(uint8_t b, uint16_t x);
+uint16_t ObjectPointGsu81E3(uint8_t b, uint16_t x);
+uint16_t ObjectVelocityAddFrom(uint8_t b, uint16_t x, uint16_t y);
+uint16_t ObjectPairGsu81E3(uint8_t b, uint16_t x, uint16_t y);
+uint16_t ObjectPairPitchGsu81E3(uint8_t b, uint16_t x, uint16_t y);
+uint16_t ObjectPairOffsetGsu81E3(uint8_t b, uint16_t x, uint16_t y);
+uint16_t ObjectPairOffsetPitchGsu81E3(uint8_t b, uint16_t x, uint16_t y);
+
 #endif
