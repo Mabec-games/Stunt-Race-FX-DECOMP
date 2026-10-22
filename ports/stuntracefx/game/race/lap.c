@@ -5,6 +5,7 @@
  */
 #include "machine.h"
 #include "cpu_ops.h"
+#include "race_calls.h"
 
 /* An 8-bit SBC in decimal mode, as the 65816 does it: C is the decimal
    no-borrow, V from the binary sum of the top digit before its adjustment. */
@@ -134,25 +135,36 @@ void abi_LapSplit(void)
  * WHAT IT DOES: Copies the race time (fraction $0E63, seconds $0E64,
  * minutes $0E66) to $0EE7-$0EE9.
  * HOW: Three 8-bit loads and stores through the data bank.
- * Entry: any widths. Exit: M 8-bit; A low byte = the minutes; N, Z from
- * them.
+ * Entry: any widths; the data bank. Exit: returns the minutes; the adapter
+ * sets M 8-bit, A low byte = the minutes, N, Z from them.
  */
+uint8_t RaceTimeKeep(uint8_t bank)
+{
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t v;
+
+    cyc(46);
+    v = rd8(b | 0x0E63);
+    cyc(24);
+    wr8(b | 0x0EE7, v);
+    cyc(24);
+    v = rd8(b | 0x0E64);
+    cyc(24);
+    wr8(b | 0x0EE8, v);
+    cyc(24);
+    v = rd8(b | 0x0E66);
+    cyc(24);
+    wr8(b | 0x0EE9, v);
+    cyc(42);
+    return v;
+}
+
 void abi_RaceTimeKeep(void)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint8_t v;
 
-    op_sep(P_M);
-    cyc(46);
-    op_lda8(b | 0x0E63);
-    cyc(24);
-    wr8(b | 0x0EE7, (uint8_t)cpu.a);
-    cyc(24);
-    op_lda8(b | 0x0E64);
-    cyc(24);
-    wr8(b | 0x0EE8, (uint8_t)cpu.a);
-    cyc(24);
-    op_lda8(b | 0x0E66);
-    cyc(24);
-    wr8(b | 0x0EE9, (uint8_t)cpu.a);
-    cyc(42);
+    cpu.p |= P_M;                               /* what an interrupt pushes */
+    v = RaceTimeKeep(cpu.db);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.p = nz8(cpu.p, v);
 }
