@@ -2,6 +2,7 @@
  * params.c: the parameter block in Super FX RAM that the renderer reads.
  */
 #include "machine.h"
+#include "gsu_calls.h"
 
 /*
  * @routine 7E:E2C9 GsuParamsUpdate
@@ -205,8 +206,8 @@ void GsuBytes200_BFB7B6(void)
 
 void abi_GsuBytes200_BFB7B6(void)
 {
-    cyc(0);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0xBF, 0xB7, 0xB6));
+    GsuBytes200_BFB7B6();
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xB6);
 }
 
 /*
@@ -215,16 +216,19 @@ void abi_GsuBytes200_BFB7B6(void)
  * HOW: As GsuBytes200_BFB7B6.
  * Entry: any widths. Exit: A low byte = $0E; P unchanged.
  */
-void GsuBytes200_0F060E(void)
+uint8_t GsuBytes200_0F060E(void)
 {
-    gsu_200(0x0F, 0x06, 0x0E);
+    uint8_t v;
+
+    cyc(0);
+    v = gsu_200(0x0F, 0x06, 0x0E);
+    cyc(72);
+    return v;
 }
 
 void abi_GsuBytes200_0F060E(void)
 {
-    cyc(0);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0x0F, 0x06, 0x0E));
-    cyc(72);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | GsuBytes200_0F060E());
 }
 
 /*
@@ -235,15 +239,18 @@ void abi_GsuBytes200_0F060E(void)
  * HOW: As GsuBytes200_BFB7B6.
  * Entry: any widths. Exit: A low byte = $0B; P unchanged.
  */
-void GsuBytes200_0F010B(void)
+uint8_t GsuBytes200_0F010B(void)
 {
-    gsu_200(0x0F, 0x01, 0x0B);
+    uint8_t v;
+
+    v = gsu_200(0x0F, 0x01, 0x0B);
+    cyc(72);
+    return v;
 }
 
 void abi_GsuBytes200_0F010B(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0x0F, 0x01, 0x0B));
-    cyc(72);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | GsuBytes200_0F010B());
 }
 
 /*
@@ -277,9 +284,9 @@ void GsuBytes200_BFBCBD(void)
 
 void abi_GsuBytes200_BFBCBD(void)
 {
-    cyc(0);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0xBF, 0xBC, 0xBD));
+    GsuBytes200_BFBCBD();
     cyc(22);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0xBD);
 }
 
 /*
@@ -307,15 +314,18 @@ void abi_GsuBytes200_BFBAB9(void)
  * HOW: As GsuBytes200_BFB7B6.
  * Entry: any widths. Exit: A low byte = $BE; P unchanged.
  */
-void GsuBytes200_BFB3BE(void)
+uint8_t GsuBytes200_BFB3BE(void)
 {
-    gsu_200(0xBF, 0xB3, 0xBE);
+    uint8_t v;
+
+    cyc(0);
+    v = gsu_200(0xBF, 0xB3, 0xBE);
+    return v;
 }
 
 void abi_GsuBytes200_BFB3BE(void)
 {
-    cyc(0);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0xBF, 0xB3, 0xBE));
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | GsuBytes200_BFB3BE());
 }
 
 /*
@@ -324,10 +334,18 @@ void abi_GsuBytes200_BFB3BE(void)
  * HOW: As GsuBytes200_BFB7B6. Not reached in the traces so far.
  * Entry: any widths. Exit: A low byte = $B3; P unchanged.
  */
+uint8_t GsuBytes200_BFB2B3(void)
+{
+    uint8_t v;
+
+    v = gsu_200(0xBF, 0xB2, 0xB3);
+    cyc(72);
+    return v;
+}
+
 void abi_GsuBytes200_BFB2B3(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0xBF, 0xB2, 0xB3));
-    cyc(72);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | GsuBytes200_BFB2B3());
 }
 
 /*
@@ -336,10 +354,18 @@ void abi_GsuBytes200_BFB2B3(void)
  * HOW: As GsuBytes200_BFB7B6. Not reached in the traces so far.
  * Entry: any widths. Exit: A low byte = $B6; P unchanged.
  */
+uint8_t GsuBytes200_BF12B6(void)
+{
+    uint8_t v;
+
+    v = gsu_200(0xBF, 0x12, 0xB6);
+    cyc(72);
+    return v;
+}
+
 void abi_GsuBytes200_BF12B6(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0xBF, 0x12, 0xB6));
-    cyc(72);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | GsuBytes200_BF12B6());
 }
 
 /*
@@ -348,10 +374,18 @@ void abi_GsuBytes200_BF12B6(void)
  * HOW: As GsuBytes200_BFB7B6. Not reached in the traces so far.
  * Entry: any widths. Exit: A low byte = $BD; P unchanged.
  */
+uint8_t GsuBytes200_BF11BD(void)
+{
+    uint8_t v;
+
+    v = gsu_200(0xBF, 0x11, 0xBD);
+    cyc(72);
+    return v;
+}
+
 void abi_GsuBytes200_BF11BD(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0xBF, 0x11, 0xBD));
-    cyc(72);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | GsuBytes200_BF11BD());
 }
 
 /*
@@ -360,10 +394,18 @@ void abi_GsuBytes200_BF11BD(void)
  * HOW: As GsuBytes200_BFB7B6. Not reached in the traces so far.
  * Entry: any widths. Exit: A low byte = $B9; P unchanged.
  */
+uint8_t GsuBytes200_BF10B9(void)
+{
+    uint8_t v;
+
+    v = gsu_200(0xBF, 0x10, 0xB9);
+    cyc(72);
+    return v;
+}
+
 void abi_GsuBytes200_BF10B9(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0xBF, 0x10, 0xB9));
-    cyc(72);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | GsuBytes200_BF10B9());
 }
 
 /*
@@ -373,11 +415,19 @@ void abi_GsuBytes200_BF10B9(void)
  * HOW: As GsuBytes200_BFB7B6. Not reached in the traces so far.
  * Entry: any widths. Exit: A low byte = $B6; P unchanged.
  */
+uint8_t GsuBytes200_BFB7B6_D8C4(void)
+{
+    uint8_t v;
+
+    cyc(0);
+    v = gsu_200(0xBF, 0xB7, 0xB6);
+    cyc(72);
+    return v;
+}
+
 void abi_GsuBytes200_BFB7B6_D8C4(void)
 {
-    cyc(0);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0xBF, 0xB7, 0xB6));
-    cyc(72);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | GsuBytes200_BFB7B6_D8C4());
 }
 
 /*
@@ -387,10 +437,18 @@ void abi_GsuBytes200_BFB7B6_D8C4(void)
  * HOW: As GsuBytes200_BFB7B6. Not reached in the traces so far.
  * Entry: any widths. Exit: A low byte = $B9; P unchanged.
  */
+uint8_t GsuBytes200_BFBAB9_D8E1(void)
+{
+    uint8_t v;
+
+    v = gsu_200(0xBF, 0xBA, 0xB9);
+    cyc(72);
+    return v;
+}
+
 void abi_GsuBytes200_BFBAB9_D8E1(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0xBF, 0xBA, 0xB9));
-    cyc(72);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | GsuBytes200_BFBAB9_D8E1());
 }
 
 /*
@@ -400,10 +458,18 @@ void abi_GsuBytes200_BFBAB9_D8E1(void)
  * HOW: As GsuBytes200_BFB7B6. Not reached in the traces so far.
  * Entry: any widths. Exit: A low byte = $BE; P unchanged.
  */
+uint8_t GsuBytes200_BFB3BE_D8FE(void)
+{
+    uint8_t v;
+
+    v = gsu_200(0xBF, 0xB3, 0xBE);
+    cyc(72);
+    return v;
+}
+
 void abi_GsuBytes200_BFB3BE_D8FE(void)
 {
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0xBF, 0xB3, 0xBE));
-    cyc(72);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | GsuBytes200_BFB3BE_D8FE());
 }
 
 /*
@@ -412,11 +478,19 @@ void abi_GsuBytes200_BFB3BE_D8FE(void)
  * HOW: As GsuBytes200_BFB7B6. Not reached in the traces so far.
  * Entry: any widths. Exit: A low byte = $BE; P unchanged.
  */
+uint8_t GsuBytes200_BFBBBE(void)
+{
+    uint8_t v;
+
+    cyc(0);
+    v = gsu_200(0xBF, 0xBB, 0xBE);
+    cyc(72);
+    return v;
+}
+
 void abi_GsuBytes200_BFBBBE(void)
 {
-    cyc(0);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0xBF, 0xBB, 0xBE));
-    cyc(72);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | GsuBytes200_BFBBBE());
 }
 
 /*
@@ -527,8 +601,18 @@ void abi_GsuTableEntryNext(void)
     cpu.p = nz16(p, cpu.x);
 }
 
-/* The body; X, Y and the flags as the exit leaves them. */
-static uint16_t gsu_records_upload(uint16_t *x, uint16_t *y, uint8_t *p)
+
+/*
+ * @routine 02:DA34 GsuRecordsUpload
+ * WHAT IT DOES: Copies the $0CEE 30-byte records at $7E:F77F to Super FX
+ * RAM at $70:0AAA and stores the count at $70:01C8.
+ * HOW: Fifteen word copies per record with the data bank at $70; the count
+ * runs down in $1F2B.
+ * Entry: any widths. Exit: X, Y past the copies (*x, *y, left alone when the
+ * count is 0); A = 0; M 16-bit, X 16-bit; N, Z from the data bank pulled back;
+ * C, V from the last source step (unchanged when the count is 0).
+ */
+uint16_t GsuRecordsUpload(uint16_t *x, uint16_t *y, uint8_t *p)
 {
     cyc(164);
     uint16_t n = rd16(0x000CEE), s, d;
@@ -563,29 +647,15 @@ static uint16_t gsu_records_upload(uint16_t *x, uint16_t *y, uint8_t *p)
     return 0;
 }
 
-/*
- * @routine 02:DA34 GsuRecordsUpload
- * WHAT IT DOES: Copies the $0CEE 30-byte records at $7E:F77F to Super FX
- * RAM at $70:0AAA and stores the count at $70:01C8.
- * HOW: Fifteen word copies per record with the data bank at $70; the count
- * runs down in $1F2B.
- * Entry: any widths. Exit: X, Y past the copies (unchanged when the count
- * is 0); A = 0; M 16-bit, X 16-bit; N, Z from the data bank pulled back;
- * C, V from the last source step (unchanged when the count is 0).
- */
-uint16_t GsuRecordsUpload(void)
-{
-    uint16_t x, y;
-    uint8_t p = 0;
-
-    return gsu_records_upload(&x, &y, &p);
-}
 
 void abi_GsuRecordsUpload(void)
 {
+    uint16_t x = cpu.x, y = cpu.y;
     uint8_t p = cpu.p;
 
-    cpu.a = gsu_records_upload(&cpu.x, &cpu.y, &p);
+    cpu.a = GsuRecordsUpload(&x, &y, &p);
+    cpu.x = x;
+    cpu.y = y;
     cpu.p = (uint8_t)(nz8(p, cpu.db) & ~(P_M | P_X));
 }
 /*
@@ -595,10 +665,18 @@ void abi_GsuRecordsUpload(void)
  * HOW: Four byte stores (gsu_200).
  * Entry: any widths. Exit: A low byte = $BD; P unchanged.
  */
+uint8_t GsuBytes200_BFBABD(void)
+{
+    uint8_t v;
+
+    cyc(84);
+    v = gsu_200(0xBF, 0xBA, 0xBD);
+    return v;
+}
+
 void abi_GsuBytes200_BFBABD(void)
 {
-    cyc(84);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | gsu_200(0xBF, 0xBA, 0xBD));
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | GsuBytes200_BFBABD());
 }
 
 

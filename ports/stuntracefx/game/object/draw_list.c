@@ -3,6 +3,7 @@
  * work RAM from the objects in the buckets the trigger list names.
  */
 #include "machine.h"
+#include "object_calls.h"
 
 #define DRAW_COUNT 0x7E0CEEu      /* records written (at most $31) */
 #define TRIGGER_POS 0x7E1F2Bu     /* offset into the trigger list */
@@ -168,7 +169,8 @@ static int drawn(uint16_t o)
  * object looked at (0 after a bucket's end); P and the data bank unchanged.
  */
 /* The objects of a bucket from o (o itself first unless `next`), each
-   drawn writing its record from r; then $3E = the next record and Y = 0. */
+   drawn writing its record from r; then $3E = the next record (and Y = 0,
+   which the callers note). */
 static void draw_bucket(uint16_t o, uint16_t r, int next)
 {
     do {
@@ -183,17 +185,17 @@ static void draw_bucket(uint16_t o, uint16_t r, int next)
         cyc(52);
         o = rd16(OBJ(o, 0x3C));
     } while (cyc_loop(60, o));
-    cpu.y = 0;
     cyc(52);
     wr16(DRAW_NEXT, r);
     cyc(24);
 }
 
-/* The triggers from $1F2B on, each bucket's objects drawn; A = 0 and X =
-   the trigger position at the end. `end` is the time from the last list
-   word read to the end: the exit's PLB, PLP and RTS, or, for the arm that
-   reads the pushed data bank itself, up to that read. */
-static void draw_triggers(unsigned end)
+/* The triggers from $1F2B on, each bucket's objects drawn; A = 0, X (e->x)
+   = the trigger position at the end and Y (e->y) = 0 once a bucket has been
+   walked. `end` is the time from the last list word read to the end: the
+   exit's PLB, PLP and RTS, or, for the arm that reads the pushed data bank
+   itself, up to that read. */
+static void draw_triggers(unsigned end, ObjectDrawListEnd *e)
 {
     uint16_t pos, a;
 
@@ -202,8 +204,7 @@ static void draw_triggers(unsigned end)
         pos = rd16(TRIGGER_POS);
         cyc(30);
         a = rd16(TRIGGER_LIST + pos);
-        cpu.x = pos;
-        cpu.a = a;
+        e->x = pos;
         if (!a)
             { cyc(end); return; }
         cyc(46);
@@ -219,25 +220,32 @@ static void draw_triggers(unsigned end)
             { cyc(22); continue; }
         cyc(46);
         draw_bucket(a, rd16(DRAW_NEXT), 0);
+        e->y = 0;
     }
 }
 
-void ObjectDrawListBuild(void)
+ObjectDrawListEnd ObjectDrawListBuild(uint16_t y)
 {
+    ObjectDrawListEnd e = {0, y};
+
     cyc(178);
     wr16(DRAW_COUNT, 0x0000);
     cyc(24);
     wr16(TRIGGER_POS, 0x0000);
     cyc(40);
     wr16(DRAW_NEXT, DRAW_LIST);
-    draw_triggers(144);
+    draw_triggers(144, &e);
+    return e;
 }
 
 void abi_ObjectDrawListBuild(void)
 {
     uint8_t p = cpu.p;
+    ObjectDrawListEnd e = ObjectDrawListBuild(cpu.y);
 
-    ObjectDrawListBuild();
+    cpu.a = 0;
+    cpu.x = e.x;
+    cpu.y = e.y;
     cpu.p = p;
 }
 
@@ -255,14 +263,25 @@ void abi_ObjectDrawListBuild(void)
  * (PHP, PHB). Exit: as ObjectDrawListBuild, P and the data bank those
  * pushed.
  */
+ObjectDrawListEnd ObjectDrawListClear08(uint16_t y, uint16_t x)
+{
+    ObjectDrawListEnd e = {0, 0};
+
+    cyc(52);
+    wr8(OBJ(y, 0x08), cyc_then(46, (uint8_t)(rd8(OBJ(y, 0x08)) & 0xFD)));
+    draw_bucket(y, x, 1);
+    draw_triggers(66, &e);
+    return e;
+}
+
 void abi_ObjectDrawListClear08(void)
 {
     uint8_t db, p;
+    ObjectDrawListEnd e = ObjectDrawListClear08(cpu.y, cpu.x);
 
-    cyc(52);
-    wr8(OBJ(cpu.y, 0x08), cyc_then(46, (uint8_t)(rd8(OBJ(cpu.y, 0x08)) & 0xFD)));
-    draw_bucket(cpu.y, cpu.x, 1);
-    draw_triggers(66);
+    cpu.a = 0;
+    cpu.x = e.x;
+    cpu.y = e.y;
     db = rd8((uint16_t)(cpu.s + 1));
     cyc(20);
     p = rd8((uint16_t)(cpu.s + 2));

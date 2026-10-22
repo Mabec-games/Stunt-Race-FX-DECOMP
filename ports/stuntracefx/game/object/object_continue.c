@@ -7,28 +7,39 @@
  * set the byte at +$39. No play runs them; unit_object_continue calls them.
  */
 #include "machine.h"
+#include "object_calls.h"
 
-/* Go on at the long address at +addr_at (bank at +bank_at) of object X,
-   or return when it is 0. */
-static void continue_at(uint16_t addr_at, uint16_t bank_at)
+/* Go on at the long address at +addr_at (bank at +bank_at) of object obj
+   in bank `db`: returns it (bank << 16 | address) for the caller to go on
+   at, or 0 when it is 0 and the command just returns. *a is the A the code
+   there is entered (or the command returns) with: the address less one. */
+static uint32_t continue_at(uint8_t db, uint16_t obj, uint16_t addr_at, uint16_t bank_at, uint16_t *a)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)db << 16;
     uint8_t bank;
     uint16_t addr;
 
     cyc(30);
-    bank = rd8(b | (uint16_t)(bank_at + cpu.x));
+    bank = rd8(b | (uint16_t)(bank_at + obj));
     cyc(bank ? 96 : 90);                /* PHA, REP, BNE, LDA abs,X */
-    addr = rd16(b | (uint16_t)(addr_at + cpu.x));
+    addr = rd16(b | (uint16_t)(addr_at + obj));
     if (!bank && (cyc(addr ? 16 : 22), !addr)) {   /* BEQ not taken / taken */
         cyc(94);                        /* SEP, PLA, RTL */
-        cpu.a = 0x0000;
-        cpu.p = nz8((uint8_t)(cpu.p | P_M), 0x00);
-        return;
+        *a = 0x0000;
+        return 0;
     } else { cyc(110); }
-    cpu.a = (uint16_t)(addr - 1);
+    *a = (uint16_t)(addr - 1);
+    return (uint32_t)bank << 16 | addr;
+}
+
+/* The register exit of the commands above: A as given, M 8-bit, N and Z
+   from A (16-bit); then on to `target` in the command's own frame. */
+static void continue_regs(uint32_t target, uint16_t a)
+{
+    cpu.a = a;
     cpu.p = (uint8_t)(nz16(cpu.p, cpu.a) | P_M);
-    jump_routine((uint32_t)bank << 16 | addr);
+    if (target)
+        jump_routine(target);
 }
 
 /*
@@ -38,18 +49,21 @@ static void continue_at(uint16_t addr_at, uint16_t bank_at)
  * HOW: The bank pushed, then the address less one (16-bit), then RTL; the
  * code there returns to this routine's caller. With bank and address 0
  * the bank byte is pulled back and it returns.
- * Entry: M 8-bit, X 16-bit; X = object. Exit: going on: the code there is
+ * Entry: M 8-bit, X 16-bit; X = object (obj). Exit: going on: the code there is
  * entered with A = the address less one, M 8-bit, N, Z from A (16-bit);
  * returning: A = 0, M 8-bit, Z set, N clear.
  */
-void ObjectContinue1A(void)
+uint32_t ObjectContinue1A(uint8_t bank, uint16_t obj, uint16_t *a)
 {
-    continue_at(0x201A, 0x201C);
+    return continue_at(bank, obj, 0x201A, 0x201C, a);
 }
 
 void abi_ObjectContinue1A(void)
 {
-    continue_at(0x201A, 0x201C);
+    uint16_t a;
+    uint32_t target = ObjectContinue1A(cpu.db, cpu.x, &a);
+
+    continue_regs(target, a);
 }
 
 /*
@@ -59,14 +73,17 @@ void abi_ObjectContinue1A(void)
  * HOW: As ObjectContinue1A.
  * Entry: as ObjectContinue1A. Exit: as ObjectContinue1A.
  */
-void ObjectContinue1D(void)
+uint32_t ObjectContinue1D(uint8_t bank, uint16_t obj, uint16_t *a)
 {
-    continue_at(0x201D, 0x201F);
+    return continue_at(bank, obj, 0x201D, 0x201F, a);
 }
 
 void abi_ObjectContinue1D(void)
 {
-    continue_at(0x201D, 0x201F);
+    uint16_t a;
+    uint32_t target = ObjectContinue1D(cpu.db, cpu.x, &a);
+
+    continue_regs(target, a);
 }
 
 /*
@@ -85,13 +102,12 @@ void abi_ObjectStubReturn(void)
 }
 
 /* The +$39 setters: the byte written (8-bit), then ObjectContinue1A. */
-static void set_39(uint8_t v)
+static uint32_t set_39(uint8_t bank, uint16_t obj, uint8_t v, uint16_t *a)
 {
     cyc(44);
-    wr8((uint32_t)cpu.db << 16 | (uint16_t)(0x2039 + cpu.x), v);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    wr8((uint32_t)bank << 16 | (uint16_t)(0x2039 + obj), v);
     cyc(62);
-    continue_at(0x201A, 0x201C);
+    return continue_at(bank, obj, 0x201A, 0x201C, a);
 }
 
 /*
@@ -100,17 +116,20 @@ static void set_39(uint8_t v)
  * HOW: An 8-bit LDA / INC / STA, then a long jump to ObjectContinue1A.
  * Entry: as ObjectContinue1A. Exit: as ObjectContinue1A.
  */
-void ObjectStep39Continue(void)
+uint32_t ObjectStep39Continue(uint8_t bank, uint16_t obj, uint16_t *a)
 {
     cyc(30);
-    uint8_t v = rd8((uint32_t)cpu.db << 16 | (uint16_t)(0x2039 + cpu.x));
+    uint8_t v = rd8((uint32_t)bank << 16 | (uint16_t)(0x2039 + obj));
 
-    set_39((uint8_t)(v + 1));
+    return set_39(bank, obj, (uint8_t)(v + 1), a);
 }
 
 void abi_ObjectStep39Continue(void)
 {
-    ObjectStep39Continue();
+    uint16_t a;
+    uint32_t target = ObjectStep39Continue(cpu.db, cpu.x, &a);
+
+    continue_regs(target, a);
 }
 
 /*
@@ -119,15 +138,18 @@ void abi_ObjectStep39Continue(void)
  * HOW: An 8-bit store, then a long jump to ObjectContinue1A.
  * Entry: as ObjectContinue1A. Exit: as ObjectContinue1A.
  */
-void ObjectSet39To0Continue(void)
+uint32_t ObjectSet39To0Continue(uint8_t bank, uint16_t obj, uint16_t *a)
 {
-    set_39(0x00);
+    cyc(2);
+    return set_39(bank, obj, 0x00, a);
 }
 
 void abi_ObjectSet39To0Continue(void)
 {
-    cyc(2);
-    set_39(0x00);
+    uint16_t a;
+    uint32_t target = ObjectSet39To0Continue(cpu.db, cpu.x, &a);
+
+    continue_regs(target, a);
 }
 
 /*
@@ -136,15 +158,18 @@ void abi_ObjectSet39To0Continue(void)
  * HOW: As ObjectSet39To0Continue.
  * Entry: as ObjectContinue1A. Exit: as ObjectContinue1A.
  */
-void ObjectSet39To1Continue(void)
+uint32_t ObjectSet39To1Continue(uint8_t bank, uint16_t obj, uint16_t *a)
 {
-    set_39(0x01);
+    cyc(2);
+    return set_39(bank, obj, 0x01, a);
 }
 
 void abi_ObjectSet39To1Continue(void)
 {
-    cyc(2);
-    set_39(0x01);
+    uint16_t a;
+    uint32_t target = ObjectSet39To1Continue(cpu.db, cpu.x, &a);
+
+    continue_regs(target, a);
 }
 
 /*
@@ -153,15 +178,18 @@ void abi_ObjectSet39To1Continue(void)
  * HOW: As ObjectSet39To0Continue.
  * Entry: as ObjectContinue1A. Exit: as ObjectContinue1A.
  */
-void ObjectSet39To2Continue(void)
+uint32_t ObjectSet39To2Continue(uint8_t bank, uint16_t obj, uint16_t *a)
 {
-    set_39(0x02);
+    cyc(2);
+    return set_39(bank, obj, 0x02, a);
 }
 
 void abi_ObjectSet39To2Continue(void)
 {
-    cyc(2);
-    set_39(0x02);
+    uint16_t a;
+    uint32_t target = ObjectSet39To2Continue(cpu.db, cpu.x, &a);
+
+    continue_regs(target, a);
 }
 
 /*
@@ -170,15 +198,18 @@ void abi_ObjectSet39To2Continue(void)
  * HOW: As ObjectSet39To0Continue.
  * Entry: as ObjectContinue1A. Exit: as ObjectContinue1A.
  */
-void ObjectSet39To3Continue(void)
+uint32_t ObjectSet39To3Continue(uint8_t bank, uint16_t obj, uint16_t *a)
 {
-    set_39(0x03);
+    cyc(2);
+    return set_39(bank, obj, 0x03, a);
 }
 
 void abi_ObjectSet39To3Continue(void)
 {
-    cyc(2);
-    set_39(0x03);
+    uint16_t a;
+    uint32_t target = ObjectSet39To3Continue(cpu.db, cpu.x, &a);
+
+    continue_regs(target, a);
 }
 
 /*
@@ -187,15 +218,18 @@ void abi_ObjectSet39To3Continue(void)
  * HOW: As ObjectSet39To0Continue.
  * Entry: as ObjectContinue1A. Exit: as ObjectContinue1A.
  */
-void ObjectSet39To4Continue(void)
+uint32_t ObjectSet39To4Continue(uint8_t bank, uint16_t obj, uint16_t *a)
 {
-    set_39(0x04);
+    cyc(2);
+    return set_39(bank, obj, 0x04, a);
 }
 
 void abi_ObjectSet39To4Continue(void)
 {
-    cyc(2);
-    set_39(0x04);
+    uint16_t a;
+    uint32_t target = ObjectSet39To4Continue(cpu.db, cpu.x, &a);
+
+    continue_regs(target, a);
 }
 
 /*
@@ -204,13 +238,16 @@ void abi_ObjectSet39To4Continue(void)
  * HOW: As ObjectSet39To0Continue.
  * Entry: as ObjectContinue1A. Exit: as ObjectContinue1A.
  */
-void ObjectSet39To5Continue(void)
+uint32_t ObjectSet39To5Continue(uint8_t bank, uint16_t obj, uint16_t *a)
 {
-    set_39(0x05);
+    cyc(2);
+    return set_39(bank, obj, 0x05, a);
 }
 
 void abi_ObjectSet39To5Continue(void)
 {
-    cyc(2);
-    set_39(0x05);
+    uint16_t a;
+    uint32_t target = ObjectSet39To5Continue(cpu.db, cpu.x, &a);
+
+    continue_regs(target, a);
 }
