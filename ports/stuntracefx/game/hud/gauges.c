@@ -4,12 +4,10 @@
  * gauge values and their screen positions sit in work RAM at $0DF9-$0E15.
  */
 #include "machine.h"
-#include "cpu_ops.h"
+#include "hud_calls.h"
 
 uint16_t SpriteBar4WithMarker(uint8_t bank, uint8_t value, uint16_t pos, uint16_t y);
 uint16_t SpriteBar6WithMarker(uint8_t bank, uint8_t value, uint16_t pos, uint16_t y);
-void abi_SpriteBar4WithMarker(void);
-void abi_SpriteBar6WithMarker(void);
 
 /* One gauge as the code loads it: the Y byte, the X byte, then the value
    (the Y byte stays in A's high byte through XBA). */
@@ -30,21 +28,31 @@ static Gauge gauge_of(uint32_t b, uint16_t lo_at, uint16_t hi_at, uint16_t value
     return g;
 }
 
-/* For the abi_ wrappers: the registers as the code sets them for a gauge
-   call (M 8-bit, X 16-bit, A high byte = the Y byte, N, Z from the slot),
-   then the gauge's own abi_. */
-static void abi_gauge(void (*gauge)(void), uint16_t lo_at, uint16_t hi_at, uint16_t value_at, uint16_t slot,
-                      uint32_t call)
+/* A gauge call as the code makes it: the bar's JSL (call clocks, with
+   the LDY # before it), the bar, then the PLP that restores 16-bit index
+   registers (72) and the return (28). X is 16-bit in these calls. */
+static uint16_t bar4(uint8_t bank, Gauge g, uint16_t slot, uint32_t call)
 {
-    Gauge g = gauge_of((uint32_t)cpu.db << 16, lo_at, hi_at, value_at);
+    uint16_t tile;
 
-    cyc(call);                          /* LDY # (24), any BRA (22), JSL (62) */
-    cpu.x = (uint16_t)(g.y << 8 | g.x);
-    cpu.a = (uint16_t)(g.y << 8 | g.value);
-    cpu.y = slot;
-    cpu.p = nz16((uint8_t)((cpu.p | P_M) & ~P_X), slot);
-    gauge();
+    cyc(call);
+    tile = SpriteBar4WithMarker(bank, g.value, (uint16_t)(g.y << 8 | g.x), slot);
+    cyc(72);
     cyc(28);
+    return tile;
+}
+
+/* The six-sprite bar's X on exit (SpriteStrip6's, from the value). */
+static uint16_t bar6(uint8_t bank, Gauge g, uint16_t slot, uint32_t call, uint16_t *x)
+{
+    uint16_t tile;
+
+    cyc(call);
+    tile = SpriteBar6WithMarker(bank, g.value, (uint16_t)(g.y << 8 | g.x), slot);
+    *x = (uint16_t)(((g.value & 0x0038) << 1) + 12);
+    cyc(72);
+    cyc(28);
+    return tile;
 }
 
 /*
@@ -54,28 +62,42 @@ static void abi_gauge(void (*gauge)(void), uint16_t lo_at, uint16_t hi_at, uint1
  * ($0E13, $0E15) from slot $16C.
  * HOW: Each position is built in A with XBA and moved to X; the value is
  * loaded last. Work RAM through the data bank.
- * Entry: any widths. Exit: as SpriteBar6WithMarker; P as at its call: M
- * 8-bit, X 16-bit, N, Z clear (from Y = $16C), C, V unchanged.
+ * Entry: any widths. Exit: as SpriteBar6WithMarker: *a the marker's tile
+ * word, *x its X, *y = $16C; the adapter sets P as at its call: M 8-bit,
+ * X 16-bit, N, Z clear (from Y = $16C), C, V unchanged.
  */
-void HudGaugesPanelA(uint8_t bank)
+void HudGaugesPanelA(uint8_t bank, uint16_t *a, uint16_t *x, uint16_t *y)
 {
     uint32_t b = (uint32_t)bank << 16;
     Gauge g;
 
+    cyc(28);
     g = gauge_of(b, 0x0E0F, 0x0E11, 0x0DFA);
-    cyc(86);                            /* LDY #, JSL */
-    SpriteBar4WithMarker(bank, g.value, (uint16_t)(g.y << 8 | g.x), 0x0140);
+    bar4(bank, g, 0x0140, 86);                  /* LDY #, JSL */
     g = gauge_of(b, 0x0E13, 0x0E15, 0x0E06);
-    cyc(86);
-    SpriteBar6WithMarker(bank, g.value, (uint16_t)(g.y << 8 | g.x), 0x016C);
+    *a = bar6(bank, g, 0x016C, 86, x);
+    *y = 0x016C;
+    cyc(14);
+}
+
+/* P as a gauge call leaves it: M 8-bit, X 16-bit, N and Z from a positive
+   slot. */
+static uint8_t gauge_p(uint8_t p)
+{
+    return (uint8_t)(((p | P_M) & ~P_X) & ~(P_N | P_Z));
 }
 
 void abi_HudGaugesPanelA(void)
 {
-    cyc(28);
-    abi_gauge(abi_SpriteBar4WithMarker, 0x0E0F, 0x0E11, 0x0DFA, 0x0140, 86);
-    abi_gauge(abi_SpriteBar6WithMarker, 0x0E13, 0x0E15, 0x0E06, 0x016C, 86);
-    cyc(14);
+    uint16_t a, x, y;
+
+    /* an interrupt inside the gauges pushes the P the bars run under */
+    cpu.p = gauge_p(cpu.p);
+    HudGaugesPanelA(cpu.db, &a, &x, &y);
+    cpu.a = a;
+    cpu.x = x;
+    cpu.y = y;
+    cpu.p = gauge_p(cpu.p);
 }
 
 /*
@@ -86,62 +108,72 @@ void abi_HudGaugesPanelA(void)
  * $100 and $12C.
  * HOW: As HudGaugesPanelA; $0D55 and $0D62 are first tested with long
  * loads, then $0D62 through the data bank.
- * Entry: any widths. Exit: when neither is set, A low byte = 0, M 8-bit,
- * X 16-bit, Z set, N clear; otherwise as SpriteBar6WithMarker, P as at its
- * call (M 8-bit, X 16-bit, N, Z from the slot).
+ * Entry: any widths. Exit: returns 0 when neither is set (the adapter then
+ * leaves A low byte = 0, M 8-bit, X 16-bit, Z set, N clear); otherwise 1
+ * with *a, *x, *y as SpriteBar6WithMarker leaves them (the adapter sets P
+ * as at its call: M 8-bit, X 16-bit, N, Z clear).
  */
-void HudGaugesPanelB(uint8_t bank)
+int HudGaugesPanelB(uint8_t bank, uint16_t *a, uint16_t *x, uint16_t *y)
 {
     uint32_t b = (uint32_t)bank << 16;
+    uint8_t v;
     int split;
     Gauge g;
 
-    if (!rd8(0x000D55) && !rd8(0x000D62))
-        return;
-    split = rd8(b | 0x0D62) != 0;
-    g = gauge_of(b, 0x0E0E, 0x0E10, 0x0DF9);
-    cyc(split ? 86 : 108);              /* LDY #, the BRA when not split, JSL */
-    SpriteBar4WithMarker(bank, g.value, (uint16_t)(g.y << 8 | g.x), split ? 0x0040 : 0x0100);
-    split = rd8(b | 0x0D62) != 0;
-    g = gauge_of(b, 0x0E12, 0x0E14, 0x0E05);
-    cyc(split ? 86 : 108);
-    SpriteBar6WithMarker(bank, g.value, (uint16_t)(g.y << 8 | g.x), split ? 0x006C : 0x012C);
-}
-
-void abi_HudGaugesPanelB(void)
-{
-    uint32_t b = (uint32_t)cpu.db << 16;
     cyc(76);
-    uint8_t v = rd8(0x000D55);
-    int split;
-
+    v = rd8(0x000D55);
     if (!v)
         { cyc(48); v = rd8(0x000D62); }
     cyc(46);
     if (!v) {
         cyc(12);
+        return 0;
+    }
+    split = rd8(b | 0x0D62) != 0;
+    if (split)
+        cyc(50);                        /* LDY # and the BRA's other arm */
+    g = gauge_of(b, 0x0E0E, 0x0E10, 0x0DF9);
+    bar4(bank, g, split ? 0x0040 : 0x0100, split ? 86 : 108);
+    cyc(40);
+    split = rd8(b | 0x0D62) != 0;
+    if (split)
+        cyc(50);
+    g = gauge_of(b, 0x0E12, 0x0E14, 0x0E05);
+    *y = split ? 0x006C : 0x012C;
+    *a = bar6(bank, g, *y, split ? 86 : 108, x);
+    cyc(14);
+    return 1;
+}
+
+void abi_HudGaugesPanelB(void)
+{
+    uint16_t a, x, y;
+    uint8_t p0 = cpu.p;
+
+    cpu.p = gauge_p(p0);
+    if (!HudGaugesPanelB(cpu.db, &a, &x, &y)) {
+        cpu.p = p0;
         cpu.a &= 0xFF00;
         cpu.p = (uint8_t)((nz8(cpu.p, 0) | P_M) & ~P_X);
         return;
     }
-    split = rd8(b | 0x0D62) != 0;
-    abi_gauge(abi_SpriteBar4WithMarker, 0x0E0E, 0x0E10, 0x0DF9, split ? (cyc(50), 0x0040) : 0x0100, split ? 86 : 108);
-    cyc(40);
-    split = rd8(b | 0x0D62) != 0;
-    abi_gauge(abi_SpriteBar6WithMarker, 0x0E12, 0x0E14, 0x0E05, split ? (cyc(50), 0x006C) : 0x012C, split ? 86 : 108);
-    cyc(14);
+    cpu.a = a;
+    cpu.x = x;
+    cpu.y = y;
+    cpu.p = gauge_p(cpu.p);
 }
 
 /* Gauge y at `at` = y, then the X-position high bits of the twelve sprites
-   from 27 + x * 4 cleared in the high table ($057B + x on). */
-static void gauge6_place(uint16_t at, uint8_t y, uint8_t x)
+   from 27 + x * 4 cleared in the high table ($057B + x on). Returns the
+   last byte stored (A's low byte on exit). */
+static uint8_t gauge6_place(uint8_t bank, uint16_t at, uint8_t y, uint8_t x)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)bank << 16;
     static const uint8_t keep[4] = {0xBF, 0xAA, 0xAA, 0xEA};
-    uint8_t p0 = cpu.p, v = 0;
+    uint8_t v = 0;
     unsigned i;
 
-    op_sep(P_M | P_X);
+    cyc(22);                            /* SEP #$30 */
     cyc(62);
     wr8(b | at, y);
     cyc(x ? 16 : 38);                   /* LDX #imm; panel B's also BRAs to the shared tail */
@@ -152,9 +184,7 @@ static void gauge6_place(uint16_t at, uint8_t y, uint8_t x)
         wr8(b | (uint16_t)(0x057B + i + x), v);
     }
     cyc(70);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.x = x;
-    cpu.p = p0;
+    return v;
 }
 
 /*
@@ -163,12 +193,21 @@ static void gauge6_place(uint16_t at, uint8_t y, uint8_t x)
  * clears the X-position high bits of sprites 27-38 in the high table
  * ($057B-$057E).
  * HOW: Byte ANDs through the data bank (masks $BF, $AA, $AA, $EA).
- * Entry: any widths. Exit: A low byte = the last byte; X = 0; X and Y high
- * bytes cleared (SEP #$30); P unchanged.
+ * Entry: any widths. Exit: returns the last byte (A low byte); the adapter
+ * sets X = 0; X and Y high bytes cleared (SEP #$30); P unchanged.
  */
+uint8_t Gauge6BPlace(uint8_t bank)
+{
+    return gauge6_place(bank, 0x0E14, 0x5A, 0x00);
+}
+
 void abi_Gauge6BPlace(void)
 {
-    gauge6_place(0x0E14, 0x5A, 0x00);
+    uint8_t v = Gauge6BPlace(cpu.db);
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.x = 0x00;
+    cpu.y &= 0x00FF;
 }
 
 /*
@@ -178,7 +217,16 @@ void abi_Gauge6BPlace(void)
  * HOW: As Gauge6BPlace with X = $10. Not reached in the traces so far.
  * Entry: any widths. Exit: as Gauge6BPlace, X = $10.
  */
+uint8_t Gauge6APlace(uint8_t bank)
+{
+    return gauge6_place(bank, 0x0E15, 0xC2, 0x10);
+}
+
 void abi_Gauge6APlace(void)
 {
-    gauge6_place(0x0E15, 0xC2, 0x10);
+    uint8_t v = Gauge6APlace(cpu.db);
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    cpu.x = 0x10;
+    cpu.y &= 0x00FF;
 }
