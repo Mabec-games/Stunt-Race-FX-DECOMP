@@ -44,4 +44,11 @@ uint16_t BcdToBinary(uint16_t v, uint8_t *p);
 uint16_t TimePackBcd(uint16_t hund, uint16_t sec, uint16_t min, uint8_t *p);
 uint16_t RecordTimeInsert(uint8_t bank, uint16_t a, uint16_t *x, uint16_t *y, uint8_t p0);
 
+/* The HUD panels' slides (hud/slide.c): the result is A's low byte as
+   each ends; d is the direct page register. */
+uint8_t HudSlideOut(uint8_t bank);
+uint8_t HudPanelASlide(uint8_t bank, uint16_t d);
+uint8_t HudPanelBSlide(uint8_t bank, uint16_t d);
+void HudPanelsStep(uint8_t bank, uint16_t d);
+
 #endif
