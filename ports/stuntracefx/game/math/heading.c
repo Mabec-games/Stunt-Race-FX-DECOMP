@@ -8,11 +8,16 @@
  * sign-extended to a word. X and Y are kept in direct page $7A and $7C,
  * the sines and cosines in $7E/$7F and $86/$87, the speed in $82. No play
  * runs these; unit_heading_03 calls them.
+ *
+ * The functions take what the routines read from registers (the caller's
+ * data bank, X the object, Y, A the speed) and return A. X and Y come back
+ * unchanged (they are saved and read back from direct page); the flags are
+ * the adapters' business (heading_regs, vel_regs, move_regs).
  */
 #include "machine.h"
 #include "native.h"
 #include "hw.h"
-#include "cpu_ops.h"
+#include "math_calls.h"
 
 #define H_X 0x000002u
 #define H_Y 0x000008u
@@ -27,13 +32,28 @@
 #define SIN_TABLE 0x0096FEu
 #define COS_TABLE 0x00973Eu
 
+/* The V flag the last SEC / SBC left, for the adapters: -1 until the
+   routine has made one (V is then the caller's). */
+static int head_v;
+
+/* SEC / SBC (8-bit, binary): the result, V in head_v. */
+static uint8_t sbc8(uint8_t a, uint8_t m)
+{
+    uint8_t nm = (uint8_t)~m;
+    unsigned r = (unsigned)a + nm + 1;
+
+    cyc(16);
+    head_v = ((~(a ^ nm) & (a ^ r) & 0x80) != 0);
+    return (uint8_t)r;
+}
+
 /*
  * Signed 8 x 8 multiply of the bytes at a_at and b_at, as each routine
  * here does it inline: the magnitude of the first, doubled, to WRMPYA; the
  * magnitude of the second to WRMPYB; the high byte of the product from
  * RDMPYH, subtracted from 0 when the signs differ (the subtract sets V).
  */
-static uint8_t smul_at(uint32_t a_at, uint32_t b_at, uint8_t *p)
+static uint8_t smul_at(uint32_t a_at, uint32_t b_at)
 {
     cyc(16);
     uint8_t a = rd8(a_at), b, h, neg = 0, a_neg;
@@ -60,8 +80,7 @@ static uint8_t smul_at(uint32_t a_at, uint32_t b_at, uint8_t *p)
     cyc(!neg ? 80 : a_neg ? 92 : 82);
     h = io_rd8(RDMPYH, (uint8_t)(cpu_mul((uint8_t)(a << 1), b) >> 8));
     if (neg) {
-        *p |= P_C;
-        h = op_sbc8(0x00, h, p);
+        h = sbc8(0x00, h);
     } else { cyc(40); }
     return h;
 }
@@ -100,7 +119,7 @@ static uint32_t crossed(uint32_t table, uint8_t i)
 
 /* The flat vector from the sine and cosine at table index i: x = speed
    sin, z = speed cos; y was cleared by the caller. */
-static uint8_t flat(uint8_t i, uint8_t *p)
+static uint8_t flat(uint8_t i)
 {
     uint8_t v;
 
@@ -108,9 +127,9 @@ static uint8_t flat(uint8_t i, uint8_t *p)
     wr8(H_SIN_A, rd8(SIN_TABLE + i));
     cyc(48 + crossed(COS_TABLE, i));
     wr8(H_COS_A, rd8(COS_TABLE + i));
-    v = smul_at(H_SPEED, H_SIN_A, p);
+    v = smul_at(H_SPEED, H_SIN_A);
     store_extended(H_X, v);
-    v = smul_at(H_SPEED, H_COS_A, p);
+    v = smul_at(H_SPEED, H_COS_A);
     store_extended(H_Z, v);
     return v;
 }
@@ -119,7 +138,7 @@ static uint8_t flat(uint8_t i, uint8_t *p)
    ib (into $86/$87): x = (speed sin a) cos b, z = (speed cos a) cos b, y =
    speed sin b; each first product read back from its place before the
    second multiply. */
-static uint8_t pitched(uint8_t ia, uint8_t ib, uint8_t *p)
+static uint8_t pitched(uint8_t ia, uint8_t ib)
 {
     uint8_t v;
 
@@ -131,37 +150,52 @@ static uint8_t pitched(uint8_t ia, uint8_t ib, uint8_t *p)
     wr8(H_SIN_B, rd8(SIN_TABLE + ib));
     cyc(48 + crossed(COS_TABLE, ib));
     wr8(H_COS_B, rd8(COS_TABLE + ib));
-    wr8(H_X, cyc_then(14, smul_at(H_SPEED, H_SIN_A, p)));
-    v = smul_at(H_X, H_COS_B, p);
+    wr8(H_X, cyc_then(14, smul_at(H_SPEED, H_SIN_A)));
+    v = smul_at(H_X, H_COS_B);
     store_dec(H_X, v);
-    wr8(H_Z, cyc_then(14, smul_at(H_SPEED, H_COS_A, p)));
-    v = smul_at(H_Z, H_COS_B, p);
+    wr8(H_Z, cyc_then(14, smul_at(H_SPEED, H_COS_A)));
+    v = smul_at(H_Z, H_COS_B);
     store_dec(H_Z, v);
-    v = smul_at(H_SPEED, H_SIN_B, p);
+    v = smul_at(H_SPEED, H_SIN_B);
     store_dec(H_Y, v);
     return v;
 }
 
 /* Every routine here saves X and Y at its start and ends with X 16-bit,
-   X and Y read back, and the PLB of the caller's data bank (N, Z from it);
+   X and Y read back (they come back as they went in: nothing between
+   writes $7A-$7D), and the PLB of the caller's data bank (N, Z from it);
    C is set by the last sign test (CMP #0); A keeps its high byte. */
-static void save_xy(void)
+static void save_xy(uint16_t x, uint16_t y)
 {
     cyc(16);
-    wr16(H_SAVE_X, cpu.x);
+    wr16(H_SAVE_X, x);
     cyc(16);
-    wr16(H_SAVE_Y, cpu.y);
+    wr16(H_SAVE_Y, y);
 }
 
-static void finish(uint8_t v, uint8_t p)
+static void finish(void)
 {
-    cpu.p = (uint8_t)((p & ~P_X) | P_C);
     cyc(38);
-    cpu.x = rd16(H_SAVE_X);
+    (void)rd16(H_SAVE_X);
     cyc(16);
-    cpu.y = rd16(H_SAVE_Y);
+    (void)rd16(H_SAVE_Y);
     cyc(72);
-    cpu.p = nz8(cpu.p, cpu.db);
+}
+
+/* The registers a heading routine leaves: A's low byte v; X, Y as they
+   were; X 16-bit, C set, V from the last subtract (the caller's when
+   there was none), N, Z from the data bank. */
+static uint8_t heading_p(uint8_t p)
+{
+    p = (uint8_t)((p & ~P_X) | P_C);
+    if (head_v >= 0)
+        p = (uint8_t)((p & ~P_V) | (head_v ? P_V : 0));
+    return p;
+}
+
+static void heading_regs(uint8_t v)
+{
+    cpu.p = nz8(heading_p(cpu.p), cpu.db);
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
 }
 
@@ -170,31 +204,34 @@ static void finish(uint8_t v, uint8_t p)
  * WHAT IT DOES: Object X's flat velocity from its speed (+$17) and its
  * heading (+$15): $02 = speed sin, $94 = speed cos, $08 = 0.
  * HOW: The tables read with the data bank 0; two signed multiplies.
- * Entry: M 8-bit, X 16-bit, D = $0000; X = object. Exit: A low byte = the
- * z component's low byte; X, Y unchanged, X 16-bit; C set; V from the
- * last negating subtract; N, Z from the caller's data bank.
+ * Entry: M 8-bit, X 16-bit, D = $0000; X = object; `bank` the caller's
+ * data bank. Exit: the return value is A's low byte = the z component's
+ * low byte; X, Y unchanged, X 16-bit; C set; V from the last negating
+ * subtract; N, Z from the caller's data bank (the adapter has these).
  */
-void HeadingFlat(void)
+uint8_t HeadingFlat(uint8_t bank, uint16_t x, uint16_t y)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint8_t p = cpu.p, i, v;
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t i, v;
 
+    head_v = -1;
     cyc(30);
-    wr8(H_SPEED, cyc_then(16, rd8(b | (uint16_t)(0x2017 + cpu.x))));
-    (cyc(22), save_xy());
+    wr8(H_SPEED, cyc_then(16, rd8(b | (uint16_t)(0x2017 + x))));
+    (cyc(22), save_xy(x, y));
     cyc(16);
     wr8(H_Y, 0x00);
     cyc(16);
     wr8(H_Y + 1, 0x00);
     cyc(30);
-    i = rd8(b | (uint16_t)(0x2015 + cpu.x));
-    v = flat(i, &p);
-    finish(v, p);
+    i = rd8(b | (uint16_t)(0x2015 + x));
+    v = flat(i);
+    finish();
+    return v;
 }
 
 void abi_HeadingFlat(void)
 {
-    HeadingFlat();
+    heading_regs(HeadingFlat(cpu.db, cpu.x, cpu.y));
 }
 
 /*
@@ -205,28 +242,30 @@ void abi_HeadingFlat(void)
  * read back.
  * Entry: as HeadingFlat. Exit: as HeadingFlat.
  */
-void HeadingFlatMirrored(void)
+uint8_t HeadingFlatMirrored(uint8_t bank, uint16_t x, uint16_t y)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint8_t p = cpu.p, i, v;
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t i, v;
 
+    head_v = -1;
     cyc(30);
-    wr8(H_SPEED, cyc_then(16, rd8(b | (uint16_t)(0x2017 + cpu.x))));
+    wr8(H_SPEED, cyc_then(16, rd8(b | (uint16_t)(0x2017 + x))));
     cyc(30);
-    i = rd8(b | (uint16_t)(0x2015 + cpu.x));
-    save_xy();
+    i = rd8(b | (uint16_t)(0x2015 + x));
+    save_xy(x, y);
     cyc(16);
     wr8(H_Y, 0x00);
     cyc(16);
     wr8(H_Y + 1, 0x00);
     cyc(80);
-    v = flat((uint8_t)(~i + 2), &p);
-    finish(v, p);
+    v = flat((uint8_t)(~i + 2));
+    finish();
+    return v;
 }
 
 void abi_HeadingFlatMirrored(void)
 {
-    HeadingFlatMirrored();
+    heading_regs(HeadingFlatMirrored(cpu.db, cpu.x, cpu.y));
 }
 
 /*
@@ -239,39 +278,41 @@ void abi_HeadingFlatMirrored(void)
  * Entry: M 8-bit, X 16-bit, D = $0000; X = object. Exit: as HeadingFlat (A
  * low byte = the y component).
  */
-void HeadingPitched(void)
+uint8_t HeadingPitched(uint8_t bank, uint16_t x, uint16_t y)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint8_t p = cpu.p, h, pitch, v;
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t h, pitch, v;
 
+    head_v = -1;
     cyc(30);
-    wr8(H_SPEED, cyc_then(16, rd8(b | (uint16_t)(0x2017 + cpu.x))));
+    wr8(H_SPEED, cyc_then(16, rd8(b | (uint16_t)(0x2017 + x))));
     cyc(16);
     wr8(H_X + 1, 0x00);
     cyc(16);
     wr8(H_Y + 1, 0x00);
     cyc(16);
     wr8(H_Z + 1, 0x00);
-    save_xy();
+    save_xy(x, y);
     cyc(30);
-    h = rd8(b | (uint16_t)(0x2015 + cpu.x));
+    h = rd8(b | (uint16_t)(0x2015 + x));
     cyc(44);
-    pitch = rd8(b | (uint16_t)(0x2014 + cpu.x));
+    pitch = rd8(b | (uint16_t)(0x2014 + x));
     cyc(118);
-    v = pitched(h, (uint8_t)(~pitch + 1), &p);
-    finish(v, p);
+    v = pitched(h, (uint8_t)(~pitch + 1));
+    finish();
+    return v;
 }
 
 void abi_HeadingPitched(void)
 {
-    HeadingPitched();
+    heading_regs(HeadingPitched(cpu.db, cpu.x, cpu.y));
 }
 
 /* HeadingPitchedFrom1F7C from its second entry on: the angles from $1F7C
    (pitch) and $1F7D (heading) through data bank 0. */
-static void pitched_1f7c(void)
+static uint8_t pitched_1f7c(uint16_t x, uint16_t y)
 {
-    uint8_t p = cpu.p, h, pitch, v;
+    uint8_t h, pitch, v;
 
     cyc(16);
     wr8(H_X + 1, 0x00);
@@ -279,13 +320,14 @@ static void pitched_1f7c(void)
     wr8(H_Y + 1, 0x00);
     cyc(16);
     wr8(H_Z + 1, 0x00);
-    save_xy();
+    save_xy(x, y);
     cyc(112);
     h = rd8(0x001F7D);
     cyc(68);
     pitch = rd8(0x001F7C);
-    v = pitched((uint8_t)(~h + 1), pitch, &p);
-    finish(v, p);
+    v = pitched((uint8_t)(~h + 1), pitch);
+    finish();
+    return v;
 }
 
 /*
@@ -297,22 +339,23 @@ static void pitched_1f7c(void)
  * HeadingPitchedFrom1F7C.
  * Entry: as HeadingPitched. Exit: as HeadingPitched.
  */
-void HeadingPitchedVia1F7C(void)
+uint8_t HeadingPitchedVia1F7C(uint8_t bank, uint16_t x, uint16_t y)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)bank << 16;
 
+    head_v = -1;
     cyc(30);
-    wr8(H_SPEED, cyc_then(16, rd8(b | (uint16_t)(0x2017 + cpu.x))));
+    wr8(H_SPEED, cyc_then(16, rd8(b | (uint16_t)(0x2017 + x))));
     cyc(30);
-    wr8(b | 0x1F7D, cyc_then(24, rd8(b | (uint16_t)(0x2015 + cpu.x))));
+    wr8(b | 0x1F7D, cyc_then(24, rd8(b | (uint16_t)(0x2015 + x))));
     cyc(30);
-    wr8(b | 0x1F7C, cyc_then(24, rd8(b | (uint16_t)(0x2014 + cpu.x))));
-    pitched_1f7c();
+    wr8(b | 0x1F7C, cyc_then(24, rd8(b | (uint16_t)(0x2014 + x))));
+    return pitched_1f7c(x, y);
 }
 
 void abi_HeadingPitchedVia1F7C(void)
 {
-    HeadingPitchedVia1F7C();
+    heading_regs(HeadingPitchedVia1F7C(cpu.db, cpu.x, cpu.y));
 }
 
 /*
@@ -323,14 +366,15 @@ void abi_HeadingPitchedVia1F7C(void)
  * HOW: As HeadingPitched, the angles read with the data bank already 0.
  * Entry: M 8-bit, X 16-bit, D = $0000; $82 = speed. Exit: as HeadingPitched.
  */
-void HeadingPitchedFrom1F7C(void)
+uint8_t HeadingPitchedFrom1F7C(uint16_t x, uint16_t y)
 {
-    pitched_1f7c();
+    head_v = -1;
+    return pitched_1f7c(x, y);
 }
 
 void abi_HeadingPitchedFrom1F7C(void)
 {
-    pitched_1f7c();
+    heading_regs(HeadingPitchedFrom1F7C(cpu.x, cpu.y));
 }
 
 /*
@@ -338,32 +382,33 @@ void abi_HeadingPitchedFrom1F7C(void)
  * WHAT IT DOES: As HeadingFlat for the speed A and the heading $41 - (+$15)
  * of object X: a quarter turn from its mirror, one step on.
  * HOW: SEC / LDA #$40 / SBC (the subtract sets V), then INX.
- * Entry: M 8-bit, X 16-bit, D = $0000; A = speed, X = object. Exit: as
- * HeadingFlat.
+ * Entry: M 8-bit, X 16-bit, D = $0000; A = speed (`speed`), X = object.
+ * Exit: as HeadingFlat.
  */
-void HeadingFlatQuarterTurn(void)
+uint8_t HeadingFlatQuarterTurn(uint8_t bank, uint8_t speed, uint16_t x, uint16_t y)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint8_t p = cpu.p, i, v;
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t i, v;
 
+    head_v = -1;
     cyc(16);
-    wr8(H_SPEED, (uint8_t)cpu.a);
-    save_xy();
+    wr8(H_SPEED, speed);
+    save_xy(x, y);
     cyc(16);
     wr8(H_Y, 0x00);
     cyc(16);
     wr8(H_Y + 1, 0x00);
-    p |= P_C;
     cyc(60);
-    i = op_sbc8(0x40, rd8(b | (uint16_t)(0x2015 + cpu.x)), &p);
+    i = sbc8(0x40, rd8(b | (uint16_t)(0x2015 + x)));
     cyc(20);
-    v = flat((uint8_t)(i + 1), &p);
-    finish(v, p);
+    v = flat((uint8_t)(i + 1));
+    finish();
+    return v;
 }
 
 void abi_HeadingFlatQuarterTurn(void)
 {
-    HeadingFlatQuarterTurn();
+    heading_regs(HeadingFlatQuarterTurn(cpu.db, (uint8_t)cpu.a, cpu.x, cpu.y));
 }
 
 /*
@@ -373,59 +418,77 @@ void abi_HeadingFlatQuarterTurn(void)
  * HOW: As HeadingFlat, with INX.
  * Entry: as HeadingFlatQuarterTurn. Exit: as HeadingFlat.
  */
-void HeadingFlatSpeedA(void)
+uint8_t HeadingFlatSpeedA(uint8_t bank, uint8_t speed, uint16_t x, uint16_t y)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint8_t p = cpu.p, i, v;
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t i, v;
 
+    head_v = -1;
     cyc(16);
-    wr8(H_SPEED, (uint8_t)cpu.a);
-    save_xy();
+    wr8(H_SPEED, speed);
+    save_xy(x, y);
     cyc(16);
     wr8(H_Y, 0x00);
     cyc(16);
     wr8(H_Y + 1, 0x00);
     cyc(30);
-    i = rd8(b | (uint16_t)(0x2015 + cpu.x));
+    i = rd8(b | (uint16_t)(0x2015 + x));
     cyc(36);
-    v = flat((uint8_t)(i + 1), &p);
-    finish(v, p);
+    v = flat((uint8_t)(i + 1));
+    finish();
+    return v;
 }
 
 void abi_HeadingFlatSpeedA(void)
 {
-    HeadingFlatSpeedA();
+    heading_regs(HeadingFlatSpeedA(cpu.db, (uint8_t)cpu.a, cpu.x, cpu.y));
+}
+
+/* The flags N, Z, C, V of the last 16-bit add, for move_regs. */
+static uint8_t move_flags;
+
+static uint16_t add16(uint16_t a, uint16_t m)
+{
+    uint32_t r = (uint32_t)a + m;
+
+    move_flags = (uint8_t)(((r & 0x8000) ? P_N : 0) | ((r & 0xFFFF) == 0 ? P_Z : 0) |
+                           (r > 0xFFFF ? P_C : 0) | ((~(a ^ m) & (a ^ r) & 0x8000) ? P_V : 0));
+    return (uint16_t)r;
 }
 
 /* Object X's position (+$0C, +$0E, +$10) plus the words at $02, $08 and
-   $94, in that order; N, Z, C, V from the last add. */
-static void move_by(uint8_t *p)
+   $94, in that order; returns the new +$10. */
+static uint16_t move_by(uint8_t bank, uint16_t x)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)bank << 16;
     uint16_t v;
 
     cyc(52);
-    v = rd16(b | (uint16_t)(0x200C + cpu.x));
-    *p &= (uint8_t)~P_C;
+    v = rd16(b | (uint16_t)(0x200C + x));
     cyc(30);
-    v = op_adc16(v, rd16(H_X), p);
+    v = add16(v, rd16(H_X));
     cyc(30);
-    wr16(b | (uint16_t)(0x200C + cpu.x), v);
+    wr16(b | (uint16_t)(0x200C + x), v);
     cyc(30);
-    v = rd16(b | (uint16_t)(0x200E + cpu.x));
-    *p &= (uint8_t)~P_C;
+    v = rd16(b | (uint16_t)(0x200E + x));
     cyc(30);
-    v = op_adc16(v, rd16(H_Y), p);
+    v = add16(v, rd16(H_Y));
     cyc(30);
-    wr16(b | (uint16_t)(0x200E + cpu.x), v);
+    wr16(b | (uint16_t)(0x200E + x), v);
     cyc(30);
-    v = rd16(b | (uint16_t)(0x2010 + cpu.x));
-    *p &= (uint8_t)~P_C;
+    v = rd16(b | (uint16_t)(0x2010 + x));
     cyc(30);
-    v = op_adc16(v, rd16(H_Z), p);
+    v = add16(v, rd16(H_Z));
     cyc(30);
-    wr16(b | (uint16_t)(0x2010 + cpu.x), v);
+    wr16(b | (uint16_t)(0x2010 + x), v);
+    return v;
+}
+
+/* The moves' registers: A the new +$10, M 8-bit, N, Z, C, V from its add. */
+static void move_regs(uint16_t v)
+{
     cpu.a = v;
+    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_V)) | move_flags | P_M);
 }
 
 /* ASL of the three words at $02, $08, $94 in that order. */
@@ -449,23 +512,24 @@ static void double_vector(void)
  * (16-bit), which is left doubled twice.
  * HOW: Each word shifted left twice, all three once and then again, then
  * the adds of ObjectMoveByVector.
- * Entry: X 16-bit, D = $0000; X = object. Exit: A = the new +$10; M 8-bit;
- * N, Z, C, V from its add.
+ * Entry: X 16-bit, D = $0000; X = object; `bank` the caller's data bank.
+ * Exit: the return value is A = the new +$10; M 8-bit; N, Z, C, V from its
+ * add (the adapter has them).
  */
-void ObjectMoveByVectorTimes4(void)
+uint16_t ObjectMoveByVectorTimes4(uint8_t bank, uint16_t x)
 {
-    uint8_t p = cpu.p;
+    uint16_t v;
 
     (cyc(22), double_vector());
     double_vector();
-    move_by(&p);
+    v = move_by(bank, x);
     cyc(66);
-    cpu.p = (uint8_t)(p | P_M);
+    return v;
 }
 
 void abi_ObjectMoveByVectorTimes4(void)
 {
-    ObjectMoveByVectorTimes4();
+    move_regs(ObjectMoveByVectorTimes4(cpu.db, cpu.x));
 }
 
 /*
@@ -475,19 +539,19 @@ void abi_ObjectMoveByVectorTimes4(void)
  * HOW: Each word shifted left once, then ObjectMoveByVector.
  * Entry: as ObjectMoveByVectorTimes4. Exit: as ObjectMoveByVectorTimes4.
  */
-void ObjectMoveByVectorTimes2(void)
+uint16_t ObjectMoveByVectorTimes2(uint8_t bank, uint16_t x)
 {
-    uint8_t p = cpu.p;
+    uint16_t v;
 
     (cyc(22), double_vector());
-    move_by(&p);
+    v = move_by(bank, x);
     cyc(66);
-    cpu.p = (uint8_t)(p | P_M);
+    return v;
 }
 
 void abi_ObjectMoveByVectorTimes2(void)
 {
-    ObjectMoveByVectorTimes2();
+    move_regs(ObjectMoveByVectorTimes2(cpu.db, cpu.x));
 }
 
 /*
@@ -497,50 +561,62 @@ void abi_ObjectMoveByVectorTimes2(void)
  * HOW: Three 16-bit adds, through the caller's data bank.
  * Entry: as ObjectMoveByVectorTimes4. Exit: as ObjectMoveByVectorTimes4.
  */
-void ObjectMoveByVector(void)
+uint16_t ObjectMoveByVector(uint8_t bank, uint16_t x)
 {
-    uint8_t p = cpu.p;
+    uint16_t v = move_by(bank, x);
 
-    move_by(&p);
     cyc(66);
-    cpu.p = (uint8_t)(p | P_M);
+    return v;
 }
 
 void abi_ObjectMoveByVector(void)
 {
-    ObjectMoveByVector();
+    move_regs(ObjectMoveByVector(cpu.db, cpu.x));
 }
+
+/* The carry the velocity routines' last shift leaves (set, as
+   HeadingPitchedFrom1F7C leaves it, when there is none). */
+static int vel_carry;
 
 /* Object X's velocity (+$2E, +$30, +$32) from the vector at $02, $08, $94
    after HeadingPitchedFrom1F7C, each word shifted left `shift` times (each
-   shift a 16-bit ASL of A). */
-static void velocity_from_vector(int shift)
+   shift a 16-bit ASL of A). Returns A, the last word. */
+static uint16_t velocity_from_vector(uint8_t bank, uint16_t x, uint16_t y, int shift)
 {
     static const uint32_t from[3] = {H_X, H_Y, H_Z};
-    uint32_t b;
+    uint32_t b = (uint32_t)bank << 16;
     uint16_t v = 0;
     unsigned i;
     int k;
 
-    (cyc(62), abi_HeadingPitchedFrom1F7C());
-    b = (uint32_t)cpu.db << 16;
+    cyc(62);
+    HeadingPitchedFrom1F7C(x, y);
+    vel_carry = 1;
     cyc(22);
     for (i = 0; i < 3; i++) {
         cyc(16);
         v = rd16(from[i]);
-        cpu.p = nz16(cpu.p, v);
         for (k = 0; k < shift; k++) {
             cyc(14);
-            cpu.p = (uint8_t)((cpu.p & ~P_C) | (v >> 15));
+            vel_carry = v >> 15;
             v = (uint16_t)(v << 1);
-            cpu.p = nz16(cpu.p, v);
         }
         cyc(30);
-        wr16(b | (uint16_t)(0x202E + 2 * i + cpu.x), v);
+        wr16(b | (uint16_t)(0x202E + 2 * i + x), v);
     }
     cyc(66);
+    return v;
+}
+
+/* The velocity routines' registers: A the last word, M 8-bit, X 16-bit;
+   N, Z from A; C and V as left. */
+static void vel_regs(uint16_t v)
+{
+    uint8_t p = heading_p(cpu.p);
+
+    p = (uint8_t)((p & ~P_C) | (vel_carry ? P_C : 0));
+    cpu.p = (uint8_t)(nz16(p, v) | P_M);
     cpu.a = v;
-    cpu.p |= P_M;
 }
 
 /*
@@ -549,17 +625,18 @@ static void velocity_from_vector(int shift)
  * HeadingPitchedFrom1F7C makes for the speed in $82 and the angles at
  * $1F7C/$1F7D.
  * HOW: The vector's words copied, 16-bit, through the caller's data bank.
- * Entry: M 8-bit, X 16-bit, D = $0000; X = object. Exit: A = the z word;
- * M 8-bit; N, Z from it; C, V as HeadingPitchedFrom1F7C leaves them.
+ * Entry: M 8-bit, X 16-bit, D = $0000; X = object. Exit: the return value
+ * is A = the z word; M 8-bit; N, Z from it; C, V as HeadingPitchedFrom1F7C
+ * leaves them (the adapter has them).
  */
-void ObjectVelocityFromHeading(void)
+uint16_t ObjectVelocityFromHeading(uint8_t bank, uint16_t x, uint16_t y)
 {
-    velocity_from_vector(0);
+    return velocity_from_vector(bank, x, y, 0);
 }
 
 void abi_ObjectVelocityFromHeading(void)
 {
-    velocity_from_vector(0);
+    vel_regs(ObjectVelocityFromHeading(cpu.db, cpu.x, cpu.y));
 }
 
 /*
@@ -569,14 +646,14 @@ void abi_ObjectVelocityFromHeading(void)
  * Entry: as ObjectVelocityFromHeading. Exit: as ObjectVelocityFromHeading,
  * C from the last shift.
  */
-void ObjectVelocityFromHeadingTimes2(void)
+uint16_t ObjectVelocityFromHeadingTimes2(uint8_t bank, uint16_t x, uint16_t y)
 {
-    velocity_from_vector(1);
+    return velocity_from_vector(bank, x, y, 1);
 }
 
 void abi_ObjectVelocityFromHeadingTimes2(void)
 {
-    velocity_from_vector(1);
+    vel_regs(ObjectVelocityFromHeadingTimes2(cpu.db, cpu.x, cpu.y));
 }
 
 /*
@@ -586,14 +663,14 @@ void abi_ObjectVelocityFromHeadingTimes2(void)
  * Entry: as ObjectVelocityFromHeading. Exit: as
  * ObjectVelocityFromHeadingTimes2.
  */
-void ObjectVelocityFromHeadingTimes4(void)
+uint16_t ObjectVelocityFromHeadingTimes4(uint8_t bank, uint16_t x, uint16_t y)
 {
-    velocity_from_vector(2);
+    return velocity_from_vector(bank, x, y, 2);
 }
 
 void abi_ObjectVelocityFromHeadingTimes4(void)
 {
-    velocity_from_vector(2);
+    vel_regs(ObjectVelocityFromHeadingTimes4(cpu.db, cpu.x, cpu.y));
 }
 
 /*
@@ -603,14 +680,14 @@ void abi_ObjectVelocityFromHeadingTimes4(void)
  * Entry: as ObjectVelocityFromHeading. Exit: as
  * ObjectVelocityFromHeadingTimes2.
  */
-void ObjectVelocityFromHeadingTimes8(void)
+uint16_t ObjectVelocityFromHeadingTimes8(uint8_t bank, uint16_t x, uint16_t y)
 {
-    velocity_from_vector(3);
+    return velocity_from_vector(bank, x, y, 3);
 }
 
 void abi_ObjectVelocityFromHeadingTimes8(void)
 {
-    velocity_from_vector(3);
+    vel_regs(ObjectVelocityFromHeadingTimes8(cpu.db, cpu.x, cpu.y));
 }
 
 /*
@@ -621,12 +698,13 @@ void abi_ObjectVelocityFromHeadingTimes8(void)
  * HOW: $02 to $1F7C, $94 to $82, $40 to $1F7D (8-bit, the first and last
  * through the caller's data bank), then the words at $02 and $08 copied to
  * +$2E and +$30.
- * Entry: M 8-bit, X 16-bit, D = $0000; X = object. Exit: A = the word at
- * $08; M 8-bit; N, Z from it; C, V as HeadingPitchedFrom1F7C leaves them.
+ * Entry: M 8-bit, X 16-bit, D = $0000; X = object. Exit: the return value
+ * is A = the word at $08; M 8-bit; N, Z from it; C, V as
+ * HeadingPitchedFrom1F7C leaves them (the adapter has them).
  */
-void ObjectVelocityLevelFromDp(void)
+uint16_t ObjectVelocityLevelFromDp(uint8_t bank, uint16_t x, uint16_t y)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)bank << 16;
     uint16_t v;
 
     cyc(16);
@@ -635,24 +713,24 @@ void ObjectVelocityLevelFromDp(void)
     wr8(H_SPEED, cyc_then(16, rd8(H_Z)));
     cyc(40);
     wr8(b | 0x1F7D, 0x40);
-    (cyc(62), abi_HeadingPitchedFrom1F7C());
-    b = (uint32_t)cpu.db << 16;
+    cyc(62);
+    HeadingPitchedFrom1F7C(x, y);
     cyc(38);
     v = rd16(H_X);
     cyc(30);
-    wr16(b | (uint16_t)(0x202E + cpu.x), v);
+    wr16(b | (uint16_t)(0x202E + x), v);
     cyc(16);
     v = rd16(H_Y);
     cyc(30);
-    wr16(b | (uint16_t)(0x2030 + cpu.x), v);
+    wr16(b | (uint16_t)(0x2030 + x), v);
     cyc(30);
-    wr16(b | (uint16_t)(0x2032 + cpu.x), 0x0000);
+    wr16(b | (uint16_t)(0x2032 + x), 0x0000);
     cyc(66);
-    cpu.a = v;
-    cpu.p = (uint8_t)(nz16(cpu.p, v) | P_M);
+    return v;
 }
 
 void abi_ObjectVelocityLevelFromDp(void)
 {
-    ObjectVelocityLevelFromDp();
+    vel_carry = 1;
+    vel_regs(ObjectVelocityLevelFromDp(cpu.db, cpu.x, cpu.y));
 }

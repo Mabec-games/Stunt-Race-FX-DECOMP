@@ -46,4 +46,24 @@ uint16_t MulWordByteLong(uint8_t bank, uint8_t *yout);
 uint16_t RotateXZWide(uint8_t angle, int x8, uint16_t *x, uint16_t *y);
 uint16_t RotateXZWideFrom08(uint8_t angle, int x8, uint16_t *x, uint16_t *y);
 
+/* An object's velocity from its speed and heading (heading.c): `bank` the
+   caller's data bank, x the object, y the Y register; A's low byte back. */
+uint8_t HeadingFlat(uint8_t bank, uint16_t x, uint16_t y);
+uint8_t HeadingFlatMirrored(uint8_t bank, uint16_t x, uint16_t y);
+uint8_t HeadingPitched(uint8_t bank, uint16_t x, uint16_t y);
+uint8_t HeadingPitchedVia1F7C(uint8_t bank, uint16_t x, uint16_t y);
+uint8_t HeadingPitchedFrom1F7C(uint16_t x, uint16_t y);
+uint8_t HeadingFlatQuarterTurn(uint8_t bank, uint8_t speed, uint16_t x, uint16_t y);
+uint8_t HeadingFlatSpeedA(uint8_t bank, uint8_t speed, uint16_t x, uint16_t y);
+/* Moving an object by the vector at $02, $08, $94: the new +$10. */
+uint16_t ObjectMoveByVectorTimes4(uint8_t bank, uint16_t x);
+uint16_t ObjectMoveByVectorTimes2(uint8_t bank, uint16_t x);
+uint16_t ObjectMoveByVector(uint8_t bank, uint16_t x);
+/* The object's velocity from the vector: the last word (A). */
+uint16_t ObjectVelocityFromHeading(uint8_t bank, uint16_t x, uint16_t y);
+uint16_t ObjectVelocityFromHeadingTimes2(uint8_t bank, uint16_t x, uint16_t y);
+uint16_t ObjectVelocityFromHeadingTimes4(uint8_t bank, uint16_t x, uint16_t y);
+uint16_t ObjectVelocityFromHeadingTimes8(uint8_t bank, uint16_t x, uint16_t y);
+uint16_t ObjectVelocityLevelFromDp(uint8_t bank, uint16_t x, uint16_t y);
+
 #endif
