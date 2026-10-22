@@ -48,6 +48,13 @@ uint8_t Bg2ScrollFromTable(uint16_t band)
     return bg2_scroll(band, 1);
 }
 
+/* The same with 8-bit index registers (X's low byte, no page-crossing
+   cycle from a 16-bit index). */
+uint8_t Bg2ScrollFromTableX8(uint8_t band)
+{
+    return bg2_scroll(band, 0);
+}
+
 void abi_Bg2ScrollFromTable(void)
 {
     int wide = !(cpu.p & P_X);

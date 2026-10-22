@@ -18,6 +18,7 @@ uint8_t FixedColourFromStep(void);
 /* scroll.c: BG2's scroll from the pair for a band (X 16-bit); the
    vertical high byte. */
 uint8_t Bg2ScrollFromTable(uint16_t band);
+uint8_t Bg2ScrollFromTableX8(uint8_t band);
 
 /* fade.c: one frame of the screen fade; the new level. */
 uint16_t FadeStepFixed(void);
@@ -103,5 +104,16 @@ WindowRegs ColdataTopBandStep(WindowRegs r, uint8_t bank, uint8_t *p);
 WindowRegs ColdataLowBandStep(uint8_t bank, uint16_t dp, uint8_t *p);
 WindowRegs ColdataLevelStep(WindowRegs r, uint8_t bank, uint8_t *p);
 WindowRegs WindowSlideCheck(WindowRegs r, uint8_t p0, uint16_t dp);
+
+/* The NMI's uploads and their parts (video/dma.c). x8: index registers
+   8-bit (CgramUploadAll's PLP is shorter then); the NmiFrameUpload*
+   entries that pull P return it (-1: none pulled). */
+uint16_t VramWriteRowFromGsuRam(uint16_t vram);
+int VramUploadGsuBuffer(void);
+void CgramUploadAll(uint8_t bank, int x8);
+void NmiFrameUpload(uint8_t bank);
+int NmiFrameUploadRace(uint8_t bank);
+uint8_t NmiFrameUploadSprites(uint8_t bank);
+uint16_t VramRowsCopyUnused(uint8_t bank, uint16_t *x, uint16_t n);
 
 #endif
