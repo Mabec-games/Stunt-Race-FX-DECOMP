@@ -11,8 +11,12 @@
 #include "native.h"
 #include "hw.h"
 #include "cpu_ops.h"
+#include "gsu_calls.h"
 
 uint8_t GsuRun(uint8_t bank, uint16_t start);
+void abi_GsuRun(void);
+void abi_GsuBytes200_BFB3BE(void);
+void abi_GsuBytes200_BFBCBD(void);
 uint16_t GsuParam216B(uint8_t bank, uint16_t index);
 void GsuBytes200_0F050E(void);
 void GsuBytes200_0F080E(void);
@@ -502,19 +506,17 @@ static uint16_t view_setup_tail(uint8_t bank)
  * Entry: D = $0000; any widths. Exit: A = GsuParamsFromDp's A; X = $80;
  * Y = 0; P unchanged.
  */
+uint16_t ViewSetup(uint8_t bank)
+{
+    cyc(22);                            /* SEP #$30; the tail's PLP and RTL are stated */
+    return view_setup_tail(bank);
+}
+
 void abi_ViewSetup(void)
 {
-    uint8_t p0 = cpu.p;
-
-    op_sep(P_M | P_X);
-    cpu.a = view_setup_tail(cpu.db);
+    cpu.a = ViewSetup(cpu.db);
     cpu.x = 0x0080;
     cpu.y = 0x0000;
-    cpu.p = p0;                         /* the tail's PLP and RTL are stated */
-    if (p0 & P_X) {
-        cpu.x &= 0x00FF;
-        cpu.y &= 0x00FF;
-    }
 }
 
 /* ViewSetup from inside (03:AE73), its P already pushed: the long jumps at
@@ -696,19 +698,18 @@ static uint8_t gsu_digit_pair_0e74(uint8_t bank, uint16_t *index)
     return (cyc(42), f15b());
 }
 
+static uint16_t digit_index;            /* the adapter's: the low digit's table offset */
+
 uint8_t GsuDigitPair0E74(uint8_t bank)
 {
-    uint16_t index;
-
-    return gsu_digit_pair_0e74(bank, &index);
+    return gsu_digit_pair_0e74(bank, &digit_index);
 }
 
 void abi_GsuDigitPair0E74(void)
 {
-    uint16_t index;
-    uint8_t mode = gsu_digit_pair_0e74(cpu.db, &index);
+    uint8_t mode = GsuDigitPair0E74(cpu.db);
     cyc(158);
-    uint16_t hi = (uint16_t)(rd16((uint32_t)cpu.db << 16 | (uint16_t)(0x8E3E + index)) & 0xFF00);
+    uint16_t hi = (uint16_t)(rd16((uint32_t)cpu.db << 16 | (uint16_t)(0x8E3E + digit_index)) & 0xFF00);
 
     cpu.a = (uint16_t)(hi | mode);
     cpu.x = 0xF15B;
@@ -881,8 +882,6 @@ void abi_ViewMatrixUpdateAndSave(void)
     cpu.p = (uint8_t)(nz16(cpu.p, cpu.a) | P_M | P_X);
 }
 
-void abi_Gsu81E3(void);
-
 /*
  * @routine 02:E016 Gsu81E3Long
  * WHAT IT DOES: Gsu81E3 for callers in other banks.
@@ -891,19 +890,19 @@ void abi_Gsu81E3(void);
  */
 uint16_t Gsu81E3Long(void)
 {
-    return Gsu81E3();
+    uint16_t v;
+
+    cyc(46);
+    v = Gsu81E3();
+    cyc(66);
+    return v;
 }
 
 void abi_Gsu81E3Long(void)
 {
-    cyc(46);
-    abi_Gsu81E3();
+    cpu.a = Gsu81E3Long();
     cpu.p = (uint8_t)(cpu.p & ~P_M);
-    cyc(66);
 }
-
-void abi_ViewMatrixUpdateAndSave(void);
-void abi_GsuRun(void);
 
 /*
  * @routine 02:DB59 ViewUpdateAndGsuAEF8
@@ -913,22 +912,28 @@ void abi_GsuRun(void);
  * Entry: D = $0000. Exit: A low byte = the screen mode value; X = $AEF8;
  * Y high byte clear; M 8-bit, X 16-bit; N, Z from the data bank.
  */
+static uint8_t aef8_high;               /* the adapter's: A's high byte from the matrix */
+
 uint8_t ViewUpdateAndGsuAEF8(uint8_t bank)
 {
-    ViewMatrixUpdateAndSave(bank);
-    return GsuRun(0x01, 0xAEF8);
+    uint8_t mode;
+
+    cyc(62);
+    aef8_high = (uint8_t)(ViewMatrixUpdateAndSave(bank) >> 8);
+    mode = (cyc(168), GsuRun(0x01, 0xAEF8));
+    cyc(72);                            /* GsuRun's PLB, RTL */
+    cyc(88);
+    return mode;
 }
 
 void abi_ViewUpdateAndGsuAEF8(void)
 {
-    cyc(62);
-    abi_ViewMatrixUpdateAndSave();
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
+    uint8_t mode = ViewUpdateAndGsuAEF8(cpu.db);
+
+    cpu.a = (uint16_t)(aef8_high << 8 | mode);
     cpu.x = 0xAEF8;
-    cpu.p = (uint8_t)(nz16((uint8_t)((cpu.p | P_M) & ~P_X), 0xAEF8));
-    (cyc(168), abi_GsuRun());
-    cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
-    cyc(88);
+    cpu.y &= 0x00FF;
+    cpu.p = (uint8_t)((nz8(cpu.p, cpu.db) | P_M) & ~P_X);
 }
 
 /*
@@ -978,22 +983,28 @@ static uint8_t gsu_f329_sequence(uint8_t bank, uint16_t y, uint16_t *last)
     return GsuF329Entry(bank, e);
 }
 
+static uint16_t f329_last;              /* the adapter's: the fifth byte's word */
+
 uint8_t GsuF329Sequence(uint8_t bank, uint16_t y)
 {
-    uint16_t last;
+    return gsu_f329_sequence(bank, y, &f329_last);
+}
 
-    return gsu_f329_sequence(bank, y, &last);
+/* What GsuF329Sequence's exit adds to A: the high byte of the fifth
+   byte's entry in the table at $8E52. */
+static uint16_t f329_high(uint8_t bank)
+{
+    uint16_t index = (uint16_t)((f329_last & 0x000F) << 1);
+
+    cyc(114);
+    return (uint16_t)(rd16((uint32_t)bank << 16 | (uint16_t)(0x8E52 + index)) & 0xFF00);
 }
 
 void abi_GsuF329Sequence(void)
 {
-    uint16_t last;
-    uint8_t mode = gsu_f329_sequence(cpu.db, cpu.y, &last);
-    uint16_t index = (uint16_t)((last & 0x000F) << 1);
-    cyc(114);
-    uint16_t hi = (uint16_t)(rd16((uint32_t)cpu.db << 16 | (uint16_t)(0x8E52 + index)) & 0xFF00);
+    uint8_t mode = GsuF329Sequence(cpu.db, cpu.y);
 
-    cpu.a = (uint16_t)(hi | mode);
+    cpu.a = (uint16_t)(f329_high(cpu.db) | mode);
     cpu.x = 0xF329;
     cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~P_C);
 }
@@ -1356,13 +1367,19 @@ static uint8_t glyph_rows_at(uint16_t input, uint16_t x, const uint16_t *piece, 
  * and the screen mode value; X = $F15B; M 16-bit, X 16-bit; N, Z from the
  * data bank.
  */
-void abi_GlyphRowsAt32(void)
+uint8_t GlyphRowsAt32(uint16_t input)
 {
     static const uint16_t piece[9] = {0x881C, 0x8418, 0x9004, 0x8C14, 0x0000,
                                       0x8408, 0x8C0C, 0x8418, 0x8408};
+    uint8_t mode = glyph_rows_at(input, 0x0020, piece, 9);
 
-    cpu.a = (uint16_t)(0x8400 | glyph_rows_at(cpu.a, 0x0020, piece, 9));
     cyc(136);                           /* GsuRun's PLB, RTL; the second REP, RTS */
+    return mode;
+}
+
+void abi_GlyphRowsAt32(void)
+{
+    cpu.a = (uint16_t)(0x8400 | GlyphRowsAt32(cpu.a));
     cpu.x = 0xF15B;
     cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X));
 }
@@ -1378,11 +1395,16 @@ void abi_GlyphRowsAt32(void)
  * and the screen mode value; X = $F15B; M 16-bit, X 16-bit; N, Z from the
  * data bank.
  */
-void abi_GlyphRowsAt56(void)
+uint8_t GlyphRowsAt56(uint16_t input)
 {
     static const uint16_t piece[6] = {0x841C, 0x8808, 0x881C, 0x8808, 0x8C10, 0x8804};
 
-    cpu.a = (uint16_t)(0x8800 | glyph_rows_at(cpu.a, 0x0038, piece, 6));
+    return glyph_rows_at(input, 0x0038, piece, 6);
+}
+
+void abi_GlyphRowsAt56(void)
+{
+    cpu.a = (uint16_t)(0x8800 | GlyphRowsAt56(cpu.a));
     cpu.x = 0xF15B;
     cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X));
 }
@@ -1397,13 +1419,14 @@ static uint32_t absx(uint8_t bank, uint16_t x, uint16_t k)
 
 /* The piece list loop of 07:81C2 and 07:81ED: each word of the list at X
    up to $FFFF to $70:0216, then GsuBytes200_BFB7B6 and the program (X and
-   P kept across the calls). N, Z, C as CMP #$FFFF leaves them at the end. */
-static void pieces_list(uint16_t program)
+   P kept across the calls). Returns the end marker's offset; the adapters
+   set N, Z, C as CMP #$FFFF leaves them. */
+static uint16_t pieces_list(uint8_t bank, uint16_t x, uint16_t program)
 {
     uint16_t a;
 
     for (;;) {
-        a = rd16(cyc_then(30, absx(cpu.db, cpu.x, 0)));
+        a = rd16(cyc_then(30, absx(bank, x, 0)));
         if (a == 0xFFFF)
             { cyc(88); break; }
         cyc(72);
@@ -1412,10 +1435,9 @@ static void pieces_list(uint16_t program)
         cyc(218);
         GsuRun(0x07, program);
         cyc(program == 0xF6DF ? 252 : 230);     /* RTL, the rest of the loop */
-        cpu.x = (uint16_t)(cpu.x + 2);
+        x = (uint16_t)(x + 2);
     }
-    cpu.a = 0xFFFF;
-    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C)) | P_Z | P_C);
+    return x;
 }
 
 /*
@@ -1430,19 +1452,29 @@ static void pieces_list(uint16_t program)
  * Entry: M 16-bit, X 16-bit; X = the record. Exit: A = $FFFF; X = the end
  * marker's offset; N clear, Z and C set (CMP #$FFFF); V from the ADC.
  */
-void abi_GsuPiecesFromRecord(void)
+static int record_v;                    /* the adapter's: V from the ADC #$000E */
+
+uint16_t GsuPiecesFromRecord(uint8_t bank, uint16_t x)
 {
     static const uint16_t to[6] = {0x020A, 0x020C, 0x020E, 0x0210, 0x0212, 0x0214};
     unsigned i;
+    uint16_t list;
 
     for (i = 0; i < 6; i++)
-        wr16(0x700000 | to[i], cyc_then(32, rd16(cyc_then(30, absx(cpu.db, cpu.x, (uint16_t)(2 * i))))));
-    rd16(cyc_then(30, absx(cpu.db, cpu.x, 0x000C)));
-    wr16(0x700216, cyc_then(32, rd16(cyc_then(30, absx(cpu.db, cpu.x, 0x000E)))));
-    cpu.p &= (uint8_t)~P_C;
-    cpu.x = op_adc16(cpu.x, 0x000E, &cpu.p);
+        wr16(0x700000 | to[i], cyc_then(32, rd16(cyc_then(30, absx(bank, x, (uint16_t)(2 * i))))));
+    rd16(cyc_then(30, absx(bank, x, 0x000C)));
+    wr16(0x700216, cyc_then(32, rd16(cyc_then(30, absx(bank, x, 0x000E)))));
+    list = (uint16_t)(x + 0x000E);
+    record_v = (~x & list & 0x8000) != 0;
     cyc(66);
-    pieces_list(0xFAF2);
+    return pieces_list(bank, list, 0xFAF2);
+}
+
+void abi_GsuPiecesFromRecord(void)
+{
+    cpu.x = GsuPiecesFromRecord(cpu.db, cpu.x);
+    cpu.a = 0xFFFF;
+    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_V | P_Z | P_C)) | (record_v ? P_V : 0) | P_Z | P_C);
 }
 
 /*
@@ -1458,9 +1490,16 @@ void abi_GsuPiecesFromRecord(void)
  * marker's offset; N clear, Z and C set (CMP #$FFFF); the other flags as at
  * entry.
  */
+uint16_t GsuPiecesListFAF2(uint8_t bank, uint16_t list)
+{
+    return pieces_list(bank, list, 0xFAF2);
+}
+
 void abi_GsuPiecesListFAF2(void)
 {
-    pieces_list(0xFAF2);
+    cpu.x = GsuPiecesListFAF2(cpu.db, cpu.x);
+    cpu.a = 0xFFFF;
+    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C)) | P_Z | P_C);
 }
 
 /*
@@ -1485,11 +1524,17 @@ void abi_GsuPiecesReturn(void)
  * Entry: X = the list. Exit: A = $FFFF; X = the end marker's offset; M and X
  * 16-bit; N clear, Z and C set (CMP #$FFFF); the other flags as at entry.
  */
+uint16_t GsuPiecesListF6DF(uint8_t bank, uint16_t list)
+{
+    cyc(22);
+    return pieces_list(bank, list, 0xF6DF);
+}
+
 void abi_GsuPiecesListF6DF(void)
 {
-    cpu.p &= (uint8_t)~(P_M | P_X);
-    cyc(22);
-    pieces_list(0xF6DF);
+    cpu.x = GsuPiecesListF6DF(cpu.db, cpu.x);
+    cpu.a = 0xFFFF;
+    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_M | P_X)) | P_Z | P_C);
 }
 
 /*
@@ -1506,10 +1551,12 @@ void abi_GsuPiecesListF6DF(void)
  * Entry: M 16-bit; data bank with the PPU registers. Exit: A = the new
  * $70:020C; X, Y unchanged; N, V, Z, C from the ADC.
  */
-void abi_GsuPieceOffsetFromView(void)
+static uint8_t offset_flags;            /* the adapter's: N, V, Z, C from the ADC */
+
+uint16_t GsuPieceOffsetFromView(uint8_t bank)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint16_t a, m;
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t a, m, r;
 
     cyc(32);
     wr16(b | 0x0E84, cyc_then(38, (uint16_t)(rd16(0x70003E) >> 1)));
@@ -1522,9 +1569,9 @@ void abi_GsuPieceOffsetFromView(void)
     io_wr16(b | 0x211C, m = cyc_then(24, rd16(b | 0x0E8E)));   /* M7B, then M7C */
     cyc(24);
     a = (uint16_t)(io_rd16(b | 0x2135, (uint16_t)(ppu_mul((uint8_t)m) >> 8)) >> 1);
-    cpu.p |= P_C;
     cyc(52);
-    a = op_sbc16(a, rd16(b | 0x0E82), &cpu.p);
+    a = (uint16_t)(a - rd16(b | 0x0E82));
+    cyc(6);                             /* the SBC's time, as op_sbc16 states it */
     a = (uint16_t)((a ^ 0xFFFF) + 1);
     cyc(64);
     wr16(0x70020A, a);
@@ -1535,13 +1582,21 @@ void abi_GsuPieceOffsetFromView(void)
     io_wr16(b | 0x211C, 0xFFF0);
     cyc(24);
     a = io_rd16(b | 0x2135, (uint16_t)(ppu_mul(0xF0) >> 8));
-    cpu.p &= (uint8_t)~P_C;
     cyc(38);
-    a = op_adc16(a, rd16(b | 0x0E84), &cpu.p);
+    m = rd16(b | 0x0E84);
+    r = (uint16_t)(a + m);
+    offset_flags = (uint8_t)(nz16(0, r) | ((unsigned)a + m > 0xFFFF ? P_C : 0)
+                             | ((~(a ^ m) & (a ^ r) & 0x8000) ? P_V : 0));
     cyc(32);
-    wr16(0x70020C, a);
-    cpu.a = a;
+    wr16(0x70020C, r);
     cyc(42);                            /* RTS */
+    return r;
+}
+
+void abi_GsuPieceOffsetFromView(void)
+{
+    cpu.a = GsuPieceOffsetFromView(cpu.db);
+    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_V | P_Z | P_C)) | offset_flags);
 }
 
 /*
@@ -1601,10 +1656,13 @@ void abi_GsuReciprocal(void)
  * Entry: M 16-bit, X 16-bit, D = $0000; data bank with the PPU registers.
  * Exit: A = the second reciprocal; X = $0E8E; N, Z from A; C set.
  */
-void abi_GsuPieceScaleFromView(void)
+static uint16_t scale_e;                /* the adapter's: $0E8E, left in X */
+
+uint16_t GsuPieceScaleFromView(uint8_t bank)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint16_t e, q1, q2, m, n;
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t e, q1, q2, m, n, r;
+    uint8_t p = 0;
 
     cyc(24);
     io_wr16(b | 0x211B, m = cyc_then(24, rd16(b | 0x0E86)));
@@ -1643,15 +1701,23 @@ void abi_GsuPieceScaleFromView(void)
     cyc(16);
     wr16(0x0000F1, q2);
     cyc(46);
-    wr16(0x700214, cyc_then(74, GsuReciprocal(cpu.db, &cpu.p)));
+    wr16(0x700214, cyc_then(74, GsuReciprocal(bank, &p)));
     cyc(52);
     wr16(0x0000F1, q1);
     cyc(46);
-    cpu.a = GsuReciprocal(cpu.db, &cpu.p);
+    r = GsuReciprocal(bank, &p);
     cyc(74);
-    wr16(0x700212, cpu.a);
-    cpu.x = e;
+    wr16(0x700212, r);
+    scale_e = e;
     cyc(42);                            /* RTS */
+    return r;
+}
+
+void abi_GsuPieceScaleFromView(void)
+{
+    cpu.a = GsuPieceScaleFromView(cpu.db);
+    cpu.x = scale_e;
+    cpu.p = (uint8_t)(nz16(cpu.p, cpu.a) | P_C);
 }
 
 /*
@@ -1679,19 +1745,26 @@ void abi_GsuReciprocalReturn(void)
  * marker's offset; N clear, Z and C set (CMP #$FFFF); the other flags as at
  * entry.
  */
-void abi_GsuPiecesFromBytes(void)
+uint16_t GsuPiecesFromBytes(uint8_t bank, uint16_t x)
 {
     static const uint16_t to[4] = {0x020E, 0x0210, 0x0212, 0x0214};
     unsigned i;
 
-    wr16(0x70020A, cyc_then(56, (uint16_t)(rd16(cyc_then(30, absx(cpu.db, cpu.x, 0))) & 0x00FF)));
-    wr16(0x70020C, cyc_then(56, (uint16_t)(rd16(cyc_then(30, absx(cpu.db, cpu.x, 1))) & 0x00FF)));
+    wr16(0x70020A, cyc_then(56, (uint16_t)(rd16(cyc_then(30, absx(bank, x, 0))) & 0x00FF)));
+    wr16(0x70020C, cyc_then(56, (uint16_t)(rd16(cyc_then(30, absx(bank, x, 1))) & 0x00FF)));
     for (i = 0; i < 4; i++)
-        wr16(0x700000 | to[i], cyc_then(32, rd16(cyc_then(30, absx(cpu.db, cpu.x, (uint16_t)(2 + 2 * i))))));
-    rd16(cyc_then(30, absx(cpu.db, cpu.x, 0x000A)));
-    cpu.x = rd16(cyc_then(54, absx(cpu.db, cpu.x, 0x000B)));
+        wr16(0x700000 | to[i], cyc_then(32, rd16(cyc_then(30, absx(bank, x, (uint16_t)(2 + 2 * i))))));
+    rd16(cyc_then(30, absx(bank, x, 0x000A)));
+    x = rd16(cyc_then(54, absx(bank, x, 0x000B)));
     cyc(14);
-    pieces_list(0xFAF2);
+    return pieces_list(bank, x, 0xFAF2);
+}
+
+void abi_GsuPiecesFromBytes(void)
+{
+    cpu.x = GsuPiecesFromBytes(cpu.db, cpu.x);
+    cpu.a = 0xFFFF;
+    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C)) | P_Z | P_C);
 }
 
 /*
@@ -1753,27 +1826,7 @@ void abi_GsuPiecesStep10CB(void)
     cpu.p = nz8(p, cpu.db);
 }
 
-void abi_Gsu81E3Long(void);
-void abi_ObjectGsu80BC(void);
-
-/* A - B as SEC / SBC does it, leaving C and V in cpu.p. */
-static uint16_t sbc16(uint16_t a, uint16_t b)
-{
-    uint16_t r = (uint16_t)(a - b);
-
-    cpu.p = (uint8_t)((cpu.p & ~(P_C | P_V)) | (a >= b ? P_C : 0) | (((a ^ b) & (a ^ r) & 0x8000) ? P_V : 0));
-    return r;
-}
-
-/* The exit of the two routines below: X, Y restored (N, Z from X), M
-   16-bit; `clocks` is the time of their exit code. */
-static void restore_xy(uint16_t x, uint16_t y, unsigned clocks)
-{
-    cyc(clocks);
-    cpu.y = y;
-    cpu.x = x;
-    cpu.p = (uint8_t)(nz16(cpu.p & ~P_M, x));
-}
+static uint8_t object_cv;               /* the adapters': C and V of the last subtract */
 
 /*
  * @routine 03:C998 ObjectGsu80BCThen81E3
@@ -1784,27 +1837,31 @@ static void restore_xy(uint16_t x, uint16_t y, unsigned clocks)
  * Entry: X 16-bit, D = $0000; X = object. Exit: A as Gsu81E3Long leaves it;
  * X, Y unchanged; M 16-bit; N, Z from X.
  */
-void ObjectGsu80BCThen81E3(void)
+uint16_t ObjectGsu80BCThen81E3(uint8_t bank, uint16_t x)
 {
-    uint16_t x = cpu.x, y = cpu.y;
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t p = 0;
+    uint16_t v;
 
-    cpu.p &= (uint8_t)~P_M;
-    abi_ObjectGsu80BC();
+    cyc(144);
+    v = ObjectGsu80BC(bank, x, &p);
     cyc(16);
-    wr16(0x000008, cpu.a);
+    wr16(0x000008, v);
     cyc(24);
-    cpu.a = sbc16(rd16(b | 0x000A), rd16(cyc_then(44, b | (uint16_t)(0x200E + x))));
+    object_cv = 0;
+    v = sub16(rd16(b | 0x000A), rd16(cyc_then(44, b | (uint16_t)(0x200E + x))), &object_cv);
     cyc(16);
-    wr16(0x000002, cpu.a);
-    (cyc(62), abi_Gsu81E3Long());
+    wr16(0x000002, v);
+    v = (cyc(62), Gsu81E3Long());
     cyc(62);
-    restore_xy(x, y, 98);
+    cyc(98);
+    return v;
 }
 
 void abi_ObjectGsu80BCThen81E3(void)
 {
-    (cyc(144), ObjectGsu80BCThen81E3());
+    cpu.a = ObjectGsu80BCThen81E3(cpu.db, cpu.x);
+    cpu.p = nz16((uint8_t)((cpu.p & ~(P_M | P_X | P_C | P_V)) | object_cv), cpu.x);
 }
 
 /*
@@ -1814,32 +1871,33 @@ void abi_ObjectGsu80BCThen81E3(void)
  * HOW: 16-bit subtracts through the data bank; X and Y saved and restored.
  * Entry: X 16-bit, D = $0000; X = object. Exit: as ObjectGsu80BCThen81E3.
  */
-void ObjectGsu81E3(void)
+uint16_t ObjectGsu81E3(uint8_t bank, uint16_t x)
 {
-    uint16_t x = cpu.x, y = cpu.y;
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint16_t m, s;
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t m, s, v;
 
-    cpu.p &= (uint8_t)~P_M;
+    object_cv = 0;
     cyc(98);
     m = rd16(0x000004);
     cyc(44);
     s = rd16(b | (uint16_t)(0x200C + x));
-    wr16(0x000002, cyc_then(16, sbc16(m, s)));
+    wr16(0x000002, cyc_then(16, sub16(m, s, &object_cv)));
     cyc(24);
     m = rd16(b | 0x05F2);
     cyc(44);
     s = rd16(b | (uint16_t)(0x2010 + x));
-    cpu.a = sbc16(m, s);
+    v = sub16(m, s, &object_cv);
     cyc(16);
-    wr16(0x000008, cpu.a);
-    (cyc(62), abi_Gsu81E3Long());
-    restore_xy(x, y, 138);                  /* REP, PLY, PLX, RTL */
+    wr16(0x000008, v);
+    v = (cyc(62), Gsu81E3Long());
+    cyc(138);                           /* REP, PLY, PLX, RTL */
+    return v;
 }
 
 void abi_ObjectGsu81E3(void)
 {
-    ObjectGsu81E3();
+    cpu.a = ObjectGsu81E3(cpu.db, cpu.x);
+    cpu.p = nz16((uint8_t)((cpu.p & ~(P_M | P_C | P_V)) | object_cv), cpu.x);
 }
 
 /* Program $07:FA5A with all four of $70:020E/0210/0212/0214 = $100. */
@@ -2024,8 +2082,6 @@ void abi_GsuFA35FromTables(void)
     cyc(4);
 }
 
-void abi_GsuBytes200_0F060E(void);
-void abi_GsuRun(void);
 
 /*
  * @routine 07:9AB0 HudSixGlyphs
@@ -2036,14 +2092,14 @@ void abi_GsuRun(void);
  * HOW: Long word stores to Super FX RAM, then GsuRun per glyph.
  * Entry: D = $0000. Exit: as the last GsuRun leaves it, with M and X 16-bit.
  */
-void abi_HudSixGlyphs(void)
+uint8_t HudSixGlyphs(void)
 {
-    cyc(84);
     static const uint16_t glyph[6] = {0x8C10, 0x8C04, 0x8814, 0x8408, 0x8C10, 0x8804};
+    uint8_t mode = 0;
     unsigned i;
 
-    cpu.p &= (uint8_t)~(P_M | P_X);
-    abi_GsuBytes200_0F060E();
+    cyc(84);
+    GsuBytes200_0F060E();
     cyc(56);
     wr16(0x700210, 0x0020);
     cyc(56);
@@ -2053,49 +2109,45 @@ void abi_HudSixGlyphs(void)
     cyc(56);
     wr16(0x70020C, 0x0018);
     for (i = 0; i < 6; i++) {
-        cpu.p &= (uint8_t)~(P_M | P_X);
-        cpu.a = glyph[i];
         cyc(78);
         wr16(0x700216, glyph[i]);
-        cpu.p |= P_M;
-        cpu.x = 0xF15B;
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x07);
-        (cyc(146), abi_GsuRun());
+        mode = f15b();
+        cyc(72);                        /* GsuRun's PLB, RTL */
         cyc(44);
     }
     cyc(42);
-    cpu.p &= (uint8_t)~(P_M | P_X);
+    return mode;
 }
 
-void abi_GsuBytes200_BFB5BB(void);
-void abi_GsuBytes200_BFBCBD(void);
+void abi_HudSixGlyphs(void)
+{
+    cpu.a = (uint16_t)(0x8800 | HudSixGlyphs());
+    cpu.x = 0xF15B;
+    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X));
+}
 
 /* $70:0216 = src, then Super FX program $07:FA88 (FxSprite24x40) through
-   GsuRun; M and X 16-bit after. */
-static void sprite24x40(uint16_t src)
+   GsuRun. Returns the screen mode value. */
+static uint8_t sprite24x40(uint16_t src)
 {
-    cpu.p &= (uint8_t)~P_M;
-    cpu.a = src;
+    uint8_t mode;
+
     cyc(78);
     wr16(0x700216, src);
-    cpu.p = (uint8_t)((nz16(cpu.p, src) | P_M) & ~P_X);
-    cpu.x = 0xFA88;
-    cpu.a = (uint16_t)((src & 0xFF00) | 0x07);
-    (cyc(146), abi_GsuRun());
-    cpu.p &= (uint8_t)~(P_M | P_X);
+    mode = (cyc(146), GsuRun(0x07, 0xFA88));
+    cyc(72);                            /* GsuRun's PLB, RTL */
+    return mode;
 }
 
 /* SEP #$20, LDA $1160, CMP #n: 1 when the count is n or more (carry). */
-static int count_at_least(uint8_t n)
+static int count_at_least(uint8_t bank, uint8_t n)
 {
     uint8_t v;
 
-    cpu.p |= P_M;
     cyc(46);
-    v = rd8((uint32_t)cpu.db << 16 | 0x1160);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = nz8(cpu.p, (uint8_t)(v - n));
-    cpu.p = (uint8_t)(v >= n ? (cyc(32), cpu.p | P_C) : cpu.p & ~P_C);
+    v = rd8((uint32_t)bank << 16 | 0x1160);
+    if (v >= n)
+        cyc(32);
     return v >= n;
 }
 
@@ -2114,94 +2166,95 @@ static int count_at_least(uint8_t n)
  * byte = the new count; below 12: N, Z, C from the compare with 12, else
  * 12 with C set.
  */
-void abi_BigSpritesCountDraw(void)
+static uint8_t count_high;              /* the adapters': A's high byte, the last source's */
+static uint8_t count_flags;             /* N, Z, C from the compare with 12 */
+
+uint8_t BigSpritesCountDraw(uint8_t bank)
 {
     static const uint16_t near_[4] = {0xA018, 0xA000, 0xA518, 0xA00C}, far_[4] = {0xAA06, 0xB00C, 0xA00C, 0xAA12};
     static const uint8_t need_far[3] = {7, 8, 9};
+    uint32_t b = (uint32_t)bank << 16;
     unsigned i;
     uint8_t v;
 
-    cpu.p &= (uint8_t)~(P_M | P_X);
-    cpu.a = 0x0100;
-    cpu.p = nz16(cpu.p, 0x0100);
     cyc(78);
     wr16(0x700212, 0x0100);
     cyc(32);
     wr16(0x700214, 0x0100);
-    cpu.a = 0x0030;
-    cpu.p = nz16(cpu.p, 0x0030);
     cyc(56);
     wr16(0x70020A, 0x0030);
-    cpu.a = 0x0010;
-    cpu.p = nz16(cpu.p, 0x0010);
     cyc(56);
     wr16(0x70020C, 0x0010);
     for (i = 0; i < 4; i++) {
         sprite24x40(near_[i]);
-        if (i < 3 && (cyc(44), !count_at_least((uint8_t)(i + 1))))
+        count_high = (uint8_t)(near_[i] >> 8);
+        if (i < 3 && (cyc(44), !count_at_least(bank, (uint8_t)(i + 1))))
             { cyc(24); goto count; } else { cyc(6); }
     }
-    cpu.a = 0x0040;
-    cpu.p = nz16(cpu.p, 0x0040);
+    count_high = 0x00;                  /* LDA #$0040 */
     cyc(116);
     wr16(0x70020A, 0x0040);
-    cpu.a = 0x0040;
     cyc(56);
     wr16(0x70020C, 0x0040);
-    if (!count_at_least(6))
+    if (!count_at_least(bank, 6))
         { cyc(24); goto count; } else { cyc(6); }
     for (i = 0; i < 4; i++) {
         sprite24x40(far_[i]);
-        if (i < 3 && (cyc(44), !count_at_least(need_far[i])))
+        count_high = (uint8_t)(far_[i] >> 8);
+        if (i < 3 && (cyc(44), !count_at_least(bank, need_far[i])))
             goto count;
     }
 cyc(6);
 count:
-    cpu.p |= P_M;
     cyc(84);
-    v = rd8((uint32_t)cpu.db << 16 | 0x1160);
-    v++;
-    cpu.p = nz8(cpu.p, (uint8_t)(v - 0x0C));
+    v = (uint8_t)(rd8(b | 0x1160) + 1);
     if (v >= 0x0C) {
         cyc(10);
-        cpu.p |= P_C;
         v = 0x0C;
-        cpu.p = nz8(cpu.p, v);
+        count_flags = P_C;
     } else {
-        cpu.p &= (uint8_t)~P_C;
+        count_flags = nz8(0, (uint8_t)(v - 0x0C));
     }
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cyc(76);
-    wr8((uint32_t)cpu.db << 16 | 0x1160, v);
+    wr8(b | 0x1160, v);
     cyc(42);                            /* RTS */
+    return v;
 }
+
+void abi_BigSpritesCountDraw(void)
+{
+    uint8_t v = BigSpritesCountDraw(cpu.db);
+
+    cpu.a = (uint16_t)(count_high << 8 | v);
+    cpu.x = 0xFA88;
+    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_X)) | P_M | count_flags);
+}
+
+static int rows_counted;                /* the adapters': the rows went to BigSpritesCountDraw */
+static uint8_t rows_count;              /* its new count */
+static uint8_t row_cv;                  /* C and V from BigSpritesRow6's add of the gap */
 
 /* The common start: the renderer bytes (setter), then, with $0E5C set,
    BigSpritesCountDraw instead (a branch, so its RTS returns from the
    caller). Returns 0 when the branch was taken. */
-static int big_sprites_start(void (*setter)(void), uint32_t lda)
+static int big_sprites_start(uint8_t bank, void (*setter)(void))
 {
-    uint8_t v;
-
-    cpu.p &= (uint8_t)~P_M;
-    (cyc(68), setter());
-    cpu.p |= P_M;
-    cyc(lda);                           /* SEP, LDA; 22 less after BFBCBD, which states 22 itself */
-    v = rd8((uint32_t)cpu.db << 16 | 0x0E5C);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = nz8(cpu.p, v);
-    if (v) {
+    cyc(68);
+    setter();
+    cyc(118);                           /* SEP, LDA */
+    if (rd8((uint32_t)bank << 16 | 0x0E5C)) {
         cyc(46);
-        abi_BigSpritesCountDraw();
+        rows_counted = 1;
+        rows_count = BigSpritesCountDraw(bank);
         return 0;
     }
+    rows_counted = 0;
     return 1;
 }
 
 /* M and X 16-bit; x, y, and both steps $100 at $70:020A-$70:0214. */
 static void big_sprites_at(uint16_t x, uint16_t y)
 {
-    cpu.p &= (uint8_t)~(P_M | P_X);
     cyc(100);
     wr16(0x70020A, x);
     cyc(56);
@@ -2210,8 +2263,6 @@ static void big_sprites_at(uint16_t x, uint16_t y)
     wr16(0x700212, 0x0100);
     cyc(32);
     wr16(0x700214, 0x0100);
-    cpu.a = 0x0100;
-    cpu.p = nz16(cpu.p, 0x0100);
 }
 
 /*
@@ -2227,26 +2278,42 @@ static void big_sprites_at(uint16_t x, uint16_t y)
  * last source's high byte and the screen mode value; N, Z from the data
  * bank; C, V from adding the gap.
  */
-void abi_BigSpritesRow6(void)
+uint8_t BigSpritesRow6(uint8_t bank)
 {
     static const uint16_t first[4] = {0xB000, 0xA506, 0xA518, 0xA00C}, second[2] = {0xB006, 0xAA0C};
-    uint16_t w;
+    uint16_t w, r;
+    uint8_t mode = 0;
     unsigned i;
 
-    if (!(cyc(16), big_sprites_start(abi_GsuBytes200_BFB5BB, 118)))
-        return;
+    if (!(cyc(16), big_sprites_start(bank, GsuBytes200_BFB5BB)))
+        return rows_count;
     big_sprites_at(0x0018, 0x0028);
     for (i = 0; i < 4; i++)
         { sprite24x40(first[i]); if (i < 3) cyc(44); }
     cyc(76);
     w = rd16(0x70020A);
-    cpu.p &= (uint8_t)~P_C;
-    cpu.a = op_adc16(w, 0x0010, &cpu.p);
+    r = (uint16_t)(w + 0x0010);
+    row_cv = (uint8_t)((w > 0xFFEF ? P_C : 0) | ((~w & r & 0x8000) ? P_V : 0));
     cyc(70);
-    wr16(0x70020A, cpu.a);
+    wr16(0x70020A, r);
     for (i = 0; i < 2; i++)
-        { sprite24x40(second[i]); cyc(44); }
+        { mode = sprite24x40(second[i]); cyc(44); }
     cyc(42);
+    return mode;
+}
+
+void abi_BigSpritesRow6(void)
+{
+    uint8_t v = BigSpritesRow6(cpu.db);
+
+    cpu.x = 0xFA88;
+    if (rows_counted) {
+        cpu.a = (uint16_t)(count_high << 8 | v);
+        cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_X)) | P_M | count_flags);
+    } else {
+        cpu.a = (uint16_t)(0xAA00 | v);
+        cpu.p = (uint8_t)((nz8(cpu.p, cpu.db) & ~(P_M | P_X | P_C | P_V)) | row_cv);
+    }
 }
 
 /*
@@ -2259,21 +2326,35 @@ void abi_BigSpritesRow6(void)
  * Entry: any widths, D = $0000. Exit: as BigSpritesRow6, C and V as the
  * entry left them.
  */
-void abi_BigSpritesRow5(void)
+uint8_t BigSpritesRow5(uint8_t bank)
 {
     static const uint16_t src[5] = {0xA006, 0xAA12, 0xA000, 0xAA18, 0xA500};
+    uint8_t mode = 0;
     unsigned i;
 
-    if (!(cyc(16), big_sprites_start(abi_GsuBytes200_BFBCBD, 96)))
-        return;
+    if (!(cyc(16), big_sprites_start(bank, GsuBytes200_BFBCBD)))
+        return rows_count;
     big_sprites_at(0x0020, 0x0028);
     for (i = 0; i < 5; i++)
-        { if (i) cyc(44); sprite24x40(src[i]); }
+        { if (i) cyc(44); mode = sprite24x40(src[i]); }
     cyc(86);
+    return mode;
 }
 
-void abi_GsuBytes200_BFB3BE(void);
-void abi_GsuF329Sequence(void);
+void abi_BigSpritesRow5(void)
+{
+    uint8_t v = BigSpritesRow5(cpu.db);
+
+    cpu.x = 0xFA88;
+    if (rows_counted) {
+        cpu.a = (uint16_t)(count_high << 8 | v);
+        cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_X)) | P_M | count_flags);
+    } else {
+        cpu.a = (uint16_t)(0xA500 | v);
+        cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X));
+    }
+}
+
 
 /*
  * @routine 07:89E4 HudHoldDraw
@@ -2285,45 +2366,71 @@ void abi_GsuF329Sequence(void);
  * Entry: any widths. Exit: P restored; A, X, Y as the draw leaves them
  * (A = $0E5D when not set).
  */
-void abi_HudHoldDraw(void)
-{
-    uint8_t p0 = cpu.p;
+static uint16_t hold_a;                 /* the adapter's: A as the draw leaves it */
 
-    op_rep(P_M | P_X);
+int HudHoldDraw(uint8_t bank)
+{
+    uint8_t mode;
+
+    cyc(22);
     cyc(46);
-    op_lda16((uint32_t)cpu.db << 16 | 0x0E5D);
-    if (!cpu.a) {
+    if (!rd16((uint32_t)bank << 16 | 0x0E5D)) {
         cyc(44);
-        op_plp(p0);
-        return;
-    } else { cyc(84); }
-    abi_GsuBytes200_BFB3BE();
-    op_lda16_imm(0x0093);
+        cyc(42);                        /* PLP */
+        hold_a = 0x0000;
+        return 0;
+    }
+    cyc(84);
+    GsuBytes200_BFB3BE();
+    cyc(38);
     cyc(114);
     wr16(0x70020A, 0x0093);
-    op_lda16_imm(0x006C);
+    cyc(38);
     cyc(18);
     wr16(0x70020C, 0x006C);
-    cpu.y = 0x0F69;
-    cpu.p = nz16(cpu.p, cpu.y);
-    (cyc(70), abi_GsuF329Sequence());
-    op_plp(p0);
+    mode = (cyc(70), GsuF329Sequence(bank, 0x0F69));
+    hold_a = (uint16_t)(f329_high(bank) | mode);
+    cyc(42);                            /* PLP */
     cyc(28);
+    return 1;
+}
+
+void abi_HudHoldDraw(void)
+{
+    if (HudHoldDraw(cpu.db)) {
+        cpu.x = 0xF329;
+        cpu.y = 0x0F69;
+        if (cpu.p & P_X) {
+            cpu.x &= 0x00FF;
+            cpu.y &= 0x00FF;
+        }
+    }
+    cpu.a = hold_a;
 }
 
 /* SEP #$20, REP #$10, LDX #$F329, LDA #$07, JSL GsuRun, REP #$20, REP #$10:
    Super FX program $07:F329 (the glyph at $70:0216 drawn at $70:020A,
    $70:020C). */
-static void run_f329(void)
+static uint8_t run_f329(void)
 {
-    op_sep(P_M);
-    op_rep(P_X);
+    uint8_t mode;
+
+    cyc(22);
+    mode = (cyc(154), GsuRun(0x07, 0xF329));
+    cyc(72);                            /* GsuRun's PLB, RTL */
+    cyc(22);
+    return mode;
+}
+
+/* run_f329 for the code still in registers: A's low byte the mode, X =
+   $F329, N, Z from the data bank, M and X 16-bit. */
+static void run_f329_regs(void)
+{
+    uint8_t mode = run_f329();
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | mode);
     cpu.x = 0xF329;
-    cpu.p = nz16(cpu.p, cpu.x);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x07);
-    cpu.p = nz8(cpu.p, 0x07);
-    (cyc(154), abi_GsuRun());
-    op_rep(P_M | P_X);
+    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X));
 }
 
 /*
@@ -2334,39 +2441,51 @@ static void run_f329(void)
  * Entry: M 16-bit, X 16-bit; A = the glyph. Exit: M 16-bit, X 16-bit; X =
  * $F329; A as GsuRun leaves it.
  */
-void abi_GlyphAtY60(void)
+uint8_t GlyphAtY60(uint16_t glyph)
 {
+    uint8_t mode;
+
     cyc(32);
-    wr16(0x700216, cpu.a);
-    op_lda16_imm(0x0060);
+    wr16(0x700216, glyph);
+    cyc(38);
     cyc(18);
     wr16(0x70020C, 0x0060);
-    (cyc(62), abi_GsuBytes200_BFB5BB());
-    (cyc(42), run_f329());
+    (cyc(62), GsuBytes200_BFB5BB());
+    mode = (cyc(42), run_f329());
     cyc(64);
+    return mode;
+}
+
+void abi_GlyphAtY60(void)
+{
+    cpu.a = GlyphAtY60(cpu.a);
+    cpu.x = 0xF329;
+    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X));
 }
 
 /* One step of the row at y 96: LDA #x, STA.L $70:020A, LDA #glyph, JSR
    GlyphAtY60. */
-static void glyph_step(uint16_t x, uint16_t glyph)
+static uint8_t glyph_step(uint16_t x, uint16_t glyph)
 {
-    op_lda16_imm(x);
+    cyc(38);
     cyc(18);
     wr16(0x70020A, x);
-    op_lda16_imm(glyph);
-    (cyc(32), abi_GlyphAtY60());
+    cyc(38);
+    return (cyc(32), GlyphAtY60(glyph));
 }
 
 /* The row of six glyphs from 04:DD61, each entry running the rest. */
-static void glyph_row(int from)
+static uint8_t glyph_row(int from)
 {
     static const uint16_t xs[6] = {0x0078, 0x0070, 0x0068, 0x0060, 0x0058, 0x0050};
     static const uint16_t gs[6] = {0x9808, 0x9808, 0x9808, 0x941A, 0x960E, 0x9414};
+    uint8_t mode = 0;
     int i;
 
     for (i = from; i < 6; i++)
-        glyph_step(xs[i], gs[i]);
+        mode = glyph_step(xs[i], gs[i]);
     cyc(42);
+    return mode;
 }
 
 /*
@@ -2377,9 +2496,16 @@ static void glyph_row(int from)
  * at $04:DD6E, $DD7B, $DD88, $DD95 and $DDA2 start further along.
  * Entry: M 16-bit, X 16-bit. Exit: as GlyphAtY60.
  */
+uint8_t GlyphRowY60From0(void)
+{
+    return glyph_row(0);
+}
+
 void abi_GlyphRowY60From0(void)
 {
-    glyph_row(0);
+    cpu.a = GlyphRowY60From0();
+    cpu.x = 0xF329;
+    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X));
 }
 
 /*
@@ -2388,9 +2514,16 @@ void abi_GlyphRowY60From0(void)
  * HOW: The same code, entered further along.
  * Entry: M 16-bit, X 16-bit. Exit: as GlyphAtY60.
  */
+uint8_t GlyphRowY60From1(void)
+{
+    return glyph_row(1);
+}
+
 void abi_GlyphRowY60From1(void)
 {
-    glyph_row(1);
+    cpu.a = GlyphRowY60From1();
+    cpu.x = 0xF329;
+    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X));
 }
 
 /*
@@ -2399,9 +2532,16 @@ void abi_GlyphRowY60From1(void)
  * HOW: The same code, entered further along.
  * Entry: M 16-bit, X 16-bit. Exit: as GlyphAtY60.
  */
+uint8_t GlyphRowY60From2(void)
+{
+    return glyph_row(2);
+}
+
 void abi_GlyphRowY60From2(void)
 {
-    glyph_row(2);
+    cpu.a = GlyphRowY60From2();
+    cpu.x = 0xF329;
+    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X));
 }
 
 /*
@@ -2410,9 +2550,16 @@ void abi_GlyphRowY60From2(void)
  * HOW: The same code, entered further along.
  * Entry: M 16-bit, X 16-bit. Exit: as GlyphAtY60.
  */
+uint8_t GlyphRowY60From3(void)
+{
+    return glyph_row(3);
+}
+
 void abi_GlyphRowY60From3(void)
 {
-    glyph_row(3);
+    cpu.a = GlyphRowY60From3();
+    cpu.x = 0xF329;
+    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X));
 }
 
 /*
@@ -2421,9 +2568,16 @@ void abi_GlyphRowY60From3(void)
  * HOW: The same code, entered further along.
  * Entry: M 16-bit, X 16-bit. Exit: as GlyphAtY60.
  */
+uint8_t GlyphRowY60From4(void)
+{
+    return glyph_row(4);
+}
+
 void abi_GlyphRowY60From4(void)
 {
-    glyph_row(4);
+    cpu.a = GlyphRowY60From4();
+    cpu.x = 0xF329;
+    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X));
 }
 
 /*
@@ -2432,9 +2586,16 @@ void abi_GlyphRowY60From4(void)
  * HOW: The same code, entered at its last step.
  * Entry: M 16-bit, X 16-bit. Exit: as GlyphAtY60.
  */
+uint8_t GlyphRowY60From5(void)
+{
+    return glyph_row(5);
+}
+
 void abi_GlyphRowY60From5(void)
 {
-    glyph_row(5);
+    cpu.a = GlyphRowY60From5();
+    cpu.x = 0xF329;
+    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X));
 }
 
 /*
@@ -2448,70 +2609,67 @@ void abi_GlyphRowY60From5(void)
  * Entry: M 16-bit, X 16-bit, D = $0000. Exit: M 16-bit, X 16-bit; X = the
  * end; N, Z, C from its compare.
  */
-void abi_GlyphListDraw(void)
+static uint16_t list_a;                 /* the adapter's: A as the last entry leaves it */
+static uint8_t list_flags;              /* N, Z, C from the last compare */
+
+uint16_t GlyphListDraw(uint8_t bank)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint16_t x;
-    uint8_t p;
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t x = 0x0000, v, lim;
 
-    cpu.x = 0x0000;
-    cpu.p = nz16(cpu.p, 0);
     cyc(48);
-    op_lda16(b | 0x10E4);
-    op_asl16();
+    v = (uint16_t)(rd16(b | 0x10E4) << 1);
     cyc(30);
-    wr16(0x0000F1, cpu.a);
+    wr16(0x0000F1, v);
     cyc(24);
-    op_lda16(b | 0x10E6);
-    op_asl16();
+    v = (uint16_t)(rd16(b | 0x10E6) << 1);
     cyc(30);
-    wr16(0x0000F3, cpu.a);
+    wr16(0x0000F3, v);
     do {
-        op_rep(P_M);
+        cyc(22);                        /* REP #$20 */
         cyc(30);
-        op_lda16(b | (uint16_t)(0x110E + cpu.x));
-        if (cpu.a) {
+        list_a = rd16(b | (uint16_t)(0x110E + x));
+        if (list_a) {
             cyc(46);
-            op_lda16(b | (uint16_t)(0x10E8 + cpu.x));
+            v = rd16(b | (uint16_t)(0x10E8 + x));
             cyc(32);
-            wr16(0x700216, cpu.a);
+            wr16(0x700216, v);
             cyc(30);
-            op_lda16(b | (uint16_t)(0x1134 + cpu.x));
-            op_and16(0x00FF);
+            v = (uint16_t)(rd16(b | (uint16_t)(0x1134 + x)) & 0x00FF);
+            cyc(2);
             cyc(54);
-            wr16(0x70020A, cpu.a);
+            wr16(0x70020A, v);
             cyc(30);
-            op_lda16(b | (uint16_t)(0x1135 + cpu.x));
-            op_and16(0x00FF);
+            v = (uint16_t)(rd16(b | (uint16_t)(0x1135 + x)) & 0x00FF);
+            cyc(2);
             cyc(54);
-            wr16(0x70020C, cpu.a);
-            {
-                cyc(16);
-                uint16_t lim = rd16(0x0000F1);
-
-                cpu.p = (uint8_t)((nz16(cpu.p, (uint16_t)(cpu.x - lim)) & ~P_C) | (cpu.x >= lim ? P_C : 0));
-                if (cpu.x >= lim)
-                    { cyc(84); abi_GsuBytes200_BFB3BE(); }
-                else
-                    { cyc(78); abi_GsuBytes200_BFBCBD(); }
-                cyc(94);
-            }
-            x = cpu.x;
-            p = cpu.p;
-            run_f329();
-            op_plp(p);
-            cpu.x = x;
-            cpu.p = nz16(cpu.p, x);
+            wr16(0x70020C, v);
+            cyc(16);
+            lim = rd16(0x0000F1);
+            if (x >= lim)
+                { cyc(84); GsuBytes200_BFB3BE(); }
+            else
+                { cyc(78); GsuBytes200_BFBCBD(); cyc(22); }
+            cyc(94);
+            list_a = run_f329();
+            cyc(42);                    /* PLP */
             /* the second REP, PLX, INX, INX, CPX (GsuRun states its PLP and RTL) */
             cyc(88);
         } else { cyc(66); }
-        cpu.x = (uint16_t)(cpu.x + 2);
-        {
-            uint16_t lim = rd16(0x0000F3);
+        x = (uint16_t)(x + 2);
+        lim = rd16(0x0000F3);
+        if (x >= lim)
+            cyc(58);
+    } while (cyc_loop(22, x < lim));
+    list_flags = (uint8_t)(nz16(0, (uint16_t)(x - lim)) | P_C);
+    return x;
+}
 
-            cpu.p = (uint8_t)((nz16(cpu.p, (uint16_t)(cpu.x - lim)) & ~P_C) | (cpu.x >= lim ? (cyc(58), P_C) : 0));
-        }
-    } while (cyc_loop(22, !(cpu.p & P_C)));
+void abi_GlyphListDraw(void)
+{
+    cpu.x = GlyphListDraw(cpu.db);
+    cpu.a = list_a;
+    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_M)) | list_flags);
 }
 
 /*
@@ -2536,7 +2694,7 @@ static void glyph_sprite_at(uint32_t b, uint16_t x)
     op_lda16(b | (uint16_t)(0x1010 + x));
     cyc(32);
     wr16(0x700216, cpu.a);
-    run_f329();
+    run_f329_regs();
     cpu.x = (uint16_t)(x + 2);
     cpu.p = nz16(cpu.p, cpu.x);
 }
@@ -4118,8 +4276,6 @@ void abi_GsuF15BFourB(void)
     cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X));
 }
 
-void abi_GsuBytes200_BFB7B6(void);
-
 /*
  * @routine 07:9B6F BigSpritesNine
  * WHAT IT DOES: Unless $0E5C is set, draws nine 24 x 40 sprites
@@ -4130,35 +4286,48 @@ void abi_GsuBytes200_BFB7B6(void);
  * leaves is read back for the gap.
  * Entry: any widths, D = $0000. Exit: as BigSpritesRow6.
  */
-void abi_BigSpritesNine(void)
+uint8_t BigSpritesNine(uint8_t bank)
 {
     static const uint16_t first[3] = {0xAA06, 0xB006, 0xB000}, second[2] = {0xAA06, 0xA012};
     static const uint16_t third[4] = {0xAA12, 0xA000, 0xAA00, 0xA50C};
-    uint16_t w;
+    uint16_t w, r;
+    uint8_t mode = 0;
     unsigned i;
 
-    if (!(cyc(16), big_sprites_start(abi_GsuBytes200_BFB7B6, 118)))
-        return;
+    if (!(cyc(16), big_sprites_start(bank, GsuBytes200_BFB7B6)))
+        return rows_count;
     big_sprites_at(0x0029, 0x0021);
     for (i = 0; i < 3; i++)
         { if (i) cyc(44); sprite24x40(first[i]); }
     cyc(76);
     w = rd16(0x70020A);
-    cpu.p &= (uint8_t)~P_C;
-    cpu.a = op_adc16(w, 0x0006, &cpu.p);
+    r = (uint16_t)(w + 0x0006);
+    row_cv = (uint8_t)((w > 0xFFF9 ? P_C : 0) | ((~w & r & 0x8000) ? P_V : 0));
     cyc(70);
-    wr16(0x70020A, cpu.a);
+    wr16(0x70020A, r);
     for (i = 0; i < 2; i++)
         { if (i) cyc(44); sprite24x40(second[i]); }
-    cpu.a = 0x0038;
     cyc(100);
     wr16(0x70020A, 0x0038);
-    cpu.a = 0x0050;
-    cpu.p = nz16(cpu.p, 0x0050);
     cyc(56);
     wr16(0x70020C, 0x0050);
     for (i = 0; i < 4; i++)
-        { if (i) cyc(44); sprite24x40(third[i]); }
+        { if (i) cyc(44); mode = sprite24x40(third[i]); }
+    return mode;
+}
+
+void abi_BigSpritesNine(void)
+{
+    uint8_t v = BigSpritesNine(cpu.db);
+
+    cpu.x = 0xFA88;
+    if (rows_counted) {
+        cpu.a = (uint16_t)(count_high << 8 | v);
+        cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_X)) | P_M | count_flags);
+    } else {
+        cpu.a = (uint16_t)(0xA500 | v);
+        cpu.p = (uint8_t)((nz8(cpu.p, cpu.db) & ~(P_M | P_X | P_C | P_V)) | row_cv);
+    }
 }
 
 /*
@@ -4169,17 +4338,38 @@ void abi_BigSpritesNine(void)
  * HOW: GsuBytes200_BFB3BE first; GsuRun for each sprite.
  * Entry: any widths, D = $0000. Exit: as BigSpritesRow5.
  */
-void abi_BigSpritesRow6B(void)
+static void bytes_bfb3be(void)
+{
+    GsuBytes200_BFB3BE();
+}
+
+uint8_t BigSpritesRow6B(uint8_t bank)
 {
     static const uint16_t src[6] = {0xAA18, 0xAA0C, 0xA512, 0xA000, 0xAA18, 0xA500};
+    uint8_t mode = 0;
     unsigned i;
 
-    if (!(cyc(16), big_sprites_start(abi_GsuBytes200_BFB3BE, 118)))
-        return;
+    if (!(cyc(16), big_sprites_start(bank, bytes_bfb3be)))
+        return rows_count;
     big_sprites_at(0x0018, 0x0028);
     for (i = 0; i < 6; i++)
-        { if (i) cyc(44); sprite24x40(src[i]); }
+        { if (i) cyc(44); mode = sprite24x40(src[i]); }
     cyc(128);
+    return mode;
+}
+
+void abi_BigSpritesRow6B(void)
+{
+    uint8_t v = BigSpritesRow6B(cpu.db);
+
+    cpu.x = 0xFA88;
+    if (rows_counted) {
+        cpu.a = (uint16_t)(count_high << 8 | v);
+        cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_X)) | P_M | count_flags);
+    } else {
+        cpu.a = (uint16_t)(0xA500 | v);
+        cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X));
+    }
 }
 
 /*
