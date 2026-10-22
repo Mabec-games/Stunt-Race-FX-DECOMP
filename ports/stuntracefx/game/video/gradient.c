@@ -9,6 +9,7 @@
 #include "machine.h"
 #include "native.h"
 #include "hw.h"
+#include "video_calls.h"
 
 /* The run expansion GradientExpandFirst and GradientExpandSecond share,
    from run table index x: each run byte n stores the colour word at the
@@ -54,17 +55,6 @@ static uint16_t expand_list(uint8_t bank, uint16_t *y, uint16_t course, uint16_t
     return expand_runs(bank, c == course ? (cyc(16), special) : 0, y);
 }
 
-static void abi_expand(uint16_t course, uint16_t special)
-{
-    uint16_t y = cpu.y;
-    int carry;
-
-    cpu.x = expand_list(cpu.db, &y, course, special, &carry);
-    cpu.y = y;
-    cpu.a = 0;
-    cpu.p = (uint8_t)((nz16(cpu.p, 0) & ~(P_M | P_C)) | (carry ? P_C : 0));
-}
-
 /*
  * @routine 03:ED34 GradientExpandFirst
  * WHAT IT DOES: Expands run-length colours into the list at $7F:EF57 + $F3:
@@ -85,7 +75,13 @@ uint16_t GradientExpandFirst(uint8_t bank, uint16_t *y, int *carry)
 
 void abi_GradientExpandFirst(void)
 {
-    abi_expand(0x000A, 0x0028);
+    uint16_t y = cpu.y;
+    int carry;
+
+    cpu.x = GradientExpandFirst(cpu.db, &y, &carry);
+    cpu.y = y;
+    cpu.a = 0;
+    cpu.p = (uint8_t)((nz16(cpu.p, 0) & ~(P_M | P_C)) | (carry ? P_C : 0));
 }
 
 /*
@@ -103,7 +99,13 @@ uint16_t GradientExpandSecond(uint8_t bank, uint16_t *y, int *carry)
 
 void abi_GradientExpandSecond(void)
 {
-    abi_expand(0x0001, 0x0050);
+    uint16_t y = cpu.y;
+    int carry;
+
+    cpu.x = GradientExpandSecond(cpu.db, &y, &carry);
+    cpu.y = y;
+    cpu.a = 0;
+    cpu.p = (uint8_t)((nz16(cpu.p, 0) & ~(P_M | P_C)) | (carry ? P_C : 0));
 }
 
 /*
@@ -170,17 +172,17 @@ static uint16_t fill_cgadd(uint16_t value, uint16_t x, uint16_t count)
  * @routine 03:ED7F GradientFillCgadd
  * WHAT IT DOES: Fills Y entries of the CGADD table at $7F:3497 + X with A.
  * HOW: 16-bit stores, X stepping by 2.
- * Entry: M 16-bit, X 16-bit; Y = count (0 means 65536). Exit: X past the
- * last entry; Y = 0; Z set, N clear.
+ * Entry: M 16-bit, X 16-bit; Y = count (0 means 65536); A = value, X =
+ * the start, as arguments. Exit: X past the last entry (the result); Y = 0; Z set, N clear.
  */
-void GradientFillCgadd(uint16_t value, uint16_t x, uint16_t count)
+uint16_t GradientFillCgadd(uint16_t value, uint16_t x, uint16_t count)
 {
-    fill_cgadd(value, x, count);
+    return fill_cgadd(value, x, count);
 }
 
 void abi_GradientFillCgadd(void)
 {
-    cpu.x = fill_cgadd(cpu.a, cpu.x, cpu.y);
+    cpu.x = GradientFillCgadd(cpu.a, cpu.x, cpu.y);
     cpu.y = 0;
     cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
 }
@@ -191,15 +193,14 @@ void abi_GradientFillCgadd(void)
  * HOW: As GradientFillCgadd.
  * Entry: as GradientFillCgadd. Exit: as GradientFillCgadd.
  */
-void GradientFillCgaddB(uint16_t value, uint16_t x, uint16_t count)
+uint16_t GradientFillCgaddB(uint16_t value, uint16_t x, uint16_t count)
 {
-    cyc(0);
-    fill_cgadd(value, x, count);
+    return fill_cgadd(value, x, count);
 }
 
 void abi_GradientFillCgaddB(void)
 {
-    cpu.x = fill_cgadd(cpu.a, cpu.x, cpu.y);
+    cpu.x = GradientFillCgaddB(cpu.a, cpu.x, cpu.y);
     cpu.y = 0;
     cpu.p = (uint8_t)((cpu.p & ~P_N) | P_Z);
 }
@@ -281,13 +282,13 @@ uint16_t GradientSetup(uint8_t bank)
     wr16(0x7F3497, 0x0117);
     x = 2;
     cyc(94);
-    GradientFillCgaddB(0x0181, x, 0x0050);
+    (cyc(0), GradientFillCgaddB(0x0181, x, 0x0050));
     x = (uint16_t)(x + 0xA0);
     cyc(56);
     wr16(0x7F3497 + x, 0x0118);
     x = (uint16_t)(x + 2);
     cyc(122);
-    GradientFillCgaddB(0x0181, x, 0x0050);
+    (cyc(0), GradientFillCgaddB(0x0181, x, 0x0050));
     x = (uint16_t)(x + 0xA0);
     cyc(56);
     wr16(0x7F3497 + x, 0x0000);

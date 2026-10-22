@@ -4,6 +4,7 @@
  */
 #include "machine.h"
 #include "native.h"
+#include "video_calls.h"
 
 void SoundPort1QueuePushW(uint8_t command, unsigned wide);
 
@@ -62,32 +63,27 @@ void abi_ColourMathA7Start(void)
  * Entry: any widths. Exit: A low byte = the intensity; X = the step; M and X
  * 8-bit; N, Z from A.
  */
-static uint8_t fixed_colour_from_step(uint8_t *step)
+static uint8_t fixed_step;              /* the step read, for the adapter's X */
+
+uint8_t FixedColourFromStep(void)
 {
     uint8_t v;
 
     cyc(54);
-    *step = rd8(0x7F3408);
+    fixed_step = rd8(0x7F3408);
     cyc(86);
-    v = rd8(0x03FE7B + *step);
+    v = rd8(0x03FE7B + fixed_step);
     wr8(0x7F340D, v);
     cyc(44);
     return v;
 }
 
-uint8_t FixedColourFromStep(void)
-{
-    uint8_t step;
-
-    return fixed_colour_from_step(&step);
-}
-
 void abi_FixedColourFromStep(void)
 {
-    uint8_t step, v = fixed_colour_from_step(&step);
+    uint8_t v = FixedColourFromStep();
 
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.x = step;
+    cpu.x = fixed_step;
     cpu.y &= 0x00FF;
     cpu.p = (uint8_t)(nz8(cpu.p, v) | P_M | P_X);
 }

@@ -6,6 +6,7 @@
  */
 #include "machine.h"
 #include "cpu_ops.h"
+#include "video_calls.h"
 
 #define SLOT_MASK 0x05D5u
 #define SLOTS 0x0595u
@@ -87,23 +88,30 @@ void abi_SpriteSlotFirst(void)
  * WHAT IT DOES: SpriteSlotFirst for callers in other banks.
  * HOW: 8-bit A, 16-bit index registers around the call; P is saved and
  * restored.
- * Entry: any widths. Exit: A, X as SpriteSlotFirst; P unchanged.
+ * Entry: any widths; x8 is whether X is 8-bit (then only its low byte
+ * comes back, else the return costs 72 more). Exit: A, X as
+ * SpriteSlotFirst; P unchanged.
  */
-uint16_t SpriteSlotFirstLong(uint8_t bank, uint16_t *x)
+uint16_t SpriteSlotFirstLong(uint8_t bank, uint16_t *x, int x8)
 {
     uint8_t p = 0;
+    uint16_t a;
 
-    return SpriteSlotFirst(bank, x, &p);
+    cyc(112);
+    a = SpriteSlotFirst(bank, x, &p);
+    if (x8)
+        *x = (uint8_t)*x;
+    else
+        cyc(72);
+    return a;
 }
 
 void abi_SpriteSlotFirstLong(void)
 {
-    cyc(112);
-    uint8_t p = (uint8_t)((cpu.p | P_M) & ~P_X);
     uint16_t x = cpu.x;
 
-    cpu.a = SpriteSlotFirst(cpu.db, &x, &p);
-    cpu.x = (cpu.p & P_X) ? (uint8_t)x : (cyc(72), x);
+    cpu.a = SpriteSlotFirstLong(cpu.db, &x, (cpu.p & P_X) != 0);
+    cpu.x = x;
 }
 
 /*
@@ -117,8 +125,9 @@ void abi_SpriteSlotFirstLong(void)
  * at 0 are not reached in the traces so far.
  * HOW: The record's fields as direct page offsets indexed by X = $059D (D
  * = $0000); work RAM through the data bank. P is saved and restored.
- * Entry: D = $0000. Exit: A low byte = the last value loaded; X = $059D,
- * unchanged when the count is $FF; P unchanged.
+ * Entry: D = $0000; bank = DB. Exit: A low byte = the last value loaded;
+ * *x = $059D, unchanged when the count is $FF; P unchanged. The return of
+ * the X register (8-bit or not) is the adapter's.
  */
 uint8_t SpriteSlot1Countdown(uint8_t bank, uint16_t *x)
 {
@@ -308,8 +317,6 @@ void abi_SpriteSlot4Full(void)
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | SpriteSlot4Full(cpu.db));
 }
 
-void abi_SpriteSlot1Countdown(void);
-
 /* Marks record r in use (mask bit) and sets +$04 = 0, +$05 = 2, +$06 = k. */
 static void slot_show(uint8_t bank, uint16_t r, uint8_t bit, uint8_t k)
 {
@@ -365,10 +372,17 @@ void abi_SpriteSlot2Brighten(void)
  * HOW: JSR, RTL.
  * Entry: D = $0000. Exit: as SpriteSlot2Brighten.
  */
+uint8_t SpriteSlot2BrightenLong(uint8_t bank)
+{
+    uint8_t a = (cyc(46), SpriteSlot2Brighten(bank));
+
+    cyc(44); /* RTL */
+    return a;
+}
+
 void abi_SpriteSlot2BrightenLong(void)
 {
-    (cyc(46), abi_SpriteSlot2Brighten());
-    cyc(44); /* RTL */
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | SpriteSlot2BrightenLong(cpu.db));
 }
 
 /*
@@ -378,26 +392,42 @@ void abi_SpriteSlot2BrightenLong(void)
  * $084C is cleared. Nothing in the game calls it.
  * HOW: 8-bit stores through the data bank and direct page (D = $0000).
  * P is saved and restored.
- * Entry: D = $0000. Exit: A low byte and X as SpriteSlot1Countdown leaves
- * them (X's low byte when X is 8-bit); P unchanged.
+ * Entry: D = $0000; x8 is whether X is 8-bit at entry (the exit PLP then
+ * clears the high bytes of X and Y). Exit: A low byte and *x as
+ * SpriteSlot1Countdown leaves them (the countdown runs with X 16-bit);
+ * P unchanged.
  */
-void abi_SpriteSlot1Start(void)
+uint8_t SpriteSlot1Start(uint8_t b, uint16_t *x, int x8)
 {
-    uint8_t b = cpu.db, p = cpu.p, a;
+    uint8_t a;
 
     wr8(dbw(b, 0x08FB), cyc_then(106, 0x28));
     a = rd8(cyc_then(68, dbw(b, SLOT_MASK)));
     wr8(dbw(b, SLOT_MASK), cyc_then(40, (uint8_t)(a | 0x02)));
-    cpu.x = 0x059D;
+    *x = 0x059D;
     cyc(106);
     wr8(0x05A4, 0x1E);
     cyc(22);
     wr8(0x05A1, 0x00);
-    cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
-    (cyc(62), abi_SpriteSlot1Countdown());
+    a = (cyc(62), SpriteSlot1Countdown(b, x));
+    cyc(72);                            /* the return of a 16-bit X */
     wr8(dbw(b, 0x084C), cyc_then(46, 0x00));
     cyc(30);
-    op_plp(p);
+    cyc(42);                            /* PLP */
+    if (x8)
+        *x = (uint8_t)*x;
+    return a;
+}
+
+void abi_SpriteSlot1Start(void)
+{
+    uint16_t x = cpu.x;
+    int x8 = (cpu.p & P_X) != 0;
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | SpriteSlot1Start(cpu.db, &x, x8));
+    cpu.x = x;
+    if (x8)
+        cpu.y &= 0x00FF;
 }
 
 /* Records 5 and 6 with +$01, +$02, +$03 and +$00: the shared stores. */
@@ -435,10 +465,15 @@ static void slot_colour(uint8_t bank, uint16_t r, uint8_t bit, uint8_t c1, uint8
  * P and X are saved and restored.
  * Entry: D = $0000. Exit: A low byte = $1F; X, P unchanged.
  */
+uint8_t SpriteSlot6Yellow(uint8_t bank)
+{
+    slot_colour(bank, 0x05C5, 0x40, 0x00, 0x1F, 0);
+    return 0x1F;
+}
+
 void abi_SpriteSlot6Yellow(void)
 {
-    slot_colour(cpu.db, 0x05C5, 0x40, 0x00, 0x1F, 0);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x1F);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | SpriteSlot6Yellow(cpu.db));
 }
 
 /*
@@ -448,10 +483,15 @@ void abi_SpriteSlot6Yellow(void)
  * HOW: As SpriteSlot6Yellow.
  * Entry: D = $0000. Exit: A low byte = $07; X, P unchanged.
  */
+uint8_t SpriteSlot6DimYellow(uint8_t bank)
+{
+    slot_colour(bank, 0x05C5, 0x40, 0x00, 0x07, 0);
+    return 0x07;
+}
+
 void abi_SpriteSlot6DimYellow(void)
 {
-    slot_colour(cpu.db, 0x05C5, 0x40, 0x00, 0x07, 0);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x07);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | SpriteSlot6DimYellow(cpu.db));
 }
 
 /*
@@ -462,10 +502,15 @@ void abi_SpriteSlot6DimYellow(void)
  * HOW: As SpriteSlot6Yellow, +$00 stored first.
  * Entry: D = $0000. Exit: A low byte = $1F; X, P unchanged.
  */
+uint8_t SpriteSlot6Red(uint8_t bank)
+{
+    slot_colour(bank, 0x05C5, 0x40, 0x1F, 0x00, 1);
+    return 0x1F;
+}
+
 void abi_SpriteSlot6Red(void)
 {
-    slot_colour(cpu.db, 0x05C5, 0x40, 0x1F, 0x00, 1);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x1F);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | SpriteSlot6Red(cpu.db));
 }
 
 /*
@@ -476,10 +521,15 @@ void abi_SpriteSlot6Red(void)
  * HOW: As SpriteSlot6Red, for record 5.
  * Entry: D = $0000. Exit: A low byte = $0A; X, P unchanged.
  */
+uint8_t SpriteSlot5DimRed(uint8_t bank)
+{
+    slot_colour(bank, 0x05BD, 0x20, 0x0A, 0x00, 1);
+    return 0x0A;
+}
+
 void abi_SpriteSlot5DimRed(void)
 {
-    slot_colour(cpu.db, 0x05BD, 0x20, 0x0A, 0x00, 1);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x0A);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | SpriteSlot5DimRed(cpu.db));
 }
 
 /*
@@ -489,15 +539,20 @@ void abi_SpriteSlot5DimRed(void)
  * and restored.
  * Entry: any widths. Exit: A low byte = the new mask; X, P unchanged.
  */
-void abi_SpriteSlot5Off(void)
+uint8_t SpriteSlot5Off(uint8_t bank)
 {
     uint8_t a;
 
-    a = rd8(cyc_then(142, dbw(cpu.db, SLOT_MASK)));
+    a = rd8(cyc_then(142, dbw(bank, SLOT_MASK)));
     a = (uint8_t)(a & 0xDF);
-    wr8(dbw(cpu.db, SLOT_MASK), cyc_then(40, a));
+    wr8(dbw(bank, SLOT_MASK), cyc_then(40, a));
     cyc(152); /* SEP, REP, PLX, PLP, RTL */
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
+    return a;
+}
+
+void abi_SpriteSlot5Off(void)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | SpriteSlot5Off(cpu.db));
 }
 
 /*
@@ -547,10 +602,17 @@ void abi_SpriteSlot2Darken(void)
  * HOW: JSR, RTL.
  * Entry: D = $0000. Exit: as SpriteSlot2Darken.
  */
+uint8_t SpriteSlot2DarkenLong(uint8_t bank)
+{
+    uint8_t a = (cyc(46), SpriteSlot2Darken(bank));
+
+    cyc(44); /* RTL */
+    return a;
+}
+
 void abi_SpriteSlot2DarkenLong(void)
 {
-    (cyc(46), abi_SpriteSlot2Darken());
-    cyc(44); /* RTL */
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | SpriteSlot2DarkenLong(cpu.db));
 }
 
 /*
@@ -561,16 +623,22 @@ void abi_SpriteSlot2DarkenLong(void)
  * SpriteSlot2Darken, RTL.
  * Entry: D = $0000. Exit: as SpriteSlot2Darken.
  */
-void abi_SpriteSlot2FadeOut(void)
+uint8_t SpriteSlot2FadeOut(uint8_t bank)
 {
     uint8_t a;
 
-    a = rd8(cyc_then(164, dbw(cpu.db, SLOT_MASK)));
-    wr8(dbw(cpu.db, SLOT_MASK), cyc_then(40, (uint8_t)(a | 0x04)));
+    a = rd8(cyc_then(164, dbw(bank, SLOT_MASK)));
+    wr8(dbw(bank, SLOT_MASK), cyc_then(40, (uint8_t)(a | 0x04)));
     cyc(106);
     wr8(0x05AC, 0x1F);
-    (cyc(110), abi_SpriteSlot2Darken());
+    a = (cyc(110), SpriteSlot2Darken(bank));
     cyc(44); /* RTL */
+    return a;
+}
+
+void abi_SpriteSlot2FadeOut(void)
+{
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | SpriteSlot2FadeOut(cpu.db));
 }
 
 /*
@@ -580,8 +648,13 @@ void abi_SpriteSlot2FadeOut(void)
  * HOW: As SpriteSlot6Yellow.
  * Entry: D = $0000. Exit: A low byte = $1F; X, P unchanged.
  */
+uint8_t SpriteSlot5Yellow(uint8_t bank)
+{
+    slot_colour(bank, 0x05BD, 0x20, 0x00, 0x1F, 0);
+    return 0x1F;
+}
+
 void abi_SpriteSlot5Yellow(void)
 {
-    slot_colour(cpu.db, 0x05BD, 0x20, 0x00, 0x1F, 0);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x1F);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | SpriteSlot5Yellow(cpu.db));
 }

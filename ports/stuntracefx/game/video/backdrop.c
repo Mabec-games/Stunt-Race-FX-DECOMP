@@ -6,6 +6,7 @@
  * at $06CD and its heading at $06CF.
  */
 #include "machine.h"
+#include "video_calls.h"
 
 static uint32_t dbw(uint8_t bank, uint16_t a)
 {
@@ -55,10 +56,11 @@ void abi_PlayerVehicleRaised(void)
  * reached in the traces so far).
  * HOW: 16-bit arithmetic; the doubling's carry goes into the add of
  * $EF99. X is the half * 2; P is saved and restored.
- * Entry: X 8-bit, DB a bank where $0D8E is work RAM. Exit: A = the
- * vertical scroll; X = the half * 2; P unchanged.
+ * Entry: X 8-bit, DB a bank where $0D8E is work RAM (bank); m16 is
+ * whether M is 16-bit, which costs the first load a cycle. Exit: A = the
+ * vertical scroll; X = the half * 2 (*x); P unchanged.
  */
-static uint16_t backdrop_scroll_from_view(uint8_t bank, uint16_t *x, int m16)
+uint16_t BackdropScrollFromView(uint8_t bank, uint16_t *x, int m16)
 {
     uint16_t a, t;
     unsigned s;
@@ -85,12 +87,7 @@ static uint16_t backdrop_scroll_from_view(uint8_t bank, uint16_t *x, int m16)
     return a;
 }
 
-uint16_t BackdropScrollFromView(uint8_t bank, uint16_t *x)
-{
-    return backdrop_scroll_from_view(bank, x, 0);
-}
-
 void abi_BackdropScrollFromView(void)
 {
-    cpu.a = backdrop_scroll_from_view(cpu.db, &cpu.x, !(cpu.p & P_M));
+    cpu.a = BackdropScrollFromView(cpu.db, &cpu.x, !(cpu.p & P_M));
 }

@@ -5,6 +5,7 @@
  */
 #include "machine.h"
 #include "cpu_ops.h"
+#include "video_calls.h"
 
 /*
  * @routine 03:FE06 WindowStep3437
@@ -115,25 +116,25 @@ void abi_WindowStep3439(void)
     cpu.p = p;
 }
 
-/* Subtract n from the byte at addr in the data bank, stopping at 1 (X
-   counting the stop), as WindowStep3435. */
-static void window_step_down(uint16_t addr, uint8_t n)
+/* Subtract n from the byte at addr in the bank, stopping at 1 (*x
+   counting the stop), as WindowStep3435; the stored byte. */
+static uint8_t window_step_down(uint8_t bank, uint16_t addr, uint8_t n, uint8_t *x, uint8_t *p)
 {
-    uint32_t a = (uint32_t)cpu.db << 16 | addr;
+    uint32_t a = (uint32_t)bank << 16 | addr;
     cyc(24);
     uint8_t v = rd8(a), r = (uint8_t)(v - n);
 
-    cpu.p = (uint8_t)((nz8(cpu.p, r) & ~(P_C | P_V)) | (v >= n ? P_C : (cyc(24), 0))
-                      | (((v ^ n) & (v ^ r) & 0x80) ? P_V : 0));
+    *p = (uint8_t)((nz8(*p, r) & ~(P_C | P_V)) | (v >= n ? P_C : (cyc(24), 0))
+                   | (((v ^ n) & (v ^ r) & 0x80) ? P_V : 0));
     if (v < n) {
-        cpu.x = (uint8_t)(cpu.x + 1);
+        *x = (uint8_t)(*x + 1);
         r = 0x01;
-        cpu.p = nz8(cpu.p, r);
+        *p = nz8(*p, r);
     }
     cyc(76);
     wr8(a, r);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | r);
     cyc(42);
+    return r;
 }
 
 /*
@@ -141,12 +142,23 @@ static void window_step_down(uint16_t addr, uint8_t n)
  * WHAT IT DOES: Subtracts 2 from $3433 in the data bank, stopping at 1; X
  * counts up by one when it stops.
  * HOW: As WindowStep3435. The stop is not reached in the traces so far.
- * Entry: M 8-bit, X 8-bit. Exit: as WindowStep3435.
+ * Entry: M 8-bit, X 8-bit; bank = DB; *x = X; *p = P. Exit: as
+ * WindowStep3435 (the stored byte is the result).
  */
-void abi_WindowStep3433By2(void)
+uint8_t WindowStep3433By2(uint8_t bank, uint8_t *x, uint8_t *p)
 {
     cyc(0);
-    window_step_down(0x3433, 2);
+    return window_step_down(bank, 0x3433, 2, x, p);
+}
+
+void abi_WindowStep3433By2(void)
+{
+    uint8_t x = (uint8_t)cpu.x, p = cpu.p;
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | WindowStep3433By2(cpu.db, &x, &p));
+    if (x != (uint8_t)cpu.x)
+        cpu.x = x;
+    cpu.p = p;
 }
 
 /*
@@ -156,9 +168,19 @@ void abi_WindowStep3433By2(void)
  * HOW: As WindowStep3435. The stop is not reached in the traces so far.
  * Entry: M 8-bit, X 8-bit. Exit: as WindowStep3435.
  */
+uint8_t WindowStep3433By3(uint8_t bank, uint8_t *x, uint8_t *p)
+{
+    return window_step_down(bank, 0x3433, 3, x, p);
+}
+
 void abi_WindowStep3433By3(void)
 {
-    window_step_down(0x3433, 3);
+    uint8_t x = (uint8_t)cpu.x, p = cpu.p;
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | WindowStep3433By3(cpu.db, &x, &p));
+    if (x != (uint8_t)cpu.x)
+        cpu.x = x;
+    cpu.p = p;
 }
 
 /*
@@ -168,28 +190,35 @@ void abi_WindowStep3433By3(void)
  * HOW: As WindowStep3437. Not reached in the traces so far.
  * Entry: M 8-bit, X 8-bit. Exit: as WindowStep3437.
  */
-void abi_WindowStep3437By3(void)
+uint8_t WindowStep3437By3(uint8_t bank, uint8_t *x, uint8_t *p)
 {
-    uint32_t a = (uint32_t)cpu.db << 16 | 0x3437;
+    uint32_t a = (uint32_t)bank << 16 | 0x3437;
     cyc(24);
     uint8_t v = rd8(a), r;
 
-    cpu.p &= (uint8_t)~P_C;
-    r = op_adc8(v, 0x03, &cpu.p);
-    if (cpu.p & P_C) {
+    *p &= (uint8_t)~P_C;
+    r = op_adc8(v, 0x03, p);
+    if (*p & P_C) {
         cyc(24);
-        cpu.x = (uint8_t)(cpu.x + 1);
+        *x = (uint8_t)(*x + 1);
         r = 0xFF;
-        cpu.p = nz8(cpu.p, r);
+        *p = nz8(*p, r);
     }
     cyc(76);
     wr8(a, r);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | r);
     cyc(42);                            /* RTS */
+    return r;
 }
 
-void abi_WindowStep3433By2(void);
-void abi_WindowStep3433By3(void);
+void abi_WindowStep3437By3(void)
+{
+    uint8_t x = (uint8_t)cpu.x, p = cpu.p;
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | WindowStep3437By3(cpu.db, &x, &p));
+    if (x != (uint8_t)cpu.x)
+        cpu.x = x;
+    cpu.p = p;
+}
 
 /*
  * @routine 03:FDA9 WindowEdgesStep
@@ -200,51 +229,62 @@ void abi_WindowStep3433By3(void);
  * stopped (X), the fade starts ($0D61 = $80, $0E3A = 1).
  * HOW: The data bank is $7F for the steps; X counts the stops. The above
  * case is not reached in the traces so far.
- * Entry: any widths. Exit: M 8-bit, X 8-bit; X = the stops; the data bank
- * restored; A as the last step left it.
+ * Entry: any widths; db0 = DB, *p = P with M and X already set. Exit: M
+ * 8-bit, X 8-bit; *x = the stops (X); the data bank restored; the result is
+ * A's low byte as the last step left it.
  */
-void abi_WindowEdgesStep(void)
+uint8_t WindowEdgesStep(uint8_t db0, uint8_t *p, uint8_t *x)
 {
-    uint8_t db0 = cpu.db, v, m;
+    uint8_t v, m, a;
     uint32_t b = 0x7F0000;
 
-    op_sep(P_M | P_X);
-    cpu.db = 0x7F;
     cyc(112);
     v = rd8(b | 0x340D);
-    cpu.p = (uint8_t)((cpu.p & ~P_C) | (v >= 0x1F ? (cyc(38), P_C) : 0));
+    *p = (uint8_t)((*p & ~P_C) | (v >= 0x1F ? (cyc(38), P_C) : 0));
     if (v < 0x1F)
         { cyc(56); wr8(b | 0x340D, cyc_then(6, (uint8_t)(rd8(b | 0x340D) + 1))); }
-    cpu.x = 0x00;
+    *x = 0x00;
     cyc(40);
     v = (uint8_t)((rd8(b | 0x3437) ^ 0xFF) + 1);
     cyc(54);
     m = rd8(b | 0x3433);
-    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(v - m)) & ~P_C) | (v >= m ? P_C : (cyc(84), 0)));
+    *p = (uint8_t)((nz8(*p, (uint8_t)(v - m)) & ~P_C) | (v >= m ? P_C : (cyc(84), 0)));
     if (v == m) {
-        (cyc(68), abi_WindowStep3437());
-        (cyc(46), abi_WindowStep3433By2());
+        (cyc(68), WindowStep3437(0x7F, x, p));
+        (cyc(46), WindowStep3433By2(0x7F, x, p));
     } else if (v < m) {
-        abi_WindowStep3437();
-        (cyc(46), abi_WindowStep3433By3());
+        WindowStep3437(0x7F, x, p);
+        (cyc(46), WindowStep3433By3(0x7F, x, p));
         cyc(22);                    /* BRA */
     } else {
         cyc(78);
-        abi_WindowStep3437By3();
-        (cyc(46), abi_WindowStep3433By2());
+        WindowStep3437By3(0x7F, x, p);
+        (cyc(46), WindowStep3433By2(0x7F, x, p));
         cyc(22);                    /* BRA */
     }
-    abi_WindowStep3439();
-    (cyc(46), abi_WindowStep3435());
-    cpu.p = (uint8_t)((cpu.p & ~P_C) | (cpu.x >= 0x02 ? P_C : (cyc(38), 0)));
-    if (cpu.x >= 0x02) {
+    WindowStep3439(0x7F, x, p);
+    a = (cyc(46), WindowStep3435(0x7F, x, p));
+    *p = (uint8_t)((*p & ~P_C) | (*x >= 0x02 ? P_C : (cyc(38), 0)));
+    if (*x >= 0x02) {
         cyc(80);
         wr8(0x000D61, 0x80);
         cyc(48);
         wr8(0x000E3A, 0x01);
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | 0x01);
+        a = 0x01;
     }
     cyc(72);
-    cpu.db = db0;
-    cpu.p = nz8(cpu.p, db0);
+    *p = nz8(*p, db0);
+    return a;
+}
+
+void abi_WindowEdgesStep(void)
+{
+    uint8_t x, p, a;
+
+    op_sep(P_M | P_X);
+    p = cpu.p;
+    a = WindowEdgesStep(cpu.db, &p, &x);
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
+    cpu.x = x;
+    cpu.p = p;
 }

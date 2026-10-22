@@ -4,6 +4,7 @@
 #include "machine.h"
 #include "native.h"
 #include "hw.h"
+#include "video_calls.h"
 
 /* BG2 scroll pairs in work RAM, indexed by the screen band: horizontal at
    $0D92, vertical at $0D8E (low, high). */
@@ -50,7 +51,7 @@ uint8_t Bg2ScrollFromTable(uint16_t band)
 void abi_Bg2ScrollFromTable(void)
 {
     int wide = !(cpu.p & P_X);
-    uint8_t v = bg2_scroll(wide ? cpu.x : (uint8_t)cpu.x, wide);
+    uint8_t v = wide ? Bg2ScrollFromTable(cpu.x) : bg2_scroll((uint8_t)cpu.x, 0);
 
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.p = nz8(cpu.p, v);

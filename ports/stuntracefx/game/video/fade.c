@@ -7,6 +7,7 @@
  */
 #include "machine.h"
 #include "wram.h"
+#include "video_calls.h"
 
 /* Per-brightness fade-in steps, in the frame code's RAM copy at $7E:AC9D. */
 #define FADE_IN_STEPS 0x7EAC9Du
@@ -61,6 +62,12 @@ static uint16_t fade_out(uint8_t *p)
     return level;
 }
 
+/* The flags, and X, the routines leave for their adapters: the adapter
+   sets them from its registers before the call and reads them back after.
+   C callers ignore them. fade_x is -1 until fading in reads the level. */
+static uint8_t fade_p;
+static int fade_x;
+
 /*
  * @routine 7E:AC4D FadeStepFixed
  * WHAT IT DOES: Steps the fade by one frame: in by a fixed $98, or out.
@@ -70,19 +77,20 @@ static uint16_t fade_out(uint8_t *p)
  */
 uint16_t FadeStepFixed(void)
 {
-    uint8_t p = 0;
+    uint16_t level;
 
-    return rd8(FADE_OUT) == 0 ? fade_in(0x0098, 38, &p) : fade_out(&p);
+    cyc(94);
+    level = rd8(FADE_OUT) == 0 ? (cyc(62), fade_in(0x0098, 38, &fade_p)) : (cyc(6), fade_out(&fade_p));
+    fade_p |= P_M;
+    cyc(64);
+    return level;
 }
 
 void abi_FadeStepFixed(void)
 {
-    uint8_t p = cpu.p;
-
-    cyc(94);
-    cpu.a = rd8(FADE_OUT) == 0 ? (cyc(62), fade_in(0x0098, 38, &p)) : (cyc(6), fade_out(&p));
-    cpu.p = (uint8_t)(p | P_M);
-    cyc(64);
+    fade_p = cpu.p;
+    cpu.a = FadeStepFixed();
+    cpu.p = fade_p;
 }
 
 /*
@@ -97,27 +105,28 @@ void abi_FadeStepFixed(void)
  */
 uint16_t FadeStep(void)
 {
-    uint8_t p = 0;
+    uint16_t level;
 
-    if (rd8(FADE_OUT) != 0)
-        return fade_out(&p);
-    return fade_in(rd16(FADE_IN_STEPS + (uint8_t)(rd8(FADE_LEVEL + 1) << 1)), 0, &p);
+    cyc(24);
+    if (rd8(FADE_OUT) != 0) {
+        level = fade_out(&fade_p);
+    } else {
+        cyc(46);
+        fade_x = (uint8_t)(rd8(FADE_LEVEL + 1) << 1);
+        cyc(136);
+        level = fade_in(rd16(FADE_IN_STEPS + fade_x), 0, &fade_p);
+    }
+    cyc(64);
+    fade_p |= P_M;
+    return level;
 }
 
 void abi_FadeStep(void)
 {
-    uint8_t p = cpu.p;
-
-    cyc(24);
-    if (rd8(FADE_OUT) != 0) {
-        cpu.a = fade_out(&p);
-    } else {
-        cyc(46);
-        uint8_t x = (uint8_t)(rd8(FADE_LEVEL + 1) << 1);
-        cyc(136);
-        cpu.a = fade_in(rd16(FADE_IN_STEPS + x), 0, &p);
-        cpu.x = x;
-    }
-    cyc(64);
-    cpu.p = (uint8_t)(p | P_M);
+    fade_p = cpu.p;
+    fade_x = -1;
+    cpu.a = FadeStep();
+    if (fade_x >= 0)
+        cpu.x = (uint16_t)fade_x;
+    cpu.p = fade_p;
 }
