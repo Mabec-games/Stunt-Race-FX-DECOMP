@@ -1092,6 +1092,32 @@ void abi_PalettesStep(void)
     }
 }
 
+/* CLC / ADC and SEC / SBC (16-bit, binary): the result, with the overflow
+   in *v (and for the subtract the carry, set when it did not borrow, in
+   *c) when they are not NULL. The subtract's clocks follow the 65816
+   core's: 6 more than the add. */
+static uint16_t add16(uint16_t a, uint16_t m, int *v)
+{
+    unsigned r = (unsigned)a + m;
+
+    if (v)
+        *v = (~(a ^ m) & (a ^ r) & 0x8000) != 0;
+    return (uint16_t)r;
+}
+
+static uint16_t sub16(uint16_t a, uint16_t m, int *c, int *v)
+{
+    uint16_t n = (uint16_t)~m;
+    unsigned r = (unsigned)a + n + 1;
+
+    if (v)
+        *v = (~(a ^ n) & (a ^ r) & 0x8000) != 0;
+    if (c)
+        *c = r > 0xFFFF;
+    cyc(6);
+    return (uint16_t)r;
+}
+
 /*
  * @routine 7E:E149 FadeValueStep
  * WHAT IT DOES: Unless bit 7 of $0DA5 is set, while bit 5 is set: steps
@@ -1101,32 +1127,31 @@ void abi_PalettesStep(void)
  * long. The step is not reached in the traces so far.
  * Entry: any widths. Exit: P and the data bank restored; A as the last
  * step left it.
+ * In C: a is A on entry; returns A.
  */
-void abi_FadeValueStep(void)
+uint16_t FadeValueStep(uint16_t a)
 {
-    uint8_t p0 = cpu.p, db0 = cpu.db, v;
-    uint32_t b = 0x7E0000;
-    uint16_t w;
+    const uint32_t b = 0x7E0000;
+    uint16_t w, m;
+    uint8_t v;
 
-    cpu.db = 0x7E;
-    cpu.p |= P_M;
     cyc(148);
     v = (uint8_t)(rd8(0x000DA5) & 0x80);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    a = (uint16_t)((a & 0xFF00) | v);
     if (!v) {
         cyc(64);
         v = (uint8_t)(rd8(0x000DA5) & 0x20);
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+        a = (uint16_t)((a & 0xFF00) | v);
         if (v) {
-            cpu.p &= (uint8_t)~(P_M | P_C);
             cyc(78);
             w = rd16(b | 0x19FE);
             cyc(38);
-            w = op_adc16(w, rd16(b | 0x1A00), &cpu.p);
-            cpu.a = w;
+            w = add16(w, rd16(b | 0x1A00), NULL);
+            a = w;
             cyc(24);
-            op_cmp16(rd16(b | 0x1A02));
-            if (!(cpu.p & P_Z))
+            m = rd16(b | 0x1A02);
+            cyc(0);
+            if (w != m)
                 { cyc(40); wr16(b | 0x19FE, w); cyc(24); }  /* JMP .show */
             else {
                 cyc(76);
@@ -1134,60 +1159,74 @@ void abi_FadeValueStep(void)
                 cyc(48);
                 wr8(0x000DA5, v);
             }
-            cpu.p |= P_M;
             cyc(46);                    /* SEP, LDA abs */
             v = rd8(b | 0x19FF);
-            cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+            a = (uint16_t)((a & 0xFF00) | v);
             cyc(32);
             wr8(0x7F3460, v);
         } else { cyc(38); }
     } else { cyc(38); }
     cyc(58);
-    cpu.db = db0;
-    op_plp(p0);
+    cyc(42);                            /* PLP */
+    return a;
 }
+
+void abi_FadeValueStep(void)
+{
+    cpu.a = FadeValueStep(cpu.a);
+    if (cpu.p & P_X) {
+        cpu.x &= 0x00FF;
+        cpu.y &= 0x00FF;
+    }
+}
+
+/* What PaletteFadeStep's exit leaves in C and V, for the adapter only: C
+   from the last part's compare; V from the last add or subtract of a step,
+   -1 when none ran. */
+static int fade_c, fade_v;
 
 /* One colour part of PaletteFadeStep: the part (mask m) of the colour at
    $0722+Y moved one step toward the same part at $02:D65A+X. */
-static uint16_t fade_part(uint32_t b, uint16_t m, uint16_t step)
+static uint16_t fade_part(uint32_t b, uint16_t m, uint16_t step, uint16_t x, uint16_t y)
 {
-    uint16_t c;
+    uint16_t a, c;
 
     cyc(30);
-    op_lda16(b | (uint16_t)(0x0722 + cpu.y));
-    op_and16(m);
+    a = rd16(b | (uint16_t)(0x0722 + y));
+    cyc(2);
+    a &= m;
     cyc(46);
-    wr16(b | 0x1F2B, cpu.a);
+    wr16(b | 0x1F2B, a);
     cyc(94);
-    op_lda16(0x02D65A + (uint32_t)cpu.x);
-    op_and16(m);
+    a = rd16(0x02D65A + (uint32_t)x);
+    cyc(2);
+    a &= m;
     c = rd16(b | 0x1F2B);
-    op_cmp16(c);
-    if (cpu.a == c)
-        { cyc(8); return cpu.a; }
-    if (cpu.p & P_C) {
+    cyc(0);
+    fade_c = a >= c;
+    if (a == c)
+        { cyc(8); return a; }
+    if (a > c) {
         cyc(62);
-        op_lda16(b | 0x1F2B);
+        a = rd16(b | 0x1F2B);
         if (step == 1) {
-            cpu.a++;
-            cpu.p = nz16(cpu.p, cpu.a);
+            a++;
         } else {
             cyc(24);
-            op_add16(step);
+            a = add16(a, step, &fade_v);
         }
     } else {
         cyc(56);
-        op_lda16(b | 0x1F2B);
+        a = rd16(b | 0x1F2B);
         if (step == 1) {
-            cpu.a--;
-            cpu.p = nz16(cpu.p, cpu.a);
+            a--;
         } else {
             cyc(18);
-            op_sub16(step);
+            a = sub16(a, step, NULL, &fade_v);
         }
         cyc(22);
     }
-    return cpu.a;
+    return a;
 }
 
 /*
@@ -1201,60 +1240,85 @@ static uint16_t fade_part(uint32_t b, uint16_t m, uint16_t step)
  * kept on the stack. Runs only from unit_cpu.
  * Entry: D = $0000. Exit: with $0CFA 0, M 8-bit and A's low byte 0;
  * otherwise M 16-bit, X 16-bit, A = 0, X and Y past the last colour.
+ * In C: returns whether the count was nonzero (the colours were stepped);
+ * then *xo and *yo are X and Y at the end.
  */
-void abi_PaletteFadeStep(void)
+int PaletteFadeStep(uint8_t bank, uint16_t *xo, uint16_t *yo)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint16_t n, v;
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t n, a, x, y, t;
+    uint8_t v;
 
-    op_sep(P_M);
+    fade_v = -1;
     cyc(46);
-    op_lda8(b | 0x0CFA);
-    if (!(uint8_t)cpu.a)
-        { cyc(60); return; }
-    v = (uint8_t)(cpu.a - 1);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = nz8(cpu.p, (uint8_t)v);
+    v = rd8(b | 0x0CFA);
+    if (v == 0)
+        { cyc(60); return 0; }
+    v = (uint8_t)(v - 1);
     cyc(60);
-    wr8(b | 0x0CFA, (uint8_t)v);
-    op_rep(P_M | P_X);
+    wr8(b | 0x0CFA, v);
+    cyc(22);                            /* REP #$30 */
     cyc(24);
-    cpu.x = rd16(b | 0x1168);
-    cpu.p = nz16(cpu.p, cpu.x);
+    x = rd16(b | 0x1168);
     cyc(24);
-    cpu.y = rd16(b | 0x1168);
-    cpu.p = nz16(cpu.p, cpu.y);
+    y = rd16(b | 0x1168);
     cyc(24);
-    op_lda16(b | 0x1167);
+    a = rd16(b | 0x1167);
     for (;;) {
         cyc(30);
-        n = cpu.a;
-        wr16(0x00003E, cyc_then(30, fade_part(b, 0x7C00, 0x0400)));
-        wr16(0x000040, cyc_then(30, fade_part(b, 0x03E0, 0x0020)));
-        fade_part(b, 0x001F, 1);
+        n = a;
+        t = fade_part(b, 0x7C00, 0x0400, x, y);
         cyc(30);
-        cpu.a |= rd16(0x00003E);
+        wr16(0x00003E, t);
+        t = fade_part(b, 0x03E0, 0x0020, x, y);
+        cyc(30);
+        wr16(0x000040, t);
+        a = fade_part(b, 0x001F, 1, x, y);
+        cyc(30);
+        a |= rd16(0x00003E);
         cyc(16);
-        cpu.a |= rd16(0x000040);
-        cpu.p = nz16(cpu.p, cpu.a);
+        a |= rd16(0x000040);
         cyc(30);
-        wr16(b | (uint16_t)(0x0722 + cpu.y), cpu.a);
-        cpu.y = (uint16_t)(cpu.y + 2);
-        cpu.x = (uint16_t)(cpu.x + 2);
-        cpu.p = nz16(cpu.p, cpu.x);
-        cpu.a = (uint16_t)(n - 1);
-        cpu.p = nz16(cpu.p, cpu.a);
-        if (!cpu.a)
+        wr16(b | (uint16_t)(0x0722 + y), a);
+        y = (uint16_t)(y + 2);
+        x = (uint16_t)(x + 2);
+        a = (uint16_t)(n - 1);
+        if (!a)
             break;
         cyc(152);               /* INY, INY, INX, INX, PLA, DEC, BEQ, BRL */
     }
     cyc(172);
+    *xo = x;
+    *yo = y;
+    return 1;
+}
+
+void abi_PaletteFadeStep(void)
+{
+    uint16_t x, y;
+    uint8_t p;
+
+    if (!PaletteFadeStep(cpu.db, &x, &y)) {
+        cpu.a &= 0xFF00;
+        cpu.p = (uint8_t)((cpu.p | P_M | P_Z) & ~P_N);
+        return;
+    }
+    p = (uint8_t)(cpu.p & ~(P_N | P_M | P_X | P_C | P_V));
+    p |= P_Z;
+    if (fade_c)
+        p |= P_C;
+    if (fade_v > 0 || (fade_v < 0 && (cpu.p & P_V)))
+        p |= P_V;
+    cpu.a = 0x0000;
+    cpu.x = x;
+    cpu.y = y;
+    cpu.p = p;
 }
 
 /* LDA $0D30, INC, back to 0 at $16, STA $0D30, ASL, TAX (M 8-bit): the
    cycle's next step and its table offset (with X 16-bit, TAX also takes
-   A's high byte). */
-static void palette_cycle_step(uint32_t b)
+   A's high byte). Returns A; *x is the offset. */
+static uint16_t palette_cycle_step(uint32_t b, uint16_t a, int index8, uint16_t *x)
 {
     cyc(56);
     uint8_t v = (uint8_t)(rd8(b | 0x0D30) + 1);
@@ -1264,9 +1328,10 @@ static void palette_cycle_step(uint32_t b)
     cyc(76);
     wr8(b | 0x0D30, v);
     v = (uint8_t)(v << 1);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.x = (cpu.p & P_X) ? (cyc(28), v) : (cyc(28), cpu.a);
-    cpu.p = nz8(cpu.p, v);
+    a = (uint16_t)((a & 0xFF00) | v);
+    cyc(28);
+    *x = index8 ? v : a;
+    return a;
 }
 
 /* Whether a read at `a` is of work RAM, a register or the Super FX's RAM
@@ -1294,55 +1359,59 @@ static int placed_read(uint32_t a)
  * for course $0B). Course $0B is not reached in the traces so far.
  * Entry: any widths. Exit: P and the data bank restored; A the last value
  * loaded; X the step's offset.
+ * In C: a is A on entry; index8 whether X is 8-bit; returns A; *xo is set
+ * to the step's offset when the course has one (else left as it was).
  */
-void abi_CoursePaletteCycle(void)
+uint16_t CoursePaletteCycle(uint16_t a, int index8, uint16_t *xo)
 {
     const uint32_t b = 0x040000;
-    uint8_t p0 = cpu.p, db0 = cpu.db, c, v;
+    uint8_t c, v;
+    uint16_t x = 0;
     static const uint16_t c3[4] = {0xE45F, 0xE48B, 0xE4B7, 0xE4E3};
     static const uint16_t c7[4] = {0xE50F, 0xE53B, 0xE4B7, 0xE4E3};
     static const uint16_t fixed7[4] = {0x14A7, 0x1086, 0x15FF, 0x269F};
     unsigned i;
     int bright = 0;
 
-    op_sep(P_M);
-    cpu.db = 0x04;
     cyc(140);
-    op_lda8(b | 0x0E3D);
-    c = (uint8_t)cpu.a;
+    c = rd8(b | 0x0E3D);
+    a = (uint16_t)((a & 0xFF00) | c);
     if (c == 0x03) {
-        palette_cycle_step(b);
-        op_rep(P_M);
+        a = palette_cycle_step(b, a, index8, &x);
+        *xo = x;
+        cyc(22);                        /* REP #$20 */
         for (i = 0; i < 4; i++) {
-            uint32_t at = (b + c3[i] + cpu.x) & 0xFFFFFF;
+            uint32_t at = (b + c3[i] + x) & 0xFFFFFF;
 
             cyc(32);
-            cpu.a = rd16(at);
+            a = rd16(at);
             cyc(placed_read(at) ? 32 : 48);        /* a ROM read's 16 clocks are stated */
-            wr16(0x7EFD7D + 2 * i, cpu.a);
+            wr16(0x7EFD7D + 2 * i, a);
         }
         cyc(24);                        /* JMP */
     } else if (c == 0x07) {
         cyc(44);
-        palette_cycle_step(b);
-        op_rep(P_M);
+        a = palette_cycle_step(b, a, index8, &x);
+        *xo = x;
+        cyc(22);                        /* REP #$20 */
         for (i = 0; i < 4; i++)
             { cyc(56); wr16(0x7F37EF + 2 * i, fixed7[i]); }
         for (i = 0; i < 4; i++) {
             cyc(80);
-            cpu.a = rd16(b + c7[i] + cpu.x);
-            wr16(0x7F39EF + 2 * i, cpu.a);
+            a = rd16(b + c7[i] + x);
+            wr16(0x7F39EF + 2 * i, a);
         }
         cyc(24);                        /* JMP */
     } else if (c == 0x0B) {
         cyc(100);
-        palette_cycle_step(b);
+        a = palette_cycle_step(b, a, index8, &x);
+        *xo = x;
         cyc(32);
         v = rd8(0x7F3460);
         bright = v >= 0x18;
         cyc(104);
-        v = rd8(b + (bright ? 0xE433 : (cyc(6), 0xE407)) + cpu.x);
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+        v = rd8(b + (bright ? 0xE433 : (cyc(6), 0xE407)) + x);
+        a = (uint16_t)((a & 0xFF00) | v);
         wr8(0x7EFD83, v);
         cyc(32);
         wr8(0x7F37F5, v);
@@ -1352,9 +1421,20 @@ void abi_CoursePaletteCycle(void)
             cyc(22);                    /* BRA */
     } else { cyc(138); }
     cyc(80);
-    op_sep(P_M);
-    cpu.db = db0;
-    op_plp(p0);
+    cyc(42);                            /* PLP */
+    return a;
+}
+
+void abi_CoursePaletteCycle(void)
+{
+    uint16_t x = cpu.x;
+
+    cpu.a = CoursePaletteCycle(cpu.a, (cpu.p & P_X) != 0, &x);
+    cpu.x = x;
+    if (cpu.p & P_X) {
+        cpu.x &= 0x00FF;
+        cpu.y &= 0x00FF;
+    }
 }
 
 void abi_ColourBlend(void);

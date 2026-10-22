@@ -46,4 +46,12 @@ void PlayerColoursFlashRts(void);
 uint16_t StatusColourPick(uint8_t bank, uint16_t y, int *stored);
 uint16_t PalettesStep(uint8_t bank, int *ran, uint16_t *xo);
 
+/* The fade and the course cycle: FadeValueStep and CoursePaletteCycle take
+   A on entry and return it; CoursePaletteCycle sets *xo to the step's
+   offset when the course has one; PaletteFadeStep returns whether it
+   stepped, then *xo and *yo are X and Y at the end. */
+uint16_t FadeValueStep(uint16_t a);
+int PaletteFadeStep(uint8_t bank, uint16_t *xo, uint16_t *yo);
+uint16_t CoursePaletteCycle(uint16_t a, int index8, uint16_t *xo);
+
 #endif
