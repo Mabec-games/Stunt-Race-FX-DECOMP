@@ -66,4 +66,19 @@ uint16_t ObjectPairPitchGsu81E3(uint8_t b, uint16_t x, uint16_t y);
 uint16_t ObjectPairOffsetGsu81E3(uint8_t b, uint16_t x, uint16_t y);
 uint16_t ObjectPairOffsetPitchGsu81E3(uint8_t b, uint16_t x, uint16_t y);
 
+/* The flags record objects of bank $08 (object/flags_record.c); b is the
+   data bank, x the object. */
+int ObjectRecordFlag4Step(uint8_t b, uint16_t obj);
+void ObjectStopMarked(uint8_t b, uint16_t x);
+void ObjectFlagsRecord(uint8_t b, uint16_t obj);
+void ObjectFlagsRecordSetup(uint8_t b, uint16_t x);
+void ObjectFlagsRecordFrame(uint8_t b, uint16_t x);
+void ObjectFrameCycleSetup(uint8_t b, uint16_t x);
+void ObjectFrameCycleStep(uint8_t b, uint16_t x);
+void ObjectFrameCycleBackSetup(uint8_t b, uint16_t x);
+void ObjectFrameCycleBackStep(uint8_t b, uint16_t x);
+void ObjectFrameSwingSetup(uint8_t b, uint16_t x);
+void ObjectFrameSwingStep(uint8_t b, uint16_t x);
+void ObjectFlagsRecordSetup20(uint8_t b, uint16_t x);
+
 #endif
