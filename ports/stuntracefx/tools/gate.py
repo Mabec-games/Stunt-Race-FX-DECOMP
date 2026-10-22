@@ -11,7 +11,10 @@ in order and on time). While the game's C is turned into plain C, each
 routine keeps its abi_ adapter as the harness's way in, so every routine
 is judged on the paths the plays never reach as well. The records go to
 build/stuntracefx/portgate, apart from the decomp's; a run measures again
-only what changed since the last (--full: everything).
+only what changed since the last (--full: everything). It fails on a
+DIVERGENT routine or a lockstep difference; UNVERIFIED and UNCOVERED
+routines (an interrupt inside every call, or no call at all) are the
+decomp's own and only counted.
 """
 import os, sys, threading, time
 
@@ -35,8 +38,11 @@ def main(argv):
         t.start()
     for t in th:
         t.join()
-    print('portgate: A5 %s, A7 %s in %.0fs' % (res.get('A5'), res.get('A7'), time.time() - t0))
-    return 1 if res.get('A5') or res.get('A7') else 0
+    import csv, collections
+    verdicts = collections.Counter(r['verdict'] for r in csv.DictReader(open(t3.LIVE)))
+    print('portgate: A5 %s (%s), A7 %s in %.0fs' % (res.get('A5'), ', '.join('%d %s' % (n, v) for v, n in sorted(verdicts.items())),
+                                                     res.get('A7'), time.time() - t0))
+    return 1 if verdicts['DIVERGENT'] or res.get('A7') else 0
 
 
 if __name__ == '__main__':
