@@ -442,7 +442,7 @@ static void return_frame(void)
             wr16(0x00003E, cpu.a);
             cyc((t[i] & 0xFFFF) < 0x100 ? 16 : 24);   /* LDA direct page or absolute */
             op_lda16(t[i]);
-            cpu.a = ApproachQuarterMin4(cpu.a, NULL);
+            approach_regs(ApproachQuarterMin4);
             wr16(F(f[i], cpu.x), cyc_then(30, cpu.a));
             cpu.p |= P_M;
         }
@@ -451,7 +451,7 @@ static void return_frame(void)
             cyc(14);
             wr8(0x00003E, cyc_then(16, ld8(F(0x2014 + i, cpu.x))));
             ld8(cyc_then(14, F(0x2014 + i, cpu.y)));
-            (cyc(62), cpu.a = (uint16_t)((cpu.a & 0xFF00) | ApproachQuarterMin4Byte((uint8_t)cpu.a, NULL)));
+            (cyc(62), approach_regs_byte(ApproachQuarterMin4Byte));
             wr8(F(0x2014 + i, cpu.x), cyc_then(30, (uint8_t)cpu.a));
         }
         cyc(62);

@@ -409,7 +409,7 @@ static void spray_piece_step(void)
     wr8(0x00003E, (uint8_t)cpu.a);
     cyc(58);
     lda8(0x00);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | ApproachSixteenthMin16Byte((uint8_t)cpu.a, NULL));
+    approach_regs_byte(ApproachSixteenthMin16Byte);
     wr8(F(0x2014, cpu.x), cyc_then(30, (uint8_t)cpu.a));
     op_lda8(cyc_then(30, F(0x2015, cpu.x)));
     cpu.p &= (uint8_t)~P_C;
@@ -425,7 +425,7 @@ static void spray_piece_step(void)
     cyc(16);
     wr16(0x00003E, cpu.a);
     op_lda16(cyc_then(30, F(0x2029, cpu.x)));
-    (cyc(14), cpu.a = ApproachEighthMin8(cpu.a, NULL));
+    (cyc(14), approach_regs(ApproachEighthMin8));
     wr16(F(0x2030, cpu.x), cyc_then(30, cpu.a));
     cpu.p |= P_M;
     cpu.p &= (uint8_t)~P_M;
@@ -433,7 +433,7 @@ static void spray_piece_step(void)
     cyc(16);
     wr16(0x00003E, cpu.a);
     op_lda16_imm(0x05DC);
-    cpu.a = ApproachEighthMin8(cpu.a, NULL);
+    approach_regs(ApproachEighthMin8);
     wr16(F(0x2032, cpu.x), cyc_then(30, cpu.a));
     cpu.p |= P_M;
     cyc(66);

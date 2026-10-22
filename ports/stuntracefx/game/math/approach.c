@@ -88,9 +88,8 @@ static uint16_t approach(uint16_t target, int wide, uint16_t min, int shifts, in
     return s;
 }
 
-/* The adapters' register exit (for the verification harness's calls): N, Z
-   from $3E; C clear when it moved, set when it was there; V from the add
-   when it moved. */
+/* The routine's register exit: N, Z from $3E; C clear when it moved, set
+   when it was there; V from the add when it moved. */
 static void approach_exit(uint16_t v, int wide, int moved)
 {
     cpu.p = (uint8_t)(wide ? nz16(cpu.p, v) : nz8(cpu.p, (uint8_t)v));
@@ -98,6 +97,27 @@ static void approach_exit(uint16_t v, int wide, int moved)
         cpu.p = (uint8_t)((cpu.p & ~(P_C | P_V)) | (approach_v ? P_V : 0));
     else
         cpu.p |= P_C;
+}
+
+
+/* A call by name from C that still works in registers: A in, the new $3E
+   in A (its low byte for the byte forms), the flags as the routine leaves
+   them. */
+void approach_regs(uint16_t (*f)(uint16_t, int *))
+{
+    int moved;
+
+    cpu.a = f(cpu.a, &moved);
+    approach_exit(cpu.a, 1, moved);
+}
+
+void approach_regs_byte(uint8_t (*f)(uint8_t, int *))
+{
+    int moved;
+    uint8_t v = f((uint8_t)cpu.a, &moved);
+
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
+    approach_exit(v, 0, moved);
 }
 
 /*
@@ -113,11 +133,7 @@ uint16_t ApproachHalfMin2(uint16_t target, int *moved)
 
 void abi_ApproachHalfMin2(void)
 {
-    int moved;
-    uint16_t v = ApproachHalfMin2(cpu.a, &moved);
-
-    cpu.a = v;
-    approach_exit(v, 1, moved);
+    approach_regs(ApproachHalfMin2);
 }
 
 /*
@@ -136,11 +152,7 @@ uint16_t ApproachQuarterMin4(uint16_t target, int *moved)
 
 void abi_ApproachQuarterMin4(void)
 {
-    int moved;
-    uint16_t v = ApproachQuarterMin4(cpu.a, &moved);
-
-    cpu.a = v;
-    approach_exit(v, 1, moved);
+    approach_regs(ApproachQuarterMin4);
 }
 
 /*
@@ -157,11 +169,7 @@ uint16_t ApproachEighthMin8(uint16_t target, int *moved)
 
 void abi_ApproachEighthMin8(void)
 {
-    int moved;
-    uint16_t v = ApproachEighthMin8(cpu.a, &moved);
-
-    cpu.a = v;
-    approach_exit(v, 1, moved);
+    approach_regs(ApproachEighthMin8);
 }
 
 /*
@@ -177,11 +185,7 @@ uint16_t ApproachSixteenthMin16(uint16_t target, int *moved)
 
 void abi_ApproachSixteenthMin16(void)
 {
-    int moved;
-    uint16_t v = ApproachSixteenthMin16(cpu.a, &moved);
-
-    cpu.a = v;
-    approach_exit(v, 1, moved);
+    approach_regs(ApproachSixteenthMin16);
 }
 
 /*
@@ -197,11 +201,7 @@ uint16_t ApproachThirtySecondMin32(uint16_t target, int *moved)
 
 void abi_ApproachThirtySecondMin32(void)
 {
-    int moved;
-    uint16_t v = ApproachThirtySecondMin32(cpu.a, &moved);
-
-    cpu.a = v;
-    approach_exit(v, 1, moved);
+    approach_regs(ApproachThirtySecondMin32);
 }
 
 /*
@@ -217,11 +217,7 @@ uint16_t ApproachSixtyFourthMin64(uint16_t target, int *moved)
 
 void abi_ApproachSixtyFourthMin64(void)
 {
-    int moved;
-    uint16_t v = ApproachSixtyFourthMin64(cpu.a, &moved);
-
-    cpu.a = v;
-    approach_exit(v, 1, moved);
+    approach_regs(ApproachSixtyFourthMin64);
 }
 
 /*
@@ -237,11 +233,7 @@ uint16_t ApproachOneTwentyEighthMin128(uint16_t target, int *moved)
 
 void abi_ApproachOneTwentyEighthMin128(void)
 {
-    int moved;
-    uint16_t v = ApproachOneTwentyEighthMin128(cpu.a, &moved);
-
-    cpu.a = v;
-    approach_exit(v, 1, moved);
+    approach_regs(ApproachOneTwentyEighthMin128);
 }
 
 /*
@@ -257,11 +249,7 @@ uint8_t ApproachHalfMin2Byte(uint8_t target, int *moved)
 
 void abi_ApproachHalfMin2Byte(void)
 {
-    int moved;
-    uint8_t v = ApproachHalfMin2Byte((uint8_t)cpu.a, &moved);
-
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    approach_exit(v, 0, moved);
+    approach_regs_byte(ApproachHalfMin2Byte);
 }
 
 /*
@@ -277,11 +265,7 @@ uint8_t ApproachEighthMin8Byte(uint8_t target, int *moved)
 
 void abi_ApproachEighthMin8Byte(void)
 {
-    int moved;
-    uint8_t v = ApproachEighthMin8Byte((uint8_t)cpu.a, &moved);
-
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    approach_exit(v, 0, moved);
+    approach_regs_byte(ApproachEighthMin8Byte);
 }
 
 /*
@@ -298,11 +282,7 @@ uint8_t ApproachQuarterMin4Byte(uint8_t target, int *moved)
 
 void abi_ApproachQuarterMin4Byte(void)
 {
-    int moved;
-    uint8_t v = ApproachQuarterMin4Byte((uint8_t)cpu.a, &moved);
-
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    approach_exit(v, 0, moved);
+    approach_regs_byte(ApproachQuarterMin4Byte);
 }
 
 /*
@@ -321,11 +301,7 @@ uint8_t ApproachSixteenthMin16Byte(uint8_t target, int *moved)
 
 void abi_ApproachSixteenthMin16Byte(void)
 {
-    int moved;
-    uint8_t v = ApproachSixteenthMin16Byte((uint8_t)cpu.a, &moved);
-
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    approach_exit(v, 0, moved);
+    approach_regs_byte(ApproachSixteenthMin16Byte);
 }
 
 /*
@@ -344,11 +320,7 @@ uint8_t ApproachThirtySecondMin32Byte(uint8_t target, int *moved)
 
 void abi_ApproachThirtySecondMin32Byte(void)
 {
-    int moved;
-    uint8_t v = ApproachThirtySecondMin32Byte((uint8_t)cpu.a, &moved);
-
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    approach_exit(v, 0, moved);
+    approach_regs_byte(ApproachThirtySecondMin32Byte);
 }
 
 /*
@@ -367,11 +339,7 @@ uint8_t ApproachSixtyFourthMin64Byte(uint8_t target, int *moved)
 
 void abi_ApproachSixtyFourthMin64Byte(void)
 {
-    int moved;
-    uint8_t v = ApproachSixtyFourthMin64Byte((uint8_t)cpu.a, &moved);
-
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    approach_exit(v, 0, moved);
+    approach_regs_byte(ApproachSixtyFourthMin64Byte);
 }
 
 /*
@@ -390,9 +358,5 @@ uint8_t ApproachOneTwentyEighthMin128Byte(uint8_t target, int *moved)
 
 void abi_ApproachOneTwentyEighthMin128Byte(void)
 {
-    int moved;
-    uint8_t v = ApproachOneTwentyEighthMin128Byte((uint8_t)cpu.a, &moved);
-
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    approach_exit(v, 0, moved);
+    approach_regs_byte(ApproachOneTwentyEighthMin128Byte);
 }

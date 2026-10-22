@@ -535,7 +535,7 @@ static void drift_frame(uint16_t ty, void (*done)(void))
         cyc(16);
         wr16(0x00003E, cpu.a);
         op_lda16_imm(t[i]);
-        cpu.a = ApproachEighthMin8(cpu.a, NULL);
+        approach_regs(ApproachEighthMin8);
         wr16(F(v[i], cpu.x), cyc_then(30, cpu.a));
         cpu.p |= P_M;
     }
@@ -759,7 +759,7 @@ static void zoom_frame(uint16_t to, uint16_t (*fn)(uint16_t, int *))
     wr16(0x00003E, cpu.a);
     op_lda16_imm(to);
     cyc(48);
-    cpu.a = fn(cpu.a, NULL);
+    approach_regs(fn);
     wr16(cam(0x000E), cyc_then(30, cpu.a));
     cpu.p |= P_M;
     (cyc(46), tail());

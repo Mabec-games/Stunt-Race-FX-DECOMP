@@ -470,7 +470,7 @@ static void counter_slide(void)
         cyc(16);
         wr8(0x00003E, v);
         lda8(0x40);
-        (cyc(58), cpu.a = (uint16_t)((cpu.a & 0xFF00) | ApproachQuarterMin4Byte((uint8_t)cpu.a, NULL)));
+        (cyc(58), approach_regs_byte(ApproachQuarterMin4Byte));
         wr8(F(0x2015, o), cyc_then(30, (uint8_t)cpu.a));
         add16(F(0x200C, o), cyc_then(22, 0x005A));
     } else { cyc(42); }
@@ -893,16 +893,14 @@ static void add8(uint32_t addr, uint8_t v)
    read. Returns C. */
 static int ease8p(uint32_t addr, uint8_t target, uint8_t (*to)(uint8_t, int *), unsigned pre)
 {
-    int moved;
-
     cyc(pre);
     wr8(0x00003E, cyc_then(16, ld8(addr)));
     cyc(58);
     lda8(target);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | to((uint8_t)cpu.a, &moved));
+    approach_regs_byte(to);
     cyc(30);
     wr8(addr, (uint8_t)cpu.a);
-    return !moved;                              /* the carry: already there */
+    return (cpu.p & P_C) != 0;
 }
 
 static int ease8(uint32_t addr, uint8_t target, uint8_t (*to)(uint8_t, int *))
@@ -1386,7 +1384,7 @@ static void ease16(uint32_t addr, uint32_t target, uint16_t (*to)(uint16_t, int 
     wr16(0x00003E, cpu.a);
     cyc(30);
     op_lda16(target);
-    cpu.a = to(cpu.a, NULL);
+    approach_regs(to);
     cyc(30);
     wr16(addr, cpu.a);
     cpu.p |= P_M;
@@ -8814,7 +8812,7 @@ void abi_ObjectPuffFollow(void)
     cyc(16);
     wr16(0x00003E, cpu.a);
     op_lda16_imm(0xF9C0);
-    cpu.a = ApproachEighthMin8(cpu.a, NULL);
+    approach_regs(ApproachEighthMin8);
     wr16(F(0x2029, cpu.x), cyc_then(30, cpu.a));
     cpu.p |= P_M;
     copy16((cyc(22), db()) | 0x1F4E, F(0x2029, cpu.x));

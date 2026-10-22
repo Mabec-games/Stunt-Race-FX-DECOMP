@@ -26,4 +26,9 @@ uint8_t ApproachThirtySecondMin32Byte(uint8_t target, int *moved);
 uint8_t ApproachSixtyFourthMin64Byte(uint8_t target, int *moved);
 uint8_t ApproachOneTwentyEighthMin128Byte(uint8_t target, int *moved);
 
+/* The same from C that still works in registers: A in, the new $3E in A,
+   the flags as the routine leaves them. */
+void approach_regs(uint16_t (*f)(uint16_t, int *));
+void approach_regs_byte(uint8_t (*f)(uint8_t, int *));
+
 #endif
