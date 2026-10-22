@@ -9,11 +9,9 @@
  */
 #include "machine.h"
 #include "cpu_ops.h"
+#include "system_calls.h"
 
-void abi_DebugPrint(void);
-void abi_DebugPrintDecimalWord(void);
-void abi_DebugPrintDecimalByte(void);
-void abi_DebugPrintHexWord(void);
+void DebugPrint(uint8_t bank);
 
 #define TEXT_POS 0x000046u
 #define TEXT_PTR 0x000054u
@@ -47,35 +45,52 @@ void abi_DebugPrintHexWord(void);
 #define TIMER_LIST 0x08FE5Eu
 
 /* A data-bank address. */
-static uint32_t dbw(uint16_t a)
+static uint32_t dbw(uint8_t bank, uint16_t a)
 {
-    return (uint32_t)cpu.db << 16 | a;
+    return (uint32_t)bank << 16 | a;
 }
 
+/* The printers a panel uses. */
+enum { DEC_WORD, HEX_WORD, DEC_BYTE };
+
+/* N and Z as the last print leaves them, for the adapters. */
+static uint8_t pr_nz;
+
 /* LDA #pos, STA $46, LDA #$0000, STA $0307 (16-bit), PLA of the value
-   pushed before, and the printer: the value in A with N and Z from it. */
-static void print16(void (*print)(void), uint16_t v, uint16_t pos)
+   pushed before, and the printer, with the widths p (M 16-bit here).
+   Returns A as it leaves it: the value. */
+static uint16_t print16(uint8_t bank, int printer, uint16_t v, uint16_t pos, uint8_t p)
 {
     cyc(70);
     wr16(TEXT_POS, pos);
-    wr16(dbw(TEXT_HALF), cyc_then(48, 0x0000));
-    cpu.a = v;
-    cpu.p = nz16(cpu.p, v);
-    (cyc(98), print());
+    wr16(dbw(bank, TEXT_HALF), cyc_then(48, 0x0000));
+    cyc(98);
+    if (printer == DEC_WORD)
+        DebugPrintDecimalWord(v);
+    else
+        DebugPrintHexWord(bank, v, p);
+    pr_nz = nz16(0, v);
+    return v;
 }
 
 /* The same with M 8-bit: $46 and $47 stored as bytes, $0307 a byte, one
-   byte pulled into A's low byte. */
-static void print8(void (*print)(void), uint8_t v, uint16_t pos)
+   byte pulled into A's low byte (a, A before it). Returns A as the
+   printer leaves it. */
+static uint16_t print8(uint8_t bank, int printer, uint16_t a, uint8_t v, uint16_t pos, uint8_t p)
 {
     cyc(54);
     wr8(TEXT_POS, (uint8_t)pos);
     cyc(32);
     wr8(TEXT_POS + 1, (uint8_t)(pos >> 8));
-    wr8(dbw(TEXT_HALF), cyc_then(40, 0x00));
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = nz8(cpu.p, v);
-    (cyc(90), print());
+    wr8(dbw(bank, TEXT_HALF), cyc_then(40, 0x00));
+    a = (uint16_t)((a & 0xFF00) | v);
+    cyc(90);
+    if (printer == HEX_WORD) {
+        pr_nz = nz8(0, v);
+        return DebugPrintHexWord(bank, a, p);
+    }
+    pr_nz = nz8(0, bank);              /* the long wrapper's last PLB */
+    return (uint16_t)((DebugPrintDecimalByte(bank, v, p) & 0xFF00) | v);
 }
 
 /* A 16-bit field of a Super FX record (LDA.L $70:field,X). */
@@ -90,6 +105,37 @@ static uint16_t fx_field_w(uint16_t field, uint16_t x)
 {
     cyc(16);
     return fx_field(field, x);
+}
+
+/* What a panel leaves for its adapter: A and X (pn_x_set), C and V
+   (pn_cv: bit 0 C, bit 1 V); N and Z are pr_nz. */
+static uint16_t pn_a, pn_x;
+static int pn_x_set, pn_cv;
+static uint8_t pn_c, pn_v;
+
+/* The panel's registers over the current ones: the M and X bits it
+   clears and sets. */
+static void panel_exit(uint8_t clear, uint8_t set)
+{
+    cpu.a = pn_a;
+    if (pn_x_set)
+        cpu.x = pn_x;
+    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | clear)) | pr_nz | set);
+    if (pn_cv & 1)
+        cpu.p = (uint8_t)((cpu.p & ~P_C) | pn_c);
+    if (pn_cv & 2)
+        cpu.p = (uint8_t)((cpu.p & ~P_V) | pn_v);
+}
+
+/* CLC; ADC (16-bit), binary: C and V to pn_c, pn_v. */
+static uint16_t add16(uint16_t a, uint16_t m)
+{
+    uint16_t r = (uint16_t)(a + m);
+
+    pn_c = (unsigned)a + m > 0xFFFF ? P_C : 0;
+    pn_v = (~(a ^ m) & (a ^ r) & 0x8000) ? P_V : 0;
+    pn_cv = 3;
+    return r;
 }
 
 /*
@@ -107,17 +153,17 @@ static uint16_t fx_field_w(uint16_t field, uint16_t x)
  * list's end; A low byte 0, its high byte the last text position's; Z
  * set, N clear; C, V from the last step of the text position.
  */
-void DebugTimersPanel(void)
+uint16_t DebugTimersPanel(uint8_t bank, uint16_t a)
 {
     uint16_t x = 0, pos, v, at;
-    uint8_t p, b, db;
+    uint8_t b, db;
 
-    cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
+    pn_cv = 0;
     cyc(76);
     wr8(TEXT_POS, 0x00);
     cyc(32);
     wr8(TEXT_POS + 1, 0x00);
-    wr8(dbw(TEXT_HALF), cyc_then(40, 0x00));
+    wr8(dbw(bank, TEXT_HALF), cyc_then(40, 0x00));
     cyc(54);
     wr8(TEXT_PTR + 2, 0x08);
     cyc(2);
@@ -129,40 +175,34 @@ void DebugTimersPanel(void)
         pos = rd16(TEXT_POS);
         cyc(46);
         wr16(TEXT_PTR, x);
-        p = (uint8_t)(cpu.p & ~P_C);
         cyc(54);
         v = rd16(TEXT_PTR);
         cyc(16);
-        wr16(TEXT_PTR, op_adc16((uint16_t)TIMER_LIST, v, &p));
-        cpu.p = p;
-        abi_DebugPrint();
-        p &= (uint8_t)~P_C;
-        x = op_adc16(x, 0x0009, &p);
+        wr16(TEXT_PTR, (uint16_t)((uint16_t)TIMER_LIST + v));
+        DebugPrint(bank);
+        x = (uint16_t)(x + 0x0009);
         cyc(366);
         db = rd8(TIMER_LIST + x);
         at = rd16(TIMER_LIST + 1 + x);
         v = rd16(((uint32_t)db << 16) + at);
-        cpu.a = v;
-        cpu.x = at;
-        cpu.p = nz16(p, v);
-        (cyc(90), abi_DebugPrintDecimalWord());
-        p &= (uint8_t)~P_C;
-        x = op_adc16(x, 0x0003, &p);
-        p &= (uint8_t)~P_C;
-        pos = op_adc16(pos, 0x0040, &p);
+        (cyc(90), DebugPrintDecimalWord(v));
+        x = (uint16_t)(x + 0x0003);
+        pos = add16(pos, 0x0040);
         cyc(178);
         wr16(TEXT_POS, pos);
-        cpu.a = pos;
-        cpu.p = p;
+        a = pos;
     }
-    cpu.a &= 0xFF00;
-    cpu.x = x;
-    cpu.p = nz8(cpu.p, 0x00);
+    pn_a = (uint16_t)(a & 0xFF00);
+    pn_x = x;
+    pn_x_set = 1;
+    pr_nz = P_Z;
+    return x;
 }
 
 void abi_DebugTimersPanel(void)
 {
-    DebugTimersPanel();
+    DebugTimersPanel(cpu.db, cpu.a);
+    panel_exit(P_X, P_M);
 }
 
 /*
@@ -174,23 +214,26 @@ void abi_DebugTimersPanel(void)
  * Entry: any widths. Exit: M and X 16-bit; X = the record; A = the speed,
  * N and Z from it.
  */
-void DebugMatchSpeedPanel(void)
+uint16_t DebugMatchSpeedPanel(uint8_t bank)
 {
     uint16_t x, v;
 
-    cpu.p &= (uint8_t)~(P_M | P_X);
+    pn_cv = 0;
     cyc(54);
     x = rd16(FX_MATCH_2476);
-    cpu.x = x;
+    pn_x = x;
+    pn_x_set = 1;
     cyc(30);
     v = fx_field(0x004A, x);
-    print16(abi_DebugPrintDecimalWord, v, 0x2840);
+    pn_a = print16(bank, DEC_WORD, v, 0x2840, 0);
+    cyc(44);                            /* RTL */
+    return pn_a;
 }
 
 void abi_DebugMatchSpeedPanel(void)
 {
-    DebugMatchSpeedPanel();
-    cyc(44);                            /* RTL */
+    DebugMatchSpeedPanel(cpu.db);
+    panel_exit(P_M | P_X, 0);
 }
 
 /*
@@ -201,22 +244,26 @@ void abi_DebugMatchSpeedPanel(void)
  * Entry: M and X 16-bit. Exit: X = the record; A = the word, N and Z from
  * it.
  */
-void DebugLastCarPanel(void)
+uint16_t DebugLastCarPanel(uint8_t bank)
 {
     uint16_t x, v;
 
+    pn_cv = 0;
     cyc(32);
     x = rd16(FX_CAR_LAST);
-    cpu.x = x;
+    pn_x = x;
+    pn_x_set = 1;
     cyc(30);
     v = fx_field(0x006A, x);
-    print16(abi_DebugPrintDecimalWord, v, 0x0440);
+    pn_a = print16(bank, DEC_WORD, v, 0x0440, 0);
+    cyc(44);                            /* RTL */
+    return pn_a;
 }
 
 void abi_DebugLastCarPanel(void)
 {
-    DebugLastCarPanel();
-    cyc(44);                            /* RTL */
+    DebugLastCarPanel(cpu.db);
+    panel_exit(0, 0);
 }
 
 /*
@@ -227,25 +274,26 @@ void abi_DebugLastCarPanel(void)
  */
 void DebugPanelNone(void)
 {
+    cyc(44);
 }
 
 void abi_DebugPanelNone(void)
 {
-    cyc(44);
+    DebugPanelNone();
 }
 
-/* Fields +$88, +$7A, +$86 and +$84 of the car record at X, printed in
+/* Fields +$88, +$7A, +$86 and +$84 of the car record at x, printed in
    decimal in four columns of one row. */
-static void car_row(uint16_t x, uint16_t row)
+static uint16_t car_row(uint8_t bank, uint16_t x, uint16_t row)
 {
     cyc(30);
-    print16(abi_DebugPrintDecimalWord, fx_field(0x0088, x), (uint16_t)(0x0400 + row));
+    print16(bank, DEC_WORD, fx_field(0x0088, x), (uint16_t)(0x0400 + row), 0);
     cyc(16);
-    print16(abi_DebugPrintDecimalWord, fx_field(0x007A, x), (uint16_t)(0x1400 + row));
+    print16(bank, DEC_WORD, fx_field(0x007A, x), (uint16_t)(0x1400 + row), 0);
     cyc(16);
-    print16(abi_DebugPrintDecimalWord, fx_field(0x0086, x), (uint16_t)(0x2800 + row));
+    print16(bank, DEC_WORD, fx_field(0x0086, x), (uint16_t)(0x2800 + row), 0);
     cyc(16);
-    print16(abi_DebugPrintDecimalWord, fx_field(0x0084, x), (uint16_t)(0x3C00 + row));
+    return print16(bank, DEC_WORD, fx_field(0x0084, x), (uint16_t)(0x3C00 + row), 0);
 }
 
 /*
@@ -259,28 +307,31 @@ static void car_row(uint16_t x, uint16_t row)
  * Entry: M and X 16-bit. Exit: X = the fourth car; A = its +$84, N and Z
  * from it.
  */
-void DebugCarsPanel(void)
+uint16_t DebugCarsPanel(uint8_t bank)
 {
     uint16_t x, row;
 
-    print16(abi_DebugPrintDecimalWord, rd16(cyc_then(24, dbw(GSU_WAIT_POLLS))), 0x5040);
-    print16(abi_DebugPrintDecimalWord, rd16(cyc_then(24, dbw(GSU_AB13_POLLS))), 0x5080);
+    pn_cv = 0;
+    print16(bank, DEC_WORD, rd16(cyc_then(24, dbw(bank, GSU_WAIT_POLLS))), 0x5040, 0);
+    print16(bank, DEC_WORD, rd16(cyc_then(24, dbw(bank, GSU_AB13_POLLS))), 0x5080, 0);
     cyc(32);
     x = rd16(FX_CARS);
-    cpu.x = x;
-    car_row(x, 0x0040);
+    pn_a = car_row(bank, x, 0x0040);
     for (row = 0x0080; row <= 0x0100; row = (uint16_t)(row + 0x0040)) {
         cyc(16);
         x = fx_field(0x0074, x);
-        cpu.x = x;
-        car_row(x, row);
+        pn_a = car_row(bank, x, row);
     }
+    pn_x = x;
+    pn_x_set = 1;
     cyc(44);
+    return pn_a;
 }
 
 void abi_DebugCarsPanel(void)
 {
-    DebugCarsPanel();
+    DebugCarsPanel(cpu.db);
+    panel_exit(0, 0);
 }
 
 /*
@@ -290,18 +341,21 @@ void abi_DebugCarsPanel(void)
  * HOW: As DebugCarsPanel.
  * Entry: M and X 16-bit. Exit: A = the second word, N and Z from it.
  */
-void DebugFxTestPanel(void)
+uint16_t DebugFxTestPanel(uint8_t bank)
 {
+    pn_cv = pn_x_set = 0;
     cyc(32);
-    print16(abi_DebugPrintDecimalWord, rd16(FX_RAM_TEST), 0x3980);
+    print16(bank, DEC_WORD, rd16(FX_RAM_TEST), 0x3980, 0);
     cyc(32);
-    print16(abi_DebugPrintDecimalWord, rd16(FX_PART_Z_SPEED), 0x39C0);
+    pn_a = print16(bank, DEC_WORD, rd16(FX_PART_Z_SPEED), 0x39C0, 0);
+    cyc(44);                            /* RTL */
+    return pn_a;
 }
 
 void abi_DebugFxTestPanel(void)
 {
-    DebugFxTestPanel();
-    cyc(44);                            /* RTL */
+    DebugFxTestPanel(cpu.db);
+    panel_exit(0, 0);
 }
 
 /*
@@ -317,40 +371,33 @@ void abi_DebugFxTestPanel(void)
  * Entry: M and X 16-bit. Exit: A = X = 0; Z set, N clear; C, V from the
  * last step of the text position (from entry when nothing was printed).
  */
-void DebugModelNamesPanel(void)
+void DebugModelNamesPanel(uint8_t bank)
 {
     uint16_t x, part, model, pos;
-    uint8_t p;
 
+    pn_cv = 0;
     cyc(32);
     x = rd16(FX_CAR_LAST);
-    cpu.x = x;
     cyc(30);
     x = fx_field(0x003E, x);
     cyc(84);
     wr16(TEXT_POS, 0x0840);
-    wr16(dbw(TEXT_HALF), cyc_then(48, 0x0000));
+    wr16(dbw(bank, TEXT_HALF), cyc_then(48, 0x0000));
     cyc(16);
     wr16(TEXT_PTR + 1, 0x0000);
-    p = cpu.p;
     do {
         cyc(82);
         part = fx_field(0x0018, x);
         cyc(76);
         while (part) {
             model = fx_field(0x000C, part);
-            p &= (uint8_t)~P_C;
             cyc(30);
-            wr16(TEXT_PTR, cyc_then(54, op_adc16(fx_field(0x0014, model), 0x001C, &p)));
+            wr16(TEXT_PTR, cyc_then(54, add16(fx_field(0x0014, model), 0x001C)));
             cyc(16);
             pos = rd16(TEXT_POS);
-            cpu.a = pos;
-            cpu.x = model;
-            cpu.p = p;
-            (cyc(30), abi_DebugPrint());
-            p &= (uint8_t)~P_C;
+            (cyc(30), DebugPrint(bank));
             cyc(112);
-            wr16(TEXT_POS, op_adc16(pos, 0x0040, &p));
+            wr16(TEXT_POS, add16(pos, 0x0040));
             cyc(52);
             part = fx_field(0x000E, part);
         }
@@ -358,14 +405,15 @@ void DebugModelNamesPanel(void)
         x = fx_field(0x0034, x);
     } while (x);
     cyc(74);
-    cpu.a = 0x0000;
-    cpu.x = 0x0000;
-    cpu.p = nz16(p, 0x0000);
+    pn_a = pn_x = 0x0000;
+    pn_x_set = 1;
+    pr_nz = P_Z;
 }
 
 void abi_DebugModelNamesPanel(void)
 {
-    DebugModelNamesPanel();
+    DebugModelNamesPanel(cpu.db);
+    panel_exit(0, 0);
 }
 
 /*
@@ -378,43 +426,42 @@ void abi_DebugModelNamesPanel(void)
  * Entry: M 16-bit or 8-bit, X 16-bit. Exit: M 16-bit; X = the viewed
  * object's record; A = its +$80, N and Z from it.
  */
-void DebugModelChainPanel(void)
+uint16_t DebugModelChainPanel(uint8_t bank)
 {
     uint16_t x, pos, v;
 
-    cpu.p &= (uint8_t)~P_M;
+    pn_cv = 0;
     cyc(54);
     x = rd16(FX_CAR_LAST);
-    cpu.x = x;
     cyc(30);
     x = fx_field(0x003E, x);
-    cpu.x = x;
     cyc(30);
-    print16(abi_DebugPrintDecimalWord, fx_field(0x0042, x), 0x08C0);
+    print16(bank, DEC_WORD, fx_field(0x0042, x), 0x08C0, 0);
     for (pos = 0x0900; pos <= 0x0980; pos = (uint16_t)(pos + 0x0040)) {
         cyc(16);
         x = fx_field(0x0034, x);
-        cpu.x = x;
         cyc(30);
-        print16(abi_DebugPrintDecimalWord, fx_field(0x0042, x), pos);
+        print16(bank, DEC_WORD, fx_field(0x0042, x), pos, 0);
     }
     cyc(16);
-    v = fx_field(0x0034, x);
-    x = rd16(cyc_then(24, dbw(VIEW_OBJECT)));
+    fx_field(0x0034, x);
+    x = rd16(cyc_then(24, dbw(bank, VIEW_OBJECT)));
     cyc(32);
-    v = rd16(OBJ_STATS + x);
-    x = v;
+    x = rd16(OBJ_STATS + x);
     cyc(30);
     v = fx_field(0x0080, x);
-    cpu.x = x;
-    cpu.a = v;
-    cpu.p = nz16(cpu.p, v);
+    pn_x = x;
+    pn_x_set = 1;
+    pn_a = v;
+    pr_nz = nz16(0, v);
+    cyc(44);                            /* RTL */
+    return v;
 }
 
 void abi_DebugModelChainPanel(void)
 {
-    DebugModelChainPanel();
-    cyc(44);                            /* RTL */
+    DebugModelChainPanel(cpu.db);
+    panel_exit(P_M, 0);
 }
 
 /*
@@ -427,38 +474,54 @@ void abi_DebugModelChainPanel(void)
  * Entry: M and X 16-bit. Exit: M 8-bit; X = the last car's record; A low
  * byte = $1F41, its high byte the traffic distance's; N, Z from the byte.
  */
-void DebugLastCarMotionPanel(void)
+uint8_t DebugLastCarMotionPanel(uint8_t bank)
 {
-    uint16_t x;
+    uint16_t x, a;
     uint8_t b;
 
+    pn_cv = 0;
     cyc(32);
     x = rd16(FX_CAR_LAST);
-    cpu.x = x;
     cyc(30);
-    print16(abi_DebugPrintDecimalWord, fx_field(0x004E, x), 0x4900);
+    print16(bank, DEC_WORD, fx_field(0x004E, x), 0x4900, 0);
     cyc(16);
-    print16(abi_DebugPrintDecimalWord, fx_field(0x004A, x), 0x4940);
+    print16(bank, DEC_WORD, fx_field(0x004A, x), 0x4940, 0);
     cyc(16);
-    print16(abi_DebugPrintDecimalWord, fx_field(0x002E, x), 0x4980);
+    print16(bank, DEC_WORD, fx_field(0x002E, x), 0x4980, 0);
     cyc(16);
-    print16(abi_DebugPrintDecimalWord, fx_field(0x0030, x), 0x49C0);
+    print16(bank, DEC_WORD, fx_field(0x0030, x), 0x49C0, 0);
     cyc(16);
-    print16(abi_DebugPrintDecimalWord, fx_field(0x0032, x), 0x4A00);
+    print16(bank, DEC_WORD, fx_field(0x0032, x), 0x4A00, 0);
     cyc(32);
-    print16(abi_DebugPrintDecimalWord, rd16(FX_TRAFFIC_CLOSE), 0x1C40);
+    print16(bank, DEC_WORD, rd16(FX_TRAFFIC_CLOSE), 0x1C40, 0);
     cyc(32);
-    print16(abi_DebugPrintDecimalWord, rd16(FX_TRAFFIC_DIST), 0x1C80);
-    cpu.p |= P_M;
-    b = rd8(cyc_then(46, dbw(WORK_1F41)));
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | b);
-    cpu.p = nz8(cpu.p, b);
+    a = print16(bank, DEC_WORD, rd16(FX_TRAFFIC_DIST), 0x1C80, 0);
+    b = rd8(cyc_then(46, dbw(bank, WORK_1F41)));
+    pn_a = (uint16_t)((a & 0xFF00) | b);
+    pn_x = x;
+    pn_x_set = 1;
+    pr_nz = nz8(0, b);
+    cyc(44);                            /* RTL */
+    return b;
 }
 
 void abi_DebugLastCarMotionPanel(void)
 {
-    DebugLastCarMotionPanel();
-    cyc(44);                            /* RTL */
+    DebugLastCarMotionPanel(cpu.db);
+    panel_exit(0, P_M);
+}
+
+/* X = the viewed object's statistics record: the byte at +$22 of the
+   object at $0346 under A's high byte (TAX with M 8-bit). */
+static uint16_t view_record8(uint8_t bank, uint16_t a)
+{
+    uint16_t x;
+    uint8_t b;
+
+    x = rd16(cyc_then(24, dbw(bank, VIEW_OBJECT)));
+    cyc(32);
+    b = rd8(OBJ_STATS + x);
+    return (uint16_t)((a & 0xFF00) | b);
 }
 
 /*
@@ -471,35 +534,35 @@ void abi_DebugLastCarMotionPanel(void)
  * time, pulled and printed with DebugPrintHexWord. The record address is
  * the byte at +$22 of the object at $0346 with A's high byte above it
  * (TAX with M 8-bit, X 16-bit).
- * Entry: M 8-bit, X 16-bit. Exit: X = the record; A and P as the last
- * DebugPrintHexWord leaves them.
+ * Entry: M 8-bit, X 16-bit; a = A, p the widths. Exit: X = the record; A
+ * and P as the last DebugPrintHexWord leaves them.
  */
-void DebugTrafficHexPanel(void)
+uint16_t DebugTrafficHexPanel(uint8_t bank, uint16_t a, uint8_t p)
 {
     uint16_t x;
-    uint8_t b;
 
+    pn_cv = 0;
     cyc(32);
-    print8(abi_DebugPrintHexWord, rd8(FX_RAM_TEST), 0x0940);
+    a = print8(bank, HEX_WORD, a, rd8(FX_RAM_TEST), 0x0940, p);
     cyc(32);
-    print8(abi_DebugPrintHexWord, rd8(FX_PART_Z_SPEED), 0x0980);
+    a = print8(bank, HEX_WORD, a, rd8(FX_PART_Z_SPEED), 0x0980, p);
     cyc(32);
-    print8(abi_DebugPrintHexWord, rd8(FX_TRAFFIC_CLOSE), 0x1D40);
+    a = print8(bank, HEX_WORD, a, rd8(FX_TRAFFIC_CLOSE), 0x1D40, p);
     cyc(32);
-    print8(abi_DebugPrintHexWord, rd8(FX_TRAFFIC_DIST), 0x1D80);
-    x = rd16(cyc_then(24, dbw(VIEW_OBJECT)));
-    cyc(32);
-    b = rd8(OBJ_STATS + x);
-    x = (uint16_t)((cpu.a & 0xFF00) | b);
-    cpu.x = x;
+    a = print8(bank, HEX_WORD, a, rd8(FX_TRAFFIC_DIST), 0x1D80, p);
+    x = view_record8(bank, a);
     cyc(46);
-    print8(abi_DebugPrintHexWord, rd8(GSU_RAM + 0x0046 + x), 0x3140);
+    pn_a = print8(bank, HEX_WORD, a, rd8(GSU_RAM + 0x0046 + x), 0x3140, p);
+    pn_x = x;
+    pn_x_set = 1;
+    cyc(44);                            /* RTL */
+    return pn_a;
 }
 
 void abi_DebugTrafficHexPanel(void)
 {
-    DebugTrafficHexPanel();
-    cyc(44);                            /* RTL */
+    DebugTrafficHexPanel(cpu.db, cpu.a, cpu.p);
+    panel_exit(0, 0);
 }
 
 /*
@@ -509,50 +572,38 @@ void abi_DebugTrafficHexPanel(void)
  * $1F43 at $49C0, then $1F41 and $1F43 again at $0940 and $0980.
  * HOW: EOR #$FF, INC A, then five CMP #$80, ROR A (an arithmetic shift);
  * printing as DebugTrafficHexPanel.
- * Entry: M 8-bit, X 16-bit. Exit: A and P as the last DebugPrintHexWord
- * leaves them, C from the last ROR.
+ * Entry: M 8-bit, X 16-bit; a = A, p the widths. Exit: A and P as the last
+ * DebugPrintHexWord leaves them, C from the last ROR.
  */
-void DebugWorkBytesPanel(void)
+uint16_t DebugWorkBytesPanel(uint8_t bank, uint16_t a, uint8_t p)
 {
-    uint8_t v, c;
+    uint8_t v, c = 0;
     int i;
 
-    print8(abi_DebugPrintHexWord, rd8(cyc_then(24, dbw(WORK_1F41))), 0x4940);
+    pn_cv = pn_x_set = 0;
+    a = print8(bank, HEX_WORD, a, rd8(cyc_then(24, dbw(bank, WORK_1F41))), 0x4940, p);
     cyc(32);
     v = rd8(FX_PART_Z_SPEED);
     v = (uint8_t)((v ^ 0xFF) + 1);
-    c = 0;
     for (i = 0; i < 5; i++) {
         cyc(36);
         c = v & 1;
         v = (uint8_t)((v >> 1) | (v & 0x80));
     }
-    cpu.p = (uint8_t)((cpu.p & ~P_C) | c);
-    print8(abi_DebugPrintHexWord, v, 0x4980);
-    print8(abi_DebugPrintHexWord, rd8(cyc_then(24, dbw(WORK_1F43))), 0x49C0);
-    print8(abi_DebugPrintHexWord, rd8(cyc_then(24, dbw(WORK_1F41))), 0x0940);
-    print8(abi_DebugPrintHexWord, rd8(cyc_then(24, dbw(WORK_1F43))), 0x0980);
+    pn_c = c;
+    pn_cv = 1;
+    a = print8(bank, HEX_WORD, a, v, 0x4980, p);
+    a = print8(bank, HEX_WORD, a, rd8(cyc_then(24, dbw(bank, WORK_1F43))), 0x49C0, p);
+    a = print8(bank, HEX_WORD, a, rd8(cyc_then(24, dbw(bank, WORK_1F41))), 0x0940, p);
+    pn_a = print8(bank, HEX_WORD, a, rd8(cyc_then(24, dbw(bank, WORK_1F43))), 0x0980, p);
+    cyc(44);                            /* RTL */
+    return pn_a;
 }
 
 void abi_DebugWorkBytesPanel(void)
 {
-    DebugWorkBytesPanel();
-    cyc(44);                            /* RTL */
-}
-
-/* X = the viewed object's statistics record: the byte at +$22 of the
-   object at $0346 under A's high byte (TAX with M 8-bit). */
-static uint16_t view_record8(void)
-{
-    uint16_t x;
-    uint8_t b;
-
-    x = rd16(cyc_then(24, dbw(VIEW_OBJECT)));
-    cyc(32);
-    b = rd8(OBJ_STATS + x);
-    x = (uint16_t)((cpu.a & 0xFF00) | b);
-    cpu.x = x;
-    return x;
+    DebugWorkBytesPanel(cpu.db, cpu.a, cpu.p);
+    panel_exit(0, 0);
 }
 
 /*
@@ -561,25 +612,30 @@ static uint16_t view_record8(void)
  * +$58 of the viewed object's statistics record at $49C0 and $0880, and
  * the Super FX byte $70:2638 at $0900.
  * HOW: As DebugTrafficHexPanel.
- * Entry: M 8-bit, X 16-bit. Exit: X = the record; A and P as the last
- * DebugPrintHexWord leaves them.
+ * Entry: M 8-bit, X 16-bit; a = A, p the widths. Exit: X = the record; A
+ * and P as the last DebugPrintHexWord leaves them.
  */
-void DebugViewRecordPanel(void)
+uint16_t DebugViewRecordPanel(uint8_t bank, uint16_t a, uint8_t p)
 {
-    uint16_t x = view_record8();
+    uint16_t x = view_record8(bank, a);
 
+    pn_cv = 0;
     cyc(46);
-    print8(abi_DebugPrintHexWord, rd8(GSU_RAM + 0x0010 + x), 0x49C0);
+    a = print8(bank, HEX_WORD, a, rd8(GSU_RAM + 0x0010 + x), 0x49C0, p);
     cyc(32);
-    print8(abi_DebugPrintHexWord, rd8(GSU_RAM + 0x0058 + x), 0x0880);
+    a = print8(bank, HEX_WORD, a, rd8(GSU_RAM + 0x0058 + x), 0x0880, p);
     cyc(32);
-    print8(abi_DebugPrintHexWord, rd8(FX_TRAFFIC_CLOSE), 0x0900);
+    pn_a = print8(bank, HEX_WORD, a, rd8(FX_TRAFFIC_CLOSE), 0x0900, p);
+    pn_x = x;
+    pn_x_set = 1;
+    cyc(44);                            /* RTL */
+    return pn_a;
 }
 
 void abi_DebugViewRecordPanel(void)
 {
-    DebugViewRecordPanel();
-    cyc(44);                            /* RTL */
+    DebugViewRecordPanel(cpu.db, cpu.a, cpu.p);
+    panel_exit(0, 0);
 }
 
 /*
@@ -588,52 +644,56 @@ void abi_DebugViewRecordPanel(void)
  * of the viewed object's statistics record at $4B00, the Super FX byte
  * $70:2482 at $4440 and $1F64 at $44C0.
  * HOW: As DebugTrafficHexPanel.
- * Entry: M 8-bit, X 16-bit. Exit: X = the record; A and P as the last
- * DebugPrintHexWord leaves them.
+ * Entry: M 8-bit, X 16-bit; a = A, p the widths. Exit: X = the record; A
+ * and P as the last DebugPrintHexWord leaves them.
  */
-void DebugViewSpeedPanel(void)
+uint16_t DebugViewSpeedPanel(uint8_t bank, uint16_t a, uint8_t p)
 {
-    uint16_t x = view_record8();
+    uint16_t x = view_record8(bank, a);
 
+    pn_cv = 0;
     cyc(46);
-    print8(abi_DebugPrintHexWord, rd8(GSU_RAM + 0x004A + x), 0x4B00);
+    a = print8(bank, HEX_WORD, a, rd8(GSU_RAM + 0x004A + x), 0x4B00, p);
     cyc(32);
-    print8(abi_DebugPrintHexWord, rd8(FX_RECORD_READY), 0x4440);
-    print8(abi_DebugPrintHexWord, rd8(cyc_then(24, dbw(WORK_1F64))), 0x44C0);
+    a = print8(bank, HEX_WORD, a, rd8(FX_RECORD_READY), 0x4440, p);
+    pn_a = print8(bank, HEX_WORD, a, rd8(cyc_then(24, dbw(bank, WORK_1F64))), 0x44C0, p);
+    pn_x = x;
+    pn_x_set = 1;
+    cyc(44);                            /* RTL */
+    return pn_a;
 }
 
 void abi_DebugViewSpeedPanel(void)
 {
-    DebugViewSpeedPanel();
-    cyc(44);                            /* RTL */
+    DebugViewSpeedPanel(cpu.db, cpu.a, cpu.p);
+    panel_exit(0, 0);
 }
 
-/* Prints the object at the head of bucket X, then up to three more along
+/* Prints the object at the head of bucket x, then up to three more along
    their +$3C links, at pos, pos + $1400, + $2800, + $3C00, + $5000
-   (hexadecimal words); stops after the print of a zero. Returns 0 when it stopped on
-   a zero (X = A = 0, Z set), else 1 with A and P as the last print left
-   them. */
-static int bucket_row(uint16_t x, uint16_t pos)
+   (hexadecimal words); stops after the print of a zero (X = A = 0, Z
+   set). */
+static void bucket_row(uint8_t bank, uint16_t x, uint16_t pos)
 {
     uint16_t v;
     int i;
 
     cyc(46);
     v = rd16(OBJECT_BUCKETS + x);
-    print16(abi_DebugPrintHexWord, v, pos);
+    pn_a = print16(bank, HEX_WORD, v, pos, 0);
     for (i = 1; i < 5; i++) {
         cyc(60);
-        x = cpu.a;
-        cpu.x = x;
-        cpu.p = nz16(cpu.p, x);
-        if (!x)
-            return 0;
+        x = pn_a;
+        pn_x = x;
+        if (!x) {
+            pr_nz = P_Z;
+            return;
+        }
         cyc(2);
         v = rd16(OBJ_NEXT + x);
-        print16(abi_DebugPrintHexWord, v, (uint16_t)(pos + 0x1400 * i));
+        pn_a = print16(bank, HEX_WORD, v, (uint16_t)(pos + 0x1400 * i), 0);
     }
     cyc(24);
-    return 1;
 }
 
 /*
@@ -647,41 +707,41 @@ static int bucket_row(uint16_t x, uint16_t pos)
  * HOW: Each value pushed while the text position is set, pulled and
  * printed with DebugPrintHexWord (16-bit: the whole word back in A); a
  * printed zero ends that row.
- * Entry: any widths. Exit: M and X 16-bit; X = the last object printed of
- * the second row, or 0; A and P as the last print or TAX leaves them, C
+ * Entry: any widths (p). Exit: M and X 16-bit; X = the last object printed
+ * of the second row, or 0; A and P as the last print or TAX leaves them, C
  * from the last LSR of the height.
  */
-void DebugBucketsPanel(void)
+uint16_t DebugBucketsPanel(uint8_t bank, uint8_t p)
 {
     uint16_t v, x;
 
-    cpu.p &= (uint8_t)~P_M;
-    v = rd16(cyc_then(46, dbw(VIEW_POS_Y_HI))) & 0x00FF;
-    cpu.p = (uint8_t)((cpu.p & ~P_C) | (v >> 3 & 1));
+    v = (uint16_t)(rd16(cyc_then(46, dbw(bank, VIEW_POS_Y_HI))) & 0x00FF);
+    pn_c = (uint8_t)(v >> 3 & 1);
+    pn_cv = 1;
     v = (uint16_t)(((v >> 4) + 1) & 0x00FE);
     cyc(118);
-    print16(abi_DebugPrintHexWord, v, 0x1C40);
-    print16(abi_DebugPrintHexWord, rd16(cyc_then(32, FX_PUSH_TURN)), 0x3040);
-    cpu.p &= (uint8_t)~P_X;
-    x = rd16(cyc_then(46, dbw(VIEW_OBJECT)));
-    cpu.x = x;
+    print16(bank, HEX_WORD, v, 0x1C40, (uint8_t)(p & P_X));
+    print16(bank, HEX_WORD, rd16(cyc_then(32, FX_PUSH_TURN)), 0x3040, (uint8_t)(p & P_X));
+    x = rd16(cyc_then(46, dbw(bank, VIEW_OBJECT)));
     cyc(32);
-    print16(abi_DebugPrintHexWord, rd16(OBJ_BUCKET + x), 0x1E80);
-    print16(abi_DebugPrintHexWord, rd16(cyc_then(24, dbw(VIEW_AREA))), 0x1EC0);
-    x = rd16(cyc_then(46, dbw(VIEW_OBJECT)));
+    print16(bank, HEX_WORD, rd16(OBJ_BUCKET + x), 0x1E80, 0);
+    print16(bank, HEX_WORD, rd16(cyc_then(24, dbw(bank, VIEW_AREA))), 0x1EC0, 0);
+    x = rd16(cyc_then(46, dbw(bank, VIEW_OBJECT)));
     cyc(32);
     v = rd16(OBJ_BUCKET + x);
-    cpu.x = v;
-    bucket_row(v, 0x0900);
-    v = rd16(dbw(VIEW_AREA));
-    cpu.x = v;
-    bucket_row(v, 0x0940);
+    bucket_row(bank, v, 0x0900);
+    v = rd16(dbw(bank, VIEW_AREA));
+    pn_x = v;
+    bucket_row(bank, v, 0x0940);
+    pn_x_set = 1;
+    cyc(20);                            /* RTL */
+    return pn_a;
 }
 
 void abi_DebugBucketsPanel(void)
 {
-    DebugBucketsPanel();
-    cyc(20);                            /* RTL */
+    DebugBucketsPanel(cpu.db, cpu.p);
+    panel_exit(P_M | P_X, 0);
 }
 
 /*
@@ -689,26 +749,30 @@ void abi_DebugBucketsPanel(void)
  * WHAT IT DOES: Prints in hexadecimal words the Super FX word $70:235C at
  * $4940 and the last car's +$80 at $4A00.
  * HOW: As DebugBucketsPanel.
- * Entry: M and X 16-bit. Exit: X = the last car's record; A and P as the
- * last DebugPrintHexWord leaves them.
+ * Entry: M and X 16-bit (p the widths). Exit: X = the last car's record; A
+ * and P as the last DebugPrintHexWord leaves them.
  */
-void DebugFxWordsPanel(void)
+uint16_t DebugFxWordsPanel(uint8_t bank, uint8_t p)
 {
     uint16_t x;
 
+    pn_cv = 0;
     cyc(32);
-    print16(abi_DebugPrintHexWord, rd16(FX_RAM_TEST), 0x4940);
+    print16(bank, HEX_WORD, rd16(FX_RAM_TEST), 0x4940, p);
     cyc(32);
     x = rd16(FX_CAR_LAST);
-    cpu.x = x;
     cyc(30);
-    print16(abi_DebugPrintHexWord, fx_field(0x0080, x), 0x4A00);
+    pn_a = print16(bank, HEX_WORD, fx_field(0x0080, x), 0x4A00, p);
+    pn_x = x;
+    pn_x_set = 1;
+    cyc(44);                            /* RTL */
+    return pn_a;
 }
 
 void abi_DebugFxWordsPanel(void)
 {
-    DebugFxWordsPanel();
-    cyc(44);                            /* RTL */
+    DebugFxWordsPanel(cpu.db, cpu.p);
+    panel_exit(0, 0);
 }
 
 /*
@@ -720,45 +784,44 @@ void abi_DebugFxWordsPanel(void)
  * and $70:235C.
  * HOW: Bytes with M 8-bit (text position stored a byte at a time), words
  * with M 16-bit; each value pushed, pulled and printed.
- * Entry: X 16-bit or 8-bit. Exit: M and X 16-bit; X = the last car's
- * record; A and P as the last DebugPrintHexWord leaves them.
+ * Entry: X 16-bit or 8-bit (p); a = A. Exit: M and X 16-bit; X = the last
+ * car's record; A and P as the last DebugPrintHexWord leaves them.
  */
-void DebugCounterPanel(void)
+uint16_t DebugCounterPanel(uint8_t bank, uint16_t a, uint8_t p)
 {
     uint16_t x;
+    uint8_t xw = (uint8_t)(p & P_X);
 
-    cpu.p |= P_M;
+    pn_cv = 0;
     cyc(54);
-    print8(abi_DebugPrintDecimalByte, rd8(FX_GSU_108E), 0x0440);
-    cpu.p &= (uint8_t)~P_M;
-    print16(abi_DebugPrintHexWord, rd16(cyc_then(46, dbw(GSU_WAIT_POLLS))), 0x0480);
-    print16(abi_DebugPrintHexWord, rd16(cyc_then(24, dbw(GSU_AB13_POLLS))), 0x04C0);
-    cpu.p &= (uint8_t)~P_X;
-    x = rd16(cyc_then(46, dbw(VIEW_OBJECT)));
-    cpu.x = x;
-    cpu.p |= P_M;
+    print8(bank, DEC_BYTE, a, rd8(FX_GSU_108E), 0x0440, (uint8_t)(P_M | xw));
+    print16(bank, HEX_WORD, rd16(cyc_then(46, dbw(bank, GSU_WAIT_POLLS))), 0x0480, xw);
+    a = print16(bank, HEX_WORD, rd16(cyc_then(24, dbw(bank, GSU_AB13_POLLS))), 0x04C0, xw);
+    x = rd16(cyc_then(46, dbw(bank, VIEW_OBJECT)));
     cyc(54);
-    print8(abi_DebugPrintDecimalByte, rd8(OBJ_4C + x), 0x0500);
+    a = print8(bank, DEC_BYTE, a, rd8(OBJ_4C + x), 0x0500, P_M);
     cyc(32);
-    print8(abi_DebugPrintDecimalByte, rd8(OBJ_4E + x), 0x0540);
-    cpu.p &= (uint8_t)~P_M;
+    print8(bank, DEC_BYTE, a, rd8(OBJ_4E + x), 0x0540, P_M);
     cyc(54);
     x = rd16(FX_CAR_LAST);
-    cpu.x = x;
     cyc(30);
-    print16(abi_DebugPrintHexWord, fx_field(0x0050, x), 0x0600);
-    print16(abi_DebugPrintHexWord, fx_field_w(0x004E, x), 0x0640);
-    print16(abi_DebugPrintHexWord, fx_field_w(0x004A, x), 0x0680);
-    print16(abi_DebugPrintHexWord, fx_field_w(0x003C, x), 0x06C0);
-    print16(abi_DebugPrintHexWord, fx_field_w(0x0056, x), 0x0700);
+    print16(bank, HEX_WORD, fx_field(0x0050, x), 0x0600, 0);
+    print16(bank, HEX_WORD, fx_field_w(0x004E, x), 0x0640, 0);
+    print16(bank, HEX_WORD, fx_field_w(0x004A, x), 0x0680, 0);
+    print16(bank, HEX_WORD, fx_field_w(0x003C, x), 0x06C0, 0);
+    print16(bank, HEX_WORD, fx_field_w(0x0056, x), 0x0700, 0);
     cyc(32);
-    print16(abi_DebugPrintHexWord, rd16(FX_RAM_TEST), 0x0740);
+    pn_a = print16(bank, HEX_WORD, rd16(FX_RAM_TEST), 0x0740, 0);
+    pn_x = x;
+    pn_x_set = 1;
+    cyc(44);                            /* RTL */
+    return pn_a;
 }
 
 void abi_DebugCounterPanel(void)
 {
-    DebugCounterPanel();
-    cyc(44);                            /* RTL */
+    DebugCounterPanel(cpu.db, cpu.a, cpu.p);
+    panel_exit(P_M | P_X, 0);
 }
 
 /*
@@ -769,12 +832,13 @@ void abi_DebugCounterPanel(void)
  */
 void DebugPanelSep(void)
 {
-    cpu.p |= P_M;
+    cyc(66);
 }
 
 void abi_DebugPanelSep(void)
 {
-    (cyc(66), DebugPanelSep());
+    DebugPanelSep();
+    cpu.p |= P_M;
 }
 
 /*
@@ -786,19 +850,18 @@ void abi_DebugPanelSep(void)
  * Entry: any widths. Exit: M and X 16-bit; A and P as DebugPrintHexWord
  * leaves them.
  */
-void DebugFxTestWordPanel(void)
+uint16_t DebugFxTestWordPanel(uint8_t bank)
 {
-    uint16_t v;
-
-    cpu.p &= (uint8_t)~(P_M | P_X);
-    v = rd16(cyc_then(46, dbw(DRAW_SIDE_20)));
-    cpu.a = v;
+    pn_cv = pn_x_set = 0;
+    rd16(cyc_then(46, dbw(bank, DRAW_SIDE_20)));
     cyc(32);
-    print16(abi_DebugPrintHexWord, rd16(FX_RAM_TEST), 0x5040);
+    pn_a = print16(bank, HEX_WORD, rd16(FX_RAM_TEST), 0x5040, 0);
+    cyc(44);                            /* RTL */
+    return pn_a;
 }
 
 void abi_DebugFxTestWordPanel(void)
 {
-    DebugFxTestWordPanel();
-    cyc(44);                            /* RTL */
+    DebugFxTestWordPanel(cpu.db);
+    panel_exit(P_M | P_X, 0);
 }

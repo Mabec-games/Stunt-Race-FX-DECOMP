@@ -55,4 +55,25 @@ uint16_t DebugPrintDecimalByte(uint8_t bank, uint8_t byte, uint8_t p);
 uint16_t DebugPrintSignedByte(uint8_t bank, uint8_t byte, uint8_t p);
 uint16_t DebugPrintHexWord(uint8_t bank, uint16_t a, uint8_t p);
 
+/* The debug panels of bank 08 (system/debug_panels.c); a is A and p the
+   widths where the panel prints with them. */
+uint16_t DebugTimersPanel(uint8_t bank, uint16_t a);
+uint16_t DebugMatchSpeedPanel(uint8_t bank);
+uint16_t DebugLastCarPanel(uint8_t bank);
+void DebugPanelNone(void);
+uint16_t DebugCarsPanel(uint8_t bank);
+uint16_t DebugFxTestPanel(uint8_t bank);
+void DebugModelNamesPanel(uint8_t bank);
+uint16_t DebugModelChainPanel(uint8_t bank);
+uint8_t DebugLastCarMotionPanel(uint8_t bank);
+uint16_t DebugTrafficHexPanel(uint8_t bank, uint16_t a, uint8_t p);
+uint16_t DebugWorkBytesPanel(uint8_t bank, uint16_t a, uint8_t p);
+uint16_t DebugViewRecordPanel(uint8_t bank, uint16_t a, uint8_t p);
+uint16_t DebugViewSpeedPanel(uint8_t bank, uint16_t a, uint8_t p);
+uint16_t DebugBucketsPanel(uint8_t bank, uint8_t p);
+uint16_t DebugFxWordsPanel(uint8_t bank, uint8_t p);
+uint16_t DebugCounterPanel(uint8_t bank, uint16_t a, uint8_t p);
+void DebugPanelSep(void);
+uint16_t DebugFxTestWordPanel(uint8_t bank);
+
 #endif
