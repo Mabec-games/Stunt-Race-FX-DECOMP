@@ -37,4 +37,13 @@ uint16_t ColourBlendToTarget(uint8_t bank, uint16_t colour, uint16_t x);
    colours stepped. */
 uint16_t PaletteKeptColoursStep(uint8_t bank, uint16_t a, uint16_t x, uint16_t y, uint16_t *xo, int *stepped);
 
+/* The frame's palette effects. PlayerColoursFlash returns the third colour
+   and sets *xo to the player's palette offset; StatusColourPick returns A
+   and sets *stored when the colour was stored; PalettesStep sets *ran when
+   $0E5F was set (else its result is only the low byte 0) and *xo. */
+uint16_t PlayerColoursFlash(uint8_t bank, uint8_t level, uint16_t y, uint16_t *xo);
+void PlayerColoursFlashRts(void);
+uint16_t StatusColourPick(uint8_t bank, uint16_t y, int *stored);
+uint16_t PalettesStep(uint8_t bank, int *ran, uint16_t *xo);
+
 #endif

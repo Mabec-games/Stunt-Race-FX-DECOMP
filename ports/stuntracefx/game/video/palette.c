@@ -829,66 +829,9 @@ void abi_ColourBlendToTarget(void)
     cpu.p = (uint8_t)(nz16((uint8_t)((cpu.p & ~(P_V | P_C)) | blend_cv), a) & ~P_M);
 }
 
-typedef struct {
-    uint16_t a, x, y;
-    uint8_t p;
-} FlashEnd;
-
-/* The body of PlayerColoursFlash, with everything its exit leaves. */
-static FlashEnd player_colours_flash(uint8_t bank, uint8_t v, uint16_t y, uint8_t p)
-{
-    uint32_t b = (uint32_t)bank << 16;
-    uint8_t k, n, c;
-    uint16_t src;
-    FlashEnd e;
-
-    if (v >= 0x08) {
-        unsigned s = (unsigned)v + 0x60;
-
-        p = (uint8_t)(p & ~P_V);
-        if (~(v ^ 0x60) & (v ^ s) & 0x80)
-            p |= P_V;
-        v = s > 0xFF ? (cyc(10), 0xFF) : (uint8_t)s;
-    }
-    k = (uint8_t)(v >> 5);
-    src = 0x0E21;
-    if (!k) {
-        cyc(178);
-        wr8(b | (uint16_t)(0x0E1F + y), 0x00);
-    } else {
-        n = (uint8_t)(8 - k);
-        p = (uint8_t)(p & ~P_V);
-        cyc(292);
-        wr8(0x0000F9, n);
-        cyc(30);
-        wr8(0x0000FA, (uint8_t)(n << 1));
-        cyc(30);
-        c = rd8(b | (uint16_t)(0x0E1F + y));
-        if (c >= (uint8_t)(n << 1))
-            { cyc(10); c = 0xFF; }
-        c = (uint8_t)(c + 1);
-        cyc(90);
-        wr8(b | (uint16_t)(0x0E1F + y), c);
-        if (c < n)
-            { cyc(6); src = 0x0E27; }
-        cyc(18);
-    }
-    p = (uint8_t)((p & ~P_C) | ((y & 0x8000) ? P_C : 0));
-    e.y = (uint16_t)(y << 1);
-    cyc(116);
-    e.x = rd16(b | (uint16_t)(0x0D83 + e.y));
-    cyc(38);
-    wr16(0x7E01C8 + e.x, cyc_then(32, rd16(b | src)));
-    cyc(24);
-    wr16(0x7E01CA + e.x, cyc_then(32, rd16(b | (uint16_t)(src + 2))));
-    cyc(24);
-    e.a = rd16(b | (uint16_t)(src + 4));
-    cyc(32);
-    wr16(0x7E01CC + e.x, e.a);
-    e.p = (uint8_t)(nz16(p, e.a) & ~(P_M | P_X));
-    cyc(42);
-    return e;
-}
+/* What PlayerColoursFlash's exit leaves in V, for the adapter only: -1 the
+   entry's, else 0 or 1. */
+static int flash_v;
 
 /*
  * @routine 7E:B5C1 PlayerColoursFlash
@@ -905,20 +848,72 @@ static FlashEnd player_colours_flash(uint8_t bank, uint8_t v, uint16_t y, uint8_
  * third colour written; X = the player's palette offset; Y = 2Y; M 16-bit;
  * N, Z from A; C = bit 15 of Y on entry; V clear after a flash step, from
  * the add of $60 when only that ran.
+ * In C: returns A; *xo is X.
  */
-void PlayerColoursFlash(uint8_t bank, uint8_t level, uint16_t y)
+uint16_t PlayerColoursFlash(uint8_t bank, uint8_t level, uint16_t y, uint16_t *xo)
 {
-    player_colours_flash(bank, level, y, 0);
+    uint32_t b = (uint32_t)bank << 16;
+    uint8_t k, n, c, v = level;
+    uint16_t src, x, a;
+
+    flash_v = -1;
+    if (v >= 0x08) {
+        unsigned s = (unsigned)v + 0x60;
+
+        flash_v = (~(v ^ 0x60) & (v ^ s) & 0x80) != 0;
+        v = s > 0xFF ? (cyc(10), 0xFF) : (uint8_t)s;
+    }
+    k = (uint8_t)(v >> 5);
+    src = 0x0E21;
+    if (!k) {
+        cyc(178);
+        wr8(b | (uint16_t)(0x0E1F + y), 0x00);
+    } else {
+        n = (uint8_t)(8 - k);
+        flash_v = 0;
+        cyc(292);
+        wr8(0x0000F9, n);
+        cyc(30);
+        wr8(0x0000FA, (uint8_t)(n << 1));
+        cyc(30);
+        c = rd8(b | (uint16_t)(0x0E1F + y));
+        if (c >= (uint8_t)(n << 1))
+            { cyc(10); c = 0xFF; }
+        c = (uint8_t)(c + 1);
+        cyc(90);
+        wr8(b | (uint16_t)(0x0E1F + y), c);
+        if (c < n)
+            { cyc(6); src = 0x0E27; }
+        cyc(18);
+    }
+    cyc(116);
+    x = rd16(b | (uint16_t)(0x0D83 + (uint16_t)(y << 1)));
+    cyc(38);
+    wr16(0x7E01C8 + x, cyc_then(32, rd16(b | src)));
+    cyc(24);
+    wr16(0x7E01CA + x, cyc_then(32, rd16(b | (uint16_t)(src + 2))));
+    cyc(24);
+    a = rd16(b | (uint16_t)(src + 4));
+    cyc(32);
+    wr16(0x7E01CC + x, a);
+    cyc(42);
+    *xo = x;
+    return a;
 }
 
 void abi_PlayerColoursFlash(void)
 {
-    FlashEnd e = player_colours_flash(cpu.db, (uint8_t)cpu.a, cpu.y, cpu.p);
+    uint16_t y = cpu.y, x;
+    uint16_t a = PlayerColoursFlash(cpu.db, (uint8_t)cpu.a, y, &x);
+    uint8_t p = cpu.p;
 
-    cpu.a = e.a;
-    cpu.x = e.x;
-    cpu.y = e.y;
-    cpu.p = e.p;
+    if (flash_v >= 0)
+        p = (uint8_t)((p & ~P_V) | (flash_v ? P_V : 0));
+    p = (uint8_t)((p & ~P_C) | ((y & 0x8000) ? P_C : 0));
+    cpu.a = a;
+    cpu.x = x;
+    cpu.y = (uint16_t)(y << 1);
+    cpu.p = (uint8_t)(nz16(p, a) & ~(P_M | P_X));
 }
 
 /*
@@ -927,10 +922,19 @@ void abi_PlayerColoursFlash(void)
  * HOW: Returns.
  * Entry: any. Exit: all unchanged.
  */
-void abi_PlayerColoursFlashRts(void)
+void PlayerColoursFlashRts(void)
 {
     cyc(42);
 }
+
+void abi_PlayerColoursFlashRts(void)
+{
+    PlayerColoursFlashRts();
+}
+
+/* What StatusColourPick's exit leaves in C, for the adapter only: whether
+   the entry's. */
+static int status_c_kept;
 
 /*
  * @routine 7E:B53F StatusColourPick
@@ -944,52 +948,47 @@ void abi_PlayerColoursFlashRts(void)
  * with $0E05 clear is not reached in the traces so far.
  * Entry: M 8-bit, X 16-bit; Y = item. Exit: M 16-bit; A = the colour (or
  * $0E3B on an odd frame, X unchanged); X = 0 after a store.
+ * In C: returns A; *stored is whether the colour was stored (then X = 0).
  */
-void abi_StatusColourPick(void)
+uint16_t StatusColourPick(uint8_t bank, uint16_t y, int *stored)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint16_t flags, t;
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t flags, t = 0, a, x;
     uint8_t v;
     int table = 0;
 
+    *stored = 1;
+    status_c_kept = 1;
     cyc(30);
-    v = rd8(b | (uint16_t)(0x0DDA + cpu.y));
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    cpu.p = nz8(cpu.p, v);
+    v = rd8(b | (uint16_t)(0x0DDA + y));
     if (v == 0) {
         cyc(68);
-        cpu.p &= (uint8_t)~P_M;
-        cpu.a = 0x0000;
-        cpu.p = nz16(cpu.p, 0);
+        a = 0x0000;
         goto store;
     }
     cyc(46);
-    v = rd8(b | (uint16_t)(0x0DF2 + cpu.y));
+    v = rd8(b | (uint16_t)(0x0DF2 + y));
     flags = (uint16_t)(v << 8);
     cyc(50);
-    flags |= rd8(b | (uint16_t)(0x0DF0 + cpu.y));
-    cpu.a = flags;
-    cpu.p &= (uint8_t)~P_M;
+    flags |= rd8(b | (uint16_t)(0x0DF0 + y));
     if (flags & 0x0400) {
         cyc(150);
-        v = rd8(b | (uint16_t)(0x0E05 + cpu.y));
+        v = rd8(b | (uint16_t)(0x0E05 + y));
         if (v) {
-            cpu.a = flags;
             cyc(104);
             t = rd16(b | 0x0E3B);
-            cpu.x = (uint16_t)((t & 0x0003) << 1);
-            cpu.p = (uint8_t)(cpu.p & ~P_C);
+            x = (uint16_t)((t & 0x0003) << 1);
+            status_c_kept = 0;
             cyc(84);
-            cpu.a = rd16((uint32_t)(0x7EB5B9 + cpu.x));
-            cpu.p = nz16(cpu.p, cpu.a);
+            a = rd16((uint32_t)(0x7EB5B9 + x));
             goto store;
         } else { cyc(12); }
     }
     cyc(86);
     if (flags & 0x0010) {
         cyc(74);
-        v = rd8(b | (uint16_t)(0x0DDA + cpu.y));
-        cpu.p = (uint8_t)((cpu.p & ~P_C) | (v >= 0x3C ? P_C : 0));
+        v = rd8(b | (uint16_t)(0x0DDA + y));
+        status_c_kept = 0;
         if (v >= 0x3C) {
             cyc(78);
             t = rd16(b | 0x0E3B);
@@ -999,31 +998,38 @@ void abi_StatusColourPick(void)
     if (!table) {
         cyc(84);
         t = rd16(b | 0x0E3B);
-        cpu.a = t;
         if (t & 0x0001) {
             cyc(88);
-            cpu.p = nz16(cpu.p, t);
-            return;
+            *stored = 0;
+            return t;
         } else { cyc(32); }
-        cpu.p = (uint8_t)((cpu.p & ~P_C) | (t & 0x0001));
+        status_c_kept = 0;
         t = (uint16_t)(t >> 1);
     }
-    cpu.x = (uint16_t)((t & 0x0003) << 1);
-    cpu.p = (uint8_t)(cpu.p & ~P_C);
+    x = (uint16_t)((t & 0x0003) << 1);
+    status_c_kept = 0;
     cyc(106);
-    cpu.a = rd16((uint32_t)(0x7EB5B1 + cpu.x));
-    cpu.p = nz16(cpu.p, cpu.a);
+    a = rd16((uint32_t)(0x7EB5B1 + x));
 store:
-    cpu.x = 0x0000;
     cyc(78);
-    wr16(0x7EFD8B, cpu.a);
-    cpu.p = nz16(cpu.p, 0);
+    wr16(0x7EFD8B, a);
     cyc(42);
+    return a;
 }
 
-void abi_PlayerColoursFlash(void);
-void abi_PaletteCycle(void);
-void abi_PaletteKeptColoursStep(void);
+void abi_StatusColourPick(void)
+{
+    int stored;
+    uint16_t a = StatusColourPick(cpu.db, cpu.y, &stored);
+    uint8_t p = (uint8_t)(cpu.p & ~P_M);
+
+    if (!status_c_kept)
+        p &= (uint8_t)~P_C;
+    cpu.a = a;
+    if (stored)
+        cpu.x = 0x0000;
+    cpu.p = nz16(p, stored ? 0 : a);
+}
 
 /*
  * @routine 7E:B3F4 PalettesStep
@@ -1033,32 +1039,57 @@ void abi_PaletteKeptColoursStep(void);
  * kept colours (PaletteKeptColoursStep).
  * HOW: Y = 0 for each; M 8-bit, X 16-bit, then both 8-bit for the last.
  * Entry: any widths. Exit: P restored; X and Y as the last call left them.
+ * In C: returns A as the last call left it (its low byte 0 when *ran is 0,
+ * the rest of A as on entry); *xo is X; X and Y are as on entry when *ran
+ * is 0, else Y is 0.
  */
-void abi_PalettesStep(void)
+uint16_t PalettesStep(uint8_t bank, int *ran, uint16_t *xo)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
-    uint8_t p0 = cpu.p, v;
+    uint32_t b = (uint32_t)bank << 16;
+    uint16_t a = 0, x = 0;
+    int stored, stepped;
+    uint8_t level;
 
-    cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
     cyc(90);
-    v = rd8(b | 0x0E5F);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    if (v) {
-        cpu.y = 0x0000;
+    *ran = rd8(b | 0x0E5F) != 0;
+    if (*ran) {
         cyc(64);
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | rd8(b | 0x0DDA));
-        (cyc(46), abi_PlayerColoursFlash());
-        cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
-        cpu.y = 0x0000;
-        (cyc(114), abi_StatusColourPick());
-        (cyc(46), abi_PaletteCycle());
-        op_sep(P_M | P_X);
-        cpu.y = 0x00;
-        cpu.x = 0x00;
-        (cyc(70), abi_PaletteKeptColoursStep());
+        level = rd8(b | 0x0DDA);
+        cyc(46);
+        PlayerColoursFlash(bank, level, 0, &x);
+        cyc(114);
+        StatusColourPick(bank, 0, &stored);
+        cyc(46);
+        a = PaletteCycle(&x);
+        cyc(22);                                /* SEP #$30 */
+        cyc(70);
+        a = PaletteKeptColoursStep(bank, a, 0, 0, &x, &stepped);
     } else { cyc(22); }
     cyc(28);
-    op_plp(p0);
+    cyc(42);                                    /* PLP */
+    *xo = x;
+    return a;
+}
+
+void abi_PalettesStep(void)
+{
+    uint8_t p0 = cpu.p;
+    uint16_t a0 = cpu.a, x;
+    int ran;
+    uint16_t a = PalettesStep(cpu.db, &ran, &x);
+
+    if (ran) {
+        cpu.a = a;
+        cpu.x = x;
+        cpu.y = 0x0000;
+    } else {
+        cpu.a = (uint16_t)(a0 & 0xFF00);
+    }
+    cpu.p = p0;
+    if (p0 & P_X) {
+        cpu.x &= 0x00FF;
+        cpu.y &= 0x00FF;
+    }
 }
 
 /*
