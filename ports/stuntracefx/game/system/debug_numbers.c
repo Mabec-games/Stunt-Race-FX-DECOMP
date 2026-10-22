@@ -3,11 +3,13 @@
  * hexadecimal, decimal and binary. The long entries save every register
  * and P and run with the data bank 0; the byte to print is passed through
  * $06E7. No play runs them; unit_debug_numbers calls them.
+ *
+ * The functions take the byte or word to print and the data bank; where
+ * the routine leaves A, X and Y as the last DebugDrawChar made them, they
+ * come back in a DebugRegs. The flags are the adapters'.
  */
 #include "machine.h"
-#include "cpu_ops.h"
-
-void abi_DebugDrawChar(void);
+#include "system_calls.h"
 
 #define NUM_BYTE 0x0006E7u
 #define NUM_VALUE 0x000042u
@@ -17,11 +19,12 @@ void abi_DebugDrawChar(void);
 #define POWERS_OF_TEN 0x03D57Au
 #define DECIMAL_PAIRS 0x03D5EDu
 
-/* DebugDrawChar with A = ch (the high byte as the caller's A has it). */
-static void draw(uint16_t ch)
+/* DebugDrawChar (a JSR from here) with the character ch; A, X, Y as it
+   leaves them. */
+static void draw(uint8_t bank, uint8_t ch, DebugRegs *r)
 {
-    cpu.a = ch;
-    (cyc(76), abi_DebugDrawChar());
+    cyc(76);
+    DebugDrawChar(bank, ch, &r->a, &r->x, &r->y);
 }
 
 /*
@@ -30,27 +33,61 @@ static void draw(uint16_t ch)
  * HOW: Each nibble indexes the ASCII digits at $03:D7B1 (a word read, its
  * low byte kept), less $20 for the font. 16-bit inside; P saved.
  * Entry: A low byte = the byte. Exit: P unchanged; A, X, Y as the second
- * DebugDrawChar leaves them.
+ * DebugDrawChar leaves them (*r), 8 bits wide in X and Y when P says so
+ * (the adapter).
  */
-void DebugHexByte(void)
+void DebugHexByte(uint8_t bank, uint8_t byte, DebugRegs *r)
 {
-    uint8_t p = cpu.p;
-    uint16_t a = cpu.a, d;
+    uint16_t d;
 
-    cpu.p &= (uint8_t)~(P_M | P_X);
     cyc(248);
-    d = rd16(HEX_DIGITS + ((a & 0x00F0) >> 4));
-    draw((uint16_t)((d & 0x00FF) - 0x0020));
+    d = rd16(HEX_DIGITS + ((byte & 0x00F0) >> 4));
+    draw(bank, (uint8_t)((d & 0x00FF) - 0x0020), r);
     cyc(154);
-    d = rd16(HEX_DIGITS + (a & 0x000F));
-    draw((uint16_t)((d & 0x00FF) - 0x0020));
+    d = rd16(HEX_DIGITS + (byte & 0x000F));
+    draw(bank, (uint8_t)((d & 0x00FF) - 0x0020), r);
     cyc(28);
-    op_plp(p);
+    cyc(42);                                    /* PLP */
 }
 
 void abi_DebugHexByte(void)
 {
-    DebugHexByte();
+    DebugRegs r = {cpu.a, cpu.x, cpu.y};
+
+    DebugHexByte(cpu.db, (uint8_t)cpu.a, &r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    if (cpu.p & P_X) {
+        cpu.x &= 0x00FF;
+        cpu.y &= 0x00FF;
+    }
+}
+
+/* What DebugDecimalByte leaves in P besides what it leaves unchanged: C
+   from the last test of the tens, V from the subtract of 200 or 100 (-1:
+   none made), N and Z from the units digit. For the adapters. */
+static int dec_c, dec_v;
+static uint8_t dec_units;
+
+/* SEC / SBC (8-bit, binary): the difference, V in dec_v. */
+static uint8_t dec_sbc(uint8_t a, uint8_t m)
+{
+    uint8_t nm = (uint8_t)~m;
+    unsigned r = (unsigned)a + nm + 1;
+
+    cyc(16);
+    dec_v = ((~(a ^ nm) & (a ^ r) & 0x80) != 0);
+    return (uint8_t)r;
+}
+
+static void dec_regs(void)
+{
+    uint8_t p = (uint8_t)((cpu.p & ~P_C) | (dec_c ? P_C : 0));
+
+    if (dec_v >= 0)
+        p = (uint8_t)((p & ~P_V) | (dec_v ? P_V : 0));
+    cpu.p = nz8(p, dec_units);
 }
 
 /*
@@ -63,46 +100,48 @@ void abi_DebugHexByte(void)
  * two-digit decimal table at $03:D5ED. The hundreds digit and the rest are
  * kept on the stack across the draws.
  * Entry: M 8-bit, X 16-bit; A = the byte. Exit: A, X, Y as the last
- * DebugDrawChar leaves them; N, Z from the units digit; C from the last
- * test of the tens (bit 3 of the pair, or no hundreds digit); V from the
- * subtract of 200 or 100 when there was one.
+ * DebugDrawChar leaves them (*r); N, Z from the units digit; C from the
+ * last test of the tens (bit 3 of the pair, or no hundreds digit); V from
+ * the subtract of 200 or 100 when there was one (the adapter has the flags).
  */
-void DebugDecimalByte(void)
+void DebugDecimalByte(uint8_t bank, uint8_t byte, DebugRegs *r)
 {
-    uint8_t v = (uint8_t)cpu.a, h, t, p = cpu.p;
+    uint8_t v = byte, h, t;
 
+    dec_v = -1;
     if (v >= 200) {
-        p |= P_C;
-        v = op_sbc8(v, 200, &p);
+        v = dec_sbc(v, 200);
         h = 0x02;
     } else if (v >= 100) {
         cyc(38);
-        p |= P_C;
-        v = op_sbc8(v, 100, &p);
+        v = dec_sbc(v, 100);
         h = 0x01;
     } else {
         h = 0xFF;
     }
     cyc(104);
-    cpu.p = p;
     if (h != 0xFF)
-        { cyc(26); draw((uint16_t)((cpu.a & 0xFF00) | h)); }
-    cpu.y = h;
-    cpu.x = v;
+        { cyc(26); draw(bank, h, r); }
     cyc(h != 0xFF ? 296 : 366);
     t = rd8(DECIMAL_PAIRS + v);
-    cpu.p = (uint8_t)((p & ~P_C) | ((t >> 4) ? (t >> 3 & 1) : (cyc(34), (h == 0xFF))));
+    dec_c = (t >> 4) ? (t >> 3 & 1) : (cyc(34), (h == 0xFF));
     if ((t >> 4) || h != 0xFF)
-        { cyc(34); draw((uint16_t)((cpu.a & 0xFF00) | (t >> 4))); cyc(14); }
+        { cyc(34); draw(bank, (uint8_t)(t >> 4), r); cyc(14); }
     else { cyc(84); }
-    cpu.p = nz8(cpu.p, (uint8_t)(t & 0x0F));
-    draw((uint16_t)(t & 0x0F));
+    dec_units = t & 0x0F;
+    draw(bank, dec_units, r);
     cyc(42); /* RTS */
 }
 
 void abi_DebugDecimalByte(void)
 {
-    DebugDecimalByte();
+    DebugRegs r = {cpu.a, cpu.x, cpu.y};
+
+    DebugDecimalByte(cpu.db, (uint8_t)cpu.a, &r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    dec_regs();
 }
 
 /*
@@ -113,52 +152,64 @@ void abi_DebugDecimalByte(void)
  * HOW: The byte kept on the stack across the sign's draw.
  * Entry: as DebugDecimalByte. Exit: as DebugDecimalByte.
  */
-void DebugSignedByte(void)
+void DebugSignedByte(uint8_t bank, uint8_t byte, DebugRegs *r)
 {
-    uint8_t v = (uint8_t)cpu.a;
+    uint8_t v = byte;
 
     if (v & 0x80) {
         cyc(40);
-        draw((uint16_t)((cpu.a & 0xFF00) | 0x24));
+        draw(bank, 0x24, r);
         cyc(30); /* EOR, INC */
         v = (uint8_t)(~v + 1);
     } else {
         cyc(46);
-        draw((uint16_t)((cpu.a & 0xFF00) | 0x29));
+        draw(bank, 0x29, r);
     }
     cyc(52);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
-    DebugDecimalByte();
+    DebugDecimalByte(bank, v, r);
 }
 
 void abi_DebugSignedByte(void)
 {
-    DebugSignedByte();
+    DebugRegs r = {cpu.a, cpu.x, cpu.y};
+
+    DebugSignedByte(cpu.db, (uint8_t)cpu.a, &r);
+    cpu.a = r.a;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    dec_regs();
 }
 
-/* The long wrappers: every register and P saved; the byte stored at $06E7
-   through the caller's data bank and read back with the data bank 0; then
-   the printer. A is pushed as wide as it came: with M 8-bit only its low
-   byte comes back, the high byte left as the printer leaves it (the high
-   byte of the text position DebugDrawChar returns). */
-static void long_wrapper(void (*print)(void))
+/* The long wrappers: every register and P saved (`p` is the P it comes
+   with); the byte stored at $06E7 through the caller's data bank and read
+   back with the data bank 0; then the printer. A is pushed as wide as it
+   came: with M 8-bit only its low byte comes back, the high byte left as
+   the printer leaves it (the high byte of the text position
+   DebugDrawChar returns, the value returned here as A). */
+static uint16_t long_wrapper(void (*print)(uint8_t, uint8_t, DebugRegs *),
+                             uint8_t bank, uint8_t byte, uint8_t p)
 {
-    Regs65816 saved = cpu;
-    uint16_t a;
+    DebugRegs r = {0, 0, 0};
 
-    cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
     /* PHA pushes a word with M 16-bit; PHX and PHY a byte each with X 8-bit */
-    cyc((saved.p & P_M ? 194 : 202) - (saved.p & P_X ? 16 : 0));
-    wr8((uint32_t)cpu.db << 16 | NUM_BYTE, (uint8_t)cpu.a);
-    cpu.db = 0x00;
+    cyc((p & P_M ? 194 : 202) - (p & P_X ? 16 : 0));
+    wr8((uint32_t)bank << 16 | NUM_BYTE, byte);
     cyc(90);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | rd8(NUM_BYTE));
-    (cyc(46), print());
-    a = cpu.a;
-    cpu = saved;
-    if (saved.p & P_M)
-        cpu.a = (uint16_t)((a & 0xFF00) | (saved.a & 0x00FF)); else { cyc(8); }
-    cyc(200 - (saved.p & P_X ? 16 : 0)); /* PLP, PLY, PLX, PLA, PLB, RTL */
+    byte = rd8(NUM_BYTE);
+    (cyc(46), print(0x00, byte, &r));
+    if (!(p & P_M))
+        cyc(8);
+    cyc(200 - (p & P_X ? 16 : 0)); /* PLP, PLY, PLX, PLA, PLB, RTL */
+    return r.a;
+}
+
+/* The long wrappers' registers: X, Y, DB, P kept but N, Z, which the final
+   PLB sets from the data bank; A kept with M 16-bit, its low byte only
+   with M 8-bit (its high byte the printer's). */
+static void long_regs(uint16_t a)
+{
+    if (cpu.p & P_M)
+        cpu.a = (uint16_t)((a & 0xFF00) | (cpu.a & 0x00FF));
     cpu.p = nz8(cpu.p, cpu.db);
 }
 
@@ -167,18 +218,19 @@ static void long_wrapper(void (*print)(void))
  * WHAT IT DOES: DebugHexByte for callers in other banks, with every
  * register kept.
  * HOW: long_wrapper.
- * Entry: A low byte = the byte; D = $0000. Exit: X, Y, P unchanged but N,
- * Z, which the final PLB sets from the data bank; A unchanged with M
- * 16-bit, its low byte only with M 8-bit.
+ * Entry: A low byte = the byte; D = $0000; `p` the P it comes with. Exit:
+ * X, Y, P unchanged but N, Z, which the final PLB sets from the data bank;
+ * A unchanged with M 16-bit, its low byte only with M 8-bit (the return
+ * value is the A the printer left, for that high byte).
  */
-void DebugPrintHexByte(void)
+uint16_t DebugPrintHexByte(uint8_t bank, uint8_t byte, uint8_t p)
 {
-    long_wrapper(DebugHexByte);
+    return long_wrapper(DebugHexByte, bank, byte, p);
 }
 
 void abi_DebugPrintHexByte(void)
 {
-    long_wrapper(DebugHexByte);
+    long_regs(DebugPrintHexByte(cpu.db, (uint8_t)cpu.a, cpu.p));
 }
 
 /*
@@ -188,14 +240,14 @@ void abi_DebugPrintHexByte(void)
  * HOW: long_wrapper.
  * Entry: as DebugPrintHexByte. Exit: as DebugPrintHexByte.
  */
-void DebugPrintDecimalByte(void)
+uint16_t DebugPrintDecimalByte(uint8_t bank, uint8_t byte, uint8_t p)
 {
-    long_wrapper(DebugDecimalByte);
+    return long_wrapper(DebugDecimalByte, bank, byte, p);
 }
 
 void abi_DebugPrintDecimalByte(void)
 {
-    long_wrapper(DebugDecimalByte);
+    long_regs(DebugPrintDecimalByte(cpu.db, (uint8_t)cpu.a, cpu.p));
 }
 
 /*
@@ -205,14 +257,14 @@ void abi_DebugPrintDecimalByte(void)
  * HOW: long_wrapper.
  * Entry: as DebugPrintHexByte. Exit: as DebugPrintHexByte.
  */
-void DebugPrintSignedByte(void)
+uint16_t DebugPrintSignedByte(uint8_t bank, uint8_t byte, uint8_t p)
 {
-    long_wrapper(DebugSignedByte);
+    return long_wrapper(DebugSignedByte, bank, byte, p);
 }
 
 void abi_DebugPrintSignedByte(void)
 {
-    long_wrapper(DebugSignedByte);
+    long_regs(DebugPrintSignedByte(cpu.db, (uint8_t)cpu.a, cpu.p));
 }
 
 /*
@@ -225,32 +277,33 @@ void abi_DebugPrintSignedByte(void)
  * (one byte).
  * With M 16-bit (the debug panels of bank 08) the long wrapper keeps the
  * whole of A, both bytes print right and the word comes back whole.
- * Entry: M 8-bit or 16-bit, D = $0000; A = the word. Exit: with M 8-bit A
- * low byte unchanged, its high byte as the second print leaves it, N, Z
- * from the low byte; with M 16-bit A unchanged, N, Z from it.
+ * Entry: M 8-bit or 16-bit (`p`), D = $0000; A = the word (`a`). Exit: the
+ * return value is A: with M 8-bit its low byte unchanged, its high byte as
+ * the second print leaves it, N, Z from the low byte; with M 16-bit A
+ * unchanged, N, Z from it (the adapter has the flags).
  */
-void DebugPrintHexWord(void)
+uint16_t DebugPrintHexWord(uint8_t bank, uint16_t a, uint8_t p)
 {
-    uint16_t a = cpu.a;
+    uint16_t pos;
+    uint8_t byte2;
 
-    cpu.a = (uint16_t)(a << 8 | a >> 8);
-    (cyc((cpu.p & P_M ? 22 : 30) + 82), abi_DebugPrintHexByte()); /* PHA, XBA, JSL */
-    cpu.a = (uint16_t)(cpu.a << 8 | cpu.a >> 8);
-    (cyc(82), abi_DebugPrintHexByte()); /* XBA, JSL */
-    if (cpu.p & P_M) {
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | (a & 0x00FF));
-        cpu.p = nz8(cpu.p, (uint8_t)a);
-    } else {
+    cyc((p & P_M ? 22 : 30) + 82);              /* PHA, XBA, JSL */
+    pos = DebugPrintHexByte(bank, (uint8_t)(a >> 8), p);
+    byte2 = (p & P_M) ? (uint8_t)(pos >> 8) : (uint8_t)a;
+    cyc(82);                                    /* XBA, JSL */
+    pos = DebugPrintHexByte(bank, byte2, p);
+    if (!(p & P_M))
         cyc(8);
-        cpu.a = a;
-        cpu.p = nz16(cpu.p, a);
-    }
     cyc(72);
+    return (p & P_M) ? (uint16_t)((pos & 0xFF00) | (a & 0x00FF)) : a;
 }
 
 void abi_DebugPrintHexWord(void)
 {
-    DebugPrintHexWord();
+    uint16_t a = cpu.a;
+
+    cpu.a = DebugPrintHexWord(cpu.db, a, cpu.p);
+    cpu.p = (cpu.p & P_M) ? nz8(cpu.p, (uint8_t)a) : nz16(cpu.p, a);
 }
 
 /*
@@ -265,26 +318,22 @@ void abi_DebugPrintHexWord(void)
  * Entry: any widths; A = the value; D = $0000. Exit: every register and P
  * unchanged.
  */
-void DebugPrintDecimalWord(void)
+void DebugPrintDecimalWord(uint16_t value)
 {
-    Regs65816 saved = cpu;
+    DebugRegs r = {0, 0, 0};
     uint16_t v, pw, n, x, drawn = 0, neg = 0, skip;
 
-    cpu.p &= (uint8_t)~(P_M | P_X);
     cyc(172);
-    wr16(NUM_VALUE, cpu.a);
-    cpu.db = 0x00;
+    wr16(NUM_VALUE, value);
     cyc(126);
     v = rd16(NUM_VALUE);
     if (v & 0x8000) {
         cyc(70);
         wr16(NUM_VALUE, (uint16_t)(~v + 1));
-        cpu.p = (uint8_t)((cpu.p | P_M) & ~P_X);
         cyc(30);
-        draw((uint16_t)((cpu.a & 0xFF00) | 0x0D));
+        draw(0x00, 0x0D, &r);
         neg = 1;
     }
-    cpu.p &= (uint8_t)~P_M;
     x = 0;
     cyc(neg ? 62 : 84);
     wr16(NUM_DIGIT, 0x0000);
@@ -311,12 +360,10 @@ void DebugPrintDecimalWord(void)
         skip = !(n || drawn);
         if (!skip) {
             drawn = 1;
-            cpu.p |= P_M;
             cyc(n ? 168 : 202);
             n = rd8(NUM_DIGIT);
-            draw((uint16_t)((cpu.a & 0xFF00) | (uint8_t)(n + 0x10)));
+            draw(0x00, (uint8_t)(n + 0x10), &r);
         }
-        cpu.p &= (uint8_t)~P_M;
         cyc(skip ? 124 : 110);
         wr16(NUM_DIGIT, 0x0000);
         x = (uint16_t)(x + 2);
@@ -324,16 +371,14 @@ void DebugPrintDecimalWord(void)
     cyc(22);
     if (!drawn) {
         cyc(94);
-        cpu.p |= P_M;
-        draw((uint16_t)((cpu.a & 0xFF00) | 0x10));
+        draw(0x00, 0x10, &r);
     }
     cyc(drawn ? 300 : 230);
-    cpu = saved;
 }
 
 void abi_DebugPrintDecimalWord(void)
 {
-    DebugPrintDecimalWord();
+    DebugPrintDecimalWord(cpu.a);
 }
 
 /*
@@ -345,18 +390,15 @@ void abi_DebugPrintDecimalWord(void)
  * printed with DebugHexByte, the last pushed (the highest bits) first. 8-bit
  * registers; P saved.
  * Entry: A = the byte; D = $0000. Exit: P unchanged; A, X, Y as the last
- * DebugDrawChar leaves them (X, Y 8 bits wide when P says so).
+ * DebugDrawChar leaves them (*r; X, Y 8 bits wide, in the adapter).
  */
-void DebugPrintBinaryByte(void)
+void DebugPrintBinaryByte(uint8_t bank, uint8_t byte, DebugRegs *r)
 {
-    uint8_t p = cpu.p, pair[4], v, lo;
+    uint8_t pair[4], v, lo;
     int i;
 
-    cpu.p |= P_M | P_X;
-    cpu.x &= 0x00FF;
-    cpu.y &= 0x00FF;
     cyc(60);
-    wr8(NUM_BITS, (uint8_t)cpu.a);
+    wr8(NUM_BITS, byte);
     for (i = 0; i < 4; i++) {
         cyc(i ? 152 : 32); /* later pairs: ROL, ASL x3, PLP, ROL, PHA, LDA #0 first */
         v = rd8(NUM_BITS);
@@ -372,14 +414,18 @@ void DebugPrintBinaryByte(void)
     cyc(22);
     for (i = 3; i >= 0; i--) {
         cyc(i == 3 ? 172 : 74); /* the first: ROL, ASL x3, PLP, ROL, PHA, PLA, JSR */
-        cpu.a = (uint16_t)((cpu.a & 0xFF00) | pair[i]);
-        DebugHexByte();
+        DebugHexByte(bank, pair[i], r);
     }
     cyc(30);
-    op_plp(p);
+    cyc(42);                                    /* PLP */
 }
 
 void abi_DebugPrintBinaryByte(void)
 {
-    DebugPrintBinaryByte();
+    DebugRegs r = {cpu.a, cpu.x, cpu.y};
+
+    DebugPrintBinaryByte(cpu.db, (uint8_t)cpu.a, &r);
+    cpu.a = r.a;
+    cpu.x = r.x & 0x00FF;               /* DebugHexByte ran with 8-bit X and Y */
+    cpu.y = r.y & 0x00FF;
 }

@@ -3,7 +3,7 @@
  * of $0DA5 is set; its high byte is copied to $7F:3468.
  */
 #include "machine.h"
-#include "cpu_ops.h"
+#include "system_calls.h"
 
 /*
  * @routine 7E:E0E8 SlideStep
@@ -17,7 +17,7 @@
  * Entry: any widths. Exit: A depends on the path (see the abi wrapper);
  * P unchanged.
  */
-static uint16_t slide_step(uint16_t a)
+uint16_t SlideStep(uint16_t a)
 {
     uint16_t v;
 
@@ -54,15 +54,25 @@ static uint16_t slide_step(uint16_t a)
     }
 }
 
-void SlideStep(void)
-{
-    slide_step(0);
-}
-
 void abi_SlideStep(void)
 {
-    cpu.a = slide_step(cpu.a);
+    cpu.a = SlideStep(cpu.a);
     cyc(100);
+}
+
+/* The flags SlideOutWobble leaves besides N and Z (those come from the
+   data bank it pulls): C from the last compare or add, V from the last add
+   (-1: none made, the caller's). For the adapter. */
+static int wobble_c, wobble_v;
+
+/* CLC / ADC (8-bit, binary): the sum, C and V in wobble_c, wobble_v. */
+static uint8_t wobble_add(uint8_t a, uint8_t m)
+{
+    unsigned r = (unsigned)a + m;
+
+    wobble_c = r > 0xFF;
+    wobble_v = ((~(a ^ m) & (a ^ r) & 0x80) != 0);
+    return (uint8_t)r;
 }
 
 /*
@@ -78,47 +88,64 @@ void abi_SlideStep(void)
  * Entry: the caller's data bank pushed above the return (PHB); data bank
  * with $19F7, $1A04, $1A05. Exit: A low byte = the last value read or
  * made; M 8-bit; data bank pulled, N, Z from it; C, V from the last compare
- * or add.
+ * or add. In C: the return value is A's low byte; *pulled the data bank
+ * pulled; the flags are the adapter's.
  */
-void abi_SlideOutWobble(void)
+uint8_t SlideOutWobble(uint8_t bank, uint8_t *pulled)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)bank << 16;
     uint8_t a, m;
 
-    cpu.p |= P_M;
+    wobble_v = -1;
     cyc(46);
     a = rd8(b | 0x19F7);
-    cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(a - 0x0F)) & ~P_C) | (a >= 0x0F ? P_C : (cyc(38), 0)));
+    wobble_c = a >= 0x0F;
+    if (!wobble_c)
+        cyc(38);
     if (a == 0x0F) {
-        cpu.p &= (uint8_t)~P_C;
         cyc(56);
-        a = op_adc8(rd8(b | 0x1A05), 0x01, &cpu.p);
+        a = wobble_add(rd8(b | 0x1A05), 0x01);
         cyc(54);
         wr8(b | 0x1A05, a);
-        cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(a - 0x02)) & ~P_C) | (a >= 0x02 ? P_C : (cyc(38), 0)));
+        wobble_c = a >= 0x02;
+        if (!wobble_c)
+            cyc(38);
         if (a == 0x02) {
             cyc(56);
             wr8(b | 0x1A05, 0x00);
             cyc(32);
             a = rd8(0x7F3468);
-            cpu.p &= (uint8_t)~P_C;
             cyc(38);
-            a = op_adc8(a, rd8(b | 0x1A04), &cpu.p);
+            a = wobble_add(a, rd8(b | 0x1A04));
             cyc(32);
             wr8(0x7F3468, a);
             m = a == 0x0F ? 0x0F : (cyc(32), 0x0B);
-            cpu.p = (uint8_t)((nz8(cpu.p, (uint8_t)(a - m)) & ~P_C) | (a >= m ? (cyc(56), P_C) : 0));
+            wobble_c = a >= m;
+            if (wobble_c)
+                cyc(56);
             if (a == 0x0F || a == 0x0B) {
                 cyc(6);
                 a = (uint8_t)((rd8(b | 0x1A04) ^ 0xFF) + 1);
-                cpu.p = nz8(cpu.p, a);
                 cyc(54);
                 wr8(b | 0x1A04, a);
             }
         }
     }
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
     cyc(20);
-    cpu.db = rd8((uint16_t)(cpu.s + 1));
-    cpu.p = nz8(cpu.p, cpu.db);    cyc(44);                            /* RTL */
+    *pulled = rd8((uint16_t)(cpu.s + 1));
+    cyc(44);                                    /* RTL */
+    return a;
+}
+
+void abi_SlideOutWobble(void)
+{
+    uint8_t pulled, a = SlideOutWobble(cpu.db, &pulled);
+
+    cpu.p |= P_M;
+    cpu.p = (uint8_t)((cpu.p & ~P_C) | (wobble_c ? P_C : 0));
+    if (wobble_v >= 0)
+        cpu.p = (uint8_t)((cpu.p & ~P_V) | (wobble_v ? P_V : 0));
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | a);
+    cpu.db = pulled;
+    cpu.p = nz8(cpu.p, pulled);
 }

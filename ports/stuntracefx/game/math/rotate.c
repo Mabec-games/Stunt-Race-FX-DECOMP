@@ -5,7 +5,7 @@
 #include "machine.h"
 #include "native.h"
 #include "hw.h"
-#include "cpu_ops.h"
+#include "math_calls.h"
 
 /*
  * Signed 8 x 8 multiply through the unsigned multiplier: the magnitudes are
@@ -202,6 +202,43 @@ void abi_RotateXY(void)
 }
 
 
+/* CLC / ADC and SEC / SBC as the binary instructions make them: the
+   result and the flags N, Z, C, V in *fl. The time is the instruction's:
+   the 16-bit subtract states 6 clocks of it, the 8-bit one 16. */
+static uint16_t add16(uint16_t a, uint16_t m, uint8_t *fl)
+{
+    uint32_t r = (uint32_t)a + m;
+
+    *fl = (uint8_t)(((r & 0x8000) ? P_N : 0) | ((r & 0xFFFF) == 0 ? P_Z : 0) |
+                    (r > 0xFFFF ? P_C : 0) | ((~(a ^ m) & (a ^ r) & 0x8000) ? P_V : 0));
+    return (uint16_t)r;
+}
+
+static uint16_t sub16(uint16_t a, uint16_t m, uint8_t *fl)
+{
+    uint16_t nm = (uint16_t)~m;
+    uint32_t r = (uint32_t)a + nm + 1;
+
+    *fl = (uint8_t)(((r & 0x8000) ? P_N : 0) | ((r & 0xFFFF) == 0 ? P_Z : 0) |
+                    (r > 0xFFFF ? P_C : 0) | ((~(a ^ nm) & (a ^ r) & 0x8000) ? P_V : 0));
+    cyc(6);
+    return (uint16_t)r;
+}
+
+/* SBC with the carry given (1: SEC before it); *carry is the carry after. */
+static uint8_t sub8(uint8_t a, uint8_t m, unsigned *carry)
+{
+    unsigned r = (unsigned)a + (uint8_t)~m + *carry;
+
+    cyc(16);
+    *carry = r > 0xFF;
+    return (uint8_t)r;
+}
+
+/* The flags MulWordByte leaves (N, Z, C, V of its last add or subtract),
+   for its adapter. */
+static uint8_t mulw_flags;
+
 /*
  * @routine 02:DF99 MulWordByte
  * WHAT IT DOES: Multiplies the signed word in direct page $67 by the signed
@@ -210,19 +247,21 @@ void abi_RotateXY(void)
  * HOW: The hardware multiplier, on magnitudes: 2|s| times the low byte,
  * then (after reading the high byte of that product) times the high byte;
  * the two products are added, or subtracted from 0 when the signs differ.
- * The multiplier's registers through the data bank; $6C-$6D are cleared
- * and used as the zero to add to.
- * Entry: M 8-bit, X 8-bit, D = $0000. Exit: M 8-bit; A = the product
- * (both bytes); Y = the first product's high byte; N, Z, C, V from the
- * last add or subtract.
+ * The multiplier's registers through the data bank (`bank`); $6C-$6D are
+ * cleared and used as the zero to add to.
+ * Entry: M 8-bit, X 8-bit, D = $0000; the data bank in `bank`. Exit: M
+ * 8-bit; A = the product (both bytes, the return value); Y = the first
+ * product's high byte (*yout); N, Z, C, V from the last add or subtract
+ * (the adapter has them).
  */
-void abi_MulWordByte(void)
+uint16_t MulWordByte(uint8_t bank, uint8_t *yout)
 {
-    uint32_t b = (uint32_t)cpu.db << 16;
+    uint32_t b = (uint32_t)bank << 16;
     uint8_t a, m, y, mpya = 0;
     uint16_t prod = 0;
     uint16_t w, n;
     uint32_t pre, st;
+    unsigned cy;
 
     cyc(16);
     wr8(0x00006C, 0x00);
@@ -232,16 +271,13 @@ void abi_MulWordByte(void)
     wr8(0x00006B, 0x00);
     cyc(16);
     a = rd8(0x000069);
-    cpu.p = nz8(cpu.p, a);
     if (a & 0x80)
         goto neg_s;
-    cpu.p = (uint8_t)((cpu.p & ~P_C) | (a >> 7));
     a = (uint8_t)(a << 1);
     cyc(54);
     io_wr8(b | 0x4202, mpya = a);
     cyc(16);
     a = rd8(0x000068);
-    cpu.p = nz8(cpu.p, a);
     if (a & 0x80)
         goto pos_s_neg_v;
     cyc(32);
@@ -255,28 +291,27 @@ void abi_MulWordByte(void)
     st = 16;
     goto add;
 pos_s_neg_v:
-    cpu.p |= P_C;
     cyc(68);
     m = rd8(0x000067);
-    a = op_sbc8(0x00, m, &cpu.p);
+    cy = 1;
+    a = sub8(0x00, m, &cy);
     cyc(8);
     io_wr8(b | 0x4203, a);
     prod = cpu_mul(mpya, a);
     cyc(32);
     m = rd8(0x000068);
-    a = op_sbc8(0x00, m, &cpu.p);
-    pre = 32;                           /* what op_sbc8 does not state: JMP, LDY */
+    cy = 1;
+    a = sub8(0x00, m, &cy);
+    pre = 32;                           /* what sub8 does not state: JMP, LDY */
     st = 34;
     goto sub;
 neg_s:
     a = (uint8_t)(~a + 1);
-    cpu.p = (uint8_t)((cpu.p & ~P_C) | (a >> 7));
     a = (uint8_t)(a << 1);
     cyc(90);
     io_wr8(b | 0x4202, mpya = a);
     cyc(16);
     a = rd8(0x000068);
-    cpu.p = nz8(cpu.p, a);
     if (a & 0x80)
         goto neg_s_neg_v;
     cyc(32);
@@ -290,17 +325,18 @@ neg_s:
     st = 34;
     goto sub;
 neg_s_neg_v:
-    cpu.p |= P_C;
     cyc(68);
     m = rd8(0x000067);
-    a = op_sbc8(0x00, m, &cpu.p);
+    cy = 1;
+    a = sub8(0x00, m, &cy);
     cyc(8);
     io_wr8(b | 0x4203, a);
     prod = cpu_mul(mpya, a);
     cyc(60);
     m = rd8(0x000068);
-    a = op_sbc8(0x00, m, &cpu.p);
-    pre = 8;                            /* LDY, less what op_sbc8 states */
+    cy = 1;
+    a = sub8(0x00, m, &cy);
+    pre = 8;                            /* LDY, less what sub8 states */
     st = 16;
     goto add;
 sub:
@@ -315,12 +351,10 @@ sub:
     w = rd16(0x00006C);
     cyc(38);
     n = io_rd16(b | 0x4216, prod);
-    cpu.p |= P_C;
-    w = op_sbc16(w, n, &cpu.p);
+    w = sub16(w, n, &mulw_flags);
     cyc(24);
     n = rd16(0x00006A);
-    cpu.p |= P_C;
-    w = op_sbc16(w, n, &cpu.p);
+    w = sub16(w, n, &mulw_flags);
     goto store;
 add:
     cyc(pre);
@@ -334,19 +368,33 @@ add:
     w = rd16(0x00006C);
     cyc(24);
     n = io_rd16(b | 0x4216, prod);
-    cpu.p &= (uint8_t)~P_C;
-    w = op_adc16(w, n, &cpu.p);
+    w = add16(w, n, &mulw_flags);
     cyc(30);
     n = rd16(0x00006A);
-    cpu.p &= (uint8_t)~P_C;
-    w = op_adc16(w, n, &cpu.p);
+    w = add16(w, n, &mulw_flags);
 store:
     cyc(st);
     wr16(0x00006A, w);
     cyc(64);
+    *yout = y;
+    return w;
+}
+
+/* MulWordByte's exit in the registers: A the product, Y the high byte, M
+   set, N, Z, C, V from its last add or subtract. */
+static void mulw_regs(uint16_t w, uint8_t y)
+{
     cpu.a = w;
     cpu.y = y;
-    cpu.p |= P_M;
+    cpu.p = (uint8_t)((cpu.p & ~(P_N | P_Z | P_C | P_V)) | mulw_flags | P_M);
+}
+
+void abi_MulWordByte(void)
+{
+    uint8_t y;
+    uint16_t w = MulWordByte(cpu.db, &y);
+
+    mulw_regs(w, y);
 }
 
 /*
@@ -355,16 +403,29 @@ store:
  * HOW: JSR, RTL.
  * Entry: M 8-bit, X 8-bit, D = $0000. Exit: as MulWordByte.
  */
-void abi_MulWordByteLong(void)
+uint16_t MulWordByteLong(uint8_t bank, uint8_t *yout)
 {
-    (cyc(46), abi_MulWordByte());
+    uint16_t w;
+
+    cyc(46);
+    w = MulWordByte(bank, yout);
     cyc(44);                            /* RTL */
+    return w;
 }
 
-/* One MulWordByte: $67-$68 = the word at v, $69 = the byte at f. */
+void abi_MulWordByteLong(void)
+{
+    uint8_t y;
+    uint16_t w = MulWordByteLong(cpu.db, &y);
+
+    mulw_regs(w, y);
+}
+
+/* One MulWordByte: $67-$68 = the word at v, $69 = the byte at f. Data
+   bank 0. Returns A. */
 static uint16_t mul_at(uint16_t v, uint16_t f)
 {
-    uint8_t t;
+    uint8_t t, y;
 
     cyc(16);
     t = rd8(v);
@@ -378,16 +439,19 @@ static uint16_t mul_at(uint16_t v, uint16_t f)
     t = rd8(f);
     cyc(16);
     wr8(0x000069, t);
-    (cyc(62), abi_MulWordByteLong());
-    return cpu.a;
+    cyc(62);
+    return MulWordByteLong(0x00, &y);
 }
 
 /* The shared body of RotateXZWide and RotateXZWideFrom08: x (the word at
    xa) and z ($94) rotated by sin and cos of the angle; z' = x sin + z cos
-   to $05F2, x' = x cos - z sin to the word at out. Data bank 0 inside. */
-static void rotate_wide(uint8_t i, uint16_t xa, uint16_t out)
+   to $05F2, x' = x cos - z sin to the word at out. Data bank 0 inside.
+   Returns A: the last product's high byte over x''s high byte. */
+static uint16_t rotate_wide(uint8_t i, uint16_t xa, uint16_t out)
 {
     uint8_t t, v;
+    uint16_t w;
+    unsigned c;
 
     cyc(186);
     t = rd8(0x0096FE + i);
@@ -405,19 +469,19 @@ static void rotate_wide(uint8_t i, uint16_t xa, uint16_t out)
     cyc(24);
     wr8(0x0005F3, t);
     mul_at(0x0094, 0x05F7);
-    cpu.p &= (uint8_t)~P_C;
     cyc(16);
     t = rd8(0x00006A);
     cyc(38);
     v = rd8(0x0005F2);
-    t = op_adc8(t, v, &cpu.p);
+    c = (unsigned)t + v;                /* CLC, ADC */
+    t = (uint8_t)c;
     cyc(24);
     wr8(0x0005F2, t);
     cyc(16);
     t = rd8(0x00006B);
     cyc(24);
     v = rd8(0x0005F3);
-    t = op_adc8(t, v, &cpu.p);
+    t = (uint8_t)(t + v + (c > 0xFF));
     cyc(24);
     wr8(0x0005F3, t);
     mul_at(0x0094, 0x05F6);
@@ -429,21 +493,61 @@ static void rotate_wide(uint8_t i, uint16_t xa, uint16_t out)
     t = rd8(0x00006B);
     cyc(16);
     wr8((uint16_t)(out + 1), t);
-    mul_at(xa, 0x05F7);
-    cpu.p |= P_C;
+    w = mul_at(xa, 0x05F7);
     cyc(16);
     t = rd8(0x00006A);
     cyc(30);
     v = rd8(out);
-    t = op_sbc8(t, v, &cpu.p);
+    c = 1;                              /* SEC, SBC */
+    t = sub8(t, v, &c);
     wr8(out, t);
     cyc(16);
     t = rd8(0x00006B);
     cyc(16);
     v = rd8((uint16_t)(out + 1));
-    t = op_sbc8(t, v, &cpu.p);
+    t = sub8(t, v, &c);
     wr8((uint16_t)(out + 1), t);
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | t);
+    return (uint16_t)((w & 0xFF00) | t);
+}
+
+/* The wide rotations' entry and exit as C: X and Y (8 bits wide when
+   `x8`) are kept in $3E and $40 across the work and come back from there;
+   returns A (the last product's high byte, x''s high byte below). */
+static uint16_t rotate_wide_keep(uint8_t i, uint16_t xa, uint16_t out, int x8,
+                                 uint16_t *x, uint16_t *y, int extra)
+{
+    uint16_t a;
+
+    if (x8) {
+        cyc(16);
+        wr8(0x00003E, (uint8_t)*x);
+        cyc(16);
+        wr8(0x000040, (uint8_t)*y);
+    } else {
+        cyc(16);
+        wr16(0x00003E, *x);
+        cyc(16);
+        wr16(0x000040, *y);
+    }
+    if (extra)
+        cyc(30);
+    cyc(22);                            /* SEP #$10 */
+    a = rotate_wide(i, xa, out);
+    cyc(42);                            /* PLP */
+    *y = x8 ? rd8(cyc_then(30, 0x000040)) : rd16(cyc_then(30, 0x000040));
+    *x = x8 ? rd8(cyc_then(16, 0x00003E)) : rd16(cyc_then(16, 0x00003E));
+    cyc(44);
+    return a;
+}
+
+/* The wide rotations' registers: A as returned, X and Y the reloaded
+   values, DB as it came, P as it came but N, Z from X. */
+static void wide_regs(uint8_t p, uint16_t a, uint16_t x, uint16_t y)
+{
+    cpu.a = a;
+    cpu.x = x;
+    cpu.y = y;
+    cpu.p = (p & P_X) ? nz8(p, (uint8_t)x) : nz16(p, x);
 }
 
 /*
@@ -456,32 +560,23 @@ static void rotate_wide(uint8_t i, uint16_t xa, uint16_t out)
  * (kept at $05F6 and $05F7); four MulWordByteLong products, added and
  * subtracted a byte at a time. X and Y are kept in direct page $3E and
  * $40; P and DB are saved and restored; the data bank is 0 inside.
- * Entry: M 8-bit, D = $0000; A = angle. Exit: A low byte = x''s high
- * byte; X, Y, DB, P unchanged (X and Y reloaded from $3E and $40).
+ * Entry: M 8-bit, D = $0000; A = angle; *x and *y the index registers,
+ * 8 bits wide when `x8`. Exit: the return value (A: x''s high byte below,
+ * the last product's high byte above); *x, *y the reloaded X and Y; DB, P
+ * unchanged but N, Z from X (the adapter has them).
  */
+uint16_t RotateXZWide(uint8_t angle, int x8, uint16_t *x, uint16_t *y)
+{
+    return rotate_wide_keep(angle, 0x0002, 0x0004, x8, x, y, 0);
+}
+
 void abi_RotateXZWide(void)
 {
-    uint8_t p = cpu.p, db = cpu.db;
+    uint16_t x = cpu.x, y = cpu.y;
+    uint8_t p = cpu.p;
 
-    if (p & P_X) {
-        cyc(16);
-        wr8(0x00003E, (uint8_t)cpu.x);
-        cyc(16);
-        wr8(0x000040, (uint8_t)cpu.y);
-    } else {
-        cyc(16);
-        wr16(0x00003E, cpu.x);
-        cyc(16);
-        wr16(0x000040, cpu.y);
-    }
-    op_sep(P_X);
-    cpu.db = 0x00;
-    rotate_wide((uint8_t)cpu.a, 0x0002, 0x0004);
-    cpu.db = db;
-    op_plp(p);
-    cpu.y = (p & P_X) ? rd8(cyc_then(30, 0x000040)) : rd16(cyc_then(30, 0x000040));
-    cpu.x = (p & P_X) ? rd8(cyc_then(16, 0x00003E)) : rd16(cyc_then(16, 0x00003E));
-    cpu.p = (p & P_X) ? (cyc(44), nz8(p, (uint8_t)cpu.x)) : (cyc(44), nz16(p, cpu.x));
+    cpu.a = RotateXZWide((uint8_t)cpu.a, (p & P_X) != 0, &x, &y);
+    wide_regs(p, cpu.a, x, y);
 }
 
 /*
@@ -490,31 +585,18 @@ void abi_RotateXZWide(void)
  * and $94 and the angle -A: z' to $05F2, x' to direct page $0A. Nothing
  * in the game calls it.
  * HOW: As RotateXZWide, the angle negated first (EOR #$FF, INC).
- * Entry: M 8-bit, D = $0000; A = angle. Exit: A low byte = x''s high
- * byte; X, Y, DB, P unchanged (X and Y reloaded from $3E and $40).
+ * Entry and exit: as RotateXZWide.
  */
+uint16_t RotateXZWideFrom08(uint8_t angle, int x8, uint16_t *x, uint16_t *y)
+{
+    return rotate_wide_keep((uint8_t)(~angle + 1), 0x0008, 0x000A, x8, x, y, 1);
+}
+
 void abi_RotateXZWideFrom08(void)
 {
-    uint8_t p = cpu.p, db = cpu.db;
+    uint16_t x = cpu.x, y = cpu.y;
+    uint8_t p = cpu.p;
 
-    if (p & P_X) {
-        cyc(16);
-        wr8(0x00003E, (uint8_t)cpu.x);
-        cyc(16);
-        wr8(0x000040, (uint8_t)cpu.y);
-    } else {
-        cyc(16);
-        wr16(0x00003E, cpu.x);
-        cyc(16);
-        wr16(0x000040, cpu.y);
-    }
-    cyc(30);
-    op_sep(P_X);
-    cpu.db = 0x00;
-    rotate_wide((uint8_t)(~(uint8_t)cpu.a + 1), 0x0008, 0x000A);
-    cpu.db = db;
-    op_plp(p);
-    cpu.y = (p & P_X) ? rd8(cyc_then(30, 0x000040)) : rd16(cyc_then(30, 0x000040));
-    cpu.x = (p & P_X) ? rd8(cyc_then(16, 0x00003E)) : rd16(cyc_then(16, 0x00003E));
-    cpu.p = (p & P_X) ? (cyc(44), nz8(p, (uint8_t)cpu.x)) : (cyc(44), nz16(p, cpu.x));
+    cpu.a = RotateXZWideFrom08((uint8_t)cpu.a, (p & P_X) != 0, &x, &y);
+    wide_regs(p, cpu.a, x, y);
 }
