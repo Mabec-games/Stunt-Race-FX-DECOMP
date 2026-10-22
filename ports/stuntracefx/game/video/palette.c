@@ -3,9 +3,12 @@
  * frame, and the colour cycling it steps. The palette buffer lives in work
  * RAM from $7E:FD65 (512 bytes); a few colours are kept apart at $7E:FF27.
  */
+#include <stddef.h>
+
 #include "machine.h"
 #include "native.h"
 #include "hw.h"
+#include "video_palette_calls.h"
 #include "cpu_ops.h"
 
 void CgramDma(uint16_t src, uint8_t colour, uint16_t size);
@@ -30,15 +33,6 @@ static uint8_t cgram_put(uint8_t c, uint32_t src, unsigned n)
     return v;
 }
 
-/* Colours $E1-$E3 when animating, else just colour 0. */
-static uint8_t raster_colours(void)
-{
-    cyc(46);
-    if (rd8(PALETTE_ANIMATE) == 0)
-        { cyc(22); return cgram_put(0x00, 0x7EFD65, 2); } else { cyc(16); }
-    return cgram_put(0xE1, 0x7EFF27, 6);
-}
-
 /*
  * @routine 7E:B755 RasterColours
  * WHAT IT DOES: Writes the animated colours $E1-$E3 when they are in use,
@@ -48,14 +42,17 @@ static uint8_t raster_colours(void)
  * Entry: any widths. Exit: A low byte = the last byte written; N, Z from it;
  * M and X 8-bit.
  */
-void RasterColours(void)
+uint8_t RasterColours(void)
 {
-    raster_colours();
+    cyc(46);
+    if (rd8(PALETTE_ANIMATE) == 0)
+        { cyc(22); return cgram_put(0x00, 0x7EFD65, 2); } else { cyc(16); }
+    return cgram_put(0xE1, 0x7EFF27, 6);
 }
 
 void abi_RasterColours(void)
 {
-    uint8_t v = raster_colours();
+    uint8_t v = RasterColours();
 
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.x &= 0x00FF;
@@ -74,7 +71,7 @@ void abi_RasterColours(void)
  * Entry: M 8-bit, X 8-bit. Exit: A low byte = the last byte written; N, Z
  * from it; when animating X = $B0, Y = $20, M and X 8-bit.
  */
-static uint8_t raster_palette_upload(int *animating)
+uint8_t RasterPaletteUpload(int *animating)
 {
     *animating = 0;
     cyc(46);
@@ -86,20 +83,13 @@ static uint8_t raster_palette_upload(int *animating)
         return cgram_put(0x00, 0x7EFD65, 2); else { cyc(156); }
     *animating = 1;
     CgramDma(0xFEC5, 0xB0, 0x0020);
-    return (cyc(42), raster_colours());
-}
-
-void RasterPaletteUpload(void)
-{
-    int animating;
-
-    raster_palette_upload(&animating);
+    return (cyc(42), RasterColours());
 }
 
 void abi_RasterPaletteUpload(void)
 {
     int animating;
-    uint8_t v = raster_palette_upload(&animating);
+    uint8_t v = RasterPaletteUpload(&animating);
 
     cpu.a = (uint16_t)((cpu.a & 0xFF00) | v);
     cpu.p = (uint8_t)(nz8(cpu.p, v) | P_M);
@@ -158,10 +148,15 @@ void abi_RasterColoursE4(void)
     cpu.p = nz8(cpu.p, v);
 }
 
+/* What PaletteCycle's exit leaves in C and V, for the adapter only: C from
+   the last phase test (set when the phase wrapped); V from the last step
+   that ran the backwards table index, -1 when none did. */
+static int cycle_c, cycle_v;
+
 /* One colour-cycling step: the phase counts 0..15; phases 8-15 run the table
    backwards (15 - phase), so the colour swings up and down. Returns the new
-   phase; *x the table offset used; tracks C and V as the original does. */
-static uint16_t cycle_step(uint32_t phase_addr, uint32_t table, uint32_t dest, uint16_t *x, uint8_t *p)
+   phase; *x the table offset used. */
+static uint16_t cycle_step(uint32_t phase_addr, uint32_t table, uint32_t dest, uint16_t *x)
 {
     cyc(24);
     uint16_t phase = rd16(phase_addr), i = phase, next;
@@ -169,7 +164,7 @@ static uint16_t cycle_step(uint32_t phase_addr, uint32_t table, uint32_t dest, u
     if (phase >= 8) {
         cyc(72);
         i = (uint16_t)(0x000F - phase);
-        *p = (uint8_t)((*p & ~P_V) | (((0x000F ^ phase) & (0x000F ^ i) & 0x8000) ? P_V : 0));
+        cycle_v = ((0x000F ^ phase) & (0x000F ^ i) & 0x8000) != 0;
     }
     *x = (uint16_t)(i << 1);
     cyc(106);
@@ -178,9 +173,9 @@ static uint16_t cycle_step(uint32_t phase_addr, uint32_t table, uint32_t dest, u
     if (next >= 0x0010) {
         cyc(18);
         next = 0;
-        *p |= P_C;
+        cycle_c = 1;
     } else {
-        *p &= (uint8_t)~P_C;
+        cycle_c = 0;
     }
     cyc(124);
     wr16(phase_addr, next);
@@ -198,34 +193,30 @@ static uint16_t cycle_step(uint32_t phase_addr, uint32_t table, uint32_t dest, u
  * offset; Y = 0; M 16-bit; N, Z from the data bank pulled back on return; C
  * from the phase wrap test.
  */
-static uint16_t palette_cycle(uint16_t *x, uint8_t *p)
+uint16_t PaletteCycle(uint16_t *x)
 {
+    cycle_v = -1;
     cyc(188);
     if (!(rd8(0x000E3B) & 0x01)) {
         cyc(54);
-        cycle_step(0x7EFD5B, 0x7EB71B, 0x7EFD85, x, p);
-        return cycle_step(0x7EFD5D, 0x7EB6FB, 0x7EFD87, x, p);
+        cycle_step(0x7EFD5B, 0x7EB71B, 0x7EFD85, x);
+        return cycle_step(0x7EFD5D, 0x7EB6FB, 0x7EFD87, x);
     } else { cyc(60); }
-    return cycle_step(0x7EFD5F, 0x7EB70B, 0x7EFD89, x, p);
-}
-
-void PaletteCycle(void)
-{
-    uint16_t x;
-    uint8_t p = 0;
-
-    palette_cycle(&x, &p);
+    return cycle_step(0x7EFD5F, 0x7EB70B, 0x7EFD89, x);
 }
 
 void abi_PaletteCycle(void)
 {
     uint16_t x;
-    uint8_t p = cpu.p;
 
-    cpu.a = palette_cycle(&x, &p);
+    cpu.a = PaletteCycle(&x);
     cpu.x = x;
     cpu.y = 0;
-    cpu.p = (uint8_t)(nz8(p, cpu.db) & ~(P_M | P_X));
+    cpu.p = (uint8_t)(nz8(cpu.p, cpu.db) & ~(P_M | P_X | P_C));
+    if (cycle_c)
+        cpu.p |= P_C;
+    if (cycle_v >= 0)
+        cpu.p = (uint8_t)((cpu.p & ~P_V) | (cycle_v ? P_V : 0));
 }
 
 /*
