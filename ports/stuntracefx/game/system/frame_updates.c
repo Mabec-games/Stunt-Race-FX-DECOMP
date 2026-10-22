@@ -12,6 +12,7 @@
 #include "native.h"
 #include "hw.h"
 #include "wram.h"
+#include "system_calls.h"
 
 #define FRAME_UPDATE_FLAGS 0x0011D7u
 #define BYTE_WRITES_SIZE 0x00162Du   /* bytes used in the list below */
@@ -55,19 +56,21 @@ static uint8_t oam_dma_if_pending(int *ran)
     return flags;
 }
 
+/* What the call left, for the adapter: the flags after clearing (0 when
+   nothing was pending) and whether it copied. */
+static uint8_t oam_flags;
+static int oam_ran;
+
 void OamDmaIfPending(void)
 {
-    int ran;
-
-    oam_dma_if_pending(&ran);
+    oam_flags = oam_dma_if_pending(&oam_ran);
 }
 
 void abi_OamDmaIfPending(void)
 {
-    int pending;
-
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | oam_dma_if_pending(&pending));
-    if (pending)
+    OamDmaIfPending();
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | oam_flags);
+    if (oam_ran)
         cpu.x = 0;
     cyc(70);
 }
@@ -110,19 +113,20 @@ static uint8_t cgram_dma_if_pending(int *ran)
     return flags;
 }
 
+/* As oam_flags and oam_ran. */
+static uint8_t cgram_flags;
+static int cgram_ran;
+
 void CgramDmaIfPending(void)
 {
-    int ran;
-
-    cgram_dma_if_pending(&ran);
+    cgram_flags = cgram_dma_if_pending(&cgram_ran);
 }
 
 void abi_CgramDmaIfPending(void)
 {
-    int pending;
-
-    cpu.a = (uint16_t)((cpu.a & 0xFF00) | cgram_dma_if_pending(&pending));
-    if (pending)
+    CgramDmaIfPending();
+    cpu.a = (uint16_t)((cpu.a & 0xFF00) | cgram_flags);
+    if (cgram_ran)
         cpu.y = 0x0200;
     cyc(70);
 }
@@ -143,12 +147,12 @@ typedef struct {
     uint8_t flags;
     uint16_t x, y;
     uint16_t a;     /* the last 16-bit value A held: its high byte survives */
-    int ran;
+    int ran, looped;
 } ByteWritesEnd;
 
 static ByteWritesEnd byte_writes_if_pending(uint8_t bank, uint16_t x0, uint16_t y0)
 {
-    ByteWritesEnd end = {0, x0, y0, 0, 0};
+    ByteWritesEnd end = {0, x0, y0, 0, 0, 0};
 
     cyc(90);
     if (!(rd8(FRAME_UPDATE_FLAGS) & 0x01))
@@ -170,6 +174,7 @@ static ByteWritesEnd byte_writes_if_pending(uint8_t bank, uint16_t x0, uint16_t 
             } while (cyc_loop(32, !(x & 0x8000)));
             cyc(34);
             end.x = x;
+            end.looped = 1;
         }
     }
     cyc(84);
@@ -181,17 +186,22 @@ static ByteWritesEnd byte_writes_if_pending(uint8_t bank, uint16_t x0, uint16_t 
     return end;
 }
 
+/* What the call left, for the adapter. */
+static ByteWritesEnd byte_writes_end;
+
 void ByteWritesIfPending(uint8_t bank)
 {
-    byte_writes_if_pending(bank, 0, 0);
+    byte_writes_end = byte_writes_if_pending(bank, 0, 0);
 }
 
 void abi_ByteWritesIfPending(void)
 {
-    ByteWritesEnd end = byte_writes_if_pending(cpu.db, cpu.x, cpu.y);
+    ByteWritesEnd end;
 
+    ByteWritesIfPending(cpu.db);
+    end = byte_writes_end;
     cpu.a = (uint16_t)(((end.ran ? end.a : cpu.a) & 0xFF00) | end.flags);
-    if (end.ran) {
+    if (end.looped) {
         cpu.x = end.x;
         cpu.y = end.y;
     }
@@ -207,13 +217,17 @@ void abi_ByteWritesIfPending(void)
  * and advances the queue size by 8. VramDmaQueueFlush runs the queue.
  * Entry: any widths. Exit: A = the new size when appended; P, X unchanged.
  */
+static int queue_added;     /* whether the last add appended (the adapter's) */
+
 static int vram_dma_queue_add(uint16_t *size_out)
 {
     cyc(98);
     uint16_t x = rd16(0x0016AF);
 
+    queue_added = 0;
     if (x == 0x0200)
         return 0;
+    queue_added = 1;
     cyc(64);
     wr16(0x0016B9 + x, cyc_then(32, rd16(0x0016B3)));
     cyc(46);
@@ -247,10 +261,9 @@ void VramDmaQueueAdd(void)
 
 void abi_VramDmaQueueAdd(void)
 {
-    uint16_t size;
-
-    if (vram_dma_queue_add(&size))
-        { cyc(108); cpu.a = size; }
+    cpu.a = VramDmaQueueAddA(cpu.a);
+    if (queue_added)
+        cyc(108);
 }
 
 /* Append A to a list of up to eight words; returns X, the new size (the
@@ -270,13 +283,6 @@ static uint16_t word_list_append(uint32_t size_addr, uint32_t list, uint16_t val
     return x;
 }
 
-static void abi_word_list(uint32_t size_addr, uint32_t list)
-{
-    uint16_t x = word_list_append(size_addr, list, cpu.a);
-
-    cpu.x = (cpu.p & P_X) ? (uint8_t)x : x;
-}
-
 /*
  * @routine 7F:10A1 WordListAAppend
  * WHAT IT DOES: Appends A to the eight-word list at $1195, unless it is full.
@@ -284,14 +290,16 @@ static void abi_word_list(uint32_t size_addr, uint32_t list)
  * Entry: any widths. Exit: X = the size (its low byte with 8-bit index
  * registers); P unchanged.
  */
-void WordListAAppend(uint16_t value)
+uint16_t WordListAAppend(uint16_t value)
 {
-    word_list_append(0x001191, 0x001195, value);
+    return word_list_append(0x001191, 0x001195, value);
 }
 
 void abi_WordListAAppend(void)
 {
-    abi_word_list(0x001191, 0x001195);
+    uint16_t x = WordListAAppend(cpu.a);
+
+    cpu.x = (cpu.p & P_X) ? (uint8_t)x : x;
 }
 
 /*
@@ -300,14 +308,16 @@ void abi_WordListAAppend(void)
  * HOW: Size in bytes at $1193; stores at $11B5 + size and adds 2.
  * Entry: as WordListAAppend. Exit: as WordListAAppend.
  */
-void WordListBAppend(uint16_t value)
+uint16_t WordListBAppend(uint16_t value)
 {
-    word_list_append(0x001193, 0x0011B5, value);
+    return word_list_append(0x001193, 0x0011B5, value);
 }
 
 void abi_WordListBAppend(void)
 {
-    abi_word_list(0x001193, 0x0011B5);
+    uint16_t x = WordListBAppend(cpu.a);
+
+    cpu.x = (cpu.p & P_X) ? (uint8_t)x : x;
 }
 
 /*
@@ -373,15 +383,20 @@ static FlushEnd vram_dma_queue_flush(void)
     return end;
 }
 
+/* What the call left, for the adapter. */
+static FlushEnd flush_end;
+
 void VramDmaQueueFlush(void)
 {
-    vram_dma_queue_flush();
+    flush_end = vram_dma_queue_flush();
 }
 
 void abi_VramDmaQueueFlush(void)
 {
-    FlushEnd end = vram_dma_queue_flush();
+    FlushEnd end;
 
+    VramDmaQueueFlush();
+    end = flush_end;
     cpu.a = (uint16_t)(((end.ran ? end.a : cpu.a) & 0xFF00) | end.flags);
     if (end.looped)
         cpu.x = end.x;
@@ -470,17 +485,19 @@ static uint8_t frame_input_and_count_end(uint8_t bank, uint16_t *hi, uint16_t *x
  * Entry: M 16-bit, D = $0000. Exit: A low byte = $11DA, high byte from
  * $0314; X = list B's size; M 8-bit; N, Z from $11DA.
  */
-void FrameInputAndCountEnd(uint8_t bank)
-{
-    uint16_t hi, x;
+/* What the call left besides the return value, for the adapter: A's high
+   byte and list B's size. */
+static uint16_t input_hi, input_x;
 
-    frame_input_and_count_end(bank, &hi, &x);
+uint8_t FrameInputAndCountEnd(uint8_t bank)
+{
+    return frame_input_and_count_end(bank, &input_hi, &input_x);
 }
 
 void abi_FrameInputAndCountEnd(void)
 {
-    uint16_t hi, x;
-    uint8_t v = frame_input_and_count_end(cpu.db, &hi, &x);
+    uint8_t v = FrameInputAndCountEnd(cpu.db);
+    uint16_t hi = input_hi, x = input_x;
 
     cpu.a = (uint16_t)(hi | v);
     cpu.x = (cpu.p & P_X) ? (cyc(44), (uint8_t)x) : x;
