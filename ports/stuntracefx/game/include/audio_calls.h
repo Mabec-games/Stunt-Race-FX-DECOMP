@@ -42,4 +42,10 @@ typedef struct {
 
 SoundPortsEnd SoundPortsSend(uint8_t bank, uint8_t x);
 
+/* Sound data and music loads (audio/sound_data.c). SoundDataLoad returns
+   the upload's stream offset (Y). */
+uint16_t SoundDataLoad(uint16_t which, uint16_t input);
+void MusicLoadForCourse(uint8_t bank, uint16_t music);
+void CourseSoundLoad(uint8_t bank);
+
 #endif

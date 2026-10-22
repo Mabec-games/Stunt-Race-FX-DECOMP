@@ -902,7 +902,7 @@ void abi_MenuScreenOpen0(void)
     MenuScreenOpen0();
 }
 
-void SoundDataLoad(uint16_t which, uint16_t input);
+uint16_t SoundDataLoad(uint16_t which, uint16_t input);
 void ApuUpload(uint8_t bank, uint16_t addr);
 
 /* A sound block upload as the menu does it: port 1 (and 2) = 5, a delay,
