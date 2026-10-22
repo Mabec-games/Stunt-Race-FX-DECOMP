@@ -66,4 +66,21 @@ uint16_t ObjectVelocityFromHeadingTimes4(uint8_t bank, uint16_t x, uint16_t y);
 uint16_t ObjectVelocityFromHeadingTimes8(uint8_t bank, uint16_t x, uint16_t y);
 uint16_t ObjectVelocityLevelFromDp(uint8_t bank, uint16_t x, uint16_t y);
 
+/* Fixed scalings of signed 16-bit values (scale.c). Those with a flags
+   pointer update N, Z, C, V in *p as the routine leaves them. */
+uint16_t ScaleThreeQuarters(uint16_t v);
+uint16_t ScaleQuarter(uint16_t v, uint8_t *p);
+uint16_t ScaleNineSixteenths(uint16_t v, uint8_t *p);
+uint16_t ScaleFiveEighths(uint16_t v, uint8_t *p);
+uint16_t ScaleSevenEighths(uint16_t v, uint8_t *p);
+uint16_t ScaleFifteenSixteenths(uint8_t bank, uint16_t v, uint8_t *p);
+uint16_t ScaleFiveThirtySeconds(uint8_t bank, uint16_t v, uint8_t *p);
+uint16_t Mode7ScaleProduct(uint16_t value, int positive);
+uint16_t ScaleDp02Dp94(uint8_t *p);
+uint16_t ScaleObjectXZ(uint16_t obj, uint8_t *p);
+uint16_t ScaleDp02Dp94Long(uint8_t *p);
+/* The blend factor stepped, the four words at $7F:3432 set by it: A. */
+uint16_t BlendStepUp(void);
+uint16_t BlendStepDown(void);
+
 #endif

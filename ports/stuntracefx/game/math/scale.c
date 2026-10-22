@@ -4,7 +4,7 @@
 #include "machine.h"
 #include "native.h"
 #include "hw.h"
-#include "cpu_ops.h"
+#include "math_calls.h"
 
 /* Direct page $3E and $40: scratch the routines below leave behind. */
 #define SCALE_SCRATCH 0x00003Eu
@@ -18,6 +18,17 @@ static uint16_t asr1(uint16_t v)
     return (uint16_t)((v >> 1) | (v & 0x8000));
 }
 
+/* CLC / ADC (16-bit, binary): the sum, and N, Z, C, V in *p. */
+static uint16_t adc16p(uint16_t a, uint16_t m, uint8_t *p)
+{
+    uint32_t r = (uint32_t)a + m;
+
+    *p = (uint8_t)((*p & ~(P_N | P_Z | P_C | P_V)) | ((r & 0x8000) ? P_N : 0) |
+                   ((r & 0xFFFF) == 0 ? P_Z : 0) | (r > 0xFFFF ? P_C : 0) |
+                   ((~(a ^ m) & (a ^ r) & 0x8000) ? P_V : 0));
+    return (uint16_t)r;
+}
+
 /* ScaleThreeQuarters with the flags of its add. */
 static uint16_t three_quarters(uint16_t v, uint8_t *p)
 {
@@ -29,7 +40,7 @@ static uint16_t three_quarters(uint16_t v, uint8_t *p)
     quarter = asr1(half);
     *p &= (uint8_t)~P_C;
     cyc(20);
-    return op_adc16(quarter, rd16(SCALE_SCRATCH), p);
+    return adc16p(quarter, rd16(SCALE_SCRATCH), p);
 }
 
 /*
@@ -99,7 +110,7 @@ uint16_t ScaleNineSixteenths(uint16_t v, uint8_t *p)
     sixteenth = asr1(asr1(asr1(half)));
     *p &= (uint8_t)~P_C;
     cyc(6);
-    return op_adc16(sixteenth, rd16(SCALE_SCRATCH), p);
+    return adc16p(sixteenth, rd16(SCALE_SCRATCH), p);
 }
 
 void abi_ScaleNineSixteenths(void)
@@ -128,7 +139,7 @@ uint16_t ScaleFiveEighths(uint16_t v, uint8_t *p)
     eighth = asr1(asr1(half));
     *p &= (uint8_t)~P_C;
     cyc(14);
-    return op_adc16(eighth, rd16(SCALE_SCRATCH), p);
+    return adc16p(eighth, rd16(SCALE_SCRATCH), p);
 }
 
 void abi_ScaleFiveEighths(void)
@@ -160,10 +171,10 @@ uint16_t ScaleSevenEighths(uint16_t v, uint8_t *p)
     r = asr1(quarter);
     *p &= (uint8_t)~P_C;
     cyc(22);
-    r = op_adc16(r, rd16(SCALE_SCRATCH), p);
+    r = adc16p(r, rd16(SCALE_SCRATCH), p);
     *p &= (uint8_t)~P_C;
     cyc(30);
-    return op_adc16(r, rd16(SCALE_SCRATCH2), p);
+    return adc16p(r, rd16(SCALE_SCRATCH2), p);
 }
 
 void abi_ScaleSevenEighths(void)
@@ -201,13 +212,13 @@ uint16_t ScaleFifteenSixteenths(uint8_t bank, uint16_t v, uint8_t *p)
     r = asr1(eighth);
     *p &= (uint8_t)~P_C;
     cyc(30);
-    r = op_adc16(r, rd16(eighth_at), p);
+    r = adc16p(r, rd16(eighth_at), p);
     *p &= (uint8_t)~P_C;
     cyc(30);
-    r = op_adc16(r, rd16(SCALE_SCRATCH), p);
+    r = adc16p(r, rd16(SCALE_SCRATCH), p);
     *p &= (uint8_t)~P_C;
     cyc(30);
-    return op_adc16(r, rd16(SCALE_SCRATCH2), p);
+    return adc16p(r, rd16(SCALE_SCRATCH2), p);
 }
 
 void abi_ScaleFifteenSixteenths(void)
@@ -364,7 +375,7 @@ uint16_t ScaleFiveThirtySeconds(uint8_t bank, uint16_t v, uint8_t *p)
     t = asr1(asr1(e));
     *p &= (uint8_t)~P_C;
     cyc(22);
-    return op_adc16(t, rd16(eighth_at), p);
+    return adc16p(t, rd16(eighth_at), p);
 }
 
 void abi_ScaleFiveThirtySeconds(void)
@@ -376,26 +387,45 @@ void abi_ScaleFiveThirtySeconds(void)
     cyc(44);
 }
 
+/* The flags the blend routines leave, and which of N, Z, C, V they set
+   (the rest are the caller's), for their adapters. */
+static uint8_t blend_flags, blend_mask;
+
 /* The four words at $7F:3432: base ($7F:3442) + (target ($7F:343A) - base)
-   through Mode7ScaleProduct, i.e. scaled by $7F:3408 / $7F:340A. */
-static void blend_words(void)
+   through Mode7ScaleProduct, i.e. scaled by $7F:3408 / $7F:340A. Returns
+   the last word; the flags are its add's. */
+static uint16_t blend_words(void)
 {
     unsigned i;
+    uint16_t a = 0, base, target;
+    uint8_t p = 0;
 
     for (i = 0; i < 4; i++) {
         cyc(32);
-        cpu.a = rd16((uint32_t)(0x7F343A + i * 2));
-        cpu.p |= P_C;
+        target = rd16((uint32_t)(0x7F343A + i * 2));
         cyc(46);
-        cpu.a = op_sbc16(cpu.a, rd16((uint32_t)(0x7F3442 + i * 2)), &cpu.p);
-        (cyc(40), abi_Mode7ScaleProduct());
-        cpu.p &= (uint8_t)~P_C;
+        base = rd16((uint32_t)(0x7F3442 + i * 2));
+        cyc(6);                                 /* SEC, SBC */
+        a = (uint16_t)(target - base);
+        cyc(40);
+        a = Mode7ScaleProduct(a, target >= base);
+        p = 0;
         cyc(46);
-        cpu.a = op_adc16(cpu.a, rd16((uint32_t)(0x7F3442 + i * 2)), &cpu.p);
+        a = adc16p(a, rd16((uint32_t)(0x7F3442 + i * 2)), &p);
         cyc(32);
-        wr16((uint32_t)(0x7F3432 + i * 2), cpu.a);
+        wr16((uint32_t)(0x7F3432 + i * 2), a);
     }
     cyc(44);
+    blend_flags = (uint8_t)(p & (P_N | P_Z | P_C | P_V));
+    blend_mask = P_N | P_Z | P_C | P_V;
+    return a;
+}
+
+/* The blend routines' registers: M and X 16-bit, A, the flags they set. */
+static void blend_regs(uint16_t a)
+{
+    cpu.a = a;
+    cpu.p = (uint8_t)((cpu.p & ~(P_M | P_X | blend_mask)) | blend_flags);
 }
 
 /*
@@ -405,23 +435,34 @@ static void blend_words(void)
  * ($7F:3442) and targets ($7F:343A) by it.
  * HOW: (target - base) through Mode7ScaleProduct, plus the base. The return
  * at the top is not reached in the traces so far.
- * Entry: any widths. Exit: M, X 16-bit; A = the last word; N, Z, C, V
- * from its add; or, at the top, A = the factor with Z and C set.
+ * Entry: any widths. Exit: M, X 16-bit; the return value is A = the last
+ * word; N, Z, C, V from its add; or, at the top, A = the factor with Z and
+ * C set (the adapter has the flags).
  */
+uint16_t BlendStepUp(void)
+{
+    uint16_t a, limit;
+
+    cyc(54);
+    a = rd16(0x7F3408);
+    cyc(32);
+    limit = rd16(0x7F340A);
+    if (a == limit) {
+        blend_flags = P_Z | P_C;                /* CMP: equal */
+        blend_mask = P_N | P_Z | P_C;
+        cyc(60);
+        return a;
+    }
+    a = (uint16_t)(a + 1);
+    cyc(68);
+    wr16(0x7F3408, a);
+    cyc(22);
+    return blend_words();
+}
+
 void abi_BlendStepUp(void)
 {
-    cpu.p &= (uint8_t)~(P_M | P_X);
-    cyc(54);
-    cpu.a = rd16(0x7F3408);
-    cyc(32);
-    op_cmp16(rd16(0x7F340A));
-    if (cpu.p & P_Z)
-        { cyc(60); return; }
-    cpu.a = (uint16_t)(cpu.a + 1);
-    cpu.p = nz16(cpu.p, cpu.a);
-    cyc(68);
-    wr16(0x7F3408, cpu.a);
-    (cyc(22), blend_words());
+    blend_regs(BlendStepUp());
 }
 
 /*
@@ -431,19 +472,27 @@ void abi_BlendStepUp(void)
  * HOW: As BlendStepUp. The return at the top is not reached in the traces
  * so far.
  * Entry: any widths. Exit: as BlendStepUp; or, at the top, A = 0 with Z
- * set.
+ * set (and N clear).
  */
+uint16_t BlendStepDown(void)
+{
+    uint16_t a;
+
+    cyc(54);
+    a = rd16(0x7F3408);
+    if (a == 0) {
+        blend_flags = P_Z;
+        blend_mask = P_N | P_Z;
+        cyc(60);
+        return a;
+    }
+    a = (uint16_t)(a - 1);
+    cyc(68);
+    wr16(0x7F3408, a);
+    return blend_words();
+}
+
 void abi_BlendStepDown(void)
 {
-    cpu.p &= (uint8_t)~(P_M | P_X);
-    cyc(54);
-    cpu.a = rd16(0x7F3408);
-    cpu.p = nz16(cpu.p, cpu.a);
-    if (cpu.p & P_Z)
-        { cyc(60); return; }
-    cpu.a = (uint16_t)(cpu.a - 1);
-    cpu.p = nz16(cpu.p, cpu.a);
-    cyc(68);
-    wr16(0x7F3408, cpu.a);
-    blend_words();
+    blend_regs(BlendStepDown());
 }
