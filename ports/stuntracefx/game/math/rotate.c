@@ -300,8 +300,7 @@ pos_s_neg_v:
     prod = cpu_mul(mpya, a);
     cyc(32);
     m = rd8(0x000068);
-    cy = 1;
-    a = sub8(0x00, m, &cy);
+    a = sub8(0x00, m, &cy);         /* the low byte's borrow */
     pre = 32;                           /* what sub8 does not state: JMP, LDY */
     st = 34;
     goto sub;
@@ -334,8 +333,7 @@ neg_s_neg_v:
     prod = cpu_mul(mpya, a);
     cyc(60);
     m = rd8(0x000068);
-    cy = 1;
-    a = sub8(0x00, m, &cy);
+    a = sub8(0x00, m, &cy);         /* the low byte's borrow */
     pre = 8;                            /* LDY, less what sub8 states */
     st = 16;
     goto add;
